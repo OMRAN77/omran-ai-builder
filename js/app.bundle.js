@@ -1822,8 +1822,8 @@ try{
     // Hide the main auth form and Google button, show the OTP section.
     const form = $('#authForm');
     const googleBtn = $('#authGoogleBtn');
-    const tabsRow = $('#authTabLogin')?.parentElement;
-    const orDivider = googleBtn?.previousElementSibling;
+    const tabsRow = ($('#authTabLogin') || {}).parentElement; /* v-es-floor: لا ?. — WebView أندرويد أقدم من كروم ٨٠ يرفض الحزمة كلّها */
+    const orDivider = googleBtn ? googleBtn.previousElementSibling : undefined;
     const t = (window.curT ? window.curT() : {});
     if(form) form.style.display = 'none';
     if(googleBtn) googleBtn.style.display = 'none';
@@ -1843,8 +1843,8 @@ try{
   function hideOtpSection(){
     const form = $('#authForm');
     const googleBtn = $('#authGoogleBtn');
-    const tabsRow = $('#authTabLogin')?.parentElement;
-    const orDivider = googleBtn?.previousElementSibling;
+    const tabsRow = ($('#authTabLogin') || {}).parentElement; /* v-es-floor: لا ?. — WebView أندرويد أقدم من كروم ٨٠ يرفض الحزمة كلّها */
+    const orDivider = googleBtn ? googleBtn.previousElementSibling : undefined;
     if(form) form.style.display = '';
     if(googleBtn) googleBtn.style.display = 'flex';
     if(otpBtn) otpBtn.style.display = 'flex';
@@ -3315,6 +3315,7 @@ const I18N = {
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
     imgUndoPrev: "رجّعتها للنسخة السابقة 👆 وش تبي أغيّر فيها؟", imgUndoOrig: "رجّعتها للصورة الأصليّة 👆 وش تبي أغيّر فيها؟", imgUndoNone: "هذي هي أوّل نسخة، ما قبلها شي 👆 وش تبي أغيّر فيها؟", /* v-img-undo */
     imgUnchanged: "⚠️ ما تنفّذ التعديل: الصورة رجعت نفسها بدون تغيير، فما عرضتها ولا انحسبت عليك. وضّح وش يتغيّر بالضبط أو اكتب الطلب بصيغة ثانية.", /* v-img-honest */
+    /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ حوّلتها إلى {fmt} — نفس الصورة بدون أي تغيير، وجاهزة للحفظ.", imgConvertSame: "الصورة أصلًا بصيغة {fmt} — هذي هي جاهزة للحفظ.", imgConvertAsk: "أيّ صيغة تبيها؟ PNG (أنقى جودة) أو JPG (أصغر حجمًا) أو WEBP (أخفّ للمواقع). اكتب مثلًا: حوّلها jpg", imgConvertGuess: "(فهمت «{word}» على أنّها {fmt} — إذا تبي صيغة ثانية قل: حوّلها jpg)", imgConvertFail: "تعذّر تحويل الصيغة في هذا المتصفّح — جرّب PNG أو JPG.",
     aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
@@ -4424,6 +4425,7 @@ const I18N = {
     emailAsst_connectText: "اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.", emailAsst_connectBtn: "🔗 ربط Gmail", emailAsst_disclaimer: "⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.", emailAsst_title: "📧 مساعد البريد الذكي", emailAsst_refresh: "تحديث", emailAsst_loading: "جارٍ فحص بريدك…", emailAsst_empty: "لا توجد إيميلات جديدة تحتاج ردًا الآن.",
     emailAsst_notConnected: "لم يتم ربط Gmail، يرجى إعادة الربط.", emailAsst_send: "✅ إرسال", emailAsst_ignore: "🚫 تجاهل هذا المرسل", emailAsst_sending: "جارٍ الإرسال…", emailAsst_sent: "✅ تم الإرسال", emailAsst_ignored: "🚫 تم التجاهل — لن يظهر مرة أخرى", emailAsst_error: "❌ خطأ: ", emailAsst_voiceBtn: "ملخص صوتي", emailAsst_addToCalendar: "📅 أضف للتقويم", emailAsst_addingEvent: "جارٍ إضافة الموعد…",
     emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض",
+    /* v-app-director: قسم «مخرج التطبيق» للمالك وحده — ٢٦ نصًّا (١٤ لغة) */ vdTab: "مخرج التطبيق", vdSub: "اكتب ما تريد فيديو عنه واختر اللغة والمتحدّث والمدّة — يكتب الفكرة والسيناريو، يصوّر شاشات التطبيق الحقيقيّة، يجهّز نماذج الأنماط، يسجّل التعليق ويجمّع الفيديو كاملًا.", vdPh: "مثال: فيديو عن أنماط الصور بصوت مها", vdLang: "اللغة", vdSpeaker: "المتحدّث", vdMinutes: "المدّة بالدقائق", vdRef: "صورتك مرجعًا لنماذج الأنماط (اختياريّ)", vdGo: "سوّ الفيديو", vdStepPlan: "يكتب الفكرة والسيناريو", vdStepShots: "يصوّر شاشات التطبيق", vdStepSamples: "يجهّز نماذج الأنماط", vdStepVoice: "يسجّل التعليق", vdStepJoin: "يجمّع الفيديو", vdScene: "المشهد {i} من {n}", vdQueued: "في الانتظار على الجسر", vdDone: "جاهز — {m} دقيقة و{s} ثانية", vdDownload: "تحميل الفيديو", vdFail: "ما قدرت أكمل الفيديو", vdFailPlan: "تعذّر كتابة السيناريو — تحقّق من مفتاح المخرج في الخادم", vdFailBridge: "تعذّر الوصول إلى الجسر — تحقّق من عنوان الجسر وسرّه في الخادم", vdFailRender: "فشل التصوير أو الدمج على الجسر", vdSaved: "حُفظ في فيديوهاتي", vdWarnSamples: "{n} نموذج لم يُولَّد فصار لقطة شاشة", vdEmpty: "اكتب الطلب أوّلًا", vdMaha: "مها", vdAbdullah: "عبدالله", /* v-app-director-voice: مع صوت/بدون صوت + الصوت الاحتياطيّ */ vdVoiceLabel: "التعليق الصوتيّ", vdVoiceOn: "مع صوت", vdVoiceOff: "بدون صوت", vdVoiceBackup: "صوت احتياطيّ (غير صوت مها وعبدالله)", vdFailVoice: "تعذّر تسجيل التعليق — اختر «بدون صوت» ليكتمل الفيديو بنصّ على الشاشة",
   },
   en: {
     notifSectionLabel: '🔔 Notifications',
@@ -4441,6 +4443,7 @@ const I18N = {
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
     imgUndoPrev: "Back to the previous version 👆 What should I change?", imgUndoOrig: "Back to the original 👆 What should I change?", imgUndoNone: "This is the first version — nothing before it 👆 What should I change?", /* v-img-undo */
     imgUnchanged: "⚠️ The edit wasn't applied: the picture came back unchanged, so I didn't show it and it wasn't counted against you. Say exactly what should change, or phrase it differently.", /* v-img-honest */
+    /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ Converted to {fmt} — the same picture, unchanged, ready to save.", imgConvertSame: "The picture is already {fmt} — here it is, ready to save.", imgConvertAsk: "Which format do you want? PNG (best quality), JPG (smaller file) or WEBP (lighter for websites). For example: convert to jpg", imgConvertGuess: "(I read «{word}» as {fmt} — for another format say: convert to jpg)", imgConvertFail: "This browser couldn't convert the format — try PNG or JPG.",
     aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
@@ -5548,6 +5551,7 @@ Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic 
     emailAsst_connectText: "Connect your Gmail account so the AI can read your emails and suggest ready replies you approve before sending.", emailAsst_connectBtn: "🔗 Connect Gmail", emailAsst_disclaimer: "⚠️ No reply is ever sent without your explicit approval on each message.", emailAsst_title: "📧 AI Email Assistant", emailAsst_refresh: "Refresh", emailAsst_loading: "Scanning your inbox…",
     emailAsst_empty: "No new emails need a reply right now.", emailAsst_notConnected: "Gmail is not connected, please reconnect.", emailAsst_send: "✅ Send", emailAsst_ignore: "🚫 Ignore this sender", emailAsst_sending: "Sending…", emailAsst_sent: "✅ Sent", emailAsst_ignored: "🚫 Ignored — won't show again", emailAsst_error: "❌ Error: ", emailAsst_voiceBtn: "Voice summary", emailAsst_addToCalendar: "📅 Add to Calendar",
     emailAsst_addingEvent: "Adding event…", emailAsst_eventAdded: "✅ Added to your calendar", emailAsst_calReauth: "Reconnect Gmail to allow calendar access", emailAsst_voiceLoading: "🔊 Preparing voice summary…", emailAsst_voiceEmpty: "No emails to summarize.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Low",
+    /* v-app-director: قسم «مخرج التطبيق» للمالك وحده — ٢٦ نصًّا (١٤ لغة) */ vdTab: "App Director", vdSub: "Describe the video you want, pick the language, the speaker and the length — it writes the idea and script, captures real app screens, prepares style samples, records the narration and assembles the full video.", vdPh: "Example: a video about portrait styles narrated by Maha", vdLang: "Language", vdSpeaker: "Speaker", vdMinutes: "Length in minutes", vdRef: "Your photo as a reference for style samples (optional)", vdGo: "Make the video", vdStepPlan: "Writing the idea and script", vdStepShots: "Capturing app screens", vdStepSamples: "Preparing style samples", vdStepVoice: "Recording the narration", vdStepJoin: "Assembling the video", vdScene: "Scene {i} of {n}", vdQueued: "Waiting on the bridge", vdDone: "Ready — {m} min {s} s", vdDownload: "Download video", vdFail: "Could not finish the video", vdFailPlan: "Could not write the script — check the director key on the server", vdFailBridge: "Could not reach the bridge — check the bridge URL and secret on the server", vdFailRender: "Capture or assembly failed on the bridge", vdSaved: "Saved to My videos", vdWarnSamples: "{n} sample(s) could not be generated and became screenshots", vdEmpty: "Write the request first", vdMaha: "Maha", vdAbdullah: "Abdullah", /* v-app-director-voice: مع صوت/بدون صوت + الصوت الاحتياطيّ */ vdVoiceLabel: "Narration", vdVoiceOn: "With voice", vdVoiceOff: "No voice", vdVoiceBackup: "Backup voice (not Maha/Abdullah)", vdFailVoice: "The narration could not be recorded — choose “No voice” to finish the video with on-screen text",
   }
 };window.I18N = I18N;
 /* v649 — لوحة المحفظة التعليميّة (كانت عربيّة ثابتة في كلّ اللغات) */
@@ -5608,7 +5612,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=736'; /* v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=739'; /* v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7453,10 +7457,10 @@ function renderMessages(keepScroll){
       if(__ownerBadge && !isAskAllReply){ label.style.color = 'var(--text)'; }
       /* v-owner-solo (المالك ٨ أكتوبر على لقطة «claude-haiku… · كاش ٠ · جديد 34.5k · خرج 34 ⚡»: «أريد المحادثة فقط، أيّ شي زائد ما أريده»):
          شارة الموديل والتوكنات لا تظهر فوق ردود المحادثة — تبقى لشارة الوكيل (شرارته ✦) و«اسأل الكل». */
-      if(isAskAllReply || (__ownerBadge && __plbl && m.agentBadge)) div.appendChild(label);
-      /* v-owner-identity (المالك ٨ أكتوبر: «شو عرّفني أنّ المزوّدين بأصلهم»): فوق ردّ المحادثة سطر واحد — اسم المزوّد والموديل كما أعلنه
-         المزوّد نفسه في ردّه (لا التوكنات ولا الكاش، v-owner-solo). للمالك وحده. */
-      else if(__ownerBadge && m.served && !isAskAllReply){ label.textContent = (m.providerKey && typeof functionalLabel === 'function' ? functionalLabel(m.providerKey) : '') + ' · ' + m.served; div.appendChild(label); } // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
+      /* v-name-below (المالك ١١ أكتوبر على ثلاث لقطات «Mistral · mistralai/…» و«DeepSeek · deepseek/…» و«OpenRouter · x-ai/grok-4.6»:
+         «ليش يطلع الاسم فوق المزوّدين كلّهم… كلّ واحد واسمه تحت بس، هذا يكفي»): سطر v-owner-identity فوق ردّ المحادثة رُفع —
+         الشريحة تحت الصندوق تقول من يردّ (v-chip-truth). يبقى فوق ردّ الوكيل (شرارته ✦) و«اسأل الكل» وحدهما. */
+      if(isAskAllReply || (__ownerBadge && __plbl && m.agentBadge)) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
     }
     /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
        عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
@@ -11233,6 +11237,9 @@ function updateProviderQuickBarActive(){
   });
   if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
   if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility();
+  /* v-chip-truth (لقطتا المالك ١١ أكتوبر: تحت «DeepSeek» والمجيب Gemini ثمّ Claude): فتح محادثة من القائمة ينقل المزوّد إلى
+     مزوّدها، لكنّ شريحة المالك تحت الصندوق (modes.js) لم تكن تُحدَّث إلّا من قائمتها — فتبقى على الاسم القديم. */
+  try{ if(typeof window.omModelChipSync === 'function') window.omModelChipSync(); }catch(e){ __swallow(e, 'ui:chip-sync-prov'); }
   try{
     const active = document.querySelector('.prov-chip-m.active');
     if(active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
@@ -15834,10 +15841,26 @@ let genAbortController = null;
 let askAllUidCounter = Date.now() % 2147483647;
 
 const btnStop = $('#btnStop');
+/* v-stop-grace (لقطة المالك ١٠ أكتوبر: «تم إيقاف الرد قبل اكتماله» بلا ضغط إيقاف): زرّ الإيقاف يحلّ محلّ زرّ الإرسال
+   في الموضع نفسه لحظة الإرسال، فالنقرة الثانية من نقرة مزدوجة (أو نقرة «تأكيد» قلقة) تصل الإيقاف وتقطع الردّ قبل
+   أن يبدأ. خلال أوّل ثانية من الطلب تُهمَل نقرة الإيقاف؛ بعدها يوقف كما كان. وقت البدء من تشغيل المحادثة المعروضة
+   (__omranRuns، v-parallel-chats) الذي يعكسه genAbortController. */
+const __OMRAN_STOP_GRACE_MS = 1000;
+function __omranShownRunStartedAt(){
+  try{
+    if(typeof __omranRuns === 'undefined' || typeof state === 'undefined' || !state) return 0;
+    const r = __omranRuns[String(state.currentId)];
+    return (r && r.ctl === genAbortController && r.t0) ? r.t0 : 0;
+  }catch(e){ __swallow(e, 'ui:stop-grace'); return 0; }
+}
 btnStop.onclick = () => {
   stopAllSpeaking();
   if(isListening && recognizer){ recognizer.stop(); }
-  if(genAbortController){ genAbortController.abort(); }
+  if(genAbortController){
+    const __startedAt = __omranShownRunStartedAt();
+    if(__startedAt && Date.now() - __startedAt < __OMRAN_STOP_GRACE_MS) return;
+    genAbortController.abort();
+  }
 };
 // v246 — قسم الصوت المبسط: زران (رجل/امرأة) يحفظان الاختيار فورًا + زر تجربة.
 function setVoiceGenderUI(val){
@@ -18914,7 +18937,7 @@ function mahaStartPointsMeter(budget){
         try{
           if(confirm(isAr ? 'خلصت نقاطك 🌸 تبي تشحن نقاط عشان نكمل سوالفنا؟' : 'Your points ran out 🌸 Top up to keep talking with me?')){
             try{ document.getElementById('btnSettings').click(); }catch(e){ __swallow(e, "points:app-08-maha#21"); }
-            try{ document.querySelector('.pointsPackBtn')?.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){ __swallow(e, "points:app-08-maha#22"); }
+            try{ var __ppb = document.querySelector('.pointsPackBtn'); if(__ppb) __ppb.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){ __swallow(e, "points:app-08-maha#22"); } /* v-es-floor: تمرير فقط، بلا ?. (موافقة المالك ١١ أكتوبر) */
           }
         }catch(e){ __swallow(e, "points:app-08-maha#23"); }
       }, 400);
@@ -19849,7 +19872,8 @@ window.__omranImgTools = function(wrap, dataUrl, att){
   //    ٢ الحافظة · ٣ فتح الصورة في صفحة مستقلّة (blob) حيث الضغط المطوّل يعطي
   //    «مشاركة» أصليّة · ٤ تنبيه أخير. زرّ التنزيل مُزال نهائيًّا (أمر عمران).
   // ⚠️ v592 — connect-src لا يسمح بـ data: ⇒ التحويل محلّيّ بـ atob (صفر شبكة).
-  const nmOf = () => 'image-' + Date.now() + '.png';
+  /* v-img-format: الاسم من نوع الصورة نفسها — كان «.png» دائمًا فتُحفظ JPG المحوَّلة باسم PNG */
+  const nmOf = (bl) => { const ty = (bl && bl.type) || 'image/png'; return 'image-' + Date.now() + (ty === 'image/jpeg' ? '.jpg' : (ty === 'image/webp' ? '.webp' : (ty === 'image/gif' ? '.gif' : '.png'))); };
   const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
   const note = (m) => { try{ if(typeof settingsToast === 'function'){ settingsToast(m); return true; } }catch(e){ __swallow(e, 'note:app-09-attach#v625'); } return false; };
   // 💾 v626 — أمر عمران: «الحفظ بضغطة واحدة — إرسال لمواقع التواصل أو أيّ إرسال».
@@ -19862,7 +19886,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       const a = document.createElement('a');
       if(!('download' in a)) return false;
       const u = URL.createObjectURL(bl);
-      a.href = u; a.download = nmOf(); a.rel = 'noopener';
+      a.href = u; a.download = nmOf(bl); a.rel = 'noopener';
       a.style.cssText = 'position:fixed;left:-9999px;top:0';
       document.body.appendChild(a);
       a.click();
@@ -19990,7 +20014,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       if(typeof omranNativeBridge !== 'function' || !omranNativeBridge('omranShare')) return false;
       const bl = toBlob(dataUrl);
       if(!bl) return false;
-      if(typeof msgDownloadBlob === 'function'){ msgDownloadBlob(bl, nmOf()); return true; }
+      if(typeof msgDownloadBlob === 'function'){ msgDownloadBlob(bl, nmOf(bl)); return true; }
     }catch(e){ __swallow(e, 'bridgeShare:app-09-attach#v-share-bridge'); }
     return false;
   };
@@ -21843,6 +21867,42 @@ function __textSwapIntent(s){
   if(/بدل\s+\S+(?:\s+\S+)?\s+(?:حط|خل|الى|إلى)\s*\S+/i.test(s)) return true;
   return false;
 }
+/* 🖼️ v-img-format (لقطة المالك ١١ أكتوبر: «حول الصوره لي صيغة pig» → «⚠️ ما تنفّذ التعديل… [nano-pro:not_done]»): تغيير الصيغة لا يغيّر
+   شكل الصورة، فكان محرّر الصور يرجعها كما هي فيُحكم «لم يُنفَّذ» — وطلب jpg كان يرجع png. التحويل هنا بالكانفس: بلا محرّك ولا تكلفة.
+   صيغة بخطأ حرف («pig») تُقرأ بأقرب صيغة على بعد حرف واحد ويقال ذلك؛ «صيغة» بلا صيغة مفهومة = سؤال؛ طلب معه تعديل آخر يبقى للمحرّر. */
+function __imgFormatIntent(s){
+  s = String(s || '').trim();
+  if(!s || s.length > 120) return null;
+  if(/(?:فيديو|ڤيديو|video|متحرك|انيميشن|أنيميشن|animation|pdf|بي\s*دي\s*[اإ]ف)/i.test(s)) return null;
+  if(/(?:خلفي|لون|ألوان|الوان|اكتب|أكتب|كتاب|احذف|امسح|شيل|ضيف|اضف|أضف|ارسم|وجه|شعر|ملابس|كبّ?ر|صغّ?ر|قصّ|crop|resize|background|colou?r|write|remove|add\b)/i.test(s)) return null;
+  const word = /(?:صيغ[ةه]|امتداد|فورمات|format|extension|file\s*type)/i.test(s);
+  const verb = /(?:^|[\s،,])(?:حول|حوّل|غير|غيّر|بدل|بدّل|احفظ|نزل|نزّل|صدر|صدّر|خل|خلّ|خلي|خلّي|اجعل|ابي|أبي|ابغ|أبغ|أريد|اريد|ودي|convert|save|export|change|turn|make)/i.test(s);
+  if(!word && !verb) return null;
+  const named = [[/(?:^|[^a-z])png(?![a-z])/i, 'png'], [/(?:^|[^a-z])(?:jpe?g|jpe|jfif)(?![a-z])/i, 'jpeg'], [/(?:^|[^a-z])webp(?![a-z])/i, 'webp'],
+    [/بي\s*[اإ]ن\s*جي/, 'png'], [/جي\s*بي\s*جي|جيبيجي|جيه\s*بي\s*جي/, 'jpeg'], [/ويب\s*بي/, 'webp']];
+  for(const [re, fmt] of named) if(re.test(s)) return { fmt, guess:'' };
+  if(!word) return null;
+  /* خطأ حرف واحد في كلمة لاتينيّة قصيرة («pig» ← png، «jpq» ← jpg)؛ تعادل صيغتين = سؤال */
+  const dist = (a, b) => { const d = Array.from({ length:a.length + 1 }, (_, i) => [i]); for(let j = 1; j <= b.length; j++) d[0][j] = j;
+    for(let i = 1; i <= a.length; i++) for(let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[a.length][b.length]; };
+  for(const tok of (s.match(/[a-z]{3,4}/gi) || [])){
+    const w = tok.toLowerCase(), hits = [['png', 'png'], ['jpg', 'jpeg'], ['jpeg', 'jpeg'], ['webp', 'webp']].filter(([n]) => dist(w, n) <= 1).map(([, f]) => f);
+    const uniq = hits.filter((f, i) => hits.indexOf(f) === i);
+    if(uniq.length === 1) return { fmt:uniq[0], guess:tok };
+    if(uniq.length > 1) return { fmt:null, guess:tok };
+  }
+  return { fmt:null, guess:'' };
+}
+async function __omranConvertImageFormat(b64, mime, fmt){
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image')); i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64; });
+  const c = document.createElement('canvas'); c.width = img.naturalWidth || 1; c.height = img.naturalHeight || 1;
+  const g = c.getContext('2d');
+  if(fmt === 'jpeg'){ g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); } /* JPG بلا شفافيّة: الخلفيّة الشفّافة بيضاء لا سوداء */
+  g.drawImage(img, 0, 0);
+  const type = 'image/' + fmt, url = fmt === 'png' ? c.toDataURL(type) : c.toDataURL(type, 0.92);
+  if(url.slice(5, 5 + type.length) !== type) throw new Error('format_unsupported'); /* متصفّح لا يكتب webp يرجع png بصمت */
+  return url;
+}
 async function omranBuildTextEditMask(b64, mime, box){
   const img = await new Promise((res, rej) => {
     const i = new Image();
@@ -22074,6 +22134,9 @@ async function renderTidyCardCanvas(spec, srcDataUrl){
 window.__agentModeOn = false; // v321: الوكيل دائمًا مطفي عند الفتح — لا يُحفظ تشغيله أبدًا
 try{ localStorage.removeItem('aiapp_agent_mode'); }catch(e){ __swallow(e, "misc:app-09-attach#4"); }
 function updateAgentModeUI(){
+  /* v-chip-truth: الوكيل يردّ دائمًا بـClaude مهما كان المختار؛ تشغيله من زرّه أو من ⋮ لا يمرّ بقائمة الشريحة، فكانت تبقى على
+     اسم المزوّد. الشريحة تكتب «الوكيل» حين يعمل — فيعرف المالك من سيردّ ومن يدفع. */
+  try{ if(typeof window.omModelChipSync === 'function') window.omModelChipSync(); }catch(e){ __swallow(e, 'ui:chip-sync-agent'); }
   const btn = document.getElementById('btnAgentMode');
   const lbl = document.getElementById('agentModeLabel');
   if(!btn || !lbl) return;
@@ -22509,6 +22572,18 @@ async function omranSharpenImage(dataUrl, amount){
 
 /* v-img-mix + v-img-honest: شريط الحالة يُطلق قبل وصول الصورة (بصمة v-img-engine-tag-owner ميتة في مسار التعديل)، فيُكتب
    سطر المحرّك للمالك وحده تحت التقرير — فقط حين يعمل المحرّكان (وضع الدمج، أو محرّك ثانٍ بعد «لم يُنفَّذ»). غيره لا يرى اسمًا. */
+/* v-prov-self (٣): مزوّد المالك المختار بلا أدوات (Perplexity) لا يرسم بنفسه — الصورة من محرّك الصور، فسطر تحتها (رسالة بعدها، لا فوقها: v666)
+   يقول أيّ محرّك رسمها بدل أن تبقى الشريحة وحدها باسم المزوّد. للمالك وحده؛ المزوّدون بالأدوات يرسمون بأنفسهم (v-prov-self ١). */
+function __omranNoToolsImgNote(engine){
+  try{
+    if(String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') return '';
+    const p = localStorage.getItem('aiapp_provider') || 'openai';
+    if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(p) !== -1) return '';
+    const e = String(engine || '');
+    const n = /openai|gpt/i.test(e) ? 'GPT Image' : (/gemini|nano/i.test(e) ? 'Gemini Image' : (/pollinations/i.test(e) ? 'Pollinations' : ''));
+    return n ? '🎨 ' + n : '';
+  }catch(e){ __swallow(e, 'ui:no-tools-img'); return ''; }
+}
 function __imgEngineLine(engine, d){
   /* v-media-plans: مشترك الصور يرى جودة الصورة والمتبقّي من رصيده تحتها. v-media-merge: ومشترك «صور وفيديو» يرى اسم رصيده المدموج. */
   const mt = d && d.mediaTag;
@@ -22929,7 +23004,8 @@ const __MEDIA_WORD_RE = /فيديو|ڤيديو|video|صور|image|picture|photo|
    فعلًا — فعل طلب/إنشاء، أو كلمة إعلان/بيع (مسار الإعلان يطلقها وحدها)، أو بدء الرسالة باسم الوسيط.
    «أتصور إنّ السوق يرتفع» و«رأيك في فيلم الأمس» لا تنتظر شيئًا. */
 const __MEDIA_MAKE_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])(?:اعمل|أعمل|اعملي|اصنع|أصنع|صنع|سوّ|سوي|سوّي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|أبي|ابي|ابا|أبا|بغيت|أريد|اريد|أبيك|ابيك|حاب|حابب|أحتاج|احتاج|طلع|طلعلي|صنعلي|عطني|أعطني|اعطني|هات|ارسمي|ارسم(?!ي)|أرسم(?!ي)|ارسملي|رسم|صمم|صمّم|صممي|تصميم|اكتب|أكتب|اكتبلي|ممكن|تقدر|تگدر|يمكن|create|make|generate|produce|draw|design|build|render|write|give me|i want|show me|can you)(?=$|[\s،,.!؟?()"'«»:؛-])|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|^\s*(?:فيلم|فيديو|ڤيديو|مقطع|كليب|صور[ةه]?|بوستر|شعار|لوجو|بطاقة|شهادة|دعوة|غلاف|video|image|logo|poster)\s/i;
-const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|طريقة|طريقه|شرح|اشرح|اشرحلي|علمني|علّمني|أفضل|افضل|أحسن|احسن|برنامج|برامج|تطبيق|تطبيقات|موقع|مواقع|أداة|اداة|أدوات|ادوات|يوتيوب|youtube|تيك\s*توك|تيكتوك|tiktok|انستقرام|انستغرام|instagram|سناب|نصيحة|نصائح|خطة|خطوات|مونتاج|تحرير|مشاهدات|ربح|تسويق|فكرة|أفكار|افكار|عنوان|عناوين|سكربت|سكريبت|سيناريو|كلمات|محتوى|قناة|قناتي|متابعين|جودة|صيغة|تحويل|ضغط|تحميل|تنزيل|رابط|مشاهدة|شاهدت|أشاهد|اشاهد|شفت|رأيت|لماذا|ليش|ليه|هل|متى|وين|فين|مين|ماهو|وش|ايش|أيش|what|how|why|when|which|best|tips|script|caption|title|ideas?)(?=$|[\s،,.!؟?()"'«»:؛-])|[؟?]\s*$/i;
+/* v-media-examples (لقطة المالك ١١ أكتوبر: «عطني نماذج… في الأنماط والاستايل والأزياء والفيديوهات» صار فيديو مدفوعًا عشوائيًّا): طلب نماذج/أمثلة = للموديل المختار لا لمسار توليد */
+const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|طريقة|طريقه|شرح|اشرح|اشرحلي|علمني|علّمني|أفضل|افضل|أحسن|احسن|برنامج|برامج|تطبيق|تطبيقات|موقع|مواقع|أداة|اداة|أدوات|ادوات|يوتيوب|youtube|تيك\s*توك|تيكتوك|tiktok|انستقرام|انستغرام|instagram|سناب|نصيحة|نصائح|خطة|خطوات|مونتاج|تحرير|مشاهدات|ربح|تسويق|فكرة|أفكار|افكار|عنوان|عناوين|سكربت|سكريبت|سيناريو|كلمات|محتوى|قناة|قناتي|متابعين|جودة|صيغة|تحويل|ضغط|تحميل|تنزيل|رابط|مشاهدة|شاهدت|أشاهد|اشاهد|شفت|رأيت|لماذا|ليش|ليه|هل|متى|وين|فين|مين|ماهو|وش|ايش|أيش|what|how|why|when|which|best|tips|script|caption|title|ideas?|نماذج|النماذج|أمثلة|امثلة|الأمثلة|الامثلة|عينات|عيّنات|العينات|examples?|samples?)(?=$|[\s،,.!؟?()"'«»:؛-])|[؟?]\s*$/i;
 /* مصنّف النيّة على الخادم (Gemini Flash، حرارة صفر): 'image' | 'video' | 'none' | null عند التعذّر أو المهلة. */
 async function omranMediaIntent(text){
   try{
@@ -23009,9 +23085,25 @@ async function __sendPromptCore(){
   /* v-media-gate: طبقتان قبل أيّ مسار وسائط كلماتيّ — (١) كلام «عن» الوسائط = لا إنشاء؛ (٢) وإلّا المصنّف الرخيص
      على الخادم. يُستدعى فقط حين تحوي الرسالة كلمة وسائط وبلا صورة مرفقة؛ تعذّره = null فتحكم التعابير المضيَّقة. */
   let __mediaLane = null;
+  /* v-prov-self (المالك ١١ أكتوبر «كلّ واحد ونفسه… من غير لفّ ودوران»، ولقطة Groq وصورة «غير الاشكال» يبنيها محرّك آخر): للمالك والمزوّد
+     المختار يحمل الأدوات، لا مسار وسائط في الواجهة يسبقه — لا مصنّف خفيّ، ولا تعديل/رسم/فيديو مباشر. الطلب يصل المزوّد نفسه فيقرّر
+     ويرسم أو يعدّل بأداته ويقول بأيّ محرّك. يبقى كما كان: أوضاع «+» التي يختارها المالك بيده، وClaude Code، والوكيل، والأدوات المطفأة،
+     وتحويل الصيغة المحلّيّ (كانفس في المتصفّح، لا محرّك). */
+  const __ownerProvTurn = (function(){
+    try{
+      if(!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return false;
+      if(window.__omMode || window.__chatToolsOn === false) return false;
+      const __p = localStorage.getItem('aiapp_provider') || 'openai';
+      if(window.__agentModeOn === true && __p === 'claude') return false;
+      if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(__p) === -1) return false;
+      if(pendingAttachments.some(a => a && a.isImage) && __imgFormatIntent(text)) return false;
+      return true;
+    }catch(e){ __swallow(e, 'ui:prov-self'); return false; }
+  })();
   try{
     const __mediaHasImg = pendingAttachments.some(a => a && a.isImage);
-    if(text && !__mediaHasImg && __MEDIA_WORD_RE.test(text)){
+    if(__ownerProvTurn) __mediaLane = 'none';
+    else if(text && !__mediaHasImg && __MEDIA_WORD_RE.test(text)){
       __mediaLane = __MEDIA_TALK_RE.test(text) ? 'none' : (__MEDIA_MAKE_RE.test(text) ? await omranMediaIntent(text) : null); /* v-chat-fast */
     }
   }catch(e){ __mediaLane = null; }
@@ -23576,7 +23668,8 @@ function __friendlyErr(e){
       return;
     }
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
-    if(window.__agentModeOn && !imageAttachments.length){
+    /* v-prov-self: الوكيل وكيلُ Claude — مع مزوّد آخر مختار يردّ المزوّد نفسه بأدواته (مسار المحادثة أدناه)، لا Claude بالخفاء */
+    if(window.__agentModeOn && !imageAttachments.length && (localStorage.getItem('aiapp_provider') || 'openai') === 'claude'){
       await runOmranAgent(cur, apiText, thinkingDiv);
       return;
     }
@@ -23703,7 +23796,7 @@ function __friendlyErr(e){
       /[📋⬜☐🔹▪•✔️]/.test(text) ||
       /^\s*(?:[-*]|\d+[.)])\s+\S.*\n\s*(?:[-*]|\d+[.)])\s+\S/m.test(text)
     ));
-    const __blockAutoImage = !!(__pastedLike && !__srcImg && !__explicitImgReq);
+    const __blockAutoImage = !!(__ownerProvTurn /* v-prov-self */ || (__pastedLike && !__srcImg && !__explicitImgReq));
     /* v-support-q (لقطة عمران ١ سبتمبر: «عندي مشكلة في الطباعة تصور خارج
        الصورة... كيف اسوي الإعدادات» راحت لتعديل صورة قديمة): سؤال مساعدة
        يحوي كلمات صور عرضًا (تصور/الصورة/تعديل) — نمنع توجيهه للصور حين لا
@@ -24124,7 +24217,7 @@ function __friendlyErr(e){
       : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
     const __talkCharRe = /(شخصية|شخصيه|كرتون|كارتون|كرتوني|كرتونية|كارتونية|character|cartoon|avatar|أفتار|افتار)/i;
     const __speakRe = /(تتكلم|يتكلم|تحكي|يحكي|تتحدث|يتحدث|ناطق|ناطقة|يقول|تقول|talk|talking|speak|speaking|say)/i;
-    const __talkCharIntent = !!text && !__codeWordRe.test(text) && __talkCharRe.test(text) && __speakRe.test(text);
+    const __talkCharIntent = !__ownerProvTurn /* v-prov-self */ && !!text && !__codeWordRe.test(text) && __talkCharRe.test(text) && __speakRe.test(text);
     let __alreadyCartoon = false;
     // 🎬 v367: طلب شخصية تتكلم بدون صورة مرفقة → افتح مكتبة شخصيات جاهزة يختار منها (أو يرفع صورته)
     window.pickTalkCharacter = window.pickTalkCharacter || function(isAr){
@@ -24522,6 +24615,27 @@ function __showImgLoading(el, ar, en){
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (__upgSrc ? (__upgSrc.mime || 'image/png') : ((cur.lastEditedImage && cur.lastEditedImage.mime) || 'image/png'));
       const __isNewImageSource = !!(__srcImg && !__srcImg._fromMemory);
+      /* 🖼️ v-img-format: تحويل الصيغة محلّيًّا قبل أيّ محرّك — الصورة نفسها بلا تغيير، وتصير مصدر التعديل التالي */
+      const __fmtReq = __b64 ? __imgFormatIntent(text) : null;
+      if(__fmtReq){
+        const __fmtName = (f) => (f === 'jpeg' ? 'JPG' : String(f || '').toUpperCase());
+        const __fmtExt = (f) => (f === 'jpeg' ? 'jpg' : f);
+        const __guessNote = (f) => (__fmtReq.guess && f ? '\n' + t('imgConvertGuess').replace('{word}', __fmtReq.guess).replace('{fmt}', __fmtName(f)) : '');
+        if(!__fmtReq.fmt){
+          cur.messages.push({ role:'assistant', content:t('imgConvertAsk') });
+        } else if(__mime === 'image/' + __fmtReq.fmt){
+          cur.messages.push({ role:'assistant', content:t('imgConvertSame').replace('{fmt}', __fmtName(__fmtReq.fmt)) + __guessNote(__fmtReq.fmt), attachments:[{ name:'image.' + __fmtExt(__fmtReq.fmt), isImage:true, mime:__mime, dataUrl:'data:' + __mime + ';base64,' + __b64 }] });
+        } else {
+          try{
+            const __cvUrl = await __omranConvertImageFormat(__b64, __mime, __fmtReq.fmt), __cvMime = 'image/' + __fmtReq.fmt;
+            cur.messages.push({ role:'assistant', content:t('imgConvertDone').replace('{fmt}', __fmtName(__fmtReq.fmt)) + __guessNote(__fmtReq.fmt), attachments:[{ name:'image.' + __fmtExt(__fmtReq.fmt), isImage:true, mime:__cvMime, dataUrl:__cvUrl }] });
+            cur.lastEditedImage = { b64:__cvUrl.split(',')[1] || '', mime:__cvMime };
+          }catch(e){ __swallow(e, 'img:format'); cur.messages.push({ role:'assistant', content:t('imgConvertFail') }); }
+        }
+        cur.lastMsgWasImageEdit = true;
+        thinkingDiv && thinkingDiv.remove();
+        renderAll(); saveState(); return;
+      }
       // 🏠 v682: مسار الديكور — صوّر غرفتك والذكاء يولّد ٤ أساليب مختلفة
       const __decorRe = /(?:ديكور|ديكو|décor|decor|تصميم\s*داخلي|interior\s*design|غير\s*(?:شكل|الشكل|الغرفة|البيت|المكان|الطابع)|حسّن\s*(?:الغرفة|البيت|المكان|الديكور)|رتّب\s*الغرفة|تزيين|أثاث\s*جديد|اقتراح\s*(?:ديكور|أثاث)|غرفتي\s*(?:غير|حسّن|بدّل)|بيتي\s*(?:غير|حسّن))/i;
       if(__decorRe.test(text) && __b64){
@@ -24863,7 +24977,9 @@ function __showImgLoading(el, ar, en){
       }
       // 🛡️ v574: نيّة كتابة صريحة بلا نصّ مفهوم → نطلب النصّ ولا نمسّ الصورة.
       // ممنوع منعًا باتًا أن يعيد مولّد الصور رسمها في شؤون الكتابة.
-      if(!__textSpec.wantsText && !__textSpec.styleEdit && window.__imageWriteIntent && window.__imageWriteIntent(text)){
+      /* v-swap-before-ask (لقطة المالك ١١ أكتوبر: «بدل بليدر حط om ai» على لقطة → «حدّد النص بين علامتي تنصيص» مرّتين): «بدل X حط Y»
+         تبديل نصّ مكتوب، ومساره (v-text-swap) بعد هذا الحارس مباشرةً — كان الحارس يردّ قبله لأنّ «حط» نيّة كتابة. */
+      if(!__textSpec.wantsText && !__textSpec.styleEdit && window.__imageWriteIntent && window.__imageWriteIntent(text) && !(__b64 && __textSwapIntent(text))){
         cur.messages.push({ role:'assistant', content:(lang === 'ar'
           ? 'أكتبه لك على نفس الصورة بدون أي تغيير فيها — بس حدّد النص بين علامتي تنصيص، مثل: اكتب «عمران» بالأصفر في الأعلى.'
           : 'I will write it on the same image without altering it — put the exact text in quotes, e.g. write «Omran» in yellow at the top.') });
@@ -24950,6 +25066,7 @@ function __showImgLoading(el, ar, en){
           }catch(e){ __swallow(e, 'img:text-keep'); }
         }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */ + __imgEngineLine(__data.engine, __data), attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
+        { const __nt = __omranNoToolsImgNote(__data.engine); if(__nt) cur.messages.push({ role: 'assistant', content: __nt }); } /* v-prov-self */
         // v-img-engine-tag-owner: بصمة المحرك الحرفيّة في شريط الحالة — للمالك وحده (باب مقفل: لا اسم مزوّد لأيّ مستخدم).
         try{ if(chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = __keptLayer ? { b64: __editUrl.split(',')[1], mime: 'image/png' } : { b64: __data.imageBase64, mime: __outMime };
@@ -25178,6 +25295,7 @@ function __showImgLoading(el, ar, en){
       if(__gOk){
         const __gm = __gData.mimeType || 'image/png';
         cur.messages.push({ role: 'assistant', content: '' /* v666: بلا جملة فوق الصورة — طلب عمران */, attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
+        { const __nt = __omranNoToolsImgNote(__gData.engine); if(__nt) cur.messages.push({ role: 'assistant', content: __nt }); } /* v-prov-self */
         // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة (لا فوقها).
         if(typeof __gData.caption === 'string' && __gData.caption.trim()){
           cur.messages.push({ role: 'assistant', content: __gData.caption.trim() });
@@ -27958,13 +28076,14 @@ function stripHeaderMenuEmoji(){
     ['#btnDeleteAll','#authToggleBtn','#settingsLogoutBtn','#btnExportZip','[data-i18n="exportZip"]'].forEach(sel=>{
       const el = document.querySelector(sel); if(el) scopes.push(el);
     });
+    let emoRe; try{ emoRe = new RegExp('[\\p{Extended_Pictographic}\\uFE0F\\u200D]', 'gu'); }catch(e2){ emoRe = /[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\uFE0F\u200D]/g; /* v-es-floor: محرّك قديم — تقريب بلا خصائص يونيكود */ }
     scopes.forEach(scope=>{
       if(!scope) return;
       const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
       let n; const nodes=[];
       while((n = walker.nextNode())) nodes.push(n);
       nodes.forEach(tn=>{
-        const clean = tn.textContent.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '').replace(/\s{2,}/g, ' ');
+        const clean = tn.textContent.replace(emoRe, '').replace(/\s{2,}/g, ' ');
         if(clean !== tn.textContent) tn.textContent = clean;
       });
     });
@@ -28316,7 +28435,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
   function T(o){ return (o && (o[lg()] || o.en || o.ar)) || ''; }
   /* v-vmk-clean (المالك: «شيل الأيقونات… شغل نضيف ومرتب»): لا إيموجي في واجهة الترندات — الأسماء وحدها */
-  function noEmoji(x){ return String(x == null ? '' : x).replace(/\u200D(?=\p{Extended_Pictographic})|(?![\u00A9\u00AE\u2122])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\uFE0F|\u20E3/gu, '').replace(/\s{2,}/g, ' ').trim(); }
+  var NOEMO_RE; try{ NOEMO_RE = new RegExp('\\u200D(?=\\p{Extended_Pictographic})|(?![\\u00A9\\u00AE\\u2122])\\p{Extended_Pictographic}|\\p{Emoji_Modifier}|\\uFE0F|\\u20E3', 'gu'); }catch(e){ NOEMO_RE = /[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\uFE0F\u20E3]/g; /* v-es-floor: محرّك قديم — تقريب */ }
+  function noEmoji(x){ return String(x == null ? '' : x).replace(NOEMO_RE, '').replace(/\s{2,}/g, ' ').trim(); }
   function ui(k){ return noEmoji(T(D.ui[k])); }
   function tokenOf(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
   var PREVIEW = function(k){ return '/api/studio-preview?feature=trend&value=' + encodeURIComponent(k); };
@@ -30474,7 +30594,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     var rw = $('fashionAiResultWrap');
     if(rw && !$('fxTry')){
       var tr = document.createElement('div'); tr.id = 'fxTry';
-      tr.style.cssText = 'display:none;flex-wrap:wrap;gap:6px;margin-top:10px;';
+      tr.style.cssText = 'display:none;flex-wrap:wrap;gap:6px;margin-top:10px;max-width:760px;margin-inline:auto;'; /* v-fashion-result-inplace: بعرض النتيجة */
       rw.insertAdjacentElement('afterend', tr);
       try{ new MutationObserver(renderTry).observe(rw, { attributes:true, attributeFilter:['style'] }); }catch(e){ /* guard-ok */ }
       try{ new MutationObserver(renderTry).observe(gen, { attributes:true, attributeFilter:['disabled'] }); }catch(e){ /* guard-ok */ }
@@ -31894,6 +32014,59 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   const beforeWrap = $('#fashionAiBeforeWrap');
   const beforeImg = $('#fashionAiBeforeImg');
   const favSaveBtn = $('#fashionAiFavoriteSaveBtn');
+  /* v-fashion-result-inplace (المالك ١١ أكتوبر بلقطة: «الصورة بعد ما تخلص تنزل تحت — أريدها تكون ثابتة نفس المكان»): النتيجة
+     كانت تحت زرّ «صمم» في آخر النموذج، ومشهد التوليد أعلاه مكان مربّع الرفع — فينتهي التوليد والعين في مكان والنتيجة في
+     آخر. العقد نفسها (بمستمعيها وصفّ التعديل داخلها) تُنقل إلى قبل لوح الصورة: المكان الذي كان فيه المشهد، وبعرضه (٧٦٠). */
+  const FX_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };
+  (function(){
+    try{
+      const pane = $('#fashionAiImagePane');
+      if(!pane || !pane.parentNode || !resultWrap) return;
+      [resultWrap, document.getElementById('fxTry'), downloadEl, favSaveBtn].forEach((n) => {
+        if(!n) return;
+        pane.parentNode.insertBefore(n, pane);
+        Object.assign(n.style, FX_RESULT_STYLE);
+      });
+    }catch(e){ __swallow(e, 'fashion:result-inplace'); }
+  })();
+  /* «ثابتة نفس المكان»: النتيجة الطوليّة بعرض المشهد أطول من الشاشة (٧٦٠×١٠١٣) فتنقصّ وتقفز الصفحة إليها — عرض الحاوية
+     يُحدّ بنسبة الصورة حتى يدخل ارتفاعها في FX_RESULT_VH من الشاشة. الصورة تبقى width:100% من حاويتها فشريط «قبل/بعد»
+     وصفّ التعديل على حالهما. على الجوّال الحدّ أوسع من الشاشة للصور ٣:٤ فلا يتغيّر شيء. */
+  const FX_RESULT_VH = 0.7;
+  function fxFitResult(){
+    try{
+      if(!resultWrap || !resultEl.naturalWidth || !resultEl.naturalHeight) return;
+      const maxH = Math.round(window.innerHeight * FX_RESULT_VH);
+      resultWrap.style.maxWidth = Math.min(760, Math.round(maxH * resultEl.naturalWidth / resultEl.naturalHeight)) + 'px';
+    }catch(e){ __swallow(e, 'fashion:result-fit'); }
+  }
+  if(resultEl){ resultEl.addEventListener('load', fxFitResult); window.addEventListener('resize', fxFitResult); }
+  /* الحاوية مخفيّة لحظة عرض النتيجة (المشهد ما زال مكانها حتى المسح التالي) فكلّ قياس أو تمرير تلك اللحظة لا يفعل شيئًا —
+     نتبع ظهورها وتغيّر مقاسها: صورة «قبل» (عرضها بالبكسل = عرض الحاوية، وكان يُقاس مرّة) تتبعه، والتمرير المؤجَّل إلى
+     النتيجة يُنفَّذ حين تظهر فعلًا (لمن نزّل الصفحة أثناء الانتظار؛ ومن بقي عند المشهد لا يتحرّك عنده شيء). */
+  let fxRevealPending = false;
+  function fxRevealResult(){
+    try{ resultEl.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(err){ __swallow(err, 'fashion:scroll'); }
+  }
+  /* v-fashion-compare-rtl (المالك ١١ أكتوبر: «أصلحه»): شريط «قبل/بعد» في الواجهة العربيّة كان يعرض جزءًا مزاحًا من صورة «قبل»
+     — الصورة أعرض من طبقتها المقصوصة فتفيض يسارًا في RTL وتبدأ من حافّة الطبقة اليمنى لا اليسرى؛ الطبقة LTR دائمًا.
+     وكانت الطبقة بارتفاع الحاوية كلّها (height:100%) والحاوية تضمّ صفّ التعديل تحت الصورة — فتغطّي زرّه؛ ارتفاعها الآن
+     ارتفاع الصورة وحدها، فتنطبق «قبل» على «بعد» بالضبط ويبقى الصفّ ظاهرًا. */
+  if(beforeWrap) beforeWrap.style.direction = 'ltr';
+  function fxSyncBefore(){
+    if(!resultWrap.clientWidth) return false;
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+    if(beforeWrap && resultEl.clientHeight) beforeWrap.style.height = resultEl.clientHeight + 'px';
+    return true;
+  }
+  if(resultWrap && beforeImg && typeof ResizeObserver === 'function'){
+    try{
+      new ResizeObserver(() => {
+        if(!fxSyncBefore()) return;
+        if(fxRevealPending){ fxRevealPending = false; fxRevealResult(); }
+      }).observe(resultWrap);
+    }catch(e){ __swallow(e, 'fashion:before-sync'); }
+  }
   const favoritesBtn = $('#fashionAiFavoritesBtn');
   const favoritesPanel = $('#fashionAiFavoritesPanel');
   const profileHeightEl = $('#fashionProfileHeight');
@@ -32178,6 +32351,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     resultWrap.style.touchAction = 'none';
     resultWrap.addEventListener('pointerdown', (ev) => {
       if(!beforeWrap || beforeWrap.style.display === 'none') return;
+      /* v-fashion-compare-rtl: صفّ التعديل داخل الحاوية — نقره ليس سحبًا للشريط (كان يُحرّك الشريط ويمنع تركيز الحقل ونقر الزرّ) */
+      if(ev.target && ev.target.closest && ev.target.closest('#fashionRefineRow')) return;
       __fashionBaDragging = true;
       try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
       updateSliderClip(fashionBaPctFromEvent(ev));
@@ -32335,7 +32510,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       resultEl.src = dataUrl;
       if(resultWrap) resultWrap.style.display = 'block'; /* v-fashion-show */
       resultEl.style.display = 'block';
-      try{ resultEl.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(err){ __swallow(err, 'fashion:scroll'); }
+      /* v-fashion-result-inplace: النتيجة في مكان المشهد والعين عليه — لا تمرير إلّا إن كانت خارج النظر (كان center فتقفز
+         الصفحة). وهي مخفيّة الآن ما دام المشهد — فالتمرير الفعليّ يُعاد حين تظهر (fxRevealPending). */
+      fxRevealPending = true;
+      fxRevealResult();
       downloadEl.href = dataUrl;
       downloadEl.style.display = 'block';
       favSaveBtn.style.display = 'block';
@@ -32564,6 +32742,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
             resultEl.src = r.dataUrl; if(resultWrap) resultWrap.style.display = 'block'; resultEl.style.display = 'block'; /* v-fashion-show */
             downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
             favSaveBtn.style.display = 'block';
+            /* v-fashion-result-inplace: النتيجة وزرّ التحميل صارا أعلى النافذة — نصعد إليهما ليرى الاختيار */
+            fxRevealResult();
           };
         } else {
           cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
@@ -33955,6 +34135,56 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   const beforeImg = $('#studioAiBeforeImg');
   const multiAngleEl = $('#studioAiMultiAngle');
   const favSaveBtn = $('#studioAiFavoriteSaveBtn');
+  /* v-style-scene (المالك ١١ أكتوبر بخمس صور «برج الستايل»: «نفس فكرة الأزياء سوّها في ستايل … وبعد ما تخلص أريد ترتّب قبل وبعد»):
+     مشهد التوليد يُركَّب أعلى الاستوديو مكان خانة «① صورتك» (app-34-gen-wait، اللوحة studio). والنتيجة كانت تحت زرّ «ولّد» بعرض
+     النافذة (١١٠٠×١٤٦٧ للطوليّة — أطول من الشاشة) وبلا تمرير إليها؛ هي وزرّا التحميل والمفضّلة (العقد نفسها بمستمعيها) تُنقل إلى
+     قبل عنوان «① صورتك» — حيث كان المشهد — وبعرضه (٧٦٠ موسَّطة). شبكة النتائج المتعدّدة تُنشأ بعد حاوية النتيجة فتتبعها. */
+  const ST_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };
+  (function(){
+    try{
+      const anchor = modal ? modal.querySelector('.stStep[data-i18n="studioStepPhoto"]') : null;
+      if(!anchor || !anchor.parentNode || !resultWrap) return;
+      [resultWrap, downloadEl, favSaveBtn].forEach((n) => {
+        if(!n) return;
+        anchor.parentNode.insertBefore(n, anchor);
+        Object.assign(n.style, ST_RESULT_STYLE);
+      });
+    }catch(e){ __swallow(e, 'studio:result-inplace'); }
+  })();
+  /* تدخل كاملة في الشاشة: عرض الحاوية يُحدّ بنسبة الصورة حتى يدخل ارتفاعها في ST_RESULT_VH من الشاشة (الصورة تبقى width:100%
+     من حاويتها فشريط «قبل/بعد» على حاله). على الجوّال الحدّ أوسع من الشاشة لصور ٣:٤ فلا يتغيّر مقاسها. */
+  const ST_RESULT_VH = 0.7;
+  function stFitResult(){
+    try{
+      if(!resultWrap || !resultEl.naturalWidth || !resultEl.naturalHeight) return;
+      const maxH = Math.round(window.innerHeight * ST_RESULT_VH);
+      resultWrap.style.maxWidth = Math.min(760, Math.round(maxH * resultEl.naturalWidth / resultEl.naturalHeight)) + 'px';
+    }catch(e){ __swallow(e, 'studio:result-fit'); }
+  }
+  if(resultEl){ resultEl.addEventListener('load', stFitResult); window.addEventListener('resize', stFitResult); }
+  /* النتيجة مخفيّة لحظة عرضها (المشهد ما زال مكانها حتى المسح التالي) — التمرير إليها يُنفَّذ حين تظهر فعلًا: من بقي عند
+     المشهد لا يتحرّك عنده شيء (nearest)، ومن نزّل الصفحة أثناء الانتظار يُعاد إليها. */
+  function stReveal(el){
+    try{
+      if(!el) return;
+      const go = () => { try{ el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(err){ __swallow(err, 'studio:scroll'); } };
+      if(el.clientWidth){ go(); return; }
+      if(typeof ResizeObserver !== 'function') return;
+      const ro = new ResizeObserver(() => { if(!el.clientWidth) return; ro.disconnect(); go(); });
+      ro.observe(el);
+    }catch(e){ __swallow(e, 'studio:reveal'); }
+  }
+  /* «ترتّب قبل وبعد»: (١) صورة «قبل» أعرض من طبقتها المقصوصة فتفيض يسارًا في RTL ويظهر نصفها الأيمن في نصف الإطار الأيسر
+     (بالمسبار: تبدأ عند −٤٦٢ والنتيجة عند ٩٠) — الطبقة LTR دائمًا. (٢) كانت تُمدَّد لمقاس النتيجة فتتشوّه إن اختلفت النسبتان —
+     تُعرض كاملة داخل صندوق النتيجة (contain) كما في الأزياء. (٣) عرضها بالبكسل كان يُقاس مرّة عند العرض والحاوية الآن مخفيّة
+     تلك اللحظة ويتغيّر عرضها (الحدّ أعلاه) — يتبع مقاس الحاوية. */
+  if(beforeWrap) beforeWrap.style.direction = 'ltr';
+  if(beforeImg){ beforeImg.style.objectFit = 'contain'; beforeImg.style.background = '#000'; }
+  if(resultWrap && beforeImg && typeof ResizeObserver === 'function'){
+    try{
+      new ResizeObserver(() => { if(resultWrap.clientWidth) beforeImg.style.width = resultWrap.clientWidth + 'px'; }).observe(resultWrap);
+    }catch(e){ __swallow(e, 'studio:before-sync'); }
+  }
   const favoritesBtn = $('#studioAiFavoritesBtn');
   const favoritesPanel = $('#studioAiFavoritesPanel');
   const profileFaceShapeEl = $('#studioProfileFaceShape');
@@ -35417,6 +35647,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         downloadEl.href = dataUrl; downloadEl.style.display = 'block';
         favSaveBtn.style.display = 'block'; favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
         setupBeforeAfter();
+        stReveal(resultWrap); /* v-style-scene */
       }
       if(r.error){
         if(r.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; }
@@ -35452,6 +35683,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       multiEl.appendChild(cell);
     });
     setStatus(ok.length ? t('studioAiDone') : studioErrText(new Error(results[0].error || 'unknown')));
+    stReveal(multiEl); /* v-style-scene: شبكة النتائج صعدت مع حاوية النتيجة */
   }
   /* v-studio-tabs: تبويبات الميزات بطاقات مصوّرة من assets/studio/features/. */
   function photoizeStudioTabs(){
@@ -35733,6 +35965,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       favSaveBtn.style.display = 'block';
       favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
       setupBeforeAfter();
+      stReveal(resultWrap); /* v-style-scene */
       setStatus(t('studioAiDone'));
     } catch(e){
       setStatus(studioErrText(e)); /* v-edit-no-change: كان هذا الموضع يعرض الكود الخامّ (image_edit_identity_mismatch) */
@@ -36636,7 +36869,8 @@ window.updateVersionLabel();
     b.setAttribute('data-cx-preset', p.type);
     b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.14));background:rgba(255,255,255,.03);color:inherit;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1.35;cursor:pointer;text-align:center;';
     var txt = optText('constructionType', p.type) || p.type;
-    var m = txt.match(/^(\p{Extended_Pictographic}️?)\s*(.*)$/u);
+    var emRe; try{ emRe = new RegExp('^(\\p{Extended_Pictographic}\\uFE0F?)\\s*(.*)$', 'u'); }catch(e){ emRe = /^((?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF])\uFE0F?)\s*(.*)$/; /* v-es-floor: محرّك قديم — تقريب */ }
+    var m = txt.match(emRe);
     var em = document.createElement('span'); em.textContent = m ? m[1] : '🏗️'; em.style.cssText = 'font-size:22px;';
     var nm = document.createElement('span'); nm.textContent = m ? m[2] : txt;
     b.appendChild(em); b.appendChild(nm);
@@ -37682,6 +37916,17 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
 (function () {
   'use strict';
 
+  /* v-prov-self (المالك ١١ أكتوبر «كلّ واحد ونفسه»): رسم/تعديل يطلبه المزوّد بأداته يُنفَّذ بمحرّك شركته إن كان لها محرّك صور —
+     GPT ← GPT Image، Gemini ← Gemini Image — والخادم يقبل forceEngine للمالك وحده (maha-image). غيرهما = سلسلة المحرّكات
+     المعتادة، واسم المحرّك يعود في نتيجة الأداة فيقوله المزوّد. */
+  function provEngine() {
+    try {
+      if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return undefined;
+      var p = localStorage.getItem('aiapp_provider') || 'openai';
+      return p === 'openai' ? 'gpt' : (p === 'gemini' ? 'nano' : undefined);
+    } catch (e) { return undefined; } // guard-ok — بلا تخزين = السلسلة المعتادة
+  }
+
   function runInSandbox(html, timeoutMs) {
     return new Promise(function (resolve) {
       var token = 'ag_' + Math.random().toString(36).slice(2);
@@ -37850,6 +38095,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
                 userText: gUserText,
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
                 guestId: window.getGuestId ? window.getGuestId() : '',
+                forceEngine: provEngine(),
               }),
             });
             j = null;
@@ -37904,6 +38150,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
                 history: tHist,
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
                 guestId: window.getGuestId ? window.getGuestId() : '',
+                forceEngine: provEngine(),
               }),
             });
             try { ej = await er.json(); } catch (e) { ej = null; }
@@ -43660,7 +43907,40 @@ if(document.readyState === 'loading'){
    عدّاد الفيديو لا يصفّره تبدّل نصّ الحالة أثناء التوليد الواحد.
 
    ذاتيّة بالكامل: MutationObserver + IIFE — بلا تعديل على العارض ولا مسارات التوليد،
-   ومسار تعديل الصور ذو النقاط الذهبيّة (الذي اختاره المالك) لا يُمسّ. */
+   ومسار تعديل الصور ذو النقاط الذهبيّة (الذي اختاره المالك) لا يُمسّ.
+
+   v-gen-scene (المالك ١١ أكتوبر، بصورة «برج الأزياء»: «في الأزياء تطلّع لي هذي عند توليد الصورة، لكن
+   تكون ممطرة، والعدّاد يشتغل [يبدأ من الصفر]، ويكون فوق مش تحت»): بطاقة الأزياء صارت مشهدًا — صورة المالك
+   خلفيّةً (assets/fashion/gen-scene.webp، وعدّاد «75%» المرسوم فيها مطموس)، فوقها مطر متحرّك وتموّجات على
+   الأرضيّة، وعدّاد حيّ في مكان المرسوم: حلقة تمتلئ ورقم يبدأ من ٠ وشريط ومرحلة. وتُركَّب أعلى الاستوديو
+   (قبل تبويبَي «من صورة / من وصف») لا تحت زرّ «صمم»، ويُمرَّر إليها. التعديل الموضعيّ («جاري تطبيق…»)
+   يبقى تحت سطر الحالة حيث ينظر المستخدم. بلا نصّ جديد: المراحل والتوقّع كما هي.
+
+   v-gen-scene-exact (المالك بلقطة من جوّاله بعد النشر: «الفكرة كلّها خطأ… هذا التصميم الذي أريده بالضبط: العدّاد يكون
+   نفس الفكرة داخل [الصورة] ونفس التصميم، وهذه الصورة تكون نفس مكان رفع الصورة»): (١) لوحة العدّاد الداكنة التي غطّت
+   البرج أُزيلت — العدّاد الآن عدّاد الصورة نفسه في موضعه وبمقاسه: الحلقة الورديّة من الأصل، وداخلها قوس التقدّم الأبيض
+   والرقم، وتحتها الشريط و«NN% COMPLETE»، تُرسم كلّها SVG بإحداثيّات الصورة (viewBox) فتكبر وتصغر معها بالضبط.
+   الأرقام لاتينيّة و«COMPLETE» كما في تصميمه (جزء من الرسمة لا نصّ واجهة). (٢) المشهد يُركَّب قبل لوح الصورة
+   ويُخفى مربّع «ارفعي صورتك» ما دام ظاهرًا — فهو في مكانه تمامًا؛ وفي «من وصف نصّي» فوق حقل الوصف.
+   (٣) «أريد الحركة داخل، خلف العدّاد — مكان الأنبوب الخلفيّ»: المطر المائل على الصورة كلّها أُزيل؛ الحركة الآن ستارة
+   الماء والأرقام النازلة داخل أنبوب البرج نفسه (٣٦٦..٦٥٩ × ٠..٤١٤ من الصورة)، تحت العدّاد الذي يُرسم وجهه وإطاره
+   فوقها، وتموّجات على بركة قاعدته.
+   (٤) «الشغل جميل لكن الصورة مغبّشة، وشيل التضليل اللي داخل العدّاد — يكون رقم فقط، وهذه الصورة [الذهبيّة] نفس الفكرة:
+   مرّة هذي ومرّة الثانية عند التوليد»: الصورتان موضَّحتان (Real-ESRGAN ×٢) ويُمحى منهما ما يُرسم حيًّا بملء من الجوار لا
+   بقرص مسطّح؛ داخل الحلقة رقم فقط (لا قرص ولا مجرى ولا دائرة — والجريان مثقوب عند الحلقة فيبقى خلفها)؛ والمشهدان
+   SCENES يتبادلان توليدًا بعد توليد، كلّ واحد بإحداثيّات صورته وألوانها. التموضع CSS صرف (نِسَب من إطار بنسبة الصورة).
+
+   v-gen-steady (المالك بلقطة من الموقع: «العدّاد الخارجيّ الصغير اللي مكتوب نرسم تحت فيه وميض قويّ»): سطر الوقت كان يُكتب
+   كلّ ١٥٠ مث ببادئة ⏱، ومنظِّف الواجهة يمسحها بعد ٤٠ مث — فيتبدّل النصّ ~١٣ مرّة في الثانية ويقفز السطر (وهو موسَّط).
+   الآن النصّ يُنظَّف قبل كتابته خارج المحادثة (المنظِّف لا يجد ما يمسحه) ولا يُكتب إلّا حين يتغيّر (مرّة في الثانية)،
+   والثواني وحدها في خانة ثابتة العرض (`.genw-timer b`) فتبدّل رقم بآخر أعرض منه لا يزحزح السطر بكسلًا.
+   والتعديل الموضعيّ للأزياء يصعد هو أيضًا مكان مربّع الرفع — النتيجة صارت هناك (v-fashion-result-inplace في app-12).
+
+   v-style-scene (المالك ١١ أكتوبر بخمس صور «برج الستايل»: «ستايل الذكاء الاصطناعي — نفس فكرة الأزياء سوّها في ستايل»):
+   استوديو الستايل (#studioAiStatus) لم تكن له بطاقة أصلًا. صار له نوع studio بخمسة مشاهد STYLE_SCENES تتبادل بالدور
+   (فضّيّ، ذهبيّ، أبيض، عربيّ، نيون) — بالقواعد نفسها التي ثبّتها المالك في الأزياء: عدّاد الصورة نفسه حيّ في موضعه (الحلقة
+   والرقم والشريط والنصّ، والمشهد العربيّ بأرقامه العربيّة و«كاملة» كما رُسم)، الحركة داخل الأنبوب خلف العدّاد، الصور موضَّحة،
+   والمشهد مكان خانة «صورتك» (تُخفى هي وعنوانها ما دام). بلا نصّ واجهة جديد: المراحل والتوقّع من نصوص قائمة. */
 (function(){
   if(window.omranGenWait) return;
 
@@ -43677,7 +43957,18 @@ if(document.readyState === 'loading'){
     { id: 'styles', sel: '#portraitStyleStatus', kind: 'styles',
       busy: ['⏳', '🎞️'] },
     { id: 'fashion', sel: '#fashionAiStatus', kind: 'fashion',
-      busy: ['🎨', 'جاري تطبيق', 'Applying'] }
+      busy: ['🎨', 'جاري تطبيق', 'Applying'],
+      /* v-gen-scene-exact: البطاقة تُركَّب مكان مربّع الرفع — قبل لوح الصورة، والمربّع يُخفى ما دامت البطاقة؛
+         البطاقة تُبحث في النافذة كلّها. v-gen-steady: والتعديل الموضعيّ أيضًا (النتيجة نفسها صارت هناك) — فتُخفى معه النتيجة
+         السابقة وأزرارها ما دام المشهد، ليحلّ مكانها وتعود الجديدة فيه */
+      scope: '#fashionAiModal', topSel: '#fashionAiImagePane', top: ['🎨', 'جاري تطبيق', 'Applying'],
+      hideSel: '#fashionAiDropZone, #fashionAiResultWrap, #fxTry, #fashionAiDownloadLink, #fashionAiFavoriteSaveBtn' },
+    /* v-style-scene: استوديو الستايل — المشهد قبل عنوان «① صورتك» (مكان خانة الصورة)، وتُخفى الخانة وعنوانها والنتيجة
+       السابقة وأزرارها ما دام. الحالة «🎨 جاري التوليد…» ومعها تقدّم السلسلة «— … (٢/٣)» */
+    { id: 'studio', sel: '#studioAiStatus', kind: 'studio',
+      busy: ['🎨'],
+      scope: '#studioAiModal', topSel: '#studioAiModal .stStep[data-i18n="studioStepPhoto"]', top: ['🎨'],
+      hideSel: '.stStep[data-i18n="studioStepPhoto"], #studioAiSlots, #studioAiResultWrap, #studioMultiResults, #studioAiDownloadLink, #studioAiFavoriteSaveBtn' }
   ];
 
   /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء */
@@ -43713,7 +44004,7 @@ if(document.readyState === 'loading'){
       slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     fashion: {
-      est: 40,
+      est: 40, /* v-gen-scene-exact: scenes تُربط أدناه بعد تعريف SCENES */
       hint: { ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
       expect: { ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
       stages: {
@@ -43722,6 +44013,17 @@ if(document.readyState === 'loading'){
       },
       slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     }
+  };
+  /* v-style-scene: الستايل — بلا نصّ جديد: مراحله وتوقّعه مركّبة من نصوص الأنواع القائمة (scenes تُربط أدناه) */
+  KINDS.studio = {
+    est: 30,
+    hint: KINDS.image.hint,
+    expect: KINDS.image.expect,
+    stages: {
+      ar: [KINDS.styles.stages.ar[0], KINDS.image.stages.ar[1], KINDS.styles.stages.ar[2], KINDS.image.stages.ar[3]],
+      en: [KINDS.styles.stages.en[0], KINDS.image.stages.en[1], KINDS.styles.stages.en[2], KINDS.image.stages.en[3]]
+    },
+    slow: KINDS.image.slow
   };
 
   var CSS_ID = 'omran-genwait-css';
@@ -43755,6 +44057,8 @@ if(document.readyState === 'loading'){
     + '.genw-stage.genw-swap{opacity:0}'
     + '.genw-sub{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}'
     + '.genw-timer{font-size:12px;color:rgba(255,255,255,.48);font-variant-numeric:tabular-nums}'
+    /* v-gen-steady: خانة الثواني — عرضها بعدد الخانات (يُضبط في paintTimer) والرقم ملاصق لحرف الوحدة */
+    + '.genw-timer b{display:inline-block;text-align:end;font-weight:inherit}'
     + 'html[data-mode="light"] .genw-canvas{background:#f4ecd9}'
     + 'html[data-mode="light"] .genw-shimmer{background:radial-gradient(120% 90% at 50% 110%,rgba(212,175,55,.18),transparent 55%),linear-gradient(180deg,#f8f1e0,#efe4cb)}'
     + 'html[data-mode="light"] .genw-film{background-color:rgba(120,90,30,.18)}'
@@ -43763,8 +44067,211 @@ if(document.readyState === 'loading'){
     + 'html[data-mode="light"] .genw-track{background:rgba(90,70,20,.12)}'
     + '@media (prefers-reduced-motion:reduce){.genw-frame,.genw-frame::before,.genw-shimmer::after,.genw-film{animation:none}}';
 
+  /* v-gen-scene-exact: بلاطة جريان SVG لداخل الأنبوب — بلا مقاس ذاتيّ (viewBox + preserveAspectRatio=none) فتتمدّد
+     على background-size بالنِّسَب، وخطوطها تخفت من أعلاها. rects = [x, y, w, h, opacity] */
+  function flowTile(w, h, rects, color){
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
+      + '<stop offset="0" stop-color="' + color + '" stop-opacity="0"/><stop offset="1" stop-color="' + color + '" stop-opacity="1"/></linearGradient></defs>';
+    for(var i = 0; i < rects.length; i++) svg += '<rect x="' + rects[i][0] + '" y="' + rects[i][1] + '" width="' + rects[i][2] + '" height="' + rects[i][3] + '" fill="url(#g)" opacity="' + rects[i][4] + '"/>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg + '</svg>') + '")';
+  }
+  /* طبقات الجريان الثلاث: ستائر عريضة ناعمة (بطيئة)، خيوط طويلة (سريعة)، شرطات قصيرة كأرقام نازلة (وسط) */
+  var FLOW_TILES = [
+    [100, 300, [[6, 20, 9, 170, 0.34], [38, 120, 12, 160, 0.26], [72, 0, 8, 150, 0.3]]],
+    [60, 200, [[8, 10, 2.4, 70, 1], [27, 95, 2.2, 85, 0.9], [44, 30, 2.4, 60, 0.95], [53, 130, 1.8, 50, 0.8], [17, 150, 1.8, 40, 0.7]]],
+    [40, 120, [[5, 6, 3, 9, 1], [5, 22, 3, 9, 0.7], [5, 38, 3, 9, 0.45], [19, 50, 3, 9, 1], [19, 66, 3, 9, 0.7], [19, 82, 3, 9, 0.45], [32, 14, 3, 9, 0.9], [32, 30, 3, 9, 0.6], [32, 98, 3, 9, 0.9]]]
+  ];
+  var HUD_FONT = '"DIN Condensed","Bahnschrift","Roboto Condensed","Avenir Next Condensed","Arial Narrow","sans-serif-condensed",Impact,sans-serif';
+  /* مشهدا الأزياء — صورتا المالك، يتبادلان توليدًا بعد توليد. كلّ القيم بإحداثيّات الصورة نفسها (w×h):
+     ring = مركز الحلقة ونصف قطر قوس التقدّم وسمكه و«ثقب» الجريان حولها؛ num/cap = خطّ القاعدة والمقاس وعرض الحروف كما رُسمت
+     («75%» و«75% COMPLETE»)؛ bar = تعبئة الشريط؛ refl = انعكاس النصّ على الأرضيّة؛ tube = عمود الضوء الذي تجري فيه
+     الحركة — ينتهي فوق الشريط فلا يمسّه ولا النصّ؛ rip = بركة قاعدته. داخل الحلقة قرص الصورة نفسه (مُنظَّف من أرقامه). */
+  var SCENES = [
+    { id: 'neon', src: '/assets/fashion/gen-scene.webp?v=3', w: 1024, h: 559,
+      ring: { cx: 512, cy: 297, r: 39.3, sw: 4.2, hole: 43.4 },
+      num: { y: 310.6, size: 37, dw: 13.5, pw: 19 },
+      bar: { x: 424.6, y: 357.3, w: 175, h: 7.8 },
+      cap: { y: 389.2, size: 19.5, dw: 7.1, rest: 77.1 },
+      refl: null,
+      tube: { x: 366, y: 0, w: 293, h: 350, blend: 'screen' },
+      rip: { x: 322, y: 405, w: 380, h: 85, color: 'rgba(190,236,255,.75)' },
+      ink: '#aee8f9', arc: '#e6f8ff', glow: 'rgba(190,235,255,.3)', barFill: '#dbe9ff', capInk: '#a5e1f6', flow: '#d6f2ff' },
+    { id: 'gold', src: '/assets/fashion/gen-scene-gold.webp?v=1', w: 1280, h: 699,
+      ring: { cx: 640, cy: 372, r: 49.6, sw: 6.7, hole: 57.5 },
+      num: { y: 388.2, size: 45, dw: 16.6, pw: 23.5 },
+      bar: { x: 530, y: 446.4, w: 229, h: 10.4 },
+      cap: { y: 487.3, size: 23, dw: 8.9, rest: 96.7 },
+      refl: { y: 572.3, sy: 1.32, ink: 'rgba(214,178,104,.5)' },
+      tube: { x: 455, y: 0, w: 370, h: 440, blend: 'multiply' },
+      rip: null,
+      ink: '#fff3cf', arc: '#fff8e6', glow: 'rgba(255,236,190,.35)', barFill: '#fff6e0', capInk: '#ffeeb8', flow: '#b9822c' }
+  ];
+  KINDS.fashion.scenes = SCENES;
+  /* v-style-scene: مشاهد «برج الستايل» الخمسة — صور المالك، بالتصميم نفسه وخمسة أثواب. القياس واحد للأربعة (١٢٨٠×٦٩٩)
+     والنيون نسخة ٠٫٨ منه (١٠٢٤×٥٥٩). الجديد عن مشهدَي الأزياء: bar.grad تدرّج تعبئة الشريط كما رُسم، tube.gap حزام بلا
+     جريان عند الشريط والنصّ (الأنبوب هنا يمتدّ تحتهما)، dig أرقام المشهد العربيّ، وcap.suffix/cap.word نصّه «NN% كاملة»
+     (الكلمة ثابتة في موضعها والرقم يمينها كما في الصورة). */
+  var AR_HUD_FONT = '"Tajawal","IBM Plex Sans Arabic","Segoe UI","Geeza Pro","Noto Sans Arabic",Tahoma,sans-serif';
+  function stScene(id, file, o){
+    var sc = { id: id, src: '/assets/studio/gen-scene-' + file + '.webp?v=1', w: 1280, h: 699,
+      ring: { cx: 640.5, cy: 341.2, r: 36.6, sw: 3.8, hole: 47.5 },
+      num: { x: 641.5, y: 352.8, size: 30, dw: 12.5, pw: 17.6 },
+      bar: { x: 577, y: 401.5, w: 127.5, h: 8 },
+      cap: { x: 640.8, y: 427.3, size: 12.8, dw: 4.8, rest: 56.6 },
+      refl: null, rip: null,
+      tube: { x: 545, y: 172, w: 190, h: 376, blend: 'screen', gap: [393, 433] } };
+    for(var k in o){
+      if(sc[k] && typeof sc[k] === 'object' && o[k] && typeof o[k] === 'object'){ for(var j in o[k]) sc[k][j] = o[k][j]; }
+      else sc[k] = o[k];
+    }
+    return sc;
+  }
+  var STYLE_SCENES = [
+    stScene('stSilver', 'silver', { bg: '#39434f', bar: { grad: ['#cfcce9', '#c2f0fa'] },
+      ink: '#f0fefe', arc: '#f8ffff', glow: 'rgba(214,244,255,.34)', capInk: '#edfcfd', flow: '#e2f6ff' }),
+    stScene('stGold', 'gold', { bg: '#8a6a3c', tube: { blend: 'multiply' }, bar: { grad: ['#f8e0b0', '#fff6cf'] },
+      ink: '#fffcd4', arc: '#fffbd8', glow: 'rgba(255,240,190,.38)', capInk: '#fff7c8', flow: '#b9822c' }),
+    stScene('stWhite', 'white', { bg: '#cfd2d2', tube: { blend: 'multiply' }, bar: { grad: ['#d8e0f7', '#defcff'] },
+      ink: '#f6fdfe', arc: '#f2ffff', glow: 'rgba(190,232,255,.45)', capInk: '#f2fbfc', flow: '#7f9fbd' }),
+    stScene('stArab', 'arab', { bg: '#4a2a12', dig: '٠١٢٣٤٥٦٧٨٩', bar: { grad: ['#f9d187', '#fff0ae'] },
+      num: { x: 640.5, y: 352, size: 33.5, dw: 13.3, pw: 20.8 },
+      tube: { x: 553, y: 205, w: 186, h: 335, gap: [393, 435] },
+      cap: { x: 647.2, anchor: 'start', y: 429.3, size: 16, dw: 6.65, rest: 10.4, suffix: '', word: { text: 'كاملة', x: 628, y: 429.4, size: 15.5, len: 30.6 } },
+      ink: '#f9eeba', arc: '#fffdcb', glow: 'rgba(255,224,140,.4)', capInk: '#ecd48d', flow: '#fff1c9' }),
+    stScene('stNeon', 'neon', { bg: '#0a1230', w: 1024, h: 559,
+      ring: { cx: 512, cy: 272.75, r: 29.15, sw: 3, hole: 38 },
+      num: { x: 513, y: 281.8, size: 23.2, dw: 9.95, pw: 14.4 },
+      bar: { x: 462, y: 321.5, w: 98.5, h: 5.7, grad: ['#a99fe0', '#8fdcf2'] },
+      cap: { x: 512.3, y: 341.3, size: 9.7, dw: 3.74, rest: 44 },
+      tube: { x: 436, y: 138, w: 152, h: 300, gap: [314.5, 346] },
+      ink: '#caf3fb', arc: '#dafeff', glow: 'rgba(150,232,255,.38)', capInk: '#bbe7f4', flow: '#c4f1ff' })
+  ];
+  KINDS.studio.scenes = STYLE_SCENES;
+  KINDS.studio.sceneKey = 'aiapp_st_scene';
+  /* التبادل: مشهد لكلّ توليد بالدور، ويُتذكّر الدور بين الجلسات. v-style-scene: دور لكلّ نوع (cfg.scenes + cfg.sceneKey)؛
+     بلا وسيط = الأزياء كما كان. peek = المشهد القادم بلا تقديم الدور (للتحميل المسبق). */
+  var SCENE_KEY = 'aiapp_fx_scene';
+  var sceneTurns = Object.create(null);
+  function nextScene(cfg, peek){
+    var list = (cfg && cfg.scenes) || SCENES, key = (cfg && cfg.sceneKey) || SCENE_KEY;
+    var sceneTurn = sceneTurns[key];
+    if(sceneTurn == null){ sceneTurn = 0; try{ sceneTurn = parseInt(localStorage.getItem(key), 10) || 0; }catch(e){ sceneTurn = 0; } }
+    var sc = list[sceneTurn % list.length];
+    if(peek){ sceneTurns[key] = sceneTurn; return sc; }
+    sceneTurn = (sceneTurn + 1) % list.length;
+    sceneTurns[key] = sceneTurn;
+    try{ localStorage.setItem(key, String(sceneTurn)); }catch(e){ /* guard-ok — بلا تخزين يبدأ الدور من الأوّل في كلّ فتح */ }
+    return sc;
+  }
+  function pc(v, total){ return (Math.round(v / total * 100000) / 1000) + '%'; }
+  function arcLen(sc){ return Math.round(2 * Math.PI * sc.ring.r * 10) / 10; }
+  /* هيكل المشهد: إطار تأثيرات بنسبة الصورة (يطابقها بأيّ مقاس وبأيّ قصّ جانبيّ) فيه الأنبوب والتموّجات وعدّاد الصورة SVG بإحداثيّاتها.
+     داخل الحلقة رقم فقط؛ القوس يمتلئ على حافّتها، والجريان مثقوب عندها فيبقى خلفها. */
+  function sceneHtml(sc){
+    var t = sc.tube, r = sc.ring, L = arcLen(sc);
+    var hole = 'radial-gradient(ellipse ' + pc(r.hole, t.w) + ' ' + pc(r.hole, t.h) + ' at ' + pc(r.cx - t.x, t.w) + ' ' + pc(r.cy - t.y, t.h) + ',transparent 0,transparent 96%,#000 100%)';
+    var rot = ' transform="rotate(-90 ' + r.cx + ' ' + r.cy + ')"';
+    /* v-style-scene: حزام بلا جريان (tube.gap = [من، إلى] بإحداثيّات الصورة) — يخفت الجريان فوق الشريط ويعود تحت النصّ */
+    var band = '';
+    if(t.gap){
+      var g0 = (t.gap[0] - t.y) / t.h * 100, g1 = (t.gap[1] - t.y) / t.h * 100, rd = function(v){ return (Math.round(v * 100) / 100) + '%'; };
+      var bm = 'linear-gradient(180deg,transparent 0,#000 6%,#000 ' + rd(g0 - 3.5) + ',transparent ' + rd(g0) + ',transparent ' + rd(g1) + ',#000 ' + rd(g1 + 3.5) + ',#000 94%,transparent 100%)';
+      band = ' style="-webkit-mask-image:' + bm + ';mask-image:' + bm + '"';
+    }
+    var h = '<div class="genw-frame"><div class="genw-canvas"><div class="genw-fx">'
+      + '<div class="genw-tube" style="left:' + pc(t.x, sc.w) + ';top:' + pc(t.y, sc.h) + ';width:' + pc(t.w, sc.w) + ';height:' + pc(t.h, sc.h) + ';mix-blend-mode:' + t.blend + '">'
+      +   '<span' + band + '><em style="-webkit-mask-image:' + hole + ';mask-image:' + hole + '"><b></b><b></b><b></b></em></span></div>';
+    if(sc.rip) h += '<div class="genw-rip" style="left:' + pc(sc.rip.x, sc.w) + ';top:' + pc(sc.rip.y, sc.h) + ';width:' + pc(sc.rip.w, sc.w) + ';height:' + pc(sc.rip.h, sc.h) + ';color:' + sc.rip.color + '"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>';
+    h += '<svg class="genw-live" viewBox="0 0 ' + sc.w + ' ' + sc.h + '" aria-hidden="true">';
+    /* v-style-scene: تعبئة الشريط بتدرّجه كما رُسم (على طول المجرى كلّه — فيظهر منه بقدر التقدّم)، وصفر المشهد بأرقامه */
+    var barFill = sc.barFill, zero = sc.dig ? sc.dig.charAt(0) : '0', capSfx = sc.cap.suffix == null ? ' COMPLETE' : sc.cap.suffix;
+    if(sc.bar.grad){
+      barFill = 'url(#genwBarG-' + sc.id + ')';
+      h += '<defs><linearGradient id="genwBarG-' + sc.id + '" gradientUnits="userSpaceOnUse" x1="' + sc.bar.x + '" y1="0" x2="' + (sc.bar.x + sc.bar.w) + '" y2="0">'
+        + '<stop offset="0" stop-color="' + sc.bar.grad[0] + '"/><stop offset="1" stop-color="' + sc.bar.grad[1] + '"/></linearGradient></defs>';
+    }
+    h += '<circle class="genw-arcg" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.glow + '" stroke-width="' + (Math.round(r.sw * 19) / 10) + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
+      + '<circle class="genw-arc" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.arc + '" stroke-width="' + r.sw + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
+      + '<text class="genw-num" x="' + (sc.num.x || r.cx) + '" y="' + sc.num.y + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.num.size + '" fill="' + sc.ink + '">' + zero + '%</text>'
+      + '<rect class="genw-bar" x="' + sc.bar.x + '" y="' + sc.bar.y + '" width="0" height="' + sc.bar.h + '" rx="' + (sc.bar.h / 2) + '" fill="' + barFill + '"></rect>'
+      + '<text class="genw-cap" x="' + (sc.cap.x || r.cx) + '" y="' + sc.cap.y + '" text-anchor="' + (sc.cap.anchor || 'middle') + '" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.capInk + '">' + zero + '%' + capSfx + '</text>';
+    if(sc.cap.word) h += '<text class="genw-capw" x="' + sc.cap.word.x + '" y="' + (sc.cap.word.y || sc.cap.y) + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" textLength="' + sc.cap.word.len + '" font-size="' + (sc.cap.word.size || sc.cap.size) + '" fill="' + sc.capInk + '">' + sc.cap.word.text + '</text>';
+    if(sc.refl) h += '<text class="genw-refl" x="' + r.cx + '" y="0" transform="matrix(1 0 0 -' + sc.refl.sy + ' 0 ' + sc.refl.y + ')" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.refl.ink + '">0% COMPLETE</text>';
+    return h + '</svg></div></div></div>'
+      + '<div class="genw-stage"></div>'
+      + '<div class="genw-sub"><span class="genw-timer"></span></div>';
+  }
+  function sceneCss(){
+    return ''
+    + '.genw--scene{width:min(100%,760px);margin:12px auto 10px}'
+    /* النيون بإطار سماويّ ورديّ؛ الذهبيّ يبقى على إطار البطاقة الذهبيّ الأصليّ */
+    + '.genw--neon .genw-frame{animation:genwNeon 2.6s ease-in-out infinite}'
+    + '.genw--neon .genw-frame::before{background:linear-gradient(120deg,transparent 15%,rgba(125,249,255,.15) 30%,#bff6ff 45%,#ff7bd5 55%,rgba(125,249,255,.15) 70%,transparent 85%);background-size:280% 100%}'
+    + '@keyframes genwNeon{0%,100%{box-shadow:0 0 22px -6px rgba(125,249,255,.4),0 0 60px -18px rgba(255,123,213,.25)}'
+    +   '50%{box-shadow:0 0 34px -4px rgba(125,249,255,.6),0 0 90px -14px rgba(255,123,213,.4)}}'
+    + '.genw--scene .genw-canvas,html[data-mode="light"] .genw--scene .genw-canvas{display:block;aspect-ratio:var(--ar);background:#070b22 center/cover no-repeat}'
+    /* الجوّال: إطار أطول يقصّ جانبَي الصورة فيكبر البرج وعدّاده (العدّاد في منتصف العرض) */
+    + '@media (max-width:520px){.genw--scene .genw-canvas,html[data-mode="light"] .genw--scene .genw-canvas{aspect-ratio:5/4}}'
+    /* إطار التأثيرات: بارتفاع المشهد ونسبة الصورة ومنتصفه منتصفها — فما بداخله بنِسَب من الصورة نفسها */
+    + '.genw-fx{position:absolute;top:0;left:50%;height:100%;aspect-ratio:var(--ar);transform:translateX(-50%);pointer-events:none}'
+    /* الحركة داخل الأنبوب (خلف العدّاد): تخفت عند حافّتيه وطرفيه، وثلاث طبقات تنزل بنصف ارتفاعها بالضبط (= عدد صحيح من
+       البلاطات) فتتكرّر بلا قفزة — transform وحده. الدمج (screen/multiply) من بيانات المشهد. */
+    + '.genw-tube{position:absolute;overflow:hidden;z-index:1;'
+    +   '-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%)}'
+    + '.genw-tube span,.genw-tube em{position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden}'
+    + '.genw-tube span{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 7%,#000 93%,transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 7%,#000 93%,transparent 100%)}'
+    + '.genw-tube b{position:absolute;left:0;right:0;top:-100%;height:200%;background-repeat:repeat}'
+    + '.genw-tube b:nth-child(1){background-size:34% 50%;opacity:.8;animation:genwFlow 3.6s linear infinite}'
+    + '.genw-tube b:nth-child(2){background-size:20.5% 25%;opacity:.95;animation:genwFlow 1.25s linear infinite}'
+    + '.genw-tube b:nth-child(3){background-size:14% 16.667%;opacity:.9;animation:genwFlow 2.2s linear infinite}'
+    + '@keyframes genwFlow{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,50%,0)}}'
+    /* تموّجات على بركة قاعدة الأنبوب — حيث ينزل الماء */
+    + '.genw-rip{position:absolute;z-index:1}'
+    + '.genw-rip i{position:absolute;width:13%;aspect-ratio:4/1;border:1px solid currentColor;border-radius:50%;opacity:0;animation:genwRip 1.9s ease-out infinite}'
+    + '.genw-rip i:nth-child(1){left:6%;top:30%}'
+    + '.genw-rip i:nth-child(2){left:24%;top:62%;animation-delay:.45s}'
+    + '.genw-rip i:nth-child(3){left:43%;top:20%;animation-delay:.9s}'
+    + '.genw-rip i:nth-child(4){left:60%;top:66%;animation-delay:.25s}'
+    + '.genw-rip i:nth-child(5){left:78%;top:28%;animation-delay:1.3s}'
+    + '.genw-rip i:nth-child(6){left:14%;top:78%;animation-delay:1.55s}'
+    + '.genw-rip i:nth-child(7){left:50%;top:80%;animation-delay:.7s}'
+    + '@keyframes genwRip{0%{transform:scale(.15);opacity:.85}100%{transform:scale(1.5);opacity:0}}'
+    /* عدّاد الصورة: SVG يملأ إطار التأثيرات وإحداثيّاته إحداثيّات الصورة */
+    + '.genw-live{position:absolute;top:0;left:0;width:100%;height:100%;z-index:3;overflow:visible;direction:ltr}'
+    + '.genw-live circle{fill:none}'
+    + '.genw-arc,.genw-arcg{transition:stroke-dashoffset .25s linear}'
+    + '.genw-num,.genw-cap,.genw-refl{font-family:' + HUD_FONT + ';font-weight:700}'
+    + '.genw-bar{transition:width .25s linear}'
+    + '.genw--scene .genw-stage{text-align:center}'
+    + '.genw--scene .genw-sub{justify-content:center}'
+    /* v-style-scene: إطار كلّ ثوب — النيون سماويّ ورديّ كنيون الأزياء، الفضّيّ والأبيض أبيض ثلجيّ، الذهبيّ والعربيّ على الذهبيّ الأصليّ؛
+       والمشهد العربيّ بخطّ عربيّ لأرقامه وكلمته */
+    + '.genw--stNeon .genw-frame{animation:genwNeon 2.6s ease-in-out infinite}'
+    + '.genw--stNeon .genw-frame::before{background:linear-gradient(120deg,transparent 15%,rgba(125,249,255,.15) 30%,#bff6ff 45%,#ff7bd5 55%,rgba(125,249,255,.15) 70%,transparent 85%);background-size:280% 100%}'
+    + '.genw--stSilver .genw-frame,.genw--stWhite .genw-frame{animation:genwIce 2.6s ease-in-out infinite}'
+    + '.genw--stSilver .genw-frame::before,.genw--stWhite .genw-frame::before{background:linear-gradient(120deg,transparent 15%,rgba(214,244,255,.18) 30%,#ffffff 45%,#bfeaff 55%,rgba(214,244,255,.18) 70%,transparent 85%);background-size:280% 100%}'
+    + '@keyframes genwIce{0%,100%{box-shadow:0 0 22px -6px rgba(200,236,255,.38),0 0 60px -18px rgba(255,255,255,.2)}'
+    +   '50%{box-shadow:0 0 34px -4px rgba(200,236,255,.58),0 0 90px -14px rgba(255,255,255,.34)}}'
+    + '.genw--stArab .genw-num,.genw--stArab .genw-cap,.genw-capw{font-family:' + AR_HUD_FONT + ';font-weight:700}'
+    /* أرقام هذه الصور أنحف من أرقام مشهدَي الأزياء */
+    + '.genw--stSilver text,.genw--stGold text,.genw--stWhite text,.genw--stNeon text{font-weight:600}'
+    /* أنبوب هذه الصور أضيق من برج الأزياء — بلاطات أعرض كي تبقى الخيوط ظاهرة (الارتفاعات كما هي: نصف الطبقة = عدد صحيح من البلاطات) */
+    + '.genw[class*="genw--st"] .genw-tube b:nth-child(1){background-size:50% 50%}'
+    + '.genw[class*="genw--st"] .genw-tube b:nth-child(2){background-size:31% 25%}'
+    + '.genw[class*="genw--st"] .genw-tube b:nth-child(3){background-size:21% 16.667%}'
+    + '@media (prefers-reduced-motion:reduce){.genw--stNeon .genw-frame,.genw--stSilver .genw-frame,.genw--stWhite .genw-frame{animation:none}}'
+    /* مربّع الرفع يُخفى ما دام المشهد في مكانه (له display سطريّ فلا بدّ من !important) */
+    + '[data-genw-hide]{display:none !important}'
+    /* أندرويد: بلا دمج ضوئيّ (أخفّ على المعالج الرسوميّ) وبطبقتين */
+    + 'html.omAndroid .genw-tube{mix-blend-mode:normal !important}'
+    + 'html.omAndroid .genw-tube b:nth-child(1){display:none}'
+    + '@media (prefers-reduced-motion:reduce){.genw--neon .genw-frame,.genw-tube b,.genw-rip i{animation:none}.genw-arc,.genw-arcg,.genw-bar{transition:none}}';
+  }
+
   var AR_DIG = '٠١٢٣٤٥٦٧٨٩';
   function toAr(n){ return String(n).replace(/[0-9]/g, function(d){ return AR_DIG[+d]; }); }
+  /* أعرض رقم مقيس بخطّ سطر الوقت: ٠٫٥٧٤em عربيًّا و٠٫٦em لاتينيًّا (مسبار الأرقام، ١٢ بكسل) */
+  var SEC_DIGIT_EM = 0.62;
   function isAr(){ try{ return (typeof lang !== 'undefined' ? lang : 'ar') === 'ar'; }catch(e){ return true; } }
 
   /* منحنى التقدّم: يتسارع ثمّ يهدأ — لا يتجاوز ٩٢٪ مهما طال الانتظار (النتيجة تستبدل البطاقة) */
@@ -43774,7 +44281,7 @@ if(document.readyState === 'loading'){
     if(document.getElementById(CSS_ID)) return;
     var st = document.createElement('style');
     st.id = CSS_ID;
-    st.textContent = CSS;
+    st.textContent = CSS + sceneCss(); /* v-gen-scene */
     document.head.appendChild(st);
   }
 
@@ -43789,9 +44296,11 @@ if(document.readyState === 'loading'){
     var expect = cfg.expect[isAr() ? 'ar' : 'en'];
     var slowTxt = cfg.slow[isAr() ? 'ar' : 'en'];
 
+    var sc = cfg.scenes ? nextScene(cfg) : null; /* v-gen-scene-exact: مشهد هذا التوليد (بالدور) — v-style-scene: بدور نوعه */
     var root = document.createElement('div');
-    root.className = 'genw' + (cfg.wide ? ' genw--video' : '');
-    root.innerHTML = ''
+    root.className = 'genw' + (cfg.wide ? ' genw--video' : '') + (sc ? ' genw--scene genw--' + sc.id : '');
+    /* v-gen-scene: مشهد بخلفيّة ومطر وعدّاد حيّ — بالخطّافات نفسها فالنبضة أدناه واحدة للنوعين */
+    root.innerHTML = sc ? sceneHtml(sc) : ''
       + '<div class="genw-frame"><div class="genw-canvas">'
       +   '<div class="genw-shimmer"></div>'
       +   (cfg.film ? '<div class="genw-film"></div>' : '')
@@ -43802,15 +44311,65 @@ if(document.readyState === 'loading'){
       + '<div class="genw-sub"><span class="genw-timer"></span></div>';
 
     var pctEl = root.querySelector('.genw-pct');
-    var pctSmall = pctEl.querySelector('small');
+    var pctSmall = pctEl ? pctEl.querySelector('small') : null;
     var fillEl = root.querySelector('.genw-fill');
     var stageEl = root.querySelector('.genw-stage');
     var timerEl = root.querySelector('.genw-timer');
-    pctSmall.textContent = hint;
+    /* v-gen-scene-exact: عناصر عدّاد الصورة — غائبة في البطاقة الذهبيّة */
+    var arcEl = root.querySelector('.genw-arc'), arcGlow = root.querySelector('.genw-arcg');
+    var numEl = root.querySelector('.genw-num'), barEl = root.querySelector('.genw-bar'), capEl = root.querySelector('.genw-cap'), reflEl = root.querySelector('.genw-refl');
+    if(sc){
+      try{
+        root.style.setProperty('--ar', sc.w + '/' + sc.h);
+        root.querySelector('.genw-canvas').style.backgroundImage = 'url("' + sc.src + '")';
+        if(sc.bg) root.querySelector('.genw-canvas').style.backgroundColor = sc.bg; /* v-style-scene: لون المشهد ريثما تُحمَّل صورته */
+        var flows = root.querySelectorAll('.genw-tube b');
+        for(var fi = 0; fi < flows.length && fi < FLOW_TILES.length; fi++) flows[fi].style.backgroundImage = flowTile(FLOW_TILES[fi][0], FLOW_TILES[fi][1], FLOW_TILES[fi][2], sc.flow);
+      }catch(e){ /* guard-ok — بلا خلفيّة أو جريان يبقى لون المشهد الداكن والعدّاد يعمل */ }
+    }
+    /* الرقم والقوس والشريط والنصّ (وانعكاسه) — أرقام لاتينيّة كما في تصميم المالك، بعرض حروف الأصل */
+    var sceneArc = sc ? arcLen(sc) : 0;
+    function paintScene(shown){
+      var digits = String(shown).length;
+      /* v-style-scene: أرقام المشهد كما رُسمت فيه (sc.dig للعربيّ) ولاحقة نصّه — لا لغة الواجهة */
+      var txt = sc.dig ? String(shown).replace(/[0-9]/g, function(d){ return sc.dig.charAt(+d); }) : String(shown);
+      var capTxt = txt + '%' + (sc.cap.suffix == null ? ' COMPLETE' : sc.cap.suffix);
+      numEl.textContent = txt + '%';
+      numEl.setAttribute('textLength', String(Math.round((digits * sc.num.dw + sc.num.pw) * 10) / 10));
+      var off = String(Math.round(sceneArc * (100 - shown)) / 100);
+      arcEl.style.strokeDashoffset = off; arcGlow.style.strokeDashoffset = off;
+      barEl.setAttribute('width', String(Math.round(sc.bar.w * shown) / 100));
+      var capLen = String(Math.round((digits * sc.cap.dw + sc.cap.rest) * 10) / 10);
+      capEl.textContent = capTxt;
+      capEl.setAttribute('textLength', capLen);
+      if(reflEl){ reflEl.textContent = capTxt; reflEl.setAttribute('textLength', capLen); }
+    }
+    if(pctSmall) pctSmall.textContent = hint;
     stageEl.textContent = stages[0];
 
     var stageIdx = 0, slow = false;
     function fmt(n){ return isAr() ? toAr(n) : String(n); }
+    /* v-gen-steady: خارج المحادثة يمسح منظِّف الواجهة الإيموجي — نكتب النصّ منظَّفًا أصلًا فلا يرمش؛ داخلها (.msg) يبقى كما هو */
+    var inChat = null, lastSec = -1, secEl = null;
+    function uiText(txt){
+      if(inChat === null) inChat = !!(root.closest && root.closest('.msg'));
+      return inChat ? txt : stripEmoji(txt);
+    }
+    /* سطر الوقت يُبنى مرّة (بادئة + خانة الثواني + الوحدة والمتوقَّع) ثمّ لا يتغيّر فيه إلّا رقم الخانة، مرّة في الثانية */
+    function paintTimer(sec){
+      if(sec === lastSec) return;
+      lastSec = sec;
+      var num = fmt(sec);
+      if(!secEl){
+        timerEl.textContent = uiText('⏱ ');
+        secEl = document.createElement('b');
+        timerEl.appendChild(secEl);
+        timerEl.appendChild(document.createTextNode((isAr() ? 'ث' : 's') + ' — ' + expect));
+      }
+      secEl.style.minWidth = (num.length * SEC_DIGIT_EM) + 'em';
+      secEl.textContent = num;
+    }
+    /* قبل أوّل نبضة موصولة (≤١٥٠ مث) السطر نصّ عاديّ يحفظ ارتفاعه؛ بعدها يبنيه paintTimer بخانته */
     timerEl.textContent = '⏱ ' + fmt(0) + (isAr() ? 'ث' : 's') + ' — ' + expect;
     /* الساعة تبدأ بعد ما تُركّب البطاقة: أول نبضة قد تأتي والعنصر لم يُلحق بعد
        (render يُستدعى ثمّ يُلحق الناتج) فلا نطفئها إلا بعد اتصالٍ سابق. */
@@ -43824,19 +44383,19 @@ if(document.readyState === 'loading'){
       var el = (Date.now() - t0) / 1000;
       var p = el / cfg.est;
       var shown = Math.min(99, Math.round(eased(p) * 100));
-      pctEl.firstChild.textContent = fmt(shown) + '%';
-      fillEl.style.width = shown + '%';
-      timerEl.textContent = '⏱ ' + fmt(Math.floor(el)) + (isAr() ? 'ث' : 's') + ' — ' + expect;
+      if(sc) paintScene(shown);
+      else { pctEl.firstChild.textContent = fmt(shown) + '%'; fillEl.style.width = shown + '%'; }
+      paintTimer(Math.floor(el));
       if(el > cfg.est * 2 && !slow){
         slow = true;
         stageEl.classList.add('genw-swap');
-        setTimeout(function(){ stageEl.textContent = slowTxt; stageEl.classList.remove('genw-swap'); }, 300);
+        setTimeout(function(){ stageEl.textContent = uiText(slowTxt); stageEl.classList.remove('genw-swap'); }, 300);
       } else if(!slow){
         var want = Math.min(stages.length - 1, Math.floor(p * stages.length));
         if(want !== stageIdx){
           stageIdx = want;
           stageEl.classList.add('genw-swap');
-          setTimeout(function(){ stageEl.textContent = stages[stageIdx]; stageEl.classList.remove('genw-swap'); }, 300);
+          setTimeout(function(){ stageEl.textContent = uiText(stages[stageIdx]); stageEl.classList.remove('genw-swap'); }, 300);
         }
       }
     }
@@ -43857,6 +44416,37 @@ if(document.readyState === 'loading'){
   /* زمن بداية كلّ لوحة: يبقى طول التوليد الواحد (الفيديو يبدّل نصّ حالته 🚀→⏳→🎬)
      ولا يُصفَّر إلا حين ينتهي الاشتغال أو تُزال البطاقة. */
   var t0ByPanel = Object.create(null);
+
+  /* v-gen-scene — عطب قائم كشفه المسبار: v-clean-ui يحذف الإيموجي من نصوص الواجهة بعد ٤٠ مث من كتابتها، والرصد
+     يقرأ سطر الحالة بعد ٦٠ مث، فلا يجد بادئة «مشغول» (🎨 / ⏳ / 🚀…) أبدًا — فلم تعد بطاقة أيّ لوحة (فيديو، أنماط،
+     أزياء) تظهر منذ تنظيف الواجهة. الآن تُقرأ الحالة لحظة تغيّرها (قبل التنظيف) ويُحفظ نصّها خامًا ومنظَّفًا؛ اللوحة
+     «مشغولة» ما دام النصّ الظاهر أحدهما. النصّ الخام يبقى مرجع «أيّ بادئة بدأت» (التوليد 🎨 يصعد، التعديل يبقى). */
+  var rawBusy = Object.create(null);
+  var cleanBusy = Object.create(null);
+  function hasPrefix(txt, list){
+    for(var i = 0; txt && list && i < list.length; i++){ if(txt.indexOf(list[i]) === 0) return true; }
+    return false;
+  }
+  function stripEmoji(txt){
+    try{ if(typeof window.__noEmoji === 'function') return String(window.__noEmoji(txt)); }catch(e){ /* guard-ok — بلا منظِّف يبقى النصّ بإيموجيه والبادئة تطابق */ }
+    return String(txt);
+  }
+  function noteBusy(p, txt){ rawBusy[p.id] = txt; cleanBusy[p.id] = stripEmoji(txt); }
+  function panelBusy(p, ptxt){
+    if(hasPrefix(ptxt, p.busy)){ noteBusy(p, ptxt); return true; }
+    if(ptxt && cleanBusy[p.id] && ptxt === cleanBusy[p.id]) return true;
+    delete rawBusy[p.id]; delete cleanBusy[p.id];
+    return false;
+  }
+  /* تُستدعى مع كلّ دفعة تغيّرات — ثلاث قراءات بالمعرّف فقط */
+  function sample(){
+    for(var i = 0; i < PANELS.length; i++){
+      var el = null, txt = '';
+      try{ el = document.querySelector(PANELS[i].sel); txt = el ? String(el.textContent || '').trim() : ''; }catch(e){ txt = ''; }
+      if(hasPrefix(txt, PANELS[i].busy)) noteBusy(PANELS[i], txt);
+    }
+  }
+
   function scan(){
     if(!document.body) return;
     var active = Object.create(null);
@@ -43909,24 +44499,58 @@ if(document.readyState === 'loading'){
       if(!pel || !pel.parentNode) continue;
       var ptxt = '';
       try{ ptxt = String(pel.textContent || '').trim(); }catch(e){ ptxt = ''; }
-      var busy = false;
-      for(var bi = 0; ptxt && bi < p.busy.length; bi++){
-        if(ptxt.indexOf(p.busy[bi]) === 0){ busy = true; break; }
-      }
+      var busy = panelBusy(p, ptxt); /* v-gen-scene: يصمد لحذف الإيموجي من سطر الحالة */
       var card = null;
-      try{ card = pel.parentNode.querySelector('.genw[data-genw-panel="' + p.id + '"]'); }catch(e){ card = null; }
+      var scopeEl = pel.parentNode; /* v-gen-scene: بطاقة تُركَّب أعلى الاستوديو ليست ابنة حاوية سطر الحالة بالضرورة */
+      if(p.scope){ try{ scopeEl = document.querySelector(p.scope) || pel.parentNode; }catch(e){ scopeEl = pel.parentNode; } }
+      try{ card = scopeEl.querySelector('.genw[data-genw-panel="' + p.id + '"]'); }catch(e){ card = null; }
       if(busy && !card){
         if(!t0ByPanel[p.id]) t0ByPanel[p.id] = Date.now();
         try{
           var node = render({ t0: t0ByPanel[p.id], kind: p.kind });
           node.setAttribute('data-genw-panel', p.id);
-          pel.parentNode.insertBefore(node, pel.nextSibling);
+          var mp = mountPoint(p, pel, rawBusy[p.id] || ptxt, document);
+          if(mp.top) node.setAttribute('data-genw-top', '1');
+          mp.parent.insertBefore(node, mp.before);
+          /* v-gen-steady: الإخفاء قبل التمرير — وإلّا حُسب موضع البطاقة تحت نتيجة ستختفي فيتجاوزها التمرير */
+          applyHide(p, scopeEl);
+          /* فوق = خارج مجال النظر (المستخدم عند زرّ «صمم» أسفل النموذج) — نصعد إليها */
+          if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
         }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ /* العرض تجميليّ */ } }
       } else if(!busy && card){
         try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ /* العرض تجميليّ */ } }
         delete t0ByPanel[p.id];
       }
+      applyHide(p, scopeEl);
     }
+  }
+
+  /* v-gen-scene-exact: المشهد في مكان مربّع الرفع — المربّع مخفيّ ما دامت بطاقة «فوق» موجودة، ويعود فور رفعها.
+     v-gen-steady: hideSel قد يسمّي عدّة عناصر (مربّع الرفع، والنتيجة السابقة وأزرارها) — كلّها تُخفى وتعود معًا. */
+  function applyHide(p, scopeEl){
+    if(!p.hideSel) return;
+    try{
+      var hideEls = scopeEl.querySelectorAll(p.hideSel);
+      var topCard = scopeEl.querySelector('.genw[data-genw-panel="' + p.id + '"][data-genw-top]');
+      for(var hi = 0; hi < hideEls.length; hi++){
+        var hideEl = hideEls[hi];
+        if(topCard && !hideEl.hasAttribute('data-genw-hide')) hideEl.setAttribute('data-genw-hide', '1');
+        else if(!topCard && hideEl.hasAttribute('data-genw-hide')) hideEl.removeAttribute('data-genw-hide');
+      }
+    }catch(e){ try{ __swallow(e, 'gen-wait:hide'); }catch(_){ /* العرض تجميليّ */ } }
+  }
+
+  /* v-gen-scene-exact: أين تُركَّب بطاقة اللوحة — { parent, before, top }. اللوحة التي لها topSel وبدأ نصّ حالتها بإحدى
+     بادئات top تُركَّب قبل ذلك العنصر نفسه (لوح الصورة: فتقع مكان مربّع الرفع المخفيّ)؛ غيرها — وأيّ مرساة غائبة —
+     بعد سطر الحالة كما كان. */
+  function mountPoint(p, pel, ptxt, doc){
+    var below = { parent: pel.parentNode, before: pel.nextSibling, top: false };
+    if(!p || !p.topSel || !p.top) return below;
+    if(!hasPrefix(String(ptxt || ''), p.top)) return below;
+    var anchor = null;
+    try{ anchor = (doc || document).querySelector(p.topSel); }catch(e){ anchor = null; }
+    if(!anchor || !anchor.parentNode) return below;
+    return { parent: anchor.parentNode, before: anchor, top: true };
   }
 
   var scheduled = false;
@@ -43938,12 +44562,34 @@ if(document.readyState === 'loading'){
 
   if(typeof MutationObserver !== 'undefined' && document.documentElement){
     try{
-      new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+      new MutationObserver(function(){ sample(); schedule(); }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     }catch(e){ try{ __swallow(e, 'gen-wait:observe'); }catch(_){ /* بلا رصد = بلا بطاقة فقط */ } }
   }
   schedule();
 
+  /* v-gen-scene: خلفيّة المشهد تُحمَّل عند فتح استوديو الأزياء لا عند أوّل توليد — فلا يظهر المشهد فارغًا لحظةً */
+  var scenePreloaded = false;
+  function preloadScenes(){
+    if(scenePreloaded) return;
+    scenePreloaded = true;
+    for(var k = 0; k < SCENES.length; k++){ try{ (new Image()).src = SCENES[k].src; }catch(e){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+  }
+  if(document.addEventListener){
+    document.addEventListener('click', function(e){
+      var tg = e && e.target;
+      if(tg && tg.closest && tg.closest('#btnFashionAI')) preloadScenes();
+      /* v-style-scene: خمسة مشاهد — يُحمَّل القادم وحده عند فتح الاستوديو وعند كلّ «ولّد» (لا الخمسة) */
+      if(tg && tg.closest && tg.closest('#btnStudioAI, #studioAiGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.studio, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+    }, true);
+  }
+
   window.omranGenWait = { render: render, scan: scan, _eased: eased, PHRASES: PHRASES, PANELS: PANELS, KINDS: KINDS };
+  window.omranGenWait._mountPoint = mountPoint; /* v-gen-scene: للاختبار */
+  window.omranGenWait._panelBusy = panelBusy;
+  window.omranGenWait._sample = sample;
+  window.omranGenWait._scenes = SCENES; window.omranGenWait._nextScene = nextScene; window.omranGenWait._sceneHtml = sceneHtml; /* v-gen-scene-exact: للاختبار */
+  window.omranGenWait._secDigitEm = SEC_DIGIT_EM; window.omranGenWait._applyHide = applyHide; /* v-gen-steady: للاختبار */
+  window.omranGenWait._styleScenes = STYLE_SCENES; /* v-style-scene: للاختبار */
 })();
 /* v-inspire (المالك ٩ أكتوبر «أبدأ بالخطوة الأولى»): «اقتراحات» صارت شاشة بتبويبين — «الإلهام» و«اقتراحات سريعة».
    «الإلهام» قسمه الأوّل «مدينتك الحقيقيّة»: عشر تجارب ثلاثيّة الأبعاد تبني حيّ المستخدم الحقيقيّ من الخرائط المفتوحة
@@ -44344,3 +44990,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
+/* ===== app-99-boot-ok — آخر شريحة في الحزمة (scripts/build.mjs يرتّب الأجزاء بالاسم) =====
+   v-ios-boot-flag (فحص ١١ أكتوبر): حارس إقلاع الآيفون (selfdiag.js) يعدّ الإقلاع مكتملًا حين __omranBootOk
+   (ui-wiring) و__omranBundleOk معًا. ضابط الثاني حُذف مع app-24-visual-guide (٢ سبتمبر) فصار كلّ فتح على الآيفون
+   «إقلاع ناقص bundle=false» + إعادة تحميل قسريّة بعد ٥ ثوانٍ، وتُخفي الحالات الحقيقيّة. وصول هذا السطر = الحزمة نُفّذت كاملة. */
+window.__omranBundleOk = true;

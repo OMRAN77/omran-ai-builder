@@ -49,7 +49,7 @@
   function on(){return true;} /* v-vmk-mobile: نفس استوديو الكمبيوتر على الهاتف */
   function id(x){return document.getElementById(x);}
   /* v-vmk-clean (المالك: «شيل الأيقونات… اسم رسميّ بلا إيموجي»): تنظيف نصوص النافذة من الإيموجي عند العرض بدل تعديل ١٤ قاموسًا */
-  var EMO=/\u200D(?=\p{Extended_Pictographic})|(?![\u00A9\u00AE\u2122])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\uFE0F|\u20E3/gu;
+  var EMO; try{ EMO=new RegExp('\\u200D(?=\\p{Extended_Pictographic})|(?![\\u00A9\\u00AE\\u2122])\\p{Extended_Pictographic}|\\p{Emoji_Modifier}|\\uFE0F|\\u20E3','gu'); }catch(e){ EMO=/[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\uFE0F\u20E3]/g; /* v-es-floor: محرّك قديم — تقريب بلا خصائص يونيكود */ }
   function noEmoji(x){ return String(x==null?'':x).replace(EMO,'').replace(/\s{2,}/g,' ').trim(); }
   function scrub(){
     var w=document.createTreeWalker(M,NodeFilter.SHOW_TEXT,null), n, list=[];
@@ -134,6 +134,7 @@
   function tabLabel(v){
     if(v==='trend') return L('videoTabTrends');
     if(v==='clean') return L('videoTabClean');
+    if(v==='director') return L('vdTab')||'مخرج التطبيق';
     var sel=id('videoMakerMode'); if(!sel) return v;
     for(var i=0;i<sel.options.length;i++) if(sel.options[i].value===v){
       var t=(sel.options[i].textContent||'').trim(), m=t.match(ICO); t=short(t.slice(m?m[1].length:0));
@@ -150,20 +151,24 @@
     }
     if(tb.previousElementSibling!==card.firstElementChild) card.insertBefore(tb,card.firstElementChild.nextSibling);
     tb.innerHTML='';
-    TABS.forEach(function(v){
+    /* v-app-director: قسم «مخرج التطبيق» آخر الشريط للمالك وحده — لغير المالك لا زرّ ولا لوحة في DOM */
+    TABS.concat(drOwner()?['director']:[]).forEach(function(v){
       var b=document.createElement('button'); b.type='button'; b.className='vmk-tab'; b.dataset.tab=v;
       b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(v===tab));
       /* v-vmk-tab-art (المالك ١١ أكتوبر بلوحة التبويبات: «شوف الصور مقاس واحد كلهم»): صورة مربّعة واحدة المقاس فوق اسم كلّ قسم */
+      /* v-app-director: قسم المخرج بلا صورة (طلب المالك «بدون أيقونات») — لا <img> فلا أيقونة مكسورة بجانب صور الأقسام */
+      if(v==='director'){ var dlb=document.createElement('span'); dlb.className='vmk-tab-lbl'; dlb.textContent=tabLabel(v); b.classList.add('vmk-tab-noimg'); b.appendChild(dlb); tb.appendChild(b); return; }
       var im=document.createElement('img'); im.className='vmk-tab-img'; im.alt=''; im.loading='lazy'; im.src='/assets/videos/tabs/'+v+'.jpg?v=2';
       var lb=document.createElement('span'); lb.className='vmk-tab-lbl'; lb.textContent=tabLabel(v);
       b.appendChild(im); b.appendChild(lb); tb.appendChild(b);
     });
     card.classList.toggle('vmk-tab-trend',tab==='trend');
     card.classList.toggle('vmk-tab-clean',tab==='clean');
+    card.classList.toggle('vmk-tab-director',tab==='director');
   }
   function setTab(v){
-    if(TABS.indexOf(v)<0) return; tab=v;
-    var sel=id('videoMakerMode');
+    if(TABS.indexOf(v)<0&&!(v==='director'&&drOwner())) return; tab=v;
+    var sel=(v==='director')?null:id('videoMakerMode'); /* v-app-director: المخرج لا يمسّ الوضع */
     if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
     buildTabs(); sync(); scrub();
   }
@@ -288,6 +293,334 @@
       [].slice.call(g.children).forEach(function(c){ if(!BASIC_DUR[c.dataset.v]) box.appendChild(c); });
       ex.style.display=box.children.length?'':'none';
     }
+  }
+  /* ═══ v-app-director (المالك: «سوّ لي أو عطني فكرة فيديو عن أنماط الصور ويعطيني فيديو عنه كامل… فيديو عن التطبيق ١٠ دقائق مع مها أو
+     عبدالله وبأيّ لغة أريدها» — «نفس مكان الفيديوهات، مخرج التطبيق، بدون أيقونات، فقط للمالك»): قسم للمالك وحده يأخذ طلبًا بالكلام
+     ويسلّم فيديو كاملًا عن التطبيق. المتصفّح يقود المسار: الخطّة من الخادم (action=app-director-plan) ← نماذج الأنماط بمسار الصور القائم
+     ← التعليق بصوت مها/عبدالله (action=tts) ← رمز مهمّة (action=app-director-token) ← جسر Railway يصوّر الشاشات ويدمج (POST /render)
+     ← استطلاع كلّ ٣ ثوانٍ ← معاينة وتحميل وحفظ. لا سرّ ولا عنوان جسر في العميل: يعودان مع الرمز. ═══ */
+  function drOwner(){ try{ return String((typeof authGet==='function')?(authGet('aiapp_username')||''):(localStorage.getItem('aiapp_username')||'')).trim().toLowerCase()==='omran'; }catch(e){ return false; } }
+  var DR_LANGS=[['ar','العربية'],['en','English'],['fr','Français'],['es','Español'],['tr','Türkçe'],['ru','Русский'],['zh','中文'],['hi','हिन्दी'],['ur','اردو'],['bn','বাংলা'],['ne','नेपाली'],['ml','മലയാളം'],['id','Bahasa Indonesia'],['fil','Filipino']];
+  var DR={busy:false,run:0,ref:'',refMime:'',out:'',lang:''};
+  function drTok(){ return (typeof authGet==='function')?(authGet('aiapp_auth_token')||''):''; }
+  function drUiLang(){ try{ return localStorage.getItem('aiapp_lang')||'ar'; }catch(e){ return 'ar'; } }
+  function drT(k,vars){ var v=L(k)||k; Object.keys(vars||{}).forEach(function(x){ v=v.split('{'+x+'}').join(String(vars[x])); }); return v; }
+  function buildDirector(){
+    var card=M.firstElementChild; if(!card||!drOwner()||id('vmkDirector')) return;
+    var box=document.createElement('div'); box.id='vmkDirector'; box.className='vmk-dir';
+    box.innerHTML='<div class="vmk-dir-head"><b></b><p></p></div>'
+      +'<textarea id="vdReq" rows="3" maxlength="600"></textarea>'
+      +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label><label><span></span><select id="vdVoice"><option value="on"></option><option value="off"></option></select></label></div>'
+      +'<label class="vmk-dir-ref"><input type="file" accept="image/*" id="vdRef"><img id="vdRefImg" alt="" hidden><span></span></label>'
+      +'<button type="button" id="vdGo"></button>'
+      +'<div class="vmk-dir-stage" id="vdStage" hidden><div class="vmk-dir-stage-bg"></div><img id="vdStageImg" alt=""><div class="vmk-dir-stage-reel"></div>'
+        +'<div class="vmk-dir-stage-cap" id="vdStageCap"></div><div class="vmk-dir-stage-hud"><span id="vdStageStep"></span><b id="vdStageTime">0:00</b></div><div class="vmk-dir-stage-bar"><i id="vdStageBar"></i></div></div>'
+      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small></li>'; }).join('')+'</ol>'
+      +'<p class="vmk-dir-msg" id="vdMsg"></p>'
+      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a></div>';
+    var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
+    var ls=box.querySelector('#vdLang'); DR_LANGS.forEach(function(l){ var o=document.createElement('option'); o.value=l[0]; o.textContent=l[1]; ls.appendChild(o); });
+    ls.value=DR_LANGS.some(function(l){ return l[0]===drUiLang(); })?drUiLang():'ar';
+    var ms=box.querySelector('#vdMin'); for(var i=1;i<=10;i++){ var o=document.createElement('option'); o.value=String(i); o.textContent=String(i); ms.appendChild(o); } ms.value='2';
+    box.querySelector('#vdRef').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0]; if(f) drPickRef(f); });
+    box.querySelector('#vdGo').addEventListener('click',drRun);
+    box.querySelector('#vdReq').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); drRun(); } });
+    box.querySelector('#vdVoice').addEventListener('change',syncDirector); /* بدون صوت: اختيار المتحدّث بلا معنى فيُعطَّل */
+  }
+  function syncDirector(){
+    var box=id('vmkDirector'); if(!box) return;
+    box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=L('vdSub');
+    box.querySelector('#vdReq').placeholder=L('vdPh');
+    var labs=box.querySelectorAll('.vmk-dir-row label>span'); labs[0].textContent=L('vdLang'); labs[1].textContent=L('vdSpeaker'); labs[2].textContent=L('vdMinutes'); labs[3].textContent=L('vdVoiceLabel');
+    var vo=box.querySelector('#vdVoice'); vo.options[0].textContent=L('vdVoiceOn'); vo.options[1].textContent=L('vdVoiceOff'); box.querySelector('#vdSpeaker').disabled=(vo.value==='off');
+    var sp=box.querySelector('#vdSpeaker'); sp.options[0].textContent=L('vdMaha')||'مها'; sp.options[1].textContent=L('vdAbdullah')||'عبدالله';
+    box.querySelector('.vmk-dir-ref span').textContent=L('vdRef');
+    box.querySelector('#vdGo').textContent=L('vdGo'); box.querySelector('#vdGo').disabled=DR.busy;
+    var names={plan:'vdStepPlan',shots:'vdStepShots',samples:'vdStepSamples',voice:'vdStepVoice',join:'vdStepJoin'};
+    [].forEach.call(box.querySelectorAll('#vdSteps li'),function(li){ li.querySelector('b').textContent=L(names[li.dataset.step]); });
+    box.querySelector('#vdDl').textContent=L('vdDownload');
+  }
+  /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
+     وما يكتبه المخرج مشهدًا مشهدًا، ونماذج الأنماط تظهر فيها بحركة كاميرا فور توليدها، مع عدّاد وقت وشريط تقدّم كلّيّ. تعمل أثناء التوليد فقط. */
+  var ST={t0:0,iv:0,board:[],bi:0,creep:null};
+  var DR_SPAN={plan:[0,14],voice:[14,30],samples:[30,58],shots:[58,84],join:[84,98]};
+  function drStageShow(on){ var s=id('vdStage'); if(s) s.hidden=!on; }
+  function drStagePct(p){ var b=id('vdStageBar'); if(b) b.style.width=Math.max(0,Math.min(100,p))+'%'; }
+  function drStageNext(){
+    if(!ST.board.length) return;
+    var it=ST.board[ST.bi++%ST.board.length], cap=id('vdStageCap'), im=id('vdStageImg');
+    if(cap){ cap.classList.remove('in'); void cap.offsetWidth; cap.textContent=it.text||''; cap.classList.add('in'); }
+    if(im){ im.classList.remove('on'); if(it.img){ im.src=it.img; void im.offsetWidth; im.classList.add('on'); } }
+  }
+  function drStageTick(){
+    var el=id('vdStageTime'); if(!el){ clearInterval(ST.iv); ST.iv=0; return; }
+    var sec=Math.floor((Date.now()-ST.t0)/1000); el.textContent=Math.floor(sec/60)+':'+('0'+(sec%60)).slice(-2);
+    if(ST.creep) drStagePct(ST.creep.lo+(ST.creep.hi-ST.creep.lo)*0.92*(1-Math.exp(-(Date.now()-ST.creep.t)/35000))); /* خطوة بلا عدّاد: الشريط يزحف بالوقت ولا يبلغ نهايتها */
+    if(sec%4===0) drStageNext();
+  }
+  function drStageStart(){
+    ST.t0=Date.now(); ST.board=[]; ST.bi=0; ST.creep=null; drStageShow(true); drStagePct(1);
+    var im=id('vdStageImg'), cap=id('vdStageCap'); if(im){ im.classList.remove('on'); im.removeAttribute('src'); } if(cap){ cap.textContent=''; cap.classList.remove('in'); }
+    if(DR.ref) ST.board.push({text:'',img:'data:'+(DR.refMime||'image/jpeg')+';base64,'+DR.ref});
+    clearInterval(ST.iv); ST.iv=setInterval(drStageTick,1000); drStageTick();
+  }
+  function drStageStop(hide){ clearInterval(ST.iv); ST.iv=0; ST.creep=null; if(hide) drStageShow(false); }
+  function drStep(k,state,note,frac){
+    var li=M.querySelector('#vdSteps li[data-step="'+k+'"]'); if(!li) return;
+    li.classList.remove('on','ok','err'); if(state) li.classList.add(state); li.querySelector('small').textContent=note||'';
+    var sp=DR_SPAN[k]; if(!sp) return;
+    if(state==='on'){
+      var lb=id('vdStageStep'); if(lb) lb.textContent=li.querySelector('b').textContent+(note?' · '+note:'');
+      if(frac==null){ if(!ST.creep||ST.creep.k!==k) ST.creep={k:k,lo:sp[0],hi:sp[1],t:Date.now()}; }
+      else { ST.creep=null; drStagePct(sp[0]+(sp[1]-sp[0])*Math.max(0,Math.min(1,frac))); }
+    } else { if(ST.creep&&ST.creep.k===k) ST.creep=null; if(state==='ok') drStagePct(sp[1]); }
+  }
+  function drMsg(t,err,diag){
+    var m=id('vdMsg'); if(!m) return; m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':'');
+    if(diag){ var d=document.createElement('code'); d.className='vmk-dir-diag'; d.dir='ltr'; d.textContent=diag; m.appendChild(d); } /* سبب الخادم كما هو، للمالك وحده */
+    if(err){ try{ m.scrollIntoView({block:'end'}); }catch(e){ /* guard-ok — متصفّح بلا خيارات التمرير */ } } /* السبب كان أسفل النافذة مقصوصًا */
+  }
+  function drReset(){ ['plan','voice','samples','shots','join'].forEach(function(k){ drStep(k,'',''); }); drMsg(''); var r=id('vdRes'); if(r) r.classList.remove('has'); }
+  function drPickRef(f){
+    var r=new FileReader();
+    r.onload=function(){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var w=img.width,h=img.height,MAX=1400; if(Math.max(w,h)>MAX){ var k=MAX/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+          var c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h);
+          var du=c.toDataURL('image/jpeg',0.86); DR.ref=du.split(',')[1]; DR.refMime='image/jpeg';
+          var pv=id('vdRefImg'); if(pv){ pv.src=du; pv.hidden=false; }
+        }catch(e){ DR.ref=''; try{ __swallow(e,'director:ref'); }catch(x){ /* guard-ok — لا مسجّل */ } }
+      };
+      img.src=String(r.result||'');
+    };
+    r.readAsDataURL(f);
+  }
+  function drPool(items,n,fn){
+    var next=0; function worker(){ if(next>=items.length) return Promise.resolve(); var i=next++; return Promise.resolve().then(function(){ return fn(items[i],i); }).then(worker); }
+    var ws=[]; for(var k=0;k<Math.min(n,items.length);k++) ws.push(worker()); return Promise.all(ws);
+  }
+  function drB64(blob){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ res(String(r.result||'').split(',')[1]||''); }; r.onerror=function(){ rej(r.error||new Error('read')); }; r.readAsDataURL(blob); }); }
+  function drJson(url,body){
+    return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().catch(function(){ return null; }).then(function(j){ return {ok:r.ok,status:r.status,json:j}; }); });
+  }
+  /* أسماء الشاشات باللغة المطلوبة من قاموس الواجهة نفسه (يُحمَّل ملفّ اللغة إن لزم) — الخادم يسمّي بها الميزات في السيناريو */
+  function drLabels(lg){
+    var p=(typeof loadLangFile==='function')?loadLangFile(lg):Promise.resolve();
+    return Promise.resolve(p).catch(function(){ /* guard-ok — بلا ملفّ لغة تُستعمل الأسماء الاحتياطيّة في الخادم */ }).then(function(){
+      var d=(typeof window.__i18nDict==='function')?window.__i18nDict(lg):((window.I18N&&window.I18N[lg])||{}); var out={};
+      Object.keys(d||{}).forEach(function(k){ if(/Title$|^tcSub_|^videoTab|^videoMode|^themeSectionLabel$|^adStudioHint$|^religionModalTitle$|^mahaTitle$/.test(k)&&typeof d[k]==='string') out[k]=d[k].slice(0,120); });
+      return out;
+    });
+  }
+  /* v-app-director-voice: نصّ المشهد مرسومًا على نموذج النمط — لوحة ١٩٢٠×١٠٨٠ (خلفيّة مموّهة من الصورة نفسها، الصورة كاملة، شريط نصّ).
+     الجسر يكتب النصّ على لقطات الشاشة وحدها (في الصفحة)، وصور النماذج تصله جاهزة؛ والنصّ العربيّ يرسمه المتصفّح بخطّ الواجهة.
+     في الفيديو بلا صوت هذا هو ما يشرح المشهد. يعيد null إن تعذّر الرسم فتُرسل الصورة كما هي. */
+  function drWrap(ctx,text,maxW){
+    var words=String(text||'').split(/\s+/).filter(Boolean), lines=[], cur='';
+    words.forEach(function(w){ var t=cur?cur+' '+w:w; if(cur&&ctx.measureText(t).width>maxW){ lines.push(cur); cur=w; } else cur=t; });
+    if(cur) lines.push(cur);
+    return lines;
+  }
+  function drCaptionSample(b64,mime,text,dir){
+    return new Promise(function(res){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var W=1920,H=1080,c=document.createElement('canvas'); c.width=W; c.height=H; var x=c.getContext('2d');
+          x.fillStyle='#07080c'; x.fillRect(0,0,W,H);
+          var k=Math.max(W/img.width,H/img.height), bw=img.width*k, bh=img.height*k;
+          try{ x.filter='blur(34px) brightness(0.78)'; }catch(e){ /* guard-ok — متصفّح بلا مرشّحات اللوحة: خلفيّة بلا تمويه */ }
+          x.drawImage(img,(W-bw)/2,(H-bh)/2,bw,bh);
+          try{ x.filter='none'; }catch(e){ /* guard-ok — كسابقه */ }
+          var f=Math.min(W/img.width,H/img.height), fw=img.width*f, fh=img.height*f;
+          x.drawImage(img,(W-fw)/2,(H-fh)/2,fw,fh);
+          var fam='system-ui,sans-serif'; try{ fam=getComputedStyle(document.body).fontFamily||fam; }catch(e){ /* guard-ok — خطّ النظام */ }
+          x.font='700 44px '+fam; x.direction=dir==='rtl'?'rtl':'ltr'; x.textAlign='center'; x.textBaseline='middle';
+          var lines=drWrap(x,text,W*0.72).slice(0,3), lh=62, padX=46, padY=20, tw=0;
+          lines.forEach(function(ln){ tw=Math.max(tw,x.measureText(ln).width); });
+          var pw=tw+padX*2, ph=lines.length*lh+padY*2, px=(W-pw)/2, py=H-64-ph, rad=lines.length>1?26:ph/2;
+          x.beginPath(); x.moveTo(px+rad,py); x.arcTo(px+pw,py,px+pw,py+ph,rad); x.arcTo(px+pw,py+ph,px,py+ph,rad); x.arcTo(px,py+ph,px,py,rad); x.arcTo(px,py,px+pw,py,rad); x.closePath();
+          x.fillStyle='rgba(7,8,12,.84)'; x.fill(); x.lineWidth=2; x.strokeStyle='rgba(232,194,122,.6)'; x.stroke();
+          x.fillStyle='#f6e7c3'; lines.forEach(function(ln,i){ x.fillText(ln,W/2,py+padY+lh*i+lh/2); });
+          res({b64:c.toDataURL('image/jpeg',0.92).split(',')[1],mime:'image/jpeg'});
+        }catch(e){ try{ __swallow(e,'director:caption'); }catch(z){ /* guard-ok — لا مسجّل */ } res(null); }
+      };
+      img.onerror=function(){ res(null); };
+      img.src='data:'+(mime||'image/png')+';base64,'+b64;
+    });
+  }
+  function drFail(code){ return Object.assign(new Error(code),{code:code}); }
+  function drPlanCall(body){ return drJson('/api/ai?action=app-director-plan',body); }
+  async function drRun(){
+    if(DR.busy||!drOwner()) return;
+    var req=(id('vdReq').value||'').trim(); if(!req){ drMsg(L('vdEmpty'),true); return; }
+    var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;
+    var voiceOn=((id('vdVoice')||{}).value!=='off'), capDir=(lang==='ar'||lang==='ur')?'rtl':'ltr';
+    var my=++DR.run, tk=drTok();
+    DR.busy=true; DR.lang=lang; syncDirector(); drReset(); drStageStart();
+    try{
+      /* ١) الفكرة والسيناريو — الفيديو الطويل يُكتب أجزاءً، كلّ جزء نداء مستقلّ على مخطّط الجزء الأوّل */
+      drStep('plan','on');
+      var labels=await drLabels(lang); if(my!==DR.run) return;
+      var base={request:req,lang:lang,speaker:speaker,minutes:minutes,voice:voiceOn,token:tk,labels:labels};
+      var pr=await drPlanCall(base); if(my!==DR.run) return;
+      if(!pr.ok||!pr.json||!pr.json.plan){ drStep('plan','err'); throw drFail('plan '+pr.status+(pr.json&&pr.json.error?' '+pr.json.error:'')+(pr.json&&pr.json.diag?' · '+pr.json.diag:'')); }
+      var plan=pr.json.plan, parts=pr.json.parts||1, cat=pr.json.catalog||{screens:[],styles:{}}, screens={}; (cat.screens||[]).forEach(function(s){ screens[s.id]=s; });
+      var backup=pr.json.fallback?String(pr.json.model||''):'';
+      if(parts>1){
+        var got={1:plan.scenes}, doneP=1, rest=[]; for(var pk=2;pk<=parts;pk++) rest.push(pk);
+        drStep('plan','on',doneP+'/'+parts,doneP/parts);
+        await drPool(rest,2,async function(k){
+          if(my!==DR.run) return;
+          var r=null;
+          for(var a=1;a<=2&&my===DR.run&&!(r&&r.ok&&r.json&&r.json.plan);a++) r=await drPlanCall(Object.assign({},base,{part:k,outline:plan.outline,title:plan.title,idea:plan.idea}));
+          if(my!==DR.run) return;
+          if(!(r&&r.ok&&r.json&&r.json.plan)){ drStep('plan','err'); throw drFail('plan '+(r?r.status:0)+' '+k+'/'+parts+(r&&r.json&&r.json.diag?' · '+r.json.diag:'')); }
+          got[k]=r.json.plan.scenes; if(r.json.fallback) backup=String(r.json.model||''); doneP++; drStep('plan','on',doneP+'/'+parts,doneP/parts);
+        });
+        if(my!==DR.run) return;
+        var all=[]; for(var q=1;q<=parts;q++) all=all.concat(got[q]||[]); plan.scenes=all;
+      }
+      var scenes=plan.scenes.map(function(sc){
+        var o={type:sc.type,target:sc.target,text:sc.text||'',sub:'',narration:sc.narration||'',seconds:sc.seconds||8,steps:null,image:'',mime:'',audio:'',prompt:''};
+        if(o.type==='title'){ o.text=sc.text||plan.title; o.sub=voiceOn?(sc.highlight||''):(o.narration||sc.highlight||''); }
+        o.cap=voiceOn?o.text:(o.narration||o.text); /* مع الصوت: الاسم القصير؛ بدونه: جملة المشهد كاملة */
+        if(o.type==='screen'){ var scr=screens[o.target]||screens.home||{steps:[]}; o.steps=scr.steps||[]; }
+        if(o.type==='style_sample'){ var st=(cat.styles||{})[o.target]; o.prompt=st?st.prompt:''; }
+        o.board={text:o.text||o.narration.slice(0,110),img:''}; ST.board.push(o.board);
+        return o;
+      });
+      drStep('plan','ok',plan.title+' · '+drT('vdScene',{i:scenes.length,n:scenes.length})+(backup?' · '+backup:''));
+      /* ٢) التعليق أوّلًا (v-app-director-voice-first — لقطة المالك «voice 15/15 401» بعد أن وُلّدت النماذج): الصوت أرخص وأسرع من الصور،
+         فمزوّد صوت يرفض (مفتاح مرفوض، رصيد منتهٍ) يُعلَن قبل الصرف على النماذج، ونصّ ردّ الخادم نفسه في سطر السبب.
+         حدّ الطلبات في الدقيقة (فيديو ١٠ دقائق = ٧٥ طلبًا): الرفض العابر يوقف العاملَين معًا مهلة تتصاعد ثمّ يعيد حتّى ستّ مرّات؛
+         والرفض النهائيّ (401/403/رصيد) يوقف الكلّ فورًا. مشهد بلا صوت يُعدّ؛ فوق خُمس المشاهد = فشل معلَن لا فيديو نصفه صامت.
+         v-app-director-voice (المالك: «تمام ابدا فيه لكن حط ميزه مع صوت ولا بدون»): «بدون صوت» يتخطّى الخطوة ويصير التعليق نصًّا على الشاشة؛
+         ومع الصوت، صوت مها/عبدالله العاجز (مرفوض نهائيًّا، أو صامت فوق خُمس المشاهد بعد كلّ الإعادات) يُستبدل للفيديو كلّه بالصوت
+         الاحتياطيّ (لا خلط صوتين) ويُعلَن ذلك في الخطوة. */
+      var voiced=voiceOn?scenes.filter(function(s){ return !!s.narration; }):[], vLimit=Math.max(1,Math.floor(voiced.length*0.2));
+      var voiceRun=async function(backup){
+        var done=0, miss=0, got=0, last='', cool=0, dead=false, vModel='';
+        await drPool(voiced,2,async function(s){
+          for(var att=1;att<=6&&!s.audio&&!dead&&my===DR.run;att++){
+            var hold=cool-Date.now(); if(hold>0) await new Promise(function(x){ setTimeout(x,hold); });
+            if(my!==DR.run) return;
+            if(dead) break;
+            try{
+              if(backup){
+                var br=await drJson('/api/ai?action=app-director-voice',{text:s.narration,lang:lang,speaker:speaker,model:vModel||undefined,token:tk});
+                if(br.ok&&br.json&&br.json.audio){ s.audio=br.json.audio; vModel=br.json.model||vModel; }
+                else {
+                  last=br.status+' '+((br.json&&(br.json.why||br.json.error))||'')+(br.json&&br.json.diag?' · '+br.json.diag:'');
+                  if(br.status===502||br.status===401||br.status===403||(br.json&&br.json.error==='voice_unconfigured')) dead=true; /* الخادم جرّب نماذجه كلّها */
+                }
+              } else {
+                var ctl=new AbortController(); var tm=setTimeout(function(){ ctl.abort(); },60000);
+                var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s.narration,voice:'maha',lang:lang,gender:speaker,token:tk}),signal:ctl.signal});
+                clearTimeout(tm);
+                if(r.ok){ var b=await r.blob(); if(b.size>200) s.audio=await drB64(b); else last='empty'; }
+                else {
+                  var et=''; try{ var ej=await r.json(); et=String((ej&&ej.error)||'').replace(/\s+/g,' ').slice(0,140); }catch(e2){ et=''; /* ردّ بلا JSON: الحالة وحدها */ }
+                  last=r.status+(et?' '+et:'');
+                  if(r.status===401||r.status===403||/insufficient_quota|no credits|invalid subscription/i.test(et)) dead=true;
+                }
+              }
+            }catch(e){ last='network'; try{ __swallow(e,'director:tts'); }catch(z){ /* guard-ok — لا مسجّل */ } }
+            if(!s.audio&&!dead&&att<6) cool=Math.max(cool,Date.now()+Math.min(4000*att,20000));
+          }
+          /* مزوّد عاجز لا يُنتظر على كلّ مشهد: فوق الحدّ، أو مشهدان استنفدا إعاداتهما بلا نجاح واحد ← يتوقّف الكلّ (والاحتياطيّ يتولّى) */
+          if(s.audio) got++; else { miss++; if(miss>vLimit||(!got&&miss>=2)) dead=true; }
+          done++; if(my===DR.run&&!dead) drStep('voice','on',(backup?L('vdVoiceBackup')+' · ':'')+drT('vdScene',{i:done,n:voiced.length}),done/voiced.length);
+        });
+        return {miss:miss,last:last,dead:dead};
+      };
+      var backupVoice=false;
+      if(!voiceOn) drStep('voice','ok',L('vdVoiceOff'));
+      else {
+        drStep('voice','on',drT('vdScene',{i:0,n:voiced.length}),0);
+        var vres=await voiceRun(false); if(my!==DR.run) return;
+        var mainWhy=vres.last;
+        if(vres.dead||vres.miss>vLimit){
+          scenes.forEach(function(s){ s.audio=''; }); backupVoice=true;
+          drStep('voice','on',L('vdVoiceBackup'),0);
+          vres=await voiceRun(true); if(my!==DR.run) return;
+        }
+        if(vres.dead||vres.miss>vLimit){ drStep('voice','err'); throw drFail('voice '+(voiced.length-vres.miss)+'/'+voiced.length+' '+(backupVoice?('main: '+mainWhy+' | backup: '+vres.last):vres.last)); }
+        drStep('voice','ok',backupVoice?L('vdVoiceBackup'):(vres.miss?('−'+vres.miss):''));
+      }
+      /* ٣) نماذج الأنماط بمسار الصور القائم (صورة المالك مرجعًا إن أرفقها) — المالك بلا نقاط */
+      var samples=scenes.filter(function(s){ return s.type==='style_sample'; });
+      var failed=0;
+      if(samples.length){
+        drStep('samples','on',drT('vdScene',{i:0,n:samples.length}),0);
+        var doneS=0;
+        await drPool(samples,2,async function(s){
+          if(my!==DR.run) return;
+          var r=null;
+          try{
+            r=DR.ref?await drJson('/api/portrait-style',{imageBase64:DR.ref,mimeType:DR.refMime,style:s.target,token:tk})
+                    :await drJson('/api/media?action=maha-image',{prompt:s.prompt||('portrait in the '+s.target+' style'),userText:'',token:tk,guestId:(window.getGuestId?window.getGuestId():'')});
+          }catch(e){ r=null; try{ __swallow(e,'director:sample'); }catch(z){ /* guard-ok — لا مسجّل */ } }
+          if(my!==DR.run) return;
+          if(r&&r.ok&&r.json&&r.json.imageBase64){
+            s.image=r.json.imageBase64; s.mime=r.json.mimeType||'image/png';
+            if(s.cap){ var cc=await drCaptionSample(s.image,s.mime,s.cap,capDir); if(my!==DR.run) return; if(cc){ s.image=cc.b64; s.mime=cc.mime; } }
+            s.board.img='data:'+s.mime+';base64,'+s.image; ST.bi=ST.board.indexOf(s.board); drStageNext(); /* النموذج يظهر في الشاشة الحيّة فور توليده */
+          } else { failed++; s.type='screen'; s.target='portrait'; s.steps=(screens.portrait||{steps:[]}).steps; s.image=''; }
+          doneS++; drStep('samples','on',drT('vdScene',{i:doneS,n:samples.length}),doneS/samples.length);
+        });
+        if(my!==DR.run) return;
+        drStep('samples','ok',failed?drT('vdWarnSamples',{n:failed}):'');
+      } else drStep('samples','ok','');
+      /* ٤) رمز المهمّة وعنوان الجسر من الخادم، ثمّ المانيفست إلى الجسر مباشرة */
+      drStep('shots','on');
+      var tr=await drJson('/api/ai?action=app-director-token',{token:tk}); if(my!==DR.run) return;
+      if(!tr.ok||!tr.json||!tr.json.token||!tr.json.bridge){ drStep('shots','err'); throw drFail('token '+tr.status+(tr.json&&tr.json.error?' '+tr.json.error:'')); }
+      var bridge=tr.json.bridge, jt=tr.json.token, auth={Authorization:'Bearer '+jt};
+      var manifest={lang:lang,title:plan.title,scenes:scenes.map(function(s){ return {type:s.type,target:s.target,text:(s.type==='screen'?s.cap:s.text),sub:s.sub,steps:s.steps||undefined,image:s.image||undefined,mime:s.mime||undefined,audio:s.audio||undefined,seconds:s.seconds}; })};
+      var post;
+      try{ post=await fetch(bridge+'/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},auth),body:JSON.stringify(manifest)}); }
+      catch(e){ drStep('shots','err'); throw drFail('bridge offline'); }
+      var pj=await post.json().catch(function(){ return null; }); if(my!==DR.run) return;
+      if(!post.ok||!pj||!pj.jobId){ drStep('shots','err'); throw drFail('render '+post.status+(pj&&pj.error?' '+pj.error:'')); }
+      var jobId=pj.jobId, st=pj, url='', lost=0;
+      /* ٥) الاستطلاع كلّ ٣ ثوانٍ: التصوير ثمّ الدمج — جسر انقطع أو أُعيد تشغيله يُعلَن لا يُنتظر للأبد */
+      while(my===DR.run){
+        await new Promise(function(x){ setTimeout(x,3000); }); if(my!==DR.run) return;
+        var sr=null, sj=null; try{ sr=await fetch(bridge+'/render/'+encodeURIComponent(jobId),{headers:auth}); sj=await sr.json(); }catch(e){ sj=null; }
+        if(sr&&(sr.status===404||sr.status===401)){ drStep('shots','err'); throw drFail('render '+sr.status+' '+((sj&&sj.error)||'')); }
+        if(!sr||!sr.ok||!sj||typeof sj!=='object'){ if(++lost>=20){ drStep('shots','err'); throw drFail('bridge offline'); } continue; }
+        lost=0; st=sj;
+        if(st.state==='queued'){ drStep('shots','on',L('vdQueued'),0.02); continue; }
+        if(st.step==='assets'||st.step==='capture'){ drStep('shots','on',st.total?drT('vdScene',{i:st.done||0,n:st.total}):'',st.step==='capture'&&st.total?(st.done||0)/st.total:0.03); }
+        if(st.step==='segments'||st.step==='join'){ drStep('shots','ok',''); drStep('join','on',st.step==='segments'&&st.total?drT('vdScene',{i:st.done||0,n:st.total}):'',st.step==='segments'&&st.total?0.8*(st.done||0)/st.total:0.9); }
+        if(st.state==='error'){ drStep(st.step==='capture'||st.step==='assets'?'shots':'join','err'); throw drFail('render '+(st.step||'')+' '+(st.message||'')); }
+        if(st.state==='done'){ drStep('shots','ok',''); drStep('join','ok',''); url=bridge+st.url; break; }
+      }
+      if(my!==DR.run||!url) return;
+      /* ٦) الفيديو: معاينة وتحميل وحفظ */
+      var vr=await fetch(url,{headers:auth}); if(!vr.ok) throw drFail('download '+vr.status);
+      var blob=await vr.blob(); if(my!==DR.run) return;
+      if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ /* guard-ok — رابط زال */ } }
+      DR.out=URL.createObjectURL(blob);
+      var vid=id('vdVideo'), dl=id('vdDl'), res=id('vdRes');
+      drStagePct(100); drStageStop(true);
+      if(vid) vid.src=DR.out; if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-app-director-'+lang+'.mp4'); } if(res) res.classList.add('has');
+      /* لا «حُفظ في فيديوهاتي»: autoSaveVideo خطّاف فارغ اليوم ولا مكتبة فيديوهات في التطبيق — لا نعلن ما لم يحدث؛ الفيديو يبقى هنا للمعاينة والتحميل */
+      var secs=Number(st.seconds)||0; drMsg(drT('vdDone',{m:Math.floor(secs/60),s:secs%60}));
+      if(typeof window.autoSaveVideo==='function') window.autoSaveVideo(DR.out,'omran-app-director-'+lang+'.mp4');
+    }catch(err){
+      if(my!==DR.run) return;
+      var code=String((err&&err.code)||(err&&err.message)||'');
+      var key=/^plan/.test(code)?'vdFailPlan':/^voice/.test(code)?'vdFailVoice':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
+      /* السبب الحقيقيّ بين قوسين (القسم للمالك وحده): ما قاله الخادم عن كلّ محاولة، لا رسالة عامّة */
+      drMsg(key==='vdFail'?L('vdFail'):L('vdFail')+' — '+L(key),true,code.slice(0,520));
+      drStageStop(true);
+      try{ __swallow(err,'director:run'); }catch(e){ /* guard-ok — لا مسجّل */ }
+      DR.run++; DR.busy=false; syncDirector(); /* رفع الرمز يوقف ما بقي من نداءات الخلفيّة */
+    }finally{ if(my===DR.run){ DR.busy=false; drStageStop(false); syncDirector(); } }
   }
   /* ═══ v-vmk-clean-video: قسم «تحسين فيديو» ═══ */
   var CL={file:null,orig:'',out:'',meta:null,level:'light',busy:false,ff:null,ffLoading:null,run:0,msg:null,view:null,showing:'after'};
@@ -788,7 +1121,7 @@
       var b=document.createElement('span'); b.className='vmk-chip gold pts';
       b.textContent=p?(p+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free'); chips.appendChild(b);
     }
-    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean();
+    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean(); syncDirector();
     var tbx=id('vmkTabs'); if(tbx) [].forEach.call(tbx.children,function(bt){ bt.setAttribute('aria-selected',String(bt.dataset.tab===tab)); });
     stageDims();
   }
@@ -806,7 +1139,7 @@
     card.classList.add('vmk-trends-top');
     if(vt.parentElement!==card||vt.nextElementSibling!==side) card.insertBefore(vt,side);
   }
-  function enhance(){ if(!on()) return; loadManifest(); build(); buildTabs(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
+  function enhance(){ if(!on()) return; loadManifest(); build(); buildTabs(); buildDirector(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
   var wasOpen=false;
   new MutationObserver(function(){
     var open=!!(M.style.display&&M.style.display!=='none');

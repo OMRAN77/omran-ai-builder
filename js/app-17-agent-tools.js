@@ -10,6 +10,17 @@
 (function () {
   'use strict';
 
+  /* v-prov-self (المالك ١١ أكتوبر «كلّ واحد ونفسه»): رسم/تعديل يطلبه المزوّد بأداته يُنفَّذ بمحرّك شركته إن كان لها محرّك صور —
+     GPT ← GPT Image، Gemini ← Gemini Image — والخادم يقبل forceEngine للمالك وحده (maha-image). غيرهما = سلسلة المحرّكات
+     المعتادة، واسم المحرّك يعود في نتيجة الأداة فيقوله المزوّد. */
+  function provEngine() {
+    try {
+      if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return undefined;
+      var p = localStorage.getItem('aiapp_provider') || 'openai';
+      return p === 'openai' ? 'gpt' : (p === 'gemini' ? 'nano' : undefined);
+    } catch (e) { return undefined; } // guard-ok — بلا تخزين = السلسلة المعتادة
+  }
+
   function runInSandbox(html, timeoutMs) {
     return new Promise(function (resolve) {
       var token = 'ag_' + Math.random().toString(36).slice(2);
@@ -178,6 +189,7 @@
                 userText: gUserText,
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
                 guestId: window.getGuestId ? window.getGuestId() : '',
+                forceEngine: provEngine(),
               }),
             });
             j = null;
@@ -232,6 +244,7 @@
                 history: tHist,
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
                 guestId: window.getGuestId ? window.getGuestId() : '',
+                forceEngine: provEngine(),
               }),
             });
             try { ej = await er.json(); } catch (e) { ej = null; }

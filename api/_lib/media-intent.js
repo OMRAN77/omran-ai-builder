@@ -19,6 +19,7 @@ function buildMediaIntentPrompt(text) {
     'lane=image: a direct command to draw/generate/design a picture, poster, logo, card, certificate, banner ("ارسم لي", "سوّ لي بوستر", "generate an image of").',
     'lane=video: a direct command to produce a video/clip/animation ("سوّ لي فيديو عن مطعمي", "animate this", "make a 10s clip of").',
     'lane=none: everything else — questions, how-to, advice, tips, best apps/tools, platforms (YouTube, TikTok, Instagram), scripts, captions, titles, ideas, editing text, uploading, downloading, watching, quality/format, or any sentence that only mentions the words image/video/picture.',
+    'Asking for examples, samples or a showcase, or for several kinds at once (images and videos, styles, patterns, fashion), is none: the chat model answers it.',
     'Rules: a question is always none. "how do I make a video" is none. "write a script for a video" is none. "what is the best app for editing photos" is none. Be conservative: if unsure, none. Confidence below 0.7 means none.',
     'Message: "' + String(text || '').replace(/["\n]+/g, ' ').slice(0, 400) + '"',
   ].join('\n');

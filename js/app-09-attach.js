@@ -351,7 +351,8 @@ window.__omranImgTools = function(wrap, dataUrl, att){
   //    ٢ الحافظة · ٣ فتح الصورة في صفحة مستقلّة (blob) حيث الضغط المطوّل يعطي
   //    «مشاركة» أصليّة · ٤ تنبيه أخير. زرّ التنزيل مُزال نهائيًّا (أمر عمران).
   // ⚠️ v592 — connect-src لا يسمح بـ data: ⇒ التحويل محلّيّ بـ atob (صفر شبكة).
-  const nmOf = () => 'image-' + Date.now() + '.png';
+  /* v-img-format: الاسم من نوع الصورة نفسها — كان «.png» دائمًا فتُحفظ JPG المحوَّلة باسم PNG */
+  const nmOf = (bl) => { const ty = (bl && bl.type) || 'image/png'; return 'image-' + Date.now() + (ty === 'image/jpeg' ? '.jpg' : (ty === 'image/webp' ? '.webp' : (ty === 'image/gif' ? '.gif' : '.png'))); };
   const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
   const note = (m) => { try{ if(typeof settingsToast === 'function'){ settingsToast(m); return true; } }catch(e){ __swallow(e, 'note:app-09-attach#v625'); } return false; };
   // 💾 v626 — أمر عمران: «الحفظ بضغطة واحدة — إرسال لمواقع التواصل أو أيّ إرسال».
@@ -364,7 +365,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       const a = document.createElement('a');
       if(!('download' in a)) return false;
       const u = URL.createObjectURL(bl);
-      a.href = u; a.download = nmOf(); a.rel = 'noopener';
+      a.href = u; a.download = nmOf(bl); a.rel = 'noopener';
       a.style.cssText = 'position:fixed;left:-9999px;top:0';
       document.body.appendChild(a);
       a.click();
@@ -492,7 +493,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       if(typeof omranNativeBridge !== 'function' || !omranNativeBridge('omranShare')) return false;
       const bl = toBlob(dataUrl);
       if(!bl) return false;
-      if(typeof msgDownloadBlob === 'function'){ msgDownloadBlob(bl, nmOf()); return true; }
+      if(typeof msgDownloadBlob === 'function'){ msgDownloadBlob(bl, nmOf(bl)); return true; }
     }catch(e){ __swallow(e, 'bridgeShare:app-09-attach#v-share-bridge'); }
     return false;
   };
@@ -2345,6 +2346,42 @@ function __textSwapIntent(s){
   if(/بدل\s+\S+(?:\s+\S+)?\s+(?:حط|خل|الى|إلى)\s*\S+/i.test(s)) return true;
   return false;
 }
+/* 🖼️ v-img-format (لقطة المالك ١١ أكتوبر: «حول الصوره لي صيغة pig» → «⚠️ ما تنفّذ التعديل… [nano-pro:not_done]»): تغيير الصيغة لا يغيّر
+   شكل الصورة، فكان محرّر الصور يرجعها كما هي فيُحكم «لم يُنفَّذ» — وطلب jpg كان يرجع png. التحويل هنا بالكانفس: بلا محرّك ولا تكلفة.
+   صيغة بخطأ حرف («pig») تُقرأ بأقرب صيغة على بعد حرف واحد ويقال ذلك؛ «صيغة» بلا صيغة مفهومة = سؤال؛ طلب معه تعديل آخر يبقى للمحرّر. */
+function __imgFormatIntent(s){
+  s = String(s || '').trim();
+  if(!s || s.length > 120) return null;
+  if(/(?:فيديو|ڤيديو|video|متحرك|انيميشن|أنيميشن|animation|pdf|بي\s*دي\s*[اإ]ف)/i.test(s)) return null;
+  if(/(?:خلفي|لون|ألوان|الوان|اكتب|أكتب|كتاب|احذف|امسح|شيل|ضيف|اضف|أضف|ارسم|وجه|شعر|ملابس|كبّ?ر|صغّ?ر|قصّ|crop|resize|background|colou?r|write|remove|add\b)/i.test(s)) return null;
+  const word = /(?:صيغ[ةه]|امتداد|فورمات|format|extension|file\s*type)/i.test(s);
+  const verb = /(?:^|[\s،,])(?:حول|حوّل|غير|غيّر|بدل|بدّل|احفظ|نزل|نزّل|صدر|صدّر|خل|خلّ|خلي|خلّي|اجعل|ابي|أبي|ابغ|أبغ|أريد|اريد|ودي|convert|save|export|change|turn|make)/i.test(s);
+  if(!word && !verb) return null;
+  const named = [[/(?:^|[^a-z])png(?![a-z])/i, 'png'], [/(?:^|[^a-z])(?:jpe?g|jpe|jfif)(?![a-z])/i, 'jpeg'], [/(?:^|[^a-z])webp(?![a-z])/i, 'webp'],
+    [/بي\s*[اإ]ن\s*جي/, 'png'], [/جي\s*بي\s*جي|جيبيجي|جيه\s*بي\s*جي/, 'jpeg'], [/ويب\s*بي/, 'webp']];
+  for(const [re, fmt] of named) if(re.test(s)) return { fmt, guess:'' };
+  if(!word) return null;
+  /* خطأ حرف واحد في كلمة لاتينيّة قصيرة («pig» ← png، «jpq» ← jpg)؛ تعادل صيغتين = سؤال */
+  const dist = (a, b) => { const d = Array.from({ length:a.length + 1 }, (_, i) => [i]); for(let j = 1; j <= b.length; j++) d[0][j] = j;
+    for(let i = 1; i <= a.length; i++) for(let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[a.length][b.length]; };
+  for(const tok of (s.match(/[a-z]{3,4}/gi) || [])){
+    const w = tok.toLowerCase(), hits = [['png', 'png'], ['jpg', 'jpeg'], ['jpeg', 'jpeg'], ['webp', 'webp']].filter(([n]) => dist(w, n) <= 1).map(([, f]) => f);
+    const uniq = hits.filter((f, i) => hits.indexOf(f) === i);
+    if(uniq.length === 1) return { fmt:uniq[0], guess:tok };
+    if(uniq.length > 1) return { fmt:null, guess:tok };
+  }
+  return { fmt:null, guess:'' };
+}
+async function __omranConvertImageFormat(b64, mime, fmt){
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image')); i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64; });
+  const c = document.createElement('canvas'); c.width = img.naturalWidth || 1; c.height = img.naturalHeight || 1;
+  const g = c.getContext('2d');
+  if(fmt === 'jpeg'){ g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); } /* JPG بلا شفافيّة: الخلفيّة الشفّافة بيضاء لا سوداء */
+  g.drawImage(img, 0, 0);
+  const type = 'image/' + fmt, url = fmt === 'png' ? c.toDataURL(type) : c.toDataURL(type, 0.92);
+  if(url.slice(5, 5 + type.length) !== type) throw new Error('format_unsupported'); /* متصفّح لا يكتب webp يرجع png بصمت */
+  return url;
+}
 async function omranBuildTextEditMask(b64, mime, box){
   const img = await new Promise((res, rej) => {
     const i = new Image();
@@ -2576,6 +2613,9 @@ async function renderTidyCardCanvas(spec, srcDataUrl){
 window.__agentModeOn = false; // v321: الوكيل دائمًا مطفي عند الفتح — لا يُحفظ تشغيله أبدًا
 try{ localStorage.removeItem('aiapp_agent_mode'); }catch(e){ __swallow(e, "misc:app-09-attach#4"); }
 function updateAgentModeUI(){
+  /* v-chip-truth: الوكيل يردّ دائمًا بـClaude مهما كان المختار؛ تشغيله من زرّه أو من ⋮ لا يمرّ بقائمة الشريحة، فكانت تبقى على
+     اسم المزوّد. الشريحة تكتب «الوكيل» حين يعمل — فيعرف المالك من سيردّ ومن يدفع. */
+  try{ if(typeof window.omModelChipSync === 'function') window.omModelChipSync(); }catch(e){ __swallow(e, 'ui:chip-sync-agent'); }
   const btn = document.getElementById('btnAgentMode');
   const lbl = document.getElementById('agentModeLabel');
   if(!btn || !lbl) return;
@@ -3011,6 +3051,18 @@ async function omranSharpenImage(dataUrl, amount){
 
 /* v-img-mix + v-img-honest: شريط الحالة يُطلق قبل وصول الصورة (بصمة v-img-engine-tag-owner ميتة في مسار التعديل)، فيُكتب
    سطر المحرّك للمالك وحده تحت التقرير — فقط حين يعمل المحرّكان (وضع الدمج، أو محرّك ثانٍ بعد «لم يُنفَّذ»). غيره لا يرى اسمًا. */
+/* v-prov-self (٣): مزوّد المالك المختار بلا أدوات (Perplexity) لا يرسم بنفسه — الصورة من محرّك الصور، فسطر تحتها (رسالة بعدها، لا فوقها: v666)
+   يقول أيّ محرّك رسمها بدل أن تبقى الشريحة وحدها باسم المزوّد. للمالك وحده؛ المزوّدون بالأدوات يرسمون بأنفسهم (v-prov-self ١). */
+function __omranNoToolsImgNote(engine){
+  try{
+    if(String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') return '';
+    const p = localStorage.getItem('aiapp_provider') || 'openai';
+    if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(p) !== -1) return '';
+    const e = String(engine || '');
+    const n = /openai|gpt/i.test(e) ? 'GPT Image' : (/gemini|nano/i.test(e) ? 'Gemini Image' : (/pollinations/i.test(e) ? 'Pollinations' : ''));
+    return n ? '🎨 ' + n : '';
+  }catch(e){ __swallow(e, 'ui:no-tools-img'); return ''; }
+}
 function __imgEngineLine(engine, d){
   /* v-media-plans: مشترك الصور يرى جودة الصورة والمتبقّي من رصيده تحتها. v-media-merge: ومشترك «صور وفيديو» يرى اسم رصيده المدموج. */
   const mt = d && d.mediaTag;
@@ -3431,7 +3483,8 @@ const __MEDIA_WORD_RE = /فيديو|ڤيديو|video|صور|image|picture|photo|
    فعلًا — فعل طلب/إنشاء، أو كلمة إعلان/بيع (مسار الإعلان يطلقها وحدها)، أو بدء الرسالة باسم الوسيط.
    «أتصور إنّ السوق يرتفع» و«رأيك في فيلم الأمس» لا تنتظر شيئًا. */
 const __MEDIA_MAKE_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])(?:اعمل|أعمل|اعملي|اصنع|أصنع|صنع|سوّ|سوي|سوّي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|أبي|ابي|ابا|أبا|بغيت|أريد|اريد|أبيك|ابيك|حاب|حابب|أحتاج|احتاج|طلع|طلعلي|صنعلي|عطني|أعطني|اعطني|هات|ارسمي|ارسم(?!ي)|أرسم(?!ي)|ارسملي|رسم|صمم|صمّم|صممي|تصميم|اكتب|أكتب|اكتبلي|ممكن|تقدر|تگدر|يمكن|create|make|generate|produce|draw|design|build|render|write|give me|i want|show me|can you)(?=$|[\s،,.!؟?()"'«»:؛-])|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|^\s*(?:فيلم|فيديو|ڤيديو|مقطع|كليب|صور[ةه]?|بوستر|شعار|لوجو|بطاقة|شهادة|دعوة|غلاف|video|image|logo|poster)\s/i;
-const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|طريقة|طريقه|شرح|اشرح|اشرحلي|علمني|علّمني|أفضل|افضل|أحسن|احسن|برنامج|برامج|تطبيق|تطبيقات|موقع|مواقع|أداة|اداة|أدوات|ادوات|يوتيوب|youtube|تيك\s*توك|تيكتوك|tiktok|انستقرام|انستغرام|instagram|سناب|نصيحة|نصائح|خطة|خطوات|مونتاج|تحرير|مشاهدات|ربح|تسويق|فكرة|أفكار|افكار|عنوان|عناوين|سكربت|سكريبت|سيناريو|كلمات|محتوى|قناة|قناتي|متابعين|جودة|صيغة|تحويل|ضغط|تحميل|تنزيل|رابط|مشاهدة|شاهدت|أشاهد|اشاهد|شفت|رأيت|لماذا|ليش|ليه|هل|متى|وين|فين|مين|ماهو|وش|ايش|أيش|what|how|why|when|which|best|tips|script|caption|title|ideas?)(?=$|[\s،,.!؟?()"'«»:؛-])|[؟?]\s*$/i;
+/* v-media-examples (لقطة المالك ١١ أكتوبر: «عطني نماذج… في الأنماط والاستايل والأزياء والفيديوهات» صار فيديو مدفوعًا عشوائيًّا): طلب نماذج/أمثلة = للموديل المختار لا لمسار توليد */
+const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|طريقة|طريقه|شرح|اشرح|اشرحلي|علمني|علّمني|أفضل|افضل|أحسن|احسن|برنامج|برامج|تطبيق|تطبيقات|موقع|مواقع|أداة|اداة|أدوات|ادوات|يوتيوب|youtube|تيك\s*توك|تيكتوك|tiktok|انستقرام|انستغرام|instagram|سناب|نصيحة|نصائح|خطة|خطوات|مونتاج|تحرير|مشاهدات|ربح|تسويق|فكرة|أفكار|افكار|عنوان|عناوين|سكربت|سكريبت|سيناريو|كلمات|محتوى|قناة|قناتي|متابعين|جودة|صيغة|تحويل|ضغط|تحميل|تنزيل|رابط|مشاهدة|شاهدت|أشاهد|اشاهد|شفت|رأيت|لماذا|ليش|ليه|هل|متى|وين|فين|مين|ماهو|وش|ايش|أيش|what|how|why|when|which|best|tips|script|caption|title|ideas?|نماذج|النماذج|أمثلة|امثلة|الأمثلة|الامثلة|عينات|عيّنات|العينات|examples?|samples?)(?=$|[\s،,.!؟?()"'«»:؛-])|[؟?]\s*$/i;
 /* مصنّف النيّة على الخادم (Gemini Flash، حرارة صفر): 'image' | 'video' | 'none' | null عند التعذّر أو المهلة. */
 async function omranMediaIntent(text){
   try{
@@ -3511,9 +3564,25 @@ async function __sendPromptCore(){
   /* v-media-gate: طبقتان قبل أيّ مسار وسائط كلماتيّ — (١) كلام «عن» الوسائط = لا إنشاء؛ (٢) وإلّا المصنّف الرخيص
      على الخادم. يُستدعى فقط حين تحوي الرسالة كلمة وسائط وبلا صورة مرفقة؛ تعذّره = null فتحكم التعابير المضيَّقة. */
   let __mediaLane = null;
+  /* v-prov-self (المالك ١١ أكتوبر «كلّ واحد ونفسه… من غير لفّ ودوران»، ولقطة Groq وصورة «غير الاشكال» يبنيها محرّك آخر): للمالك والمزوّد
+     المختار يحمل الأدوات، لا مسار وسائط في الواجهة يسبقه — لا مصنّف خفيّ، ولا تعديل/رسم/فيديو مباشر. الطلب يصل المزوّد نفسه فيقرّر
+     ويرسم أو يعدّل بأداته ويقول بأيّ محرّك. يبقى كما كان: أوضاع «+» التي يختارها المالك بيده، وClaude Code، والوكيل، والأدوات المطفأة،
+     وتحويل الصيغة المحلّيّ (كانفس في المتصفّح، لا محرّك). */
+  const __ownerProvTurn = (function(){
+    try{
+      if(!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return false;
+      if(window.__omMode || window.__chatToolsOn === false) return false;
+      const __p = localStorage.getItem('aiapp_provider') || 'openai';
+      if(window.__agentModeOn === true && __p === 'claude') return false;
+      if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(__p) === -1) return false;
+      if(pendingAttachments.some(a => a && a.isImage) && __imgFormatIntent(text)) return false;
+      return true;
+    }catch(e){ __swallow(e, 'ui:prov-self'); return false; }
+  })();
   try{
     const __mediaHasImg = pendingAttachments.some(a => a && a.isImage);
-    if(text && !__mediaHasImg && __MEDIA_WORD_RE.test(text)){
+    if(__ownerProvTurn) __mediaLane = 'none';
+    else if(text && !__mediaHasImg && __MEDIA_WORD_RE.test(text)){
       __mediaLane = __MEDIA_TALK_RE.test(text) ? 'none' : (__MEDIA_MAKE_RE.test(text) ? await omranMediaIntent(text) : null); /* v-chat-fast */
     }
   }catch(e){ __mediaLane = null; }
@@ -4078,7 +4147,8 @@ function __friendlyErr(e){
       return;
     }
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
-    if(window.__agentModeOn && !imageAttachments.length){
+    /* v-prov-self: الوكيل وكيلُ Claude — مع مزوّد آخر مختار يردّ المزوّد نفسه بأدواته (مسار المحادثة أدناه)، لا Claude بالخفاء */
+    if(window.__agentModeOn && !imageAttachments.length && (localStorage.getItem('aiapp_provider') || 'openai') === 'claude'){
       await runOmranAgent(cur, apiText, thinkingDiv);
       return;
     }
@@ -4205,7 +4275,7 @@ function __friendlyErr(e){
       /[📋⬜☐🔹▪•✔️]/.test(text) ||
       /^\s*(?:[-*]|\d+[.)])\s+\S.*\n\s*(?:[-*]|\d+[.)])\s+\S/m.test(text)
     ));
-    const __blockAutoImage = !!(__pastedLike && !__srcImg && !__explicitImgReq);
+    const __blockAutoImage = !!(__ownerProvTurn /* v-prov-self */ || (__pastedLike && !__srcImg && !__explicitImgReq));
     /* v-support-q (لقطة عمران ١ سبتمبر: «عندي مشكلة في الطباعة تصور خارج
        الصورة... كيف اسوي الإعدادات» راحت لتعديل صورة قديمة): سؤال مساعدة
        يحوي كلمات صور عرضًا (تصور/الصورة/تعديل) — نمنع توجيهه للصور حين لا
@@ -4626,7 +4696,7 @@ function __friendlyErr(e){
       : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
     const __talkCharRe = /(شخصية|شخصيه|كرتون|كارتون|كرتوني|كرتونية|كارتونية|character|cartoon|avatar|أفتار|افتار)/i;
     const __speakRe = /(تتكلم|يتكلم|تحكي|يحكي|تتحدث|يتحدث|ناطق|ناطقة|يقول|تقول|talk|talking|speak|speaking|say)/i;
-    const __talkCharIntent = !!text && !__codeWordRe.test(text) && __talkCharRe.test(text) && __speakRe.test(text);
+    const __talkCharIntent = !__ownerProvTurn /* v-prov-self */ && !!text && !__codeWordRe.test(text) && __talkCharRe.test(text) && __speakRe.test(text);
     let __alreadyCartoon = false;
     // 🎬 v367: طلب شخصية تتكلم بدون صورة مرفقة → افتح مكتبة شخصيات جاهزة يختار منها (أو يرفع صورته)
     window.pickTalkCharacter = window.pickTalkCharacter || function(isAr){
@@ -5024,6 +5094,27 @@ function __showImgLoading(el, ar, en){
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (__upgSrc ? (__upgSrc.mime || 'image/png') : ((cur.lastEditedImage && cur.lastEditedImage.mime) || 'image/png'));
       const __isNewImageSource = !!(__srcImg && !__srcImg._fromMemory);
+      /* 🖼️ v-img-format: تحويل الصيغة محلّيًّا قبل أيّ محرّك — الصورة نفسها بلا تغيير، وتصير مصدر التعديل التالي */
+      const __fmtReq = __b64 ? __imgFormatIntent(text) : null;
+      if(__fmtReq){
+        const __fmtName = (f) => (f === 'jpeg' ? 'JPG' : String(f || '').toUpperCase());
+        const __fmtExt = (f) => (f === 'jpeg' ? 'jpg' : f);
+        const __guessNote = (f) => (__fmtReq.guess && f ? '\n' + t('imgConvertGuess').replace('{word}', __fmtReq.guess).replace('{fmt}', __fmtName(f)) : '');
+        if(!__fmtReq.fmt){
+          cur.messages.push({ role:'assistant', content:t('imgConvertAsk') });
+        } else if(__mime === 'image/' + __fmtReq.fmt){
+          cur.messages.push({ role:'assistant', content:t('imgConvertSame').replace('{fmt}', __fmtName(__fmtReq.fmt)) + __guessNote(__fmtReq.fmt), attachments:[{ name:'image.' + __fmtExt(__fmtReq.fmt), isImage:true, mime:__mime, dataUrl:'data:' + __mime + ';base64,' + __b64 }] });
+        } else {
+          try{
+            const __cvUrl = await __omranConvertImageFormat(__b64, __mime, __fmtReq.fmt), __cvMime = 'image/' + __fmtReq.fmt;
+            cur.messages.push({ role:'assistant', content:t('imgConvertDone').replace('{fmt}', __fmtName(__fmtReq.fmt)) + __guessNote(__fmtReq.fmt), attachments:[{ name:'image.' + __fmtExt(__fmtReq.fmt), isImage:true, mime:__cvMime, dataUrl:__cvUrl }] });
+            cur.lastEditedImage = { b64:__cvUrl.split(',')[1] || '', mime:__cvMime };
+          }catch(e){ __swallow(e, 'img:format'); cur.messages.push({ role:'assistant', content:t('imgConvertFail') }); }
+        }
+        cur.lastMsgWasImageEdit = true;
+        thinkingDiv && thinkingDiv.remove();
+        renderAll(); saveState(); return;
+      }
       // 🏠 v682: مسار الديكور — صوّر غرفتك والذكاء يولّد ٤ أساليب مختلفة
       const __decorRe = /(?:ديكور|ديكو|décor|decor|تصميم\s*داخلي|interior\s*design|غير\s*(?:شكل|الشكل|الغرفة|البيت|المكان|الطابع)|حسّن\s*(?:الغرفة|البيت|المكان|الديكور)|رتّب\s*الغرفة|تزيين|أثاث\s*جديد|اقتراح\s*(?:ديكور|أثاث)|غرفتي\s*(?:غير|حسّن|بدّل)|بيتي\s*(?:غير|حسّن))/i;
       if(__decorRe.test(text) && __b64){
@@ -5365,7 +5456,9 @@ function __showImgLoading(el, ar, en){
       }
       // 🛡️ v574: نيّة كتابة صريحة بلا نصّ مفهوم → نطلب النصّ ولا نمسّ الصورة.
       // ممنوع منعًا باتًا أن يعيد مولّد الصور رسمها في شؤون الكتابة.
-      if(!__textSpec.wantsText && !__textSpec.styleEdit && window.__imageWriteIntent && window.__imageWriteIntent(text)){
+      /* v-swap-before-ask (لقطة المالك ١١ أكتوبر: «بدل بليدر حط om ai» على لقطة → «حدّد النص بين علامتي تنصيص» مرّتين): «بدل X حط Y»
+         تبديل نصّ مكتوب، ومساره (v-text-swap) بعد هذا الحارس مباشرةً — كان الحارس يردّ قبله لأنّ «حط» نيّة كتابة. */
+      if(!__textSpec.wantsText && !__textSpec.styleEdit && window.__imageWriteIntent && window.__imageWriteIntent(text) && !(__b64 && __textSwapIntent(text))){
         cur.messages.push({ role:'assistant', content:(lang === 'ar'
           ? 'أكتبه لك على نفس الصورة بدون أي تغيير فيها — بس حدّد النص بين علامتي تنصيص، مثل: اكتب «عمران» بالأصفر في الأعلى.'
           : 'I will write it on the same image without altering it — put the exact text in quotes, e.g. write «Omran» in yellow at the top.') });
@@ -5452,6 +5545,7 @@ function __showImgLoading(el, ar, en){
           }catch(e){ __swallow(e, 'img:text-keep'); }
         }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */ + __imgEngineLine(__data.engine, __data), attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
+        { const __nt = __omranNoToolsImgNote(__data.engine); if(__nt) cur.messages.push({ role: 'assistant', content: __nt }); } /* v-prov-self */
         // v-img-engine-tag-owner: بصمة المحرك الحرفيّة في شريط الحالة — للمالك وحده (باب مقفل: لا اسم مزوّد لأيّ مستخدم).
         try{ if(chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = __keptLayer ? { b64: __editUrl.split(',')[1], mime: 'image/png' } : { b64: __data.imageBase64, mime: __outMime };
@@ -5680,6 +5774,7 @@ function __showImgLoading(el, ar, en){
       if(__gOk){
         const __gm = __gData.mimeType || 'image/png';
         cur.messages.push({ role: 'assistant', content: '' /* v666: بلا جملة فوق الصورة — طلب عمران */, attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
+        { const __nt = __omranNoToolsImgNote(__gData.engine); if(__nt) cur.messages.push({ role: 'assistant', content: __nt }); } /* v-prov-self */
         // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة (لا فوقها).
         if(typeof __gData.caption === 'string' && __gData.caption.trim()){
           cur.messages.push({ role: 'assistant', content: __gData.caption.trim() });

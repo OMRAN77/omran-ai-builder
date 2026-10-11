@@ -12,12 +12,12 @@ const nickOf = (src, re) => { const m = src.match(re); assert.ok(m, 'الخري�
 // v-chip-own-name (أمر المالك ٤ أكتوبر «المزوّدين اللي تحت… أريد كلّ واحد واسمه»): الشريحة صارت باسم المزوّد المختار
 // (الشريط للمالك وحده)؛ اللقب الوظيفيّ باقٍ احتياطًا لمزوّد غير معروف، وخريطته مطابقة لـapp-05 كما كانت.
 test('١. الشريحة باسم المزوّد المختار لا اسم النموذج، والخريطة الوظيفيّة الاحتياطيّة مطابقة لـapp-05', () => {
-  assert.match(modes, /\(window\.__agentModeOn === true\) \? agentLabel\(\) : curProvName\(\);/);
+  assert.match(modes, /\(window\.__agentModeOn === true && curProv\(\) === 'claude'\)[^?]*\? agentLabel\(\) : curProvName\(\);/); // v-prov-self: «الوكيل» مع Claude وحده
   assert.doesNotMatch(modes, /curProvModelLabel/);
   const a = nickOf(modes, /var NICK = (\{[^}]+\});/);
   const b = nickOf(app05, /const PROVIDER_NICK_KEYS = (\{[\s\S]*?\});/);
   assert.deepEqual(a, b);
-  assert.match(fs.readFileSync('index.html', 'utf8'), /js\/modes\.js\?v=m111026a/);
+  assert.match(fs.readFileSync('index.html', 'utf8'), /js\/modes\.js\?v=m111026c/);
 });
 
 test('٢. اللقب يُقرأ من الترجمة (١٤ لغة) مع احتياط، وبلا اسم مزوّد', () => {

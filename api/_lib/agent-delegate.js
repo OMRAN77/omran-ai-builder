@@ -167,9 +167,22 @@ function formatCheck(res) {
 /* ---------- تعريف الأداتين (للمالك وحده) ---------- */
 const KIMI_MODEL_IDS = ['kimi-k2.5', 'kimi-k2-thinking', 'kimi-k2-thinking-turbo', 'kimi-for-coding'];
 const CLAUDE_MODEL_IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+/* v-code-not-primary (المالك ١١ أكتوبر: «الفاتورة كلّها راحت في كودي… خلّه صلاحيّات بس ما يكون الأساسيّ»): التسليم إلى
+   Claude Code يشغّل تشغيلًا كاملًا في GitHub Actions على رصيد Anthropic، والمزوّدون كانوا يفوّضون من أنفسهم حتّى إصلاحًا صغيرًا.
+   الأداة باقية، لكنّ الخادم لا ينفّذها إلّا إذا سمّاه المالك في رسالته الأخيرة («كودي» مع فعل تسليم، أو «Claude Code»، أو
+   «فوّض») — كحارس «ادمج». «كودي» وحدها قد تعني «الكود حقّي»، فلا تكفي بلا فعل تسليم. النفي («لا تفوّض»، «بدون كودي») يُسقطه. */
+const ASK_CODE_NEG_RE = /(?:^|[\s،.,!؟?])(?:لا|ما|مو|بدون|بلاش|بلا)\s*(?:ت|ن)?(?:فوّ?ض|سلّ?م|عط|حوّ?ل|تدخّ?ل|يتدخّ?ل)?\S*\s*(?:ل|ال)?(?:كودي|claude\s*code|كلو?ا?د\s*كود)|don'?t\s+delegate|do\s+not\s+delegate/i;
+const ASK_CODE_RE = /claude\s*code|كلاود\s*كود|كلود\s*كود|(?:^|[\s،.,!؟?«])(?:فوّ?ض|delegate)|(?:خلّ?|خلّ?ي|عط|اعط|أعط|سلّ?م|حوّ?ل|ارسل|أرسل|ودّ?)(?:ها|ه|يها|يه)?\s+(?:\S+\s+){0,2}(?:ل|ال)?كودي|كودي\s+ي\S*(?:ها|ه)(?=$|[\s،.,!؟?])/i;
+function ownerAsksCode(text) {
+  const s = String(text || '');
+  if (ASK_CODE_NEG_RE.test(s)) return false;
+  return ASK_CODE_RE.test(s);
+}
+const DELEGATE_REFUSAL = '✗ Claude Code ليس الأساسيّ: لا تفويض إلّا إذا طلبه المالك بالاسم («خلّ كودي يسويها» · «Claude Code» · «فوّض») في رسالته الأخيرة. نفّذ أنت الآن: read_github ثمّ edit_github (الحزمة تُبنى تلقائيًّا في الالتزام نفسه)، وما لا تقدر عليه بأدواتك قله له في سطر وهو يقرّر.';
+
 const START_TOOL = {
   name: 'delegate_code_task',
-  description: 'سلّم مهمّة كود على مستودع المالك إلى Claude Code داخل GitHub Actions (يقرأ المستودع كاملًا، يعدّل، يعيد بناء الحزمة، يشغّل npm run ci حتّى يمرّ، ويدفع فرعًا). للمالك وحده. تُستخدم للتغييرات الحقيقيّة (إصلاح، ميزة، إعادة هيكلة) التي تحتاج اختبارًا؛ لا للقراءة ولا للأسئلة. اكتب المهمّة كما تكتبها لمهندس زميل: ماذا يتغيّر ولماذا وأين (مسارات الملفّات) وما معيار النجاح. تعود فورًا برقم مسألة وروابط، والتنفيذ يأخذ دقائق — تحقّق لاحقًا بـcheck_code_task.',
+  description: 'ليست طريقك الأساسيّ: استدعها فقط إذا طلب المالك في رسالته الأخيرة Claude Code أو «كودي» بالاسم أو قال «فوّض» — وإلّا يرفضها الخادم؛ التعديلات تعملها أنت بـread_github ثمّ edit_github. تسلّم مهمّة كود على مستودع المالك إلى Claude Code داخل GitHub Actions (يقرأ المستودع كاملًا، يعدّل، يعيد بناء الحزمة، يشغّل npm run ci حتّى يمرّ، ويدفع فرعًا) على رصيد Anthropic. للمالك وحده؛ لا للقراءة ولا للأسئلة. اكتب المهمّة كما تكتبها لمهندس زميل: ماذا يتغيّر ولماذا وأين (مسارات الملفّات) وما معيار النجاح. تعود فورًا برقم مسألة وروابط، والتنفيذ يأخذ دقائق — تحقّق لاحقًا بـcheck_code_task.',
   input_schema: {
     type: 'object',
     properties: {
@@ -195,4 +208,4 @@ const CHECK_TOOL = {
   },
 };
 
-module.exports = { startTask, checkTask, formatStart, formatCheck, parseStatuses, START_TOOL, CHECK_TOOL, WORKFLOW, WORKFLOW_KIMI, KIMI_MODEL_IDS, defaultRepo, slug };
+module.exports = { ownerAsksCode, DELEGATE_REFUSAL, startTask, checkTask, formatStart, formatCheck, parseStatuses, START_TOOL, CHECK_TOOL, WORKFLOW, WORKFLOW_KIMI, KIMI_MODEL_IDS, defaultRepo, slug };

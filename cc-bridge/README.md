@@ -18,8 +18,10 @@ Claude Code **الخام** (حزمة الوكيل الرسميّة، لا حلق
 | `CC_FALLBACK_MODEL` | احتياط إن لم يتوفّر الأساسيّ: `claude-opus-5` افتراضيًّا |
 | `CC_EFFORT` | الجهد: `max` افتراضيًّا (أو `xhigh` / `high` / `medium` / `low`)، مع تفكير تكيّفيّ |
 | `CC_MAX_TURNS` / `CC_MAX_BUDGET_USD` | سقف الجولات (١٠٠٠) وسقف الكلفة للجلسة (اختياريّ) |
+| `DIRECTOR_APP_URL` | التطبيق الذي يصوّر «مخرج التطبيق» شاشاته: `https://omran-ai-builder.vercel.app` افتراضيًّا (اختياريّ) |
+| `DIRECTOR_CONCURRENCY` | مقاطع ffmpeg المتوازية في مهمّة المخرج: تلقائيًّا أنوية الجهاز ناقص واحد بسقف ٤ (اختياريّ؛ كلّ مقطع ≈ ٤٠٠ م.ب) |
 
-في الحاوية أيضًا Chromium وPlaywright (كجلسة المالك على الويب) لمسابر `scripts/*-probe.mjs` واللقطات، وإعدادات المستخدم وذاكرته على القرص الدائم (`/work/claude`)، والمهمّة الطويلة تُتابَع في المحادثة حتّى نهايتها مهما طالت.
+في الحاوية أيضًا Chromium وPlaywright (كجلسة المالك على الويب) لمسابر `scripts/*-probe.mjs` واللقطات، وffmpeg وخطوط Noto لمخرج التطبيق، وإعدادات المستخدم وذاكرته على القرص الدائم (`/work/claude`)، والمهمّة الطويلة تُتابَع في المحادثة حتّى نهايتها مهما طالت.
 
 ## التشغيل على Railway (الأسهل — بلا خادم تديره)
 
@@ -63,3 +65,13 @@ docker run -d --name cc-bridge --restart unless-stopped \
 ## نقاط الجسر (للاطّلاع)
 
 `POST /chat` (SSE) · `GET /runs/:id?since=` · `POST /stop` · `GET /status` · `POST /publish` · `GET /pr/:n` · `POST /merge` · `POST /reset` — كلّها بترويسة `Authorization: Bearer <CC_BRIDGE_SECRET>`.
+
+## مخرج التطبيق (v-app-director)
+
+قسم «مخرج التطبيق» في صانع الفيديو (للمالك وحده) يكتب السيناريو ويسجّل التعليق في Vercel، ثمّ يرسل مانيفست المشاهد إلى الجسر الذي يصوّر شاشات التطبيق المنشور بـChromium (١٢٨٠×٧٢٠ ×٣، ثيم داكن) ويرسم بطاقات العناوين ويدمج الفيديو بـffmpeg (zoompan، والانتقال xfade مخبوز في آخر كلّ مقطع فيكون الدمج لصقًا بلا إعادة ترميز وبذاكرة ثابتة؛ ‏1080p30 H.264/AAC). الترميز يبدأ أثناء التصوير، ولقطة تتعذّر مرّتين تصير بطاقة عنوان بدل فشل الفيديو.
+
+- `POST /render` · `GET /render/:jobId` · `GET /render/:jobId/video.mp4` — بترويسة `Authorization: Bearer <رمز مهمّة>` لا السرّ الخام: الرمز HMAC بـ`CC_BRIDGE_SECRET` يصدره Vercel للمالك (`/api/ai?action=app-director-token`، ساعتان، يحمل اسم المالك ومعرّف المهمّة). الجسر يجيب CORS لأصل التطبيق ومعاينات Vercel.
+- الناتج يبقى ٢٤ ساعة في `/work/state/render/jobs/<jobId>` ثمّ يُحذف. حدود: ٩٠ مشهدًا، ١٦٠ م.ب للمانيفست، ٥٥ دقيقة للمهمّة.
+- في Vercel يلزم `CC_BRIDGE_URL` و`CC_BRIDGE_SECRET` (موجودان) و`GEMINI_API_KEY`، واختياريًّا `DIRECTOR_MODEL` (نموذج المخرج؛ الافتراضيّ أحدث Pro).
+- الصوت الاحتياطيّ (حين يرفض مزوّد صوت مها/عبدالله) بالمفتاح نفسه `GEMINI_API_KEY`؛ اختياريًّا `DIRECTOR_TTS_MODEL` (نموذج الصوت الذي يُجرَّب أوّلًا)
+  و`DIRECTOR_VOICE_FEMALE` / `DIRECTOR_VOICE_MALE` (اسم الصوت؛ الافتراضيّ Kore / Charon). ملفّ الصوت يصل الجسر WAV أو MP3 ويُكتب بامتداده من محتواه.

@@ -69,7 +69,8 @@
     b.setAttribute('data-cx-preset', p.type);
     b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.14));background:rgba(255,255,255,.03);color:inherit;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1.35;cursor:pointer;text-align:center;';
     var txt = optText('constructionType', p.type) || p.type;
-    var m = txt.match(/^(\p{Extended_Pictographic}️?)\s*(.*)$/u);
+    var emRe; try{ emRe = new RegExp('^(\\p{Extended_Pictographic}\\uFE0F?)\\s*(.*)$', 'u'); }catch(e){ emRe = /^((?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF])\uFE0F?)\s*(.*)$/; /* v-es-floor: محرّك قديم — تقريب */ }
+    var m = txt.match(emRe);
     var em = document.createElement('span'); em.textContent = m ? m[1] : '🏗️'; em.style.cssText = 'font-size:22px;';
     var nm = document.createElement('span'); nm.textContent = m ? m[2] : txt;
     b.appendChild(em); b.appendChild(nm);

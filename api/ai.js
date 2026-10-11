@@ -30,6 +30,8 @@ function load(action) {
     case 'agent': return require('./_lib/agent.js');
     case 'chat': return require('./_lib/chat.js');
     case 'models': return require('./_lib/provider-models.js'); // v-provider-models: قائمة الموديلات الحيّة للمالك
+    case 'app-director-plan': case 'app-director-voice': // v-app-director: «مخرج التطبيق» للمالك وحده — الخطّة من نموذج المخرج، والرمز للجسر
+    case 'app-director-token': return require('./_lib/app-director.js');
     // v-vg-removed: المرشد البصري (screen-guide/visual-guide) حُذف نهائيًا بطلب
     // المالك — لم يعد له مسار على الخادم؛ أي نداء قديم يُردّ بـ 404 نظيف.
     default: return null;
@@ -506,7 +508,11 @@ module.exports = withErrorCapture('ai', async (req, res) => {
         try { b.__ownerFactory = isOwner({ query: req.query, body: b }); } catch (e) { b.__ownerFactory = false; }
         // v-religion-owner: النزع اختياريّ (raw:true) كـchat.js منذ v-owner-full — كان افتراضيًّا فيحذف تعليمات كلّ أداة للمالك
         if (b.__ownerFactory && b.raw === true) stripAppSystem(action, b);
+        /* v-prov-self: المسارات القديمة لكلّ مزوّد — الدروس المنشورة بـ«عمّم» لكلّ مستخدم، وللمالك ملفّ المزوّد وتجارب الدروس. بعد ملاحظة الخادم. */
+        let __provSelf = '';
+        if (!(b.__ownerFactory && b.raw === true)) { try { __provSelf = await require('./_lib/prov-self.js').systemBlocks(!!b.__ownerFactory, action); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الدروس */ } }
         injectNote(action, b, geoCountry);
+        if (__provSelf) applyNote(action, b, __provSelf);
         delete b.__ownerFactory;
         req.body = b;
       }

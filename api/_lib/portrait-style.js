@@ -550,3 +550,7 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
   }
 };
+/* v-app-director: خرائط الأنماط تُقرأ من كتالوج التطبيق (app-catalog.js) — بيانات فقط، لا تغيير في المعالج */
+module.exports.STYLE_PROMPTS = STYLE_PROMPTS;
+module.exports.EDIT_PROMPTS = EDIT_PROMPTS;
+module.exports.BACKDROP_PROMPTS = BACKDROP_PROMPTS;

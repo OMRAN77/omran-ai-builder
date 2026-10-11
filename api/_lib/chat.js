@@ -150,7 +150,7 @@ const TOOLS = [
    (v-owner-raw2) — فوصفُها هو تعليمتُها الوحيدة التي تصله. */
 /* v-providers-like-agent (أمر المالك ٤ أكتوبر «خلّهم كلّهم نفس الي عند الوكيل، نفس الخاصيّة في الكتابة وكلّ شي»): أدوات المالك
    في المحادثة هي أدوات وكيله نفسها — الرفع إلى GitHub وتفويض مهمّة الكود والتحقّق منها وأخطاء الإنتاج — لكلّ مزوّد. */
-const OWNER_TOOLS = [require('./app-errors.js').TOOL, require('./github-write.js').TOOL, require('./agent-delegate.js').START_TOOL, require('./agent-delegate.js').CHECK_TOOL, require('./github-edit.js').EDIT_TOOL, require('./github-edit.js').MERGE_TOOL, require('./github-manage.js').MANAGE_TOOL]; // v-agent-surgical: التعديل الجراحيّ والدمج بـ«ادمج»
+const OWNER_TOOLS = [require('./app-errors.js').TOOL, require('./github-write.js').TOOL, require('./agent-delegate.js').START_TOOL, require('./agent-delegate.js').CHECK_TOOL, require('./github-edit.js').EDIT_TOOL, require('./github-edit.js').MERGE_TOOL, require('./github-manage.js').MANAGE_TOOL, require('./prov-self.js').SELF_TOOL, require('./prov-self.js').TEACH_TOOL]; // v-prov-self: ملفّ المزوّد والدروس العامّة · v-agent-surgical: التعديل الجراحيّ والدمج بـ«ادمج»
 const toolsFor = (owner, noMedia) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).map((t) => (owner && t.name === 'read_github' ? require('./provider-level.js').ownerReadTool(t) : t)).concat(owner ? OWNER_TOOLS : []); // v-claude-code-level E5: وصف read_github للمالك يذكر from= المتوازية — غيره بالكائنات نفسها حرفيًّا
 
 const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — سبع، وهي تعمل فعلًا الآن]:\n' +
@@ -615,7 +615,7 @@ const OR_MODELS = {
      ولا يبحث. المفتاح هو نفسه (`OPENROUTER_API_KEY`) في المسارين فلا كلفة جديدة، والموديل يأتي
      من اختيار المالك نفسه (أيّ معرّف صالح عند الوسيط — لا بادئة شركة واحدة). */
   openrouter: 'anthropic/claude-sonnet-5', // احتياط الخادم إن لم يصل اختيار أو رُفض؛ افتراضيّ المنتقي (modes.js) Grok — v-prov-or-unique
-  kimi: 'moonshotai/kimi-k2', // v-kimi: المسار المباشر بمفتاح Moonshot أوّلًا (oa-direct)، وهذا احتياط الوسيط إن غاب المفتاح أو فشل قبل أوّل حرف
+  kimi: 'moonshotai/kimi-k3', // v-kimi-feed: المسار المباشر بمفتاح Moonshot أوّلًا (oa-direct)، وهذا احتياط الوسيط إن غاب المفتاح أو فشل قبل أوّل حرف — kimi-k2 أوقفته Moonshot (٢٥ مايو ٢٠٢٦) وK2 نصّيّ لا يرى صورًا؛ K3 هو الحيّ (رؤية + نصّ)
 };
 
 /* v-cohere-coach (أمر المالك ٢٧ سبتمبر: «غذّه بمعلومات عامّة وآخر التحديثات والبحث في الويب… كأنّه
@@ -1426,8 +1426,14 @@ module.exports = async (req, res) => {
     // حتى الدور الاجتماعي («كيف الحال») الذي كان محرومًا منها كليًّا.
     /* v-nano-pro-edit (تتبّع المالك: صورة مرفقة + «أقوى» → النموذج اختار generate_image فرسم صورة جديدة بلا
        علاقة): TOOLS_NOTE القديم لم يكن يُحقن أصلًا، فكان النموذج لا يعرف edit_image. سطر واحد في دور فيه صورة. */
+    /* v-owner-shot-code (لقطة المالك ١٠ أكتوبر: لقطة من التطبيق + «احذف هذا المكان» → النموذج استدعى edit_image فبدأ يرسم صورة
+       وأوقفه المالك): هذه الملاحظة تأمر بـedit_image «فورًا» لأيّ تغيير على صورة مرفقة، وقواعد عمل المالك (WORK_NOTE) تأتي بعدها
+       ولا تذكر edit_image. للمالك في دور الأدوات: لقطة التطبيق/الموقع/الكود مع طلب = تعديل في الكود (read_github ثمّ edit_github)،
+       ولا edit_image ولا generate_image إلّا بطلب صريح على الصورة نفسها. المستخدم العاديّ كما كان. */
     const IMAGE_TURN_NOTE = lastUserHasImage
-      ? '\n[صورة مرفقة في هذا الدور]: أي طلب تغيير أو تحسين أو ترقية أو «نسخة أقوى/أفخم» أو أسلوب جديد على هذه الصورة = استدعِ edit_image فورًا بتعليمة إنجليزية دقيقة — لا generate_image (edit_image يبني على صورته مصدرًا، وgenerate_image يرسم من الوصف وحده صورة بلا علاقة). لا تسأل قبل التنفيذ؛ ضع رمز الصورة العائد وحده في سطر ثم جملة قصيرة واحدة.'
+      ? ((ownerKnowledge && __ownerReq)
+        ? '\n[صورة مرفقة في هذا الدور — المالك]: إن كانت لقطةً من التطبيق أو الموقع أو الكود أو الإعدادات ومعها طلب (احذف/غيّر/حرّك/صلّح/كبّر…) فهو طلب تعديل في الكود لا في الصورة: حدّد العنصر بـread_github (query عن نصّه أو معرّفه) ثمّ عدّله بـedit_github — ممنوع edit_image وممنوع generate_image هنا. استدعِ edit_image فقط إن طلب المالك صراحةً تعديل الصورة نفسها («عدّل الصورة»، «سوّها 3D»، «غيّر خلفيّة الصورة»)، وgenerate_image فقط إن طلب رسم صورة صراحةً.'
+        : '\n[صورة مرفقة في هذا الدور]: أي طلب تغيير أو تحسين أو ترقية أو «نسخة أقوى/أفخم» أو أسلوب جديد على هذه الصورة = استدعِ edit_image فورًا بتعليمة إنجليزية دقيقة — لا generate_image (edit_image يبني على صورته مصدرًا، وgenerate_image يرسم من الوصف وحده صورة بلا علاقة). لا تسأل قبل التنفيذ؛ ضع رمز الصورة العائد وحده في سطر ثم جملة قصيرة واحدة.')
       : '';
     // v-visual-guide (أمر المالك «أبي إرشاد عام لأي شاشة… كله خطأ»): لقطة شاشة
     // + سؤال «كيف/وين/أضغط إيش» كان يُجاب بإرشاد عامّ أو خاطئ (فهم «Developer
@@ -1455,13 +1461,16 @@ module.exports = async (req, res) => {
     /* v-live-social: «اريده ai فعلن وليس كلام فقط» — كلّ سؤال معلومة يُبحث فيه، لا ما «قد تغيّر» وحده */
     const SEARCH_RULE_NOTE = '\n\n[البحث]: لأيّ سؤال يطلب معلومة أو حقيقة استدعِ web_search أوّلًا حتّى لو ظننت أنّك تعرف — يبحث في الويب والتواصل الاجتماعي معًا. '
       + 'اذكر من أين جاءت كلّ معلومة (موقع أو منصّة). لا بحث للتحيّة والمجاملة والكتابة الإبداعيّة والترجمة وتعديل نصّ المستخدم. بحثان كحدّ أقصى في الردّ.';
-    const system = quietSocialTurn
+    /* v-prov-self: آخر النظام (فيبقى الثابت بادئة الكاش) — للمالك ملفّ المزوّد المختار والدروس كلّها، ولغيره الدروس المنشورة بـ«عمّم» */
+    let __provSelfSys = '';
+    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov); } catch (e) { logError('chat/prov-self', e); }
+    const system = (quietSocialTurn
       ? PERSONA_NOTE + '\n' + __sysBase + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور وبلغة رسالة المستخدم نفسها — جملتان أو ثلاث فيها روح (المثال العربي «الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟» مجرد مثال، ترجم روحه للغة المستخدم) واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn
         /* v-clean-slate: كتاب القواعد فُصل كله من النظام — بقي القصير + ملف المالك + ذاكرة الحساب (تصل ضمن __sysBase).
            v-tokens-cache: التاريخ والوقت والمدينة صارت في ذيل رسالة المستخدم الأخيرة (__turnTail) — تتبدّل كلّ دقيقة فكانت تبطل كاش التاريخ. */
         ? PERSONA_NOTE + '\n' + __sysBase + ownerKnowledge + SEARCH_RULE_NOTE + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE + (siteGuideTurn && baseSystem.indexOf(SITE_GUIDE_MARK) === -1 ? SITE_GUIDE_NOTE : '') + (__ownerNoTools ? '' : (ownerKnowledge && __ownerReq ? require('./github-edit.js').WORK_NOTE : '')) + (__ownerUiShot ? require('./owner-carry.js').UI_SHOT_NOTE : '') + (__ownerNoTools ? require('./provider-level.js').NO_TOOLS_NOTE : '') /* v-claude-code-level E1: دور المالك بلا أدوات لا يُؤمر بها */ /* v-agent-surgical: طريقة العمل بلا تكرار */
-        : PERSONA_NOTE + '\n' + __sysBase + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ;
+        : PERSONA_NOTE + '\n' + __sysBase + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ) + __provSelfSys;
     // v-owner-raw2: ما يُرسل فعلًا — للمالك صفر حرف، ولغيره النظام كما هو.
     const __coach = __rawOwner && prov === 'cohere'; // v-cohere-coach
     const __sysRaw = __rawOwner ? (siteGuideTurn ? SITE_GUIDE_NOTE.trim() : '') : system; // v-site-guide3: الإرشاد وحده يصل نظام المالك الخام
@@ -1526,7 +1535,7 @@ module.exports = async (req, res) => {
     let searchesUsed = 0; // v-chat-parallel-tools: سقف بحثين لكل ردّ
     let anyText = false;
     let fullText = '';   // v608 — نصّ الردّ المتراكم
-    let toolCorpus = ''; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور
+    let toolCorpus = '', __searchRan = false; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور · v-rating-guard-search: هل بحث فعليّ (web_search/fetch_page) جرى؟
 
     // إزالة تكرار المواقع عبر استدعاءات البحث في نفس الدور
       const seenHostnames = new Set();
@@ -1927,7 +1936,7 @@ module.exports = async (req, res) => {
         }
       }
       if (stopReason !== 'tool_use') {
-        const badRatings = unsourcedRatings(fullText, toolCorpus); // v608
+        const badRatings = __searchRan ? unsourcedRatings(fullText, toolCorpus) : []; // v608 · v-rating-guard-search (أمر المالك ١١ أكتوبر): بلا بحث فعليّ لا تحذير — «٣ من ٥» و«٨ من ١٠» والتواريخ كانت تُعلَّم «لم تظهر في نتائج البحث» ولا بحث أصلًا
         if (badRatings.length) {
           logError('chat/unsourced-rating', new Error('ratings absent from tool output: ' + badRatings.join(', ')));
           send({ delta: ratingWarning(fullText) });
@@ -2038,9 +2047,14 @@ module.exports = async (req, res) => {
             else { __ownerOps.manages = (__ownerOps.manages || 0) + 1; result = __ownerOps.manages > 8 ? '✗ ثمانية استدعاءات إدارة في الردّ الواحد حدّ مقصود.' : __gm.formatManage(await __gm.manage(input)); }
           }
           else if (cb.name === 'delegate_code_task') {
+            const __dl = require('./agent-delegate.js');
             if (!__ownerReq) result = '✗ تفويض مهامّ الكود للمالك وحده.';
-            else { __ownerOps.delegates++; const __dl = require('./agent-delegate.js'); result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
+            else if (!__dl.ownerAsksCode(lastUserText)) result = __dl.DELEGATE_REFUSAL; // v-code-not-primary: بطلب المالك بالاسم وحده
+            else { __ownerOps.delegates++; result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
           }
+          /* v-prov-self: ملفّ المزوّد المختار نفسه (لا غيره)، والدروس العامّة بـ«عمّم» يفحصها الخادم */
+          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf(reqProv || prov, input, __ownerReq);
+          else if (cb.name === 'teach_users') result = await require('./prov-self.js').runTeach(input, lastUserText, __ownerReq, reqProv || prov);
           else if (cb.name === 'check_code_task') {
             const __dl = require('./agent-delegate.js');
             result = __ownerReq ? __dl.formatCheck(await __dl.checkTask(input)) : '✗ التحقّق من مهامّ الكود للمالك وحده.';
@@ -2087,6 +2101,7 @@ module.exports = async (req, res) => {
         const __outMax = (__ownerReq && st.cb.name === 'read_github') ? 30000 : 8000;
         toolResults.push({ type: 'tool_result', tool_use_id: st.cb.id, content: String(st.result).slice(0, __outMax) });
         if (toolCorpus.length < 200000) toolCorpus += ' ' + String(st.result).slice(0, 8000); // v608
+        if (st.cb.name === 'web_search' || st.cb.name === 'fetch_page') __searchRan = true;
       }
       convo.push({ role: 'user', content: toolResults });
     }
@@ -2109,7 +2124,12 @@ module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 �
 function ownerStopNote(fail, then) {
   const isCredit = (x) => { const f = x || {}; return /credit|balance|billing|insufficient|quota|payment/i.test(String(f.text || '')) || Number(f.status) === 402; };
   if (isCredit(fail) || isCredit(then)) return 'ما عندي رصيد';
-  return 'ما قدرت أردّ الحين — خطأ ' + (((then || fail) || {}).status || '؟');
+  const __f = (then || fail) || {};
+  // v-groq-tpm: 413 «tokens per minute» بعد إعادة القصّ في oa-direct = المحادثة نفسها أكبر من حدّ المفتاح في الدقيقة
+  if (Number(__f.status) === 413 && /tokens per minute|\bTPM\b/i.test(String(__f.text || ''))) return 'ما قدرت أردّ الحين — المحادثة أكبر من حدّ المفتاح في الدقيقة؛ افتح محادثة جديدة';
+  // v-groq-tpm: 429 بموعد («try again in 12m3s») بعد انتظار oa-direct القصير = موعد الحدّ نفسه للمالك بدل رقم
+  if (Number(__f.status) === 429) { const __w = require('./oa-direct.js').groqRetryAfter(__f.text); if (__w) return 'ما قدرت أردّ الحين — وصلت حدّ المفتاح؛ جرّب بعد ' + (__w < 90 ? Math.ceil(__w) + ' ثانية' : __w < 5400 ? Math.ceil(__w / 60) + ' دقيقة' : Math.ceil(__w / 3600) + ' ساعة'); }
+  return 'ما قدرت أردّ الحين — خطأ ' + (__f.status || '؟');
 }
 /* v-owner-identity (المالك ٨ أكتوبر: «ولا واحد يردّ على أيّ مزوّد باسمه… المزوّدين كلّهم أسامي فقط، شو عرّفني أنّهم بأصلهم»):
    منذ v-owner-full (٢ أكتوبر) يأخذ المالك النظام الكامل، وفي رأسه «أنت عمران… أسماء النماذج والمزوّدين لا تُذكر أبدًا — تقول المحرّك»

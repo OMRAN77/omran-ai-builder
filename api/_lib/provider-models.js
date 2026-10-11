@@ -8,7 +8,7 @@
 const { isOwner } = require('./_owner.js');
 
 // مفتاح المزوّد في التطبيق ← بادئة الشركة عند OpenRouter.
-const OR_VENDOR = { openai: 'openai', gemini: 'google', deepseek: 'deepseek', mistral: 'mistralai', cohere: 'cohere', groq: 'meta-llama', perplexity: 'perplexity' };
+const OR_VENDOR = { openai: 'openai', gemini: 'google', deepseek: 'deepseek', mistral: 'mistralai', cohere: 'cohere', groq: 'meta-llama', perplexity: 'perplexity', kimi: 'moonshotai' };
 const OR_ID_RE = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i;
 const PER_PROVIDER = 8;
 const TTL_MS = 6 * 60 * 60 * 1000;

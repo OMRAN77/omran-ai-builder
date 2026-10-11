@@ -17,6 +17,7 @@ import { timingSafeEqual, randomBytes } from 'node:crypto';
 import { ALLOWED_TOOLS, DENIED_TOOLS, RULES_APPEND, RunLog, decideTool, briefTool, detailTool, DETAIL_MAX, redact } from './policy.mjs';
 import { makeGit } from './git.mjs';
 import { makeWatcher, wakeMessage } from './watch.mjs';
+import { createRenderer } from './render.mjs'; // v-app-director: تصوير شاشات التطبيق ودمج فيديو «مخرج التطبيق»
 
 const env = process.env;
 const PORT = Number(env.PORT) || 8787;
@@ -37,6 +38,17 @@ if (!SECRET || SECRET.length < 24) { console.error('CC_BRIDGE_SECRET مفقود 
 if (!env.ANTHROPIC_API_KEY && !env.CLAUDE_CODE_OAUTH_TOKEN) { console.error('لا ANTHROPIC_API_KEY ولا CLAUDE_CODE_OAUTH_TOKEN في البيئة.'); process.exit(1); }
 
 const gitOps = makeGit({ cwd: REPO_DIR });
+/* v-app-director: مسار /render برمز مهمّة (HMAC بالسرّ نفسه يصدره Vercel للمالك) لا بالسرّ الخام — المتصفّح يناديه مباشرة.
+   DIRECTOR_APP_URL: التطبيق الذي تُصوَّر شاشاته (الإنتاج افتراضيًّا). FFMPEG_BIN/FFPROBE_BIN اختياريّان. */
+const renderer = createRenderer({
+  secret: SECRET,
+  appUrl: String(env.DIRECTOR_APP_URL || 'https://omran-ai-builder.vercel.app').replace(/\/+$/, ''),
+  workDir: join(STATE_DIR, 'render'),
+  repoDir: REPO_DIR,
+  ffmpeg: env.FFMPEG_BIN || 'ffmpeg',
+  ffprobe: env.FFPROBE_BIN || 'ffprobe',
+  concurrency: Math.max(0, Number(env.DIRECTOR_CONCURRENCY) || 0), /* ٠ = تلقائيّ: أنوية الجهاز ناقص واحد بسقف ٤ */
+});
 
 /** بيئة Claude Code: بيئة الجسر بلا سرّه المشترك، ومفتاح GitHub باسمه عند gh (GH_TOKEN) ليعمل gh وgit push. */
 function childEnv() {
@@ -203,7 +215,11 @@ function gc() { const now = Date.now(); for (const [id, l] of runs) if (l.done &
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/health') return json(res, 200, { ok: true, busy: !!(current && !current.done) });
+  if (url.pathname === '/health') return json(res, 200, { ok: true, busy: !!(current && !current.done), renderJobs: renderer.jobs.size });
+  /* v-app-director: /render يتحقّق من رمز المهمّة بنفسه (لا السرّ الخام) ويردّ على CORS لأصل التطبيق */
+  if (url.pathname === '/render' || url.pathname.startsWith('/render/')) {
+    try { if (await renderer.handle(req, res, url)) return; } catch (e) { return json(res, 500, { error: redact(String((e && e.message) || e).slice(0, 300)) }); }
+  }
   if (!authed(req)) return json(res, 401, { error: 'unauthorized' });
   try {
     if (req.method === 'POST' && url.pathname === '/chat') {

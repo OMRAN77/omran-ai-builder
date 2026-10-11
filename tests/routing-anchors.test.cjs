@@ -57,14 +57,14 @@ for (const a of anchors) {
 // لو انزاح تعريف دالّة سطرًا واحدًا، يُمسك هنا لا في مراجعة بشريّة.
 const NAMED = [
   ['api/ai.js', 19, 'function load('],
-  ['api/ai.js', 294, 'const AI_MODE'],
-  ['api/ai.js', 296, 'const MODES'],
-  ['api/ai.js', 307, 'function resolveMode('],
-  ['api/ai.js', 352, 'function stripAppSystem('],
-  ['api/ai.js', 358, 'function injectNote('],
-  ['api/ai.js', 440, 'function applyNote('],
-  ['api/ai.js', 477, 'const PROVIDERS'],
-  ['api/ai.js', 479, "withErrorCapture('ai'"],
+  ['api/ai.js', 296, 'const AI_MODE'],
+  ['api/ai.js', 298, 'const MODES'],
+  ['api/ai.js', 309, 'function resolveMode('],
+  ['api/ai.js', 354, 'function stripAppSystem('],
+  ['api/ai.js', 360, 'function injectNote('],
+  ['api/ai.js', 442, 'function applyNote('],
+  ['api/ai.js', 479, 'const PROVIDERS'],
+  ['api/ai.js', 481, "withErrorCapture('ai'"],
   ['api/_lib/chat.js', 65, 'function customInstructionsBlock('],
   ['api/_lib/chat.js', 572, 'function imageTurnConfig('],
   ['api/_lib/chat.js', 592, 'const CLAUDE_MODELS'],
@@ -73,7 +73,7 @@ const NAMED = [
   ['api/_lib/chat.js', 1159, 'module.exports = async'],
   ['api/_lib/chat.js', 1180, 'let viaOR'],
   ['api/_lib/chat.js', 1183, 'let apiKey'],
-  ['api/_lib/chat.js', 1589, 'ANTHROPIC_API_KEY / OPENROUTER_API_KEY'],
+  ['api/_lib/chat.js', 1598, 'ANTHROPIC_API_KEY / OPENROUTER_API_KEY'],
   ['api/_lib/chat.js', 1184, 'let CHAT_URL'],
   ['api/_lib/chat.js', 1190, 'let DEFAULT_MODEL'],
   ['api/_lib/chat.js', 1229, 'const applyRoute'], // v-plan-routing
@@ -85,10 +85,10 @@ const NAMED = [
   ['api/_lib/chat.js', 1337, '__freeLane'],
   ['api/_lib/chat.js', 1404, 'const sysParts'],
   ['api/_lib/chat.js', 1414, 'customInstructionsBlock('],
-  ['api/_lib/chat.js', 1521, 'imageTurnConfig('],
-  ['api/_lib/chat.js', 1572, 'if (__freeLane || !__visionRoute)'],
-  ['api/_lib/chat.js', 1736, 'while (!upstream.ok && !anyText && __planFallbacks.length)'], // v-plan-routing
-  ['api/_lib/chat.js', 1752, 'v-king-fallback'],
+  ['api/_lib/chat.js', 1530, 'imageTurnConfig('],
+  ['api/_lib/chat.js', 1581, 'if (__freeLane || !__visionRoute)'],
+  ['api/_lib/chat.js', 1745, 'while (!upstream.ok && !anyText && __planFallbacks.length)'], // v-plan-routing
+  ['api/_lib/chat.js', 1761, 'v-king-fallback'],
   ['api/_lib/tier.js', 46, 'const PLAN_ROUTING'], // v-plan-routing
   ['api/_lib/tier.js', 54, 'function isStrongTurn('],
   ['api/_lib/tier.js', 71, 'function planRoute('],
@@ -176,7 +176,7 @@ assert.ok(/isPaidProvider/.test(tier), 'حارس المزوّد المدفوع �
 // (د) الأسلاك المقطوعة المذكورة ما زالت مقطوعة فعلًا (وإلّا فالخريطة تكذب)
 assert.ok(!/quickIntent/.test(chat), 'مصنّف النيّة ما زال لا يصل chat.js — كما تقول §٦-ب');
 assert.ok(!/require\(.*tone\.js.*\)/.test(chat), 'tone.js ما زال لا يصل chat.js — كما تقول §٦-ب');
-assert.ok(/CACHE_NAME/.test(rd('scripts/build.mjs')) && /BUILD_ID/.test(rd('sw.js')),
+assert.ok(/CACHE_NAME/.test(rd('scripts/build.mjs') + rd('api/_lib/bundle-core.js')) && /BUILD_ID/.test(rd('sw.js')), // v-auto-bundle: الختم في الوحدة المشتركة
   'تناقض ختم sw.js ما زال قائمًا كما تقول §٦-ب');
 
 // ── (٤) الخريطة مذكورة حيث يقرأها القادم ──

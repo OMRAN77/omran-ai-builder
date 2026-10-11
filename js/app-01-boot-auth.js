@@ -1684,8 +1684,8 @@ try{
     // Hide the main auth form and Google button, show the OTP section.
     const form = $('#authForm');
     const googleBtn = $('#authGoogleBtn');
-    const tabsRow = $('#authTabLogin')?.parentElement;
-    const orDivider = googleBtn?.previousElementSibling;
+    const tabsRow = ($('#authTabLogin') || {}).parentElement; /* v-es-floor: لا ?. — WebView أندرويد أقدم من كروم ٨٠ يرفض الحزمة كلّها */
+    const orDivider = googleBtn ? googleBtn.previousElementSibling : undefined;
     const t = (window.curT ? window.curT() : {});
     if(form) form.style.display = 'none';
     if(googleBtn) googleBtn.style.display = 'none';
@@ -1705,8 +1705,8 @@ try{
   function hideOtpSection(){
     const form = $('#authForm');
     const googleBtn = $('#authGoogleBtn');
-    const tabsRow = $('#authTabLogin')?.parentElement;
-    const orDivider = googleBtn?.previousElementSibling;
+    const tabsRow = ($('#authTabLogin') || {}).parentElement; /* v-es-floor: لا ?. — WebView أندرويد أقدم من كروم ٨٠ يرفض الحزمة كلّها */
+    const orDivider = googleBtn ? googleBtn.previousElementSibling : undefined;
     if(form) form.style.display = '';
     if(googleBtn) googleBtn.style.display = 'flex';
     if(otpBtn) otpBtn.style.display = 'flex';
