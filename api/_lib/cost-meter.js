@@ -35,15 +35,79 @@ const monthOf = (t) => new Date(typeof t === 'number' ? t : Date.now()).toISOStr
 const norm = (u) => encodeURIComponent(String(u || '').trim().toLowerCase());
 const keyOf = (month, user, kind) => 'cost:' + month + ':' + norm(user) + ':' + kind;
 
-async function addCost(username, usd, kind, opts) {
+function costCmds(username, usd, kind, now) {
   const micros = Math.round((Number(usd) || 0) * 1e6);
-  if (!username || !(micros > 0)) return;
-  const k = keyOf(monthOf(opts && opts.now), username, KINDS.includes(kind) ? kind : 'chat');
+  if (!username || !(micros > 0)) return [];
+  const k = keyOf(monthOf(now), username, KINDS.includes(kind) ? kind : 'chat');
+  return [['INCRBY', k, String(micros)], ['EXPIRE', k, String(MONTH_TTL_SEC)]];
+}
+
+async function addCost(username, usd, kind, opts) {
+  const cmds = costCmds(username, usd, kind, opts && opts.now);
+  if (!cmds.length) return;
   try {
     const kv = (opts && opts.kv) || require('./kv.js');
     if (typeof kv.kvPipeline !== 'function') return; // بيئة بلا Redis كامل (اختبارات) — لا قياس
-    await kv.kvPipeline([['INCRBY', k, String(micros)], ['EXPIRE', k, String(MONTH_TTL_SEC)]]);
+    await kv.kvPipeline(cmds);
   } catch (e) { console.warn('[cost-meter] skipped:', e && e.message); }
+}
+
+/* v-tokens-meter (التقييم ١١ أكتوبر: نسبة قراءة الكاش لم تكن تُقاس في الإنتاج — حالات الصفر وجدها مسبار التدقيق وحده): عدّادات توكنات
+   لكلّ يوم ومسار (paid · free · owner · pro) وموديل — دخل، قراءة كاش، كتابة كاش، خرج، أدوار — HINCRBY في طلب Redis المجمّع نفسه الذي
+   يسجّل التكلفة (لا رحلة إضافيّة)، مدّة ١٠٠ يوم. تقرير للمالك (tokenReport) بنسبة القراءة. لا حصّة تقرؤها؛ والفشل لا يوقف ردًّا. */
+const dayOf = (t) => new Date(typeof t === 'number' ? t : Date.now()).toISOString().slice(0, 10);
+const TOK_FIELDS = [['input', 'in'], ['cacheRead', 'cr'], ['cacheWrite', 'cw'], ['output', 'out']];
+function tokenKey(day, lane, model) {
+  return 'tok:' + day + ':' + (String(lane || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 12) || 'paid') + ':' + encodeURIComponent(String(model || '?').trim().toLowerCase().slice(0, 80));
+}
+function tokenCmds(t, now) {
+  if (!t || typeof t !== 'object') return [];
+  const k = tokenKey(dayOf(now), t.lane, t.model);
+  const cmds = [];
+  for (const [f, h] of TOK_FIELDS) { const n = Math.max(0, Math.round(Number(t[f]) || 0)); if (n) cmds.push(['HINCRBY', k, h, String(n)]); }
+  cmds.push(['HINCRBY', k, 'turns', '1'], ['EXPIRE', k, String(MONTH_TTL_SEC)]);
+  return cmds;
+}
+// نهاية دور محادثة: التكلفة (إن كان حساب غير المالك) والتوكنات معًا في طلب واحد.
+async function meterTurn(username, usd, kind, tokens, opts) {
+  const now = opts && opts.now;
+  const cmds = costCmds(username, usd, kind, now).concat(tokenCmds(tokens, now));
+  if (!cmds.length) return;
+  try {
+    const kv = (opts && opts.kv) || require('./kv.js');
+    if (typeof kv.kvPipeline !== 'function') return; // بيئة بلا Redis كامل (اختبارات) — لا قياس
+    await kv.kvPipeline(cmds);
+  } catch (e) { console.warn('[cost-meter] skipped:', e && e.message); }
+}
+// تقرير المالك: آخر N يوم لكلّ مسار وموديل، ونسبة القراءة = قراءة الكاش ÷ كلّ الدخل (جديد + قراءة + كتابة).
+async function tokenReport(days, deps) {
+  const d = deps || {};
+  const kv = d.kv || require('./kv.js');
+  const n = Math.max(1, Math.min(100, Math.trunc(Number(days) || 7)));
+  const end = typeof d.now === 'number' ? d.now : Date.now();
+  const want = new Set(Array.from({ length: n }, (_, i) => dayOf(end - i * 86400000)));
+  const keys = (await kv.kvList('tok:')).filter((k) => want.has(String(k).split(':')[1]));
+  const vals = keys.length ? await kv.kvPipeline(keys.map((k) => ['HGETALL', k])) : [];
+  const rows = new Map();
+  keys.forEach((k, i) => {
+    const [, , lane, model] = String(k).split(':');
+    const v = vals[i];
+    const h = {}; // HGETALL من Upstash REST: [حقل، قيمة، حقل، قيمة…]
+    if (Array.isArray(v)) { for (let j = 0; j + 1 < v.length; j += 2) h[v[j]] = v[j + 1]; } else Object.assign(h, v || {});
+    const id = lane + ':' + model;
+    const r = rows.get(id) || { lane, model: decodeURIComponent(model || ''), turns: 0, input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
+    r.turns += Number(h.turns) || 0;
+    for (const [f, hk] of TOK_FIELDS) r[f] += Number(h[hk]) || 0;
+    rows.set(id, r);
+  });
+  const share = (r) => { const all = r.input + r.cacheRead + r.cacheWrite; return all ? Math.round(1000 * r.cacheRead / all) / 10 : 0; };
+  const list = [...rows.values()].map((r) => Object.assign(r, { readPct: share(r) })).sort((a, b) => b.turns - a.turns);
+  const lanes = {};
+  for (const r of list) {
+    const l = lanes[r.lane] || (lanes[r.lane] = { lane: r.lane, turns: 0, input: 0, cacheRead: 0, cacheWrite: 0, output: 0 });
+    l.turns += r.turns; for (const [f] of TOK_FIELDS) l[f] += r[f];
+  }
+  return { days: n, byLane: Object.values(lanes).map((l) => Object.assign(l, { readPct: share(l) })).sort((a, b) => b.turns - a.turns), rows: list };
 }
 
 // v-rename-move: تكلفة الشهر تتبع الحساب بعد تغيير اسمه — وإلّا انقسمت على صفّين وحُسب الاسم القديم (سجلّ محذوف) «مجّانيًّا».
@@ -142,4 +206,4 @@ async function monthReport(month, deps) {
   return { month: m, users: users.length, total: r2(users.reduce((s, e) => s + e.total, 0)), byPlan, top };
 }
 
-module.exports = { tokenCostUsd, addCost, meterOp, opCostUsd, anthropicUsageTap, monthReport, moveMonthCosts, PRICES };
+module.exports = { tokenCostUsd, addCost, meterOp, opCostUsd, anthropicUsageTap, monthReport, moveMonthCosts, PRICES, meterTurn, tokenCmds, tokenKey, tokenReport };

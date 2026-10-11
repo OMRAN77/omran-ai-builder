@@ -194,7 +194,7 @@ module.exports = async (req, res) => {
           if (tap) tap.push(dec.decode(value, { stream: true }));
         }
       } catch (e) { /* client likely disconnected */ }
-      if (tap) { try { const cm = require('./cost-meter.js'); await cm.addCost(meterUser, cm.tokenCostUsd(useModel, tap.usage()), 'chat'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } }
+      if (tap) { try { const cm = require('./cost-meter.js'); const tu = tap.usage(); await cm.meterTurn(meterUser, cm.tokenCostUsd(useModel, tu), 'chat', Object.assign({ lane: 'pro', model: useModel }, tu)); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } } // v-tokens-meter: وعدّادات التوكنات في الطلب نفسه
       res.end();
       return;
     }
@@ -204,7 +204,8 @@ module.exports = async (req, res) => {
       try {
         const u = (JSON.parse(data) || {}).usage || {};
         const cm = require('./cost-meter.js');
-        await cm.addCost(meterUser, cm.tokenCostUsd(useModel, { input: u.input_tokens, cacheRead: u.cache_read_input_tokens, cacheWrite: u.cache_creation_input_tokens, output: u.output_tokens }), 'chat');
+        const tu = { input: u.input_tokens, cacheRead: u.cache_read_input_tokens, cacheWrite: u.cache_creation_input_tokens, output: u.output_tokens };
+        await cm.meterTurn(meterUser, cm.tokenCostUsd(useModel, tu), 'chat', Object.assign({ lane: 'pro', model: useModel }, tu)); // v-tokens-meter
       } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
     }
     if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }

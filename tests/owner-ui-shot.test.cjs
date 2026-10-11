@@ -141,17 +141,20 @@ test('الخادم حين يصله دور اللقطة من العميل: الم
     const up = bodies.find((b) => b && Array.isArray(b.tools));
     assert.ok(up, user + ': وصل طلب المزوّد بأدوات');
     const sys = Array.isArray(up.system) ? up.system.map((b) => b.text || '').join('\n') : String(up.system || '');
-    return { tools: up.tools.map((t) => t.name), sys };
+    return { tools: up.tools.map((t) => t.name), sys, msgs: JSON.stringify(up.messages) };
   }
+  // v-tokens-owner-tools: أدوات الصور كانت تُرفع من القائمة فتفوت بادئة الكاش كلّها — صارت مقفلة بتنبيه الذيل والحارس عند التنفيذ والقائمة كاملة
+  const { OWNER_NO_MEDIA_NOTE } = chat.__tokens2;
   const owner = await send('ui-owner');
-  assert.ok(!owner.tools.includes('edit_image') && !owner.tools.includes('generate_image'), 'المالك: أدوات الصور مرفوعة');
+  assert.ok(owner.msgs.includes(OWNER_NO_MEDIA_NOTE), 'المالك: أدوات الصور مقفلة في هذا الدور');
   assert.ok(owner.tools.includes('edit_github') && owner.tools.includes('read_github'), 'المالك: أدوات الكود حاضرة');
   assert.ok(owner.sys.includes('[لقطة من التطبيق — هذا الدور]'), 'المالك: ملاحظة اللقطة في النظام');
   // قرار الواجهة يتقدّم: «صورة حقيقيّة» (false) تُبقي أدوات الصور للمالك؛ وtrue بلا مالك لا أثر له
   const ownerPhoto = await send('ui-owner', { ownerUiShot: false });
-  assert.ok(ownerPhoto.tools.includes('edit_image') && !ownerPhoto.sys.includes('[لقطة من التطبيق — هذا الدور]'), 'المالك: الواجهة قالت صورة حقيقيّة');
+  assert.ok(ownerPhoto.tools.includes('edit_image') && !ownerPhoto.msgs.includes(OWNER_NO_MEDIA_NOTE) && !ownerPhoto.sys.includes('[لقطة من التطبيق — هذا الدور]'), 'المالك: الواجهة قالت صورة حقيقيّة');
+  assert.deepEqual(owner.tools, ownerPhoto.tools, 'القائمة نفسها في الدورين (بادئة الكاش)');
   const ownerFlag = await send('ui-owner', { ownerUiShot: true });
-  assert.ok(!ownerFlag.tools.includes('edit_image') && ownerFlag.sys.includes('[لقطة من التطبيق — هذا الدور]'));
+  assert.ok(ownerFlag.msgs.includes(OWNER_NO_MEDIA_NOTE) && ownerFlag.sys.includes('[لقطة من التطبيق — هذا الدور]'));
   const userFlag = await send('someone', { ownerUiShot: true });
   assert.ok(userFlag.tools.includes('edit_image'), 'العلامة لا تعني شيئًا لغير المالك');
   const user = await send('someone');
