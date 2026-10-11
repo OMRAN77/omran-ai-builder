@@ -128,7 +128,7 @@ test('٤. E2: المالك بلا احتفال ولا طمأنة ولا «اقت
   assert.match(claude, /بلا مجاملة ولا طمأنة — النتيجة أوّلًا/, 'سطر عائلة Claude');
   const small = levelNote('claude', 'claude-haiku-4-5');
   assert.ok(!/موديلًا أقوى/.test(small), 'الصغير لا يُحيل إلى موديل آخر');
-  assert.match(small, /استعمل أدواتك[^\n]*delegate_code_task/, 'بل يعمل بأدواته أو يفوّض');
+  assert.match(small, /استعمل أدواتك[^\n]*edit_github\) حتّى النهاية/, 'بل يعمل بأدواته حتّى النهاية (v-code-not-primary: بلا إحالة إلى التفويض)');
   const r = await run('omran', { provider: 'claude', model: 'claude-haiku-4-5', messages: ask('صلّح زر الإرسال') }, okText);
   const t = sysText(upBody(r));
   assert.ok(!/يحتفل|يطمئنه|موديلًا أقوى/.test(t), 'لا احتفال ولا طمأنة ولا إحالة');
@@ -141,7 +141,7 @@ test('٤. E2: المالك بلا احتفال ولا طمأنة ولا «اقت
 
 test('٥. E3: منهج Claude Code للمالك داخل الكتلة الثابتة المخزَّنة (cache_control) لكلّ مزوّد — والقاعدة الأولى والدمج التلقائيّ باقيان', async () => {
   assert.ok(PL.OWNER_METHOD.length > 1500 && PL.OWNER_METHOD.length < 3200, 'حجم معقول: ' + PL.OWNER_METHOD.length);
-  for (const re of [/DECISIONS\.md[^\n]*PITFALLS\.md[^\n]*read_github/, /from= متوازية في دور واحد/, /read_app_errors[^\n]*test_html[^\n]*delegate_code_task/, /أصغر تغيير يحلّ الجذر/,
+  for (const re of [/DECISIONS\.md[^\n]*PITFALLS\.md[^\n]*read_github/, /from= متوازية في دور واحد/, /read_app_errors[^\n]*test_html[^\n]*فقله للمالك في سطر \(Claude Code بطلبه وحده\)/, /أصغر تغيير يحلّ الجذر/,
     /manage_github \(runs ثمّ run_jobs\)[^\n]*لا «تمّ»/, /مفصولًا صراحةً عمّا لم تتحقّق منه/, /طلب عمران الصريح في رسالته الأخيرة = أمر صريح؛ نفّذه الآن/,
     /افحص CI مرّة واحدة[^\n]*قيد العمل فقل ذلك مع الرابط وأنهِ الردّ — لا تكرّر الفحص في الردّ نفسه/, // لا استطلاع لـCI داخل ردّ واحد (MAX_STEPS/MAX_MS)
     /٤\) الحزمة: js\/app-NN-\*\.js تُبنى[^\n]*js\/partials-\*\.js لا تُحزَم: يكفي رفع رقم \?v=/, /للّغات الأربع عشرة \(js\/app-03-i18n-data\.js وi18n\/\*\.js\)/,
@@ -177,8 +177,8 @@ test('٦. E1·E4: دور المالك بلا أدوات لا يُؤمر بها (
     // الدور بأدواته: طريقة العمل وفقرة الصلاحيّة باقيتان، والحزمة بحقيقتها
     assert.ok(tailT.includes('[طريقة العمل على كود المالك]') && tailT.includes('صلاحيّتك على كود التطبيق'));
     assert.ok(!sysText(withT).includes('ويُرفع معها'), 'لا «ويُرفع معها»');
-    assert.match(tailT, /app\.bundle\.js مبنيّ منها \(npm run bundle\) — ولا يُبنى مع رفعة جزئيّة[^\n]*فشل CI ولم تتغيّر المعاينة حتّى الدمج/);
-    assert.match(tailT, /js\/app-NN-\*\.js يحتاج npm run bundle[^\n]*وjs\/partials-\*\.js لا تُحزَم: يكفي رفع رقم \?v= لها في index\.html\. الإعدادات:/, 'partials بحقيقتها (build.mjs: ^app-\\d\\d- وحدها)');
+    assert.match(tailT, /app\.bundle\.js مبنيّ منها \(npm run bundle\) — وتبنيه أدوات الرفع في المحادثة تلقائيًّا في الالتزام نفسه/); // v-auto-bundle
+    assert.match(tailT, /حين تمسّ js\/app-NN-\*\.js \(v-auto-bundle\)، فلا يُرفع يدويًّا\. وjs\/partials-\*\.js لا تُحزَم: يكفي رفع رقم \?v= لها في index\.html\. الإعدادات:/, 'partials بحقيقتها (build.mjs: ^app-\\d\\d- وحدها)');
     assert.ok(!tailT.includes(PL.NO_TOOLS_NOTE.trim()));
     // بلا أدوات: لا WORK_NOTE ولا فقرة read_github/التفويض ولا أداة رفع أو تفويض، وآخره «لا أدوات» قبل الهويّة
     for (const w of ['[طريقة العمل على كود المالك]', 'صلاحيّتك على كود التطبيق', 'edit_github', 'write_github', 'delegate_code_task', 'merge_github', 'manage_github', 'ويُرفع معها'])
@@ -209,6 +209,10 @@ test('٧. E4: رفعة ناجحة تمسّ js/app-NN-*.js = «الحزمة لم 
   assert.equal(PL.bundleNote({ repo: R, edits: [{ path: 'js/app-09-attach.js' }] }, '✗ لم يُرفع شيء'), '', 'الفاشلة بلا تنبيه');
   assert.equal(PL.bundleNote({ repo: R, edits: [{ path: 'js/app-09-attach.js' }] }, '✅ رُفع\nدُفع مباشرةً إلى main (AGENT_GITHUB_DIRECT مفعّل).'), '', 'المباشر إلى main: bundle.yml يبنيها');
   assert.equal(PL.bundleNote({ repo: 'OMRAN77/other-app', edits: [{ path: 'js/app-09-attach.js' }] }, '✅ رُفع'), '', 'مستودع آخر');
+  // v-auto-bundle: الأداة بنت الحزمة في الالتزام نفسه، أو قالت إنّ البناء تعذّر — فلا تنبيه ثانٍ
+  assert.equal(PL.bundleNote({ repo: R, edits: [{ path: 'js/app-09-attach.js' }] }, '✅ رُفع\n📦 الحزمة js/app.bundle.js بُنيت تلقائيًّا'), '');
+  assert.equal(PL.bundleNote({ repo: R, edits: [{ path: 'js/app-09-attach.js' }] }, '✅ رُفع\n⚠️ تعذّر بناء الحزمة تلقائيًّا: x'), '');
+  assert.ok(!PL.BUNDLE_WARN.includes('delegate_code_task'), 'التنبيه بلا إحالة إلى التفويض');
   const GE = require(rp('api/_lib/github-edit.js')); const GW = require(rp('api/_lib/github-write.js'));
   const savedE = GE.editFiles, savedW = GW.pushFiles;
   const ok = { commit: 'abc1234def', repo: 'OMRAN77/omran-ai-builder', branch: 'omran-agent/x', files: 1, commitUrl: 'https://github.com/c', prUrl: 'https://github.com/p/1', prNumber: 1 };
