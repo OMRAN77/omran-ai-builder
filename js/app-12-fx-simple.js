@@ -218,7 +218,7 @@
     var rw = $('fashionAiResultWrap');
     if(rw && !$('fxTry')){
       var tr = document.createElement('div'); tr.id = 'fxTry';
-      tr.style.cssText = 'display:none;flex-wrap:wrap;gap:6px;margin-top:10px;';
+      tr.style.cssText = 'display:none;flex-wrap:wrap;gap:6px;margin-top:10px;max-width:760px;margin-inline:auto;'; /* v-fashion-result-inplace: بعرض النتيجة */
       rw.insertAdjacentElement('afterend', tr);
       try{ new MutationObserver(renderTry).observe(rw, { attributes:true, attributeFilter:['style'] }); }catch(e){ /* guard-ok */ }
       try{ new MutationObserver(renderTry).observe(gen, { attributes:true, attributeFilter:['disabled'] }); }catch(e){ /* guard-ok */ }

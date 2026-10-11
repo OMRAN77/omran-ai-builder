@@ -1385,6 +1385,49 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   const beforeWrap = $('#fashionAiBeforeWrap');
   const beforeImg = $('#fashionAiBeforeImg');
   const favSaveBtn = $('#fashionAiFavoriteSaveBtn');
+  /* v-fashion-result-inplace (المالك ١١ أكتوبر بلقطة: «الصورة بعد ما تخلص تنزل تحت — أريدها تكون ثابتة نفس المكان»): النتيجة
+     كانت تحت زرّ «صمم» في آخر النموذج، ومشهد التوليد أعلاه مكان مربّع الرفع — فينتهي التوليد والعين في مكان والنتيجة في
+     آخر. العقد نفسها (بمستمعيها وصفّ التعديل داخلها) تُنقل إلى قبل لوح الصورة: المكان الذي كان فيه المشهد، وبعرضه (٧٦٠). */
+  const FX_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };
+  (function(){
+    try{
+      const pane = $('#fashionAiImagePane');
+      if(!pane || !pane.parentNode || !resultWrap) return;
+      [resultWrap, document.getElementById('fxTry'), downloadEl, favSaveBtn].forEach((n) => {
+        if(!n) return;
+        pane.parentNode.insertBefore(n, pane);
+        Object.assign(n.style, FX_RESULT_STYLE);
+      });
+    }catch(e){ __swallow(e, 'fashion:result-inplace'); }
+  })();
+  /* «ثابتة نفس المكان»: النتيجة الطوليّة بعرض المشهد أطول من الشاشة (٧٦٠×١٠١٣) فتنقصّ وتقفز الصفحة إليها — عرض الحاوية
+     يُحدّ بنسبة الصورة حتى يدخل ارتفاعها في FX_RESULT_VH من الشاشة. الصورة تبقى width:100% من حاويتها فشريط «قبل/بعد»
+     وصفّ التعديل على حالهما. على الجوّال الحدّ أوسع من الشاشة للصور ٣:٤ فلا يتغيّر شيء. */
+  const FX_RESULT_VH = 0.7;
+  function fxFitResult(){
+    try{
+      if(!resultWrap || !resultEl.naturalWidth || !resultEl.naturalHeight) return;
+      const maxH = Math.round(window.innerHeight * FX_RESULT_VH);
+      resultWrap.style.maxWidth = Math.min(760, Math.round(maxH * resultEl.naturalWidth / resultEl.naturalHeight)) + 'px';
+    }catch(e){ __swallow(e, 'fashion:result-fit'); }
+  }
+  if(resultEl){ resultEl.addEventListener('load', fxFitResult); window.addEventListener('resize', fxFitResult); }
+  /* الحاوية مخفيّة لحظة عرض النتيجة (المشهد ما زال مكانها حتى المسح التالي) فكلّ قياس أو تمرير تلك اللحظة لا يفعل شيئًا —
+     نتبع ظهورها وتغيّر مقاسها: صورة «قبل» (عرضها بالبكسل = عرض الحاوية، وكان يُقاس مرّة) تتبعه، والتمرير المؤجَّل إلى
+     النتيجة يُنفَّذ حين تظهر فعلًا (لمن نزّل الصفحة أثناء الانتظار؛ ومن بقي عند المشهد لا يتحرّك عنده شيء). */
+  let fxRevealPending = false;
+  function fxRevealResult(){
+    try{ resultEl.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(err){ __swallow(err, 'fashion:scroll'); }
+  }
+  if(resultWrap && beforeImg && typeof ResizeObserver === 'function'){
+    try{
+      new ResizeObserver(() => {
+        if(!resultWrap.clientWidth) return;
+        beforeImg.style.width = resultWrap.clientWidth + 'px';
+        if(fxRevealPending){ fxRevealPending = false; fxRevealResult(); }
+      }).observe(resultWrap);
+    }catch(e){ __swallow(e, 'fashion:before-sync'); }
+  }
   const favoritesBtn = $('#fashionAiFavoritesBtn');
   const favoritesPanel = $('#fashionAiFavoritesPanel');
   const profileHeightEl = $('#fashionProfileHeight');
@@ -1826,7 +1869,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       resultEl.src = dataUrl;
       if(resultWrap) resultWrap.style.display = 'block'; /* v-fashion-show */
       resultEl.style.display = 'block';
-      try{ resultEl.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(err){ __swallow(err, 'fashion:scroll'); }
+      /* v-fashion-result-inplace: النتيجة في مكان المشهد والعين عليه — لا تمرير إلّا إن كانت خارج النظر (كان center فتقفز
+         الصفحة). وهي مخفيّة الآن ما دام المشهد — فالتمرير الفعليّ يُعاد حين تظهر (fxRevealPending). */
+      fxRevealPending = true;
+      fxRevealResult();
       downloadEl.href = dataUrl;
       downloadEl.style.display = 'block';
       favSaveBtn.style.display = 'block';
@@ -2055,6 +2101,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
             resultEl.src = r.dataUrl; if(resultWrap) resultWrap.style.display = 'block'; resultEl.style.display = 'block'; /* v-fashion-show */
             downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
             favSaveBtn.style.display = 'block';
+            /* v-fashion-result-inplace: النتيجة وزرّ التحميل صارا أعلى النافذة — نصعد إليهما ليرى الاختيار */
+            fxRevealResult();
           };
         } else {
           cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
