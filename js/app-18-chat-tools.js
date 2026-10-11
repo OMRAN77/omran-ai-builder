@@ -121,6 +121,7 @@
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
         model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); } catch (e) { return ''; } })(),
+        effort: (function () { try { var __p = provider || 'claude'; return (__p === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined) : (__p === 'openai' && window.gptEffortGet) ? (window.gptEffortGet() || undefined) : undefined; } catch (e) { return undefined; } })(), /* v-owner-claude-all + v-owner-gpt-all: جهد المالك من المنتقي (كلود وGPT)؛ undefined لغيره فيسقط الحقل من JSON وطلبه كما كان بايتًا بايتًا */
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
@@ -207,9 +208,14 @@
 
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم — إلّا حدّ الباقة: لا مسار آخر يتجاوزه.
     if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er; }
+    /* v-claude-code-level C3 (المالك: «ما يعطيني شي»): سبب توقّف المالك بعد نصّ (خطأ بعد التمهيد، قطع لطوله، مهلة، رفض) كان يضيع —
+       يُلحق تحت الردّ. ownerStop لا يرسله الخادم إلّا للمالك، فغيره كما كان. ردّ قُطع داخل كتلة كود (سياج لم يُغلق) يُغلَق سياجه
+       قبل السطر — وإلّا صار السبب جزءًا من الكود المستخرَج (extractReplyRaw) — ويُعلَّم fenceCut ليعرف المستدعي أنّه مقطوع. */
+    var __fenceCut = false;
+    if (__ownerStop && serverErr) { __fenceCut = ((full.match(/```/g) || []).length % 2) === 1; full = full + (__fenceCut ? '\n```' : '') + '\n\n⚠️ ' + serverErr; if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-note'); } } }
     var __p = provider || 'claude';
     var __log = __steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }].concat(__steps) : undefined;
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined };
   };
 })();
 

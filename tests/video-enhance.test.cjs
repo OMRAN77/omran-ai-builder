@@ -2701,5 +2701,5 @@ test('١٦. النصوص والوسوم: ١٦ مفتاحًا بالـ١٤ لغة
   assert.deepEqual([...new Set(VJS.match(/'vclPro\w*'/g).map((s) => s.slice(1, -1)))].sort(), PRO_KEYS.slice().sort());
   const h = read('index.html');
   assert.ok(h.includes('src="/js/video.js?v=440"') && h.includes('css/modules.css?v=676'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=733'; /* v-video-enhance-pro (733): "), 'وسم ملفّات اللغات مرفوع، وسببه في رأس التعليق');
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=736'; /* v-video-enhance-pro (736): "), 'وسم ملفّات اللغات مرفوع، وسببه في رأس التعليق');
 });

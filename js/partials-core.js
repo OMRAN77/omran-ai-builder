@@ -14,10 +14,6 @@
     </div>
     <form id="authForm" autocomplete="on" onsubmit="return false;" style="margin-top:34px;">
     <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
-    <label id="authRecoveryRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:12px;">
-      <span data-i18n="authRecoveryLabel">رمز الاسترجاع</span>
-      <input type="text" id="authRecoveryCode" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; direction:ltr; text-align:center;">
-    </label>
     <div id="authPasswordRow" style="display:block; position:relative; margin-bottom:12px;">
       <span id="authPasswordLabelText" style="display:none;" data-i18n="authPasswordLabel">كلمة المرور</span>
       <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" style="height:50px; padding:0 44px 0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
@@ -29,7 +25,6 @@
     <button type="submit" class="btn primary" id="authSubmitBtn" style="width:100%; height:48px; border-radius:999px; font-weight:bold; font-size:15px; justify-content:center; text-align:center;" data-i18n="authSubmitLogin">دخول</button>
     <div style="text-align:center; margin-top:16px;">
       <a href="#" id="authForgotLink" style="font-size:14px; font-weight:700; color:var(--text); text-decoration:none;" data-i18n="authForgotLink">نسيت كلمة المرور؟</a>
-      <a href="#" id="authUseCodeLink" style="font-size:13px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
       <a href="#" id="authBackToLoginLink" style="font-size:13px; color:var(--accent,#6b7280); text-decoration:none; display:none; margin-inline-start:12px;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
     </div>
     <!-- v-phone-link: في «نسيت كلمة المرور» — الاسترجاع برقم مربوط، مجّانًا عبر واتساب أو تيليجرام -->
@@ -74,18 +69,6 @@
   </div>
 </div>
 
-<div id="authRecoveryModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:420px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); text-align:center;">
-    <h3 style="margin-top:0;" data-i18n="authRecoveryModalTitle">🔑 احتفظ برمز الاسترجاع هذا</h3>
-    <p style="font-size: var(--fs-3); color:var(--muted);" data-i18n="authRecoveryModalDesc">هذا هو الرمز الوحيد الذي يمكنك استخدامه لاستعادة حسابك إذا نسيت كلمة المرور. احفظه في مكان آمن — لن يظهر مرة أخرى.</p>
-    <div id="authRecoveryCodeDisplay" style="font-family:monospace; font-size:18px; direction:ltr; background:var(--bg,#111); border-radius:var(--r-2); padding:14px; margin:14px 0; letter-spacing:1px; word-break:break-all;"></div>
-    <div style="display:flex; gap:8px;">
-      <button type="button" class="btn" id="authCopyRecoveryBtn" style="flex:1;" data-i18n="authCopyBtn">📋 نسخ</button>
-      <button type="button" class="btn primary" id="authAckRecoveryBtn" style="flex:1;" data-i18n="authAckBtn">✅ حفظته، متابعة</button>
-    </div>
-  </div>
-</div>
-
 <div id="omranEduModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.85); display:none; align-items:stretch; justify-content:stretch; padding:0;">
   <div style="width:100%; height:100%; display:flex; flex-direction:column; background:var(--panel,#1a1a1a);">
     <div style="display:flex; justify-content:space-between; align-items:center; padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px; border-bottom:1px solid rgba(255,255,255,0.08); flex:0 0 auto;">
@@ -112,12 +95,12 @@
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="videoModeLabel">وضع الإنشاء</label>
       <select id="videoMakerMode" style="width:100%;">
-        <option value="canvas" data-i18n="videoModeCanvasOnly">🎨 كانفا فقط (بدون AI)</option>
-        <option value="runway" selected data-i18n="videoModeRunwayOnly">🤖 فيديو AI فقط (Runway)</option>
+        <option value="canvas" data-i18n="videoModeCanvasOnly">🎨 قوالب متحرّكة (بلا ذكاء اصطناعي)</option>
+        <option value="runway" selected data-i18n="videoModeRunwayOnly">🤖 فيديو AI فقط</option>
         <option value="minimax" data-i18n="videoModeMinimax">💸 فيديو اقتصادي — أرخص وأسرع</option>
         <option value="omni" data-i18n="videoModeOmni">🎬 فيديو سينمائيّ — أعلى جودة (أغلى)</option>
         <option value="hybrid" data-i18n="videoModeHybrid">🔗 دمج الاثنين (الأفضل)</option>
-        <option value="veo" data-i18n="videoModeVeo">🚀 Veo 3 — جوجل (أعلى جودة + صوت)</option>
+        <option value="veo" data-i18n="videoModeVeo">🚀 سينمائي (أعلى جودة + صوت)</option>
         <option value="actor" data-i18n="videoModeActor">🗣️ ممثل يتكلم — لهجة إماراتية</option>
       </select>
     </div>
@@ -190,7 +173,7 @@
       <input type="file" id="videoMakerHeroInput" accept="image/*" style="display:none;">
       <p style="font-size: var(--fs-5); color:var(--muted); margin-top:6px;" data-i18n="videoMakerHeroNote">ارفع صورتك أو صورة أي شخص — راح يكون بطل كل مشاهد الفيلم.</p>
     </div>
-    <p id="videoMakerHeroVeoNote" style="display:none; font-size:11.5px; color:#e8a13c; margin-top:10px;" data-i18n="videoMakerHeroVeoNote">ℹ️ صورة البطل متاحة مع محرك Runway فقط — Veo 3 لا يقبل صورة في وضع الفيلم.</p>
+    <p id="videoMakerHeroVeoNote" style="display:none; font-size:11.5px; color:#e8a13c; margin-top:10px;" data-i18n="videoMakerHeroVeoNote">ℹ️ صورة البطل تعمل مع محرّك «فيديو بالذكاء الاصطناعي» فقط — المحرّك السينمائيّ لا يقبل صورة في وضع الفيلم.</p>
 
     <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size: var(--fs-3); cursor:pointer;">
       <input type="checkbox" id="videoMakerNarrationToggle">

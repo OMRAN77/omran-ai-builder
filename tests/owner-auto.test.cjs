@@ -133,7 +133,11 @@ test('٥. كلود المباشر: Sonnet 5 بجهد low في الكلام ال�
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'low' });
   r = await run({ user: 'omran', provider: 'claude', model: 'claude-sonnet-5', messages: ask('احسب الفائدة المركّبة على ١٠ آلاف'), script: [() => anthropicText('تم')] });
   assert.equal(r.calls[0].body.output_config, undefined);
+  // v-owner-claude-all (أمر المالك ١٠ أكتوبر): المالك بلا اختيار = Opus 5.5، والتحيّة فوريّة بجهد low كما في v-owner-auto
   r = await run({ user: 'omran', provider: 'claude', messages: ask('السلام'), script: [() => anthropicText('تم')] });
+  assert.equal(r.calls[0].body.model, 'claude-opus-5-5');
+  assert.deepEqual(r.calls[0].body.output_config, { effort: 'low' });
+  r = await run({ user: 'omran', provider: 'claude', model: 'claude-haiku-4-5', messages: ask('السلام'), script: [() => anthropicText('تم')] });
   assert.equal(r.calls[0].body.model, 'claude-haiku-4-5');
   assert.equal(r.calls[0].body.output_config, undefined, 'Haiku 4.5 لا يفكّر ويرفض effort');
   r = await run({ user: 'someone', provider: 'claude', model: 'claude-sonnet-5', messages: ask('السلام'), script: [() => anthropicText('تم')] });

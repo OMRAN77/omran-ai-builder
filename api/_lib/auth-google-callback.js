@@ -14,11 +14,6 @@ function randomPasswordHash() {
   return { salt, hash };
 }
 
-function genRecoveryCode() {
-  const bytes = crypto.randomBytes(10).toString('hex').toUpperCase();
-  return bytes.match(/.{1,4}/g).join('-');
-}
-
 module.exports = async (req, res) => {
   // v-google-app-fail: فشل دخول بدأ من غلاف الآيفون («-app») كان يهبط في سفاري على
   // نسخة الموقع كضيف — شاشة دخول فارغة بلا سبب — والتطبيق ينتظر عشر دقائق بصمت.
@@ -143,12 +138,9 @@ module.exports = async (req, res) => {
 
     if (!user || user.deleted) {
       const { salt, hash } = randomPasswordHash();
-      const recCode = genRecoveryCode();
-      const rec = randomPasswordHash();
       user = {
         username: profile.name || email.split('@')[0],
         salt, hash,
-        recoverySalt: rec.salt, recoveryHash: rec.hash,
         email,
         avatar: profile.picture || null,
         googleAuth: true,

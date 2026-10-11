@@ -180,11 +180,6 @@ async function moveLiveCounters(oldKey, newKey, user) {
   await require('./cost-meter.js').moveMonthCosts(oldKey, newKey);
 }
 
-function genRecoveryCode() {
-  const bytes = crypto.randomBytes(10).toString('hex').toUpperCase(); // 20 hex chars
-  return bytes.match(/.{1,4}/g).join('-'); // XXXX-XXXX-XXXX-XXXX-XXXX
-}
-
 function makeToken(username) {
   const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 1000 * 60 * 60 * 24 * 30 })).toString('base64url');
   const sig = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
@@ -443,7 +438,7 @@ module.exports = async (req, res) => {
     // قراءة متغيّر غير معرَّف ترمي ReferenceError، فكان كلّ تحقّق برمز ينتهي
     // بخطأ 500 — الميزة كانت معطّلة بالكامل.
     const {
-      action, username, password, token, recoveryCode, newPassword,
+      action, username, password, token, newPassword,
       newUsername, currentPassword, avatarDataUrl, lang,
       email, resetToken, otp,
     } = body;
@@ -455,7 +450,7 @@ module.exports = async (req, res) => {
 
     // Hardening: cap input lengths to block scrypt CPU-exhaustion and junk-data attacks.
     const tooLong = [username, newUsername].some(v => v && String(v).length > 64) ||
-      [password, newPassword, currentPassword, recoveryCode].some(v => v && String(v).length > 128) ||
+      [password, newPassword, currentPassword].some(v => v && String(v).length > 128) ||
       (otp && String(otp).length > 16) ||
       (resetToken && String(resetToken).length > 256) ||
       (email && String(email).length > 254);
@@ -489,11 +484,8 @@ module.exports = async (req, res) => {
         return;
       }
       const { salt, hash } = hashPassword(password);
-      const recCode = genRecoveryCode();
-      const rec = hashPassword(recCode);
       const user = {
         username: String(username).trim(), salt, hash,
-        recoverySalt: rec.salt, recoveryHash: rec.hash,
         email: email ? String(email).trim().toLowerCase() : null,
         avatar: null,
         createdAt: Date.now(),
@@ -515,7 +507,7 @@ module.exports = async (req, res) => {
           }
         } catch (e) { logError('auth:email-index', e); }
       }
-      res.status(200).json({ ok: true, token: makeToken(key), username: user.username, recoveryCode: recCode, avatar: null });
+      res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: null });
       return;
     }
 
@@ -610,29 +602,6 @@ module.exports = async (req, res) => {
       user.avatar = avatarDataUrl;
       await putUser(u, user);
       res.status(200).json({ ok: true, avatar: avatarDataUrl });
-      return;
-    }
-
-    if (action === 'reset') {
-      if (!username || !recoveryCode || !newPassword || String(newPassword).length < MIN_PASSWORD) {
-        res.status(400).json({ error: m('أدخل اسم المستخدم ورمز الاسترجاع وكلمة مرور جديدة (' + MIN_PASSWORD + ' أحرف على الأقل)', 'Enter your username, recovery code, and a new password (at least ' + MIN_PASSWORD + ' characters)') });
-        return;
-      }
-      const key = String(username).trim().toLowerCase();
-      const user = await getUser(key);
-      if (!user || user.deleted || !user.recoveryHash || !verifyPassword(String(recoveryCode).trim().toUpperCase(), user.recoverySalt, user.recoveryHash)) {
-        res.status(401).json({ error: m('اسم المستخدم أو رمز الاسترجاع غير صحيح', 'Incorrect username or recovery code') });
-        return;
-      }
-      const { salt, hash } = hashPassword(newPassword);
-      const newRec = genRecoveryCode();
-      const rec = hashPassword(newRec);
-      user.salt = salt;
-      user.hash = hash;
-      user.recoverySalt = rec.salt;
-      user.recoveryHash = rec.hash;
-      await putUser(key, user);
-      res.status(200).json({ ok: true, token: makeToken(key), username: user.username, recoveryCode: newRec, avatar: user.avatar || null });
       return;
     }
 
@@ -738,7 +707,9 @@ module.exports = async (req, res) => {
         return;
       }
       if (!user.email) {
-        res.status(400).json({ error: m('لا يوجد إيميل مسجل لهذا الحساب، استخدم رمز الاسترجاع بدلًا من ذلك', 'No email is registered for this account — use your recovery code instead') });
+        res.status(400).json({ error: user.phone
+          ? m('لا يوجد إيميل مسجل لهذا الحساب — استرجع حسابك برقم هاتفك المربوط', 'No email is registered for this account — recover it with your linked phone number')
+          : m('لا يوجد إيميل ولا رقم هاتف مرتبط بهذا الحساب، فلا يمكن استرجاعه من هنا', 'This account has no email or phone number linked, so it cannot be recovered from here') });
         return;
       }
       const rt = crypto.randomBytes(24).toString('hex');
@@ -983,11 +954,8 @@ module.exports = async (req, res) => {
         }
         if (!candidateKey) candidateKey = 'user_' + crypto.randomBytes(6).toString('hex');
         const { salt, hash } = hashPassword(crypto.randomBytes(32).toString('hex'));
-        const recCode = genRecoveryCode();
-        const rec = hashPassword(recCode);
         user = {
           username: candidateKey, salt, hash,
-          recoverySalt: rec.salt, recoveryHash: rec.hash,
           email: key,
           avatar: null,
           createdAt: Date.now(),
@@ -1028,7 +996,6 @@ module.exports.getUser = getUser;
 module.exports.getUserOnce = getUserOnce;
 module.exports.putUser = putUser;
 module.exports.hashPassword = hashPassword;
-module.exports.genRecoveryCode = genRecoveryCode;
 module.exports.makeToken = makeToken;
 module.exports.verifyToken = verifyToken;
 module.exports.encryptUserBlob = encryptUserBlob;

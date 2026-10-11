@@ -129,12 +129,13 @@ test('٧. كلود: Opus 5.5 في الوكيل وتحليل الكود والم�
   assert.equal(require('../api/_lib/code-analyze.js').__test.DEFAULT_MODEL, 'claude-opus-5-5');
   const chat = require('../api/_lib/chat.js');
   const { pickClaudeModel } = chat.__vmodels;
-  assert.equal(pickClaudeModel('claude-opus-5', false, 'x').model, 'claude-opus-5-5');
+  // v-owner-claude-all (أمر المالك ١٠ أكتوبر): Opus 5 صار اختيارًا مستقلًّا في منتقي المالك — لا يُرقّى على الخادم؛ ترقية العميل لغير المالك وحده (طلبه كما كان)
+  assert.equal(pickClaudeModel('claude-opus-5', false, 'x').model, 'claude-opus-5');
   const m = read('js/app-29-claude-model.js');
   assert.ok(m.includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"));
   assert.ok(read('js/app.bundle.js').includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"), 'الحزمة أُعيد بناؤها');
   assert.ok(read('js/modes.js').includes("['claude-opus-5-5','Opus 5.5']"));
-  assert.ok(read('index.html').includes('js/modes.js?v=m081026a') && read('index.html').includes('js/partials-settings.js?v=694'), 'وسوم الكاش رُفعت');
+  assert.ok(read('index.html').includes('js/modes.js?v=m111026a') && read('index.html').includes('js/partials-settings.js?v=694'), 'وسوم الكاش رُفعت');
   assert.ok(read('js/app-10-features.js').includes("'anthropic/claude-opus-5': 'anthropic/claude-opus-5.5',"), 'اختيار الوسيط المحفوظ يهاجر');
 });
 
