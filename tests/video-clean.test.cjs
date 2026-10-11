@@ -1,5 +1,7 @@
 // tests/video-clean.test.cjs — v-vmk-clean-video (المالك: «كيف أضيف الفيديو إذا كان مغبّش؟ أريد تنظيفه»)
-// تحسين فيديو المستخدم في جهازه بـffmpeg.wasm الموجود: مجّانيّ، بلا خادم ولا مزوّد.
+// المسار المجّانيّ: تحسين فيديو المستخدم في جهازه بـffmpeg.wasm الموجود، بلا خادم ولا مزوّد.
+// (v-video-enhance-pro أضاف للقسم نفسه زرًّا مدفوعًا يمرّ بالخادم — «تحسين احترافي»، واختباره tests/video-enhance.test.cjs؛
+//  «بلا خادم» هنا تخصّ المسار المجّانيّ وتُثبَت على شيفرته نفسها.)
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -81,7 +83,7 @@ test('عارض مستقلّ: نتيجة المولّد لا تُمسّ، ولا 
   assert.ok(css.includes('html[data-mode="light"] #videoMakerModal #vmkClCancel'), 'الإلغاء ظاهر في الفاتح');
 });
 
-test('القسم: تبويب «تحسين فيديو» لا يغيّر الوضع ولا يُظهر زرّ الإنشاء المدفوع، ولا خادم ولا مزوّد', () => {
+test('القسم: تبويب «تحسين فيديو» لا يغيّر الوضع ولا يُظهر زرّ الإنشاء المدفوع، والمسار المجّانيّ بلا خادم ولا مزوّد', () => {
   assert.ok(js.includes("var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor','clean'];"));
   assert.ok(js.includes("if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v)"), 'لا يضبط الـselect');
   const css = read('css/modules.css');
@@ -91,6 +93,16 @@ test('القسم: تبويب «تحسين فيديو» لا يغيّر الوض�
   assert.ok(js.includes('var CL_MAX_SEC=60') && js.includes('?80:200'), 'حدود المدّة والحجم');
   assert.ok(js.includes("ff.mount('WORKERFS',{blobs:[{name:'input',data:CL.file}]},'/clin')"), 'يُقرأ الملفّ من الجهاز بلا نسخه كلّه في الذاكرة، باسم ثابت');
   assert.ok(js.includes('if(f) f.terminate();'), 'الإلغاء يوقف العامل فعلًا');
+  // v-video-enhance-pro: في الملفّ الآن شيفرة تنادي الخادم (الزرّ المدفوع) — فالمسار المجّانيّ يُفحص بشيفرته هو: أوامر الأداة، تحميلها، وتشغيلها
+  const free = js.slice(js.indexOf('function cleanArgs(o){'), js.indexOf('try{ window.__vmkCleanArgs'))
+    + js.slice(js.indexOf('function clFF(){'), js.indexOf('function stageDims(){'))
+    + js.slice(js.indexOf('async function clRun(){'), js.indexOf('function clCancel(){'));
+  assert.ok(free.includes('ff.exec(cleanArgs(') && free.includes("import('/ffmpeg/lib/index.js')") && free.length > 3000, 'المقاطع الثلاثة مأخوذة فعلًا');
+  for (const bad of ['fetch(', 'XMLHttpRequest', '/api/', 'proApi', 'proPut', 'PRO.']) assert.ok(!free.includes(bad), 'المسار المجّانيّ لا يعرف: ' + bad);
+  assert.ok(js.indexOf('function proApi(') > js.indexOf('function syncClean(){'), 'شيفرة الزرّ المدفوع بعد المسار المجّانيّ كلّه');
+  // اختيار ملفّ أثناء التحسين المجّانيّ يُهمل كما كان؛ الاستثناء الوحيد متابعة مهمّة مدفوعة (بلا إلغاء) — الاختيار يخرج منها فلا تحبس المسار المجّانيّ
+  const pick = js.slice(js.indexOf('function clPick(f){'), js.indexOf('async function clRun(){'));
+  assert.ok(pick.includes("if(CL.busy&&PRO.stage!=='run') return;") && pick.includes("if(PRO.stage==='run') proLeave();") && !pick.includes('if(CL.busy) return;'));
 });
 
 test('النصوص بالـ١٤ لغة والوسوم مرفوعة', () => {
@@ -104,6 +116,6 @@ test('النصوص بالـ١٤ لغة والوسوم مرفوعة', () => {
     assert.ok(/\{n\}/.test(s.match(/vclTooBig: "([^"]+)"/)[1]), lg + ' vclTooBig {n}');
   });
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=439"') && h.includes('modules.css?v=675'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=736'"));
+  assert.ok(h.includes('src="/js/video.js?v=440"') && h.includes('modules.css?v=676'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=737'"));
 });

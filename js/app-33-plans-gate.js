@@ -74,7 +74,7 @@
 
   function tabFor(url, reason){
     if(/realtime-session/.test(url)) return 'maha';
-    if(/video-watch/.test(url)) return 'pts'; // تحليل الفيديو بالنقاط وحدها (ليس في جدول الوسائط)
+    if(/video-watch|video-enhance/.test(url)) return 'pts'; // تحليل الفيديو و«تحسين احترافي» بالنقاط وحدها (ليسا في جدول الوسائط)
     if(/\/api\/video/.test(url) || /maha-image|upscale/.test(url)) return 'media'; // v-media-merge
     return reason === 'points' ? 'pts' : 'chat';
   }
