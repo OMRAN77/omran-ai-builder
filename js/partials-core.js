@@ -180,7 +180,7 @@
       <input type="file" id="videoMakerHeroInput" accept="image/*" style="display:none;">
       <p style="font-size: var(--fs-5); color:var(--muted); margin-top:6px;" data-i18n="videoMakerHeroNote">ارفع صورتك أو صورة أي شخص — راح يكون بطل كل مشاهد الفيلم.</p>
     </div>
-    <p id="videoMakerHeroVeoNote" style="display:none; font-size:11.5px; color:#e8a13c; margin-top:10px;" data-i18n="videoMakerHeroVeoNote">ℹ️ صورة البطل متاحة مع محرك Runway فقط — Veo 3 لا يقبل صورة في وضع الفيلم.</p>
+    <p id="videoMakerHeroVeoNote" style="display:none; font-size:11.5px; color:#e8a13c; margin-top:10px;" data-i18n="videoMakerHeroVeoNote">ℹ️ صورة البطل تعمل مع محرّك «فيديو بالذكاء الاصطناعي» فقط — المحرّك السينمائيّ لا يقبل صورة في وضع الفيلم.</p>
 
     <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size: var(--fs-3); cursor:pointer;">
       <input type="checkbox" id="videoMakerNarrationToggle">

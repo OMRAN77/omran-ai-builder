@@ -420,7 +420,7 @@ I18N['zh'] = {
     "videoMakerDurationFilm": "🎬 完整微电影(剧本 + 场景 + 解说)",
     "videoMakerHeroLabel": "📸 使用您的照片作为影片主角(可选)",
     "videoMakerHeroBtn": "📸 选择主角照片",
-    "videoMakerHeroVeoNote": "ℹ️ 主角照片功能仅适用于 Runway 引擎——Veo 3 模式不支持在电影模式下使用图像。",
+    "videoMakerHeroVeoNote": "ℹ️ 主角照片仅适用于 AI 视频引擎——电影级引擎在电影模式下不支持图像。",
     "videoMakerHeroNote": "上传您(或他人)的照片——该人物将出现在影片的每个场景中。",
     "videoMakerDurationLongMinutes": "🎥 长视频(按分钟计)- 仅限所有者",
     "videoMakerLongMinutesLabel": "完整视频时长(分钟，1-10)",
@@ -1227,3 +1227,4 @@ Object.assign(I18N["zh"], {"pdfDocPage": "⏳ 正在准备第 {i} / {n} 页…",
 /* v-media-merge */ Object.assign(I18N['zh'], {"priceTabMedia":"图片和视频","mixPlanName":"图片和视频","mixPlansDesc":"适合想要图片和视频的用户——不含聊天。一个余额同时用于两者；用完后将使用你的积分继续。","mixOneBalance":"图片和视频共用一个余额","mixApprox1":"大约可生成50张图片或12个视频，或两者混合","mixApprox2":"大约可生成100张图片或24个视频，或两者混合","mixApprox3":"大约可生成500张图片或121个视频，或两者混合","mixNoChat":"不含聊天","mixLeft":"图片和视频余额剩余"});
 /* v-inspire */ Object.assign(I18N['zh'], {"inspTabInspire":"灵感","inspTabQuick":"快捷建议","inspCityTitle":"你的真实城市","inspCitySub":"基于开放地图、在你真实街区上构建的 3D 体验。选一个即可在预览中立即打开，然后在里面输入任意街区或城市。","inspLoading":"正在打开…","inspFail":"暂时无法打开，请重试"});
 /* v-chat-edit */ Object.assign(I18N['zh'], {"editApplied": "已将修改应用到设计（{n}）。", "editFailed": "未应用修改——部分旧文本与当前设计不匹配，设计保持不变。请重新提出。", "editTruncated": "回复在文件完整之前被截断，因此设计保持原样。", "editPartial": "未应用修改——回复不完整或格式有误，设计保持不变。请重新提出。", "editBroke": "未应用修改——它会破坏设计的代码，设计保持不变。请重新提出。"});
+/* v-owner-effort — منتقي المالك: الجهد ونماذج أخرى */ Object.assign(I18N['zh'], {"effortLabel": "努力程度", "effortAuto": "自动", "effortLow": "低", "effortMedium": "中", "effortHigh": "高", "effortExtra": "超高", "effortMax": "最高", "otherModelsLabel": "其他模型"});

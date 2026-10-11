@@ -425,7 +425,7 @@ I18N['tr'] = {
     "videoMakerDurationFilm": "🎬 Tam kısa film (senaryo + sahneler + anlatım)",
     "videoMakerHeroLabel": "📸 Filmin kahramanı olarak fotoğrafınız (isteğe bağlı)",
     "videoMakerHeroBtn": "📸 Kahraman fotoğrafı seç",
-    "videoMakerHeroVeoNote": "ℹ️ Kahraman fotoğrafı yalnızca Runway motoruyla çalışır — Veo 3, film modunda görsel kabul etmez.",
+    "videoMakerHeroVeoNote": "ℹ️ Kahraman fotoğrafı yalnızca AI video motoruyla çalışır — sinematik motor film modunda görsel kabul etmez.",
     "videoMakerHeroNote": "Fotoğrafınızı (veya başka birinin fotoğrafını) yükleyin — filmin her sahnesinde onlar başrol oynayacak.",
     "videoMakerDurationLongMinutes": "🎥 Uzun (dakika) - yalnızca sahip",
     "videoMakerLongMinutesLabel": "Tam video uzunluğu (dakika, 1-10)",
@@ -1235,3 +1235,4 @@ Object.assign(I18N["tr"], {"pdfDocPage": "⏳ Sayfa {i} / {n} hazırlanıyor…"
 /* v-media-merge */ Object.assign(I18N['tr'], {"priceTabMedia":"Görsel ve video","mixPlanName":"Görsel ve video","mixPlansDesc":"Görsel ve video isteyenler için — sohbet yok. İkisi için tek bakiye; bitince puanlarınızla devam edersiniz.","mixOneBalance":"Görsel ve video için tek bakiye","mixApprox1":"Yaklaşık 50 görsel veya 12 video ya da ikisinin karışımı","mixApprox2":"Yaklaşık 100 görsel veya 24 video ya da ikisinin karışımı","mixApprox3":"Yaklaşık 500 görsel veya 121 video ya da ikisinin karışımı","mixNoChat":"Sohbet yok","mixLeft":"Görsel ve video bakiyesinde kalan"});
 /* v-inspire */ Object.assign(I18N['tr'], {"inspTabInspire":"İlham","inspTabQuick":"Hızlı öneriler","inspCityTitle":"Gerçek şehrin","inspCitySub":"Açık haritalardan gerçek mahallen üzerine kurulan 3D deneyimler. Birini seç, önizlemede hemen açılsın — sonra içine istediğin mahalle ya da şehri yaz.","inspLoading":"Açılıyor…","inspFail":"Şu an açılamadı — tekrar dene"});
 /* v-chat-edit */ Object.assign(I18N['tr'], {"editApplied": "Değişiklikler tasarıma uygulandı ({n}).", "editFailed": "Değişikliği uygulamadım — eski metnin bir kısmı mevcut tasarımla eşleşmedi, tasarım aynen kaldı. Lütfen tekrar isteyin.", "editTruncated": "Yanıt dosya tamamlanmadan kesildi, bu yüzden tasarım olduğu gibi bırakıldı.", "editPartial": "Değişikliği uygulamadım — yanıt eksik ya da hatalı biçimde geldi, tasarım aynen kaldı. Lütfen tekrar isteyin.", "editBroke": "Değişikliği uygulamadım — tasarımın kodunu bozacaktı, tasarım aynen kaldı. Lütfen tekrar isteyin."});
+/* v-owner-effort — منتقي المالك: الجهد ونماذج أخرى */ Object.assign(I18N['tr'], {"effortLabel": "Efor", "effortAuto": "Otomatik", "effortLow": "Düşük", "effortMedium": "Orta", "effortHigh": "Yüksek", "effortExtra": "Ekstra", "effortMax": "Maksimum", "otherModelsLabel": "Diğer modeller"});

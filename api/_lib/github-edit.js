@@ -8,6 +8,7 @@
 //   ② merge_github: يدمج طلب سحب — للمالك وحده، وفقط إن كانت آخر رسالة منه فيها «ادمج» (agent.js يفحصها، لا النموذج).
 'use strict';
 
+const vm = require('vm');
 const { ghFetch, parseTarget, resolveGithubToken } = require('./github-read.js');
 const githubWrite = require('./github-write.js');
 
@@ -24,7 +25,15 @@ function countOf(hay, needle) { let n = 0, i = 0; while ((i = hay.indexOf(needle
 
 /* يقرأ نصّ ملفّ من فرع (إن وُجد) وإلّا من الأساس. */
 async function readText(R, path, ref, o) {
-  const { r, j } = await ghJson(R + '/contents/' + encPath(path) + '?ref=' + encodeURIComponent(ref), o);
+  const url = R + '/contents/' + encPath(path) + '?ref=' + encodeURIComponent(ref);
+  const { r, j } = await ghJson(url, o);
+  /* v-claude-code-level (F2): فوق ١ م.ب تردّ واجهة contents بـencoding:"none" ومحتوى فارغ (DECISIONS.md
+     ١٫٥ م.ب صار «ترميز غير مدعوم» فلا يُعدَّل) — نعيد الطلب بالنوع الخامّ كما يفعل getContents في القارئ. */
+  if (r.ok && j && (j.type === 'file' || j.type === undefined) && (j.encoding === 'none' || (!j.content && Number(j.size) > 0))) { // وصلة رمزيّة لا تُستبدل بنصّ هدفها
+    const rr = await ghFetch(url, Object.assign({}, o, { raw: true }));
+    if (!rr.ok) return { error: 'تعذّرت قراءة ' + path + ' (GitHub HTTP ' + rr.status + ')' };
+    return { text: await rr.text() };
+  }
   if (!r.ok || !j || typeof j.content !== 'string') return { error: r.status === 404 ? 'الملفّ غير موجود: ' + path + ' (على ' + ref + ')' : 'تعذّرت قراءة ' + path + ' (GitHub HTTP ' + r.status + ')' };
   if (j.encoding && j.encoding !== 'base64') return { error: 'ترميز غير مدعوم لـ' + path };
   return { text: Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf8') };
@@ -42,6 +51,48 @@ function applyEdits(texts, edits) {
     out[e.path] = e.all ? cur.split(e.old).join(e.new) : cur.replace(e.old, () => e.new);
   }
   return { texts: out };
+}
+
+/* v-claude-code-level (A3): فحص صياغة قبل الرفع — تبديل مقطع واحد ناقص قوس كان يُرفع ويكسر الفرع وCI.
+   .js/.cjs تُترجَم بـvm.Script (ترجمة بلا تشغيل)، و.json بـJSON.parse؛ .mjs ووحدات ESM (import/export
+   في رأس سطر) لا تُفحص هنا. يُرفض التعديل فقط إن كسر ملفًّا كان سليمًا — ملفّ مكسور أصلًا لا يُسدّ عليه. */
+const ESM_RE = /^[ \t]*(?:import[\s{*'"]|export[\s{*])/m;
+function syntaxError(path, text) {
+  const p = String(path).toLowerCase();
+  const isJson = /\.json$/.test(p);
+  if (!isJson && (!/\.c?js$/.test(p) || ESM_RE.test(text))) return null;
+  try {
+    if (isJson) JSON.parse(text);
+    else {
+      try { new vm.Script(text, { filename: path }); } catch (e) {
+        // return في نطاق الوحدة مشروع في CommonJS (كما يقبله node --check في npm run check) — نترجمه بغلاف الوحدة
+        if (!/Illegal return/.test(String(e && e.message))) throw e;
+        vm.compileFunction(text, ['exports', 'require', 'module', '__filename', '__dirname'], { filename: path });
+      }
+    }
+    return null;
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    // صياغة وحدات (import.meta، await في الرأس) في .js بلا import/export في رأس سطر: ESM لا كسر — لا نرفض زورًا
+    if (!isJson && /outside a module|top level bodies of modules/.test(msg)) return null;
+    let line = 0, m;
+    if (isJson) {
+      if ((m = /line (\d+)/.exec(msg))) line = Number(m[1]);
+      else if ((m = /position (\d+)/.exec(msg))) line = text.slice(0, Number(m[1])).split('\n').length;
+    } else if ((m = /:(\d+)\s*$/.exec(String((e && e.stack) || '').split('\n')[0]))) line = Number(m[1]);
+    return { line, msg: msg.slice(0, 160) };
+  }
+}
+function checkSyntax(before, after) {
+  for (const p of Object.keys(after)) {
+    if (after[p] === before[p]) continue;
+    const bad = syntaxError(p, after[p]);
+    if (!bad || syntaxError(p, before[p])) continue;
+    const src = bad.line ? String(after[p].split('\n')[bad.line - 1] || '').trim().slice(0, 160) : '';
+    return { error: 'التعديل يكسر صياغة ' + p + (bad.line ? ' عند السطر ' + bad.line : '') + ': ' + bad.msg
+      + (src ? '\n' + bad.line + '| ' + src : '') + '\nاقرأ المقطع بـread_github وصحّح old/new ثمّ أعد الاستدعاء.' };
+  }
+  return null;
 }
 
 function validateEdits(input) {
@@ -85,8 +136,11 @@ async function editFiles(input, opts) {
   }
   const applied = applyEdits(texts, v.edits);
   if (applied.error) return applied;
+  const broken = checkSyntax(texts, applied.texts); // v-claude-code-level (A3)
+  if (broken) return broken;
   const files = Object.keys(applied.texts).map((p) => ({ path: p, content: applied.texts[p] }));
-  const res = await githubWrite.pushFiles({ repo: t.owner + '/' + t.repo, files, message: i.message, title: i.title, body: i.body, branch: i.branch, base }, o);
+  // v-claude-code-level (F1): fromEdit = سقف الملفّ ١٫٥ مليون حرف لمسار التعديل وحده (write_github يبقى ٢٠٠ ألف)
+  const res = await githubWrite.pushFiles({ repo: t.owner + '/' + t.repo, files, message: i.message, title: i.title, body: i.body, branch: i.branch, base }, Object.assign({}, o, { fromEdit: true }));
   if (res && res.ok) res.edits = v.edits.length;
   return res;
 }
@@ -178,4 +232,4 @@ const WORK_NOTE = '\n\n[طريقة العمل على كود المالك]:\n' +
   '- هذه القواعد لك أنت: طبّقها ولا تتلُها ولا تصف أنّك ستتبعها («أقرأ قبل الحذف…»). الطلب = تنفيذ بالأدوات في الردّ نفسه، لا خطّة تنتهي عندها.\n' +
   '- التقرير: النتيجة أوّلًا في سطر، ثمّ الروابط (الالتزام/طلب السحب)، وما لم تتحقّق منه بصراحة. بلا مقدّمات.';
 
-module.exports = { WORK_NOTE, editFiles, applyEdits, validateEdits, mergePr, formatMerge, ownerSaidMerge, EDIT_TOOL, MERGE_TOOL, EDIT_LIMITS };
+module.exports = { WORK_NOTE, editFiles, applyEdits, validateEdits, syntaxError, checkSyntax, mergePr, formatMerge, ownerSaidMerge, EDIT_TOOL, MERGE_TOOL, EDIT_LIMITS };

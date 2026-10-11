@@ -72,7 +72,7 @@ const I18N = {
     "authEmailLabel": "📧 الإيميل (اختياري - لاسترجاع الحساب)",
     "authOrDivider": "أو",
     "authGoogleBtn": "المتابعة عبر Google",
-    "videoMakerHeroVeoNote": "ℹ️ صورة البطل تعمل مع محرك Runway فقط — Veo 3 لا يقبل صورة في وضع الفيلم.",
+    "videoMakerHeroVeoNote": "ℹ️ صورة البطل تعمل مع محرّك «فيديو بالذكاء الاصطناعي» فقط — المحرّك السينمائيّ لا يقبل صورة في وضع الفيلم.",
     "runCodeBtn": "تشغيل",
     "orFreeGroup": "🆓 مجاني",
     "orPaidGroup": "💰 مدفوع",
@@ -787,6 +787,7 @@ const I18N = {
     codePlaceholder: 'سيظهر الكود المولّد هنا...',
     settingsTitle: 'إعدادات الاتصال بالذكاء الاصطناعي',
     provider: 'مزوّد الخدمة',
+    effortLabel: 'الجهد', effortAuto: 'تلقائي', effortLow: 'منخفض', effortMedium: 'متوسّط', effortHigh: 'عالٍ', effortExtra: 'إضافيّ', effortMax: 'أقصى', otherModelsLabel: 'نماذج أخرى', /* v-owner-claude-all: منتقي المالك — الجهد ونماذج أخرى */
     claudeModelPick: 'نموذج كلود', stModelFallback: '⚠️ نموذج {model} غير متاح على المفتاح الحاليّ — أكمل بالنموذج الافتراضيّ.',
     apiKeyLabel: 'مفتاح API الخاص بك',
     modelLabel: 'اسم النموذج',
@@ -1593,6 +1594,7 @@ const I18N = {
     codePlaceholder: 'Generated code will appear here...',
     settingsTitle: 'AI Connection Settings',
     provider: 'Provider',
+    effortLabel: 'Effort', effortAuto: 'Auto', effortLow: 'Low', effortMedium: 'Medium', effortHigh: 'High', effortExtra: 'Extra', effortMax: 'Max', otherModelsLabel: 'Other models', /* v-owner-claude-all */
     claudeModelPick: 'Claude model', stModelFallback: '⚠️ {model} is not available on the current key — continuing with the default model.',
     apiKeyLabel: 'Your API Key',
     modelLabel: 'Model Name',
@@ -1709,7 +1711,7 @@ const I18N = {
     videoMakerDurationFilm: '🎬 Full mini-film (script + scenes + narration)',
     videoMakerHeroLabel: '📸 Your photo as the film hero (optional)',
     videoMakerHeroBtn: '📸 Pick hero photo',
-    videoMakerHeroVeoNote: 'ℹ️ Hero photo works with the Runway engine only — Veo 3 does not accept an image in film mode.',
+    videoMakerHeroVeoNote: 'ℹ️ Hero photo works with the AI video engine only — the cinematic engine does not accept an image in film mode.',
     videoMakerHeroNote: 'Upload your photo (or anyone\'s) — they will star in every scene of the film.',
     videoMakerDurationLongMinutes: '🎥 Long (minutes) - owner only',
     videoMakerLongMinutesLabel: 'Full video length (minutes, 1-10)',
