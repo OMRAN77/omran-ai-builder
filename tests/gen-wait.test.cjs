@@ -94,7 +94,7 @@ test('منحنى التقدّم: يتسارع، يهدأ، ولا يتجاوز �
   assert.equal(w._eased(1), 0.92);
   assert.equal(w._eased(5), 0.92, 'لا يعلق ولا يتجاوز ٩٢٪ مهما طال');
   assert.deepEqual(w.PHRASES.length, 4);
-  assert.equal(w.PANELS.length, 3, 'ثلاث لوحات: فيديو، أنماط، أزياء');
+  assert.equal(w.PANELS.length, 4, 'أربع لوحات: فيديو، أنماط، أزياء، ستايل (v-style-scene)');
   assert.equal(w.KINDS.video.est, 120, 'الفيديو ~دقيقتان');
   assert.ok(w.KINDS.video.film && w.KINDS.video.wide, 'الفيديو عريض بشريط فلم');
   assert.equal(w.KINDS.image.est, 30);

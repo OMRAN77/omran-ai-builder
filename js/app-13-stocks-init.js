@@ -944,6 +944,56 @@
   const beforeImg = $('#studioAiBeforeImg');
   const multiAngleEl = $('#studioAiMultiAngle');
   const favSaveBtn = $('#studioAiFavoriteSaveBtn');
+  /* v-style-scene (المالك ١١ أكتوبر بخمس صور «برج الستايل»: «نفس فكرة الأزياء سوّها في ستايل … وبعد ما تخلص أريد ترتّب قبل وبعد»):
+     مشهد التوليد يُركَّب أعلى الاستوديو مكان خانة «① صورتك» (app-34-gen-wait، اللوحة studio). والنتيجة كانت تحت زرّ «ولّد» بعرض
+     النافذة (١١٠٠×١٤٦٧ للطوليّة — أطول من الشاشة) وبلا تمرير إليها؛ هي وزرّا التحميل والمفضّلة (العقد نفسها بمستمعيها) تُنقل إلى
+     قبل عنوان «① صورتك» — حيث كان المشهد — وبعرضه (٧٦٠ موسَّطة). شبكة النتائج المتعدّدة تُنشأ بعد حاوية النتيجة فتتبعها. */
+  const ST_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };
+  (function(){
+    try{
+      const anchor = modal ? modal.querySelector('.stStep[data-i18n="studioStepPhoto"]') : null;
+      if(!anchor || !anchor.parentNode || !resultWrap) return;
+      [resultWrap, downloadEl, favSaveBtn].forEach((n) => {
+        if(!n) return;
+        anchor.parentNode.insertBefore(n, anchor);
+        Object.assign(n.style, ST_RESULT_STYLE);
+      });
+    }catch(e){ __swallow(e, 'studio:result-inplace'); }
+  })();
+  /* تدخل كاملة في الشاشة: عرض الحاوية يُحدّ بنسبة الصورة حتى يدخل ارتفاعها في ST_RESULT_VH من الشاشة (الصورة تبقى width:100%
+     من حاويتها فشريط «قبل/بعد» على حاله). على الجوّال الحدّ أوسع من الشاشة لصور ٣:٤ فلا يتغيّر مقاسها. */
+  const ST_RESULT_VH = 0.7;
+  function stFitResult(){
+    try{
+      if(!resultWrap || !resultEl.naturalWidth || !resultEl.naturalHeight) return;
+      const maxH = Math.round(window.innerHeight * ST_RESULT_VH);
+      resultWrap.style.maxWidth = Math.min(760, Math.round(maxH * resultEl.naturalWidth / resultEl.naturalHeight)) + 'px';
+    }catch(e){ __swallow(e, 'studio:result-fit'); }
+  }
+  if(resultEl){ resultEl.addEventListener('load', stFitResult); window.addEventListener('resize', stFitResult); }
+  /* النتيجة مخفيّة لحظة عرضها (المشهد ما زال مكانها حتى المسح التالي) — التمرير إليها يُنفَّذ حين تظهر فعلًا: من بقي عند
+     المشهد لا يتحرّك عنده شيء (nearest)، ومن نزّل الصفحة أثناء الانتظار يُعاد إليها. */
+  function stReveal(el){
+    try{
+      if(!el) return;
+      const go = () => { try{ el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(err){ __swallow(err, 'studio:scroll'); } };
+      if(el.clientWidth){ go(); return; }
+      if(typeof ResizeObserver !== 'function') return;
+      const ro = new ResizeObserver(() => { if(!el.clientWidth) return; ro.disconnect(); go(); });
+      ro.observe(el);
+    }catch(e){ __swallow(e, 'studio:reveal'); }
+  }
+  /* «ترتّب قبل وبعد»: (١) صورة «قبل» أعرض من طبقتها المقصوصة فتفيض يسارًا في RTL ويظهر نصفها الأيمن في نصف الإطار الأيسر
+     (بالمسبار: تبدأ عند −٤٦٢ والنتيجة عند ٩٠) — الطبقة LTR دائمًا. (٢) كانت تُمدَّد لمقاس النتيجة فتتشوّه إن اختلفت النسبتان —
+     تُعرض كاملة داخل صندوق النتيجة (contain) كما في الأزياء. (٣) عرضها بالبكسل كان يُقاس مرّة عند العرض والحاوية الآن مخفيّة
+     تلك اللحظة ويتغيّر عرضها (الحدّ أعلاه) — يتبع مقاس الحاوية. */
+  if(beforeWrap) beforeWrap.style.direction = 'ltr';
+  if(beforeImg){ beforeImg.style.objectFit = 'contain'; beforeImg.style.background = '#000'; }
+  if(resultWrap && beforeImg && typeof ResizeObserver === 'function'){
+    try{
+      new ResizeObserver(() => { if(resultWrap.clientWidth) beforeImg.style.width = resultWrap.clientWidth + 'px'; }).observe(resultWrap);
+    }catch(e){ __swallow(e, 'studio:before-sync'); }
+  }
   const favoritesBtn = $('#studioAiFavoritesBtn');
   const favoritesPanel = $('#studioAiFavoritesPanel');
   const profileFaceShapeEl = $('#studioProfileFaceShape');
@@ -2406,6 +2456,7 @@
         downloadEl.href = dataUrl; downloadEl.style.display = 'block';
         favSaveBtn.style.display = 'block'; favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
         setupBeforeAfter();
+        stReveal(resultWrap); /* v-style-scene */
       }
       if(r.error){
         if(r.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; }
@@ -2441,6 +2492,7 @@
       multiEl.appendChild(cell);
     });
     setStatus(ok.length ? t('studioAiDone') : studioErrText(new Error(results[0].error || 'unknown')));
+    stReveal(multiEl); /* v-style-scene: شبكة النتائج صعدت مع حاوية النتيجة */
   }
   /* v-studio-tabs: تبويبات الميزات بطاقات مصوّرة من assets/studio/features/. */
   function photoizeStudioTabs(){
@@ -2722,6 +2774,7 @@
       favSaveBtn.style.display = 'block';
       favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
       setupBeforeAfter();
+      stReveal(resultWrap); /* v-style-scene */
       setStatus(t('studioAiDone'));
     } catch(e){
       setStatus(studioErrText(e)); /* v-edit-no-change: كان هذا الموضع يعرض الكود الخامّ (image_edit_identity_mismatch) */
