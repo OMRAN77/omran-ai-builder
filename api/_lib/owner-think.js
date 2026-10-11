@@ -59,15 +59,16 @@ function forgetEffort(model) { if (model) deadEffort.add(String(model)); }
 const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
 const NO_XHIGH_RE = /^claude-(?:opus-4-6|sonnet-4-6)$/;
 const ADAPTIVE_REQ_RE = /^claude-(?:opus-4-[678]|sonnet-4-6)$/;
-// viaOR: الوسيط يحجز رصيد max_tokens كاملًا قبل التشغيل (٦٤ ألفًا من Opus 5.5 ≈ ١٫٣$) فرصيد قليل = 402 — يبقى سقفه ١٦٠٠٠ ويكمل owner-loop المقطوع.
-function claudeEffortFields(model, effort, viaOR) {
+// noCap: لا رفع للسقف — يمرّره chat.js بعد أن رفض الوسيط حجز رصيد السقف الكبير (402 «fewer max_tokens / can only afford»). السقف الكبير
+// على المسارين: بدونه عند xhigh/max قد يستهلك التفكير السقف كلّه فلا يصل حرف، والإكمال على الوسيط يعيد التفكير من الصفر (لا تُعاد كتله).
+function claudeEffortFields(model, effort, noCap) {
   const raw = String(model || '');
   const id = raw.replace(/^anthropic\//, '').replace(/\./g, '-');
   let lvl = String(effort == null ? '' : effort).trim().toLowerCase();
   if (EFFORT_LEVELS.indexOf(lvl) === -1 || !EFFORT_MODEL_RE.test(id) || deadEffort.has(raw)) return null;
   if (lvl === 'xhigh' && NO_XHIGH_RE.test(id)) lvl = 'high';
   const out = { output_config: { effort: lvl } };
-  if ((lvl === 'xhigh' || lvl === 'max') && !viaOR) out.max_tokens = 64000;
+  if ((lvl === 'xhigh' || lvl === 'max') && !noCap) out.max_tokens = 64000;
   if (ADAPTIVE_REQ_RE.test(id)) out.thinking = { type: 'adaptive' };
   return out;
 }
@@ -85,8 +86,8 @@ function gptId(model) { return String(model || '').trim().toLowerCase().replace(
 function gptEfforts(model) { return Object.prototype.hasOwnProperty.call(GPT_EFFORTS, gptId(model)) ? GPT_EFFORTS[gptId(model)] : null; }
 /* جهد المالك المختار لـGPT ← output_config.effort (oa-direct يترجمه reasoning.effort، والوسيط يترجمه بنفسه). مستوى لا يدعمه
    الموديل ينزل لأقرب أدنى (max → xhigh على 5.5/5.4/5.2). سقف الخرج على المسار المباشر وحده (يشمل التفكير عند OpenAI، وتوصيتها
-   ٢٥ ألفًا على الأقلّ للتفكير والردّ): high ‏٣٢٠٠٠، وxhigh/max ‏٦٤٠٠٠؛ الوسيط يبقى ١٦٠٠٠ (يحجز الرصيد كاملًا قبل التشغيل). */
-function gptEffortFields(model, effort, viaOR) {
+   ٢٥ ألفًا على الأقلّ للتفكير والردّ): high ‏٣٢٠٠٠، وxhigh/max ‏٦٤٠٠٠ على المسارين؛ noCap كما في claudeEffortFields. */
+function gptEffortFields(model, effort, noCap) {
   const raw = String(model || '');
   const allowed = gptEfforts(raw);
   let lvl = String(effort == null ? '' : effort).trim().toLowerCase();
@@ -94,8 +95,8 @@ function gptEffortFields(model, effort, viaOR) {
   while (allowed.indexOf(lvl) === -1 && EFFORT_LEVELS.indexOf(lvl) > 0) lvl = EFFORT_LEVELS[EFFORT_LEVELS.indexOf(lvl) - 1];
   if (allowed.indexOf(lvl) === -1) return null;
   const out = { output_config: { effort: lvl } };
-  if (!viaOR && lvl === 'high') out.max_tokens = 32000;
-  if (!viaOR && (lvl === 'xhigh' || lvl === 'max')) out.max_tokens = 64000;
+  if (!noCap && lvl === 'high') out.max_tokens = 32000;
+  if (!noCap && (lvl === 'xhigh' || lvl === 'max')) out.max_tokens = 64000;
   return out;
 }
 

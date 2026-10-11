@@ -1605,9 +1605,9 @@ module.exports = async (req, res) => {
          في تطبيقه الأصليّ (أبطأ في السؤال الصعب، وأدقّ) — صار للدور الصعب وحده (v-owner-auto أدناه). غير المالك على v-chat-fast كما هو. */
       /* v-owner-auto: دور المالك العاديّ (لا صعب) بلا تفكير — الوسيط بحقوله أعلاه، وGPT المباشر بإشارة يترجمها
          oa-direct إلى جهد تفكير أدنى، وكلود المباشر بجهد low (Opus 5.5/Fable 5.1 يرفضان إطفاءه). الصعب كما في v-owner-reason. */
-      let __qfLast = {};
+      let __qfLast = {}, __orCap = false; // v-owner-claude-all/gpt-all: __orCap = الوسيط رفض حجز سقف ٦٤ ألفًا (402 رصيد) — يكمل بالسقف الأصليّ
       const __quickFields = () => (__qfLast = __quickFor());
-      const __quickFor = () => { if (__ownerReq && prov === 'openai' && body && body.effort && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __gf = require('./owner-think.js').gptEffortFields(CHAT_MODEL, body.effort, viaOR); if (__gf) return __gf; } /* v-owner-gpt-all: جهد المالك لـGPT على المسارين (المباشر يترجمه oa-direct) */ if (__ownerReq && prov === 'claude' && !__direct && body && body.effort && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __ef = require('./owner-think.js').claudeEffortFields(CHAT_MODEL, body.effort, viaOR); if (__ef) return __ef; } /* v-owner-claude-all: جهد المالك المختار من المنتقي يغلب التلقائيّ في كلّ دور، على المسارين — إلّا دور صورة بموديل CHAT_IMAGE_MODEL آخر (جهده لغير موديله = 400) */
+      const __quickFor = () => { if (__ownerReq && prov === 'openai' && body && body.effort && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __gf = require('./owner-think.js').gptEffortFields(CHAT_MODEL, body.effort, viaOR && __orCap); if (__gf) return __gf; } /* v-owner-gpt-all: جهد المالك لـGPT على المسارين (المباشر يترجمه oa-direct) */ if (__ownerReq && prov === 'claude' && !__direct && body && body.effort && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __ef = require('./owner-think.js').claudeEffortFields(CHAT_MODEL, body.effort, viaOR && __orCap); if (__ef) return __ef; } /* v-owner-claude-all: جهد المالك المختار من المنتقي يغلب التلقائيّ في كلّ دور، على المسارين — إلّا دور صورة بموديل CHAT_IMAGE_MODEL آخر (جهده لغير موديله = 400) */
         if (__ownerReq && !__ownerThink && __direct) return __direct.prov === 'openai' ? { thinking: { type: 'disabled' } } : {};
         if (__ownerReq && !__ownerThink && !viaOR && prov === 'claude') return require('./owner-think.js').claudeQuickFields(CHAT_MODEL);
         /* v-cohere-reasoning (لقطة المالك ٤ أكتوبر ٩:٤٣: «<EOS_TOKEN>» ثمّ «يبدو أن المستخدم يطلب…» في الردّ): Cohere Command A موديل تفكير؛ إطفاؤه بـthinking:disabled
@@ -1644,7 +1644,7 @@ module.exports = async (req, res) => {
         } else {
           upstream = { ok: false, status: 400, text: async () => __ot };
         }
-      }
+      } if (!upstream.ok && upstream.status === 402 && __ownerReq && viaOR && !__orCap && __qfLast.max_tokens) { let __ct = ''; try { __ct = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ } if (/max_tokens|afford/i.test(__ct)) { __orCap = true; send({ status: '↳ ⚠️ رصيد الوسيط لا يكفي حجز سقف ٦٤ ألف توكن للجهد المختار — أكمل بالسقف العاديّ' }); upstream = await callUpstream(true); } else { upstream = { ok: false, status: 402, text: async () => __ct }; } } // v-owner-claude-all/gpt-all (مراجعة): السقف الكبير على الوسيط كي لا يأكل التفكير الردّ، و402 حجزه = إعادة واحدة بالسقف العاديّ
       // v-claude-models: نموذج اختاره المستخدم ولا يملكه المفتاح/الوسيط (404، أو 400/403 نصّه
       // عن النموذج) = رجوع فوريّ للافتراضيّ بالطلب نفسه، مع إخبار المستخدم. غير ذلك يمرّ كما هو.
       if (!upstream.ok && __ownerReq && prov === 'openrouter' && String(CHAT_MODEL).split('/')[0] !== String(DEFAULT_MODEL).split('/')[0]) __pick.picked = false; /* v-owner-solo: Grok/Qwen المرفوض لا يجيب عنه موديل شركة أخرى (الافتراضيّ كلود) — يتوقّف بسببه */ if (!upstream.ok && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL) {

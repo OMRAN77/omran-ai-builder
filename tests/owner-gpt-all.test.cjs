@@ -143,7 +143,7 @@ test('٤. الوسيط: output_config.effort بلا حقول الإطفاء، و
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'xhigh' });
   assert.equal(r.calls[0].body.thinking, undefined, 'لا thinking:disabled (يُبطل الجهد عند الوسيط)');
   assert.equal(r.calls[0].body.reasoning, undefined);
-  assert.equal(r.calls[0].body.max_tokens, 16000);
+  assert.equal(r.calls[0].body.max_tokens, 64000, 'سقف التفكير والردّ على الوسيط أيضًا (مراجعة)');
   reset();
 });
 
@@ -215,6 +215,11 @@ test('٧. modes.js: صفّ GPT بمجموعتيه وصفّ جهده، والقا
   assert.ok(/class="omEffortHead" data-for="openai"/.test(box) && /class="omEffortBox" data-for="openai" hidden/.test(box));
   assert.ok(/class="omProvMore" data-for="openai" hidden/.test(box));
   assert.ok(m.includes('if(!p.or || p.effort || !L || !L.length) continue;'), 'القائمة الحيّة لا تمسح المجموعات');
+  // مراجعة: اختيار محفوظ من القائمة الحيّة القديمة خارج المنسّقة يظهر في «نماذج أخرى» باسمه (يُعلَّم ويُعاد اختياره)
+  const store = { aiapp_provider: 'openai', aiapp_model: 'openai/gpt-6-sol-pro' };
+  const ls = { getItem: (k) => (k in store ? store[k] : null) };
+  const name = new Function('localStorage', 'AR', 't', 'window', m.slice(i, m.indexOf('var ROW =', i)) + '; return curProvName;')(ls, true, (k) => k, {});
+  assert.equal(name(), 'gpt-6-sol-pro', 'باسمه لا «GPT» وحده');
   assert.ok(m.includes("var setFn = (efor === 'openai') ? window.gptEffortSet : window.claudeEffortSet;"), 'كلّ صفّ جهد يحفظ لمزوّده');
   assert.ok(read('index.html').includes('/js/modes.js?v=m111026a'));
   assert.ok(read('js/app.bundle.js').includes('window.gptEffortGet = gptEffortGet;'), 'الحزمة أُعيد بناؤها');

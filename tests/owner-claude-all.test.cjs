@@ -174,9 +174,14 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   assert.equal(r.calls[0].body.model, 'anthropic/claude-sonnet-5.5');
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'medium' });
   assert.equal(r.calls[0].body.thinking, undefined);
+  // مراجعة GPT: السقف الكبير على الوسيط أيضًا (بدونه يأكل التفكير الردّ)، و402 «can only afford» = إعادة واحدة بالسقف العاديّ وسطر السبب
   r = await withoutAnth(() => run('omran', { messages: ask(HARD), effort: 'max' }));
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'max' });
-  assert.equal(r.calls[0].body.max_tokens, 16000, 'الوسيط بلا رفع السقف');
+  assert.equal(r.calls[0].body.max_tokens, 64000);
+  r = await withoutAnth(() => run('omran', { messages: ask(HARD), effort: 'max' }, [() => new Response(JSON.stringify({ error: { message: 'This request requires more credits, or fewer max_tokens. You requested up to 64000 tokens, but can only afford 9000.', code: 402 } }), { status: 402 }), () => text('تم')]));
+  assert.deepEqual(r.calls.map((c) => c.body.max_tokens), [64000, 16000]);
+  assert.deepEqual(r.calls[1].body.output_config, { effort: 'max' }, 'الجهد نفسه');
+  assert.ok(r.events.some((e) => /رصيد الوسيط لا يكفي/.test(e.status || '')));
   // مراجعة: دور صورة بموديل CHAT_IMAGE_MODEL آخر لا يأخذ جهدًا حُسب لموديل المحادثة (Haiku 4.5 يرفضه = 400)
   process.env.CHAT_IMAGE_MODEL = 'claude-haiku-4-5';
   try {

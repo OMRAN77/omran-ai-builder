@@ -110,6 +110,10 @@
            فوق (xAI وQwen) — موديلاته السبعة القديمة كانت كلّها تحت شركاتها. المعرّفات من كتالوج OpenRouter. */
         { grp:3, key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'x-ai/grok-4.6',            models:[['x-ai/grok-4.6','Grok 4.6'],['x-ai/grok-4.20','Grok 4.20'],['qwen/qwen3.6-27b','Qwen 3.6 27B']] }
       ];
+      /* v-owner-gpt-all (مراجعة): اختيار GPT محفوظ من القائمة الحيّة القديمة وليس في المنسّقة يُضاف لـ«نماذج أخرى» باسمه —
+         كان يُرسل ولا يظهر في الشريحة ولا يُعلَّم ولا يُعاد اختياره. */
+      try{ for(var pi=0;pi<PROVS.length;pi++){ var pp = PROVS[pi], psv = pp.or && pp.effort ? (localStorage.getItem(pp.store) || '') : '';
+        if(psv && psv.indexOf('/') > 0 && !pp.models.some(function(m){ return m[0] === psv; })) pp.models.push([psv, psv.split('/')[1], 1]); } }catch(e){ /* guard-ok: تخزين محجوب */ }
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
       function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; if(pv.key === 'openrouter' && v && !pv.models.some(function(m){ return m[0] === v; })) v = ''; if(pv.key === 'groq' && /^meta-llama\/llama-4-/.test(v)) v = ''; /* v-owner-solo: موديل Groq المتقاعد المحفوظ = الافتراضيّ الحيّ */ /* v-prov-or-unique: اختيار قديم مكرّر (Claude/GPT عبر الوسيط) لا يبقى خفيًّا */ /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
