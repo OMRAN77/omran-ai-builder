@@ -195,3 +195,43 @@ test('٦. الخادم والصورة: /render قبل بوّابة السرّ ا
   const readme = read('cc-bridge/README.md');
   assert.ok(readme.includes('DIRECTOR_APP_URL') && readme.includes('/render'));
 });
+
+test('٧. v-app-director-voice: الصوت الاحتياطيّ WAV يُكتب بامتداده، ونموذج نمط وصل ١٦:٩ بنصّه لا يُموَّه، ونصّ الشاشة يتّسع لجملة المشهد', async () => {
+  const M = await R();
+  // الامتداد من محتوى الملفّ لا من اسمه: RIFF/WAVE = wav، وكلّ ما عداه mp3 كما كان
+  const wav = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WAVEfmt '), Buffer.alloc(40)]);
+  assert.equal(M.audioExtOf(wav), 'wav');
+  assert.equal(M.audioExtOf(Buffer.from([0xff, 0xfb, 0x90, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0])), 'mp3');
+  assert.equal(M.audioExtOf(Buffer.from('ID3' + 'x'.repeat(20))), 'mp3');
+  assert.equal(M.audioExtOf(Buffer.from('RIFF')), 'mp3', 'ملفّ مبتور لا يُعدّ WAV');
+  assert.equal(M.audioExtOf(null), 'mp3');
+  // النسبة: ١٦:٩ (بهامش صغير) وحدها عريضة
+  assert.equal(M.isWide({ w: 1920, h: 1080 }), true); assert.equal(M.isWide({ w: 1280, h: 720 }), true);
+  assert.equal(M.isWide({ w: 1024, h: 1024 }), false); assert.equal(M.isWide({ w: 1080, h: 1920 }), false);
+  assert.equal(M.isWide(null), false); assert.equal(M.isWide({ w: 0, h: 0 }), false);
+  // الأوامر: مشهد بصوت WAV يُقرأ من audio_N.wav، والباقي mp3؛ والنموذج العريض بلا gblur والمربّع به
+  const J = (f) => path.join('/work/j2', f);
+  const fc = (a) => a[a.indexOf('-filter_complex') + 1];
+  const inputs = (a) => a.map((x, i) => (x === '-i' ? a[i + 1] : null)).filter(Boolean);
+  const plan = M.buildFfmpegArgs({ lang: 'ar', dir: 'rtl', scenes: [
+    { type: 'screen', seconds: 5, audio: 'file', audioExt: 'wav' },
+    { type: 'style_sample', mime: 'image/jpeg', seconds: 5, audio: 'file', wide: true },
+    { type: 'style_sample', mime: 'image/png', seconds: 5, audio: null },
+  ] }, '/work/j2');
+  const [a0, a1, a2] = plan.segments.map((s) => s.args);
+  assert.deepEqual(inputs(a0), [J('shot_0.png'), J('img_1.jpg'), J('audio_0.wav')]);
+  assert.deepEqual(inputs(a1), [J('img_1.jpg'), J('img_2.png'), J('audio_1.mp3')]);
+  assert.ok(!fc(a0).includes('gblur'), 'لقطة ثمّ نموذج عريض: لا تمويه');
+  assert.ok(fc(a1).includes('gblur') && !fc(a1).split('[1:v]')[0].includes('gblur'), 'النموذج العريض نفسه بلا تمويه، وتاليه المربّع به');
+  assert.ok(fc(a2).includes('gblur'), 'نموذج مربّع على خلفيّة مموّهة كما كان');
+  // نصّ الشاشة: جملة المشهد كاملة في الفيديو بلا صوت (كان ٨٠ حرفًا)
+  assert.equal(M.LIMITS.textChars, 180); assert.equal(M.LIMITS.subChars, 200);
+  const long = 'ك'.repeat(170);
+  const v = M.validateManifest({ lang: 'ar', scenes: [{ type: 'screen', target: 'home', text: long, seconds: 5 }, { type: 'title', text: 'عنوان', sub: 'س'.repeat(190), seconds: 4 }] });
+  assert.equal(v.ok, true, JSON.stringify(v).slice(0, 200));
+  assert.equal(v.manifest.scenes[0].text.length, 170); assert.equal(v.manifest.scenes[1].sub.length, 190);
+  const src = read('cc-bridge/render.mjs');
+  assert.ok(src.includes("(String(t).length > 48 ? '18px' : '999px')"), 'شريط النصّ الطويل بزوايا لا كبسولة');
+  assert.ok(src.includes("s.audioExt = audioExtOf(ab);") && src.includes("if (s.type === 'style_sample') s.wide = isWide(await probeSize(c.ffprobe, sceneImage(s, i, d)));"));
+  assert.ok(src.includes("'audio_' + i + '.mp3', 'audio_' + i + '.wav',"), 'ملفّ WAV يُنظَّف مع بقيّة ملفّات المهمّة');
+});

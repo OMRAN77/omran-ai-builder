@@ -6,6 +6,7 @@
      app-director-plan  : الطلب + اللغة + المتحدّث + المدّة + كتالوج التطبيق (app-catalog.js) → عنوان وفكرة ومشاهد
                           {type: screen|style_sample|title, target, text, highlight, narration, seconds} بجواب JSON من نموذج
                           المخرج (DIRECTOR_MODEL أو أحدث Pro)، مع إعادة على العابر وبدائل وتحقّق من JSON؛ الفيديو الطويل يُكتب أجزاءً.
+     app-director-voice : جملة تعليق بالصوت الاحتياطيّ (حين يرفض مزوّد صوت مها/عبدالله) — WAV base64.
      app-director-token : رمز مهمّة قصير العمر (HMAC بسرّ الجسر CC_BRIDGE_SECRET، ساعتان، يحمل اسم المالك ومعرّف المهمّة)
                           يستعمله المتصفّح مع جسر Railway مباشرة لمسار /render؛ السرّ نفسه لا يبلغ المتصفّح، وعنوان الجسر
                           يعود مع الرمز من البيئة (CC_BRIDGE_URL) لا من العميل.
@@ -86,6 +87,8 @@ function buildPrompt(o) {
     'اللغة المطلوبة للتعليق الصوتيّ وبطاقات العناوين: ' + (LANG_NAMES[o.lang] || o.lang) + '.',
     'المتحدّث: ' + spk + '. المدّة الكلّيّة: ' + o.minutes + ' دقيقة ≈ ' + total + ' مشهدًا، كلّ مشهد نحو ' + SCENE_SECONDS + ' ثوانٍ = ' + words + ' كلمة تعليق تقريبًا (الحدّ ' + Math.round(words * 1.6) + ').',
   ];
+  /* v-app-director-voice (المالك: «حط ميزه مع صوت ولا بدون»): بلا صوت يصير نصّ التعليق هو ما يُقرأ على الشاشة */
+  if (o.silent) L.push('الفيديو بلا تعليق صوتيّ: حقل narration لن يُنطق بل يُعرض نصًّا على الشاشة، فاجعله جملة واحدة قصيرة واضحة (١٢ كلمة على الأكثر) تكفي وحدها لفهم المشهد.');
   let shape = '{"title":"عنوان الفيديو","idea":"سطران عن الفكرة","scenes":[';
   if (parts === 1) {
     L.push('أعد بالضبط ' + scenes + ' مشهدًا (±٢) تغطّي المدّة المطلوبة، تلتزم بالطلب (إن طلب موضوعًا واحدًا كأنماط الصور فركّز عليه وأرِ أمثلته، وإن طلب التطبيق كلّه فغطِّ الشاشات الأهمّ بالترتيب المنطقيّ).');
@@ -224,7 +227,7 @@ async function requestPlan(opts) {
   const sleep = o.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   const catalog = o.catalog;
   const parts = o.parts || 1, part = o.part || 1;
-  const prompt = buildPrompt({ request: o.request, lang: o.lang, speaker: o.speaker, minutes: o.minutes, part, parts, outline: o.outline, title: o.title, idea: o.idea, catalog, catalogText: CAT.catalogText(catalog) });
+  const prompt = buildPrompt({ request: o.request, lang: o.lang, speaker: o.speaker, minutes: o.minutes, silent: !!o.silent, part, parts, outline: o.outline, title: o.title, idea: o.idea, catalog, catalogText: CAT.catalogText(catalog) });
   const deadline = Date.now() + (o.budgetMs || PLAN_BUDGET_MS);
   const left = () => deadline - Date.now();
   const attempts = [], tried = new Set();
@@ -265,6 +268,97 @@ async function requestPlan(opts) {
     }
   }
   return { ok: false, why, attempts };
+}
+
+/* ───── v-app-director-voice: المعلّق الاحتياطيّ (للمالك وحده) ─────
+   المالك بعد لقطة «voice 15/15 401» (مفتاح صوت مها/عبدالله مرفوض في الإنتاج، ورصيد المسار الآخر منتهٍ): «تمام ابدا فيه» — صوت
+   احتياطيّ من المزوّد الذي يعمل (نفسه الذي يكتب السيناريو) كي يكتمل الفيديو. ليس صوت مها/عبدالله الأصليّ، فتعلنه الواجهة.
+   واجهة الصوت كما في التوثيق الرسميّ (ai.google.dev/gemini-api/docs/speech-generation، فُحص ١١ أكتوبر ٢٠٢٦): POST /v1beta/interactions
+   والمفتاح في ترويسة x-goog-api-key؛ الصوت base64 في steps[type=model_output].content[type=audio].data، وافتراضيّه WAV ‏24kHz
+   أحاديّ ١٦ بت. الأشكال الأقدم تُقرأ احتياطًا، وPCM بلا ترويسة يُغلَّف WAV. */
+const VOICE_MODELS = ['gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-3.8-flash-lite-tts', 'gemini-2.5-pro-preview-tts'];
+const VOICE_NAMES = { female: 'Kore', male: 'Charon' };
+const VOICE_STYLE = { ar: 'warm, confident promo narrator with a natural Gulf Arabic delivery', _: 'warm, confident, upbeat promo narrator' };
+const INTERACTIONS = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+const MAX_VOICE_CHARS = 900;
+
+function voiceModels(env) {
+  const m = String((env || process.env).DIRECTOR_TTS_MODEL || '').trim();
+  return m ? [m].concat(VOICE_MODELS.filter((x) => x !== m)) : VOICE_MODELS.slice();
+}
+function voiceName(speaker, env) {
+  const e = env || process.env, male = speaker === 'male';
+  const v = String((male ? e.DIRECTOR_VOICE_MALE : e.DIRECTOR_VOICE_FEMALE) || '').trim();
+  return /^[A-Za-z]{2,30}$/.test(v) ? v : VOICE_NAMES[male ? 'male' : 'female'];
+}
+function voiceBody(model, text, speaker, lang, env) {
+  return {
+    model,
+    input: [{ type: 'user_input', content: [{ type: 'text', text, annotations: [{ type: 'speech_metadata', style: VOICE_STYLE[lang] || VOICE_STYLE._ }] }] }],
+    response_format: { type: 'audio' },
+    generation_config: { speech_config: [{ voice: voiceName(speaker, env) }] },
+    store: false, /* لا يُحفظ الطلب عند المزوّد */
+  };
+}
+/** يستخرج الصوت من الردّ: آخر محتوى صوتيّ في خطوات model_output (وأشكال أقدم احتياطًا) — base64 أو '' */
+function pickAudio(d) {
+  let hit = '';
+  for (const st of ((d && d.steps) || [])) {
+    if (!st || st.type !== 'model_output') continue;
+    for (const c of (st.content || [])) if (c && c.type === 'audio' && typeof c.data === 'string' && c.data.length > 100) hit = c.data;
+  }
+  if (!hit && d && d.output_audio && typeof d.output_audio.data === 'string') hit = d.output_audio.data;
+  if (!hit) for (const p of ((((d && d.candidates) || [])[0] || {}).content || {}).parts || []) if (p && p.inlineData && typeof p.inlineData.data === 'string') hit = p.inlineData.data;
+  return hit;
+}
+/** WAV صالح دائمًا: ما وصل بلا ترويسة RIFF (PCM خام 24kHz أحاديّ ١٦ بت) يُغلَّف */
+function toWav(b64) {
+  const buf = Buffer.from(String(b64 || ''), 'base64');
+  if (buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WAVE') return buf;
+  const h = Buffer.alloc(44), rate = 24000;
+  h.write('RIFF', 0); h.writeUInt32LE(36 + buf.length, 4); h.write('WAVE', 8); h.write('fmt ', 12);
+  h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22); h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate * 2, 28);
+  h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34); h.write('data', 36); h.writeUInt32LE(buf.length, 40);
+  return Buffer.concat([h, buf]);
+}
+/**
+ * جملة واحدة بالصوت الاحتياطيّ. opts: {text, speaker, lang, apiKey, env, fetchImpl, timeoutMs, prefer: نموذج نجح قبلُ فيُجرَّب أوّلًا إن كان في القائمة}. يعيد {ok, wav, model} أو {ok:false, status, why, attempts}.
+ * نموذج مرفوض (400/403/404) أو بلا صوت ← التالي؛ العابر (429/5xx) يعود للعميل بحالته فهو من ينتظر ويعيد (حدّ الطلبات في الدقيقة).
+ */
+async function requestVoice(opts) {
+  const o = opts || {};
+  const fetchImpl = o.fetchImpl || fetch;
+  const attempts = [];
+  let last = { status: 0, why: 'unavailable' };
+  const list = voiceModels(o.env);
+  if (o.prefer && list.includes(o.prefer)) { list.splice(list.indexOf(o.prefer), 1); list.unshift(o.prefer); }
+  for (const model of list) {
+    const t0 = Date.now();
+    let r = null, d = null;
+    try {
+      r = await fetchImpl(INTERACTIONS, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': o.apiKey },
+        signal: AbortSignal.timeout(o.timeoutMs || 60000),
+        body: JSON.stringify(voiceBody(model, o.text, o.speaker, o.lang, o.env)),
+      });
+      d = await r.json().catch(() => null);
+    } catch (e) {
+      attempts.push({ model, why: 'network', ms: Date.now() - t0, msg: clip(e && e.message, 100) });
+      last = { status: 0, why: 'network' };
+      continue;
+    }
+    if (!r.ok) {
+      attempts.push({ model, why: 'http_' + r.status, ms: Date.now() - t0, msg: clip(d && d.error && (d.error.message || d.error), 140) });
+      last = { status: r.status, why: 'http_' + r.status };
+      if (TRANSIENT.includes(r.status)) break;
+      continue;
+    }
+    const wav = toWav(pickAudio(d));
+    if (wav.length > 44 + 2400) return { ok: true, wav, model, attempts }; /* أكثر من عُشر ثانية */
+    attempts.push({ model, why: 'no_audio', ms: Date.now() - t0, msg: clip(d ? JSON.stringify(d).slice(0, 90) : '', 90) });
+    last = { status: 502, why: 'no_audio' };
+  }
+  return { ok: false, status: last.status, why: last.why, attempts };
 }
 
 /* ───── رمز المهمّة: base64url(JSON{u,j,exp}).base64url(HMAC-SHA256) بسرّ الجسر ───── */
@@ -342,7 +436,7 @@ async function handler(req, res) {
     const part = Math.max(1, Math.min(parts, Math.round(Number(body.part) || 1)));
     let r;
     try {
-      r = await requestPlan({ request, lang, speaker, minutes, catalog, apiKey, env: process.env, part, parts,
+      r = await requestPlan({ request, lang, speaker, minutes, catalog, apiKey, env: process.env, part, parts, silent: body.voice === false,
         outline: part > 1 ? body.outline : undefined, title: clip(body.title, 120), idea: clip(body.idea, 400) });
     } catch (e) { r = { ok: false, why: 'exception', attempts: [{ model: '-', why: 'exception', ms: 0, msg: clip(e && e.message, 100) }] }; }
     if (!r.ok) {
@@ -361,8 +455,28 @@ async function handler(req, res) {
     res.status(200).json(out);
     return;
   }
+  if (action === 'app-director-voice') {
+    const apiKey = String(process.env.GEMINI_API_KEY || '').trim();
+    if (!apiKey) { res.status(503).json({ error: 'voice_unconfigured' }); return; }
+    const text = clip(body.text, MAX_VOICE_CHARS);
+    if (!text) { res.status(400).json({ error: 'text_required' }); return; }
+    const lang = CAT.LANGS.includes(body.lang) ? body.lang : 'ar';
+    const speaker = body.speaker === 'male' ? 'male' : 'female';
+    let r;
+    try { r = await requestVoice({ text, speaker, lang, apiKey, env: process.env, prefer: clip(body.model, 60) }); }
+    catch (e) { r = { ok: false, status: 0, why: 'exception', attempts: [{ model: '-', why: 'exception', ms: 0, msg: clip(e && e.message, 100) }] }; }
+    if (!r.ok) {
+      const diag = diagOf(r.attempts);
+      try { require('./log-error.js').logError('app-director/voice', new Error(r.why), { diag: diag.slice(0, 160) }); } catch (e) { console.error('[app-director] voice failed: ' + r.why); }
+      /* العابر بحالته (العميل ينتظر ويعيد)، وكلّ ما عداه 502 نهائيّ: النماذج كلّها جُرّبت */
+      res.status(TRANSIENT.includes(r.status) ? r.status : 502).json({ error: 'voice_failed', why: r.why, diag });
+      return;
+    }
+    res.status(200).json({ audio: r.wav.toString('base64'), mime: 'audio/wav', model: r.model });
+    return;
+  }
   res.status(404).json({ error: 'unknown action' });
 }
 
 module.exports = handler;
-module.exports.__test = { directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel };
+module.exports.__test = { directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel, requestVoice, voiceBody, voiceModels, voiceName, pickAudio, toWav, VOICE_MODELS };
