@@ -367,6 +367,10 @@
       "destination": "/download.html"
     },
     {
+      "source": "/app",
+      "destination": "/download.html"
+    },
+    {
       "source": "/ar",
       "destination": "/index.html"
     },
