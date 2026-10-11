@@ -311,7 +311,7 @@ test('١٦. القائمة تسمّي ما يجيب فعلًا: Groq = GPT-OSS 1
     vm.runInNewContext('var model = this.model;\n' + line + '\nthis.out = model;', ctx);
     assert.equal(ctx.out, want, id);
   }
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m111026a/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m111026b/);
 });
 
 // ── مراجعة مستقلّة (١٦ وكيلًا) على التعديل نفسه: أخطاء أكّدها مشكّك ثانٍ ──
@@ -384,7 +384,7 @@ test('٢١. كلّ مزوّد يعرف اسمه الحقيقيّ عند الما
   assert.match(vt, /أنت «عمران»/); assert.match(vt, /لا تُذكر للمستخدم أبدًا/); assert.ok(!/باسمك الحقيقيّ/.test(vt), 'غير المالك كما كان');
 });
 
-test('٢٢. دليل المالك: الموديل كما أعلنه المزوّد نفسه في ردّه يصل الواجهة ويظهر فوق الردّ (بلا توكنات)', async () => {
+test('٢٢. دليل المالك: الموديل كما أعلنه المزوّد نفسه في ردّه يصل الواجهة ويُحفظ على الردّ — ولا يُرسم فوقه (v-name-below)', async () => {
   const served = (model) => new Response([
     { type: 'message_start', message: { model, usage: { input_tokens: 1, output_tokens: 0 } } },
     { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
@@ -395,7 +395,8 @@ test('٢٢. دليل المالك: الموديل كما أعلنه المزوّ
   assert.equal(r.events.find((e) => e.served).served, 'deepseek/deepseek-v4-pro-20260901', 'من ردّ المزوّد لا من اختيارنا');
   const v = await run('vipuser', { provider: 'openai', messages: ask('من أنت؟') }, (u) => (isOR(u) ? served('openai/gpt-6-sol') : new Response('{}', { status: 404 })));
   assert.ok(!v.events.some((e) => e.served), 'لغير المالك لا شيء');
-  for (const f of ['js/app-04-i18n-state.js', 'js/app.bundle.js']) assert.ok(read(f).includes("else if(__ownerBadge && m.served && !isAskAllReply){ label.textContent = (m.providerKey && typeof functionalLabel === 'function' ? functionalLabel(m.providerKey) : '') + ' · ' + m.served; div.appendChild(label); }"), f);
+  // v-name-below (المالك ١١ أكتوبر «كلّ واحد واسمه تحت بس»): السطر لم يعد يُرسم فوق ردّ المحادثة — يبقى في البيانات، والشريحة تحت الصندوق تقول من يردّ
+  for (const f of ['js/app-04-i18n-state.js', 'js/app.bundle.js']) assert.ok(!read(f).includes('m.served'), f + ': لا اسم فوق ردّ المحادثة');
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) assert.ok(read(f).includes("if (typeof ev.served === 'string' && ev.served) __served = ev.served;"), f);
   for (const f of ['js/app-09-attach.js', 'js/app.bundle.js']) assert.ok(read(f).includes('served: __ctServed || undefined, /* v-owner-identity'), f);
 });
