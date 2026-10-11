@@ -2171,6 +2171,9 @@ function updateProviderQuickBarActive(){
   });
   if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
   if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility();
+  /* v-chip-truth (لقطتا المالك ١١ أكتوبر: تحت «DeepSeek» والمجيب Gemini ثمّ Claude): فتح محادثة من القائمة ينقل المزوّد إلى
+     مزوّدها، لكنّ شريحة المالك تحت الصندوق (modes.js) لم تكن تُحدَّث إلّا من قائمتها — فتبقى على الاسم القديم. */
+  try{ if(typeof window.omModelChipSync === 'function') window.omModelChipSync(); }catch(e){ __swallow(e, 'ui:chip-sync-prov'); }
   try{
     const active = document.querySelector('.prov-chip-m.active');
     if(active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
