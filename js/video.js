@@ -152,7 +152,11 @@
     tb.innerHTML='';
     TABS.forEach(function(v){
       var b=document.createElement('button'); b.type='button'; b.className='vmk-tab'; b.dataset.tab=v;
-      b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(v===tab)); b.textContent=tabLabel(v); tb.appendChild(b);
+      b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(v===tab));
+      /* v-vmk-tab-art (المالك ١١ أكتوبر بلوحة التبويبات: «شوف الصور مقاس واحد كلهم»): صورة مربّعة واحدة المقاس فوق اسم كلّ قسم */
+      var im=document.createElement('img'); im.className='vmk-tab-img'; im.alt=''; im.loading='lazy'; im.src='/assets/videos/tabs/'+v+'.jpg?v=2';
+      var lb=document.createElement('span'); lb.className='vmk-tab-lbl'; lb.textContent=tabLabel(v);
+      b.appendChild(im); b.appendChild(lb); tb.appendChild(b);
     });
     card.classList.toggle('vmk-tab-trend',tab==='trend');
     card.classList.toggle('vmk-tab-clean',tab==='clean');

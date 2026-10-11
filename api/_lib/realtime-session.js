@@ -540,6 +540,15 @@ module.exports = async (req, res) => {
     const REALTIME_SPEED = { slow: 0.9, normal: 1.0, fast: 1.1, xfast: 1.2 };
     if (mode !== 'builder') sessionConfig.session.audio.output.speed = REALTIME_SPEED[voiceSpeed] || 1.0;
 
+    // v-maha-secret-ttl (فحص ثغرات المال): المفتاح المؤقّت يفتح جلسات كثيرة حتّى ينتهي (الافتراضيّ عند المزوّد ٦٠٠ث)،
+    // والخادم يخصم دقيقة الافتتاح مرّة — فمفتاح واحد مدفوع يفتح جلسات موازية بلا خصم. نقصّر عمره إلى نافذة الإعداد
+    // وحدها (العميل الأمين يستعمله مرّة داخل سباق ١٢ث، والمكالمة القائمة لا تتأثّر بانتهائه). تخفيف لا إغلاق: الجلسة
+    // الواحدة ما زالت تستمرّ ٦٠ دقيقة بدقيقة مدفوعة واحدة حتّى ينتقل الاتّصال إلى الخادم.
+    // مفتاح طوارئ بلا تعديل كود: MAHA_SECRET_TTL_SEC (١٠–٦٠٠، الافتراضيّ ٣٠)؛ ٦٠٠ يعيد السلوك السابق.
+    const ttlRaw = parseInt(String(process.env.MAHA_SECRET_TTL_SEC || ''), 10);
+    const secretTtl = Number.isFinite(ttlRaw) ? Math.min(600, Math.max(10, ttlRaw)) : 30;
+    sessionConfig.expires_after = { anchor: 'created_at', seconds: secretTtl };
+
     const postSession = () => fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
       headers: {
@@ -551,6 +560,14 @@ module.exports = async (req, res) => {
 
     let upstream = await postSession();
     let rawText = await upstream.text();
+    // v-maha-secret-ttl: إن رفضت الواجهة عمر المفتاح فالطلب بدونه — مها لا تنكسر بسببه. يُجرَّب أوّلًا متى سمّى
+    // الخطأ الحقل، وأخيرًا (قبل الردّ) متى بقي رفض ٤٠٠ بلا تسمية والحقل ما زال موجودًا.
+    const dropTtl = async () => {
+      delete sessionConfig.expires_after;
+      upstream = await postSession();
+      rawText = await upstream.text();
+    };
+    if (!upstream.ok && sessionConfig.expires_after && /expires_after/i.test(rawText)) await dropTtl();
     // v-maha-natural: إن رفضت الواجهة كشف المعنى فالإعداد السابق حرفيًّا — المكالمة لا تهبط للوضع الأساسيّ بسببه.
     // يُجرَّب أوّلًا متى سمّى الخطأ الحقل (فتبقى السرعة)، وأخيرًا متى رُفض الطلب بلا تسمية.
     const useClassicTurn = async () => {
@@ -574,6 +591,7 @@ module.exports = async (req, res) => {
       upstream = await postSession();
       rawText = await upstream.text();
     }
+    if (!upstream.ok && upstream.status === 400 && sessionConfig.expires_after) await dropTtl();
     // v-maha-server-bill: فشل فتح الجلسة عند المزوّد يردّ دقيقة الافتتاح (أو يعيد التجربة) — لا خصم بلا مكالمة.
     const refundOpening = async () => {
       if (!undoBill) return;
