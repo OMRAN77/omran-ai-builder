@@ -74,7 +74,7 @@ test('٢. «مرّة هذي ومرّة الثانية عند التوليد»: �
   assert.equal(store.get('aiapp_fx_scene'), '0');
   assert.equal(b._nextScene().id, 'neon');
   assert.equal(store.get('aiapp_fx_scene'), '1');
-  assert.match(SRC, /var sc = cfg\.scenes \? nextScene\(\) : null;/, 'مشهد لكلّ توليد');
+  assert.ok(SRC.includes('var sc = cfg.scenes ? nextScene(cfg) : null;'), 'مشهد لكلّ توليد (بدور نوعه — v-style-scene)');
   assert.match(SRC, /root\.className = 'genw' \+ \(cfg\.wide \? ' genw--video' : ''\) \+ \(sc \? ' genw--scene genw--' \+ sc\.id : ''\);/);
 });
 
@@ -440,10 +440,10 @@ test('١٣. لا اسم مزوّد، والحزمة والتسجيل والقر�
   assert.doesNotMatch(SRC, /Gemini|GPT|OpenAI|Runway|Claude/i, 'لا اسم مزوّد');
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes("src: '/assets/fashion/gen-scene.webp?v=3'") && bundle.includes("src: '/assets/fashion/gen-scene-gold.webp?v=1'"), 'الحزمة تحمل المشهدين');
-  assert.ok(bundle.includes('function sceneHtml(sc){') && bundle.includes('function nextScene(){'), 'الحزمة تحمل البناء والتبادل');
+  assert.ok(bundle.includes('function sceneHtml(sc){') && bundle.includes('function nextScene(cfg, peek){'), 'الحزمة تحمل البناء والتبادل');
   assert.ok(bundle.includes('function panelBusy(p, ptxt){'), 'الحزمة تحمل إصلاح القراءة');
   assert.ok(!bundle.includes('genw-hud') && !bundle.includes('genw-face') && !bundle.includes('genw-rain'), 'الحزمة بلا اللوحة الداكنة ولا القرص ولا مطر الصورة كلّها');
   assert.ok(JSON.parse(read('package.json')).scripts.test.includes('node tests/gen-scene.test.cjs'));
-  const dec = read('knowledge/DECISIONS.md').slice(0, 9000);
+  const dec = read('knowledge/DECISIONS.md'); /* السجلّ يكبر من رأسه — المدخلان موجودان أينما صارا */
   assert.ok(dec.includes('v-gen-scene-exact') && dec.includes('v-gen-steady'));
 });
