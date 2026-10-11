@@ -193,8 +193,8 @@ test('٥. agent.js: المالك يحصل على كتلة الذاكرة الح�
   const cook = await agentRequest('omran', [user('كيف أطبخ رز؟')]);
   assert.ok(!cook.system.includes('طلب صورة فشلت بسبب المحتوى'), 'سؤال آخر = حقائق أخرى (الكتلة نفسها حاضرة بالاسم والأسلوب)');
   assert.match(cook.system, /الاسم: اسمه عمران/);
-  const other = await agentRequest('someone', [user('ارسم لي صورة قطة')]);
-  assert.ok(!other.system.includes('الذاكرة الحيّة'), 'غير المالك: لا حقن ولو وُجد سجلّ');
+  // v-agent-owner-only: الوكيل للمالك وحده على الخادم — غير المالك يُردّ ٤٠٣ قبل بناء النظام، فلا حقن من باب أولى (كان: نظام بلا الكتلة).
+  await assert.rejects(agentRequest('someone', [user('ارسم لي صورة قطة')]), /json \{"error":"owner_only"\}/, 'غير المالك: ٤٠٣ لا حقن ولو وُجد سجلّ');
   // لا سجلّ للمالك → لا كتلة ولا خطأ
   store.delete('db/living/omran.json');
   assert.ok(!(await agentRequest('omran', [user('ارسم لي صورة')])).system.includes('الذاكرة الحيّة'));
@@ -207,7 +207,8 @@ test('٥ب. agent.js: سجلّ المالك آخر ٥٠ رسالة يبدأ بم
   assert.ok(o.messages.length <= 50 && o.messages.length >= 49, 'المالك: ' + o.messages.length);
   assert.equal(o.messages[0].role, 'user');
   assert.equal(o.messages[o.messages.length - 1].content, 'س70');
-  assert.equal((await agentRequest('someone', convo)).messages.length, 71, 'غير المالك لم يتغيّر');
+  // v-agent-owner-only: غير المالك لا يصل الوكيل أصلًا (٤٠٣ قبل أيّ نداء)، فلا سجلّ يُرسَل (كان: ٧١ رسالة كما أُرسلت).
+  await assert.rejects(agentRequest('someone', convo), /json \{"error":"owner_only"\}/, 'غير المالك: ٤٠٣');
 });
 
 // ── ٦. memory.js: التعلّم يُخزَّن في Redis (الصلاحيّات والعزل: tests/living-all-users.test.cjs) ──────────

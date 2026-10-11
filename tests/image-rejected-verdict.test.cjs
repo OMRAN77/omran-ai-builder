@@ -188,7 +188,8 @@ test('handler: changed pixels but rejected vision, no alternate → 422 and refu
   assert.equal(r.data.imageBase64, undefined);
   assert.match(r.data.__diag.tried, /nano-pro:not_done/);
   assert.deepEqual(r.calls, ['pro', 'judge:1', 'gpt-edit']);
-  assert.deepEqual(r.ledger, [['spend', 'sara', 20], ['refund', 'sara', 20]]);
+  // v-unchanged-cap: عدّاد سقف الردّ اليوميّ (image-giveback) يزيد بـkvIncr المحاكى فيظهر ['reserve'] بين الخصم والردّ؛ الردّ نفسه لم يتغيّر (أوّل ٢ في اليوم).
+  assert.deepEqual(r.ledger, [['spend', 'sara', 20], ['reserve'], ['refund', 'sara', 20]]);
 });
 
 test('handler: guest rejection releases reservation once via existing refund helper', async () => {
@@ -196,7 +197,8 @@ test('handler: guest rejection releases reservation once via existing refund hel
   assert.equal(r.status, 422);
   // v-share-guard: الضيف يُحجز له على المعرّف وعلى شبكته (clientIp المحاكى = 'offline') — وكلّ حجز يُردّ مرّة واحدة.
   const day = new Date().toISOString().slice(0, 10);
-  assert.deepEqual(r.ledger, [['reserve'], ['reserve'], ['release', 'db/points/guest-image/guest123/count', 1], ['release', 'db/points/guest-image-ip/offline/' + day, 1]]);
+  // v-unchanged-cap: حجزان للحصّة ثمّ حجزان لعدّاد سقف الردّ (المعرّف + الشبكة)، ثمّ ردّ الحصّة مرّة واحدة كما كان.
+  assert.deepEqual(r.ledger, [['reserve'], ['reserve'], ['reserve'], ['reserve'], ['release', 'db/points/guest-image/guest123/count', 1], ['release', 'db/points/guest-image-ip/offline/' + day, 1]]);
 });
 
 test('handler: rejected primary uses eligible fallback; all rejected fail; partial succeeds', async () => {
@@ -209,7 +211,7 @@ test('handler: rejected primary uses eligible fallback; all rejected fail; parti
   assert.equal(fallback.ledger.filter((x) => x[0] === 'refund').length, 0);
   const failed = await route(genBody, { pro: SRC, 'gpt-gen': EDIT }, (n) => verdict(Array(n).fill('not_done'), 0));
   assert.equal(failed.status, 422);
-  assert.deepEqual(failed.ledger, [['spend', 'sara', 20], ['refund', 'sara', 20]]);
+  assert.deepEqual(failed.ledger, [['spend', 'sara', 20], ['reserve'], ['refund', 'sara', 20]]); // v-unchanged-cap: ['reserve'] = عدّاد سقف الردّ
   const partial = await route(genBody, { pro: SRC, 'gpt-gen': EDIT }, () => verdict(['partial'], 0));
   assert.equal(partial.status, 200);
   assert.equal(partial.data.verdict, 'partial');
@@ -219,7 +221,7 @@ test('handler: rejected primary uses eligible fallback; all rejected fail; parti
 test('handler: unchanged still fails, while raw, verify-off and unavailable judge preserve delivery', async () => {
   const unchanged = await route(editBody, { pro: SRC, 'gpt-edit': SRC }, () => { throw Error('unchanged must not reach judge'); });
   assert.equal(unchanged.status, 422);
-  assert.deepEqual(unchanged.ledger, [['spend', 'sara', 20], ['refund', 'sara', 20]]);
+  assert.deepEqual(unchanged.ledger, [['spend', 'sara', 20], ['reserve'], ['refund', 'sara', 20]]); // v-unchanged-cap: ['reserve'] = عدّاد سقف الردّ
   const raw = await route({ ...editBody, prompt: 'نانو: غيّر الأشخاص' }, { pro: SRC }, () => verdict(['not_done'], 0, 'لم يتغير'));
   assert.equal(raw.status, 200);
   assert.equal(raw.data.imageBase64, SRC);
