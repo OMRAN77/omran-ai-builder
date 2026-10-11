@@ -150,7 +150,7 @@ test('٧. لا اسم مزوّد في رسائل صانع الفيديو الت�
   for (const s of ["'🔒 Veo 3 مقتصر", 'جاري الإرسال إلى Google Veo 3', 'Sending to Google Veo 3', "'فشل Veo.'", "' (Veo 3)'", 'Veo 3 يولّد', 'Veo 3 is limited', 'Veo failed.']) assert.ok(!VIDEO.includes(s), 'اسم مزوّد باقٍ: ' + s);
   assert.ok(VIDEO.includes("'🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.'"), 'صياغة v-no-provider-names (main) بعد الدمج');
   const html = read('index.html');
-  assert.ok(html.includes('/js/partials-core.js?v=657') && html.includes('/js/video.js?v=440'), 'وسوم partials-core ٦٥٦←٦٥٧ وvideo.js ٤٣٩←٤٤٠');
+  assert.ok(html.includes('/js/partials-core.js?v=657') && html.includes('/js/video.js?v=441'), 'وسوم partials-core ٦٥٦←٦٥٧ وvideo.js ٤٣٩←٤٤٠ (ثمّ ٤٤١ بعد دمج main v-vmk-tab-art)');
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('async function wrapWithCanvas(') && bundle.includes("creationMode !== 'minimax' && !filmUseVeo"), 'شغّل npm run bundle');
 });
