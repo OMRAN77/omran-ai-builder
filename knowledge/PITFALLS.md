@@ -3,6 +3,9 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **خطأ داخل بثّ محوَّل يقفز فوق كلّ معالجات المالك:** `responsesToAnthropicStream` يرمي `OA_STREAM_PROTOCOL_ERROR` بـ`controller.error`،
+  وقارئ `chat.js` يرميه إلى catch الأعلى الذي لا يعرف المالك — فيصل «chat error» بلا ownerStop ويمحوه العميل إلى «ما قدرت أردّ الحين».
+  وأيّ أحداث في طابور المجرى لم تُقرأ تضيع مع الخطأ: لاختبار «فشل بعد نصّ» أرسل النصّ في دفعة سابقة. (v-claude-code-level C9)
 - **جسم Response مركَّب يُسقط الترويسات فتعمى طبقة الإعادة فوقه:** `directFetch` كان يرجع `{ ok, status, text }` بلا `headers`، فإعادة C4 لم ترَ `retry-after`
   وأعادت 429 بعد ٠٫٨ ث و٢ ث ما قال Groq إنّه بعد ٣٥ ث — ثلاث محاولات ضائعة ثمّ «خطأ 429». أيّ غلاف لنداء مزوّد يمرّر `headers` كما هي. (v-groq-tpm ٢)
 - **Groq يعدّ سقف الخرج ضمن حدّ الدقيقة:** «Request too large… on tokens per minute (TPM): Limit 8000, Requested 27xxx» يأتي 413 قبل أوّل حرف حتّى على «مرحبا»
