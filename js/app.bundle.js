@@ -1822,8 +1822,8 @@ try{
     // Hide the main auth form and Google button, show the OTP section.
     const form = $('#authForm');
     const googleBtn = $('#authGoogleBtn');
-    const tabsRow = $('#authTabLogin')?.parentElement;
-    const orDivider = googleBtn?.previousElementSibling;
+    const tabsRow = ($('#authTabLogin') || {}).parentElement; /* v-es-floor: لا ?. — WebView أندرويد أقدم من كروم ٨٠ يرفض الحزمة كلّها */
+    const orDivider = googleBtn ? googleBtn.previousElementSibling : undefined;
     const t = (window.curT ? window.curT() : {});
     if(form) form.style.display = 'none';
     if(googleBtn) googleBtn.style.display = 'none';
@@ -1843,8 +1843,8 @@ try{
   function hideOtpSection(){
     const form = $('#authForm');
     const googleBtn = $('#authGoogleBtn');
-    const tabsRow = $('#authTabLogin')?.parentElement;
-    const orDivider = googleBtn?.previousElementSibling;
+    const tabsRow = ($('#authTabLogin') || {}).parentElement; /* v-es-floor: لا ?. — WebView أندرويد أقدم من كروم ٨٠ يرفض الحزمة كلّها */
+    const orDivider = googleBtn ? googleBtn.previousElementSibling : undefined;
     if(form) form.style.display = '';
     if(googleBtn) googleBtn.style.display = 'flex';
     if(otpBtn) otpBtn.style.display = 'flex';
@@ -18937,7 +18937,7 @@ function mahaStartPointsMeter(budget){
         try{
           if(confirm(isAr ? 'خلصت نقاطك 🌸 تبي تشحن نقاط عشان نكمل سوالفنا؟' : 'Your points ran out 🌸 Top up to keep talking with me?')){
             try{ document.getElementById('btnSettings').click(); }catch(e){ __swallow(e, "points:app-08-maha#21"); }
-            try{ document.querySelector('.pointsPackBtn')?.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){ __swallow(e, "points:app-08-maha#22"); }
+            try{ var __ppb = document.querySelector('.pointsPackBtn'); if(__ppb) __ppb.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){ __swallow(e, "points:app-08-maha#22"); } /* v-es-floor: تمرير فقط، بلا ?. (موافقة المالك ١١ أكتوبر) */
           }
         }catch(e){ __swallow(e, "points:app-08-maha#23"); }
       }, 400);
@@ -22992,7 +22992,8 @@ const __MEDIA_WORD_RE = /فيديو|ڤيديو|video|صور|image|picture|photo|
    فعلًا — فعل طلب/إنشاء، أو كلمة إعلان/بيع (مسار الإعلان يطلقها وحدها)، أو بدء الرسالة باسم الوسيط.
    «أتصور إنّ السوق يرتفع» و«رأيك في فيلم الأمس» لا تنتظر شيئًا. */
 const __MEDIA_MAKE_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])(?:اعمل|أعمل|اعملي|اصنع|أصنع|صنع|سوّ|سوي|سوّي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|أبي|ابي|ابا|أبا|بغيت|أريد|اريد|أبيك|ابيك|حاب|حابب|أحتاج|احتاج|طلع|طلعلي|صنعلي|عطني|أعطني|اعطني|هات|ارسمي|ارسم(?!ي)|أرسم(?!ي)|ارسملي|رسم|صمم|صمّم|صممي|تصميم|اكتب|أكتب|اكتبلي|ممكن|تقدر|تگدر|يمكن|create|make|generate|produce|draw|design|build|render|write|give me|i want|show me|can you)(?=$|[\s،,.!؟?()"'«»:؛-])|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|^\s*(?:فيلم|فيديو|ڤيديو|مقطع|كليب|صور[ةه]?|بوستر|شعار|لوجو|بطاقة|شهادة|دعوة|غلاف|video|image|logo|poster)\s/i;
-const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|طريقة|طريقه|شرح|اشرح|اشرحلي|علمني|علّمني|أفضل|افضل|أحسن|احسن|برنامج|برامج|تطبيق|تطبيقات|موقع|مواقع|أداة|اداة|أدوات|ادوات|يوتيوب|youtube|تيك\s*توك|تيكتوك|tiktok|انستقرام|انستغرام|instagram|سناب|نصيحة|نصائح|خطة|خطوات|مونتاج|تحرير|مشاهدات|ربح|تسويق|فكرة|أفكار|افكار|عنوان|عناوين|سكربت|سكريبت|سيناريو|كلمات|محتوى|قناة|قناتي|متابعين|جودة|صيغة|تحويل|ضغط|تحميل|تنزيل|رابط|مشاهدة|شاهدت|أشاهد|اشاهد|شفت|رأيت|لماذا|ليش|ليه|هل|متى|وين|فين|مين|ماهو|وش|ايش|أيش|what|how|why|when|which|best|tips|script|caption|title|ideas?)(?=$|[\s،,.!؟?()"'«»:؛-])|[؟?]\s*$/i;
+/* v-media-examples (لقطة المالك ١١ أكتوبر: «عطني نماذج… في الأنماط والاستايل والأزياء والفيديوهات» صار فيديو مدفوعًا عشوائيًّا): طلب نماذج/أمثلة = للموديل المختار لا لمسار توليد */
+const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|طريقة|طريقه|شرح|اشرح|اشرحلي|علمني|علّمني|أفضل|افضل|أحسن|احسن|برنامج|برامج|تطبيق|تطبيقات|موقع|مواقع|أداة|اداة|أدوات|ادوات|يوتيوب|youtube|تيك\s*توك|تيكتوك|tiktok|انستقرام|انستغرام|instagram|سناب|نصيحة|نصائح|خطة|خطوات|مونتاج|تحرير|مشاهدات|ربح|تسويق|فكرة|أفكار|افكار|عنوان|عناوين|سكربت|سكريبت|سيناريو|كلمات|محتوى|قناة|قناتي|متابعين|جودة|صيغة|تحويل|ضغط|تحميل|تنزيل|رابط|مشاهدة|شاهدت|أشاهد|اشاهد|شفت|رأيت|لماذا|ليش|ليه|هل|متى|وين|فين|مين|ماهو|وش|ايش|أيش|what|how|why|when|which|best|tips|script|caption|title|ideas?|نماذج|النماذج|أمثلة|امثلة|الأمثلة|الامثلة|عينات|عيّنات|العينات|examples?|samples?)(?=$|[\s،,.!؟?()"'«»:؛-])|[؟?]\s*$/i;
 /* مصنّف النيّة على الخادم (Gemini Flash، حرارة صفر): 'image' | 'video' | 'none' | null عند التعذّر أو المهلة. */
 async function omranMediaIntent(text){
   try{
@@ -28044,13 +28045,14 @@ function stripHeaderMenuEmoji(){
     ['#btnDeleteAll','#authToggleBtn','#settingsLogoutBtn','#btnExportZip','[data-i18n="exportZip"]'].forEach(sel=>{
       const el = document.querySelector(sel); if(el) scopes.push(el);
     });
+    let emoRe; try{ emoRe = new RegExp('[\\p{Extended_Pictographic}\\uFE0F\\u200D]', 'gu'); }catch(e2){ emoRe = /[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\uFE0F\u200D]/g; /* v-es-floor: محرّك قديم — تقريب بلا خصائص يونيكود */ }
     scopes.forEach(scope=>{
       if(!scope) return;
       const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
       let n; const nodes=[];
       while((n = walker.nextNode())) nodes.push(n);
       nodes.forEach(tn=>{
-        const clean = tn.textContent.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '').replace(/\s{2,}/g, ' ');
+        const clean = tn.textContent.replace(emoRe, '').replace(/\s{2,}/g, ' ');
         if(clean !== tn.textContent) tn.textContent = clean;
       });
     });
@@ -28402,7 +28404,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
   function T(o){ return (o && (o[lg()] || o.en || o.ar)) || ''; }
   /* v-vmk-clean (المالك: «شيل الأيقونات… شغل نضيف ومرتب»): لا إيموجي في واجهة الترندات — الأسماء وحدها */
-  function noEmoji(x){ return String(x == null ? '' : x).replace(/\u200D(?=\p{Extended_Pictographic})|(?![\u00A9\u00AE\u2122])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\uFE0F|\u20E3/gu, '').replace(/\s{2,}/g, ' ').trim(); }
+  var NOEMO_RE; try{ NOEMO_RE = new RegExp('\\u200D(?=\\p{Extended_Pictographic})|(?![\\u00A9\\u00AE\\u2122])\\p{Extended_Pictographic}|\\p{Emoji_Modifier}|\\uFE0F|\\u20E3', 'gu'); }catch(e){ NOEMO_RE = /[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\uFE0F\u20E3]/g; /* v-es-floor: محرّك قديم — تقريب */ }
+  function noEmoji(x){ return String(x == null ? '' : x).replace(NOEMO_RE, '').replace(/\s{2,}/g, ' ').trim(); }
   function ui(k){ return noEmoji(T(D.ui[k])); }
   function tokenOf(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
   var PREVIEW = function(k){ return '/api/studio-preview?feature=trend&value=' + encodeURIComponent(k); };
@@ -36716,7 +36719,8 @@ window.updateVersionLabel();
     b.setAttribute('data-cx-preset', p.type);
     b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.14));background:rgba(255,255,255,.03);color:inherit;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1.35;cursor:pointer;text-align:center;';
     var txt = optText('constructionType', p.type) || p.type;
-    var m = txt.match(/^(\p{Extended_Pictographic}️?)\s*(.*)$/u);
+    var emRe; try{ emRe = new RegExp('^(\\p{Extended_Pictographic}\\uFE0F?)\\s*(.*)$', 'u'); }catch(e){ emRe = /^((?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF])\uFE0F?)\s*(.*)$/; /* v-es-floor: محرّك قديم — تقريب */ }
+    var m = txt.match(emRe);
     var em = document.createElement('span'); em.textContent = m ? m[1] : '🏗️'; em.style.cssText = 'font-size:22px;';
     var nm = document.createElement('span'); nm.textContent = m ? m[2] : txt;
     b.appendChild(em); b.appendChild(nm);
@@ -44675,3 +44679,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
+/* ===== app-99-boot-ok — آخر شريحة في الحزمة (scripts/build.mjs يرتّب الأجزاء بالاسم) =====
+   v-ios-boot-flag (فحص ١١ أكتوبر): حارس إقلاع الآيفون (selfdiag.js) يعدّ الإقلاع مكتملًا حين __omranBootOk
+   (ui-wiring) و__omranBundleOk معًا. ضابط الثاني حُذف مع app-24-visual-guide (٢ سبتمبر) فصار كلّ فتح على الآيفون
+   «إقلاع ناقص bundle=false» + إعادة تحميل قسريّة بعد ٥ ثوانٍ، وتُخفي الحالات الحقيقيّة. وصول هذا السطر = الحزمة نُفّذت كاملة. */
+window.__omranBundleOk = true;
