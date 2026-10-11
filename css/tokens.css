@@ -280,6 +280,10 @@
      (شاشة سوداء على ٣ هواتف) فالقاعدة مقيّدة بصنف cv-ok الذي لا يوضع إلا
      على المحركات السليمة (كروميوم/فايرفوكس) — انظر selfdiag.js. */
   html.cv-ok .msg{content-visibility:auto; contain-intrinsic-size:auto 160px;}
+  /* طلب المالك ١١ أكتوبر ٢٠٢٦ — تثبيت تمرير المحادثة: آخر ٨ رسائل بارتفاعها
+     الحقيقيّ دائمًا (لا contain-intrinsic-size تقديريّ) — البث يكبّرها فتقفز
+     الصفحة حين يُستبدل التقدير بالارتفاع الحقيقيّ. الأقدم تبقى مؤجّلة للأداء. */
+  html.cv-ok .msg.cv-recent{content-visibility:visible;}
   /* v338: حجم خط المحادثة */
   html.fs-small .msg{font-size:12px;}
   html.fs-large .msg{font-size:15.5px;}

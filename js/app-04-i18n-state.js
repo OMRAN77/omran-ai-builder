@@ -1169,7 +1169,10 @@ function __chatsMergeServer(server, deletedIds){
   // مع السيرفر يعمل دوريًّا، وكان يُعيد الرسم بلا حفظ التمرير فيقفز لأسفل القائمة
   // (scrollTop=scrollHeight) وسط قراءة ردّ طويل — فيبدو أن المحتوى «يرتفع». مع
   // عدم تطابق عدّ السيرفر/المحلي كان يتكرّر كلّ دورة مزامنة. الآن يحفظ الموضع.
-  try{ if(typeof renderAll === 'function') renderAll(true); }catch(e){ __swallow(e, "save:app-04-i18n-state#20"); }
+  // طلب المالك ١١ أكتوبر ٢٠٢٦ — تثبيت تمرير المحادثة: إعادة الرسم من المزامنة
+  // الدوريّة تتأجّل ما دام ردّ يُبثّ الآن (تمسح الفقاعة الحيّة وتُفقد الموضع)؛
+  // الرسم النهائيّ عند انتهاء الردّ (app-09-attach.js) يلتقط هذا التغيير بنفسه.
+  try{ if(typeof renderAll === 'function' && !(typeof window !== 'undefined' && window.__omranStreamActive)) renderAll(true); }catch(e){ __swallow(e, "save:app-04-i18n-state#20"); }
   try{ if(typeof buildChatList === 'function') buildChatList(); }catch(e){ __swallow(e, "save:app-04-i18n-state#21"); }
   return true;
 }
@@ -1827,7 +1830,12 @@ function renderMessages(keepScroll){
     }
     const div = document.createElement('div');
     const _isLastUser = m.role === 'user' && mIdx === cur.messages.length - 1 && window.__userAnimUntil > Date.now();
-    div.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (_isLastUser ? ' msg-anim' : '');
+    // طلب المالك ١١ أكتوبر ٢٠٢٦ — تثبيت تمرير المحادثة: آخر ٨ رسائل بارتفاعها
+    // الحقيقيّ دائمًا (cv-recent في tokens.css)، ورقم الرسالة عنصرٌ مرجعيّ
+    // لاستعادة موضع التمرير بعد إعادة البناء بدل scrollTop الخام.
+    const _isRecentMsg = mIdx >= cur.messages.length - 8;
+    div.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (_isLastUser ? ' msg-anim' : '') + (_isRecentMsg ? ' cv-recent' : '');
+    div.dataset.msgIdx = String(mIdx);
     if(isAskAllReply) div.style.flex = '1 1 auto';
     let copyMsgBtn = null;
     let pColor = null;
@@ -2516,6 +2524,7 @@ function renderMessages(keepScroll){
         } else {
           compareGroup.style.cssText = 'display:flex; gap:10px; overflow-x:auto; max-width:100%; padding-bottom:6px; align-items:flex-start; scroll-snap-type:x proximity; flex-shrink:0;';
         }
+        compareGroup.dataset.msgIdx = String(mIdx); // طلب المالك ١١ أكتوبر ٢٠٢٦ — تثبيت تمرير المحادثة: عنصر مرجعيّ لاستعادة الموضع
         messagesEl.appendChild(compareGroup);
       }
       const layoutNow = localStorage.getItem('askAllLayout') || 'horizontal';
@@ -2531,6 +2540,7 @@ function renderMessages(keepScroll){
         const bubbleCol = document.createElement('div');
         /* v-one-side: الفقاعة وأيقوناتها على جهة واحدة (البداية = يمين عربيّ/يسار إنجليزيّ). */
         bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:flex-start; max-width:100%;';
+        bubbleCol.dataset.msgIdx = String(mIdx); // طلب المالك ١١ أكتوبر ٢٠٢٦ — تثبيت تمرير المحادثة: عنصر مرجعيّ لاستعادة الموضع
         bubbleCol.appendChild(div);
         bubbleCol.appendChild(copyMsgBtn);
         // ✨ v363: ملاحظة تلقائية آخر الرد تقترح الميزة المناسبة من رسالة المستخدم السابقة

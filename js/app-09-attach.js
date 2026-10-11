@@ -4001,6 +4001,10 @@ function __friendlyErr(e){
   // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
   let __lastStreamPartial = '';
 
+  // طلب المالك ١١ أكتوبر ٢٠٢٦ — تثبيت تمرير المحادثة: علم بثّ نشط يؤجّل
+  // إعادة الرسم الدوريّة من المزامنة (app-04-i18n-state.js) حتى لا تُفقد
+  // الفقاعة الحيّة والموضع وسط الردّ.
+  window.__omranStreamActive = true;
   try{
     // v-social-alive: الردود المخزنة الحرفية حُذفت نهائيًا بطلب
     // المالك — «انا اكلم الذكاء الاصطناعي مش قوالب». كل تحية تمر للنموذج
@@ -6637,24 +6641,16 @@ DESIGN RULES (non-negotiable):
       const __live = { target: '', shown: 0, timer: null, done: false, waiters: [], _mLast: 0 };
       const __liveRender = () => {
         const shownTxt = __live.target.slice(0, __live.shown);
-        // v-stream-scroll-free (شكوى المالك: «ما أقدر أحرّك المحادثة لين تخلص» +
-        // «لما تنتهي ترتفع»): البثّ كان يجبر التمرير للأسفل كلّ ~١٥٠مل فلا يستطيع
-        // المستخدم القراءة للأعلى، ويبقى بالأسفل عند الانتهاء فيبدو «يرتفع». الآن:
-        // إن حرّك المستخدم القائمة للأعلى (scrollTop نقص عمّا وضعناه) نرفع علم
-        // «تحرّر» فنتوقّف عن الملاحقة لبقيّة الدور — يقرأ بحرّية، وعند الانتهاء
-        // يبقى في موضعه (renderMessages المحروس يحفظه لأنّه ليس قرب الأسفل).
-        try{
-          if(!__live.userBroke && typeof __live.lastAutoTop === 'number' && messagesEl.scrollTop < __live.lastAutoTop - 40){
-            __live.userBroke = true;
-          }
-        }catch(e){ /* guard-ok — كشف تحرّر المستخدم اختياريّ */ }
+        /* طلب المالك ١١ أكتوبر ٢٠٢٦ — تثبيت تمرير المحادثة: قرار «هل نتابع؟»
+           يُحسب الآن قبل إلحاق النصّ الجديد (chatUserWantsFollow — نيّة مستخدم
+           فعليّة وحدها، لا فرق موضع). كان يُحسب بعد الرسم (chatIsNearBottom
+           على الفجوة الناتجة)، فجزء كبير يصل دفعة واحدة (جدول/كود) يدفع الفجوة
+           فوق الحدّ ويظنّ أنّ المستخدم صعد فيتوقّف عن المتابعة خطأً — نفس الغلط
+           المحذَّر منه في app-02-tts.js عند chatIsNearBottom. */
+        const __followReply = chatUserWantsFollow();
         if(!document.documentElement.classList.contains('mobile-ui')){
           renderStreamingAssistant(thinkingDiv, shownTxt);
-          if(!__live.userBroke){
-            const __followReply = typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
-            smartScrollBottom(__followReply);
-            __live.lastAutoTop = messagesEl.scrollTop;
-          }
+          if(__followReply) smartScrollBottom(true);
         } else {
           // الجوال ينسّق حيًّا كسطح المكتب، مع كبح لإعادة البناء كل ١٥٠مل
           // حفاظًا على أداء الجوال.
@@ -6663,11 +6659,8 @@ DESIGN RULES (non-negotiable):
             __live._mLast = __now;
             renderStreamingAssistant(thinkingDiv, shownTxt);
           }
-          if(!__live.userBroke){
-            try{
-              const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
-              if(__mobileGap < 140){ messagesEl.scrollTop = messagesEl.scrollHeight; __live.lastAutoTop = messagesEl.scrollTop; }
-            }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
+          if(__followReply){
+            try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
           }
         }
       };
@@ -6962,10 +6955,23 @@ DESIGN RULES (non-negotiable):
       cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
     }
   }finally{
-    const __keepReaderPosition = !document.documentElement.classList.contains('mobile-ui') && typeof chatIsNearBottom === 'function' ? !chatIsNearBottom() : false;
+    /* طلب المالك ١١ أكتوبر ٢٠٢٦ — تثبيت تمرير المحادثة: القرار النهائيّ من نفس
+       نيّة المستخدم المتابَعة أثناء البثّ (لا chatIsNearBottom بعد إعادة البناء
+       الكاملة — الأقدم تُفقِد ارتفاعها الحقيقيّ content-visibility فيختلف
+       القياس). متابِع → يُثبَّت في الأسفل بعد تهدئة التخطيط (rAF)؛ صاعد → موضعه
+       يُحفظ بعنصر مرجعيّ قبل الرسم ويُستعاد بعده، لا برقم scrollTop الخام الذي
+       تُبطله إعادة البناء. */
+    window.__omranStreamActive = false;
+    const __finalFollow = chatUserWantsFollow();
+    const __scrollAnchor = __finalFollow ? null : __omranCaptureScrollAnchor();
+    const __pinOrRestoreScroll = () => {
+      if(__finalFollow) requestAnimationFrame(() => { try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ __swallow(e, 'ui:final-follow'); } });
+      else __omranRestoreScrollAnchor(__scrollAnchor);
+    };
     __omranRunEnd(__run); /* v-parallel-chats: يُفكّ قفل هذه المحادثة وحدها؛ زرّ الإرسال يرجع إن كانت هي المعروضة */
     saveState();
-    renderAll(__keepReaderPosition);
+    renderAll(true);
+    __pinOrRestoreScroll();
     /* v-diag-turn: لو انتهى الدور بلا رد ظاهر (لا نصّ ولا كود ولا مرفق) وليس
        إيقافًا من المستخدم — نعرض سطر تشخيص فيه سبب الغياب الحقيقي. مؤقّت للتشخيص. */
     try{
@@ -6982,7 +6988,8 @@ DESIGN RULES (non-negotiable):
           + '• خطأ مسار الأدوات: ' + ((__d.toolsErr || '').slice(0, 200) || 'لا يوجد') + '\n'
           + '• الخطأ النهائي: ' + ((__d.err || '').slice(0, 200) || 'لا يوجد') + '\n'
           + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة/idle = انقطاع الاتصال)' });
-        renderAll(__keepReaderPosition);
+        renderAll(true);
+        __pinOrRestoreScroll();
       }
     }catch(e){ __swallow(e, 'ui:diag-finally'); }
     // 🧠 تحديث ذاكرة المستخدم بعد اكتمال الرد (بدون انتظار)
