@@ -310,12 +310,12 @@
     var box=document.createElement('div'); box.id='vmkDirector'; box.className='vmk-dir';
     box.innerHTML='<div class="vmk-dir-head"><b></b><p></p></div>'
       +'<textarea id="vdReq" rows="3" maxlength="600"></textarea>'
-      +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label></div>'
+      +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label><label><span></span><select id="vdVoice"><option value="on"></option><option value="off"></option></select></label></div>'
       +'<label class="vmk-dir-ref"><input type="file" accept="image/*" id="vdRef"><img id="vdRefImg" alt="" hidden><span></span></label>'
       +'<button type="button" id="vdGo"></button>'
       +'<div class="vmk-dir-stage" id="vdStage" hidden><div class="vmk-dir-stage-bg"></div><img id="vdStageImg" alt=""><div class="vmk-dir-stage-reel"></div>'
         +'<div class="vmk-dir-stage-cap" id="vdStageCap"></div><div class="vmk-dir-stage-hud"><span id="vdStageStep"></span><b id="vdStageTime">0:00</b></div><div class="vmk-dir-stage-bar"><i id="vdStageBar"></i></div></div>'
-      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','samples','voice','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small></li>'; }).join('')+'</ol>'
+      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small></li>'; }).join('')+'</ol>'
       +'<p class="vmk-dir-msg" id="vdMsg"></p>'
       +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a></div>';
     var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
@@ -325,12 +325,14 @@
     box.querySelector('#vdRef').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0]; if(f) drPickRef(f); });
     box.querySelector('#vdGo').addEventListener('click',drRun);
     box.querySelector('#vdReq').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); drRun(); } });
+    box.querySelector('#vdVoice').addEventListener('change',syncDirector); /* بدون صوت: اختيار المتحدّث بلا معنى فيُعطَّل */
   }
   function syncDirector(){
     var box=id('vmkDirector'); if(!box) return;
     box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=L('vdSub');
     box.querySelector('#vdReq').placeholder=L('vdPh');
-    var labs=box.querySelectorAll('.vmk-dir-row label>span'); labs[0].textContent=L('vdLang'); labs[1].textContent=L('vdSpeaker'); labs[2].textContent=L('vdMinutes');
+    var labs=box.querySelectorAll('.vmk-dir-row label>span'); labs[0].textContent=L('vdLang'); labs[1].textContent=L('vdSpeaker'); labs[2].textContent=L('vdMinutes'); labs[3].textContent=L('vdVoiceLabel');
+    var vo=box.querySelector('#vdVoice'); vo.options[0].textContent=L('vdVoiceOn'); vo.options[1].textContent=L('vdVoiceOff'); box.querySelector('#vdSpeaker').disabled=(vo.value==='off');
     var sp=box.querySelector('#vdSpeaker'); sp.options[0].textContent=L('vdMaha')||'مها'; sp.options[1].textContent=L('vdAbdullah')||'عبدالله';
     box.querySelector('.vmk-dir-ref span').textContent=L('vdRef');
     box.querySelector('#vdGo').textContent=L('vdGo'); box.querySelector('#vdGo').disabled=DR.busy;
@@ -341,7 +343,7 @@
   /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
      وما يكتبه المخرج مشهدًا مشهدًا، ونماذج الأنماط تظهر فيها بحركة كاميرا فور توليدها، مع عدّاد وقت وشريط تقدّم كلّيّ. تعمل أثناء التوليد فقط. */
   var ST={t0:0,iv:0,board:[],bi:0,creep:null};
-  var DR_SPAN={plan:[0,14],samples:[14,40],voice:[40,58],shots:[58,84],join:[84,98]};
+  var DR_SPAN={plan:[0,14],voice:[14,30],samples:[30,58],shots:[58,84],join:[84,98]};
   function drStageShow(on){ var s=id('vdStage'); if(s) s.hidden=!on; }
   function drStagePct(p){ var b=id('vdStageBar'); if(b) b.style.width=Math.max(0,Math.min(100,p))+'%'; }
   function drStageNext(){
@@ -376,8 +378,9 @@
   function drMsg(t,err,diag){
     var m=id('vdMsg'); if(!m) return; m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':'');
     if(diag){ var d=document.createElement('code'); d.className='vmk-dir-diag'; d.dir='ltr'; d.textContent=diag; m.appendChild(d); } /* سبب الخادم كما هو، للمالك وحده */
+    if(err){ try{ m.scrollIntoView({block:'end'}); }catch(e){ /* guard-ok — متصفّح بلا خيارات التمرير */ } } /* السبب كان أسفل النافذة مقصوصًا */
   }
-  function drReset(){ ['plan','samples','voice','shots','join'].forEach(function(k){ drStep(k,'',''); }); drMsg(''); var r=id('vdRes'); if(r) r.classList.remove('has'); }
+  function drReset(){ ['plan','voice','samples','shots','join'].forEach(function(k){ drStep(k,'',''); }); drMsg(''); var r=id('vdRes'); if(r) r.classList.remove('has'); }
   function drPickRef(f){
     var r=new FileReader();
     r.onload=function(){
@@ -411,19 +414,57 @@
       return out;
     });
   }
+  /* v-app-director-voice: نصّ المشهد مرسومًا على نموذج النمط — لوحة ١٩٢٠×١٠٨٠ (خلفيّة مموّهة من الصورة نفسها، الصورة كاملة، شريط نصّ).
+     الجسر يكتب النصّ على لقطات الشاشة وحدها (في الصفحة)، وصور النماذج تصله جاهزة؛ والنصّ العربيّ يرسمه المتصفّح بخطّ الواجهة.
+     في الفيديو بلا صوت هذا هو ما يشرح المشهد. يعيد null إن تعذّر الرسم فتُرسل الصورة كما هي. */
+  function drWrap(ctx,text,maxW){
+    var words=String(text||'').split(/\s+/).filter(Boolean), lines=[], cur='';
+    words.forEach(function(w){ var t=cur?cur+' '+w:w; if(cur&&ctx.measureText(t).width>maxW){ lines.push(cur); cur=w; } else cur=t; });
+    if(cur) lines.push(cur);
+    return lines;
+  }
+  function drCaptionSample(b64,mime,text,dir){
+    return new Promise(function(res){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var W=1920,H=1080,c=document.createElement('canvas'); c.width=W; c.height=H; var x=c.getContext('2d');
+          x.fillStyle='#07080c'; x.fillRect(0,0,W,H);
+          var k=Math.max(W/img.width,H/img.height), bw=img.width*k, bh=img.height*k;
+          try{ x.filter='blur(34px) brightness(0.78)'; }catch(e){ /* guard-ok — متصفّح بلا مرشّحات اللوحة: خلفيّة بلا تمويه */ }
+          x.drawImage(img,(W-bw)/2,(H-bh)/2,bw,bh);
+          try{ x.filter='none'; }catch(e){ /* guard-ok — كسابقه */ }
+          var f=Math.min(W/img.width,H/img.height), fw=img.width*f, fh=img.height*f;
+          x.drawImage(img,(W-fw)/2,(H-fh)/2,fw,fh);
+          var fam='system-ui,sans-serif'; try{ fam=getComputedStyle(document.body).fontFamily||fam; }catch(e){ /* guard-ok — خطّ النظام */ }
+          x.font='700 44px '+fam; x.direction=dir==='rtl'?'rtl':'ltr'; x.textAlign='center'; x.textBaseline='middle';
+          var lines=drWrap(x,text,W*0.72).slice(0,3), lh=62, padX=46, padY=20, tw=0;
+          lines.forEach(function(ln){ tw=Math.max(tw,x.measureText(ln).width); });
+          var pw=tw+padX*2, ph=lines.length*lh+padY*2, px=(W-pw)/2, py=H-64-ph, rad=lines.length>1?26:ph/2;
+          x.beginPath(); x.moveTo(px+rad,py); x.arcTo(px+pw,py,px+pw,py+ph,rad); x.arcTo(px+pw,py+ph,px,py+ph,rad); x.arcTo(px,py+ph,px,py,rad); x.arcTo(px,py,px+pw,py,rad); x.closePath();
+          x.fillStyle='rgba(7,8,12,.84)'; x.fill(); x.lineWidth=2; x.strokeStyle='rgba(232,194,122,.6)'; x.stroke();
+          x.fillStyle='#f6e7c3'; lines.forEach(function(ln,i){ x.fillText(ln,W/2,py+padY+lh*i+lh/2); });
+          res({b64:c.toDataURL('image/jpeg',0.92).split(',')[1],mime:'image/jpeg'});
+        }catch(e){ try{ __swallow(e,'director:caption'); }catch(z){ /* guard-ok — لا مسجّل */ } res(null); }
+      };
+      img.onerror=function(){ res(null); };
+      img.src='data:'+(mime||'image/png')+';base64,'+b64;
+    });
+  }
   function drFail(code){ return Object.assign(new Error(code),{code:code}); }
   function drPlanCall(body){ return drJson('/api/ai?action=app-director-plan',body); }
   async function drRun(){
     if(DR.busy||!drOwner()) return;
     var req=(id('vdReq').value||'').trim(); if(!req){ drMsg(L('vdEmpty'),true); return; }
     var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;
+    var voiceOn=((id('vdVoice')||{}).value!=='off'), capDir=(lang==='ar'||lang==='ur')?'rtl':'ltr';
     var my=++DR.run, tk=drTok();
     DR.busy=true; DR.lang=lang; syncDirector(); drReset(); drStageStart();
     try{
       /* ١) الفكرة والسيناريو — الفيديو الطويل يُكتب أجزاءً، كلّ جزء نداء مستقلّ على مخطّط الجزء الأوّل */
       drStep('plan','on');
       var labels=await drLabels(lang); if(my!==DR.run) return;
-      var base={request:req,lang:lang,speaker:speaker,minutes:minutes,token:tk,labels:labels};
+      var base={request:req,lang:lang,speaker:speaker,minutes:minutes,voice:voiceOn,token:tk,labels:labels};
       var pr=await drPlanCall(base); if(my!==DR.run) return;
       if(!pr.ok||!pr.json||!pr.json.plan){ drStep('plan','err'); throw drFail('plan '+pr.status+(pr.json&&pr.json.error?' '+pr.json.error:'')+(pr.json&&pr.json.diag?' · '+pr.json.diag:'')); }
       var plan=pr.json.plan, parts=pr.json.parts||1, cat=pr.json.catalog||{screens:[],styles:{}}, screens={}; (cat.screens||[]).forEach(function(s){ screens[s.id]=s; });
@@ -444,14 +485,72 @@
       }
       var scenes=plan.scenes.map(function(sc){
         var o={type:sc.type,target:sc.target,text:sc.text||'',sub:'',narration:sc.narration||'',seconds:sc.seconds||8,steps:null,image:'',mime:'',audio:'',prompt:''};
-        if(o.type==='title'){ o.text=sc.text||plan.title; o.sub=sc.highlight||''; }
+        if(o.type==='title'){ o.text=sc.text||plan.title; o.sub=voiceOn?(sc.highlight||''):(o.narration||sc.highlight||''); }
+        o.cap=voiceOn?o.text:(o.narration||o.text); /* مع الصوت: الاسم القصير؛ بدونه: جملة المشهد كاملة */
         if(o.type==='screen'){ var scr=screens[o.target]||screens.home||{steps:[]}; o.steps=scr.steps||[]; }
         if(o.type==='style_sample'){ var st=(cat.styles||{})[o.target]; o.prompt=st?st.prompt:''; }
         o.board={text:o.text||o.narration.slice(0,110),img:''}; ST.board.push(o.board);
         return o;
       });
       drStep('plan','ok',plan.title+' · '+drT('vdScene',{i:scenes.length,n:scenes.length})+(backup?' · '+backup:''));
-      /* ٢) نماذج الأنماط بمسار الصور القائم (صورة المالك مرجعًا إن أرفقها) — المالك بلا نقاط */
+      /* ٢) التعليق أوّلًا (v-app-director-voice-first — لقطة المالك «voice 15/15 401» بعد أن وُلّدت النماذج): الصوت أرخص وأسرع من الصور،
+         فمزوّد صوت يرفض (مفتاح مرفوض، رصيد منتهٍ) يُعلَن قبل الصرف على النماذج، ونصّ ردّ الخادم نفسه في سطر السبب.
+         حدّ الطلبات في الدقيقة (فيديو ١٠ دقائق = ٧٥ طلبًا): الرفض العابر يوقف العاملَين معًا مهلة تتصاعد ثمّ يعيد حتّى ستّ مرّات؛
+         والرفض النهائيّ (401/403/رصيد) يوقف الكلّ فورًا. مشهد بلا صوت يُعدّ؛ فوق خُمس المشاهد = فشل معلَن لا فيديو نصفه صامت.
+         v-app-director-voice (المالك: «تمام ابدا فيه لكن حط ميزه مع صوت ولا بدون»): «بدون صوت» يتخطّى الخطوة ويصير التعليق نصًّا على الشاشة؛
+         ومع الصوت، صوت مها/عبدالله العاجز (مرفوض نهائيًّا، أو صامت فوق خُمس المشاهد بعد كلّ الإعادات) يُستبدل للفيديو كلّه بالصوت
+         الاحتياطيّ (لا خلط صوتين) ويُعلَن ذلك في الخطوة. */
+      var voiced=voiceOn?scenes.filter(function(s){ return !!s.narration; }):[], vLimit=Math.max(1,Math.floor(voiced.length*0.2));
+      var voiceRun=async function(backup){
+        var done=0, miss=0, got=0, last='', cool=0, dead=false, vModel='';
+        await drPool(voiced,2,async function(s){
+          for(var att=1;att<=6&&!s.audio&&!dead&&my===DR.run;att++){
+            var hold=cool-Date.now(); if(hold>0) await new Promise(function(x){ setTimeout(x,hold); });
+            if(my!==DR.run) return;
+            if(dead) break;
+            try{
+              if(backup){
+                var br=await drJson('/api/ai?action=app-director-voice',{text:s.narration,lang:lang,speaker:speaker,model:vModel||undefined,token:tk});
+                if(br.ok&&br.json&&br.json.audio){ s.audio=br.json.audio; vModel=br.json.model||vModel; }
+                else {
+                  last=br.status+' '+((br.json&&(br.json.why||br.json.error))||'')+(br.json&&br.json.diag?' · '+br.json.diag:'');
+                  if(br.status===502||br.status===401||br.status===403||(br.json&&br.json.error==='voice_unconfigured')) dead=true; /* الخادم جرّب نماذجه كلّها */
+                }
+              } else {
+                var ctl=new AbortController(); var tm=setTimeout(function(){ ctl.abort(); },60000);
+                var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s.narration,voice:'maha',lang:lang,gender:speaker,token:tk}),signal:ctl.signal});
+                clearTimeout(tm);
+                if(r.ok){ var b=await r.blob(); if(b.size>200) s.audio=await drB64(b); else last='empty'; }
+                else {
+                  var et=''; try{ var ej=await r.json(); et=String((ej&&ej.error)||'').replace(/\s+/g,' ').slice(0,140); }catch(e2){ et=''; /* ردّ بلا JSON: الحالة وحدها */ }
+                  last=r.status+(et?' '+et:'');
+                  if(r.status===401||r.status===403||/insufficient_quota|no credits|invalid subscription/i.test(et)) dead=true;
+                }
+              }
+            }catch(e){ last='network'; try{ __swallow(e,'director:tts'); }catch(z){ /* guard-ok — لا مسجّل */ } }
+            if(!s.audio&&!dead&&att<6) cool=Math.max(cool,Date.now()+Math.min(4000*att,20000));
+          }
+          /* مزوّد عاجز لا يُنتظر على كلّ مشهد: فوق الحدّ، أو مشهدان استنفدا إعاداتهما بلا نجاح واحد ← يتوقّف الكلّ (والاحتياطيّ يتولّى) */
+          if(s.audio) got++; else { miss++; if(miss>vLimit||(!got&&miss>=2)) dead=true; }
+          done++; if(my===DR.run&&!dead) drStep('voice','on',(backup?L('vdVoiceBackup')+' · ':'')+drT('vdScene',{i:done,n:voiced.length}),done/voiced.length);
+        });
+        return {miss:miss,last:last,dead:dead};
+      };
+      var backupVoice=false;
+      if(!voiceOn) drStep('voice','ok',L('vdVoiceOff'));
+      else {
+        drStep('voice','on',drT('vdScene',{i:0,n:voiced.length}),0);
+        var vres=await voiceRun(false); if(my!==DR.run) return;
+        var mainWhy=vres.last;
+        if(vres.dead||vres.miss>vLimit){
+          scenes.forEach(function(s){ s.audio=''; }); backupVoice=true;
+          drStep('voice','on',L('vdVoiceBackup'),0);
+          vres=await voiceRun(true); if(my!==DR.run) return;
+        }
+        if(vres.dead||vres.miss>vLimit){ drStep('voice','err'); throw drFail('voice '+(voiced.length-vres.miss)+'/'+voiced.length+' '+(backupVoice?('main: '+mainWhy+' | backup: '+vres.last):vres.last)); }
+        drStep('voice','ok',backupVoice?L('vdVoiceBackup'):(vres.miss?('−'+vres.miss):''));
+      }
+      /* ٣) نماذج الأنماط بمسار الصور القائم (صورة المالك مرجعًا إن أرفقها) — المالك بلا نقاط */
       var samples=scenes.filter(function(s){ return s.type==='style_sample'; });
       var failed=0;
       if(samples.length){
@@ -467,6 +566,7 @@
           if(my!==DR.run) return;
           if(r&&r.ok&&r.json&&r.json.imageBase64){
             s.image=r.json.imageBase64; s.mime=r.json.mimeType||'image/png';
+            if(s.cap){ var cc=await drCaptionSample(s.image,s.mime,s.cap,capDir); if(my!==DR.run) return; if(cc){ s.image=cc.b64; s.mime=cc.mime; } }
             s.board.img='data:'+s.mime+';base64,'+s.image; ST.bi=ST.board.indexOf(s.board); drStageNext(); /* النموذج يظهر في الشاشة الحيّة فور توليده */
           } else { failed++; s.type='screen'; s.target='portrait'; s.steps=(screens.portrait||{steps:[]}).steps; s.image=''; }
           doneS++; drStep('samples','on',drT('vdScene',{i:doneS,n:samples.length}),doneS/samples.length);
@@ -474,39 +574,12 @@
         if(my!==DR.run) return;
         drStep('samples','ok',failed?drT('vdWarnSamples',{n:failed}):'');
       } else drStep('samples','ok','');
-      /* ٣) التعليق لكلّ مشهد بصوت مها/عبدالله باللغة المختارة (المسار نفسه الذي يستعمله الصانع) */
-      var voiced=scenes.filter(function(s){ return !!s.narration; });
-      drStep('voice','on',drT('vdScene',{i:0,n:voiced.length}),0);
-      /* مزوّد الصوت يحدّ الطلبات في الدقيقة (فيديو ١٠ دقائق = ٧٥ طلبًا): الرفض يوقف العاملَين معًا مهلة تتصاعد ثمّ يعيد حتّى ستّ مرّات،
-         ومشهد بلا صوت بعدها يُعدّ؛ فوق خُمس المشاهد = فشل معلَن بسببه لا فيديو نصفه صامت */
-      var doneV=0, missV=0, lastTts='', coolUntil=0;
-      await drPool(voiced,2,async function(s){
-        for(var att=1;att<=6&&!s.audio&&my===DR.run;att++){
-          var hold=coolUntil-Date.now(); if(hold>0) await new Promise(function(x){ setTimeout(x,hold); });
-          if(my!==DR.run) return;
-          var stop=false;
-          try{
-            var ctl=new AbortController(); var tm=setTimeout(function(){ ctl.abort(); },60000);
-            var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s.narration,voice:'maha',lang:lang,gender:speaker,token:tk}),signal:ctl.signal});
-            clearTimeout(tm);
-            if(r.ok){ var b=await r.blob(); if(b.size>200) s.audio=await drB64(b); else lastTts='empty'; }
-            else { lastTts=String(r.status); stop=(r.status===401||r.status===403); }
-          }catch(e){ lastTts='network'; try{ __swallow(e,'director:tts'); }catch(z){ /* guard-ok — لا مسجّل */ } }
-          if(stop) break;
-          if(!s.audio&&att<6) coolUntil=Math.max(coolUntil,Date.now()+Math.min(4000*att,20000));
-        }
-        if(!s.audio) missV++;
-        doneV++; if(my===DR.run) drStep('voice','on',drT('vdScene',{i:doneV,n:voiced.length}),doneV/voiced.length);
-      });
-      if(my!==DR.run) return;
-      if(missV>Math.max(1,Math.floor(voiced.length*0.2))){ drStep('voice','err'); throw drFail('voice '+missV+'/'+voiced.length+' '+lastTts); }
-      drStep('voice','ok',missV?('−'+missV):'');
       /* ٤) رمز المهمّة وعنوان الجسر من الخادم، ثمّ المانيفست إلى الجسر مباشرة */
       drStep('shots','on');
       var tr=await drJson('/api/ai?action=app-director-token',{token:tk}); if(my!==DR.run) return;
       if(!tr.ok||!tr.json||!tr.json.token||!tr.json.bridge){ drStep('shots','err'); throw drFail('token '+tr.status+(tr.json&&tr.json.error?' '+tr.json.error:'')); }
       var bridge=tr.json.bridge, jt=tr.json.token, auth={Authorization:'Bearer '+jt};
-      var manifest={lang:lang,title:plan.title,scenes:scenes.map(function(s){ return {type:s.type,target:s.target,text:s.text,sub:s.sub,steps:s.steps||undefined,image:s.image||undefined,mime:s.mime||undefined,audio:s.audio||undefined,seconds:s.seconds}; })};
+      var manifest={lang:lang,title:plan.title,scenes:scenes.map(function(s){ return {type:s.type,target:s.target,text:(s.type==='screen'?s.cap:s.text),sub:s.sub,steps:s.steps||undefined,image:s.image||undefined,mime:s.mime||undefined,audio:s.audio||undefined,seconds:s.seconds}; })};
       var post;
       try{ post=await fetch(bridge+'/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},auth),body:JSON.stringify(manifest)}); }
       catch(e){ drStep('shots','err'); throw drFail('bridge offline'); }
@@ -541,7 +614,7 @@
     }catch(err){
       if(my!==DR.run) return;
       var code=String((err&&err.code)||(err&&err.message)||'');
-      var key=/^plan/.test(code)?'vdFailPlan':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
+      var key=/^plan/.test(code)?'vdFailPlan':/^voice/.test(code)?'vdFailVoice':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
       /* السبب الحقيقيّ بين قوسين (القسم للمالك وحده): ما قاله الخادم عن كلّ محاولة، لا رسالة عامّة */
       drMsg(key==='vdFail'?L('vdFail'):L('vdFail')+' — '+L(key),true,code.slice(0,520));
       drStageStop(true);

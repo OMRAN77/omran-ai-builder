@@ -73,3 +73,5 @@ docker run -d --name cc-bridge --restart unless-stopped \
 - `POST /render` · `GET /render/:jobId` · `GET /render/:jobId/video.mp4` — بترويسة `Authorization: Bearer <رمز مهمّة>` لا السرّ الخام: الرمز HMAC بـ`CC_BRIDGE_SECRET` يصدره Vercel للمالك (`/api/ai?action=app-director-token`، ساعتان، يحمل اسم المالك ومعرّف المهمّة). الجسر يجيب CORS لأصل التطبيق ومعاينات Vercel.
 - الناتج يبقى ٢٤ ساعة في `/work/state/render/jobs/<jobId>` ثمّ يُحذف. حدود: ٩٠ مشهدًا، ١٦٠ م.ب للمانيفست، ٥٥ دقيقة للمهمّة.
 - في Vercel يلزم `CC_BRIDGE_URL` و`CC_BRIDGE_SECRET` (موجودان) و`GEMINI_API_KEY`، واختياريًّا `DIRECTOR_MODEL` (نموذج المخرج؛ الافتراضيّ أحدث Pro).
+- الصوت الاحتياطيّ (حين يرفض مزوّد صوت مها/عبدالله) بالمفتاح نفسه `GEMINI_API_KEY`؛ اختياريًّا `DIRECTOR_TTS_MODEL` (نموذج الصوت الذي يُجرَّب أوّلًا)
+  و`DIRECTOR_VOICE_FEMALE` / `DIRECTOR_VOICE_MALE` (اسم الصوت؛ الافتراضيّ Kore / Charon). ملفّ الصوت يصل الجسر WAV أو MP3 ويُكتب بامتداده من محتواه.
