@@ -2044,8 +2044,10 @@ module.exports = async (req, res) => {
             else { __ownerOps.manages = (__ownerOps.manages || 0) + 1; result = __ownerOps.manages > 8 ? '✗ ثمانية استدعاءات إدارة في الردّ الواحد حدّ مقصود.' : __gm.formatManage(await __gm.manage(input)); }
           }
           else if (cb.name === 'delegate_code_task') {
+            const __dl = require('./agent-delegate.js');
             if (!__ownerReq) result = '✗ تفويض مهامّ الكود للمالك وحده.';
-            else { __ownerOps.delegates++; const __dl = require('./agent-delegate.js'); result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
+            else if (!__dl.ownerAsksCode(lastUserText)) result = __dl.DELEGATE_REFUSAL; // v-code-not-primary: بطلب المالك بالاسم وحده
+            else { __ownerOps.delegates++; result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
           }
           else if (cb.name === 'check_code_task') {
             const __dl = require('./agent-delegate.js');

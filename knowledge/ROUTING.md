@@ -266,7 +266,7 @@ streamFreeChain(args)                             free-chain.js:167
 | `quickIntent` / `INTENT_NOTES` (`router.js`) | نفس الشيء — `injectNote` فقط | تصنيف النيّة لا يصل المحادثة الرئيسيّة |
 | `APP_FACTS_NOTE` (حارس أسئلة «مَن صنع التطبيق») | نفس الشيء | حماية خصوصيّة المالك من هذا الحارس لا تسري على `chat` (يغطّيها `_knowledge.js` و`PERSONA_NOTE` بصياغة أخرى) |
 | `ONBOARDING` في `tone.js:132` | مُصدَّر ولا يستهلكه أحد | كود ميّت |
-| `scripts/build.mjs` يختم `sw.js` | يبحث عن `CACHE_NAME` و`sw.js` يستعمل `BUILD_ID` | الختم لاغٍ. غير مؤثّر عمليًّا (القشرة تُجلب `no-store`) لكنّه تناقض قائم |
+| `scripts/build.mjs` يختم `sw.js` (منطقه في `api/_lib/bundle-core.js`، ويستعمله `github-write.js` أيضًا) | يبحث عن `CACHE_NAME` و`sw.js` يستعمل `BUILD_ID` | الختم لاغٍ. غير مؤثّر عمليًّا (القشرة تُجلب `no-store`) لكنّه تناقض قائم |
 
 > **القاعدة:** أيّ إعداد واجهة جديد يجب أن يُثبِت وصوله إلى المسار الذي يستعمله المستخدم
 > فعلًا — لا إلى مسارٍ كان يستعمله يومًا. `chat` انفصل عن `PROVIDERS` فسقطت معه كلّ طبقة

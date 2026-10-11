@@ -176,7 +176,7 @@ assert.ok(/isPaidProvider/.test(tier), 'حارس المزوّد المدفوع �
 // (د) الأسلاك المقطوعة المذكورة ما زالت مقطوعة فعلًا (وإلّا فالخريطة تكذب)
 assert.ok(!/quickIntent/.test(chat), 'مصنّف النيّة ما زال لا يصل chat.js — كما تقول §٦-ب');
 assert.ok(!/require\(.*tone\.js.*\)/.test(chat), 'tone.js ما زال لا يصل chat.js — كما تقول §٦-ب');
-assert.ok(/CACHE_NAME/.test(rd('scripts/build.mjs')) && /BUILD_ID/.test(rd('sw.js')),
+assert.ok(/CACHE_NAME/.test(rd('scripts/build.mjs') + rd('api/_lib/bundle-core.js')) && /BUILD_ID/.test(rd('sw.js')), // v-auto-bundle: الختم في الوحدة المشتركة
   'تناقض ختم sw.js ما زال قائمًا كما تقول §٦-ب');
 
 // ── (٤) الخريطة مذكورة حيث يقرأها القادم ──
