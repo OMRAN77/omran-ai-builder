@@ -97,6 +97,15 @@ module.exports = async (req, res) => {
         ur: ['ur-PK', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
         bn: ['bn-BD', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
         ne: ['ne-NP', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
+        /* v-app-director (المالك: «بأيّ لغة أريدها»): بقيّة لغات الواجهة الأربع عشرة بالصوتين متعدّدَي اللغات أنفسهما —
+           كانت تسقط على العربيّة فيُقرأ النصّ الإسبانيّ بصوت عربيّ */
+        es: ['es-ES', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
+        tr: ['tr-TR', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
+        ru: ['ru-RU', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
+        zh: ['zh-CN', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
+        id: ['id-ID', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
+        fil: ['fil-PH', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
+        ml: ['ml-IN', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
       };
       // Normalize possible variants Whisper may return (e.g. "urdu", "nepali").
       const rawLang = String(lang || 'ar').toLowerCase();
@@ -104,7 +113,7 @@ module.exports = async (req, res) => {
         arabic: 'ar', english: 'en', french: 'fr', hindi: 'hi',
         urdu: 'ur', bengali: 'bn', bangla: 'bn', nepali: 'ne',
       };
-      const langKey = langAliases[rawLang] || rawLang.slice(0, 2);
+      const langKey = langAliases[rawLang] || (MAHA_VOICE_MAP[rawLang] ? rawLang : rawLang.slice(0, 2));
       const voiceSet = MAHA_VOICE_MAP[langKey] || MAHA_VOICE_MAP.ar;
       // The multilingual neural voices read xml:lang to pick which
       // language/accent to speak the text in, so we still pass the actual
