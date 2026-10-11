@@ -163,7 +163,8 @@ vm.runInNewContext([
   '  const cur = { lastMsgWasImageEdit: chain !== false, lastEditedImage: { b64: "x", mime: "image/png" }, messages: [',
   '    { role: "user", content: "ارسم صورة صقر على جبل" }, { role: "assistant", content: "", attachments: [{ isImage: true, name: "generated.png" }] } ].concat(extra || []) };',
   '  const getCurrent = () => cur, pendingAttachments = [], imageAttachments = [];',
-  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtSuggestRe = '), line('const __rtPutRe = '), line('const __rtWriteAsk = '), line('const __rtTextOutRe = '), line('const __rtTextOut = '),
+  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtSuggestRe = '), line('const __rtPutRe = '), line('const __rtWriteAsk = '), line('const __rtTextOutRe = '), line('const __rtTextOut = '), line('const __rtTextRevRe = '), line('const __rtIsTextOut = '),
+  SRC.slice(SRC.indexOf('  const __rtTextRev = '), SRC.indexOf('  })());', SRC.indexOf('  const __rtTextRev = ')) + 8),
   line('const __IMGF_NEW_RE = '), line('const __IMGF_NOT_RE = '), line('const __IMG_EDIT_VERB_RE = '),
   imgFollowSrc,
   line('const __nanoQ = '), line('const __ATT_VISION_RE = '), line('const __codeWordRe = '), line('const __ackOnly = '),
@@ -172,7 +173,7 @@ vm.runInNewContext([
   line('const __imgEditRe = '), line('const __IMG_CREATIVE_RE = '), line('const __editStyleIntent = '), line('const __FOLLOW_DEFAULT = '),
   line('const __STYLE_RE = '), line('const __styleShort = '), line('const __STYLE_FOLLOW = '),
   '  const memAttach = !!(' + cond('if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && !__rtWriteAsk').replace(/^/, '!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && !__rtWriteAsk') + ');',
-  '  return { follow: __IMG_FOLLOW, any: __FOLLOW_ANY, def: __FOLLOW_DEFAULT, style: __STYLE_FOLLOW, mem: memAttach, write: __rtWriteAsk, textOut: __rtTextOut };',
+  '  return { follow: __IMG_FOLLOW, any: __FOLLOW_ANY, def: __FOLLOW_DEFAULT, style: __STYLE_FOLLOW, mem: memAttach, write: __rtWriteAsk, textOut: __rtTextOut, rev: __rtTextRev };',
   '};',
 ].join('\n'), W);
 
@@ -278,34 +279,34 @@ test('١٤. v-route-want: الرغبة + اسم البناء + وصف صنع ت�
   assert.equal(G.gate('أبي أفضل برنامج لإدارة المشاريع'), false);
 });
 
-test('١٥. v-route-sticky: الدور الذي يصل مسار النصّ بلا صورة يُنهي سلسلة الصورة، فـ«اختصرها/خله أقصر/بالإنجليزي» بعده للنصّ؛ بعد الصورة مباشرةً كما كانت', () => {
-  // الشرط الحقيقيّ قبل مسار النصّ (askAll/المزوّد الواحد)، بعد أن عادت كلّ مسارات الصورة
-  const RESET = '    if(__rtTextOut && !imageAttachments.length && cur.lastMsgWasImageEdit) cur.lastMsgWasImageEdit = false;';
-  const at = SRC.indexOf(RESET);
-  assert.ok(at > 0 && SRC.indexOf('    if(askAll){', at) - (at + RESET.length) <= 3, 'النزع قبيل مسار النصّ مباشرةً');
-  const run = (atts, flag, textOut) => { const cur = { lastMsgWasImageEdit: flag }; vm.runInNewContext(RESET, { imageAttachments: atts, cur, __rtTextOut: textOut }); return cur.lastMsgWasImageEdit; };
-  assert.equal(run([], true, true), false, 'طلب مخرَج نصّيّ بلا صورة («اكتب لي قصيدة/ملخص») يُنهي السلسلة');
-  assert.equal(run([], true, false), true, 'المراجعة الثالثة: «حلوة/شكرًا/وش نوعه؟» بعد صورة تُبقيها كما في main');
-  assert.equal(run([{ isImage: true, _fromMemory: true }], true, true), true, 'وبصورة مرفقة تبقى');
-  for (const t of ['اكتب لي قصيدة عن الصقر', 'اكتب لي بوست لينكدإن عن العمل الجماعي', 'سوي لي ملخص عن تاريخ الاتحاد', 'اكتب لي معلومات عن الجمال']) assert.equal(W.after(t).textOut, true, 'مخرَج نصّيّ: ' + t);
-  for (const t of ['حلوة', 'شكرا', 'وش نوع هذا الصقر؟', 'خلها بالليل', 'اكتب عليها عيد مبارك']) assert.equal(W.after(t).textOut, false, 'ليس مخرَجًا نصّيًّا: ' + t);
-  // بعد النزع: المسارات الأربعة والإرفاق التلقائيّ كلّها مطفأة
-  const poem = [{ role: 'user', content: 'اكتب لي قصيدة عن الصقر' }, { role: 'assistant', content: 'يا صقرُ يا رمزَ العلا…' }];
-  for (const t of ['اختصرها', 'خله أقصر', 'خلها أقصر', 'بالإنجليزي', 'اكتبه بأسلوب رسمي', 'سوه أرسمي شوي', 'خل الخلفية زرقاء', 'خله كرتون']) {
-    const r = W.after(t, poem, false);
-    assert.deepEqual([r.follow, r.any, r.def, r.style, r.mem], [false, false, false, false, false], 'بعد القصيدة: ' + t);
+test('١٥. v-route-sticky: بعد «اكتب لي قصيدة/بوست/ملخص» المراجعة النصّيّة («اختصرها/خله أقصر/بالإنجليزي») للنصّ، والتعديل البصريّ («بالليل/الخلفية بحر») للصورة كما في main', () => {
+  const U = (c) => ({ role: 'user', content: c }), A = (c) => ({ role: 'assistant', content: c });
+  const IMG = (r) => r.follow || r.any || r.def || r.style;
+  const poem = [U('اكتب لي قصيدة عن الصقر'), A('يا صقرُ يا رمزَ العلا…')];
+  for (const t of ['اختصرها', 'خله أقصر', 'خلها أطول', 'بالإنجليزي', 'ترجمها', 'اكتبه بأسلوب رسمي', 'سوه أرسمي شوي', 'اختصرها في ثلاث نقاط']) {
+    const r = W.after(t, poem);
+    assert.equal(r.rev, true, 'مراجعة نصّيّة: ' + t);
+    assert.deepEqual([r.follow, r.any, r.def, r.style, r.mem], [false, false, false, false, false], 'بعد القصيدة للنصّ: ' + t);
   }
-  // ومسارات سلسلة الصورة (فشل التعديل، «حدّد النصّ»، «اكتب وش التعديل») تعود قبل النزع فتبقى السلسلة
-  for (const pat of ['⚠️ تعذر تعديل الصورة', 'تعذّر تبديل النصّ هذه المرّة', 'حدّد النص بين علامتي تنصيص', 'تمام — اكتب وش التعديل']) {
-    const i = SRC.indexOf(pat); assert.ok(i > 0 && i < at, pat);
-    assert.match(SRC.slice(i, i + 900), /return;/, 'يعود قبل مسار النصّ: ' + pat);
+  // المراجعة الرابعة: التعديل البصريّ بعد الدور النصّيّ يبقى على الصورة (العلامة لا تُمسّ)
+  for (const t of ['خلها بالليل', 'خل الخلفية بحر', 'خله كرتون', 'كبر الصقر', 'غير لون السماء للبنفسجي', 'خل السماء زرقاء']) {
+    assert.equal(IMG(W.after(t, poem)), true, 'بصريّ بعد القصيدة: ' + t);
   }
-  // المسبار الأعمى: طلب مخرَج نصّيّ بعد صورة لا تُرفق له صورة الذاكرة، فيصل مسار النصّ بلا صورة فتنتهي السلسلة
-  for (const t of ['سوي لي ملخص عن تاريخ الاتحاد', 'اكتب لي معلومات عن الجمال', 'عطني نبذة عن الصقور', 'ابي شرح عن تاريخ الإمارات']) assert.equal(W.after(t).mem, false, 'بلا صورة ذاكرة: ' + t);
-  for (const t of ['وش رايك فيها؟', 'اكتب لي وصف للصورة', 'سوي لي ملخص عن الصورة']) assert.equal(W.after(t).mem, true, 'السؤال عن الصورة يحملها كما كان: ' + t);
-  assert.equal(W.after('خله كرتون').style, true, 'بعد الصورة مباشرةً كما كان');
-  assert.equal(W.after('خله أقصر').def, true);
+  for (const pre of [[U('سوي لي ملخص عن تاريخ الاتحاد'), A('ملخص…')], [U('اكتب لي معلومات عن الجمال'), A('الجمال…')], [U('اكتب لي بوست لينكدإن عن العمل الجماعي'), A('بوست…')]]) {
+    for (const t of ['بالإنجليزي', 'اختصرها في ثلاث نقاط', 'خله أقصر']) assert.equal(IMG(W.after(t, pre)), false, pre[0].content + ' ← ' + t);
+  }
+  // سلسلة مراجعات: «اختصرها» ثمّ «بالإنجليزي» كلاهما للنصّ
+  assert.equal(IMG(W.after('بالإنجليزي', poem.concat([U('اختصرها'), A('…')]))), false, 'مراجعة بعد مراجعة');
+  // «حلوة» بينهما تُرجع سلوك main، وبعد الصورة مباشرةً كما كانت
+  assert.equal(W.after('اختصرها', poem.concat([U('حلوة'), A('شكرًا')])).rev, false, 'فاصل غير نصّيّ = سلوك main');
+  assert.equal(W.after('خله أقصر').def, true, 'بعد الصورة مباشرةً «خله…» تعديل كما كان');
+  assert.equal(W.after('خله كرتون').style, true);
   for (const t of ['خلها بالليل', 'خل الخلفية زرقاء']) assert.equal(W.after(t).follow || W.after(t).any, true, 'بعد الصورة مباشرةً: ' + t);
+  // المسبار الأعمى: طلب مخرَج نصّيّ بعد صورة لا تُرفق له صورة الذاكرة؛ والسؤال عن الصورة يحملها كما كان
+  for (const t of ['سوي لي ملخص عن تاريخ الاتحاد', 'اكتب لي معلومات عن الجمال', 'عطني نبذة عن الصقور', 'ابي شرح عن تاريخ الإمارات']) assert.equal(W.after(t).mem, false, 'بلا صورة ذاكرة: ' + t);
+  for (const t of ['وش رايك فيها؟', 'اكتب لي وصف للصورة', 'سوي لي ملخص عن الصورة']) assert.equal(W.after(t).mem, true, 'السؤال عن الصورة يحملها: ' + t);
+  // العلامة لا تُنزل في مسار النصّ (كما في main) — لا سطر نزع
+  assert.ok(!/__rtTextOut && !imageAttachments\.length && cur\.lastMsgWasImageEdit\) cur\.lastMsgWasImageEdit = false/.test(SRC));
 });
 
 test('١٦. «أرسمي» (أكثر رسميّة) ليست «ارسم»: لا تفتح أنماط الصورة؛ «ارسم/ارسمي لي» كما كانتا', () => {
