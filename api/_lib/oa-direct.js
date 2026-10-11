@@ -392,6 +392,11 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
    مع سطر يقول للموديل ذلك، (٣) وإلّا النظام مقصوصًا (أوّله وهويّته ثمّ ما يتّسع بترتيبه). التقدير من رقم Groq نفسه (توكن/حرف لهذا
    الطلب)، لا تخمين. لا يتّسع حتّى أقصره = يبقى 413 كما هو. المفتاح المدفوع (حدّ أعلى) لا يصل هنا أصلًا. */
 const TPM_NOTE = '[هذا الدور بلا أدوات: حدّ مفتاح Groq في الدقيقة لا يتّسع لها مع هذا السياق. أجب ممّا تعرفه، ولا تدّعِ بحثًا ولا قراءة ملفّ ولا تعديلًا؛ وإن طلب عمران شيئًا منها فقل في سطر إنّه يحتاج موديلًا آخر أو مفتاح Groq بحدّ أعلى.]';
+/* v-prov-self (٣): «ما أريد كلمة ما أقدر» — في الجسم المقصوص تبقى الأدوات الصغيرة ذات الصلة بالرسالة الأخيرة إن اتّسعت: صورة مرفقة أو رسم ←
+   أداتا الصور (نتيجتهما رمز قصير)، وسؤال معلومة ← البحث. أدوات GitHub نتائجها عشرات الآلاف من الحروف فلا تتّسع لحدّ الدقيقة أصلًا. */
+const LEAN_IMG_RE = /(?:ارسم|أرسم|ارسمي|رسمة|صور[ةه]|لوحة|شعار|لوجو|بوستر|image|draw|picture|logo|poster)/i;
+const LEAN_Q_RE = /[؟?]|(?:^|[\s،,])(?:كم|متى|وين|فين|من هو|من هي|ما هو|ما هي|ايش|إيش|شو|وش|أخبار|اخبار|سعر|أسعار|اسعار|طقس|نتيجة|مباراة|who|what|when|where|price|news|weather)(?=$|[\s،,؟?])/i;
+const TPM_NOTE_TOOLS = (names) => '[هذا الدور بأدوات محدودة لضيق حدّ مفتاح Groq في الدقيقة: ' + names.join('، ') + ' فقط. استعملها بنفسك حين تلزم؛ وما ليس معك في هذا الدور فلا تدّعِه — قل في سطر إنّه يحتاج رسالة أقصر أو مفتاح Groq بحدّ أعلى.]';
 function fitGroqTpm(body, errText) {
   const t = String(errText || '');
   const m = /Limit\s+(\d+)\s*,\s*Requested\s+(\d+)/i.exec(t);
@@ -399,7 +404,8 @@ function fitGroqTpm(body, errText) {
   const limit = Number(m[1]), requested = Number(m[2]);
   if (!(limit > 0) || !(requested > limit)) return null;
   const msgs = Array.isArray(body.messages) ? body.messages : [];
-  const size = (b) => JSON.stringify(b.messages || []).length + (b.tools ? JSON.stringify(b.tools).length : 0);
+  // صورة base64 لا تُعدّ حروفًا عند Groq — تُحسب كثلاثة آلاف حرف (≈ ألف توكن) في القياسين معًا
+  const size = (b) => JSON.stringify(b.messages || []).replace(/data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, 'x'.repeat(3000)).length + (b.tools ? JSON.stringify(b.tools).length : 0);
   const chars = size(body);
   if (!chars) return null;
   const cap = Number(body.max_completion_tokens) || 0;
@@ -411,12 +417,18 @@ function fitGroqTpm(body, errText) {
   const est = (b) => Math.ceil(size(b) * perChar);
   const sysIdx = msgs.findIndex((x) => x && x.role === 'system' && typeof x.content === 'string');
   const sys = sysIdx >= 0 ? msgs[sysIdx].content : '';
-  const lean = (s) => {
+  const lean = (s, tools) => {
     const ms = msgs.slice();
     if (sysIdx >= 0) ms[sysIdx] = { role: 'system', content: s }; else ms.unshift({ role: 'system', content: s });
     const out = Object.assign({}, body, { messages: ms }); delete out.tools; delete out.tool_choice;
+    if (tools && tools.length) out.tools = tools;
     return out;
   };
+  const lastUser = (() => { for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i] && msgs[i].role === 'user') return msgs[i]; return null; })();
+  const luText = !lastUser ? '' : (typeof lastUser.content === 'string' ? lastUser.content : (Array.isArray(lastUser.content) ? lastUser.content.map((x) => (x && x.text) || '').join(' ') : ''));
+  const luImg = !!(lastUser && Array.isArray(lastUser.content) && lastUser.content.some((x) => x && x.type === 'image_url'));
+  const want = (luImg || LEAN_IMG_RE.test(luText) ? ['edit_image', 'generate_image'] : []).concat(LEAN_Q_RE.test(luText) ? ['web_search'] : []);
+  const wantTools = (body.tools || []).filter((x) => x && x.function && want.indexOf(x.function.name) !== -1);
   /* (٢) بلا أدوات، والنظام: الفقرة الأولى (الهويّة والأسلوب) و[هويّتك] إن كانت آخرها، ثمّ الباقي بترتيبه ما اتّسع لـ٤٠٪ من الحدّ —
      الحدّ للدقيقة كلّها لا للطلب: جسم بستّة آلاف من ثمانية يردّ «مرحبا» ثمّ يرفض الرسالة التالية 429 (لقطة المالك الثانية). */
   const fitsAll = (b) => est(b) + room + 64 <= limit;
@@ -424,7 +436,9 @@ function fitGroqTpm(body, errText) {
   const paras = sys.split(/\n{2,}/);
   const idLast = paras.length > 1 && /^\[هويّتك\]/.test(paras[paras.length - 1]);
   const mid = paras.slice(1, idLast ? -1 : undefined);
-  const build = (k) => lean([paras[0] || ''].concat(mid.slice(0, k), idLast ? [paras[paras.length - 1]] : [], [TPM_NOTE]).filter(Boolean).join('\n\n'));
+  let tools = wantTools.slice();
+  const build = (k) => lean([paras[0] || ''].concat(mid.slice(0, k), idLast ? [paras[paras.length - 1]] : [], [tools.length ? TPM_NOTE_TOOLS(tools.map((x) => x.function.name)) : TPM_NOTE]).filter(Boolean).join('\n\n'), tools);
+  while (tools.length && est(build(0)) > budget) tools = tools.slice(0, -1); // الأدوات ذات الصلة ما اتّسعت لأقصر نظام، من الآخر
   if (!fitsAll(build(0))) return null;
   let k = 0;
   while (k < mid.length && est(build(k + 1)) <= budget) k++;
@@ -459,7 +473,7 @@ async function directFetch(route, anthropicBody, opts) {
       const r = await f(route.responsesUrl, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(rb) }, sig));
       if (r.ok && r.body) return { ok: true, status: r.status, model: rb.model, api: 'responses', text: async () => '', body: responsesToAnthropicStream(r.body, rb.model) };
       const t = await r.text().catch(() => '');
-      rl = { ok: false, status: r.status, model: rb.model, api: 'responses', text: async () => t };
+      rl = { ok: false, status: r.status, model: rb.model, api: 'responses', text: async () => t, headers: r.headers || null }; // v-groq-tpm: retry-after يصل إعادة C4 (GPT كان يعيد 429 ثلاثًا بلا انتظار)
       // v-owner-auto: جهد مرفوض = الدرجة التالية من السلّم، وبعد آخرها بلا reasoning (سلوك ما قبل الإصلاح).
       /* v-owner-gpt-all: جهد اختاره المالك ورُفض = إعادة واحدة بلا reasoning (افتراضيّ الموديل) ويُذكر — لا يُحسب درجة من
          سلّم «بلا تفكير» (كان max المرفوض يقفز إلى none، عكس ما اختاره). */

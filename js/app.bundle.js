@@ -22572,6 +22572,18 @@ async function omranSharpenImage(dataUrl, amount){
 
 /* v-img-mix + v-img-honest: شريط الحالة يُطلق قبل وصول الصورة (بصمة v-img-engine-tag-owner ميتة في مسار التعديل)، فيُكتب
    سطر المحرّك للمالك وحده تحت التقرير — فقط حين يعمل المحرّكان (وضع الدمج، أو محرّك ثانٍ بعد «لم يُنفَّذ»). غيره لا يرى اسمًا. */
+/* v-prov-self (٣): مزوّد المالك المختار بلا أدوات (Perplexity) لا يرسم بنفسه — الصورة من محرّك الصور، فسطر تحتها (رسالة بعدها، لا فوقها: v666)
+   يقول أيّ محرّك رسمها بدل أن تبقى الشريحة وحدها باسم المزوّد. للمالك وحده؛ المزوّدون بالأدوات يرسمون بأنفسهم (v-prov-self ١). */
+function __omranNoToolsImgNote(engine){
+  try{
+    if(String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') return '';
+    const p = localStorage.getItem('aiapp_provider') || 'openai';
+    if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(p) !== -1) return '';
+    const e = String(engine || '');
+    const n = /openai|gpt/i.test(e) ? 'GPT Image' : (/gemini|nano/i.test(e) ? 'Gemini Image' : (/pollinations/i.test(e) ? 'Pollinations' : ''));
+    return n ? '🎨 ' + n : '';
+  }catch(e){ __swallow(e, 'ui:no-tools-img'); return ''; }
+}
 function __imgEngineLine(engine, d){
   /* v-media-plans: مشترك الصور يرى جودة الصورة والمتبقّي من رصيده تحتها. v-media-merge: ومشترك «صور وفيديو» يرى اسم رصيده المدموج. */
   const mt = d && d.mediaTag;
@@ -25053,6 +25065,7 @@ function __showImgLoading(el, ar, en){
           }catch(e){ __swallow(e, 'img:text-keep'); }
         }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */ + __imgEngineLine(__data.engine, __data), attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
+        { const __nt = __omranNoToolsImgNote(__data.engine); if(__nt) cur.messages.push({ role: 'assistant', content: __nt }); } /* v-prov-self */
         // v-img-engine-tag-owner: بصمة المحرك الحرفيّة في شريط الحالة — للمالك وحده (باب مقفل: لا اسم مزوّد لأيّ مستخدم).
         try{ if(chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = __keptLayer ? { b64: __editUrl.split(',')[1], mime: 'image/png' } : { b64: __data.imageBase64, mime: __outMime };
@@ -25281,6 +25294,7 @@ function __showImgLoading(el, ar, en){
       if(__gOk){
         const __gm = __gData.mimeType || 'image/png';
         cur.messages.push({ role: 'assistant', content: '' /* v666: بلا جملة فوق الصورة — طلب عمران */, attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
+        { const __nt = __omranNoToolsImgNote(__gData.engine); if(__nt) cur.messages.push({ role: 'assistant', content: __nt }); } /* v-prov-self */
         // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة (لا فوقها).
         if(typeof __gData.caption === 'string' && __gData.caption.trim()){
           cur.messages.push({ role: 'assistant', content: __gData.caption.trim() });
