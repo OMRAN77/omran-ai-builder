@@ -95,8 +95,8 @@ test('٤. minimax-create: الطلب الصحيح (نقطة النهاية v2 / 
   const s = read('api/_lib/minimax-status.js');
   for (const old of ['files/retrieve', 'file_id', 'base_resp', 'MINIMAX_GROUP_ID', '/v1/']) assert.ok(!s.includes(old), 'بقايا v1 في الاستطلاع: ' + old);
   const p = read('api/_lib/points.js');
-  assert.match(p, /minimax_video:\s*\d+,/, 'كلفة minimax_video معرّفة');
-  /* v-minimax-h3: UNIT_COST.minimax_video ١٠٣←١٧٦ مع نقاط الاقتصاديّ معلّقان على قرار المالك (رقعة جاهزة في ملاحظات الجلسة) */
+  assert.match(p, /minimax_video:\s*55,/, 'نقاط الاقتصاديّ بقرار المالك (v-minimax-h3)');
+  assert.equal(require('../api/_lib/_mediaPlans.js').UNIT_COST.minimax_video, 176, 'تكلفتنا: ٦ث × $0.08 × ٣٫٦٧٢٥ (قرار المالك بمضاعفة التكلفة)');
 });
 
 test('٥. الواجهة: خيار المحرّك في القائمة (الافتراضيّ)، وفرع العميل، وترجمة كلّ اللغات', () => {
