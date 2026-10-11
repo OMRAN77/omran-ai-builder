@@ -28,6 +28,7 @@ const PHOTO_B = photo(640, 480, [0.20, 0.25, 0.32, 0.41], 2);
 const RESULT = photo(480, 640, null, 3);
 const faceBox = (b64) => (b64 === PHOTO_A ? [180, 400, 300, 560] : (b64 === PHOTO_B ? [250, 200, 410, 320] : null));
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.GEMINI_API_KEY = 'test-gemini';
 process.env.OPENAI_API_KEY = 'test-openai';
 process.env.IMAGE_UPSCALE = 'off';

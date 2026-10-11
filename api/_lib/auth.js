@@ -211,7 +211,11 @@ function verifyToken(token) {
   }
 }
 
-function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+// v-time-seam: مفصل الزمن لانتظار إعادة محاولة getUser (٣٠٠/٦٠٠/٩٠٠ م.ث). الإنتاج ينام كما كان تمامًا؛
+// الاختبار يضبط OMRAN_TEST_FAST_SLEEP=1 (يُقرأ عند كلّ نداء لا في نطاق الوحدة) فلا يدفع ١٫٨ ثانية لكلّ سجلّ غائب،
+// أو يستبدل _timing.sleep ليرى المُدَد نفسها.
+const _timing = { sleep(ms) { return new Promise((r) => setTimeout(r, process.env.OMRAN_TEST_FAST_SLEEP === '1' ? 0 : ms)); } };
+function sleep(ms) { return _timing.sleep(ms); }
 
 async function getUserOnce(key) {
   try {
@@ -1035,6 +1039,7 @@ module.exports = async (req, res) => {
 
 module.exports.getUser = getUser;
 module.exports.getUserOnce = getUserOnce;
+module.exports._timing = _timing; // v-time-seam: للاختبارات وحدها
 module.exports.putUser = putUser;
 module.exports.hashPassword = hashPassword;
 module.exports.makeToken = makeToken;

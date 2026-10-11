@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Readable } = require('node:stream');
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'test-secret-phone-link';
 process.env.UPSTASH_REDIS_REST_URL = 'http://local-test';
 process.env.TELEGRAM_BOT_TOKEN = 'test-tg-token';

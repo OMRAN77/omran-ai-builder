@@ -5,6 +5,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'test-secret-account-email';
 process.env.UPSTASH_REDIS_REST_URL = 'http://local-test';
 process.env.RESEND_API_KEY = 'test-resend';

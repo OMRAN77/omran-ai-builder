@@ -1,0 +1,8 @@
+{
+ "_note": "سقّاطة البنية (scripts/arch-ratchet.mjs عبر npm run guard): كلّ قيمة سقف لا يُتجاوز، وتنزل ولا ترتفع أبدًا — حين يتحسّن مقياس اخفض قيمته هنا في الالتزام نفسه. قيست على 8687179.",
+ "sendPromptCoreLines": 3672,
+ "sendPromptCoreRegex": 264,
+ "sendPromptCoreTests": 306,
+ "verifyTokenDefs": 17,
+ "vPinTests": 80
+}

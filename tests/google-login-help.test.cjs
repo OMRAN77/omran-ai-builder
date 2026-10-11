@@ -12,6 +12,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'test-secret-google-login-help';
 process.env.UPSTASH_REDIS_REST_URL = 'http://local-test';
 process.env.RESEND_API_KEY = 'test-resend';
