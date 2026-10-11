@@ -96,7 +96,7 @@
            والمالك وحده يأخذ القائمة الحيّة التي يملكها مفتاحه من /api/ai?action=models. */
         /* v-owner-gpt-all (أمر عمران «بعد الانثروبك GPT — نفس الموضوع»): موديلات OpenAI النشطة من صفحاتها الرسميّة (١١ أكتوبر) —
            الرئيسيّة مجموعة OpenAI «Flagship» (Astra · 6.1 Sol · 6 Luna) ثمّ «نماذج أخرى»، وصفّ الجهد. القائمة الحيّة لا تستبدلها (effort). */
-        { grp:1, key:'openai',     name:'GPT · OpenAI',             or:true, store:'aiapp_model',            def:'openai/gpt-6-sol',            effort:true, models:[['openai/gpt-6-astra','GPT-6 Astra'],['openai/gpt-6.1-sol','GPT-6.1 Sol'],['openai/gpt-6-luna','GPT-6 Luna'],['openai/gpt-6-sol','GPT-6 Sol',1],['openai/gpt-5.6-sol','GPT-5.6 Sol',1],['openai/gpt-5.6-terra','GPT-5.6 Terra',1],['openai/gpt-5.6-luna','GPT-5.6 Luna',1],['openai/gpt-5.5','GPT-5.5',1],['openai/gpt-5.4','GPT-5.4',1],['openai/gpt-5.4-mini','GPT-5.4 Mini',1],['openai/gpt-5.2','GPT-5.2',1]] },
+        { grp:1, key:'openai',     name:'GPT · OpenAI',             or:true, store:'aiapp_model',            def:'openai/gpt-6-sol',            odef:'openai/gpt-6-astra', effort:true, models:[['openai/gpt-6-astra','GPT-6 Astra'],['openai/gpt-6.1-sol','GPT-6.1 Sol'],['openai/gpt-6-luna','GPT-6 Luna'],['openai/gpt-6-sol','GPT-6 Sol',1],['openai/gpt-5.6-sol','GPT-5.6 Sol',1],['openai/gpt-5.6-terra','GPT-5.6 Terra',1],['openai/gpt-5.6-luna','GPT-5.6 Luna',1],['openai/gpt-5.5','GPT-5.5',1],['openai/gpt-5.4','GPT-5.4',1],['openai/gpt-5.4-mini','GPT-5.4 Mini',1],['openai/gpt-5.2','GPT-5.2',1]] },
         { grp:1, key:'gemini',     name:'Gemini · Google', or:true, store:'aiapp_gemini_model', def:'google/gemini-3.8-flash', models:[['google/gemini-3.8-flash','Gemini 3.8 Flash']] },
         { grp:2, key:'kimi',       name:'Kimi · Moonshot',          or:true, direct:true, store:'aiapp_kimi_model',       def:'kimi-k3',                     models:[['kimi-k3','Kimi K3'],['kimi-k2.6','Kimi K2.6']] },
         { grp:2, key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v4-pro',     models:[['deepseek/deepseek-v4-pro','DeepSeek V4 Pro']] },
@@ -116,14 +116,19 @@
         if(psv && psv.indexOf('/') > 0 && !pp.models.some(function(m){ return m[0] === psv; })) pp.models.push([psv, psv.split('/')[1], 1]); } }catch(e){ /* guard-ok: تخزين محجوب */ }
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
-      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; if(pv.key === 'openrouter' && v && !pv.models.some(function(m){ return m[0] === v; })) v = ''; if(pv.key === 'groq' && /^meta-llama\/llama-4-/.test(v)) v = ''; /* v-owner-solo: موديل Groq المتقاعد المحفوظ = الافتراضيّ الحيّ */ /* v-prov-or-unique: اختيار قديم مكرّر (Claude/GPT عبر الوسيط) لا يبقى خفيًّا */ /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
+      /* v-owner-gpt-all (أمر المالك ١١ أكتوبر «Astra»): odef = افتراضيّ المالك وحده (GPT-6 Astra)؛ غير المالك على def كما كان (طلبه لا يتغيّر). */
+      function ownDef(){ try{ return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); }catch(e){ return false; } }
+      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; if(pv.key === 'openrouter' && v && !pv.models.some(function(m){ return m[0] === v; })) v = ''; if(pv.key === 'groq' && /^meta-llama\/llama-4-/.test(v)) v = ''; /* v-owner-solo: موديل Groq المتقاعد المحفوظ = الافتراضيّ الحيّ */ /* v-prov-or-unique: اختيار قديم مكرّر (Claude/GPT عبر الوسيط) لا يبقى خفيًّا */ /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || ((pv.odef && ownDef()) ? pv.odef : pv.def); }catch(e){ return pv.def; } }
       /* v-provider-models: العميل يرسل الموديل المختار لكلّ مزوّد على وسيط OpenRouter (كلود له claudeModelGet). */
       window.omranModelFor = function(k){ try{ var pv = provOf(k); return (pv && pv.or) ? curModelId(pv) : ''; }catch(e){ return ''; } };
       /* v-oa-models (لقطة «فحص النظام» ٢٣ سبتمبر: gpt-6-luna-pro ×4): الخادم رفض الموديل المختار (غير موجود أو لا يملكه
          المفتاح) ورجع للافتراضيّ — يُمسح من الاختيار المحفوظ لهذا المزوّد إن كان هو نفسه، فلا يُرسل مع كلّ رسالة بعدها.
          اختيار آخر صالح لا يُمسّ. */
       window.omranForgetModel = function(k, id){
-        try{ var pv = provOf(k); if(!pv || !id) return false; if((localStorage.getItem(pv.store) || '') !== String(id)) return false;
+        try{ var pv = provOf(k); if(!pv || !id) return false;
+          /* افتراضيّ المالك (odef) رفضه المفتاح ولا اختيار محفوظ = يُثبَّت الافتراضيّ العامّ فلا يُجرَّب الميّت في كلّ رسالة */
+          if(!localStorage.getItem(pv.store) && pv.odef && String(id) === pv.odef){ localStorage.setItem(pv.store, pv.def); try{ refresh(); }catch(e3){ /* guard-ok */ } return true; }
+          if((localStorage.getItem(pv.store) || '') !== String(id)) return false;
           localStorage.removeItem(pv.store); try{ refresh(); }catch(e2){ /* guard-ok: الشريط لم يُبنَ بعد */ } return true; }
         catch(e){ return false; /* guard-ok: بلا تخزين يبقى الرجوع للافتراضيّ على الخادم */ }
       };
@@ -186,6 +191,8 @@
       // v-perf-idle-timers: الميزة كلّها «للمالك وحده» (bar.style.display أعلاه none لغير المالك، وpop
       // داخله فلا يُرى أبدًا) لكنّ renderPop() كانت تُستدعى فورًا للجميع — بناء DOM كامل لتسعة مزوّدين
       // وعشرات الأزرار غير مستخدَم أصلًا. الآن تُبنى فقط للمالك؛ لا فرق مرئيّ لغير المالك (كان مخفيًّا دومًا).
+      /* v-owner-gpt-all: مرّة واحدة على جهاز المالك — اختيار GPT المحفوظ قبل اليوم يُمسح فيسري Astra (أمره ١١ أكتوبر)، وما يختاره بعدها يبقى */
+      if(isOwner()){ try{ if(!localStorage.getItem('aiapp_owner_astra_v1')){ localStorage.removeItem('aiapp_model'); localStorage.setItem('aiapp_owner_astra_v1', '1'); } }catch(e){ /* guard-ok: تخزين محجوب */ } }
       if(isOwner()) renderPop();
       /* v-provider-models: القائمة الحيّة من الخادم تُلحق بالافتراضيّ الثابت؛ OpenAI يرتّب الثلاثة العامّة أولًا. */
       if(isOwner()){

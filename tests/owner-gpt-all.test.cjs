@@ -205,6 +205,22 @@ test('٧. modes.js: صفّ GPT بمجموعتيه وصفّ جهده، والقا
   const PROVS = new Function('return ' + m.slice(i + 'var PROVS = '.length, j + '\n      ]'.length))();
   const g = PROVS.find((p) => p.key === 'openai');
   assert.equal(g.def, 'openai/gpt-6-sol', 'افتراضيّ السهم = OR_MODELS.openai كما كان');
+  // أمر المالك ١١ أكتوبر «Astra»: افتراضيّ المالك وحده GPT-6 Astra (odef)؛ غير المالك def كما كان، وافتراضيّ المالك الميّت يُثبَّت def
+  assert.equal(g.odef, 'openai/gpt-6-astra');
+  const sl = m.slice(i, m.indexOf('var ROW =', i));
+  for (const [own, want] of [[true, 'openai/gpt-6-astra'], [false, 'openai/gpt-6-sol']]) {
+    const st = {};
+    const ls2 = { getItem: (k) => (k in st ? st[k] : null), setItem: (k, v) => { st[k] = String(v); }, removeItem: (k) => { delete st[k]; } };
+    const win = {};
+    new Function('localStorage', 'AR', 't', 'window', 'omranOwnerUi', 'refresh', sl)(ls2, true, (k) => k, win, () => own, () => {});
+    assert.equal(win.omranModelFor('openai'), want, own ? 'المالك' : 'غير المالك');
+    if (own) {
+      assert.equal(win.omranForgetModel('openai', 'openai/gpt-6-astra'), true);
+      assert.equal(st.aiapp_model, 'openai/gpt-6-sol', 'Astra ميّت على المفتاح = يُثبَّت الافتراضيّ العامّ فلا يتكرّر الفشل');
+      assert.equal(win.omranModelFor('openai'), 'openai/gpt-6-sol');
+    }
+  }
+  assert.ok(m.includes("if(!localStorage.getItem('aiapp_owner_astra_v1')){ localStorage.removeItem('aiapp_model'); localStorage.setItem('aiapp_owner_astra_v1', '1'); }"), 'ترحيل مرّة واحدة على جهاز المالك');
   assert.equal(g.effort, true);
   assert.deepEqual(g.models.filter((x) => x[2] !== 1).map((x) => x[1]), ['GPT-6 Astra', 'GPT-6.1 Sol', 'GPT-6 Luna']);
   assert.deepEqual(g.models.filter((x) => x[2] === 1).map((x) => x[0]), ['openai/gpt-6-sol', 'openai/gpt-5.6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-luna', 'openai/gpt-5.5', 'openai/gpt-5.4', 'openai/gpt-5.4-mini', 'openai/gpt-5.2']);
