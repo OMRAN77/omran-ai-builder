@@ -140,7 +140,8 @@ module.exports = async (req, res) => {
     if (!user || user.deleted) {
       // v-welcome-cap: كان السجلّ بلا points فيمنحه readPoints ٧٠ بلا أيّ حدّ — الآن من حصّة العنوان واليوم، و0 رقمًا فوقها.
       // دخول حساب قائم لا يمرّ هنا فلا يمسّ العدّادات.
-      const gift = await takeWelcomeGift(req);
+      const giftOut = {}; // v-farm-gate: capped = سقف الشبكة رفض الهديّة (free-tier.js)
+      const gift = await takeWelcomeGift(req, { out: giftOut });
       const { salt, hash } = randomPasswordHash();
       user = {
         username: profile.name || email.split('@')[0],
@@ -151,6 +152,7 @@ module.exports = async (req, res) => {
         createdAt: Date.now(),
         points: gift ? 70 : 0,
         welcomeGift: gift,
+        giftCapped: giftOut.capped === true,
       };
       await putUser(key, user);
     }

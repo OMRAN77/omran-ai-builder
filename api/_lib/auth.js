@@ -178,6 +178,7 @@ async function moveLiveCounters(oldKey, newKey, user) {
   const at = Math.floor(Number(user.planUpdatedAt) || 0); // فيديوهات الباقة للفترة الحاليّة (_planVideos.js)
   if (at > 0) await move('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
   await require('./_usage.js').moveTodayTallies(oldKey, newKey);
+  await require('./_dailyQuota.js').moveToday(oldKey, newKey); // v-farm-gate: حصص أدوات الصور والفيديو اليوميّة كانت تتصفّر بتغيير الاسم
   await require('./cost-meter.js').moveMonthCosts(oldKey, newKey);
 }
 
@@ -485,7 +486,8 @@ module.exports = async (req, res) => {
         return;
       }
       // v-welcome-cap: الهديّة تُحجز بعد كلّ رفض (محاولة فاشلة لا تأكل حصّة)، وفوق السقف حساب برصيد 0 لا رفض.
-      const gift = await takeWelcomeGift(req);
+      const giftOut = {}; // v-farm-gate: capped = سقف الشبكة رفض الهديّة (free-tier.js)
+      const gift = await takeWelcomeGift(req, { out: giftOut });
       const { salt, hash } = hashPassword(password);
       const user = {
         username: String(username).trim(), salt, hash,
@@ -496,6 +498,7 @@ module.exports = async (req, res) => {
         // ‏0 رقمًا لا غيابًا: سجلّ بلا points يمنحه readPoints (points.js) ٧٠ عند أوّل قراءة.
         points: gift ? 70 : 0,
         welcomeGift: gift,
+        giftCapped: giftOut.capped === true,
       };
       await putUser(key, user);
       // v380: فهرس الإيميل → الدخول بجوجل بنفس الإيميل يفتح هذا الحساب نفسه
@@ -957,7 +960,8 @@ module.exports = async (req, res) => {
           candidateKey = '';
         }
         if (!candidateKey) candidateKey = 'user_' + crypto.randomBytes(6).toString('hex');
-        const gift = OTP_SIGNUP_GIFT > 0 && await takeWelcomeGift(req);
+        const giftOut = {}; // v-farm-gate: capped = سقف الشبكة رفض الهديّة (free-tier.js)
+        const gift = OTP_SIGNUP_GIFT > 0 && await takeWelcomeGift(req, { out: giftOut });
         const { salt, hash } = hashPassword(crypto.randomBytes(32).toString('hex'));
         user = {
           username: candidateKey, salt, hash,
@@ -966,6 +970,7 @@ module.exports = async (req, res) => {
           createdAt: Date.now(),
           points: gift ? OTP_SIGNUP_GIFT : 0,
           welcomeGift: !!gift,
+          giftCapped: giftOut.capped === true,
           otpOnly: true,
         };
         userKey = candidateKey;
