@@ -89,10 +89,14 @@
          المفتوحة والسريعة، ثمّ البحث والوسيط — وكلّ اسم بصيغة واحدة «الاسم · الشركة» (كانت «كلود» و«جوجل جيميني» بين
          أسماء لاتينيّة). Kimi جديد (v-kimi): مسار Moonshot المباشر بمفتاح المالك، ومعرّفاته بلا بادئة كـGroq. */
       var PROVS = [
-        { grp:1, key:'claude',     name:'Claude · Anthropic',      store:'aiapp_claude_model',     def:'claude-haiku-4-5',     models:[['claude-opus-5-5','Opus 5.5'],['claude-sonnet-5','Sonnet 5'],['claude-haiku-4-5','Haiku 4.5'],['claude-fable-5-1','Fable 5.1']] },
+        /* v-owner-claude-all (أمر عمران ١٠ أكتوبر، لقطة منتقي تطبيق Claude): كلّ نماذج Claude — الأربعة الرئيسيّة ثمّ «نماذج أخرى»
+           (العنصر الثالث 1)، وصفّ «الجهد» بينهما (effort). الافتراضيّ للمالك Opus 5.5 (الخادم يطبّقه حين لا اختيار). */
+        { grp:1, key:'claude',     name:'Claude · Anthropic',      store:'aiapp_claude_model',     def:'claude-opus-5-5',     effort:true, models:[['claude-opus-5-5','Opus 5.5'],['claude-fable-5-1','Fable 5.1'],['claude-sonnet-5-5','Sonnet 5.5'],['claude-haiku-5-5','Haiku 5.5'],['claude-haiku-4-5','Haiku 4.5',1],['claude-sonnet-5','Sonnet 5',1],['claude-opus-5','Opus 5',1],['claude-fable-5','Fable 5',1],['claude-opus-4-8','Opus 4.8',1],['claude-opus-4-7','Opus 4.7',1],['claude-opus-4-6','Opus 4.6',1],['claude-sonnet-4-6','Sonnet 4.6',1]] },
         /* v-provider-models/v-openai-pick: المعرّفات هنا هي نفسها التي يرسلها الخادم؛
            والمالك وحده يأخذ القائمة الحيّة التي يملكها مفتاحه من /api/ai?action=models. */
-        { grp:1, key:'openai',     name:'GPT · OpenAI',             or:true, store:'aiapp_model',            def:'openai/gpt-6-sol',            models:[['openai/gpt-6-astra','GPT-6 Astra'],['openai/gpt-6-sol','GPT-6 Sol'],['openai/gpt-6-luna','GPT-6 Luna']] },
+        /* v-owner-gpt-all (أمر عمران «بعد الانثروبك GPT — نفس الموضوع»): موديلات OpenAI النشطة من صفحاتها الرسميّة (١١ أكتوبر) —
+           الرئيسيّة مجموعة OpenAI «Flagship» (Astra · 6.1 Sol · 6 Luna) ثمّ «نماذج أخرى»، وصفّ الجهد. القائمة الحيّة لا تستبدلها (effort). */
+        { grp:1, key:'openai',     name:'GPT · OpenAI',             or:true, store:'aiapp_model',            def:'openai/gpt-6-sol',            odef:'openai/gpt-6-astra', effort:true, models:[['openai/gpt-6-astra','GPT-6 Astra'],['openai/gpt-6.1-sol','GPT-6.1 Sol'],['openai/gpt-6-luna','GPT-6 Luna'],['openai/gpt-6-sol','GPT-6 Sol',1],['openai/gpt-5.6-sol','GPT-5.6 Sol',1],['openai/gpt-5.6-terra','GPT-5.6 Terra',1],['openai/gpt-5.6-luna','GPT-5.6 Luna',1],['openai/gpt-5.5','GPT-5.5',1],['openai/gpt-5.4','GPT-5.4',1],['openai/gpt-5.4-mini','GPT-5.4 Mini',1],['openai/gpt-5.2','GPT-5.2',1]] },
         { grp:1, key:'gemini',     name:'Gemini · Google', or:true, store:'aiapp_gemini_model', def:'google/gemini-3.8-flash', models:[['google/gemini-3.8-flash','Gemini 3.8 Flash']] },
         { grp:2, key:'kimi',       name:'Kimi · Moonshot',          or:true, direct:true, store:'aiapp_kimi_model',       def:'kimi-k3',                     models:[['kimi-k3','Kimi K3'],['kimi-k2.6','Kimi K2.6']] },
         { grp:2, key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v4-pro',     models:[['deepseek/deepseek-v4-pro','DeepSeek V4 Pro']] },
@@ -106,16 +110,25 @@
            فوق (xAI وQwen) — موديلاته السبعة القديمة كانت كلّها تحت شركاتها. المعرّفات من كتالوج OpenRouter. */
         { grp:3, key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'x-ai/grok-4.6',            models:[['x-ai/grok-4.6','Grok 4.6'],['x-ai/grok-4.20','Grok 4.20'],['qwen/qwen3.6-27b','Qwen 3.6 27B']] }
       ];
+      /* v-owner-gpt-all (مراجعة): اختيار GPT محفوظ من القائمة الحيّة القديمة وليس في المنسّقة يُضاف لـ«نماذج أخرى» باسمه —
+         كان يُرسل ولا يظهر في الشريحة ولا يُعلَّم ولا يُعاد اختياره. */
+      try{ for(var pi=0;pi<PROVS.length;pi++){ var pp = PROVS[pi], psv = pp.or && pp.effort ? (localStorage.getItem(pp.store) || '') : '';
+        if(psv && psv.indexOf('/') > 0 && !pp.models.some(function(m){ return m[0] === psv; })) pp.models.push([psv, psv.split('/')[1], 1]); } }catch(e){ /* guard-ok: تخزين محجوب */ }
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
-      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; if(pv.key === 'openrouter' && v && !pv.models.some(function(m){ return m[0] === v; })) v = ''; if(pv.key === 'groq' && /^meta-llama\/llama-4-/.test(v)) v = ''; /* v-owner-solo: موديل Groq المتقاعد المحفوظ = الافتراضيّ الحيّ */ /* v-prov-or-unique: اختيار قديم مكرّر (Claude/GPT عبر الوسيط) لا يبقى خفيًّا */ /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || pv.def; }catch(e){ return pv.def; } }
+      /* v-owner-gpt-all (أمر المالك ١١ أكتوبر «Astra»): odef = افتراضيّ المالك وحده (GPT-6 Astra)؛ غير المالك على def كما كان (طلبه لا يتغيّر). */
+      function ownDef(){ try{ return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); }catch(e){ return false; } }
+      function curModelId(pv){ try{ var v = localStorage.getItem(pv.store) || ''; if(pv.or && !pv.direct && v && v.indexOf('/') === -1) v = ''; if(pv.key === 'openrouter' && v && !pv.models.some(function(m){ return m[0] === v; })) v = ''; if(pv.key === 'groq' && /^meta-llama\/llama-4-/.test(v)) v = ''; /* v-owner-solo: موديل Groq المتقاعد المحفوظ = الافتراضيّ الحيّ */ /* v-prov-or-unique: اختيار قديم مكرّر (Claude/GPT عبر الوسيط) لا يبقى خفيًّا */ /* v-provider-models: معرّف قديم بلا بادئة = الافتراضيّ؛ v-owner-direct: Groq معرّفاته من Groq نفسه وبعضها بلا بادئة */ return v || ((pv.odef && ownDef()) ? pv.odef : pv.def); }catch(e){ return pv.def; } }
       /* v-provider-models: العميل يرسل الموديل المختار لكلّ مزوّد على وسيط OpenRouter (كلود له claudeModelGet). */
       window.omranModelFor = function(k){ try{ var pv = provOf(k); return (pv && pv.or) ? curModelId(pv) : ''; }catch(e){ return ''; } };
       /* v-oa-models (لقطة «فحص النظام» ٢٣ سبتمبر: gpt-6-luna-pro ×4): الخادم رفض الموديل المختار (غير موجود أو لا يملكه
          المفتاح) ورجع للافتراضيّ — يُمسح من الاختيار المحفوظ لهذا المزوّد إن كان هو نفسه، فلا يُرسل مع كلّ رسالة بعدها.
          اختيار آخر صالح لا يُمسّ. */
       window.omranForgetModel = function(k, id){
-        try{ var pv = provOf(k); if(!pv || !id) return false; if((localStorage.getItem(pv.store) || '') !== String(id)) return false;
+        try{ var pv = provOf(k); if(!pv || !id) return false;
+          /* افتراضيّ المالك (odef) رفضه المفتاح ولا اختيار محفوظ = يُثبَّت الافتراضيّ العامّ فلا يُجرَّب الميّت في كلّ رسالة */
+          if(!localStorage.getItem(pv.store) && pv.odef && String(id) === pv.odef){ localStorage.setItem(pv.store, pv.def); try{ refresh(); }catch(e3){ /* guard-ok */ } return true; }
+          if((localStorage.getItem(pv.store) || '') !== String(id)) return false;
           localStorage.removeItem(pv.store); try{ refresh(); }catch(e2){ /* guard-ok: الشريط لم يُبنَ بعد */ } return true; }
         catch(e){ return false; /* guard-ok: بلا تخزين يبقى الرجوع للافتراضيّ على الخادم */ }
       };
@@ -143,13 +156,31 @@
       var ROW = 'display:block; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:9px 12px; border-radius:8px; cursor:pointer;';
       function optRow(act, label, key){ var a = key ? ' data-i18n="' + key + '"' : ''; return '<button type="button" class="omModelOpt" data-act="' + act + '" style="' + ROW + '"><span' + a + '>' + label + '</span></button>'; }
       var divider = '<div style="height:1px; margin:5px 6px; background:var(--border,rgba(255,255,255,.12));"></div>';
+      /* v-owner-claude-all: نصوص المنتقي الجديدة بمفاتيح ترجمة (١٤ لغة) واحتياط عربيّ/إنجليزيّ إن لم يجهز i18n. */
+      function tr(key, ar, en){ try{ if(typeof t === 'function'){ var v = t(key); if(v && v !== key) return v; } }catch(e){ /* guard-ok: i18n لم يجهز — الاحتياط */ } return AR ? ar : en; }
+      var EFFORT_OPTS = [['', 'effortAuto', 'تلقائي', 'Auto'], ['low', 'effortLow', 'منخفض', 'Low'], ['medium', 'effortMedium', 'متوسّط', 'Medium'], ['high', 'effortHigh', 'عالٍ', 'High'], ['xhigh', 'effortExtra', 'إضافيّ', 'Extra'], ['max', 'effortMax', 'أقصى', 'Max']];
+      function effortLabel(v){ for(var i=0;i<EFFORT_OPTS.length;i++){ if(EFFORT_OPTS[i][0] === v) return tr(EFFORT_OPTS[i][1], EFFORT_OPTS[i][2], EFFORT_OPTS[i][3]); } return tr('effortAuto', 'تلقائي', 'Auto'); }
+      var SUB = ROW + ' display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:500; opacity:.9;';
+      function modelBtn(p, m){ return '<button type="button" class="omProvModel" data-prov="' + p.key + '" data-store="' + p.store + '" data-model="' + m[0] + '" style="' + ROW + ' font-weight:500; opacity:.9;">' + m[1] + '</button>'; }
       function provsHTML(){
         var out = '';
         for(var i=0;i<PROVS.length;i++){ var p = PROVS[i];
           if(i && p.grp !== PROVS[i-1].grp) out += divider; // v-prov-order: خطّ رفيع بين المجموعات
           out += '<button type="button" class="omProvHead" data-prov="' + p.key + '" style="' + ROW + ' display:flex; align-items:center; justify-content:space-between; gap:8px;"><span>' + p.name + '</span><span class="omProvChev" style="color:var(--muted,#9a958a); font-size:11px;">▸</span></button>';
           out += '<div class="omProvModels" data-for="' + p.key + '" hidden style="padding-inline-start:10px;">';
-          for(var j=0;j<p.models.length;j++){ out += '<button type="button" class="omProvModel" data-prov="' + p.key + '" data-store="' + p.store + '" data-model="' + p.models[j][0] + '" style="' + ROW + ' font-weight:500; opacity:.9;">' + p.models[j][1] + '</button>'; }
+          var more = '';
+          for(var j=0;j<p.models.length;j++){ if(p.models[j][2] === 1) more += modelBtn(p, p.models[j]); else out += modelBtn(p, p.models[j]); }
+          /* v-owner-claude-all: «الجهد» تحت الرئيسيّة كمنتقي Claude، ثمّ «نماذج أخرى» مطويّة — صناديق فرعيّة بأصناف خاصّة كي لا يطويها رأس المزوّد. */
+          if(p.effort){
+            out += '<button type="button" class="omEffortHead" data-for="' + p.key + '" style="' + SUB + '"><span data-i18n="effortLabel">' + tr('effortLabel', 'الجهد', 'Effort') + '</span><span style="display:flex; align-items:center; gap:8px;"><span class="omEffortVal" style="color:var(--muted,#9a958a); font-size:12px;"></span><span class="omEffortChev" style="color:var(--muted,#9a958a); font-size:11px;">▸</span></span></button>';
+            out += '<div class="omEffortBox" data-for="' + p.key + '" hidden style="padding-inline-start:10px;">';
+            for(var k=0;k<EFFORT_OPTS.length;k++){ out += '<button type="button" class="omEffortOpt" data-effort="' + EFFORT_OPTS[k][0] + '" style="' + ROW + ' font-weight:500; opacity:.9;"><span data-i18n="' + EFFORT_OPTS[k][1] + '">' + tr(EFFORT_OPTS[k][1], EFFORT_OPTS[k][2], EFFORT_OPTS[k][3]) + '</span></button>'; }
+            out += '</div>';
+          }
+          if(more){
+            out += '<button type="button" class="omMoreHead" data-for="' + p.key + '" style="' + SUB + '"><span data-i18n="otherModelsLabel">' + tr('otherModelsLabel', 'نماذج أخرى', 'Other models') + '</span><span class="omMoreChev" style="color:var(--muted,#9a958a); font-size:11px;">▸</span></button>';
+            out += '<div class="omProvMore" data-for="' + p.key + '" hidden style="padding-inline-start:10px;">' + more + '</div>';
+          }
           out += '</div>';
         }
         return out;
@@ -160,6 +191,8 @@
       // v-perf-idle-timers: الميزة كلّها «للمالك وحده» (bar.style.display أعلاه none لغير المالك، وpop
       // داخله فلا يُرى أبدًا) لكنّ renderPop() كانت تُستدعى فورًا للجميع — بناء DOM كامل لتسعة مزوّدين
       // وعشرات الأزرار غير مستخدَم أصلًا. الآن تُبنى فقط للمالك؛ لا فرق مرئيّ لغير المالك (كان مخفيًّا دومًا).
+      /* v-owner-gpt-all: مرّة واحدة على جهاز المالك — اختيار GPT المحفوظ قبل اليوم يُمسح فيسري Astra (أمره ١١ أكتوبر)، وما يختاره بعدها يبقى */
+      if(isOwner()){ try{ if(!localStorage.getItem('aiapp_owner_astra_v1')){ localStorage.removeItem('aiapp_model'); localStorage.setItem('aiapp_owner_astra_v1', '1'); } }catch(e){ /* guard-ok: تخزين محجوب */ } }
       if(isOwner()) renderPop();
       /* v-provider-models: القائمة الحيّة من الخادم تُلحق بالافتراضيّ الثابت؛ OpenAI يرتّب الثلاثة العامّة أولًا. */
       if(isOwner()){
@@ -170,7 +203,7 @@
               if(!d || !d.models) return;
               var changed = false;
               for(var i=0;i<PROVS.length;i++){ var p = PROVS[i]; var L = d.models[p.key];
-                if(!p.or || !L || !L.length) continue;
+                if(!p.or || p.effort || !L || !L.length) continue; /* v-owner-gpt-all: القائمة المنسّقة (بمجموعتيها وجهدها) لا تُستبدل بالحيّة */
                 var has = false; for(var j=0;j<L.length;j++){ if(L[j][0] === p.def) has = true; }
                 var defLabel = p.def; for(j=0;j<p.models.length;j++){ if(p.models[j][0] === p.def){ defLabel = p.models[j][1]; break; } }
                 p.models = (has ? [] : [[p.def, defLabel]]).concat(L); changed = true;
@@ -196,9 +229,25 @@
           var heads = pop.querySelectorAll('.omProvHead'); for(var i=0;i<heads.length;i++){ heads[i].style.color = (heads[i].getAttribute('data-prov') === pk) ? ACCENT : INK; }
           var ms = pop.querySelectorAll('.omProvModel'); for(i=0;i<ms.length;i++){ var on = ms[i].getAttribute('data-prov') === pk && ms[i].getAttribute('data-model') === mid; ms[i].style.color = on ? ACCENT : INK; }
         }catch(e){ /* guard-ok */ }
+        /* v-owner-claude-all + v-owner-gpt-all: صفّ الجهد لكلّ مزوّد يتبع موديله المحفوظ — موديل بلا جهد يُخفي الصفّ، ومستوى ينزل عند
+           الموديل (Extra على Opus/Sonnet 4.6، Max على GPT-5.5/5.4/5.2) يُخفى؛ والقيمة المعروضة هي المرسَلة فعلًا. */
+        try{
+          var ehs = pop.querySelectorAll('.omEffortHead');
+          for(var h=0;h<ehs.length;h++){
+            var eh = ehs[h], ek = eh.getAttribute('data-for'), eb = pop.querySelector('.omEffortBox[data-for="' + ek + '"]');
+            var epv = provOf(ek), cm = epv ? curModelId(epv) : '';
+            var isG = ek === 'openai', forFn = isG ? window.gptEffortFor : window.claudeEffortFor;
+            var sv = isG ? (window.gptEffortSaved ? window.gptEffortSaved() : '') : (window.claudeEffortSaved ? window.claudeEffortSaved() : '');
+            var ok = !!(forFn && forFn(cm, 'low'));
+            eh.style.display = ok ? 'flex' : 'none'; if(!ok && eb){ eb.hidden = true; var ec3 = eh.querySelector('.omEffortChev'); if(ec3) ec3.textContent = '▸'; }
+            var ev = forFn ? forFn(cm, sv) : '';
+            var vl = eh.querySelector('.omEffortVal'); if(vl) vl.textContent = effortLabel(ev);
+            var eo = eb ? eb.querySelectorAll('.omEffortOpt') : []; for(var q=0;q<eo.length;q++){ var v = eo[q].getAttribute('data-effort'); eo[q].style.color = (v === ev) ? ACCENT : INK; eo[q].style.display = (v && forFn && forFn(cm, v) !== v) ? 'none' : 'block'; }
+          }
+        }catch(e){ /* guard-ok: صفّ الجهد تحسينيّ */ }
       }
       function setAgent(on){ if((window.__agentModeOn === true) !== on){ var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); } }
-      function collapseAll(){ var g = pop.querySelectorAll('.omProvModels'); for(var i=0;i<g.length;i++) g[i].hidden = true; var c = pop.querySelectorAll('.omProvChev'); for(i=0;i<c.length;i++) c[i].textContent = '▸'; }
+      function collapseAll(){ var g = pop.querySelectorAll('.omProvModels, .omProvMore, .omEffortBox'); for(var i=0;i<g.length;i++) g[i].hidden = true; var c = pop.querySelectorAll('.omProvChev, .omMoreChev, .omEffortChev'); for(i=0;i<c.length;i++) c[i].textContent = '▸'; }
 
       chip.addEventListener('click', function(e){ e.stopPropagation(); var showing = pop.style.display !== 'none'; pop.style.display = showing ? 'none' : 'block'; if(!showing){ collapseAll(); refresh(); } });
       pop.addEventListener('click', function(e){
@@ -208,6 +257,15 @@
           else if(act === 'cc'){ if(window.__omMode === 'cc') pick(null); else { setAgent(false); pick('cc'); } }
           refresh(); pop.style.display = 'none'; return;
         }
+        /* v-owner-claude-all: «نماذج أخرى» و«الجهد» صناديق فرعيّة داخل صندوق المزوّد — تُفتح وتُطوى بلا طيّ صندوقه. */
+        var mh = e.target.closest('.omMoreHead');
+        if(mh){ e.stopPropagation(); var mb = pop.querySelector('.omProvMore[data-for="' + mh.getAttribute('data-for') + '"]'); if(mb){ mb.hidden = !mb.hidden; var mc = mh.querySelector('.omMoreChev'); if(mc) mc.textContent = mb.hidden ? '▸' : '▾'; } return; }
+        var ehd = e.target.closest('.omEffortHead');
+        if(ehd){ e.stopPropagation(); var ebx = pop.querySelector('.omEffortBox[data-for="' + ehd.getAttribute('data-for') + '"]'); if(ebx){ ebx.hidden = !ebx.hidden; var ec = ehd.querySelector('.omEffortChev'); if(ec) ec.textContent = ebx.hidden ? '▸' : '▾'; } return; }
+        var eopt = e.target.closest('.omEffortOpt');
+        if(eopt){ e.stopPropagation(); var ebx2 = eopt.closest('.omEffortBox'), efor = ebx2 ? ebx2.getAttribute('data-for') : 'claude';
+          try{ var setFn = (efor === 'openai') ? window.gptEffortSet : window.claudeEffortSet; if(setFn) setFn(eopt.getAttribute('data-effort') || ''); }catch(e4){ /* guard-ok */ }
+          if(ebx2) ebx2.hidden = true; var ehd2 = pop.querySelector('.omEffortHead[data-for="' + efor + '"]'), ec2 = ehd2 && ehd2.querySelector('.omEffortChev'); if(ec2) ec2.textContent = '▸'; refresh(); return; }
         var head = e.target.closest('.omProvHead');
         if(head){ e.stopPropagation(); var key = head.getAttribute('data-prov'); var box = pop.querySelector('.omProvModels[data-for="' + key + '"]'); var open = box && !box.hidden; collapseAll(); if(box){ box.hidden = open; head.querySelector('.omProvChev').textContent = open ? '▸' : '▾'; } return; }
         var pm = e.target.closest('.omProvModel');

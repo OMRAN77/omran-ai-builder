@@ -59,7 +59,7 @@ const SMALL_NOTE = 'أنت موديل خفيف وسريع: قوّتك السرع
 
 /* معلومة لا يعرفها أيّ موديل من تدريبه: من هم أحدث الموديلات «الآن». القائمة من التطبيق نفسه (CLAUDE_MODELS وOR_MODELS
    وoa-direct في هذا المستودع) لا من ذاكرة — فلا يقول موديل للمالك إنّ أحدث موجود هو ما انتهى عنده تدريبه. */
-const LANDSCAPE_NOTE = 'معلومة محدّثة (من التطبيق نفسه، أحدث من تدريبك): الموديلات المتاحة في هذا التطبيق الآن — Anthropic: Claude Fable 5.1 (الأقوى) وOpus 5.5 وSonnet 5 وHaiku 4.5؛ OpenAI: GPT-6 (Sol وAstra وLuna)؛ Google: Gemini 3.8 Flash؛ DeepSeek: V4 Pro؛ Mistral: Medium 3.5؛ Cohere: Command A؛ Moonshot: Kimi K3؛ xAI: Grok 4.6؛ Groq يشغّل GPT-OSS 120B. إن سُئلت عن «أحدث موديل» أو قارنت بين موديلات فانطلق من هذه القائمة لا من ذاكرتك، وللتفاصيل والأرقام ابحث.';
+const LANDSCAPE_NOTE = 'معلومة محدّثة (من التطبيق نفسه، أحدث من تدريبك): الموديلات المتاحة في هذا التطبيق الآن — Anthropic: Claude Fable 5.1 (الأقوى) وOpus 5.5 وSonnet 5.5 وHaiku 5.5، والأقدم Opus 5 وFable 5 وSonnet 5 وOpus 4.8/4.7/4.6 وSonnet 4.6 وHaiku 4.5؛ OpenAI: GPT-6 (Sol وAstra وLuna)؛ Google: Gemini 3.8 Flash؛ DeepSeek: V4 Pro؛ Mistral: Medium 3.5؛ Cohere: Command A؛ Moonshot: Kimi K3؛ xAI: Grok 4.6؛ Groq يشغّل GPT-OSS 120B. إن سُئلت عن «أحدث موديل» أو قارنت بين موديلات فانطلق من هذه القائمة لا من ذاكرتك، وللتفاصيل والأرقام ابحث.';
 
 const PROV_DEFAULT = { claude: 'claude', openai: 'gpt', gemini: 'gemini', deepseek: 'deepseek', mistral: 'mistral', cohere: 'cohere', kimi: 'kimi', groq: 'gpt-oss' };
 
