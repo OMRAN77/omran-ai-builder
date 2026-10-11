@@ -10,6 +10,7 @@
 //       الثانية عند التوليد» — صورتان موضَّحتان، رقم فقط داخل الحلقة، ومشهدان يتبادلان.
 // v-gen-steady (بلقطة من الموقع: «الصورة بعد ما تخلص تنزل تحت — أريدها تكون ثابتة نفس المكان، والعدّاد الخارجيّ الصغير اللي
 //   مكتوب نرسم تحت فيه وميض قويّ»): النتيجة وأزرارها تُنقل مكان المشهد وتدخل كاملة في الشاشة، وسطر الوقت لا يرمش ولا يتزحزح.
+// v-fashion-compare-rtl (المالك: «أصلحه»): شريط «قبل/بعد» منطبق في الواجهة العربيّة ولا يغطّي صفّ التعديل ولا يخطف نقره.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -300,7 +301,7 @@ test('١٠. «الصورة بعد ما تخلص تنزل تحت — أريدها
     const ctx = {
       $: (sel) => (sel === '#fashionAiImagePane' ? pane : null),
       document: { getElementById: (id) => (id === 'fxTry' && opts.fxTry !== false ? nodes.fxTry : null) },
-      resultWrap: nodes.resultWrap, downloadEl: nodes.downloadEl, favSaveBtn: nodes.favSaveBtn, resultEl, beforeImg,
+      resultWrap: nodes.resultWrap, downloadEl: nodes.downloadEl, favSaveBtn: nodes.favSaveBtn, resultEl, beforeImg, beforeWrap: { style: {} },
       window: win, ResizeObserver: opts.noRO ? undefined : RO, __swallow: (e) => { throw e; }, Object, Math,
     };
     vm.runInNewContext(block + ';this.setPending = () => { fxRevealPending = true; }; this.reveal = fxRevealResult;', ctx);
@@ -386,7 +387,56 @@ test('١١. التعديل الموضعيّ: المشهد يحلّ مكان ال
   assert.equal(SRC.split('applyHide(p, scopeEl);').length - 1, 2, 'عند التركيب، وفي آخر كلّ مسح');
 });
 
-test('١٢. لا اسم مزوّد، والحزمة والتسجيل والقرار', () => {
+test('١٢. «أصلحه»: شريط «قبل/بعد» — «قبل» منطبقة على «بعد» في الواجهة العربيّة، طبقتها على الصورة وحدها، ونقر صفّ التعديل ليس سحبًا', () => {
+  const st = read('js/app-12-studios.js');
+  // (أ) الطبقة LTR دائمًا وارتفاعها ارتفاع الصورة — تُشغَّل كتلة النقل نفسها على عقد وهميّة
+  const a = st.indexOf("const FX_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };");
+  const b = st.indexOf("const favoritesBtn = $('#fashionAiFavoritesBtn');", a);
+  const observed = [];
+  function RO(cb) { this.cb = cb; }
+  RO.prototype.observe = function (el) { observed.push({ el, cb: this.cb }); };
+  const resultWrap = { id: 'fashionAiResultWrap', style: {}, clientWidth: 0 };
+  const resultEl = { naturalWidth: 0, naturalHeight: 0, clientHeight: 0, addEventListener: () => {}, scrollIntoView: () => {} };
+  const beforeWrap = { style: { height: '100%' } };
+  const beforeImg = { style: {} };
+  vm.runInNewContext(st.slice(a, b), {
+    $: () => null, document: { getElementById: () => null }, resultWrap, downloadEl: { style: {} }, favSaveBtn: { style: {} }, resultEl, beforeWrap, beforeImg,
+    window: { innerHeight: 900, addEventListener: () => {} }, ResizeObserver: RO, __swallow: (e) => { throw e; }, Object, Math,
+  });
+  assert.equal(beforeWrap.style.direction, 'ltr', 'الصورة الأعرض من طبقتها تبدأ من يسارها — في RTL كانت تفيض يسارًا فيظهر نصفها الأيمن');
+  observed[0].cb();
+  assert.equal(beforeWrap.style.height, '100%', 'حاوية مخفيّة: لا شيء يُكتب');
+  resultWrap.clientWidth = 473;
+  observed[0].cb();
+  assert.equal(beforeImg.style.width, '473px'); assert.equal(beforeWrap.style.height, '100%', 'الصورة لم تُحمَّل بعد: الارتفاع كما هو');
+  resultEl.clientHeight = 631;
+  observed[0].cb();
+  assert.equal(beforeWrap.style.height, '631px', 'ارتفاع الطبقة = ارتفاع الصورة (الحاوية ٦٧٩ بصفّ التعديل) — الزرّ لا يُغطّى، و«قبل» في صندوق «بعد» نفسه');
+  // (ب) نقر صفّ التعديل لا يسحب الشريط ولا يمنع التركيز؛ والسحب على الصورة كما كان
+  const h0 = st.indexOf('let __fashionBaDragging = false;');
+  const h1 = st.indexOf('/* ---- 📊 v-fashion-compare-cards', h0);
+  assert.ok(h0 > 0 && h1 > h0);
+  const on = {}; const clips = []; let prevented = 0;
+  const wrap = { style: {}, addEventListener: (ev, fn) => { on[ev] = fn; }, getBoundingClientRect: () => ({ left: 0, width: 400 }), setPointerCapture: () => {} };
+  const bw = { style: { display: 'block' } };
+  vm.runInNewContext(st.slice(h0, h1), { resultWrap: wrap, beforeWrap: bw, updateSliderClip: (p) => clips.push(p) });
+  const ev = (inRow, x) => ({ target: { closest: (sel) => (sel === '#fashionRefineRow' && inRow ? {} : null) }, clientX: x, pointerId: 1, preventDefault: () => { prevented++; } });
+  on.pointerdown(ev(true, 100)); on.pointermove(ev(true, 300));
+  assert.equal(clips.length, 0, 'نقر الحقل أو الزرّ لا يحرّك الشريط');
+  assert.equal(prevented, 0, 'ولا يُمنع افتراضيّه — فيتركّز الحقل وينضغط الزرّ');
+  on.pointerdown(ev(false, 100)); on.pointermove(ev(false, 200));
+  assert.equal(clips.join(','), '25,50', 'السحب على الصورة كما كان');
+  assert.equal(prevented, 1);
+  on.pointerup(ev(false, 200)); on.pointermove(ev(false, 300));
+  assert.equal(clips.length, 2, 'انتهى السحب برفع الإصبع');
+  bw.style.display = 'none';
+  on.pointerdown(ev(false, 100));
+  assert.equal(clips.length, 2, 'بلا «قبل» لا شريط');
+  const bundle = read('js/app.bundle.js');
+  assert.ok(bundle.includes("if(beforeWrap) beforeWrap.style.direction = 'ltr';") && bundle.includes("if(ev.target && ev.target.closest && ev.target.closest('#fashionRefineRow')) return;"), 'الحزمة تحمل الإصلاح');
+});
+
+test('١٣. لا اسم مزوّد، والحزمة والتسجيل والقرار', () => {
   assert.doesNotMatch(SRC, /Gemini|GPT|OpenAI|Runway|Claude/i, 'لا اسم مزوّد');
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes("src: '/assets/fashion/gen-scene.webp?v=3'") && bundle.includes("src: '/assets/fashion/gen-scene-gold.webp?v=1'"), 'الحزمة تحمل المشهدين');

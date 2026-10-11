@@ -1419,11 +1419,21 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function fxRevealResult(){
     try{ resultEl.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(err){ __swallow(err, 'fashion:scroll'); }
   }
+  /* v-fashion-compare-rtl (المالك ١١ أكتوبر: «أصلحه»): شريط «قبل/بعد» في الواجهة العربيّة كان يعرض جزءًا مزاحًا من صورة «قبل»
+     — الصورة أعرض من طبقتها المقصوصة فتفيض يسارًا في RTL وتبدأ من حافّة الطبقة اليمنى لا اليسرى؛ الطبقة LTR دائمًا.
+     وكانت الطبقة بارتفاع الحاوية كلّها (height:100%) والحاوية تضمّ صفّ التعديل تحت الصورة — فتغطّي زرّه؛ ارتفاعها الآن
+     ارتفاع الصورة وحدها، فتنطبق «قبل» على «بعد» بالضبط ويبقى الصفّ ظاهرًا. */
+  if(beforeWrap) beforeWrap.style.direction = 'ltr';
+  function fxSyncBefore(){
+    if(!resultWrap.clientWidth) return false;
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+    if(beforeWrap && resultEl.clientHeight) beforeWrap.style.height = resultEl.clientHeight + 'px';
+    return true;
+  }
   if(resultWrap && beforeImg && typeof ResizeObserver === 'function'){
     try{
       new ResizeObserver(() => {
-        if(!resultWrap.clientWidth) return;
-        beforeImg.style.width = resultWrap.clientWidth + 'px';
+        if(!fxSyncBefore()) return;
         if(fxRevealPending){ fxRevealPending = false; fxRevealResult(); }
       }).observe(resultWrap);
     }catch(e){ __swallow(e, 'fashion:before-sync'); }
@@ -1712,6 +1722,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     resultWrap.style.touchAction = 'none';
     resultWrap.addEventListener('pointerdown', (ev) => {
       if(!beforeWrap || beforeWrap.style.display === 'none') return;
+      /* v-fashion-compare-rtl: صفّ التعديل داخل الحاوية — نقره ليس سحبًا للشريط (كان يُحرّك الشريط ويمنع تركيز الحقل ونقر الزرّ) */
+      if(ev.target && ev.target.closest && ev.target.closest('#fashionRefineRow')) return;
       __fashionBaDragging = true;
       try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
       updateSliderClip(fashionBaPctFromEvent(ev));
