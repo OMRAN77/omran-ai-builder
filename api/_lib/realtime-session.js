@@ -239,17 +239,25 @@ module.exports = async (req, res) => {
          عند ٠:٥٩ تبقى تجربته للأبد ولو رصيده صفر). الآن الدقيقة الأولى تُدفع هنا قبل فتح الجلسة: التجربة بحجز ذرّيّ
          يُعلَّم فورًا، وإلّا خصم دقيقة (رصيد اشتراك مها أوّلًا ثمّ النقاط). والمتصفّح يخصم كلّ دقيقة تبدأ بعدها. */
       let trial = false;
-      if (!rec.user.mahaTrialUsed) {
-        const trialKey = 'maha:trial:' + encodeURIComponent(String(rtUser).trim().toLowerCase());
-        trial = await require('./kv.js').kvSetIfAbsent(trialKey, '1');
-        if (trial) {
-          rec.user.mahaTrialUsed = true;
-          await require('./auth.js').putUser(rtUser, rec.user);
-          undoBill = async () => {
-            await require('./kv.js').kvDel(trialKey);
-            const u = await require('./auth.js').getUser(rtUser);
-            if (u && !u.deleted) { u.mahaTrialUsed = false; await require('./auth.js').putUser(rtUser, u); }
-          };
+      /* v-farm-gate: حساب فوق سقف هديّة شبكته بلا دفع لا تجربة له (free-tier.giftCapped)، والتجارب كلّها من سقف يوميّ كلّيّ
+         (MAHA_TRIAL_DAILY، ١٠٠ افتراضيًّا). بلا مقعد = مسار الخصم القائم (صفر نقاط = ٤٠٢ points_insufficient) والتجربة لا تُعلَّم؛
+         ومقعد اليوم يُردّ إن خسر السباق أو لم تُفتح الجلسة. */
+      const freeTier = require('./free-tier.js');
+      if (!rec.user.mahaTrialUsed && !freeTier.giftCapped(rec.user)) {
+        const slot = await freeTier.takeDailySlot('maha-trial');
+        if (slot.ok) {
+          const trialKey = 'maha:trial:' + encodeURIComponent(String(rtUser).trim().toLowerCase());
+          try { trial = await require('./kv.js').kvSetIfAbsent(trialKey, '1'); } finally { if (!trial) await freeTier.giveDailySlot(slot); }
+          if (trial) {
+            rec.user.mahaTrialUsed = true;
+            await require('./auth.js').putUser(rtUser, rec.user);
+            undoBill = async () => {
+              await require('./kv.js').kvDel(trialKey);
+              await freeTier.giveDailySlot(slot);
+              const u = await require('./auth.js').getUser(rtUser);
+              if (u && !u.deleted) { u.mahaTrialUsed = false; await require('./auth.js').putUser(rtUser, u); }
+            };
+          }
         }
       }
       let pay = null;
@@ -276,6 +284,11 @@ module.exports = async (req, res) => {
         : (guestId ? 'db/points/guest-maha/' + encodeURIComponent(String(guestId)) : null);
       const used = gk ? await kvGetJSON(gk) : { blocked: true };
       if (used) { res.status(402).json({ error: 'guest_trial_used' }); return; }
+      // v-farm-gate: تجربة الضيف من سقف التجارب اليوميّ الكلّيّ نفسه (MAHA_TRIAL_DAILY) — تدوير العناوين لا يتجاوزه؛ ويُردّ مقعده إن لم تُفتح الجلسة.
+      const freeTier = require('./free-tier.js');
+      const slot = await freeTier.takeDailySlot('maha-trial');
+      if (!slot.ok) { res.status(402).json({ error: 'guest_trial_used' }); return; }
+      undoBill = () => freeTier.giveDailySlot(slot);
       await kvPutJSON(gk, { at: Date.now() });
       mahaBudget = { unlimited: false, points: 0, trial: true, guest: true };
     }

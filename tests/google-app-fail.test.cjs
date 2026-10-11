@@ -49,12 +49,13 @@ test('١. فشل مسار الآيفون: سفاري على صفحة «تعذّ�
 
 test('٢. عودة مكرّرة بعد نجاح مودع لا تكتب فوقه، وسفاري يبقى على «تم»', async () => {
   store.clear();
-  store.set('db/oauth-claim/' + ST, JSON.stringify({ token: 'tok', user: 'u', ts: Date.now() }));
+  // v-oauth-bind: الإيداع الناجح يحمل شبكة من أكمل الدخول، والاستلام من الجهاز نفسه (الشبكة نفسها).
+  store.set('db/oauth-claim/' + ST, JSON.stringify({ token: 'tok', user: 'u', ts: Date.now(), net: '198.51.100.7' }));
   const r = mkRes();
   await cb({ query: { error: 'access_denied', state: ST + '-app' } }, r);
   assert.equal(r.headers.Location, 'https://example.test/login-done.html');
   const c = mkRes();
-  await claim({ method: 'POST', body: { state: ST } }, c);
+  await claim({ method: 'POST', body: { state: ST }, headers: { 'x-forwarded-for': '198.51.100.7' } }, c);
   assert.equal(c.j.token, 'tok');
 });
 
