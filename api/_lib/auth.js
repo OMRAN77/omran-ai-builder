@@ -181,10 +181,12 @@ async function moveLiveCounters(oldKey, newKey, user) {
   }
   const at = Math.floor(Number(user.planUpdatedAt) || 0); // فيديوهات الباقة للفترة الحاليّة (_planVideos.js)
   if (at > 0) await move('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
-  await require('./_usage.js').moveTodayTallies(oldKey, newKey);
-  await require('./_dailyQuota.js').moveToday(oldKey, newKey); // v-farm-gate: حصص أدوات الصور والفيديو اليوميّة كانت تتصفّر بتغيير الاسم
-  await require('./image-giveback.js').moveToday(oldKey, newKey); // ردود الحارس و«لم يُنفَّذ» اليوم — كانت تتجدّد مع كلّ اسم
-  await require('./cost-meter.js').moveMonthCosts(oldKey, newKey);
+  // كلّ نقل مستقلّ: عطل في واحد لا يترك البقيّة على الاسم القديم (فتتجدّد مع الاسم الجديد).
+  const step = async (label, fn) => { try { await fn(); } catch (e) { console.warn('[rename] move ' + label + ' failed: ' + (e && e.message)); } };
+  await step('usage', () => require('./_usage.js').moveTodayTallies(oldKey, newKey));
+  await step('daily-quota', () => require('./_dailyQuota.js').moveToday(oldKey, newKey)); // v-farm-gate: حصص أدوات الصور والفيديو اليوميّة كانت تتصفّر بتغيير الاسم
+  await step('image-giveback', () => require('./image-giveback.js').moveToday(oldKey, newKey)); // ردود الحارس و«لم يُنفَّذ» اليوم — كانت تتجدّد مع كلّ اسم
+  await step('cost-meter', () => require('./cost-meter.js').moveMonthCosts(oldKey, newKey));
 }
 
 function makeToken(username) {

@@ -298,7 +298,7 @@ test('٨ب. كلّ أداة تعدّ في _dailyQuota تنتقل بتغيير ا
   assert.ok(found.size >= 7, [...found].join(','));
   assert.deepEqual([...found].sort(), [...q.NAMESPACES].sort());
   const src = fs.readFileSync(path.join(root, 'api/_lib/auth.js'), 'utf8');
-  assert.match(src, /moveTodayTallies\(oldKey, newKey\);\n\s+await require\('\.\/_dailyQuota\.js'\)\.moveToday\(oldKey, newKey\);/);
+  assert.match(src, /await step\('daily-quota', \(\) => require\('\.\/_dailyQuota\.js'\)\.moveToday\(oldKey, newKey\)\);/, 'moveLiveCounters ينقل حصص _dailyQuota (خطوة مستقلّة)');
 });
 
 test('٩. FREE_MEDIA_DAILY غير مضبوط = بلا سقف كلّيّ ولا عدّ (الافتراضيّ)', async () => {
@@ -458,6 +458,25 @@ test('١٤. تغيير الاسم لا يُحيي الرمز القديم: ال�
   }
   assert.equal((await call('design', r2.body.token)).code, 402, 'الحصّة على الاسم الجديد');
   assert.equal((await points.spendPoints('deadfree2', 10, 'test')).ok, true, 'الاسم الحيّ ليس شاهدًا');
+});
+
+test('١٤ب. نافذة ذاكرة isBanned بين دوالّ Vercel: الشاهد يُرى «غير محظور» لحظات في دالّة الأدوات — planLimitInfo يقرأ السجلّ طازجًا فحدّه 0 بصفر نداء', async () => {
+  reset();
+  await put('memowin', { points: 70, welcomeGift: true, giftCapped: false });
+  const t = tok('memowin');
+  assert.equal(await auth.isBanned('memowin'), false, 'ذاكرة دالّة الأدوات دافئة: حيّ');
+  await put('memowin', { deleted: true, movedTo: 'memowin2' }); // تغيير الاسم في دالّة أخرى — ذاكرة هذه لم تُمسح
+  assert.equal(await auth.isBanned('memowin'), false, 'النافذة قائمة: الذاكرة ما زالت تقول حيّ');
+  for (const tool of QUOTA_TOOLS) {
+    const o = await call(tool, t);
+    assert.equal(o.paid, 0, tool + ': لا نداء مدفوع في النافذة'); assert.equal(o.code, 402, tool);
+  }
+  for (const tool of TALLY_TOOLS) {
+    const o = await call(tool, t);
+    assert.equal(o.paid, 0, tool); assert.equal(o.code, 429, tool);
+  }
+  const { planLimitInfo } = require(rp('api/_lib/_planCap.js'));
+  assert.deepEqual(await planLimitInfo('memowin', 3), { limit: 0, free: true });
 });
 
 test('١٥. تغيير الاسم: اثنان في ٢٤ ساعة متحرّكة لكلّ حساب — الثالث ٤٢٩ برسالة المحاولات القائمة والسجلّ لا يُمسّ؛ المتباعدان يُقبلان؛ المالك معفى؛ المتوازيان لا ينسخان الحساب', async () => {

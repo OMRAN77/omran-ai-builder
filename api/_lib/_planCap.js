@@ -23,6 +23,9 @@ async function planLimitInfo(username, base, opts) {
     // توليد (كما في isBanned). سجلّ غائب أو قراءة فاشلة = ليس مشتركًا = الأساس. noCache: انظر رأس الملفّ.
     let rec = null;
     const tier = await tierLib.resolveTier(username, { noCache: true, getUser: async (u) => (rec = await require('./auth.js').getUserOnce(u)) });
+    // v-farm-gate (المراجعة الثالثة): شاهد تغيير الاسم/الحذف لا حصّة له. isBanned يرفضه، لكنّ ذاكرته ٥ث لكلّ دالّة Vercel
+    // فدالّة الأدوات قد تراه حيًّا لحظات بعد تغيير الاسم في دالّة الحساب — والسجلّ هنا يُقرأ طازجًا.
+    if (rec && rec.deleted) return { limit: 0, free: true };
     if (!tier || tier.tier !== 'sub') {
       if (!tier || tier.tier !== 'free') return { limit: base, free: false };
       const ft = require('./free-tier.js');

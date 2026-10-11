@@ -360,7 +360,7 @@ test('١١ب. كلّ أداة تمرّ بـkeepGuardCharge في GUARD_NAMESPACES
   for (const f of walk(path.join(root, 'api'), [])) for (const m of fs.readFileSync(f, 'utf8').matchAll(/\bkeepGuardCharge\('([a-z0-9-]+)'/g)) found.add(m[1]);
   assert.deepEqual([...found].sort(), [...giveback.GUARD_NAMESPACES].sort());
   const src = fs.readFileSync(path.join(root, 'api/_lib/auth.js'), 'utf8');
-  assert.match(src, /await require\('\.\/image-giveback\.js'\)\.moveToday\(oldKey, newKey\);/);
+  assert.match(src, /await step\('image-giveback', \(\) => require\('\.\/image-giveback\.js'\)\.moveToday\(oldKey, newKey\)\);/, 'moveLiveCounters ينقل عدّادات الحارس (خطوة مستقلّة)');
   assert.match(fs.readFileSync(path.join(root, 'api/_lib/maha-image.js'), 'utf8'), /\[require\('\.\/image-giveback\.js'\)\.userMeterId\(mahaImgCharged\)\]/, 'مها تبني هويّتها بالبانِي نفسه');
 });
 
