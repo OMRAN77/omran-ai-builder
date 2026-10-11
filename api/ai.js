@@ -30,6 +30,8 @@ function load(action) {
     case 'agent': return require('./_lib/agent.js');
     case 'chat': return require('./_lib/chat.js');
     case 'models': return require('./_lib/provider-models.js'); // v-provider-models: قائمة الموديلات الحيّة للمالك
+    case 'app-director-plan': // v-app-director: «مخرج التطبيق» للمالك وحده — الخطّة من نموذج المخرج، والرمز للجسر
+    case 'app-director-token': return require('./_lib/app-director.js');
     // v-vg-removed: المرشد البصري (screen-guide/visual-guide) حُذف نهائيًا بطلب
     // المالك — لم يعد له مسار على الخادم؛ أي نداء قديم يُردّ بـ 404 نظيف.
     default: return null;
