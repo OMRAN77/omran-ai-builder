@@ -5,7 +5,7 @@
    إجراءان في api/ai.js:
      app-director-plan  : الطلب + اللغة + المتحدّث + المدّة + كتالوج التطبيق (app-catalog.js) → عنوان وفكرة ومشاهد
                           {type: screen|style_sample|title, target, text, highlight, narration, seconds} بجواب JSON من نموذج
-                          المخرج (DIRECTOR_MODEL أو أحدث Pro)، مع تحقّق من JSON وإعادة محاولة واحدة عند الفساد.
+                          المخرج (DIRECTOR_MODEL أو أحدث Pro)، مع إعادة على العابر وبدائل وتحقّق من JSON؛ الفيديو الطويل يُكتب أجزاءً.
      app-director-token : رمز مهمّة قصير العمر (HMAC بسرّ الجسر CC_BRIDGE_SECRET، ساعتان، يحمل اسم المالك ومعرّف المهمّة)
                           يستعمله المتصفّح مع جسر Railway مباشرة لمسار /render؛ السرّ نفسه لا يبلغ المتصفّح، وعنوان الجسر
                           يعود مع الرمز من البيئة (CC_BRIDGE_URL) لا من العميل.
@@ -15,8 +15,18 @@ const { isOwner } = require('./_owner.js');
 const { safeParse } = require('./safe-parse.js');
 const CAT = require('./app-catalog.js');
 
-const DEFAULT_MODELS = ['gemini-3.1-pro-preview', 'gemini-3-pro-preview', 'gemini-2.5-pro'];
+/* v-app-director-reliable (المالك بلقطة «plan 502 plan_failed»: «شكل فقط ما يشتغل»): نداء واحد بلا إعادة ولا بديل كان يُسقط
+   الفيديو كلّه عند أوّل زحام عابر أو مهلة عند المزوّد، والسبب لا يظهر. الآن: أحدث Pro أوّلًا، إعادة على الأعطال العابرة
+   (429/5xx/شبكة)، ومهلة ← محاولة أسرع بتفكير أخفّ، ثمّ البديل التالي، ثمّ استكشاف قائمة النماذج، وآخر الحبل النموذج السريع
+   — وسبب كلّ محاولة يعود للمالك في diag. `gemini-3-pro-preview` أُغلق في مارس ٢٠٢٦ فخرج من القائمة. */
+const DEFAULT_MODELS = ['gemini-3.1-pro-preview', 'gemini-pro-latest', 'gemini-2.5-pro'];
+const LAST_RESORT = ['gemini-3.8-flash', 'gemini-flash-latest'];
+const PRO_RE = /^(?:models\/)?(gemini-(\d+(?:\.\d+)?)-pro(?:-preview[\w-]*)?)$/i;
+const TRANSIENT = [429, 500, 502, 503, 504];
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/';
+const PLAN_BUDGET_MS = 270000;   // كلّ المحاولات تحت سقف دالّة Vercel (٣٠٠ ث)
+const ATTEMPT_MS = 150000;       // مهلة المحاولة الواحدة (النموذج يفكّر قبل أوّل حرف)
+const PART_MINUTES = 2.5;        // فيديو أطول من ٣ دقائق يُكتب أجزاءً: كلّ جزء نداء مستقلّ قصير
 const TOKEN_TTL_MS = 2 * 3600 * 1000;
 const MAX_REQUEST = 600;
 const MIN_MINUTES = 1, MAX_MINUTES = 10;
@@ -47,20 +57,54 @@ const SYSTEM = [
 function sceneTarget(minutes) { return Math.max(4, Math.round((minutes * 60) / SCENE_SECONDS)); }
 function wordsPerScene() { return Math.round(SCENE_SECONDS * WORDS_PER_SEC); }
 
+/** عدد أجزاء الكتابة: حتّى ٣ دقائق نداء واحد، وما فوقها جزء لكلّ دقيقتين ونصف (١٠ دقائق = ٤ أجزاء) */
+function partsFor(minutes) { return minutes <= 3 ? 1 : Math.ceil(minutes / PART_MINUTES); }
+
+/** مخطّط الأجزاء منقّى: {focus, targets[]} لكلّ جزء — والناقص يُكمَل بتوزيع الشاشات بالتساوي كي لا يتعطّل جزء لاحق */
+function cleanOutline(list, catalog, parts) {
+  const out = [];
+  for (const x of (Array.isArray(list) ? list : []).slice(0, parts)) {
+    if (!x || typeof x !== 'object') continue;
+    const targets = (Array.isArray(x.targets) ? x.targets : []).map((t) => clip(t, 40)).filter(Boolean).slice(0, 14);
+    out.push({ focus: clip(x.focus, 200), targets });
+  }
+  const ids = catalog.screens.map((s) => s.id);
+  const per = Math.max(1, Math.ceil(ids.length / parts));
+  for (let i = out.length; i < parts; i++) out.push({ focus: '', targets: ids.slice(i * per, (i + 1) * per) });
+  for (let i = 0; i < out.length; i++) if (!out[i].targets.length) out[i].targets = ids.slice(i * per, (i + 1) * per);
+  return out;
+}
+
 function buildPrompt(o) {
-  const scenes = sceneTarget(o.minutes);
+  const parts = o.parts || 1, part = o.part || 1;
+  const total = sceneTarget(o.minutes);
+  const scenes = parts === 1 ? total : Math.max(4, Math.round(total / parts));
   const words = wordsPerScene();
   const spk = o.speaker === 'male' ? 'عبدالله (صوت رجل)' : 'مها (صوت امرأة)';
-  return [
+  const L = [
     'الطلب من مالك التطبيق: «' + o.request + '»',
     'اللغة المطلوبة للتعليق الصوتيّ وبطاقات العناوين: ' + (LANG_NAMES[o.lang] || o.lang) + '.',
-    'المتحدّث: ' + spk + '. المدّة الكلّيّة: ' + o.minutes + ' دقيقة ≈ ' + scenes + ' مشهدًا، كلّ مشهد نحو ' + SCENE_SECONDS + ' ثوانٍ = ' + words + ' كلمة تعليق تقريبًا (الحدّ ' + Math.round(words * 1.6) + ').',
-    'أعد بالضبط ' + scenes + ' مشهدًا (±٢) تغطّي المدّة المطلوبة، تلتزم بالطلب (إن طلب موضوعًا واحدًا كأنماط الصور فركّز عليه وأرِ أمثلته، وإن طلب التطبيق كلّه فغطِّ الشاشات الأهمّ بالترتيب المنطقيّ).',
-    'أنواع المشاهد: "title" بطاقة عنوان (text ≤ ٦ كلمات، للافتتاح والفواصل والختام)، "screen" لقطة شاشة حقيقيّة (target = معرّف شاشة من الكتالوج)، "style_sample" صورة حقيقيّة تُولَّد بنمط صور (target = مفتاح نمط من PORTRAIT STYLES). نوّع بينها: افتح ببطاقة عنوان، ولا تضع أكثر من ثلاث لقطات متتالية للشاشة نفسها.',
-    'الصيغة المطلوبة: {"title":"عنوان الفيديو","idea":"سطران عن الفكرة","scenes":[{"type":"title|screen|style_sample","target":"screen id or style key","text":"نصّ قصير على الشاشة (اختياريّ لغير title)","highlight":"ما يُبرَز في هذا المشهد (كلمات قليلة)","narration":"التعليق الصوتيّ لهذا المشهد","seconds":8}]}',
-    'كتالوج التطبيق:',
-    o.catalogText,
-  ].join('\n');
+    'المتحدّث: ' + spk + '. المدّة الكلّيّة: ' + o.minutes + ' دقيقة ≈ ' + total + ' مشهدًا، كلّ مشهد نحو ' + SCENE_SECONDS + ' ثوانٍ = ' + words + ' كلمة تعليق تقريبًا (الحدّ ' + Math.round(words * 1.6) + ').',
+  ];
+  let shape = '{"title":"عنوان الفيديو","idea":"سطران عن الفكرة","scenes":[';
+  if (parts === 1) {
+    L.push('أعد بالضبط ' + scenes + ' مشهدًا (±٢) تغطّي المدّة المطلوبة، تلتزم بالطلب (إن طلب موضوعًا واحدًا كأنماط الصور فركّز عليه وأرِ أمثلته، وإن طلب التطبيق كلّه فغطِّ الشاشات الأهمّ بالترتيب المنطقيّ).');
+  } else if (part === 1) {
+    L.push('الفيديو طويل فيُكتب على ' + parts + ' أجزاء متتالية، كلّ جزء في نداء مستقلّ. اكتب الآن ثلاثة أشياء: (١) العنوان والفكرة. (٢) "outline": مخطّط من ' + parts + ' عناصر بالضبط، لكلّ جزء ما يغطّيه بجملة ("focus") ومعرّفات الشاشات ومفاتيح الأنماط التي يعرضها هو وحده ("targets") — لا تتكرّر شاشة في جزأين، والشاشات الأهمّ تُغطّى بالترتيب المنطقيّ ملتزمًا بالطلب. (٣) مشاهد الجزء ١ فقط: ' + scenes + ' مشهدًا (±٢) تبدأ بالخطّاف وبطاقة العنوان، ولا تختم الفيديو لأنّ بعده أجزاء.');
+    shape = '{"title":"عنوان الفيديو","idea":"سطران عن الفكرة","outline":[{"focus":"ما يغطّيه الجزء","targets":["screen id or style key"]}],"scenes":[';
+  } else {
+    const outline = cleanOutline(o.outline, o.catalog || { screens: [] }, parts);
+    const cur = outline[part - 1] || { focus: '', targets: [] };
+    L.push('الفيديو طويل ويُكتب على ' + parts + ' أجزاء متتالية. العنوان: «' + (o.title || '') + '». الفكرة: ' + (o.idea || '') + '.');
+    L.push('المخطّط: ' + outline.map((x, i) => (i + 1) + ') ' + (x.focus || '') + ' [' + x.targets.join(', ') + ']').join(' | '));
+    L.push('اكتب الآن مشاهد الجزء ' + part + ' فقط: ' + scenes + ' مشهدًا (±٢)' + (cur.focus ? ' عن: ' + cur.focus : '') + ' — أهدافه: ' + cur.targets.join(', ') + '. لا ترحّب ولا تُعِد ما غطّته الأجزاء الأخرى؛ ابدأ ببطاقة عنوان قصيرة للجزء أو بجملة انتقال.' +
+      (part === parts ? ' هذا الجزء الأخير: اختم بدعوة واضحة للتجربة وبطاقة عنوان ختاميّة.' : ' لا تختم الفيديو؛ بعده جزء آخر.'));
+  }
+  L.push('أنواع المشاهد: "title" بطاقة عنوان (text ≤ ٦ كلمات، للافتتاح والفواصل والختام)، "screen" لقطة شاشة حقيقيّة (target = معرّف شاشة من الكتالوج)، "style_sample" صورة حقيقيّة تُولَّد بنمط صور (target = مفتاح نمط من PORTRAIT STYLES). نوّع بينها: افتح ببطاقة عنوان، ولا تضع أكثر من ثلاث لقطات متتالية للشاشة نفسها.');
+  L.push('الصيغة المطلوبة: ' + shape + '{"type":"title|screen|style_sample","target":"screen id or style key","text":"نصّ قصير على الشاشة (اختياريّ لغير title)","highlight":"ما يُبرَز في هذا المشهد (كلمات قليلة)","narration":"التعليق الصوتيّ لهذا المشهد","seconds":8}]}');
+  L.push('كتالوج التطبيق:');
+  L.push(o.catalogText);
+  return L.join('\n');
 }
 
 function clip(s, n) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n); }
@@ -72,7 +116,8 @@ function extractJson(text) {
 }
 
 /** يقرأ خطّة المخرج بحزم: الأنواع والأهداف تُطابَق على الكتالوج، والمجهول يسقط أو يُحوَّل، والمدد تُحصر. null إن لم يبقَ مشهد. */
-function normalizePlan(obj, catalog) {
+function normalizePlan(obj, catalog, opts) {
+  const o = opts || {};
   if (!obj || typeof obj !== 'object' || !Array.isArray(obj.scenes)) return null;
   const screenIds = new Set(catalog.screens.map((s) => s.id));
   const styleKeys = new Set(catalog.portraitStyles.map((s) => s.key));
@@ -98,57 +143,128 @@ function normalizePlan(obj, catalog) {
     });
   }
   if (scenes.length < 2) return null;
-  return { title: clip(obj.title, 120) || clip(scenes[0].text, 120), idea: clip(obj.idea, 400), scenes };
+  const out = { title: clip(obj.title, 120) || clip(scenes[0].text, 120), idea: clip(obj.idea, 400), scenes };
+  if (o.parts > 1) out.outline = cleanOutline((o.part || 1) === 1 ? obj.outline : o.outline, catalog, o.parts);
+  return out;
 }
 
-function geminiBody(prompt, nudge) {
+function geminiBody(prompt, nudge, thinking) {
   const parts = [{ text: prompt }];
   if (nudge) parts.push({ text: nudge });
-  return {
-    systemInstruction: { parts: [{ text: SYSTEM }] },
-    contents: [{ role: 'user', parts }],
-    generationConfig: { temperature: 0.9, maxOutputTokens: 32768, responseMimeType: 'application/json' },
-  };
+  const generationConfig = { temperature: 0.9, maxOutputTokens: 32768, responseMimeType: 'application/json' };
+  if (thinking) generationConfig.thinkingConfig = { thinkingLevel: thinking };
+  return { systemInstruction: { parts: [{ text: SYSTEM }] }, contents: [{ role: 'user', parts }], generationConfig };
 }
 function partsText(d) { return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join('')); }
 
+/** نداء واحد: {ok, text, finish} أو {ok:false, why: timeout|network|http_NNN, status, msg} — لا يرمي */
+async function callModel(o) {
+  const t0 = Date.now();
+  let r = null, d = null;
+  try {
+    r = await o.fetchImpl(ENDPOINT + o.model + ':generateContent?key=' + o.apiKey, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(Math.max(5000, o.timeoutMs)), /* إشارة صريحة: مهلة أوّل بايت العامّة (٣٠ ث) لا تكفي نموذجًا يفكّر */
+      body: JSON.stringify(geminiBody(o.prompt, o.nudge, o.thinking)),
+    });
+    d = await r.json().catch(() => null);
+  } catch (e) {
+    const timeout = !!(e && (e.name === 'TimeoutError' || e.name === 'AbortError' || /timed? ?out|aborted/i.test(String(e.message))));
+    return { ok: false, status: 0, why: timeout ? 'timeout' : 'network', msg: clip(e && e.message, 100), ms: Date.now() - t0 };
+  }
+  if (!r.ok) {
+    let retryAfter = 0;
+    try { retryAfter = Number(r.headers && r.headers.get && r.headers.get('retry-after')) || 0; } catch (e) { retryAfter = 0; /* ترويسة غير مقروءة = بلا مهلة مقترحة */ }
+    return { ok: false, status: r.status, why: 'http_' + r.status, msg: clip(d && d.error && d.error.message, 140), retryAfter, ms: Date.now() - t0 };
+  }
+  const cand = ((d || {}).candidates || [])[0] || {};
+  return { ok: true, status: 200, text: partsText(d), finish: String(cand.finishReason || ''), block: String(((d || {}).promptFeedback || {}).blockReason || ''), ms: Date.now() - t0 };
+}
+
+/** يستكشف أحدث نماذج Pro من قائمة النماذج عند المزوّد (حين تسقط الأسماء المعروفة كلّها) — الأحدث أوّلًا، والثابت قبل المعاينة */
+async function discoverPro(apiKey, fetchImpl) {
+  try {
+    const r = await fetchImpl(ENDPOINT.replace(/\/$/, '') + '?pageSize=200&key=' + apiKey, { signal: AbortSignal.timeout(8000) });
+    if (!r || !r.ok) return [];
+    const d = await r.json();
+    const found = [];
+    for (const m of ((d && d.models) || [])) {
+      const mm = PRO_RE.exec(String((m && m.name) || ''));
+      if (!mm) continue;
+      if (Array.isArray(m.supportedGenerationMethods) && !m.supportedGenerationMethods.includes('generateContent')) continue;
+      found.push({ id: mm[1], v: parseFloat(mm[2]) || 0, preview: /preview/i.test(mm[1]) });
+    }
+    found.sort((a, b) => (b.v - a.v) || ((a.preview ? 1 : 0) - (b.preview ? 1 : 0)));
+    return found.map((x) => x.id).slice(0, 3);
+  } catch (e) { return []; /* القائمة ترف: تعذّرها = لا مرشّحين إضافيّين */ }
+}
+
+/** سطر تشخيص للمالك: كلّ محاولة بنموذجها وسببها وزمنها — بلا مفتاح */
+function diagOf(attempts) {
+  const rows = [];
+  for (const a of (attempts || [])) {
+    const head = a.model + (a.thinking ? '/' + a.thinking : '') + ':' + a.why;
+    const last = rows[rows.length - 1];
+    if (last && last.head === head) { last.n++; last.ms += a.ms || 0; continue; }
+    rows.push({ head, n: 1, ms: a.ms || 0, msg: a.msg || '' });
+  }
+  return rows.map((r) => r.head + (r.n > 1 ? ' ×' + r.n : '') + ' ' + Math.round(r.ms / 1000) + 's' + (r.msg ? ' «' + String(r.msg).slice(0, 70) + '»' : ''))
+    .join(' → ').replace(/key=[\w-]+/gi, 'key=…').slice(0, 480);
+}
+
 /**
- * يطلب الخطّة من نموذج المخرج. opts: {request, lang, speaker, minutes, catalog, apiKey, env, fetchImpl, timeoutMs}.
- * نموذج غير موجود (404) → التالي في القائمة؛ جواب ليس JSON صالحًا → محاولة ثانية واحدة بتنبيه؛ وإلّا {ok:false, why}.
+ * يطلب الخطّة (أو جزءًا منها) من نموذج المخرج. opts: {request, lang, speaker, minutes, catalog, apiKey, env, part, parts, outline, title, idea,
+ * fetchImpl, timeoutMs, budgetMs, sleep}. يعيد {ok, plan, model, fallback, attempts} أو {ok:false, why, attempts}.
+ * الترتيب: DIRECTOR_MODEL ← أحدث Pro ← استكشاف القائمة ← النموذج السريع. لكلّ نموذج: إعادة واحدة على العابر (429/5xx/شبكة)،
+ * مهلة ← محاولة بتفكير أخفّ، JSON فاسد ← محاولة ثانية بتنبيه؛ وكلّ ما عدا ذلك ينتقل للنموذج التالي.
  */
 async function requestPlan(opts) {
   const o = opts || {};
   const fetchImpl = o.fetchImpl || fetch;
+  const sleep = o.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   const catalog = o.catalog;
-  const prompt = buildPrompt({ request: o.request, lang: o.lang, speaker: o.speaker, minutes: o.minutes, catalogText: CAT.catalogText(catalog) });
-  const models = directorModels(o.env);
-  let why = 'unavailable';
-  for (const model of models) {
-    let nudge = '';
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      let r = null, d = null;
-      try {
-        r = await fetchImpl(ENDPOINT + model + ':generateContent?key=' + o.apiKey, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(o.timeoutMs || 130000), /* محاولتان على الأكثر تحت سقف دالّة Vercel (٣٠٠ ث) */
-          body: JSON.stringify(geminiBody(prompt, nudge)),
-        });
-        d = await r.json().catch(() => null);
-      } catch (e) { why = 'network'; break; }
+  const parts = o.parts || 1, part = o.part || 1;
+  const prompt = buildPrompt({ request: o.request, lang: o.lang, speaker: o.speaker, minutes: o.minutes, part, parts, outline: o.outline, title: o.title, idea: o.idea, catalog, catalogText: CAT.catalogText(catalog) });
+  const deadline = Date.now() + (o.budgetMs || PLAN_BUDGET_MS);
+  const left = () => deadline - Date.now();
+  const attempts = [], tried = new Set();
+  const queue = directorModels(o.env);
+  const pinned = String((o.env || process.env).DIRECTOR_MODEL || '').trim();
+  let discovered = false, lastResort = false, why = 'unavailable';
+  for (;;) {
+    if (!queue.length) {
+      if (!discovered) { discovered = true; for (const m of await discoverPro(o.apiKey, fetchImpl)) if (!tried.has(m)) queue.push(m); if (queue.length) continue; }
+      if (!lastResort) { lastResort = true; for (const m of LAST_RESORT) if (!tried.has(m)) queue.push(m); if (queue.length) continue; }
+      break;
+    }
+    const model = queue.shift();
+    if (tried.has(model)) continue;
+    tried.add(model);
+    let nudge = '', thinking = '', transient = 0, jsonTries = 0, timeouts = 0;
+    for (let i = 0; i < 4; i++) {
+      if (left() < 20000) return { ok: false, why: why === 'unavailable' ? 'budget' : why, attempts };
+      const r = await callModel({ model, prompt, nudge, thinking, apiKey: o.apiKey, fetchImpl, timeoutMs: Math.min(o.timeoutMs || ATTEMPT_MS, left() - 5000) });
+      const rec = { model, thinking, why: r.ok ? 'ok' : r.why, ms: r.ms, msg: r.msg || '' };
+      attempts.push(rec);
       if (!r.ok) {
-        const msg = String((d && d.error && d.error.message) || '');
-        why = 'http_' + r.status;
-        if (r.status === 404 || (r.status === 400 && /model|not found|not supported/i.test(msg))) break; /* النموذج التالي */
-        return { ok: false, why, model };
+        why = r.why;
+        if (r.why === 'timeout') { if (++timeouts === 1 && thinking !== 'low') { thinking = 'low'; continue; } break; }
+        if (r.why === 'network' || TRANSIENT.includes(r.status)) {
+          if (++transient > 1) break;
+          await sleep(Math.min(Math.max((r.retryAfter || 0) * 1000, 2000), 6000));
+          continue;
+        }
+        if (r.status === 400 && thinking && /thinking/i.test(r.msg || '')) { thinking = ''; timeouts = 2; continue; } /* النموذج لا يقبل مستوى التفكير */
+        break; /* 400/401/403/404…: النموذج التالي */
       }
-      const plan = normalizePlan(extractJson(partsText(d)), catalog);
-      if (plan) return { ok: true, plan, model, attempts: attempt };
-      why = 'bad_json';
+      const plan = normalizePlan(extractJson(r.text), catalog, { parts, part, outline: o.outline });
+      if (plan) return { ok: true, plan, model, fallback: !(model === pinned || /(^|-)pro(-|$)/i.test(model)), attempts };
+      why = rec.why = 'bad_json' + (r.finish && r.finish !== 'STOP' ? ':' + r.finish : '') + (r.block ? ':' + r.block : '');
+      if (++jsonTries >= 2) break;
       nudge = 'الجواب السابق لم يكن JSON صالحًا بالصيغة المطلوبة. أعد الآن JSON واحدًا صالحًا فقط بالحقول نفسها، بلا أيّ نصّ قبله أو بعده.';
     }
-    if (why === 'bad_json' || why === 'network') return { ok: false, why, model };
   }
-  return { ok: false, why };
+  return { ok: false, why, attempts };
 }
 
 /* ───── رمز المهمّة: base64url(JSON{u,j,exp}).base64url(HMAC-SHA256) بسرّ الجسر ───── */
@@ -222,20 +338,31 @@ async function handler(req, res) {
     const speaker = body.speaker === 'male' ? 'male' : 'female';
     const minutes = Math.max(MIN_MINUTES, Math.min(MAX_MINUTES, Math.round(Number(body.minutes) || 2)));
     const catalog = CAT.buildCatalog({ lang, labels: cleanLabels(body.labels) });
+    const parts = partsFor(minutes);
+    const part = Math.max(1, Math.min(parts, Math.round(Number(body.part) || 1)));
     let r;
-    try { r = await requestPlan({ request, lang, speaker, minutes, catalog, apiKey, env: process.env }); }
-    catch (e) { console.error('[app-director] ' + (e && e.message)); r = { ok: false, why: 'exception' }; }
-    if (!r.ok) { console.error('[app-director] plan failed: ' + r.why + (r.model ? ' (' + r.model + ')' : '')); res.status(502).json({ error: 'plan_failed', why: r.why }); return; }
-    const styles = {};
-    catalog.portraitStyles.forEach((s, i) => { styles[s.key] = { desc: s.desc, prompt: CAT.samplePrompt(s.key, s.desc, i) }; });
-    res.status(200).json({
-      plan: r.plan, lang, speaker, minutes, attempts: r.attempts,
-      catalog: { screens: catalog.screens.map((s) => ({ id: s.id, name: s.name, steps: s.steps })), styles },
-    });
+    try {
+      r = await requestPlan({ request, lang, speaker, minutes, catalog, apiKey, env: process.env, part, parts,
+        outline: part > 1 ? body.outline : undefined, title: clip(body.title, 120), idea: clip(body.idea, 400) });
+    } catch (e) { r = { ok: false, why: 'exception', attempts: [{ model: '-', why: 'exception', ms: 0, msg: clip(e && e.message, 100) }] }; }
+    if (!r.ok) {
+      /* السبب الحقيقيّ يُرى من أوّل فشل: في سجلّ المالك، وفي الردّ (المسار للمالك وحده) فتعرضه الواجهة بين قوسين */
+      const diag = diagOf(r.attempts);
+      try { require('./log-error.js').logError('app-director/plan', new Error(r.why), { part, parts, diag: diag.slice(0, 160) }); } catch (e) { console.error('[app-director] plan failed: ' + r.why); }
+      res.status(502).json({ error: 'plan_failed', why: r.why, diag });
+      return;
+    }
+    const out = { plan: r.plan, lang, speaker, minutes, part, parts, model: r.model, fallback: !!r.fallback, attempts: r.attempts.length };
+    if (part === 1) {
+      const styles = {};
+      catalog.portraitStyles.forEach((s, i) => { styles[s.key] = { desc: s.desc, prompt: CAT.samplePrompt(s.key, s.desc, i) }; });
+      out.catalog = { screens: catalog.screens.map((s) => ({ id: s.id, name: s.name, steps: s.steps })), styles };
+    }
+    res.status(200).json(out);
     return;
   }
   res.status(404).json({ error: 'unknown action' });
 }
 
 module.exports = handler;
-module.exports.__test = { directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, cleanLabels };
+module.exports.__test = { directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel };

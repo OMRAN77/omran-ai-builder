@@ -50,7 +50,7 @@ test('٢. المانيفست: الأنواع الثلاثة بحقولها، ا�
   assert.ok(M.LIMITS.scenes >= 75 && M.LIMITS.bodyBytes >= 100e6 && M.LIMITS.ttlMs === 24 * 3600 * 1000 && M.LIMITS.jobTimeoutMs >= 45 * 60 * 1000);
 });
 
-test('٣. buildFfmpegArgs: مشهد شاشة/نموذج/عنوان بـzoompan يتبدّل اتّجاهه، صوته عليه أو صمت، ثمّ xfade+acrossfade و1080p30 H.264+AAC', async () => {
+test('٣. buildFfmpegArgs: الانتقال مخبوز في المقطع (صورته + صورة تاليه)، zoompan يتبدّل اتّجاهه ويتّصل عبر الحدّ، الصوت عليه أو صمت، والدمج لصق بلا إعادة ترميز الفيديو', async () => {
   const M = await R();
   const manifest = { lang: 'ar', dir: 'rtl', scenes: [
     { type: 'title', text: 'مرحبا', seconds: 4, audio: 'file' },
@@ -61,51 +61,77 @@ test('٣. buildFfmpegArgs: مشهد شاشة/نموذج/عنوان بـzoompan �
   const plan = M.buildFfmpegArgs(manifest, '/work/j1');
   const J = (f) => path.join('/work/j1', f); // المسارات بفاصل النظام (الاختبار يجري على ويندوز أيضًا)
   assert.equal(plan.segments.length, 4);
-  const a0 = plan.segments[0].args, a1 = plan.segments[1].args, a2 = plan.segments[2].args, a3 = plan.segments[3].args;
-  assert.ok(a0.includes(J('shot_0.png')) && a0.includes(J('audio_0.mp3')) && a0[a0.length - 1] === J('seg_0.mp4'));
-  assert.ok(a2.includes(J('img_2.jpg')) && a2.includes('anullsrc=r=44100:cl=stereo'), 'نموذج النمط صورة jpg بلا صوت → صمت');
+  const [a0, a1, a2, a3] = plan.segments.map((s) => s.args);
   const fc = (a) => a[a.indexOf('-filter_complex') + 1];
-  assert.ok(fc(a0).includes("zoompan=z='1+0.08*on/120'") && fc(a0).includes(':d=120:s=1920x1080:fps=30'), 'تقريب للداخل: ١٢٠ إطارًا لـ٤ ثوانٍ');
-  assert.ok(fc(a1).includes("z='1.08-0.08*on/195'"), 'المشهد الثاني يبتعد');
-  assert.ok(fc(a2).includes("x='(iw-iw/zoom)*on/150'") && fc(a2).includes('gblur=sigma=40') && fc(a2).includes('overlay=(W-w)/2:(H-h)/2'), 'الثالث تحريك جانبيّ، والصورة المربّعة على خلفيّة مموّهة');
-  assert.ok(fc(a3).includes("x='(iw-iw/zoom)*(1-on/210)'"), 'الرابع يعود');
-  assert.ok(fc(a0).includes('scale=2560:1440:force_original_aspect_ratio=decrease,pad=2560:1440') && fc(a0).includes('[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,apad[a]'));
-  for (const a of [a0, a1, a2, a3]) {
-    assert.equal(a[a.indexOf('-t') + 1], Number(manifest.scenes[[a0, a1, a2, a3].indexOf(a)].seconds).toFixed(3), 'مدّة المقطع بالضبط');
-    for (const x of ['libx264', 'yuv420p', 'aac', '+faststart', '-map', '[v]', '[a]']) assert.ok(a.includes(x), x);
-    assert.equal(a[a.indexOf('-r') + 1], '30');
-  }
-  const j = plan.join.args, jf = fc(j);
-  assert.equal((j.filter((x) => x === '-i')).length, 4);
-  assert.ok(jf.includes('[0:v][1:v]xfade=transition=fade:duration=0.5:offset=3.500[v1]'), 'الانتقال الأوّل بعد ٤ − ٠٫٥');
-  assert.ok(jf.includes('[v1][2:v]xfade=transition=fade:duration=0.5:offset=9.500[v2]'), 'الإزاحة تراكميّة ناقص الانتقالات');
-  assert.ok(jf.includes('[v2][3:v]xfade=transition=fade:duration=0.5:offset=14.000[vout]'));
-  assert.ok(jf.includes('[0:a][1:a]acrossfade=d=0.5:c1=tri:c2=tri[a1]') && jf.includes('[a2][3:a]acrossfade=d=0.5:c1=tri:c2=tri[aout]'));
-  assert.ok(j.includes('[vout]') && j.includes('[aout]') && j.includes('libx264') && j.includes('aac') && j[j.length - 1] === J('video.mp4'));
-  assert.equal(plan.total, 4 + 6.5 + 5 + 7 - 1.5);
-  assert.ok(plan.concat.args.includes('concat') && plan.concat.args.includes(J('concat.txt')), 'احتياط اللصق المباشر');
+  const inputs = (a) => a.map((x, i) => (x === '-i' ? a[i + 1] : null)).filter(Boolean);
+  // المدخلات: صورة المشهد ثمّ صورة التالي ثمّ الصوت (الأخير بلا تالٍ)
+  assert.deepEqual(inputs(a0), [J('shot_0.png'), J('shot_1.png'), J('audio_0.mp3')]);
+  assert.deepEqual(inputs(a1), [J('shot_1.png'), J('img_2.jpg'), J('audio_1.mp3')]);
+  assert.deepEqual(inputs(a2), [J('img_2.jpg'), J('shot_3.png'), 'anullsrc=r=44100:cl=stereo'], 'نموذج النمط jpg بلا صوت → صمت');
+  assert.deepEqual(inputs(a3), [J('shot_3.png'), J('audio_3.mp3')]);
+  assert.deepEqual(plan.segments.map((s) => s.needs), [[0, 1], [1, 2], [2, 3], [3]], 'المقطع يُرمَّز حين تتوفّر صورته وصورة تاليه');
+  assert.equal(a0[a0.length - 1], J('seg_0.mp4'));
+  // المشهد الأوّل: حركته من الإطار ٠ على ١٢٠ إطارًا، ثمّ ذوبان في أوّل ١٥ إطارًا من حركة التالي (مقامها ١٩٥+١٥)
+  assert.ok(fc(a0).includes("[0:v]scale=2560:1440:force_original_aspect_ratio=decrease,pad=2560:1440") && fc(a0).includes("zoompan=z='1+0.08*(on+0)/120'") && fc(a0).includes(':d=120:s=1920x1080:fps=30'));
+  assert.ok(fc(a0).includes("[1:v]") && fc(a0).includes("zoompan=z='1.08-0.08*(on+0)/210'") && fc(a0).includes(':d=15:s=1920x1080:fps=30'), 'مقدّمة التالي بسرعة حركته نفسها');
+  assert.ok(fc(a0).includes('[own][nx]xfade=transition=fade:duration=0.5:offset=3.500[v]'), 'الذوبان في آخر نصف ثانية من الخانة');
+  assert.ok(fc(a0).includes('[2:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,apad[a]'), 'الصوت المدخل الثالث حين يوجد تالٍ');
+  // المشهد الثاني يكمل حركته من الإطار ١٥ (ما ظهر في ذوبان سابقه) — اتّصال بلا قفزة
+  assert.ok(fc(a1).includes("zoompan=z='1.08-0.08*(on+15)/210'") && fc(a1).includes(':d=195:'), 'يبتعد، ويبدأ من حيث انتهى الذوبان');
+  assert.ok(fc(a1).includes('[1:v]split[bgb][fgb]') && fc(a1).includes('gblur=sigma=40') && fc(a1).includes("x='(iw-iw/zoom)*(on+0)/165'"), 'التالي نموذج نمط: خلفيّة مموّهة وتحريك جانبيّ');
+  assert.ok(fc(a1).includes('xfade=transition=fade:duration=0.5:offset=6.000[v]'));
+  assert.ok(fc(a2).includes('[0:v]split[bga][fga]') && fc(a2).includes("x='(iw-iw/zoom)*(on+15)/165'") && fc(a2).includes("x='(iw-iw/zoom)*(1-(on+0)/225)'"));
+  assert.ok(fc(a3).includes("x='(iw-iw/zoom)*(1-(on+15)/225)'") && fc(a3).endsWith('format=yuv420p[v];[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,apad[a]') && !fc(a3).includes('xfade'), 'الأخير بلا ذوبان');
+  manifest.scenes.forEach((s, i) => {
+    const a = plan.segments[i].args;
+    assert.equal(a[a.indexOf('-t') + 1], s.seconds.toFixed(3), 'طول المقطع = خانته بالضبط');
+    for (const x of ['libx264', 'veryfast', 'high', '4.1', 'yuv420p', 'aac', '+faststart', '[v]', '[a]']) assert.ok(a.includes(x), x);
+    assert.equal(a[a.indexOf('-r') + 1], '30'); assert.equal(a[a.indexOf('-g') + 1], '60');
+  });
+  // الدمج: لصق — الفيديو نسخ، والصوت يُعاد ترميزه؛ والاحتياط نسخ الاثنين. لا سلسلة xfade تكبر ذاكرتها مع عدد المشاهد
+  const j = plan.join.args;
+  assert.deepEqual(j.slice(0, 10), ['-y', '-hide_banner', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', J('concat.txt')]);
+  assert.ok(j[j.indexOf('-c:v') + 1] === 'copy' && j[j.indexOf('-c:a') + 1] === 'aac' && !j.includes('-filter_complex') && j[j.length - 1] === J('video.mp4'));
+  assert.ok(plan.fallback.args.includes('-c') && plan.fallback.args[plan.fallback.args.indexOf('-c') + 1] === 'copy');
+  assert.equal(plan.listText, ["file '/work/j1/seg_0.mp4'", "file '/work/j1/seg_1.mp4'", "file '/work/j1/seg_2.mp4'", "file '/work/j1/seg_3.mp4'", ''].join('\n'), 'قائمة اللصق بشرطة أماميّة');
+  assert.equal(M.concatList(["C:\\w\\it's.mp4"]), "file 'C:/w/it'\\''s.mp4'\n");
+  assert.equal(plan.total, 4 + 6.5 + 5 + 7, 'المدّة الكلّيّة = مجموع الخانات');
+  assert.equal(M.joinArgs, undefined, 'سلسلة xfade القديمة حُذفت');
+  // الانزلاق باتّجاه القراءة كلّ ثالث حدّ (بعيدًا عن بطاقات العناوين)
+  const six = (dir) => M.buildFfmpegArgs({ lang: 'x', dir, scenes: Array.from({ length: 6 }, () => ({ type: 'screen', seconds: 5 })) }, '/w').segments.map((s) => fc(s.args)).join(' ');
+  assert.ok(six('ltr').includes('xfade=transition=smoothleft') && six('rtl').includes('xfade=transition=smoothright'));
+  // مشهد واحد: بلا تالٍ ولا ذوبان
   const one = M.buildFfmpegArgs({ lang: 'en', dir: 'ltr', scenes: [{ type: 'title', text: 'x', seconds: 3 }] }, '/w');
-  assert.ok(one.join.args.includes('copy') && !one.join.args.includes('-filter_complex'), 'مشهد واحد = نسخ بلا دمج');
-  // الانزلاق باتّجاه القراءة كلّ ثالث مشهد (بعيدًا عن بطاقات العناوين)
-  const six = M.buildFfmpegArgs({ lang: 'en', dir: 'ltr', scenes: Array.from({ length: 6 }, (_, i) => ({ type: 'screen', seconds: 5 })) }, '/w');
-  assert.ok(fc(six.join.args).includes('xfade=transition=smoothleft') && M.buildFfmpegArgs({ lang: 'ar', dir: 'rtl', scenes: six.segments.map(() => ({ type: 'screen', seconds: 5 })) }, '/w').join.args.join(' ').includes('smoothright'));
-  // مدّة المشهد = مدّة صوته + نصف ثانية، محصورة
+  assert.ok(!fc(one.segments[0].args).includes('xfade') && one.total === 3);
+  // خانة المشهد = مدّة صوته + نصف ثانية، محصورة، وعدد إطاراتها صحيح
   assert.equal(M.resolveSeconds({ seconds: 8 }, 6.2), 6.7);
   assert.equal(M.resolveSeconds({ seconds: 8 }, 0), 8);
   assert.equal(M.resolveSeconds({}, 0.4), M.LIMITS.minSec);
   assert.equal(M.resolveSeconds({}, 100), M.LIMITS.maxSec);
+  assert.equal(M.slotFrames({ seconds: 6.7 }), 201); assert.equal(M.XF, 15);
 });
 
-test('٤. بطاقة العنوان صفحة بخطّ عربيّ (لا drawtext)، وتنظيف المنبثقات، ودوالّ الصفحة دوالّ حقيقيّة لا نصوص (Playwright لا ينادي نصًّا بمعطى)', async () => {
+test('٤. بطاقة العنوان صفحة بخطّ عربيّ (لا drawtext)، ودوالّ الصفحة دوالّ حقيقيّة، والتصوير لا يُسقط المهمّة بلقطة واحدة', async () => {
   const M = await R();
   const html = M.titleCardHtml({ text: 'عمران <AI>', sub: 'جولة', dir: 'rtl', lang: 'ar' });
   assert.ok(html.includes('dir="rtl"') && html.includes('عمران &lt;AI&gt;') && html.includes('Tajawal') && html.includes('width:1920px;height:1080px'));
-  assert.ok(!/drawtext=/.test(read('cc-bridge/render.mjs')), 'النصّ العربيّ يُرسم في المتصفّح لا بمرشّح drawtext');
-  assert.equal(typeof M.cleanPage, 'function'); assert.equal(typeof M.addCaption, 'function'); assert.equal(typeof M.focusRect, 'function');
+  assert.ok(!/filter:blur/.test(html) && html.includes('radial-gradient('), 'توهّج البطاقة تدرّج لا دائرة مموّهة (كانت تُقصّ بحافّة حادّة)');
   const src = read('cc-bridge/render.mjs');
-  assert.ok(src.includes('page.evaluate(cleanPage)') && src.includes('page.evaluate(addCaption, [') && src.includes('page.evaluate(focusRect, fc.focus)'));
-  assert.ok(src.includes("viewport: { width: VIEW_W, height: VIEW_H }, deviceScaleFactor: VIEW_SCALE, colorScheme: 'dark'") && M.VIEW_W === 1280 && M.VIEW_SCALE === 3, 'التصوير ١٢٨٠×٧٢٠ ×٣ بالثيم الداكن');
+  assert.ok(!/drawtext=/.test(src), 'النصّ العربيّ يُرسم في المتصفّح لا بمرشّح drawtext');
+  assert.equal(typeof M.cleanPage, 'function'); assert.equal(typeof M.addCaption, 'function'); assert.equal(typeof M.focusRect, 'function');
+  assert.ok(src.includes('pg.evaluate(cleanPage)') && src.includes('pg.evaluate(addCaption, [') && src.includes('pg.evaluate(focusRect, fc.focus)'), 'Playwright لا ينادي نصًّا بمعطى');
+  assert.ok(src.includes("viewport: { width: VIEW_W, height: VIEW_H }, deviceScaleFactor: VIEW_SCALE, colorScheme: 'dark'") && M.VIEW_W === 1280 && M.VIEW_SCALE === 3, 'التطبيق ١٢٨٠×٧٢٠ ×٣ بالثيم الداكن');
+  assert.ok(src.includes("const cardCtx = await browser.newContext({ viewport: { width: OUT_W, height: OUT_H }, deviceScaleFactor: 2"), 'بطاقات العناوين في سياقها (لا ١٩٢٠×١٠٨٠ بدقّة ×٣)');
   assert.ok(src.includes("localStorage.setItem('aiapp_intro', '0'); localStorage.setItem('aiapp_privacy_ack', '1'); localStorage.setItem('aiapp_lang', lg);"), 'بلا مقدّمة ولا إشعار خصوصيّة وباللغة المطلوبة');
+  // الصمود: الحركات موقوفة عند اللقطة، إعادة واحدة، ثمّ بطاقة عنوان بدل الفشل؛ ومشاهد متتالية للشاشة نفسها بلا إعادة تحميل
+  assert.ok(src.includes("const SHOT = { type: 'png', animations: 'disabled', caret: 'hide', timeout: 60000 };"));
+  assert.ok(src.includes('for (let attempt = 1; attempt <= 2 && !ok; attempt++)') && src.includes("capture failed twice: ' + lastErr + ' — title card instead'") && src.includes('j.fallbacks++'));
+  assert.ok(src.includes('if (state.key !== key) {') && src.includes('await pg.bringToFront();'));
+  // الترميز يبدأ أثناء التصوير (واحد في كلّ مرّة) ثمّ بالتوازي، والدمج لصق
+  assert.ok(src.includes('const limit = () => (capturing ? 1 : c.concurrency);') && src.includes('seg.needs.every((k) => ready.has(k))'));
+  assert.ok(src.includes('try { await capture(j, (i) => enc.markReady(i)); } finally { enc.captureDone(); }') && src.includes('await enc.finish();') && src.includes('await joinSegments(j, plan);'));
+  assert.ok(src.includes('availableParallelism() - 1'), 'التزامن الافتراضيّ من أنوية الجهاز');
+  assert.ok(!src.includes(String.fromCharCode(27)), 'لا بايت هروب خام في المصدر');
 });
 
 test('٥. المسارات: CORS لأصل التطبيق، ٤٠١ بلا رمز، ٤٠٠ لمانيفست فاسد، ٤٠٩ لمهمّة مكرّرة، ٤١٣ لجسم ضخم، والحالة لصاحب الرمز وحده', async () => {
