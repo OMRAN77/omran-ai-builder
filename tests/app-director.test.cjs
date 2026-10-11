@@ -273,11 +273,16 @@ test('٧. القسم في شريط صانع الفيديو للمالك وحده
   assert.ok(js.includes("if(sr&&(sr.status===404||sr.status===401))") && js.includes("if(++lost>=20)"), 'جسر أُعيد تشغيله أو انقطع لا يُنتظر للأبد');
   assert.ok(js.includes("DR.run++; DR.busy=false; syncDirector();"), 'الفشل يوقف نداءات الخلفيّة الباقية');
   assert.ok(!block.includes("L('vdSaved')"), 'لا «حُفظ في فيديوهاتي»: لا مكتبة فيديوهات في التطبيق');
-  assert.ok(js.includes("for(var att=1;att<=6&&!s.audio&&my===DR.run;att++)") && js.includes("coolUntil=Math.max(coolUntil,Date.now()+Math.min(4000*att,20000))") && js.includes("throw drFail('voice '+missV+'/'+voiced.length+' '+lastTts)"), 'حدّ الطلبات عند مزوّد الصوت: انتظار وإعادة، وفشل معلَن إن صمت خُمس المشاهد');
+  assert.ok(js.includes("for(var att=1;att<=6&&!s.audio&&!voiceDead&&my===DR.run;att++)") && js.includes("coolUntil=Math.max(coolUntil,Date.now()+Math.min(4000*att,20000))") && js.includes("throw drFail('voice '+(voiced.length-missV)+'/'+voiced.length+' '+lastTts)"), 'حدّ الطلبات عند مزوّد الصوت: انتظار وإعادة، وفشل معلَن إن صمت خُمس المشاهد');
+  // v-app-director-voice-first (لقطة المالك «voice 15/15 401» بعد توليد النماذج): التعليق قبل النماذج، والرفض النهائيّ يوقف الكلّ فورًا بنصّ ردّ الخادم
+  assert.ok(js.indexOf('/* ٢) التعليق أوّلًا') > 0 && js.indexOf('/* ٢) التعليق أوّلًا') < js.indexOf('/* ٣) نماذج الأنماط') && js.indexOf("'/api/media?action=tts'") < js.indexOf("'/api/portrait-style'"), 'الصوت يُسجَّل قبل الصرف على الصور');
+  assert.ok(js.includes("if(r.status===401||r.status===403||/insufficient_quota|no credits|invalid subscription/i.test(et)) voiceDead=true;") && js.includes("if(voiceDead||missV>Math.max(1,Math.floor(voiced.length*0.2)))"), 'مفتاح مرفوض أو رصيد منتهٍ = توقّف فوريّ');
+  assert.ok(js.includes("lastTts=r.status+(et?' '+et:'');") && js.includes("if(err){ try{ m.scrollIntoView({block:'end'}); }"), 'سبب الخادم في السطر، والسطر في مجال النظر');
+  assert.ok(js.includes("var DR_SPAN={plan:[0,14],voice:[14,30],samples:[30,58],shots:[58,84],join:[84,98]};"));
   // v-app-director-motion: الشاشة الحيّة أثناء التوليد، والخطوات بترتيب تنفيذها، وتبويب بلا صورة مكسورة
   assert.ok(js.includes('id="vdStage" hidden') && js.includes('function drStageStart()') && js.includes('ST.iv=setInterval(drStageTick,1000)') && js.includes('function drStageStop(hide){ clearInterval(ST.iv);'), 'الشاشة الحيّة تعمل أثناء التوليد فقط');
   assert.ok(js.includes("s.board.img='data:'+s.mime+';base64,'+s.image; ST.bi=ST.board.indexOf(s.board); drStageNext();"), 'نموذج النمط يظهر فور توليده');
-  assert.ok(js.includes("['plan','samples','voice','shots','join'].map(") && !js.includes("['plan','shots','samples','voice','join']"), 'الخطوات بترتيب التنفيذ');
+  assert.ok(js.includes("['plan','voice','samples','shots','join'].map(") && !js.includes("['plan','shots','samples','voice','join']") && !js.includes("['plan','samples','voice','shots','join']"), 'الخطوات بترتيب التنفيذ');
   assert.ok(js.includes("if(v==='director'){ var dlb=document.createElement('span');") && js.includes("b.classList.add('vmk-tab-noimg')"), 'تبويب المخرج بلا <img>');
   const css2 = read('css/modules.css');
   for (const k of ['.vmk-tab.vmk-tab-noimg{', '.vmk-dir-stage{', '@keyframes vdSweep', '@keyframes vdReel', '@keyframes vdKen', '.vmk-dir-diag{', '@media (prefers-reduced-motion:reduce){#videoMakerModal .vmk-dir-stage-bg']) assert.ok(css2.includes(k), k);
@@ -313,7 +318,7 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
     seen[lg] = obj.vdTab;
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=444'));
+  assert.ok(read('index.html').includes('/js/video.js?v=445'));
   assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=738';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });

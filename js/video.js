@@ -315,7 +315,7 @@
       +'<button type="button" id="vdGo"></button>'
       +'<div class="vmk-dir-stage" id="vdStage" hidden><div class="vmk-dir-stage-bg"></div><img id="vdStageImg" alt=""><div class="vmk-dir-stage-reel"></div>'
         +'<div class="vmk-dir-stage-cap" id="vdStageCap"></div><div class="vmk-dir-stage-hud"><span id="vdStageStep"></span><b id="vdStageTime">0:00</b></div><div class="vmk-dir-stage-bar"><i id="vdStageBar"></i></div></div>'
-      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','samples','voice','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small></li>'; }).join('')+'</ol>'
+      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small></li>'; }).join('')+'</ol>'
       +'<p class="vmk-dir-msg" id="vdMsg"></p>'
       +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a></div>';
     var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
@@ -341,7 +341,7 @@
   /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
      وما يكتبه المخرج مشهدًا مشهدًا، ونماذج الأنماط تظهر فيها بحركة كاميرا فور توليدها، مع عدّاد وقت وشريط تقدّم كلّيّ. تعمل أثناء التوليد فقط. */
   var ST={t0:0,iv:0,board:[],bi:0,creep:null};
-  var DR_SPAN={plan:[0,14],samples:[14,40],voice:[40,58],shots:[58,84],join:[84,98]};
+  var DR_SPAN={plan:[0,14],voice:[14,30],samples:[30,58],shots:[58,84],join:[84,98]};
   function drStageShow(on){ var s=id('vdStage'); if(s) s.hidden=!on; }
   function drStagePct(p){ var b=id('vdStageBar'); if(b) b.style.width=Math.max(0,Math.min(100,p))+'%'; }
   function drStageNext(){
@@ -376,8 +376,9 @@
   function drMsg(t,err,diag){
     var m=id('vdMsg'); if(!m) return; m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':'');
     if(diag){ var d=document.createElement('code'); d.className='vmk-dir-diag'; d.dir='ltr'; d.textContent=diag; m.appendChild(d); } /* سبب الخادم كما هو، للمالك وحده */
+    if(err){ try{ m.scrollIntoView({block:'end'}); }catch(e){ /* guard-ok — متصفّح بلا خيارات التمرير */ } } /* السبب كان أسفل النافذة مقصوصًا */
   }
-  function drReset(){ ['plan','samples','voice','shots','join'].forEach(function(k){ drStep(k,'',''); }); drMsg(''); var r=id('vdRes'); if(r) r.classList.remove('has'); }
+  function drReset(){ ['plan','voice','samples','shots','join'].forEach(function(k){ drStep(k,'',''); }); drMsg(''); var r=id('vdRes'); if(r) r.classList.remove('has'); }
   function drPickRef(f){
     var r=new FileReader();
     r.onload=function(){
@@ -451,7 +452,38 @@
         return o;
       });
       drStep('plan','ok',plan.title+' · '+drT('vdScene',{i:scenes.length,n:scenes.length})+(backup?' · '+backup:''));
-      /* ٢) نماذج الأنماط بمسار الصور القائم (صورة المالك مرجعًا إن أرفقها) — المالك بلا نقاط */
+      /* ٢) التعليق أوّلًا (v-app-director-voice-first — لقطة المالك «voice 15/15 401» بعد أن وُلّدت النماذج): الصوت أرخص وأسرع من الصور،
+         فمزوّد صوت يرفض (مفتاح مرفوض، رصيد منتهٍ) يُعلَن قبل الصرف على النماذج، ونصّ ردّ الخادم نفسه في سطر السبب.
+         حدّ الطلبات في الدقيقة (فيديو ١٠ دقائق = ٧٥ طلبًا): الرفض العابر يوقف العاملَين معًا مهلة تتصاعد ثمّ يعيد حتّى ستّ مرّات؛
+         والرفض النهائيّ (401/403/رصيد) يوقف الكلّ فورًا. مشهد بلا صوت يُعدّ؛ فوق خُمس المشاهد = فشل معلَن لا فيديو نصفه صامت. */
+      var voiced=scenes.filter(function(s){ return !!s.narration; });
+      drStep('voice','on',drT('vdScene',{i:0,n:voiced.length}),0);
+      var doneV=0, missV=0, lastTts='', coolUntil=0, voiceDead=false;
+      await drPool(voiced,2,async function(s){
+        for(var att=1;att<=6&&!s.audio&&!voiceDead&&my===DR.run;att++){
+          var hold=coolUntil-Date.now(); if(hold>0) await new Promise(function(x){ setTimeout(x,hold); });
+          if(my!==DR.run) return;
+          if(voiceDead) break;
+          try{
+            var ctl=new AbortController(); var tm=setTimeout(function(){ ctl.abort(); },60000);
+            var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s.narration,voice:'maha',lang:lang,gender:speaker,token:tk}),signal:ctl.signal});
+            clearTimeout(tm);
+            if(r.ok){ var b=await r.blob(); if(b.size>200) s.audio=await drB64(b); else lastTts='empty'; }
+            else {
+              var et=''; try{ var ej=await r.json(); et=String((ej&&ej.error)||'').replace(/\s+/g,' ').slice(0,140); }catch(e2){ et=''; /* ردّ بلا JSON: الحالة وحدها */ }
+              lastTts=r.status+(et?' '+et:'');
+              if(r.status===401||r.status===403||/insufficient_quota|no credits|invalid subscription/i.test(et)) voiceDead=true;
+            }
+          }catch(e){ lastTts='network'; try{ __swallow(e,'director:tts'); }catch(z){ /* guard-ok — لا مسجّل */ } }
+          if(!s.audio&&!voiceDead&&att<6) coolUntil=Math.max(coolUntil,Date.now()+Math.min(4000*att,20000));
+        }
+        if(!s.audio) missV++;
+        doneV++; if(my===DR.run&&!voiceDead) drStep('voice','on',drT('vdScene',{i:doneV,n:voiced.length}),doneV/voiced.length);
+      });
+      if(my!==DR.run) return;
+      if(voiceDead||missV>Math.max(1,Math.floor(voiced.length*0.2))){ drStep('voice','err'); throw drFail('voice '+(voiced.length-missV)+'/'+voiced.length+' '+lastTts); }
+      drStep('voice','ok',missV?('−'+missV):'');
+      /* ٣) نماذج الأنماط بمسار الصور القائم (صورة المالك مرجعًا إن أرفقها) — المالك بلا نقاط */
       var samples=scenes.filter(function(s){ return s.type==='style_sample'; });
       var failed=0;
       if(samples.length){
@@ -474,33 +506,6 @@
         if(my!==DR.run) return;
         drStep('samples','ok',failed?drT('vdWarnSamples',{n:failed}):'');
       } else drStep('samples','ok','');
-      /* ٣) التعليق لكلّ مشهد بصوت مها/عبدالله باللغة المختارة (المسار نفسه الذي يستعمله الصانع) */
-      var voiced=scenes.filter(function(s){ return !!s.narration; });
-      drStep('voice','on',drT('vdScene',{i:0,n:voiced.length}),0);
-      /* مزوّد الصوت يحدّ الطلبات في الدقيقة (فيديو ١٠ دقائق = ٧٥ طلبًا): الرفض يوقف العاملَين معًا مهلة تتصاعد ثمّ يعيد حتّى ستّ مرّات،
-         ومشهد بلا صوت بعدها يُعدّ؛ فوق خُمس المشاهد = فشل معلَن بسببه لا فيديو نصفه صامت */
-      var doneV=0, missV=0, lastTts='', coolUntil=0;
-      await drPool(voiced,2,async function(s){
-        for(var att=1;att<=6&&!s.audio&&my===DR.run;att++){
-          var hold=coolUntil-Date.now(); if(hold>0) await new Promise(function(x){ setTimeout(x,hold); });
-          if(my!==DR.run) return;
-          var stop=false;
-          try{
-            var ctl=new AbortController(); var tm=setTimeout(function(){ ctl.abort(); },60000);
-            var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s.narration,voice:'maha',lang:lang,gender:speaker,token:tk}),signal:ctl.signal});
-            clearTimeout(tm);
-            if(r.ok){ var b=await r.blob(); if(b.size>200) s.audio=await drB64(b); else lastTts='empty'; }
-            else { lastTts=String(r.status); stop=(r.status===401||r.status===403); }
-          }catch(e){ lastTts='network'; try{ __swallow(e,'director:tts'); }catch(z){ /* guard-ok — لا مسجّل */ } }
-          if(stop) break;
-          if(!s.audio&&att<6) coolUntil=Math.max(coolUntil,Date.now()+Math.min(4000*att,20000));
-        }
-        if(!s.audio) missV++;
-        doneV++; if(my===DR.run) drStep('voice','on',drT('vdScene',{i:doneV,n:voiced.length}),doneV/voiced.length);
-      });
-      if(my!==DR.run) return;
-      if(missV>Math.max(1,Math.floor(voiced.length*0.2))){ drStep('voice','err'); throw drFail('voice '+missV+'/'+voiced.length+' '+lastTts); }
-      drStep('voice','ok',missV?('−'+missV):'');
       /* ٤) رمز المهمّة وعنوان الجسر من الخادم، ثمّ المانيفست إلى الجسر مباشرة */
       drStep('shots','on');
       var tr=await drJson('/api/ai?action=app-director-token',{token:tk}); if(my!==DR.run) return;
