@@ -448,10 +448,19 @@ module.exports = async (req, res) => {
   if (body.runState) {
     const who = require('./auth.js').verifyToken(token);
     if (!who) { res.status(401).json({ error: 'auth_required' }); return; }
+    if (!isOwner(who)) { res.status(403).json({ error: 'owner_only' }); return; } // v-agent-owner-only
     const { kvGetJSON } = require('./kv.js');
     res.status(200).json({ run: (await kvGetJSON(runKey(who))) || null });
     return;
   }
+
+  /* v-agent-owner-only (تدقيق المال ١١ أكتوبر: الواجهة تخفي الوكيل عن غير المالك، والخادم كان يفحص الباقة وحدها — فالمشترك
+     يأخذ حتّى ٣٠ نداء Opus بحصّة رسالة واحدة، وVIP بلا سقف): الوكيل للمالك وحده (ownerList: المدمج + أسماء البيئة). البوّابة
+     من الرمز الموقَّع وحده — قبل checkAndConsume والدفتر وأيّ fetch، فلا حصّة تُحجز ولا نداء نموذج ولا لمس لسلال IP المكتب.
+     /api/agent-tool-result لا يمرّ من هنا ويبقى مفتوحًا للمحادثة. */
+  const caller = require('./auth.js').verifyToken(token);
+  if (!caller) { res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); return; }
+  if (!isOwner(caller)) { res.status(403).json({ error: 'owner_only' }); return; }
 
   if (!messages || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }
 

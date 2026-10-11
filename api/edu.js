@@ -50,6 +50,26 @@ function eduCapsFor(t) {
   if (t.tier === 'sub') return EDU_CAPS[t.plan] || EDU_CAPS.free;
   return EDU_CAPS.free;
 }
+/* v-edu-econ (ثغرات الفلوس، ١١ أكتوبر): كلّ تحليل للضيف والمجّانيّ كان نداءين على
+   النموذج الأغلى، والضيف يتجدّد بتدوير الـIP بلا سقف كلّيّ. الآن الضيف والمجّانيّ على النموذج
+   الاقتصاديّ (EDU_ECON_MODEL، افتراضيًّا claude-haiku-4-5 — مجرَّب هنا في المحادثة والتجربة الحيّة)،
+   والمالك وVIP والباقات المدفوعة على MODEL كما كانوا. EDU_ECON_TIERS يحدّد الطبقات (افتراضيًّا
+   guest,free). تُقرأ البيئة داخل الدالّة لا في نطاق الوحدة، ولا حالة مشتركة بين الطلبات. */
+function eduModelFor(t) {
+  const raw = process.env.EDU_ECON_TIERS == null ? 'guest,free' : process.env.EDU_ECON_TIERS;
+  const tiers = String(raw).split(',').map((x) => x.trim()).filter(Boolean);
+  return tiers.includes((t && t.tier) || 'guest') ? (String(process.env.EDU_ECON_MODEL || '').trim() || 'claude-haiku-4-5') : null;
+}
+// سقف كلّيّ لتحليلات الضيوف الثقيلة في اليوم (كلّ الـIP معًا) — يغلق ثغرة تدوير الـIP.
+function guestTotalCap() {
+  const n = parseInt(process.env.EDU_GUEST_TOTAL_DAILY, 10);
+  return Number.isFinite(n) && n >= 0 ? n : 200;
+}
+// المراجعة: «اسأل المستند» خفيف لكنّه ٦٠ ألف حرف في النداء و١٥ لكلّ IP — سقف كلّيّ مستقلّ كي لا يأكل حصّة التحليل الثقيل.
+function guestLightCap() {
+  const n = parseInt(process.env.EDU_GUEST_LIGHT_TOTAL_DAILY, 10);
+  return Number.isFinite(n) && n >= 0 ? n : 1500;
+}
 
 /**
  * One daily counter per subject (ip or username) per bucket. Owner is exempt.
@@ -125,7 +145,12 @@ async function resolveModel(apiKey) {
 // anthropic/ — فيبقى التحليل حيًّا بدل توقّف الأداة كلها.
 const ANTHROPIC_MSG_URL = 'https://api.anthropic.com/v1/messages';
 const OPENROUTER_MSG_URL = 'https://openrouter.ai/api/v1/messages';
-function orModelId(m) { return String(m).indexOf('/') >= 0 ? String(m) : ('anthropic/' + m); }
+// v-edu-econ: كتالوج OpenRouter يكتب الإصدار بنقطة (anthropic/claude-haiku-4.5، كما في CLAUDE_MODELS
+// في chat.js) — بالشرطة كان احتياط الاقتصاديّ يسقط. claude-sonnet-5 بلا إصدار فرعيّ فيبقى كما هو.
+function orModelId(m) {
+  const x = String(m);
+  return x.indexOf('/') >= 0 ? x : ('anthropic/' + x.replace(/^(claude-[a-z]+-\d+)-(\d+)(?:-\d{8})?$/, '$1.$2'));
+}
 // أخطاء يُجدي معها تحويل المزوّد: رصيد/حصة/تحميل زائد/خطأ خادم — لا أخطاء طلبنا
 // نحن (400/401/403) ولا 404 الموديل (له مساره الخاصّ في كل نداء).
 function worthFailover(status, data) {
@@ -167,6 +192,20 @@ async function sendClaude(payload, timeoutMs) {
   throw new Error('missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY');
 }
 
+// v-edu-econ: الإرسال بنموذج الطبقة (model فارغ = الافتراضيّ كما كان). الاقتصاديّ أضيق (سياق ٢٠٠ ألف،
+// ١٠٠ صفحة PDF) فيرفض الملفّ الضخم بـ400 قبل أيّ استدلال (بلا كلفة) — نعيد مرّة على الافتراضيّ
+// كي لا ينكسر الملفّ الكبير على الضيف والمجّانيّ.
+async function sendEdu(base, model, timeoutMs) {
+  const def = RESOLVED_MODEL || MODEL;
+  const r = await sendClaude({ ...base, model: model || def }, timeoutMs);
+  if (!r.ok && model && model !== def && r.status === 400
+    && /PDF pages|prompt is too long|context/i.test(JSON.stringify(r.data || ''))) {
+    console.warn('[edu] econ model 400 (size) → default model');
+    return sendClaude({ ...base, model: def }, timeoutMs);
+  }
+  return r;
+}
+
 // Language bridge: the student understands in one language but is examined in
 // another (an Arabic-speaking med student sitting an English exam, a Malayalam
 // speaker in an English-medium school). Explanations follow the native
@@ -205,10 +244,10 @@ function languageRules(lang, nativeLang, examLang) {
    واحدًا ضخمًا (ملخص + بطاقات + اختبار + مقالي معًا) يستغرق دقيقة وأكثر.
    الآن نداءان متوازيان على نفس المحتوى: الملخص | الأسئلة كلها — الزمن الكلي
    يصير زمن الأطول فقط (~النصف) بنفس المحتوى حرفيًا. */
-async function anthropicJSON(apiKey, sys, contentBlocks, maxTokens) {
+async function anthropicJSON(apiKey, sys, contentBlocks, maxTokens, model) {
   // v407: مهلة خاصة 280ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة.
   const base = { max_tokens: maxTokens, system: sys, messages: [{ role: 'user', content: contentBlocks }] };
-  let r = await sendClaude({ ...base, model: RESOLVED_MODEL || MODEL }, 280000);
+  let r = await sendEdu(base, model, 280000);
   if (!r.ok && r.status === 404 && r.data && r.data.error && /model/i.test(JSON.stringify(r.data.error))) {
     RESOLVED_MODEL = null;
     const m = await resolveModel(apiKey);
@@ -223,6 +262,8 @@ async function anthropicJSON(apiKey, sys, contentBlocks, maxTokens) {
   const text = (r.data && r.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   return extractJSON(text);
 }
+// v-edu-econ: يربط نموذج الطلب بـanthropicJSON — لكلّ طلب نسخته (لا حالة على مستوى الوحدة).
+const anthropicJSONFor = (model) => (k, sys, blocks, maxTokens) => anthropicJSON(k, sys, blocks, maxTokens, model);
 function eduLangTail(lang, nativeLang, examLang, stage) {
   const level = (stage || 'university') === 'university' ? 'جامعي' : 'مدرسي مناسب لمرحلة: ' + stage;
   return '- مستوى الصياغة والعمق: ' + level + '.\n'
@@ -247,7 +288,9 @@ function buildQuestionsSys(langTail) {
     + '- "section" في كل سؤال = عنوان قصير للجزء من المحاضرة الذي يغطيه السؤال، ليُوجَّه الطالب لمراجعته عند الخطأ.\n'
     + langTail;
 }
-async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, stage) {
+async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, stage, model) {
+  // v-edu-econ: الشقّان على نموذج الطبقة — الربط محلّيّ فيبقى نصّ النداءين كما هو (مقفول في fashion-locks ㉟/㊳).
+  const anthropicJSON = anthropicJSONFor(model);
   const langTail = eduLangTail(lang, nativeLang, examLang, stage);
   const sysSummary = 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
     + 'حلل المحتوى وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
@@ -271,7 +314,7 @@ async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, sta
 // Deliberately NOT a pass/fail verdict. A student learns from "you covered X,
 // you missed Y, go re-read Z" — not from a number. The rubric is echoed back
 // so the student can see what they were judged against and challenge it.
-async function callClaudeGrade(apiKey, payload, lang, nativeLang) {
+async function callClaudeGrade(apiKey, payload, lang, nativeLang, model) {
   const sys = 'أنت مصحّح تعليمي منصف. يُعطى إليك سؤال مقالي، ومعيار تصحيح (قائمة نقاط يجب أن ترد في الإجابة الكاملة)، وإجابة الطالب. '
     + 'قيّم الإجابة مقابل المعيار فقط. أعد JSON صالحًا بلا أي نص خارجه وبلا أسوار كود:\n'
     + '{"score":0,"max":10,"covered":["نقطة من المعيار وردت فعلًا في إجابة الطالب"],"missing":["نقطة من المعيار لم ترد"],"feedback":"ملاحظة قصيرة موجّهة للطالب","review":"عنوان القسم الذي يُنصح بمراجعته أو نص فارغ"}\n'
@@ -291,7 +334,7 @@ async function callClaudeGrade(apiKey, payload, lang, nativeLang) {
     + (payload.dispute ? '\n\nاعتراض الطالب على تصحيح سابق (أعد التقييم بإنصاف وخذه بجدية):\n' + String(payload.dispute).slice(0, 1500) : '');
 
   const base = { max_tokens: 2000, system: sys, messages: [{ role: 'user', content: user }] };
-  let r = await sendClaude({ ...base, model: RESOLVED_MODEL || MODEL }, 280000);
+  let r = await sendEdu(base, model, 280000);
   if (!r.ok && r.status === 404 && r.data && r.data.error && /model/i.test(JSON.stringify(r.data.error))) {
     RESOLVED_MODEL = null; const m = await resolveModel(apiKey); r = await sendClaude({ ...base, model: m }, 280000);
   }
@@ -301,7 +344,7 @@ async function callClaudeGrade(apiKey, payload, lang, nativeLang) {
 }
 
 // ---------- 📊 محلّل المصاريف: يقرأ كشف حساب (PDF/صور/نص) ويصنّف المصاريف ----------
-async function callClaudeExpense(apiKey, contentBlocks, lang) {
+async function callClaudeExpense(apiKey, contentBlocks, lang, model) {
   const sys = 'أنت محلل مالي شخصي خبير. يُرسل إليك كشف حساب بنكي أو قائمة مصاريف (نص أو PDF أو صور). '
     + 'اقرأ كل الحركات المالية المصروفة (تجاهل الإيداعات/الرواتب الداخلة إلا لحساب صافي التدفق)، وصنّفها في فئات واضحة. '
     + 'أعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
@@ -317,7 +360,7 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
     + (lang && /^ar/i.test(lang) ? 'بالعربية.' : ('in ' + eduLangName(lang || 'ar') + ' — not in Arabic.'))
     + ' لا تكتب أي شيء خارج كائن JSON.';
   const base = { max_tokens: 8000, system: sys, messages: [{ role: 'user', content: contentBlocks }] };
-  let r = await sendClaude({ ...base, model: RESOLVED_MODEL || MODEL }, 280000);
+  let r = await sendEdu(base, model, 280000);
   if (!r.ok && r.status === 404 && r.data && r.data.error && /model/i.test(JSON.stringify(r.data.error))) {
     RESOLVED_MODEL = null;
     const m = await resolveModel(apiKey);
@@ -333,7 +376,7 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
 
 // ---------- 📄 مساعد المستندات: يقرأ عقدًا/فاتورة/تقريرًا (PDF/صورة/نص) ----------
 // أُعيد بطلب المالك ٨ سبتمبر بعد تقاعده؛ الآن بحدّ يومي (المعالج في الراوتر).
-async function callClaudeDoc(apiKey, contentBlocks, lang) {
+async function callClaudeDoc(apiKey, contentBlocks, lang, model) {
   const outLang = (lang && /^ar/i.test(lang)) ? 'بالعربية' : ('in ' + eduLangName(lang || 'ar') + ' — not in Arabic');
   const sys = 'أنت مساعد مستندات خبير (عقود، فواتير، تقارير، عروض أسعار). يُرسل إليك مستند (نص أو PDF أو صورة). '
     + 'اقرأه بدقّة وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
@@ -343,12 +386,12 @@ async function callClaudeDoc(apiKey, contentBlocks, lang) {
     + 'keypoints = 3 إلى 6 نقاط تنبيه عملية (التزامات، مواعيد، شروط جزائية، بنود مهمة). '
     + 'docText = نصّ المستند المقروء (حتى ~15000 حرف) حتى يُجاب عن أسئلة المستخدم لاحقًا؛ إن كان المستند نصًّا مُدخلًا فأعده كما هو. '
     + 'اكتب كل النصوص ' + outLang + '. لا تكتب أي شيء خارج كائن JSON.';
-  return anthropicJSON(apiKey, sys, contentBlocks, 8000);
+  return anthropicJSON(apiKey, sys, contentBlocks, 8000, model);
 }
 
 // v-cv-back (طلب عمران: زر السيرة كان يحوّل للمحادثة): مولّد السيرة عاد
 // نافذة مستقلة — كلود يبني HTML كاملًا للطباعة + خطاب تقديم بلغة التطبيق.
-async function callClaudeCv(apiKey, info, lang) {
+async function callClaudeCv(apiKey, info, lang, model) {
   const isAr = !lang || /^(ar|ur)/i.test(String(lang));
   const outLang = isAr ? 'Arabic' : eduLangName(lang || 'en');
   const sys = 'You are an expert CV writer and designer. From the user info build two things. '
@@ -362,7 +405,7 @@ async function callClaudeCv(apiKey, info, lang) {
     + 'Return ONLY valid JSON exactly as {"cvHtml":"...","coverLetter":"..."} with the HTML JSON-escaped. No text outside the JSON.';
   const userText = 'User info (JSON):\n' + JSON.stringify(info) + '\n\nBuild the CV now.';
   const base = { max_tokens: 8000, system: sys, messages: [{ role: 'user', content: [{ type: 'text', text: userText }] }] };
-  let r = await sendClaude({ ...base, model: RESOLVED_MODEL || MODEL }, 280000);
+  let r = await sendEdu(base, model, 280000);
   if (!r.ok && r.status === 404 && r.data && r.data.error && /model/i.test(JSON.stringify(r.data.error))) {
     RESOLVED_MODEL = null;
     const m = await resolveModel(apiKey);
@@ -395,8 +438,13 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // v-edu-tiers: طبقة المستخدم وسقفه التعليمي — تُحسب مرة لكل طلب.
     // عطب القراءة = معاملة مسجّل مجاني (فشل آمن، لا يفتح ولا يقفل ظلمًا).
     let __eduCaps = username ? EDU_CAPS.free : EDU_CAPS.guest;
-    try { __eduCaps = eduCapsFor(await require('./_lib/tier.js').resolveTier(username)); } catch (e) { /* best-effort */ }
+    let __tier = username ? { tier: 'free' } : null;
+    try { __tier = await require('./_lib/tier.js').resolveTier(username); __eduCaps = eduCapsFor(__tier); } catch (e) { /* best-effort */ }
     const __eduMax = (k) => (__eduCaps ? __eduCaps[k] : Infinity);
+    // v-edu-econ: نموذج الطلب حسب الطبقة (null = الافتراضيّ)، وسقف الضيوف الكلّيّ اليوميّ
+    // (يُفحص بعد التحقّق من المحتوى وقبل النداء مباشرة كي لا يستنزفه طلب فارغ؛ فشل KV لا يقفل).
+    const __eduModel = eduModelFor(__tier);
+    const __guestTotalOver = async () => !username && overDailyLimit('*', 'guest-total', guestTotalCap());
 
     // ---------------- process ----------------
     if (action === 'process') {
@@ -442,10 +490,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!blocks.length) { res.status(400).json({ error: 'لا يوجد محتوى للتحليل — ارفع ملفًا أو الصق نصًا.' }); return; }
       blocks.push({ type: 'text', text: 'حلل هذه المحاضرة وأعد JSON فقط بالصيغة المطلوبة.' });
+      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' محاضرات). سجّل الدخول أو عد غدًا 🌙' }); return; }
 
       let result = null;
       try {
-        result = await callClaude(apiKey, blocks, lang, nativeLang, examLang, stage);
+        result = await callClaude(apiKey, blocks, lang, nativeLang, examLang, stage, __eduModel);
       } catch (e) {
         res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر تحليل المحاضرة: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
         return;
@@ -546,9 +595,10 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         + (grade ? '- الصف/السنة: ' + grade + '\n' : '')
         + '- المادة: ' + subjName + '\n- عنوان الدرس: ' + lessonName + '\n'
         + 'في حقل "summary" اكتب شرح الدرس كاملًا كأنه فصل من كتاب مدرسي: تمهيد يربط الدرس بما قبله، شرح كل فكرة بالتفصيل مع أمثلة محلولة خطوة بخطوة، القوانين والقواعد بارزة بخط غامق، ثم خلاصة — بمستوى يناسب الصف المحدد بالضبط. واجعل حقل "subject" هو: ' + subjName + '. ثم ولّد البطاقات والاختبار والأسئلة المقالية من هذا الشرح نفسه.' }];
+      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' دروس). سجّل الدخول أو عد غدًا 🌙' }); return; }
       let result = null;
       try {
-        result = await callClaude(apiKey, blocks, body.lang, body.nativeLang, body.examLang, (stageTxt && /جامع|كلي|university|college/i.test(stageTxt)) ? 'university' : ((stageTxt + ' ' + grade).trim() || 'school'));
+        result = await callClaude(apiKey, blocks, body.lang, body.nativeLang, body.examLang, (stageTxt && /جامع|كلي|university|college/i.test(stageTxt)) ? 'university' : ((stageTxt + ' ' + grade).trim() || 'school'), __eduModel);
       } catch (e) {
         res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر توليد الدرس: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
         return;
@@ -575,11 +625,13 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       }
+      // نفس سلّة proc — نصّ الضيف نفسه الذي في process.
+      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' محاضرات). سجّل الدخول أو عد غدًا 🌙' }); return; }
       const qTail = eduLangTail(body.lang, body.nativeLang, body.examLang, body.stage || 'university');
       let qResult = null;
       try {
         qResult = await anthropicJSON(apiKey, buildQuestionsSys(qTail),
-          [{ type: 'text', text: 'محتوى المحاضرة (ملخص الدرس):\n\n' + qSummary }], 9000);
+          [{ type: 'text', text: 'محتوى المحاضرة (ملخص الدرس):\n\n' + qSummary }], 9000, __eduModel);
       } catch (e) {
         res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر توليد الأسئلة: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' });
         return;
@@ -619,6 +671,8 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const subjName = String(body.subject || '').slice(0, 80).trim();
       const summary = String(body.summary || '').slice(0, 14000).trim();
       if (!title || !summary) { res.status(400).json({ error: 'الدرس غير مكتمل — حلّل المحاضرة أولًا.' }); return; }
+      // v-edu-econ (المراجعة): المختبر ثقيل (١٤٠٠٠ + تكملة) فتحت سقف الضيوف الكلّيّ كالتحليل — كان تدوير الـIP يفتحه بعد امتلاء السقف.
+      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       const nat = String(body.nativeLang || body.lang || 'ar').slice(0, 8);
       const sys = 'أنت مطوّر ألعاب تعليمية عبقري. يُعطى إليك ملخص درس، ومطلوب منك بناء «تجربة حية»: '
         + 'صفحة HTML واحدة كاملة تفاعلية تجعل الطالب يلعب بجوهر الدرس بيديه ويرى النتيجة فورًا.\n'
@@ -695,9 +749,10 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         const v = String(info[k] == null ? '' : info[k]).slice(0, 4000).trim();
         if (v) clean[k] = v;
       });
+      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' سير ذاتية). عد غدًا 🌙' }); return; }
       let out = null;
       try {
-        out = await callClaudeCv(apiKey, clean, body.lang);
+        out = await callClaudeCv(apiKey, clean, body.lang, __eduModel);
       } catch (e) {
         res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر توليد السيرة: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
         return;
@@ -747,10 +802,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!blocks.length) { res.status(400).json({ error: 'لا يوجد محتوى للتحليل — ارفع كشف حساب أو الصق قائمة المصاريف.' }); return; }
       blocks.push({ type: 'text', text: 'حلّل هذه المصاريف وأعد JSON فقط بالصيغة المطلوبة.' });
+      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' كشوفات). عد غدًا 🌙' }); return; }
 
       let result = null;
       try {
-        result = await callClaudeExpense(apiKey, blocks, lang);
+        result = await callClaudeExpense(apiKey, blocks, lang, __eduModel);
       } catch (e) {
         res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر تحليل الكشف: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
         return;
@@ -802,9 +858,10 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!blocks.length) { res.status(400).json({ error: 'لا يوجد محتوى للتحليل — ارفع مستندًا أو الصق نصًا.' }); return; }
       blocks.push({ type: 'text', text: 'حلّل هذا المستند وأعد JSON فقط بالصيغة المطلوبة.' });
+      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' مستندات). سجّل الدخول أو عد غدًا 🌙' }); return; }
       let result = null;
       try {
-        result = await callClaudeDoc(apiKey, blocks, lang);
+        result = await callClaudeDoc(apiKey, blocks, lang, __eduModel);
       } catch (e) {
         res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر تحليل المستند: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
         return;
@@ -838,6 +895,8 @@ module.exports = withErrorCapture('edu', async (req, res) => {
           return;
         }
       }
+      // v-edu-econ (المراجعة): سقف كلّيّ للضيوف على الأسئلة (كلّ الـIP معًا) — يغلق تدويرها.
+      if (!username && !isOwner && await overDailyLimit('*', 'guest-light-total', guestLightCap())) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       const lang = body.lang;
       const outLang = (lang && /^ar/i.test(lang)) ? 'بالعربية' : ('in ' + eduLangName(lang || 'ar') + ' — not in Arabic');
       const sys = 'أنت مساعد مستندات. يُعطى إليك نصّ مستند وسؤال عنه. أجب عن السؤال بالاعتماد على المستند فقط، '
@@ -851,7 +910,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       history.forEach((h) => messages.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content).slice(0, 4000) }));
       messages.push({ role: 'user', content: question });
       const base = { max_tokens: 1500, system: sys, messages };
-      let r = await sendClaude({ ...base, model: RESOLVED_MODEL || MODEL }, 120000);
+      let r = await sendEdu(base, __eduModel, 120000);
       if (!r.ok && r.status === 404 && r.data && r.data.error && /model/i.test(JSON.stringify(r.data.error))) {
         RESOLVED_MODEL = null; const m = await resolveModel(apiKey); r = await sendClaude({ ...base, model: m }, 120000);
       }
@@ -893,7 +952,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
 
       let result = null;
       try {
-        result = await callClaudeGrade(apiKey, { question, rubric, answer, dispute }, lang, nativeLang);
+        result = await callClaudeGrade(apiKey, { question, rubric, answer, dispute }, lang, nativeLang, __eduModel);
       } catch (e) {
         res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر التصحيح: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' });
         return;
@@ -950,7 +1009,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const blocks = [{ type: 'text', text: 'الدرس: ' + title + '\n\nملخّص الدرس:\n' + summary
         + (history ? '\n\nآخر المحادثة:\n' + history : '') + '\n\nسؤال الطالب الآن:\n' + question }];
       let result = null;
-      try { result = await anthropicJSON(apiKey, sys, blocks, 1800); }
+      try { result = await anthropicJSON(apiKey, sys, blocks, 1800, __eduModel); }
       catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر الردّ الآن — حاول مرة أخرى.' }); return; }
       const reply = String((result && result.reply) || '').trim();
       if (!reply) { res.status(502).json({ error: 'وصل ردّ فارغ — حاول مرة أخرى.' }); return; }
@@ -997,8 +1056,9 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const blocks = [];
       if (img) blocks.push({ type: 'image', source: { type: 'base64', media_type: /^image\/(png|jpeg|gif|webp)$/i.test(img.mime || '') ? img.mime : 'image/jpeg', data: img.base64 } });
       blocks.push({ type: 'text', text: (text ? 'الواجب:\n' + text : 'الواجب في الصورة.') + '\n\nحلّه الآن كاملًا وأعد JSON فقط.' });
+      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي لحلّ المسائل (' + __eduMax('solve') + '). عد غدًا 🌙' }); return; }
       let result = null;
-      try { result = await anthropicJSON(apiKey, sys, blocks, 8000); }
+      try { result = await anthropicJSON(apiKey, sys, blocks, 8000, __eduModel); }
       catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر الحلّ الآن — حاول مرة أخرى.' }); return; }
       if (result && result.error) { res.status(422).json({ error: String(result.error).slice(0, 300) }); return; }
       const steps = (result && Array.isArray(result.steps) ? result.steps : [])

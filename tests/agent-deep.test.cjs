@@ -132,13 +132,21 @@ test('٤. المالك: xhigh و٦٤ ألفًا، GitHub عميق وناتجه �
   assert.ok(r.events.some((e) => /بحثتُ في كود OMRAN77\/x عن «foo»/.test(e.status || '')), 'الأثر يذكر البحث');
 });
 
-test('٥. غير المالك كما كان: high و٣٢ ألفًا، GitHub بلا مفتاح، والناتج مقصوص عند ٨ آلاف', async () => {
-  const r = await run('someone', [thinkThenSearch, () => answer('تم')]);
-  assert.deepEqual(r.calls[0].output_config, { effort: 'high' });
-  assert.equal(r.calls[0].max_tokens, 32000);
-  assert.deepEqual(ghCalls[0].opts, { anonymous: true });
-  const msgs = r.calls[1].messages;
-  assert.equal(msgs[msgs.length - 1].content[0].content.length, 8000);
+/* v-agent-owner-only: كان هذا الاختبار يثبت مسار غير المالك (high و٣٢ ألفًا وGitHub بلا مفتاح ومقصوص عند ٨ آلاف). الوكيل صار
+   للمالك وحده على الخادم، فذلك المسار لا يُبلَغ: غير المالك يُردّ ٤٠٣ قبل أيّ نداء مزوّد أو قراءة GitHub (tests/agent-owner-only.test.cjs). */
+test('٥. غير المالك: ٤٠٣ owner_only — لا نداء مزوّد ولا قراءة GitHub', async () => {
+  usageUser = 'someone';
+  ghCalls.length = 0;
+  let fetches = 0, code = 0, body = null;
+  const save = global.fetch;
+  global.fetch = async () => { fetches++; return new Response('{}', { status: 500 }); };
+  const req = { method: 'POST', headers: { host: 'x' }, body: { messages: [{ role: 'user', content: 'وين الخلل في foo؟' }], token: token('someone') } };
+  const res = { setHeader() {}, status(c) { code = c; return this; }, json(v) { body = v; return this; }, write() { throw new Error('لا بثّ لغير المالك'); }, end() {}, flush() {} };
+  try { await agent(req, res); } finally { global.fetch = save; }
+  assert.equal(code, 403);
+  assert.deepEqual(body, { error: 'owner_only' });
+  assert.equal(fetches, 0, 'لا نداء مزوّد');
+  assert.equal(ghCalls.length, 0, 'لا قراءة GitHub');
 });
 
 test('٦. توقيع تفكير مرفوض → تُنزع كتل التفكير وإعادة واحدة، والتشغيل يكمل', async () => {
