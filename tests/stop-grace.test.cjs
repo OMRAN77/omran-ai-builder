@@ -15,10 +15,11 @@ const attach = read('js/app-09-attach.js');
 
 /* يستخرج معالج زرّ الإيقاف كما هو في المصدر ويشغّله في سياق معزول ببدائل للعناصر العامّة. */
 function runStopClick({ startedAt, now, controller }) {
+  const h0 = voice.indexOf('function __omranShownRunStartedAt(){');
   const i = voice.indexOf('btnStop.onclick = () => {');
-  assert.ok(i > 0, 'معالج زرّ الإيقاف موجود');
+  assert.ok(h0 > 0 && i > h0, 'دالّة وقت البدء ومعالج زرّ الإيقاف موجودان');
   const j = voice.indexOf('\n};', i);
-  const handler = voice.slice(i, j + 3);
+  const handler = voice.slice(h0, j + 3);
   const grace = Number((voice.match(/const __OMRAN_STOP_GRACE_MS = (\d+);/) || [])[1]);
   assert.ok(grace > 0, 'مهلة السماح معرَّفة');
   const calls = { speak: 0 };
@@ -28,7 +29,9 @@ function runStopClick({ startedAt, now, controller }) {
     isListening: false,
     recognizer: null,
     genAbortController: controller,
-    __omranReqStartedAt: startedAt,
+    state: { currentId: 'p1' },
+    __omranRuns: startedAt ? { p1: { pid: 'p1', ctl: controller, t0: startedAt } } : {},
+    __swallow: () => {},
     __OMRAN_STOP_GRACE_MS: grace,
     Date: { now: () => now },
   };
@@ -61,9 +64,19 @@ test('no recorded start (watchdog not armed) keeps the old immediate stop; no co
 });
 
 test('the start time is recorded the moment the stop button takes the send button\'s place', () => {
-  assert.ok(attach.includes("  genAbortController = new AbortController();\n  btnStop.classList.add('live');\n  __omranArmWatchdog();"), 'الحارس يُسلَّح (ويسجّل وقت البدء) مع إضاءة زرّ الإيقاف');
-  assert.ok(attach.includes('__omranReqStartedAt = Date.now();'), 'وقت البدء يُسجَّل في تسليح الحارس');
-  assert.ok(/var __omranWdTimer = null, __omranWdWake = null, __omranReqStartedAt = 0;/.test(attach), 'المتغيّر عامّ في الحزمة فيقرؤه المعالج');
+  // v-parallel-chats: كلّ محادثة لها تشغيلها؛ البدء يسجّل t0 ثمّ يضيء الإيقاف ويعكس genAbortController للمحادثة المعروضة
+  assert.ok(attach.includes("var r = { pid: String(pid), ctl: ctl, t0: Date.now(),"), 'التشغيل يسجّل وقت بدئه');
+  assert.ok(/function __omranRunStart\(pid, ctl\)\{[\s\S]{0,400}__omranSyncRunView\(\);/.test(attach), 'البدء يزامن الواجهة (إضاءة الإيقاف)');
+  assert.ok(attach.includes('genAbortController = r ? r.ctl : null;') && attach.includes("if(stop) stop.classList.add('live');"), 'المرآة والإضاءة للمحادثة المعروضة');
+  assert.ok(/var __omranRuns = \{\};/.test(attach), 'سجلّ التشغيلات عامّ في الحزمة فيقرؤه المعالج');
+  // تشغيل في محادثة أخرى لا يمنح مهلة سماح لمتحكّم المحادثة المعروضة
+  const c = spyController();
+  const other = { aborted: 0, abort() { this.aborted++; } };
+  const i0 = voice.indexOf('function __omranShownRunStartedAt(){'), j0 = voice.indexOf('\n};', voice.indexOf('btnStop.onclick = () => {'));
+  const ctx = { btnStop: {}, stopAllSpeaking() {}, isListening: false, recognizer: null, genAbortController: c, state: { currentId: 'p1' },
+    __omranRuns: { p1: { ctl: other, t0: 10000 } }, __swallow() {}, __OMRAN_STOP_GRACE_MS: 1000, Date: { now: () => 10100 } };
+  vm.createContext(ctx); vm.runInContext(voice.slice(i0, j0 + 3), ctx); ctx.btnStop.onclick();
+  assert.equal(c.aborted, 1, 'متحكّم لا يطابق تشغيل المحادثة المعروضة = إيقاف فوريّ كما كان');
   const tokens = read('css/tokens.css');
   assert.ok(tokens.includes('#btnStop.live + #btnSend{display:none;}'), 'سبب الفخّ: زرّ الإيقاف يحلّ محلّ الإرسال في الموضع نفسه');
 });

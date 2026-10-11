@@ -97,7 +97,11 @@ test('٤. المالك افتراضيًّا: النظام الكامل — ال�
     assert.match(r.sysText, prov === 'cohere' ? /أنت Command من Cohere/ : /أنت Mistral من Mistral AI/, prov + ': البصمة بهويّته الحقيقيّة');
     assert.ok(!r.sysText.includes('أنت «عمران»'), prov + ': لا «أنت عمران» للمالك');
     assert.ok(r.sysText.includes('[البحث]: لأيّ سؤال يطلب معلومة أو حقيقة استدعِ web_search أوّلًا'), prov + ': ابحث أوّلًا');
-    assert.match(r.sysText, /التاريخ والوقت الآن/, prov);
+    // v-tokens-cache: التاريخ يصل الموديل في ذيل رسالة المستخدم الأخيرة (خارج بادئة الكاش)، لا في النظام
+    const lastU = r.body.messages[r.body.messages.length - 1];
+    const tailText = Array.isArray(lastU.content) ? lastU.content.map((b) => b.text || '').join('') : String(lastU.content);
+    assert.match(tailText, /التاريخ والوقت الآن/, prov);
+    assert.ok(!/التاريخ والوقت الآن/.test(r.sysText), prov + ': لا وقت بالدقيقة في النظام');
     assert.ok(r.sysText.includes('generate_image للرسم'), prov + ': رسم الصور من الكلام');
     assert.ok(r.sysText.includes('علّمتك: قارن دائمًا بالسعر قبل المواصفات.'), prov + ': تعليماته');
     const d = await ask(prov, 'coach-owner', false, 'ارسم لي صورة قطة على شاطئ وقت الغروب');

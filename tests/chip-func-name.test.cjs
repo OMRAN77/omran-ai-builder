@@ -17,7 +17,7 @@ test('١. الشريحة باسم المزوّد المختار لا اسم ال
   const a = nickOf(modes, /var NICK = (\{[^}]+\});/);
   const b = nickOf(app05, /const PROVIDER_NICK_KEYS = (\{[\s\S]*?\});/);
   assert.deepEqual(a, b);
-  assert.match(fs.readFileSync('index.html', 'utf8'), /js\/modes\.js\?v=m081026a/);
+  assert.match(fs.readFileSync('index.html', 'utf8'), /js\/modes\.js\?v=m111026a/);
 });
 
 test('٢. اللقب يُقرأ من الترجمة (١٤ لغة) مع احتياط، وبلا اسم مزوّد', () => {
@@ -43,7 +43,7 @@ test('٣. كلّ مزوّد باسمه: Claude وGPT وGemini وKimi وDeepSeek�
   const run = new Function('localStorage', 'AR', 't', 'window', modes.slice(i, j) + '; return curProvName;');
   const name = run(ls, true, (k) => ({ provNickKing: 'الكينج', provNickFast: 'السريع', provNickDeep: 'العميق' }[k] || k), {});
   // v-chip-model: المزوّد + موديله المختار (الافتراضيّ هنا)، والاسم لا يتكرّر إن كان الموديل يبدأ به.
-  const want = { claude: 'Claude Haiku 4.5', openai: 'GPT-6 Sol', gemini: 'Gemini 3.8 Flash', kimi: 'Kimi K3', deepseek: 'DeepSeek V4 Pro', mistral: 'Mistral Medium 3.5', groq: 'Groq GPT-OSS 120B' /* v-owner-solo: الموديل الذي يجيب فعلًا عند Groq */, perplexity: 'Perplexity Sonar', cohere: 'Cohere Command A', openrouter: 'Grok' };
+  const want = { claude: 'Claude Opus 5.5' /* v-owner-claude-all: افتراضيّ المالك */, openai: 'GPT-6 Sol', gemini: 'Gemini 3.8 Flash', kimi: 'Kimi K3', deepseek: 'DeepSeek V4 Pro', mistral: 'Mistral Medium 3.5', groq: 'Groq GPT-OSS 120B' /* v-owner-solo: الموديل الذي يجيب فعلًا عند Groq */, perplexity: 'Perplexity Sonar', cohere: 'Cohere Command A', openrouter: 'Grok' };
   const seen = new Set();
   for (const [k, v] of Object.entries(want)) { store.aiapp_provider = k; assert.equal(name(), v, k); seen.add(name()); }
   assert.equal(seen.size, Object.keys(want).length, 'لا اسمان متشابهان');
@@ -52,10 +52,12 @@ test('٣. كلّ مزوّد باسمه: Claude وGPT وGemini وKimi وDeepSeek�
   // v-chip-model (المالك ٤ أكتوبر «شو عرفني أيّ كلاود اختار»): كلّ موديل كلود باسمه
   store.aiapp_provider = 'claude';
   const cl = new Set();
-  for (const [id, lbl] of [['claude-opus-5-5', 'Claude Opus 5.5'], ['claude-sonnet-5', 'Claude Sonnet 5'], ['claude-haiku-4-5', 'Claude Haiku 4.5'], ['claude-fable-5-1', 'Claude Fable 5.1']]) {
-    store.aiapp_claude_model = id; assert.equal(name(), lbl); cl.add(name());
+  // v-owner-claude-all: كلّ نماذج كلود الاثني عشر باسمها في الشريحة (الرئيسيّة و«نماذج أخرى»)
+  const ALL = [['claude-opus-5-5', 'Opus 5.5'], ['claude-fable-5-1', 'Fable 5.1'], ['claude-sonnet-5-5', 'Sonnet 5.5'], ['claude-haiku-5-5', 'Haiku 5.5'], ['claude-haiku-4-5', 'Haiku 4.5'], ['claude-sonnet-5', 'Sonnet 5'], ['claude-opus-5', 'Opus 5'], ['claude-fable-5', 'Fable 5'], ['claude-opus-4-8', 'Opus 4.8'], ['claude-opus-4-7', 'Opus 4.7'], ['claude-opus-4-6', 'Opus 4.6'], ['claude-sonnet-4-6', 'Sonnet 4.6']];
+  for (const [id, lbl] of ALL) {
+    store.aiapp_claude_model = id; assert.equal(name(), 'Claude ' + lbl); cl.add(name());
   }
-  assert.equal(cl.size, 4, 'أربعة موديلات كلود = أربعة أسماء');
+  assert.equal(cl.size, 12, 'اثنا عشر موديل كلود = اثنا عشر اسمًا');
   store.aiapp_provider = 'unknown';
   assert.equal(name(), 'العميق', 'مزوّد غير معروف → اللقب الوظيفيّ');
 });

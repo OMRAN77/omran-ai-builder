@@ -84,7 +84,7 @@ test('v-hw-cards-once: البطاقات مرّة واحدة لكلّ فتح — 
   assert.ok(inl > 0 && inl < early.indexOf('<link rel="stylesheet"'), 'سكربت مبكّر في الرأس قبل أيّ ورقة أنماط — بلا وميض');
 
   const html = read('index.html');
-  assert.ok(html.includes('css/redesign.css?v=689') && html.includes('/js/ui-wiring.js?v=660'), 'وسما الكاش ارتفعا');
+  assert.ok(html.includes('css/redesign.css?v=690') && html.includes('/js/ui-wiring.js?v=660'), 'وسما الكاش ارتفعا');
 });
 
 test('زرّ «جرّبه لي» 🧪 محذوف من الواجهة', () => {

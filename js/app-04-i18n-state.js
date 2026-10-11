@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=732'; /* v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=735'; /* v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -1031,6 +1031,7 @@ function chatsSlimForServer(){
     provider: p.provider || '',
     messages: Array.isArray(p.messages) ? p.messages.map(__msgForServer) : [],
     code: (typeof p.code === 'string') ? p.code : '',
+    updatedAt: Number(p.updatedAt) || 0, // v-chat-order: الخادم يحفظه أصلًا (slimProjects)
   })).filter(p => p.id);
   // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
   /* v-perf-slim-linear (المالك ٢٩ سبتمبر: «إذا أطلع من التطبيق وأدخل يأخذ ١٠–٢٠ ثانية، وإذا أدخل أيّ مكان مجمّد ويفتح»):
@@ -1102,7 +1103,7 @@ function __chatsMergeServer(server, deletedIds){
       var p = list[i];
       if(!p || !p.id) continue;
       var ml = Array.isArray(p.messages) ? p.messages.length : 0;
-      fp += p.id + ':' + ml + ':' + (p.title||'') + ':' + (p.provider||'') + ';';
+      fp += p.id + ':' + ml + ':' + (p.title||'') + ':' + (p.provider||'') + ':' + (Number(p.updatedAt) || 0) + ';';
     }
     return fp;
   };
@@ -1139,6 +1140,7 @@ function __chatsMergeServer(server, deletedIds){
         local.messages = merged;
       }
       if(sp.title && !local.title) local.title = sp.title;
+      if((Number(sp.updatedAt) || 0) > (Number(local.updatedAt) || 0)) local.updatedAt = Number(sp.updatedAt); // v-chat-order: كتابة من جهاز آخر
       if(sp.code && !local.code) local.code = sp.code;
       if(sp.provider && !local.provider) local.provider = sp.provider;
       result.push(local);
@@ -1363,7 +1365,10 @@ function renderHistory(){
   // v380: القائمة تعرض كل المحادثات من كل المزودات — حساب واحد، قائمة وحدة.
   // v-stable-order: نرتّب دائمًا بزمن الإنشاء (من المعرّف p_<وقت>) تنازليًّا —
   // الأحدث أولًا — فلا يتغيّر ترتيب القائمة بين الفتحات مهما كان ترتيب المصفوفة.
-  const __histTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
+  /* v-chat-order (المالك ١٠ أكتوبر: «أريد المحادثات بالترتيب — آخر وحدة كتبتها تكون أوّل وحدة»): المفتاح وقت آخر رسالة
+     كتبها المستخدم (p.updatedAt، يُحفظ ويتزامن)، وإلّا وقت الإنشاء من المعرّف. ثابت بين الفتحات والمزامنات (v-stable-order)
+     لأنّه محفوظ في المشروع لا مستمدّ من ترتيب المصفوفة؛ يتغيّر فقط حين يكتب المستخدم. */
+  const __histTs = (p) => { const u = Number(p && p.updatedAt) || 0; if(u) return u; const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
   const __histSorted = [...state.projects].sort((a, b) => __histTs(b) - __histTs(a));
   // v-perf-history-guard (المالك ٢٩ سبتمبر: «الشاشة تتأخر وتعلّق»): renderHistory تبني <iframe>
   // كاملة لكلّ محادثة فيها كود، وتُستدعى بعد كلّ رسالة وعند كلّ نبضة مزامنة حيّة (٢٠ث) حتّى لو لم
@@ -2167,6 +2172,7 @@ function renderMessages(keepScroll){
             $('#pyConsole').style.display = 'none';
             emptyState.style.display = 'none';
             previewFrame._imageView = true;
+            previewFrame._imagePid = state.currentId; // v-panel-x: الصورة تخصّ هذه المحادثة وتُطوى عند الانتقال لغيرها
             previewFrame._lastSrc = null;
             previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + ((a.dataUrl && a.dataUrl !== '[media]') ? a.dataUrl : (a.viewUrl || '')) + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
             switchWorkTab('preview');
@@ -2338,7 +2344,7 @@ function renderMessages(keepScroll){
           m._reportPending = true;
           try{
             let u='guest'; try{ u = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ __swallow(_, "ui:app-04-i18n-state#39"); }
-            const response = await fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,lang:(typeof lang!=='undefined'?lang:'')})});
+            const response = await fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,token:((typeof authGet==='function'&&authGet('aiapp_auth_token'))||''),lang:(typeof lang!=='undefined'?lang:'')})}); /* v-sec-feedback: الخادم يأخذ الاسم من الرمز الموقَّع وحده — بلا رمز يُسجَّل «guest» */
             if(!response.ok) throw new Error('Report request failed: ' + response.status);
             const result = await response.json();
             if(!result || result.ok !== true) throw new Error('Report not accepted');
@@ -2425,6 +2431,7 @@ function renderMessages(keepScroll){
       btn.onclick = () => {
         cur.code = m.code;
         cur.codeType = m.codeType;
+        if(window.__omranPanelHidden) delete window.__omranPanelHidden[cur.id]; // v-panel-x: الرجوع من المحادثة
         saveState();
         renderAll(true);
         if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){

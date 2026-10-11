@@ -31,6 +31,9 @@ body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omr
 #omranSidebarFoot{order:9; display:flex; align-items:center; gap:4px; padding:8px 12px calc(10px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--omLine); flex:0 0 auto;}
 /* v396: تنقّل الحاسوب أسفل الشريط الجانبي — نفس تبويبات الجوال (5) بدل السلة والترس */
 #omranFootDelete,#omranFootSettings{display:none !important;}
+/* v-no-projmenu (المالك ١٠ أكتوبر، لقطة: «احذف هذا المكان»): قائمة «المشاريع / بحث عن مشروع / حذف الكل» تختفي على الكمبيوتر والجوّال.
+   العناصر تبقى في الصفحة مخفيّة لأنّ غيرها يعتمد عليها: «محادثة جديدة» تنقر #btnNew، وخانة البحث العلويّة #sbSearch تكتب في #projSearchInput. */
+#projMenuWrap{display:none !important;}
 #omranSidebarFoot{container-type:inline-size; gap:2px; padding-top:6px;}
 #omranSidebarFoot .omNavBtn{padding:6px 0;}
 @container (max-width:210px){#omranSidebarFoot .omNavBtn span{display:none;}}

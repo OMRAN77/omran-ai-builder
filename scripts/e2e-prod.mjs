@@ -47,12 +47,9 @@ await p.fill('#authPassword', pw);
 await p.screenshot({ path: 'e2e-2-قبل-الإرسال.png' });
 await p.click('#authSubmitBtn');
 await p.waitForTimeout(3500);
-const modal = await p.evaluate(() => { const m = document.querySelector('#authRecoveryModal'); return m && getComputedStyle(m).display !== 'none'; });
-if (modal) { ok('نافذة رمز الاسترجاع ظهرت — الحساب أُنشئ'); await p.click('#authAckRecoveryBtn'); await p.waitForTimeout(1200); }
-else {
-  const err = await p.evaluate(() => (document.querySelector('#authError') || {}).textContent || '');
-  no('لم تظهر نافذة الاسترجاع' + (err ? ' — رسالة الخطأ: ' + err : ''));
-}
+// v-no-recovery-code: لا نافذة رمز بعد التسجيل — الدخول مباشرة
+const signupErr = await p.evaluate(() => (document.querySelector('#authError') || {}).textContent || '');
+signupErr ? no('رسالة خطأ بعد التسجيل: ' + signupErr) : ok('التسجيل مرّ بلا خطأ');
 let s1 = await state();
 await p.screenshot({ path: 'e2e-3-بعد-التسجيل.png' });
 (s1.overlay === 'مخفيّ' && s1.user === user) ? ok(`داخل التطبيق باسم ${s1.user}`) : no(`الحالة بعد التسجيل: شاشة=${s1.overlay} مستخدم=${s1.user}`);

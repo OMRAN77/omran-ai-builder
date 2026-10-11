@@ -1,0 +1,50 @@
+// tests/floorplan-bridge-origin.test.cjs — v-sec-postmsg (إعادة التقييم ١٠ أكتوبر).
+// العرض: مستمع جسر المخطّطات (app-15-floorplan.js) كان يقبل {__omranView:1} من أيّ نافذة، فموقع آخر يفتح التطبيق في نافذة منبثقة
+// ويرسل الرسالة فيولّد التطبيق صورة مدفوعة برمز المستخدم. القرار: الطلب من إطار داخل صفحة التطبيق وحده.
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'js/app-15-floorplan.js'), 'utf8');
+const start = SRC.indexOf('/* ───────── التكامل: زر المقاولات + جسر توليد الصور');
+assert.ok(start > 0, 'كتلة الجسر موجودة');
+const BLOCK = SRC.slice(start);
+
+function harness(frameWin) {
+  let handler = null; const fetches = []; const replies = [];
+  const ctx = {
+    window: { location: { origin: 'https://app.example' }, omranFloorplan: { facadePrompt: () => 'facade prompt' }, addEventListener: (t, f) => { if (t === 'message') handler = f; }, getGuestId: () => 'g' },
+    document: { getElementsByTagName: () => [{ contentWindow: frameWin }], getElementById: () => null, querySelectorAll: () => [] },
+    fetch: (url, init) => { fetches.push({ url, init }); return Promise.resolve({ ok: true, json: () => Promise.resolve({ imageBase64: 'AAAA', mimeType: 'image/png' }) }); },
+    authGet: () => 'tok', __swallow: () => {}, console,
+  };
+  ctx.window.window = ctx.window;
+  vm.runInNewContext('var window = this.window; var document = this.document;\n' + BLOCK, ctx);
+  assert.equal(typeof handler, 'function', 'المستمع مسجَّل');
+  return { handler, fetches, replies };
+}
+
+test('رسالة من نافذة خارجيّة (ليست إطارًا في الصفحة) لا تولّد صورة', () => {
+  const ownFrame = { postMessage() {} };
+  const evil = { postMessage() {} };
+  const h = harness(ownFrame);
+  h.handler({ data: { __omranView: 1, id: 1, view: 'front', spec: {} }, source: evil, origin: 'https://evil.example' });
+  assert.equal(h.fetches.length, 0, 'لا نداء مدفوع لمصدر خارجيّ');
+});
+
+test('رسالة المحرّر من إطار المعاينة نفسه تعمل كما كانت', () => {
+  const ownFrame = { postMessage() {} };
+  const h = harness(ownFrame);
+  h.handler({ data: { __omranView: 1, id: 2, view: 'front', spec: {} }, source: ownFrame, origin: 'https://app.example' /* معاينة srcdoc ترث أصل التطبيق */ });
+  assert.equal(h.fetches.length, 1);
+  assert.equal(h.fetches[0].url, '/api/maha-image');
+});
+
+test('المراجعة العدائيّة: إطار معزول داخل الصفحة (جرّبه لي، run_js — أصله «null») لا يولّد صورة مدفوعة', () => {
+  const sandboxed = { postMessage() {} };
+  const h = harness(sandboxed);
+  h.handler({ data: { __omranView: 1, id: 3, view: 'front', spec: {} }, source: sandboxed, origin: 'null' });
+  assert.equal(h.fetches.length, 0, 'كود النموذج في الإطار المعزول لا ينفق نقاط المستخدم');
+});

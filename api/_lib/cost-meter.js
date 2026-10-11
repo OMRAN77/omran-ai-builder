@@ -10,9 +10,15 @@ const MONTH_TTL_SEC = 100 * 86400;
 const AED = 3.6725;
 const KINDS = ['chat', 'media', 'voice'];
 
-// [نمط اسم النموذج، دخل، خرج] بالدولار لكلّ مليون توكن (أسعار معلنة أكتوبر ٢٠٢٦؛ الأوّل المطابق يفوز).
+// [نمط اسم النموذج، دخل، خرج، (مضاعف قراءة الكاش — الافتراضيّ ٠٫١)] بالدولار لكلّ مليون توكن (أسعار معلنة أكتوبر ٢٠٢٦؛ الأوّل المطابق يفوز).
+/* v-meter-prices (المالك ١٠ أكتوبر: «اصلح»): كلود بأسعار Anthropic الرسميّة (مرجع claude-api، ٦ أكتوبر ٢٠٢٦) لكلّ موديل في المنتقي —
+   كان Fable 5.1 لا يطابق شيئًا فيُحسب ١/٥ (حقيقته ١٠/٥٠، عُشر تكلفته)، وOpus 5.5 بسعر Opus القديم ٥/٢٥ (حقيقته ٤/٢٠)، وSonnet 5
+   بسعر Sonnet 4.x ٣/١٥ (حقيقته ٢/١٠). وقراءة الكاش ليست ١٠٪ للكلّ: Opus 5.5 ‏٠٫٢٠$ (٥٪)، Fable 5.1 ‏٠٫٢٥$ (٢٫٥٪). المعرّفان
+   المباشر (claude-opus-5-5) والوسيط (anthropic/claude-opus-5.5) يطابقان النمط نفسه. Haiku 5.5 بسعر ما دون ١٠٠ ألف توكن للطلب. */
 const PRICES = [
-  [/opus/i, 5, 25], [/sonnet/i, 3, 15], [/haiku/i, 1, 5],
+  [/fable-5[-.]1/i, 10, 50, 0.025], [/fable/i, 10, 50] /* v-owner-claude-all: Fable 5 قراءة كاشه ١$ (١٠٪) لا ربع Fable 5.1 */, [/opus-5[-.]5/i, 4, 20, 0.05], [/opus/i, 5, 25],
+  [/sonnet-5(?:[-.]5)?(?!\d)/i, 2, 10], [/sonnet/i, 3, 15],
+  [/haiku-5[-.]5/i, 0.1, 0.5], [/haiku/i, 1, 5],
   [/deepseek/i, 0.58, 1.16], [/gpt-oss/i, 0.15, 0.6], [/gemini|flash/i, 0.75, 3.75],
   [/command|cohere/i, 2.5, 10], [/sonar|perplexity/i, 1, 1], [/mistral|ministral/i, 0.4, 2], [/gpt|openai/i, 1.25, 10],
 ];
@@ -21,7 +27,7 @@ const FALLBACK = [null, 1, 5];
 function tokenCostUsd(model, u) {
   const p = PRICES.find((x) => x[0].test(String(model || ''))) || FALLBACK;
   const x = u || {};
-  return ((Number(x.input) || 0) * p[1] + (Number(x.cacheRead) || 0) * p[1] * 0.1
+  return ((Number(x.input) || 0) * p[1] + (Number(x.cacheRead) || 0) * p[1] * (p[3] || 0.1)
     + (Number(x.cacheWrite) || 0) * p[1] * 1.25 + (Number(x.output) || 0) * p[2]) / 1e6;
 }
 

@@ -240,7 +240,11 @@ async function readIssue(t, o) {
 const SEARCH_MAX_FILES = 400;   // أكثر من api/_lib (١٦٢) وtests (١٩٨) بمريح؛ أكبر يُطلب تضييق المسار
 const SEARCH_MAX_FILES_DEEP = 700;
 const SEARCH_CONCURRENCY = 15;  // نداءات متوازية — لا تُغرق GitHub ولا الدالّة
-const SEARCH_FILE_BYTES_MAX = 400000; // فوقه ليس كودًا منطقيًّا (صورة/بيانات) — يُتخطّى بلا تنزيله
+const SEARCH_FILE_BYTES_MAX = 800000; // فوقه ليس كودًا منطقيًّا (صورة/بيانات) — يُتخطّى بلا تنزيله
+/* v-claude-code-level (A2): كان ٤٠٠ ألف بايت فسقط js/app-09-attach.js (~٦٨٠ ألفًا، قلب الإرسال) من كلّ بحث —
+   «__sendPromptCore» يرجع «لا نتائج» وهو موجود. ٨٠٠ ألف لا ١٫٥ مليون: المكتبات المصغّرة تأكل مهلة البحث،
+   فالمولَّد والمصغَّر (js/vendor، *.min.js، الحزمة) يُتخطّى إلّا إن كان مسار البحث نفسه داخله. */
+const SEARCH_SKIP_RE = /^js\/vendor\/|\.min\.js$|^js\/app\.bundle\.js$/;
 const SEARCH_BUDGET_MS = 25000;
 
 async function resolveDefaultRef(t, o) {
@@ -259,10 +263,15 @@ async function readContentSearch(t, o, query, limit) {
   if (!tr.ok) return ghError(tr, 'شجرة ' + repoOf(t), o && o.env, o && o.anonymous);
   const tj = await tr.json().catch(() => ({}));
   const prefix = t.path.replace(/\/+$/, '') + '/';
-  const candidates = (tj.tree || []).filter((e) => e.type === 'blob' && (e.path + '/').indexOf(prefix) === 0
+  const askedSkipped = SEARCH_SKIP_RE.test(prefix) || SEARCH_SKIP_RE.test(t.path); // طلب المصغَّر صراحةً
+  const inScope = (tj.tree || []).filter((e) => e.type === 'blob' && (e.path + '/').indexOf(prefix) === 0
     && Number(e.size) > 0 && Number(e.size) <= SEARCH_FILE_BYTES_MAX
     && !zipLib.SKIP_DIR_PATTERNS.some((p) => p.test(e.path)));
-  if (!candidates.length) return 'لا ملفّات كود تحت ' + repoOf(t) + '/' + t.path + ' (أو المسار غير موجود على ' + ref + ').';
+  const candidates = askedSkipped ? inScope : inScope.filter((e) => !SEARCH_SKIP_RE.test(e.path));
+  // المتخطّى يُذكر صراحةً: «لا نتائج» لا تعني أنّ الرمز غير موجود في ملفّ مصغّر/مولَّد لم يُبحث
+  const skipped = inScope.length - candidates.length;
+  const skipNote = skipped ? '\n— تخطّيت ' + skipped + ' ملفًّا مصغّرًا/مولَّدًا (js/vendor، *.min.js، الحزمة)؛ للبحث فيه مرّر path داخله (مثل js/vendor).' : '';
+  if (!candidates.length) return 'لا ملفّات كود تحت ' + repoOf(t) + '/' + t.path + ' (أو المسار غير موجود على ' + ref + ').' + skipNote;
   const cap = deep ? SEARCH_MAX_FILES_DEEP : SEARCH_MAX_FILES;
   if (candidates.length > cap) return 'المسار ' + t.path + ' فيه ' + candidates.length + ' ملفًّا — أكثر من حدّ البحث الواحد (' + cap + '). ضيّق المسار لمجلّد أصغر داخله.';
 
@@ -288,14 +297,14 @@ async function readContentSearch(t, o, query, limit) {
   }
   await Promise.all(Array.from({ length: Math.min(SEARCH_CONCURRENCY, candidates.length) }, worker));
 
-  if (!hits.length) return 'لا نتائج لـ«' + query + '» في ' + repoOf(t) + '/' + t.path + ' (بحث فعليّ في محتوى ' + candidates.length + ' ملفًّا — لا فهرسة). جرّب كلمة أدقّ أو أقصر، أو تأكّد من التهجئة.';
+  if (!hits.length) return 'لا نتائج لـ«' + query + '» في ' + repoOf(t) + '/' + t.path + ' (بحث فعليّ في محتوى ' + candidates.length + ' ملفًّا — لا فهرسة). جرّب كلمة أدقّ أو أقصر، أو تأكّد من التهجئة.' + skipNote;
   const shown = hits.slice(0, n).sort((a, b) => (a.path < b.path ? -1 : 1));
   const out = ['🔎 «' + query + '» في ' + repoOf(t) + '/' + t.path + ' — ' + shown.length + (hits.length > shown.length ? '+' : '') + ' ملفّ (بحث فعليّ في محتوى ' + candidates.length + ' ملفًّا):'];
   for (const h of shown) {
     out.push('\n📄 ' + h.path);
     for (const l of h.lines) out.push('  ' + l.n + '| ' + l.text.trim().slice(0, 200));
   }
-  out.push('\nلقراءة ملفّ كاملًا: read_github بمساره.');
+  out.push('\nلقراءة ملفّ كاملًا: read_github بمساره.' + skipNote);
   return out.join('\n');
 }
 
@@ -442,4 +451,4 @@ async function fetchRepoZip(target, opts) {
   return { ref, entries, total: all.length };
 }
 
-module.exports = { parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP };
+module.exports = { parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP, SEARCH_FILE_BYTES_MAX, SEARCH_SKIP_RE };

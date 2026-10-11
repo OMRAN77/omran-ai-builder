@@ -973,9 +973,17 @@ function omranBuildCodeViewerBar(){
   };
   bar._resetEdit = function(){ setOn(edt, false); };
 
+  /* v-panel-x (المالك ١٠ أكتوبر: «الإكس مسؤول في الصندوق فقط، إلّا إذا أريد أرجعه من عند المحادثة — الطرفين مشبوكين»):
+     على الكمبيوتر يقفل ما يعرضه الصندوق لهذه المحادثة بالترتيب — عارض الكود، ثمّ الصورة، ثمّ معاينة تطبيقها —
+     ولا يطوي اللوحة (لذلك زرّ الطيّ). يرجع المعروض من المحادثة (نقر الصورة، «استخدم هذا الإصدار»، كود جديد)
+     أو من تبويب المعاينة. الجوّال كما كان. */
   cls.onclick = function(){
     if(document.getElementById('omranCodeViewer')){ omranCloseCodeViewer(); return; }
-    try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+    if(document.documentElement.classList.contains('mobile-ui')){
+      try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+      return;
+    }
+    omranPanelCloseShown();
   };
 
   edt.onclick = function(){
@@ -1074,9 +1082,36 @@ window.omranOpenTextInCodePanel = function(text, title){
     }
   }catch(e){ __swallow(e, 'ui:code-viewer'); }
 };
+/* v-panel-x: معاينة تطبيق محادثةٍ أقفلها الإكس — {معرّف المحادثة: الكود المقفول}. كود جديد في المحادثة يرجعها تلقائيًّا. */
+window.__omranPanelHidden = window.__omranPanelHidden || {};
+function omranPanelCloseShown(){
+  try{
+    const cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    if(previewFrame._imageView){
+      previewFrame._imageView = false; previewFrame._imagePid = null; previewFrame._lastSrc = null;
+      previewFrame.srcdoc = '';
+    } else if(cur && cur.code){
+      window.__omranPanelHidden[cur.id] = cur.code;
+    }
+    renderCodeAndPreview();
+  }catch(e){ __swallow(e, 'ui:panel-x'); }
+}
+function omranPanelReopen(){
+  try{
+    const cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    if(cur && window.__omranPanelHidden[cur.id] !== undefined){ delete window.__omranPanelHidden[cur.id]; renderCodeAndPreview(); }
+  }catch(e){ __swallow(e, 'ui:panel-reopen'); }
+}
+window.omranPanelReopen = omranPanelReopen;
 function renderCodeAndPreview(){
   const cur = getCurrent();
   const pyConsole = $('#pyConsole');
+  /* v-panel-x (المالك: «إذا فاتح محادثة فيها صورة تكون في المعاينة، وإذا دخلت محادثة أخرى فيها كتابة تكون الصورة
+     موجودة»): الصورة المفتوحة في المعاينة تخصّ محادثتها — علم _imageView كان عامًّا فتبقى في كلّ محادثة بلا كود. */
+  if(previewFrame._imageView && previewFrame._imagePid !== ((cur && cur.id) || null)){
+    previewFrame._imageView = false; previewFrame._imagePid = null; previewFrame._lastSrc = null;
+    previewFrame.srcdoc = '';
+  }
   /* v-code-viewer: عارض القراءة يخصّ مشروعًا بعينه — يُزال عند تبديل المشروع */
   try{
     const __ov = document.getElementById('omranCodeViewer');
@@ -1115,6 +1150,17 @@ function renderCodeAndPreview(){
   /* v-tap-fast: إسناد نص ضخم (مئات الكيلوبايت) لخانة الكود مع كل إعادة رسم
      كان يكلّف تخطيطًا كاملًا — نسنده فقط عند تغيّره فعلًا. */
   if(codeEl.value !== cur.code) codeEl.value = cur.code;
+  const __hidden = window.__omranPanelHidden[cur.id];
+  if(__hidden !== undefined && __hidden !== cur.code) delete window.__omranPanelHidden[cur.id];
+  else if(__hidden !== undefined && !previewFrame._imageView){
+    previewFrame.style.display = 'none'; pyConsole.style.display = 'none';
+    previewFrame._lastSrc = null; previewFrame.srcdoc = ''; /* لا يبقى التطبيق يعمل مخفيًّا */
+    emptyState.style.display = 'flex';
+    $('#emptyStateSpinner').style.display = 'none';
+    $('#emptyTitleEl').textContent = t('emptyTitle');
+    $('#emptyDescEl').innerHTML = t('emptyDesc');
+    return;
+  }
   emptyState.style.display = 'none';
   /* v-panel-head: العنوان يتبع المعروض — اسم المشروع ونوع الكود */
   try{
@@ -1349,8 +1395,11 @@ $('#btnDeleteAll').onclick = () => {
     const chips = [...document.querySelectorAll('#fbChips .fbChip.on')].map(c=>c.dataset.k);
     const note = document.getElementById('fbNote').value.trim();
     let user='guest'; try{ user = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ __swallow(_, "misc:app-05-ui#7"); }
+    // v-sec-feedback: الخادم لا يصدّق `user` من الجسم بعد اليوم — يأخذ الاسم من رمز الجلسة الموقَّع، فنرسله معه
+    // (وإلّا صار تقييم من لم يختر «تذكّرني» باسم guest).
+    let token=''; try{ token = (typeof authGet==='function'&&authGet('aiapp_auth_token'))||''; }catch(_){ __swallow(_, "misc:app-05-ui#7t"); }
     try{
-      fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rating:fbRating,chips,note,user,lang:(typeof lang!=='undefined'?lang:'')})});
+      fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rating:fbRating,chips,note,user,token,lang:(typeof lang!=='undefined'?lang:'')})});
     }catch(_){ __swallow(_, "misc:app-05-ui#8"); }
     localStorage.setItem('fbDone','1');
     document.getElementById('fbFormView').style.display='none';
@@ -1371,6 +1420,25 @@ $('#btnDeleteAll').onclick = () => {
     setTimeout(()=>wrap.classList.remove('open'),2600);
   };
 
+  /* v-sec-feedback: تدقيق ١٠ أكتوبر — «آراء المستخدمين» كانت تلصق اسم المرسل والشرائح ومزوّد البلاغ في HTML
+     بلا تهريب (الملاحظة والمحتوى وحدهما يُهرَّب منهما «<»)، والخادم يقبلها من أيّ زائر بلا دخول — فجرى سكربت
+     في متصفّح المالك (fb=1 ch=1 في المسبار). كلّ حقل يُهرَّب الآن (& < > " ')، والتقييم يُحصر في ٠–٥ (قيمة
+     مخزّنة غريبة كانت ترمي في repeat فتطفئ اللوحة كلّها). الشكل والترتيب كما كانا. */
+  function fbEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function fbOwnerListHtml(items, reports){
+    let html = items.map(it=>{
+      const n = Math.max(0, Math.min(5, parseInt(it.rating,10)||0));
+      const stars='★'.repeat(n)+'☆'.repeat(5-n);
+      const chips=(Array.isArray(it.chips)?it.chips:[]).map(k=>fbEsc(t(k))).join(' · ');
+      return '<div class="fbItem"><span class="fbStarsSm">'+stars+'</span>'+(chips?' — '+chips:'')+(it.note?'<div style="margin-top:4px;">'+fbEsc(it.note)+'</div>':'')+'<div class="fbMeta">'+fbEsc(it.user||'guest')+' · '+fbEsc(String(it.ts||'').slice(0,16).replace('T',' '))+'</div></div>';
+    }).join('');
+    if(reports.length){
+      html += '<div style="margin:14px 0 6px;font-weight:700;color:#ff5c6c;">🚩 بلاغات المحتوى ('+reports.length+')</div>';
+      html += reports.map(rp=>'<div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">'+fbEsc(String(rp.content||'').slice(0,300))+'</div><div class="fbMeta">'+fbEsc(rp.user||'guest')+(rp.provider?' · '+fbEsc(rp.provider):'')+' · '+fbEsc(String(rp.ts||'').slice(0,16).replace('T',' '))+'</div></div>').join('');
+    }
+    return html;
+  }
+
   document.getElementById('fbOwnerBtn').onclick = async ()=>{
     const list = document.getElementById('fbList');
     document.getElementById('fbFormView').style.display='none';
@@ -1382,16 +1450,7 @@ $('#btnDeleteAll').onclick = () => {
       const items = (d&&d.feedback)||[];
       const reports = (d&&d.reports)||[];
       if(!items.length && !reports.length){ list.innerHTML = '<div style="text-align:center;color:#889;padding:20px;">'+t('fbEmpty')+'</div>'; return; }
-      let html = items.map(it=>{
-        const stars='★'.repeat(it.rating)+'☆'.repeat(5-it.rating);
-        const chips=(it.chips||[]).map(k=>t(k)).join(' · ');
-        return '<div class="fbItem"><span class="fbStarsSm">'+stars+'</span>'+(chips?' — '+chips:'')+(it.note?'<div style="margin-top:4px;">'+it.note.replace(/</g,'&lt;')+'</div>':'')+'<div class="fbMeta">'+(it.user||'guest')+' · '+String(it.ts||'').slice(0,16).replace('T',' ')+'</div></div>';
-      }).join('');
-      if(reports.length){
-        html += '<div style="margin:14px 0 6px;font-weight:700;color:#ff5c6c;">🚩 بلاغات المحتوى ('+reports.length+')</div>';
-        html += reports.map(rp=>'<div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">'+String(rp.content||'').slice(0,300).replace(/</g,'&lt;')+'</div><div class="fbMeta">'+(rp.user||'guest')+(rp.provider?' · '+rp.provider:'')+' · '+String(rp.ts||'').slice(0,16).replace('T',' ')+'</div></div>').join('');
-      }
-      list.innerHTML = html;
+      list.innerHTML = fbOwnerListHtml(items, reports);
     }catch(e){ list.innerHTML = '<div style="text-align:center;color:#e66;padding:20px;">⚠️</div>'; }
   };
 
@@ -1593,6 +1652,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     $('#panel-' + tab.dataset.tab).classList.add('active');
+    if(tab.dataset.tab === 'preview') omranPanelReopen(); // v-panel-x: تبويب المعاينة يرجّع ما أقفله الإكس
     if(tab.dataset.tab === 'voice' && typeof mahaStartCall === 'function' && !mahaCallActive){
       mahaStartCall('builder');
     }
@@ -3304,6 +3364,9 @@ const SETTINGS_NAV_GROUPS = [
   ['setGrpAppearance', ['themeSection', 'bgImgSection', 'fontFamilySection', 'fontSizeSection', 'langSection']],
   ['setGrpGeneral', ['apiKeysSection', 'aboutSection']], // v-news-off: «التنبيهات» أُزيل مع الأخبار
 ];
+// v-apikeys-owner (أمر المالك): صفّ «مفاتيح API لمزوّدي الخدمة» للمالك وحده — يُخفى من قائمة الإعدادات
+// لغير المالك ولا تُفتح صفحته مباشرةً (مثل «صفحة المالك»). المفاتيح يديرها المالك لا المستخدمون.
+const SETTINGS_OWNER_ONLY = ['apiKeysSection'];
 const SETTINGS_PLAN_LABEL = { basic: 'Plus', pro: 'Pro', max: 'Max', owner: 'VIP', vip: 'VIP' };
 function settingsTr(k){ try{ return (typeof t === 'function' && t(k)) || ''; }catch(e){ return ''; } }
 function settingsLoggedIn(){ try{ return !!(typeof authGet === 'function' && authGet('aiapp_auth_token')); }catch(e){ return false; } }
@@ -3356,7 +3419,7 @@ function renderSettingsNavList(){
   const plan = String(window.__omranPlan || '').toLowerCase();
   const planText = owner ? 'VIP' : (SETTINGS_PLAN_LABEL[plan] || settingsTr('setPlanFree'));
   SETTINGS_NAV_GROUPS.forEach(([titleKey, ids]) => {
-    const rows = ids.filter(has);
+    const rows = ids.filter(sid => has(sid) && (owner || SETTINGS_OWNER_ONLY.indexOf(sid) === -1)); // v-apikeys-owner: مفاتيح المزوّدين للمالك وحده
     if(!rows.length) return;
     const title = document.createElement('div');
     title.className = 'settingsNavGroupTitle';
@@ -3410,6 +3473,7 @@ function showSettingsHome(){
 window.showSettingsHome = showSettingsHome;
 function showSettingsPage(sid){
   if(sid === 'ownerSection' && !settingsOwnerUi()){ showSettingsHome(); return; }
+  if(SETTINGS_OWNER_ONLY.indexOf(sid) !== -1 && !settingsOwnerUi()){ showSettingsHome(); return; } // v-apikeys-owner
   const home = document.getElementById('settingsHomeView');
   const pageHdr = document.getElementById('settingsPageHeader');
   const pageTitleEl = document.getElementById('settingsPageTitle');

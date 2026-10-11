@@ -32,3 +32,18 @@ test('الربط: المحادثة والوكيل للمالك وحده، مرّ
   assert.match(agent, /ownerCarried = true;[\s\S]{0,200}oc\.CARRY_NOTE[\s\S]{0,200}continue;/);
   assert.match(C.CARRY_NOTE, /ليس من المالك/);
 });
+
+test('v-owner-ui-shot: «احذف هذا المكان» مع لقطة = تعديل التطبيق لا الصورة، وأدوات الصور تُرفع', () => {
+  assert.equal(C.uiEditTurn('احذف هذا المكان'), true);
+  assert.equal(C.uiEditTurn('شيل الزر هذا'), true);
+  assert.equal(C.uiEditTurn('كبّر الخط في القائمة'), true);
+  assert.equal(C.uiEditTurn('احذف الخلفية من الصورة'), false);
+  assert.equal(C.uiEditTurn('امسح الشخص من الصورة'), false);
+  assert.equal(C.uiEditTurn('وش هذا؟'), false);
+  const chat = read('api/_lib/chat.js');
+  // v-owner-ui-shot-client: قرار العميل (body.ownerUiShot) أوّلًا، والتعابير حين يغيب الحقل
+  assert.ok(chat.includes("const __ownerUiShot = __ownerReq && lastUserHasImage && (typeof (body && body.ownerUiShot) === 'boolean' ? body.ownerUiShot : require('./owner-carry.js').uiEditTurn(lastUserText));"));
+  assert.ok(chat.includes("tools: toolTurn ? toolsFor(__ownerReq, __analyzeDoc || __ownerUiShot) : undefined"));
+  assert.ok(chat.includes("+ (__ownerUiShot ? require('./owner-carry.js').UI_SHOT_NOTE : '')"));
+  assert.match(C.UI_SHOT_NOTE, /ليس تعديل الصورة/);
+});

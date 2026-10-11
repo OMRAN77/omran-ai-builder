@@ -202,7 +202,8 @@ test('٨. الأسلاك: العميل يرمي فشل المالك فورًا،
     const s = read(f);
     assert.ok(s.includes("catch(e){ if(e && e.ownerStop) throw e;"), f + ': رمي التوقّف');
     assert.ok(s.includes("if(!__ct && !__ownerFree && !(imageAttachments.length && __effProv === 'claude')){"), f + ': لا فريق بديل للمالك');
-    assert.ok(s.includes('await callAIWithFallback(apiMessages, onDelta, __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })'), f + ': المسار القديم وحده، وفشل الأدوات لا يُعاد');
+    /* v-parallel-chats: onDelta يحمل إشارة الطلب (__sigFn) — المسار والوسائط كما هي */
+    assert.ok(s.includes('await callAIWithFallback(apiMessages, __sigFn(onDelta), __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })'), f + ': المسار القديم وحده، وفشل الأدوات لا يُعاد');
   }
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) {
     const s = read(f);
@@ -310,7 +311,7 @@ test('١٦. القائمة تسمّي ما يجيب فعلًا: Groq = GPT-OSS 1
     vm.runInNewContext('var model = this.model;\n' + line + '\nthis.out = model;', ctx);
     assert.equal(ctx.out, want, id);
   }
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m081026a/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m111026a/);
 });
 
 // ── مراجعة مستقلّة (١٦ وكيلًا) على التعديل نفسه: أخطاء أكّدها مشكّك ثانٍ ──

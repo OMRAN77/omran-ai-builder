@@ -104,7 +104,8 @@ prov (من body.provider، افتراضه 'claude')
 │
 └─ النموذج الافتراضيّ                              chat.js:1190
       viaOR → OR_MODELS[prov]        (chat.js:605)
-      وإلّا → CHAT_CLAUDE_MODEL أو 'claude-haiku-4-5'
+      وإلّا → CHAT_CLAUDE_MODEL أو 'claude-haiku-4-5'   (غير المالك، وإنقاذ المالك عند الرفض)
+      المالك على كلود بلا اختيار → 'claude-opus-5-5'  (pickClaudeModel، v-owner-claude-all)
 ```
 
 **v-plan-routing (قرار المالك ٢٠ سبتمبر):** الحقول الأربعة أعلاه `let` لا `const`، لأنّ `applyRoute(p, model, direct)`
