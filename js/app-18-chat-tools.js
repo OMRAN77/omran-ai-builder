@@ -121,7 +121,7 @@
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
         model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); } catch (e) { return ''; } })(),
-        effort: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined) : undefined; } catch (e) { return undefined; } })(), /* v-owner-claude-all: جهد المالك من المنتقي؛ undefined لغيره فيسقط الحقل من JSON وطلبه كما كان بايتًا بايتًا */
+        effort: (function () { try { var __p = provider || 'claude'; return (__p === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined) : (__p === 'openai' && window.gptEffortGet) ? (window.gptEffortGet() || undefined) : undefined; } catch (e) { return undefined; } })(), /* v-owner-claude-all + v-owner-gpt-all: جهد المالك من المنتقي (كلود وGPT)؛ undefined لغيره فيسقط الحقل من JSON وطلبه كما كان بايتًا بايتًا */
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',

@@ -94,7 +94,9 @@
         { grp:1, key:'claude',     name:'Claude · Anthropic',      store:'aiapp_claude_model',     def:'claude-opus-5-5',     effort:true, models:[['claude-opus-5-5','Opus 5.5'],['claude-fable-5-1','Fable 5.1'],['claude-sonnet-5-5','Sonnet 5.5'],['claude-haiku-5-5','Haiku 5.5'],['claude-haiku-4-5','Haiku 4.5',1],['claude-sonnet-5','Sonnet 5',1],['claude-opus-5','Opus 5',1],['claude-fable-5','Fable 5',1],['claude-opus-4-8','Opus 4.8',1],['claude-opus-4-7','Opus 4.7',1],['claude-opus-4-6','Opus 4.6',1],['claude-sonnet-4-6','Sonnet 4.6',1]] },
         /* v-provider-models/v-openai-pick: المعرّفات هنا هي نفسها التي يرسلها الخادم؛
            والمالك وحده يأخذ القائمة الحيّة التي يملكها مفتاحه من /api/ai?action=models. */
-        { grp:1, key:'openai',     name:'GPT · OpenAI',             or:true, store:'aiapp_model',            def:'openai/gpt-6-sol',            models:[['openai/gpt-6-astra','GPT-6 Astra'],['openai/gpt-6-sol','GPT-6 Sol'],['openai/gpt-6-luna','GPT-6 Luna']] },
+        /* v-owner-gpt-all (أمر عمران «بعد الانثروبك GPT — نفس الموضوع»): موديلات OpenAI النشطة من صفحاتها الرسميّة (١١ أكتوبر) —
+           الرئيسيّة مجموعة OpenAI «Flagship» (Astra · 6.1 Sol · 6 Luna) ثمّ «نماذج أخرى»، وصفّ الجهد. القائمة الحيّة لا تستبدلها (effort). */
+        { grp:1, key:'openai',     name:'GPT · OpenAI',             or:true, store:'aiapp_model',            def:'openai/gpt-6-sol',            effort:true, models:[['openai/gpt-6-astra','GPT-6 Astra'],['openai/gpt-6.1-sol','GPT-6.1 Sol'],['openai/gpt-6-luna','GPT-6 Luna'],['openai/gpt-6-sol','GPT-6 Sol',1],['openai/gpt-5.6-sol','GPT-5.6 Sol',1],['openai/gpt-5.6-terra','GPT-5.6 Terra',1],['openai/gpt-5.6-luna','GPT-5.6 Luna',1],['openai/gpt-5.5','GPT-5.5',1],['openai/gpt-5.4','GPT-5.4',1],['openai/gpt-5.4-mini','GPT-5.4 Mini',1],['openai/gpt-5.2','GPT-5.2',1]] },
         { grp:1, key:'gemini',     name:'Gemini · Google', or:true, store:'aiapp_gemini_model', def:'google/gemini-3.8-flash', models:[['google/gemini-3.8-flash','Gemini 3.8 Flash']] },
         { grp:2, key:'kimi',       name:'Kimi · Moonshot',          or:true, direct:true, store:'aiapp_kimi_model',       def:'kimi-k3',                     models:[['kimi-k3','Kimi K3'],['kimi-k2.6','Kimi K2.6']] },
         { grp:2, key:'deepseek',   name:'DeepSeek',                 or:true, store:'aiapp_deepseek_model',   def:'deepseek/deepseek-v4-pro',     models:[['deepseek/deepseek-v4-pro','DeepSeek V4 Pro']] },
@@ -190,7 +192,7 @@
               if(!d || !d.models) return;
               var changed = false;
               for(var i=0;i<PROVS.length;i++){ var p = PROVS[i]; var L = d.models[p.key];
-                if(!p.or || !L || !L.length) continue;
+                if(!p.or || p.effort || !L || !L.length) continue; /* v-owner-gpt-all: القائمة المنسّقة (بمجموعتيها وجهدها) لا تُستبدل بالحيّة */
                 var has = false; for(var j=0;j<L.length;j++){ if(L[j][0] === p.def) has = true; }
                 var defLabel = p.def; for(j=0;j<p.models.length;j++){ if(p.models[j][0] === p.def){ defLabel = p.models[j][1]; break; } }
                 p.models = (has ? [] : [[p.def, defLabel]]).concat(L); changed = true;
@@ -216,17 +218,20 @@
           var heads = pop.querySelectorAll('.omProvHead'); for(var i=0;i<heads.length;i++){ heads[i].style.color = (heads[i].getAttribute('data-prov') === pk) ? ACCENT : INK; }
           var ms = pop.querySelectorAll('.omProvModel'); for(i=0;i<ms.length;i++){ var on = ms[i].getAttribute('data-prov') === pk && ms[i].getAttribute('data-model') === mid; ms[i].style.color = on ? ACCENT : INK; }
         }catch(e){ /* guard-ok */ }
-        /* v-owner-claude-all: صفّ الجهد يتبع نموذج كلود المحفوظ — Haiku 4.5 بلا جهد، وOpus 4.6/Sonnet 4.6 بلا «إضافيّ»؛ والقيمة المعروضة هي المرسَلة فعلًا. */
+        /* v-owner-claude-all + v-owner-gpt-all: صفّ الجهد لكلّ مزوّد يتبع موديله المحفوظ — موديل بلا جهد يُخفي الصفّ، ومستوى ينزل عند
+           الموديل (Extra على Opus/Sonnet 4.6، Max على GPT-5.5/5.4/5.2) يُخفى؛ والقيمة المعروضة هي المرسَلة فعلًا. */
         try{
-          var eh = pop.querySelector('.omEffortHead'), eb = pop.querySelector('.omEffortBox');
-          if(eh){
-            var cpv = provOf('claude'), cm = cpv ? curModelId(cpv) : '';
-            var noEff = cm === 'claude-haiku-4-5';
-            eh.style.display = noEff ? 'none' : 'flex'; if(noEff && eb){ eb.hidden = true; var ec3 = eh.querySelector('.omEffortChev'); if(ec3) ec3.textContent = '▸'; }
-            var sv = window.claudeEffortSaved ? window.claudeEffortSaved() : '';
-            var ev = window.claudeEffortFor ? window.claudeEffortFor(cm, sv) : sv;
+          var ehs = pop.querySelectorAll('.omEffortHead');
+          for(var h=0;h<ehs.length;h++){
+            var eh = ehs[h], ek = eh.getAttribute('data-for'), eb = pop.querySelector('.omEffortBox[data-for="' + ek + '"]');
+            var epv = provOf(ek), cm = epv ? curModelId(epv) : '';
+            var isG = ek === 'openai', forFn = isG ? window.gptEffortFor : window.claudeEffortFor;
+            var sv = isG ? (window.gptEffortSaved ? window.gptEffortSaved() : '') : (window.claudeEffortSaved ? window.claudeEffortSaved() : '');
+            var ok = !!(forFn && forFn(cm, 'low'));
+            eh.style.display = ok ? 'flex' : 'none'; if(!ok && eb){ eb.hidden = true; var ec3 = eh.querySelector('.omEffortChev'); if(ec3) ec3.textContent = '▸'; }
+            var ev = forFn ? forFn(cm, sv) : '';
             var vl = eh.querySelector('.omEffortVal'); if(vl) vl.textContent = effortLabel(ev);
-            var eo = pop.querySelectorAll('.omEffortOpt'); for(var q=0;q<eo.length;q++){ var v = eo[q].getAttribute('data-effort'); eo[q].style.color = (v === ev) ? ACCENT : INK; eo[q].style.display = (v === 'xhigh' && /^claude-(?:opus-4-6|sonnet-4-6)$/.test(cm)) ? 'none' : 'block'; }
+            var eo = eb ? eb.querySelectorAll('.omEffortOpt') : []; for(var q=0;q<eo.length;q++){ var v = eo[q].getAttribute('data-effort'); eo[q].style.color = (v === ev) ? ACCENT : INK; eo[q].style.display = (v && forFn && forFn(cm, v) !== v) ? 'none' : 'block'; }
           }
         }catch(e){ /* guard-ok: صفّ الجهد تحسينيّ */ }
       }
@@ -247,7 +252,9 @@
         var ehd = e.target.closest('.omEffortHead');
         if(ehd){ e.stopPropagation(); var ebx = pop.querySelector('.omEffortBox[data-for="' + ehd.getAttribute('data-for') + '"]'); if(ebx){ ebx.hidden = !ebx.hidden; var ec = ehd.querySelector('.omEffortChev'); if(ec) ec.textContent = ebx.hidden ? '▸' : '▾'; } return; }
         var eopt = e.target.closest('.omEffortOpt');
-        if(eopt){ e.stopPropagation(); try{ if(window.claudeEffortSet) window.claudeEffortSet(eopt.getAttribute('data-effort') || ''); }catch(e4){ /* guard-ok */ } var ebx2 = pop.querySelector('.omEffortBox'); if(ebx2) ebx2.hidden = true; var ec2 = pop.querySelector('.omEffortChev'); if(ec2) ec2.textContent = '▸'; refresh(); return; }
+        if(eopt){ e.stopPropagation(); var ebx2 = eopt.closest('.omEffortBox'), efor = ebx2 ? ebx2.getAttribute('data-for') : 'claude';
+          try{ var setFn = (efor === 'openai') ? window.gptEffortSet : window.claudeEffortSet; if(setFn) setFn(eopt.getAttribute('data-effort') || ''); }catch(e4){ /* guard-ok */ }
+          if(ebx2) ebx2.hidden = true; var ehd2 = pop.querySelector('.omEffortHead[data-for="' + efor + '"]'), ec2 = ehd2 && ehd2.querySelector('.omEffortChev'); if(ec2) ec2.textContent = '▸'; refresh(); return; }
         var head = e.target.closest('.omProvHead');
         if(head){ e.stopPropagation(); var key = head.getAttribute('data-prov'); var box = pop.querySelector('.omProvModels[data-for="' + key + '"]'); var open = box && !box.hidden; collapseAll(); if(box){ box.hidden = open; head.querySelector('.omProvChev').textContent = open ? '▸' : '▾'; } return; }
         var pm = e.target.closest('.omProvModel');

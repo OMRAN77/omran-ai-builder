@@ -72,4 +72,31 @@ function claudeEffortFields(model, effort, viaOR) {
   return out;
 }
 
-module.exports = { ownerThinks, lastReplyHasCode, claudeQuickFields, claudeEffortFields, forgetEffort, ANALYSIS_RE, EFFORT_LEVELS, __deadEffort: deadEffort };
+/* v-owner-gpt-all (أمر عمران ١٠ أكتوبر «بعد ما تخلص الانثروبك ابدأ في GPT — كلهم نفس الموضوع»): مستويات reasoning.effort لكلّ
+   موديل GPT في منتقي المالك، من صفحات موديلات OpenAI الرسميّة (developers.openai.com/api/docs/models/<id>، فُحصت ١١ أكتوبر):
+   Astra و6.1 Sol بلا none (none = 400)، وGPT-5.5/5.4/5.2 بلا max. المفتاح المعرّف المباشر (بلا openai/). */
+const GPT_EFFORTS = {
+  'gpt-6-astra': ['low', 'medium', 'high', 'xhigh', 'max'], 'gpt-6.1-sol': ['low', 'medium', 'high', 'xhigh', 'max'],
+  'gpt-6-luna': ['none', 'low', 'medium', 'high', 'xhigh', 'max'], 'gpt-6-sol': ['none', 'low', 'medium', 'high', 'xhigh', 'max'],
+  'gpt-5.6-sol': ['none', 'low', 'medium', 'high', 'xhigh', 'max'], 'gpt-5.6-terra': ['none', 'low', 'medium', 'high', 'xhigh', 'max'], 'gpt-5.6-luna': ['none', 'low', 'medium', 'high', 'xhigh', 'max'],
+  'gpt-5.5': ['none', 'low', 'medium', 'high', 'xhigh'], 'gpt-5.4': ['none', 'low', 'medium', 'high', 'xhigh'], 'gpt-5.4-mini': ['none', 'low', 'medium', 'high', 'xhigh'], 'gpt-5.2': ['none', 'low', 'medium', 'high', 'xhigh'],
+};
+function gptId(model) { return String(model || '').trim().toLowerCase().replace(/^openai\//, ''); }
+function gptEfforts(model) { return Object.prototype.hasOwnProperty.call(GPT_EFFORTS, gptId(model)) ? GPT_EFFORTS[gptId(model)] : null; }
+/* جهد المالك المختار لـGPT ← output_config.effort (oa-direct يترجمه reasoning.effort، والوسيط يترجمه بنفسه). مستوى لا يدعمه
+   الموديل ينزل لأقرب أدنى (max → xhigh على 5.5/5.4/5.2). سقف الخرج على المسار المباشر وحده (يشمل التفكير عند OpenAI، وتوصيتها
+   ٢٥ ألفًا على الأقلّ للتفكير والردّ): high ‏٣٢٠٠٠، وxhigh/max ‏٦٤٠٠٠؛ الوسيط يبقى ١٦٠٠٠ (يحجز الرصيد كاملًا قبل التشغيل). */
+function gptEffortFields(model, effort, viaOR) {
+  const raw = String(model || '');
+  const allowed = gptEfforts(raw);
+  let lvl = String(effort == null ? '' : effort).trim().toLowerCase();
+  if (!allowed || EFFORT_LEVELS.indexOf(lvl) === -1 || deadEffort.has(raw)) return null;
+  while (allowed.indexOf(lvl) === -1 && EFFORT_LEVELS.indexOf(lvl) > 0) lvl = EFFORT_LEVELS[EFFORT_LEVELS.indexOf(lvl) - 1];
+  if (allowed.indexOf(lvl) === -1) return null;
+  const out = { output_config: { effort: lvl } };
+  if (!viaOR && lvl === 'high') out.max_tokens = 32000;
+  if (!viaOR && (lvl === 'xhigh' || lvl === 'max')) out.max_tokens = 64000;
+  return out;
+}
+
+module.exports = { ownerThinks, lastReplyHasCode, claudeQuickFields, claudeEffortFields, gptEffortFields, gptEfforts, forgetEffort, ANALYSIS_RE, EFFORT_LEVELS, GPT_EFFORTS, __deadEffort: deadEffort };

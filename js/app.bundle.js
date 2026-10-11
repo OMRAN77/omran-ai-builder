@@ -37998,7 +37998,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
         model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : ''); } catch (e) { return ''; } })(),
-        effort: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined) : undefined; } catch (e) { return undefined; } })(), /* v-owner-claude-all: جهد المالك من المنتقي؛ undefined لغيره فيسقط الحقل من JSON وطلبه كما كان بايتًا بايتًا */
+        effort: (function () { try { var __p = provider || 'claude'; return (__p === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined) : (__p === 'openai' && window.gptEffortGet) ? (window.gptEffortGet() || undefined) : undefined; } catch (e) { return undefined; } })(), /* v-owner-claude-all + v-owner-gpt-all: جهد المالك من المنتقي (كلود وGPT)؛ undefined لغيره فيسقط الحقل من JSON وطلبه كما كان بايتًا بايتًا */
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
@@ -42867,6 +42867,31 @@ if(document.readyState === 'loading'){
   window.claudeEffortSet = effortSet;
   window.claudeEffortSaved = effortSaved;
   window.claudeEffortFor = effortFor;
+
+  /* v-owner-gpt-all (أمر عمران «بعد الانثروبك GPT — نفس الموضوع»): جهد GPT للمالك بالمستويات نفسها، مقيّدًا بما يقبله كلّ موديل
+     (صفحات OpenAI الرسميّة؛ الخادم يتحقّق أيضًا — owner-think.gptEffortFields): GPT-5.5/5.4/5.2 بلا «أقصى» فيُعرض ويُرسل «إضافيّ». */
+  var GPT_EFFORT_KEY = 'aiapp_gpt_effort';
+  var GPT_MAX = /^gpt-(?:6-astra|6\.1-sol|6-luna|6-sol|5\.6-sol|5\.6-terra|5\.6-luna)$/;
+  var GPT_XHIGH = /^gpt-(?:5\.5|5\.4|5\.4-mini|5\.2)$/;
+  function gptEffortFor(model, v) {
+    var id = String(model || '').replace(/^openai\//, '');
+    if (!v || EFFORTS.indexOf(v) === -1 || !(GPT_MAX.test(id) || GPT_XHIGH.test(id))) return '';
+    return (v === 'max' && GPT_XHIGH.test(id)) ? 'xhigh' : v;
+  }
+  function gptEffortSaved() { try { var v = localStorage.getItem(GPT_EFFORT_KEY) || ''; return EFFORTS.indexOf(v) === -1 ? '' : v; } catch (e) { return ''; } }
+  function gptEffortSet(v) {
+    v = EFFORTS.indexOf(v) === -1 ? '' : v;
+    try { if (v) localStorage.setItem(GPT_EFFORT_KEY, v); else localStorage.removeItem(GPT_EFFORT_KEY); } catch (e) { /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
+    return v;
+  }
+  function gptEffortGet() {
+    if (!owner()) return '';
+    try { return gptEffortFor(window.omranModelFor ? window.omranModelFor('openai') : '', gptEffortSaved()); } catch (e) { return ''; }
+  }
+  window.gptEffortGet = gptEffortGet;
+  window.gptEffortSet = gptEffortSet;
+  window.gptEffortSaved = gptEffortSaved;
+  window.gptEffortFor = gptEffortFor;
 })();
 /* v-maha-goldwave (طلب المالك ٢٢ سبتمبر، بعد خمسة نماذج راجعها بنفسه): «حطها في التطبيق» — صورة الموجة الذهبية
    نفسها مكان دائرة مها في نافذة المكالمة. تمشي باستمرار مثل شريط الأسهم (٣٦ بكسل/ث من اليمين لليسار — سرعة

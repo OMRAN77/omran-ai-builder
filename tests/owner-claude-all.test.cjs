@@ -304,7 +304,7 @@ test('٩. modes.js: كلّ نماذج كلود بمجموعتيها، وصفّ �
   assert.ok(/class="omProvMore" data-for="claude" hidden/.test(box), 'مطويّة');
   for (const id of ['claude-haiku-4-5', 'claude-opus-4-6', 'claude-sonnet-4-6']) assert.ok(more.includes('data-model="' + id + '"'), id);
   assert.ok(box.indexOf('omEffortHead') < box.indexOf('omMoreHead') && box.indexOf('data-model="claude-haiku-5-5"') < box.indexOf('omEffortHead'), 'الترتيب: الرئيسيّة ثمّ الجهد ثمّ نماذج أخرى');
-  assert.ok(!/omEffortHead|omMoreHead/.test(html.slice(html.indexOf('class="omProvHead" data-prov="openai"'))), 'بقيّة المزوّدين كما كانوا');
+  assert.ok(!/omEffortHead|omMoreHead/.test(html.slice(html.indexOf('class="omProvHead" data-prov="gemini"'))), 'بقيّة المزوّدين كما كانوا (GPT له صفّه — owner-gpt-all)');
   assert.ok(m.includes("querySelectorAll('.omProvModels, .omProvMore, .omEffortBox')"), 'الطيّ يشمل الصناديق الفرعيّة');
   assert.ok(m.includes("querySelectorAll('.omProvChev, .omMoreChev, .omEffortChev')") && /class="omEffortChev"[^>]*>▸</.test(box), 'سهم الجهد كبقيّة الصفوف (لا ‹ ثابت)');
   assert.ok(m.includes("if(isOwner()) renderPop();"), 'المنتقي يُبنى للمالك وحده');
@@ -321,7 +321,7 @@ test('١٠. الإعدادات لا تكتب فوق اختيار المالك، 
     for (const k of K) assert.ok(f.includes('"' + k + '":'), lg + ' ' + k);
   }
   assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=735';"));
-  assert.ok(read('index.html').includes('/js/modes.js?v=m101026a'));
+  assert.ok(read('index.html').includes('/js/modes.js?v=m111026a'));
   const bundle = read('js/app.bundle.js');
-  assert.ok(bundle.includes('window.claudeEffortGet = effortGet;') && bundle.includes("effort: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeEffortGet)"), 'الحزمة أُعيد بناؤها');
+  assert.ok(bundle.includes('window.claudeEffortGet = effortGet;') && bundle.includes("return (__p === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined)"), 'الحزمة أُعيد بناؤها');
 });
