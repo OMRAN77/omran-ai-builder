@@ -1,0 +1,13 @@
+[
+ {"id":"h1","text":"أبي أعرف موقع الدائرة الاقتصادية في دبي","expect":"chat-search"},
+ {"id":"h2","text":"وين موقع البلدية؟","expect":"chat-search"},
+ {"id":"h3","text":"ممكن تعطيني موقع مستشفى راشد","expect":"chat-search"},
+ {"id":"h4","text":"أبي أفضل تطبيق لتعلم الإنجليزي","expect":"chat"},
+ {"id":"h5","text":"ممكن تقترح لي برنامج لإدارة المشاريع","expect":"chat"},
+ {"id":"h6","text":"عطني أداة أحول فيها PDF إلى وورد","expect":"chat"},
+ {"id":"h7","text":"ابي صفحة الدائرة الرسمية في انستقرام","expect":"chat-search"},
+ {"id":"h8","text":"أبي لعبة حلوة أنزلها لولدي عمره ٨ سنوات","expect":"chat"},
+ {"id":"h9","text":"ارسم لي وردة حمراء","expect":"image","clf":"image","then":[{"text":"وش معنى الوردة الحمراء في الثقافة العربية","expect":"chat"},{"text":"كمل","expect":"chat"},{"text":"اختصر","expect":"chat"}]},
+ {"id":"h10","text":"صمم لي بوستر عن السلامة المرورية","expect":"image","clf":"image","then":[{"text":"اكتب لي نص تغريدة ننشره معه","expect":"chat"},{"text":"خلها بالإنجليزي","expect":"chat"}]},
+ {"id":"h11","text":"ارسم لي سيارة رياضية","expect":"image","clf":"image","then":[{"text":"شكرا","expect":"chat"},{"text":"الحين اشرح لي الفرق بين الكهربائية والهايبرد","expect":"chat"},{"text":"عطني جدول مقارنة","expect":"chat"}]}
+]

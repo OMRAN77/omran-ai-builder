@@ -56,17 +56,19 @@ test('٤. «ارسم» وحدها تُسأل عن الموضوع بدل رسم �
   const re = eval(m[1]);
   for (const x of ['ارسم', 'ارسم لي', 'رسمة', 'draw', 'صمم؟']) assert.ok(re.test(x), x);
   for (const x of ['ارسم قطة', 'رسمة وردة', 'draw a cat']) assert.ok(!re.test(x), x);
-  assert.ok(a.includes('if(__bareDraw || (!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text))){'));
+  /* v-vague-guard: فحص الإبهام يجري لكلّ طلب صورة — كان يُتخطّى حين يطابق __txtOnlyImgRe («ارسم لي شي» تُرسم عشوائيًّا) */
+  assert.ok(a.includes('if(__bareDraw || __isVagueMediaRequest(text)){'));
 });
 
 test('٥. حلقة التعديل: بعد صورة، أيّ رسالة قصيرة ليست سؤالًا ولا شكرًا = تعديل على آخر نسخة', () => {
   const a = read('js/app-09-attach.js');
-  const m = a.match(/const __ackOnly = (\/.+\/i);/);
+  /* v-ack-one: قائمة الشكر واحدة مشتركة (__OMRAN_ACK_RE) بدل __ackOnly — المعنى نفسه: الشكر ليس تعديلًا والتعديل يبقى تعديلًا */
+  const m = a.match(/const __OMRAN_ACK_RE = (\/.+\/i);/);
   assert.ok(m);
   const ack = eval(m[1]);
   for (const x of ['شكرا', 'حلوة', 'تمام 👍', 'ok']) assert.ok(ack.test(x), x);
   for (const x of ['أكثر واقعية', 'نفس الشي بس مبتسمة', 'لا، الخلفية فقط', 'حلوة بس الإضاءة قوية']) assert.ok(!ack.test(x), x + ' = تعديل لا شكر');
-  assert.ok(a.includes('const __FOLLOW_ANY = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || \'\').trim() && text.length <= 300 && !__ackOnly.test(text) && !__nanoQ.test(text)'));
+  assert.ok(a.includes('const __FOLLOW_ANY = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || \'\').trim() && text.length <= 300 && !__OMRAN_ACK_RE.test(text) && !__nanoQ.test(text)'));
   assert.ok(a.includes('const __FOLLOW_DEFAULT = __FOLLOW_ANY || '));
 });
 

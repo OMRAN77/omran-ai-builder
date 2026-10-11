@@ -279,6 +279,16 @@ for (const f of apiFiles) {
   }
 }
 
+// (ز) `\b` ملاصق لحرف عربيّ في تعبير حرفيّ. \w في JS لاتينيّ فقط، فـ`\b(?:كيف|ليش)` لا يطابق أبدًا و`الهند\b` لا يطابق «الهند»
+//     وحدها. حدث فعلًا: ٩ تعابير حتّى ١١ أكتوبر ٢٠٢٦، منها حارس «الطلب المبهم» (فصار «ابي صورة» يولّد صورة عشوائيّة مدفوعة)
+//     وفيتو الشكر بعد الصورة (فصار «شكرا وايد» تعديلًا مدفوعًا) — والفخّ في PITFALLS مرّتين قبلها. الحدود العربيّة يدويّة:
+//     `(?:^|[\s،,])كلمة(?=$|[\s،,])` أو `كلمة(?![؀-ۿ])`. التحليل بـacorn على الأجزاء وشيفرة الخادم (scripts/lib/arabic-wordb.cjs).
+{
+  const { createRequire } = await import('node:module');
+  const { scanTree } = createRequire(import.meta.url)('./lib/arabic-wordb.cjs');
+  for (const r of scanTree(ROOT)) found.push(`${r.file}:${r.line}  \\b ملاصق لحرف عربيّ (لا يطابق أبدًا) → ${r.pattern.slice(0, 60)}…؛ استعمل حدًّا يدويًّا (?:^|[\\s،,])…(?=$|[\\s،,])`);
+}
+
 if (found.length) {
   console.error(`\n✗ الحارس: ${found.length} اكتشافًا — لا نشر.\n`);
   for (const f of found) console.error(`  ${f}`);
