@@ -1241,6 +1241,63 @@ if(chatJumpBottomBtn){
   };
 }
 
+/* طلب المالك ١١ أكتوبر ٢٠٢٦ — تثبيت تمرير المحادثة: المتابعة أثناء البثّ
+   تتوقّف فقط بنيّة مستخدم فعليّة — لا بفرق الموضع، الذي يحرّكه المتصفّح
+   نفسه (تعديل حجم رسالة مؤجَّلة، مثلًا) فيبدو وكأنّ المستخدم صعد. عجلة
+   للأعلى، سحب باللمس، مفاتيح PageUp/ArrowUp/Home، أو سحب شريط التمرير
+   هي الإشارات الوحيدة؛ والعودة قرب الأسفل تُعيد المتابعة تلقائيًّا. */
+var __omranChatFollow = { broken: false, _wired: false };
+function chatBreakFollow(){ __omranChatFollow.broken = true; }
+function chatUserWantsFollow(){ return !__omranChatFollow.broken; }
+function __omranWireChatFollow(){
+  if(__omranChatFollow._wired || !messagesEl) return;
+  __omranChatFollow._wired = true;
+  messagesEl.addEventListener('wheel', (e) => { if(e && e.deltaY < 0) chatBreakFollow(); }, {passive:true});
+  messagesEl.addEventListener('touchmove', () => chatBreakFollow(), {passive:true});
+  // سحب شريط التمرير: الهدف هو العنصر القابل للتمرير نفسه لا رسالة بداخله —
+  // النقر على محتوى المحادثة يستهدف دائمًا عنصرًا فرعيًّا.
+  messagesEl.addEventListener('mousedown', (e) => { if(e && e.target === messagesEl) chatBreakFollow(); });
+  messagesEl.addEventListener('scroll', () => { if(chatIsNearBottom(32)) __omranChatFollow.broken = false; }, {passive:true});
+  document.addEventListener('keydown', (e) => {
+    if(!e || (e.key !== 'PageUp' && e.key !== 'ArrowUp' && e.key !== 'Home')) return;
+    const tag = e.target && e.target.tagName;
+    if(tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+    chatBreakFollow();
+  });
+}
+__omranWireChatFollow();
+
+/* طلب المالك ١١ أكتوبر ٢٠٢٦ — تثبيت تمرير المحادثة: إعادة بناء القائمة
+   كاملة (renderMessages) تغيّر ارتفاعات العناصر — رقم scrollTop الخام
+   المحفوظ قبلها يشير بعدها إلى موضع آخر. الموضع يُحفظ بعنصر مرجعي
+   (رقم الرسالة + مسافته عن أعلى الجزء الظاهر) ويُستعاد بإيجاد العنصر نفسه. */
+function __omranCaptureScrollAnchor(){
+  try{
+    const kids = messagesEl.children;
+    for(let i = 0; i < kids.length; i++){
+      const k = kids[i];
+      if(!k || !k.dataset || k.dataset.msgIdx == null) continue;
+      if((k.offsetTop || 0) + (k.offsetHeight || 0) > messagesEl.scrollTop){
+        return { idx: Number(k.dataset.msgIdx), delta: messagesEl.scrollTop - (k.offsetTop || 0) };
+      }
+    }
+  }catch(e){ __swallow(e, 'ui:scroll-anchor-capture'); }
+  return null;
+}
+function __omranRestoreScrollAnchor(anchor){
+  if(!anchor) return;
+  try{
+    const kids = messagesEl.children;
+    for(let i = 0; i < kids.length; i++){
+      const k = kids[i];
+      if(k && k.dataset && Number(k.dataset.msgIdx) === anchor.idx){
+        messagesEl.scrollTop = (k.offsetTop || 0) + anchor.delta;
+        return;
+      }
+    }
+  }catch(e){ __swallow(e, 'ui:scroll-anchor-restore'); }
+}
+
 // أثناء البث نخفي علامات Markdown الناقصة وننسّق المكتمل فورًا؛ عند اكتمال
 // الرابط يعود نصّه نفسه كرابط قابل للنقر بدل القفزة من نص خام إلى تنسيق نهائي.
 function streamingMarkdownDisplayText(text){
