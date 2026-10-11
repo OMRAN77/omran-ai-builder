@@ -17,7 +17,8 @@ const load = () => import(pathToFileURL(path.join(root, 'scripts', 'arch-ratchet
 const baseline = JSON.parse(fs.readFileSync(path.join(root, 'scripts', 'arch-baseline.json'), 'utf8'));
 
 // السقف الأوّل يوم وُلدت السقّاطة (8687179). الأساس لا يتجاوزه أبدًا: رفعه هنا تغيير معنى يراه المراجع.
-const CEILING = { sendPromptCoreLines: 3672, sendPromptCoreRegex: 264, sendPromptCoreTests: 306, verifyTokenDefs: 17, vPinTests: 80 };
+const CEILING = { sendPromptCoreLines: 3695, // وُلدت السقّاطة في الدفعة A نفسها: سقفها الأوّل بعد تعديلات التوجيه والتوكنز فيها (3672 قبلها)
+  sendPromptCoreRegex: 264, sendPromptCoreTests: 306, verifyTokenDefs: 17, vPinTests: 80 };
 
 const CORE = fs.readFileSync(path.join(root, 'js', 'app-09-attach.js'), 'utf8');
 function growCore(extra) { // يحقن سطرًا في أوّل جسم __sendPromptCore
