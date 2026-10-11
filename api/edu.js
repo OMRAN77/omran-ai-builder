@@ -65,6 +65,11 @@ function guestTotalCap() {
   const n = parseInt(process.env.EDU_GUEST_TOTAL_DAILY, 10);
   return Number.isFinite(n) && n >= 0 ? n : 200;
 }
+// المراجعة: «اسأل المستند» خفيف لكنّه ٦٠ ألف حرف في النداء و١٥ لكلّ IP — سقف كلّيّ مستقلّ كي لا يأكل حصّة التحليل الثقيل.
+function guestLightCap() {
+  const n = parseInt(process.env.EDU_GUEST_LIGHT_TOTAL_DAILY, 10);
+  return Number.isFinite(n) && n >= 0 ? n : 1500;
+}
 
 /**
  * One daily counter per subject (ip or username) per bucket. Owner is exempt.
@@ -666,6 +671,8 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const subjName = String(body.subject || '').slice(0, 80).trim();
       const summary = String(body.summary || '').slice(0, 14000).trim();
       if (!title || !summary) { res.status(400).json({ error: 'الدرس غير مكتمل — حلّل المحاضرة أولًا.' }); return; }
+      // v-edu-econ (المراجعة): المختبر ثقيل (١٤٠٠٠ + تكملة) فتحت سقف الضيوف الكلّيّ كالتحليل — كان تدوير الـIP يفتحه بعد امتلاء السقف.
+      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       const nat = String(body.nativeLang || body.lang || 'ar').slice(0, 8);
       const sys = 'أنت مطوّر ألعاب تعليمية عبقري. يُعطى إليك ملخص درس، ومطلوب منك بناء «تجربة حية»: '
         + 'صفحة HTML واحدة كاملة تفاعلية تجعل الطالب يلعب بجوهر الدرس بيديه ويرى النتيجة فورًا.\n'
@@ -888,6 +895,8 @@ module.exports = withErrorCapture('edu', async (req, res) => {
           return;
         }
       }
+      // v-edu-econ (المراجعة): سقف كلّيّ للضيوف على الأسئلة (كلّ الـIP معًا) — يغلق تدويرها.
+      if (!username && !isOwner && await overDailyLimit('*', 'guest-light-total', guestLightCap())) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       const lang = body.lang;
       const outLang = (lang && /^ar/i.test(lang)) ? 'بالعربية' : ('in ' + eduLangName(lang || 'ar') + ' — not in Arabic');
       const sys = 'أنت مساعد مستندات. يُعطى إليك نصّ مستند وسؤال عنه. أجب عن السؤال بالاعتماد على المستند فقط، '

@@ -18,6 +18,7 @@ delete process.env.OPENROUTER_API_KEY;
 delete process.env.EDU_ECON_MODEL;
 delete process.env.EDU_ECON_TIERS;
 delete process.env.EDU_GUEST_TOTAL_DAILY;
+delete process.env.EDU_GUEST_LIGHT_TOTAL_DAILY;
 delete process.env.EDU_LAB_MODEL;
 
 const root = path.join(__dirname, '..');
@@ -302,7 +303,7 @@ test('٩. عطب قراءة الطبقة: المسجّل يُعامل مجّان
 test('١٠. فحص ثابت: نصوص السقف الكلّيّ مُعادة حرفيًّا بلا اسم مزوّد، والأقفال القديمة باقية', () => {
   const src = fs.readFileSync(rp('api/edu.js'), 'utf8');
   const lines = src.split('\n').filter((l) => l.includes('if (await __guestTotalOver())'));
-  assert.equal(lines.length, 7, 'process/explain/questions/cv/expense/docqa/solve');
+  assert.equal(lines.length, 8, 'process/explain/questions/lab/cv/expense/docqa/solve');
   const RE = /\b(Claude|Anthropic|OpenAI|GPT|Gemini|Groq|Sonnet|Haiku|Opus)\b|كلود|جيمناي/i;
   for (const l of lines) {
     const lits = (l.match(/'[^']*'/g) || []).filter((s) => /[؀-ۿ]/.test(s));
@@ -318,10 +319,43 @@ test('١٠. فحص ثابت: نصوص السقف الكلّيّ مُعادة ح�
   }
   // لا قراءة بيئة في نطاق الوحدة للمتغيّرات الجديدة، ولا نموذج مشترك على مستوى الوحدة
   const top = src.slice(0, src.indexOf('module.exports'));
-  assert.ok(!/^(const|let|var)\s+\S+\s*=.*process\.env\.(EDU_ECON|EDU_GUEST_TOTAL)/m.test(top));
+  assert.ok(!/^(const|let|var)\s+\S+\s*=.*process\.env\.(EDU_ECON|EDU_GUEST_TOTAL|EDU_GUEST_LIGHT)/m.test(top));
   assert.ok(!/^let\s+\S*[Mm]odel\S*\s*=\s*(null|'|")/m.test(top.replace('let RESOLVED_MODEL = null;', '')), 'لا متغيّر نموذج على مستوى الوحدة');
   // fashion-locks ㉟/㊳ وmodels-latest ٣
   for (const s of ['v-edu-split', 'await Promise.all([', 'anthropicJSON(apiKey, sysSummary', 'anthropicJSON(apiKey, sysQuestions', '.catch(() => null)', 'quiz = 15 سؤالًا بالضبط', 'anthropicJSON(apiKey, sysQuestions, contentBlocks, 9000)', 'oaLightFetch(']) {
     assert.ok(src.includes(s), s);
+  }
+});
+
+test('١١. المراجعة: المختبر تحت سقف الضيوف الكلّيّ، و«اسأل المستند» تحت سقف خفيف كلّيّ — تدوير الـIP لا يفتحهما، والمسجّل يمرّ', async () => {
+  process.env.EDU_GUEST_TOTAL_DAILY = '1';
+  process.env.EDU_GUEST_LIGHT_TOTAL_DAILY = '2';
+  resetGuestTotal();
+  const lightKey = 'edu:guest-light-total:*:' + new Date().toISOString().slice(0, 10);
+  db.delete(lightKey);
+  const lab = { action: 'lab', title: 'الضوء', subject: 'علوم', summary: 'ملخّص الدرس' };
+  const ask = { action: 'docask', docText: 'نصّ العقد', question: 'ما المدّة؟' };
+  try {
+    assert.notEqual((await call('10.0.11.1', lab)).code, 402, 'أوّل مختبر ضيف ضمن السقف');
+    const over = await call('10.0.11.2', lab);
+    assert.equal(over.code, 402, 'IP جديد بعد امتلاء السقف الكلّيّ');
+    assert.equal(over.calls.length, 0, 'المختبر بلا نداء');
+    const reg = await call('10.0.11.2', Object.assign({ token: addUser('lab-reg') }, lab));
+    assert.notEqual(reg.code, 402, 'المسجّل لا يمسّه سقف الضيوف');
+    assert.ok(reg.calls.length >= 1);
+
+    assert.equal((await call('10.0.11.10', ask)).code, 200);
+    assert.equal((await call('10.0.11.11', ask)).code, 200);
+    const askOver = await call('10.0.11.12', ask);
+    assert.equal(askOver.code, 402, 'السؤال الثالث من IP ثالث');
+    assert.equal(askOver.calls.length, 0, 'السؤال بلا نداء');
+    const askReg = await call('10.0.11.12', Object.assign({ token: addUser('ask-reg') }, ask));
+    assert.equal(askReg.code, 200, 'المسجّل يسأل');
+    assert.equal((await call('10.0.11.13', { action: 'tutor', question: 'q' })).code, 200, 'المعلّم خارج السقف الخفيف');
+  } finally {
+    delete process.env.EDU_GUEST_TOTAL_DAILY;
+    delete process.env.EDU_GUEST_LIGHT_TOTAL_DAILY;
+    resetGuestTotal();
+    db.delete(lightKey);
   }
 });

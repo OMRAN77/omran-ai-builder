@@ -144,3 +144,52 @@ test('٦. الضبط بالبيئة: IMAGE_UNCHANGED_FREE (افتراضيًّا 
   assert.equal(await giveback.unchangedGiveback(['g2', 'ip'], { kv, limit: 1 }), false);
   assert.deepEqual(capKeys().map((k) => store.get(k)), [1, 1, 0], 'g=1 · ip=1 · g2 أُرجع إلى ٠');
 });
+
+// ٧. المراجعة: حلقات الإعادة التلقائيّة في الواجهة كانت تعيد بعد ٤٢٢ المحتسب (retryable:false) و٤٠٢ — فبعد السقف
+// يدفع المستخدم الأمين ٢–٣ مرّات بلا صورة. الحلقات الثلاث مستخرجة نصًّا من js/app-09-attach.js وتُشغَّل بـfetch محاكى.
+const fs = require('node:fs');
+const vm = require('node:vm');
+function loopAt(src, head) {
+  const i = src.indexOf(head);
+  assert.ok(i >= 0, 'الحلقة غير موجودة: ' + head);
+  let depth = 0, j = src.indexOf('{', i);
+  for (let k = j; k < src.length; k++) {
+    if (src[k] === '{') depth++;
+    else if (src[k] === '}' && --depth === 0) return src.slice(i, k + 1);
+  }
+  throw new Error('حلقة غير مغلقة: ' + head);
+}
+async function runLoop(code, decl, replies) {
+  let n = 0;
+  const fetch = async () => {
+    const r = replies[Math.min(n++, replies.length - 1)];
+    return { ok: r.status === 200, status: r.status, json: async () => r.body };
+  };
+  const ctx = {
+    fetch, setTimeout: (f) => f(), Date, String, JSON, Promise,
+    __runCtl: { signal: null }, authGet: () => 't', window: { getGuestId: () => 'g' },
+    __charImg: { b64: 'x', mime: 'image/png' }, __cartoonPrompt: 'p', prompt: 'p', text: 'p',
+    __genTextSpec: { visualPrompt: 'p' },
+  };
+  await vm.runInNewContext('(async () => { ' + decl + '\n' + code + '\n})()', ctx);
+  return n;
+}
+test('٧. الواجهة: الردّ النهائيّ (retryable:false أو ٤٠٢) يوقف الإعادة التلقائيّة؛ العطل المؤقّت يُعاد كما كان', async () => {
+  const src = fs.readFileSync(rp('js/app-09-attach.js'), 'utf8');
+  const loops = [
+    ['كرتون', loopAt(src, 'for(let __ct = 0; __ct < 2 && !__cartoonB64; __ct++)'), "let __cartoonB64 = '', __cartoonMime = '';", 2],
+    ['معماريّ', loopAt(src, 'for(let __t3 = 0; __t3 < 3 && !__k; __t3++)'), 'let __d = {}; let __k = false;', 3],
+    ['توليد', loopAt(src, 'for(let __t2 = 0; __t2 < 2 && !__gOk; __t2++)'), 'let __gData = {}; let __gOk = false; const __gT0 = Date.now();', 2],
+  ];
+  const kept = { status: 422, body: { error: 'image_generation_failed', retryable: false } };
+  const broke = { status: 402, body: { error: 'insufficient' } };
+  const transient = { status: 500, body: { error: 'upstream', retryable: true } };
+  const bare = { status: 502, body: {} };
+  for (const [name, code, decl, max] of loops) {
+    assert.equal(await runLoop(code, decl, [kept]), 1, name + ': ٤٢٢ المحتسب نداء واحد');
+    assert.equal(await runLoop(code, decl, [broke]), 1, name + ': ٤٠٢ نداء واحد');
+    assert.equal(await runLoop(code, decl, [transient]), max, name + ': المؤقّت يُعاد');
+    assert.equal(await runLoop(code, decl, [bare]), max, name + ': ردّ بلا جسم يُعاد');
+    assert.equal(await runLoop(code, decl, [transient, kept]), 2, name + ': مؤقّت ثمّ نهائيّ يتوقّف');
+  }
+});
