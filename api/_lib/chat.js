@@ -1532,7 +1532,7 @@ module.exports = async (req, res) => {
     let searchesUsed = 0; // v-chat-parallel-tools: سقف بحثين لكل ردّ
     let anyText = false;
     let fullText = '';   // v608 — نصّ الردّ المتراكم
-    let toolCorpus = ''; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور
+    let toolCorpus = '', __searchRan = false; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور · v-rating-guard-search: هل بحث فعليّ (web_search/fetch_page) جرى؟
 
     // إزالة تكرار المواقع عبر استدعاءات البحث في نفس الدور
       const seenHostnames = new Set();
@@ -1933,7 +1933,7 @@ module.exports = async (req, res) => {
         }
       }
       if (stopReason !== 'tool_use') {
-        const badRatings = unsourcedRatings(fullText, toolCorpus); // v608
+        const badRatings = __searchRan ? unsourcedRatings(fullText, toolCorpus) : []; // v608 · v-rating-guard-search (أمر المالك ١١ أكتوبر): بلا بحث فعليّ لا تحذير — «٣ من ٥» و«٨ من ١٠» والتواريخ كانت تُعلَّم «لم تظهر في نتائج البحث» ولا بحث أصلًا
         if (badRatings.length) {
           logError('chat/unsourced-rating', new Error('ratings absent from tool output: ' + badRatings.join(', ')));
           send({ delta: ratingWarning(fullText) });
@@ -2095,6 +2095,7 @@ module.exports = async (req, res) => {
         const __outMax = (__ownerReq && st.cb.name === 'read_github') ? 30000 : 8000;
         toolResults.push({ type: 'tool_result', tool_use_id: st.cb.id, content: String(st.result).slice(0, __outMax) });
         if (toolCorpus.length < 200000) toolCorpus += ' ' + String(st.result).slice(0, 8000); // v608
+        if (st.cb.name === 'web_search' || st.cb.name === 'fetch_page') __searchRan = true;
       }
       convo.push({ role: 'user', content: toolResults });
     }
@@ -2117,7 +2118,10 @@ module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 �
 function ownerStopNote(fail, then) {
   const isCredit = (x) => { const f = x || {}; return /credit|balance|billing|insufficient|quota|payment/i.test(String(f.text || '')) || Number(f.status) === 402; };
   if (isCredit(fail) || isCredit(then)) return 'ما عندي رصيد';
-  return 'ما قدرت أردّ الحين — خطأ ' + (((then || fail) || {}).status || '؟');
+  const __f = (then || fail) || {};
+  // v-groq-tpm: 413 «tokens per minute» بعد إعادة القصّ في oa-direct = المحادثة نفسها أكبر من حدّ المفتاح في الدقيقة
+  if (Number(__f.status) === 413 && /tokens per minute|\bTPM\b/i.test(String(__f.text || ''))) return 'ما قدرت أردّ الحين — المحادثة أكبر من حدّ المفتاح في الدقيقة؛ افتح محادثة جديدة';
+  return 'ما قدرت أردّ الحين — خطأ ' + (__f.status || '؟');
 }
 /* v-owner-identity (المالك ٨ أكتوبر: «ولا واحد يردّ على أيّ مزوّد باسمه… المزوّدين كلّهم أسامي فقط، شو عرّفني أنّهم بأصلهم»):
    منذ v-owner-full (٢ أكتوبر) يأخذ المالك النظام الكامل، وفي رأسه «أنت عمران… أسماء النماذج والمزوّدين لا تُذكر أبدًا — تقول المحرّك»
