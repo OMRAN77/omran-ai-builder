@@ -3315,6 +3315,7 @@ const I18N = {
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
     imgUndoPrev: "رجّعتها للنسخة السابقة 👆 وش تبي أغيّر فيها؟", imgUndoOrig: "رجّعتها للصورة الأصليّة 👆 وش تبي أغيّر فيها؟", imgUndoNone: "هذي هي أوّل نسخة، ما قبلها شي 👆 وش تبي أغيّر فيها؟", /* v-img-undo */
     imgUnchanged: "⚠️ ما تنفّذ التعديل: الصورة رجعت نفسها بدون تغيير، فما عرضتها ولا انحسبت عليك. وضّح وش يتغيّر بالضبط أو اكتب الطلب بصيغة ثانية.", /* v-img-honest */
+    /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ حوّلتها إلى {fmt} — نفس الصورة بدون أي تغيير، وجاهزة للحفظ.", imgConvertSame: "الصورة أصلًا بصيغة {fmt} — هذي هي جاهزة للحفظ.", imgConvertAsk: "أيّ صيغة تبيها؟ PNG (أنقى جودة) أو JPG (أصغر حجمًا) أو WEBP (أخفّ للمواقع). اكتب مثلًا: حوّلها jpg", imgConvertGuess: "(فهمت «{word}» على أنّها {fmt} — إذا تبي صيغة ثانية قل: حوّلها jpg)", imgConvertFail: "تعذّر تحويل الصيغة في هذا المتصفّح — جرّب PNG أو JPG.",
     aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
@@ -3491,7 +3492,7 @@ const I18N = {
     /* v-video-seq-cooldown + v-film-mode-gate */
     videoSceneWait: '⏳ المشهد {i}/{n}: مهلة بين الفيديوهات — يبدأ تلقائيًا بعد {s} ثانية.',
     videoFilmModeOnly: '🎬 «فيلم متكامل» يعمل مع وضع «فيديو AI» فقط — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
-    pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', videoIdeaLbl: "💡 جرّب مثالًا", videoIdeaCanvas: "إنفوجرافيك: ٣ نصائح لتوفير المال في ٥ ثواني", videoIdeaRunway: "سيارة رياضية تمرّ في شوارع دبي ليلًا", videoIdeaMinimax: "أمواج هادئة على شاطئ وقت الغروب", videoIdeaOmni: "إعلان عطر فاخر على شاطئ وقت الغروب", videoIdeaHybrid: "إعلان عرض: لقطة منتج وفوقها الخصم والسعر", videoIdeaVeo: "سوق شعبي مزدحم بأصوات الباعة والزبائن", videoIdeaActor: "ممثل إماراتي يعرّف بمحل قهوة", vwTitle: "مساعد الكتابة", vwSub: "يكتب لك قصة أو حوارًا أو إعلانًا مضبوطًا على مدة الفيديو", vwPh: "مثال: اكتب لي قصة عن صاحب محل قهوة يفتتح فرعًا جديدًا", vwSend: "إرسال", vwSug1: "اكتب لي قصة قصيرة عن…", vwSug2: "اكتب لي نص إعلان عن…", vwToScene: "ضعه في وصف المشهد", vwToNarr: "ضعه في الراوي", vwToActor: "ضعه في كلام الممثل", vwBusy: "جارٍ الكتابة…", vwErr: "تعذّرت الكتابة الآن، حاول بعد قليل", vwLimit: "وصلت حدّ الكتابة اليوم", vwLogin: "سجّل الدخول لاستعمال مساعد الكتابة", vwFit: "مضبوط على {n} ثانية — حتى {w} كلمة", videoTabTrends: "الترندات", videoIdeaCanvas2: "سعر الذهب اليوم بالدرهم مع سهم أخضر أو أحمر", videoIdeaCanvas3: "عدّ تنازلي لافتتاح المحل", videoIdeaRunway2: "موظف مبيعات يشرح مفتاح سيارة لزبون في معرض فخم", videoIdeaRunway3: "برجر يُقلب على الشواية مع بخار ودخان", videoIdeaMinimax2: "كاميرا تمرّ فوق أبراج دبي وقت الفجر", videoIdeaMinimax3: "قطرات مطر على نافذة مقهى", videoIdeaOmni2: "لقطة بطيئة لدلّة قهوة تُسكب في فنجان بجانبه تمر", videoIdeaOmni3: "افتتاحية فيلم: كثبان صحراء وقت الفجر", videoIdeaHybrid2: "تقرير سوق: لقطة مدينة وأرقام الأسهم تظهر فوقها", videoIdeaHybrid3: "عقار جديد: لقطة المبنى مع السعر والموقع", videoIdeaVeo2: "طبخ بأصوات القلي والغلي (ASMR)", videoIdeaVeo3: "سيارة تنطلق بصوت المحرّك في الصحراء", videoIdeaActor2: "ممثل إماراتي يعرّف بمحل عطور: عود وبخور", videoIdeaActor3: "موظف استقبال يرحّب بالعملاء ويشرح الخدمات", vcTitle: "الشخصيات", vcSub: "حتى 3 شخصيات — لكل واحدة اسم وصوت وكلام", vcAdd: "إضافة شخصية", vcName: "الاسم", vcLine: "ماذا تقول؟", vcMale: "رجل", vcFemale: "امرأة", vcRemove: "حذف", vwToChars: "وزّع الحوار على الشخصيات", vcMore: "خيارات إضافية", vcTutorial: "شاهد: كيف تصنع فيديو", vcToExtra: "ضعه في الإضافات", videoTabClean: "تحسين فيديو", vclTitle: "حسّن فيديو من جهازك", vclSub: "ارفع فيديو مغبّشًا أو مشوّشًا: ننقّي التشويش ونوضّح الصورة ونحسّن الألوان — داخل جهازك ومجانًا", vclPick: "اختر فيديو أو اسحبه هنا", vclDrop: "حتى {s} ثانية و{n} ميغابايت", vclLight: "خفيف", vclStrong: "قوي", vclUpscale: "ضاعف الدقة (للفيديو الصغير)", vclStart: "حسّن الفيديو", vclWorking: "جارٍ التحسين… لا تغلق النافذة", vclCancel: "إلغاء", vclDownload: "تحميل الفيديو المحسَّن", vclBefore: "قبل", vclAfter: "بعد", vclTooLong: "الفيديو أطول من {s} ثانية — قصّه أولًا", vclTooBig: "الملف أكبر من {n} ميغابايت", vclFail: "تعذّر تحسين هذا الفيديو على هذا الجهاز", vclNote: "ينقّي التشويش ويوضّح الحواف ويحسّن الألوان، ولا يصلح الغبش الشديد أو اهتزاز الكاميرا", vclLoading: "جارٍ تجهيز أداة التحسين (أول مرة فقط)…", fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
+    pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', videoIdeaLbl: "💡 جرّب مثالًا", videoIdeaCanvas: "إنفوجرافيك: ٣ نصائح لتوفير المال في ٥ ثواني", videoIdeaRunway: "سيارة رياضية تمرّ في شوارع دبي ليلًا", videoIdeaMinimax: "أمواج هادئة على شاطئ وقت الغروب", videoIdeaOmni: "إعلان عطر فاخر على شاطئ وقت الغروب", videoIdeaHybrid: "إعلان عرض: لقطة منتج وفوقها الخصم والسعر", videoIdeaVeo: "سوق شعبي مزدحم بأصوات الباعة والزبائن", videoIdeaActor: "ممثل إماراتي يعرّف بمحل قهوة", vwTitle: "مساعد الكتابة", vwSub: "يكتب لك قصة أو حوارًا أو إعلانًا مضبوطًا على مدة الفيديو", vwPh: "مثال: اكتب لي قصة عن صاحب محل قهوة يفتتح فرعًا جديدًا", vwSend: "إرسال", vwSug1: "اكتب لي قصة قصيرة عن…", vwSug2: "اكتب لي نص إعلان عن…", vwToScene: "ضعه في وصف المشهد", vwToNarr: "ضعه في الراوي", vwToActor: "ضعه في كلام الممثل", vwBusy: "جارٍ الكتابة…", vwErr: "تعذّرت الكتابة الآن، حاول بعد قليل", vwLimit: "وصلت حدّ الكتابة اليوم", vwLogin: "سجّل الدخول لاستعمال مساعد الكتابة", vwFit: "مضبوط على {n} ثانية — حتى {w} كلمة", videoTabTrends: "الترندات", videoIdeaCanvas2: "سعر الذهب اليوم بالدرهم مع سهم أخضر أو أحمر", videoIdeaCanvas3: "عدّ تنازلي لافتتاح المحل", videoIdeaRunway2: "موظف مبيعات يشرح مفتاح سيارة لزبون في معرض فخم", videoIdeaRunway3: "برجر يُقلب على الشواية مع بخار ودخان", videoIdeaMinimax2: "كاميرا تمرّ فوق أبراج دبي وقت الفجر", videoIdeaMinimax3: "قطرات مطر على نافذة مقهى", videoIdeaOmni2: "لقطة بطيئة لدلّة قهوة تُسكب في فنجان بجانبه تمر", videoIdeaOmni3: "افتتاحية فيلم: كثبان صحراء وقت الفجر", videoIdeaHybrid2: "تقرير سوق: لقطة مدينة وأرقام الأسهم تظهر فوقها", videoIdeaHybrid3: "عقار جديد: لقطة المبنى مع السعر والموقع", videoIdeaVeo2: "طبخ بأصوات القلي والغلي (ASMR)", videoIdeaVeo3: "سيارة تنطلق بصوت المحرّك في الصحراء", videoIdeaActor2: "ممثل إماراتي يعرّف بمحل عطور: عود وبخور", videoIdeaActor3: "موظف استقبال يرحّب بالعملاء ويشرح الخدمات", vcTitle: "الشخصيات", vcSub: "حتى 3 شخصيات — لكل واحدة اسم وصوت وكلام", vcAdd: "إضافة شخصية", vcName: "الاسم", vcLine: "ماذا تقول؟", vcMale: "رجل", vcFemale: "امرأة", vcRemove: "حذف", vwToChars: "وزّع الحوار على الشخصيات", vcMore: "خيارات إضافية", vcTutorial: "شاهد: كيف تصنع فيديو", vcToExtra: "ضعه في الإضافات", videoTabClean: "تحسين فيديو", vclTitle: "حسّن فيديو من جهازك", vclSub: "ارفع فيديو مغبّشًا أو مشوّشًا: ننقّي التشويش ونوضّح الصورة ونحسّن الألوان — داخل جهازك ومجانًا", vclPick: "اختر فيديو أو اسحبه هنا", vclDrop: "حتى {s} ثانية و{n} ميغابايت", vclLight: "خفيف", vclStrong: "قوي", vclUpscale: "ضاعف الدقة (للفيديو الصغير)", vclStart: "حسّن الفيديو", vclWorking: "جارٍ التحسين… لا تغلق النافذة", vclCancel: "إلغاء", vclDownload: "تحميل الفيديو المحسَّن", vclBefore: "قبل", vclAfter: "بعد", vclTooLong: "الفيديو أطول من {s} ثانية — قصّه أولًا", vclTooBig: "الملف أكبر من {n} ميغابايت", vclFail: "تعذّر تحسين هذا الفيديو على هذا الجهاز", vclNote: "ينقّي التشويش ويوضّح الحواف ويحسّن الألوان، ولا يصلح الغبش الشديد أو اهتزاز الكاميرا", vclLoading: "جارٍ تجهيز أداة التحسين (أول مرة فقط)…", vclPro: "تحسين احترافي", vclProNotice: "التحسين الاحترافي لا يتم على جهازك: يُرفع الفيديو إلى خدمة معالجة خارجية (نطلب حذف المرفوع خلال ساعتين والناتج خلال يومين، ولا نتحكم بما تحتفظ به جهة المعالجة). {n} نقطة لكل ثانية، الحد الأدنى {m} نقطة، حتى {s} ثانية — ولا خصم قبل تأكيدك.", vclProUploading: "جارٍ رفع الفيديو وفحصه… لم يُخصم شيء بعد", vclProQuote: "مدة الفيديو {s} ثانية — التكلفة {n} نقطة (رصيدك {p}). بعد التأكيد لا يمكن الإلغاء.", vclProConfirm: "تأكيد وخصم {n} نقطة", vclProWorking: "جارٍ التحسين الاحترافي… قد يستغرق عدة دقائق، ويمكنك إغلاق النافذة والعودة لاحقًا", vclProDone: "خُصم {n} نقطة · {s} ثانية", vclProLater: "ما زال التحسين جاريًا — ارجع إلى هذا القسم لاحقًا وستجد النتيجة (تبقى يومين)", vclProNoPoints: "رصيدك {p} نقطة، وهذا الفيديو يحتاج {n} نقطة.", vclProTooLong: "التحسين الاحترافي حتى {s} ثانية — قصّ الفيديو أولًا", vclProSpec: "التحسين الاحترافي يقبل MP4 أو MOV حتى 1920×1080 و30 إطارًا في الثانية — هذا الفيديو خارج هذه الحدود. لم يُخصم شيء.", vclProLimit: "وصلت حدّ التحسين الاحترافي لليوم — جرّب غدًا", vclProUnavailable: "التحسين الاحترافي متوقّف مؤقتًا — لم تُخصم أي نقاط", vclProUploadFail: "تعذّر رفع الفيديو — تحقّق من الاتصال وأعد المحاولة. لم يُخصم شيء.", vclProFail: "تعذّر التحسين الاحترافي — لم تُخصم أي نقاط", vclProRefunded: "تعذّر تحسين هذا الفيديو — أُعيدت {n} نقطة إلى رصيدك", fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
     fashionRefinePh: 'مثال: غيّري لون الفستان إلى أزرق فقط', fashionRefineBtn: '✏️ عدّلي شيئًا محددًا', fashionRefineNeed: 'اكتبي التعديل المطلوب أولًا', fashionRefining: 'جاري تطبيق التعديل…',
     modeCreateImage: 'إنشاء صورة', modeWebSearch: 'البحث على الويب', modeThinkDeeper: 'التفكير العميق', psheetCountSuffix: 'ستايلًا — نفس وجهك بكل ستايل',
     provNickKing: 'الكينج', provNickFast: 'السريع', provNickDeep: 'العميق',
@@ -4424,6 +4425,7 @@ const I18N = {
     emailAsst_connectText: "اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.", emailAsst_connectBtn: "🔗 ربط Gmail", emailAsst_disclaimer: "⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.", emailAsst_title: "📧 مساعد البريد الذكي", emailAsst_refresh: "تحديث", emailAsst_loading: "جارٍ فحص بريدك…", emailAsst_empty: "لا توجد إيميلات جديدة تحتاج ردًا الآن.",
     emailAsst_notConnected: "لم يتم ربط Gmail، يرجى إعادة الربط.", emailAsst_send: "✅ إرسال", emailAsst_ignore: "🚫 تجاهل هذا المرسل", emailAsst_sending: "جارٍ الإرسال…", emailAsst_sent: "✅ تم الإرسال", emailAsst_ignored: "🚫 تم التجاهل — لن يظهر مرة أخرى", emailAsst_error: "❌ خطأ: ", emailAsst_voiceBtn: "ملخص صوتي", emailAsst_addToCalendar: "📅 أضف للتقويم", emailAsst_addingEvent: "جارٍ إضافة الموعد…",
     emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض",
+    /* v-app-director: قسم «مخرج التطبيق» للمالك وحده — ٢٦ نصًّا (١٤ لغة) */ vdTab: "مخرج التطبيق", vdSub: "اكتب ما تريد فيديو عنه واختر اللغة والمتحدّث والمدّة — يكتب الفكرة والسيناريو، يصوّر شاشات التطبيق الحقيقيّة، يجهّز نماذج الأنماط، يسجّل التعليق ويجمّع الفيديو كاملًا.", vdPh: "مثال: فيديو عن أنماط الصور بصوت مها", vdLang: "اللغة", vdSpeaker: "المتحدّث", vdMinutes: "المدّة بالدقائق", vdRef: "صورتك مرجعًا لنماذج الأنماط (اختياريّ)", vdGo: "سوّ الفيديو", vdStepPlan: "يكتب الفكرة والسيناريو", vdStepShots: "يصوّر شاشات التطبيق", vdStepSamples: "يجهّز نماذج الأنماط", vdStepVoice: "يسجّل التعليق", vdStepJoin: "يجمّع الفيديو", vdScene: "المشهد {i} من {n}", vdQueued: "في الانتظار على الجسر", vdDone: "جاهز — {m} دقيقة و{s} ثانية", vdDownload: "تحميل الفيديو", vdFail: "ما قدرت أكمل الفيديو", vdFailPlan: "تعذّر كتابة السيناريو — تحقّق من مفتاح المخرج في الخادم", vdFailBridge: "تعذّر الوصول إلى الجسر — تحقّق من عنوان الجسر وسرّه في الخادم", vdFailRender: "فشل التصوير أو الدمج على الجسر", vdSaved: "حُفظ في فيديوهاتي", vdWarnSamples: "{n} نموذج لم يُولَّد فصار لقطة شاشة", vdEmpty: "اكتب الطلب أوّلًا", vdMaha: "مها", vdAbdullah: "عبدالله",
   },
   en: {
     notifSectionLabel: '🔔 Notifications',
@@ -4441,6 +4443,7 @@ const I18N = {
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
     imgUndoPrev: "Back to the previous version 👆 What should I change?", imgUndoOrig: "Back to the original 👆 What should I change?", imgUndoNone: "This is the first version — nothing before it 👆 What should I change?", /* v-img-undo */
     imgUnchanged: "⚠️ The edit wasn't applied: the picture came back unchanged, so I didn't show it and it wasn't counted against you. Say exactly what should change, or phrase it differently.", /* v-img-honest */
+    /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ Converted to {fmt} — the same picture, unchanged, ready to save.", imgConvertSame: "The picture is already {fmt} — here it is, ready to save.", imgConvertAsk: "Which format do you want? PNG (best quality), JPG (smaller file) or WEBP (lighter for websites). For example: convert to jpg", imgConvertGuess: "(I read «{word}» as {fmt} — for another format say: convert to jpg)", imgConvertFail: "This browser couldn't convert the format — try PNG or JPG.",
     aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
@@ -4700,7 +4703,7 @@ const I18N = {
     /* v-video-seq-cooldown + v-film-mode-gate */
     videoSceneWait: '⏳ Scene {i}/{n}: cooldown between videos — starting automatically in {s}s.',
     videoFilmModeOnly: '🎬 "Full mini-film" works with the "AI video" mode only — change the mode or pick another length. Nothing was charged.',
-    pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', videoIdeaLbl: "💡 Try an example", videoIdeaCanvas: "Infographic: 3 money-saving tips in 5 seconds", videoIdeaRunway: "A sports car driving through Dubai streets at night", videoIdeaMinimax: "Calm waves on a beach at sunset", videoIdeaOmni: "Luxury perfume ad on a beach at sunset", videoIdeaHybrid: "Offer ad: a product shot with the discount and price on top", videoIdeaVeo: "A busy traditional market with vendors and shoppers chatting", videoIdeaActor: "An Emirati actor introducing a coffee shop", vwTitle: "Writing assistant", vwSub: "Writes a story, dialogue or ad fitted to your video length", vwPh: "Example: write a story about a coffee shop owner opening a new branch", vwSend: "Send", vwSug1: "Write me a short story about…", vwSug2: "Write me an ad script about…", vwToScene: "Use as scene description", vwToNarr: "Use as narrator", vwToActor: "Use as actor speech", vwBusy: "Writing…", vwErr: "Could not write right now, try again shortly", vwLimit: "You reached today's writing limit", vwLogin: "Sign in to use the writing assistant", vwFit: "Fitted to {n} seconds — up to {w} words", videoTabTrends: "Trends", videoIdeaCanvas2: "Gold price today in dirhams with a green or red arrow", videoIdeaCanvas3: "Countdown to the shop opening", videoIdeaRunway2: "A salesman explaining a car key to a customer in a luxury showroom", videoIdeaRunway3: "A burger flipped on the grill with steam and smoke", videoIdeaMinimax2: "Camera gliding over Dubai towers at dawn", videoIdeaMinimax3: "Raindrops on a café window", videoIdeaOmni2: "Slow shot of a coffee pot pouring into a cup beside dates", videoIdeaOmni3: "Film opening: desert dunes at dawn", videoIdeaHybrid2: "Market report: a city shot with stock numbers appearing over it", videoIdeaHybrid3: "New property: building shot with price and location", videoIdeaVeo2: "Cooking with sizzling and boiling sounds (ASMR)", videoIdeaVeo3: "A car speeding through the desert with engine sound", videoIdeaActor2: "An Emirati actor introducing a perfume shop: oud and incense", videoIdeaActor3: "A receptionist welcoming customers and explaining services", vcTitle: "Characters", vcSub: "Up to 3 characters — each with a name, voice and lines", vcAdd: "Add character", vcName: "Name", vcLine: "What do they say?", vcMale: "Man", vcFemale: "Woman", vcRemove: "Remove", vwToChars: "Spread the dialogue across the characters", vcMore: "More options", vcTutorial: "Watch: how to make a video", vcToExtra: "Use as extras", videoTabClean: "Enhance video", vclTitle: "Enhance a video from your device", vclSub: "Upload a blurry or noisy video: we reduce noise, sharpen and improve colors — on your device, for free", vclPick: "Choose a video or drop it here", vclDrop: "Up to {s} seconds and {n} MB", vclLight: "Light", vclStrong: "Strong", vclUpscale: "Double the resolution (small videos)", vclStart: "Enhance video", vclWorking: "Enhancing… keep this window open", vclCancel: "Cancel", vclDownload: "Download enhanced video", vclBefore: "Before", vclAfter: "After", vclTooLong: "The video is longer than {s} seconds — trim it first", vclTooBig: "The file is larger than {n} MB", vclFail: "Could not enhance this video on this device", vclNote: "Reduces noise, sharpens edges and improves colors; it cannot fix heavy blur or camera shake", vclLoading: "Preparing the enhancer (first time only)…", fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
+    pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', videoIdeaLbl: "💡 Try an example", videoIdeaCanvas: "Infographic: 3 money-saving tips in 5 seconds", videoIdeaRunway: "A sports car driving through Dubai streets at night", videoIdeaMinimax: "Calm waves on a beach at sunset", videoIdeaOmni: "Luxury perfume ad on a beach at sunset", videoIdeaHybrid: "Offer ad: a product shot with the discount and price on top", videoIdeaVeo: "A busy traditional market with vendors and shoppers chatting", videoIdeaActor: "An Emirati actor introducing a coffee shop", vwTitle: "Writing assistant", vwSub: "Writes a story, dialogue or ad fitted to your video length", vwPh: "Example: write a story about a coffee shop owner opening a new branch", vwSend: "Send", vwSug1: "Write me a short story about…", vwSug2: "Write me an ad script about…", vwToScene: "Use as scene description", vwToNarr: "Use as narrator", vwToActor: "Use as actor speech", vwBusy: "Writing…", vwErr: "Could not write right now, try again shortly", vwLimit: "You reached today's writing limit", vwLogin: "Sign in to use the writing assistant", vwFit: "Fitted to {n} seconds — up to {w} words", videoTabTrends: "Trends", videoIdeaCanvas2: "Gold price today in dirhams with a green or red arrow", videoIdeaCanvas3: "Countdown to the shop opening", videoIdeaRunway2: "A salesman explaining a car key to a customer in a luxury showroom", videoIdeaRunway3: "A burger flipped on the grill with steam and smoke", videoIdeaMinimax2: "Camera gliding over Dubai towers at dawn", videoIdeaMinimax3: "Raindrops on a café window", videoIdeaOmni2: "Slow shot of a coffee pot pouring into a cup beside dates", videoIdeaOmni3: "Film opening: desert dunes at dawn", videoIdeaHybrid2: "Market report: a city shot with stock numbers appearing over it", videoIdeaHybrid3: "New property: building shot with price and location", videoIdeaVeo2: "Cooking with sizzling and boiling sounds (ASMR)", videoIdeaVeo3: "A car speeding through the desert with engine sound", videoIdeaActor2: "An Emirati actor introducing a perfume shop: oud and incense", videoIdeaActor3: "A receptionist welcoming customers and explaining services", vcTitle: "Characters", vcSub: "Up to 3 characters — each with a name, voice and lines", vcAdd: "Add character", vcName: "Name", vcLine: "What do they say?", vcMale: "Man", vcFemale: "Woman", vcRemove: "Remove", vwToChars: "Spread the dialogue across the characters", vcMore: "More options", vcTutorial: "Watch: how to make a video", vcToExtra: "Use as extras", videoTabClean: "Enhance video", vclTitle: "Enhance a video from your device", vclSub: "Upload a blurry or noisy video: we reduce noise, sharpen and improve colors — on your device, for free", vclPick: "Choose a video or drop it here", vclDrop: "Up to {s} seconds and {n} MB", vclLight: "Light", vclStrong: "Strong", vclUpscale: "Double the resolution (small videos)", vclStart: "Enhance video", vclWorking: "Enhancing… keep this window open", vclCancel: "Cancel", vclDownload: "Download enhanced video", vclBefore: "Before", vclAfter: "After", vclTooLong: "The video is longer than {s} seconds — trim it first", vclTooBig: "The file is larger than {n} MB", vclFail: "Could not enhance this video on this device", vclNote: "Reduces noise, sharpens edges and improves colors; it cannot fix heavy blur or camera shake", vclLoading: "Preparing the enhancer (first time only)…", vclPro: "Pro enhance", vclProNotice: "Pro enhance does not run on your device: the video is uploaded to an external processing service (we request deletion of the upload within two hours and of the result within two days; we do not control what the processor retains). {n} points per second, minimum {m} points, up to {s} seconds — nothing is charged before you confirm.", vclProUploading: "Uploading and checking the video… nothing charged yet", vclProQuote: "Video length {s} s — cost {n} points (your balance: {p}). It cannot be cancelled after you confirm.", vclProConfirm: "Confirm and spend {n} points", vclProWorking: "Pro enhancing… this can take several minutes; you may close this window and come back later", vclProDone: "{n} points charged · {s} s", vclProLater: "Still enhancing — come back to this tab later to find the result (kept for two days)", vclProNoPoints: "You have {p} points; this video needs {n}.", vclProTooLong: "Pro enhance accepts up to {s} seconds — trim the video first", vclProSpec: "Pro enhance accepts MP4 or MOV up to 1920×1080 and 30 fps — this video is outside those limits. Nothing was charged.", vclProLimit: "You reached today's Pro enhance limit — try again tomorrow", vclProUnavailable: "Pro enhance is temporarily unavailable — no points were charged", vclProUploadFail: "Could not upload the video — check your connection and try again. Nothing was charged.", vclProFail: "Pro enhance failed — no points were charged", vclProRefunded: "This video could not be enhanced — {n} points were returned to your balance", fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
     fashionRefinePh: 'e.g. change only the dress colour to blue', fashionRefineBtn: '✏️ Edit one specific thing', fashionRefineNeed: 'Type the change you want first', fashionRefining: 'Applying your edit…',
     modeCreateImage: 'Create image', modeWebSearch: 'Web search', modeThinkDeeper: 'Think deeper', psheetCountSuffix: 'styles — same face, every style',
     provNickKing: 'The King', provNickFast: 'The Fast', provNickDeep: 'The Deep',
@@ -5548,6 +5551,7 @@ Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic 
     emailAsst_connectText: "Connect your Gmail account so the AI can read your emails and suggest ready replies you approve before sending.", emailAsst_connectBtn: "🔗 Connect Gmail", emailAsst_disclaimer: "⚠️ No reply is ever sent without your explicit approval on each message.", emailAsst_title: "📧 AI Email Assistant", emailAsst_refresh: "Refresh", emailAsst_loading: "Scanning your inbox…",
     emailAsst_empty: "No new emails need a reply right now.", emailAsst_notConnected: "Gmail is not connected, please reconnect.", emailAsst_send: "✅ Send", emailAsst_ignore: "🚫 Ignore this sender", emailAsst_sending: "Sending…", emailAsst_sent: "✅ Sent", emailAsst_ignored: "🚫 Ignored — won't show again", emailAsst_error: "❌ Error: ", emailAsst_voiceBtn: "Voice summary", emailAsst_addToCalendar: "📅 Add to Calendar",
     emailAsst_addingEvent: "Adding event…", emailAsst_eventAdded: "✅ Added to your calendar", emailAsst_calReauth: "Reconnect Gmail to allow calendar access", emailAsst_voiceLoading: "🔊 Preparing voice summary…", emailAsst_voiceEmpty: "No emails to summarize.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Low",
+    /* v-app-director: قسم «مخرج التطبيق» للمالك وحده — ٢٦ نصًّا (١٤ لغة) */ vdTab: "App Director", vdSub: "Describe the video you want, pick the language, the speaker and the length — it writes the idea and script, captures real app screens, prepares style samples, records the narration and assembles the full video.", vdPh: "Example: a video about portrait styles narrated by Maha", vdLang: "Language", vdSpeaker: "Speaker", vdMinutes: "Length in minutes", vdRef: "Your photo as a reference for style samples (optional)", vdGo: "Make the video", vdStepPlan: "Writing the idea and script", vdStepShots: "Capturing app screens", vdStepSamples: "Preparing style samples", vdStepVoice: "Recording the narration", vdStepJoin: "Assembling the video", vdScene: "Scene {i} of {n}", vdQueued: "Waiting on the bridge", vdDone: "Ready — {m} min {s} s", vdDownload: "Download video", vdFail: "Could not finish the video", vdFailPlan: "Could not write the script — check the director key on the server", vdFailBridge: "Could not reach the bridge — check the bridge URL and secret on the server", vdFailRender: "Capture or assembly failed on the bridge", vdSaved: "Saved to My videos", vdWarnSamples: "{n} sample(s) could not be generated and became screenshots", vdEmpty: "Write the request first", vdMaha: "Maha", vdAbdullah: "Abdullah",
   }
 };window.I18N = I18N;
 /* v649 — لوحة المحفظة التعليميّة (كانت عربيّة ثابتة في كلّ اللغات) */
@@ -5608,7 +5612,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=735'; /* v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=738'; /* v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -11233,6 +11237,9 @@ function updateProviderQuickBarActive(){
   });
   if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
   if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility();
+  /* v-chip-truth (لقطتا المالك ١١ أكتوبر: تحت «DeepSeek» والمجيب Gemini ثمّ Claude): فتح محادثة من القائمة ينقل المزوّد إلى
+     مزوّدها، لكنّ شريحة المالك تحت الصندوق (modes.js) لم تكن تُحدَّث إلّا من قائمتها — فتبقى على الاسم القديم. */
+  try{ if(typeof window.omModelChipSync === 'function') window.omModelChipSync(); }catch(e){ __swallow(e, 'ui:chip-sync-prov'); }
   try{
     const active = document.querySelector('.prov-chip-m.active');
     if(active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
@@ -15834,10 +15841,26 @@ let genAbortController = null;
 let askAllUidCounter = Date.now() % 2147483647;
 
 const btnStop = $('#btnStop');
+/* v-stop-grace (لقطة المالك ١٠ أكتوبر: «تم إيقاف الرد قبل اكتماله» بلا ضغط إيقاف): زرّ الإيقاف يحلّ محلّ زرّ الإرسال
+   في الموضع نفسه لحظة الإرسال، فالنقرة الثانية من نقرة مزدوجة (أو نقرة «تأكيد» قلقة) تصل الإيقاف وتقطع الردّ قبل
+   أن يبدأ. خلال أوّل ثانية من الطلب تُهمَل نقرة الإيقاف؛ بعدها يوقف كما كان. وقت البدء من تشغيل المحادثة المعروضة
+   (__omranRuns، v-parallel-chats) الذي يعكسه genAbortController. */
+const __OMRAN_STOP_GRACE_MS = 1000;
+function __omranShownRunStartedAt(){
+  try{
+    if(typeof __omranRuns === 'undefined' || typeof state === 'undefined' || !state) return 0;
+    const r = __omranRuns[String(state.currentId)];
+    return (r && r.ctl === genAbortController && r.t0) ? r.t0 : 0;
+  }catch(e){ __swallow(e, 'ui:stop-grace'); return 0; }
+}
 btnStop.onclick = () => {
   stopAllSpeaking();
   if(isListening && recognizer){ recognizer.stop(); }
-  if(genAbortController){ genAbortController.abort(); }
+  if(genAbortController){
+    const __startedAt = __omranShownRunStartedAt();
+    if(__startedAt && Date.now() - __startedAt < __OMRAN_STOP_GRACE_MS) return;
+    genAbortController.abort();
+  }
 };
 // v246 — قسم الصوت المبسط: زران (رجل/امرأة) يحفظان الاختيار فورًا + زر تجربة.
 function setVoiceGenderUI(val){
@@ -19849,7 +19872,8 @@ window.__omranImgTools = function(wrap, dataUrl, att){
   //    ٢ الحافظة · ٣ فتح الصورة في صفحة مستقلّة (blob) حيث الضغط المطوّل يعطي
   //    «مشاركة» أصليّة · ٤ تنبيه أخير. زرّ التنزيل مُزال نهائيًّا (أمر عمران).
   // ⚠️ v592 — connect-src لا يسمح بـ data: ⇒ التحويل محلّيّ بـ atob (صفر شبكة).
-  const nmOf = () => 'image-' + Date.now() + '.png';
+  /* v-img-format: الاسم من نوع الصورة نفسها — كان «.png» دائمًا فتُحفظ JPG المحوَّلة باسم PNG */
+  const nmOf = (bl) => { const ty = (bl && bl.type) || 'image/png'; return 'image-' + Date.now() + (ty === 'image/jpeg' ? '.jpg' : (ty === 'image/webp' ? '.webp' : (ty === 'image/gif' ? '.gif' : '.png'))); };
   const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
   const note = (m) => { try{ if(typeof settingsToast === 'function'){ settingsToast(m); return true; } }catch(e){ __swallow(e, 'note:app-09-attach#v625'); } return false; };
   // 💾 v626 — أمر عمران: «الحفظ بضغطة واحدة — إرسال لمواقع التواصل أو أيّ إرسال».
@@ -19862,7 +19886,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       const a = document.createElement('a');
       if(!('download' in a)) return false;
       const u = URL.createObjectURL(bl);
-      a.href = u; a.download = nmOf(); a.rel = 'noopener';
+      a.href = u; a.download = nmOf(bl); a.rel = 'noopener';
       a.style.cssText = 'position:fixed;left:-9999px;top:0';
       document.body.appendChild(a);
       a.click();
@@ -19990,7 +20014,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       if(typeof omranNativeBridge !== 'function' || !omranNativeBridge('omranShare')) return false;
       const bl = toBlob(dataUrl);
       if(!bl) return false;
-      if(typeof msgDownloadBlob === 'function'){ msgDownloadBlob(bl, nmOf()); return true; }
+      if(typeof msgDownloadBlob === 'function'){ msgDownloadBlob(bl, nmOf(bl)); return true; }
     }catch(e){ __swallow(e, 'bridgeShare:app-09-attach#v-share-bridge'); }
     return false;
   };
@@ -21843,6 +21867,42 @@ function __textSwapIntent(s){
   if(/بدل\s+\S+(?:\s+\S+)?\s+(?:حط|خل|الى|إلى)\s*\S+/i.test(s)) return true;
   return false;
 }
+/* 🖼️ v-img-format (لقطة المالك ١١ أكتوبر: «حول الصوره لي صيغة pig» → «⚠️ ما تنفّذ التعديل… [nano-pro:not_done]»): تغيير الصيغة لا يغيّر
+   شكل الصورة، فكان محرّر الصور يرجعها كما هي فيُحكم «لم يُنفَّذ» — وطلب jpg كان يرجع png. التحويل هنا بالكانفس: بلا محرّك ولا تكلفة.
+   صيغة بخطأ حرف («pig») تُقرأ بأقرب صيغة على بعد حرف واحد ويقال ذلك؛ «صيغة» بلا صيغة مفهومة = سؤال؛ طلب معه تعديل آخر يبقى للمحرّر. */
+function __imgFormatIntent(s){
+  s = String(s || '').trim();
+  if(!s || s.length > 120) return null;
+  if(/(?:فيديو|ڤيديو|video|متحرك|انيميشن|أنيميشن|animation|pdf|بي\s*دي\s*[اإ]ف)/i.test(s)) return null;
+  if(/(?:خلفي|لون|ألوان|الوان|اكتب|أكتب|كتاب|احذف|امسح|شيل|ضيف|اضف|أضف|ارسم|وجه|شعر|ملابس|كبّ?ر|صغّ?ر|قصّ|crop|resize|background|colou?r|write|remove|add\b)/i.test(s)) return null;
+  const word = /(?:صيغ[ةه]|امتداد|فورمات|format|extension|file\s*type)/i.test(s);
+  const verb = /(?:^|[\s،,])(?:حول|حوّل|غير|غيّر|بدل|بدّل|احفظ|نزل|نزّل|صدر|صدّر|خل|خلّ|خلي|خلّي|اجعل|ابي|أبي|ابغ|أبغ|أريد|اريد|ودي|convert|save|export|change|turn|make)/i.test(s);
+  if(!word && !verb) return null;
+  const named = [[/(?:^|[^a-z])png(?![a-z])/i, 'png'], [/(?:^|[^a-z])(?:jpe?g|jpe|jfif)(?![a-z])/i, 'jpeg'], [/(?:^|[^a-z])webp(?![a-z])/i, 'webp'],
+    [/بي\s*[اإ]ن\s*جي/, 'png'], [/جي\s*بي\s*جي|جيبيجي|جيه\s*بي\s*جي/, 'jpeg'], [/ويب\s*بي/, 'webp']];
+  for(const [re, fmt] of named) if(re.test(s)) return { fmt, guess:'' };
+  if(!word) return null;
+  /* خطأ حرف واحد في كلمة لاتينيّة قصيرة («pig» ← png، «jpq» ← jpg)؛ تعادل صيغتين = سؤال */
+  const dist = (a, b) => { const d = Array.from({ length:a.length + 1 }, (_, i) => [i]); for(let j = 1; j <= b.length; j++) d[0][j] = j;
+    for(let i = 1; i <= a.length; i++) for(let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[a.length][b.length]; };
+  for(const tok of (s.match(/[a-z]{3,4}/gi) || [])){
+    const w = tok.toLowerCase(), hits = [['png', 'png'], ['jpg', 'jpeg'], ['jpeg', 'jpeg'], ['webp', 'webp']].filter(([n]) => dist(w, n) <= 1).map(([, f]) => f);
+    const uniq = hits.filter((f, i) => hits.indexOf(f) === i);
+    if(uniq.length === 1) return { fmt:uniq[0], guess:tok };
+    if(uniq.length > 1) return { fmt:null, guess:tok };
+  }
+  return { fmt:null, guess:'' };
+}
+async function __omranConvertImageFormat(b64, mime, fmt){
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image')); i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64; });
+  const c = document.createElement('canvas'); c.width = img.naturalWidth || 1; c.height = img.naturalHeight || 1;
+  const g = c.getContext('2d');
+  if(fmt === 'jpeg'){ g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); } /* JPG بلا شفافيّة: الخلفيّة الشفّافة بيضاء لا سوداء */
+  g.drawImage(img, 0, 0);
+  const type = 'image/' + fmt, url = fmt === 'png' ? c.toDataURL(type) : c.toDataURL(type, 0.92);
+  if(url.slice(5, 5 + type.length) !== type) throw new Error('format_unsupported'); /* متصفّح لا يكتب webp يرجع png بصمت */
+  return url;
+}
 async function omranBuildTextEditMask(b64, mime, box){
   const img = await new Promise((res, rej) => {
     const i = new Image();
@@ -22074,6 +22134,9 @@ async function renderTidyCardCanvas(spec, srcDataUrl){
 window.__agentModeOn = false; // v321: الوكيل دائمًا مطفي عند الفتح — لا يُحفظ تشغيله أبدًا
 try{ localStorage.removeItem('aiapp_agent_mode'); }catch(e){ __swallow(e, "misc:app-09-attach#4"); }
 function updateAgentModeUI(){
+  /* v-chip-truth: الوكيل يردّ دائمًا بـClaude مهما كان المختار؛ تشغيله من زرّه أو من ⋮ لا يمرّ بقائمة الشريحة، فكانت تبقى على
+     اسم المزوّد. الشريحة تكتب «الوكيل» حين يعمل — فيعرف المالك من سيردّ ومن يدفع. */
+  try{ if(typeof window.omModelChipSync === 'function') window.omModelChipSync(); }catch(e){ __swallow(e, 'ui:chip-sync-agent'); }
   const btn = document.getElementById('btnAgentMode');
   const lbl = document.getElementById('agentModeLabel');
   if(!btn || !lbl) return;
@@ -24246,6 +24309,7 @@ function __friendlyErr(e){
             });
             const __cd = await __cr.json().catch(()=>({}));
             if(__cr.ok && __cd.imageBase64){ __cartoonB64 = __cd.imageBase64; __cartoonMime = __cd.mimeType || 'image/png'; }
+            else if(__cr.status === 402 || (__cr.status === 422 && __cd.retryable === false)) break; // v-unchanged-cap: ردّ نهائيّ (الخصم باقٍ أو الرصيد نفد) — الإعادة التلقائيّة تخصم مرّة ثانية بلا صورة؛ عطل الشبكة المردود يُعاد كما كان
           }
           if(!__cartoonB64) throw new Error(lang==='ar'?'تعذر تحويل الصورة لكرتون، جرّب صورة أوضح.':'Could not cartoonize the image, try a clearer photo.');
           cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎨 صارت شخصية كرتونية ✅ الحين أحرّكها تتكلم…':'🎨 Cartoon character ready ✅ now animating it to talk…'), attachments:[{ name:'cartoon.png', isImage:true, mime:__cartoonMime, dataUrl:'data:'+__cartoonMime+';base64,'+__cartoonB64 }] });
@@ -24522,6 +24586,27 @@ function __showImgLoading(el, ar, en){
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (__upgSrc ? (__upgSrc.mime || 'image/png') : ((cur.lastEditedImage && cur.lastEditedImage.mime) || 'image/png'));
       const __isNewImageSource = !!(__srcImg && !__srcImg._fromMemory);
+      /* 🖼️ v-img-format: تحويل الصيغة محلّيًّا قبل أيّ محرّك — الصورة نفسها بلا تغيير، وتصير مصدر التعديل التالي */
+      const __fmtReq = __b64 ? __imgFormatIntent(text) : null;
+      if(__fmtReq){
+        const __fmtName = (f) => (f === 'jpeg' ? 'JPG' : String(f || '').toUpperCase());
+        const __fmtExt = (f) => (f === 'jpeg' ? 'jpg' : f);
+        const __guessNote = (f) => (__fmtReq.guess && f ? '\n' + t('imgConvertGuess').replace('{word}', __fmtReq.guess).replace('{fmt}', __fmtName(f)) : '');
+        if(!__fmtReq.fmt){
+          cur.messages.push({ role:'assistant', content:t('imgConvertAsk') });
+        } else if(__mime === 'image/' + __fmtReq.fmt){
+          cur.messages.push({ role:'assistant', content:t('imgConvertSame').replace('{fmt}', __fmtName(__fmtReq.fmt)) + __guessNote(__fmtReq.fmt), attachments:[{ name:'image.' + __fmtExt(__fmtReq.fmt), isImage:true, mime:__mime, dataUrl:'data:' + __mime + ';base64,' + __b64 }] });
+        } else {
+          try{
+            const __cvUrl = await __omranConvertImageFormat(__b64, __mime, __fmtReq.fmt), __cvMime = 'image/' + __fmtReq.fmt;
+            cur.messages.push({ role:'assistant', content:t('imgConvertDone').replace('{fmt}', __fmtName(__fmtReq.fmt)) + __guessNote(__fmtReq.fmt), attachments:[{ name:'image.' + __fmtExt(__fmtReq.fmt), isImage:true, mime:__cvMime, dataUrl:__cvUrl }] });
+            cur.lastEditedImage = { b64:__cvUrl.split(',')[1] || '', mime:__cvMime };
+          }catch(e){ __swallow(e, 'img:format'); cur.messages.push({ role:'assistant', content:t('imgConvertFail') }); }
+        }
+        cur.lastMsgWasImageEdit = true;
+        thinkingDiv && thinkingDiv.remove();
+        renderAll(); saveState(); return;
+      }
       // 🏠 v682: مسار الديكور — صوّر غرفتك والذكاء يولّد ٤ أساليب مختلفة
       const __decorRe = /(?:ديكور|ديكو|décor|decor|تصميم\s*داخلي|interior\s*design|غير\s*(?:شكل|الشكل|الغرفة|البيت|المكان|الطابع)|حسّن\s*(?:الغرفة|البيت|المكان|الديكور)|رتّب\s*الغرفة|تزيين|أثاث\s*جديد|اقتراح\s*(?:ديكور|أثاث)|غرفتي\s*(?:غير|حسّن|بدّل)|بيتي\s*(?:غير|حسّن))/i;
       if(__decorRe.test(text) && __b64){
@@ -24863,7 +24948,9 @@ function __showImgLoading(el, ar, en){
       }
       // 🛡️ v574: نيّة كتابة صريحة بلا نصّ مفهوم → نطلب النصّ ولا نمسّ الصورة.
       // ممنوع منعًا باتًا أن يعيد مولّد الصور رسمها في شؤون الكتابة.
-      if(!__textSpec.wantsText && !__textSpec.styleEdit && window.__imageWriteIntent && window.__imageWriteIntent(text)){
+      /* v-swap-before-ask (لقطة المالك ١١ أكتوبر: «بدل بليدر حط om ai» على لقطة → «حدّد النص بين علامتي تنصيص» مرّتين): «بدل X حط Y»
+         تبديل نصّ مكتوب، ومساره (v-text-swap) بعد هذا الحارس مباشرةً — كان الحارس يردّ قبله لأنّ «حط» نيّة كتابة. */
+      if(!__textSpec.wantsText && !__textSpec.styleEdit && window.__imageWriteIntent && window.__imageWriteIntent(text) && !(__b64 && __textSwapIntent(text))){
         cur.messages.push({ role:'assistant', content:(lang === 'ar'
           ? 'أكتبه لك على نفس الصورة بدون أي تغيير فيها — بس حدّد النص بين علامتي تنصيص، مثل: اكتب «عمران» بالأصفر في الأعلى.'
           : 'I will write it on the same image without altering it — put the exact text in quotes, e.g. write «Omran» in yellow at the top.') });
@@ -25054,6 +25141,7 @@ function __showImgLoading(el, ar, en){
             });
             __d = await __r.json().catch(() => ({}));
             __k = __r.ok && !!__d.imageBase64;
+            if(!__k && (__r.status === 402 || (__r.status === 422 && __d.retryable === false))) break; // v-unchanged-cap: ردّ نهائيّ — لا خصم ثانٍ وثالث بلا صورة
           }
         }catch(e){ if(e && e.name === 'AbortError') throw e; }
         return __k ? __d : null;
@@ -25156,6 +25244,7 @@ function __showImgLoading(el, ar, en){
           __gData = await __gRes.json().catch(() => ({}));
           __gOk = __gRes.ok && !!__gData.imageBase64;
           if(!__gOk){ if(!__gData) __gData = {}; __gData.__status = __gRes.status; }
+          if(!__gOk && (__gRes.status === 402 || (__gRes.status === 422 && __gData.retryable === false))) break; // v-unchanged-cap: ردّ نهائيّ — لا خصم ثانٍ بلا صورة
         }
         if(__gOk){
           let __resolvedText = __genTextSpec.exactText ? await omranSpellFix(__genTextSpec.exactText) : ((__genTextSpec.autoAuthored && typeof __gData.authoredText === 'string') ? __gData.authoredText.trim() : ''); /* v-spell-quran */
@@ -43497,7 +43586,7 @@ if(document.readyState === 'loading'){
 
   function tabFor(url, reason){
     if(/realtime-session/.test(url)) return 'maha';
-    if(/video-watch/.test(url)) return 'pts'; // تحليل الفيديو بالنقاط وحدها (ليس في جدول الوسائط)
+    if(/video-watch|video-enhance/.test(url)) return 'pts'; // تحليل الفيديو و«تحسين احترافي» بالنقاط وحدها (ليسا في جدول الوسائط)
     if(/\/api\/video/.test(url) || /maha-image|upscale/.test(url)) return 'media'; // v-media-merge
     return reason === 'points' ? 'pts' : 'chat';
   }
@@ -43631,7 +43720,28 @@ if(document.readyState === 'loading'){
    عدّاد الفيديو لا يصفّره تبدّل نصّ الحالة أثناء التوليد الواحد.
 
    ذاتيّة بالكامل: MutationObserver + IIFE — بلا تعديل على العارض ولا مسارات التوليد،
-   ومسار تعديل الصور ذو النقاط الذهبيّة (الذي اختاره المالك) لا يُمسّ. */
+   ومسار تعديل الصور ذو النقاط الذهبيّة (الذي اختاره المالك) لا يُمسّ.
+
+   v-gen-scene (المالك ١١ أكتوبر، بصورة «برج الأزياء»: «في الأزياء تطلّع لي هذي عند توليد الصورة، لكن
+   تكون ممطرة، والعدّاد يشتغل [يبدأ من الصفر]، ويكون فوق مش تحت»): بطاقة الأزياء صارت مشهدًا — صورة المالك
+   خلفيّةً (assets/fashion/gen-scene.webp، وعدّاد «75%» المرسوم فيها مطموس)، فوقها مطر متحرّك وتموّجات على
+   الأرضيّة، وعدّاد حيّ في مكان المرسوم: حلقة تمتلئ ورقم يبدأ من ٠ وشريط ومرحلة. وتُركَّب أعلى الاستوديو
+   (قبل تبويبَي «من صورة / من وصف») لا تحت زرّ «صمم»، ويُمرَّر إليها. التعديل الموضعيّ («جاري تطبيق…»)
+   يبقى تحت سطر الحالة حيث ينظر المستخدم. بلا نصّ جديد: المراحل والتوقّع كما هي.
+
+   v-gen-scene-exact (المالك بلقطة من جوّاله بعد النشر: «الفكرة كلّها خطأ… هذا التصميم الذي أريده بالضبط: العدّاد يكون
+   نفس الفكرة داخل [الصورة] ونفس التصميم، وهذه الصورة تكون نفس مكان رفع الصورة»): (١) لوحة العدّاد الداكنة التي غطّت
+   البرج أُزيلت — العدّاد الآن عدّاد الصورة نفسه في موضعه وبمقاسه: الحلقة الورديّة من الأصل، وداخلها قوس التقدّم الأبيض
+   والرقم، وتحتها الشريط و«NN% COMPLETE»، تُرسم كلّها SVG بإحداثيّات الصورة (viewBox) فتكبر وتصغر معها بالضبط.
+   الأرقام لاتينيّة و«COMPLETE» كما في تصميمه (جزء من الرسمة لا نصّ واجهة). (٢) المشهد يُركَّب قبل لوح الصورة
+   ويُخفى مربّع «ارفعي صورتك» ما دام ظاهرًا — فهو في مكانه تمامًا؛ وفي «من وصف نصّي» فوق حقل الوصف.
+   (٣) «أريد الحركة داخل، خلف العدّاد — مكان الأنبوب الخلفيّ»: المطر المائل على الصورة كلّها أُزيل؛ الحركة الآن ستارة
+   الماء والأرقام النازلة داخل أنبوب البرج نفسه (٣٦٦..٦٥٩ × ٠..٤١٤ من الصورة)، تحت العدّاد الذي يُرسم وجهه وإطاره
+   فوقها، وتموّجات على بركة قاعدته.
+   (٤) «الشغل جميل لكن الصورة مغبّشة، وشيل التضليل اللي داخل العدّاد — يكون رقم فقط، وهذه الصورة [الذهبيّة] نفس الفكرة:
+   مرّة هذي ومرّة الثانية عند التوليد»: الصورتان موضَّحتان (Real-ESRGAN ×٢) ويُمحى منهما ما يُرسم حيًّا بملء من الجوار لا
+   بقرص مسطّح؛ داخل الحلقة رقم فقط (لا قرص ولا مجرى ولا دائرة — والجريان مثقوب عند الحلقة فيبقى خلفها)؛ والمشهدان
+   SCENES يتبادلان توليدًا بعد توليد، كلّ واحد بإحداثيّات صورته وألوانها. التموضع CSS صرف (نِسَب من إطار بنسبة الصورة). */
 (function(){
   if(window.omranGenWait) return;
 
@@ -43648,7 +43758,10 @@ if(document.readyState === 'loading'){
     { id: 'styles', sel: '#portraitStyleStatus', kind: 'styles',
       busy: ['⏳', '🎞️'] },
     { id: 'fashion', sel: '#fashionAiStatus', kind: 'fashion',
-      busy: ['🎨', 'جاري تطبيق', 'Applying'] }
+      busy: ['🎨', 'جاري تطبيق', 'Applying'],
+      /* v-gen-scene-exact: التوليد (🎨) يُركَّب مكان مربّع الرفع — قبل لوح الصورة، والمربّع يُخفى ما دامت البطاقة؛
+         البطاقة تُبحث في النافذة كلّها */
+      scope: '#fashionAiModal', topSel: '#fashionAiImagePane', hideSel: '#fashionAiDropZone', top: ['🎨'] }
   ];
 
   /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء */
@@ -43684,7 +43797,7 @@ if(document.readyState === 'loading'){
       slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     fashion: {
-      est: 40,
+      est: 40, /* v-gen-scene-exact: scenes تُربط أدناه بعد تعريف SCENES */
       hint: { ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
       expect: { ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
       stages: {
@@ -43734,6 +43847,130 @@ if(document.readyState === 'loading'){
     + 'html[data-mode="light"] .genw-track{background:rgba(90,70,20,.12)}'
     + '@media (prefers-reduced-motion:reduce){.genw-frame,.genw-frame::before,.genw-shimmer::after,.genw-film{animation:none}}';
 
+  /* v-gen-scene-exact: بلاطة جريان SVG لداخل الأنبوب — بلا مقاس ذاتيّ (viewBox + preserveAspectRatio=none) فتتمدّد
+     على background-size بالنِّسَب، وخطوطها تخفت من أعلاها. rects = [x, y, w, h, opacity] */
+  function flowTile(w, h, rects, color){
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
+      + '<stop offset="0" stop-color="' + color + '" stop-opacity="0"/><stop offset="1" stop-color="' + color + '" stop-opacity="1"/></linearGradient></defs>';
+    for(var i = 0; i < rects.length; i++) svg += '<rect x="' + rects[i][0] + '" y="' + rects[i][1] + '" width="' + rects[i][2] + '" height="' + rects[i][3] + '" fill="url(#g)" opacity="' + rects[i][4] + '"/>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg + '</svg>') + '")';
+  }
+  /* طبقات الجريان الثلاث: ستائر عريضة ناعمة (بطيئة)، خيوط طويلة (سريعة)، شرطات قصيرة كأرقام نازلة (وسط) */
+  var FLOW_TILES = [
+    [100, 300, [[6, 20, 9, 170, 0.34], [38, 120, 12, 160, 0.26], [72, 0, 8, 150, 0.3]]],
+    [60, 200, [[8, 10, 2.4, 70, 1], [27, 95, 2.2, 85, 0.9], [44, 30, 2.4, 60, 0.95], [53, 130, 1.8, 50, 0.8], [17, 150, 1.8, 40, 0.7]]],
+    [40, 120, [[5, 6, 3, 9, 1], [5, 22, 3, 9, 0.7], [5, 38, 3, 9, 0.45], [19, 50, 3, 9, 1], [19, 66, 3, 9, 0.7], [19, 82, 3, 9, 0.45], [32, 14, 3, 9, 0.9], [32, 30, 3, 9, 0.6], [32, 98, 3, 9, 0.9]]]
+  ];
+  var HUD_FONT = '"DIN Condensed","Bahnschrift","Roboto Condensed","Avenir Next Condensed","Arial Narrow","sans-serif-condensed",Impact,sans-serif';
+  /* مشهدا الأزياء — صورتا المالك، يتبادلان توليدًا بعد توليد. كلّ القيم بإحداثيّات الصورة نفسها (w×h):
+     ring = مركز الحلقة ونصف قطر قوس التقدّم وسمكه و«ثقب» الجريان حولها؛ num/cap = خطّ القاعدة والمقاس وعرض الحروف كما رُسمت
+     («75%» و«75% COMPLETE»)؛ bar = تعبئة الشريط؛ refl = انعكاس النصّ على الأرضيّة؛ tube = عمود الضوء الذي تجري فيه
+     الحركة — ينتهي فوق الشريط فلا يمسّه ولا النصّ؛ rip = بركة قاعدته. داخل الحلقة قرص الصورة نفسه (مُنظَّف من أرقامه). */
+  var SCENES = [
+    { id: 'neon', src: '/assets/fashion/gen-scene.webp?v=3', w: 1024, h: 559,
+      ring: { cx: 512, cy: 297, r: 39.3, sw: 4.2, hole: 43.4 },
+      num: { y: 310.6, size: 37, dw: 13.5, pw: 19 },
+      bar: { x: 424.6, y: 357.3, w: 175, h: 7.8 },
+      cap: { y: 389.2, size: 19.5, dw: 7.1, rest: 77.1 },
+      refl: null,
+      tube: { x: 366, y: 0, w: 293, h: 350, blend: 'screen' },
+      rip: { x: 322, y: 405, w: 380, h: 85, color: 'rgba(190,236,255,.75)' },
+      ink: '#aee8f9', arc: '#e6f8ff', glow: 'rgba(190,235,255,.3)', barFill: '#dbe9ff', capInk: '#a5e1f6', flow: '#d6f2ff' },
+    { id: 'gold', src: '/assets/fashion/gen-scene-gold.webp?v=1', w: 1280, h: 699,
+      ring: { cx: 640, cy: 372, r: 49.6, sw: 6.7, hole: 57.5 },
+      num: { y: 388.2, size: 45, dw: 16.6, pw: 23.5 },
+      bar: { x: 530, y: 446.4, w: 229, h: 10.4 },
+      cap: { y: 487.3, size: 23, dw: 8.9, rest: 96.7 },
+      refl: { y: 572.3, sy: 1.32, ink: 'rgba(214,178,104,.5)' },
+      tube: { x: 455, y: 0, w: 370, h: 440, blend: 'multiply' },
+      rip: null,
+      ink: '#fff3cf', arc: '#fff8e6', glow: 'rgba(255,236,190,.35)', barFill: '#fff6e0', capInk: '#ffeeb8', flow: '#b9822c' }
+  ];
+  KINDS.fashion.scenes = SCENES;
+  /* التبادل: مشهد لكلّ توليد بالدور، ويُتذكّر الدور بين الجلسات */
+  var SCENE_KEY = 'aiapp_fx_scene';
+  var sceneTurn = -1;
+  function nextScene(){
+    if(sceneTurn < 0){ sceneTurn = 0; try{ sceneTurn = parseInt(localStorage.getItem(SCENE_KEY), 10) || 0; }catch(e){ sceneTurn = 0; } }
+    var sc = SCENES[sceneTurn % SCENES.length];
+    sceneTurn = (sceneTurn + 1) % SCENES.length;
+    try{ localStorage.setItem(SCENE_KEY, String(sceneTurn)); }catch(e){ /* guard-ok — بلا تخزين يبدأ الدور من الأوّل في كلّ فتح */ }
+    return sc;
+  }
+  function pc(v, total){ return (Math.round(v / total * 100000) / 1000) + '%'; }
+  function arcLen(sc){ return Math.round(2 * Math.PI * sc.ring.r * 10) / 10; }
+  /* هيكل المشهد: إطار تأثيرات بنسبة الصورة (يطابقها بأيّ مقاس وبأيّ قصّ جانبيّ) فيه الأنبوب والتموّجات وعدّاد الصورة SVG بإحداثيّاتها.
+     داخل الحلقة رقم فقط؛ القوس يمتلئ على حافّتها، والجريان مثقوب عندها فيبقى خلفها. */
+  function sceneHtml(sc){
+    var t = sc.tube, r = sc.ring, L = arcLen(sc);
+    var hole = 'radial-gradient(ellipse ' + pc(r.hole, t.w) + ' ' + pc(r.hole, t.h) + ' at ' + pc(r.cx - t.x, t.w) + ' ' + pc(r.cy - t.y, t.h) + ',transparent 0,transparent 96%,#000 100%)';
+    var rot = ' transform="rotate(-90 ' + r.cx + ' ' + r.cy + ')"';
+    var h = '<div class="genw-frame"><div class="genw-canvas"><div class="genw-fx">'
+      + '<div class="genw-tube" style="left:' + pc(t.x, sc.w) + ';top:' + pc(t.y, sc.h) + ';width:' + pc(t.w, sc.w) + ';height:' + pc(t.h, sc.h) + ';mix-blend-mode:' + t.blend + '">'
+      +   '<span><em style="-webkit-mask-image:' + hole + ';mask-image:' + hole + '"><b></b><b></b><b></b></em></span></div>';
+    if(sc.rip) h += '<div class="genw-rip" style="left:' + pc(sc.rip.x, sc.w) + ';top:' + pc(sc.rip.y, sc.h) + ';width:' + pc(sc.rip.w, sc.w) + ';height:' + pc(sc.rip.h, sc.h) + ';color:' + sc.rip.color + '"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>';
+    h += '<svg class="genw-live" viewBox="0 0 ' + sc.w + ' ' + sc.h + '" aria-hidden="true">';
+    h += '<circle class="genw-arcg" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.glow + '" stroke-width="' + (Math.round(r.sw * 19) / 10) + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
+      + '<circle class="genw-arc" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.arc + '" stroke-width="' + r.sw + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
+      + '<text class="genw-num" x="' + r.cx + '" y="' + sc.num.y + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.num.size + '" fill="' + sc.ink + '">0%</text>'
+      + '<rect class="genw-bar" x="' + sc.bar.x + '" y="' + sc.bar.y + '" width="0" height="' + sc.bar.h + '" rx="' + (sc.bar.h / 2) + '" fill="' + sc.barFill + '"></rect>'
+      + '<text class="genw-cap" x="' + r.cx + '" y="' + sc.cap.y + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.capInk + '">0% COMPLETE</text>';
+    if(sc.refl) h += '<text class="genw-refl" x="' + r.cx + '" y="0" transform="matrix(1 0 0 -' + sc.refl.sy + ' 0 ' + sc.refl.y + ')" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.refl.ink + '">0% COMPLETE</text>';
+    return h + '</svg></div></div></div>'
+      + '<div class="genw-stage"></div>'
+      + '<div class="genw-sub"><span class="genw-timer"></span></div>';
+  }
+  function sceneCss(){
+    return ''
+    + '.genw--scene{width:min(100%,760px);margin:12px auto 10px}'
+    /* النيون بإطار سماويّ ورديّ؛ الذهبيّ يبقى على إطار البطاقة الذهبيّ الأصليّ */
+    + '.genw--neon .genw-frame{animation:genwNeon 2.6s ease-in-out infinite}'
+    + '.genw--neon .genw-frame::before{background:linear-gradient(120deg,transparent 15%,rgba(125,249,255,.15) 30%,#bff6ff 45%,#ff7bd5 55%,rgba(125,249,255,.15) 70%,transparent 85%);background-size:280% 100%}'
+    + '@keyframes genwNeon{0%,100%{box-shadow:0 0 22px -6px rgba(125,249,255,.4),0 0 60px -18px rgba(255,123,213,.25)}'
+    +   '50%{box-shadow:0 0 34px -4px rgba(125,249,255,.6),0 0 90px -14px rgba(255,123,213,.4)}}'
+    + '.genw--scene .genw-canvas,html[data-mode="light"] .genw--scene .genw-canvas{display:block;aspect-ratio:var(--ar);background:#070b22 center/cover no-repeat}'
+    /* الجوّال: إطار أطول يقصّ جانبَي الصورة فيكبر البرج وعدّاده (العدّاد في منتصف العرض) */
+    + '@media (max-width:520px){.genw--scene .genw-canvas,html[data-mode="light"] .genw--scene .genw-canvas{aspect-ratio:5/4}}'
+    /* إطار التأثيرات: بارتفاع المشهد ونسبة الصورة ومنتصفه منتصفها — فما بداخله بنِسَب من الصورة نفسها */
+    + '.genw-fx{position:absolute;top:0;left:50%;height:100%;aspect-ratio:var(--ar);transform:translateX(-50%);pointer-events:none}'
+    /* الحركة داخل الأنبوب (خلف العدّاد): تخفت عند حافّتيه وطرفيه، وثلاث طبقات تنزل بنصف ارتفاعها بالضبط (= عدد صحيح من
+       البلاطات) فتتكرّر بلا قفزة — transform وحده. الدمج (screen/multiply) من بيانات المشهد. */
+    + '.genw-tube{position:absolute;overflow:hidden;z-index:1;'
+    +   '-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%)}'
+    + '.genw-tube span,.genw-tube em{position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden}'
+    + '.genw-tube span{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 7%,#000 93%,transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 7%,#000 93%,transparent 100%)}'
+    + '.genw-tube b{position:absolute;left:0;right:0;top:-100%;height:200%;background-repeat:repeat}'
+    + '.genw-tube b:nth-child(1){background-size:34% 50%;opacity:.8;animation:genwFlow 3.6s linear infinite}'
+    + '.genw-tube b:nth-child(2){background-size:20.5% 25%;opacity:.95;animation:genwFlow 1.25s linear infinite}'
+    + '.genw-tube b:nth-child(3){background-size:14% 16.667%;opacity:.9;animation:genwFlow 2.2s linear infinite}'
+    + '@keyframes genwFlow{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,50%,0)}}'
+    /* تموّجات على بركة قاعدة الأنبوب — حيث ينزل الماء */
+    + '.genw-rip{position:absolute;z-index:1}'
+    + '.genw-rip i{position:absolute;width:13%;aspect-ratio:4/1;border:1px solid currentColor;border-radius:50%;opacity:0;animation:genwRip 1.9s ease-out infinite}'
+    + '.genw-rip i:nth-child(1){left:6%;top:30%}'
+    + '.genw-rip i:nth-child(2){left:24%;top:62%;animation-delay:.45s}'
+    + '.genw-rip i:nth-child(3){left:43%;top:20%;animation-delay:.9s}'
+    + '.genw-rip i:nth-child(4){left:60%;top:66%;animation-delay:.25s}'
+    + '.genw-rip i:nth-child(5){left:78%;top:28%;animation-delay:1.3s}'
+    + '.genw-rip i:nth-child(6){left:14%;top:78%;animation-delay:1.55s}'
+    + '.genw-rip i:nth-child(7){left:50%;top:80%;animation-delay:.7s}'
+    + '@keyframes genwRip{0%{transform:scale(.15);opacity:.85}100%{transform:scale(1.5);opacity:0}}'
+    /* عدّاد الصورة: SVG يملأ إطار التأثيرات وإحداثيّاته إحداثيّات الصورة */
+    + '.genw-live{position:absolute;top:0;left:0;width:100%;height:100%;z-index:3;overflow:visible;direction:ltr}'
+    + '.genw-live circle{fill:none}'
+    + '.genw-arc,.genw-arcg{transition:stroke-dashoffset .25s linear}'
+    + '.genw-num,.genw-cap,.genw-refl{font-family:' + HUD_FONT + ';font-weight:700}'
+    + '.genw-bar{transition:width .25s linear}'
+    + '.genw--scene .genw-stage{text-align:center}'
+    + '.genw--scene .genw-sub{justify-content:center}'
+    /* مربّع الرفع يُخفى ما دام المشهد في مكانه (له display سطريّ فلا بدّ من !important) */
+    + '[data-genw-hide]{display:none !important}'
+    /* أندرويد: بلا دمج ضوئيّ (أخفّ على المعالج الرسوميّ) وبطبقتين */
+    + 'html.omAndroid .genw-tube{mix-blend-mode:normal !important}'
+    + 'html.omAndroid .genw-tube b:nth-child(1){display:none}'
+    + '@media (prefers-reduced-motion:reduce){.genw--neon .genw-frame,.genw-tube b,.genw-rip i{animation:none}.genw-arc,.genw-arcg,.genw-bar{transition:none}}';
+  }
+
   var AR_DIG = '٠١٢٣٤٥٦٧٨٩';
   function toAr(n){ return String(n).replace(/[0-9]/g, function(d){ return AR_DIG[+d]; }); }
   function isAr(){ try{ return (typeof lang !== 'undefined' ? lang : 'ar') === 'ar'; }catch(e){ return true; } }
@@ -43745,7 +43982,7 @@ if(document.readyState === 'loading'){
     if(document.getElementById(CSS_ID)) return;
     var st = document.createElement('style');
     st.id = CSS_ID;
-    st.textContent = CSS;
+    st.textContent = CSS + sceneCss(); /* v-gen-scene */
     document.head.appendChild(st);
   }
 
@@ -43760,9 +43997,11 @@ if(document.readyState === 'loading'){
     var expect = cfg.expect[isAr() ? 'ar' : 'en'];
     var slowTxt = cfg.slow[isAr() ? 'ar' : 'en'];
 
+    var sc = cfg.scenes ? nextScene() : null; /* v-gen-scene-exact: مشهد هذا التوليد (بالدور) */
     var root = document.createElement('div');
-    root.className = 'genw' + (cfg.wide ? ' genw--video' : '');
-    root.innerHTML = ''
+    root.className = 'genw' + (cfg.wide ? ' genw--video' : '') + (sc ? ' genw--scene genw--' + sc.id : '');
+    /* v-gen-scene: مشهد بخلفيّة ومطر وعدّاد حيّ — بالخطّافات نفسها فالنبضة أدناه واحدة للنوعين */
+    root.innerHTML = sc ? sceneHtml(sc) : ''
       + '<div class="genw-frame"><div class="genw-canvas">'
       +   '<div class="genw-shimmer"></div>'
       +   (cfg.film ? '<div class="genw-film"></div>' : '')
@@ -43773,11 +44012,36 @@ if(document.readyState === 'loading'){
       + '<div class="genw-sub"><span class="genw-timer"></span></div>';
 
     var pctEl = root.querySelector('.genw-pct');
-    var pctSmall = pctEl.querySelector('small');
+    var pctSmall = pctEl ? pctEl.querySelector('small') : null;
     var fillEl = root.querySelector('.genw-fill');
     var stageEl = root.querySelector('.genw-stage');
     var timerEl = root.querySelector('.genw-timer');
-    pctSmall.textContent = hint;
+    /* v-gen-scene-exact: عناصر عدّاد الصورة — غائبة في البطاقة الذهبيّة */
+    var arcEl = root.querySelector('.genw-arc'), arcGlow = root.querySelector('.genw-arcg');
+    var numEl = root.querySelector('.genw-num'), barEl = root.querySelector('.genw-bar'), capEl = root.querySelector('.genw-cap'), reflEl = root.querySelector('.genw-refl');
+    if(sc){
+      try{
+        root.style.setProperty('--ar', sc.w + '/' + sc.h);
+        root.querySelector('.genw-canvas').style.backgroundImage = 'url("' + sc.src + '")';
+        var flows = root.querySelectorAll('.genw-tube b');
+        for(var fi = 0; fi < flows.length && fi < FLOW_TILES.length; fi++) flows[fi].style.backgroundImage = flowTile(FLOW_TILES[fi][0], FLOW_TILES[fi][1], FLOW_TILES[fi][2], sc.flow);
+      }catch(e){ /* guard-ok — بلا خلفيّة أو جريان يبقى لون المشهد الداكن والعدّاد يعمل */ }
+    }
+    /* الرقم والقوس والشريط والنصّ (وانعكاسه) — أرقام لاتينيّة كما في تصميم المالك، بعرض حروف الأصل */
+    var sceneArc = sc ? arcLen(sc) : 0;
+    function paintScene(shown){
+      var digits = String(shown).length;
+      numEl.textContent = shown + '%';
+      numEl.setAttribute('textLength', String(Math.round((digits * sc.num.dw + sc.num.pw) * 10) / 10));
+      var off = String(Math.round(sceneArc * (100 - shown)) / 100);
+      arcEl.style.strokeDashoffset = off; arcGlow.style.strokeDashoffset = off;
+      barEl.setAttribute('width', String(Math.round(sc.bar.w * shown) / 100));
+      var capLen = String(Math.round((digits * sc.cap.dw + sc.cap.rest) * 10) / 10);
+      capEl.textContent = shown + '% COMPLETE';
+      capEl.setAttribute('textLength', capLen);
+      if(reflEl){ reflEl.textContent = shown + '% COMPLETE'; reflEl.setAttribute('textLength', capLen); }
+    }
+    if(pctSmall) pctSmall.textContent = hint;
     stageEl.textContent = stages[0];
 
     var stageIdx = 0, slow = false;
@@ -43795,8 +44059,8 @@ if(document.readyState === 'loading'){
       var el = (Date.now() - t0) / 1000;
       var p = el / cfg.est;
       var shown = Math.min(99, Math.round(eased(p) * 100));
-      pctEl.firstChild.textContent = fmt(shown) + '%';
-      fillEl.style.width = shown + '%';
+      if(sc) paintScene(shown);
+      else { pctEl.firstChild.textContent = fmt(shown) + '%'; fillEl.style.width = shown + '%'; }
       timerEl.textContent = '⏱ ' + fmt(Math.floor(el)) + (isAr() ? 'ث' : 's') + ' — ' + expect;
       if(el > cfg.est * 2 && !slow){
         slow = true;
@@ -43828,6 +44092,37 @@ if(document.readyState === 'loading'){
   /* زمن بداية كلّ لوحة: يبقى طول التوليد الواحد (الفيديو يبدّل نصّ حالته 🚀→⏳→🎬)
      ولا يُصفَّر إلا حين ينتهي الاشتغال أو تُزال البطاقة. */
   var t0ByPanel = Object.create(null);
+
+  /* v-gen-scene — عطب قائم كشفه المسبار: v-clean-ui يحذف الإيموجي من نصوص الواجهة بعد ٤٠ مث من كتابتها، والرصد
+     يقرأ سطر الحالة بعد ٦٠ مث، فلا يجد بادئة «مشغول» (🎨 / ⏳ / 🚀…) أبدًا — فلم تعد بطاقة أيّ لوحة (فيديو، أنماط،
+     أزياء) تظهر منذ تنظيف الواجهة. الآن تُقرأ الحالة لحظة تغيّرها (قبل التنظيف) ويُحفظ نصّها خامًا ومنظَّفًا؛ اللوحة
+     «مشغولة» ما دام النصّ الظاهر أحدهما. النصّ الخام يبقى مرجع «أيّ بادئة بدأت» (التوليد 🎨 يصعد، التعديل يبقى). */
+  var rawBusy = Object.create(null);
+  var cleanBusy = Object.create(null);
+  function hasPrefix(txt, list){
+    for(var i = 0; txt && list && i < list.length; i++){ if(txt.indexOf(list[i]) === 0) return true; }
+    return false;
+  }
+  function stripEmoji(txt){
+    try{ if(typeof window.__noEmoji === 'function') return String(window.__noEmoji(txt)); }catch(e){ /* guard-ok — بلا منظِّف يبقى النصّ بإيموجيه والبادئة تطابق */ }
+    return String(txt);
+  }
+  function noteBusy(p, txt){ rawBusy[p.id] = txt; cleanBusy[p.id] = stripEmoji(txt); }
+  function panelBusy(p, ptxt){
+    if(hasPrefix(ptxt, p.busy)){ noteBusy(p, ptxt); return true; }
+    if(ptxt && cleanBusy[p.id] && ptxt === cleanBusy[p.id]) return true;
+    delete rawBusy[p.id]; delete cleanBusy[p.id];
+    return false;
+  }
+  /* تُستدعى مع كلّ دفعة تغيّرات — ثلاث قراءات بالمعرّف فقط */
+  function sample(){
+    for(var i = 0; i < PANELS.length; i++){
+      var el = null, txt = '';
+      try{ el = document.querySelector(PANELS[i].sel); txt = el ? String(el.textContent || '').trim() : ''; }catch(e){ txt = ''; }
+      if(hasPrefix(txt, PANELS[i].busy)) noteBusy(PANELS[i], txt);
+    }
+  }
+
   function scan(){
     if(!document.body) return;
     var active = Object.create(null);
@@ -43880,24 +44175,51 @@ if(document.readyState === 'loading'){
       if(!pel || !pel.parentNode) continue;
       var ptxt = '';
       try{ ptxt = String(pel.textContent || '').trim(); }catch(e){ ptxt = ''; }
-      var busy = false;
-      for(var bi = 0; ptxt && bi < p.busy.length; bi++){
-        if(ptxt.indexOf(p.busy[bi]) === 0){ busy = true; break; }
-      }
+      var busy = panelBusy(p, ptxt); /* v-gen-scene: يصمد لحذف الإيموجي من سطر الحالة */
       var card = null;
-      try{ card = pel.parentNode.querySelector('.genw[data-genw-panel="' + p.id + '"]'); }catch(e){ card = null; }
+      var scopeEl = pel.parentNode; /* v-gen-scene: بطاقة تُركَّب أعلى الاستوديو ليست ابنة حاوية سطر الحالة بالضرورة */
+      if(p.scope){ try{ scopeEl = document.querySelector(p.scope) || pel.parentNode; }catch(e){ scopeEl = pel.parentNode; } }
+      try{ card = scopeEl.querySelector('.genw[data-genw-panel="' + p.id + '"]'); }catch(e){ card = null; }
       if(busy && !card){
         if(!t0ByPanel[p.id]) t0ByPanel[p.id] = Date.now();
         try{
           var node = render({ t0: t0ByPanel[p.id], kind: p.kind });
           node.setAttribute('data-genw-panel', p.id);
-          pel.parentNode.insertBefore(node, pel.nextSibling);
+          var mp = mountPoint(p, pel, rawBusy[p.id] || ptxt, document);
+          if(mp.top) node.setAttribute('data-genw-top', '1');
+          mp.parent.insertBefore(node, mp.before);
+          /* فوق = خارج مجال النظر (المستخدم عند زرّ «صمم» أسفل النموذج) — نصعد إليها */
+          if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
         }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ /* العرض تجميليّ */ } }
       } else if(!busy && card){
         try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ /* العرض تجميليّ */ } }
         delete t0ByPanel[p.id];
       }
+      /* v-gen-scene-exact: المشهد في مكان مربّع الرفع — المربّع مخفيّ ما دامت بطاقة «فوق» موجودة، ويعود فور رفعها */
+      if(p.hideSel){
+        try{
+          var hideEl = scopeEl.querySelector(p.hideSel);
+          var topCard = scopeEl.querySelector('.genw[data-genw-panel="' + p.id + '"][data-genw-top]');
+          if(hideEl){
+            if(topCard && !hideEl.hasAttribute('data-genw-hide')) hideEl.setAttribute('data-genw-hide', '1');
+            else if(!topCard && hideEl.hasAttribute('data-genw-hide')) hideEl.removeAttribute('data-genw-hide');
+          }
+        }catch(e){ try{ __swallow(e, 'gen-wait:hide'); }catch(_){ /* العرض تجميليّ */ } }
+      }
     }
+  }
+
+  /* v-gen-scene-exact: أين تُركَّب بطاقة اللوحة — { parent, before, top }. اللوحة التي لها topSel وبدأ نصّ حالتها بإحدى
+     بادئات top تُركَّب قبل ذلك العنصر نفسه (لوح الصورة: فتقع مكان مربّع الرفع المخفيّ)؛ غيرها — وأيّ مرساة غائبة —
+     بعد سطر الحالة كما كان. */
+  function mountPoint(p, pel, ptxt, doc){
+    var below = { parent: pel.parentNode, before: pel.nextSibling, top: false };
+    if(!p || !p.topSel || !p.top) return below;
+    if(!hasPrefix(String(ptxt || ''), p.top)) return below;
+    var anchor = null;
+    try{ anchor = (doc || document).querySelector(p.topSel); }catch(e){ anchor = null; }
+    if(!anchor || !anchor.parentNode) return below;
+    return { parent: anchor.parentNode, before: anchor, top: true };
   }
 
   var scheduled = false;
@@ -43909,12 +44231,30 @@ if(document.readyState === 'loading'){
 
   if(typeof MutationObserver !== 'undefined' && document.documentElement){
     try{
-      new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+      new MutationObserver(function(){ sample(); schedule(); }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     }catch(e){ try{ __swallow(e, 'gen-wait:observe'); }catch(_){ /* بلا رصد = بلا بطاقة فقط */ } }
   }
   schedule();
 
+  /* v-gen-scene: خلفيّة المشهد تُحمَّل عند فتح استوديو الأزياء لا عند أوّل توليد — فلا يظهر المشهد فارغًا لحظةً */
+  var scenePreloaded = false;
+  function preloadScenes(){
+    if(scenePreloaded) return;
+    scenePreloaded = true;
+    for(var k = 0; k < SCENES.length; k++){ try{ (new Image()).src = SCENES[k].src; }catch(e){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+  }
+  if(document.addEventListener){
+    document.addEventListener('click', function(e){
+      var tg = e && e.target;
+      if(tg && tg.closest && tg.closest('#btnFashionAI')) preloadScenes();
+    }, true);
+  }
+
   window.omranGenWait = { render: render, scan: scan, _eased: eased, PHRASES: PHRASES, PANELS: PANELS, KINDS: KINDS };
+  window.omranGenWait._mountPoint = mountPoint; /* v-gen-scene: للاختبار */
+  window.omranGenWait._panelBusy = panelBusy;
+  window.omranGenWait._sample = sample;
+  window.omranGenWait._scenes = SCENES; window.omranGenWait._nextScene = nextScene; window.omranGenWait._sceneHtml = sceneHtml; /* v-gen-scene-exact: للاختبار */
 })();
 /* v-inspire (المالك ٩ أكتوبر «أبدأ بالخطوة الأولى»): «اقتراحات» صارت شاشة بتبويبين — «الإلهام» و«اقتراحات سريعة».
    «الإلهام» قسمه الأوّل «مدينتك الحقيقيّة»: عشر تجارب ثلاثيّة الأبعاد تبني حيّ المستخدم الحقيقيّ من الخرائط المفتوحة

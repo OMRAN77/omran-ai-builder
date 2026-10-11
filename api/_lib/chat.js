@@ -615,7 +615,7 @@ const OR_MODELS = {
      ولا يبحث. المفتاح هو نفسه (`OPENROUTER_API_KEY`) في المسارين فلا كلفة جديدة، والموديل يأتي
      من اختيار المالك نفسه (أيّ معرّف صالح عند الوسيط — لا بادئة شركة واحدة). */
   openrouter: 'anthropic/claude-sonnet-5', // احتياط الخادم إن لم يصل اختيار أو رُفض؛ افتراضيّ المنتقي (modes.js) Grok — v-prov-or-unique
-  kimi: 'moonshotai/kimi-k2', // v-kimi: المسار المباشر بمفتاح Moonshot أوّلًا (oa-direct)، وهذا احتياط الوسيط إن غاب المفتاح أو فشل قبل أوّل حرف
+  kimi: 'moonshotai/kimi-k3', // v-kimi-feed: المسار المباشر بمفتاح Moonshot أوّلًا (oa-direct)، وهذا احتياط الوسيط إن غاب المفتاح أو فشل قبل أوّل حرف — kimi-k2 أوقفته Moonshot (٢٥ مايو ٢٠٢٦) وK2 نصّيّ لا يرى صورًا؛ K3 هو الحيّ (رؤية + نصّ)
 };
 
 /* v-cohere-coach (أمر المالك ٢٧ سبتمبر: «غذّه بمعلومات عامّة وآخر التحديثات والبحث في الويب… كأنّه
@@ -1426,8 +1426,14 @@ module.exports = async (req, res) => {
     // حتى الدور الاجتماعي («كيف الحال») الذي كان محرومًا منها كليًّا.
     /* v-nano-pro-edit (تتبّع المالك: صورة مرفقة + «أقوى» → النموذج اختار generate_image فرسم صورة جديدة بلا
        علاقة): TOOLS_NOTE القديم لم يكن يُحقن أصلًا، فكان النموذج لا يعرف edit_image. سطر واحد في دور فيه صورة. */
+    /* v-owner-shot-code (لقطة المالك ١٠ أكتوبر: لقطة من التطبيق + «احذف هذا المكان» → النموذج استدعى edit_image فبدأ يرسم صورة
+       وأوقفه المالك): هذه الملاحظة تأمر بـedit_image «فورًا» لأيّ تغيير على صورة مرفقة، وقواعد عمل المالك (WORK_NOTE) تأتي بعدها
+       ولا تذكر edit_image. للمالك في دور الأدوات: لقطة التطبيق/الموقع/الكود مع طلب = تعديل في الكود (read_github ثمّ edit_github)،
+       ولا edit_image ولا generate_image إلّا بطلب صريح على الصورة نفسها. المستخدم العاديّ كما كان. */
     const IMAGE_TURN_NOTE = lastUserHasImage
-      ? '\n[صورة مرفقة في هذا الدور]: أي طلب تغيير أو تحسين أو ترقية أو «نسخة أقوى/أفخم» أو أسلوب جديد على هذه الصورة = استدعِ edit_image فورًا بتعليمة إنجليزية دقيقة — لا generate_image (edit_image يبني على صورته مصدرًا، وgenerate_image يرسم من الوصف وحده صورة بلا علاقة). لا تسأل قبل التنفيذ؛ ضع رمز الصورة العائد وحده في سطر ثم جملة قصيرة واحدة.'
+      ? ((ownerKnowledge && __ownerReq)
+        ? '\n[صورة مرفقة في هذا الدور — المالك]: إن كانت لقطةً من التطبيق أو الموقع أو الكود أو الإعدادات ومعها طلب (احذف/غيّر/حرّك/صلّح/كبّر…) فهو طلب تعديل في الكود لا في الصورة: حدّد العنصر بـread_github (query عن نصّه أو معرّفه) ثمّ عدّله بـedit_github — ممنوع edit_image وممنوع generate_image هنا. استدعِ edit_image فقط إن طلب المالك صراحةً تعديل الصورة نفسها («عدّل الصورة»، «سوّها 3D»، «غيّر خلفيّة الصورة»)، وgenerate_image فقط إن طلب رسم صورة صراحةً.'
+        : '\n[صورة مرفقة في هذا الدور]: أي طلب تغيير أو تحسين أو ترقية أو «نسخة أقوى/أفخم» أو أسلوب جديد على هذه الصورة = استدعِ edit_image فورًا بتعليمة إنجليزية دقيقة — لا generate_image (edit_image يبني على صورته مصدرًا، وgenerate_image يرسم من الوصف وحده صورة بلا علاقة). لا تسأل قبل التنفيذ؛ ضع رمز الصورة العائد وحده في سطر ثم جملة قصيرة واحدة.')
       : '';
     // v-visual-guide (أمر المالك «أبي إرشاد عام لأي شاشة… كله خطأ»): لقطة شاشة
     // + سؤال «كيف/وين/أضغط إيش» كان يُجاب بإرشاد عامّ أو خاطئ (فهم «Developer
@@ -2038,8 +2044,10 @@ module.exports = async (req, res) => {
             else { __ownerOps.manages = (__ownerOps.manages || 0) + 1; result = __ownerOps.manages > 8 ? '✗ ثمانية استدعاءات إدارة في الردّ الواحد حدّ مقصود.' : __gm.formatManage(await __gm.manage(input)); }
           }
           else if (cb.name === 'delegate_code_task') {
+            const __dl = require('./agent-delegate.js');
             if (!__ownerReq) result = '✗ تفويض مهامّ الكود للمالك وحده.';
-            else { __ownerOps.delegates++; const __dl = require('./agent-delegate.js'); result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
+            else if (!__dl.ownerAsksCode(lastUserText)) result = __dl.DELEGATE_REFUSAL; // v-code-not-primary: بطلب المالك بالاسم وحده
+            else { __ownerOps.delegates++; result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
           }
           else if (cb.name === 'check_code_task') {
             const __dl = require('./agent-delegate.js');

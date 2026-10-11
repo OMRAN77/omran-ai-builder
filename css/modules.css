@@ -602,6 +602,14 @@ html[data-mode="light"] #videoMakerModal #videoMakerHeroBtn{background:rgba(0,0,
 html[data-mode="light"] #videoMakerModal .vmk-studio{background:#f3f1ec!important}
 html[data-mode="light"] #videoMakerModal .vmk-tabs{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.08)}
 html[data-mode="light"] #videoMakerModal .vmk-tab{color:#4a4f5a}
+/* v-vmk-tab-art: تبويبات بصور مربّعة واحدة المقاس (240×240 في assets/videos/tabs) والاسم تحتها؛ الصفّ يتمرّر أفقيًّا بدل أن يلتفّ */
+#videoMakerModal .vmk-tabs{border-radius:18px;padding:6px;gap:4px}/* الحاسوب: التسعة تتّسع في صفّ وتلتفّ إن طال اسمٌ بلغة؛ لا تمرير — صفّ التمرير يصفّر الحدّ الأدنى لارتفاعه في شبكة ثابتة الارتفاع فيُعصر إلى ١٨ بكسل */
+@media (max-width:640px){#videoMakerModal .vmk-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-height:max-content;flex-shrink:0;width:100%}}
+#videoMakerModal .vmk-tabs::-webkit-scrollbar{display:none}
+#videoMakerModal .vmk-tab{display:flex;flex-direction:column;align-items:center;gap:6px;padding:6px 6px 8px;border-radius:14px;flex:0 0 auto;min-width:92px;max-width:112px;line-height:1.2;text-align:center}
+#videoMakerModal .vmk-tab-img{display:block;width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.08);pointer-events:none}
+#videoMakerModal .vmk-tab[aria-selected=true] .vmk-tab-img{border-color:rgba(26,20,8,.35);box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+#videoMakerModal .vmk-tab-lbl{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 html[data-mode="light"] #videoMakerModal .vmk-main #videoMakerPrompt{background:#ffffff;border-color:rgba(0,0,0,.14)}
 #videoMakerModal #videoMakerHeroBtn{padding:0 !important;padding-inline-start:46px !important;padding-inline-end:18px !important;text-align:start}
 #videoMakerModal .vmk-main .mini-mic-field-row{align-items:flex-start}
@@ -682,6 +690,15 @@ html[data-mode="light"] #videoMakerModal #videoMakerQualityRow{background:#fffff
 #videoMakerModal .vmk-cl-msg.err{color:#ffb4b4}
 #videoMakerModal .vmk-cl-msg:empty{display:none}
 #videoMakerModal .vmk-cl-note{margin:0;font-size:11.5px;line-height:1.7;color:#7f8796}
+/* v-video-enhance-pro: زرّ «تحسين احترافي» مخطَّط تحت الزرّ المجّانيّ (يمتلئ حين يصير «تأكيد وخصم»)، وسطر التنبيه تحته. الارتفاع تلقائيّ فيلتفّ النصّ الطويل على الجوّال */
+#videoMakerModal .vmk-cl-pro{background:none;border:1.5px solid #e8c27a;color:#f0dcb0;box-shadow:none;height:auto;min-height:52px;padding:8px 12px}
+#videoMakerModal .vmk-cl-pro[data-cost]:after{content:" · " attr(data-cost);font-weight:700;opacity:.85}
+#videoMakerModal .vmk-cl-pro.ask{background:linear-gradient(135deg,#f0cf8f,#c9964a);color:#1a1408;border-color:transparent}
+#videoMakerModal .vmk-cl-pro:disabled{opacity:.45;cursor:default}
+#videoMakerModal .vmk-cl-pnote{margin:-6px 0 0;font-size:11.5px;line-height:1.7;color:#8d95a3}
+html[data-mode="light"] #videoMakerModal .vmk-cl-pro{color:#8a5a12;border-color:#8a5a12}
+html[data-mode="light"] #videoMakerModal .vmk-cl-pro.ask{color:#1a1408;border-color:transparent}
+html[data-mode="light"] #videoMakerModal .vmk-cl-pnote{color:#4a5160}
 html[data-mode="light"] #videoMakerModal .vmk-cl-head b{color:var(--text)}
 html[data-mode="light"] #videoMakerModal .vmk-cl-drop{background:#ffffff;border-color:rgba(0,0,0,.25)}
 html[data-mode="light"] #videoMakerModal .vmk-cl-pick,html[data-mode="light"] #videoMakerModal .vmk-cl-up,html[data-mode="light"] #videoMakerModal .vmk-cl-prow{color:var(--text)}
@@ -700,3 +717,46 @@ html[data-mode="light"] #videoMakerModal .vmk-cl-track{background:rgba(0,0,0,.12
 html[data-mode="light"] #videoMakerModal #vmkClCancel{color:var(--text);border-color:rgba(0,0,0,.3);background:#fff}
 html[data-mode="light"] #videoMakerModal .vmk-cl-pick{color:#8a5a12}
 html[data-mode="light"] #videoMakerModal .vmk-cl-drop:focus-within{outline-color:#8a5a12}
+
+/* v-app-director: قسم «مخرج التطبيق» (للمالك وحده) — يملأ عرض البطاقة ويخفي الاستوديو والترندات */
+#videoMakerModal .vmk-studio:not(.vmk-tab-director) #vmkDirector{display:none!important}
+#videoMakerModal .vmk-studio.vmk-tab-director>.vmk-side,#videoMakerModal .vmk-studio.vmk-tab-director>.vmk-main,#videoMakerModal .vmk-studio.vmk-tab-director>#vtRoot{display:none!important}
+#videoMakerModal #vmkDirector{grid-column:1/-1;display:flex;flex-direction:column;gap:14px;max-height:calc(90vh - 150px);overflow-y:auto;padding-inline-end:4px}
+#videoMakerModal .vmk-dir-head b{display:block;font-size:17px;color:var(--text,#eceef4)}
+#videoMakerModal .vmk-dir-head p{margin:6px 0 0;font-size:12.5px;line-height:1.7;color:var(--muted,#9a9a9e)}
+#videoMakerModal #vdReq{width:100%;resize:vertical;min-height:72px;font:inherit}
+#videoMakerModal .vmk-dir-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#videoMakerModal .vmk-dir-row label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted,#9a9a9e)}
+#videoMakerModal .vmk-dir-row select{width:100%;font:inherit}
+#videoMakerModal .vmk-dir-ref{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted,#9a9a9e);cursor:pointer}
+#videoMakerModal .vmk-dir-ref input{max-width:220px;font:inherit;font-size:12px}
+#videoMakerModal .vmk-dir-ref img{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid rgba(232,194,122,.5)}
+#videoMakerModal #vdGo{align-self:flex-start;font:inherit;font-weight:800;font-size:15px;padding:12px 26px;border-radius:14px;border:0;cursor:pointer;color:#1a1408;background:linear-gradient(135deg,#f6dca2,#c9964a);box-shadow:0 14px 34px -14px rgba(232,194,122,.8)}
+#videoMakerModal #vdGo:disabled{opacity:.5;cursor:default}
+#videoMakerModal .vmk-dir-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+#videoMakerModal .vmk-dir-steps li{position:relative;padding:10px 12px;padding-inline-start:32px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(255,255,255,.03);font-size:12px;line-height:1.5;color:var(--muted,#9a9a9e)}
+#videoMakerModal .vmk-dir-steps li:before{content:"";position:absolute;inset-inline-start:11px;top:14px;width:11px;height:11px;border-radius:50%;border:2px solid rgba(255,255,255,.25)}
+#videoMakerModal .vmk-dir-steps li b{font-weight:700}
+#videoMakerModal .vmk-dir-steps li small{display:block;font-size:11px;color:var(--muted,#9a9a9e)}
+#videoMakerModal .vmk-dir-steps li.on{color:var(--text,#eceef4);border-color:rgba(232,194,122,.6)}
+#videoMakerModal .vmk-dir-steps li.on:before{border-color:#e8c27a;animation:vdPulse .9s infinite alternate}
+#videoMakerModal .vmk-dir-steps li.ok{color:var(--text,#eceef4)}
+#videoMakerModal .vmk-dir-steps li.ok:before{background:#e8c27a;border-color:#e8c27a}
+#videoMakerModal .vmk-dir-steps li.err:before{background:#c0392b;border-color:#c0392b}
+@keyframes vdPulse{from{opacity:.35}to{opacity:1}}
+#videoMakerModal .vmk-dir-msg{margin:0;font-size:12.5px;line-height:1.6;color:var(--muted,#9a9a9e)}
+#videoMakerModal .vmk-dir-msg:empty{display:none}
+#videoMakerModal .vmk-dir-msg.err{color:#ff8a80}
+#videoMakerModal .vmk-dir-res{display:none;flex-direction:column;gap:10px}
+#videoMakerModal .vmk-dir-res.has{display:flex}
+#videoMakerModal .vmk-dir-res video{width:100%;max-height:420px;border-radius:14px;background:#000;border:1px solid rgba(232,194,122,.25)}
+#videoMakerModal .vmk-dir-dl{align-self:flex-start;font-size:13px;font-weight:700;padding:9px 18px;border-radius:999px;border:1px solid rgba(232,194,122,.6);color:var(--accent-light,#f0be7a);text-decoration:none}
+html[data-mode="light"] #videoMakerModal .vmk-dir-steps li{background:#ffffff;border-color:rgba(0,0,0,.12)}
+html[data-mode="light"] #videoMakerModal .vmk-dir-steps li:before{border-color:rgba(0,0,0,.25)}
+html[data-mode="light"] #videoMakerModal .vmk-dir-msg.err{color:#b42318}
+html[data-mode="light"] #videoMakerModal .vmk-dir-dl{color:#8a5a12;background:#fff}
+@media (max-width:860px){
+  #videoMakerModal #vmkDirector{max-height:none;overflow:visible}
+  #videoMakerModal .vmk-dir-row{grid-template-columns:1fr 1fr}
+  #videoMakerModal .vmk-dir-steps{grid-template-columns:1fr}
+}

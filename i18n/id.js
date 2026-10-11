@@ -1127,6 +1127,22 @@ Object.assign(I18N['id'], {
   vclFail: "Tidak dapat meningkatkan video ini di perangkat ini",
   vclNote: "Mengurangi derau, mempertajam tepi, dan memperbaiki warna; tidak memperbaiki buram berat atau guncangan kamera",
   vclLoading: "Menyiapkan alat peningkat (hanya pertama kali)…",
+  vclPro: "Peningkatan profesional",
+  vclProNotice: "Peningkatan profesional tidak dijalankan di perangkatmu: video diunggah ke layanan pemrosesan eksternal (kami meminta unggahan dihapus dalam dua jam dan hasilnya dalam dua hari; kami tidak mengendalikan apa yang disimpan oleh pihak pemroses). {n} poin per detik, minimal {m} poin, hingga {s} detik — tidak ada poin yang dipotong sebelum kamu mengonfirmasi.",
+  vclProUploading: "Mengunggah dan memeriksa video… belum ada poin yang dipotong",
+  vclProQuote: "Durasi video {s} detik — biaya {n} poin (saldomu: {p}). Tidak dapat dibatalkan setelah kamu mengonfirmasi.",
+  vclProConfirm: "Konfirmasi dan pakai {n} poin",
+  vclProWorking: "Peningkatan profesional sedang berjalan… bisa memakan waktu beberapa menit; kamu boleh menutup jendela ini dan kembali lagi nanti",
+  vclProDone: "{n} poin dipotong · {s} detik",
+  vclProLater: "Peningkatan masih berjalan — kembali ke tab ini nanti untuk melihat hasilnya (disimpan selama dua hari)",
+  vclProNoPoints: "Kamu punya {p} poin; video ini butuh {n}.",
+  vclProTooLong: "Peningkatan profesional menerima hingga {s} detik — potong videonya dulu",
+  vclProSpec: "Peningkatan profesional menerima MP4 atau MOV hingga 1920×1080 dan 30 frame per detik — video ini di luar batas tersebut. Tidak ada poin yang dipotong.",
+  vclProLimit: "Kamu sudah mencapai batas peningkatan profesional hari ini — coba lagi besok",
+  vclProUnavailable: "Peningkatan profesional untuk sementara tidak tersedia — tidak ada poin yang dipotong",
+  vclProUploadFail: "Tidak dapat mengunggah video — periksa koneksimu lalu coba lagi. Tidak ada poin yang dipotong.",
+  vclProFail: "Peningkatan profesional gagal — tidak ada poin yang dipotong",
+  vclProRefunded: "Video ini tidak dapat ditingkatkan — {n} poin dikembalikan ke saldomu",
   fashionEngineLabel: "🎨 Mesin gambar",
   fashionEngineGemini: "Gemini — paling menjaga wajah (bawaan)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — mesin gambar ChatGPT",
@@ -1237,3 +1253,5 @@ Object.assign(I18N["id"], {"pdfDocPage": "⏳ Menyiapkan halaman {i} dari {n}…
 /* v-inspire */ Object.assign(I18N['id'], {"inspTabInspire":"Inspirasi","inspTabQuick":"Ide cepat","inspCityTitle":"Kotamu yang nyata","inspCitySub":"Pengalaman 3D yang dibangun di lingkungan nyatamu dari peta terbuka. Pilih satu dan langsung terbuka di pratinjau — lalu ketik lingkungan atau kota mana pun di dalamnya.","inspLoading":"Membuka…","inspFail":"Belum bisa dibuka sekarang — coba lagi"});
 /* v-chat-edit */ Object.assign(I18N['id'], {"editApplied": "Perubahan diterapkan ke desain ({n}).", "editFailed": "Perubahan tidak diterapkan — sebagian teks lama tidak cocok dengan desain saat ini, jadi desain tetap seperti semula. Silakan minta lagi.", "editTruncated": "Balasan terpotong sebelum file selesai, jadi desain dibiarkan seperti semula.", "editPartial": "Perubahan tidak diterapkan — balasan datang tidak lengkap atau formatnya salah, jadi desain tetap seperti semula. Silakan minta lagi.", "editBroke": "Perubahan tidak diterapkan — perubahan itu akan merusak kode desain, jadi desain tetap seperti semula. Silakan minta lagi."});
 /* v-owner-effort — منتقي المالك: الجهد ونماذج أخرى */ Object.assign(I18N['id'], {"effortLabel": "Upaya", "effortAuto": "Otomatis", "effortLow": "Rendah", "effortMedium": "Sedang", "effortHigh": "Tinggi", "effortExtra": "Ekstra", "effortMax": "Maksimum", "otherModelsLabel": "Model lain"});
+/* v-app-director — قسم «مخرج التطبيق» للمالك (١٤ لغة) */ Object.assign(I18N['id'], {"vdTab": "Sutradara Aplikasi", "vdSub": "Tulis video yang kamu inginkan, pilih bahasa, pengisi suara, dan durasi — ia menulis ide dan naskah, merekam layar aplikasi yang asli, menyiapkan contoh gaya, merekam narasi, dan merangkai video secara utuh.", "vdPh": "Contoh: video tentang gaya potret dengan suara Maha", "vdLang": "Bahasa", "vdSpeaker": "Pengisi suara", "vdMinutes": "Durasi (menit)", "vdRef": "Fotomu sebagai acuan contoh gaya (opsional)", "vdGo": "Buat video", "vdStepPlan": "Menulis ide dan naskah", "vdStepShots": "Merekam layar aplikasi", "vdStepSamples": "Menyiapkan contoh gaya", "vdStepVoice": "Merekam narasi", "vdStepJoin": "Merangkai video", "vdScene": "Adegan {i} dari {n}", "vdQueued": "Menunggu di jembatan", "vdDone": "Siap — {m} mnt {s} dtk", "vdDownload": "Unduh video", "vdFail": "Video tidak dapat diselesaikan", "vdFailPlan": "Naskah tidak dapat ditulis — periksa kunci sutradara di server", "vdFailBridge": "Jembatan tidak dapat dijangkau — periksa alamat dan rahasia jembatan di server", "vdFailRender": "Perekaman atau perangkaian gagal di jembatan", "vdSaved": "Disimpan ke Video saya", "vdWarnSamples": "{n} contoh gagal dibuat dan diganti tangkapan layar", "vdEmpty": "Tulis permintaannya dulu", "vdMaha": "Maha", "vdAbdullah": "Abdullah"});
+/* v-img-format: تحويل الصيغة محلّيًّا */ Object.assign(I18N['id'], {"imgConvertDone": "✅ Sudah diubah ke {fmt} — gambar yang sama, tanpa perubahan, siap disimpan.", "imgConvertSame": "Gambarnya memang sudah {fmt} — ini dia, siap disimpan.", "imgConvertAsk": "Mau format apa? PNG (kualitas terbaik), JPG (file lebih kecil) atau WEBP (lebih ringan untuk situs web). Contoh: ubah ke jpg", "imgConvertGuess": "(Saya mengartikan «{word}» sebagai {fmt} — untuk format lain, katakan: ubah ke jpg)", "imgConvertFail": "Browser ini tidak bisa mengubah formatnya — coba PNG atau JPG."});

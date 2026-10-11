@@ -169,6 +169,7 @@ test('٥. التصنيف: رموز جدار الوسائط والاستوديو�
     ['/api/video-create', 402, L, 'limit', 'media'],
     ['/api/video-script', 403, L, 'limit', 'media'],
     ['/api/video?action=video-watch&step=start', 402, P, 'points', 'pts'],
+    ['/api/video?action=video-enhance&step=run', 402, P, 'points', 'pts'], // v-video-enhance-pro: بالنقاط وحدها — قسم النقاط لا «صور وفيديو»
     ['/api/realtime-session', 402, P, 'points', 'maha'],
     ['/api/design-create', 402, L, 'limit', 'chat'],
     ['/api/tools?action=stocks', 402, L, 'limit', 'chat'],
@@ -180,6 +181,10 @@ test('٥. التصنيف: رموز جدار الوسائط والاستوديو�
     ['/api/openai', 402, { error: 'insufficient_points', reason: 'points' }],
     ['/api/maha-image', 402, { error: 'guest_image_used' }], // للضيف مساره: شاشة التسجيل
     ['/api/video?action=video-watch&step=start', 503, { error: 'unavailable' }], // رصيد المزوّد عندنا
+    // v-video-enhance-pro: توقّف الخدمة وحدّ اليوم والحظر ليست جدارًا تفكّه ترقية
+    ['/api/video?action=video-enhance&step=run', 503, { error: 'unavailable' }],
+    ['/api/video?action=video-enhance&step=start', 429, { error: 'limit' }],
+    ['/api/video?action=video-enhance&step=start', 403, { error: 'banned' }],
     ['/api/maha-image', 500, P],
     ['/api/account?action=create-checkout-session', 402, { ok: false, error: 'الدفع لم يكتمل بعد' }],
   ]) assert.equal(classify(url, st, body), null, url + ' ' + st);
@@ -309,7 +314,7 @@ test('١١. النصوص السبعة بالـ١٤ لغة بمواضعها {plan
     assert.ok(d.plansWhyExpired.includes('{plan}'), l);
     assert.ok(d.plansWhyExpiring.includes('{plan}') && d.plansWhyExpiring.includes('{date}'), l);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=735'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=738'"));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.omranOpenPlans = openPlans;') && bundle.includes("if(c === 'unavailable') return t('vwUnavailable');"), 'الحزمة مبنيّة');
 });

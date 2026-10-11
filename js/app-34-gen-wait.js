@@ -15,7 +15,28 @@
    عدّاد الفيديو لا يصفّره تبدّل نصّ الحالة أثناء التوليد الواحد.
 
    ذاتيّة بالكامل: MutationObserver + IIFE — بلا تعديل على العارض ولا مسارات التوليد،
-   ومسار تعديل الصور ذو النقاط الذهبيّة (الذي اختاره المالك) لا يُمسّ. */
+   ومسار تعديل الصور ذو النقاط الذهبيّة (الذي اختاره المالك) لا يُمسّ.
+
+   v-gen-scene (المالك ١١ أكتوبر، بصورة «برج الأزياء»: «في الأزياء تطلّع لي هذي عند توليد الصورة، لكن
+   تكون ممطرة، والعدّاد يشتغل [يبدأ من الصفر]، ويكون فوق مش تحت»): بطاقة الأزياء صارت مشهدًا — صورة المالك
+   خلفيّةً (assets/fashion/gen-scene.webp، وعدّاد «75%» المرسوم فيها مطموس)، فوقها مطر متحرّك وتموّجات على
+   الأرضيّة، وعدّاد حيّ في مكان المرسوم: حلقة تمتلئ ورقم يبدأ من ٠ وشريط ومرحلة. وتُركَّب أعلى الاستوديو
+   (قبل تبويبَي «من صورة / من وصف») لا تحت زرّ «صمم»، ويُمرَّر إليها. التعديل الموضعيّ («جاري تطبيق…»)
+   يبقى تحت سطر الحالة حيث ينظر المستخدم. بلا نصّ جديد: المراحل والتوقّع كما هي.
+
+   v-gen-scene-exact (المالك بلقطة من جوّاله بعد النشر: «الفكرة كلّها خطأ… هذا التصميم الذي أريده بالضبط: العدّاد يكون
+   نفس الفكرة داخل [الصورة] ونفس التصميم، وهذه الصورة تكون نفس مكان رفع الصورة»): (١) لوحة العدّاد الداكنة التي غطّت
+   البرج أُزيلت — العدّاد الآن عدّاد الصورة نفسه في موضعه وبمقاسه: الحلقة الورديّة من الأصل، وداخلها قوس التقدّم الأبيض
+   والرقم، وتحتها الشريط و«NN% COMPLETE»، تُرسم كلّها SVG بإحداثيّات الصورة (viewBox) فتكبر وتصغر معها بالضبط.
+   الأرقام لاتينيّة و«COMPLETE» كما في تصميمه (جزء من الرسمة لا نصّ واجهة). (٢) المشهد يُركَّب قبل لوح الصورة
+   ويُخفى مربّع «ارفعي صورتك» ما دام ظاهرًا — فهو في مكانه تمامًا؛ وفي «من وصف نصّي» فوق حقل الوصف.
+   (٣) «أريد الحركة داخل، خلف العدّاد — مكان الأنبوب الخلفيّ»: المطر المائل على الصورة كلّها أُزيل؛ الحركة الآن ستارة
+   الماء والأرقام النازلة داخل أنبوب البرج نفسه (٣٦٦..٦٥٩ × ٠..٤١٤ من الصورة)، تحت العدّاد الذي يُرسم وجهه وإطاره
+   فوقها، وتموّجات على بركة قاعدته.
+   (٤) «الشغل جميل لكن الصورة مغبّشة، وشيل التضليل اللي داخل العدّاد — يكون رقم فقط، وهذه الصورة [الذهبيّة] نفس الفكرة:
+   مرّة هذي ومرّة الثانية عند التوليد»: الصورتان موضَّحتان (Real-ESRGAN ×٢) ويُمحى منهما ما يُرسم حيًّا بملء من الجوار لا
+   بقرص مسطّح؛ داخل الحلقة رقم فقط (لا قرص ولا مجرى ولا دائرة — والجريان مثقوب عند الحلقة فيبقى خلفها)؛ والمشهدان
+   SCENES يتبادلان توليدًا بعد توليد، كلّ واحد بإحداثيّات صورته وألوانها. التموضع CSS صرف (نِسَب من إطار بنسبة الصورة). */
 (function(){
   if(window.omranGenWait) return;
 
@@ -32,7 +53,10 @@
     { id: 'styles', sel: '#portraitStyleStatus', kind: 'styles',
       busy: ['⏳', '🎞️'] },
     { id: 'fashion', sel: '#fashionAiStatus', kind: 'fashion',
-      busy: ['🎨', 'جاري تطبيق', 'Applying'] }
+      busy: ['🎨', 'جاري تطبيق', 'Applying'],
+      /* v-gen-scene-exact: التوليد (🎨) يُركَّب مكان مربّع الرفع — قبل لوح الصورة، والمربّع يُخفى ما دامت البطاقة؛
+         البطاقة تُبحث في النافذة كلّها */
+      scope: '#fashionAiModal', topSel: '#fashionAiImagePane', hideSel: '#fashionAiDropZone', top: ['🎨'] }
   ];
 
   /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء */
@@ -68,7 +92,7 @@
       slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     fashion: {
-      est: 40,
+      est: 40, /* v-gen-scene-exact: scenes تُربط أدناه بعد تعريف SCENES */
       hint: { ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
       expect: { ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
       stages: {
@@ -118,6 +142,130 @@
     + 'html[data-mode="light"] .genw-track{background:rgba(90,70,20,.12)}'
     + '@media (prefers-reduced-motion:reduce){.genw-frame,.genw-frame::before,.genw-shimmer::after,.genw-film{animation:none}}';
 
+  /* v-gen-scene-exact: بلاطة جريان SVG لداخل الأنبوب — بلا مقاس ذاتيّ (viewBox + preserveAspectRatio=none) فتتمدّد
+     على background-size بالنِّسَب، وخطوطها تخفت من أعلاها. rects = [x, y, w, h, opacity] */
+  function flowTile(w, h, rects, color){
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
+      + '<stop offset="0" stop-color="' + color + '" stop-opacity="0"/><stop offset="1" stop-color="' + color + '" stop-opacity="1"/></linearGradient></defs>';
+    for(var i = 0; i < rects.length; i++) svg += '<rect x="' + rects[i][0] + '" y="' + rects[i][1] + '" width="' + rects[i][2] + '" height="' + rects[i][3] + '" fill="url(#g)" opacity="' + rects[i][4] + '"/>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg + '</svg>') + '")';
+  }
+  /* طبقات الجريان الثلاث: ستائر عريضة ناعمة (بطيئة)، خيوط طويلة (سريعة)، شرطات قصيرة كأرقام نازلة (وسط) */
+  var FLOW_TILES = [
+    [100, 300, [[6, 20, 9, 170, 0.34], [38, 120, 12, 160, 0.26], [72, 0, 8, 150, 0.3]]],
+    [60, 200, [[8, 10, 2.4, 70, 1], [27, 95, 2.2, 85, 0.9], [44, 30, 2.4, 60, 0.95], [53, 130, 1.8, 50, 0.8], [17, 150, 1.8, 40, 0.7]]],
+    [40, 120, [[5, 6, 3, 9, 1], [5, 22, 3, 9, 0.7], [5, 38, 3, 9, 0.45], [19, 50, 3, 9, 1], [19, 66, 3, 9, 0.7], [19, 82, 3, 9, 0.45], [32, 14, 3, 9, 0.9], [32, 30, 3, 9, 0.6], [32, 98, 3, 9, 0.9]]]
+  ];
+  var HUD_FONT = '"DIN Condensed","Bahnschrift","Roboto Condensed","Avenir Next Condensed","Arial Narrow","sans-serif-condensed",Impact,sans-serif';
+  /* مشهدا الأزياء — صورتا المالك، يتبادلان توليدًا بعد توليد. كلّ القيم بإحداثيّات الصورة نفسها (w×h):
+     ring = مركز الحلقة ونصف قطر قوس التقدّم وسمكه و«ثقب» الجريان حولها؛ num/cap = خطّ القاعدة والمقاس وعرض الحروف كما رُسمت
+     («75%» و«75% COMPLETE»)؛ bar = تعبئة الشريط؛ refl = انعكاس النصّ على الأرضيّة؛ tube = عمود الضوء الذي تجري فيه
+     الحركة — ينتهي فوق الشريط فلا يمسّه ولا النصّ؛ rip = بركة قاعدته. داخل الحلقة قرص الصورة نفسه (مُنظَّف من أرقامه). */
+  var SCENES = [
+    { id: 'neon', src: '/assets/fashion/gen-scene.webp?v=3', w: 1024, h: 559,
+      ring: { cx: 512, cy: 297, r: 39.3, sw: 4.2, hole: 43.4 },
+      num: { y: 310.6, size: 37, dw: 13.5, pw: 19 },
+      bar: { x: 424.6, y: 357.3, w: 175, h: 7.8 },
+      cap: { y: 389.2, size: 19.5, dw: 7.1, rest: 77.1 },
+      refl: null,
+      tube: { x: 366, y: 0, w: 293, h: 350, blend: 'screen' },
+      rip: { x: 322, y: 405, w: 380, h: 85, color: 'rgba(190,236,255,.75)' },
+      ink: '#aee8f9', arc: '#e6f8ff', glow: 'rgba(190,235,255,.3)', barFill: '#dbe9ff', capInk: '#a5e1f6', flow: '#d6f2ff' },
+    { id: 'gold', src: '/assets/fashion/gen-scene-gold.webp?v=1', w: 1280, h: 699,
+      ring: { cx: 640, cy: 372, r: 49.6, sw: 6.7, hole: 57.5 },
+      num: { y: 388.2, size: 45, dw: 16.6, pw: 23.5 },
+      bar: { x: 530, y: 446.4, w: 229, h: 10.4 },
+      cap: { y: 487.3, size: 23, dw: 8.9, rest: 96.7 },
+      refl: { y: 572.3, sy: 1.32, ink: 'rgba(214,178,104,.5)' },
+      tube: { x: 455, y: 0, w: 370, h: 440, blend: 'multiply' },
+      rip: null,
+      ink: '#fff3cf', arc: '#fff8e6', glow: 'rgba(255,236,190,.35)', barFill: '#fff6e0', capInk: '#ffeeb8', flow: '#b9822c' }
+  ];
+  KINDS.fashion.scenes = SCENES;
+  /* التبادل: مشهد لكلّ توليد بالدور، ويُتذكّر الدور بين الجلسات */
+  var SCENE_KEY = 'aiapp_fx_scene';
+  var sceneTurn = -1;
+  function nextScene(){
+    if(sceneTurn < 0){ sceneTurn = 0; try{ sceneTurn = parseInt(localStorage.getItem(SCENE_KEY), 10) || 0; }catch(e){ sceneTurn = 0; } }
+    var sc = SCENES[sceneTurn % SCENES.length];
+    sceneTurn = (sceneTurn + 1) % SCENES.length;
+    try{ localStorage.setItem(SCENE_KEY, String(sceneTurn)); }catch(e){ /* guard-ok — بلا تخزين يبدأ الدور من الأوّل في كلّ فتح */ }
+    return sc;
+  }
+  function pc(v, total){ return (Math.round(v / total * 100000) / 1000) + '%'; }
+  function arcLen(sc){ return Math.round(2 * Math.PI * sc.ring.r * 10) / 10; }
+  /* هيكل المشهد: إطار تأثيرات بنسبة الصورة (يطابقها بأيّ مقاس وبأيّ قصّ جانبيّ) فيه الأنبوب والتموّجات وعدّاد الصورة SVG بإحداثيّاتها.
+     داخل الحلقة رقم فقط؛ القوس يمتلئ على حافّتها، والجريان مثقوب عندها فيبقى خلفها. */
+  function sceneHtml(sc){
+    var t = sc.tube, r = sc.ring, L = arcLen(sc);
+    var hole = 'radial-gradient(ellipse ' + pc(r.hole, t.w) + ' ' + pc(r.hole, t.h) + ' at ' + pc(r.cx - t.x, t.w) + ' ' + pc(r.cy - t.y, t.h) + ',transparent 0,transparent 96%,#000 100%)';
+    var rot = ' transform="rotate(-90 ' + r.cx + ' ' + r.cy + ')"';
+    var h = '<div class="genw-frame"><div class="genw-canvas"><div class="genw-fx">'
+      + '<div class="genw-tube" style="left:' + pc(t.x, sc.w) + ';top:' + pc(t.y, sc.h) + ';width:' + pc(t.w, sc.w) + ';height:' + pc(t.h, sc.h) + ';mix-blend-mode:' + t.blend + '">'
+      +   '<span><em style="-webkit-mask-image:' + hole + ';mask-image:' + hole + '"><b></b><b></b><b></b></em></span></div>';
+    if(sc.rip) h += '<div class="genw-rip" style="left:' + pc(sc.rip.x, sc.w) + ';top:' + pc(sc.rip.y, sc.h) + ';width:' + pc(sc.rip.w, sc.w) + ';height:' + pc(sc.rip.h, sc.h) + ';color:' + sc.rip.color + '"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>';
+    h += '<svg class="genw-live" viewBox="0 0 ' + sc.w + ' ' + sc.h + '" aria-hidden="true">';
+    h += '<circle class="genw-arcg" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.glow + '" stroke-width="' + (Math.round(r.sw * 19) / 10) + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
+      + '<circle class="genw-arc" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.arc + '" stroke-width="' + r.sw + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
+      + '<text class="genw-num" x="' + r.cx + '" y="' + sc.num.y + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.num.size + '" fill="' + sc.ink + '">0%</text>'
+      + '<rect class="genw-bar" x="' + sc.bar.x + '" y="' + sc.bar.y + '" width="0" height="' + sc.bar.h + '" rx="' + (sc.bar.h / 2) + '" fill="' + sc.barFill + '"></rect>'
+      + '<text class="genw-cap" x="' + r.cx + '" y="' + sc.cap.y + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.capInk + '">0% COMPLETE</text>';
+    if(sc.refl) h += '<text class="genw-refl" x="' + r.cx + '" y="0" transform="matrix(1 0 0 -' + sc.refl.sy + ' 0 ' + sc.refl.y + ')" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.refl.ink + '">0% COMPLETE</text>';
+    return h + '</svg></div></div></div>'
+      + '<div class="genw-stage"></div>'
+      + '<div class="genw-sub"><span class="genw-timer"></span></div>';
+  }
+  function sceneCss(){
+    return ''
+    + '.genw--scene{width:min(100%,760px);margin:12px auto 10px}'
+    /* النيون بإطار سماويّ ورديّ؛ الذهبيّ يبقى على إطار البطاقة الذهبيّ الأصليّ */
+    + '.genw--neon .genw-frame{animation:genwNeon 2.6s ease-in-out infinite}'
+    + '.genw--neon .genw-frame::before{background:linear-gradient(120deg,transparent 15%,rgba(125,249,255,.15) 30%,#bff6ff 45%,#ff7bd5 55%,rgba(125,249,255,.15) 70%,transparent 85%);background-size:280% 100%}'
+    + '@keyframes genwNeon{0%,100%{box-shadow:0 0 22px -6px rgba(125,249,255,.4),0 0 60px -18px rgba(255,123,213,.25)}'
+    +   '50%{box-shadow:0 0 34px -4px rgba(125,249,255,.6),0 0 90px -14px rgba(255,123,213,.4)}}'
+    + '.genw--scene .genw-canvas,html[data-mode="light"] .genw--scene .genw-canvas{display:block;aspect-ratio:var(--ar);background:#070b22 center/cover no-repeat}'
+    /* الجوّال: إطار أطول يقصّ جانبَي الصورة فيكبر البرج وعدّاده (العدّاد في منتصف العرض) */
+    + '@media (max-width:520px){.genw--scene .genw-canvas,html[data-mode="light"] .genw--scene .genw-canvas{aspect-ratio:5/4}}'
+    /* إطار التأثيرات: بارتفاع المشهد ونسبة الصورة ومنتصفه منتصفها — فما بداخله بنِسَب من الصورة نفسها */
+    + '.genw-fx{position:absolute;top:0;left:50%;height:100%;aspect-ratio:var(--ar);transform:translateX(-50%);pointer-events:none}'
+    /* الحركة داخل الأنبوب (خلف العدّاد): تخفت عند حافّتيه وطرفيه، وثلاث طبقات تنزل بنصف ارتفاعها بالضبط (= عدد صحيح من
+       البلاطات) فتتكرّر بلا قفزة — transform وحده. الدمج (screen/multiply) من بيانات المشهد. */
+    + '.genw-tube{position:absolute;overflow:hidden;z-index:1;'
+    +   '-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%)}'
+    + '.genw-tube span,.genw-tube em{position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden}'
+    + '.genw-tube span{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 7%,#000 93%,transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 7%,#000 93%,transparent 100%)}'
+    + '.genw-tube b{position:absolute;left:0;right:0;top:-100%;height:200%;background-repeat:repeat}'
+    + '.genw-tube b:nth-child(1){background-size:34% 50%;opacity:.8;animation:genwFlow 3.6s linear infinite}'
+    + '.genw-tube b:nth-child(2){background-size:20.5% 25%;opacity:.95;animation:genwFlow 1.25s linear infinite}'
+    + '.genw-tube b:nth-child(3){background-size:14% 16.667%;opacity:.9;animation:genwFlow 2.2s linear infinite}'
+    + '@keyframes genwFlow{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,50%,0)}}'
+    /* تموّجات على بركة قاعدة الأنبوب — حيث ينزل الماء */
+    + '.genw-rip{position:absolute;z-index:1}'
+    + '.genw-rip i{position:absolute;width:13%;aspect-ratio:4/1;border:1px solid currentColor;border-radius:50%;opacity:0;animation:genwRip 1.9s ease-out infinite}'
+    + '.genw-rip i:nth-child(1){left:6%;top:30%}'
+    + '.genw-rip i:nth-child(2){left:24%;top:62%;animation-delay:.45s}'
+    + '.genw-rip i:nth-child(3){left:43%;top:20%;animation-delay:.9s}'
+    + '.genw-rip i:nth-child(4){left:60%;top:66%;animation-delay:.25s}'
+    + '.genw-rip i:nth-child(5){left:78%;top:28%;animation-delay:1.3s}'
+    + '.genw-rip i:nth-child(6){left:14%;top:78%;animation-delay:1.55s}'
+    + '.genw-rip i:nth-child(7){left:50%;top:80%;animation-delay:.7s}'
+    + '@keyframes genwRip{0%{transform:scale(.15);opacity:.85}100%{transform:scale(1.5);opacity:0}}'
+    /* عدّاد الصورة: SVG يملأ إطار التأثيرات وإحداثيّاته إحداثيّات الصورة */
+    + '.genw-live{position:absolute;top:0;left:0;width:100%;height:100%;z-index:3;overflow:visible;direction:ltr}'
+    + '.genw-live circle{fill:none}'
+    + '.genw-arc,.genw-arcg{transition:stroke-dashoffset .25s linear}'
+    + '.genw-num,.genw-cap,.genw-refl{font-family:' + HUD_FONT + ';font-weight:700}'
+    + '.genw-bar{transition:width .25s linear}'
+    + '.genw--scene .genw-stage{text-align:center}'
+    + '.genw--scene .genw-sub{justify-content:center}'
+    /* مربّع الرفع يُخفى ما دام المشهد في مكانه (له display سطريّ فلا بدّ من !important) */
+    + '[data-genw-hide]{display:none !important}'
+    /* أندرويد: بلا دمج ضوئيّ (أخفّ على المعالج الرسوميّ) وبطبقتين */
+    + 'html.omAndroid .genw-tube{mix-blend-mode:normal !important}'
+    + 'html.omAndroid .genw-tube b:nth-child(1){display:none}'
+    + '@media (prefers-reduced-motion:reduce){.genw--neon .genw-frame,.genw-tube b,.genw-rip i{animation:none}.genw-arc,.genw-arcg,.genw-bar{transition:none}}';
+  }
+
   var AR_DIG = '٠١٢٣٤٥٦٧٨٩';
   function toAr(n){ return String(n).replace(/[0-9]/g, function(d){ return AR_DIG[+d]; }); }
   function isAr(){ try{ return (typeof lang !== 'undefined' ? lang : 'ar') === 'ar'; }catch(e){ return true; } }
@@ -129,7 +277,7 @@
     if(document.getElementById(CSS_ID)) return;
     var st = document.createElement('style');
     st.id = CSS_ID;
-    st.textContent = CSS;
+    st.textContent = CSS + sceneCss(); /* v-gen-scene */
     document.head.appendChild(st);
   }
 
@@ -144,9 +292,11 @@
     var expect = cfg.expect[isAr() ? 'ar' : 'en'];
     var slowTxt = cfg.slow[isAr() ? 'ar' : 'en'];
 
+    var sc = cfg.scenes ? nextScene() : null; /* v-gen-scene-exact: مشهد هذا التوليد (بالدور) */
     var root = document.createElement('div');
-    root.className = 'genw' + (cfg.wide ? ' genw--video' : '');
-    root.innerHTML = ''
+    root.className = 'genw' + (cfg.wide ? ' genw--video' : '') + (sc ? ' genw--scene genw--' + sc.id : '');
+    /* v-gen-scene: مشهد بخلفيّة ومطر وعدّاد حيّ — بالخطّافات نفسها فالنبضة أدناه واحدة للنوعين */
+    root.innerHTML = sc ? sceneHtml(sc) : ''
       + '<div class="genw-frame"><div class="genw-canvas">'
       +   '<div class="genw-shimmer"></div>'
       +   (cfg.film ? '<div class="genw-film"></div>' : '')
@@ -157,11 +307,36 @@
       + '<div class="genw-sub"><span class="genw-timer"></span></div>';
 
     var pctEl = root.querySelector('.genw-pct');
-    var pctSmall = pctEl.querySelector('small');
+    var pctSmall = pctEl ? pctEl.querySelector('small') : null;
     var fillEl = root.querySelector('.genw-fill');
     var stageEl = root.querySelector('.genw-stage');
     var timerEl = root.querySelector('.genw-timer');
-    pctSmall.textContent = hint;
+    /* v-gen-scene-exact: عناصر عدّاد الصورة — غائبة في البطاقة الذهبيّة */
+    var arcEl = root.querySelector('.genw-arc'), arcGlow = root.querySelector('.genw-arcg');
+    var numEl = root.querySelector('.genw-num'), barEl = root.querySelector('.genw-bar'), capEl = root.querySelector('.genw-cap'), reflEl = root.querySelector('.genw-refl');
+    if(sc){
+      try{
+        root.style.setProperty('--ar', sc.w + '/' + sc.h);
+        root.querySelector('.genw-canvas').style.backgroundImage = 'url("' + sc.src + '")';
+        var flows = root.querySelectorAll('.genw-tube b');
+        for(var fi = 0; fi < flows.length && fi < FLOW_TILES.length; fi++) flows[fi].style.backgroundImage = flowTile(FLOW_TILES[fi][0], FLOW_TILES[fi][1], FLOW_TILES[fi][2], sc.flow);
+      }catch(e){ /* guard-ok — بلا خلفيّة أو جريان يبقى لون المشهد الداكن والعدّاد يعمل */ }
+    }
+    /* الرقم والقوس والشريط والنصّ (وانعكاسه) — أرقام لاتينيّة كما في تصميم المالك، بعرض حروف الأصل */
+    var sceneArc = sc ? arcLen(sc) : 0;
+    function paintScene(shown){
+      var digits = String(shown).length;
+      numEl.textContent = shown + '%';
+      numEl.setAttribute('textLength', String(Math.round((digits * sc.num.dw + sc.num.pw) * 10) / 10));
+      var off = String(Math.round(sceneArc * (100 - shown)) / 100);
+      arcEl.style.strokeDashoffset = off; arcGlow.style.strokeDashoffset = off;
+      barEl.setAttribute('width', String(Math.round(sc.bar.w * shown) / 100));
+      var capLen = String(Math.round((digits * sc.cap.dw + sc.cap.rest) * 10) / 10);
+      capEl.textContent = shown + '% COMPLETE';
+      capEl.setAttribute('textLength', capLen);
+      if(reflEl){ reflEl.textContent = shown + '% COMPLETE'; reflEl.setAttribute('textLength', capLen); }
+    }
+    if(pctSmall) pctSmall.textContent = hint;
     stageEl.textContent = stages[0];
 
     var stageIdx = 0, slow = false;
@@ -179,8 +354,8 @@
       var el = (Date.now() - t0) / 1000;
       var p = el / cfg.est;
       var shown = Math.min(99, Math.round(eased(p) * 100));
-      pctEl.firstChild.textContent = fmt(shown) + '%';
-      fillEl.style.width = shown + '%';
+      if(sc) paintScene(shown);
+      else { pctEl.firstChild.textContent = fmt(shown) + '%'; fillEl.style.width = shown + '%'; }
       timerEl.textContent = '⏱ ' + fmt(Math.floor(el)) + (isAr() ? 'ث' : 's') + ' — ' + expect;
       if(el > cfg.est * 2 && !slow){
         slow = true;
@@ -212,6 +387,37 @@
   /* زمن بداية كلّ لوحة: يبقى طول التوليد الواحد (الفيديو يبدّل نصّ حالته 🚀→⏳→🎬)
      ولا يُصفَّر إلا حين ينتهي الاشتغال أو تُزال البطاقة. */
   var t0ByPanel = Object.create(null);
+
+  /* v-gen-scene — عطب قائم كشفه المسبار: v-clean-ui يحذف الإيموجي من نصوص الواجهة بعد ٤٠ مث من كتابتها، والرصد
+     يقرأ سطر الحالة بعد ٦٠ مث، فلا يجد بادئة «مشغول» (🎨 / ⏳ / 🚀…) أبدًا — فلم تعد بطاقة أيّ لوحة (فيديو، أنماط،
+     أزياء) تظهر منذ تنظيف الواجهة. الآن تُقرأ الحالة لحظة تغيّرها (قبل التنظيف) ويُحفظ نصّها خامًا ومنظَّفًا؛ اللوحة
+     «مشغولة» ما دام النصّ الظاهر أحدهما. النصّ الخام يبقى مرجع «أيّ بادئة بدأت» (التوليد 🎨 يصعد، التعديل يبقى). */
+  var rawBusy = Object.create(null);
+  var cleanBusy = Object.create(null);
+  function hasPrefix(txt, list){
+    for(var i = 0; txt && list && i < list.length; i++){ if(txt.indexOf(list[i]) === 0) return true; }
+    return false;
+  }
+  function stripEmoji(txt){
+    try{ if(typeof window.__noEmoji === 'function') return String(window.__noEmoji(txt)); }catch(e){ /* guard-ok — بلا منظِّف يبقى النصّ بإيموجيه والبادئة تطابق */ }
+    return String(txt);
+  }
+  function noteBusy(p, txt){ rawBusy[p.id] = txt; cleanBusy[p.id] = stripEmoji(txt); }
+  function panelBusy(p, ptxt){
+    if(hasPrefix(ptxt, p.busy)){ noteBusy(p, ptxt); return true; }
+    if(ptxt && cleanBusy[p.id] && ptxt === cleanBusy[p.id]) return true;
+    delete rawBusy[p.id]; delete cleanBusy[p.id];
+    return false;
+  }
+  /* تُستدعى مع كلّ دفعة تغيّرات — ثلاث قراءات بالمعرّف فقط */
+  function sample(){
+    for(var i = 0; i < PANELS.length; i++){
+      var el = null, txt = '';
+      try{ el = document.querySelector(PANELS[i].sel); txt = el ? String(el.textContent || '').trim() : ''; }catch(e){ txt = ''; }
+      if(hasPrefix(txt, PANELS[i].busy)) noteBusy(PANELS[i], txt);
+    }
+  }
+
   function scan(){
     if(!document.body) return;
     var active = Object.create(null);
@@ -264,24 +470,51 @@
       if(!pel || !pel.parentNode) continue;
       var ptxt = '';
       try{ ptxt = String(pel.textContent || '').trim(); }catch(e){ ptxt = ''; }
-      var busy = false;
-      for(var bi = 0; ptxt && bi < p.busy.length; bi++){
-        if(ptxt.indexOf(p.busy[bi]) === 0){ busy = true; break; }
-      }
+      var busy = panelBusy(p, ptxt); /* v-gen-scene: يصمد لحذف الإيموجي من سطر الحالة */
       var card = null;
-      try{ card = pel.parentNode.querySelector('.genw[data-genw-panel="' + p.id + '"]'); }catch(e){ card = null; }
+      var scopeEl = pel.parentNode; /* v-gen-scene: بطاقة تُركَّب أعلى الاستوديو ليست ابنة حاوية سطر الحالة بالضرورة */
+      if(p.scope){ try{ scopeEl = document.querySelector(p.scope) || pel.parentNode; }catch(e){ scopeEl = pel.parentNode; } }
+      try{ card = scopeEl.querySelector('.genw[data-genw-panel="' + p.id + '"]'); }catch(e){ card = null; }
       if(busy && !card){
         if(!t0ByPanel[p.id]) t0ByPanel[p.id] = Date.now();
         try{
           var node = render({ t0: t0ByPanel[p.id], kind: p.kind });
           node.setAttribute('data-genw-panel', p.id);
-          pel.parentNode.insertBefore(node, pel.nextSibling);
+          var mp = mountPoint(p, pel, rawBusy[p.id] || ptxt, document);
+          if(mp.top) node.setAttribute('data-genw-top', '1');
+          mp.parent.insertBefore(node, mp.before);
+          /* فوق = خارج مجال النظر (المستخدم عند زرّ «صمم» أسفل النموذج) — نصعد إليها */
+          if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
         }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ /* العرض تجميليّ */ } }
       } else if(!busy && card){
         try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ /* العرض تجميليّ */ } }
         delete t0ByPanel[p.id];
       }
+      /* v-gen-scene-exact: المشهد في مكان مربّع الرفع — المربّع مخفيّ ما دامت بطاقة «فوق» موجودة، ويعود فور رفعها */
+      if(p.hideSel){
+        try{
+          var hideEl = scopeEl.querySelector(p.hideSel);
+          var topCard = scopeEl.querySelector('.genw[data-genw-panel="' + p.id + '"][data-genw-top]');
+          if(hideEl){
+            if(topCard && !hideEl.hasAttribute('data-genw-hide')) hideEl.setAttribute('data-genw-hide', '1');
+            else if(!topCard && hideEl.hasAttribute('data-genw-hide')) hideEl.removeAttribute('data-genw-hide');
+          }
+        }catch(e){ try{ __swallow(e, 'gen-wait:hide'); }catch(_){ /* العرض تجميليّ */ } }
+      }
     }
+  }
+
+  /* v-gen-scene-exact: أين تُركَّب بطاقة اللوحة — { parent, before, top }. اللوحة التي لها topSel وبدأ نصّ حالتها بإحدى
+     بادئات top تُركَّب قبل ذلك العنصر نفسه (لوح الصورة: فتقع مكان مربّع الرفع المخفيّ)؛ غيرها — وأيّ مرساة غائبة —
+     بعد سطر الحالة كما كان. */
+  function mountPoint(p, pel, ptxt, doc){
+    var below = { parent: pel.parentNode, before: pel.nextSibling, top: false };
+    if(!p || !p.topSel || !p.top) return below;
+    if(!hasPrefix(String(ptxt || ''), p.top)) return below;
+    var anchor = null;
+    try{ anchor = (doc || document).querySelector(p.topSel); }catch(e){ anchor = null; }
+    if(!anchor || !anchor.parentNode) return below;
+    return { parent: anchor.parentNode, before: anchor, top: true };
   }
 
   var scheduled = false;
@@ -293,10 +526,28 @@
 
   if(typeof MutationObserver !== 'undefined' && document.documentElement){
     try{
-      new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+      new MutationObserver(function(){ sample(); schedule(); }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     }catch(e){ try{ __swallow(e, 'gen-wait:observe'); }catch(_){ /* بلا رصد = بلا بطاقة فقط */ } }
   }
   schedule();
 
+  /* v-gen-scene: خلفيّة المشهد تُحمَّل عند فتح استوديو الأزياء لا عند أوّل توليد — فلا يظهر المشهد فارغًا لحظةً */
+  var scenePreloaded = false;
+  function preloadScenes(){
+    if(scenePreloaded) return;
+    scenePreloaded = true;
+    for(var k = 0; k < SCENES.length; k++){ try{ (new Image()).src = SCENES[k].src; }catch(e){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+  }
+  if(document.addEventListener){
+    document.addEventListener('click', function(e){
+      var tg = e && e.target;
+      if(tg && tg.closest && tg.closest('#btnFashionAI')) preloadScenes();
+    }, true);
+  }
+
   window.omranGenWait = { render: render, scan: scan, _eased: eased, PHRASES: PHRASES, PANELS: PANELS, KINDS: KINDS };
+  window.omranGenWait._mountPoint = mountPoint; /* v-gen-scene: للاختبار */
+  window.omranGenWait._panelBusy = panelBusy;
+  window.omranGenWait._sample = sample;
+  window.omranGenWait._scenes = SCENES; window.omranGenWait._nextScene = nextScene; window.omranGenWait._sceneHtml = sceneHtml; /* v-gen-scene-exact: للاختبار */
 })();

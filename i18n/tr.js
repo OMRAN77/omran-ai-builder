@@ -1126,6 +1126,22 @@ Object.assign(I18N['tr'], {
   vclFail: "Bu video bu cihazda iyileştirilemedi",
   vclNote: "Gürültüyü azaltır, kenarları netleştirir ve renkleri iyileştirir; ağır bulanıklığı veya kamera titremesini düzeltmez",
   vclLoading: "İyileştirme aracı hazırlanıyor (yalnızca ilk sefer)…",
+  vclPro: "Profesyonel iyileştirme",
+  vclProNotice: "Profesyonel iyileştirme cihazında yapılmaz: video harici bir işleme hizmetine yüklenir (yüklenen dosyanın iki saat içinde, sonucun da iki gün içinde silinmesini talep ederiz; işleme hizmetinin neleri sakladığı bizim kontrolümüzde değildir). Saniye başına {n} puan, en az {m} puan, en fazla {s} saniye — sen onaylamadan hiç puan düşülmez.",
+  vclProUploading: "Video yükleniyor ve kontrol ediliyor… henüz hiç puan düşülmedi",
+  vclProQuote: "Video süresi {s} sn — maliyet {n} puan (bakiyen: {p}). Onayladıktan sonra iptal edilemez.",
+  vclProConfirm: "Onayla ve {n} puan harca",
+  vclProWorking: "Profesyonel iyileştirme sürüyor… birkaç dakika sürebilir; bu pencereyi kapatıp daha sonra dönebilirsin",
+  vclProDone: "{n} puan düşüldü · {s} sn",
+  vclProLater: "İyileştirme hâlâ sürüyor — sonucu görmek için daha sonra bu sekmeye dön (iki gün saklanır)",
+  vclProNoPoints: "{p} puanın var; bu video için {n} gerekiyor.",
+  vclProTooLong: "Profesyonel iyileştirme en fazla {s} saniye kabul eder — önce videoyu kırp",
+  vclProSpec: "Profesyonel iyileştirme, 1920×1080 ve saniyede 30 kareye kadar MP4 veya MOV kabul eder — bu video bu sınırların dışında. Hiç puan düşülmedi.",
+  vclProLimit: "Bugünkü profesyonel iyileştirme sınırına ulaştın — yarın tekrar dene",
+  vclProUnavailable: "Profesyonel iyileştirme geçici olarak kullanılamıyor — hiç puan düşülmedi",
+  vclProUploadFail: "Video yüklenemedi — bağlantını kontrol edip tekrar dene. Hiç puan düşülmedi.",
+  vclProFail: "Profesyonel iyileştirme başarısız oldu — hiç puan düşülmedi",
+  vclProRefunded: "Bu video iyileştirilemedi — {n} puan bakiyene iade edildi",
   fashionEngineLabel: "🎨 Görsel motoru",
   fashionEngineGemini: "Gemini — yüzü en iyi koruyan (varsayılan)",
   fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT görsel motoru",
@@ -1236,3 +1252,5 @@ Object.assign(I18N["tr"], {"pdfDocPage": "⏳ Sayfa {i} / {n} hazırlanıyor…"
 /* v-inspire */ Object.assign(I18N['tr'], {"inspTabInspire":"İlham","inspTabQuick":"Hızlı öneriler","inspCityTitle":"Gerçek şehrin","inspCitySub":"Açık haritalardan gerçek mahallen üzerine kurulan 3D deneyimler. Birini seç, önizlemede hemen açılsın — sonra içine istediğin mahalle ya da şehri yaz.","inspLoading":"Açılıyor…","inspFail":"Şu an açılamadı — tekrar dene"});
 /* v-chat-edit */ Object.assign(I18N['tr'], {"editApplied": "Değişiklikler tasarıma uygulandı ({n}).", "editFailed": "Değişikliği uygulamadım — eski metnin bir kısmı mevcut tasarımla eşleşmedi, tasarım aynen kaldı. Lütfen tekrar isteyin.", "editTruncated": "Yanıt dosya tamamlanmadan kesildi, bu yüzden tasarım olduğu gibi bırakıldı.", "editPartial": "Değişikliği uygulamadım — yanıt eksik ya da hatalı biçimde geldi, tasarım aynen kaldı. Lütfen tekrar isteyin.", "editBroke": "Değişikliği uygulamadım — tasarımın kodunu bozacaktı, tasarım aynen kaldı. Lütfen tekrar isteyin."});
 /* v-owner-effort — منتقي المالك: الجهد ونماذج أخرى */ Object.assign(I18N['tr'], {"effortLabel": "Efor", "effortAuto": "Otomatik", "effortLow": "Düşük", "effortMedium": "Orta", "effortHigh": "Yüksek", "effortExtra": "Ekstra", "effortMax": "Maksimum", "otherModelsLabel": "Diğer modeller"});
+/* v-app-director — قسم «مخرج التطبيق» للمالك (١٤ لغة) */ Object.assign(I18N['tr'], {"vdTab": "Uygulama Yönetmeni", "vdSub": "İstediğin videoyu anlat; dili, konuşmacıyı ve süreyi seç — fikri ve senaryoyu yazar, gerçek uygulama ekranlarını çeker, stil örneklerini hazırlar, seslendirmeyi kaydeder ve videoyu tamamen birleştirir.", "vdPh": "Örnek: Maha'nın anlattığı, portre stilleri hakkında bir video", "vdLang": "Dil", "vdSpeaker": "Konuşmacı", "vdMinutes": "Süre (dakika)", "vdRef": "Stil örnekleri için referans fotoğrafın (isteğe bağlı)", "vdGo": "Videoyu yap", "vdStepPlan": "Fikir ve senaryo yazılıyor", "vdStepShots": "Uygulama ekranları çekiliyor", "vdStepSamples": "Stil örnekleri hazırlanıyor", "vdStepVoice": "Seslendirme kaydediliyor", "vdStepJoin": "Video birleştiriliyor", "vdScene": "Sahne {i} / {n}", "vdQueued": "Köprüde sırada bekliyor", "vdDone": "Hazır — {m} dk {s} sn", "vdDownload": "Videoyu indir", "vdFail": "Video tamamlanamadı", "vdFailPlan": "Senaryo yazılamadı — sunucudaki yönetmen anahtarını kontrol et", "vdFailBridge": "Köprüye ulaşılamadı — sunucudaki köprü adresini ve gizli anahtarını kontrol et", "vdFailRender": "Köprüde çekim veya birleştirme başarısız oldu", "vdSaved": "Videolarım'a kaydedildi", "vdWarnSamples": "{n} örnek üretilemedi ve ekran görüntüsüne dönüştü", "vdEmpty": "Önce isteği yaz", "vdMaha": "Maha", "vdAbdullah": "Abdullah"});
+/* v-img-format: تحويل الصيغة محلّيًّا */ Object.assign(I18N['tr'], {"imgConvertDone": "✅ {fmt} biçimine dönüştürdüm — aynı görsel, hiçbir değişiklik yok, kaydetmeye hazır.", "imgConvertSame": "Görsel zaten {fmt} biçiminde — işte, kaydetmeye hazır.", "imgConvertAsk": "Hangi biçimi istersin? PNG (en iyi kalite), JPG (daha küçük dosya) veya WEBP (web siteleri için daha hafif). Örneğin: jpg'ye çevir", "imgConvertGuess": "(«{word}» ifadesini {fmt} olarak anladım — başka bir biçim için: jpg'ye çevir de)", "imgConvertFail": "Bu tarayıcı biçimi dönüştüremedi — PNG veya JPG dene."});

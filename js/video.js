@@ -17,6 +17,30 @@
     return ['-i',o.input,'-t',String(o.maxSec||60),'-map','0:v:0','-map','0:a:0?','-vf',vf.join(','),'-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p','-c:a','aac','-b:a','160k','-movflags','+faststart',o.output||'out.mp4'];
   }
   try{ window.__vmkCleanArgs=cleanArgs; }catch(e){ /* guard-ok — بيئة بلا window */ }
+  /* v-video-enhance-pro (المالك بعد تجربة المسار المجّانيّ: «مش قوي بما فيه الكفاية… مش الجودة المطلوبة» ثمّ «اريده في التطبيق»):
+     زرّ «تحسين احترافي» في القسم نفسه — ترميم على الخادم بالنقاط (api/_lib/video-enhance.js). المسار المجّانيّ أعلاه لا يتغيّر ولا
+     يمرّ بالخادم. هذه الدوالّ الصرفة تُكشف للاختبار: estimate تقدير النقاط قبل الرفع (الحكم لقياس الخادم)، check فحص محلّيّ يُرجع
+     مفتاح نصّ الرفض أو فراغًا (فلا يُرفع ملفّ سيُرفض)، errKey رمز الخادم ← مفتاح النصّ.
+     info.tall===false = الخادم يقول إنّ المخرج الأعلى من 1080 مغلق لهذا الحساب: قاعدته نفسها هنا (العرض ≤ 1920 والارتفاع ≤ 1080) قبل
+     الرفع — المقطع الطوليّ كان يُرفع كاملًا ويأكل رفعة من حدّ اليوم ثمّ يُرفض. جواب بلا الحقل يبقى على القاعدة العامّة. */
+  function proEstimate(info,sec){
+    var r=info?+info.rate:0, mn=info?+info.minSec:0, s=+sec;
+    return (r>0&&mn>0&&s>0)?r*Math.max(mn,Math.ceil(s-0.1)):0;
+  }
+  function proCheck(info,file,meta){
+    if(!info||!file) return '';
+    var ty=String(file.type||'').toLowerCase().split(';')[0].trim();
+    if(!/\.(mp4|mov|m4v)$/i.test(file.name||'')&&!/^video\/(mp4|quicktime|x-m4v)$/.test(ty)) return 'vclProSpec';
+    if(file.size>info.maxMB*1048576) return 'vclTooBig';
+    if(meta&&meta.sec>info.maxSec+0.1) return 'vclProTooLong';
+    if(meta&&meta.w&&meta.h&&info.tall===false&&(meta.w>1920||meta.h>1080)) return 'vclProSpec';
+    if(meta&&meta.w&&meta.h&&(Math.min(meta.w,meta.h)>1080||Math.max(meta.w,meta.h)>1920)) return 'vclProSpec';
+    return '';
+  }
+  var PRO_ERR={points_insufficient:'vclProNoPoints',too_big:'vclTooBig',too_long:'vclProTooLong',fps:'vclProSpec',resolution:'vclProSpec',format:'vclProSpec',
+    limit:'vclProLimit',unavailable:'vclProUnavailable',upload:'vclProUploadFail',not_uploaded:'vclProUploadFail'};
+  function proErrKey(code){ var c=String(code||''); return Object.prototype.hasOwnProperty.call(PRO_ERR,c)?PRO_ERR[c]:'vclProFail'; }
+  try{ window.__vmkPro={estimate:proEstimate,check:proCheck,errKey:proErrKey}; }catch(e){ /* guard-ok — بيئة بلا window */ }
   var M=document.getElementById('videoMakerModal'); if(!M) return;
   var G=[['videoMakerMode','card'],['videoMakerStyle','pill'],['videoMakerDuration','pill'],['videoMakerRatio','pill']];
   var PTS={canvas:0,runway:60,hybrid:60,veo:400,actor:400};
@@ -110,6 +134,7 @@
   function tabLabel(v){
     if(v==='trend') return L('videoTabTrends');
     if(v==='clean') return L('videoTabClean');
+    if(v==='director') return L('vdTab')||'مخرج التطبيق';
     var sel=id('videoMakerMode'); if(!sel) return v;
     for(var i=0;i<sel.options.length;i++) if(sel.options[i].value===v){
       var t=(sel.options[i].textContent||'').trim(), m=t.match(ICO); t=short(t.slice(m?m[1].length:0));
@@ -126,16 +151,22 @@
     }
     if(tb.previousElementSibling!==card.firstElementChild) card.insertBefore(tb,card.firstElementChild.nextSibling);
     tb.innerHTML='';
-    TABS.forEach(function(v){
+    /* v-app-director: قسم «مخرج التطبيق» آخر الشريط للمالك وحده — لغير المالك لا زرّ ولا لوحة في DOM */
+    TABS.concat(drOwner()?['director']:[]).forEach(function(v){
       var b=document.createElement('button'); b.type='button'; b.className='vmk-tab'; b.dataset.tab=v;
-      b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(v===tab)); b.textContent=tabLabel(v); tb.appendChild(b);
+      b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(v===tab));
+      /* v-vmk-tab-art (المالك ١١ أكتوبر بلوحة التبويبات: «شوف الصور مقاس واحد كلهم»): صورة مربّعة واحدة المقاس فوق اسم كلّ قسم */
+      var im=document.createElement('img'); im.className='vmk-tab-img'; im.alt=''; im.loading='lazy'; im.src='/assets/videos/tabs/'+v+'.jpg?v=2';
+      var lb=document.createElement('span'); lb.className='vmk-tab-lbl'; lb.textContent=tabLabel(v);
+      b.appendChild(im); b.appendChild(lb); tb.appendChild(b);
     });
     card.classList.toggle('vmk-tab-trend',tab==='trend');
     card.classList.toggle('vmk-tab-clean',tab==='clean');
+    card.classList.toggle('vmk-tab-director',tab==='director');
   }
   function setTab(v){
-    if(TABS.indexOf(v)<0) return; tab=v;
-    var sel=id('videoMakerMode');
+    if(TABS.indexOf(v)<0&&!(v==='director'&&drOwner())) return; tab=v;
+    var sel=(v==='director')?null:id('videoMakerMode'); /* v-app-director: المخرج لا يمسّ الوضع */
     if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
     buildTabs(); sync(); scrub();
   }
@@ -261,9 +292,192 @@
       ex.style.display=box.children.length?'':'none';
     }
   }
+  /* ═══ v-app-director (المالك: «سوّ لي أو عطني فكرة فيديو عن أنماط الصور ويعطيني فيديو عنه كامل… فيديو عن التطبيق ١٠ دقائق مع مها أو
+     عبدالله وبأيّ لغة أريدها» — «نفس مكان الفيديوهات، مخرج التطبيق، بدون أيقونات، فقط للمالك»): قسم للمالك وحده يأخذ طلبًا بالكلام
+     ويسلّم فيديو كاملًا عن التطبيق. المتصفّح يقود المسار: الخطّة من الخادم (action=app-director-plan) ← نماذج الأنماط بمسار الصور القائم
+     ← التعليق بصوت مها/عبدالله (action=tts) ← رمز مهمّة (action=app-director-token) ← جسر Railway يصوّر الشاشات ويدمج (POST /render)
+     ← استطلاع كلّ ٣ ثوانٍ ← معاينة وتحميل وحفظ. لا سرّ ولا عنوان جسر في العميل: يعودان مع الرمز. ═══ */
+  function drOwner(){ try{ return String((typeof authGet==='function')?(authGet('aiapp_username')||''):(localStorage.getItem('aiapp_username')||'')).trim().toLowerCase()==='omran'; }catch(e){ return false; } }
+  var DR_LANGS=[['ar','العربية'],['en','English'],['fr','Français'],['es','Español'],['tr','Türkçe'],['ru','Русский'],['zh','中文'],['hi','हिन्दी'],['ur','اردو'],['bn','বাংলা'],['ne','नेपाली'],['ml','മലയാളം'],['id','Bahasa Indonesia'],['fil','Filipino']];
+  var DR={busy:false,run:0,ref:'',refMime:'',out:'',lang:''};
+  function drTok(){ return (typeof authGet==='function')?(authGet('aiapp_auth_token')||''):''; }
+  function drUiLang(){ try{ return localStorage.getItem('aiapp_lang')||'ar'; }catch(e){ return 'ar'; } }
+  function drT(k,vars){ var v=L(k)||k; Object.keys(vars||{}).forEach(function(x){ v=v.split('{'+x+'}').join(String(vars[x])); }); return v; }
+  function buildDirector(){
+    var card=M.firstElementChild; if(!card||!drOwner()||id('vmkDirector')) return;
+    var box=document.createElement('div'); box.id='vmkDirector'; box.className='vmk-dir';
+    box.innerHTML='<div class="vmk-dir-head"><b></b><p></p></div>'
+      +'<textarea id="vdReq" rows="3" maxlength="600"></textarea>'
+      +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label></div>'
+      +'<label class="vmk-dir-ref"><input type="file" accept="image/*" id="vdRef"><img id="vdRefImg" alt="" hidden><span></span></label>'
+      +'<button type="button" id="vdGo"></button>'
+      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','shots','samples','voice','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small></li>'; }).join('')+'</ol>'
+      +'<p class="vmk-dir-msg" id="vdMsg"></p>'
+      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a></div>';
+    var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
+    var ls=box.querySelector('#vdLang'); DR_LANGS.forEach(function(l){ var o=document.createElement('option'); o.value=l[0]; o.textContent=l[1]; ls.appendChild(o); });
+    ls.value=DR_LANGS.some(function(l){ return l[0]===drUiLang(); })?drUiLang():'ar';
+    var ms=box.querySelector('#vdMin'); for(var i=1;i<=10;i++){ var o=document.createElement('option'); o.value=String(i); o.textContent=String(i); ms.appendChild(o); } ms.value='2';
+    box.querySelector('#vdRef').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0]; if(f) drPickRef(f); });
+    box.querySelector('#vdGo').addEventListener('click',drRun);
+    box.querySelector('#vdReq').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); drRun(); } });
+  }
+  function syncDirector(){
+    var box=id('vmkDirector'); if(!box) return;
+    box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=L('vdSub');
+    box.querySelector('#vdReq').placeholder=L('vdPh');
+    var labs=box.querySelectorAll('.vmk-dir-row label>span'); labs[0].textContent=L('vdLang'); labs[1].textContent=L('vdSpeaker'); labs[2].textContent=L('vdMinutes');
+    var sp=box.querySelector('#vdSpeaker'); sp.options[0].textContent=L('vdMaha')||'مها'; sp.options[1].textContent=L('vdAbdullah')||'عبدالله';
+    box.querySelector('.vmk-dir-ref span').textContent=L('vdRef');
+    box.querySelector('#vdGo').textContent=L('vdGo'); box.querySelector('#vdGo').disabled=DR.busy;
+    var names={plan:'vdStepPlan',shots:'vdStepShots',samples:'vdStepSamples',voice:'vdStepVoice',join:'vdStepJoin'};
+    [].forEach.call(box.querySelectorAll('#vdSteps li'),function(li){ li.querySelector('b').textContent=L(names[li.dataset.step]); });
+    box.querySelector('#vdDl').textContent=L('vdDownload');
+  }
+  function drStep(k,state,note){ var li=M.querySelector('#vdSteps li[data-step="'+k+'"]'); if(!li) return; li.classList.remove('on','ok','err'); if(state) li.classList.add(state); li.querySelector('small').textContent=note||''; }
+  function drMsg(t,err){ var m=id('vdMsg'); if(m){ m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':''); } }
+  function drReset(){ ['plan','shots','samples','voice','join'].forEach(function(k){ drStep(k,'',''); }); drMsg(''); var r=id('vdRes'); if(r) r.classList.remove('has'); }
+  function drPickRef(f){
+    var r=new FileReader();
+    r.onload=function(){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var w=img.width,h=img.height,MAX=1400; if(Math.max(w,h)>MAX){ var k=MAX/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+          var c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h);
+          var du=c.toDataURL('image/jpeg',0.86); DR.ref=du.split(',')[1]; DR.refMime='image/jpeg';
+          var pv=id('vdRefImg'); if(pv){ pv.src=du; pv.hidden=false; }
+        }catch(e){ DR.ref=''; try{ __swallow(e,'director:ref'); }catch(x){ /* guard-ok — لا مسجّل */ } }
+      };
+      img.src=String(r.result||'');
+    };
+    r.readAsDataURL(f);
+  }
+  function drPool(items,n,fn){
+    var next=0; function worker(){ if(next>=items.length) return Promise.resolve(); var i=next++; return Promise.resolve().then(function(){ return fn(items[i],i); }).then(worker); }
+    var ws=[]; for(var k=0;k<Math.min(n,items.length);k++) ws.push(worker()); return Promise.all(ws);
+  }
+  function drB64(blob){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ res(String(r.result||'').split(',')[1]||''); }; r.onerror=function(){ rej(r.error||new Error('read')); }; r.readAsDataURL(blob); }); }
+  function drJson(url,body){
+    return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().catch(function(){ return null; }).then(function(j){ return {ok:r.ok,status:r.status,json:j}; }); });
+  }
+  /* أسماء الشاشات باللغة المطلوبة من قاموس الواجهة نفسه (يُحمَّل ملفّ اللغة إن لزم) — الخادم يسمّي بها الميزات في السيناريو */
+  function drLabels(lg){
+    var p=(typeof loadLangFile==='function')?loadLangFile(lg):Promise.resolve();
+    return Promise.resolve(p).catch(function(){ /* guard-ok — بلا ملفّ لغة تُستعمل الأسماء الاحتياطيّة في الخادم */ }).then(function(){
+      var d=(typeof window.__i18nDict==='function')?window.__i18nDict(lg):((window.I18N&&window.I18N[lg])||{}); var out={};
+      Object.keys(d||{}).forEach(function(k){ if(/Title$|^tcSub_|^videoTab|^videoMode|^themeSectionLabel$|^adStudioHint$|^religionModalTitle$|^mahaTitle$/.test(k)&&typeof d[k]==='string') out[k]=d[k].slice(0,120); });
+      return out;
+    });
+  }
+  function drFail(code){ return Object.assign(new Error(code),{code:code}); }
+  async function drRun(){
+    if(DR.busy||!drOwner()) return;
+    var req=(id('vdReq').value||'').trim(); if(!req){ drMsg(L('vdEmpty'),true); return; }
+    var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;
+    var my=++DR.run, tk=drTok();
+    DR.busy=true; DR.lang=lang; syncDirector(); drReset();
+    try{
+      /* ١) الفكرة والسيناريو */
+      drStep('plan','on');
+      var labels=await drLabels(lang); if(my!==DR.run) return;
+      var pr=await drJson('/api/ai?action=app-director-plan',{request:req,lang:lang,speaker:speaker,minutes:minutes,token:tk,labels:labels}); if(my!==DR.run) return;
+      if(!pr.ok||!pr.json||!pr.json.plan){ drStep('plan','err'); throw drFail('plan '+pr.status+(pr.json&&pr.json.error?' '+pr.json.error:'')); }
+      var plan=pr.json.plan, cat=pr.json.catalog||{screens:[],styles:{}}, screens={}; (cat.screens||[]).forEach(function(s){ screens[s.id]=s; });
+      var scenes=plan.scenes.map(function(sc){
+        var o={type:sc.type,target:sc.target,text:sc.text||'',sub:'',narration:sc.narration||'',seconds:sc.seconds||8,steps:null,image:'',mime:'',audio:'',prompt:''};
+        if(o.type==='title'){ o.text=sc.text||plan.title; o.sub=sc.highlight||''; }
+        if(o.type==='screen'){ var scr=screens[o.target]||screens.home||{steps:[]}; o.steps=scr.steps||[]; }
+        if(o.type==='style_sample'){ var st=(cat.styles||{})[o.target]; o.prompt=st?st.prompt:''; }
+        return o;
+      });
+      drStep('plan','ok',plan.title+' · '+drT('vdScene',{i:scenes.length,n:scenes.length}));
+      /* ٢) نماذج الأنماط بمسار الصور القائم (صورة المالك مرجعًا إن أرفقها) — المالك بلا نقاط */
+      var samples=scenes.filter(function(s){ return s.type==='style_sample'; });
+      var failed=0;
+      if(samples.length){
+        drStep('samples','on',drT('vdScene',{i:0,n:samples.length}));
+        var doneS=0;
+        await drPool(samples,2,async function(s){
+          var r=null;
+          try{
+            r=DR.ref?await drJson('/api/portrait-style',{imageBase64:DR.ref,mimeType:DR.refMime,style:s.target,token:tk})
+                    :await drJson('/api/media?action=maha-image',{prompt:s.prompt||('portrait in the '+s.target+' style'),userText:'',token:tk,guestId:(window.getGuestId?window.getGuestId():'')});
+          }catch(e){ r=null; try{ __swallow(e,'director:sample'); }catch(z){ /* guard-ok — لا مسجّل */ } }
+          if(my!==DR.run) return;
+          if(r&&r.ok&&r.json&&r.json.imageBase64){ s.image=r.json.imageBase64; s.mime=r.json.mimeType||'image/png'; }
+          else { failed++; s.type='screen'; s.target='portrait'; s.steps=(screens.portrait||{steps:[]}).steps; s.image=''; }
+          doneS++; drStep('samples','on',drT('vdScene',{i:doneS,n:samples.length}));
+        });
+        if(my!==DR.run) return;
+        drStep('samples','ok',failed?drT('vdWarnSamples',{n:failed}):'');
+      } else drStep('samples','ok','');
+      /* ٣) التعليق لكلّ مشهد بصوت مها/عبدالله باللغة المختارة (المسار نفسه الذي يستعمله الصانع) */
+      var voiced=scenes.filter(function(s){ return !!s.narration; });
+      drStep('voice','on',drT('vdScene',{i:0,n:voiced.length}));
+      var doneV=0;
+      await drPool(voiced,2,async function(s){
+        for(var att=1;att<=2&&!s.audio;att++){
+          try{
+            var ctl=new AbortController(); var tm=setTimeout(function(){ ctl.abort(); },60000);
+            var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s.narration,voice:'maha',lang:lang,gender:speaker,token:tk}),signal:ctl.signal});
+            clearTimeout(tm);
+            if(r.ok){ var b=await r.blob(); if(b.size>200) s.audio=await drB64(b); }
+          }catch(e){ try{ __swallow(e,'director:tts'); }catch(z){ /* guard-ok — لا مسجّل */ } }
+          if(!s.audio&&att===1) await new Promise(function(x){ setTimeout(x,2500); });
+        }
+        doneV++; if(my===DR.run) drStep('voice','on',drT('vdScene',{i:doneV,n:voiced.length}));
+      });
+      if(my!==DR.run) return;
+      drStep('voice','ok','');
+      /* ٤) رمز المهمّة وعنوان الجسر من الخادم، ثمّ المانيفست إلى الجسر مباشرة */
+      drStep('shots','on');
+      var tr=await drJson('/api/ai?action=app-director-token',{token:tk}); if(my!==DR.run) return;
+      if(!tr.ok||!tr.json||!tr.json.token||!tr.json.bridge){ drStep('shots','err'); throw drFail('token '+tr.status+(tr.json&&tr.json.error?' '+tr.json.error:'')); }
+      var bridge=tr.json.bridge, jt=tr.json.token, auth={Authorization:'Bearer '+jt};
+      var manifest={lang:lang,title:plan.title,scenes:scenes.map(function(s){ return {type:s.type,target:s.target,text:s.text,sub:s.sub,steps:s.steps||undefined,image:s.image||undefined,mime:s.mime||undefined,audio:s.audio||undefined,seconds:s.seconds}; })};
+      var post;
+      try{ post=await fetch(bridge+'/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},auth),body:JSON.stringify(manifest)}); }
+      catch(e){ drStep('shots','err'); throw drFail('bridge offline'); }
+      var pj=await post.json().catch(function(){ return null; }); if(my!==DR.run) return;
+      if(!post.ok||!pj||!pj.jobId){ drStep('shots','err'); throw drFail('render '+post.status+(pj&&pj.error?' '+pj.error:'')); }
+      var jobId=pj.jobId, st=pj, url='';
+      /* ٥) الاستطلاع كلّ ٣ ثوانٍ: التصوير ثمّ الدمج */
+      while(my===DR.run){
+        await new Promise(function(x){ setTimeout(x,3000); }); if(my!==DR.run) return;
+        var sr; try{ sr=await fetch(bridge+'/render/'+encodeURIComponent(jobId),{headers:auth}); st=await sr.json(); }catch(e){ continue; }
+        if(!st||typeof st!=='object') continue;
+        if(st.state==='queued'){ drStep('shots','on',L('vdQueued')); continue; }
+        if(st.step==='assets'||st.step==='capture'){ drStep('shots','on',st.total?drT('vdScene',{i:st.done||0,n:st.total}):''); }
+        if(st.step==='segments'||st.step==='join'){ drStep('shots','ok',''); drStep('join','on',st.step==='segments'&&st.total?drT('vdScene',{i:st.done||0,n:st.total}):''); }
+        if(st.state==='error'){ drStep(st.step==='capture'||st.step==='assets'?'shots':'join','err'); throw drFail('render '+(st.step||'')+' '+(st.message||'')); }
+        if(st.state==='done'){ drStep('shots','ok',''); drStep('join','ok',''); url=bridge+st.url; break; }
+      }
+      if(my!==DR.run||!url) return;
+      /* ٦) الفيديو: معاينة وتحميل وحفظ */
+      var vr=await fetch(url,{headers:auth}); if(!vr.ok) throw drFail('download '+vr.status);
+      var blob=await vr.blob(); if(my!==DR.run) return;
+      if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ /* guard-ok — رابط زال */ } }
+      DR.out=URL.createObjectURL(blob);
+      var vid=id('vdVideo'), dl=id('vdDl'), res=id('vdRes');
+      if(vid) vid.src=DR.out; if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-app-director-'+lang+'.mp4'); } if(res) res.classList.add('has');
+      var secs=Number(st.seconds)||0; drMsg(drT('vdDone',{m:Math.floor(secs/60),s:secs%60})+(typeof window.autoSaveVideo==='function'?' · '+L('vdSaved'):''));
+      if(typeof window.autoSaveVideo==='function') window.autoSaveVideo(DR.out,'omran-app-director-'+lang+'.mp4');
+    }catch(err){
+      if(my!==DR.run) return;
+      var code=String((err&&err.code)||'');
+      var key=/^plan/.test(code)?'vdFailPlan':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
+      drMsg(L('vdFail')+' — '+L(key)+(code?' ('+code.slice(0,80)+')':''),true);
+      try{ __swallow(err,'director:run'); }catch(e){ /* guard-ok — لا مسجّل */ }
+    }finally{ if(my===DR.run){ DR.busy=false; syncDirector(); } }
+  }
   /* ═══ v-vmk-clean-video: قسم «تحسين فيديو» ═══ */
   var CL={file:null,orig:'',out:'',meta:null,level:'light',busy:false,ff:null,ffLoading:null,run:0,msg:null,view:null,showing:'after'};
   var CL_MAX_SEC=60;
+  /* v-video-enhance-pro: حالة «تحسين احترافي» — info إعداد الخادم لهذا الحساب، stage ''|'up' (رفع وفحص، يُلغى)|'run' (أُرسل التأكيد، لا إلغاء)،
+     id/up/quote مهمّة الملفّ المختار، parked مهمّة تُركت تكمل على الخادم، last آخر محاولة استئناف، job المهمّة المتابَعة الآن (ليست دائمًا
+     مهمّة الملفّ المختار: مهمّة الحساب الجارية أو المستأنَفة)، who جلسة الدخول التي تخصّها هذه الحالة. التخزين المحلّيّ يحفظ معرّف آخر نتيجة عُرضت فقط. */
+  var PRO={info:null,asked:false,stage:'',id:'',up:false,quote:null,xhr:null,parked:'',last:0,job:''}, PRO_SEEN='vmk_pro_seen';
   function clMaxMB(){ return (window.matchMedia&&matchMedia('(max-width:860px)').matches)?80:200; }
   function clRevoke(u){ try{ if(u) URL.revokeObjectURL(u); }catch(e){ /* guard-ok — رابط زال */ } }
   var clLoad=null;
@@ -314,6 +528,7 @@
       +'<div class="vmk-cl-opts" id="vmkClOpts"><div class="vmk-pills vmk-cl-level"><span class="vmk-pill" data-lv="light"></span><span class="vmk-pill" data-lv="strong"></span></div>'
       +'<label class="vmk-cl-up"><input type="checkbox" id="vmkClUp"><span></span></label></div>'
       +'<button type="button" class="vmk-cl-go" id="vmkClGo"></button>'
+      +'<button type="button" class="vmk-cl-go vmk-cl-pro" id="vmkClPro"></button><p class="vmk-cl-pnote" id="vmkClProNote"></p>'
       +'<div class="vmk-cl-prog" id="vmkClProg"><div class="vmk-cl-track"><i id="vmkClBar"></i></div><div class="vmk-cl-prow"><span id="vmkClPct">0%</span><span class="vmk-cl-wk"></span><button type="button" id="vmkClCancel"></button></div></div>'
       +'<div class="vmk-cl-done" id="vmkClDone"><div class="vmk-pills vmk-cl-ab"><span class="vmk-pill" data-ab="before"></span><span class="vmk-pill" data-ab="after"></span></div><a class="vmk-cl-dl" id="vmkClDl" download="video-clean.mp4"></a></div>'
       +'<p class="vmk-cl-msg" id="vmkClMsg"></p><p class="vmk-cl-note"></p>';
@@ -331,10 +546,19 @@
     box.querySelector('[data-ab="after"]').textContent=L('vclAfter');
     box.querySelector('#vmkClDl').textContent=L('vclDownload');
     box.querySelector('.vmk-cl-note').textContent=L('vclNote');
+    /* v-video-enhance-pro: زرّ واحد وسطر تنبيه واحد تحت الزرّ المجّانيّ — يظهران فقط حين يفتح الخادم الميزة لهذا الحساب.
+       فحص محلّيّ يفشل = الزرّ معطَّل والسطر يقول السبب (لا يُرفع ملفّ سيُرفض)؛ عرض تكلفة قائم = الزرّ يصير «تأكيد وخصم». */
+    var pi=PRO.info, pb=id('vmkClPro'), pn=id('vmkClProNote'), pq=(PRO.quote&&PRO.id)?PRO.quote:null;
+    var why=(has&&pi)?proCheck(pi,CL.file,CL.meta):'', est=(pi&&CL.meta&&!pq&&!why)?proEstimate(pi,CL.meta.sec):0;
+    pb.textContent=pq?proText('vclProConfirm',{n:pq.cost}):L('vclPro'); pb.classList.toggle('ask',!!pq); pb.disabled=!!why;
+    if(est>0) pb.setAttribute('data-cost',est+' '+L('pricingPointsUnit'));
+    pn.textContent=why?proText(why,{n:pi.maxMB,s:pi.maxSec}):(pi?proText('vclProNotice',{n:pi.rate,m:pi.rate*pi.minSec,s:pi.maxSec}):'');
     var small=!!(CL.meta&&Math.min(CL.meta.w,CL.meta.h)<=540);
     id('vmkClFile').style.display=has?'':'none'; id('vmkClOpts').style.display=has?'':'none';
     id('vmkClGo').style.display=has&&!CL.busy?'':'none'; id('vmkClProg').style.display=CL.busy?'':'none';
     id('vmkClDone').style.display=done&&!CL.busy?'':'none'; id('vmkClDrop').classList.toggle('has',has);
+    var proOn=has&&!CL.busy&&!!(pi&&pi.on); pb.style.display=proOn?'':'none'; pn.style.display=proOn?'':'none';
+    box.querySelector('.vmk-cl-ab').style.display=CL.orig?'':'none'; /* نتيجة استُؤنفت بلا الملفّ الأصليّ: لا «قبل/بعد» */
     var up=id('vmkClUp'); up.disabled=!small; up.checked=small&&!!CL.upscale; up.parentElement.style.opacity=small?'1':'.45';
     [].forEach.call(box.querySelectorAll('[data-lv]'),function(p){ p.setAttribute('aria-checked',String(p.dataset.lv===CL.level)); p.onclick=function(){ if(!CL.busy){ CL.level=p.dataset.lv; clRender(); } }; });
     [].forEach.call(box.querySelectorAll('[data-ab]'),function(p){ p.setAttribute('aria-checked',String(p.dataset.ab===CL.showing)); p.onclick=function(){ CL.showing=p.dataset.ab; clStage(CL.showing==='before'?CL.orig:CL.out); clRender(); }; });
@@ -348,19 +572,26 @@
     dz.ondragleave=function(){ dz.classList.remove('over'); };
     dz.ondrop=function(e){ e.preventDefault(); dz.classList.remove('over'); var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) clPick(f); };
     id('vmkClGo').onclick=clRun;
+    id('vmkClPro').onclick=clPro;
     id('vmkClCancel').onclick=clCancel;
   }
   function clPick(f){
-    if(CL.busy) return;
+    /* v-video-enhance-pro: مهمّة احترافيّة تُتابَع (بعد الخصم، بلا إلغاء) لا تقفل القسم — اختيار ملفّ يخرج من متابعتها (accept أدناه) */
+    if(CL.busy&&PRO.stage!=='run') return;
     clMsg('');
     if(!/^video\//.test(f.type||'')&&!/\.(mp4|mov|m4v|webm|mkv|3gp)$/i.test(f.name||'')){ clMsg(L('vclFail'),true); return; }
     if(f.size>clMaxMB()*1048576){ clMsg(L('vclTooBig').replace('{n}',String(clMaxMB())),true); return; }
     var url=URL.createObjectURL(f), v=document.createElement('video'); v.preload='metadata'; v.muted=true; var settled=false;
     var accept=function(sec,w,h){
       if(settled) return; settled=true;
+      /* v-video-enhance-pro: ملفّ اختير ثمّ بدأ «تحسين احترافي» لسابقه قبل أن تُقرأ بياناته — لا يُبدَّل الملفّ تحت رفع جارٍ (عرض تكلفة ملفّ على ملفّ آخر) */
+      if(PRO.stage==='up'){ clRevoke(url); return; }
       if(sec>CL_MAX_SEC+0.5){ clRevoke(url); clMsg(L('vclTooLong').replace('{s}',String(CL_MAX_SEC)),true); return; }
+      /* …وملفّ مقبول اختير أثناء متابعة مهمّة مدفوعة: المتابعة تُترك (المهمّة تكمل على الخادم وزرّ «تحسين احترافي» يعيدها) والمسار المجّانيّ يعود كما كان */
+      if(PRO.stage==='run') proLeave();
       clRevoke(CL.orig); clRevoke(CL.out);
       CL.file=f; CL.orig=url; CL.out=''; CL.meta=w?{sec:sec,w:w,h:h}:null; CL.upscale=!!w&&Math.min(w,h)<=540; CL.showing='before';
+      PRO.id=''; PRO.up=false; PRO.quote=null; /* ملفّ جديد = رفع وعرض تكلفة جديدان */
       clRender(); clStage(w?url:''); /* بلا معاينة يُفرَّغ العارض: لا يبقى على رابط ملفّ سابق أُلغي */
     };
     /* WebM من MediaRecorder يعطي مدّة Infinity حتّى يُقرأ كلّه: مدّة غير محدودة = غير معروفة، و-t في الأداة يحدّها */
@@ -408,13 +639,239 @@
   }
   function clCancel(){
     if(!CL.busy) return;
+    if(PRO.stage){ proCancel(); return; } /* v-video-enhance-pro: إلغاء الرفع الاحترافيّ لا يُنهي أداة التحسين المحمَّلة */
     CL.run++;
     [CL.ff,CL.ffLoading].forEach(function(f){ try{ if(f) f.terminate(); }catch(e){ /* guard-ok — العامل انتهى */ } });
     CL.ff=null; CL.ffLoading=null; clLoad=null; CL.busy=false; clMsg(''); clRender();
   }
   function syncClean(){
     if(tab!=='clean'){ return; }
+    proInfo();
     if(!CL.busy) clRender();
+    proResume();
+  }
+  /* ═══ v-video-enhance-pro: «تحسين احترافي» — رفع ← فحص وعرض التكلفة ← تأكيد ← خصم وتشغيل على الخادم ← النتيجة في العارض نفسه ═══
+     المال كلّه في الخادم (api/_lib/video-enhance.js): الواجهة لا تقرّر خصمًا ولا ردًّا، تعرض ما يجيب به فقط. قاعدتان هنا:
+     «لم يُخصم شيء» لا تُكتب إلّا حين يُعرف ذلك (قبل إرسال التأكيد، أو برفض صريح من الخادم)؛ وبعد إرسال التأكيد أيّ جواب غير
+     واضح (انقطاع، رمز مجهول) لا يُفسَّر — تُسأل الحالة، وهي الحقيقة. الإلغاء متاح قبل التأكيد فقط؛ بعده المهمّة تكمل على الخادم
+     ولو أُغلقت النافذة، والنتيجة تنتظر صاحبها يومين ويجدها من أيّ جهاز (الخادم يحفظ مهمّة الحساب). */
+  function proTok(){ try{ return (typeof authGet==='function')?(authGet('aiapp_auth_token')||''):''; }catch(e){ return ''; } }
+  function proSleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+  function proText(k,v){ var s=L(k); Object.keys(v||{}).forEach(function(x){ s=s.split('{'+x+'}').join(String(v[x])); }); return s; }
+  /* سبب الفشل الحقيقيّ للمالك وحده (نمط v-video-watch-diag): الخادم لا يرسل __diag لغيره، وعطل الرفع أو الشبكة يُكتب هنا. نصّ الخادم لا يُعرض لمستخدم. */
+  function proDiag(d,local){
+    var own=false; try{ own=String(authGet('aiapp_username')||'').trim().toLowerCase()==='omran'; }catch(e){ own=false; }
+    var s=(d&&d.__diag)||(local&&own?local:'');
+    return s?' ['+String(s).slice(0,300)+']':'';
+  }
+  function proQuoteText(q){ return proText('vclProQuote',{s:q.sec,n:q.cost,p:q.points==null?'∞':q.points})+proDiag(q); }
+  function proWallets(){ ['refreshPointsWallet','refreshPremiumPoints'].forEach(function(n){ try{ if(typeof window[n]==='function') window[n](); }catch(e){ /* guard-ok — الرصيد يتحدّث عند أوّل قراءة تالية */ } }); }
+  function proSeenId(){ try{ return localStorage.getItem(PRO_SEEN)||''; }catch(e){ return ''; } }
+  /* عُرضت نتيجتها (أو انتهت): لا تُستأنف ثانية — في التخزين للزيارة التالية، وفي الذاكرة إن تعذّر التخزين */
+  function proForget(jid){ if(PRO.parked===jid) PRO.parked=''; if(PRO.info&&PRO.info.job===jid) PRO.info.job=null; }
+  function proSeen(jid){
+    proForget(jid);
+    try{ localStorage.setItem(PRO_SEEN,jid); }catch(e){ /* guard-ok — بلا تخزين تُعرض النتيجة مرّة أخرى في زيارة تالية */ }
+  }
+  function proDrop(jid){ if(!jid||PRO.id===jid){ PRO.id=''; PRO.up=false; PRO.quote=null; } }
+  function proIdle(){ PRO.stage=''; PRO.xhr=null; CL.busy=false; clRender(); }
+  function proStage(text,cancelable){
+    var w=M.querySelector('#vmkClean .vmk-cl-wk'), c=id('vmkClCancel');
+    if(w) w.textContent=text; if(c) c.style.display=cancelable?'':'none';
+  }
+  function proBusy(stage,text,cancelable,p){
+    PRO.stage=stage; if(!CL.busy){ CL.busy=true; clRender(); }
+    clMsg(''); proStage(text,cancelable); clProgress(p);
+  }
+  function proClock(ms){ var n=id('vmkClPct'), s=Math.max(0,Math.floor(ms/1000)); if(n) n.textContent=Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60); }
+  async function proApi(step,payload){
+    /* POST دائمًا، حتّى للاستطلاع: عامل الخدمة يحوّل GET الفاشل إلى 503 مزيّف ولا يلمس POST؛ والرمز في الجسم كبقيّة خطوات الفيديو */
+    var r=await fetch('/api/video?action=video-enhance&step='+step,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({token:proTok()},payload||{}))});
+    var d=await r.json().catch(function(){ return null; });
+    return {status:r.status,d:(d&&typeof d==='object')?d:{}};
+  }
+  function proInfo(){
+    if(typeof fetch!=='function') return;
+    /* مرّة لكلّ جلسة دخول: الجواب يخصّ الحساب (المالك وحده قبل الفتح للجميع، ومهمّته هو)، والدخول لا يعيد تحميل الصفحة.
+       جواب حساب سابق يُنسى، وقراءة فشلت تُعاد عند أوّل فتح للقسم بعد نصف دقيقة. بلا جواب لا يظهر الزرّ والمسار المجّانيّ كما هو. */
+    var tk=proTok(), who=tk||'-'; if(PRO.asked===who) return;
+    /* جلسة أخرى في الصفحة نفسها (الخروج والدخول لا يعيدان تحميلها): مهمّة الحساب السابق وعرض تكلفته ومهمّته المركونة لا تُعرض لغيره ولا
+       تُستطلع برمزه. مرحلة جارية تُترك: جواب الخادم برمز الجلسة الجديدة ينهيها. */
+    if(PRO.who!==undefined&&PRO.who!==who&&!PRO.stage){ if(!CL.busy&&(PRO.id||PRO.parked||PRO.quote)) clMsg(''); PRO.id=''; PRO.up=false; PRO.quote=null; PRO.parked=''; }
+    PRO.who=who; PRO.asked=who; PRO.info=null;
+    var again=function(){ setTimeout(function(){ if(PRO.asked===who&&!PRO.info) PRO.asked=false; },30000); };
+    /* GET لا POST: أيّ POST إلى /api/video يفتح شريط طلب الإشعارات، وقراءة الإعداد عند فتح التبويب لا تستحقّه */
+    fetch('/api/video?action=video-enhance&step=info',tk?{headers:{Authorization:'Bearer '+tk}}:undefined)
+      .then(function(r){ return r.json(); }).then(function(d){
+        if(PRO.asked!==who) return;
+        if(!d||d.ok!==true){ again(); return; }
+        if(d.job&&d.job===proSeenId()) d.job=null;
+        PRO.info=d; if(!CL.busy&&tab==='clean') clRender(); proResume();
+      }).catch(again);
+  }
+  function proPut(url,mime,file,my){
+    return new Promise(function(res,rej){
+      var x=new XMLHttpRequest(); PRO.xhr=x;
+      var bad=function(){ rej({error:'upload',local:'http '+x.status}); };
+      x.open('PUT',url,true); x.timeout=900000;
+      x.setRequestHeader('Content-Type',mime); /* النوع الذي أصدر الخادم الهدف به حرفيًّا */
+      x.upload.onprogress=function(e){ if(my===CL.run&&e.lengthComputable&&e.total>0) clProgress(e.loaded/e.total*0.9); };
+      x.onload=function(){ if(x.status>=200&&x.status<300) res(); else bad(); };
+      x.onerror=bad; x.ontimeout=bad; x.onabort=bad;
+      x.send(file);
+    });
+  }
+  function proFail(d,local,keep){
+    d=d||{}; var pi=PRO.info||{}, k=proErrKey(d.error);
+    if(!keep) proDrop('');
+    proIdle();
+    clMsg(proText(k,{p:d.points==null?0:d.points,n:k==='vclTooBig'?pi.maxMB:(d.needed==null?'':d.needed),s:pi.maxSec})+proDiag(d,local),true);
+  }
+  async function clPro(){
+    var pi=PRO.info;
+    if(!CL.file||CL.busy||!pi||!pi.on||proCheck(pi,CL.file,CL.meta)) return;
+    if(!proTok()){ try{ if(typeof window.requireLogin==='function') window.requireLogin('guestLimit'); }catch(e){ /* guard-ok — بلا شاشة دخول لا شيء يُرفع */ } return; }
+    if(PRO.quote&&PRO.id){ proConfirm(PRO.quote); return; }
+    /* مهمّة للحساب لم تُعرف نهايتها أو لم تُرَ نتيجتها (رُكنت، تُركت باختيار ملفّ آخر، أو بدأت من جهاز آخر): الزرّ يسأل الخادم عنها أوّلًا —
+       لا رفع ثانٍ ولا عرض تكلفة ثانٍ لفيديو ربّما خُصم ثمنه، ولا مهمّة جديدة تكتب فوق نتيجة مدفوعة لم تُعرض */
+    if(proResume(true)) return;
+    var my=++CL.run, f=CL.file, q=null, step='start';
+    proBusy('up',L('vclProUploading'),true,0);
+    try{
+      if(!PRO.up||!PRO.id){
+        var s=await proApi('start',{size:f.size,mime:f.type||'',name:f.name||'',durationSec:(CL.meta&&CL.meta.sec)||0});
+        if(my!==CL.run) return;
+        if(s.d.error==='busy'&&s.d.job){ proBusy('run',L('vclProWorking'),false,1); proWatch(String(s.d.job),my); return; } /* مهمّة الحساب ما زالت جارية */
+        if(!s.d.ok||!s.d.id||!s.d.upload){ proFail(s.d,'start '+s.status); return; }
+        PRO.id=String(s.d.id); PRO.up=false; step='put';
+        await proPut(String(s.d.upload),s.d.mime||f.type||'video/mp4',f,my);
+        if(my!==CL.run) return;
+        PRO.up=true; PRO.xhr=null;
+      }
+      step='run'; clProgress(0.95);
+      /* الخادم ينسخ الملفّ ويقيسه: «لم يصل بعد» و«أعد» وعطل الشبكة أو البوّابة = انتظار ثمّ إعادة، ١٢ مرّة */
+      for(var i=0;i<12;i++){
+        try{ q=await proApi('run',{id:PRO.id}); }catch(e){ q=null; }
+        if(my!==CL.run) return;
+        if(q&&q.d.error!=='not_uploaded'&&q.d.error!=='retry'&&!(q.status>=500&&!q.d.error)) break;
+        await proSleep(2000); if(my!==CL.run) return;
+      }
+      if(q&&q.d.ok&&q.d.quote){ PRO.quote=q.d; proIdle(); clMsg(proQuoteText(q.d)); return; }
+      if(q&&q.d.ok&&q.d.state){ proBusy('run',L('vclProWorking'),false,1); proWatch(PRO.id,my); return; } /* أُكّدت من نافذة أخرى */
+      proFail(q&&q.d.error?q.d:{error:q?'':'upload'},'run '+(q?q.status:'network'));
+    }catch(err){
+      if(my!==CL.run) return; /* أُلغي: الإلغاء أعاد الرسم بنفسه */
+      proFail({error:'upload'},step+': '+((err&&(err.local||err.message))||'network'));
+    }
+  }
+  async function proConfirm(q){
+    var jid=PRO.id, my=++CL.run, r=null; PRO.job=jid;
+    /* من هنا لا إلغاء: الطلب قد يخصم، وما لا يُعرف مصيره يُسأل عنه الخادم */
+    PRO.quote=null; proBusy('run',L('vclProWorking'),false,1); proClock(0);
+    try{ r=await proApi('run',{id:jid,confirmed:true,cost:q.cost}); }catch(e){ r=null; }
+    if(my!==CL.run) return;
+    var d=r?r.d:{};
+    if(d.ok&&d.quote){ PRO.quote=d; proIdle(); clMsg(proQuoteText(d)); return; } /* التكلفة تغيّرت: عرض جديد بلا خصم */
+    if(d.ok&&d.state){ proWallets(); proWatch(jid,my); return; }
+    if(d.error==='busy'){ proWatch(String(d.job||jid),my); return; }
+    if(d.refunded!=null){ /* خُصم ثمّ تعذّر الإرسال: الخادم ردّ النقاط في الجواب نفسه */
+      proWallets();
+      if(d.refunded>0){ proDrop(''); proIdle(); clMsg(proText('vclProRefunded',{n:d.refunded})+proDiag(d),true); }
+      else proFail(d);
+      return;
+    }
+    /* رفض صريح قبل الخصم. نقص الرصيد وتوقّف الخدمة يُبقيان العرض (صالح ربع ساعة) فيعيد المستخدم التأكيد بلا رفع ثانٍ */
+    if({points_insufficient:1,unavailable:1}[d.error]===1){ PRO.quote=q; proFail(d,'',true); return; }
+    if({banned:1,limit:1,not_found:1,resolution:1,auth:1}[d.error]===1){ proFail(d); return; }
+    proWatch(jid,my);
+  }
+  /* استطلاع المهمّة: كلّ ٥ث في أوّل دقيقتين ثمّ ١٠ث، والوقت المنقضي مكان النسبة. خطأ الاستطلاع ليس فشل المهمّة أبدًا. */
+  async function proWatch(jid,my){
+    var t0=Date.now(), due=0, errs=0, miss=0, el=0, tk0=proTok(); PRO.job=jid;
+    try{
+      for(;;){
+        if(my!==CL.run) return;
+        el=Date.now()-t0; proClock(el);
+        if(el>=due){
+          var r=null; try{ r=await proApi('status',{id:jid}); }catch(e){ r=null; }
+          if(my!==CL.run) return;
+          el=Date.now()-t0; due=el+(el<120000?5000:10000);
+          var d=r?r.d:{};
+          if(d.ok===true){
+            errs=0; miss=0;
+            if(d.state==='done'){ proShow(jid,d,my); return; }
+            if(d.state==='failed'){
+              proSeen(jid); proWallets(); proDrop(jid); proIdle();
+              clMsg(d.refunded>0?proText('vclProRefunded',{n:d.refunded}):L('vclProFail'),true); return;
+            }
+            if(d.state==='gone'){ proSeen(jid); proDrop(jid); proIdle(); clMsg(''); return; }
+            if(d.state==='quoted'||d.state==='upload'){ /* لم يُخصم شيء: العرض من جديد إن كان لملفّنا، وإلّا رجوع صامت */
+              proForget(jid);
+              if(d.quote&&PRO.id===jid&&CL.file){ PRO.quote=d; proIdle(); clMsg(proQuoteText(d)); }
+              else if(PRO.id===jid) proFail({error:'failed'});
+              else { proIdle(); clMsg(''); }
+              return;
+            }
+          } else {
+            /* «غير موجودة» برمز جلسة أخرى (دخل حساب آخر أثناء المتابعة) ليست «شوهدت»: علامة الجهاز تبقى لصاحب المهمّة فيجد نتيجته حين يعود */
+            if(d.error==='not_found'){ if(++miss>=3){ if(proTok()===tk0) proSeen(jid); else proForget(jid); proDrop(jid); proIdle(); clMsg(''); return; } } else miss=0;
+            if(++errs>=6){ proPark(jid); return; }
+          }
+        }
+        /* ٥٠ دقيقة: تُترك تكمل على الخادم. بعد الاستطلاع لا قبله: صفحة نامت (هاتف مقفل، تبويب في الخلفيّة) تسأل الخادم مرّة عند
+           استيقاظها — المهمّة غالبًا انتهت — ولا تقول «ما زال جاريًا» بلا سؤال */
+        if(el>=3000000){ proPark(jid); return; }
+        await proSleep(1000);
+      }
+    }catch(err){
+      /* عطل غير متوقَّع في الواجهة لا يحبس القسم في «جارٍ» بلا زرّ إلغاء: المهمّة تكمل على الخادم */
+      try{ __swallow(err,'video:pro'); }catch(e){ /* guard-ok — لا مسجّل */ }
+      if(my===CL.run) proPark(jid);
+    }
+  }
+  async function proShow(jid,d,my){
+    try{
+      /* عبر وسيط التنزيل عندنا دائمًا: جلب رابط المزوّد مباشرة يخزّنه عامل الخدمة (GET من أصل آخر) */
+      var tk=proTok(), px=(typeof window.__omranProxyVideoUrl==='function')?window.__omranProxyVideoUrl(String(d.url||'')):'';
+      if(!/^\/api\//.test(px||'')) throw new Error('no proxy');
+      var r=await fetch(px,tk?{headers:{Authorization:'Bearer '+tk}}:undefined);
+      if(!r.ok) throw new Error('proxy '+r.status);
+      var blob=await r.blob();
+      if(my!==CL.run) return;
+      if(PRO.id!==jid){ clRevoke(CL.orig); CL.file=null; CL.orig=''; CL.meta=null; } /* ملفّ آخر مختار: «قبل/بعد» لا يقارن بأصل غير أصله */
+      proDrop(''); PRO.stage=''; PRO.xhr=null;
+      clRevoke(CL.out); CL.out=URL.createObjectURL(blob); CL.showing='after';
+      CL.busy=false; clRender(); clStage(CL.out); clProgress(1);
+      clMsg(proText('vclProDone',{n:d.cost==null?0:d.cost,s:d.sec==null?'':d.sec}));
+      proSeen(jid);
+      try{ if(typeof window.mediaReadyNotify==='function') window.mediaReadyNotify('video',true); }catch(e){ /* guard-ok — الإشعار تحسين */ }
+    }catch(err){
+      if(my!==CL.run) return;
+      proPark(jid); /* النتيجة محفوظة على الخادم: تعذّر جلبها الآن ليس فشلًا */
+    }
+  }
+  function proPark(jid){ PRO.parked=jid; PRO.last=Date.now(); proIdle(); clMsg(L('vclProLater')); }
+  /* خروج المستخدم من متابعة مهمّة مدفوعة باختيار ملفّ: لا إلغاء (المهمّة تكمل على الخادم) ولا رسالة — تُركن بمعرّفها المتابَع، وجواب أيّ
+     طلب جارٍ يُهمل برمز التشغيل (تأكيد في الطريق تُعرف حقيقته من الحالة عند العودة) */
+  function proLeave(){ var jid=PRO.job||PRO.id; CL.run++; if(jid){ PRO.parked=jid; PRO.last=Date.now(); } proIdle(); }
+  function proCancel(){
+    if(PRO.stage==='run') return; /* بعد إرسال التأكيد لا إلغاء: المهمّة تكمل على الخادم، وإلغاء المزوّد لا يضمن ألّا يحاسبنا */
+    CL.run++;
+    try{ if(PRO.xhr) PRO.xhr.abort(); }catch(e){ /* guard-ok — الرفع انتهى */ }
+    proIdle(); clMsg('');
+  }
+  /* مهمّة تُركت تكمل (أو بدأت من جهاز آخر): العودة إلى القسم تتابعها — مرّة كلّ دقيقة على الأكثر (أو فورًا بنقرة المستخدم)، ولا تقاطع عملًا جاريًا.
+     الاستئناف التلقائيّ لا يأخذ ما على الشاشة: نتيجة معروضة (المجّانيّة تُمحى بعرض غيرها) أو ملفّ مختار غير ملفّ المهمّة يبقيان، والمهمّة
+     تنتظر نقرة «تحسين احترافي» أو فتح القسم فارغًا. مهمّة الملفّ المختار نفسه تُستأنف كما كانت. ترجع true حين بدأت متابعة. */
+  function proResume(now){
+    var jid=String(PRO.parked||(PRO.info&&PRO.info.job)||'');
+    if(!/^[a-f0-9]{24}$/.test(jid)||tab!=='clean'||CL.busy||!proTok()||jid===proSeenId()||(now!==true&&Date.now()-PRO.last<60000)) return false;
+    if(now!==true&&(CL.out||(CL.file&&PRO.id!==jid))) return false;
+    PRO.last=Date.now();
+    var my=++CL.run;
+    proBusy('run',L('vclProWorking'),false,1);
+    proWatch(jid,my);
+    return true;
   }
   function L(k){ var v=(typeof window.t==='function')?window.t(k):k; return v&&v!==k?v:''; }
   var SECS={'5':5,'8':8,'10':10,long20:20,film:45,adspot:5,reels:10};
@@ -513,7 +970,7 @@
       var b=document.createElement('span'); b.className='vmk-chip gold pts';
       b.textContent=p?(p+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free'); chips.appendChild(b);
     }
-    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean();
+    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean(); syncDirector();
     var tbx=id('vmkTabs'); if(tbx) [].forEach.call(tbx.children,function(bt){ bt.setAttribute('aria-selected',String(bt.dataset.tab===tab)); });
     stageDims();
   }
@@ -531,7 +988,7 @@
     card.classList.add('vmk-trends-top');
     if(vt.parentElement!==card||vt.nextElementSibling!==side) card.insertBefore(vt,side);
   }
-  function enhance(){ if(!on()) return; loadManifest(); build(); buildTabs(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
+  function enhance(){ if(!on()) return; loadManifest(); build(); buildTabs(); buildDirector(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
   var wasOpen=false;
   new MutationObserver(function(){
     var open=!!(M.style.display&&M.style.display!=='none');
