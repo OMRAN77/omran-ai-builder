@@ -313,7 +313,7 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
     seen[lg] = obj.vdTab;
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=443'));
+  assert.ok(read('index.html').includes('/js/video.js?v=444'));
   assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=738';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });

@@ -2700,7 +2700,7 @@ test('١٦. النصوص والوسوم: ١٦ مفتاحًا بالـ١٤ لغة
   // ما تستعمله الواجهة = المفاتيح الستّة عشر بالضبط
   assert.deepEqual([...new Set(VJS.match(/'vclPro\w*'/g).map((s) => s.slice(1, -1)))].sort(), PRO_KEYS.slice().sort());
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=443"') && h.includes('css/modules.css?v=679')); // v-app-director: ٤٤١←٤٤٢
+  assert.ok(h.includes('src="/js/video.js?v=444"') && h.includes('css/modules.css?v=679')); // v-app-director: ٤٤١←٤٤٢
   // v-img-format رفع الوسم بعده إلى ٧٣٧ (سببه في الرأس)، وسبب ٧٣٦ باقٍ في التعليق نفسه
   const __tagLine = read('js/app-04-i18n-state.js').split('\n').find((l) => l.includes("sc.src = 'i18n/' + lg + '.js?v=")) || '';
   assert.ok(__tagLine.includes("sc.src = 'i18n/' + lg + '.js?v=738'; /* v-app-director (738): ") && __tagLine.includes('v-img-format (737)') && __tagLine.includes('v-video-enhance-pro (736): '), 'وسم ملفّات اللغات مرفوع، وسببه في رأس التعليق');
