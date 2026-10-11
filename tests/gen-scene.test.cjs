@@ -8,6 +8,9 @@
 //   (٣) «أريد الحركة داخل، خلف العدّاد — مكان الأنبوب الخلفيّ» — لا مطر على الصورة كلّها؛ جريان داخل أنبوب البرج.
 //   (٤) «الصورة مغبّشة، وشيل التضليل اللي داخل العدّاد — يكون رقم فقط، وهذه الصورة [الذهبيّة] نفس الفكرة: مرّة هذي ومرّة
 //       الثانية عند التوليد» — صورتان موضَّحتان، رقم فقط داخل الحلقة، ومشهدان يتبادلان.
+// v-gen-steady (بلقطة من الموقع: «الصورة بعد ما تخلص تنزل تحت — أريدها تكون ثابتة نفس المكان، والعدّاد الخارجيّ الصغير اللي
+//   مكتوب نرسم تحت فيه وميض قويّ»): النتيجة وأزرارها تُنقل مكان المشهد وتدخل كاملة في الشاشة، وسطر الوقت لا يرمش ولا يتزحزح.
+// v-fashion-compare-rtl (المالك: «أصلحه»): شريط «قبل/بعد» منطبق في الواجهة العربيّة ولا يغطّي صفّ التعديل ولا يخطف نقره.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -169,12 +172,12 @@ test('٥. «الحركة داخل، خلف العدّاد — مكان الأن�
   assert.doesNotMatch(SRC, /backdrop-filter|filter:blur/, 'لا تغبيش (v-android-gpu)');
 });
 
-test('٦. «نفس مكان رفع الصورة»: التوليد (🎨) قبل لوح الصورة ومربّع الرفع مخفيّ؛ التعديل الموضعيّ وبقيّة اللوحات تحت سطر الحالة', () => {
+test('٦. «نفس مكان رفع الصورة»: التوليد (🎨) والتعديل الموضعيّ قبل لوح الصورة ومربّع الرفع مخفيّ؛ بقيّة اللوحات تحت سطر الحالة', () => {
   const fashion = W0.PANELS.find((p) => p.id === 'fashion');
   assert.equal(fashion.scope, '#fashionAiModal');
   assert.equal(fashion.topSel, '#fashionAiImagePane');
-  assert.equal(fashion.hideSel, '#fashionAiDropZone');
-  assert.deepEqual(Array.from(fashion.top), ['🎨']);
+  assert.ok(fashion.hideSel.split(', ').includes('#fashionAiDropZone'), 'مربّع الرفع يُخفى (والنتيجة السابقة معه — الاختبار ١١)');
+  assert.equal(Array.from(fashion.top).join('|'), '🎨|جاري تطبيق|Applying', 'التعديل الموضعيّ يصعد أيضًا — النتيجة صارت هناك');
   const dialog = { id: 'dialog' };
   const pane = { id: 'fashionAiImagePane', parentNode: dialog };
   const next = { id: 'afterStatus' };
@@ -183,9 +186,11 @@ test('٦. «نفس مكان رفع الصورة»: التوليد (🎨) قبل 
   const up = W0._mountPoint(fashion, pel, '🎨 جاري تصميم الزي...', doc);
   assert.equal(up.top, true); assert.equal(up.parent, dialog); assert.equal(up.before, pane, 'قبل لوح الصورة نفسه — فيقع مكان مربّع الرفع');
   for (const txt of ['جاري تطبيق التعديل…', 'Applying your edit…']) {
-    const down = W0._mountPoint(fashion, pel, txt, doc);
-    assert.equal(down.top, false, txt); assert.equal(down.parent, dialog); assert.equal(down.before, next);
+    const upToo = W0._mountPoint(fashion, pel, txt, doc);
+    assert.equal(upToo.top, true, txt); assert.equal(upToo.before, pane);
   }
+  const other = W0._mountPoint(fashion, pel, '⏳ شيء آخر', doc);
+  assert.equal(other.top, false); assert.equal(other.parent, dialog); assert.equal(other.before, next, 'بادئة غير معروفة = تحت سطر الحالة');
   assert.equal(W0._mountPoint(fashion, pel, '🎨 جاري تصميم الزي...', { querySelector: () => null }).top, false, 'مرساة غائبة = الموضع القديم لا خطأ');
   const video = W0.PANELS.find((p) => p.id === 'video');
   assert.equal(W0._mountPoint(video, pel, '🚀 جاري إرسال الطلب', doc).top, false, 'الفيديو والأنماط في موضعهما');
@@ -222,7 +227,216 @@ test('٨. بلا منظِّف (متصفّح قديم): البادئة تبقى �
   assert.equal(W0._panelBusy(p, ''), false);
 });
 
-test('٩. لا اسم مزوّد، والحزمة والتسجيل والقرار', () => {
+test('٩. «فيه وميض قويّ»: سطر الوقت يُبنى مرّة منظَّفًا خارج المحادثة، ولا يتغيّر فيه إلّا خانة الثواني الثابتة العرض — مرّة في الثانية', () => {
+  const { clean } = load(true);
+  const body = SRC.slice(SRC.indexOf('var inChat = null, lastSec = -1, secEl = null;'), SRC.indexOf("timerEl.textContent = '⏱ ' + fmt(0)"));
+  assert.ok(body.includes('function uiText(txt){') && body.includes('function paintTimer(sec){'), 'دالّتا النصّ المعروض وسطر الوقت');
+  const AR = '٠١٢٣٤٥٦٧٨٩';
+  const run = (inMsg) => {
+    const writes = [];   // كلّ كتابة في السطر: [أين، ماذا]
+    const mkNode = (kind) => {
+      const n = { kind, style: {}, kids: [], _t: '' };
+      Object.defineProperty(n, 'textContent', { get: () => n._t + n.kids.map((k) => k.textContent).join(''), set: (v) => { n._t = String(v); n.kids = []; writes.push([kind, String(v)]); } });
+      n.appendChild = (k) => { n.kids.push(k); };
+      return n;
+    };
+    const timerEl = mkNode('line');
+    const ctx = {
+      root: { closest: (sel) => (sel === '.msg' && inMsg ? {} : null) }, stripEmoji: (t) => clean(t), timerEl,
+      document: { createElement: (tag) => mkNode(tag), createTextNode: (t) => ({ kind: 'text', textContent: String(t) }) },
+      fmt: (n) => String(n).replace(/[0-9]/g, (d) => AR[+d]), isAr: () => true, expect: 'الإطلالات تاخذ ~٤٠ ثانية', SEC_DIGIT_EM: W0._secDigitEm,
+    };
+    vm.runInNewContext(body + ';this.uiText = uiText; this.paintTimer = paintTimer;', ctx);
+    return { uiText: ctx.uiText, paintTimer: ctx.paintTimer, timerEl, writes };
+  };
+  // في لوحة الأداة: النصّ كما سيتركه المنظِّف — فلا يجد ما يمسحه ولا يتناوب نصّان
+  const P = run(false);
+  P.paintTimer(7);
+  assert.equal(P.timerEl.textContent, clean('⏱ ') + '٧ث — الإطلالات تاخذ ~٤٠ ثانية');
+  assert.ok(!P.timerEl.textContent.includes('⏱'));
+  assert.equal(clean(P.timerEl.textContent), P.timerEl.textContent, 'المنظِّف لا يغيّر فيه شيئًا');
+  const box = P.timerEl.kids[0];
+  assert.equal(box.kind, 'b'); assert.equal(P.timerEl.kids.length, 2, 'خانة الثواني ثمّ الوحدة والمتوقَّع');
+  assert.equal(box.style.minWidth, (1 * W0._secDigitEm) + 'em');
+  const built = P.writes.length;
+  for (let i = 0; i < 6; i++) P.paintTimer(7);   // النبضة كلّ ١٥٠ مث: الثانية نفسها = لا كتابة
+  assert.equal(P.writes.length, built, 'لا كتابة ما دامت الثانية نفسها (كانت ~١٣ تبديلًا في الثانية مع المنظِّف)');
+  P.paintTimer(8); P.paintTimer(17);
+  assert.equal(P.writes.slice(built).map((w) => w.join(':')).join(','), 'b:٨,b:١٧', 'الثانية الجديدة تكتب في الخانة وحدها — السطر لا يُعاد بناؤه');
+  assert.equal(box.style.minWidth, (2 * W0._secDigitEm) + 'em', 'عرض الخانة بعدد خاناتها');
+  assert.equal(P.timerEl.textContent, clean('⏱ ') + '١٧ث — الإطلالات تاخذ ~٤٠ ثانية');
+  assert.ok(W0._secDigitEm >= 0.6 && W0._secDigitEm <= 0.7, 'أعرض رقم مقيس ٠٫٦em — الخانة تسعه بلا فراغ ظاهر');
+  assert.ok(SRC.includes('.genw-timer b{display:inline-block;text-align:end;font-weight:inherit}'), 'الخانة كتلة سطريّة والرقم ملاصق للوحدة');
+  // داخل المحادثة (.msg) المنظِّف لا يمسّها — تبقى ببادئتها
+  const C = run(true);
+  C.paintTimer(3);
+  assert.equal(C.timerEl.textContent, '⏱ ٣ث — الإطلالات تاخذ ~٤٠ ثانية');
+  assert.equal(P.uiText('اللمسات الأخيرة ✨'), clean('اللمسات الأخيرة ✨'), 'والمرحلة تُكتب منظَّفة كذلك');
+  assert.equal(C.uiText('اللمسات الأخيرة ✨'), 'اللمسات الأخيرة ✨');
+  assert.ok(SRC.includes('      paintTimer(Math.floor(el));'), 'النبضة تستدعي paintTimer بالثانية الصحيحة');
+  assert.equal(SRC.split('timerEl.textContent = ').length - 1, 2, 'كتابتان للسطر كلّه فقط: نصّ البناء، ثمّ بادئة paintTimer مرّة');
+  assert.ok(SRC.includes('stageEl.textContent = uiText(slowTxt);'));
+  assert.ok(SRC.includes('stageEl.textContent = uiText(stages[stageIdx]);'));
+});
+
+test('١٠. «الصورة بعد ما تخلص تنزل تحت — أريدها ثابتة نفس المكان»: النتيجة وأزرارها قبل لوح الصورة، بعرض المشهد، وتدخل كاملة في الشاشة', () => {
+  const st = read('js/app-12-studios.js');
+  const a = st.indexOf("const FX_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };");
+  const b = st.indexOf("const favoritesBtn = $('#fashionAiFavoritesBtn');", a);
+  assert.ok(a > 0 && b > a, 'كتلة النقل موجودة بعد مراجع النتيجة');
+  const block = st.slice(a, b);
+  const mk = (id) => ({ id, style: {} });
+  const run = (opts) => {
+    const order = [];
+    const pane = mk('fashionAiImagePane');
+    pane.parentNode = { insertBefore: (n, ref) => { assert.equal(ref, pane, 'قبل لوح الصورة'); order.push(n.id); } };
+    const nodes = { resultWrap: mk('fashionAiResultWrap'), downloadEl: mk('fashionAiDownloadLink'), favSaveBtn: mk('fashionAiFavoriteSaveBtn'), fxTry: mk('fxTry') };
+    const listeners = {}; const winListeners = {}; const observed = [];
+    const scrolls = [];
+    const resultEl = { naturalWidth: 0, naturalHeight: 0, addEventListener: (ev, fn) => { listeners[ev] = fn; }, scrollIntoView: (o) => { scrolls.push(o.block); } };
+    const beforeImg = { style: {} };
+    const win = { innerHeight: opts.vh || 900, addEventListener: (ev, fn) => { winListeners[ev] = fn; } };
+    function RO(cb) { this.cb = cb; }
+    RO.prototype.observe = function (el) { observed.push({ el, cb: this.cb }); };
+    const ctx = {
+      $: (sel) => (sel === '#fashionAiImagePane' ? pane : null),
+      document: { getElementById: (id) => (id === 'fxTry' && opts.fxTry !== false ? nodes.fxTry : null) },
+      resultWrap: nodes.resultWrap, downloadEl: nodes.downloadEl, favSaveBtn: nodes.favSaveBtn, resultEl, beforeImg, beforeWrap: { style: {} },
+      window: win, ResizeObserver: opts.noRO ? undefined : RO, __swallow: (e) => { throw e; }, Object, Math,
+    };
+    vm.runInNewContext(block + ';this.setPending = () => { fxRevealPending = true; }; this.reveal = fxRevealResult;', ctx);
+    return { order, nodes, listeners, winListeners, observed, resultEl, beforeImg, win, scrolls, setPending: ctx.setPending, reveal: ctx.reveal };
+  };
+  // النقل: العقد نفسها قبل لوح الصورة بترتيبها، وبعرض المشهد موسَّطة
+  const R = run({});
+  assert.equal(R.order.join(','), 'fashionAiResultWrap,fxTry,fashionAiDownloadLink,fashionAiFavoriteSaveBtn', 'الترتيب كما كان: النتيجة، «جرّب»، التحميل، المفضّلة');
+  for (const n of Object.values(R.nodes)) { assert.equal(n.style.maxWidth, '760px', n.id + ': بعرض المشهد'); assert.equal(n.style.marginInline, 'auto', n.id + ': موسَّط مثله'); }
+  assert.equal(run({ fxTry: false }).order.join(','), 'fashionAiResultWrap,fashionAiDownloadLink,fashionAiFavoriteSaveBtn', 'بلا صفّ «جرّب» بعد');
+  assert.ok(read('js/app-12-fx-simple.js').includes("tr.style.cssText = 'display:none;flex-wrap:wrap;gap:6px;margin-top:10px;max-width:760px;margin-inline:auto;';"), 'وصفّ «جرّب» يُنشأ بالعرض نفسه');
+  // المقاس: الطوليّة ٧٦٨×١٠٢٤ بعرض ٧٦٠ = ١٠١٣ ارتفاعًا (أطول من شاشة ٩٠٠) — يُحدّ العرض فيدخل الارتفاع في ٧٠٪ من الشاشة
+  assert.equal(typeof R.listeners.load, 'function', 'يُعاد الضبط عند تحميل كلّ نتيجة');
+  assert.equal(R.winListeners.resize, R.listeners.load, 'وعند تغيّر مقاس النافذة');
+  R.listeners.load();
+  assert.equal(R.nodes.resultWrap.style.maxWidth, '760px', 'بلا أبعاد بعد = لا تغيير');
+  R.resultEl.naturalWidth = 768; R.resultEl.naturalHeight = 1024;
+  R.listeners.load();
+  assert.equal(R.nodes.resultWrap.style.maxWidth, '473px', '٩٠٠×٠٫٧=٦٣٠ ارتفاعًا ← ٤٧٣ عرضًا');
+  assert.ok(473 * 1024 / 768 <= 900 * 0.7 + 1, 'فالارتفاع ضمن الحدّ');
+  R.resultEl.naturalWidth = 1600; R.resultEl.naturalHeight = 900;
+  R.listeners.load();
+  assert.equal(R.nodes.resultWrap.style.maxWidth, '760px', 'العرضيّة لا تتجاوز عرض المشهد');
+  R.resultEl.naturalWidth = 768; R.resultEl.naturalHeight = 1024; R.win.innerHeight = 700;
+  R.winListeners.resize();
+  assert.equal(R.nodes.resultWrap.style.maxWidth, '368px', 'نافذة أقصر ← نتيجة أصغر');
+  const M = run({ vh: 800 });
+  M.resultEl.naturalWidth = 768; M.resultEl.naturalHeight = 1024; M.listeners.load();
+  assert.equal(M.nodes.resultWrap.style.maxWidth, '420px', 'الجوّال (٨٠٠): الحدّ ٤٢٠ أوسع من الشاشة — فالصورة بعرضها الكامل كما كانت');
+  // صورة «قبل» تتبع عرض الحاوية (كان يُقاس مرّة، والحاوية الآن مخفيّة لحظة العرض ويتغيّر عرضها)
+  assert.equal(R.observed.length, 1); assert.equal(R.observed[0].el, R.nodes.resultWrap);
+  R.nodes.resultWrap.clientWidth = 0; R.observed[0].cb();
+  assert.equal(R.beforeImg.style.width, undefined, 'حاوية مخفيّة (صفر) لا تُكتب');
+  R.nodes.resultWrap.clientWidth = 473; R.observed[0].cb();
+  assert.equal(R.beforeImg.style.width, '473px');
+  assert.equal(run({ noRO: true }).observed.length, 0, 'متصفّح بلا ResizeObserver: لا خطأ');
+  // لا قفزة: التمرير للنتيجة «nearest» — لا يتحرّك شيء ما دامت ظاهرة (كان center)
+  R.reveal();
+  assert.equal(R.scrolls.join(','), 'nearest');
+  // والنتيجة مخفيّة لحظة عرضها (المشهد ما زال مكانها): التمرير يُعاد مرّة واحدة حين تظهر فعلًا — لمن نزّل الصفحة أثناء الانتظار
+  R.nodes.resultWrap.clientWidth = 473; R.observed[0].cb();
+  assert.equal(R.scrolls.length, 1, 'بلا نتيجة جديدة: تغيّر المقاس لا يمرّر');
+  R.setPending();
+  R.nodes.resultWrap.clientWidth = 0; R.observed[0].cb();
+  assert.equal(R.scrolls.length, 1, 'ما زالت مخفيّة — ينتظر');
+  R.nodes.resultWrap.clientWidth = 473; R.observed[0].cb(); R.observed[0].cb();
+  assert.equal(R.scrolls.length, 2, 'ظهرت ← تمرير واحد لا أكثر');
+  const iPend = st.indexOf('      fxRevealPending = true;'), iRev = st.indexOf('      fxRevealResult();', iPend), iDl = st.indexOf('      downloadEl.href = dataUrl;', iPend);
+  assert.ok(iPend > 0 && iRev > iPend && iDl > iRev && iDl - iPend < 120, 'مسار النجاح يطلبه قبل إظهار زرّ التحميل');
+  assert.ok(!st.includes("resultEl.scrollIntoView({ behavior:'smooth', block:'center' })"));
+  // اختيار إطلالة من المقارنة يضعها في النتيجة — وقد صعدت، فيصعد إليها (وإلّا لا أثر ظاهر ولا زرّ تحميل عند المستخدم)
+  const pick = st.slice(st.indexOf('cell.onclick = () => {'), st.indexOf("cell.innerHTML = '<p style=\"font-size:11.5px; color:#f87171;\">"));
+  assert.ok(pick.includes("resultEl.src = r.dataUrl;") && pick.includes('fxRevealResult();'));
+  // المشهد يُركَّب قبل لوح الصورة أيضًا — فالنتيجة تحلّ في مكانه نفسه
+  assert.equal(W0.PANELS.find((p) => p.id === 'fashion').topSel, '#fashionAiImagePane');
+  const bundle = read('js/app.bundle.js');
+  assert.ok(bundle.includes("const FX_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };") && bundle.includes('function fxFitResult(){') && bundle.includes('function fxRevealResult(){') && bundle.includes('function uiText(txt){') && bundle.includes('function paintTimer(sec){') && bundle.includes('function applyHide(p, scopeEl){'), 'الحزمة تحمل الإصلاحات');
+});
+
+test('١١. التعديل الموضعيّ: المشهد يحلّ مكان النتيجة السابقة — تُخفى هي وأزرارها ومربّع الرفع ما دام، والإخفاء قبل التمرير', () => {
+  const fashion = W0.PANELS.find((p) => p.id === 'fashion');
+  assert.equal(fashion.hideSel, '#fashionAiDropZone, #fashionAiResultWrap, #fxTry, #fashionAiDownloadLink, #fashionAiFavoriteSaveBtn');
+  const mkEl = (id) => { const at = {}; return { id, hasAttribute: (k) => k in at, setAttribute: (k, v) => { at[k] = v; }, removeAttribute: (k) => { delete at[k]; }, at }; };
+  const els = ['fashionAiDropZone', 'fashionAiResultWrap', 'fxTry', 'fashionAiDownloadLink', 'fashionAiFavoriteSaveBtn'].map(mkEl);
+  let topCard = { id: 'card' };
+  const asked = [];
+  const scope = { querySelectorAll: (sel) => { asked.push(sel); return els; }, querySelector: () => topCard };
+  W0._applyHide(fashion, scope);
+  assert.equal(asked[0], fashion.hideSel);
+  assert.ok(els.every((e) => e.at['data-genw-hide'] === '1'), 'كلّها مخفيّة ما دامت بطاقة «فوق»');
+  W0._applyHide(fashion, scope);
+  assert.ok(els.every((e) => e.at['data-genw-hide'] === '1'), 'النداء المكرَّر لا يغيّر شيئًا');
+  topCard = null;
+  W0._applyHide(fashion, scope);
+  assert.ok(els.every((e) => !('data-genw-hide' in e.at)), 'رُفعت البطاقة ← تعود كلّها معًا');
+  const video = W0.PANELS.find((p) => p.id === 'video');
+  assert.doesNotThrow(() => W0._applyHide(video, { querySelectorAll: () => { throw new Error('لا يُسأل'); } }), 'لوحة بلا hideSel لا تُمسّ');
+  // الترتيب في scan: تركيب ← إخفاء ← تمرير (وإلّا حُسب موضع البطاقة تحت نتيجة ستختفي)
+  const iIns = SRC.indexOf('mp.parent.insertBefore(node, mp.before);');
+  const iHide = SRC.indexOf('applyHide(p, scopeEl);', iIns);
+  const iScroll = SRC.indexOf("if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }", iIns);
+  assert.ok(iIns > 0 && iHide > iIns && iScroll > iHide, 'الإخفاء بين التركيب والتمرير');
+  assert.equal(SRC.split('applyHide(p, scopeEl);').length - 1, 2, 'عند التركيب، وفي آخر كلّ مسح');
+});
+
+test('١٢. «أصلحه»: شريط «قبل/بعد» — «قبل» منطبقة على «بعد» في الواجهة العربيّة، طبقتها على الصورة وحدها، ونقر صفّ التعديل ليس سحبًا', () => {
+  const st = read('js/app-12-studios.js');
+  // (أ) الطبقة LTR دائمًا وارتفاعها ارتفاع الصورة — تُشغَّل كتلة النقل نفسها على عقد وهميّة
+  const a = st.indexOf("const FX_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };");
+  const b = st.indexOf("const favoritesBtn = $('#fashionAiFavoritesBtn');", a);
+  const observed = [];
+  function RO(cb) { this.cb = cb; }
+  RO.prototype.observe = function (el) { observed.push({ el, cb: this.cb }); };
+  const resultWrap = { id: 'fashionAiResultWrap', style: {}, clientWidth: 0 };
+  const resultEl = { naturalWidth: 0, naturalHeight: 0, clientHeight: 0, addEventListener: () => {}, scrollIntoView: () => {} };
+  const beforeWrap = { style: { height: '100%' } };
+  const beforeImg = { style: {} };
+  vm.runInNewContext(st.slice(a, b), {
+    $: () => null, document: { getElementById: () => null }, resultWrap, downloadEl: { style: {} }, favSaveBtn: { style: {} }, resultEl, beforeWrap, beforeImg,
+    window: { innerHeight: 900, addEventListener: () => {} }, ResizeObserver: RO, __swallow: (e) => { throw e; }, Object, Math,
+  });
+  assert.equal(beforeWrap.style.direction, 'ltr', 'الصورة الأعرض من طبقتها تبدأ من يسارها — في RTL كانت تفيض يسارًا فيظهر نصفها الأيمن');
+  observed[0].cb();
+  assert.equal(beforeWrap.style.height, '100%', 'حاوية مخفيّة: لا شيء يُكتب');
+  resultWrap.clientWidth = 473;
+  observed[0].cb();
+  assert.equal(beforeImg.style.width, '473px'); assert.equal(beforeWrap.style.height, '100%', 'الصورة لم تُحمَّل بعد: الارتفاع كما هو');
+  resultEl.clientHeight = 631;
+  observed[0].cb();
+  assert.equal(beforeWrap.style.height, '631px', 'ارتفاع الطبقة = ارتفاع الصورة (الحاوية ٦٧٩ بصفّ التعديل) — الزرّ لا يُغطّى، و«قبل» في صندوق «بعد» نفسه');
+  // (ب) نقر صفّ التعديل لا يسحب الشريط ولا يمنع التركيز؛ والسحب على الصورة كما كان
+  const h0 = st.indexOf('let __fashionBaDragging = false;');
+  const h1 = st.indexOf('/* ---- 📊 v-fashion-compare-cards', h0);
+  assert.ok(h0 > 0 && h1 > h0);
+  const on = {}; const clips = []; let prevented = 0;
+  const wrap = { style: {}, addEventListener: (ev, fn) => { on[ev] = fn; }, getBoundingClientRect: () => ({ left: 0, width: 400 }), setPointerCapture: () => {} };
+  const bw = { style: { display: 'block' } };
+  vm.runInNewContext(st.slice(h0, h1), { resultWrap: wrap, beforeWrap: bw, updateSliderClip: (p) => clips.push(p) });
+  const ev = (inRow, x) => ({ target: { closest: (sel) => (sel === '#fashionRefineRow' && inRow ? {} : null) }, clientX: x, pointerId: 1, preventDefault: () => { prevented++; } });
+  on.pointerdown(ev(true, 100)); on.pointermove(ev(true, 300));
+  assert.equal(clips.length, 0, 'نقر الحقل أو الزرّ لا يحرّك الشريط');
+  assert.equal(prevented, 0, 'ولا يُمنع افتراضيّه — فيتركّز الحقل وينضغط الزرّ');
+  on.pointerdown(ev(false, 100)); on.pointermove(ev(false, 200));
+  assert.equal(clips.join(','), '25,50', 'السحب على الصورة كما كان');
+  assert.equal(prevented, 1);
+  on.pointerup(ev(false, 200)); on.pointermove(ev(false, 300));
+  assert.equal(clips.length, 2, 'انتهى السحب برفع الإصبع');
+  bw.style.display = 'none';
+  on.pointerdown(ev(false, 100));
+  assert.equal(clips.length, 2, 'بلا «قبل» لا شريط');
+  const bundle = read('js/app.bundle.js');
+  assert.ok(bundle.includes("if(beforeWrap) beforeWrap.style.direction = 'ltr';") && bundle.includes("if(ev.target && ev.target.closest && ev.target.closest('#fashionRefineRow')) return;"), 'الحزمة تحمل الإصلاح');
+});
+
+test('١٣. لا اسم مزوّد، والحزمة والتسجيل والقرار', () => {
   assert.doesNotMatch(SRC, /Gemini|GPT|OpenAI|Runway|Claude/i, 'لا اسم مزوّد');
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes("src: '/assets/fashion/gen-scene.webp?v=3'") && bundle.includes("src: '/assets/fashion/gen-scene-gold.webp?v=1'"), 'الحزمة تحمل المشهدين');
@@ -230,5 +444,6 @@ test('٩. لا اسم مزوّد، والحزمة والتسجيل والقرا�
   assert.ok(bundle.includes('function panelBusy(p, ptxt){'), 'الحزمة تحمل إصلاح القراءة');
   assert.ok(!bundle.includes('genw-hud') && !bundle.includes('genw-face') && !bundle.includes('genw-rain'), 'الحزمة بلا اللوحة الداكنة ولا القرص ولا مطر الصورة كلّها');
   assert.ok(JSON.parse(read('package.json')).scripts.test.includes('node tests/gen-scene.test.cjs'));
-  assert.ok(read('knowledge/DECISIONS.md').slice(0, 7000).includes('v-gen-scene-exact'));
+  const dec = read('knowledge/DECISIONS.md').slice(0, 9000);
+  assert.ok(dec.includes('v-gen-scene-exact') && dec.includes('v-gen-steady'));
 });
