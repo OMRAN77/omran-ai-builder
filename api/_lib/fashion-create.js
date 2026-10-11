@@ -6,10 +6,11 @@
 // Uses the server-side owner API key (GEMINI_API_KEY). Returns a base64
 // PNG/JPEG the client can preview and download.
 const { checkFashionQuota, consumeFashion, FASHION_DAILY_LIMIT } = require('./_fashionUsage');
+const { keepGuardCharge } = require('./image-giveback.js'); /* v-guard-cap */
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const { judgeBest, duoEnabled } = require('./image-judge');
-const { locksFor, needsModest } = require('./fashion-locks');
+const { locksFor, needsModest, FAIRNESS_LOCK, MODEST_LOCK } = require('./fashion-locks');
 const variety = require('./fashion-variety');
 
 // 🎨 محرك بديل اختياري: gpt-image-1 (نفس محرك صور ChatGPT) بمفتاح OPENAI_API_KEY.
@@ -257,6 +258,11 @@ module.exports = async (req, res) => {
     // v-fashion-locks: قفل الهوية بدل السطر الضعيف القديم، وقفل العدالة عند
     // المقارنة (نفس الاستوديو في كل الخيارات)، وقفل الاحتشام حيث يلزم.
     const locks = locksFor({ fairness: !!fairness, modest: !!modest, style, occasion });
+    /* v-guard-cap: ما طلبه أمرنا نفسه يصل الحارس — قفل العدالة (خلفيّة رماديّة ووقفة واحدة في المقارنة) والاحتشام والمجمّع؛
+       بدونها يحكم «تغيّر النطاق» على ما طلبناه نحن، ورفض الحارس صار يُحتسب بعد اثنين في اليوم. قفل الهويّة لا يلزم (هو معيار الحارس).
+       الترتيب مقصود: الحارس يقصّ الطلب عند ٨٠٠ حرف، فما طلبه أمرنا قبل التفاصيل والوصف الحرّ. لا إعفاء من الاحتساب بأيّ علم. */
+    const guardLocks = ((fairness ? FAIRNESS_LOCK : '') + (needsModest({ modest: !!modest, style, occasion }) ? MODEST_LOCK : '')).trim();
+    const guardPrompt = [styleDesc, design && design.text, multiAngleClause.trim(), guardLocks, detailClause.trim(), description].filter(Boolean).join(' ');
     let promptText = '';
     if (mode === 'refine') {
       /* v-fashion-refine: تعديل نقطة واحدة فقط — كل ما عداها يبقى مطابقًا
@@ -320,8 +326,19 @@ module.exports = async (req, res) => {
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     const reqBody = { contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } };
-    /* v-image-duo: gpt-image بالتوازي مع Gemini، والحكم يختار الأدقّ في النهاية */
-    const duoP = duoEnabled() ? (mode === 'image' ? openaiRedress(promptText, imageBase64, mimeType) : openaiGenerate(promptText)).catch(function () { return null; }) : null;
+    /* v-image-duo: gpt-image بالتوازي مع Gemini، والحكم يختار الأدقّ في النهاية.
+       المراجعة (img422-3): في التعديل الموضعيّ (refine) البديل تعديلٌ للمصدر نفسه (images/edits) لا توليد من الصفر — كان الإنقاذ
+       يسلّم صورة شخص آخر بوصفها التعديل ويُحتسب، والعميل يبني عليها التعديلات التالية. */
+    const editsSource = mode === 'image' || mode === 'refine';
+    const altImage = () => (editsSource ? openaiRedress(promptText, imageBase64, mimeType) : openaiGenerate(promptText));
+    const duoP = duoEnabled() ? altImage().catch(function () { return null; }) : null;
+    /* v-guard-cap: نتيجة gpt-image الموازية مدفوعة في كلّ الأحوال — تمرّ بالحارس نفسه (وضع الصورة) وتُسلَّم بشكل الإنقاذ نفسه */
+    const guardAlt = (alt) => verifyLocalizedImageEdit({ apiKey, sourceBase64: imageBase64, sourceMime: mimeType || 'image/jpeg', resultBase64: alt.imageBase64, resultMime: alt.mimeType || 'image/png', userPrompt: guardPrompt });
+    const passes = (g) => !!(g && (g.ok || g.reason === 'validation_unavailable'));
+    const sendDuo = async (alt) => {
+      const remD = await consumeFashion(quota.username, quota.limit);
+      res.status(200).json({ imageBase64: alt.imageBase64, mimeType: alt.mimeType || 'image/png', engine: 'openai', remaining: remD, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
+    };
 
     const upstream = await fetch(endpoint, {
       method: 'POST',
@@ -339,9 +356,7 @@ module.exports = async (req, res) => {
       console.error('[fashion-create] upstream failed status=' + upstream.status + ' detail=' + detail);
       // v-fashion-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعني تعطّل الميزة —
       // إن وُجد مفتاح OpenAI فجرّب gpt-image-1 قبل إبلاغ المستخدم بالفشل.
-      const rescue = duoP ? await duoP : (mode === 'image'
-        ? await openaiRedress(promptText, imageBase64, mimeType)
-        : await openaiGenerate(promptText));
+      const rescue = duoP ? await duoP : await altImage();
       if (rescue) {
         const remR = await consumeFashion(quota.username, quota.limit);
         res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
@@ -354,6 +369,21 @@ module.exports = async (req, res) => {
     const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     const imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
+      /* v-guard-cap: Gemini أجاب ٢٠٠ بلا صورة (نصّ حرّ في الوصف/التعديل/الإضافات يوجّهه لذلك) والنداء الموازي مدفوع — كان يُرمى
+         والحجز يُردّ فيتكرّر بلا حدّ. الآن يُسلَّم كإنقاذ !upstream.ok ويُستهلك، وفي وضع الصورة يمرّ بالحارس أوّلًا. ٥٠٠ بلا صورة مدفوعة فقط. */
+      const altN = duoP ? await duoP : null;
+      if (altN && altN.imageBase64) {
+        if (mode === 'image') {
+          const gN = await guardAlt(altN);
+          if (!passes(gN)) {
+            await keepGuardCharge('fashion', quota, consumeFashion);
+            res.status(422).json({ error: publicGuardError(gN), retryable: false });
+            return;
+          }
+        }
+        await sendDuo(altN);
+        return;
+      }
       res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بوصف أو ستايل آخر.' });
       return;
     }
@@ -365,12 +395,16 @@ module.exports = async (req, res) => {
         sourceMime: mimeType || 'image/jpeg',
         resultBase64: imgPart.inlineData.data,
         resultMime: imgPart.inlineData.mimeType || 'image/png',
-        userPrompt: [styleDesc, design && design.text, description, detailClause, multiAngleClause].filter(Boolean).join(' '),
+        userPrompt: guardPrompt,
       });
       /* v-guard-fail-open: تعطّل الحارس نفسه (مهلة/حصة) لا يُسقط صورةً جاهزة —
          نعرضها ونسجّل؛ الرفض فقط عند حكمٍ صريح بتغيير الهوية أو الأسلوب. */
       if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[fashion-create] guard unavailable — passing result through');
       else if (!guard.ok) {
+        /* v-guard-cap: البديل المدفوع أصلًا يُجرَّب على الحارس قبل الرفض — إن مرّ فهو الجواب (ويُستهلك)، وإلّا ٤٢٢ يُحتسب بعد اثنين */
+        const altR = duoP ? await duoP : null;
+        if (altR && altR.imageBase64 && passes(await guardAlt(altR))) { await sendDuo(altR); return; }
+        await keepGuardCharge('fashion', quota, consumeFashion);
         res.status(422).json({ error: publicGuardError(guard), retryable: false });
         return;
       }
@@ -382,10 +416,7 @@ module.exports = async (req, res) => {
         const alt = await duoP;
         if (alt && alt.imageBase64) {
           let altOk = true;
-          if (mode === 'image') {
-            const g2 = await verifyLocalizedImageEdit({ apiKey, sourceBase64: imageBase64, sourceMime: mimeType || 'image/jpeg', resultBase64: alt.imageBase64, resultMime: alt.mimeType || 'image/png', userPrompt: [styleDesc, design && design.text, description, detailClause, multiAngleClause].filter(Boolean).join(' ') });
-            altOk = !!(g2 && (g2.ok || g2.reason === 'validation_unavailable'));
-          }
+          if (mode === 'image') altOk = passes(await guardAlt(alt));
           if (altOk) {
             const pick = await judgeBest({ apiKey, prompt: promptText, source: mode === 'image' ? { b64: imageBase64, mime: mimeType || 'image/jpeg' } : null, a: { b64: outB64, mime: outMime }, b: { b64: alt.imageBase64, mime: alt.mimeType || 'image/png' } });
             if (pick === 'b') { outB64 = alt.imageBase64; outMime = alt.mimeType || 'image/png'; outEngine = 'openai+judge'; } else outEngine = 'gemini+judge';

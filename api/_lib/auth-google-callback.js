@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { getUser, putUser, makeToken } = require('./auth.js'); // داخل _lib
-const { takeWelcomeGift } = require('./welcome-gift.js'); // v-welcome-cap
+const { takeWelcomeGift, giftNet, clientIp } = require('./welcome-gift.js'); // v-welcome-cap · v-oauth-bind
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -140,7 +140,8 @@ module.exports = async (req, res) => {
     if (!user || user.deleted) {
       // v-welcome-cap: كان السجلّ بلا points فيمنحه readPoints ٧٠ بلا أيّ حدّ — الآن من حصّة العنوان واليوم، و0 رقمًا فوقها.
       // دخول حساب قائم لا يمرّ هنا فلا يمسّ العدّادات.
-      const gift = await takeWelcomeGift(req);
+      const giftOut = {}; // v-farm-gate: capped = سقف الشبكة رفض الهديّة (free-tier.js)
+      const gift = await takeWelcomeGift(req, { out: giftOut });
       const { salt, hash } = randomPasswordHash();
       user = {
         username: profile.name || email.split('@')[0],
@@ -151,6 +152,7 @@ module.exports = async (req, res) => {
         createdAt: Date.now(),
         points: gift ? 70 : 0,
         welcomeGift: gift,
+        giftCapped: giftOut.capped === true,
       };
       await putUser(key, user);
     }
@@ -164,12 +166,15 @@ module.exports = async (req, res) => {
     // الإيداع يتم تحت الجزء السداسي وحده (هو ما يطالب به التطبيق)،
     // وسفاري يُوجَّه لصفحة «✅ ارجع للتطبيق» بدل نسخة كاملة من الموقع
     // (التي كانت ترفض gtoken أصلًا لغياب state جلستها — ارتباك بلا فائدة).
+    // v-oauth-bind: state يختارها البادئ — قد يكون مهاجمًا أرسل الرابط للضحيّة، و«-app» يضعها هو أيضًا. فالإيداع
+    // (للويب و«-app»: تطبيق الشاشة الرئيسيّة في الآيفون ومعاينات Vercel يحتاجانه) يحمل شبكة من أكمل الدخول، و
+    // oauth-claim لا يسلّمه إلّا لطلب من الشبكة نفسها — مهاجم من شبكة أخرى لا يستلم شيئًا.
     const stM = typeof state === 'string' ? /^([0-9a-f]{16,64})(-app)?$/i.exec(state) : null;
     if (stM) {
       try {
         const { kvPutJSON, kvExpire } = require('./kv.js');
         await kvPutJSON('db/oauth-claim/' + stM[1].toLowerCase(), {
-          token, user: user.username, avatar: user.avatar || '', ts: Date.now(),
+          token, user: user.username, avatar: user.avatar || '', ts: Date.now(), net: giftNet(clientIp(req)),
         });
         await kvExpire('db/oauth-claim/' + stM[1].toLowerCase(), 600);
       } catch (e) { console.warn('[oauth] claim store failed:', e && e.message); }

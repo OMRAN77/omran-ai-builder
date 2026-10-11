@@ -5,7 +5,7 @@ const crypto = require('crypto');
 // v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
 const quotaTally = require('./_dailyQuota.js');
 // v-plan-caps: الحدّ أدناه للمجّانيّ، والمشترك بباقة سارية بنسبة سقف محادثته (_planCap.js).
-const { planScaledLimit } = require('./_planCap.js');
+const { planScaledLimit, planLimitInfo } = require('./_planCap.js');
 const { isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
 // v-owner-unlimited (شكوى المالك «استهلكت المجاني كلها»): المالك وVIP بلا حدّ يومي هنا
@@ -46,8 +46,9 @@ async function checkConstructionQuota(token, res) {
   if (await __unlimitedUser(username)) {
     return { allowed: true, username, remaining: Infinity, unlimited: true };
   }
-  const limit = await planScaledLimit(username, CONSTRUCTION_DAILY_LIMIT);
-  return Object.assign(await quotaTally.check('construction', username, limit, res), { limit });
+  // v-farm-gate: gift — حساب فوق سقف هديّة شبكته بلا دفع حدّه 0؛ free — يُعدّ في FREE_MEDIA_DAILY (free-tier.js).
+  const { limit, free } = await planLimitInfo(username, CONSTRUCTION_DAILY_LIMIT, { gift: true });
+  return Object.assign(await quotaTally.check('construction', username, limit, res, { free }), { limit });
 }
 
 // v-plan-consume-limit: limit = الحدّ المحسوب في الفحص (quota.limit) — لا قراءة ثانية للطبقة، والمتبقّي لا ينزل تحت الصفر.

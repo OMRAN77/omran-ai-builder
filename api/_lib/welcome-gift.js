@@ -49,7 +49,10 @@ async function giveBack(kv, keys) {
   }
 }
 
-/** يحجز هديّة ترحيب لهذا الطلب: true = تُمنح، false = حساب برصيد 0. لا ترمي أبدًا. */
+/** يحجز هديّة ترحيب لهذا الطلب: true = تُمنح، false = حساب برصيد 0. لا ترمي أبدًا.
+    v-farm-gate: o.out.capped = true حين رفضها سقف **الشبكة** وحده — لا السقف العامّ (استنزافه من مزرعة لا يحرم الأمين على شبكة
+    أخرى أدواته المجّانيّة)، ولا البيئة 0، ولا عطب KV. المسارات الثلاثة تكتبه giftCapped في السجلّ (free-tier.js). وسقف الشبكة
+    على تسجيلاتها في اليوم، بهديّة أو بلا هديّة (المراجعة farm-2). */
 async function takeWelcomeGift(req, o) {
   const opt = o || {};
   const perIp = envInt('WELCOME_GIFT_PER_IP_DAILY', 50);
@@ -59,17 +62,23 @@ async function takeWelcomeGift(req, o) {
   const net = giftNet(clientIp(req));
   // بلا عنوان (تشغيل محلّيّ) = القاطع العامّ وحده.
   const steps = [];
-  if (net) steps.push(['db/welcome-gift/ip/' + encodeURIComponent(net) + '/' + day, perIp]);
-  steps.push(['db/welcome-gift/all/' + day, all]);
+  if (net) steps.push(['db/welcome-gift/ip/' + encodeURIComponent(net) + '/' + day, perIp, true]);
+  steps.push(['db/welcome-gift/all/' + day, all, false]);
   let kv = null;
   const taken = [];
   try {
     kv = opt.kv || require('./kv.js');
-    for (const [key, cap] of steps) {
+    for (const [key, cap, perNet] of steps) {
       await kv.kvSetIfAbsent(key, 0, DAY_TTL_SEC);
       const n = Number(await kv.kvIncr(key));
       taken.push(key);
-      if (!(n >= 1) || n > cap) { await giveBack(kv, taken); return false; }
+      if (!(n >= 1) || n > cap) {
+        if (perNet && n > cap && opt.out) opt.out.capped = true;
+        // المراجعة (farm-2): رفض السقف العامّ يُبقي زيادة الشبكة — عدّاد الشبكة يعدّ تسجيلاتها لا هداياها. كان يُردّ معه، فبعد
+        // استنزاف السقف العامّ لا تبلغ شبكةٌ سقفها أبدًا ولا يُسقف أحد بقيّة اليوم. ورفض الشبكة نفسها يردّ زيادتها كما كان.
+        await giveBack(kv, perNet ? taken : [key]);
+        return false;
+      }
     }
     return true;
   } catch (e) {
@@ -79,4 +88,5 @@ async function takeWelcomeGift(req, o) {
   }
 }
 
-module.exports = { takeWelcomeGift, giftNet, DAY_TTL_SEC };
+// clientIp يُصدَّر لربط إيداع دخول Google وتذكرة ربط Gmail بشبكة من أكملهما (v-oauth-bind) — المحلّل نفسه لا نسخة ثانية.
+module.exports = { takeWelcomeGift, giftNet, clientIp, DAY_TTL_SEC };

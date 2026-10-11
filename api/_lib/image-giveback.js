@@ -4,10 +4,18 @@
 // في اليوم (UTC) لكلّ فاعل تُردّ كما كانت، وبعدها يبقى الخصم. عطب KV = ردّ كما كان (لا يُعاقَب الصادق على عطبنا،
 // ومع عطب KV يسقط حجز الضيف والنقاط قبل أيّ محرّك أصلًا). البيئة تُقرأ داخل الدالّة لا في نطاق الوحدة.
 const DAY_TTL_SEC = 172800;
+const UNCHANGED_PREFIX = 'abuse:img-unchanged:';
+const GUARD_PREFIX = 'abuse:img-guard:';
+const GUARD_NAMESPACES = ['studio', 'fashion', 'portrait']; // كلّ ns يمرّ بـkeepGuardCharge — tests/image-guard-cap يستخرجها من الكود
 
-/** عدد الردود المجانيّة في اليوم لكلّ فاعل: ٠ = لا ردّ أبدًا؛ قيمة فاسدة = ٢. */
-function freeLimit(env) {
-  const n = parseInt((env || process.env).IMAGE_UNCHANGED_FREE, 10);
+/** هويّة الحساب في العدّادين ('u:' + الاسم مطبَّعًا): maha-image لـ«لم يُنفَّذ»، وkeepGuardCharge بعد ns. */
+const userMeterId = (username) => 'u:' + String(username).trim().toLowerCase();
+/** مفتاح عدّاد اليوم لهويّة — بانيه الوحيد (العدّ ونقله بتغيير الاسم). */
+const meterKey = (id, day, prefix) => (prefix || UNCHANGED_PREFIX) + encodeURIComponent(String(id)).slice(0, 200) + ':' + day;
+
+/** عدد الردود المجانيّة في اليوم لكلّ فاعل: ٠ = لا ردّ أبدًا؛ قيمة فاسدة = ٢. name: مفتاح البيئة (v-guard-cap: IMAGE_GUARD_FREE). */
+function freeLimit(env, name) {
+  const n = parseInt((env || process.env)[name || 'IMAGE_UNCHANGED_FREE'], 10);
   return Number.isFinite(n) && n >= 0 ? n : 2;
 }
 
@@ -21,7 +29,7 @@ async function unchangedGiveback(ids, o) {
   const taken = [];
   try {
     for (const id of (ids || []).filter(Boolean)) {
-      const key = 'abuse:img-unchanged:' + encodeURIComponent(String(id)).slice(0, 200) + ':' + day;
+      const key = meterKey(id, day, opt.prefix);
       await kv.kvSetIfAbsent(key, 0, DAY_TTL_SEC);
       const n = Number(await kv.kvIncr(key));
       taken.push(key);
@@ -37,4 +45,37 @@ async function unchangedGiveback(ids, o) {
   }
 }
 
-module.exports = { unchangedGiveback, freeLimit };
+/* v-guard-cap (١١ أكتوبر ٢٠٢٦): ٤٢٢ الحارس (الهويّة/الأسلوب/«ما تغيّر») في أدوات الحصّة اليوميّة — الاستوديو والأزياء والبورتريه —
+   يخرج بعد نداء صور مدفوع واحد على الأقلّ، وكان الحجز يُردّ دائمًا: خطوة سلسلة بصورة شخص آخر تفشل حتميًّا فتتكرّر بلا حدّ والعدّاد صفر.
+   الآن أوّل IMAGE_GUARD_FREE (٢) في اليوم لكلّ حساب ولكلّ أداة (ns) تُردّ كما كانت، وبعدها يُستهلك المقعد قبل الردّ (consume يثبّت
+   الحجز فلا يردّه إرسال الردّ). الرمز نفسه (لا يدّعي «ما انحسبت»)، وبلا إعادة تلقائيّة. المالك وVIP لا يُعدّون. العدّ بالحساب لا
+   بالعنوان (مكتب خلف NAT واحد لا يتأثّر). عطب KV = ردّ كما كان. البيئة تُقرأ هنا لا في نطاق الوحدة. يرجع true إن بقي الخصم. */
+async function keepGuardCharge(ns, quota, consume, o) {
+  if (!quota || quota.unlimited || !quota.username) return false;
+  const opt = Object.assign({ prefix: GUARD_PREFIX, limit: freeLimit(null, 'IMAGE_GUARD_FREE') }, o);
+  if (await unchangedGiveback([ns + ':' + userMeterId(quota.username)], opt)) return false;
+  try { await consume(quota.username, quota.limit); } catch (e) { console.warn('[image-giveback] guard charge failed: ' + (e && e.message)); return false; }
+  return true;
+}
+
+/* المراجعة العدائيّة (img422-1، farm-6، INT-1): العدّادان بالحساب كانا يبقيان على الاسم القديم بتغيير الاسم — كلّ اسم جديد ردّان مجّانيّان
+   جديدان لكلّ أداة (studio/fashion/portrait) و«لم يُنفَّذ» في مها، فالنداءات المدفوعة بلا حدّ والعدّاد صفر. الآن عدّادات اليوم تتبع الحساب
+   كـ_dailyQuota.moveToday: INCRBY + EXPIRE على الجديد ثمّ حذف القديم (auth.moveLiveCounters). عطب KV = لا نقل، ويُسجَّل. */
+async function moveToday(oldUser, newUser, o) {
+  if (!oldUser || !newUser || userMeterId(oldUser) === userMeterId(newUser)) return;
+  const day = new Date(o && typeof o.now === 'number' ? o.now : Date.now()).toISOString().slice(0, 10);
+  const keysOf = (u) => GUARD_NAMESPACES.map((ns) => meterKey(ns + ':' + userMeterId(u), day, GUARD_PREFIX)).concat([meterKey(userMeterId(u), day, UNCHANGED_PREFIX)]);
+  const from = keysOf(oldUser), to = keysOf(newUser);
+  try {
+    const kv = (o && o.kv) || require('./kv.js');
+    const vals = await kv.kvPipeline(from.map((k) => ['GET', k]));
+    const cmds = [];
+    (vals || []).forEach((v, i) => {
+      const n = parseInt(v, 10);
+      if (n > 0) cmds.push(['INCRBY', to[i], String(n)], ['EXPIRE', to[i], String(DAY_TTL_SEC)], ['DEL', from[i]]);
+    });
+    if (cmds.length) await kv.kvPipeline(cmds);
+  } catch (e) { console.warn('[image-giveback] rename meters not moved: ' + (e && e.message)); }
+}
+
+module.exports = { unchangedGiveback, freeLimit, keepGuardCharge, moveToday, userMeterId, meterKey, GUARD_NAMESPACES, GUARD_PREFIX, UNCHANGED_PREFIX };
