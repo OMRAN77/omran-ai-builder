@@ -2117,7 +2117,10 @@ module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 �
 function ownerStopNote(fail, then) {
   const isCredit = (x) => { const f = x || {}; return /credit|balance|billing|insufficient|quota|payment/i.test(String(f.text || '')) || Number(f.status) === 402; };
   if (isCredit(fail) || isCredit(then)) return 'ما عندي رصيد';
-  return 'ما قدرت أردّ الحين — خطأ ' + (((then || fail) || {}).status || '؟');
+  const __f = (then || fail) || {};
+  // v-groq-tpm: 413 «tokens per minute» بعد إعادة القصّ في oa-direct = المحادثة نفسها أكبر من حدّ المفتاح في الدقيقة
+  if (Number(__f.status) === 413 && /tokens per minute|\bTPM\b/i.test(String(__f.text || ''))) return 'ما قدرت أردّ الحين — المحادثة أكبر من حدّ المفتاح في الدقيقة؛ افتح محادثة جديدة';
+  return 'ما قدرت أردّ الحين — خطأ ' + (__f.status || '؟');
 }
 /* v-owner-identity (المالك ٨ أكتوبر: «ولا واحد يردّ على أيّ مزوّد باسمه… المزوّدين كلّهم أسامي فقط، شو عرّفني أنّهم بأصلهم»):
    منذ v-owner-full (٢ أكتوبر) يأخذ المالك النظام الكامل، وفي رأسه «أنت عمران… أسماء النماذج والمزوّدين لا تُذكر أبدًا — تقول المحرّك»
