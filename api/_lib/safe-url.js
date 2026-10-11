@@ -10,11 +10,13 @@ const net = require('node:net');
    الآن يُفكّ عنوان IPv6 إلى ثماني خانات، ويُستخرج منه IPv4 المضمّن (mapped/compatible/NAT64/6to4)
    فيُفحص بقواعد IPv4 نفسها. العناوين العامّة كما كانت. */
 function isPrivateIpv4(address) {
-  const [a, b] = address.split('.').map(Number);
+  const [a, b, c] = address.split('.').map(Number);
   return a === 0 || a === 10 || a === 127 || a === 169 && b === 254 ||
     a === 192 && b === 168 || a === 172 && b >= 16 && b <= 31 ||
     a === 100 && b >= 64 && b <= 127 || // CGNAT 100.64.0.0/10
     a === 198 && (b === 18 || b === 19) || // 198.18.0.0/15 (قياس الأداء)
+    // v-ssrf-pin: 192.0.0.0/24 (تخصيصات IETF) و TEST-NET الثلاث 192.0.2/24 و198.51.100/24 و203.0.113/24
+    a === 192 && b === 0 && (c === 0 || c === 2) || a === 198 && b === 51 && c === 100 || a === 203 && b === 0 && c === 113 ||
     a >= 224; // 224.0.0.0/4 بثّ متعدّد + 240.0.0.0/4 محجوز (ومعه 255.255.255.255)
 }
 
@@ -47,6 +49,10 @@ function isPrivateIpv6(value) {
   if (zeros(0, 6) || (zeros(0, 5) && h[5] === 0xffff)) return isPrivateIpv4(v4From(h[6], h[7]));
   // NAT64 المعروف 64:ff9b::/96 — يمرّ إلى IPv4 المضمّن، فيُحكم بحكمه
   if (h[0] === 0x64 && h[1] === 0xff9b && zeros(2, 6)) return isPrivateIpv4(v4From(h[6], h[7]));
+  // v-ssrf-pin: NAT64 المحلّيّ 64:ff9b:1::/48 (شبكة المشغّل نفسه)، والتوثيق 2001:db8::/32، وقياس الأداء 2001:2::/48، والتصريف 100::/64
+  if (h[0] === 0x64 && h[1] === 0xff9b && h[2] === 1) return true;
+  if (h[0] === 0x2001 && (h[1] === 0x0db8 || (h[1] === 0x0002 && h[2] === 0))) return true;
+  if (h[0] === 0x0100 && zeros(1, 4)) return true;
   // 6to4 ‏2002:AABB:CCDD::/48 — IPv4 في الخانتين الثانية والثالثة
   if (h[0] === 0x2002) return isPrivateIpv4(v4From(h[1], h[2]));
   return (h[0] & 0xfe00) === 0xfc00 || // fc00::/7 محلّيّ فريد
@@ -68,7 +74,8 @@ function parsePublicUrl(raw, { allowedHosts } = {}) {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('invalid_outbound_scheme');
   if (url.username || url.password || !url.hostname) throw new Error('invalid_outbound_url');
   const host = url.hostname.toLowerCase().replace(/\.$/, '');
-  if (host === 'localhost' || host.endsWith('.local') || host === 'metadata.google.internal' || isPrivateAddress(host)) {
+  // v-ssrf-pin: ‎*.localhost و‎*.internal محجوزان للشبكة المحلّيّة (ومعهما metadata.google.internal)
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || isPrivateAddress(host)) {
     throw new Error('blocked_outbound_host');
   }
   if (allowedHosts && !allowedHosts.includes(host)) throw new Error('unapproved_outbound_host');
@@ -85,13 +92,62 @@ async function validatePublicUrl(raw, options = {}) {
   return url;
 }
 
+/* v-ssrf-pin (الدفعة A، أمان): validatePublicUrl يحلّ الاسم ويفحصه، ثمّ fetch يحلّه من جديد عند الاتصال — فاسمٌ يجيب عنوانًا
+   عامًّا للفحص ثمّ 127.0.0.1 للاتصال (DNS rebinding) يمرّ إلى الداخل. الآن الاتصال نفسه يمرّ بموزّع undici المدمج مع Node
+   (صنف الموزّع العامّ، لا حزمة npm) بـconnect.lookup يحلّ الاسم ويرفض أيّ عنوان خاصّ لكلّ اتصال، فالعنوان الذي يُتّصل به هو
+   المفحوص. SNI والشهادة على الاسم كما كانا. بيئة بلا موزّع مدمج = الفحص قبل الاتصال وحده (كما كان) مع تحذير في السجلّ. */
+const BLOCKED = 'blocked_outbound_host';
+function pinnedLookup(resolve) {
+  return (hostname, opts, cb) => {
+    if (typeof opts === 'function') { cb = opts; opts = {}; }
+    const o = opts || {};
+    Promise.resolve()
+      .then(() => resolve(hostname, { all: true, verbatim: true }))
+      .then((records) => {
+        const list = (Array.isArray(records) ? records : []).filter((r) => r && r.address)
+          .map((r) => ({ address: String(r.address), family: Number(r.family) || net.isIP(String(r.address)) }));
+        if (!list.length || list.some((r) => isPrivateAddress(r.address))) throw new Error(BLOCKED);
+        const usable = o.family ? list.filter((r) => r.family === Number(o.family)) : list;
+        if (!usable.length) throw new Error(BLOCKED);
+        if (o.all) cb(null, usable);
+        else cb(null, usable[0].address, usable[0].family);
+      })
+      .catch((e) => cb(e));
+  };
+}
+let __agentWarned = false;
+const __pinned = new WeakMap();
+function pinnedDispatcher(resolve) {
+  if (__pinned.has(resolve)) return __pinned.get(resolve);
+  let Agent = null;
+  try {
+    void globalThis.Headers; // يحمّل undici المدمج فيُنشأ موزّعه العامّ — بلا نداء fetch (قد يكون بديلًا في الاختبارات)
+    const d = globalThis[Symbol.for('undici.globalDispatcher.1')];
+    if (d && typeof d.constructor === 'function' && d.constructor.name === 'Agent') Agent = d.constructor;
+  } catch (e) { Agent = null; } // لا موزّع مدمج يُعرف — يبقى الفحص قبل الاتصال
+  if (!Agent) {
+    if (!__agentWarned) { __agentWarned = true; console.warn('[safe-url] no built-in undici Agent — outbound IP not pinned'); }
+    return null;
+  }
+  const dispatcher = new Agent({ connect: { lookup: pinnedLookup(resolve) } });
+  __pinned.set(resolve, dispatcher);
+  return dispatcher;
+}
+
 async function fetchPublicUrl(raw, init = {}, options = {}) {
   const fetchFn = options.fetchFn || fetch;
   const maxRedirects = options.maxRedirects == null ? 3 : options.maxRedirects;
+  const dispatcher = pinnedDispatcher(options.lookup || dns.lookup);
   let url = String(raw || '');
   for (let redirects = 0; redirects <= maxRedirects; redirects++) {
     const checked = await validatePublicUrl(url, options);
-    const response = await fetchFn(checked, Object.assign({}, init, { redirect: 'manual' }));
+    let response;
+    try {
+      response = await fetchFn(checked, Object.assign({}, init, { redirect: 'manual' }, dispatcher ? { dispatcher } : null));
+    } catch (e) {
+      if (e && e.cause && e.cause.message === BLOCKED) throw new Error(BLOCKED); // الاتصال رفض عنوانًا خاصًّا
+      throw e;
+    }
     if (![301, 302, 303, 307, 308].includes(response.status)) return response;
     const location = response.headers.get('location');
     if (!location || redirects === maxRedirects) throw new Error('outbound_redirect_rejected');
@@ -100,4 +156,4 @@ async function fetchPublicUrl(raw, init = {}, options = {}) {
   throw new Error('outbound_redirect_rejected');
 }
 
-module.exports = { isPrivateAddress, parsePublicUrl, validatePublicUrl, fetchPublicUrl };
+module.exports = { isPrivateAddress, parsePublicUrl, validatePublicUrl, fetchPublicUrl, pinnedLookup };

@@ -26,7 +26,10 @@ require.cache[kvPath] = { id: kvPath, filename: kvPath, loaded: true, exports: {
   kvGetJSON: async (k) => (store.has(k) ? JSON.parse(store.get(k)) : null),
   kvPutJSON: async (k, v) => { store.set(k, JSON.stringify(v)); },
   kvDel: async (k) => { store.delete(k); }, kvList: async () => [...store.keys()],
-  kvIncr: async () => 1, kvExpire: async () => {}, kvIncrBy: async () => 1, kvDecrBy: async () => 1,
+  // v-auth-throttle: حدود المحاولات صارت عدّادات ذرّيّة (INCR) لا JSON يُقرأ ثمّ يُكتب — فالمحاكاة تعدّ فعلًا
+  kvIncr: async (k) => { const v = Number(store.get(k) || 0) + 1; store.set(k, String(v)); return v; },
+  kvExpire: async () => {}, kvIncrBy: async () => 1,
+  kvDecrBy: async (k, n) => { const v = Number(store.get(k) || 0) - Number(n); store.set(k, String(v)); return v; },
   kvSetIfAbsent: async (k, v) => { if (store.has(k)) return false; store.set(k, String(v)); return true; },
   kvGetRaw: async (k) => store.get(k) || null, kvSetRaw: async (k, v) => { store.set(k, String(v)); },
 } };

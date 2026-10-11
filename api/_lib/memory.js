@@ -2,10 +2,8 @@
 // (اسمه، مشاريعه، تفضيلاته) في Redis تحت db/memory/<username>.json،
 // ويُحقن هذا الملخص في بداية كل محادثة ليتذكر التطبيق المستخدم.
 // التحديث يتم عبر نموذج Groq المجاني (llama-3.3-70b) بدمج آخر تبادل في الملخص.
-const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const { logError } = require('./log-error.js');
 const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 
@@ -13,18 +11,9 @@ const MAX_MEMORY_CHARS = 6000;   // ملف موجز يكفي الهوية وال
 const MEMORY_PROMPT_CHARS = 5000; // سقف ما يُحقن في طلب واحد حتى لا تزاحم الذاكرة سؤال المستخدم
 const MIN_UPDATE_GAP_MS = 20 * 1000; // لا نحدّث أكثر من مرة كل 20 ثانية لكل مستخدم
 
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
-}
+// v-session-shape (الدفعة A، أمان): نسخة verifyToken اليدويّة هنا كانت تقبل حمولة موقّعة بلا exp (تذكرة مهمّة البناء) جلسةً
+// لا تنتهي، وتقرأ السرّ في نطاق الوحدة. الآن _session.sessionUser: u نصّ وexp رقم في المستقبل، والسرّ عند النداء.
+const { sessionUser } = require('./_session.js');
 
 function memPath(username) {
   return 'db/memory/' + encodeURIComponent(String(username).toLowerCase()) + '.json';
@@ -163,7 +152,7 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     const { token, op } = body;
-    const username = verifyToken(token);
+    const username = sessionUser(token);
     if (!username) {
       // v-living-all: الذاكرة الحيّة لكلّ مسجَّل — الزائر بلا حساب 403 (لا 401: لا حساب كي يُطلب منه تجديد جلسته).
       if (typeof op === 'string' && op.indexOf('living_') === 0) { res.status(403).json({ error: 'account_required' }); return; }

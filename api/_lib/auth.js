@@ -195,20 +195,11 @@ function makeToken(username) {
   return payload + '.' + sig;
 }
 
+/* v-session-shape (الدفعة A، أمان): كانت هنا نسخة تقارن `data.exp < Date.now()`، فحمولة موقّعة بلا exp (تذكرة مهمّة البناء
+   {u,p,h,r,n,e}) تمرّ «جلسة» لا تنتهي، و'verify' يسكّ منها رمزًا جديدًا بثلاثين يومًا. الآن الشكل كما يصنعه makeToken حرفيًّا
+   (u نصّ، exp رقم في المستقبل) عبر _session.sessionUser — وكلّ من يستورد auth.verifyToken (الدفع والبريد والوكيل…) يرثه. */
 function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
-    const a = Buffer.from(String(sig || ''));
-    const b = Buffer.from(expected);
-    if (a.length !== b.length) return null;
-    if (!crypto.timingSafeEqual(a, b)) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
+  return require('./_session.js').sessionUser(token);
 }
 
 // v-time-seam: مفصل الزمن لانتظار إعادة محاولة getUser (٣٠٠/٦٠٠/٩٠٠ م.ث). الإنتاج ينام كما كان تمامًا؛
@@ -330,17 +321,99 @@ async function emailOwner(emailKey) {
   } catch (e) { logError('auth:email-owner', e); }
   return null;
 }
-/* v-account-email: نافذة محاولات بسيطة في KV — يرجع دقائق الانتظار، أو ٠ إن سُمح. */
+/* v-auth-throttle (الدفعة A، أمان): عدّادات المحاولات ذرّيّة. كانت rateWait وقفل الدخول وعدّاد رموز البريد قراءةً ثمّ كتابة،
+   فالطلبات المتوازية تقرأ العدد نفسه وتمرّ كلّها (المسبار: ٢٠٠ كلمة مرور خاطئة متوازية = ٢٠٠ تقييم، والقفل لم يقع).
+   الآن INCR ذرّيّ، والعمر يُضبط مع إنشاء المفتاح (SET NX EX) فلا مفتاح أبديّ، والنافذة تبدأ من أوّل محاولة كما كانت
+   (‎<المفتاح>/t يحفظ بدايتها لحساب الدقائق). المفاتيح ‎/n و‎/t جديدة: القديمة نصوص JSON بلا عمر، وINCR عليها يرمي. */
+async function hitCounter(key, ttlSec) {
+  const kv = require('./kv.js');
+  const created = await kv.kvSetIfAbsent(key, '0', ttlSec);
+  const n = Number(await kv.kvIncr(key));
+  if (n === 1 && !created) await kv.kvExpire(key, ttlSec); // انقضى بين الخطوتين فأنشأه INCR بلا عمر
+  return { n, created };
+}
+async function windowHit(base, windowMs) {
+  const ttl = Math.max(1, Math.ceil(windowMs / 1000));
+  const { n, created } = await hitCounter(base + '/n', ttl);
+  if (created || n === 1) {
+    try { await require('./kv.js').kvSetRaw(base + '/t', String(Date.now()), ttl); } catch (e) { logError('auth:window-start', e); }
+  }
+  return n;
+}
+async function windowMinutes(base, windowMs) {
+  let start = NaN;
+  try { start = Number(await require('./kv.js').kvGetRaw(base + '/t')); } catch (e) { logError('auth:window-read', e); }
+  const left = start > 0 ? start + windowMs - Date.now() : windowMs;
+  return Math.max(1, Math.ceil(left / 60000));
+}
+async function windowBack(base) {
+  try { await require('./kv.js').kvDecrBy(base + '/n', 1); } catch (e) { logError('auth:window-back', e); }
+}
+
+/* v-account-email: نافذة محاولات في KV — يرجع دقائق الانتظار، أو ٠ إن سُمح. عطب KV = يُسمح (لا يُقفل الجميع بعطل). */
 async function rateWait(rateKey, limit, windowMs) {
-  const now = Date.now();
-  let rate = null;
-  try { rate = await kvGetJSON(rateKey); } catch (e) { logError('auth:rate-read', e); rate = null; }
-  if (rate && rate.windowStart && (now - rate.windowStart) < windowMs) {
-    if ((rate.count || 0) >= limit) return Math.ceil((rate.windowStart + windowMs - now) / 60000);
-    rate = { windowStart: rate.windowStart, count: (rate.count || 0) + 1 };
-  } else rate = { windowStart: now, count: 1 };
-  try { await kvPutJSON(rateKey, rate); } catch (e) { logError('auth:rate-write', e); }
+  try {
+    if ((await windowHit(rateKey, windowMs)) > limit) return await windowMinutes(rateKey, windowMs);
+  } catch (e) { logError('auth:rate', e); }
   return 0;
+}
+
+/* v-auth-throttle: قفل الدخول لا يُستعمل سلاحًا. كان عدّادًا في سجلّ الحساب نفسه: ست محاولات خاطئة من أيّ شبكة تقفل صاحبه
+   ربع ساعة (المسبار: كلمة المالك الصحيحة بعد ستّ محاولات غرباء = ٤٢٩)، والسباق يتجاوزه. الآن ثلاثة عدّادات ذرّيّة في ١٥ دقيقة:
+   (١) الحساب من شبكة واحدة (giftNet: IPv4 كما هو وIPv6 بشبكته /64) — يُقفل بعد ٦؛ غريب على شبكة أخرى لا يقفلك.
+   (٢) الحساب كلّه — حدّ ليّن ٥٠: فوقه لا تُقيَّم كلمة مرور إلّا من شبكة دخل منها الحساب بنجاح في آخر ٣٠ يومًا (db/login-ok)،
+       فهجوم موزَّع من آلاف العناوين يقف عند ٥٠ تخمينًا وصاحب الحساب من بيته أو مكتبه يدخل؛ ومن شبكة جديدة أثناء الهجوم
+       ينتظر النافذة أو يدخل برمز البريد.
+   (٣) الشبكة عبر كلّ الحسابات — ١٠٠ (حشو بيانات الاعتماد)؛ مكتب بعشرين موظّفًا خلف عنوان واحد بعيد عنها بأخطاء الكتابة.
+   الزيادة قبل تقييم كلمة المرور، فالمتوازي لا يتجاوز الحدّ؛ والمحاولة المحجوبة تُرَدّ فلا يُحسب إلّا ما قُيِّم؛ والدخول الناجح
+   يُرجع زيادته ويمسح عدّاد زوجه ويحفظ شبكته. لا شيء يُكتب في السجلّ (failedLoginCount/lockUntil القديمان لا يُقرآن).
+   عطب KV = يُسمح. */
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_PAIR_MAX = 6;
+const LOGIN_ACCOUNT_SOFT = 50;
+const LOGIN_NET_MAX = 100;
+const LOGIN_KNOWN_NET_SEC = 30 * 86400;
+async function loginGate(key, req) {
+  const acct = 'db/login-fail/' + encodeURIComponent(key);
+  let net = '';
+  let netBase = null;
+  const taken = [];
+  const giveBack = async () => { for (const b of taken.splice(0)) await windowBack(b); };
+  const pairOf = () => acct + '/' + encodeURIComponent(net || '-');
+  const knownKey = () => 'db/login-ok/' + encodeURIComponent(key) + '/' + encodeURIComponent(net || '-');
+  try {
+    const { clientIp, giftNet } = require('./welcome-gift.js');
+    net = giftNet(clientIp(req));
+    if (net) netBase = 'db/login-fail-net/' + encodeURIComponent(net);
+    const a = await windowHit(acct, LOGIN_WINDOW_MS); taken.push(acct);
+    if (a > LOGIN_ACCOUNT_SOFT && !(await require('./kv.js').kvGetRaw(knownKey()))) {
+      await giveBack();
+      return { wait: await windowMinutes(acct, LOGIN_WINDOW_MS) };
+    }
+    const p = await windowHit(pairOf(), LOGIN_WINDOW_MS);
+    if (p > LOGIN_PAIR_MAX) { await giveBack(); return { wait: await windowMinutes(pairOf(), LOGIN_WINDOW_MS) }; }
+    taken.push(pairOf());
+    if (netBase) {
+      const n = await windowHit(netBase, LOGIN_WINDOW_MS); taken.push(netBase);
+      if (n > LOGIN_NET_MAX) { await giveBack(); return { wait: await windowMinutes(netBase, LOGIN_WINDOW_MS) }; }
+    }
+  } catch (e) {
+    logError('auth:login-gate', e);
+    await giveBack();
+    return { wait: 0, passed: async () => {} };
+  }
+  return {
+    wait: 0,
+    passed: async () => {
+      await windowBack(acct);
+      if (netBase) await windowBack(netBase);
+      try {
+        const kv = require('./kv.js');
+        await kv.kvDel(pairOf() + '/n'); await kv.kvDel(pairOf() + '/t');
+        await kv.kvSetRaw(knownKey(), '1', LOGIN_KNOWN_NET_SEC);
+      } catch (e) { logError('auth:login-clear', e); }
+    },
+  };
 }
 
 async function sendMail(toEmail, subject, html) {
@@ -797,33 +870,21 @@ module.exports = async (req, res) => {
         return;
       }
       const { key, user } = await resolveLoginUser(username);
-      // Brute-force protection: lock the account for 15 minutes after 6
-      // consecutive failed attempts. Lockout resets on any successful login.
-      const LOCK_AFTER = 6;
-      const LOCK_MS = 15 * 60 * 1000;
-      if (user && user.lockUntil && user.lockUntil > Date.now()) {
-        const mins = Math.ceil((user.lockUntil - Date.now()) / 60000);
+      // v-auth-throttle: الحدّ قبل تقييم كلمة المرور، وبعدّادات ذرّيّة لكلّ (حساب، شبكة) — انظر loginGate.
+      const gate = await loginGate(key, req);
+      if (gate.wait) {
+        const mins = gate.wait;
         res.status(429).json({ error: m('محاولات كثيرة فاشلة. حاول بعد ' + mins + ' دقيقة', 'Too many failed attempts. Try again in ' + mins + ' min') });
         return;
       }
       if (!user || user.deleted || !verifyPassword(password, user.salt, user.hash)) {
-        if (user && !user.deleted) {
-          const fails = (user.failedLoginCount || 0) + 1;
-          const updated = Object.assign({}, user, {
-            failedLoginCount: fails,
-            lockUntil: fails >= LOCK_AFTER ? Date.now() + LOCK_MS : (user.lockUntil || null),
-          });
-          try { await putUser(key, updated); } catch (e) { logError('auth:lock-write', e); }
-        }
         res.status(401).json({ error: m('اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة', 'Incorrect username, email or password') });
         return;
       }
+      await gate.passed();
       if (user.banned) {
         res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true });
         return;
-      }
-      if (user.failedLoginCount || user.lockUntil) {
-        try { await putUser(key, Object.assign({}, user, { failedLoginCount: 0, lockUntil: null })); } catch (e) { logError('auth:lock-clear', e); }
       }
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: user.avatar || null });
       return;
@@ -896,24 +957,13 @@ module.exports = async (req, res) => {
       }
       const key = String(email).trim().toLowerCase();
 
-      // Rate limit: max 3 OTP requests per email per 5 minutes.
-      const RATE_LIMIT = 3;
-      const RATE_WINDOW_MS = 5 * 60 * 1000;
-      const rateKey = 'db/otp-rate/' + key;
+      // Rate limit: max 3 OTP requests per email per 5 minutes — v-auth-throttle: ذرّيًّا (كان قراءة ثمّ كتابة).
       const now = Date.now();
-      let rate = null;
-      try { rate = await kvGetJSON(rateKey); } catch (e) { logError('auth:otp-rate-read', e); rate = null; }
-      if (rate && rate.windowStart && (now - rate.windowStart) < RATE_WINDOW_MS) {
-        if ((rate.count || 0) >= RATE_LIMIT) {
-          const mins = Math.ceil((rate.windowStart + RATE_WINDOW_MS - now) / 60000);
-          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min') });
-          return;
-        }
-        rate = { windowStart: rate.windowStart, count: (rate.count || 0) + 1 };
-      } else {
-        rate = { windowStart: now, count: 1 };
+      const mins = await rateWait('db/otp-rate/' + key, 3, 5 * 60 * 1000);
+      if (mins) {
+        res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min') });
+        return;
       }
-      await kvPutJSON(rateKey, rate);
 
       // تشخيص واضح: غياب مفتاح Resend كان يظهر كـ«تعذر الإرسال» العامة،
       // فيضيع أصل العطل (إعدادات Vercel) خلف رسالة توحي بخلل عابر.
@@ -940,10 +990,41 @@ module.exports = async (req, res) => {
         return;
       }
       const key = String(email).trim().toLowerCase();
+      /* v-otp-cap (الدفعة A، أمان): التحقّق كان بلا عدّاد — ٣٠٠٠ تخمين خاطئ من ٢٥٠ عنوانًا ثمّ الرمز الصحيح = 200 ورمز جلسة،
+         والرمز حيّ خمس دقائق؛ أي أنّ أيّ حساب مربوط ببريد يُخمَّن. الآن: (١) لكلّ رمز صادر خمس محاولات على الأكثر — العدّاد
+         ذرّيّ قبل المقارنة فالمتوازي لا يتجاوزها، والخامسة الخاطئة تحرق الرمز (الردّ ٤٠١ العامّ نفسه، والمستخدم يطلب رمزًا جديدًا
+         من «رجوع» القائم). (٢) لكلّ شبكة (giftNet) ٣٠ محاولة فاشلة في ربع ساعة عبر كلّ العناوين — الناجحة تُرَدّ، فمكتب بعشرين
+         موظّفًا خلف عنوان واحد لا يبلغها بأخطاء الكتابة. الرسائل قائمة. */
+      const OTP_MAX_TRIES = 5;
+      const OTP_NET_MAX = 30;
+      const OTP_NET_WINDOW_MS = 15 * 60 * 1000;
+      let netBase = null;
+      try {
+        const { clientIp, giftNet } = require('./welcome-gift.js');
+        const net = giftNet(clientIp(req));
+        if (net) netBase = 'db/otp-verify-net/' + encodeURIComponent(net);
+        if (netBase && (await windowHit(netBase, OTP_NET_WINDOW_MS)) > OTP_NET_MAX) {
+          const mins = await windowMinutes(netBase, OTP_NET_WINDOW_MS);
+          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min') });
+          return;
+        }
+      } catch (e) { logError('auth:otp-net', e); netBase = null; }
       let record = null;
       try { record = await kvGetJSON('db/otp/' + key); } catch (e) { logError('auth:otp-read', e); record = null; }
       const submitted = String(otp).trim();
       if (!record || typeof record.otp !== 'string' || !record.exp || record.exp < Date.now()) {
+        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        return;
+      }
+      const burnOtp = async () => { try { await kvPutJSON('db/otp/' + key, { otp: null, exp: 0 }); } catch (e) { logError('auth:otp-burn', e); } };
+      let tries = 0;
+      try {
+        // العدّاد لهذا الرمز بعينه (exp يميّز كلّ رمز صادر) ويعيش عمره — الرمز الجديد يبدأ من صفر.
+        const ttl = Math.max(1, Math.ceil((Number(record.exp) - Date.now()) / 1000)) || 300;
+        tries = (await hitCounter('db/otp-fail/' + key + '/' + Number(record.exp), ttl)).n;
+      } catch (e) { logError('auth:otp-tries', e); }
+      if (tries > OTP_MAX_TRIES) {
+        await burnOtp();
         res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
         return;
       }
@@ -954,12 +1035,13 @@ module.exports = async (req, res) => {
       const given = Buffer.from(submitted.padEnd(known.length, '\0'));
       const matches = submitted.length === record.otp.length && given.length === known.length && crypto.timingSafeEqual(given, known);
       if (!matches) {
+        if (tries >= OTP_MAX_TRIES) await burnOtp();
         res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
         return;
       }
-      // Invalidate immediately so the same code can't be replayed — there's no
-      // del() in kv.js, so overwrite with an already-expired record.
-      try { await kvPutJSON('db/otp/' + key, { otp: null, exp: 0 }); } catch (e) { logError('auth:otp-invalidate', e); }
+      if (netBase) await windowBack(netBase);
+      // Invalidate immediately so the same code can't be replayed — overwrite with an already-expired record.
+      await burnOtp();
 
       // Find an existing account linked to this email via the email index.
       let userKey = null;
