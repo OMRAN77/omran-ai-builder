@@ -43721,7 +43721,17 @@ if(document.readyState === 'loading'){
    خلفيّةً (assets/fashion/gen-scene.webp، وعدّاد «75%» المرسوم فيها مطموس)، فوقها مطر متحرّك وتموّجات على
    الأرضيّة، وعدّاد حيّ في مكان المرسوم: حلقة تمتلئ ورقم يبدأ من ٠ وشريط ومرحلة. وتُركَّب أعلى الاستوديو
    (قبل تبويبَي «من صورة / من وصف») لا تحت زرّ «صمم»، ويُمرَّر إليها. التعديل الموضعيّ («جاري تطبيق…»)
-   يبقى تحت سطر الحالة حيث ينظر المستخدم. بلا نصّ جديد: المراحل والتوقّع كما هي. */
+   يبقى تحت سطر الحالة حيث ينظر المستخدم. بلا نصّ جديد: المراحل والتوقّع كما هي.
+
+   v-gen-scene-exact (المالك بلقطة من جوّاله بعد النشر: «الفكرة كلّها خطأ… هذا التصميم الذي أريده بالضبط: العدّاد يكون
+   نفس الفكرة داخل [الصورة] ونفس التصميم، وهذه الصورة تكون نفس مكان رفع الصورة»): (١) لوحة العدّاد الداكنة التي غطّت
+   البرج أُزيلت — العدّاد الآن عدّاد الصورة نفسه في موضعه وبمقاسه: الحلقة الورديّة من الأصل، وداخلها قوس التقدّم الأبيض
+   والرقم، وتحتها الشريط و«NN% COMPLETE»، تُرسم كلّها SVG بإحداثيّات الصورة (viewBox) فتكبر وتصغر معها بالضبط.
+   الأرقام لاتينيّة و«COMPLETE» كما في تصميمه (جزء من الرسمة لا نصّ واجهة). (٢) المشهد يُركَّب قبل لوح الصورة
+   ويُخفى مربّع «ارفعي صورتك» ما دام ظاهرًا — فهو في مكانه تمامًا؛ وفي «من وصف نصّي» فوق حقل الوصف.
+   (٣) «أريد الحركة داخل، خلف العدّاد — مكان الأنبوب الخلفيّ»: المطر المائل على الصورة كلّها أُزيل؛ الحركة الآن ستارة
+   الماء والأرقام النازلة داخل أنبوب البرج نفسه (٣٦٦..٦٥٩ × ٠..٤١٤ من الصورة)، تحت العدّاد الذي يُرسم وجهه وإطاره
+   فوقها، وتموّجات على بركة قاعدته. */
 (function(){
   if(window.omranGenWait) return;
 
@@ -43739,8 +43749,9 @@ if(document.readyState === 'loading'){
       busy: ['⏳', '🎞️'] },
     { id: 'fashion', sel: '#fashionAiStatus', kind: 'fashion',
       busy: ['🎨', 'جاري تطبيق', 'Applying'],
-      /* v-gen-scene: التوليد (🎨) يُركَّب أعلى الاستوديو قبل صفّ التبويبين؛ البطاقة تُبحث في النافذة كلّها */
-      scope: '#fashionAiModal', topSel: '#fashionAiTabImage', top: ['🎨'] }
+      /* v-gen-scene-exact: التوليد (🎨) يُركَّب مكان مربّع الرفع — قبل لوح الصورة، والمربّع يُخفى ما دامت البطاقة؛
+         البطاقة تُبحث في النافذة كلّها */
+      scope: '#fashionAiModal', topSel: '#fashionAiImagePane', hideSel: '#fashionAiDropZone', top: ['🎨'] }
   ];
 
   /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء */
@@ -43776,7 +43787,7 @@ if(document.readyState === 'loading'){
       slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     fashion: {
-      est: 40, scene: '/assets/fashion/gen-scene.webp?v=1',
+      est: 40, scene: '/assets/fashion/gen-scene.webp?v=2',
       hint: { ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
       expect: { ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
       stages: {
@@ -43826,62 +43837,84 @@ if(document.readyState === 'loading'){
     + 'html[data-mode="light"] .genw-track{background:rgba(90,70,20,.12)}'
     + '@media (prefers-reduced-motion:reduce){.genw-frame,.genw-frame::before,.genw-shimmer::after,.genw-film{animation:none}}';
 
-  /* v-gen-scene: بلاطة مطر SVG (خطوط تخفت من أعلاها) — ثلاث طبقات بمقاسات وسرعات مختلفة فلا يبدو المطر شبكة */
-  function rainTile(w, h, streaks, sw){
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
-      + '<stop offset="0" stop-color="#cfeaff" stop-opacity="0"/><stop offset="1" stop-color="#cfeaff" stop-opacity=".9"/></linearGradient></defs>';
-    for(var i = 0; i < streaks.length; i++) svg += '<rect x="' + streaks[i][0] + '" y="' + streaks[i][1] + '" width="' + sw + '" height="' + streaks[i][2] + '" fill="url(#g)"/>';
+  /* v-gen-scene-exact: بلاطة جريان SVG لداخل الأنبوب — بلا مقاس ذاتيّ (viewBox + preserveAspectRatio=none) فتتمدّد
+     على background-size بالنِّسَب، وخطوطها تخفت من أعلاها. rects = [x, y, w, h, opacity] */
+  function flowTile(w, h, rects){
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
+      + '<stop offset="0" stop-color="#d6f2ff" stop-opacity="0"/><stop offset="1" stop-color="#d6f2ff" stop-opacity="1"/></linearGradient></defs>';
+    for(var i = 0; i < rects.length; i++) svg += '<rect x="' + rects[i][0] + '" y="' + rects[i][1] + '" width="' + rects[i][2] + '" height="' + rects[i][3] + '" fill="url(#g)" opacity="' + rects[i][4] + '"/>';
     return 'url("data:image/svg+xml,' + encodeURIComponent(svg + '</svg>') + '")';
   }
-  var ARC_LEN = 276.5; /* محيط حلقة العدّاد (نصف قطر ٤٤ في إطار ١٠٠) */
+  var SCENE_H = 559;
+  var ARC_LEN = 246.9;
+  var BAR_W = 175;
+  var HUD_FONT = '"DIN Condensed","Bahnschrift","Roboto Condensed","Avenir Next Condensed","Arial Narrow","sans-serif-condensed",Impact,sans-serif';
   function sceneCss(){
     return ''
-    + '.genw--scene{width:min(100%,760px);margin:10px auto 14px}'
+    + '.genw--scene{width:min(100%,760px);margin:12px auto 10px}'
     + '.genw--scene .genw-frame{animation:genwNeon 2.6s ease-in-out infinite}'
     + '.genw--scene .genw-frame::before{background:linear-gradient(120deg,transparent 15%,rgba(125,249,255,.15) 30%,#bff6ff 45%,#ff7bd5 55%,rgba(125,249,255,.15) 70%,transparent 85%);background-size:280% 100%}'
     + '@keyframes genwNeon{0%,100%{box-shadow:0 0 22px -6px rgba(125,249,255,.4),0 0 60px -18px rgba(255,123,213,.25)}'
     +   '50%{box-shadow:0 0 34px -4px rgba(125,249,255,.6),0 0 90px -14px rgba(255,123,213,.4)}}'
     + '.genw--scene .genw-canvas,html[data-mode="light"] .genw--scene .genw-canvas{display:block;aspect-ratio:1024/559;background:#070b22 center/cover no-repeat}'
-    /* المطر: الحاوية مائلة، وكلّ طبقة تنزل بمقدار بلاطتها بالضبط فتتكرّر بلا قفزة (transform وحده — لا إعادة رسم) */
-    + '.genw-rain{position:absolute;top:-30%;bottom:-30%;left:-12%;right:-12%;transform:rotate(9deg);pointer-events:none;z-index:1}'
-    + '.genw-rain i{position:absolute;left:0;right:0;top:-260px;bottom:0;background-repeat:repeat}'
-    + '.genw-rain i:nth-child(1){background-image:' + rainTile(120, 260, [[18, 8, 54], [74, 122, 60], [104, 44, 46], [46, 196, 50]], 1.5) + ';background-size:120px 260px;opacity:.8;animation:genwRain1 .62s linear infinite}'
-    + '.genw-rain i:nth-child(2){background-image:' + rainTile(90, 200, [[12, 20, 34], [58, 96, 38], [80, 150, 30], [34, 60, 32]], 1.1) + ';background-size:90px 200px;opacity:.55;animation:genwRain2 .85s linear infinite}'
-    + '.genw-rain i:nth-child(3){background-image:' + rainTile(60, 150, [[8, 10, 22], [36, 70, 24], [52, 118, 20], [22, 40, 20]], 0.9) + ';background-size:60px 150px;opacity:.38;animation:genwRain3 1.15s linear infinite}'
-    + '@keyframes genwRain1{to{transform:translate3d(0,260px,0)}}'
-    + '@keyframes genwRain2{to{transform:translate3d(0,200px,0)}}'
-    + '@keyframes genwRain3{to{transform:translate3d(0,150px,0)}}'
-    /* تموّجات قطرات على الأرضيّة المبلّلة (الربع السفليّ من الصورة) */
-    + '.genw-rip{position:absolute;left:0;right:0;bottom:0;height:24%;pointer-events:none;z-index:1}'
-    + '.genw-rip i{position:absolute;width:9%;aspect-ratio:4/1;border:1px solid rgba(190,236,255,.75);border-radius:50%;opacity:0;animation:genwRip 1.9s ease-out infinite}'
-    + '.genw-rip i:nth-child(1){left:14%;top:22%}'
-    + '.genw-rip i:nth-child(2){left:31%;top:58%;animation-delay:.45s}'
-    + '.genw-rip i:nth-child(3){left:47%;top:30%;animation-delay:.9s}'
-    + '.genw-rip i:nth-child(4){left:63%;top:66%;animation-delay:.25s}'
-    + '.genw-rip i:nth-child(5){left:78%;top:26%;animation-delay:1.3s}'
-    + '.genw-rip i:nth-child(6){left:22%;top:74%;animation-delay:1.55s}'
-    + '.genw-rip i:nth-child(7){left:55%;top:80%;animation-delay:.7s}'
+    /* الجوّال: إطار أطول يقصّ جانبَي الصورة فيكبر البرج وعدّاده (المقياس = الارتفاع ÷ ٥٥٩، والعدّاد في منتصف العرض) */
+    + '@media (max-width:520px){.genw--scene .genw-canvas,html[data-mode="light"] .genw--scene .genw-canvas{aspect-ratio:5/4}}'
+    /* الحركة داخل الأنبوب (خلف العدّاد): حاوية فوق عمود الضوء في الصورة (٣٦٦..٦٥٩ × ٠..٤١٤) تخفت عند حافّتيه وطرفيه،
+       وفيها ثلاث طبقات تنزل بنصف ارتفاعها بالضبط (= عدد صحيح من البلاطات) فتتكرّر بلا قفزة — transform وحده.
+       screen يجمع ضوءها مع ضوء الأنبوب فتبدو ماءً يجري فيه لا خطوطًا فوقه. */
+    + '.genw-tube{position:absolute;left:50%;top:0;width:calc(var(--u,0px) * 293);height:calc(var(--u,0px) * 414);margin-left:calc(var(--u,0px) * -146.5);'
+    +   'overflow:hidden;pointer-events:none;z-index:1;mix-blend-mode:screen;opacity:0;'
+    +   '-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%)}'
+    + '.genw--fit .genw-tube{opacity:1}'
+    + '.genw-tube span{position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden;'
+    +   '-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 7%,#000 84%,transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 7%,#000 84%,transparent 100%)}'
+    + '.genw-tube b{position:absolute;left:0;right:0;top:-100%;height:200%;background-repeat:repeat}'
+    /* ستائر عريضة ناعمة — بطيئة */
+    + '.genw-tube b:nth-child(1){background-image:' + flowTile(100, 300, [[6, 20, 9, 170, 0.34], [38, 120, 12, 160, 0.26], [72, 0, 8, 150, 0.3]]) + ';background-size:34% 50%;opacity:.8;animation:genwFlow 3.6s linear infinite}'
+    /* خيوط ماء طويلة — سريعة */
+    + '.genw-tube b:nth-child(2){background-image:' + flowTile(60, 200, [[8, 10, 2.4, 70, 1], [27, 95, 2.2, 85, 0.9], [44, 30, 2.4, 60, 0.95], [53, 130, 1.8, 50, 0.8], [17, 150, 1.8, 40, 0.7]]) + ';background-size:20.5% 25%;opacity:.95;animation:genwFlow 1.25s linear infinite}'
+    /* شرطات قصيرة كأرقام نازلة — وسط */
+    + '.genw-tube b:nth-child(3){background-image:' + flowTile(40, 120, [[5, 6, 3, 9, 1], [5, 22, 3, 9, 0.7], [5, 38, 3, 9, 0.45], [19, 50, 3, 9, 1], [19, 66, 3, 9, 0.7], [19, 82, 3, 9, 0.45], [32, 14, 3, 9, 0.9], [32, 30, 3, 9, 0.6], [32, 98, 3, 9, 0.9]]) + ';background-size:14% 16.667%;opacity:.9;animation:genwFlow 2.2s linear infinite}'
+    + '@keyframes genwFlow{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,50%,0)}}'
+    /* تموّجات على بركة قاعدة الأنبوب (٣٢٢..٧٠٢ × ٤٠٥..٤٩٠ من الصورة) — حيث ينزل الماء */
+    + '.genw-rip{position:absolute;left:50%;top:calc(var(--u,0px) * 405);width:calc(var(--u,0px) * 380);height:calc(var(--u,0px) * 85);margin-left:calc(var(--u,0px) * -190);pointer-events:none;z-index:1;opacity:0}'
+    + '.genw--fit .genw-rip{opacity:1}'
+    + '.genw-rip i{position:absolute;width:13%;aspect-ratio:4/1;border:1px solid rgba(190,236,255,.75);border-radius:50%;opacity:0;animation:genwRip 1.9s ease-out infinite}'
+    + '.genw-rip i:nth-child(1){left:6%;top:30%}'
+    + '.genw-rip i:nth-child(2){left:24%;top:62%;animation-delay:.45s}'
+    + '.genw-rip i:nth-child(3){left:43%;top:20%;animation-delay:.9s}'
+    + '.genw-rip i:nth-child(4){left:60%;top:66%;animation-delay:.25s}'
+    + '.genw-rip i:nth-child(5){left:78%;top:28%;animation-delay:1.3s}'
+    + '.genw-rip i:nth-child(6){left:14%;top:78%;animation-delay:1.55s}'
+    + '.genw-rip i:nth-child(7){left:50%;top:80%;animation-delay:.7s}'
     + '@keyframes genwRip{0%{transform:scale(.15);opacity:.85}100%{transform:scale(1.5);opacity:0}}'
-    /* العدّاد الحيّ فوق موضع العدّاد المرسوم في الصورة (مركزه ٥٠٪ × ٥٧٫٧٪) */
-    + '.genw-hud{position:absolute;left:50%;top:57.7%;transform:translate(-50%,-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:6px;'
-    +   'padding:8px 12px 9px;border-radius:16px;background:rgba(7,11,34,.94);box-shadow:0 0 0 1px rgba(125,249,255,.5),0 0 18px -2px rgba(125,249,255,.45)}'
-    + '.genw-ring{position:relative;flex:none;width:clamp(64px,11vw,84px);aspect-ratio:1/1;display:flex;align-items:center;justify-content:center}'
-    + '.genw-ring svg{position:absolute;top:0;left:0;width:100%;height:100%;transform:rotate(-90deg)}'
-    + '.genw-ring circle{fill:none;stroke-width:7}'
-    + '.genw-arc0{stroke:rgba(255,255,255,.14)}'
-    + '.genw-arc{stroke:#7df9ff;stroke-linecap:round;stroke-dasharray:' + ARC_LEN + ';stroke-dashoffset:' + ARC_LEN + ';transition:stroke-dashoffset .25s linear}'
-    + '.genw--scene .genw-pct,html[data-mode="light"] .genw--scene .genw-pct{font-size:clamp(17px,2.9vw,22px);color:#eafcff;text-shadow:0 0 12px rgba(125,249,255,.7)}'
-    + '.genw--scene .genw-pct small{display:none}'
-    + '.genw-hudb{width:clamp(126px,22vw,166px)}'
-    + '.genw-sbar{height:5px;border-radius:99px;background:rgba(255,255,255,.16);overflow:hidden}'
-    + '.genw--scene .genw-fill{background:linear-gradient(90deg,#7df9ff,#ffc4ee);box-shadow:0 0 10px rgba(125,249,255,.6)}'
-    + '.genw--scene .genw-stage{font-size:12px;line-height:1.35;min-height:16px;margin-top:5px;text-align:center;color:#eafcff}'
+    /* العدّاد الحيّ: إطار SVG فوق مستطيل العدّاد في الصورة — --u بكسل الشاشة لكلّ بكسل من الصورة (يُقاس من ارتفاع المشهد) */
+    + '.genw-live{position:absolute;left:50%;top:calc(var(--u,0px) * 246);width:calc(var(--u,0px) * 200);height:calc(var(--u,0px) * 152);margin-left:calc(var(--u,0px) * -100);'
+    +   'z-index:3;overflow:visible;pointer-events:none;direction:ltr;opacity:0}'
+    + '.genw--fit .genw-live{opacity:1}'
+    + '.genw-live circle{fill:none}'
+    /* وجه العدّاد وإطاره فوق الجريان: القرص ولوحتا الشريط والنصّ بألوان الصورة، والحلقة الورديّة وإطار الشريط */
+    + '.genw-live .genw-face{fill:rgb(70,92,149)}'
+    + '.genw-plate{fill:rgb(49,68,112)}'
+    + '.genw-plate2{fill:rgb(51,76,129)}'
+    + '.genw-rim{stroke:rgba(255,198,214,.92);stroke-width:1.5}'
+    + '.genw-rail{fill:none;stroke:rgba(214,200,255,.85);stroke-width:1}'
+    + '.genw-in{stroke:rgba(196,206,255,.55);stroke-width:.9}'
+    + '.genw-arc0{stroke:rgba(255,255,255,.1);stroke-width:4.2}'
+    + '.genw-arcg{stroke:rgba(190,235,255,.3);stroke-width:8}'
+    + '.genw-arc{stroke:#e6f8ff;stroke-width:4.2}'
+    + '.genw-arc,.genw-arcg{stroke-dasharray:' + ARC_LEN + ';stroke-dashoffset:' + ARC_LEN + ';transition:stroke-dashoffset .25s linear}'
+    + '.genw-num{font:700 37px/1 ' + HUD_FONT + ';fill:#aee8f9}'
+    + '.genw-bar{fill:#dbe9ff;transition:width .25s linear}'
+    + '.genw-cap{font:700 19.5px/1 ' + HUD_FONT + ';fill:#a5e1f6}'
+    + '.genw--scene .genw-stage{text-align:center}'
     + '.genw--scene .genw-sub{justify-content:center}'
-    /* الجوّال: الحلقة والشريط جنبًا إلى جنب كي لا يغطّي العدّاد نصف المشهد */
-    + '@media (max-width:430px){.genw-hud{flex-direction:row;gap:8px;padding:7px 10px}.genw-ring{width:50px}'
-    +   '.genw--scene .genw-pct,html[data-mode="light"] .genw--scene .genw-pct{font-size:15px}.genw-hudb{width:118px}.genw--scene .genw-stage{font-size:11px;margin-top:4px}}'
-    + 'html.omAndroid .genw-rain i:nth-child(3){display:none}'
-    + '@media (prefers-reduced-motion:reduce){.genw--scene .genw-frame,.genw-rain i,.genw-rip i{animation:none}.genw-arc{transition:none}}';
+    /* مربّع الرفع يُخفى ما دام المشهد في مكانه (له display سطريّ فلا بدّ من !important) */
+    + '[data-genw-hide]{display:none !important}'
+    /* أندرويد: بلا دمج ضوئيّ (أخفّ على المعالج الرسوميّ) وبطبقتين */
+    + 'html.omAndroid .genw-tube{mix-blend-mode:normal}'
+    + 'html.omAndroid .genw-tube b:nth-child(1){display:none}'
+    + '@media (prefers-reduced-motion:reduce){.genw--scene .genw-frame,.genw-tube b,.genw-rip i{animation:none}.genw-arc,.genw-arcg,.genw-bar{transition:none}}';
   }
 
   var AR_DIG = '٠١٢٣٤٥٦٧٨٩';
@@ -43915,14 +43948,24 @@ if(document.readyState === 'loading'){
     /* v-gen-scene: مشهد بخلفيّة ومطر وعدّاد حيّ — بالخطّافات نفسها فالنبضة أدناه واحدة للنوعين */
     root.innerHTML = cfg.scene ? (''
       + '<div class="genw-frame"><div class="genw-canvas">'
-      +   '<div class="genw-rain"><i></i><i></i><i></i></div>'
+      +   '<div class="genw-tube"><span><b></b><b></b><b></b></span></div>'
       +   '<div class="genw-rip"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>'
-      +   '<div class="genw-hud">'
-      +     '<div class="genw-ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="genw-arc0" cx="50" cy="50" r="44"></circle><circle class="genw-arc" cx="50" cy="50" r="44"></circle></svg>'
-      +       '<div class="genw-pct">0%<small></small></div></div>'
-      +     '<div class="genw-hudb"><div class="genw-sbar"><div class="genw-fill"></div></div><div class="genw-stage"></div></div>'
-      +   '</div>'
+      +   '<svg class="genw-live" viewBox="412 246 200 152" aria-hidden="true">'
+      +     '<circle class="genw-face" cx="512" cy="297" r="42.6"></circle>'
+      +     '<circle class="genw-rim" cx="512" cy="297" r="45.2"></circle>'
+      +     '<rect class="genw-plate" x="423.6" y="356.4" width="176.6" height="9.6" rx="4.8"></rect>'
+      +     '<rect class="genw-rail" x="421.6" y="354.6" width="180.6" height="13.2" rx="6.6"></rect>'
+      +     '<rect class="genw-plate2" x="463" y="373" width="98" height="19" rx="2"></rect>'
+      +     '<circle class="genw-in" cx="512" cy="297" r="35.5"></circle>'
+      +     '<circle class="genw-arc0" cx="512" cy="297" r="39.3"></circle>'
+      +     '<circle class="genw-arcg" cx="512" cy="297" r="39.3" transform="rotate(-90 512 297)"></circle>'
+      +     '<circle class="genw-arc" cx="512" cy="297" r="39.3" transform="rotate(-90 512 297)"></circle>'
+      +     '<text class="genw-num" x="512" y="310.6" text-anchor="middle" lengthAdjust="spacingAndGlyphs">0%</text>'
+      +     '<rect class="genw-bar" x="424.6" y="357.3" width="0" height="7.8" rx="3.9"></rect>'
+      +     '<text class="genw-cap" x="512" y="389.2" text-anchor="middle" lengthAdjust="spacingAndGlyphs">0% COMPLETE</text>'
+      +   '</svg>'
       + '</div></div>'
+      + '<div class="genw-stage"></div>'
       + '<div class="genw-sub"><span class="genw-timer"></span></div>'
     ) : ''
       + '<div class="genw-frame"><div class="genw-canvas">'
@@ -43935,13 +43978,40 @@ if(document.readyState === 'loading'){
       + '<div class="genw-sub"><span class="genw-timer"></span></div>';
 
     var pctEl = root.querySelector('.genw-pct');
-    var pctSmall = pctEl.querySelector('small');
+    var pctSmall = pctEl ? pctEl.querySelector('small') : null;
     var fillEl = root.querySelector('.genw-fill');
     var stageEl = root.querySelector('.genw-stage');
     var timerEl = root.querySelector('.genw-timer');
-    var arcEl = root.querySelector('.genw-arc'); /* حلقة المشهد — غائبة في البطاقة الذهبيّة */
-    if(cfg.scene){ try{ root.querySelector('.genw-canvas').style.backgroundImage = 'url("' + cfg.scene + '")'; }catch(e){ /* guard-ok — بلا خلفيّة يبقى لون المشهد الداكن والعدّاد يعمل */ } }
-    pctSmall.textContent = hint;
+    /* v-gen-scene-exact: عناصر عدّاد الصورة — غائبة في البطاقة الذهبيّة */
+    var canvasEl = root.querySelector('.genw-canvas');
+    var arcEl = root.querySelector('.genw-arc'), arcGlow = root.querySelector('.genw-arcg');
+    var numEl = root.querySelector('.genw-num'), barEl = root.querySelector('.genw-bar'), capEl = root.querySelector('.genw-cap');
+    if(cfg.scene){ try{ canvasEl.style.backgroundImage = 'url("' + cfg.scene + '")'; }catch(e){ /* guard-ok — بلا خلفيّة يبقى لون المشهد الداكن والعدّاد يعمل */ } }
+    /* المقياس: بكسل الشاشة لكلّ بكسل من الصورة = ارتفاع المشهد ÷ ٥٥٩ (الصورة تملأ الارتفاع دائمًا: cover مع إطار لا يزيد عرضًا عنها) */
+    var lastU = 0;
+    function fit(){
+      if(!cfg.scene || !canvasEl) return;
+      var h = canvasEl.clientHeight;
+      if(!(h > 0)) return;
+      var u = Math.round(h / SCENE_H * 10000) / 10000;
+      if(u === lastU) return;
+      lastU = u;
+      root.style.setProperty('--u', u + 'px');
+      if(root.className.indexOf('genw--fit') === -1) root.className += ' genw--fit';
+    }
+    root.__genwFit = fit;
+    /* الرقم والقوس والشريط والنصّ — أرقام لاتينيّة كما في تصميم المالك، بعرض حروف الأصل (٧٥% = ٤٦ بكسل، ونصّه = ٩١٫٣) */
+    function paintScene(shown){
+      var digits = String(shown).length;
+      numEl.textContent = shown + '%';
+      numEl.setAttribute('textLength', String(Math.round((digits * 13.5 + 19) * 10) / 10));
+      var off = String(Math.round(ARC_LEN * (100 - shown)) / 100);
+      arcEl.style.strokeDashoffset = off; arcGlow.style.strokeDashoffset = off;
+      barEl.setAttribute('width', String(Math.round(BAR_W * shown) / 100));
+      capEl.textContent = shown + '% COMPLETE';
+      capEl.setAttribute('textLength', String(Math.round((digits * 7.1 + 77.1) * 10) / 10));
+    }
+    if(pctSmall) pctSmall.textContent = hint;
     stageEl.textContent = stages[0];
 
     var stageIdx = 0, slow = false;
@@ -43959,9 +44029,8 @@ if(document.readyState === 'loading'){
       var el = (Date.now() - t0) / 1000;
       var p = el / cfg.est;
       var shown = Math.min(99, Math.round(eased(p) * 100));
-      pctEl.firstChild.textContent = fmt(shown) + '%';
-      fillEl.style.width = shown + '%';
-      if(arcEl) arcEl.style.strokeDashoffset = String(Math.round(ARC_LEN * (100 - shown)) / 100);
+      if(cfg.scene){ fit(); paintScene(shown); }
+      else { pctEl.firstChild.textContent = fmt(shown) + '%'; fillEl.style.width = shown + '%'; }
       timerEl.textContent = '⏱ ' + fmt(Math.floor(el)) + (isAr() ? 'ث' : 's') + ' — ' + expect;
       if(el > cfg.est * 2 && !slow){
         slow = true;
@@ -44087,7 +44156,9 @@ if(document.readyState === 'loading'){
           var node = render({ t0: t0ByPanel[p.id], kind: p.kind });
           node.setAttribute('data-genw-panel', p.id);
           var mp = mountPoint(p, pel, rawBusy[p.id] || ptxt, document);
+          if(mp.top) node.setAttribute('data-genw-top', '1');
           mp.parent.insertBefore(node, mp.before);
+          if(node.__genwFit){ try{ node.__genwFit(); }catch(e){ /* guard-ok — النبضة الأولى تضبط المقياس */ } }
           /* فوق = خارج مجال النظر (المستخدم عند زرّ «صمم» أسفل النموذج) — نصعد إليها */
           if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
         }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ /* العرض تجميليّ */ } }
@@ -44095,22 +44166,31 @@ if(document.readyState === 'loading'){
         try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ /* العرض تجميليّ */ } }
         delete t0ByPanel[p.id];
       }
+      /* v-gen-scene-exact: المشهد في مكان مربّع الرفع — المربّع مخفيّ ما دامت بطاقة «فوق» موجودة، ويعود فور رفعها */
+      if(p.hideSel){
+        try{
+          var hideEl = scopeEl.querySelector(p.hideSel);
+          var topCard = scopeEl.querySelector('.genw[data-genw-panel="' + p.id + '"][data-genw-top]');
+          if(hideEl){
+            if(topCard && !hideEl.hasAttribute('data-genw-hide')) hideEl.setAttribute('data-genw-hide', '1');
+            else if(!topCard && hideEl.hasAttribute('data-genw-hide')) hideEl.removeAttribute('data-genw-hide');
+          }
+        }catch(e){ try{ __swallow(e, 'gen-wait:hide'); }catch(_){ /* العرض تجميليّ */ } }
+      }
     }
   }
 
-  /* v-gen-scene: أين تُركَّب بطاقة اللوحة — { parent, before, top }. اللوحة التي لها topSel وبدأ نصّ حالتها بإحدى
-     بادئات top تُركَّب قبل صفّ ذلك العنصر (أعلى الاستوديو)؛ غيرها — وأيّ مرساة غائبة — بعد سطر الحالة كما كان. */
+  /* v-gen-scene-exact: أين تُركَّب بطاقة اللوحة — { parent, before, top }. اللوحة التي لها topSel وبدأ نصّ حالتها بإحدى
+     بادئات top تُركَّب قبل ذلك العنصر نفسه (لوح الصورة: فتقع مكان مربّع الرفع المخفيّ)؛ غيرها — وأيّ مرساة غائبة —
+     بعد سطر الحالة كما كان. */
   function mountPoint(p, pel, ptxt, doc){
     var below = { parent: pel.parentNode, before: pel.nextSibling, top: false };
     if(!p || !p.topSel || !p.top) return below;
-    var up = false;
-    for(var i = 0; i < p.top.length; i++){ if(String(ptxt || '').indexOf(p.top[i]) === 0){ up = true; break; } }
-    if(!up) return below;
+    if(!hasPrefix(String(ptxt || ''), p.top)) return below;
     var anchor = null;
     try{ anchor = (doc || document).querySelector(p.topSel); }catch(e){ anchor = null; }
-    var row = anchor && anchor.parentNode;
-    if(!row || !row.parentNode) return below;
-    return { parent: row.parentNode, before: row, top: true };
+    if(!anchor || !anchor.parentNode) return below;
+    return { parent: anchor.parentNode, before: anchor, top: true };
   }
 
   var scheduled = false;
