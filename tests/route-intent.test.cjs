@@ -158,9 +158,9 @@ const imgFollowSrc = SRC.slice(imgFollowStart, SRC.indexOf('\n  })();', imgFollo
 const W = { window: { __isExplicitImageEdit: isExplicitEdit } };
 vm.runInNewContext([
   'const __omranPrev = ' + SRC.slice(SRC.indexOf('function omranPrevTurnHadImage(messages){'), SRC.indexOf('\n}\n', SRC.indexOf('function omranPrevTurnHadImage(messages){')) + 2) + ';',
-  'this.after = function(text, extra){',
+  'this.after = function(text, extra, chain){',
   '  const omranPrevTurnHadImage = __omranPrev;',
-  '  const cur = { lastMsgWasImageEdit: true, lastEditedImage: { b64: "x", mime: "image/png" }, messages: [',
+  '  const cur = { lastMsgWasImageEdit: chain !== false, lastEditedImage: { b64: "x", mime: "image/png" }, messages: [',
   '    { role: "user", content: "ارسم صورة صقر على جبل" }, { role: "assistant", content: "", attachments: [{ isImage: true, name: "generated.png" }] } ].concat(extra || []) };',
   '  const getCurrent = () => cur, pendingAttachments = [], imageAttachments = [];',
   line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtSuggestRe = '), line('const __rtPutRe = '), line('const __rtWriteAsk = '),
@@ -276,19 +276,28 @@ test('١٤. v-route-want: الرغبة + اسم البناء + وصف صنع ت�
   assert.equal(G.gate('أبي أفضل برنامج لإدارة المشاريع'), false);
 });
 
-test('١٥. v-route-sticky: «اختصر/بالإنجليزي/خله أقصر» بعد ردّ نصّيّ لا تعود لآخر صورة؛ بعد الصورة مباشرةً كما كانت', () => {
+test('١٥. v-route-sticky: الدور الذي يصل مسار النصّ بلا صورة يُنهي سلسلة الصورة، فـ«اختصرها/خله أقصر/بالإنجليزي» بعده للنصّ؛ بعد الصورة مباشرةً كما كانت', () => {
+  // الشرط الحقيقيّ قبل مسار النصّ (askAll/المزوّد الواحد)، بعد أن عادت كلّ مسارات الصورة
+  const RESET = '    if(!imageAttachments.length && cur.lastMsgWasImageEdit) cur.lastMsgWasImageEdit = false;';
+  const at = SRC.indexOf(RESET);
+  assert.ok(at > 0 && SRC.indexOf('    if(askAll){', at) - (at + RESET.length) <= 3, 'النزع قبيل مسار النصّ مباشرةً');
+  const run = (atts, flag) => { const cur = { lastMsgWasImageEdit: flag }; vm.runInNewContext(RESET, { imageAttachments: atts, cur }); return cur.lastMsgWasImageEdit; };
+  assert.equal(run([], true), false, 'دور نصّيّ بلا صورة («اكتب لي قصيدة») يُنهي السلسلة');
+  assert.equal(run([{ isImage: true, _fromMemory: true }], true), true, 'سؤال عن الصورة بصورة الذاكرة يُبقيها');
+  // بعد النزع: المسارات الأربعة والإرفاق التلقائيّ كلّها مطفأة
   const poem = [{ role: 'user', content: 'اكتب لي قصيدة عن الصقر' }, { role: 'assistant', content: 'يا صقرُ يا رمزَ العلا…' }];
-  for (const t of ['اختصرها', 'خله أقصر', 'خلها أقصر', 'بالإنجليزي', 'اكتبه بأسلوب رسمي', 'سوه أرسمي شوي', 'خل الخلفية زرقاء']) {
-    const r = W.after(t, poem);
-    assert.deepEqual([r.follow, r.any, r.def, r.style, r.mem], [false, false, false, false, false], 'بعد القصيدة (المسارات الأربعة والإرفاق): ' + t);
+  for (const t of ['اختصرها', 'خله أقصر', 'خلها أقصر', 'بالإنجليزي', 'اكتبه بأسلوب رسمي', 'سوه أرسمي شوي', 'خل الخلفية زرقاء', 'خله كرتون']) {
+    const r = W.after(t, poem, false);
+    assert.deepEqual([r.follow, r.any, r.def, r.style, r.mem], [false, false, false, false, false], 'بعد القصيدة: ' + t);
   }
-  assert.equal(W.after('خله كرتون', poem).style, false, 'الأسلوب بعد ردّ نصّيّ ليس تحويل الصورة');
-  assert.equal(W.after('خله كرتون').style, true, 'وبعد الصورة مباشرةً كما كان');
-  assert.equal(W.after('خله أقصر').def, true, 'وبعد الصورة مباشرةً «خله…» تعديل كما كان');
-  for (const t of ['خلها بالليل', 'خل الخلفية زرقاء']) {
-    const r = W.after(t);
-    assert.equal(r.follow || r.any, true, 'بعد الصورة مباشرةً: ' + t);
+  // ومسارات سلسلة الصورة (فشل التعديل، «حدّد النصّ»، «اكتب وش التعديل») تعود قبل النزع فتبقى السلسلة
+  for (const pat of ['⚠️ تعذر تعديل الصورة', 'تعذّر تبديل النصّ هذه المرّة', 'حدّد النص بين علامتي تنصيص', 'تمام — اكتب وش التعديل']) {
+    const i = SRC.indexOf(pat); assert.ok(i > 0 && i < at, pat);
+    assert.match(SRC.slice(i, i + 900), /return;/, 'يعود قبل مسار النصّ: ' + pat);
   }
+  assert.equal(W.after('خله كرتون').style, true, 'بعد الصورة مباشرةً كما كان');
+  assert.equal(W.after('خله أقصر').def, true);
+  for (const t of ['خلها بالليل', 'خل الخلفية زرقاء']) assert.equal(W.after(t).follow || W.after(t).any, true, 'بعد الصورة مباشرةً: ' + t);
 });
 
 test('١٦. «أرسمي» (أكثر رسميّة) ليست «ارسم»: لا تفتح أنماط الصورة؛ «ارسم/ارسمي لي» كما كانتا', () => {
@@ -327,33 +336,39 @@ test('١٨. v-route-suggest: بعد صورة شعار «اقترح لي اسم �
   }
 });
 
-test('١٩. المراجعة العدائيّة: الصورة المولَّدة وتقريرها رسالتان — «أكثر واقعية/بالليل» بعدها تعديل كما كان، والرسالة الحاليّة مدفوعة قبل الفحص', () => {
+test('١٩. المراجعة العدائيّة: الصورة المولَّدة وتقريرها رسالتان — «أكثر واقعية/بالليل» بعدها تعديل كما في main، وصور أداة المحادثة كذلك', () => {
   const report = [{ role: 'assistant', content: '📋 تفسير الفكرة\n- صقر على قمّة جبل…' }];
   for (const t of ['أكثر واقعية', 'بالليل', 'خلها بالليل', 'نفس الشي بس مبتسمة']) {
     const r = W.after(t, report.concat([{ role: 'user', content: t }]));
-    assert.equal(r.follow || r.any || r.def, true, 'بعد صورة + تقريرها + الرسالة الحاليّة: ' + t);
+    assert.equal(r.follow || r.any || r.def, true, 'بعد صورة + تقريرها: ' + t);
   }
-  const poem = [{ role: 'user', content: 'اكتب لي قصيدة' }, { role: 'assistant', content: 'يا صقر…' }, { role: 'user', content: 'خله أقصر' }];
-  assert.deepEqual([W.after('خله أقصر', poem).any, W.after('خله أقصر', poem).def, W.after('خله أقصر', poem).follow], [false, false, false], 'بعد ردّ نصّيّ كما في ١٥');
+  const tool = [{ role: 'user', content: 'ارسم لي شخصيات أطفال يلعبون' }, { role: 'assistant', content: 'تفضل 👇\n__IMG_1__' }];
+  const r = W.after('غير الشخصيات الي 3d', tool);
+  assert.equal(r.any || r.def || r.style, true, 'صورة أداة المحادثة رمزٌ في النصّ لا مرفق — المتابعة تعدّلها (v-tool-chain)');
 });
 
 test('٢٠. المراجعة العدائيّة: البناء بوصفه أو ملكيّته أو استنساخه يبقى بناءً؛ الجهات القائمة بحث', () => {
   for (const t of ['أبغى موقع الكتروني', 'اريد موقع للشركة', 'ابي موقع للمطعم', 'ابي صفحة للحجز', 'ابي موقع للعيادة حقتي', 'ابي موقع للشركة حقتنا',
     'ابي موقع رسمي لشركتي', 'ابي موقع لمطعمي فيه رابط واتساب', 'ابي موقع لمطعمي فيه عنوان وخريطة', 'ابي تطبيق يعرض أفضل المطاعم', 'أبي برنامج أعرف فيه مصاريفي',
-    'ابي موقع لمرسمي', 'ابي نسخة من انستقرام', 'أبي تطبيق مثل سناب شات']) {
+    'ابي موقع لمرسمي', 'ابي نسخة من انستقرام', 'أبي تطبيق مثل سناب شات',
+    /* المراجعة الثانية */ 'ابي موقع بنك اسئلة للطلاب', 'ابي تطبيق جامع للملاحظات والمهام', 'ابي موقع مستشفى لمشروع التخرج', 'ابي تطبيق مطاردة سيارات',
+    'ابي تطبيق بنك بسيط', 'ابي موقع مستشفى متكامل', 'ابي تطبيق بس ما اعرف برمجة', 'ابي موقع بس ما اعرف كيف ابدأ', 'ابي تطبيق اعرف منه كم صرفت',
+    'ابي صفحة تحميل لتطبيقي', 'ابي صفحة تحميل للتطبيق حقي', 'ابي موقع لكتبي وفيه تحميل pdf', 'ابي صفحة لينك تري', 'عطني موقع حق مطعمي', 'عطني صفحة حق متجري']) {
     assert.equal(G.gate(t), true, t);
   }
   // «سو» بلا ياء: بناء عبر «اسأل الكل» كما كان في main (فعل بناء صريح فلا يُقرأ جلبًا)
   for (const t of ['سو لي موقع فيه رابط انستقرام', 'سو لي تطبيق يعرض أفضل العروض']) assert.equal(G.askAllShape(t), true, t);
-  for (const t of ['عطني موقع وزارة الاقتصاد', 'ابي رابط تطبيق الهيئة', 'ابي موقع وزارة الصحة', 'ابي تطبيق الهيئة الاتحادية للضرائب', 'وين أحمله تطبيق سهل؟ ابي رابط التحميل']) {
+  for (const t of ['عطني موقع وزارة الاقتصاد', 'ابي رابط تطبيق الهيئة', 'ابي موقع وزارة الصحة', 'ابي تطبيق الهيئة الاتحادية للضرائب', 'وين أحمله تطبيق سهل؟ ابي رابط التحميل',
+    'ابي موقع شرطة دبي', 'ابي موقع بنك دبي الاسلامي', 'أبي أعرف موقع الدائرة الاقتصادية في دبي']) {
     assert.equal(G.wantLookup(t, ''), true, t);
   }
 });
 
 test('٢١. المراجعة العدائيّة: «تمام/زين/اوكي شكرا» بعد جواب بحث ليست موافقة على بناء ما بُحث عنه (شبكة استرجاع الطلب المعلّق)', () => {
-  const i = SRC.indexOf('        const __lastU = [...__ms].reverse().find(m => {');
+  const i = SRC.indexOf('        const __cand = [...__ms].reverse().find(m => {');
   assert.ok(i > 0);
-  const finder = SRC.slice(i, SRC.indexOf('        });', i) + 11).replace('const __lastU = ', 'return ');
+  const j = SRC.indexOf('        const __lastU = ', i);
+  const finder = SRC.slice(i, SRC.indexOf('\n', j)).replace('const __lastU = ', 'return ');
   const R = {};
   vm.runInNewContext([line('const GATE_BUILD_RE = '), line('const GATE_CMD_RE = '),
     line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtEntityRe = '),
@@ -361,8 +376,11 @@ test('٢١. المراجعة العدائيّة: «تمام/زين/اوكي شك
     SRC.slice(SRC.indexOf('  const __rtIsLookup = '), SRC.indexOf('\n  };\n', SRC.indexOf('  const __rtIsLookup = ')) + 5),
     'this.pick = function(__ms){ const __gp = { code: "" }; ' + finder + ' };'].join('\n'), R);
   for (const q of ['أبي أفضل تطبيق لتعلم الإنجليزي', 'عطني موقع وزارة الاقتصاد', 'ابي رابط تطبيق الهيئة', 'ممكن تقترح لي برنامج لإدارة المشاريع']) {
-    assert.equal(R.pick([{ role: 'user', content: q }, { role: 'assistant', content: 'أنصحك بـ…' }]), undefined, q);
+    assert.ok(!R.pick([{ role: 'user', content: q }, { role: 'assistant', content: 'أنصحك بـ…' }]), q);
   }
   const b = R.pick([{ role: 'user', content: 'أبي تطبيق ملاحظات' }, { role: 'assistant', content: 'تبيني أبدأ؟' }]);
   assert.equal(b && b.content, 'أبي تطبيق ملاحظات', 'طلب البناء يُسترجع كما كان');
+  // المراجعة الثانية: لا يتخطّى البحث إلى طلب بناء أقدم أُجّل («لا بعدين»)
+  assert.equal(R.pick([{ role: 'user', content: 'ابي موقع لمطعمي' }, { role: 'assistant', content: 'تبيني أبدأ البناء؟' }, { role: 'user', content: 'لا بعدين' },
+    { role: 'assistant', content: 'تمام' }, { role: 'user', content: 'عطني رابط موقع وزارة الصحة' }, { role: 'assistant', content: 'هذا الرابط…' }]), null);
 });
