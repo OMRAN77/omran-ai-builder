@@ -228,7 +228,49 @@ const onInstallBtnClick = async () => {
 installButtons.forEach(b => { b.onclick = onInstallBtnClick; });
 window.addEventListener('appinstalled', () => {
   showInstallButtons(false);
+  const pill = document.getElementById('installPill');
+  if(pill) pill.remove();
 });
+
+/* v-qr-one: الباركود الواحد (/app ← download.html) يفتح التطبيق بـ?install=1 على أيّ جهاز: زرّ «تثبيت التطبيق» عائم
+   أعلى الشاشة بنصّ install الموجود في الـ١٤ لغة، ونقره = زرّ التثبيت نفسه (نافذة المتصفّح أو خطوات جهازه).
+   لا يظهر داخل التطبيق المثبّت، ويُحذف install من الرابط كي لا يعود مع التحديث (ref يبقى لمن يقرؤه). */
+(function(){
+  try {
+    const here = new URL(location.href);
+    if(here.searchParams.get('install') !== '1') return;
+    here.searchParams.delete('install');
+    history.replaceState(history.state, '', here.pathname + here.search + here.hash);
+    if(isStandalone()) return;
+    const mount = () => {
+      if(document.getElementById('installPill')) return;
+      const d = (typeof window.curT === 'function') ? window.curT() : {};
+      const pill = document.createElement('div');
+      pill.id = 'installPill';
+      pill.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 12px);left:50%;transform:translateX(-50%);z-index:2147483000;display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:#14161c;border:1px solid rgba(212,175,55,.55);box-shadow:0 8px 28px rgba(0,0,0,.45);';
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.style.cssText = 'display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:9px 16px;background:linear-gradient(135deg,#d4af37,#9b791e);color:#111;font:inherit;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap;';
+      go.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>';
+      const label = document.createElement('span');
+      label.setAttribute('data-i18n', 'install');
+      label.textContent = d.install || (I18N.en || {}).install || '';
+      go.appendChild(label);
+      go.onclick = () => { pill.remove(); onInstallBtnClick(); };
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.setAttribute('aria-label', '×');
+      x.textContent = '×';
+      x.style.cssText = 'border:0;background:none;color:#cfd3dc;font-size:20px;line-height:1;width:32px;height:32px;border-radius:50%;cursor:pointer;';
+      x.onclick = () => pill.remove();
+      pill.appendChild(go);
+      pill.appendChild(x);
+      document.body.appendChild(pill);
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
+    else setTimeout(mount, 0);
+  } catch(e){ __swallow(e, "misc:app-10-features#install-pill"); }
+})();
 
 /* v-browser-install: /?q=نصّ (بحث المتصفّح عبر opensearch.xml، وقائمة إضافة المتصفّح) يعبّئ صندوق
    المحادثة ولا يرسل — الإرسال بيد المستخدم. يُحذف q من الرابط كي لا يعود مع التحديث. */

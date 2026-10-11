@@ -3314,6 +3314,7 @@ window.acctToggleRow = function(id, btn) {
 window.acctToggleQr = function() {
   var q = document.getElementById('acctQrBox');
   if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
+  if (q && q.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
 };
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');

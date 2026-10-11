@@ -111,10 +111,9 @@
         <button type="button" class="btn" id="acctQrBtn" onclick="acctToggleQr()" style="flex:1; background:none; border:1px solid rgba(255,255,255,.2); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;">فتح الباركود</button>
       </div>
       <div id="acctQrBox" style="display:none; margin-top:12px; padding:12px; background:rgba(0,0,0,.35); border-radius:var(--r-2); text-align:center; border:1px solid rgba(212,175,55,.25);">
-        <img id="acctQrImg" src="/icons/omran-qr-code.png" alt="QR" style="width:180px; height:180px; border-radius:12px; background:#fff; padding:6px; box-shadow:0 4px 16px rgba(0,0,0,.4); display:inline-block;">
+        <canvas id="acctQrCanvas" aria-label="QR" style="width:180px; height:180px; border-radius:12px; background:#fff; padding:6px; box-shadow:0 4px 16px rgba(0,0,0,.4); display:inline-block;"></canvas>
         <div style="display:flex; gap:8px; margin-top:10px; justify-content:center;">
-          <a href="/icons/omran-qr-code.png" download="omran-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;">تحميل الباركود</a>
-          <a href="/download" target="_blank" rel="noopener" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:none; border:1px solid rgba(255,255,255,.2); color:var(--text);">صفحة المتاجر</a>
+          <a id="acctQrDl" download="omran-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;">تحميل الباركود</a>
         </div>
       </div>
       <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية</div>
@@ -874,6 +873,33 @@
   window.acctToggleQr = function() {
     var q = document.getElementById('acctQrBox');
     if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
+    if (q && q.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
+  };
+  // v-qr-one: باركود واحد لكلّ الأجهزة برابط دعوة صاحب الحساب — /app يرسل كلّ جهاز إلى تطبيقه (download.html).
+  // يُرسم هنا بـjs/qr.js (بلا شبكة) ويُعاد فقط إن تغيّر الرابط؛ «تحميل الباركود» ينزّل الصورة المرسومة نفسها.
+  window.acctQrLink = function(refLink) {
+    var m = /[?&]ref=([^&#]*)/.exec(refLink || '');
+    var ref = m ? decodeURIComponent(m[1]) : '';
+    return location.origin + '/app' + (/^[a-zA-Z0-9_-]{3,64}$/.test(ref) ? '?ref=' + ref : '');
+  };
+  window.acctPaintQr = function() {
+    var cv = document.getElementById('acctQrCanvas');
+    if (!cv) return;
+    var u = document.getElementById('acctReferralLink');
+    var link = window.acctQrLink(u && u.value);
+    if (cv.getAttribute('data-link') === link) return;
+    var paint = function() {
+      cv.setAttribute('data-link', link);
+      window.OmranQR.draw(cv, link, { px: 720, logo: '/icons/ai-hub-mark-256.png' }, function() {
+        var a = document.getElementById('acctQrDl');
+        try { if (a) a.href = cv.toDataURL('image/png'); } catch (e) { /* guard-ok — لوحة ملوّثة لا تُصدَّر؛ الباركود ظاهر ويُمسح من الشاشة */ }
+      });
+    };
+    if (window.OmranQR) return paint();
+    var sc = document.createElement('script');
+    sc.src = '/js/qr.js?v=1';
+    sc.onload = paint;
+    document.head.appendChild(sc);
   };
   window.acctShareApp = async function() {
     var u = document.getElementById('acctReferralLink');
