@@ -393,7 +393,7 @@ const MOVE_BUCKETS = ['plan', 'chat', 'plan-haiku', 'plan-sonnet', 'maha-realtim
   'prayer-plan', 'text-layout',
   'search', 'search-classify', 'chat-search', 'translate', 'tts', 'media-intent', 'adchat', 'adimage', 'stamps', 'cx-brief', 'video-write', 'stocks-ai', 'stocks-pf',
   'design-ideas', 'design-suggest', 'fashion-suggest', 'studio-suggest',
-  'video-prompt', 'video-upscale', 'video-download',
+  'video-prompt', 'video-upscale', 'video-download', 'video-enhance',
   'share', 'share-img', 'share-pdf', 'share-file', 'media-save-img', 'media-save-pdf', 'media-save-file'];
 async function moveTodayTallies(oldUser, newUser) {
   if (!oldUser || !newUser) return;

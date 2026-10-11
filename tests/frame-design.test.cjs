@@ -118,5 +118,5 @@ test('٦. «منصّة الذكاء» بالـ١٤ لغة، ونصوص «الب�
   }
   assert.doesNotMatch(data, /frameHome/);
   for (const lg of LANGS) assert.doesNotMatch(rd('i18n/' + lg + '.js'), /frameHome/, lg);
-  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=732'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes(".js?v=733'"));
 });

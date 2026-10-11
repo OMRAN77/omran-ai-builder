@@ -153,7 +153,7 @@ test('النصوص الستّة بالـ١٤ لغة، ووسم تحميل الل
       assert.doesNotMatch(c.I18N[l][k], EMOJI);
     }
   }
-  assert.ok(rd('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=732'"));
+  assert.ok(rd('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=733'"));
 });
 
 test('مصادر التجارب لا تُنشر، والمبنيّ يُنشر', () => {
