@@ -682,6 +682,15 @@ html[data-mode="light"] #videoMakerModal #videoMakerQualityRow{background:#fffff
 #videoMakerModal .vmk-cl-msg.err{color:#ffb4b4}
 #videoMakerModal .vmk-cl-msg:empty{display:none}
 #videoMakerModal .vmk-cl-note{margin:0;font-size:11.5px;line-height:1.7;color:#7f8796}
+/* v-video-enhance-pro: زرّ «تحسين احترافي» مخطَّط تحت الزرّ المجّانيّ (يمتلئ حين يصير «تأكيد وخصم»)، وسطر التنبيه تحته. الارتفاع تلقائيّ فيلتفّ النصّ الطويل على الجوّال */
+#videoMakerModal .vmk-cl-pro{background:none;border:1.5px solid #e8c27a;color:#f0dcb0;box-shadow:none;height:auto;min-height:52px;padding:8px 12px}
+#videoMakerModal .vmk-cl-pro[data-cost]:after{content:" · " attr(data-cost);font-weight:700;opacity:.85}
+#videoMakerModal .vmk-cl-pro.ask{background:linear-gradient(135deg,#f0cf8f,#c9964a);color:#1a1408;border-color:transparent}
+#videoMakerModal .vmk-cl-pro:disabled{opacity:.45;cursor:default}
+#videoMakerModal .vmk-cl-pnote{margin:-6px 0 0;font-size:11.5px;line-height:1.7;color:#8d95a3}
+html[data-mode="light"] #videoMakerModal .vmk-cl-pro{color:#8a5a12;border-color:#8a5a12}
+html[data-mode="light"] #videoMakerModal .vmk-cl-pro.ask{color:#1a1408;border-color:transparent}
+html[data-mode="light"] #videoMakerModal .vmk-cl-pnote{color:#4a5160}
 html[data-mode="light"] #videoMakerModal .vmk-cl-head b{color:var(--text)}
 html[data-mode="light"] #videoMakerModal .vmk-cl-drop{background:#ffffff;border-color:rgba(0,0,0,.25)}
 html[data-mode="light"] #videoMakerModal .vmk-cl-pick,html[data-mode="light"] #videoMakerModal .vmk-cl-up,html[data-mode="light"] #videoMakerModal .vmk-cl-prow{color:var(--text)}
