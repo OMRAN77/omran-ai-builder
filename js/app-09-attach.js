@@ -351,7 +351,8 @@ window.__omranImgTools = function(wrap, dataUrl, att){
   //    ٢ الحافظة · ٣ فتح الصورة في صفحة مستقلّة (blob) حيث الضغط المطوّل يعطي
   //    «مشاركة» أصليّة · ٤ تنبيه أخير. زرّ التنزيل مُزال نهائيًّا (أمر عمران).
   // ⚠️ v592 — connect-src لا يسمح بـ data: ⇒ التحويل محلّيّ بـ atob (صفر شبكة).
-  const nmOf = () => 'image-' + Date.now() + '.png';
+  /* v-img-format: الاسم من نوع الصورة نفسها — كان «.png» دائمًا فتُحفظ JPG المحوَّلة باسم PNG */
+  const nmOf = (bl) => { const ty = (bl && bl.type) || 'image/png'; return 'image-' + Date.now() + (ty === 'image/jpeg' ? '.jpg' : (ty === 'image/webp' ? '.webp' : (ty === 'image/gif' ? '.gif' : '.png'))); };
   const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
   const note = (m) => { try{ if(typeof settingsToast === 'function'){ settingsToast(m); return true; } }catch(e){ __swallow(e, 'note:app-09-attach#v625'); } return false; };
   // 💾 v626 — أمر عمران: «الحفظ بضغطة واحدة — إرسال لمواقع التواصل أو أيّ إرسال».
@@ -364,7 +365,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       const a = document.createElement('a');
       if(!('download' in a)) return false;
       const u = URL.createObjectURL(bl);
-      a.href = u; a.download = nmOf(); a.rel = 'noopener';
+      a.href = u; a.download = nmOf(bl); a.rel = 'noopener';
       a.style.cssText = 'position:fixed;left:-9999px;top:0';
       document.body.appendChild(a);
       a.click();
@@ -492,7 +493,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       if(typeof omranNativeBridge !== 'function' || !omranNativeBridge('omranShare')) return false;
       const bl = toBlob(dataUrl);
       if(!bl) return false;
-      if(typeof msgDownloadBlob === 'function'){ msgDownloadBlob(bl, nmOf()); return true; }
+      if(typeof msgDownloadBlob === 'function'){ msgDownloadBlob(bl, nmOf(bl)); return true; }
     }catch(e){ __swallow(e, 'bridgeShare:app-09-attach#v-share-bridge'); }
     return false;
   };
@@ -2345,6 +2346,42 @@ function __textSwapIntent(s){
   if(/بدل\s+\S+(?:\s+\S+)?\s+(?:حط|خل|الى|إلى)\s*\S+/i.test(s)) return true;
   return false;
 }
+/* 🖼️ v-img-format (لقطة المالك ١١ أكتوبر: «حول الصوره لي صيغة pig» → «⚠️ ما تنفّذ التعديل… [nano-pro:not_done]»): تغيير الصيغة لا يغيّر
+   شكل الصورة، فكان محرّر الصور يرجعها كما هي فيُحكم «لم يُنفَّذ» — وطلب jpg كان يرجع png. التحويل هنا بالكانفس: بلا محرّك ولا تكلفة.
+   صيغة بخطأ حرف («pig») تُقرأ بأقرب صيغة على بعد حرف واحد ويقال ذلك؛ «صيغة» بلا صيغة مفهومة = سؤال؛ طلب معه تعديل آخر يبقى للمحرّر. */
+function __imgFormatIntent(s){
+  s = String(s || '').trim();
+  if(!s || s.length > 120) return null;
+  if(/(?:فيديو|ڤيديو|video|متحرك|انيميشن|أنيميشن|animation|pdf|بي\s*دي\s*[اإ]ف)/i.test(s)) return null;
+  if(/(?:خلفي|لون|ألوان|الوان|اكتب|أكتب|كتاب|احذف|امسح|شيل|ضيف|اضف|أضف|ارسم|وجه|شعر|ملابس|كبّ?ر|صغّ?ر|قصّ|crop|resize|background|colou?r|write|remove|add\b)/i.test(s)) return null;
+  const word = /(?:صيغ[ةه]|امتداد|فورمات|format|extension|file\s*type)/i.test(s);
+  const verb = /(?:^|[\s،,])(?:حول|حوّل|غير|غيّر|بدل|بدّل|احفظ|نزل|نزّل|صدر|صدّر|خل|خلّ|خلي|خلّي|اجعل|ابي|أبي|ابغ|أبغ|أريد|اريد|ودي|convert|save|export|change|turn|make)/i.test(s);
+  if(!word && !verb) return null;
+  const named = [[/(?:^|[^a-z])png(?![a-z])/i, 'png'], [/(?:^|[^a-z])(?:jpe?g|jpe|jfif)(?![a-z])/i, 'jpeg'], [/(?:^|[^a-z])webp(?![a-z])/i, 'webp'],
+    [/بي\s*[اإ]ن\s*جي/, 'png'], [/جي\s*بي\s*جي|جيبيجي|جيه\s*بي\s*جي/, 'jpeg'], [/ويب\s*بي/, 'webp']];
+  for(const [re, fmt] of named) if(re.test(s)) return { fmt, guess:'' };
+  if(!word) return null;
+  /* خطأ حرف واحد في كلمة لاتينيّة قصيرة («pig» ← png، «jpq» ← jpg)؛ تعادل صيغتين = سؤال */
+  const dist = (a, b) => { const d = Array.from({ length:a.length + 1 }, (_, i) => [i]); for(let j = 1; j <= b.length; j++) d[0][j] = j;
+    for(let i = 1; i <= a.length; i++) for(let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[a.length][b.length]; };
+  for(const tok of (s.match(/[a-z]{3,4}/gi) || [])){
+    const w = tok.toLowerCase(), hits = [['png', 'png'], ['jpg', 'jpeg'], ['jpeg', 'jpeg'], ['webp', 'webp']].filter(([n]) => dist(w, n) <= 1).map(([, f]) => f);
+    const uniq = hits.filter((f, i) => hits.indexOf(f) === i);
+    if(uniq.length === 1) return { fmt:uniq[0], guess:tok };
+    if(uniq.length > 1) return { fmt:null, guess:tok };
+  }
+  return { fmt:null, guess:'' };
+}
+async function __omranConvertImageFormat(b64, mime, fmt){
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image')); i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64; });
+  const c = document.createElement('canvas'); c.width = img.naturalWidth || 1; c.height = img.naturalHeight || 1;
+  const g = c.getContext('2d');
+  if(fmt === 'jpeg'){ g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); } /* JPG بلا شفافيّة: الخلفيّة الشفّافة بيضاء لا سوداء */
+  g.drawImage(img, 0, 0);
+  const type = 'image/' + fmt, url = fmt === 'png' ? c.toDataURL(type) : c.toDataURL(type, 0.92);
+  if(url.slice(5, 5 + type.length) !== type) throw new Error('format_unsupported'); /* متصفّح لا يكتب webp يرجع png بصمت */
+  return url;
+}
 async function omranBuildTextEditMask(b64, mime, box){
   const img = await new Promise((res, rej) => {
     const i = new Image();
@@ -2576,6 +2613,9 @@ async function renderTidyCardCanvas(spec, srcDataUrl){
 window.__agentModeOn = false; // v321: الوكيل دائمًا مطفي عند الفتح — لا يُحفظ تشغيله أبدًا
 try{ localStorage.removeItem('aiapp_agent_mode'); }catch(e){ __swallow(e, "misc:app-09-attach#4"); }
 function updateAgentModeUI(){
+  /* v-chip-truth: الوكيل يردّ دائمًا بـClaude مهما كان المختار؛ تشغيله من زرّه أو من ⋮ لا يمرّ بقائمة الشريحة، فكانت تبقى على
+     اسم المزوّد. الشريحة تكتب «الوكيل» حين يعمل — فيعرف المالك من سيردّ ومن يدفع. */
+  try{ if(typeof window.omModelChipSync === 'function') window.omModelChipSync(); }catch(e){ __swallow(e, 'ui:chip-sync-agent'); }
   const btn = document.getElementById('btnAgentMode');
   const lbl = document.getElementById('agentModeLabel');
   if(!btn || !lbl) return;
@@ -3422,12 +3462,15 @@ function omranPrevTurnHadImage(messages){
   }catch(e){ return false; }
 }
 /* v-media-gate (بلاغ المالك ١٩ سبتمبر): كلمات الوسائط التي تستدعي البوّابة، وكلمات «الكلام عن» الوسائط
-   (كيف/طريقة/أفضل برنامج/يوتيوب/سكربت/سؤال…) التي تعني: لا إنشاء. حدود الكلمة العربيّة يدويّة لأنّ \b لا يفهمها. */
-const __MEDIA_WORD_RE = /فيديو|ڤيديو|video|صور|image|picture|photo|بوستر|ملصق|شعار|لوجو|logo|بطاق|شهاد|دعو[ةه]|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|banner|بنر|غلاف|رسم|draw|animation|أنيميشن|انيميشن|كليب|clip|مقطع|فيلم/i;
+   (كيف/طريقة/أفضل برنامج/يوتيوب/سكربت/سؤال…) التي تعني: لا إنشاء. حدود الكلمة العربيّة يدويّة لأنّ \b لا يفهمها.
+   v-route-formal (تدقيق التوجيه ١٠ أكتوبر): «رسم» العارية كانت تطابق «رسمي/رسمية» فينتظر «اكتب لي إيميل رسمي» و«خطاب رسمي»
+   نداء المصنّف (حتّى ٢٫٥ث) قبل أن يُرسل — «رسم» لا تُعدّ إذا تلتها ياء. «رسمة/ارسم/رسمها» كما كانت.
+   و«انفوجرافيك» صارت كلمة وسائط: «أبي انفوجرافيك عن…» يسأل المصنّف، فإن قال image ذهبت للبانِي (v-route-design). */
+const __MEDIA_WORD_RE = /فيديو|ڤيديو|video|صور|image|picture|photo|بوستر|ملصق|شعار|لوجو|logo|بطاق|شهاد|دعو[ةه]|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|banner|بنر|غلاف|رسم(?!ي)|draw|animation|أنيميشن|انيميشن|كليب|clip|مقطع|فيلم|انفوجرافيك|إنفوجرافيك|انفوغرافيك|infographic/i;
 /* v-chat-fast (المالك ١٩ سبتمبر «الردود بطيئة»): المصنّف لا يُنادى إلّا حين تحمل الرسالة ما قد يفتح مسار إنشاء
    فعلًا — فعل طلب/إنشاء، أو كلمة إعلان/بيع (مسار الإعلان يطلقها وحدها)، أو بدء الرسالة باسم الوسيط.
    «أتصور إنّ السوق يرتفع» و«رأيك في فيلم الأمس» لا تنتظر شيئًا. */
-const __MEDIA_MAKE_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])(?:اعمل|أعمل|اعملي|اصنع|أصنع|صنع|سوّ|سوي|سوّي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|أبي|ابي|ابا|أبا|بغيت|أريد|اريد|أبيك|ابيك|حاب|حابب|أحتاج|احتاج|طلع|طلعلي|صنعلي|عطني|أعطني|اعطني|هات|ارسم|أرسم|ارسملي|رسم|صمم|صمّم|صممي|تصميم|اكتب|أكتب|اكتبلي|ممكن|تقدر|تگدر|يمكن|create|make|generate|produce|draw|design|build|render|write|give me|i want|show me|can you)(?=$|[\s،,.!؟?()"'«»:؛-])|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|^\s*(?:فيلم|فيديو|ڤيديو|مقطع|كليب|صور[ةه]?|بوستر|شعار|لوجو|بطاقة|شهادة|دعوة|غلاف|video|image|logo|poster)\s/i;
+const __MEDIA_MAKE_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])(?:اعمل|أعمل|اعملي|اصنع|أصنع|صنع|سوّ|سوي|سوّي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|أبي|ابي|ابا|أبا|بغيت|أريد|اريد|أبيك|ابيك|حاب|حابب|أحتاج|احتاج|طلع|طلعلي|صنعلي|عطني|أعطني|اعطني|هات|ارسمي|ارسم(?!ي)|أرسم(?!ي)|ارسملي|رسم|صمم|صمّم|صممي|تصميم|اكتب|أكتب|اكتبلي|ممكن|تقدر|تگدر|يمكن|create|make|generate|produce|draw|design|build|render|write|give me|i want|show me|can you)(?=$|[\s،,.!؟?()"'«»:؛-])|إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار|^\s*(?:فيلم|فيديو|ڤيديو|مقطع|كليب|صور[ةه]?|بوستر|شعار|لوجو|بطاقة|شهادة|دعوة|غلاف|video|image|logo|poster)\s/i;
 const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|طريقة|طريقه|شرح|اشرح|اشرحلي|علمني|علّمني|أفضل|افضل|أحسن|احسن|برنامج|برامج|تطبيق|تطبيقات|موقع|مواقع|أداة|اداة|أدوات|ادوات|يوتيوب|youtube|تيك\s*توك|تيكتوك|tiktok|انستقرام|انستغرام|instagram|سناب|نصيحة|نصائح|خطة|خطوات|مونتاج|تحرير|مشاهدات|ربح|تسويق|فكرة|أفكار|افكار|عنوان|عناوين|سكربت|سكريبت|سيناريو|كلمات|محتوى|قناة|قناتي|متابعين|جودة|صيغة|تحويل|ضغط|تحميل|تنزيل|رابط|مشاهدة|شاهدت|أشاهد|اشاهد|شفت|رأيت|لماذا|ليش|ليه|هل|متى|وين|فين|مين|ماهو|وش|ايش|أيش|what|how|why|when|which|best|tips|script|caption|title|ideas?)(?=$|[\s،,.!؟?()"'«»:؛-])|[؟?]\s*$/i;
 /* مصنّف النيّة على الخادم (Gemini Flash، حرارة صفر): 'image' | 'video' | 'none' | null عند التعذّر أو المهلة. */
 async function omranMediaIntent(text){
@@ -3589,11 +3632,91 @@ async function __sendPromptCore(){
   // (نعم/ابدأ/سو...) في الرسالة التالية — بدون أي أزرار أو شرائط.
   // فعل بناء صريح في بداية الرسالة + موضوع بعده = طلب بناء حتى لو الموضوع
   // غير موجود في القوائم (ساعة، حاسبة، آلة حاسبة...). يغطي فجوة القوائم الثابتة.
-  const __strongBuildRe = /^\s*(?:(?:ممكن|ممكنك|لو\s*سمحت|من\s*فضلك|بليز|please|can\s*you|could\s*you|أبغى|ابغى|أبغي|ابغي|أبي|ابي|بغيت|أريد|اريد|ودّي|ودي|حاب|حابب|تقدر|تقدرين|أحتاج|احتاج|يا\s*ريت|ياريت|i\s*want|i\s*need)\s+){0,3}(?:تسوي|تسوّي|تسويلي|تصمم|تصمّم|تصميم|تبني|تبنيلي|تعمل|تعملي|تنشئ|تصنع|ابني|ابنيلي|نبني|اعمل|أعمل|سوي|سوّي|سولي|سوّلي|صمم|صمّم|انشئ|أنشئ|اصنع|build|create|make|design)\s+.{2,}/i;
+  /* v-route-gate (تدقيق التوجيه ١٠ أكتوبر، مسبار ١١٥ رسالة لمستخدمة عاديّة): الذيل المفتوح «فعل + أيّ شيء» (.{2,}) جعل أشيع
+     صيغة طلب خليجيّة بناءً — «سوي لي ملخص لاجتماع اليوم»، «سوي لي جدول مقارنة»، «اعمل لي ايميل ترحيب»، «Make me a logo» كانت
+     تُجاب «تبيني أبدأ البناء الحين؟» على المسار القديم بلا أدوات (لا بحث ولا صور). البناء الآن فقط حين يكون المفعول به
+     شيئًا يُبنى فعلًا (موقع/تطبيق/لعبة/بوت/صفحة/أداة/برنامج/سكربت/حاسبة/ساعة/متجر…) بعد الفعل مباشرةً
+     (مع «لي/me» وصفات إنجليزيّة قبل الاسم). المخرجات النصّيّة تذهب للمحادثة بأدواتها. */
+  const __strongBuildRe = /^\s*(?:(?:ممكن|ممكنك|لو\s*سمحت|من\s*فضلك|بليز|please|can\s*you|could\s*you|أبغى|ابغى|أبغي|ابغي|أبي|ابي|بغيت|أريد|اريد|ودّي|ودي|حاب|حابب|تقدر|تقدرين|أحتاج|احتاج|يا\s*ريت|ياريت|i\s*want|i\s*need)\s+){0,3}(?:تسوي|تسوّي|تسويلي|تصمم|تصمّم|تصميم|تبني|تبنيلي|تعمل|تعملي|تنشئ|تصنع|ابني|ابنيلي|نبني|اعمل|أعمل|سوي|سوّي|سولي|سوّلي|صمم|صمّم|انشئ|أنشئ|اصنع|build|create|make|design)\s+(?:(?:لي|لنا|ليا|إلي|الي|me|us)\s+)?(?:(?!(?:of|about|for|on|in|with|from|to|that|which|and)\b)[a-z][\w'-]*\s+){0,3}(?:ال)?(?:موقع|مواقع|تطبيق|تطبيقات|لعب[ةه]|ألعاب|العاب|بوت|شات\s*بوت|صفح[ةه]|أدا[ةه]|ادا[ةه]|أدوات|ادوات|برنامج|برامج|سكربت|سكريبت|(?:آل[ةه]|ال[ةه])\s*حاسب[ةه]|حاسب[ةه]|ساع[ةه]|متجر|لوح[ةه]\s*تحكم|داشبورد|apps?|application|web\s*site|website|site|web\s*page|webpage|page|games?|bot|chatbot|tool|script|program|calculator|clock|timer|dashboard|store|extension)(?![ء-يa-z])/i;
+  /* v-route-want (إعادة التقييم ١٠ أكتوبر، ١١ من ١٢ حالة): «عطني/أبي/ممكن + موقع/تطبيق/برنامج/أداة/صفحة/لعبة» بلا فعل بناء صريح كانت تُسأل
+     «تبيني أبدأ البناء؟» على المسار القديم بلا أدوات — «عطني موقع مركز خدمة العملاء»، «ابي موقع السفارة الهندية»، «أبي أفضل تطبيق لتعلم الإنجليزي»،
+     «ممكن تقترح لي برنامج»، «أبي لعبة أنزلها لولدي». جلبٌ لا بناء حين: تنزيل (أنزلها/حمّل) بلا وصف صنع، أو بحث/توصية (رابط/أعرف/تقترح/«أفضل تطبيق») بلا وصف صنع
+     ولا ملكيّة، أو «عطني/هات» أو «موقع/صفحة/تطبيق + جهة قائمة» (السفارة/الهيئة/وزارة…) بلا ملكيّة ولا استنساخ. «أبي تطبيق ملاحظات»، «اريد موقع لشركتي»، «ابي موقع»،
+     «عطني موقع لمطعمي»، «ابي موقع لمطعمي فيه رابط واتساب»، «ابي نسخة من انستقرام» تبقى بناءً؛ والدالّة نفسها تحرس شبكة استرجاع الطلب المعلّق («تمام» بعد جواب البحث ليست موافقة)؛
+     وفعل البناء الصريح (ابني/سوّي/صمّم…) والمشروع المفتوح (كود حاضر = تعديل) كما كانا. */
+  const __rtBuildVerbRe = /(ابني|ابن\s|تبني|تعمل|تنشئ|تصنع|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|سولي|سوّلي|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|build|create|make|design|develop)|(?:^|[\s،,])سوّ?(?=$|[\s،,])/i;
+  const __rtGiveRe = /(?:^|[\s،,])(?:عطني|أعطني|اعطني|تعطيني|عطيني|هات|هاتي|جيب|give\s+me)(?=$|[\s،,])/i;
+  const __rtDlRe = /(?:^|[\s،,.!؟?])(?:أنزل|انزل|نزّل|أحمل|احمل|حمّل)(?:ه|ها|هم)?(?=$|[\s،,.!؟?])/i; // فعل التنزيل («أنزلها لولدي»): جلب حتّى مع المستفيد؛ «صفحة تحميل لتطبيقي» صنع
+  const __rtLookupRe = /(?:^|[\s،,.!؟?])(?:رابط|لينك|link|أعرف|اعرف|تقترح|تقترحين|اقترح|أنصح|انصح|تنصح|تنصحني|ترشح|رشح|رشّح|recommend|suggest|best)(?=$|[\s،,.!؟?])/i; // يُفحص قبل اسم البناء وحده: «ابي رابط موقع الهيئة» بحث، «ابي تطبيق يرسل رابط الدفع» صنع
+  const __rtBestRe = /(?:أفضل|افضل|أحسن|احسن)\s+(?:موقع|مواقع|تطبيق|تطبيقات|برنامج|برامج|لعب[ةه]|ألعاب|العاب|أدا[ةه]|ادا[ةه])/;
+  const __rtNounRe = /(?:موقع|مواقع|تطبيق|برنامج|لعب[ةه]|بوت|صفح[ةه]|أدا[ةه]|ادا[ةه]|متجر|\bapps?\b|website|\bsite\b|\bpage\b|\bgame\b|\bbot\b|\btool\b)/i;
+  const __rtNotLookupRe = /(?:صفح[ةه]|موقع|page)\s+(?:رابط|لينك|link)(?![ء-يa-z])|(?:^|[\s،,.!؟?])و?(?:ما|مو|مب|لا|ماني)\s+(?:أعرف|اعرف)(?=$|[\s،,.!؟?])|link\s+(?:shortener|in\s+bio)|لينك\s+تري/gi; // «صفحة لينك» صنع و«(و)ما اعرف برمجة» نفي — تُحذف قبل الفحص (بلا lookbehind: سفاري قبل 16.4 يرفض الحزمة كلّها)
+  const __rtEntityRe = /(?:موقع|مواقع|صفح[ةه]|رابط|تطبيق)\s+(?:ال(?:وزار|هيئ|سفار|قنصلي|دائر|بلدي|مستشف|جامع[ةه]|شرط|محكم|محاكم|مطار(?![ء-ي])|بنك|مصرف|حكوم|مجلس|ديوان)|(?:وزار[ةه]|هيئ[ةه]|سفار[ةه]|قنصلي[ةه]|بلدي[ةه]|شرط[ةه])\s+[ء-ي]{2,}|(?:بنك|مصرف|مستشف[ىي]|جامع[ةه]|دائر[ةه]|محكم[ةه]|مجلس|ديوان|مطار)\s+(?:دبي|أبوظبي|ابوظبي|الشارقة|عجمان|راشد|زايد|خليفة|الإمارات|الامارات)(?![ء-ي]))/; // جهة قائمة: «موقع السفارة»، «موقع وزارة الصحة»، «مستشفى راشد» — لا «بنك الأسئلة» ولا «مجلس الطلاب» ولا «حساب الدائرة»
+  const __rtMineRe = /(?:^|[\s،,])(?:ل[ء-ي]{2,}(?:ي|نا)|حق(?:ت)?(?:ي|نا)|حگ(?:ت)?(?:ي|نا)|(?:حق|حگ)(?:ت)?\s+[ء-ي]{2,}(?:ي|نا))(?=$|[\s،,.!؟?])|\bfor\s+(?:my|our)\b/i; // ملكيّة بعد الاسم («لمطعمي/حقتي/حق مطعمي») = صنع؛ «هات لي» ليست ملكيّة
+  const __rtFeatureRe = /(?:^|[\s،,])و?(?:فيه|فيها|منه|منها|به|بها|عليه|عليها|يعرض|تعرض|يحسب|تحسب|مثل|زي|نسخ[ةه]|كلون)(?=$|[\s،,])|\b(?:clone|like|with)\b/i; // وصف صنع: «موقع فيه رابط واتساب»، «انزل عليه المنتجات»، «اعرف منه»، «نسخة من انستقرام»
+  const __rtCloneRe = /(?:^|[\s،,])(?:مثل|زي|نسخ[ةه]|كلون)(?=$|[\s،,])|\b(?:clone|like)\b/i;
+  const __rtIsLookup = (t, code) => {
+    t = String(t || '');
+    if(!t || code || __rtBuildVerbRe.test(t)) return false;
+    const feat = __rtFeatureRe.test(t), mine = __rtMineRe.test(t);
+    if(__rtDlRe.test(t) && !feat) return true;
+    const nm = __rtNounRe.exec(t), pre = (nm ? t.slice(0, nm.index) : t).replace(__rtNotLookupRe, ' ');
+    if((__rtLookupRe.test(pre) || __rtBestRe.test(t)) && !feat && !mine) return true;
+    return !!((__rtGiveRe.test(t) || __rtEntityRe.test(t)) && !mine && !__rtCloneRe.test(t));
+  };
+  const __rtCurP = ((typeof __startPid !== 'undefined' && __startPid && typeof state !== 'undefined' && state && Array.isArray(state.projects)) ? state.projects.find(p => p && p.id === __startPid) : null) || getCurrent(); // المحادثة التي كُتبت فيها الرسالة (v-parallel-chats) لا الظاهرة بعد انتظار المصنّف
+  const __rtWantLookup = __rtIsLookup(text, __rtCurP && __rtCurP.code);
   // 🖼️ v330: متابعة بعد تعديل صورة (بدون مرفق جديد) → مسار تعديل الصورة مباشرة
   // بآخر صورة محفوظة — ممنوع بوابة البناء وممنوع خطة عمل («ضيفه الرابط» كانت
   // تروح للبوابة فيرسم المزود الصورة من خياله بدل تعديل الأصلية).
   // v577: قائمة سوداء للمتابعة — هذه وحدها تخرج من «تعديل نفس الصورة».
+  /* v-route-write (تدقيق التوجيه ١٠ أكتوبر): «اكتب لي قصيدة قصيرة عن الصقر» بعد صورة مولَّدة كانت تذهب لخطّ الكتابة على
+     الصورة (تُطبع القصيدة على الصقر بدل أن تُجاب)، و«اكتب لي دعوة لاجتماع/شهادة خبرة» تصير صورة حين يتعذّر المصنّف.
+     طلب كتابة وثيقة (قصيدة/إيميل/رسالة/مقال/خطاب/تقرير…، أو «اكتب لي نص/تهنئة») بلا إشارة إلى الصورة
+     (عليها/فيها/الصورة/على البطاقة/نصّ بين علامتي تنصيص) = محادثة. «اكتب عليها…» و«اكتب «عيد مبارك»» تبقى كتابة على الصورة. */
+  const __rtWriteVerbRe = /(?:^|[\s،,.!؟?])(?:اكتب|أكتب|اكتبي|اكتبلي|أكتبلي|تكتب|تكتبلي|نكتب|write|compose|draft)(?=$|[\s،,.:!؟?])/i;
+  const __rtImgRefRe = /عليها|فوقها|تحتها|فيها|عليه(?=$|[\s،,.!؟?])|(?:ال|لل|بال)صور[ةه]|صورتي|هالصور|(?:على|في|فوق|تحت|داخل)\s*(?:ال)?(?:بطاق[ةه]|بوستر|تصميم|خلفي[ةه]|لوح[ةه]|شعار|لوجو)|[«»"“”]|\b(?:it|image|picture|photo)\b/i;
+  const __rtDocNounRe = /(?:^|[\s،,.])(?:ال)?(?:قصيد[ةه]|قصائد|شعر|إيميل|ايميل|رسال[ةه]|مقال[ةه]?|خطاب|تغريد[ةه]|تقرير|قص[ةه]|بوست|منشور|كابشن|poem|email|letter|essay|article|story|tweet|report|post|caption)(?=$|[\s،,.:!؟?])|(?:(?:اكتب|أكتب|اكتبي|تكتب)\s*لي|اكتبلي|أكتبلي|تكتبلي)\s+(?:نص|تهنئ[ةه])(?=$|[\s،,.:!؟?])/i;
+  /* المراجعة: «اكتب رسالة رمضان كريم بخط ذهبي» و«اكتب رسالة: عيد مبارك» بعد صورة كتابةٌ عليها (خطّ/لون/نقطتان) لا وثيقة */
+  const __rtStyleCueRe = /بخط|بالخط|خط\s*(?:ديواني|كوفي|فارسي|ثلث|رقعة|عريض|ذهبي)|بلون|باللون|ذهبي|فضي|[:：]/;
+  /* v-route-suggest (المدوّنة العمياء ٢): بعد صورة شعار «اقترح لي اسم للنادي» صارت تعديلًا على الصورة فجرّت ما بعدها («عطني خمس أسماء ثانية»، «الثالث حلو»).
+     طلب اقتراح نصّيّ (اسم/أسماء/عبارة/سلوقن) بلا إشارة للصورة ولا فعل وضع (حطّه/اكتبه) جوابٌ بالكلام؛ «عطني فكرة ثانية» تبقى لقطة بصريّة جديدة (__IMG_CREATIVE_RE). */
+  const __rtSuggestRe = /(?:^|[\s،,.!؟?])(?:اقترح|أقترح|اقترحي|تقترح|عطني|أعطني|اعطني|عطيني|هات|suggest|give\s+me)\s+(?:(?:لي|لنا|me|us)\s+)?(?:[^\s،,.!؟?]+\s+){0,2}?(?:اسم|اسماء|أسماء|عبار[ةه]|عبارات|سلوقن|سلوغن|names?|slogans?)(?=$|[\s،,.!؟?])/i;
+  const __rtPutRe = /(?:^|[\s،,.!؟?])و?(?:حط|حطه|حطها|حطيه|اكتب|اكتبه|اكتبها|ضيف|ضيفه|ضيفها|أضف|اضف|ضعه|ضعها|خل|خله|خلها|put|add|write)(?=$|[\s،,.!؟?])/i; // «اقترح اسم واكتبه على الشعار» تعديل لا اقتراح
+  const __rtWriteAsk = !!(text && (__rtWriteVerbRe.test(text) && __rtDocNounRe.test(text) || (__rtSuggestRe.test(text) && !__rtPutRe.test(text))) && !__rtImgRefRe.test(text) && !__rtStyleCueRe.test(text));
+  /* v-route-sticky: طلب مخرَج نصّيّ (ملخص/معلومات/نبذة/شرح/مقال…) بلا إشارة للصورة لا تُرفق له صورة الذاكرة — فيصل مسار النصّ بلا صورة وتنتهي سلسلة الصورة
+     (كان «سوي لي ملخص عن تاريخ الاتحاد» بعد البوستر يحمل الصورة فيبقى «بالإنجليزي» بعده تعديلًا عليها). */
+  const __rtTextOutRe = /(?:^|[\s،,.!؟?])(?:اكتب|أكتب|اكتبي|اكتبلي|سوي|سوّي|سولي|اعمل|أعمل|عطني|أعطني|اعطني|هات|ابي|أبي|ابغى|أبغى|اريد|أريد)\s+(?:(?:لي|لنا)\s+)?(?:[^\s،,.!؟?]+\s+)?(?:ملخص|تلخيص|معلومات|نبذ[ةه]|شرح|مقال[ةه]?|قصيد[ةه]|إيميل|ايميل|رسال[ةه]|تقرير|بوست|منشور|تغريد[ةه]|خطاب|قص[ةه]|كابشن|نقاط)(?=$|[\s،,.!؟?])/i;
+  const __rtTextOut = !!(text && (__rtWriteAsk || (__rtTextOutRe.test(text) && !__rtImgRefRe.test(text))));
+  /* v-route-sticky (المدوّنة العمياء + أربع مراجعات عدائيّة): «اختصرها/خله أقصر/بالإنجليزي/بأسلوب رسمي» بعد «اكتب لي قصيدة/بوست/ملخص» كانت تعدّل آخر صورة
+     (lastMsgWasImageEdit تبقى مرفوعة بعد الدور النصّيّ). مراجعة نصّيّة لا تذكر الصورة، ورسالة المستخدم السابقة طلب مخرَج نصّيّ (أو مراجعات نصّيّة متتالية بعده)
+     = للنصّ لا للصورة. العلامة نفسها لا تُمسّ: «خلها بالليل/الخلفية بحر/كرتون» بعد القصيدة تعدّل الصورة كما في main، و«حلوة» بينهما تُرجع سلوك main. */
+  const __rtTextRevRe = /(?:^|[\s،,.!؟?])(?:اختصر|اختصره|اختصرها|اختصري|لخص|لخّص|لخصه|لخصها|قصّر|قصره|قصرها|أقصر|اقصر|أطول|اطول|طوّل|طوله|طولها|ترجم|ترجمه|ترجمها|ترجمي|بالإنجليزي|بالانجليزي|بالإنقليزي|بالعربي|بالفرنسي|رسمي|أرسمي|أسلوب|اسلوب|بأسلوب|باسلوب|صياغ[ةه]|صيغ[ةه]|نقاط|بنقاط|shorter|longer|translate|english|formal)(?=$|[\s،,.!؟?])/i;
+  const __rtIsTextOut = (t) => !!(t && !__rtImgRefRe.test(t) && ((__rtWriteVerbRe.test(t) && __rtDocNounRe.test(t) && !__rtStyleCueRe.test(t)) || __rtTextOutRe.test(t) || (__rtSuggestRe.test(t) && !__rtPutRe.test(t))));
+  const __rtQRe = /[؟?]\s*$|^\s*(?:وش|شو|ايش|إيش|ليش|كيف|متى|وين|هل|مين|كم|ماهو|ماهي|what|why|how|when|where|who)(?=$|[\s،,])/i; // سؤال يُجاب نصًّا
+  const __rtContRe = /^\s*(?:كمل|كمّل|كمل لي|زيد|وبعد|continue|more)\s*[.!؟?]*\s*$/i;
+  const __rtDocNameRe = /(?:^|[\s،,.!؟?])(?:ال)?(?:قصيد[ةه]|إيميل|ايميل|رسال[ةه]|مقال[ةه]?|بوست|منشور|ملخص|تقرير|كابشن|الكلام|الشرح|الجواب|الرد|الردّ)(?=$|[\s،,.!؟?])/i; // «اختصر القصيدة» تسمّي النصّ
+  const __rtCtx = (() => { // سياق الأدوار السابقة: strict = طلب مخرَج نصّيّ صريح (أو اقتراح أسماء)، any = أو سؤال يُجاب نصًّا — عبر المراجعات و«كمل»
+    const out = { strict: false, any: false };
+    try{
+      const ms = ((typeof __rtCurP !== 'undefined' && __rtCurP) || getCurrent() || {}).messages || [];
+      let hops = 0;
+      for(let i = ms.length - 1; i >= 0 && hops < 5; i--){
+        const m = ms[i]; if(!m || m.role !== 'user') continue;
+        const u = String(m.content || ''); if(u === String(text) && i === ms.length - 1) continue; // الرسالة الحاليّة إن دُفعت
+        hops++;
+        if(__rtIsTextOut(u)){ out.strict = out.any = true; break; }
+        if(__rtQRe.test(u) && !__rtImgRefRe.test(u)){ out.any = true; break; }
+        if((__rtTextRevRe.test(u) && !__rtImgRefRe.test(u)) || __rtContRe.test(u)) continue;
+        break;
+      }
+    }catch(e){ __swallow(e, 'route:text-ctx'); }
+    return out;
+  })();
+  const __rtTextRev = !!(text && __rtTextRevRe.test(text) && !__rtImgRefRe.test(text) && (__rtCtx.any || __rtDocNameRe.test(text)));
+  const __rtAfterTextOut = __rtCtx.strict; // بعد طلب نصّيّ صريح: الالتقاط الشامل (__FOLLOW_ANY) مطفأ — «الثالث حلو» بعد «عطني خمس أسماء» للنصّ، والتعديل الصريح يبقى
+  /* «اكتب لي دعوة/شهادة/بطاقة…» في أوّل الرسالة = وثيقة تُكتب، لا تصميم بنصّ (فعل التصميم «صمّم/سوّ» يبقى صورة) */
+  const __rtWriteDocAsk = !!(text && !__rtImgRefRe.test(text) && /^\s*(?:(?:ممكن|لو\s*سمحت|من\s*فضلك|بليز|please|ساعدني)\s+)?(?:اكتب|أكتب|اكتبي|اكتبلي|أكتبلي|تكتب|تكتبلي|write)\s*(?:لي\s*|لنا\s*|me\s+)?(?:(?:a|an)\s+)?(?:ال)?(?:دعو[ةه]|شهاد[ةه]|بطاق[ةه]|تهنئ[ةه]|كرت|invitation|certificate|card)(?=$|[\s،,.:!؟?])/i.test(text));
   const __IMGF_NEW_RE = /(?:صورة|صوره|بطاق[ةه]|بوستر|ملصق|شهاد[ةه]|غلاف|بنر|لوجو|شعار|image|picture|card|poster)\s*(?:جديد[ةه]|ثاني[ةه]|أخرى|اخرى|new|another)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:ارسم|أرسم|اصنع|انشئ|أنشئ|صمم|صمّم|ولّد|ولد|draw|create|generate|design)\s*(?:لي\s*)?(?:صورة|صوره|بطاق[ةه]|بوستر|ملصق|شهاد[ةه]|غلاف|بنر|لوجو|شعار|image|picture|card|poster|logo|banner)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:صوّر|صور|صوره|صورة|تصور)\s?لي\s+\S/i; // v659: «صوّر لي X» = صورة جديدة، لا تعديل على السابقة
   const __IMGF_NOT_RE = /^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|ما|من|why|how|what|where|when|who)(?=$|[\s،,.!?؟])|[؟?]\s*$|(?:^|[\s،,])(?:ابحث|دور|اعطني|أعطني|معلومات|سعر|أسعار|اسعار|فندق|فنادق|مطعم|مطاعم|طيران|تذاكر|وظيف[ةه]|وظائف|عقار|شق[ةه]|سيار[ةه]|سيارات|أخبار|اخبار|طقس|أسهم|اسهم|ذهب|search|find|price|hotel|restaurant|flight|news|weather)(?=$|[\s،,.!?؟])|^(?:شكرا|شكرًا|مشكور|تسلم|تمام|اوك|أوك|زين|طيب|ايه|أيه|نعم|لا|يب|ok|okay|thanks|yes|no)[\s!.،,]*$|(?:^|[\s،,])(?:فيديو|حركها|حركه|حرك|صوت|video|animate|audio)(?=$|[\s،,.!?؟])/i;
   // v725: أمر تعديل صريح يتغلّب على فلتر «سؤال معلومات» — «غيّر السيارة» و«شيل السعر» تعديلان لا بحث
@@ -3602,6 +3725,7 @@ async function __sendPromptCore(){
     try{
       const c = getCurrent();
       if(!c || !c.lastMsgWasImageEdit || !c.lastEditedImage || !c.lastEditedImage.b64) return false;
+      if(__rtWriteAsk || __rtTextRev /* v-route-sticky */) return false; // v-route-write: طلب كتابة وثيقة بلا إشارة للصورة = محادثة لا كتابة عليها
       if(pendingAttachments.some(a => a.isImage)) return false;
       if(!text || text.length > 220) return false;
       if(/بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|سكربت|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\bscript\b|\bcode\b|كود/i.test(text)) return false;
@@ -3622,11 +3746,15 @@ async function __sendPromptCore(){
   const __entryImageTextSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:false };
   const __explicitImageTextRequest = !!(__entryImageTextSpec.wantsText &&
     /(?:صورة|صوره|بطاقة|بطاقه|دعوة|دعوه|بوستر|ملصق|شهادة|شهاده|غلاف|بنر|شعار|لوجو|image|picture|card|invitation|poster|banner|cover|logo)/i.test(text) &&
-    !/(?:تطبيق|برنامج|موقع|صفحة|لعبة|سكربت|كود|\bapp\b|\bwebsite\b|\bpage\b|\bgame\b|\bscript\b|\bcode\b)/i.test(text));
+    !/(?:تطبيق|برنامج|موقع|صفحة|لعبة|سكربت|كود|\bapp\b|\bwebsite\b|\bpage\b|\bgame\b|\bscript\b|\bcode\b)/i.test(text)
+    && !__rtWriteDocAsk /* v-route-write: «اكتب لي دعوة لاجتماع» وثيقة تُكتب لا تصميم */);
   let __gateNoBuild = false;
   let __gateApprovedText = null; // ما كتبه المستخدم فعلًا (نعم/ابدأ) ليُعرض كما هو
+  let __ownerBuildAsk = false; // v-claude-code-level: طلب بناء المالك (بلا دور استئذان) — إشارة اعتماد الكود مشروعًا
   {
-    const GATE_BUILD_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
+    /* v-route-gate: أسماء التصميم (بوستر/شعار/لوجو/بطاقة/دعوة/شهادة/تهنئة) خرجت من كلمات البناء — «صمّم لي بوستر لليوم الوطني»
+       كانت تُسأل «تبيني أبدأ البناء الحين؟» ثمّ «نعم» تبني صفحة HTML. طلب التصميم يذهب للبانِي المباشر (v-route-design أدناه). */
+    const GATE_BUILD_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b/i;
     const GATE_CMD_RE = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|\bwant\b|\bgive\b|\bcan you\b)/i;
     const GATE_FIX_RE = /(صلح|أصلح|اصلح|إصلاح|اصلاح|خطأ|خطا|أخطاء|اخطاء|مشكل|عطل|توقف|خرب|ما\s*يشتغل|مو\s*شغال|لا\s*يعمل|\bfix\b|\berror\b|\bbug\b|\bdebug\b|\bbroken\b)/i;
     /* v-loc-not-build (لقطة المالك ١ أكتوبر: «دي تو دي عجمان — عطني الموقع» فرجع ردّ فارغ): «موقع» + «عطني» كانتا تفتحان
@@ -3649,7 +3777,7 @@ async function __sendPromptCore(){
       /[📋⬜☐🔹▪•✔️]/.test(text) ||
       /^\s*(?:[-*]|\d+[.)])\s+\S.*\n\s*(?:[-*]|\d+[.)])\s+\S/m.test(text)
     ));
-    const __isFullBuildReq = !!(text && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)));
+    const __isFullBuildReq = !!(text && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text) && !__rtWantLookup /* v-route-want */) || __strongBuildRe.test(text)));
     // 🤝 v345: موافقة قصيرة («نعم/تمام/يلا») بعد عرض بناء من المزود نفسه في
     // رده السابق («أقدر أبنيلك أداة... تبيني أبدأ فيها؟») = موافقة تنفيذ فورية
     // على ما عرضه المزود، لا إعادة تشغيل الطلب السابق المرفوض.
@@ -3670,10 +3798,12 @@ async function __sendPromptCore(){
         const __gp = getCurrent();
         const __ms = __gp ? __gp.messages : [];
         // آخر طلب بناء كتبه المستخدم في هذا المشروع
-        const __lastU = [...__ms].reverse().find(m => {
+        const __cand = [...__ms].reverse().find(m => {
           const __t = String(m.apiText !== undefined ? m.apiText : (m.content || ''));
           return m.role === 'user' && GATE_BUILD_RE.test(__t) && GATE_CMD_RE.test(__t);
         });
+        // v-route-want: «تمام/زين/شكرًا» بعد جواب بحث ليست موافقة على بناء ما بُحث عنه — ولا على طلب أقدم منه
+        const __lastU = (__cand && !__rtIsLookup(String(__cand.apiText !== undefined ? __cand.apiText : (__cand.content || '')), __gp && __gp.code)) ? __cand : null;
         if(__lastU){
           const __idx = __ms.lastIndexOf(__lastU);
           // إذا ما انبنى كود فعلي بعد ذلك الطلب → «ابدأ» معناها الموافقة على بنائه
@@ -3694,13 +3824,18 @@ async function __sendPromptCore(){
       __gateApprovedText = text;
       text = __pend;
       __setPend(null);
-    } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)
+    } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(__gateText) && GATE_CMD_RE.test(text) && !__rtWantLookup /* v-route-want */) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)
+      && !(typeof omranOwnerUi === 'function' && omranOwnerUi()) /* v-claude-code-level (المالك: «ولا يبني ولا يقرى»): لا دور استئذان للمالك — طلبه أمر، يُبنى في الدور نفسه بالأدوات */
       && !omranEditBigOpen(getCurrent())){ // v-chat-edit: «ممكن تغيّر … في اللعبة» على تصميم كبير تعديلٌ برقع، لا بناء يُستأذن
       __setPend(text);
       __gateNoBuild = true;
     } else if(text){
       __setPend(null);
     }
+    /* v-claude-code-level: «أبي لعبة ثعبان» كانت تمرّ بالبوّابة فتُعلَّم بـ«نعم»؛ المالك بلا بوّابة الآن، فتُحفظ نيّة البناء هنا
+       بشرط البوّابة نفسه — والسؤال («how does the app build…»، «كيف…») ليس طلب بناء. */
+    __ownerBuildAsk = !!(typeof omranOwnerUi === 'function' && omranOwnerUi() && __isFullBuildReq && !__IMG_FOLLOW && !__explicitImageTextRequest && !GATE_FIX_RE.test(text)
+      && (__strongBuildRe.test(text) || !/^\s*(?:وش|شو|ايش|إيش|أيش|ليش|ليه|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|how|what|why|where|when|who|which|does|do|is|are)(?=$|[\s،,.!?؟])/i.test(text)));
   }
 
   // Guest gate: users without an account get GUEST_MSG_LIMIT free messages,
@@ -3786,7 +3921,7 @@ async function __sendPromptCore(){
     // v473c: بعد «وصلتني الصورة» أي رسالة تالية قصيرة تُرفق الصورة المحفوظة تلقائياً
     // v-memory-one-hop: قفزة واحدة فقط — الدور السابق مباشرةً حمل صورة حقيقيّة (v574 يبقي العلم
     // مرفوعًا عبر الرسائل، فكان أيّ نصّ قصير يعيد الصورة إلى الأبد). الإشارة الصريحة أعلاه تبقى دائمًا.
-    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220 && omranPrevTurnHadImage(cur.messages)){
+    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && !__rtWriteAsk /* v-route-write */ && !__rtTextOut && !__rtTextRev /* v-route-sticky */ && cur.lastMsgWasImageEdit && text && text.length <= 220 && omranPrevTurnHadImage(cur.messages)){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
       /* الصورة أُرفقت بالتخمين لا بالطلب: النموذج يتجاهلها بصمت إن لم تكن الرسالة عنها (بدل «الصورة المرفقة لا علاقة لها…») */
       apiText += (apiText ? '\n\n' : '') + '[ملاحظة للنموذج: الصورة memory.png أُرفقت تلقائيًّا من ذاكرة المحادثة لأنّ الرسالة قد تشير إليها. إن كانت الرسالة لا تخصّ الصورة فتجاهلها تمامًا: لا تذكرها ولا تصفها ولا تقل إنّها لا علاقة لها بالسؤال، وأجب عن الرسالة وحدها.]';
@@ -3909,7 +4044,9 @@ function __friendlyErr(e){
   //   1. نقاش/أسئلة عادية  → Gemini Flash (مجاني وسريع) واحتياطه Claude Haiku.
   //   2. إصلاح/تعديل كود موجود → Claude Sonnet "خلف الكواليس".
   //   3. بناء تطبيق/موقع/بوت  → اسأل الكل بالدمج (بدون أي تغيير).
-  const __routeBuildRe = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
+  /* v-route-gate: أسماء التصميم خرجت من هنا أيضًا — بعد خروجها من البوّابة كانت «ممكن تكتب لي دعوة» و«أبغى بوستر» ستسقط
+     إلى «اسأل الكل» القديم بتعليمة «This turn is a BUILD request» فتُبنى صفحة HTML؛ تذهب للمحادثة بأدواتها أو للبانِي. */
+  const __routeBuildRe = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b/i;
   const __routeFixRe = /(صلح|أصلح|اصلح|إصلاح|اصلاح|خطأ|خطا|أخطاء|اخطاء|مشكل|عطل|توقف|خرب|ما\s*يشتغل|مو\s*شغال|لا\s*يعمل|\bfix\b|\berror\b|\bbug\b|\bdebug\b|\bbroken\b)/i;
   // ✏️ نية تعديل على المشروع المفتوح: فعل تعديل (عدّل/غيّر/حط/بدل/خل...) +
   // عنصر داخل التصميم (نص/شعار/لون/خلفية/زر...) → يروح لمسار التعديل الحقيقي
@@ -3965,7 +4102,7 @@ function __friendlyErr(e){
       return false;
     }catch(e){ return true; } // guard-ok: أي خطأ → السلوك القديم بالضبط
   })();
-  const askAll = !!customProviders || __askAllExplicit || (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) /* v-owner-solo: البناء الضمنيّ يفرض كلود — المالك على مزوّده */ && !__gateNoBuild && !__gateApprovedText && !__fileAnalyze && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
+  const askAll = !!customProviders || __askAllExplicit || (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) /* v-owner-solo: البناء الضمنيّ يفرض كلود — المالك على مزوّده */ && !__gateNoBuild && !__gateApprovedText && !__fileAnalyze && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape && !__rtWantLookup /* v-route-want */) || __strongBuildRe.test(text)) && !__routeFix);
   // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
   let __lastStreamPartial = '';
 
@@ -3999,12 +4136,15 @@ function __friendlyErr(e){
     // من البحث المباشر وعرضه صورًا في الشات (بدون رسم نسخة مقلدة).
     // "صمم لي لوجو" (تصميم جديد) يظل على مسار التصميم العادي.
     const __logoFetchRe = /شعار|لوجو|\blogo\b/i;
-    const __logoDesignRe = /(صمم|صمّم|تصميم|ابتكر|انشئ|أنشئ|إنشاء|انشاء|اعمل|أعمل|سوي|سوّي|ابني|اقترح|\bdesign\b|\bcreate\b|\bmake\b|\binvent\b)/i;
+    /* v-route-logo (تدقيق التوجيه ١٠ أكتوبر): «سوّ لي لوجو لمقهى اسمه سنع» كانت تبحث عن شعار رسميّ فتردّ «ما حصلت الشعار
+       في البحث المباشر» — «سوّ/سو» لم تكن فعل تصميم هنا (بحدود كلمة كي لا تُقرأ «سوق» في «شعار سوق دبي الحرة»)، ولا «لمقهى/لكافيه/
+       لصالون/لعيادة/لمكتب…» هدفًا جديدًا. «عطني شعار شرطة دبي» تجلب الشعار الأصليّ كما كانت. */
+    const __logoDesignRe = /(صمم|صمّم|تصميم|ارسم|أرسم|ارسمي|ارسملي|ابتكر|انشئ|أنشئ|إنشاء|انشاء|اعمل|أعمل|سوي|سوّي|ابني|اقترح|\bdesign\b|\bcreate\b|\bmake\b|\binvent\b)|(?:^|[\s،,.!؟?])(?:سوّ|سو|سوّلي|سولي)(?=$|[\s،,.!؟?])/i;
     // v295: 🖼️ بحث صور حقيقي عام — "عطني/هات/وريني صور [أي شي]" → صور حقيقية من النت
     const __photoFetchRe = /(عطني|أعطني|اعطني|هات|جيب|وريني|أرني|ارني|اعرض|ابغي|أبي|ابي|اريد|أريد|show me|give me|find me)[^]{0,40}?(صور|صورة|photos?|images?|pictures?)/i;
     const __genDrawRe = /(ارسم|ولّد|ولد لي|تخيل|اصنع|صمم|أنشئ صورة|انشئ صورة|generate|draw|imagine)/i;
     // v322: "لوجو لتطبيقي/لشركتي/دعاية..." = تصميم جديد، مو بحث عن شعار رسمي موجود
-    const __logoNewRe = /(لتطبيق|لموقع|لشرك|لمشروع|لمتجر|لقناة|لبراند|لعلامت|لمطعم|لمحل|دعاي|اعلان|إعلان|جديد|خاص|هوية|براند|for my|my app|my site|my brand|my company|new logo|(لي|إلي|الي|حق|حگ)\s*(تطبيق|موقع|شرك|مشروع|متجر|قناة|براند|مطعم|محل))/i;
+    const __logoNewRe = /(لتطبيق|لموقع|لشرك|لمشروع|لمتجر|لقناة|لبراند|لعلامت|لمطعم|لمحل|دعاي|اعلان|إعلان|جديد|خاص|هوية|براند|for my|my app|my site|my brand|my company|new logo|(لي|إلي|الي|حق|حگ)\s*(تطبيق|موقع|شرك|مشروع|متجر|قناة|براند|مطعم|محل))|(?:^|[\s،,.])ل(?:نادي|فريق|جمعي|مدرس|مؤسس|مركز|مقه[ىي]|كافي|كوفي|صالون|عياد|مكتب|مخبز|حلويات|محمص|مغسل|بقال|صيدلي|مطبخ|بوتيك|مشغل|ورش)/i; /* v-route-logo: «لوجو لمقهى/لكافيه/لصالون…» تصميم جديد — اللام أوّل الكلمة كي لا تُقرأ «المكتب الإعلامي» */
     // v324: سؤال/متابعة عن شعار سبق ذكره بالمحادثة (وين الشعار اللي عطيتك...) = مو بحث — يروح للمزود عادي
     const __logoRefRe = /(عطيتك|أعطيتك|اعطيتك|أرفقت|ارفقت|رفعت|حطيت|اللي عطيت|الي عطيت|وين|فين|ليش|ما استخدمت|مااستخدمت|استخدم|ضفه|أضفه|اضفه|حطه|بدله|غيره|عدله)/i;
     // 🧭 v326 القبطان: بوابة بحث الشعارات الرسمية تفتح فقط في أول رسالة
@@ -4096,7 +4236,7 @@ function __friendlyErr(e){
     // نصّ ملصوق طويل (قصّة/شرح/تقرير) بلا صورة مرفقة وبلا طلب صريح للصورة = يُمنع
     // أيّ توليد صورة تلقائيّ لهذا الدور. الطلب الصريح («ارسم/صمّم/اصنع لي صورة/
     // بوستر/شعار») يبقى يعمل، وتعديل صورة مرفقة يبقى يعمل (شرطه __srcImg).
-    const __explicitImgReq = /(?:^|[\s،,.])(?:ارسم|أرسم|ارسمي|اصنع|اصنعي|انشئ|أنشئ|صمم|صمّم|صمّمي|ولّد|ولد|صوّر|صور)\s*(?:لي\s*)?[^\n]{0,25}?(?:صور|رسم|بوستر|ملصق|شعار|لوجو|بطاق|بنر|غلاف|تصميم|image|picture|poster|logo|banner|drawing)/i.test(text || '');
+    const __explicitImgReq = /(?:^|[\s،,.])(?:ارسمي|ارسم(?!ي)|أرسم(?!ي)|اصنع|اصنعي|انشئ|أنشئ|صمم|صمّم|صمّمي|ولّد|ولد|صوّر|صور)\s*(?:لي\s*)?[^\n]{0,25}?(?:صور|رسم|بوستر|ملصق|شعار|لوجو|بطاق|بنر|غلاف|تصميم|image|picture|poster|logo|banner|drawing)/i.test(text || '');
     // نُعيد حساب «نصّ ملصوق» محليًّا لأنّ __looksPasted معرّف في كتلة أخرى أعلى
     // (نطاق const مقفل) — لا نُشير إليه هنا (كان يسبّب __looksPasted is not defined).
     const __pastedLike = !!(text && !__strongBuildRe.test(text) && (
@@ -4199,6 +4339,21 @@ function __friendlyErr(e){
     }
     // 🪧 v300: سؤال داخل/خارج قبل تصميم إعلان على صورة مرفقة
     const __adIntentRe = /(إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار)/i;
+    /* v-route-ad (تدقيق التوجيه ١٠ أكتوبر): كلمة «إعلان/للبيع/للإيجار» وحدها كانت تكفي لصورة إعلان «للبيع» حين يتعذّر المصنّف
+       (لا مفتاح، مهلة ٢٫٥ث، أو السقف اليوميّ) — «اكتب لي إعلان وظيفة محاسب»، «لخص النص التالي: أعلنت دائرة…»، «أبي أعرف أسعار
+       الفلل للإيجار»، «كم سعر إعلان في جريدة الخليج»، «ترجم الإعلان هذا» صارت صور إعلان بعنوان جملة المستخدم.
+       مسار صورة الإعلان الآن فقط لإعلان بيع/إيجار صريح بتفاصيله (سعر/موديل/غرف/رقم)، أو فعل صنع + «إعلان»، أو مصنّف قال image؛
+       والكتابة/الترجمة/التلخيص/السؤال عن السعر محادثة دائمًا. «اعلان سيارة للبيع لكزس موديل 2020 السعر 90 الف» كما كانت. */
+    const __rtAdNoRe = /^\s*(?:كم|بكم|سعر|أسعار|اسعار)(?=$|[\s،,.:!؟?])|(?:^|[\s،,.!؟?:])(?:اكتب|أكتب|اكتبي|اكتبلي|أكتبلي|تكتب|ترجم|ترجملي|ترجمه|ترجمها|لخص|لخّص|لخصلي|لخّصلي|أسعار|اسعار)(?=$|[\s،,.:!؟?])|(?:أبي|ابي|أبغى|ابغى|أبغي|ابغي|ودي|ودّي|حاب|أريد|اريد)\s+(?:أعرف|اعرف)(?=$|[\s،,.!؟?])/i;
+    const __rtAdListing = /(?:لل?بيع|للإيجار|للايجار|للأجار|للاجار)/i.test(text || '') && /[0-9٠-٩]|غرف|موديل|السعر|درهم|ريال|للتواصل|واتساب|واتس/i.test(text || '');
+    const __rtAdMake = /(?:^|[\s،,.!؟?])(?:صمم|صمّم|صممي|سوّ|سو|سوي|سوّي|سولي|سوّلي|سويلي|اعمل|أعمل|اعملي|اصنع|أصنع|انشئ|أنشئ|جهز|جهّز|أبي|ابي|أبغى|ابغى|أبغي|ابغي|أريد|اريد|بغيت|ودي|ودّي|عطني|أعطني|اعطني|ابا|أبا|design|make|create)\s+(?:(?:لي|لنا|me)\s+)?(?:(?:a|an)\s+)?(?:[^\s،,.!؟?]+\s+)?(?:إعلان|اعلان|أعلان|ad\b)/i.test(text || '');
+    /* المراجعة العدائيّة قبل الدمج: (١) صورة سيّارة/عقار مرفقة + «للبيع» أو «سيارة للبيع» وحدها كانت تذهب للمحادثة (المصنّف لا يُنادى مع
+       صورة فلا تفاصيل ولا مصنّف) — صورة جديدة مرفقة + كلمة إعلان = الإعلان كما كان، إلّا السؤال والكتابة/الترجمة/التلخيص.
+       (٢) إعلان صريح بتفاصيله يغلب كلمات السعر («للإيجار شقق… أسعار مناسبة للتواصل 050…»، «سعر حرق للبيع ايفون 2500 درهم»)؛
+       الكتابة والترجمة والتلخيص تبقى محادثة دائمًا. */
+    const __rtAdHardNo = /(?:^|[\s،,.!؟?:])(?:اكتب|أكتب|اكتبي|اكتبلي|أكتبلي|تكتب|ترجم|ترجملي|ترجمه|ترجمها|لخص|لخّص|لخصلي|لخّصلي)(?=$|[\s،,.:!؟?])/i;
+    const __rtAdImg = !!(__srcImg && !__srcImg._fromMemory && !/[؟?]\s*$/.test(text || ''));
+    const __rtAdOk = !__rtAdHardNo.test(text || '') && (__rtAdListing || (!__rtAdNoRe.test(text || '') && (__mediaLane === 'image' || __rtAdMake || __rtAdImg)));
     if(text && cur.awaitingAdMode){
       // v311: «ثنتين/الاثنين/كلاهما» = داخل (صورة كاملة + كل التفاصيل فوقها).
       const __ansInside = /(داخل|فوق|عليها|على الصور|ثنتين|ثنتينهم|الاثنين|الإثنين|الثنتين|كلاهما|كليهما|الكل|both|inside)/i.test(text);
@@ -4421,7 +4576,7 @@ function __friendlyErr(e){
       }
       renderAll(); saveState();
       return;
-    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !(__mediaLane === 'video' || /(?:إعلان|اعلان)\s*(?:فيديو|ڤيديو)|(?:فيديو|ڤيديو)\s*(?:إعلان|اعلان|إعلاني|اعلاني|دعائي|ترويجي)|\bvideo\s+ad\b|\bad\s+video\b/i.test(text)) /* v-video-ad-route: «إعلان فيديو» ليس صورة إعلان؛ «للبيع ايفون يصور فيديو 4K» تبقى إعلانًا */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
+    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !(__mediaLane === 'video' || /(?:إعلان|اعلان)\s*(?:فيديو|ڤيديو)|(?:فيديو|ڤيديو)\s*(?:إعلان|اعلان|إعلاني|اعلاني|دعائي|ترويجي)|\bvideo\s+ad\b|\bad\s+video\b/i.test(text)) /* v-video-ad-route: «إعلان فيديو» ليس صورة إعلان؛ «للبيع ايفون يصور فيديو 4K» تبقى إعلانًا */ && __rtAdOk /* v-route-ad */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
       // v695: إعلان → /api/tools?action=adimage (gpt-image-2) بجودة احترافية حقيقية
       const __wM  = text.match(/(?:مطلوب|السعر|ب\s*(?:فقط)?)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
       const __mmM = text.match(/(?:الممشى|ممشى)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
@@ -4632,6 +4787,7 @@ function __friendlyErr(e){
             });
             const __cd = await __cr.json().catch(()=>({}));
             if(__cr.ok && __cd.imageBase64){ __cartoonB64 = __cd.imageBase64; __cartoonMime = __cd.mimeType || 'image/png'; }
+            else if(__cr.status === 402 || (__cr.status === 422 && __cd.retryable === false)) break; // v-unchanged-cap: ردّ نهائيّ (الخصم باقٍ أو الرصيد نفد) — الإعادة التلقائيّة تخصم مرّة ثانية بلا صورة؛ عطل الشبكة المردود يُعاد كما كان
           }
           if(!__cartoonB64) throw new Error(lang==='ar'?'تعذر تحويل الصورة لكرتون، جرّب صورة أوضح.':'Could not cartoonize the image, try a clearer photo.');
           cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎨 صارت شخصية كرتونية ✅ الحين أحرّكها تتكلم…':'🎨 Cartoon character ready ✅ now animating it to talk…'), attachments:[{ name:'cartoon.png', isImage:true, mime:__cartoonMime, dataUrl:'data:'+__cartoonMime+';base64,'+__cartoonB64 }] });
@@ -4855,8 +5011,8 @@ function __showImgLoading(el, ar, en){
        التعديل قائمة كلمات («واقعي» لا تطابق «واقعية»، «إضاءة» لا تطابق «الإضاءة»). كتطبيقات الصور الكبرى: بعد صورة مباشرةً
        أيّ رسالة قصيرة ليست سؤالًا ولا شكرًا ولا طلب صورة جديدة ولا كودًا = تعديل على آخر نسخة. */
     const __ackOnly = /^\s*(?:هلا|مرحبا|السلام\s*عليكم|شكرا|شكرًا|مشكور|تسلم|تسلمين|يعطيك\s*العافية|تمام|ممتاز|رائع|جميل|جميلة|حلو|حلوة|زين|نعم|لا|اوكي|أوكي|ok|okay|thanks|thank you|nice|great|perfect|yes|no)\s*[.!👍❤️🌹]*\s*$/i;
-    const __FOLLOW_ANY = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 300 && !__ackOnly.test(text) && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
-    const __FOLLOW_DEFAULT = __FOLLOW_ANY || !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && __editStyleIntent && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text));
+    const __FOLLOW_ANY = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 300 && !__ackOnly.test(text) && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !__rtWriteAsk /* v-route-write */ && !__rtTextRev && !__rtAfterTextOut /* v-route-sticky */);
+    const __FOLLOW_DEFAULT = __FOLLOW_ANY || !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && __editStyleIntent && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text) && !__rtWriteAsk /* v-route-write */ && !__rtTextRev /* v-route-sticky */);
     /* v-fresh-gen-wins (شكوى المالك: «عطني صور» مع صورة مرفقة كانت تُعدّل
        اللقطة بدل توليد صور جديدة → نتيجة زفت). طلب توليد صريح («عطني/ولّد/
        ارسم صورة») بلا أي فعل تعديل وبلا إشارة للمرفق = توليد جديد نظيف
@@ -4868,7 +5024,7 @@ function __showImgLoading(el, ar, en){
     const __STYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|ستايل|أسلوب|اسلوب|نمط|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|sketch|realistic|render|style)(?=$|[\s،,.!?؟])/i;
     const __styleShort = !!(text && text.length <= 80 && __STYLE_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !/[؟?]\s*$/.test(text));
     const __ATT_STYLE = !!(__srcImg && !__srcImg._fromMemory && __styleShort);
-    const __STYLE_FOLLOW = !!(!__srcImg && __styleShort && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit);
+    const __STYLE_FOLLOW = !!(!__srcImg && __styleShort && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && !__rtTextRev /* v-route-sticky: «بأسلوب رسمي» بعد قصيدة للنصّ */);
     const __freshGenWins = !!(text && __srcImg && !__srcImg._fromMemory
       && __imgGenIntentRe.test(text)
       && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_ELEVATE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
@@ -4908,6 +5064,27 @@ function __showImgLoading(el, ar, en){
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (__upgSrc ? (__upgSrc.mime || 'image/png') : ((cur.lastEditedImage && cur.lastEditedImage.mime) || 'image/png'));
       const __isNewImageSource = !!(__srcImg && !__srcImg._fromMemory);
+      /* 🖼️ v-img-format: تحويل الصيغة محلّيًّا قبل أيّ محرّك — الصورة نفسها بلا تغيير، وتصير مصدر التعديل التالي */
+      const __fmtReq = __b64 ? __imgFormatIntent(text) : null;
+      if(__fmtReq){
+        const __fmtName = (f) => (f === 'jpeg' ? 'JPG' : String(f || '').toUpperCase());
+        const __fmtExt = (f) => (f === 'jpeg' ? 'jpg' : f);
+        const __guessNote = (f) => (__fmtReq.guess && f ? '\n' + t('imgConvertGuess').replace('{word}', __fmtReq.guess).replace('{fmt}', __fmtName(f)) : '');
+        if(!__fmtReq.fmt){
+          cur.messages.push({ role:'assistant', content:t('imgConvertAsk') });
+        } else if(__mime === 'image/' + __fmtReq.fmt){
+          cur.messages.push({ role:'assistant', content:t('imgConvertSame').replace('{fmt}', __fmtName(__fmtReq.fmt)) + __guessNote(__fmtReq.fmt), attachments:[{ name:'image.' + __fmtExt(__fmtReq.fmt), isImage:true, mime:__mime, dataUrl:'data:' + __mime + ';base64,' + __b64 }] });
+        } else {
+          try{
+            const __cvUrl = await __omranConvertImageFormat(__b64, __mime, __fmtReq.fmt), __cvMime = 'image/' + __fmtReq.fmt;
+            cur.messages.push({ role:'assistant', content:t('imgConvertDone').replace('{fmt}', __fmtName(__fmtReq.fmt)) + __guessNote(__fmtReq.fmt), attachments:[{ name:'image.' + __fmtExt(__fmtReq.fmt), isImage:true, mime:__cvMime, dataUrl:__cvUrl }] });
+            cur.lastEditedImage = { b64:__cvUrl.split(',')[1] || '', mime:__cvMime };
+          }catch(e){ __swallow(e, 'img:format'); cur.messages.push({ role:'assistant', content:t('imgConvertFail') }); }
+        }
+        cur.lastMsgWasImageEdit = true;
+        thinkingDiv && thinkingDiv.remove();
+        renderAll(); saveState(); return;
+      }
       // 🏠 v682: مسار الديكور — صوّر غرفتك والذكاء يولّد ٤ أساليب مختلفة
       const __decorRe = /(?:ديكور|ديكو|décor|decor|تصميم\s*داخلي|interior\s*design|غير\s*(?:شكل|الشكل|الغرفة|البيت|المكان|الطابع)|حسّن\s*(?:الغرفة|البيت|المكان|الديكور)|رتّب\s*الغرفة|تزيين|أثاث\s*جديد|اقتراح\s*(?:ديكور|أثاث)|غرفتي\s*(?:غير|حسّن|بدّل)|بيتي\s*(?:غير|حسّن))/i;
       if(__decorRe.test(text) && __b64){
@@ -5249,7 +5426,9 @@ function __showImgLoading(el, ar, en){
       }
       // 🛡️ v574: نيّة كتابة صريحة بلا نصّ مفهوم → نطلب النصّ ولا نمسّ الصورة.
       // ممنوع منعًا باتًا أن يعيد مولّد الصور رسمها في شؤون الكتابة.
-      if(!__textSpec.wantsText && !__textSpec.styleEdit && window.__imageWriteIntent && window.__imageWriteIntent(text)){
+      /* v-swap-before-ask (لقطة المالك ١١ أكتوبر: «بدل بليدر حط om ai» على لقطة → «حدّد النص بين علامتي تنصيص» مرّتين): «بدل X حط Y»
+         تبديل نصّ مكتوب، ومساره (v-text-swap) بعد هذا الحارس مباشرةً — كان الحارس يردّ قبله لأنّ «حط» نيّة كتابة. */
+      if(!__textSpec.wantsText && !__textSpec.styleEdit && window.__imageWriteIntent && window.__imageWriteIntent(text) && !(__b64 && __textSwapIntent(text))){
         cur.messages.push({ role:'assistant', content:(lang === 'ar'
           ? 'أكتبه لك على نفس الصورة بدون أي تغيير فيها — بس حدّد النص بين علامتي تنصيص، مثل: اكتب «عمران» بالأصفر في الأعلى.'
           : 'I will write it on the same image without altering it — put the exact text in quotes, e.g. write «Omran» in yellow at the top.') });
@@ -5367,7 +5546,7 @@ function __showImgLoading(el, ar, en){
     // → مخطط 2D + واجهة خارجية + مواصفات نصية من المزود — كلها في رد واحد.
     let __archImagesDone = false;
     const __designDocRe = /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|سيرة ذاتية|certificate|invitation|poster|logo|banner|\bcv\b|resume)/i;
-    const __archVerbRe = /(تصميم|صمم|صمّم|صممي|مخطط|اسكتش|ابني|أبني|نبني|بناء|ارسم|أرسم|ارسمي)/i;
+    const __archVerbRe = /(تصميم|صمم|صمّم|صممي|مخطط|اسكتش|ابني|أبني|نبني|بناء|ارسمي|ارسم(?!ي)|أرسم(?!ي))/i;
     const __archHomeRe = /(غرف|غرفة|غرفتين|صالة|صاله|فيلا|فله|فلة|بيت|منزل|شقة|شقه|ملحق|مجلس|استراحة|عمارة|مزرعة|دور\s?أرضي|واجهة|villa|floor\s?plan|house\s?design|apartment\s?design)/i;
     // ⛔ طلبات الإيجار/البيع/الأسعار = بحث حي، مو تصميم معماري.
     const __archExcludeRe = /(ايجار|إيجار|اجار|أجار|تأجير|تاجير|استئجار|للبيع|شراء|اشتري|بكم|سعر|أسعار|اسعار|rent|for\s?sale|price)/i;
@@ -5440,6 +5619,7 @@ function __showImgLoading(el, ar, en){
             });
             __d = await __r.json().catch(() => ({}));
             __k = __r.ok && !!__d.imageBase64;
+            if(!__k && (__r.status === 402 || (__r.status === 422 && __d.retryable === false))) break; // v-unchanged-cap: ردّ نهائيّ — لا خصم ثانٍ وثالث بلا صورة
           }
         }catch(e){ if(e && e.name === 'AbortError') throw e; }
         return __k ? __d : null;
@@ -5499,10 +5679,18 @@ function __showImgLoading(el, ar, en){
     /* v-img-one-road (المالك ٢٣ سبتمبر «وحّد طرق بناء الصور في طريق واحد»): مسبار ٣٠ طلبًا — «ولّد صورة»، «تخيّل مدينة»، «لوحة
        زيتيّة»، «خلفية جوال»، «generate an image of» كانت تذهب لأداة المحادثة (بلا مربّع ولا تقرير ولا حلقة تعديل)، و«أبي صورة
        قطة» لبحث صور الإنترنت. كلّ طلب صورة جديدة يمرّ الآن بالبانِي نفسه: مربّع · تقرير · متابعة وتراجع. */
-    const __unifiedBuildRe = /(?:^|[\s،,])(?:ولّد|ولد|اصنع|أنشئ|انشئ|سوّ?ي|سو|اعمل|أعمل|صمّ?م|ارسم|أرسم|generate|create|make|draw|render)\s*(?:لي\s*)?(?:صور[ةه]|صوره|رسم[ةه]|لوح[ةه]|خلفي[ةه]|an?\s+image|an?\s+picture|an?\s+illustration|image|picture|illustration|wallpaper)(?=$|[\s،,.!])|(?:^|[\s،,])(?:صوّ?رني|صوّر\s*لي)|(?:^|[\s،,])(?:أبي|ابي|ابغى|أبغى|أبغي|ابغي|اريد|أريد|عطني|أعطني|اعطني|هات|بدي|ودي)\s*(?:لي\s*)?(?:صور[ةه]|صوره|رسم[ةه]|لوح[ةه]|خلفي[ةه])(?=$|[\s،,.!])|(?:^|[\s،,])(?:لوح[ةه]\s*(?:زيتي[ةه]|مائي[ةه]|فني[ةه])|خلفي[ةه]\s*(?:جو[ّا]?ل|للجوال|شاش[ةه]|للشاش[ةه]|موبايل|ايفون|آيفون)|منظر\s*طبيعي|wallpaper)|(?:^|[\s،,])تخيّ?ل\s+(?!لو|إن|ان|انك|إنك|معي|معاي|أن|اني|إني)\S|\b(?:an?|the)\s+(?:image|picture|illustration)\s+of\b/i;
-    const __txtOnlyImgRe = /^\s*صور[هة]\s+\S|(تصور|منظور|بورتريه|ارسم|أرسم|ارسمي|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
-    if(text && !__blockAutoImage && __mediaLane !== 'none' && __mediaLane !== 'video' /* v-media-gate */ && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
-       (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)) || (__unifiedBuildRe.test(text) && !__nanoQ.test(text)))){
+    const __unifiedBuildRe = /(?:^|[\s،,])(?:ولّد|ولد|اصنع|أنشئ|انشئ|سوّ?ي|سو|اعمل|أعمل|صمّ?م|ارسمي|ارسم(?!ي)|أرسم(?!ي)|generate|create|make|draw|render)\s*(?:لي\s*)?(?:صور[ةه]|صوره|رسم[ةه]|لوح[ةه]|خلفي[ةه]|an?\s+image|an?\s+picture|an?\s+illustration|image|picture|illustration|wallpaper)(?=$|[\s،,.!])|(?:^|[\s،,])(?:صوّ?رني|صوّر\s*لي)|(?:^|[\s،,])(?:أبي|ابي|ابغى|أبغى|أبغي|ابغي|اريد|أريد|عطني|أعطني|اعطني|هات|بدي|ودي)\s*(?:لي\s*)?(?:صور[ةه]|صوره|رسم[ةه]|لوح[ةه]|خلفي[ةه])(?=$|[\s،,.!])|(?:^|[\s،,])(?:لوح[ةه]\s*(?:زيتي[ةه]|مائي[ةه]|فني[ةه])|خلفي[ةه]\s*(?:جو[ّا]?ل|للجوال|شاش[ةه]|للشاش[ةه]|موبايل|ايفون|آيفون)|منظر\s*طبيعي|wallpaper)|(?:^|[\s،,])تخيّ?ل\s+(?!لو|إن|ان|انك|إنك|معي|معاي|أن|اني|إني)\S|\b(?:an?|the)\s+(?:image|picture|illustration)\s+of\b/i;
+    const __txtOnlyImgRe = /^\s*صور[هة]\s+\S|(تصور|منظور|بورتريه|ارسمي|ارسم(?!ي)|أرسم(?!ي)|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
+    /* v-route-design (تدقيق التوجيه ١٠ أكتوبر): «صمّم لي بوستر لليوم الوطني»، «صمّم لي بطاقة تهنئة»، «سوّ لي لوجو لمقهى»،
+       «Make me a logo» كانت تُسأل «تبيني أبدأ البناء الحين؟» على المسار القديم بلا أدوات، و«نعم» بعدها تبني صفحة HTML للبوستر.
+       فعل تصميم صريح + اسم تصميم مفعولًا به = البانِي المباشر نفسه (v-img-one-road: مربّع · تقرير · متابعة وتراجع)؛
+       فعل الرغبة («أبي بوستر/انفوجرافيك») فقط إن قال المصنّف image. «اكتب لي دعوة/شهادة» كتابة لا تصميم (ليس «اكتب» هنا)،
+       و«شهادة خبرة/راتب» و«دعوة لاجتماع» وثائق لا تصاميم. */
+    const __rtDesignMakeRe = /(?:^|[\s،,.!؟?])(?:صمم|صمّم|صممي|صمملي|سوّ|سو|سوي|سوّي|سولي|سوّلي|سويلي|اعمل|أعمل|اعملي|اصنع|أصنع|انشئ|أنشئ|ارسم|أرسم|ارسمي|ارسملي|ولّد|ولد|جهز|جهّز|design|make|create|draw|generate)\s+(?:(?:لي|لنا|me|us)\s+)?(?:(?:a|an|the|new|nice|simple|modern)\s+)?(?:تصميم\s+)?(?:ال)?(?:بوستر|ملصق|فلاير|بنر|بانر|غلاف|شعار|لوجو|بطاق[ةه]|كرت|دعو[ةه](?!\s*(?:لل?اجتماع|اجتماع))|شهاد[ةه](?!\s*(?:خبر|راتب|لمن))|تهنئ[ةه]|انفوجرافيك|إنفوجرافيك|انفوغرافيك|poster|flyer|banner|cover|logo|card|invitation|certificate|infographic)(?=$|[\s،,.!؟?:])/i;
+    const __rtDesignWantRe = /(?:^|[\s،,.!؟?])(?:أبي|ابي|أبغى|ابغى|أبغي|ابغي|أريد|اريد|بغيت|ودي|ودّي|عطني|أعطني|اعطني|هات|ابا|أبا|i\s+want|i\s+need|give\s+me)\s+(?:(?:لي|لنا)\s+)?(?:(?:a|an)\s+)?(?:تصميم\s+)?(?:ال)?(?:بوستر|ملصق|فلاير|بنر|بانر|غلاف|شعار|لوجو|بطاق[ةه]|كرت|دعو[ةه](?!\s*(?:لل?اجتماع|اجتماع))|شهاد[ةه](?!\s*(?:خبر|راتب|لمن))|تهنئ[ةه]|انفوجرافيك|إنفوجرافيك|انفوغرافيك|poster|flyer|banner|cover|logo|card|invitation|certificate|infographic)(?=$|[\s،,.!؟?:])/i;
+    const __rtDesignImg = !!(text && !__nanoQ.test(text) && (__rtDesignMakeRe.test(text) || (__mediaLane === 'image' && __rtDesignWantRe.test(text))));
+    if(text && !__blockAutoImage && __mediaLane !== 'none' && __mediaLane !== 'video' /* v-media-gate */ && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest || __rtDesignImg) &&
+       (__rtDesignImg /* v-route-design */ || __explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)) || (__unifiedBuildRe.test(text) && !__nanoQ.test(text)))){
       /* v-img-bare (مسبار الصور ٢٣ سبتمبر): «ارسم» وحدها كانت تُرسل للمولّد بلا موضوع فترسم شيئًا عشوائيًّا —
          فعل رسم بلا موضوع يُسأل عنه كالطلب المبهم. */
       const __bareDraw = /^\s*(?:ارسم|أرسم|ارسمي|ارسم\s*لي|ارسملي|رسمة|رسمه|صمم|صمّم|draw|imagine)\s*[.!؟?]*\s*$/i.test(text);
@@ -5534,6 +5722,7 @@ function __showImgLoading(el, ar, en){
           __gData = await __gRes.json().catch(() => ({}));
           __gOk = __gRes.ok && !!__gData.imageBase64;
           if(!__gOk){ if(!__gData) __gData = {}; __gData.__status = __gRes.status; }
+          if(!__gOk && (__gRes.status === 402 || (__gRes.status === 422 && __gData.retryable === false))) break; // v-unchanged-cap: ردّ نهائيّ — لا خصم ثانٍ بلا صورة
         }
         if(__gOk){
           let __resolvedText = __genTextSpec.exactText ? await omranSpellFix(__genTextSpec.exactText) : ((__genTextSpec.autoAuthored && typeof __gData.authoredText === 'string') ? __gData.authoredText.trim() : ''); /* v-spell-quran */
@@ -6706,7 +6895,8 @@ DESIGN RULES (non-negotiable):
       // بقية المزوّدات تبقى مُقصاة: كتل الرؤية بصيغة Anthropic لا تناسبها.
       // v-owner-vision (المالك ٦ أكتوبر «كلّ واحد يحلّل ويشوف… أنا المالك عند اختيار أيّ مزوّد»): صورة المالك تمرّ هنا
       // لأيّ مزوّد — الخادم يعطيه موديل رؤيته (owner-vision.js) بدل المسار القديم الذي يُسقطها أو يصفها Gemini وحده.
-      const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText)
+      // v-claude-code-level (المالك: «ولا يبني ولا يقرى»): إصلاحه وتعديله على مشروع مفتوح يمرّان بالأدوات أيضًا — لا المسار القديم بلا أدوات.
+      const __toolsWillRun = (window.__chatToolsOn !== false && (__ownerFree || !__routeFix) && (!__gateNoBuild || !!__gateApprovedText)
         && (__ownerFree || (!imageAttachments.length || (__effProv === 'claude' || __effProv === 'openai')))
         && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
@@ -6716,10 +6906,14 @@ DESIGN RULES (non-negotiable):
       } else if(__gateNoBuild){
         // 🔒 دور البوابة: صف الفكرة واسأل الإذن — ممنوع البناء الآن.
         apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
+      } else if(__ownerFree && __routeFix && __toolsWillRun){
+        // v-claude-code-level: إصلاح المالك على مشروع مفتوح صار بالأدوات — المعاينة تُعدَّل في الردّ، لا طلب سحب على مستودع التطبيق.
+        apiMessages.push({ role: 'system', content: 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق الحيّ)' });
       }
       // v469: Q&A system prompt مدمج في __sys — لا حاجة لـ unshift إضافي.
       let reply, providerKey, switched, requestedKey;
       let __ctUsed = false;
+      let __ctFenceCut = false; /* v-claude-code-level: app-18 أغلق سياجًا قطعه خطأ المزوّد قبل سطر السبب — الكود ناقص */
       let __ctSources = null; /* v-one-brain: مصادر بحث النموذج — نطاق يبلغ موضع اللصق */
       let __ctModel = ''; /* v-owner-model-badge: ما أعلنه الخادم عن الموديل الذي أجاب (للمالك) */
       let __ctServed = ''; /* v-owner-identity: الموديل كما أعلنه المزوّد نفسه — دليل المالك فوق الردّ */
@@ -6770,7 +6964,7 @@ DESIGN RULES (non-negotiable):
             }
           }
         }
-        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
+        if(__ct){ __ctUsed = true; __ctFenceCut = !!__ct.fenceCut; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, __sigFn(onDelta), __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })); // v-owner-solo
       }finally{
         window.__claudeModelOverride = null;
@@ -6778,6 +6972,26 @@ DESIGN RULES (non-negotiable):
       }
       try{ window.__diagTurn.provider = String(providerKey||''); window.__diagTurn.replyLen = String(reply||'').length; if(!window.__diagTurn.path) window.__diagTurn.path = __ctUsed ? 'tools' : 'fallback'; }catch(e){ __swallow(e,'ui:diag-ok'); }
       let { code, explanation, codeType } = extractReply(reply, cur.code); // v-chat-edit: الرقع تُطبَّق على المشروع الحاليّ
+      /* v-claude-code-level (المالك: «ولا يبني ولا يقرى»): مقتطف في شرحٍ (كود من المستودع فيه <div>، رأس index.html، مثال بايثون)
+         كان يصير cur.code فيقلب المحادثة «مشروعًا مفتوحًا» وقد يمحو مشروعًا صغيرًا. للمالك وحده يُعتمد الكود مشروعًا فقط إن كان:
+         رقعة طُبّقت، أو مستندًا كاملًا (<html…</html> في الكود المستخرَج نفسه)، أو بايثون طلبه، أو أيّ كود في محادثة بلا مشروع
+         على طلب بناء صريح؛ وإلّا يبقى في الفقاعة. مقطع على مشروع مفتوح لا يحلّ محلّه أبدًا (قاعدة التصميم الكبير في extractReply)،
+         و__routeFix و__bldRe+__appWd ليسا إشارة (يلتقطان «خلنا نراجع…» و«اقرأ كود التطبيق…»). وسياج لم يُغلق = ردّ انقطع لطوله: لا يحلّ
+         محلّ المشروع المفتوح. غير المالك كما كان (v491). */
+      if(code && __ownerFree){
+        const __ownRaw = String((typeof stripLeakedThinking === 'function') ? stripLeakedThinking(String(reply || '')) : (reply || ''));
+        const __ownPatch = !!(cur.code && typeof omranEditParse === 'function' && (function(){ const __p = omranEditParse(__ownRaw); return !!(__p && __p.blocks.length && !__p.bad); })());
+        const __ownDoc = codeType === 'html' && /<!doctype html|<html[\s>]/i.test(code) && /<\/html>\s*$/i.test(code) && /<!doctype html|<html[\s>]/i.test(__ownRaw); // الأخير: لا مقطعًا لفّه v490
+        const __ownPy = codeType === 'python' && (/(?:python|بايثون|بايثن|\bpy\b|سكربت|سكريبت|\bscript\b)/i.test(text) || (cur.codeType === 'python' && isBuildTask));
+        const __ownAsk = !cur.code && !!(__gateApprovedText || __ownerBuildAsk || (__dsnRe.test(text) && __designAskRe.test(text)));
+        if(!__ownPatch && __ctFenceCut){
+          code = ''; explanation = __ownRaw.trim() + '\n\n' + omranEditNote('editTruncated'); // السياج أُغلق في app-18 قبل السبب: كود ناقص لا يصير مشروعًا ولا يحلّ محلّ المفتوح
+        } else if(!__ownPatch && !__ownDoc && cur.code && (__ownRaw.match(/```/g) || []).length % 2 === 1){
+          code = ''; explanation = __ownRaw.trim() + '\n```\n\n' + omranEditNote('editTruncated'); // يُغلق السياج: الفقاعة ترسمه كتلة، والتاريخ يطويه «مقتطفًا لم يُطبَّق» بدل إعادة إرساله كلّ دور
+        } else if(!__ownPatch && !__ownDoc && !__ownPy && !__ownAsk){
+          code = ''; explanation = __ownRaw.trim() + ((isBuildTask && cur.code) ? '\n\n' + omranEditNote('editPartial') : ''); // دور تعديل بمقطع = لم يُطبَّق، والسبب مكتوب
+        }
+      }
       // v-reveal-live: رد نصّي بلا كود → ننتظر حركة الكتابة تلحق آخر حرف
       // قبل الرسم النهائي. مع الكود لا ننتظر إطلاقًا حتى لا تتأخر المعاينة.
       if(code){

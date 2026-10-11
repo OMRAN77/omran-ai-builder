@@ -115,6 +115,7 @@ function toOpenAIBody(ab, prov) {
   if (prov === 'openai' || prov === 'kimi') body.stream_options = { include_usage: true };
   if (Array.isArray(ab.tools) && ab.tools.length) {
     body.tools = ab.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description || '', parameters: t.input_schema || { type: 'object', properties: {} } } }));
+    if (ab.tool_choice && ab.tool_choice.type === 'none') body.tool_choice = 'none'; // v-claude-code-level C1: الجواب الختاميّ بلا أدوات، والقائمة كما هي
   }
   return body;
 }
@@ -123,7 +124,7 @@ function toOpenAIBody(ab, prov) {
 // ← function_call ونتيجتها ← function_call_output بنفس call_id (بلا معرّفات fc_/rs_: لا يُطلب معها عنصر التفكير)؛
 // الأدوات مسطّحة وstrict:false (الافتراضيّ هنا صارم ومخطّطاتنا غير صارمة)؛ store:false فلا تُحفظ محادثة المالك عند
 // المزوّد؛ ولا reasoning: الموديل يفكّر بإعداده الافتراضيّ كما في تطبيقه — إلّا دور المالك العاديّ (v-owner-auto أدناه).
-// الكاش والتفكير وجهد أنثروبيك تُسقط.
+// الكاش والتفكير تُسقط؛ output_config.effort لا يصل إلّا من جهد المالك المختار لـGPT (v-owner-gpt-all) ← reasoning.effort.
 function toResponsesBody(ab) {
   const input = [];
   for (const m of ab.messages || []) {
@@ -158,12 +159,14 @@ function toResponsesBody(ab) {
   /* v-owner-auto: دور المالك العاديّ يصل بـthinking:{type:'disabled'} (صيغة أنثروبيك) ← أدنى جهد تفكير يقبله
      الموديل. الأسماء تختلف بين أجيال GPT فالسلّم none → minimal → low، وما رفضه الموديل يُذكَر (quickEffortFor). */
   const qe = (ab.thinking && ab.thinking.type === 'disabled') ? quickEffortFor(ab.model) : '';
-  if (qe) body.reasoning = { effort: qe };
+  const oe = ab.output_config && ab.output_config.effort; // v-owner-gpt-all: جهد المالك المختار (owner-think.gptEffortFields) يغلب السلّم
+  if (oe) body.reasoning = { effort: String(oe) }; else if (qe) body.reasoning = { effort: qe };
   const sys = textOf(ab.system);
   if (sys) body.instructions = sys;
   if (ab.max_tokens) body.max_output_tokens = ab.max_tokens;
   if (Array.isArray(ab.tools) && ab.tools.length) {
     body.tools = ab.tools.map((t) => ({ type: 'function', name: t.name, description: t.description || '', parameters: t.input_schema || { type: 'object', properties: {} }, strict: false }));
+    if (ab.tool_choice && ab.tool_choice.type === 'none') body.tool_choice = 'none'; // v-claude-code-level C1
   }
   return body;
 }
@@ -191,7 +194,10 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
   const dec = new TextDecoder();
   return new ReadableStream({
     async start(controller) {
-      const emit = (ev) => controller.enqueue(enc.encode('data: ' + JSON.stringify(ev) + '\n\n'));
+      let lastOut = Date.now();
+      const emit = (ev) => { lastOut = Date.now(); controller.enqueue(enc.encode('data: ' + JSON.stringify(ev) + '\n\n')); };
+      /* v-claude-code-level C5: تفكير المزوّد الصامت (أحداث لا تُترجم) يبقى بايتات عند حارس الصمت في chat.js — تعليق SSE كلّ ٥ ث على الأكثر، لا يصل العميل */
+      const alive = () => { if (Date.now() - lastOut > 5000) { lastOut = Date.now(); controller.enqueue(enc.encode(': up\n\n')); } };
       const reader = upstreamBody.getReader();
       let buf = '';
       let started = false;
@@ -215,6 +221,7 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          alive();
           buf += dec.decode(value, { stream: true });
           const lines = buf.split('\n');
           buf = lines.pop();
@@ -290,7 +297,10 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
   const dec = new TextDecoder();
   return new ReadableStream({
     async start(controller) {
-      const emit = (ev) => controller.enqueue(enc.encode('data: ' + JSON.stringify(ev) + '\n\n'));
+      let lastOut = Date.now();
+      const emit = (ev) => { lastOut = Date.now(); controller.enqueue(enc.encode('data: ' + JSON.stringify(ev) + '\n\n')); };
+      /* v-claude-code-level C5: تفكير المزوّد الصامت (أحداث لا تُترجم) يبقى بايتات عند حارس الصمت في chat.js — تعليق SSE كلّ ٥ ث على الأكثر، لا يصل العميل */
+      const alive = () => { if (Date.now() - lastOut > 5000) { lastOut = Date.now(); controller.enqueue(enc.encode(': up\n\n')); } };
       const reader = upstreamBody.getReader();
       let buf = '';
       let started = false;
@@ -307,6 +317,7 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          alive();
           buf += dec.decode(value, { stream: true });
           const lines = buf.split('\n');
           buf = lines.pop();
@@ -379,16 +390,26 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
 async function directFetch(route, anthropicBody, opts) {
   const o = opts || {};
   const f = o.fetchImpl || fetch;
+  const sig = o.signal ? { signal: o.signal } : {}; // v-claude-code-level C5: حارس صمت المالك يقطع النداء المباشر أيضًا
   if (route.responsesUrl) {
     let rb = toResponsesBody(anthropicBody);
     let rl = null;
     let capDropped = false;
+    let ownerEff = !!(anthropicBody.output_config && anthropicBody.output_config.effort); // v-owner-gpt-all
     for (let attempt = 0; attempt < 2 + QUICK_EFFORTS.length; attempt++) {
-      const r = await f(route.responsesUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(rb) });
+      const r = await f(route.responsesUrl, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(rb) }, sig));
       if (r.ok && r.body) return { ok: true, status: r.status, model: rb.model, api: 'responses', text: async () => '', body: responsesToAnthropicStream(r.body, rb.model) };
       const t = await r.text().catch(() => '');
       rl = { ok: false, status: r.status, model: rb.model, api: 'responses', text: async () => t };
       // v-owner-auto: جهد مرفوض = الدرجة التالية من السلّم، وبعد آخرها بلا reasoning (سلوك ما قبل الإصلاح).
+      /* v-owner-gpt-all: جهد اختاره المالك ورُفض = إعادة واحدة بلا reasoning (افتراضيّ الموديل) ويُذكر — لا يُحسب درجة من
+         سلّم «بلا تفكير» (كان max المرفوض يقفز إلى none، عكس ما اختاره). */
+      if (r.status === 400 && rb.reasoning && ownerEff && /reasoning|effort/i.test(t)) {
+        ownerEff = false;
+        try { require('./owner-think.js').forgetEffort(anthropicBody.model); } catch (e) { /* guard-ok — الذاكرة تحسين */ }
+        rb = Object.assign({}, rb); delete rb.reasoning;
+        continue;
+      }
       if (r.status === 400 && rb.reasoning && /reasoning|effort/i.test(t)) {
         quickEffortRejected(rb.model, rb.reasoning.effort);
         rb = Object.assign({}, rb);
@@ -417,7 +438,7 @@ async function directFetch(route, anthropicBody, opts) {
   for (const model of models) {
     let body = Object.assign({}, base, { model });
     for (let attempt = 0; attempt < 2; attempt++) {
-      const r = await f(route.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(body) });
+      const r = await f(route.url, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(body) }, sig));
       if (r.ok && r.body) {
         if (route.prov === 'groq') rememberWorking('groq', model);
         return { ok: true, status: r.status, model, text: async () => '', body: toAnthropicStream(r.body, model) };
@@ -439,7 +460,8 @@ const QUICK_EFFORTS = ['none', 'minimal', 'low'];
 const quickRejected = new Map();
 function quickEffortFor(model) {
   const bad = quickRejected.get(String(model || '')) || [];
-  return QUICK_EFFORTS.find((e) => bad.indexOf(e) === -1) || '';
+  let ok = null; try { ok = require('./owner-think.js').gptEfforts(model); } catch (e) { /* guard-ok — بلا الجدول السلّم كما كان */ }
+  return QUICK_EFFORTS.find((e) => bad.indexOf(e) === -1 && (!ok || ok.indexOf(e) !== -1)) || ''; // v-owner-gpt-all: Astra و6.1 Sol يبدآن من low (none/minimal = 400 موثَّق)
 }
 function quickEffortRejected(model, effort) {
   const k = String(model || '');

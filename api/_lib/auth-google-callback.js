@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { getUser, putUser, makeToken } = require('./auth.js'); // داخل _lib
+const { takeWelcomeGift } = require('./welcome-gift.js'); // v-welcome-cap
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -12,11 +13,6 @@ function randomPasswordHash() {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(crypto.randomBytes(32).toString('hex'), salt, 64).toString('hex');
   return { salt, hash };
-}
-
-function genRecoveryCode() {
-  const bytes = crypto.randomBytes(10).toString('hex').toUpperCase();
-  return bytes.match(/.{1,4}/g).join('-');
 }
 
 module.exports = async (req, res) => {
@@ -142,17 +138,19 @@ module.exports = async (req, res) => {
     }
 
     if (!user || user.deleted) {
+      // v-welcome-cap: كان السجلّ بلا points فيمنحه readPoints ٧٠ بلا أيّ حدّ — الآن من حصّة العنوان واليوم، و0 رقمًا فوقها.
+      // دخول حساب قائم لا يمرّ هنا فلا يمسّ العدّادات.
+      const gift = await takeWelcomeGift(req);
       const { salt, hash } = randomPasswordHash();
-      const recCode = genRecoveryCode();
-      const rec = randomPasswordHash();
       user = {
         username: profile.name || email.split('@')[0],
         salt, hash,
-        recoverySalt: rec.salt, recoveryHash: rec.hash,
         email,
         avatar: profile.picture || null,
         googleAuth: true,
         createdAt: Date.now(),
+        points: gift ? 70 : 0,
+        welcomeGift: gift,
       };
       await putUser(key, user);
     }

@@ -154,7 +154,7 @@ test('٩. القاعدة: «ابحث في كلّ سؤال معلومة» في و
   const sys = CHAT.slice(CHAT.indexOf('    const system = quietSocialTurn\n'), CHAT.indexOf('    // v-owner-raw2: ما يُرسل فعلًا'));
   assert.equal((sys.match(/SEARCH_RULE_NOTE/g) || []).length, 1);
   assert.match(sys, /\+ ownerKnowledge \+ SEARCH_RULE_NOTE \+ IMAGE_TURN_NOTE/);
-  assert.match(sys, /: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ IMAGE_TURN_NOTE \+ VISUAL_GUIDE_NOTE \+ IMAGE_READ;/, 'فرع بلا أدوات بلا القاعدة');
+  assert.match(sys, /: PERSONA_NOTE \+ '\\n' \+ __sysBase \+ IMAGE_TURN_NOTE \+ VISUAL_GUIDE_NOTE \+ IMAGE_READ;/, 'فرع بلا أدوات بلا القاعدة'); // v-tokens-cache: __sysBase = النظام بلا ملاحظات الدور
   // سطر الشخصيّة يصل المجّانيّ (بلا أدوات): لا يدفعه إلى «البحث» بعد الآن
   assert.ok(!CHAT.includes('web_search للمعلومات الحية (بحثان كحد أقصى في الرد)'));
   assert.ok(CHAT.includes('web_search (متى وكيف: في وصف الأداة؛ بحثان كحد أقصى في الرد)'));

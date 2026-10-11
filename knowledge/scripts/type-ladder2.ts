@@ -12,7 +12,7 @@ const WEIGHT_TIERS = new Set((process.env.WEIGHT_TIERS ?? '1,2,4,5').split(',').
 function tierOf(px:number){ if(px>=26) return 0; if(px>=18) return 1; if(px>=15) return 2; if(px>=13) return 3; if(px>=12) return 4; return 5; }
 
 // ما لا يُمسّ: أيقونات، إيموجي، مقياس تكبير الخط، حالات نصّ لا يقبل الالتفاف
-const BLOCK_RE = /fs-small|fs-large|fs-xlarge|emoji|\bem\b|omSpark|langFlag|btnAttach|btnEmoji|btnMic|btnVoiceChat|btnStop|mini-mic|prov-name|omNavBtn|btnTimeMachine|videoMakerHeroClear|authTogglePassBtn|authRecoveryCodeDisplay|vmk-card i|eduCardFace|closeCheckout|btnMahaCamera|btnMahaEndCall|btnCloseTemplates|btnClosePreviewTpl|bg3dEmoji|hist-thumb/i;
+const BLOCK_RE = /fs-small|fs-large|fs-xlarge|emoji|\bem\b|omSpark|langFlag|btnAttach|btnEmoji|btnMic|btnVoiceChat|btnStop|mini-mic|prov-name|omNavBtn|btnTimeMachine|videoMakerHeroClear|authTogglePassBtn|vmk-card i|eduCardFace|closeCheckout|btnMahaCamera|btnMahaEndCall|btnCloseTemplates|btnClosePreviewTpl|bg3dEmoji|hist-thumb/i;
 function isIconBox(body:string){
   const w = body.match(/(?:^|[;\s])width:\s*([0-9.]+)px/), h = body.match(/(?:^|[;\s])height:\s*([0-9.]+)px/);
   return !!(w && h && parseFloat(w[1])<=64 && parseFloat(h[1])<=64);

@@ -14,7 +14,7 @@
 
 ## ١. نقطة الدخول الوحيدة
 
-كلّ نداءات الذكاء تمرّ من دالّة واحدة: `api/ai.js:479` (`module.exports = withErrorCapture('ai', …)`).
+كلّ نداءات الذكاء تمرّ من دالّة واحدة: `api/ai.js:481` (`module.exports = withErrorCapture('ai', …)`).
 الفرز بـ`?action=` عبر `load()` في `api/ai.js:19`.
 
 ```
@@ -25,7 +25,7 @@ POST /api/ai?action=<name>
 │     openrouter · perplexity · agent · chat
 │     (غير ذلك → 404 «unknown ai route»)
 │
-└─ action ضمن PROVIDERS؟                          ai.js:477
+└─ action ضمن PROVIDERS؟                          ai.js:479
    │  ['openai','gemini','groq','claude','cohere','deepseek',
    │   'mistral','openrouter','perplexity']   ← لاحظ: «chat» و«agent» ليسا منها
    │
@@ -40,27 +40,27 @@ POST /api/ai?action=<name>
 
 ## ٢. مسار المزوّد المباشر (PROVIDERS)
 
-يُطبَّق فقط حين `action` في القائمة **و**`req.method === 'POST'` (`ai.js:487`).
+يُطبَّق فقط حين `action` في القائمة **و**`req.method === 'POST'` (`ai.js:489`).
 
 | # | القرار | المرساة | الأثر |
 |---|--------|---------|-------|
 | ١ | تنظيف محادثة Claude (آخر رسالة يجب أن تكون للمستخدم) | `ai.js` داخل المعالج | يمنع خطأ 400 (v262) |
 | ٢ | تنظيف `contents` لـGemini | `sanitizeGeminiContents` | يمنع 400 صامتًا |
 | ٣ | هل الطالب المالك؟ | `isOwner` → `body.__ownerFactory` | يفتح الوضع الخام |
-| ٤ | المالك + `raw === true` → نزع طبقة التطبيق (اختياريّ منذ v-religion-owner، كـ`chat.js`) | `stripAppSystem` — `ai.js:352` | يحذف كلّ رسائل `system` |
-| ٥ | حقن الملاحظات | `injectNote` — `ai.js:358` | §٢-أ |
+| ٤ | المالك + `raw === true` → نزع طبقة التطبيق (اختياريّ منذ v-religion-owner، كـ`chat.js`) | `stripAppSystem` — `ai.js:354` | يحذف كلّ رسائل `system` |
+| ٥ | حقن الملاحظات | `injectNote` — `ai.js:360` | §٢-أ |
 | ٦ | حذف علم المالك قبل الإرسال | داخل المعالج | لا يتسرّب للمزوّد |
 
 ### ٢-أ. `injectNote` — ماذا يُحقن ومتى
 
 ```
-injectNote(action, body, country)                 ai.js:358
+injectNote(action, body, country)                 ai.js:360
 │
-├─ resolveMode(body)                              ai.js:307
-│   ├─ body.mode صريح وضمن MODES؟ → هو            MODES: ai.js:296
+├─ resolveMode(body)                              ai.js:309
+│   ├─ body.mode صريح وضمن MODES؟ → هو            MODES: ai.js:298
 │   │     ['factory','balanced','minimal','guided']   ('minimal' → 'balanced')
 │   ├─ body.__ownerFactory === true  → 'factory'   (المالك افتراضًا)
-│   └─ وإلّا → AI_MODE من البيئة أو 'balanced'     ai.js:294
+│   └─ وإلّا → AI_MODE من البيئة أو 'balanced'     ai.js:296
 │
 ├─ mode === 'factory'
 │     └─ المالك فقط: OWNER_DIRECT_NOTE ثمّ **توقّف** — لا شيء آخر يُحقن
@@ -75,7 +75,7 @@ injectNote(action, body, country)                 ai.js:358
       + APP_FACTS_NOTE + HIVE
 ```
 
-الحقن نفسه يُكتب في الحقل الذي يقرأه كلّ مزوّد: `applyNote` — `ai.js:440`
+الحقن نفسه يُكتب في الحقل الذي يقرأه كلّ مزوّد: `applyNote` — `ai.js:442`
 (Gemini → `systemInstruction`، Claude → `body.system`، الباقي → رسالة `system` في `messages`).
 
 مصادر الملاحظات: النيّة `quickIntent` — `_lib/router.js:32` و`INTENT_NOTES` — `router.js:78`؛
@@ -97,14 +97,15 @@ prov (من body.provider، افتراضه 'claude')
 │     غيره:    يوجد OPENROUTER_API_KEY
 │
 ├─ المفتاح الأوّليّ = viaOR ? OPENROUTER_API_KEY : ANTHROPIC_API_KEY   chat.js:1183
-│     (فحص غيابه بعد اختيار المسار الفعليّ، لا هنا)                chat.js:1589
+│     (فحص غيابه بعد اختيار المسار الفعليّ، لا هنا)                chat.js:1595
 │
 ├─ العنوان   = viaOR ? openrouter.ai/api/v1/messages              chat.js:1184
 │                    : api.anthropic.com/v1/messages
 │
 └─ النموذج الافتراضيّ                              chat.js:1190
       viaOR → OR_MODELS[prov]        (chat.js:605)
-      وإلّا → CHAT_CLAUDE_MODEL أو 'claude-haiku-4-5'
+      وإلّا → CHAT_CLAUDE_MODEL أو 'claude-haiku-4-5'   (غير المالك، وإنقاذ المالك عند الرفض)
+      المالك على كلود بلا اختيار → 'claude-opus-5-5'  (pickClaudeModel، v-owner-claude-all)
 ```
 
 **v-plan-routing (قرار المالك ٢٠ سبتمبر):** الحقول الأربعة أعلاه `let` لا `const`، لأنّ `applyRoute(p, model, direct)`
@@ -178,7 +179,7 @@ PERSONA_NOTE هو ميثاق الشخصيّة (الهويّة · اللغة · �
 ### ٣-د. الطبقة المجانيّة تنتهي هنا
 
 ```
-if (__freeLane || !__visionRoute)                 chat.js:1572
+if (__freeLane || !__visionRoute)                 chat.js:1578
    للمجانيّ: send({tier}) ثمّ streamFreeChain(...) free-chain.js:167
    بلا أدوات · بلا بحث حيّ · الصورة تُمرَّر فقط لمزوّد يرى (Gemini)، وينتهي الطلب
    الصورة تطلب الرؤية تلقائيًّا؛ لا تُرسل إلى مزوّد نصّيّ أعمى
@@ -194,7 +195,7 @@ if (__freeLane || !__visionRoute)                 chat.js:1572
 من يمرّ بهذا المسار من العميل: `TOOL_PROVIDERS` في `app-06` — claude · openai · gemini · deepseek · mistral ·
 groq · cohere (v-cohere-tools: Cohere عبر الوسيط `cohere/command-a`). Perplexity و«OpenRouter» العامّ يبقيان
 على المسار المباشر (§٢) **بلا أدوات** — Sonar لا يقبل أدوات وبحثه مدمج.
-دور فيه صورة يعيد ضبط النموذج عبر `imageTurnConfig` — `chat.js:572` / `chat.js:1521`.
+دور فيه صورة يعيد ضبط النموذج عبر `imageTurnConfig` — `chat.js:572` / `chat.js:1527`.
 
 ---
 
@@ -231,13 +232,13 @@ streamFreeChain(args)                             free-chain.js:167
 
 | الحالة | أين | ماذا يحدث |
 |--------|-----|-----------|
-| لا مفتاح بعد تحديد المسار الفعليّ (وليس قبل اختيار المجانيّ/المباشر/الباقة) | `chat.js:1589` | خطأ صريح عند الحاجة لمفتاح Anthropic/OpenRouter فقط؛ المجانيّ بسلسلته والمباشر بمفتاحه |
-| الطبقة المجانيّة أو صورة بلا مسار رؤية مدفوع متاح | `chat.js:1572` | سلسلة احتياط تستبعد الوجهات العمياء تلقائيًّا للصورة، وينتهي الطلب |
+| لا مفتاح بعد تحديد المسار الفعليّ (وليس قبل اختيار المجانيّ/المباشر/الباقة) | `chat.js:1595` | خطأ صريح عند الحاجة لمفتاح Anthropic/OpenRouter فقط؛ المجانيّ بسلسلته والمباشر بمفتاحه |
+| الطبقة المجانيّة أو صورة بلا مسار رؤية مدفوع متاح | `chat.js:1578` | سلسلة احتياط تستبعد الوجهات العمياء تلقائيًّا للصورة، وينتهي الطلب |
 | 400 على حقول إطفاء التفكير (وسيط OpenRouter، غير كلود) | قبل الفشل النهائيّ (`v-chat-fast`، `chat/or-quick-400`) | إعادة فوريّة بلا الحقل المرفوض (`thinking`/`reasoning`)، ويُذكَر المستوى لبقيّة عمر الدالّة (`__orQuick.level`) |
 | المالك: 400 على حقول «بلا تفكير» لدوره العاديّ (جهد كلود `low`، أو حقول الوسيط) | بعد إعادة دور الصورة وقبل رجوع الموديل المختار (`v-owner-auto`، `chat/owner-quick-400`) | إعادة فوريّة بالموديل نفسه بلا الحقل المرفوض، ويُذكَر (`owner-think.js` للجهد، `__orQuick.level` للوسيط). GPT المباشر يعالجها داخل `oa-direct.js`: سلّم `none → minimal → low` ثمّ بلا reasoning |
-| مشترك: تعطّل مزوّد باقته **قبل أوّل حرف** | `chat.js:1736` (`v-plan-routing`، `chat/plan-fallback-<status>`) | التالي في سلسلة الباقة **بصمت** (أرخص فأرخص، مزوّد بلا مفتاح أو رؤية للصورة يُتخطّى) قبل الهبوط المجانيّ أدناه |
-| المالك: تعطّل مزوّده المختار **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1721` (`v-owner-solo`، كان `v-owner-swap`) | **المزوّد نفسه وحده**: كلود المباشر يُعاد عبر الوسيط (كلود أيضًا) وإن أجاب فسطر «🔧 للمالك فقط — … فشل … · أجاب بدله: OpenRouter · anthropic/…»؛ والمفتاح المباشر لـGPT/Groq/Kimi يُعاد عبر الوسيط للمزوّد نفسه. غير ذلك لا مزوّد آخر ولا سلسلة مجّانيّة: حدث `{ error: ownerStopNote(…), ownerStop: true }` («الحساب · الموديل — لا رصيد كافٍ (نصّ المزوّد) … لم يُجب مزوّد آخر مكانه.»)، والعميل يعرضه ولا يجرّب فريق الأدوات ولا المسار القديم لغيره. الوكيل كما هو: كلود عبر الوسيط بأدواته قبل DeepSeek/Mistral/Groq |
-| انهيار المحرّك الاحترافيّ **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1752` (`v-king-fallback`) | هبوط إلى `streamFreeChain` **بصمت** (`v-silent-fallback`) — بلا سطر حالة ولا بادئة |
+| مشترك: تعطّل مزوّد باقته **قبل أوّل حرف** | `chat.js:1742` (`v-plan-routing`، `chat/plan-fallback-<status>`) | التالي في سلسلة الباقة **بصمت** (أرخص فأرخص، مزوّد بلا مفتاح أو رؤية للصورة يُتخطّى) قبل الهبوط المجانيّ أدناه |
+| المالك: تعطّل مزوّده المختار **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1727` (`v-owner-solo`، كان `v-owner-swap`) | **المزوّد نفسه وحده**: كلود المباشر يُعاد عبر الوسيط (كلود أيضًا) وإن أجاب فسطر «🔧 للمالك فقط — … فشل … · أجاب بدله: OpenRouter · anthropic/…»؛ والمفتاح المباشر لـGPT/Groq/Kimi يُعاد عبر الوسيط للمزوّد نفسه. غير ذلك لا مزوّد آخر ولا سلسلة مجّانيّة: حدث `{ error: ownerStopNote(…), ownerStop: true }` («الحساب · الموديل — لا رصيد كافٍ (نصّ المزوّد) … لم يُجب مزوّد آخر مكانه.»)، والعميل يعرضه ولا يجرّب فريق الأدوات ولا المسار القديم لغيره. الوكيل كما هو: كلود عبر الوسيط بأدواته قبل DeepSeek/Mistral/Groq |
+| انهيار المحرّك الاحترافيّ **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1758` (`v-king-fallback`) | هبوط إلى `streamFreeChain` **بصمت** (`v-silent-fallback`) — بلا سطر حالة ولا بادئة |
 | … ودور فيه **صورة** | نفس الموضع (`v-img-no-blind`) | صورة المحادثة تفرض الرؤية تلقائيًّا؛ المزوّدات العمياء تُستبعد، ولا مزوّد يرى → `FREE_TEXT.imageBusy` صريح، **لا تأليف** ولا هبوط للعميل. المالك وحده يرى `modelLabel: احتياط · مزوّد/نموذج`. نفاد الرصيد (402) → إشعار دفع للمالك مرّة كلّ ٦ ساعات (`_owner-alert.js`) |
 | فشل السلسلة أيضًا في دور نصّيّ | نفس الموضع | `tierDiag` + `error` مع `fallback:true` فيهبط العميل بمساره القديم؛ الصورة تُستثنى فلا هبوط أعمى |
 | انهيار **بعد** بدء البثّ (`anyText`) | نفس الموضع | لا هبوط — النصّ المكتوب يبقى |
@@ -255,7 +256,7 @@ streamFreeChain(args)                             free-chain.js:167
 
 | السلك | كان ينقطع عند | الحالة |
 |-------|---------------|--------|
-| أزرار «النبرة» (ودود · مباشر · رسمي) | العميل يحقن `tone` لطلبات `/api/ai`، و`injectNote` لا يقرأه إلّا لمسارات `PROVIDERS` (`ai.js:477`) — و`chat` ليس منها | **حُذفت** (`v-tone-buttons-removed`). البديل: الأسلوب العفويّ في `PERSONA_NOTE` + حقل التعليمات المخصّصة |
+| أزرار «النبرة» (ودود · مباشر · رسمي) | العميل يحقن `tone` لطلبات `/api/ai`، و`injectNote` لا يقرأه إلّا لمسارات `PROVIDERS` (`ai.js:479`) — و`chat` ليس منها | **حُذفت** (`v-tone-buttons-removed`). البديل: الأسلوب العفويّ في `PERSONA_NOTE` + حقل التعليمات المخصّصة |
 
 ### ٦-ب. قائمة ما زال يستحقّ الانتباه
 
@@ -265,7 +266,7 @@ streamFreeChain(args)                             free-chain.js:167
 | `quickIntent` / `INTENT_NOTES` (`router.js`) | نفس الشيء — `injectNote` فقط | تصنيف النيّة لا يصل المحادثة الرئيسيّة |
 | `APP_FACTS_NOTE` (حارس أسئلة «مَن صنع التطبيق») | نفس الشيء | حماية خصوصيّة المالك من هذا الحارس لا تسري على `chat` (يغطّيها `_knowledge.js` و`PERSONA_NOTE` بصياغة أخرى) |
 | `ONBOARDING` في `tone.js:132` | مُصدَّر ولا يستهلكه أحد | كود ميّت |
-| `scripts/build.mjs` يختم `sw.js` | يبحث عن `CACHE_NAME` و`sw.js` يستعمل `BUILD_ID` | الختم لاغٍ. غير مؤثّر عمليًّا (القشرة تُجلب `no-store`) لكنّه تناقض قائم |
+| `scripts/build.mjs` يختم `sw.js` (منطقه في `api/_lib/bundle-core.js`، ويستعمله `github-write.js` أيضًا) | يبحث عن `CACHE_NAME` و`sw.js` يستعمل `BUILD_ID` | الختم لاغٍ. غير مؤثّر عمليًّا (القشرة تُجلب `no-store`) لكنّه تناقض قائم |
 
 > **القاعدة:** أيّ إعداد واجهة جديد يجب أن يُثبِت وصوله إلى المسار الذي يستعمله المستخدم
 > فعلًا — لا إلى مسارٍ كان يستعمله يومًا. `chat` انفصل عن `PROVIDERS` فسقطت معه كلّ طبقة
@@ -283,6 +284,6 @@ streamFreeChain(args)                             free-chain.js:167
 | `scripts/routing-probe.mjs` | **السلوك**: ١٩ نقطة قرار تُستدعى فعلًا (`__resolveMode` · `__injectNote` · `__stripAppSystem` · `resolveTier` · `freeChain`) ويُقارَن الفرع المأخوذ بما تصفه الخريطة. بلا شبكة وبلا مفاتيح | `node scripts/routing-probe.mjs` |
 
 الأوّل يمسك انزياح الكود، والثاني يمسك تغيّر السلوك مع بقاء الشكل. أُثبت أنّ الأوّل يفشل
-فعلًا: إزاحة سطر واحد في `api/ai.js` أسقطته فورًا («المرساة `api/ai.js:479` تشير إلى سطر فارغ»).
+فعلًا: إزاحة سطر واحد في `api/ai.js` أسقطته فورًا («المرساة `api/ai.js:481` تشير إلى سطر فارغ»).
 
 عند تغيير التوجيه: عدّل الكود، ثمّ عدّل هذه الخريطة، ثمّ `npm run ci`.

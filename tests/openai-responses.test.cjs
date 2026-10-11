@@ -156,7 +156,9 @@ test('٣. تحويل الجسم: تعليمات، مدخلات، صورة، أد
   assert.equal(b.max_output_tokens, 16000);
   assert.equal(b.stream, true);
   assert.equal(b.store, false, 'لا تُخزَّن محادثات المالك عند المزوّد');
-  for (const k of ['max_tokens', 'messages', 'system', 'thinking', 'output_config', 'reasoning', 'reasoning_effort']) assert.equal(b[k], undefined, k);
+  // v-owner-gpt-all: output_config.effort لا يصل oa-direct إلّا من جهد المالك المختار لـGPT ← reasoning.effort؛ بقيّة حقول أنثروبيك تُسقط
+  assert.deepEqual(b.reasoning, { effort: 'low' });
+  for (const k of ['max_tokens', 'messages', 'system', 'thinking', 'output_config', 'reasoning_effort']) assert.equal(b[k], undefined, k);
 });
 
 test('٤. تحويل البثّ: نصّ، نداء أداة مقطّع أو كامل عند done، العدّاد، وسبب التوقّف (أداة/طول/نهاية)', async () => {
@@ -279,7 +281,7 @@ test('٩. العميل: الموديل المرفوض يُمسح من الاخت
   const tools = fs.readFileSync(path.join(root, 'js/app-18-chat-tools.js'), 'utf8');
   assert.ok(tools.includes("if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); }"), 'العميل يمسح عند سطر الرجوع');
   assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('window.omranForgetModel(ev.prov'), 'في الحزمة');
-  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('js/modes.js?v=m101026a'), 'وسم كاش modes رُفع');
+  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('js/modes.js?v=m111026b'), 'وسم كاش modes رُفع');
 });
 
 test('١٠. رصيد نفد: سجلّ المالك يسمّي الحساب الذي رفض والموديل (OpenAI المباشر ثمّ OpenRouter) بدل JSON بلا اسم', async () => {
