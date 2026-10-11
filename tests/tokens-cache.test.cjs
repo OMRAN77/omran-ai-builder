@@ -37,6 +37,13 @@ const toolReply = () => sse([
   { type: 'content_block_stop', index: 0 },
   { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 5 } },
 ]);
+const mediaCall = (name) => sse([
+  { type: 'message_start', message: { model: 'x', usage: { input_tokens: 1, output_tokens: 0 } } },
+  { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu-m', name } },
+  { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '{"prompt":"قطة على سطح"}' } },
+  { type: 'content_block_stop', index: 0 },
+  { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 5 } },
+]);
 const TOPIC = 'قاعدة الموضوع (أولوية قصوى): رسالة المستخدم الأخيرة تحدّد الموضوع الحاليّ.';
 function fakeRes() {
   const r = new EventEmitter();
@@ -54,10 +61,12 @@ async function turn(messages, opts) {
   const bodies = [];
   const save = global.fetch;
   const res = fakeRes();
+  if (o.writes) res.write = (c) => { o.writes.push(String(c)); return true; };
   global.fetch = async (url, init) => {
     let b = {}; try { b = JSON.parse(init.body); } catch (e) { /* ليس JSON — نداء جانبيّ */ }
     if (b && b.max_tokens) Object.defineProperty(b, '__hasSignal', { value: !!(init && init.signal) });
     bodies.push(b);
+    if (o.urls && !b.max_tokens) o.urls.push(String(url));
     if (o.onModel && b.max_tokens) return o.onModel(res, modelCalls(bodies).length);
     return textReply('تمام');
   };
@@ -121,4 +130,34 @@ test('٥. المساعدات: withTurnTail نسخة لا تعديل، وإغلا
   const r2 = fakeRes(); const st2 = T.watchClientGone(r2);
   r2.emit('close');
   assert.equal(st2.gone, true); assert.equal(st2.signal.aborted, true);
+});
+
+test('٦. v-tokens-tools: دور السؤال يُرسَل بقائمة الأدوات نفسها (كانت أقصر فتنكسر بادئة الكاش)، و«لا رسم» تنبيه في الذيل', async () => {
+  const { ASK_NO_MEDIA_NOTE } = chat.__imgAsk;
+  const ask = (await turn([{ role: 'user', content: 'قصدك في التطبيق؟' }]))[0];
+  const plain = (await turn([{ role: 'user', content: 'اشرح لي الذكاء الاصطناعي ببساطة' }]))[0];
+  assert.ok(Array.isArray(ask.tools) && ask.tools.some((t) => t.name === 'generate_image'), 'أدوات الصورة في القائمة');
+  assert.equal(JSON.stringify(ask.tools), JSON.stringify(plain.tools), 'الأدوات بايت ببايت بين السؤال والطلب');
+  assert.equal(JSON.stringify(ask.system), JSON.stringify(plain.system), 'والنظام كذلك');
+  const tail = blocks(ask.messages[ask.messages.length - 1]);
+  assert.ok(tail[tail.length - 1].text.includes(ASK_NO_MEDIA_NOTE), 'التنبيه في ذيل الدور بعد علامة الكاش');
+  assert.ok(!JSON.stringify(plain.messages).includes(ASK_NO_MEDIA_NOTE), 'غير السؤال بلا تنبيه');
+});
+
+test('٧. v-tokens-tools: generate_image/edit_image/generate_video في دور السؤال تُرفض عند التنفيذ — بلا نداء وبلا سطر «يرسم»', async () => {
+  const { ASK_NO_MEDIA_REFUSAL } = chat.__imgAsk;
+  for (const name of ['generate_image', 'edit_image', 'generate_video']) {
+    const writes = [], urls = [];
+    const calls = await turn([{ role: 'user', content: 'قصدك في التطبيق؟' }], { writes, urls, onModel: (res, n) => (n === 1 ? mediaCall(name) : textReply('أقصد التطبيق')) });
+    assert.equal(calls.length, 2, name + ': جولة ثانية بعد الرفض');
+    const res = JSON.stringify(calls[1].messages);
+    assert.ok(res.includes(ASK_NO_MEDIA_REFUSAL), name + ': نتيجة الأداة هي الرفض');
+    assert.ok(!writes.some((w) => /stGenImage|stGenVideo|trImgFail|↳/.test(w)), name + ': لا سطر حالة رسم/فيديو ولا «↳ تعذّرت الصورة» (المراجعة العدائيّة)');
+    assert.deepEqual(urls, [], name + ': لا نداء جانبيّ (لا مولّد صور ولا فيديو)');
+  }
+  // الضابط: الطلب نفسه في دور غير سؤاليّ ينفَّذ كما كان (سطر الحالة يظهر ونتيجة الأداة ليست الرفض)
+  const writes = [];
+  const calls = await turn([{ role: 'user', content: 'ارسم لي قطة على سطح' }], { writes, onModel: (res, n) => (n === 1 ? mediaCall('generate_image') : textReply('تمام')) });
+  assert.ok(writes.some((w) => w.includes('stGenImage')), 'غير السؤال يرسم كما كان');
+  assert.ok(!JSON.stringify(calls[1] ? calls[1].messages : []).includes(ASK_NO_MEDIA_REFUSAL));
 });
