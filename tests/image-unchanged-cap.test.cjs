@@ -174,7 +174,7 @@ async function runLoop(code, decl, replies) {
   await vm.runInNewContext('(async () => { ' + decl + '\n' + code + '\n})()', ctx);
   return n;
 }
-test('٧. الواجهة: الردّ النهائيّ (retryable:false أو ٤٠٢) يوقف الإعادة التلقائيّة؛ العطل المؤقّت يُعاد كما كان', async () => {
+test('٧. الواجهة: الخصم الباقي (٤٢٢ بـretryable:false) أو ٤٠٢ يوقف الإعادة التلقائيّة؛ العطل المؤقّت وعطل الشبكة المردود يُعادان كما كان', async () => {
   const src = fs.readFileSync(rp('js/app-09-attach.js'), 'utf8');
   const loops = [
     ['كرتون', loopAt(src, 'for(let __ct = 0; __ct < 2 && !__cartoonB64; __ct++)'), "let __cartoonB64 = '', __cartoonMime = '';", 2],
@@ -185,11 +185,16 @@ test('٧. الواجهة: الردّ النهائيّ (retryable:false أو ٤٠
   const broke = { status: 402, body: { error: 'insufficient' } };
   const transient = { status: 500, body: { error: 'upstream', retryable: true } };
   const bare = { status: 502, body: {} };
+  // المراجعة بعد الدمج: انقطاع الشبكة عند كلّ المحرّكات يُردّ ويُوسَم retryable:false (maha-image.js) — ليس خصمًا باقيًا فيُعاد
+  const netDown = { status: 502, body: { error: 'image_generation_failed', retryable: false } };
+  const noKey = { status: 503, body: { error: 'image_generation_failed', retryable: false } };
   for (const [name, code, decl, max] of loops) {
     assert.equal(await runLoop(code, decl, [kept]), 1, name + ': ٤٢٢ المحتسب نداء واحد');
     assert.equal(await runLoop(code, decl, [broke]), 1, name + ': ٤٠٢ نداء واحد');
     assert.equal(await runLoop(code, decl, [transient]), max, name + ': المؤقّت يُعاد');
     assert.equal(await runLoop(code, decl, [bare]), max, name + ': ردّ بلا جسم يُعاد');
     assert.equal(await runLoop(code, decl, [transient, kept]), 2, name + ': مؤقّت ثمّ نهائيّ يتوقّف');
+    assert.equal(await runLoop(code, decl, [netDown]), max, name + ': عطل الشبكة المردود يُعاد كما قبل الطلب');
+    assert.equal(await runLoop(code, decl, [noKey]), max, name + ': ٥٠٣ قبل الخصم يُعاد كما قبل الطلب');
   }
 });
