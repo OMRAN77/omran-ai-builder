@@ -78,8 +78,25 @@ test('٣. كتالوج التطبيق مشتقّ من مكتبات الأنما�
   assert.ok(/لا كلود ولا جيمناي ولا GPT ولا جوجل/.test(D.SYSTEM) && /خطّاف/.test(D.SYSTEM) && /دعوة واضحة/.test(D.SYSTEM) && /جملة واحدة لكلّ فكرة/.test(D.SYSTEM));
 });
 
-test('٤. طلب الخطّة بـfetch مزيّف: JSON صالح يُطبَّع على الكتالوج، والفاسد يُعاد مرّة واحدة، والنموذج الغائب ينتقل للتالي', async () => {
-  const catalog = CAT.buildCatalog({ lang: 'en' });
+/* مزوّد مزيّف مشترك: script(n, model) يعيد ردًّا، أو 'TIMEOUT' ليرمي مهلة؛ calls يسجّل النموذج ومستوى التفكير */
+function fakeProvider(script) {
+  const calls = [], bodies = [];
+  const fetchImpl = async (url, init) => {
+    const model = (String(url).match(/models\/([^:?]+)/) || [])[1] || 'LIST';
+    const body = init && init.body ? JSON.parse(init.body) : null;
+    calls.push(model + (body && body.generationConfig.thinkingConfig ? '/' + body.generationConfig.thinkingConfig.thinkingLevel : ''));
+    bodies.push(body);
+    const r = script(calls.length, model);
+    if (r === 'TIMEOUT') { const e = new Error('The operation was aborted due to timeout'); e.name = 'TimeoutError'; throw e; }
+    return r;
+  };
+  return { calls, bodies, fetchImpl };
+}
+const reply = (status, text, msg) => ({ ok: status < 400, status, headers: { get: () => null }, json: async () => (status >= 400 ? { error: { message: msg || 'boom' } } : { candidates: [{ content: { parts: [{ text }] }, finishReason: 'STOP' }] }) });
+const planText = (n, extra) => JSON.stringify(Object.assign({ title: 'Tour', idea: 'Idea', scenes: Array.from({ length: n }, (_, i) => ({ type: i ? 'screen' : 'title', target: 'video', text: 't' + i, narration: 'n' + i, seconds: 8 })) }, extra || {}));
+const ask = (p, opts) => D.requestPlan(Object.assign({ request: 'tour', lang: 'en', speaker: 'male', minutes: 1, catalog: CAT.buildCatalog({ lang: 'en' }), apiKey: 'k', env: {}, fetchImpl: p.fetchImpl, sleep: async () => {} }, opts || {}));
+
+test('٤. طلب الخطّة بمزوّد مزيّف: JSON صالح يُطبَّع على الكتالوج، والفاسد يُعاد مرّة بتنبيه ثمّ ينتقل للنموذج التالي', async () => {
   const good = { title: 'Tour', idea: 'Idea', scenes: [
     { type: 'title', text: 'Welcome', narration: 'Hook', seconds: 4 },
     { type: 'screen', target: 'video', narration: 'Video maker', seconds: 9 },
@@ -88,36 +105,113 @@ test('٤. طلب الخطّة بـfetch مزيّف: JSON صالح يُطبَّع
     { type: 'screen', target: 'nope', narration: 'Unknown screen → home', seconds: 99 },
     { type: 'weird', narration: '' },
   ] };
-  const reply = (text, status) => ({ ok: !status || status < 400, status: status || 200, json: async () => (status >= 400 ? { error: { message: 'model not found' } } : { candidates: [{ content: { parts: [{ text }] } }] }) });
-  const calls = [];
-  const fetchImpl = async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body) });
-    if (calls.length === 1) return reply('', 404);                                   // gemini-3.1-pro-preview غائب
-    if (calls.length === 2) return reply('sorry, here is prose and no json');          // فاسد → إعادة
-    return reply('```json\n' + JSON.stringify(good) + '\n```');
-  };
-  const r = await D.requestPlan({ request: 'tour', lang: 'en', speaker: 'male', minutes: 1, catalog, apiKey: 'k', env: {}, fetchImpl });
+  let p = fakeProvider((n) => (n === 1 ? reply(200, 'sorry, here is prose and no json') : reply(200, '```json\n' + JSON.stringify(good) + '\n```')));
+  let r = await ask(p);
   assert.equal(r.ok, true);
-  assert.equal(calls.length, 3);
-  assert.ok(calls[0].url.includes('gemini-3.1-pro-preview') && calls[1].url.includes('gemini-3-pro-preview') && calls[2].url.includes('gemini-3-pro-preview'), 'DIRECTOR_MODEL الافتراضيّ ثمّ التالي بعد 404');
-  assert.equal(calls[1].body.contents[0].parts.length, 1); assert.equal(calls[2].body.contents[0].parts.length, 2, 'الإعادة بتنبيه JSON');
-  assert.equal(calls[1].body.generationConfig.responseMimeType, 'application/json');
-  assert.ok(calls[1].body.systemInstruction.parts[0].text === D.SYSTEM);
-  assert.ok(calls[1].body.contents[0].parts[0].text.includes('PORTRAIT STYLES') && calls[1].body.contents[0].parts[0].text.includes('عبدالله (صوت رجل)'));
+  assert.deepEqual(p.calls, ['gemini-3.1-pro-preview', 'gemini-3.1-pro-preview'], 'النموذج الأحدث أوّلًا، والإعادة عليه');
+  assert.equal(p.bodies[0].contents[0].parts.length, 1); assert.equal(p.bodies[1].contents[0].parts.length, 2, 'الإعادة بتنبيه JSON');
+  assert.equal(p.bodies[0].generationConfig.responseMimeType, 'application/json');
+  assert.equal(p.bodies[0].systemInstruction.parts[0].text, D.SYSTEM);
+  assert.ok(p.bodies[0].contents[0].parts[0].text.includes('PORTRAIT STYLES') && p.bodies[0].contents[0].parts[0].text.includes('عبدالله (صوت رجل)'));
   const sc = r.plan.scenes;
-  assert.equal(sc.length, 5);
   assert.deepEqual(sc.map((s) => s.type), ['title', 'screen', 'style_sample', 'screen', 'screen']);
   assert.equal(sc[3].target, 'portrait'); assert.equal(sc[4].target, 'home'); assert.equal(sc[4].seconds, 25, 'المدّة محصورة');
-  assert.equal(r.model, 'gemini-3-pro-preview');
-  // DIRECTOR_MODEL يُجرَّب أوّلًا
-  assert.deepEqual(D.directorModels({ DIRECTOR_MODEL: 'gemini-x' })[0], 'gemini-x');
+  assert.equal(r.fallback, false);
+  // فاسد مرّتين على النموذج الأوّل = النموذج التالي، لا فشل
+  p = fakeProvider((n) => (n <= 2 ? reply(200, '{"nope":1}') : reply(200, planText(5))));
+  r = await ask(p);
+  assert.equal(r.ok, true); assert.deepEqual(p.calls, ['gemini-3.1-pro-preview', 'gemini-3.1-pro-preview', 'gemini-pro-latest']);
+  assert.equal(r.fallback, false, 'بديل Pro ليس احتياطًا أضعف');
+  // DIRECTOR_MODEL يُجرَّب أوّلًا، والنموذج المغلق خرج من القائمة
+  assert.equal(D.directorModels({ DIRECTOR_MODEL: 'gemini-x' })[0], 'gemini-x');
   assert.deepEqual(D.directorModels({}), D.DEFAULT_MODELS);
-  // فاسد مرّتين = فشل بسبب واضح، بلا نداء ثالث
-  let n = 0;
-  const bad = await D.requestPlan({ request: 'x', lang: 'ar', speaker: 'female', minutes: 2, catalog, apiKey: 'k', env: {}, fetchImpl: async () => { n++; return reply('{"nope":1}'); } });
-  assert.equal(bad.ok, false); assert.equal(bad.why, 'bad_json'); assert.equal(n, 2);
-  // عدد المشاهد المستهدف من المدّة
+  assert.ok(!D.DEFAULT_MODELS.includes('gemini-3-pro-preview') && D.DEFAULT_MODELS[0] === 'gemini-3.1-pro-preview');
   assert.equal(D.sceneTarget(10), 75); assert.equal(D.sceneTarget(1), 8);
+});
+
+test('٤ب. لقطة المالك «plan 502 plan_failed»: الزحام العابر يُعاد، والمهلة تُعاد بتفكير أخفّ، وكلّ نموذج ساقط ينتقل لتاليه حتّى الاستكشاف والنموذج السريع', async () => {
+  // 503 مرّة ثمّ نجاح: النموذج نفسه (كان يفشل فورًا)
+  let p = fakeProvider((n) => (n === 1 ? reply(503, '', 'The model is overloaded') : reply(200, planText(5))));
+  let r = await ask(p);
+  assert.equal(r.ok, true); assert.deepEqual(p.calls, ['gemini-3.1-pro-preview', 'gemini-3.1-pro-preview']); assert.equal(r.attempts.length, 2);
+  // 503 مرّتين: النموذج التالي
+  p = fakeProvider((n) => (n <= 2 ? reply(503, '', 'overloaded') : reply(200, planText(5))));
+  r = await ask(p);
+  assert.equal(r.ok, true); assert.equal(r.model, 'gemini-pro-latest');
+  // مهلة: المحاولة الثانية على النموذج نفسه بتفكير أخفّ
+  p = fakeProvider((n) => (n === 1 ? 'TIMEOUT' : reply(200, planText(5))));
+  r = await ask(p);
+  assert.equal(r.ok, true); assert.deepEqual(p.calls, ['gemini-3.1-pro-preview', 'gemini-3.1-pro-preview/low']);
+  assert.deepEqual(p.bodies[1].generationConfig.thinkingConfig, { thinkingLevel: 'low' }); assert.equal(p.bodies[0].generationConfig.thinkingConfig, undefined);
+  // نموذج لا يقبل مستوى التفكير (400): يُعاد بلا الحقل
+  p = fakeProvider((n) => (n === 1 ? 'TIMEOUT' : n === 2 ? reply(400, '', 'Unknown name "thinkingLevel": thinking is not supported') : reply(200, planText(5))));
+  r = await ask(p);
+  assert.equal(r.ok, true); assert.deepEqual(p.calls, ['gemini-3.1-pro-preview', 'gemini-3.1-pro-preview/low', 'gemini-3.1-pro-preview']);
+  // كلّ Pro المعروفة 404: يُستكشف من القائمة (الأحدث أوّلًا، ونماذج الصور تُستثنى)، ثمّ النموذج السريع موسومًا احتياطًا
+  p = fakeProvider((n, m) => (m === 'LIST'
+    ? { ok: true, status: 200, json: async () => ({ models: [{ name: 'models/gemini-3.9-pro-preview', supportedGenerationMethods: ['generateContent'] }, { name: 'models/gemini-4-pro', supportedGenerationMethods: ['generateContent'] }, { name: 'models/gemini-3-pro-image' }, { name: 'models/gemini-4-pro-tts', supportedGenerationMethods: ['generateContent'] }, { name: 'models/gemini-5-pro', supportedGenerationMethods: ['embedContent'] }] }) }
+    : (/flash/.test(m) ? reply(200, planText(5)) : reply(404, '', 'not found'))));
+  r = await ask(p);
+  assert.equal(r.ok, true);
+  assert.deepEqual(p.calls, ['gemini-3.1-pro-preview', 'gemini-pro-latest', 'gemini-2.5-pro', 'LIST', 'gemini-4-pro', 'gemini-3.9-pro-preview', 'gemini-3.8-flash']);
+  assert.equal(r.fallback, true, 'النموذج السريع يُعلَن للمالك');
+  // كلّ شيء ساقط: السبب الحقيقيّ في diag (النموذج والحالة ونصّ المزوّد)، بلا مفتاح، وبلا إعادة لا نهائيّة
+  p = fakeProvider((n, m) => (m === 'LIST' ? { ok: false, status: 500 } : reply(429, '', 'Quota exceeded for metric x?key=SECRET-KEY-123')));
+  r = await ask(p);
+  assert.equal(r.ok, false); assert.equal(r.why, 'http_429');
+  assert.equal(p.calls.filter((c) => c !== 'LIST').length, (D.DEFAULT_MODELS.length + D.LAST_RESORT.length) * 2, 'محاولتان لكلّ نموذج لا أكثر');
+  const diag = D.diagOf(r.attempts);
+  assert.ok(diag.startsWith('gemini-3.1-pro-preview:http_429 ×2 ') && diag.includes('Quota exceeded') && diag.includes(' → gemini-pro-latest:http_429'));
+  assert.ok(!diag.includes('SECRET-KEY-123') && diag.includes('key=…') && diag.length <= 480);
+  // الميزانيّة: لا نداء جديد حين يضيق الوقت عن سقف الدالّة
+  p = fakeProvider(() => 'TIMEOUT');
+  r = await ask(p, { budgetMs: 10000 });
+  assert.equal(r.ok, false); assert.equal(p.calls.length, 0);
+});
+
+test('٤ج. الفيديو الطويل يُكتب أجزاءً: حتّى ٣ دقائق نداء واحد، وما فوقها جزء لكلّ دقيقتين ونصف، والمخطّط يوزّع الشاشات', async () => {
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 8, 10].map(D.partsFor), [1, 1, 1, 2, 2, 3, 4, 4]);
+  const catalog = CAT.buildCatalog({ lang: 'ar' });
+  let p = fakeProvider(() => reply(200, planText(19, { outline: [{ focus: 'الصور', targets: ['portrait'] }, { focus: 'الفيديو', targets: ['video', 'video-modes'] }] })));
+  let r = await ask(p, { minutes: 10, parts: 4, part: 1, catalog });
+  assert.equal(r.ok, true); assert.equal(p.calls.length, 1);
+  const t1 = p.bodies[0].contents[0].parts[0].text;
+  assert.ok(t1.includes('على 4 أجزاء') && t1.includes('"outline"') && t1.includes('مشاهد الجزء ١ فقط: 19 مشهدًا') && t1.includes('≈ 75 مشهدًا'));
+  assert.equal(r.plan.outline.length, 4, 'المخطّط الناقص يُكمَل بتوزيع الشاشات');
+  assert.deepEqual(r.plan.outline[0], { focus: 'الصور', targets: ['portrait'] });
+  assert.ok(r.plan.outline[2].targets.length > 0 && r.plan.outline[3].targets.length > 0);
+  p = fakeProvider(() => reply(200, planText(18)));
+  r = await ask(p, { minutes: 10, parts: 4, part: 4, outline: r.plan.outline, title: 'جولة', idea: 'فكرة', catalog });
+  const t4 = p.bodies[0].contents[0].parts[0].text;
+  assert.ok(t4.includes('اكتب الآن مشاهد الجزء 4 فقط') && t4.includes('هذا الجزء الأخير: اختم بدعوة واضحة') && t4.includes('العنوان: «جولة»') && t4.includes('المخطّط: 1) الصور [portrait]'));
+  assert.ok(!t4.includes('"outline"'));
+  const t2 = D.buildPrompt({ request: 'x', lang: 'ar', speaker: 'female', minutes: 10, parts: 4, part: 2, outline: r.plan.outline, title: 't', idea: 'i', catalog, catalogText: 'CAT' });
+  assert.ok(t2.includes('لا تختم الفيديو؛ بعده جزء آخر') && !t2.includes('هذا الجزء الأخير'));
+  // نداء واحد للقصير: الصيغة القديمة نفسها
+  const t0 = D.buildPrompt({ request: 'x', lang: 'ar', speaker: 'female', minutes: 2, catalog, catalogText: 'CAT' });
+  assert.ok(t0.includes('أعد بالضبط 15 مشهدًا') && !t0.includes('أجزاء'));
+});
+
+test('٤د. المعالج يعيد سبب الفشل للمالك (diag) ويسجّله، والأجزاء من الطلب، والكتالوج مع الجزء الأوّل وحده', async () => {
+  const saved = { g: process.env.GEMINI_API_KEY, f: global.fetch };
+  process.env.GEMINI_API_KEY = 'k';
+  try {
+    global.fetch = async (url) => (String(url).includes('?pageSize=') ? { ok: false, status: 500 } : reply(503, '', 'The model is overloaded. Please try again later.'));
+    const real = setTimeout; global.setTimeout = (fn) => real(fn, 0); /* لا انتظار حقيقيّ بين الإعادات */
+    let r = res();
+    try { await handler({ method: 'POST', query: { action: 'app-director-plan' }, body: { token: ownerToken('omran'), request: 'فيديو' } }, r); } finally { global.setTimeout = real; }
+    assert.equal(r.code, 502); assert.equal(r.body.error, 'plan_failed'); assert.equal(r.body.why, 'http_503');
+    assert.ok(r.body.diag.includes('gemini-3.1-pro-preview:http_503 ×2') && r.body.diag.includes('overloaded'), 'السبب الحقيقيّ يصل الواجهة');
+    global.fetch = async () => reply(200, planText(6, { outline: [] }));
+    r = res();
+    await handler({ method: 'POST', query: { action: 'app-director-plan' }, body: { token: ownerToken('omran'), request: 'فيديو', minutes: 10 } }, r);
+    assert.equal(r.code, 200); assert.equal(r.body.parts, 4); assert.equal(r.body.part, 1); assert.equal(r.body.plan.outline.length, 4);
+    assert.ok(r.body.catalog && r.body.catalog.screens.length > 10 && r.body.catalog.styles.ghibli.prompt, 'الكتالوج مع الجزء الأوّل');
+    assert.equal(r.body.model, 'gemini-3.1-pro-preview'); assert.equal(r.body.fallback, false);
+    r = res();
+    await handler({ method: 'POST', query: { action: 'app-director-plan' }, body: { token: ownerToken('omran'), request: 'فيديو', minutes: 10, part: 3, outline: [{ focus: 'a', targets: ['home'] }], title: 'T', idea: 'I' } }, r);
+    assert.equal(r.code, 200); assert.equal(r.body.part, 3); assert.equal(r.body.catalog, undefined, 'الأجزاء اللاحقة بلا كتالوج');
+  } finally { global.fetch = saved.f; if (saved.g == null) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = saved.g; }
 });
 
 test('٥. رمز المهمّة: HMAC بسرّ الجسر، يحمل المالك ومعرّف المهمّة، ساعتان، ويُرفض بسرّ آخر أو بعد انتهائه', () => {
@@ -173,6 +267,20 @@ test('٧. القسم في شريط صانع الفيديو للمالك وحده
   const EMO = /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}]/u;
   assert.doesNotMatch(block, EMO, 'بلا إيموجي');
   assert.doesNotMatch(block, BANNED, 'بلا اسم مزوّد');
+  // v-app-director-reliable: السبب الحقيقيّ يُعرض، والأجزاء، والجسر المنقطع يُعلَن، ولا إعلان حفظ لم يحدث
+  assert.ok(js.includes("(pr.json&&pr.json.diag?' · '+pr.json.diag:'')") && js.includes("drMsg(key==='vdFail'?L('vdFail'):L('vdFail')+' — '+L(key),true,code.slice(0,520));") && js.includes("d.className='vmk-dir-diag'; d.dir='ltr';"), 'تشخيص الخادم يظهر للمالك');
+  assert.ok(js.includes("drPlanCall(Object.assign({},base,{part:k,outline:plan.outline,title:plan.title,idea:plan.idea}))") && js.includes("drStep('plan','on',doneP+'/'+parts,doneP/parts)"), 'الفيديو الطويل أجزاء');
+  assert.ok(js.includes("if(sr&&(sr.status===404||sr.status===401))") && js.includes("if(++lost>=20)"), 'جسر أُعيد تشغيله أو انقطع لا يُنتظر للأبد');
+  assert.ok(js.includes("DR.run++; DR.busy=false; syncDirector();"), 'الفشل يوقف نداءات الخلفيّة الباقية');
+  assert.ok(!block.includes("L('vdSaved')"), 'لا «حُفظ في فيديوهاتي»: لا مكتبة فيديوهات في التطبيق');
+  assert.ok(js.includes("for(var att=1;att<=6&&!s.audio&&my===DR.run;att++)") && js.includes("coolUntil=Math.max(coolUntil,Date.now()+Math.min(4000*att,20000))") && js.includes("throw drFail('voice '+missV+'/'+voiced.length+' '+lastTts)"), 'حدّ الطلبات عند مزوّد الصوت: انتظار وإعادة، وفشل معلَن إن صمت خُمس المشاهد');
+  // v-app-director-motion: الشاشة الحيّة أثناء التوليد، والخطوات بترتيب تنفيذها، وتبويب بلا صورة مكسورة
+  assert.ok(js.includes('id="vdStage" hidden') && js.includes('function drStageStart()') && js.includes('ST.iv=setInterval(drStageTick,1000)') && js.includes('function drStageStop(hide){ clearInterval(ST.iv);'), 'الشاشة الحيّة تعمل أثناء التوليد فقط');
+  assert.ok(js.includes("s.board.img='data:'+s.mime+';base64,'+s.image; ST.bi=ST.board.indexOf(s.board); drStageNext();"), 'نموذج النمط يظهر فور توليده');
+  assert.ok(js.includes("['plan','samples','voice','shots','join'].map(") && !js.includes("['plan','shots','samples','voice','join']"), 'الخطوات بترتيب التنفيذ');
+  assert.ok(js.includes("if(v==='director'){ var dlb=document.createElement('span');") && js.includes("b.classList.add('vmk-tab-noimg')"), 'تبويب المخرج بلا <img>');
+  const css2 = read('css/modules.css');
+  for (const k of ['.vmk-tab.vmk-tab-noimg{', '.vmk-dir-stage{', '@keyframes vdSweep', '@keyframes vdReel', '@keyframes vdKen', '.vmk-dir-diag{', '@media (prefers-reduced-motion:reduce){#videoMakerModal .vmk-dir-stage-bg']) assert.ok(css2.includes(k), k);
   // الدالّة الحقيقيّة في vm: غير المالك لا يرى الزرّ ولا اللوحة
   const run = (user) => {
     const els = {};
@@ -205,7 +313,7 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
     seen[lg] = obj.vdTab;
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=443'));
+  assert.ok(read('index.html').includes('/js/video.js?v=444'));
   assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=738';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });

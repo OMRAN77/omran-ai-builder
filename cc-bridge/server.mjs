@@ -47,7 +47,7 @@ const renderer = createRenderer({
   repoDir: REPO_DIR,
   ffmpeg: env.FFMPEG_BIN || 'ffmpeg',
   ffprobe: env.FFPROBE_BIN || 'ffprobe',
-  concurrency: Math.max(1, Number(env.DIRECTOR_CONCURRENCY) || 2),
+  concurrency: Math.max(0, Number(env.DIRECTOR_CONCURRENCY) || 0), /* ٠ = تلقائيّ: أنوية الجهاز ناقص واحد بسقف ٤ */
 });
 
 /** بيئة Claude Code: بيئة الجسر بلا سرّه المشترك، ومفتاح GitHub باسمه عند gh (GH_TOKEN) ليعمل gh وgit push. */
