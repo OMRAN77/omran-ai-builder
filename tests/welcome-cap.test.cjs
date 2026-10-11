@@ -168,7 +168,7 @@ test('٥. تسجيل مرفوض (اسم مأخوذ، محجوز، إيميل م�
   assert.equal(counter(ipKey('203.0.113.8')), 1);
 });
 
-test('٦. القاطع العامّ ٤ بعناوين مختلفة: أربع هدايا بالضبط، والتجاوز يردّ عدّاد عنوانه أيضًا؛ وبلا عنوان القاطع وحده', async () => {
+test('٦. القاطع العامّ ٤ بعناوين مختلفة: أربع هدايا بالضبط، والتجاوز يُبقي عدّاد عنوانه (يعدّ التسجيلات — farm-2)؛ وبلا عنوان القاطع وحده', async () => {
   reset({ WELCOME_GIFT_DAILY: '4' });
   const ips = Array.from({ length: 7 }, (_, i) => '198.51.100.' + (10 + i));
   const res = await Promise.all(ips.map((ip, i) => signup('spread' + i, ip)));
@@ -177,7 +177,7 @@ test('٦. القاطع العامّ ٤ بعناوين مختلفة: أربع ه�
   for (let i = 0; i < ips.length; i++) {
     const u = await rec('spread' + i);
     if (u.points === 70) { gifted++; assert.equal(counter(ipKey(ips[i])), 1); }
-    else { assert.equal(u.points, 0); assert.equal(counter(ipKey(ips[i])), 0, 'عدّاد العنوان رُدّ بعد تجاوز القاطع'); }
+    else { assert.equal(u.points, 0); assert.equal(counter(ipKey(ips[i])), 1, 'رفض القاطع العامّ لا يردّ عدّاد العنوان: سقف الشبكة على تسجيلاتها (farm-2)'); }
   }
   assert.equal(gifted, 4);
   assert.equal(counter(allKey()), 4);

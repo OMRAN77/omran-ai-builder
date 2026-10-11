@@ -4,6 +4,7 @@
 // style while keeping their identity/likeness recognizable. Returns a
 // base64 PNG/JPEG the client can preview and download.
 const { checkPortraitQuota, consumePortrait, PORTRAIT_DAILY_LIMIT } = require('./_portraitUsage');
+const { keepGuardCharge } = require('./image-giveback.js'); /* v-guard-cap */
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const mergeIdentity = require('./merge-identity');
@@ -240,6 +241,7 @@ module.exports = async (req, res) => {
         });
         if (!frameGuard.ok && frameGuard.reason === 'validation_unavailable') console.warn('[portrait-style] frame guard unavailable — passing result through'); /* v-guard-fail-open */
         else if (!frameGuard.ok) {
+          await keepGuardCharge('portrait', quota, consumePortrait); /* v-guard-cap: بعد ١–٣ إطارات مدفوعة */
           res.status(422).json({ error: publicGuardError(frameGuard), retryable: false });
           return;
         }
@@ -530,6 +532,7 @@ module.exports = async (req, res) => {
          نعرضها ونسجّل؛ الرفض فقط عند حكمٍ صريح بتغيير الهوية أو الأسلوب. */
       if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[portrait-style] guard unavailable — passing result through');
       else if (!guard.ok) {
+        await keepGuardCharge('portrait', quota, consumePortrait); /* v-guard-cap */
         res.status(422).json({ error: publicGuardError(guard), retryable: false });
         return;
       }
