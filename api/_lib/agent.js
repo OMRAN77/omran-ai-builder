@@ -710,7 +710,9 @@ module.exports = async (req, res) => {
           content: typeof m.content === 'string' ? m.content
             : (Array.isArray(m.content) ? m.content.map((c) => c.text || c.content || '').filter(Boolean).join('\n') : ''),
         })).filter((m) => m.content));
-        for (const fb of fallbacks) {
+        /* v-prov-self (المالك ١١ أكتوبر «كلّ واحد ونفسه… من غير لفّ ودوران»): للمالك لا هبوط صامت إلى DeepSeek/Mistral/Groq بلا أدوات
+           (كان v-silent-fallback) — يقول السبب في سطر كالمحادثة (v-owner-solo). */
+        for (const fb of (isOwner(runUser) ? [] : fallbacks)) {
           if (!fb.key) continue;
           try {
             const fr = await fetch(fb.url, {
@@ -747,6 +749,7 @@ module.exports = async (req, res) => {
           } catch (e) { /* جرّب التالي */ }
         }
         await meterRun();
+        if (isOwner(runUser)) { send({ error: (Number(upstream.status) === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(errText)) ? 'ما عندي رصيد' : 'ما قدرت أردّ الحين — خطأ ' + upstream.status }); res.end(); return; } // v-prov-self
         send({ error: 'خطأ المحرّك ' + upstream.status + ': ' + errText.slice(0, 300) });
         res.end();
         return;

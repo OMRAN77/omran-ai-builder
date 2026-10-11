@@ -3551,9 +3551,25 @@ async function __sendPromptCore(){
   /* v-media-gate: طبقتان قبل أيّ مسار وسائط كلماتيّ — (١) كلام «عن» الوسائط = لا إنشاء؛ (٢) وإلّا المصنّف الرخيص
      على الخادم. يُستدعى فقط حين تحوي الرسالة كلمة وسائط وبلا صورة مرفقة؛ تعذّره = null فتحكم التعابير المضيَّقة. */
   let __mediaLane = null;
+  /* v-prov-self (المالك ١١ أكتوبر «كلّ واحد ونفسه… من غير لفّ ودوران»، ولقطة Groq وصورة «غير الاشكال» يبنيها محرّك آخر): للمالك والمزوّد
+     المختار يحمل الأدوات، لا مسار وسائط في الواجهة يسبقه — لا مصنّف خفيّ، ولا تعديل/رسم/فيديو مباشر. الطلب يصل المزوّد نفسه فيقرّر
+     ويرسم أو يعدّل بأداته ويقول بأيّ محرّك. يبقى كما كان: أوضاع «+» التي يختارها المالك بيده، وClaude Code، والوكيل، والأدوات المطفأة،
+     وتحويل الصيغة المحلّيّ (كانفس في المتصفّح، لا محرّك). */
+  const __ownerProvTurn = (function(){
+    try{
+      if(!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return false;
+      if(window.__omMode || window.__chatToolsOn === false) return false;
+      const __p = localStorage.getItem('aiapp_provider') || 'openai';
+      if(window.__agentModeOn === true && __p === 'claude') return false;
+      if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(__p) === -1) return false;
+      if(pendingAttachments.some(a => a && a.isImage) && __imgFormatIntent(text)) return false;
+      return true;
+    }catch(e){ __swallow(e, 'ui:prov-self'); return false; }
+  })();
   try{
     const __mediaHasImg = pendingAttachments.some(a => a && a.isImage);
-    if(text && !__mediaHasImg && __MEDIA_WORD_RE.test(text)){
+    if(__ownerProvTurn) __mediaLane = 'none';
+    else if(text && !__mediaHasImg && __MEDIA_WORD_RE.test(text)){
       __mediaLane = __MEDIA_TALK_RE.test(text) ? 'none' : (__MEDIA_MAKE_RE.test(text) ? await omranMediaIntent(text) : null); /* v-chat-fast */
     }
   }catch(e){ __mediaLane = null; }
@@ -4118,7 +4134,8 @@ function __friendlyErr(e){
       return;
     }
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
-    if(window.__agentModeOn && !imageAttachments.length){
+    /* v-prov-self: الوكيل وكيلُ Claude — مع مزوّد آخر مختار يردّ المزوّد نفسه بأدواته (مسار المحادثة أدناه)، لا Claude بالخفاء */
+    if(window.__agentModeOn && !imageAttachments.length && (localStorage.getItem('aiapp_provider') || 'openai') === 'claude'){
       await runOmranAgent(cur, apiText, thinkingDiv);
       return;
     }
@@ -4245,7 +4262,7 @@ function __friendlyErr(e){
       /[📋⬜☐🔹▪•✔️]/.test(text) ||
       /^\s*(?:[-*]|\d+[.)])\s+\S.*\n\s*(?:[-*]|\d+[.)])\s+\S/m.test(text)
     ));
-    const __blockAutoImage = !!(__pastedLike && !__srcImg && !__explicitImgReq);
+    const __blockAutoImage = !!(__ownerProvTurn /* v-prov-self */ || (__pastedLike && !__srcImg && !__explicitImgReq));
     /* v-support-q (لقطة عمران ١ سبتمبر: «عندي مشكلة في الطباعة تصور خارج
        الصورة... كيف اسوي الإعدادات» راحت لتعديل صورة قديمة): سؤال مساعدة
        يحوي كلمات صور عرضًا (تصور/الصورة/تعديل) — نمنع توجيهه للصور حين لا
@@ -4666,7 +4683,7 @@ function __friendlyErr(e){
       : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
     const __talkCharRe = /(شخصية|شخصيه|كرتون|كارتون|كرتوني|كرتونية|كارتونية|character|cartoon|avatar|أفتار|افتار)/i;
     const __speakRe = /(تتكلم|يتكلم|تحكي|يحكي|تتحدث|يتحدث|ناطق|ناطقة|يقول|تقول|talk|talking|speak|speaking|say)/i;
-    const __talkCharIntent = !!text && !__codeWordRe.test(text) && __talkCharRe.test(text) && __speakRe.test(text);
+    const __talkCharIntent = !__ownerProvTurn /* v-prov-self */ && !!text && !__codeWordRe.test(text) && __talkCharRe.test(text) && __speakRe.test(text);
     let __alreadyCartoon = false;
     // 🎬 v367: طلب شخصية تتكلم بدون صورة مرفقة → افتح مكتبة شخصيات جاهزة يختار منها (أو يرفع صورته)
     window.pickTalkCharacter = window.pickTalkCharacter || function(isAr){
