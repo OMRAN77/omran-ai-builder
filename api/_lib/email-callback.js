@@ -2,7 +2,8 @@
 // user approves Gmail access for the "AI Email Assistant" feature. Separate
 // from the login OAuth (auth-google-callback.js) — this one requests Gmail
 // scopes (read + send) and stores an encrypted refresh token on the user.
-const { getUser, putUser, verifyToken } = require('./auth.js');
+const { getUser, putUser } = require('./auth.js');
+const { takeTicket } = require('./email-link-ticket.js'); // v-oauth-bind
 const { encrypt } = require('./_emailCrypto.js');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -31,7 +32,9 @@ module.exports = async (req, res) => {
     const { code, state, error } = req.query || {};
     if (error) return fail(String(error));
     if (!code || !state) return fail('missing_params');
-    const username = verifyToken(state);
+    // v-oauth-bind: state كانت رمز الجلسة نفسه — فمن أكمل رابطًا يحمل رمز غيره رُبطت Gmail الخاصّة به بحساب ذلك
+    // الغير. الآن تذكرة تُستهلك مرّة (عشر دقائق) وتُعيد صاحبها وحده، ومن الشبكة التي سكّتها؛ وإلّا الخطأ القائم.
+    const username = await takeTicket(String(state), req);
     if (!username) return fail('session_expired');
 
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {

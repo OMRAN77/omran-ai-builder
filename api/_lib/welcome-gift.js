@@ -85,4 +85,5 @@ async function takeWelcomeGift(req, o) {
   }
 }
 
-module.exports = { takeWelcomeGift, giftNet, DAY_TTL_SEC };
+// clientIp يُصدَّر لربط إيداع دخول Google وتذكرة ربط Gmail بشبكة من أكملهما (v-oauth-bind) — المحلّل نفسه لا نسخة ثانية.
+module.exports = { takeWelcomeGift, giftNet, clientIp, DAY_TTL_SEC };
