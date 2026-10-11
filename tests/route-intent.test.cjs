@@ -42,7 +42,7 @@ vm.runInNewContext([
   line('const __strongBuildRe = '),
   line('const GATE_BUILD_RE = '), line('const GATE_CMD_RE = '), line('const GATE_FIX_RE = '), line('const GATE_HARD_RE = '),
   line('const __routeBuildRe = '), line('const __routeCmdRe = '),
-  line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtNotLookupRe = '), line('const __rtEntityRe = '),
+  line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtBestRe = '), line('const __rtNounRe = '), line('const __rtNotLookupRe = '), line('const __rtEntityRe = '),
   line('const __rtMineRe = '), line('const __rtFeatureRe = '), line('const __rtCloneRe = '),
   SRC.slice(SRC.indexOf('  const __rtIsLookup = '), SRC.indexOf('\n  };\n', SRC.indexOf('  const __rtIsLookup = ')) + 5),
   'function wantLookup(text, code){ return __rtIsLookup(text, code); }',
@@ -163,7 +163,7 @@ vm.runInNewContext([
   '  const cur = { lastMsgWasImageEdit: chain !== false, lastEditedImage: { b64: "x", mime: "image/png" }, messages: [',
   '    { role: "user", content: "ارسم صورة صقر على جبل" }, { role: "assistant", content: "", attachments: [{ isImage: true, name: "generated.png" }] } ].concat(extra || []) };',
   '  const getCurrent = () => cur, pendingAttachments = [], imageAttachments = [];',
-  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtSuggestRe = '), line('const __rtPutRe = '), line('const __rtWriteAsk = '),
+  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtSuggestRe = '), line('const __rtPutRe = '), line('const __rtWriteAsk = '), line('const __rtTextOutRe = '), line('const __rtTextOut = '),
   line('const __IMGF_NEW_RE = '), line('const __IMGF_NOT_RE = '), line('const __IMG_EDIT_VERB_RE = '),
   imgFollowSrc,
   line('const __nanoQ = '), line('const __ATT_VISION_RE = '), line('const __codeWordRe = '), line('const __ackOnly = '),
@@ -172,7 +172,7 @@ vm.runInNewContext([
   line('const __imgEditRe = '), line('const __IMG_CREATIVE_RE = '), line('const __editStyleIntent = '), line('const __FOLLOW_DEFAULT = '),
   line('const __STYLE_RE = '), line('const __styleShort = '), line('const __STYLE_FOLLOW = '),
   '  const memAttach = !!(' + cond('if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && !__rtWriteAsk').replace(/^/, '!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && !__rtWriteAsk') + ');',
-  '  return { follow: __IMG_FOLLOW, any: __FOLLOW_ANY, def: __FOLLOW_DEFAULT, style: __STYLE_FOLLOW, mem: memAttach, write: __rtWriteAsk };',
+  '  return { follow: __IMG_FOLLOW, any: __FOLLOW_ANY, def: __FOLLOW_DEFAULT, style: __STYLE_FOLLOW, mem: memAttach, write: __rtWriteAsk, textOut: __rtTextOut };',
   '};',
 ].join('\n'), W);
 
@@ -280,12 +280,15 @@ test('١٤. v-route-want: الرغبة + اسم البناء + وصف صنع ت�
 
 test('١٥. v-route-sticky: الدور الذي يصل مسار النصّ بلا صورة يُنهي سلسلة الصورة، فـ«اختصرها/خله أقصر/بالإنجليزي» بعده للنصّ؛ بعد الصورة مباشرةً كما كانت', () => {
   // الشرط الحقيقيّ قبل مسار النصّ (askAll/المزوّد الواحد)، بعد أن عادت كلّ مسارات الصورة
-  const RESET = '    if(!imageAttachments.length && cur.lastMsgWasImageEdit) cur.lastMsgWasImageEdit = false;';
+  const RESET = '    if(__rtTextOut && !imageAttachments.length && cur.lastMsgWasImageEdit) cur.lastMsgWasImageEdit = false;';
   const at = SRC.indexOf(RESET);
   assert.ok(at > 0 && SRC.indexOf('    if(askAll){', at) - (at + RESET.length) <= 3, 'النزع قبيل مسار النصّ مباشرةً');
-  const run = (atts, flag) => { const cur = { lastMsgWasImageEdit: flag }; vm.runInNewContext(RESET, { imageAttachments: atts, cur }); return cur.lastMsgWasImageEdit; };
-  assert.equal(run([], true), false, 'دور نصّيّ بلا صورة («اكتب لي قصيدة») يُنهي السلسلة');
-  assert.equal(run([{ isImage: true, _fromMemory: true }], true), true, 'سؤال عن الصورة بصورة الذاكرة يُبقيها');
+  const run = (atts, flag, textOut) => { const cur = { lastMsgWasImageEdit: flag }; vm.runInNewContext(RESET, { imageAttachments: atts, cur, __rtTextOut: textOut }); return cur.lastMsgWasImageEdit; };
+  assert.equal(run([], true, true), false, 'طلب مخرَج نصّيّ بلا صورة («اكتب لي قصيدة/ملخص») يُنهي السلسلة');
+  assert.equal(run([], true, false), true, 'المراجعة الثالثة: «حلوة/شكرًا/وش نوعه؟» بعد صورة تُبقيها كما في main');
+  assert.equal(run([{ isImage: true, _fromMemory: true }], true, true), true, 'وبصورة مرفقة تبقى');
+  for (const t of ['اكتب لي قصيدة عن الصقر', 'اكتب لي بوست لينكدإن عن العمل الجماعي', 'سوي لي ملخص عن تاريخ الاتحاد', 'اكتب لي معلومات عن الجمال']) assert.equal(W.after(t).textOut, true, 'مخرَج نصّيّ: ' + t);
+  for (const t of ['حلوة', 'شكرا', 'وش نوع هذا الصقر؟', 'خلها بالليل', 'اكتب عليها عيد مبارك']) assert.equal(W.after(t).textOut, false, 'ليس مخرَجًا نصّيًّا: ' + t);
   // بعد النزع: المسارات الأربعة والإرفاق التلقائيّ كلّها مطفأة
   const poem = [{ role: 'user', content: 'اكتب لي قصيدة عن الصقر' }, { role: 'assistant', content: 'يا صقرُ يا رمزَ العلا…' }];
   for (const t of ['اختصرها', 'خله أقصر', 'خلها أقصر', 'بالإنجليزي', 'اكتبه بأسلوب رسمي', 'سوه أرسمي شوي', 'خل الخلفية زرقاء', 'خله كرتون']) {
@@ -297,6 +300,9 @@ test('١٥. v-route-sticky: الدور الذي يصل مسار النصّ بل�
     const i = SRC.indexOf(pat); assert.ok(i > 0 && i < at, pat);
     assert.match(SRC.slice(i, i + 900), /return;/, 'يعود قبل مسار النصّ: ' + pat);
   }
+  // المسبار الأعمى: طلب مخرَج نصّيّ بعد صورة لا تُرفق له صورة الذاكرة، فيصل مسار النصّ بلا صورة فتنتهي السلسلة
+  for (const t of ['سوي لي ملخص عن تاريخ الاتحاد', 'اكتب لي معلومات عن الجمال', 'عطني نبذة عن الصقور', 'ابي شرح عن تاريخ الإمارات']) assert.equal(W.after(t).mem, false, 'بلا صورة ذاكرة: ' + t);
+  for (const t of ['وش رايك فيها؟', 'اكتب لي وصف للصورة', 'سوي لي ملخص عن الصورة']) assert.equal(W.after(t).mem, true, 'السؤال عن الصورة يحملها كما كان: ' + t);
   assert.equal(W.after('خله كرتون').style, true, 'بعد الصورة مباشرةً كما كان');
   assert.equal(W.after('خله أقصر').def, true);
   for (const t of ['خلها بالليل', 'خل الخلفية زرقاء']) assert.equal(W.after(t).follow || W.after(t).any, true, 'بعد الصورة مباشرةً: ' + t);
@@ -355,13 +361,17 @@ test('٢٠. المراجعة العدائيّة: البناء بوصفه أو م
     'ابي موقع لمرسمي', 'ابي نسخة من انستقرام', 'أبي تطبيق مثل سناب شات',
     /* المراجعة الثانية */ 'ابي موقع بنك اسئلة للطلاب', 'ابي تطبيق جامع للملاحظات والمهام', 'ابي موقع مستشفى لمشروع التخرج', 'ابي تطبيق مطاردة سيارات',
     'ابي تطبيق بنك بسيط', 'ابي موقع مستشفى متكامل', 'ابي تطبيق بس ما اعرف برمجة', 'ابي موقع بس ما اعرف كيف ابدأ', 'ابي تطبيق اعرف منه كم صرفت',
-    'ابي صفحة تحميل لتطبيقي', 'ابي صفحة تحميل للتطبيق حقي', 'ابي موقع لكتبي وفيه تحميل pdf', 'ابي صفحة لينك تري', 'عطني موقع حق مطعمي', 'عطني صفحة حق متجري']) {
+    'ابي صفحة تحميل لتطبيقي', 'ابي صفحة تحميل للتطبيق حقي', 'ابي موقع لكتبي وفيه تحميل pdf', 'ابي صفحة لينك تري', 'عطني موقع حق مطعمي', 'عطني صفحة حق متجري',
+    /* المراجعة الثالثة */ 'ابي موقع وما اعرف برمجة', 'ابي موقع ولا اعرف ابرمج', 'أبي تطبيق يرسل رابط الدفع للعملاء', 'ابي تطبيق يولد رابط دعوة للحفلة', 'ابي موقع يختصر رابط طويل',
+    'ابي تطبيق عشان اعرف كم صرفت في الشهر', 'ابي موقع لمتجري انزل عليه المنتجات', 'ابي تطبيق اقدر احمل عليه الفيديوهات', 'ابي موقع بنك الأسئلة للطلاب',
+    'ابي تطبيق مجلس الطلاب', 'ابي تطبيق دائرة الأصدقاء', 'ابي تطبيق حساب الدائرة']) {
     assert.equal(G.gate(t), true, t);
   }
   // «سو» بلا ياء: بناء عبر «اسأل الكل» كما كان في main (فعل بناء صريح فلا يُقرأ جلبًا)
   for (const t of ['سو لي موقع فيه رابط انستقرام', 'سو لي تطبيق يعرض أفضل العروض']) assert.equal(G.askAllShape(t), true, t);
+  for (const t of ['I want an app that generates a payment link', 'I want a link shortener website', 'i want a link in bio page']) assert.equal(G.wantLookup(t, ''), false, t);
   for (const t of ['عطني موقع وزارة الاقتصاد', 'ابي رابط تطبيق الهيئة', 'ابي موقع وزارة الصحة', 'ابي تطبيق الهيئة الاتحادية للضرائب', 'وين أحمله تطبيق سهل؟ ابي رابط التحميل',
-    'ابي موقع شرطة دبي', 'ابي موقع بنك دبي الاسلامي', 'أبي أعرف موقع الدائرة الاقتصادية في دبي']) {
+    'ابي موقع شرطة دبي', 'ابي موقع بنك دبي الاسلامي', 'أبي أعرف موقع الدائرة الاقتصادية في دبي', 'ابي تطبيق احمله للايفون', 'ممكن تعطيني موقع مستشفى راشد']) {
     assert.equal(G.wantLookup(t, ''), true, t);
   }
 });
@@ -373,7 +383,7 @@ test('٢١. المراجعة العدائيّة: «تمام/زين/اوكي شك
   const finder = SRC.slice(i, SRC.indexOf('\n', j)).replace('const __lastU = ', 'return ');
   const R = {};
   vm.runInNewContext([line('const GATE_BUILD_RE = '), line('const GATE_CMD_RE = '),
-    line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtNotLookupRe = '), line('const __rtEntityRe = '),
+    line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtBestRe = '), line('const __rtNounRe = '), line('const __rtNotLookupRe = '), line('const __rtEntityRe = '),
     line('const __rtMineRe = '), line('const __rtFeatureRe = '), line('const __rtCloneRe = '),
     SRC.slice(SRC.indexOf('  const __rtIsLookup = '), SRC.indexOf('\n  };\n', SRC.indexOf('  const __rtIsLookup = ')) + 5),
     'this.pick = function(__ms){ const __gp = { code: "" }; ' + finder + ' };'].join('\n'), R);
