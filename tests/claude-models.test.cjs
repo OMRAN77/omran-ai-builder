@@ -99,12 +99,15 @@ test('٥. Haiku 4.5 بلا effort في دور الصورة، والجيل الح
   assert.deepEqual(imageTurnConfig({}, false, 'claude-opus-4-6'), { model: 'claude-opus-4-6', output_config: { effort: 'high' } });
 });
 
-test('٦. طلب المحادثة بلا thinking ولا temperature — فالقائمة كلّها تمرّ بالطلب نفسه', () => {
+test('٦. طلب المحادثة بلا temperature، وthinking للعرض الملخّص وحده عبر owner-loop (لا Haiku)', () => {
   const s = read('api/_lib/chat.js');
   const i = s.indexOf('const callUpstream = (withImg) => __upFetch(CHAT_URL');
   const req = s.slice(i, s.indexOf('let upstream = await callUpstream(true);', i));
   assert.ok(req.length > 0);
   assert.ok(!/thinking|temperature|top_p|top_k/.test(req), 'Fable يرفض temperature، وHaiku يرفض adaptive');
+  /* v-claude-code-level D1: حقل العرض الملخّص (لا يغيّر الفوترة) يُضاف في owner-loop.think للمالك على موديلات المنتقي الأحدث وحدها */
+  assert.ok(req.includes('__ol.think('), 'حقل العرض يُضاف في owner-loop.think لا في الشريحة');
+  assert.ok(!require('../api/_lib/owner-loop.js').DISPLAY_RE.test('claude-haiku-4-5'), 'Haiku لا يصله العرض');
 });
 
 // v-chat-economy (أمر المالك ٢٣ سبتمبر «كلاود الرئيسي للمحادثات يكون الاقتصادي»): الافتراضيّ Haiku 4.5

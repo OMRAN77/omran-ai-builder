@@ -42,8 +42,19 @@ const micros = (u, kind) => Number(kv.get('cost:' + month + ':' + encodeURICompo
 
 test('١. سعر الدور بالتوكنات: الدخل والخرج وقراءة الكاش (١٠٪) وكتابته (١٢٥٪) لكلّ نموذج', () => {
   assert.equal(cm.tokenCostUsd('claude-haiku-4-5', { input: 1e6, output: 1e6 }), 6);
-  assert.equal(cm.tokenCostUsd('anthropic/claude-sonnet-5', { cacheRead: 1e6 }), 0.3);
-  assert.equal(cm.tokenCostUsd('claude-sonnet-5', { cacheWrite: 1e6 }), 3.75);
+  // v-meter-prices: Sonnet 5 بسعره الرسميّ ٢/١٠ (كان يُحسب بسعر Sonnet 4.x ٣/١٥)
+  assert.equal(cm.tokenCostUsd('anthropic/claude-sonnet-5', { cacheRead: 1e6 }), 0.2);
+  assert.equal(cm.tokenCostUsd('claude-sonnet-5', { cacheWrite: 1e6 }), 2.5);
+  assert.equal(cm.tokenCostUsd('claude-sonnet-5', { input: 1e6, output: 1e6 }), 12);
+  assert.equal(cm.tokenCostUsd('claude-sonnet-4-6', { input: 1e6, output: 1e6 }), 18, 'Sonnet 4.x باقٍ ٣/١٥');
+  // Opus 5.5 ‏٤/٢٠ وقراءة كاشه ٠٫٢٠$؛ Opus 5 باقٍ ٥/٢٥؛ Fable 5.1 ‏١٠/٥٠ وقراءة كاشه ٠٫٢٥$ — بالمعرّف المباشر والوسيط
+  assert.equal(cm.tokenCostUsd('claude-opus-5-5', { input: 1e6, output: 1e6 }), 24);
+  assert.equal(cm.tokenCostUsd('anthropic/claude-opus-5.5', { cacheRead: 1e6 }), 0.2);
+  assert.equal(cm.tokenCostUsd('claude-opus-5', { input: 1e6, output: 1e6 }), 30);
+  assert.equal(cm.tokenCostUsd('claude-fable-5-1', { input: 1e6, output: 1e6 }), 60);
+  assert.equal(cm.tokenCostUsd('anthropic/claude-fable-5.1', { cacheRead: 1e6 }), 0.25);
+  assert.equal(cm.tokenCostUsd('claude-fable-5-1', { cacheWrite: 1e6 }), 12.5);
+  assert.equal(cm.tokenCostUsd('claude-haiku-5-5', { input: 1e6, output: 1e6 }), 0.6);
   assert.equal(cm.tokenCostUsd('openai/gpt-oss-120b', { input: 1e6, output: 1e6 }), 0.75);
   assert.equal(cm.tokenCostUsd('deepseek/deepseek-v4-pro', { input: 1e6 }), 0.58);
   assert.equal(cm.tokenCostUsd('', {}), 0);

@@ -40,7 +40,7 @@ const BRIEF = `
 - الخادم: api/ai.js موجّه ?action= → api/_lib/chat.js (المحادثة لكلّ المزوّدين، نقطتها /api/ai?action=chat) · api/_lib/agent.js (الوكيل، /api/ai?action=agent). المسارات المختصرة (/api/openai…) في vercel.json rewrites.
 - المزوّدون: oa-direct.js (GPT وGroq وKimi بمفاتيحها المباشرة) · OR_MODELS في chat.js (البقيّة عبر OpenRouter) · provider-models.js (موديل يختاره المالك) · owner-vision.js (رؤية الصور) · Perplexity طريق منفصل بلا أدوات.
 - أدوات المالك: github-read/write/edit/manage.js · agent-delegate.js (تفويض Claude Code) · app-errors.js (سجلّ الأخطاء — read_app_errors). خطأ «ما قدرت أردّ الحين — خطأ N» من ownerStopNote في chat.js، وسببه الكامل في السجلّ.
-- الواجهة: js/app-*.js هي المصدر؛ js/app.bundle.js مبنيّ منها (npm run bundle) ويُرفع معها. الإعدادات: js/partials-settings.js وأقسامها في js/app-05-ui.js. منتقي المزوّد: js/modes.js.
+- الواجهة: js/app-*.js هي المصدر؛ js/app.bundle.js مبنيّ منها (npm run bundle) — ولا يُبنى مع رفعة جزئيّة: تغيير js/app-NN-*.js يحتاج npm run bundle ثمّ npm run ci (كودي في المهمّة المفوَّضة يفعلهما)، وإلّا فشل CI ولم تتغيّر المعاينة حتّى الدمج. وjs/partials-*.js لا تُحزَم: يكفي رفع رقم ?v= لها في index.html. الإعدادات: js/partials-settings.js وأقسامها في js/app-05-ui.js. منتقي المزوّد: js/modes.js.
 - التنسيق: css/*.css وكلّ ملفّ بإصدار ?v=N في index.html (يُرفع الرقم مع كلّ تغيير).
 - الاختبارات: tests/*.test.cjs مسجّلة في package.json، وnpm run ci يشغّلها مع الفحوص. المعرفة الكاملة: knowledge/ (PITFALLS · STATE · DECISIONS).
 
