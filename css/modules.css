@@ -602,6 +602,14 @@ html[data-mode="light"] #videoMakerModal #videoMakerHeroBtn{background:rgba(0,0,
 html[data-mode="light"] #videoMakerModal .vmk-studio{background:#f3f1ec!important}
 html[data-mode="light"] #videoMakerModal .vmk-tabs{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.08)}
 html[data-mode="light"] #videoMakerModal .vmk-tab{color:#4a4f5a}
+/* v-vmk-tab-art: تبويبات بصور مربّعة واحدة المقاس (240×240 في assets/videos/tabs) والاسم تحتها؛ الصفّ يتمرّر أفقيًّا بدل أن يلتفّ */
+#videoMakerModal .vmk-tabs{border-radius:18px;padding:6px;gap:4px}/* الحاسوب: التسعة تتّسع في صفّ وتلتفّ إن طال اسمٌ بلغة؛ لا تمرير — صفّ التمرير يصفّر الحدّ الأدنى لارتفاعه في شبكة ثابتة الارتفاع فيُعصر إلى ١٨ بكسل */
+@media (max-width:640px){#videoMakerModal .vmk-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-height:max-content;flex-shrink:0;width:100%}}
+#videoMakerModal .vmk-tabs::-webkit-scrollbar{display:none}
+#videoMakerModal .vmk-tab{display:flex;flex-direction:column;align-items:center;gap:6px;padding:6px 6px 8px;border-radius:14px;flex:0 0 auto;min-width:92px;max-width:112px;line-height:1.2;text-align:center}
+#videoMakerModal .vmk-tab-img{display:block;width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.08);pointer-events:none}
+#videoMakerModal .vmk-tab[aria-selected=true] .vmk-tab-img{border-color:rgba(26,20,8,.35);box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+#videoMakerModal .vmk-tab-lbl{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 html[data-mode="light"] #videoMakerModal .vmk-main #videoMakerPrompt{background:#ffffff;border-color:rgba(0,0,0,.14)}
 #videoMakerModal #videoMakerHeroBtn{padding:0 !important;padding-inline-start:46px !important;padding-inline-end:18px !important;text-align:start}
 #videoMakerModal .vmk-main .mini-mic-field-row{align-items:flex-start}
