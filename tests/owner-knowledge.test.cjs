@@ -23,7 +23,8 @@ assert.ok(forOwner.includes('OMRAN77/omran-ai-builder'), 'يعرف اسم الم
 // ٣) صلاحية القراءة الذاتيّة والتفويض بدل طلب اللصق
 assert.ok(/لا تطلب منه أبدًا أن يلصق/.test(forOwner), 'ممنوع يطلب من عمران لصق الكود');
 assert.ok(forOwner.includes('read_github'), 'يقرأ الملفّ بنفسه بـread_github');
-assert.ok(forOwner.includes('delegate_code_task'), 'يسلّم التنفيذ لكودي');
+assert.ok(forOwner.includes('delegate_code_task'), 'يعرف أداة كودي');
+assert.ok(/ثمّ عدّله أنت بـedit_github/.test(forOwner) && /لا يُستدعى إلّا إذا طلبه عمران بالاسم/.test(forOwner), 'v-code-not-primary: يعدّل بنفسه، وكودي بطلب عمران بالاسم وحده');
 
 // ٤) الحقيقة المصحّحة: Vercel مربوط بـGitHub (نشر تلقائيّ) — لا الجملة القديمة
 assert.ok(/Vercel مربوط بـGitHub/.test(forOwner), 'Vercel مربوط بـGitHub الآن');
