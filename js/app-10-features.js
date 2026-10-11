@@ -1216,13 +1216,14 @@ function stripHeaderMenuEmoji(){
     ['#btnDeleteAll','#authToggleBtn','#settingsLogoutBtn','#btnExportZip','[data-i18n="exportZip"]'].forEach(sel=>{
       const el = document.querySelector(sel); if(el) scopes.push(el);
     });
+    let emoRe; try{ emoRe = new RegExp('[\\p{Extended_Pictographic}\\uFE0F\\u200D]', 'gu'); }catch(e2){ emoRe = /[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\uFE0F\u200D]/g; /* v-es-floor: محرّك قديم — تقريب بلا خصائص يونيكود */ }
     scopes.forEach(scope=>{
       if(!scope) return;
       const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
       let n; const nodes=[];
       while((n = walker.nextNode())) nodes.push(n);
       nodes.forEach(tn=>{
-        const clean = tn.textContent.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '').replace(/\s{2,}/g, ' ');
+        const clean = tn.textContent.replace(emoRe, '').replace(/\s{2,}/g, ' ');
         if(clean !== tn.textContent) tn.textContent = clean;
       });
     });

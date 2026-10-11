@@ -2091,7 +2091,7 @@ function mahaStartPointsMeter(budget){
         try{
           if(confirm(isAr ? 'خلصت نقاطك 🌸 تبي تشحن نقاط عشان نكمل سوالفنا؟' : 'Your points ran out 🌸 Top up to keep talking with me?')){
             try{ document.getElementById('btnSettings').click(); }catch(e){ __swallow(e, "points:app-08-maha#21"); }
-            try{ document.querySelector('.pointsPackBtn')?.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){ __swallow(e, "points:app-08-maha#22"); }
+            try{ var __ppb = document.querySelector('.pointsPackBtn'); if(__ppb) __ppb.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){ __swallow(e, "points:app-08-maha#22"); } /* v-es-floor: تمرير فقط، بلا ?. (موافقة المالك ١١ أكتوبر) */
           }
         }catch(e){ __swallow(e, "points:app-08-maha#23"); }
       }, 400);

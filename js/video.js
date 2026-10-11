@@ -25,7 +25,7 @@
   function on(){return true;} /* v-vmk-mobile: نفس استوديو الكمبيوتر على الهاتف */
   function id(x){return document.getElementById(x);}
   /* v-vmk-clean (المالك: «شيل الأيقونات… اسم رسميّ بلا إيموجي»): تنظيف نصوص النافذة من الإيموجي عند العرض بدل تعديل ١٤ قاموسًا */
-  var EMO=/\u200D(?=\p{Extended_Pictographic})|(?![\u00A9\u00AE\u2122])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\uFE0F|\u20E3/gu;
+  var EMO; try{ EMO=new RegExp('\\u200D(?=\\p{Extended_Pictographic})|(?![\\u00A9\\u00AE\\u2122])\\p{Extended_Pictographic}|\\p{Emoji_Modifier}|\\uFE0F|\\u20E3','gu'); }catch(e){ EMO=/[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\uFE0F\u20E3]/g; /* v-es-floor: محرّك قديم — تقريب بلا خصائص يونيكود */ }
   function noEmoji(x){ return String(x==null?'':x).replace(EMO,'').replace(/\s{2,}/g,' ').trim(); }
   function scrub(){
     var w=document.createTreeWalker(M,NodeFilter.SHOW_TEXT,null), n, list=[];
