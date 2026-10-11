@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { getUser, putUser, makeToken } = require('./auth.js'); // داخل _lib
+const { takeWelcomeGift } = require('./welcome-gift.js'); // v-welcome-cap
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -137,6 +138,9 @@ module.exports = async (req, res) => {
     }
 
     if (!user || user.deleted) {
+      // v-welcome-cap: كان السجلّ بلا points فيمنحه readPoints ٧٠ بلا أيّ حدّ — الآن من حصّة العنوان واليوم، و0 رقمًا فوقها.
+      // دخول حساب قائم لا يمرّ هنا فلا يمسّ العدّادات.
+      const gift = await takeWelcomeGift(req);
       const { salt, hash } = randomPasswordHash();
       user = {
         username: profile.name || email.split('@')[0],
@@ -145,6 +149,8 @@ module.exports = async (req, res) => {
         avatar: profile.picture || null,
         googleAuth: true,
         createdAt: Date.now(),
+        points: gift ? 70 : 0,
+        welcomeGift: gift,
       };
       await putUser(key, user);
     }

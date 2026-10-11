@@ -8,6 +8,7 @@
 const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 const { logError } = require('./log-error.js');
+const { takeWelcomeGift } = require('./welcome-gift.js'); // v-welcome-cap
 
 // ⏳ القراءة مؤجَّلة عمدًا. _secrets.AUTH_SECRET رامٍ (getter)، وقراءته هنا —
 // في نطاق الوحدة — تحوّل متغيّرًا مفقودًا إلى انهيار عند الإقلاع البارد:
@@ -483,6 +484,8 @@ module.exports = async (req, res) => {
         res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.') });
         return;
       }
+      // v-welcome-cap: الهديّة تُحجز بعد كلّ رفض (محاولة فاشلة لا تأكل حصّة)، وفوق السقف حساب برصيد 0 لا رفض.
+      const gift = await takeWelcomeGift(req);
       const { salt, hash } = hashPassword(password);
       const user = {
         username: String(username).trim(), salt, hash,
@@ -490,8 +493,9 @@ module.exports = async (req, res) => {
         avatar: null,
         createdAt: Date.now(),
         // 🎁 هدية الترحيب: 70 نقطة عند التسجيل = فيديو واحد (60) + صورة واحدة (10).
-        points: 70,
-        welcomeGift: true,
+        // ‏0 رقمًا لا غيابًا: سجلّ بلا points يمنحه readPoints (points.js) ٧٠ عند أوّل قراءة.
+        points: gift ? 70 : 0,
+        welcomeGift: gift,
       };
       await putUser(key, user);
       // v380: فهرس الإيميل → الدخول بجوجل بنفس الإيميل يفتح هذا الحساب نفسه
@@ -939,8 +943,8 @@ module.exports = async (req, res) => {
         // prefix, an unusable random password (this account only ever logs in
         // via OTP), the email set, and the standard welcome gift.
         //
-        // ⚠️ مزرعة نقاط: كلّ بريد جديد = 70 نقطة. التحديد ثلاث محاولات لكلّ
-        // بريد، لكنّ عدد العناوين لا نهائيّ. راجع OTP_SIGNUP_GIFT قبل التسويق.
+        // ⚠️ كانت مزرعة نقاط: كلّ بريد جديد = 70 نقطة، وعدد العناوين لا نهائيّ.
+        // v-welcome-cap: الهديّة الآن من حصّة العنوان واليوم (welcome-gift.js)، وفوقها رصيد 0.
         const OTP_SIGNUP_GIFT = Math.max(0, Number(process.env.OTP_SIGNUP_GIFT || 70));
         const prefix = key.split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase() || 'user';
         let candidateKey = '';
@@ -953,14 +957,15 @@ module.exports = async (req, res) => {
           candidateKey = '';
         }
         if (!candidateKey) candidateKey = 'user_' + crypto.randomBytes(6).toString('hex');
+        const gift = OTP_SIGNUP_GIFT > 0 && await takeWelcomeGift(req);
         const { salt, hash } = hashPassword(crypto.randomBytes(32).toString('hex'));
         user = {
           username: candidateKey, salt, hash,
           email: key,
           avatar: null,
           createdAt: Date.now(),
-          points: OTP_SIGNUP_GIFT,
-          welcomeGift: OTP_SIGNUP_GIFT > 0,
+          points: gift ? OTP_SIGNUP_GIFT : 0,
+          welcomeGift: !!gift,
           otpOnly: true,
         };
         userKey = candidateKey;
