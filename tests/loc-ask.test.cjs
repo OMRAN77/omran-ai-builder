@@ -25,7 +25,7 @@ vm.runInNewContext([
   line(ATTACH, 'const GATE_HARD_RE = '),
   'function gateText(text){ ' + line(ATTACH, 'const __gateText = ').replace('const __gateText = ', 'return ') + ' }',
   // v-route-want: «عطني/أبي + اسم بناء» بلا فعل بناء ولا وصف صنع = جلب/بحث (__rtWantLookup الحقيقيّ)
-  line(ATTACH, 'const __rtBuildVerbRe = '), line(ATTACH, 'const __rtGiveRe = '), line(ATTACH, 'const __rtDlRe = '), line(ATTACH, 'const __rtLookupRe = '),
+  line(ATTACH, 'const __rtBuildVerbRe = '), line(ATTACH, 'const __rtGiveRe = '), line(ATTACH, 'const __rtDlRe = '), line(ATTACH, 'const __rtLookupRe = '), line(ATTACH, 'const __rtNotLookupRe = '),
   line(ATTACH, 'const __rtEntityRe = '), line(ATTACH, 'const __rtMineRe = '), line(ATTACH, 'const __rtFeatureRe = '), line(ATTACH, 'const __rtCloneRe = '),
   ATTACH.slice(ATTACH.indexOf('  const __rtIsLookup = '), ATTACH.indexOf('\n  };\n', ATTACH.indexOf('  const __rtIsLookup = ')) + 5),
   'function wantLookup(text){ return __rtIsLookup(text, ""); }',

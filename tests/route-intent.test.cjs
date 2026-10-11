@@ -42,7 +42,7 @@ vm.runInNewContext([
   line('const __strongBuildRe = '),
   line('const GATE_BUILD_RE = '), line('const GATE_CMD_RE = '), line('const GATE_FIX_RE = '), line('const GATE_HARD_RE = '),
   line('const __routeBuildRe = '), line('const __routeCmdRe = '),
-  line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtEntityRe = '),
+  line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtNotLookupRe = '), line('const __rtEntityRe = '),
   line('const __rtMineRe = '), line('const __rtFeatureRe = '), line('const __rtCloneRe = '),
   SRC.slice(SRC.indexOf('  const __rtIsLookup = '), SRC.indexOf('\n  };\n', SRC.indexOf('  const __rtIsLookup = ')) + 5),
   'function wantLookup(text, code){ return __rtIsLookup(text, code); }',
@@ -228,6 +228,8 @@ test('١١. الحزمة مبنيّة من الجزء (الشروط الجديد
   }
   assert.ok(bundle.includes("&& __rtAdOk /* v-route-ad */ && !cur.adMode"), 'شرط الإعلان');
   assert.ok(bundle.includes('(__rtDesignImg /* v-route-design */ || __explicitImageTextRequest'), 'شرط البانِي');
+  // لا lookbehind في الحزمة: سفاري قبل 16.4 يرفض السكربت كلّه فيموت التطبيق على الآيفونات الأقدم (main بلا أيّ واحد)
+  assert.ok(!/\(\?<[!=]/.test(bundle), 'لا (?<! ولا (?<= في app.bundle.js');
 });
 
 test('١٢. المراجعة قبل الدمج: صورة مرفقة + «للبيع» إعلان كما كان، والتفاصيل تغلب كلمات السعر، والكتابة بخطّ على الصورة', () => {
@@ -371,7 +373,7 @@ test('٢١. المراجعة العدائيّة: «تمام/زين/اوكي شك
   const finder = SRC.slice(i, SRC.indexOf('\n', j)).replace('const __lastU = ', 'return ');
   const R = {};
   vm.runInNewContext([line('const GATE_BUILD_RE = '), line('const GATE_CMD_RE = '),
-    line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtEntityRe = '),
+    line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtNotLookupRe = '), line('const __rtEntityRe = '),
     line('const __rtMineRe = '), line('const __rtFeatureRe = '), line('const __rtCloneRe = '),
     SRC.slice(SRC.indexOf('  const __rtIsLookup = '), SRC.indexOf('\n  };\n', SRC.indexOf('  const __rtIsLookup = ')) + 5),
     'this.pick = function(__ms){ const __gp = { code: "" }; ' + finder + ' };'].join('\n'), R);
