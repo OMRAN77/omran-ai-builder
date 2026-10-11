@@ -138,8 +138,8 @@
   }
   function setTab(v){
     if(TABS.indexOf(v)<0&&!(v==='director'&&drOwner())) return; tab=v;
-    var sel=id('videoMakerMode');
-    if(v!=='trend'&&v!=='clean'&&v!=='director'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
+    var sel=(v==='director')?null:id('videoMakerMode'); /* v-app-director: المخرج لا يمسّ الوضع */
+    if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
     buildTabs(); sync(); scrub();
   }
   function syncSamples(){
