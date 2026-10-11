@@ -1,0 +1,644 @@
+[
+ {
+  "label": "T",
+  "text": "عطني نماذج عندى بناء الصور في الانماط وفي الاستايل وفي الازياء وفي الفيديوات يعني مايكون شي ثابة يعني شي بالذكاء الاصطناعي",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "شو الصيغه الي موجوده في الانثروبك عشان يبني صوره او يصنع فيديو اوتصميم او اي شي في صوره ولا فيديو",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "شوفلي موضوع الصور",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "الصور تمسح من المحادثه",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "بعده الصور نفس الشي",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "كيف المستخدم يعرف جودة الصور؟",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "اقدر اضيف شخصيات يعني مش شخصيه وحده في الفيديو ٢ او ٣",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "الفيديو في الترند يغيّر الأشكال، شوف الاختلاف الكبير",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "وين ترقية الفيديو كيف أضيف الفيديو إذا كان مغبّش أريد تنظيفه",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "إذا دمجت الصور مع الفيديو باقة واحدة هل هذا رأي طيب",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "بخصوص نانو وGPT عن الصور مش بذيك الدقّة شو الحلّ وعطني أفضل فكرة",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "كلّ الصور غشّ، لا صورة نفس الطلب، شو سويت أنت",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "الفيديوهات ما تطلع الشخصيّة وأهمّ شي في الترندات",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "شوف الفيديوات كلّها ما تشتغل",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "من الي يكتب على الصور ونوع الخط",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ايتوكن مرتب منظم هذا يعني الي مافيه ضغط بيرتفعله الضغط",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "عطني أمثلة على إعلانات ناجحة لمطعم",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "عطني نماذج تصاميم للمطابخ الحديثة",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ابي نماذج فساتين سهرة",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "عطني أمثلة على أنماط الصور الموجودة عندكم",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ابي افكار فيديوهات لقناتي في اليوتيوب",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "عطني عناوين لفيديو عن السفر",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "اكتب لي سكربت فيديو مدته دقيقة عن القهوة",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ابي كابشن لصورة غروب على البحر",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "كم نقطة يكلف الفيديو",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ليش الفيديو ما اشتغل",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "الصورة طلعت مغبشة ليش",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ابي وظيفة مصمم جرافيك في دبي",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "سيارتي للبيع كم تتوقع سعرها كامري 2018",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "وش رأيك في إعلان سامسونج الجديد",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ابي اتعلم الرسم من الصفر",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "لخّص لي فيلم انسبشن",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "عطني قائمة أفلام رعب حلوة",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "عطني افكار لبوستر عن اليوم الوطني",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "هل تقدر تسوي فيديو",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ابي اسوي قناة يوتيوب عن الطبخ وش تنصحني",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "عطني رابط فيديو يشرح بايثون",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ابغى انزل فيلم وين القاه",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "عطني اسماء لقناة فيديوهات طبخ",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "هل الفيديو يطلع بصوت",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "الصور اللي تطلعونها لها حقوق",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "اكتب لي دعوة عرس نصية للواتساب",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ابي شهادة خبرة من شركتي كيف اطلبها",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "عطني نماذج لوجوهات مطاعم مشهورة وش يميزها",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "ابي فيديو تعليمي عن الكسور لولدي من يوتيوب",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "أريد أفكار الفيديوهات",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "رأيك في فيلم الأمس",
+  "ctx": [
+   "fresh",
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "اقترح لي اسم",
+  "ctx": [
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "اكتب قصيدة قصيرة عن القطط",
+  "ctx": [
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "كم سعر الصورة هذي بالنقاط",
+  "ctx": [
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "شكرا حلوة",
+  "ctx": [
+   "afterImage"
+  ]
+ },
+ {
+  "label": "T",
+  "text": "وش رأيك فيها؟",
+  "ctx": [
+   "afterImage"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "ارسم قطة",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "سو لي صورة قطة بدون كتابة",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "عطني صورة غروب",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "ارسم ولد يكتب على السبورة",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "اصنع لي فيديو قصير عن البحر",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "سوّ لي فيديو إعلان لمطعم شاورما",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "ابي فيديو قصير لمطعمي",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "صمم لي شعار لمقهى اسمه سحاب",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "صمم بوستر لليوم الوطني",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "سوي لي بطاقة دعوة عرس",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "ابي شهادة تقدير لموظف اسمه أحمد",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "ولّد صورة لسيارة رياضية حمراء",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "سو لي إعلان شقة للإيجار في الشارقة 3 غرف",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "للبيع لاندكروزر 2020 ممشى 80 ألف",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "ارسم لي مخطط بيت دورين",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "سوّ لي تصميم داخلي لغرفة معيشة مودرن",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "ابي طابع بريدي باسمي",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "سوي شخصية كرتونية تتكلم وتقول مرحبا",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "make a video of a cat playing piano",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "draw a dragon",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "ابي لوجو لمتجري",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "عطني فيديو عن تاريخ دبي",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "هات فيديو عن البحر",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "ابي غلاف لكتابي",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "سوّ لي انفوجرافيك عن فوائد الماء",
+  "ctx": [
+   "fresh"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "غيرها الى كرتون",
+  "ctx": [
+   "afterImage"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "و خلي الصوره فيها بالونات",
+  "ctx": [
+   "afterImage"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "خلها بالليل",
+  "ctx": [
+   "afterImage"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "اكتب عليها مبروك",
+  "ctx": [
+   "afterImage"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "حرّك الصورة",
+  "ctx": [
+   "afterImage"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "حوّل هذي الصورة لكرتون",
+  "ctx": [
+   "attached"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "خلها أوضح",
+  "ctx": [
+   "attached"
+  ]
+ },
+ {
+  "label": "M",
+  "text": "حط خلفية بحر",
+  "ctx": [
+   "attached"
+  ]
+ }
+]
