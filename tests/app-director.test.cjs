@@ -259,7 +259,7 @@ test('٧. القسم في شريط صانع الفيديو للمالك وحده
   assert.ok(js.includes("if(!card||!drOwner()||id('vmkDirector')) return;"), 'اللوحة لا تُنشأ لغير المالك — لا أثر في DOM');
   assert.ok(js.includes("if(TABS.indexOf(v)<0&&!(v==='director'&&drOwner())) return;"));
   assert.ok(js.includes("if(v==='director') return L('vdTab')||'مخرج التطبيق';"));
-  for (const k of ['action=app-director-plan', 'action=app-director-token', "'/api/media?action=tts'", "'/api/media?action=maha-image'", "'/api/portrait-style'", "bridge+'/render'", "bridge+'/render/'+encodeURIComponent(jobId)", 'setTimeout(x,3000)', 'window.autoSaveVideo(DR.out']) assert.ok(js.includes(k), k);
+  for (const k of ['action=app-director-plan', 'action=app-director-token', 'action=app-director-voice', "'/api/media?action=tts'", "'/api/media?action=maha-image'", "'/api/portrait-style'", "bridge+'/render'", "bridge+'/render/'+encodeURIComponent(jobId)", 'setTimeout(x,3000)', 'window.autoSaveVideo(DR.out']) assert.ok(js.includes(k), k);
   assert.ok(js.includes("voice:'maha',lang:lang,gender:speaker"), 'التعليق بصوت مها/عبدالله باللغة المختارة');
   assert.ok(!/CC_BRIDGE_SECRET|CC_BRIDGE_URL|railway\.app|vercel\.app/.test(js), 'لا سرّ ولا عنوان جسر في العميل');
   const block = js.slice(js.indexOf('v-app-director (المالك:'), js.indexOf('v-vmk-clean-video: قسم'));
@@ -273,11 +273,11 @@ test('٧. القسم في شريط صانع الفيديو للمالك وحده
   assert.ok(js.includes("if(sr&&(sr.status===404||sr.status===401))") && js.includes("if(++lost>=20)"), 'جسر أُعيد تشغيله أو انقطع لا يُنتظر للأبد');
   assert.ok(js.includes("DR.run++; DR.busy=false; syncDirector();"), 'الفشل يوقف نداءات الخلفيّة الباقية');
   assert.ok(!block.includes("L('vdSaved')"), 'لا «حُفظ في فيديوهاتي»: لا مكتبة فيديوهات في التطبيق');
-  assert.ok(js.includes("for(var att=1;att<=6&&!s.audio&&!voiceDead&&my===DR.run;att++)") && js.includes("coolUntil=Math.max(coolUntil,Date.now()+Math.min(4000*att,20000))") && js.includes("throw drFail('voice '+(voiced.length-missV)+'/'+voiced.length+' '+lastTts)"), 'حدّ الطلبات عند مزوّد الصوت: انتظار وإعادة، وفشل معلَن إن صمت خُمس المشاهد');
+  assert.ok(js.includes("for(var att=1;att<=6&&!s.audio&&!dead&&my===DR.run;att++)") && js.includes("cool=Math.max(cool,Date.now()+Math.min(4000*att,20000))") && js.includes("throw drFail('voice '+(voiced.length-vres.miss)+'/'+voiced.length+' '+"), 'حدّ الطلبات عند مزوّد الصوت: انتظار وإعادة، وفشل معلَن إن صمت خُمس المشاهد');
   // v-app-director-voice-first (لقطة المالك «voice 15/15 401» بعد توليد النماذج): التعليق قبل النماذج، والرفض النهائيّ يوقف الكلّ فورًا بنصّ ردّ الخادم
   assert.ok(js.indexOf('/* ٢) التعليق أوّلًا') > 0 && js.indexOf('/* ٢) التعليق أوّلًا') < js.indexOf('/* ٣) نماذج الأنماط') && js.indexOf("'/api/media?action=tts'") < js.indexOf("'/api/portrait-style'"), 'الصوت يُسجَّل قبل الصرف على الصور');
-  assert.ok(js.includes("if(r.status===401||r.status===403||/insufficient_quota|no credits|invalid subscription/i.test(et)) voiceDead=true;") && js.includes("if(voiceDead||missV>Math.max(1,Math.floor(voiced.length*0.2)))"), 'مفتاح مرفوض أو رصيد منتهٍ = توقّف فوريّ');
-  assert.ok(js.includes("lastTts=r.status+(et?' '+et:'');") && js.includes("if(err){ try{ m.scrollIntoView({block:'end'}); }"), 'سبب الخادم في السطر، والسطر في مجال النظر');
+  assert.ok(js.includes("if(r.status===401||r.status===403||/insufficient_quota|no credits|invalid subscription/i.test(et)) dead=true;") && js.includes("vLimit=Math.max(1,Math.floor(voiced.length*0.2));") && js.includes("if(s.audio) got++; else { miss++; if(miss>vLimit||(!got&&miss>=2)) dead=true; }") && js.includes("if(vres.dead||vres.miss>vLimit){ drStep('voice','err');"), 'مفتاح مرفوض أو رصيد منتهٍ = توقّف فوريّ');
+  assert.ok(js.includes("last=r.status+(et?' '+et:'');") && js.includes("if(err){ try{ m.scrollIntoView({block:'end'}); }"), 'سبب الخادم في السطر، والسطر في مجال النظر');
   assert.ok(js.includes("var DR_SPAN={plan:[0,14],voice:[14,30],samples:[30,58],shots:[58,84],join:[84,98]};"));
   // v-app-director-motion: الشاشة الحيّة أثناء التوليد، والخطوات بترتيب تنفيذها، وتبويب بلا صورة مكسورة
   assert.ok(js.includes('id="vdStage" hidden') && js.includes('function drStageStart()') && js.includes('ST.iv=setInterval(drStageTick,1000)') && js.includes('function drStageStop(hide){ clearInterval(ST.iv);'), 'الشاشة الحيّة تعمل أثناء التوليد فقط');
@@ -318,8 +318,8 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
     seen[lg] = obj.vdTab;
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=445'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=738';"));
+  assert.ok(read('index.html').includes('/js/video.js?v=446'));
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=739';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });
 
@@ -330,4 +330,147 @@ test('٩. أصوات التعليق بالـ١٤ لغة: كلّ لغة واجه�
   }
   assert.ok(tts.includes("MAHA_VOICE_MAP[rawLang] ? rawLang : rawLang.slice(0, 2)"), 'fil لا تُقصّ إلى fi');
   assert.ok(tts.includes("ar: ['ar-AE', 'ar-AE-FatimaNeural', 'ar-AE-HamdanNeural']"), 'الصوت العربيّ كما كان');
+});
+
+/* ───── v-app-director-voice (المالك بعد «voice 15/15 401»: «تمام ابدا فيه لكن حط ميزه مع صوت ولا بدون») ───── */
+const VOICE_KEYS = ['vdVoiceLabel', 'vdVoiceOn', 'vdVoiceOff', 'vdVoiceBackup', 'vdFailVoice'];
+const wavB64 = (ms) => D.toWav(Buffer.alloc(Math.round(24000 * 2 * ms / 1000), 1).toString('base64')).toString('base64');
+const voiceReply = (status, data, msg) => ({ ok: status < 400, status, json: async () => (status >= 400 ? { error: { message: msg || 'denied' } } : data) });
+const stepsAudio = (b64) => ({ steps: [{ type: 'thought' }, { type: 'model_output', content: [{ type: 'audio', data: b64 }] }] });
+function fakeVoice(script) {
+  const calls = [];
+  return { calls, fetchImpl: async (url, init) => { const b = JSON.parse(init.body); calls.push({ url: String(url), model: b.model, body: b, headers: init.headers }); return script(calls.length, b.model); } };
+}
+
+test('١٠. الصوت الاحتياطيّ: طلب بالشكل الموثّق والمفتاح في الترويسة، النموذج المرفوض يُتخطّى، والعابر يعود بحالته، والـPCM الخام يُغلَّف WAV', async () => {
+  // الشكل: واجهة interactions، المفتاح في الترويسة لا في العنوان، الصوت حسب المتحدّث، ولا حفظ عند المزوّد
+  let p = fakeVoice(() => voiceReply(200, stepsAudio(wavB64(800))));
+  let r = await D.requestVoice({ text: 'مرحبًا', speaker: 'male', lang: 'ar', apiKey: 'KEY-1', env: {}, fetchImpl: p.fetchImpl });
+  assert.equal(r.ok, true); assert.equal(r.model, D.VOICE_MODELS[0]);
+  assert.equal(r.wav.toString('ascii', 0, 4), 'RIFF'); assert.equal(r.wav.toString('ascii', 8, 12), 'WAVE');
+  const c = p.calls[0];
+  assert.ok(c.url.endsWith('/v1beta/interactions') && !c.url.includes('KEY-1'), 'المفتاح ليس في العنوان');
+  assert.equal(c.headers['x-goog-api-key'], 'KEY-1');
+  assert.equal(c.body.input[0].content[0].text, 'مرحبًا');
+  assert.deepEqual(c.body.response_format, { type: 'audio' }); assert.equal(c.body.store, false);
+  assert.deepEqual(c.body.generation_config.speech_config, [{ voice: 'Charon' }]);
+  assert.equal(D.voiceName('female', {}), 'Kore'); assert.equal(D.voiceName('female', { DIRECTOR_VOICE_FEMALE: 'Aoede' }), 'Aoede');
+  assert.equal(D.voiceName('male', { DIRECTOR_VOICE_MALE: 'bad name!' }), 'Charon', 'اسم صوت غير صالح من البيئة يُهمل');
+  assert.deepEqual(D.voiceModels({ DIRECTOR_TTS_MODEL: 'x-tts' }).slice(0, 2), ['x-tts', D.VOICE_MODELS[0]]);
+  assert.equal(D.voiceModels({ DIRECTOR_TTS_MODEL: D.VOICE_MODELS[1] }).length, D.VOICE_MODELS.length, 'بلا تكرار');
+  // نموذج غير متاح (404) ثمّ ردّ بلا صوت ← الثالث ينجح
+  p = fakeVoice((n) => (n === 1 ? voiceReply(404, null, 'model not found') : n === 2 ? voiceReply(200, { steps: [] }) : voiceReply(200, stepsAudio(wavB64(600)))));
+  r = await D.requestVoice({ text: 'hi', speaker: 'female', lang: 'en', apiKey: 'k', env: {}, fetchImpl: p.fetchImpl });
+  assert.equal(r.ok, true); assert.equal(r.model, D.VOICE_MODELS[2]); assert.deepEqual(r.attempts.map((a) => a.why), ['http_404', 'no_audio']);
+  // النموذج الذي نجح قبلُ يُجرَّب أوّلًا (لا طلب ضائع لكلّ جملة)، واسم من خارج القائمة يُهمل
+  p = fakeVoice(() => voiceReply(200, stepsAudio(wavB64(600))));
+  r = await D.requestVoice({ text: 'hi', speaker: 'female', lang: 'en', apiKey: 'k', env: {}, fetchImpl: p.fetchImpl, prefer: D.VOICE_MODELS[2] });
+  assert.equal(r.model, D.VOICE_MODELS[2]); assert.equal(p.calls.length, 1);
+  p = fakeVoice(() => voiceReply(200, stepsAudio(wavB64(600))));
+  r = await D.requestVoice({ text: 'hi', speaker: 'female', lang: 'en', apiKey: 'k', env: {}, fetchImpl: p.fetchImpl, prefer: 'evil-model' });
+  assert.equal(r.model, D.VOICE_MODELS[0], 'نموذج من خارج القائمة لا يُنادى');
+  // حدّ الطلبات: يتوقّف فورًا ويعود 429 (العميل هو من ينتظر ويعيد) — لا حرق لبقيّة النماذج
+  p = fakeVoice(() => voiceReply(429, null, 'Resource exhausted'));
+  r = await D.requestVoice({ text: 'hi', speaker: 'female', lang: 'en', apiKey: 'k', env: {}, fetchImpl: p.fetchImpl });
+  assert.equal(r.ok, false); assert.equal(r.status, 429); assert.equal(p.calls.length, 1);
+  // الكلّ مرفوض: فشل نهائيّ بسبب كلّ نموذج
+  p = fakeVoice(() => voiceReply(403, null, 'API key not valid'));
+  r = await D.requestVoice({ text: 'hi', speaker: 'female', lang: 'en', apiKey: 'k', env: {}, fetchImpl: p.fetchImpl });
+  assert.equal(r.ok, false); assert.equal(r.status, 403); assert.equal(p.calls.length, D.VOICE_MODELS.length);
+  assert.ok(D.diagOf(r.attempts).includes('http_403') && D.diagOf(r.attempts).includes('API key not valid'));
+  // PCM خام بلا ترويسة يُغلَّف: ٢٤ك هرتز أحاديّ ١٦ بت، والطول صحيح؛ وWAV جاهز لا يُمسّ
+  const pcm = Buffer.alloc(48000, 3);
+  const w = D.toWav(pcm.toString('base64'));
+  assert.equal(w.length, 44 + 48000); assert.equal(w.readUInt32LE(24), 24000); assert.equal(w.readUInt16LE(22), 1); assert.equal(w.readUInt16LE(34), 16); assert.equal(w.readUInt32LE(40), 48000);
+  assert.equal(D.toWav(w.toString('base64')).length, w.length, 'WAV جاهز لا يُغلَّف مرّتين');
+  // أشكال الردّ الأقدم تُقرأ احتياطًا
+  const b = 'A'.repeat(200);
+  assert.equal(D.pickAudio(stepsAudio(b)), b); assert.equal(D.pickAudio({ output_audio: { data: b } }), b);
+  assert.equal(D.pickAudio({ candidates: [{ content: { parts: [{ inlineData: { data: b } }] } }] }), b);
+  assert.equal(D.pickAudio({ steps: [{ type: 'thought', content: [{ type: 'audio', data: b }] }] }), '', 'صوت خارج model_output لا يُؤخذ');
+  assert.equal(D.pickAudio(null), '');
+});
+
+test('١١. إجراء app-director-voice: للمالك وحده، ٥٠٣ بلا مفتاح، ٢٠٠ بـWAV، والعابر بحالته وغيره ٥٠٢ مع السبب؛ والخطّة بلا صوت تطلب جملة تُقرأ', async () => {
+  const saved = { g: process.env.GEMINI_API_KEY, f: global.fetch };
+  try {
+    delete process.env.GEMINI_API_KEY;
+    let r = res();
+    await handler({ method: 'POST', query: { action: 'app-director-voice' }, body: { token: ownerToken('sara'), text: 'x' } }, r);
+    assert.equal(r.code, 403, 'غير المالك');
+    r = res();
+    await handler({ method: 'POST', query: { action: 'app-director-voice' }, body: { token: ownerToken('omran'), text: 'x' } }, r);
+    assert.equal(r.code, 503); assert.equal(r.body.error, 'voice_unconfigured'); assert.doesNotMatch(JSON.stringify(r.body), BANNED);
+    process.env.GEMINI_API_KEY = 'k';
+    r = res();
+    await handler({ method: 'POST', query: { action: 'app-director-voice' }, body: { token: ownerToken('omran'), text: '  ' } }, r);
+    assert.equal(r.code, 400); assert.equal(r.body.error, 'text_required');
+    let seen = null;
+    global.fetch = async (url, init) => { seen = JSON.parse(init.body); return voiceReply(200, stepsAudio(wavB64(700))); };
+    r = res();
+    await handler({ method: 'POST', query: { action: 'app-director-voice' }, body: { token: ownerToken('omran'), text: 'جملة التعليق', lang: 'xx', speaker: 'male' } }, r);
+    assert.equal(r.code, 200); assert.equal(r.body.mime, 'audio/wav'); assert.equal(Buffer.from(r.body.audio, 'base64').toString('ascii', 0, 4), 'RIFF');
+    assert.equal(seen.generation_config.speech_config[0].voice, 'Charon'); assert.equal(seen.input[0].content[0].text, 'جملة التعليق');
+    global.fetch = async () => voiceReply(429, null, 'quota');
+    r = res();
+    await handler({ method: 'POST', query: { action: 'app-director-voice' }, body: { token: ownerToken('omran'), text: 'x' } }, r);
+    assert.equal(r.code, 429, 'العابر بحالته: العميل ينتظر ويعيد'); assert.equal(r.body.error, 'voice_failed');
+    global.fetch = async () => voiceReply(404, null, 'model is not found');
+    r = res();
+    await handler({ method: 'POST', query: { action: 'app-director-voice' }, body: { token: ownerToken('omran'), text: 'x' } }, r);
+    assert.equal(r.code, 502); assert.equal(r.body.why, 'http_404'); assert.ok(r.body.diag.includes('not found'), 'السبب يصل المالك');
+  } finally { global.fetch = saved.f; if (saved.g == null) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = saved.g; }
+  // الخطّة: بلا صوت ← تعليمة الجملة المقروءة في الطلب، ومع الصوت لا
+  const cat = CAT.buildCatalog({ lang: 'ar' });
+  const mk = (silent) => D.buildPrompt({ request: 'جولة', lang: 'ar', speaker: 'female', minutes: 1, silent, part: 1, parts: 1, catalog: cat, catalogText: CAT.catalogText(cat) });
+  assert.ok(mk(true).includes('بلا تعليق صوتيّ') && !mk(false).includes('بلا تعليق صوتيّ'));
+  const p = fakeProvider(() => reply(200, planText(6)));
+  await ask(p, { silent: true });
+  assert.ok(JSON.stringify(p.bodies[0]).includes('بلا تعليق صوتيّ'), 'requestPlan يمرّر الخيار إلى الطلب');
+  assert.ok(read('api/_lib/app-director.js').includes('silent: body.voice === false,'), 'المعالج يقرأ الخيار من الطلب');
+});
+
+test('١٢. الواجهة: خيار «مع صوت / بدون صوت»، والصوت المرفوض يُستبدل بالاحتياطيّ للفيديو كلّه، والنصّ يُرسم على النماذج — بالـ١٤ لغة', () => {
+  const js = read('js/video.js');
+  assert.ok(js.includes('<select id="vdVoice"><option value="on"></option><option value="off"></option></select>'), 'الخيار في صفّ الخيارات، والافتراضيّ مع صوت');
+  assert.ok(js.includes("labs[3].textContent=L('vdVoiceLabel');") && js.includes("vo.options[0].textContent=L('vdVoiceOn'); vo.options[1].textContent=L('vdVoiceOff');") && js.includes("box.querySelector('#vdSpeaker').disabled=(vo.value==='off');"), 'بلا صوت يعطّل اختيار المتحدّث');
+  assert.ok(js.includes("var voiceOn=((id('vdVoice')||{}).value!=='off')") && js.includes('minutes:minutes,voice:voiceOn,token:tk'), 'الخيار يبلغ كاتب الخطّة');
+  assert.ok(js.includes('var voiced=voiceOn?scenes.filter(function(s){ return !!s.narration; }):[],') && js.includes("if(!voiceOn) drStep('voice','ok',L('vdVoiceOff'));"), 'بلا صوت: لا نداء صوت واحد');
+  assert.ok(js.includes('o.cap=voiceOn?o.text:(o.narration||o.text);') && js.includes("text:(s.type==='screen'?s.cap:s.text)") && js.includes("o.sub=voiceOn?(sc.highlight||''):(o.narration||sc.highlight||'');"), 'بلا صوت: جملة المشهد هي النصّ المعروض');
+  assert.ok(js.includes("drJson('/api/ai?action=app-director-voice',{text:s.narration,lang:lang,speaker:speaker,model:vModel||undefined,token:tk})") && js.includes('if(br.ok&&br.json&&br.json.audio){ s.audio=br.json.audio; vModel=br.json.model||vModel; }'), 'الصوت الاحتياطيّ من الخادم');
+  assert.ok(js.includes('if(vres.dead||vres.miss>vLimit){\n          scenes.forEach(') && js.includes("scenes.forEach(function(s){ s.audio=''; }); backupVoice=true;") && js.includes('vres=await voiceRun(true);'), 'الرفض النهائيّ ← الاحتياطيّ للفيديو كلّه (لا خلط صوتين)');
+  assert.ok(js.includes("drStep('voice','ok',backupVoice?L('vdVoiceBackup'):(vres.miss?("), 'الصوت الاحتياطيّ يُعلَن في الخطوة');
+  assert.ok(js.includes("(backupVoice?('main: '+mainWhy+' | backup: '+vres.last):vres.last)"), 'فشل الاثنين: سبب كلٍّ منهما في السطر');
+  assert.ok(js.includes("/^voice/.test(code)?'vdFailVoice':"), 'فشل الصوتين يدلّ المالك على «بدون صوت»');
+  assert.ok(js.includes('function drCaptionSample(b64,mime,text,dir){') && js.includes('if(s.cap){ var cc=await drCaptionSample(s.image,s.mime,s.cap,capDir);'), 'نصّ المشهد مرسوم على نموذج النمط');
+  assert.ok(js.indexOf('var cc=await drCaptionSample') < js.indexOf("s.board.img='data:'+s.mime+';base64,'+s.image;"), 'الشاشة الحيّة تعرض النموذج بنصّه');
+  // دالّة لفّ السطور الحقيقيّة: لا سطر أعرض من الحدّ، والكلمات كلّها محفوظة بترتيبها
+  const src = js.slice(js.indexOf('function drWrap(ctx,text,maxW){'), js.indexOf('function drCaptionSample('));
+  const drWrap = vm.runInNewContext('(' + src.trim() + ')');
+  const ctx = { measureText: (t) => ({ width: t.length * 10 }) };
+  const words = 'واحد اثنان ثلاثة أربعة خمسة ستة سبعة';
+  const lines = drWrap(ctx, words, 150);
+  assert.ok(lines.length >= 3 && lines.every((l) => l.length * 10 <= 150)); assert.equal(lines.join(' '), words);
+  assert.equal(drWrap(ctx, '', 150).length, 0);
+  assert.equal(drWrap(ctx, 'كلمةطويلةجداجداجدا', 50).join('|'), 'كلمةطويلةجداجداجدا', 'كلمة أطول من السطر تبقى كاملة');
+  const css = read('css/modules.css');
+  assert.ok(css.includes('.vmk-dir-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}') && css.includes('#videoMakerModal .vmk-dir-row{grid-template-columns:1fr 1fr}'), 'أربعة خيارات في صفّ، وعلى الجوّال صفّان');
+  assert.ok(read('index.html').includes('css/modules.css?v=680'));
+  // النصوص الأربعة بالـ١٤ لغة، بلا اسم مزوّد
+  const core = read('js/app-03-i18n-data.js');
+  const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
+  vm.runInNewContext(core, base);
+  for (const k of VOICE_KEYS) { assert.ok(base.I18N.ar[k] && base.I18N.en[k], k + ' داخل ar وen'); assert.doesNotMatch(base.I18N.ar[k] + base.I18N.en[k], BANNED, k); }
+  assert.ok(base.I18N.ar.vdFailVoice.includes(base.I18N.ar.vdVoiceOff) && base.I18N.en.vdFailVoice.includes(base.I18N.en.vdVoiceOff));
+  assert.equal(base.I18N.ar.vdVoiceOff, 'بدون صوت'); assert.equal(base.I18N.ar.vdVoiceOn, 'مع صوت');
+  const off = {};
+  for (const lg of LANGS) {
+    const m = read('i18n/' + lg + '.js').match(/v-app-director-voice[^\n]*Object\.assign\(I18N\['(\w+)'\], (\{.*\})\);/);
+    assert.ok(m && m[1] === lg, lg + ' كتلة الترجمة');
+    const obj = JSON.parse(m[2]);
+    for (const k of VOICE_KEYS) { assert.ok(obj[k] && obj[k].trim().length > 1, lg + ' ← ' + k); assert.doesNotMatch(obj[k], BANNED, lg + ' ← ' + k); }
+    assert.ok(obj.vdFailVoice.includes(obj.vdVoiceOff), lg + ' ← رسالة الفشل تسمّي الخيار بنصّه');
+    off[lg] = obj.vdVoiceOff;
+  }
+  assert.ok(new Set(Object.values(off)).size >= 11, 'ترجمات لا نسخ');
 });

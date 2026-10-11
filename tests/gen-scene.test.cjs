@@ -444,6 +444,7 @@ test('١٣. لا اسم مزوّد، والحزمة والتسجيل والقر�
   assert.ok(bundle.includes('function panelBusy(p, ptxt){'), 'الحزمة تحمل إصلاح القراءة');
   assert.ok(!bundle.includes('genw-hud') && !bundle.includes('genw-face') && !bundle.includes('genw-rain'), 'الحزمة بلا اللوحة الداكنة ولا القرص ولا مطر الصورة كلّها');
   assert.ok(JSON.parse(read('package.json')).scripts.test.includes('node tests/gen-scene.test.cjs'));
-  const dec = read('knowledge/DECISIONS.md').slice(0, 9000);
+  // القرار مسجَّل أينما صار في السجلّ: قصّ الرأس بعدد أحرف ثابت كان ينكسر بكلّ قرار جديد يُضاف فوقه (كسره v-app-director-voice-first في #996)
+  const dec = read('knowledge/DECISIONS.md');
   assert.ok(dec.includes('v-gen-scene-exact') && dec.includes('v-gen-steady'));
 });

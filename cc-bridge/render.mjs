@@ -28,7 +28,7 @@ export const WORK_W = 2560, WORK_H = 1440;   // مقاس العمل قبل zoomp
 export const XFADE = 0.5;                    // ثانية الانتقال
 export const TAIL = 0.5;                     // ما يُضاف بعد نهاية الصوت
 export const LIMITS = {
-  scenes: 90, steps: 8, imageChars: 9e6, audioChars: 4e6, bodyBytes: 160e6, textChars: 80, subChars: 120,
+  scenes: 90, steps: 8, imageChars: 9e6, audioChars: 4e6, bodyBytes: 160e6, textChars: 180, subChars: 200,
   minSec: 2.5, maxSec: 40, ttlMs: 24 * 3600 * 1000, jobTimeoutMs: 55 * 60 * 1000, segmentTimeoutMs: 6 * 60 * 1000, joinTimeoutMs: 25 * 60 * 1000,
 };
 const RTL = new Set(['ar', 'ur']);
@@ -142,6 +142,11 @@ function fitFilter(type, tag) {
     ? 'split[bg' + tag + '][fg' + tag + '];[bg' + tag + ']scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=increase,crop=' + WORK_W + ':' + WORK_H + ',gblur=sigma=40,eq=brightness=-0.12[bgb' + tag + '];[fg' + tag + ']scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=decrease[fgs' + tag + '];[bgb' + tag + '][fgs' + tag + ']overlay=(W-w)/2:(H-h)/2,setsar=1'
     : 'scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=decrease,pad=' + WORK_W + ':' + WORK_H + ':(ow-iw)/2:(oh-ih)/2:color=0x07080c,setsar=1';
 }
+/** نموذج نمط وصل بنسبة ١٦:٩ (التعليق مرسوم عليه في المتصفّح) يُعامل كلقطة: بلا خلفيّة مموّهة (أسرع) */
+function fitType(scene) { return scene.type === 'style_sample' && !scene.wide ? 'style_sample' : 'screen'; }
+export function isWide(size) { return !!(size && size.w > 0 && size.h > 0 && Math.abs(size.w / size.h - 16 / 9) < 0.03); }
+/** امتداد ملفّ الصوت من محتواه: RIFF/WAVE = wav (الصوت الاحتياطيّ)، وغيره mp3 */
+export function audioExtOf(buf) { return (buf && buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WAVE') ? 'wav' : 'mp3'; }
 /* الانتقال: ذوبان حول بطاقات العناوين، وانزلاق ناعم باتّجاه القراءة كلّ ثالث مشهد */
 function transitionFor(i, scenes, dir) {
   if (scenes[i].type === 'title' || scenes[i - 1].type === 'title') return 'fade';
@@ -152,9 +157,9 @@ function transitionFor(i, scenes, dir) {
 export function sceneVideoFilter(scenes, index, dir) {
   const s = scenes[index], next = scenes[index + 1];
   const F = slotFrames(s), lead = index > 0 ? XF : 0;
-  const own = '[0:v]' + fitFilter(s.type, 'a') + ',' + zoomFilter(MOTIONS[index % MOTIONS.length], F + lead, lead, F) + ',format=yuv420p';
+  const own = '[0:v]' + fitFilter(fitType(s), 'a') + ',' + zoomFilter(MOTIONS[index % MOTIONS.length], F + lead, lead, F) + ',format=yuv420p';
   if (!next) return own + '[v]';
-  const nx = '[1:v]' + fitFilter(next.type, 'b') + ',' + zoomFilter(MOTIONS[(index + 1) % MOTIONS.length], slotFrames(next) + XF, 0, XF) + ',format=yuv420p';
+  const nx = '[1:v]' + fitFilter(fitType(next), 'b') + ',' + zoomFilter(MOTIONS[(index + 1) % MOTIONS.length], slotFrames(next) + XF, 0, XF) + ',format=yuv420p';
   return own + '[own];' + nx + '[nx];[own][nx]xfade=transition=' + transitionFor(index + 1, scenes, dir) + ':duration=' + XFADE + ':offset=' + ((F - XF) / FPS).toFixed(3) + '[v]';
 }
 /** أمر مقطع واحد: صورته (+ صورة التالي للذوبان) + صوته أو صمت → مقطع 1080p30 بطول خانته بالضبط */
@@ -185,7 +190,7 @@ export function buildFfmpegArgs(manifest, dir) {
   const sc = manifest.scenes;
   const segs = sc.map((s, i) => {
     const out = join(d, 'seg_' + i + '.mp4');
-    const files = { image: sceneImage(s, i, d), nextImage: i < sc.length - 1 ? sceneImage(sc[i + 1], i + 1, d) : '', audio: s.audio ? join(d, 'audio_' + i + '.mp3') : '', out };
+    const files = { image: sceneImage(s, i, d), nextImage: i < sc.length - 1 ? sceneImage(sc[i + 1], i + 1, d) : '', audio: s.audio ? join(d, 'audio_' + i + '.' + (s.audioExt || 'mp3')) : '', out };
     return { index: i, out, needs: [i].concat(i < sc.length - 1 ? [i + 1] : []), args: sceneArgs(sc, i, files, manifest.dir) };
   });
   const out = join(d, 'video.mp4'), list = join(d, 'concat.txt');
@@ -213,7 +218,7 @@ export function addCaption(arg) {
   var old = document.getElementById('__dirCap'); if (old) old.remove();
   if (!t) return;
   var d = document.createElement('div'); d.id = '__dirCap'; d.dir = dir; d.textContent = t;
-  d.style.cssText = 'position:fixed;left:50%;bottom:' + (bottom || 56) + 'px;transform:translateX(-50%);z-index:2147483647;max-width:72vw;padding:10px 24px;border-radius:999px;background:rgba(7,8,12,.84);border:1px solid rgba(232,194,122,.55);color:#f6e7c3;font:700 20px/1.45 Tajawal,system-ui,sans-serif;box-shadow:0 20px 50px -20px rgba(0,0,0,.9);pointer-events:none;text-align:center';
+  d.style.cssText = 'position:fixed;left:50%;bottom:' + (bottom || 56) + 'px;transform:translateX(-50%);z-index:2147483647;max-width:72vw;padding:10px 24px;border-radius:' + (String(t).length > 48 ? '18px' : '999px') + ';background:rgba(7,8,12,.84);border:1px solid rgba(232,194,122,.55);color:#f6e7c3;font:700 20px/1.45 Tajawal,system-ui,sans-serif;box-shadow:0 20px 50px -20px rgba(0,0,0,.9);pointer-events:none;text-align:center';
   document.body.appendChild(d);
 }
 /** مستطيل القصّ حول عنصر: يُوسَّع إلى ١٦:٩ مع هامش ويُحصر في الشاشة — null إن غاب العنصر */
@@ -248,6 +253,11 @@ export function run(bin, args, opts) {
     child.on('error', (e) => { done = true; clearTimeout(timer); resolve({ code: -1, out, err: err + String(e && e.message || e) }); });
     child.on('close', (code) => { done = true; clearTimeout(timer); resolve({ code: code == null ? -1 : code, out, err }); });
   });
+}
+export async function probeSize(ffprobe, file) {
+  const r = await run(ffprobe, ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0:s=x', file], { timeoutMs: 30000 });
+  const m = /^(\d+)x(\d+)/.exec(String(r.out || '').trim());
+  return (r.code === 0 && m) ? { w: Number(m[1]), h: Number(m[2]) } : null;
 }
 export async function probeSeconds(ffprobe, file) {
   const r = await run(ffprobe, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file], { timeoutMs: 30000 });
@@ -320,14 +330,19 @@ export function createRenderer(cfg) {
     const m = j.manifest;
     for (let i = 0; i < m.scenes.length; i++) {
       const s = m.scenes[i];
-      if (s.audio) { await writeFile(join(d, 'audio_' + i + '.mp3'), Buffer.from(s.audio, 'base64')); s.hasAudio = true; s.audio = 'file'; }
+      if (s.audio) {
+        const ab = Buffer.from(s.audio, 'base64');
+        s.audioExt = audioExtOf(ab);
+        await writeFile(join(d, 'audio_' + i + '.' + s.audioExt), ab); s.hasAudio = true; s.audio = 'file';
+      }
       if (s.image) { await writeFile(join(d, 'img_' + i + (s.mime === 'image/jpeg' ? '.jpg' : s.mime === 'image/webp' ? '.webp' : '.png')), Buffer.from(s.image, 'base64')); s.image = 'file'; }
       j.done = i + 1;
     }
     for (let i = 0; i < m.scenes.length; i++) {
       const s = m.scenes[i];
-      const a = s.hasAudio ? await probeSeconds(c.ffprobe, join(d, 'audio_' + i + '.mp3')) : 0;
+      const a = s.hasAudio ? await probeSeconds(c.ffprobe, join(d, 'audio_' + i + '.' + (s.audioExt || 'mp3'))) : 0;
       s.seconds = resolveSeconds(s, a);
+      if (s.type === 'style_sample') s.wide = isWide(await probeSize(c.ffprobe, sceneImage(s, i, d)));
     }
     j.seconds = Math.round(totalSeconds(m.scenes));
   }
@@ -466,7 +481,7 @@ export function createRenderer(cfg) {
     }
     for (const s of plan.segments) rm(s.out, { force: true }).catch(() => null);
     rm(plan.list, { force: true }).catch(() => null);
-    for (let i = 0; i < plan.segments.length; i++) for (const f of ['shot_' + i + '.png', 'audio_' + i + '.mp3', 'img_' + i + '.png', 'img_' + i + '.jpg', 'img_' + i + '.webp']) rm(join(d, f), { force: true }).catch(() => null);
+    for (let i = 0; i < plan.segments.length; i++) for (const f of ['shot_' + i + '.png', 'audio_' + i + '.mp3', 'audio_' + i + '.wav', 'img_' + i + '.png', 'img_' + i + '.jpg', 'img_' + i + '.webp']) rm(join(d, f), { force: true }).catch(() => null);
     return plan.join.out;
   }
 
