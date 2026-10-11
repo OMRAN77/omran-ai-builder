@@ -18,20 +18,20 @@ function jpegSize(file) {
   throw new Error('no SOF ' + file);
 }
 
-test('صورة لكلّ قسم من التسعة بمقاس واحد ٢٤٠×٢٤٠', () => {
+test('صورة لكلّ قسم من التسعة بمقاس واحد ٣٢٠×٣٢٠', () => {
   const js = read('js/video.js');
   const tabs = JSON.parse(js.match(/var TABS=(\[[^\]]+\]);/)[1].replace(/'/g, '"'));
   assert.strictEqual(tabs.length, 9);
   for (const t of tabs) {
     const f = path.join(root, 'assets/videos/tabs', t + '.jpg');
     assert.ok(fs.existsSync(f), t + '.jpg');
-    assert.deepStrictEqual(jpegSize(f), { w: 240, h: 240 }, t);
+    assert.deepStrictEqual(jpegSize(f), { w: 320, h: 320 }, t);
   }
 });
 
 test('التبويب صورة ثمّ اسم مترجم، والصفّ لا يُعصر في الشبكة ولا في عمود الجوّال', () => {
   const js = read('js/video.js');
-  assert.match(js, /im\.src='\/assets\/videos\/tabs\/'\+v\+'\.jpg\?v=1'/);
+  assert.match(js, /im\.src='\/assets\/videos\/tabs\/'\+v\+'\.jpg\?v=2'/);
   assert.match(js, /lb\.className='vmk-tab-lbl'; lb\.textContent=tabLabel\(v\)/);
   assert.match(js, /b\.appendChild\(im\); b\.appendChild\(lb\); tb\.appendChild\(b\);/);
   const css = read('css/modules.css');
