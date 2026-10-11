@@ -186,7 +186,7 @@ test('٦. «الحركة داخل، خلف العدّاد»: جريان داخل
 });
 
 test('٧. المشهد مكان خانة «صورتك»: يُركَّب قبل عنوانها، وتُخفى هي وعنوانها والنتيجة السابقة ما دام', () => {
-  assert.equal(W.PANELS.length, 4);
+  assert.equal(W.PANELS.length, 6, 'مع لوحتَي الترندات والديكور (v-scene-kinds)');
   const p = W.PANELS.find((x) => x.id === 'studio');
   assert.equal(p.sel, '#studioAiStatus'); assert.equal(p.kind, 'studio'); assert.equal(p.scope, '#studioAiModal');
   assert.equal(Array.from(p.busy).join('|'), '🎨'); assert.equal(Array.from(p.top).join('|'), '🎨');

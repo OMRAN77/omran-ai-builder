@@ -198,7 +198,8 @@
     go.onclick = function(){ make(t); };
     panel.appendChild(go);
     var st = document.createElement('div'); st.id = 'vtStatus'; st.style.cssText = 'display:none;margin-top:10px;font-size:13px;line-height:1.7;';
-    var out = document.createElement('div'); out.id = 'vtOut'; out.style.cssText = 'margin-top:10px;';
+    /* v-scene-kinds: مشهد التوليد يُركَّب تحت سطر الحالة — حيث تظهر النتيجة — فالنتيجة بعرضه (٧٦٠ موسَّطة) */
+    var out = document.createElement('div'); out.id = 'vtOut'; out.style.cssText = 'margin-top:10px;max-width:760px;margin-inline:auto;';
     panel.appendChild(st); panel.appendChild(out);
     try{ panel.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
   }
