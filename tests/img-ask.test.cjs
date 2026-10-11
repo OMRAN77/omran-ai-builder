@@ -22,13 +22,13 @@ test('٢. طلب صريح يبقي الأدوات — ومع «قصدك» أيض
   assert.equal(isClarifyTurn('مقصدكم'), false, 'كلمة أخرى لا تُلتقط');
 });
 
-test('٣. قائمة الأدوات في دور الكلام بلا صورة ولا فيديو، والباقي كما هو', () => {
+test('٣. القائمة بلا وسائط (تحليل وثيقة · لقطة المالك) = الأدوات ناقص الصورة والفيديو؛ ودور الاستيضاح بالقائمة الكاملة (v-tokens-tools)', () => {
   const names = (l) => l.map((t) => t.name);
   assert.ok(names(TOOLS).includes('edit_image') && names(TOOLS).includes('generate_image'));
   assert.deepEqual(names(TOOLS_NO_MEDIA), names(TOOLS).filter((n) => !['generate_image', 'edit_image', 'generate_video'].includes(n)));
   assert.ok(TOOLS_NO_MEDIA.length >= 3);
   const src = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
-  assert.ok(src.includes('tools: toolTurn ? toolsFor(__ownerReq, isClarifyTurn(lastUserText) || __analyzeDoc || __ownerUiShot) : undefined')); // v-providers-like-agent: الاستيضاح بلا أدوات الصورة (وأدوات المالك له) // دمج v-provider-errors: غير الاستيضاح = أدوات المستخدم (وأداة المالك له وحده)
+  assert.ok(src.includes('tools: toolTurn ? toolsFor(__ownerReq, __analyzeDoc || __ownerUiShot) : undefined')); // v-tokens-tools: القائمة ثابتة في دور الاستيضاح (بادئة الكاش)، والمنع بالذيل والحارس — tokens-cache ٦ و٧
 });
 
 test('٤. وصف edit_image: الاستيضاح ليس طلبًا، والوثيقة الرسميّة لا تُعدَّل', () => {

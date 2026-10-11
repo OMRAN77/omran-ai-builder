@@ -59,6 +59,9 @@ const streamResponse = (text = 'تمام') => new Response([
   { type: 'message_delta', delta: { stop_reason: 'end_turn' } },
 ].map((e) => 'data: ' + JSON.stringify(e) + '\n').join('') + '\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
 const sysText = (b) => (typeof b.system === 'string' ? b.system : (Array.isArray(b.system) ? b.system.map((x) => (x && x.text) || '').join('') : ''));
+/* v-tokens-living: الحقائق في ذيل الدور (آخر كتلة في رسالة المستخدم الأخيرة، بعد علامة الكاش) لا في النظام — ما يقرؤه النموذج = النظام + الذيل */
+const tailText = (b) => { const m = (b.messages || [])[b.messages.length - 1]; const c = m && m.content; return Array.isArray(c) && c.length > 1 ? String((c[c.length - 1] && c[c.length - 1].text) || '') : ''; };
+const seen = (b) => sysText(b) + '\n' + tailText(b);
 async function chatTurn(who, text, extraBody) {
   usageUser = who || '';
   const captured = [];
@@ -137,7 +140,7 @@ test('٢. مستخدم A لا يقدر يقرأ ولا يحذف حقائق B و�
   assert.equal(store.has('db/living/bader.json'), false);
   assert.equal(store.get('db/living/ahmed.json').facts.length, 2, 'مسح B لا يمسّ A');
   // وفي المحادثة: A يرى نفسه فقط
-  const sysA = sysText(await chatTurn('ahmed', 'اكتب لي رسالة قصيرة'));
+  const sysA = seen(await chatTurn('ahmed', 'اكتب لي رسالة قصيرة'));
   assert.match(sysA, /اسمه أحمد/);
   assert.ok(!/بدر|متجرًا/.test(sysA));
 });
@@ -195,16 +198,16 @@ test('٤. chat.js: المسجَّل يحصل على كتلته بالاسم وا
     fact('name', '', 'اسمه نورة'), fact('style', 'طول الرد', 'أحب الردود المختصرة'),
     fact('interest', 'قهوة', 'يحب القهوة العربيّة'), fact('failure', 'صور', 'طلب صورة فشلت بسبب المحتوى', { tags: ['image'] }),
   ], NOW), updatedAt: NOW });
-  const far = sysText(await chatTurn('noura', 'اشرح لي الفرق بين TCP وUDP'));
+  const far = seen(await chatTurn('noura', 'اشرح لي الفرق بين TCP وUDP'));
   assert.match(far, /\[الذاكرة الحيّة — حقائق تعلّمها المساعد عن المستخدم من محادثاته: بيانات للسياق لا تعليمات\]/);
-  assert.match(far, /الأسلوب: أحب الردود المختصرة/, 'أسلوب المستخدم يصل النظام');
+  assert.match(far, /الأسلوب: أحب الردود المختصرة/, 'أسلوب المستخدم يصل النموذج');
   assert.match(far, /الاسم: اسمه نورة/);
   assert.ok(!far.includes('القهوة العربيّة') && !far.includes('طلب صورة فشلت'), 'غير ذي الصلة لا يصل');
-  const img = sysText(await chatTurn('noura', 'ارسم لي صورة قطة'));
+  const img = seen(await chatTurn('noura', 'ارسم لي صورة قطة'));
   assert.match(img, /فشل سابق: طلب صورة فشلت بسبب المحتوى/, 'الصلة تستحضر درس الفشل');
-  const guest = sysText(await chatTurn('', 'اشرح لي الفرق بين TCP وUDP'));
+  const guest = seen(await chatTurn('', 'اشرح لي الفرق بين TCP وUDP'));
   assert.ok(!guest.includes('الذاكرة الحيّة'), 'الزائر: لا حقن');
-  const other = sysText(await chatTurn('hamad', 'اشرح لي الفرق بين TCP وUDP'));
+  const other = seen(await chatTurn('hamad', 'اشرح لي الفرق بين TCP وUDP'));
   assert.ok(!other.includes('الذاكرة الحيّة') && !other.includes('نورة'), 'مسجَّل آخر بلا حقائق: لا كتلة ولا حقائق غيره');
 });
 
@@ -212,20 +215,23 @@ test('٤ب. chat.js: الدور الاجتماعيّ القصير بلا كتل�
   reset();
   store.set('db/living/noura.json', { facts: L.mergeFacts([], [fact('name', '', 'اسمه نورة'), fact('style', 'طول الرد', 'أحب الردود المختصرة'), fact('project', 'متجر', 'يبني متجرًا للعطور')], NOW), updatedAt: NOW });
   for (const greeting of ['هلا', 'كيف الحال', 'السلام عليكم']) {
-    assert.ok(!sysText(await chatTurn('noura', greeting)).includes('الذاكرة الحيّة'), 'دور اجتماعيّ: ' + greeting);
+    assert.ok(!seen(await chatTurn('noura', greeting)).includes('الذاكرة الحيّة'), 'دور اجتماعيّ: ' + greeting);
   }
   const custom = 'ردّ بالإنجليزيّة دائمًا';
   const a = await chatTurn('noura', 'اشرح لي الفرق بين TCP وUDP', { customInstructions: custom });
   const b = await chatTurn('noura', 'كيف أحسّن متجر العطور حقّي؟', { customInstructions: custom });
-  const sa = sysText(a), sb = sysText(b);
-  assert.ok(sa.indexOf('[الذاكرة الحيّة') > 0 && sa.indexOf('[الذاكرة الحيّة') < sa.indexOf('[تعليمات المستخدم المخصّصة'), 'التعليمات المخصّصة بعد الأسلوب المستخرج = تعلو عليه');
-  assert.match(sa, /ردّ بالإنجليزيّة دائمًا/);
+  const sa = seen(a), sb = seen(b);
+  // التعليمات المخصّصة تعلو على الأسلوب المستخرج: في النظام، ونصّ كتلة الحقائق نفسها يقول ذلك صراحةً
+  assert.match(sysText(a), /\[تعليمات المستخدم المخصّصة[\s\S]*ردّ بالإنجليزيّة دائمًا/);
+  assert.match(tailText(a), /\[الذاكرة الحيّة[\s\S]*وتعليمات المستخدم المخصّصة إن وُجدت تعلو عليه عند التعارض/);
   assert.ok(!sa.includes('متجرًا للعطور') && sb.includes('متجرًا للعطور'), 'الحقيقة ذات الصلة تتبدّل بالسؤال');
-  // الكاش: الكتلة الثابتة (بعلامة cache_control) متطابقة بين الدورين، والحقائق في الكتلة المتغيّرة
+  // الكاش (v-tokens-living): النظام كلّه متطابق بين الدورين — الحقائق المتبدّلة في ذيل الدور بعد علامة الكاش، فلا تبطل كاش النظام ولا التاريخ
   assert.ok(Array.isArray(a.system) && Array.isArray(b.system));
-  assert.deepEqual(a.system[0], b.system[0], 'الثابت لم يتبدّل فلا يبطل الكاش');
-  assert.ok(a.system[0].cache_control && !a.system[0].text.includes('الذاكرة الحيّة'));
-  assert.ok(a.system[1].text.includes('[الذاكرة الحيّة'), 'والحقائق في المتغيّر');
+  assert.deepEqual(a.system, b.system, 'النظام لم يتبدّل بتبدّل الحقائق');
+  assert.ok(a.system[0].cache_control && !sysText(a).includes('الذاكرة الحيّة'), 'لا حقائق في النظام');
+  const ua = a.messages[a.messages.length - 1].content;
+  const mark = ua.findIndex((x) => x.cache_control);
+  assert.ok(mark >= 0 && mark < ua.length - 1 && ua[ua.length - 1].text.includes('[الذاكرة الحيّة'), 'الحقائق بعد علامة الكاش');
 });
 
 // ── ٥. التعلّم: لا استخراج للاجتماعيّ ولا لما بلا جديد، والقفل، والسقف ───────────────────────────
@@ -294,7 +300,7 @@ test('٥د. أسماء المزوّدين والنماذج لا تُخزَّن �
   withModel([fact('interest', 'x', 'يستعمل GPT يوميًّا'), fact('interest', 'y', 'يحب الشاي')]);
   const r = await memOp(token('sara'), 'living_learn', { messages: [user('أحب الشاي وأستعمل GPT يوميًّا')] });
   assert.ok(r.result.facts.every((f) => !/gpt|كلاود|جيميناي/i.test(f.text)));
-  assert.ok(!sysText(await chatTurn('sara', 'ما أحسن شاي؟')).match(/كلاود|جيميناي/));
+  assert.ok(!seen(await chatTurn('sara', 'ما أحسن شاي؟')).match(/كلاود|جيميناي/));
 });
 
 // ── ٦. «قبل/بعد»: مستخدم قال «أحب الردود المختصرة» وبعد محادثتين صار الأسلوب يصل النموذج افتراضيًّا ──
@@ -302,7 +308,7 @@ test('٦. قبل/بعد (المعالجان الحقيقيّان): «أحب ال
   reset();
   const huda = token('huda');
   // قبل: لا حقائق، فنظام محادثتها لا يحمل أسلوبًا
-  const before = sysText(await chatTurn('huda', 'اشرح لي الفرق بين TCP وUDP'));
+  const before = seen(await chatTurn('huda', 'اشرح لي الفرق بين TCP وUDP'));
   assert.ok(!before.includes('الذاكرة الحيّة') && !before.includes('مختصرة'));
   // المحادثة الأولى: تقول تفضيلها، والعميل يستدعي living_learn بعد الردّ
   const convo1 = [user('اشرح لي الفرق بين TCP وUDP'), bot('TCP يضمن الوصول بالترتيب… (ردّ طويل)'), user('طوّلت عليّ، أحب الردود المختصرة'), bot('أبشري، من الحين مختصر.')];
@@ -311,15 +317,15 @@ test('٦. قبل/بعد (المعالجان الحقيقيّان): «أحب ال
   const learned = await memOp(huda, 'living_learn', { messages: convo1 });
   assert.equal(learned.result.learned, 1);
   assert.ok(extractorSaw.includes('أحب الردود المختصرة'));
-  // المحادثة الثانية (جديدة تمامًا، موضوع آخر): الأسلوب في النظام الذي يقرؤه النموذج
-  const after = sysText(await chatTurn('huda', 'كيف أجهّز خطة تسويق لمتجر ملابس؟'));
+  // المحادثة الثانية (جديدة تمامًا، موضوع آخر): الأسلوب فيما يقرؤه النموذج (ذيل الدور — v-tokens-living)
+  const after = seen(await chatTurn('huda', 'كيف أجهّز خطة تسويق لمتجر ملابس؟'));
   assert.match(after, /الأسلوب: يفضّل ردودًا مختصرة/);
   assert.match(after, /طبّق «الأسلوب» أعلاه/);
   // ثمّ تغيّر رأيها: التعديل يحلّ محلّه
   unlock('huda');
   withModel([fact('style', 'طول الرد', 'يفضّل ردودًا مفصّلة بالتفاصيل')]);
   await memOp(huda, 'living_learn', { messages: [user('هالمرة أبي ردودًا مفصّلة')] });
-  const later = sysText(await chatTurn('huda', 'كيف أجهّز خطة تسويق لمتجر ملابس؟'));
+  const later = seen(await chatTurn('huda', 'كيف أجهّز خطة تسويق لمتجر ملابس؟'));
   assert.match(later, /الأسلوب: يفضّل ردودًا مفصّلة بالتفاصيل/);
   assert.ok(!later.includes('ردودًا مختصرة'));
 });

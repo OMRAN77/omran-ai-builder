@@ -25,7 +25,7 @@ function cut(src, start, end) {
   return src.slice(a, b);
 }
 const S = {
-  strong: cut(A9, '  const __strongBuildRe =', '\n'),
+  strong: cut(A9, '  const __strongBuildRe =', '  const __IMGF_NEW_RE ='), // v-route-want · v-route-write: __rtWantLookup و__rtWriteAsk بين الاثنين، والبوّابة تقرؤهما
   imgf: cut(A9, '  const __IMGF_NEW_RE =', '  let __gateNoBuild = false;'),
   gate: cut(A9, '  let __gateNoBuild = false;', '  // Guest gate:'),
   route: cut(A9, '  const __routeBuildRe =', '  // آخر نص كامل وصل من البث'),
