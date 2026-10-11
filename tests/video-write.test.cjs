@@ -63,5 +63,5 @@ test('الربط: التوجيه، السلسلة، الواجهة، النصو�
   });
   const h = read('index.html');
   assert.ok(h.includes('src="/js/video.js?v=442"') && h.includes('modules.css?v=678'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=737'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=738'"));
 });
