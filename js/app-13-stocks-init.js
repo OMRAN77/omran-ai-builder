@@ -921,6 +921,52 @@
   const btnOpen = $('#btnStudioAI');
   const btnClose = $('#studioAiCloseBtn');
   const btnGenerate = $('#studioAiGenerateBtn');
+  /* v-studio-tower (المالك ١١ أكتوبر بخمس لوحات لبرج الستايل): أثناء التوليد تظهر اللوحة في أعلى الاستوديو مكان خانة
+     «صورتك» (لا تحت الزرّ)، وتختفي أوّل ما تجهز النتيجة. الخمس بالتسلسل ١←٢←٣←٤←٥ ثمّ الأولى — موضعها محفوظ في الجهاز،
+     واللوحة ثابتة طوال التوليد الواحد. صورة المستخدم تدخل دائرة البرج مكان «75%» مصبوغة بلون المشهد، والقطع داخل الأنبوب
+     (١٥ قصاصة مريّشة من اللوحة نفسها) تطفو كلّ واحدة وحدها مع ضوء ينساب للأعلى. لا نصّ — لا شيء يُترجم. */
+  const TOWER_N = 5, TOWER_ITEMS = 15;
+  const TOWER_TINT = ['#9fd8ff', '#f0c46a', '#bfe6ff', '#f2b45c', '#8df3ff'];
+  const towerPos = [[578,205],[640,200],[700,205],[585,262],[650,255],[708,262],[575,305],[705,300],[575,380],[705,375],[585,470],[650,465],[705,470],[580,525],[700,520]];
+  function towerNext(){
+    let i = 0; try{ i = parseInt(localStorage.getItem('studio_tower_idx') || '0', 10) || 0; }catch(e){ __swallow(e, 'studio:tower-read'); }
+    const n = (i % TOWER_N) + 1;
+    try{ localStorage.setItem('studio_tower_idx', String(n)); }catch(e){ __swallow(e, 'studio:tower-save'); }
+    return n;
+  }
+  function towerShow(){
+    const slots = $('#studioAiSlots'); if(!slots) return;
+    towerHide();
+    const n = towerNext(), tint = TOWER_TINT[n - 1];
+    const el = document.createElement('div'); el.id = 'studioTower'; el.className = 'stTower'; el.setAttribute('aria-hidden', 'true'); el.style.setProperty('--tint', tint);
+    const img = document.createElement('img'); img.className = 'stTowerImg'; img.alt = ''; img.src = '/assets/studio/tower/' + n + '.jpg?v=1';
+    el.appendChild(img);
+    const glow = document.createElement('div'); glow.className = 'stTowerGlow'; el.appendChild(glow);
+    const items = document.createElement('div'); items.className = 'stTowerItems'; items.style.backgroundImage = 'none';
+    towerPos.forEach((pt, k) => {
+      const it = document.createElement('i');
+      it.style.left = (pt[0] / 12.8) + '%'; it.style.top = (pt[1] / 6.99) + '%';
+      it.style.backgroundImage = 'url(/assets/studio/tower/' + n + '-items.png?v=1)';
+      it.style.backgroundPosition = (k * 100 / (TOWER_ITEMS - 1)) + '% 0';
+      it.style.animationDuration = (3.2 + (k % 5) * 0.7) + 's'; it.style.animationDelay = (-(k * 0.9)) + 's';
+      items.appendChild(it);
+    });
+    el.appendChild(items);
+    const src = previewA && previewA.src && previewA.style.display !== 'none' ? previewA.src : '';
+    if(src){
+      const ph = document.createElement('div'); ph.className = 'stTowerPhoto';
+      const pi = document.createElement('img'); pi.alt = ''; pi.src = src; ph.appendChild(pi);
+      const tn = document.createElement('span'); ph.appendChild(tn);
+      el.appendChild(ph);
+    }
+    slots.parentNode.insertBefore(el, slots);
+    modal.classList.add('studio-towering');
+  }
+  function towerHide(){
+    const el = document.getElementById('studioTower'); if(el) el.remove();
+    modal.classList.remove('studio-towering');
+  }
+  try{ window.omranStudioTower = { show: towerShow, hide: towerHide }; }catch(e){ __swallow(e, 'studio:tower-expose'); } /* للمسابر واللقطات */
   const tabsWrap = $('#studioAiTabs');
   const imageAWrap = $('#studioAiImageAWrap');
   const imageBWrap = $('#studioAiImageBWrap');
@@ -2678,12 +2724,13 @@
     beforeWrap.style.display = 'none';
     setStatus(t('studioAiGenerating'));
     { const mr = document.getElementById('studioMultiResults'); if(mr){ mr.innerHTML = ''; mr.style.display = 'none'; } }
+    towerShow(); /* v-studio-tower */
 
     /* v-studio-chain: اختيارات متعدّدة ⇒ سلسلة/صور متعدّدة */
     if(studioBasket.length && feature !== 'merge'){
       try{ await runStudioBasket(token); }
       catch(e){ setStatus(studioErrText(e)); }
-      finally{ btnGenerate.disabled = false; }
+      finally{ btnGenerate.disabled = false; towerHide(); }
       return;
     }
 
@@ -2727,6 +2774,7 @@
       setStatus(studioErrText(e)); /* v-edit-no-change: كان هذا الموضع يعرض الكود الخامّ (image_edit_identity_mismatch) */
     } finally {
       btnGenerate.disabled = false;
+      towerHide(); /* v-studio-tower: تختفي أوّل ما تجهز النتيجة (أو يفشل) */
     }
   };
 

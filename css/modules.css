@@ -717,3 +717,20 @@ html[data-mode="light"] #videoMakerModal .vmk-cl-track{background:rgba(0,0,0,.12
 html[data-mode="light"] #videoMakerModal #vmkClCancel{color:var(--text);border-color:rgba(0,0,0,.3);background:#fff}
 html[data-mode="light"] #videoMakerModal .vmk-cl-pick{color:#8a5a12}
 html[data-mode="light"] #videoMakerModal .vmk-cl-drop:focus-within{outline-color:#8a5a12}
+
+/* ═══ v-studio-tower: لوحة برج الستايل أثناء التوليد (مكان خانة «صورتك»)، صورة المستخدم في الدائرة، القطع تطفو والضوء ينساب ═══ */
+#studioAiModal.studio-towering #studioAiSlots{display:none!important}
+#studioAiModal .stTower{position:relative;width:100%;aspect-ratio:1280/699;border-radius:var(--r-3);overflow:hidden;background:#0b0b10;margin:0 0 12px;box-shadow:0 18px 40px -22px rgba(0,0,0,.8)}
+#studioAiModal .stTower .stTowerImg{display:block;width:100%;height:100%;object-fit:cover}
+#studioAiModal .stTower .stTowerGlow{position:absolute;left:42.8%;top:25%;width:14.4%;height:55%;border-radius:40%/8%;pointer-events:none;mix-blend-mode:screen;opacity:.38;
+  background:repeating-linear-gradient(180deg,transparent 0 18%,var(--tint,#fff) 30%,transparent 42%);background-size:100% 60%;animation:stTowerRise 2.6s linear infinite}
+#studioAiModal .stTower .stTowerItems{position:absolute;inset:0;pointer-events:none}
+#studioAiModal .stTower .stTowerItems i{position:absolute;width:4.375%;aspect-ratio:1;margin:-2.19% 0 0 -2.19%;background-size:1500% 100%;background-repeat:no-repeat;animation:stTowerFloat 4s ease-in-out infinite alternate;will-change:transform}
+#studioAiModal .stTower .stTowerPhoto{position:absolute;left:50%;top:49.1%;width:6.2%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;overflow:hidden;
+  box-shadow:0 0 0 2px var(--tint,#fff),0 0 18px 4px var(--tint,#fff);animation:stTowerPulse 2.2s ease-in-out infinite}
+#studioAiModal .stTower .stTowerPhoto img{display:block;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.15) brightness(1.05)}
+#studioAiModal .stTower .stTowerPhoto span{position:absolute;inset:0;background:var(--tint,#fff);mix-blend-mode:color;opacity:.85}
+@keyframes stTowerRise{from{background-position:0 100%}to{background-position:0 0}}
+@keyframes stTowerFloat{from{transform:translateY(-5px) rotate(-3deg)}to{transform:translateY(5px) rotate(3deg)}}
+@keyframes stTowerPulse{0%,100%{box-shadow:0 0 0 2px var(--tint,#fff),0 0 14px 2px var(--tint,#fff)}50%{box-shadow:0 0 0 2px var(--tint,#fff),0 0 26px 8px var(--tint,#fff)}}
+@media (prefers-reduced-motion:reduce){#studioAiModal .stTower .stTowerGlow,#studioAiModal .stTower .stTowerItems i,#studioAiModal .stTower .stTowerPhoto{animation:none}}
