@@ -161,7 +161,7 @@
           for(var j=0;j<p.models.length;j++){ if(p.models[j][2] === 1) more += modelBtn(p, p.models[j]); else out += modelBtn(p, p.models[j]); }
           /* v-owner-claude-all: «الجهد» تحت الرئيسيّة كمنتقي Claude، ثمّ «نماذج أخرى» مطويّة — صناديق فرعيّة بأصناف خاصّة كي لا يطويها رأس المزوّد. */
           if(p.effort){
-            out += '<button type="button" class="omEffortHead" data-for="' + p.key + '" style="' + SUB + '"><span data-i18n="effortLabel">' + tr('effortLabel', 'الجهد', 'Effort') + '</span><span class="omEffortVal" style="color:var(--muted,#9a958a); font-size:12px;"></span></button>';
+            out += '<button type="button" class="omEffortHead" data-for="' + p.key + '" style="' + SUB + '"><span data-i18n="effortLabel">' + tr('effortLabel', 'الجهد', 'Effort') + '</span><span style="display:flex; align-items:center; gap:8px;"><span class="omEffortVal" style="color:var(--muted,#9a958a); font-size:12px;"></span><span class="omEffortChev" style="color:var(--muted,#9a958a); font-size:11px;">▸</span></span></button>';
             out += '<div class="omEffortBox" data-for="' + p.key + '" hidden style="padding-inline-start:10px;">';
             for(var k=0;k<EFFORT_OPTS.length;k++){ out += '<button type="button" class="omEffortOpt" data-effort="' + EFFORT_OPTS[k][0] + '" style="' + ROW + ' font-weight:500; opacity:.9;"><span data-i18n="' + EFFORT_OPTS[k][1] + '">' + tr(EFFORT_OPTS[k][1], EFFORT_OPTS[k][2], EFFORT_OPTS[k][3]) + '</span></button>'; }
             out += '</div>';
@@ -222,16 +222,16 @@
           if(eh){
             var cpv = provOf('claude'), cm = cpv ? curModelId(cpv) : '';
             var noEff = cm === 'claude-haiku-4-5';
-            eh.style.display = noEff ? 'none' : 'flex'; if(noEff && eb) eb.hidden = true;
+            eh.style.display = noEff ? 'none' : 'flex'; if(noEff && eb){ eb.hidden = true; var ec3 = eh.querySelector('.omEffortChev'); if(ec3) ec3.textContent = '▸'; }
             var sv = window.claudeEffortSaved ? window.claudeEffortSaved() : '';
             var ev = window.claudeEffortFor ? window.claudeEffortFor(cm, sv) : sv;
-            var vl = eh.querySelector('.omEffortVal'); if(vl) vl.textContent = effortLabel(ev) + ' ‹';
+            var vl = eh.querySelector('.omEffortVal'); if(vl) vl.textContent = effortLabel(ev);
             var eo = pop.querySelectorAll('.omEffortOpt'); for(var q=0;q<eo.length;q++){ var v = eo[q].getAttribute('data-effort'); eo[q].style.color = (v === ev) ? ACCENT : INK; eo[q].style.display = (v === 'xhigh' && /^claude-(?:opus-4-6|sonnet-4-6)$/.test(cm)) ? 'none' : 'block'; }
           }
         }catch(e){ /* guard-ok: صفّ الجهد تحسينيّ */ }
       }
       function setAgent(on){ if((window.__agentModeOn === true) !== on){ var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); } }
-      function collapseAll(){ var g = pop.querySelectorAll('.omProvModels, .omProvMore, .omEffortBox'); for(var i=0;i<g.length;i++) g[i].hidden = true; var c = pop.querySelectorAll('.omProvChev, .omMoreChev'); for(i=0;i<c.length;i++) c[i].textContent = '▸'; }
+      function collapseAll(){ var g = pop.querySelectorAll('.omProvModels, .omProvMore, .omEffortBox'); for(var i=0;i<g.length;i++) g[i].hidden = true; var c = pop.querySelectorAll('.omProvChev, .omMoreChev, .omEffortChev'); for(i=0;i<c.length;i++) c[i].textContent = '▸'; }
 
       chip.addEventListener('click', function(e){ e.stopPropagation(); var showing = pop.style.display !== 'none'; pop.style.display = showing ? 'none' : 'block'; if(!showing){ collapseAll(); refresh(); } });
       pop.addEventListener('click', function(e){
@@ -245,9 +245,9 @@
         var mh = e.target.closest('.omMoreHead');
         if(mh){ e.stopPropagation(); var mb = pop.querySelector('.omProvMore[data-for="' + mh.getAttribute('data-for') + '"]'); if(mb){ mb.hidden = !mb.hidden; var mc = mh.querySelector('.omMoreChev'); if(mc) mc.textContent = mb.hidden ? '▸' : '▾'; } return; }
         var ehd = e.target.closest('.omEffortHead');
-        if(ehd){ e.stopPropagation(); var ebx = pop.querySelector('.omEffortBox[data-for="' + ehd.getAttribute('data-for') + '"]'); if(ebx) ebx.hidden = !ebx.hidden; return; }
+        if(ehd){ e.stopPropagation(); var ebx = pop.querySelector('.omEffortBox[data-for="' + ehd.getAttribute('data-for') + '"]'); if(ebx){ ebx.hidden = !ebx.hidden; var ec = ehd.querySelector('.omEffortChev'); if(ec) ec.textContent = ebx.hidden ? '▸' : '▾'; } return; }
         var eopt = e.target.closest('.omEffortOpt');
-        if(eopt){ e.stopPropagation(); try{ if(window.claudeEffortSet) window.claudeEffortSet(eopt.getAttribute('data-effort') || ''); }catch(e4){ /* guard-ok */ } var ebx2 = pop.querySelector('.omEffortBox'); if(ebx2) ebx2.hidden = true; refresh(); return; }
+        if(eopt){ e.stopPropagation(); try{ if(window.claudeEffortSet) window.claudeEffortSet(eopt.getAttribute('data-effort') || ''); }catch(e4){ /* guard-ok */ } var ebx2 = pop.querySelector('.omEffortBox'); if(ebx2) ebx2.hidden = true; var ec2 = pop.querySelector('.omEffortChev'); if(ec2) ec2.textContent = '▸'; refresh(); return; }
         var head = e.target.closest('.omProvHead');
         if(head){ e.stopPropagation(); var key = head.getAttribute('data-prov'); var box = pop.querySelector('.omProvModels[data-for="' + key + '"]'); var open = box && !box.hidden; collapseAll(); if(box){ box.hidden = open; head.querySelector('.omProvChev').textContent = open ? '▸' : '▾'; } return; }
         var pm = e.target.closest('.omProvModel');

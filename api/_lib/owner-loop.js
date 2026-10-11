@@ -371,9 +371,9 @@ async function isDeadPick(model) {
   } catch (e) { /* guard-ok — الذاكرة تحسين لا شرط: بلاها يُجرَّب الموديل كما كان */ }
   return false;
 }
-async function rememberDeadPick(model, status, text) {
+async function rememberDeadPick(model, status, text, gone) {
   const m = String(model || '');
-  if (!m || !ACCESS_RE.test(String(text || ''))) return false;
+  if (!m || !(gone || ACCESS_RE.test(String(text || '')))) return false; // v-owner-claude-all: gone = افتراضيّ المالك (Opus 5.5) غير موجود على المفتاح — لا اختيار محفوظ يمسحه العميل، فيُذكر هنا
   const until = Date.now() + DEAD_TTL_S * 1000;
   deadPicks.set(m, until);
   try {

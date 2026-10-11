@@ -42800,6 +42800,10 @@ if(document.readyState === 'loading'){
   var EFFORT_KEY = 'aiapp_claude_effort';
   var EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
   function owner() { try { return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); } catch (e) { return false; } }
+  /* مرّة واحدة على جهاز المالك (أمره «خلّه Opus 5.5 لي»): المحفوظ قبل اليوم — ومنه Sonnet 5 الذي كان إغلاق الإعدادات يكتبه
+     بلا اختيار منه (app-06) — يُمسح فيسري الافتراضيّ الجديد؛ وأيّ اختيار بعدها يبقى كما هو. */
+  var MIGRATED = 'aiapp_owner_opus55_v1';
+  function migrate() { try { if (!localStorage.getItem(MIGRATED)) { localStorage.removeItem(KEY); localStorage.setItem(MIGRATED, '1'); } } catch (e) { /* guard-ok — بلا تخزين لا شيء يُرحَّل */ } }
   function ids() { return owner() ? OWNER_IDS : IDS; }
   function isAr() { try { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; } catch (e) { return true; } }
   var HINTS = {
@@ -42811,7 +42815,7 @@ if(document.readyState === 'loading'){
   };
 
   function get() {
-    try { var own = owner(), v = localStorage.getItem(KEY) || ''; if (!own && UPGRADES[v]) { v = UPGRADES[v]; localStorage.setItem(KEY, v); } return ids().indexOf(v) === -1 ? '' : v; } catch (e) { return ''; }
+    try { var own = owner(); if (own) migrate(); var v = localStorage.getItem(KEY) || ''; if (!own && UPGRADES[v]) v = UPGRADES[v]; return ids().indexOf(v) === -1 ? '' : v; } catch (e) { return ''; } /* الترقية لغير المالك قراءةً فقط — كتابتها كانت تمحو «Opus 5» الذي اختاره المالك إن قُرئ قبل جاهزيّة حسابه */
   }
   function set(v) {
     v = ids().indexOf(v) === -1 ? '' : v;
@@ -42825,6 +42829,7 @@ if(document.readyState === 'loading'){
     box.textContent = isAr() ? h[0] : h[1];
   }
   function sync() {
+    if (owner()) migrate();
     var sel = document.getElementById('claudeModel');
     if (sel) sel.value = get();
     hint();

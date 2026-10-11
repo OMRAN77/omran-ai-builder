@@ -1607,7 +1607,7 @@ module.exports = async (req, res) => {
          oa-direct إلى جهد تفكير أدنى، وكلود المباشر بجهد low (Opus 5.5/Fable 5.1 يرفضان إطفاءه). الصعب كما في v-owner-reason. */
       let __qfLast = {};
       const __quickFields = () => (__qfLast = __quickFor());
-      const __quickFor = () => { if (__ownerReq && prov === 'claude' && !__direct && body && body.effort) { const __ef = require('./owner-think.js').claudeEffortFields(CHAT_MODEL, body.effort); if (__ef) return __ef; } /* v-owner-claude-all: جهد المالك المختار من المنتقي يغلب التلقائيّ في كلّ دور، على المسارين */
+      const __quickFor = () => { if (__ownerReq && prov === 'claude' && !__direct && body && body.effort && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __ef = require('./owner-think.js').claudeEffortFields(CHAT_MODEL, body.effort, viaOR); if (__ef) return __ef; } /* v-owner-claude-all: جهد المالك المختار من المنتقي يغلب التلقائيّ في كلّ دور، على المسارين — إلّا دور صورة بموديل CHAT_IMAGE_MODEL آخر (جهده لغير موديله = 400) */
         if (__ownerReq && !__ownerThink && __direct) return __direct.prov === 'openai' ? { thinking: { type: 'disabled' } } : {};
         if (__ownerReq && !__ownerThink && !viaOR && prov === 'claude') return require('./owner-think.js').claudeQuickFields(CHAT_MODEL);
         /* v-cohere-reasoning (لقطة المالك ٤ أكتوبر ٩:٤٣: «<EOS_TOKEN>» ثمّ «يبدو أن المستخدم يطلب…» في الردّ): Cohere Command A موديل تفكير؛ إطفاؤه بـthinking:disabled
@@ -1656,7 +1656,7 @@ module.exports = async (req, res) => {
              (كان gpt-6-luna-pro يتكرّر ×4: 404 ثمّ سطر «غير متاح» في كلّ رسالة). */
           // يُمسح فقط لموديل غير موجود/لا يملكه المفتاح — لا لـ400 آخر يذكر «model» (مثل تجاوز نافذة السياق).
           const __dead = !(lastUserHasImage && /image|vision|modalit/i.test(__mt)) && (upstream.status === 404 || /model_not_found|does not exist|do not have access|no longer available|not a valid model|invalid model|unknown model/i.test(__mt)); // v-owner-vision: موديل لا يرى الصور ليس ميّتًا
-          send(Object.assign({ status: '⚠️ نموذج ' + __pick.label + ' غير متاح على المفتاح الحاليّ — أكمل بالنموذج الافتراضيّ.', k: 'stModelFallback', p: { model: __pick.label } }, __dead ? { deadModel: String((body && body.model) || __pick.id || '').slice(0, 120), prov } : {})); if (__ownerReq && !(lastUserHasImage && /image|vision|modalit/i.test(__mt))) await __ol.rememberDeadPick(CHAT_MODEL, upstream.status, __mt); // v-claude-code-level C8: لا يُذكَر موديل لا يرى الصور (v-owner-vision)
+          send(Object.assign({ status: '⚠️ نموذج ' + __pick.label + ' غير متاح على المفتاح الحاليّ — أكمل بالنموذج الافتراضيّ.', k: 'stModelFallback', p: { model: __pick.label } }, __dead ? { deadModel: String((body && body.model) || __pick.id || '').slice(0, 120), prov } : {})); if (__ownerReq && !(lastUserHasImage && /image|vision|modalit/i.test(__mt))) await __ol.rememberDeadPick(CHAT_MODEL, upstream.status, __mt, __dead && !(body && body.model)); // v-claude-code-level C8 · v-owner-claude-all: الافتراضيّ الميّت يُذكر (لا محفوظ يُمسح): لا يُذكَر موديل لا يرى الصور (v-owner-vision)
           CHAT_MODEL = DEFAULT_MODEL;
           if (__imgCfg) __imgCfg = imageTurnConfig(process.env, viaOR, CHAT_MODEL);
           upstream = await callUpstream(true);

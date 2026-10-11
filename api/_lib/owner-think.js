@@ -59,14 +59,15 @@ function forgetEffort(model) { if (model) deadEffort.add(String(model)); }
 const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
 const NO_XHIGH_RE = /^claude-(?:opus-4-6|sonnet-4-6)$/;
 const ADAPTIVE_REQ_RE = /^claude-(?:opus-4-[678]|sonnet-4-6)$/;
-function claudeEffortFields(model, effort) {
+// viaOR: الوسيط يحجز رصيد max_tokens كاملًا قبل التشغيل (٦٤ ألفًا من Opus 5.5 ≈ ١٫٣$) فرصيد قليل = 402 — يبقى سقفه ١٦٠٠٠ ويكمل owner-loop المقطوع.
+function claudeEffortFields(model, effort, viaOR) {
   const raw = String(model || '');
   const id = raw.replace(/^anthropic\//, '').replace(/\./g, '-');
   let lvl = String(effort == null ? '' : effort).trim().toLowerCase();
   if (EFFORT_LEVELS.indexOf(lvl) === -1 || !EFFORT_MODEL_RE.test(id) || deadEffort.has(raw)) return null;
   if (lvl === 'xhigh' && NO_XHIGH_RE.test(id)) lvl = 'high';
   const out = { output_config: { effort: lvl } };
-  if (lvl === 'xhigh' || lvl === 'max') out.max_tokens = 64000;
+  if ((lvl === 'xhigh' || lvl === 'max') && !viaOR) out.max_tokens = 64000;
   if (ADAPTIVE_REQ_RE.test(id)) out.thinking = { type: 'adaptive' };
   return out;
 }

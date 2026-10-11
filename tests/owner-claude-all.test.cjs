@@ -124,6 +124,8 @@ test('٤. الوحدة claudeEffortFields: Extra = xhigh، سقف ٦٤ ألفً�
   assert.deepEqual(F('claude-opus-5-5', 'high'), { output_config: { effort: 'high' } });
   assert.deepEqual(F('claude-opus-5-5', 'xhigh'), { output_config: { effort: 'xhigh' }, max_tokens: 64000 });
   assert.deepEqual(F('anthropic/claude-fable-5.1', 'max'), { output_config: { effort: 'max' }, max_tokens: 64000 }, 'صيغة الوسيط تُطبَّع');
+  // مراجعة: الوسيط يحجز رصيد max_tokens كاملًا قبل التشغيل (رصيد قليل = 402) — سقفه يبقى ١٦٠٠٠
+  assert.deepEqual(F('anthropic/claude-opus-5.5', 'max', true), { output_config: { effort: 'max' } });
   for (const id of ['claude-fable-5-1', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-sonnet-5', 'claude-opus-5', 'claude-fable-5']) assert.deepEqual(F(id, 'high'), { output_config: { effort: 'high' } }, id + ': الجيل ٥ يفكّر بلا الحقل');
   for (const id of ['claude-opus-4-8', 'claude-opus-4-7']) assert.deepEqual(F(id, 'xhigh'), { output_config: { effort: 'xhigh' }, max_tokens: 64000, thinking: { type: 'adaptive' } }, id);
   for (const id of ['claude-opus-4-6', 'claude-sonnet-4-6']) {
@@ -172,6 +174,17 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   assert.equal(r.calls[0].body.model, 'anthropic/claude-sonnet-5.5');
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'medium' });
   assert.equal(r.calls[0].body.thinking, undefined);
+  r = await withoutAnth(() => run('omran', { messages: ask(HARD), effort: 'max' }));
+  assert.deepEqual(r.calls[0].body.output_config, { effort: 'max' });
+  assert.equal(r.calls[0].body.max_tokens, 16000, 'الوسيط بلا رفع السقف');
+  // مراجعة: دور صورة بموديل CHAT_IMAGE_MODEL آخر لا يأخذ جهدًا حُسب لموديل المحادثة (Haiku 4.5 يرفضه = 400)
+  process.env.CHAT_IMAGE_MODEL = 'claude-haiku-4-5';
+  try {
+    r = await run('omran', { messages: [{ role: 'user', content: [{ type: 'text', text: 'وش في الصورة؟' }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAAA' } }] }], effort: 'high' });
+    assert.equal(r.calls[0].body.model, 'claude-haiku-4-5');
+    assert.equal(r.calls[0].body.output_config, undefined, 'لا جهد لموديل الصورة المختلف');
+    assert.equal(r.calls.length, 1, 'بلا 400 ولا إعادة');
+  } finally { delete process.env.CHAT_IMAGE_MODEL; }
   // قيمة غير معروفة = التلقائيّ كما كان (التحيّة low)
   r = await run('omran', { messages: ask('السلام'), effort: 'ultra' });
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'low' });
@@ -186,6 +199,23 @@ test('٦. 400 على الجهد = إعادة فوريّة بالموديل نف�
   assert.equal(r.calls[1].body.output_config, undefined, 'بلا الجهد المرفوض');
   assert.ok(!r.events.some((e) => e.k === 'stModelFallback'), 'لا رجوع للافتراضيّ');
   assert.ok(ot.__deadEffort.has('claude-opus-4-6'));
+  reset();
+});
+
+test('٦ب. افتراضيّ المالك غير موجود على المفتاح (404) يُذكر: الرسالة التالية Haiku مباشرة بلا نداء فاشل يتكرّر', async () => {
+  reset();
+  const notFound = () => new Response(JSON.stringify({ type: 'error', error: { type: 'not_found_error', message: 'model: claude-opus-5-5' } }), { status: 404 });
+  let r = await run('omran', { messages: ask(HARD) }, [notFound, () => text('تم')]);
+  assert.deepEqual(r.calls.map((c) => c.body.model), ['claude-opus-5-5', 'claude-haiku-4-5']);
+  assert.ok(r.events.some((e) => e.k === 'stModelFallback'));
+  r = await run('omran', { messages: ask(HARD) });
+  assert.deepEqual(r.calls.map((c) => c.body.model), ['claude-haiku-4-5'], 'لا نداء فاشل ثانٍ');
+  assert.ok(r.events.some((e) => e.k === 'stModelFallback'), 'السبب ظاهر');
+  // اختيار صريح فشل بـ404: العميل يمسحه (deadModel) — لا يُذكر على الخادم (الذاكرة لرفض الصلاحيّة كما كانت)
+  reset();
+  r = await run('omran', { model: 'claude-fable-5', messages: ask(HARD) }, [() => new Response(JSON.stringify({ type: 'error', error: { type: 'not_found_error', message: 'model: claude-fable-5' } }), { status: 404 }), () => text('تم')]);
+  assert.ok(r.events.some((e) => e.deadModel === 'claude-fable-5'));
+  assert.equal(await OL.isDeadPick('claude-fable-5'), false);
   reset();
 });
 
@@ -218,11 +248,19 @@ test('٧. app-29: المالك يرى الاثني عشر ويحفظ أيّها 
   store.aiapp_claude_model = 'claude-opus-4-6'; assert.equal(w.claudeEffortGet(), 'high', 'Opus 4.6 بلا Extra');
   store.aiapp_claude_model = 'claude-haiku-4-5'; assert.equal(w.claudeEffortGet(), '', 'Haiku 4.5 بلا جهد');
   assert.equal(w.claudeEffortSaved(), 'xhigh', 'المحفوظ يبقى لموديل يدعمه');
-  // غير المالك
+  // ترحيل مرّة واحدة: المحفوظ قبل اليوم (Sonnet 5 الذي كان إغلاق الإعدادات يكتبه) يُمسح فيسري Opus 5.5؛ وبعدها يبقى الاختيار
+  store = { aiapp_claude_model: 'claude-sonnet-5' };
+  w = appCtx('omran', store);
+  assert.equal(w.claudeModelGet(), '', 'الافتراضيّ الجديد');
+  assert.equal(store.aiapp_owner_opus55_v1, '1');
+  store.aiapp_claude_model = 'claude-sonnet-5';
+  assert.equal(w.claudeModelGet(), 'claude-sonnet-5', 'اختيار بعد الترحيل يبقى');
+  // غير المالك: الترقية القديمة قراءةً فقط (لا تمحو «Opus 5» المحفوظ للمالك على الجهاز نفسه)
   store = { aiapp_claude_model: 'claude-opus-5', aiapp_claude_effort: 'max' };
   w = appCtx('someone', store);
   assert.deepEqual(Array.from(w.CLAUDE_MODEL_IDS), ['claude-opus-5-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1']);
   assert.equal(w.claudeModelGet(), 'claude-opus-5-5', 'ترقيته القديمة كما كانت');
+  assert.equal(store.aiapp_claude_model, 'claude-opus-5', 'بلا كتابة');
   store.aiapp_claude_model = 'claude-opus-4-8'; assert.equal(w.claudeModelGet(), '', 'الجديدة ليست له');
   assert.equal(w.claudeEffortGet(), '', 'لا جهد لغير المالك');
 });
@@ -268,6 +306,7 @@ test('٩. modes.js: كلّ نماذج كلود بمجموعتيها، وصفّ �
   assert.ok(box.indexOf('omEffortHead') < box.indexOf('omMoreHead') && box.indexOf('data-model="claude-haiku-5-5"') < box.indexOf('omEffortHead'), 'الترتيب: الرئيسيّة ثمّ الجهد ثمّ نماذج أخرى');
   assert.ok(!/omEffortHead|omMoreHead/.test(html.slice(html.indexOf('class="omProvHead" data-prov="openai"'))), 'بقيّة المزوّدين كما كانوا');
   assert.ok(m.includes("querySelectorAll('.omProvModels, .omProvMore, .omEffortBox')"), 'الطيّ يشمل الصناديق الفرعيّة');
+  assert.ok(m.includes("querySelectorAll('.omProvChev, .omMoreChev, .omEffortChev')") && /class="omEffortChev"[^>]*>▸</.test(box), 'سهم الجهد كبقيّة الصفوف (لا ‹ ثابت)');
   assert.ok(m.includes("if(isOwner()) renderPop();"), 'المنتقي يُبنى للمالك وحده');
 });
 
