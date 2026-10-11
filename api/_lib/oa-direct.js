@@ -122,7 +122,7 @@ function toOpenAIBody(ab, prov) {
 // ← function_call ونتيجتها ← function_call_output بنفس call_id (بلا معرّفات fc_/rs_: لا يُطلب معها عنصر التفكير)؛
 // الأدوات مسطّحة وstrict:false (الافتراضيّ هنا صارم ومخطّطاتنا غير صارمة)؛ store:false فلا تُحفظ محادثة المالك عند
 // المزوّد؛ ولا reasoning: الموديل يفكّر بإعداده الافتراضيّ كما في تطبيقه — إلّا دور المالك العاديّ (v-owner-auto أدناه).
-// الكاش والتفكير وجهد أنثروبيك تُسقط.
+// الكاش والتفكير تُسقط؛ output_config.effort لا يصل إلّا من جهد المالك المختار لـGPT (v-owner-gpt-all) ← reasoning.effort.
 function toResponsesBody(ab) {
   const input = [];
   for (const m of ab.messages || []) {
@@ -157,7 +157,8 @@ function toResponsesBody(ab) {
   /* v-owner-auto: دور المالك العاديّ يصل بـthinking:{type:'disabled'} (صيغة أنثروبيك) ← أدنى جهد تفكير يقبله
      الموديل. الأسماء تختلف بين أجيال GPT فالسلّم none → minimal → low، وما رفضه الموديل يُذكَر (quickEffortFor). */
   const qe = (ab.thinking && ab.thinking.type === 'disabled') ? quickEffortFor(ab.model) : '';
-  if (qe) body.reasoning = { effort: qe };
+  const oe = ab.output_config && ab.output_config.effort; // v-owner-gpt-all: جهد المالك المختار (owner-think.gptEffortFields) يغلب السلّم
+  if (oe) body.reasoning = { effort: String(oe) }; else if (qe) body.reasoning = { effort: qe };
   const sys = textOf(ab.system);
   if (sys) body.instructions = sys;
   if (ab.max_tokens) body.max_output_tokens = ab.max_tokens;
@@ -392,12 +393,21 @@ async function directFetch(route, anthropicBody, opts) {
     let rb = toResponsesBody(anthropicBody);
     let rl = null;
     let capDropped = false;
+    let ownerEff = !!(anthropicBody.output_config && anthropicBody.output_config.effort); // v-owner-gpt-all
     for (let attempt = 0; attempt < 2 + QUICK_EFFORTS.length; attempt++) {
       const r = await f(route.responsesUrl, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(rb) }, sig));
       if (r.ok && r.body) return { ok: true, status: r.status, model: rb.model, api: 'responses', text: async () => '', body: responsesToAnthropicStream(r.body, rb.model) };
       const t = await r.text().catch(() => '');
       rl = { ok: false, status: r.status, model: rb.model, api: 'responses', text: async () => t };
       // v-owner-auto: جهد مرفوض = الدرجة التالية من السلّم، وبعد آخرها بلا reasoning (سلوك ما قبل الإصلاح).
+      /* v-owner-gpt-all: جهد اختاره المالك ورُفض = إعادة واحدة بلا reasoning (افتراضيّ الموديل) ويُذكر — لا يُحسب درجة من
+         سلّم «بلا تفكير» (كان max المرفوض يقفز إلى none، عكس ما اختاره). */
+      if (r.status === 400 && rb.reasoning && ownerEff && /reasoning|effort/i.test(t)) {
+        ownerEff = false;
+        try { require('./owner-think.js').forgetEffort(anthropicBody.model); } catch (e) { /* guard-ok — الذاكرة تحسين */ }
+        rb = Object.assign({}, rb); delete rb.reasoning;
+        continue;
+      }
       if (r.status === 400 && rb.reasoning && /reasoning|effort/i.test(t)) {
         quickEffortRejected(rb.model, rb.reasoning.effort);
         rb = Object.assign({}, rb);
@@ -448,7 +458,8 @@ const QUICK_EFFORTS = ['none', 'minimal', 'low'];
 const quickRejected = new Map();
 function quickEffortFor(model) {
   const bad = quickRejected.get(String(model || '')) || [];
-  return QUICK_EFFORTS.find((e) => bad.indexOf(e) === -1) || '';
+  let ok = null; try { ok = require('./owner-think.js').gptEfforts(model); } catch (e) { /* guard-ok — بلا الجدول السلّم كما كان */ }
+  return QUICK_EFFORTS.find((e) => bad.indexOf(e) === -1 && (!ok || ok.indexOf(e) !== -1)) || ''; // v-owner-gpt-all: Astra و6.1 Sol يبدآن من low (none/minimal = 400 موثَّق)
 }
 function quickEffortRejected(model, effort) {
   const k = String(model || '');

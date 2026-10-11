@@ -230,7 +230,8 @@ test('٨. Grok (الوسيط): كتل تفكيره لا تُعاد، ولا حق
 });
 
 test('٩. Haiku 4.5 لا يصله adaptive ولا effort أبدًا (المالك سؤالًا وتحيّةً، واختيارًا صريحًا، وغير المالك)، ولا عرض في المجاملة الفوريّة', async () => {
-  const cases = [['omran', {}, Q], ['omran', {}, [{ role: 'user', content: 'السلام' }]], ['omran', { model: 'claude-haiku-4-5' }, Q], ['maxuser', {}, [{ role: 'user', content: 'وش أفضل وقت للمشي؟' }]]];
+  // v-owner-claude-all: المالك بلا اختيار صار Opus 5.5 — Haiku 4.5 للمالك اختيارًا صريحًا (سؤالًا وتحيّةً وبجهد مختار يُتجاهَل)
+  const cases = [['omran', { model: 'claude-haiku-4-5', effort: 'max' }, Q], ['omran', { model: 'claude-haiku-4-5' }, [{ role: 'user', content: 'السلام' }]], ['omran', { model: 'claude-haiku-4-5' }, Q], ['maxuser', {}, [{ role: 'user', content: 'وش أفضل وقت للمشي؟' }]]];
   for (const [user, extra, messages] of cases) {
     const r = await (user === 'maxuser' ? asMax : (f) => f())(() => run(user, Object.assign({ provider: 'claude', messages }, extra), (u, b, n) => (!isAnth(u) ? new Response('{}', { status: 404 })
       : n === 1 ? thinkTool('SIG-H', user === 'omran' ? 'read_github' : 'web_search', user === 'omran' ? READ : { query: 'omran app' }, { id: 'tu1', model: 'claude-haiku-4-5' }) : text('تم', 'claude-haiku-4-5'))));

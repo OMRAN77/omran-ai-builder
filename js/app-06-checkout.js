@@ -881,7 +881,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_groq_apikey', $('#groqApiKey').value.trim());
   localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'openai/gpt-oss-120b');
   localStorage.setItem('aiapp_claude_apikey', $('#claudeApiKey').value.trim());
-  localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5');
+  if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5'); // v-owner-claude-all: اختيار المالك من المنتقي — إغلاق الإعدادات كان يكتب Sonnet 5 فوق افتراضيّه (Opus 5.5)
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
   (() => {
     const sel = $('#openrouterModelSelect');
