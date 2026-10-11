@@ -161,7 +161,7 @@ vm.runInNewContext([
   '  const cur = { lastMsgWasImageEdit: true, lastEditedImage: { b64: "x", mime: "image/png" }, messages: [',
   '    { role: "user", content: "ارسم صورة صقر على جبل" }, { role: "assistant", content: "", attachments: [{ isImage: true, name: "generated.png" }] } ].concat(extra || []) };',
   '  const getCurrent = () => cur, pendingAttachments = [], imageAttachments = [];',
-  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtWriteAsk = '),
+  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtSuggestRe = '), line('const __rtWriteAsk = '),
   line('const __IMGF_NEW_RE = '), line('const __IMGF_NOT_RE = '), line('const __IMG_EDIT_VERB_RE = '),
   imgFollowSrc,
   line('const __nanoQ = '), line('const __ATT_VISION_RE = '), line('const __codeWordRe = '), line('const __ackOnly = '),
@@ -296,4 +296,17 @@ test('١٦. «أرسمي» (أكثر رسميّة) ليست «ارسم»: لا �
 test('١٧. الشعار: «ارسم لي شعار لنادي الشطرنج» تصميم لا جلب شعار رسميّ (كانت تبحث)', () => {
   for (const t of ['ارسم لي شعار لنادي الشطرنج', 'ارسم شعار لفريق كرة القدم في المدرسة', 'سو لي شعار لجمعية الصيادين']) assert.equal(L.fetch(t), false, t);
   assert.equal(L.fetch('عطني شعار نادي الشارقة'), true, 'شعار الجهة القائمة يُجلب كما كان');
+});
+
+test('١٨. v-route-suggest: بعد صورة شعار «اقترح لي اسم للنادي/عطني خمس أسماء» جواب بالكلام لا تعديل على الصورة', () => {
+  for (const t of ['اقترح لي اسم للنادي', 'عطني خمس أسماء ثانية', 'اقترح لي عبارة للبوستر', 'هات أفكار ثانية', 'suggest a name for the club']) {
+    const r = W.after(t);
+    assert.deepEqual([r.write, r.follow, r.any, r.mem], [true, false, false, false], t);
+  }
+  // الإشارة للصورة تبقيها على الصورة كما كانت
+  for (const t of ['اكتب اسم النادي عليها', 'حط اسم النادي فوقها', 'عطني فكرة ثانية للصورة']) {
+    const r = W.after(t);
+    assert.equal(r.write, false, t);
+    assert.equal(r.follow || r.any, true, t);
+  }
 });

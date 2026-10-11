@@ -1420,9 +1420,7 @@ module.exports = async (req, res) => {
   const toolTurn = !quietSocialTurn && (!__analyzeDoc || __ownerReq); const __ownerUiShot = __ownerReq && lastUserHasImage && (typeof (body && body.ownerUiShot) === 'boolean' ? body.ownerUiShot : require('./owner-carry.js').uiEditTurn(lastUserText)); /* v-owner-ui-shot · v-owner-ui-shot-client: قرار العميل (يعرف علامة اللقطة) أوّلًا، والتعابير حين يغيب */ // v-providers-like-agent: المالك يقرأ ويبحث في الرسالة الطويلة كالوكيل (بلا أدوات الصور)
   const siteGuideTurn = toolTurn && isGuideTurn(messages); // v-site-guide3 · v-guide-next: والمتابعة القصيرة بعده
     const baseSystem = sysParts.join('\n\n');
-    /* v-tokens-living (إعادة التقييم ١٠ أكتوبر): الحقائق تُختار بسؤال كلّ دور، وكانت في النظام قبل علامة كاش الرسائل — فيُكتب التاريخ كلّه بسعر ١٫٢٥ كلّ دور ولا يُقرأ.
-       صارت في ذيل الدور (بعد العلامة) كملاحظات الدور، ونصّها نفسه يقول إنّ التعليمات المخصّصة تعلو عليها؛ baseSystem الكامل (السلسلة المجّانيّة) كما كان. */
-    const __sysBase = sysParts.filter((p) => !isClientTurnNote(p) && !(livingBlock && p === livingBlock)).join('\n\n'), stableSystem = __sysBase; // v-living-all: بلا حقائق = كما كان حرفيًّا · v-tokens-cache: نظام المزوّد بلا ملاحظات الدور (baseSystem الكامل يبقى للسلسلة المجّانيّة وفحص الإرشاد)
+    const __sysBase = sysParts.filter((p) => !isClientTurnNote(p) && !(livingBlock && p === livingBlock)).join('\n\n'), stableSystem = __sysBase; /* v-tokens-living: الحقائق (تُختار بسؤال كلّ دور) كانت قبل علامة كاش الرسائل فيُكتب التاريخ كلّه بسعر ١٫٢٥ كلّ دور ولا يُقرأ — صارت في ذيل الدور، ونصّها يقول إنّ التعليمات المخصّصة تعلو عليها */ // v-living-all: بلا حقائق = كما كان حرفيًّا · v-tokens-cache: نظام المزوّد بلا ملاحظات الدور (baseSystem الكامل يبقى للسلسلة المجّانيّة وفحص الإرشاد)
     const ownerKnowledge = toolTurn ? require('./_knowledge.js').ownerKnowledge(req, token) : '';
     // v-persona-front: البصمة أول ما يقرأه النموذج في المسارات الثلاثة —
     // حتى الدور الاجتماعي («كيف الحال») الذي كان محرومًا منها كليًّا.
@@ -1513,10 +1511,7 @@ module.exports = async (req, res) => {
   if (!convo.length) { send({ error: 'Missing user message' }); res.end(); return; }
 
   // ─── live-answers: استبدل رسالة المستخدم الأخيرة بالنسخة المسنودة بالمصادر ───
-  // v-tokens-tools: دور السؤال/الاستيضاح (v-img-ask · v-img-question) كان يُرسَل بقائمة أدوات أقصر فتنكسر بادئة الكاش (الأدوات أوّلها)؛
-  // الآن القائمة ثابتة، و«لا رسم في دور السؤال» تنبيه في الذيل + حارس عند التنفيذ (ASK_NO_MEDIA_REFUSAL)
-  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText));
-  const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowNote(body && body.tz), countryNote(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : [])); /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
+  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText)); /* v-tokens-tools: دور السؤال كان بقائمة أدوات أقصر فتنكسر بادئة الكاش — القائمة ثابتة، و«لا رسم» تنبيه في الذيل + حارس عند التنفيذ */ const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowNote(body && body.tz), countryNote(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : [])); /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
   // (الترويسات وsend فُتحا مبكرًا أعلاه — v-fast-headers)
   // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
 
