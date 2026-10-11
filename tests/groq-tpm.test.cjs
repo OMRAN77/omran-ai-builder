@@ -46,7 +46,7 @@ const tpm413 = (model, limit, requested) => new Response(JSON.stringify({ error:
 const groqOk = (model, text) => new Response(['data: ' + JSON.stringify({ model, choices: [{ delta: { content: text } }] }), 'data: ' + JSON.stringify({ model, choices: [{ delta: {}, finish_reason: 'stop' }] }), 'data: [DONE]', ''].join('\n\n'), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
 const tokensOf = (b) => Math.ceil((JSON.stringify(b.messages).length + (b.tools ? JSON.stringify(b.tools).length : 0)) / 3);
 
-async function ownerOnGroq(limit, messages) {
+async function ownerOnGroq(limit, messages, after413) {
   const calls = [], out = [];
   const save = global.fetch;
   global.fetch = async (url, init) => {
@@ -55,7 +55,8 @@ async function ownerOnGroq(limit, messages) {
     calls.push({ url: u, body: b });
     if (!/api\.groq\.com/.test(u)) return new Response('{}', { status: 404 });
     const req = tokensOf(b) + (b.max_completion_tokens || 0);
-    return req > limit ? tpm413(b.model, limit, req) : groqOk(b.model, 'هلا والله');
+    if (req > limit) return tpm413(b.model, limit, req);
+    return (after413 && after413(b, calls.filter((c) => /api\.groq\.com/.test(c.url)).length)) || groqOk(b.model, 'هلا والله');
   };
   const req = { method: 'POST', headers: {}, body: { token: token('omran'), provider: 'groq', model: 'qwen/qwen3.8-27b', messages } };
   const res = { setHeader() {}, status() { return this; }, json(v) { out.push(JSON.stringify(v)); return this; }, write(c) { out.push(String(c)); return true; }, end() {}, flushHeaders() {} };
@@ -73,7 +74,8 @@ test('real chat handler: owner says «مرحبا» on Groq with an 8K-per-minute
   assert.equal(second.model, 'qwen/qwen3.8-27b', 'الموديل الذي اختاره المالك نفسه — لا موديل آخر');
   assert.ok(!second.tools, 'بلا أدوات: لا تتّسع لحدّ الدقيقة');
   assert.ok(tokensOf(second) + second.max_completion_tokens <= 8000, 'الإعادة داخل الحدّ');
-  assert.ok(second.max_completion_tokens >= 1000, 'مساحة جواب حقيقيّة');
+  assert.ok(second.max_completion_tokens >= 1000 && second.max_completion_tokens <= 2000, 'مساحة جواب حقيقيّة بلا حجز الدقيقة كلّها');
+  assert.ok(tokensOf(second) <= 8000 * 0.4, 'المدخل ≤ ٤٠٪ من حدّ الدقيقة — فتتّسع الرسالة التالية (كان ~٦ آلاف من ٨ فرُفضت التالية 429)');
   const sys = second.messages.find((m) => m.role === 'system').content;
   assert.match(sys, /^أنت موديل يعمل على خوادم Groq/, 'أوّل النظام (الهويّة والأسلوب) باقٍ');
   assert.match(sys, /\[هويّتك\]/, 'و[هويّتك]');
@@ -113,11 +115,13 @@ test('fitGroqTpm: cap alone when the input fits; tools off next; trimmed system 
   const a = OD.fitGroqTpm(body, msg(P + 4000, P + 16000));
   assert.ok(a.tools && a.messages[0].content === sys, 'لا شيء يُقصّ');
   assert.equal(a.max_completion_tokens, P + 4000 - P - 64);
-  // (٢) المدخل نفسه أكبر من الحدّ والنظام يتّسع بلا أدوات
+  // (٢) المدخل نفسه أكبر من الحدّ: بلا أدوات، وأوّل النظام و[هويّتك] وما اتّسع بينهما لـ٤٠٪ من الحدّ
   const b = OD.fitGroqTpm(body, msg(4200, P + 16000));
   assert.ok(!b.tools && !('tool_choice' in b), 'بلا أدوات');
-  assert.ok(b.messages[0].content.startsWith(sys), 'النظام كاملًا');
-  assert.ok(tokensOf(b) * 1.1 + b.max_completion_tokens <= 4200 + 5);
+  const bs = b.messages[0].content;
+  assert.ok(bs.startsWith('أنت موديل يعمل على خوادم Groq.') && bs.includes('[هويّتك]'));
+  assert.ok(bs.includes('أ'.repeat(3000)) && !bs.includes('ب'.repeat(3000)), 'الفقرة الأولى من الوسط اتّسعت والثانية لا');
+  assert.ok(tokensOf(b) * 1.1 <= 4200 * 0.4 + 5 && b.max_completion_tokens <= 1050);
   // (٣) حتّى بلا أدوات لا يتّسع: أوّل النظام و[هويّتك] وما اتّسع بينهما
   const c = OD.fitGroqTpm(body, msg(2500, P + 16000));
   const cs = c.messages[0].content;
@@ -131,6 +135,27 @@ test('fitGroqTpm: cap alone when the input fits; tools off next; trimmed system 
   // Groq لا يعدّ السقف (الرقم = المدخل وحده): لا «السقف وحده»، بل بلا أدوات
   const d = OD.fitGroqTpm(body, msg(P - 1000, P));
   assert.ok(d && !d.tools, 'الرقم مدخل وحده → القصّ لا السقف');
+});
+
+test('429 per-minute right after (the owner\'s second screenshot: «مرحبا» answered, then «تقدر تفحص التطبيق» → «خطأ 429»): wait what Groq says, retry once, the reply arrives', async () => {
+  const t0 = Date.now();
+  const r = await ownerOnGroq(8000, [{ role: 'user', content: 'تقدر تفحص التطبيق' }], (b, n) => (n === 2 ? new Response(JSON.stringify({ error: { message: 'Rate limit reached for model `' + b.model + '` in organization `org_x` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6123, Requested 5234. Please try again in 0.3s. Need more tokens?', type: 'tokens', code: 'rate_limit_exceeded' } }), { status: 429, headers: { 'retry-after': '1' } }) : null));
+  assert.equal(r.groq.length, 3, 'الأصل 413، ثمّ المقصوص 429، ثمّ المقصوص نفسه بعد الانتظار');
+  assert.deepEqual(r.groq[2].body, r.groq[1].body, 'الجسم نفسه');
+  assert.ok(Date.now() - t0 >= 300, 'انتظر ما قاله Groq');
+  assert.equal(r.text, 'هلا والله');
+  assert.deepEqual(r.errors, []);
+});
+
+test('a wait longer than 40 s (or a per-day limit) is not slept on: the owner gets the time in one line', async () => {
+  const r = await ownerOnGroq(8000, [{ role: 'user', content: 'مرحبا' }], (b) => new Response(JSON.stringify({ error: { message: 'Rate limit reached for model `' + b.model + '` in organization `org_x` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199500, Requested 3000. Please try again in 12m3.5s. Need more tokens?', type: 'tokens', code: 'rate_limit_exceeded' } }), { status: 429, headers: { 'retry-after': '724' } }));
+  assert.equal(r.groq.length, 2, 'لا انتظار ولا إعادة — وretry-after يصل إعادة المالك (C4) فلا تعيد هي أيضًا');
+  assert.deepEqual(r.errors, ['ما قدرت أردّ الحين — وصلت حدّ المفتاح؛ جرّب بعد 13 دقيقة']);
+  assert.equal(OD.groqRetryAfter('Please try again in 25.7s.'), 25.7);
+  assert.equal(OD.groqRetryAfter('try again in 1m12.5s'), 72.5);
+  assert.equal(OD.groqRetryAfter('try again in 450ms'), 0.45);
+  assert.equal(OD.groqRetryAfter('Request too large'), null);
+  assert.equal(OD.GROQ_WAIT_MAX, 40, 'تحت حارس الصمت (٧٥ ث)');
 });
 
 test('the retry lives in directFetch for Groq only, once, after the cap retry; and the stop note names the reason', () => {

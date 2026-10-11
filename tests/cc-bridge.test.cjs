@@ -136,7 +136,7 @@ const R = (p) => path.join(__dirname, '..', p);
   assert.strictEqual(cleanImages([{ mediaType: 'image/png', data: 'A'.repeat(3600000) }]).length, 0, 'حدّ الحجم الإجماليّ ٣٫٥ مليون حرف');
   assert.deepStrictEqual(Object.keys(forwardBody('chat', { message: 'hi', images: [okImg] })).sort(), ['images', 'message', 'model', 'newSession', 'sessionId'], 'الصور تُمرَّر مع الرسالة');
   assert.strictEqual(forwardBody('chat', { message: 'hi' }).images, undefined, 'بلا صور لا حقل');
-  assert.ok(ui09.indexOf("window.__omMode === 'cc'") < ui09.indexOf('if(window.__agentModeOn && !imageAttachments.length){'), 'فحص cc قبل فحص الوكيل');
+  assert.ok(ui09.indexOf("window.__omMode === 'cc'") < ui09.indexOf('if(window.__agentModeOn && !imageAttachments.length && '), 'فحص cc قبل فحص الوكيل');
   assert.ok(ui09.includes('!__lastA._cc &&'), 'ردود Claude Code لا تدخل ذاكرة المستخدم');
   // v-stream-full-agent («الكلام يطلع مخربط ويوم يخلص يكون تمام»): البثّ كاملًا بالمنسّق التدريجيّ لا ذيل ٤٠٠ حرف
   // v-agent-log: كلّ مقطع كلام بين خطوتين يُرسم كاملًا بالمنسّق نفسه في عنصره داخل السجلّ

@@ -22573,6 +22573,18 @@ async function omranSharpenImage(dataUrl, amount){
 
 /* v-img-mix + v-img-honest: شريط الحالة يُطلق قبل وصول الصورة (بصمة v-img-engine-tag-owner ميتة في مسار التعديل)، فيُكتب
    سطر المحرّك للمالك وحده تحت التقرير — فقط حين يعمل المحرّكان (وضع الدمج، أو محرّك ثانٍ بعد «لم يُنفَّذ»). غيره لا يرى اسمًا. */
+/* v-prov-self (٣): مزوّد المالك المختار بلا أدوات (Perplexity) لا يرسم بنفسه — الصورة من محرّك الصور، فسطر تحتها (رسالة بعدها، لا فوقها: v666)
+   يقول أيّ محرّك رسمها بدل أن تبقى الشريحة وحدها باسم المزوّد. للمالك وحده؛ المزوّدون بالأدوات يرسمون بأنفسهم (v-prov-self ١). */
+function __omranNoToolsImgNote(engine){
+  try{
+    if(String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') return '';
+    const p = localStorage.getItem('aiapp_provider') || 'openai';
+    if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(p) !== -1) return '';
+    const e = String(engine || '');
+    const n = /openai|gpt/i.test(e) ? 'GPT Image' : (/gemini|nano/i.test(e) ? 'Gemini Image' : (/pollinations/i.test(e) ? 'Pollinations' : ''));
+    return n ? '🎨 ' + n : '';
+  }catch(e){ __swallow(e, 'ui:no-tools-img'); return ''; }
+}
 function __imgEngineLine(engine, d){
   /* v-media-plans: مشترك الصور يرى جودة الصورة والمتبقّي من رصيده تحتها. v-media-merge: ومشترك «صور وفيديو» يرى اسم رصيده المدموج. */
   const mt = d && d.mediaTag;
@@ -23074,9 +23086,25 @@ async function __sendPromptCore(){
   /* v-media-gate: طبقتان قبل أيّ مسار وسائط كلماتيّ — (١) كلام «عن» الوسائط = لا إنشاء؛ (٢) وإلّا المصنّف الرخيص
      على الخادم. يُستدعى فقط حين تحوي الرسالة كلمة وسائط وبلا صورة مرفقة؛ تعذّره = null فتحكم التعابير المضيَّقة. */
   let __mediaLane = null;
+  /* v-prov-self (المالك ١١ أكتوبر «كلّ واحد ونفسه… من غير لفّ ودوران»، ولقطة Groq وصورة «غير الاشكال» يبنيها محرّك آخر): للمالك والمزوّد
+     المختار يحمل الأدوات، لا مسار وسائط في الواجهة يسبقه — لا مصنّف خفيّ، ولا تعديل/رسم/فيديو مباشر. الطلب يصل المزوّد نفسه فيقرّر
+     ويرسم أو يعدّل بأداته ويقول بأيّ محرّك. يبقى كما كان: أوضاع «+» التي يختارها المالك بيده، وClaude Code، والوكيل، والأدوات المطفأة،
+     وتحويل الصيغة المحلّيّ (كانفس في المتصفّح، لا محرّك). */
+  const __ownerProvTurn = (function(){
+    try{
+      if(!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return false;
+      if(window.__omMode || window.__chatToolsOn === false) return false;
+      const __p = localStorage.getItem('aiapp_provider') || 'openai';
+      if(window.__agentModeOn === true && __p === 'claude') return false;
+      if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(__p) === -1) return false;
+      if(pendingAttachments.some(a => a && a.isImage) && __imgFormatIntent(text)) return false;
+      return true;
+    }catch(e){ __swallow(e, 'ui:prov-self'); return false; }
+  })();
   try{
     const __mediaHasImg = pendingAttachments.some(a => a && a.isImage);
-    if(text && !__mediaHasImg && __MEDIA_WORD_RE.test(text)){
+    if(__ownerProvTurn) __mediaLane = 'none';
+    else if(text && !__mediaHasImg && __MEDIA_WORD_RE.test(text)){
       __mediaLane = __MEDIA_TALK_RE.test(text) ? 'none' : (__MEDIA_MAKE_RE.test(text) ? await omranMediaIntent(text) : null); /* v-chat-fast */
     }
   }catch(e){ __mediaLane = null; }
@@ -23641,7 +23669,8 @@ function __friendlyErr(e){
       return;
     }
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
-    if(window.__agentModeOn && !imageAttachments.length){
+    /* v-prov-self: الوكيل وكيلُ Claude — مع مزوّد آخر مختار يردّ المزوّد نفسه بأدواته (مسار المحادثة أدناه)، لا Claude بالخفاء */
+    if(window.__agentModeOn && !imageAttachments.length && (localStorage.getItem('aiapp_provider') || 'openai') === 'claude'){
       await runOmranAgent(cur, apiText, thinkingDiv);
       return;
     }
@@ -23768,7 +23797,7 @@ function __friendlyErr(e){
       /[📋⬜☐🔹▪•✔️]/.test(text) ||
       /^\s*(?:[-*]|\d+[.)])\s+\S.*\n\s*(?:[-*]|\d+[.)])\s+\S/m.test(text)
     ));
-    const __blockAutoImage = !!(__pastedLike && !__srcImg && !__explicitImgReq);
+    const __blockAutoImage = !!(__ownerProvTurn /* v-prov-self */ || (__pastedLike && !__srcImg && !__explicitImgReq));
     /* v-support-q (لقطة عمران ١ سبتمبر: «عندي مشكلة في الطباعة تصور خارج
        الصورة... كيف اسوي الإعدادات» راحت لتعديل صورة قديمة): سؤال مساعدة
        يحوي كلمات صور عرضًا (تصور/الصورة/تعديل) — نمنع توجيهه للصور حين لا
@@ -24189,7 +24218,7 @@ function __friendlyErr(e){
       : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
     const __talkCharRe = /(شخصية|شخصيه|كرتون|كارتون|كرتوني|كرتونية|كارتونية|character|cartoon|avatar|أفتار|افتار)/i;
     const __speakRe = /(تتكلم|يتكلم|تحكي|يحكي|تتحدث|يتحدث|ناطق|ناطقة|يقول|تقول|talk|talking|speak|speaking|say)/i;
-    const __talkCharIntent = !!text && !__codeWordRe.test(text) && __talkCharRe.test(text) && __speakRe.test(text);
+    const __talkCharIntent = !__ownerProvTurn /* v-prov-self */ && !!text && !__codeWordRe.test(text) && __talkCharRe.test(text) && __speakRe.test(text);
     let __alreadyCartoon = false;
     // 🎬 v367: طلب شخصية تتكلم بدون صورة مرفقة → افتح مكتبة شخصيات جاهزة يختار منها (أو يرفع صورته)
     window.pickTalkCharacter = window.pickTalkCharacter || function(isAr){
@@ -25038,6 +25067,7 @@ function __showImgLoading(el, ar, en){
           }catch(e){ __swallow(e, 'img:text-keep'); }
         }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */ + __imgEngineLine(__data.engine, __data), attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
+        { const __nt = __omranNoToolsImgNote(__data.engine); if(__nt) cur.messages.push({ role: 'assistant', content: __nt }); } /* v-prov-self */
         // v-img-engine-tag-owner: بصمة المحرك الحرفيّة في شريط الحالة — للمالك وحده (باب مقفل: لا اسم مزوّد لأيّ مستخدم).
         try{ if(chatStatus && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') chatStatus.note('🎨', String(__data.engine || '?')); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = __keptLayer ? { b64: __editUrl.split(',')[1], mime: 'image/png' } : { b64: __data.imageBase64, mime: __outMime };
@@ -25266,6 +25296,7 @@ function __showImgLoading(el, ar, en){
       if(__gOk){
         const __gm = __gData.mimeType || 'image/png';
         cur.messages.push({ role: 'assistant', content: '' /* v666: بلا جملة فوق الصورة — طلب عمران */, attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
+        { const __nt = __omranNoToolsImgNote(__gData.engine); if(__nt) cur.messages.push({ role: 'assistant', content: __nt }); } /* v-prov-self */
         // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة (لا فوقها).
         if(typeof __gData.caption === 'string' && __gData.caption.trim()){
           cur.messages.push({ role: 'assistant', content: __gData.caption.trim() });
@@ -37845,6 +37876,17 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
 (function () {
   'use strict';
 
+  /* v-prov-self (المالك ١١ أكتوبر «كلّ واحد ونفسه»): رسم/تعديل يطلبه المزوّد بأداته يُنفَّذ بمحرّك شركته إن كان لها محرّك صور —
+     GPT ← GPT Image، Gemini ← Gemini Image — والخادم يقبل forceEngine للمالك وحده (maha-image). غيرهما = سلسلة المحرّكات
+     المعتادة، واسم المحرّك يعود في نتيجة الأداة فيقوله المزوّد. */
+  function provEngine() {
+    try {
+      if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return undefined;
+      var p = localStorage.getItem('aiapp_provider') || 'openai';
+      return p === 'openai' ? 'gpt' : (p === 'gemini' ? 'nano' : undefined);
+    } catch (e) { return undefined; } // guard-ok — بلا تخزين = السلسلة المعتادة
+  }
+
   function runInSandbox(html, timeoutMs) {
     return new Promise(function (resolve) {
       var token = 'ag_' + Math.random().toString(36).slice(2);
@@ -38013,6 +38055,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
                 userText: gUserText,
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
                 guestId: window.getGuestId ? window.getGuestId() : '',
+                forceEngine: provEngine(),
               }),
             });
             j = null;
@@ -38067,6 +38110,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
                 history: tHist,
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
                 guestId: window.getGuestId ? window.getGuestId() : '',
+                forceEngine: provEngine(),
               }),
             });
             try { ej = await er.json(); } catch (e) { ej = null; }
