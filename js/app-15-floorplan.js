@@ -584,6 +584,8 @@
   /* v-sec-postmsg (إعادة التقييم ١٠ أكتوبر): أيّ نافذة (موقع آخر فتح التطبيق في نافذة منبثقة) كانت ترسل {__omranView:1} فيولّد التطبيق
      صورة مدفوعة برمز المستخدم ونقاطه. الطلب يُقبل الآن من إطار داخل صفحة التطبيق نفسها وحده — المحرّر يعيش في iframe المعاينة. */
   function fromOwnFrame(e) {
+    // المراجعة العدائيّة: إطارات التطبيق المعزولة (جرّبه لي، run_js/test_html) تشغّل كود النموذج وأصلها «null» — المحرّر في المعاينة يرث أصل التطبيق
+    if (e.origin !== window.location.origin) return false;
     try {
       var fr = document.getElementsByTagName('iframe');
       for (var i = 0; i < fr.length; i++) { if (fr[i].contentWindow && fr[i].contentWindow === e.source) return true; }

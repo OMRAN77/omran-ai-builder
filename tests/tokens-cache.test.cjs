@@ -152,7 +152,7 @@ test('٧. v-tokens-tools: generate_image/edit_image/generate_video في دور �
     assert.equal(calls.length, 2, name + ': جولة ثانية بعد الرفض');
     const res = JSON.stringify(calls[1].messages);
     assert.ok(res.includes(ASK_NO_MEDIA_REFUSAL), name + ': نتيجة الأداة هي الرفض');
-    assert.ok(!writes.some((w) => /stGenImage|stGenVideo/.test(w)), name + ': لا سطر حالة رسم/فيديو');
+    assert.ok(!writes.some((w) => /stGenImage|stGenVideo|trImgFail|↳/.test(w)), name + ': لا سطر حالة رسم/فيديو ولا «↳ تعذّرت الصورة» (المراجعة العدائيّة)');
     assert.deepEqual(urls, [], name + ': لا نداء جانبيّ (لا مولّد صور ولا فيديو)');
   }
   // الضابط: الطلب نفسه في دور غير سؤاليّ ينفَّذ كما كان (سطر الحالة يظهر ونتيجة الأداة ليست الرفض)

@@ -42,8 +42,10 @@ vm.runInNewContext([
   line('const __strongBuildRe = '),
   line('const GATE_BUILD_RE = '), line('const GATE_CMD_RE = '), line('const GATE_FIX_RE = '), line('const GATE_HARD_RE = '),
   line('const __routeBuildRe = '), line('const __routeCmdRe = '),
-  line('const __rtBuildVerbRe = '), line('const __rtLookupRe = '), line('const __rtGiveRe = '), line('const __rtEntityRe = '), line('const __rtMineRe = '),
-  'function wantLookup(text, code){ const getCurrent = () => ({ code: code || "" }); ' + stmt('const __rtWantLookup = ').replace('const __rtWantLookup = ', 'return ') + ' }',
+  line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtEntityRe = '),
+  line('const __rtMineRe = '), line('const __rtFeatureRe = '), line('const __rtCloneRe = '),
+  SRC.slice(SRC.indexOf('  const __rtIsLookup = '), SRC.indexOf('\n  };\n', SRC.indexOf('  const __rtIsLookup = ')) + 5),
+  'function wantLookup(text, code){ return __rtIsLookup(text, code); }',
   'this.wantLookup = wantLookup;',
   'this.gate = function(text, code){',
   '  const getCurrent = () => ({ code: code || "" }), omranEditBigOpen = () => false;',
@@ -161,14 +163,16 @@ vm.runInNewContext([
   '  const cur = { lastMsgWasImageEdit: true, lastEditedImage: { b64: "x", mime: "image/png" }, messages: [',
   '    { role: "user", content: "ارسم صورة صقر على جبل" }, { role: "assistant", content: "", attachments: [{ isImage: true, name: "generated.png" }] } ].concat(extra || []) };',
   '  const getCurrent = () => cur, pendingAttachments = [], imageAttachments = [];',
-  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtSuggestRe = '), line('const __rtWriteAsk = '),
+  line('const __rtWriteVerbRe = '), line('const __rtImgRefRe = '), line('const __rtDocNounRe = '), line('const __rtStyleCueRe = '), line('const __rtSuggestRe = '), line('const __rtPutRe = '), line('const __rtWriteAsk = '),
   line('const __IMGF_NEW_RE = '), line('const __IMGF_NOT_RE = '), line('const __IMG_EDIT_VERB_RE = '),
   imgFollowSrc,
   line('const __nanoQ = '), line('const __ATT_VISION_RE = '), line('const __codeWordRe = '), line('const __ackOnly = '),
   '  const __srcImg = null;',
   line('const __FOLLOW_ANY = '),
+  line('const __imgEditRe = '), line('const __IMG_CREATIVE_RE = '), line('const __editStyleIntent = '), line('const __FOLLOW_DEFAULT = '),
+  line('const __STYLE_RE = '), line('const __styleShort = '), line('const __STYLE_FOLLOW = '),
   '  const memAttach = !!(' + cond('if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && !__rtWriteAsk').replace(/^/, '!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && !__rtWriteAsk') + ');',
-  '  return { follow: __IMG_FOLLOW, any: __FOLLOW_ANY, mem: memAttach, write: __rtWriteAsk };',
+  '  return { follow: __IMG_FOLLOW, any: __FOLLOW_ANY, def: __FOLLOW_DEFAULT, style: __STYLE_FOLLOW, mem: memAttach, write: __rtWriteAsk };',
   '};',
 ].join('\n'), W);
 
@@ -274,11 +278,17 @@ test('١٤. v-route-want: الرغبة + اسم البناء + وصف صنع ت�
 
 test('١٥. v-route-sticky: «اختصر/بالإنجليزي/خله أقصر» بعد ردّ نصّيّ لا تعود لآخر صورة؛ بعد الصورة مباشرةً كما كانت', () => {
   const poem = [{ role: 'user', content: 'اكتب لي قصيدة عن الصقر' }, { role: 'assistant', content: 'يا صقرُ يا رمزَ العلا…' }];
-  for (const t of ['اختصرها', 'خله أقصر', 'بالإنجليزي', 'اكتبه بأسلوب رسمي', 'سوه أرسمي شوي']) {
+  for (const t of ['اختصرها', 'خله أقصر', 'خلها أقصر', 'بالإنجليزي', 'اكتبه بأسلوب رسمي', 'سوه أرسمي شوي', 'خل الخلفية زرقاء']) {
     const r = W.after(t, poem);
-    assert.equal(r.any, false, 'بعد القصيدة: ' + t);
+    assert.deepEqual([r.follow, r.any, r.def, r.style, r.mem], [false, false, false, false, false], 'بعد القصيدة (المسارات الأربعة والإرفاق): ' + t);
   }
-  for (const t of ['خلها بالليل', 'خل الخلفية زرقاء']) assert.equal(W.after(t).any, true, 'بعد الصورة مباشرةً: ' + t);
+  assert.equal(W.after('خله كرتون', poem).style, false, 'الأسلوب بعد ردّ نصّيّ ليس تحويل الصورة');
+  assert.equal(W.after('خله كرتون').style, true, 'وبعد الصورة مباشرةً كما كان');
+  assert.equal(W.after('خله أقصر').def, true, 'وبعد الصورة مباشرةً «خله…» تعديل كما كان');
+  for (const t of ['خلها بالليل', 'خل الخلفية زرقاء']) {
+    const r = W.after(t);
+    assert.equal(r.follow || r.any, true, 'بعد الصورة مباشرةً: ' + t);
+  }
 });
 
 test('١٦. «أرسمي» (أكثر رسميّة) ليست «ارسم»: لا تفتح أنماط الصورة؛ «ارسم/ارسمي لي» كما كانتا', () => {
@@ -298,17 +308,61 @@ test('١٦. «أرسمي» (أكثر رسميّة) ليست «ارسم»: لا �
 test('١٧. الشعار: «ارسم لي شعار لنادي الشطرنج» تصميم لا جلب شعار رسميّ (كانت تبحث)', () => {
   for (const t of ['ارسم لي شعار لنادي الشطرنج', 'ارسم شعار لفريق كرة القدم في المدرسة', 'سو لي شعار لجمعية الصيادين']) assert.equal(L.fetch(t), false, t);
   assert.equal(L.fetch('عطني شعار نادي الشارقة'), true, 'شعار الجهة القائمة يُجلب كما كان');
+  // المراجعة العدائيّة: البدائل الجديدة مرسّاة باللام أوّل الكلمة — «النادي/المركز/المؤسسة…» جهات قائمة تُجلب كما كانت
+  for (const q of ['عطني شعار النادي الأهلي', 'عطني لوجو النادي العربي', 'عطني شعار المركز الوطني للأرصاد', 'عطني شعار المؤسسة العامة للتأمينات الاجتماعية',
+    'عطني شعار الجمعية التعاونية', 'عطني شعار المدرسة الإماراتية', 'عطني شعار الفريق الوطني']) assert.equal(L.fetch(q), true, q);
 });
 
 test('١٨. v-route-suggest: بعد صورة شعار «اقترح لي اسم للنادي/عطني خمس أسماء» جواب بالكلام لا تعديل على الصورة', () => {
-  for (const t of ['اقترح لي اسم للنادي', 'عطني خمس أسماء ثانية', 'اقترح لي عبارة للبوستر', 'هات أفكار ثانية', 'suggest a name for the club']) {
+  for (const t of ['اقترح لي اسم للنادي', 'عطني خمس أسماء ثانية', 'اقترح لي عبارة للبوستر', 'هات أسماء ثانية', 'suggest a name for the club']) {
     const r = W.after(t);
     assert.deepEqual([r.write, r.follow, r.any, r.mem], [true, false, false, false], t);
   }
   // الإشارة للصورة تبقيها على الصورة كما كانت
-  for (const t of ['اكتب اسم النادي عليها', 'حط اسم النادي فوقها', 'عطني فكرة ثانية للصورة']) {
+  for (const t of ['اكتب اسم النادي عليها', 'حط اسم النادي فوقها', 'عطني فكرة ثانية للصورة',
+    /* المراجعة العدائيّة: فعل الوضع أو «على الشعار» يبقيها تعديلًا */ 'اقترح اسم ثاني واكتبه على الشعار', 'اقترح لي اسم وحطه على اللوجو', 'عطني اسم ثاني للنادي على الشعار', 'عطني فكرة ثانية']) {
     const r = W.after(t);
     assert.equal(r.write, false, t);
     assert.equal(r.follow || r.any, true, t);
   }
+});
+
+test('١٩. المراجعة العدائيّة: الصورة المولَّدة وتقريرها رسالتان — «أكثر واقعية/بالليل» بعدها تعديل كما كان، والرسالة الحاليّة مدفوعة قبل الفحص', () => {
+  const report = [{ role: 'assistant', content: '📋 تفسير الفكرة\n- صقر على قمّة جبل…' }];
+  for (const t of ['أكثر واقعية', 'بالليل', 'خلها بالليل', 'نفس الشي بس مبتسمة']) {
+    const r = W.after(t, report.concat([{ role: 'user', content: t }]));
+    assert.equal(r.follow || r.any || r.def, true, 'بعد صورة + تقريرها + الرسالة الحاليّة: ' + t);
+  }
+  const poem = [{ role: 'user', content: 'اكتب لي قصيدة' }, { role: 'assistant', content: 'يا صقر…' }, { role: 'user', content: 'خله أقصر' }];
+  assert.deepEqual([W.after('خله أقصر', poem).any, W.after('خله أقصر', poem).def, W.after('خله أقصر', poem).follow], [false, false, false], 'بعد ردّ نصّيّ كما في ١٥');
+});
+
+test('٢٠. المراجعة العدائيّة: البناء بوصفه أو ملكيّته أو استنساخه يبقى بناءً؛ الجهات القائمة بحث', () => {
+  for (const t of ['أبغى موقع الكتروني', 'اريد موقع للشركة', 'ابي موقع للمطعم', 'ابي صفحة للحجز', 'ابي موقع للعيادة حقتي', 'ابي موقع للشركة حقتنا',
+    'ابي موقع رسمي لشركتي', 'ابي موقع لمطعمي فيه رابط واتساب', 'ابي موقع لمطعمي فيه عنوان وخريطة', 'ابي تطبيق يعرض أفضل المطاعم', 'أبي برنامج أعرف فيه مصاريفي',
+    'ابي موقع لمرسمي', 'ابي نسخة من انستقرام', 'أبي تطبيق مثل سناب شات']) {
+    assert.equal(G.gate(t), true, t);
+  }
+  // «سو» بلا ياء: بناء عبر «اسأل الكل» كما كان في main (فعل بناء صريح فلا يُقرأ جلبًا)
+  for (const t of ['سو لي موقع فيه رابط انستقرام', 'سو لي تطبيق يعرض أفضل العروض']) assert.equal(G.askAllShape(t), true, t);
+  for (const t of ['عطني موقع وزارة الاقتصاد', 'ابي رابط تطبيق الهيئة', 'ابي موقع وزارة الصحة', 'ابي تطبيق الهيئة الاتحادية للضرائب', 'وين أحمله تطبيق سهل؟ ابي رابط التحميل']) {
+    assert.equal(G.wantLookup(t, ''), true, t);
+  }
+});
+
+test('٢١. المراجعة العدائيّة: «تمام/زين/اوكي شكرا» بعد جواب بحث ليست موافقة على بناء ما بُحث عنه (شبكة استرجاع الطلب المعلّق)', () => {
+  const i = SRC.indexOf('        const __lastU = [...__ms].reverse().find(m => {');
+  assert.ok(i > 0);
+  const finder = SRC.slice(i, SRC.indexOf('        });', i) + 11).replace('const __lastU = ', 'return ');
+  const R = {};
+  vm.runInNewContext([line('const GATE_BUILD_RE = '), line('const GATE_CMD_RE = '),
+    line('const __rtBuildVerbRe = '), line('const __rtGiveRe = '), line('const __rtDlRe = '), line('const __rtLookupRe = '), line('const __rtEntityRe = '),
+    line('const __rtMineRe = '), line('const __rtFeatureRe = '), line('const __rtCloneRe = '),
+    SRC.slice(SRC.indexOf('  const __rtIsLookup = '), SRC.indexOf('\n  };\n', SRC.indexOf('  const __rtIsLookup = ')) + 5),
+    'this.pick = function(__ms){ const __gp = { code: "" }; ' + finder + ' };'].join('\n'), R);
+  for (const q of ['أبي أفضل تطبيق لتعلم الإنجليزي', 'عطني موقع وزارة الاقتصاد', 'ابي رابط تطبيق الهيئة', 'ممكن تقترح لي برنامج لإدارة المشاريع']) {
+    assert.equal(R.pick([{ role: 'user', content: q }, { role: 'assistant', content: 'أنصحك بـ…' }]), undefined, q);
+  }
+  const b = R.pick([{ role: 'user', content: 'أبي تطبيق ملاحظات' }, { role: 'assistant', content: 'تبيني أبدأ؟' }]);
+  assert.equal(b && b.content, 'أبي تطبيق ملاحظات', 'طلب البناء يُسترجع كما كان');
 });

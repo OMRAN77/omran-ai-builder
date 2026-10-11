@@ -25,8 +25,10 @@ vm.runInNewContext([
   line(ATTACH, 'const GATE_HARD_RE = '),
   'function gateText(text){ ' + line(ATTACH, 'const __gateText = ').replace('const __gateText = ', 'return ') + ' }',
   // v-route-want: «عطني/أبي + اسم بناء» بلا فعل بناء ولا وصف صنع = جلب/بحث (__rtWantLookup الحقيقيّ)
-  line(ATTACH, 'const __rtBuildVerbRe = '), line(ATTACH, 'const __rtLookupRe = '), line(ATTACH, 'const __rtGiveRe = '), line(ATTACH, 'const __rtEntityRe = '), line(ATTACH, 'const __rtMineRe = '),
-  'function wantLookup(text){ const getCurrent = () => null; ' + (() => { const i = ATTACH.indexOf('const __rtWantLookup = '); return ATTACH.slice(i, ATTACH.indexOf(';\n', i) + 1).replace('const __rtWantLookup = ', 'return '); })() + ' }',
+  line(ATTACH, 'const __rtBuildVerbRe = '), line(ATTACH, 'const __rtGiveRe = '), line(ATTACH, 'const __rtDlRe = '), line(ATTACH, 'const __rtLookupRe = '),
+  line(ATTACH, 'const __rtEntityRe = '), line(ATTACH, 'const __rtMineRe = '), line(ATTACH, 'const __rtFeatureRe = '), line(ATTACH, 'const __rtCloneRe = '),
+  ATTACH.slice(ATTACH.indexOf('  const __rtIsLookup = '), ATTACH.indexOf('\n  };\n', ATTACH.indexOf('  const __rtIsLookup = ')) + 5),
+  'function wantLookup(text){ return __rtIsLookup(text, ""); }',
   'this.gate = (text) => !!(text && ((GATE_BUILD_RE.test(gateText(text)) && GATE_CMD_RE.test(text) && !wantLookup(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text));',
 ].join('\n'), ctx);
 

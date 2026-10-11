@@ -15,7 +15,7 @@ const BLOCK = SRC.slice(start);
 function harness(frameWin) {
   let handler = null; const fetches = []; const replies = [];
   const ctx = {
-    window: { omranFloorplan: { facadePrompt: () => 'facade prompt' }, addEventListener: (t, f) => { if (t === 'message') handler = f; }, getGuestId: () => 'g' },
+    window: { location: { origin: 'https://app.example' }, omranFloorplan: { facadePrompt: () => 'facade prompt' }, addEventListener: (t, f) => { if (t === 'message') handler = f; }, getGuestId: () => 'g' },
     document: { getElementsByTagName: () => [{ contentWindow: frameWin }], getElementById: () => null, querySelectorAll: () => [] },
     fetch: (url, init) => { fetches.push({ url, init }); return Promise.resolve({ ok: true, json: () => Promise.resolve({ imageBase64: 'AAAA', mimeType: 'image/png' }) }); },
     authGet: () => 'tok', __swallow: () => {}, console,
@@ -37,7 +37,14 @@ test('رسالة من نافذة خارجيّة (ليست إطارًا في ال
 test('رسالة المحرّر من إطار المعاينة نفسه تعمل كما كانت', () => {
   const ownFrame = { postMessage() {} };
   const h = harness(ownFrame);
-  h.handler({ data: { __omranView: 1, id: 2, view: 'front', spec: {} }, source: ownFrame, origin: 'null' });
+  h.handler({ data: { __omranView: 1, id: 2, view: 'front', spec: {} }, source: ownFrame, origin: 'https://app.example' /* معاينة srcdoc ترث أصل التطبيق */ });
   assert.equal(h.fetches.length, 1);
   assert.equal(h.fetches[0].url, '/api/maha-image');
+});
+
+test('المراجعة العدائيّة: إطار معزول داخل الصفحة (جرّبه لي، run_js — أصله «null») لا يولّد صورة مدفوعة', () => {
+  const sandboxed = { postMessage() {} };
+  const h = harness(sandboxed);
+  h.handler({ data: { __omranView: 1, id: 3, view: 'front', spec: {} }, source: sandboxed, origin: 'null' });
+  assert.equal(h.fetches.length, 0, 'كود النموذج في الإطار المعزول لا ينفق نقاط المستخدم');
 });

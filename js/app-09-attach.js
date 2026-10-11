@@ -3409,16 +3409,19 @@ async function sendPrompt(){
    (المستخدم أرفق صورة، أو المساعد أخرج صورة). صورة الذاكرة memory.png لا تُحفظ في الرسائل فلا تُعدّ،
    فتنقطع السلسلة بعد قفزة واحدة بدل أن تلاحق كلّ رسالة قصيرة إلى الأبد. */
 function omranPrevTurnHadImage(messages){
+  /* v-route-sticky (المراجعة العدائيّة): الصورة المولَّدة وتقريرها («📋 تفسير الفكرة») رسالتان منفصلتان، والرسالة الحاليّة قد تكون دُفعت قبل الفحص —
+     فالدور السابق = رسالة المستخدم السابقة وكلّ ردود المساعد بعدها، لا آخر رسالة مساعد وحدها (كان «أكثر واقعية» بعد صورة جديدة يسقط للمحادثة). */
   try{
     const list = Array.isArray(messages) ? messages : [];
     const hasImg = (m) => !!(m && Array.isArray(m.attachments) && m.attachments.some(a => a && a.isImage && !a._fromMemory));
-    let lastA = null, lastU = null;
-    for(let i = list.length - 1; i >= 0; i--){
+    let i = list.length - 1;
+    if(i >= 0 && list[i] && list[i].role === 'user'){ if(hasImg(list[i])) return true; i--; } // الرسالة الحاليّة إن دُفعت قبل الفحص
+    for(; i >= 0; i--){
       const m = list[i]; if(!m) continue;
-      if(m.role === 'assistant' && !lastA){ lastA = m; if(lastU) break; }
-      else if(m.role === 'user' && !lastU){ lastU = m; if(lastA) break; }
+      if(m.role === 'assistant'){ if(hasImg(m)) return true; continue; }
+      if(m.role === 'user') return hasImg(m);
     }
-    return hasImg(lastA) || hasImg(lastU);
+    return false;
   }catch(e){ return false; }
 }
 /* v-media-gate (بلاغ المالك ١٩ سبتمبر): كلمات الوسائط التي تستدعي البوّابة، وكلمات «الكلام عن» الوسائط
@@ -3600,16 +3603,28 @@ async function __sendPromptCore(){
   const __strongBuildRe = /^\s*(?:(?:ممكن|ممكنك|لو\s*سمحت|من\s*فضلك|بليز|please|can\s*you|could\s*you|أبغى|ابغى|أبغي|ابغي|أبي|ابي|بغيت|أريد|اريد|ودّي|ودي|حاب|حابب|تقدر|تقدرين|أحتاج|احتاج|يا\s*ريت|ياريت|i\s*want|i\s*need)\s+){0,3}(?:تسوي|تسوّي|تسويلي|تصمم|تصمّم|تصميم|تبني|تبنيلي|تعمل|تعملي|تنشئ|تصنع|ابني|ابنيلي|نبني|اعمل|أعمل|سوي|سوّي|سولي|سوّلي|صمم|صمّم|انشئ|أنشئ|اصنع|build|create|make|design)\s+(?:(?:لي|لنا|ليا|إلي|الي|me|us)\s+)?(?:(?!(?:of|about|for|on|in|with|from|to|that|which|and)\b)[a-z][\w'-]*\s+){0,3}(?:ال)?(?:موقع|مواقع|تطبيق|تطبيقات|لعب[ةه]|ألعاب|العاب|بوت|شات\s*بوت|صفح[ةه]|أدا[ةه]|ادا[ةه]|أدوات|ادوات|برنامج|برامج|سكربت|سكريبت|(?:آل[ةه]|ال[ةه])\s*حاسب[ةه]|حاسب[ةه]|ساع[ةه]|متجر|لوح[ةه]\s*تحكم|داشبورد|apps?|application|web\s*site|website|site|web\s*page|webpage|page|games?|bot|chatbot|tool|script|program|calculator|clock|timer|dashboard|store|extension)(?![ء-يa-z])/i;
   /* v-route-want (إعادة التقييم ١٠ أكتوبر، ١١ من ١٢ حالة): «عطني/أبي/ممكن + موقع/تطبيق/برنامج/أداة/صفحة/لعبة» بلا فعل بناء صريح كانت تُسأل
      «تبيني أبدأ البناء؟» على المسار القديم بلا أدوات — «عطني موقع مركز خدمة العملاء»، «ابي موقع السفارة الهندية»، «أبي أفضل تطبيق لتعلم الإنجليزي»،
-     «ممكن تقترح لي برنامج»، «أبي لعبة أنزلها لولدي». جلبٌ لا بناء حين: كلمة بحث/توصية/تنزيل (رابط/أفضل/تقترح/أنزل/الرسمي/انستقرام…)،
-     أو «عطني/هات/تعطيني» أو «موقع/صفحة/حساب + جهة معرّفة» بلا ملكيّة («عطني موقع لمطعمي» بناء). «أبي تطبيق ملاحظات»، «اريد موقع لشركتي»، «ابي موقع» تبقى بناءً كما كانت؛
+     «ممكن تقترح لي برنامج»، «أبي لعبة أنزلها لولدي». جلبٌ لا بناء حين: تنزيل (أنزلها/حمّل) بلا وصف صنع، أو بحث/توصية (رابط/أعرف/تقترح/«أفضل تطبيق») بلا وصف صنع
+     ولا ملكيّة، أو «عطني/هات» أو «موقع/صفحة/تطبيق + جهة قائمة» (السفارة/الهيئة/وزارة…) بلا ملكيّة ولا استنساخ. «أبي تطبيق ملاحظات»، «اريد موقع لشركتي»، «ابي موقع»،
+     «عطني موقع لمطعمي»، «ابي موقع لمطعمي فيه رابط واتساب»، «ابي نسخة من انستقرام» تبقى بناءً؛ والدالّة نفسها تحرس شبكة استرجاع الطلب المعلّق («تمام» بعد جواب البحث ليست موافقة)؛
      وفعل البناء الصريح (ابني/سوّي/صمّم…) والمشروع المفتوح (كود حاضر = تعديل) كما كانا. */
-  const __rtBuildVerbRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|سولي|سوّلي|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|build|create|make|design|develop)/i;
-  const __rtLookupRe = /رابط|لينك|\blink\b|أعرف|اعرف|أفضل|افضل|أحسن|احسن|تقترح|اقترح|انصح|تنصح|ترشح|رشح|أنزل|انزل|نزّل|أحمل|احمل|حمّل|تحميل|download|\bbest\b|recommend|suggest|الرسمي|الرسمية|رسمي|انستقرام|انستغرام|instagram|تويتر|twitter|فيسبوك|facebook|يوتيوب|youtube|سناب|tiktok|تيك\s*توك|عنوان/i;
+  const __rtBuildVerbRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|سولي|سوّلي|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|build|create|make|design|develop)|(?:^|[\s،,])سوّ?(?=$|[\s،,])/i;
   const __rtGiveRe = /(?:^|[\s،,])(?:عطني|أعطني|اعطني|تعطيني|عطيني|هات|هاتي|جيب|give\s+me)(?=$|[\s،,])/i;
-  const __rtEntityRe = /(?:^|[\s،,])(?:موقع|مواقع|صفح[ةه]|حساب|رابط)\s+(?:ال|لل)[ء-ي]{2,}/;
-  const __rtMineRe = /(?:^|[\s،,])(?:ل[ء-ي]{2,}(?:ي|نا)|حق(?:ي|نا)|حگ(?:ي|نا))(?=$|[\s،,.!؟?])|\bfor\s+(?:my|our)\b/i; // ملكيّة بعد الاسم («لمطعمي/لشركتي/حقي») = صنع؛ «هات لي» ليست ملكيّة
-  const __rtWantLookup = !!(text && !__rtBuildVerbRe.test(text) && !(getCurrent() && getCurrent().code)
-    && (__rtLookupRe.test(text) || ((__rtGiveRe.test(text) || __rtEntityRe.test(text)) && !__rtMineRe.test(text))));
+  const __rtDlRe = /(?:^|[\s،,.!؟?])(?:(?:أنزل|انزل|نزّل|أحمل|احمل|حمّل)(?:ه|ها|هم)?|تحميل|download)(?=$|[\s،,.!؟?])/i; // تنزيل: جلب حتّى مع «لولدي»
+  const __rtLookupRe = /(?:^|[\s،,.!؟?])(?:رابط|لينك|أعرف|اعرف|تقترح|تقترحين|اقترح|أنصح|انصح|تنصح|تنصحني|ترشح|رشح|رشّح|link|recommend|suggest|best)(?=$|[\s،,.!؟?])|(?:أفضل|افضل|أحسن|احسن)\s+(?:موقع|مواقع|تطبيق|تطبيقات|برنامج|برامج|لعب[ةه]|ألعاب|العاب|أدا[ةه]|ادا[ةه])/i;
+  const __rtEntityRe = /(?:موقع|مواقع|صفح[ةه]|حساب|رابط|تطبيق)\s+(?:ال(?:وزار|هيئ|سفار|قنصلي|دائر|بلدي|مستشف|جامع|شرط|محكم|محاكم|مطار|بنك|مصرف|حكوم|مجلس|ديوان)|(?:وزار|هيئ|سفار|قنصلي|دائر|بلدي|مستشف|جامع|شرط|محكم|محاكم|مطار|بنك|مصرف|مجلس|ديوان)[ء-ي]*\s+[ء-ي]{2,})/; // جهة قائمة: «موقع السفارة»، «موقع وزارة الاقتصاد» — لا «موقع الكتروني» ولا «موقع للشركة»
+  const __rtMineRe = /(?:^|[\s،,])(?:ل[ء-ي]{2,}(?:ي|نا)|حق(?:ت)?(?:ي|نا)|حگ(?:ت)?(?:ي|نا))(?=$|[\s،,.!؟?])|\bfor\s+(?:my|our)\b/i; // ملكيّة بعد الاسم («لمطعمي/لشركتي/حقتي») = صنع؛ «هات لي» ليست ملكيّة
+  const __rtFeatureRe = /(?:^|[\s،,])(?:فيه|فيها|يعرض|تعرض|يحسب|تحسب|مثل|زي|نسخ[ةه]|كلون)(?=$|[\s،,])|\b(?:clone|like)\b/i; // وصف صنع: «موقع فيه رابط واتساب»، «نسخة من انستقرام»
+  const __rtCloneRe = /(?:^|[\s،,])(?:مثل|زي|نسخ[ةه]|كلون)(?=$|[\s،,])|\b(?:clone|like)\b/i;
+  const __rtIsLookup = (t, code) => {
+    t = String(t || '');
+    if(!t || code || __rtBuildVerbRe.test(t)) return false;
+    const feat = __rtFeatureRe.test(t), mine = __rtMineRe.test(t);
+    if(__rtDlRe.test(t) && !feat) return true;
+    if(__rtLookupRe.test(t) && !feat && !mine) return true;
+    return !!((__rtGiveRe.test(t) || __rtEntityRe.test(t)) && !mine && !__rtCloneRe.test(t));
+  };
+  const __rtCurP = ((typeof __startPid !== 'undefined' && __startPid && typeof state !== 'undefined' && state && Array.isArray(state.projects)) ? state.projects.find(p => p && p.id === __startPid) : null) || getCurrent(); // المحادثة التي كُتبت فيها الرسالة (v-parallel-chats) لا الظاهرة بعد انتظار المصنّف
+  const __rtWantLookup = __rtIsLookup(text, __rtCurP && __rtCurP.code);
   // 🖼️ v330: متابعة بعد تعديل صورة (بدون مرفق جديد) → مسار تعديل الصورة مباشرة
   // بآخر صورة محفوظة — ممنوع بوابة البناء وممنوع خطة عمل («ضيفه الرابط» كانت
   // تروح للبوابة فيرسم المزود الصورة من خياله بدل تعديل الأصلية).
@@ -3619,14 +3634,15 @@ async function __sendPromptCore(){
      طلب كتابة وثيقة (قصيدة/إيميل/رسالة/مقال/خطاب/تقرير…، أو «اكتب لي نص/تهنئة») بلا إشارة إلى الصورة
      (عليها/فيها/الصورة/على البطاقة/نصّ بين علامتي تنصيص) = محادثة. «اكتب عليها…» و«اكتب «عيد مبارك»» تبقى كتابة على الصورة. */
   const __rtWriteVerbRe = /(?:^|[\s،,.!؟?])(?:اكتب|أكتب|اكتبي|اكتبلي|أكتبلي|تكتب|تكتبلي|نكتب|write|compose|draft)(?=$|[\s،,.:!؟?])/i;
-  const __rtImgRefRe = /عليها|فوقها|تحتها|فيها|عليه(?=$|[\s،,.!؟?])|(?:ال|لل|بال)صور[ةه]|صورتي|هالصور|(?:على|في|فوق|تحت|داخل)\s*(?:ال)?(?:بطاق[ةه]|بوستر|تصميم|خلفي[ةه]|لوح[ةه])|[«»"“”]|\b(?:it|image|picture|photo)\b/i;
+  const __rtImgRefRe = /عليها|فوقها|تحتها|فيها|عليه(?=$|[\s،,.!؟?])|(?:ال|لل|بال)صور[ةه]|صورتي|هالصور|(?:على|في|فوق|تحت|داخل)\s*(?:ال)?(?:بطاق[ةه]|بوستر|تصميم|خلفي[ةه]|لوح[ةه]|شعار|لوجو)|[«»"“”]|\b(?:it|image|picture|photo)\b/i;
   const __rtDocNounRe = /(?:^|[\s،,.])(?:ال)?(?:قصيد[ةه]|قصائد|شعر|إيميل|ايميل|رسال[ةه]|مقال[ةه]?|خطاب|تغريد[ةه]|تقرير|قص[ةه]|بوست|منشور|كابشن|poem|email|letter|essay|article|story|tweet|report|post|caption)(?=$|[\s،,.:!؟?])|(?:(?:اكتب|أكتب|اكتبي|تكتب)\s*لي|اكتبلي|أكتبلي|تكتبلي)\s+(?:نص|تهنئ[ةه])(?=$|[\s،,.:!؟?])/i;
   /* المراجعة: «اكتب رسالة رمضان كريم بخط ذهبي» و«اكتب رسالة: عيد مبارك» بعد صورة كتابةٌ عليها (خطّ/لون/نقطتان) لا وثيقة */
   const __rtStyleCueRe = /بخط|بالخط|خط\s*(?:ديواني|كوفي|فارسي|ثلث|رقعة|عريض|ذهبي)|بلون|باللون|ذهبي|فضي|[:：]/;
   /* v-route-suggest (المدوّنة العمياء ٢): بعد صورة شعار «اقترح لي اسم للنادي» صارت تعديلًا على الصورة فجرّت ما بعدها («عطني خمس أسماء ثانية»، «الثالث حلو»).
-     طلب اقتراح نصّيّ (اسم/أسماء/فكرة/عنوان/عبارة/شعار نصّيّ) بلا إشارة للصورة جوابٌ بالكلام كطلب الكتابة. */
-  const __rtSuggestRe = /(?:^|[\s،,.!؟?])(?:اقترح|أقترح|اقترحي|تقترح|عطني|أعطني|اعطني|عطيني|هات|suggest|give\s+me)\s+(?:(?:لي|لنا|me|us)\s+)?(?:[^\s،,.!؟?]+\s+){0,2}?(?:اسم|اسماء|أسماء|فكر[ةه]|أفكار|افكار|عنوان|عناوين|عبار[ةه]|عبارات|سلوقن|سلوغن|names?|ideas?|titles?|slogans?)(?=$|[\s،,.!؟?])/i;
-  const __rtWriteAsk = !!(text && (__rtWriteVerbRe.test(text) && __rtDocNounRe.test(text) || __rtSuggestRe.test(text)) && !__rtImgRefRe.test(text) && !__rtStyleCueRe.test(text));
+     طلب اقتراح نصّيّ (اسم/أسماء/عبارة/سلوقن) بلا إشارة للصورة ولا فعل وضع (حطّه/اكتبه) جوابٌ بالكلام؛ «عطني فكرة ثانية» تبقى لقطة بصريّة جديدة (__IMG_CREATIVE_RE). */
+  const __rtSuggestRe = /(?:^|[\s،,.!؟?])(?:اقترح|أقترح|اقترحي|تقترح|عطني|أعطني|اعطني|عطيني|هات|suggest|give\s+me)\s+(?:(?:لي|لنا|me|us)\s+)?(?:[^\s،,.!؟?]+\s+){0,2}?(?:اسم|اسماء|أسماء|عبار[ةه]|عبارات|سلوقن|سلوغن|names?|slogans?)(?=$|[\s،,.!؟?])/i;
+  const __rtPutRe = /(?:^|[\s،,.!؟?])و?(?:حط|حطه|حطها|حطيه|اكتب|اكتبه|اكتبها|ضيف|ضيفه|ضيفها|أضف|اضف|ضعه|ضعها|خل|خله|خلها|put|add|write)(?=$|[\s،,.!؟?])/i; // «اقترح اسم واكتبه على الشعار» تعديل لا اقتراح
+  const __rtWriteAsk = !!(text && (__rtWriteVerbRe.test(text) && __rtDocNounRe.test(text) || (__rtSuggestRe.test(text) && !__rtPutRe.test(text))) && !__rtImgRefRe.test(text) && !__rtStyleCueRe.test(text));
   /* «اكتب لي دعوة/شهادة/بطاقة…» في أوّل الرسالة = وثيقة تُكتب، لا تصميم بنصّ (فعل التصميم «صمّم/سوّ» يبقى صورة) */
   const __rtWriteDocAsk = !!(text && !__rtImgRefRe.test(text) && /^\s*(?:(?:ممكن|لو\s*سمحت|من\s*فضلك|بليز|please|ساعدني)\s+)?(?:اكتب|أكتب|اكتبي|اكتبلي|أكتبلي|تكتب|تكتبلي|write)\s*(?:لي\s*|لنا\s*|me\s+)?(?:(?:a|an)\s+)?(?:ال)?(?:دعو[ةه]|شهاد[ةه]|بطاق[ةه]|تهنئ[ةه]|كرت|invitation|certificate|card)(?=$|[\s،,.:!؟?])/i.test(text));
   const __IMGF_NEW_RE = /(?:صورة|صوره|بطاق[ةه]|بوستر|ملصق|شهاد[ةه]|غلاف|بنر|لوجو|شعار|image|picture|card|poster)\s*(?:جديد[ةه]|ثاني[ةه]|أخرى|اخرى|new|another)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:ارسم|أرسم|اصنع|انشئ|أنشئ|صمم|صمّم|ولّد|ولد|draw|create|generate|design)\s*(?:لي\s*)?(?:صورة|صوره|بطاق[ةه]|بوستر|ملصق|شهاد[ةه]|غلاف|بنر|لوجو|شعار|image|picture|card|poster|logo|banner)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:صوّر|صور|صوره|صورة|تصور)\s?لي\s+\S/i; // v659: «صوّر لي X» = صورة جديدة، لا تعديل على السابقة
@@ -3637,6 +3653,7 @@ async function __sendPromptCore(){
     try{
       const c = getCurrent();
       if(!c || !c.lastMsgWasImageEdit || !c.lastEditedImage || !c.lastEditedImage.b64) return false;
+      if(!omranPrevTurnHadImage(c.messages)) return false; // v-route-sticky: بعد ردّ نصّيّ («اكتب لي بوست») «خله أقصر» للنصّ — lastMsgWasImageEdit يبقى بعد دور المحادثة
       if(__rtWriteAsk) return false; // v-route-write: طلب كتابة وثيقة بلا إشارة للصورة = محادثة لا كتابة عليها
       if(pendingAttachments.some(a => a.isImage)) return false;
       if(!text || text.length > 220) return false;
@@ -3712,7 +3729,7 @@ async function __sendPromptCore(){
         // آخر طلب بناء كتبه المستخدم في هذا المشروع
         const __lastU = [...__ms].reverse().find(m => {
           const __t = String(m.apiText !== undefined ? m.apiText : (m.content || ''));
-          return m.role === 'user' && GATE_BUILD_RE.test(__t) && GATE_CMD_RE.test(__t);
+          return m.role === 'user' && GATE_BUILD_RE.test(__t) && GATE_CMD_RE.test(__t) && !__rtIsLookup(__t, __gp && __gp.code); // v-route-want: «تمام/زين/شكرًا» بعد جواب بحث ليست موافقة على بناء ما بُحث عنه
         });
         if(__lastU){
           const __idx = __ms.lastIndexOf(__lastU);
@@ -4054,7 +4071,7 @@ function __friendlyErr(e){
     const __photoFetchRe = /(عطني|أعطني|اعطني|هات|جيب|وريني|أرني|ارني|اعرض|ابغي|أبي|ابي|اريد|أريد|show me|give me|find me)[^]{0,40}?(صور|صورة|photos?|images?|pictures?)/i;
     const __genDrawRe = /(ارسم|ولّد|ولد لي|تخيل|اصنع|صمم|أنشئ صورة|انشئ صورة|generate|draw|imagine)/i;
     // v322: "لوجو لتطبيقي/لشركتي/دعاية..." = تصميم جديد، مو بحث عن شعار رسمي موجود
-    const __logoNewRe = /(لتطبيق|لموقع|لشرك|لنادي|لفريق|لجمعي|لمدرس|لمؤسس|لمركز|لمشروع|لمتجر|لقناة|لبراند|لعلامت|لمطعم|لمحل|دعاي|اعلان|إعلان|جديد|خاص|هوية|براند|for my|my app|my site|my brand|my company|new logo|(لي|إلي|الي|حق|حگ)\s*(تطبيق|موقع|شرك|مشروع|متجر|قناة|براند|مطعم|محل))|(?:^|[\s،,.])ل(?:مقه[ىي]|كافي|كوفي|صالون|عياد|مكتب|مخبز|حلويات|محمص|مغسل|بقال|صيدلي|مطبخ|بوتيك|مشغل|ورش)/i; /* v-route-logo: «لوجو لمقهى/لكافيه/لصالون…» تصميم جديد — اللام أوّل الكلمة كي لا تُقرأ «المكتب الإعلامي» */
+    const __logoNewRe = /(لتطبيق|لموقع|لشرك|لمشروع|لمتجر|لقناة|لبراند|لعلامت|لمطعم|لمحل|دعاي|اعلان|إعلان|جديد|خاص|هوية|براند|for my|my app|my site|my brand|my company|new logo|(لي|إلي|الي|حق|حگ)\s*(تطبيق|موقع|شرك|مشروع|متجر|قناة|براند|مطعم|محل))|(?:^|[\s،,.])ل(?:نادي|فريق|جمعي|مدرس|مؤسس|مركز|مقه[ىي]|كافي|كوفي|صالون|عياد|مكتب|مخبز|حلويات|محمص|مغسل|بقال|صيدلي|مطبخ|بوتيك|مشغل|ورش)/i; /* v-route-logo: «لوجو لمقهى/لكافيه/لصالون…» تصميم جديد — اللام أوّل الكلمة كي لا تُقرأ «المكتب الإعلامي» */
     // v324: سؤال/متابعة عن شعار سبق ذكره بالمحادثة (وين الشعار اللي عطيتك...) = مو بحث — يروح للمزود عادي
     const __logoRefRe = /(عطيتك|أعطيتك|اعطيتك|أرفقت|ارفقت|رفعت|حطيت|اللي عطيت|الي عطيت|وين|فين|ليش|ما استخدمت|مااستخدمت|استخدم|ضفه|أضفه|اضفه|حطه|بدله|غيره|عدله)/i;
     // 🧭 v326 القبطان: بوابة بحث الشعارات الرسمية تفتح فقط في أول رسالة
@@ -4921,7 +4938,7 @@ function __showImgLoading(el, ar, en){
        أيّ رسالة قصيرة ليست سؤالًا ولا شكرًا ولا طلب صورة جديدة ولا كودًا = تعديل على آخر نسخة. */
     const __ackOnly = /^\s*(?:هلا|مرحبا|السلام\s*عليكم|شكرا|شكرًا|مشكور|تسلم|تسلمين|يعطيك\s*العافية|تمام|ممتاز|رائع|جميل|جميلة|حلو|حلوة|زين|نعم|لا|اوكي|أوكي|ok|okay|thanks|thank you|nice|great|perfect|yes|no)\s*[.!👍❤️🌹]*\s*$/i;
     const __FOLLOW_ANY = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 300 && !__ackOnly.test(text) && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !__rtWriteAsk /* v-route-write */ && omranPrevTurnHadImage(cur.messages) /* v-route-sticky: «بعد صورة مباشرةً» كما قصد v-img-loop — بعد ردّ نصّيّ («اكتب قصيدة») «اختصر/بالإنجليزي» للنصّ لا للصورة */);
-    const __FOLLOW_DEFAULT = __FOLLOW_ANY || !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && __editStyleIntent && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text) && !__rtWriteAsk /* v-route-write */);
+    const __FOLLOW_DEFAULT = __FOLLOW_ANY || !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && __editStyleIntent && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text) && !__rtWriteAsk /* v-route-write */ && omranPrevTurnHadImage(cur.messages) /* v-route-sticky */);
     /* v-fresh-gen-wins (شكوى المالك: «عطني صور» مع صورة مرفقة كانت تُعدّل
        اللقطة بدل توليد صور جديدة → نتيجة زفت). طلب توليد صريح («عطني/ولّد/
        ارسم صورة») بلا أي فعل تعديل وبلا إشارة للمرفق = توليد جديد نظيف
@@ -4933,7 +4950,7 @@ function __showImgLoading(el, ar, en){
     const __STYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|ستايل|أسلوب|اسلوب|نمط|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|sketch|realistic|render|style)(?=$|[\s،,.!?؟])/i;
     const __styleShort = !!(text && text.length <= 80 && __STYLE_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !/[؟?]\s*$/.test(text));
     const __ATT_STYLE = !!(__srcImg && !__srcImg._fromMemory && __styleShort);
-    const __STYLE_FOLLOW = !!(!__srcImg && __styleShort && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit);
+    const __STYLE_FOLLOW = !!(!__srcImg && __styleShort && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && omranPrevTurnHadImage(cur.messages) /* v-route-sticky */);
     const __freshGenWins = !!(text && __srcImg && !__srcImg._fromMemory
       && __imgGenIntentRe.test(text)
       && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_ELEVATE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
