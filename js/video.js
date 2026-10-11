@@ -110,6 +110,7 @@
   function tabLabel(v){
     if(v==='trend') return L('videoTabTrends');
     if(v==='clean') return L('videoTabClean');
+    if(v==='director') return L('vdTab')||'مخرج التطبيق';
     var sel=id('videoMakerMode'); if(!sel) return v;
     for(var i=0;i<sel.options.length;i++) if(sel.options[i].value===v){
       var t=(sel.options[i].textContent||'').trim(), m=t.match(ICO); t=short(t.slice(m?m[1].length:0));
@@ -126,17 +127,19 @@
     }
     if(tb.previousElementSibling!==card.firstElementChild) card.insertBefore(tb,card.firstElementChild.nextSibling);
     tb.innerHTML='';
-    TABS.forEach(function(v){
+    /* v-app-director: قسم «مخرج التطبيق» آخر الشريط للمالك وحده — لغير المالك لا زرّ ولا لوحة في DOM */
+    TABS.concat(drOwner()?['director']:[]).forEach(function(v){
       var b=document.createElement('button'); b.type='button'; b.className='vmk-tab'; b.dataset.tab=v;
       b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(v===tab)); b.textContent=tabLabel(v); tb.appendChild(b);
     });
     card.classList.toggle('vmk-tab-trend',tab==='trend');
     card.classList.toggle('vmk-tab-clean',tab==='clean');
+    card.classList.toggle('vmk-tab-director',tab==='director');
   }
   function setTab(v){
-    if(TABS.indexOf(v)<0) return; tab=v;
+    if(TABS.indexOf(v)<0&&!(v==='director'&&drOwner())) return; tab=v;
     var sel=id('videoMakerMode');
-    if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
+    if(v!=='trend'&&v!=='clean'&&v!=='director'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
     buildTabs(); sync(); scrub();
   }
   function syncSamples(){
@@ -260,6 +263,185 @@
       [].slice.call(g.children).forEach(function(c){ if(!BASIC_DUR[c.dataset.v]) box.appendChild(c); });
       ex.style.display=box.children.length?'':'none';
     }
+  }
+  /* ═══ v-app-director (المالك: «سوّ لي أو عطني فكرة فيديو عن أنماط الصور ويعطيني فيديو عنه كامل… فيديو عن التطبيق ١٠ دقائق مع مها أو
+     عبدالله وبأيّ لغة أريدها» — «نفس مكان الفيديوهات، مخرج التطبيق، بدون أيقونات، فقط للمالك»): قسم للمالك وحده يأخذ طلبًا بالكلام
+     ويسلّم فيديو كاملًا عن التطبيق. المتصفّح يقود المسار: الخطّة من الخادم (action=app-director-plan) ← نماذج الأنماط بمسار الصور القائم
+     ← التعليق بصوت مها/عبدالله (action=tts) ← رمز مهمّة (action=app-director-token) ← جسر Railway يصوّر الشاشات ويدمج (POST /render)
+     ← استطلاع كلّ ٣ ثوانٍ ← معاينة وتحميل وحفظ. لا سرّ ولا عنوان جسر في العميل: يعودان مع الرمز. ═══ */
+  function drOwner(){ try{ return String((typeof authGet==='function')?(authGet('aiapp_username')||''):(localStorage.getItem('aiapp_username')||'')).trim().toLowerCase()==='omran'; }catch(e){ return false; } }
+  var DR_LANGS=[['ar','العربية'],['en','English'],['fr','Français'],['es','Español'],['tr','Türkçe'],['ru','Русский'],['zh','中文'],['hi','हिन्दी'],['ur','اردو'],['bn','বাংলা'],['ne','नेपाली'],['ml','മലയാളം'],['id','Bahasa Indonesia'],['fil','Filipino']];
+  var DR={busy:false,run:0,ref:'',refMime:'',out:'',lang:''};
+  function drTok(){ return (typeof authGet==='function')?(authGet('aiapp_auth_token')||''):''; }
+  function drUiLang(){ try{ return localStorage.getItem('aiapp_lang')||'ar'; }catch(e){ return 'ar'; } }
+  function drT(k,vars){ var v=L(k)||k; Object.keys(vars||{}).forEach(function(x){ v=v.split('{'+x+'}').join(String(vars[x])); }); return v; }
+  function buildDirector(){
+    var card=M.firstElementChild; if(!card||!drOwner()||id('vmkDirector')) return;
+    var box=document.createElement('div'); box.id='vmkDirector'; box.className='vmk-dir';
+    box.innerHTML='<div class="vmk-dir-head"><b></b><p></p></div>'
+      +'<textarea id="vdReq" rows="3" maxlength="600"></textarea>'
+      +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label></div>'
+      +'<label class="vmk-dir-ref"><input type="file" accept="image/*" id="vdRef"><img id="vdRefImg" alt="" hidden><span></span></label>'
+      +'<button type="button" id="vdGo"></button>'
+      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','shots','samples','voice','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small></li>'; }).join('')+'</ol>'
+      +'<p class="vmk-dir-msg" id="vdMsg"></p>'
+      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a></div>';
+    var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
+    var ls=box.querySelector('#vdLang'); DR_LANGS.forEach(function(l){ var o=document.createElement('option'); o.value=l[0]; o.textContent=l[1]; ls.appendChild(o); });
+    ls.value=DR_LANGS.some(function(l){ return l[0]===drUiLang(); })?drUiLang():'ar';
+    var ms=box.querySelector('#vdMin'); for(var i=1;i<=10;i++){ var o=document.createElement('option'); o.value=String(i); o.textContent=String(i); ms.appendChild(o); } ms.value='2';
+    box.querySelector('#vdRef').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0]; if(f) drPickRef(f); });
+    box.querySelector('#vdGo').addEventListener('click',drRun);
+    box.querySelector('#vdReq').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); drRun(); } });
+  }
+  function syncDirector(){
+    var box=id('vmkDirector'); if(!box) return;
+    box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=L('vdSub');
+    box.querySelector('#vdReq').placeholder=L('vdPh');
+    var labs=box.querySelectorAll('.vmk-dir-row label>span'); labs[0].textContent=L('vdLang'); labs[1].textContent=L('vdSpeaker'); labs[2].textContent=L('vdMinutes');
+    var sp=box.querySelector('#vdSpeaker'); sp.options[0].textContent=L('vdMaha')||'مها'; sp.options[1].textContent=L('vdAbdullah')||'عبدالله';
+    box.querySelector('.vmk-dir-ref span').textContent=L('vdRef');
+    box.querySelector('#vdGo').textContent=L('vdGo'); box.querySelector('#vdGo').disabled=DR.busy;
+    var names={plan:'vdStepPlan',shots:'vdStepShots',samples:'vdStepSamples',voice:'vdStepVoice',join:'vdStepJoin'};
+    [].forEach.call(box.querySelectorAll('#vdSteps li'),function(li){ li.querySelector('b').textContent=L(names[li.dataset.step]); });
+    box.querySelector('#vdDl').textContent=L('vdDownload');
+  }
+  function drStep(k,state,note){ var li=M.querySelector('#vdSteps li[data-step="'+k+'"]'); if(!li) return; li.classList.remove('on','ok','err'); if(state) li.classList.add(state); li.querySelector('small').textContent=note||''; }
+  function drMsg(t,err){ var m=id('vdMsg'); if(m){ m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':''); } }
+  function drReset(){ ['plan','shots','samples','voice','join'].forEach(function(k){ drStep(k,'',''); }); drMsg(''); var r=id('vdRes'); if(r) r.classList.remove('has'); }
+  function drPickRef(f){
+    var r=new FileReader();
+    r.onload=function(){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var w=img.width,h=img.height,MAX=1400; if(Math.max(w,h)>MAX){ var k=MAX/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+          var c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h);
+          var du=c.toDataURL('image/jpeg',0.86); DR.ref=du.split(',')[1]; DR.refMime='image/jpeg';
+          var pv=id('vdRefImg'); if(pv){ pv.src=du; pv.hidden=false; }
+        }catch(e){ DR.ref=''; try{ __swallow(e,'director:ref'); }catch(x){ /* guard-ok — لا مسجّل */ } }
+      };
+      img.src=String(r.result||'');
+    };
+    r.readAsDataURL(f);
+  }
+  function drPool(items,n,fn){
+    var next=0; function worker(){ if(next>=items.length) return Promise.resolve(); var i=next++; return Promise.resolve().then(function(){ return fn(items[i],i); }).then(worker); }
+    var ws=[]; for(var k=0;k<Math.min(n,items.length);k++) ws.push(worker()); return Promise.all(ws);
+  }
+  function drB64(blob){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ res(String(r.result||'').split(',')[1]||''); }; r.onerror=function(){ rej(r.error||new Error('read')); }; r.readAsDataURL(blob); }); }
+  function drJson(url,body){
+    return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().catch(function(){ return null; }).then(function(j){ return {ok:r.ok,status:r.status,json:j}; }); });
+  }
+  /* أسماء الشاشات باللغة المطلوبة من قاموس الواجهة نفسه (يُحمَّل ملفّ اللغة إن لزم) — الخادم يسمّي بها الميزات في السيناريو */
+  function drLabels(lg){
+    var p=(typeof loadLangFile==='function')?loadLangFile(lg):Promise.resolve();
+    return Promise.resolve(p).catch(function(){ /* guard-ok — بلا ملفّ لغة تُستعمل الأسماء الاحتياطيّة في الخادم */ }).then(function(){
+      var d=(typeof window.__i18nDict==='function')?window.__i18nDict(lg):((window.I18N&&window.I18N[lg])||{}); var out={};
+      Object.keys(d||{}).forEach(function(k){ if(/Title$|^tcSub_|^videoTab|^videoMode|^themeSectionLabel$|^adStudioHint$|^religionModalTitle$|^mahaTitle$/.test(k)&&typeof d[k]==='string') out[k]=d[k].slice(0,120); });
+      return out;
+    });
+  }
+  function drFail(code){ return Object.assign(new Error(code),{code:code}); }
+  async function drRun(){
+    if(DR.busy||!drOwner()) return;
+    var req=(id('vdReq').value||'').trim(); if(!req){ drMsg(L('vdEmpty'),true); return; }
+    var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;
+    var my=++DR.run, tk=drTok();
+    DR.busy=true; DR.lang=lang; syncDirector(); drReset();
+    try{
+      /* ١) الفكرة والسيناريو */
+      drStep('plan','on');
+      var labels=await drLabels(lang); if(my!==DR.run) return;
+      var pr=await drJson('/api/ai?action=app-director-plan',{request:req,lang:lang,speaker:speaker,minutes:minutes,token:tk,labels:labels}); if(my!==DR.run) return;
+      if(!pr.ok||!pr.json||!pr.json.plan){ drStep('plan','err'); throw drFail('plan '+pr.status+(pr.json&&pr.json.error?' '+pr.json.error:'')); }
+      var plan=pr.json.plan, cat=pr.json.catalog||{screens:[],styles:{}}, screens={}; (cat.screens||[]).forEach(function(s){ screens[s.id]=s; });
+      var scenes=plan.scenes.map(function(sc){
+        var o={type:sc.type,target:sc.target,text:sc.text||'',sub:'',narration:sc.narration||'',seconds:sc.seconds||8,steps:null,image:'',mime:'',audio:'',prompt:''};
+        if(o.type==='title'){ o.text=sc.text||plan.title; o.sub=sc.highlight||''; }
+        if(o.type==='screen'){ var scr=screens[o.target]||screens.home||{steps:[]}; o.steps=scr.steps||[]; }
+        if(o.type==='style_sample'){ var st=(cat.styles||{})[o.target]; o.prompt=st?st.prompt:''; }
+        return o;
+      });
+      drStep('plan','ok',plan.title+' · '+drT('vdScene',{i:scenes.length,n:scenes.length}));
+      /* ٢) نماذج الأنماط بمسار الصور القائم (صورة المالك مرجعًا إن أرفقها) — المالك بلا نقاط */
+      var samples=scenes.filter(function(s){ return s.type==='style_sample'; });
+      var failed=0;
+      if(samples.length){
+        drStep('samples','on',drT('vdScene',{i:0,n:samples.length}));
+        var doneS=0;
+        await drPool(samples,2,async function(s){
+          var r=null;
+          try{
+            r=DR.ref?await drJson('/api/portrait-style',{imageBase64:DR.ref,mimeType:DR.refMime,style:s.target,token:tk})
+                    :await drJson('/api/media?action=maha-image',{prompt:s.prompt||('portrait in the '+s.target+' style'),userText:'',token:tk,guestId:(window.getGuestId?window.getGuestId():'')});
+          }catch(e){ r=null; try{ __swallow(e,'director:sample'); }catch(z){ /* guard-ok — لا مسجّل */ } }
+          if(my!==DR.run) return;
+          if(r&&r.ok&&r.json&&r.json.imageBase64){ s.image=r.json.imageBase64; s.mime=r.json.mimeType||'image/png'; }
+          else { failed++; s.type='screen'; s.target='portrait'; s.steps=(screens.portrait||{steps:[]}).steps; s.image=''; }
+          doneS++; drStep('samples','on',drT('vdScene',{i:doneS,n:samples.length}));
+        });
+        if(my!==DR.run) return;
+        drStep('samples','ok',failed?drT('vdWarnSamples',{n:failed}):'');
+      } else drStep('samples','ok','');
+      /* ٣) التعليق لكلّ مشهد بصوت مها/عبدالله باللغة المختارة (المسار نفسه الذي يستعمله الصانع) */
+      var voiced=scenes.filter(function(s){ return !!s.narration; });
+      drStep('voice','on',drT('vdScene',{i:0,n:voiced.length}));
+      var doneV=0;
+      await drPool(voiced,2,async function(s){
+        for(var att=1;att<=2&&!s.audio;att++){
+          try{
+            var ctl=new AbortController(); var tm=setTimeout(function(){ ctl.abort(); },60000);
+            var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s.narration,voice:'maha',lang:lang,gender:speaker,token:tk}),signal:ctl.signal});
+            clearTimeout(tm);
+            if(r.ok){ var b=await r.blob(); if(b.size>200) s.audio=await drB64(b); }
+          }catch(e){ try{ __swallow(e,'director:tts'); }catch(z){ /* guard-ok — لا مسجّل */ } }
+          if(!s.audio&&att===1) await new Promise(function(x){ setTimeout(x,2500); });
+        }
+        doneV++; if(my===DR.run) drStep('voice','on',drT('vdScene',{i:doneV,n:voiced.length}));
+      });
+      if(my!==DR.run) return;
+      drStep('voice','ok','');
+      /* ٤) رمز المهمّة وعنوان الجسر من الخادم، ثمّ المانيفست إلى الجسر مباشرة */
+      drStep('shots','on');
+      var tr=await drJson('/api/ai?action=app-director-token',{token:tk}); if(my!==DR.run) return;
+      if(!tr.ok||!tr.json||!tr.json.token||!tr.json.bridge){ drStep('shots','err'); throw drFail('token '+tr.status+(tr.json&&tr.json.error?' '+tr.json.error:'')); }
+      var bridge=tr.json.bridge, jt=tr.json.token, auth={Authorization:'Bearer '+jt};
+      var manifest={lang:lang,title:plan.title,scenes:scenes.map(function(s){ return {type:s.type,target:s.target,text:s.text,sub:s.sub,steps:s.steps||undefined,image:s.image||undefined,mime:s.mime||undefined,audio:s.audio||undefined,seconds:s.seconds}; })};
+      var post;
+      try{ post=await fetch(bridge+'/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},auth),body:JSON.stringify(manifest)}); }
+      catch(e){ drStep('shots','err'); throw drFail('bridge offline'); }
+      var pj=await post.json().catch(function(){ return null; }); if(my!==DR.run) return;
+      if(!post.ok||!pj||!pj.jobId){ drStep('shots','err'); throw drFail('render '+post.status+(pj&&pj.error?' '+pj.error:'')); }
+      var jobId=pj.jobId, st=pj, url='';
+      /* ٥) الاستطلاع كلّ ٣ ثوانٍ: التصوير ثمّ الدمج */
+      while(my===DR.run){
+        await new Promise(function(x){ setTimeout(x,3000); }); if(my!==DR.run) return;
+        var sr; try{ sr=await fetch(bridge+'/render/'+encodeURIComponent(jobId),{headers:auth}); st=await sr.json(); }catch(e){ continue; }
+        if(!st||typeof st!=='object') continue;
+        if(st.state==='queued'){ drStep('shots','on',L('vdQueued')); continue; }
+        if(st.step==='assets'||st.step==='capture'){ drStep('shots','on',st.total?drT('vdScene',{i:st.done||0,n:st.total}):''); }
+        if(st.step==='segments'||st.step==='join'){ drStep('shots','ok',''); drStep('join','on',st.step==='segments'&&st.total?drT('vdScene',{i:st.done||0,n:st.total}):''); }
+        if(st.state==='error'){ drStep(st.step==='capture'||st.step==='assets'?'shots':'join','err'); throw drFail('render '+(st.step||'')+' '+(st.message||'')); }
+        if(st.state==='done'){ drStep('shots','ok',''); drStep('join','ok',''); url=bridge+st.url; break; }
+      }
+      if(my!==DR.run||!url) return;
+      /* ٦) الفيديو: معاينة وتحميل وحفظ */
+      var vr=await fetch(url,{headers:auth}); if(!vr.ok) throw drFail('download '+vr.status);
+      var blob=await vr.blob(); if(my!==DR.run) return;
+      if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ /* guard-ok — رابط زال */ } }
+      DR.out=URL.createObjectURL(blob);
+      var vid=id('vdVideo'), dl=id('vdDl'), res=id('vdRes');
+      if(vid) vid.src=DR.out; if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-app-director-'+lang+'.mp4'); } if(res) res.classList.add('has');
+      var secs=Number(st.seconds)||0; drMsg(drT('vdDone',{m:Math.floor(secs/60),s:secs%60})+(typeof window.autoSaveVideo==='function'?' · '+L('vdSaved'):''));
+      if(typeof window.autoSaveVideo==='function') window.autoSaveVideo(DR.out,'omran-app-director-'+lang+'.mp4');
+    }catch(err){
+      if(my!==DR.run) return;
+      var code=String((err&&err.code)||'');
+      var key=/^plan/.test(code)?'vdFailPlan':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
+      drMsg(L('vdFail')+' — '+L(key)+(code?' ('+code.slice(0,80)+')':''),true);
+      try{ __swallow(err,'director:run'); }catch(e){ /* guard-ok — لا مسجّل */ }
+    }finally{ if(my===DR.run){ DR.busy=false; syncDirector(); } }
   }
   /* ═══ v-vmk-clean-video: قسم «تحسين فيديو» ═══ */
   var CL={file:null,orig:'',out:'',meta:null,level:'light',busy:false,ff:null,ffLoading:null,run:0,msg:null,view:null,showing:'after'};
@@ -513,7 +695,7 @@
       var b=document.createElement('span'); b.className='vmk-chip gold pts';
       b.textContent=p?(p+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free'); chips.appendChild(b);
     }
-    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean();
+    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean(); syncDirector();
     var tbx=id('vmkTabs'); if(tbx) [].forEach.call(tbx.children,function(bt){ bt.setAttribute('aria-selected',String(bt.dataset.tab===tab)); });
     stageDims();
   }
@@ -531,7 +713,7 @@
     card.classList.add('vmk-trends-top');
     if(vt.parentElement!==card||vt.nextElementSibling!==side) card.insertBefore(vt,side);
   }
-  function enhance(){ if(!on()) return; loadManifest(); build(); buildTabs(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
+  function enhance(){ if(!on()) return; loadManifest(); build(); buildTabs(); buildDirector(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
   var wasOpen=false;
   new MutationObserver(function(){
     var open=!!(M.style.display&&M.style.display!=='none');

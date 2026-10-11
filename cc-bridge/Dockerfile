@@ -5,7 +5,8 @@
 FROM node:22-bookworm-slim
 
 # Same tools as the owner's web session: git, gh (pull requests and checks), curl, jq, ripgrep, python.
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates curl gnupg jq ripgrep python3 python3-pip \
+# ffmpeg + Noto fonts: the app director (render.mjs) assembles 1080p videos and draws title cards in 14 scripts.
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates curl gnupg jq ripgrep python3 python3-pip ffmpeg fonts-noto-core \
   && mkdir -p -m 755 /etc/apt/keyrings \
   && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
   && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
@@ -28,7 +29,7 @@ RUN npm i -g --no-audit --no-fund playwright@${PW_VERSION} \
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && chown -R agent:agent /app
-COPY policy.mjs git.mjs watch.mjs server.mjs entrypoint.sh ./
+COPY policy.mjs git.mjs watch.mjs render.mjs server.mjs entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
 # No USER here on purpose: entrypoint.sh starts as root only to take ownership of the mounted
