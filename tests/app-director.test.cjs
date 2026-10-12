@@ -230,9 +230,10 @@ test('٥. رمز المهمّة: HMAC بسرّ الجسر، يحمل المال�
 });
 
 test('٦. المعالج: الرمز للمالك مع عنوان الجسر من البيئة (لا من العميل)، و٥٠٣ بلا إعداد، والخطّة ٥٠٣ بلا مفتاح', async () => {
-  const saved = { s: process.env.CC_BRIDGE_SECRET, u: process.env.CC_BRIDGE_URL, g: process.env.GEMINI_API_KEY };
+  const saved = { s: process.env.CC_BRIDGE_SECRET, u: process.env.CC_BRIDGE_URL, g: process.env.GEMINI_API_KEY, f: global.fetch };
   try {
     delete process.env.CC_BRIDGE_SECRET; delete process.env.CC_BRIDGE_URL; delete process.env.GEMINI_API_KEY;
+    global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ ok: true, busy: false, renderJobs: 0 }) }); /* v-app-director-bridge-check: الجسر سليم */
     let r = res();
     await handler({ method: 'POST', query: { action: 'app-director-token' }, body: { token: ownerToken('omran') } }, r);
     assert.equal(r.code, 503); assert.equal(r.body.error, 'bridge_unconfigured');
@@ -249,6 +250,7 @@ test('٦. المعالج: الرمز للمالك مع عنوان الجسر م�
     assert.equal(r.code, 503); assert.equal(r.body.error, 'director_unconfigured');
     assert.doesNotMatch(JSON.stringify(r.body), BANNED);
   } finally {
+    global.fetch = saved.f;
     for (const [k, v] of [['CC_BRIDGE_SECRET', saved.s], ['CC_BRIDGE_URL', saved.u], ['GEMINI_API_KEY', saved.g]]) { if (v == null) delete process.env[k]; else process.env[k] = v; }
   }
 });
@@ -318,8 +320,8 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
     seen[lg] = obj.vdTab;
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=446'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=739';"));
+  assert.ok(read('index.html').includes('/js/video.js?v=447'));
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=740';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });
 
@@ -455,7 +457,7 @@ test('١٢. الواجهة: خيار «مع صوت / بدون صوت»، وال�
   assert.equal(drWrap(ctx, 'كلمةطويلةجداجداجدا', 50).join('|'), 'كلمةطويلةجداجداجدا', 'كلمة أطول من السطر تبقى كاملة');
   const css = read('css/modules.css');
   assert.ok(css.includes('.vmk-dir-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}') && css.includes('#videoMakerModal .vmk-dir-row{grid-template-columns:1fr 1fr}'), 'أربعة خيارات في صفّ، وعلى الجوّال صفّان');
-  assert.ok(read('index.html').includes('css/modules.css?v=680'));
+  assert.ok(read('index.html').includes('css/modules.css?v=681'));
   // النصوص الأربعة بالـ١٤ لغة، بلا اسم مزوّد
   const core = read('js/app-03-i18n-data.js');
   const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
@@ -473,4 +475,76 @@ test('١٢. الواجهة: خيار «مع صوت / بدون صوت»، وال�
     off[lg] = obj.vdVoiceOff;
   }
   assert.ok(new Set(Object.values(off)).size >= 11, 'ترجمات لا نسخ');
+});
+/* ───── v-app-director-bridge-check (لقطة المالك «bridge offline» بعد أن كُتب السيناريو ووُلّدت النماذج) ───── */
+const healthReply = (status, obj) => ({ ok: status < 400, status, json: async () => obj });
+
+test('١٣. الجسر يُفحص قبل أيّ صرف: جسر بنسخة قديمة أو منقطع يُعلَن عند إصدار الرمز، والواجهة تطلب الرمز أوّل شيء', async () => {
+  // الفحص نفسه: الحقل الذي يضيفه المصوِّر هو الدليل على أنّ الجسر يعرف مسار الفيديو
+  let calls = [];
+  let r = await D.probeBridge('https://b.example', { fetchImpl: async (u) => { calls.push(String(u)); return healthReply(200, { ok: true, busy: false, renderJobs: 0 }); } });
+  assert.deepEqual(r, { ok: true, renderJobs: 0, busy: false }); assert.deepEqual(calls, ['https://b.example/health']);
+  // ردّ الجسر المنشور فعلًا يوم اللقطة (نسخة ٢٠ سبتمبر): صحّة بلا renderJobs
+  r = await D.probeBridge('https://b.example', { fetchImpl: async () => healthReply(200, { ok: true, busy: false }) });
+  assert.equal(r.ok, false); assert.equal(r.error, 'bridge_outdated');
+  // منقطع: محاولتان ثمّ سبب الأخيرة
+  calls = [];
+  r = await D.probeBridge('https://b.example', { fetchImpl: async (u) => { calls.push(u); throw new Error('ECONNREFUSED'); } });
+  assert.equal(r.ok, false); assert.equal(r.error, 'bridge_offline'); assert.equal(r.why, 'network'); assert.equal(calls.length, 2);
+  r = await D.probeBridge('https://b.example', { fetchImpl: async () => { const e = new Error('aborted'); e.name = 'TimeoutError'; throw e; } });
+  assert.equal(r.why, 'timeout');
+  r = await D.probeBridge('https://b.example', { fetchImpl: async () => healthReply(502, null) });
+  assert.equal(r.error, 'bridge_offline'); assert.equal(r.why, 'health_502');
+  // زحام عابر ثمّ سليم: المحاولة الثانية تكفي
+  let n = 0;
+  r = await D.probeBridge('https://b.example', { fetchImpl: async () => (++n === 1 ? healthReply(503, null) : healthReply(200, { ok: true, busy: true, renderJobs: 2 })) });
+  assert.deepEqual(r, { ok: true, renderJobs: 2, busy: true });
+
+  // المعالج: لا رمز لجسر لا يصوّر — 502 بسببه، ولا عنوان ولا رمز في الردّ
+  const saved = { s: process.env.CC_BRIDGE_SECRET, u: process.env.CC_BRIDGE_URL, d: process.env.DIRECTOR_BRIDGE_URL, f: global.fetch };
+  try {
+    process.env.CC_BRIDGE_SECRET = 'bridge-secret-' + 'y'.repeat(20); process.env.CC_BRIDGE_URL = 'https://cc.example.app'; delete process.env.DIRECTOR_BRIDGE_URL;
+    const seen = [];
+    global.fetch = async (u) => { seen.push(String(u)); return healthReply(200, { ok: true, busy: false }); };
+    let rr = res();
+    await handler({ method: 'POST', query: { action: 'app-director-token' }, body: { token: ownerToken('omran') } }, rr);
+    assert.equal(rr.code, 502); assert.equal(rr.body.error, 'bridge_outdated'); assert.equal(rr.body.token, undefined); assert.equal(rr.body.bridge, undefined);
+    assert.deepEqual(seen, ['https://cc.example.app/health'], 'نداء صحّة واحد، خادمًا لخادم');
+    assert.doesNotMatch(JSON.stringify(rr.body), BANNED);
+    global.fetch = async () => { throw new Error('getaddrinfo ENOTFOUND'); };
+    rr = res();
+    await handler({ method: 'POST', query: { action: 'app-director-token' }, body: { token: ownerToken('omran') } }, rr);
+    assert.equal(rr.code, 502); assert.equal(rr.body.error, 'bridge_offline');
+    // غير المالك لا يبلغ الفحص أصلًا
+    let probed = 0; global.fetch = async () => { probed++; return healthReply(200, { ok: true, renderJobs: 0 }); };
+    rr = res();
+    await handler({ method: 'POST', query: { action: 'app-director-token' }, body: { token: ownerToken('sara') } }, rr);
+    assert.equal(rr.code, 403); assert.equal(probed, 0);
+  } finally {
+    global.fetch = saved.f;
+    for (const [k, v] of [['CC_BRIDGE_SECRET', saved.s], ['CC_BRIDGE_URL', saved.u], ['DIRECTOR_BRIDGE_URL', saved.d]]) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+  }
+
+  // الواجهة: الرمز قبل الخطّة، والسبب الدقيق في الرسالة
+  const js = read('js/video.js');
+  const iTok = js.indexOf("drJson('/api/ai?action=app-director-token',{token:tk})");
+  assert.ok(iTok > 0 && iTok < js.indexOf('var labels=await drLabels(lang)') && iTok < js.indexOf("'/api/media?action=tts'") && iTok < js.indexOf("'/api/portrait-style'"), 'رمز المهمّة (وفحص الجسر معه) قبل الخطّة والصوت والصور');
+  assert.equal(js.split("action=app-director-token',{token:tk}").length - 1, 1, 'نداء رمز واحد لا اثنان');
+  assert.ok(js.includes("throw drFail('token '+tr.status+(tr.json&&tr.json.error?' '+tr.json.error:'')+(tr.json&&tr.json.why?' '+tr.json.why:''));"), 'سبب الخادم في سطر التشخيص');
+  assert.ok(js.includes("var key=/bridge_outdated/.test(code)?'vdFailBridgeOld':/^plan/.test(code)?'vdFailPlan':"), 'جسر قديم ← رسالته لا «تحقّق من العنوان والسرّ»');
+  assert.ok(js.includes("throw drFail('bridge offline (browser)');"), 'فشل الإرسال بعد نجاح فحص الخادم = المتصفّح هو الممنوع');
+  // النصّ بالـ١٤ لغة
+  const core = read('js/app-03-i18n-data.js');
+  const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
+  vm.runInNewContext(core, base);
+  assert.ok(base.I18N.ar.vdFailBridgeOld && base.I18N.en.vdFailBridgeOld); assert.doesNotMatch(base.I18N.ar.vdFailBridgeOld + base.I18N.en.vdFailBridgeOld, BANNED);
+  const seenT = new Set();
+  for (const lg of LANGS) {
+    const m = read('i18n/' + lg + '.js').match(/v-app-director-bridge-check[^\n]*Object\.assign\(I18N\['(\w+)'\], (\{.*\})\);/);
+    assert.ok(m && m[1] === lg, lg + ' كتلة الترجمة');
+    const t = JSON.parse(m[2]).vdFailBridgeOld;
+    assert.ok(t && t.length > 20, lg); assert.doesNotMatch(t, BANNED, lg); seenT.add(t);
+  }
+  assert.equal(seenT.size, LANGS.length, 'ترجمات لا نسخ');
+  assert.ok(read('index.html').includes('/js/video.js?v=447'));
 });
