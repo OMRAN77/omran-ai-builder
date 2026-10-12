@@ -42,9 +42,9 @@ test('٢. التابلت (٦٤١–٨٦٠): بطاقات الأوضاع شبكة
   const tab = mediaBlock('(min-width:641px) and (max-width:860px)', MARK);
   assert.ok(tab.body.includes('#videoMakerModal .vmk-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%}'));
   assert.ok(tab.body.includes('#videoMakerModal .vmk-tab{min-width:0;max-width:none}'), 'البطاقة تملأ خانتها (كان لها حدّان ٩٢–١١٢)');
-  // عشرة أوضاع = صفّان كاملان
+  // عشرة أوضاع = صفّان كاملان؛ بعد v-video-modes-by-result سبعة (omni وhybrid خرجا) = صفّ كامل وصفّ ناقص في الشبكة نفسها
   const tabs = JSON.parse(read('js/video.js').match(/var TABS=(\[[^\]]+\]);/)[1].replace(/'/g, '"'));
-  assert.ok(tabs.length >= 9 && tabs.length <= 10, 'عدد الأوضاع: ' + tabs.length);
+  assert.ok(tabs.length >= 7 && tabs.length <= 10, 'عدد الأوضاع: ' + tabs.length);
   // الصور بمقاسها الواحد كما قرّر المالك (v-vmk-tab-art)، والهاتف بصفّه المتمرّر كما هو
   assert.ok(CSS.includes('#videoMakerModal .vmk-tab-img{display:block;width:80px;height:80px;object-fit:cover'));
   assert.ok(CSS.includes('@media (max-width:640px){#videoMakerModal .vmk-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-height:max-content;flex-shrink:0;width:100%}}'));

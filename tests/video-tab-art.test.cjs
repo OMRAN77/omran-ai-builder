@@ -18,10 +18,10 @@ function jpegSize(file) {
   throw new Error('no SOF ' + file);
 }
 
-test('صورة لكلّ قسم من التسعة بمقاس واحد ٣٢٠×٣٢٠', () => {
+test('صورة لكلّ قسم من السبعة بمقاس واحد ٣٢٠×٣٢٠ (v-video-modes-by-result: omni وhybrid خرجا من القائمة وصورتاهما تبقيان)', () => {
   const js = read('js/video.js');
   const tabs = JSON.parse(js.match(/var TABS=(\[[^\]]+\]);/)[1].replace(/'/g, '"'));
-  assert.strictEqual(tabs.length, 9);
+  assert.strictEqual(tabs.length, 7); // كانت ٩ قبل v-video-modes-by-result
   for (const t of tabs) {
     const f = path.join(root, 'assets/videos/tabs', t + '.jpg');
     assert.ok(fs.existsSync(f), t + '.jpg');

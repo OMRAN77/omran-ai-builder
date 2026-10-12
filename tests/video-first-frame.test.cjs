@@ -64,7 +64,7 @@ async function run(modRel, body, opt) {
       return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: FRAME } }] } }] });
     }
     if (u.startsWith('https://runway.test/')) { calls.push({ kind: 'runway', url: u, body: b }); return Response.json({ id: 'task1' }); }
-    if (u.includes('/v1/video_generation')) { calls.push({ kind: 'minimax', body: b }); return Response.json({ task_id: 'm1', base_resp: { status_code: 0 } }); }
+    if (u.includes('/v2/video_generation')) { calls.push({ kind: 'minimax', body: b }); return Response.json({ task_id: 'm1' }); }
     if (u.includes(':predictLongRunning')) { calls.push({ kind: 'veo', body: b }); return Response.json({ name: 'op/1' }); }
     if (u.endsWith('/interactions')) { calls.push({ kind: 'omni', body: b }); return Response.json({ steps: [{ type: 'model_output', content: [{ type: 'video', uri: 'https://x/v' }] }] }); }
     throw new Error('unexpected fetch: ' + u);
@@ -156,7 +156,9 @@ test('٥. الاقتصاديّ مع صورة: أوّل الإطار صورته �
   const r = await run('api/_lib/minimax-create.js', { promptText: long, ratio: '720:1280', token: 't', imageBase64: PHOTO, imageMime: 'image/jpeg' });
   assert.equal(r.res.code, 200, JSON.stringify(r.res.body));
   assert.deepEqual(r.kinds, ['detect', 'image', 'minimax']);
-  const mm = r.of('minimax')[0].body;
+  /* v-minimax-h3: جسم v2 — النصّ في content[0].text وصورة أوّل الإطار في content[1].image_url.url */
+  const mm0 = r.of('minimax')[0].body;
+  const mm = { prompt: mm0.content[0].text, first_frame_image: mm0.content[1] && mm0.content[1].image_url.url };
   assert.equal(mm.first_frame_image, 'data:image/png;base64,' + FRAME);
   assert.ok(mm.prompt.length <= 1500, String(mm.prompt.length));
   assert.match(mm.prompt, /^MAIN CHARACTER: the real person in the attached reference photo/);
@@ -164,17 +166,17 @@ test('٥. الاقتصاديّ مع صورة: أوّل الإطار صورته �
   // الأنمي: الإطار أنمي، وسطر الأسلوب داخل الأمر
   const a = await run('api/_lib/minimax-create.js', { promptText: DESC, ratio: '720:1280', token: 't', style: 'anime', imageBase64: PHOTO, imageMime: 'image/jpeg' });
   assert.ok(taskOf(a.image).includes(TP.ANIME_FRAME_STYLE));
-  assert.ok(a.of('minimax')[0].body.prompt.includes(TP.STYLE_ANIME_VIDEO.trim()));
+  assert.ok(a.of('minimax')[0].body.content[0].text.includes(TP.STYLE_ANIME_VIDEO.trim()));
   // بلا صورة: الأنمي بادئة للوصف (كان لا يصل أصلًا)، والواقعيّ كما كان حرفيًّا
   const t = await run('api/_lib/minimax-create.js', { promptText: 'قطّة تلعب في حديقة', token: 't', style: 'anime' });
   assert.deepEqual(t.kinds, ['minimax']);
-  assert.equal(t.of('minimax')[0].body.prompt, TP.STYLE_ANIME_VIDEO + 'قطّة تلعب في حديقة');
+  assert.equal(t.of('minimax')[0].body.content[0].text, TP.STYLE_ANIME_VIDEO + 'قطّة تلعب في حديقة');
   const real = await run('api/_lib/minimax-create.js', { promptText: 'قطّة تلعب في حديقة', token: 't', style: 'realistic' });
-  assert.equal(real.of('minimax')[0].body.prompt, 'قطّة تلعب في حديقة');
+  assert.equal(real.of('minimax')[0].body.content[0].text, 'قطّة تلعب في حديقة');
   // العطب: الصورة نفسها والأمر السابق حرفيًّا
   const f = await run('api/_lib/minimax-create.js', { promptText: DESC, token: 't', imageBase64: PHOTO, imageMime: 'image/jpeg' }, { image: 'fail' });
-  assert.equal(f.of('minimax')[0].body.first_frame_image, 'data:image/jpeg;base64,' + PHOTO);
-  assert.equal(f.of('minimax')[0].body.prompt, withIdentityLock(DESC, 1500));
+  assert.equal(f.of('minimax')[0].body.content[1].image_url.url, 'data:image/jpeg;base64,' + PHOTO);
+  assert.equal(f.of('minimax')[0].body.content[0].text, withIdentityLock(DESC, 1500));
 });
 
 test('٦. Veo (الوصف الحرّ والممثّل) مع صورة: أوّل الإطار صورته الأولى والقفل آخرًا؛ والشخصيّة الكرتونيّة الجاهزة (keepPhoto) كما هي', async () => {
