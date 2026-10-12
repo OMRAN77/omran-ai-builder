@@ -2322,52 +2322,136 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     return m ? m[1] : String(fromHeader || '').trim();
   }
 
+  /* v-email-best: كلّ نصّ من البريد أو من الذكاء يدخل الصفحة نصًّا (textContent/value) لا HTML. المسودّة كانت تُلصق
+     داخل <textarea> بـinnerHTML بلا تهريب: رسالة من مهاجم تطلب من الذكاء ردًّا فيه «</textarea><img onerror=…>» فتنفّذ
+     شيفرة في التطبيق برمز جلسة المستخدم (ثمّ تقرأ بريده بها). وdir=auto لأنّ الإنجليزيّ داخل واجهة عربيّة كان ينقلب. */
+  function emEl(tag, css, text){
+    const n = document.createElement(tag);
+    if(css) n.style.cssText = css;
+    if(text != null) n.textContent = String(text);
+    return n;
+  }
+  function emBtn(cls, label){
+    const b = emEl('button', 'flex:1; min-width:110px;', label);
+    b.type = 'button'; b.className = cls;
+    return b;
+  }
+  function emTz(){
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }catch(e){ __swallow(e, 'misc:email-tz'); return ''; }
+  }
+  function emToken(){ return localStorage.getItem('aiapp_auth_token'); }
+  /* ربط جوجل انتهى (سحب الإذن، أو أيّام وضع الاختبار السبعة): زرّ إعادة الربط بنصّه «أعد الربط» بدل خطأ خام. */
+  function showConnect(reconnect){
+    connectBox.style.display = 'block';
+    connectedBox.style.display = 'none';
+    if(reconnect){ const p = $('#emailAssistConnectText'); if(p) p.textContent = T().notConnected; }
+    emPrefetchTicket(); // v-oauth-bind
+  }
+
+  /* v-email-best: ذاكرة الجهاز لنتيجة الذكاء لكلّ رسالة (الأولويّة، الملخّص، المسودّة وتعديلك عليها، الموعد) — كان كلّ فتح
+     أو «تحديث» يعيد صياغة عشر مسودّات من الصفر (ثوانٍ وكلفة) ويمسح ما عدّلته. الخادم لا يصوغ ما عند الجهاز (known).
+     على الجهاز لا في الخادم: محتوى البريد لا يُخزَّن عندنا. مربوطة ببريد Gmail المربوط، وتُمسح إن تغيّر. */
+  const EM_CACHE_KEY = 'aiapp_email_ai_v1';
+  const EM_CACHE_MAX = 60;
+  const EM_CACHE_DAYS = 14;
+  function emCacheRead(){
+    try{
+      const c = JSON.parse(localStorage.getItem(EM_CACHE_KEY) || 'null');
+      if(c && typeof c === 'object' && c.items && typeof c.items === 'object') return c;
+    }catch(e){ __swallow(e, 'misc:email-cache-read'); }
+    return { acct: '', items: {} };
+  }
+  function emCacheWrite(c){
+    try{
+      const cutoff = Date.now() - EM_CACHE_DAYS * 864e5;
+      const ids = Object.keys(c.items).filter((id) => (c.items[id].at || 0) > cutoff)
+        .sort((a, b) => (c.items[b].at || 0) - (c.items[a].at || 0)).slice(0, EM_CACHE_MAX);
+      const items = {};
+      ids.forEach((id) => { items[id] = c.items[id]; });
+      localStorage.setItem(EM_CACHE_KEY, JSON.stringify({ acct: c.acct || '', items }));
+    }catch(e){ __swallow(e, 'misc:email-cache-write'); }
+  }
+  function emCachePatch(id, fields){
+    const c = emCacheRead();
+    if(!c.items[id]) return;
+    Object.keys(fields).forEach((k) => { c.items[id][k] = fields[k]; });
+    emCacheWrite(c);
+  }
+  function emCacheDrop(id){
+    const c = emCacheRead();
+    if(!c.items[id]) return;
+    delete c.items[id];
+    emCacheWrite(c);
+  }
+
   function renderEmails(emails){
     const tr = T();
-    listEl.innerHTML = '';
+    listEl.textContent = '';
     if(!emails || !emails.length){
-      listEl.innerHTML = '<div style="text-align:center; font-size:13px; color:var(--muted,#999); padding:20px 0;">' + tr.empty + '</div>';
+      listEl.appendChild(emEl('div', 'text-align:center; font-size:13px; color:var(--muted,#999); padding:20px 0;', tr.empty));
       return;
     }
     emails.forEach((mail) => {
-      const card = document.createElement('div');
-      card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
-      card.innerHTML =
-        '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
-          '<div style="min-width:0;">' +
-            '<div style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.subject || '').replace(/</g,'&lt;') + '</div>' +
-            '<div style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.from || '').replace(/</g,'&lt;') + '</div>' +
-          '</div>' +
-          '<span style="font-size:11.5px; white-space:nowrap;">' + priorityLabel(mail.priority) + '</span>' +
-        '</div>' +
-        '<div style="font-size:12px; color:var(--muted,#999); margin-top:6px;">' + (mail.snippet || '').replace(/</g,'&lt;') + '</div>' +
-        '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px;">' + (mail.draft || '') + '</textarea>' +
-        '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
-          '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;">' + tr.send + '</button>' +
-          '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;">' + tr.ignore + '</button>' +
-          (mail.meeting ? '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px;">' + tr.addToCalendar + '</button>' : '') +
-        '</div>' +
-        (mail.meeting ? '<div style="font-size:11.5px; color:var(--muted,#999); margin-top:6px;">📅 ' + String(mail.meeting.title || '').replace(/</g,'&lt;') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') + '</div>' : '') +
-        '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
+      const card = emEl('div', 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;');
+      const head = emEl('div', 'display:flex; justify-content:space-between; gap:8px; align-items:flex-start;');
+      const info = emEl('div', 'min-width:0;');
+      const subj = emEl('div', 'font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;', mail.subject || '');
+      const from = emEl('div', 'font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;', mail.from || '');
+      subj.dir = 'auto'; from.dir = 'auto';
+      info.appendChild(subj); info.appendChild(from);
+      head.appendChild(info);
+      head.appendChild(emEl('span', 'font-size:11.5px; white-space:nowrap;', priorityLabel(mail.priority)));
+      card.appendChild(head);
+      // الملخّص بلغة الواجهة إن وُجد (رسالة إنجليزيّة تُفهم بالعربيّة مثلًا)، وإلّا مقتطف Gmail.
+      const gist = emEl('div', 'font-size:12px; color:var(--muted,#999); margin-top:6px;', mail.summary || mail.snippet || '');
+      gist.dir = 'auto';
+      card.appendChild(gist);
 
-      const sendBtn = card.querySelector('.emailSendBtn');
-      const ignoreBtn = card.querySelector('.emailIgnoreBtn');
-      const draftEl = card.querySelector('.emailDraftInput');
-      const cardStatus = card.querySelector('.emailCardStatus');
-      const calBtn = card.querySelector('.emailCalBtn');
+      // البريد الآليّ (no-reply، نشرات) لا ردّ عليه: بلا مسودّة ولا «إرسال»، و«تجاهل هذا المرسل» يبقى.
+      let draftEl = null;
+      let sendBtn = null;
+      if(!mail.auto){
+        draftEl = emEl('textarea', 'width:100%; margin-top:8px; resize:vertical; font-size:13px;');
+        draftEl.className = 'emailDraftInput';
+        draftEl.rows = 4;
+        draftEl.dir = 'auto';
+        draftEl.value = mail.draft || '';
+        let saveT = 0;
+        draftEl.addEventListener('input', () => {
+          clearTimeout(saveT);
+          saveT = setTimeout(() => { emCachePatch(mail.id, { draft: draftEl.value }); }, 400);
+        });
+        card.appendChild(draftEl);
+      }
+      const row = emEl('div', 'display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;');
+      if(!mail.auto){ sendBtn = emBtn('btn primary emailSendBtn', tr.send); row.appendChild(sendBtn); }
+      const ignoreBtn = emBtn('btn emailIgnoreBtn', tr.ignore);
+      row.appendChild(ignoreBtn);
+      const calBtn = mail.meeting ? emBtn('btn emailCalBtn', tr.addToCalendar) : null;
+      if(calBtn) row.appendChild(calBtn);
+      card.appendChild(row);
+      if(mail.meeting){
+        const mt = emEl('div', 'font-size:11.5px; color:var(--muted,#999); margin-top:6px;', '📅 ' + String(mail.meeting.title || '') + ' — ' + String(mail.meeting.start || '').replace('T', ' '));
+        mt.dir = 'auto';
+        card.appendChild(mt);
+      }
+      const cardStatus = emEl('div', 'display:none; font-size:12px; margin-top:6px; text-align:center;');
+      cardStatus.className = 'emailCardStatus';
+      card.appendChild(cardStatus);
+      const busy = (on) => { [sendBtn, ignoreBtn].forEach((b) => { if(b) b.disabled = on; }); };
 
       if(calBtn) calBtn.addEventListener('click', async () => {
         calBtn.disabled = true;
         cardStatus.style.display = 'block';
         cardStatus.textContent = tr.addingEvent;
         try{
-          const token = localStorage.getItem('aiapp_auth_token');
           const r = await fetch('/api/email-calendar', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, description: (mail.subject || '') + '\n' + (mail.from || '') }),
+            body: JSON.stringify({ token: emToken(), tz: emTz(), title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, description: (mail.subject || '') + '\n' + (mail.from || '') }),
           });
           const d = await r.json();
           if(!r.ok){
+            if(d && d.notConnected){ showConnect(true); return; }
             if(d && d.needsReauth) throw new Error(tr.calReauth);
             throw new Error((d && d.error) || 'calendar failed');
           }
@@ -2379,45 +2463,51 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         }
       });
 
-      sendBtn.addEventListener('click', async () => {
+      if(sendBtn) sendBtn.addEventListener('click', async () => {
         const text = (draftEl.value || '').trim();
-        if(!text) return;
-        sendBtn.disabled = true; ignoreBtn.disabled = true;
+        if(!text){ draftEl.focus(); return; }
+        busy(true);
         cardStatus.style.display = 'block';
         cardStatus.textContent = tr.sending;
         try{
-          const token = localStorage.getItem('aiapp_auth_token');
+          // المستلم والموضوع والسلسلة يقرؤها الخادم من الرسالة نفسها (id) — لا يُرسل من هنا ما يدخل الترويسات.
           const r = await fetch('/api/email-send', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
+            body: JSON.stringify({ token: emToken(), id: mail.id, text }),
           });
           const d = await r.json();
-          if(!r.ok) throw new Error(d.error || 'send failed');
+          if(!r.ok){
+            if(d && d.notConnected){ showConnect(true); return; }
+            throw new Error(d.error || 'send failed');
+          }
           cardStatus.textContent = tr.sent;
+          emCacheDrop(mail.id);
+          lastLoadedEmails = lastLoadedEmails.filter((m) => m !== mail);
           setTimeout(() => { card.remove(); }, 1200);
         }catch(e){
           cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          sendBtn.disabled = false; ignoreBtn.disabled = false;
+          busy(false);
         }
       });
 
       ignoreBtn.addEventListener('click', async () => {
-        sendBtn.disabled = true; ignoreBtn.disabled = true;
+        busy(true);
         cardStatus.style.display = 'block';
         try{
-          const token = localStorage.getItem('aiapp_auth_token');
           const pattern = extractEmailAddress(mail.from);
           const r = await fetch('/api/email-ignore', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, pattern }),
+            body: JSON.stringify({ token: emToken(), pattern }),
           });
           const d = await r.json();
           if(!r.ok) throw new Error(d.error || 'ignore failed');
           cardStatus.textContent = tr.ignored;
+          emCacheDrop(mail.id);
+          lastLoadedEmails = lastLoadedEmails.filter((m) => m !== mail);
           setTimeout(() => { card.remove(); }, 1000);
         }catch(e){
           cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          sendBtn.disabled = false; ignoreBtn.disabled = false;
+          busy(false);
         }
       });
 
@@ -2425,32 +2515,65 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     });
   }
 
-  async function loadEmails(){
+  const EM_ORDER = { urgent: 0, normal: 1, low: 2 };
+  const emRank = (p) => (Object.prototype.hasOwnProperty.call(EM_ORDER, p) ? EM_ORDER[p] : 1);
+  const EM_AI_FIELDS = ['priority', 'lang', 'summary', 'draft', 'meeting'];
+
+  async function loadEmails(fresh){
     const tr = T();
     setStatus(tr.loading);
-    listEl.innerHTML = '';
+    listEl.textContent = '';
     try{
-      const token = localStorage.getItem('aiapp_auth_token');
+      const cache = emCacheRead();
       const r = await fetch('/api/email-list', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
+        body: JSON.stringify({
+          token: emToken(),
+          lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar',
+          tz: emTz(),
+          known: fresh === true ? [] : Object.keys(cache.items).slice(0, 100),
+        }),
       });
       const d = await r.json();
       if(!r.ok){
         if(d.notConnected || /invalid_grant/i.test(String(d.error || ''))){
-          connectBox.style.display = 'block';
-          connectedBox.style.display = 'none';
-          setStatus(d.notConnected ? '' : T().notConnected);
-          emPrefetchTicket(); // v-oauth-bind
+          showConnect(!!d.reconnect || /invalid_grant/i.test(String(d.error || '')));
           return;
         }
         throw new Error(d.error || 'load failed');
       }
-      gmailLabel.textContent = d.gmailAddress || '';
+      const acct = String(d.gmailAddress || '');
+      // بريد مربوط آخر = ذاكرة غيره: تُمسح، وما عُدّ «عند الجهاز» يُطلب من جديد.
+      if(cache.acct !== acct){
+        const hadKnown = Object.keys(cache.items).length > 0;
+        cache.acct = acct; cache.items = {};
+        emCacheWrite(cache);
+        if(hadKnown && fresh !== true && (d.emails || []).some((m) => m.known)) return loadEmails(true);
+      }
+      const emails = [];
+      let missing = false;
+      (d.emails || []).forEach((m) => {
+        if(m.known){
+          const hit = cache.items[m.id];
+          if(!hit){ missing = true; return; }
+          EM_AI_FIELDS.forEach((k) => { m[k] = hit[k]; });
+          hit.at = Date.now();
+        }else if(!m.auto && m.draft){
+          const keep = { at: Date.now() };
+          EM_AI_FIELDS.forEach((k) => { keep[k] = m[k]; });
+          cache.items[m.id] = keep;
+        }
+        emails.push(m);
+      });
+      emCacheWrite(cache);
+      // ذاكرة مُسحت بين الطلب والردّ (تبويب آخر) — مرّة واحدة بلا known.
+      if(missing && fresh !== true) return loadEmails(true);
+      emails.sort((a, b) => (emRank(a.priority) - emRank(b.priority)) || ((b.date || 0) - (a.date || 0)));
+      gmailLabel.textContent = acct;
       // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
       setStatus(d.note || '');
-      lastLoadedEmails = d.emails || [];
-      renderEmails(d.emails);
+      lastLoadedEmails = emails;
+      renderEmails(emails);
     }catch(e){
       setStatus(tr.error + (e && e.message ? e.message : String(e)));
     }
@@ -2500,10 +2623,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     voiceBtn.disabled = true;
     setStatus(tr.voiceLoading);
     try{
-      const resp = await fetch('/api/tts', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'nova', text: text.slice(0, 4000) })
-      });
+      /* v-email-best: صوت مها (فاطمة الإماراتيّة للعربيّ — أفضل صوت عربيّ عندنا وبالباقة المجّانيّة) بدل nova، وبرمز
+         الجلسة فتُحسب الحصّة على الحساب لا على عنوان الشبكة المشترك. nova احتياط إن تعذّرت مها. */
+      const ttsBody = (v) => JSON.stringify({ voice: v, lang: en() ? 'en' : 'ar', token: emToken(), text: text.slice(0, 4000) });
+      let resp = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: ttsBody('maha') });
+      if(!resp.ok && resp.status !== 401 && resp.status !== 402){
+        resp = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: ttsBody('nova') });
+      }
       if(!resp.ok){ let msg = 'tts failed'; try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){ __swallow(e, "misc:app-12-studios#2"); } throw new Error(msg); }
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
@@ -2604,7 +2730,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         if(connected){
           setTimeout(() => { btnOpen.click(); }, 300);
         }
-        if(err){
+        // v-email-best: «إلغاء» في شاشة جوجل (access_denied) ليس خطأً — تعود النافذة على زرّ الربط بلا تنبيه رمز خام.
+        if(err === 'access_denied'){
+          setTimeout(() => { btnOpen.click(); }, 300);
+        }else if(err){
           setTimeout(() => { emLinkError(err); }, 300);
         }
       }

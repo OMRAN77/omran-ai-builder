@@ -1,25 +1,22 @@
 // Vercel Serverless Function: adds a detected meeting/appointment from an email
-// to the user's Google Calendar (primary calendar, Asia/Dubai timezone).
-const { getUser, verifyToken } = require('./auth.js');
-const { decrypt } = require('./_emailCrypto.js');
+// to the user's Google Calendar (primary calendar).
+// v-email-best: بمنطقة المستخدم الزمنيّة (tz من الواجهة) لا دبيّ لكلّ أحد — كان موعد «١٠ صباحًا» في الرياض أو القاهرة
+// يُسجَّل بتوقيت دبيّ فيزيح ساعة أو اثنتين. الوقت يُرسل لجوجل محلّيًّا مع timeZone فيحسب جوجل الإزاحة والتوقيت الصيفيّ.
+const G = require('./_gmail.js');
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const LOCAL_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
-async function getAccessToken(refreshToken) {
-  const r = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error || 'refresh_failed');
-  return d.access_token;
+/** «YYYY-MM-DDTHH:MM[:SS]» + دقائق، على ساعة الحائط (بلا منطقة) — أو null إن لم يكن تاريخًا حقيقيًّا. */
+function addMinutesLocal(start, minutes) {
+  const m = LOCAL_RE.exec(String(start || ''));
+  if (!m) return null;
+  const t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+  const d = new Date(t);
+  if (isNaN(t) || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3] || +m[4] > 23 || +m[5] > 59) return null;
+  return {
+    start: d.toISOString().slice(0, 19),
+    end: new Date(t + minutes * 60000).toISOString().slice(0, 19),
+  };
 }
 
 module.exports = async (req, res) => {
@@ -32,41 +29,32 @@ module.exports = async (req, res) => {
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-    const { token, title, start, durationMin, description } = body;
-    const username = verifyToken(token);
-    if (!username) { res.status(401).json({ error: 'الجلسة منتهية، سجل الدخول من جديد' }); return; }
+    const { title, start, durationMin, description } = body;
     if (!title || !start) { res.status(400).json({ error: 'بيانات الموعد ناقصة' }); return; }
+    const dur = Number(durationMin) > 0 ? Math.min(1440, Math.round(Number(durationMin))) : 60;
+    const span = addMinutesLocal(start, dur);
+    if (!span) { res.status(400).json({ error: 'صيغة الوقت غير صحيحة' }); return; }
 
-    const user = await getUser(username);
-    if (!user || !user.emailAssist || !user.emailAssist.connected) {
-      res.status(400).json({ error: 'لم يتم ربط Gmail بعد', notConnected: true });
-      return;
-    }
-    const refreshToken = decrypt(user.emailAssist.refreshTokenEnc);
-    if (!refreshToken) { res.status(400).json({ error: 'تعذر قراءة صلاحية Gmail، أعد الربط', notConnected: true }); return; }
-
-    const accessToken = await getAccessToken(refreshToken);
-
-    // start format: YYYY-MM-DDTHH:MM (Dubai local time)
-    const startISO = String(start).length === 16 ? start + ':00' : start;
-    const startDate = new Date(startISO + '+04:00');
-    if (isNaN(startDate.getTime())) { res.status(400).json({ error: 'صيغة الوقت غير صحيحة' }); return; }
-    const endDate = new Date(startDate.getTime() + (Number(durationMin) > 0 ? Number(durationMin) : 60) * 60000);
+    const sess = await G.gmailSession(body);
+    if (sess.status) { res.status(sess.status).json(sess.json); return; }
+    const tz = G.validTz(body.tz);
 
     const evRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + accessToken },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.accessToken },
       body: JSON.stringify({
-        summary: title,
-        description: description || 'أُضيف تلقائيًا من مساعد البريد الذكي — Omran AI Builder',
-        start: { dateTime: startDate.toISOString(), timeZone: 'Asia/Dubai' },
-        end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Dubai' },
+        summary: String(title).slice(0, 200),
+        description: String(description || 'أُضيف تلقائيًا من مساعد البريد الذكي — Omran AI Builder').slice(0, 2000),
+        start: { dateTime: span.start, timeZone: tz },
+        end: { dateTime: span.end, timeZone: tz },
         reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 30 }] },
       }),
+      signal: AbortSignal.timeout(15000),
     });
-    const ev = await evRes.json();
+    const ev = await evRes.json().catch(() => ({}));
     if (!evRes.ok) {
       const msg = (ev.error && ev.error.message) || 'calendar_error';
+      if (evRes.status === 401) { res.status(401).json({ error: 'invalid_grant', notConnected: true, reconnect: true }); return; }
       const needsReauth = evRes.status === 403 || /insufficient/i.test(msg);
       res.status(evRes.status).json({ error: msg, needsReauth });
       return;
@@ -76,3 +64,4 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'Calendar error: ' + (e && e.message ? e.message : String(e)) });
   }
 };
+module.exports.addMinutesLocal = addMinutesLocal;

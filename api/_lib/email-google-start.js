@@ -52,7 +52,8 @@ module.exports = async (req, res) => {
     response_type: 'code',
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events',
     access_type: 'offline',
-    prompt: 'consent',
+    // v-email-best: select_account — من في متصفّحه أكثر من حساب جوجل يختار أيّ بريد يربط (كان يُربط الحاليّ صامتًا).
+    prompt: 'consent select_account',
     state: q.state,
   });
   res.writeHead(302, { Location: 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString() });
