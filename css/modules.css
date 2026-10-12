@@ -610,6 +610,20 @@ html[data-mode="light"] #videoMakerModal .vmk-tab{color:#4a4f5a}
 #videoMakerModal .vmk-tab-img{display:block;width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.08);pointer-events:none}
 #videoMakerModal .vmk-tab[aria-selected=true] .vmk-tab-img{border-color:rgba(26,20,8,.35);box-shadow:0 0 0 2px rgba(255,255,255,.35)}
 #videoMakerModal .vmk-tab-lbl{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* v-vmk-mobile-fill (المالك ١٢ أكتوبر بلقطتَي هاتف وتابلت: «شوف مكان الفيديو، رتّبهم في الهاتف والتابلت»): قاعدة شبكة الحاسوب
+   align-items:start تسري على عمود الهاتف (flex ≤٨٦٠) فينكمش كلّ ابن إلى عرض محتواه ويلتصق باليمين — بالمسبار: صندوق الترندات ٢٤٥
+   بكسل من ٦٧٨، الرأس ٢٦٢، وشاشة المعاينة ٧٤×٤٢. الأبناء يملؤون العرض. وعلى التابلت (٦٤١–٨٦٠): بطاقات الأوضاع شبكة خمسة أعمدة
+   بدل صفّ يلتفّ ملتصقًا باليمين؛ ومن ٥٦١: عمود المعاينة بعرض الحاسوب (٤٠٠) في الوسط — وإلّا صارت الشاشة ٦٧٨×٣٨١ فارغة — وبطاقات
+   الترندات أعمدة تلقائيّة (كانت عمودين حتى ٨٦٠). الحاسوب (≥٨٦١) والهاتف في صفّ الأوضاع المتمرّر (≤٦٤٠) كما هما. */
+@media (max-width:860px){#videoMakerModal .vmk-studio{align-items:stretch}}
+@media (min-width:641px) and (max-width:860px){
+#videoMakerModal .vmk-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%}
+#videoMakerModal .vmk-tab{min-width:0;max-width:none}
+}
+@media (min-width:561px) and (max-width:860px){
+#videoMakerModal .vmk-studio>#vtRoot #vtGrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important}
+#videoMakerModal .vmk-side{width:100%;max-width:400px;align-self:center}
+}
 html[data-mode="light"] #videoMakerModal .vmk-main #videoMakerPrompt{background:#ffffff;border-color:rgba(0,0,0,.14)}
 #videoMakerModal #videoMakerHeroBtn{padding:0 !important;padding-inline-start:46px !important;padding-inline-end:18px !important;text-align:start}
 #videoMakerModal .vmk-main .mini-mic-field-row{align-items:flex-start}
