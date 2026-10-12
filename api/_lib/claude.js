@@ -184,7 +184,8 @@ module.exports = async (req, res) => {
       if (res.flushHeaders) res.flushHeaders();
       const reader = upstream.body.getReader();
       // v-cost-meter: توكنات المزوّد من البثّ نفسه (يمرّ كما هو) — تكلفة الطلب في عدّاد شهر الحساب، غير المالك وVIP.
-      const tap = meterUser ? require('./cost-meter.js').anthropicUsageTap() : null;
+      // tok-5 (مراجعة الدفعة A): التوكنات لكلّ دور (المالك وVIP أيضًا، كمسار المحادثة)؛ التكلفة لغيرهما وحدهم كما كانت.
+      const tap = require('./cost-meter.js').anthropicUsageTap();
       const dec = tap ? new TextDecoder() : null;
       try {
         while (true) {
@@ -194,17 +195,18 @@ module.exports = async (req, res) => {
           if (tap) tap.push(dec.decode(value, { stream: true }));
         }
       } catch (e) { /* client likely disconnected */ }
-      if (tap) { try { const cm = require('./cost-meter.js'); await cm.addCost(meterUser, cm.tokenCostUsd(useModel, tap.usage()), 'chat'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } }
+      if (tap) { try { const cm = require('./cost-meter.js'); const tu = tap.usage(); await cm.meterTurn(meterUser || '', meterUser ? cm.tokenCostUsd(useModel, tu) : 0, 'chat', Object.assign({ lane: 'pro', model: useModel }, tu)); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } } // v-tokens-meter: وعدّادات التوكنات في الطلب نفسه
       res.end();
       return;
     }
 
     const data = await upstream.text();
-    if (meterUser && upstream.ok) { // v-cost-meter: الردّ غير المتدفّق يحمل usage كاملًا
+    if (upstream.ok) { // v-cost-meter: الردّ غير المتدفّق يحمل usage كاملًا · tok-5: التوكنات للجميع، والتكلفة لغير المالك وVIP
       try {
         const u = (JSON.parse(data) || {}).usage || {};
         const cm = require('./cost-meter.js');
-        await cm.addCost(meterUser, cm.tokenCostUsd(useModel, { input: u.input_tokens, cacheRead: u.cache_read_input_tokens, cacheWrite: u.cache_creation_input_tokens, output: u.output_tokens }), 'chat');
+        const tu = { input: u.input_tokens, cacheRead: u.cache_read_input_tokens, cacheWrite: u.cache_creation_input_tokens, output: u.output_tokens };
+        await cm.meterTurn(meterUser || '', meterUser ? cm.tokenCostUsd(useModel, tu) : 0, 'chat', Object.assign({ lane: 'pro', model: useModel }, tu)); // v-tokens-meter
       } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
     }
     if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }

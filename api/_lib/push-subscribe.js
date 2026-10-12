@@ -1,32 +1,21 @@
 // Stores/removes the browser's Web Push subscription for a logged-in user,
 // so /api/check-reminders can wake them up with a real system notification
 // even when the app/tab is closed. One JSON record per user (db/push-subs/{username}.json).
-const crypto = require('crypto');
 const { kvPutJSON } = require('./kv.js');
 
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 function subPath(username) {
   return 'db/push-subs/' + encodeURIComponent(username) + '.json';
 }
 
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
-}
+// v-session-shape (الدفعة A، أمان): نسخة verifyToken اليدويّة هنا كانت تقبل حمولة موقّعة بلا exp (تذكرة مهمّة البناء) جلسةً
+// لا تنتهي، وتقرأ السرّ في نطاق الوحدة. الآن _session.sessionUser: u نصّ وexp رقم في المستقبل، والسرّ عند النداء.
+const { sessionUser } = require('./_session.js');
 
 module.exports = async (req, res) => {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  const username = verifyToken(token);
+  const username = sessionUser(token);
   if (!username) { res.status(401).json({ error: 'auth' }); return; }
 
   if (req.method === 'POST') {

@@ -98,7 +98,8 @@ test('٣. رسالة المالك الطويلة تحمل أدوات القرا�
   const c = calls.find((x) => viaClaudeDirect(x.url));
   const names = ((c && c.body.tools) || []).map((t) => t.name);
   assert.ok(names.includes('read_github') && names.includes('web_search'), 'القراءة والبحث: ' + names.join(','));
-  assert.ok(!names.includes('generate_image') && !names.includes('edit_image'), 'بلا أدوات الصور');
+  // v-tokens-owner-tools: «بلا أدوات الصور» صار تنبيهًا في الذيل وحارسًا عند التنفيذ والقائمة كاملة (بادئة الكاش — tokens-share ٥)
+  assert.ok(JSON.stringify(c.body.messages).includes(chat.__tokens2.OWNER_NO_MEDIA_NOTE), 'أدوات الصور مقفلة في هذا الدور');
 });
 
 test('٤. الوكيل: كلود المباشر بلا رصيد → كلود عبر الوسيط بأدواته (لا DeepSeek/Groq بلا أدوات)، وسطر السبب تحت الردّ', async () => {

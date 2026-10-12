@@ -110,7 +110,8 @@ test('٥. تقرير الشهر: لكلّ باقة العدد والمتوسّط
 test('٦. الأسلاك: chat.js يقيس نهاية الدور العاديّة والمخرج الآخر مرّة وحدة، وclaude.js من البثّ، والمالك يرى التقرير وحده', () => {
   const chat = read('api/_lib/chat.js');
   assert.ok((chat.match(/await __meterTurn\(\);/g) || []).length >= 2);
-  assert.match(chat, /if \(__metered \|\| !usage\.username \|\| __ownerReq\) return;/);
+  // v-tokens-meter: الدور يُقاس مرّة واحدة (__metered)، والتكلفة لغير المالك بحساب كما كانت — عدّادات التوكنات للكلّ في الطلب نفسه (token-counters)
+  assert.match(chat, /if \(__metered\) return;\n\s+__metered = true;\n\s+try \{ const __cm = require\('\.\/cost-meter\.js'\); await __cm\.meterTurn\(\(usage\.username && !__ownerReq\) \? usage\.username : '',/);
   const cl = read('api/_lib/claude.js');
   assert.match(cl, /if \(tap\) tap\.push\(dec\.decode\(value, \{ stream: true \}\)\);/);
   const h = read('api/_lib/health.js');

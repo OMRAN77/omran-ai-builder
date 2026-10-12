@@ -3,6 +3,7 @@
 // «أوّل شي يقولي شي والتنفيذ صفر… نفّذ المطلوب، وإذا تقدر خاصيّة دمج بين نانو وGPT — النتيجة ١».
 // هنا يُشغَّل موجِّه maha-image الحقيقيّ والمحرّكات مزيّفة، والمصدر والناتج من لقطة المالك نفسها (tests/fixtures).
 'use strict';
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

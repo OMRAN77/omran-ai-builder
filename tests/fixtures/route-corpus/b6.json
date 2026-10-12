@@ -1,0 +1,8 @@
+[
+{"id":"v1","text":"ابي صورة","expect":"ask","clf":"image"},
+{"id":"v2","text":"سوي لي فيديو","expect":"ask","clf":"video"},
+{"id":"v3","text":"اريد فيديو","expect":"ask","clf":"video"},
+{"id":"v4","text":"ارسم لي صورة","expect":"ask","clf":"image"},
+{"id":"v5","text":"سو لي صورة","expect":"ask","clf":"image"},
+{"id":"v6","text":"make me a video","expect":"ask","clf":"video"}
+]

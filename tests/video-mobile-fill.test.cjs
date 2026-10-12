@@ -71,7 +71,8 @@ test('٤. لا أثر على الحاسوب: كلّ القواعد الجديد�
   const outside = block.replace(/@media \([^{]+\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '').trim();
   assert.equal(outside, '', 'لا قاعدة خارج استعلامات المقاس');
   for (const m of block.match(/@media [^{]+/g)) assert.match(m, /max-width:860px\)$/, m);
-  assert.ok(read('index.html').includes('css/modules.css?v=681'), 'وسم الملفّ المحمَّل منفصلًا مرفوع');
+  const vTag = Number((read('index.html').match(/css\/modules\.css\?v=(\d+)/) || [])[1]); // يُقرأ لا يُثبَّت (سقّاطة vPinTests)
+  assert.ok(vTag >= 681, 'وسم الملفّ المحمَّل منفصلًا مرفوع (كان 680 قبل v-vmk-mobile-fill)');
   assert.ok(read('package.json').includes('node tests/video-mobile-fill.test.cjs'), 'الاختبار مسجَّل');
   assert.ok(read('knowledge/DECISIONS.md').includes('— v-vmk-mobile-fill:'), 'مدخل القرار في السجلّ');
 });

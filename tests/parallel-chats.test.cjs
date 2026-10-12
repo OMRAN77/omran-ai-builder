@@ -99,7 +99,7 @@ test('دالّة الإرسال: متحكّم لكلّ طلب، رسم مظلَ�
   assert.match(core, /if\(__mine\(\)\) messagesEl\.appendChild\(thinkingDiv\);/);
   assert.doesNotMatch(core.slice(core.indexOf('window.__chatStatus = chatStatus;') + 30), /window\.__chatStatus/, 'شريط الحالة شريط هذا الطلب');
   assert.match(core, /if\(__mine\(\)\)\{ promptEl\.value = '';/, 'إيقاف طلب في الخلفيّة لا يمسح ما يُكتب في محادثة أخرى');
-  for (const call of ['callChatWithTools(apiMessages.filter(m => m !== __staticSys), __sigFn(onDelta), __effProv)', 'callAIWithFallback(apiMessages, __sigFn(onDelta),'])
+  for (const call of ['callChatWithTools(apiMessages.filter(m => m !== __staticSys), __sigFn(onDelta), __effProv, { histOffset: __histOffset })', 'callAIWithFallback(apiMessages, __sigFn(onDelta),']) // v-tokens-window: وسيط رابع (موضع المحادثة) — الإشارة نفسها
     assert.ok(core.includes(call), call);
 });
 

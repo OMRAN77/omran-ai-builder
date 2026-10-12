@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getUser, putUser, makeToken } = require('./auth.js'); // داخل _lib
+const { getUser, putUser, makeToken, markKnownNet } = require('./auth.js'); // داخل _lib
 const { takeWelcomeGift, giftNet, clientIp } = require('./welcome-gift.js'); // v-welcome-cap · v-oauth-bind
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -158,6 +158,7 @@ module.exports = async (req, res) => {
     }
 
     const token = makeToken(key);
+    await markKnownNet(key, req); // v-known-net: دخول Google نجاح موثَّق — شبكته معروفة لحدّ الدخول الليّن
     // v-ios-bridge: على آيفون المثبَّت تهبط هذه العودة في ورقة متصفّح منفصلة
     // عن التطبيق (تخزينهما منفصل) فيضيع الدخول. نودع الجلسة تحت state
     // (عشوائي ولّده التطبيق نفسه) عشر دقائق، والتطبيق يستلمها عند العودة
