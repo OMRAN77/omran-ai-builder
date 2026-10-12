@@ -1403,6 +1403,9 @@ async function mahaStartRealtimeCall(){
       // finished initializing; then give the audio path a moment to warm up.
       if(inputTrack) inputTrack.enabled = false;
 
+    // v-mail-call: أدوات البريد في هذه الجلسة فقط إن ربط Gmail وقبلت الواجهة التفريغ (الخادم يقرّر mail). كلّ جلسة تبدأ نظيفة،
+    // وقبل قناة الأحداث فلا يسبقها حدث.
+    try{ if(window.omranMailVoice) window.omranMailVoice.begin(tokenData.mail === true, mahaMailNotify); }catch(e){ __swallow(e, 'maha:mail-begin'); }
     const pc = new RTCPeerConnection();
   mahaRtPc = pc;
   mahaRtAudioEl = new Audio();
@@ -1437,7 +1440,9 @@ async function mahaStartRealtimeCall(){
         rtSessionReadySeen = true;
         resolveRtSessionReady();
         return;
-      }    if(ev.type === 'input_audio_buffer.speech_started'){
+      }
+      if(typeof mahaMailEvent === 'function') mahaMailEvent(ev); // v-mail-call (المستمع يُختبر منفردًا في vm)
+      if(ev.type === 'input_audio_buffer.speech_started'){
         mahaLastActivity = Date.now(); // v-maha-band
         mahaClearRtResponseWatchdog();
         // A detected first utterance must never wait forever for speech_stopped.
@@ -1653,6 +1658,26 @@ async function mahaLookCamera(question){
   if(b) b.onclick = () => { if(mahaCamStream) mahaCameraOff(); else mahaCameraOn(); };
 })();
 
+/* v-mail-call: ما يحتاجه «مكالمة البريد» من أحداث الجلسة — بداية كلام المستخدم (وهل كانت مها تتكلّم = صدى محتمل)،
+   وتثبيت جملته، وتفريغ كلامه من المايك، وما قالته مها (لكشف الصدى). المنطق كلّه في app-12 (window.omranMailVoice). */
+function mahaMailEvent(ev){
+  const mv = window.omranMailVoice;
+  if(!mv || !ev) return;
+  try{
+    if(ev.type === 'input_audio_buffer.speech_started') mv.started(ev.item_id, mahaRtPlaying);
+    else if(ev.type === 'input_audio_buffer.committed') mv.committed(ev.item_id);
+    else if(ev.type === 'conversation.item.input_audio_transcription.completed') mv.transcript(ev.item_id, ev.transcript);
+    else if(ev.type === 'conversation.item.input_audio_transcription.failed') mv.transcript(ev.item_id, '');
+    else if(ev.type === 'response.output_audio_transcript.done' || ev.type === 'response.audio_transcript.done') mv.mahaSaid(ev.transcript);
+  }catch(e){ __swallow(e, 'maha:mail-event'); }
+}
+function mahaMailNotify(text){
+  if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
+  try{
+    mahaRtDc.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: String(text) }] } }));
+  }catch(e){ __swallow(e, 'maha:mail-notify'); }
+}
+
 async function mahaHandleRtFunctionCall(ev){
   if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
   let args = {};
@@ -1661,7 +1686,15 @@ async function mahaHandleRtFunctionCall(ev){
   let output = { ok: false };
   try{
     mahaSetState('thinking');
-    if(ev.name === 'generate_image'){
+    const mailVoice = window.omranMailVoice;
+    if(mailVoice && /^email_/.test(String(ev.name))){
+      output = await mailVoice.tool(ev.name, args); // v-mail-call
+    }else if(mailVoice && await mailVoice.blocks(ev.name)){
+      // v-mail-call: محتوى البريد دخل المكالمة — لا معاينة تتّصل بالشبكة ولا ذاكرة دائمة حتّى تنتهي، ولا تذكير لم يطلبه المستخدم بصوته.
+      output = ev.name === 'set_reminder'
+        ? { ok: false, message: 'Not set: in a call that has read emails, a reminder is set only when the user asks for it in their own words. Ask them.' }
+        : { ok: false, message: 'Not available in a call that has read emails (privacy). Tell the user to start a new call for this.' };
+    }else if(ev.name === 'generate_image'){
       const r = await mahaGenerateOrEditImage(args.prompt || '', false, args.text_to_write || '', args.font_style || '', args.text_color || '', false, args.text_position || 'auto', false);
       output = r.ok ? { ok: true, message: 'Image generated and shown to the user on screen.' } : { ok: false, message: 'Image generation failed: ' + (r.error || 'unknown error') };
     }else if(ev.name === 'edit_image'){
@@ -1869,6 +1902,7 @@ function urlBase64ToUint8Array(base64String){
 }
 
 function mahaEndRealtimeCall(){
+    try{ if(window.omranMailVoice) window.omranMailVoice.end(); }catch(e){ __swallow(e, 'maha:mail-end'); } // v-mail-call
     mahaRtCancelled = true;
     mahaRtActive = false;
     mahaRtReady = false;

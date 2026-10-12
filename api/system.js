@@ -23,6 +23,7 @@ function load(action) {
     case 'email-send': return require('./_lib/email-send.js');
     case 'email-ignore': return require('./_lib/email-ignore.js');
     case 'email-calendar': return require('./_lib/email-calendar.js');
+    case 'email-voice-draft': return require('./_lib/email-voice-draft.js'); // v-mail-call: ردّ من كلام المستخدم في مكالمة مها
     case 'memory': return require('./_lib/memory.js');
     case 'client-errors': return require('./_lib/client-errors.js');
     case 'tv-resolve': return require('./_lib/tv-resolve.js');

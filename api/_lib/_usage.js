@@ -390,7 +390,7 @@ async function giveMeter(username, bucket) {
 // v-move-buckets (المراجعة المعاكسة): وكلّ سلال checkAndConsumeCustom المستعملة — كانت سقوف الأدوات (البحث، المشاركة،
 // التنزيل، الاقتراحات، الفيديو…) تتصفّر بتغيير الاسم بلا حدّ. tests/rename-move.test.cjs يستخرج السلال من الكود ويقارن.
 const MOVE_BUCKETS = ['plan', 'chat', 'plan-haiku', 'plan-sonnet', 'maha-realtime', 'agent', 'claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'gemini', 'groq', 'mistral', 'openrouter', 'stt', 'general',
-  'prayer-plan', 'text-layout',
+  'prayer-plan', 'text-layout', 'email-voice', // v-mail-call: سقف الصياغة الصوتيّة لا يتصفّر بتغيير الاسم
   'search', 'search-classify', 'chat-search', 'translate', 'tts', 'media-intent', 'adchat', 'adimage', 'stamps', 'cx-brief', 'video-write', 'stocks-ai', 'stocks-pf',
   'design-ideas', 'design-suggest', 'fashion-suggest', 'studio-suggest',
   'video-prompt', 'video-upscale', 'video-download', 'video-enhance',

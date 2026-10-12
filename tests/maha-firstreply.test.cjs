@@ -80,13 +80,22 @@ test('٤. التوصيل في المكالمة: الحارس يُسلَّح بع
   assert.match(src, /if\(!mahaRtReady \|\| !mahaCallActive \|\| mahaRtDc !== dc/, 'الحارس لا يعمل قبل الجاهزية');
 });
 
-test('٥. جلسة المكالمة بلا تفريغ غير مستعمل (gpt-live-transcribe لا يدعم server_vad المستعمل هنا)', () => {
+test('٥. جلسة المكالمة بلا تفريغ غير مستعمل — والتفريغ لمكالمة البريد وحدها بنموذج يدعم كشف الدور (v-mail-call)', () => {
   const rt = fs.readFileSync(path.join(root, 'api/_lib/realtime-session.js'), 'utf8');
-  assert.doesNotMatch(rt, /transcription: \{ model:/);
+  // الإعداد الأساسيّ (كلّ مكالمة) بلا تفريغ: لا حقل transcription في كائن الجلسة نفسه.
+  const base = rt.slice(rt.indexOf('const sessionConfig = {'), rt.indexOf('const baseInstructions = sessionConfig.session.instructions;')).replace(/\/\/.*$/gm, '');
+  assert.ok(base.length > 0);
+  assert.doesNotMatch(base, /transcription/);
+  // يُضاف فقط في مسار البريد، وبنموذج غير gpt-live-transcribe (لا يدعم كشف الدور في جلسات المحادثة).
+  assert.match(rt, /if \(mailOn\) \{[\s\S]{0,300}sessionConfig\.session\.audio\.input\.transcription = \{ model: MAIL_TRANSCRIBE_MODEL \};/);
+  assert.match(rt, /const MAIL_TRANSCRIBE_MODEL = 'gpt-4o-mini-transcribe';/);
+  assert.doesNotMatch(rt, /gpt-live-transcribe'/);
   assert.match(rt, /create_response: false/, 'الردّ بطلب العميل كما هو');
   assert.match(rt, /type: 'server_vad',/);
-  const clientUses = fs.readdirSync(path.join(root, 'js')).filter((f) => /^app-\d\d-.*\.js$/.test(f))
-    .some((f) => /input_audio_transcription/.test(fs.readFileSync(path.join(root, 'js', f), 'utf8')));
-  assert.equal(clientUses, false, 'لا مستقبل لأحداث التفريغ في العميل — حذفه لا يُفقد شيئًا');
+  // له مستقبل الآن: مكالمة البريد وحدها تقرأ أحداث التفريغ.
+  const maha = fs.readFileSync(path.join(root, 'js/app-08-maha.js'), 'utf8');
+  const uses = (maha.match(/input_audio_transcription/g) || []).length;
+  const inMail = (maha.slice(maha.indexOf('function mahaMailEvent(ev){'), maha.indexOf('function mahaMailNotify(text){')).match(/input_audio_transcription/g) || []).length;
+  assert.ok(uses > 0 && uses === inMail, 'أحداث التفريغ في mahaMailEvent وحدها');
   assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('if(preBufSent) mahaArmRtResponseWatchdog(900);'), 'الحزمة أُعيد بناؤها');
 });
