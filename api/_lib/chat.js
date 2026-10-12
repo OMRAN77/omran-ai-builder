@@ -1587,7 +1587,7 @@ module.exports = async (req, res) => {
       : !!apiKey && (prov === 'claude' || (viaOR && (prov === 'gemini' || prov === 'openai'))))); if (__ownerNoRoute) { send({ error: 'ما قدرت أردّ الحين — لا طريق لهذا المزوّد على الخادم', ownerStop: true }); res.end(); return; } // v-owner-solo
     if (__freeLane || !__visionRoute) {
       if (__freeLane) send({ tier: usage.tier }); const __pre = await require('./free-read.js').preRead({ convo, send, fetchPage, trailLine }); // v-read-all
-      const __fr = await streamFreeChain({ system: __rawOwner && !__freeLane ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), raw: __rawOwner && !__freeLane, convo: __pre.convo, send, requireVision: lastUserHasImage });
+      const __fr = await streamFreeChain({ system: __rawOwner && !__freeLane ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + __provSelfSys /* v-lessons-all (المالك ١٢ أكتوبر «اريدهم كلهم»): الدروس المنشورة للمجّانيّ وللمدفوع بصورة بلا مسار رؤية */, raw: __rawOwner && !__freeLane, convo: __pre.convo, send, requireVision: lastUserHasImage });
       if (!__fr.ok) {
         // تشخيص للمالك (المجسّ يطبعه، والعميل يتجاهله): أي مزوّد فشل ولماذا — بلا مفاتيح.
         try { logError('free-chain', new Error((__fr.errors || []).join(' | ').slice(0, 400))); } catch (e) { /* التسجيل تحسين */ }

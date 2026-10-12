@@ -519,7 +519,7 @@ module.exports = async (req, res) => {
     const __cc = String(currentCode).slice(0, 300000), __big = __cc.length > 24000;
     system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا' + (__big ? ' — الملفّ ' + __cc.length + ' حرفًا، أكبر من أن يُعاد كاملًا: أرسل التعديل رقعًا داخل كتلة ```patch بالشكل @@PATCH ثمّ @@WHY سطر ثمّ @@OLD نصّ موجود في الملفّ مرّة واحدة بالضبط منسوخ حرفيًّا ثمّ @@NEW البديل ثمّ @@END، والتطبيق يطبّقها' : ' وأعد الملف كاملًا') + '):\n```html\n' + __cc + '\n```';
   }
-  if (isOwner(runUser)) { try { system += await require('./prov-self.js').systemBlocks(true, 'claude'); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } } // v-prov-self
+  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude'); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all (المالك ١٢ أكتوبر «اريدهم كلهم»): غير المالك يأخذ الدروس المنشورة وحدها
   if (isOwner(runUser)) system += OWNER_ENGINEERING_NOTE + OWNER_COMMAND_NOTE; // v-owner-obey: آخر النظام فيعلو على ما قبله · v-agent-surgical
 
   const convoAll = messages
