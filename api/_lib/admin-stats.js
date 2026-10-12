@@ -3,11 +3,9 @@
 // summary. Never exposed to regular users — the caller's session token is
 // verified server-side and must belong to OWNER_USERNAME, independent of
 // whatever the frontend hides/shows.
-const crypto = require('crypto');
 const { getUserOnce } = require('./auth.js');
 const { kvList, kvGetJSON } = require('./kv.js');
 
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 // v-owner-core: قائمة المالك الموحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
 const { isOwnerName, ownerList } = require('./_owner.js');
 
@@ -18,18 +16,9 @@ async function getUserRecord(key) {
   return getUserOnce(key);
 }
 
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
-}
+// v-session-shape (الدفعة A، أمان): نسخة verifyToken اليدويّة هنا كانت تقبل حمولة موقّعة بلا exp (تذكرة مهمّة البناء) جلسةً
+// لا تنتهي، وتقرأ السرّ في نطاق الوحدة. الآن _session.sessionUser: u نصّ وexp رقم في المستقبل، والسرّ عند النداء.
+const { sessionUser } = require('./_session.js');
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -48,7 +37,7 @@ function isTestUsername(u) {
 module.exports = async (req, res) => {
   try {
     const token = (req.query && req.query.token) || (req.body && req.body.token) || '';
-    const username = verifyToken(token);
+    const username = sessionUser(token);
     if (!isOwnerName(username)) {
       res.statusCode = 403;
       res.setHeader('Content-Type', 'application/json');

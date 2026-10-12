@@ -10,7 +10,6 @@ const { saveDesign } = require('./_constructionLibrary');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 const { kvSetIfAbsent, kvDel } = require('./kv');
-const AUTH_SECRET = require('./_secrets').AUTH_SECRET;
 
 const TEXT_TIMEOUT_MS = 60000;
 
@@ -63,6 +62,16 @@ function requestHash(body) {
   return crypto.createHash('sha256').update(JSON.stringify(stable)).digest('base64url');
 }
 
+/* v-session-shape (الدفعة A، أمان): التذكرة كانت تُوقَّع بـHMAC(AUTH_SECRET, الحمولة) — توقيع رمز الجلسة نفسه، وبلا exp —
+   فتمرّ «جلسة» لا تنتهي في كلّ نسخة تحقّق تقارن `exp < now` (auth 'verify' كان يسكّ منها رمزًا بثلاثين يومًا). الآن مجالها
+   منفصل: HMAC(AUTH_SECRET, 'cx-job|' + الحمولة) — كتذكرة veo-download — فلا تطابق توقيع جلسة أبدًا. والتحقّق يقبل الشكل
+   القديم أيضًا لتكمل المهامّ الجارية لحظة النشر: كلّ تذكرة قديمة تنتهي بـe خلال JOB_TTL من سكّها، فهذا الباب يموت وحده بعد
+   ربع ساعة من النشر (ويُحذف في تغيير لاحق). السرّ يُقرأ عند النداء لا في نطاق الوحدة. */
+function jobSig(payload, legacy) {
+  const secret = require('./_secrets').AUTH_SECRET;
+  return crypto.createHmac('sha256', secret).update(legacy ? payload : 'cx-job|' + payload).digest('base64url');
+}
+
 function signJob(username, parts, body, remaining) {
   const payload = Buffer.from(JSON.stringify({
     u: username,
@@ -72,19 +81,18 @@ function signJob(username, parts, body, remaining) {
     n: crypto.randomBytes(12).toString('hex'),
     e: Date.now() + JOB_TTL_MS,
   })).toString('base64url');
-  const signature = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-  return payload + '.' + signature;
+  return payload + '.' + jobSig(payload);
 }
 
 function verifyJob(ticket, username, part, body) {
   try {
     const [payload, signature] = String(ticket || '').split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    const given = Buffer.from(signature || '');
-    const wanted = Buffer.from(expected);
-    if (given.length !== wanted.length || !crypto.timingSafeEqual(given, wanted)) return null;
+    if (!payload || !signature) return null;
+    const given = Buffer.from(signature);
+    const sameSig = (expected) => { const wanted = Buffer.from(expected); return given.length === wanted.length && crypto.timingSafeEqual(given, wanted); };
+    if (!sameSig(jobSig(payload)) && !sameSig(jobSig(payload, true))) return null;
     const job = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (job.u !== username || job.e < Date.now() || job.h !== requestHash(body)) return null;
+    if (job.u !== username || !(job.e > Date.now()) || job.h !== requestHash(body)) return null;
     if (!Array.isArray(job.p) || !job.p.includes(part) || !/^[a-f0-9]{24}$/.test(job.n || '')) return null;
     return job;
   } catch (e) {
@@ -583,3 +591,6 @@ module.exports = async (req, res) => {
     res.status(status).json({ error: GENERATION_ERROR });
   }
 };
+
+module.exports.signJob = signJob;
+module.exports.verifyJob = verifyJob;

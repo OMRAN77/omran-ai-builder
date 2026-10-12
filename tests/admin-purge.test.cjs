@@ -18,6 +18,7 @@ function check(ok, label) {
   else { failures.push(label); console.log('  ✗ ' + label); }
 }
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'سرّ-قديم-A';
 process.env.OWNER_USERNAME = 'boss';
 

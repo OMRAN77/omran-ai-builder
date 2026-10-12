@@ -311,7 +311,7 @@ test('١٦. القائمة تسمّي ما يجيب فعلًا: Groq = GPT-OSS 1
     vm.runInNewContext('var model = this.model;\n' + line + '\nthis.out = model;', ctx);
     assert.equal(ctx.out, want, id);
   }
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m111026b/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m111026c/);
 });
 
 // ── مراجعة مستقلّة (١٦ وكيلًا) على التعديل نفسه: أخطاء أكّدها مشكّك ثانٍ ──
@@ -357,7 +357,7 @@ test('١٩. Kimi K2.6 مع صورة بعد سقوط Moonshot: يبقى K2.6 (ي�
 
 test('٢٠. العميل: فشل مسار الأدوات للمالك لا يُعاد بطلب ثانٍ لمزوّده (لا تفويض/رفع مكرّر)، والمحوَّل يطلب بلا أدوات', async () => {
   let ctx = clientCtx({});
-  await assert.rejects(loadFallback(ctx)([{ role: 'user', content: 'فوّض' }], null, ['claude'], { solo: true, toolsErr: new Error('chat: empty reply') }), (e) => e.message === 'ما قدرت أردّ الحين');
+  await assert.rejects(loadFallback(ctx)([{ role: 'user', content: 'فوّض' }], null, ['claude'], { solo: true, toolsErr: new Error('chat: empty reply') }), (e) => e.message === 'ما قدرت أردّ الحين — رجع الردّ فارغًا'); // v-claude-code-level C9: السبب لا الرسالة العارية
   assert.deepEqual(ctx.viaChat, [], 'لا طلب ثانٍ'); assert.deepEqual(ctx.tried, []);
   ctx = clientCtx({});
   await loadFallback(ctx)([{ role: 'user', content: 'صلّح' }], null, ['mistral'], { solo: true });

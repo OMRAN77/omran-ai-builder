@@ -6,6 +6,7 @@
 // نطاق معاينة…) أو مع اختلاف المعرّفين يفشل الربط، وهذه «مساعد الإيميل لا
 // يعمل». هنا يُبنى الرابط بالقيمتين اللتين سيستعملهما الخادم نفسه عند المبادلة.
 const { siteUrl, siteUrlIsValid, siteUrlConfigured } = require('./_site.js');
+const { isTicket } = require('./email-link-ticket.js'); // v-oauth-bind
 
 const clientId = () => process.env.GOOGLE_CLIENT_ID
   || '533765051685-2334rjfvu738sd2i50p7rb8gck1d00i2.apps.googleusercontent.com';
@@ -37,6 +38,14 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // v-oauth-bind: state تذكرة ربط قصيرة العمر (email-link-ticket.js) لا رمز جلسة — رمز الجلسة كان يمرّ هنا إلى
+  // روابط جوجل وسجلّاتها ويحدّد بمفرده الحساب الذي تُربط به Gmail. غير التذكرة = خطأ الربط القائم.
+  if (!isTicket(q.state)) {
+    res.writeHead(302, { Location: reqOrigin(req) + '/?emailerror=session_expired' });
+    res.end();
+    return;
+  }
+
   const params = new URLSearchParams({
     client_id: clientId(),
     redirect_uri: emailRedirectUri(req),
@@ -44,7 +53,7 @@ module.exports = async (req, res) => {
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events',
     access_type: 'offline',
     prompt: 'consent',
-    state: typeof q.state === 'string' ? q.state : '',
+    state: q.state,
   });
   res.writeHead(302, { Location: 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString() });
   res.end();

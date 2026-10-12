@@ -4,20 +4,10 @@
 // speech-to-speech, using the site owner's own OPENAI_API_KEY (never exposed
 // to the client - only the short-lived ephemeral token is sent to the browser).
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const crypto = require('crypto');
-
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const { logError } = require('./log-error.js');
-function rtVerifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) { return null; }
-}
+// v-session-shape (الدفعة A، أمان): نسخة التحقّق اليدويّة هنا (rtVerifyToken) كانت تقبل حمولة موقّعة بلا exp جلسةً لا تنتهي،
+// وتقرأ السرّ في نطاق الوحدة. الهويّة هنا لتحميل الذاكرة وحده — الحصّة والفوترة كما هي (checkAndConsume).
+const { sessionUser: rtVerifyToken } = require('./_session.js');
 
 const BUILDER_REALTIME_INSTRUCTIONS = "You are a fast, friendly voice assistant helping the user build a website/app by talking out loud, inside an AI app-builder tool - never call yourself Maha or any other name, and never introduce yourself. CRITICAL RULES: 1) Detect the language the user just spoke in and ALWAYS reply in that exact same language/dialect (natural Khaleeji Gulf Arabic if they speak Arabic, never Fus-ha, unless they clearly use another dialect). 2) Keep every reply EXTREMELY short - a single brief confirmation sentence, like 'تم! شوف النتيجة' or 'Done, check the preview!' - never explain code, never describe the image/app in detail, never chat casually, never ask unrelated follow-up questions. 3) Never use markdown, asterisks, emojis, or symbols - speech only. 4) You have real tools: generate_image (create a new picture from a description), edit_image (modify the picture just generated in this call), build_app (build or update the actual website/app code shown in the code+preview panels from a description), and make_video (start generating a short video from a description). Only ONE image is allowed per project: whenever the user asks - by voice - to draw/design/make a picture or logo, and NO picture exists yet in this project, call generate_image with a prompt describing that subject. But if a picture ALREADY exists in this project, ALWAYS call edit_image instead for any further image request, no matter what it asks for - even if it names a totally different subject/type/model - never call generate_image again in that case. The image only ever changes to something brand new when the user starts a new project. Whenever they ask to build, create, add a feature to, or change the app/website/page, call build_app with a clear description of exactly what they want. Whenever they ask for a video, call make_video. ALWAYS call the matching tool immediately instead of just describing what you would do, then give ONE short spoken confirmation after it finishes. 5) If the user just asks a normal question unrelated to building (general chat), answer briefly and naturally in 1-2 short sentences - but if it involves current/time-sensitive info or specific vehicle/car/motorcycle/airplane models, brands, specs, or model years (especially recent ones), ALWAYS call search_web first instead of guessing, then answer using the results.";
 
@@ -239,17 +229,25 @@ module.exports = async (req, res) => {
          عند ٠:٥٩ تبقى تجربته للأبد ولو رصيده صفر). الآن الدقيقة الأولى تُدفع هنا قبل فتح الجلسة: التجربة بحجز ذرّيّ
          يُعلَّم فورًا، وإلّا خصم دقيقة (رصيد اشتراك مها أوّلًا ثمّ النقاط). والمتصفّح يخصم كلّ دقيقة تبدأ بعدها. */
       let trial = false;
-      if (!rec.user.mahaTrialUsed) {
-        const trialKey = 'maha:trial:' + encodeURIComponent(String(rtUser).trim().toLowerCase());
-        trial = await require('./kv.js').kvSetIfAbsent(trialKey, '1');
-        if (trial) {
-          rec.user.mahaTrialUsed = true;
-          await require('./auth.js').putUser(rtUser, rec.user);
-          undoBill = async () => {
-            await require('./kv.js').kvDel(trialKey);
-            const u = await require('./auth.js').getUser(rtUser);
-            if (u && !u.deleted) { u.mahaTrialUsed = false; await require('./auth.js').putUser(rtUser, u); }
-          };
+      /* v-farm-gate: حساب فوق سقف هديّة شبكته بلا دفع لا تجربة له (free-tier.giftCapped)، والتجارب كلّها من سقف يوميّ كلّيّ
+         (MAHA_TRIAL_DAILY، ١٠٠ افتراضيًّا). بلا مقعد = مسار الخصم القائم (صفر نقاط = ٤٠٢ points_insufficient) والتجربة لا تُعلَّم؛
+         ومقعد اليوم يُردّ إن خسر السباق أو لم تُفتح الجلسة. */
+      const freeTier = require('./free-tier.js');
+      if (!rec.user.mahaTrialUsed && !freeTier.giftCapped(rec.user)) {
+        const slot = await freeTier.takeDailySlot('maha-trial');
+        if (slot.ok) {
+          const trialKey = 'maha:trial:' + encodeURIComponent(String(rtUser).trim().toLowerCase());
+          try { trial = await require('./kv.js').kvSetIfAbsent(trialKey, '1'); } finally { if (!trial) await freeTier.giveDailySlot(slot); }
+          if (trial) {
+            rec.user.mahaTrialUsed = true;
+            await require('./auth.js').putUser(rtUser, rec.user);
+            undoBill = async () => {
+              await require('./kv.js').kvDel(trialKey);
+              await freeTier.giveDailySlot(slot);
+              const u = await require('./auth.js').getUser(rtUser);
+              if (u && !u.deleted) { u.mahaTrialUsed = false; await require('./auth.js').putUser(rtUser, u); }
+            };
+          }
         }
       }
       let pay = null;
@@ -276,6 +274,11 @@ module.exports = async (req, res) => {
         : (guestId ? 'db/points/guest-maha/' + encodeURIComponent(String(guestId)) : null);
       const used = gk ? await kvGetJSON(gk) : { blocked: true };
       if (used) { res.status(402).json({ error: 'guest_trial_used' }); return; }
+      // v-farm-gate: تجربة الضيف من سقف التجارب اليوميّ الكلّيّ نفسه (MAHA_TRIAL_DAILY) — تدوير العناوين لا يتجاوزه؛ ويُردّ مقعده إن لم تُفتح الجلسة.
+      const freeTier = require('./free-tier.js');
+      const slot = await freeTier.takeDailySlot('maha-trial');
+      if (!slot.ok) { res.status(402).json({ error: 'guest_trial_used' }); return; }
+      undoBill = () => freeTier.giveDailySlot(slot);
       await kvPutJSON(gk, { at: Date.now() });
       mahaBudget = { unlimited: false, points: 0, trial: true, guest: true };
     }

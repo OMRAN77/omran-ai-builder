@@ -12,6 +12,7 @@
    C6 الرفض والردّ الفارغ: سبب صريح للمالك، ولا يُعاد ردّ مرفوض إلى الحلقة.
    C7 تجاوز نافذة السياق بعد الخطوة الأولى: تُقصّ نتائج الأدوات الأقدم وتبقى الأخيرة كاملة.
    C8 موديل اختاره المالك ورفضه المفتاح «does not have access»: يُذكَر (الدالّة الدافئة + KV ست ساعات) فلا يُدفع نداء فاشل أوّلًا كلّ رسالة.
+   C9 بثّ المزوّد انقطع في منتصفه (خطأ داخل البثّ، بثّ بلا نهاية، أو انقطاع الاتّصال): إعادة النداء نفسه مرّة في الدور قبل أيّ حرف، وبعدها سبب ظاهر بكوده.
    D1 كتل التفكير تعود بين جولات الأدوات كما وصلت (المالك وحده، أنثروبيك المباشر) وتُنزع عند أيّ تعديل للتاريخ — تفصيله عند thinkState.
    لا مفتاح ولا متغيّر سرّيّ يُقرأ هنا؛ مهلتا C5 من CHAT_STALL_FIRST_MS / CHAT_STALL_IDLE_MS لحظة النداء. */
 
@@ -32,7 +33,7 @@ function stepText(blocks) { return (blocks || []).filter((b) => b && b.type === 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); } // انتظار الإعادة جزء من الدور (≤ ٨ ث) — ليس unref
 
 function state(on) {
-  return { on: !!on, final: false, nudged: false, conts: 0, retryMs: 0, noChoice: false, choice: false, slow: false, t0: 0, send: null, ac: null, reader: null, tFirst: null, tIdle: null, stalled: '', lastStall: '', stopDetails: null };
+  return { on: !!on, final: false, nudged: false, conts: 0, retryMs: 0, noChoice: false, choice: false, slow: false, t0: 0, send: null, ac: null, reader: null, tFirst: null, tIdle: null, stalled: '', lastStall: '', stopDetails: null, midRetried: false };
 }
 
 /* C5: الحارس — لكلّ نداء مؤقّت حتّى الترويسة، وبعدها مؤقّت خمول يُصفَّر مع كلّ دفعة. الانطلاق يلغي القارئ
@@ -196,6 +197,33 @@ function afterStream(s, o) {
   if (s.final && (o.stopReason === 'tool_use' || hasTool)) return { kind: 'stop', msg: exitText(o) };
   if (o.stopReason !== 'tool_use' && !text.trim() && !hasTool) return { kind: 'stop', msg: EMPTY_STOP };
   return null;
+}
+
+/* C9 (لقطة المالك ١١ أكتوبر: GPT وصورة و«غير الشكل كامل» ← «⚠️ ما قدرت أردّ الحين» ثلاث مرّات بلا سبب): خطأ داخل بثّ المسار
+   المباشر (oa-direct يرمي OA_STREAM_PROTOCOL_ERROR لحدث error أو response.failed أو بثّ بلا حدث ختام) كان يقفز إلى catch الأعلى
+   في chat.js فيصل العميل «chat error» بلا ownerStop: لا إعادة، والعميل يمحو السبب. الآن قبل أيّ حرف في الخطوة = النداء نفسه مرّة
+   واحدة في الدور (مثل C4) لفشل المزوّد أو انقطاع بثّه، وبعد حرف أو إعادة فاشلة = توقّف بسبب ظاهر وكود المزوّد. غير هذا الخطأ يمضي كما كان (null). */
+function midCode(m) {
+  const t = String(m || '');
+  const k = /provider error — ([a-z_]{2,40})/.exec(t) || /response\.incomplete — ([a-z_]{2,40})/.exec(t);
+  if (k) return k[1];
+  if (/without response terminal|without \[DONE\]/.test(t)) return 'stream_cut';
+  if (/function_call arguments|tool arguments JSON/.test(t)) return 'tool_args_cut';
+  if (/invalid SSE/.test(t)) return 'bad_sse';
+  return '';
+}
+// انقطاع اتّصال المزوّد أثناء القراءة (undici: «terminated» / «other side closed») — لقطة المالك الثانية: DeepSeek عبر الوسيط و«افحص الأمان».
+// نصوص الشبكة وحدها: TypeError من كود chat.js نفسه (خطأ برمجيّ) لا يُعاد ولا يُسمّى انقطاعًا.
+const NET_RE = /^terminated$|other side closed|socket hang up|fetch failed|ECONNRESET|UND_ERR_SOCKET|network error/i;
+function midStream(s, e, o) {
+  if (!s || !s.on || !e) return null;
+  const net = e.code !== 'OA_STREAM_PROTOCOL_ERROR' && (NET_RE.test(String(e.message || '')) || NET_RE.test(String((e.cause && (e.cause.code || e.cause.message)) || '')));
+  if (e.code !== 'OA_STREAM_PROTOCOL_ERROR' && !net) return null;
+  const c = net ? 'net_cut' : midCode(e.message);
+  const why = 'انقطع ردّ المزوّد في منتصفه' + (c ? ' (' + c + ')' : '');
+  if (!(o && o.sawText) && !s.midRetried && c !== 'tool_args_cut' && c !== 'bad_sse') { s.midRetried = true; // استدعاء أداة مكسور أو SSE تالف: لا نداء ثانٍ (chat-route-credentials)
+    return { kind: 'retry', status: '⏳ ' + why + ' — أعيد مرّة…' }; }
+  return { kind: 'stop', msg: why };
 }
 
 // C1: خروج الحلقة بلا جواب ختاميّ (حدّ الخطوات أو المهلة) — السبب للمالك بدل «ما قدرت أردّ الحين». خطوة ختاميّة قبل حدّ الخطوات = ختام بالوقت.
@@ -385,7 +413,7 @@ async function rememberDeadPick(model, status, text, gone) {
 }
 
 module.exports = {
-  state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, exitText, stallNote, shrinkOld,
+  state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, exitText, stallNote, shrinkOld,
   isDeadPick, rememberDeadPick, margin,
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1
   FINAL_NOTE, CONTINUE_NOTE, TOOL_CUT_NOTE, CUT_STOP, EMPTY_STOP, __deadPicks: deadPicks,

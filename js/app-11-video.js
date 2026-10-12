@@ -254,6 +254,13 @@
       (c.byPlan || []).forEach(function(g){ lines.push('• ' + (NAME[g.plan] || g.plan) + ': ' + g.users + ' · متوسّط ' + usd(g.avg) + ' · الأعلى ' + usd(g.max) + (NET[g.plan] ? ' · يدفع ' + usd(NET[g.plan]) : '')); });
       lines.push('', 'أعلى الحسابات تكلفةً:');
       (c.top || []).forEach(function(u){ lines.push('• ' + u.user + ' (' + (NAME[u.plan] || u.plan) + ') — ' + usd(u.total) + '  [رسائل ' + usd(u.chat) + ' · وسائط ' + usd(u.media) + ' · صوت ' + usd(u.voice) + ']'); });
+      /* v-tokens-meter: نسبة قراءة الكاش في الإنتاج لكلّ مسار (آخر ٧ أيّام) — للمالك وحده بجانب التكلفة */
+      const tk = d.tokens, kt = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1000 ? Math.round(n / 1000) + 'k' : String(n || 0));
+      const LANE = { paid: 'المشتركون', free: 'المجّانيّ (تقديريّ)', owner: 'المالك', pro: 'الردّ الاحترافيّ' };
+      if(tk && tk.byLane && tk.byLane.length){
+        lines.push('', '🔢 التوكنات آخر ' + tk.days + ' أيّام — قراءة الكاش من كلّ الدخل:');
+        tk.byLane.forEach(function(l){ lines.push('• ' + (LANE[l.lane] || l.lane) + ': ' + l.turns + ' دورًا · قراءة ' + l.readPct + '% · جديد ' + kt(l.input) + ' · كتابة ' + kt(l.cacheWrite) + ' · خرج ' + kt(l.output)); });
+      }
       if(box) box.textContent = lines.join('\n');
     }catch(e){ if(box) box.textContent = '❌ فشل التقرير: ' + e.message; }
   };

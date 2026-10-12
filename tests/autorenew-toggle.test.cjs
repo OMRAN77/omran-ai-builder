@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'autorenew-test-secret';
 process.env.STRIPE_SECRET_KEY = 'test-stripe-key';
 const root = path.join(__dirname, '..');
@@ -91,7 +92,7 @@ test('٥. العميل: الزرّ آخر «خطط الأسعار»، يتبعه
     for (const k of keys) assert.ok(new RegExp('"?' + k + '"?: "').test(s), lg + ':' + k);
     assert.match(s, /"?autoRenewStopped"?: "[^"]*\{date\}/, lg);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=694'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=695'));
 });
 
 test('٦. v-autorenew-one: خيار تجديد واحد فقط في التطبيق — زرّ تبويب المحادثة، ولا مربّع في نافذة الدفع، ويحكم كلّ الباقات', () => {

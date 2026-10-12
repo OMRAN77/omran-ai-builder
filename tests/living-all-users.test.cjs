@@ -9,6 +9,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'living-all-users-test-secret';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
 for (const k of ['GROQ_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY']) delete process.env[k];
@@ -443,8 +444,8 @@ test('٧د. الربط: البطاقة داخل «ذاكرتي» لا صفحة �
   const a09 = read('js/app-09-attach.js');
   assert.match(a09, /memoryUpdate\(text, String\(__lastA\.content\)\);\n\s*try\{ if\(window\.livingLearn\) window\.livingLearn\(cur\.messages\); \}catch\(e\)\{ __swallow\(e, 'misc:living-learn-chat'\); \}/);
   assert.match(a09, /if\(window\.livingLearn && settingsOwnerUi\(\)\) window\.livingLearn\(cur\.messages\);/, 'الوكيل: للمالك وحده كما كان');
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=694'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=738'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=695'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=740'"));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('livingMemClearAll') && bundle.includes('window.livingLearn'));
   // الحقن في chat.js: بلا تحيّة، ومن ملفّ صاحب الرمز، وقبل التعليمات المخصّصة

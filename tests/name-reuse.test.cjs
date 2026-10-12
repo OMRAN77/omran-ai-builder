@@ -9,6 +9,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'name-reuse-test-secret';
 process.env.UPSTASH_REDIS_REST_URL = 'https://redis.invalid';
 process.env.UPSTASH_REDIS_REST_TOKEN = 'x';
@@ -139,12 +140,15 @@ test('٦. الرجوع لاسمك يُثبت بسلسلة الشواهد لا ب
   await auth.putUser('ali2', { username: 'ali2', points: 70, createdAt: Date.now() });
   const back = await call({ action: 'changeUsername', token: auth.makeToken('ali2'), newUsername: 'ali' });
   assert.equal(back.status, 200, JSON.stringify(back.body));
-  // ١١ تغييرًا ثمّ الرجوع للأوّل (prevUsernames مقصوص إلى آخر عشرة)
+  // ١١ تغييرًا ثمّ الرجوع للأوّل (prevUsernames مقصوص إلى آخر عشرة). التغييرات على أيّام: حدّان في ٢٤ ساعة (renameLog)،
+  // فيُقدَّم سجلّ التغييرات يومًا قبل كلّ تغيير — السلسلة نفسها، والحدّ له اختباره في farm-gate.
+  const aDayAgo = async (name) => { const rec = await auth.getUser(name); rec.renameLog = (rec.renameLog || []).map((t) => t - 86400000); await auth.putUser(name, rec); };
   await auth.putUser('nam0', { username: 'nam0', points: 70, createdAt: Date.now() });
   let tok = auth.makeToken('nam0');
   for (let i = 1; i <= 11; i++) {
     const r = await call({ action: 'changeUsername', token: tok, newUsername: 'nam' + i });
     assert.equal(r.status, 200); tok = r.body.token;
+    await aDayAgo('nam' + i);
   }
   const first = await call({ action: 'changeUsername', token: tok, newUsername: 'nam0' });
   assert.equal(first.status, 200, JSON.stringify(first.body));

@@ -36,7 +36,8 @@ test('agent on/off (its own button, ⋮ menu, premium toggle) refreshes the chip
 
 test('the chip itself: agent on → agent label, otherwise the provider; and both call sites tolerate the chip not being built yet', () => {
   assert.match(modes, /window\.omModelChipSync = refresh;/);
-  assert.match(modes, /nm\.textContent = \(window\.__omMode === 'cc'\) \? 'Claude Code' : \(window\.__agentModeOn === true\) \? agentLabel\(\) : curProvName\(\);/);
+  // v-prov-self: «الوكيل» مع Claude وحده؛ مع غيره يردّ المزوّد نفسه فاسمه هو
+  assert.match(modes, /nm\.textContent = \(window\.__omMode === 'cc'\) \? 'Claude Code' : \(window\.__agentModeOn === true && curProv\(\) === 'claude'\)[^?]*\? agentLabel\(\) : curProvName\(\);/);
   // تنفيذ الدالّتين في سياق بلا شريحة (غير المالك أو قبل بناء الشريط) لا يرمي
   const ctx = { window: {}, document: { getElementById: () => null, querySelectorAll: () => [], querySelector: () => null }, localStorage: { getItem: () => 'deepseek' }, __swallow: () => { throw new Error('لا يجب أن يُبلَّغ'); }, functionalLabel: (k) => k, lang: 'ar' };
   vm.createContext(ctx);

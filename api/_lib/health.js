@@ -102,7 +102,10 @@ module.exports = async (req, res) => {
   // v-cost-meter: «كم يكلّفني كلّ مشترك؟» — تقرير الشهر لكلّ باقة وأعلى الحسابات (للمالك وحده، isOwner أعلاه). ...&costs=1[&month=YYYY-MM]
   if (req.query && req.query.costs === '1') {
     try {
-      res.status(200).json({ ok: true, costs: await require('./cost-meter.js').monthReport(req.query.month) });
+      const __cm = require('./cost-meter.js');
+      let tokens = null; // v-tokens-meter: عدّادات توكنات آخر ٧ أيّام لكلّ مسار بجانب التكلفة — فشلها لا يُسقط تقرير التكلفة
+      try { tokens = await __cm.tokenReport(7); } catch (e) { console.warn('[health] token report skipped:', e && e.message); }
+      res.status(200).json({ ok: true, costs: await __cm.monthReport(req.query.month), tokens });
     } catch (e) {
       res.status(500).json({ ok: false, error: 'costs_failed', message: String((e && e.message) || e).slice(0, 200) });
     }

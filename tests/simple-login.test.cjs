@@ -9,6 +9,7 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'test-secret-simple-login';
 process.env.UPSTASH_REDIS_REST_URL = 'http://local-test';
 const store = new Map();
@@ -98,5 +99,5 @@ test('النصوص الجديدة بالـ١٤ لغة', () => {
     const s = read('i18n/' + l + '.js');
     for (const k of ['authIdPlaceholder', 'authCreateAccount', 'authHaveAccount', 'authSubmitForgotEmail']) assert.match(s, new RegExp('"?' + k + '"?:\\s*"[^"]+"'), l + ': ' + k);
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=738'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=740'/);
 });

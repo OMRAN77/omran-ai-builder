@@ -150,7 +150,7 @@ const TOOLS = [
    (v-owner-raw2) — فوصفُها هو تعليمتُها الوحيدة التي تصله. */
 /* v-providers-like-agent (أمر المالك ٤ أكتوبر «خلّهم كلّهم نفس الي عند الوكيل، نفس الخاصيّة في الكتابة وكلّ شي»): أدوات المالك
    في المحادثة هي أدوات وكيله نفسها — الرفع إلى GitHub وتفويض مهمّة الكود والتحقّق منها وأخطاء الإنتاج — لكلّ مزوّد. */
-const OWNER_TOOLS = [require('./app-errors.js').TOOL, require('./github-write.js').TOOL, require('./agent-delegate.js').START_TOOL, require('./agent-delegate.js').CHECK_TOOL, require('./github-edit.js').EDIT_TOOL, require('./github-edit.js').MERGE_TOOL, require('./github-manage.js').MANAGE_TOOL]; // v-agent-surgical: التعديل الجراحيّ والدمج بـ«ادمج»
+const OWNER_TOOLS = [require('./app-errors.js').TOOL, require('./github-write.js').TOOL, require('./agent-delegate.js').START_TOOL, require('./agent-delegate.js').CHECK_TOOL, require('./github-edit.js').EDIT_TOOL, require('./github-edit.js').MERGE_TOOL, require('./github-manage.js').MANAGE_TOOL, require('./prov-self.js').SELF_TOOL, require('./prov-self.js').TEACH_TOOL]; // v-prov-self: ملفّ المزوّد والدروس العامّة · v-agent-surgical: التعديل الجراحيّ والدمج بـ«ادمج»
 const toolsFor = (owner, noMedia) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).map((t) => (owner && t.name === 'read_github' ? require('./provider-level.js').ownerReadTool(t) : t)).concat(owner ? OWNER_TOOLS : []); // v-claude-code-level E5: وصف read_github للمالك يذكر from= المتوازية — غيره بالكائنات نفسها حرفيًّا
 
 const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — سبع، وهي تعمل فعلًا الآن]:\n' +
@@ -515,9 +515,9 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
     if (typeof content === 'string') return content.length;
     try { return JSON.stringify(content || '').length; } catch (e) { return 0; }
     }
-    function compactConversation(items) {
+    function compactConversation(items, win) { // v-tokens-window: win = { histOffset, lane } من العميل الجديد — بلا histOffset السلوك القديم حرفيًّا
     const source = Array.isArray(items) ? items.filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content) : [];
-    if (source.length <= 16 && source.reduce((n, m) => n + messageSize(m.content), 0) <= 36000) return source;
+    if (win && Number.isInteger(win.histOffset) && win.histOffset >= 0) { const __aw = alignedWindow(source, win.histOffset, win.lane); if (__aw) return __aw; } if (source.length <= 16 && source.reduce((n, m) => n + messageSize(m.content), 0) <= 36000) return source;
     const tail = [];
     let chars = 0;
     for (let i = source.length - 1; i >= 0 && tail.length < 14; i--) {
@@ -653,7 +653,7 @@ function nowNote(tz) {
   const opts = { timeZone: zone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
   let ar = '';
   try { ar = new Intl.DateTimeFormat('ar', opts).format(new Date()); } catch (e) { try { ar = new Intl.DateTimeFormat('ar', Object.assign({}, opts, { timeZone: 'Asia/Dubai' })).format(new Date()); } catch (e2) { /* يبقى فارغًا */ } }
-  return ar ? ('\n[التاريخ والوقت الآن بتوقيت جهاز المستخدم]: ' + ar + '. تجاهل أي تاريخ من بيانات تدريبك، ولا تذكر اسم بلد أو مدينة عند ذكر الوقت.') : '';
+  return ar ? ('\n[التاريخ والوقت الآن بتوقيت جهاز المستخدم]: ' + ar + '.' + NOW_RULE) : ''; // v-tokens-tail: نصّ القاعدة ثابت واحد آخر الملفّ — الذيل يأخذ القيمة وحدها (nowLine) والقاعدة في نظام دور الأدوات (LOCATION_RULES_NOTE)
 }
 
 function countryNote(code, cityRaw) {
@@ -663,13 +663,13 @@ function countryNote(code, cityRaw) {
   try { city = decodeURIComponent(String(cityRaw || '')).trim(); } catch (e) { city = String(cityRaw || '').trim(); }
   const c = (typeof code === 'string' ? code.trim().toUpperCase() : '');
   // v-no-region-assume: لا افتراض دولة عند غياب الرمز.
-  if (!/^[A-Z]{2}$/.test(c)) return '\n[الموقع]: غير معروف — لا تفترض دولة أو مدينة؛ إذا احتاج الجواب مكانًا فاسأل المستخدم عنه.';
+  if (!/^[A-Z]{2}$/.test(c)) return '\n[الموقع]: غير معروف' + LOC_UNKNOWN_RULE; // v-tokens-tail: القاعدة ثابت واحد آخر الملفّ
   let ar = '';
   try { ar = new Intl.DisplayNames(['ar'], { type: 'region' }).of(c) || ''; } catch (e) { /* رمز لا يعرفه Intl */ }
   return '\n[تلميح موقع من الشبكة — ليس مؤكّدًا]: ' + (city ? city + '، ' : '') + (ar || c)
-    + '. هذا تقدير من عنوان الشبكة وقد يكون خاطئًا تمامًا (سفر، VPN، شبكة شركة). قواعد إلزامية: (١) لا تذكر هذه المدينة أو الدولة بالاسم في ردّك ولا تقترح خدمات أو عيادات أو محلات «قريبة في X» من تلقاء نفسك. (٢) إذا احتاج الجواب مكانًا (مواقيت الصلاة، الطقس، أقرب مكان) فاسأل المستخدم عن مدينته بسؤال قصير أو استدعِ get_location بإذنه — ولا تعتمد التقدير إلا إن أكّده المستخدم. (٣) يجوز اعتماد الدولة فقط لاختيار العملة والجهات الرسمية عند الحاجة، بلا تصريح بأنه فيها.'
-    // v-geo-precise: «في أي منطقة أنا؟» أُجيب من مدينة الشبكة فأخطأ ١٥-٢٠ كم.
-    + ' وإذا سأل عن موقعه هو («وين أنا» · «موقعي») فممنوع الجواب منها؛ استدعِ get_location واذكر الدقّة التي تعيدها.';
+    + '.' + LOC_HINT_RULES; // v-tokens-tail: القواعد الإلزاميّة (١)(٢)(٣) نصّها ثابت واحد آخر الملفّ — الذيل يأخذ التلميح وحده (countryLine) والقواعد في النظام المخزَّن
+    // v-geo-precise: «في أي منطقة أنا؟» أُجيب من مدينة الشبكة فأخطأ ١٥-٢٠ كم —
+    // فقاعدة «وين أنا» (استدعِ get_location ولا تجب من التلميح) آخر LOC_HINT_RULES.
 }
 
 // 🛰️ v566 — سلسلة الصمود: محرّك معرفة واحد = نقطة فشل واحدة. Tavily سقطت
@@ -1403,8 +1403,8 @@ module.exports = async (req, res) => {
   // نستبعد نسخة الذاكرة التي أرسلها عميل قديم كي لا تتكرر أو تتعارض مع الحساب.
   const sysParts = messages
     .filter((m) => m && m.role === 'system' && typeof m.content === 'string' && !isClientMemoryNote(m.content) && !isClientTopicRule(m.content)) // v-tokens-dedupe: قاعدة الموضوع تصل في PERSONA_NOTE أدناه بنصّ أشمل — نسخة العميل كانت تتكرّر في كلّ دور
-    .map((m) => m.content);
-  if (!quietSocialTurn) sysParts.unshift(MASTERY_NOTE); if (__ownerReq && !quietSocialTurn) sysParts.splice(1, 0, require('./provider-level.js').OWNER_METHOD); /* v-claude-code-level E3: منهج Claude Code للمالك بعد منهج الإتقان — في الثابت المخزَّن */ // v-provider-mastery: أوّل الثابت، وتعليمات المستخدم بعده أعلى أولويّة
+    .map((m) => m.content); const __nClient = sysParts.length; // v-tokens-s0: ملاحظات العميل (تُعرف بموضعها لا بنصّها)
+  if (!quietSocialTurn) sysParts.unshift(MASTERY_NOTE); if (__ownerReq && !quietSocialTurn) sysParts.splice(1, 0, require('./provider-level.js').OWNER_METHOD); const __clFrom = sysParts.length - __nClient, __clTo = sysParts.length; /* v-tokens-s0: ملاحظات العميل الآن آخر sysParts — كلّ ما يُدفع بعدها (التعليمات · الذاكرة · الحقائق · المخصّصة) ليس منها */ /* v-claude-code-level E3: منهج Claude Code للمالك بعد منهج الإتقان — في الثابت المخزَّن */ // v-provider-mastery: أوّل الثابت، وتعليمات المستخدم بعده أعلى أولويّة
   if (typeof body.system === 'string' && body.system.trim() && !isClientMemoryNote(body.system)) sysParts.push(body.system);
   if (accountMemory) sysParts.push(accountMemory);
   const __turnNotes = sysParts.filter(isClientTurnNote); // v-tokens-cache: ملاحظات العميل الخاصّة بهذا الدور وحده (موضوع جديد/عودة، أخبار، بناء…) — تخرج من النظام إلى ذيل رسالة المستخدم الأخيرة
@@ -1420,7 +1420,7 @@ module.exports = async (req, res) => {
   const toolTurn = !quietSocialTurn && (!__analyzeDoc || __ownerReq); const __ownerUiShot = __ownerReq && lastUserHasImage && (typeof (body && body.ownerUiShot) === 'boolean' ? body.ownerUiShot : require('./owner-carry.js').uiEditTurn(lastUserText)); /* v-owner-ui-shot · v-owner-ui-shot-client: قرار العميل (يعرف علامة اللقطة) أوّلًا، والتعابير حين يغيب */ // v-providers-like-agent: المالك يقرأ ويبحث في الرسالة الطويلة كالوكيل (بلا أدوات الصور)
   const siteGuideTurn = toolTurn && isGuideTurn(messages); // v-site-guide3 · v-guide-next: والمتابعة القصيرة بعده
     const baseSystem = sysParts.join('\n\n');
-    const __sysBase = sysParts.filter((p) => !isClientTurnNote(p) && !(livingBlock && p === livingBlock)).join('\n\n'), stableSystem = __sysBase; /* v-tokens-living: الحقائق (تُختار بسؤال كلّ دور) كانت قبل علامة كاش الرسائل فيُكتب التاريخ كلّه بسعر ١٫٢٥ كلّ دور ولا يُقرأ — صارت في ذيل الدور، ونصّها يقول إنّ التعليمات المخصّصة تعلو عليها */ // v-living-all: بلا حقائق = كما كان حرفيًّا · v-tokens-cache: نظام المزوّد بلا ملاحظات الدور (baseSystem الكامل يبقى للسلسلة المجّانيّة وفحص الإرشاد)
+    const stableSystem = sysParts.filter((p, i) => !isClientTurnNote(p) && !(livingBlock && p === livingBlock) && (i < __clFrom || i >= __clTo)).join('\n\n'), __clNotes = sysParts.slice(__clFrom, __clTo).filter((p) => !isClientTurnNote(p)), __sysBase = [stableSystem].concat(__clNotes, (customInstr && __clNotes.length) ? [CI_PRECEDENCE_NOTE] : []).filter(Boolean).join('\n\n'); /* v-ci-precedence (مراجعة الدفعة A، tok-1): ملاحظات العميل صارت بعد التعليمات المخصّصة (التحيّة «بلغة المستخدم»، الصورة «باختصار»…) فتعلو عليها — سطر ثابت للنموذج وحده يعيد للمخصّصة علوّها، والكتلتان المخزّنتان كما هما */ /* v-tokens-s0 (التقييم ١١ أكتوبر: ملاحظة عميل جديدة — مرساة «📌»، قواعد الصورة، الإعلان، المساعد البصريّ — كانت تقع داخل الكتلة الثابتة فتبطل قراءتها): الثابت المخزَّن بلا ملاحظات العميل، وهي رأس المتغيّر بعده بنصّها وترتيبها (قبل قواعد الصورة كما يلزم v-img-read)؛ بلا ملاحظات = كما كان حرفيًّا */ /* v-tokens-living: الحقائق (تُختار بسؤال كلّ دور) كانت قبل علامة كاش الرسائل فيُكتب التاريخ كلّه بسعر ١٫٢٥ كلّ دور ولا يُقرأ — صارت في ذيل الدور، ونصّها يقول إنّ التعليمات المخصّصة تعلو عليها */ // v-living-all: بلا حقائق = كما كان حرفيًّا · v-tokens-cache: نظام المزوّد بلا ملاحظات الدور (baseSystem الكامل يبقى للسلسلة المجّانيّة وفحص الإرشاد)
     const __ownerNoTools = __ownerReq && !!(body && body.noTools === true); const ownerKnowledge = toolTurn ? require('./provider-level.js').ownerBrief(require('./_knowledge.js').ownerKnowledge(req, token), __ownerNoTools) : ''; // v-claude-code-level E1·E4: الملخّص بلا «ويُرفع معها» الكاذبة، وبلا فقرة الأدوات في دور بلا أدوات (غير المالك: '' كما كان)
     // v-persona-front: البصمة أول ما يقرأه النموذج في المسارات الثلاثة —
     // حتى الدور الاجتماعي («كيف الحال») الذي كان محرومًا منها كليًّا.
@@ -1461,13 +1461,16 @@ module.exports = async (req, res) => {
     /* v-live-social: «اريده ai فعلن وليس كلام فقط» — كلّ سؤال معلومة يُبحث فيه، لا ما «قد تغيّر» وحده */
     const SEARCH_RULE_NOTE = '\n\n[البحث]: لأيّ سؤال يطلب معلومة أو حقيقة استدعِ web_search أوّلًا حتّى لو ظننت أنّك تعرف — يبحث في الويب والتواصل الاجتماعي معًا. '
       + 'اذكر من أين جاءت كلّ معلومة (موقع أو منصّة). لا بحث للتحيّة والمجاملة والكتابة الإبداعيّة والترجمة وتعديل نصّ المستخدم. بحثان كحدّ أقصى في الردّ.';
-    const system = quietSocialTurn
+    /* v-prov-self: آخر النظام (فيبقى الثابت بادئة الكاش) — للمالك ملفّ المزوّد المختار والدروس كلّها، ولغيره الدروس المنشورة بـ«عمّم» */
+    let __provSelfSys = '';
+    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov); } catch (e) { logError('chat/prov-self', e); }
+    const system = (quietSocialTurn
       ? PERSONA_NOTE + '\n' + __sysBase + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور وبلغة رسالة المستخدم نفسها — جملتان أو ثلاث فيها روح (المثال العربي «الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟» مجرد مثال، ترجم روحه للغة المستخدم) واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn
         /* v-clean-slate: كتاب القواعد فُصل كله من النظام — بقي القصير + ملف المالك + ذاكرة الحساب (تصل ضمن __sysBase).
            v-tokens-cache: التاريخ والوقت والمدينة صارت في ذيل رسالة المستخدم الأخيرة (__turnTail) — تتبدّل كلّ دقيقة فكانت تبطل كاش التاريخ. */
-        ? PERSONA_NOTE + '\n' + __sysBase + ownerKnowledge + SEARCH_RULE_NOTE + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE + (siteGuideTurn && baseSystem.indexOf(SITE_GUIDE_MARK) === -1 ? SITE_GUIDE_NOTE : '') + (__ownerNoTools ? '' : (ownerKnowledge && __ownerReq ? require('./github-edit.js').WORK_NOTE : '')) + (__ownerUiShot ? require('./owner-carry.js').UI_SHOT_NOTE : '') + (__ownerNoTools ? require('./provider-level.js').NO_TOOLS_NOTE : '') /* v-claude-code-level E1: دور المالك بلا أدوات لا يُؤمر بها */ /* v-agent-surgical: طريقة العمل بلا تكرار */
-        : PERSONA_NOTE + '\n' + __sysBase + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ;
+        ? PERSONA_NOTE + '\n' + __sysBase + LOCATION_RULES_NOTE /* v-tokens-tail: قواعد سطرَي الوقت والموقع هنا (ثابتة تُقرأ من الكاش)، وقيمهما وحدها في ذيل الدور */ + ownerKnowledge + SEARCH_RULE_NOTE + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE + (siteGuideTurn && baseSystem.indexOf(SITE_GUIDE_MARK) === -1 ? SITE_GUIDE_NOTE : '') + (__ownerNoTools ? '' : (ownerKnowledge && __ownerReq ? require('./github-edit.js').WORK_NOTE : '')) + (__ownerUiShot ? require('./owner-carry.js').UI_SHOT_NOTE : '') + (__ownerNoTools ? require('./provider-level.js').NO_TOOLS_NOTE : '') /* v-claude-code-level E1: دور المالك بلا أدوات لا يُؤمر بها */ /* v-agent-surgical: طريقة العمل بلا تكرار */
+        : PERSONA_NOTE + '\n' + __sysBase + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ) + __provSelfSys;
     // v-owner-raw2: ما يُرسل فعلًا — للمالك صفر حرف، ولغيره النظام كما هو.
     const __coach = __rawOwner && prov === 'cohere'; // v-cohere-coach
     const __sysRaw = __rawOwner ? (siteGuideTurn ? SITE_GUIDE_NOTE.trim() : '') : system; // v-site-guide3: الإرشاد وحده يصل نظام المالك الخام
@@ -1483,14 +1486,14 @@ module.exports = async (req, res) => {
     let __cacheOn = String(process.env.CHAT_PROMPT_CACHE || '').trim().toLowerCase() !== 'off';
     const __sysBlocks = splitSystemForCache(__sysSend, __coach
       ? cohereCoachSystem({ customInstr, ownerKnowledge, siteGuide: siteGuideTurn ? SITE_GUIDE_NOTE : '' })
-      : (__ownerReq ? ownerIdentity(PERSONA_NOTE + '\n' + stableSystem, prov, CHAT_MODEL) : PERSONA_NOTE + '\n' + stableSystem)); // v-owner-identity: التحويل نفسه فيبقى الثابت بادئة المرسَل (الكاش)
+      : (__ownerReq ? ownerIdentity(PERSONA_NOTE + '\n' + stableSystem, prov, CHAT_MODEL) : PERSONA_NOTE + '\n' + stableSystem), (!__ownerReq && !quietSocialTurn) ? PERSONA_NOTE + '\n' + MASTERY_NOTE : ''); // v-owner-identity: التحويل نفسه فيبقى الثابت بادئة المرسَل (الكاش) · v-tokens-shared: البصمة والإتقان (واحدة لكلّ المستخدمين) علامة كاش مشتركة قبل ثابت المستخدم
     const __usage = { input: 0, cacheRead: 0, cacheWrite: 0, output: 0, stepOut: 0, served: '' };
     // v-cost-meter: تكلفة الدور علينا بتوكنات المزوّد الفعليّة × سعر النموذج الذي خدم (غير المالك) — أفضل جهد، مرّة للدور.
     let __metered = false;
-    const __meterTurn = async () => {
-      if (__metered || !usage.username || __ownerReq) return;
+    const __meterTurn = async () => { // v-tokens-meter: عدّادات توكنات اليوم لكلّ مسار وموديل في طلب Redis نفسه — للمالك والزائر أيضًا (التكلفة كما كانت: غير المالك بحساب)
+      if (__metered) return;
       __metered = true;
-      try { const __cm = require('./cost-meter.js'); await __cm.addCost(usage.username, __cm.tokenCostUsd(__usage.served || DEFAULT_MODEL, __usage), 'chat'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+      try { const __cm = require('./cost-meter.js'); await __cm.meterTurn((usage.username && !__ownerReq) ? usage.username : '', __cm.tokenCostUsd(__usage.served || DEFAULT_MODEL, __usage), 'chat', Object.assign({ lane: __ownerReq ? 'owner' : 'paid', model: __usage.served || CHAT_MODEL }, __usage)); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
     };
 
       const convoSource = stripStaleImagesFromHistory(quietSocialTurn ? [lastUser] : messages);
@@ -1500,7 +1503,7 @@ module.exports = async (req, res) => {
      الأقدم يبقى مضبوطًا عند ١٢ ألف لحماية جودة السياق. */
   const __lastMsgIdx = (function () { for (let k = convoSource.length - 1; k >= 0; k--) if (convoSource[k] && convoSource[k].role === 'user') return k; return convoSource.length - 1; })(), __codeMsgIdx = convoSource.findIndex(isProjectCodeMsg); // v-chat-edit
   const convo = (__ownerReq ? ownerConversation : compactConversation)(convoSource // v-owner-memory
-      .map((m, __i) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, __i === __codeMsgIdx ? 300000 : __i === __lastMsgIdx ? 200000 : (__ownerReq ? 60000 : 12000)) : m.content })));
+      .map((m, __i) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, __i === __codeMsgIdx ? 300000 : __i === __lastMsgIdx ? 200000 : (__ownerReq ? 60000 : 12000)) : m.content })), { histOffset: __freeLane ? undefined : (body && body.histOffset), lane: 'paid' }); /* tok-4: المسار المجّانيّ بالضغط القديم حرفيًّا — نظامه ينتهي بوقت الدقيقة فلا كاش يربحه، والنافذة المحاذاة كانت تُسقط رسالتين في ثلث أدواره */ // v-tokens-window: موضع المحادثة المطلق من العميل (المالك لا يأخذه — ownerConversation بوسيط واحد)
       while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
   /* v-claude-shape: أنثروبيك يرفض 400 محادثة أولها assistant أو فيها دوران
    * متتاليان بنفس الدور — كود المشروع يصل كرسالة assistant في المقدمة،
@@ -1517,7 +1520,7 @@ module.exports = async (req, res) => {
   if (!convo.length) { send({ error: 'Missing user message' }); res.end(); return; }
 
   // ─── live-answers: استبدل رسالة المستخدم الأخيرة بالنسخة المسنودة بالمصادر ───
-  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText)); /* v-tokens-tools: دور السؤال كان بقائمة أدوات أقصر فتنكسر بادئة الكاش — القائمة ثابتة، و«لا رسم» تنبيه في الذيل + حارس عند التنفيذ */ const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowNote(body && body.tz), countryNote(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : [])); /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
+  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText)); /* v-tokens-tools: دور السؤال كان بقائمة أدوات أقصر فتنكسر بادئة الكاش — القائمة ثابتة، و«لا رسم» تنبيه في الذيل + حارس عند التنفيذ */ const __ownerNoMedia = !!(toolTurn && __ownerReq && !__ownerNoTools && (__analyzeDoc || __ownerUiShot)), __noMedia = __askNoMedia || __ownerNoMedia; /* v-tokens-owner-tools: لقطة المالك والرسالة الطويلة كانتا بقائمة أدوات بلا الصور فيفوت الكاش كلّه (~١٦ ألف توكن) — القائمة كاملة كغيرهما، والصور تُرفض عند التنفيذ بالحارس نفسه */ const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowLine(body && body.tz), countryLine(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : (__ownerNoMedia ? [OWNER_NO_MEDIA_NOTE] : []))); /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
   // (الترويسات وsend فُتحا مبكرًا أعلاه — v-fast-headers)
   // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
 
@@ -1586,8 +1589,8 @@ module.exports = async (req, res) => {
         else send({ delta: (lastUserHasImage ? tierLib.FREE_TEXT.imageBusy : tierLib.FREE_TEXT.busy) + (__ownerReq ? ownerFailNote(0, __visionRoute ? '' : 'no-vision-route', __fr.errors) : '') }); // v-img-why
       }
       // v-cost-meter: المسار المجّانيّ — تكلفة تقديريّة (دخل ثابت تقريبيّ + خرج من طول النصّ)، غير المالك.
-      if (__fr.ok && usage.username && !__ownerReq) { try { const __cm = require('./cost-meter.js'); await __cm.addCost(usage.username, __cm.tokenCostUsd(__fr.model, { input: 6000, output: Math.ceil(String(__fr.text || '').length / 3.5) }), 'chat'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } }
-      send({ done: true });
+      send({ done: true }); // tok-3: الردّ لا ينتظر القياس — الدالّة تبقى حيّة حتّى res.end()
+      if (__fr.ok) { try { const __cm = require('./cost-meter.js'); const __fu = { input: 6000, output: Math.ceil(String(__fr.text || '').length / 3.5) }; await __cm.meterTurn((usage.username && !__ownerReq) ? usage.username : '', __cm.tokenCostUsd(__fr.model, __fu), 'chat', Object.assign({ lane: 'free', model: __fr.model }, __fu)); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } } // v-tokens-meter: والمسار المجّانيّ في عدّادات اليوم (تقديريّ: السلسلة لا تعيد توكناتها بعد)
       res.end();
       return;
     }
@@ -1626,7 +1629,7 @@ module.exports = async (req, res) => {
       const callUpstream = (withImg) => __upFetch(CHAT_URL, {
         method: 'POST', // v-tokens-close: غير المالك بلا إشارة — تبقى مهلة _fetch-timeout (٣٠ ث لأوّل بايت)؛ للمالك إشارة owner-loop بحرّاسها (٧٥ ث لأوّل بايت، الصمت، سبب ظاهر) — v-claude-code-level C5
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, signal: __ol.signal(__olS, !!__direct),
-        body: JSON.stringify(__ol.think(__ol.shape(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, __analyzeDoc || __ownerUiShot) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {}), __olS, !!__direct), __olT, convo, __direct ? 'x' : (viaOR ? 'or' : 'a'))), // v-claude-code-level D1: تفكير الجولة السابقة يعود كما وصل على المسار نفسه · v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم)
+        body: JSON.stringify(__ol.think(__ol.shape(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {}), __olS, !!__direct), __olT, convo, __direct ? 'x' : (viaOR ? 'or' : 'a'))), // v-claude-code-level D1: تفكير الجولة السابقة يعود كما وصل على المسار نفسه · v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم) /* cross-1: المالك الخامّ بلا نظام ولا ذيل فلا يصله تنبيه «مقفلة» — قائمته بلا أدوات الصور كما كانت (__rawOwner && __ownerNoMedia) */
       }).then((r) => __ol.got(__olS, r), (e) => __ol.fetchFailed(__olS, e)); // v-claude-code-level C5: حارس لكلّ نداء، وقطعه = فشل صريح
       let upstream = await callUpstream(true); upstream = await __ol.retryBusy(upstream, () => callUpstream(true), __olS, { direct: __ownerReq && !viaOR, t0, MAX_MS, send }); upstream = await __ol.think400(upstream, __olT, convo, () => callUpstream(true), send); // v-claude-code-level C4: مشغول = النداء نفسه · D1: توقيع مرفوض = نزع وإعادة واحدة
       // v-img-err: أيّ فشل على إعداد دور الصورة (400 أو 404 نموذج لا يملكه المفتاح أو
@@ -1832,7 +1835,7 @@ module.exports = async (req, res) => {
       // انتهائه، فدرس #527 (لا تغذية للحارس أثناء حلقة الأدوات) محفوظ.
       // v-owner-reason: تفكير الموديل للمالك قد يطول بلا حرف (لا يُبثّ منه شيء) فيأخذ النبض أيضًا — أثناء بثّ المزوّد فقط.
       let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage || __ownerReq) ? setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000) : null;
-      let streamDone = false;
+      let streamDone = false; let __midFail = null; // v-claude-code-level C9: بثّ المزوّد انقطع في منتصفه (المالك)
       const __tokStrip = makeTokenStripper(); // v-special-tokens: لكلّ ردّ مزوّد مرشّحه (رمز منقسم بين دلتا لا يفلت)
       try {
       while (true) {
@@ -1859,9 +1862,9 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' }); // v-chat-github-read: مفتاح ترجمة قائم، لا نصّ واجهة جديد
             else if (cb.type === 'tool_use' && cb.name === 'read_app_errors') send({ status: '🩺 يقرأ أخطاء التطبيق الحيّة…' }); // v-provider-errors: بلا مفتاح — العميل يعود لنصّ الخادم (أداة المالك وحده)
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
-            else if (cb.type === 'tool_use' && cb.name === 'generate_image' && !__askNoMedia) send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
-            else if (cb.type === 'tool_use' && cb.name === 'edit_image' && !__askNoMedia) send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
-            else if (cb.type === 'tool_use' && cb.name === 'generate_video' && !__askNoMedia) send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_image' && !__noMedia) send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'edit_image' && !__noMedia) send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_video' && !__noMedia) send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…', k: 'stTestHtml' });
             else if (cb.type === 'tool_use' && cb.name === 'get_location') send({ status: '📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…', k: 'stGeoLoc' });
           } else if (ev.type === 'content_block_delta') {
@@ -1892,12 +1895,14 @@ module.exports = async (req, res) => {
           }
         }
       }
+      } catch (__se) { __midFail = __cut.gone ? null : __ol.midStream(__olS, __se, { sawText: sawTextThisStep }); if (!__midFail) throw __se; __midFail.text = String((__se && __se.message) || __se).slice(0, 300); // C9: غير المالك وغير هذا الخطأ إلى catch الأعلى كما كان
       } finally {
         if (kaTimer) { clearInterval(kaTimer); kaTimer = null; } // أوقف النبض أيضًا عند فشل قراءة البثّ
         __ol.stop(__olS); // v-claude-code-level C5: الحارس للبثّ وحده، لا لتنفيذ الأدوات
         if (!streamDone) { try { await reader.cancel(); } catch (e) { /* المجرى أغلق مع الخطأ */ } }
         try { reader.releaseLock(); } catch (e) { /* المجرى أغلق مع الخطأ */ }
       }
+      if (__midFail) { await logErrorAndFlush('chat/mid-stream', new Error(__acct() + ': ' + __midFail.text), { action: __midFail.kind, prov }); if (__midFail.kind === 'retry') { send({ status: __midFail.status }); steps--; continue; } send({ error: __midFail.msg, ownerStop: true }); res.end(); return; } // C9: النداء نفسه مرّة، ثمّ السبب للمالك (تحت النصّ إن وُجد)
       { const __rest = __tokStrip.flush(); if (__rest) { const __tb = blocks.filter((b) => b && b.type === 'text').pop(); if (__tb) __tb.text += __rest; fullText += __rest; anyText = true; send({ delta: __rest }); } } // v-special-tokens: ذيل محجوز لم يكتمل رمزًا
       __usage.output += __usage.stepOut; __usage.stepOut = 0;
       // v-prompt-cache: المالك وحده يرى الحساب في شارة النموذج: كاش · جديد · خرج (مجموع الجولات).
@@ -1941,8 +1946,8 @@ module.exports = async (req, res) => {
         const _cleaned = stripSpecialTokens(stripMemoryUrls(fullText, toolCorpus)); // v-special-tokens: حزام ثانٍ للتصحيح الختاميّ
           if (_cleaned !== fullText) { send({ patch: _cleaned }); }
           // v-owner-solo (المالك ٨ أكتوبر «أريد المحادثة فقط، أيّ شي زائد عليها ما أريده»): لا سطر سبب تحت الردّ.
-          await __meterTurn(); // v-cost-meter: نهاية الدور العاديّة
-          send({ done: true }); res.end(); return;
+          send({ done: true }); // tok-3: done قبل القياس — الدالّة تبقى حيّة حتّى res.end()
+          await __meterTurn(); res.end(); return; // v-cost-meter: نهاية الدور العاديّة
       }
 
       /* v-claude-code-level D1 (منقول من agent.js v-agent-deep): كتل التفكير (والمحجوبة) تعود بلا تعديل وبترتيبها — كانت تُحذف
@@ -1969,7 +1974,7 @@ module.exports = async (req, res) => {
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
         try {
-          if (__askNoMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1) result = ASK_NO_MEDIA_REFUSAL; // v-tokens-tools: دور سؤال — لا رسم ولا تعديل ولا فيديو
+          if (__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1) result = __askNoMedia ? ASK_NO_MEDIA_REFUSAL : OWNER_NO_MEDIA_REFUSAL; // v-tokens-tools: دور سؤال — لا رسم ولا تعديل ولا فيديو · v-tokens-owner-tools: ولقطة المالك ورسالته الطويلة كما كانتا بلا أدوات الصور
           else if (cb.name === 'web_search') {
             const _q = input.query || '';
             const mySearchNo = ++searchesUsed; // يزداد قبل أول await فالعدّ آمن مع التوازي
@@ -2049,6 +2054,9 @@ module.exports = async (req, res) => {
             else if (!__dl.ownerAsksCode(lastUserText)) result = __dl.DELEGATE_REFUSAL; // v-code-not-primary: بطلب المالك بالاسم وحده
             else { __ownerOps.delegates++; result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
           }
+          /* v-prov-self: ملفّ المزوّد المختار نفسه (لا غيره)، والدروس العامّة بـ«عمّم» يفحصها الخادم */
+          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf(reqProv || prov, input, __ownerReq);
+          else if (cb.name === 'teach_users') result = await require('./prov-self.js').runTeach(input, lastUserText, __ownerReq, reqProv || prov);
           else if (cb.name === 'check_code_task') {
             const __dl = require('./agent-delegate.js');
             result = __ownerReq ? __dl.formatCheck(await __dl.checkTask(input)) : '✗ التحقّق من مهامّ الكود للمالك وحده.';
@@ -2067,7 +2075,7 @@ module.exports = async (req, res) => {
           result = 'فشل تنفيذ الأداة: ' + String((toolErr && toolErr.message) || toolErr).slice(0, 150);
         }
         const __tl = trailLine(cb.name, input, result);
-        if (!(__askNoMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1)) send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p }, trailDetail(cb.name, input, result))); // v-read-all · v-tokens-tools: الرفض في دور السؤال بلا سطر «↳ تعذّرت الصورة»
+        if (!(__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1)) send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p }, trailDetail(cb.name, input, result))); // v-read-all · v-tokens-tools: الرفض في دور السؤال بلا سطر «↳ تعذّرت الصورة»
         // v-one-brain: بطاقات «المصادر» كانت تأتي من طبقة البحث المحذوفة —
         // الآن تُستخرج من نتيجة أداة البحث نفسها وتُبثّ للعميل ليرسمها.
         if (cb.name === 'web_search') {
@@ -2101,13 +2109,13 @@ module.exports = async (req, res) => {
     }
 
     if (__olS.on) send({ error: __ol.exitText({ t0, MAX_MS, MAX_STEPS }), ownerStop: true }); // v-claude-code-level C1: لا خروج صامت — السبب للمالك (تحت النصّ إن وُجد)
-    await __meterTurn(); // v-cost-meter: خروج بعد حدّ الجولات أو المهلة
     send({ done: true });
+    await __meterTurn(); // v-cost-meter: خروج بعد حدّ الجولات أو المهلة · tok-3: بعد done
     res.end();
   } catch (e) {
     await __giveMeter(); // v-meter-atomic: عطل قبل أن يقبل المزوّد الطلب — الحجز يُردّ (بعد قبوله صار استهلاكًا: لا شيء يُردّ)
     if (__cut.gone) { await __meterTurn(); try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا */ } return; } // v-tokens-close: الإلغاء المقصود (AbortError) ليس عطلًا — يُقاس ما صُرف ولا رسالة خطأ لعميل رحل
-    send({ error: 'chat error: ' + String((e && e.message) || e).slice(0, 200) });
+    send(__ownerReq ? { error: 'ما قدرت أردّ الحين — عطل في الخادم: ' + String((e && e.message) || e).slice(0, 160), ownerStop: true } : { error: 'chat error: ' + String((e && e.message) || e).slice(0, 200) }); // C9: المالك يرى السبب — بلا ownerStop كان العميل يمحوه إلى «ما قدرت أردّ الحين» عارية
     try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا */ }
   }
 };
@@ -2121,6 +2129,8 @@ function ownerStopNote(fail, then) {
   const __f = (then || fail) || {};
   // v-groq-tpm: 413 «tokens per minute» بعد إعادة القصّ في oa-direct = المحادثة نفسها أكبر من حدّ المفتاح في الدقيقة
   if (Number(__f.status) === 413 && /tokens per minute|\bTPM\b/i.test(String(__f.text || ''))) return 'ما قدرت أردّ الحين — المحادثة أكبر من حدّ المفتاح في الدقيقة؛ افتح محادثة جديدة';
+  // v-groq-tpm: 429 بموعد («try again in 12m3s») بعد انتظار oa-direct القصير = موعد الحدّ نفسه للمالك بدل رقم
+  if (Number(__f.status) === 429) { const __w = require('./oa-direct.js').groqRetryAfter(__f.text); if (__w) return 'ما قدرت أردّ الحين — وصلت حدّ المفتاح؛ جرّب بعد ' + (__w < 90 ? Math.ceil(__w) + ' ثانية' : __w < 5400 ? Math.ceil(__w / 60) + ' دقيقة' : Math.ceil(__w / 3600) + ' ساعة'); }
   return 'ما قدرت أردّ الحين — خطأ ' + (__f.status || '؟');
 }
 /* v-owner-identity (المالك ٨ أكتوبر: «ولا واحد يردّ على أيّ مزوّد باسمه… المزوّدين كلّهم أسامي فقط، شو عرّفني أنّهم بأصلهم»):
@@ -2173,13 +2183,21 @@ module.exports.__vimg = { imageTurnConfig, IMAGE_READ_NOTE }; // v-img-read — 
 
 // ─── v-prompt-cache ───
 // النظام كتلتين: الثابت أوّلًا بعلامة الكاش، والمتغيّر بعده. فارغ (المالك الخام) → undefined.
-function splitSystemForCache(sysSend, stable) {
+/* v-tokens-shared (التقييم ١١ أكتوبر: أوّل دور في كلّ جلسة يقرأ صفرًا ويكتب ~٥ آلاف توكن بسعر ١٫٢٥ — ١٢٣٪ من بلا كاش — لأنّ علامة
+   النظام الوحيدة بعد ذاكرة المستخدم وتعليماته): shared = بادئة الثابت التي لا تتبدّل بين المستخدمين (البصمة + الإتقان) — كتلة أولى
+   بعلامتها، فالأدوات وهي يُقرآن من كاش أيّ مستخدم سبق خلال خمس دقائق؛ ثمّ ثابت المستخدم بعلامته، ثمّ المتغيّر. ثلاث علامات مع آخر
+   رسالة (الحدّ أربع). النصّ المرسَل نفسه حرفيًّا — التقسيم وحده تغيّر. Haiku 4.5 لا يخزّن بادئة دون ٤٠٩٦ توكن: علامة تحت الحدّ لا تُخزَّن ولا تضرّ. */
+function splitSystemForCache(sysSend, stable, shared) {
   const s = String(sysSend || '');
   if (!s) return undefined;
   const st = String(stable || '');
   if (st && s.indexOf(st) === 0) {
     const rest = s.slice(st.length);
-    return [{ type: 'text', text: st, cache_control: { type: 'ephemeral' } }].concat(rest ? [{ type: 'text', text: rest }] : []);
+    const sh = String(shared || '');
+    const head = (sh && sh.length < st.length && st.indexOf(sh) === 0)
+      ? [{ type: 'text', text: sh, cache_control: { type: 'ephemeral' } }, { type: 'text', text: st.slice(sh.length), cache_control: { type: 'ephemeral' } }]
+      : [{ type: 'text', text: st, cache_control: { type: 'ephemeral' } }];
+    return head.concat(rest ? [{ type: 'text', text: rest }] : []);
   }
   return [{ type: 'text', text: s, cache_control: { type: 'ephemeral' } }];
 }
@@ -2288,3 +2306,53 @@ module.exports.__vread = { trailDetail, trailLine }; // v-read-all — للاخ�
 function isProjectCodeMsg(m) {
   return !!(m && m.role === 'assistant' && typeof m.content === 'string' && /^```(?:html|python)\n/.test(m.content));
 }
+
+/* v-tokens-window (التقييم ١١ أكتوبر: المحادثة الطويلة ٨٣٪ من كلفة بلا كاش — نافذة الأربع عشرة رسالة المنزلقة تبدّل أوّل رسالة في كلّ دور
+   فيُكتب التاريخ كلّه بسعر ١٫٢٥ ولا يُقرأ): العميل الجديد يرسل histOffset (عدد رسائل المحادثة قبل أوّل ما أرسله)، فلكلّ رسالة موضع مطلق.
+   بداية النافذة = أوّل رسالة مستخدم عند الموضع المطلق floor((n−MIN+1)/STEP)·STEP أو بعده (n = موضع الرسالة الأخيرة)، فتثبت البداية
+   STEP/2 أدوار وتُقرأ بادئة التاريخ من الكاش في ثلاثة من أربعة. الطول بين MIN وMAX رسالة وتحت سقف حروف (كود المشروع خارج الحساب ويبقى
+   أوّلًا كما كان). المجّانيّ أقصر (حدّ Groq في الدقيقة). محادثة لا تتجاوز MIN تُرسل كاملة؛ وبلا histOffset، أو حين لا تتّسع أقصر نافذة
+   للسقف = compactConversation القديم حرفيًّا. */
+const WINDOW = { paid: { MIN: 14, MAX: 22, STEP: 8, BUDGET: 40000 }, free: { MIN: 10, MAX: 16, STEP: 6, BUDGET: 32000 } };
+function alignedWindow(source, histOffset, lane) {
+  const w = WINDOW[lane === 'free' ? 'free' : 'paid'];
+  const pc = source.find(isProjectCodeMsg);
+  const conv = pc ? source.filter((m) => m !== pc) : source;
+  const last = conv.length - 1;
+  if (last < 0) return null;
+  const suffix = new Array(conv.length + 1).fill(0);
+  for (let i = last; i >= 0; i--) suffix[i] = suffix[i + 1] + messageSize(conv[i].content);
+  if (conv.length <= w.MIN) return suffix[0] <= w.BUDGET ? source : null;
+  const cands = [];
+  for (let s = Math.max(0, last - w.MAX + 1); s <= last - w.MIN + 1; s++) if (conv[s].role === 'user' && suffix[s] <= w.BUDGET) cands.push(s);
+  if (!cands.length) return null;
+  const start = Math.floor((histOffset + last - w.MIN + 1) / w.STEP) * w.STEP - histOffset; // الموضع المطلق للبداية محوَّلًا إلى موضع في هذا الطلب
+  const pick = cands.find((c) => c >= start);
+  const tail = conv.slice(pick === undefined ? cands[cands.length - 1] : pick);
+  while (tail.length && tail[tail.length - 1].role !== 'user') tail.pop();
+  if (!tail.length) return null;
+  return pc ? [{ role: 'user', content: 'هذا مشروعي الحالي — اعتمد عليه فيما يلي:' }, pc].concat(tail) : tail; // v-chat-edit: كود المشروع أوّلًا بعد دور مستخدم
+}
+/* v-tokens-tail (التقييم ١١ أكتوبر: ذيل الدور ~٥٢٠ توكنًا خارج الكاش في كلّ نداء — ~١٩٠ منها قواعد ثابتة للوقت والموقع): القواعد نصّ واحد
+   هنا. nowNote/countryNote الكاملة كما كانت حرفيًّا (للسلسلة المجّانيّة ومدرّب Cohere)، وذيل دور الأدوات يأخذ القيمة وحدها (nowLine/countryLine)
+   والقواعد نفسها في نظام دور الأدوات (LOCATION_RULES_NOTE) — ثابتة فتُقرأ من الكاش. */
+const NOW_RULE = ' تجاهل أي تاريخ من بيانات تدريبك، ولا تذكر اسم بلد أو مدينة عند ذكر الوقت.';
+const LOC_HINT_RULES = ' هذا تقدير من عنوان الشبكة وقد يكون خاطئًا تمامًا (سفر، VPN، شبكة شركة). قواعد إلزامية: (١) لا تذكر هذه المدينة أو الدولة بالاسم في ردّك ولا تقترح خدمات أو عيادات أو محلات «قريبة في X» من تلقاء نفسك. (٢) إذا احتاج الجواب مكانًا (مواقيت الصلاة، الطقس، أقرب مكان) فاسأل المستخدم عن مدينته بسؤال قصير أو استدعِ get_location بإذنه — ولا تعتمد التقدير إلا إن أكّده المستخدم. (٣) يجوز اعتماد الدولة فقط لاختيار العملة والجهات الرسمية عند الحاجة، بلا تصريح بأنه فيها.'
+  + ' وإذا سأل عن موقعه هو («وين أنا» · «موقعي») فممنوع الجواب منها؛ استدعِ get_location واذكر الدقّة التي تعيدها.'; // v-geo-precise
+const LOC_UNKNOWN_RULE = ' — لا تفترض دولة أو مدينة؛ إذا احتاج الجواب مكانًا فاسأل المستخدم عنه.'; // v-no-region-assume
+const LOCATION_RULES_NOTE = '\n\n[الوقت والموقع — قواعد سطرَي الوقت والموقع في «سياق هذا الدور»]: سطر التاريخ والوقت:' + NOW_RULE
+  + ' سطر «تلميح موقع من الشبكة»:' + LOC_HINT_RULES + ' وإن قال السياق «[الموقع]: غير معروف»' + LOC_UNKNOWN_RULE;
+function nowLine(tz) { const n = nowNote(tz); return n.slice(-NOW_RULE.length) === NOW_RULE ? n.slice(0, -NOW_RULE.length) : n; }
+function countryLine(country, city) {
+  const n = countryNote(country, city);
+  if (n.slice(-LOC_HINT_RULES.length) === LOC_HINT_RULES) return n.slice(0, -LOC_HINT_RULES.length);
+  return n.slice(-LOC_UNKNOWN_RULE.length) === LOC_UNKNOWN_RULE ? n.slice(0, -LOC_UNKNOWN_RULE.length) + '.' : n;
+}
+/* v-tokens-owner-tools: لقطة المالك («احذف هذا المكان» على لقطة من التطبيق) ورسالته الطويلة كانتا بقائمة أدوات بلا الصور فتفوت بادئة الكاش
+   كلّها. القائمة كاملة الآن، و«لا صور» تنبيه في ذيل الدور وحارس عند التنفيذ كدور السؤال (ASK_NO_MEDIA). نصّان للنموذج وحده. */
+/* v-ci-precedence (tok-1): يُلحق بعد ملاحظات العميل حين تُرسل مع تعليمات مخصّصة — للنموذج وحده، ثابت (~٣٠ توكن خارج الكاش في تلك الأدوار).
+   هنا أسفل الملفّ لا قرب customInstructionsBlock: knowledge/ROUTING.md يذكر أرقام أسطر chat.js (routing-anchors). */
+const CI_PRECEDENCE_NOTE = '[تعليمات المستخدم المخصّصة أعلاه تعلو على ملاحظات هذا الدور في اللغة والطول والنبرة عند التعارض]';
+const OWNER_NO_MEDIA_NOTE = '[أدوات الصور والفيديو مقفلة في هذا الدور: لا تستدعِ generate_image ولا edit_image ولا generate_video.]';
+const OWNER_NO_MEDIA_REFUSAL = 'هذه الأداة مقفلة في هذا الدور — لا رسم ولا تعديل صورة ولا فيديو هنا: أكمل المطلوب بالقراءة والكود أو بالكلام.';
+module.exports.__tokens2 = { alignedWindow, compactConversation, WINDOW, nowNote, countryNote, nowLine, countryLine, NOW_RULE, LOC_HINT_RULES, LOC_UNKNOWN_RULE, LOCATION_RULES_NOTE, OWNER_NO_MEDIA_NOTE, OWNER_NO_MEDIA_REFUSAL, CI_PRECEDENCE_NOTE }; // v-tokens-window · v-tokens-tail · v-tokens-owner-tools — للاختبار

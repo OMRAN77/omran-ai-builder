@@ -637,7 +637,7 @@ var APP_CAPABILITIES = [
   { id:'btnCV',       icon:'💼', ar:'مولّد السيرة الذاتية', en:'CV Builder',
     kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },
   { id:'btnDocs',     icon:'📄', ar:'مساعد المستندات', en:'Document Assistant',
-    kw:/(?:حلل|حلّل|اقرأ|افهم|لخص|لخّص|راجع|افحص).{0,18}(?:مستند|عقد|فاتورة|تقرير|ملف|اتفاقية|pdf)|(?:مستند|عقد|فاتورة|اتفاقية|contract|invoice)\b/i },
+    kw:/(?:حلل|حلّل|اقرأ|افهم|لخص|لخّص|راجع|افحص).{0,18}(?:مستند|عقد|فاتورة|تقرير|ملف|اتفاقية|pdf)|(?:مستند|عقد|فاتورة|اتفاقية)(?![\u0600-\u06FF])|(?:contract|invoice)\b/i }, // v-arabic-wordb: كان \b بعد الأسماء العربيّة فلا تطابق وحدها
   { id:'btnGov',      icon:'🧾', ar:'المعاملات الحكومية', en:'Government Services',
     kw:/(إقامة|اقامة|رخصة تجارية|رخصه|تجديد.{0,10}(هوية|جواز|رخصة|إقامة)|تأشيرة|تاشيرة|فيزا|بلدية|معاملة حكوم|خدمة حكوم|residence visa|business license|govern)/i },
   { id:'btnReligion', icon:'☪️', ar:'التفسير الديني', en:'Religious Guidance',
@@ -3193,6 +3193,9 @@ function renderReferral(){
   const username = authGet('aiapp_username');
   const linkEl = $('#acctReferralLink');
   if(linkEl) linkEl.value = username ? (location.origin + '/?ref=' + encodeURIComponent(username)) : '';
+  // v-qr-one: الباركود المفتوح يتبع الرابط — الدخول والخروج لا يعيدان تحميل الصفحة، والصندوق يبقى مفتوحًا بينهما
+  const qrBox = $('#acctQrBox');
+  if(qrBox && qrBox.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
   const bonusEl = $('#acctReferralBonus');
   if(!bonusEl) return;
   if(!username){ bonusEl.textContent = ''; return; }
@@ -3314,10 +3317,11 @@ window.acctToggleRow = function(id, btn) {
 window.acctToggleQr = function() {
   var q = document.getElementById('acctQrBox');
   if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
+  if (q && q.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
 };
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
-  var shareUrl = (u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/download';
+  var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
   var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
   if (navigator.share) {
     try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }

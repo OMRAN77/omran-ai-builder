@@ -12,6 +12,7 @@
 //   merge   - merge two photos into a single combined image
 // Returns a base64 PNG/JPEG the client can preview and download.
 const { checkStudioQuota, consumeStudio, STUDIO_DAILY_LIMIT } = require('./_studioUsage');
+const { keepGuardCharge } = require('./image-giveback.js'); /* v-guard-cap */
 
 // v-studio-rescue: تعديل الصورة عبر gpt-image-1 عند رفض Gemini (نفس نمط
 // الأزياء والبورتريه). يدعم صورتين للدمج. يرجع base64 أو null — لا يرمي.
@@ -138,6 +139,11 @@ function varietyLine(feature, variant, style) {
     '\nThe requested change must be clearly and unmistakably visible in the result.';
 }
 
+/* v-guard-cap: سطر «المجمّع من ثلاث زوايا» نفسه يصل المولّد والحارس — بدونه يرى الحارس ثلاث لوحات لم يطلبها أحد
+   فيحكم «تغيّر النطاق»، ورفض الحارس صار يُحتسب بعد اثنين في اليوم: لا يدفع الأمين ثمن تناقض أمرنا. */
+const COLLAGE_FEATURES = ['hair', 'heritage', 'beard'];
+const COLLAGE_CLAUSE = 'Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
+
 /* ───── بناء أمر ميزة واحدة (كان داخل المعالج) ───── */
 function buildSinglePrompt(feature, style, description, multiAngle, variant) {
   const styleMap = STYLE_TEXT[feature] || {};
@@ -155,8 +161,8 @@ function buildSinglePrompt(feature, style, description, multiAngle, variant) {
   if (!buildFn) return null;
   let promptText = buildFn(styleDesc);
   if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK(LOCK_WHAT[feature] || 'the requested detail');
-  if (multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')) {
-    promptText += ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
+  if (multiAngle && COLLAGE_FEATURES.indexOf(feature) !== -1) {
+    promptText += ' ' + COLLAGE_CLAUSE;
   }
   if (DESIGN_FEATURES.indexOf(feature) !== -1) promptText += SKIN_LOCK;
   promptText += varietyLine(feature, variant, style);
@@ -357,12 +363,14 @@ module.exports = async (req, res) => {
     /* v-edit-no-change: الميزات الخفيّة (بشرة، عيون، جسم، عمر) تغييرها دقيق فلا يُفرض عليها */
     /* v-visible-change: العيون والجسم والعمر تغييرها ظاهر — «ما تغيّر» يُكشف ويُعاد؛ البشرة وحدها دقيقة بطبعها */
     const SUBTLE = ['skin'];
-    if (feature !== 'merge') guardOpts = { userPrompt: [feature, style, description].filter(Boolean).join(' '), allowStyleChange: feature === 'anime', requireChange: SUBTLE.indexOf(feature) === -1 };
+    const collage = !!(multiAngle && COLLAGE_FEATURES.indexOf(feature) !== -1);
+    /* v-guard-cap: المجمّع قبل الوصف — الحارس يقصّ الطلب عند ٨٠٠ حرف، والوصف نصّ حرّ من المستخدم */
+    if (feature !== 'merge') guardOpts = { userPrompt: [feature, style, collage ? COLLAGE_CLAUSE : '', description].filter(Boolean).join(' '), allowStyleChange: feature === 'anime', requireChange: SUBTLE.indexOf(feature) === -1 };
     try {
       const r = await runEdit({
         apiKey, openaiKey, feature, promptText, imageBase64, mimeType,
         lockLevel: faceLock.protectLevel(feature),
-        collage: !!(multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')),
+        collage,
         guard: guardOpts, skipGuard: !guardOpts,
       });
       /* v-studio-chain (طلب المالك ٣٠ سبتمبر: «يختار كذا شي… وشوف يغيّر شكل الشخصيّة»): في السلسلة كلّ
@@ -377,6 +385,7 @@ module.exports = async (req, res) => {
           allowBroadChange: true, allowStyleChange: feature === 'anime',
         });
         if (!idg.ok && idg.reason === 'identity_or_scope_mismatch') {
+          await keepGuardCharge('studio', quota, consumeStudio); /* v-guard-cap: بصورة شخص آخر يفشل حتميًّا — كان بلا حدّ والعدّاد صفر */
           res.status(422).json({ error: 'image_edit_identity_mismatch', retryable: false, chainStep: true });
           return;
         }
@@ -384,7 +393,12 @@ module.exports = async (req, res) => {
       const remaining = await consumeStudio(quota.username, quota.limit);
       res.status(200).json({ imageBase64: r.b64, mimeType: r.mime, engine: r.engine, remaining, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
     } catch (err) {
-      if (err && err.status && err.payload) { res.status(err.status).json(err.payload); return; }
+      if (err && err.status && err.payload) {
+        /* v-guard-cap: ٤٢٢ المرميّ من runEdit = رفض الحارس بعد محاولتين مدفوعتين؛ ٥٠٢/٥٠٠ (لا صورة مدفوعة) تُردّ كما كانت */
+        if (err.status === 422) await keepGuardCharge('studio', quota, consumeStudio);
+        res.status(err.status).json(err.payload);
+        return;
+      }
       throw err;
     }
   } catch (e) {

@@ -42,7 +42,7 @@ assert.ok(!/cur\.topicAnchor/.test(a09) && !/__historyMsgs = __historyMsgs\.slic
 assert.ok(a09.includes("window.omranTopicSwitch(text, __pu ? __txt(__pu.m) : '', __pa ? __txt(__pa) : '', __olderUsers.map(x => __txt(x.m)))"), 'الكاشف يرى الدور السابق والأسئلة الأقدم');
 assert.ok(a09.includes('رسالة المستخدم الأخيرة موضوع جديد مختلف عمّا قبله') && a09.includes('تاريخ المحادثة كلّه يبقى في ذاكرتك'), 'تعليمة الموضوع الجديد تحفظ الذاكرة');
 assert.ok(a09.includes('المستخدم يعود إلى موضوع سابق في هذه المحادثة نفسها') && a09.includes("'\\nسؤاله السابق كان: «'") && a09.includes("'\\nوجوابك عليه (مختصرًا): «'"), 'تعليمة العودة تستدعي السؤال والجواب نصًّا');
-assert.ok(a09.includes("!__quietSocialTurn && !__routeFix && !__editIntent && !window.__buildOfferApproved && !__editedOriginal"), 'لا تعليمة في تعديل الكود أو موافقة البناء أو تعديل رسالة أو الدور الاجتماعيّ');
+assert.ok(a09.includes("!__quietSocialTurn && !__routeFix && !__editIntent && !__editVerbHit /* rel-4 */ && !window.__buildOfferApproved && !__editedOriginal"), 'لا تعليمة في تعديل الكود أو موافقة البناء أو تعديل رسالة أو الدور الاجتماعيّ');
 assert.ok(a09.includes('وإن عادت إلى موضوع سابق في هذه المحادثة فأنت تذكره كاملًا') && !a09.includes('تاريخ المحادثة خلفية فقط، وليس قائمة مهام.'), 'قاعدة الموضوع في العميل تحفظ الذاكرة');
 const chat = fs.readFileSync(R('api/_lib/chat.js'), 'utf8');
 assert.ok(chat.includes('تاريخ المحادثة كلّه ذاكرتك الحاضرة') && !chat.includes('تاريخ المحادثة خلفية فقط، وليس قائمة مهام'), 'قاعدة الموضوع في الخادم تحفظ الذاكرة');

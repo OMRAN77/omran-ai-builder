@@ -12,6 +12,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'test-secret-google-login-help';
 process.env.UPSTASH_REDIS_REST_URL = 'http://local-test';
 process.env.RESEND_API_KEY = 'test-resend';
@@ -121,7 +122,7 @@ test('٥. النصّ بالـ١٤ لغة باسم الزرّ نفسه، ووسم
     const o = JSON.parse(m[2]);
     assert.ok(o.authGoogleHint && o.authGoogleHint.includes('{btn}') && /Gmail/.test(o.authGoogleHint), lg);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=738'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=740'"));
 });
 
 test('٦. أندرويد الخام (; wv) وحده يأخذ مسار «ارجع للتطبيق» — Chrome والآيفون كما كانا', () => {

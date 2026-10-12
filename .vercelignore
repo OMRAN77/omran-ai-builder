@@ -22,6 +22,41 @@ js/app-14-tester.js
 js/app-29-cc.js
 js/app-15-floorplan.js
 js/app-17-agent-tools.js
+# v-vercelignore-parts: الأجزاء التي أُضيفت بعد القائمة الأولى (كانت تُنشر مفردةً بجانب الحزمة).
+# tests/vercelignore-parts.test.cjs يفشل إن وُلد جزء بلا سطره هنا.
+js/app-00-intro.js
+js/app-05-img-save.js
+js/app-05-save-media.js
+js/app-05-share-text.js
+js/app-05-swipe-back.js
+js/app-08-image-text.js
+js/app-11-video-trends-data.js
+js/app-11-video-trends.js
+js/app-12-fx-simple.js
+js/app-12-studio-more.js
+js/app-15-cx-brief.js
+js/app-15-cx-ideas.js
+js/app-15-cx-simple.js
+js/app-16-opt-xl.js
+js/app-18-chat-tools.js
+js/app-19-fonts.js
+js/app-20-signature.js
+js/app-22-session-new.js
+js/app-24-codefix.js
+js/app-25-tv.js
+js/app-25-خلفيات.js
+js/app-26-qibla.js
+js/app-27-codescore.js
+js/app-28-vault.js
+js/app-29-claude-model.js
+js/app-30-maha-wave.js
+js/app-31-إطارات.js
+js/app-32-video-watch.js
+js/app-33-plans-gate.js
+js/app-34-gen-wait.js
+js/app-35-inspire.js
+js/app-36-clean-ui.js
+js/app-99-boot-ok.js
 
 # Change specs — internal notes, not part of the product.
 specs/

@@ -341,6 +341,14 @@ module.exports = async (req, res) => {
     const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     const imgPart = parts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
+      /* v-guard-cap: Gemini أجاب ٢٠٠ بلا صورة («طلب المستخدم» الحرّ يوجّهه لذلك) والنداء الموازي مدفوع — كان يُرمى والحجز يُردّ
+         فيتكرّر بلا حدّ. الآن يُسلَّم بشكل إنقاذ !upstream.ok نفسه ويُستهلك؛ ٥٠٠ فقط حين لا صورة مدفوعة. */
+      const rescuedN = duoP ? await duoP : null;
+      if (rescuedN) {
+        const nrem = await consumeDesign(quota.username, quota.limit);
+        res.status(200).json({ imageBase64: rescuedN, mimeType: 'image/webp', remaining: nrem, dailyLimit: quota.limit || DESIGN_DAILY_LIMIT, engine: 'openai' });
+        return;
+      }
       res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بصورة أو ستايل آخر.' });
       return;
     }

@@ -137,13 +137,13 @@ check(attach.includes('let __turns = [];') && attach.includes('if(!__quietSocial
 check(attach.includes('هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة') && attach.includes('ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'سؤال الحال له توجيه مباشر يمنع عرض الخدمة والمواضيع القديمة');
 check(attach.includes('!(isPureGreeting(text) || isCasualCheckIn(text))'), 'الدور الاجتماعي العابر لا يلوث الذاكرة طويلة المدى');
 check(chatServer.includes('function isCasualCheckIn(text)') && chatServer.includes('if (usage.username && !quietSocialTurn)'), 'الخادم لا يقرأ ذاكرة الحساب لسؤال الحال');
-check(chatServer.includes('const system = quietSocialTurn') && chatServer.includes('وممنوع سرد مشاريع أو مواضيع قديمة'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
+check(chatServer.includes('const system = (quietSocialTurn') /* v-prov-self: ملفّ المزوّد والدروس تُلحق بآخر النظام */ && chatServer.includes('وممنوع سرد مشاريع أو مواضيع قديمة'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
 check(chatServer.includes('quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 
 // ═══ الأدوات والبحث ═══
 group('الأدوات والبحث');
 
-check(chatServer.includes('tools: toolTurn ? toolsFor(__ownerReq, __analyzeDoc || __ownerUiShot) : undefined'), // v-providers-like-agent: الاستيضاح والطويل بلا أدوات الصورة، وأدوات المالك له دائمًا
+check(chatServer.includes('tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined'), // v-providers-like-agent: أدوات المالك له دائمًا · v-tokens-owner-tools: القائمة لا تتبدّل (الصور تُرفض عند التنفيذ — tokens-share)
       'الأدوات تُمرَّر خلف toolTurn لا دائمًا'); // v-img-ask: دور الاستيضاح بلا أدوات الصورة؛ v-provider-errors: أداة المالك تُضاف له وحده
 check(chatServer.includes("const toolsFor = (owner, noMedia) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).map((t) => (owner && t.name === 'read_github' ? require('./provider-level.js').ownerReadTool(t) : t)).concat(owner ? OWNER_TOOLS : []);"), 'أدوات المالك تُضاف له وحده ولا تُعرض لغيره (ووصف read_github الموسَّع له وحده — v-claude-code-level E5)');
 // v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»

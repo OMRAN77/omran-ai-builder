@@ -37,10 +37,15 @@
 //     حين تجتمع الملفّات في صفحة واحدة. لذلك يُقرأ هنا وسم <script> من كلّ
 //     صفحة HTML، وتُقارَن تعريفاتها العليا بعضها ببعض.
 //
+// (ح) سقّاطة البنية (v-arch-ratchet، scripts/arch-ratchet.mjs): __sendPromptCore نما ١٩٠ سطرًا و٣٧ تعبيرًا
+//     نمطيًّا بين تدقيقَي ١٠ و١١ أكتوبر، ونسخ verifyToken واختبارات ?v= تزيد ولا شيء يوقفها. كلّ مقياس له
+//     سقف في scripts/arch-baseline.json؛ تجاوزه اكتشاف، والسقف ينزل ولا يرتفع.
+//
 // يُشغَّل: node scripts/guard.mjs   ·   يخرج ١ عند أول اكتشاف.
 // للاستثناء المتعمَّد: اكتب guard-ok في نفس السطر واشرح لماذا.
 
 import { readFile, readdir } from 'node:fs/promises';
+import { measure as measureArch, compare as compareArch, fsIO, METRICS as ARCH_METRICS, BASELINE_REL } from './arch-ratchet.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const found = [];
@@ -258,10 +263,36 @@ for (const f of apiFiles) {
   });
 }
 
+// (ح) سقّاطة البنية: يفشل إن ساء مقياس عن سقفه، وينبّه (بلا فشل) إن تحسّن ليُخفض السقف.
+{
+  let base = null;
+  try { base = JSON.parse(await readFile(ROOT + BASELINE_REL, 'utf8')); }
+  catch (e) { found.push(`${BASELINE_REL}  سقّاطة البنية بلا أساس مقروء → ${e.message}`); }
+  if (base) {
+    const arch = measureArch(fsIO(ROOT));
+    const { worse, better } = compareArch(arch.metrics, base);
+    for (const w of worse) {
+      const who = arch.detail[w.key] ? ` (${arch.detail[w.key].join('، ')})` : '';
+      found.push(`${BASELINE_REL}  سقّاطة البنية ساءت → ${ARCH_METRICS[w.key]}: ${w.now} > ${w.base}${who}`);
+    }
+    for (const b of better) console.log(`↓ سقّاطة البنية تحسّنت: ${b.key} ${b.base} → ${b.now} — اخفض قيمته في ${BASELINE_REL} في الالتزام نفسه.`);
+  }
+}
+
+// (ز) `\b` ملاصق لحرف عربيّ في تعبير حرفيّ. \w في JS لاتينيّ فقط، فـ`\b(?:كيف|ليش)` لا يطابق أبدًا و`الهند\b` لا يطابق «الهند»
+//     وحدها. حدث فعلًا: ٩ تعابير حتّى ١١ أكتوبر ٢٠٢٦، منها حارس «الطلب المبهم» (فصار «ابي صورة» يولّد صورة عشوائيّة مدفوعة)
+//     وفيتو الشكر بعد الصورة (فصار «شكرا وايد» تعديلًا مدفوعًا) — والفخّ في PITFALLS مرّتين قبلها. الحدود العربيّة يدويّة:
+//     `(?:^|[\s،,])كلمة(?=$|[\s،,])` أو `كلمة(?![؀-ۿ])`. التحليل بـacorn على الأجزاء وشيفرة الخادم (scripts/lib/arabic-wordb.cjs).
+{
+  const { createRequire } = await import('node:module');
+  const { scanTree } = createRequire(import.meta.url)('./lib/arabic-wordb.cjs');
+  for (const r of scanTree(ROOT)) found.push(`${r.file}:${r.line}  \\b ملاصق لحرف عربيّ (لا يطابق أبدًا) → ${r.pattern.slice(0, 60)}…؛ استعمل حدًّا يدويًّا (?:^|[\\s،,])…(?=$|[\\s،,])`);
+}
+
 if (found.length) {
   console.error(`\n✗ الحارس: ${found.length} اكتشافًا — لا نشر.\n`);
   for (const f of found) console.error(`  ${f}`);
   console.error('\nإن كان مقصودًا: اكتب guard-ok في السطر واشرح السبب.\n');
   process.exit(1);
 }
-console.log(`✓ الحارس: ${seen.size} ملفًا نظيفًا — لا سرّ في العميل، لا بديل منشور، لا كتمة صامتة، ولا اسمٌ قبل تعريفه، ولا تصادم أسماء بين سكربتَي صفحة، ولا قراءة SITE_URL خام.`);
+console.log(`✓ الحارس: ${seen.size} ملفًا نظيفًا — لا سرّ في العميل، لا بديل منشور، لا كتمة صامتة، ولا اسمٌ قبل تعريفه، ولا تصادم أسماء بين سكربتَي صفحة، ولا قراءة SITE_URL خام، ولا مقياس بنية تجاوز سقفه.`);

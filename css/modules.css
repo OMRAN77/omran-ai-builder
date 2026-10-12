@@ -610,6 +610,20 @@ html[data-mode="light"] #videoMakerModal .vmk-tab{color:#4a4f5a}
 #videoMakerModal .vmk-tab-img{display:block;width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.08);pointer-events:none}
 #videoMakerModal .vmk-tab[aria-selected=true] .vmk-tab-img{border-color:rgba(26,20,8,.35);box-shadow:0 0 0 2px rgba(255,255,255,.35)}
 #videoMakerModal .vmk-tab-lbl{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* v-vmk-mobile-fill (المالك ١٢ أكتوبر بلقطتَي هاتف وتابلت: «شوف مكان الفيديو، رتّبهم في الهاتف والتابلت»): قاعدة شبكة الحاسوب
+   align-items:start تسري على عمود الهاتف (flex ≤٨٦٠) فينكمش كلّ ابن إلى عرض محتواه ويلتصق باليمين — بالمسبار: صندوق الترندات ٢٤٥
+   بكسل من ٦٧٨، الرأس ٢٦٢، وشاشة المعاينة ٧٤×٤٢. الأبناء يملؤون العرض. وعلى التابلت (٦٤١–٨٦٠): بطاقات الأوضاع شبكة خمسة أعمدة
+   بدل صفّ يلتفّ ملتصقًا باليمين؛ ومن ٥٦١: عمود المعاينة بعرض الحاسوب (٤٠٠) في الوسط — وإلّا صارت الشاشة ٦٧٨×٣٨١ فارغة — وبطاقات
+   الترندات أعمدة تلقائيّة (كانت عمودين حتى ٨٦٠). الحاسوب (≥٨٦١) والهاتف في صفّ الأوضاع المتمرّر (≤٦٤٠) كما هما. */
+@media (max-width:860px){#videoMakerModal .vmk-studio{align-items:stretch}}
+@media (min-width:641px) and (max-width:860px){
+#videoMakerModal .vmk-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%}
+#videoMakerModal .vmk-tab{min-width:0;max-width:none}
+}
+@media (min-width:561px) and (max-width:860px){
+#videoMakerModal .vmk-studio>#vtRoot #vtGrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important}
+#videoMakerModal .vmk-side{width:100%;max-width:400px;align-self:center}
+}
 html[data-mode="light"] #videoMakerModal .vmk-main #videoMakerPrompt{background:#ffffff;border-color:rgba(0,0,0,.14)}
 #videoMakerModal #videoMakerHeroBtn{padding:0 !important;padding-inline-start:46px !important;padding-inline-end:18px !important;text-align:start}
 #videoMakerModal .vmk-main .mini-mic-field-row{align-items:flex-start}
@@ -725,7 +739,7 @@ html[data-mode="light"] #videoMakerModal .vmk-cl-drop:focus-within{outline-color
 #videoMakerModal .vmk-dir-head b{display:block;font-size:17px;color:var(--text,#eceef4)}
 #videoMakerModal .vmk-dir-head p{margin:6px 0 0;font-size:12.5px;line-height:1.7;color:var(--muted,#9a9a9e)}
 #videoMakerModal #vdReq{width:100%;resize:vertical;min-height:72px;font:inherit}
-#videoMakerModal .vmk-dir-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#videoMakerModal .vmk-dir-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 #videoMakerModal .vmk-dir-row label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted,#9a9a9e)}
 #videoMakerModal .vmk-dir-row select{width:100%;font:inherit}
 #videoMakerModal .vmk-dir-ref{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted,#9a9a9e);cursor:pointer}
@@ -749,7 +763,7 @@ html[data-mode="light"] #videoMakerModal .vmk-cl-drop:focus-within{outline-color
 #videoMakerModal .vmk-dir-msg.err{color:#ff8a80}
 #videoMakerModal .vmk-dir-res{display:none;flex-direction:column;gap:10px}
 #videoMakerModal .vmk-dir-res.has{display:flex}
-#videoMakerModal .vmk-dir-res video{width:100%;max-height:420px;border-radius:14px;background:#000;border:1px solid rgba(232,194,122,.25)}
+#videoMakerModal .vmk-dir-res video{width:100%;max-width:760px;aspect-ratio:16/9;height:auto;align-self:center;border-radius:14px;background:#000;border:1px solid rgba(232,194,122,.25)}
 #videoMakerModal .vmk-dir-dl{align-self:flex-start;font-size:13px;font-weight:700;padding:9px 18px;border-radius:999px;border:1px solid rgba(232,194,122,.6);color:var(--accent-light,#f0be7a);text-decoration:none}
 html[data-mode="light"] #videoMakerModal .vmk-dir-steps li{background:#ffffff;border-color:rgba(0,0,0,.12)}
 html[data-mode="light"] #videoMakerModal .vmk-dir-steps li:before{border-color:rgba(0,0,0,.25)}
@@ -760,3 +774,33 @@ html[data-mode="light"] #videoMakerModal .vmk-dir-dl{color:#8a5a12;background:#f
   #videoMakerModal .vmk-dir-row{grid-template-columns:1fr 1fr}
   #videoMakerModal .vmk-dir-steps{grid-template-columns:1fr}
 }
+
+/* v-app-director-reliable: تبويب المخرج بلا صورة («بدون أيقونات») بمقاس تبويبات الصور نفسه */
+#videoMakerModal .vmk-tab.vmk-tab-noimg{justify-content:center;min-height:115px;border:1px dashed rgba(232,194,122,.35)}
+#videoMakerModal .vmk-tab.vmk-tab-noimg .vmk-tab-lbl{white-space:normal;font-weight:700;line-height:1.5}
+#videoMakerModal .vmk-tab.vmk-tab-noimg[aria-selected=true]{border-color:transparent}
+/* v-app-director-motion: الشاشة الحيّة أثناء التوليد (ضوء يتحرّك، شريط لقطات، نصّ المشهد، نماذج الأنماط بحركة كاميرا، عدّاد وشريط تقدّم) */
+#videoMakerModal .vmk-dir-stage{position:relative;align-self:center;aspect-ratio:16/9;width:100%;max-width:640px;border-radius:16px;overflow:hidden;background:#07080c;border:1px solid rgba(232,194,122,.32);box-shadow:0 24px 60px -30px rgba(0,0,0,.9)}
+#videoMakerModal .vmk-dir-stage[hidden]{display:none}
+#videoMakerModal .vmk-dir-stage-bg{position:absolute;inset:-20%;background:radial-gradient(45% 55% at 25% 30%,rgba(150,108,36,.65),transparent 62%),radial-gradient(45% 55% at 75% 72%,rgba(34,54,96,.8),transparent 62%);animation:vdDrift 6s ease-in-out infinite alternate}
+#videoMakerModal .vmk-dir-stage:after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 35%,rgba(255,236,190,.16) 50%,transparent 65%);transform:translateX(-100%);animation:vdSweep 2.6s linear infinite;pointer-events:none}
+#videoMakerModal #vdStageImg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .5s}
+#videoMakerModal #vdStageImg.on{opacity:1;animation:vdKen 5s ease-out forwards}
+#videoMakerModal .vmk-dir-stage-reel{position:absolute;left:0;right:0;bottom:14px;height:24px;opacity:.6;background:repeating-linear-gradient(90deg,rgba(232,194,122,.22) 0 56px,transparent 56px 66px);animation:vdReel 2.2s linear infinite}
+#videoMakerModal .vmk-dir-stage-cap{position:absolute;left:8%;right:8%;top:50%;transform:translateY(-50%);text-align:center;font-weight:800;font-size:19px;line-height:1.6;color:#fff4d6;text-shadow:0 2px 14px rgba(0,0,0,.95);opacity:0}
+#videoMakerModal .vmk-dir-stage-cap.in{animation:vdCap 4s ease both}
+#videoMakerModal .vmk-dir-stage-hud{position:absolute;top:10px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:#f6e7c3;text-shadow:0 1px 8px rgba(0,0,0,.9)}
+#videoMakerModal .vmk-dir-stage-hud span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#videoMakerModal .vmk-dir-stage-hud b{flex:none;font-variant-numeric:tabular-nums;padding:2px 9px;border-radius:999px;background:rgba(7,8,12,.6);border:1px solid rgba(232,194,122,.45)}
+#videoMakerModal .vmk-dir-stage-bar{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.1)}
+#videoMakerModal .vmk-dir-stage-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c9964a,#f6dca2);transition:width .8s ease}
+@keyframes vdDrift{from{transform:translate(-4%,-3%) scale(1)}to{transform:translate(5%,4%) scale(1.15)}}
+@keyframes vdSweep{to{transform:translateX(100%)}}
+@keyframes vdKen{from{transform:scale(1)}to{transform:scale(1.1)}}
+@keyframes vdReel{from{background-position:0 0}to{background-position:-66px 0}}
+@keyframes vdCap{0%{opacity:0;transform:translateY(-40%)}12%{opacity:1;transform:translateY(-50%)}85%{opacity:1;transform:translateY(-50%)}100%{opacity:0;transform:translateY(-60%)}}
+@media (prefers-reduced-motion:reduce){#videoMakerModal .vmk-dir-stage-bg,#videoMakerModal .vmk-dir-stage:after,#videoMakerModal .vmk-dir-stage-reel,#videoMakerModal #vdStageImg.on{animation:none}#videoMakerModal .vmk-dir-stage-cap.in{animation:none;opacity:1}}
+@media (max-width:860px){#videoMakerModal .vmk-dir-stage-cap{font-size:15px}}
+#videoMakerModal .vmk-dir-diag{display:block;margin-top:6px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.05);font:12px/1.6 ui-monospace,Consolas,monospace;color:#ffb4ab;text-align:left;white-space:pre-wrap;word-break:break-word;user-select:all}
+html[data-mode="light"] #videoMakerModal .vmk-dir-diag{background:rgba(0,0,0,.05);color:#8a1c12}
+#videoMakerModal .vmk-dir-row select:disabled{opacity:.45}

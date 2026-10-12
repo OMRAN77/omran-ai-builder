@@ -150,7 +150,9 @@ test('٧. لا اسم مزوّد في رسائل صانع الفيديو الت�
   for (const s of ["'🔒 Veo 3 مقتصر", 'جاري الإرسال إلى Google Veo 3', 'Sending to Google Veo 3', "'فشل Veo.'", "' (Veo 3)'", 'Veo 3 يولّد', 'Veo 3 is limited', 'Veo failed.']) assert.ok(!VIDEO.includes(s), 'اسم مزوّد باقٍ: ' + s);
   assert.ok(VIDEO.includes("'🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.'"), 'صياغة v-no-provider-names (main) بعد الدمج');
   const html = read('index.html');
-  assert.ok(html.includes('/js/partials-core.js?v=657') && html.includes('/js/video.js?v=443'), 'وسوم partials-core ٦٥٦←٦٥٧ وvideo.js ٤٣٩←٤٤٠ (ثمّ ٤٤٣ بعد دمج main: صور التبويبات ومخرج التطبيق وأندرويد القديم)');
+  /* الوسوم تُقرأ من index.html لا تُثبَّت حرفيًّا (سقّاطة البنية vPinTests في main): partials-core رُفع ٦٥٦←٦٥٧ وvideo.js ٤٣٩←٤٤٠ في هذا الفرع، وmain يرفعهما بعدها */
+  const vTag = (re) => Number((html.match(re) || [])[1]);
+  assert.ok(vTag(/partials-core\.js\?v=(\d+)/) >= 657 && vTag(/\/js\/video\.js\?v=(\d+)/) >= 440, 'وسوم partials-core ≥ ٦٥٧ وvideo.js ≥ ٤٤٠');
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('async function wrapWithCanvas(') && bundle.includes("creationMode !== 'minimax' && !filmUseVeo"), 'شغّل npm run bundle');
 });
