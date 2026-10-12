@@ -3316,6 +3316,7 @@ const I18N = {
     imgUndoPrev: "رجّعتها للنسخة السابقة 👆 وش تبي أغيّر فيها؟", imgUndoOrig: "رجّعتها للصورة الأصليّة 👆 وش تبي أغيّر فيها؟", imgUndoNone: "هذي هي أوّل نسخة، ما قبلها شي 👆 وش تبي أغيّر فيها؟", /* v-img-undo */
     imgUnchanged: "⚠️ ما تنفّذ التعديل: الصورة رجعت نفسها بدون تغيير، فما عرضتها ولا انحسبت عليك. وضّح وش يتغيّر بالضبط أو اكتب الطلب بصيغة ثانية.", /* v-img-honest */
     /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ حوّلتها إلى {fmt} — نفس الصورة بدون أي تغيير، وجاهزة للحفظ.", imgConvertSame: "الصورة أصلًا بصيغة {fmt} — هذي هي جاهزة للحفظ.", imgConvertAsk: "أيّ صيغة تبيها؟ PNG (أنقى جودة) أو JPG (أصغر حجمًا) أو WEBP (أخفّ للمواقع). اكتب مثلًا: حوّلها jpg", imgConvertGuess: "(فهمت «{word}» على أنّها {fmt} — إذا تبي صيغة ثانية قل: حوّلها jpg)", imgConvertFail: "تعذّر تحويل الصيغة في هذا المتصفّح — جرّب PNG أو JPG.",
+    /* v-cards: بطاقات الخيارات */ stCards: "🛍️ يجمع لك خيارات منظّمة…", trCards: "عرضتُ {n} بطاقات لـ«{q}»", trCardsNone: "لا بطاقات لـ«{q}»", cardsOpen: "افتح",
     aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
@@ -4444,6 +4445,7 @@ const I18N = {
     imgUndoPrev: "Back to the previous version 👆 What should I change?", imgUndoOrig: "Back to the original 👆 What should I change?", imgUndoNone: "This is the first version — nothing before it 👆 What should I change?", /* v-img-undo */
     imgUnchanged: "⚠️ The edit wasn't applied: the picture came back unchanged, so I didn't show it and it wasn't counted against you. Say exactly what should change, or phrase it differently.", /* v-img-honest */
     /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ Converted to {fmt} — the same picture, unchanged, ready to save.", imgConvertSame: "The picture is already {fmt} — here it is, ready to save.", imgConvertAsk: "Which format do you want? PNG (best quality), JPG (smaller file) or WEBP (lighter for websites). For example: convert to jpg", imgConvertGuess: "(I read «{word}» as {fmt} — for another format say: convert to jpg)", imgConvertFail: "This browser couldn't convert the format — try PNG or JPG.",
+    /* v-cards */ stCards: "🛍️ Gathering organized options…", trCards: "Showed {n} cards for “{q}”", trCardsNone: "No cards for “{q}”", cardsOpen: "Open",
     aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
@@ -5612,7 +5614,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=740'; /* v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=741'; /* v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7592,6 +7594,7 @@ function renderMessages(keepScroll){
     if(m.role !== 'user' && Array.isArray(m._agParts) && m._agParts.length && window.omranAgentLog){
       try{ div.appendChild(window.omranAgentLog.render(m._agParts)); }catch(e){ __swallow(e, 'agent:log'); }
     }
+    if (m.cards && typeof window.omranRenderCards === 'function') { try{ div.appendChild(window.omranRenderCards(m.cards)); }catch(e){ __swallow(e, 'ui:cards'); } } /* v-cards: الرقائق والبطاقات فوق نصّ الردّ (كما شريط صور البحث) — المواقع بزرّ المصادر تحته */
     div.appendChild(textDiv);
     // AppGallery: وسم صريح للمحتوى المولّد بالذكاء الاصطناعي على كل ردّ مساعد.
     if(m.role !== 'user' && __mc){
@@ -26567,7 +26570,7 @@ DESIGN RULES (non-negotiable):
             }
           }
         }
-        if(__ct){ __ctUsed = true; __ctFenceCut = !!__ct.fenceCut; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
+        if(__ct){ __ctUsed = true; __ctFenceCut = !!__ct.fenceCut; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; window.__chatCardsResult = __ct.cards || null; /* v-cards */ if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, __sigFn(onDelta), __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })); // v-owner-solo
       }finally{
         window.__claudeModelOverride = null;
@@ -26644,7 +26647,7 @@ DESIGN RULES (non-negotiable):
         _agParts: __ctLog || undefined,
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
-        searchImages: (__searchData && __searchData.images) || undefined});
+        searchImages: (__searchData && __searchData.images) || undefined, cards: (function(c){ window.__chatCardsResult = null; return c || undefined; })(window.__chatCardsResult) /* v-cards: تُقرأ مرّة وتُصفَّر فلا تلتصق برسالة تالية بلا أدوات */});
       // v-plans-gate: انتهت الرسائل المجّانيّة/التجربة — الردّ نفسه يبقى بشارته وزرّه، والباقات (أو التسجيل للضيف) تنفتح.
       if(__ctTier === 'free-limit' || __ctTier === 'guest-limit'){
         try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(e){ __swallow(e, 'chat:plans-gate'); }
@@ -38457,6 +38460,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
 
   window.callChatWithTools = async function (messages, onDelta, provider, opts) {
     window.__chatVideoResult = null;
+    window.__chatCardsResult = null; /* v-cards */
     window.__chatVideoReference = null;
     window.__chatLastUserText = '';
     try {
@@ -38529,6 +38533,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var __planLimit = false; /* v-plans-gate: الخادم علّم الخطأ «حدّ الباقة» (limit) — المستدعي يفتح الباقات ولا يجرّب غيره */
     var __ownerStop = false; /* v-owner-solo: مزوّد المالك المختار فشل والخادم كتب السبب — المستدعي يعرضه ولا يجرّب غيره */
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
+    var __cards = null; /* v-cards: حدث البطاقات (آخر واحد في الردّ) */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
     var __model = ''; /* v-claude-models: اسم النموذج الذي أجاب فعلًا (من الخادم) */
@@ -38581,6 +38586,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
             if (s && s.url && !__srcAcc.some(function (x) { return x.url === s.url; })) __srcAcc.push(s);
           });
         }
+        if (ev.cards && typeof ev.cards === 'object') __cards = ev.cards; /* v-cards */
         if (ev.error) serverErr = ev.error;
         if (ev.error && ev.limit === true) __planLimit = true;
         if (ev.error && ev.ownerStop === true) __ownerStop = true;
@@ -38602,7 +38608,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     if (__ownerStop && serverErr) { __fenceCut = ((full.match(/```/g) || []).length % 2) === 1; full = full + (__fenceCut ? '\n```' : '') + '\n\n⚠️ ' + serverErr; if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-note'); } } }
     var __p = provider || 'claude';
     var __log = __steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }].concat(__steps) : undefined;
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined, cards: __cards || undefined };
   };
 })();
 
@@ -45255,6 +45261,92 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     }catch(e){ __swallow(e, 'clean-ui:observer'); }
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+/* ───────── v-cards: بطاقات الخيارات في المحادثة (أمر المالك ١٢ أكتوبر، لقطات جوجل وChatGPT: «اذا اريد اطالب اي شي تطلعي
+ * نفس هذي الأفكار — شي نظامي… نماذج وعقب يعطيني المواقع… والتتبع على نفس الموضوع ويعطيه الأفضل») ─────────
+ * الخادم يبثّ حدث `cards` { q, kind, chips[], items[{title,url,site,image,price,snippet}] } من أداة show_cards، ويحفظه العميل
+ * في رسالة المساعد (m.cards) فيُرسم هنا مع كلّ عرض: رقائق الاقتراحات (بأزرار [[OPT]] نفسها: ضغطها = إرسال) ثمّ شبكة بطاقات
+ * عموديّة تتكيّف بالعرض — لا ماسح أفقيّ (فخّ هواوي v-shelf-nocomposite: تمرير أفقيّ داخل نافذة تتمرّر يفرغ عند السحب).
+ * المواقع تحت الردّ بزرّ «المصادر» القائم (حدث sources). النصوص بالمفاتيح stCards/trCards/trCardsNone/cardsOpen (١٤ لغة).
+ * سطح المكتب أوّلًا (٤ أعمدة فأكثر)، والجوّال عمودان. DOM فقط — لا innerHTML بنصّ من الشبكة. */
+(function(){
+  'use strict';
+  function css(){
+    if(document.getElementById('omranCardsCss')) return;
+    var st = document.createElement('style');
+    st.id = 'omranCardsCss';
+    st.textContent = '.omCardsWrap{margin:6px 0 10px;max-width:100%;}'
+      + '.omCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;margin-top:8px;}' /* عمود المحادثة على سطح المكتب ~٣٠٠px (المعاينة بجانبه) ← عمودان فأكثر */
+      + 'html.mobile-ui .omCards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}'
+      + '.msg .omCard,.msg .omCard:hover,.msg .omCard:visited{display:flex;flex-direction:column;min-width:0;border:1px solid var(--border,rgba(255,255,255,.12));border-radius:var(--r-3,14px);background:var(--panel2,#161c2a);overflow:hidden;color:var(--text,#eee) !important;text-decoration:none !important;transition:border-color .15s,transform .15s;}' /* قواعد روابط الرسالة والثيمات (لون ذهبيّ وتسطير) أعلى تخصيصًا — البطاقة رابط فتُثبَّت بـ!important */
+      + '.msg .omCard *{text-decoration:none !important;}'
+      + '.omCard:hover{border-color:var(--accent2,#a78bfa);transform:translateY(-1px);}'
+      + '.omCardImg{position:relative;aspect-ratio:1/1;max-height:180px;background:var(--panel,#1c2230);display:flex;align-items:center;justify-content:center;overflow:hidden;}'
+      + '.omCardImg img{width:100%;height:100%;object-fit:cover;display:block;}'
+      + '.omCardImg img.omCardFav{width:36px;height:36px;object-fit:contain;opacity:.8;border-radius:8px;}'
+      + '.omCardNo{position:absolute;top:6px;inset-inline-start:6px;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}'
+      + '.omCardBody{display:flex;flex-direction:column;gap:3px;padding:8px 10px 10px;min-width:0;}'
+      + '.msg .omCardTitle{color:var(--text,#eee) !important;font-size:13px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}'
+      + '.msg .omCardPrice{font-size:14px;font-weight:800;color:var(--accent2,#a78bfa) !important;}'
+      + '.msg .omCardSite{font-size:11px;color:var(--muted,#9aa3b2) !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:5px;}'
+      + '.omCardSite img{width:12px;height:12px;border-radius:3px;flex:0 0 auto;}'
+      + '.msg .omCardOpen{margin-top:4px;align-self:flex-start;font-size:12px;font-weight:700;color:var(--accent2,#a78bfa) !important;}'
+      + 'html[data-mode="light"] .omCard{background:#fff;}'
+      + 'html[data-mode="light"] .omCardImg{background:#f3f4f8;}';
+    document.head.appendChild(st);
+  }
+  function https(u){ u = String(u || ''); return /^https:\/\//i.test(u) ? u : ''; }
+  function fav(site){ return 'https://www.google.com/s2/favicons?sz=64&domain=' + encodeURIComponent(String(site || '')); }
+  function tt(k, fb){ try{ var v = (typeof t === 'function') ? t(k) : k; return (v && v !== k) ? v : fb; }catch(e){ return fb; } }
+  function chipsRow(chips){
+    if(!Array.isArray(chips) || !chips.length) return null;
+    if(typeof omranOptCss === 'function') omranOptCss();
+    var row = document.createElement('div');
+    row.className = 'omranOpts omCardChips';
+    chips.slice(0, 6).forEach(function(c){
+      var txt = String(c || '').trim(); if(!txt) return;
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'omranOpt'; b.textContent = txt;
+      b.addEventListener('click', function(){ if(typeof omranSendOption === 'function') omranSendOption(txt); });
+      row.appendChild(b);
+    });
+    return row.childNodes.length ? row : null;
+  }
+  function card(it, i){
+    var url = https(it && it.url); if(!url) return null;
+    var a = document.createElement('a');
+    a.className = 'omCard'; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    var im = document.createElement('div'); im.className = 'omCardImg';
+    var img = document.createElement('img');
+    img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.alt = '';
+    var src = https(it.image);
+    if(src){ img.src = src; img.addEventListener('error', function(){ img.className = 'omCardFav'; img.src = fav(it.site); }); }
+    else { img.className = 'omCardFav'; img.src = fav(it.site); }
+    im.appendChild(img);
+    var no = document.createElement('span'); no.className = 'omCardNo'; no.textContent = String(i + 1); im.appendChild(no);
+    a.appendChild(im);
+    var body = document.createElement('div'); body.className = 'omCardBody';
+    var ti = document.createElement('div'); ti.className = 'omCardTitle'; ti.textContent = String(it.title || it.site || ''); body.appendChild(ti);
+    if(it.price){ var pr = document.createElement('div'); pr.className = 'omCardPrice'; pr.textContent = String(it.price); body.appendChild(pr); }
+    var si = document.createElement('div'); si.className = 'omCardSite';
+    var fi = document.createElement('img'); fi.src = fav(it.site); fi.alt = ''; fi.loading = 'lazy'; si.appendChild(fi);
+    si.appendChild(document.createTextNode(String(it.site || ''))); body.appendChild(si);
+    var op = document.createElement('span'); op.className = 'omCardOpen'; op.textContent = tt('cardsOpen', 'افتح') + ' ↗'; body.appendChild(op);
+    a.appendChild(body);
+    return a;
+  }
+  window.omranRenderCards = function(cards){
+    css();
+    var wrap = document.createElement('div');
+    wrap.className = 'omCardsWrap';
+    wrap.setAttribute('data-keep-emoji', '1');
+    var chips = chipsRow(cards && cards.chips); if(chips) wrap.appendChild(chips);
+    var items = (cards && Array.isArray(cards.items)) ? cards.items : [];
+    var grid = document.createElement('div'); grid.className = 'omCards';
+    items.slice(0, 8).forEach(function(it, i){ var c = card(it, i); if(c) grid.appendChild(c); });
+    if(grid.childNodes.length) wrap.appendChild(grid);
+    return wrap;
+  };
 })();
 /* ===== app-99-boot-ok — آخر شريحة في الحزمة (scripts/build.mjs يرتّب الأجزاء بالاسم) =====
    v-ios-boot-flag (فحص ١١ أكتوبر): حارس إقلاع الآيفون (selfdiag.js) يعدّ الإقلاع مكتملًا حين __omranBootOk
