@@ -84,6 +84,7 @@ const TOOLS = [
     description: 'ابحث الآن في الإنترنت وفي التواصل الاجتماعي معًا — النتيجة قسمان: 🌐 الويب، و📱 منشورات عامّة من يوتيوب وريديت وإنستغرام وتيك توك وX وفيسبوك وغيرها. استعملها لأيّ سؤال يطلب معلومة أو حقيقة عن أيّ شيء (علم، صحّة، أماكن، منتجات، عروض، أشخاص، أحداث، أسعار، كيف يعمل شيء) حتّى لو ظننت أنّك تعرف الجواب — الجواب من البحث لا من الذاكرة، مع مصدره. لا تبحث للتحيّة والمجاملة والكتابة الإبداعيّة والترجمة وتعديل نصّ المستخدم والكود والحساب. إجباري لأي سعر أو خبر أو طقس أو نتيجة مباراة أو رسوم رسمية أو أي معلومة قد تكون تغيّرت بعد تدريبك. وإجباري أيضًا لأي سؤال عن أماكن أو جهات حقيقية (عيادة، مستشفى، طبيب، مطعم، متجر، دائرة حكومية) — ابحث باسم المدينة لتعطيه أسماء وروابط حقيقية لا أمثلة. مهم: للاستفسارات التجارية (متاجر، مواقع تسوق، خدمات، شركات) ابحث بالإنجليزية مع اسم المدينة/الدولة للحصول على نتائج دقيقة وذات صلة — مثال: "children clothing stores Dubai UAE" بدل العربية.',
     input_schema: { type: 'object', properties: { query: { type: 'string', description: 'عبارة البحث' } }, required: ['query'] },
   },
+  require('./cards-search.js').TOOL, // v-cards: بطاقات منظّمة للطلب العامّ (صورة · اسم · سعر · متجر · رابط) — وصفها في وحدتها
   {
     name: 'fetch_page',
     description: 'افتح رابطًا واقرأ محتواه الحقيقي. استخدمها لأي رابط ذكره المستخدم أو ظهر في نتائج البحث.',
@@ -1015,6 +1016,10 @@ function trailLine(name, input, result) {
       ? R('بحثتُ عن «' + q + '» — حصلتُ ' + n + ' نتيجة', 'trSearchN', { q: q, n: n })
       : R('بحثتُ عن «' + q + '» — حصلتُ ' + r.length + ' حرفًا', 'trSearchC', { q: q, n: r.length });
   }
+  if (name === 'show_cards') { // v-cards: عدد البطاقات = عدد الأسطر المرقّمة في نصّ الموديل
+    const n = (r.match(/(?:^|\n)\s*\d+\.\s/g) || []).length; const q = s(input.query, 50) || '؟';
+    return n ? R('عرضتُ ' + n + ' بطاقات لـ«' + q + '»', 'trCards', { q: q, n: n }) : R('لا بطاقات لـ«' + q + '»', 'trCardsNone', { q: q });
+  }
   if (name === 'fetch_page') {
     let h = s(input.url, 60);
     try { h = new URL(String(input.url)).hostname || h; } catch (e) { /* رابط مشوّه → نعرض ما أُرسل */ }
@@ -1460,7 +1465,9 @@ module.exports = async (req, res) => {
       '\n\n[تفسير بعد الصورة — إلزاميّ]: كلّما رسمتَ صورةً بأداة generate_image في ردّ محادثة عاديّ (وليست صورةً داخل كتلة كود ```html أو صفحة تبنيها)، اكتب بعد رمز الصورة مباشرةً تقريرًا قصيرًا يشرح فكرتها بهذا الشكل حرفيًّا:\n📋 تفسير الفكرة\nثمّ ٣ إلى ٥ نقاط أو أسطر توضّح: ماذا رسمت، والعناصر الرئيسيّة في الصورة ومدلولها، والفكرة أو الرسالة وراءها. موجز ومباشر بلا حشو، بلغة المستخدم. قاعدة السرعة تبقى: اكتب تمهيد نصّك أوّلًا ثمّ الصورة ثمّ هذا التفسير في نهاية الردّ. (تعديل صورة أرفقها المستخدم بـedit_image يبقى صورةً بلا شرح كما هي قاعدته.)';
     /* v-live-social: «اريده ai فعلن وليس كلام فقط» — كلّ سؤال معلومة يُبحث فيه، لا ما «قد تغيّر» وحده */
     const SEARCH_RULE_NOTE = '\n\n[البحث]: لأيّ سؤال يطلب معلومة أو حقيقة استدعِ web_search أوّلًا حتّى لو ظننت أنّك تعرف — يبحث في الويب والتواصل الاجتماعي معًا. '
-      + 'اذكر من أين جاءت كلّ معلومة (موقع أو منصّة). لا بحث للتحيّة والمجاملة والكتابة الإبداعيّة والترجمة وتعديل نصّ المستخدم. بحثان كحدّ أقصى في الردّ.';
+      + 'اذكر من أين جاءت كلّ معلومة (موقع أو منصّة). لا بحث للتحيّة والمجاملة والكتابة الإبداعيّة والترجمة وتعديل نصّ المستخدم. بحثان كحدّ أقصى في الردّ.'
+      /* v-cards (أمر المالك ١٢ أكتوبر «نفس جوجل: نماذج وعقب المواقع… والتتبع على نفس الموضوع ويعطيه الأفضل»): الطلب العامّ ← بطاقات لا سرد، ثمّ سؤال واحد، ثمّ الأفضل */
+      + '\n\n[البطاقات]: حين يطلب المستخدم شيئًا عامًّا ليختار منه — منتجًا أو سلعة أو خدمة أو محلًّا أو موقعًا أو مكانًا أو خطّة أو «أفضل X» («أبغى رنقات ENVE بكم»، «بذور زراعة»، «جوّال بالتقسيط») — استدعِ show_cards (مرّة واحدة) بدل web_search؛ البطاقات تُرسم له تلقائيًّا بصورها وأسعارها ومواقعها، فلا تعِد سردها نصًّا. بعدها: سطر أو سطران عمّا وجدت، ثمّ سؤال متابعة واحد فقط يضيّق الاختيار (الميزانيّة، المقاس، المدينة، الغرض…) وتوقّف. حين يجيب: ابقَ على الموضوع نفسه ورشّح له الأفضل واحدًا — ⭐ الأفضل لك: الاسم — السبب في سطر — الرابط — وإن ضاق الطلب فاستدعِ show_cards ثانيةً بالصياغة الأضيق. لا تقل «لا أقدر أعرض صورًا أو أسعارًا».';
     /* v-prov-self: آخر النظام (فيبقى الثابت بادئة الكاش) — للمالك ملفّ المزوّد المختار والدروس كلّها، ولغيره الدروس المنشورة بـ«عمّم» */
     let __provSelfSys = '';
     try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov); } catch (e) { logError('chat/prov-self', e); }
@@ -1868,6 +1875,7 @@ module.exports = async (req, res) => {
             const cb = ev.content_block || {};
             blocks[ev.index] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' }; __ol.thinkOpen(blocks[ev.index], cb); // D1
             if (cb.type === 'tool_use' && cb.name === 'web_search') send({ status: '🔍 أتحقق لك من المصادر الحية…', k: 'stSearch' });
+            else if (cb.type === 'tool_use' && cb.name === 'show_cards') send({ status: '🛍️ يجمع لك خيارات منظّمة…', k: 'stCards' }); // v-cards
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 يقرأ صفحة…', k: 'stFetchPage' });
             else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' }); // v-chat-github-read: مفتاح ترجمة قائم، لا نصّ واجهة جديد
             else if (cb.type === 'tool_use' && cb.name === 'read_app_errors') send({ status: '🩺 يقرأ أخطاء التطبيق الحيّة…' }); // v-provider-errors: بلا مفتاح — العميل يعود لنصّ الخادم (أداة المالك وحده)
@@ -2015,6 +2023,23 @@ module.exports = async (req, res) => {
               }
             }
           }
+          else if (cb.name === 'show_cards') { /* v-cards: بحث منظّم ← حدث cards للعميل (يرسم البطاقات) + حدث sources (المواقع) + نصّ مرقّم للموديل. السقف والحصّة كبحث الويب نفسه. */
+            const __cq = String(input.query || '').trim();
+            const mySearchNo = ++searchesUsed;
+            if (!__cq) result = 'show_cards تحتاج query — أعد الاستدعاء بعبارة بحث.';
+            else if (mySearchNo > 2) result = 'بلغتَ سقف البحث لهذا الردّ (بحثان). أجب الآن ممّا جمعت.';
+            else {
+              const __ls = require('./live-social.js');
+              const __quota = await __ls.searchQuota(token, clientIp(req));
+              if (!__quota.ok) result = __ls.QUOTA_TEXT;
+              else {
+                const __cs = require('./cards-search.js');
+                const __found = await __cs.searchCards(__cq);
+                if (__found.items.length) { send(__cs.cardsEvent(__cq, input, __found.items)); send({ sources: __found.sites }); }
+                result = __cs.cardsText(__found.items, __cq);
+              }
+            }
+          }
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           else if (cb.name === 'read_github') { /* v-github-owner-only (تصحيح المالك: «ما أريد أي مستخدم يقرى الجيت هب — فقط أنا»): كانت غير
                هذا مقصورة على المالك وحده، على كلّ المزوّدين بلا استثناء — لا وصول عامّ حتى على كلود. */
@@ -2114,6 +2139,7 @@ module.exports = async (req, res) => {
         toolResults.push({ type: 'tool_result', tool_use_id: st.cb.id, content: String(st.result).slice(0, __outMax) });
         if (toolCorpus.length < 200000) toolCorpus += ' ' + String(st.result).slice(0, 8000); // v608
         if (st.cb.name === 'web_search' || st.cb.name === 'fetch_page') __searchRan = true;
+        if (st.cb.name === 'show_cards') __searchRan = true; // v-cards: بطاقات البحث بحثٌ فعليّ — حارس التقييمات يعمل عليها أيضًا
       }
       convo.push({ role: 'user', content: toolResults });
     }
@@ -2307,7 +2333,7 @@ module.exports.__vcustom = { customInstructionsBlock, CUSTOM_INSTRUCTIONS_CHARS 
    وحدها؛ ناتج الصور والفيديو رموز داخليّة لا تُعرض. */
 function trailDetail(name, input, result) {
   const i = input || {};
-  const cmd = name === 'web_search' ? i.query : name === 'fetch_page' ? i.url : name === 'read_github' ? [i.url, i.path].filter(Boolean).join(' ') : name === 'run_js' ? i.code : '';
+  const cmd = (name === 'web_search' || name === 'show_cards') ? i.query : name === 'fetch_page' ? i.url : name === 'read_github' ? [i.url, i.path].filter(Boolean).join(' ') : name === 'run_js' ? i.code : '';
   if (!cmd) return {};
   return { cmd: String(cmd).slice(0, 300), out: String(result == null ? '' : result).slice(0, 400) };
 }
