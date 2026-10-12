@@ -1616,6 +1616,15 @@ module.exports = async (req, res) => {
     const __kTok = (n) => String(Math.round(n / 1000)).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]) + ' ألف توكن';
     // حدّ الموديل من نصّ 400: أكبر عدد في الرسالة أقلّ من السقف المرسَل (أنثروبيك: «max_tokens: 128000 > 64000, which is the maximum allowed…»)
     const __capFromText = (t, cur) => { let best = 0; for (const m of String(t).match(/\d{4,7}/g) || []) { const n = Number(m); if (n >= 1024 && n < cur && n > best) best = n; } return best; };
+    /* v-turn-pulse (لقطة المالك ١٢ أكتوبر: «⚠️ ما قدرت أردّ الحين — ما وصل شي من الخادم» بعد ردّ طويل بأدوات): النبض (kaTimer) لبثّ المزوّد وحده
+       ويُلغى مع نهايته، فبين خطوتين — تنفيذ أدوات الخادم (بحث، GitHub، ملفّ المزوّد…) ثمّ انتظار ترويسة النداء التالي حتّى ٧٥ ث — يصمت
+       الخادم وهو يعمل، وحارس العميل (٩٠ ث بلا بايت) يستسلم بلا رقم ولا سبب. نبض للدور كلّه مقيّدٌ بميزانيّة الدور (MAX_MS) وبحياة المجرى،
+       فدرس #527 محفوظ: تعليق حقيقيّ بعد الميزانيّة يُسكت النبض فيقطعه العميل كما كان. CHAT_KA_MS للاختبار. */
+    const __kaMs = Math.max(50, Number(process.env.CHAT_KA_MS) || 4000);
+    const __turnKa = (toolTurn || __ownerReq) ? setInterval(() => { if (res.writableEnded || __cut.gone || Date.now() - t0 > MAX_MS) { clearInterval(__turnKa); return; } try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, __kaMs) : null;
+    if (__turnKa && __turnKa.unref) __turnKa.unref();
+    const __turnKaStop = () => { if (__turnKa) clearInterval(__turnKa); };
+    if (__turnKa) { const __endRaw = res.end; res.end = function () { __turnKaStop(); return __endRaw.apply(res, arguments); }; } // كلّ خروج (done، catch، خروج مبكّر في الحلقة) يمرّ بـres.end فلا يبقى نبض حيّ بعده (chat-owner-errors يعدّ المؤقّتات)
           while (steps < MAX_STEPS) {
       if (__cut.gone) break; /* v-tokens-close: العميل رحل — لا جولة جديدة */ if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; }
       steps++; __ol.beginStep(__olS, { steps, MAX_STEPS, t0, MAX_MS, convo, tools: toolTurn && !(body && body.noTools === true), send }); // v-claude-code-level C1: الخطوة الأخيرة = جواب ختاميّ
@@ -2145,7 +2154,7 @@ module.exports = async (req, res) => {
     }
 
     if (__olS.on) send({ error: __ol.exitText({ t0, MAX_MS, MAX_STEPS }), ownerStop: true }); // v-claude-code-level C1: لا خروج صامت — السبب للمالك (تحت النصّ إن وُجد)
-    send({ done: true });
+    __turnKaStop(); send({ done: true });
     await __meterTurn(); // v-cost-meter: خروج بعد حدّ الجولات أو المهلة · tok-3: بعد done
     res.end();
   } catch (e) {
