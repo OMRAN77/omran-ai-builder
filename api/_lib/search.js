@@ -356,7 +356,7 @@ const REGION_RE = {
   ID: /إندونيس|اندونيس|indonesia|جاكرت|jakarta|بالي|\bbali\b/i,
   PH: /الفلبين|فلبين|فليبين|philippin|مانيلا|manila/i,
   VN: /فيتنام|vietnam|هانوي|hanoi/i,
-  IN: /الهند\b|هندية|india|دلهي|delhi|مومباي|mumbai|بنغالور|bangalore|غوا|\bgoa\b|كشمير|kashmir/i,
+  IN: /الهند(?![\u0600-\u06FF])|هندية|india|دلهي|delhi|مومباي|mumbai|بنغالور|bangalore|غوا|\bgoa\b|كشمير|kashmir/i,
   PK: /باكستان|pakistan|كراتشي|karachi|لاهور|lahore|إسلام أباد|islamabad/i,
   LK: /سريلانك|sri lanka|كولومبو|colombo/i,
   MV: /المالديف|مالديف|maldive/i,

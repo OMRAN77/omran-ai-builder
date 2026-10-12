@@ -338,3 +338,11 @@ test('١٢. العميل يعرض network_changed بلا تعديل ولا نص�
     assert.ok(fs.readFileSync(path.join(root, f), 'utf8').includes("const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);"), f);
   }
 });
+
+// مراجعة الدفعة A (sec-1): دخول Google نجاح موثَّق — شبكته تُحفظ «معروفة» لحدّ الدخول الليّن (كانت تُحفظ بعد كلمة المرور وحدها).
+test('٩. دخول Google يحفظ شبكة من أكمله في db/login-ok', async () => {
+  store.clear();
+  const r = await googleLogin({ state: HEX(16), app: false, ip: VICTIM });
+  assert.equal(r.code, 302);
+  assert.equal(store.get('db/login-ok/' + encodeURIComponent('g_victim@gmail.com') + '/' + encodeURIComponent(VICTIM)), '1');
+});

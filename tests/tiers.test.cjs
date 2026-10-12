@@ -196,7 +196,7 @@ test('chat.js wiring: tier first, free lane before the tool loop, limit as a rep
   assert.match(freeBranch, /const __fr = await streamFreeChain\(\{[^\n]*convo, send, requireVision: lastUserHasImage \}\);/);
   assert.match(freeBranch, /send\(\{ tierDiag: \(__fr\.errors \|\| \[\]\)\.slice\(0, 6\) \}\);/);
   assert.match(freeBranch, /lastUserHasImage \? tierLib\.FREE_TEXT\.imageBusy : tierLib\.FREE_TEXT\.busy/);
-  assert.match(freeBranch, /send\(\{ done: true \}\);\n\s+res\.end\(\);\n\s+return;/);
+  assert.match(freeBranch, /send\(\{ done: true \}\);[^\n]*\n\s+if \(__fr\.ok\) \{[^\n]*meterTurn[^\n]*\n\s+res\.end\(\);\n\s+return;/); // tok-3: done قبل القياس، وres.end() بعده
 });
 
 test('_usage.js wiring: tier caps, paid providers closed to non-subscribers, guest cap from env', () => {

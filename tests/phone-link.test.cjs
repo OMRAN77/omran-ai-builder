@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Readable } = require('node:stream');
 
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'test-secret-phone-link';
 process.env.UPSTASH_REDIS_REST_URL = 'http://local-test';
 process.env.TELEGRAM_BOT_TOKEN = 'test-tg-token';
@@ -25,7 +26,10 @@ require.cache[kvPath] = { id: kvPath, filename: kvPath, loaded: true, exports: {
   kvGetJSON: async (k) => (store.has(k) ? JSON.parse(store.get(k)) : null),
   kvPutJSON: async (k, v) => { store.set(k, JSON.stringify(v)); },
   kvDel: async (k) => { store.delete(k); }, kvList: async () => [...store.keys()],
-  kvIncr: async () => 1, kvExpire: async () => {}, kvIncrBy: async () => 1, kvDecrBy: async () => 1,
+  // v-auth-throttle: حدود المحاولات صارت عدّادات ذرّيّة (INCR) لا JSON يُقرأ ثمّ يُكتب — فالمحاكاة تعدّ فعلًا
+  kvIncr: async (k) => { const v = Number(store.get(k) || 0) + 1; store.set(k, String(v)); return v; },
+  kvExpire: async () => {}, kvIncrBy: async () => 1,
+  kvDecrBy: async (k, n) => { const v = Number(store.get(k) || 0) - Number(n); store.set(k, String(v)); return v; },
   kvSetIfAbsent: async (k, v) => { if (store.has(k)) return false; store.set(k, String(v)); return true; },
   kvGetRaw: async (k) => store.get(k) || null, kvSetRaw: async (k, v) => { store.set(k, String(v)); },
 } };

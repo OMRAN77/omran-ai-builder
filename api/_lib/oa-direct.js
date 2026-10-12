@@ -425,9 +425,13 @@ function fitGroqTpm(body, errText) {
     return out;
   };
   const lastUser = (() => { for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i] && msgs[i].role === 'user') return msgs[i]; return null; })();
-  const luText = !lastUser ? '' : (typeof lastUser.content === 'string' ? lastUser.content : (Array.isArray(lastUser.content) ? lastUser.content.map((x) => (x && x.text) || '').join(' ') : ''));
+  const luRaw = !lastUser ? '' : (typeof lastUser.content === 'string' ? lastUser.content : (Array.isArray(lastUser.content) ? lastUser.content.map((x) => (x && x.text) || '').join(' ') : ''));
+  /* tok-2 (مراجعة الدفعة A): ذيل الدور من النظام ليس كلام المستخدم — تنبيه «أدوات الصور مقفلة» يذكر generate_image بالاسم فكان
+     LEAN_IMG_RE يختار الأدوات المقفلة نفسها. الاختيار من نصّ المستخدم وحده، والذيل المقفل يُسقط أداتَي الصور. */
+  const TAIL_HEAD = '\n\n[سياق هذا الدور من النظام', tailAt = luRaw.indexOf(TAIL_HEAD);
+  const luText = tailAt >= 0 ? luRaw.slice(0, tailAt) : luRaw, mediaLocked = tailAt >= 0 && /لا تستدعِ generate_image/.test(luRaw.slice(tailAt));
   const luImg = !!(lastUser && Array.isArray(lastUser.content) && lastUser.content.some((x) => x && x.type === 'image_url'));
-  const want = (luImg || LEAN_IMG_RE.test(luText) ? ['edit_image', 'generate_image'] : []).concat(LEAN_Q_RE.test(luText) ? ['web_search'] : []);
+  const want = (!mediaLocked && (luImg || LEAN_IMG_RE.test(luText)) ? ['edit_image', 'generate_image'] : []).concat(LEAN_Q_RE.test(luText) ? ['web_search'] : []);
   const wantTools = (body.tools || []).filter((x) => x && x.function && want.indexOf(x.function.name) !== -1);
   /* (٢) بلا أدوات، والنظام: الفقرة الأولى (الهويّة والأسلوب) و[هويّتك] إن كانت آخرها، ثمّ الباقي بترتيبه ما اتّسع لـ٤٠٪ من الحدّ —
      الحدّ للدقيقة كلّها لا للطلب: جسم بستّة آلاف من ثمانية يردّ «مرحبا» ثمّ يرفض الرسالة التالية 429 (لقطة المالك الثانية). */

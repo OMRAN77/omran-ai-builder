@@ -1,26 +1,15 @@
 // Vercel Serverless Function: OWNER-ONLY user management actions.
 // Requires a valid session token belonging to OWNER_USERNAME. Regular users
 // get 403 no matter what they send. Actions: ban, unban, delete, message.
-const crypto = require('crypto');
 const { getUser, putUser, userPath } = require('./auth.js');
 const { kvDel, kvList } = require('./kv.js');
 
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 // v-owner-core: قائمة المالك الموحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
 const { isOwnerName } = require('./_owner.js');
 
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
-}
+// v-session-shape (الدفعة A، أمان): نسخة verifyToken اليدويّة هنا كانت تقبل حمولة موقّعة بلا exp (تذكرة مهمّة البناء) جلسةً
+// لا تنتهي، وتقرأ السرّ في نطاق الوحدة. الآن _session.sessionUser: u نصّ وexp رقم في المستقبل، والسرّ عند النداء.
+const { sessionUser } = require('./_session.js');
 
 // getUser/putUser now come from auth.js, which stores/reads user records
 // encrypted at rest (AES-256-GCM) instead of as raw JSON.
@@ -38,7 +27,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     const { token, action, targetUsername, text } = body;
 
-    const requester = verifyToken(token);
+    const requester = sessionUser(token);
     if (!isOwnerName(requester)) {
       res.status(403).json({ error: 'forbidden' });
       return;
