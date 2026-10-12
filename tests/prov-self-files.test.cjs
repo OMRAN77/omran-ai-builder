@@ -119,6 +119,22 @@ test('a lesson: tried on the owner first, not on users; no «عمّم» = refuse
   assert.ok(si && si.includes(LESSON), 'المسار القديم: ' + String(si).slice(-200));
 });
 
+// v-lessons-all (المالك ١٢ أكتوبر «اريدهم كلهم»): الدروس المنشورة تصل المسار المجّانيّ (ومعه المدفوع بصورة بلا مسار رؤية) ووكيل غير المالك.
+test('published lessons reach the free chain and the non-owner agent; the agent gives a user published lessons only', async () => {
+  const fs = require('node:fs');
+  const chatSrc = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
+  const agentSrc = fs.readFileSync(path.join(root, 'api/_lib/agent.js'), 'utf8');
+  assert.ok(chatSrc.includes("const __fr = await streamFreeChain({ system: __rawOwner && !__freeLane ? '' : PERSONA_NOTE + '\\n' + baseSystem + nowNote(body && body.tz) + __provSelfSys"), 'السلسلة المجّانيّة تأخذ الدروس');
+  assert.ok(agentSrc.includes("system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude')"), 'الوكيل لكلّ مستخدم');
+  assert.ok(!/if \(isOwner\(runUser\)\) \{ try \{ system \+= await require\('\.\/prov-self\.js'\)/.test(agentSrc), 'لا شرط مالك على الدروس في الوكيل');
+  db.clear(); PS.__resetCache();
+  db.set('db/lessons.json', { items: [{ id: 'a', text: 'منشور', scope: 'all' }, { id: 'b', text: 'تجربة', scope: 'owner' }] });
+  const u = await PS.systemBlocks(false, 'claude');
+  assert.ok(u.includes('- منشور') && !u.includes('تجربة'), 'المستخدم: المنشور وحده');
+  const o = await PS.systemBlocks(true, 'claude');
+  assert.ok(o.includes('- منشور') && o.includes('تجربة (تجربة — للمالك وحده)'), 'المالك: الكلّ');
+});
+
 test('the module: «عمّم» and its negation, no personal data in a lesson, no keys in a file, caps', async () => {
   assert.equal(PS.ownerSaidPublish('عمّم'), true);
   assert.equal(PS.ownerSaidPublish('تمام عممه للكل'), true);
