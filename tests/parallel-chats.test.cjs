@@ -109,7 +109,8 @@ test('المزوّدون ومسار الأدوات يأخذون إشارة طل�
   assert.doesNotMatch(a6, /\? genAbortController\.signal : undefined,\n/, 'كلّ fetch يمرّ عبر __omranReqSig');
   assert.match(a6, /__od\.__signal = onDelta && onDelta\.__signal;/);
   const a18 = read('js/app-18-chat-tools.js');
-  assert.match(a18, /signal: \(onDelta && onDelta\.__signal\) \|\|/);
+  assert.match(a18, /var __sig = \(onDelta && onDelta\.__signal\) \|\|/); // v-stall-resume: الإشارة نفسها تُرفع إلى متغيّر (يُعلَّم عليها آخر بايت)
+  assert.match(a18, /signal: __sig,/);
   assert.match(a18, /note\(\(typeof tStatus === 'function'\) \? tStatus\(ev\) : ev\.status, onDelta && onDelta\.__status\)/);
   const r = vm.runInNewContext(a6.slice(a6.indexOf('function __omranReqSig'), a6.indexOf('async function callClaude(')) + ';__omranReqSig', { genAbortController: { signal: 'mirror' } });
   assert.equal(r(null, null), 'mirror'); assert.equal(r({ __signal: 'own' }), 'own'); assert.equal(r({ __signal: 'own' }, 'explicit'), 'explicit');
