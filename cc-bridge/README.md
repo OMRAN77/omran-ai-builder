@@ -27,6 +27,8 @@ Claude Code **الخام** (حزمة الوكيل الرسميّة، لا حلق
 
 1. في مشروع Railway: **New → GitHub Repo → `OMRAN77/omran-ai-builder`** (الفرع `main`).
 2. **Settings → Source:** Root Directory = `/cc-bridge`، وWatch Paths = `/cc-bridge/**` (فلا يعاد النشر إلّا عند تغيّر الجسر).
+   **الفرع يجب أن يبقى `main`:** خدمة تتبع فرع عمل قديمًا تتوقّف عن التحديث بصمت حين يتوقّف ذلك الفرع (حدث من ٢٠ سبتمبر إلى ١٢ أكتوبر ٢٠٢٦).
+   للتأكّد بعد أيّ دمج يلمس الجسر: `curl https://<الجسر>/health` يحمل `renderJobs`.
 3. **Settings → Volumes → Add Volume:** Mount Path = `/work` (نسخة المستودع وجلسات Claude Code وحالة الجسر تبقى فيه بين النشرات).
 4. **Variables:** `CC_BRIDGE_SECRET` و`ANTHROPIC_API_KEY` (أو `CLAUDE_CODE_OAUTH_TOKEN`) و`GITHUB_TOKEN`؛ واختياريًّا `CC_MODEL`.
 5. **Settings → Networking → Generate Domain** والمنفذ `8787`. (اختياريًّا Healthcheck Path = `/health`.)
