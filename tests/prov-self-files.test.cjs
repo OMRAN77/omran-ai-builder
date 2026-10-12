@@ -119,11 +119,45 @@ test('a lesson: tried on the owner first, not on users; no «عمّم» = refuse
   assert.ok(si && si.includes(LESSON), 'المسار القديم: ' + String(si).slice(-200));
 });
 
+// v-liked-all (أمر المالك ١٢ أكتوبر «اريد تعميم — اذا عجبني شي يتعمم على الجميع»): «عجبني» = حفظ ونشر بخطوة واحدة لكلّ مستخدم على كلّ مزوّد؛
+// بلا كلمته أو مع نفيها يبقى تجربة ويُسأل؛ و«عجبني» تنشر درسًا سابقًا كـ«عمّم».
+test('«عجبني» generalizes in one step: saved and published to every user on every provider; negated or absent = trial only', async () => {
+  db.clear(); PS.__resetCache();
+  const WAY = 'ابدأ الجواب بالخلاصة في سطر ثمّ التفاصيل نقاطًا قصيرة.';
+  const liked = await turn('omran', 'claude', 'عجبني هالأسلوب', [() => toolTurn('teach_users', { action: 'generalize', text: WAY }), () => textTurn('عمّمته')]);
+  assert.match(liked.toolResults, /عُمِّم الدرس L\w+ على الجميع/);
+  let items = db.get('db/lessons.json').items;
+  assert.equal(items.length, 1); assert.equal(items[0].scope, 'all'); assert.ok(items[0].publishedAt > 0);
+  for (const p of ['gemini', 'deepseek', 'openrouter']) {
+    const r = await turn('vipuser', p, 'اشرح لي الضريبة', [() => textTurn('…')]);
+    assert.ok(r.sys.includes('[دروس عمران العامّة — طبّقها في ردودك]:\n- ' + WAY), 'يصل المستخدم فورًا · ' + p);
+  }
+  const no = await turn('omran', 'claude', 'ما عجبني هالأسلوب', [() => toolTurn('teach_users', { action: 'generalize', text: 'درس ثانٍ' }), () => textTurn('…')]);
+  assert.match(no.toolResults, /لم يُعمَّم لأنّ رسالته الأخيرة بلا «عجبني» أو «عمّم»/);
+  items = db.get('db/lessons.json').items;
+  assert.equal(items.length, 2); assert.equal(items[1].scope, 'owner', 'النفي = تجربة');
+  const user = await turn('vipuser', 'gemini', 'هلا', [() => textTurn('…')]);
+  assert.ok(!user.sys.includes('درس ثانٍ'), 'التجربة لا تصل المستخدم');
+  const later = await turn('omran', 'claude', 'عجبني، خلّه للكل', [() => toolTurn('teach_users', { action: 'publish' }), () => textTurn('…')]);
+  assert.match(later.toolResults, /نُشر الدرس/);
+  assert.equal(db.get('db/lessons.json').items[1].scope, 'all', '«عجبني» تنشر درسًا سابقًا كـ«عمّم»');
+  const desc = liked.bodies[0].tools.find((t) => t.name === 'teach_users');
+  assert.ok(desc.input_schema.properties.action.enum.includes('generalize') && /«عجبني» = تعميم بخطوة واحدة/.test(desc.description), 'الأداة تشرح الخطوة الواحدة');
+});
+
 test('the module: «عمّم» and its negation, no personal data in a lesson, no keys in a file, caps', async () => {
   assert.equal(PS.ownerSaidPublish('عمّم'), true);
   assert.equal(PS.ownerSaidPublish('تمام عممه للكل'), true);
   assert.equal(PS.ownerSaidPublish('لا تعمم'), false);
   assert.equal(PS.ownerSaidPublish('انشر'), false, '«انشر» تخصّ طلبات السحب لا الدروس');
+  // v-liked-all: «عجبني» بأشكالها ونفيها
+  for (const t of ['عجبني', 'عجبتني الطريقة خلّها كذا', 'حلو أعجبني هالأسلوب', 'ممتاز، للجميع']) assert.equal(PS.ownerSaidPublish(t), true, t);
+  for (const t of ['ما عجبني', 'مو عاجبني', 'مش عاجبني الأسلوب', 'لا يعجبني']) assert.equal(PS.ownerSaidPublish(t), false, t);
+  // فوق سقف الكتلة يسقط الأقدم لا الأحدث
+  const many = []; for (let i = 0; i < 40; i++) many.push({ text: 'درس رقم ' + i + ' ' + 'x'.repeat(90), scope: 'all' });
+  const blk = PS.lessonsBlock(many, false);
+  assert.ok(blk.length <= 2500 && blk.includes('- درس رقم 39 ') && !blk.includes('- درس رقم 0 '), 'الأحدث يبقى');
+  assert.ok(blk.indexOf('درس رقم 38 ') < blk.indexOf('درس رقم 39 '), 'بترتيبه الزمنيّ');
   assert.match(await PS.runTeach({ action: 'add', text: 'راسلوا ali@example.com' }, '', true), /بيانات شخصيّة/);
   assert.match(await PS.runSelf('groq', { action: 'write', text: 'المفتاح sk-ant-api03-abcdefghijklmnop' }, true), /لا أسرار/);
   assert.match(await PS.runSelf('groq', { action: 'write', text: 'ك'.repeat(4001) }, true), /الحدّ 4000/);

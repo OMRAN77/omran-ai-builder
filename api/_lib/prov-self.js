@@ -33,25 +33,31 @@ const SELF_TOOL = {
     required: ['action'],
   },
 };
+/* v-liked-all (أمر المالك ١٢ أكتوبر «اريد تعميم — اذا عجبني شي يتعمم على الجميع»): «عجبني» = تعميم بخطوة واحدة. كان الدرس
+   يُجرَّب على المالك ثمّ يحتاج «عمّم» ثانيةً؛ الآن generalize يحفظ وينشر معًا حين يقول المالك «عجبني» (أو «عمّم») في رسالته الأخيرة،
+   والخادم يفحص كلمته كحارس كما في publish. التجربة (add) والنشر اللاحق (publish) باقيان. */
 const TEACH_TOOL = {
   name: 'teach_users',
-  description: 'دروس عامّة لتحسين ردود المستخدمين — يكتبها المالك (مثلًا بعد محادثة ضعيفة أرسلها له مستخدم). add يحفظ درسًا عامًّا (لا معلومة شخصيّة) '
-    + 'يسري فورًا على محادثات المالك وحده للتجربة؛ publish ينشره لكلّ المستخدمين وكلّ المزوّدين — ولا يُقبل إلّا إذا كتب المالك «عمّم» في رسالته الأخيرة؛ '
+  description: 'دروس عامّة تحسّن ردود كلّ المستخدمين على كلّ المزوّدين — يكتبها المالك. '
+    + '«عجبني» = تعميم بخطوة واحدة: حين يقول المالك «عجبني» أو «عجبتني الطريقة» أو «خلّه كذا دايم» أو «عمّم» عن ردّك أو عن أسلوب أو قاعدة، استخرج الدرس العامّ '
+    + '(القاعدة أو الطريقة التي أعجبته — لا نصّ الردّ ولا معلومة شخصيّة — جملة أو جملتان) واستدعِ generalize به: يُحفظ ويُنشر فورًا لكلّ المستخدمين وكلّ المزوّدين، '
+    + 'ثمّ قل له بسطر ما الذي عُمِّم. الخادم يرفض التعميم إن لم تكن كلمته في رسالته الأخيرة أو كانت منفيّة («ما عجبني»). '
+    + 'add يحفظ درسًا للتجربة على محادثات المالك وحده؛ publish ينشر درسًا سابقًا (يحتاج «عمّم» أو «عجبني» في رسالته الأخيرة)؛ '
     + 'unpublish يرجعه للمالك وحده؛ remove يحذفه؛ list يعرض الدروس وحالتها.',
   input_schema: {
     type: 'object',
     properties: {
-      action: { type: 'string', enum: ['add', 'list', 'publish', 'unpublish', 'remove'] },
-      text: { type: 'string', description: 'نصّ الدرس (لـadd)، جملة أو جملتان عامّتان' },
+      action: { type: 'string', enum: ['generalize', 'add', 'list', 'publish', 'unpublish', 'remove'] },
+      text: { type: 'string', description: 'نصّ الدرس (لـgeneralize/add)، جملة أو جملتان عامّتان' },
       id: { type: 'string', description: 'معرّف الدرس (لـpublish/unpublish/remove)؛ بلا معرّف = آخر درس' },
     },
     required: ['action'],
   },
 };
 
-// «عمّم» بأشكالها، والنفي يُسقطها (كـ«ادمج»).
-const PUBLISH_RE = /(?:^|[\s،,.!؟?«»"'()-])(?:عمّم|عمم|عمّمه|عممه|عمّمها|عممها|عمّموه|انشره للناس|انشر الدرس|publish)(?=$|[\s،,.!؟?«»"'()-])/i;
-const PUBLISH_NEG_RE = /(?:لا|ما|مب|مو|بدون)\s+(?:ت|ن)?(?:عمّم|عمم)/;
+// «عمّم» بأشكالها، و«عجبني» بأشكالها (v-liked-all)، والنفي يُسقطها (كـ«ادمج»): «ما عجبني»، «مو عاجبني»، «لا تعمّم».
+const PUBLISH_RE = /(?:^|[\s،,.!؟?«»"'()-])(?:عمّم|عمم|عمّمه|عممه|عمّمها|عممها|عمّموه|انشره للناس|انشر الدرس|publish|عجبني|عجبتني|عجبوني|أعجبني|اعجبني|أعجبتني|اعجبتني|حبّيته|حبيته|حبّيتها|حبيتها|للجميع|للكلّ|للكل)(?=$|[\s،,.!؟?«»"'()-])/i;
+const PUBLISH_NEG_RE = /(?:لا|ما|مب|مو|مش|بدون)\s+(?:ت|ن|ي)?(?:عمّم|عمم|عجب|أعجب|اعجب|عاجب|يعجب|حبّيت|حبيت)/;
 function ownerSaidPublish(text) { const s = String(text || ''); return PUBLISH_RE.test(s) && !PUBLISH_NEG_RE.test(s); }
 
 async function readSelf(prov) {
@@ -108,19 +114,23 @@ async function runTeach(input, lastUserText, isOwner, by) {
     if (!items.length) return 'لا دروس بعد.';
     return items.map((x) => x.id + ' · ' + (x.scope === 'all' ? 'منشور للكلّ' : 'تجربة للمالك') + ' · ' + x.text).join('\n');
   }
-  if (act === 'add') {
+  if (act === 'add' || act === 'generalize') {
     const text = String((input && input.text) || '').replace(/\s+/g, ' ').trim();
     if (!text) return '✗ الدرس فارغ.';
     if (text.length > LESSON_MAX) return '✗ الدرس ' + text.length + ' حرفًا — الحدّ ' + LESSON_MAX + '.';
     if (/(?:sk-ant-|sk-or-|ghp_|github_pat_|AIza)[\w-]{8,}|[\w.+-]+@[\w-]+\.\w|\+?\d[\d\s-]{8,}/.test(text)) return '✗ في الدرس ما يشبه مفتاحًا أو بريدًا أو رقمًا — الدروس عامّة بلا بيانات شخصيّة.';
-    if (items.length >= LESSONS_MAX) return '✗ ' + LESSONS_MAX + ' درسًا حدّ مقصود — احذف درسًا قديمًا أوّلًا.';
+    if (items.length >= LESSONS_MAX) return '✗ ' + LESSONS_MAX + ' درسًا حدّ مقصود — احذف درسًا قديمًا أوّلًا (list ثمّ remove).';
     const id = 'L' + Date.now().toString(36);
-    items.push({ id, text, scope: 'owner', by: provOf(by) || '', at: Date.now() });
+    // v-liked-all: generalize = حفظ ونشر معًا، بحارس كلمة المالك في رسالته الأخيرة («عجبني» أو «عمّم» غير منفيّة) — وإلّا يبقى تجربة ويُسأل
+    const all = act === 'generalize' && ownerSaidPublish(lastUserText);
+    items.push(Object.assign({ id, text, scope: all ? 'all' : 'owner', by: provOf(by) || '', at: Date.now() }, all ? { publishedAt: Date.now() } : {}));
     await saveLessons(items);
-    return '✅ حُفظ الدرس ' + id + ' — يسري الآن على محادثات المالك وحده للتجربة. ليصل كلّ المستخدمين يكتب المالك «عمّم».';
+    if (all) return '✅ عُمِّم الدرس ' + id + ' على الجميع — كلّ المستخدمين وكلّ المزوّدين (خلال دقيقة على كلّ خادم): ' + text;
+    if (act === 'generalize') return '✅ حُفظ الدرس ' + id + ' للتجربة على محادثات المالك وحده — لم يُعمَّم لأنّ رسالته الأخيرة بلا «عجبني» أو «عمّم» صريحة (أو منفيّة). اعرض عليه الدرس واسأله: «أعمّمه على الجميع؟».';
+    return '✅ حُفظ الدرس ' + id + ' — يسري الآن على محادثات المالك وحده للتجربة. ليصل كلّ المستخدمين يكتب المالك «عمّم» أو «عجبني».';
   }
   if (act === 'publish') {
-    if (!ownerSaidPublish(lastUserText)) return '✗ لا نشر بلا «عمّم» صريحة في آخر رسالة من المالك — اعرض عليه الدرس واسأله.';
+    if (!ownerSaidPublish(lastUserText)) return '✗ لا نشر بلا «عمّم» أو «عجبني» صريحة في آخر رسالة من المالك — اعرض عليه الدرس واسأله.';
     const x = pick();
     if (!x) return '✗ لا درس بهذا المعرّف.';
     x.scope = 'all'; x.publishedAt = Date.now();
@@ -140,20 +150,24 @@ async function runTeach(input, lastUserText, isOwner, by) {
     await saveLessons(items.filter((y) => y !== x));
     return '🗑️ حُذف الدرس ' + x.id + '.';
   }
-  return '✗ action واحد من add / list / publish / unpublish / remove.';
+  return '✗ action واحد من generalize / add / list / publish / unpublish / remove.';
 }
 
-// كتلة الدروس: للمستخدمين المنشور وحده، وللمالك المنشور والتجربة.
+// كتلة الدروس: للمستخدمين المنشور وحده، وللمالك المنشور والتجربة. فوق سقف الكتلة يسقط الأقدم لا الأحدث (v-liked-all: «عجبني»
+// الأخيرة لا تضيع)، والمحفوظ يُعرض بترتيبه الزمنيّ.
 function lessonsBlock(items, owner) {
   const list = (items || []).filter((x) => x && x.text && (owner || x.scope === 'all'));
   if (!list.length) return '';
-  let out = '\n\n[دروس عمران العامّة — طبّقها في ردودك]:';
-  for (const x of list) {
+  const head = '\n\n[دروس عمران العامّة — طبّقها في ردودك]:';
+  const lines = [];
+  let len = head.length;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const x = list[i];
     const line = '\n- ' + x.text + (owner && x.scope !== 'all' ? ' (تجربة — للمالك وحده)' : '');
-    if (out.length + line.length > BLOCK_MAX) break;
-    out += line;
+    if (len + line.length > BLOCK_MAX) break;
+    len += line.length; lines.unshift(line);
   }
-  return out;
+  return lines.length ? head + lines.join('') : '';
 }
 function selfBlock(text) {
   const t = String(text || '').trim();
