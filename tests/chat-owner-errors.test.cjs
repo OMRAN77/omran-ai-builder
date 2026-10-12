@@ -152,6 +152,21 @@ test('٤. C6: رفض المزوّد ← لا تنبيه «نفّذ الآن» ع
   assert.equal((await client(r.raw)).reply, 'سأقرأ الملفّ ثمّ أحذف القائمة وأتتبّع مراجعها\n\n⚠️ رفض المزوّد الطلب (cyber)');
 });
 
+test('٤-ب. v-refusal-why: رفض بفئة reasoning_extraction (لقطة المالك ١٢ أكتوبر، Fable 5.1) ← معناها بالعربيّة وشرح المزوّد إن أرسله، وبلا شرح الفئة ومعناها', { timeout: 20000 }, async () => {
+  const ask = (details) => run('omran', { provider: 'claude', model: 'claude-fable-5-1', messages: [{ role: 'user', content: 'لا الكتابة الي فوق المحادثة فكر لمدة الوقت' }] },
+    (u) => (isAnth(u) ? T.text('', 'refusal', details) : new Response('{}', { status: 404 })));
+  const r = await ask({ type: 'refusal', category: 'reasoning_extraction', explanation: 'The request asks the model to reveal  its internal\nreasoning.' });
+  assert.equal(r.calls.filter((c) => isAnth(c.url)).length, 1, 'لا إعادة ولا وسيط');
+  const stop = r.events.find((e) => e.ownerStop);
+  assert.equal(stop && stop.error, 'رفض المزوّد الطلب (reasoning_extraction — فُهم السؤال طلبًا لكشف تفكيره الداخليّ — اسأل عن الجواب لا عمّا فكّر فيه) — The request asks the model to reveal its internal reasoning.');
+  const c = await client(r.raw);
+  assert.deepEqual({ error: c.error, ownerStop: c.ownerStop }, { error: stop.error, ownerStop: true }, 'العميل يعرض السبب كما هو');
+  const r2 = await ask({ type: 'refusal', category: 'reasoning_extraction' });
+  assert.equal(r2.events.find((e) => e.ownerStop).error, 'رفض المزوّد الطلب (reasoning_extraction — فُهم السؤال طلبًا لكشف تفكيره الداخليّ — اسأل عن الجواب لا عمّا فكّر فيه)', 'الشرح ليس مضمونًا');
+  const r3 = await ask({ type: 'refusal', category: null });
+  assert.equal(r3.events.find((e) => e.ownerStop).error, 'رفض المزوّد الطلب', 'فئة null حالة صالحة (التوثيق)');
+});
+
 test('٥. C6: end_turn فارغ ← «رجع الردّ فارغًا» بدل «chat: empty reply»', { timeout: 20000 }, async () => {
   const r = await run('omran', { provider: 'claude', messages: Q }, (u) => (isAnth(u) ? T.empty() : new Response('{}', { status: 404 })));
   const c = await client(r.raw);

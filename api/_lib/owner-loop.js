@@ -25,6 +25,11 @@ const EMPTY_STOP = 'رجع الردّ فارغًا';
 const BUSY = new Set([429, 500, 502, 503, 504, 529]);
 const RETRY_CAP_MS = 8000;
 const ACCESS_RE = /does not have access|do not have access|not have access to (?:the )?model/i;
+const CREDIT_RE = /credit|balance|billing|insufficient|quota|payment/i; // v-mid-credit: عائلة الرصيد نفسها التي تعرفها retryBusy وownerStopNote في chat.js
+/* v-refusal-why (لقطة المالك ١٢ أكتوبر: Fable 5.1 و«لا الكتابة الي فوق المحادثة فكر لمدة الوقت» ← «رفض المزوّد الطلب (reasoning_extraction)» بلا معنى):
+   مصنّف أنثروبيك (Fable 5.1 وOpus 5.5 وSonnet 5.5) يرفض بـstop_reason refusal وفئة في stop_details. reasoning_extraction = السؤال فُهم طلبًا
+   لكشف تفكيره الداخليّ (التوثيق: لا يُعاد على موديل بديل، والمخرج قراءة ملخّص التفكير لا طلبه). الفئة تُترجم للمالك بمعناها، وشرح المزوّد إن أرسله يُلحق. */
+const REFUSAL_WHY = { reasoning_extraction: 'فُهم السؤال طلبًا لكشف تفكيره الداخليّ — اسأل عن الجواب لا عمّا فكّر فيه' };
 const DEAD_TTL_S = 6 * 3600;
 
 // هامش الختام: دقيقة من ٢٤٠ ث، وربع المهلة إن ضُيّقت (CHAT_MAX_MS=20000 ← ٥ ث) كي لا يُجبر الختام من أوّل خطوة.
@@ -180,9 +185,12 @@ function afterStream(s, o) {
   const blocks = o.blocks || [];
   const text = stepText(blocks);
   const hasTool = blocks.some((b) => b && b.type === 'tool_use');
-  if (o.stopReason === 'refusal') {
-    const cat = s.stopDetails && s.stopDetails.category ? String(s.stopDetails.category).slice(0, 40) : '';
-    return { kind: 'stop', msg: 'رفض المزوّد الطلب' + (cat ? ' (' + cat + ')' : '') };
+  if (o.stopReason === 'refusal') { // v-refusal-why: الفئة بمعناها، وشرح المزوّد (stop_details.explanation) إن وُجد — ليس مضمونًا
+    const d = s.stopDetails || {};
+    const cat = d.category ? String(d.category).slice(0, 40) : '';
+    const exp = d.explanation ? String(d.explanation).replace(/\s+/g, ' ').trim().slice(0, 200) : '';
+    const why = Object.prototype.hasOwnProperty.call(REFUSAL_WHY, cat) ? REFUSAL_WHY[cat] : '';
+    return { kind: 'stop', msg: 'رفض المزوّد الطلب' + (cat ? ' (' + cat + (why ? ' — ' + why : '') + ')' : '') + (exp ? ' — ' + exp : '') };
   }
   if (o.stopReason === 'max_tokens') {
     if (s.conts < 2 && o.steps < o.MAX_STEPS && Date.now() - o.t0 < o.MAX_MS - margin(o.MAX_MS)) {
@@ -220,6 +228,14 @@ function midStream(s, e, o) {
   const net = e.code !== 'OA_STREAM_PROTOCOL_ERROR' && (NET_RE.test(String(e.message || '')) || NET_RE.test(String((e.cause && (e.cause.code || e.cause.message)) || '')));
   if (e.code !== 'OA_STREAM_PROTOCOL_ERROR' && !net) return null;
   const c = net ? 'net_cut' : midCode(e.message);
+  /* v-mid-credit (لقطة المالك ١٢ أكتوبر: GPT-6.1 Sol و«السلام عليكم» ← «انقطع ردّ المزوّد في منتصفه (insufficient_quota)» مرّتين): OpenAI يفتح
+     البثّ (200) ثمّ يرسل حدث خطأ بكود الحصّة — رصيدٌ لا انقطاع، والنداء نفسه لا يجديه. يُعاد إلى سلسلة ما قبل البثّ في chat.js بحالة 402
+     (الوسيط للمزوّد نفسه بالموديل نفسه، ثمّ «ما عندي رصيد» — أمر المالك ٨ أكتوبر) مرّة في الدور، وبعدها الرسالة القصيرة نفسها. */
+  if (!net && CREDIT_RE.test(String(e.message || ''))) {
+    if (s.midRetried) return { kind: 'stop', msg: 'ما عندي رصيد' };
+    s.midRetried = true;
+    return { kind: 'fail', status: 402 };
+  }
   const why = 'انقطع ردّ المزوّد في منتصفه' + (c ? ' (' + c + ')' : '');
   if (!(o && o.sawText) && !s.midRetried && c !== 'tool_args_cut' && c !== 'bad_sse') { s.midRetried = true; // استدعاء أداة مكسور أو SSE تالف: لا نداء ثانٍ (chat-route-credentials)
     return { kind: 'retry', status: '⏳ ' + why + ' — أعيد مرّة…' }; }

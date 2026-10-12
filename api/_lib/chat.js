@@ -1212,7 +1212,7 @@ module.exports = async (req, res) => {
   // بلا مفتاح مباشر ولا وسيط: الاحتياط القديم على Anthropic يجيب بكلود فعلًا،
   // فلا يبقى اسم المزوّد المطلوب (مثل OpenAI) في حالة المسار الحقيقيّ.
   let __ownerNoRoute = __ownerReq && !!reqProv && reqProv !== prov; if (!__direct && !viaOR && prov !== 'claude' && apiKey) { if (__ownerReq) __ownerNoRoute = true; else prov = 'claude'; } // v-owner-solo: للمالك لا يجيب كلود عن مزوّد غير معروف أو بلا طريق
-  const __upFetch = (url, init) => __direct
+  let __midUp = null; /* v-mid-credit: خطأ رصيد داخل البثّ (OpenAI: 200 ثمّ حدث insufficient_quota) يُعاد كفشل جاهز 402 تمرّ به سلسلة ما قبل البثّ نفسها بدل نداء جديد — يُستهلك في أوّل __upFetch بعده */ const __upFetch = (url, init) => __midUp ? Promise.resolve(__midUp).then((u) => { __midUp = null; return u; }) : __direct
     ? require('./oa-direct.js').directFetch(__direct, JSON.parse(init.body), { fallbackModels: __directFallbacks, signal: init.signal /* v-claude-code-level C5 */ })
     : fetch(url, init);
   /* v-err-acct (لقطة «فحص النظام» ٢٣ سبتمبر: «402 … billing_error … This request would exceed your available credit» بلا
@@ -1902,7 +1902,7 @@ module.exports = async (req, res) => {
         if (!streamDone) { try { await reader.cancel(); } catch (e) { /* المجرى أغلق مع الخطأ */ } }
         try { reader.releaseLock(); } catch (e) { /* المجرى أغلق مع الخطأ */ }
       }
-      if (__midFail) { await logErrorAndFlush('chat/mid-stream', new Error(__acct() + ': ' + __midFail.text), { action: __midFail.kind, prov }); if (__midFail.kind === 'retry') { send({ status: __midFail.status }); steps--; continue; } send({ error: __midFail.msg, ownerStop: true }); res.end(); return; } // C9: النداء نفسه مرّة، ثمّ السبب للمالك (تحت النصّ إن وُجد)
+      if (__midFail) { await logErrorAndFlush('chat/mid-stream', new Error(__acct() + ': ' + __midFail.text), { action: __midFail.kind, prov }); if (__midFail.kind === 'retry') { send({ status: __midFail.status }); steps--; continue; } if (__midFail.kind === 'fail') { __midUp = { ok: false, status: __midFail.status, text: async () => __midFail.text }; steps--; continue; } /* v-mid-credit: رصيد داخل البثّ = الخطوة نفسها من جديد بفشل جاهز تمرّ به سلسلة ما قبل البثّ (الوسيط ثمّ «ما عندي رصيد») */ send({ error: __midFail.msg, ownerStop: true }); res.end(); return; } // C9: النداء نفسه مرّة، ثمّ السبب للمالك (تحت النصّ إن وُجد)
       { const __rest = __tokStrip.flush(); if (__rest) { const __tb = blocks.filter((b) => b && b.type === 'text').pop(); if (__tb) __tb.text += __rest; fullText += __rest; anyText = true; send({ delta: __rest }); } } // v-special-tokens: ذيل محجوز لم يكتمل رمزًا
       __usage.output += __usage.stepOut; __usage.stepOut = 0;
       // v-prompt-cache: المالك وحده يرى الحساب في شارة النموذج: كاش · جديد · خرج (مجموع الجولات).
