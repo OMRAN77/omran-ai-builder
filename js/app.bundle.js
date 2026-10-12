@@ -22937,7 +22937,13 @@ try{
       var r = __omranRuns[k];
       if(!r || (Date.now() - r.t0) < __OMRAN_WD_STALE_MS) return;
       try{ clearTimeout(r.wake); }catch(_){ /* guard-ok — cleanup, intentional */ }
-      r.wake = setTimeout(function(){ __omranAbortRun(r); }, __OMRAN_WD_GRACE_MS);
+      /* v-stall-resume: طلب قديم عند الرجوع يُقطع بعد مهلة السماح إلّا إن كان بثّه حيًّا — بايت خلال المهلة (يعلّمه app-18 على إشارة
+         الطلب) = يُعاد الفحص بعد مهلة أخرى. كان يقطع ردًّا يتدفّق لأنّ المالك خرج من التطبيق دقيقتين أثناء مهمّة طويلة. */
+      r.wake = setTimeout(function __omWake(){
+        var __lb = r.ctl && r.ctl.signal && r.ctl.signal.__omLastByte;
+        if(__lb && (Date.now() - __lb) < __OMRAN_WD_GRACE_MS && __omranRuns[r.pid] === r){ r.wake = setTimeout(__omWake, __OMRAN_WD_GRACE_MS); return; }
+        __omranAbortRun(r);
+      }, __OMRAN_WD_GRACE_MS);
     });
     var __live = (typeof genAbortController !== 'undefined' && genAbortController);
     if(!__live){
@@ -38452,10 +38458,25 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   // والحارس الصلب (٥ دقائق) يبقى شبكة الأمان النهائيّة ضدّ التعليق الحقيقيّ.
   var __CHAT_IDLE_MS = 90000;   // لا بايت من الخادم هذه المدة (خارج الأدوات) = تعثّر
   var __CHAT_TOOL_MS = 295000;  // أثناء تشغيل أداة محلّيّة نترك القطع للحارس الصلب
+  /* v-stall-resume (لقطة المالك ١٢ أكتوبر ١٠:٠٠: «تقدر تسويه كلهم» ← «ما وصل شي من الخادم»، والخادم في اللحظة نفسها أنجز وفتح
+     طلب السحب #1012): الجوّال يجمّد التطبيق في الخلفيّة، ومؤقّت ٩٠ ث الذي حلّ موعده أثناء التجميد كان يطلق فور الرجوع قبل أن تُقرأ
+     البايتات المنتظرة في المقبس. الآن الصمت يُعدّ وقتًا ظاهرًا حيًّا فقط: نبضة كلّ ثانية، والصفحة المخفيّة أو فجوة أكبر من ٥ ث بين
+     نبضتين (تجميد) لا تُحسبان. صمتٌ ظاهر ٩٠ ث يبقى تعثّرًا كما كان (درس #527). */
   function __raceIdle(p, ms, tag) {
-    var to;
-    var timer = new Promise(function (_res, rej) { to = setTimeout(function () { rej(new Error(tag)); }, ms); });
-    return Promise.race([p, timer]).finally(function () { try { clearTimeout(to); } catch (e) { /* guard-ok — تنظيف المؤقّت */ } });
+    return new Promise(function (resolve, reject) {
+      var idle = 0, last = Date.now(), done = false, to = null;
+      function finish(fn, v) { if (done) return; done = true; try { clearTimeout(to); } catch (e) { /* guard-ok — تنظيف المؤقّت */ } fn(v); }
+      function tick() {
+        var now = Date.now(), dt = now - last;
+        last = now;
+        var shown = (typeof document === 'undefined') || !document.visibilityState || document.visibilityState === 'visible';
+        if (shown && dt < 5000) idle += dt;
+        if (idle >= ms) { finish(reject, new Error(tag)); return; }
+        to = setTimeout(tick, 1000);
+      }
+      to = setTimeout(tick, 1000);
+      p.then(function (v) { finish(resolve, v); }, function (e) { finish(reject, e); });
+    });
   }
 
   window.callChatWithTools = async function (messages, onDelta, provider, opts) {
@@ -38499,10 +38520,11 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       });
       return { role: m.role, content: content };
     });
+    var __sig = (onDelta && onDelta.__signal) || ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined); /* v-parallel-chats */
     var res = await __raceIdle(fetch('/api/ai?action=chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: (onDelta && onDelta.__signal) || ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined), /* v-parallel-chats */
+      signal: __sig,
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
@@ -38553,6 +38575,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       }
       if (chunk.done) break;
       __toolBusy = false; /* وصلت بايتات جديدة من الخادم → لم نعد بانتظار أداة */
+      if (__sig) { try { __sig.__omLastByte = Date.now(); } catch (e) { /* guard-ok — إشارة مجمّدة: حارس الرجوع يقطع كما كان */ } } /* v-stall-resume: آخر بايت على إشارة الطلب — حارس الرجوع (app-09) لا يقطع بثًّا حيًّا */
       buf += dec.decode(chunk.value, { stream: true });
       var lines = buf.split('\n');
       buf = lines.pop();

@@ -3407,7 +3407,13 @@ try{
       var r = __omranRuns[k];
       if(!r || (Date.now() - r.t0) < __OMRAN_WD_STALE_MS) return;
       try{ clearTimeout(r.wake); }catch(_){ /* guard-ok — cleanup, intentional */ }
-      r.wake = setTimeout(function(){ __omranAbortRun(r); }, __OMRAN_WD_GRACE_MS);
+      /* v-stall-resume: طلب قديم عند الرجوع يُقطع بعد مهلة السماح إلّا إن كان بثّه حيًّا — بايت خلال المهلة (يعلّمه app-18 على إشارة
+         الطلب) = يُعاد الفحص بعد مهلة أخرى. كان يقطع ردًّا يتدفّق لأنّ المالك خرج من التطبيق دقيقتين أثناء مهمّة طويلة. */
+      r.wake = setTimeout(function __omWake(){
+        var __lb = r.ctl && r.ctl.signal && r.ctl.signal.__omLastByte;
+        if(__lb && (Date.now() - __lb) < __OMRAN_WD_GRACE_MS && __omranRuns[r.pid] === r){ r.wake = setTimeout(__omWake, __OMRAN_WD_GRACE_MS); return; }
+        __omranAbortRun(r);
+      }, __OMRAN_WD_GRACE_MS);
     });
     var __live = (typeof genAbortController !== 'undefined' && genAbortController);
     if(!__live){
