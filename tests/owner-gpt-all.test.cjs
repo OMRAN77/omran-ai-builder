@@ -112,11 +112,11 @@ test('٢. المباشر (/v1/responses): جهد المالك reasoning.effort �
     assert.deepEqual(r.calls[0].body.reasoning, { effort: 'xhigh' });
     r = await run('omran', { model: 'openai/gpt-6.1-sol', messages: ask(HARD), effort: 'high' });
     assert.deepEqual(r.calls[0].body.reasoning, { effort: 'high' });
-    assert.equal(r.calls[0].body.max_output_tokens, 32000);
-    // تلقائي: الصعب بلا reasoning والسقف كما كان
+    assert.equal(r.calls[0].body.max_output_tokens, 64000, 'v-owner-cap-open: سقف المالك يغلب سقف الجهد ٣٢ ألفًا');
+    // تلقائي: الصعب بلا reasoning وسقف المالك المفتوح
     r = await run('omran', { model: 'openai/gpt-6-astra', messages: ask(HARD) });
     assert.equal(r.calls[0].body.reasoning, undefined);
-    assert.equal(r.calls[0].body.max_output_tokens, 16000);
+    assert.equal(r.calls[0].body.max_output_tokens, 64000); // v-owner-cap-open
   });
   reset();
 });

@@ -86,7 +86,7 @@ test('١. المالك بلا اختيار = Opus 5.5 على المفتاح ال
   r = await withoutAnth(() => run('omran', { messages: ask(HARD) }));
   assert.equal(r.calls[0].url, 'https://openrouter.ai/api/v1/messages');
   assert.equal(r.calls[0].body.model, 'anthropic/claude-opus-5.5');
-  assert.equal(r.calls[0].body.max_tokens, 16000, 'بلا جهد مختار: السقف كما كان');
+  assert.equal(r.calls[0].body.max_tokens, 64000, 'بلا جهد مختار: سقف المالك المفتوح (v-owner-cap-open)');
 });
 
 test('٢. النماذج الاثنا عشر كلّها للمالك بمعرّفاتها الرسميّة على المسارين، وOpus 5 مستقلّ', async () => {
@@ -158,7 +158,7 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   r = await run('omran', { model: 'claude-opus-4-8', messages: ask('السلام'), effort: 'high' });
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'high' });
   assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive' });
-  assert.equal(r.calls[0].body.max_tokens, 16000);
+  assert.equal(r.calls[0].body.max_tokens, 64000); // v-owner-cap-open: سقف المالك ٦٤ ألفًا في كلّ جهد
   r = await run('omran', { model: 'claude-opus-4-8', messages: ask(HARD), effort: 'high' });
   assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive', display: 'summarized' });
   // Opus 4.6: Extra → high
@@ -168,7 +168,7 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   r = await run('omran', { model: 'claude-haiku-4-5', messages: ask(HARD), effort: 'max' });
   assert.equal(r.calls[0].body.output_config, undefined);
   assert.equal(r.calls[0].body.thinking, undefined);
-  assert.equal(r.calls[0].body.max_tokens, 16000);
+  assert.equal(r.calls[0].body.max_tokens, 64000); // v-owner-cap-open
   // الوسيط: الجهد يصل بالحقل نفسه، بلا عرض (العرض لأنثروبيك المباشر)
   r = await withoutAnth(() => run('omran', { model: 'claude-sonnet-5-5', messages: ask(HARD), effort: 'medium' }));
   assert.equal(r.calls[0].body.model, 'anthropic/claude-sonnet-5.5');
@@ -193,7 +193,7 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   // قيمة غير معروفة = التلقائيّ كما كان (التحيّة low)
   r = await run('omran', { messages: ask('السلام'), effort: 'ultra' });
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'low' });
-  assert.equal(r.calls[0].body.max_tokens, 16000);
+  assert.equal(r.calls[0].body.max_tokens, 64000); // v-owner-cap-open
 });
 
 test('٦. 400 على الجهد = إعادة فوريّة بالموديل نفسه بلا الجهد، بلا رجوع للافتراضيّ، ويُذكر الرفض', async () => {

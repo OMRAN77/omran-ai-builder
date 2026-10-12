@@ -259,7 +259,7 @@ test('٩. الذاكرة: المالك يرسل المحادثة كلّها؛ غ
   const shortChat = [{ role: 'user', content: 'اكتب لي خطّة' }, { role: 'assistant', content: 'الخطّة: ...' }, { role: 'user', content: 'زين' }];
   r = await run({ user: 'omran', provider: 'claude', messages: shortChat, script: [() => anthropicText('تم')] });
   assert.equal(r.calls[0].body.messages.length, 3);
-  assert.equal(r.calls[0].body.max_tokens, 16000);
+  assert.equal(r.calls[0].body.max_tokens, 64000); // v-owner-cap-open: سقف المالك ٦٤ ألفًا
   r = await run({ user: 'someone', provider: 'claude', messages: shortChat, script: [() => anthropicText('تم')] });
   assert.equal(r.calls[0].body.messages.length, 1, 'غير المالك: التحية معزولة كما كانت');
 });
