@@ -351,6 +351,7 @@ async function __safeJson(res){
           cell.appendChild(vb);
           gridEl.appendChild(cell);
         });
+        dsReveal(gridEl); /* v-scene-kinds */
         setStatus(t('designAiDone'));
         return;
       }
@@ -364,6 +365,7 @@ async function __safeJson(res){
       }
       downloadEl.href = dataUrl;
       downloadEl.style.display = 'block';
+      dsReveal((baWrap && baWrap.style.display !== 'none') ? baWrap : resultEl); /* v-scene-kinds */
       setStatus(t('designAiDone'));
     } catch(e){
       setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
@@ -455,6 +457,55 @@ async function __safeJson(res){
   window.__designShowBA = showBeforeAfter;
   window.__designBAHide = baHide;
   window.__designSourceUrl = function(){ return selectedBase64 ? ('data:' + selectedMime + ';base64,' + selectedBase64) : ''; };
+
+  /* v-scene-kinds (المالك ١١ أكتوبر بصورة مشاهد الديكور: «والثانية للديكور… وكلّهم نفس الأفكار»): مشهد التوليد يُركَّب أعلى الاستوديو
+     مكان صندوق الأفكار والرفع (app-34-gen-wait، اللوحة decor). والنتيجة — سحّاب قبل/بعد أو الصورة المفردة أو شبكة التصاميم الأربعة —
+     وزرّ التحميل كانت تحت زرّ «صمم الغرفة» بلا تمرير إليها؛ تُنقل (العقد نفسها بمستمعيها) إلى قبل صندوق الأفكار، حيث كان المشهد،
+     وبعرضه (٧٦٠ موسَّطة). */
+  const DS_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };
+  (function(){
+    try{
+      const anchor = document.getElementById('designAiIdeas');
+      if(!anchor || !anchor.parentNode) return;
+      [baWrap, resultEl, gridEl, downloadEl].forEach((n) => {
+        if(!n) return;
+        anchor.parentNode.insertBefore(n, anchor);
+        Object.assign(n.style, DS_RESULT_STYLE);
+      });
+    }catch(e){ __swallow(e, 'decor:result-inplace'); }
+  })();
+  /* تدخل كاملة في الشاشة: عرض حاوية الصورة يُحدّ بنسبتها حتى يدخل ارتفاعها في DS_RESULT_VH من الشاشة (غرفة طوليّة بعرض ٧٦٠
+     أطول من الشاشة). الصور العرضيّة — أغلب الغرف — تبقى بعرض المشهد. */
+  const DS_RESULT_VH = 0.7;
+  function dsFit(img, box){
+    try{
+      if(!img || !box || !img.naturalWidth || !img.naturalHeight) return;
+      const maxH = Math.round(window.innerHeight * DS_RESULT_VH);
+      box.style.maxWidth = Math.min(760, Math.round(maxH * img.naturalWidth / img.naturalHeight)) + 'px';
+    }catch(e){ __swallow(e, 'decor:result-fit'); }
+  }
+  function dsFitAll(){ dsFit(baAfter, baWrap); dsFit(resultEl, resultEl); }
+  if(baAfter) baAfter.addEventListener('load', dsFitAll);
+  if(resultEl) resultEl.addEventListener('load', dsFitAll);
+  window.addEventListener('resize', dsFitAll);
+  /* النتيجة مخفيّة لحظة عرضها (المشهد ما زال مكانها حتى المسح التالي) — التمرير إليها يُنفَّذ حين تظهر فعلًا (nearest: من بقي
+     عند المشهد لا يتحرّك عنده شيء)، وعرض صورة «قبل» في السحّاب (بالبكسل، كان يُقاس عند العرض فيصير صفرًا) يتبع مقاس حاويته. */
+  function dsReveal(el){
+    try{
+      if(!el) return;
+      const go = () => { try{ el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(err){ __swallow(err, 'decor:scroll'); } };
+      if(el.clientWidth){ go(); return; }
+      if(typeof ResizeObserver !== 'function') return;
+      const ro = new ResizeObserver(() => { if(!el.clientWidth) return; ro.disconnect(); go(); });
+      ro.observe(el);
+    }catch(e){ __swallow(e, 'decor:reveal'); }
+  }
+  if(baWrap && baBefore && typeof ResizeObserver === 'function'){
+    try{ new ResizeObserver(() => { if(baWrap.clientWidth) baSize(); }).observe(baWrap); }catch(e){ __swallow(e, 'decor:ba-sync'); }
+  }
+  /* «قبل/بعد» في الواجهة العربيّة: طبقة «قبل» (inset:0 + width) يتجاهل فيها RTL الطرف الأيسر فتُثبَّت من اليمين، والخطّ والمقبض
+     يُحسبان من اليسار — بالمسبار عند ٤٠٪: الطبقة ٧١٦..١٠٢٠ والخطّ عند ٥٦٤. تُثبَّت من اليسار صراحةً (right:auto). */
+  if(baBeforeClip) baBeforeClip.style.right = 'auto';
 
   /* ---- v-decor-compare: «غرفتي بكل الأنماط» — حتى ٣ أنماط جنبًا إلى جنب ---- */
   const cmpChecksEl = $('#designCompareChecks');
@@ -2390,6 +2441,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           connectBox.style.display = 'block';
           connectedBox.style.display = 'none';
           setStatus(d.notConnected ? '' : T().notConnected);
+          emPrefetchTicket(); // v-oauth-bind
           return;
         }
         throw new Error(d.error || 'load failed');
@@ -2485,6 +2537,27 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   btnClose.addEventListener('click', () => { modal.style.display = 'none'; });
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
+  /* v-oauth-bind: state كان رمز الجلسة نفسه (٣٠ يومًا) — يمرّ في روابط جوجل وسجلّاتها، ومن أكمل رابطًا يحمل رمز
+     غيره رُبطت Gmail الخاصّة به بحساب ذلك الغير. الآن تذكرة ربط من الخادم (استعمال واحد، عشر دقائق) تُسكّ مسبقًا
+     حين يظهر زرّ الربط، فيبقى فتح سفاري في غلاف الآيفون داخل لمسة المستخدم بلا انتظار شبكة قبله. */
+  const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);
+  let emTicket = null; // { t: التذكرة، at: وقت سكّها، tok: الجلسة التي سكّتها — حساب آخر على الجهاز نفسه لا يستعملها }
+  async function emMintTicket(token){
+    const r = await fetch('/api/system?action=email-link-ticket', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    let d = null;
+    try{ d = await r.json(); }catch(e){ __swallow(e, "misc:app-12-studios#3"); }
+    if(!r.ok || !d || !d.ticket) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    return d.ticket;
+  }
+  function emPrefetchTicket(){
+    const tok = localStorage.getItem('aiapp_auth_token');
+    if(!tok) return;
+    emMintTicket(tok).then((tk) => { emTicket = { t: tk, at: Date.now(), tok }; }, (e) => { emTicket = null; __swallow(e, "misc:app-12-studios#4"); });
+  }
+
   connectBtn.addEventListener('click', () => {
     const token = localStorage.getItem('aiapp_auth_token');
     if(!token){
@@ -2493,20 +2566,28 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(authBtn) authBtn.click();
       return;
     }
-    /* v-email-start-server: الرابط كان يُبنى هنا بـ window.location.origin ومعرّف
-       عميل مكتوب، بينما يبادل الخادم بـ SITE_URL ومعرّف البيئة — وجوجل تشترط
-       تطابق redirect_uri حرفًا بحرف، فكان الربط يفشل («مساعد الإيميل لا يعمل»).
-       الآن الخادم يبني الرابط بقيمه هو نفسها. (api/_lib/email-google-start.js) */
-    const emStartUrl = '/api/system?action=email-google-start&state=' + encodeURIComponent(token);
-    /* v-google-safari: داخل تطبيق الآيفون تفويض جوجل داخل الويب-فيو يفشل
-       (نفس علة الدخول) — نفتح سفاري، والربط يُخزَّن في الخادم تحت حساب
-       المستخدم فيظهر عند العودة والتحديث. */
-    let emIosWrap = false;
-    /* v-google-safari-2: الكشف بجسر كاباسيتور «bridge» — الغلاف الفعلي بلا جسور omran */
-    try { emIosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
-    try { if(!emIosWrap){ const mh = window.webkit && window.webkit.messageHandlers; emIosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
-    if (emIosWrap) { window.open(location.origin + emStartUrl, '_blank'); return; }
-    window.location.href = emStartUrl;
+    const go = (ticket) => {
+      /* v-email-start-server: الرابط كان يُبنى هنا بـ window.location.origin ومعرّف
+         عميل مكتوب، بينما يبادل الخادم بـ SITE_URL ومعرّف البيئة — وجوجل تشترط
+         تطابق redirect_uri حرفًا بحرف، فكان الربط يفشل («مساعد الإيميل لا يعمل»).
+         الآن الخادم يبني الرابط بقيمه هو نفسها. (api/_lib/email-google-start.js) */
+      const emStartUrl = '/api/system?action=email-google-start&state=' + encodeURIComponent(ticket);
+      /* v-google-safari: داخل تطبيق الآيفون تفويض جوجل داخل الويب-فيو يفشل
+         (نفس علة الدخول) — نفتح سفاري، والربط يُخزَّن في الخادم تحت حساب
+         المستخدم فيظهر عند العودة والتحديث. */
+      let emIosWrap = false;
+      /* v-google-safari-2: الكشف بجسر كاباسيتور «bridge» — الغلاف الفعلي بلا جسور omran */
+      try { emIosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
+      try { if(!emIosWrap){ const mh = window.webkit && window.webkit.messageHandlers; emIosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
+      if (emIosWrap) { window.open(location.origin + emStartUrl, '_blank'); emPrefetchTicket(); return; }
+      window.location.href = emStartUrl;
+    };
+    // v-oauth-bind: state تذكرة الربط لا رمز الجلسة — المسكوكة مسبقًا تُستعمل مرّة إن لم تقدم، وإلّا تُسكّ الآن.
+    const fresh = (emTicket && emTicket.tok === token && Date.now() - emTicket.at < 8 * 60 * 1000) ? emTicket.t : '';
+    emTicket = null;
+    if(fresh){ go(fresh); return; }
+    connectBtn.disabled = true;
+    emMintTicket(token).then(go, (e) => emLinkError(e && e.message ? e.message : String(e))).finally(() => { connectBtn.disabled = false; });
   });
 
   refreshBtn.addEventListener('click', loadEmails);
@@ -2524,7 +2605,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           setTimeout(() => { btnOpen.click(); }, 300);
         }
         if(err){
-          setTimeout(() => { alert('⚠️ خطأ ربط Gmail: ' + err); }, 300);
+          setTimeout(() => { emLinkError(err); }, 300);
         }
       }
     }catch(e){ /* ignore */ }

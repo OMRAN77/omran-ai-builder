@@ -17,6 +17,7 @@ function load(action) {
     case 'realtime-session': return require('./_lib/realtime-session.js');
     case 'google-start': return require('./_lib/auth-google-start.js');
     case 'email-google-start': return require('./_lib/email-google-start.js');
+    case 'email-link-ticket': return require('./_lib/email-link-ticket.js'); // v-oauth-bind: تذكرة ربط Gmail بدل رمز الجلسة في state
     case 'email-callback': return require('./_lib/email-callback.js');
     case 'email-list': return require('./_lib/email-list.js');
     case 'email-send': return require('./_lib/email-send.js');

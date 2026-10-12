@@ -12259,6 +12259,9 @@ function renderReferral(){
   const username = authGet('aiapp_username');
   const linkEl = $('#acctReferralLink');
   if(linkEl) linkEl.value = username ? (location.origin + '/?ref=' + encodeURIComponent(username)) : '';
+  // v-qr-one: الباركود المفتوح يتبع الرابط — الدخول والخروج لا يعيدان تحميل الصفحة، والصندوق يبقى مفتوحًا بينهما
+  const qrBox = $('#acctQrBox');
+  if(qrBox && qrBox.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
   const bonusEl = $('#acctReferralBonus');
   if(!bonusEl) return;
   if(!username){ bonusEl.textContent = ''; return; }
@@ -12380,10 +12383,11 @@ window.acctToggleRow = function(id, btn) {
 window.acctToggleQr = function() {
   var q = document.getElementById('acctQrBox');
   if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
+  if (q && q.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
 };
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
-  var shareUrl = (u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/download';
+  var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
   var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
   if (navigator.share) {
     try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
@@ -27090,7 +27094,51 @@ const onInstallBtnClick = async () => {
 installButtons.forEach(b => { b.onclick = onInstallBtnClick; });
 window.addEventListener('appinstalled', () => {
   showInstallButtons(false);
+  const pill = document.getElementById('installPill');
+  if(pill) pill.remove();
 });
+
+/* v-qr-one: الباركود الواحد (/app ← download.html) يفتح التطبيق بـ?install=1 على أيّ جهاز: زرّ «تثبيت التطبيق» عائم
+   أعلى الشاشة بنصّ install الموجود في الـ١٤ لغة، ونقره = زرّ التثبيت نفسه (نافذة المتصفّح أو خطوات جهازه).
+   لا يظهر داخل التطبيق المثبّت ولا داخل تطبيق هواوي (الرابط يفتح فيه بفلتر autoVerify، وWebView ليس standalone —
+   جسره OmranRender أو علم المتجر يدلّان عليه)، ويُحذف install من الرابط كي لا يعود مع التحديث (ref يبقى لمن يقرؤه). */
+(function(){
+  try {
+    const here = new URL(location.href);
+    if(here.searchParams.get('install') !== '1') return;
+    here.searchParams.delete('install');
+    history.replaceState(history.state, '', here.pathname + here.search + here.hash);
+    const root = document.documentElement;
+    if(isStandalone() || window.OmranRender || (root && root.classList.contains('store-safe'))) return;
+    const mount = () => {
+      if(document.getElementById('installPill')) return;
+      const d = (typeof window.curT === 'function') ? window.curT() : {};
+      const pill = document.createElement('div');
+      pill.id = 'installPill';
+      pill.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 12px);left:50%;transform:translateX(-50%);z-index:2147483000;display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:#14161c;border:1px solid rgba(212,175,55,.55);box-shadow:0 8px 28px rgba(0,0,0,.45);';
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.style.cssText = 'display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:9px 16px;background:linear-gradient(135deg,#d4af37,#9b791e);color:#111;font:inherit;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap;';
+      go.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>';
+      const label = document.createElement('span');
+      label.setAttribute('data-i18n', 'install');
+      label.textContent = d.install || (I18N.en || {}).install || '';
+      go.appendChild(label);
+      go.onclick = () => { pill.remove(); onInstallBtnClick(); };
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.setAttribute('aria-label', d.closeTitle || (I18N.en || {}).closeTitle || '×');
+      x.textContent = '×';
+      x.style.cssText = 'border:0;background:none;color:#cfd3dc;font-size:20px;line-height:1;width:32px;height:32px;border-radius:50%;cursor:pointer;';
+      x.onclick = () => pill.remove();
+      pill.appendChild(go);
+      pill.appendChild(x);
+      document.body.appendChild(pill);
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
+    else setTimeout(mount, 0);
+  } catch(e){ __swallow(e, "misc:app-10-features#install-pill"); }
+})();
 
 /* v-browser-install: /?q=نصّ (بحث المتصفّح عبر opensearch.xml، وقائمة إضافة المتصفّح) يعبّئ صندوق
    المحادثة ولا يرسل — الإرسال بيد المستخدم. يُحذف q من الرابط كي لا يعود مع التحديث. */
@@ -28626,7 +28674,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     go.onclick = function(){ make(t); };
     panel.appendChild(go);
     var st = document.createElement('div'); st.id = 'vtStatus'; st.style.cssText = 'display:none;margin-top:10px;font-size:13px;line-height:1.7;';
-    var out = document.createElement('div'); out.id = 'vtOut'; out.style.cssText = 'margin-top:10px;';
+    /* v-scene-kinds: مشهد التوليد يُركَّب تحت سطر الحالة — حيث تظهر النتيجة — فالنتيجة بعرضه (٧٦٠ موسَّطة) */
+    var out = document.createElement('div'); out.id = 'vtOut'; out.style.cssText = 'margin-top:10px;max-width:760px;margin-inline:auto;';
     panel.appendChild(st); panel.appendChild(out);
     try{ panel.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
   }
@@ -30982,6 +31031,7 @@ async function __safeJson(res){
           cell.appendChild(vb);
           gridEl.appendChild(cell);
         });
+        dsReveal(gridEl); /* v-scene-kinds */
         setStatus(t('designAiDone'));
         return;
       }
@@ -30995,6 +31045,7 @@ async function __safeJson(res){
       }
       downloadEl.href = dataUrl;
       downloadEl.style.display = 'block';
+      dsReveal((baWrap && baWrap.style.display !== 'none') ? baWrap : resultEl); /* v-scene-kinds */
       setStatus(t('designAiDone'));
     } catch(e){
       setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
@@ -31086,6 +31137,55 @@ async function __safeJson(res){
   window.__designShowBA = showBeforeAfter;
   window.__designBAHide = baHide;
   window.__designSourceUrl = function(){ return selectedBase64 ? ('data:' + selectedMime + ';base64,' + selectedBase64) : ''; };
+
+  /* v-scene-kinds (المالك ١١ أكتوبر بصورة مشاهد الديكور: «والثانية للديكور… وكلّهم نفس الأفكار»): مشهد التوليد يُركَّب أعلى الاستوديو
+     مكان صندوق الأفكار والرفع (app-34-gen-wait، اللوحة decor). والنتيجة — سحّاب قبل/بعد أو الصورة المفردة أو شبكة التصاميم الأربعة —
+     وزرّ التحميل كانت تحت زرّ «صمم الغرفة» بلا تمرير إليها؛ تُنقل (العقد نفسها بمستمعيها) إلى قبل صندوق الأفكار، حيث كان المشهد،
+     وبعرضه (٧٦٠ موسَّطة). */
+  const DS_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };
+  (function(){
+    try{
+      const anchor = document.getElementById('designAiIdeas');
+      if(!anchor || !anchor.parentNode) return;
+      [baWrap, resultEl, gridEl, downloadEl].forEach((n) => {
+        if(!n) return;
+        anchor.parentNode.insertBefore(n, anchor);
+        Object.assign(n.style, DS_RESULT_STYLE);
+      });
+    }catch(e){ __swallow(e, 'decor:result-inplace'); }
+  })();
+  /* تدخل كاملة في الشاشة: عرض حاوية الصورة يُحدّ بنسبتها حتى يدخل ارتفاعها في DS_RESULT_VH من الشاشة (غرفة طوليّة بعرض ٧٦٠
+     أطول من الشاشة). الصور العرضيّة — أغلب الغرف — تبقى بعرض المشهد. */
+  const DS_RESULT_VH = 0.7;
+  function dsFit(img, box){
+    try{
+      if(!img || !box || !img.naturalWidth || !img.naturalHeight) return;
+      const maxH = Math.round(window.innerHeight * DS_RESULT_VH);
+      box.style.maxWidth = Math.min(760, Math.round(maxH * img.naturalWidth / img.naturalHeight)) + 'px';
+    }catch(e){ __swallow(e, 'decor:result-fit'); }
+  }
+  function dsFitAll(){ dsFit(baAfter, baWrap); dsFit(resultEl, resultEl); }
+  if(baAfter) baAfter.addEventListener('load', dsFitAll);
+  if(resultEl) resultEl.addEventListener('load', dsFitAll);
+  window.addEventListener('resize', dsFitAll);
+  /* النتيجة مخفيّة لحظة عرضها (المشهد ما زال مكانها حتى المسح التالي) — التمرير إليها يُنفَّذ حين تظهر فعلًا (nearest: من بقي
+     عند المشهد لا يتحرّك عنده شيء)، وعرض صورة «قبل» في السحّاب (بالبكسل، كان يُقاس عند العرض فيصير صفرًا) يتبع مقاس حاويته. */
+  function dsReveal(el){
+    try{
+      if(!el) return;
+      const go = () => { try{ el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(err){ __swallow(err, 'decor:scroll'); } };
+      if(el.clientWidth){ go(); return; }
+      if(typeof ResizeObserver !== 'function') return;
+      const ro = new ResizeObserver(() => { if(!el.clientWidth) return; ro.disconnect(); go(); });
+      ro.observe(el);
+    }catch(e){ __swallow(e, 'decor:reveal'); }
+  }
+  if(baWrap && baBefore && typeof ResizeObserver === 'function'){
+    try{ new ResizeObserver(() => { if(baWrap.clientWidth) baSize(); }).observe(baWrap); }catch(e){ __swallow(e, 'decor:ba-sync'); }
+  }
+  /* «قبل/بعد» في الواجهة العربيّة: طبقة «قبل» (inset:0 + width) يتجاهل فيها RTL الطرف الأيسر فتُثبَّت من اليمين، والخطّ والمقبض
+     يُحسبان من اليسار — بالمسبار عند ٤٠٪: الطبقة ٧١٦..١٠٢٠ والخطّ عند ٥٦٤. تُثبَّت من اليسار صراحةً (right:auto). */
+  if(baBeforeClip) baBeforeClip.style.right = 'auto';
 
   /* ---- v-decor-compare: «غرفتي بكل الأنماط» — حتى ٣ أنماط جنبًا إلى جنب ---- */
   const cmpChecksEl = $('#designCompareChecks');
@@ -33021,6 +33121,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           connectBox.style.display = 'block';
           connectedBox.style.display = 'none';
           setStatus(d.notConnected ? '' : T().notConnected);
+          emPrefetchTicket(); // v-oauth-bind
           return;
         }
         throw new Error(d.error || 'load failed');
@@ -33116,6 +33217,27 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   btnClose.addEventListener('click', () => { modal.style.display = 'none'; });
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
+  /* v-oauth-bind: state كان رمز الجلسة نفسه (٣٠ يومًا) — يمرّ في روابط جوجل وسجلّاتها، ومن أكمل رابطًا يحمل رمز
+     غيره رُبطت Gmail الخاصّة به بحساب ذلك الغير. الآن تذكرة ربط من الخادم (استعمال واحد، عشر دقائق) تُسكّ مسبقًا
+     حين يظهر زرّ الربط، فيبقى فتح سفاري في غلاف الآيفون داخل لمسة المستخدم بلا انتظار شبكة قبله. */
+  const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);
+  let emTicket = null; // { t: التذكرة، at: وقت سكّها، tok: الجلسة التي سكّتها — حساب آخر على الجهاز نفسه لا يستعملها }
+  async function emMintTicket(token){
+    const r = await fetch('/api/system?action=email-link-ticket', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    let d = null;
+    try{ d = await r.json(); }catch(e){ __swallow(e, "misc:app-12-studios#3"); }
+    if(!r.ok || !d || !d.ticket) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    return d.ticket;
+  }
+  function emPrefetchTicket(){
+    const tok = localStorage.getItem('aiapp_auth_token');
+    if(!tok) return;
+    emMintTicket(tok).then((tk) => { emTicket = { t: tk, at: Date.now(), tok }; }, (e) => { emTicket = null; __swallow(e, "misc:app-12-studios#4"); });
+  }
+
   connectBtn.addEventListener('click', () => {
     const token = localStorage.getItem('aiapp_auth_token');
     if(!token){
@@ -33124,20 +33246,28 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(authBtn) authBtn.click();
       return;
     }
-    /* v-email-start-server: الرابط كان يُبنى هنا بـ window.location.origin ومعرّف
-       عميل مكتوب، بينما يبادل الخادم بـ SITE_URL ومعرّف البيئة — وجوجل تشترط
-       تطابق redirect_uri حرفًا بحرف، فكان الربط يفشل («مساعد الإيميل لا يعمل»).
-       الآن الخادم يبني الرابط بقيمه هو نفسها. (api/_lib/email-google-start.js) */
-    const emStartUrl = '/api/system?action=email-google-start&state=' + encodeURIComponent(token);
-    /* v-google-safari: داخل تطبيق الآيفون تفويض جوجل داخل الويب-فيو يفشل
-       (نفس علة الدخول) — نفتح سفاري، والربط يُخزَّن في الخادم تحت حساب
-       المستخدم فيظهر عند العودة والتحديث. */
-    let emIosWrap = false;
-    /* v-google-safari-2: الكشف بجسر كاباسيتور «bridge» — الغلاف الفعلي بلا جسور omran */
-    try { emIosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
-    try { if(!emIosWrap){ const mh = window.webkit && window.webkit.messageHandlers; emIosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
-    if (emIosWrap) { window.open(location.origin + emStartUrl, '_blank'); return; }
-    window.location.href = emStartUrl;
+    const go = (ticket) => {
+      /* v-email-start-server: الرابط كان يُبنى هنا بـ window.location.origin ومعرّف
+         عميل مكتوب، بينما يبادل الخادم بـ SITE_URL ومعرّف البيئة — وجوجل تشترط
+         تطابق redirect_uri حرفًا بحرف، فكان الربط يفشل («مساعد الإيميل لا يعمل»).
+         الآن الخادم يبني الرابط بقيمه هو نفسها. (api/_lib/email-google-start.js) */
+      const emStartUrl = '/api/system?action=email-google-start&state=' + encodeURIComponent(ticket);
+      /* v-google-safari: داخل تطبيق الآيفون تفويض جوجل داخل الويب-فيو يفشل
+         (نفس علة الدخول) — نفتح سفاري، والربط يُخزَّن في الخادم تحت حساب
+         المستخدم فيظهر عند العودة والتحديث. */
+      let emIosWrap = false;
+      /* v-google-safari-2: الكشف بجسر كاباسيتور «bridge» — الغلاف الفعلي بلا جسور omran */
+      try { emIosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
+      try { if(!emIosWrap){ const mh = window.webkit && window.webkit.messageHandlers; emIosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
+      if (emIosWrap) { window.open(location.origin + emStartUrl, '_blank'); emPrefetchTicket(); return; }
+      window.location.href = emStartUrl;
+    };
+    // v-oauth-bind: state تذكرة الربط لا رمز الجلسة — المسكوكة مسبقًا تُستعمل مرّة إن لم تقدم، وإلّا تُسكّ الآن.
+    const fresh = (emTicket && emTicket.tok === token && Date.now() - emTicket.at < 8 * 60 * 1000) ? emTicket.t : '';
+    emTicket = null;
+    if(fresh){ go(fresh); return; }
+    connectBtn.disabled = true;
+    emMintTicket(token).then(go, (e) => emLinkError(e && e.message ? e.message : String(e))).finally(() => { connectBtn.disabled = false; });
   });
 
   refreshBtn.addEventListener('click', loadEmails);
@@ -33155,7 +33285,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           setTimeout(() => { btnOpen.click(); }, 300);
         }
         if(err){
-          setTimeout(() => { alert('⚠️ خطأ ربط Gmail: ' + err); }, 300);
+          setTimeout(() => { emLinkError(err); }, 300);
         }
       }
     }catch(e){ /* ignore */ }
@@ -43912,7 +44042,13 @@ if(document.readyState === 'loading'){
    استوديو الستايل (#studioAiStatus) لم تكن له بطاقة أصلًا. صار له نوع studio بخمسة مشاهد STYLE_SCENES تتبادل بالدور
    (فضّيّ، ذهبيّ، أبيض، عربيّ، نيون) — بالقواعد نفسها التي ثبّتها المالك في الأزياء: عدّاد الصورة نفسه حيّ في موضعه (الحلقة
    والرقم والشريط والنصّ، والمشهد العربيّ بأرقامه العربيّة و«كاملة» كما رُسم)، الحركة داخل الأنبوب خلف العدّاد، الصور موضَّحة،
-   والمشهد مكان خانة «صورتك» (تُخفى هي وعنوانها ما دام). بلا نصّ واجهة جديد: المراحل والتوقّع من نصوص قائمة. */
+   والمشهد مكان خانة «صورتك» (تُخفى هي وعنوانها ما دام). بلا نصّ واجهة جديد: المراحل والتوقّع من نصوص قائمة.
+
+   v-scene-kinds (المالك ١١ أكتوبر بمجلّد صور للفيديو وصورة للديكور: «اللي في الملف للفيديوات وزّعه للفيديوات، والثانية للديكور…
+   وكلّهم نفس الأفكار»، ثمّ: «لا تخلط الديكور مع الفيديوهات»): ثلاث مجموعات مشاهد لا تختلط — صانع الفيديو (VIDEO_SCENES، مكان
+   شاشة المعاينة)، الترندات (TREND_SCENES، حيث تظهر نتيجتها)، والديكور (DECOR_SCENES، مكان صندوق الأفكار والرفع). صوره ليست
+   قالبًا واحدًا: بعضها حلقة ورقم وشريط، وبعضها شريط فقط، وبعضها حلقة على لوحة جانبيّة أو بلا عدّاد — فأجزاء العدّاد صارت
+   اختياريّة (ring/num/bar/cap) ويُرسم حيًّا ما رُسم في الصورة نفسها لا غير، ونصوصها («الفيديو جاهز»…) تبقى من الصورة. */
 (function(){
   if(window.omranGenWait) return;
 
@@ -43924,8 +44060,11 @@ if(document.readyState === 'loading'){
   /* لوحات الأدوات: عنصر الحالة + نوع البطاقة + بادئات «مشغول». البادئة إيموجي فتعمل
      مع كلّ اللغات، وبادئات التمّ/الخطأ (✅❌⚠️🔑⛔) منفصلة عنها فلا تصطدم. */
   var PANELS = [
-    { id: 'video', sel: '#videoMakerStatus', kind: 'video',
-      busy: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️', '💳'] },
+    /* v-scene-kinds: صانع الفيديو — المشهد مكان شاشة المعاينة (.vmk-stage) وتُخفى ما دام؛ النتيجة تعود فيها نفسها */
+    { id: 'video', sel: '#videoMakerStatus', kind: 'vmaker',
+      busy: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️', '💳'],
+      scope: '#videoMakerModal', topSel: '#videoMakerModal .vmk-stage', hideSel: '.vmk-stage',
+      top: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️', '💳'] },
     { id: 'styles', sel: '#portraitStyleStatus', kind: 'styles',
       busy: ['⏳', '🎞️'] },
     { id: 'fashion', sel: '#fashionAiStatus', kind: 'fashion',
@@ -43940,7 +44079,16 @@ if(document.readyState === 'loading'){
     { id: 'studio', sel: '#studioAiStatus', kind: 'studio',
       busy: ['🎨'],
       scope: '#studioAiModal', topSel: '#studioAiModal .stStep[data-i18n="studioStepPhoto"]', top: ['🎨'],
-      hideSel: '.stStep[data-i18n="studioStepPhoto"], #studioAiSlots, #studioAiResultWrap, #studioMultiResults, #studioAiDownloadLink, #studioAiFavoriteSaveBtn' }
+      hideSel: '.stStep[data-i18n="studioStepPhoto"], #studioAiSlots, #studioAiResultWrap, #studioMultiResults, #studioAiDownloadLink, #studioAiFavoriteSaveBtn' },
+    /* v-scene-kinds: الترندات — سطر حالتها يُبنى مع لوحة كلّ ترند، والمشهد تحته حيث تظهر النتيجة (#vtOut). حالة الترند
+       المتعدّد المشاهد تبدأ بـ«المشهد ١ من ٣…» ثمّ ⏳ — فتُعرف بوجود ⏳ لا ببدايته (busyHas). وسطر الحالة تحت زرّ «اصنع» في آخر
+       اللوحة، فالمشهد يُركَّب عند حافّة الشاشة السفلى — يُمرَّر إليه (scroll) */
+    { id: 'vtrend', sel: '#vtStatus', kind: 'vtrend', busy: ['⏳'], busyHas: ['⏳'], scroll: true },
+    /* v-scene-kinds: الديكور — المشهد مكان صندوق الأفكار والرفع (#designAiIdeas) ويُخفى ما دام هو والنتيجة السابقة */
+    { id: 'decor', sel: '#designAiStatus', kind: 'decor',
+      busy: ['🎨'],
+      scope: '#designAiModal', topSel: '#designAiIdeas', top: ['🎨'],
+      hideSel: '#designAiIdeas, #designBAWrap, #designAiResult, #designAiGrid, #designAiDownloadLink' }
   ];
 
   /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء */
@@ -43997,6 +44145,10 @@ if(document.readyState === 'loading'){
     },
     slow: KINDS.image.slow
   };
+  /* v-scene-kinds: صانع الفيديو والترندات بنصوص الفيديو، والديكور بنصوص الصور — بلا نصّ جديد (scenes تُربط أدناه) */
+  KINDS.vmaker = { est: 120, hint: KINDS.video.hint, expect: KINDS.video.expect, stages: KINDS.video.stages, slow: KINDS.video.slow };
+  KINDS.vtrend = { est: 120, hint: KINDS.video.hint, expect: KINDS.video.expect, stages: KINDS.video.stages, slow: KINDS.video.slow };
+  KINDS.decor = { est: 30, hint: KINDS.image.hint, expect: KINDS.image.expect, stages: KINDS.image.stages, slow: KINDS.image.slow };
 
   var CSS_ID = 'omran-genwait-css';
   var CSS = ''
@@ -44120,6 +44272,40 @@ if(document.readyState === 'loading'){
   ];
   KINDS.studio.scenes = STYLE_SCENES;
   KINDS.studio.sceneKey = 'aiapp_st_scene';
+  /* @vd-scenes:start — مولَّد من قياسات الصور (لا يُحرَّر يدويًّا: يُعاد توليده مع أيّ صورة جديدة) */
+  var VD_FONT = { family: "'Bahnschrift','Segoe UI','Helvetica Neue','Roboto',Arial,sans-serif", weight: 300 };
+  var VIDEO_SCENES = [
+    { id: 'vdMain', src: '/assets/videos/scenes/main.webp?v=1', w: 1365, h: 768, bg: '#2c2f29', tube: { x: 446, y: 70, w: 484, h: 500, blend: 'screen', gap: [402, 474] }, flow: '#d4fcf3', bar: { x: 575.2, y: 411.3, w: 228.6, h: 12.9, grad: ['#93f7e2', '#d6fdf0'] }, sprite: true, font: VD_FONT, ring: { cx: 687.6, cy: 319.2, hole: 79.5, img: { src: '/assets/videos/scenes/main-r1.webp?v=1', x: 613, y: 244.5, w: 149, h: 149 } }, num: { x: 690.8, y: 334.5, size: 45.5, dw: 22.4, pw: 31.2 }, ink: '#d6fbf9' },
+    { id: 'vdDesign', src: '/assets/videos/scenes/design.webp?v=1', w: 692, h: 384, bg: '#2a2d27', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#d9fbf4', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.9, grad: ['#a0f5e4', '#8dfae3'] }, sprite: true, font: VD_FONT, ring: { cx: 346.8, cy: 165.8, hole: 40.5, img: { src: '/assets/videos/scenes/design-r1.webp?v=1', x: 308, y: 127, w: 77, h: 77 } }, num: { x: 347.3, y: 174, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#d6f8ec' },
+    { id: 'vdQuantum', src: '/assets/videos/scenes/quantum.webp?v=1', w: 692, h: 384, bg: '#2c201b', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#fccfc6', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.4, grad: ['#f78671', '#fb987e'] } },
+    { id: 'vd2050', src: '/assets/videos/scenes/world2050.webp?v=1', w: 673, h: 384, bg: '#3b4948', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d3fbfb', bar: { x: 290.2, y: 215.8, w: 113.4, h: 6.9, grad: ['#91f5f5', '#98f8f7'] } },
+    { id: 'vdMain2', src: '/assets/videos/scenes/main2.webp?v=1', w: 1000, h: 563, bg: '#282a24', tube: { x: 322, y: 52, w: 356, h: 372, blend: 'screen', gap: [293, 346] }, flow: '#d2fff4', bar: { x: 417.7, y: 300.8, w: 162.9, h: 9.9, grad: ['#8efee4', '#d3fef2'] }, sprite: true, font: VD_FONT, ring: { cx: 498.7, cy: 235, hole: 60, img: { src: '/assets/videos/scenes/main2-r1.webp?v=1', x: 442.5, y: 179, w: 112, h: 112 } }, num: { x: 502, y: 245.5, size: 33.1, dw: 16.5, pw: 22.9 }, ink: '#dffbf9' },
+    { id: 'vdNet', src: '/assets/videos/scenes/network.webp?v=1', w: 673, h: 384, bg: '#1c2d3a', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#dff7ff', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.9, grad: ['#afecff', '#ccf5ff'] }, sprite: true, font: VD_FONT, ring: { cx: 346.4, cy: 165.7, hole: 42, img: { src: '/assets/videos/scenes/network-r1.webp?v=1', x: 306, y: 125.5, w: 80, h: 80 } }, num: { x: 348.8, y: 175, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#c9f1f8' },
+    { id: 'vdSea', src: '/assets/videos/scenes/sea.webp?v=1', w: 692, h: 384, bg: '#11242c', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c3edf9', bar: { x: 288.7, y: 213.8, w: 106.4, h: 6.9, grad: ['#68d3f1', '#e5ede0'] } },
+    { id: 'vdPortal', src: '/assets/videos/scenes/portal.webp?v=1', w: 692, h: 384, bg: '#15242d', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c5e9f4', bar: { x: 289.2, y: 213.8, w: 105.9, h: 7.4, grad: ['#6fc7e4', '#e0ddd8'] } },
+    { id: 'vdGalaxy', src: '/assets/videos/scenes/galaxy.webp?v=1', w: 692, h: 384, bg: '#1d1e23', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c6f2fd', bar: { x: 288.2, y: 213.8, w: 106.9, h: 6.9, grad: ['#71defa', '#c2f7ff'] } },
+    { id: 'vdGreen', src: '/assets/videos/scenes/green.webp?v=1', w: 673, h: 384, bg: '#3d4b49', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d7fefe', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.4, grad: ['#9afcfc', '#c4fefe'] } },
+    { id: 'vdMind', src: '/assets/videos/scenes/mind.webp?v=1', w: 692, h: 384, bg: '#2d231f', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#f5cfc5', bar: { x: 289.7, y: 214.8, w: 110.9, h: 6.9, grad: ['#e6866e', '#ea8e76'] } },
+    { id: 'vdDna', src: '/assets/videos/scenes/dna.webp?v=1', w: 673, h: 384, bg: '#3e4b49', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d0faf5', bar: { x: 291.7, y: 214.3, w: 105.9, h: 7.4, grad: ['#8af2e5', '#b0fbed'] } },
+    { id: 'vdHeritage', src: '/assets/videos/scenes/heritage.webp?v=1', w: 673, h: 384, bg: '#3e4845', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cdf8f3', bar: { x: 291.2, y: 214.3, w: 105.9, h: 6.9, grad: ['#83ede1', '#d3f8e3'] } },
+    { id: 'vdBrief', src: '/assets/videos/scenes/brief.webp?v=1', w: 673, h: 384, bg: '#394544', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cff6f5', bar: { x: 291.7, y: 214.3, w: 104.9, h: 6.9, grad: ['#88e8e5', '#def3e7'] } }
+  ];
+  var TREND_SCENES = [
+    { id: 'vtStory', src: '/assets/videos/scenes/trend-story.webp?v=1', w: 692, h: 384, bg: '#2e2e33', tube: { x: 228, y: 36, w: 236, h: 254, blend: 'screen' }, flow: '#e5f6ff', sprite: true, font: VD_FONT, ring: { cx: 443.4, cy: 92.4, hole: 21.2, img: { src: '/assets/videos/scenes/trend-story-r1.webp?v=1', x: 425.5, y: 72, w: 35.5, h: 40.5 } }, num: { x: 444.8, y: 95.6, size: 8.8, dw: 5, pw: 7 }, ink: '#f0f4f6' },
+    { id: 'vtAnime', src: '/assets/videos/scenes/trend-anime.webp?v=1', w: 673, h: 384, bg: '#404d50', tube: { x: 230, y: 36, w: 236, h: 254, blend: 'multiply' }, flow: '#567886', sprite: true, font: VD_FONT, ring: { cx: 200.3, cy: 150.4, hole: 20.6, img: { src: '/assets/videos/scenes/trend-anime-r1.webp?v=1', x: 182, y: 130.5, w: 37, h: 39.5 } }, num: { x: 200.3, y: 154.6, size: 10.2, dw: 6, pw: 8.3 }, ink: '#eef4f4' },
+    { id: 'vtVoice', src: '/assets/videos/scenes/trend-voice.webp?v=1', w: 692, h: 384, bg: '#152432', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [207, 251] }, flow: '#c9ebfa', bar: { x: 289.2, y: 213.3, w: 105.4, h: 7.9, grad: ['#78cef2', '#b2b9cd'] } },
+    { id: 'vtAnim', src: '/assets/videos/scenes/trend-animation.webp?v=1', w: 673, h: 384, bg: '#3a474a', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d1f9fa', bar: { x: 292.2, y: 214.3, w: 104.9, h: 6.9, grad: ['#8cf0f2', '#e6f8f3'] } }
+  ];
+  var DECOR_SCENES = [
+    { id: 'dcBed', src: '/assets/decor/scenes/bedroom.webp?v=1', w: 689, h: 382, bg: '#342c28', tube: { x: 232, y: 34, w: 226, h: 246, blend: 'screen' }, flow: '#e5f6ff' },
+    { id: 'dcLiving', src: '/assets/decor/scenes/living.webp?v=1', w: 676, h: 382, bg: '#2b3036', tube: { x: 222, y: 34, w: 226, h: 246, blend: 'screen' }, flow: '#e5f6ff', sprite: true, font: VD_FONT, ring: { cx: 136.1, cy: 131.4, hole: 35.2, img: { src: '/assets/decor/scenes/living-r1.webp?v=1', x: 105, y: 98, w: 61.5, h: 66.5 } }, num: { x: 136.9, y: 137.8, size: 19, dw: 8.2, pw: 11.3 }, ink: '#e1eaed', more: [{ cx: 522.1, cy: 128.5, hole: 29.9, img: { src: '/assets/decor/scenes/living-r2.webp?v=1', x: 495, y: 100.5, w: 54, h: 56 }, num: { x: 521.7, y: 133.8, size: 13.5, dw: 6.6, pw: 9.2 }, ink: '#dfe6f2' }] },
+    { id: 'dcKitchen', src: '/assets/decor/scenes/kitchen.webp?v=1', w: 689, h: 386, bg: '#252d2d', tube: { x: 232, y: 34, w: 226, h: 250, blend: 'screen' }, flow: '#e5f6ff', sprite: true, font: VD_FONT, ring: { cx: 560.8, cy: 132.6, hole: 33.2, img: { src: '/assets/decor/scenes/kitchen-r1.webp?v=1', x: 531, y: 101, w: 59, h: 62.5 } }, num: { x: 560.6, y: 137.2, size: 12.7, dw: 7.1, pw: 9.9 }, ink: '#deede5' },
+    { id: 'dcCafe', src: '/assets/decor/scenes/cafe.webp?v=1', w: 676, h: 386, bg: '#29221e', tube: { x: 228, y: 34, w: 226, h: 250, blend: 'screen' }, flow: '#e5f6ff', sprite: true, font: VD_FONT, ring: { cx: 342.9, cy: 79.6, hole: 32.3, img: { src: '/assets/decor/scenes/cafe-r1.webp?v=1', x: 313.5, y: 50, w: 59, h: 59 } }, num: { x: 343.4, y: 85, size: 14.1, dw: 7.7, pw: 10.7 }, ink: '#ebe7dc' }
+  ];
+  /* @vd-scenes:end */
+  KINDS.vmaker.scenes = VIDEO_SCENES; KINDS.vmaker.sceneKey = 'aiapp_vd_scene';
+  KINDS.vtrend.scenes = TREND_SCENES; KINDS.vtrend.sceneKey = 'aiapp_vt_scene';
+  KINDS.decor.scenes = DECOR_SCENES; KINDS.decor.sceneKey = 'aiapp_dc_scene';
   /* التبادل: مشهد لكلّ توليد بالدور، ويُتذكّر الدور بين الجلسات. v-style-scene: دور لكلّ نوع (cfg.scenes + cfg.sceneKey)؛
      بلا وسيط = الأزياء كما كان. peek = المشهد القادم بلا تقديم الدور (للتحميل المسبق). */
   var SCENE_KEY = 'aiapp_fx_scene';
@@ -44140,34 +44326,51 @@ if(document.readyState === 'loading'){
   /* هيكل المشهد: إطار تأثيرات بنسبة الصورة (يطابقها بأيّ مقاس وبأيّ قصّ جانبيّ) فيه الأنبوب والتموّجات وعدّاد الصورة SVG بإحداثيّاتها.
      داخل الحلقة رقم فقط؛ القوس يمتلئ على حافّتها، والجريان مثقوب عندها فيبقى خلفها. */
   function sceneHtml(sc){
-    var t = sc.tube, r = sc.ring, L = arcLen(sc);
-    var hole = 'radial-gradient(ellipse ' + pc(r.hole, t.w) + ' ' + pc(r.hole, t.h) + ' at ' + pc(r.cx - t.x, t.w) + ' ' + pc(r.cy - t.y, t.h) + ',transparent 0,transparent 96%,#000 100%)';
-    var rot = ' transform="rotate(-90 ' + r.cx + ' ' + r.cy + ')"';
+    /* v-scene-kinds: الحلقة والرقم والشريط والنصّ والأنبوب اختياريّة — يُبنى ما في بيانات المشهد فقط. الجريان يُثقب عند الحلقة إن
+       كانت داخل الأنبوب (حلقات اللوحات الجانبيّة خارجه). مشهدا الأزياء ومشاهد الستايل فيها الكلّ فهيكلها كما كان حرفًا. */
+    var t = sc.tube, r = sc.ring, L = r ? arcLen(sc) : 0;
+    var inTube = !!(r && t && r.cx > t.x && r.cx < t.x + t.w && r.cy > t.y && r.cy < t.y + t.h);
+    var hole = inTube ? 'radial-gradient(ellipse ' + pc(r.hole, t.w) + ' ' + pc(r.hole, t.h) + ' at ' + pc(r.cx - t.x, t.w) + ' ' + pc(r.cy - t.y, t.h) + ',transparent 0,transparent 96%,#000 100%)' : '';
+    var rot = r ? ' transform="rotate(-90 ' + r.cx + ' ' + r.cy + ')"' : '';
+    /* خطّ أرقام المشهد إن خالف الافتراضيّ (أرقام صور الفيديو والديكور نحيفة غير مضغوطة) — نمط سطريّ يغلب قاعدة الصنف */
+    var fst = sc.font ? ' style="font-family:' + sc.font.family + ';font-weight:' + sc.font.weight + '"' : '';
     /* v-style-scene: حزام بلا جريان (tube.gap = [من، إلى] بإحداثيّات الصورة) — يخفت الجريان فوق الشريط ويعود تحت النصّ */
     var band = '';
-    if(t.gap){
+    if(t && t.gap){
       var g0 = (t.gap[0] - t.y) / t.h * 100, g1 = (t.gap[1] - t.y) / t.h * 100, rd = function(v){ return (Math.round(v * 100) / 100) + '%'; };
       var bm = 'linear-gradient(180deg,transparent 0,#000 6%,#000 ' + rd(g0 - 3.5) + ',transparent ' + rd(g0) + ',transparent ' + rd(g1) + ',#000 ' + rd(g1 + 3.5) + ',#000 94%,transparent 100%)';
       band = ' style="-webkit-mask-image:' + bm + ';mask-image:' + bm + '"';
     }
-    var h = '<div class="genw-frame"><div class="genw-canvas"><div class="genw-fx">'
-      + '<div class="genw-tube" style="left:' + pc(t.x, sc.w) + ';top:' + pc(t.y, sc.h) + ';width:' + pc(t.w, sc.w) + ';height:' + pc(t.h, sc.h) + ';mix-blend-mode:' + t.blend + '">'
-      +   '<span' + band + '><em style="-webkit-mask-image:' + hole + ';mask-image:' + hole + '"><b></b><b></b><b></b></em></span></div>';
+    var h = '<div class="genw-frame"><div class="genw-canvas"><div class="genw-fx">';
+    if(t) h += '<div class="genw-tube" style="left:' + pc(t.x, sc.w) + ';top:' + pc(t.y, sc.h) + ';width:' + pc(t.w, sc.w) + ';height:' + pc(t.h, sc.h) + ';mix-blend-mode:' + t.blend + '">'
+      +   '<span' + band + '><em' + (hole ? ' style="-webkit-mask-image:' + hole + ';mask-image:' + hole + '"' : '') + '><b></b><b></b><b></b></em></span></div>';
     if(sc.rip) h += '<div class="genw-rip" style="left:' + pc(sc.rip.x, sc.w) + ';top:' + pc(sc.rip.y, sc.h) + ';width:' + pc(sc.rip.w, sc.w) + ';height:' + pc(sc.rip.h, sc.h) + ';color:' + sc.rip.color + '"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>';
+    /* v-scene-kinds: قوس الحلقة صورةً (ring.img) — قصّة شفّافة من الصورة الأصليّة فوق موضعها، تُكشف بقناع مخروطيّ من الأعلى مع عقارب
+       الساعة. بها يبقى القوس بتدرّج ألوانه وميل لوحته كما رُسم بالضبط؛ الخلفيّة تحتها مجراه الخافت. */
+    var arcImg = function(g){ return '<i class="genw-arcimg" style="left:' + pc(g.x, sc.w) + ';top:' + pc(g.y, sc.h) + ';width:' + pc(g.w, sc.w) + ';height:' + pc(g.h, sc.h) + ';background-image:url(' + g.src + ')"></i>'; };
+    if(r && r.img) h += arcImg(r.img);
+    for(var ai = 0; sc.more && ai < sc.more.length; ai++){ if(sc.more[ai].img) h += arcImg(sc.more[ai].img); }
     h += '<svg class="genw-live" viewBox="0 0 ' + sc.w + ' ' + sc.h + '" aria-hidden="true">';
     /* v-style-scene: تعبئة الشريط بتدرّجه كما رُسم (على طول المجرى كلّه — فيظهر منه بقدر التقدّم)، وصفر المشهد بأرقامه */
-    var barFill = sc.barFill, zero = sc.dig ? sc.dig.charAt(0) : '0', capSfx = sc.cap.suffix == null ? ' COMPLETE' : sc.cap.suffix;
-    if(sc.bar.grad){
+    var barFill = sc.barFill, zero = sc.dig ? sc.dig.charAt(0) : '0', capSfx = !sc.cap ? '' : (sc.cap.suffix == null ? ' COMPLETE' : sc.cap.suffix);
+    if(sc.bar && sc.bar.grad){
       barFill = 'url(#genwBarG-' + sc.id + ')';
       h += '<defs><linearGradient id="genwBarG-' + sc.id + '" gradientUnits="userSpaceOnUse" x1="' + sc.bar.x + '" y1="0" x2="' + (sc.bar.x + sc.bar.w) + '" y2="0">'
         + '<stop offset="0" stop-color="' + sc.bar.grad[0] + '"/><stop offset="1" stop-color="' + sc.bar.grad[1] + '"/></linearGradient></defs>';
     }
-    h += '<circle class="genw-arcg" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.glow + '" stroke-width="' + (Math.round(r.sw * 19) / 10) + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
-      + '<circle class="genw-arc" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.arc + '" stroke-width="' + r.sw + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
-      + '<text class="genw-num" x="' + (sc.num.x || r.cx) + '" y="' + sc.num.y + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.num.size + '" fill="' + sc.ink + '">' + zero + '%</text>'
-      + '<rect class="genw-bar" x="' + sc.bar.x + '" y="' + sc.bar.y + '" width="0" height="' + sc.bar.h + '" rx="' + (sc.bar.h / 2) + '" fill="' + barFill + '"></rect>'
-      + '<text class="genw-cap" x="' + (sc.cap.x || r.cx) + '" y="' + sc.cap.y + '" text-anchor="' + (sc.cap.anchor || 'middle') + '" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.capInk + '">' + zero + '%' + capSfx + '</text>';
-    if(sc.cap.word) h += '<text class="genw-capw" x="' + sc.cap.word.x + '" y="' + (sc.cap.word.y || sc.cap.y) + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" textLength="' + sc.cap.word.len + '" font-size="' + (sc.cap.word.size || sc.cap.size) + '" fill="' + sc.capInk + '">' + sc.cap.word.text + '</text>';
+    if(r && !r.img) h += '<circle class="genw-arcg" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.glow + '" stroke-width="' + (Math.round(r.sw * 19) / 10) + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
+      + '<circle class="genw-arc" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.arc + '" stroke-width="' + r.sw + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>';
+    if(sc.num) h += '<text class="genw-num" x="' + (sc.num.x || r.cx) + '" y="' + sc.num.y + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.num.size + '" fill="' + sc.ink + '"' + fst + '>' + zero + '%</text>';
+    if(sc.bar) h += '<rect class="genw-bar" x="' + sc.bar.x + '" y="' + sc.bar.y + '" width="0" height="' + sc.bar.h + '" rx="' + (sc.bar.h / 2) + '" fill="' + barFill + '"></rect>';
+    if(sc.cap) h += '<text class="genw-cap" x="' + (sc.cap.x || r.cx) + '" y="' + sc.cap.y + '" text-anchor="' + (sc.cap.anchor || 'middle') + '" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.capInk + '">' + zero + '%' + capSfx + '</text>';
+    /* حلقات إضافيّة (لوحة جانبيّة ثانية بعدّادها): قوس ووهج ورقم لكلّ واحدة، تمشي مع الرئيسيّة */
+    for(var mi = 0; sc.more && mi < sc.more.length; mi++){
+      var m = sc.more[mi], ml = Math.round(2 * Math.PI * m.r * 10) / 10, mrot = ' transform="rotate(-90 ' + m.cx + ' ' + m.cy + ')"';
+      if(!m.img) h += '<circle class="genw-xarcg" cx="' + m.cx + '" cy="' + m.cy + '" r="' + m.r + '"' + mrot + ' stroke="' + (m.glow || sc.glow) + '" stroke-width="' + (Math.round(m.sw * 19) / 10) + '" stroke-dasharray="' + ml + '" stroke-dashoffset="' + ml + '"></circle>'
+        + '<circle class="genw-xarc" cx="' + m.cx + '" cy="' + m.cy + '" r="' + m.r + '"' + mrot + ' stroke="' + (m.arc || sc.arc) + '" stroke-width="' + m.sw + '" stroke-dasharray="' + ml + '" stroke-dashoffset="' + ml + '"></circle>';
+      if(m.num) h += '<text class="genw-xnum" x="' + (m.num.x || m.cx) + '" y="' + m.num.y + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + m.num.size + '" fill="' + (m.ink || sc.ink) + '"' + fst + '>' + zero + '%</text>';
+    }
+    if(sc.cap && sc.cap.word) h += '<text class="genw-capw" x="' + sc.cap.word.x + '" y="' + (sc.cap.word.y || sc.cap.y) + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" textLength="' + sc.cap.word.len + '" font-size="' + (sc.cap.word.size || sc.cap.size) + '" fill="' + sc.capInk + '">' + sc.cap.word.text + '</text>';
     if(sc.refl) h += '<text class="genw-refl" x="' + r.cx + '" y="0" transform="matrix(1 0 0 -' + sc.refl.sy + ' 0 ' + sc.refl.y + ')" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.refl.ink + '">0% COMPLETE</text>';
     return h + '</svg></div></div></div>'
       + '<div class="genw-stage"></div>'
@@ -44211,8 +44414,10 @@ if(document.readyState === 'loading'){
     /* عدّاد الصورة: SVG يملأ إطار التأثيرات وإحداثيّاته إحداثيّات الصورة */
     + '.genw-live{position:absolute;top:0;left:0;width:100%;height:100%;z-index:3;overflow:visible;direction:ltr}'
     + '.genw-live circle{fill:none}'
-    + '.genw-arc,.genw-arcg{transition:stroke-dashoffset .25s linear}'
-    + '.genw-num,.genw-cap,.genw-refl{font-family:' + HUD_FONT + ';font-weight:700}'
+    + '.genw-arc,.genw-arcg,.genw-xarc,.genw-xarcg{transition:stroke-dashoffset .25s linear}'
+    /* قوس الصورة: فوق الجريان وتحت الأرقام، مخفيّ حتى أوّل رسم */
+    + '.genw-arcimg{position:absolute;z-index:2;background:center/100% 100% no-repeat;-webkit-mask-image:conic-gradient(#000 0,transparent 0);mask-image:conic-gradient(#000 0,transparent 0)}'
+    + '.genw-num,.genw-cap,.genw-refl,.genw-xnum{font-family:' + HUD_FONT + ';font-weight:700}'
     + '.genw-bar{transition:width .25s linear}'
     + '.genw--scene .genw-stage{text-align:center}'
     + '.genw--scene .genw-sub{justify-content:center}'
@@ -44232,6 +44437,12 @@ if(document.readyState === 'loading'){
     + '.genw[class*="genw--st"] .genw-tube b:nth-child(2){background-size:31% 25%}'
     + '.genw[class*="genw--st"] .genw-tube b:nth-child(3){background-size:21% 16.667%}'
     + '@media (prefers-reduced-motion:reduce){.genw--stNeon .genw-frame,.genw--stSilver .genw-frame,.genw--stWhite .genw-frame{animation:none}}'
+    /* v-scene-kinds: في صانع الفيديو المشهد مكان شاشة المعاينة — بعرض عمودها وبلا هامش علويّ؛ وأنبوب صور الفيديو والديكور أعرض
+       من برج الستايل فبلاطاته بين المقاسين */
+    + '.vmk-side .genw--scene{width:100%;margin:0 0 10px}'
+    + '.genw[class*="genw--vd"] .genw-tube b:nth-child(1),.genw[class*="genw--vt"] .genw-tube b:nth-child(1),.genw[class*="genw--dc"] .genw-tube b:nth-child(1){background-size:42% 50%}'
+    + '.genw[class*="genw--vd"] .genw-tube b:nth-child(2),.genw[class*="genw--vt"] .genw-tube b:nth-child(2),.genw[class*="genw--dc"] .genw-tube b:nth-child(2){background-size:26% 25%}'
+    + '.genw[class*="genw--vd"] .genw-tube b:nth-child(3),.genw[class*="genw--vt"] .genw-tube b:nth-child(3),.genw[class*="genw--dc"] .genw-tube b:nth-child(3){background-size:18% 16.667%}'
     /* مربّع الرفع يُخفى ما دام المشهد في مكانه (له display سطريّ فلا بدّ من !important) */
     + '[data-genw-hide]{display:none !important}'
     /* أندرويد: بلا دمج ضوئيّ (أخفّ على المعالج الرسوميّ) وبطبقتين */
@@ -44300,21 +44511,41 @@ if(document.readyState === 'loading'){
       }catch(e){ /* guard-ok — بلا خلفيّة أو جريان يبقى لون المشهد الداكن والعدّاد يعمل */ }
     }
     /* الرقم والقوس والشريط والنصّ (وانعكاسه) — أرقام لاتينيّة كما في تصميم المالك، بعرض حروف الأصل */
-    var sceneArc = sc ? arcLen(sc) : 0;
+    var sceneArc = (sc && sc.ring) ? arcLen(sc) : 0;
+    /* v-scene-kinds: الحلقات الإضافيّة وأرقامها (غائبة في أغلب المشاهد) */
+    var xArcs = root.querySelectorAll('.genw-xarc'), xGlows = root.querySelectorAll('.genw-xarcg'), xNums = root.querySelectorAll('.genw-xnum');
+    var arcImgs = root.querySelectorAll('.genw-arcimg');
     function paintScene(shown){
       var digits = String(shown).length;
       /* v-style-scene: أرقام المشهد كما رُسمت فيه (sc.dig للعربيّ) ولاحقة نصّه — لا لغة الواجهة */
       var txt = sc.dig ? String(shown).replace(/[0-9]/g, function(d){ return sc.dig.charAt(+d); }) : String(shown);
-      var capTxt = txt + '%' + (sc.cap.suffix == null ? ' COMPLETE' : sc.cap.suffix);
-      numEl.textContent = txt + '%';
-      numEl.setAttribute('textLength', String(Math.round((digits * sc.num.dw + sc.num.pw) * 10) / 10));
+      /* v-scene-kinds: يُرسم ما في المشهد فقط — رقم، قوس، شريط، نصّ؛ كلٌّ إن وُجد عنصره */
+      if(numEl){
+        numEl.textContent = txt + '%';
+        numEl.setAttribute('textLength', String(Math.round((digits * sc.num.dw + sc.num.pw) * 10) / 10));
+      }
       var off = String(Math.round(sceneArc * (100 - shown)) / 100);
-      arcEl.style.strokeDashoffset = off; arcGlow.style.strokeDashoffset = off;
-      barEl.setAttribute('width', String(Math.round(sc.bar.w * shown) / 100));
-      var capLen = String(Math.round((digits * sc.cap.dw + sc.cap.rest) * 10) / 10);
-      capEl.textContent = capTxt;
-      capEl.setAttribute('textLength', capLen);
-      if(reflEl){ reflEl.textContent = capTxt; reflEl.setAttribute('textLength', capLen); }
+      if(arcEl){ arcEl.style.strokeDashoffset = off; arcGlow.style.strokeDashoffset = off; }
+      if(barEl) barEl.setAttribute('width', String(Math.round(sc.bar.w * shown) / 100));
+      if(capEl){
+        var capTxt = txt + '%' + (sc.cap.suffix == null ? ' COMPLETE' : sc.cap.suffix);
+        var capLen = String(Math.round((digits * sc.cap.dw + sc.cap.rest) * 10) / 10);
+        capEl.textContent = capTxt;
+        capEl.setAttribute('textLength', capLen);
+        if(reflEl){ reflEl.textContent = capTxt; reflEl.setAttribute('textLength', capLen); }
+      }
+      if(sc.sprite){
+        var cone = 'conic-gradient(#000 ' + shown + '%,transparent 0)';
+        for(var ci = 0; ci < arcImgs.length; ci++){ arcImgs[ci].style.webkitMaskImage = cone; arcImgs[ci].style.maskImage = cone; }
+      }
+      if(sc.more){
+        for(var xi = 0; xi < sc.more.length; xi++){
+          var xm = sc.more[xi], xoff = String(Math.round(2 * Math.PI * xm.r * (100 - shown) * 10) / 1000);
+          if(xArcs[xi]) xArcs[xi].style.strokeDashoffset = xoff;
+          if(xGlows[xi]) xGlows[xi].style.strokeDashoffset = xoff;
+          if(xNums[xi] && xm.num){ xNums[xi].textContent = txt + '%'; xNums[xi].setAttribute('textLength', String(Math.round((digits * xm.num.dw + xm.num.pw) * 10) / 10)); }
+        }
+      }
     }
     if(pctSmall) pctSmall.textContent = hint;
     stageEl.textContent = stages[0];
@@ -44404,8 +44635,14 @@ if(document.readyState === 'loading'){
     return String(txt);
   }
   function noteBusy(p, txt){ rawBusy[p.id] = txt; cleanBusy[p.id] = stripEmoji(txt); }
+  /* v-scene-kinds: لوحة حالتها لا تبدأ دائمًا بالإيموجي (الترند المتعدّد المشاهد) تُعرف بوجوده في النصّ — busyHas */
+  function busyText(p, txt){
+    if(hasPrefix(txt, p.busy)) return true;
+    for(var i = 0; txt && p.busyHas && i < p.busyHas.length; i++){ if(txt.indexOf(p.busyHas[i]) >= 0) return true; }
+    return false;
+  }
   function panelBusy(p, ptxt){
-    if(hasPrefix(ptxt, p.busy)){ noteBusy(p, ptxt); return true; }
+    if(busyText(p, ptxt)){ noteBusy(p, ptxt); return true; }
     if(ptxt && cleanBusy[p.id] && ptxt === cleanBusy[p.id]) return true;
     delete rawBusy[p.id]; delete cleanBusy[p.id];
     return false;
@@ -44415,7 +44652,7 @@ if(document.readyState === 'loading'){
     for(var i = 0; i < PANELS.length; i++){
       var el = null, txt = '';
       try{ el = document.querySelector(PANELS[i].sel); txt = el ? String(el.textContent || '').trim() : ''; }catch(e){ txt = ''; }
-      if(hasPrefix(txt, PANELS[i].busy)) noteBusy(PANELS[i], txt);
+      if(busyText(PANELS[i], txt)) noteBusy(PANELS[i], txt);
     }
   }
 
@@ -44488,6 +44725,7 @@ if(document.readyState === 'loading'){
           applyHide(p, scopeEl);
           /* فوق = خارج مجال النظر (المستخدم عند زرّ «صمم» أسفل النموذج) — نصعد إليها */
           if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
+          else if(p.scroll){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
         }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ /* العرض تجميليّ */ } }
       } else if(!busy && card){
         try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ /* العرض تجميليّ */ } }
@@ -44552,6 +44790,9 @@ if(document.readyState === 'loading'){
       if(tg && tg.closest && tg.closest('#btnFashionAI')) preloadScenes();
       /* v-style-scene: خمسة مشاهد — يُحمَّل القادم وحده عند فتح الاستوديو وعند كلّ «ولّد» (لا الخمسة) */
       if(tg && tg.closest && tg.closest('#btnStudioAI, #studioAiGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.studio, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      /* v-scene-kinds: القادم وحده لكلّ مجموعة — عند فتح الأداة وعند زرّ التوليد */
+      var pre = !tg || !tg.closest ? null : (tg.closest('#btnVideoMaker, #videoMakerGenerateBtn') ? KINDS.vmaker : (tg.closest('#vtGrid, #vtGo') ? KINDS.vtrend : (tg.closest('#btnDesignAI, #designAiGenerateBtn, #designAiIdeaAI') ? KINDS.decor : null)));
+      if(pre && pre.scenes && pre.scenes.length){ try{ (new Image()).src = nextScene(pre, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
     }, true);
   }
 
@@ -44562,6 +44803,7 @@ if(document.readyState === 'loading'){
   window.omranGenWait._scenes = SCENES; window.omranGenWait._nextScene = nextScene; window.omranGenWait._sceneHtml = sceneHtml; /* v-gen-scene-exact: للاختبار */
   window.omranGenWait._secDigitEm = SEC_DIGIT_EM; window.omranGenWait._applyHide = applyHide; /* v-gen-steady: للاختبار */
   window.omranGenWait._styleScenes = STYLE_SCENES; /* v-style-scene: للاختبار */
+  window.omranGenWait._videoScenes = VIDEO_SCENES; window.omranGenWait._trendScenes = TREND_SCENES; window.omranGenWait._decorScenes = DECOR_SCENES; /* v-scene-kinds: للاختبار */
 })();
 /* v-inspire (المالك ٩ أكتوبر «أبدأ بالخطوة الأولى»): «اقتراحات» صارت شاشة بتبويبين — «الإلهام» و«اقتراحات سريعة».
    «الإلهام» قسمه الأوّل «مدينتك الحقيقيّة»: عشر تجارب ثلاثيّة الأبعاد تبني حيّ المستخدم الحقيقيّ من الخرائط المفتوحة

@@ -10,6 +10,9 @@
 //   • check بلا res (مسارات الاقتراح) قراءة مجرّدة لا تحجز، كما كانت.
 //   • يوم الترحيل: أوّل لمسة لمفتاح اليوم تبذره (SET NX) بعدّ اليوم من ملفّ JSON القديم، فلا يوم مجّانيّ.
 //   • عطل KV = مفتوح كما كان (القراءة القديمة ترجع null فالعدّ ٠، والكتابة تُبتلع)، ولا حجز يُردّ.
+//   • v-farm-gate: سقف صفر (حساب فوق سقف هديّة شبكته — free-tier.js) يُرفض قبل أيّ أمر KV كـtakeTally، فلا يفتحه عطل.
+//     ولـ{ free } (مجّانيّ غير دافع) وحده: امتلاء القاعدة أو سقف FREE_MEDIA_DAILY مضبوط لا يُعدّ = مغلق، ومقعد من السقف
+//     الكلّيّ يركب الحجز نفسه (يُثبَّت بالنجاح ويُردّ بالفشل والمهلة). المشترك وباقة الوسائط: كما كانا.
 const { kvGetJSON, kvGetRaw, kvSetIfAbsent, kvIncr, kvIncrBy, kvDecrBy } = require('./kv.js');
 
 const TALLY_TTL_SEC = 172800; // يومان: المفتاح مؤرَّخ فلا يتراكم
@@ -69,7 +72,8 @@ function settle(hold) {
     return null;
   }
   forget(s);
-  return decrement(hold.key);
+  const back = decrement(hold.key);
+  return hold.gkey ? Promise.all([back, decrement(hold.gkey)]) : back; // v-farm-gate: مقعد السقف الكلّيّ يُردّ معه
 }
 
 // أوّل إرسال للردّ (json/send/end) يغلق الحجز؛ فإن كان ردًّا للمقعد انتظره ثمّ أرسل، وإلّا أرسل فورًا
@@ -111,7 +115,10 @@ async function todayCount(ns, username) {
 }
 
 // الفحص: بلا res قراءة مجرّدة؛ مع res حجز ذرّيّ مربوط بالردّ. يرجع شكل check*Quota نفسه.
-async function check(ns, username, limit, res) {
+// opts.free: حساب مجّانيّ غير دافع (_planCap.planLimitInfo) — يُعدّ في FREE_MEDIA_DAILY ويُغلق على امتلاء القاعدة.
+async function check(ns, username, limit, res, opts) {
+  if (!(limit > 0)) return { allowed: false, reason: 'limit', username }; // v-farm-gate: قبل أيّ KV — العطل لا يفتح حدّ 0
+  const free = !!(opts && opts.free);
   if (!res) {
     const count = await todayCount(ns, username);
     if (count >= limit) return { allowed: false, reason: 'limit', username };
@@ -123,6 +130,12 @@ async function check(ns, username, limit, res) {
     await ensureKey(k, ns, username);
     n = Number(await kvIncr(k));
   } catch (e) {
+    // v-farm-gate: للمجّانيّ غير الدافع وحده — القاعدة ممتلئة (الكتابة مرفوضة والقراءة تعمل: لا حصّة تُعدّ لأحد)، أو سقف كلّيّ
+    // مضبوط لا يُعدّ = مغلق. المشترك وباقة الوسائط وكلّ عطل آخر للمجّانيّ: مفتوح كما كان (atomic-quota ٨).
+    if (free && (require('./media-purge.js').isStoreFull(e) || require('./free-tier.js').mediaBudgetOn())) {
+      console.warn('[daily-quota] reserve failed, free tier closed: ' + (e && e.message));
+      return { allowed: false, reason: 'limit', username };
+    }
     console.warn('[daily-quota] reserve failed, allowing: ' + (e && e.message));
     return { allowed: true, username, remaining: limit }; // عطل KV = مفتوح كما كان، ولا حجز يُردّ
   }
@@ -130,10 +143,16 @@ async function check(ns, username, limit, res) {
     await decrement(k);
     return { allowed: false, reason: 'limit', username };
   }
+  let gkey = null; // v-farm-gate: مقعد FREE_MEDIA_DAILY (مطفأ افتراضيًّا: لا عدّ)
+  if (free) {
+    const slot = await require('./free-tier.js').takeDailySlot('media', { kvSetIfAbsent, kvIncrBy, kvDecrBy });
+    if (!slot.ok) { await decrement(k); return { allowed: false, reason: 'limit', username }; }
+    gkey = slot.key || null;
+  }
   const id = stateId(ns, username);
   const state = states.get(id) || { id, holds: [], claims: 0 };
   states.set(id, state);
-  const hold = { state, key: k, count: n, done: false, timer: null };
+  const hold = { state, key: k, gkey, count: n, done: false, timer: null };
   state.holds.push(hold);
   bindToResponse(res, hold);
   return { allowed: true, username, remaining: limit - (n - 1) };
@@ -169,4 +188,23 @@ async function giveBack(ns, username) {
   await decrement(k);
 }
 
-module.exports = { check, consume, todayCount, giveBack, todayStr, HOLD_MAX_MS };
+// v-farm-gate (المراجعة العدائيّة): تغيير الاسم كان يصفّر هذه الحصص — العدّاد يبقى على الاسم القديم والجديد يبدأ من صفر،
+// فحساب واحد يأخذ صورًا بلا حدّ: استعمل، غيّر الاسم، كرّر. الآن تنتقل مع الحساب كـ_usage.moveTodayTallies (INCRBY + EXPIRE
+// على الجديد) ثمّ يُحذف القديم. NAMESPACES = كلّ أداة تعدّ هنا — tests/farm-gate.test.cjs يستخرجها من الكود ويقارن.
+const NAMESPACES = ['design', 'fashion', 'studio', 'portrait', 'construction', 'video', 'car'];
+async function moveToday(oldUser, newUser) {
+  if (!oldUser || !newUser || String(oldUser) === String(newUser)) return;
+  try {
+    const { kvPipeline } = require('./kv.js');
+    const pairs = NAMESPACES.map((ns) => [tallyKey(ns, oldUser), tallyKey(ns, newUser)]);
+    const vals = await kvPipeline(pairs.map((p) => ['GET', p[0]]));
+    const cmds = [];
+    (vals || []).forEach((v, i) => {
+      const n = parseInt(v, 10);
+      if (n > 0) cmds.push(['INCRBY', pairs[i][1], String(n)], ['EXPIRE', pairs[i][1], String(TALLY_TTL_SEC)], ['DEL', pairs[i][0]]);
+    });
+    if (cmds.length) await kvPipeline(cmds);
+  } catch (e) { console.warn('[daily-quota] rename tallies not moved: ' + (e && e.message)); }
+}
+
+module.exports = { check, consume, todayCount, giveBack, todayStr, moveToday, NAMESPACES, HOLD_MAX_MS };
