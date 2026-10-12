@@ -461,8 +461,14 @@
     var my=++DR.run, tk=drTok();
     DR.busy=true; DR.lang=lang; syncDirector(); drReset(); drStageStart();
     try{
-      /* ١) الفكرة والسيناريو — الفيديو الطويل يُكتب أجزاءً، كلّ جزء نداء مستقلّ على مخطّط الجزء الأوّل */
+      /* ٠) الجسر أوّلًا (v-app-director-bridge-check — لقطة المالك «bridge offline» بعد توليد النماذج): رمز المهمّة يُطلب قبل أيّ صرف،
+         والخادم يفحص الجسر وهو يصدره؛ جسر منقطع أو بنسخة قديمة لا تعرف مسار الفيديو يُعلَن هنا لا بعد الخطّة والصوت والصور.
+         الرمز ساعتان، يكفي أطول فيديو. */
       drStep('plan','on');
+      var tr=await drJson('/api/ai?action=app-director-token',{token:tk}); if(my!==DR.run) return;
+      if(!tr.ok||!tr.json||!tr.json.token||!tr.json.bridge){ drStep('plan',''); drStep('shots','err'); throw drFail('token '+tr.status+(tr.json&&tr.json.error?' '+tr.json.error:'')+(tr.json&&tr.json.why?' '+tr.json.why:'')); }
+      var bridge=tr.json.bridge, jt=tr.json.token, auth={Authorization:'Bearer '+jt};
+      /* ١) الفكرة والسيناريو — الفيديو الطويل يُكتب أجزاءً، كلّ جزء نداء مستقلّ على مخطّط الجزء الأوّل */
       var labels=await drLabels(lang); if(my!==DR.run) return;
       var base={request:req,lang:lang,speaker:speaker,minutes:minutes,voice:voiceOn,token:tk,labels:labels};
       var pr=await drPlanCall(base); if(my!==DR.run) return;
@@ -574,15 +580,12 @@
         if(my!==DR.run) return;
         drStep('samples','ok',failed?drT('vdWarnSamples',{n:failed}):'');
       } else drStep('samples','ok','');
-      /* ٤) رمز المهمّة وعنوان الجسر من الخادم، ثمّ المانيفست إلى الجسر مباشرة */
+      /* ٤) المانيفست إلى الجسر مباشرة (رمز المهمّة وعنوان الجسر أُخذا في الخطوة ٠) */
       drStep('shots','on');
-      var tr=await drJson('/api/ai?action=app-director-token',{token:tk}); if(my!==DR.run) return;
-      if(!tr.ok||!tr.json||!tr.json.token||!tr.json.bridge){ drStep('shots','err'); throw drFail('token '+tr.status+(tr.json&&tr.json.error?' '+tr.json.error:'')); }
-      var bridge=tr.json.bridge, jt=tr.json.token, auth={Authorization:'Bearer '+jt};
       var manifest={lang:lang,title:plan.title,scenes:scenes.map(function(s){ return {type:s.type,target:s.target,text:(s.type==='screen'?s.cap:s.text),sub:s.sub,steps:s.steps||undefined,image:s.image||undefined,mime:s.mime||undefined,audio:s.audio||undefined,seconds:s.seconds}; })};
       var post;
       try{ post=await fetch(bridge+'/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},auth),body:JSON.stringify(manifest)}); }
-      catch(e){ drStep('shots','err'); throw drFail('bridge offline'); }
+      catch(e){ drStep('shots','err'); throw drFail('bridge offline (browser)'); } /* الخادم وصله قبل قليل: المتصفّح هو من مُنع (أصل الصفحة أو الشبكة) */
       var pj=await post.json().catch(function(){ return null; }); if(my!==DR.run) return;
       if(!post.ok||!pj||!pj.jobId){ drStep('shots','err'); throw drFail('render '+post.status+(pj&&pj.error?' '+pj.error:'')); }
       var jobId=pj.jobId, st=pj, url='', lost=0;
@@ -614,7 +617,7 @@
     }catch(err){
       if(my!==DR.run) return;
       var code=String((err&&err.code)||(err&&err.message)||'');
-      var key=/^plan/.test(code)?'vdFailPlan':/^voice/.test(code)?'vdFailVoice':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
+      var key=/bridge_outdated/.test(code)?'vdFailBridgeOld':/^plan/.test(code)?'vdFailPlan':/^voice/.test(code)?'vdFailVoice':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
       /* السبب الحقيقيّ بين قوسين (القسم للمالك وحده): ما قاله الخادم عن كلّ محاولة، لا رسالة عامّة */
       drMsg(key==='vdFail'?L('vdFail'):L('vdFail')+' — '+L(key),true,code.slice(0,520));
       drStageStop(true);
