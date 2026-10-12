@@ -46,3 +46,14 @@ test('٥. v-img-question: سؤال عامّ بعد صورة = كلام («بخص
     assert.equal(isClarifyTurn(t), false, t);
   }
 });
+
+test('٦. v-recipe-img: سؤال الطبخ ليس دور كلام مقفلًا (صورة الطبق)، والسؤال العامّ يبقى مقفلًا', () => {
+  for (const t of ['كيف أطبخ مجبوس؟', 'وصفة كبسة دجاج؟', 'ايش طريقة عمل اللقيمات', 'وش مكونات الهريس؟', 'how to cook biryani?', 'كم مقادير الكيكة؟']) {
+    assert.equal(isClarifyTurn(t), false, t);
+  }
+  for (const t of ['بخصوص الشخير ماهي الاسباب', 'هل الشخير خطير؟', 'كم عدد سكان الإمارات', 'في الصوره نفسها قصدك']) {
+    assert.equal(isClarifyTurn(t), true, t);
+  }
+  const src = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
+  assert.ok(src.includes('(ج) سؤال طبخ أو وصفة في الرسالة الحاليّة: صورة الطبق نفسه حسب قاعدة الطبخ'), 'قاعدة الصور تستثني الطبخ');
+});
