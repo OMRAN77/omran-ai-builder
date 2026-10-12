@@ -1512,6 +1512,8 @@ module.exports = async (req, res) => {
   const convo = (__ownerReq ? ownerConversation : compactConversation)(convoSource // v-owner-memory
       .map((m, __i) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, __i === __codeMsgIdx ? 300000 : __i === __lastMsgIdx ? 200000 : (__ownerReq ? 60000 : 12000)) : m.content })), { histOffset: __freeLane ? undefined : (body && body.histOffset), lane: 'paid' }); /* tok-4: المسار المجّانيّ بالضغط القديم حرفيًّا — نظامه ينتهي بوقت الدقيقة فلا كاش يربحه، والنافذة المحاذاة كانت تُسقط رسالتين في ثلث أدواره */ // v-tokens-window: موضع المحادثة المطلق من العميل (المالك لا يأخذه — ownerConversation بوسيط واحد)
       while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
+  let __reRetried = false; // v-think-more (٢): إعادة واحدة بعد رفض reasoning_extraction
+  if (__ownerReq && rewriteLastUser(convo, THINK_MORE_RE, 'بدقّة ومراجعة')) { if (body) body.effort = 'max'; } // v-think-more (١): «فكّر أكثر» = جهد أعلى لا كشف تفكير
   /* v-claude-shape: أنثروبيك يرفض 400 محادثة أولها assistant أو فيها دوران
    * متتاليان بنفس الدور — كود المشروع يصل كرسالة assistant في المقدمة،
    * والمسار القصير في compactConversation يمرّره كما هو. نصلّح الشكل هنا. */
@@ -1946,6 +1948,7 @@ module.exports = async (req, res) => {
           steps--; continue;
         }
       }
+      if (__oa && __oa.kind === 'stop' && __ownerReq && !__reRetried && __olS.stopDetails && String(__olS.stopDetails.category || '') === 'reasoning_extraction' && rewriteLastUser(convo, THINK_WORD_RE, 'بدقّة')) { __reRetried = true; if (body) body.effort = 'max'; send({ status: '↳ ⚠️ رُفض كطلب كشف تفكير — أعيد الصياغة بلا «فكّر» وبجهد أعلى' }); steps--; continue; } // v-think-more (٢)
       if (__oa && (__oa.kind === 'stall' || __oa.kind === 'stop')) { send({ error: __oa.msg, ownerStop: true }); res.end(); return; }
       if (__oa && __oa.kind === 'continue') { send({ status: __oa.status }); continue; }
       if (__oa && __oa.kind === 'note') { send({ error: __oa.msg, ownerStop: true }); __ownerCarried = true; }
@@ -2348,6 +2351,24 @@ function trailDetail(name, input, result) {
 }
 module.exports.__vread = { trailDetail, trailLine }; // v-read-all — للاختبار
 /* v-chat-edit: رسالة كود المشروع = أوّل رسالة assistant تبدأ بسياج html/python (يرسلها العميل من codeForApi) — لا تُقصّ ولا تُضغط. */
+/* v-think-more (لقطتا المالك ١٢ أكتوبر على Fable 5.1: «لا الكتابة الي فوق المحادثة فكر لمدة الوقت» ثمّ مرّة ثانية ← «رفض المزوّد الطلب
+   (reasoning_extraction)»): مصنّف أنثروبيك يقرأ «فكّر لمدة/أكثر/زين…» طلبًا لكشف التفكير الداخليّ فيرفض الدور كلّه، والمالك يقصد «جهدًا أعلى».
+   (١) قبل النداء، للمالك وحده وعلى النسخة المرسَلة لا المحفوظة: عبارة «فكّر…» تصير «بدقّة ومراجعة» والجهد max للدور. (٢) إن رُفض بالفئة
+   نفسها رغم ذلك: إعادة واحدة بعد إزالة كلمات جذر فكّر/تفكير من آخر رسالة (لا «فكرة») وبجهد max، بسطر حالة؛ وبلا كلمة تُزال لا إعادة. */
+const THINK_MORE_RE = /(^|[\s،,.!؟?()«»"'-])(?:و|ف)?(?:فكّ?ر|تفكّ?ر)\s*(?:لمدّ?[ةه]\S*(?:\s+(?:الوقت|وقت\S*|أطول|اطول|طويل[ةه]?))?|أكثر|اكثر|زين|طويل\S*|عميق\S*|كثير|شوي[ةه]?|معي|فيها|بها|قبل|مرّ?[ةه]|أوّ?ل\S*|اول\S*|بتركيز|بهدوء|كويس|صح)|(^|[\s،,.!؟?])(?:خذ|خوذ)\s+وقتك|(^|[\s،,.!؟?])لا\s+تستعجل/i;
+const THINK_WORD_RE = /(^|[\s،,.!؟?()«»"'-])(?:و|ف|ب|بال|ال)?(?:فكّ?ر(?:وا|ي|ت|نا|ه|ها)?|تفكّ?ر(?:وا|ي|ه|ها)?|تفكير(?:ك|ه|ها|ي|نا)?)(?=$|[\s،,.!؟?()«»"'-])/i;
+function rewriteLastUser(convo, re, to) {
+  const m = convo[convo.length - 1];
+  if (!m || m.role !== 'user') return false;
+  const g = new RegExp(re.source, 'gi');
+  const fix = (t) => String(t).replace(g, (all) => (/^[\s،,.!؟?()«»"'-]/.test(all) ? all[0] : '') + to); // المطابقة تبدأ بحرف الحدّ أو ببداية النصّ — يُحفظ الحدّ وحده
+  if (typeof m.content === 'string') { const t = fix(m.content); if (t === m.content) return false; m.content = t; return true; }
+  if (!Array.isArray(m.content)) return false;
+  let changed = false;
+  m.content = m.content.map((blk) => { if (blk && blk.type === 'text' && typeof blk.text === 'string') { const t = fix(blk.text); if (t !== blk.text) { changed = true; return Object.assign({}, blk, { text: t }); } } return blk; });
+  return changed;
+}
+module.exports.__thinkMore = { THINK_MORE_RE, THINK_WORD_RE, rewriteLastUser }; // للاختبار
 function isProjectCodeMsg(m) {
   return !!(m && m.role === 'assistant' && typeof m.content === 'string' && /^```(?:html|python)\n/.test(m.content));
 }
