@@ -381,6 +381,25 @@ function verifyJobToken(token, secret, now) {
     return { ok: true, user: String(data.u || ''), jobId: String(data.j), exp: data.exp };
   } catch (e) { return { ok: false, why: 'malformed' }; }
 }
+/* v-app-director-bridge-check (لقطة المالك «bridge offline» بعد أن كُتب السيناريو ووُلّدت النماذج): الجسر على Railway كان يشغّل نسخة
+   من ٢٠ سبتمبر لا تعرف مسار /render (خدمته تنشر من فرع قديم لا من main)، فردّ على طلب المتصفّح 401 بلا ترويسات CORS وظهر «منقطعًا».
+   الخادم يسأل الجسر عن صحّته قبل إصدار الرمز (خادم لخادم، بلا CORS): جسر لا يردّ = bridge_offline، وجسر يردّ بلا حقل renderJobs
+   (حقل أضافه المصوِّر نفسه) = bridge_outdated — والواجهة تنادي هذا أوّل شيء فلا يُصرف على خطّة ولا صوت ولا صور لجسر لا يصوّر. */
+async function probeBridge(bridge, opts) {
+  const o = opts || {};
+  const fetchImpl = o.fetchImpl || fetch;
+  let last = { error: 'bridge_offline', why: 'network' };
+  for (let a = 1; a <= 2; a++) {
+    try {
+      const r = await fetchImpl(bridge + '/health', { signal: AbortSignal.timeout(o.timeoutMs || 8000) });
+      const d = await r.json().catch(() => null);
+      if (!r.ok || !d || d.ok !== true) { last = { error: 'bridge_offline', why: 'health_' + r.status }; continue; }
+      if (typeof d.renderJobs !== 'number') return { ok: false, error: 'bridge_outdated', why: 'no_render_route' };
+      return { ok: true, renderJobs: d.renderJobs, busy: !!d.busy };
+    } catch (e) { last = { error: 'bridge_offline', why: e && e.name === 'TimeoutError' ? 'timeout' : 'network' }; }
+  }
+  return Object.assign({ ok: false }, last);
+}
 function newJobId() { return 'd' + Date.now().toString(36) + crypto.randomBytes(5).toString('hex'); }
 
 function sessionUser(token) {
@@ -417,6 +436,12 @@ async function handler(req, res) {
     const secret = String(process.env.CC_BRIDGE_SECRET || '').trim();
     const bridge = String(process.env.DIRECTOR_BRIDGE_URL || process.env.CC_BRIDGE_URL || '').trim().replace(/\/+$/, '');
     if (!secret || !/^https?:\/\//.test(bridge)) { res.status(503).json({ error: 'bridge_unconfigured' }); return; }
+    const health = await probeBridge(bridge);
+    if (!health.ok) {
+      try { require('./log-error.js').logError('app-director/bridge', new Error(health.error), { why: health.why }); } catch (e) { console.error('[app-director] bridge ' + health.error + ' ' + health.why); }
+      res.status(502).json({ error: health.error, why: health.why });
+      return;
+    }
     const jobId = newJobId();
     const exp = Date.now() + TOKEN_TTL_MS;
     res.status(200).json({ token: signJobToken({ user: sessionUser(body.token), jobId, exp }, secret), jobId, bridge, exp });
@@ -479,4 +504,4 @@ async function handler(req, res) {
 }
 
 module.exports = handler;
-module.exports.__test = { directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel, requestVoice, voiceBody, voiceModels, voiceName, pickAudio, toWav, VOICE_MODELS };
+module.exports.__test = { probeBridge, directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel, requestVoice, voiceBody, voiceModels, voiceName, pickAudio, toWav, VOICE_MODELS };
