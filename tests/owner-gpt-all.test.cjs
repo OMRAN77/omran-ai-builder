@@ -107,16 +107,16 @@ test('٢. المباشر (/v1/responses): جهد المالك reasoning.effort �
     assert.equal(r.calls[0].url, 'https://api.openai.com/v1/responses');
     assert.equal(r.calls[0].body.model, 'gpt-6-astra');
     assert.deepEqual(r.calls[0].body.reasoning, { effort: 'max' }, 'التحيّة بجهد المالك لا السلّم');
-    assert.equal(r.calls[0].body.max_output_tokens, 64000);
+    assert.equal(r.calls[0].body.max_output_tokens, 128000); // v-owner-cap-open
     r = await run('omran', { model: 'openai/gpt-5.5', messages: ask(HARD), effort: 'max' });
     assert.deepEqual(r.calls[0].body.reasoning, { effort: 'xhigh' });
     r = await run('omran', { model: 'openai/gpt-6.1-sol', messages: ask(HARD), effort: 'high' });
     assert.deepEqual(r.calls[0].body.reasoning, { effort: 'high' });
-    assert.equal(r.calls[0].body.max_output_tokens, 32000);
-    // تلقائي: الصعب بلا reasoning والسقف كما كان
+    assert.equal(r.calls[0].body.max_output_tokens, 128000, 'v-owner-cap-open: سقف المالك يغلب سقف الجهد ٣٢ ألفًا');
+    // تلقائي: الصعب بلا reasoning وسقف المالك المفتوح
     r = await run('omran', { model: 'openai/gpt-6-astra', messages: ask(HARD) });
     assert.equal(r.calls[0].body.reasoning, undefined);
-    assert.equal(r.calls[0].body.max_output_tokens, 16000);
+    assert.equal(r.calls[0].body.max_output_tokens, 128000); // v-owner-cap-open
   });
   reset();
 });
@@ -143,7 +143,7 @@ test('٤. الوسيط: output_config.effort بلا حقول الإطفاء، و
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'xhigh' });
   assert.equal(r.calls[0].body.thinking, undefined, 'لا thinking:disabled (يُبطل الجهد عند الوسيط)');
   assert.equal(r.calls[0].body.reasoning, undefined);
-  assert.equal(r.calls[0].body.max_tokens, 64000, 'سقف التفكير والردّ على الوسيط أيضًا (مراجعة)');
+  assert.equal(r.calls[0].body.max_tokens, 128000, 'سقف التفكير والردّ على الوسيط أيضًا (مراجعة · v-owner-cap-open)');
   reset();
 });
 
