@@ -327,8 +327,16 @@ async function emailOwner(emailKey) {
    (‎<المفتاح>/t يحفظ بدايتها لحساب الدقائق). المفاتيح ‎/n و‎/t جديدة: القديمة نصوص JSON بلا عمر، وINCR عليها يرمي. */
 async function hitCounter(key, ttlSec) {
   const kv = require('./kv.js');
-  const created = await kv.kvSetIfAbsent(key, '0', ttlSec);
-  const n = Number(await kv.kvIncr(key));
+  let created = await kv.kvSetIfAbsent(key, '0', ttlSec);
+  let n;
+  try { n = Number(await kv.kvIncr(key)); } catch (e) {
+    /* v-rate-ns (مراجعة الدفعة A): قيمة غير عدديّة في مفتاح العدّاد (سجلّ JSON قديم بلا عمر) كانت ترمي INCR، والرمية تُفهم
+       «اسمح» — فيسقط الحدّ للأبد. تُمسح القيمة ويُعاد العدّ مرّة واحدة؛ أيّ عطب آخر يبقى كما كان. */
+    if (!/not an integer/i.test(String(e && e.message))) throw e;
+    await kv.kvDel(key);
+    created = await kv.kvSetIfAbsent(key, '0', ttlSec);
+    n = Number(await kv.kvIncr(key));
+  }
   if (n === 1 && !created) await kv.kvExpire(key, ttlSec); // انقضى بين الخطوتين فأنشأه INCR بلا عمر
   return { n, created };
 }
@@ -350,12 +358,29 @@ async function windowBack(base) {
   try { await require('./kv.js').kvDecrBy(base + '/n', 1); } catch (e) { logError('auth:window-back', e); }
 }
 
-/* v-account-email: نافذة محاولات في KV — يرجع دقائق الانتظار، أو ٠ إن سُمح. عطب KV = يُسمح (لا يُقفل الجميع بعطل). */
-async function rateWait(rateKey, limit, windowMs) {
+/* v-account-email: نافذة محاولات في KV — يرجع دقائق الانتظار، أو ٠ إن سُمح. عطب KV = يُسمح (لا يُقفل الجميع بعطل).
+   v-rate-ns (مراجعة الدفعة A): العدّاد في مساحة db/rl/ لم يكتبها الكود القديم قطّ، وقيمة المستخدم مرمَّزة — كان ‎<قاعدة قديمة>/n
+   والبريد خامًا، فبريد «V/n» عند كود قديم يكتب JSON بلا عمر في مفتاح عدّاد V نفسه فيسقط حدّه للأبد. */
+async function rateWait(kind, value, limit, windowMs) {
+  const rateKey = 'db/rl/' + kind + '/' + encodeURIComponent(String(value));
   try {
     if ((await windowHit(rateKey, windowMs)) > limit) return await windowMinutes(rateKey, windowMs);
   } catch (e) { logError('auth:rate', e); }
   return 0;
+}
+
+/* v-known-net (مراجعة الدفعة A): «شبكة معروفة» يكتبها كلّ نجاح موثَّق لا الدخول بكلمة المرور وحده — التسجيل، والتحقّق المنزلق
+   (المالك نادرًا ما يدخل بكلمته)، ورمز البريد، والاسترجاع، وGoogle. وإلّا فرشّ ٥٠ كلمة خاطئة من شبكات متفرّقة كلّ ربع ساعة يقفل
+   صاحب الحساب حتّى من بيته. SET NX واحد (لا كتابة كلّ مرّة)، وعطب KV لا يُفشل الدخول. */
+function knownNetKey(key, net) {
+  return 'db/login-ok/' + encodeURIComponent(key) + '/' + encodeURIComponent(net || '-');
+}
+async function markKnownNet(key, req) {
+  try {
+    const { clientIp, giftNet } = require('./welcome-gift.js');
+    const net = giftNet(clientIp(req));
+    if (key && net) await require('./kv.js').kvSetIfAbsent(knownNetKey(String(key).trim().toLowerCase(), net), '1', LOGIN_KNOWN_NET_SEC);
+  } catch (e) { logError('auth:known-net', e); }
 }
 
 /* v-auth-throttle: قفل الدخول لا يُستعمل سلاحًا. كان عدّادًا في سجلّ الحساب نفسه: ست محاولات خاطئة من أيّ شبكة تقفل صاحبه
@@ -380,7 +405,7 @@ async function loginGate(key, req) {
   const taken = [];
   const giveBack = async () => { for (const b of taken.splice(0)) await windowBack(b); };
   const pairOf = () => acct + '/' + encodeURIComponent(net || '-');
-  const knownKey = () => 'db/login-ok/' + encodeURIComponent(key) + '/' + encodeURIComponent(net || '-');
+  const knownKey = () => knownNetKey(key, net);
   try {
     const { clientIp, giftNet } = require('./welcome-gift.js');
     net = giftNet(clientIp(req));
@@ -598,6 +623,7 @@ module.exports = async (req, res) => {
           }
         } catch (e) { logError('auth:email-index', e); }
       }
+      await markKnownNet(key, req);
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: null });
       return;
     }
@@ -786,7 +812,7 @@ module.exports = async (req, res) => {
           res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin') });
           return;
         }
-        const wait = await rateWait('db/forgot-rate/' + emailKey, 3, 15 * 60 * 1000);
+        const wait = await rateWait('forgot-rate', emailKey, 3, 15 * 60 * 1000);
         if (wait) {
           res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') });
           return;
@@ -860,6 +886,7 @@ module.exports = async (req, res) => {
       user.resetTokenHash = null;
       user.resetTokenExpiry = null;
       await putUser(key, user);
+      await markKnownNet(key, req);
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: user.avatar || null });
       return;
     }
@@ -919,6 +946,7 @@ module.exports = async (req, res) => {
       }
       // 🔄 جلسة منزلقة: توكن جديد بعمر كامل مع كل تحقق ناجح — المستخدم
       // النشط لا يُطرد أبدًا بانتهاء صلاحية الثلاثين يومًا الثابتة.
+      await markKnownNet(u, req);
       res.status(200).json({ ok: true, token: makeToken(u), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
       return;
     }
@@ -939,7 +967,7 @@ module.exports = async (req, res) => {
         if (!me) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') }); return; }
       }
       const ip = String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim().slice(0, 64);
-      const wait = await rateWait('db/phone-start-rate/' + (me ? 'u/' + me : 'ip/' + (ip || 'none')), 5, 15 * 60 * 1000);
+      const wait = await rateWait('phone-start-rate', me ? 'u/' + me : 'ip/' + (ip || 'none'), 5, 15 * 60 * 1000);
       if (wait) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') }); return; }
       const r = await pl.start({ purpose: me ? 'link' : 'recover', channel, username: me });
       if (r.error === 'channel_unavailable') {
@@ -959,7 +987,7 @@ module.exports = async (req, res) => {
 
       // Rate limit: max 3 OTP requests per email per 5 minutes — v-auth-throttle: ذرّيًّا (كان قراءة ثمّ كتابة).
       const now = Date.now();
-      const mins = await rateWait('db/otp-rate/' + key, 3, 5 * 60 * 1000);
+      const mins = await rateWait('otp-rate', key, 3, 5 * 60 * 1000);
       if (mins) {
         res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min') });
         return;
@@ -1106,6 +1134,7 @@ module.exports = async (req, res) => {
         return;
       }
 
+      await markKnownNet(userKey, req);
       res.status(200).json({ ok: true, token: makeToken(userKey), username: user.username, avatar: user.avatar || null, isNew });
       return;
     }
@@ -1125,6 +1154,7 @@ module.exports._timing = _timing; // v-time-seam: للاختبارات وحده�
 module.exports.putUser = putUser;
 module.exports.hashPassword = hashPassword;
 module.exports.makeToken = makeToken;
+module.exports.markKnownNet = markKnownNet; // v-known-net: والكولباك (auth-google-callback.js)
 module.exports.verifyToken = verifyToken;
 module.exports.encryptUserBlob = encryptUserBlob;
 module.exports.decryptUserBlob = decryptUserBlob;

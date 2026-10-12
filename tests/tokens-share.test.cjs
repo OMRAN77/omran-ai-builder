@@ -159,3 +159,63 @@ test('٥. v-tokens-owner-tools: لقطة المالك بقائمة الأدوا�
   const photo = (await turn('share-owner', shotMsg, { body: { ownerUiShot: false } }))[0];
   assert.ok(!tailOf(photo).includes(T2.OWNER_NO_MEDIA_NOTE), 'صورة حقيقيّة: أدوات الصور متاحة');
 });
+
+// مراجعة الدفعة A (tok-1): ملاحظات العميل صارت بعد التعليمات المخصّصة (v-tokens-s0) فتعلو عليها — التحيّة «بلغة المستخدم» تغلب
+// «ردّ بالإنجليزيّة دائمًا»، وقاعدة الصورة «باختصار» تغلب «ردود طويلة». سطر ثابت بعد الملاحظات يعيد العلوّ، والكتلتان المخزّنتان كما هما.
+test('٦. التعليمات المخصّصة تعلو على ملاحظات الدور: سطر الأولويّة بعد كلّ ملاحظة عميل (تحيّة، صورة، مرساة)، والكاش لا يتغيّر (tok-1)', async () => {
+  const a9 = require('node:fs').readFileSync(path.join(root, 'js/app-09-attach.js'), 'utf8');
+  const gi = a9.indexOf("content: 'رسالة المستخدم الأخيرة تحية لفظية");
+  const GREET = a9.slice(gi + 10, a9.indexOf("'}", gi)).replace(/\\n/g, '\n');
+  const CI = { body: { customInstructions: 'Always reply in English and call me Abu Ahmed.' } };
+  const P = T2.CI_PRECEDENCE_NOTE;
+  assert.ok(P && P.startsWith('[') && !/claude|gpt|gemini|groq/i.test(P), 'سطر للنموذج وحده بلا اسم مزوّد');
+  const plain = (await turn('sara', Q, CI))[0];
+  const cases = [
+    ['تحيّة', [{ role: 'system', content: GREET }, { role: 'user', content: 'السلام عليكم' }], GREET],
+    ['صورة', [{ role: 'system', content: ATTACHED }, { role: 'user', content: [{ type: 'text', text: 'وش هذا؟' }, IMG] }, { role: 'system', content: IMG_RULE }], IMG_RULE],
+    ['مرساة', [{ role: 'system', content: ANCHOR }].concat(Q), ANCHOR],
+  ];
+  for (const [name, msgs, note] of cases) {
+    const b = (await turn('sara', msgs, CI))[0];
+    const t = sysText(b), ci = t.indexOf('[تعليمات المستخدم المخصّصة'), n = t.indexOf(note.slice(0, 40)), p = t.indexOf(P);
+    assert.ok(ci >= 0 && n > ci, name + ': الملاحظة بعد التعليمات (v-tokens-s0)');
+    assert.ok(p > n, name + ': سطر الأولويّة بعد الملاحظة (كان غائبًا فتعلو الملاحظة)');
+    if (name !== 'تحيّة') assert.equal(b.system[1].text, plain.system[1].text, name + ': ثابت المستخدم المخزَّن كما هو');
+  }
+  assert.ok(!sysText(plain).includes(P), 'بلا ملاحظة عميل: لا سطر');
+  assert.ok(!sysText((await turn('sara', [{ role: 'system', content: ANCHOR }].concat(Q)))[0]).includes(P), 'بلا تعليمات مخصّصة: لا سطر');
+});
+
+// مراجعة الدفعة A (cross-1): المالك الخامّ (body.raw) بلا نظام ولا ذيل، فلا يصله تنبيه «أدوات الصور مقفلة» — قائمته بلا أدوات الصور كما كانت.
+test('٧. المالك الخامّ في دور اللقطة: قائمة الأدوات بلا الصور (لا تنبيه يصله)، وغير الخامّ القائمة الكاملة للكاش (cross-1)', async () => {
+  const shotMsg = [{ role: 'user', content: [IMG, { type: 'text', text: 'احذف هذا المكان' }] }];
+  const raw = (await turn('share-owner', shotMsg, { body: { ownerUiShot: true, raw: true } }))[0];
+  assert.ok(!raw.tools.some((t) => /^(edit_image|generate_image|generate_video)$/.test(t.name)), 'الخامّ: بلا أدوات الصور (كانت ١٨ أداة بلا تنبيه)');
+  assert.ok(raw.tools.some((t) => t.name === 'read_github'), 'وبقيّة أدواته');
+  const full = (await turn('share-owner', shotMsg, { body: { ownerUiShot: true } }))[0];
+  assert.ok(full.tools.some((t) => t.name === 'edit_image') && tailOf(full).includes(T2.OWNER_NO_MEDIA_NOTE), 'غير الخامّ: كاملة + التنبيه');
+});
+
+// مراجعة الدفعة A (tok-2): fitGroqTpm كان يختار أدوات الصور من نصّ الرسالة الأخيرة كلّه — وذيل الدور «مقفلة: لا تستدعِ generate_image…»
+// يذكرها بالاسم، فيبقى generate_image وحده في الجسم المقصوص مع «استعملها بنفسك». الاختيار من كلام المستخدم وحده، والذيل المقفل يُسقطها.
+test('٨. قصّ حدّ Groq في الدقيقة: ذيل «مقفلة» لا يختار أدوات الصور، وطلب رسم بلا قفل يبقيها (tok-2)', () => {
+  const OD = require(rp('api/_lib/oa-direct.js'));
+  const fn = (name) => ({ type: 'function', function: { name, description: 'd', parameters: { type: 'object', properties: {} } } });
+  const tools = ['web_search', 'read_github', 'edit_image', 'generate_image', 'generate_video'].map(fn);
+  const tail = '\n\n[سياق هذا الدور من النظام — ليس من كلام المستخدم]\n[التاريخ]: الآن.\n' + T2.OWNER_NO_MEDIA_NOTE;
+  // نظام المالك الطويل (~٢٠ ألف حرف) هو ما يُقصّ؛ ورقم Groq = السقف + ~٠٫٣ توكن لكلّ حرف من الجسم
+  const body = (text) => ({ model: 'm', stream: true, max_completion_tokens: 16000, tools, messages: [{ role: 'system', content: 'أنت مساعد.\n\n' + 'قواعد العمل. '.repeat(1600) }, { role: 'user', content: text }] });
+  const err = (b) => 'Request too large on tokens per minute (TPM): Limit 8000, Requested ' + (16000 + Math.ceil((JSON.stringify(b.messages).length + JSON.stringify(b.tools).length) * 0.3)) + ', please reduce';
+  const fit = (text) => { const b = body(text); return OD.fitGroqTpm(b, err(b)); };
+  const names = (b) => (b && b.tools ? b.tools.map((t) => t.function.name) : []);
+  const doc = 'هذا تقرير الاجتماع الأسبوعيّ عن المشروع.\n'.repeat(12) + 'لخّصه لي في نقاط.';
+  const locked = fit(doc + tail);
+  assert.ok(locked && locked.messages[0].content.length < 2000, 'يتّسع بعد قصّ النظام');
+  assert.deepEqual(names(locked).filter((n) => /image|video/.test(n)), [], 'لا أداة صور مع ذيل مقفل (كان generate_image)');
+  const draw = fit('ارسم لي صقرًا على جبل');
+  assert.ok(names(draw).includes('generate_image'), 'طلب رسم بلا قفل: أداة الصور باقية');
+  const askTail = '\n\n[سياق هذا الدور من النظام — ليس من كلام المستخدم]\n' + chat.__imgAsk.ASK_NO_MEDIA_NOTE;
+  const ask = fit('وش رأيك في هذي الصورة؟' + askTail);
+  assert.ok(ask, 'يتّسع');
+  assert.deepEqual(names(ask).filter((n) => /image/.test(n)), [], 'ذيل السؤال يقفلها أيضًا');
+});

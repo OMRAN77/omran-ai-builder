@@ -33,11 +33,13 @@ test('٣. سؤال يبدأ بأداة استفهام عربيّة والمشر�
   const i = h.SRC.indexOf('  const __editVerbRe = ');
   const src = [h.SRC.slice(i, h.SRC.indexOf('\n', i)), h.SRC.slice(h.SRC.indexOf('  const __editObjRe = '), h.SRC.indexOf('\n', h.SRC.indexOf('  const __editObjRe = '))),
     h.SRC.slice(h.SRC.indexOf('  const __questionStartRe = '), h.SRC.indexOf('\n', h.SRC.indexOf('  const __questionStartRe = '))),
-    h.SRC.slice(h.SRC.indexOf('  const __editIntent = '), h.SRC.indexOf('\n', h.SRC.indexOf('  const __editIntent = '))), 'this.r = __editIntent;'].join('\n');
+    h.SRC.slice(h.SRC.indexOf('  const __editVerbHit = '), h.SRC.indexOf('\n', h.SRC.indexOf('  const __editVerbHit = '))), 'this.r = __editIntent;'].join('\n'); // rel-4: سطر __editVerbHit و__editIntent معًا
   const edit = (text) => { const c = { text, cur: { code: '<html></html>' }, __imgWriteAsk: false }; require('vm').runInNewContext(src, c); return c.r; };
   assert.equal(edit('كيف اضيف ميزة البحث؟'), false, 'سؤال = نقاش');
   assert.equal(edit('ليش ما تضيف ميزة البحث'), false, 'سؤال = نقاش');
   for (const t of ['اضيف ميزة البحث', 'شيل المستطيل الأصفر', 'غير لون الزر للأحمر', 'كيف أغير لون الزر؟']) assert.equal(edit(t), true, 'تعديل: ' + t); // عنصر التصميم (لون/زر) يبقى تعديلًا كما كان
+  // مراجعة الدفعة A (rel-4): «هل تقدر/هل ممكن + فعل تعديل» طلبٌ لا سؤال (كانت تخرج من مسار تعديل الكود)
+  for (const t of ['هل تقدر تضيف ميزة البحث', 'هل ممكن تضيف واتساب للتواصل']) { assert.ok(!q.test(t), 'ليس سؤالًا: ' + t); assert.equal(edit(t), true, 'تعديل: ' + t); }
 });
 
 test('٤. «الهند» وحدها بلد في البحث، و«الهندسة» لا؛ «نمر» ثيم الأساطير و«نمرة» لا؛ «عقد/فاتورة» وحدها تقترح مساعد المستندات', () => {

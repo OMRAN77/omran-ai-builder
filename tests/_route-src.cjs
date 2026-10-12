@@ -32,15 +32,17 @@ function load(root) {
     line('const __mediaTriggerWordsRe = '),
     block('    function __isVagueMediaRequest(raw){', '\n    }'),
     line('const __unifiedBuildRe = '), line('const __txtOnlyImgRe = '), line('const __rtDesignMakeRe = '), line('const __rtDesignWantRe = '),
+    optional('const __rtLaneImgRe = '), // مراجعة الدفعة A (rel-1 · rel-5): ما يُبنى صورةً فقط إن قال المصنّف image (omranLaneImgAsk)
     line('const __bareDraw = ').replace(/\.test\(text\);\s*$/, ';').replace('const __bareDraw = ', 'const __bareDrawRe = '),
     'this.R = { MEDIA_WORD: __MEDIA_WORD_RE, MEDIA_MAKE: __MEDIA_MAKE_RE, MEDIA_TALK: __MEDIA_TALK_RE, VID_MAKE: __VID_MAKE_RE, VID_Q: __VID_Q_RE,',
     '  routeCmd: __routeCmdRe, questionStart: __questionStartRe, codeWord: __codeWordRe, attVision: __ATT_VISION_RE, nanoQ: __nanoQ, imgEdit: __imgEditRe,',
     '  imgGen: __imgGenIntentRe, videoWord: __videoWordRe, animate: __animateRe, unifiedBuild: __unifiedBuildRe, txtOnly: __txtOnlyImgRe,',
-    '  designMake: __rtDesignMakeRe, designWant: __rtDesignWantRe, bareDraw: __bareDrawRe, ack: (typeof __OMRAN_ACK_RE !== "undefined" ? __OMRAN_ACK_RE : null) };',
+    '  designMake: __rtDesignMakeRe, designWant: __rtDesignWantRe, bareDraw: __bareDrawRe, ack: (typeof __OMRAN_ACK_RE !== "undefined" ? __OMRAN_ACK_RE : null),',
+    '  laneImg: (typeof __rtLaneImgRe !== "undefined" ? __rtLaneImgRe : null) };',
     'this.vague = __isVagueMediaRequest;',
     /* __wantsVideo بنصّه: الصورة مرفقة (photo) أو لا */
-    'this.wantsVideo = function(text, photo, lane){',
-    '  const __mediaLane = lane || null, __srcImg = photo ? { isImage: true } : null, __vidSrc = photo ? { b64: "x" } : null, cur = { lastMsgWasImageEdit: false };',
+    'this.wantsVideo = function(text, photo, lane, afterImg){',
+    '  const __mediaLane = lane || null, __srcImg = photo ? { isImage: true } : null, __vidSrc = (photo || afterImg) ? { b64: "x" } : null, cur = { lastMsgWasImageEdit: !!afterImg };',
     '  ' + stmt('const __wantsVideo = '),
     '  return __wantsVideo;',
     '};',
@@ -89,7 +91,24 @@ function load(root) {
     '};',
   ].join('\n'), F);
 
-  return { SRC, R: ctx.R, vague: ctx.vague, wantsVideo: ctx.wantsVideo, classifierCalled: ctx.classifierCalled, after: F.after };
+  /* بطل صانع الفيديو بعد صورة مولَّدة (rel-2): omranLastImageHero الحقيقيّة على «كلام المستخدم» بتقسيم الكود نفسه (__vidOwnWordsOf) */
+  let videoHero = null;
+  if (has('function omranLastImageHero(')) {
+    const V = {};
+    vm.runInNewContext([
+      SRC.slice(SRC.indexOf('function omranPrevTurnHadImage(messages){'), SRC.indexOf('\n}\n', SRC.indexOf('function omranPrevTurnHadImage(messages){')) + 2),
+      line('const __VID_BACKREF_RE = '), block('function omranLastImageHero(', '\n}'),
+      line('const __VID_FILLER = '), line('const __VID_PHOTO_WORD = '), block('    const __vidOwnWordsOf = function(t){', '\n    };'),
+      'this.hero = function(text, prevUser){',
+      '  const c = { lastMsgWasImageEdit: true, lastEditedImage: { b64: "x", mime: "image/png" }, messages: [',
+      '    { role: "user", content: prevUser || "ارسم صورة صقر على جبل" }, { role: "assistant", content: "", attachments: [{ isImage: true, name: "generated.png" }] } ] };',
+      '  return !!omranLastImageHero(c, text, __vidOwnWordsOf(text).length);',
+      '};',
+    ].join('\n'), V);
+    videoHero = V.hero;
+  }
+
+  return { SRC, R: ctx.R, vague: ctx.vague, wantsVideo: ctx.wantsVideo, classifierCalled: ctx.classifierCalled, after: F.after, videoHero };
 }
 
 /* قرارات المدوّنة (tests/fixtures/route-corpus/*.json) بالتعابير وحدها، ستّ عائلات يحسمها تعبير واحد أو اثنان:
@@ -99,15 +118,20 @@ function load(root) {
    ocr    — صورة مرفقة + قراءة فيها فعل تعديل («حول/اكتب…»): __ATT_VISION_RE أو سؤال
    textVideo / textImage — نصّ بلا مرفق يُتوقَّع له فيديو/صورة: تعبير المسار يطابق (المصنّف oracle كما في المدوّنة)
    chatSafe — نصّ بلا مرفق يُتوقَّع له كلام: لا يفتح صانع الفيديو ولا مسار فيديو/صورة والمصنّف متعذّر (null)
+   مراجعة الدفعة A:
+   chatImg — نصّ بلا مرفق يُتوقَّع له كلام أو بوّابة بناء: لا يصل بانِي الصور المدفوع، والمصنّف oracle ثمّ متعذّر (null) — rel-1 · rel-5
+   attEdit — صورة مرفقة + تعديل/كتابة عليها: فيتو القراءة (__ATT_VISION_RE) لا يلتقطها — rel-3
+   afterEdit — بعد صورة مولَّدة يُتوقَّع تعديل: مدخل التعديل يأخذها — rel-3 (و«لا لا كبرها» في rel-7)
+   fromImage — بعد صورة مولَّدة «ابي فيديو منها»: صانع الفيديو ببطل الصورة، أو image_to_video — rel-2
    يُرجع لكلّ عائلة قائمة المعرّفات التي يخطئ فيها القرار. */
 function corpusMisses(h, sets) {
   const R = h.R;
-  const out = { ack: [], ask: [], photoVideo: [], ocr: [], textVideo: [], textImage: [], chatSafe: [] };
-  const n = { ack: 0, ask: 0, photoVideo: 0, ocr: 0, textVideo: 0, textImage: 0, chatSafe: 0 };
+  const out = { ack: [], ask: [], photoVideo: [], ocr: [], textVideo: [], textImage: [], chatSafe: [], chatImg: [], attEdit: [], afterEdit: [], fromImage: [] };
+  const n = { ack: 0, ask: 0, photoVideo: 0, ocr: 0, textVideo: 0, textImage: 0, chatSafe: 0, chatImg: 0, attEdit: 0, afterEdit: 0, fromImage: 0 };
   const isImgStep = (st) => ['image', 'edit', 'edit-text'].includes(st.expect) || (Array.isArray(st.exp) && st.exp.some((e) => /^IMG_/.test(e)));
   const isChat = (st) => /^chat/.test(st.expect || '') || (Array.isArray(st.exp) && st.exp.length && st.exp.every((e) => e === 'CHAT' || e === 'CHAT_IMG'));
   const vidOpens = (t, lane) => R.VID_MAKE.test(t) && !R.VID_Q.test(t) && lane !== 'none' && lane !== 'image';
-  const builder = (t, lane) => lane !== 'none' && lane !== 'video' && !R.codeWord.test(t) && (R.designMake.test(t) || (lane === 'image' && R.designWant.test(t)) || R.txtOnly.test(t) || (R.imgGen.test(t) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(t)) || (R.unifiedBuild.test(t) && !R.nanoQ.test(t)));
+  const builder = (t, lane) => lane !== 'none' && lane !== 'video' && !R.codeWord.test(t) && (R.designMake.test(t) || (lane === 'image' && R.designWant.test(t)) || (lane === 'image' && !!R.laneImg && R.laneImg.test(t)) || R.txtOnly.test(t) || (R.imgGen.test(t) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(t)) || (R.unifiedBuild.test(t) && !R.nanoQ.test(t)));
   const laneOf = (t, clf) => (R.MEDIA_WORD.test(t) ? (R.MEDIA_TALK.test(t) ? 'none' : (R.MEDIA_MAKE.test(t) ? (clf === undefined ? null : clf) : null)) : null);
   for (const set of sets) {
     for (const c of set.cases) {
@@ -146,6 +170,24 @@ function corpusMisses(h, sets) {
           n.chatSafe++;
           const lane = laneOf(t, null);
           if (vidOpens(t, lane) || h.wantsVideo(t, false, lane)) out.chatSafe.push(id);
+        }
+        if (!i && !st.attach && !c.ctx && (isChat(st) || st.expect === 'build-gate')) {
+          n.chatImg++;
+          if (builder(t, laneOf(t, st.clf || st.lane || 'none')) || builder(t, laneOf(t, null))) out.chatImg.push(id);
+        }
+        if (st.attach && (st.expect === 'edit' || st.expect === 'edit-text') && !R.VID_MAKE.test(t)) {
+          n.attEdit++;
+          if (R.attVision.test(t)) out.attEdit.push(id);
+        }
+        if (prev && isImgStep(prev) && !st.attach && (st.expect === 'edit' || st.expect === 'edit-text')) {
+          n.afterEdit++;
+          if (!h.after(t, prev.text).edit) out.afterEdit.push(id);
+        }
+        if (prev && isImgStep(prev) && !st.attach && st.expect === 'video-from-image') {
+          n.fromImage++;
+          const lane = st.clf || st.lane || null;
+          const ok = (R.VID_MAKE.test(t) && !R.VID_Q.test(t) && lane !== 'none' && lane !== 'image') ? !!(h.videoHero && h.videoHero(t, prev.text)) : h.wantsVideo(t, false, lane, true);
+          if (!ok) out.fromImage.push(id);
         }
       });
     }

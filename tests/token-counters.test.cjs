@@ -34,8 +34,8 @@ const kv = {
   },
 };
 stub('api/_lib/kv.js', kv);
-let curUser = 'sub1';
-stub('api/_lib/_usage.js', { DAILY_LIMIT: 20, clientIp: () => '127.0.0.1', checkAndConsume: async () => ({ allowed: true, username: curUser }) });
+let curUser = 'sub1', curTier = null; // curTier: owner/vip للردّ الاحترافيّ (claude.js)
+stub('api/_lib/_usage.js', { DAILY_LIMIT: 20, clientIp: () => '127.0.0.1', checkAndConsume: async () => Object.assign({ allowed: true, username: curUser }, curTier ? { tier: curTier } : {}) });
 stub('api/_lib/search.js', { fetchPlaces: async () => [] });
 const cm = require(rp('api/_lib/cost-meter.js'));
 const chat = require(rp('api/_lib/chat.js'));
@@ -84,11 +84,11 @@ const reply = () => new Response([
   { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'تمام' } },
   { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 42 } },
 ].map((e) => 'data: ' + JSON.stringify(e) + '\n').join('') + '\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
-async function turn(user) {
+async function turn(user, onWrite) {
   curUser = user;
   const save = global.fetch;
   global.fetch = async (url, init) => { let b = {}; try { b = JSON.parse(init.body); } catch (e) { /* نداء جانبيّ */ } return b.max_tokens ? reply() : new Response('{}'); };
-  const res = { setHeader() {}, status() { return this; }, json() { return this; }, write() { return true; }, end() { this.writableEnded = true; }, on() {}, flushHeaders() {} };
+  const res = { setHeader() {}, status() { return this; }, json() { return this; }, write(c) { if (onWrite) onWrite(String(c)); return true; }, end() { this.writableEnded = true; }, on() {}, flushHeaders() {} };
   try { await chat({ method: 'POST', headers: {}, body: { messages: [{ role: 'user', content: 'اشرح لي الذكاء الاصطناعي' }], token: token(user), provider: 'claude', tz: 'Asia/Dubai' } }, res); }
   finally { global.fetch = save; }
 }
@@ -116,5 +116,41 @@ test('٤. التقرير للمالك وحده بجانب تقرير التكل�
   const b = read('js/app.bundle.js');
   assert.ok(b.includes("const tk = d.tokens, kt = (n) =>") && b.includes("'🔢 التوكنات آخر '"), 'لوحة المالك تعرض المسارات');
   const cl = read('api/_lib/claude.js');
-  assert.equal((cl.match(/cm\.meterTurn\(meterUser, cm\.tokenCostUsd\(useModel, tu\), 'chat', Object\.assign\(\{ lane: 'pro', model: useModel \}, tu\)\)/g) || []).length, 2, 'الردّ الاحترافيّ (متدفّق وغير متدفّق)');
+  assert.equal((cl.match(/cm\.meterTurn\(meterUser \|\| '', meterUser \? cm\.tokenCostUsd\(useModel, tu\) : 0, 'chat', Object\.assign\(\{ lane: 'pro', model: useModel \}, tu\)\)/g) || []).length, 2, 'الردّ الاحترافيّ (متدفّق وغير متدفّق) — التكلفة لغير المالك وVIP، والتوكنات للكلّ');
+});
+
+// مراجعة الدفعة A (tok-3): «await __meterTurn(); send({done})» كان يؤخّر نهاية ردّ المالك والزائر رحلة Redis كاملة (المسبار: ٧٨ ← ١٥٦٦ ms
+// مع Redis بطيء ١٫٥ ث) ولم يكن قبلها نداء أصلًا. الآن done أوّلًا ثمّ القياس ثمّ res.end().
+test('٥. done يصل العميل قبل نداء القياس — المالك والمشترك (tok-3)', async () => {
+  for (const u of ['meter-owner', 'sub1']) {
+    let doneSeen = false;
+    const order = [];
+    const real = kv.kvPipeline;
+    kv.kvPipeline = async (cmds) => { if (cmds.some((x) => x[0] === 'HINCRBY')) order.push(doneSeen ? 'meter-after-done' : 'meter-before-done'); return real(cmds); };
+    try { await turn(u, (c) => { if (/"done":true/.test(c)) doneSeen = true; }); }
+    finally { kv.kvPipeline = real; }
+    assert.deepEqual(order, ['meter-after-done'], u + ': القياس بعد done (كان قبله)');
+  }
+});
+
+// مراجعة الدفعة A (tok-5): الردّ الاحترافيّ (claude.js) لم يكن يعدّ توكنات المالك وVIP — meterUser فارغ لهما فلا صنبور ولا قياس —
+// ومسار المحادثة يعدّها «للمالك والزائر أيضًا». الآن التوكنات للجميع، والتكلفة لغير المالك وVIP وحدهم كما كانت.
+test('٦. الردّ الاحترافيّ: المالك (متدفّق) وVIP (غير متدفّق) يُعدّان في مسار pro بلا تكلفة (tok-5)', async () => {
+  const claude = require(rp('api/_lib/claude.js'));
+  process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
+  const save = global.fetch;
+  const nonStream = () => new Response(JSON.stringify({ content: [{ type: 'text', text: 'ok' }], usage: { input_tokens: 20, cache_read_input_tokens: 700, cache_creation_input_tokens: 0, output_tokens: 9 } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  try {
+    for (const [tier, stream] of [['owner', true], ['vip', false]]) {
+      calls.length = 0; hashes.clear();
+      curUser = tier + '-u'; curTier = tier;
+      global.fetch = async (url, init) => { const b = JSON.parse(init.body); return b.stream ? reply() : nonStream(); };
+      const res = { setHeader() { return this; }, status() { return this; }, json() { return this; }, send() { return this; }, write() { return true; }, end() {}, flushHeaders() {} };
+      await claude({ method: 'POST', headers: {}, body: { model: 'claude-sonnet-5', stream, messages: [{ role: 'user', content: 'اكتب كود' }] } }, res);
+      const k = 'tok:' + day + ':pro:claude-sonnet-5';
+      assert.ok(hashes.get(k) && hashes.get(k).turns === 1, tier + ': سُجّل دور pro (كان صفرًا)');
+      assert.equal(hashes.get(k).cr, stream ? 4720 : 700, tier + ': القراءة كما أعلنها المزوّد');
+      assert.ok(!calls.some((c) => c.some((x) => x[0] === 'INCRBY')), tier + ': لا تكلفة على المالك وVIP');
+    }
+  } finally { global.fetch = save; curTier = null; curUser = 'sub1'; delete process.env.ANTHROPIC_API_KEY; }
 });

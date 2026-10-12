@@ -16,9 +16,21 @@ const root = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 const rp = (f) => require.resolve(path.join(root, f));
 const stub = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(f), loaded: true, exports }; };
-stub('api/_lib/kv.js', { kvGetJSON: async () => null, kvPutJSON: async () => {}, kvDel: async () => {}, kvExpire: async () => {} });
-stub('api/_lib/_usage.js', { DAILY_LIMIT: 20, clientIp: () => '127.0.0.1', checkAndConsume: async () => ({ allowed: true, username: 'win-u' }) });
+let onPipeline = null; // tok-3: يرى ترتيب نداء القياس مقابل done
+stub('api/_lib/kv.js', { kvGetJSON: async () => null, kvPutJSON: async () => {}, kvDel: async () => {}, kvExpire: async () => {}, kvPipeline: async (cmds) => { if (onPipeline) onPipeline(cmds); return cmds.map(() => 1); } });
+let freeTier = false; // tok-4: مستخدم الطبقة المجّانيّة (__freeLane)
+stub('api/_lib/_usage.js', { DAILY_LIMIT: 20, clientIp: () => '127.0.0.1', checkAndConsume: async () => Object.assign({ allowed: true, username: 'win-u' }, freeTier ? { tier: 'free', subscriber: false } : {}) });
 stub('api/_lib/search.js', { fetchPlaces: async () => [] });
+// السلسلة المجّانيّة: نلتقط المحادثة التي تصلها (الوحدة الحقيقيّة، ودالّة البثّ وحدها مستبدلة قبل أن يقرأها chat.js)
+const FC = require(rp('api/_lib/free-chain.js'));
+const realFreeChain = FC.streamFreeChain;
+let freeConvos = null;
+FC.streamFreeChain = async (args) => {
+  if (!freeConvos) return realFreeChain(args);
+  freeConvos.push(args.convo.map((m) => ({ role: m.role, content: m.content })));
+  args.send({ delta: 'تمام' });
+  return { ok: true, text: 'تمام', model: 'free-test-model' };
+};
 const chat = require(rp('api/_lib/chat.js'));
 const { compactConversation, WINDOW } = chat.__tokens2 || {}; // على الكود السابق غير موجود — فيفشل كلّ اختبار بسببه لا بخطأ تحميل
 
@@ -164,6 +176,33 @@ test('٤. العميل: app-09 يحسب histOffset (ما قبل الشريحة +
   assert.ok(bundle.includes('{ histOffset: __histOffset }') && bundle.includes('histOffset: (opts && Number.isInteger(opts.histOffset)'), 'الحزمة مبنيّة');
   // الخادم: المالك لا يأخذ النافذة (ownerConversation بوسيط واحد)، والمسار المجّانيّ بقيمه
   const c = read('api/_lib/chat.js');
-  assert.ok(c.includes("{ histOffset: body && body.histOffset, lane: __freeLane ? 'free' : 'paid' }"));
+  assert.ok(c.includes("{ histOffset: __freeLane ? undefined : (body && body.histOffset), lane: 'paid' }"), 'tok-4: المجّانيّ بلا نافذة محاذاة');
   assert.ok(WINDOW.free.MAX <= 16 && WINDOW.paid.MIN === 14 && WINDOW.paid.MAX === 22 && WINDOW.paid.STEP === 8);
+});
+
+// مراجعة الدفعة A (tok-4): نظام المسار المجّانيّ ينتهي بوقت الدقيقة (nowNote) فلا يُقرأ تاريخه من كاش أبدًا، والنافذة المحاذاة (١٠–١٦)
+// كانت تعطيه ١١ رسالة في ثلث أدواره بدل ١٣ — خسارة سياق بلا ربح. المجّانيّ الآن بالضغط القديم حرفيًّا. (tok-3): وdone قبل القياس.
+test('٥. المسار المجّانيّ: المحادثة الطويلة بالضغط القديم حرفيًّا مهما كان histOffset، وdone قبل نداء القياس (tok-4 · tok-3)', async () => {
+  const H = [];
+  for (let i = 0; i < 29; i++) H.push({ role: i % 2 ? 'assistant' : 'user', content: (i % 2 ? 'جواب ' : 'سؤال ') + i + ' ' + 'كلام '.repeat(40) });
+  const expected = oldCompact(H).map((m) => ({ role: m.role, content: m.content }));
+  freeTier = true; freeConvos = [];
+  const order = [];
+  let doneSeen = false;
+  onPipeline = (cmds) => { if (cmds.some((x) => x[0] === 'HINCRBY')) order.push(doneSeen ? 'after' : 'before'); };
+  try {
+    for (const ho of [0, 3, 6, 11, 17]) {
+      doneSeen = false;
+      const res = { setHeader() {}, status() { return this; }, json() { return this; }, write(c) { if (/"done":true/.test(String(c))) doneSeen = true; return true; }, end() { this.writableEnded = true; }, on() {}, flushHeaders() {} };
+      await chat({ method: 'POST', headers: {}, body: { messages: H, token: token('win-u'), provider: 'claude', tz: 'Asia/Dubai', histOffset: ho } }, res);
+    }
+  } finally { freeTier = false; onPipeline = null; }
+  const got = freeConvos; freeConvos = null;
+  assert.equal(got.length, 5, 'السلسلة المجّانيّة خدمت الأدوار الخمسة');
+  got.forEach((cv, k) => {
+    const lastIdx = cv.length - 1;
+    assert.equal(cv.length, expected.length, 'الدور ' + k + ': ' + cv.length + ' رسالة (القديم ' + expected.length + ')');
+    assert.deepEqual(cv.slice(0, lastIdx), expected.slice(0, lastIdx), 'الدور ' + k + ': الرسائل نفسها');
+  });
+  assert.deepEqual(order, ['after', 'after', 'after', 'after', 'after'], 'القياس بعد done في المسار المجّانيّ');
 });

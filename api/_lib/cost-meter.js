@@ -54,7 +54,9 @@ async function addCost(username, usd, kind, opts) {
 
 /* v-tokens-meter (التقييم ١١ أكتوبر: نسبة قراءة الكاش لم تكن تُقاس في الإنتاج — حالات الصفر وجدها مسبار التدقيق وحده): عدّادات توكنات
    لكلّ يوم ومسار (paid · free · owner · pro) وموديل — دخل، قراءة كاش، كتابة كاش، خرج، أدوار — HINCRBY في طلب Redis المجمّع نفسه الذي
-   يسجّل التكلفة (لا رحلة إضافيّة)، مدّة ١٠٠ يوم. تقرير للمالك (tokenReport) بنسبة القراءة. لا حصّة تقرؤها؛ والفشل لا يوقف ردًّا. */
+   يسجّل التكلفة حين يُسجَّل (لا رحلة إضافيّة لدور حساب يدفع)؛ أمّا دور المالك والزائر وVIP فلا تكلفة له، فالتوكنات طلب Redis جديد
+   (حتّى ٦ أوامر) بعد done لا قبله (cross-2/tok-3، مراجعة الدفعة A). EXPIRE في كلّ دور كنمط costCmds: ضبطه مرّة يكلّف رحلة ثانية.
+   مدّة ١٠٠ يوم. تقرير للمالك (tokenReport) بنسبة القراءة. لا حصّة تقرؤها؛ والفشل لا يوقف ردًّا. */
 const dayOf = (t) => new Date(typeof t === 'number' ? t : Date.now()).toISOString().slice(0, 10);
 const TOK_FIELDS = [['input', 'in'], ['cacheRead', 'cr'], ['cacheWrite', 'cw'], ['output', 'out']];
 function tokenKey(day, lane, model) {

@@ -9,6 +9,9 @@
 //
 // المدوّنة: tests/fixtures/route-corpus/*.json (كلّ ملفّ مجموعة). كلّ حالة { id, text, expect|exp, clf|lane, attach, then:[خطوات] }:
 //   expect (نصّ): chat · chat-search · vision · image · edit · edit-text · video · ad · ask · build-gate · build
+//     · video-from-image (بعد صورة مولَّدة: الفيديو من الصورة نفسها — بطلها في صانع الفيديو أو imageBase64 في video-create)
+//     · project-edit (مشروع مفتوح: محادثة بلا «موضوع جديد»، وللمالك ملاحظة «المشروع المفتوح = عدّله…»)
+//   ctx: project (مشروع مفتوح فيه كود قبل الخطوة الأولى) — مراجعة الدفعة A (rel-2/rel-4).
 //   exp (مصفوفة، مدوّنة الـ١١٥): CHAT · CHAT_IMG · IMG_GEN · IMG_EDIT · IMG_TEXT · VIDEO · AD · PHOTOS · LOGO_FETCH · BUILD_GATE · BUILD_HTML
 //   attach: photo (صورة جوّال) أو shot (لقطة شاشة) تُرفق قبل الخطوة بـomranIngestFiles الحقيقيّة.
 //   clf/lane: المسار الصحيح لمصنّف media-intent في وضع oracle. الحالات المتتابعة (then) في المحادثة نفسها،
@@ -139,6 +142,8 @@ function summarize(r) {
     o.img = Array.isArray(lu.content) && lu.content.some((c) => c && (c.type === 'image' || c.type === 'image_url'));
     o.lastUser = String(typeof lu.content === 'string' ? lu.content : (lu.content || []).filter((c) => c && c.type === 'text').map((c) => c.text).join(' ')).replace(/\s+/g, ' ').slice(0, 80);
   }
+  o.ownerNote = /المشروع المفتوح = عدّله/.test(sys); o.topicNew = /موضوع جديد مختلف/.test(sys); // rel-4
+  if (j.imageBase64) o.vidImg = true; // rel-2: الفيديو من صورة
   if (j.editImageBase64) o.edit = true;
   if (j.layoutOnly) o.layoutOnly = true;
   if (j.prompt && !j.messages) o.prompt = String(j.prompt).replace(/\s+/g, ' ').slice(0, 60);
@@ -171,6 +176,15 @@ function judgeExpect(row) {
   if (e === 'edit') return [s === 'IMG-EDIT' ? 'OK' : (s === 'CHAT+img' ? 'SOFT' : 'HARD'), s];
   if (e === 'edit-text') return [(s === 'IMG-EDIT' || s === 'IMG-TEXT') ? 'OK' : (s === 'CHAT+img' ? 'SOFT' : 'HARD'), s];
   if (e === 'video') return [s === 'VIDEO' ? 'OK' : (/^CHAT/.test(s) ? 'SOFT' : 'HARD'), s];
+  if (e === 'video-from-image') { // rel-2: صانع فيديو بلا الصورة = فيديو نصّيّ مدفوع من أمر بلا معنى («ابي فيديو منها»)
+    const fromImg = !!(row.ui.hero || row.calls.some((x) => x.vidImg));
+    return [s === 'VIDEO' && fromImg ? 'OK' : (/^CHAT/.test(s) ? 'SOFT' : 'HARD'), s + (s === 'VIDEO' && !fromImg ? '(no-image)' : '')];
+  }
+  if (e === 'project-edit') { // rel-4
+    const c = row.calls.filter((x) => !FREE.test(x.ep));
+    const topic = c.some((x) => x.topicNew), note = c.some((x) => x.ownerNote);
+    return [/^CHAT/.test(s) && !topic && (USER_OPT !== 'owner' || note) ? 'OK' : 'HARD', s + (topic ? '+topicNew' : '') + (USER_OPT === 'owner' && !note ? '-ownerNote' : '')];
+  }
   if (e === 'ad') return [(s === 'AD' || s === 'IMG' || s === 'IMG-TEXT') ? 'OK' : (/^CHAT/.test(s) ? 'SOFT' : 'HARD'), s];
   if (e === 'ask') return [(s === 'ASK' || s === 'CHAT' || freeModal) ? 'OK' : 'HARD', s];
   if (e === 'build-gate') return [s === 'GATE' ? 'OK' : (/^CHAT/.test(s) ? 'SOFT' : 'HARD'), s];
@@ -242,6 +256,10 @@ async function runCase(browser, base, set, c) {
       p.messages.push({ role: 'assistant', content: '', attachments: [{ name: 'generated.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + IMG }] });
       p.lastEditedImage = { b64: IMG, mime: 'image/png' }; p.lastMsgWasImageEdit = true;
     }
+    if (ctxName === 'project') { // rel-4: مشروع مفتوح فيه كود (ردّ بناء سابق)
+      p.code = '<!doctype html><html><head><title>متجر</title></head><body><header><h1>متجر الورد</h1><button id="buy">اشتر الآن</button></header><section id="products"><div class="card">ورد أحمر</div></section></body></html>';
+      p.messages.push({ role: 'user', content: 'ابني لي صفحة متجر ورد' }); p.messages.push({ role: 'assistant', content: 'تفضّل الصفحة.', code: p.code });
+    }
     state.projects.push(p); state.currentId = id;
     if (ctxName === 'attached') pendingAttachments.push({ name: 'photo.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + IMG });
   }, { ctxName: c.ctx || 'fresh', IMG });
@@ -253,7 +271,7 @@ async function runCase(browser, base, set, c) {
     calls = [];
     const t0 = Date.now();
     await page.evaluate(async (s) => {
-      try { const vm = document.getElementById('videoMakerModal'); if (vm) vm.style.display = 'none'; } catch (e) { /* لا شيء */ }
+      try { const vm = document.getElementById('videoMakerModal'); if (vm) vm.style.display = 'none'; const hp = document.getElementById('videoMakerHeroPreview'); if (hp) { hp.removeAttribute('src'); hp.style.display = 'none'; } } catch (e) { /* لا شيء */ }
       if (s.attach) {
         const cv = document.createElement('canvas');
         const [w, h] = s.attach === 'shot' ? [1280, 720] : [900, 1200];
@@ -280,7 +298,8 @@ async function runCase(browser, base, set, c) {
       const vis = (el) => !!el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden'; // النافذة position:fixed فـoffsetParent فارغ دائمًا
       const cur = (typeof getCurrent === 'function') ? getCurrent() : null;
       const la = [...(cur ? cur.messages : [])].reverse().find((m) => m.role === 'assistant');
-      return { video: vis(vm), lastA: la ? String(la.content || '').replace(/\s+/g, ' ').slice(0, 90) : '', gate: window.__mediaGate };
+      const hp = document.getElementById('videoMakerHeroPreview'); // rel-2: بطل صانع الفيديو صورةٌ فعلًا
+      return { hero: !!(hp && /^data:/.test(hp.getAttribute('src') || '') && hp.style.display !== 'none'), video: vis(vm), lastA: la ? String(la.content || '').replace(/\s+/g, ' ').slice(0, 90) : '', gate: window.__mediaGate };
     });
     inflight.delete(st);
     const sig = calls.filter((x) => !FREE.test(x.ep));

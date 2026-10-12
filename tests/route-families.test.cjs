@@ -81,12 +81,90 @@ test('٦. أفعال الرغبة والطلب المهذّب: فيديو وصو
   }
   assert.ok(R.VID_Q.test('تقدر تسوي فيديو؟'), 'السؤال يُستثنى كما كان');
   for (const t of ['تقدر تصمم لي شعار لمطعم', 'ممكن تصمم لي كرت معايدة للعيد', 'تكفى صمم لي ستيكر لقهوة عربية', 'سو لي لوقو لمقهى']) assert.ok(R.designMake.test(t), 'تصميم: ' + t);
-  for (const t of ['ممكن ترسم لي بيت', 'لو سمحت ترسم لي وردة', 'يا ليت ترسم لي غيمة']) assert.ok(R.txtOnly.test(t), 'رسم: ' + t);
-  for (const t of ['ممكن تسوي لي صورة لقطة', 'حاب صورة كرتونية لطفل يدرس', 'ودي صورة لجمل', 'نبي صورة لبرج خليفة']) assert.ok(R.unifiedBuild.test(t), 'صورة: ' + t);
+  // مراجعة الدفعة A (rel-5): «ممكن ترسم…» بلا مفعول صورة، وأفعال الرغبة الجديدة + صورة — بانٍ فقط إن قال المصنّف image (__rtLaneImgRe)
+  for (const t of ['ممكن ترسم لي بيت', 'لو سمحت ترسم لي وردة', 'يا ليت ترسم لي غيمة', 'حاب صورة كرتونية لطفل يدرس', 'نبي صورة لبرج خليفة']) {
+    assert.ok(R.laneImg.test(t) && !R.txtOnly.test(t) && !R.unifiedBuild.test(t), 'رسم بشرط المصنّف: ' + t);
+  }
+  for (const t of ['ممكن تسوي لي صورة لقطة', 'ودي صورة لجمل']) assert.ok(R.unifiedBuild.test(t), 'صورة: ' + t);
   for (const t of ['كيف ترسم وجه', 'متى ترسم اللوحة', 'ليش تصمم كذا']) {
     assert.ok(!R.txtOnly.test(t) && !R.designMake.test(t) && !R.unifiedBuild.test(t), 'ليس طلبًا: ' + t);
   }
   // المصنّف يُستشار لأفعال الرغبة والطلب المهذّب (له حقّ الفيتو)، والكلام عن الوسائط لا ينتظره
   for (const t of ['ودي صورة لجمل', 'نبي فيديو قصير عن القهوة', 'يا ليت ترسم لي غيمة', 'لو سمحت ترسم لي وردة']) assert.equal(h.classifierCalled(t), true, 'مصنّف: ' + t);
   for (const t of ['رأيك في فيلم الأمس', 'شفت صورة حلوة اليوم']) assert.equal(h.classifierCalled(t), false, 'لا انتظار: ' + t);
+});
+
+/* مراجعة الدفعة A — rel-1 · rel-2 · rel-3 · rel-4 · rel-5 · rel-7 على التعابير والشروط الحقيقيّة (السطر نفسه من الكود). */
+const gateLine = (() => { const i = h.SRC.indexOf('       (__rtDesignImg /* v-route-design */'); return h.SRC.slice(i, h.SRC.indexOf('){\n', i)).trim(); })();
+function builds(text, lane) { // شرط بانِي الصور بنصّه، وما قبله من البوّابة (ليس none/video، ولا كود)
+  const ctx = { text, __mediaLane: lane, __rtDesignImg: R.designMake.test(text) || (lane === 'image' && R.designWant.test(text)), __explicitImageTextRequest: false,
+    omranLaneImgAsk: (t, l) => l === 'image' && R.laneImg.test(t), __txtOnlyImgRe: R.txtOnly, __imgGenIntentRe: R.imgGen, __unifiedBuildRe: R.unifiedBuild, __nanoQ: R.nanoQ };
+  return lane !== 'none' && lane !== 'video' && !R.codeWord.test(text) && !!vm.runInNewContext(gateLine, ctx);
+}
+
+test('٧. rel-1 · rel-5: لوحة/خلفية بعد فعل رغبة أو طلب مهذّب، و«ممكن ترسم» المجازيّة، والرغبة الجديدة + صورة — لا صورة مدفوعة بلا «image» من المصنّف', () => {
+  assert.ok(gateLine.includes('omranLaneImgAsk(text, __mediaLane)'), 'البوّابة تسأل المسار المشروط');
+  const talk = ['حاب لوحة مفاتيح عربية للابتوب بسعر معقول', 'نبي لوحة سيارة مميزة للوالد', 'حاب خلفية بسيطة عن تاريخ الدولة العثمانية', 'نبي لوحة تحكم للمتجر نتابع فيها الطلبات',
+    'حابب لوحة الدرجات تطلع بالترتيب', 'ممكن تسوي لي لوحة تحكم للمتجر', 'تقدر تعمل لي خلفية عن الشركة للعرض التقديمي', 'ابي لوحة مفاتيح جديدة'];
+  for (const t of talk) for (const lane of [null, 'none']) assert.equal(builds(t, lane), false, 'كلام (المصنّف ' + lane + '): ' + t);
+  for (const t of ['ممكن ترسم لي مسار مهني كمحاسب مبتدئ', 'نبغى صورة واضحة عن الوضع المالي للشركة قبل الاجتماع']) {
+    assert.equal(builds(t, null), false, 'المصنّف متعذّر: كلام — ' + t);
+    assert.equal(builds(t, 'image'), true, 'المصنّف قال image: صورة — ' + t);
+  }
+  // الصورة الحقيقيّة باقية: الأمر الصريح، والموصوف، والرغبة القديمة + صورة، وكلّ ما قال فيه المصنّف image
+  for (const t of ['ارسم لي لوحة لغروب الشمس', 'حاب لوحة زيتية لقرية جبلية', 'ابغى خلفية للجوال فيها بحر', 'ودي صورة لجمل في الصحراء وقت الغروب', 'سوي لي صورة لقطة']) assert.equal(builds(t, null), true, 'صورة: ' + t);
+  for (const t of ['نبغى رسمة كرتونية لعائلة على البحر', 'ممكن ترسم لي حصان عربي أبيض', 'ابي لوحة لغروب الشمس']) assert.equal(builds(t, 'image'), true, 'صورة بقول المصنّف: ' + t);
+});
+
+test('٨. rel-5: فعل رغبة + مقطع/فيلم ليس صانع فيديو إن تلاه «من قصيدة/رواية» أو «أشوف/انصحني» أو «صوتي»؛ طلب المشهد يبقى', () => {
+  for (const t of ['ابي مقطع من قصيدة المتنبي عن الشجاعة', 'نبي مقطع صوتي للأذان بصوت هادي', 'ودي فيلم رعب اشوفه الليلة مع العيال', 'ابغا مقطع من رواية ساق البامبو', 'ودي فيلم وثائقي عن الفضاء انصحني']) {
+    assert.ok(!R.VID_MAKE.test(t), 'ليس طلب فيديو: ' + t);
+  }
+  for (const t of ['ودي مقطع قصير لشلال في غابة', 'ابي فيديو لصقر يطير فوق الجبال', 'ابغا كليب لسيارة تمشي في دبي بالليل', 'سوي لي مقطع من قصيدة المتنبي مع صور صحراء', 'اريد فيلم قصير عن جمل يمشي']) {
+    assert.ok(R.VID_MAKE.test(t), 'صانع الفيديو: ' + t);
+  }
+});
+
+test('٩. rel-2: بعد صورة مولَّدة «ابي فيديو منها» يفتح صانع الفيديو ببطل الصورة نفسها؛ طلب فيديو بموضوعه جديد بلا بطل', () => {
+  assert.ok(h.videoHero, 'omranLastImageHero موجودة');
+  for (const t of ['ابي فيديو منها', 'ابي فيديو', 'ودي فيديو لها وهي تلعب', 'نبي فيديو من هالصورة', 'ابغى فيديو منها', 'اريد فيديو منها']) assert.equal(h.videoHero(t), true, 'البطل الصورة: ' + t);
+  for (const t of ['ابي فيديو لصقر يطير فوق الجبال', 'نبي فيديو لطفل يلعب كورة في الحارة']) assert.equal(h.videoHero(t), false, 'طلب جديد: ' + t);
+  const i = h.SRC.indexOf('    const __heroAtt = ');
+  assert.ok(i > h.SRC.indexOf('    const __vidOwnWords = __vidOwnWordsOf(text);') && h.SRC.slice(i, h.SRC.indexOf('\n', i)).includes('omranLastImageHero(getCurrent(), text, __vidOwnWords.length)'), 'البطل بعد كلام المستخدم، وgetCurrent() لا cur (TDZ)');
+});
+
+test('١٠. rel-3: نسخ النصّ مرسًى على الصورة نفسها؛ الكتابة على الصورة بأسلوبها و«حوّل … لكتابة» تعديل', () => {
+  for (const t of ['اكتب الكلام اللي بين القوسين على الصورة (مبروك التخرج)', 'اكتب النص اللي بالأسفل بخط ذهبي: عيد سعيد', 'اكتب الكلام اللي على الكرت بخط أوضح',
+    'حول اسمي لكتابة بالخط الديواني', 'حول الاسم لكتابة عربية', 'اكتب الكلام اللي على الصورة بخط أكبر', 'اكتب النص اللي بالرسالة على الصورة']) {
+    assert.ok(!R.attVision.test(t), 'تعديل/كتابة: ' + t);
+  }
+  for (const t of ['اكتب النص اللي في الصورة', 'اكتب الكلام اللي فيها', 'اكتب النص اللي بخط اليد بشكل مرتب', 'حول اللي في الصورة لنص', 'حولها لنص اقدر انسخه', 'اكتب النص اللي في الصورة لو سمحت']) {
+    assert.ok(R.attVision.test(t), 'قراءة: ' + t);
+  }
+  assert.equal(h.after('حول الاسم لكتابة عربية', 'ارسم لي بطاقة فيها اسم Omar بخط حلو').edit, true, 'بعد صورة مولَّدة: تعديل');
+});
+
+test('١١. rel-4: المشروع المفتوح — ملاحظة المالك في كلّ دور تعمل فيه الأدوات، ولا «موضوع جديد» على دور فيه فعل تعديل', () => {
+  const ownerLine = h.SRC.slice(h.SRC.indexOf('      } else if(__ownerFree && '), h.SRC.indexOf('\n', h.SRC.indexOf('      } else if(__ownerFree && ')));
+  assert.ok(ownerLine.includes('__ownerFree && !!cur.code && __toolsWillRun'), 'لا على __routeFix وحده: ' + ownerLine.slice(0, 80));
+  const note = h.SRC.indexOf("'المشروع المفتوح = عدّله في الردّ", h.SRC.indexOf('      } else if(__ownerFree && '));
+  assert.ok(note > 0 && note - h.SRC.indexOf('      } else if(__ownerFree && ') < 600, 'الملاحظة في هذا الفرع');
+  const topic = h.SRC.slice(h.SRC.indexOf("      if(typeof window.omranTopicSwitch === 'function'"), h.SRC.indexOf('\n', h.SRC.indexOf("      if(typeof window.omranTopicSwitch === 'function'")));
+  assert.ok(topic.includes('!__editVerbHit'), 'فيتو فعل التعديل على ملاحظة الموضوع');
+  // __editVerbHit بنصّه: المشروع مفتوح + فعل تعديل («كم منتج اقدر احط؟» فيها «حط»)
+  const i = h.SRC.indexOf('  const __editVerbRe = ');
+  const src = [h.SRC.slice(i, h.SRC.indexOf('\n', i)), h.SRC.slice(h.SRC.indexOf('  const __editObjRe = '), h.SRC.indexOf('\n', h.SRC.indexOf('  const __editObjRe = '))),
+    h.SRC.slice(h.SRC.indexOf('  const __questionStartRe = '), h.SRC.indexOf('\n', h.SRC.indexOf('  const __questionStartRe = '))),
+    h.SRC.slice(h.SRC.indexOf('  const __editVerbHit = '), h.SRC.indexOf('\n', h.SRC.indexOf('  const __editVerbHit = '))), 'this.hit = __editVerbHit;'].join('\n');
+  const hit = (text, code) => { const c = { text, cur: { code }, __imgWriteAsk: false }; vm.runInNewContext(src, c); return c.hit; };
+  for (const t of ['كم منتج اقدر احط؟', 'كيف اضيف ميزة البحث؟', 'متى تضيف الدفع الالكتروني', 'شو رايك تضيف عداد زوار']) assert.equal(hit(t, '<html></html>'), true, 'فعل تعديل والمشروع مفتوح: ' + t);
+  assert.equal(hit('كم منتج اقدر احط؟', ''), false, 'بلا مشروع: كما كان');
+});
+
+test('١٢. rel-7: الرفض أو الموافقة المكرّرة بعد صورة ليست تعديلًا («لا لا»، «no no»)، و«لا لا كبرها» تعديل', () => {
+  for (const t of ['لا لا', 'لا لا لا', 'no no', 'ok no', 'نعم نعم', 'ايه ايه', 'لا تمام']) {
+    assert.ok(R.ack.test(t), 'شكر/رفض: ' + t);
+    assert.equal(h.after(t, 'ارسم لي فراشة ملونة').edit, false, 'ليس تعديلًا: ' + t);
+  }
+  assert.equal(h.after('لا لا كبرها', 'ارسم لي فراشة ملونة').edit, true, 'تعديل');
 });

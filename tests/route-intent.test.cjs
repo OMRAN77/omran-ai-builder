@@ -88,6 +88,7 @@ vm.runInNewContext([
   stmt('const __explicitImageTextRequest = '),
   line('const __codeWordRe = '), line('const __designDocRe = '), line('const __nanoQ = '),
   line('const __imgGenIntentRe = '), line('const __unifiedBuildRe = '), line('const __txtOnlyImgRe = '),
+  line('const __rtLaneImgRe = '), line('function omranLaneImgAsk('), // مراجعة الدفعة A (rel-1 · rel-5): ما يُبنى فقط إن قال المصنّف image
   line('const __rtDesignMakeRe = '), line('const __rtDesignWantRe = '), line('const __rtDesignImg = '),
   '  const __blockAutoImage = false, __srcImg = null, __freshGenWins = false, __followUp = false, __archImagesDone = false;',
   '  return !!(' + BUILDER_HEAD.slice(3) + cond(BUILDER_HEAD) + ');',

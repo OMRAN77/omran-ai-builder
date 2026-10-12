@@ -25,7 +25,8 @@ const kvImpl = {
   kvGetRaw: async (k) => { await tick(); return store.has(k) ? String(store.get(k)) : null; },
   kvSetRaw: async (k, v) => { await tick(); store.set(k, String(v)); },
   kvSetIfAbsent: async (k, v) => { await tick(); if (store.has(k)) return false; store.set(k, String(v)); return true; },
-  kvIncr: async (k) => { await tick(); const v = Number(store.get(k) || 0) + 1; store.set(k, String(v)); return v; },
+  // كـRedis: INCR على قيمة غير عدديّة (سجلّ JSON قديم) يرمي — لا يُعدّ NaN
+  kvIncr: async (k) => { await tick(); if (store.has(k) && !/^-?\d+$/.test(String(store.get(k)))) throw new Error('Upstash error: ERR value is not an integer or out of range'); const v = Number(store.get(k) || 0) + 1; store.set(k, String(v)); return v; },
   kvIncrBy: async (k, n) => { await tick(); const v = Number(store.get(k) || 0) + Number(n); store.set(k, String(v)); return v; },
   kvDecrBy: async (k, n) => { await tick(); const v = Number(store.get(k) || 0) - Number(n); store.set(k, String(v)); return v; },
   kvDel: async (k) => { await tick(); store.delete(k); },
@@ -157,4 +158,66 @@ test('٨. rateWait ذرّيّ: ٥٠ «نسيت كلمة المرور» متوا�
   assert.equal(ok, 3, 'نجح ' + ok + ' (كان أكثر من ٣ بسباق القراءة-الكتابة)');
   assert.equal(mails, 3);
   assert.ok(rs.filter((r) => r.status === 429).every((r) => /^محاولات كثيرة، حاول بعد \d+ دقيقة$/.test(r.body.error)));
+});
+
+// مراجعة الدفعة A (sec-1): «الشبكة المعروفة» كانت تُكتب بعد الدخول بكلمة المرور وحده — من سجّل ثمّ بقي بالتحقّق المنزلق
+// (المالك نادرًا ما يدخل بكلمته) أو دخل برمز البريد يُقفَل حتّى من بيته برشّ ٥٠ كلمة خاطئة من شبكات متفرّقة (المسبار: ٤٢٩).
+test('٩. كلّ نجاح موثَّق يحفظ شبكته: تسجيل من S، تحقّق منزلق من V، رمز بريد من O — بعد رشّ ٦٠ موزَّعًا كلمته من الثلاث 200', async () => {
+  const su = await call({ action: 'signup', username: 'homeowner', password: PASS, email: 'homeowner@example.com' }, '10.7.7.1');
+  assert.equal(su.status, 200);
+  assert.equal((await call({ action: 'verify', token: su.body.token }, '10.7.8.1')).status, 200, 'تحقّق منزلق من شبكة أخرى بلا دخول بكلمة');
+  assert.equal((await call({ action: 'email-otp-request', email: 'homeowner@example.com' }, '10.7.9.1')).status, 200);
+  const code = JSON.parse(store.get('db/otp/homeowner@example.com')).otp;
+  assert.equal((await call({ action: 'email-otp-verify', email: 'homeowner@example.com', otp: code }, '10.7.9.1')).status, 200);
+  const spray = await Promise.all(Array.from({ length: 60 }, (_, i) => login('homeowner', 'w' + i, '77.0.0.' + i)));
+  assert.ok(spray.filter((r) => r.status === 429).length >= 10, 'الحدّ الليّن وقع');
+  for (const net of ['10.7.7.1', '10.7.8.1', '10.7.9.1']) {
+    assert.equal((await login('homeowner', PASS, net)).status, 200, 'كلمته من شبكته المعروفة ' + net + ' (كانت ٤٢٩)');
+  }
+  assert.equal((await login('homeowner', PASS, '99.0.0.1')).status, 429, 'شبكة لم يُرَ منها نجاح تبقى خلف الحدّ الليّن');
+});
+
+test('١٠. الاسترجاع برابط البريد يحفظ شبكته أيضًا، وعطب KV في الحفظ لا يُفشل الدخول', async () => {
+  await account('resetter', { email: 'resetter@example.com' });
+  const rt = 'reset-token-abc';
+  const rec = await auth.getUser('resetter');
+  rec.resetTokenHash = crypto.createHash('sha256').update(rt).digest('hex');
+  rec.resetTokenExpiry = Date.now() + 60000;
+  await auth.putUser('resetter', rec);
+  assert.equal((await call({ action: 'resetWithToken', username: 'resetter', resetToken: rt, newPassword: PASS }, '10.6.6.1')).status, 200);
+  await Promise.all(Array.from({ length: 60 }, (_, i) => login('resetter', 'w' + i, '78.0.0.' + i)));
+  assert.equal((await login('resetter', PASS, '10.6.6.1')).status, 200, 'شبكة الاسترجاع معروفة');
+  const orig = kvImpl.kvSetIfAbsent;
+  kvImpl.kvSetIfAbsent = async (k, v, t) => { if (String(k).startsWith('db/login-ok/')) throw new Error('kv down'); return orig(k, v, t); };
+  try {
+    const su = await call({ action: 'signup', username: 'kvdown', password: PASS }, '10.6.6.2');
+    assert.equal(su.status, 200, 'عطب حفظ الشبكة لا يُفشل التسجيل');
+    assert.equal((await call({ action: 'verify', token: su.body.token }, '10.6.6.2')).status, 200, 'ولا التحقّق');
+  } finally { kvImpl.kvSetIfAbsent = orig; }
+});
+
+// مراجعة الدفعة A (sec-2): العدّاد الجديد كان ‎<القاعدة القديمة>/n والبريد خامًا — سجلّ JSON قديم بلا عمر في ‎db/otp-rate/V/n
+// (يكتبه كود قديم لبريد «V/n») يجعل INCR يرمي، والرمية «اسمح»: ٢٠ طلب رمز = ٢٠ رسالة للأبد.
+test('١١. سجلّ JSON قديم في مفتاح العدّاد لا يُسقط الحدّ: رابع طلب رمز لبريد مسموم ٤٢٩، وعدّاد دخول مسموم يُمسح ويُعدّ', async () => {
+  const legacy = JSON.stringify({ windowStart: Date.now(), count: 1 });
+  store.set('db/otp-rate/victim@example.com/n', legacy); // الشكل القديم (بلا عمر)
+  store.set('db/forgot-rate/victim@example.com/n', legacy);
+  mails = 0;
+  const rs = [];
+  for (let i = 0; i < 4; i++) rs.push((await call({ action: 'email-otp-request', email: 'victim@example.com' }, '79.0.0.' + i)).status);
+  assert.deepEqual(rs, [200, 200, 200, 429], 'كانت ٢٠٠ ×٤');
+  assert.equal(mails, 3);
+  // والقيمة البشريّة مرمَّزة: «V/n» لا يقع على عدّاد V
+  assert.equal((await call({ action: 'email-otp-request', email: 'victim@example.com/n' }, '79.0.1.1')).status, 200);
+  // دفاع ثانٍ: قيمة غير عدديّة في عدّاد ذرّيّ (هنا عدّاد الحساب في قفل الدخول) تُمسح ويُعاد العدّ — لا تُفهم «اسمح»
+  await account('poisoned');
+  store.set('db/login-fail/poisoned/n', legacy);
+  const ev = countEvals();
+  let by = {};
+  try {
+    const out = await Promise.all(Array.from({ length: 20 }, (_, i) => login('poisoned', 'p' + i, '9.8.7.6')));
+    out.forEach((r) => { by[r.status] = (by[r.status] || 0) + 1; });
+  } finally { ev.stop(); }
+  assert.ok(ev.n <= 6, 'تقييمات ' + ev.n + ' (كانت ٢٠: عطب العدّاد = اسمح)');
+  assert.equal(by[429], 20 - ev.n, JSON.stringify(by));
 });

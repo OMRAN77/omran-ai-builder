@@ -95,3 +95,36 @@ test('٥. على package.json الحقيقيّ: القائمة = pretest ثمّ 
   assert.ok(files.length >= chain, 'كلّ مقطع من سلسلة test في القائمة');
   assert.deepEqual(counts('# tests 4\n# pass 3\n# fail 1\nℹ tests 2\nℹ pass 2\nℹ fail 0\n'), { tests: 6, pass: 5, fail: 1 });
 });
+
+test('٦. النداء عبر مسار فيه رابط رمزيّ يشغّل الاختبارات ويرى الفشل؛ والتشغيل الفارغ خروج ٢ لا نجاح (arch-2)', () => {
+  const dir = fixture({ test: 'node tests/fail.test.cjs' }, { 'tests/fail.test.cjs': FAIL });
+  const empty = fixture({ test: '' }, {});
+  try {
+    const link = path.join(dir, 'scripts-link');
+    fs.symlinkSync(path.join(root, 'scripts'), link);
+    const r = spawnSync(process.execPath, [path.join(link, 'run-tests.mjs'), '--root', dir, '--jobs', '1'], { encoding: 'utf8' });
+    assert.equal(r.status, 1, 'كان ٠ بلا مخرجات: ' + r.stdout + r.stderr);
+    assert.match(r.stdout, /✗ tests\/fail\.test\.cjs/);
+    const e = run(empty);
+    assert.equal(e.status, 2, e.stdout + e.stderr);
+    assert.match(e.stderr, /لا ملفّ اختبار مسجّل/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(empty, { recursive: true, force: true }); }
+});
+
+test('٧. حفيد هارب يمسك الأنابيب: الملفّ الذي خرج ٠ ناجح بلا انتظاره، والمعلّق يُحسم بمهلته + المهلة القصيرة (arch-3)', () => {
+  // حفيد في جلسة مستقلّة يرث الأنابيب ويعيش ١٢ ثانية — kill(-pid) لا يصله، و'close' لا يأتي قبله
+  const LEAK = "require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 12000)'], { detached: true, stdio: 'inherit' }).unref();\n";
+  const dir = fixture({ test: 'node tests/leak.test.cjs && node tests/hang.test.cjs' }, {
+    'tests/leak.test.cjs': LEAK + PASS,
+    'tests/hang.test.cjs': LEAK + 'setInterval(() => {}, 1000);\n',
+  });
+  try {
+    const t0 = Date.now();
+    const r = spawnSync(process.execPath, [RUNNER, '--root', dir, '--jobs', '2'], { encoding: 'utf8', env: Object.assign({}, process.env, { TEST_FILE_TIMEOUT_MS: '2500', TEST_EXIT_GRACE_MS: '400' }) });
+    const wall = Date.now() - t0;
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stdout, /✓ tests\/leak\.test\.cjs/, 'خرج ٠ = ناجح (كان «timeout» بعد ١٢ ثانية)');
+    assert.match(r.stdout, /✗ tests\/hang\.test\.cjs .*\(timeout\)/);
+    assert.ok(wall < 8000, 'حُسم خلال المهلة + المهلة القصيرة: ' + wall + 'ms (كان ينتظر الحفيد ١٢ ثانية)');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

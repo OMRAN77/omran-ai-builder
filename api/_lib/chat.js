@@ -1420,7 +1420,7 @@ module.exports = async (req, res) => {
   const toolTurn = !quietSocialTurn && (!__analyzeDoc || __ownerReq); const __ownerUiShot = __ownerReq && lastUserHasImage && (typeof (body && body.ownerUiShot) === 'boolean' ? body.ownerUiShot : require('./owner-carry.js').uiEditTurn(lastUserText)); /* v-owner-ui-shot · v-owner-ui-shot-client: قرار العميل (يعرف علامة اللقطة) أوّلًا، والتعابير حين يغيب */ // v-providers-like-agent: المالك يقرأ ويبحث في الرسالة الطويلة كالوكيل (بلا أدوات الصور)
   const siteGuideTurn = toolTurn && isGuideTurn(messages); // v-site-guide3 · v-guide-next: والمتابعة القصيرة بعده
     const baseSystem = sysParts.join('\n\n');
-    const stableSystem = sysParts.filter((p, i) => !isClientTurnNote(p) && !(livingBlock && p === livingBlock) && (i < __clFrom || i >= __clTo)).join('\n\n'), __sysBase = [stableSystem].concat(sysParts.slice(__clFrom, __clTo).filter((p) => !isClientTurnNote(p))).filter(Boolean).join('\n\n'); /* v-tokens-s0 (التقييم ١١ أكتوبر: ملاحظة عميل جديدة — مرساة «📌»، قواعد الصورة، الإعلان، المساعد البصريّ — كانت تقع داخل الكتلة الثابتة فتبطل قراءتها): الثابت المخزَّن بلا ملاحظات العميل، وهي رأس المتغيّر بعده بنصّها وترتيبها (قبل قواعد الصورة كما يلزم v-img-read)؛ بلا ملاحظات = كما كان حرفيًّا */ /* v-tokens-living: الحقائق (تُختار بسؤال كلّ دور) كانت قبل علامة كاش الرسائل فيُكتب التاريخ كلّه بسعر ١٫٢٥ كلّ دور ولا يُقرأ — صارت في ذيل الدور، ونصّها يقول إنّ التعليمات المخصّصة تعلو عليها */ // v-living-all: بلا حقائق = كما كان حرفيًّا · v-tokens-cache: نظام المزوّد بلا ملاحظات الدور (baseSystem الكامل يبقى للسلسلة المجّانيّة وفحص الإرشاد)
+    const stableSystem = sysParts.filter((p, i) => !isClientTurnNote(p) && !(livingBlock && p === livingBlock) && (i < __clFrom || i >= __clTo)).join('\n\n'), __clNotes = sysParts.slice(__clFrom, __clTo).filter((p) => !isClientTurnNote(p)), __sysBase = [stableSystem].concat(__clNotes, (customInstr && __clNotes.length) ? [CI_PRECEDENCE_NOTE] : []).filter(Boolean).join('\n\n'); /* v-ci-precedence (مراجعة الدفعة A، tok-1): ملاحظات العميل صارت بعد التعليمات المخصّصة (التحيّة «بلغة المستخدم»، الصورة «باختصار»…) فتعلو عليها — سطر ثابت للنموذج وحده يعيد للمخصّصة علوّها، والكتلتان المخزّنتان كما هما */ /* v-tokens-s0 (التقييم ١١ أكتوبر: ملاحظة عميل جديدة — مرساة «📌»، قواعد الصورة، الإعلان، المساعد البصريّ — كانت تقع داخل الكتلة الثابتة فتبطل قراءتها): الثابت المخزَّن بلا ملاحظات العميل، وهي رأس المتغيّر بعده بنصّها وترتيبها (قبل قواعد الصورة كما يلزم v-img-read)؛ بلا ملاحظات = كما كان حرفيًّا */ /* v-tokens-living: الحقائق (تُختار بسؤال كلّ دور) كانت قبل علامة كاش الرسائل فيُكتب التاريخ كلّه بسعر ١٫٢٥ كلّ دور ولا يُقرأ — صارت في ذيل الدور، ونصّها يقول إنّ التعليمات المخصّصة تعلو عليها */ // v-living-all: بلا حقائق = كما كان حرفيًّا · v-tokens-cache: نظام المزوّد بلا ملاحظات الدور (baseSystem الكامل يبقى للسلسلة المجّانيّة وفحص الإرشاد)
     const __ownerNoTools = __ownerReq && !!(body && body.noTools === true); const ownerKnowledge = toolTurn ? require('./provider-level.js').ownerBrief(require('./_knowledge.js').ownerKnowledge(req, token), __ownerNoTools) : ''; // v-claude-code-level E1·E4: الملخّص بلا «ويُرفع معها» الكاذبة، وبلا فقرة الأدوات في دور بلا أدوات (غير المالك: '' كما كان)
     // v-persona-front: البصمة أول ما يقرأه النموذج في المسارات الثلاثة —
     // حتى الدور الاجتماعي («كيف الحال») الذي كان محرومًا منها كليًّا.
@@ -1503,7 +1503,7 @@ module.exports = async (req, res) => {
      الأقدم يبقى مضبوطًا عند ١٢ ألف لحماية جودة السياق. */
   const __lastMsgIdx = (function () { for (let k = convoSource.length - 1; k >= 0; k--) if (convoSource[k] && convoSource[k].role === 'user') return k; return convoSource.length - 1; })(), __codeMsgIdx = convoSource.findIndex(isProjectCodeMsg); // v-chat-edit
   const convo = (__ownerReq ? ownerConversation : compactConversation)(convoSource // v-owner-memory
-      .map((m, __i) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, __i === __codeMsgIdx ? 300000 : __i === __lastMsgIdx ? 200000 : (__ownerReq ? 60000 : 12000)) : m.content })), { histOffset: body && body.histOffset, lane: __freeLane ? 'free' : 'paid' }); // v-tokens-window: موضع المحادثة المطلق من العميل (المالك لا يأخذه — ownerConversation بوسيط واحد)
+      .map((m, __i) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, __i === __codeMsgIdx ? 300000 : __i === __lastMsgIdx ? 200000 : (__ownerReq ? 60000 : 12000)) : m.content })), { histOffset: __freeLane ? undefined : (body && body.histOffset), lane: 'paid' }); /* tok-4: المسار المجّانيّ بالضغط القديم حرفيًّا — نظامه ينتهي بوقت الدقيقة فلا كاش يربحه، والنافذة المحاذاة كانت تُسقط رسالتين في ثلث أدواره */ // v-tokens-window: موضع المحادثة المطلق من العميل (المالك لا يأخذه — ownerConversation بوسيط واحد)
       while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
   /* v-claude-shape: أنثروبيك يرفض 400 محادثة أولها assistant أو فيها دوران
    * متتاليان بنفس الدور — كود المشروع يصل كرسالة assistant في المقدمة،
@@ -1589,8 +1589,8 @@ module.exports = async (req, res) => {
         else send({ delta: (lastUserHasImage ? tierLib.FREE_TEXT.imageBusy : tierLib.FREE_TEXT.busy) + (__ownerReq ? ownerFailNote(0, __visionRoute ? '' : 'no-vision-route', __fr.errors) : '') }); // v-img-why
       }
       // v-cost-meter: المسار المجّانيّ — تكلفة تقديريّة (دخل ثابت تقريبيّ + خرج من طول النصّ)، غير المالك.
+      send({ done: true }); // tok-3: الردّ لا ينتظر القياس — الدالّة تبقى حيّة حتّى res.end()
       if (__fr.ok) { try { const __cm = require('./cost-meter.js'); const __fu = { input: 6000, output: Math.ceil(String(__fr.text || '').length / 3.5) }; await __cm.meterTurn((usage.username && !__ownerReq) ? usage.username : '', __cm.tokenCostUsd(__fr.model, __fu), 'chat', Object.assign({ lane: 'free', model: __fr.model }, __fu)); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } } // v-tokens-meter: والمسار المجّانيّ في عدّادات اليوم (تقديريّ: السلسلة لا تعيد توكناتها بعد)
-      send({ done: true });
       res.end();
       return;
     }
@@ -1629,7 +1629,7 @@ module.exports = async (req, res) => {
       const callUpstream = (withImg) => __upFetch(CHAT_URL, {
         method: 'POST', // v-tokens-close: غير المالك بلا إشارة — تبقى مهلة _fetch-timeout (٣٠ ث لأوّل بايت)؛ للمالك إشارة owner-loop بحرّاسها (٧٥ ث لأوّل بايت، الصمت، سبب ظاهر) — v-claude-code-level C5
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, signal: __ol.signal(__olS, !!__direct),
-        body: JSON.stringify(__ol.think(__ol.shape(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {}), __olS, !!__direct), __olT, convo, __direct ? 'x' : (viaOR ? 'or' : 'a'))), // v-claude-code-level D1: تفكير الجولة السابقة يعود كما وصل على المسار نفسه · v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم)
+        body: JSON.stringify(__ol.think(__ol.shape(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {}), __olS, !!__direct), __olT, convo, __direct ? 'x' : (viaOR ? 'or' : 'a'))), // v-claude-code-level D1: تفكير الجولة السابقة يعود كما وصل على المسار نفسه · v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم) /* cross-1: المالك الخامّ بلا نظام ولا ذيل فلا يصله تنبيه «مقفلة» — قائمته بلا أدوات الصور كما كانت (__rawOwner && __ownerNoMedia) */
       }).then((r) => __ol.got(__olS, r), (e) => __ol.fetchFailed(__olS, e)); // v-claude-code-level C5: حارس لكلّ نداء، وقطعه = فشل صريح
       let upstream = await callUpstream(true); upstream = await __ol.retryBusy(upstream, () => callUpstream(true), __olS, { direct: __ownerReq && !viaOR, t0, MAX_MS, send }); upstream = await __ol.think400(upstream, __olT, convo, () => callUpstream(true), send); // v-claude-code-level C4: مشغول = النداء نفسه · D1: توقيع مرفوض = نزع وإعادة واحدة
       // v-img-err: أيّ فشل على إعداد دور الصورة (400 أو 404 نموذج لا يملكه المفتاح أو
@@ -1944,8 +1944,8 @@ module.exports = async (req, res) => {
         const _cleaned = stripSpecialTokens(stripMemoryUrls(fullText, toolCorpus)); // v-special-tokens: حزام ثانٍ للتصحيح الختاميّ
           if (_cleaned !== fullText) { send({ patch: _cleaned }); }
           // v-owner-solo (المالك ٨ أكتوبر «أريد المحادثة فقط، أيّ شي زائد عليها ما أريده»): لا سطر سبب تحت الردّ.
-          await __meterTurn(); // v-cost-meter: نهاية الدور العاديّة
-          send({ done: true }); res.end(); return;
+          send({ done: true }); // tok-3: done قبل القياس — الدالّة تبقى حيّة حتّى res.end()
+          await __meterTurn(); res.end(); return; // v-cost-meter: نهاية الدور العاديّة
       }
 
       /* v-claude-code-level D1 (منقول من agent.js v-agent-deep): كتل التفكير (والمحجوبة) تعود بلا تعديل وبترتيبها — كانت تُحذف
@@ -2107,8 +2107,8 @@ module.exports = async (req, res) => {
     }
 
     if (__olS.on) send({ error: __ol.exitText({ t0, MAX_MS, MAX_STEPS }), ownerStop: true }); // v-claude-code-level C1: لا خروج صامت — السبب للمالك (تحت النصّ إن وُجد)
-    await __meterTurn(); // v-cost-meter: خروج بعد حدّ الجولات أو المهلة
     send({ done: true });
+    await __meterTurn(); // v-cost-meter: خروج بعد حدّ الجولات أو المهلة · tok-3: بعد done
     res.end();
   } catch (e) {
     await __giveMeter(); // v-meter-atomic: عطل قبل أن يقبل المزوّد الطلب — الحجز يُردّ (بعد قبوله صار استهلاكًا: لا شيء يُردّ)
@@ -2348,6 +2348,9 @@ function countryLine(country, city) {
 }
 /* v-tokens-owner-tools: لقطة المالك («احذف هذا المكان» على لقطة من التطبيق) ورسالته الطويلة كانتا بقائمة أدوات بلا الصور فتفوت بادئة الكاش
    كلّها. القائمة كاملة الآن، و«لا صور» تنبيه في ذيل الدور وحارس عند التنفيذ كدور السؤال (ASK_NO_MEDIA). نصّان للنموذج وحده. */
+/* v-ci-precedence (tok-1): يُلحق بعد ملاحظات العميل حين تُرسل مع تعليمات مخصّصة — للنموذج وحده، ثابت (~٣٠ توكن خارج الكاش في تلك الأدوار).
+   هنا أسفل الملفّ لا قرب customInstructionsBlock: knowledge/ROUTING.md يذكر أرقام أسطر chat.js (routing-anchors). */
+const CI_PRECEDENCE_NOTE = '[تعليمات المستخدم المخصّصة أعلاه تعلو على ملاحظات هذا الدور في اللغة والطول والنبرة عند التعارض]';
 const OWNER_NO_MEDIA_NOTE = '[أدوات الصور والفيديو مقفلة في هذا الدور: لا تستدعِ generate_image ولا edit_image ولا generate_video.]';
 const OWNER_NO_MEDIA_REFUSAL = 'هذه الأداة مقفلة في هذا الدور — لا رسم ولا تعديل صورة ولا فيديو هنا: أكمل المطلوب بالقراءة والكود أو بالكلام.';
-module.exports.__tokens2 = { alignedWindow, compactConversation, WINDOW, nowNote, countryNote, nowLine, countryLine, NOW_RULE, LOC_HINT_RULES, LOC_UNKNOWN_RULE, LOCATION_RULES_NOTE, OWNER_NO_MEDIA_NOTE, OWNER_NO_MEDIA_REFUSAL }; // v-tokens-window · v-tokens-tail · v-tokens-owner-tools — للاختبار
+module.exports.__tokens2 = { alignedWindow, compactConversation, WINDOW, nowNote, countryNote, nowLine, countryLine, NOW_RULE, LOC_HINT_RULES, LOC_UNKNOWN_RULE, LOCATION_RULES_NOTE, OWNER_NO_MEDIA_NOTE, OWNER_NO_MEDIA_REFUSAL, CI_PRECEDENCE_NOTE }; // v-tokens-window · v-tokens-tail · v-tokens-owner-tools — للاختبار

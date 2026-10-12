@@ -8,7 +8,7 @@
 // القياس بمحلّل acorn لا بنصّ خام: التعابير النمطيّة رموزٌ يميّزها المحلّل من القسمة والتعليقات والنصوص.
 
 import * as acorn from 'acorn';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,12 +26,24 @@ export const METRICS = {
 
 const PARSE = { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true, allowHashBang: true, locations: true };
 
-/** { lines, regex, tests } لـ__sendPromptCore في نصّ الجزء؛ أصفار إن لم توجد الدالّة. */
+/** عقدة __sendPromptCore في أعلى الجزء: تصريح دالّة، أو `const __sendPromptCore = (async) function/سهم` (arch-1: تحويلها إلى
+ *  تعبير كان يقيسها صفرًا فتمرّ السقّاطة). null إن غابت. */
+function coreNode(ast) {
+  for (const n of ast.body) {
+    if (n.type === 'FunctionDeclaration' && n.id && n.id.name === CORE_FN) return n;
+    if (n.type === 'VariableDeclaration') {
+      for (const d of n.declarations) if (d.id && d.id.name === CORE_FN && isFn(d.init)) return d.init;
+    }
+  }
+  return null;
+}
+
+/** { lines, regex, tests } لـ__sendPromptCore في نصّ الجزء؛ null إن لم توجد الدالّة (اكتشاف لا صفر — arch-1). */
 export function sendPromptCoreStats(src) {
   const tokens = [];
   const ast = acorn.parse(src, Object.assign({}, PARSE, { onToken: tokens }));
-  const fn = ast.body.find((n) => n.type === 'FunctionDeclaration' && n.id && n.id.name === CORE_FN);
-  if (!fn) return { lines: 0, regex: 0, tests: 0 };
+  const fn = coreNode(ast);
+  if (!fn) return null;
   let regex = 0, tests = 0;
   const inside = tokens.filter((t) => t.start >= fn.start && t.end <= fn.end);
   for (let i = 0; i < inside.length; i++) {
@@ -76,7 +88,9 @@ export const V_PIN = /\.(?:m?js|css|json|html|png|jpe?g|webp|svg|ico|webmanifest
 /** io: { read(rel) → نصّ أو null، list(dir) → أسماء } — قرص حقيقيّ عبر fsIO أو مجلّد وهميّ في الاختبار. */
 export function measure(io) {
   const core = io.read(CORE_FILE);
-  const s = core === null ? { lines: 0, regex: 0, tests: 0 } : sendPromptCoreStats(core);
+  // arch-1: الجزء أو الدالّة غائبان = اكتشاف (القياس null فيراه compare)، لا صفر يمرّ تحت كلّ سقف
+  const s = (core === null ? null : sendPromptCoreStats(core)) || { lines: null, regex: null, tests: null };
+  const coreMissing = s.lines === null ? [core === null ? CORE_FILE + ' غائب' : CORE_FN + ' غائبة من ' + CORE_FILE] : null;
   const vt = [];
   for (const d of ['api', 'api/_lib']) {
     for (const f of io.list(d).filter((x) => x.endsWith('.js')).sort()) {
@@ -94,7 +108,8 @@ export function measure(io) {
       verifyTokenDefs: vt.reduce((a, x) => a + (Number((/×(\d+)$/.exec(x) || [])[1]) || 1), 0),
       vPinTests: pins.length,
     },
-    detail: { verifyTokenDefs: vt, vPinTests: pins.map((f) => 'tests/' + f) },
+    detail: Object.assign({ verifyTokenDefs: vt, vPinTests: pins.map((f) => 'tests/' + f) },
+      coreMissing ? { sendPromptCoreLines: coreMissing, sendPromptCoreRegex: coreMissing, sendPromptCoreTests: coreMissing } : {}),
   };
 }
 
@@ -104,6 +119,7 @@ export function compare(metrics, baseline) {
   for (const key of Object.keys(METRICS)) {
     const base = Number(baseline && baseline[key]);
     if (!Number.isFinite(base)) { worse.push({ key, now: metrics[key], base: 'غائب' }); continue; }
+    if (typeof metrics[key] !== 'number' || !Number.isFinite(metrics[key])) { worse.push({ key, now: 'غير مقيس', base }); continue; } // arch-1
     if (metrics[key] > base) worse.push({ key, now: metrics[key], base });
     else if (metrics[key] < base) better.push({ key, now: metrics[key], base });
   }
@@ -118,6 +134,8 @@ export function fsIO(root) {
 }
 
 // `node scripts/arch-ratchet.mjs` يطبع المقاييس الحاليّة — لخفض السقف بعد تحسّن.
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// arch-2: المسار الحقيقيّ لا النصّيّ (نداء عبر رابط رمزيّ كان لا يطبع شيئًا).
+const isEntry = () => { try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch (e) { return false; } }; // ‎-e/REPL: ليس نقطة دخول
+if (isEntry()) {
   console.log(JSON.stringify(measure(fsIO(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'))).metrics, null, 1));
 }

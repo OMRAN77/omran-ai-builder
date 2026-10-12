@@ -16,9 +16,11 @@ const root = path.resolve(__dirname, '..');
 const load = () => import(pathToFileURL(path.join(root, 'scripts', 'arch-ratchet.mjs')).href);
 const baseline = JSON.parse(fs.readFileSync(path.join(root, 'scripts', 'arch-baseline.json'), 'utf8'));
 
-// السقف الأوّل يوم وُلدت السقّاطة (8687179). الأساس لا يتجاوزه أبدًا: رفعه هنا تغيير معنى يراه المراجع.
-const CEILING = { sendPromptCoreLines: 3695, // وُلدت السقّاطة في الدفعة A نفسها: سقفها الأوّل بعد تعديلات التوجيه والتوكنز فيها (3672 قبلها)
-  sendPromptCoreRegex: 264, sendPromptCoreTests: 306, verifyTokenDefs: 17, vPinTests: 80 };
+// السقف = الأساس حرفيًّا (arch-1، مراجعة الدفعة A): كان CEILING يبقى على قيم ما قبل الدفعة (17 و264) بعد خفض الأساس إلى 10 و263،
+// فرفع الأساس ثانيةً حتّى 17 لا يراه شيء. الآن الاختبار ١ يشترط التساوي: من يخفض الأساس يخفض CEILING في الالتزام نفسه،
+// ومن يرفعه يرفع CEILING هنا أيضًا — تغيير معنى يراه المراجع في ملفّين.
+// القيم الأولى: شجرة الدفعة A المدموجة (السقّاطة وُلدت فيها، بعد تعديلات التوجيه والتوكنز؛ ‎3672/264/306/17/80 قبلها).
+const CEILING = { sendPromptCoreLines: 3695, sendPromptCoreRegex: 263, sendPromptCoreTests: 306, verifyTokenDefs: 10, vPinTests: 80 };
 
 const CORE = fs.readFileSync(path.join(root, 'js', 'app-09-attach.js'), 'utf8');
 function growCore(extra) { // يحقن سطرًا في أوّل جسم __sendPromptCore
@@ -37,11 +39,11 @@ async function ioWith(over) {
   };
 }
 
-test('١. الشجرة الحاليّة داخل السقوف، والسقوف لا تتجاوز سقفها الأوّل (تنزل ولا ترتفع)', async () => {
+test('١. الشجرة الحاليّة داخل السقوف، والأساس = CEILING حرفيًّا (خفضه يخفض CEILING معه؛ رفعه يُرى في ملفّين)', async () => {
   const { measure, compare, fsIO, METRICS } = await load();
   for (const k of Object.keys(METRICS)) {
     assert.ok(Number.isFinite(baseline[k]), 'سقف مفقود: ' + k);
-    assert.ok(baseline[k] <= CEILING[k], `${k}: السقف ${baseline[k]} فوق سقفه الأوّل ${CEILING[k]} — السقّاطة لا ترتفع`);
+    assert.equal(baseline[k], CEILING[k], `${k}: الأساس ${baseline[k]} ≠ CEILING ${CEILING[k]} — اخفضهما معًا (السقّاطة لا ترتفع)`);
   }
   const { worse } = compare(measure(fsIO(root)).metrics, baseline);
   assert.deepEqual(worse, [], 'مقياس ساء عن سقفه');
@@ -110,5 +112,34 @@ test('٥. الحارس نفسه: نموّ __sendPromptCore يُفشل npm run gu
     const ok = guard();
     assert.equal(ok.status, 0, ok.stdout + ok.stderr);
     assert.match(ok.stdout, /↓ سقّاطة البنية تحسّنت: sendPromptCoreLines/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('٦. __sendPromptCore غائبة أو صارت تعبيرًا: الغياب اكتشاف لا صفر، والتعبير يُقاس كالتصريح (arch-1)', async () => {
+  const { measure, compare } = await load();
+  const before = measure(await ioWith({})).metrics;
+  const asExpr = CORE.replace('async function __sendPromptCore(', 'const __sendPromptCore = async function(');
+  assert.notEqual(asExpr, CORE, 'نصّ التصريح موجود');
+  const e = measure(await ioWith({ 'js/app-09-attach.js': asExpr })).metrics;
+  assert.equal(e.sendPromptCoreLines, before.sendPromptCoreLines);
+  assert.equal(e.sendPromptCoreRegex, before.sendPromptCoreRegex);
+  assert.equal(e.sendPromptCoreTests, before.sendPromptCoreTests);
+  const gone = measure(await ioWith({ 'js/app-09-attach.js': CORE.replace('async function __sendPromptCore(', 'async function __sendPromptCoreRenamed(') }));
+  const w = compare(gone.metrics, baseline).worse.map((x) => x.key).sort();
+  assert.deepEqual(w, ['sendPromptCoreLines', 'sendPromptCoreRegex', 'sendPromptCoreTests'], 'الغياب لا يمرّ تحت السقف بصفر');
+  assert.match(gone.detail.sendPromptCoreLines[0], /__sendPromptCore غائبة/);
+  const noFile = measure(await ioWith({ 'js/app-09-attach.js': null }));
+  assert.equal(compare(noFile.metrics, baseline).worse.length, 3, 'الجزء الغائب اكتشاف');
+});
+
+test('٧. النداء عبر مسار فيه رابط رمزيّ يطبع المقاييس (كان لا يطبع شيئًا ويخرج ٠ — arch-2)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arch-link-'));
+  try {
+    const link = path.join(dir, 'scripts-link');
+    fs.symlinkSync(path.join(root, 'scripts'), link);
+    const r = spawnSync(process.execPath, [path.join(link, 'arch-ratchet.mjs')], { encoding: 'utf8', cwd: root });
+    assert.equal(r.status, 0, r.stderr);
+    const m = JSON.parse(r.stdout);
+    assert.equal(m.sendPromptCoreLines <= baseline.sendPromptCoreLines, true, r.stdout);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

@@ -18,7 +18,7 @@
 // ملفّ معلّق يُقتل ويُعدّ فاشلًا بدل أن يعلّق CI كلّه.
 
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -87,6 +87,12 @@ function argValue(argv, name) {
 const TAIL = 64 * 1024;
 const live = new Set();
 
+/* مراجعة الدفعة A (arch-3): كان الحكم على 'close' وحده، و'close' ينتظر كلّ من يمسك الأنابيب — حفيد هرب من مجموعة العمليّات
+   (detached/setsid) يمسكها فيعلّق المشغّل حتّى يخرج (وللأبد لو كان خادمًا)، ولا تصله kill(-pid)، والملفّ الذي خرج ٠ يُعدّ «timeout».
+   الآن: الحكم يُسجَّل عند 'exit' ويُلغى المؤقّت، ثمّ مهلة قصيرة لـ'close' وبعدها تُقطع الأنابيب ويُحسم؛ والمهلة تقطعها أيضًا بعد
+   القتل — فكلّ ملفّ يُحسم خلال مهلته + EXIT_GRACE على الأكثر. */
+const EXIT_GRACE_MS = () => Number(process.env.TEST_EXIT_GRACE_MS) || 2000;
+
 function runOne(root, entry, env, timeoutMs) {
   return new Promise((resolve) => {
     const t0 = Date.now();
@@ -97,13 +103,24 @@ function runOne(root, entry, env, timeoutMs) {
     child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8'); // حرف عربيّ مقسوم بين قطعتين لا يصير �
     child.stdout.on('data', take);
     child.stderr.on('data', take);
-    let timedOut = false;
-    const timer = setTimeout(() => { timedOut = true; kill(child); }, timeoutMs);
-    child.on('error', (e) => { out += '\n' + String(e && e.stack || e); });
-    child.on('close', (code, signal) => {
-      clearTimeout(timer);
+    let timedOut = false, verdict, settled = false, grace = null;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer); clearTimeout(grace);
       live.delete(child);
-      resolve({ file: entry.file, code: timedOut ? 'timeout' : (code === null ? signal : code), ms: Date.now() - t0, out });
+      child.stdout.destroy(); child.stderr.destroy(); // حفيد هارب يمسك الأنابيب لا يُبقي المشغّل حيًّا
+      resolve({ file: entry.file, code: timedOut ? 'timeout' : verdict, ms: Date.now() - t0, out });
+    };
+    const timer = setTimeout(() => { timedOut = true; kill(child); grace = setTimeout(settle, EXIT_GRACE_MS()); }, timeoutMs);
+    child.on('error', (e) => { out += '\n' + String(e && e.stack || e); });
+    child.on('exit', (code, signal) => {
+      verdict = code === null ? signal : code;
+      if (!timedOut) { clearTimeout(timer); grace = setTimeout(settle, EXIT_GRACE_MS()); }
+    });
+    child.on('close', (code, signal) => {
+      if (verdict === undefined) verdict = code === null ? signal : code;
+      settle();
     });
   });
 }
@@ -127,6 +144,7 @@ export async function main(argv = process.argv.slice(2)) {
   const timeoutMs = Number(process.env.TEST_FILE_TIMEOUT_MS) || 10 * 60 * 1000;
   const durations = readJson(path.join(root, DURATIONS_REL)) || {};
   const queue = schedule(list, durations);
+  if (!queue.length) { console.error('✗ لا ملفّ اختبار مسجّل — تشغيل فارغ لا يُعدّ نجاحًا'); return 2; } // arch-2
   const env = Object.assign({}, process.env);
   delete env.NODE_TEST_CONTEXT; // لو شُغّل المشغّل نفسه تحت node --test لصار كلّ ملفّ «اختبارًا فرعيًّا» صامتًا
 
@@ -165,7 +183,14 @@ export async function main(argv = process.argv.slice(2)) {
   return fails.length ? 1 : 0;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+/* مراجعة الدفعة A (arch-2): المقارنة بالمسار الحقيقيّ — Node يُبقي argv[1] رابطًا رمزيًّا وimport.meta.url حقيقيّ، فالنداء
+   عبر مسار فيه رابط (macOS: ‎/tmp → ‎/private/tmp، أو مستودع مربوط) كان يخرج ٠ بلا اختبار واحد: نجاح كاذب صامت. */
+export function isEntry(argv1, metaUrl) {
+  try { return !!argv1 && realpathSync(argv1) === realpathSync(fileURLToPath(metaUrl)); }
+  catch (e) { return false; } // argv[1] ليس ملفًّا (‎-e أو REPL): ليس نقطة دخول
+}
+
+if (isEntry(process.argv[1], import.meta.url)) {
   // العمّال في مجموعات عمليّات مستقلّة (لتُقتل المهلة بأحفادها)، فلا يصلهم Ctrl-C تلقائيًّا: نقتلهم نحن.
   for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { for (const c of live) kill(c); process.exit(130); });
   main().then((code) => { process.exitCode = code; }, (e) => { console.error(e && e.stack || e); process.exitCode = 2; });
