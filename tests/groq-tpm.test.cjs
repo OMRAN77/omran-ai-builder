@@ -69,8 +69,8 @@ test('real chat handler: owner says «مرحبا» on Groq with an 8K-per-minute
   const r = await ownerOnGroq(8000, [{ role: 'user', content: 'مرحبا' }]);
   assert.equal(r.groq.length, 2, 'الأصل ثمّ إعادة واحدة');
   const [first, second] = r.groq.map((c) => c.body);
-  assert.ok(first.tools && first.tools.length > 5 && first.max_completion_tokens === 64000, 'الأصل بأدوات المالك وسقفه (v-owner-cap-open: ٦٤ ألفًا) — هذا ما رُفض');
-  assert.ok(tokensOf(first) + 64000 > 8000);
+  assert.ok(first.tools && first.tools.length > 5 && first.max_completion_tokens === 128000, 'الأصل بأدوات المالك وسقفه (v-owner-cap-open: ١٢٨ ألفًا) — هذا ما رُفض');
+  assert.ok(tokensOf(first) + 128000 > 8000);
   assert.equal(second.model, 'qwen/qwen3.8-27b', 'الموديل الذي اختاره المالك نفسه — لا موديل آخر');
   assert.ok(!second.tools, 'بلا أدوات: لا تتّسع لحدّ الدقيقة');
   assert.ok(tokensOf(second) + second.max_completion_tokens <= 8000, 'الإعادة داخل الحدّ');
@@ -88,7 +88,7 @@ test('real chat handler: owner says «مرحبا» on Groq with an 8K-per-minute
 test('a key with room (paid tier) is untouched: one call, full tools and cap', async () => {
   const r = await ownerOnGroq(300000, [{ role: 'user', content: 'مرحبا' }]);
   assert.equal(r.groq.length, 1);
-  assert.ok(r.groq[0].body.tools.length > 5 && r.groq[0].body.max_completion_tokens === 64000); // v-owner-cap-open
+  assert.ok(r.groq[0].body.tools.length > 5 && r.groq[0].body.max_completion_tokens === 128000); // v-owner-cap-open
   assert.equal(r.text, 'هلا والله');
 });
 

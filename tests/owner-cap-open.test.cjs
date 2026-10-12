@@ -1,8 +1,8 @@
 'use strict';
 /* v-owner-cap-open (أمر المالك ١٢ أكتوبر: «اريدك تعطي المزودين تفتح لهم التوكن أكثر ماهم عليه الآن — عندي الحين فقط ٤٠٠ سطر —
-   اريد مفتوح بدون مايوقف كل المزودين»): سقف خرج المالك ٦٤ ألف توكن على كلّ المسارات (كلود المباشر، الوسيط، Groq/OpenAI المباشر)
+   اريد مفتوح بدون مايوقف كل المزودين»): سقف خرج المالك ١٢٨ ألف توكن (أقصى الجيل ٥ من كلود وGPT) على كلّ المسارات (كلود المباشر، الوسيط، Groq/OpenAI المباشر)
    بدل ١٦ ألفًا (≈ ٤٠٠ سطر)، ويغلب سقوف الجهد (٣٢ ألفًا لـGPT high). رفض السقف الكبير (402 حجز رصيد الوسيط أو 400 حدّ الموديل) =
-   إعادة واحدة بالسقف العاديّ تُذكَر لبقيّة الدور. غير المالك ١٦ ألفًا والتحيّة ٣٥٠ كما كانا. المعالج الحقيقيّ أمام مزوّد مزيّف. */
+   إعادة بسقف أدنى تُذكَر لبقيّة الدور: 402 ← العاديّ، و400 ← حدّ الموديل من نصّ الرسالة (وبلا رقم ٦٤ ألفًا ثمّ العاديّ). غير المالك ١٦ ألفًا والتحيّة ٣٥٠ كما كانا. المعالج الحقيقيّ أمام مزوّد مزيّف. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
@@ -49,8 +49,8 @@ const oaResp = (t) => new Response([
   { type: 'response.output_text.delta', output_index: 0, delta: t },
   { type: 'response.completed', response: { status: 'completed', usage: { input_tokens: 10, output_tokens: 2 } } },
 ].map((e) => 'event: ' + e.type + '\ndata: ' + JSON.stringify(e) + '\n\n').join(''), { status: 200 });
-const or402 = () => new Response(JSON.stringify({ error: { message: 'This request requires more credits, or fewer max_tokens. You requested up to 64000 tokens, but can only afford 9000.', code: 402 } }), { status: 402 });
-const anth400cap = () => new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'max_tokens: 64000 > 32000, which is the maximum allowed number of output tokens for this model' } }), { status: 400 });
+const or402 = () => new Response(JSON.stringify({ error: { message: 'This request requires more credits, or fewer max_tokens. You requested up to 128000 tokens, but can only afford 9000.', code: 402 } }), { status: 402 });
+const anth400cap = () => new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'max_tokens: 128000 > 32000, which is the maximum allowed number of output tokens for this model' } }), { status: 400 });
 const ask = (t) => [{ role: 'user', content: t }];
 const HARD = 'اكتب لي صفحة HTML كاملة لمتجر إلكترونيّ بكلّ الأقسام';
 
@@ -82,18 +82,18 @@ const withoutAnth = async (fn) => { const k = process.env.ANTHROPIC_API_KEY; del
 const withEnv = (k, v) => async (fn) => { process.env[k] = v; try { return await fn(); } finally { delete process.env[k]; } };
 const up = (r) => r.calls.filter((c) => /anthropic\.com|openrouter\.ai|groq\.com|openai\.com/.test(c.url));
 
-test('١. المالك: ٦٤ ألفًا على كلود المباشر وعلى الوسيط، للصعب وللتحيّة سواء، وبلا جهد مختار', async () => {
+test('١. المالك: ١٢٨ ألفًا على كلود المباشر وعلى الوسيط، للصعب وللتحيّة سواء، وبلا جهد مختار', async () => {
   reset();
   let r = await run('omran', { messages: ask(HARD) });
   assert.equal(up(r)[0].url, 'https://api.anthropic.com/v1/messages');
-  assert.equal(up(r)[0].body.max_tokens, 64000);
+  assert.equal(up(r)[0].body.max_tokens, 128000);
   r = await run('omran', { messages: ask('السلام عليكم') });
-  assert.equal(up(r)[0].body.max_tokens, 64000, 'تحيّة المالك ليست دورًا صامتًا');
+  assert.equal(up(r)[0].body.max_tokens, 128000, 'تحيّة المالك ليست دورًا صامتًا');
   r = await withoutAnth(() => run('omran', { messages: ask(HARD) }));
   assert.equal(up(r)[0].url, 'https://openrouter.ai/api/v1/messages');
-  assert.equal(up(r)[0].body.max_tokens, 64000);
+  assert.equal(up(r)[0].body.max_tokens, 128000);
   r = await withoutAnth(() => run('omran', { model: 'claude-opus-4-8', messages: ask(HARD), effort: 'high' }));
-  assert.equal(up(r)[0].body.max_tokens, 64000, 'الجهد لا يُنزل السقف');
+  assert.equal(up(r)[0].body.max_tokens, 128000, 'الجهد لا يُنزل السقف');
   assert.equal(r.text, 'تم');
 });
 
@@ -105,35 +105,35 @@ test('٢. غير المالك كما كان: ١٦ ألفًا للسؤال و٣٥
   assert.equal(up(r)[0].body.max_tokens, 350);
 });
 
-test('٣. المسار المباشر: Groq يصله max_completion_tokens ٦٤ ألفًا، وGPT يصله max_output_tokens ٦٤ ألفًا حتّى بجهد high (كان ٣٢)', async () => {
+test('٣. المسار المباشر: Groq يصله max_completion_tokens ١٢٨ ألفًا، وGPT يصله max_output_tokens ١٢٨ ألفًا حتّى بجهد high (كان ٣٢)', async () => {
   reset();
   let r = await withEnv('GROQ_API_KEY', 'gsk-test')(() => run('omran', { provider: 'groq', model: 'openai/gpt-oss-120b', messages: ask(HARD) }));
   const g = r.calls.filter((c) => /api\.groq\.com/.test(c.url));
   assert.equal(g.length, 1);
-  assert.equal(g[0].body.max_completion_tokens, 64000);
+  assert.equal(g[0].body.max_completion_tokens, 128000);
   assert.equal(r.text, 'تم');
   r = await withEnv('OPENAI_API_KEY', 'sk-openai-test')(() => run('omran', { provider: 'openai', model: 'openai/gpt-6-astra', messages: ask(HARD), effort: 'high' }));
   const o = r.calls.filter((c) => /api\.openai\.com/.test(c.url));
   assert.equal(o[0].url, 'https://api.openai.com/v1/responses');
   assert.deepEqual(o[0].body.reasoning, { effort: 'high' });
-  assert.equal(o[0].body.max_output_tokens, 64000);
+  assert.equal(o[0].body.max_output_tokens, 128000);
   r = await withEnv('OPENAI_API_KEY', 'sk-openai-test')(() => run('omran', { provider: 'openai', model: 'openai/gpt-6-astra', messages: ask(HARD) }));
-  assert.equal(r.calls.filter((c) => /api\.openai\.com/.test(c.url))[0].body.max_output_tokens, 64000, 'وبلا جهد');
+  assert.equal(r.calls.filter((c) => /api\.openai\.com/.test(c.url))[0].body.max_output_tokens, 128000, 'وبلا جهد');
 });
 
 test('٤. الوسيط 402 «can only afford» بلا جهد = إعادة واحدة بـ١٦ ألفًا وسطر السبب، ويُذكَر: إكمال المقطوع يبقى ١٦ ألفًا بلا 402 جديد', async () => {
   reset();
   const r = await withoutAnth(() => run('omran', { messages: ask(HARD) }, [or402, () => anth('الجزء الأوّل ', 'max_tokens'), () => anth('والثاني.')]));
-  assert.deepEqual(up(r).map((c) => c.body.max_tokens), [64000, 16000, 16000]);
+  assert.deepEqual(up(r).map((c) => c.body.max_tokens), [128000, 16000, 16000]);
   assert.equal(r.statuses.filter((s) => /رصيد الوسيط لا يكفي/.test(s)).length, 1, 'سطر واحد في الدور كلّه');
   assert.equal(r.text, 'الجزء الأوّل والثاني.');
 });
 
-test('٥. كلود المباشر 400 «max_tokens … maximum allowed» (موديل حدّه أقلّ) = إعادة واحدة بـ١٦ ألفًا بالموديل نفسه وسطر السبب', async () => {
+test('٥. كلود المباشر 400 «max_tokens: 128000 > 32000 … maximum allowed» = إعادة بحدّ الموديل من الرسالة (٣٢ ألفًا) بالموديل نفسه وسطر السبب', async () => {
   reset();
   const r = await run('omran', { model: 'claude-haiku-4-5', messages: ask(HARD) }, [anth400cap, () => anth('تم')]);
-  assert.deepEqual(up(r).map((c) => [c.body.model, c.body.max_tokens]), [['claude-haiku-4-5', 64000], ['claude-haiku-4-5', 16000]]);
-  assert.ok(r.statuses.some((s) => /لا يقبل سقف ٦٤ ألف/.test(s)));
+  assert.deepEqual(up(r).map((c) => [c.body.model, c.body.max_tokens]), [['claude-haiku-4-5', 128000], ['claude-haiku-4-5', 32000]]);
+  assert.ok(r.statuses.some((s) => /لا يقبل سقف ١٢٨ ألف توكن — أكمل بسقفه ٣٢ ألف توكن/.test(s)), r.statuses.join(' | '));
   assert.ok(!r.events.some((e) => e.k === 'stModelFallback'), 'لا رجوع للافتراضيّ');
   assert.equal(r.text, 'تم');
 });
@@ -141,6 +141,20 @@ test('٥. كلود المباشر 400 «max_tokens … maximum allowed» (مود
 test('٦. 402 بلا ذكر السقف (رصيد منتهٍ) لا يُعاد بالسقف العاديّ — يمرّ لسلسلة الرصيد كما كان', async () => {
   reset();
   const r = await withoutAnth(() => run('omran', { messages: ask(HARD) }, [() => new Response(JSON.stringify({ error: { message: 'Insufficient credits. Add more using https://openrouter.ai/settings/credits', code: 402 } }), { status: 402 })]));
-  assert.ok(up(r).every((c) => c.body.max_tokens === 64000), 'لا إعادة بسقف أدنى');
+  assert.ok(up(r).every((c) => c.body.max_tokens === 128000), 'لا إعادة بسقف أدنى');
   assert.ok(!r.statuses.some((s) => /رصيد الوسيط لا يكفي حجز/.test(s)));
+});
+
+test('٧. 400 على السقف بلا رقم (الوسيط): ١٢٨ ← ٦٤ ← ١٦ ألفًا مرّتين كحدّ، والثالث يمرّ كما هو؛ ورقم أكبر من السقف يُهمَل', async () => {
+  reset();
+  const noNum = () => new Response(JSON.stringify({ error: { message: 'max_tokens exceeds the limit for this model', code: 400 } }), { status: 400 });
+  let r = await withoutAnth(() => run('omran', { messages: ask(HARD) }, [noNum, noNum, () => anth('تم')]));
+  assert.deepEqual(up(r).map((c) => c.body.max_tokens), [128000, 64000, 16000]);
+  assert.equal(r.text, 'تم');
+  r = await withoutAnth(() => run('omran', { messages: ask(HARD) }, [noNum, noNum, noNum, () => anth('تم')]));
+  assert.deepEqual(up(r).slice(0, 3).map((c) => c.body.max_tokens), [128000, 64000, 16000], 'مرّتان كحدّ ثمّ لا إعادة بالسقف');
+  assert.ok(!up(r).some((c) => c.body.max_tokens < 16000));
+  const big = () => new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'max_tokens: 128000 > 200000 context window 1000000' } }), { status: 400 });
+  r = await run('omran', { messages: ask(HARD) }, [big, () => anth('تم')]);
+  assert.deepEqual(up(r).slice(0, 2).map((c) => c.body.max_tokens), [128000, 64000], 'الأرقام الأكبر من السقف لا تُؤخذ حدًّا');
 });
