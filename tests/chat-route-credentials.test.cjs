@@ -131,7 +131,7 @@ test('malformed direct tool arguments produce SSE error, no tool invocation or n
   ].map((ev) => 'data: ' + JSON.stringify(ev) + '\n\n').join('') + 'data: [DONE]\n\n');
   const r = await ask({ keys: { GROQ_API_KEY: 'q' }, provider: 'groq', upstream: bad });
   assert.equal(r.calls.length, 1, 'no next upstream tool turn');
-  assert.match(r.text, /OA_STREAM_PROTOCOL_ERROR/);
+  assert.match(r.text, /انقطع ردّ المزوّد في منتصفه \(tool_args_cut\)","ownerStop":true/); // v-claude-code-level C9: المالك يرى السبب بكوده بدل «chat error: OA_STREAM_PROTOCOL_ERROR» الذي كان العميل يمحوه
   assert.doesNotMatch(r.text, /"done":true|يشغّل كودًا/);
   assert.equal(r.jsonCalls, 0);
 });

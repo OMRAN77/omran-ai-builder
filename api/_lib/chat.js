@@ -1835,7 +1835,7 @@ module.exports = async (req, res) => {
       // انتهائه، فدرس #527 (لا تغذية للحارس أثناء حلقة الأدوات) محفوظ.
       // v-owner-reason: تفكير الموديل للمالك قد يطول بلا حرف (لا يُبثّ منه شيء) فيأخذ النبض أيضًا — أثناء بثّ المزوّد فقط.
       let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage || __ownerReq) ? setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000) : null;
-      let streamDone = false;
+      let streamDone = false; let __midFail = null; // v-claude-code-level C9: بثّ المزوّد انقطع في منتصفه (المالك)
       const __tokStrip = makeTokenStripper(); // v-special-tokens: لكلّ ردّ مزوّد مرشّحه (رمز منقسم بين دلتا لا يفلت)
       try {
       while (true) {
@@ -1895,12 +1895,14 @@ module.exports = async (req, res) => {
           }
         }
       }
+      } catch (__se) { __midFail = __cut.gone ? null : __ol.midStream(__olS, __se, { sawText: sawTextThisStep }); if (!__midFail) throw __se; __midFail.text = String((__se && __se.message) || __se).slice(0, 300); // C9: غير المالك وغير هذا الخطأ إلى catch الأعلى كما كان
       } finally {
         if (kaTimer) { clearInterval(kaTimer); kaTimer = null; } // أوقف النبض أيضًا عند فشل قراءة البثّ
         __ol.stop(__olS); // v-claude-code-level C5: الحارس للبثّ وحده، لا لتنفيذ الأدوات
         if (!streamDone) { try { await reader.cancel(); } catch (e) { /* المجرى أغلق مع الخطأ */ } }
         try { reader.releaseLock(); } catch (e) { /* المجرى أغلق مع الخطأ */ }
       }
+      if (__midFail) { await logErrorAndFlush('chat/mid-stream', new Error(__acct() + ': ' + __midFail.text), { action: __midFail.kind, prov }); if (__midFail.kind === 'retry') { send({ status: __midFail.status }); steps--; continue; } send({ error: __midFail.msg, ownerStop: true }); res.end(); return; } // C9: النداء نفسه مرّة، ثمّ السبب للمالك (تحت النصّ إن وُجد)
       { const __rest = __tokStrip.flush(); if (__rest) { const __tb = blocks.filter((b) => b && b.type === 'text').pop(); if (__tb) __tb.text += __rest; fullText += __rest; anyText = true; send({ delta: __rest }); } } // v-special-tokens: ذيل محجوز لم يكتمل رمزًا
       __usage.output += __usage.stepOut; __usage.stepOut = 0;
       // v-prompt-cache: المالك وحده يرى الحساب في شارة النموذج: كاش · جديد · خرج (مجموع الجولات).
@@ -2113,7 +2115,7 @@ module.exports = async (req, res) => {
   } catch (e) {
     await __giveMeter(); // v-meter-atomic: عطل قبل أن يقبل المزوّد الطلب — الحجز يُردّ (بعد قبوله صار استهلاكًا: لا شيء يُردّ)
     if (__cut.gone) { await __meterTurn(); try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا */ } return; } // v-tokens-close: الإلغاء المقصود (AbortError) ليس عطلًا — يُقاس ما صُرف ولا رسالة خطأ لعميل رحل
-    send({ error: 'chat error: ' + String((e && e.message) || e).slice(0, 200) });
+    send(__ownerReq ? { error: 'ما قدرت أردّ الحين — عطل في الخادم: ' + String((e && e.message) || e).slice(0, 160), ownerStop: true } : { error: 'chat error: ' + String((e && e.message) || e).slice(0, 200) }); // C9: المالك يرى السبب — بلا ownerStop كان العميل يمحوه إلى «ما قدرت أردّ الحين» عارية
     try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا */ }
   }
 };

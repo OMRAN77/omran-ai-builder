@@ -15666,7 +15666,9 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
         if(err && !err.ownerStop){
           try{
             const __st = err.status || Number((String(err.message || '').match(/^chat (\d{3})\b/) || [])[1]) || 0;
-            err.message = (__st === 402 || /credit|balance|billing|insufficient_quota|payment/i.test(String(err.upstreamText || ''))) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين' + (__st ? ' — خطأ ' + __st : ''));
+            /* v-claude-code-level C9 (لقطة المالك ١١ أكتوبر: «⚠️ ما قدرت أردّ الحين» ×٣ بلا شيء): خطأ بلا رقم كان يُمحى سببه — الآن سطره القصير */
+            const __m = String((err && err.message) || ''), __why = __st ? '' : /stalled|__chat_idle__|__chat_no_headers__/.test(__m) ? 'ما وصل شي من الخادم' : /empty reply/.test(__m) ? 'رجع الردّ فارغًا' : /^chat error: /.test(__m) ? 'عطل في الخادم: ' + __m.slice(12, 140) : /Failed to fetch|NetworkError|network|Load failed/i.test(__m) ? 'انقطع الاتّصال' : '';
+            err.message = (__st === 402 || /credit|balance|billing|insufficient_quota|payment/i.test(String(err.upstreamText || ''))) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين' + (__st ? ' — خطأ ' + __st : (__why ? ' — ' + __why : '')));
           }catch(e){ __swallow(e, 'fallback:solo-msg'); }
         }
         throw err;
