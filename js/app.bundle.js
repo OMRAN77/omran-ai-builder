@@ -3241,7 +3241,7 @@ const messagesEl = $('#messages');
 
 // v463: سكرول طبيعي — المحادثة تتحرك كلها مع بعض
 function anchorLastUserMsgTop(){
-  try{ messagesEl.scrollTop = messagesEl.scrollHeight; syncChatJumpButton(); }catch(e){ window.__swallow && window.__swallow(e,'ui.scrollAnchor'); }
+  try{ if(window.omranChatFollow) window.omranChatFollow.stickNow(); messagesEl.scrollTop = messagesEl.scrollHeight; syncChatJumpButton(); }catch(e){ window.__swallow && window.__swallow(e,'ui.scrollAnchor'); }
 }
 // رتم البث: نأخذ قرار المتابعة قبل أن يكبر الرد. القياس بعد إضافة النص
 // كان يظن أن المستخدم صعد للأعلى، فيتوقف التمرير وحده وسط الرد الطويل.
@@ -3260,7 +3260,9 @@ function syncChatJumpButton(){
 }
 function smartScrollBottom(wasNearBottom){
   try{
-    const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : chatIsNearBottom();
+    /* v-scroll-free: الملاحقة يقرّرها omranChatFollow (app-40) من حركة المستخدم — لا فرق ١٦٠px يشدّ إصبعه أثناء السحب */
+    const __F = window.omranChatFollow;
+    const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : (__F ? __F.follow() : chatIsNearBottom());
     if(follow) messagesEl.scrollTop = messagesEl.scrollHeight;
     syncChatJumpButton();
   }catch(e){ __swallow(e, "misc:app-02-tts#8"); }
@@ -3271,6 +3273,7 @@ if(messagesEl){
 }
 if(chatJumpBottomBtn){
   chatJumpBottomBtn.onclick = () => {
+    if(window.omranChatFollow) window.omranChatFollow.stickNow();
     messagesEl.scrollTo ? messagesEl.scrollTo({top:messagesEl.scrollHeight, behavior:'smooth'}) : (messagesEl.scrollTop = messagesEl.scrollHeight);
     setTimeout(syncChatJumpButton, 220);
   };
@@ -7480,7 +7483,8 @@ function renderMessages(keepScroll){
   }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أي خطأ نرسم كالمعتاد */ }
   const prevScrollTop = messagesEl.scrollTop;
   let __wasNearBottom = true;
-  try{ __wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
+  /* v-scroll-free: قرار الملاحقة نفسه (app-40) — محادثة أخرى تُفتح من الأسفل، وإصبع على الشاشة لا يُقفز من تحته */
+  try{ __wasNearBottom = window.omranChatFollow ? window.omranChatFollow.forRender(__cInit && __cInit.id) : (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
   window.__isRenderingMsgs = true;
   try{
     messagesEl.innerHTML = '';
@@ -8261,6 +8265,11 @@ function renderMessages(keepScroll){
   });
   // v-scroll-respect: نتبع الأسفل فقط إن كان المستخدم أصلًا هناك (متابِعًا) أو
   // طُلب keepScroll صراحةً؛ وإلا نحفظ موضع قراءته كما كان.
+  // v-scroll-free: على cv-ok كلّ رسالة جديدة تُقدَّر ١٦٠px (content-visibility) حتّى يُرسم إطار، فالموضع المحفوظ كان يُقصّ — مسبار:
+  // يقرأ عند 9414 وينتهي الردّ فيُقذف إلى 0 (أعلى المحادثة). تُرسم كاملة لحظة الاستعادة وتعود في الإطار التالي بأحجامها المحفوظة (auto).
+  const __cvAll = document.documentElement.classList.contains('cv-ok') ? Array.from(messagesEl.querySelectorAll('.msg')) : [];
+  __cvAll.forEach(__m => { __m.style.contentVisibility = 'visible'; });
+  if(__cvAll.length) requestAnimationFrame(() => requestAnimationFrame(() => __cvAll.forEach(__m => { if(__m.style.contentVisibility === 'visible') __m.style.contentVisibility = ''; })));
   if(__wasNearBottom && !keepScroll){
     messagesEl.scrollTop = messagesEl.scrollHeight;
   } else {
@@ -22401,6 +22410,7 @@ function omranShowThink(thinkingDiv, th){
       thinkingDiv.__cw = cw; thinkingDiv.__thinkBox = cw.el;
     }
     cw.add(th.s ? { t: 'think', ms: th.ms || 1000, s: String(th.s) } : th.step);
+    if(typeof smartScrollBottom === 'function') smartScrollBottom(); // v-scroll-free: الصندوق يكبر قبل الكلام — الملاحِق ينزل معه
   }catch(e){ __swallow(e, 'chat:think-note'); }
 }
 function __agLogGroupEl(els){
@@ -22575,7 +22585,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
       }
       if(ev.act){
         agLog.act(ev.act);
-        if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight;
+        smartScrollBottom(); // v-scroll-free
       }
       if(ev.clientTool && window.omranAgentTools){
         // v411: الوكيل طلب تشغيل كود. ننفّذه في إطار معزول هنا ونعيد الناتج عبر
@@ -22600,7 +22610,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
            التدريجيّ نفسه الذي تستعمله المحادثة، وكبح ١٥٠مل على الجوال. v-agent-log: كلّ مقطع كلام بين خطوتين يُرسم
            في عنصره داخل السجلّ (__agLogLive.text) — المقاطع السابقة لا يُعاد رسمها. */
         agLog.text(ev.delta);
-        if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight;
+        smartScrollBottom(); // v-scroll-free
       }
       if(ev.error) serverErr = ev.error;
     }
@@ -26510,39 +26520,12 @@ DESIGN RULES (non-negotiable):
       const __live = { target: '', shown: 0, timer: null, done: false, waiters: [], _mLast: 0 };
       const __liveRender = () => {
         const shownTxt = __live.target.slice(0, __live.shown);
-        // v-stream-scroll-free (شكوى المالك: «ما أقدر أحرّك المحادثة لين تخلص» +
-        // «لما تنتهي ترتفع»): البثّ كان يجبر التمرير للأسفل كلّ ~١٥٠مل فلا يستطيع
-        // المستخدم القراءة للأعلى، ويبقى بالأسفل عند الانتهاء فيبدو «يرتفع». الآن:
-        // إن حرّك المستخدم القائمة للأعلى (scrollTop نقص عمّا وضعناه) نرفع علم
-        // «تحرّر» فنتوقّف عن الملاحقة لبقيّة الدور — يقرأ بحرّية، وعند الانتهاء
-        // يبقى في موضعه (renderMessages المحروس يحفظه لأنّه ليس قرب الأسفل).
-        try{
-          if(!__live.userBroke && typeof __live.lastAutoTop === 'number' && messagesEl.scrollTop < __live.lastAutoTop - 40){
-            __live.userBroke = true;
-          }
-        }catch(e){ /* guard-ok — كشف تحرّر المستخدم اختياريّ */ }
-        if(!document.documentElement.classList.contains('mobile-ui')){
-          renderStreamingAssistant(thinkingDiv, shownTxt);
-          if(!__live.userBroke){
-            const __followReply = typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
-            smartScrollBottom(__followReply);
-            __live.lastAutoTop = messagesEl.scrollTop;
-          }
-        } else {
-          // الجوال ينسّق حيًّا كسطح المكتب، مع كبح لإعادة البناء كل ١٥٠مل
-          // حفاظًا على أداء الجوال.
-          const __now = Date.now();
-          if(__now - __live._mLast >= 150 || __live.shown >= __live.target.length){
-            __live._mLast = __now;
-            renderStreamingAssistant(thinkingDiv, shownTxt);
-          }
-          if(!__live.userBroke){
-            try{
-              const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
-              if(__mobileGap < 140){ messagesEl.scrollTop = messagesEl.scrollHeight; __live.lastAutoTop = messagesEl.scrollTop; }
-            }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
-          }
-        }
+        /* v-stream-scroll-free ← v-scroll-free (المالك ١٣ أكتوبر: «حرية الحركة داخل المحادثة… تنزل معها ونفس الوقت أقدر أحرّكها»): الملاحقة
+           يقرّرها omranChatFollow (app-40) من أفعال المستخدم نفسها (عجلة، لمس، أزرار، شريط) لا من فرق scrollTop — فلا شدّ أثناء السحب البطيء،
+           ولا كتابة فوق إصبعه أو انزلاقه، ورجوعه للأسفل يعيد الملاحقة. الجوّال: كبح إعادة البناء كلّ ١٥٠مل كما كان. */
+        const __mob = document.documentElement.classList.contains('mobile-ui'), __now = Date.now();
+        if(!__mob || __now - __live._mLast >= 150 || __live.shown >= __live.target.length){ __live._mLast = __now; renderStreamingAssistant(thinkingDiv, shownTxt); }
+        smartScrollBottom();
       };
       const __liveTimer = () => {
         if(__live.timer) return;
@@ -43442,7 +43425,7 @@ if(document.readyState === 'loading'){
           thinkingDiv._omLastRender = now;
           renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full);
         }
-        try{ if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ /* guard-ok */ }
+        try{ smartScrollBottom(); }catch(e){ /* guard-ok — v-scroll-free: قرار الملاحقة الموحّد */ }
       }
       if(ev.result){ result = ev.result; if(!full && ev.result.text) full = ev.result.text; }
       if(ev.error) err = ev.error;
@@ -45871,6 +45854,52 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     },
     _lines: lines, _dur: dur, // للاختبار
   };
+})();
+/* v-scroll-free (المالك ١٣ أكتوبر: «حرية الحركة داخل المحادثة — اذا فيه محادثة تنزل معها ونفس الوقت اقدر احركها»): قرار ملاحقة الأسفل
+   أثناء البثّ صار حالة واحدة تغيّرها حركة المستخدم نفسه، لا فرق scrollTop بين نبضتين. كان: البثّ يكتب scrollTop كلّ ٣٠–١٥٠مل،
+   و«تحرّر» المستخدم لا يُكشف إلّا إن صعد ٤٠px بين نبضتين — فالسحب البطيء بالإصبع يُشدّ للأسفل في كلّ نبضة (لا يتحرّك)، والتحرّر
+   إن حصل يبقى لبقيّة الدور حتّى لو رجع للأسفل.
+   - لا كتابة أبدًا والإصبع على الشاشة أو الشريط ممسوك، ولا خلال مهلة قصيرة بعد عجلة أو مفتاح أو رفع الإصبع (الانزلاق يكمل).
+   - يتحرّر (لا ملاحقة): صعود القائمة نفسها خلال تلك الأفعال — فعجلة داخل صندوق كود، أو سحب في محادثة قصيرة لا تتمرّر، لا تحرّر.
+   - يعود للملاحقة: نزوله بنفسه قرب الأسفل (٤٨px)، أو زرّ ↓، أو إرسال رسالة، أو فتح محادثة أخرى.
+   - تقلّص المحتوى (scrollTop ينقص بلا حركة مستخدم) لا يحرّر ولا يعيد. */
+(function(){
+  var el = document.getElementById('messages');
+  var NEAR = 48, COOL = 700, WHEEL = 400, KEY = 600;
+  var stick = true, touching = false, dragging = false, coolUntil = 0, lastTop = 0, lastH = 0, lastId;
+  function gap(){ return el ? el.scrollHeight - el.scrollTop - el.clientHeight : 0; }
+  function now(){ return Date.now(); }
+  function hold(ms){ var u = now() + ms; if(u > coolUntil) coolUntil = u; }
+  window.omranChatFollow = {
+    /** هل يجوز للبثّ أن يمرّر للأسفل الآن؟ */
+    follow: function(){ return stick && !touching && !dragging && now() >= coolUntil; },
+    /** إرسال رسالة أو زرّ ↓: الملاحقة من جديد. */
+    stickNow: function(){ stick = true; coolUntil = 0; },
+    /** إعادة رسم القائمة: محادثة أخرى = من الأسفل؛ وإلّا قرار الملاحقة نفسه. */
+    forRender: function(id){ if(id !== lastId){ lastId = id; stick = true; coolUntil = 0; } return window.omranChatFollow.follow(); },
+    _state: function(){ return { stick: stick, touching: touching, dragging: dragging, coolUntil: coolUntil }; }, // للاختبار
+  };
+  if(!el) return;
+  lastTop = el.scrollTop; lastH = el.scrollHeight;
+  el.addEventListener('wheel', function(){ hold(WHEEL); }, { passive: true });
+  el.addEventListener('touchstart', function(){ touching = true; }, { passive: true });
+  el.addEventListener('touchmove', function(){ touching = true; }, { passive: true });
+  var up = function(){ if(!touching) return; touching = false; hold(COOL); };
+  el.addEventListener('touchend', up, { passive: true });
+  el.addEventListener('touchcancel', up, { passive: true });
+  el.addEventListener('pointerdown', function(e){ if(e.target === el && e.pointerType === 'mouse') dragging = true; }, { passive: true });
+  window.addEventListener('pointerup', function(){ if(dragging){ dragging = false; hold(WHEEL); } }, { passive: true });
+  document.addEventListener('keydown', function(e){
+    var tg = e.target, tag = tg && tg.tagName;
+    if(tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT' || (tg && tg.isContentEditable)) return;
+    if(e.key === 'PageUp' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'PageDown' || e.key === 'ArrowDown' || e.key === 'End' || e.key === ' ') hold(KEY);
+  });
+  el.addEventListener('scroll', function(){
+    var t = el.scrollTop, h = el.scrollHeight, upward = t < lastTop - 1 && h >= lastH - 1;
+    if(upward){ if(dragging || touching || now() < coolUntil) stick = false; }
+    else if(t >= lastTop && gap() < NEAR) stick = true; // نزل بنفسه إلى الأسفل (أو كتبنا نحن هناك)
+    lastTop = t; lastH = h;
+  }, { passive: true });
 })();
 /* ===== app-99-boot-ok — آخر شريحة في الحزمة (scripts/build.mjs يرتّب الأجزاء بالاسم) =====
    v-ios-boot-flag (فحص ١١ أكتوبر): حارس إقلاع الآيفون (selfdiag.js) يعدّ الإقلاع مكتملًا حين __omranBootOk

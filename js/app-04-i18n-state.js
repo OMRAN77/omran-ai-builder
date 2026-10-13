@@ -1790,7 +1790,8 @@ function renderMessages(keepScroll){
   }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أي خطأ نرسم كالمعتاد */ }
   const prevScrollTop = messagesEl.scrollTop;
   let __wasNearBottom = true;
-  try{ __wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
+  /* v-scroll-free: قرار الملاحقة نفسه (app-40) — محادثة أخرى تُفتح من الأسفل، وإصبع على الشاشة لا يُقفز من تحته */
+  try{ __wasNearBottom = window.omranChatFollow ? window.omranChatFollow.forRender(__cInit && __cInit.id) : (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
   window.__isRenderingMsgs = true;
   try{
     messagesEl.innerHTML = '';
@@ -2571,6 +2572,11 @@ function renderMessages(keepScroll){
   });
   // v-scroll-respect: نتبع الأسفل فقط إن كان المستخدم أصلًا هناك (متابِعًا) أو
   // طُلب keepScroll صراحةً؛ وإلا نحفظ موضع قراءته كما كان.
+  // v-scroll-free: على cv-ok كلّ رسالة جديدة تُقدَّر ١٦٠px (content-visibility) حتّى يُرسم إطار، فالموضع المحفوظ كان يُقصّ — مسبار:
+  // يقرأ عند 9414 وينتهي الردّ فيُقذف إلى 0 (أعلى المحادثة). تُرسم كاملة لحظة الاستعادة وتعود في الإطار التالي بأحجامها المحفوظة (auto).
+  const __cvAll = document.documentElement.classList.contains('cv-ok') ? Array.from(messagesEl.querySelectorAll('.msg')) : [];
+  __cvAll.forEach(__m => { __m.style.contentVisibility = 'visible'; });
+  if(__cvAll.length) requestAnimationFrame(() => requestAnimationFrame(() => __cvAll.forEach(__m => { if(__m.style.contentVisibility === 'visible') __m.style.contentVisibility = ''; })));
   if(__wasNearBottom && !keepScroll){
     messagesEl.scrollTop = messagesEl.scrollHeight;
   } else {

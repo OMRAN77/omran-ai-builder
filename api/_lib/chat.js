@@ -1515,7 +1515,7 @@ module.exports = async (req, res) => {
       .map((m, __i) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, __i === __codeMsgIdx ? 300000 : __i === __lastMsgIdx ? 200000 : (__ownerReq ? 60000 : 12000)) : m.content })), { histOffset: __freeLane ? undefined : (body && body.histOffset), lane: 'paid' }); /* tok-4: المسار المجّانيّ بالضغط القديم حرفيًّا — نظامه ينتهي بوقت الدقيقة فلا كاش يربحه، والنافذة المحاذاة كانت تُسقط رسالتين في ثلث أدواره */ // v-tokens-window: موضع المحادثة المطلق من العميل (المالك لا يأخذه — ownerConversation بوسيط واحد)
       while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
   let __reRetried = false; // v-think-more (٢): إعادة واحدة بعد رفض reasoning_extraction
-  if (__ownerReq && rewriteLastUser(convo, THINK_MORE_RE, 'بدقّة ومراجعة')) { if (body) body.effort = 'max'; } // v-think-more (١): «فكّر أكثر» = جهد أعلى لا كشف تفكير
+  if (__ownerReq && rewriteLastUser(convo, THINK_MORE_RE, 'بدقّة ومراجعة')) { if (body) body.effort = 'max'; } const __resumeTurn = !!(__ownerReq && __ol.resume(convo, lastUserText)); /* v-owner-resume: «كمل» بعد ختام الميزانيّة = أكمل المهمّة نفسها بأدواتك */ // v-think-more (١): «فكّر أكثر» = جهد أعلى لا كشف تفكير
   /* v-claude-shape: أنثروبيك يرفض 400 محادثة أولها assistant أو فيها دوران
    * متتاليان بنفس الدور — كود المشروع يصل كرسالة assistant في المقدمة،
    * والمسار القصير في compactConversation يمرّره كما هو. نصلّح الشكل هنا. */
@@ -1967,7 +1967,7 @@ module.exports = async (req, res) => {
         const __oc = require('./owner-carry.js');
         const __stepText = blocks.filter((b) => b && b.type === 'text').map((b) => b.text || '').join('');
         const __prevOwner = (function(){ try{ const us = (messages || []).filter((m) => m && m.role === 'user'); const p = us[us.length - 2]; if (!p) return ''; return typeof p.content === 'string' ? p.content : (Array.isArray(p.content) ? p.content.filter((x) => x && x.type === 'text').map((x) => x.text || '').join(' ') : ''); }catch(e){ return ''; } })();
-        if (__oc.stalledPlan(__stepText, { usedTools: steps > 1, pushed: __ownerOps.pushes > 0, ownerText: lastUserText, prevOwnerText: __prevOwner })) {
+        if (__oc.stalledPlan(__stepText, { usedTools: steps > 1, pushed: __ownerOps.pushes > 0, ownerText: lastUserText, prevOwnerText: __prevOwner }) || (__resumeTurn && steps === 1 && !__ownerOps.pushes)) { // v-owner-resume: دور الإكمال ختم بنصّ بلا أداة واحدة
           __ownerCarried = true;
           convo.push({ role: 'assistant', content: __ol.asSent(__olT, blocks, [{ type: 'text', text: __stepText.trim() || ' ' }]) }); // D1: بتفكير الجولة كما وصل
           convo.push({ role: 'user', content: [{ type: 'text', text: __oc.CARRY_NOTE }] });
@@ -1977,6 +1977,12 @@ module.exports = async (req, res) => {
         }
       }
       if (stopReason !== 'tool_use') {
+        /* v-owner-resume: الختام أُجبر بالميزانيّة (التنبيه وصل) ولم يُرفع تعديل = الشغل قد يكون ناقصًا — سطر ثابت من الخادم يحفظه العميل في الردّ،
+           و«كمل» بعده تحمل تنبيه الإكمال (owner-loop.resume). */
+        if (__ownerReq && __olS.nudged && !__ownerOps.pushes) { const __rm = __ol.resumeMark(); send({ delta: __rm }); fullText += __rm; }
+        /* v-owner-like-me (المالك ١٣ أكتوبر «كيف انته تجيني في النهاية تقولي ادمج وانشر — اريد كل المزودين نفسك»): رفع في هذا الدور ولم يُدمج
+           ولم يسأل المزوّد نفسه = الخادم يختم بالسؤال نفسه، فيعرف المالك أنّ الكلمة التالية «أدمج وأنشر». */
+        if (__ownerReq && __ownerOps.prs && !__ownerOps.merges && !/[اأإ]دمج/.test(fullText)) { const __mq = '\n\nأدمج وأنشر؟'; send({ delta: __mq }); fullText += __mq; }
         const badRatings = __searchRan ? unsourcedRatings(fullText, toolCorpus) : []; // v608 · v-rating-guard-search (أمر المالك ١١ أكتوبر): بلا بحث فعليّ لا تحذير — «٣ من ٥» و«٨ من ١٠» والتواريخ كانت تُعلَّم «لم تظهر في نتائج البحث» ولا بحث أصلًا
         if (badRatings.length) {
           logError('chat/unsourced-rating', new Error('ratings absent from tool output: ' + badRatings.join(', ')));
@@ -2085,12 +2091,12 @@ module.exports = async (req, res) => {
           /* v-providers-like-agent: أدوات الوكيل للمالك في المحادثة بحرّاسها نفسها — ثلاث رفعات ومهمّة مفوَّضة واحدة في الدور. */
           else if (cb.name === 'write_github') {
             if (!__ownerReq) result = '✗ الرفع إلى GitHub للمالك وحده.';
-            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./github-write.js').pushFiles(input)); result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4 */ }
+            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./github-write.js').pushFiles(input)); result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4 */ if (/^✅ رُفع/.test(result)) __ownerOps.prs = (__ownerOps.prs || 0) + 1; /* v-owner-like-me */ }
           }
           /* v-agent-surgical: كما في الوكيل — التعديل يتشارك سقف الرفعات، والدمج بإذن «ادمج» في آخر رسالة المالك يفحصه الخادم. */
           else if (cb.name === 'edit_github') {
             if (!__ownerReq) result = '✗ التعديل على GitHub للمالك وحده.';
-            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./github-edit.js').editFiles(input)); result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4: رفعة تمسّ js/app-NN-*.js = «الحزمة لم تُبنَ» (partials لا تُحزَم) */ }
+            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./github-edit.js').editFiles(input)); result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4: رفعة تمسّ js/app-NN-*.js = «الحزمة لم تُبنَ» (partials لا تُحزَم) */ if (/^✅ رُفع/.test(result)) __ownerOps.prs = (__ownerOps.prs || 0) + 1; /* v-owner-like-me */ }
           }
           else if (cb.name === 'merge_github') {
             const __ge = require('./github-edit.js');

@@ -18,7 +18,31 @@
    لا مفتاح ولا متغيّر سرّيّ يُقرأ هنا؛ مهلتا C5 من CHAT_STALL_FIRST_MS / CHAT_STALL_IDLE_MS لحظة النداء. */
 
 const SYS = '[تنبيه النظام — ليس من المالك]: ';
-const FINAL_NOTE = SYS + 'انتهت ميزانيّة الأدوات — اكتب الجواب الآن ممّا قرأت وصرّح بما لم تقرأه.';
+const FINAL_NOTE = SYS + 'انتهت ميزانيّة الأدوات — اكتب الجواب الآن ممّا قرأت وصرّح بما لم تقرأه. وإن بقي شغل لم يُنفَّذ فاختم بما بقي بالتحديد '
+  + '(الملفّ والأسطر والتغيير) — منه يكمل الدور التالي. لا تقل إنّك عدّلت ما لم تعدّله.';
+/* v-owner-resume (لقطة المالك ١٣ أكتوبر، GPT-6 Astra وبطاقات الأزياء: «مب قادر يكمل»): الختام بالميزانيّة كان ينهي الدور بملخّص، و«كمل»
+   بعده تصل كلمة وحدها فيعيد المزوّد وصف ما قرأ بلا أداة. الآن سطر ثابت من الخادم تحت ختام الميزانيّة (RESUME_KEY)، و«كمل» بعد ردّ يحمله
+   تأخذ RESUME_NOTE في رسالة المالك، ودور الإكمال الذي يختم بنصّ بلا أداة يُعاد للحلقة مرّة (CARRY_NOTE في chat.js). */
+const RESUME_KEY = 'اكتب «كمل» ويكمل من حيث وقف';
+function resumeMark() { return '\n\n⏸️ خلص وقت الدور قبل ما يخلّص الشغل — ' + RESUME_KEY + '.'; }
+const RESUME_NOTE = SYS + 'المالك يطلب إكمال المهمّة نفسها التي قطعها حدّ وقت الدور في ردّك السابق. لا تُعِد التحليل ولا الوصف ولا الخطّة: '
+  + 'ابدأ فورًا بما بقي — اقرأ بأدواتك فقط ما تحتاجه للتعديل (المسارات والأسطر بالتحديد)، ثمّ نفّذ بـedit_github وأعطِ رابط طلب السحب. '
+  + 'إن كان الباقي شيئًا لا تقدر عليه بأداة فقله في سطر واحد بالتحديد.';
+// كلمة الإكمال وحدها (مع «يلا/طيب» قبلها أو «ها/الشغل/المهمّة» بعدها) — جملة فيها طلب آخر ليست إكمالًا. ملاحظات العميل بين قوسين بعد سطر فارغ لا تُحسب.
+const RESUME_RE = /^(?:(?:يلا|يالله|طيب|تمام|اوكي|أوكي|ok)\s+)?(?:[أاإ]?كم\u0651?ل(?:ها)?|تابع|واصل|continue|go\s+on)(?:\s+(?:الشغل|المهم[ةه]|الشغله|الشغلة))?\s*[.!؟?…]*$/i;
+function isResume(text) { return RESUME_RE.test(String(text || '').replace(/\n\s*\n\s*\[[\s\S]*$/, '').trim()); }
+function msgText(m) { return !m ? '' : (typeof m.content === 'string' ? m.content : (Array.isArray(m.content) ? m.content.map((b) => (b && b.type === 'text' ? b.text || '' : '')).join('\n') : '')); }
+/** «كمل» بعد ردّ قطعته الميزانيّة: يُلحق RESUME_NOTE برسالة المالك الأخيرة (نسخة جديدة للمحتوى). يعيد true إن أُلحق. */
+function resume(convo, lastUserText) {
+  if (!Array.isArray(convo) || convo.length < 3 || !isResume(lastUserText)) return false;
+  const last = convo[convo.length - 1];
+  if (!last || last.role !== 'user') return false;
+  let prev = null;
+  for (let i = convo.length - 2; i >= 0; i--) if (convo[i] && convo[i].role === 'assistant') { prev = convo[i]; break; }
+  if (msgText(prev).indexOf(RESUME_KEY) === -1) return false;
+  last.content = typeof last.content === 'string' ? last.content + '\n\n' + RESUME_NOTE : (Array.isArray(last.content) ? last.content.concat([{ type: 'text', text: RESUME_NOTE }]) : RESUME_NOTE);
+  return true;
+}
 const CONTINUE_NOTE = SYS + 'انقطع ردّك لطوله. أكمل من آخر حرف بلا تكرار — بلا مقدّمة ولا إعادة ما كُتب ولا فتح كتلة كود جديدة إن كنت داخل واحدة.';
 const TOOL_CUT_NOTE = SYS + 'انقطع استدعاء الأداة لطوله فلم يُنفَّذ — قسّم أو استعمل edit_github برقع صغيرة بدل محتوى الملفّ كاملًا.';
 const CUT_STOP = 'انقطع لطوله — اكتب: كمل';
@@ -256,8 +280,8 @@ function midStream(s, e, o) {
 // C1: خروج الحلقة بلا جواب ختاميّ (حدّ الخطوات أو المهلة) — السبب للمالك بدل «ما قدرت أردّ الحين». خطوة ختاميّة قبل حدّ الخطوات = ختام بالوقت.
 function exitText(o) {
   return ((o.steps != null && o.steps < o.MAX_STEPS) || Date.now() - o.t0 > o.MAX_MS)
-    ? 'انتهت مهلة الردّ (' + Math.round(o.MAX_MS / 1000) + ' ث) قبل الجواب النهائيّ'
-    : 'انتهت ميزانيّة الخطوات (' + o.MAX_STEPS + ') قبل الجواب النهائيّ';
+    ? 'انتهت مهلة الردّ (' + Math.round(o.MAX_MS / 1000) + ' ث) قبل الجواب النهائيّ — ' + RESUME_KEY
+    : 'انتهت ميزانيّة الخطوات (' + o.MAX_STEPS + ') قبل الجواب النهائيّ — ' + RESUME_KEY; // v-owner-resume: «كمل» بعده تكمل المهمّة
 }
 // C5: الفشل النهائيّ بعد انقطاع بالحارس قبل الترويسة — سبب المهلة لا «خطأ 504».
 function stallNote(s, last) { return (s && s.on && s.lastStall && last && Number(last.status) === 504) ? s.lastStall : ''; }
@@ -468,5 +492,6 @@ module.exports = {
   state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, exitText, stallNote, shrinkOld, overTime,
   isDeadPick, rememberDeadPick, margin,
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1
+  RESUME_KEY, RESUME_NOTE, resumeMark, isResume, resume, // v-owner-resume
   FINAL_NOTE, CONTINUE_NOTE, TOOL_CUT_NOTE, CUT_STOP, EMPTY_STOP, __deadPicks: deadPicks, __resetTalk: () => NO_TALK.clear(), // v-talk-400
 };

@@ -1299,7 +1299,7 @@ const messagesEl = $('#messages');
 
 // v463: سكرول طبيعي — المحادثة تتحرك كلها مع بعض
 function anchorLastUserMsgTop(){
-  try{ messagesEl.scrollTop = messagesEl.scrollHeight; syncChatJumpButton(); }catch(e){ window.__swallow && window.__swallow(e,'ui.scrollAnchor'); }
+  try{ if(window.omranChatFollow) window.omranChatFollow.stickNow(); messagesEl.scrollTop = messagesEl.scrollHeight; syncChatJumpButton(); }catch(e){ window.__swallow && window.__swallow(e,'ui.scrollAnchor'); }
 }
 // رتم البث: نأخذ قرار المتابعة قبل أن يكبر الرد. القياس بعد إضافة النص
 // كان يظن أن المستخدم صعد للأعلى، فيتوقف التمرير وحده وسط الرد الطويل.
@@ -1318,7 +1318,9 @@ function syncChatJumpButton(){
 }
 function smartScrollBottom(wasNearBottom){
   try{
-    const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : chatIsNearBottom();
+    /* v-scroll-free: الملاحقة يقرّرها omranChatFollow (app-40) من حركة المستخدم — لا فرق ١٦٠px يشدّ إصبعه أثناء السحب */
+    const __F = window.omranChatFollow;
+    const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : (__F ? __F.follow() : chatIsNearBottom());
     if(follow) messagesEl.scrollTop = messagesEl.scrollHeight;
     syncChatJumpButton();
   }catch(e){ __swallow(e, "misc:app-02-tts#8"); }
@@ -1329,6 +1331,7 @@ if(messagesEl){
 }
 if(chatJumpBottomBtn){
   chatJumpBottomBtn.onclick = () => {
+    if(window.omranChatFollow) window.omranChatFollow.stickNow();
     messagesEl.scrollTo ? messagesEl.scrollTo({top:messagesEl.scrollHeight, behavior:'smooth'}) : (messagesEl.scrollTop = messagesEl.scrollHeight);
     setTimeout(syncChatJumpButton, 220);
   };
