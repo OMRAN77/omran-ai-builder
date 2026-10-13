@@ -106,6 +106,6 @@ test('٥. الأنماط: جدول كامل العرض رغم .msg table{display
   assert.ok(css.includes('.msg .md-table{display:table; width:100%;'), 'يغلب القاعدة العامّة .msg table{display:block}');
   for (const sel of ['.md-table-wrap{display:block; width:100%;', '.md-table th{', '.md-table td{', '.md-table tbody tr:last-child td{border-bottom:0;}', '.md-ic{', '.md-ic-ar{font-family:inherit;', '.md-ic-gap{']) assert.ok(css.includes(sel), sel);
   const src = read('js/app-02-tts.js');
-  assert.ok(src.includes("if(n.nodeType === 1 && (n.className === 'chat-codeblock' || n.className === 'md-table-wrap')){ out.push(n); newLine(); return; }"), 'الجدول كتلة');
+  assert.ok(src.includes("if(n.nodeType === 1 && (n.className === 'chat-codeblock' || n.className === 'md-table-wrap' || n.className === 'md-gallery')){ out.push(n); newLine(); return; }"), 'الجدول كتلة (والمعرض منذ v-rich-reply)');
   assert.ok(read('js/app.bundle.js').includes('function omranMdTableMark('), 'الحزمة مبنيّة من الأجزاء');
 });
