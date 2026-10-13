@@ -2769,6 +2769,7 @@ function omranShowThink(thinkingDiv, th){
       thinkingDiv.__cw = cw; thinkingDiv.__thinkBox = cw.el;
     }
     cw.add(th.s ? { t: 'think', ms: th.ms || 1000, s: String(th.s) } : th.step);
+    if(typeof smartScrollBottom === 'function') smartScrollBottom(); // v-scroll-free: الصندوق يكبر قبل الكلام — الملاحِق ينزل معه
   }catch(e){ __swallow(e, 'chat:think-note'); }
 }
 function __agLogGroupEl(els){
@@ -2943,7 +2944,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
       }
       if(ev.act){
         agLog.act(ev.act);
-        if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight;
+        smartScrollBottom(); // v-scroll-free
       }
       if(ev.clientTool && window.omranAgentTools){
         // v411: الوكيل طلب تشغيل كود. ننفّذه في إطار معزول هنا ونعيد الناتج عبر
@@ -2968,7 +2969,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
            التدريجيّ نفسه الذي تستعمله المحادثة، وكبح ١٥٠مل على الجوال. v-agent-log: كلّ مقطع كلام بين خطوتين يُرسم
            في عنصره داخل السجلّ (__agLogLive.text) — المقاطع السابقة لا يُعاد رسمها. */
         agLog.text(ev.delta);
-        if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight;
+        smartScrollBottom(); // v-scroll-free
       }
       if(ev.error) serverErr = ev.error;
     }
@@ -6878,39 +6879,12 @@ DESIGN RULES (non-negotiable):
       const __live = { target: '', shown: 0, timer: null, done: false, waiters: [], _mLast: 0 };
       const __liveRender = () => {
         const shownTxt = __live.target.slice(0, __live.shown);
-        // v-stream-scroll-free (شكوى المالك: «ما أقدر أحرّك المحادثة لين تخلص» +
-        // «لما تنتهي ترتفع»): البثّ كان يجبر التمرير للأسفل كلّ ~١٥٠مل فلا يستطيع
-        // المستخدم القراءة للأعلى، ويبقى بالأسفل عند الانتهاء فيبدو «يرتفع». الآن:
-        // إن حرّك المستخدم القائمة للأعلى (scrollTop نقص عمّا وضعناه) نرفع علم
-        // «تحرّر» فنتوقّف عن الملاحقة لبقيّة الدور — يقرأ بحرّية، وعند الانتهاء
-        // يبقى في موضعه (renderMessages المحروس يحفظه لأنّه ليس قرب الأسفل).
-        try{
-          if(!__live.userBroke && typeof __live.lastAutoTop === 'number' && messagesEl.scrollTop < __live.lastAutoTop - 40){
-            __live.userBroke = true;
-          }
-        }catch(e){ /* guard-ok — كشف تحرّر المستخدم اختياريّ */ }
-        if(!document.documentElement.classList.contains('mobile-ui')){
-          renderStreamingAssistant(thinkingDiv, shownTxt);
-          if(!__live.userBroke){
-            const __followReply = typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
-            smartScrollBottom(__followReply);
-            __live.lastAutoTop = messagesEl.scrollTop;
-          }
-        } else {
-          // الجوال ينسّق حيًّا كسطح المكتب، مع كبح لإعادة البناء كل ١٥٠مل
-          // حفاظًا على أداء الجوال.
-          const __now = Date.now();
-          if(__now - __live._mLast >= 150 || __live.shown >= __live.target.length){
-            __live._mLast = __now;
-            renderStreamingAssistant(thinkingDiv, shownTxt);
-          }
-          if(!__live.userBroke){
-            try{
-              const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
-              if(__mobileGap < 140){ messagesEl.scrollTop = messagesEl.scrollHeight; __live.lastAutoTop = messagesEl.scrollTop; }
-            }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
-          }
-        }
+        /* v-stream-scroll-free ← v-scroll-free (المالك ١٣ أكتوبر: «حرية الحركة داخل المحادثة… تنزل معها ونفس الوقت أقدر أحرّكها»): الملاحقة
+           يقرّرها omranChatFollow (app-40) من أفعال المستخدم نفسها (عجلة، لمس، أزرار، شريط) لا من فرق scrollTop — فلا شدّ أثناء السحب البطيء،
+           ولا كتابة فوق إصبعه أو انزلاقه، ورجوعه للأسفل يعيد الملاحقة. الجوّال: كبح إعادة البناء كلّ ١٥٠مل كما كان. */
+        const __mob = document.documentElement.classList.contains('mobile-ui'), __now = Date.now();
+        if(!__mob || __now - __live._mLast >= 150 || __live.shown >= __live.target.length){ __live._mLast = __now; renderStreamingAssistant(thinkingDiv, shownTxt); }
+        smartScrollBottom();
       };
       const __liveTimer = () => {
         if(__live.timer) return;

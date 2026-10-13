@@ -305,7 +305,7 @@
           thinkingDiv._omLastRender = now;
           renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full);
         }
-        try{ if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ /* guard-ok */ }
+        try{ smartScrollBottom(); }catch(e){ /* guard-ok — v-scroll-free: قرار الملاحقة الموحّد */ }
       }
       if(ev.result){ result = ev.result; if(!full && ev.result.text) full = ev.result.text; }
       if(ev.error) err = ev.error;
