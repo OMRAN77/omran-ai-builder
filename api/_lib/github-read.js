@@ -425,6 +425,30 @@ async function readCommits(t, o, limit) {
   return out.join('\n');
 }
 
+/* v-owner-see-repo-img (المالك ١٣ أكتوبر، ردّ GPT-6 Astra على بطاقات الأزياء: «الصور البديلة الموجودة بالمستودع ما قدرت أعاينها»): مسار
+   صورة في المستودع كان يعود «ملفّ ثنائيّ، لا يُقرأ نصًّا». الآن بايتاتها (حتّى ٣٫٥ م.ب، بترويسة raw) لتُرفق للمزوّد الذي يرى — chat.js يقرّر. */
+const IMG_FILE_RE = /\.(png|jpe?g|webp|gif)$/i;
+const IMG_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
+const IMG_SEE_MAX = 3500000;
+function imagePathOf(input) {
+  if (input && typeof input === 'object' && String(input.query || '').trim()) return null;
+  const t = parseTarget(input);
+  return (t && t.path && IMG_FILE_RE.test(t.path) && ['file', 'path'].indexOf(t.kind) !== -1) ? t : null;
+}
+async function readImageFile(input, opts) {
+  const t = imagePathOf(input);
+  if (!t) return { error: 'ليس مسار صورة في مستودع' };
+  const o = Object.assign({}, opts || {}, { raw: true, timeoutMs: 30000 });
+  try {
+    const r = await ghFetch('/repos/' + repoOf(t) + '/contents/' + encPath(t.path) + (t.ref ? '?ref=' + encodeURIComponent(t.ref) : ''), o);
+    if (!r.ok) return { error: ghError(r, repoOf(t) + '/' + t.path, o.env) };
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length) return { error: 'الصورة ' + t.path + ' فارغة' };
+    if (buf.length > IMG_SEE_MAX) return { error: 'الصورة ' + t.path + ' ' + b(buf.length) + ' أكبر من حدّ الرؤية (' + b(IMG_SEE_MAX) + ')' };
+    return { path: t.path, mime: IMG_MIME[t.path.split('.').pop().toLowerCase()] || 'image/png', b64: buf.toString('base64'), bytes: buf.length };
+  } catch (e) { return { error: 'تعذّر جلب الصورة: ' + String((e && e.message) || e).slice(0, 120) }; }
+}
+
 async function readGithub(input, opts) {
   const t = parseTarget(input);
   if (!t) return 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ أو pull أو issue أو commits، أو owner/repo مع path (وwhat=commits لآخر الدفعات)، أو مع query للبحث.';
@@ -475,4 +499,5 @@ async function fetchRepoZip(target, opts) {
   return { ref, entries, total: all.length };
 }
 
-module.exports = { parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, fileExcerpt, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP, SEARCH_FILE_BYTES_MAX, SEARCH_SKIP_RE };
+module.exports = { imagePathOf, readImageFile, // v-owner-see-repo-img
+  parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, fileExcerpt, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP, SEARCH_FILE_BYTES_MAX, SEARCH_SKIP_RE };
