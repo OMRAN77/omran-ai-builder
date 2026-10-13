@@ -7,7 +7,7 @@
 //     والدمج والنشر بيد المالك. AGENT_GITHUB_DIRECT=1 في البيئة يفتح الدفع المباشر
 //     صراحةً إن أراده المالك يومًا.
 // (٣) التزام واحد لكلّ رفع عبر Git Data API (شجرة + commit + ref) لا التزام لكلّ ملفّ،
-//     والملفّات نصّية فقط، بسقوف حجم وعدد، ومسارات مُتحقَّق منها (لا ..، لا .git/).
+//     والملفّات نصّية (والصورة بحقل image من مخزن التطبيق — v-gen-image)، بسقوف حجم وعدد، ومسارات مُتحقَّق منها (لا ..، لا .git/).
 // (٤) المضيف ثابت api.github.com خلف حارس safe-url (عبر ghFetch في github-read.js).
 'use strict';
 
@@ -25,6 +25,13 @@ const CTRL_RE = /[\u0000-\u001f\u007f]/; // v-claude-code-level: هروب لا �
 function validPath(p) {
   const s = String(p == null ? '' : p);
   return !!s && s.length <= 300 && s[0] !== '/' && !CTRL_RE.test(s) && !/(^|\/)\.\.(\/|$)/.test(s) && !/^\.git(\/|$)/.test(s) && !/\/$/.test(s);
+}
+/* v-gen-image (أمر المالك ١٣ أكتوبر «بدل الصورة هذي حط بدلها… داخل التطبيق»): ملفّ بحقل image بدل content = صورة من رابط في التطبيق
+   (/i/<id>.jpg — صورة معمّمة أو مشاركة) تُرفع بايتاتها كما هي. المعرّف يُقرأ من مخزن التطبيق مباشرة، فلا يُجلب أيّ رابط خارجيّ. */
+const IMG_PATH_RE = /\.(png|jpe?g|webp|gif)$/i;
+function imageIdOf(s) {
+  const m = String(s || '').trim().match(/^(?:https?:\/\/[^/\s]+)?(?:\/i\/)?([a-f0-9]{6,24})(?:\.[a-z.]{2,9})?(?:[?#]\S*)?$/i);
+  return m ? m[1].toLowerCase() : '';
 }
 function slug(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'update'; }
 function short(sha) { return String(sha || '').slice(0, 7); }
@@ -55,9 +62,19 @@ function validateInput(input, limits) {
   let total = 0;
   const seen = new Set();
   const outFiles = [];
+  const outImages = [];
   for (const f of files) {
     if (!f || typeof f !== 'object' || !validPath(f.path)) return { error: 'مسار ملفّ غير صالح: ' + String(f && f.path).slice(0, 80) };
-    if (typeof f.content !== 'string') return { error: 'محتوى ' + f.path + ' يجب أن يكون نصًّا (الملفّات الثنائيّة غير مدعومة).' };
+    if (typeof f.content !== 'string' && typeof f.image === 'string') { // v-gen-image
+      const id = imageIdOf(f.image);
+      if (!id) return { error: 'رابط الصورة لـ' + f.path + ' ليس من التطبيق — أعطِ رابط صورة معمّمة مثل /i/abc123def456.jpg.' };
+      if (!IMG_PATH_RE.test(f.path)) return { error: f.path + ': الصورة تحتاج مسارًا بامتداد صورة (png أو jpg أو jpeg أو webp أو gif).' };
+      if (seen.has(f.path)) return { error: 'المسار مكرّر: ' + f.path };
+      seen.add(f.path);
+      outImages.push({ path: f.path, id });
+      continue;
+    }
+    if (typeof f.content !== 'string') return { error: 'محتوى ' + f.path + ' يجب أن يكون نصًّا (الملفّات الثنائيّة غير مدعومة) — والصورة تُرفع بحقل image برابطها في التطبيق.' };
     if (f.content.length > L.perFile) return { error: f.path + ' أكبر من ' + L.perFile + ' حرفًا.' };
     if (seen.has(f.path)) return { error: 'المسار مكرّر: ' + f.path };
     seen.add(f.path);
@@ -71,7 +88,7 @@ function validateInput(input, limits) {
     if (seen.has(p)) return { error: 'المسار في الرفع والحذف معًا: ' + p };
     outDel.push(String(p));
   }
-  return { files: outFiles, deletes: outDel };
+  return outImages.length ? { files: outFiles, deletes: outDel, images: outImages } : { files: outFiles, deletes: outDel };
 }
 
 /* ---------- v-auto-bundle: الحزمة تُبنى داخل الرفعة نفسها ----------
@@ -128,6 +145,13 @@ async function pushFiles(input, opts) {
   if (v.error) return v;
   const message = String(i.message || '').trim().slice(0, 300) || 'تحديث من وكيل عمران';
   const R = '/repos/' + t.owner + '/' + t.repo;
+  // v-gen-image: بايتات الصور من مخزن التطبيق قبل أيّ نداء لـGitHub — صورة انتهت أو حُذفت تُرفض بسببها لا بنصف رفعة.
+  const imgs = [];
+  for (const im of v.images || []) {
+    const got = await (o.getImage || require('./img-share.js').getImage)(im.id);
+    if (!got || !got.b64) return { error: 'الصورة ' + im.id + ' غير موجودة في التطبيق (انتهت أو حُذفت) — اطلب من المالك «عمّم» عليها من جديد.' };
+    imgs.push({ path: im.path, b64: got.b64 });
+  }
 
   const { r: rr, j: repo } = await ghJson(R, o);
   if (!rr.ok) return { error: apiMsg(rr, repo, 'المستودع ' + t.owner + '/' + t.repo) };
@@ -156,7 +180,7 @@ async function pushFiles(input, opts) {
 
   /* v-claude-code-level (F1): ملفّ فوق سقف write_github (لا يصله إلّا مسار التعديل) يُرفع blobًا أوّلًا — /git/blobs
      موثّق حتّى ١٠٠ م.ب، والمحتوى المضمَّن في /git/trees بلا سقف موثّق. ما دون السقف يبقى مضمَّنًا كما كان حرفيًّا. */
-  const userFiles = v.files.length; // ما رفعه النموذج — الحزمة وختمها إضافة من الخادم
+  const userFiles = v.files.length + imgs.length; // ما رفعه النموذج — الحزمة وختمها إضافة من الخادم
   let bundled = null, bundleError = '';
   try { bundled = await autoBundle(R, cj.tree.sha, v, o); } catch (e) { bundleError = String((e && e.message) || e).slice(0, 200); }
 
@@ -166,6 +190,11 @@ async function pushFiles(input, opts) {
     const { r: bl, j: blj } = await ghJson(R + '/git/blobs', Object.assign({}, o, { method: 'POST', body: { content: f.content, encoding: 'utf-8' }, timeoutMs: Math.max(o.timeoutMs || 0, 60000) })); /* v-auto-bundle: الحزمة ~٣٫٧ م.ب */
     if (!bl.ok || !blj || !blj.sha) return { error: apiMsg(bl, blj, 'رفع ' + f.path) };
     tree.push({ path: f.path, mode: '100644', type: 'blob', sha: blj.sha });
+  }
+  for (const im of imgs) { // v-gen-image: الصورة blob ثنائيّ بترميز base64 كما خُزّنت
+    const { r: bl, j: blj } = await ghJson(R + '/git/blobs', Object.assign({}, o, { method: 'POST', body: { content: im.b64, encoding: 'base64' }, timeoutMs: Math.max(o.timeoutMs || 0, 60000) }));
+    if (!bl.ok || !blj || !blj.sha) return { error: apiMsg(bl, blj, 'رفع الصورة ' + im.path) };
+    tree.push({ path: im.path, mode: '100644', type: 'blob', sha: blj.sha });
   }
   for (const p of v.deletes) tree.push({ path: p, mode: '100644', type: 'blob', sha: null });
   const { r: tr, j: tj } = await ghJson(R + '/git/trees', Object.assign({}, o, { method: 'POST', body: { base_tree: cj.tree.sha, tree } }));
@@ -210,12 +239,12 @@ function formatPush(res) {
 
 const TOOL = {
   name: 'write_github',
-  description: 'ارفع ملفّات إلى مستودع GitHub للمالك: يُنشأ فرع جديد omran-agent/… من الفرع الرئيسيّ، ويُرفع التزام واحد بكلّ الملفّات، ويُفتح طلب سحب — لا دفع إلى الفرع الرئيسيّ أبدًا، والدمج والنشر بيد المالك. لا تستدعها إلّا بطلب صريح من المستخدم بالرفع، وبعد أن تقرأ الملفّ الحاليّ بـread_github إن كنت تعدّله. الملفّات نصّية فقط (٢٠ ملفًّا كحدّ أقصى). أعد الاستدعاء بنفس branch لإضافة التزام ثانٍ على الفرع نفسه.',
+  description: 'ارفع ملفّات إلى مستودع GitHub للمالك: يُنشأ فرع جديد omran-agent/… من الفرع الرئيسيّ، ويُرفع التزام واحد بكلّ الملفّات، ويُفتح طلب سحب — لا دفع إلى الفرع الرئيسيّ أبدًا، والدمج والنشر بيد المالك. لا تستدعها إلّا بطلب صريح من المستخدم بالرفع، وبعد أن تقرأ الملفّ الحاليّ بـread_github إن كنت تعدّله. الملفّات نصّية (٢٠ ملفًّا كحدّ أقصى)، والصورة وحدها تُرفع بحقل image بدل content: رابطها في التطبيق (/i/<id>.jpg — من سطر «[صورة معمّمة]»)، مثل «بدّل صورة الواجهة بهذي». أعد الاستدعاء بنفس branch لإضافة التزام ثانٍ على الفرع نفسه.',
   input_schema: {
     type: 'object',
     properties: {
       repo: { type: 'string', description: 'المستودع بصيغة owner/repo أو رابطه' },
-      files: { type: 'array', description: 'الملفّات المرفوعة (تُنشأ أو تُستبدل كاملة)', items: { type: 'object', properties: { path: { type: 'string', description: 'المسار داخل المستودع مثل js/app.js' }, content: { type: 'string', description: 'محتوى الملفّ كاملًا' } }, required: ['path', 'content'] } },
+      files: { type: 'array', description: 'الملفّات المرفوعة (تُنشأ أو تُستبدل كاملة)', items: { type: 'object', properties: { path: { type: 'string', description: 'المسار داخل المستودع مثل js/app.js' }, content: { type: 'string', description: 'محتوى الملفّ كاملًا' }, image: { type: 'string', description: 'بدل content لرفع صورة: رابطها في التطبيق مثل /i/abc123def456.jpg — تُرفع بايتاتها كما هي' } }, required: ['path'] } },
       delete: { type: 'array', description: 'مسارات ملفّات تُحذف (اختياريّ)', items: { type: 'string' } },
       message: { type: 'string', description: 'رسالة الالتزام — سطر واضح بما تغيّر ولماذا' },
       title: { type: 'string', description: 'عنوان طلب السحب (اختياريّ؛ الافتراضيّ رسالة الالتزام)' },
@@ -227,4 +256,4 @@ const TOOL = {
   },
 };
 
-module.exports = { pushFiles, formatPush, validateInput, validPath, autoBundle, TOOL, LIMITS, EDIT_PUSH_LIMITS };
+module.exports = { pushFiles, formatPush, validateInput, validPath, autoBundle, imageIdOf, TOOL, LIMITS, EDIT_PUSH_LIMITS };

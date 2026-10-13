@@ -8,6 +8,8 @@
        «عمّم» ليست درسًا: المزوّد لا يسأل «وش تقصد» ولا يستخرج أسلوبًا. إن لم يكن له ردّ سابق والمعلومة في الصورة، يكتبها كاملة فتُحفظ.
    (١ج) v-prov-one (١٣ أكتوبر: «كل المحادثات وبناء الصور… أي واحد أسأله كأني أسأل واحد»): المخزن نفسه يمتلئ وحده من كل
        محادثات المالك (كلامه وردّ المزوّد) ومن بناء الصور، بلا كلمة «عمّم». «لا تعمّم» تُسقط آخر ردّ قبلها. السقف كما هو.
+   (١د) v-gen-fix + v-gen-image: «لا تعمّم» تمسح الحوار الذي قبلها من المخزن، الحفظ يأخذ الجديد من كلّ محادثة فقط، كتابة واحدة لكلّ
+       دور، وما يُرسل مع الرسالة أحدثه حتّى ٤٠ ألف توكن. و«عمّم» على صورة تحفظها برابط من التطبيق يصل العشرة.
    (٢) دروس عامّة: يكتبها المالك عبر أيّ مزوّد (teach_users). الدرس الجديد يسري على محادثات المالك وحده (تجربة)، و«عمّم» في رسالته
        الأخيرة — يفحصها الخادم كحارس «ادمج» — تنشره لكلّ المستخدمين ولكلّ المزوّدين (chat.js وai.js).
    الكتابة للمالك وحده (الأداتان في أدواته فقط، والمنفّذ يرفض غيره). لا مفتاح يُقرأ في نطاق الوحدة. */
@@ -24,6 +26,13 @@ const LESSONS_KEY = 'db/lessons.json';
 const GEN_KEY = 'db/owner-gen.json';
 // ١٦٠ ألف توكن بحساب التطبيق (٢٫٥ حرف للتوكن). المجموع مع المحادثة الحاليّة لا يتجاوزه: الأقدم من المعمّم يُنقص.
 const GEN_CHARS = 160000 * 2.5;
+/* v-gen-fix (فحص #1022 بالتشغيل قبل دمجه، ١٣ أكتوبر): بعد نحو ٣٠٠ دور يمتلئ المخزن، فكانت كلّ رسالة للمالك — حتّى «هلا» في محادثة
+   جديدة على Groq — تحمل ١٦٠ ألف توكن. المخزن يبقى ١٦٠ ألفًا، وما يُرسل منه مع الرسالة الواحدة أحدثه حتّى ٤٠ ألف توكن (أمر المالك). */
+const GEN_INJECT = 40000 * 2.5;
+// v-gen-image: الصورة المعمّمة تبقى ما بقيت في المخزن (عمر ١٠ سنوات لا يمسّه تنظيف الروابط القديمة)، وأحدث ٢٠ صورة فقط.
+const GEN_IMG_TTL = 3650 * 86400;
+const GEN_IMG_MAX = 20;
+const GEN_IMG_B64_MAX = 700 * 1024; // دون حدّ طلب Upstash (≈1MB)؛ العميل يضغطها JPEG دون ٦٤٠ ك.ب
 const selfKey = (p) => 'db/prov-self/' + p + '.json';
 const provOf = (p) => { const k = String(p || '').trim().toLowerCase(); return PROVS.indexOf(k) !== -1 ? k : ''; };
 
@@ -110,7 +119,7 @@ function sentConvoChars(messages) {
   }
   return Math.min(chars, GEN_CHARS);
 }
-function genBudget(messages) { return messages ? Math.max(0, GEN_CHARS - sentConvoChars(messages)) : GEN_CHARS; }
+function genBudget(messages) { return Math.min(GEN_INJECT, messages ? Math.max(0, GEN_CHARS - sentConvoChars(messages)) : GEN_CHARS); }
 function trimGen(items, cap) {
   const out = (items || []).filter((x) => x && x.text).map((x) => ({ id: x.id, text: x.text, at: x.at || 0, by: x.by || '' }));
   let total = out.reduce((n, x) => n + x.text.length, 0);
@@ -118,18 +127,22 @@ function trimGen(items, cap) {
   if (out.length === 1 && out[0].text.length > cap) out[0] = Object.assign({}, out[0], { text: out[0].text.slice(-cap) });
   return out;
 }
+// السجلّ: items (المعلومات) · marks (كم رسالة أُخذت من كلّ محادثة محفوظة) · last (ما أضافه آخر دور) · imgs (الصور المعمّمة).
 let genCache = null;
-async function readGen(fresh) {
-  if (!fresh && genCache && Date.now() - genCache.t < CACHE_MS) return genCache.items;
+async function readRec(fresh) {
+  if (!fresh && genCache && Date.now() - genCache.t < CACHE_MS) return genCache.rec;
   const d = await kvGetJSON(GEN_KEY);
-  const items = Array.isArray(d && d.items) ? d.items : [];
-  genCache = { t: Date.now(), items };
-  return items;
+  const rec = Object.assign({}, d && typeof d === 'object' ? d : {});
+  if (!Array.isArray(rec.items)) rec.items = [];
+  genCache = { t: Date.now(), rec };
+  return rec;
 }
-async function saveGen(items) {
-  await kvPutJSON(GEN_KEY, { items });
-  genCache = { t: Date.now(), items };
+async function readGen(fresh) { return (await readRec(fresh)).items; }
+async function saveRec(rec) {
+  await kvPutJSON(GEN_KEY, rec);
+  genCache = { t: Date.now(), rec };
 }
+async function saveGen(items) { await saveRec(Object.assign({}, (genCache && genCache.rec) || {}, { items })); }
 // ردود المزوّد كما كُتبت، بلا تلخيص. التكرار لا يُضاعَف. فوق السقف يسقط الأقدم.
 async function captureGeneralize(messages, prov) {
   const fresh = assistantTexts(messages);
@@ -182,39 +195,72 @@ function isGenCmd(t) {
   const s = String(t || '').trim();
   return s.length <= 40 && ownerSaidGeneralize(s);
 }
-// «لا تعمّم» تُسقط الردّ الذي قبلها وما بعده في هذه الدفعة. ما قبل ذلك يبقى.
-function dialogueLines(messages) {
-  const list = Array.isArray(messages) ? messages : [];
-  let end = list.length;
-  for (let i = list.length - 1; i >= 0; i--) {
-    if (!list[i] || list[i].role !== 'user' || !GEN_NEG_RE.test(plainText(list[i].content))) continue;
-    end = i;
-    for (let j = i - 1; j >= 0; j--) {
-      if (list[j] && list[j].role === 'assistant') { end = j; break; }
+function saidNoGen(text) { return GEN_NEG_RE.test(String(text || '')); }
+/* المسح بصيغة الأمر وحدها («لا تعمّم»، «ما تعمّمها»، «بدون تعميم»): «ليش ما عمّمت؟» سؤال لا أمر، ونفي الماضي لا يمسح شيئًا محفوظًا. */
+const GEN_NEG_CMD_RE = /(?:^|[\s،,.!«»"'()-])(?:لا|ما|مب|مو|مش)\s+(?:ت|ن)(?:عمّم|عمم)(?:ها|ه|هم)?(?=$|[\s،,.!؟?«»"'()-])|بدون\s+تعميم/;
+function isNegCmd(text) { const s = String(text || ''); return GEN_NEG_CMD_RE.test(s) && !/ليش|ليه|لماذا|\bwhy\b/i.test(s) && !/[؟?]\s*$/.test(s); }
+function isNegMsg(m) { return !!(m && m.role === 'user' && isNegCmd(plainText(m.content))); }
+/* v-gen-fix: «لا تعمّم» تُسقط الحوار الذي قبلها — ردّ المزوّد والسؤال الذي سبقه — والكلمة نفسها، ويكمل ما بعدها. كانت (#1022) تقطع
+   كلّ ما بعدها في المحادثة، فلا يُحفظ سؤال للمالك بعدها ما دامت في النافذة. يرجع { i: [الردّ، السؤال] } لكلّ نفي. */
+function negExchanges(list) {
+  const out = new Map();
+  for (let i = 0; i < list.length; i++) {
+    if (!isNegMsg(list[i])) continue;
+    const ex = [];
+    let j = i - 1; while (j >= 0 && !(list[j] && list[j].role === 'assistant')) j--;
+    if (j >= 0) {
+      ex.push(j);
+      let k = j - 1; while (k >= 0 && !(list[k] && list[k].role === 'user')) k--;
+      if (k >= 0 && !isNegMsg(list[k])) ex.push(k);
     }
-    break;
-  }
-  const out = [];
-  for (let i = 0; i < end; i++) {
-    const m = list[i];
-    if (!m || (m.role !== 'user' && m.role !== 'assistant')) continue;
-    let t = plainText(m.content);
-    if (m.role === 'assistant' && typeof m.code === 'string' && m.code.trim()) {
-      const code = redactKeys(m.code).replace(/\u0000/g, '').trim();
-      if (code) t = t ? (t + '\n' + code) : code;
-    }
-    if (m.role === 'assistant' && hasBuiltImage(m)) {
-      const cap = t && !LOADING_RE.test(t) ? t : '';
-      t = cap ? ('[بُنيت صورة] ' + cap) : '[بُنيت صورة]';
-    }
-    if (!t || t === '[media]' || LOADING_RE.test(t)) continue;
-    if (m.role === 'assistant' && (GEN_ACK_RE.test(t) || GEN_ASK_RE.test(t))) continue;
-    if (m.role === 'user' && isGenCmd(t)) continue;
-    out.push(m.role === 'user' ? ('المالك: ' + t) : t);
+    out.set(i, ex);
   }
   return out;
 }
-async function absorbGroups(groups) {
+// سطر الرسالة كما يُحفظ في المخزن ('' = لا يُحفظ).
+function entryText(m) {
+  if (!m || (m.role !== 'user' && m.role !== 'assistant')) return '';
+  let t = plainText(m.content);
+  if (m.role === 'assistant' && typeof m.code === 'string' && m.code.trim()) {
+    const code = redactKeys(m.code).replace(/\u0000/g, '').trim();
+    if (code) t = t ? (t + '\n' + code) : code;
+  }
+  if (m.role === 'assistant' && hasBuiltImage(m)) {
+    const cap = t && !LOADING_RE.test(t) ? t : '';
+    t = cap ? ('[بُنيت صورة] ' + cap) : '[بُنيت صورة]';
+  }
+  if (!t || t === '[media]' || LOADING_RE.test(t)) return '';
+  if (m.role === 'assistant' && (GEN_ACK_RE.test(t) || GEN_ASK_RE.test(t))) return '';
+  if (m.role === 'user' && isGenCmd(t)) return '';
+  return m.role === 'user' ? ('المالك: ' + t) : t;
+}
+function dialogueEntries(messages) {
+  const list = Array.isArray(messages) ? messages : [];
+  const skip = new Set();
+  for (const [i, ex] of negExchanges(list)) { skip.add(i); for (const j of ex) skip.add(j); }
+  const out = [];
+  for (let i = 0; i < list.length; i++) {
+    if (skip.has(i)) continue;
+    const t = entryText(list[i]);
+    if (t) out.push({ i, text: t });
+  }
+  return out;
+}
+function dialogueLines(messages) { return dialogueEntries(messages).map((e) => e.text); }
+// ما يُمسح بالنفي: النصّ نفسه، أو أوّله بعد تطبيع المسافات والرموز (الردّ المبثوث على الخادم والمحفوظ من الواجهة قد يختلفان قليلًا).
+function normKey(t) { return String(t || '').replace(/^المالك:\s*/, '').replace(/\[بُنيت صورة\]\s*/g, '').replace(/[\s*#`>_~|•-]+/g, ' ').trim().slice(0, 160); }
+function negTargets(list, from) {
+  const texts = [];
+  for (const [i, ex] of negExchanges(list)) {
+    if (i < (from || 0)) continue;
+    for (const j of ex) { const t = entryText(list[j]); if (t) texts.push(t); }
+  }
+  return texts;
+}
+/* كتابة واحدة: يضيف الأسطر الجديدة (التكرار لا يُضاعَف)، ويمسح ما طلب النفي مسحه، ويدمج حقول السجلّ (marks · last · imgs).
+   opts.forget = { texts, ids, has(item) } · opts.extra = حقول السجلّ · opts.turn = مزوّد الدور (يُحفظ ما أضافه في last). */
+async function absorbGroups(groups, opts) {
+  const o = opts || {};
   const fresh = [];
   for (const g of groups || []) {
     const by = provOf(g && g.by) || '';
@@ -223,25 +269,61 @@ async function absorbGroups(groups) {
       if (t) fresh.push({ text: t, by });
     }
   }
-  if (!fresh.length) return { added: 0 };
-  const items = (await readGen(true)).slice();
+  const f = o.forget || null;
+  if (!fresh.length && !f && !o.extra && !o.turn) return { added: 0 };
+  const rec = await readRec(true);
+  let items = rec.items.slice();
+  let forgot = 0;
+  if (f) {
+    const texts = new Set((f.texts || []).map((t) => String(t)));
+    const keys = new Set((f.texts || []).map(normKey).filter((k) => k.length >= 24));
+    const ids = new Set(f.ids || []);
+    const n0 = items.length;
+    items = items.filter((x) => !(ids.has(x.id) || texts.has(x.text) || keys.has(normKey(x.text)) || (typeof f.has === 'function' && f.has(x))));
+    forgot = n0 - items.length;
+  }
   const have = new Set(items.map((x) => x.text));
-  let added = 0;
+  const ids = [];
   for (const row of fresh) {
     if (have.has(row.text)) continue;
     have.add(row.text);
-    items.push({ id: 'G' + Date.now().toString(36) + added, text: row.text, at: Date.now(), by: row.by });
-    added++;
+    const id = 'G' + Date.now().toString(36) + ids.length;
+    items.push({ id, text: row.text, at: Date.now(), by: row.by });
+    ids.push(id);
   }
   const kept = trimGen(items, GEN_CHARS);
-  if (added || kept.length !== items.length) await saveGen(kept);
-  return { added, items: kept };
+  const extra = Object.assign({}, o.extra || {}, o.turn ? { last: { by: provOf(o.turn) || '', ids, at: Date.now() } } : {});
+  if (ids.length || forgot || kept.length !== items.length || Object.keys(extra).length) await saveRec(Object.assign({}, rec, extra, { items: kept }));
+  return { added: ids.length, forgot, items: kept };
 }
+/* v-gen-fix: حفظ المحادثات (كلّ ٤ ث بعد أيّ تغيير) كان يعيد كلّ أسطر كلّ المشاريع، فما قُصّ فوق السقف يرجع لآخر المخزن ويُقصّ
+   الأحدث بدله — في الفحص ضاعت معلومة جديدة بعد ٥ حفظات. الآن لكلّ محادثة علامة بعدد ما أُخذ منها، ولا يُقرأ إلّا ما بعدها. */
 async function absorbProjects(projects) {
-  return absorbGroups((projects || []).filter((p) => p && Array.isArray(p.messages)).map((p) => ({ lines: dialogueLines(p.messages), by: p.provider })));
+  const list = (projects || []).filter((p) => p && p.id && Array.isArray(p.messages));
+  const rec = await readRec(true);
+  const old = rec.marks && typeof rec.marks === 'object' ? rec.marks : {};
+  const marks = {};
+  const groups = [];
+  const forget = [];
+  let moved = Object.keys(old).length !== list.length;
+  for (const p of list) {
+    const id = String(p.id);
+    const n = p.messages.length;
+    const from = Math.min(Number(old[id]) || 0, n);
+    marks[id] = n;
+    if (old[id] !== n) moved = true;
+    if (from >= n) continue;
+    groups.push({ lines: dialogueEntries(p.messages).filter((e) => e.i >= from).map((e) => e.text), by: p.provider });
+    forget.push(...negTargets(p.messages, from));
+  }
+  if (!moved) return { added: 0 };
+  return absorbGroups(groups, { extra: { marks }, forget: forget.length ? { texts: forget } : null });
 }
 async function clearGen() {
-  await saveGen([]);
+  const rec = await readRec(true);
+  const share = require('./img-share.js');
+  for (const g of Array.isArray(rec.imgs) ? rec.imgs : []) { try { await share.delImage(g && g.id); } catch (e) { /* guard-ok — صورة باقية تنتهي بعمرها */ } }
+  await saveRec({ items: [], marks: {}, imgs: [] });
   return { cleared: true };
 }
 // بناء صورة للمالك: الطلب كما قاله، بلا بايتات الصورة.
@@ -250,15 +332,56 @@ async function noteImage(prompt) {
   if (!t) return { added: 0 };
   return absorbGroups([{ lines: ['المالك: ' + t, '[بُنيت صورة] ' + t], by: '' }]);
 }
-// كل دور للمالك: المحادثة والردّ الجديد. «لا تعمّم» لا تضيف. سطر التأكيد وسؤال المعنى لا يُحفظان.
+/* كل دور للمالك: المحادثة والردّ الجديد، بكتابة واحدة بعد الردّ (كانت كتابتين كاملتين: قبل الردّ وبعده). سطر التأكيد وسؤال المعنى
+   لا يُحفظان. دور «لا تعمّم» لا يضيف شيئًا — المسح جرى قبل الردّ (systemBlocks). */
 async function captureOwnerTurn(messages, reply, prov, lastUserText) {
-  if (GEN_NEG_RE.test(plainText(lastUserText)) || GEN_NEG_RE.test(String(lastUserText || ''))) return { added: 0 };
+  if (saidNoGen(plainText(lastUserText)) || saidNoGen(lastUserText)) return { added: 0 };
   const lines = dialogueLines(messages);
   let t = plainText(reply);
   if (!t || GEN_ACK_RE.test(t) || GEN_ASK_RE.test(t) || lines.indexOf(t) !== -1) t = '';
   if (t) lines.push(t);
   if (!lines.length) return { added: 0 };
-  return absorbGroups([{ lines, by: prov }]);
+  return absorbGroups([{ lines, by: prov }], { turn: prov || '-' });
+}
+/* v-gen-fix: «لا تعمّم» تمسح من المخزن الحوار الذي قبلها. كان الردّ قد حُفظ آخر دوره، والنفي في الدور التالي يمنع إضافته فقط — فيصل
+   Groq. يُمسح بالنصّ وبأوّله المطبَّع، وبما أضافه آخر دور لهذا المزوّد (الردّ كما بثّه الخادم). */
+async function forgetLastExchange(messages, prov) {
+  const list = Array.isArray(messages) ? messages : [];
+  let i = list.length - 1; while (i >= 0 && !isNegMsg(list[i])) i--;
+  const texts = i >= 0 ? (negExchanges(list.slice(0, i + 1)).get(i) || []).map((j) => entryText(list[j])).filter(Boolean) : [];
+  const rec = await readRec(true);
+  // ما أضافه آخر دور لهذا المزوّد خلال ١٠ دقائق فقط — لا يُمسح دور قديم أو من محادثة أخرى بعيدة.
+  const last = rec.last && rec.last.by === (provOf(prov) || '') && Array.isArray(rec.last.ids) && Date.now() - (Number(rec.last.at) || 0) < 10 * 60 * 1000 ? rec.last.ids : [];
+  if (!texts.length && !last.length) return { forgot: 0 };
+  return absorbGroups([], { forget: { texts, ids: last }, extra: { last: null } });
+}
+function extOf(mime) { return mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg'); }
+/* v-gen-image (أمر المالك ١٣ أكتوبر «اذا شفت الصورة عند مزوّد اقوله عمّم… كل شي موجود في التطبيق نفسه»): «عمّم» ومعها صورة —
+   الواجهة ترسلها مضغوطة مع الطلب — تُحفظ برابط من التطبيق نفسه (/i/<id>) ويصل رابطها ووصفها العشرة، فيعرضها أيّ مزوّد أو يضعها
+   في التطبيق (write_github بحقل image). الصورة نفسها لا تُحفظ مرّتين، وأحدث ٢٠ فقط تبقى (الأقدم تُحذف بايتاتها وسطرها). */
+async function noteGenImage(img, prov) {
+  const i = img && typeof img === 'object' ? img : {};
+  let data = typeof i.data === 'string' ? i.data : '';
+  if (data.slice(0, 5) === 'data:') data = data.slice(data.indexOf(',') + 1);
+  data = data.replace(/\s+/g, '');
+  if (!data || data.length > GEN_IMG_B64_MAX || !/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return { error: 'bad_image' };
+  const mime = /^image\/(png|jpeg|webp)$/.test(String(i.mime || '')) ? String(i.mime) : 'image/jpeg';
+  const h = require('crypto').createHash('sha1').update(data).digest('hex').slice(0, 16);
+  const rec = await readRec(true);
+  const imgs = (Array.isArray(rec.imgs) ? rec.imgs : []).filter((x) => x && x.id);
+  const share = require('./img-share.js');
+  const same = imgs.find((x) => x.h === h);
+  const id = same ? same.id : await share.putImage(data, mime, i.w, i.h, GEN_IMG_TTL);
+  if (!id) return { error: 'store_failed' };
+  const url = '/i/' + id + '.' + (same ? same.ext || 'jpg' : extOf(mime));
+  const note = plainText(i.note).replace(/\s+/g, ' ').slice(0, 300);
+  const line = '[صورة معمّمة] ' + (note ? note + ' — ' : '') + 'رابطها في التطبيق: ' + url + ' (اعرضها بـ![](' + url + ')، ولوضعها في ملفّات التطبيق: write_github بملفّ {path, image: "' + url + '"})';
+  const next = same ? imgs : imgs.concat({ id, h, ext: extOf(mime), at: Date.now() });
+  const drop = next.length > GEN_IMG_MAX ? next.slice(0, next.length - GEN_IMG_MAX) : [];
+  for (const d of drop) { try { await share.delImage(d.id); } catch (e) { /* guard-ok — صورة باقية تنتهي بعمرها */ } }
+  const dead = drop.map((d) => '/i/' + d.id + '.');
+  await absorbGroups([{ lines: [line], by: prov }], { extra: { imgs: next.slice(-GEN_IMG_MAX) }, forget: dead.length ? { has: (x) => dead.some((u) => x.text.includes(u)) } : null });
+  return { id, url, reused: !!same };
 }
 function genBlock(items, budget, already) {
   const room = Number(budget) || 0;
@@ -395,7 +518,8 @@ async function systemBlocks(owner, prov, ctx) {
   let out = '';
   if (owner) {
     try {
-      if (ctx && Array.isArray(ctx.messages)) { try { await absorbGroups([{ lines: dialogueLines(ctx.messages), by: prov }]); } catch (e) { /* guard-ok — فشل حفظ المحادثة المشتركة لا يوقف الردّ */ } }
+      // v-gen-fix: لا كتابة قبل الردّ (الدور يُحفظ مرّة بعده — captureOwnerTurn)، إلّا مسح «لا تعمّم» قبل أن يُحقن ما طلب مسحه.
+      if (ctx && Array.isArray(ctx.messages) && isNegCmd(ctx.lastUserText)) { try { await forgetLastExchange(ctx.messages, prov); } catch (e) { /* guard-ok — فشل المسح لا يوقف الردّ */ } }
       out += selfBlock((await readSelf(prov)).text);
       try {
         const already = (ctx && ctx.messages) ? new Set(dialogueLines(ctx.messages).concat(assistantTexts(ctx.messages))) : null;
@@ -404,8 +528,8 @@ async function systemBlocks(owner, prov, ctx) {
     } catch (e) { /* guard-ok — بلا تخزين يردّ بلا ملفّه */ }
   }
   try { out += lessonsBlock(await readLessons(false), !!owner); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الدروس */ }
-  if (owner && ctx && ownerSaidGeneralize(ctx.lastUserText)) out += GEN_ORDER;
+  if (owner && ctx && ownerSaidGeneralize(ctx.lastUserText)) out += GEN_ORDER + (ctx.genImageUrl ? ' والصورة نفسها صارت عند العشرة برابطها في التطبيق: ' + ctx.genImageUrl + ' — اذكر الرابط في سطرك.' : '');
   return out;
 }
 
-module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, GEN_ORDER, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, ownerSaidLiked, trimGen, genBlock, genBudget, captureGeneralize, captureBareReply, captureOwnerTurn, absorbProjects, noteImage, clearGen, dialogueLines, __resetCache: () => { lessonsCache = null; genCache = null; } };
+module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, GEN_ORDER, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, ownerSaidLiked, trimGen, genBlock, genBudget, captureGeneralize, captureBareReply, captureOwnerTurn, absorbProjects, noteImage, clearGen, dialogueLines, forgetLastExchange, noteGenImage, GEN_INJECT, GEN_IMG_MAX, __resetCache: () => { lessonsCache = null; genCache = null; } };
