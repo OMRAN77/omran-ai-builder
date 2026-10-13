@@ -221,7 +221,16 @@
              التعديل، فالرسالة التالية تذهب للنموذج النصي. الآن هي آخر صورة وسلسلة جديدة، فتعمل عليها «3d/أقوى/غيّر…» مباشرة. */
           try { var gcur = (typeof getCurrent === 'function') ? getCurrent() : null; if (gcur) { gcur.lastEditedImage = { b64: j.imageBase64, mime: j.mimeType || 'image/png' }; gcur.lastMsgWasImageEdit = true; gcur.imageTurns = []; } } catch (e) { /* guard-ok — السلسلة اختيارية */ }
           // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
-          return '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+          var gLine = '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+          /* v-img-with-edit: دور لقطة + صور = احفظ رابط /i/ فورًا كي تُرفع مع التعديل بلا انتظار «عمّم» */
+          if (args && args.noRef) {
+            try {
+              var gUp = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: j.imageBase64, mime: j.mimeType || 'image/png', token: (window.authGet && window.authGet('aiapp_auth_token')) || '' }) });
+              var gUj = null; try { gUj = await gUp.json(); } catch (e2) { gUj = null; }
+              if (gUp.ok && gUj && gUj.url) gLine += ' رابطها في التطبيق: ' + gUj.url + ' — ارفعها الآن بـwrite_github ملف {path: مسار الصورة في المستودع كما قرأته, image: "' + gUj.url + '"} في هذا الردّ نفسه. لا تنتظر «عمّم».';
+            } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:pics-share'); }
+          }
+          return gLine;
         }
         /* v-edit-image-tool: تعديل الصورة المرفقة في هذا الدور بنفس محرك التطبيق
            (المصدر: آخر صورة أرفقها المستخدم — app-18 يحفظها في __chatVideoReference). */

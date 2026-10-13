@@ -38592,7 +38592,16 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
              التعديل، فالرسالة التالية تذهب للنموذج النصي. الآن هي آخر صورة وسلسلة جديدة، فتعمل عليها «3d/أقوى/غيّر…» مباشرة. */
           try { var gcur = (typeof getCurrent === 'function') ? getCurrent() : null; if (gcur) { gcur.lastEditedImage = { b64: j.imageBase64, mime: j.mimeType || 'image/png' }; gcur.lastMsgWasImageEdit = true; gcur.imageTurns = []; } } catch (e) { /* guard-ok — السلسلة اختيارية */ }
           // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
-          return '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+          var gLine = '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+          /* v-img-with-edit: دور لقطة + صور = احفظ رابط /i/ فورًا كي تُرفع مع التعديل بلا انتظار «عمّم» */
+          if (args && args.noRef) {
+            try {
+              var gUp = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: j.imageBase64, mime: j.mimeType || 'image/png', token: (window.authGet && window.authGet('aiapp_auth_token')) || '' }) });
+              var gUj = null; try { gUj = await gUp.json(); } catch (e2) { gUj = null; }
+              if (gUp.ok && gUj && gUj.url) gLine += ' رابطها في التطبيق: ' + gUj.url + ' — ارفعها الآن بـwrite_github ملف {path: مسار الصورة في المستودع كما قرأته, image: "' + gUj.url + '"} في هذا الردّ نفسه. لا تنتظر «عمّم».';
+            } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:pics-share'); }
+          }
+          return gLine;
         }
         /* v-edit-image-tool: تعديل الصورة المرفقة في هذا الدور بنفس محرك التطبيق
            (المصدر: آخر صورة أرفقها المستخدم — app-18 يحفظها في __chatVideoReference). */
@@ -38969,7 +38978,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
         else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status, onDelta && onDelta.__status);  /* v656 */
         if (ev.status && !/^↳/.test(String(ev.status)) && typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ head: String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/, '').trim(), t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:head'); } } /* v-work-log: رأس صندوق العمل = ما يجري الآن */
-        if (ev.think && ev.think.s && __thinks.length < 8) {
+        if (ev.think && ev.think.s && __thinks.length < 8 && !__steps.length) { /* v-edit-no-talk: بعد أوّل أداة لا كلام تفكير في الصندوق */
           var __ts = String(ev.think.s).slice(0, 1200);
           var __tm = Date.now() - __tLast; __tLast = Date.now();
           __thinks.push({ t: 'think', ms: __tm, s: __ts }); __seq.push(__thinks[__thinks.length - 1]); /* محفوظًا مطويًّا: «فكّر N ث ›» يُفتح بالضغط */
@@ -45966,9 +45975,9 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
 })();
 /* v-work-log (المالك ١٣ أكتوبر، لقطة من واجهة Claude وهو يعمل: «سولي نفس هذي بالضبط»): عمل المزوّد في المحادثة صندوق واحد فوق الردّ.
    رأسه: شرارة + ما يفعله الآن + الوقت المنقضي + سهم. داخله إطار، وكلّ عنصر سطر عنوان ينفتح: التفكير أسطرًا قصيرة (جملة في
-   السطر، وعنوانه آخر جملة)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا: التفكير مسكّر (عنوان آخر جملة وسهم ›) حتّى يفتحه
-   من يريد (v-think-closed — المالك ١٣ أكتوبر: «وين مكان يفكر يكون مسكر فقط الي يريد يفتحه»). أحدث أداة وحدها مفتوحة وما قبلها
-   يُطوى، والوقت يعدّ كلّ ثانية. محفوظًا (m._agParts وأوّله {t:'meta', ms}): مطويّ في سطر «عمل لمدّة …». سجلّ الوكيل القديم (بلا meta) يرسمه __agLogRender كما كان.
+   السطر، وعنوانه آخر جملة)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا: التفكير مسكّر حتّى يفتحه من يريد (v-think-closed)،
+   وبعد أوّل أداة لا يُضاف كلام تفكير جديد (v-edit-no-talk). أحدث أداة وحدها مفتوحة وما قبلها يُطوى، والوقت يعدّ كلّ ثانية.
+   محفوظًا (m._agParts وأوّله {t:'meta', ms}): مطويّ في سطر «عمل لمدّة …». سجلّ الوكيل القديم (بلا meta) يرسمه __agLogRender كما كان.
    النصوص: cwWorked وcwRequest وcwResponse وcwTimeM وcwTimeS وcwWorking (١٤ لغة). */
 (function(){
   var TITLE_MAX = 120;
@@ -45994,7 +46003,9 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     if(!ls.length) return mk('div', 'cwItem cwPlain', tr('agThought', '{n}s').replace('{n}', String(Math.max(1, Math.round((Number(p.ms) || 0) / 1000)))));
     var body = mk('div', 'cwThink');
     ls.forEach(function(l){ body.appendChild(mk('div', 'cwLine', l)); });
-    return item(clip(ls[ls.length - 1]), body, open);
+    var d = item(clip(ls[ls.length - 1]), body, open);
+    d.classList.add('cwThinkItem');
+    return d;
   }
   function pre(txt, err){ var p = mk('pre', 'cwPre' + (err ? ' cwErr' : ''), txt); p.dir = 'ltr'; return p; }
   function toolEl(p, open){
@@ -46040,7 +46051,18 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
         el: b.d,
         head: function(txt){ if(txt) b.lb.textContent = txt; },
         add: function(p){
-          Array.prototype.forEach.call(b.list.children, function(c){ if(c.tagName === 'DETAILS' && c.classList.contains('cwTool')) c.open = false; });
+          var hasTool = false;
+          Array.prototype.forEach.call(b.list.children, function(c){
+            if(c.classList && c.classList.contains('cwTool')) hasTool = true;
+          });
+          /* v-edit-no-talk: بعد أوّل أداة كلام التفكير يملأ الصندوق — لا نضيفه ولا نطوي الأداة */
+          if(p && p.t === 'think' && hasTool) return;
+          Array.prototype.forEach.call(b.list.children, function(c){
+            if(c.classList && c.classList.contains('cwTool')) c.open = false;
+          });
+          if(p && p.t === 'tool'){
+            Array.prototype.forEach.call(b.list.children, function(c){ if(c.classList && c.classList.contains('cwThinkItem')) c.open = false; });
+          }
           /* v-think-closed: التفكير مطويّ؛ الأداة الأحدث وحدها تُفتح */
           var el = partEl(p, p && p.t !== 'think');
           if(el) b.list.appendChild(el);
@@ -46052,7 +46074,13 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       var b = shell(false);
       var meta = parts[0] || {};
       b.lb.textContent = tr('cwWorked', 'Worked for {t}').replace('{t}', dur(meta.ms));
-      for(var i = 1; i < parts.length; i++){ var el = partEl(parts[i], false); if(el) b.list.appendChild(el); }
+      var sawTool = false;
+      for(var i = 1; i < parts.length; i++){
+        var p = parts[i];
+        if(p && p.t === 'think' && sawTool) continue; /* v-edit-no-talk */
+        if(p && p.t === 'tool') sawTool = true;
+        var el = partEl(p, false); if(el) b.list.appendChild(el);
+      }
       return b.d;
     },
     _lines: lines, _dur: dur, // للاختبار

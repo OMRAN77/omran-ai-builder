@@ -1,8 +1,8 @@
 /* v-work-log (المالك ١٣ أكتوبر، لقطة من واجهة Claude وهو يعمل: «سولي نفس هذي بالضبط»): عمل المزوّد في المحادثة صندوق واحد فوق الردّ.
    رأسه: شرارة + ما يفعله الآن + الوقت المنقضي + سهم. داخله إطار، وكلّ عنصر سطر عنوان ينفتح: التفكير أسطرًا قصيرة (جملة في
-   السطر، وعنوانه آخر جملة)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا: التفكير مسكّر (عنوان آخر جملة وسهم ›) حتّى يفتحه
-   من يريد (v-think-closed — المالك ١٣ أكتوبر: «وين مكان يفكر يكون مسكر فقط الي يريد يفتحه»). أحدث أداة وحدها مفتوحة وما قبلها
-   يُطوى، والوقت يعدّ كلّ ثانية. محفوظًا (m._agParts وأوّله {t:'meta', ms}): مطويّ في سطر «عمل لمدّة …». سجلّ الوكيل القديم (بلا meta) يرسمه __agLogRender كما كان.
+   السطر، وعنوانه آخر جملة)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا: التفكير مسكّر حتّى يفتحه من يريد (v-think-closed)،
+   وبعد أوّل أداة لا يُضاف كلام تفكير جديد (v-edit-no-talk). أحدث أداة وحدها مفتوحة وما قبلها يُطوى، والوقت يعدّ كلّ ثانية.
+   محفوظًا (m._agParts وأوّله {t:'meta', ms}): مطويّ في سطر «عمل لمدّة …». سجلّ الوكيل القديم (بلا meta) يرسمه __agLogRender كما كان.
    النصوص: cwWorked وcwRequest وcwResponse وcwTimeM وcwTimeS وcwWorking (١٤ لغة). */
 (function(){
   var TITLE_MAX = 120;
@@ -28,7 +28,9 @@
     if(!ls.length) return mk('div', 'cwItem cwPlain', tr('agThought', '{n}s').replace('{n}', String(Math.max(1, Math.round((Number(p.ms) || 0) / 1000)))));
     var body = mk('div', 'cwThink');
     ls.forEach(function(l){ body.appendChild(mk('div', 'cwLine', l)); });
-    return item(clip(ls[ls.length - 1]), body, open);
+    var d = item(clip(ls[ls.length - 1]), body, open);
+    d.classList.add('cwThinkItem');
+    return d;
   }
   function pre(txt, err){ var p = mk('pre', 'cwPre' + (err ? ' cwErr' : ''), txt); p.dir = 'ltr'; return p; }
   function toolEl(p, open){
@@ -74,7 +76,18 @@
         el: b.d,
         head: function(txt){ if(txt) b.lb.textContent = txt; },
         add: function(p){
-          Array.prototype.forEach.call(b.list.children, function(c){ if(c.tagName === 'DETAILS' && c.classList.contains('cwTool')) c.open = false; });
+          var hasTool = false;
+          Array.prototype.forEach.call(b.list.children, function(c){
+            if(c.classList && c.classList.contains('cwTool')) hasTool = true;
+          });
+          /* v-edit-no-talk: بعد أوّل أداة كلام التفكير يملأ الصندوق — لا نضيفه ولا نطوي الأداة */
+          if(p && p.t === 'think' && hasTool) return;
+          Array.prototype.forEach.call(b.list.children, function(c){
+            if(c.classList && c.classList.contains('cwTool')) c.open = false;
+          });
+          if(p && p.t === 'tool'){
+            Array.prototype.forEach.call(b.list.children, function(c){ if(c.classList && c.classList.contains('cwThinkItem')) c.open = false; });
+          }
           /* v-think-closed: التفكير مطويّ؛ الأداة الأحدث وحدها تُفتح */
           var el = partEl(p, p && p.t !== 'think');
           if(el) b.list.appendChild(el);
@@ -86,7 +99,13 @@
       var b = shell(false);
       var meta = parts[0] || {};
       b.lb.textContent = tr('cwWorked', 'Worked for {t}').replace('{t}', dur(meta.ms));
-      for(var i = 1; i < parts.length; i++){ var el = partEl(parts[i], false); if(el) b.list.appendChild(el); }
+      var sawTool = false;
+      for(var i = 1; i < parts.length; i++){
+        var p = parts[i];
+        if(p && p.t === 'think' && sawTool) continue; /* v-edit-no-talk */
+        if(p && p.t === 'tool') sawTool = true;
+        var el = partEl(p, false); if(el) b.list.appendChild(el);
+      }
       return b.d;
     },
     _lines: lines, _dur: dur, // للاختبار

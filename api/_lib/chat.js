@@ -1970,7 +1970,7 @@ module.exports = async (req, res) => {
         if (__oc.stalledPlan(__stepText, { usedTools: steps > 1, pushed: __ownerOps.pushes > 0, ownerText: lastUserText, prevOwnerText: __prevOwner }) || (__resumeTurn && steps === 1 && !__ownerOps.pushes)) { // v-owner-resume: دور الإكمال ختم بنصّ بلا أداة واحدة
           __ownerCarried = true;
           convo.push({ role: 'assistant', content: __ol.asSent(__olT, blocks, [{ type: 'text', text: __stepText.trim() || ' ' }]) }); // D1: بتفكير الجولة كما وصل
-          convo.push({ role: 'user', content: [{ type: 'text', text: __oc.CARRY_NOTE }] });
+          convo.push({ role: 'user', content: [{ type: 'text', text: (__ownerPicsOk && __ownerOps.drew) ? __oc.PICS_CARRY_NOTE : __oc.CARRY_NOTE }] }); /* v-img-with-edit: بعد الرسم ارفع الصورة لا edit_github */
           send({ delta: '\n\n' }); fullText += '\n\n';
           send({ status: '🛠️ ينفّذ…', k: 'stCarry' });
           continue;
@@ -2131,7 +2131,7 @@ module.exports = async (req, res) => {
           }
           else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
           /* v-nano-pro-edit: كلمات المستخدم نفسها تُرافق أمر النموذج الإنجليزي — منها يقرأ الخادم نيّة «أقوى/فكرة ثانية» */
-          else if (cb.name === 'generate_image') { input.userText = String(lastUserText || '').slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); /* v-quad-fix: القصّ قبل الـregex — كانت O(n²) على النصّ الطويل. مع صورة مرفقة قد يتحوّل الرسم إلى تعديل على برو (v-nano-pro-edit) فيحتاج مهلة التعديل */ if (__ownerPicsOk) input.noRef = true; /* v-owner-like-me: صورة جديدة للتطبيق — لقطة المالك ليست مصدرًا يُعدَّل */ result = await runInClient(send, 'generate_image', input, lastUserHasImage ? 150000 : 75000); }
+          else if (cb.name === 'generate_image') { input.userText = String(lastUserText || '').slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); /* v-quad-fix: القصّ قبل الـregex — كانت O(n²) على النصّ الطويل. مع صورة مرفقة قد يتحوّل الرسم إلى تعديل على برو (v-nano-pro-edit) فيحتاج مهلة التعديل */ if (__ownerPicsOk) input.noRef = true; /* v-owner-like-me: صورة جديدة للتطبيق — لقطة المالك ليست مصدرًا يُعدَّل */ result = await runInClient(send, 'generate_image', input, lastUserHasImage ? 150000 : 75000); if (__ownerPicsOk && /__IMG_|\/i\//.test(String(result || ''))) __ownerOps.drew = true; } /* v-img-with-edit: رسم بلا رفع = يُحمَل للكتابة */
           // v-edit-image-tool: التعديل عالي الدقة (gpt-image للنصّي) قد يأخذ دقيقتين.
           else if (cb.name === 'edit_image') { input.userText = String(lastUserText || '').slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); /* v-quad-fix: القصّ قبل الـregex */ result = await runInClient(send, 'edit_image', input, 150000); }
           else if (cb.name === 'generate_video') result = await runInClient(send, 'generate_video', input, 290000);
@@ -2451,7 +2451,7 @@ const CI_PRECEDENCE_NOTE = '[تعليمات المستخدم المخصّصة أ
 /* v-owner-like-me (ردّ GPT-6 Astra: «أدوات إنشاء الصور غير متاحة في هذا الدور» على «غيّر هذي الصور على نفس الأسامي» مع لقطة): لقطة التطبيق
    والطلب صور فيه — اللقطة لا تُعدَّل (edit_image والفيديو مقفلان)، وgenerate_image مفتوحة بعد أن يبحث في الكود عن مولّد قائم. */
 const OWNER_PICS_RE = /صور|رسم[ةه]|رسومات|شعار|لوجو|\b(?:images?|pictures?|photos?|logos?)\b/i;
-const OWNER_PICS_NOTE = '[لقطة من التطبيق والمطلوب صور فيه: edit_image وgenerate_video مقفلان — اللقطة نفسها لا تُعدَّل. قبل أن ترسم ابحث في الكود هل يولّد التطبيق هذه الصور بنفسه (معاينة من الخادم أو مسار توليد) — تعديل الكود أدوم من صورة ثابتة. وإن لزمت صور جديدة فـgenerate_image متاحة: اعرضها على المالك، وبعد «عمّم» تُرفع بـwrite_github (files[].image برابطها /i/…). وصور المستودع تراها بـread_github على مسار الصورة.]';
+const OWNER_PICS_NOTE = '[لقطة من التطبيق والمطلوب صور فيه: edit_image وgenerate_video مقفلان — اللقطة نفسها لا تُعدَّل. قبل أن ترسم ابحث في الكود هل يولّد التطبيق هذه الصور بنفسه (معاينة من الخادم أو مسار توليد) — تعديل الكود أدوم من صورة ثابتة. وإن لزمت صور جديدة فـgenerate_image متاحة: ارسم ثم ارفع في هذا الردّ نفسه بـwrite_github ملف {path: مسار الصورة في المستودع كما قرأته, image: رابط /i/… من نتيجة الرسم} — الصورة مع التعديل، لا تنتظر «عمّم». ثم افحص الفحوص بـmanage_github status ولا تسأل «أدمج» قبل أن تخضر؛ الدمج يرفض إن كانت قيد العمل أو حمراء. وصور المستودع تراها بـread_github على مسار الصورة.]';
 const OWNER_NO_MEDIA_NOTE = '[أدوات الصور والفيديو مقفلة في هذا الدور: لا تستدعِ generate_image ولا edit_image ولا generate_video.]';
 const OWNER_NO_MEDIA_REFUSAL = 'هذه الأداة مقفلة في هذا الدور — لا رسم ولا تعديل صورة ولا فيديو هنا: أكمل المطلوب بالقراءة والكود أو بالكلام.';
 module.exports.__tokens2 = { alignedWindow, compactConversation, WINDOW, nowNote, countryNote, nowLine, countryLine, NOW_RULE, LOC_HINT_RULES, LOC_UNKNOWN_RULE, LOCATION_RULES_NOTE, OWNER_NO_MEDIA_NOTE, OWNER_NO_MEDIA_REFUSAL, CI_PRECEDENCE_NOTE }; // v-tokens-window · v-tokens-tail · v-tokens-owner-tools — للاختبار

@@ -42,12 +42,12 @@ test('١. البثّ: الرأس بما يجري، وكلّ تفكير وخطو�
     { status: '↳ بحثتُ عن «x» — حصلتُ 3 نتيجة', k: 'trSearchN', cmd: 'x', out: '1. a' },
     { delta: 'الجواب' },
   ]);
-  assert.deepEqual(notes.map((n) => (n.head ? 'head:' + n.head : n.s ? 'think' : 'step')), ['head:يقرأ سؤالك…', 'think', 'head:يقرأ من GitHub…', 'step', 'think', 'step'], 'الرأس بلا رمزه، ولا رأس من سطر أثر');
+  assert.deepEqual(notes.map((n) => (n.head ? 'head:' + n.head : n.s ? 'think' : 'step')), ['head:يقرأ سؤالك…', 'think', 'head:يقرأ من GitHub…', 'step', 'step'], 'بعد أوّل أداة لا كلام تفكير');
   assert.ok(notes.every((n) => typeof n.t0 === 'number'), 'بداية الدور لعدّاد الوقت');
   assert.equal(notes[3].step.title, 'api/a.js  1–40', 'قراءة الملفّ: عنوانها مساره وأسطره');
-  assert.equal(notes[5].step.title, 'بحثتُ عن «x» — حصلتُ 3 نتيجة');
+  assert.equal(notes[4].step.title, 'بحثتُ عن «x» — حصلتُ 3 نتيجة');
   const log = plain(r.log);
-  assert.deepEqual(log.map((p) => p.t), ['meta', 'think', 'tool', 'think', 'tool'], 'بترتيب الوصول');
+  assert.deepEqual(log.map((p) => p.t), ['meta', 'think', 'tool', 'tool'], 'تفكير قبل العمل فقط');
   assert.ok(log[0].ms >= 0);
   assert.ok(log.filter((p) => p.t === 'think').every((p) => !('open' in p)), 'لا تفكير محفوظ مفتوحًا');
   assert.equal(log[2].code.p, 'api/a.js', 'مقطع لوحة الكود المقروء باقٍ مع خطوته');
@@ -121,6 +121,8 @@ test('٢. الحيّ: لا صندوق قبل أوّل تفكير أو خطوة؛
   sb.omranShowThink(bubble, { step: { t: 'tool', title: 'api/_lib/chat.js  1–40', cmd: 'OMRAN77/omran-ai-builder api/_lib/chat.js', out: '📄 chat.js', err: 0 } });
   assert.equal(head.childNodes[1].textContent, 'يقرأ من GitHub…', 'الرأس يتبع ما يجري');
   assert.deepEqual(kids(list), ['think', 'tool+'], 'التفكير مطويّ والأداة الأحدث مفتوحة');
+  sb.omranShowThink(bubble, { s: 'الآن أعدّل المقطع من جديد داخل التعديل.', ms: 2000, t0: 1000 });
+  assert.deepEqual(kids(list), ['think', 'tool+'], 'تفكير بعد الأداة لا يُضاف');
   const tool = list.childNodes[1];
   assert.deepEqual(tool.q('cwLbl').map((x) => x.textContent), ['الطلب', 'النتيجة']);
   assert.deepEqual(tool.q('cwPre').map((x) => x.textContent + ':' + x.dir), ['OMRAN77/omran-ai-builder api/_lib/chat.js:ltr', '📄 chat.js:ltr']);
@@ -139,7 +141,7 @@ test('٣. المحفوظ: صندوق مطويّ «عمل لمدّة …» وعن
   ]);
   assert.equal(d.open, false);
   assert.equal(d.childNodes[0].childNodes[1].textContent, 'عمل لمدّة 1د 15ث');
-  assert.deepEqual(kids(d.childNodes[1]), ['think', 'tool', 'plain'], 'تفكير بلا ملخّص = سطر «فكّر لمدّة N ث» لا ينفتح');
+  assert.deepEqual(kids(d.childNodes[1]), ['think', 'tool'], 'تفكير بعد أداة لا يُرسم (كلام داخل التعديل)');
   const r = APP09.slice(APP09.indexOf('function __agLogRender('), APP09.indexOf('function __agLogRender(') + 300);
   assert.ok(r.includes("if(parts[0] && parts[0].t === 'meta' && window.omranWorkLog) return window.omranWorkLog.render(parts);"), 'الوكيل بلا meta = مساره القديم');
 });
