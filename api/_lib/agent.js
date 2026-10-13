@@ -644,11 +644,14 @@ module.exports = async (req, res) => {
           break;
         }
         timeoutClose = true;
+        const oc = require('./owner-carry.js');
+        const asked = isOwner(runUser) && oc.ACTION_RE.test(String(living.lastUserText(messages) || ''));
+        const note = (asked && !(run.pushes > 0)) ? ol.FINAL_EDIT_NOTE : ol.FINAL_NOTE;
         const last = convo[convo.length - 1];
         if (last && last.role === 'user' && Array.isArray(last.content)) {
-          last.content = last.content.concat([{ type: 'text', text: ol.FINAL_NOTE }]);
+          last.content = last.content.concat([{ type: 'text', text: note }]);
         } else {
-          convo.push({ role: 'user', content: ol.FINAL_NOTE });
+          convo.push({ role: 'user', content: note });
         }
       }
       steps++;
@@ -990,7 +993,7 @@ module.exports = async (req, res) => {
       }
 
       /* v-owner-carry: كما في المحادثة — خطّة بلا تنفيذ للمالك تُعاد للحلقة مرّة واحدة. */
-      if (isOwner(runUser) && !ownerCarried && steps < MAX_STEPS && Date.now() - taskStart < MAX_TASK_MS - 45000) {
+      if (isOwner(runUser) && !ownerCarried && steps < MAX_STEPS && Date.now() - taskStart < require('./owner-loop.js').FN_BUDGET_MS - 20000) {
         const oc = require('./owner-carry.js');
         const said = contentBlocks.filter(Boolean).map((cb) => cb.text || '').join('');
         if (oc.stalledPlan(said, { usedTools: steps > 1, pushed: (run.pushes || 0) > 0, ownerText: living.lastUserText(messages) })) {
