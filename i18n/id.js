@@ -38,6 +38,7 @@ I18N['id'] = {
     agThought: 'Berpikir {n} dtk', agExplored: 'Menjelajahi {n} file', agNoOutput: 'Tidak ada keluaran', // v-agent-log
     readTab: 'Kode yang dibaca', readCite: 'Buka baris ini di panel kode', // v-read-panel
     cwWorked: 'Bekerja selama {t}', cwRequest: 'Permintaan', cwResponse: 'Respons', cwTimeM: '{m}m {s}d', cwTimeS: '{s}d', cwWorking: 'Sedang bekerja…', // v-work-log
+    optFormSend: 'Tampilkan detail', // v-rich-reply: زرّ بطاقة الأسئلة
     convertToImage: 'Ubah ke Gambar',
     convertToPdf: 'Ubah ke PDF',
     convertToWord: 'Ubah ke Word',

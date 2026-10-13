@@ -592,7 +592,129 @@ function omranIcTok(span, s, st){
   st.open = inside;
   return true;
 }
+/* v-rich-reply (لقطة المالك ١٣ أكتوبر، ChatGPT: صور حقيقيّة تحت كلّ دولة — «اريد الردود… وفيها صور»): سطر المزوّد
+   [[IMG: اسم / English | اسم٢ …]] يُرسم معرضًا كتلةً كالجدول (صورة كبيرة وصغيرتان و«+N»)، والصور الحقيقيّة من ويكيبيديا
+   مباشرة من المتصفّح (مجّانيّة بلا مفتاح؛ CORS بـorigin=*) بعد ظهور النصّ فلا تبطّئ الردّ. كلّ اسم يُطلب مرّة في الجلسة (الوعد
+   محفوظ) فإعادة الرسم أثناء البثّ لا تعيد الطلب. اسم بلا صورة يسقط، ومعرض بلا صورة يختفي. كلمات السطر عناصر tts-word مخفيّة
+   كالجدول فلا تنزاح القراءة الصوتيّة، وسطر لم يُغلق بعد أثناء البثّ لا يظهر خامًا. */
+const OMRAN_IMG_LINE = /^\s*\[\[IMG:\s*([^\]\n]*)\]\]\s*$/i;
+function omranImgItems(body){
+  return String(body || '').split('|').map(function(x){ return x.replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 6);
+}
+/** آخر سطر أثناء البثّ بداية سطر صور لم يُغلق («[»، «[[IM»، «[[IMG: برج خ…») */
+function omranImgPartial(l){
+  const t = String(l || '').trim();
+  if(!t || /\]\]$/.test(t)) return false;
+  return /^\[\[IMG:/i.test(t) || '[[IMG:'.indexOf(t.toUpperCase()) === 0;
+}
+function omranMdImgMark(text){
+  const lines = String(text || '').split('\n'), out = [], list = [];
+  let fence = false;
+  for(let i = 0; i < lines.length; i++){
+    const l = lines[i];
+    if(/^\s*```/.test(l)) fence = !fence;
+    const m = !fence && OMRAN_IMG_LINE.exec(l);
+    if(m){
+      const items = omranImgItems(m[1]);
+      if(items.length){ list.push({ items: items, extra: (l.match(/\S+/g) || []).length }); out.push('\uE004' + (list.length - 1) + '\uE005'); continue; }
+    }
+    out.push(l);
+  }
+  return { text: out.join('\n'), list: list };
+}
+const __omImgSeen = new Map(); // الاسم ← وعد {src, title} أو null
+const __omImgDone = new Map(); // الاسم ← النتيجة بعد وصولها (رسم فوريّ بلا هيكل عند إعادة الرسم)
+function omranImgLookup(name){
+  const key = String(name || '').trim().toLowerCase();
+  if(__omImgSeen.has(key)) return __omImgSeen.get(key);
+  const parts = String(name || '').split('/').map(function(x){ return x.trim(); }).filter(Boolean);
+  const ar = parts.filter(function(x){ return /[؀-ۿ]/.test(x); })[0] || '';
+  const lat = parts.filter(function(x){ return !/[؀-ۿ]/.test(x); })[0] || '';
+  const tries = [];
+  if(lat) tries.push(['en', lat]);
+  if(ar) tries.push(['ar', ar]);
+  const p = (async function(){
+    for(const tr of tries){
+      try{
+        const u = 'https://' + tr[0] + '.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&generator=search&gsrlimit=1'
+          + '&prop=pageimages&piprop=thumbnail&pithumbsize=800&gsrsearch=' + encodeURIComponent(tr[1]);
+        const r = await fetch(u);
+        if(!r.ok) continue;
+        const j = await r.json();
+        const pages = (j && j.query && j.query.pages) ? Object.keys(j.query.pages).map(function(k){ return j.query.pages[k]; }) : [];
+        const pg = pages.filter(function(x){ return x && x.thumbnail && /^https:\/\/upload\.wikimedia\.org\//.test(x.thumbnail.source || ''); })[0];
+        if(pg && !/\.svg\.png(?:$|\?)/i.test(pg.thumbnail.source)) return { src: pg.thumbnail.source, title: ar || pg.title || tr[1] }; // الأعلام والشعارات والخرائط (svg) ليست صورًا
+      }catch(e){ __swallow(e, 'gallery:wiki'); }
+    }
+    return null;
+  })();
+  __omImgSeen.set(key, p);
+  p.then(function(v){ __omImgDone.set(key, v); });
+  return p;
+}
+function omranGalleryCss(){
+  if(document.getElementById('omranGalleryCss')) return;
+  const st = document.createElement('style');
+  st.id = 'omranGalleryCss';
+  st.textContent = '.md-gallery{display:grid;gap:4px;margin:10px 0 12px;width:100%;align-self:stretch;box-sizing:border-box;border-radius:16px;overflow:hidden;height:300px;grid-template-columns:1fr;grid-template-rows:1fr;}'
+    + '.md-gallery[data-n="2"]{grid-template-columns:1fr 1fr;}'
+    + '.md-gallery[data-n="3"]{grid-template-columns:1.45fr 1fr;grid-template-rows:1fr 1fr;}'
+    + '.md-gallery[data-n="3"] .md-gal-cell:first-child{grid-row:1 / span 2;}'
+    + '.md-gal-cell{position:relative;border:0;padding:0;margin:0;cursor:zoom-in;overflow:hidden;background:rgba(127,127,127,.16);min-height:0;}'
+    + '.md-gal-cell img{width:100%;height:100%;object-fit:cover;display:block;}'
+    + '.md-gal-cell.skel{animation:mdGalPulse 1.2s ease-in-out infinite;cursor:default;}'
+    + '.md-gal-more{position:absolute;bottom:8px;inset-inline-start:8px;padding:2px 9px;border-radius:12px;background:rgba(0,0,0,.6);color:#fff;font-size:12.5px;font-weight:700;}'
+    + '@keyframes mdGalPulse{50%{opacity:.55}}'
+    + '@media (max-width:640px){.md-gallery{height:220px;}}';
+  document.head.appendChild(st);
+}
+function omranGalleryLayout(g){
+  const cells = Array.prototype.slice.call(g.querySelectorAll('.md-gal-cell'));
+  if(!cells.length){ g.remove(); return; }
+  const shown = Math.min(cells.length, 3);
+  cells.forEach(function(c, i){ c.style.display = i < shown ? '' : 'none'; });
+  g.setAttribute('data-n', String(shown));
+  const old = g.querySelector('.md-gal-more'); if(old) old.remove();
+  if(cells.length > shown){ const b = document.createElement('span'); b.className = 'md-gal-more'; b.textContent = '+' + (cells.length - shown); cells[shown - 1].appendChild(b); }
+}
+function omranGalleryEl(it){
+  omranGalleryCss();
+  const g = document.createElement('div');
+  g.className = 'md-gallery';
+  g.setAttribute('contenteditable', 'false');
+  let pending = 0;
+  const fill = function(cell, v){
+    if(!v){ cell.remove(); return; }
+    cell.classList.remove('skel');
+    const img = document.createElement('img');
+    img.src = v.src; img.alt = v.title || ''; img.title = v.title || ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+    img.onerror = function(){ cell.remove(); omranGalleryLayout(g); };
+    cell.onclick = function(e){ e.stopPropagation(); if(window.omranLightbox) window.omranLightbox(v.src.replace(/\/\d+px-/, '/1280px-')); else window.open(v.src, '_blank', 'noopener'); };
+    cell.appendChild(img);
+  };
+  it.items.forEach(function(name){
+    const cell = document.createElement('button');
+    cell.type = 'button'; cell.className = 'md-gal-cell';
+    g.appendChild(cell);
+    const key = String(name).trim().toLowerCase();
+    if(__omImgDone.has(key)){ fill(cell, __omImgDone.get(key)); return; }
+    cell.classList.add('skel');
+    pending++;
+    omranImgLookup(name).then(function(v){ fill(cell, v); }, function(){ cell.remove(); }).then(function(){ if(--pending === 0) omranGalleryLayout(g); });
+  });
+  omranGalleryLayout(g);
+  if(!g.querySelector('.md-gal-cell')) g.style.display = 'none';
+  return g;
+}
+/** القراءة الصوتيّة: كلمات سطر الصور تبقى بعددها (محاذاة tts-word) لكنّها لا تُنطق. */
+function omranSpeechNoImg(text){
+  const s = String(text || '');
+  if(s.indexOf('[[IMG') < 0 && s.indexOf('[[img') < 0) return s;
+  return s.split('\n').map(function(l){ return OMRAN_IMG_LINE.test(l) ? l.replace(/\S+/g, '\u2060') : l; }).join('\n');
+}
 function buildSpokenWordSpans(container, text){
+  let __im = { text: text, list: [] };
+  try{ __im = omranMdImgMark(text); text = __im.text; }catch(e){ __swallow(e, 'md:img-mark'); } // v-rich-reply: سطر الصور معرض
   let __tb = { text: text, list: [] };
   try{ __tb = omranMdTableMark(text); }catch(e){ __swallow(e, 'md:table-mark'); } // v-gpt-format: الجدول الكامل يُرسم جدولًا
   text = mdTablesToLines(__tb.text); // v-md-table: جدول بلا سطر فاصل يبقى سطورًا كما كان
@@ -682,6 +804,17 @@ function buildSpokenWordSpans(container, text){
       if(__ic.open && !codePre && between.indexOf('\n') === -1){ const __g = document.createElement('span'); __g.className = 'md-ic md-ic-gap'; __g.textContent = between; parent.appendChild(__g); } // v-gpt-format
       else { if(between.indexOf('\n') !== -1) __ic.open = false; parent.appendChild(document.createTextNode(between)); }
       if(between.indexOf('\n') !== -1){ headerLevel = 0; lineStart = true; }
+    }
+    const __imm = !codePre && /^\uE004(\d+)\uE005$/.exec(m[0]);
+    if(__imm){ // v-rich-reply: المعرض كتلة، وكلمات سطره عناصر مخفيّة داخله
+      const __g = __im.list[+__imm[1]];
+      if(__g){
+        const __w = omranGalleryEl(__g);
+        for(let __k = 0; __k < __g.extra; __k++){ const __h = document.createElement('span'); __h.className = 'tts-word'; __h.style.display = 'none'; __w.appendChild(__h); wordEls.push(__h); }
+        container.appendChild(__w);
+      }
+      lastIndex = m.index + m[0].length; lineStart = true;
+      continue;
     }
     const __tbm = !codePre && /^\uE002(\d+)\uE003$/.exec(m[0]);
     if(__tbm){ // v-gpt-format: الجدول كتلة، وكلماته القديمة عناصر مخفيّة داخله
@@ -880,7 +1013,7 @@ function omranMdBlocks(container, text){
   const newLine = function(){ cur = document.createElement('div'); cur.className = 'md-line'; out.push(cur); };
   newLine();
   nodes.forEach(function(n){
-    if(n.nodeType === 1 && (n.className === 'chat-codeblock' || n.className === 'md-table-wrap')){ out.push(n); newLine(); return; } // v-gpt-format: الجدول كتلة
+    if(n.nodeType === 1 && (n.className === 'chat-codeblock' || n.className === 'md-table-wrap' || n.className === 'md-gallery')){ out.push(n); newLine(); return; } // v-gpt-format: الجدول كتلة · v-rich-reply: والمعرض
     if(n.nodeType === 3){
       const parts = String(n.textContent).split('\n');
       parts.forEach(function(p, i){
@@ -1106,6 +1239,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   if(!text) return;
   unlockCloudAudio(); // يجب أن يحدث قبل أي await حتى يبقى ضمن ضغطة المستخدم
   text = await applyDialectForSpeech(text);
+  text = omranSpeechNoImg(text); // v-rich-reply: سطر الصور لا يُنطق وعدد كلماته باقٍ
   stopAllSpeaking();
   ttsHighlightWordEls = wordEls || null;
   // v248: صوت السحابة (Azure) دائمًا — الخيار القديم المحفوظ 'false' في أجهزة
@@ -1413,6 +1547,7 @@ function renderStreamingAssistant(el, text){
   el.classList.add('msg-streaming');
   let __st = streamingMarkdownDisplayText(text);
   if(__st && __st.indexOf('[[') >= 0) __st = __st.replace(/\[\[(?:OPT|MULTI)\]\][\s\S]*$/, '').trimEnd();
+  if(__st){ const __nl = __st.lastIndexOf('\n'); if(omranImgPartial(__st.slice(__nl + 1))) __st = __st.slice(0, __nl + 1).trimEnd(); } // v-rich-reply
   var cut = omranStreamSplitPoint(__st);
   if(cut < 0){
     el._omStreamHead = null; el._omStreamHeadEl = null; el._omStreamTailEl = null;

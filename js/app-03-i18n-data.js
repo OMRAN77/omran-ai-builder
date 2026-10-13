@@ -859,6 +859,7 @@ const I18N = {
     agThought: 'فكّر لمدّة {n} ث', agExplored: 'استكشف {n} ملفّات', agNoOutput: 'بلا ناتج', // v-agent-log
     readTab: 'الكود المقروء', readCite: 'افتح السطر في لوحة الكود', // v-read-panel
     cwWorked: 'عمل لمدّة {t}', cwRequest: 'الطلب', cwResponse: 'النتيجة', cwTimeM: '{m}د {s}ث', cwTimeS: '{s}ث', cwWorking: 'يعمل…', // v-work-log
+    optFormSend: 'اعرض التفاصيل', // v-rich-reply: زرّ بطاقة الأسئلة
     selfHealing: '🔧 اكتشفت أخطاء في الكود... جاري الإصلاح الذاتي',
     noCodeToDownload: 'لا يوجد كود لتنزيله بعد.',
     geminiApiKeyLabel: 'مفتاح API — Google Gemini',
@@ -1635,6 +1636,7 @@ const I18N = {
     agThought: 'Thought for {n}s', agExplored: 'Explored {n} files', agNoOutput: 'No output', // v-agent-log
     readTab: 'Code read', readCite: 'Open this line in the code panel', // v-read-panel
     cwWorked: 'Worked for {t}', cwRequest: 'Request', cwResponse: 'Response', cwTimeM: '{m}m {s}s', cwTimeS: '{s}s', cwWorking: 'Working…', // v-work-log
+    optFormSend: 'Show details', // v-rich-reply: زرّ بطاقة الأسئلة
     selfHealing: '🔧 Errors detected in the code... self-healing in progress',
     noCodeToDownload: 'No code to download yet.',
     runPythonBtn: '▶️ Run code',

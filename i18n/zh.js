@@ -33,6 +33,7 @@ I18N['zh'] = {
     agThought: '思考了 {n} 秒', agExplored: '浏览了 {n} 个文件', agNoOutput: '无输出', // v-agent-log
     readTab: '已读代码', readCite: '在代码面板中打开此行', // v-read-panel
     cwWorked: '工作了 {t}', cwRequest: '请求', cwResponse: '响应', cwTimeM: '{m}分{s}秒', cwTimeS: '{s}秒', cwWorking: '处理中…', // v-work-log
+    optFormSend: '显示详情', // v-rich-reply: زرّ بطاقة الأسئلة
     convertToImage: '转换为图片',
     convertToPdf: '转换为 PDF',
     convertToWord: '转换为 Word',
