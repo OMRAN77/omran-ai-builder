@@ -78,7 +78,7 @@ test('١. العائلة من معرّف الموديل لا من اسم الم�
     ['groq', 'openai/gpt-oss-120b', 'gpt-oss'], ['groq', 'meta-llama/llama-4-maverick', 'llama'], ['gemini', 'google/gemini-3.8-flash', 'gemini'],
     ['deepseek', 'deepseek/deepseek-v4-pro', 'deepseek'], ['mistral', 'mistralai/ministral-14b-2512', 'mistral'], ['cohere', 'cohere/command-a', 'cohere'],
     ['kimi', 'kimi-k3', 'kimi'], ['openrouter', 'x-ai/grok-4.6', 'grok'], ['openrouter', 'qwen/qwen3-max', 'qwen'], ['openrouter', 'anthropic/claude-sonnet-5', 'claude'],
-    ['deepseek', '', 'deepseek'],
+    ['deepseek', '', 'deepseek'], ['openrouter', '', 'grok'],
   ];
   for (const [p, m, k] of cases) assert.equal((familyOf(p, m) || {}).key, k, p + ' ' + m);
   assert.equal(levelNote('openrouter', 'unknown/xyz'), '', 'عائلة مجهولة: المنهج العامّ وحده');
@@ -94,7 +94,7 @@ test('٢. الموديل الصغير يأخذ قواعد التعويض وال�
 
 test('٣. المالك: كلّ مزوّد يصله ملفّ مستواه بعد هويّته داخل الكتلة الثابتة المخزَّنة — وغير المالك كما كان', async () => {
   const cases = [['claude', '', /قوّتك: التحليل العميق/], ['deepseek', '', /هذه ساحتك: في أيّ مسألة منطق/], ['mistral', 'mistralai/ministral-14b-2512', /أنت موديل خفيف وسريع/],
-    ['cohere', '', /هذه ساحتك: ابحث، اقرأ أقوى مصدر/], ['gemini', '', /سياق طويل جدًّا/], ['openai', '', /تميل إلى الإطالة/], ['openrouter', 'x-ai/grok-4.6', /صراحة ومباشرة/]];
+    ['cohere', '', /هذه ساحتك: ابحث، اقرأ أقوى مصدر/], ['gemini', '', /سياق طويل جدًّا/], ['openai', '', /تميل إلى الإطالة/], ['openrouter', 'x-ai/grok-4.6', /صراحة ومباشرة/], ['openrouter', '', /أكمل المهمّة في نفس الردّ/]];
   for (const [prov, model, re] of cases) {
     const r = await run('omran', { provider: prov, model, messages: ask('حلّل لي هذا') }, (u) => (isOR(u) || isAnth(u) ? sse('تمام.') : new Response('{}', { status: 404 })));
     const b = r.calls.find((c) => isOR(c.url) || isAnth(c.url)).body;
@@ -145,7 +145,8 @@ test('٥. E3: منهج Claude Code للمالك داخل الكتلة الثاب
     /manage_github \(runs ثمّ run_jobs\)[^\n]*لا «تمّ»/, /مفصولًا صراحةً عمّا لم تتحقّق منه/, /طلب عمران الصريح في رسالته الأخيرة = أمر صريح؛ نفّذه الآن/,
     /افحص CI مرّة واحدة[^\n]*قيد العمل فقل ذلك مع الرابط وأنهِ الردّ — لا تكرّر الفحص في الردّ نفسه/, // لا استطلاع لـCI داخل ردّ واحد (MAX_STEPS/MAX_MS)
     /٤\) الحزمة: js\/app-NN-\*\.js تُبنى[^\n]*js\/partials-\*\.js لا تُحزَم: يكفي رفع رقم \?v=/, /للّغات الأربع عشرة \(js\/app-03-i18n-data\.js وi18n\/\*\.js\)/,
-    /لا تستأذن ثانيةً — عدا الأبواب الخمسة المقفلة: موافقة صريحة على البند نفسه/]) assert.match(PL.OWNER_METHOD, re);
+    /لا تستأذن ثانيةً — عدا الأبواب الخمسة المقفلة: موافقة صريحة على البند نفسه/,
+    /ولا تُنهَ الردّ بعد القراءة وحدها: الجواب أو التعديل في نفس الدور/]) assert.match(PL.OWNER_METHOD, re);
   assert.ok(!/js\/app-\*\.js وjs\/partials-\*\.js تُبنى/.test(PL.OWNER_METHOD), 'partials لا تُبنى في الحزمة');
   await withRealBrief(async () => {
     for (const [prov, model] of [['claude', 'claude-opus-5-5'], ['claude', ''], ['openrouter', 'x-ai/grok-4.6']]) {

@@ -620,7 +620,7 @@ $('#btnSettings').onclick = () => {
   collapseAllSettingsSections();
   renderStats();
   renderReferral();
-  $('#provider').value = localStorage.getItem('aiapp_provider') || 'openai';
+  $('#provider').value = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
   $('#apiKey').value = localStorage.getItem('aiapp_apikey') || '';
   $('#modelName').value = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
   $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
@@ -2365,7 +2365,7 @@ const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'gr
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
   if(providerKey === 'default'){
-    effective = localStorage.getItem('aiapp_provider') || 'openai';
+    effective = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
   }
   if(effective === 'gemini') return await callGemini(messages, onDelta);
   if(effective === 'groq') return await callGroq(messages, onDelta);
@@ -2488,7 +2488,7 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
   }catch(e){ __swallow(e, "misc:app-06-checkout#11"); }
   // v358 — التوجيه بالمجموعات الوظيفية: المزود المختار يوسَّع لسلسلة مجموعته
   // (الاحتياط الصامت يبقى داخل نفس المجموعة أولًا)، ثم بقية المزودين كشبكة أمان أخيرة.
-  const __sel = localStorage.getItem('aiapp_provider') || 'openai';
+  const __sel = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
   const __grp = (typeof FUNCTIONAL_GROUPS !== 'undefined' && FUNCTIONAL_GROUPS[__sel]) ? FUNCTIONAL_GROUPS[__sel] : [__sel];
   const head = (preferredList && preferredList.length) ? preferredList : __grp;
   const order = __solo ? head.slice(0, 1) : [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];

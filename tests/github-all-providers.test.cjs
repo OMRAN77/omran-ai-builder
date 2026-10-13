@@ -177,7 +177,7 @@ test('٩. OpenRouter: موديل المالك يصل كما اختاره (أيّ
   ghCalls.length = 0;
   const bodies = await ask('openrouter', 'gh-owner', { url: 'OMRAN77/omran-ai-builder', path: 'README.md' });
   assert.match(bodies[0].url, /openrouter\.ai\/api\/v1\/messages/, 'العنوان هو الوسيط نفسه');
-  assert.equal(bodies[0].body.model, 'anthropic/claude-sonnet-5', 'الافتراضيّ = افتراضيّ المنتقي');
+  assert.equal(bodies[0].body.model, 'x-ai/grok-4.6', 'الافتراضيّ = افتراضيّ المنتقي (كروك)');
   assert.ok(bodies[0].body.tools.some((t) => t.name === 'read_github'), 'الأداة تصله');
   assert.deepEqual(ghCalls[0].opts, { deep: true }, 'وبالعمق نفسه');
 
