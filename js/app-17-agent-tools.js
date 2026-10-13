@@ -21,6 +21,18 @@
     } catch (e) { return undefined; } // guard-ok — بلا تخزين = السلسلة المعتادة
   }
 
+  /* v-owner-img-why (لقطة المالك ١٣ أكتوبر: GPT-6 Astra حاول رسم بدائل بطاقات الأزياء فرجع «image_generation_busy» مرّتين وقال «العائق توليد
+     الصور» بلا سبب): السبب الحقيقيّ في __diag من الخادم (رسالة المحرّك: رصيد، صلاحيّة، موديل…) كان يُرمى هنا. للمالك وحده يصل نتيجةَ الأداة —
+     بلا مفاتيح — فيقوله المزوّد كما هو ولا يسمّيه «مشغول». غير المالك كما كان (لا أسماء محرّكات تصل ردّه). */
+  function engineWhy(j) {
+    try {
+      if (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) || !j || !j.__diag) return '';
+      var d = j.__diag;
+      var w = String(d.openai && d.openai !== 'no-rescue' ? d.openai : (d.gErr || d.nano || d.openai || d.free || '')).replace(/sk-[A-Za-z0-9_*\-]{6,}/g, 'sk-…').replace(/\s+/g, ' ').trim().slice(0, 220);
+      return w ? ' — السبب من المحرّك: ' + w + ' — قله للمالك كما هو؛ إن كان رصيدًا أو صلاحيّة أو موديلًا غير متاح فلا تسمّه «مشغول» ولا تعِد المحاولة' : '';
+    } catch (e) { return ''; } // guard-ok — السبب إضافة؛ بلاه الرسالة كما كانت
+  }
+
   function runInSandbox(html, timeoutMs) {
     return new Promise(function (resolve) {
       var token = 'ag_' + Math.random().toString(36).slice(2);
@@ -200,7 +212,7 @@
             await new Promise(function (r3) { setTimeout(r3, 2500); });
           }
           if (!resp.ok || !j || !j.imageBase64) {
-            return 'تعذّر رسم الصورة: ' + (((j && j.error) || ('HTTP ' + resp.status)) + '').slice(0, 120) +
+            return 'تعذّر رسم الصورة: ' + (((j && j.error) || ('HTTP ' + resp.status)) + '').slice(0, 120) + engineWhy(j) +
                    '. لا تخترع رابط صورة — استعمل خلفية CSS بدلها.';
           }
           var tok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
@@ -253,7 +265,7 @@
           if (!er.ok || !ej || !ej.imageBase64) {
             /* v-img-honest: الخادم قاس الناتج فوجده الصورة نفسها — النموذج يعرف ذلك فلا يروي «تمّ» */
             if (ej && ej.error === 'image_unchanged') return 'لم يُنفَّذ التعديل: رجعت الصورة نفسها بلا تغيير (مقيسة بالبكسل)، فلم تُعرض ولم تُحسب على المستخدم. قل له ذلك بصراحة، لا تدّعِ أنّ شيئًا تغيّر، واقترح صياغة أوضح.';
-            return 'تعذّر تعديل الصورة: ' + (((ej && ej.error) || ('HTTP ' + er.status)) + '').slice(0, 120);
+            return 'تعذّر تعديل الصورة: ' + (((ej && ej.error) || ('HTTP ' + er.status)) + '').slice(0, 120) + engineWhy(ej);
           }
           var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
           window.__genImages[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
