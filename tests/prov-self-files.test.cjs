@@ -72,7 +72,7 @@ test('each provider writes its own file with its own tool; it reaches that provi
   const next = await turn('omran', 'deepseek', 'هلا', [() => textTurn('هلا')]);
   assert.match(next.sys, /\[ملفّك — تعليماتك لنفسك[^\]]*\]:\nلا أبدأ ردودي بـ«بالتأكيد»\./, 'يصل نظام DeepSeek في الدور التالي');
   const other = await turn('omran', 'mistral', 'هلا', [() => textTurn('هلا')]);
-  assert.ok(!/بالتأكيد/.test(other.sys), 'Mistral لا يرى ملفّ DeepSeek');
+  assert.ok(!/\[ملفّك — تعليماتك لنفسك[^\]]*\]:\nلا أبدأ ردودي بـ«بالتأكيد»\./.test(other.sys), 'ملفّ DeepSeek لا يُحقن عند Mistral');
   await turn('omran', 'deepseek', 'غيّره', [() => toolTurn('edit_self', { action: 'write', text: 'نسخة ثانية.' }), () => textTurn('تمام')]);
   assert.equal(db.get('db/prov-self/deepseek.json').text, 'نسخة ثانية.');
   const u = await turn('omran', 'deepseek', 'رجّعه', [() => toolTurn('edit_self', { action: 'undo' }), () => textTurn('رجعته')]);
@@ -162,8 +162,8 @@ test('«عجبني» generalizes in one step: saved and published to every user 
   assert.match(desc.description, /«عمّم» ليست هذه الأداة/, '«عمّم» لا تستخرج درسًا');
 });
 
-// v-owner-gen (المالك ١٣ أكتوبر): «عمّم» من أي مزوّد يحفظ ردوده كما هي (قصير وطويل وكود) عند العشرة في محادثات المالك فقط.
-// «لا تعمّم» لا تحفظ. كلام المستخدم لا يُنسخ. المفتاح يُحذف. فوق السقف يسقط الأقدم. المحادثة الحاليّة تبقى والسقف ١٦٠ ألف توكن.
+// v-owner-gen (المالك ١٣ أكتوبر): «عمّم» من أي مزوّد يحفظ الردّ كما هو (قصير وطويل وكود) عند العشرة في محادثات المالك فقط.
+// v-prov-one: المحادثة نفسها (كلامه والردّ) تنتقل بلا الكلمة. «لا تعمّم» لا تحفظ. المفتاح يُحذف. فوق السقف يسقط الأقدم. السقف ١٦٠ ألف توكن.
 test('«عمّم» copies that provider’s replies to every provider for the owner only, within 160k tokens', async () => {
   db.clear(); PS.__resetCache();
   const CODE = 'function add(a, b) {\n  return a + b;\n}';
@@ -177,12 +177,13 @@ test('«عمّم» copies that provider’s replies to every provider for the ow
   const first = await turn('omran', 'deepseek', '', [() => textTurn('تم')], hist);
   assert.ok(first.sys.includes('لا تسأل') && first.sys.includes('صارت عند العشرة') && first.sys.includes('لا تستدعِ teach_users'), 'الأمر يمنع السؤال');
   const saved = db.get('db/owner-gen.json').items;
-  assert.equal(saved.length, 1);
-  assert.equal(saved[0].by, 'deepseek');
-  assert.ok(saved[0].text.includes(CODE) && saved[0].text.includes(FACT), 'الكود والمعلومة كما هما');
-  assert.ok(!saved[0].text.includes('سرّ المستخدم'), 'كلام المالك لا يُنسخ');
-  assert.ok(!saved[0].text.includes('sk-ant-'), 'المفتاح يُحذف');
-  assert.ok(saved[0].text.includes('خزنة الأسرار'), 'علامة حذف السرّ تبقى');
+  const fact = saved.find((x) => x.text.includes(CODE));
+  assert.ok(fact, 'الكود محفوظ');
+  assert.equal(fact.by, 'deepseek');
+  assert.ok(fact.text.includes(FACT), 'المعلومة كما هي');
+  assert.ok(saved.some((x) => x.text.includes('سرّ المستخدم')), 'كلام المحادثة ينتقل مع الردّ');
+  assert.ok(!fact.text.includes('sk-ant-'), 'المفتاح يُحذف');
+  assert.ok(fact.text.includes('خزنة الأسرار'), 'علامة حذف السرّ تبقى');
   for (const p of ['claude', 'gemini', 'openai', 'groq', 'mistral', 'kimi', 'cohere', 'openrouter']) {
     const r = await turn('omran', p, 'كمّل', [() => textTurn('…')]);
     assert.ok(r.sys.includes(CODE) && r.sys.includes(FACT) && r.sys.includes('[معلومات معمّمة'), 'تصل المالك · ' + p);
@@ -196,9 +197,11 @@ test('«عمّم» copies that provider’s replies to every provider for the ow
     { role: 'user', content: 'لا تعمّم' },
   ]);
   assert.ok(!neg.sys.includes('لا تحفظ هذي الجملة'));
-  assert.equal(db.get('db/owner-gen.json').items.length, 1, 'النفي لا يضيف');
+  const n0 = db.get('db/owner-gen.json').items.length;
+  assert.ok(!db.get('db/owner-gen.json').items.some((x) => x.text.includes('لا تحفظ هذي الجملة')), 'النفي لا يضيف');
   await turn('omran', 'groq', '', [() => textTurn('…')], hist);
-  assert.equal(db.get('db/owner-gen.json').items.length, 1, 'التكرار لا يُضاعف');
+  assert.equal(db.get('db/owner-gen.json').items.filter((x) => x.text.includes(CODE)).length, 1, 'التكرار لا يُضاعف');
+  assert.equal(db.get('db/owner-gen.json').items.length, n0, 'إعادة «عمّم» لا تضاعف المخزن');
   assert.equal(PS.GEN_CHARS, 400000);
   assert.equal(PS.ownerSaidGeneralize('عمّم على الجميع'), true);
   assert.equal(PS.ownerSaidGeneralize('عمم'), true);
@@ -208,7 +211,7 @@ test('«عمّم» copies that provider’s replies to every provider for the ow
   assert.deepEqual(trimmed.map((x) => x.text), ['جديد']);
   assert.equal(PS.trimGen([{ text: 'ABCDEFGH' }], 4)[0].text, 'EFGH');
   const blk = PS.genBlock([{ text: 'أ'.repeat(80) }, { text: 'ب'.repeat(80) }], PS.GEN_HEAD.length + 80, '');
-  assert.ok(blk.includes('ب') && !blk.includes('أ'), 'الأقدم يُنقص والأجدد يبقى');
+  assert.ok(blk.includes('ب'.repeat(40)) && !blk.includes('أ'.repeat(40)), 'الأقدم يُنقص والأجدد يبقى');
   const huge = 'س'.repeat(300000);
   assert.equal(PS.genBudget([{ role: 'assistant', content: huge }]), 100000, 'المحادثة تبقى والباقي للمعمّم');
   db.clear(); PS.__resetCache();
@@ -222,6 +225,50 @@ test('«عمّم» copies that provider’s replies to every provider for the ow
   assert.equal((await PS.captureBareReply([{ role: 'user', content: 'عمّم' }], 'صارت عند العشرة.', 'grok')).added, 0, 'سطر التأكيد لا يُحفظ');
   assert.equal((await PS.captureBareReply([{ role: 'user', content: 'عمّم' }], 'ما عمّمت شي. وش تقصد بـ«عمّم»؟ اللقطة ما فيها أسلوب ردّ واضح.', 'grok')).added, 0, 'سؤال المعنى لا يُحفظ');
   assert.equal((await PS.captureBareReply([{ role: 'assistant', content: 'رد سابق' }, { role: 'user', content: 'عمّم' }], shot, 'grok')).added, 0, 'مع ردّ سابق لا يُعاد حفظ الجواب');
+});
+
+test('كل محادثات المالك وبناء صوره تصل أي مزوّد بلا «عمّم»، ومحادثات غيره لا', async () => {
+  db.clear(); PS.__resetCache();
+  await turn('omran', 'claude', '', [() => textTurn('البرج في دبي.')], [
+    { role: 'user', content: 'وين البرج؟' },
+    { role: 'assistant', content: 'البرج في المارينا.' },
+  ]);
+  const grok = await turn('omran', 'groq', 'كمّل من هناك', [() => textTurn('في المارينا')]);
+  assert.ok(grok.sys.includes('البرج في المارينا') && grok.sys.includes('وين البرج') && grok.sys.includes('[معلومات معمّمة'), 'كروك يقرأ محادثة كلود');
+  const img = await PS.noteImage('ارسم برجًا زجاجيًا sk-ant-api03-abcdefghijklmnop');
+  assert.equal(img.added, 2);
+  const gem = await PS.systemBlocks(true, 'gemini', { messages: [{ role: 'user', content: 'وش الصورة؟' }], lastUserText: 'وش الصورة؟' });
+  assert.ok(gem.includes('[بُنيت صورة]') && gem.includes('ارسم برجًا زجاجيًا') && !gem.includes('sk-ant-'), 'بناء الصورة يصل والمفتاح لا');
+  await PS.absorbProjects([
+    { id: 'p1', provider: 'claude', messages: [
+      { role: 'user', content: 'ارسم بيتًا' },
+      { role: 'assistant', content: '', code: 'function house(){ return 1 }\nالمفتاح sk-or-abcdefghijklmnop', attachments: [{ isImage: true, dataUrl: 'data:image/png;base64,' + 'A'.repeat(80) }] },
+    ] },
+    { id: 'p2', provider: 'groq', messages: [
+      { role: 'user', content: 'المعادلة النهائية س=١٢' },
+      { role: 'assistant', content: 'س = ١٢' },
+    ] },
+  ]);
+  const all = await PS.systemBlocks(true, 'openai', { messages: [{ role: 'user', content: 'كمّل' }], lastUserText: 'كمّل' });
+  assert.ok(all.includes('function house') && all.includes('[بُنيت صورة]') && all.includes('س = ١٢') && all.includes('المعادلة النهائية') && !all.includes('base64') && !all.includes('sk-or-'), 'محادثتان وصورة وكود بلا بايتات ولا مفتاح');
+  const chats = require(rp('api/_lib/chats.js'));
+  async function save(user, projects, action) {
+    const res = { statusCode: 200, body: null, setHeader() {}, status(c) { this.statusCode = c; return this; }, json(o) { this.body = o; return this; }, end() {} };
+    await chats({ method: 'POST', headers: {}, query: { action: action || 'chats_save' }, body: { token: token(user), projects: projects || [] } }, res);
+    return res;
+  }
+  db.set('db/owner-gen.json', { items: [{ id: 'keep', text: 'سرّ المالك القديم', at: 1, by: 'claude' }] });
+  PS.__resetCache();
+  await save('vipuser', [{ id: 'p9', provider: 'gemini', title: 'x', messages: [{ role: 'user', content: 'سرّ المستخدم العادي لا يصل' }, { role: 'assistant', content: 'رد المستخدم العادي' }], code: '', updatedAt: 1 }]);
+  const afterUser = await PS.systemBlocks(true, 'claude', { messages: [{ role: 'user', content: 'هلا' }], lastUserText: 'هلا' });
+  assert.ok(!afterUser.includes('سرّ المستخدم العادي') && !afterUser.includes('رد المستخدم العادي'), 'حفظ مستخدم لا يدخل مخزن المالك');
+  await save('omran', [{ id: 'p8', provider: 'kimi', title: 'x', messages: [{ role: 'user', content: 'حقيقة من المحادثة المحفوظة' }, { role: 'assistant', content: 'القمر يبعد ٣٨٤ ألف كيلومتر.' }], code: '', updatedAt: 2 }]);
+  const afterOwner = await PS.systemBlocks(true, 'mistral', { messages: [{ role: 'user', content: 'كم يبعد؟' }], lastUserText: 'كم يبعد؟' });
+  assert.ok(afterOwner.includes('القمر يبعد'), 'حفظ محادثات المالك يدخل المخزن');
+  await save('omran', [], 'chats_wipe');
+  PS.__resetCache();
+  const wiped = await PS.systemBlocks(true, 'claude', { messages: [{ role: 'user', content: 'بعد المسح' }], lastUserText: 'بعد المسح' });
+  assert.ok(!wiped.includes('القمر يبعد') && !wiped.includes('سرّ المالك القديم'), 'مسح المحادثات يمسح المخزن المشترك');
 });
 
 test('the module: «عمّم» and its negation, no personal data in a lesson, no keys in a file, caps', async () => {
