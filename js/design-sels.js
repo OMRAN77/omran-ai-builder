@@ -232,16 +232,57 @@
     designAiDecorArt:['#4a2f5f','#8a5f9e','#d4af37'],
     designAiDecorAccessories:['#1a1a1f','#d4af37','#8a6d2f']
   };
+  /* v-decor-art (طلب المالك ١٣ أكتوبر ٢٠٢٦): رسمة SVG داخل كل بطاقة بدل التدرّج
+     المسطّح — نبتة ولوحة وإكسسوار وأثاث بألوان البطاقة نفسها (الملفّات لا تُرفع،
+     فالرسم مضمّن في الكود ويشتغل فورًا). */
+  var CBKIND={
+    designAiRearrange:'furniture',
+    designAiDecorPlants:'plants',
+    designAiDecorArt:'art',
+    designAiDecorAccessories:'accessories'
+  };
+  function cbSvg(c,kind){
+    var dark=shade(c[0],.55), mid=c[1], light=c[2];
+    var body='';
+    if(kind==='plants'){
+      body='<path d="M150 250 q-40 -30 -52 -86 q44 12 58 74 z" fill="#4a8a4a"/>'+
+        '<path d="M150 250 q40 -30 52 -86 q-44 12 -58 74 z" fill="#5fa85a"/>'+
+        '<path d="M150 248 q-16 -54 4 -96 q20 42 -4 96 z" fill="#6ebd63"/>'+
+        '<rect x="88" y="238" width="124" height="20" rx="8" fill="'+mid+'"/>'+
+        '<path d="M96 258 h108 l-14 74 h-80 z" fill="'+light+'"/>';
+    } else if(kind==='art'){
+      body='<rect x="76" y="92" width="148" height="150" rx="6" fill="'+shade(c[2],.9)+'" stroke="#d4af37" stroke-width="7"/>'+
+        '<path d="M88 224 l36 -56 24 30 20 -38 44 64 z" fill="'+dark+'"/>'+
+        '<circle cx="118" cy="132" r="12" fill="#d4af37"/>';
+    } else if(kind==='accessories'){
+      body='<path d="M120 252 q-8 -70 30 -70 q38 0 30 70 z" fill="#d4af37"/>'+
+        '<rect x="110" y="246" width="80" height="14" rx="6" fill="'+shade('#d4af37',.75)+'"/>'+
+        '<circle cx="150" cy="122" r="22" fill="none" stroke="#d4af37" stroke-width="7"/>'+
+        '<circle cx="150" cy="122" r="8" fill="'+light+'"/>'+
+        '<path d="M150 144 v42" stroke="#d4af37" stroke-width="5"/>';
+    } else {
+      body='<rect x="82" y="168" width="136" height="36" rx="12" fill="'+shade(c[1],.8)+'"/>'+
+        '<rect x="70" y="196" width="160" height="48" rx="14" fill="'+mid+'"/>'+
+        '<rect x="96" y="208" width="44" height="28" rx="8" fill="'+light+'"/>'+
+        '<rect x="160" y="208" width="44" height="28" rx="8" fill="'+shade(c[2],.85)+'"/>'+
+        '<path d="M62 300 l-16 -16 M62 300 l-16 16" stroke="#d4af37" stroke-width="6" fill="none" stroke-linecap="round"/>'+
+        '<path d="M238 300 l16 -16 M238 300 l16 16" stroke="#d4af37" stroke-width="6" fill="none" stroke-linecap="round"/>';
+    }
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 340">'+
+      '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+shade(c[0],1.18)+'"/><stop offset="1" stop-color="'+shade(c[0],.8)+'"/></linearGradient></defs>'+
+      '<rect width="300" height="340" fill="url(#g)"/>'+body+'</svg>';
+    return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") center/cover no-repeat';
+  }
   function proToggle(cb){
     var lab=cb.parentElement, sp=lab?lab.querySelector('span'):null;
     var txt=(sp?(sp.textContent||''):cb.id).trim().replace(EMO,'');
     var c=CBPAL[cb.id]||['#2a2a30','#3d3d45','#55555f'];
     var d=document.createElement('div');
     d.setAttribute('data-dtoggle',cb.id);
-    /* v-decor-names-only (طلب المالك ١٣ أكتوبر ٢٠٢٦): الاسم وحده بلا وصف — بطاقة أقصر. */
-    d.style.cssText='position:relative;border-radius:12px;overflow:hidden;cursor:pointer;min-height:56px;display:flex;flex-direction:column;justify-content:flex-end;'+
-      'background:linear-gradient(90deg,'+c[0]+' 0 33.4%,'+c[1]+' 33.4% 66.7%,'+c[2]+' 66.7% 100%) top/100% 30% no-repeat,'+
-      'linear-gradient(155deg,'+c[0]+' 0%,'+c[1]+' 55%,'+c[2]+' 120%);';
+    /* v-decor-art: رسمة داخل البطاقة (نبتة/لوحة/إكسسوار/أثاث) — والاسم وحده
+       فوقها بلا وصف. */
+    d.style.cssText='position:relative;border-radius:12px;overflow:hidden;cursor:pointer;min-height:104px;display:flex;flex-direction:column;justify-content:flex-end;'+
+      'background:'+cbSvg(c,CBKIND[cb.id]||'furniture')+';';
     var sh=document.createElement('div');
     sh.style.cssText='position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(transparent,rgba(0,0,0,.78));';
     var info=document.createElement('div');
