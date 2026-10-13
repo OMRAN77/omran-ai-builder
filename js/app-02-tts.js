@@ -516,8 +516,86 @@ function omranMathIsoTok(span){
   span.appendChild(iso);
   if(tail) span.appendChild(document.createTextNode(tail));
 }
+/* v-gpt-format (المالك ١٣ أكتوبر: «المحادثة العاديه قلت اريدها مرتبه» ثمّ «نفس gpt» بلقطتي ChatGPT: جدول حقيقيّ بعنوانه وخطوط
+   صفوفه، وكود مضمّن بلا علامات ` ظاهرة): (١) جدول الماركداون الكامل (رأس + سطر فاصل) يُستبدل قبل التقطيع برمز حارس (E002 n E003)
+   ويُرسم <table> حقيقيًّا كتلةً كصندوق الكود؛ خلاياه بعريضها وكودها وروابطها، وكلمات سطوره القديمة (mdTablesToLines) عناصر tts-word
+   مخفيّة داخله فلا تنزاح القراءة الصوتيّة عمّا كانت. الجداول داخل سياج كود لا تُمسّ، وما بلا سطر فاصل يبقى سطورًا كما كان.
+   (٢) `كود` مضمّن يُرسم رقاقة <code class="md-ic"> داخل عنصر كلمته نفسه — عنصر لكلّ كلمة كما كان — والكود الممتدّ على كلمات يصل
+   بين رقائقه بفراغ ملوّن (md-ic-gap ليس tts-word). سطر جديد يغلقه. */
+function omranMdTableMark(text){
+  const lines = String(text || '').split('\n'), out = [], list = [];
+  const row = (l) => /^\s*\|.*\|\s*$/.test(l || '');
+  const isSep = (l) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l || '');
+  const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  let fence = false;
+  for(let i = 0; i < lines.length; i++){
+    const l = lines[i];
+    if(/^\s*```/.test(l)) fence = !fence;
+    if(!fence && row(l) && !isSep(l) && isSep(lines[i + 1])){
+      let j = i + 2;
+      while(j < lines.length && row(lines[j]) && !isSep(lines[j])) j++;
+      const block = lines.slice(i, j);
+      list.push({ head: cells(block[0]), rows: block.slice(2).map(cells), extra: (mdTablesToLines(block.join('\n')).match(/\S+/g) || []).length });
+      out.push('\uE002' + (list.length - 1) + '\uE003');
+      i = j - 1;
+      continue;
+    }
+    out.push(l);
+  }
+  return { text: out.join('\n'), list: list };
+}
+const OMRAN_IC_AR = /[\u0600-\u06FF]/; // كود مضمّن بحروف عربيّة: رقاقة <span> بخطّ النصّ — الخطّ الثابت يفكّك الحروف
+/** خليّة جدول: **عريض** و`كود` و[نصّ](رابط) — عُقدًا لا HTML. */
+function omranMdInline(el, s){
+  const re = /\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  let m, last = 0;
+  s = String(s || '');
+  while((m = re.exec(s))){
+    if(m.index > last) el.appendChild(document.createTextNode(s.slice(last, m.index)));
+    let k;
+    if(m[1] !== undefined){ k = document.createElement('strong'); k.textContent = m[1]; }
+    else if(m[2] !== undefined){ const ar = OMRAN_IC_AR.test(m[2]); k = document.createElement(ar ? 'span' : 'code'); k.className = 'md-ic' + (ar ? ' md-ic-ar' : ''); k.textContent = m[2]; }
+    else { k = document.createElement('a'); k.href = m[4]; k.target = '_blank'; k.rel = 'noopener noreferrer'; k.textContent = m[3]; }
+    el.appendChild(k);
+    last = m.index + m[0].length;
+  }
+  if(last < s.length) el.appendChild(document.createTextNode(s.slice(last)));
+}
+function omranMdTableEl(tb){
+  const wrap = document.createElement('div'); wrap.className = 'md-table-wrap';
+  const all = tb.head.concat.apply(tb.head, tb.rows).join(' ');
+  wrap.setAttribute('dir', /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/.test(all) ? 'rtl' : 'ltr');
+  const table = document.createElement('table'); table.className = 'md-table';
+  const n = Math.max(tb.head.length, ...tb.rows.map((r) => r.length));
+  const tr = (cells, tag) => { const r = document.createElement('tr'); for(let i = 0; i < n; i++){ const c = document.createElement(tag); omranMdInline(c, cells[i] || ''); r.appendChild(c); } return r; };
+  const thead = document.createElement('thead'); thead.appendChild(tr(tb.head, 'th')); table.appendChild(thead);
+  const tbody = document.createElement('tbody'); tb.rows.forEach((r) => tbody.appendChild(tr(r, 'td'))); table.appendChild(tbody);
+  wrap.appendChild(table);
+  return wrap;
+}
+/** كلمة فيها ` (أو داخل كود مفتوح): تُملأ رقائق md-ic؛ st.open يحمل الكود المفتوح إلى الكلمة التالية. false = ليست كودًا. */
+function omranIcTok(span, s, st){
+  s = String(s);
+  if((s.indexOf('`') === -1 && !st.open) || /^```/.test(s)) return false;
+  const parts = s.split('`');
+  let inside = st.open;
+  parts.forEach(function(p, i){
+    if(i > 0) inside = !inside;
+    if(!p) return;
+    if(!inside){ span.appendChild(document.createTextNode(p)); return; }
+    const ar = OMRAN_IC_AR.test(p);
+    const c = document.createElement(ar ? 'span' : 'code'); // خطّ المحادثة يفرض الخطّ الثابت على كلّ <code> بـ!important
+    c.className = 'md-ic' + (i === 0 && st.open ? ' md-ic-ps' : '') + (i === parts.length - 1 ? ' md-ic-pe' : '') + (ar ? ' md-ic-ar' : '');
+    c.textContent = p;
+    span.appendChild(c);
+  });
+  st.open = inside;
+  return true;
+}
 function buildSpokenWordSpans(container, text){
-  text = mdTablesToLines(text); // v-md-table
+  let __tb = { text: text, list: [] };
+  try{ __tb = omranMdTableMark(text); }catch(e){ __swallow(e, 'md:table-mark'); } // v-gpt-format: الجدول الكامل يُرسم جدولًا
+  text = mdTablesToLines(__tb.text); // v-md-table: جدول بلا سطر فاصل يبقى سطورًا كما كان
   // بعض الردود تفصل عنوان المصدر عن رابطه بسطر جديد:
   // [عنوان المصدر]\nhttps://example.com — نعيده إلى ماركداون صالح
   // قبل التقسيم كي يصير رابطًا نظيفًا ويُجمع تحت زر «المصادر».
@@ -538,6 +616,7 @@ function buildSpokenWordSpans(container, text){
   const re = /[^\s\[!\x60]*(?:\*\*)?\[[^\]]*\]\(https?:\/\/[^\s)]+\)(?:\*\*)?[.,،؛!؟)]*|\S+/g;
   let m, lastIndex = 0;
   let boldOpen = false;
+  const __ic = { open: false }; // v-gpt-format: كود مضمّن مفتوح بين الكلمات
   let headerLevel = 0; // >0 while inside a "## ..." heading line
   let lineStart = true; // v-md-list: هل التوكن الحالي أول توكن في سطره؟
   let parent = container;    // where tokens/text currently get appended
@@ -600,8 +679,20 @@ function buildSpokenWordSpans(container, text){
   while((m = re.exec(text))){
     if(m.index > lastIndex){
       const between = text.slice(lastIndex, m.index);
-      parent.appendChild(document.createTextNode(between));
+      if(__ic.open && !codePre && between.indexOf('\n') === -1){ const __g = document.createElement('span'); __g.className = 'md-ic md-ic-gap'; __g.textContent = between; parent.appendChild(__g); } // v-gpt-format
+      else { if(between.indexOf('\n') !== -1) __ic.open = false; parent.appendChild(document.createTextNode(between)); }
       if(between.indexOf('\n') !== -1){ headerLevel = 0; lineStart = true; }
+    }
+    const __tbm = !codePre && /^\uE002(\d+)\uE003$/.exec(m[0]);
+    if(__tbm){ // v-gpt-format: الجدول كتلة، وكلماته القديمة عناصر مخفيّة داخله
+      const __t = __tb.list[+__tbm[1]];
+      if(__t){
+        const __w = omranMdTableEl(__t);
+        for(let __k = 0; __k < __t.extra; __k++){ const __h = document.createElement('span'); __h.className = 'tts-word'; __h.style.display = 'none'; __w.appendChild(__h); wordEls.push(__h); }
+        container.appendChild(__w);
+      }
+      lastIndex = m.index + m[0].length; lineStart = true;
+      continue;
     }
     if(/^```/.test(m[0])){
       // fence token: hide it, toggle code mode (span kept so TTS word mapping stays aligned)
@@ -663,6 +754,7 @@ function buildSpokenWordSpans(container, text){
       // v467: الرابط المسبوق بقوس أو علامة اقتباس — (https://…) أو «https://…» —
       // كان يسقط من الالتقاط فيخرج نصًّا يُنسخ باليد. نفصل البادئة، ونوسّع
       // اللاحقة لتشمل : » " ' ] التي تلتصق بنهايات الروابط في النصّ العربي.
+      const __icDone = omranIcTok(span, display, __ic); // v-gpt-format: `كود` رقاقة لا علامات خامّة
       let __lead = '';
       // v476: «[نص](رابط)» كان يبدأ بـ"[" فتقتطعه بادئةُ v467 فينكسر الماركداون
       // ويظهر «النص](الرابط)» ملتصقًا. نتخطّى الاقتطاع متى كان التوكن رابطَ ماركداون.
@@ -687,7 +779,8 @@ function buildSpokenWordSpans(container, text){
           if(!bareM[2] && __fileExt.test(__tld)) bareM = null;
         }
       }
-      if(linkM || urlM || bareM){
+      if(__icDone){ /* v-gpt-format: الكلمة رُسمت كودًا مضمّنًا — لا رابط داخلها */ }
+      else if(linkM || urlM || bareM){
         if(__lead) __appendMath(span, __lead);
         const rawUrl = linkM ? linkM[2] : (urlM ? urlM[1] : bareM[1] + bareM[2]);
         const href = (rawUrl.indexOf('www.') === 0 || bareM) ? 'https://' + rawUrl : rawUrl;
@@ -787,7 +880,7 @@ function omranMdBlocks(container, text){
   const newLine = function(){ cur = document.createElement('div'); cur.className = 'md-line'; out.push(cur); };
   newLine();
   nodes.forEach(function(n){
-    if(n.nodeType === 1 && n.className === 'chat-codeblock'){ out.push(n); newLine(); return; }
+    if(n.nodeType === 1 && (n.className === 'chat-codeblock' || n.className === 'md-table-wrap')){ out.push(n); newLine(); return; } // v-gpt-format: الجدول كتلة
     if(n.nodeType === 3){
       const parts = String(n.textContent).split('\n');
       parts.forEach(function(p, i){
