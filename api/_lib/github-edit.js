@@ -139,8 +139,11 @@ async function editFiles(input, opts) {
   const broken = checkSyntax(texts, applied.texts); // v-claude-code-level (A3)
   if (broken) return broken;
   const files = Object.keys(applied.texts).map((p) => ({ path: p, content: applied.texts[p] }));
+  /* v-img-token-write: edit_github يقبل files[{path, image}] مع رمز __IMG_N__ أو /i/ كما write_github */
+  const imgFiles = Array.isArray(i.files) ? i.files.filter((f) => f && typeof f === 'object' && typeof f.image === 'string') : [];
+  for (const f of imgFiles) files.push({ path: f.path, image: f.image });
   // v-claude-code-level (F1): fromEdit = سقف الملفّ ١٫٥ مليون حرف لمسار التعديل وحده (write_github يبقى ٢٠٠ ألف)
-  const res = await githubWrite.pushFiles({ repo: t.owner + '/' + t.repo, files, message: i.message, title: i.title, body: i.body, branch: i.branch, base }, Object.assign({}, o, { fromEdit: true }));
+  const res = await githubWrite.pushFiles({ repo: t.owner + '/' + t.repo, files, message: i.message, title: i.title, body: i.body, branch: i.branch, base }, Object.assign({}, o, { fromEdit: true, imageTokens: o.imageTokens }));
   if (res && res.ok) res.edits = v.edits.length;
   return res;
 }
@@ -213,6 +216,7 @@ const EDIT_TOOL = {
         new: { type: 'string', description: 'المقطع الجديد (فارغ = حذف)' },
         all: { type: 'boolean', description: 'بدّل كلّ المطابقات (اختياريّ)' },
       }, required: ['path', 'old', 'new'] } },
+      files: { type: 'array', description: 'صور تُرفع مع التعديل (اختياريّ) — نفس حقل image في write_github: رمز __IMG_N__ أو رابط /i/', items: { type: 'object', properties: { path: { type: 'string' }, image: { type: 'string', description: 'رمز __IMG_1__ أو /i/<id>.jpg' } }, required: ['path', 'image'] } },
       message: { type: 'string', description: 'رسالة الالتزام بالعربيّة: ما تغيّر ولماذا' },
       title: { type: 'string', description: 'عنوان طلب السحب (اختياريّ)' },
       body: { type: 'string', description: 'وصف طلب السحب (اختياريّ)' },

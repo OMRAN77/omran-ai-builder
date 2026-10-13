@@ -27,11 +27,65 @@ function validPath(p) {
   return !!s && s.length <= 300 && s[0] !== '/' && !CTRL_RE.test(s) && !/(^|\/)\.\.(\/|$)/.test(s) && !/^\.git(\/|$)/.test(s) && !/\/$/.test(s);
 }
 /* v-gen-image (أمر المالك ١٣ أكتوبر «بدل الصورة هذي حط بدلها… داخل التطبيق»): ملفّ بحقل image بدل content = صورة من رابط في التطبيق
-   (/i/<id>.jpg — صورة معمّمة أو مشاركة) تُرفع بايتاتها كما هي. المعرّف يُقرأ من مخزن التطبيق مباشرة، فلا يُجلب أيّ رابط خارجيّ. */
+   (/i/<id>.jpg — صورة معمّمة أو مشاركة) تُرفع بايتاتها كما هي. المعرّف يُقرأ من مخزن التطبيق مباشرة، فلا يُجلب أيّ رابط خارجيّ.
+   v-img-token-write: رمز __IMG_N__ من نتيجة generate_image/edit_image في الحوار نفسه يُحلّ إلى المعرّف المحفوظ. */
 const IMG_PATH_RE = /\.(png|jpe?g|webp|gif)$/i;
-function imageIdOf(s) {
-  const m = String(s || '').trim().match(/^(?:https?:\/\/[^/\s]+)?(?:\/i\/)?([a-f0-9]{6,24})(?:\.[a-z.]{2,9})?(?:[?#]\S*)?$/i);
+const IMG_TOK_RE = /^__IMG_\d+__$/;
+function imageIdOf(s, tokens) {
+  const t = String(s || '').trim();
+  if (IMG_TOK_RE.test(t)) {
+    const id = tokens && tokens[t] ? String(tokens[t]).toLowerCase() : '';
+    return /^[a-f0-9]{6,24}$/.test(id) ? id : '';
+  }
+  const m = t.match(/^(?:https?:\/\/[^/\s]+)?(?:\/i\/)?([a-f0-9]{6,24})(?:\.[a-z.]{2,9})?(?:[?#]\S*)?$/i);
   return m ? m[1].toLowerCase() : '';
+}
+/* يقرأ من نصّ نتيجة الرسم زوج __IMG_N__ و /i/<id> في نافذة قصيرة حول الرمز. */
+function parseImageTokens(text) {
+  const s = String(text || '');
+  const map = Object.create(null);
+  const re = /__IMG_(\d+)__/g;
+  let m;
+  while ((m = re.exec(s))) {
+    const around = s.slice(Math.max(0, m.index - 120), m.index + m[0].length + 280);
+    const idm = around.match(/\/i\/([a-f0-9]{6,24})/i);
+    if (idm) map[m[0]] = idm[1].toLowerCase();
+  }
+  return map;
+}
+function sniffBuf(buf) {
+  if (!buf || buf.length < 12) return '';
+  if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 && buf.toString('ascii', 8, 12) === 'WEBP') return 'webp';
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'png';
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpeg';
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return 'gif';
+  return '';
+}
+async function toWebp(buf, kind) {
+  let sharp;
+  try { sharp = require('sharp'); } catch (e) { sharp = null; }
+  const label = kind === 'png' ? 'PNG' : (kind === 'jpeg' ? 'JPEG' : String(kind || 'صورة'));
+  if (!sharp) return { error: 'المسار .webp والبايتات ' + label + ' — لا محوّل WebP على الخادم. ارفع بامتداد يطابق المحتوى أو حوّلها قبل الرفع.' };
+  try {
+    const out = await sharp(buf).webp({ quality: 88 }).toBuffer();
+    if (!out || out.length < 12 || out.toString('ascii', 0, 4) !== 'RIFF' || out.toString('ascii', 8, 12) !== 'WEBP') {
+      return { error: 'المسار .webp والبايتات ' + label + ' — التحويل لم يُنتج WebP صالحًا.' };
+    }
+    return { b64: out.toString('base64') };
+  } catch (e) {
+    return { error: 'تعذّر تحويل ' + label + ' إلى WebP: ' + String((e && e.message) || e).slice(0, 140) };
+  }
+}
+async function fitImageBytes(path, b64) {
+  let buf;
+  try { buf = Buffer.from(String(b64 || ''), 'base64'); } catch (e) { return { error: 'بايتات الصورة معيوبة.' }; }
+  const kind = sniffBuf(buf);
+  if (/\.webp$/i.test(String(path || '')) && (kind === 'png' || kind === 'jpeg')) {
+    const conv = await toWebp(buf, kind);
+    if (conv.error) return conv;
+    return { b64: conv.b64 };
+  }
+  return { b64: buf.toString('base64') };
 }
 function slug(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'update'; }
 function short(sha) { return String(sha || '').slice(0, 7); }
@@ -51,7 +105,7 @@ function apiMsg(r, j, what) {
 }
 
 /* ---------- التحقّق من المدخل ---------- */
-function validateInput(input, limits) {
+function validateInput(input, limits, tokens) {
   const L = limits || LIMITS;
   const i = input && typeof input === 'object' ? input : {};
   const files = Array.isArray(i.files) ? i.files : [];
@@ -65,9 +119,12 @@ function validateInput(input, limits) {
   const outImages = [];
   for (const f of files) {
     if (!f || typeof f !== 'object' || !validPath(f.path)) return { error: 'مسار ملفّ غير صالح: ' + String(f && f.path).slice(0, 80) };
-    if (typeof f.content !== 'string' && typeof f.image === 'string') { // v-gen-image
-      const id = imageIdOf(f.image);
-      if (!id) return { error: 'رابط الصورة لـ' + f.path + ' ليس من التطبيق — أعطِ رابط صورة معمّمة مثل /i/abc123def456.jpg.' };
+    if (typeof f.content !== 'string' && typeof f.image === 'string') { // v-gen-image · v-img-token-write
+      const raw = String(f.image);
+      const id = imageIdOf(raw, tokens);
+      if (!id) return { error: IMG_TOK_RE.test(raw.trim())
+        ? ('رمز ' + raw.trim() + ' لا يقابل صورة محفوظة في هذه المحادثة — ارسم بـgenerate_image ثم ارفع بالرمز نفسه.')
+        : ('رابط الصورة لـ' + f.path + ' ليس من التطبيق — أعطِ رابطًا مثل /i/abc123def456.jpg أو رمز __IMG_1__ من هذا الحوار.') };
       if (!IMG_PATH_RE.test(f.path)) return { error: f.path + ': الصورة تحتاج مسارًا بامتداد صورة (png أو jpg أو jpeg أو webp أو gif).' };
       if (seen.has(f.path)) return { error: 'المسار مكرّر: ' + f.path };
       seen.add(f.path);
@@ -141,7 +198,7 @@ async function pushFiles(input, opts) {
   const i = input && typeof input === 'object' ? input : {};
   const t = parseTarget({ url: i.repo || i.url || '' });
   if (!t) return { error: 'حدّد المستودع بصيغة owner/repo أو برابطه.' };
-  const v = validateInput(i, o.fromEdit === true ? EDIT_PUSH_LIMITS : LIMITS);
+  const v = validateInput(i, o.fromEdit === true ? EDIT_PUSH_LIMITS : LIMITS, o.imageTokens);
   if (v.error) return v;
   const message = String(i.message || '').trim().slice(0, 300) || 'تحديث من وكيل عمران';
   const R = '/repos/' + t.owner + '/' + t.repo;
@@ -150,7 +207,9 @@ async function pushFiles(input, opts) {
   for (const im of v.images || []) {
     const got = await (o.getImage || require('./img-share.js').getImage)(im.id);
     if (!got || !got.b64) return { error: 'الصورة ' + im.id + ' غير موجودة في التطبيق (انتهت أو حُذفت) — اطلب من المالك «عمّم» عليها من جديد.' };
-    imgs.push({ path: im.path, b64: got.b64 });
+    const fit = await fitImageBytes(im.path, got.b64); // v-img-token-write: .webp ومحتوى PNG/JPEG يُحوَّل قبل الرفع
+    if (fit.error) return fit;
+    imgs.push({ path: im.path, b64: fit.b64 });
   }
 
   const { r: rr, j: repo } = await ghJson(R, o);
@@ -239,12 +298,12 @@ function formatPush(res) {
 
 const TOOL = {
   name: 'write_github',
-  description: 'ارفع ملفّات إلى مستودع GitHub للمالك: يُنشأ فرع جديد omran-agent/… من الفرع الرئيسيّ، ويُرفع التزام واحد بكلّ الملفّات، ويُفتح طلب سحب — لا دفع إلى الفرع الرئيسيّ أبدًا، والدمج والنشر بيد المالك. لا تستدعها إلّا بطلب صريح من المستخدم بالرفع، وبعد أن تقرأ الملفّ الحاليّ بـread_github إن كنت تعدّله. الملفّات نصّية (٢٠ ملفًّا كحدّ أقصى)، والصورة وحدها تُرفع بحقل image بدل content: رابطها في التطبيق (/i/<id>.jpg — من سطر «[صورة معمّمة]»)، مثل «بدّل صورة الواجهة بهذي». أعد الاستدعاء بنفس branch لإضافة التزام ثانٍ على الفرع نفسه.',
+  description: 'ارفع ملفّات إلى مستودع GitHub للمالك: يُنشأ فرع جديد omran-agent/… من الفرع الرئيسيّ، ويُرفع التزام واحد بكلّ الملفّات، ويُفتح طلب سحب — لا دفع إلى الفرع الرئيسيّ أبدًا، والدمج والنشر بيد المالك. لا تستدعها إلّا بطلب صريح من المستخدم بالرفع، وبعد أن تقرأ الملفّ الحاليّ بـread_github إن كنت تعدّله. الملفّات نصّية (٢٠ ملفًّا كحدّ أقصى)، والصورة وحدها تُرفع بحقل image بدل content: رمز __IMG_N__ من نتيجة generate_image/edit_image في هذا الحوار، أو رابطها في التطبيق (/i/<id>.jpg). مثل «بدّل صورة الواجهة بهذي». أعد الاستدعاء بنفس branch لإضافة التزام ثانٍ على الفرع نفسه.',
   input_schema: {
     type: 'object',
     properties: {
       repo: { type: 'string', description: 'المستودع بصيغة owner/repo أو رابطه' },
-      files: { type: 'array', description: 'الملفّات المرفوعة (تُنشأ أو تُستبدل كاملة)', items: { type: 'object', properties: { path: { type: 'string', description: 'المسار داخل المستودع مثل js/app.js' }, content: { type: 'string', description: 'محتوى الملفّ كاملًا' }, image: { type: 'string', description: 'بدل content لرفع صورة: رابطها في التطبيق مثل /i/abc123def456.jpg — تُرفع بايتاتها كما هي' } }, required: ['path'] } },
+      files: { type: 'array', description: 'الملفّات المرفوعة (تُنشأ أو تُستبدل كاملة)', items: { type: 'object', properties: { path: { type: 'string', description: 'المسار داخل المستودع مثل js/app.js' }, content: { type: 'string', description: 'محتوى الملفّ كاملًا' }, image: { type: 'string', description: 'بدل content لرفع صورة: رمز __IMG_1__ من نتيجة الرسم في هذا الحوار، أو رابط /i/abc123def456.jpg — إن كان المسار .webp والبايتات PNG/JPEG تُحوَّل تلقائيًّا' } }, required: ['path'] } },
       delete: { type: 'array', description: 'مسارات ملفّات تُحذف (اختياريّ)', items: { type: 'string' } },
       message: { type: 'string', description: 'رسالة الالتزام — سطر واضح بما تغيّر ولماذا' },
       title: { type: 'string', description: 'عنوان طلب السحب (اختياريّ؛ الافتراضيّ رسالة الالتزام)' },
@@ -256,4 +315,4 @@ const TOOL = {
   },
 };
 
-module.exports = { pushFiles, formatPush, validateInput, validPath, autoBundle, imageIdOf, TOOL, LIMITS, EDIT_PUSH_LIMITS };
+module.exports = { pushFiles, formatPush, validateInput, validPath, autoBundle, imageIdOf, parseImageTokens, fitImageBytes, sniffBuf, toWebp, TOOL, LIMITS, EDIT_PUSH_LIMITS, IMG_TOK_RE };

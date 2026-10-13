@@ -151,7 +151,10 @@ test('٥. readImageFile: بايتات الصورة بترويسة raw ونوعه
 test('٦. العميل: noRef يمنع تحويل generate_image إلى تعديل على المرفق، ويحفظ رابط /i/ للرفعة، والحزمة مبنيّة', () => {
   const src = fs.readFileSync(path.join(root, 'js/app-17-agent-tools.js'), 'utf8');
   assert.ok(/var gCreative = !!\(gFirst && gRefB64[^\n]*&& !\(args && args\.noRef\)\);/.test(src));
-  assert.ok(src.includes("if (args && args.noRef)") && src.includes("/api/media?action=img") && src.includes('write_github ملف'));
-  assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('&& !(args && args.noRef));'));
-  assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('/api/media?action=img'));
+  assert.ok(src.includes("purpose: 'owner-draw'") && src.includes("/api/media?action=img") && src.includes('write_github ملف'));
+  assert.ok(src.includes('if (args && args.noRef && gShare)'));
+  const bundle = fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8');
+  assert.ok(bundle.includes('&& !(args && args.noRef));'));
+  assert.ok(bundle.includes('/api/media?action=img'));
+  assert.ok(bundle.includes("purpose: 'owner-draw'"));
 });

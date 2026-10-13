@@ -170,16 +170,19 @@ module.exports = async (req, res) => {
     if (!data) { res.status(400).json({ error: 'Missing data' }); return; }
     if (data.length > MAX_B64) { res.status(413).json({ error: 'too_large' }); return; }
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
-    const plan = uploadPlan(body, 'share-img', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
-    if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
+    const plan = uploadPlan(body, 'share-img', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة · v-img-token-write: رسم المالك بعمر ٢٤ ساعة
+    const who = await gateShare(req, res, body, plan.bucket, plan.limit, data.length); // v-share-bytes
+    if (!who) return;
+    const ownerDraw = !!(plan.ownerDraw && require('./_owner.js').isOwnerName(who));
+    const ttlSec = ownerDraw ? plan.ttlSec : (plan.ownerDraw ? TTL_SEC : plan.ttlSec); // غير المالك لا يأخذ سلّة الرسم القصيرة
     const mime = /^image\/(png|jpeg|webp)$/.test(String(body.mime || '')) ? String(body.mime) : 'image/jpeg';
-    const id = await putImage(data, mime, body.w, body.h, plan.ttlSec); // دعم أجزاء للصور الكبيرة داخلها
+    const id = await putImage(data, mime, body.w, body.h, ttlSec); // دعم أجزاء للصور الكبيرة داخلها
 
     if (!id) { await refundShare(req, body, plan.bucket); res.status(500).json({ error: 'store_failed' }); return; } // v-refund-custom
     // v637 — أمر عمران: «صورة خاليه أريد». الرابط المُشارَك يفتح البايتات الخام
     // مباشرةً (صورة وحدها بلا صفحة ولا زرّ)؛ صفحة /i/<id> تبقى للروابط القديمة.
     const outExt = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
-    res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: 7 });
+    res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: ownerDraw ? 1 : 7 });
     return;
   }
 

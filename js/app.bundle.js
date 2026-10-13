@@ -38395,6 +38395,17 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   /* v-owner-img-why (لقطة المالك ١٣ أكتوبر: GPT-6 Astra حاول رسم بدائل بطاقات الأزياء فرجع «image_generation_busy» مرّتين وقال «العائق توليد
      الصور» بلا سبب): السبب الحقيقيّ في __diag من الخادم (رسالة المحرّك: رصيد، صلاحيّة، موديل…) كان يُرمى هنا. للمالك وحده يصل نتيجةَ الأداة —
      بلا مفاتيح — فيقوله المزوّد كما هو ولا يسمّيه «مشغول». غير المالك كما كان (لا أسماء محرّكات تصل ردّه). */
+  /* v-img-token-write: رسم/تعديل المالك يُحفظ في img-share بعمر ٢٤ ساعة كي يُرفع بـwrite_github من __IMG_N__ */
+  async function saveOwnerDraw(b64, mime, tok) {
+    if (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) || !b64) return '';
+    try {
+      var up = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64, mime: mime || 'image/png', token: (window.authGet && window.authGet('aiapp_auth_token')) || '', purpose: 'owner-draw' }) });
+      var uj = null; try { uj = await up.json(); } catch (e2) { uj = null; }
+      if (!(up.ok && uj && uj.url)) return '';
+      return ' رابطها في التطبيق: ' + uj.url + ' — ارفعها بـwrite_github ملف {path: مسار الصورة في المستودع, image: "' + tok + '"} أو image: "' + uj.url + '"';
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-draw'); return ''; }
+  }
+
   function engineWhy(j) {
     try {
       if (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) || !j || !j.__diag) return '';
@@ -38593,14 +38604,10 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           try { var gcur = (typeof getCurrent === 'function') ? getCurrent() : null; if (gcur) { gcur.lastEditedImage = { b64: j.imageBase64, mime: j.mimeType || 'image/png' }; gcur.lastMsgWasImageEdit = true; gcur.imageTurns = []; } } catch (e) { /* guard-ok — السلسلة اختيارية */ }
           // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
           var gLine = '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
-          /* v-img-with-edit: دور لقطة + صور = احفظ رابط /i/ فورًا كي تُرفع مع التعديل بلا انتظار «عمّم» */
-          if (args && args.noRef) {
-            try {
-              var gUp = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: j.imageBase64, mime: j.mimeType || 'image/png', token: (window.authGet && window.authGet('aiapp_auth_token')) || '' }) });
-              var gUj = null; try { gUj = await gUp.json(); } catch (e2) { gUj = null; }
-              if (gUp.ok && gUj && gUj.url) gLine += ' رابطها في التطبيق: ' + gUj.url + ' — ارفعها الآن بـwrite_github ملف {path: مسار الصورة في المستودع كما قرأته, image: "' + gUj.url + '"} في هذا الردّ نفسه. لا تنتظر «عمّم».';
-            } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:pics-share'); }
-          }
+          /* v-img-token-write: كل رسم للمالك يُحفظ بـ/i/؛ v-img-with-edit: دور اللقطة+صور يرفع في الردّ نفسه */
+          var gShare = await saveOwnerDraw(j.imageBase64, j.mimeType || 'image/png', tok);
+          if (args && args.noRef && gShare) gShare += ' في هذا الردّ نفسه. لا تنتظر «عمّم».';
+          gLine += gShare;
           return gLine;
         }
         /* v-edit-image-tool: تعديل الصورة المرفقة في هذا الدور بنفس محرك التطبيق
@@ -38664,7 +38671,9 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           /* v-img-honest (المالك: «يقولي شي والتنفيذ صفر»): النموذج كان يرى «✅» وحدها فيروي «تمّ تغيير كلّ شيء» مهما خرج.
              الآن يصله حكم التنفيذ (ej.verdict) وتقرير ما يُرى فعلًا، ويُطلب منه ألّا يدّعي أكثر منه. */
           var ev = ej.verdict === 'not_done' ? ' — الفحص: الطلب لم يظهر في الصورة' : (ej.verdict === 'partial' ? ' — الفحص: نُفّذ جزء فقط' : (ej.verdict === 'done' ? ' — الفحص: نُفّذ' : ''));
-          return (ej.verdict === 'not_done' ? '⚠️' : '✅') + ' عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + ')' + ev + (ej.caption ? '. ما يُرى فعلًا: «' + String(ej.caption).slice(0, 400) + '» — صِف للمستخدم هذا وحده ولا تدّعِ أكثر منه' : '') + '. ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
+          var eLine = (ej.verdict === 'not_done' ? '⚠️' : '✅') + ' عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + ')' + ev + (ej.caption ? '. ما يُرى فعلًا: «' + String(ej.caption).slice(0, 400) + '» — صِف للمستخدم هذا وحده ولا تدّعِ أكثر منه' : '') + '. ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
+          eLine += await saveOwnerDraw(ej.imageBase64, ej.mimeType || 'image/png', etok);
+          return eLine;
         }
         // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء
         // الأداة فعلًا، لا عند فتح الصفحة. الإحداثيات تُستهلك في نداء التحويل

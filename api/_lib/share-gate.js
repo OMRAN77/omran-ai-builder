@@ -63,9 +63,11 @@ const SAVE_PLANS = {
   'share-pdf': { bucket: 'media-save-pdf', limit: 20, ttlSec: SAVE_TTL_SEC },
   'share-file': { bucket: 'media-save-file', limit: 10, ttlSec: SAVE_TTL_SEC },
 };
+const DRAW_TTL_SEC = 24 * 3600; // v-img-token-write: رسم المالك — عمر قصير لأنّ Redis قريب من الامتلاء
 function uploadPlan(body, bucket, limit, ttlSec) {
+  if (body && body.purpose === 'owner-draw') return { bucket: 'owner-draw-img', limit: 40, ttlSec: DRAW_TTL_SEC, ownerDraw: true };
   const save = (body && body.purpose === 'download') ? SAVE_PLANS[bucket] : null;
   return save || { bucket, limit, ttlSec };
 }
 
-module.exports = { gateShare, sessionToken, refundShare, uploadPlan, SAVE_PLANS };
+module.exports = { gateShare, sessionToken, refundShare, uploadPlan, SAVE_PLANS, DRAW_TTL_SEC };

@@ -486,7 +486,7 @@ module.exports = async (req, res) => {
     status: 'running', ask: String((messages[messages.length - 1] || {}).content || '').slice(0, 200), text: '',
     // الدفتر كان لصاحبه لا لمشروعه: يعرف أن عملًا اكتمل، ولا يعرف أين يُوضع بعد
     // إعادة التحميل. معرّف المشروع يجعل الاستئناف ممكنًا بلا تخمين.
-    projId: String(projId || '').slice(0, 64) };
+    projId: String(projId || '').slice(0, 64), imgTok: githubWrite.parseImageTokens(JSON.stringify(messages || [])) };
   send({ runId: run.runId, phase: 'planning', status: '🗺️ الوكيل يخطط للمهمة…' });
   await journal(runUser, run);
 
@@ -895,7 +895,7 @@ module.exports = async (req, res) => {
             if (!isOwner(runUser)) result = '✗ الرفع إلى GitHub للمالك وحده.';
             else {
               run.pushes = (run.pushes || 0) + 1;
-              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubWrite.pushFiles(input));
+              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubWrite.pushFiles(input, { imageTokens: run.imgTok }));
             }
           }
           /* v-agent-surgical: التعديل الجراحيّ يتشارك سقف الرفعات مع write_github، والدمج بإذن «ادمج» في آخر رسالة المالك
@@ -904,7 +904,7 @@ module.exports = async (req, res) => {
             if (!isOwner(runUser)) result = '✗ التعديل على GitHub للمالك وحده.';
             else {
               run.pushes = (run.pushes || 0) + 1;
-              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubEdit.editFiles(input));
+              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubEdit.editFiles(input, { imageTokens: run.imgTok }));
             }
           }
           else if (cb.name === 'merge_github') {
@@ -951,6 +951,7 @@ module.exports = async (req, res) => {
               ? '✗ نشرتَ ثلاث مرات في هذا التشغيل وهذا حدّ مقصود — سلّم المستخدم آخر رابط حصلتَ عليه.'
               : await doPublish(input, lastCodeIn(run.text) || lastTested, runUser, req.headers && req.headers.host);
           }
+          if (typeof result === 'string') Object.assign(run.imgTok, githubWrite.parseImageTokens(result));
           toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, (deepRun && cb.name === 'read_github') ? 30000 : 8000) }); // v-agent-deep: الدفعة العميقة (٢٤ ألفًا) لا تُقصّ
 
           // سطر واحد صادق لكل أداة: ماذا فعلتُ وماذا حصلتُ. يُبثّ حالًا ويُقيَّد
