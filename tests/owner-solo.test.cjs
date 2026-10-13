@@ -259,11 +259,16 @@ test('١٢. GPT: سقوط المفتاح المباشر يكمل عند الوس
   } finally { delete process.env.OPENAI_API_KEY; }
 });
 
-test('١٣. صفّ الوسيط العامّ: Grok المرفوض (404 نصّ) لا يجيب عنه كلود — يتوقّف بسببه', async () => {
+test('١٣. صفّ الوسيط العامّ: Grok المرفوض (404 نصّ) لا يجيب عنه كلود — يرجع لكروك الافتراضيّ', async () => {
   const r = await run('omran', { provider: 'openrouter', model: 'x-ai/grok-4.20', messages: ask('سؤال') },
     (u, b) => (isOR(u) ? (b.model === 'x-ai/grok-4.20' ? new Response('{"error":{"message":"No endpoints found for x-ai/grok-4.20"}}', { status: 404 }) : sse('من ' + b.model)) : new Response('{}', { status: 404 })));
-  assert.deepEqual(orModels(r.calls), ['x-ai/grok-4.20'], 'لا anthropic/claude-sonnet-5 بعده');
-  assert.equal(r.events.find((e) => e.ownerStop).error, 'ما قدرت أردّ الحين — خطأ 404');
+  assert.deepEqual(orModels(r.calls), ['x-ai/grok-4.20', 'x-ai/grok-4.6'], 'نفس شركة xAI لا كلود');
+  assert.ok(!r.calls.some((c) => isAnth(c.url) || (c.body && /^anthropic\//.test(c.body.model))), 'لا كلود');
+  assert.match(r.text, /من x-ai\/grok-4\.6/);
+  const r2 = await run('omran', { provider: 'openrouter', model: 'x-ai/grok-4.20', messages: ask('سؤال') },
+    (u) => (isOR(u) ? new Response('{"error":{"message":"No endpoints found"}}', { status: 404 }) : new Response('{}', { status: 404 })));
+  assert.deepEqual(orModels(r2.calls), ['x-ai/grok-4.20', 'x-ai/grok-4.6'], 'الافتراضيّ إن سقط يتوقّف — لا شركة أخرى');
+  assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما قدرت أردّ الحين — خطأ 404');
 });
 
 test('١٤. مزوّد بلا طريق له أو غير معروف للخادم: لا يجيب كلود صامتًا عنه — للمالك وحده', async () => {
@@ -311,7 +316,7 @@ test('١٦. القائمة تسمّي ما يجيب فعلًا: Groq = GPT-OSS 1
     vm.runInNewContext('var model = this.model;\n' + line + '\nthis.out = model;', ctx);
     assert.equal(ctx.out, want, id);
   }
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m111026c/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m131026g/);
 });
 
 // ── مراجعة مستقلّة (١٦ وكيلًا) على التعديل نفسه: أخطاء أكّدها مشكّك ثانٍ ──

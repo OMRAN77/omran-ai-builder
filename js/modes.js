@@ -89,6 +89,8 @@
          المفتوحة والسريعة، ثمّ البحث والوسيط — وكلّ اسم بصيغة واحدة «الاسم · الشركة» (كانت «كلود» و«جوجل جيميني» بين
          أسماء لاتينيّة). Kimi جديد (v-kimi): مسار Moonshot المباشر بمفتاح المالك، ومعرّفاته بلا بادئة كـGroq. */
       var PROVS = [
+        /* v-grok-first (المالك ١٣ أكتوبر «نفسك انته لي كل المزودين واهم واحد كروك»): كروك أوّل المجموعة الأساسيّة. */
+        { grp:1, key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'x-ai/grok-4.6',            models:[['x-ai/grok-4.6','Grok 4.6'],['x-ai/grok-4.20','Grok 4.20'],['qwen/qwen3.6-27b','Qwen 3.6 27B']] },
         /* v-owner-claude-all (أمر عمران ١٠ أكتوبر، لقطة منتقي تطبيق Claude): كلّ نماذج Claude — الأربعة الرئيسيّة ثمّ «نماذج أخرى»
            (العنصر الثالث 1)، وصفّ «الجهد» بينهما (effort). الافتراضيّ للمالك Opus 5.5 (الخادم يطبّقه حين لا اختيار). */
         { grp:1, key:'claude',     name:'Claude · Anthropic',      store:'aiapp_claude_model',     def:'claude-opus-5-5',     effort:true, models:[['claude-opus-5-5','Opus 5.5'],['claude-fable-5-1','Fable 5.1'],['claude-sonnet-5-5','Sonnet 5.5'],['claude-haiku-5-5','Haiku 5.5'],['claude-haiku-4-5','Haiku 4.5',1],['claude-sonnet-5','Sonnet 5',1],['claude-opus-5','Opus 5',1],['claude-fable-5','Fable 5',1],['claude-opus-4-8','Opus 4.8',1],['claude-opus-4-7','Opus 4.7',1],['claude-opus-4-6','Opus 4.6',1],['claude-sonnet-4-6','Sonnet 4.6',1]] },
@@ -104,17 +106,13 @@
         /* v-owner-solo: Groq أوقف Llama 4 Maverick (٩ مارس) والذي يجيب فعلًا عند Groq هو GPT-OSS 120B (GROQ_ALIAS في oa-direct) — القائمة تسمّيه */
         { grp:2, key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'openai/gpt-oss-120b',         models:[['openai/gpt-oss-120b','GPT-OSS 120B']] },
         { grp:3, key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning Pro']] },
-        { grp:3, key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
-        /* v-openrouter-tools: or:true كي يصل اختيار المالك إلى الخادم (omranModelFor) كبقيّة مزوّدي الوسيط.
-           v-prov-or-unique (المالك ٣ أكتوبر «متكررين فوق وتحت» ثمّ «في واحد ناقص»): الصفّ باقٍ، لكن بشركات ليس لها صفّ
-           فوق (xAI وQwen) — موديلاته السبعة القديمة كانت كلّها تحت شركاتها. المعرّفات من كتالوج OpenRouter. */
-        { grp:3, key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'x-ai/grok-4.6',            models:[['x-ai/grok-4.6','Grok 4.6'],['x-ai/grok-4.20','Grok 4.20'],['qwen/qwen3.6-27b','Qwen 3.6 27B']] }
+        { grp:3, key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] }
       ];
       /* v-owner-gpt-all (مراجعة): اختيار GPT محفوظ من القائمة الحيّة القديمة وليس في المنسّقة يُضاف لـ«نماذج أخرى» باسمه —
          كان يُرسل ولا يظهر في الشريحة ولا يُعلَّم ولا يُعاد اختياره. */
       try{ for(var pi=0;pi<PROVS.length;pi++){ var pp = PROVS[pi], psv = pp.or && pp.effort ? (localStorage.getItem(pp.store) || '') : '';
         if(psv && psv.indexOf('/') > 0 && !pp.models.some(function(m){ return m[0] === psv; })) pp.models.push([psv, psv.split('/')[1], 1]); } }catch(e){ /* guard-ok: تخزين محجوب */ }
-      function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
+      function curProv(){ try{ return localStorage.getItem('aiapp_provider') || (isOwner() ? 'openrouter' : 'openai'); }catch(e){ return isOwner() ? 'openrouter' : 'openai'; } } /* v-grok-first: المالك بلا اختيار = كروك */
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
       /* v-owner-gpt-all (أمر المالك ١١ أكتوبر «Astra»): odef = افتراضيّ المالك وحده (GPT-6 Astra)؛ غير المالك على def كما كان (طلبه لا يتغيّر). */
       function ownDef(){ try{ return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); }catch(e){ return false; } }

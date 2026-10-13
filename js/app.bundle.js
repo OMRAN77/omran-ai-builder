@@ -7188,7 +7188,7 @@ function __histThumbLazy(thumb, p){
 }
 function renderHistory(){
   // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
-  const provKey = localStorage.getItem('aiapp_provider') || 'openai';
+  const provKey = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
   let provDirty = false;
   state.projects.forEach(p => { if(!p.provider){ p.provider = provKey; provDirty = true; } });
   if(provDirty) saveState();
@@ -7245,7 +7245,7 @@ function renderHistory(){
     titleSpan.onclick = () => {
       // v380: الضغط على محادثة من مزود آخر → ينتقل لمزودها تلقائيًا (بدون إنشاء محادثة جديدة)
       try{
-        const cur = localStorage.getItem('aiapp_provider') || 'openai';
+        const cur = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
         if(p.provider && p.provider !== cur){
           localStorage.setItem('aiapp_provider', p.provider);
           const sel = document.getElementById('provider');
@@ -11335,6 +11335,7 @@ const PROVIDER_REAL_SHORT = {
 function omranOwnerUi(){
   try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
 }
+function omranDefaultProv(){ return omranOwnerUi() ? 'openrouter' : 'openai'; } /* v-grok-first: المالك بلا اختيار = كروك؛ غيره GPT */
 function functionalLabel(key){
   if(omranOwnerUi() && PROVIDER_REAL_SHORT[key]) return PROVIDER_REAL_SHORT[key]; // v-owner-real-names
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
@@ -11362,12 +11363,12 @@ let providerQuickBarBuilt = false;
 window.omranPickProviderModel = function(provKey, storeKey, modelId){
   try{ if(storeKey && modelId) localStorage.setItem(storeKey, modelId); }catch(e){ __swallow(e, "save:app-05-ui#prov-arrow"); }
   try{
-    const cur = localStorage.getItem('aiapp_provider') || 'openai';
+    const cur = localStorage.getItem('aiapp_provider') || omranDefaultProv();
     if(provKey && provKey !== cur) selectProviderKey(provKey);
   }catch(e){ __swallow(e, "misc:app-05-ui#prov-arrow"); }
 };
 function selectProviderKey(key){
-  const prev = localStorage.getItem('aiapp_provider') || 'openai';
+  const prev = localStorage.getItem('aiapp_provider') || omranDefaultProv();
   localStorage.setItem('aiapp_provider', key);
   // v262: المستخدم اختار مزودًا بيده → نحترم اختياره ويتعطل التوجيه بالتخصص
   localStorage.setItem('aiapp_provider_explicit', '1');
@@ -11473,7 +11474,7 @@ function buildProviderQuickBar(){
 /* v336: قائمة المزودين المنسدلة (كمبيوتر فقط) */
 function provDDUpdateButton(){
   try{
-    const cur = localStorage.getItem('aiapp_provider') || 'openai';
+    const cur = localStorage.getItem('aiapp_provider') || omranDefaultProv();
     const p = PROVIDER_QUICK_LIST.find(x => x.key === cur) || PROVIDER_QUICK_LIST[0];
     const logo = document.getElementById('provDDLogo');
     const name = document.getElementById('provDDName');
@@ -11531,7 +11532,7 @@ function relabelProviders(){
 }
 try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
-  const current = localStorage.getItem('aiapp_provider') || 'openai';
+  const current = localStorage.getItem('aiapp_provider') || omranDefaultProv();
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
     el.classList.toggle('active', el.dataset.provider === current);
     el.title = functionalLabel(el.dataset.provider);
@@ -14036,7 +14037,7 @@ $('#btnSettings').onclick = () => {
   collapseAllSettingsSections();
   renderStats();
   renderReferral();
-  $('#provider').value = localStorage.getItem('aiapp_provider') || 'openai';
+  $('#provider').value = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
   $('#apiKey').value = localStorage.getItem('aiapp_apikey') || '';
   $('#modelName').value = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
   $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
@@ -15781,7 +15782,7 @@ const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'gr
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
   if(providerKey === 'default'){
-    effective = localStorage.getItem('aiapp_provider') || 'openai';
+    effective = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
   }
   if(effective === 'gemini') return await callGemini(messages, onDelta);
   if(effective === 'groq') return await callGroq(messages, onDelta);
@@ -15904,7 +15905,7 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
   }catch(e){ __swallow(e, "misc:app-06-checkout#11"); }
   // v358 — التوجيه بالمجموعات الوظيفية: المزود المختار يوسَّع لسلسلة مجموعته
   // (الاحتياط الصامت يبقى داخل نفس المجموعة أولًا)، ثم بقية المزودين كشبكة أمان أخيرة.
-  const __sel = localStorage.getItem('aiapp_provider') || 'openai';
+  const __sel = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
   const __grp = (typeof FUNCTIONAL_GROUPS !== 'undefined' && FUNCTIONAL_GROUPS[__sel]) ? FUNCTIONAL_GROUPS[__sel] : [__sel];
   const head = (preferredList && preferredList.length) ? preferredList : __grp;
   const order = __solo ? head.slice(0, 1) : [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
@@ -23456,7 +23457,7 @@ async function __sendPromptCore(){
     try{
       if(!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return false;
       if(window.__omMode || window.__chatToolsOn === false) return false;
-      const __p = localStorage.getItem('aiapp_provider') || 'openai';
+      const __p = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
       if(window.__agentModeOn === true && __p === 'claude') return false;
       if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(__p) === -1) return false;
       if(pendingAttachments.some(a => a && a.isImage) && __imgFormatIntent(text)) return false;
@@ -26754,7 +26755,7 @@ DESIGN RULES (non-negotiable):
       };
       // المزود المختار من المستخدم يرد بنفسه (GPT هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
       const isBuildTask = __routeFix && !__gateNoBuild;
-      const __selProv = localStorage.getItem('aiapp_provider') || 'openai';
+      const __selProv = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
       // الطلب يروح خلف الكواليس للمزود المتخصص، والواجهة تعرض المزود الافتراضي كما هو.
       // ٦ أغسطس: الاختيار الصريح يُحترم فقط حيث توجد قائمة تُختار منها (الجوال).
@@ -39755,7 +39756,7 @@ function onHistoryReady(){
     // ── أنشئ محادثة جديدة ──────────────────────────────────────────────────
     var newId = 'p_' + Date.now();
     var provKey = '';
-    try{ provKey = localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ /* guard-ok */ provKey = 'openai'; }
+    try{ provKey = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); }catch(e){ /* guard-ok */ provKey = (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); } /* v-grok-first */
     var title = '';
     try{ title = (typeof t === 'function') ? (t('defaultProjectTitle') || 'محادثة جديدة') : 'محادثة جديدة'; }catch(e){ title = 'محادثة جديدة'; }
 

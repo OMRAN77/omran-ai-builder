@@ -581,6 +581,7 @@ module.exports = async (req, res) => {
     let modelAnnounced = false;
     let steps = 0;
     let ownerCarried = false; // v-owner-carry
+    let timeoutClose = false; // v-prov-close-read: خطوة جواب بعد مهلة الأدوات
 
     // 4 خطوات لا تكفي «اقرأ ← افهم ← جرّب ← أخطأت ← صحّح ← تحقّق». المهام
     // الحقيقية تحتاج عشرات الجولات، وكان الوكيل يتوقف في منتصف عمله فيبدو
@@ -636,9 +637,19 @@ module.exports = async (req, res) => {
 
     while (steps < MAX_STEPS) {
       if (Date.now() - taskStart > MAX_TASK_MS) {
-        send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' });
-        run.status = 'timeout';
-        break;
+        const ol = require('./owner-loop.js');
+        if (ol.overTime({ on: isOwner(runUser), final: timeoutClose }, { t0: taskStart, MAX_MS: MAX_TASK_MS, steps })) {
+          send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' });
+          run.status = 'timeout';
+          break;
+        }
+        timeoutClose = true;
+        const last = convo[convo.length - 1];
+        if (last && last.role === 'user' && Array.isArray(last.content)) {
+          last.content = last.content.concat([{ type: 'text', text: ol.FINAL_NOTE }]);
+        } else {
+          convo.push({ role: 'user', content: ol.FINAL_NOTE });
+        }
       }
       steps++;
       // يرى المستخدم أين وصل بدل انتظار صامت طويل
@@ -843,6 +854,11 @@ module.exports = async (req, res) => {
       await journal(runUser, run);
 
       if (stopReason === 'tool_use') {
+        if (timeoutClose) {
+          send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' });
+          run.status = 'timeout';
+          break;
+        }
         // Append assistant turn + tool results, then continue the loop.
         /* v-agent-deep: كتل التفكير (والمحجوبة) تعود بلا تعديل وبترتيبها — التوثيق يطلبها في حلقة الأدوات، وحذفها
            كان يبدأ كلّ خطوة من الثلاثين بلا تفكير ما قبلها. */

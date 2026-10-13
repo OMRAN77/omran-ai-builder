@@ -615,7 +615,7 @@ const OR_MODELS = {
      آخر من في منتقي المالك بلا أدوات — على مسار `api/_lib/openrouter.js` القديم، فلا يقرأ GitHub
      ولا يبحث. المفتاح هو نفسه (`OPENROUTER_API_KEY`) في المسارين فلا كلفة جديدة، والموديل يأتي
      من اختيار المالك نفسه (أيّ معرّف صالح عند الوسيط — لا بادئة شركة واحدة). */
-  openrouter: 'anthropic/claude-sonnet-5', // احتياط الخادم إن لم يصل اختيار أو رُفض؛ افتراضيّ المنتقي (modes.js) Grok — v-prov-or-unique
+  openrouter: 'x-ai/grok-4.6', // v-grok-first: احتياط الخادم = افتراضيّ المنتقي (كروك) — كان كلود فيخالف الاختيار
   kimi: 'moonshotai/kimi-k3', // v-kimi-feed: المسار المباشر بمفتاح Moonshot أوّلًا (oa-direct)، وهذا احتياط الوسيط إن غاب المفتاح أو فشل قبل أوّل حرف — kimi-k2 أوقفته Moonshot (٢٥ مايو ٢٠٢٦) وK2 نصّيّ لا يرى صورًا؛ K3 هو الحيّ (رؤية + نصّ)
 };
 
@@ -1637,7 +1637,7 @@ module.exports = async (req, res) => {
     const __turnKaStop = () => { if (__turnKa) clearInterval(__turnKa); };
     if (__turnKa) { const __endRaw = res.end; res.end = function () { __turnKaStop(); return __endRaw.apply(res, arguments); }; } // كلّ خروج (done، catch، خروج مبكّر في الحلقة) يمرّ بـres.end فلا يبقى نبض حيّ بعده (chat-owner-errors يعدّ المؤقّتات)
           while (steps < MAX_STEPS) {
-      if (__cut.gone) break; /* v-tokens-close: العميل رحل — لا جولة جديدة */ if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; }
+      if (__cut.gone) break; /* v-tokens-close: العميل رحل — لا جولة جديدة */ if (__ol.overTime(__olS, { t0, MAX_MS, steps })) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; } /* v-prov-close-read: بعد قراءة تجاوزت المهلة خطوة ختام لا قطع */
       steps++; __ol.beginStep(__olS, { steps, MAX_STEPS, t0, MAX_MS, convo, tools: toolTurn && !(body && body.noTools === true), send }); // v-claude-code-level C1: الخطوة الأخيرة = جواب ختاميّ
 
       // v-img-read: إعداد دور الصورة (نموذج/جهد) يُجرَّب أوّلًا؛ 400 عليه = إعادة فوريّة
@@ -1693,7 +1693,7 @@ module.exports = async (req, res) => {
       } for (;;) { if (!(!upstream.ok && (upstream.status === 402 || upstream.status === 400) && __ownerReq && !__direct && __capTries < 2)) break; let __ct = ''; try { __ct = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ } const __cur = __maxTokens(); let __next = 0; if (upstream.status === 402 && /max_tokens|afford/i.test(__ct)) __next = PLAIN_MAX_TOKENS; else if (upstream.status === 400 && /max_tokens/i.test(__ct)) __next = __capFromText(__ct, __cur) || (__cur > MID_MAX_TOKENS ? MID_MAX_TOKENS : PLAIN_MAX_TOKENS); if (__next && __next < __cur) { __capTries++; __capCut = __next; send({ status: upstream.status === 402 ? '↳ ⚠️ رصيد الوسيط لا يكفي حجز سقف ' + __kTok(__cur) + ' — أكمل بالسقف العاديّ' : '↳ ⚠️ الموديل لا يقبل سقف ' + __kTok(__cur) + ' — أكمل بسقفه ' + __kTok(__next) }); upstream = await callUpstream(true); continue; } upstream = { ok: false, status: upstream.status, headers: upstream.headers || null, text: async () => __ct }; break; } // v-owner-cap-open (كان v-owner-claude-all/gpt-all للجهد وحده): السقف الكبير للمالك على كلّ دور؛ 402 حجزه ← العاديّ، و400 حدّ الموديل ← حدّه من الرسالة — يُذكَر لبقيّة الدور
       // v-claude-models: نموذج اختاره المستخدم ولا يملكه المفتاح/الوسيط (404، أو 400/403 نصّه
       // عن النموذج) = رجوع فوريّ للافتراضيّ بالطلب نفسه، مع إخبار المستخدم. غير ذلك يمرّ كما هو.
-      if (!upstream.ok && __ownerReq && prov === 'openrouter' && String(CHAT_MODEL).split('/')[0] !== String(DEFAULT_MODEL).split('/')[0]) __pick.picked = false; /* v-owner-solo: Grok/Qwen المرفوض لا يجيب عنه موديل شركة أخرى (الافتراضيّ كلود) — يتوقّف بسببه */ if (!upstream.ok && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL) {
+      if (!upstream.ok && __ownerReq && prov === 'openrouter' && String(CHAT_MODEL).split('/')[0] !== String(DEFAULT_MODEL).split('/')[0]) __pick.picked = false; /* v-owner-solo: Grok/Qwen المرفوض لا يجيب عنه موديل شركة أخرى — يتوقّف بسببه. v-grok-first: الافتراضيّ كروك فيرجع موديل xAI إلى كروك نفسه لا لشركة أخرى */ if (!upstream.ok && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL) {
         let __mt = '';
         try { __mt = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
         if (isModelErrorStatus(upstream.status, __mt)) {

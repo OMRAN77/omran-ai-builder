@@ -1968,6 +1968,7 @@ const PROVIDER_REAL_SHORT = {
 function omranOwnerUi(){
   try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; }
 }
+function omranDefaultProv(){ return omranOwnerUi() ? 'openrouter' : 'openai'; } /* v-grok-first: المالك بلا اختيار = كروك؛ غيره GPT */
 function functionalLabel(key){
   if(omranOwnerUi() && PROVIDER_REAL_SHORT[key]) return PROVIDER_REAL_SHORT[key]; // v-owner-real-names
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
@@ -1995,12 +1996,12 @@ let providerQuickBarBuilt = false;
 window.omranPickProviderModel = function(provKey, storeKey, modelId){
   try{ if(storeKey && modelId) localStorage.setItem(storeKey, modelId); }catch(e){ __swallow(e, "save:app-05-ui#prov-arrow"); }
   try{
-    const cur = localStorage.getItem('aiapp_provider') || 'openai';
+    const cur = localStorage.getItem('aiapp_provider') || omranDefaultProv();
     if(provKey && provKey !== cur) selectProviderKey(provKey);
   }catch(e){ __swallow(e, "misc:app-05-ui#prov-arrow"); }
 };
 function selectProviderKey(key){
-  const prev = localStorage.getItem('aiapp_provider') || 'openai';
+  const prev = localStorage.getItem('aiapp_provider') || omranDefaultProv();
   localStorage.setItem('aiapp_provider', key);
   // v262: المستخدم اختار مزودًا بيده → نحترم اختياره ويتعطل التوجيه بالتخصص
   localStorage.setItem('aiapp_provider_explicit', '1');
@@ -2106,7 +2107,7 @@ function buildProviderQuickBar(){
 /* v336: قائمة المزودين المنسدلة (كمبيوتر فقط) */
 function provDDUpdateButton(){
   try{
-    const cur = localStorage.getItem('aiapp_provider') || 'openai';
+    const cur = localStorage.getItem('aiapp_provider') || omranDefaultProv();
     const p = PROVIDER_QUICK_LIST.find(x => x.key === cur) || PROVIDER_QUICK_LIST[0];
     const logo = document.getElementById('provDDLogo');
     const name = document.getElementById('provDDName');
@@ -2164,7 +2165,7 @@ function relabelProviders(){
 }
 try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
-  const current = localStorage.getItem('aiapp_provider') || 'openai';
+  const current = localStorage.getItem('aiapp_provider') || omranDefaultProv();
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
     el.classList.toggle('active', el.dataset.provider === current);
     el.title = functionalLabel(el.dataset.provider);
