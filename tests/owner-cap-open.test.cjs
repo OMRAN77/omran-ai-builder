@@ -115,7 +115,7 @@ test('٣. المسار المباشر: Groq يصله max_completion_tokens ١٢�
   r = await withEnv('OPENAI_API_KEY', 'sk-openai-test')(() => run('omran', { provider: 'openai', model: 'openai/gpt-6-astra', messages: ask(HARD), effort: 'high' }));
   const o = r.calls.filter((c) => /api\.openai\.com/.test(c.url));
   assert.equal(o[0].url, 'https://api.openai.com/v1/responses');
-  assert.deepEqual(o[0].body.reasoning, { effort: 'high' });
+  assert.deepEqual(o[0].body.reasoning, { effort: 'high', summary: 'auto' });
   assert.equal(o[0].body.max_output_tokens, 128000);
   r = await withEnv('OPENAI_API_KEY', 'sk-openai-test')(() => run('omran', { provider: 'openai', model: 'openai/gpt-6-astra', messages: ask(HARD) }));
   assert.equal(r.calls.filter((c) => /api\.openai\.com/.test(c.url))[0].body.max_output_tokens, 128000, 'وبلا جهد');

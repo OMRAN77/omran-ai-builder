@@ -106,16 +106,16 @@ test('٢. المباشر (/v1/responses): جهد المالك reasoning.effort �
     let r = await run('omran', { model: 'openai/gpt-6-astra', messages: ask('السلام'), effort: 'max' });
     assert.equal(r.calls[0].url, 'https://api.openai.com/v1/responses');
     assert.equal(r.calls[0].body.model, 'gpt-6-astra');
-    assert.deepEqual(r.calls[0].body.reasoning, { effort: 'max' }, 'التحيّة بجهد المالك لا السلّم');
+    assert.deepEqual(r.calls[0].body.reasoning, { effort: 'max', summary: 'auto' }, 'التحيّة بجهد المالك لا السلّم، والملخّص للعرض');
     assert.equal(r.calls[0].body.max_output_tokens, 128000); // v-owner-cap-open
     r = await run('omran', { model: 'openai/gpt-5.5', messages: ask(HARD), effort: 'max' });
-    assert.deepEqual(r.calls[0].body.reasoning, { effort: 'xhigh' });
+    assert.deepEqual(r.calls[0].body.reasoning, { effort: 'xhigh', summary: 'auto' });
     r = await run('omran', { model: 'openai/gpt-6.1-sol', messages: ask(HARD), effort: 'high' });
-    assert.deepEqual(r.calls[0].body.reasoning, { effort: 'high' });
+    assert.deepEqual(r.calls[0].body.reasoning, { effort: 'high', summary: 'auto' });
     assert.equal(r.calls[0].body.max_output_tokens, 128000, 'v-owner-cap-open: سقف المالك يغلب سقف الجهد ٣٢ ألفًا');
     // تلقائي: الصعب بلا reasoning وسقف المالك المفتوح
     r = await run('omran', { model: 'openai/gpt-6-astra', messages: ask(HARD) });
-    assert.equal(r.calls[0].body.reasoning, undefined);
+    assert.deepEqual(r.calls[0].body.reasoning, { summary: 'auto' }, 'بلا جهد مفروض، والملخّص للعرض');
     assert.equal(r.calls[0].body.max_output_tokens, 128000); // v-owner-cap-open
   });
   reset();
@@ -126,7 +126,7 @@ test('٣. المباشر: جهد المالك المرفوض (400) = إعادة 
   await withDirect(async () => {
     const r = await run('omran', { model: 'openai/gpt-6-luna', messages: ask(HARD), effort: 'max' }, [() => err400("Unsupported value: 'reasoning.effort' does not support 'max' with this model."), () => oaResp('تم', 'gpt-6-luna')]);
     assert.equal(r.calls.length, 2);
-    assert.deepEqual(r.calls[0].body.reasoning, { effort: 'max' });
+    assert.deepEqual(r.calls[0].body.reasoning, { effort: 'max', summary: 'auto' });
     assert.equal(r.calls[1].body.reasoning, undefined, 'افتراضيّ الموديل، لا none');
     assert.ok(!r.events.some((e) => e.k === 'stModelFallback'));
     assert.ok(ot.__deadEffort.has('gpt-6-luna'), 'يُذكر');

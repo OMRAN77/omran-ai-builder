@@ -67,7 +67,7 @@ const TERRA_400 = JSON.stringify({ error: { message: 'Function tools with reason
 const OR_402 = JSON.stringify({ type: 'error', error: { type: 'billing_error', message: 'This request would exceed your available credit' } });
 
 /* خادم مزيّف يوجّه حسب العنوان — يتصرّف كالحقيقيّ في الحالتين */
-async function run({ provider, model, messages, responses, chatCompletions }) {
+async function run({ provider, model, messages, responses, chatCompletions, effort }) {
   const calls = [];
   const save = global.fetch;
   let ri = 0;
@@ -88,7 +88,7 @@ async function run({ provider, model, messages, responses, chatCompletions }) {
     return new Response('{"error":"unexpected ' + u + '"}', { status: 500 });
   };
   let written = '';
-  const req = { method: 'POST', headers: {}, body: { messages, token: token('omran'), provider, model } };
+  const req = { method: 'POST', headers: {}, body: Object.assign({ messages, token: token('omran'), provider, model }, effort ? { effort } : {}) };
   const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('unexpected json ' + JSON.stringify(v)); }, write(c) { written += String(c || ''); }, end() {}, flush() {} };
   try { await chat(req, res); } finally { global.fetch = save; }
   const events = written.split('\n').filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch (e) { return null; } }).filter(Boolean);
@@ -157,7 +157,7 @@ test('٣. تحويل الجسم: تعليمات، مدخلات، صورة، أد
   assert.equal(b.stream, true);
   assert.equal(b.store, false, 'لا تُخزَّن محادثات المالك عند المزوّد');
   // v-owner-gpt-all: output_config.effort لا يصل oa-direct إلّا من جهد المالك المختار لـGPT ← reasoning.effort؛ بقيّة حقول أنثروبيك تُسقط
-  assert.deepEqual(b.reasoning, { effort: 'low' });
+  assert.deepEqual(b.reasoning, { effort: 'low', summary: 'auto' });
   for (const k of ['max_tokens', 'messages', 'system', 'thinking', 'output_config', 'reasoning_effort']) assert.equal(b[k], undefined, k);
 });
 
@@ -299,6 +299,32 @@ test('١٠. رصيد نفد: سجلّ المالك يسمّي الحساب ال�
     assert.ok(!log.some((e) => /^swallowed:chat\/plan-fallback-/.test(e.route)), JSON.stringify(log.map((e) => e.route + ' ' + String(e.message).slice(0, 60))));
     assert.ok(final && /^402 OpenRouter · openai\/gpt-6-sol: /.test(final.message), final && final.message);
   } finally { delete process.env.OPENAI_API_KEY; }
+});
+
+test('١٢. ملخّص responses يصل المالك think.s والجواب منفصل، و٤٠٠ على summary يسقطه ويُبقي الجهد', async () => {
+  process.env.OPENAI_API_KEY = 'sk-openai-test';
+  od.__summaryOff.clear();
+  try {
+    const stream = rsse([
+      { type: 'response.created', response: { model: 'gpt-6-sol', status: 'in_progress' } },
+      { type: 'response.reasoning_summary_text.delta', delta: 'أراجع السؤال' },
+      { type: 'response.reasoning_summary_text.delta', delta: '\nثمّ أجيب' },
+      { type: 'response.output_text.delta', output_index: 1, delta: 'باريس' },
+      { type: 'response.completed', response: { status: 'completed', usage: { input_tokens: 8, output_tokens: 3 } } },
+    ]);
+    const r = await run({ provider: 'openai', messages: ask('حلّل لي عاصمة فرنسا باختصار'), responses: [() => stream] });
+    assert.deepEqual(r.calls[0].body.reasoning, { summary: 'auto' });
+    assert.equal(r.calls[0].body.reasoning.effort, undefined);
+    const talk = r.events.find((e) => e.think && e.think.s);
+    assert.ok(talk && talk.think.s.includes('أراجع السؤال') && talk.think.s.includes('ثمّ أجيب'), JSON.stringify(talk));
+    assert.equal(r.text, 'باريس');
+    const bad = await run({ provider: 'openai', model: 'openai/gpt-6-sol', messages: ask('حلّل لي هذا'), effort: 'high', responses: [
+      () => new Response(JSON.stringify({ error: { message: 'reasoning.summary is not supported for this model', type: 'invalid_request_error' } }), { status: 400 }),
+      (body) => { assert.deepEqual(body.reasoning, { effort: 'high' }); return rText('تم'); },
+    ] });
+    assert.equal(bad.text, 'تم');
+    assert.ok(od.__summaryOff.has('gpt-6-sol'));
+  } finally { delete process.env.OPENAI_API_KEY; od.__summaryOff.clear(); }
 });
 
 test('١١. 400 يذكر «model» لسبب غير وجوده (نافذة السياق) → رجوع للافتراضيّ كما كان، لكن بلا مسح اختيار المالك', async () => {

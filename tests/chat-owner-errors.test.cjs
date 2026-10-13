@@ -261,9 +261,10 @@ test('١١. C5 على المسار المباشر (oa-direct): تفكير الم
   Date.now = () => realNow() + skew;
   let txt;
   try { txt = await new Response(od.responsesToAnthropicStream(up, 'fb')).text(); } finally { Date.now = realNow; }
-  assert.ok((txt.match(/^: up$/gm) || []).length >= 2, 'تعليقات حياة أثناء التفكير الصامت');
+  assert.ok((txt.match(/^: up$/gm) || []).length >= 2, 'تعليقات حياة أثناء التفكير');
   const evs = txt.split('\n').filter((l) => l.startsWith('data: ')).map((l) => JSON.parse(l.slice(6)));
-  assert.equal(evs.filter((e) => e.type === 'content_block_delta').map((e) => e.delta.text).join(''), 'الجواب', 'الأحداث كما هي');
+  assert.equal(evs.filter((e) => e.delta && e.delta.type === 'thinking_delta').map((e) => e.delta.thinking).join(''), 'يفكّرما زال', 'الملخّص كتلة تفكير');
+  assert.equal(evs.filter((e) => e.type === 'content_block_delta').map((e) => e.delta.text).join(''), 'الجواب', 'الجواب منفصل عن الملخّص');
   assert.equal(evs[evs.length - 1].type, 'message_stop');
 });
 
