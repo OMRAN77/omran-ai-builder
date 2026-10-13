@@ -265,7 +265,8 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   html:not(.mobile-ui) #eduIntroCard, html:not(.mobile-ui) #eduChatHint{z-index:9990 !important;}
   /* v410: (كمبيوتر فقط) الشكل — إحياء البطاقات + هالة تملأ الفراغ + تلطيف زرّ إغلاق إعلان التعليم */
   html:not(.mobile-ui) body.omranWelcome #omranHero{position:relative;}
-  html:not(.mobile-ui) body.omranWelcome #omranHero::before{content:""; position:absolute; inset:0; pointer-events:none; z-index:0; background:radial-gradient(closest-side at 50% 46%, rgba(var(--accent-tint-rgb),.075), rgba(var(--accent-tint-rgb),.026) 55%, transparent 78%);}
+  /* v-no-center-glow (المالك ١٣ أكتوبر، لقطة الشاشة الفارغة: «شيل الوهج الي في الوسط فقط»): أُزيلت هالة #omranHero::before
+     (تدرّج دائريّ خلف الترحيب في وسط المحادثة). الإطارات والنجوم وتوهّج أسفل اللوحة باقية. */
   html:not(.mobile-ui) #omranToolsGrid{position:relative; z-index:1;}
   /* v411: (كمبيوتر فقط) تقليص الفراغ فوق البطاقات — كان ٢٠٩px من التمركز الرأسيّ */
   html:not(.mobile-ui) body.omranWelcome #omranHero{justify-content:flex-start; padding-top:48px;}
