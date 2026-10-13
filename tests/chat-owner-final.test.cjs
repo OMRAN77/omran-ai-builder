@@ -1,6 +1,7 @@
 // tests/chat-owner-final.test.cjs — v-claude-code-level C1 (المالك ١٠ أكتوبر: «ولا يبني ولا يقرى… ما يعطيني شي»):
 // حلقة أدوات المالك كانت تنتهي بعد ١٢ خطوة أو ٢٤٠ ث بـ{done} بلا حرف، فيرى «ما قدرت أردّ الحين». الآن آخر خطوة (أو آخر دقيقة
 // من المهلة) تُرسل بتنبيه «اكتب الجواب الآن» والأدوات كما هي؛ وإن خرجت الحلقة بلا جواب فالسبب للمالك.
+// v-prov-close-read: قراءة تتجاوز MAX_MS كانت تقطع قبل الختام — ٢ج/٢د.
 // مسار أنثروبيك بلا tool_choice (تغييره يُبطل كاش الرسائل كلّها): الطلب الختاميّ = السابق + إلحاق فقط؛ وأداة طُلبت رغم التنبيه
 // لا تُنفَّذ. المسار المباشر (oa-direct) بـtool_choice none.
 // يشغّل api/_lib/chat.js الحقيقيّ بـfetch مزيّف (نمط provider-level)، وcallChatWithTools الحقيقيّ (app-18) في vm.
@@ -148,6 +149,40 @@ test('٢ب. أداة في خطوة الختام بالوقت ← لا تُنفَ
     const stop = r.events.find((e) => e.ownerStop);
     assert.ok(stop && /انتهت مهلة الردّ \(20 ث\) قبل الجواب النهائيّ/.test(stop.error), JSON.stringify(stop));
   } finally { Date.now = realNow; delete process.env.CHAT_MAX_MS; }
+});
+
+test('٢ج. أداة تتجاوز المهلة ← خطوة ختام بعدها والجواب يصل (لا قطع بعد القراءة)', async () => {
+  process.env.CHAT_MAX_MS = '20000';
+  const realNow = Date.now; let skew = 0;
+  Date.now = () => realNow() + skew;
+  try {
+    const r = await run('omran', { provider: 'claude', messages: Q }, (u, b) => {
+      if (!isAnth(u)) return new Response('{}', { status: 404 });
+      if (isFinal(b)) return T.text('الجواب بعد القراءة.');
+      skew += 21000;
+      return T.tool('read_github', { url: 'OMRAN77/omran-ai-builder', path: 'late.js' });
+    });
+    const anth = r.calls.filter((c) => isAnth(c.url));
+    assert.equal(anth.length, 2, 'نداء قراءة ثمّ ختام (وُجد ' + anth.length + ')');
+    assert.ok(isFinal(anth[1].body), 'الثاني ختاميّ رغم تجاوز المهلة');
+    assert.equal(toolLog.length, 1, 'القراءة نُفّذت قبل الختام');
+    assert.equal(r.text, 'الجواب بعد القراءة.' + resumeMark()); // v-owner-resume: ختام الميزانيّة بلا رفع يلحق سطر «كمل»
+    assert.ok(!r.events.some((e) => e.ownerStop), 'الجواب وصل — لا سبب توقّف');
+  } finally { Date.now = realNow; delete process.env.CHAT_MAX_MS; }
+});
+
+test('٢د. overTime: بعد المهلة ختام واحد إن بقي حدّ الدالّة، وإلّا قطع', () => {
+  const ol = require(rp('api/_lib/owner-loop.js'));
+  const s = ol.state(true);
+  const t0 = Date.now() - 250000;
+  assert.equal(ol.overTime(s, { t0, MAX_MS: 240000, steps: 1 }), false, 'يسمح بالختام');
+  s.final = true;
+  assert.equal(ol.overTime(s, { t0, MAX_MS: 240000, steps: 1 }), true, 'بعد الختام يقطع');
+  s.final = false;
+  assert.equal(ol.overTime(ol.state(false), { t0, MAX_MS: 240000, steps: 1 }), true, 'غير المالك يقطع');
+  assert.equal(ol.overTime(s, { t0, MAX_MS: 240000, steps: 0 }), true, 'بلا خطوة سابقة يقطع');
+  assert.equal(ol.overTime(s, { t0: Date.now(), MAX_MS: 240000, steps: 1 }), false, 'قبل المهلة لا قطع');
+  assert.equal(ol.overTime(s, { t0: Date.now() - 280000, MAX_MS: 240000, steps: 1 }), true, 'حدّ الدالّة لا يكفي');
 });
 
 test('٣. موديل يطلب أداة رغم التنبيه: أداة الخطوة ١٢ لا تُنفَّذ، والسبب ظاهر للمالك (لا «ما قدرت أردّ الحين»)', async () => {

@@ -3628,7 +3628,7 @@ async function __sendPromptCore(){
     try{
       if(!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return false;
       if(window.__omMode || window.__chatToolsOn === false) return false;
-      const __p = localStorage.getItem('aiapp_provider') || 'openai';
+      const __p = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
       if(window.__agentModeOn === true && __p === 'claude') return false;
       if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(__p) === -1) return false;
       if(pendingAttachments.some(a => a && a.isImage) && __imgFormatIntent(text)) return false;
@@ -6926,7 +6926,7 @@ DESIGN RULES (non-negotiable):
       };
       // المزود المختار من المستخدم يرد بنفسه (GPT هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
       const isBuildTask = __routeFix && !__gateNoBuild;
-      const __selProv = localStorage.getItem('aiapp_provider') || 'openai';
+      const __selProv = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
       // الطلب يروح خلف الكواليس للمزود المتخصص، والواجهة تعرض المزود الافتراضي كما هو.
       // ٦ أغسطس: الاختيار الصريح يُحترم فقط حيث توجد قائمة تُختار منها (الجوال).
