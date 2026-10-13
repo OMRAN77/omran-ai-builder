@@ -1638,7 +1638,7 @@ module.exports = async (req, res) => {
     if (__turnKa) { const __endRaw = res.end; res.end = function () { __turnKaStop(); return __endRaw.apply(res, arguments); }; } // كلّ خروج (done، catch، خروج مبكّر في الحلقة) يمرّ بـres.end فلا يبقى نبض حيّ بعده (chat-owner-errors يعدّ المؤقّتات)
           while (steps < MAX_STEPS) {
       if (__cut.gone) break; /* v-tokens-close: العميل رحل — لا جولة جديدة */ if (__ol.overTime(__olS, { t0, MAX_MS, steps })) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; } /* v-prov-close-read: بعد قراءة تجاوزت المهلة خطوة ختام لا قطع */
-      steps++; __ol.beginStep(__olS, { steps, MAX_STEPS, t0, MAX_MS, convo, tools: toolTurn && !(body && body.noTools === true), send }); // v-claude-code-level C1: الخطوة الأخيرة = جواب ختاميّ
+      steps++; __ol.beginStep(__olS, { steps, MAX_STEPS, t0, MAX_MS, convo, tools: toolTurn && !(body && body.noTools === true), send, editAsk: __ownerReq && require('./owner-carry.js').ACTION_RE.test(lastUserText), pushed: __ownerOps.pushes > 0 }); // v-claude-code-level C1 · v-prov-finish-edit: طلب تعديل بلا رفع = ختام يبقي الأدوات
 
       // v-img-read: إعداد دور الصورة (نموذج/جهد) يُجرَّب أوّلًا؛ 400 عليه = إعادة فوريّة
       // بالطلب العاديّ نفسه قبل أيّ هبوط إلى مسار العميل الاحتياطيّ.
@@ -1961,9 +1961,9 @@ module.exports = async (req, res) => {
       if (__oa && (__oa.kind === 'stall' || __oa.kind === 'stop')) { send({ error: __oa.msg, ownerStop: true }); res.end(); return; }
       if (__oa && __oa.kind === 'continue') { send({ status: __oa.status }); continue; }
       if (__oa && __oa.kind === 'note') { send({ error: __oa.msg, ownerStop: true }); __ownerCarried = true; }
-      if (__olS.final) __ownerCarried = true; // الجواب الختاميّ لا يُعاد بـ«نفّذ الآن»
+      if (__olS.final && !(__olS.editClose && !__ownerOps.pushes)) __ownerCarried = true; // الجواب الختاميّ لا يُعاد بـ«نفّذ الآن» — إلّا ختام تعديل بلا رفع
       /* v-owner-carry: للمالك — نموذج كتب خطّته («أقرأ… أتتبّع… قبل الحذف») وتوقّف بلا تنفيذ يُعاد للحلقة مرّة واحدة. */
-      if (stopReason !== 'tool_use' && __ownerReq && toolTurn && !__ownerCarried && steps < MAX_STEPS && Date.now() - t0 < MAX_MS - 45000) {
+      if (stopReason !== 'tool_use' && __ownerReq && toolTurn && !__ownerCarried && steps < MAX_STEPS && Date.now() - t0 < __ol.FN_BUDGET_MS - 20000) {
         const __oc = require('./owner-carry.js');
         const __stepText = blocks.filter((b) => b && b.type === 'text').map((b) => b.text || '').join('');
         const __prevOwner = (function(){ try{ const us = (messages || []).filter((m) => m && m.role === 'user'); const p = us[us.length - 2]; if (!p) return ''; return typeof p.content === 'string' ? p.content : (Array.isArray(p.content) ? p.content.filter((x) => x && x.type === 'text').map((x) => x.text || '').join(' ') : ''); }catch(e){ return ''; } })();
@@ -2172,7 +2172,8 @@ module.exports = async (req, res) => {
       convo.push({ role: 'user', content: toolResults });
     }
 
-    if (__olS.on) send({ error: __ol.exitText({ t0, MAX_MS, MAX_STEPS }), ownerStop: true }); // v-claude-code-level C1: لا خروج صامت — السبب للمالك (تحت النصّ إن وُجد)
+    if (__olS.on && !__ownerOps.pushes) send({ error: __ol.exitText({ t0, MAX_MS, MAX_STEPS }), ownerStop: true }); // v-claude-code-level C1: لا خروج صامت — السبب للمالك (تحت النصّ إن وُجد). رفعة في ختام التعديل = الشغل تمّ، لا «انتهت الميزانيّة»
+    else if (__ownerReq && __ownerOps.prs && !__ownerOps.merges && !/[اأإ]دمج/.test(fullText)) { const __mq = '\n\nأدمج وأنشر؟'; send({ delta: __mq }); fullText += __mq; }
     await __saveGenReply();
     __turnKaStop(); send({ done: true });
     await __meterTurn(); // v-cost-meter: خروج بعد حدّ الجولات أو المهلة · tok-3: بعد done

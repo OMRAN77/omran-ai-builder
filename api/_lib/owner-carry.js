@@ -19,8 +19,10 @@ function stalledPlan(text, opts) {
   if (!t || t.length > 1800) return false;
   if (/[?؟]/.test(t.slice(-220))) return false; // يسأل المالك — توقّف مشروع
   if (DONE_RE.test(t) || o.pushed) return false;
-  if (!INTENT_RE.test(t)) return false;
-  return !!(o.usedTools || ACTION_RE.test(String(o.ownerText || '')) || ACTION_RE.test(String(o.prevOwnerText || '')));
+  const asked = ACTION_RE.test(String(o.ownerText || '')) || ACTION_RE.test(String(o.prevOwnerText || ''));
+  if (INTENT_RE.test(t)) return !!(o.usedTools || asked);
+  /* v-prov-finish-edit (المالك ١٣ أكتوبر، ثلاث محاولات بلا رفعة): قرأ ثمّ وصف بلا صيغة «سأ…»، فالحمل السابق ما اشتغل. طلب تعديل + قراءة بلا رفع = نفّذ الآن. */
+  return !!(o.usedTools && asked);
 }
 
 const CARRY_NOTE = '[تنبيه النظام — ليس من المالك]: ردّك السابق وصف ما ستفعله ثمّ توقّف بلا تنفيذ. نفّذ الآن بأدواتك في هذا الردّ نفسه '

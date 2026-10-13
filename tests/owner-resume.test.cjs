@@ -38,6 +38,9 @@ const toolLog = [];
 require(rp('api/_lib/github-read.js')).readGithub = async (input) => { toolLog.push(input); return 'FILE ' + (input.path || '') + '\n1| // محتوى'; };
 const le = require(rp('api/_lib/log-error.js'));
 le.logErrorAndFlush = async () => {}; le.logError = () => {};
+const GE = require(rp('api/_lib/github-edit.js'));
+const edits = [];
+GE.editFiles = async (input) => { edits.push(input); return { repo: 'OMRAN77/omran-ai-builder', branch: 'omran-agent/fix', commit: 'abcdef1234567', commitUrl: 'https://github.com/OMRAN77/omran-ai-builder/commit/abcdef1', files: 1, prUrl: 'https://github.com/OMRAN77/omran-ai-builder/pull/88', prNumber: 88 }; };
 const chat = require(rp('api/_lib/chat.js'));
 const ol = require(rp('api/_lib/owner-loop.js'));
 const { CARRY_NOTE } = require(rp('api/_lib/owner-carry.js'));
@@ -51,14 +54,16 @@ const resp = (evs) => new Response(evs.map((e) => 'event: ' + e.type + '\ndata: 
 const done = { type: 'response.completed', response: { status: 'completed', usage: { input_tokens: 10, output_tokens: 2 } } };
 const R = {
   text: (t) => resp([{ type: 'response.created', response: { model: 'gpt-6-astra' } }, { type: 'response.output_text.delta', output_index: 0, delta: t }, done]),
-  read: (p) => {
-    const id = 'call_' + Math.random().toString(36).slice(2, 8), args = JSON.stringify({ url: 'OMRAN77/omran-ai-builder', path: p });
+  call: (name, input) => {
+    const id = 'call_' + Math.random().toString(36).slice(2, 8), args = JSON.stringify(input);
     return resp([{ type: 'response.created', response: { model: 'gpt-6-astra' } },
-      { type: 'response.output_item.added', output_index: 0, item: { type: 'function_call', call_id: id, name: 'read_github', arguments: '' } },
+      { type: 'response.output_item.added', output_index: 0, item: { type: 'function_call', call_id: id, name, arguments: '' } },
       { type: 'response.function_call_arguments.delta', output_index: 0, delta: args },
-      { type: 'response.output_item.done', output_index: 0, item: { type: 'function_call', call_id: id, name: 'read_github', arguments: args, status: 'completed' } }, done]);
+      { type: 'response.output_item.done', output_index: 0, item: { type: 'function_call', call_id: id, name, arguments: args, status: 'completed' } }, done]);
   },
+  read: (p) => R.call('read_github', { url: 'OMRAN77/omran-ai-builder', path: p }),
 };
+const EDIT = { repo: 'OMRAN77/omran-ai-builder', edits: [{ path: 'js/app-13-stocks-init.js', old: 'a', new: 'b' }], message: 'تصحيح' };
 async function run(messages, route) {
   toolLog.length = 0;
   const calls = [], out = [];
@@ -89,11 +94,12 @@ const ASK = 'بطاقات الأزياء: «عماني بكمة» و«بشت و�
 const SUMMARY = 'ما رفعت تعديل للحين: انتهت مهلة الأدوات بعد القراءة.';
 const withEnv = async (fn) => { process.env.OPENAI_API_KEY = 'sk-openai-test'; process.env.CHAT_MAX_STEPS = '4'; try { return await fn(); } finally { delete process.env.OPENAI_API_KEY; delete process.env.CHAT_MAX_STEPS; } };
 
-test('١. الدور الأوّل: يقرأ حتّى تنتهي الميزانيّة فيُجبر على الختام بلا أدوات (tool_choice none)، وتحت ملخّصه سطر الخادم «اكتب «كمل»»', async () => {
+test('١. الدور الأوّل: طلب تعديل — ختام الميزانيّة يُبقي الأدوات (لا tool_choice none) بتنبيه التنفيذ، وتحت الملخّص سطر «كمل»', async () => {
   await withEnv(async () => {
-    const r = await run([{ role: 'user', content: ASK }], (b) => (b.tool_choice === 'none' ? R.text(SUMMARY) : R.read('js/app-13-stocks-init.js')));
+    const r = await run([{ role: 'user', content: ASK }], (b) => (lastUserText(b).includes('نفّذ التعديل الآن') ? R.text(SUMMARY) : R.read('js/app-13-stocks-init.js')));
     assert.equal(r.calls.length, 4, 'أربع خطوات: ثلاث قراءات ثمّ الختام');
-    assert.equal(r.calls[3].body.tool_choice, 'none', 'الختام بلا أدوات على المسار المباشر');
+    assert.equal(r.calls[3].body.tool_choice, undefined, 'ختام التعديل يُبقي الأدوات على المسار المباشر');
+    assert.ok(lastUserText(r.calls[3].body).includes(ol.FINAL_EDIT_NOTE), 'تنبيه التنفيذ لا الملخّص');
     assert.equal(toolLog.length, 3);
     assert.ok(r.text.startsWith(SUMMARY), r.text);
     assert.ok(r.text.includes(ol.RESUME_KEY), 'سطر الإكمال تحت الملخّص: ' + r.text);
@@ -134,7 +140,7 @@ test('٤. لا تنبيه بلا سببه: «كمل» بعد ردّ عاديّ،
 });
 
 test('٥. كلمات الإكمال: الصيغ الخليجيّة القصيرة وحدها، لا جملة فيها طلب آخر', () => {
-  for (const t of ['كمل', 'كمّل', 'اكمل', 'أكمل', 'كملها', 'كمّلها', 'تابع', 'واصل', 'يلا كمل', 'طيب كمل', 'كمل الشغل', 'كمل المهمه', 'كمل.', 'continue', 'كمل\n\n[مرفقات: a.png]']) assert.ok(ol.isResume(t), t);
+  for (const t of ['كمل', 'كمّل', 'اكمل', 'أكمل', 'كملها', 'كمّلها', 'تابع', 'واصل', 'يلا كمل', 'طيب كمل', 'كمل الشغل', 'كمل المهمه', 'كمل التعديل', 'كمل التعديلات', 'كمل من حيث وقف', 'كمل.', 'continue', 'كمل\n\n[مرفقات: a.png]']) assert.ok(ol.isResume(t), t);
   for (const t of ['كمل الصورة بالأزرق وغيّر الخلفية', 'شو صار؟', 'اكمل قراءة الكتاب لي من الصفحة ٣', '']) assert.ok(!ol.isResume(t), t);
 });
 
@@ -145,4 +151,38 @@ test('٦. لا سطر إكمال إن رُفع تعديل في الدور، وس
   assert.ok(ol.exitText({ t0: Date.now(), MAX_MS: 240000, MAX_STEPS: 12, steps: 12 }).includes(ol.RESUME_KEY));
   assert.ok(ol.FINAL_NOTE.startsWith('[تنبيه النظام — ليس من المالك]: انتهت ميزانيّة الأدوات'), 'بداية التنبيه كما كانت');
   assert.ok(/ما بقي/.test(ol.FINAL_NOTE), 'الختام يطلب ما بقي بالتحديد كي يكمل منه الدور التالي');
+});
+
+test('٧. ختام طلب التعديل: أداة edit_github تُنفَّذ (كانت تُرفض في afterStream)، ولا سبب توقّف بعد الرفعة', async () => {
+  await withEnv(async () => {
+    edits.length = 0;
+    const r = await run([{ role: 'user', content: ASK }], (b) => (lastUserText(b).includes('نفّذ التعديل الآن') ? R.call('edit_github', EDIT) : R.read('js/app-13-stocks-init.js')));
+    assert.equal(edits.length, 1, 'نُفّذ التعديل في خطوة الختام');
+    assert.ok(!r.events.some((e) => e.ownerStop), 'رفعة = لا «انتهت الميزانيّة»');
+    assert.ok(r.text.includes('أدمج وأنشر؟'), 'السؤال بعد الرفعة: ' + r.text);
+  });
+});
+
+test('٨. إعادة الطلب نفسه بعد سطر «كمل» تحمل تنبيه الإكمال (ثلاث محاولات كانت تصل بلاه)', async () => {
+  await withEnv(async () => {
+    const hist = [{ role: 'user', content: ASK }, { role: 'assistant', content: SUMMARY + ol.resumeMark() }, { role: 'user', content: ASK }];
+    const r = await run(hist, (b, n) => (n === 1 ? R.read('js/app-13-stocks-init.js') : R.text('رفعت التعديل.')));
+    assert.ok(lastUserText(r.calls[0].body).includes(ol.RESUME_NOTE), 'التنبيه مع إعادة الطلب: ' + lastUserText(r.calls[0].body).slice(0, 300));
+  });
+});
+
+test('٩. beginStep/shape/afterStream: طلب تعديل يُبقي الأدوات ويُنفِّذها؛ السؤال يبقى tool_choice none', () => {
+  const convo = [{ role: 'user', content: [{ type: 'text', text: 'x' }] }];
+  const s = ol.state(true);
+  ol.beginStep(s, { steps: 12, MAX_STEPS: 12, t0: Date.now(), MAX_MS: 240000, convo, tools: true, editAsk: true, pushed: false });
+  assert.equal(s.editClose, true);
+  assert.ok(convo[0].content.some((c) => c.text === ol.FINAL_EDIT_NOTE), 'تنبيه التنفيذ');
+  assert.equal(ol.shape({ tools: [{ name: 'edit_github' }] }, s, true).tool_choice, undefined, 'لا none');
+  assert.equal(ol.afterStream(s, { stopReason: 'tool_use', blocks: [{ type: 'tool_use', name: 'edit_github' }], steps: 12, MAX_STEPS: 12, t0: Date.now(), MAX_MS: 240000 }), null, 'الأداة تُنفَّذ');
+  const q = [{ role: 'user', content: [{ type: 'text', text: 'q' }] }];
+  const s2 = ol.state(true);
+  ol.beginStep(s2, { steps: 12, MAX_STEPS: 12, t0: Date.now(), MAX_MS: 240000, convo: q, tools: true, editAsk: false, pushed: false });
+  assert.equal(s2.editClose, false);
+  assert.equal(ol.shape({ tools: [{ name: 'read_github' }] }, s2, true).tool_choice.type, 'none');
+  assert.equal(ol.afterStream(s2, { stopReason: 'tool_use', blocks: [{ type: 'tool_use' }], steps: 12, MAX_STEPS: 12, t0: Date.now(), MAX_MS: 240000 }).kind, 'stop');
 });
