@@ -635,7 +635,7 @@ module.exports = async (req, res) => {
     if (__optForceEngine === 'gpt') {
       const __gptB64 = await openaiRescueImage();
       if (__gptB64) { await deliver({ b64: __gptB64, mime: 'image/png', engine: 'openai' }, null); return; } /* الخام خام: بلا محرّك آخر ولا رفض */
-      await refundImageCharge();
+      await refundImageCharge(); try { await require('./log-error.js').logErrorAndFlush('maha-image:gpt-forced-failed', new Error('image_generation_busy'), { openai: (lastRescueErr || 'no-rescue').replace(/sk-[A-Za-z0-9_*\-]{6,}/g, 'sk-…').slice(0, 200) }); } catch (e) { /* guard-ok — السجلّ لا يوقف الردّ */ } // v-owner-img-why: فشل GPT المفروض كان لا يُسجَّل — سببه في سجلّ الأخطاء كالمسار العاديّ
       res.status(502).json({ error: 'image_generation_busy', retryable: true, __diag: process.env.IMG_DIAG === 'off' ? undefined : { forced: 'gpt', openai: (lastRescueErr || 'no-rescue').slice(0, 160) } });
       return;
     }
