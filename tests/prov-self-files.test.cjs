@@ -44,7 +44,7 @@ const textTurn = (t) => sse([start(), { type: 'content_block_start', index: 0, c
 const sysOf = (b) => (typeof b.system === 'string' ? b.system : Array.isArray(b.system) ? b.system.map((x) => x.text || '').join('') : '');
 
 // دور محادثة: script = دوال تُرجع ردّ المزوّد بالترتيب؛ يرجع الأجسام المرسَلة ونتائج الأدوات العائدة
-async function turn(user, provider, text, script) {
+async function turn(user, provider, text, script, history) {
   usageUser = user;
   const bodies = [];
   const save = global.fetch;
@@ -55,7 +55,7 @@ async function turn(user, provider, text, script) {
     bodies.push(JSON.parse(init.body));
     return (script[Math.min(i++, script.length - 1)])();
   };
-  const req = { method: 'POST', headers: {}, body: { token: token(user), provider, messages: [{ role: 'user', content: text }] } };
+  const req = { method: 'POST', headers: {}, body: { token: token(user), provider, messages: history || [{ role: 'user', content: text }] } };
   const res = { setHeader() {}, status() { return this; }, json() { return this; }, write() { return true; }, end() {}, flushHeaders() {} };
   try { await chat(req, res); } finally { global.fetch = save; }
   const toolResults = bodies.slice(1).map((b) => JSON.stringify(b.messages)).join(' ');
@@ -125,7 +125,7 @@ test('published lessons reach the free chain and the non-owner agent; the agent 
   const chatSrc = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
   const agentSrc = fs.readFileSync(path.join(root, 'api/_lib/agent.js'), 'utf8');
   assert.ok(chatSrc.includes("const __fr = await streamFreeChain({ system: __rawOwner && !__freeLane ? '' : PERSONA_NOTE + '\\n' + baseSystem + nowNote(body && body.tz) + __provSelfSys"), 'السلسلة المجّانيّة تأخذ الدروس');
-  assert.ok(agentSrc.includes("system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude')"), 'الوكيل لكلّ مستخدم');
+  assert.ok(/system \+= await require\('\.\/prov-self\.js'\)\.systemBlocks\(isOwner\(runUser\), 'claude'/.test(agentSrc), 'الوكيل لكلّ مستخدم');
   assert.ok(!/if \(isOwner\(runUser\)\) \{ try \{ system \+= await require\('\.\/prov-self\.js'\)/.test(agentSrc), 'لا شرط مالك على الدروس في الوكيل');
   db.clear(); PS.__resetCache();
   db.set('db/lessons.json', { items: [{ id: 'a', text: 'منشور', scope: 'all' }, { id: 'b', text: 'تجربة', scope: 'owner' }] });
@@ -159,6 +159,56 @@ test('«عجبني» generalizes in one step: saved and published to every user 
   assert.equal(db.get('db/lessons.json').items[1].scope, 'all', '«عجبني» تنشر درسًا سابقًا كـ«عمّم»');
   const desc = liked.bodies[0].tools.find((t) => t.name === 'teach_users');
   assert.ok(desc.input_schema.properties.action.enum.includes('generalize') && /«عجبني» = تعميم بخطوة واحدة/.test(desc.description), 'الأداة تشرح الخطوة الواحدة');
+});
+
+// v-owner-gen (المالك ١٣ أكتوبر): «عمّم» من أي مزوّد يحفظ ردوده كما هي (قصير وطويل وكود) عند العشرة في محادثات المالك فقط.
+// «لا تعمّم» لا تحفظ. كلام المستخدم لا يُنسخ. المفتاح يُحذف. فوق السقف يسقط الأقدم. المحادثة الحاليّة تبقى والسقف ١٦٠ ألف توكن.
+test('«عمّم» copies that provider’s replies to every provider for the owner only, within 160k tokens', async () => {
+  db.clear(); PS.__resetCache();
+  const CODE = 'function add(a, b) {\n  return a + b;\n}';
+  const FACT = 'سعر الغرام ٤٢٠ درهم.';
+  const REPLY = CODE + '\n' + FACT + '\nالمفتاح sk-ant-api03-abcdefghijklmnop';
+  const hist = [
+    { role: 'user', content: 'سرّ المستخدم الخاص لا يُحفظ' },
+    { role: 'assistant', content: REPLY },
+    { role: 'user', content: 'عمّم على الجميع' },
+  ];
+  await turn('omran', 'deepseek', '', [() => textTurn('تم')], hist);
+  const saved = db.get('db/owner-gen.json').items;
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].by, 'deepseek');
+  assert.ok(saved[0].text.includes(CODE) && saved[0].text.includes(FACT), 'الكود والمعلومة كما هما');
+  assert.ok(!saved[0].text.includes('سرّ المستخدم'), 'كلام المالك لا يُنسخ');
+  assert.ok(!saved[0].text.includes('sk-ant-'), 'المفتاح يُحذف');
+  assert.ok(saved[0].text.includes('خزنة الأسرار'), 'علامة حذف السرّ تبقى');
+  for (const p of ['claude', 'gemini', 'openai', 'groq', 'mistral', 'kimi', 'cohere', 'openrouter']) {
+    const r = await turn('omran', p, 'كمّل', [() => textTurn('…')]);
+    assert.ok(r.sys.includes(CODE) && r.sys.includes(FACT) && r.sys.includes('[معلومات معمّمة'), 'تصل المالك · ' + p);
+  }
+  const tenth = await PS.systemBlocks(true, 'perplexity');
+  assert.ok(tenth.includes(CODE), 'المزوّد العاشر يقرأ المخزن نفسه');
+  const user = await turn('vipuser', 'gemini', 'كمّل', [() => textTurn('…')]);
+  assert.ok(!user.sys.includes(CODE) && !user.sys.includes(FACT), 'المستخدم لا يراها');
+  const neg = await turn('omran', 'openai', '', [() => textTurn('…')], [
+    { role: 'assistant', content: 'لا تحفظ هذي الجملة.' },
+    { role: 'user', content: 'لا تعمّم' },
+  ]);
+  assert.ok(!neg.sys.includes('لا تحفظ هذي الجملة'));
+  assert.equal(db.get('db/owner-gen.json').items.length, 1, 'النفي لا يضيف');
+  await turn('omran', 'groq', '', [() => textTurn('…')], hist);
+  assert.equal(db.get('db/owner-gen.json').items.length, 1, 'التكرار لا يُضاعف');
+  assert.equal(PS.GEN_CHARS, 400000);
+  assert.equal(PS.ownerSaidGeneralize('عمّم على الجميع'), true);
+  assert.equal(PS.ownerSaidGeneralize('عمم'), true);
+  assert.equal(PS.ownerSaidGeneralize('لا تعمّم'), false);
+  assert.equal(PS.ownerSaidGeneralize('عجبني الأسلوب'), false, '«عجبني» وحدها لا تنسخ الردّ');
+  const trimmed = PS.trimGen([{ text: 'قديم' }, { text: 'جديد' }], 4);
+  assert.deepEqual(trimmed.map((x) => x.text), ['جديد']);
+  assert.equal(PS.trimGen([{ text: 'ABCDEFGH' }], 4)[0].text, 'EFGH');
+  const blk = PS.genBlock([{ text: 'أ'.repeat(80) }, { text: 'ب'.repeat(80) }], PS.GEN_HEAD.length + 80, '');
+  assert.ok(blk.includes('ب') && !blk.includes('أ'), 'الأقدم يُنقص والأجدد يبقى');
+  const huge = 'س'.repeat(300000);
+  assert.equal(PS.genBudget([{ role: 'assistant', content: huge }]), 100000, 'المحادثة تبقى والباقي للمعمّم');
 });
 
 test('the module: «عمّم» and its negation, no personal data in a lesson, no keys in a file, caps', async () => {
