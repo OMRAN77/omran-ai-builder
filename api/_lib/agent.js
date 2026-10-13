@@ -979,7 +979,7 @@ module.exports = async (req, res) => {
         }
       }
       // Finished normally.
-      if (isOwner(runUser)) { try { const __ps = require('./prov-self.js'); if (__ps.ownerSaidGeneralize(living.lastUserText(messages))) await __ps.captureBareReply(messages, run.text, 'claude'); } catch (e) { /* guard-ok — فشل حفظ التعميم لا يوقف الردّ */ } } // v-owner-gen
+      if (isOwner(runUser)) { try { const __ps = require('./prov-self.js'); await __ps.captureOwnerTurn(messages, run.text, 'claude', living.lastUserText(messages)); } catch (e) { /* guard-ok — فشل حفظ المحادثة المشتركة لا يوقف الردّ */ } } // v-prov-one
       run.status = 'done'; await journal(runUser, run); await meterRun(); // v-tokens-agent-cache: التكلفة الفعليّة قبل إغلاق المجرى (بعده قد تتجمّد الدالّة)
       if (agentFail && isOwner(runUser)) send({ phase: 'reporting', delta: swapNote('كلود عبر الوسيط · ' + orModel(model)) }); // v-owner-swap: للمالك وحده، تحت الردّ
       send({ phase: 'reporting', done: true });

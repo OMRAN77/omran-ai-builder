@@ -6,6 +6,8 @@
    (١ب) v-owner-gen (١٣ أكتوبر: «عمّم» من أي مزوّد = المعلومة عند العشرة، للمالك وحده): ردود المزوّد في المحادثة تُحفظ كما هي
        (قصير وطويل وكود) في مخزن واحد سقفه ١٦٠ ألف توكن، ويُحمَّل مع كل مزوّد في محادثات المالك. غير المالك لا يراه.
        «عمّم» ليست درسًا: المزوّد لا يسأل «وش تقصد» ولا يستخرج أسلوبًا. إن لم يكن له ردّ سابق والمعلومة في الصورة، يكتبها كاملة فتُحفظ.
+   (١ج) v-prov-one (١٣ أكتوبر: «كل المحادثات وبناء الصور… أي واحد أسأله كأني أسأل واحد»): المخزن نفسه يمتلئ وحده من كل
+       محادثات المالك (كلامه وردّ المزوّد) ومن بناء الصور، بلا كلمة «عمّم». «لا تعمّم» تُسقط آخر ردّ قبلها. السقف كما هو.
    (٢) دروس عامّة: يكتبها المالك عبر أيّ مزوّد (teach_users). الدرس الجديد يسري على محادثات المالك وحده (تجربة)، و«عمّم» في رسالته
        الأخيرة — يفحصها الخادم كحارس «ادمج» — تنشره لكلّ المستخدمين ولكلّ المزوّدين (chat.js وai.js).
    الكتابة للمالك وحده (الأداتان في أدواته فقط، والمنفّذ يرفض غيره). لا مفتاح يُقرأ في نطاق الوحدة. */
@@ -152,13 +154,112 @@ async function captureBareReply(messages, reply, prov) {
   if (t.length < 40 || GEN_ACK_RE.test(t) || GEN_ASK_RE.test(t)) return { added: 0 };
   return captureGeneralize([{ role: 'assistant', content: t }], prov);
 }
-const GEN_HEAD = '\n\n[معلومات معمّمة — حفظها عمران بـ«عمّم» لتكون عند كل المزوّدين. اعتمدها كما هي، ولا تعلو على قواعد المالك]:\n';
+const GEN_HEAD = '\n\n[معلومات معمّمة — كل محادثات عمران وبناء صوره، عند المزوّدين العشرة كأنهم واحد. اعتمدها كما هي، ولا تعلو على قواعد المالك]:\n';
 const GEN_ORDER = '\n\n[أمر «عمّم» — هذا الدور، يعلو على وصف الأدوات]: المالك قال «عمّم». معناها واحد: المعلومات التي عندك في هذه المحادثة (ردودك السابقة كاملة، والكود من أوّله لآخره) صارت عند المزوّدين العشرة. الخادم نسخها. '
   + 'لا تسأل «وش تقصد». لا تعرض خيارات. لا تستخرج درسًا ولا أسلوب عرض. لا تستدعِ teach_users. لا تقترح صفحة ولا ميزة. '
   + 'ردّك سطر واحد: صارت عند العشرة. '
   + 'استثناء: إن لم يكن لك ردّ سابق والمعلومة في الصورة المرفقة — انسخ ما في الصورة كاملًا كما هو (كل رقم وكل نص) بلا تلخيص وبلا سؤال، ثمّ السطر: صارت عند العشرة.';
 const GEN_ACK_RE = /^\s*صارت عند العشرة[.!]?\s*$/;
 const GEN_ASK_RE = /وش\s*تقصد|ماذا\s*تقصد|ما\s*تقصد بـ?|أعمّم درس|استخرج منه درس|أسلوب رد/;
+const DATA_URL_RE = /data:(?:image|audio|video)\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]{40,}/g;
+const LOADING_RE = /^🎨\s*(?:أرسم|Generating)/;
+function plainText(content) {
+  return redactKeys(textOf(content)).replace(/\u0000/g, '').replace(DATA_URL_RE, '').trim();
+}
+function hasBuiltImage(m) {
+  for (const list of [m && m.attachments, m && m.apiImages, m && m.images]) {
+    if (!Array.isArray(list)) continue;
+    for (const a of list) {
+      if (!a) continue;
+      if (a.isImage === true) return true;
+      if (typeof a.mime === 'string' && a.mime.indexOf('image/') === 0) return true;
+      if (typeof a.dataUrl === 'string' && a.dataUrl.indexOf('data:image') === 0) return true;
+    }
+  }
+  return false;
+}
+function isGenCmd(t) {
+  const s = String(t || '').trim();
+  return s.length <= 40 && ownerSaidGeneralize(s);
+}
+// «لا تعمّم» تُسقط الردّ الذي قبلها وما بعده في هذه الدفعة. ما قبل ذلك يبقى.
+function dialogueLines(messages) {
+  const list = Array.isArray(messages) ? messages : [];
+  let end = list.length;
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (!list[i] || list[i].role !== 'user' || !GEN_NEG_RE.test(plainText(list[i].content))) continue;
+    end = i;
+    for (let j = i - 1; j >= 0; j--) {
+      if (list[j] && list[j].role === 'assistant') { end = j; break; }
+    }
+    break;
+  }
+  const out = [];
+  for (let i = 0; i < end; i++) {
+    const m = list[i];
+    if (!m || (m.role !== 'user' && m.role !== 'assistant')) continue;
+    let t = plainText(m.content);
+    if (m.role === 'assistant' && typeof m.code === 'string' && m.code.trim()) {
+      const code = redactKeys(m.code).replace(/\u0000/g, '').trim();
+      if (code) t = t ? (t + '\n' + code) : code;
+    }
+    if (m.role === 'assistant' && hasBuiltImage(m)) {
+      const cap = t && !LOADING_RE.test(t) ? t : '';
+      t = cap ? ('[بُنيت صورة] ' + cap) : '[بُنيت صورة]';
+    }
+    if (!t || t === '[media]' || LOADING_RE.test(t)) continue;
+    if (m.role === 'assistant' && (GEN_ACK_RE.test(t) || GEN_ASK_RE.test(t))) continue;
+    if (m.role === 'user' && isGenCmd(t)) continue;
+    out.push(m.role === 'user' ? ('المالك: ' + t) : t);
+  }
+  return out;
+}
+async function absorbGroups(groups) {
+  const fresh = [];
+  for (const g of groups || []) {
+    const by = provOf(g && g.by) || '';
+    for (const text of (g && g.lines) || []) {
+      const t = String(text || '').trim();
+      if (t) fresh.push({ text: t, by });
+    }
+  }
+  if (!fresh.length) return { added: 0 };
+  const items = (await readGen(true)).slice();
+  const have = new Set(items.map((x) => x.text));
+  let added = 0;
+  for (const row of fresh) {
+    if (have.has(row.text)) continue;
+    have.add(row.text);
+    items.push({ id: 'G' + Date.now().toString(36) + added, text: row.text, at: Date.now(), by: row.by });
+    added++;
+  }
+  const kept = trimGen(items, GEN_CHARS);
+  if (added || kept.length !== items.length) await saveGen(kept);
+  return { added, items: kept };
+}
+async function absorbProjects(projects) {
+  return absorbGroups((projects || []).filter((p) => p && Array.isArray(p.messages)).map((p) => ({ lines: dialogueLines(p.messages), by: p.provider })));
+}
+async function clearGen() {
+  await saveGen([]);
+  return { cleared: true };
+}
+// بناء صورة للمالك: الطلب كما قاله، بلا بايتات الصورة.
+async function noteImage(prompt) {
+  const t = plainText(prompt).replace(/^المالك:\s*/, '');
+  if (!t) return { added: 0 };
+  return absorbGroups([{ lines: ['المالك: ' + t, '[بُنيت صورة] ' + t], by: '' }]);
+}
+// كل دور للمالك: المحادثة والردّ الجديد. «لا تعمّم» لا تضيف. سطر التأكيد وسؤال المعنى لا يُحفظان.
+async function captureOwnerTurn(messages, reply, prov, lastUserText) {
+  if (GEN_NEG_RE.test(plainText(lastUserText)) || GEN_NEG_RE.test(String(lastUserText || ''))) return { added: 0 };
+  const lines = dialogueLines(messages);
+  let t = plainText(reply);
+  if (!t || GEN_ACK_RE.test(t) || GEN_ASK_RE.test(t) || lines.indexOf(t) !== -1) t = '';
+  if (t) lines.push(t);
+  if (!lines.length) return { added: 0 };
+  return absorbGroups([{ lines, by: prov }]);
+}
 function genBlock(items, budget, already) {
   const room = Number(budget) || 0;
   if (room <= GEN_HEAD.length) return '';
@@ -294,10 +395,10 @@ async function systemBlocks(owner, prov, ctx) {
   let out = '';
   if (owner) {
     try {
-      if (ctx && ownerSaidGeneralize(ctx.lastUserText)) { try { await captureGeneralize(ctx.messages, prov); } catch (e) { /* guard-ok — فشل الحفظ لا يوقف الردّ */ } }
+      if (ctx && Array.isArray(ctx.messages)) { try { await absorbGroups([{ lines: dialogueLines(ctx.messages), by: prov }]); } catch (e) { /* guard-ok — فشل حفظ المحادثة المشتركة لا يوقف الردّ */ } }
       out += selfBlock((await readSelf(prov)).text);
       try {
-        const already = (ctx && ctx.messages) ? new Set(assistantTexts(ctx.messages)) : null;
+        const already = (ctx && ctx.messages) ? new Set(dialogueLines(ctx.messages).concat(assistantTexts(ctx.messages))) : null;
         out += genBlock(await readGen(false), genBudget(ctx && ctx.messages), already);
       } catch (e) { /* guard-ok — بلا تخزين يردّ بلا المعلومات المعمّمة */ }
     } catch (e) { /* guard-ok — بلا تخزين يردّ بلا ملفّه */ }
@@ -307,4 +408,4 @@ async function systemBlocks(owner, prov, ctx) {
   return out;
 }
 
-module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, GEN_ORDER, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, ownerSaidLiked, trimGen, genBlock, genBudget, captureGeneralize, captureBareReply, __resetCache: () => { lessonsCache = null; genCache = null; } };
+module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, GEN_ORDER, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, ownerSaidLiked, trimGen, genBlock, genBudget, captureGeneralize, captureBareReply, captureOwnerTurn, absorbProjects, noteImage, clearGen, dialogueLines, __resetCache: () => { lessonsCache = null; genCache = null; } };

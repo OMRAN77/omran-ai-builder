@@ -1544,9 +1544,9 @@ module.exports = async (req, res) => {
     let searchesUsed = 0; // v-chat-parallel-tools: سقف بحثين لكل ردّ
     let anyText = false;
     let fullText = '';   // v608 — نصّ الردّ المتراكم
-    const __saveGenReply = async () => { // v-owner-gen: بلا ردّ سابق، ما يكتبه المزوّد عن الصورة يُحفظ مع «عمّم»
+    const __saveGenReply = async () => { // v-prov-one: كل دور للمالك يُنسخ إلى العشرة؛ «لا تعمّم» لا تُنسخ
       if (!__ownerReq) return;
-      try { const __ps = require('./prov-self.js'); if (__ps.ownerSaidGeneralize(lastUserText)) await __ps.captureBareReply(messages, fullText, reqProv || prov); }
+      try { const __ps = require('./prov-self.js'); await __ps.captureOwnerTurn(messages, fullText, reqProv || prov, lastUserText); }
       catch (e) { logError('chat/owner-gen-reply', e); }
     };
     let toolCorpus = '', __searchRan = false; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور · v-rating-guard-search: هل بحث فعليّ (web_search/fetch_page) جرى؟
