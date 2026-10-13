@@ -929,6 +929,28 @@
   .agThinkBody{color:var(--muted); font-size:13px; white-space:pre-wrap; margin:6px 0 2px; padding-inline-start:10px; border-inline-start:2px solid rgba(128,128,128,.28);}
   .agGroup > .agStep{margin-top:6px;}
   .agPill:empty{display:none;}
+  /* v-read-panel: لوحة «الكود المقروء» (تبويب ثالث في #workarea) بلون محرّر الكود نفسه، والأرقام في الردّ تفتح السطر مظلّلًا. */
+  #panel-read.active{flex-direction:column;}
+  .rdWrap{display:flex; flex-direction:column; flex:1; min-height:0; background:#101013; color:#d4d8e2; text-align:left;}
+  .rdFiles{display:flex; gap:6px; padding:10px 12px 6px; overflow-x:auto; scrollbar-width:none; flex:0 0 auto;}
+  .rdFiles::-webkit-scrollbar{display:none;}
+  .rdFile{flex:0 0 auto; border:1px solid rgba(128,128,128,.28); background:none; color:var(--muted,#98a0b3); border-radius:999px; padding:3px 10px; font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; cursor:pointer;}
+  .rdFile.on{color:var(--om-hl,#e3b341); border-color:var(--om-hl,#e3b341);}
+  .rdHead{display:flex; align-items:baseline; gap:10px; padding:4px 14px 8px; border-bottom:1px solid rgba(128,128,128,.18); font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; flex:0 0 auto;}
+  .rdPath{overflow-wrap:anywhere;}
+  .rdMeta{margin-left:auto; color:var(--muted,#98a0b3); white-space:nowrap;}
+  .rdCode{position:relative; flex:1; min-height:0; overflow:auto; padding:6px 0 24px; font:12.5px/1.65 'Consolas','Courier New',ui-monospace,monospace;}
+  .rdLn{display:flex; white-space:pre; padding-right:14px; border-left:2px solid transparent;}
+  .rdNo{flex:0 0 auto; min-width:44px; padding:0 12px 0 8px; text-align:right; color:var(--muted,#6b7280); user-select:none;}
+  .rdHl{background:rgba(227,179,65,.14); border-left-color:var(--om-hl,#e3b341);}
+  .rdHl .rdNo{color:var(--om-hl,#e3b341);}
+  .rdGap{padding:2px 0 2px 52px; color:var(--muted,#6b7280); user-select:none;}
+  html[data-mode="light"] .rdWrap{background:#ffffff; color:#1f2328;}
+  html[data-mode="light"] .rdHl{background:rgba(227,179,65,.2);}
+  .rdCite{display:inline-flex; align-items:center; gap:3px; margin:0 1px; padding:0; border:0; background:none; color:inherit; font:inherit; cursor:pointer; unicode-bidi:isolate; vertical-align:baseline;}
+  .rdCite code{font:.88em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; padding:1px 5px; border-radius:6px; background:rgba(128,128,128,.16);}
+  .rdCiteN{display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 3px; border-radius:999px; background:var(--om-hl,#e3b341); color:#111; font-size:10.5px; font-weight:700; line-height:1; transform:translateY(-.35em);}
+  .rdCite:hover code, .rdCite:focus-visible code{background:rgba(227,179,65,.22);}
   html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.

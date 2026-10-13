@@ -128,9 +128,11 @@ function bundleNote(input, result) {
 
 /* v-claude-code-level E5: وصف read_github للمالك وحده — غيره يأخذ كائن الأداة نفسه حرفيًّا. */
 const READ_PARALLEL = ' يجوز طلب عدّة from= متوازية في دور واحد (أجزاء الملفّ الطويل معًا) بدل جزء في كلّ جولة.';
+/* v-read-panel: الواجهة تحوّل `مسار:سطر` في ردّ المالك رقمًا يفتح السطر في لوحة «الكود المقروء» — فالموضع يُكتب بهذه الصيغة. */
+const READ_CITE = ' وكلّ موضع تذكره من ملفّ قرأته اكتبه بين علامتي كود بصيغة `مسار:سطر` أو `مسار:سطر-سطر` (المسار من جذر المستودع كما قرأته، مثل `api/_lib/chat.js:1896`) — يصير في الواجهة رقمًا يفتح السطر نفسه.';
 let __readTool = null;
 function ownerReadTool(t) {
-  if (!__readTool || __readTool.src !== t) __readTool = { src: t, out: Object.assign({}, t, { description: String(t.description || '') + READ_PARALLEL }) };
+  if (!__readTool || __readTool.src !== t) __readTool = { src: t, out: Object.assign({}, t, { description: String(t.description || '') + READ_PARALLEL + READ_CITE }) };
   return __readTool.out;
 }
 

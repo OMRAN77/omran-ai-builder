@@ -37,6 +37,7 @@ I18N['es'] = {
     acctCleanupConfirm: 'Se eliminarán permanentemente todos los chats y proyectos. ¿Estás seguro?',
     buildNoCode: '⚠️ No se recibió código del proveedor — la vista previa está vacía. Vuelve a enviar la solicitud o prueba con otro proveedor.',
     agThought: 'Pensó durante {n} s', agExplored: 'Exploró {n} archivos', agNoOutput: 'Sin salida', // v-agent-log
+    readTab: 'Código leído', readCite: 'Abrir esta línea en el panel de código', // v-read-panel
     convertToImage: 'Convertir a Imagen',
     convertToPdf: 'Convertir a PDF',
     convertToWord: 'Convertir a Word',

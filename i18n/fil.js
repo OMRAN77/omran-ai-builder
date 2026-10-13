@@ -38,6 +38,7 @@ I18N['fil'] = {
     acctCleanupConfirm: 'Permanenteng mabubura ang lahat ng chat at proyekto. Sigurado ka ba?',
     buildNoCode: '⚠️ Walang natanggap na code mula sa provider — walang laman ang preview. Ipadala muli ang request o subukan ang ibang provider.',
     agThought: 'Nag-isip nang {n} seg', agExplored: 'Sinuri ang {n} file', agNoOutput: 'Walang output', // v-agent-log
+    readTab: 'Nabasang code', readCite: 'Buksan ang linyang ito sa panel ng code', // v-read-panel
     convertToImage: 'I-convert sa Image',
     convertToPdf: 'I-convert sa PDF',
     convertToWord: 'I-convert sa Word',

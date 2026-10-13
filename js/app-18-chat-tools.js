@@ -227,6 +227,8 @@
     /* v-read-all (المالك: «الوكيل يقرأ ويحلّل كلّ شي — أريد نفس الشي في المزوّدين كلّهم»): كلّ سطر أثر «↳» خطوةٌ في
        سجلّ بصيغة سجلّ الوكيل (m._agParts)، يسبقها «فكّر N ث» حتّى أوّل حرف — يُحفظ في الرسالة فيبقى بعد الردّ. */
     var __t0 = Date.now(), __tFirst = 0, __steps = [], __thinks = [];
+    var __rp = window.omranReadPanel || null; /* v-read-panel: لوحة «الكود المقروء» — ما يُقرأ من GitHub يظهر فيها أثناء البثّ */
+    if (__rp) __rp.begin();
 
     while (true) {
       var chunk;
@@ -260,7 +262,9 @@
         if (ev.status && /^↳/.test(String(ev.status)) && !/^↳\s*💭/.test(String(ev.status)) && __steps.length < 24) {
           var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
           __steps.push({ t: 'tool', name: String(ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: /Fail|Err/.test(String(ev.k || '')) ? 1 : 0, g: 0 });
+          if (ev.code && typeof ev.code === 'object') __steps[__steps.length - 1].code = ev.code; /* v-read-panel: يُحفظ مع الخطوة فتعمل الأرقام بعد إعادة التحميل */
         }
+        if (ev.code && typeof ev.code === 'object' && __rp) { try { __rp.live(ev.code); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-live'); } }
         if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
         if (ev.delta) {
           if (!__tFirst) __tFirst = Date.now();
@@ -300,6 +304,7 @@
     var __fenceCut = false;
     if (__ownerStop && serverErr) { __fenceCut = ((full.match(/```/g) || []).length % 2) === 1; full = full + (__fenceCut ? '\n```' : '') + '\n\n⚠️ ' + serverErr; if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-note'); } } }
     var __p = provider || 'claude';
+    if (__rp) { try { __rp.pack(__steps, full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-pack'); } } /* v-read-panel: سقف حجم المقاطع المحفوظة */
     var __head = __thinks.length ? __thinks : (__steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }] : []);
     var __log = (__head.length || __steps.length) ? __head.concat(__steps) : undefined;
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined, cards: __cards || undefined };

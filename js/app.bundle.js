@@ -4153,6 +4153,7 @@ const I18N = {
     buildSuccess: 'تم إنشاء/تحديث التطبيق بنجاح ✅ يمكنك معاينته من تبويب "المعاينة".',
     buildNoCode: '⚠️ لم يصل كود من المزوّد — المعاينة فارغة. أعد إرسال الطلب أو جرّب مزوّدًا آخر.',
     agThought: 'فكّر لمدّة {n} ث', agExplored: 'استكشف {n} ملفّات', agNoOutput: 'بلا ناتج', // v-agent-log
+    readTab: 'الكود المقروء', readCite: 'افتح السطر في لوحة الكود', // v-read-panel
     selfHealing: '🔧 اكتشفت أخطاء في الكود... جاري الإصلاح الذاتي',
     noCodeToDownload: 'لا يوجد كود لتنزيله بعد.',
     geminiApiKeyLabel: 'مفتاح API — Google Gemini',
@@ -4927,6 +4928,7 @@ const I18N = {
     buildSuccess: 'App created/updated successfully ✅ You can preview it in the "Preview" tab.',
     buildNoCode: '⚠️ No code came back from the provider — the preview is empty. Send the request again or try another provider.',
     agThought: 'Thought for {n}s', agExplored: 'Explored {n} files', agNoOutput: 'No output', // v-agent-log
+    readTab: 'Code read', readCite: 'Open this line in the code panel', // v-read-panel
     selfHealing: '🔧 Errors detected in the code... self-healing in progress',
     noCodeToDownload: 'No code to download yet.',
     runPythonBtn: '▶️ Run code',
@@ -5614,7 +5616,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=741'; /* v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=742'; /* v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7596,6 +7598,10 @@ function renderMessages(keepScroll){
     }
     if (m.cards && typeof window.omranRenderCards === 'function') { try{ div.appendChild(window.omranRenderCards(m.cards)); }catch(e){ __swallow(e, 'ui:cards'); } } /* v-cards: الرقائق والبطاقات فوق نصّ الردّ (كما شريط صور البحث) — المواقع بزرّ المصادر تحته */
     div.appendChild(textDiv);
+    // v-read-panel: `مسار:سطر` في ردّ قرأ ملفّات GitHub يصير رقمًا يفتح السطر في لوحة «الكود المقروء»
+    if(m.role !== 'user' && Array.isArray(m._agParts) && window.omranReadPanel){
+      try{ window.omranReadPanel.linkify(textDiv, m._agParts); }catch(e){ __swallow(e, 'read:cite'); }
+    }
     // AppGallery: وسم صريح للمحتوى المولّد بالذكاء الاصطناعي على كل ردّ مساعد.
     if(m.role !== 'user' && __mc){
       const aiTag = document.createElement('div');
@@ -22369,6 +22375,7 @@ function __agLogLive(host){
         const p = byId[a.id]; if(!p) return;
         p.run = false; p.err = !a.ok; p.out = String(a.out || '');
         __agLogFillTool(p.el, p);
+        if(a.code && typeof a.code === 'object'){ p.code = a.code; if(window.omranReadPanel) window.omranReadPanel.live(a.code); } // v-read-panel
         return;
       }
       closeText();
@@ -22398,14 +22405,18 @@ function __agLogLive(host){
       const log = parts.slice(0, last + 1).map(function(p){
         if(p.t === 'text') return { t: 'text', s: cap(p.note ? p.s : stripCodeFromChat(p.s).trim(), 4000) };
         if(p.t === 'think') return { t: 'think', ms: Number(p.ms) || 0, s: cap(p.s, 2000) };
-        return { t: 'tool', name: p.name, title: p.title, cmd: cap(p.cmd, 700), out: cap(p.out, 1500), err: p.err ? 1 : 0, g: p.g };
+        const o = { t: 'tool', name: p.name, title: p.title, cmd: cap(p.cmd, 700), out: cap(p.out, 1500), err: p.err ? 1 : 0, g: p.g };
+        if(p.code) o.code = p.code; // v-read-panel: سقفه في pack أدناه لا في AG_LOG_BUDGET
+        return o;
       }).filter(function(p){ return p.t !== 'text' || p.s; });
       const tail = parts.slice(last + 1).filter(function(p){ return p.t === 'text' && !p.note; }).map(function(p){ return p.s; }).join('');
+      if(window.omranReadPanel) window.omranReadPanel.pack(log, tail);
       return { log: log, tail: tail };
     },
   };
 }
 async function runOmranAgent(cur, apiText, thinkingDiv){
+  if(window.omranReadPanel) window.omranReadPanel.begin(); // v-read-panel: أوّل ملفّ يقرؤه هذا التشغيل يبدأ اللوحة من جديد
   const agLog = __agLogLive(thinkingDiv);
   const agentStatus = makeChatStatus(agLog.pill);
   window.__chatStatus = agentStatus;
@@ -38639,6 +38650,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     /* v-read-all (المالك: «الوكيل يقرأ ويحلّل كلّ شي — أريد نفس الشي في المزوّدين كلّهم»): كلّ سطر أثر «↳» خطوةٌ في
        سجلّ بصيغة سجلّ الوكيل (m._agParts)، يسبقها «فكّر N ث» حتّى أوّل حرف — يُحفظ في الرسالة فيبقى بعد الردّ. */
     var __t0 = Date.now(), __tFirst = 0, __steps = [], __thinks = [];
+    var __rp = window.omranReadPanel || null; /* v-read-panel: لوحة «الكود المقروء» — ما يُقرأ من GitHub يظهر فيها أثناء البثّ */
+    if (__rp) __rp.begin();
 
     while (true) {
       var chunk;
@@ -38672,7 +38685,9 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         if (ev.status && /^↳/.test(String(ev.status)) && !/^↳\s*💭/.test(String(ev.status)) && __steps.length < 24) {
           var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
           __steps.push({ t: 'tool', name: String(ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: /Fail|Err/.test(String(ev.k || '')) ? 1 : 0, g: 0 });
+          if (ev.code && typeof ev.code === 'object') __steps[__steps.length - 1].code = ev.code; /* v-read-panel: يُحفظ مع الخطوة فتعمل الأرقام بعد إعادة التحميل */
         }
+        if (ev.code && typeof ev.code === 'object' && __rp) { try { __rp.live(ev.code); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-live'); } }
         if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
         if (ev.delta) {
           if (!__tFirst) __tFirst = Date.now();
@@ -38712,6 +38727,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var __fenceCut = false;
     if (__ownerStop && serverErr) { __fenceCut = ((full.match(/```/g) || []).length % 2) === 1; full = full + (__fenceCut ? '\n```' : '') + '\n\n⚠️ ' + serverErr; if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-note'); } } }
     var __p = provider || 'claude';
+    if (__rp) { try { __rp.pack(__steps, full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-pack'); } } /* v-read-panel: سقف حجم المقاطع المحفوظة */
     var __head = __thinks.length ? __thinks : (__steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }] : []);
     var __log = (__head.length || __steps.length) ? __head.concat(__steps) : undefined;
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined, cards: __cards || undefined };
@@ -45452,6 +45468,206 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     items.slice(0, 8).forEach(function(it, i){ var c = card(it, i); if(c) grid.appendChild(c); });
     if(grid.childNodes.length) wrap.appendChild(grid);
     return wrap;
+  };
+})();
+/* v-read-panel (المالك ١٣ أكتوبر، بعد نموذجين في المحادثة: «لوحة الكود + الأرقام»): ما يقرؤه المزوّد أو الوكيل من GitHub يظهر
+   في تبويب ثالث للوحة الجانبيّة («الكود المقروء») بأسطره المرقّمة كما قُرئت، وكلّ `مسار:سطر` في الردّ يصير رقمًا صغيرًا يفتح
+   ذلك السطر مظلّلًا. الخادم يرسل المقطع مع سطر الأثر (code: {p,a,b,n,l} من github-read.fileExcerpt) — للمالك وحده.
+   - live(x): مقطع وصل أثناء البثّ. أوّل مقطع في الدور يفرّغ اللوحة من الدور السابق، وعلى الحاسوب يفتحها مرّة على الكود المقروء.
+   - pack(parts, reply): قبل الحفظ في الرسالة (m._agParts): بسقف حجم، وما زاد يُقصّ إلى نوافذ الأسطر المذكورة في الردّ.
+   - linkify(el, parts): بعد رسم الردّ — المواضع التي قُرئت أسطرها فعلًا وحدها تصير أرقامًا؛ الباقي نصّ كما هو.
+   الجوّال: لا فتح تلقائيّ ولا تغيير تخطيط — الرقم يفتح درج اللوحة القائم نفسه. */
+(function(){
+  var SAVE_MAX = 60000;   // حروف المقاطع المحفوظة في رسالة واحدة
+  var CTX = 12;           // أسطر حول الموضع المذكور حين يُقصّ المقطع للحفظ
+  var CITE_RE = /`?((?:[\w.\-]+\/)*[\w.\-]+\.[A-Za-z0-9]{1,8}):(\d{1,6})(?:[-–](\d{1,6}))?`?/g;
+  var CITE_ANY = new RegExp(CITE_RE.source); // فحص بلا حالة lastIndex
+  var files = [], cur = null, hl = null, fresh = true;
+
+  function isMobile(){ return document.documentElement.classList.contains('mobile-ui'); }
+  function tr(k, fb){ try{ var v = (typeof t === 'function') ? t(k) : ''; return (v && v !== k) ? v : fb; }catch(e){ __swallow(e, 'read:tr'); return fb; } }
+  function base(p){ var s = String(p || ''); return s.slice(s.lastIndexOf('/') + 1); }
+
+  /* مقاطع → ملفّات: الأسطر تُدمج بأرقامها، فقراءتان لملفّ واحد (from=) تصيران ملفًّا واحدًا. */
+  function build(reads){
+    var out = [];
+    (reads || []).forEach(function(x){ merge(out, x); });
+    return out;
+  }
+  function merge(list, x){
+    if(!x || !x.p || !Array.isArray(x.l) || !(x.a >= 1)) return null;
+    var f = null;
+    for(var i = 0; i < list.length; i++) if(list[i].p === x.p){ f = list[i]; break; }
+    if(!f){ f = { p: String(x.p), n: 0, rows: {} }; list.push(f); }
+    if(x.n > f.n) f.n = x.n;
+    for(var j = 0; j < x.l.length; j++) f.rows[x.a + j] = String(x.l[j]);
+    return f;
+  }
+  /* المسار كما كتبه المزوّد ← الملفّ المقروء: مطابق، ثمّ لاحقة مسار، ثمّ اسم الملفّ إن لم يتكرّر. */
+  function find(list, p){
+    var q = String(p || '').replace(/^\.?\//, '');
+    if(!q) return null;
+    for(var i = 0; i < list.length; i++) if(list[i].p === q) return list[i];
+    var suf = list.filter(function(f){ return f.p.slice(-q.length - 1) === '/' + q || q.slice(-f.p.length - 1) === '/' + f.p; });
+    if(suf.length) return suf.length === 1 ? suf[0] : null; // لاحقة تطابق ملفّين = لا تخمين
+    var bn = list.filter(function(f){ return base(f.p) === base(q); });
+    return bn.length === 1 ? bn[0] : null;
+  }
+  function readsOf(parts){
+    var r = [];
+    (parts || []).forEach(function(p){ if(p && p.t === 'tool' && p.code && Array.isArray(p.code.l)) r.push(p.code); });
+    return r;
+  }
+  function cites(text){
+    var out = [], m, re = new RegExp(CITE_RE.source, 'g');
+    while((m = re.exec(String(text || '')))){
+      var a = Number(m[2]), b = Number(m[3] || m[2]);
+      if(b < a){ var s = a; a = b; b = s; }
+      out.push({ p: m[1], a: a, b: b, raw: m[0], i: m.index });
+    }
+    return out;
+  }
+
+  /* نصّ ← مقاطع: نصوص عاديّة، و{p,a,b,raw,n} لكلّ موضع قُرئ سطره الأوّل فعلًا (ما لم يُقرأ يبقى نصًّا كما هو).
+     seq يرقّم المواضع بترتيب ظهورها في الردّ كلّه، والموضع المكرّر يأخذ رقمه الأوّل. null = لا موضع مقروء. */
+  function segs(txt, list, seq){
+    var out = [], last = 0;
+    cites(txt).forEach(function(c){
+      var f = find(list, c.p);
+      if(!f || f.rows[c.a] === undefined) return;
+      var k = f.p + ':' + c.a + '-' + c.b;
+      if(!seq[k]) seq[k] = ++seq.n;
+      if(c.i > last) out.push(txt.slice(last, c.i));
+      out.push({ p: f.p, a: c.a, b: c.b, raw: c.raw, n: seq[k] });
+      last = c.i + c.raw.length;
+    });
+    if(!last) return null;
+    if(last < txt.length) out.push(txt.slice(last));
+    return out;
+  }
+
+  /* ---------- اللوحة ---------- */
+  function host(){ return document.getElementById('panel-read'); }
+  function tab(){ return document.getElementById('tabRead'); }
+  function render(at){
+    var h = host(); if(!h) return;
+    h.innerHTML = '';
+    var tb = tab(); if(tb) tb.style.display = files.length ? '' : 'none';
+    if(!files.length || !cur) return;
+    var wrap = document.createElement('div'); wrap.className = 'rdWrap'; wrap.dir = 'ltr';
+    wrap.setAttribute('data-keep-emoji', ''); // الكود كما قُرئ: منظّف الواجهة (v-clean-ui) كان يحذف إيموجي السطر ويقصّ مسافات بدايته
+    var bar = document.createElement('div'); bar.className = 'rdFiles';
+    files.forEach(function(f){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'rdFile' + (f === cur ? ' on' : '');
+      b.textContent = base(f.p); b.title = f.p;
+      b.onclick = function(){ cur = f; hl = null; render(); };
+      bar.appendChild(b);
+    });
+    wrap.appendChild(bar);
+    var nums = Object.keys(cur.rows).map(Number).sort(function(x, y){ return x - y; });
+    var head = document.createElement('div'); head.className = 'rdHead';
+    var path = document.createElement('span'); path.className = 'rdPath'; path.textContent = cur.p;
+    var meta = document.createElement('span'); meta.className = 'rdMeta';
+    meta.textContent = 'L' + nums[0] + '–' + nums[nums.length - 1] + (cur.n ? ' / ' + cur.n : '');
+    head.appendChild(path); head.appendChild(meta); wrap.appendChild(head);
+    var code = document.createElement('div'); code.className = 'rdCode';
+    var frag = document.createDocumentFragment(), first = null;
+    for(var i = 0; i < nums.length; i++){
+      var n = nums[i];
+      if(i && n !== nums[i - 1] + 1){ var g = document.createElement('div'); g.className = 'rdGap'; g.textContent = '⋯'; frag.appendChild(g); }
+      var row = document.createElement('div'); row.className = 'rdLn'; row.setAttribute('data-n', String(n));
+      var no = document.createElement('span'); no.className = 'rdNo'; no.textContent = String(n);
+      var tx = document.createElement('span'); tx.className = 'rdTx'; tx.textContent = cur.rows[n];
+      row.appendChild(no); row.appendChild(tx);
+      if(hl && n >= hl[0] && n <= hl[1]){ row.className += ' rdHl'; if(!first) first = row; }
+      else if(!hl && at && n === at && !first) first = row;
+      frag.appendChild(row);
+    }
+    code.appendChild(frag); wrap.appendChild(code); h.appendChild(wrap);
+    /* تمرير داخل صندوق الكود وحده (rdCode موضعه نسبيّ) — scrollIntoView كان سيحرّك المحادثة معه على الجوّال */
+    if(first) code.scrollTop = Math.max(0, first.offsetTop - code.clientHeight / 3);
+  }
+  function reveal(){
+    try{
+      if(typeof switchWorkTab === 'function') switchWorkTab('read');
+      if(isMobile()){
+        if(typeof workareaEl !== 'undefined' && workareaEl && !workareaEl.classList.contains('open') && typeof openDrawer === 'function') openDrawer(workareaEl);
+      } else if(typeof window.waAutoExpand === 'function') window.waAutoExpand();
+    }catch(e){ __swallow(e, 'read:reveal'); }
+  }
+
+  window.omranReadPanel = {
+    /** بداية دور جديد: أوّل مقطع يصل بعدها يبدأ لوحة جديدة (ما قُرئ في الدور السابق يبقى حتّى ذلك). */
+    begin: function(){ fresh = true; },
+    live: function(x){
+      try{
+        if(fresh){ files = []; cur = null; hl = null; }
+        var f = merge(files, x); if(!f) return;
+        var first = fresh; fresh = false;
+        var p = host(), shown = p && p.classList.contains('active');
+        var follow = first || shown || !cur;
+        if(follow) cur = f;
+        if(first && !isMobile()) reveal(); // مرّة في الدور، على الحاسوب وحده — قبل الرسم كي يُحسب التمرير على لوحة ظاهرة
+        render(follow ? x.a : 0); // اللوحة تتبع آخر ما قُرئ: ملفّه وأوّل سطر فيه
+      }catch(e){ __swallow(e, 'read:live'); }
+    },
+    open: function(reads, p, a, b){
+      try{
+        files = build(reads);
+        var f = find(files, p); if(!f) return false;
+        cur = f; hl = [a, b || a]; fresh = true;
+        reveal(); render();
+        return true;
+      }catch(e){ __swallow(e, 'read:open'); return false; }
+    },
+    pack: function(parts, reply){
+      var withCode = (parts || []).filter(function(p){ return p && p.code && Array.isArray(p.code.l); });
+      var size = function(){ return withCode.reduce(function(s, p){ return s + (p.code ? p.code.l.join('\n').length : 0); }, 0); };
+      if(!withCode.length || size() <= SAVE_MAX) return parts;
+      var cs = cites(reply);
+      withCode.forEach(function(p){
+        var c = p.code, lo = Infinity, hi = -Infinity, one = [{ p: c.p }];
+        cs.forEach(function(x){ if(find(one, x.p) && x.b >= c.a && x.a <= c.b){ lo = Math.min(lo, x.a - CTX); hi = Math.max(hi, x.b + CTX); } });
+        if(lo === Infinity){ delete p.code; return; }
+        lo = Math.max(lo, c.a); hi = Math.min(hi, c.b);
+        p.code = { p: c.p, r: c.r, a: lo, b: hi, n: c.n, l: c.l.slice(lo - c.a, hi - c.a + 1) };
+      });
+      withCode = withCode.filter(function(p){ return !!p.code; }).sort(function(x, y){ return y.code.l.length - x.code.l.length; });
+      while(withCode.length && size() > SAVE_MAX){ delete withCode[0].code; withCode.shift(); }
+      return parts;
+    },
+    linkify: function(el, parts){
+      var reads = readsOf(parts);
+      if(!el || !reads.length) return 0;
+      var list = build(reads), seq = { n: 0 };
+      var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: function(nd){
+        for(var a = nd.parentNode; a && a !== el; a = a.parentNode){
+          if(a.nodeType === 1 && (a.tagName === 'A' || a.tagName === 'BUTTON' || /\bchat-codeblock\b/.test(a.className || ''))) return NodeFilter.FILTER_REJECT;
+        }
+        return CITE_ANY.test(nd.nodeValue || '') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+      } });
+      var nodes = [], nd;
+      while((nd = walker.nextNode())) nodes.push(nd);
+      nodes.forEach(function(node){
+        var sg = segs(node.nodeValue, list, seq);
+        if(!sg) return;
+        var frag = document.createDocumentFragment();
+        sg.forEach(function(x){
+          if(typeof x === 'string'){ frag.appendChild(document.createTextNode(x)); return; }
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'rdCite'; b.dir = 'ltr';
+          b.title = tr('readCite', 'Open in code panel') + ' — ' + x.p + ':' + x.a + (x.b !== x.a ? '–' + x.b : '');
+          var cd = document.createElement('code'); cd.textContent = x.raw.replace(/`/g, '');
+          var no = document.createElement('span'); no.className = 'rdCiteN'; no.textContent = String(x.n);
+          b.appendChild(cd); b.appendChild(no);
+          b.onclick = function(ev){ ev.stopPropagation(); window.omranReadPanel.open(reads, x.p, x.a, x.b); };
+          frag.appendChild(b);
+        });
+        node.parentNode.replaceChild(frag, node);
+      });
+      return seq.n;
+    },
+    _segs: function(text, reads){ return segs(text, build(reads), { n: 0 }); }, // للاختبار
+    _state: function(){ return { files: files, cur: cur, hl: hl }; }, // للاختبار
   };
 })();
 /* ===== app-99-boot-ok — آخر شريحة في الحزمة (scripts/build.mjs يرتّب الأجزاء بالاسم) =====

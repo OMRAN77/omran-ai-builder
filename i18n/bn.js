@@ -35,6 +35,7 @@ I18N['bn'] = {
     adStudioTitle: 'বিজ্ঞাপন স্টুডিও', adStudioHint: 'বিজ্ঞাপন স্টুডিও — চ্যাট করে আপনার বিজ্ঞাপন তৈরি করুন।', chatToPdfEmpty: 'রূপান্তরের জন্য এখনও কোনো উত্তর নেই।', mahaConnectionLost: 'পুনরায় সংযোগ করা যায়নি', voiceTabAssistantName: 'অ্যাসিস্ট্যান্ট',
     buildNoCode: '⚠️ প্রোভাইডার থেকে কোনো কোড আসেনি — প্রিভিউ খালি। অনুরোধটি আবার পাঠান বা অন্য প্রোভাইডার চেষ্টা করুন।',
     agThought: '{n} সেকেন্ড ভেবেছে', agExplored: '{n}টি ফাইল দেখেছে', agNoOutput: 'কোনো আউটপুট নেই', // v-agent-log
+    readTab: 'পড়া কোড', readCite: 'কোড প্যানেলে এই লাইন খুলুন', // v-read-panel
     convertToImage: 'ছবিতে রূপান্তর করুন',
     convertToPdf: 'PDF-এ রূপান্তর করুন',
     convertToWord: 'Word-এ রূপান্তর করুন',

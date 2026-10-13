@@ -2839,6 +2839,7 @@ function __agLogLive(host){
         const p = byId[a.id]; if(!p) return;
         p.run = false; p.err = !a.ok; p.out = String(a.out || '');
         __agLogFillTool(p.el, p);
+        if(a.code && typeof a.code === 'object'){ p.code = a.code; if(window.omranReadPanel) window.omranReadPanel.live(a.code); } // v-read-panel
         return;
       }
       closeText();
@@ -2868,14 +2869,18 @@ function __agLogLive(host){
       const log = parts.slice(0, last + 1).map(function(p){
         if(p.t === 'text') return { t: 'text', s: cap(p.note ? p.s : stripCodeFromChat(p.s).trim(), 4000) };
         if(p.t === 'think') return { t: 'think', ms: Number(p.ms) || 0, s: cap(p.s, 2000) };
-        return { t: 'tool', name: p.name, title: p.title, cmd: cap(p.cmd, 700), out: cap(p.out, 1500), err: p.err ? 1 : 0, g: p.g };
+        const o = { t: 'tool', name: p.name, title: p.title, cmd: cap(p.cmd, 700), out: cap(p.out, 1500), err: p.err ? 1 : 0, g: p.g };
+        if(p.code) o.code = p.code; // v-read-panel: سقفه في pack أدناه لا في AG_LOG_BUDGET
+        return o;
       }).filter(function(p){ return p.t !== 'text' || p.s; });
       const tail = parts.slice(last + 1).filter(function(p){ return p.t === 'text' && !p.note; }).map(function(p){ return p.s; }).join('');
+      if(window.omranReadPanel) window.omranReadPanel.pack(log, tail);
       return { log: log, tail: tail };
     },
   };
 }
 async function runOmranAgent(cur, apiText, thinkingDiv){
+  if(window.omranReadPanel) window.omranReadPanel.begin(); // v-read-panel: أوّل ملفّ يقرؤه هذا التشغيل يبدأ اللوحة من جديد
   const agLog = __agLogLive(thinkingDiv);
   const agentStatus = makeChatStatus(agLog.pill);
   window.__chatStatus = agentStatus;
