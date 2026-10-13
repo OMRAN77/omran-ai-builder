@@ -75,7 +75,7 @@ global.fetch = async (url) => {
   const u = String(url);
   if (/images\/(generations|edits)/.test(u)) return failImg ? Response.json({ error: { message: 'x' } }, { status: 500 }) : Response.json({ data: [{ b64_json: PNG }] });
   if (/realtime\/client_secrets/.test(u)) return failRt ? Response.json({ error: { message: 'x' } }, { status: 500 }) : Response.json({ value: 'ek_test' });
-  if (/gemini-3-pro-image/.test(u) && failImg) return Response.json({ error: { message: 'x' } }, { status: 503 });
+  if (/gemini-3-pro-image|flash-image/.test(u) && failImg) /* v-decor-fallback: «فشل المولّد» يشمل نانو ٢ البديل */ return Response.json({ error: { message: 'x' } }, { status: 503 });
   if (u.includes('gemini-flash-latest')) return Response.json({ error: 'offline judge' }, { status: 503 });
   return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: SRC } }, { text: 'A' }] } }] });
 };
