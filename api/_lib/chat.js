@@ -1637,7 +1637,7 @@ module.exports = async (req, res) => {
     const __turnKaStop = () => { if (__turnKa) clearInterval(__turnKa); };
     if (__turnKa) { const __endRaw = res.end; res.end = function () { __turnKaStop(); return __endRaw.apply(res, arguments); }; } // كلّ خروج (done، catch، خروج مبكّر في الحلقة) يمرّ بـres.end فلا يبقى نبض حيّ بعده (chat-owner-errors يعدّ المؤقّتات)
           while (steps < MAX_STEPS) {
-      if (__cut.gone) break; /* v-tokens-close: العميل رحل — لا جولة جديدة */ if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; }
+      if (__cut.gone) break; /* v-tokens-close: العميل رحل — لا جولة جديدة */ if (__ol.overTime(__olS, { t0, MAX_MS, steps })) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; } /* v-prov-close-read: بعد قراءة تجاوزت المهلة خطوة ختام لا قطع */
       steps++; __ol.beginStep(__olS, { steps, MAX_STEPS, t0, MAX_MS, convo, tools: toolTurn && !(body && body.noTools === true), send }); // v-claude-code-level C1: الخطوة الأخيرة = جواب ختاميّ
 
       // v-img-read: إعداد دور الصورة (نموذج/جهد) يُجرَّب أوّلًا؛ 400 عليه = إعادة فوريّة

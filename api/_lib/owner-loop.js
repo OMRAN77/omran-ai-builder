@@ -5,6 +5,7 @@
    C1 جواب ختاميّ إلزاميّ: آخر خطوة (أو آخر دقيقة من المهلة) بتنبيه «اكتب الجواب الآن» والأدوات كما هي. على مسار أنثروبيك (المباشر
       والوسيط) بلا tool_choice: تغييره يُبطل كاش الرسائل كلّها (كتابة ×1.25 للتاريخ كلّه بدل قراءة ≤×0.1)، والتنبيه وحده إلحاق بآخر رسالة
       فيبقى المسبوق مقروءًا من الكاش؛ وأداة طُلبت رغم التنبيه لا تُنفَّذ ويظهر السبب. المسار المباشر (oa-direct) بـtool_choice none.
+      إن تجاوزت الأداة MAX_MS داخل تنفيذها فلا تُكسر الحلقة قبل الختام: overTime يسمح بخطوة جواب واحدة ما دام حدّ الدالّة يكفي.
    C2 القطع لطوله: إكمال حتّى مرّتين داخل الوقت؛ استدعاء أداة مقطوع لا يُنفَّذ أبدًا.
    C4 مشغول/حدّ (429/529/5xx) على المفتاح المباشر: إعادة النداء نفسه مرّة أو مرّتين بانتظار يحترم retry-after (سقف ٨ ث).
    C5 مزوّد صامت: لكلّ نداء مهلة حتّى الترويسة (٧٥ ث — العميل بلا نبض قبلها ويستسلم عند ٩٠)، وبعدها مهلة خمول تُصفَّر مع أيّ بايت
@@ -34,6 +35,16 @@ const DEAD_TTL_S = 6 * 3600;
 
 // هامش الختام: دقيقة من ٢٤٠ ث، وربع المهلة إن ضُيّقت (CHAT_MAX_MS=20000 ← ٥ ث) كي لا يُجبر الختام من أوّل خطوة.
 function margin(maxMs) { return Math.min(60000, Math.floor(Number(maxMs) / 4)); }
+/* v-prov-close-read: القراءة كانت تتجاوز MAX_MS داخل الأداة، فالحلقة تُكسر قبل beginStep فيبدو المزود واقفًا بعد ما قرأ.
+   بعد المهلة خطوة ختام واحدة إن بقي من حدّ الدالّة أكثر من ١٥ ث ولم يُختَم بعد. غير المالك كما كان (قطع). */
+const CLOSE_MIN_MS = 15000;
+function overTime(s, o) {
+  if (!o) return false;
+  const elapsed = Date.now() - Number(o.t0 || 0);
+  if (!(elapsed > Number(o.MAX_MS || 0))) return false;
+  if (s && s.on && Number(o.steps) > 0 && !s.final && (FN_BUDGET_MS - elapsed) > CLOSE_MIN_MS) return false;
+  return true;
+}
 function stepText(blocks) { return (blocks || []).filter((b) => b && b.type === 'text').map((b) => b.text || '').join(''); }
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); } // انتظار الإعادة جزء من الدور (≤ ٨ ث) — ليس unref
 
@@ -454,7 +465,7 @@ async function rememberDeadPick(model, status, text, gone) {
 }
 
 module.exports = {
-  state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, exitText, stallNote, shrinkOld,
+  state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, exitText, stallNote, shrinkOld, overTime,
   isDeadPick, rememberDeadPick, margin,
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1
   FINAL_NOTE, CONTINUE_NOTE, TOOL_CUT_NOTE, CUT_STOP, EMPTY_STOP, __deadPicks: deadPicks, __resetTalk: () => NO_TALK.clear(), // v-talk-400
