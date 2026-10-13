@@ -232,36 +232,50 @@
     designAiDecorArt:['#4a2f5f','#8a5f9e','#d4af37'],
     designAiDecorAccessories:['#1a1a1f','#d4af37','#8a6d2f']
   };
+  /* v-decor-toggle-img (طلب المالك ١٣ أكتوبر ٢٠٢٦): صورة حقيقية لكل لمسة بدل
+     شرائط الألوان — مقصوصة بلا أيّ نصّ، والاسم فوقها من الترجمة بالـ١٤ لغة. */
+  var CBIMG={
+    designAiRearrange:'assets/design/decor/rearrange.webp',
+    designAiDecorPlants:'assets/design/decor/plants.webp',
+    designAiDecorArt:'assets/design/decor/art.webp',
+    designAiDecorAccessories:'assets/design/decor/accessories.webp'
+  };
+  function cbName(cb,sp){
+    var key=sp?sp.getAttribute('data-i18n'):'';
+    var tx=(key&&typeof window.t==='function')?window.t(key):'';
+    if(!tx||tx===key) tx=sp?(sp.textContent||''):cb.id;
+    return (tx+'').trim().replace(EMO,'');
+  }
   function proToggle(cb){
     var lab=cb.parentElement, sp=lab?lab.querySelector('span'):null;
-    var txt=(sp?(sp.textContent||''):cb.id).trim().replace(EMO,'');
+    var txt=cbName(cb,sp);
     var c=CBPAL[cb.id]||['#2a2a30','#3d3d45','#55555f'];
+    var img=CBIMG[cb.id];
     var d=document.createElement('div');
     d.setAttribute('data-dtoggle',cb.id);
-    /* v-decor-names-only (طلب المالك ١٣ أكتوبر ٢٠٢٦): الاسم وحده بلا وصف — بطاقة أقصر. */
-    d.style.cssText='position:relative;border-radius:12px;overflow:hidden;cursor:pointer;min-height:56px;display:flex;flex-direction:column;justify-content:flex-end;'+
-      'background:linear-gradient(90deg,'+c[0]+' 0 33.4%,'+c[1]+' 33.4% 66.7%,'+c[2]+' 66.7% 100%) top/100% 30% no-repeat,'+
+    /* v-decor-names-only (طلب المالك ١٣ أكتوبر ٢٠٢٦): الاسم وحده بلا وصف.
+       v-decor-toggle-img (طلبه: «الصورة واضحة وضوح الشمس»): الصورة صافية بلا
+       تظليل ولا نصّ فوقها، والاسم المترجم سطر تحتها. التدرّج احتياط خلف الصورة. */
+    d.style.cssText='position:relative;border-radius:12px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;';
+    var pic=document.createElement('div');
+    pic.setAttribute('data-dimg','1');
+    pic.style.cssText='position:relative;width:100%;aspect-ratio:8/3;min-height:48px;'+
+      'background:'+(img?'url("'+img+'") center/cover no-repeat,':'')+
       'linear-gradient(155deg,'+c[0]+' 0%,'+c[1]+' 55%,'+c[2]+' 120%);';
-    var sh=document.createElement('div');
-    sh.style.cssText='position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(transparent,rgba(0,0,0,.78));';
-    var info=document.createElement('div');
-    info.style.cssText='position:relative;padding:7px 9px 8px;';
     var nm=document.createElement('div');
     nm.textContent=txt;
-    nm.style.cssText='font-size:12.5px;font-weight:800;color:#fff;';
-    info.appendChild(nm);
-    /* v-decor-names-only: الوصف تحت الاسم أُزيل — الاسم وحده داخل البطاقة. */
+    nm.style.cssText='padding:6px 9px 7px;font-size:12.5px;font-weight:800;color:var(--text,#fff);line-height:1.3;';
     var tk=document.createElement('div'); tk.textContent='✓';
     tk.style.cssText='position:absolute;top:7px;inset-inline-start:8px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:none;align-items:center;justify-content:center;';
     function paint(){
-      d.style.outline=cb.checked?'2px solid #d4af37':'1px solid rgba(255,255,255,.14)';
+      d.style.outline=cb.checked?'2px solid #d4af37':'1px solid rgba(127,127,127,.25)';
       d.style.outlineOffset='-2px';
       d.style.boxShadow=cb.checked?'0 0 12px rgba(212,175,55,.35)':'none';
       tk.style.display=cb.checked?'flex':'none';
-      nm.style.color=cb.checked?'#d4af37':'#fff';
+      nm.style.color=cb.checked?'#d4af37':'var(--text,#fff)';
     }
     paint();
-    d.appendChild(sh); d.appendChild(tk); d.appendChild(info);
+    pic.appendChild(tk); d.appendChild(pic); d.appendChild(nm);
     d.onclick=function(){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change',{bubbles:true})); paint(); };
     return d;
   }
