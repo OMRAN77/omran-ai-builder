@@ -31,6 +31,7 @@ I18N['zh'] = {
     acctCleanupConfirm: '所有聊天和项目将被永久删除。确定要继续吗？',
     buildNoCode: '⚠️ 未收到提供方返回的代码——预览为空。请重新发送请求或尝试其他提供方。',
     agThought: '思考了 {n} 秒', agExplored: '浏览了 {n} 个文件', agNoOutput: '无输出', // v-agent-log
+    readTab: '已读代码', readCite: '在代码面板中打开此行', // v-read-panel
     convertToImage: '转换为图片',
     convertToPdf: '转换为 PDF',
     convertToWord: '转换为 Word',

@@ -36,6 +36,7 @@ I18N['tr'] = {
     acctCleanupConfirm: 'Tüm sohbetler ve projeler kalıcı olarak silinecek. Emin misiniz?',
     buildNoCode: '⚠️ Sağlayıcıdan kod gelmedi — önizleme boş. İsteği tekrar gönderin veya başka bir sağlayıcı deneyin.',
     agThought: '{n} sn düşündü', agExplored: '{n} dosya inceledi', agNoOutput: 'Çıktı yok', // v-agent-log
+    readTab: 'Okunan kod', readCite: 'Bu satırı kod panelinde aç', // v-read-panel
     convertToImage: 'Görsele Dönüştür',
     convertToPdf: 'PDF\'ye Dönüştür',
     convertToWord: 'Word\'e Dönüştür',

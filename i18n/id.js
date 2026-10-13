@@ -36,6 +36,7 @@ I18N['id'] = {
     acctCleanupConfirm: 'Semua obrolan dan proyek akan dihapus permanen. Anda yakin?',
     buildNoCode: '⚠️ Tidak ada kode yang diterima dari penyedia — pratinjau kosong. Kirim ulang permintaan atau coba penyedia lain.',
     agThought: 'Berpikir {n} dtk', agExplored: 'Menjelajahi {n} file', agNoOutput: 'Tidak ada keluaran', // v-agent-log
+    readTab: 'Kode yang dibaca', readCite: 'Buka baris ini di panel kode', // v-read-panel
     convertToImage: 'Ubah ke Gambar',
     convertToPdf: 'Ubah ke PDF',
     convertToWord: 'Ubah ke Word',
