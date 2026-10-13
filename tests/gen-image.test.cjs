@@ -161,6 +161,11 @@ test('كتابة واحدة لكلّ دور، وما يُرسل مع الرسا�
   assert.ok(blk.includes('معلومة رقم 99 ') && !blk.includes('معلومة رقم 0 '), 'الأحدث يُرسل والأقدم يبقى في المخزن');
   assert.ok(has('معلومة رقم 50 ') && !blk.includes('معلومة رقم 50 '), 'المخزن يحتفظ بما لا يُرسل');
   assert.equal(PS.GEN_INJECT, 100000);
+  // v-talk-400 (ب): القصّ لا يترك نصف إيموجي في الطلب (المزوّد يرفضه 400)
+  const lone = (s) => /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(s);
+  const emo = 'أ'.repeat(10) + '🎨'.repeat(60000);
+  for (const room of [1000, 1001, 1002]) assert.ok(!lone(PS.genBlock([{ text: emo }], PS.GEN_HEAD.length + room, '')), 'genBlock سليم · ' + room);
+  assert.ok(!lone(PS.trimGen([{ text: emo }], 1001)[0].text), 'trimGen سليم');
 });
 
 const IMG = Buffer.from('fake-jpeg-bytes-' + 'z'.repeat(200)).toString('base64');

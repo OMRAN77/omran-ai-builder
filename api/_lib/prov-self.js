@@ -120,11 +120,17 @@ function sentConvoChars(messages) {
   return Math.min(chars, GEN_CHARS);
 }
 function genBudget(messages) { return Math.min(GEN_INJECT, messages ? Math.max(0, GEN_CHARS - sentConvoChars(messages)) : GEN_CHARS); }
+/* v-talk-400 (ب): القصّ بالطول (slice) قد يقسم إيموجي أو حرفًا خارج المستوى الأساسيّ نصفين، فيصل الطلب بنصف زوج (\udfa8…) يرفضه
+   المزوّد 400. ما يُقصّ هنا يُصلَح قبل أن يُحفظ أو يُرسل: النصف اليتيم يصير «�». */
+function wellFormed(s) {
+  const t = String(s || '');
+  return typeof t.toWellFormed === 'function' ? t.toWellFormed() : t.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '�');
+}
 function trimGen(items, cap) {
   const out = (items || []).filter((x) => x && x.text).map((x) => ({ id: x.id, text: x.text, at: x.at || 0, by: x.by || '' }));
   let total = out.reduce((n, x) => n + x.text.length, 0);
   while (out.length > 1 && total > cap) { total -= out[0].text.length; out.shift(); }
-  if (out.length === 1 && out[0].text.length > cap) out[0] = Object.assign({}, out[0], { text: out[0].text.slice(-cap) });
+  if (out.length === 1 && out[0].text.length > cap) out[0] = Object.assign({}, out[0], { text: wellFormed(out[0].text.slice(-cap)) });
   return out;
 }
 // السجلّ: items (المعلومات) · marks (كم رسالة أُخذت من كلّ محادثة محفوظة) · last (ما أضافه آخر دور) · imgs (الصور المعمّمة).
@@ -435,7 +441,7 @@ function genBlock(items, budget, already) {
     const gap = parts.length ? 2 : 0;
     if (len + gap + list[i].text.length > room) {
       const fit = room - len - gap;
-      if (fit > 0 && !parts.length) parts.unshift(list[i].text.slice(-fit));
+      if (fit > 0 && !parts.length) parts.unshift(wellFormed(list[i].text.slice(-fit)));
       break;
     }
     len += gap + list[i].text.length;
