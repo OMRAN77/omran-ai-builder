@@ -2891,11 +2891,14 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   // نعرف أن هناك دفترًا يُنتظر. localStorage لأنها تنجو من إغلاق التبويب وتُكتب
   // فورًا — IndexedDB غير متزامنة فقد لا تصل قبل موت الصفحة. والضيف بلا دفتر.
   try{ if(authGet('aiapp_auth_token')) localStorage.setItem('aiapp_agent_live', JSON.stringify({ p: cur.id, t: Date.now() })); }catch(e){ __swallow(e, 'misc:agentlive'); }
+  /* v-gen-image-agent (أمر المالك ١٣ أكتوبر «اربط صورة عمّم بالوكيل»): «عمّم» من المالك ومعها صورة قريبة تُرسل للوكيل كما للمحادثة (app-18) */
+  let __genImg = null;
+  try{ const __lu = history.length ? history[history.length - 1] : null; if(__lu && __lu.role === 'user' && typeof window.omranGenImageFor === 'function') __genImg = await window.omranGenImageFor(String(__lu.content || ''), cur); }catch(e){ __swallow(e, 'agent:genImage'); }
   const res = await fetch('/api/ai?action=agent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: (thinkingDiv && thinkingDiv.__signal) || (genAbortController ? genAbortController.signal : undefined),
-    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id, agentModel: (function(){ try{ return localStorage.getItem('aiapp_agent_model') || ''; }catch(e){ return ''; } })() }),
+    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id, agentModel: (function(){ try{ return localStorage.getItem('aiapp_agent_model') || ''; }catch(e){ return ''; } })(), genImage: __genImg || undefined }),
   });
   if(!res.ok){
     try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* لم يبدأ تشغيل */ }

@@ -189,6 +189,39 @@ test('أحدث ٢٠ صورة معمّمة فقط: الأقدم تُحذف باي
   assert.equal([...raw.keys()].filter((k) => k.startsWith('db/img/')).length, 0, 'مسح المحادثات يحذف الصور المعمّمة');
 });
 
+// v-gen-image-agent (المالك ١٣ أكتوبر «اربط صورة عمّم بالوكيل»): الوكيل الحقيقيّ (agent.js) يحفظ الصورة ويؤمر بذكر رابطها كالمحادثة.
+test('الوكيل: «عمّم» ومعها صورة تُحفظ برابط في التطبيق ويؤمر بذكره؛ بلا الكلمة لا شيء', async () => {
+  reset();
+  const agent = require(rp('api/_lib/agent.js'));
+  async function agentTurn(history, extra) {
+    usageUser = 'omran';
+    const bodies = [];
+    const save = global.fetch;
+    global.fetch = async (url, init) => {
+      if (!/api\.anthropic\.com\/v1\/messages/.test(String(url))) return new Response('{}', { status: 404 });
+      bodies.push(JSON.parse(init.body));
+      return textTurn('صارت عند العشرة.');
+    };
+    const res = { setHeader() {}, status() { return this; }, json() { return this; }, write() { return true; }, end() {}, flushHeaders() {} };
+    try { await agent({ method: 'POST', headers: {}, body: Object.assign({ token: token('omran'), messages: history }, extra || {}) }, res); } finally { global.fetch = save; }
+    return { sys: bodies[0] ? sysOf(bodies[0]) : '' };
+  }
+  const IMG2 = Buffer.from('agent-jpeg-' + 'k'.repeat(120)).toString('base64');
+  const r = await agentTurn([a('هذي صورة الشعار'), u('عمّمها')], { genImage: { data: IMG2, mime: 'image/jpeg', w: 300, h: 200, note: 'شعار عمران الذهبي' } });
+  const keys = [...raw.keys()].filter((k) => /^db\/img\/[a-f0-9]{12}$/.test(k));
+  assert.equal(keys.length, 1, 'الصورة في مخزن التطبيق');
+  const url = '/i/' + keys[0].slice(7) + '.jpg';
+  assert.ok(has('[صورة معمّمة] شعار عمران الذهبي — رابطها في التطبيق: ' + url), 'سطرها عند العشرة');
+  assert.ok(r.sys.includes('والصورة نفسها صارت عند العشرة برابطها في التطبيق: ' + url), 'الوكيل يُؤمر بذكر الرابط');
+  const g = await turn('omran', 'groq', '…', [u('وش الصورة اللي عمّمتها؟')]);
+  assert.ok(g.sys.includes(url), 'Groq يستلم رابطها');
+  await agentTurn([a('صورة'), u('حلوة')], { genImage: { data: Buffer.from('agent-other-' + 'p'.repeat(60)).toString('base64') } });
+  assert.equal([...raw.keys()].filter((k) => k.startsWith('db/img/')).length, 1, 'بلا «عمّم» لا حفظ');
+  const app09 = fs.readFileSync(path.join(root, 'js/app-09-attach.js'), 'utf8');
+  const run = app09.slice(app09.indexOf('async function runOmranAgent('), app09.indexOf("const res = await fetch('/api/ai?action=agent'", app09.indexOf('async function runOmranAgent(')) + 900);
+  assert.ok(/window\.omranGenImageFor\(String\(__lu\.content \|\| ''\), cur\)/.test(run) && /genImage: __genImg \|\| undefined/.test(run), 'واجهة الوكيل ترسل genImage بقاعدة المحادثة نفسها');
+});
+
 const lookup = async () => [{ address: '140.82.112.3', family: 4 }];
 const ghRes = (obj, status) => ({ ok: !status || status < 400, status: status || 200, headers: new Headers(), json: async () => obj, text: async () => JSON.stringify(obj) });
 function net(extraOpts) {
@@ -253,6 +286,7 @@ async function client(text, curMessages, owner) {
     TextDecoder, setTimeout, clearTimeout, Promise, Error, String, JSON, Date, Array, Math, console, Intl, Object, Number, RegExp };
   vm.runInNewContext(app18Core, ctx);
   try { await ctx.window.callChatWithTools([u(text)], null, 'gemini'); } catch (e) { /* الإرسال وحده ما نختبره */ }
+  if (sent) sent.__direct = await ctx.window.omranGenImageFor(text, { messages: curMessages }); // v-gen-image-agent: ما يناديه الوكيل بمشروعه
   return sent;
 }
 const PIC = { role: 'assistant', content: 'هذي صورة البرج __IMG_1__', attachments: [{ isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,iVBORw0KGgo=' }] };
@@ -265,6 +299,7 @@ test('الواجهة: «عمّم» من المالك ومعها صورة قري�
   assert.equal(s.genImage.h, 800);
   assert.ok(s.genImage.data.length <= 640 * 1024);
   assert.equal(s.genImage.note, 'هذي صورة البرج', 'الوصف من الرسالة بلا رمز الصورة');
+  assert.deepEqual(JSON.parse(JSON.stringify(s.__direct)), s.genImage, 'الدالّة المكشوفة للوكيل تعطي الصورة نفسها');
   const cached = await client('عمم', [{ role: 'assistant', content: 'رسمتها', _imgCache: { __IMG_1__: 'data:image/png;base64,AAAA' } }, u('عمم')], true);
   assert.ok(cached && cached.genImage, 'صورة الردّ بالأدوات (_imgCache)');
   assert.equal((await client('عمّمها', [PIC, u('عمّمها')], false)).genImage, undefined, 'غير المالك');

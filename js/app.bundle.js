@@ -22421,11 +22421,14 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   // نعرف أن هناك دفترًا يُنتظر. localStorage لأنها تنجو من إغلاق التبويب وتُكتب
   // فورًا — IndexedDB غير متزامنة فقد لا تصل قبل موت الصفحة. والضيف بلا دفتر.
   try{ if(authGet('aiapp_auth_token')) localStorage.setItem('aiapp_agent_live', JSON.stringify({ p: cur.id, t: Date.now() })); }catch(e){ __swallow(e, 'misc:agentlive'); }
+  /* v-gen-image-agent (أمر المالك ١٣ أكتوبر «اربط صورة عمّم بالوكيل»): «عمّم» من المالك ومعها صورة قريبة تُرسل للوكيل كما للمحادثة (app-18) */
+  let __genImg = null;
+  try{ const __lu = history.length ? history[history.length - 1] : null; if(__lu && __lu.role === 'user' && typeof window.omranGenImageFor === 'function') __genImg = await window.omranGenImageFor(String(__lu.content || ''), cur); }catch(e){ __swallow(e, 'agent:genImage'); }
   const res = await fetch('/api/ai?action=agent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: (thinkingDiv && thinkingDiv.__signal) || (genAbortController ? genAbortController.signal : undefined),
-    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id, agentModel: (function(){ try{ return localStorage.getItem('aiapp_agent_model') || ''; }catch(e){ return ''; } })() }),
+    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id, agentModel: (function(){ try{ return localStorage.getItem('aiapp_agent_model') || ''; }catch(e){ return ''; } })(), genImage: __genImg || undefined }),
   });
   if(!res.ok){
     try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* لم يبدأ تشغيل */ }
@@ -38528,11 +38531,11 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       } catch (e) { resolve(null); }
     });
   }
-  async function __genImageFor(text) {
+  async function __genImageFor(text, proj) {
     if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return null;
     var s = String(text || '');
     if (!__GEN_WORD_RE.test(s) || __GEN_NEG_RE.test(s)) return null;
-    var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    var cur = proj || ((typeof getCurrent === 'function') ? getCurrent() : null);
     var ms = (cur && Array.isArray(cur.messages)) ? cur.messages : [];
     for (var i = ms.length - 1, seen = 0; i >= 0 && seen < 3; i--) {
       var m = ms[i];
@@ -38546,6 +38549,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     }
     return null;
   }
+
+  window.omranGenImageFor = __genImageFor; /* v-gen-image-agent: الوكيل (app-09 runOmranAgent) يرسل الصورة نفسها بالقاعدة نفسها */
 
   window.callChatWithTools = async function (messages, onDelta, provider, opts) {
     window.__chatVideoResult = null;

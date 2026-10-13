@@ -519,7 +519,10 @@ module.exports = async (req, res) => {
     const __cc = String(currentCode).slice(0, 300000), __big = __cc.length > 24000;
     system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا' + (__big ? ' — الملفّ ' + __cc.length + ' حرفًا، أكبر من أن يُعاد كاملًا: أرسل التعديل رقعًا داخل كتلة ```patch بالشكل @@PATCH ثمّ @@WHY سطر ثمّ @@OLD نصّ موجود في الملفّ مرّة واحدة بالضبط منسوخ حرفيًّا ثمّ @@NEW البديل ثمّ @@END، والتطبيق يطبّقها' : ' وأعد الملف كاملًا') + '):\n```html\n' + __cc + '\n```';
   }
-  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude', isOwner(runUser) ? { messages: messages, lastUserText: living.lastUserText(messages) } : null); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all · v-owner-gen
+  /* v-gen-image-agent (أمر المالك ١٣ أكتوبر «اربط صورة عمّم بالوكيل»): كالمحادثة — «عمّم» ومعها صورة (genImage من الواجهة) تُحفظ برابط في التطبيق ويصل رابطها العشرة. */
+  let __genImg = null;
+  if (isOwner(runUser) && body.genImage && require('./prov-self.js').ownerSaidGeneralize(living.lastUserText(messages))) { try { __genImg = await require('./prov-self.js').noteGenImage(body.genImage, 'claude'); } catch (e) { console.warn('[agent] gen image failed', e && e.message); } }
+  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude', isOwner(runUser) ? { messages: messages, lastUserText: living.lastUserText(messages), genImageUrl: (__genImg && __genImg.url) || '' } : null); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all · v-owner-gen
   if (isOwner(runUser)) system += OWNER_ENGINEERING_NOTE + OWNER_COMMAND_NOTE; // v-owner-obey: آخر النظام فيعلو على ما قبله · v-agent-surgical
 
   const convoAll = messages

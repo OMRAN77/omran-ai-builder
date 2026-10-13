@@ -119,11 +119,11 @@
       } catch (e) { resolve(null); }
     });
   }
-  async function __genImageFor(text) {
+  async function __genImageFor(text, proj) {
     if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return null;
     var s = String(text || '');
     if (!__GEN_WORD_RE.test(s) || __GEN_NEG_RE.test(s)) return null;
-    var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    var cur = proj || ((typeof getCurrent === 'function') ? getCurrent() : null);
     var ms = (cur && Array.isArray(cur.messages)) ? cur.messages : [];
     for (var i = ms.length - 1, seen = 0; i >= 0 && seen < 3; i--) {
       var m = ms[i];
@@ -137,6 +137,8 @@
     }
     return null;
   }
+
+  window.omranGenImageFor = __genImageFor; /* v-gen-image-agent: الوكيل (app-09 runOmranAgent) يرسل الصورة نفسها بالقاعدة نفسها */
 
   window.callChatWithTools = async function (messages, onDelta, provider, opts) {
     window.__chatVideoResult = null;
