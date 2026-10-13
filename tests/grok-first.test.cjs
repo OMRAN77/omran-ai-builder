@@ -25,7 +25,8 @@ test('١. كروك أوّل منتقي المالك، وافتراضيّه grok-
   assert.ok(rows[0].models.some((x) => x[0] === 'x-ai/grok-4.6' && x[1] === 'Grok 4.6'));
   const m = read('js/modes.js');
   assert.match(m, /function curProv\(\)\{ try\{ return localStorage\.getItem\('aiapp_provider'\) \|\| \(isOwner\(\) \? 'openrouter' : 'openai'\); \}catch\(e\)\{ return isOwner\(\) \? 'openrouter' : 'openai'; \}/);
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m131026g/);
+  const pin = (read('index.html').match(/js\/modes\.js\?v=([^"']+)/) || [])[1];
+  assert.ok(pin && pin !== 'm111026c', 'وسم modes.js رُفع مع نقل كروك');
 });
 
 test('٢. احتياط الخادم لصفّ الوسيط = كروك، لا كلود', () => {
