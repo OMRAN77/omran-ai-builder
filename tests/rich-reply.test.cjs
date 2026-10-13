@@ -58,12 +58,13 @@ test('١. الكاشف: طلب المعلومات (ونصّ بحث المودي�
   for (const s of ['كم سعر الذهب اليوم', 'اكتب لي قصيدة', 'هلا']) assert.equal(rs.wantsRichReply(s), false, s);
 });
 
-test('٢. تفكير المالك: طلب المعلومات بالجهد الأدنى، والتحليل والكود والشغل البرمجيّ كما كانت', () => {
-  assert.equal(ot.ownerThinks(ASK, {}), false, 'طلب معلومات سريع');
+test('٢. تفكير المالك: طلب المعلومات light (يفكّر ويظهر تفكيره بالجهد الأدنى — v-owner-light)، والتحليل والكود والشغل البرمجيّ deep', () => {
+  assert.equal(ot.ownerThinks(ASK, {}), true, 'يفكّر ويظهر تفكيره');
+  assert.equal(ot.ownerThinkLevel(ASK, {}), 'light', 'بالجهد الأدنى');
   assert.equal(ot.ownerThinks('حلّل لي معلومات هذا التقرير', {}), true, 'التحليل يفكّر');
   assert.equal(ot.ownerThinks('اشرح لي الذكاء الاصطناعي باختصار', {}), true, 'الشرح كما كان (v-owner-think-all)');
   const code = [{ role: 'user', content: 'سوّ زر' }, { role: 'assistant', content: '```html\n<b>x</b>\n```' }];
-  assert.equal(ot.ownerThinks('عطني معلومات عن الكود هذا', { history: code }), true, 'وسط شغل الكود يفكّر');
+  assert.equal(ot.ownerThinkLevel('عطني معلومات عن الكود هذا', { history: code }), 'deep', 'وسط شغل الكود يفكّر بعمق');
   assert.equal(ot.ownerThinks('وش هذا', { image: true }), true, 'الصورة تحليل');
 });
 
@@ -145,7 +146,7 @@ test('٤. دور المالك «معلومات عن الإمارات والسع�
   });
 });
 
-test('٥. غير طلب المعلومات كما كان: سؤال الأماكن يمرّ بالخرائط، ولا ملاحظة شكل، والتفكير افتراضيّ', async () => {
+test('٥. غير طلب المعلومات: سؤال الأماكن يمرّ بالخرائط، ولا ملاحظة شكل، والردّ العاديّ بالجهد الأدنى (v-owner-light)', async () => {
   await withEnv(async () => {
     placesAsked.length = 0;
     const save = R.search;
@@ -154,7 +155,8 @@ test('٥. غير طلب المعلومات كما كان: سؤال الأماك�
       const r = await run([{ role: 'user', content: 'وين أحصل مندي زين في عجمان' }], { socialMs: 5 });
       assert.deepEqual(placesAsked, ['مطاعم مندي في عجمان'], 'الخرائط كما كانت');
       assert.ok(!JSON.stringify(r.oa[0].body).includes('[شكل هذا الردّ'), 'لا ملاحظة شكل');
-      assert.notEqual(r.oa[0].body.reasoning && r.oa[0].body.reasoning.effort, 'low', 'سؤال عاديّ يفكّر بافتراضيّه');
+      assert.equal(r.oa[0].body.reasoning && r.oa[0].body.reasoning.effort, 'low', 'v-owner-light: الردّ العاديّ low');
+      assert.ok(r.oa[0].body.reasoning.summary, 'وتفكيره ظاهر');
     } finally { R.search = save; }
   });
 });
