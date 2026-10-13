@@ -5,6 +5,7 @@
        كلّ نسخة سابقة محفوظة (٢٠) وتُرجَع بـundo.
    (١ب) v-owner-gen (١٣ أكتوبر: «عمّم» من أي مزوّد = المعلومة عند العشرة، للمالك وحده): ردود المزوّد في المحادثة تُحفظ كما هي
        (قصير وطويل وكود) في مخزن واحد سقفه ١٦٠ ألف توكن، ويُحمَّل مع كل مزوّد في محادثات المالك. غير المالك لا يراه.
+       «عمّم» ليست درسًا: المزوّد لا يسأل «وش تقصد» ولا يستخرج أسلوبًا. إن لم يكن له ردّ سابق والمعلومة في الصورة، يكتبها كاملة فتُحفظ.
    (٢) دروس عامّة: يكتبها المالك عبر أيّ مزوّد (teach_users). الدرس الجديد يسري على محادثات المالك وحده (تجربة)، و«عمّم» في رسالته
        الأخيرة — يفحصها الخادم كحارس «ادمج» — تنشره لكلّ المستخدمين ولكلّ المزوّدين (chat.js وai.js).
    الكتابة للمالك وحده (الأداتان في أدواته فقط، والمنفّذ يرفض غيره). لا مفتاح يُقرأ في نطاق الوحدة. */
@@ -44,10 +45,11 @@ const SELF_TOOL = {
 const TEACH_TOOL = {
   name: 'teach_users',
   description: 'دروس عامّة تحسّن ردود كلّ المستخدمين على كلّ المزوّدين — يكتبها المالك. '
-    + '«عجبني» = تعميم بخطوة واحدة: حين يقول المالك «عجبني» أو «عجبتني الطريقة» أو «خلّه كذا دايم» أو «عمّم» عن ردّك أو عن أسلوب أو قاعدة، استخرج الدرس العامّ '
+    + '«عجبني» = تعميم بخطوة واحدة: حين يقول المالك «عجبني» أو «عجبتني الطريقة» أو «خلّه كذا دايم» عن ردّك أو عن أسلوب أو قاعدة، استخرج الدرس العامّ '
     + '(القاعدة أو الطريقة التي أعجبته — لا نصّ الردّ ولا معلومة شخصيّة — جملة أو جملتان) واستدعِ generalize به: يُحفظ ويُنشر فورًا لكلّ المستخدمين وكلّ المزوّدين، '
     + 'ثمّ قل له بسطر ما الذي عُمِّم. الخادم يرفض التعميم إن لم تكن كلمته في رسالته الأخيرة أو كانت منفيّة («ما عجبني»). '
-    + 'add يحفظ درسًا للتجربة على محادثات المالك وحده؛ publish ينشر درسًا سابقًا (يحتاج «عمّم» أو «عجبني» في رسالته الأخيرة)؛ '
+    + '«عمّم» ليست هذه الأداة: الخادم ينسخ الردود كاملة إلى كل المزوّدين. إن قالها المالك لا تستدعِ teach_users ولا تسأل ماذا يقصد ولا تعرض خيارات. '
+    + 'add يحفظ درسًا للتجربة على محادثات المالك وحده؛ publish ينشر درسًا سابقًا (يحتاج «عجبني» أو «عمّم» في رسالته الأخيرة)؛ '
     + 'unpublish يرجعه للمالك وحده؛ remove يحذفه؛ list يعرض الدروس وحالتها.',
   input_schema: {
     type: 'object',
@@ -68,6 +70,9 @@ function ownerSaidPublish(text) { const s = String(text || ''); return PUBLISH_R
 const GEN_RE = /(?:^|[\s،,.!؟?«»"'()-])(?:عمّم|عمم|عمّمه|عممه|عمّمها|عممها|عمّموه)(?=$|[\s،,.!؟?«»"'()-])/i;
 const GEN_NEG_RE = /(?:لا|ما|مب|مو|مش|بدون)\s+(?:ت|ن|ي)?(?:عمّم|عمم)/;
 function ownerSaidGeneralize(text) { const s = String(text || ''); return GEN_RE.test(s) && !GEN_NEG_RE.test(s); }
+const LIKED_RE = /(?:^|[\s،,.!؟?«»"'()-])(?:عجبني|عجبتني|عجبوني|أعجبني|اعجبني|أعجبتني|اعجبتني|حبّيته|حبيته|حبّيتها|حبيتها)(?=$|[\s،,.!؟?«»"'()-])/i;
+const LIKED_NEG_RE = /(?:لا|ما|مب|مو|مش|بدون)\s+(?:ت|ن|ي)?(?:عجب|أعجب|اعجب|عاجب|يعجب|حبّيت|حبيت)/;
+function ownerSaidLiked(text) { const s = String(text || ''); return LIKED_RE.test(s) && !LIKED_NEG_RE.test(s); }
 
 async function readSelf(prov) {
   const p = provOf(prov);
@@ -140,7 +145,20 @@ async function captureGeneralize(messages, prov) {
   if (added || kept.length !== items.length) await saveGen(kept);
   return { added, items: kept };
 }
+// بلا ردّ سابق: ما يكتبه المزوّد عن الصورة يُحفظ هو. سطر التأكيد وسؤال «وش تقصد» لا يُحفظان.
+async function captureBareReply(messages, reply, prov) {
+  if (assistantTexts(messages).length) return { added: 0 };
+  const t = redactKeys(String(reply || '')).replace(/\u0000/g, '').trim();
+  if (t.length < 40 || GEN_ACK_RE.test(t) || GEN_ASK_RE.test(t)) return { added: 0 };
+  return captureGeneralize([{ role: 'assistant', content: t }], prov);
+}
 const GEN_HEAD = '\n\n[معلومات معمّمة — حفظها عمران بـ«عمّم» لتكون عند كل المزوّدين. اعتمدها كما هي، ولا تعلو على قواعد المالك]:\n';
+const GEN_ORDER = '\n\n[أمر «عمّم» — هذا الدور، يعلو على وصف الأدوات]: المالك قال «عمّم». معناها واحد: المعلومات التي عندك في هذه المحادثة (ردودك السابقة كاملة، والكود من أوّله لآخره) صارت عند المزوّدين العشرة. الخادم نسخها. '
+  + 'لا تسأل «وش تقصد». لا تعرض خيارات. لا تستخرج درسًا ولا أسلوب عرض. لا تستدعِ teach_users. لا تقترح صفحة ولا ميزة. '
+  + 'ردّك سطر واحد: صارت عند العشرة. '
+  + 'استثناء: إن لم يكن لك ردّ سابق والمعلومة في الصورة المرفقة — انسخ ما في الصورة كاملًا كما هو (كل رقم وكل نص) بلا تلخيص وبلا سؤال، ثمّ السطر: صارت عند العشرة.';
+const GEN_ACK_RE = /^\s*صارت عند العشرة[.!]?\s*$/;
+const GEN_ASK_RE = /وش\s*تقصد|ماذا\s*تقصد|ما\s*تقصد بـ?|أعمّم درس|استخرج منه درس|أسلوب رد/;
 function genBlock(items, budget, already) {
   const room = Number(budget) || 0;
   if (room <= GEN_HEAD.length) return '';
@@ -208,6 +226,9 @@ async function runTeach(input, lastUserText, isOwner, by) {
   if (act === 'list') {
     if (!items.length) return 'لا دروس بعد.';
     return items.map((x) => x.id + ' · ' + (x.scope === 'all' ? 'منشور للكلّ' : 'تجربة للمالك') + ' · ' + x.text).join('\n');
+  }
+  if ((act === 'generalize' || act === 'add') && ownerSaidGeneralize(lastUserText) && !ownerSaidLiked(lastUserText)) {
+    return '✗ «عمّم» نسخ ردود المحادثة كما هي إلى كل المزوّدين — الخادم نفّذها. لا درس هنا. لا تسأل المالك. ردّك سطر واحد: صارت عند العشرة.';
   }
   if (act === 'add' || act === 'generalize') {
     const text = String((input && input.text) || '').replace(/\s+/g, ' ').trim();
@@ -282,7 +303,8 @@ async function systemBlocks(owner, prov, ctx) {
     } catch (e) { /* guard-ok — بلا تخزين يردّ بلا ملفّه */ }
   }
   try { out += lessonsBlock(await readLessons(false), !!owner); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الدروس */ }
+  if (owner && ctx && ownerSaidGeneralize(ctx.lastUserText)) out += GEN_ORDER;
   return out;
 }
 
-module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, trimGen, genBlock, genBudget, captureGeneralize, __resetCache: () => { lessonsCache = null; genCache = null; } };
+module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, GEN_ORDER, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, ownerSaidLiked, trimGen, genBlock, genBudget, captureGeneralize, captureBareReply, __resetCache: () => { lessonsCache = null; genCache = null; } };

@@ -1544,6 +1544,11 @@ module.exports = async (req, res) => {
     let searchesUsed = 0; // v-chat-parallel-tools: سقف بحثين لكل ردّ
     let anyText = false;
     let fullText = '';   // v608 — نصّ الردّ المتراكم
+    const __saveGenReply = async () => { // v-owner-gen: بلا ردّ سابق، ما يكتبه المزوّد عن الصورة يُحفظ مع «عمّم»
+      if (!__ownerReq) return;
+      try { const __ps = require('./prov-self.js'); if (__ps.ownerSaidGeneralize(lastUserText)) await __ps.captureBareReply(messages, fullText, reqProv || prov); }
+      catch (e) { logError('chat/owner-gen-reply', e); }
+    };
     let toolCorpus = '', __searchRan = false; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور · v-rating-guard-search: هل بحث فعليّ (web_search/fetch_page) جرى؟
 
     // إزالة تكرار المواقع عبر استدعاءات البحث في نفس الدور
@@ -1976,6 +1981,7 @@ module.exports = async (req, res) => {
         const _cleaned = stripSpecialTokens(stripMemoryUrls(fullText, toolCorpus)); // v-special-tokens: حزام ثانٍ للتصحيح الختاميّ
           if (_cleaned !== fullText) { send({ patch: _cleaned }); }
           // v-owner-solo (المالك ٨ أكتوبر «أريد المحادثة فقط، أيّ شي زائد عليها ما أريده»): لا سطر سبب تحت الردّ.
+          await __saveGenReply();
           send({ done: true }); // tok-3: done قبل القياس — الدالّة تبقى حيّة حتّى res.end()
           await __meterTurn(); res.end(); return; // v-cost-meter: نهاية الدور العاديّة
       }
@@ -2157,6 +2163,7 @@ module.exports = async (req, res) => {
     }
 
     if (__olS.on) send({ error: __ol.exitText({ t0, MAX_MS, MAX_STEPS }), ownerStop: true }); // v-claude-code-level C1: لا خروج صامت — السبب للمالك (تحت النصّ إن وُجد)
+    await __saveGenReply();
     __turnKaStop(); send({ done: true });
     await __meterTurn(); // v-cost-meter: خروج بعد حدّ الجولات أو المهلة · tok-3: بعد done
     res.end();
