@@ -227,6 +227,10 @@
     /* v-read-all (المالك: «الوكيل يقرأ ويحلّل كلّ شي — أريد نفس الشي في المزوّدين كلّهم»): كلّ سطر أثر «↳» خطوةٌ في
        سجلّ بصيغة سجلّ الوكيل (m._agParts)، يسبقها «فكّر N ث» حتّى أوّل حرف — يُحفظ في الرسالة فيبقى بعد الردّ. */
     var __t0 = Date.now(), __tFirst = 0, __steps = [], __thinks = [];
+    /* v-work-log (المالك ١٣ أكتوبر: «الحينه هذا منظم بي ذمتك» ثمّ لقطة واجهة Claude «سولي نفس هذي بالضبط»): التفكير والخطوات سجلّ
+       واحد بترتيب وصولها (__seq)، وكلّ واحد يصل صندوق العمل حيًّا (__omranThinkNote) مع بداية الدور (t0) لعدّاد الوقت.
+       مدّة كلّ تفكير منذ آخر حدث لا منذ بداية الدور. */
+    var __seq = [], __tLast = __t0;
     var __rp = window.omranReadPanel || null; /* v-read-panel: لوحة «الكود المقروء» — ما يُقرأ من GitHub يظهر فيها أثناء البثّ */
     if (__rp) __rp.begin();
 
@@ -253,16 +257,19 @@
         /* v-img-box (المالك: «احذف كلمة يرسم الصورة مع أيقونة الرسم»): حالة رسم/تعديل صورة تُظهر مربّع الإنشاء بدل السطر */
         if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
         else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status, onDelta && onDelta.__status);  /* v656 */
+        if (ev.status && !/^↳/.test(String(ev.status)) && typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ head: String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/, '').trim(), t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:head'); } } /* v-work-log: رأس صندوق العمل = ما يجري الآن */
         if (ev.think && ev.think.s && __thinks.length < 8) {
           var __ts = String(ev.think.s).slice(0, 1200);
-          var __tm = Date.now() - __t0;
-          __thinks.push({ t: 'think', ms: __tm, s: __ts, open: 1 });
-          if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ s: __ts, ms: __tm }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:think'); } }
+          var __tm = Date.now() - __tLast; __tLast = Date.now();
+          __thinks.push({ t: 'think', ms: __tm, s: __ts }); __seq.push(__thinks[__thinks.length - 1]); /* محفوظًا مطويًّا: «فكّر N ث ›» يُفتح بالضغط */
+          if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ s: __ts, ms: __tm, t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:think'); } }
         }
         if (ev.status && /^↳/.test(String(ev.status)) && !/^↳\s*💭/.test(String(ev.status)) && __steps.length < 24) {
           var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
           __steps.push({ t: 'tool', name: String(ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: /Fail|Err/.test(String(ev.k || '')) ? 1 : 0, g: 0 });
-          if (ev.code && typeof ev.code === 'object') __steps[__steps.length - 1].code = ev.code; /* v-read-panel: يُحفظ مع الخطوة فتعمل الأرقام بعد إعادة التحميل */
+          var __st = __steps[__steps.length - 1]; __seq.push(__st); __tLast = Date.now();
+          if (ev.code && typeof ev.code === 'object') { __st.code = ev.code; __st.g = 1; __st.title = String(ev.code.p || __tt) + '  ' + ev.code.a + '–' + ev.code.b; } /* v-read-panel: يُحفظ مع الخطوة فتعمل الأرقام بعد إعادة التحميل · v-work-log: عنوان قراءة الملفّ مساره وأسطره */
+          if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ step: __st, t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:step'); } }
         }
         if (ev.code && typeof ev.code === 'object' && __rp) { try { __rp.live(ev.code); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-live'); } }
         if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
@@ -305,8 +312,7 @@
     if (__ownerStop && serverErr) { __fenceCut = ((full.match(/```/g) || []).length % 2) === 1; full = full + (__fenceCut ? '\n```' : '') + '\n\n⚠️ ' + serverErr; if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-note'); } } }
     var __p = provider || 'claude';
     if (__rp) { try { __rp.pack(__steps, full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-pack'); } } /* v-read-panel: سقف حجم المقاطع المحفوظة */
-    var __head = __thinks.length ? __thinks : (__steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }] : []);
-    var __log = (__head.length || __steps.length) ? __head.concat(__steps) : undefined;
+    var __log = __seq.length ? [{ t: 'meta', ms: (__tFirst || Date.now()) - __t0 }].concat(__seq) : undefined; /* v-work-log: بترتيب الوصول، وأوّله مدّة العمل حتّى أوّل حرف من الردّ */
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined, cards: __cards || undefined };
   };
 })();

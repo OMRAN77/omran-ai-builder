@@ -95,7 +95,7 @@ function loadChatTools(events) {
   return window.callChatWithTools;
 }
 
-test('العميل يبني السجلّ: «فكّر» ثمّ خطوة لكلّ سطر أثر بمُدخلها وناتجها؛ وبلا أثر لا سجلّ', async () => {
+test('العميل يبني السجلّ: مدّة العمل ثمّ خطوة لكلّ سطر أثر بمُدخلها وناتجها؛ وبلا أثر لا سجلّ', async () => {
   const call = loadChatTools([
     { status: '💭 يقرأ سؤالك…', k: 'stReading' },
     { status: '🌐 يقرأ صفحة…', k: 'stFetchPage' },
@@ -107,7 +107,7 @@ test('العميل يبني السجلّ: «فكّر» ثمّ خطوة لكلّ 
   const r = await call([{ role: 'user', content: 'x' }], null, 'gemini');
   assert.strictEqual(r.reply, 'الجواب');
   assert.strictEqual(r.log.length, 3);
-  assert.strictEqual(r.log[0].t, 'think');
+  assert.strictEqual(r.log[0].t, 'meta', 'v-work-log: أوّل السجلّ مدّة العمل حتّى أوّل حرف (كان «فكّر N ث» بلا ملخّص)');
   assert.ok(r.log[0].ms >= 0);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(r.log.slice(1))), [
     { t: 'tool', name: 'trFetch', title: 'قرأتُ a.com — حصلتُ 3 حرفًا', cmd: 'https://a.com', out: 'abc', err: 0, g: 0 },

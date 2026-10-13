@@ -32,6 +32,7 @@ I18N['zh'] = {
     buildNoCode: '⚠️ 未收到提供方返回的代码——预览为空。请重新发送请求或尝试其他提供方。',
     agThought: '思考了 {n} 秒', agExplored: '浏览了 {n} 个文件', agNoOutput: '无输出', // v-agent-log
     readTab: '已读代码', readCite: '在代码面板中打开此行', // v-read-panel
+    cwWorked: '工作了 {t}', cwRequest: '请求', cwResponse: '响应', cwTimeM: '{m}分{s}秒', cwTimeS: '{s}秒', cwWorking: '处理中…', // v-work-log
     convertToImage: '转换为图片',
     convertToPdf: '转换为 PDF',
     convertToWord: '转换为 Word',

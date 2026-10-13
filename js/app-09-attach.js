@@ -2752,18 +2752,23 @@ function __agLogThinkEl(p){
   const b = document.createElement('div'); b.className = 'agThinkBody'; b.textContent = p.s; d.appendChild(b);
   return d;
 }
-/* v-think-talk: ملخّص تفكير المزوّد فوق فقاعة الردّ — خارج __sendPromptCore كي لا يكبر سقفها. */
+/* v-think-talk: ملخّص تفكير المزوّد فوق فقاعة الردّ — خارج __sendPromptCore كي لا يكبر سقفها.
+   v-work-log (المالك ١٣ أكتوبر، لقطة واجهة Claude: «سولي نفس هذي بالضبط»): الملخّصات والخطوات ({step} من app-18) تصل صندوق العمل
+   (js/app-39-work-log.js) بترتيبها، و{head} يحدّث رأسه بما يجري الآن. الصندوق لا يُنشأ إلّا بأوّل تفكير أو خطوة — ردّ بلا أدوات بلا صندوق.
+   يُزال مع الفقاعة المؤقّتة (__thinkBox)، والمحفوظ يرسمه __agLogRender. */
 function omranShowThink(thinkingDiv, th){
   try{
-    if(!thinkingDiv || !th || !th.s) return;
-    let box = thinkingDiv.__thinkBox;
-    if(!box || !box.isConnected){
-      box = document.createElement('div'); box.className = 'agLog';
-      if(thinkingDiv.isConnected && thinkingDiv.parentNode) thinkingDiv.parentNode.insertBefore(box, thinkingDiv);
-      else if(typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(box);
-      thinkingDiv.__thinkBox = box;
+    if(!thinkingDiv || !th) return;
+    if(th.t0 && !thinkingDiv.__cwT0) thinkingDiv.__cwT0 = th.t0;
+    if(th.head){ thinkingDiv.__cwHead = String(th.head); if(thinkingDiv.__cw) thinkingDiv.__cw.head(thinkingDiv.__cwHead); }
+    if(!(th.s || th.step) || !window.omranWorkLog) return;
+    let cw = thinkingDiv.__cw;
+    if(!cw || !cw.el.isConnected){
+      cw = window.omranWorkLog.live(thinkingDiv, thinkingDiv.__cwT0, thinkingDiv.__cwHead);
+      if(!cw.el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(cw.el);
+      thinkingDiv.__cw = cw; thinkingDiv.__thinkBox = cw.el;
     }
-    box.appendChild(__agLogThinkEl({ t: 'think', ms: th.ms || 1000, s: String(th.s), open: 1 }));
+    cw.add(th.s ? { t: 'think', ms: th.ms || 1000, s: String(th.s) } : th.step);
   }catch(e){ __swallow(e, 'chat:think-note'); }
 }
 function __agLogGroupEl(els){
@@ -2780,6 +2785,7 @@ function __agLogTextEl(s){
 }
 /** يستدعيه renderMessages لكلّ ردّ وكيل يحمل سجلًّا محفوظًا: عنصر السجلّ يسبق نصّ الردّ. */
 function __agLogRender(parts){
+  if(parts[0] && parts[0].t === 'meta' && window.omranWorkLog) return window.omranWorkLog.render(parts); // v-work-log: سجلّ المحادثة بصندوق العمل
   const root = document.createElement('div'); root.className = 'agLog';
   for(let i = 0; i < parts.length; i++){
     const p = parts[i];

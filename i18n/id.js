@@ -37,6 +37,7 @@ I18N['id'] = {
     buildNoCode: '⚠️ Tidak ada kode yang diterima dari penyedia — pratinjau kosong. Kirim ulang permintaan atau coba penyedia lain.',
     agThought: 'Berpikir {n} dtk', agExplored: 'Menjelajahi {n} file', agNoOutput: 'Tidak ada keluaran', // v-agent-log
     readTab: 'Kode yang dibaca', readCite: 'Buka baris ini di panel kode', // v-read-panel
+    cwWorked: 'Bekerja selama {t}', cwRequest: 'Permintaan', cwResponse: 'Respons', cwTimeM: '{m}m {s}d', cwTimeS: '{s}d', cwWorking: 'Sedang bekerja…', // v-work-log
     convertToImage: 'Ubah ke Gambar',
     convertToPdf: 'Ubah ke PDF',
     convertToWord: 'Ubah ke Word',

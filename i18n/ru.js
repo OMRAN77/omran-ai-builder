@@ -38,6 +38,7 @@ I18N['ru'] = {
     buildNoCode: '⚠️ От провайдера не получен код — предпросмотр пуст. Отправьте запрос повторно или попробуйте другого провайдера.',
     agThought: 'Думал {n} с', agExplored: 'Просмотрено файлов: {n}', agNoOutput: 'Нет вывода', // v-agent-log
     readTab: 'Прочитанный код', readCite: 'Открыть строку в панели кода', // v-read-panel
+    cwWorked: 'Работал {t}', cwRequest: 'Запрос', cwResponse: 'Ответ', cwTimeM: '{m} мин {s} с', cwTimeS: '{s} с', cwWorking: 'Работает…', // v-work-log
     convertToImage: 'Преобразовать в изображение',
     convertToPdf: 'Преобразовать в PDF',
     convertToWord: 'Преобразовать в Word',

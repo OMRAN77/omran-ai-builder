@@ -36,6 +36,7 @@ I18N['ne'] = {
     buildNoCode: '⚠️ प्रदायकबाट कुनै कोड प्राप्त भएन — पूर्वावलोकन खाली छ। अनुरोध फेरि पठाउनुहोस् वा अर्को प्रदायक प्रयास गर्नुहोस्।',
     agThought: '{n} सेकेन्ड सोच्यो', agExplored: '{n} फाइलहरू हेर्यो', agNoOutput: 'कुनै आउटपुट छैन', // v-agent-log
     readTab: 'पढिएको कोड', readCite: 'यो लाइन कोड प्यानलमा खोल्नुहोस्', // v-read-panel
+    cwWorked: '{t} काम गर्यो', cwRequest: 'अनुरोध', cwResponse: 'नतिजा', cwTimeM: '{m}मि {s}से', cwTimeS: '{s}से', cwWorking: 'काम हुँदैछ…', // v-work-log
     convertToImage: 'छविमा रूपान्तरण गर्नुहोस्',
     convertToPdf: 'PDF मा रूपान्तरण गर्नुहोस्',
     convertToWord: 'Word मा रूपान्तरण गर्नुहोस्',
