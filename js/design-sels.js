@@ -286,6 +286,9 @@
     return id==='designAiStyle' ? 'assets/design/styles/'+v+'.webp'
       : 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp';
   }
+  /* v-light-imgs (طلب المالك ١٣ أكتوبر): صور حقيقيّة للإضاءة الأربع ذات الأسماء نفسها (assets/design/opts/lighting-*.webp)،
+     مقصوصة بلا الاسم المطبوع، والاسم المترجم تحت الصورة. «بدون تغيير» يبقى رسمًا. */
+  var WIDE={designAiLighting:1};
   function selTrigger(s){
     var ien=(document.documentElement.lang||'ar')==='en';
     function optTxt(o){ return (typeof window.__optT==='function')?window.__optT(o):(((o&&o.textContent)||'')+'').trim(); } /* v657 */
@@ -304,7 +307,9 @@
           return { v:o.value, title:optTxt(o)||(ien?'None':'بدون'), active:o.value===s.value,
             img:selImg(s.id,o.value), bg:roomBg(s.id,o.value), sub:palSub(s.id,o.value) };
         }),
-        onPick: function(v){ s.value=v; s.dispatchEvent(new Event('change',{bubbles:true})); tr.refresh(); }
+        onPick: function(v){ s.value=v; s.dispatchEvent(new Event('change',{bubbles:true})); tr.refresh(); },
+        /* v-light-imgs: صور الإضاءة أفقيّة — بطاقة ١٦/٩ بعمود أعرض فتظهر الغرفة كاملة. */
+        aspect: WIDE[s.id] ? '16/9' : undefined, minCol: WIDE[s.id] ? 240 : undefined
       };
     });
     tr.el.classList.add('optGrid');
