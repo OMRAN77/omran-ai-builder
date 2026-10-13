@@ -38395,6 +38395,26 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   /* v-owner-img-why (لقطة المالك ١٣ أكتوبر: GPT-6 Astra حاول رسم بدائل بطاقات الأزياء فرجع «image_generation_busy» مرّتين وقال «العائق توليد
      الصور» بلا سبب): السبب الحقيقيّ في __diag من الخادم (رسالة المحرّك: رصيد، صلاحيّة، موديل…) كان يُرمى هنا. للمالك وحده يصل نتيجةَ الأداة —
      بلا مفاتيح — فيقوله المزوّد كما هو ولا يسمّيه «مشغول». غير المالك كما كان (لا أسماء محرّكات تصل ردّه). */
+  /* v-agent-img: رسمة المزوّد للمالك تُحفظ في مخزن التطبيق يومًا (purpose:'agent' — الخادم يتحقّق أنّه المالك) ويُسجَّل رمزها ←
+     معرّفها في المحادثة (agentImgIds) فيرسله app-18 مع كلّ طلب، ويقبل write_github الرمز في دور لاحق أيضًا. يرجع الرابط أو ''. */
+  function omranAgentOwner() { try { return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); } catch (e) { return false; } }
+  async function omranAgentSave(tok, b64, mime) {
+    try {
+      var up = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64, mime: mime || 'image/png', purpose: 'agent', token: (window.authGet && window.authGet('aiapp_auth_token')) || '' }) });
+      var uj = null; try { uj = await up.json(); } catch (e2) { uj = null; }
+      if (!up.ok || !uj || !uj.url || !uj.id) return '';
+      try {
+        var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+        if (cur) {
+          var m = Object.assign({}, cur.agentImgIds || {});
+          m[tok] = String(uj.id);
+          var keys = Object.keys(m); if (keys.length > 30) keys.slice(0, keys.length - 30).forEach(function (k) { delete m[k]; });
+          cur.agentImgIds = m;
+        }
+      } catch (e3) { if (window.__swallow) window.__swallow(e3, 'chatTools:agent-img-map'); }
+      return String(uj.url);
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:pics-share'); return ''; }
+  }
   function engineWhy(j) {
     try {
       if (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) || !j || !j.__diag) return '';
@@ -38594,12 +38614,12 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
           var gLine = '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
           /* v-img-with-edit: دور لقطة + صور = احفظ رابط /i/ فورًا كي تُرفع مع التعديل بلا انتظار «عمّم» */
-          if (args && args.noRef) {
-            try {
-              var gUp = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: j.imageBase64, mime: j.mimeType || 'image/png', token: (window.authGet && window.authGet('aiapp_auth_token')) || '' }) });
-              var gUj = null; try { gUj = await gUp.json(); } catch (e2) { gUj = null; }
-              if (gUp.ok && gUj && gUj.url) gLine += ' رابطها في التطبيق: ' + gUj.url + ' — ارفعها الآن بـwrite_github ملف {path: مسار الصورة في المستودع كما قرأته, image: "' + gUj.url + '"} في هذا الردّ نفسه. لا تنتظر «عمّم».';
-            } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:pics-share'); }
+          /* v-agent-img (المالك ١٣ أكتوبر: «الوكيل يرسم صورة ويرفعها للمستودع مباشرة»): كلّ رسمة للمالك تُحفظ في المخزن يومًا
+             (purpose:'agent') ويصل النموذجَ رابطها مع رمزها، فيرفعها write_github بـimage:"__IMG_N__" أو بالرابط. */
+          if ((args && args.noRef) || omranAgentOwner()) {
+            var gUrl = await omranAgentSave(tok, j.imageBase64, j.mimeType || 'image/png');
+            if (gUrl && args && args.noRef) gLine += ' رابطها في التطبيق: ' + gUrl + ' — ارفعها الآن بـwrite_github ملف {path: مسار الصورة في المستودع كما قرأته, image: "' + gUrl + '"} في هذا الردّ نفسه. لا تنتظر «عمّم».';
+            else if (gUrl) gLine += ' رابطها في التطبيق: ' + gUrl + ' — لرفعها إلى المستودع: write_github ملف {path, image: "' + tok + '"}.';
           }
           return gLine;
         }
@@ -38649,6 +38669,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           }
           var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
           window.__genImages[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
+          var eUrl = omranAgentOwner() ? await omranAgentSave(etok, ej.imageBase64, ej.mimeType || 'image/png') : ''; // v-agent-img
           /* v-tool-chain: نتيجة أداة التعديل تصير آخر صورة في السلسلة كي تعمل عليها الرسالة التالية مباشرة */
           try { if (tcur) { tcur.lastEditedImage = { b64: ej.imageBase64, mime: ej.mimeType || 'image/png' }; tcur.lastMsgWasImageEdit = true; } } catch (e) { /* guard-ok */ }
           /* v-image-memory: نسجّل الدور هنا أيضًا (كلمات المستخدم + مصغّر النتيجة) */
@@ -38664,7 +38685,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           /* v-img-honest (المالك: «يقولي شي والتنفيذ صفر»): النموذج كان يرى «✅» وحدها فيروي «تمّ تغيير كلّ شيء» مهما خرج.
              الآن يصله حكم التنفيذ (ej.verdict) وتقرير ما يُرى فعلًا، ويُطلب منه ألّا يدّعي أكثر منه. */
           var ev = ej.verdict === 'not_done' ? ' — الفحص: الطلب لم يظهر في الصورة' : (ej.verdict === 'partial' ? ' — الفحص: نُفّذ جزء فقط' : (ej.verdict === 'done' ? ' — الفحص: نُفّذ' : ''));
-          return (ej.verdict === 'not_done' ? '⚠️' : '✅') + ' عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + ')' + ev + (ej.caption ? '. ما يُرى فعلًا: «' + String(ej.caption).slice(0, 400) + '» — صِف للمستخدم هذا وحده ولا تدّعِ أكثر منه' : '') + '. ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
+          return (ej.verdict === 'not_done' ? '⚠️' : '✅') + ' عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + ')' + ev + (ej.caption ? '. ما يُرى فعلًا: «' + String(ej.caption).slice(0, 400) + '» — صِف للمستخدم هذا وحده ولا تدّعِ أكثر منه' : '') + '. ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok + (eUrl ? ' — رابطها في التطبيق: ' + eUrl + ' — لرفعها إلى المستودع: write_github ملف {path, image: "' + etok + '"}.' : ''); // v-agent-img
         }
         // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء
         // الأداة فعلًا، لا عند فتح الصفحة. الإحداثيات تُستهلك في نداء التحويل
@@ -38914,6 +38935,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         ownerUiShot: (typeof window.__ownerUiShotTurn === 'boolean') ? window.__ownerUiShotTurn : undefined, /* v-owner-ui-shot-client: قرار الواجهة لهذا الدور (لقطة المالك يطلب تعديلها) — الخادم يتبعه بدل إعادة التخمين من النصّ */
         noTools: (opts && opts.noTools) ? true : undefined, /* v-owner-solo: المسار القديم للمالك (استئذان/إصلاح) بلا أدوات كما كان — الخادم يقبله للمالك وحده */
         genImage: __genImg || undefined, /* v-gen-image: صورة «عمّم» للمالك وحده؛ undefined لغيرها فيسقط الحقل من JSON */
+        imgIds: (function () { try { var c = (typeof omranOwnerUi === 'function' && omranOwnerUi() && typeof getCurrent === 'function') ? getCurrent() : null; return (c && c.agentImgIds && Object.keys(c.agentImgIds).length) ? c.agentImgIds : undefined; } catch (e) { return undefined; } })(), /* v-agent-img: رمز رسمة المحادثة ← معرّفها في المخزن، للمالك وحده */
         histOffset: (opts && Number.isInteger(opts.histOffset) && opts.histOffset >= 0) ? opts.histOffset : undefined, /* v-tokens-window: موضع أوّل رسالة مرسلة في المحادثة — الخادم يثبّت به بداية نافذة التاريخ (كاش)؛ undefined = السلوك القديم */
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */

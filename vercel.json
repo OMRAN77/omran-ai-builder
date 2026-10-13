@@ -110,7 +110,8 @@
       "regions": [
         "bom1"
       ],
-      "maxDuration": 300
+      "maxDuration": 300,
+      "includeFiles": "node_modules/@jsquash/webp/**"
     }
   },
   "rewrites": [

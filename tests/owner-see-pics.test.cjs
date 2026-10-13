@@ -151,7 +151,8 @@ test('٥. readImageFile: بايتات الصورة بترويسة raw ونوعه
 test('٦. العميل: noRef يمنع تحويل generate_image إلى تعديل على المرفق، ويحفظ رابط /i/ للرفعة، والحزمة مبنيّة', () => {
   const src = fs.readFileSync(path.join(root, 'js/app-17-agent-tools.js'), 'utf8');
   assert.ok(/var gCreative = !!\(gFirst && gRefB64[^\n]*&& !\(args && args\.noRef\)\);/.test(src));
-  assert.ok(src.includes("if (args && args.noRef)") && src.includes("/api/media?action=img") && src.includes('write_github ملف'));
+  // v-agent-img: الحفظ صار لكلّ رسمة للمالك (noRef وغيره) بـpurpose:'agent'، ونصّ noRef «ارفعها الآن» باقٍ
+  assert.ok(src.includes("if ((args && args.noRef) || omranAgentOwner())") && src.includes("/api/media?action=img") && src.includes("purpose: 'agent'") && src.includes('write_github ملف') && src.includes('ارفعها الآن'));
   assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('&& !(args && args.noRef));'));
   assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('/api/media?action=img'));
 });
