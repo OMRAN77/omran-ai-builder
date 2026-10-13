@@ -20,6 +20,8 @@
 const SYS = '[تنبيه النظام — ليس من المالك]: ';
 const FINAL_NOTE = SYS + 'انتهت ميزانيّة الأدوات — اكتب الجواب الآن ممّا قرأت وصرّح بما لم تقرأه. وإن بقي شغل لم يُنفَّذ فاختم بما بقي بالتحديد '
   + '(الملفّ والأسطر والتغيير) — منه يكمل الدور التالي. لا تقل إنّك عدّلت ما لم تعدّله.';
+/* v-prov-finish-edit: ختام الميزانيّة كان «اكتب الجواب» وtool_choice none، فيتوقّف بعد القراءة بلا رفعة. إن طلب المالك تعديلًا وما رُفع شيء: نفّذ الآن والأدوات تبقى. */
+const FINAL_EDIT_NOTE = SYS + 'انتهت ميزانيّة القراءة — لا تلخّص ولا تعتذر. نفّذ التعديل الآن بـedit_github رقعة واحدة ممّا قرأت، ثمّ اكتب رابط طلب السحب. لا تقرأ من جديد.';
 /* v-owner-resume (لقطة المالك ١٣ أكتوبر، GPT-6 Astra وبطاقات الأزياء: «مب قادر يكمل»): الختام بالميزانيّة كان ينهي الدور بملخّص، و«كمل»
    بعده تصل كلمة وحدها فيعيد المزوّد وصف ما قرأ بلا أداة. الآن سطر ثابت من الخادم تحت ختام الميزانيّة (RESUME_KEY)، و«كمل» بعد ردّ يحمله
    تأخذ RESUME_NOTE في رسالة المالك، ودور الإكمال الذي يختم بنصّ بلا أداة يُعاد للحلقة مرّة (CARRY_NOTE في chat.js). */
@@ -29,12 +31,14 @@ const RESUME_NOTE = SYS + 'المالك يطلب إكمال المهمّة نف�
   + 'ابدأ فورًا بما بقي — اقرأ بأدواتك فقط ما تحتاجه للتعديل (المسارات والأسطر بالتحديد)، ثمّ نفّذ بـedit_github وأعطِ رابط طلب السحب. '
   + 'إن كان الباقي شيئًا لا تقدر عليه بأداة فقله في سطر واحد بالتحديد.';
 // كلمة الإكمال وحدها (مع «يلا/طيب» قبلها أو «ها/الشغل/المهمّة» بعدها) — جملة فيها طلب آخر ليست إكمالًا. ملاحظات العميل بين قوسين بعد سطر فارغ لا تُحسب.
-const RESUME_RE = /^(?:(?:يلا|يالله|طيب|تمام|اوكي|أوكي|ok)\s+)?(?:[أاإ]?كم\u0651?ل(?:ها)?|تابع|واصل|continue|go\s+on)(?:\s+(?:الشغل|المهم[ةه]|الشغله|الشغلة))?\s*[.!؟?…]*$/i;
+const RESUME_RE = /^(?:(?:يلا|يالله|طيب|تمام|اوكي|أوكي|ok)\s+)?(?:[أاإ]?كم\u0651?ل(?:ها)?|تابع|واصل|continue|go\s+on)(?:\s+(?:الشغل|المهم[ةه]|الشغله|الشغلة|التعديل|التعديلات|من\s+حيث\s+وقف))?\s*[.!؟?…]*$/i;
 function isResume(text) { return RESUME_RE.test(String(text || '').replace(/\n\s*\n\s*\[[\s\S]*$/, '').trim()); }
 function msgText(m) { return !m ? '' : (typeof m.content === 'string' ? m.content : (Array.isArray(m.content) ? m.content.map((b) => (b && b.type === 'text' ? b.text || '' : '')).join('\n') : '')); }
 /** «كمل» بعد ردّ قطعته الميزانيّة: يُلحق RESUME_NOTE برسالة المالك الأخيرة (نسخة جديدة للمحتوى). يعيد true إن أُلحق. */
 function resume(convo, lastUserText) {
-  if (!Array.isArray(convo) || convo.length < 3 || !isResume(lastUserText)) return false;
+  if (!Array.isArray(convo) || convo.length < 3) return false;
+  const asked = require('./owner-carry.js').ACTION_RE.test(String(lastUserText || ''));
+  if (!isResume(lastUserText) && !asked) return false;
   const last = convo[convo.length - 1];
   if (!last || last.role !== 'user') return false;
   let prev = null;
@@ -73,7 +77,7 @@ function stepText(blocks) { return (blocks || []).filter((b) => b && b.type === 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); } // انتظار الإعادة جزء من الدور (≤ ٨ ث) — ليس unref
 
 function state(on) {
-  return { on: !!on, final: false, nudged: false, conts: 0, retryMs: 0, noChoice: false, choice: false, slow: false, t0: 0, send: null, ac: null, reader: null, tFirst: null, tIdle: null, stalled: '', lastStall: '', stopDetails: null, midRetried: false };
+  return { on: !!on, final: false, nudged: false, editClose: false, conts: 0, retryMs: 0, noChoice: false, choice: false, slow: false, t0: 0, send: null, ac: null, reader: null, tFirst: null, tIdle: null, stalled: '', lastStall: '', stopDetails: null, midRetried: false };
 }
 
 /* C5: الحارس — لكلّ نداء مؤقّت حتّى الترويسة، وبعدها مؤقّت خمول يُصفَّر مع كلّ دفعة. الانطلاق يلغي القارئ
@@ -130,9 +134,10 @@ function beginStep(s, o) {
   if (!s || !s.on) return;
   s.stopDetails = null; s.t0 = Number(o.t0) || Date.now(); s.send = typeof o.send === 'function' ? o.send : null;
   s.final = !!o.tools && (o.steps >= o.MAX_STEPS || Date.now() - o.t0 > o.MAX_MS - margin(o.MAX_MS));
+  s.editClose = !!(s.final && o.editAsk && !o.pushed);
   if (s.final && !s.nudged && o.steps > 1 && Array.isArray(o.convo) && o.convo.length) {
     const last = o.convo[o.convo.length - 1];
-    if (last && last.role === 'user' && Array.isArray(last.content)) { last.content = last.content.concat([{ type: 'text', text: FINAL_NOTE }]); s.nudged = true; }
+    if (last && last.role === 'user' && Array.isArray(last.content)) { last.content = last.content.concat([{ type: 'text', text: s.editClose ? FINAL_EDIT_NOTE : FINAL_NOTE }]); s.nudged = true; }
   }
   clear(s); s.stalled = ''; s.reader = null; // الحارس يُسلَّح مع كلّ نداء (signal)
 }
@@ -141,7 +146,7 @@ function beginStep(s, o) {
    تغيير tool_choice يُبطل كاش الرسائل (جدول «ما يُبطل الكاش»: الأدوات والنظام يبقيان، الرسائل لا)، فيكفيه التنبيه. */
 function shape(b, s, direct) {
   if (s && s.on) s.choice = false;
-  if (s && s.on && s.final && direct && !s.noChoice && Array.isArray(b.tools) && b.tools.length) { b.tool_choice = { type: 'none' }; s.choice = true; }
+  if (s && s.on && s.final && direct && !s.noChoice && !s.editClose && Array.isArray(b.tools) && b.tools.length) { b.tool_choice = { type: 'none' }; s.choice = true; }
   return b;
 }
 
@@ -236,8 +241,8 @@ function afterStream(s, o) {
     }
     return { kind: 'note', msg: CUT_STOP };
   }
-  // C1: أداة طُلبت في الخطوة الختاميّة رغم التنبيه — لا تُنفَّذ (لا خطوة بعدها تقرأ نتيجتها)، والسبب للمالك تحت ما كُتب.
-  if (s.final && (o.stopReason === 'tool_use' || hasTool)) return { kind: 'stop', msg: exitText(o) };
+  // C1: أداة في ختام السؤال لا تُنفَّذ (لا خطوة بعدها). ختام التعديل (editClose) يُنفِّذها — وإلّا تبقى القراءة بلا رفعة.
+  if (s.final && !s.editClose && (o.stopReason === 'tool_use' || hasTool)) return { kind: 'stop', msg: exitText(o) };
   if (o.stopReason !== 'tool_use' && !text.trim() && !hasTool) return { kind: 'stop', msg: EMPTY_STOP };
   return null;
 }
@@ -493,5 +498,5 @@ module.exports = {
   isDeadPick, rememberDeadPick, margin,
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1
   RESUME_KEY, RESUME_NOTE, resumeMark, isResume, resume, // v-owner-resume
-  FINAL_NOTE, CONTINUE_NOTE, TOOL_CUT_NOTE, CUT_STOP, EMPTY_STOP, __deadPicks: deadPicks, __resetTalk: () => NO_TALK.clear(), // v-talk-400
+  FINAL_NOTE, FINAL_EDIT_NOTE, FN_BUDGET_MS, CONTINUE_NOTE, TOOL_CUT_NOTE, CUT_STOP, EMPTY_STOP, __deadPicks: deadPicks, __resetTalk: () => NO_TALK.clear(), // v-talk-400 · v-prov-finish-edit
 };
