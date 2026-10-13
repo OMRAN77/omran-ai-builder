@@ -1470,7 +1470,7 @@ module.exports = async (req, res) => {
       + '\n\n[البطاقات]: حين يطلب المستخدم شيئًا عامًّا ليختار منه — منتجًا أو سلعة أو خدمة أو محلًّا أو موقعًا أو مكانًا أو خطّة أو «أفضل X» («أبغى رنقات ENVE بكم»، «بذور زراعة»، «جوّال بالتقسيط») — استدعِ show_cards (مرّة واحدة) بدل web_search؛ البطاقات تُرسم له تلقائيًّا بصورها وأسعارها ومواقعها، فلا تعِد سردها نصًّا. بعدها: سطر أو سطران عمّا وجدت، ثمّ سؤال متابعة واحد فقط يضيّق الاختيار (الميزانيّة، المقاس، المدينة، الغرض…) وتوقّف. حين يجيب: ابقَ على الموضوع نفسه ورشّح له الأفضل واحدًا — ⭐ الأفضل لك: الاسم — السبب في سطر — الرابط — وإن ضاق الطلب فاستدعِ show_cards ثانيةً بالصياغة الأضيق. لا تقل «لا أقدر أعرض صورًا أو أسعارًا».';
     /* v-prov-self: آخر النظام (فيبقى الثابت بادئة الكاش) — للمالك ملفّ المزوّد المختار والدروس كلّها، ولغيره الدروس المنشورة بـ«عمّم» */
     let __provSelfSys = '';
-    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov); } catch (e) { logError('chat/prov-self', e); }
+    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov, __ownerReq ? { messages: messages, lastUserText: lastUserText } : null); } catch (e) { logError('chat/prov-self', e); }
     const system = (quietSocialTurn
       ? PERSONA_NOTE + '\n' + __sysBase + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور وبلغة رسالة المستخدم نفسها — جملتان أو ثلاث فيها روح (المثال العربي «الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟» مجرد مثال، ترجم روحه للغة المستخدم) واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn
@@ -2101,8 +2101,8 @@ module.exports = async (req, res) => {
             else if (!__dl.ownerAsksCode(lastUserText)) result = __dl.DELEGATE_REFUSAL; // v-code-not-primary: بطلب المالك بالاسم وحده
             else { __ownerOps.delegates++; result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
           }
-          /* v-prov-self: ملفّ المزوّد المختار نفسه (لا غيره)، والدروس العامّة بـ«عمّم» يفحصها الخادم · v-info-all: «عجبني» تنسخ المعلومة لكلّ المزوّدين */
-          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf(reqProv || prov, input, __ownerReq, lastUserText);
+          /* v-prov-self: ملفّ المزوّد المختار نفسه (لا غيره)، والدروس العامّة بـ«عمّم» يفحصها الخادم */
+          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf(reqProv || prov, input, __ownerReq);
           else if (cb.name === 'teach_users') result = await require('./prov-self.js').runTeach(input, lastUserText, __ownerReq, reqProv || prov);
           else if (cb.name === 'check_code_task') {
             const __dl = require('./agent-delegate.js');

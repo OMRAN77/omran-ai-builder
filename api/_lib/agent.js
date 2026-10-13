@@ -519,7 +519,7 @@ module.exports = async (req, res) => {
     const __cc = String(currentCode).slice(0, 300000), __big = __cc.length > 24000;
     system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا' + (__big ? ' — الملفّ ' + __cc.length + ' حرفًا، أكبر من أن يُعاد كاملًا: أرسل التعديل رقعًا داخل كتلة ```patch بالشكل @@PATCH ثمّ @@WHY سطر ثمّ @@OLD نصّ موجود في الملفّ مرّة واحدة بالضبط منسوخ حرفيًّا ثمّ @@NEW البديل ثمّ @@END، والتطبيق يطبّقها' : ' وأعد الملف كاملًا') + '):\n```html\n' + __cc + '\n```';
   }
-  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude'); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all (المالك ١٢ أكتوبر «اريدهم كلهم»): غير المالك يأخذ الدروس المنشورة وحدها
+  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude', isOwner(runUser) ? { messages: messages, lastUserText: living.lastUserText(messages) } : null); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all · v-owner-gen
   if (isOwner(runUser)) system += OWNER_ENGINEERING_NOTE + OWNER_COMMAND_NOTE; // v-owner-obey: آخر النظام فيعلو على ما قبله · v-agent-surgical
 
   const convoAll = messages
@@ -908,7 +908,7 @@ module.exports = async (req, res) => {
             result = isOwner(runUser) ? delegate.formatCheck(await delegate.checkTask(input)) : '✗ التحقّق من مهامّ الكود للمالك وحده.';
           }
           /* v-prov-self: الوكيل وكيلُ Claude — ملفّه ملفّ Claude نفسه؛ والدروس بـ«عمّم» يفحصها الخادم */
-          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf('claude', input, isOwner(runUser), living.lastUserText(messages));
+          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf('claude', input, isOwner(runUser));
           else if (cb.name === 'teach_users') result = await require('./prov-self.js').runTeach(input, living.lastUserText(messages), isOwner(runUser), 'claude');
           /* v-provider-errors: أخطاء الإنتاج الحيّة — للمالك وحده، وحارسٌ ثانٍ هنا لا في إخفاء الأداة وحده. */
           else if (cb.name === 'read_app_errors') {

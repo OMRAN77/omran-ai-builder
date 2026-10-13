@@ -3,8 +3,8 @@
    ملفّه»، ثمّ «زوّدت كلاود بمعلومة عامّة… تنتقل للمستخدمين؟» (الجواب كان: لا — كلّ مستخدم ذاكرته وحده ولا مخزن مشترك).
    (١) ملفّ لكلّ مزوّد: تعليماته لنفسه، يكتبه هو بأداة edit_self بأمر المالك، ويُحمَّل مع كلّ ردّ له في محادثات المالك وحده.
        كلّ نسخة سابقة محفوظة (٢٠) وتُرجَع بـundo.
-   (١ب) v-info-all (١٣ أكتوبر: «اذا عجبني في اي واحد يكون لي المزودين كلهم»): share — أو write ورسالته فيها «عجبني» / «كل المزودين» —
-       ينسخ المعلومة إلى مخزن واحد يُحمَّل مع كلّ مزوّد في محادثات المالك. ملفّه الخاصّ يبقى له إن لم يقلها. غير المالك لا يراها.
+   (١ب) v-owner-gen (١٣ أكتوبر: «عمّم» من أي مزوّد = المعلومة عند العشرة، للمالك وحده): ردود المزوّد في المحادثة تُحفظ كما هي
+       (قصير وطويل وكود) في مخزن واحد سقفه ١٦٠ ألف توكن، ويُحمَّل مع كل مزوّد في محادثات المالك. غير المالك لا يراه.
    (٢) دروس عامّة: يكتبها المالك عبر أيّ مزوّد (teach_users). الدرس الجديد يسري على محادثات المالك وحده (تجربة)، و«عمّم» في رسالته
        الأخيرة — يفحصها الخادم كحارس «ادمج» — تنشره لكلّ المستخدمين ولكلّ المزوّدين (chat.js وai.js).
    الكتابة للمالك وحده (الأداتان في أدواته فقط، والمنفّذ يرفض غيره). لا مفتاح يُقرأ في نطاق الوحدة. */
@@ -18,21 +18,22 @@ const LESSONS_MAX = 40;
 const BLOCK_MAX = 2500;
 const CACHE_MS = 60 * 1000;
 const LESSONS_KEY = 'db/lessons.json';
-const SHARED_KEY = 'db/prov-info.json';
+const GEN_KEY = 'db/owner-gen.json';
+// ١٦٠ ألف توكن بحساب التطبيق (٢٫٥ حرف للتوكن). المجموع مع المحادثة الحاليّة لا يتجاوزه: الأقدم من المعمّم يُنقص.
+const GEN_CHARS = 160000 * 2.5;
 const selfKey = (p) => 'db/prov-self/' + p + '.json';
 const provOf = (p) => { const k = String(p || '').trim().toLowerCase(); return PROVS.indexOf(k) !== -1 ? k : ''; };
 
 const SELF_TOOL = {
   name: 'edit_self',
-  description: 'ملفّك أنت، ومعلومات عمران المشتركة بين كلّ المزوّدين. '
-    + 'write يستبدل ملفّك (يُحمَّل مع ردودك في محادثات المالك؛ وإن قال «عجبني» أو «كل المزودين» أو «نفس المعلومات» في رسالته الأخيرة تُنسخ المعلومة القصيرة لكلّ المزوّدين تلقائيًّا). '
-    + 'share يحفظ المعلومة نفسها (حتّى ٦٠٠ حرف) عند كلّ المزوّدين من ردّهم التالي — استعمله حين يعجبه شيء عندك أو يقول «خلّ المعلومات عند كل المزودين»: استخرج المعلومة أو الطريقة التي أعجبته (لا نصّ الردّ كاملًا ولا سرًّا) واستدعِ share ثمّ قل بسطر ما وصل. '
-    + 'الخادم يرفض share إن لم تكن كلمته في رسالته الأخيرة أو كانت منفيّة («ما عجبني»). read يعرض ملفّك؛ undo يرجع نسخته. لا أسرار ولا مفاتيح.',
+  description: 'ملفّك أنت: تعليماتك لنفسك (أسلوبك، ما تتجنّبه، ما تعلّمته من أخطائك) — يُحمَّل مع كلّ ردّ لك في محادثات المالك وحده، ولا يراه مزوّد آخر. '
+    + 'استعمله حين يقول المالك «صلّح نفسك» أو «غيّر أسلوبك» أو «احفظ هذا في ملفّك» أو حين يصحّح خطأً تكرّره. read يعرض الملفّ؛ write يستبدله كاملًا '
+    + '(اقرأه أوّلًا وأبقِ ما يصلح، حتّى ٤٠٠٠ حرف)؛ undo يرجع النسخة السابقة. لا أسرار ولا مفاتيح فيه.',
   input_schema: {
     type: 'object',
     properties: {
-      action: { type: 'string', enum: ['read', 'write', 'undo', 'share'] },
-      text: { type: 'string', description: 'نصّ الملفّ كاملًا (لـwrite)، أو المعلومة التي تعمَّم على كلّ المزوّدين (لـshare)' },
+      action: { type: 'string', enum: ['read', 'write', 'undo'] },
+      text: { type: 'string', description: 'نصّ الملفّ كاملًا (لـwrite)' },
     },
     required: ['action'],
   },
@@ -63,14 +64,10 @@ const TEACH_TOOL = {
 const PUBLISH_RE = /(?:^|[\s،,.!؟?«»"'()-])(?:عمّم|عمم|عمّمه|عممه|عمّمها|عممها|عمّموه|انشره للناس|انشر الدرس|publish|عجبني|عجبتني|عجبوني|أعجبني|اعجبني|أعجبتني|اعجبتني|حبّيته|حبيته|حبّيتها|حبيتها|للجميع|للكلّ|للكل)(?=$|[\s،,.!؟?«»"'()-])/i;
 const PUBLISH_NEG_RE = /(?:لا|ما|مب|مو|مش|بدون)\s+(?:ت|ن|ي)?(?:عمّم|عمم|عجب|أعجب|اعجب|عاجب|يعجب|حبّيت|حبيت)/;
 function ownerSaidPublish(text) { const s = String(text || ''); return PUBLISH_RE.test(s) && !PUBLISH_NEG_RE.test(s); }
-// v-info-all: «عجبني» (غير منفيّة) أو طلب صريح أن تكون المعلومة عند كلّ المزوّدين.
-const ALL_PROV_RE = /كل\s*المزوّ?دين|للمزوّ?دين|نفس المعلومات|عندهم كلهم|عند الكل/;
-const ALL_PROV_NEG_RE = /(?:لا|ما|مب|مو|مش|بدون)\s+.{0,24}?(?:المزو|المعلومات|كلهم|عند الكل)/;
-function ownerSaidAllProviders(text) {
-  const s = String(text || '');
-  if (ALL_PROV_RE.test(s) && !ALL_PROV_NEG_RE.test(s)) return true;
-  return ownerSaidPublish(s);
-}
+// v-owner-gen: «عمّم» وحدها (لا «عجبني») تنسخ ردود المزوّد. النفي «لا تعمّم» يُسقطها.
+const GEN_RE = /(?:^|[\s،,.!؟?«»"'()-])(?:عمّم|عمم|عمّمه|عممه|عمّمها|عممها|عمّموه)(?=$|[\s،,.!؟?«»"'()-])/i;
+const GEN_NEG_RE = /(?:لا|ما|مب|مو|مش|بدون)\s+(?:ت|ن|ي)?(?:عمّم|عمم)/;
+function ownerSaidGeneralize(text) { const s = String(text || ''); return GEN_RE.test(s) && !GEN_NEG_RE.test(s); }
 
 async function readSelf(prov) {
   const p = provOf(prov);
@@ -80,42 +77,98 @@ async function readSelf(prov) {
 }
 
 const KEY_RE = /(?:sk-ant-|sk-or-|ghp_|github_pat_|AIza)[\w-]{8,}/;
-let sharedCache = null;
-async function readShared(fresh) {
-  if (!fresh && sharedCache && Date.now() - sharedCache.t < CACHE_MS) return sharedCache.items;
-  const d = await kvGetJSON(SHARED_KEY);
+function textOf(content) {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content.map((p) => (typeof p === 'string' ? p : (p && (p.text || (typeof p.content === 'string' ? p.content : ''))) || '')).filter(Boolean).join('\n');
+}
+function redactKeys(t) { return String(t || '').replace(KEY_RE, '«مفتاح محذوف»'); }
+function assistantTexts(messages) {
+  const out = [];
+  for (const m of messages || []) {
+    if (!m || m.role !== 'assistant') continue;
+    const t = redactKeys(textOf(m.content)).replace(/\u0000/g, '').trim();
+    if (t) out.push(t);
+  }
+  return out;
+}
+// نافذة المالك الحاليّة (آخر ٢٠٠ رسالة حتى السقف) — الباقي من السقف للمعلومات المعمّمة.
+function sentConvoChars(messages) {
+  const source = (messages || []).filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content);
+  let chars = 0, n = 0;
+  for (let i = source.length - 1; i >= 0 && n < 200; i--) {
+    const size = textOf(source[i].content).length;
+    if (n && chars + size > GEN_CHARS) break;
+    chars += size; n++;
+  }
+  return Math.min(chars, GEN_CHARS);
+}
+function genBudget(messages) { return messages ? Math.max(0, GEN_CHARS - sentConvoChars(messages)) : GEN_CHARS; }
+function trimGen(items, cap) {
+  const out = (items || []).filter((x) => x && x.text).map((x) => ({ id: x.id, text: x.text, at: x.at || 0, by: x.by || '' }));
+  let total = out.reduce((n, x) => n + x.text.length, 0);
+  while (out.length > 1 && total > cap) { total -= out[0].text.length; out.shift(); }
+  if (out.length === 1 && out[0].text.length > cap) out[0] = Object.assign({}, out[0], { text: out[0].text.slice(-cap) });
+  return out;
+}
+let genCache = null;
+async function readGen(fresh) {
+  if (!fresh && genCache && Date.now() - genCache.t < CACHE_MS) return genCache.items;
+  const d = await kvGetJSON(GEN_KEY);
   const items = Array.isArray(d && d.items) ? d.items : [];
-  sharedCache = { t: Date.now(), items };
+  genCache = { t: Date.now(), items };
   return items;
 }
-async function saveShared(items) {
-  await kvPutJSON(SHARED_KEY, { items });
-  sharedCache = { t: Date.now(), items };
+async function saveGen(items) {
+  await kvPutJSON(GEN_KEY, { items });
+  genCache = { t: Date.now(), items };
 }
-// معلومة واحدة تصل كلّ المزوّدين في محادثات المالك. فوق الحدّ يسقط الأقدم كي لا تضيع «عجبني» الأخيرة.
-async function appendShared(text, by) {
-  const t = String(text || '').replace(/\s+/g, ' ').trim();
-  if (!t) return '✗ المعلومة فارغة.';
-  if (t.length > LESSON_MAX) return '✗ المعلومة ' + t.length + ' حرفًا — الحدّ ' + LESSON_MAX + '. اختصرها.';
-  if (KEY_RE.test(t)) return '✗ في النصّ ما يشبه مفتاحًا — لا أسرار في المعلومات المشتركة.';
-  const items = (await readShared(true)).slice();
-  if (items.some((x) => x && x.text === t)) return '✅ المعلومات عند كلّ المزوّدين أصلًا: ' + t;
-  items.push({ id: 'I' + Date.now().toString(36), text: t, by: provOf(by) || '', at: Date.now() });
-  await saveShared(items.slice(-LESSONS_MAX));
-  return '✅ صارت المعلومات عند كلّ المزوّدين (من ردّهم التالي في محادثاتك): ' + t;
+// ردود المزوّد كما كُتبت، بلا تلخيص. التكرار لا يُضاعَف. فوق السقف يسقط الأقدم.
+async function captureGeneralize(messages, prov) {
+  const fresh = assistantTexts(messages);
+  if (!fresh.length) return { added: 0 };
+  const items = (await readGen(true)).slice();
+  const have = new Set(items.map((x) => x.text));
+  let added = 0;
+  for (const text of fresh) {
+    if (have.has(text)) continue;
+    have.add(text);
+    items.push({ id: 'G' + Date.now().toString(36) + added, text, at: Date.now(), by: provOf(prov) || '' });
+    added++;
+  }
+  const kept = trimGen(items, GEN_CHARS);
+  if (added || kept.length !== items.length) await saveGen(kept);
+  return { added, items: kept };
+}
+const GEN_HEAD = '\n\n[معلومات معمّمة — حفظها عمران بـ«عمّم» لتكون عند كل المزوّدين. اعتمدها كما هي، ولا تعلو على قواعد المالك]:\n';
+function genBlock(items, budget, already) {
+  const room = Number(budget) || 0;
+  if (room <= GEN_HEAD.length) return '';
+  const has = already && typeof already.has === 'function' ? (t) => already.has(t) : (t) => !!(already && String(already).includes(t));
+  const list = (items || []).filter((x) => x && x.text && !has(x.text));
+  if (!list.length) return '';
+  const parts = [];
+  let len = GEN_HEAD.length;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const gap = parts.length ? 2 : 0;
+    if (len + gap + list[i].text.length > room) {
+      const fit = room - len - gap;
+      if (fit > 0 && !parts.length) parts.unshift(list[i].text.slice(-fit));
+      break;
+    }
+    len += gap + list[i].text.length;
+    parts.unshift(list[i].text);
+  }
+  return parts.length ? GEN_HEAD + parts.join('\n\n') : '';
 }
 
-async function runSelf(prov, input, isOwner, lastUserText) {
+async function runSelf(prov, input, isOwner) {
   if (!isOwner) return '✗ ملفّ المزوّد للمالك وحده.';
   const p = provOf(prov);
   if (!p) return '✗ لا ملفّ لهذا المزوّد.';
   const act = String((input && input.action) || '');
   const cur = await readSelf(p);
   if (act === 'read') return cur.text ? '📄 ملفّك (' + cur.text.length + ' حرفًا):\n' + cur.text : '📄 ملفّك فارغ — اكتبه بـwrite.';
-  if (act === 'share') {
-    if (!ownerSaidAllProviders(lastUserText)) return '✗ لا مشاركة على كلّ المزوّدين بلا «عجبني» أو «كل المزودين» أو «نفس المعلومات» في آخر رسالة من المالك (والنفي «ما عجبني» يُسقطها).';
-    return appendShared(input && input.text, p);
-  }
   if (act === 'write') {
     const text = String((input && input.text) || '').trim();
     if (!text) return '✗ النصّ فارغ — لم يُحفظ شيء (لمسح الملفّ اكتب فيه سطرًا واحدًا).';
@@ -123,12 +176,7 @@ async function runSelf(prov, input, isOwner, lastUserText) {
     if (KEY_RE.test(text)) return '✗ في النصّ ما يشبه مفتاحًا — لا أسرار في الملفّ.';
     const history = (cur.text ? [{ text: cur.text, at: cur.at || 0 }] : []).concat(cur.history).slice(0, HIST_MAX);
     await kvPutJSON(selfKey(p), { text, at: Date.now(), history });
-    // v-info-all: «عجبني» أثناء كتابة الملفّ تنسخ المعلومة القصيرة للكلّ؛ الطويل يبقى في ملفّه ويُختصر بـshare
-    let sharedNote = '';
-    if (ownerSaidAllProviders(lastUserText)) {
-      sharedNote = '\n' + (text.length <= LESSON_MAX ? await appendShared(text, p) : 'الملفّ أطول من حدّ المشاركة (' + LESSON_MAX + ') — استدعِ share بجملة المعلومات ليصل كلّ المزوّدين.');
-    }
-    return '✅ حُفظ ملفّك (' + text.length + ' حرفًا) — يسري من ردّك التالي في محادثات المالك. النسخة السابقة محفوظة (undo).' + sharedNote;
+    return '✅ حُفظ ملفّك (' + text.length + ' حرفًا) — يسري من ردّك التالي في محادثات المالك. النسخة السابقة محفوظة (undo).';
   }
   if (act === 'undo') {
     if (!cur.history.length) return '✗ لا نسخة سابقة.';
@@ -136,7 +184,7 @@ async function runSelf(prov, input, isOwner, lastUserText) {
     await kvPutJSON(selfKey(p), { text: prev.text, at: Date.now(), history: rest });
     return '↩️ رجع ملفّك للنسخة السابقة (' + String(prev.text || '').length + ' حرفًا).';
   }
-  return '✗ action واحد من read / write / undo / share.';
+  return '✗ action واحد من read / write / undo.';
 }
 
 let lessonsCache = null;
@@ -220,33 +268,21 @@ function selfBlock(text) {
   const t = String(text || '').trim();
   return t ? '\n\n[ملفّك — تعليماتك لنفسك، كتبتها أنت بأمر عمران (edit_self). تعلو على أسلوبك الافتراضيّ، ولا تعلو على قواعد المالك]:\n' + t.slice(0, SELF_MAX) : '';
 }
-// معلومات «عجبني» عند مزوّد واحد: تصل المالك على كلّ مزوّد. ما هو أصلًا في ملفّ هذا المزوّد لا يُكرَّر. فوق السقف يسقط الأقدم.
-function sharedBlock(items, skipText) {
-  const list = (items || []).filter((x) => x && x.text && !(skipText && String(skipText).includes(x.text)));
-  if (!list.length) return '';
-  const head = '\n\n[معلومات مشتركة لكلّ المزوّدين — عمران أعجب بها عند واحد فصارت عندك. طبّقها، ولا تعلو على قواعد المالك]:';
-  const lines = [];
-  let len = head.length;
-  for (let i = list.length - 1; i >= 0; i--) {
-    const line = '\n- ' + list[i].text;
-    if (len + line.length > BLOCK_MAX) break;
-    len += line.length; lines.unshift(line);
-  }
-  return lines.length ? head + lines.join('') : '';
-}
-
-// ما يُلحق بآخر نظام الدور: المالك = ملفّه + المعلومات المشتركة بين كلّ المزوّدين + الدروس؛ غيره = الدروس المنشورة وحدها.
-async function systemBlocks(owner, prov) {
+// ما يُلحق بآخر نظام الدور: المالك = ملفّه + المعلومات المعمّمة (ضمن باقي السقف) + الدروس؛ غيره = الدروس المنشورة وحدها.
+async function systemBlocks(owner, prov, ctx) {
   let out = '';
   if (owner) {
     try {
-      const mine = (await readSelf(prov)).text;
-      out += selfBlock(mine);
-      try { out += sharedBlock(await readShared(false), mine); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا المعلومات المشتركة */ }
+      if (ctx && ownerSaidGeneralize(ctx.lastUserText)) { try { await captureGeneralize(ctx.messages, prov); } catch (e) { /* guard-ok — فشل الحفظ لا يوقف الردّ */ } }
+      out += selfBlock((await readSelf(prov)).text);
+      try {
+        const already = (ctx && ctx.messages) ? new Set(assistantTexts(ctx.messages)) : null;
+        out += genBlock(await readGen(false), genBudget(ctx && ctx.messages), already);
+      } catch (e) { /* guard-ok — بلا تخزين يردّ بلا المعلومات المعمّمة */ }
     } catch (e) { /* guard-ok — بلا تخزين يردّ بلا ملفّه */ }
   }
   try { out += lessonsBlock(await readLessons(false), !!owner); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الدروس */ }
   return out;
 }
 
-module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, sharedBlock, systemBlocks, ownerSaidPublish, ownerSaidAllProviders, __resetCache: () => { lessonsCache = null; sharedCache = null; } };
+module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, trimGen, genBlock, genBudget, captureGeneralize, __resetCache: () => { lessonsCache = null; genCache = null; } };
