@@ -853,7 +853,7 @@
   .msgActionBar button.msgThumbActive{ color:var(--accent-ink); }
   .msgActionBar button.msgThumbDownActive{ color:#ef4444; }
   .msgReplyActions .msgMoreTrigger{ order:1; }
-  .msgActionBar .msgMoreTrigger{ border-inline-start:1px solid var(--border,rgba(255,255,255,.12)); padding-inline-start:12px; }
+  /* v-no-more-sep (المالك ١٣ أكتوبر: الخطّ بين ⋮ والدائرة ← «نعم» شيله): لا فاصل قبل زرّ القائمة — مسافته كبقيّة الأزرار. */
   .msgActionBar button:focus-visible, .msgMoreMenu button:focus-visible{ outline:2px solid var(--accent-ink); outline-offset:2px; }
 
   /* v560: تحرير/إعادة توليد بأسلوب ChatGPT — سطح المكتب فقط. */
