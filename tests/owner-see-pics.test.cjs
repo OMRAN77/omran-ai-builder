@@ -88,15 +88,18 @@ const shot = (t) => [{ role: 'user', content: [{ type: 'text', text: t }, { type
 const ASK = 'الحينه شوف هذي الصور اريدك ان تغيرها على نفس الاسامي';
 const outputs = (body) => (body.input || []).filter((x) => x && x.type === 'function_call_output').map((x) => x.output);
 
-test('١. لقطة التطبيق + «غيّر هذي الصور»: generate_image تُنفَّذ بـnoRef (اللقطة لا تُعدَّل بدلها)، والتنبيه يدلّه على مولّد الكود و«عمّم»', async () => {
+test('١. لقطة التطبيق + «غيّر هذي الصور»: generate_image تُنفَّذ بـnoRef (اللقطة لا تُعدَّل بدلها)، والتنبيه يرفع الصورة مع التعديل بلا «عمّم»', async () => {
   const r = await run('openai', shot(ASK), [() => R.call('generate_image', { prompt: 'Omani man in dishdasha and kummah' }), () => R.text('رسمت البديل.')], { ownerUiShot: true });
   const tail = JSON.stringify(r.calls[0].body.input);
   assert.ok(tail.includes('لقطة من التطبيق والمطلوب صور فيه'), 'تنبيه الصور لا «مقفلة»');
+  assert.ok(tail.includes('الصورة مع التعديل') && tail.includes('write_github') && tail.includes('لا تنتظر «عمّم»'));
   assert.ok(!tail.includes('أدوات الصور والفيديو مقفلة في هذا الدور'));
   const ct = r.events.find((e) => e.clientTool && e.clientTool.name === 'generate_image');
   assert.ok(ct, 'نُفّذت في المتصفّح');
   assert.equal(ct.clientTool.input.noRef, true, 'صورة جديدة لا تعديل على اللقطة');
   assert.ok(outputs(r.calls[1].body).some((o) => o.includes('رُسمت الصورة')), 'النتيجة عادت للموديل');
+  const carry = r.calls.slice(1).some((c) => JSON.stringify(c.body && c.body.input).includes('ارفع الصورة الآن بـwrite_github'));
+  assert.ok(carry, 'بعد الرسم بلا رفع يُحمَل للكتابة لا لـedit_github');
 });
 
 test('٢. وفي الدور نفسه edit_image وgenerate_video مرفوضتان كما كانتا — اللقطة نفسها لا تُعدَّل', async () => {
@@ -145,8 +148,10 @@ test('٥. readImageFile: بايتات الصورة بترويسة raw ونوعه
   assert.ok(GR.imagePathOf({ url: 'https://github.com/o/r/blob/main/assets/x.JPG' }));
 });
 
-test('٦. العميل: noRef يمنع تحويل generate_image إلى تعديل على المرفق، والحزمة مبنيّة', () => {
+test('٦. العميل: noRef يمنع تحويل generate_image إلى تعديل على المرفق، ويحفظ رابط /i/ للرفعة، والحزمة مبنيّة', () => {
   const src = fs.readFileSync(path.join(root, 'js/app-17-agent-tools.js'), 'utf8');
   assert.ok(/var gCreative = !!\(gFirst && gRefB64[^\n]*&& !\(args && args\.noRef\)\);/.test(src));
+  assert.ok(src.includes("if (args && args.noRef)") && src.includes("/api/media?action=img") && src.includes('write_github ملف'));
   assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('&& !(args && args.noRef));'));
+  assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('/api/media?action=img'));
 });
