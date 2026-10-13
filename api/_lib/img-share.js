@@ -182,7 +182,9 @@ module.exports = async (req, res) => {
     // v637 — أمر عمران: «صورة خاليه أريد». الرابط المُشارَك يفتح البايتات الخام
     // مباشرةً (صورة وحدها بلا صفحة ولا زرّ)؛ صفحة /i/<id> تبقى للروابط القديمة.
     const outExt = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
-    res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: ownerDraw ? 1 : 7 });
+    const out = { id, url: '/i/' + id + '.' + outExt, ttlDays: 7 };
+    if (ownerDraw) out.ttlDays = 1;
+    res.status(200).json(out);
     return;
   }
 
