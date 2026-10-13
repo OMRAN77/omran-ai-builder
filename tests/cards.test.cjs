@@ -29,7 +29,8 @@ stub('api/_lib/_usage.js', {
   checkAndConsumeCustom: async (token, guestId, ip, bucket, limit) => { quota.calls.push({ bucket, limit }); return quota.allow ? { allowed: true, username: 'sub-user', remaining: 9 } : { allowed: false, reason: 'limit' }; },
 });
 stub('api/_lib/_knowledge.js', { ownerKnowledge: () => '' });
-stub('api/_lib/search.js', { fetchPlaces: async () => [], isPlacesAsk: () => false, regionOf: () => '' });
+const realSearch = require(rp('api/_lib/search.js'));
+stub('api/_lib/search.js', { fetchPlaces: async () => [], isPlacesAsk: () => false, regionOf: realSearch.regionOf, hasRegion: realSearch.hasRegion });
 const CS = require(rp('api/_lib/cards-search.js'));
 const chat = require(rp('api/_lib/chat.js'));
 
@@ -48,7 +49,9 @@ test('١. الوحدة: pagemap جوجل → صورة (cse_image ثمّ og:image
   const fetchImpl = async (u) => { calls.push(String(u)); return new Response(JSON.stringify(GOOGLE), { status: 200 }); };
   const r = await CS.searchCards('ENVE SES wheels price UAE', { fetch: fetchImpl });
   assert.equal(calls.length, 1, 'جوجل وحده كفى');
-  assert.match(calls[0], /customsearch\/v1\?key=g-key&cx=g-cx&num=10&q=ENVE%20SES/);
+  assert.match(calls[0], /gl=ae/, 'بحث دولة الطلب');
+  assert.match(calls[0], /cr=countryAE/);
+  assert.match(calls[0], /q=ENVE%20SES/);
   assert.deepEqual(r.items.map((c) => [c.site, c.image, c.price]), [
     ['ventum.me', 'https://www.ventum.me/cdn/ses45.jpg', 'AED 12999'],
     ['wolfis.ae', 'https://wolfis.ae/img/ses34.jpg', 'AED 9099'],
@@ -95,7 +98,7 @@ const textTurn = (t) => sse([
   { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: t } },
   { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 1 } },
 ]);
-async function ask(question, turns, google) {
+async function ask(question, turns, google, headers) {
   const log = { model: [], google: [] };
   const saved = global.fetch;
   let turn = 0;
@@ -106,7 +109,7 @@ async function ask(question, turns, google) {
     return new Response('{}', { status: 404 });
   };
   let written = '';
-  const req = { method: 'POST', headers: {}, body: { messages: [{ role: 'user', content: question }], token: token('sub-user'), provider: 'deepseek' } };
+  const req = { method: 'POST', headers: headers || {}, body: { messages: [{ role: 'user', content: question }], token: token('sub-user'), provider: 'deepseek' } };
   const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('json ' + JSON.stringify(v)); }, write(c) { written += String(c || ''); }, end() {} };
   try { await chat(req, res); } finally { global.fetch = saved; }
   const events = written.split('\n').filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch (e) { return null; } }).filter(Boolean);
@@ -125,6 +128,9 @@ test('٣. المعالج: show_cards ← حدث cards (رقائق وبطاقات
   assert.match(sys, /\[البطاقات\]: حين يطلب المستخدم شيئًا عامًّا/);
   assert.match(sys, /سؤال متابعة واحد فقط/);
   assert.match(sys, /⭐ الأفضل لك/);
+  assert.match(sys, /نفس المطلوب في نفس المكان/);
+  assert.match(read('api/_lib/cards-search.js'), /لا توسّع لصنف آخر/);
+  assert.doesNotMatch(read('api/_lib/cards-search.js'), /سيكل|سيارة/, 'القاعدة بلا أسماء أصناف');
   assert.equal(r.log.google.length, 1);
   const st = r.events.find((e) => e.k === 'stCards'); assert.ok(st && /🛍️/.test(st.status), 'سطر الحالة بمفتاحه');
   const cards = r.events.find((e) => e.cards);
@@ -183,4 +189,30 @@ test('٥. العميل: callChatWithTools يرجع cards من البثّ، وا�
   }
   const v = /i18n\/' \+ lg \+ '\.js\?v=(\d+)'/.exec(a04);
   assert.ok(v && Number(v[1]) >= 741, 'وسم ملفّات اللغات رُفع');
+});
+
+test('٦. المكان من كلام المستخدم يغلب الشبكة: أمريكا تُبحث في أمريكا، وبطاقة أو رقاقة من بلد آخر أو خارج المطلوب تُستبعد', async () => {
+  assert.equal(CS.placeOf('كندوه في أمريكا', 'kandura UAE', 'AE'), 'US', 'البلد المسمّى يغلب الشبكة وعبارة الموديل');
+  assert.equal(CS.placeOf('كندوه في الإمارات', 'kandura', 'US'), 'AE');
+  assert.match(CS.pinQuery('kandura', { ask: 'كندوه في أمريكا', country: 'AE' }), /United States/);
+  assert.equal(CS.pinQuery('ENVE SES wheels price UAE', {}), 'ENVE SES wheels price UAE', 'مكان العبارة يكفي فلا يُزاد');
+  const kept = CS.keepOnRequest([
+    { title: 'White Kandura', url: 'https://shop.example.us/k', snippet: 'New York mens kandura', site: 'shop.example.us' },
+    { title: 'Kandura Dubai', url: 'https://store.ae/k', snippet: 'ثوب في دبي', site: 'store.ae' },
+    { title: 'Evening gown sale', url: 'https://shop.example.com/g', snippet: 'party dress', site: 'shop.example.com' },
+  ], 'kandura United States', 'US');
+  assert.deepEqual(kept.map((c) => c.site), ['shop.example.us'], 'يبقى المطلوب في مكانه فقط');
+  assert.deepEqual(CS.scopeChips(['أبيض', 'كندوه في الإمارات', 'مقاس كبير'], 'US'), ['أبيض', 'مقاس كبير']);
+  quota.calls.length = 0; quota.allow = true;
+  const mixed = { items: [
+    { title: 'White Kandura USA', link: 'https://shop.example.us/k', snippet: 'New York mens kandura $90', pagemap: {} },
+    { title: 'Kandura Dubai', link: 'https://store.ae/k', snippet: 'ثوب في دبي AED 200', pagemap: {} },
+  ] };
+  const r = await ask('كندوه رجالي في أمريكا', [() => toolTurn('show_cards', { query: 'kandura UAE', chips: ['أبيض', 'كندوه في الإمارات'], kind: 'product' }), () => textTurn('كم ميزانيتك؟')], mixed, { 'x-vercel-ip-country': 'AE' });
+  assert.match(r.log.google[0], /gl=us/);
+  assert.match(r.log.google[0], /cr=countryUS/);
+  assert.match(r.log.google[0], /United%20States/);
+  const cards = r.events.find((e) => e.cards);
+  assert.deepEqual(cards.cards.items.map((c) => c.site), ['shop.example.us']);
+  assert.deepEqual(cards.cards.chips, ['أبيض'], 'رقاقة البلد الآخر سقطت');
 });
