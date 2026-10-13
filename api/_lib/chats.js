@@ -143,6 +143,7 @@ module.exports = async (req, res) => {
       // Merge: server + client, respecting deletions
       const merged = slimProjects(mergeProjects(serverProjects, incoming, deletedSet));
       await kvPutJSON(chatsKey(username), { projects: merged, updatedAt: Date.now() });
+      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').absorbProjects(merged); } catch (e) { /* guard-ok — فشل ربط المحادثات بالمخزن المشترك لا يوقف الحفظ */ } } // v-prov-one
       res.status(200).json({ ok: true, count: merged.length, merged: true });
       return;
     }
@@ -168,6 +169,7 @@ module.exports = async (req, res) => {
 
     if (action === 'chats_wipe') {
       await kvPutJSON(chatsKey(username), { projects: [], updatedAt: Date.now(), wiped: true });
+      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').clearGen(); } catch (e) { /* guard-ok — فشل مسح المخزن المشترك لا يوقف المسح */ } } // v-prov-one
       // Clear tombstones too
       await kvPutJSON(deletedKey(username), { ids: [], updatedAt: Date.now() });
       res.status(200).json({ ok: true, wiped: true });

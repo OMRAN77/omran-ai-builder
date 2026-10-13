@@ -84,6 +84,60 @@
     });
   }
 
+  /* v-gen-image (أمر المالك ١٣ أكتوبر «اذا شفت الصورة عند مزوّد اقوله عمّم… كل شي موجود في التطبيق نفسه»): «عمّم» من المالك ومعها
+     صورة قريبة — مرفقة مع الكلمة، أو في الردّ الذي قبلها، أو مرفقة في السؤال قبله — تُرسل JPEG مضغوطة (دون ٦٤٠ ك.ب) مع الطلب في
+     genImage، فيحفظها الخادم برابط من التطبيق يصل المزوّدين العشرة. بلا الكلمة أو مع نفيها أو لغير المالك: لا شيء يُرسل. */
+  var __GEN_WORD_RE = /(?:^|[\s،,.!؟?«»"'()-])(?:عمّم|عمم|عمّمه|عممه|عمّمها|عممها|عمّموه)(?=$|[\s،,.!؟?«»"'()-])/i;
+  var __GEN_NEG_RE = /(?:لا|ما|مب|مو|مش|بدون)\s+(?:ت|ن|ي)?(?:عمّم|عمم)/;
+  function __msgImage(m) {
+    var att = (m && Array.isArray(m.attachments)) ? m.attachments : [];
+    for (var a = att.length - 1; a >= 0; a--) { var x = att[a]; if (x && x.isImage && typeof x.dataUrl === 'string' && x.dataUrl.indexOf('data:image') === 0) return x.dataUrl; }
+    var c = (m && m._imgCache && typeof m._imgCache === 'object') ? m._imgCache : null;
+    if (c) { var ks = Object.keys(c); for (var k = ks.length - 1; k >= 0; k--) { var u = c[ks[k]]; if (typeof u === 'string' && u.indexOf('data:image') === 0) return u; } }
+    return '';
+  }
+  function __smallJpeg(du) {
+    return new Promise(function (resolve) {
+      try {
+        var im = new Image();
+        im.onload = function () {
+          try {
+            var steps = [1600, 1400, 1200, 1024, 800, 640], q = [0.88, 0.86, 0.84, 0.8, 0.75, 0.7];
+            for (var s = 0; s < steps.length; s++) {
+              var r = Math.min(1, steps[s] / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+              var cv = document.createElement('canvas');
+              cv.width = Math.max(1, Math.round((im.naturalWidth || 1) * r)); cv.height = Math.max(1, Math.round((im.naturalHeight || 1) * r));
+              var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+              var b64 = cv.toDataURL('image/jpeg', q[s]).split(',')[1] || '';
+              if (b64 && b64.length <= 640 * 1024) { resolve({ data: b64, mime: 'image/jpeg', w: cv.width, h: cv.height }); return; }
+            }
+          } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:genImage'); }
+          resolve(null);
+        };
+        im.onerror = function () { resolve(null); };
+        im.src = du;
+      } catch (e) { resolve(null); }
+    });
+  }
+  async function __genImageFor(text) {
+    if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return null;
+    var s = String(text || '');
+    if (!__GEN_WORD_RE.test(s) || __GEN_NEG_RE.test(s)) return null;
+    var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    var ms = (cur && Array.isArray(cur.messages)) ? cur.messages : [];
+    for (var i = ms.length - 1, seen = 0; i >= 0 && seen < 3; i--) {
+      var m = ms[i];
+      if (!m || m._loading) continue;
+      seen++;
+      var du = __msgImage(m);
+      if (!du) continue;
+      var sm = await __smallJpeg(du);
+      if (sm) sm.note = String((m.apiText !== undefined ? m.apiText : m.content) || '').replace(/__IMG_\d+__/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
+      return sm;
+    }
+    return null;
+  }
+
   window.callChatWithTools = async function (messages, onDelta, provider, opts) {
     window.__chatVideoResult = null;
     window.__chatCardsResult = null; /* v-cards */
@@ -125,6 +179,8 @@
       });
       return { role: m.role, content: content };
     });
+    var __genImg = null;
+    try { __genImg = await __genImageFor(window.__chatLastUserText); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:genImage'); } /* v-gen-image */
     var __sig = (onDelta && onDelta.__signal) || ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined); /* v-parallel-chats */
     var res = await __raceIdle(fetch('/api/ai?action=chat', {
       method: 'POST',
@@ -135,6 +191,7 @@
         provider: provider || 'claude',
         ownerUiShot: (typeof window.__ownerUiShotTurn === 'boolean') ? window.__ownerUiShotTurn : undefined, /* v-owner-ui-shot-client: قرار الواجهة لهذا الدور (لقطة المالك يطلب تعديلها) — الخادم يتبعه بدل إعادة التخمين من النصّ */
         noTools: (opts && opts.noTools) ? true : undefined, /* v-owner-solo: المسار القديم للمالك (استئذان/إصلاح) بلا أدوات كما كان — الخادم يقبله للمالك وحده */
+        genImage: __genImg || undefined, /* v-gen-image: صورة «عمّم» للمالك وحده؛ undefined لغيرها فيسقط الحقل من JSON */
         histOffset: (opts && Number.isInteger(opts.histOffset) && opts.histOffset >= 0) ? opts.histOffset : undefined, /* v-tokens-window: موضع أوّل رسالة مرسلة في المحادثة — الخادم يثبّت به بداية نافذة التاريخ (كاش)؛ undefined = السلوك القديم */
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */

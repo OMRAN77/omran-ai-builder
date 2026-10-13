@@ -1469,8 +1469,10 @@ module.exports = async (req, res) => {
       /* v-cards (أمر المالك ١٢ أكتوبر «نفس جوجل: نماذج وعقب المواقع… والتتبع على نفس الموضوع ويعطيه الأفضل»): الطلب العامّ ← بطاقات لا سرد، ثمّ سؤال واحد، ثمّ الأفضل */
       + '\n\n[البطاقات]: حين يطلب المستخدم شيئًا عامًّا ليختار منه — منتجًا أو سلعة أو خدمة أو محلًّا أو موقعًا أو مكانًا أو خطّة أو «أفضل X» («أبغى رنقات ENVE بكم»، «بذور زراعة»، «جوّال بالتقسيط») — استدعِ show_cards (مرّة واحدة) بدل web_search؛ البطاقات تُرسم له تلقائيًّا بصورها وأسعارها ومواقعها، فلا تعِد سردها نصًّا. بعدها: سطر أو سطران عمّا وجدت، ثمّ سؤال متابعة واحد فقط يضيّق الاختيار (الميزانيّة، المقاس، المدينة، الغرض…) وتوقّف. حين يجيب: ابقَ على الموضوع نفسه ورشّح له الأفضل واحدًا — ⭐ الأفضل لك: الاسم — السبب في سطر — الرابط — وإن ضاق الطلب فاستدعِ show_cards ثانيةً بالصياغة الأضيق. لا تقل «لا أقدر أعرض صورًا أو أسعارًا».';
     /* v-prov-self: آخر النظام (فيبقى الثابت بادئة الكاش) — للمالك ملفّ المزوّد المختار والدروس كلّها، ولغيره الدروس المنشورة بـ«عمّم» */
-    let __provSelfSys = '';
-    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov, __ownerReq ? { messages: messages, lastUserText: lastUserText } : null); } catch (e) { logError('chat/prov-self', e); }
+    let __provSelfSys = '', __genImg = null;
+    /* v-gen-image: «عمّم» من المالك ومعها صورة (الواجهة ترسلها مضغوطة في genImage) = تُحفظ برابط من التطبيق ويصل رابطها العشرة. بلا الكلمة أو لغيره لا شيء. */
+    if (__ownerReq && body && body.genImage && require('./prov-self.js').ownerSaidGeneralize(lastUserText)) { try { __genImg = await require('./prov-self.js').noteGenImage(body.genImage, reqProv || prov); } catch (e) { logError('chat/gen-image', e); } }
+    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov, __ownerReq ? { messages: messages, lastUserText: lastUserText, genImageUrl: (__genImg && __genImg.url) || '' } : null); } catch (e) { logError('chat/prov-self', e); }
     const system = (quietSocialTurn
       ? PERSONA_NOTE + '\n' + __sysBase + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور وبلغة رسالة المستخدم نفسها — جملتان أو ثلاث فيها روح (المثال العربي «الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟» مجرد مثال، ترجم روحه للغة المستخدم) واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn
@@ -1544,9 +1546,9 @@ module.exports = async (req, res) => {
     let searchesUsed = 0; // v-chat-parallel-tools: سقف بحثين لكل ردّ
     let anyText = false;
     let fullText = '';   // v608 — نصّ الردّ المتراكم
-    const __saveGenReply = async () => { // v-owner-gen: بلا ردّ سابق، ما يكتبه المزوّد عن الصورة يُحفظ مع «عمّم»
+    const __saveGenReply = async () => { // v-prov-one: كل دور للمالك يُنسخ إلى العشرة؛ «لا تعمّم» لا تُنسخ
       if (!__ownerReq) return;
-      try { const __ps = require('./prov-self.js'); if (__ps.ownerSaidGeneralize(lastUserText)) await __ps.captureBareReply(messages, fullText, reqProv || prov); }
+      try { const __ps = require('./prov-self.js'); await __ps.captureOwnerTurn(messages, fullText, reqProv || prov, lastUserText); }
       catch (e) { logError('chat/owner-gen-reply', e); }
     };
     let toolCorpus = '', __searchRan = false; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور · v-rating-guard-search: هل بحث فعليّ (web_search/fetch_page) جرى؟

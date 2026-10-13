@@ -13,6 +13,76 @@ const MAX_B64 = 3 * 1024 * 1024; // حدّ أمان لكلّ صورة
 const TTL_SEC = 60 * 60 * 24 * 7; // v-media-purge: كان ٣٠ يومًا فامتلأت القاعدة المجانيّة — ٧ كالفيديو والـPDF
 const DAILY_UPLOADS = 30; // v-share-guard: روابط صور يوميًّا لكلّ حساب
 const KEY = (id) => 'db/img/' + id;
+const CHUNK = 700 * 1024;
+
+/* v-gen-image (أمر المالك ١٣ أكتوبر «اذا شفت الصورة عند مزوّد اقوله عمّم… كل شي موجود في التطبيق نفسه»): الحفظ والقراءة
+   دالّتان يستعملهما «عمّم» على صورة (prov-self) ورفع الصورة إلى المستودع (github-write)، بالمخزن والصيغة نفسيهما. */
+// ما خُزّن تحت db/img/<id> (مع أجزائه) نصًّا «mime[:w:h]:base64» — { s } أو { error: 'not_found' | 'chunk_missing' }.
+async function readStored(id) {
+  const raw = await kvGetRaw(KEY(id));
+  if (!raw) return { error: 'not_found' };
+  let s = String(raw);
+  /* دعم أجزاء للصور الكبيرة (مثل PDF) */
+  if (s.indexOf('chunks:') === 0) {
+    const parts = s.split(':');
+    const n = parseInt(parts[1], 10) || 0;
+    const prefix = parts.slice(2).join(':');
+    const pieces = [];
+    for (let i = 0; i < n; i++) {
+      let c = await kvGetRaw(KEY(id) + ':' + i);
+      if (!c) {
+        await new Promise(r => setTimeout(r, 100));
+        c = await kvGetRaw(KEY(id) + ':' + i).catch(() => null);
+      }
+      if (!c) return { error: 'chunk_missing' };
+      pieces.push(String(c));
+    }
+    s = prefix + pieces.join('');
+  }
+  return { s };
+}
+// v649 — الصيغة الجديدة mime:w:h:base64 (الأبعاد تصنع بطاقة صورة كبيرة في واتساب)؛ القديمة mime:base64 تبقى مقروءة.
+function parseStored(s) {
+  const seg = s.split(':');
+  const isNew = seg.length >= 4 && /^\d+$/.test(seg[1]) && /^\d+$/.test(seg[2]);
+  const i = isNew ? s.indexOf(':', s.indexOf(':', s.indexOf(':') + 1) + 1) : s.indexOf(':');
+  return { mime: seg.length > 1 ? seg[0] : 'image/jpeg', w: isNew ? parseInt(seg[1], 10) : 0, h: isNew ? parseInt(seg[2], 10) : 0, b64: s.slice(i + 1) };
+}
+async function getImage(id) {
+  const st = await readStored(String(id || ''));
+  return st.error ? null : parseStored(st.s);
+}
+// يحفظ base64 بعمر ttlSec ويرجع المعرّف، أو '' إن فشل الحفظ (القاعدة ممتلئة رغم التنظيف أو عطل).
+async function putImage(data, mime, w, h, ttlSec) {
+  const id = crypto.randomBytes(6).toString('hex');
+  const W = Math.max(0, parseInt(w, 10) || 0), H = Math.max(0, parseInt(h, 10) || 0);
+  const prefix = (W && H) ? (mime + ':' + W + ':' + H + ':') : (mime + ':');
+  let ok;
+  try {
+    if (data.length <= CHUNK) {
+      ok = await setIfAbsentWithRoom(KV, KEY(id), prefix + data, ttlSec);
+    } else {
+      const n = Math.ceil(data.length / CHUNK);
+      ok = true;
+      for (let i = 0; i < n && ok; i++) {
+        const ok_i = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), ttlSec);
+        ok = ok && ok_i;
+      }
+      if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + prefix, ttlSec);
+    }
+  } catch (e) {
+    console.error('[img-share] store failed:', e && e.message); // القاعدة ممتلئة رغم التنظيف أو عطل — يُردّ كـstore_failed
+    ok = false;
+  }
+  return ok ? id : '';
+}
+async function delImage(id) {
+  const k = KEY(String(id || ''));
+  const raw = await kvGetRaw(k);
+  const n = raw && String(raw).indexOf('chunks:') === 0 ? (parseInt(String(raw).split(':')[1], 10) || 0) : 0;
+  for (let i = 0; i < n; i++) await KV.kvDel(k + ':' + i);
+  await KV.kvDel(k);
+}
 
 module.exports = async (req, res) => {
   if (req.method === 'GET') {
@@ -32,48 +102,17 @@ module.exports = async (req, res) => {
     // (`<id>.raw.jpg` → المعرّف + `a` من «raw» ⇒ 404). نأخذ أوّل مقطع ستّ عشريّ فقط.
     const id = String((rawId.match(/^[a-f0-9]{6,24}/i) || [''])[0]).toLowerCase();
     if (!id) { res.status(400).json({ error: 'Missing id' }); return; }
-    let raw = await kvGetRaw(KEY(id));
-    if (!raw) { res.status(404).json({ error: 'not_found' }); return; }
-    let s = String(raw);
-
-    /* دعم أجزاء للصور الكبيرة (مثل PDF) */
-    if (s.indexOf('chunks:') === 0) {
-      const parts = s.split(':');
-      const n = parseInt(parts[1], 10) || 0;
-      const prefix = parts.slice(2).join(':');
-      const pieces = [];
-      let failed = false;
-      for (let i = 0; i < n; i++) {
-        let c = await kvGetRaw(KEY(id) + ':' + i);
-        if (!c) {
-          await new Promise(r => setTimeout(r, 100));
-          c = await kvGetRaw(KEY(id) + ':' + i).catch(() => null);
-        }
-        if (!c) {
-          failed = true;
-          break;
-        }
-        pieces.push(String(c));
-      }
-      if (failed) { res.status(503).json({ error: 'chunk_missing', detail: 'جزء من الصورة اختفى — حاول لاحقًا' }); return; }
-      s = prefix + pieces.join('');
-    }
-
-    // v649 — الصيغة الجديدة mime:w:h:base64 (الأبعاد تصنع بطاقة صورة كبيرة في
-    // واتساب)؛ القديمة mime:base64 تبقى مقروءة.
-    const seg = s.split(':');
-    const isNew = seg.length >= 4 && /^\d+$/.test(seg[1]) && /^\d+$/.test(seg[2]);
-    const mime = seg.length > 1 ? seg[0] : 'image/jpeg';
-    const imgW = isNew ? parseInt(seg[1], 10) : 0;
-    const imgH = isNew ? parseInt(seg[2], 10) : 0;
-    const i = isNew ? s.indexOf(':', s.indexOf(':', s.indexOf(':') + 1) + 1) : s.indexOf(':');
+    const st = await readStored(id);
+    if (st.error === 'not_found') { res.status(404).json({ error: 'not_found' }); return; }
+    if (st.error) { res.status(503).json({ error: 'chunk_missing', detail: 'جزء من الصورة اختفى — حاول لاحقًا' }); return; }
+    const { mime, w: imgW, h: imgH, b64 } = parseStored(st.s);
 
     // v639 — عيب مقيس حيًّا: بلا Vary خزّن CDN صفحة الزاحف وقدّمها للبشر.
     res.setHeader('Vary', 'User-Agent');
     if (wantRaw) {
       let buf;
       try {
-        buf = Buffer.from(s.slice(i + 1), 'base64');
+        buf = Buffer.from(b64, 'base64');
       } catch (e) {
         res.status(400).json({ error: 'corrupt', detail: 'بيانات الصورة معيوبة' });
         return;
@@ -134,31 +173,9 @@ module.exports = async (req, res) => {
     const plan = uploadPlan(body, 'share-img', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
     if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
     const mime = /^image\/(png|jpeg|webp)$/.test(String(body.mime || '')) ? String(body.mime) : 'image/jpeg';
-    const id = crypto.randomBytes(6).toString('hex');
-    const w = Math.max(0, parseInt(body.w, 10) || 0), h = Math.max(0, parseInt(body.h, 10) || 0);
-    const prefix = (w && h) ? (mime + ':' + w + ':' + h + ':') : (mime + ':');
+    const id = await putImage(data, mime, body.w, body.h, plan.ttlSec); // دعم أجزاء للصور الكبيرة داخلها
 
-    /* دعم أجزاء للصور الكبيرة */
-    const CHUNK = 700 * 1024;
-    let ok;
-    try {
-      if (data.length <= CHUNK) {
-        ok = await setIfAbsentWithRoom(KV, KEY(id), prefix + data, plan.ttlSec);
-      } else {
-        const n = Math.ceil(data.length / CHUNK);
-        ok = true;
-        for (let i = 0; i < n && ok; i++) {
-          const ok_i = await setIfAbsentWithRoom(KV, KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), plan.ttlSec);
-          ok = ok && ok_i;
-        }
-        if (ok) ok = await setIfAbsentWithRoom(KV, KEY(id), 'chunks:' + n + ':' + prefix, plan.ttlSec);
-      }
-    } catch (e) {
-      console.error('[img-share] store failed:', e && e.message); // القاعدة ممتلئة رغم التنظيف أو عطل — يُردّ كـstore_failed
-      ok = false;
-    }
-
-    if (!ok) { await refundShare(req, body, plan.bucket); res.status(500).json({ error: 'store_failed' }); return; } // v-refund-custom
+    if (!id) { await refundShare(req, body, plan.bucket); res.status(500).json({ error: 'store_failed' }); return; } // v-refund-custom
     // v637 — أمر عمران: «صورة خاليه أريد». الرابط المُشارَك يفتح البايتات الخام
     // مباشرةً (صورة وحدها بلا صفحة ولا زرّ)؛ صفحة /i/<id> تبقى للروابط القديمة.
     const outExt = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
@@ -168,3 +185,6 @@ module.exports = async (req, res) => {
 
   res.status(405).json({ error: 'Method not allowed' });
 };
+module.exports.putImage = putImage;
+module.exports.getImage = getImage;
+module.exports.delImage = delImage;
