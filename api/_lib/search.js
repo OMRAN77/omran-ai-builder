@@ -380,6 +380,10 @@ function regionOf(text) {
   for (let i = 0; i < keys.length; i++) if (REGION_RE[keys[i]].test(t)) return keys[i];
   return '';
 }
+function hasRegion(text, cc) {
+  const re = REGION_RE[String(cc || '').toUpperCase()];
+  return !!(re && re.test(String(text || '')));
+}
 
 // 📍 v542: Google Places API (New) — Text Search. سؤال «وين أحسن مطعم؟» جوابه
 // اسمٌ وعنوانٌ وتقييم، لا مقالة. محرّك الويب العام لا يملك هذا؛ Places يملكه.
@@ -970,3 +974,4 @@ module.exports = async (req, res) => {
 module.exports.fetchPlaces = fetchPlaces;
 module.exports.isPlacesAsk = isPlacesAsk;
 module.exports.regionOf = regionOf;
+module.exports.hasRegion = hasRegion;
