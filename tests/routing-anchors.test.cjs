@@ -73,7 +73,7 @@ const NAMED = [
   ['api/_lib/chat.js', 1164, 'module.exports = async'],
   ['api/_lib/chat.js', 1185, 'let viaOR'],
   ['api/_lib/chat.js', 1188, 'let apiKey'],
-  ['api/_lib/chat.js', 1607, 'ANTHROPIC_API_KEY / OPENROUTER_API_KEY'],
+  ['api/_lib/chat.js', 1612, 'ANTHROPIC_API_KEY / OPENROUTER_API_KEY'],
   ['api/_lib/chat.js', 1189, 'let CHAT_URL'],
   ['api/_lib/chat.js', 1195, 'let DEFAULT_MODEL'],
   ['api/_lib/chat.js', 1234, 'const applyRoute'], // v-plan-routing
@@ -86,9 +86,9 @@ const NAMED = [
   ['api/_lib/chat.js', 1409, 'const sysParts'],
   ['api/_lib/chat.js', 1419, 'customInstructionsBlock('],
   ['api/_lib/chat.js', 1539, 'imageTurnConfig('],
-  ['api/_lib/chat.js', 1590, 'if (__freeLane || !__visionRoute)'],
-  ['api/_lib/chat.js', 1773, 'while (!upstream.ok && !anyText && __planFallbacks.length)'], // v-plan-routing
-  ['api/_lib/chat.js', 1789, 'v-king-fallback'],
+  ['api/_lib/chat.js', 1595, 'if (__freeLane || !__visionRoute)'],
+  ['api/_lib/chat.js', 1778, 'while (!upstream.ok && !anyText && __planFallbacks.length)'], // v-plan-routing
+  ['api/_lib/chat.js', 1794, 'v-king-fallback'],
   ['api/_lib/tier.js', 46, 'const PLAN_ROUTING'], // v-plan-routing
   ['api/_lib/tier.js', 54, 'function isStrongTurn('],
   ['api/_lib/tier.js', 71, 'function planRoute('],

@@ -159,6 +159,7 @@ test('«عجبني» generalizes in one step: saved and published to every user 
   assert.equal(db.get('db/lessons.json').items[1].scope, 'all', '«عجبني» تنشر درسًا سابقًا كـ«عمّم»');
   const desc = liked.bodies[0].tools.find((t) => t.name === 'teach_users');
   assert.ok(desc.input_schema.properties.action.enum.includes('generalize') && /«عجبني» = تعميم بخطوة واحدة/.test(desc.description), 'الأداة تشرح الخطوة الواحدة');
+  assert.match(desc.description, /«عمّم» ليست هذه الأداة/, '«عمّم» لا تستخرج درسًا');
 });
 
 // v-owner-gen (المالك ١٣ أكتوبر): «عمّم» من أي مزوّد يحفظ ردوده كما هي (قصير وطويل وكود) عند العشرة في محادثات المالك فقط.
@@ -173,7 +174,8 @@ test('«عمّم» copies that provider’s replies to every provider for the ow
     { role: 'assistant', content: REPLY },
     { role: 'user', content: 'عمّم على الجميع' },
   ];
-  await turn('omran', 'deepseek', '', [() => textTurn('تم')], hist);
+  const first = await turn('omran', 'deepseek', '', [() => textTurn('تم')], hist);
+  assert.ok(first.sys.includes('لا تسأل') && first.sys.includes('صارت عند العشرة') && first.sys.includes('لا تستدعِ teach_users'), 'الأمر يمنع السؤال');
   const saved = db.get('db/owner-gen.json').items;
   assert.equal(saved.length, 1);
   assert.equal(saved[0].by, 'deepseek');
@@ -209,6 +211,17 @@ test('«عمّم» copies that provider’s replies to every provider for the ow
   assert.ok(blk.includes('ب') && !blk.includes('أ'), 'الأقدم يُنقص والأجدد يبقى');
   const huge = 'س'.repeat(300000);
   assert.equal(PS.genBudget([{ role: 'assistant', content: huge }]), 100000, 'المحادثة تبقى والباقي للمعمّم');
+  db.clear(); PS.__resetCache();
+  const refused = await PS.runTeach({ action: 'generalize', text: 'بيانات الاستهلاك تنعرض كبطاقة فيها شريط تقدّم.' }, 'عمّم', true, 'grok');
+  assert.match(refused, /لا درس/);
+  assert.ok(!db.has('db/lessons.json'), '«عمّم» لا تحفظ درسًا');
+  const shot = 'الاشتراك ستون دولارًا في الشهر وينلغي في ٢٧ أكتوبر. النماذج الأخرى مستهلكة ١٠٠٪.';
+  const bare = await PS.captureBareReply([{ role: 'user', content: 'عمّم' }], shot + ' صارت عند العشرة.', 'grok');
+  assert.equal(bare.added, 1);
+  assert.ok(db.get('db/owner-gen.json').items[0].text.includes('ستون دولارًا'));
+  assert.equal((await PS.captureBareReply([{ role: 'user', content: 'عمّم' }], 'صارت عند العشرة.', 'grok')).added, 0, 'سطر التأكيد لا يُحفظ');
+  assert.equal((await PS.captureBareReply([{ role: 'user', content: 'عمّم' }], 'ما عمّمت شي. وش تقصد بـ«عمّم»؟ اللقطة ما فيها أسلوب ردّ واضح.', 'grok')).added, 0, 'سؤال المعنى لا يُحفظ');
+  assert.equal((await PS.captureBareReply([{ role: 'assistant', content: 'رد سابق' }, { role: 'user', content: 'عمّم' }], shot, 'grok')).added, 0, 'مع ردّ سابق لا يُعاد حفظ الجواب');
 });
 
 test('the module: «عمّم» and its negation, no personal data in a lesson, no keys in a file, caps', async () => {
