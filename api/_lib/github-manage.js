@@ -11,7 +11,7 @@
 
 const { ghFetch, parseTarget, resolveGithubToken } = require('./github-read.js');
 
-const ACTIONS = ['status', 'runs', 'run_jobs', 'close', 'reopen', 'comment', 'delete_branch', 'rerun_failed', 'cancel_run', 'delete_runs'];
+const ACTIONS = ['status', 'deploy', 'runs', 'run_jobs', 'close', 'reopen', 'comment', 'delete_branch', 'rerun_failed', 'cancel_run', 'delete_runs'];
 const GATE = { close: 'close', reopen: 'reopen', delete_branch: 'delete', delete_runs: 'delete', cancel_run: 'cancel' };
 const VERBS = {
   close: /سكّ?ر|اغلق|أغلق|إغلاق|قفّ?ل|\bclose\b/i,
@@ -56,6 +56,48 @@ async function itemStatus(R, n, o) {
     }
   }
   return line;
+}
+
+/* v-owner-like-me (المالك ١٣ أكتوبر «اريد كل المزودين نفسك» — Claude Code يتحقّق بعد «ادمج وانشر» أنّ النشر وصل الموقع ويقول ما رأى):
+   قراءة بلا إذن. طلب مدموج = حالة Vercel على التزام الدمج (الإنتاج)، وغير مدموج = معاينته؛ وبلا رقم = آخر التزام على main.
+   ومع find: الملفّ نفسه من الموقع المنشور (siteUrl، لا عنوان من النموذج) وهل فيه النصّ الجديد. */
+const STATE_AR = { success: 'نجح', pending: 'قيد البناء', failure: 'فشل', error: 'فشل' };
+async function siteHas(p, find, o) {
+  const base = require('./_site.js').siteUrl();
+  const rel = String(p || '').trim().replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '').replace(/[?#].*$/, '');
+  if (/\.\.|\\/.test(rel)) return '✗ مسار غير صالح: ' + rel;
+  const url = base + '/' + encodeURI(rel);
+  const f = String(find).slice(0, 200);
+  try {
+    const r = await require('./safe-url.js').fetchPublicUrl(url + '?_omran=' + Date.now(), { signal: AbortSignal.timeout(20000), headers: { 'Cache-Control': 'no-cache' } }, { fetchFn: o && o.fetchImpl, lookup: o && o.lookup, maxRedirects: 3 });
+    if (!r.ok) return '✗ الموقع المنشور: ' + url + ' ← HTTP ' + r.status;
+    const txt = String(await r.text()).slice(0, 8000000);
+    const at = txt.indexOf(f);
+    if (at === -1) return '✗ الموقع المنشور: «' + f + '» غير موجود في ' + url + ' — إن كانت الحالة «قيد البناء» فأعد بعد قليل، وإلّا فالتغيير لم يصل.';
+    return '✓ الموقع المنشور: «' + f + '» موجود في ' + url + ' — …' + txt.slice(Math.max(0, at - 60), at + f.length + 60).replace(/\s+/g, ' ') + '…';
+  } catch (e) { return '✗ تعذّر فتح ' + url + ': ' + String((e && e.message) || e).slice(0, 120); }
+}
+async function deployCheck(R, i, o) {
+  const n = posInt(i.number);
+  let sha = '', label = '';
+  if (n) {
+    const { r, j: p } = await ghJson(R + '/pulls/' + n, o);
+    if (!r.ok || !p) return { error: '#' + n + ': طلب سحب غير موجود (HTTP ' + r.status + ')' };
+    if (p.merged && p.merge_commit_sha) { sha = p.merge_commit_sha; label = 'نشر الإنتاج — التزام دمج #' + n + ' (' + sha.slice(0, 7) + ')'; }
+    else { sha = (p.head && p.head.sha) || ''; label = 'طلب السحب #' + n + ' غير مدموج — هذه معاينته لا الإنتاج (' + sha.slice(0, 7) + ')'; }
+  } else {
+    const br = String(i.branch || 'main');
+    const { r, j } = await ghJson(R + '/commits/' + encodeURIComponent(br), o);
+    if (!r.ok || !j || !j.sha) return ghErr('تعذّرت قراءة آخر التزام', r, j);
+    sha = j.sha; label = 'آخر التزام على ' + br + ' (' + sha.slice(0, 7) + ')';
+  }
+  const { r: sr, j: sj } = await ghJson(R + '/commits/' + sha + '/status', o);
+  const sts = (sr.ok && sj && Array.isArray(sj.statuses)) ? sj.statuses : [];
+  const lines = [label];
+  if (sts.length) for (const st of sts) lines.push('  ' + st.context + ': ' + (STATE_AR[st.state] || st.state) + (st.target_url ? ' · ' + st.target_url : ''));
+  else lines.push('  لا حالة نشر على هذا الالتزام بعد — النشر لم يبدأ أو لم يُبلَغ؛ أعد بعد قليل.');
+  if (i.find) lines.push(await siteHas(i.path, i.find, o));
+  return { ok: true, text: lines.join('\n') };
 }
 
 async function deleteBranch(R, branch, o) {
@@ -106,6 +148,7 @@ async function manage(input, opts) {
   const R = '/repos/' + t.owner + '/' + t.repo;
   const lines = [];
 
+  if (action === 'deploy') return deployCheck(R, i, o); // v-owner-like-me
   if (action === 'status' || action === 'close' || action === 'reopen' || action === 'comment') {
     const ns = nums(i);
     if (!ns.length) return { error: 'أعطِ number أو numbers (حتّى ١٠).' };
@@ -166,7 +209,7 @@ function formatManage(res) {
 
 const MANAGE_TOOL = {
   name: 'manage_github',
-  description: 'أدِر مستودع المالك: status (حالة طلبات سحب/مسائل: مفتوح أو مغلق أو مدموج، والتعارض، والفحوص) · runs (تشغيلات Actions؛ status=failure للفاشلة، workflow=CI) · run_jobs (مهامّ تشغيل وخطواته الفاشلة) · close/reopen (طلبات ومسائل؛ delete_branch=true يحذف فرع الطلب) · comment · delete_branch · rerun_failed · cancel_run · delete_runs (يحذف تشغيلات مكتملة، الفاشلة افتراضيًّا، ٥٠ في الاستدعاء). close وreopen والحذف والإلغاء تُرفض إلّا إن قالها المالك صراحةً في رسالته الأخيرة («سكّر»، «افتح»، «احذف»، «وقّف») — الخادم يفحص. افحص بـstatus قبل أن تقول إنّ شيئًا مفتوح أو مدموج، ولا تقل «تمّ» قبل نتيجة الأداة.',
+  description: 'أدِر مستودع المالك: status (حالة طلبات سحب/مسائل: مفتوح أو مغلق أو مدموج، والتعارض، والفحوص) · deploy (بعد الدمج: حالة نشر Vercel للطلب number، ومع path وfind هل التغيير في الموقع المنشور — قبل أن تقول «نُشر») · runs (تشغيلات Actions؛ status=failure للفاشلة، workflow=CI) · run_jobs (مهامّ تشغيل وخطواته الفاشلة) · close/reopen (طلبات ومسائل؛ delete_branch=true يحذف فرع الطلب) · comment · delete_branch · rerun_failed · cancel_run · delete_runs (يحذف تشغيلات مكتملة، الفاشلة افتراضيًّا، ٥٠ في الاستدعاء). close وreopen والحذف والإلغاء تُرفض إلّا إن قالها المالك صراحةً في رسالته الأخيرة («سكّر»، «افتح»، «احذف»، «وقّف») — الخادم يفحص. افحص بـstatus قبل أن تقول إنّ شيئًا مفتوح أو مدموج، ولا تقل «تمّ» قبل نتيجة الأداة.',
   input_schema: {
     type: 'object',
     properties: {
@@ -184,6 +227,8 @@ const MANAGE_TOOL = {
       status: { type: 'string', description: 'تصفية التشغيلات: failure · success · in_progress · cancelled' },
       workflow: { type: 'string', description: 'اسم الـworkflow مثل CI' },
       limit: { type: 'integer' },
+      path: { type: 'string', description: 'deploy: ملفّ في الموقع المنشور تغيّر، مثل css/tokens.css أو js/app.bundle.js' },
+      find: { type: 'string', description: 'deploy: نصّ جديد أضافه التغيير في ذلك الملفّ (حتّى ٢٠٠ حرف)' },
     },
     required: ['repo', 'action'],
   },

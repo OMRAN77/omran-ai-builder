@@ -1980,6 +1980,9 @@ module.exports = async (req, res) => {
         /* v-owner-resume: الختام أُجبر بالميزانيّة (التنبيه وصل) ولم يُرفع تعديل = الشغل قد يكون ناقصًا — سطر ثابت من الخادم يحفظه العميل في الردّ،
            و«كمل» بعده تحمل تنبيه الإكمال (owner-loop.resume). */
         if (__ownerReq && __olS.nudged && !__ownerOps.pushes) { const __rm = __ol.resumeMark(); send({ delta: __rm }); fullText += __rm; }
+        /* v-owner-like-me (المالك ١٣ أكتوبر «كيف انته تجيني في النهاية تقولي ادمج وانشر — اريد كل المزودين نفسك»): رفع في هذا الدور ولم يُدمج
+           ولم يسأل المزوّد نفسه = الخادم يختم بالسؤال نفسه، فيعرف المالك أنّ الكلمة التالية «أدمج وأنشر». */
+        if (__ownerReq && __ownerOps.prs && !__ownerOps.merges && !/[اأإ]دمج/.test(fullText)) { const __mq = '\n\nأدمج وأنشر؟'; send({ delta: __mq }); fullText += __mq; }
         const badRatings = __searchRan ? unsourcedRatings(fullText, toolCorpus) : []; // v608 · v-rating-guard-search (أمر المالك ١١ أكتوبر): بلا بحث فعليّ لا تحذير — «٣ من ٥» و«٨ من ١٠» والتواريخ كانت تُعلَّم «لم تظهر في نتائج البحث» ولا بحث أصلًا
         if (badRatings.length) {
           logError('chat/unsourced-rating', new Error('ratings absent from tool output: ' + badRatings.join(', ')));
@@ -2088,12 +2091,12 @@ module.exports = async (req, res) => {
           /* v-providers-like-agent: أدوات الوكيل للمالك في المحادثة بحرّاسها نفسها — ثلاث رفعات ومهمّة مفوَّضة واحدة في الدور. */
           else if (cb.name === 'write_github') {
             if (!__ownerReq) result = '✗ الرفع إلى GitHub للمالك وحده.';
-            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./github-write.js').pushFiles(input)); result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4 */ }
+            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./github-write.js').pushFiles(input)); result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4 */ if (/^✅ رُفع/.test(result)) __ownerOps.prs = (__ownerOps.prs || 0) + 1; /* v-owner-like-me */ }
           }
           /* v-agent-surgical: كما في الوكيل — التعديل يتشارك سقف الرفعات، والدمج بإذن «ادمج» في آخر رسالة المالك يفحصه الخادم. */
           else if (cb.name === 'edit_github') {
             if (!__ownerReq) result = '✗ التعديل على GitHub للمالك وحده.';
-            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./github-edit.js').editFiles(input)); result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4: رفعة تمسّ js/app-NN-*.js = «الحزمة لم تُبنَ» (partials لا تُحزَم) */ }
+            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./github-edit.js').editFiles(input)); result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4: رفعة تمسّ js/app-NN-*.js = «الحزمة لم تُبنَ» (partials لا تُحزَم) */ if (/^✅ رُفع/.test(result)) __ownerOps.prs = (__ownerOps.prs || 0) + 1; /* v-owner-like-me */ }
           }
           else if (cb.name === 'merge_github') {
             const __ge = require('./github-edit.js');
