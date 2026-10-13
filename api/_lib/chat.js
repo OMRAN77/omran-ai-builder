@@ -713,7 +713,7 @@ async function pplxSearch(query, win) {
         { role: 'user', content: String(query || '').slice(0, 600) },
       ],
     }, w ? { search_recency_filter: w } : {})),
-  }, 20000);
+  }, 10000); // v-rich-reply: ١٠ ث لا ٢٠ — بعدها Google السريع (السلسلة نفسها، بلا نداء جديد)
   if (!r.ok) { console.warn('[live] perplexity HTTP ' + r.status); return null; }
   const d = asJSON(r.body) || {};
   const txt = String((((d.choices || [])[0] || {}).message || {}).content || '').trim();
@@ -922,7 +922,7 @@ async function tavilySearch(query, reC, plateAsk, country, city, win, where) {
   // الحارس يبقى على الأسئلة الأجنبيّة غير المكانيّة (تأشيرة · أنظمة · أسعار).
   // v-loc-offers (لقطة المالك: «اريد عروضات في عجمان» رجعت أسماء سوبرماركتات بلا عرض واحد): سؤال العروض يذهب لبحث
   // العروض (liveSearch: بقيد البلد ونافذة شهر) لا لبطاقات الخرائط — الخرائط تعرف المحلّات لا عروضها.
-  const places = ((foreign && !isPlacesAsk(query)) || DEALS_RE.test(query)) ? [] : await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar', foreign ? regionOf(query) : '');
+  const places = ((foreign && !isPlacesAsk(query)) || DEALS_RE.test(query) || (require('./reply-style.js').isInfoAsk(query) && !isPlacesAsk(query))) ? [] : await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar', foreign ? regionOf(query) : '');
   if (places.length) return placeCards(places, where);
 
   const live = await liveSearch(query, foreign, country, city, win);
@@ -1533,7 +1533,7 @@ module.exports = async (req, res) => {
   if (__ownerReq && !__rawOwner && !__ownerNoRoute && !lastUserHasImage && convo[convo.length - 1].role === 'user' && !require('./prov-self.js').ownerSaidGeneralize(lastUserText)) { try { const __ps = require('./prov-self.js'), __vp = prov === 'claude' ? null : require('./owner-vision.js').visionPlan(prov, __direct ? 'direct' : (viaOR ? 'or' : ''), CHAT_MODEL, DEFAULT_MODEL), __gs = await __ps.genImagesToSee(lastUserText, { recent: prov === 'claude' || !!(__vp && !__vp.forced) }); if (__gs.length && (prov === 'claude' || __seeImage())) convo[convo.length - 1] = { role: 'user', content: __ps.withGenImages(convo[convo.length - 1].content, __gs) }; } catch (e) { logError('chat/gen-see', e); } }
 
   // ─── live-answers: استبدل رسالة المستخدم الأخيرة بالنسخة المسنودة بالمصادر ───
-  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText)); /* v-tokens-tools: دور السؤال كان بقائمة أدوات أقصر فتنكسر بادئة الكاش — القائمة ثابتة، و«لا رسم» تنبيه في الذيل + حارس عند التنفيذ */ const __ownerNoMedia = !!(toolTurn && __ownerReq && !__ownerNoTools && (__analyzeDoc || __ownerUiShot)), __noMedia = __askNoMedia || __ownerNoMedia; /* v-tokens-owner-tools: لقطة المالك والرسالة الطويلة كانتا بقائمة أدوات بلا الصور فيفوت الكاش كلّه (~١٦ ألف توكن) — القائمة كاملة كغيرهما، والصور تُرفض عند التنفيذ بالحارس نفسه */ const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowLine(body && body.tz), countryLine(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : (__ownerNoMedia ? [OWNER_NO_MEDIA_NOTE] : []))); /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
+  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText)); /* v-tokens-tools: دور السؤال كان بقائمة أدوات أقصر فتنكسر بادئة الكاش — القائمة ثابتة، و«لا رسم» تنبيه في الذيل + حارس عند التنفيذ */ const __ownerNoMedia = !!(toolTurn && __ownerReq && !__ownerNoTools && (__analyzeDoc || __ownerUiShot)), __noMedia = __askNoMedia || __ownerNoMedia; /* v-tokens-owner-tools: لقطة المالك والرسالة الطويلة كانتا بقائمة أدوات بلا الصور فيفوت الكاش كلّه (~١٦ ألف توكن) — القائمة كاملة كغيرهما، والصور تُرفض عند التنفيذ بالحارس نفسه */ const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowLine(body && body.tz), countryLine(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : (__ownerNoMedia ? [OWNER_NO_MEDIA_NOTE] : [])).concat((!lastUserHasImage && require('./reply-style.js').wantsRichReply(lastUserText)) ? [require('./reply-style.js').RICH_REPLY_NOTE.trim()] : [])); /* v-rich-reply: شكل ChatGPT لطلب المعلومات في ذيل الدور (النظام ثابت فيبقى كاشه — v-tokens-living) */ /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
   // (الترويسات وsend فُتحا مبكرًا أعلاه — v-fast-headers)
   // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
 
@@ -2041,10 +2041,10 @@ module.exports = async (req, res) => {
                 const __sq = __lf.stripStaleYears(_q, __said);
                 const __win = __lf.searchWindow({ fresh: FRESH_RE.test(__sq), deals: DEALS_RE.test(__sq), userText: __said });
                 const __plateAsk = !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUserText));
-                const [__web, __social] = await Promise.all([
+                const [__web, __social] = await require('./reply-style.js').withSocialGrace( // v-rich-reply: الويب لا ينتظر التواصل أكثر من ١٫٥ ث بعده
                   tavilySearch(__sq, reC, __plateAsk, country, city, __win, WHERE_ASK_RE.test(String(lastUserText || '')) || WHERE_ASK_RE.test(__sq)),
                   __ls.socialSearch(__sq, { recency: __win }),
-                ]);
+                );
                 const __curated = isCuratedSearch(__sq, reC, __plateAsk) || String(__web || '').indexOf(PLACES_MARK) >= 0;
                 result = filterDuplicateUrls(__ls.mergeWebSocial(__web, __social, { curated: __curated }))
                   + (__curated ? '' : __lf.freshNote(__win, body && body.tz));
