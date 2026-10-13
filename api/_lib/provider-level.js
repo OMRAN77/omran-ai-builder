@@ -65,7 +65,11 @@ const PROV_DEFAULT = { claude: 'claude', openai: 'gpt', gemini: 'gemini', deepse
 
 function familyOf(prov, model) {
   const m = String(model || '').trim();
-  if (m) for (const f of FAMILIES) if (f.re.test(m)) return f;
+  if (m) {
+    for (const f of FAMILIES) if (f.re.test(m)) return f;
+    /* v-grok-first: صفّ الوسيط شركات متعدّدة — معرّف مجهول لا يُفترَض كروك؛ بلا موديل = كروك */
+    if (String(prov || '').toLowerCase() === 'openrouter') return null;
+  }
   const k = PROV_DEFAULT[String(prov || '').toLowerCase()];
   return k ? FAMILIES.find((f) => f.key === k) : null;
 }
