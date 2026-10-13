@@ -354,13 +354,21 @@ function thinkDelta(blk, d) {
   if (d.type === 'signature_delta') { blk.signature = (blk.signature || '') + (d.signature || ''); return true; }
   return false;
 }
-// نهاية كتلة تفكير فيها ملخّص (المالك وحده): سطره الأوّل «↳ 💭 …» — يدخل سجلّ الردّ (__steps في app-18) كسطور الأدوات.
+// نهاية كتلة تفكير فيها ملخّص (المالك وحده): السطر الأوّل «↳ 💭»، والملخّص كاملًا في think.s ليبقى في الفقاعة كلامًا (v-think-talk).
+function thinkTalk(text) {
+  const lines = String(text || '').split('\n').map((x) => x.replace(/[*#_`>]+/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  if (!lines.length) return { first: '', body: '' };
+  let body = lines.join('\n');
+  if (body.length > 1200) body = body.slice(0, 1199) + '…';
+  return { first: lines[0], body };
+}
 function thinkStop(t, blk, send) {
   if (!t || !t.owner || !blk || blk.type !== 'thinking' || typeof send !== 'function' || t.shown >= THINK_SHOWN_MAX) return;
-  const first = String(blk.thinking || '').split('\n').map((x) => x.replace(/[*#_`>]+/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean)[0] || '';
-  if (!first) return;
+  const talk = thinkTalk(blk.thinking);
+  if (!talk.first) return;
   t.shown++;
-  try { send({ status: '↳ 💭 ' + (first.length > 160 ? first.slice(0, 159) + '…' : first) }); } catch (e) { /* guard-ok — العميل أغلق المجرى */ }
+  const line = talk.first.length > 160 ? talk.first.slice(0, 159) + '…' : talk.first;
+  try { send({ status: '↳ 💭 ' + line, think: { s: talk.body } }); } catch (e) { /* guard-ok — العميل أغلق المجرى */ }
 }
 // ردّ المساعد: كتلة التفكير كما وصلت (undefined = ليست تفكيرًا، null = لا تُعاد: مسار آخر أو بلا توقيع).
 function thinkOut(t, cb) {

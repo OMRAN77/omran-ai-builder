@@ -167,7 +167,7 @@
     var __served = ''; /* v-owner-identity: الموديل كما أعلنه المزوّد نفسه في ردّه (للمالك) */
     /* v-read-all (المالك: «الوكيل يقرأ ويحلّل كلّ شي — أريد نفس الشي في المزوّدين كلّهم»): كلّ سطر أثر «↳» خطوةٌ في
        سجلّ بصيغة سجلّ الوكيل (m._agParts)، يسبقها «فكّر N ث» حتّى أوّل حرف — يُحفظ في الرسالة فيبقى بعد الردّ. */
-    var __t0 = Date.now(), __tFirst = 0, __steps = [];
+    var __t0 = Date.now(), __tFirst = 0, __steps = [], __thinks = [];
 
     while (true) {
       var chunk;
@@ -192,7 +192,13 @@
         /* v-img-box (المالك: «احذف كلمة يرسم الصورة مع أيقونة الرسم»): حالة رسم/تعديل صورة تُظهر مربّع الإنشاء بدل السطر */
         if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
         else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status, onDelta && onDelta.__status);  /* v656 */
-        if (ev.status && /^↳/.test(String(ev.status)) && __steps.length < 24) {
+        if (ev.think && ev.think.s && __thinks.length < 8) {
+          var __ts = String(ev.think.s).slice(0, 1200);
+          var __tm = Date.now() - __t0;
+          __thinks.push({ t: 'think', ms: __tm, s: __ts, open: 1 });
+          if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ s: __ts, ms: __tm }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:think'); } }
+        }
+        if (ev.status && /^↳/.test(String(ev.status)) && !/^↳\s*💭/.test(String(ev.status)) && __steps.length < 24) {
           var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
           __steps.push({ t: 'tool', name: String(ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: /Fail|Err/.test(String(ev.k || '')) ? 1 : 0, g: 0 });
         }
@@ -235,7 +241,8 @@
     var __fenceCut = false;
     if (__ownerStop && serverErr) { __fenceCut = ((full.match(/```/g) || []).length % 2) === 1; full = full + (__fenceCut ? '\n```' : '') + '\n\n⚠️ ' + serverErr; if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-note'); } } }
     var __p = provider || 'claude';
-    var __log = __steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }].concat(__steps) : undefined;
+    var __head = __thinks.length ? __thinks : (__steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }] : []);
+    var __log = (__head.length || __steps.length) ? __head.concat(__steps) : undefined;
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined, cards: __cards || undefined };
   };
 })();
