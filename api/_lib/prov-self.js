@@ -376,12 +376,52 @@ async function noteGenImage(img, prov) {
   const url = '/i/' + id + '.' + (same ? same.ext || 'jpg' : extOf(mime));
   const note = plainText(i.note).replace(/\s+/g, ' ').slice(0, 300);
   const line = '[صورة معمّمة] ' + (note ? note + ' — ' : '') + 'رابطها في التطبيق: ' + url + ' (اعرضها بـ![](' + url + ')، ولوضعها في ملفّات التطبيق: write_github بملفّ {path, image: "' + url + '"})';
-  const next = same ? imgs : imgs.concat({ id, h, ext: extOf(mime), at: Date.now() });
+  const next = same ? imgs : imgs.concat({ id, h, ext: extOf(mime), at: Date.now(), note });
   const drop = next.length > GEN_IMG_MAX ? next.slice(0, next.length - GEN_IMG_MAX) : [];
   for (const d of drop) { try { await share.delImage(d.id); } catch (e) { /* guard-ok — صورة باقية تنتهي بعمرها */ } }
   const dead = drop.map((d) => '/i/' + d.id + '.');
   await absorbGroups([{ lines: [line], by: prov }], { extra: { imgs: next.slice(-GEN_IMG_MAX) }, forget: dead.length ? { has: (x) => dead.some((u) => x.text.includes(u)) } : null });
   return { id, url, reused: !!same };
+}
+/* v-gen-see (أمر المالك ١٣ أكتوبر «خلّ الوكيل والمزوّدين يشوفون الصورة نفسها مو بس الرابط»): الصورة المعمّمة تُرفق ببايتاتها مع
+   رسالة المالك حين يكون الكلام عنها — رابطها مذكور في الرسالة (حتّى ٣)، أو كلمة صورة/رسمة/شعار، أو عُمّمت آخر ٣٠ دقيقة (الأحدث
+   وحدها). لا كلّ رسالة: الصورة ~١٦٠٠ توكن وتفرض موديل رؤية. chat.js يرفقها للمزوّد الذي يرى وحده (owner-vision)، والوكيل كلود. */
+const SEE_WORD_RE = /صور|رسم[ةه]|شعار|لوجو|\b(?:image|picture|photo|logo)s?\b/i;
+const SEE_RECENT_MS = 30 * 60 * 1000;
+const SEE_MAX = 3;
+function noteFromItems(items, id) {
+  const it = (items || []).find((x) => x && typeof x.text === 'string' && x.text.includes('/i/' + id + '.'));
+  const m = it && it.text.match(/^\[صورة معمّمة\]\s*(.*?)\s*—\s*رابطها/);
+  return m ? m[1] : '';
+}
+// opts.recent = false: قاعدة «آخر ٣٠ دقيقة» لا تسري (المزوّد يحتاج تبديل موديل ليرى — لا يُبدَّل لرسالة لا تذكر الصورة).
+async function genImagesToSee(text, opts) {
+  const s = String(text || '');
+  const rec = await readRec(false);
+  const imgs = (Array.isArray(rec.imgs) ? rec.imgs : []).filter((x) => x && x.id);
+  if (!imgs.length) return [];
+  let pick = imgs.filter((x) => s.includes('/i/' + x.id)).slice(-SEE_MAX);
+  if (!pick.length) {
+    const last = imgs[imgs.length - 1];
+    if (SEE_WORD_RE.test(s) || (!(opts && opts.recent === false) && Date.now() - (Number(last.at) || 0) < SEE_RECENT_MS)) pick = [last];
+  }
+  const share = require('./img-share.js');
+  const out = [];
+  for (const x of pick) {
+    const got = await share.getImage(x.id);
+    if (got && got.b64) out.push({ id: x.id, url: '/i/' + x.id + '.' + (x.ext || 'jpg'), mime: /^image\/(png|jpeg|webp|gif)$/.test(got.mime) ? got.mime : 'image/jpeg', b64: got.b64, note: x.note || noteFromItems(rec.items, x.id) });
+  }
+  return out;
+}
+// رسالة المستخدم مع الصور قبل كلامه (الصور أوّلًا ثمّ النصّ، كما توصي Anthropic). محتوى نصّيّ أو كتل.
+function withGenImages(content, imgs) {
+  const blocks = [{ type: 'text', text: '[صور عمّمها المالك — تراها هنا بنفسك، لا رابطها فقط]' }];
+  for (const g of imgs || []) {
+    blocks.push({ type: 'text', text: '— ' + (g.note || 'صورة معمّمة') + ' · ' + g.url });
+    blocks.push({ type: 'image', source: { type: 'base64', media_type: g.mime, data: g.b64 } });
+  }
+  const rest = typeof content === 'string' ? (content ? [{ type: 'text', text: content }] : []) : (Array.isArray(content) ? content : []);
+  return blocks.concat(rest);
 }
 function genBlock(items, budget, already) {
   const room = Number(budget) || 0;
@@ -532,4 +572,4 @@ async function systemBlocks(owner, prov, ctx) {
   return out;
 }
 
-module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, GEN_ORDER, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, ownerSaidLiked, trimGen, genBlock, genBudget, captureGeneralize, captureBareReply, captureOwnerTurn, absorbProjects, noteImage, clearGen, dialogueLines, forgetLastExchange, noteGenImage, GEN_INJECT, GEN_IMG_MAX, __resetCache: () => { lessonsCache = null; genCache = null; } };
+module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, GEN_ORDER, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, ownerSaidLiked, trimGen, genBlock, genBudget, captureGeneralize, captureBareReply, captureOwnerTurn, absorbProjects, noteImage, clearGen, dialogueLines, forgetLastExchange, noteGenImage, genImagesToSee, withGenImages, GEN_INJECT, GEN_IMG_MAX, __resetCache: () => { lessonsCache = null; genCache = null; } };

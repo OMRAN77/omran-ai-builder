@@ -529,6 +529,8 @@ module.exports = async (req, res) => {
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => ({ role: m.role, content: String(m.content || '').slice(0, 30000) }));
   const convo = livingOn ? living.shortTerm(convoAll) : convoAll; // الذاكرة القصيرة: آخر ٥٠ رسالة كاملة، والأقدم يحمله ملخّص الحقائق
+  /* v-gen-see: الوكيل (كلود يرى) يأخذ الصورة المعمّمة ببايتاتها مع رسالة المالك حين يكون الكلام عنها — كالمحادثة؛ لا في دور «عمّم» نفسه. */
+  if (isOwner(runUser) && convo.length && convo[convo.length - 1].role === 'user' && !require('./prov-self.js').ownerSaidGeneralize(living.lastUserText(messages))) { try { const __ps = require('./prov-self.js'), __gs = await __ps.genImagesToSee(living.lastUserText(messages)); if (__gs.length) convo[convo.length - 1] = { role: 'user', content: __ps.withGenImages(convo[convo.length - 1].content, __gs) }; } catch (e) { console.warn('[agent] gen see failed', e && e.message); } }
 
   // Resolve the best available Claude model on this key (mirrors claude.js
   // fallback): prefer sonnet-5, then sonnet-4, then 3.5.
