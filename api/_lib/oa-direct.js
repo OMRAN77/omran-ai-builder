@@ -160,7 +160,11 @@ function toResponsesBody(ab) {
      الموديل. الأسماء تختلف بين أجيال GPT فالسلّم none → minimal → low، وما رفضه الموديل يُذكَر (quickEffortFor). */
   const qe = (ab.thinking && ab.thinking.type === 'disabled') ? quickEffortFor(ab.model) : '';
   const oe = ab.output_config && ab.output_config.effort; // v-owner-gpt-all: جهد المالك المختار (owner-think.gptEffortFields) يغلب السلّم
-  if (oe) body.reasoning = { effort: String(oe) }; else if (qe) body.reasoning = { effort: qe };
+  // v-think-talk-all: الملخّص لا يُبثّ إلّا بطلبه. الجهد يبقى كما هو (الافتراضيّ بلا effort). التحيّة (disabled) بلا ملخّص.
+  const sum = summaryWanted(ab.model) ? { summary: 'auto' } : null;
+  if (oe) body.reasoning = Object.assign({ effort: String(oe) }, sum);
+  else if (qe) body.reasoning = { effort: qe };
+  else if (sum && !(ab.thinking && ab.thinking.type === 'disabled')) body.reasoning = sum;
   const sys = textOf(ab.system);
   if (sys) body.instructions = sys;
   if (ab.max_tokens) body.max_output_tokens = ab.max_tokens;
@@ -172,7 +176,8 @@ function toResponsesBody(ab) {
 }
 
 // v-oa-responses: بثّ /v1/responses (أحداث response.*) ← أحداث أنثروبيك بالأسطر نفسها التي تقرؤها الحلقة.
-// عناصر التفكير لا تُمرَّر (لا يُبثّ منها شيء للمستخدم)؛ وسائط النداء تصل دلتا أو كاملةً عند done — مرّة واحدة.
+// ملخّص التفكير (reasoning_summary) يُترجم كتلة thinking كي يظهر كلام المزوّد مع نفسه في الفقاعة (v-think-talk-all).
+// نصّ التفكير الخام لا يُمرَّر (ليس الملخّص المعروض). وسائط النداء تصل دلتا أو كاملةً عند done — مرّة واحدة.
 // رفض البثّ عبر reader.read() يصل إلى catch المحادثة كـ chat error؛ لا تُنهِ رسالةً ناجحةً عند سقوط المزوّد.
 function streamProtocolError(reason, detail) {
   const err = new Error('OA_STREAM_PROTOCOL_ERROR: ' + reason + (detail ? ' — ' + String(detail).slice(0, 240) : ''));
@@ -208,8 +213,22 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
       let usage = null;
       let terminal = false;
       const begin = (model) => { if (!started) { started = true; emit({ type: 'message_start', message: { model: model || fallbackModel, usage: { input_tokens: 0, output_tokens: 0 } } }); } };
+      let thinkIdx = -1, thinkHad = false;
+      const closeThink = () => { if (thinkIdx >= 0) { emit({ type: 'content_block_stop', index: thinkIdx }); thinkIdx = -1; } };
+      const pushThink = (text) => {
+        const s = typeof text === 'string' ? text : '';
+        if (!s) return;
+        if (thinkIdx < 0) {
+          if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; }
+          thinkIdx = next++;
+          emit({ type: 'content_block_start', index: thinkIdx, content_block: { type: 'thinking', thinking: '', signature: '' } });
+        }
+        emit({ type: 'content_block_delta', index: thinkIdx, delta: { type: 'thinking_delta', thinking: s } });
+        thinkHad = true;
+      };
       const closeText = () => { if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; } };
       const openCall = (oi, item) => {
+        closeThink();
         closeText();
         const idx = next++;
         const c = { idx, sent: false, args: '', done: false };
@@ -237,7 +256,13 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
             if (terminal) continue;
             if (t === 'response.created' || t === 'response.in_progress') { begin(ev.response && ev.response.model); continue; }
             begin('');
-            if (t === 'response.output_text.delta' && typeof ev.delta === 'string' && ev.delta) {
+            if (t === 'response.reasoning_summary_text.delta' && typeof ev.delta === 'string') { pushThink(ev.delta); }
+            else if (t === 'response.reasoning_summary_text.done' && !thinkHad && typeof ev.text === 'string') { pushThink(ev.text); }
+            else if (t === 'response.output_item.done' && ev.item && ev.item.type === 'reasoning') {
+              if (!thinkHad && Array.isArray(ev.item.summary)) for (const p of ev.item.summary) if (p && typeof p.text === 'string') pushThink(p.text);
+              closeThink();
+            } else if (t === 'response.output_text.delta' && typeof ev.delta === 'string' && ev.delta) {
+              closeThink();
               if (textIdx < 0) { textIdx = next++; emit({ type: 'content_block_start', index: textIdx, content_block: { type: 'text', text: '' } }); }
               emit({ type: 'content_block_delta', index: textIdx, delta: { type: 'text_delta', text: ev.delta } });
             } else if (t === 'response.output_item.added' && ev.item && ev.item.type === 'function_call') {
@@ -269,6 +294,7 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
           if (!c.done || !validToolArguments(c.args)) throw streamProtocolError('incomplete function_call arguments');
         }
         begin('');
+        closeThink();
         closeText();
         for (const c of calls.values()) emit({ type: 'content_block_stop', index: c.idx });
         if (usage) {
@@ -312,7 +338,33 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
       let usage = null;
       let doneMarker = false;
       const begin = (model) => { if (!started) { started = true; emit({ type: 'message_start', message: { model: model || fallbackModel, usage: { input_tokens: 0, output_tokens: 0 } } }); } };
-      const closeText = () => { if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; } };
+      let thinkIdx = -1;
+      const closeThink = () => { if (thinkIdx >= 0) { emit({ type: 'content_block_stop', index: thinkIdx }); thinkIdx = -1; } };
+      const pushThink = (text) => {
+        const s = typeof text === 'string' ? text : '';
+        if (!s) return;
+        if (thinkIdx < 0) {
+          if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; }
+          thinkIdx = next++;
+          emit({ type: 'content_block_start', index: thinkIdx, content_block: { type: 'thinking', thinking: '', signature: '' } });
+        }
+        emit({ type: 'content_block_delta', index: thinkIdx, delta: { type: 'thinking_delta', thinking: s } });
+      };
+      const reasonPiece = (d) => {
+        if (!d || typeof d !== 'object') return '';
+        if (Array.isArray(d.reasoning_details) && d.reasoning_details.length) {
+          return d.reasoning_details.map((p) => {
+            if (!p || p.type === 'reasoning.encrypted') return '';
+            if (typeof p.summary === 'string') return p.summary;
+            if (typeof p.text === 'string' && p.text !== '[REDACTED]') return p.text;
+            return '';
+          }).join('');
+        }
+        if (typeof d.reasoning_content === 'string') return d.reasoning_content;
+        if (typeof d.reasoning === 'string') return d.reasoning;
+        return '';
+      };
+      const closeText = () => { closeThink(); if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; } };
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -337,7 +389,10 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
             const c = ch.choices && ch.choices[0];
             if (!c) continue;
             const d = c.delta || {};
+            const rt = reasonPiece(d) || ((d.reasoning_content == null && d.reasoning == null && !d.reasoning_details && c.message) ? reasonPiece(c.message) : '');
+            if (rt) pushThink(rt);
             if (typeof d.content === 'string' && d.content) {
+              closeThink();
               if (textIdx < 0) { textIdx = next++; emit({ type: 'content_block_start', index: textIdx, content_block: { type: 'text', text: '' } }); }
               emit({ type: 'content_block_delta', index: textIdx, delta: { type: 'text_delta', text: d.content } });
             }
@@ -481,6 +536,14 @@ async function directFetch(route, anthropicBody, opts) {
       // v-owner-auto: جهد مرفوض = الدرجة التالية من السلّم، وبعد آخرها بلا reasoning (سلوك ما قبل الإصلاح).
       /* v-owner-gpt-all: جهد اختاره المالك ورُفض = إعادة واحدة بلا reasoning (افتراضيّ الموديل) ويُذكر — لا يُحسب درجة من
          سلّم «بلا تفكير» (كان max المرفوض يقفز إلى none، عكس ما اختاره). */
+      if (r.status === 400 && rb.reasoning && rb.reasoning.summary && /summary/i.test(t)) {
+        summaryDrop(rb.model);
+        rb = Object.assign({}, rb);
+        const rest = Object.assign({}, rb.reasoning);
+        delete rest.summary;
+        if (Object.keys(rest).length) rb.reasoning = rest; else delete rb.reasoning;
+        continue;
+      }
       if (r.status === 400 && rb.reasoning && ownerEff && /reasoning|effort/i.test(t)) {
         ownerEff = false;
         try { require('./owner-think.js').forgetEffort(anthropicBody.model); } catch (e) { /* guard-ok — الذاكرة تحسين */ }
@@ -536,6 +599,9 @@ async function directFetch(route, anthropicBody, opts) {
 const deadModels = new Set();
 
 // v-owner-auto: سلّم «بلا تفكير» لكلّ موديل في هذه الدالّة الدافئة: أوّل درجة لم يرفضها. '' = الموديل رفضها كلّها.
+const summaryOff = new Set();
+function summaryWanted(model) { return !summaryOff.has(String(model || '')); }
+function summaryDrop(model) { if (model) summaryOff.add(String(model)); }
 const QUICK_EFFORTS = ['none', 'minimal', 'low'];
 const quickRejected = new Map();
 function quickEffortFor(model) {
@@ -550,4 +616,4 @@ function quickEffortRejected(model, effort) {
   quickRejected.set(k, bad);
 }
 
-module.exports = { directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected };
+module.exports = { directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected, __summaryOff: summaryOff };

@@ -230,10 +230,11 @@ test('٧. المالك + مفتاح OpenAI: GPT مباشر بمعرّفه عند
 test('٨. تفكير الموديل: سؤال المالك بلا حقول إطفاء، والمجاملة بها (v-owner-think-all)، وغير المالك عليها كما كان (v-chat-fast)', async () => {
   chat.__orQuick.level = 2;
   let r = await run({ user: 'omran', provider: 'deepseek', messages: ask('حلّل لي هذا التقرير'), script: [() => anthropicText('تم')] });
-  assert.equal(r.calls[0].body.thinking, undefined);
+  assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive' });
+  assert.equal(r.calls[0].body.thinking.display, undefined);
   assert.equal(r.calls[0].body.reasoning, undefined);
   r = await run({ user: 'omran', provider: 'deepseek', messages: ask('اشرح'), script: [() => anthropicText('تم')] });
-  assert.equal(r.calls[0].body.thinking, undefined, 'v-owner-think-all: كلّ سؤال للمالك يفكّر');
+  assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive' }, 'v-owner-think-all: كلّ سؤال للمالك يفكّر، والملخّص يُطلب');
   r = await run({ user: 'omran', provider: 'deepseek', messages: ask('شكرًا'), script: [() => anthropicText('تم')] });
   assert.deepEqual(r.calls[0].body.thinking, { type: 'disabled' }, 'v-owner-auto: المجاملة للمالك فوريّة');
   assert.deepEqual(r.calls[0].body.reasoning, { enabled: false });
@@ -307,4 +308,56 @@ test('١٢. العميل: المالك يرسل المحادثة كاملة بر
   assert.ok(!ctx.f('assistant', long, 'text').includes('```'), 'والكود مستبدل (كوده يُرسل منفصلًا)');
   assert.equal(ctx.f('assistant', long, '').length, 3000, 'غير المالك كما كان');
   assert.equal(ctx.f('user', long, ''), long);
+});
+
+test('١٣. بثّ chat/completions: reasoning وreasoning_content والملخّص يصيرون كتلة تفكير، والجواب منفصل، والمشفّر لا يمرّ', async () => {
+  const read = async (chunks) => (await new Response(od.toAnthropicStream(new ReadableStream({ start(c) {
+    const enc = new TextEncoder();
+    for (const x of chunks) c.enqueue(enc.encode('data: ' + (typeof x === 'string' ? x : JSON.stringify(x)) + '\n\n'));
+    c.close();
+  } }), 'fb')).text()).split('\n').filter((l) => l.startsWith('data: ')).map((l) => JSON.parse(l.slice(6)));
+  const done = { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] };
+  let evs = await read([
+    { choices: [{ index: 0, delta: { reasoning: 'أراجع' } }] },
+    { choices: [{ index: 0, delta: { reasoning: ' الأرقام' } }] },
+    { choices: [{ index: 0, delta: { content: '١٢' } }] },
+    done, '[DONE]',
+  ]);
+  assert.equal(evs.filter((e) => e.delta && e.delta.type === 'thinking_delta').map((e) => e.delta.thinking).join(''), 'أراجع الأرقام');
+  assert.equal(evs.filter((e) => e.delta && e.delta.type === 'text_delta').map((e) => e.delta.text).join(''), '١٢');
+  const thinkStop = evs.findIndex((e) => e.type === 'content_block_stop');
+  const textStart = evs.findIndex((e) => e.type === 'content_block_start' && e.content_block && e.content_block.type === 'text');
+  assert.ok(thinkStop !== -1 && thinkStop < textStart, 'كتلة التفكير تُغلق قبل النصّ');
+  evs = await read([
+    { choices: [{ index: 0, delta: { reasoning_content: 'أفكّر' } }] },
+    { choices: [{ index: 0, delta: { content: 'تم' } }] },
+    done, '[DONE]',
+  ]);
+  assert.equal(evs.filter((e) => e.delta && e.delta.type === 'thinking_delta').map((e) => e.delta.thinking).join(''), 'أفكّر');
+  assert.equal(evs.filter((e) => e.delta && e.delta.text).map((e) => e.delta.text).join(''), 'تم');
+  evs = await read([
+    { choices: [{ index: 0, delta: { reasoning_details: [{ type: 'reasoning.summary', summary: 'ملخّص' }, { type: 'reasoning.encrypted', data: 'x' }, { type: 'reasoning.text', text: '[REDACTED]' }] } }] },
+    { choices: [{ index: 0, delta: { content: 'جواب' } }] },
+    done, '[DONE]',
+  ]);
+  assert.equal(evs.filter((e) => e.delta && e.delta.type === 'thinking_delta').map((e) => e.delta.thinking).join(''), 'ملخّص');
+  assert.equal(evs.filter((e) => e.delta && e.delta.text).map((e) => e.delta.text).join(''), 'جواب');
+});
+
+test('١٤. Groq المباشر: reasoning في البثّ يصل المالك think.s والجواب لا يحوي كلام التفكير', async () => {
+  process.env.GROQ_API_KEY = 'gsk-test';
+  try {
+    const chunks = [
+      { model: 'openai/gpt-oss-120b', choices: [{ index: 0, delta: { reasoning: 'أراجع الأرقام' } }] },
+      { model: 'openai/gpt-oss-120b', choices: [{ index: 0, delta: { reasoning: '\nثمّ أجمع' } }] },
+      { model: 'openai/gpt-oss-120b', choices: [{ index: 0, delta: { content: 'الناتج ١٢' } }] },
+      { model: 'openai/gpt-oss-120b', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+      '[DONE]',
+    ];
+    const r = await run({ user: 'omran', provider: 'groq', messages: ask('حلّل لي هذا التقرير'), script: [() => sse(chunks)] });
+    const talk = r.events.find((e) => e.think && e.think.s);
+    assert.ok(talk && talk.think.s.includes('أراجع الأرقام') && talk.think.s.includes('ثمّ أجمع'), JSON.stringify(talk));
+    assert.equal(r.text, 'الناتج ١٢');
+    assert.ok(!r.text.includes('أراجع'));
+  } finally { delete process.env.GROQ_API_KEY; }
 });

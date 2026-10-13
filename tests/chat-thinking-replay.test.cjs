@@ -227,8 +227,9 @@ test('٨. Grok (الوسيط): كتل تفكيره لا تُعاد، ولا حق
   assert.ok(r.calls.every((c) => isOR(c.url) && c.body.model === 'x-ai/grok-4.6'));
   assert.deepEqual(thinkBlocks(r.calls[1].body), []);
   assert.deepEqual(blocksOf(r.calls[1].body, 'tool_use').map((x) => x.id), ['tu1']);
-  assert.ok(r.calls.every((c) => !c.body.thinking || c.body.thinking.type !== 'adaptive'), 'لا adaptive ولا display على Grok');
+  assert.ok(r.calls.every((c) => c.body.thinking && c.body.thinking.type === 'adaptive' && !c.body.thinking.display), 'الوسيط: تكيّفيّ بلا عرض أنثروبيك');
   assert.ok(r.events.some((e) => e.status === '↳ 💭 reasoning'), 'ما يصل من تفكير المزوّد نفسه يظهر للمالك سطرًا (v-owner-think-all)');
+  assert.ok(r.events.some((e) => e.think && e.think.s === 'reasoning'), 'الملخّص يبقى في الفقاعة');
 });
 
 test('٩. Haiku 4.5 لا يصله adaptive ولا effort أبدًا (المالك سؤالًا وتحيّةً، واختيارًا صريحًا، وغير المالك)، ولا عرض في المجاملة الفوريّة', async () => {
@@ -320,4 +321,36 @@ test('١٣. 400 عن حقول الجهد/التفكير بلا عرض (المج�
   assert.equal(await OL.think400(raw, guest, convo, async () => { again++; return null; }), raw, 'غير المالك: الاستجابة نفسها');
   assert.equal(again, 1); assert.equal(OL.hasThink(convo), true);
   assert.equal(OL.thinkOut(guest, { type: 'thinking', thinking: '', signature: 'S' }), null, 'غير المالك: لا إعادة');
+});
+
+test('١٤. كلام المزوّد مع نفسه للمالك على كل مزوّد وسيط غير كلود: تكيّفيّ بلا display، والملخّص في think.s، والتحيّة بلاه', async () => {
+  for (const prov of ['openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'kimi']) {
+    const r = await run('omran', { provider: prov, messages: Q }, (u, b, n) => (!isOR(u) ? new Response('{}', { status: 404 })
+      : n === 1 ? thinkTool('S', 'read_github', READ, { id: 'tu1', model: b.model, summary: 'أراجع المسألة' }) : text('تم', b.model)));
+    assert.ok(r.calls.length >= 1 && r.calls.every((c) => isOR(c.url) && c.body.thinking && c.body.thinking.type === 'adaptive' && !c.body.thinking.display), prov + ' ' + JSON.stringify(r.calls[0] && r.calls[0].body.thinking));
+    assert.ok(r.events.some((e) => e.think && e.think.s.includes('أراجع المسألة')), prov);
+    assert.equal(r.text, 'تم');
+  }
+  const grok = await run('omran', { provider: 'openrouter', model: 'x-ai/grok-4.6', messages: Q }, (u, b, n) => (!isOR(u) ? new Response('{}', { status: 404 })
+    : n === 1 ? thinkTool('S', 'read_github', READ, { id: 'tu1', model: 'x-ai/grok-4.6', summary: 'أراجع المسألة' }) : text('تم', 'x-ai/grok-4.6')));
+  assert.ok(grok.calls.every((c) => c.body.model === 'x-ai/grok-4.6' && c.body.thinking.type === 'adaptive' && !c.body.thinking.display));
+  const hi = await run('omran', { provider: 'deepseek', messages: [{ role: 'user', content: 'السلام' }] }, (u) => (!isOR(u) ? new Response('{}', { status: 404 }) : text('وعليكم')));
+  assert.deepEqual(hi.calls[0].body.thinking, { type: 'disabled' }, 'التحيّة فوريّة');
+  assert.ok(!hi.events.some((e) => e.think));
+  const coHi = await run('omran', { provider: 'cohere', messages: [{ role: 'user', content: 'السلام' }] }, (u) => (!isOR(u) ? new Response('{}', { status: 404 }) : text('وعليكم')));
+  assert.equal(coHi.calls[0].body.thinking, undefined, 'Cohere في التحيّة بلا حقل إطفاء ولا تكيّفيّ');
+  assert.equal(coHi.calls[0].body.reasoning, undefined);
+});
+
+test('١٥. وسيط يرفض thinking التكيّفيّ ← إعادة واحدة بلا الحقل والجواب يصل، بلا سطر إطفاء العرض', async () => {
+  const r = await run('omran', { provider: 'mistral', messages: Q }, (u, b) => {
+    if (!isOR(u)) return new Response('{}', { status: 404 });
+    if (b.thinking) return err(400, 'thinking is not supported for this model');
+    return text('تم');
+  });
+  assert.equal(r.calls.length, 2);
+  assert.equal(r.calls[0].body.thinking.type, 'adaptive');
+  assert.equal(r.calls[1].body.thinking, undefined);
+  assert.equal(r.text, 'تم');
+  assert.ok(!r.events.some((e) => /ملخّص التفكير غير متاح/.test(e.status || '')));
 });

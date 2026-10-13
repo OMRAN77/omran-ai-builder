@@ -296,7 +296,7 @@ const THINK_SHOWN_MAX = 8;
 function isThink(b) { return !!b && (b.type === 'thinking' || b.type === 'redacted_thinking'); }
 function hasThink(convo) { return Array.isArray(convo) && convo.some((m) => m && Array.isArray(m.content) && m.content.some(isThink)); }
 // owner: سطور «↳ 💭»؛ show: العرض الملخّص — دور المالك الذي يفكّر فيه الموديل (ownerThinks)، لا المجاملة الفوريّة (v-owner-auto).
-function thinkState(owner, show) { return { owner: !!owner, show: !!(owner && show), key: '', sent: '', direct: false, disp: false, noDisplay: false, shown: 0 }; }
+function thinkState(owner, show) { return { owner: !!owner, show: !!(owner && show), key: '', sent: '', direct: false, disp: false, noDisplay: false, noTalk: false, talk: false, shown: 0 }; }
 function fp(system, tools) {
   try { return require('crypto').createHash('sha1').update(JSON.stringify([system == null ? null : system, tools == null ? null : tools])).digest('hex').slice(0, 16); }
   catch (e) { return String(Date.now()); } // بصمة غير محسوبة = مفتاح لا يتطابق → نزع (الآمن)
@@ -324,6 +324,9 @@ function think(b, t, convo, route) {
     if (Array.isArray(b.messages) && b.messages !== convo) stripThink(b.messages); // نسخة markLastForCache: آخر رسالة منسوخة
   }
   t.disp = false;
+  t.talk = false;
+  // v-think-talk-all: دور المالك الذي يفكّر فيه، على الوسيط لغير كلود — تكيّفيّ بلا display. الوسيط يترجمها إلى تفكير المزوّد نفسه (جهده الافتراضيّ) ويرجع الملخّص كتلة تفكير. كلود المباشر يبقى بالعرض الملخّص في السطر التالي. بعد رفض الحقل (noTalk) يبقى بلاه.
+  if (t.show && route === 'or' && !t.noTalk && b.thinking === undefined && !/^(?:anthropic\/|claude-)/.test(model)) { b.thinking = { type: 'adaptive' }; t.talk = true; }
   if (t.show && t.direct && !t.noDisplay && (b.thinking === undefined || (b.thinking && b.thinking.type === 'adaptive' && !b.thinking.display)) && DISPLAY_RE.test(model)) { b.thinking = { type: 'adaptive', display: 'summarized' }; t.disp = true; } // v-owner-claude-all: تكيّفيّ بلا عرض (جهد المالك على 4.x) يأخذ العرض؛ وبعد رفض العرض (noDisplay) يبقى التفكير بلا عرض
   return b;
 }
@@ -331,9 +334,15 @@ function think(b, t, convo, route) {
    (حقل thinking نفسه). بلا عرض: النزع لرفضٍ عن كتلة في الرسائل وحده (توقيع أو messages.N) — 400 عن حقول الجهد/التفكير
    (المجاملة الفوريّة v-owner-auto، إعداد الصورة) يمرّ لمعالجه بنصّه ولا يُضيّع تفكير الدور. والسبب سطر «↳» للمالك لا صمت. */
 async function think400(up, t, convo, again, send) {
-  if (!t || !t.owner || !up || up.ok || Number(up.status) !== 400 || !(t.disp || hasThink(convo))) return up;
+  if (!t || !t.owner || !up || up.ok || Number(up.status) !== 400 || !(t.disp || t.talk || hasThink(convo))) return up;
   const why = await bodyText(up);
   const blk = /signature|messages\.\d+/i.test(why);
+  // v-think-talk-all: رفض حقل التكيّفيّ على الوسيط (مزوّد لا يعرفه) = إعادة واحدة بلاه، بصمت — التفكير الافتراضيّ يبقى، ولا يُطفأ الدور.
+  if (t.talk && !t.disp && !blk && /thinking|display/i.test(why)) {
+    t.noTalk = true;
+    try { await require('./log-error.js').logErrorAndFlush('chat/thinking-talk', new Error(why || 'upstream 400'), { action: 'thinking-talk' }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
+    return again();
+  }
   if (!/thinking|signature|display/i.test(why) || (!t.disp && !blk)) return synth(up, why);
   const n = stripThink(convo, t);
   const off = t.disp && !blk;
