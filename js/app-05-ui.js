@@ -3801,12 +3801,15 @@ async function postWithConfirm(url, payload){
     el('pickerSheetTitle').textContent = cfg.title || '';
     el('pickerSheetCount').textContent = cfg.count || '';
     grid.innerHTML = '';
+    /* v-picker-wide (طلب المالك ١٣ أكتوبر: صور الإضاءة الأفقيّة كاملة لا مقصوصة): cfg.aspect يغيّر نسبة البطاقة
+       وcfg.minCol عرض العمود الأدنى لهذا المعرض على الحاسوب وحده؛ بلاهما ٣/٤ و١٥٠ كما كان. */
+    grid.style.gridTemplateColumns = 'repeat(auto-fill,minmax(' + ((!document.documentElement.classList.contains('mobile-ui') && Number(cfg.minCol)) || 150) + 'px,1fr))'; /* الجوّال بعموديه كما كان */
     (cfg.items || []).forEach(function(it, idx){
       var card = document.createElement('div');
       card.style.cssText = 'border-radius:14px;overflow:hidden;cursor:pointer;background:#17171b;' +
         (it.active ? 'border:2px solid #d4af37;box-shadow:0 0 14px rgba(212,175,55,.3);' : 'border:1px solid #2a2a30;');
       var wrap = document.createElement('div');
-      wrap.style.cssText = 'position:relative;aspect-ratio:3/4;background:linear-gradient(160deg,#23232a,#101014);display:flex;align-items:center;justify-content:center;';
+      wrap.style.cssText = 'position:relative;aspect-ratio:' + (cfg.aspect || '3/4') + ';background:linear-gradient(160deg,#23232a,#101014);display:flex;align-items:center;justify-content:center;';
       // it.bg (لوحة ألوان النمط) تعطي بطاقة احترافية بلا شارة إيموجي إطلاقًا.
       if(it.bg){ wrap.style.background = it.bg; }
       else {
