@@ -2747,10 +2747,24 @@ function __agLogToolEl(p){
 function __agLogThinkEl(p){
   const label = t('agThought').replace('{n}', String(Math.max(1, Math.round((Number(p.ms) || 0) / 1000))));
   if(!p.s){ const r = document.createElement('div'); r.className = 'agThink'; r.textContent = label; return r; }
-  const d = document.createElement('details'); d.className = 'agThink';
+  const d = document.createElement('details'); d.className = 'agThink'; if(p.open) d.open = true;
   const s = document.createElement('summary'); s.textContent = label; d.appendChild(s);
   const b = document.createElement('div'); b.className = 'agThinkBody'; b.textContent = p.s; d.appendChild(b);
   return d;
+}
+/* v-think-talk: ملخّص تفكير المزوّد فوق فقاعة الردّ — خارج __sendPromptCore كي لا يكبر سقفها. */
+function omranShowThink(thinkingDiv, th){
+  try{
+    if(!thinkingDiv || !th || !th.s) return;
+    let box = thinkingDiv.__thinkBox;
+    if(!box || !box.isConnected){
+      box = document.createElement('div'); box.className = 'agLog';
+      if(thinkingDiv.isConnected && thinkingDiv.parentNode) thinkingDiv.parentNode.insertBefore(box, thinkingDiv);
+      else if(typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(box);
+      thinkingDiv.__thinkBox = box;
+    }
+    box.appendChild(__agLogThinkEl({ t: 'think', ms: th.ms || 1000, s: String(th.s), open: 1 }));
+  }catch(e){ __swallow(e, 'chat:think-note'); }
 }
 function __agLogGroupEl(els){
   const d = document.createElement('details'); d.className = 'agGroup';
@@ -4093,7 +4107,7 @@ function __friendlyErr(e){
   thinkingDiv.textContent = t('building');
   if(__mine()) messagesEl.appendChild(thinkingDiv);
   // v-parallel-chats: الإزالة المقصودة تُعلَّم فلا تُعاد الفقاعة حين يرجع المستخدم إلى المحادثة
-  thinkingDiv.remove = function(){ thinkingDiv.__gone = true; return Element.prototype.remove.call(thinkingDiv); };
+  thinkingDiv.remove = function(){ thinkingDiv.__gone = true; try{ if(thinkingDiv.__thinkBox) thinkingDiv.__thinkBox.remove(); }catch(e){ __swallow(e, 'chat:think-box'); } return Element.prototype.remove.call(thinkingDiv); };
   __run.thinking = thinkingDiv;
   thinkingDiv.__signal = __runCtl.signal;
   // شريط الحالة: يُظهر خطوات العمل بدل انتظار صامت.
@@ -7008,7 +7022,7 @@ DESIGN RULES (non-negotiable):
       // عنه أنماط نصّيّة في المتصفّح. أيّ عثرة تهبط صامتة إلى المسار القديم.
       /* v-img-box: أداة generate_image/edit_image في مسار الأدوات كانت تُظهر سطر «🎨 يرسم صورة…» بلا مربّع. الآن
          app-18 يستدعي هذا فيظهر المربّع نفسه فوق الردّ (الصورة تُعرض فوق النصّ في الرسم النهائيّ). */
-      window.__omranImgBox = function(){
+      window.__omranThinkNote = function(th){ omranShowThink(thinkingDiv, th); }; window.__omranImgBox = function(){
         try{
           let b = thinkingDiv.__imgBox;
           if(!b || !b.isConnected){
@@ -7050,7 +7064,7 @@ DESIGN RULES (non-negotiable):
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, __sigFn(onDelta), __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })); // v-owner-solo
       }finally{
         window.__claudeModelOverride = null;
-        window.__claudeThinking = false;
+        window.__claudeThinking = false; window.__omranThinkNote = null;
       }
       try{ window.__diagTurn.provider = String(providerKey||''); window.__diagTurn.replyLen = String(reply||'').length; if(!window.__diagTurn.path) window.__diagTurn.path = __ctUsed ? 'tools' : 'fallback'; }catch(e){ __swallow(e,'ui:diag-ok'); }
       let { code, explanation, codeType } = extractReply(reply, cur.code); // v-chat-edit: الرقع تُطبَّق على المشروع الحاليّ

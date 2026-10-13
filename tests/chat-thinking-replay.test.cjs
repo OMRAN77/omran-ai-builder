@@ -122,6 +122,8 @@ test('١. الجولة الثانية تعيد التفكير كما وصل: ا�
   assert.equal(JSON.stringify(r.calls[0].body.system), JSON.stringify(r.calls[1].body.system), 'system ثابت بين الجولتين');
   assert.equal(JSON.stringify(r.calls[0].body.tools), JSON.stringify(r.calls[1].body.tools), 'tools ثابتة بين الجولتين');
   assert.ok(r.events.some((e) => e.status === '↳ 💭 أبحث عن foo'), 'ملخّص التفكير سطر ↳ في سجلّ الردّ');
+  const talk = r.events.find((e) => e.think && e.think.s);
+  assert.ok(talk && talk.think.s.includes('أبحث عن foo') && talk.think.s.includes('ثمّ أقرأ الملفّ'), 'الملخّص كاملًا يبقى في الفقاعة');
   assert.equal(r.text, 'الخلل في x.js:1');
 });
 
@@ -135,7 +137,7 @@ test('٢. المالك وحده: مشترك Max في دور كود (Sonnet 5 ا�
     const msgs = r.calls[1].body.messages;
     assert.deepEqual(msgs[msgs.length - 2].content.map((x) => x.type), ['tool_use'], 'ردّ الجولة كما كان قبل D1: الأداة وحدها');
     assert.ok(r.calls.every((c) => c.body.thinking === undefined), 'غير المالك: لا حقل thinking');
-    assert.ok(!r.events.some((e) => /^↳ 💭/.test(e.status || '')));
+    assert.ok(!r.events.some((e) => /^↳ 💭/.test(e.status || '')) && !r.events.some((e) => e.think), 'غير المالك بلا تفكير ظاهر');
   });
 });
 
