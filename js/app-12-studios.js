@@ -325,7 +325,9 @@ async function __safeJson(res){
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; }
-        throw new Error(data.error || 'unknown');
+        /* v-decor-fallback: سبب المزوّد (detail) للمالك وحده — مثل v-img-diag-owner؛ غيره يرى الرسالة الودّيّة فقط */
+        const __why = (data.detail && typeof omranOwnerUi === 'function' && omranOwnerUi()) ? ' (' + String(data.detail).slice(0, 300) + ')' : '';
+        throw new Error((data.error || 'unknown') + __why);
       }
       if(Array.isArray(data.images) && data.images.length && gridEl){
         gridEl.innerHTML = '';

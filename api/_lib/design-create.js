@@ -148,6 +148,78 @@ const DECOR_PROMPTS = {
   accessories: 'add luxury decorative accessories',
 };
 
+/* v-decor-fallback (لقطة المالك ١٣ أكتوبر: «خطأ: لم يرجع النموذج أي شكل» على «٣ كراسي فخمة»):
+   مسار «بلا صورة» كان على gpt-image-2.5-flare وحده — رفض موديل أو سلامة أو زحام أو رصيد = صفر أشكال،
+   والسبب في detail لا يعرضه أحد. الآن كلّ لقطة تتدرّج Flare ← gpt-image-2 (مثل maha-image)، وإن لم يرجع
+   أيّ شكل من OpenAI تُرسم بنانو برو ← نانو ٢ بمفتاح GEMINI_API_KEY نفسه، كلّه داخل حدّ الدالّة (٣٠٠ث). */
+const PLACE_OA_MODELS = ['gpt-image-2.5-flare', 'gpt-image-2'];
+const PLACE_GEMINI_MODELS = ['gemini-3-pro-image', 'gemini-3.1-flash-image'];
+const PLACE_BUDGET_MS = 285000;
+const PLACE_GEMINI_RESERVE_MS = 70000;
+
+// خطأ يخصّ موديلًا واحدًا (غير متاح، رفض سلامته، زحامه، عطل مؤقّت) يُجرَّب بعده التالي؛ الرصيد والمفتاح للحساب كلّه.
+function oaNextModel(status, msg) {
+  if (/insufficient_quota|billing|exceeded your current quota|invalid api key|incorrect api key/i.test(msg)) return false;
+  if ((status === 400 || status === 404) && /model/i.test(msg)) return true;
+  if (status === 400 && /safety system|content policy|rejected by the safety|moderation/i.test(msg)) return true;
+  return status === 429 || status >= 500;
+}
+
+async function placeShotOpenAI(key, prompt, deadline, noteErr) {
+  for (let i = 0; i < PLACE_OA_MODELS.length; i++) {
+    const m = PLACE_OA_MODELS[i];
+    const left = deadline - Date.now() - PLACE_GEMINI_RESERVE_MS;
+    if (left < 15000) return null;
+    try {
+      const r = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: m,
+          prompt,
+          size: '1536x1024',
+          /* v-decor-hq (المالك: «الصور لم تعجبني»): أعلى جودة بدل medium وضغط أخفّ */
+          quality: 'high',
+          n: 1,
+          output_format: 'webp',
+          output_compression: 92,
+        }),
+        signal: AbortSignal.timeout(Math.min(240000, left)),
+      });
+      const d = await r.json().catch(() => null);
+      const b = (((d && d.data) || [])[0] || {}).b64_json;
+      if (b) return b;
+      const msg = String((d && d.error && (d.error.message || d.error.code)) || 'empty response');
+      noteErr(m + ' ' + r.status + ': ' + msg);
+      if (!oaNextModel(r.status, msg)) return null;
+    } catch (e) { noteErr(m + ': ' + ((e && e.message) || e)); return null; }
+  }
+  return null;
+}
+
+async function placeShotGemini(apiKey, prompt, deadline, noteErr) {
+  for (const m of PLACE_GEMINI_MODELS) {
+    const left = deadline - Date.now();
+    if (left < 10000) return null;
+    try {
+      /* برو يقبل imageSize/aspectRatio؛ نانو ٢ بالصيغة النظيفة responseModalities وحدها (درس v-nano-banana) */
+      const gc = /pro-image/.test(m) ? { imageConfig: { imageSize: '2K', aspectRatio: '16:9' } } : { responseModalities: ['IMAGE'] };
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent?key=' + apiKey, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: gc }),
+        signal: AbortSignal.timeout(Math.min(150000, left)),
+      });
+      const d = await r.json().catch(() => null);
+      const c = ((d && d.candidates) || [])[0] || {};
+      const part = ((c.content || {}).parts || []).find((x) => x && x.inlineData && x.inlineData.data);
+      if (part) return { b64: part.inlineData.data, mime: part.inlineData.mimeType || 'image/png' };
+      noteErr(m + ' ' + r.status + ': ' + ((d && d.error && d.error.message) || c.finishReason || (d && d.promptFeedback && d.promptFeedback.blockReason) || 'no image'));
+    } catch (e) { noteErr(m + ': ' + ((e && e.message) || e)); }
+  }
+  return null;
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -207,6 +279,7 @@ module.exports = async (req, res) => {
 
     // ── مسار «بلا صورة»: أشكال جاهزة من نوع المكان. يعمل على OpenAI لا على نموذج جوجل. ──
     if (!imageBase64) {
+      const deadline = Date.now() + PLACE_BUDGET_MS; /* v-decor-fallback: الميزانيّة من بداية المسار (يشمل محاولة «نسخة ثانية») */
       const oaKey = process.env.OPENAI_API_KEY;
       if (!oaKey) {
         res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' });
@@ -262,32 +335,20 @@ module.exports = async (req, res) => {
       }
       // v-decor-detail: لا نبتلع خطأ المزوّد — نكشفه منظّفًا في detail ليُشخَّص
       // (رصيد؟ اسم نموذج؟) بدل 502 صامتة. المفاتيح تُشطب دائمًا.
-      let upstreamErr = '';
-      const noteErr = (m) => { if (!upstreamErr && m) upstreamErr = String(m).slice(0, 300); };
-      const shots = await Promise.all(Array.from({ length: n }, (_, i) => fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gpt-image-2.5-flare',
-          prompt: base + ' Camera: ' + VIEWS[i % VIEWS.length] + '.',
-          size: '1536x1024',
-          /* v-decor-hq (المالك: «الصور لم تعجبني»): أعلى جودة بدل medium وضغط أخفّ */
-          quality: 'high',
-          n: 1,
-          output_format: 'webp',
-          output_compression: 92,
-        }),
-        signal: AbortSignal.timeout(240000),
-      }).then((r) => r.json()).then((d) => {
-        const b = (((d && d.data) || [])[0] || {}).b64_json || null;
-        if (!b) noteErr(d && d.error && d.error.message);
-        return b;
-      }).catch((e) => { noteErr((e && e.message) || e); return null; })));
-      const images = shots.filter(Boolean).map((b64) => ({ imageBase64: b64, mimeType: 'image/webp' }));
+      // v-decor-fallback: كلّ لقطة تتدرّج بين موديلات OpenAI، وإن لم يرجع أيّ شكل تُرسم بنانو.
+      const errs = [];
+      const noteErr = (m) => { const t = String(m || '').slice(0, 160); if (t && errs.length < 3 && errs.indexOf(t) < 0) errs.push(t); };
+      const prompts = Array.from({ length: n }, (_, i) => base + ' Camera: ' + VIEWS[i % VIEWS.length] + '.');
+      let images = (await Promise.all(prompts.map((pr) => placeShotOpenAI(oaKey, pr, deadline, noteErr))))
+        .filter(Boolean).map((b64) => ({ imageBase64: b64, mimeType: 'image/webp' }));
+      if (!images.length) {
+        images = (await Promise.all(prompts.map((pr) => placeShotGemini(apiKey, pr, deadline, noteErr))))
+          .filter(Boolean).map((g) => ({ imageBase64: g.b64, mimeType: g.mime }));
+      }
       if (!images.length) {
         res.status(502).json({
           error: 'لم يرجع النموذج أي شكل. جرّب نمطًا أو نوع مكان آخر.',
-          detail: upstreamErr.replace(/key=[^&\s"']+/g, 'key=***'),
+          detail: errs.join(' | ').slice(0, 300).replace(/key=[^&\s"']+/g, 'key=***'),
         });
         return;
       }
