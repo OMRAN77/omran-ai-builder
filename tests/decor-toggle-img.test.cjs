@@ -12,18 +12,21 @@ const IMGS = {
 };
 const KEYS = ['designAiRearrangeLabel', 'designAiDecorPlants', 'designAiDecorArt', 'designAiDecorAccessories'];
 
-test('١. لكل بطاقة صورتها، والملفّ موجود وصغير', () => {
-  for (const [id, name] of Object.entries(IMGS)) {
-    const rel = 'assets/design/decor/' + name + '.webp';
-    assert.ok(src.includes(id + ":'" + rel + "'"), 'الصورة مربوطة: ' + id);
-    const st = fs.statSync(path.join(root, rel));
-    assert.ok(st.size > 2000 && st.size < 120000, 'حجم معقول: ' + rel);
-  }
+// v-decor-art (دمج #1021 بأمر المالك ١٣ أكتوبر «ادمج»): الصورة رسمة SVG بألوان البطاقة بدل الصورة الحقيقيّة،
+// في الخانة الصافية نفسها (بلا تظليل، والاسم المترجم تحتها). ملفّات الصور الحقيقيّة تبقى في المستودع (قرار المالك: الوسائط لا تُحذف).
+test('١. لكل بطاقة رسمتها، وملفّات الصور الحقيقيّة باقية', () => {
+  const KIND = { designAiRearrange: 'furniture', designAiDecorPlants: 'plants', designAiDecorArt: 'art', designAiDecorAccessories: 'accessories' };
+  for (const [id, kind] of Object.entries(KIND)) assert.ok(src.includes(id + ":'" + kind + "'"), 'الرسمة مربوطة: ' + id);
+  assert.ok(!src.includes('CBIMG'), 'لا صورة حقيقيّة مربوطة');
+  for (const name of Object.values(IMGS)) assert.ok(fs.existsSync(path.join(root, 'assets/design/decor/' + name + '.webp')), 'الملفّ باقٍ: ' + name);
 });
 
-test('٢. الصورة خلفية البطاقة وتدرّج الألوان احتياط تحتها', () => {
-  assert.match(src, /'background:'\+\(img\?'url\("'\+img\+'"\) center\/cover no-repeat,':''\)\+/);
-  assert.ok(src.includes('aspect-ratio:8/3'), 'الصورة بنسبتها');
+test('٢. الرسمة خلفية الخانة كاملة بلا قصّ، وتدرّج الألوان احتياط تحتها', () => {
+  assert.ok(src.includes("'background:'+cbSvg(c,CBKIND[cb.id]||'furniture').replace('center/cover','center/contain')+','+"), 'الرسمة contain');
+  assert.ok(src.includes('aspect-ratio:4/3'), 'خانة تتّسع للرسمة');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const v = Number((html.match(/design-sels\.js\?v=(\d+)/) || [])[1]);
+  assert.ok(v > 563, 'وسم الملفّ مرفوع فوق نسخة الصور الحقيقيّة (563): ' + v);
 });
 
 test('٢-ب. الصورة صافية: لا تظليل ولا اسم فوقها — الاسم سطر تحتها', () => {
