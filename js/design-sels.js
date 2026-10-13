@@ -232,31 +232,25 @@
     designAiDecorArt:['#4a2f5f','#8a5f9e','#d4af37'],
     designAiDecorAccessories:['#1a1a1f','#d4af37','#8a6d2f']
   };
-  var CBSUB={
-    designAiRearrange:'توزيع أذكى للمساحة',
-    designAiDecorPlants:'خضرة حيّة تنعش المكان',
-    designAiDecorArt:'جدارية تكمل الحكاية',
-    designAiDecorAccessories:'تفاصيل ذهبية تصنع الفرق'
-  };
   function proToggle(cb){
     var lab=cb.parentElement, sp=lab?lab.querySelector('span'):null;
     var txt=(sp?(sp.textContent||''):cb.id).trim().replace(EMO,'');
     var c=CBPAL[cb.id]||['#2a2a30','#3d3d45','#55555f'];
     var d=document.createElement('div');
     d.setAttribute('data-dtoggle',cb.id);
-    d.style.cssText='position:relative;border-radius:12px;overflow:hidden;cursor:pointer;min-height:76px;display:flex;flex-direction:column;justify-content:flex-end;'+
+    /* v-decor-names-only (طلب المالك ١٣ أكتوبر ٢٠٢٦): الاسم وحده بلا وصف — بطاقة أقصر. */
+    d.style.cssText='position:relative;border-radius:12px;overflow:hidden;cursor:pointer;min-height:56px;display:flex;flex-direction:column;justify-content:flex-end;'+
       'background:linear-gradient(90deg,'+c[0]+' 0 33.4%,'+c[1]+' 33.4% 66.7%,'+c[2]+' 66.7% 100%) top/100% 30% no-repeat,'+
       'linear-gradient(155deg,'+c[0]+' 0%,'+c[1]+' 55%,'+c[2]+' 120%);';
     var sh=document.createElement('div');
     sh.style.cssText='position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(transparent,rgba(0,0,0,.78));';
     var info=document.createElement('div');
-    info.style.cssText='position:relative;padding:8px 10px 9px;';
+    info.style.cssText='position:relative;padding:7px 9px 8px;';
     var nm=document.createElement('div');
     nm.textContent=txt;
     nm.style.cssText='font-size:12.5px;font-weight:800;color:#fff;';
     info.appendChild(nm);
-    var subT=(((document.documentElement.lang||'ar')+'').indexOf('ar')===0)&&CBSUB[cb.id]; /* v-psub-ar-only */
-    if(subT){ var sb=document.createElement('div'); sb.textContent=subT; sb.style.cssText='font-size:10.5px;color:rgba(255,255,255,.75);margin-top:2px;'; info.appendChild(sb); }
+    /* v-decor-names-only: الوصف تحت الاسم أُزيل — الاسم وحده داخل البطاقة. */
     var tk=document.createElement('div'); tk.textContent='✓';
     tk.style.cssText='position:absolute;top:7px;inset-inline-start:8px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:none;align-items:center;justify-content:center;';
     function paint(){
@@ -326,7 +320,8 @@
       var wrap=anchor.parentElement.parentElement, host=wrap.parentElement;
       var oldc=host.querySelector('.chipGrid'); if(oldc) oldc.remove();
       var cg=document.createElement('div'); cg.className='chipGrid';
-      cg.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;';
+      /* v-decor-names-only: شبكة مرتّبة ببطاقات أقصر — ٢×٢ على الجوّال. */
+      cg.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;';
       CBS.forEach(function(id){ var cb=document.getElementById(id); if(!cb) return; if(cb.parentElement) cb.parentElement.style.display='none'; cg.appendChild(proToggle(cb)); });
       wrap.style.display='none'; host.appendChild(cg);
     }
