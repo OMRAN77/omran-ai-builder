@@ -34,6 +34,7 @@ I18N['ur'] = {
     adStudioTitle: 'اشتہار اسٹوڈیو', adStudioHint: 'اشتہار اسٹوڈیو — بات چیت کر کے اپنا اشتہار بنائیں', chatToPdfEmpty: 'ابھی تبدیل کرنے کے لیے کوئی جواب نہیں ہے۔', mahaConnectionLost: 'دوبارہ رابطہ نہیں ہو سکا', voiceTabAssistantName: 'اسسٹنٹ',
     buildNoCode: '⚠️ فراہم کنندہ سے کوئی کوڈ موصول نہیں ہوا — پیش منظر خالی ہے۔ درخواست دوبارہ بھیجیں یا کوئی اور فراہم کنندہ آزمائیں۔',
     agThought: '{n} سیکنڈ سوچا', agExplored: '{n} فائلیں دیکھیں', agNoOutput: 'کوئی نتیجہ نہیں', // v-agent-log
+    readTab: 'پڑھا گیا کوڈ', readCite: 'یہ سطر کوڈ پینل میں کھولیں', // v-read-panel
     convertToImage: 'تصویر میں تبدیل کریں',
     convertToPdf: 'PDF میں تبدیل کریں',
     convertToWord: 'Word میں تبدیل کریں',

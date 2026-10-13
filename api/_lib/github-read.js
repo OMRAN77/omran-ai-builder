@@ -134,6 +134,30 @@ function formatFile(name, ref, content, from, deep) {
     + (end < total ? '… يتبع من السطر ' + (end + 1) + ' — استدعِ الأداة نفسها مع from=' + (end + 1) + ' لقراءة التتمّة.' : '[نهاية الملفّ]');
 }
 
+/* v-read-panel (المالك ١٣ أكتوبر: «لوحة الكود + الأرقام»): ناتج formatFile مقطعًا منظّمًا للوحة «الكود المقروء» في الواجهة.
+   formatFile يكتب اسم الملفّ وحده، فالمسار من المُدخل نفسه (parseTarget)، والأسطر كما قُرئت بأرقامها المتتالية.
+   غير الملفّ (مجلّد، بحث، فشل، ثنائيّ) = null. السقف حروف الدفعة العميقة نفسها فلا يتجاوز ما قرأه المزوّد. */
+const EXCERPT_HEAD_RE = /^📄 (.+?)(?: \(([^)\n]*)\))? · (\d+) سطر · الأسطر (\d+)–(\d+)\n/;
+const EXCERPT_LINE_RE = /^(\d+)\| (.*)$/;
+function fileExcerpt(input, result) {
+  const r = String(result == null ? '' : result);
+  const h = EXCERPT_HEAD_RE.exec(r);
+  if (!h) return null;
+  const t = parseTarget(input);
+  const a = Number(h[4]);
+  const l = [];
+  let used = 0;
+  const body = r.slice(h[0].length).split('\n');
+  for (let i = 0; i < body.length; i++) {
+    const m = EXCERPT_LINE_RE.exec(body[i]);
+    if (!m || Number(m[1]) !== a + l.length || used + m[2].length > DEEP_CHUNK) break;
+    used += m[2].length + 1;
+    l.push(m[2]);
+  }
+  if (!l.length) return null;
+  return { p: String((t && t.path) || h[1]).slice(0, 300), r: String(h[2] || '').slice(0, 80), a, b: a + l.length - 1, n: Number(h[3]), l };
+}
+
 /* ---------- المحتويات (ملفّ أو مجلّد) ---------- */
 async function getContents(t, o) {
   const q = t.ref ? '?ref=' + encodeURIComponent(t.ref) : '';
@@ -451,4 +475,4 @@ async function fetchRepoZip(target, opts) {
   return { ref, entries, total: all.length };
 }
 
-module.exports = { parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP, SEARCH_FILE_BYTES_MAX, SEARCH_SKIP_RE };
+module.exports = { parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, fileExcerpt, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP, SEARCH_FILE_BYTES_MAX, SEARCH_SKIP_RE };

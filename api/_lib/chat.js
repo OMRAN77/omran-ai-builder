@@ -2358,7 +2358,11 @@ function trailDetail(name, input, result) {
   const i = input || {};
   const cmd = (name === 'web_search' || name === 'show_cards') ? i.query : name === 'fetch_page' ? i.url : name === 'read_github' ? [i.url, i.path].filter(Boolean).join(' ') : name === 'run_js' ? i.code : '';
   if (!cmd) return {};
-  return { cmd: String(cmd).slice(0, 300), out: String(result == null ? '' : result).slice(0, 400) };
+  const o = { cmd: String(cmd).slice(0, 300), out: String(result == null ? '' : result).slice(0, 400) };
+  /* v-read-panel: ملفّ قُرئ من GitHub يُرسل مقطعه للوحة «الكود المقروء». read_github تُنفَّذ للمالك وحده — غيره يأخذ نصّ
+     الرفض فلا يُطابق رأس الملفّ ولا مقطع. */
+  if (name === 'read_github') { const gr = require('./github-read.js'); const x = typeof gr.fileExcerpt === 'function' ? gr.fileExcerpt(i, result) : null; if (x) o.code = x; } // قارئ بديل بلا مقطع (محاكاة) = سطر الأثر كما كان
+  return o;
 }
 module.exports.__vread = { trailDetail, trailLine }; // v-read-all — للاختبار
 /* v-chat-edit: رسالة كود المشروع = أوّل رسالة assistant تبدأ بسياج html/python (يرسلها العميل من codeForApi) — لا تُقصّ ولا تُضغط. */

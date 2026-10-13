@@ -938,7 +938,9 @@ module.exports = async (req, res) => {
           // في الدفتر — فالأثر يبقى وإن سقط الاتصال أو أُغلق التبويب.
           const did = trailDid(cb.name, input), got = trailGot(cb.name, result);
           // v-agent-log: الخطوة تكتمل بناتجها، والفشل بحكم الأثر نفسه (غير موجود، خطأ تشغيل، لم يُنشر)
-          send({ act: { k: 'done', id: cb.id, ok: !/^(ففشلت|فظهر خطأ|فلم يُنشر)/.test(got), out: String(result).slice(0, 1500) } });
+          const __gr = cb.name === 'read_github' ? require('./github-read.js') : null; // v-read-panel: مقطع الملفّ للوحة «الكود المقروء»
+          const __code = __gr && typeof __gr.fileExcerpt === 'function' ? __gr.fileExcerpt(input, result) : null;
+          send({ act: Object.assign({ k: 'done', id: cb.id, ok: !/^(ففشلت|فظهر خطأ|فلم يُنشر)/.test(got), out: String(result).slice(0, 1500) }, __code ? { code: __code } : {}) });
           send({ phase: cb.name === 'run_js' || cb.name === 'test_html' ? 'verifying' : 'executing', status: '↳ ' + did + ' — ' + got });
           if (!Array.isArray(run.trail)) run.trail = [];
           run.trail.push({ n: run.trail.length + 1, did: did, got: got, at: Date.now() });
