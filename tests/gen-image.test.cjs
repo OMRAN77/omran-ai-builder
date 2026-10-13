@@ -67,8 +67,24 @@ async function turn(user, provider, reply, history, extra) {
   const req = { method: 'POST', headers: {}, body: Object.assign({ token: token(user), provider, messages: history }, extra || {}) };
   const res = { setHeader() {}, status() { return this; }, json() { return this; }, write() { return true; }, end() {}, flushHeaders() {} };
   try { await chat(req, res); } finally { global.fetch = save; }
-  return { sys: bodies[0] ? sysOf(bodies[0]) : '' };
+  return { sys: bodies[0] ? sysOf(bodies[0]) : '', body: bodies[0] || null };
 }
+async function agentTurn(history, extra) {
+  const agent = require(rp('api/_lib/agent.js'));
+  usageUser = 'omran';
+  const bodies = [];
+  const save = global.fetch;
+  global.fetch = async (url, init) => {
+    if (!/api\.anthropic\.com\/v1\/messages/.test(String(url))) return new Response('{}', { status: 404 });
+    bodies.push(JSON.parse(init.body));
+    return textTurn('صارت عند العشرة.');
+  };
+  const res = { setHeader() {}, status() { return this; }, json() { return this; }, write() { return true; }, end() {}, flushHeaders() {} };
+  try { await agent({ method: 'POST', headers: {}, body: Object.assign({ token: token('omran'), messages: history }, extra || {}) }, res); } finally { global.fetch = save; }
+  return { sys: bodies[0] ? sysOf(bodies[0]) : '', body: bodies[0] || null };
+}
+// كتل الصور في آخر رسالة مستخدم أُرسلت للمزوّد
+const imgBlocks = (body) => { const ms = (body && body.messages) || []; const last = ms[ms.length - 1]; return Array.isArray(last && last.content) ? last.content.filter((b) => b && b.type === 'image') : []; };
 const u = (content) => ({ role: 'user', content });
 const a = (content) => ({ role: 'assistant', content });
 
@@ -145,6 +161,11 @@ test('كتابة واحدة لكلّ دور، وما يُرسل مع الرسا�
   assert.ok(blk.includes('معلومة رقم 99 ') && !blk.includes('معلومة رقم 0 '), 'الأحدث يُرسل والأقدم يبقى في المخزن');
   assert.ok(has('معلومة رقم 50 ') && !blk.includes('معلومة رقم 50 '), 'المخزن يحتفظ بما لا يُرسل');
   assert.equal(PS.GEN_INJECT, 100000);
+  // v-talk-400 (ب): القصّ لا يترك نصف إيموجي في الطلب (المزوّد يرفضه 400)
+  const lone = (s) => /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(s);
+  const emo = 'أ'.repeat(10) + '🎨'.repeat(60000);
+  for (const room of [1000, 1001, 1002]) assert.ok(!lone(PS.genBlock([{ text: emo }], PS.GEN_HEAD.length + room, '')), 'genBlock سليم · ' + room);
+  assert.ok(!lone(PS.trimGen([{ text: emo }], 1001)[0].text), 'trimGen سليم');
 });
 
 const IMG = Buffer.from('fake-jpeg-bytes-' + 'z'.repeat(200)).toString('base64');
@@ -192,20 +213,6 @@ test('أحدث ٢٠ صورة معمّمة فقط: الأقدم تُحذف باي
 // v-gen-image-agent (المالك ١٣ أكتوبر «اربط صورة عمّم بالوكيل»): الوكيل الحقيقيّ (agent.js) يحفظ الصورة ويؤمر بذكر رابطها كالمحادثة.
 test('الوكيل: «عمّم» ومعها صورة تُحفظ برابط في التطبيق ويؤمر بذكره؛ بلا الكلمة لا شيء', async () => {
   reset();
-  const agent = require(rp('api/_lib/agent.js'));
-  async function agentTurn(history, extra) {
-    usageUser = 'omran';
-    const bodies = [];
-    const save = global.fetch;
-    global.fetch = async (url, init) => {
-      if (!/api\.anthropic\.com\/v1\/messages/.test(String(url))) return new Response('{}', { status: 404 });
-      bodies.push(JSON.parse(init.body));
-      return textTurn('صارت عند العشرة.');
-    };
-    const res = { setHeader() {}, status() { return this; }, json() { return this; }, write() { return true; }, end() {}, flushHeaders() {} };
-    try { await agent({ method: 'POST', headers: {}, body: Object.assign({ token: token('omran'), messages: history }, extra || {}) }, res); } finally { global.fetch = save; }
-    return { sys: bodies[0] ? sysOf(bodies[0]) : '' };
-  }
   const IMG2 = Buffer.from('agent-jpeg-' + 'k'.repeat(120)).toString('base64');
   const r = await agentTurn([a('هذي صورة الشعار'), u('عمّمها')], { genImage: { data: IMG2, mime: 'image/jpeg', w: 300, h: 200, note: 'شعار عمران الذهبي' } });
   const keys = [...raw.keys()].filter((k) => /^db\/img\/[a-f0-9]{12}$/.test(k));
@@ -220,6 +227,45 @@ test('الوكيل: «عمّم» ومعها صورة تُحفظ برابط في 
   const app09 = fs.readFileSync(path.join(root, 'js/app-09-attach.js'), 'utf8');
   const run = app09.slice(app09.indexOf('async function runOmranAgent('), app09.indexOf("const res = await fetch('/api/ai?action=agent'", app09.indexOf('async function runOmranAgent(')) + 900);
   assert.ok(/window\.omranGenImageFor\(String\(__lu\.content \|\| ''\), cur\)/.test(run) && /genImage: __genImg \|\| undefined/.test(run), 'واجهة الوكيل ترسل genImage بقاعدة المحادثة نفسها');
+});
+
+// v-gen-see (المالك ١٣ أكتوبر «خلّ الوكيل والمزوّدين يشوفون الصورة نفسها مو بس الرابط»): البايتات نفسها كتلة صورة مع رسالة المالك حين
+// يكون الكلام عنها، للمزوّد الذي يرى (موديل رؤية شركته إن لزم) وللوكيل — لا في كلّ رسالة ولا في دور «عمّم» ولا لغير المالك.
+test('المزوّدون والوكيل يرون الصورة المعمّمة نفسها حين يكون الكلام عنها', async () => {
+  reset();
+  const IMG3 = Buffer.from('see-jpeg-' + 'v'.repeat(150)).toString('base64');
+  const { id, url } = await PS.noteGenImage({ data: IMG3, mime: 'image/jpeg', note: 'واجهة المتجر الجديدة' }, 'gemini');
+  const age = (ms) => { const r = db.get(GEN); r.imgs[r.imgs.length - 1].at = Date.now() - ms; db.set(GEN, r); PS.__resetCache(); };
+  age(2 * 3600 * 1000); // عُمّمت قبل ساعتين
+  const see = await turn('omran', 'claude', 'أرى واجهة متجر.', [u('وش رأيك في الصورة؟')]);
+  const blk = imgBlocks(see.body);
+  assert.equal(blk.length, 1, 'كلود يرى الصورة نفسها');
+  assert.deepEqual(blk[0].source, { type: 'base64', media_type: 'image/jpeg', data: IMG3 }, 'البايتات كما حُفظت');
+  const last = see.body.messages[see.body.messages.length - 1].content;
+  assert.ok(last.some((b) => b.type === 'text' && b.text.includes('واجهة المتجر الجديدة') && b.text.includes(url)), 'وصفها ورابطها معها');
+  assert.ok(last.findIndex((b) => b.type === 'image') < last.findIndex((b) => b.type === 'text' && b.text.includes('وش رأيك')), 'الصورة قبل كلام المالك');
+  assert.equal(imgBlocks((await turn('omran', 'claude', '…', [u('كم الساعة الحين؟')])).body).length, 0, 'لا كلام عن صورة وعُمّمت من زمان = لا صورة');
+  assert.equal(imgBlocks((await turn('omran', 'claude', '…', [u('حطّ ' + url + ' في الصفحة الرئيسيّة')])).body).length, 1, 'رابطها في الرسالة = تُرفق');
+  age(5 * 60 * 1000); // عُمّمت قبل ٥ دقائق
+  assert.equal(imgBlocks((await turn('omran', 'claude', '…', [u('حطّها في الصفحة الرئيسيّة')])).body).length, 1, 'عُمّمت للتوّ = تُرفق بلا كلمة صورة');
+  const dsCode = await turn('omran', 'deepseek', '…', [u('صلّح الدالّة هذي')]);
+  assert.equal(imgBlocks(dsCode.body).length, 0, 'حديثة بلا ذكرها: DeepSeek لا يُبدَّل موديله إلى موديل الرؤية');
+  assert.equal(dsCode.body.model, 'deepseek/deepseek-v4-pro');
+  assert.equal(imgBlocks((await turn('omran', 'gemini', '…', [u('صلّح الدالّة هذي')])).body).length, 1, 'حديثة بلا ذكرها: Gemini يراها بموديله نفسه');
+  const ds = await turn('omran', 'deepseek', '…', [u('وش في الصورة؟')]);
+  assert.equal(imgBlocks(ds.body).length, 1, 'DeepSeek يراها');
+  assert.equal(ds.body.model, 'deepseek/deepseek-v4-flash-vision-exp', 'بموديل الرؤية عند شركته (V4 Pro نصّيّ)');
+  const gq = await turn('omran', 'groq', '…', [u('وش في الصورة؟')]);
+  assert.equal(imgBlocks(gq.body).length, 1, 'Groq يراها على مساره');
+  assert.equal(imgBlocks((await turn('omran', 'claude', 'صارت عند العشرة.', [u('عمّمها')])).body).length, 0, 'دور «عمّم» نفسه بلا إرفاق');
+  assert.equal(imgBlocks((await turn('vipuser', 'claude', '…', [u('وش في الصورة؟')])).body).length, 0, 'غير المالك لا يراها');
+  const ag = await agentTurn([u('وش في الصورة اللي عمّمتها؟')]);
+  const agBlk = imgBlocks(ag.body);
+  assert.equal(agBlk.length, 1, 'الوكيل يراها');
+  assert.equal(agBlk[0].source.data, IMG3);
+  age(2 * 3600 * 1000);
+  assert.equal(imgBlocks((await agentTurn([u('كمّل الشغل على الكود')])).body).length, 0, 'الوكيل بلا كلام عنها (وعُمّمت من زمان) لا يأخذها');
+  assert.ok(id);
 });
 
 const lookup = async () => [{ address: '140.82.112.3', family: 4 }];

@@ -296,7 +296,12 @@ const THINK_SHOWN_MAX = 8;
 function isThink(b) { return !!b && (b.type === 'thinking' || b.type === 'redacted_thinking'); }
 function hasThink(convo) { return Array.isArray(convo) && convo.some((m) => m && Array.isArray(m.content) && m.content.some(isThink)); }
 // owner: سطور «↳ 💭»؛ show: العرض الملخّص — دور المالك الذي يفكّر فيه الموديل (ownerThinks)، لا المجاملة الفوريّة (v-owner-auto).
-function thinkState(owner, show) { return { owner: !!owner, show: !!(owner && show), key: '', sent: '', direct: false, disp: false, noDisplay: false, noTalk: false, talk: false, shown: 0 }; }
+function thinkState(owner, show) { return { owner: !!owner, show: !!(owner && show), key: '', sent: '', direct: false, disp: false, noDisplay: false, noTalk: false, talk: false, talkModel: '', shown: 0 }; }
+/* v-talk-400 (لقطة المالك ١٣ أكتوبر: «افحص انماط الصور» ← «خطأ 400» يتكرّر في المزوّدين): موديل وسيط رفض الحقل التكيّفيّ لا يُرسل له
+   ثانيةً ٦ ساعات في هذه العمليّة — كان كلّ دور يبدأ بطلب فاشل. الذاكرة في العمليّة وحدها (لا تخزين ولا كلفة)؛ الإقلاع البارد يجرّب مرّة. */
+const NO_TALK = new Map();
+const NO_TALK_MS = 6 * 3600 * 1000;
+function talkRefused(model) { const at = NO_TALK.get(model); if (!at) return false; if (Date.now() - at > NO_TALK_MS) { NO_TALK.delete(model); return false; } return true; }
 function fp(system, tools) {
   try { return require('crypto').createHash('sha1').update(JSON.stringify([system == null ? null : system, tools == null ? null : tools])).digest('hex').slice(0, 16); }
   catch (e) { return String(Date.now()); } // بصمة غير محسوبة = مفتاح لا يتطابق → نزع (الآمن)
@@ -326,7 +331,7 @@ function think(b, t, convo, route) {
   t.disp = false;
   t.talk = false;
   // v-think-talk-all: دور المالك الذي يفكّر فيه، على الوسيط لغير كلود — تكيّفيّ بلا display. الوسيط يترجمها إلى تفكير المزوّد نفسه (جهده الافتراضيّ) ويرجع الملخّص كتلة تفكير. كلود المباشر يبقى بالعرض الملخّص في السطر التالي. بعد رفض الحقل (noTalk) يبقى بلاه.
-  if (t.show && route === 'or' && !t.noTalk && b.thinking === undefined && !/^(?:anthropic\/|claude-)/.test(model)) { b.thinking = { type: 'adaptive' }; t.talk = true; }
+  if (t.show && route === 'or' && !t.noTalk && !talkRefused(model) && b.thinking === undefined && !/^(?:anthropic\/|claude-)/.test(model)) { b.thinking = { type: 'adaptive' }; t.talk = true; t.talkModel = model; }
   if (t.show && t.direct && !t.noDisplay && (b.thinking === undefined || (b.thinking && b.thinking.type === 'adaptive' && !b.thinking.display)) && DISPLAY_RE.test(model)) { b.thinking = { type: 'adaptive', display: 'summarized' }; t.disp = true; } // v-owner-claude-all: تكيّفيّ بلا عرض (جهد المالك على 4.x) يأخذ العرض؛ وبعد رفض العرض (noDisplay) يبقى التفكير بلا عرض
   return b;
 }
@@ -338,8 +343,11 @@ async function think400(up, t, convo, again, send) {
   const why = await bodyText(up);
   const blk = /signature|messages\.\d+/i.test(why);
   // v-think-talk-all: رفض حقل التكيّفيّ على الوسيط (مزوّد لا يعرفه) = إعادة واحدة بلاه، بصمت — التفكير الافتراضيّ يبقى، ولا يُطفأ الدور.
-  if (t.talk && !t.disp && !blk && /thinking|display/i.test(why)) {
+  // v-talk-400: بأيّ نصّ — الوسيط يترجم الحقل إلى reasoning المزوّد فيصل رفضه بنصّ المزوّد («reasoning…»، «Provider returned error») بلا
+  // كلمة thinking. الحقل إضافتنا: 400 عليه = إعادة واحدة بلاه، و400 الإعادة يصل بسببه كما كان (t.talk يُصفَّر في think).
+  if (t.talk && !t.disp && !blk) {
     t.noTalk = true;
+    if (t.talkModel) NO_TALK.set(t.talkModel, Date.now());
     try { await require('./log-error.js').logErrorAndFlush('chat/thinking-talk', new Error(why || 'upstream 400'), { action: 'thinking-talk' }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
     return again();
   }
@@ -449,5 +457,5 @@ module.exports = {
   state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, exitText, stallNote, shrinkOld,
   isDeadPick, rememberDeadPick, margin,
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1
-  FINAL_NOTE, CONTINUE_NOTE, TOOL_CUT_NOTE, CUT_STOP, EMPTY_STOP, __deadPicks: deadPicks,
+  FINAL_NOTE, CONTINUE_NOTE, TOOL_CUT_NOTE, CUT_STOP, EMPTY_STOP, __deadPicks: deadPicks, __resetTalk: () => NO_TALK.clear(), // v-talk-400
 };

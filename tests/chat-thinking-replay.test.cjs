@@ -354,3 +354,33 @@ test('١٥. وسيط يرفض thinking التكيّفيّ ← إعادة واح�
   assert.equal(r.text, 'تم');
   assert.ok(!r.events.some((e) => /ملخّص التفكير غير متاح/.test(e.status || '')));
 });
+
+/* v-talk-400 (لقطة المالك ١٣ أكتوبر: «افحص انماط الصور» ← «⚠️ ما قدرت أردّ الحين — خطأ 400»، «كل مره تطلع في المزودين تتكرر كثير جدا»):
+   الوسيط يترجم thinking التكيّفيّ إلى reasoning المزوّد، فرفضه يصل بنصّ المزوّد («reasoning…» أو «Provider returned error») بلا كلمة
+   thinking — والإعادة بلا الحقل كانت مشروطة بالكلمة، فيصل المالك 400. الحقل إضافتنا نحن: أيّ 400 عليه = إعادة واحدة بلاه، والموديل
+   الرافض لا يُرسل له الحقل ثانيةً (فلا يدفع كلّ دور طلبًا فاشلًا). 400 الثاني بعده يصل بسببه كما كان. */
+test('١٦. وسيط يرفض الحقل بنصّ بلا كلمة thinking ← إعادة واحدة بلاه والجواب يصل، والدور التالي بلا الحقل من البداية', async () => {
+  for (const why of ['Provider returned error', 'reasoning is not supported for this model', 'Unrecognized request argument supplied: reasoning_effort']) {
+    OL.__resetTalk();
+    let n = 0;
+    const r = await run('omran', { provider: 'deepseek', messages: Q }, (u, b) => {
+      if (!isOR(u)) return new Response('{}', { status: 404 });
+      n++;
+      if (b.thinking) return err(400, why);
+      return text('تم');
+    });
+    assert.equal(r.text, 'تم', why);
+    assert.equal(r.calls.length, 2, why);
+    assert.equal(r.calls[0].body.thinking.type, 'adaptive');
+    assert.equal(r.calls[1].body.thinking, undefined);
+    const next = await run('omran', { provider: 'deepseek', messages: Q }, (u, b) => (!isOR(u) ? new Response('{}', { status: 404 }) : b.thinking ? err(400, why) : text('تم ثانيةً')));
+    assert.equal(next.calls.length, 1, 'الدور التالي طلب واحد: ' + why);
+    assert.equal(next.calls[0].body.thinking, undefined);
+    assert.equal(next.text, 'تم ثانيةً');
+  }
+  OL.__resetTalk();
+  const other = await run('omran', { provider: 'mistral', messages: Q }, (u, b) => (!isOR(u) ? new Response('{}', { status: 404 }) : err(400, 'prompt is too long')));
+  assert.equal(other.calls.length, 2, 'إعادة واحدة فقط');
+  assert.ok(other.events.some((e) => e.ownerStop && /خطأ 400/.test(e.error || '')), '400 لا علاقة له بالحقل يصل بسببه بعد الإعادة');
+  OL.__resetTalk();
+});
