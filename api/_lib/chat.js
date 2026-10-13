@@ -2101,8 +2101,8 @@ module.exports = async (req, res) => {
             else if (!__dl.ownerAsksCode(lastUserText)) result = __dl.DELEGATE_REFUSAL; // v-code-not-primary: بطلب المالك بالاسم وحده
             else { __ownerOps.delegates++; result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
           }
-          /* v-prov-self: ملفّ المزوّد المختار نفسه (لا غيره)، والدروس العامّة بـ«عمّم» يفحصها الخادم */
-          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf(reqProv || prov, input, __ownerReq);
+          /* v-prov-self: ملفّ المزوّد المختار نفسه (لا غيره)، والدروس العامّة بـ«عمّم» يفحصها الخادم · v-info-all: «عجبني» تنسخ المعلومة لكلّ المزوّدين */
+          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf(reqProv || prov, input, __ownerReq, lastUserText);
           else if (cb.name === 'teach_users') result = await require('./prov-self.js').runTeach(input, lastUserText, __ownerReq, reqProv || prov);
           else if (cb.name === 'check_code_task') {
             const __dl = require('./agent-delegate.js');

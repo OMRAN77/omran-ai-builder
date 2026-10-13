@@ -161,6 +161,47 @@ test('«عجبني» generalizes in one step: saved and published to every user 
   assert.ok(desc.input_schema.properties.action.enum.includes('generalize') && /«عجبني» = تعميم بخطوة واحدة/.test(desc.description), 'الأداة تشرح الخطوة الواحدة');
 });
 
+// v-info-all (المالك ١٣ أكتوبر «اذا عجبني في اي واحد يكون لي المزودين كلهم… المعلومات عندهم كلهم»):
+// المعلومة التي تعجبه عند مزوّد واحد تصل نظام كلّ مزوّد في محادثاته؛ بلا الكلمة أو مع نفيها تبقى في ملفّ قائلها؛ والمستخدم لا يراها.
+test('«عجبني» on one provider puts that information on every provider for the owner only', async () => {
+  db.clear(); PS.__resetCache();
+  const INFO = 'ابدأ الجواب بالخلاصة في سطر ثمّ التفاصيل نقاطًا.';
+  const liked = await turn('omran', 'deepseek', 'عجبني هالأسلوب', [() => toolTurn('edit_self', { action: 'share', text: INFO }), () => textTurn('وصلت')]);
+  assert.match(liked.toolResults, /صارت المعلومات عند كلّ المزوّدين/);
+  assert.equal(db.get('db/prov-info.json').items.length, 1);
+  assert.equal(db.get('db/prov-info.json').items[0].by, 'deepseek');
+  for (const p of ['claude', 'gemini', 'openai', 'groq', 'mistral', 'kimi', 'cohere', 'openrouter']) {
+    const r = await turn('omran', p, 'هلا', [() => textTurn('هلا')]);
+    assert.ok(r.sys.includes('[معلومات مشتركة لكلّ المزوّدين') && r.sys.includes('- ' + INFO), 'تصل المالك · ' + p);
+  }
+  const user = await turn('vipuser', 'gemini', 'هلا', [() => textTurn('…')]);
+  assert.ok(!user.sys.includes(INFO), 'المستخدم لا يرى معلومات المزوّدين');
+  const again = await turn('omran', 'claude', 'عجبني، خلّها', [() => toolTurn('edit_self', { action: 'share', text: INFO }), () => textTurn('…')]);
+  assert.match(again.toolResults, /عند كلّ المزوّدين أصلًا/);
+  assert.equal(db.get('db/prov-info.json').items.length, 1, 'لا تكرار');
+  const neg = await turn('omran', 'claude', 'ما عجبني هالأسلوب', [() => toolTurn('edit_self', { action: 'share', text: 'معلومة مرفوضة' }), () => textTurn('…')]);
+  assert.match(neg.toolResults, /لا مشاركة على كلّ المزوّدين/);
+  assert.equal(db.get('db/prov-info.json').items.length, 1);
+  const noWord = await turn('omran', 'openai', 'احفظ في ملفّك فقط', [() => toolTurn('edit_self', { action: 'write', text: 'خاص بأوبن إيه آي.' }), () => textTurn('…')]);
+  assert.match(noWord.toolResults, /حُفظ ملفّك/);
+  assert.ok(!/صارت المعلومات/.test(noWord.toolResults), 'بلا «عجبني» لا تُنسخ');
+  const other = await turn('omran', 'mistral', 'هلا', [() => textTurn('هلا')]);
+  assert.ok(!other.sys.includes('خاص بأوبن إيه آي'), 'ملفّ غيره يبقى له');
+  const viaWrite = await turn('omran', 'groq', 'نفس المعلومات عند كل المزودين', [() => toolTurn('edit_self', { action: 'write', text: 'لا تبدأ الردّ بالاعتذار.' }), () => textTurn('…')]);
+  assert.match(viaWrite.toolResults, /صارت المعلومات عند كلّ المزوّدين/);
+  const seen = await turn('omran', 'kimi', 'هلا', [() => textTurn('هلا')]);
+  assert.ok(seen.sys.includes('- لا تبدأ الردّ بالاعتذار.'), 'الكتابة مع الكلمة تنسخ');
+  const own = await turn('omran', 'groq', 'هلا', [() => textTurn('هلا')]);
+  assert.equal((own.sys.match(/لا تبدأ الردّ بالاعتذار/g) || []).length, 1, 'لا تُكرَّر في ملفّه والكتلة معًا');
+  const desc = liked.bodies[0].tools.find((t) => t.name === 'edit_self');
+  assert.ok(desc.input_schema.properties.action.enum.includes('share') && /معلومات عمران المشتركة بين كلّ المزوّدين/.test(desc.description));
+  assert.equal(PS.ownerSaidAllProviders('عجبني'), true);
+  assert.equal(PS.ownerSaidAllProviders('خل المعلومات عند كل المزودين'), true);
+  assert.equal(PS.ownerSaidAllProviders('ما عجبني'), false);
+  assert.equal(PS.ownerSaidAllProviders('لا تخلي نفس المعلومات عندهم'), false);
+  assert.match(await PS.runSelf('claude', { action: 'share', text: 'المفتاح sk-ant-api03-abcdefghijklmnop' }, true, 'عجبني'), /لا أسرار/);
+});
+
 test('the module: «عمّم» and its negation, no personal data in a lesson, no keys in a file, caps', async () => {
   assert.equal(PS.ownerSaidPublish('عمّم'), true);
   assert.equal(PS.ownerSaidPublish('تمام عممه للكل'), true);

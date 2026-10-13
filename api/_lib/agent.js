@@ -908,7 +908,7 @@ module.exports = async (req, res) => {
             result = isOwner(runUser) ? delegate.formatCheck(await delegate.checkTask(input)) : '✗ التحقّق من مهامّ الكود للمالك وحده.';
           }
           /* v-prov-self: الوكيل وكيلُ Claude — ملفّه ملفّ Claude نفسه؛ والدروس بـ«عمّم» يفحصها الخادم */
-          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf('claude', input, isOwner(runUser));
+          else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf('claude', input, isOwner(runUser), living.lastUserText(messages));
           else if (cb.name === 'teach_users') result = await require('./prov-self.js').runTeach(input, living.lastUserText(messages), isOwner(runUser), 'claude');
           /* v-provider-errors: أخطاء الإنتاج الحيّة — للمالك وحده، وحارسٌ ثانٍ هنا لا في إخفاء الأداة وحده. */
           else if (cb.name === 'read_app_errors') {
