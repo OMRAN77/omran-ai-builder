@@ -86,6 +86,34 @@ test('mergePr: يدمج المفتوح بـsquash ورأسه، ويرفض الم
   assert.match(cl.error, /مغلق/);
 });
 
+test('ciBlock وmergePr: لا دمج قبل اختبار أخضر على مستودع التطبيق', async () => {
+  assert.equal(GE.ciBlock([{ name: 'test', status: 'completed', conclusion: 'success' }], 'OMRAN77/omran-ai-builder'), '');
+  assert.match(GE.ciBlock([{ name: 'test', status: 'in_progress' }], 'OMRAN77/omran-ai-builder'), /لسه ما خلصت/);
+  assert.match(GE.ciBlock([{ name: 'test', status: 'completed', conclusion: 'failure' }], 'OMRAN77/omran-ai-builder'), /فحص فشل/);
+  assert.match(GE.ciBlock([], 'OMRAN77/omran-ai-builder'), /ما بدأت الفحوص/);
+  assert.equal(GE.ciBlock([], 'o/r'), '', 'مستودع بلا فحوص لا يُسدّ');
+  const pulls = { state: 'open', mergeable: true, head: { sha: 'h1' }, base: { ref: 'main' }, html_url: 'https://github.com/OMRAN77/omran-ai-builder/pull/9' };
+  const pending = await GE.mergePr({ repo: 'OMRAN77/omran-ai-builder', number: 9 }, net([
+    ['GET', /\/pulls\/9$/, res(pulls)],
+    ['GET', /\/commits\/h1\/check-runs/, res({ check_runs: [{ name: 'test', status: 'in_progress' }] })],
+  ]).opts);
+  assert.match(pending.error, /لسه ما خلصت/);
+  const red = await GE.mergePr({ repo: 'OMRAN77/omran-ai-builder', number: 9 }, net([
+    ['GET', /\/pulls\/9$/, res(pulls)],
+    ['GET', /\/commits\/h1\/check-runs/, res({ check_runs: [{ name: 'test', status: 'completed', conclusion: 'failure' }] })],
+  ]).opts);
+  assert.match(red.error, /فحص فشل/);
+  const green = net([
+    ['GET', /\/pulls\/9$/, res(pulls)],
+    ['GET', /\/commits\/h1\/check-runs/, res({ check_runs: [{ name: 'test', status: 'completed', conclusion: 'success' }, { name: 'smoke', status: 'completed', conclusion: 'skipped' }] })],
+    ['PUT', /\/pulls\/9\/merge$/, res({ merged: true, sha: 'mabcdef12' })],
+  ]);
+  const okCi = await GE.mergePr({ repo: 'OMRAN77/omran-ai-builder', number: 9 }, green.opts);
+  assert.equal(okCi.ok, true, JSON.stringify(okCi));
+  assert.ok(green.calls.some((c) => c.method === 'PUT'));
+  assert.match(GE.MERGE_TOOL.description, /لا دمج قبل اختبار أخضر/);
+});
+
 test('agent.js: الأداتان للمالك وحده، والدمج يفحص «ادمج» في الخادم، وطريقة العمل في نظام المالك', () => {
   const A = require('../api/_lib/agent.js').__test;
   const ownerNames = A.toolsFor('__nobody__').map((t) => t.name);

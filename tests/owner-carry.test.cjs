@@ -34,11 +34,14 @@ test('لا تنبيه: سؤال للمالك، أو تنفيذ تمّ، أو ج�
 test('الربط: المحادثة والوكيل للمالك وحده، مرّة واحدة، وبمهلة كافية', () => {
   const chat = read('api/_lib/chat.js');
   assert.match(chat, /if \(stopReason !== 'tool_use' && __ownerReq && toolTurn && !__ownerCarried && steps < MAX_STEPS && Date\.now\(\) - t0 < __ol\.FN_BUDGET_MS - 20000\)/);
-  assert.match(chat, /__ownerCarried = true;[\s\S]{0,300}__oc\.CARRY_NOTE[\s\S]{0,200}continue;/);
+  assert.match(chat, /__ownerCarried = true;[\s\S]{0,500}__oc\.CARRY_NOTE[\s\S]{0,200}continue;/);
   const agent = read('api/_lib/agent.js');
   assert.match(agent, /if \(isOwner\(runUser\) && !ownerCarried && steps < MAX_STEPS && Date\.now\(\) - taskStart < require\('\.\/owner-loop\.js'\)\.FN_BUDGET_MS - 20000\)/);
   assert.match(agent, /ownerCarried = true;[\s\S]{0,200}oc\.CARRY_NOTE[\s\S]{0,200}continue;/);
   assert.match(C.CARRY_NOTE, /ليس من المالك/);
+  assert.match(C.PICS_CARRY_NOTE, /write_github/);
+  assert.match(C.PICS_CARRY_NOTE, /لا تنتظر «عمّم»/);
+  assert.match(chat, /PICS_CARRY_NOTE : __oc\.CARRY_NOTE/);
 });
 
 test('v-owner-ui-shot: «احذف هذا المكان» مع لقطة = تعديل التطبيق لا الصورة، وأدوات الصور تُرفع', () => {

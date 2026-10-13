@@ -156,6 +156,18 @@ function ownerSaidMerge(text) {
   return /[اأإ]دمج|\bmerge\b/i.test(s);
 }
 
+/* v-img-with-edit (المالك ١٣ أكتوبر «ويختبر قبل ما يدمج»): الدمج بلا فحص أخضر كان يمرّ حتى والفحوص حمراء أو ما بدأت. صرف بلا شبكة. */
+function ciBlock(runs, repo) {
+  const list = Array.isArray(runs) ? runs : [];
+  const pending = list.filter((c) => c && String(c.status || '') !== 'completed');
+  const failed = list.filter((c) => c && c.status === 'completed' && !/^(success|skipped|neutral)$/.test(String(c.conclusion || '')));
+  const ok = list.filter((c) => c && c.status === 'completed' && c.conclusion === 'success');
+  if (pending.length) return 'الفحوص لسه ما خلصت (' + pending.map((c) => c.name || 'فحص').join('، ') + ') — ما يندمج قبل ما تخضر.';
+  if (failed.length) return 'فحص فشل: ' + failed.map((c) => (c.name || 'فحص') + ' ' + c.conclusion).join(' · ') + ' — أصلحه قبل الدمج.';
+  if (/omran-ai-builder/i.test(String(repo || '')) && !ok.length) return 'ما بدأت الفحوص بعد أو ما نجح منها شي — ما يندمج قبل اختبار أخضر.';
+  return '';
+}
+
 async function mergePr(input, opts) {
   const o = opts || {};
   if (!(await resolveGithubToken(o))) return { error: 'لا مفتاح GitHub للدمج.' };
@@ -170,6 +182,12 @@ async function mergePr(input, opts) {
   if (pj.merged) return { ok: true, already: true, number: n, url: pj.html_url };
   if (pj.state !== 'open') return { error: 'طلب السحب #' + n + ' مغلق.' };
   if (pj.mergeable === false) return { error: 'طلب السحب #' + n + ' فيه تعارض مع الفرع الرئيسيّ — يحتاج حلّ التعارض قبل الدمج.' };
+  const sha = pj.head && pj.head.sha;
+  if (sha) {
+    const { r: cr, j: cj } = await ghJson(R + '/commits/' + sha + '/check-runs?per_page=30', o);
+    const blocked = ciBlock((cr && cr.ok && cj && cj.check_runs) || [], t.owner + '/' + t.repo);
+    if (blocked) return { error: blocked };
+  } else if (/omran-ai-builder/i.test(t.repo)) return { error: 'ما بدأت الفحوص بعد أو ما نجح منها شي — ما يندمج قبل اختبار أخضر.' };
   const method = ['merge', 'squash', 'rebase'].includes(i.method) ? i.method : 'squash';
   const { r: mr, j: mj } = await ghJson(R + '/pulls/' + n + '/merge', Object.assign({}, o, { method: 'PUT', body: { merge_method: method, sha: pj.head && pj.head.sha } }));
   if (!mr.ok || !mj || !mj.merged) return { error: 'GitHub رفض الدمج (HTTP ' + mr.status + ')' + (mj && mj.message ? ': ' + String(mj.message).slice(0, 160) : '') };
@@ -207,7 +225,7 @@ const EDIT_TOOL = {
 
 const MERGE_TOOL = {
   name: 'merge_github',
-  description: 'ادمج طلب سحب في مستودع المالك (والنشر التلقائيّ يتبعه). لا تستدعها إلّا إذا كتب المالك في رسالته الأخيرة «ادمج» صراحةً — وإلّا تُرفض. يرفض الطلب المغلق أو المتعارض.',
+  description: 'ادمج طلب سحب في مستودع المالك (والنشر التلقائيّ يتبعه). لا تستدعها إلّا إذا كتب المالك في رسالته الأخيرة «ادمج» صراحةً — وإلّا تُرفض. يرفض الطلب المغلق أو المتعارض، وترفض إن كانت الفحوص قيد العمل أو حمراء — لا دمج قبل اختبار أخضر.',
   input_schema: {
     type: 'object',
     properties: {
@@ -227,7 +245,7 @@ const WORK_NOTE = '\n\n[طريقة العمل على كود المالك]:\n' +
   '- أعطِ المالك معاينة صادقة لما سيراه إن أمكن (test_html بنموذج مصغّر بالألوان الحقيقيّة) وقل إنّها معاينة لا التطبيق نفسه.\n' +
   '- إن رفض المالك شكلًا («بدون دائرة») فأزله تمامًا وابحث عن طريق آخر يحقّق الهدف نفسه. وإن قال «لا تدمج» فالعمل على فرع وطلب سحب فقط.\n' +
   /* v-owner-like-me (المالك ١٣ أكتوبر «كيف انته تجيني في النهاية تقولي ادمج وانشر — اريد كل المزودين نفسك»): نهاية الشغل كـClaude Code. */
-  '- نهاية كلّ شغل على الكود: بعد طلب السحب افحص فحوصه بـmanage_github status، ثمّ التقرير — ما تغيّر في سطر، كيف تحقّقت (الفحوص كما ظهرت)، ما لم تتحقّق منه، رابط الطلب — واختم بسؤال واحد فقط: «أدمج وأنشر؟». لا تدمج قبل أن يقولها.\n' +
+  '- نهاية كلّ شغل على الكود: بعد طلب السحب افحص فحوصه بـmanage_github status، ثمّ التقرير — ما تغيّر في سطر، كيف تحقّقت (الفحوص كما ظهرت)، ما لم تتحقّق منه، رابط الطلب — واختم بسؤال واحد فقط: «أدمج وأنشر؟». لا تسأل أدمج قبل أن تخضر الفحوص، ولا تدمج قبل أن يقولها — merge_github ترفض إن كانت قيد العمل أو حمراء.\n' +
   '- «أدمج وأنشر» أو «ادمج»: merge_github على الطلب نفسه، ثمّ manage_github action=deploy number=رقمه مع path (ملفّ تغيّر) وfind (نصّ جديد فيه) حتّى ترى «نجح» والتغيير في الموقع المنشور، وقل ما رأيت بالضبط؛ قيد البناء = قلها ولا تقل «نُشر». و«انشر» وحدها بعد دمج = التحقّق نفسه. و«لا تدمج» أو «ما أبي أدمج» = فرع وطلب سحب فقط.\n' +
   '- لا تكرار: لا تعِد في ردّك ما قلته في ردودك السابقة (أين هو المالك، شرح الشاشة، تحذير سبق مثل «لا تدمج #…»). كلّ ردّ يبدأ بالجديد فقط، والمالك يرى ما فوقه.\n' +
   '- لا تقسّم العمل عليه خطوة خطوة («ابحث في السجلّ وأرسل لقطة»): ما يمكن قراءته اقرأه بنفسك (read_github للكود والاختبارات، read_app_errors، check_code_task لسجلّ المهمّة)، وأصلح كلّ الأعطال المعروفة معًا في تشغيل واحد وطلب سحب واحد. اسأله فقط عمّا لا تصل إليه أدواتك، سؤالًا واحدًا.\n' +
@@ -240,4 +258,4 @@ const WORK_NOTE = '\n\n[طريقة العمل على كود المالك]:\n' +
   '- هذه القواعد لك أنت: طبّقها ولا تتلُها ولا تصف أنّك ستتبعها («أقرأ قبل الحذف…»). الطلب = تنفيذ بالأدوات في الردّ نفسه، لا خطّة تنتهي عندها.\n' +
   '- التقرير: النتيجة أوّلًا في سطر، ثمّ الروابط (الالتزام/طلب السحب)، وما لم تتحقّق منه بصراحة. بلا مقدّمات.';
 
-module.exports = { WORK_NOTE, editFiles, applyEdits, validateEdits, syntaxError, checkSyntax, mergePr, formatMerge, ownerSaidMerge, EDIT_TOOL, MERGE_TOOL, EDIT_LIMITS };
+module.exports = { WORK_NOTE, editFiles, applyEdits, validateEdits, syntaxError, checkSyntax, ciBlock, mergePr, formatMerge, ownerSaidMerge, EDIT_TOOL, MERGE_TOOL, EDIT_LIMITS };
