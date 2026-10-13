@@ -107,21 +107,23 @@ test('٢. write_github مقطوع لطوله لا يُنفَّذ، ويُطلب 
   const r = await run('omran', { provider: 'claude', messages: [{ role: 'user', content: 'ارفع لعبة الثعبان إلى مستودعي في ملفّ game.html' }] },
     (u, b, n) => (!isUp(u) ? new Response('{}', { status: 404 }) : n === 1 ? cutWrite('سأرفع الملف الآن:') : textTurn('قسّمت الملفّ وسأرفعه برقع.')));
   assert.equal(pushes.length, 0, 'لا رفع من استدعاء مقطوع');
-  assert.equal(r.calls.length, 2);
+  assert.ok(r.calls.length >= 2, 'نداء القطع ثمّ طلب التقسيم');
   const msgs = r.calls[1].body.messages;
   assert.ok(!JSON.stringify(msgs).includes('tu_cut'), 'الاستدعاء المقطوع لا يدخل التاريخ (لا tool_use بلا نتيجة)');
   assert.match(texts(msgs[msgs.length - 1]), /انقطع استدعاء الأداة لطوله/);
   assert.match(texts(msgs[msgs.length - 1]), /edit_github/);
 });
 
-test('٣. الإكمال يسبق owner-carry: خطّة مقطوعة لطولها تُكمَل ولا تُعاد بتنبيه «نفّذ الآن»', async () => {
+test('٣. الإكمال يسبق owner-carry: خطّة مقطوعة لطولها تُكمَل أوّلًا ثمّ تُحمَل إن توقّفت بلا تنفيذ', async () => {
   const r = await run('omran', { provider: 'claude', messages: [{ role: 'user', content: 'احذف قائمة المشاريع من الواجهة' }] },
     (u, b, n) => (!isUp(u) ? new Response('{}', { status: 404 }) : n === 1 ? textTurn('سأقرأ الملفّ أوّلًا ثمّ أحذف العنصر وأتتبّع مراجعه', 'max_tokens') : textTurn(' — تمّ التحديد.')));
-  assert.equal(r.calls.length, 2);
+  assert.ok(r.calls.length >= 2, 'إكمال القطع أولًا');
   const lastText = texts(r.calls[1].body.messages[r.calls[1].body.messages.length - 1]);
   assert.match(lastText, /أكمل من آخر حرف/);
-  assert.ok(!lastText.includes(CARRY_NOTE), 'ليس تنبيه owner-carry');
-  assert.ok(!r.events.some((e) => e.k === 'stCarry'), 'لا «ينفّذ…»');
+  assert.ok(!lastText.includes(CARRY_NOTE), 'الإكمال أوّلًا ليس تنبيه owner-carry');
+  assert.equal(r.calls.length, 3, 'بعد اكتمال القطع: وصف بلا تنفيذ يُحمَل (v-prov-finish-edit)');
+  assert.ok(JSON.stringify(r.calls[2].body.messages).includes(CARRY_NOTE.slice(0, 60)), 'ثمّ نفّذ الآن');
+  assert.ok(r.events.some((e) => e.k === 'stCarry'), 'ينفّذ بعد الإكمال لا أثناءه');
 });
 
 test('٤. حدّ الإكمال مرّتان ← سطر «انقطع لطوله — اكتب: كمل» تحت النصّ عند المالك', async () => {
