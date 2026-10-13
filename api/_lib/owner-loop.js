@@ -370,6 +370,7 @@ function think(b, t, convo, route) {
   }
   t.disp = false;
   t.talk = false;
+  t.effort = !!(b.output_config && b.output_config.effort); // v-owner-light: جهد الردّ العاديّ في هذا الطلب
   // v-think-talk-all: دور المالك الذي يفكّر فيه، على الوسيط لغير كلود — تكيّفيّ بلا display. الوسيط يترجمها إلى تفكير المزوّد نفسه (جهده الافتراضيّ) ويرجع الملخّص كتلة تفكير. كلود المباشر يبقى بالعرض الملخّص في السطر التالي. بعد رفض الحقل (noTalk) يبقى بلاه.
   if (t.show && route === 'or' && !t.noTalk && !talkRefused(model) && b.thinking === undefined && !/^(?:anthropic\/|claude-)/.test(model)) { b.thinking = { type: 'adaptive' }; t.talk = true; t.talkModel = model; }
   if (t.show && t.direct && !t.noDisplay && (b.thinking === undefined || (b.thinking && b.thinking.type === 'adaptive' && !b.thinking.display)) && DISPLAY_RE.test(model)) { b.thinking = { type: 'adaptive', display: 'summarized' }; t.disp = true; } // v-owner-claude-all: تكيّفيّ بلا عرض (جهد المالك على 4.x) يأخذ العرض؛ وبعد رفض العرض (noDisplay) يبقى التفكير بلا عرض
@@ -388,6 +389,7 @@ async function think400(up, t, convo, again, send) {
   if (t.talk && !t.disp && !blk) {
     t.noTalk = true;
     if (t.talkModel) NO_TALK.set(t.talkModel, Date.now());
+    if (t.effort && t.talkModel && /effort|output_config|reasoning|provider returned/i.test(why)) require('./owner-think.js').forgetEffort(t.talkModel); // v-owner-light: الرفض لا يميّز بين الحقلين (الوسيط يترجمهما معًا إلى reasoning) — يسقطان معًا في إعادة واحدة ويُذكران
     try { await require('./log-error.js').logErrorAndFlush('chat/thinking-talk', new Error(why || 'upstream 400'), { action: 'thinking-talk' }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
     return again();
   }

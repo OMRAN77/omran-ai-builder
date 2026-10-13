@@ -1354,7 +1354,7 @@ module.exports = async (req, res) => {
   // v-owner-memory: للمالك لا دور اجتماعيّ معزول — «زين» أو «ممتاز» وسط شغل كانت تُرسل وحدها بلا تاريخ وبسقف ٣٥٠ توكن.
   const quietSocialTurn = !__ownerReq && (pureGreetingTurn || casualCheckInTurn);
   // v-owner-auto (المالك ٢٨ سبتمبر «السلام ياخذ ٣–٧ ثواني» → «تلقائي مثل الرسمي»): يفكّر للدور الصعب وحده.
-  const __ownerThink = __ownerReq && require('./owner-think.js').ownerThinks(lastUserText, { image: lastUserHasImage, greeting: pureGreetingTurn || casualCheckInTurn, history: messages });
+  const __ownerThink = __ownerReq && require('./owner-think.js').ownerThinks(lastUserText, { image: lastUserHasImage, greeting: pureGreetingTurn || casualCheckInTurn, history: messages }); const __ownerLight = !!__ownerThink && require('./owner-think.js').ownerThinkLevel(lastUserText, { image: lastUserHasImage, greeting: pureGreetingTurn || casualCheckInTurn, history: messages }) === 'light'; // v-owner-light: الردّ العاديّ يفكّر بالجهد الأدنى
   const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
   const foreignTurn = !!(lastUser && isForeignAsk(lastUserText));
   // v-analyze-doc (تعليق «النص الطويل ما يرد»): لصق وثيقة/تقرير/سجلّ/كود طويل مع
@@ -1654,7 +1654,7 @@ module.exports = async (req, res) => {
       let __qfLast = {}; // v-owner-claude-all/gpt-all: حقول الجهد الأخيرة المرسَلة (للإعادة على 400 الجهد)
       const __quickFields = () => (__qfLast = __quickFor());
       const __quickFor = () => { if (__ownerReq && prov === 'openai' && body && body.effort && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __gf = require('./owner-think.js').gptEffortFields(CHAT_MODEL, body.effort, viaOR && !!__capCut); if (__gf) return __gf; } /* v-owner-gpt-all: جهد المالك لـGPT على المسارين (المباشر يترجمه oa-direct) */ if (__ownerReq && prov === 'claude' && !__direct && body && body.effort && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __ef = require('./owner-think.js').claudeEffortFields(CHAT_MODEL, body.effort, viaOR && !!__capCut); if (__ef) return __ef; } /* v-owner-claude-all: جهد المالك المختار من المنتقي يغلب التلقائيّ في كلّ دور، على المسارين — إلّا دور صورة بموديل CHAT_IMAGE_MODEL آخر (جهده لغير موديله = 400) */
-        if (__ownerReq && !__ownerThink && __direct) return __direct.prov === 'openai' ? { thinking: { type: 'disabled' } } : {};
+        if (__ownerLight && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __lf = require('./owner-think.js').lightEffortFields(prov, CHAT_MODEL, viaOR, __direct, viaOR && !!__capCut); if (__lf) return __lf; } /* v-owner-light: بعد جهد المنتقي — الردّ العاديّ low، والرفض (400) يُنسى ويُعاد بلاه */ if (__ownerReq && !__ownerThink && __direct) return __direct.prov === 'openai' ? { thinking: { type: 'disabled' } } : {};
         if (__ownerReq && !__ownerThink && !viaOR && prov === 'claude') return require('./owner-think.js').claudeQuickFields(CHAT_MODEL);
         /* v-cohere-reasoning (لقطة المالك ٤ أكتوبر ٩:٤٣: «<EOS_TOKEN>» ثمّ «يبدو أن المستخدم يطلب…» في الردّ): Cohere Command A موديل تفكير؛ إطفاؤه بـthinking:disabled
            وreasoning.enabled=false يخرج تفكيره نصًّا في الردّ بدل كتلة تفكير منفصلة تتجاهلها الواجهة. فلا حقول إطفاء لـCohere (غير مجرَّب على المزوّد الحيّ). */
@@ -1682,7 +1682,7 @@ module.exports = async (req, res) => {
       if (!upstream.ok && upstream.status === 400 && __ownerReq && !__direct && Object.keys(__qfLast).length) {
         let __ot = '';
         try { __ot = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
-        if (/effort|output_config|reasoning|thinking/i.test(__ot)) {
+        if (/effort|output_config|reasoning|thinking/i.test(__ot) && !(__qfLast.output_config && !/effort|output_config/i.test(__ot))) { // v-owner-light: حقل الجهد لا يُتّهم إلّا برفض يذكره — 400 توقيع كتلة التفكير ليس رفضًا للجهد (يمرّ لمعالجه)
           if (__qfLast.output_config) require('./owner-think.js').forgetEffort(CHAT_MODEL);
           else if (/mandatory|cannot be disabled|can ?not be turned off|must be enabled/i.test(__ot)) __mustReason.add(CHAT_MODEL); /* v-owner-solo: Grok 4.6 «Reasoning is mandatory…» */ else __orQuick.level = (__orQuick.level >= 2 && /reasoning/i.test(__ot) && !/thinking/i.test(__ot)) ? 1 : 0;
           await logErrorAndFlush('chat/owner-quick-400', new Error(__acct() + ': ' + __ot), { action: 'owner-quick', model: CHAT_MODEL });
