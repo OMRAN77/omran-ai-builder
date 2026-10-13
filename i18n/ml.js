@@ -40,6 +40,7 @@ I18N['ml'] = {
     agThought: '{n} സെക്കൻഡ് ചിന്തിച്ചു', agExplored: '{n} ഫയലുകൾ പരിശോധിച്ചു', agNoOutput: 'ഔട്ട്പുട്ട് ഇല്ല', // v-agent-log
     readTab: 'വായിച്ച കോഡ്', readCite: 'ഈ വരി കോഡ് പാനലിൽ തുറക്കുക', // v-read-panel
     cwWorked: '{t} പ്രവർത്തിച്ചു', cwRequest: 'അഭ്യർത്ഥന', cwResponse: 'ഫലം', cwTimeM: '{m}മി {s}സെ', cwTimeS: '{s}സെ', cwWorking: 'പ്രവർത്തിക്കുന്നു…', // v-work-log
+    optFormSend: 'വിശദാംശങ്ങൾ കാണിക്കുക', // v-rich-reply: زرّ بطاقة الأسئلة
     convertToImage: 'ചിത്രമാക്കി മാറ്റുക',
     convertToPdf: 'PDF ആക്കി മാറ്റുക',
     convertToWord: 'Word ആക്കി മാറ്റുക',

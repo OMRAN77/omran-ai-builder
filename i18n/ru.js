@@ -39,6 +39,7 @@ I18N['ru'] = {
     agThought: 'Думал {n} с', agExplored: 'Просмотрено файлов: {n}', agNoOutput: 'Нет вывода', // v-agent-log
     readTab: 'Прочитанный код', readCite: 'Открыть строку в панели кода', // v-read-panel
     cwWorked: 'Работал {t}', cwRequest: 'Запрос', cwResponse: 'Ответ', cwTimeM: '{m} мин {s} с', cwTimeS: '{s} с', cwWorking: 'Работает…', // v-work-log
+    optFormSend: 'Показать подробности', // v-rich-reply: زرّ بطاقة الأسئلة
     convertToImage: 'Преобразовать в изображение',
     convertToPdf: 'Преобразовать в PDF',
     convertToWord: 'Преобразовать в Word',

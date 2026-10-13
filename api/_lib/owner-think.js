@@ -37,6 +37,9 @@ function ownerThinks(text, opts) {
   const s = String(text || '');
   if (isStrongTurn(s) || ANALYSIS_RE.test(s) || s.split('\n').length >= 8) return true;
   if (o.greeting || isSocial(s) || !s.trim()) return false; /* «السلام» وسط شغل كود تبقى تحيّة */
+  /* v-rich-reply (المالك ١٣ أكتوبر، لقطة ChatGPT: «معلومات عن الإمارات والسعوديّة» في ثوانٍ وعندنا «فكّر 44 ث»): طلب المعلومات
+     خارج شغل الكود سريع — جهد التفكير الأدنى للموديل (Astra: low) بدل افتراضيّه في كلّ جولة أدوات. جهد يختاره المالك من المنتقي يغلب. */
+  if (require('./reply-style.js').isInfoAsk(s) && !lastReplyHasCode(o.history)) return false;
   return true;
 }
 

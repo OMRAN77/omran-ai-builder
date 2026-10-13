@@ -37,6 +37,7 @@ I18N['bn'] = {
     agThought: '{n} সেকেন্ড ভেবেছে', agExplored: '{n}টি ফাইল দেখেছে', agNoOutput: 'কোনো আউটপুট নেই', // v-agent-log
     readTab: 'পড়া কোড', readCite: 'কোড প্যানেলে এই লাইন খুলুন', // v-read-panel
     cwWorked: '{t} ধরে কাজ করেছে', cwRequest: 'অনুরোধ', cwResponse: 'ফলাফল', cwTimeM: '{m}মি {s}সে', cwTimeS: '{s}সে', cwWorking: 'কাজ চলছে…', // v-work-log
+    optFormSend: 'বিস্তারিত দেখান', // v-rich-reply: زرّ بطاقة الأسئلة
     convertToImage: 'ছবিতে রূপান্তর করুন',
     convertToPdf: 'PDF-এ রূপান্তর করুন',
     convertToWord: 'Word-এ রূপান্তর করুন',

@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=743'; /* v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=744'; /* v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -1672,7 +1672,16 @@ function omranOptCss(){
     + '.omranOpt:hover{border-color:var(--accent2,#a78bfa);transform:translateY(-1px);}'
     + '.omranOpt.on{background:var(--accent2,#a78bfa);color:#fff;border-color:transparent;}'
     + '.omranOptDone{padding:8px 18px;border-radius:14px;border:0;background:linear-gradient(135deg,var(--accent2,#a78bfa),#06b6d4);color:#fff;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;}'
-    + '.omranOptDone:disabled{opacity:.45;cursor:default;}';
+    + '.omranOptDone:disabled{opacity:.45;cursor:default;}'
+    /* v-rich-reply: بطاقة الأسئلة كما في ChatGPT — إطار، سؤال عريض، صفوف بدائرة، وزرّ عريض فاتح */
+    + '.omranOptForm{border:1px solid var(--border,rgba(255,255,255,.16));border-radius:18px;padding:14px 16px 16px;margin:14px 0 4px;}'
+    + '.omranOptQ{font-weight:700;font-size:15px;margin:2px 0 8px;}'
+    + '.omranOptRow{display:flex;align-items:center;gap:12px;width:100%;padding:9px 2px;border:0;background:none;color:var(--text,#eee);font:inherit;font-size:14.5px;text-align:start;cursor:pointer;}'
+    + '.omranOptDot{flex:0 0 auto;width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;opacity:.55;box-sizing:border-box;}'
+    + '.omranOptRow.on .omranOptDot{opacity:1;border:6px solid currentColor;}'
+    + '.omranOptSep{height:1px;background:var(--border,rgba(255,255,255,.12));margin:10px 0;}'
+    + '.omranOptSend{display:block;width:100%;margin-top:14px;padding:12px;border:0;border-radius:999px;background:var(--text,#f2f2f2);color:var(--bg,#111);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;}'
+    + '.omranOptSend:disabled{opacity:.4;cursor:default;}';
   document.head.appendChild(st);
 }
 function omranExtractOptions(txt){
@@ -1696,6 +1705,17 @@ function omranExtractOptions(txt){
         return '';
       });
     }
+    /* v-rich-reply (لقطة ChatGPT للمالك: «أي موضوع يهمك أكثر؟» و«عن أي دولة؟» في بطاقة واحدة بزرّ «اعرض التفاصيل»): سؤالان أو
+       أكثر باختيار واحد = بطاقة: كلّ سؤال (سطره المنتهي بـ؟ فوق خياراته) يدخلها، والاختيارات تُرسل معًا بزرّ واحد. سؤال واحد كما كان. */
+    if(blocks.length >= 2 && blocks.every(function(b){ return !b.multi; })){
+      const form = [];
+      const rest = source.replace(/(?:^|\n)[ \t]*([^\n]*[؟?][*_ \t]*)\n+[ \t]*\[\[OPT\]\]([\s\S]*?)\[\[\/OPT\]\]/g, function(m, q, body){
+        const items = body.split('|').map(function(x){ return x.trim(); }).filter(Boolean);
+        if(items.length) form.push({ q: q.replace(/^[#>*\s-]+|\*+/g, '').trim(), items: items.slice(0, 12) });
+        return '\n';
+      });
+      if(form.length === blocks.length) return { text: rest.replace(/\n{3,}/g, '\n\n').trim(), blocks: [{ form: form }] };
+    }
     clean = clean.replace(/\n{3,}/g, '\n\n').trim();
     return blocks.length ? { text: clean, blocks: blocks } : null;
     }
@@ -1706,8 +1726,39 @@ function omranSendOption(val){
   try{ el.dispatchEvent(new Event('input', { bubbles: true })); }catch(e){ __swallow(e, "misc:app-04-i18n-state#opt"); }
   sendPrompt();
 }
+function omranRenderOptForm(host, form){
+  const card = document.createElement('div');
+  card.className = 'omranOptForm';
+  const picked = form.map(function(){ return ''; });
+  let send = null;
+  form.forEach(function(g, gi){
+    const q = document.createElement('div'); q.className = 'omranOptQ'; q.textContent = g.q; card.appendChild(q);
+    g.items.forEach(function(label){
+      const row = document.createElement('button');
+      row.type = 'button'; row.className = 'omranOptRow'; row.setAttribute('role', 'radio'); row.setAttribute('aria-checked', 'false');
+      const dot = document.createElement('span'); dot.className = 'omranOptDot';
+      const tx = document.createElement('span'); tx.textContent = label;
+      row.appendChild(dot); row.appendChild(tx);
+      row.onclick = function(){
+        picked[gi] = label;
+        Array.prototype.forEach.call(row.parentNode.querySelectorAll('.omranOptRow[data-g="' + gi + '"]'), function(r){ r.classList.toggle('on', r === row); r.setAttribute('aria-checked', r === row ? 'true' : 'false'); });
+        if(send) send.disabled = !picked.some(Boolean);
+      };
+      row.setAttribute('data-g', String(gi));
+      card.appendChild(row);
+    });
+    if(gi < form.length - 1){ const hr = document.createElement('div'); hr.className = 'omranOptSep'; card.appendChild(hr); }
+  });
+  send = document.createElement('button');
+  send.type = 'button'; send.className = 'omranOptSend'; send.disabled = true;
+  send.textContent = (typeof t === 'function' && t('optFormSend') !== 'optFormSend') ? t('optFormSend') : 'Show details';
+  send.onclick = function(){ const v = picked.filter(Boolean); if(v.length) omranSendOption(v.join(' — ')); };
+  card.appendChild(send);
+  host.appendChild(card);
+}
 function omranRenderOptions(host, blocks){
   omranOptCss();
+  if(blocks.length === 1 && blocks[0].form){ omranRenderOptForm(host, blocks[0].form); return; } // v-rich-reply
   blocks.forEach(function(b){
     const wrap = document.createElement('div');
     wrap.className = 'omranOpts';

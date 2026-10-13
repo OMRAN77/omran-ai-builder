@@ -1,7 +1,7 @@
 'use strict';
 /* v-work-log (المالك ١٣ أكتوبر: «الحينه هذا منظم بي ذمتك»، ثمّ لقطة واجهة Claude وهو يعمل: «سولي نفس هذي بالضبط»): عمل المزوّد في
    المحادثة صندوق واحد فوق الردّ — رأس «✦ ما يجري · الوقت ⌄»، وفي إطاره عناصر بترتيب وصولها: التفكير أسطرًا قصيرة بعنوان آخر جملة،
-   والأداة «الطلب/النتيجة». التفكير مفتوح وأحدث أداة وحدها مفتوحة؛ والمحفوظ مطويّ «عمل لمدّة …». كود العميل الحقيقيّ في vm بصفحة مصغّرة. */
+   والأداة «الطلب/النتيجة». التفكير مسكّر حتّى يفتحه من يريد، وأحدث أداة وحدها مفتوحة؛ والمحفوظ مطويّ «عمل لمدّة …». كود العميل الحقيقيّ في vm بصفحة مصغّرة. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -94,7 +94,7 @@ function client(now) {
 }
 const kids = (list) => list.childNodes.map((c) => c.className.split(' ')[1] === 'cwPlain' ? 'plain' : (c.q('cwThink').length ? 'think' : 'tool') + (c.open ? '+' : ''));
 
-test('٢. الحيّ: لا صندوق قبل أوّل تفكير أو خطوة؛ ثمّ رأس بما يجري ووقت يعدّ، والتفكير مفتوح وأحدث أداة وحدها مفتوحة', () => {
+test('٢. الحيّ: لا صندوق قبل أوّل تفكير أو خطوة؛ ثمّ رأس بما يجري ووقت يعدّ، والتفكير مسكّر وأحدث أداة وحدها مفتوحة', () => {
   const now = { t: 1000 };
   const { sb, timers } = client(now);
   const msgs = mkEl('div'); msgs.__root = true;
@@ -112,10 +112,15 @@ test('٢. الحيّ: لا صندوق قبل أوّل تفكير أو خطوة؛
   const think = list.childNodes[0];
   assert.equal(think.childNodes[0].textContent, 'ثمّ أتتبّع الكود حتّى عنصر التفكير.', 'عنوان التفكير آخر جملة');
   assert.deepEqual(think.q('cwLine').map((l) => l.textContent), ['أقرأ سجلّ الأخطاء أوّلًا.', 'ثمّ أتتبّع الكود حتّى عنصر التفكير.'], 'جملة في كلّ سطر');
+  assert.equal(think.tagName, 'DETAILS');
+  assert.equal(think.open, false, 'التفكير مسكّر حتى يفتحه من يريد');
+  think.open = true;
+  assert.equal(think.open, true, 'من يريد يفتحه');
+  think.open = false;
   sb.omranShowThink(bubble, { head: 'يقرأ من GitHub…' });
   sb.omranShowThink(bubble, { step: { t: 'tool', title: 'api/_lib/chat.js  1–40', cmd: 'OMRAN77/omran-ai-builder api/_lib/chat.js', out: '📄 chat.js', err: 0 } });
   assert.equal(head.childNodes[1].textContent, 'يقرأ من GitHub…', 'الرأس يتبع ما يجري');
-  assert.deepEqual(kids(list), ['think', 'tool+'], 'مع الأداة يُطوى التفكير فلا يتكلم المزود داخل التعديل');
+  assert.deepEqual(kids(list), ['think', 'tool+'], 'التفكير مطويّ والأداة الأحدث مفتوحة');
   sb.omranShowThink(bubble, { s: 'الآن أعدّل المقطع من جديد داخل التعديل.', ms: 2000, t0: 1000 });
   assert.deepEqual(kids(list), ['think', 'tool+'], 'تفكير بعد الأداة لا يُضاف');
   const tool = list.childNodes[1];

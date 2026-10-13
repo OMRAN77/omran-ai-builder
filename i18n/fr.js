@@ -38,6 +38,7 @@ I18N['fr'] = {
     agThought: 'A réfléchi {n} s', agExplored: 'A exploré {n} fichiers', agNoOutput: 'Aucune sortie', // v-agent-log
     readTab: 'Code lu', readCite: 'Ouvrir cette ligne dans le panneau de code', // v-read-panel
     cwWorked: 'A travaillé {t}', cwRequest: 'Requête', cwResponse: 'Réponse', cwTimeM: '{m} min {s} s', cwTimeS: '{s} s', cwWorking: 'En cours…', // v-work-log
+    optFormSend: 'Afficher les détails', // v-rich-reply: زرّ بطاقة الأسئلة
     convertToImage: 'Convertir en image',
     convertToPdf: 'Convertir en PDF',
     convertToWord: 'Convertir en Word',

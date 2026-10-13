@@ -38,6 +38,7 @@ I18N['tr'] = {
     agThought: '{n} sn düşündü', agExplored: '{n} dosya inceledi', agNoOutput: 'Çıktı yok', // v-agent-log
     readTab: 'Okunan kod', readCite: 'Bu satırı kod panelinde aç', // v-read-panel
     cwWorked: '{t} çalıştı', cwRequest: 'İstek', cwResponse: 'Yanıt', cwTimeM: '{m} dk {s} sn', cwTimeS: '{s} sn', cwWorking: 'Çalışıyor…', // v-work-log
+    optFormSend: 'Ayrıntıları göster', // v-rich-reply: زرّ بطاقة الأسئلة
     convertToImage: 'Görsele Dönüştür',
     convertToPdf: 'PDF\'ye Dönüştür',
     convertToWord: 'Word\'e Dönüştür',

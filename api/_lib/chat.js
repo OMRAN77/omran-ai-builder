@@ -713,7 +713,7 @@ async function pplxSearch(query, win) {
         { role: 'user', content: String(query || '').slice(0, 600) },
       ],
     }, w ? { search_recency_filter: w } : {})),
-  }, 20000);
+  }, 10000); // v-rich-reply: ١٠ ث لا ٢٠ — بعدها Google السريع (السلسلة نفسها، بلا نداء جديد)
   if (!r.ok) { console.warn('[live] perplexity HTTP ' + r.status); return null; }
   const d = asJSON(r.body) || {};
   const txt = String((((d.choices || [])[0] || {}).message || {}).content || '').trim();
@@ -922,7 +922,7 @@ async function tavilySearch(query, reC, plateAsk, country, city, win, where) {
   // الحارس يبقى على الأسئلة الأجنبيّة غير المكانيّة (تأشيرة · أنظمة · أسعار).
   // v-loc-offers (لقطة المالك: «اريد عروضات في عجمان» رجعت أسماء سوبرماركتات بلا عرض واحد): سؤال العروض يذهب لبحث
   // العروض (liveSearch: بقيد البلد ونافذة شهر) لا لبطاقات الخرائط — الخرائط تعرف المحلّات لا عروضها.
-  const places = ((foreign && !isPlacesAsk(query)) || DEALS_RE.test(query)) ? [] : await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar', foreign ? regionOf(query) : '');
+  const places = ((foreign && !isPlacesAsk(query)) || DEALS_RE.test(query) || (require('./reply-style.js').isInfoAsk(query) && !isPlacesAsk(query))) ? [] : await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar', foreign ? regionOf(query) : '');
   if (places.length) return placeCards(places, where);
 
   const live = await liveSearch(query, foreign, country, city, win);
@@ -1533,7 +1533,7 @@ module.exports = async (req, res) => {
   if (__ownerReq && !__rawOwner && !__ownerNoRoute && !lastUserHasImage && convo[convo.length - 1].role === 'user' && !require('./prov-self.js').ownerSaidGeneralize(lastUserText)) { try { const __ps = require('./prov-self.js'), __vp = prov === 'claude' ? null : require('./owner-vision.js').visionPlan(prov, __direct ? 'direct' : (viaOR ? 'or' : ''), CHAT_MODEL, DEFAULT_MODEL), __gs = await __ps.genImagesToSee(lastUserText, { recent: prov === 'claude' || !!(__vp && !__vp.forced) }); if (__gs.length && (prov === 'claude' || __seeImage())) convo[convo.length - 1] = { role: 'user', content: __ps.withGenImages(convo[convo.length - 1].content, __gs) }; } catch (e) { logError('chat/gen-see', e); } }
 
   // ─── live-answers: استبدل رسالة المستخدم الأخيرة بالنسخة المسنودة بالمصادر ───
-  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText)); /* v-tokens-tools: دور السؤال كان بقائمة أدوات أقصر فتنكسر بادئة الكاش — القائمة ثابتة، و«لا رسم» تنبيه في الذيل + حارس عند التنفيذ */ const __ownerNoMedia = !!(toolTurn && __ownerReq && !__ownerNoTools && (__analyzeDoc || __ownerUiShot)), __noMedia = __askNoMedia || __ownerNoMedia; /* v-tokens-owner-tools: لقطة المالك والرسالة الطويلة كانتا بقائمة أدوات بلا الصور فيفوت الكاش كلّه (~١٦ ألف توكن) — القائمة كاملة كغيرهما، والصور تُرفض عند التنفيذ بالحارس نفسه */ const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowLine(body && body.tz), countryLine(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : (__ownerNoMedia ? [OWNER_NO_MEDIA_NOTE] : []))); /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
+  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText)); /* v-tokens-tools: دور السؤال كان بقائمة أدوات أقصر فتنكسر بادئة الكاش — القائمة ثابتة، و«لا رسم» تنبيه في الذيل + حارس عند التنفيذ */ const __ownerNoMedia = !!(toolTurn && __ownerReq && !__ownerNoTools && (__analyzeDoc || __ownerUiShot)), __noMedia = __askNoMedia || __ownerNoMedia; /* v-tokens-owner-tools: لقطة المالك والرسالة الطويلة كانتا بقائمة أدوات بلا الصور فيفوت الكاش كلّه (~١٦ ألف توكن) — القائمة كاملة كغيرهما، والصور تُرفض عند التنفيذ بالحارس نفسه */ const __ownerPicsOk = !!(__ownerNoMedia && __ownerUiShot && OWNER_PICS_RE.test(String(lastUserText || '').replace(/\n*\[[^\[\]\n]*\]\s*$/, ''))); /* v-owner-like-me: لقطة التطبيق والطلب صور فيه («غيّر هذي الصور») — generate_image مفتوحة، واللقطة نفسها لا تُعدَّل */ const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowLine(body && body.tz), countryLine(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : (__ownerNoMedia ? [__ownerPicsOk ? OWNER_PICS_NOTE : OWNER_NO_MEDIA_NOTE] : [])).concat((!lastUserHasImage && require('./reply-style.js').wantsRichReply(lastUserText)) ? [require('./reply-style.js').RICH_REPLY_NOTE.trim()] : [])); /* v-rich-reply: شكل ChatGPT لطلب المعلومات في ذيل الدور (النظام ثابت فيبقى كاشه — v-tokens-living) */ /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
   // (الترويسات وsend فُتحا مبكرًا أعلاه — v-fast-headers)
   // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
 
@@ -1900,7 +1900,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' }); // v-chat-github-read: مفتاح ترجمة قائم، لا نصّ واجهة جديد
             else if (cb.type === 'tool_use' && cb.name === 'read_app_errors') send({ status: '🩺 يقرأ أخطاء التطبيق الحيّة…' }); // v-provider-errors: بلا مفتاح — العميل يعود لنصّ الخادم (أداة المالك وحده)
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
-            else if (cb.type === 'tool_use' && cb.name === 'generate_image' && !__noMedia) send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_image' && (!__noMedia || __ownerPicsOk)) send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
             else if (cb.type === 'tool_use' && cb.name === 'edit_image' && !__noMedia) send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_video' && !__noMedia) send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…', k: 'stTestHtml' });
@@ -2015,12 +2015,13 @@ module.exports = async (req, res) => {
       // الآن تنطلق كلها معًا؛ و«سقف البحثين»: النموذج كان يبحث ٤ مرات للسؤال
       // الواحد وكل بحث رحلة نموذج كاملة — الثالث فما فوق يُرَدّ فورًا بلا شبكة.
       const toolBlocks = blocks.filter(Boolean).filter((cb) => cb.type === 'tool_use');
+      const __seeImgs = []; // v-owner-see-repo-img: صور المستودع التي قُرئت في هذه الخطوة
       const settledTools = await Promise.all(toolBlocks.map(async (cb) => {
         let input = {};
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
         try {
-          if (__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1) result = __askNoMedia ? ASK_NO_MEDIA_REFUSAL : OWNER_NO_MEDIA_REFUSAL; // v-tokens-tools: دور سؤال — لا رسم ولا تعديل ولا فيديو · v-tokens-owner-tools: ولقطة المالك ورسالته الطويلة كما كانتا بلا أدوات الصور
+          if (__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1 && !(cb.name === 'generate_image' && __ownerPicsOk)) result = __askNoMedia ? ASK_NO_MEDIA_REFUSAL : OWNER_NO_MEDIA_REFUSAL; // v-tokens-tools: دور سؤال — لا رسم ولا تعديل ولا فيديو · v-tokens-owner-tools: ولقطة المالك ورسالته الطويلة كما كانتا بلا أدوات الصور
           else if (cb.name === 'web_search') {
             const _q = input.query || '';
             const mySearchNo = ++searchesUsed; // يزداد قبل أول await فالعدّ آمن مع التوازي
@@ -2041,10 +2042,10 @@ module.exports = async (req, res) => {
                 const __sq = __lf.stripStaleYears(_q, __said);
                 const __win = __lf.searchWindow({ fresh: FRESH_RE.test(__sq), deals: DEALS_RE.test(__sq), userText: __said });
                 const __plateAsk = !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUserText));
-                const [__web, __social] = await Promise.all([
+                const [__web, __social] = await require('./reply-style.js').withSocialGrace( // v-rich-reply: الويب لا ينتظر التواصل أكثر من ١٫٥ ث بعده
                   tavilySearch(__sq, reC, __plateAsk, country, city, __win, WHERE_ASK_RE.test(String(lastUserText || '')) || WHERE_ASK_RE.test(__sq)),
                   __ls.socialSearch(__sq, { recency: __win }),
-                ]);
+                );
                 const __curated = isCuratedSearch(__sq, reC, __plateAsk) || String(__web || '').indexOf(PLACES_MARK) >= 0;
                 result = filterDuplicateUrls(__ls.mergeWebSocial(__web, __social, { curated: __curated }))
                   + (__curated ? '' : __lf.freshNote(__win, body && body.tz));
@@ -2080,7 +2081,11 @@ module.exports = async (req, res) => {
               /* v-github-all-providers (أمر المالك ٢٩ سبتمبر: «كلّهم أعطهم صلاحيّة يقرون الجيت هوب فقط للمالك»):
                  العمق كان على مسار كلود حصرًا (v-claude-deep-github)، فبقيّة المزوّدين تقرأ دفعة ٧ آلاف حرف
                  وشجرة ٣٠٠ مدخلة. الآن العمق نفسه لكلّ مزوّد — وهذا الفرع للمالك وحده بحكم الحارس أعلاه. */
-              result = await require('./github-read.js').readGithub(input, { deep: true });
+              /* v-owner-see-repo-img: مسار صورة والموديل الحاليّ يرى (كلود، أو موديل المزوّد يرى بلا تبديل في منتصف الدور) = بايتاتها تُرفق بعد نتائج الخطوة */
+              const __gr = require('./github-read.js');
+              const __sees = prov === 'claude' || __ownerSeen || (() => { const v = require('./owner-vision.js').visionPlan(prov, __direct ? 'direct' : (viaOR ? 'or' : ''), CHAT_MODEL, DEFAULT_MODEL); return !!(v && !v.forced); })();
+              if (typeof __gr.imagePathOf === 'function' && __gr.imagePathOf(input) && __sees) { const __im = await __gr.readImageFile(input); if (__im.error) result = '✗ ' + __im.error; else { __seeImgs.push(__im); result = '🖼️ ' + __im.path + ' (' + Math.max(1, Math.round(__im.bytes / 1024)) + 'KB) — الصورة مرفقة بعد نتائج هذه الخطوة: انظر إليها بنفسك قبل أن تحكم عليها.'; } }
+              else result = await require('./github-read.js').readGithub(input, { deep: true });
             }
           }
           /* v-provider-errors: سجلّ أخطاء الإنتاج — للمالك وحده، وحارسٌ ثانٍ هنا لا في إخفاء الأداة وحده. */
@@ -2126,7 +2131,7 @@ module.exports = async (req, res) => {
           }
           else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
           /* v-nano-pro-edit: كلمات المستخدم نفسها تُرافق أمر النموذج الإنجليزي — منها يقرأ الخادم نيّة «أقوى/فكرة ثانية» */
-          else if (cb.name === 'generate_image') { input.userText = String(lastUserText || '').slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); /* v-quad-fix: القصّ قبل الـregex — كانت O(n²) على النصّ الطويل. مع صورة مرفقة قد يتحوّل الرسم إلى تعديل على برو (v-nano-pro-edit) فيحتاج مهلة التعديل */ result = await runInClient(send, 'generate_image', input, lastUserHasImage ? 150000 : 75000); }
+          else if (cb.name === 'generate_image') { input.userText = String(lastUserText || '').slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); /* v-quad-fix: القصّ قبل الـregex — كانت O(n²) على النصّ الطويل. مع صورة مرفقة قد يتحوّل الرسم إلى تعديل على برو (v-nano-pro-edit) فيحتاج مهلة التعديل */ if (__ownerPicsOk) input.noRef = true; /* v-owner-like-me: صورة جديدة للتطبيق — لقطة المالك ليست مصدرًا يُعدَّل */ result = await runInClient(send, 'generate_image', input, lastUserHasImage ? 150000 : 75000); }
           // v-edit-image-tool: التعديل عالي الدقة (gpt-image للنصّي) قد يأخذ دقيقتين.
           else if (cb.name === 'edit_image') { input.userText = String(lastUserText || '').slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); /* v-quad-fix: القصّ قبل الـregex */ result = await runInClient(send, 'edit_image', input, 150000); }
           else if (cb.name === 'generate_video') result = await runInClient(send, 'generate_video', input, 290000);
@@ -2138,7 +2143,7 @@ module.exports = async (req, res) => {
           result = 'فشل تنفيذ الأداة: ' + String((toolErr && toolErr.message) || toolErr).slice(0, 150);
         }
         const __tl = trailLine(cb.name, input, result);
-        if (!(__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1)) send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p }, trailDetail(cb.name, input, result))); // v-read-all · v-tokens-tools: الرفض في دور السؤال بلا سطر «↳ تعذّرت الصورة»
+        if (!(__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1 && !(cb.name === 'generate_image' && __ownerPicsOk))) send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p }, trailDetail(cb.name, input, result))); // v-read-all · v-tokens-tools: الرفض في دور السؤال بلا سطر «↳ تعذّرت الصورة»
         // v-one-brain: بطاقات «المصادر» كانت تأتي من طبقة البحث المحذوفة —
         // الآن تُستخرج من نتيجة أداة البحث نفسها وتُبثّ للعميل ليرسمها.
         if (cb.name === 'web_search') {
@@ -2169,6 +2174,8 @@ module.exports = async (req, res) => {
         if (st.cb.name === 'web_search' || st.cb.name === 'fetch_page') __searchRan = true;
         if (st.cb.name === 'show_cards') __searchRan = true; // v-cards: بطاقات البحث بحثٌ فعليّ — حارس التقييمات يعمل عليها أيضًا
       }
+      /* v-owner-see-repo-img: بعد نتائج الأدوات (أنثروبيك يشترطها أوّلًا) نصّ المسار ثمّ الصورة — oa-direct يحوّلها input_image / image_url */
+      for (const __im of __seeImgs.slice(0, 4)) toolResults.push({ type: 'text', text: '[صورة من المستودع: ' + __im.path + ']' }, { type: 'image', source: { type: 'base64', media_type: __im.mime, data: __im.b64 } });
       convo.push({ role: 'user', content: toolResults });
     }
 
@@ -2441,6 +2448,10 @@ function countryLine(country, city) {
 /* v-ci-precedence (tok-1): يُلحق بعد ملاحظات العميل حين تُرسل مع تعليمات مخصّصة — للنموذج وحده، ثابت (~٣٠ توكن خارج الكاش في تلك الأدوار).
    هنا أسفل الملفّ لا قرب customInstructionsBlock: knowledge/ROUTING.md يذكر أرقام أسطر chat.js (routing-anchors). */
 const CI_PRECEDENCE_NOTE = '[تعليمات المستخدم المخصّصة أعلاه تعلو على ملاحظات هذا الدور في اللغة والطول والنبرة عند التعارض]';
+/* v-owner-like-me (ردّ GPT-6 Astra: «أدوات إنشاء الصور غير متاحة في هذا الدور» على «غيّر هذي الصور على نفس الأسامي» مع لقطة): لقطة التطبيق
+   والطلب صور فيه — اللقطة لا تُعدَّل (edit_image والفيديو مقفلان)، وgenerate_image مفتوحة بعد أن يبحث في الكود عن مولّد قائم. */
+const OWNER_PICS_RE = /صور|رسم[ةه]|رسومات|شعار|لوجو|\b(?:images?|pictures?|photos?|logos?)\b/i;
+const OWNER_PICS_NOTE = '[لقطة من التطبيق والمطلوب صور فيه: edit_image وgenerate_video مقفلان — اللقطة نفسها لا تُعدَّل. قبل أن ترسم ابحث في الكود هل يولّد التطبيق هذه الصور بنفسه (معاينة من الخادم أو مسار توليد) — تعديل الكود أدوم من صورة ثابتة. وإن لزمت صور جديدة فـgenerate_image متاحة: اعرضها على المالك، وبعد «عمّم» تُرفع بـwrite_github (files[].image برابطها /i/…). وصور المستودع تراها بـread_github على مسار الصورة.]';
 const OWNER_NO_MEDIA_NOTE = '[أدوات الصور والفيديو مقفلة في هذا الدور: لا تستدعِ generate_image ولا edit_image ولا generate_video.]';
 const OWNER_NO_MEDIA_REFUSAL = 'هذه الأداة مقفلة في هذا الدور — لا رسم ولا تعديل صورة ولا فيديو هنا: أكمل المطلوب بالقراءة والكود أو بالكلام.';
 module.exports.__tokens2 = { alignedWindow, compactConversation, WINDOW, nowNote, countryNote, nowLine, countryLine, NOW_RULE, LOC_HINT_RULES, LOC_UNKNOWN_RULE, LOCATION_RULES_NOTE, OWNER_NO_MEDIA_NOTE, OWNER_NO_MEDIA_REFUSAL, CI_PRECEDENCE_NOTE }; // v-tokens-window · v-tokens-tail · v-tokens-owner-tools — للاختبار

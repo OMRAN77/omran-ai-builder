@@ -37,6 +37,7 @@ I18N['hi'] = {
     agThought: '{n} सेकंड सोचा', agExplored: '{n} फ़ाइलें देखीं', agNoOutput: 'कोई आउटपुट नहीं', // v-agent-log
     readTab: 'पढ़ा गया कोड', readCite: 'इस पंक्ति को कोड पैनल में खोलें', // v-read-panel
     cwWorked: '{t} तक काम किया', cwRequest: 'अनुरोध', cwResponse: 'परिणाम', cwTimeM: '{m}मि {s}से', cwTimeS: '{s}से', cwWorking: 'काम जारी है…', // v-work-log
+    optFormSend: 'विवरण दिखाएँ', // v-rich-reply: زرّ بطاقة الأسئلة
     convertToImage: 'इमेज में बदलें',
     convertToPdf: 'PDF में बदलें',
     convertToWord: 'Word में बदलें',

@@ -36,6 +36,7 @@ I18N['ur'] = {
     agThought: '{n} سیکنڈ سوچا', agExplored: '{n} فائلیں دیکھیں', agNoOutput: 'کوئی نتیجہ نہیں', // v-agent-log
     readTab: 'پڑھا گیا کوڈ', readCite: 'یہ سطر کوڈ پینل میں کھولیں', // v-read-panel
     cwWorked: '{t} کام کیا', cwRequest: 'درخواست', cwResponse: 'نتیجہ', cwTimeM: '{m}م {s}س', cwTimeS: '{s}س', cwWorking: 'کام جاری ہے…', // v-work-log
+    optFormSend: 'تفصیلات دکھائیں', // v-rich-reply: زرّ بطاقة الأسئلة
     convertToImage: 'تصویر میں تبدیل کریں',
     convertToPdf: 'PDF میں تبدیل کریں',
     convertToWord: 'Word میں تبدیل کریں',
