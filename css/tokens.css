@@ -951,6 +951,27 @@
   .rdCite code{font:.88em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; padding:1px 5px; border-radius:6px; background:rgba(128,128,128,.16);}
   .rdCiteN{display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 3px; border-radius:999px; background:var(--om-hl,#e3b341); color:#111; font-size:10.5px; font-weight:700; line-height:1; transform:translateY(-.35em);}
   .rdCite:hover code, .rdCite:focus-visible code{background:rgba(227,179,65,.22);}
+  /* v-work-log: صندوق العمل كواجهة Claude — رأس «✦ ما يجري · الوقت ⌄»، وإطار عناصره: عنوان ينفتح على أسطر التفكير أو «الطلب/النتيجة». */
+  .cwBox{margin:2px 0 12px; color:var(--muted);}
+  .cwHead, .cwSum{cursor:pointer; list-style:none;}
+  .cwHead::-webkit-details-marker, .cwSum::-webkit-details-marker{display:none;}
+  .cwHead{display:flex; align-items:center; gap:8px; padding:4px 2px; font-size:14px; color:var(--muted);}
+  .cwHead::after, .cwSum::after{content:'›'; display:inline-block; font-size:15px; line-height:1;}
+  .cwBox[open] > .cwHead::after, .cwItem[open] > .cwSum::after{content:'⌄';}
+  .cwIc{color:var(--om-hl,#e3b341); flex:0 0 auto;}
+  .cwTime{color:var(--muted); opacity:.75; white-space:nowrap;}
+  .cwList{margin-top:8px; border:1px solid rgba(128,128,128,.24); border-radius:14px; overflow:hidden;}
+  .cwItem{padding:0 16px; border-top:1px solid rgba(128,128,128,.16);}
+  .cwItem:first-child{border-top:0;}
+  .cwSum{display:flex; align-items:center; gap:6px; padding:12px 0; font-size:14px; color:var(--muted); overflow-wrap:anywhere;}
+  .cwPlain{padding:12px 16px; font-size:14px; color:var(--muted);}
+  .cwFail > .cwSum{color:#f87171;}
+  .cwThink{padding:0 0 14px; color:var(--text); font-size:14.5px; line-height:1.85;}
+  .cwLbl{margin:2px 0 6px; font-size:13px; color:var(--muted);}
+  .cwPre{margin:0 0 14px; padding:10px 12px; max-height:260px; overflow:auto; border:1px solid rgba(128,128,128,.18); border-radius:10px; background:rgba(128,128,128,.10); color:var(--text); font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; word-break:break-word; text-align:left;}
+  .cwPre.cwErr{color:#f87171;}
+  .cwNone{margin:0 0 14px; font-size:12.5px; color:var(--muted);}
+  .msg.cwOn > .chat-status-fold{display:none;}
   html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.

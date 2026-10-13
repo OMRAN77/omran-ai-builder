@@ -4154,6 +4154,7 @@ const I18N = {
     buildNoCode: '⚠️ لم يصل كود من المزوّد — المعاينة فارغة. أعد إرسال الطلب أو جرّب مزوّدًا آخر.',
     agThought: 'فكّر لمدّة {n} ث', agExplored: 'استكشف {n} ملفّات', agNoOutput: 'بلا ناتج', // v-agent-log
     readTab: 'الكود المقروء', readCite: 'افتح السطر في لوحة الكود', // v-read-panel
+    cwWorked: 'عمل لمدّة {t}', cwRequest: 'الطلب', cwResponse: 'النتيجة', cwTimeM: '{m}د {s}ث', cwTimeS: '{s}ث', cwWorking: 'يعمل…', // v-work-log
     selfHealing: '🔧 اكتشفت أخطاء في الكود... جاري الإصلاح الذاتي',
     noCodeToDownload: 'لا يوجد كود لتنزيله بعد.',
     geminiApiKeyLabel: 'مفتاح API — Google Gemini',
@@ -4929,6 +4930,7 @@ const I18N = {
     buildNoCode: '⚠️ No code came back from the provider — the preview is empty. Send the request again or try another provider.',
     agThought: 'Thought for {n}s', agExplored: 'Explored {n} files', agNoOutput: 'No output', // v-agent-log
     readTab: 'Code read', readCite: 'Open this line in the code panel', // v-read-panel
+    cwWorked: 'Worked for {t}', cwRequest: 'Request', cwResponse: 'Response', cwTimeM: '{m}m {s}s', cwTimeS: '{s}s', cwWorking: 'Working…', // v-work-log
     selfHealing: '🔧 Errors detected in the code... self-healing in progress',
     noCodeToDownload: 'No code to download yet.',
     runPythonBtn: '▶️ Run code',
@@ -5616,7 +5618,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=742'; /* v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
+    sc.src = 'i18n/' + lg + '.js?v=743'; /* v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -22288,18 +22290,23 @@ function __agLogThinkEl(p){
   const b = document.createElement('div'); b.className = 'agThinkBody'; b.textContent = p.s; d.appendChild(b);
   return d;
 }
-/* v-think-talk: ملخّص تفكير المزوّد فوق فقاعة الردّ — خارج __sendPromptCore كي لا يكبر سقفها. */
+/* v-think-talk: ملخّص تفكير المزوّد فوق فقاعة الردّ — خارج __sendPromptCore كي لا يكبر سقفها.
+   v-work-log (المالك ١٣ أكتوبر، لقطة واجهة Claude: «سولي نفس هذي بالضبط»): الملخّصات والخطوات ({step} من app-18) تصل صندوق العمل
+   (js/app-39-work-log.js) بترتيبها، و{head} يحدّث رأسه بما يجري الآن. الصندوق لا يُنشأ إلّا بأوّل تفكير أو خطوة — ردّ بلا أدوات بلا صندوق.
+   يُزال مع الفقاعة المؤقّتة (__thinkBox)، والمحفوظ يرسمه __agLogRender. */
 function omranShowThink(thinkingDiv, th){
   try{
-    if(!thinkingDiv || !th || !th.s) return;
-    let box = thinkingDiv.__thinkBox;
-    if(!box || !box.isConnected){
-      box = document.createElement('div'); box.className = 'agLog';
-      if(thinkingDiv.isConnected && thinkingDiv.parentNode) thinkingDiv.parentNode.insertBefore(box, thinkingDiv);
-      else if(typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(box);
-      thinkingDiv.__thinkBox = box;
+    if(!thinkingDiv || !th) return;
+    if(th.t0 && !thinkingDiv.__cwT0) thinkingDiv.__cwT0 = th.t0;
+    if(th.head){ thinkingDiv.__cwHead = String(th.head); if(thinkingDiv.__cw) thinkingDiv.__cw.head(thinkingDiv.__cwHead); }
+    if(!(th.s || th.step) || !window.omranWorkLog) return;
+    let cw = thinkingDiv.__cw;
+    if(!cw || !cw.el.isConnected){
+      cw = window.omranWorkLog.live(thinkingDiv, thinkingDiv.__cwT0, thinkingDiv.__cwHead);
+      if(!cw.el.isConnected && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(cw.el);
+      thinkingDiv.__cw = cw; thinkingDiv.__thinkBox = cw.el;
     }
-    box.appendChild(__agLogThinkEl({ t: 'think', ms: th.ms || 1000, s: String(th.s), open: 1 }));
+    cw.add(th.s ? { t: 'think', ms: th.ms || 1000, s: String(th.s) } : th.step);
   }catch(e){ __swallow(e, 'chat:think-note'); }
 }
 function __agLogGroupEl(els){
@@ -22316,6 +22323,7 @@ function __agLogTextEl(s){
 }
 /** يستدعيه renderMessages لكلّ ردّ وكيل يحمل سجلًّا محفوظًا: عنصر السجلّ يسبق نصّ الردّ. */
 function __agLogRender(parts){
+  if(parts[0] && parts[0].t === 'meta' && window.omranWorkLog) return window.omranWorkLog.render(parts); // v-work-log: سجلّ المحادثة بصندوق العمل
   const root = document.createElement('div'); root.className = 'agLog';
   for(let i = 0; i < parts.length; i++){
     const p = parts[i];
@@ -38652,6 +38660,10 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     /* v-read-all (المالك: «الوكيل يقرأ ويحلّل كلّ شي — أريد نفس الشي في المزوّدين كلّهم»): كلّ سطر أثر «↳» خطوةٌ في
        سجلّ بصيغة سجلّ الوكيل (m._agParts)، يسبقها «فكّر N ث» حتّى أوّل حرف — يُحفظ في الرسالة فيبقى بعد الردّ. */
     var __t0 = Date.now(), __tFirst = 0, __steps = [], __thinks = [];
+    /* v-work-log (المالك ١٣ أكتوبر: «الحينه هذا منظم بي ذمتك» ثمّ لقطة واجهة Claude «سولي نفس هذي بالضبط»): التفكير والخطوات سجلّ
+       واحد بترتيب وصولها (__seq)، وكلّ واحد يصل صندوق العمل حيًّا (__omranThinkNote) مع بداية الدور (t0) لعدّاد الوقت.
+       مدّة كلّ تفكير منذ آخر حدث لا منذ بداية الدور. */
+    var __seq = [], __tLast = __t0;
     var __rp = window.omranReadPanel || null; /* v-read-panel: لوحة «الكود المقروء» — ما يُقرأ من GitHub يظهر فيها أثناء البثّ */
     if (__rp) __rp.begin();
 
@@ -38678,16 +38690,19 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         /* v-img-box (المالك: «احذف كلمة يرسم الصورة مع أيقونة الرسم»): حالة رسم/تعديل صورة تُظهر مربّع الإنشاء بدل السطر */
         if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
         else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status, onDelta && onDelta.__status);  /* v656 */
+        if (ev.status && !/^↳/.test(String(ev.status)) && typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ head: String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/, '').trim(), t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:head'); } } /* v-work-log: رأس صندوق العمل = ما يجري الآن */
         if (ev.think && ev.think.s && __thinks.length < 8) {
           var __ts = String(ev.think.s).slice(0, 1200);
-          var __tm = Date.now() - __t0;
-          __thinks.push({ t: 'think', ms: __tm, s: __ts, open: 1 });
-          if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ s: __ts, ms: __tm }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:think'); } }
+          var __tm = Date.now() - __tLast; __tLast = Date.now();
+          __thinks.push({ t: 'think', ms: __tm, s: __ts }); __seq.push(__thinks[__thinks.length - 1]); /* محفوظًا مطويًّا: «فكّر N ث ›» يُفتح بالضغط */
+          if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ s: __ts, ms: __tm, t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:think'); } }
         }
         if (ev.status && /^↳/.test(String(ev.status)) && !/^↳\s*💭/.test(String(ev.status)) && __steps.length < 24) {
           var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
           __steps.push({ t: 'tool', name: String(ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: /Fail|Err/.test(String(ev.k || '')) ? 1 : 0, g: 0 });
-          if (ev.code && typeof ev.code === 'object') __steps[__steps.length - 1].code = ev.code; /* v-read-panel: يُحفظ مع الخطوة فتعمل الأرقام بعد إعادة التحميل */
+          var __st = __steps[__steps.length - 1]; __seq.push(__st); __tLast = Date.now();
+          if (ev.code && typeof ev.code === 'object') { __st.code = ev.code; __st.g = 1; __st.title = String(ev.code.p || __tt) + '  ' + ev.code.a + '–' + ev.code.b; } /* v-read-panel: يُحفظ مع الخطوة فتعمل الأرقام بعد إعادة التحميل · v-work-log: عنوان قراءة الملفّ مساره وأسطره */
+          if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ step: __st, t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:step'); } }
         }
         if (ev.code && typeof ev.code === 'object' && __rp) { try { __rp.live(ev.code); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-live'); } }
         if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
@@ -38730,8 +38745,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     if (__ownerStop && serverErr) { __fenceCut = ((full.match(/```/g) || []).length % 2) === 1; full = full + (__fenceCut ? '\n```' : '') + '\n\n⚠️ ' + serverErr; if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-note'); } } }
     var __p = provider || 'claude';
     if (__rp) { try { __rp.pack(__steps, full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-pack'); } } /* v-read-panel: سقف حجم المقاطع المحفوظة */
-    var __head = __thinks.length ? __thinks : (__steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }] : []);
-    var __log = (__head.length || __steps.length) ? __head.concat(__steps) : undefined;
+    var __log = __seq.length ? [{ t: 'meta', ms: (__tFirst || Date.now()) - __t0 }].concat(__seq) : undefined; /* v-work-log: بترتيب الوصول، وأوّله مدّة العمل حتّى أوّل حرف من الردّ */
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined, cards: __cards || undefined };
   };
 })();
@@ -45670,6 +45684,98 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     },
     _segs: function(text, reads){ return segs(text, build(reads), { n: 0 }); }, // للاختبار
     _state: function(){ return { files: files, cur: cur, hl: hl }; }, // للاختبار
+  };
+})();
+/* v-work-log (المالك ١٣ أكتوبر، لقطة من واجهة Claude وهو يعمل: «سولي نفس هذي بالضبط»): عمل المزوّد في المحادثة صندوق واحد فوق الردّ.
+   رأسه: شرارة + ما يفعله الآن + الوقت المنقضي + سهم. داخله إطار، وكلّ عنصر سطر عنوان ينفتح: التفكير أسطرًا قصيرة (جملة في
+   السطر، وعنوانه آخر جملة)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا كما في اللقطة: التفكير يبقى مفتوحًا (أسطره قصيرة)،
+   وأحدث أداة وحدها مفتوحة وما قبلها يُطوى، والوقت يعدّ كلّ ثانية. محفوظًا (m._agParts وأوّله {t:'meta', ms}): مطويّ في سطر «عمل لمدّة …». سجلّ الوكيل القديم (بلا meta) يرسمه __agLogRender كما كان.
+   النصوص: cwWorked وcwRequest وcwResponse وcwTimeM وcwTimeS وcwWorking (١٤ لغة). */
+(function(){
+  var TITLE_MAX = 120;
+  function tr(k, fb){ try{ var v = (typeof t === 'function') ? t(k) : ''; return (v && v !== k) ? v : fb; }catch(e){ __swallow(e, 'work:tr'); return fb; } }
+  function mk(tag, cls, txt){ var e = document.createElement(tag); if(cls) e.className = cls; if(txt !== undefined) e.textContent = txt; return e; }
+  function dur(ms){
+    var all = Math.max(1, Math.round((Number(ms) || 0) / 1000)), m = Math.floor(all / 60), s = all % 60;
+    return m ? tr('cwTimeM', '{m}m {s}s').replace('{m}', String(m)).replace('{s}', String(s)) : tr('cwTimeS', '{s}s').replace('{s}', String(s));
+  }
+  /* ملخّص التفكير ← أسطر: سطر لكلّ جملة، بلا علامات العريض. */
+  function lines(s){
+    return String(s || '').replace(/\*\*/g, '').replace(/([.!?؟])\s+(?=\S)/g, '$1\n').split(/\n+/).map(function(x){ return x.trim(); }).filter(Boolean);
+  }
+  function clip(s){ s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > TITLE_MAX ? s.slice(0, TITLE_MAX - 1) + '…' : s; }
+  function item(title, body, open){
+    var d = mk('details', 'cwItem'); if(open) d.open = true;
+    var s = mk('summary', 'cwSum'); s.appendChild(mk('span', 'cwTitle', title)); d.appendChild(s);
+    d.appendChild(body);
+    return d;
+  }
+  function thinkEl(p, open){
+    var ls = lines(p.s);
+    if(!ls.length) return mk('div', 'cwItem cwPlain', tr('agThought', '{n}s').replace('{n}', String(Math.max(1, Math.round((Number(p.ms) || 0) / 1000)))));
+    var body = mk('div', 'cwThink');
+    ls.forEach(function(l){ body.appendChild(mk('div', 'cwLine', l)); });
+    return item(clip(ls[ls.length - 1]), body, open);
+  }
+  function pre(txt, err){ var p = mk('pre', 'cwPre' + (err ? ' cwErr' : ''), txt); p.dir = 'ltr'; return p; }
+  function toolEl(p, open){
+    var body = mk('div', 'cwTool');
+    if(p.cmd){ body.appendChild(mk('div', 'cwLbl', tr('cwRequest', 'Request'))); body.appendChild(pre(p.cmd, false)); }
+    body.appendChild(mk('div', 'cwLbl', tr('cwResponse', 'Response')));
+    body.appendChild(p.out ? pre(p.out, !!p.err) : mk('div', 'cwNone', tr('agNoOutput', 'No output')));
+    var d = item(clip(p.title || p.name || ''), body, open);
+    d.classList.add('cwTool');
+    if(p.err) d.classList.add('cwFail');
+    return d;
+  }
+  function textEl(p){ return mk('div', 'cwItem cwPlain', clip(p.s)); }
+  function partEl(p, open){
+    if(!p) return null;
+    if(p.t === 'think') return thinkEl(p, open);
+    if(p.t === 'tool') return toolEl(p, open);
+    if(p.t === 'text' && String(p.s || '').trim()) return textEl(p);
+    return null;
+  }
+  function shell(open){
+    var d = mk('details', 'cwBox'); d.open = !!open;
+    var s = mk('summary', 'cwHead');
+    var ic = mk('span', 'cwIc', '✦'), lb = mk('span', 'cwLabel'), tm = mk('span', 'cwTime');
+    s.appendChild(ic); s.appendChild(lb); s.appendChild(tm); d.appendChild(s);
+    var list = mk('div', 'cwList'); d.appendChild(list);
+    return { d: d, ic: ic, lb: lb, tm: tm, list: list };
+  }
+
+  window.omranWorkLog = {
+    /** الصندوق الحيّ قبل الفقاعة المؤقّتة: head(نصّ) لما يفعله الآن، add(جزء) لتفكير أو خطوة وصلت. */
+    live: function(anchor, t0, head){
+      var b = shell(true);
+      b.d.classList.add('cwLive'); b.ic.classList.add('chat-status-spark');
+      b.lb.textContent = head || tr('cwWorking', 'Working…');
+      if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(b.d, anchor);
+      if(anchor && anchor.classList) anchor.classList.add('cwOn'); // شريط الحالة القديم يختفي: الرأس يقول ما يحدث
+      var start = Number(t0) || Date.now();
+      var tick = function(){ b.tm.textContent = dur(Date.now() - start); };
+      tick();
+      var iv = setInterval(function(){ if(!b.d.isConnected){ clearInterval(iv); return; } tick(); }, 1000);
+      return {
+        el: b.d,
+        head: function(txt){ if(txt) b.lb.textContent = txt; },
+        add: function(p){
+          Array.prototype.forEach.call(b.list.children, function(c){ if(c.tagName === 'DETAILS' && c.classList.contains('cwTool')) c.open = false; });
+          var el = partEl(p, true);
+          if(el) b.list.appendChild(el);
+        },
+      };
+    },
+    /** السجلّ المحفوظ: صندوق مطويّ «عمل لمدّة …» وعناصره مطويّة بترتيبها. */
+    render: function(parts){
+      var b = shell(false);
+      var meta = parts[0] || {};
+      b.lb.textContent = tr('cwWorked', 'Worked for {t}').replace('{t}', dur(meta.ms));
+      for(var i = 1; i < parts.length; i++){ var el = partEl(parts[i], false); if(el) b.list.appendChild(el); }
+      return b.d;
+    },
+    _lines: lines, _dur: dur, // للاختبار
   };
 })();
 /* ===== app-99-boot-ok — آخر شريحة في الحزمة (scripts/build.mjs يرتّب الأجزاء بالاسم) =====

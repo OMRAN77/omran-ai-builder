@@ -36,6 +36,7 @@ I18N['hi'] = {
     buildNoCode: '⚠️ प्रोवाइडर से कोई कोड नहीं मिला — प्रीव्यू खाली है। अनुरोध फिर से भेजें या किसी दूसरे प्रोवाइडर को आज़माएँ।',
     agThought: '{n} सेकंड सोचा', agExplored: '{n} फ़ाइलें देखीं', agNoOutput: 'कोई आउटपुट नहीं', // v-agent-log
     readTab: 'पढ़ा गया कोड', readCite: 'इस पंक्ति को कोड पैनल में खोलें', // v-read-panel
+    cwWorked: '{t} तक काम किया', cwRequest: 'अनुरोध', cwResponse: 'परिणाम', cwTimeM: '{m}मि {s}से', cwTimeS: '{s}से', cwWorking: 'काम जारी है…', // v-work-log
     convertToImage: 'इमेज में बदलें',
     convertToPdf: 'PDF में बदलें',
     convertToWord: 'Word में बदलें',

@@ -35,6 +35,7 @@ I18N['ur'] = {
     buildNoCode: '⚠️ فراہم کنندہ سے کوئی کوڈ موصول نہیں ہوا — پیش منظر خالی ہے۔ درخواست دوبارہ بھیجیں یا کوئی اور فراہم کنندہ آزمائیں۔',
     agThought: '{n} سیکنڈ سوچا', agExplored: '{n} فائلیں دیکھیں', agNoOutput: 'کوئی نتیجہ نہیں', // v-agent-log
     readTab: 'پڑھا گیا کوڈ', readCite: 'یہ سطر کوڈ پینل میں کھولیں', // v-read-panel
+    cwWorked: '{t} کام کیا', cwRequest: 'درخواست', cwResponse: 'نتیجہ', cwTimeM: '{m}م {s}س', cwTimeS: '{s}س', cwWorking: 'کام جاری ہے…', // v-work-log
     convertToImage: 'تصویر میں تبدیل کریں',
     convertToPdf: 'PDF میں تبدیل کریں',
     convertToWord: 'Word میں تبدیل کریں',

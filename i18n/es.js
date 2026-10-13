@@ -38,6 +38,7 @@ I18N['es'] = {
     buildNoCode: '⚠️ No se recibió código del proveedor — la vista previa está vacía. Vuelve a enviar la solicitud o prueba con otro proveedor.',
     agThought: 'Pensó durante {n} s', agExplored: 'Exploró {n} archivos', agNoOutput: 'Sin salida', // v-agent-log
     readTab: 'Código leído', readCite: 'Abrir esta línea en el panel de código', // v-read-panel
+    cwWorked: 'Trabajó durante {t}', cwRequest: 'Solicitud', cwResponse: 'Respuesta', cwTimeM: '{m} min {s} s', cwTimeS: '{s} s', cwWorking: 'Trabajando…', // v-work-log
     convertToImage: 'Convertir a Imagen',
     convertToPdf: 'Convertir a PDF',
     convertToWord: 'Convertir a Word',
