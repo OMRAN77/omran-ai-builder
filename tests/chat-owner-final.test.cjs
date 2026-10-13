@@ -41,7 +41,7 @@ const le = require(rp('api/_lib/log-error.js'));
 le.logErrorAndFlush = async () => {}; le.logError = () => {};
 const chat = require(rp('api/_lib/chat.js'));
 const oa = require(rp('api/_lib/oa-direct.js'));
-const { FINAL_NOTE } = require(rp('api/_lib/owner-loop.js'));
+const { FINAL_NOTE, resumeMark } = require(rp('api/_lib/owner-loop.js')); // v-owner-resume: تحت ختام الميزانيّة سطر «اكتب «كمل»» من الخادم
 
 function token(u) {
   const p = Buffer.from(JSON.stringify({ u, exp: Date.now() + 600000 })).toString('base64url');
@@ -109,9 +109,9 @@ test('١. حلقة لا تنتهي: الخطوة ١٢ بالتنبيه والأ�
   assert.deepEqual(fin.slice(0, prev.length), prev, 'الطلب الختاميّ = السابق + إلحاق (البادئة تُقرأ من الكاش)');
   assert.deepEqual(noCC(last.system), noCC(anth[anth.length - 2].body.system), 'النظام كما هو');
   assert.equal(toolLog.length, 11, 'لا قراءة في الخطوة الختاميّة');
-  assert.equal(r.text, 'الجواب الختاميّ ممّا قرأت.');
+  assert.equal(r.text, 'الجواب الختاميّ ممّا قرأت.' + resumeMark());
   assert.ok(!r.events.some((e) => e.ownerStop), 'لا سبب توقّف — جاء الجواب');
-  assert.equal((await client(r.raw)).reply, 'الجواب الختاميّ ممّا قرأت.');
+  assert.equal((await client(r.raw)).reply, 'الجواب الختاميّ ممّا قرأت.' + resumeMark());
 });
 
 test('٢. مسار الوقت (CHAT_MAX_MS): بعد (المهلة − الهامش) الخطوة التالية ختاميّة قبل حدّ الخطوات', async () => {
@@ -128,7 +128,7 @@ test('٢. مسار الوقت (CHAT_MAX_MS): بعد (المهلة − الهام
     const anth = r.calls.filter((c) => isAnth(c.url));
     assert.ok(anth.length < 12 && anth.length >= 2, 'الختام بالوقت لا بالخطوات (وُجد ' + anth.length + ')');
     assert.ok(isFinal(anth[anth.length - 1].body) && anth[anth.length - 1].body.tool_choice === undefined);
-    assert.equal(r.text, 'جواب قبل انتهاء المهلة.');
+    assert.equal(r.text, 'جواب قبل انتهاء المهلة.' + resumeMark());
   } finally { Date.now = realNow; delete process.env.CHAT_MAX_MS; }
 });
 
@@ -198,6 +198,6 @@ test('٦. المسار المباشر (Groq عبر oa-direct): الخطوة ال
     assert.equal(g[2].body.tool_choice, 'none', 'الختام بـtool_choice على المسار المباشر');
     assert.ok(g.slice(0, 2).every((c) => c.body.tool_choice === undefined));
     assert.deepEqual(g[2].body.tools.map((t) => t.function.name), g[0].body.tools.map((t) => t.function.name), 'الأدوات نفسها');
-    assert.equal(r.text, 'جواب Groq الختاميّ');
+    assert.equal(r.text, 'جواب Groq الختاميّ' + resumeMark());
   } finally { delete process.env.GROQ_API_KEY; delete process.env.CHAT_MAX_STEPS; }
 });
