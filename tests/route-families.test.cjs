@@ -149,8 +149,8 @@ test('١١. rel-4: المشروع المفتوح — ملاحظة المالك �
   assert.ok(ownerLine.includes('__ownerFree && !!cur.code && __toolsWillRun'), 'لا على __routeFix وحده: ' + ownerLine.slice(0, 80));
   const branchStart = h.SRC.indexOf('      } else if(__ownerFree && ');
   const branch = h.SRC.slice(branchStart, h.SRC.indexOf('      // v469: Q&A system prompt', branchStart));
-  assert.ok(branch.includes('__ownerRepoAsk'), 'طلب التطبيق يُصرف للمستودع لا المعاينة');
-  assert.ok(branch.includes("'المشروع المفتوح = عدّله في الردّ"), 'الملاحظة في هذا الفرع');
+  assert.ok(branch.includes('omranOwnerRepoNote'), 'طلب التطبيق يُصرف للمستودع لا المعاينة');
+  assert.ok(h.SRC.includes("'المشروع المفتوح = عدّله في الردّ"), 'الملاحظة ما زالت');
   const topic = h.SRC.slice(h.SRC.indexOf("      if(typeof window.omranTopicSwitch === 'function'"), h.SRC.indexOf('\n', h.SRC.indexOf("      if(typeof window.omranTopicSwitch === 'function'")));
   assert.ok(topic.includes('!__editVerbHit'), 'فيتو فعل التعديل على ملاحظة الموضوع');
   // __editVerbHit بنصّه: المشروع مفتوح + فعل تعديل («كم منتج اقدر احط؟» فيها «حط»)
