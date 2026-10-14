@@ -2014,6 +2014,9 @@ function renderMessages(keepScroll){
       // v-cc-fold: ردّ Claude Code — أدواته وأكواده الطويلة مطويّة بترتيبها داخل الردّ
       if(m._cc && window.omranCC && typeof window.omranCC.decorate === 'function'){
         try{ const __ccw = window.omranCC.decorate(textDiv, m); if(__ccw) msgWordEls = __ccw; }catch(e){ __swallow(e, 'cc:fold'); }
+      } else if(window.omranCC && typeof window.omranCC.foldCode === 'function'){
+        /* v-read-fold: كود الصفحة الطويل مطويّ لكلّ المزوّدين كتطبيق Claude — لا وضع Claude Code وحده */
+        try{ window.omranCC.foldCode(textDiv); }catch(e){ __swallow(e, 'cc:fold-all'); }
       }
     } else {
       textDiv.textContent = __mc;

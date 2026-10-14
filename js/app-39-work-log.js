@@ -1,7 +1,7 @@
 /* v-work-log (المالك ١٣ أكتوبر، لقطة من واجهة Claude وهو يعمل: «سولي نفس هذي بالضبط»): عمل المزوّد في المحادثة صندوق واحد فوق الردّ.
    رأسه: شرارة + ما يفعله الآن + الوقت المنقضي + سهم. داخله إطار، وكلّ عنصر سطر عنوان ينفتح: التفكير أسطرًا قصيرة (جملة في
    السطر، وعنوانه آخر جملة)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا: التفكير مسكّر حتّى يفتحه من يريد (v-think-closed)،
-   وبعد أوّل أداة لا يُضاف كلام تفكير جديد (v-edit-no-talk). أحدث أداة وحدها مفتوحة وما قبلها يُطوى، والوقت يعدّ كلّ ثانية.
+   والتفكير بين الأدوات يظهر مطويًّا (v-interleave). قراءة الصفحة/الملفّ مطويّة ولو كانت الأحدث (v-read-fold)، وغير القراءة الأحدث وحدها مفتوحة.
    محفوظًا (m._agParts وأوّله {t:'meta', ms}): مطويّ في سطر «عمل لمدّة …». سجلّ الوكيل القديم (بلا meta) يرسمه __agLogRender كما كان.
    النصوص: cwWorked وcwRequest وcwResponse وcwTimeM وcwTimeS وcwWorking (١٤ لغة). */
 (function(){
@@ -60,6 +60,12 @@
     return el;
   }
   function sameKind(a, b){ return !!(a && b && a.t === 'tool' && b.t === 'tool' && a.name && a.name === b.name); }
+  /* v-read-fold (المالك ١٤ أكتوبر «يقرى الصفحة اريدها مطوية نفس نظام كلاود»): قراءة الصفحة/الملفّ سطر مطويّ كـRead في Claude Code — لا تُفتح ولو كانت الأحدث. */
+  function isRead(p){
+    if(!p || p.t !== 'tool') return false;
+    if(p.code) return true;
+    return /^(?:trFetch|stFetchPage|trFetchFail|fetch_page|read_github|Read)$/i.test(String(p.name || ''));
+  }
   function partEl(p, open){
     if(!p) return null;
     if(p.t === 'think') return thinkEl(p, open);
@@ -106,8 +112,8 @@
           if(p && p.t === 'tool'){
             Array.prototype.forEach.call(b.list.children, function(c){ if(c.classList && c.classList.contains('cwThinkItem')) c.open = false; });
           }
-          /* v-think-closed: التفكير مطويّ؛ الأداة الأحدث وحدها تُفتح */
-          var el = partEl(p, p && p.t !== 'think');
+          /* v-think-closed: التفكير مطويّ. v-read-fold: قراءة الصفحة مطويّة كـClaude؛ غيرها الأحدث تُفتح */
+          var el = partEl(p, p && p.t === 'tool' && !isRead(p));
           if(el){ el.__last = p; b.list.appendChild(el); }
         },
       };
@@ -127,7 +133,7 @@
       }
       return b.d;
     },
-    thinkEl: thinkEl, toolEl: toolEl, groupEl: groupEl, groupAdd: groupAdd, // v-interleave: الوكيل يبني بالعناصر نفسها
+    thinkEl: thinkEl, toolEl: toolEl, groupEl: groupEl, groupAdd: groupAdd, isRead: isRead, // v-interleave · v-read-fold
     _lines: lines, _dur: dur, // للاختبار
   };
 })();

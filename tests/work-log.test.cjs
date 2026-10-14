@@ -121,9 +121,9 @@ test('٢. الحيّ: لا صندوق قبل أوّل تفكير أو خطوة؛
   assert.equal(think.open, true, 'من يريد يفتحه');
   think.open = false;
   sb.omranShowThink(bubble, { head: 'يقرأ من GitHub…' });
-  sb.omranShowThink(bubble, { step: { t: 'tool', title: 'api/_lib/chat.js  1–40', cmd: 'OMRAN77/omran-ai-builder api/_lib/chat.js', out: '📄 chat.js', err: 0 } });
+  sb.omranShowThink(bubble, { step: { t: 'tool', name: 'trFetch', title: 'api/_lib/chat.js  1–40', cmd: 'OMRAN77/omran-ai-builder api/_lib/chat.js', out: '📄 chat.js', err: 0 } });
   assert.equal(head.childNodes[1].textContent, 'يقرأ من GitHub…', 'الرأس يتبع ما يجري');
-  assert.deepEqual(kids(list), ['think', 'tool+'], 'التفكير مطويّ والأداة الأحدث مفتوحة');
+  assert.deepEqual(kids(list), ['think', 'tool'], 'v-read-fold: قراءة الصفحة مطويّة كـClaude Code ولو كانت الأحدث');
   sb.omranShowThink(bubble, { s: 'الآن أعدّل المقطع من جديد داخل التعديل.', ms: 2000, t0: 1000 });
   assert.deepEqual(kids(list), ['think', 'tool', 'think'], 'v-interleave: تفكير بعد الأداة سطر مطويّ، والأداة تُطوى');
   const tool = list.childNodes[1];
@@ -182,9 +182,27 @@ test('٥. v-interleave (المالك ١٤ أكتوبر «نفس فكرة كلا�
   assert.equal(d.childNodes[1].childNodes[0].q('cwTitle')[0].textContent, 'y  · +1');
   const a9 = APP09;
   assert.ok(a9.includes("if(window.omranWorkLog) return window.omranWorkLog.thinkEl(p, false);"), 'تفكير الوكيل سطر مطويّ');
-  assert.ok(a9.includes("p.el = W.groupAdd(g, p); g.__last = p;") && a9.includes("p.el = W.toolEl(p, true);"), 'أدوات الوكيل بالمجموعة والأحدث مفتوحة');
+  assert.ok(a9.includes("p.el = W.groupAdd(g, p); g.__last = p;") && a9.includes("p.el = W.toolEl(p, !W.isRead(p));"), 'أدوات الوكيل بالمجموعة والقراءة مطويّة');
   assert.ok(a9.includes("return window.omranWorkLog.render([{ t: 'meta'"), 'سجلّ الوكيل المحفوظ بالصندوق نفسه');
   assert.ok(read('js/app-18-chat-tools.js').includes('__thinks.length < 12) { /* v-interleave'), 'المحادثة: التفكير بين الأدوات لكلّ المزوّدين');
   assert.ok(require(path.join(root, 'api/_lib/github-edit.js')).WORK_NOTE.includes('اعمل كما يعمل Claude Code (v-interleave)'), 'تعليمة المزوّدين');
   for (const s of ['groupAdd: groupAdd', '__thinks.length < 12']) assert.ok(read('js/app.bundle.js').includes(s), 'الحزمة: ' + s);
+});
+
+test('٦. v-read-fold (المالك ١٤ أكتوبر «يقرى الصفحة اريدها مطوية نفس نظام كلاود»): القراءة مطويّة لكلّ المزوّدين ولو كانت الأحدث، والبحث يبقى مفتوحًا', () => {
+  const { sb } = client({ t: 0 });
+  const bubble = mkEl('div'); const host = mkEl('div'); host.__root = 1; host.appendChild(bubble);
+  sb.omranShowThink(bubble, { step: { t: 'tool', name: 'trFetch', title: 'example.com', cmd: 'https://example.com', out: '<html>…', err: 0 } });
+  const list = host.childNodes[0].childNodes[1];
+  assert.equal(list.childNodes[0].open, false, 'fetch_page مطويّ كـRead في Claude Code');
+  sb.omranShowThink(bubble, { step: { t: 'tool', name: 'read_github', title: 'a.js  1–40', cmd: 'a.js', out: '📄', code: { p: 'a.js' }, err: 0 } });
+  assert.equal(list.childNodes[1].open, false, 'read_github مطويّ');
+  sb.omranShowThink(bubble, { step: { t: 'tool', name: 'trSearchN', title: 'بحث', cmd: 'q', out: 'y', err: 0 } });
+  assert.equal(list.childNodes[2].open, true, 'البحث الأحدث مفتوح كما كان');
+  const W = sb.window.omranWorkLog;
+  assert.equal(W.isRead({ t: 'tool', name: 'fetch_page' }), true);
+  assert.equal(W.isRead({ t: 'tool', name: 'trSearchN' }), false);
+  assert.equal(W.isRead({ t: 'tool', code: { p: 'x.js' } }), true);
+  assert.ok(read('js/app-04-i18n-state.js').includes('window.omranCC.foldCode(textDiv)'), 'كود الردّ الطويل يُطوى لكلّ المزوّدين');
+  assert.ok(read('js/app-38-read-panel.js').includes('v-read-fold') && !read('js/app-38-read-panel.js').includes('if(first && !isMobile()) reveal()'), 'اللوحة لا تُفتح وحدها');
 });
