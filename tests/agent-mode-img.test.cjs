@@ -87,8 +87,9 @@ const toolTurn = (name, input) => () => sse([start,
 const textTurn = (t) => () => sse([start, { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
   { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: t } }, { type: 'content_block_stop', index: 0 }, { type: 'message_delta', delta: { stop_reason: 'end_turn' } }]);
 
+const saves = [];
 async function run(ask, script, extra) {
-  const calls = [], gh = [], pending = [];
+  const calls = [], gh = [], pending = []; saves.length = 0;
   const save = global.fetch;
   let i = 0;
   global.fetch = async (url, init) => {
@@ -113,6 +114,12 @@ async function run(ask, script, extra) {
       for (const l of String(c).split('\n')) {
         if (!l.startsWith('data: ')) continue;
         let e = null; try { e = JSON.parse(l.slice(6)); } catch (err) { e = null; }
+        if (e && e.clientTool && e.clientTool.name === 'save_image') { // المتصفّح يحفظ الرسمة التي عنده برمزها — بلا رسم
+          const id = e.clientTool.id, t = e.clientTool.input.token;
+          saves.push(t);
+          if (t === '__IMG_2__') db.set('agent/tool/' + id, { output: 'تعذّر: لا صورة للرمز ' + t + ' في هذا المتصفّح — ارسمها من جديد.' }); // رمز لا رسمة له في المتصفّح
+          else pending.push(share({ data: PNG_B64, mime: 'image/png', purpose: 'agent' }).then((sv) => { db.set('agent/tool/' + id, { output: '✅ حُفظت ' + t + ': ' + sv.body.url }); }));
+        }
         if (e && e.clientTool && e.clientTool.name === 'generate_image') {
           const id = e.clientTool.id;
           pending.push(fakeClientDraw('__IMG_1__').then((output) => { db.set('agent/tool/' + id, { output }); }));
@@ -135,7 +142,7 @@ test('١. وضع الوكيل: أداتا الرسم للمالك وحده (بع
   for (const t of toolsFor('omran').filter((x) => /_image$/.test(x.name))) assert.equal(Object.keys(t.input_schema.properties)[0], 'step_title');
   const gen = toolsFor('omran').find((t) => t.name === 'generate_image');
   assert.ok(gen.description.includes('__IMG_1__') && gen.description.includes('write_github'), 'الوصف يقول كيف تُرفع');
-  assert.deepEqual(CLIENT_WAIT_MS, { generate_image: 75000, edit_image: 150000 }, 'مهلة chat.js نفسها — لا ٢٥ ثانية');
+  assert.deepEqual(CLIENT_WAIT_MS, { generate_image: 75000, edit_image: 150000, save_image: 30000 }, 'مهلة chat.js نفسها — لا ٢٥ ثانية');
   const src = read('api/_lib/agent.js');
   assert.ok(src.includes('const waitMs = CLIENT_WAIT_MS[name] || 25000;'), 'run_js وtest_html على ٢٥ ثانية كما كانا');
 });
@@ -207,4 +214,30 @@ test('٥. v-agent-img-size: الرسمة فوق ٢٫٥ م.ب تُعاد JPEG ق�
   assert.ok(c.includes('⚠️ لم تُحفظ في مخزن التطبيق (') && c.includes('لا تُرفع بهذا الرمز؛ أعد رسمها.'));
   assert.ok(bundle.includes('function omranAgentShrink(b64, mime)'), 'الحزمة مبنيّة');
   assert.equal(require(rp('api/_lib/img-share.js')).AGENT_TTL_SEC, 86400);
+});
+
+test('٦. v-agent-img-keep: رمز رسمة لم تُحفظ ← الخادم يطلب من المتصفّح حفظها (save_image) فيُرفع بلا رسم جديد ولا رصيد، والمحادثة مثل الوكيل', async () => {
+  db.clear(); raw.clear();
+  const r = await run('ارفع الصورة اللي رسمتها مكان ' + P, [
+    toolTurn('write_github', { repo: REPO, files: [{ path: P, image: '__IMG_3__' }], message: 'رفع' }),
+    textTurn('رفعت.'),
+  ]);
+  assert.deepEqual(saves, ['__IMG_3__'], 'طُلب الحفظ مرّة للرمز نفسه');
+  assert.ok(!r.events.some((e) => e.clientTool && e.clientTool.name === 'generate_image'), 'لا رسم جديد');
+  assert.ok(toolResults(r.calls[1])[0].startsWith('✅ رُفع'), toolResults(r.calls[1])[0]);
+  assert.ok(isWebp(r.gh.find((c) => /\/git\/blobs$/.test(c.url)).body.content));
+  const ch = read('api/_lib/chat.js'), c17 = read('js/app-17-agent-tools.js');
+  assert.ok(ch.includes("ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-write.js').pushFiles("), 'المحادثة: كلّ المزوّدين');
+  assert.ok(ch.includes(".then(() => require('./github-edit.js').editFiles("));
+  assert.ok(c17.includes("if (name === 'save_image') {") && c17.includes('sms[si]._imgCache[stok]'), 'الرسمة من ذاكرة المتصفّح أو من رسالتها');
+  assert.ok(c17.includes('if (u || again) return u;') && c17.includes('return sh ? omranAgentSave1(tok, sh.b64, sh.mime)'), 'الحفظ الفاشل يُعاد مصغّرًا مرّة');
+  assert.ok(read('js/app.bundle.js').includes("if (name === 'save_image') {"));
+});
+
+test('٧. v-owner-self-drive: طريقة العمل المشتركة (المحادثة لكلّ المزوّدين والوكيل) — ارسم ثمّ ارفع مرّة، لا رسم لتشخيص، والفشل يجرّب طريقًا آخر', () => {
+  const w = require(rp('api/_lib/github-edit.js')).WORK_NOTE;
+  assert.ok(w.includes('ارسم كلّ المطلوب أوّلًا، ثمّ ارفعها كلّها في رفعة واحدة') && w.includes('رسمة «لم تُحفظ» لا تُعاد رسمًا'));
+  assert.ok(w.includes('لا تُعِد رسمًا ولا تشغيلًا مكلفًا لتعرف سبب عطل') && w.includes('جرّب الطريق الآخر بنفسك في الردّ نفسه'));
+  assert.ok(read('api/_lib/agent.js').includes('const OWNER_ENGINEERING_NOTE = githubEdit.WORK_NOTE;'), 'الوكيل يقرؤها');
+  assert.ok(read('api/_lib/chat.js').includes("require('./github-edit.js').WORK_NOTE"), 'والمحادثة لكلّ المزوّدين');
 });
