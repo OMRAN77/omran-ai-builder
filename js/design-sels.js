@@ -306,8 +306,10 @@
   function selImg(id,v){
     if(!v) return '';
     if(id==='designAiLighting'&&LIGHT_POS[v]) return ''; /* v-decor-light-sheet: صورتها من اللوحة في roomBg */
-    return id==='designAiStyle' ? 'assets/design/styles/'+v+'.webp'
-      : 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp';
+    /* v-decor-furn-photos (المالك ١٤ أكتوبر: «بعدّل صور خيارات الأثاث داخل الديكور» · «ما عندي رصيد»):
+       المودرن/الكلاسيكي/البسيط/الفاخر/البوهيمي = صور أنماطها الموجودة. بلا رسم ولا قصّ من لوحة. */
+    if(id==='designAiStyle' || id==='designAiFurniture') return 'assets/design/styles/'+v+'.webp';
+    return 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp';
   }
   function selTrigger(s){
     var ien=(document.documentElement.lang||'ar')==='en';
