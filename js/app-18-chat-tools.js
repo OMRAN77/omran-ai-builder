@@ -194,6 +194,7 @@
         ownerUiShot: (typeof window.__ownerUiShotTurn === 'boolean') ? window.__ownerUiShotTurn : undefined, /* v-owner-ui-shot-client: قرار الواجهة لهذا الدور (لقطة المالك يطلب تعديلها) — الخادم يتبعه بدل إعادة التخمين من النصّ */
         noTools: (opts && opts.noTools) ? true : undefined, /* v-owner-solo: المسار القديم للمالك (استئذان/إصلاح) بلا أدوات كما كان — الخادم يقبله للمالك وحده */
         genImage: __genImg || undefined, /* v-gen-image: صورة «عمّم» للمالك وحده؛ undefined لغيرها فيسقط الحقل من JSON */
+        imgIds: (function () { try { var c = (typeof omranOwnerUi === 'function' && omranOwnerUi() && typeof getCurrent === 'function') ? getCurrent() : null; return (c && c.agentImgIds && Object.keys(c.agentImgIds).length) ? c.agentImgIds : undefined; } catch (e) { return undefined; } })(), /* v-agent-img: رمز رسمة المحادثة ← معرّفها في المخزن، للمالك وحده */
         histOffset: (opts && Number.isInteger(opts.histOffset) && opts.histOffset >= 0) ? opts.histOffset : undefined, /* v-tokens-window: موضع أوّل رسالة مرسلة في المحادثة — الخادم يثبّت به بداية نافذة التاريخ (كاش)؛ undefined = السلوك القديم */
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */

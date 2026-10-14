@@ -51,7 +51,7 @@ function apiMsg(r, j, what) {
 }
 
 /* ---------- التحقّق من المدخل ---------- */
-function validateInput(input, limits) {
+function validateInput(input, limits, imgIds) {
   const L = limits || LIMITS;
   const i = input && typeof input === 'object' ? input : {};
   const files = Array.isArray(i.files) ? i.files : [];
@@ -66,8 +66,10 @@ function validateInput(input, limits) {
   for (const f of files) {
     if (!f || typeof f !== 'object' || !validPath(f.path)) return { error: 'مسار ملفّ غير صالح: ' + String(f && f.path).slice(0, 80) };
     if (typeof f.content !== 'string' && typeof f.image === 'string') { // v-gen-image
-      const id = imageIdOf(f.image);
-      if (!id) return { error: 'رابط الصورة لـ' + f.path + ' ليس من التطبيق — أعطِ رابط صورة معمّمة مثل /i/abc123def456.jpg.' };
+      const tok = require('./agent-img.js').resolveImage(f.image, imgIds); // v-agent-img: «__IMG_N__» رسمة المزوّد في هذه المحادثة
+      if (tok.unknown) return { error: 'الرمز ' + tok.value + ' لـ' + f.path + ' لا صورة محفوظة له في هذه المحادثة — ارسمها أوّلًا بـgenerate_image (للمالك تُحفظ تلقائيًّا ويصلك رابطها) أو أعطِ رابطها /i/….' };
+      const id = imageIdOf(tok.value);
+      if (!id) return { error: 'رابط الصورة لـ' + f.path + ' ليس من التطبيق — أعطِ رمز الرسمة __IMG_N__ أو رابطها مثل /i/abc123def456.jpg.' };
       if (!IMG_PATH_RE.test(f.path)) return { error: f.path + ': الصورة تحتاج مسارًا بامتداد صورة (png أو jpg أو jpeg أو webp أو gif).' };
       if (seen.has(f.path)) return { error: 'المسار مكرّر: ' + f.path };
       seen.add(f.path);
@@ -141,7 +143,7 @@ async function pushFiles(input, opts) {
   const i = input && typeof input === 'object' ? input : {};
   const t = parseTarget({ url: i.repo || i.url || '' });
   if (!t) return { error: 'حدّد المستودع بصيغة owner/repo أو برابطه.' };
-  const v = validateInput(i, o.fromEdit === true ? EDIT_PUSH_LIMITS : LIMITS);
+  const v = validateInput(i, o.fromEdit === true ? EDIT_PUSH_LIMITS : LIMITS, o.imgIds);
   if (v.error) return v;
   const message = String(i.message || '').trim().slice(0, 300) || 'تحديث من وكيل عمران';
   const R = '/repos/' + t.owner + '/' + t.repo;
@@ -149,8 +151,11 @@ async function pushFiles(input, opts) {
   const imgs = [];
   for (const im of v.images || []) {
     const got = await (o.getImage || require('./img-share.js').getImage)(im.id);
-    if (!got || !got.b64) return { error: 'الصورة ' + im.id + ' غير موجودة في التطبيق (انتهت أو حُذفت) — اطلب من المالك «عمّم» عليها من جديد.' };
-    imgs.push({ path: im.path, b64: got.b64 });
+    if (!got || !got.b64) return { error: 'الصورة ' + im.id + ' غير موجودة في التطبيق (انتهت أو حُذفت) — ارسمها من جديد، أو اطلب من المالك «عمّم» عليها.' };
+    /* v-agent-img: امتداد المسار يطابق المحتوى — PNG/JPEG إلى .webp تُحوَّل (والعكس)، وما لا يُحوَّل يُرفض بسببه قبل أيّ نداء لـGitHub */
+    const conv = await require('./img-convert.js').toPathFormat(got.b64, im.path);
+    if (conv.error) return { error: conv.error };
+    imgs.push({ path: im.path, b64: conv.b64, converted: conv.converted ? conv.from + '→' + conv.to : '' });
   }
 
   const { r: rr, j: repo } = await ghJson(R, o);
@@ -210,7 +215,7 @@ async function pushFiles(input, opts) {
     if (!mk.ok) return { error: apiMsg(mk, mj, 'إنشاء الفرع ' + branch) };
   }
 
-  const out = { ok: true, repo: t.owner + '/' + t.repo, branch, base, direct: branch === base, commit: cmj.sha, commitUrl: (cmj.html_url || ('https://github.com/' + t.owner + '/' + t.repo + '/commit/' + cmj.sha)), files: userFiles, bundle: bundled || undefined, bundleError: bundleError || undefined, deleted: v.deletes.length, prUrl: '', prNumber: null, prError: '' };
+  const out = { ok: true, converted: imgs.filter((x) => x.converted).map((x) => x.path + ' (' + x.converted + ')'), repo: t.owner + '/' + t.repo, branch, base, direct: branch === base, commit: cmj.sha, commitUrl: (cmj.html_url || ('https://github.com/' + t.owner + '/' + t.repo + '/commit/' + cmj.sha)), files: userFiles, bundle: bundled || undefined, bundleError: bundleError || undefined, deleted: v.deletes.length, prUrl: '', prNumber: null, prError: '' };
   if (branch !== base) {
     const { r: pl, j: plj } = await ghJson(R + '/pulls?state=open&head=' + encodeURIComponent(t.owner + ':' + branch) + '&base=' + encodeURIComponent(base), o);
     let pr = pl.ok && Array.isArray(plj) && plj.length ? plj[0] : null;
@@ -228,6 +233,7 @@ async function pushFiles(input, opts) {
 function formatPush(res) {
   if (!res || res.error) return '✗ لم يُرفع شيء: ' + ((res && res.error) || 'سبب غير معروف');
   const lines = ['✅ رُفع commit ' + short(res.commit) + ' إلى ' + res.repo + ' على الفرع «' + res.branch + '» (' + res.files + ' ملفًّا' + (res.deleted ? '، حُذف ' + res.deleted : '') + ').', 'الالتزام: ' + res.commitUrl];
+  if (res.converted && res.converted.length) lines.push('🖼️ حُوّلت صيغة الصورة لتطابق امتداد مسارها: ' + res.converted.join('، ') + '.'); // v-agent-img
   if (res.bundle) lines.push('📦 الحزمة js/app.bundle.js بُنيت تلقائيًّا في الالتزام نفسه من ' + res.bundle.parts + ' جزءًا (بصمة ' + res.bundle.hash + ' في index.html وsw.js) — لا تبنها ولا ترفعها بنفسك؛ CI والمعاينة يريان التغيير.');
   else if (res.bundleError) lines.push('⚠️ تعذّر بناء الحزمة تلقائيًّا: ' + res.bundleError + ' — CI سيفشل والمعاينة لن تتغيّر. قلها للمالك كما هي.');
   if (res.prUrl) lines.push('طلب السحب #' + res.prNumber + ': ' + res.prUrl);
@@ -239,12 +245,12 @@ function formatPush(res) {
 
 const TOOL = {
   name: 'write_github',
-  description: 'ارفع ملفّات إلى مستودع GitHub للمالك: يُنشأ فرع جديد omran-agent/… من الفرع الرئيسيّ، ويُرفع التزام واحد بكلّ الملفّات، ويُفتح طلب سحب — لا دفع إلى الفرع الرئيسيّ أبدًا، والدمج والنشر بيد المالك. لا تستدعها إلّا بطلب صريح من المستخدم بالرفع، وبعد أن تقرأ الملفّ الحاليّ بـread_github إن كنت تعدّله. الملفّات نصّية (٢٠ ملفًّا كحدّ أقصى)، والصورة وحدها تُرفع بحقل image بدل content: رابطها في التطبيق (/i/<id>.jpg — من سطر «[صورة معمّمة]»)، مثل «بدّل صورة الواجهة بهذي». أعد الاستدعاء بنفس branch لإضافة التزام ثانٍ على الفرع نفسه.',
+  description: 'ارفع ملفّات إلى مستودع GitHub للمالك: يُنشأ فرع جديد omran-agent/… من الفرع الرئيسيّ، ويُرفع التزام واحد بكلّ الملفّات، ويُفتح طلب سحب — لا دفع إلى الفرع الرئيسيّ أبدًا، والدمج والنشر بيد المالك. لا تستدعها إلّا بطلب صريح من المستخدم بالرفع، وبعد أن تقرأ الملفّ الحاليّ بـread_github إن كنت تعدّله. الملفّات نصّية (٢٠ ملفًّا كحدّ أقصى)، والصورة وحدها تُرفع بحقل image بدل content: رمز رسمتك في هذه المحادثة (__IMG_1__ من نتيجة generate_image/edit_image) أو رابطها في التطبيق (/i/<id>.jpg — من نتيجة الرسم أو سطر «[صورة معمّمة]» أو «[صور رسالة المالك…]»)، مثل «بدّل صورة الواجهة بهذي»؛ وامتداد المسار يحدّد الصيغة (PNG/JPEG إلى .webp تُحوَّل تلقائيًّا). أعد الاستدعاء بنفس branch لإضافة التزام ثانٍ على الفرع نفسه.',
   input_schema: {
     type: 'object',
     properties: {
       repo: { type: 'string', description: 'المستودع بصيغة owner/repo أو رابطه' },
-      files: { type: 'array', description: 'الملفّات المرفوعة (تُنشأ أو تُستبدل كاملة)', items: { type: 'object', properties: { path: { type: 'string', description: 'المسار داخل المستودع مثل js/app.js' }, content: { type: 'string', description: 'محتوى الملفّ كاملًا' }, image: { type: 'string', description: 'بدل content لرفع صورة: رابطها في التطبيق مثل /i/abc123def456.jpg — تُرفع بايتاتها كما هي' } }, required: ['path'] } },
+      files: { type: 'array', description: 'الملفّات المرفوعة (تُنشأ أو تُستبدل كاملة)', items: { type: 'object', properties: { path: { type: 'string', description: 'المسار داخل المستودع مثل js/app.js' }, content: { type: 'string', description: 'محتوى الملفّ كاملًا' }, image: { type: 'string', description: 'بدل content لرفع صورة: رمز رسمتك __IMG_1__ أو رابطها في التطبيق مثل /i/abc123def456.jpg — تُحوَّل لصيغة امتداد المسار إن اختلفت' } }, required: ['path'] } },
       delete: { type: 'array', description: 'مسارات ملفّات تُحذف (اختياريّ)', items: { type: 'string' } },
       message: { type: 'string', description: 'رسالة الالتزام — سطر واضح بما تغيّر ولماذا' },
       title: { type: 'string', description: 'عنوان طلب السحب (اختياريّ؛ الافتراضيّ رسالة الالتزام)' },

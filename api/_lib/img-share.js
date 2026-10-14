@@ -13,6 +13,9 @@ const MAX_B64 = 3 * 1024 * 1024; // حدّ أمان لكلّ صورة
 const TTL_SEC = 60 * 60 * 24 * 7; // v-media-purge: كان ٣٠ يومًا فامتلأت القاعدة المجانيّة — ٧ كالفيديو والـPDF
 const DAILY_UPLOADS = 30; // v-share-guard: روابط صور يوميًّا لكلّ حساب
 const KEY = (id) => 'db/img/' + id;
+const AGENT_TTL_SEC = 60 * 60 * 24; // v-agent-img: صور المزوّد للمالك يومًا واحدًا — تكفي للرفع، وRedis قرب الامتلاء
+/** بصمة المحتوى (١٦ خانة) — معرّف ثابت للصورة نفسها */
+function contentId(b64) { return crypto.createHash('sha256').update(String(b64 || '')).digest('hex').slice(0, 16); }
 const CHUNK = 700 * 1024;
 
 /* v-gen-image (أمر المالك ١٣ أكتوبر «اذا شفت الصورة عند مزوّد اقوله عمّم… كل شي موجود في التطبيق نفسه»): الحفظ والقراءة
@@ -53,8 +56,10 @@ async function getImage(id) {
   return st.error ? null : parseStored(st.s);
 }
 // يحفظ base64 بعمر ttlSec ويرجع المعرّف، أو '' إن فشل الحفظ (القاعدة ممتلئة رغم التنظيف أو عطل).
-async function putImage(data, mime, w, h, ttlSec) {
-  const id = crypto.randomBytes(6).toString('hex');
+// v-agent-img: fixedId (بصمة المحتوى) = الصورة نفسها مفتاح واحد — موجودة تُرجَع بلا كتابة ثانية.
+async function putImage(data, mime, w, h, ttlSec, fixedId) {
+  const id = /^[a-f0-9]{12,24}$/.test(String(fixedId || '')) ? String(fixedId) : crypto.randomBytes(6).toString('hex');
+  if (fixedId && id === fixedId) { try { if (await kvGetRaw(KEY(id))) return id; } catch (e) { /* guard-ok — القراءة تحسين؛ الكتابة بعدها تحسم */ } }
   const W = Math.max(0, parseInt(w, 10) || 0), H = Math.max(0, parseInt(h, 10) || 0);
   const prefix = (W && H) ? (mime + ':' + W + ':' + H + ':') : (mime + ':');
   let ok;
@@ -74,6 +79,7 @@ async function putImage(data, mime, w, h, ttlSec) {
     console.error('[img-share] store failed:', e && e.message); // القاعدة ممتلئة رغم التنظيف أو عطل — يُردّ كـstore_failed
     ok = false;
   }
+  if (!ok && fixedId && id === fixedId) return putImage(data, mime, w, h, ttlSec); // v-agent-img: أجزاء ناقصة من محاولة سابقة تحجز البصمة يومًا — معرّف عشوائيّ بدلها
   return ok ? id : '';
 }
 async function delImage(id) {
@@ -171,14 +177,20 @@ module.exports = async (req, res) => {
     if (data.length > MAX_B64) { res.status(413).json({ error: 'too_large' }); return; }
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
     const plan = uploadPlan(body, 'share-img', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
-    if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
+    const __user = await gateShare(req, res, body, plan.bucket, plan.limit, data.length); // v-share-bytes
+    if (!__user) return;
+    /* v-agent-img: صورة رسمها المزوّد للمالك (purpose:'agent') — للمالك وحده، ٢٤ ساعة لا أسبوع (Redis قرب الامتلاء)،
+       وبصمة المحتوى معرّفها فالصورة نفسها لا تُكتب مرّتين. */
+    const __agent = body.purpose === 'agent';
+    if (__agent && !require('./_owner.js').isOwnerName(__user)) { await refundShare(req, body, plan.bucket); res.status(403).json({ error: 'owner_only' }); return; }
     const mime = /^image\/(png|jpeg|webp)$/.test(String(body.mime || '')) ? String(body.mime) : 'image/jpeg';
-    const id = await putImage(data, mime, body.w, body.h, plan.ttlSec); // دعم أجزاء للصور الكبيرة داخلها
+    const id = await putImage(data, mime, body.w, body.h, __agent ? AGENT_TTL_SEC : plan.ttlSec, __agent ? contentId(data) : ''); // دعم أجزاء للصور الكبيرة داخلها
 
     if (!id) { await refundShare(req, body, plan.bucket); res.status(500).json({ error: 'store_failed' }); return; } // v-refund-custom
     // v637 — أمر عمران: «صورة خاليه أريد». الرابط المُشارَك يفتح البايتات الخام
     // مباشرةً (صورة وحدها بلا صفحة ولا زرّ)؛ صفحة /i/<id> تبقى للروابط القديمة.
     const outExt = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
+    if (__agent) { res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: 1 }); return; } // v-agent-img: يوم واحد
     res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: 7 });
     return;
   }
@@ -186,5 +198,7 @@ module.exports = async (req, res) => {
   res.status(405).json({ error: 'Method not allowed' });
 };
 module.exports.putImage = putImage;
+module.exports.contentId = contentId;
+module.exports.AGENT_TTL_SEC = AGENT_TTL_SEC;
 module.exports.getImage = getImage;
 module.exports.delImage = delImage;

@@ -98,7 +98,10 @@ function checkSyntax(before, after) {
 function validateEdits(input) {
   const i = input && typeof input === 'object' ? input : {};
   const edits = Array.isArray(i.edits) ? i.edits : [];
-  if (!edits.length) return { error: 'لا تعديلات: أعطِ edits [{path, old, new}].' };
+  /* v-agent-img: صور تُستبدل مع التعديل في الالتزام نفسه — {path, image} (رمز الرسمة __IMG_N__ أو رابط /i/)؛ يتحقّق منها write_github */
+  const images = (Array.isArray(i.images) ? i.images : []).filter((x) => x && typeof x === 'object').map((x) => ({ path: String(x.path || ''), image: String(x.image || '') }));
+  if (images.length > 10) return { error: 'الحدّ ١٠ صور في الرفعة الواحدة.' };
+  if (!edits.length && !images.length) return { error: 'لا تعديلات: أعطِ edits [{path, old, new}] أو images [{path, image}].' };
   if (edits.length > EDIT_LIMITS.edits) return { error: 'الحدّ ' + EDIT_LIMITS.edits + ' تعديلًا في الرفعة الواحدة.' };
   const out = [];
   for (const e of edits) {
@@ -110,7 +113,8 @@ function validateEdits(input) {
     out.push({ path: String(e.path), old: e.old, new: e.new, all: e.all === true });
   }
   if (new Set(out.map((e) => e.path)).size > EDIT_LIMITS.files) return { error: 'الحدّ ' + EDIT_LIMITS.files + ' ملفّات في الرفعة الواحدة.' };
-  return { edits: out };
+  for (const im of images) if (out.some((e) => e.path === im.path)) return { error: 'المسار في التعديل والصور معًا: ' + im.path };
+  return images.length ? { edits: out, images } : { edits: out };
 }
 
 async function editFiles(input, opts) {
@@ -138,7 +142,7 @@ async function editFiles(input, opts) {
   if (applied.error) return applied;
   const broken = checkSyntax(texts, applied.texts); // v-claude-code-level (A3)
   if (broken) return broken;
-  const files = Object.keys(applied.texts).map((p) => ({ path: p, content: applied.texts[p] }));
+  const files = Object.keys(applied.texts).map((p) => ({ path: p, content: applied.texts[p] })).concat(v.images || []); // v-agent-img
   // v-claude-code-level (F1): fromEdit = سقف الملفّ ١٫٥ مليون حرف لمسار التعديل وحده (write_github يبقى ٢٠٠ ألف)
   const res = await githubWrite.pushFiles({ repo: t.owner + '/' + t.repo, files, message: i.message, title: i.title, body: i.body, branch: i.branch, base }, Object.assign({}, o, { fromEdit: true }));
   if (res && res.ok) res.edits = v.edits.length;
@@ -216,6 +220,7 @@ const EDIT_TOOL = {
       message: { type: 'string', description: 'رسالة الالتزام بالعربيّة: ما تغيّر ولماذا' },
       title: { type: 'string', description: 'عنوان طلب السحب (اختياريّ)' },
       body: { type: 'string', description: 'وصف طلب السحب (اختياريّ)' },
+      images: { type: 'array', description: 'صور تُستبدل في الالتزام نفسه (اختياريّ): {path, image} — image رمز رسمتك __IMG_1__ أو رابطها /i/…؛ تُحوَّل لصيغة امتداد المسار', items: { type: 'object', properties: { path: { type: 'string' }, image: { type: 'string' } }, required: ['path', 'image'] } },
       branch: { type: 'string', description: 'فرع رفعتَ إليه سابقًا في هذا الحوار لإضافة التزام (اختياريّ)' },
       base: { type: 'string', description: 'الفرع الأساس (اختياريّ)' },
     },
