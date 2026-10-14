@@ -11,6 +11,19 @@ import { createHash } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
 
 const BASE = (process.argv[2] || 'https://omran-ai-builder.vercel.app').replace(/\/$/, '');
+/** v-smoke-skip-railway: لوحة Railway/غير Vercel ليست التطبيق — تُخطّى بلا أحمر. localhost لفحص محلّي. */
+function isSmokeableUrl(u) {
+  try {
+    const s = String(u || '').trim();
+    const h = new URL(/^[a-z][a-z0-9+.-]*:/i.test(s) ? s : 'https://' + s).hostname.toLowerCase();
+    if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return true;
+    return h === 'omran-ai-builder.vercel.app' || h.endsWith('.vercel.app');
+  } catch (e) { return false; }
+}
+if (process.argv[2] && !isSmokeableUrl(process.argv[2])) {
+  console.log('ⓘ تُخطّى: العنوان ليس نشرة التطبيق — ' + BASE);
+  process.exit(0);
+}
 const KEY = process.env.MONITOR_KEY || '';
 let pass = 0, fail = 0;
 const ok = (m) => { pass++; console.log('  ✓ ' + m); };
