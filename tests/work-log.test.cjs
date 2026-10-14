@@ -1,6 +1,6 @@
 'use strict';
 /* v-work-log (المالك ١٣ أكتوبر: «الحينه هذا منظم بي ذمتك»، ثمّ لقطة واجهة Claude وهو يعمل: «سولي نفس هذي بالضبط»): عمل المزوّد في
-   المحادثة صندوق واحد فوق الردّ — رأس «✦ ما يجري · الوقت ⌄»، وفي إطاره عناصر بترتيب وصولها: التفكير أسطرًا قصيرة بعنوان آخر جملة،
+   المحادثة صندوق واحد فوق الردّ — رأس «✦ ما يجري · الوقت ⌄»، وفي إطاره عناصر بترتيب وصولها: التفكير أسطرًا قصيرة بعنوان المدّة،
    والأداة «الطلب/النتيجة». التفكير مسكّر حتّى يفتحه من يريد، وأحدث أداة وحدها مفتوحة؛ والمحفوظ مطويّ «عمل لمدّة …». كود العميل الحقيقيّ في vm بصفحة مصغّرة. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -110,7 +110,7 @@ test('٢. الحيّ: لا صندوق قبل أوّل تفكير أو خطوة؛
   assert.equal(head.childNodes[1].textContent, 'يقرأ سؤالك…');
   assert.equal(head.childNodes[2].textContent, '17ث');
   const think = list.childNodes[0];
-  assert.equal(think.childNodes[0].textContent, 'ثمّ أتتبّع الكود حتّى عنصر التفكير.', 'عنوان التفكير آخر جملة');
+  assert.equal(think.childNodes[0].textContent, 'فكّر لمدّة 17 ث', 'عنوان التفكير المدّة لا كلام المزود');
   assert.deepEqual(think.q('cwLine').map((l) => l.textContent), ['أقرأ سجلّ الأخطاء أوّلًا.', 'ثمّ أتتبّع الكود حتّى عنصر التفكير.'], 'جملة في كلّ سطر');
   assert.equal(think.tagName, 'DETAILS');
   assert.equal(think.open, false, 'التفكير مسكّر حتى يفتحه من يريد');

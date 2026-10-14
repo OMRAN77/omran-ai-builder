@@ -1,6 +1,6 @@
 /* v-work-log (المالك ١٣ أكتوبر، لقطة من واجهة Claude وهو يعمل: «سولي نفس هذي بالضبط»): عمل المزوّد في المحادثة صندوق واحد فوق الردّ.
    رأسه: شرارة + ما يفعله الآن + الوقت المنقضي + سهم. داخله إطار، وكلّ عنصر سطر عنوان ينفتح: التفكير أسطرًا قصيرة (جملة في
-   السطر، وعنوانه آخر جملة)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا: التفكير مسكّر حتّى يفتحه من يريد (v-think-closed)،
+   السطر)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا: التفكير مسكّر وعنوانه المدّة لا كلام المزود (v-think-shut)،
    وبعد أوّل أداة لا يُضاف كلام تفكير جديد (v-edit-no-talk). أحدث أداة وحدها مفتوحة وما قبلها يُطوى، والوقت يعدّ كلّ ثانية.
    محفوظًا (m._agParts وأوّله {t:'meta', ms}): مطويّ في سطر «عمل لمدّة …». سجلّ الوكيل القديم (بلا meta) يرسمه __agLogRender كما كان.
    النصوص: cwWorked وcwRequest وcwResponse وcwTimeM وcwTimeS وcwWorking (١٤ لغة). */
@@ -25,10 +25,12 @@
   }
   function thinkEl(p, open){
     var ls = lines(p.s);
-    if(!ls.length) return mk('div', 'cwItem cwPlain', tr('agThought', '{n}s').replace('{n}', String(Math.max(1, Math.round((Number(p.ms) || 0) / 1000)))));
+    var title = tr('agThought', '{n}s').replace('{n}', String(Math.max(1, Math.round((Number(p.ms) || 0) / 1000))));
+    if(!ls.length) return mk('div', 'cwItem cwPlain', title);
     var body = mk('div', 'cwThink');
     ls.forEach(function(l){ body.appendChild(mk('div', 'cwLine', l)); });
-    var d = item(clip(ls[ls.length - 1]), body, open);
+    /* v-think-shut: العنوان المدّة لا آخر جملة — آخر جملة كانت تظهر والمكان «مسكّر» فيبان المزود يتكلم */
+    var d = item(title, body, open);
     d.classList.add('cwThinkItem');
     return d;
   }
