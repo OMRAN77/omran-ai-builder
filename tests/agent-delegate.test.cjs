@@ -25,7 +25,7 @@ function net(routes) {
     for (const [m, re, r] of routes) if (m === method && re.test(u)) return typeof r === 'function' ? r(u, body) : r;
     return res({ message: 'Not Found' }, 404);
   };
-  return { calls, opts: { fetchImpl, lookup, env: { GITHUB_TOKEN: 'tok' }, now: 1_700_000_000_000 } };
+  return { calls, opts: { fetchImpl, lookup, env: { GITHUB_TOKEN: 'tok', CODE_DELEGATE_ENABLED: 'on' }, now: 1_700_000_000_000 } }; // v-cc-off: التفويض بالمفتاح الصريح وحده
 }
 
 test('startTask: opens the task issue, then dispatches the workflow with task/branch/issue/base', async () => {

@@ -24,6 +24,13 @@ const OPS = {
   watch: { method: 'POST', path: () => '/watch' },
 };
 
+/* v-cc-off (المالك ١٤ أكتوبر: «الرصيد ١٥٠ دولار راحو يوم واحد — وقف كودي من اي شي لا تخليه يسوي اي شي»): Claude Code موقوف
+   افتراضيًّا. كلّ عمليّة تشغّله أو تغيّر شيئًا تُرفض هنا قبل الجسر؛ الإيقاف والحالة والإشعارات واستئناف بثّ جارٍ تبقى (لا تكلفة).
+   يعود فقط بـCC_ENABLED=on في بيئة Vercel (والجسر بالمتغيّر نفسه في Railway). */
+const LIVE_OPS = ['stop', 'status', 'attach', 'notes', 'notesRead'];
+const CC_OFF = 'كودي (Claude Code) موقوف بأمر المالك — لا تشغيل ولا نشر ولا دمج. يعود فقط بـCC_ENABLED=on في Vercel وRailway.';
+function ccEnabled(env) { return String((env || process.env).CC_ENABLED || '').trim().toLowerCase() === 'on'; }
+
 function config(env) {
   const e = env || process.env;
   const base = String(e.CC_BRIDGE_URL || '').trim().replace(/\/+$/, '');
@@ -76,6 +83,7 @@ module.exports = async (req, res) => {
   const op = String(body.op || 'status');
   const spec = OPS[op];
   if (!spec) { res.status(400).json({ error: 'عمليّة غير معروفة: ' + op.slice(0, 20) }); return; }
+  if (!ccEnabled() && LIVE_OPS.indexOf(op) === -1) { res.status(403).json({ error: CC_OFF, off: true }); return; } // v-cc-off
 
   const init = { method: spec.method, headers: { 'Authorization': 'Bearer ' + cfg.secret, 'Content-Type': 'application/json', 'Accept': spec.stream ? 'text/event-stream' : 'application/json' } };
   if (spec.method === 'POST') init.body = JSON.stringify(forwardBody(op, body));
@@ -112,4 +120,4 @@ module.exports = async (req, res) => {
   try { res.end(); } catch (e) { /* مغلق */ }
 };
 
-module.exports.__test = { OPS, config, forwardBody, cleanImages };
+module.exports.__test = { OPS, config, forwardBody, cleanImages, ccEnabled, LIVE_OPS, CC_OFF };
