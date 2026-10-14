@@ -22574,6 +22574,7 @@ function __agLogToolEl(p){
   return d;
 }
 function __agLogThinkEl(p){
+  if(window.omranWorkLog) return window.omranWorkLog.thinkEl(p, false); // v-interleave: الوكيل بعناصر صندوق المحادثة — سطر مطويّ عنوانه آخر جملة
   const label = t('agThought').replace('{n}', String(Math.max(1, Math.round((Number(p.ms) || 0) / 1000))));
   if(!p.s){ const r = document.createElement('div'); r.className = 'agThink'; r.textContent = label; return r; }
   const d = document.createElement('details'); d.className = 'agThink'; if(p.open) d.open = true;
@@ -22616,6 +22617,8 @@ function __agLogTextEl(s){
 /** يستدعيه renderMessages لكلّ ردّ وكيل يحمل سجلًّا محفوظًا: عنصر السجلّ يسبق نصّ الردّ. */
 function __agLogRender(parts){
   if(parts[0] && parts[0].t === 'meta' && window.omranWorkLog) return window.omranWorkLog.render(parts); // v-work-log: سجلّ المحادثة بصندوق العمل
+  /* v-interleave: سجلّ الوكيل المحفوظ بالصندوق نفسه — مدّته مجموع تفكيره */
+  if(window.omranWorkLog) return window.omranWorkLog.render([{ t: 'meta', ms: parts.reduce(function(a, p){ return a + ((p && Number(p.ms)) || 0); }, 0) || 1000 }].concat(parts));
   const root = document.createElement('div'); root.className = 'agLog';
   for(let i = 0; i < parts.length; i++){
     const p = parts[i];
@@ -22639,6 +22642,7 @@ window.omranAgentLog = { render: __agLogRender };
 function __agLogLive(host){
   host.innerHTML = '';
   const root = document.createElement('div'); root.className = 'agLog';
+  const W = window.omranWorkLog || null; // v-interleave: عناصر صندوق المحادثة نفسها
   const pill = document.createElement('div'); pill.className = 'agPill';
   host.appendChild(root); host.appendChild(pill);
   const parts = [];
@@ -22674,7 +22678,10 @@ function __agLogLive(host){
       if(a.k === 'done'){
         const p = byId[a.id]; if(!p) return;
         p.run = false; p.err = !a.ok; p.out = String(a.out || '');
-        __agLogFillTool(p.el, p);
+        if(W && p.el && p.el.classList.contains('cwItem')){
+          const n = W.toolEl(p, p.el.open); p.el.replaceWith(n); p.el = n;
+          const g = n.parentNode && n.parentNode.parentNode; if(g && g.classList && g.classList.contains('cwGroup') && p.err) g.classList.add('cwFail');
+        } else __agLogFillTool(p.el, p);
         if(a.code && typeof a.code === 'object'){ p.code = a.code; if(window.omranReadPanel) window.omranReadPanel.live(a.code); } // v-read-panel
         return;
       }
@@ -22683,6 +22690,17 @@ function __agLogLive(host){
       if(a.k === 'think'){ const p = { t: 'think', ms: a.ms, s: String(a.s || '') }; add(p, __agLogThinkEl(p)); grp = null; return; }
       if(a.k !== 'tool') return;
       const p = { t: 'tool', id: a.id, name: a.name, title: a.t, cmd: String(a.cmd || ''), g: a.g ? 1 : 0, run: true };
+      if(W){ /* v-interleave: الأحدث وحدها مفتوحة، والمتتالية من النوع نفسه سطر «آخر عنوان · +N» */
+        Array.prototype.forEach.call(root.querySelectorAll('details.cwItem[open]'), function(x){ x.open = false; });
+        const lastEl = root.lastElementChild;
+        if(lastEl && lastEl.__last && lastEl.__last.t === 'tool' && lastEl.__last.name === p.name){
+          let g = lastEl.classList.contains('cwGroup') ? lastEl : null;
+          if(!g){ const first = lastEl.__last; g = W.groupEl([first]); root.replaceChild(g, lastEl); first.el = g.lastChild.firstChild; }
+          p.el = W.groupAdd(g, p); g.__last = p;
+        } else { p.el = W.toolEl(p, true); p.el.__last = p; root.appendChild(p.el); }
+        parts.push(p); if(a.id) byId[a.id] = p; grp = null;
+        return;
+      }
       p.el = __agLogToolEl(p); parts.push(p);
       if(a.id) byId[a.id] = p;
       if(p.g && grp){
@@ -39046,7 +39064,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
         else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status, onDelta && onDelta.__status);  /* v656 */
         if (ev.status && !/^↳/.test(String(ev.status)) && typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ head: String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/, '').trim(), t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:head'); } } /* v-work-log: رأس صندوق العمل = ما يجري الآن */
-        if (ev.think && ev.think.s && __thinks.length < 8 && !__steps.length) { /* v-edit-no-talk: بعد أوّل أداة لا كلام تفكير في الصندوق */
+        if (ev.think && ev.think.s && __thinks.length < 12) { /* v-interleave (المالك ١٤ أكتوبر «نفس فكرة كلاود كودي»): التفكير بين الأدوات يظهر سطرًا مطويًّا كما يفكّر — كان v-edit-no-talk يحجبه بعد أوّل أداة */
           var __ts = String(ev.think.s).slice(0, 1200);
           var __tm = Date.now() - __tLast; __tLast = Date.now();
           __thinks.push({ t: 'think', ms: __tm, s: __ts }); __seq.push(__thinks[__thinks.length - 1]); /* محفوظًا مطويًّا: «فكّر N ث ›» يُفتح بالضغط */
@@ -46087,6 +46105,22 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     return d;
   }
   function textEl(p){ return mk('div', 'cwItem cwPlain', clip(p.s)); }
+  /* v-interleave: أدوات متتالية من النوع نفسه سطر واحد «آخر عنوان · +N ›» (كـ«git, 2+» في Claude Code)، ينفتح على خطواتها */
+  function groupTitle(g){ var n = g.__items.length; return clip(g.__items[n - 1].title || g.__items[n - 1].name || '') + (n > 1 ? '  · +' + (n - 1) : ''); }
+  function groupEl(items){
+    var body = mk('div', 'cwGroupList');
+    var d = item('', body, false); d.classList.add('cwTool'); d.classList.add('cwGroup'); d.__items = [];
+    items.forEach(function(p){ groupAdd(d, p); });
+    return d;
+  }
+  function groupAdd(g, p){
+    g.__items.push(p);
+    var el = toolEl(p, false); g.lastChild.appendChild(el);
+    g.querySelector('.cwTitle').textContent = groupTitle(g);
+    if(p.err) g.classList.add('cwFail');
+    return el;
+  }
+  function sameKind(a, b){ return !!(a && b && a.t === 'tool' && b.t === 'tool' && a.name && a.name === b.name); }
   function partEl(p, open){
     if(!p) return null;
     if(p.t === 'think') return thinkEl(p, open);
@@ -46119,12 +46153,14 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
         el: b.d,
         head: function(txt){ if(txt) b.lb.textContent = txt; },
         add: function(p){
-          var hasTool = false;
-          Array.prototype.forEach.call(b.list.children, function(c){
-            if(c.classList && c.classList.contains('cwTool')) hasTool = true;
-          });
-          /* v-edit-no-talk: بعد أوّل أداة كلام التفكير يملأ الصندوق — لا نضيفه ولا نطوي الأداة */
-          if(p && p.t === 'think' && hasTool) return;
+          /* v-interleave: كلام التفكير بين الأدوات يظهر (كان v-edit-no-talk يحجبه) — مطويًّا، والأداة الأحدث وحدها مفتوحة */
+          var last = b.list.lastElementChild;
+          if(p && p.t === 'tool' && last && last.__last && sameKind(last.__last, p)){
+            var g = last.classList.contains('cwGroup') ? last : null;
+            if(!g){ g = groupEl([last.__last]); b.list.replaceChild(g, last); }
+            groupAdd(g, p); g.__last = p;
+            return;
+          }
           Array.prototype.forEach.call(b.list.children, function(c){
             if(c.classList && c.classList.contains('cwTool')) c.open = false;
           });
@@ -46133,7 +46169,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
           }
           /* v-think-closed: التفكير مطويّ؛ الأداة الأحدث وحدها تُفتح */
           var el = partEl(p, p && p.t !== 'think');
-          if(el) b.list.appendChild(el);
+          if(el){ el.__last = p; b.list.appendChild(el); }
         },
       };
     },
@@ -46142,15 +46178,17 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       var b = shell(false);
       var meta = parts[0] || {};
       b.lb.textContent = tr('cwWorked', 'Worked for {t}').replace('{t}', dur(meta.ms));
-      var sawTool = false;
       for(var i = 1; i < parts.length; i++){
         var p = parts[i];
-        if(p && p.t === 'think' && sawTool) continue; /* v-edit-no-talk */
-        if(p && p.t === 'tool') sawTool = true;
+        if(p && p.t === 'tool' && sameKind(p, parts[i + 1])){ // v-interleave: المتتالية من النوع نفسه سطر واحد
+          var run = [p]; while(sameKind(p, parts[i + 1])){ run.push(parts[++i]); }
+          b.list.appendChild(groupEl(run)); continue;
+        }
         var el = partEl(p, false); if(el) b.list.appendChild(el);
       }
       return b.d;
     },
+    thinkEl: thinkEl, toolEl: toolEl, groupEl: groupEl, groupAdd: groupAdd, // v-interleave: الوكيل يبني بالعناصر نفسها
     _lines: lines, _dur: dur, // للاختبار
   };
 })();

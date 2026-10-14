@@ -2745,6 +2745,7 @@ function __agLogToolEl(p){
   return d;
 }
 function __agLogThinkEl(p){
+  if(window.omranWorkLog) return window.omranWorkLog.thinkEl(p, false); // v-interleave: الوكيل بعناصر صندوق المحادثة — سطر مطويّ عنوانه آخر جملة
   const label = t('agThought').replace('{n}', String(Math.max(1, Math.round((Number(p.ms) || 0) / 1000))));
   if(!p.s){ const r = document.createElement('div'); r.className = 'agThink'; r.textContent = label; return r; }
   const d = document.createElement('details'); d.className = 'agThink'; if(p.open) d.open = true;
@@ -2787,6 +2788,8 @@ function __agLogTextEl(s){
 /** يستدعيه renderMessages لكلّ ردّ وكيل يحمل سجلًّا محفوظًا: عنصر السجلّ يسبق نصّ الردّ. */
 function __agLogRender(parts){
   if(parts[0] && parts[0].t === 'meta' && window.omranWorkLog) return window.omranWorkLog.render(parts); // v-work-log: سجلّ المحادثة بصندوق العمل
+  /* v-interleave: سجلّ الوكيل المحفوظ بالصندوق نفسه — مدّته مجموع تفكيره */
+  if(window.omranWorkLog) return window.omranWorkLog.render([{ t: 'meta', ms: parts.reduce(function(a, p){ return a + ((p && Number(p.ms)) || 0); }, 0) || 1000 }].concat(parts));
   const root = document.createElement('div'); root.className = 'agLog';
   for(let i = 0; i < parts.length; i++){
     const p = parts[i];
@@ -2810,6 +2813,7 @@ window.omranAgentLog = { render: __agLogRender };
 function __agLogLive(host){
   host.innerHTML = '';
   const root = document.createElement('div'); root.className = 'agLog';
+  const W = window.omranWorkLog || null; // v-interleave: عناصر صندوق المحادثة نفسها
   const pill = document.createElement('div'); pill.className = 'agPill';
   host.appendChild(root); host.appendChild(pill);
   const parts = [];
@@ -2845,7 +2849,10 @@ function __agLogLive(host){
       if(a.k === 'done'){
         const p = byId[a.id]; if(!p) return;
         p.run = false; p.err = !a.ok; p.out = String(a.out || '');
-        __agLogFillTool(p.el, p);
+        if(W && p.el && p.el.classList.contains('cwItem')){
+          const n = W.toolEl(p, p.el.open); p.el.replaceWith(n); p.el = n;
+          const g = n.parentNode && n.parentNode.parentNode; if(g && g.classList && g.classList.contains('cwGroup') && p.err) g.classList.add('cwFail');
+        } else __agLogFillTool(p.el, p);
         if(a.code && typeof a.code === 'object'){ p.code = a.code; if(window.omranReadPanel) window.omranReadPanel.live(a.code); } // v-read-panel
         return;
       }
@@ -2854,6 +2861,17 @@ function __agLogLive(host){
       if(a.k === 'think'){ const p = { t: 'think', ms: a.ms, s: String(a.s || '') }; add(p, __agLogThinkEl(p)); grp = null; return; }
       if(a.k !== 'tool') return;
       const p = { t: 'tool', id: a.id, name: a.name, title: a.t, cmd: String(a.cmd || ''), g: a.g ? 1 : 0, run: true };
+      if(W){ /* v-interleave: الأحدث وحدها مفتوحة، والمتتالية من النوع نفسه سطر «آخر عنوان · +N» */
+        Array.prototype.forEach.call(root.querySelectorAll('details.cwItem[open]'), function(x){ x.open = false; });
+        const lastEl = root.lastElementChild;
+        if(lastEl && lastEl.__last && lastEl.__last.t === 'tool' && lastEl.__last.name === p.name){
+          let g = lastEl.classList.contains('cwGroup') ? lastEl : null;
+          if(!g){ const first = lastEl.__last; g = W.groupEl([first]); root.replaceChild(g, lastEl); first.el = g.lastChild.firstChild; }
+          p.el = W.groupAdd(g, p); g.__last = p;
+        } else { p.el = W.toolEl(p, true); p.el.__last = p; root.appendChild(p.el); }
+        parts.push(p); if(a.id) byId[a.id] = p; grp = null;
+        return;
+      }
       p.el = __agLogToolEl(p); parts.push(p);
       if(a.id) byId[a.id] = p;
       if(p.g && grp){
