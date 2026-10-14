@@ -59,6 +59,15 @@ async function attachmentLinks(content, opts) {
   return ['[صور رسالة المالك محفوظة في التطبيق يومًا — لرفع إحداها إلى المستودع: write_github بملفّ {path, image: "<الرابط>"}]\n' + lines.join('\n')];
 }
 
+/** v-agent-img-keep: رموز __IMG_N__ في ملفّات الرفع بلا معرّف بعد ← يُطلب من المتصفّح حفظ الرسمة نفسها (ask = runInClient save_image) */
+async function ensureSaved(input, map, ask) {
+  const i = input && typeof input === 'object' ? input : {};
+  const all = [].concat(Array.isArray(i.files) ? i.files : [], Array.isArray(i.images) ? i.images : []);
+  const want = Array.from(new Set(all.map((f) => String((f && f.image) || '').trim()).filter((t) => TOKEN_RE.test(t) && !(map && map[t])))).slice(0, 10);
+  for (const t of want) { try { noteTokens(await ask(t), map); } catch (e) { /* guard-ok — يرفضه الرفع بعدها بسببه */ } }
+  return map;
+}
+
 /* v-agent-img-mode (المالك ١٤ أكتوبر، ردّ الوكيل: «الصور ما تبدّلت… أنت الحين في وضع الوكيل، والوكيل ما وصله منه شي»): وضع الوكيل
    (agent.js) كان بلا أداة رسم أصلًا. الأداتان هنا بوصف الوكيل، وتنفيذهما في المتصفّح نفسه (omranAgentTools في app-17) — للمالك وحده. */
 const DRAW_TOOLS = [
@@ -74,4 +83,4 @@ const DRAW_TOOLS = [
   },
 ];
 
-module.exports = { seedTokens, noteTokens, resolveImage, attachmentLinks, TOKEN_RE, DRAW_TOOLS };
+module.exports = { seedTokens, noteTokens, resolveImage, attachmentLinks, ensureSaved, TOKEN_RE, DRAW_TOOLS };

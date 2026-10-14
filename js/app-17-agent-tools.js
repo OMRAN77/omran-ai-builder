@@ -49,7 +49,15 @@
       } catch (e) { resolve(null); }
     });
   }
-  async function omranAgentSave(tok, b64, mime) {
+  /* v-agent-img-keep (المالك ١٤ أكتوبر: «لا ترفعلي الضغط… هذا رصيدي يخلص»): الحفظ الفاشل لا يكلّف رسمة ثانية — يُعاد مرّة مصغّرًا JPEG
+     مهما كان السبب، والرسمة تبقى في المتصفّح فيطلب الخادم حفظها (save_image) عند الرفع بدل إعادة الرسم. */
+  async function omranAgentSave(tok, b64, mime, again) {
+    var u = await omranAgentSave1(tok, b64, mime);
+    if (u || again) return u;
+    var sh = await omranAgentShrink(b64, mime);
+    return sh ? omranAgentSave1(tok, sh.b64, sh.mime) : '';
+  }
+  async function omranAgentSave1(tok, b64, mime) {
     try {
       if (String(b64 || '').length > 2500000) { var sh = await omranAgentShrink(b64, mime); if (sh) { b64 = sh.b64; mime = sh.mime; } }
       var up = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64, mime: mime || 'image/png', purpose: 'agent', token: (window.authGet && window.authGet('aiapp_auth_token')) || '' }) });
@@ -212,6 +220,16 @@
         // 🎨 صورة حقيقية بدل رابط عشوائي. تُخزَّن محليًّا ويُعاد للنموذج رمز قصير
         // (__IMG_n__) يضعه في src؛ العميل يستبدله بـdata URI قبل العرض — فلا
         // تدخل مئات الكيلوبايت في سياق النموذج ولا في سجلّ المحادثة.
+        /* v-agent-img-keep: حفظ رسمة موجودة في المتصفّح برمزها — بلا رسم جديد ولا رصيد */
+        if (name === 'save_image') {
+          var stok = String((args && args.token) || '');
+          var ssrc = (window.__genImages || {})[stok] || '';
+          if (!ssrc) { try { var scur = getCurrent(); var sms = (scur && scur.messages) || []; for (var si = sms.length - 1; si >= 0 && !ssrc; si--) if (sms[si] && sms[si]._imgCache && sms[si]._imgCache[stok]) ssrc = sms[si]._imgCache[stok]; } catch (e) { ssrc = ''; } }
+          var sm = String(ssrc).match(/^data:([^;,]+);base64,(.+)$/);
+          if (!sm) return 'تعذّر: لا صورة للرمز ' + stok + ' في هذا المتصفّح — ارسمها من جديد.';
+          var surl = await omranAgentSave(stok, sm[2], sm[1]);
+          return surl ? ('✅ حُفظت ' + stok + ': ' + surl) : ('تعذّر حفظ ' + stok + ' (' + (window.__agentSaveWhy || 'سبب غير معروف') + ')');
+        }
         if (name === 'generate_image') {
           var prompt = String((args && args.prompt) || '').trim();
           if (!prompt) return 'وصف الصورة فارغ — لم تُرسم.';

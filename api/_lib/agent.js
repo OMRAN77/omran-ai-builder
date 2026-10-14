@@ -371,7 +371,7 @@ async function fetchPage(url) {
 // اختبار/نشر/صورة) كانت تُسقط الوكيل كلّه بـReferenceError. الآن يُمرَّر send صراحةً
 // كما في chat.js.
 /* v-agent-img-mode: الرسم في المتصفّح يأخذ دقيقة أحيانًا (والتعديل أكثر) — ٢٥ ثانية كانت تكذّب رسمة ناجحة؛ مهلة chat.js نفسها */
-const CLIENT_WAIT_MS = { generate_image: 75000, edit_image: 150000 };
+const CLIENT_WAIT_MS = { generate_image: 75000, edit_image: 150000, save_image: 30000 };
 async function runInClient(send, name, input) {
   const { kvGetJSON, kvDel, kvPutJSON, kvExpire } = require('./kv.js');
   const waitMs = CLIENT_WAIT_MS[name] || 25000;
@@ -902,7 +902,7 @@ module.exports = async (req, res) => {
             if (!isOwner(runUser)) result = '✗ الرفع إلى GitHub للمالك وحده.';
             else {
               run.pushes = (run.pushes || 0) + 1;
-              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubWrite.pushFiles(input, { imgIds })); // v-agent-img-mode: «__IMG_N__»
+              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await require('./agent-img.js').ensureSaved(input, imgIds, (t) => runInClient(send, 'save_image', { token: t })).then(() => githubWrite.pushFiles(input, { imgIds }))); // v-agent-img-mode: «__IMG_N__»
             }
           }
           /* v-agent-surgical: التعديل الجراحيّ يتشارك سقف الرفعات مع write_github، والدمج بإذن «ادمج» في آخر رسالة المالك
@@ -911,7 +911,7 @@ module.exports = async (req, res) => {
             if (!isOwner(runUser)) result = '✗ التعديل على GitHub للمالك وحده.';
             else {
               run.pushes = (run.pushes || 0) + 1;
-              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubEdit.editFiles(input, { imgIds })); // v-agent-img-mode
+              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await require('./agent-img.js').ensureSaved(input, imgIds, (t) => runInClient(send, 'save_image', { token: t })).then(() => githubEdit.editFiles(input, { imgIds }))); // v-agent-img-mode
             }
           }
           else if (cb.name === 'merge_github') {
