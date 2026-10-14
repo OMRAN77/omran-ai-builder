@@ -132,7 +132,7 @@ test('٥. delegate_code_task: النموذج اختياريّ من القائم�
     if (/\/dispatches$/.test(u)) { bodies.push(body); return { ok: true, status: 204, headers: new Headers(), json: async () => null, text: async () => '' }; }
     return { ok: false, status: 404, headers: new Headers(), json: async () => ({}), text: async () => '' };
   };
-  const opts = { fetchImpl, lookup, env: { GITHUB_TOKEN: 'tok' }, now: 1_700_000_000_000 };
+  const opts = { fetchImpl, lookup, env: { GITHUB_TOKEN: 'tok', CODE_DELEGATE_ENABLED: 'on' }, now: 1_700_000_000_000 }; // v-cc-off: التفويض بالمفتاح الصريح وحده
   const TASK = 'أصلح تحليل الصورة في api/_lib/chat.js: الصورة لا تصل النموذج';
   const r1 = await D.startTask({ task: TASK, repo: 'o/r', model: 'claude-opus-5' }, opts);
   assert.equal(r1.ok, true);

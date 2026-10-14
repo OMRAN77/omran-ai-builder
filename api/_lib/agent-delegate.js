@@ -55,6 +55,8 @@ async function startTask(input, opts) {
   const base = /^[A-Za-z0-9_.\/-]{1,100}$/.test(String(i.base || '')) ? String(i.base) : 'main';
   // v-kimi-agent: engine=kimi يسلّم المهمّة إلى Kimi Code (kimi-agent.yml) بدل Claude Code
   const engine = String(i.engine || '').toLowerCase() === 'kimi' ? 'kimi' : 'claude';
+  /* v-cc-off (المالك ١٤ أكتوبر: «وقف كودي من اي شي»): تسليم المهمّة إلى Claude Code في Actions موقوف حتّى يضع المالك CODE_DELEGATE_ENABLED=on */
+  if (engine === 'claude' && String((o.env || process.env).CODE_DELEGATE_ENABLED || '').trim().toLowerCase() !== 'on') return { error: 'كودي (Claude Code) موقوف بأمر المالك — لم تُفتح مهمّة ولم يُشغَّل شيء. اعمل التغيير بأدواتك أنت (edit_github/write_github)، ويعود التفويض فقط بـCODE_DELEGATE_ENABLED=on.' };
   const workflow = engine === 'kimi' ? WORKFLOW_KIMI : WORKFLOW;
   const now = Number(o.now) || Date.now();
   const branch = (engine === 'kimi' ? 'kimi-agent/' : 'omran-agent/') + slug(task) + '-' + now.toString(36);

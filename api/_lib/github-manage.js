@@ -11,7 +11,7 @@
 
 const { ghFetch, parseTarget, resolveGithubToken } = require('./github-read.js');
 
-const ACTIONS = ['status', 'deploy', 'runs', 'run_jobs', 'close', 'reopen', 'comment', 'delete_branch', 'rerun_failed', 'cancel_run', 'delete_runs'];
+const ACTIONS = ['status', 'deploy', 'runs', 'run_jobs', 'run_log', 'close', 'reopen', 'comment', 'delete_branch', 'rerun_failed', 'cancel_run', 'delete_runs'];
 const GATE = { close: 'close', reopen: 'reopen', delete_branch: 'delete', delete_runs: 'delete', cancel_run: 'cancel' };
 const VERBS = {
   close: /سكّ?ر|اغلق|أغلق|إغلاق|قفّ?ل|\bclose\b/i,
@@ -126,6 +126,29 @@ async function closeOrReopen(R, n, state, i, o) {
   return line;
 }
 
+/* v-run-log (المالك ١٤ أكتوبر: «اريد يكون عندهم معلومات تصحيح الاخطاء»): run_jobs يعطي اسم الخطوة الفاشلة فقط، فيخمّن المزوّد سبب فشل
+   CI ويرفع إصلاحًا أعمى. هنا سطور الفشل نفسها من سجلّ المهمّة (الاختبار والتأكيد والمتوقّع والفعليّ) — قراءة بلا إذن مثل
+   gh run view --log-failed عند Claude Code. السجلّ يحوّله GitHub إلى رابط موقَّع على مخزن آخر: مفتاح GitHub لا يُرسل إليه. */
+const FAIL_RE = /✗|✖|not ok|AssertionError|Error:|ERR_[A-Z_]{3,}|expected|actual|##\[error\]|failing|فشل [1-9١-٩]/;
+const NOISE_RE = /Node\.js 20 is deprecated|^Post job|##\[(?:end)?group\]/;
+function failLines(raw) {
+  const L = String(raw || '').replace(/\r/g, '').split('\n').map((l) => l.replace(/^\d{4}-\d\d-\d\dT[\d:.]+Z\s?/, '').replace(/\x1b\[[0-9;]*m/g, ''));
+  const keep = new Set();
+  L.forEach((l, k) => { if (FAIL_RE.test(l) && !NOISE_RE.test(l) && keep.size < 400) for (let d = -2; d <= 6; d++) if (L[k + d] !== undefined && !NOISE_RE.test(L[k + d])) keep.add(k + d); });
+  let prev = -1;
+  const out = keep.size ? [...keep].sort((a, b) => a - b).reduce((a, k) => { if (k !== prev + 1) a.push('…'); a.push(L[k]); prev = k; return a; }, []) : ['(لا سطر فشل ظاهر — آخر السجلّ:)'].concat(L.slice(-60));
+  let t = out.join('\n').replace(/sk-[A-Za-z0-9_*\-]{8,}/g, 'sk-…').replace(/gh[pousr]_[A-Za-z0-9]{20,}/g, 'gh…').replace(/github_pat_[A-Za-z0-9_]{20,}/g, 'github_pat_…');
+  if (t.length > 6000) t = t.slice(0, 6000) + '\n… (قُصّ — أوّل الفشل أهمّه)';
+  return t;
+}
+async function jobLog(R, jobId, o) {
+  const f = o.fetchImpl || fetch;
+  const noKey = (url, init) => f(url, /^https:\/\/api\.github\.com\//.test(String(url)) ? init : Object.assign({}, init, { headers: { 'User-Agent': 'OmranAgent/1.0' } }));
+  const r = await ghFetch(R + '/actions/jobs/' + jobId + '/logs', Object.assign({}, o, { fetchImpl: noKey, timeoutMs: 20000 }));
+  if (!r.ok) return ghErr('تعذّرت قراءة سجلّ المهمّة ' + jobId, r, null);
+  return { ok: true, text: 'سجلّ المهمّة ' + jobId + ' — سطور الفشل:\n' + failLines(String(await r.text()).slice(-3000000)) };
+}
+
 async function listRuns(R, i, o) {
   const q = ['per_page=' + Math.min(posInt(i.limit) || 15, 50)];
   if (i.status) q.push('status=' + encodeURIComponent(String(i.status)));
@@ -179,7 +202,20 @@ async function manage(input, opts) {
     if (!id) return { error: 'run_id مطلوب.' };
     const { r, j } = await ghJson(R + '/actions/runs/' + id + '/jobs?per_page=30', o);
     if (!r.ok || !j) return ghErr('تعذّرت قراءة مهامّ التشغيل', r, j);
-    return { ok: true, text: (j.jobs || []).map((jb) => jb.name + ': ' + (jb.conclusion || jb.status) + (jb.steps || []).filter((s) => s.conclusion === 'failure').map((s) => '\n  ✗ خطوة فاشلة: ' + s.name).join('') + ' · ' + jb.html_url).join('\n') || 'لا مهامّ.' };
+    return { ok: true, text: (j.jobs || []).map((jb) => jb.name + ' (job_id ' + jb.id + '): ' + (jb.conclusion || jb.status) + (jb.steps || []).filter((s) => s.conclusion === 'failure').map((s) => '\n  ✗ خطوة فاشلة: ' + s.name).join('') + ' · ' + jb.html_url).join('\n') || 'لا مهامّ.' };
+  }
+  if (action === 'run_log') { // v-run-log
+    let jid = posInt(i.job_id);
+    if (!jid) {
+      if (!id) return { error: 'job_id (من run_jobs) أو run_id مطلوب.' };
+      const { r, j } = await ghJson(R + '/actions/runs/' + id + '/jobs?per_page=30', o);
+      if (!r.ok || !j) return ghErr('تعذّرت قراءة مهامّ التشغيل', r, j);
+      const jobs = j.jobs || [];
+      const bad = jobs.find((jb) => jb.conclusion === 'failure') || jobs[0];
+      if (!bad) return { ok: true, text: 'لا مهامّ في التشغيل ' + id + '.' };
+      jid = bad.id;
+    }
+    return jobLog(R, jid, o);
   }
   if (action === 'rerun_failed' || action === 'cancel_run') {
     if (!id) return { error: 'run_id مطلوب.' };
@@ -209,7 +245,7 @@ function formatManage(res) {
 
 const MANAGE_TOOL = {
   name: 'manage_github',
-  description: 'أدِر مستودع المالك: status (حالة طلبات سحب/مسائل: مفتوح أو مغلق أو مدموج، والتعارض، والفحوص) · deploy (بعد الدمج: حالة نشر Vercel للطلب number، ومع path وfind هل التغيير في الموقع المنشور — قبل أن تقول «نُشر») · runs (تشغيلات Actions؛ status=failure للفاشلة، workflow=CI) · run_jobs (مهامّ تشغيل وخطواته الفاشلة) · close/reopen (طلبات ومسائل؛ delete_branch=true يحذف فرع الطلب) · comment · delete_branch · rerun_failed · cancel_run · delete_runs (يحذف تشغيلات مكتملة، الفاشلة افتراضيًّا، ٥٠ في الاستدعاء). close وreopen والحذف والإلغاء تُرفض إلّا إن قالها المالك صراحةً في رسالته الأخيرة («سكّر»، «افتح»، «احذف»، «وقّف») — الخادم يفحص. افحص بـstatus قبل أن تقول إنّ شيئًا مفتوح أو مدموج، ولا تقل «تمّ» قبل نتيجة الأداة.',
+  description: 'أدِر مستودع المالك: status (حالة طلبات سحب/مسائل: مفتوح أو مغلق أو مدموج، والتعارض، والفحوص) · deploy (بعد الدمج: حالة نشر Vercel للطلب number، ومع path وfind هل التغيير في الموقع المنشور — قبل أن تقول «نُشر») · runs (تشغيلات Actions؛ status=failure للفاشلة، workflow=CI) · run_jobs (مهامّ تشغيل وخطواته الفاشلة) · run_log (سطور الفشل نفسها من سجلّ مهمّة: job_id من run_jobs، أو run_id فتُقرأ أوّل مهمّة فاشلة — اقرأه قبل أيّ إصلاح لفشل CI، لا تخمّن السبب من اسم الخطوة) · close/reopen (طلبات ومسائل؛ delete_branch=true يحذف فرع الطلب) · comment · delete_branch · rerun_failed · cancel_run · delete_runs (يحذف تشغيلات مكتملة، الفاشلة افتراضيًّا، ٥٠ في الاستدعاء). close وreopen والحذف والإلغاء تُرفض إلّا إن قالها المالك صراحةً في رسالته الأخيرة («سكّر»، «افتح»، «احذف»، «وقّف») — الخادم يفحص. افحص بـstatus قبل أن تقول إنّ شيئًا مفتوح أو مدموج، ولا تقل «تمّ» قبل نتيجة الأداة.',
   input_schema: {
     type: 'object',
     properties: {
@@ -223,6 +259,7 @@ const MANAGE_TOOL = {
       branch: { type: 'string', description: 'فرع (delete_branch، أو تصفية runs)' },
       branches: { type: 'array', items: { type: 'string' } },
       run_id: { type: 'integer' },
+      job_id: { type: 'integer', description: 'run_log: رقم المهمّة كما في run_jobs' },
       run_ids: { type: 'array', items: { type: 'integer' } },
       status: { type: 'string', description: 'تصفية التشغيلات: failure · success · in_progress · cancelled' },
       workflow: { type: 'string', description: 'اسم الـworkflow مثل CI' },
@@ -234,4 +271,4 @@ const MANAGE_TOOL = {
   },
 };
 
-module.exports = { MANAGE_TOOL, manage, formatManage, ownerAllows, ACTIONS, GATE };
+module.exports = { MANAGE_TOOL, manage, formatManage, ownerAllows, ACTIONS, GATE, failLines };

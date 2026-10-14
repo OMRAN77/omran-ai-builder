@@ -25,7 +25,7 @@ function net(routes) {
     for (const [m, re, r] of routes) if (m === method && re.test(u)) return typeof r === 'function' ? r(u, body) : r;
     return res({ message: 'Not Found' }, 404);
   };
-  return { calls, opts: { fetchImpl, lookup, env: { GITHUB_TOKEN: 'tok' }, now: 1_700_000_000_000 } };
+  return { calls, opts: { fetchImpl, lookup, env: { GITHUB_TOKEN: 'tok', CODE_DELEGATE_ENABLED: 'on' }, now: 1_700_000_000_000 } }; // v-cc-off: تفويض Claude بالمفتاح الصريح؛ Kimi لا يحتاجه
 }
 
 test('engine=kimi: يشغّل kimi-agent.yml بفرع kimi-agent/ ونموذج kimi صالح', async () => {

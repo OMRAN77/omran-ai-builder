@@ -33,6 +33,11 @@ const EFFORT = ['low', 'medium', 'high', 'xhigh', 'max'].includes(String(env.CC_
 const MAX_TURNS = Math.max(5, Number(env.CC_MAX_TURNS) || 1000); // v-cc-raw-full: بلا سقف عمليّ كجلسة الويب
 const MAX_BUDGET = Number(env.CC_MAX_BUDGET_USD) || 0;
 const RUN_TTL_MS = 6 * 3600 * 1000;
+/* v-cc-off (المالك ١٤ أكتوبر: «الرصيد ١٥٠ دولار راحو يوم واحد — وقف كودي من اي شي»): موقوف افتراضيًّا — لا تشغيل من المحادثة، ولا إيقاظ
+   ذاتيّ من مراقبة الطلبات (فحص أحمر أو تعليق كان يشغّل جلسة كاملة بأقصى جهد بلا رسالة من المالك)، ولا نشر ولا دمج ولا دمج تلقائيّ.
+   الإيقاف والحالة والإشعارات و«مخرج التطبيق» (/render، بلا Claude) تبقى. يعود فقط بـCC_ENABLED=on في متغيّرات Railway. */
+const ENABLED = String(env.CC_ENABLED || '').trim().toLowerCase() === 'on';
+const CC_OFF = 'كودي (Claude Code) موقوف بأمر المالك — يعود فقط بـCC_ENABLED=on في متغيّرات Railway.';
 
 if (!SECRET || SECRET.length < 24) { console.error('CC_BRIDGE_SECRET مفقود أو قصير (٢٤ حرفًا فأكثر).'); process.exit(1); }
 if (!env.ANTHROPIC_API_KEY && !env.CLAUDE_CODE_OAUTH_TOKEN) { console.error('لا ANTHROPIC_API_KEY ولا CLAUDE_CODE_OAUTH_TOKEN في البيئة.'); process.exit(1); }
@@ -79,6 +84,7 @@ function watchFromText(text) { for (const m of String(text || '').matchAll(PR_UR
 
 /** يوقظ الوكيل بما تجمّع من إشعارات إن كان الجسر فارغًا، ويحفظ ردّه على الإشعار نفسه. */
 function wakeIfIdle() {
+  if (!ENABLED) { wakeQueue.length = 0; return; } // v-cc-off: لا إيقاظ ذاتيّ
   if (!wakeQueue.length || (current && !current.done)) return;
   const batch = wakeQueue.splice(0);
   const log = new RunLog('w' + Date.now().toString(36) + randomBytes(3).toString('hex'));
@@ -95,6 +101,7 @@ function wakeIfIdle() {
     });
 }
 async function watchLoop() {
+  if (!ENABLED) return; // v-cc-off: لا مراقبة تشغّل جلسة أو تدمج تلقائيًّا
   try { if (watcher.watching().length) { await watcher.tick(); await saveWatch(); } wakeIfIdle(); }
   catch (e) { console.warn('[cc] watch tick failed', e && e.message); }
 }
@@ -221,6 +228,7 @@ const server = createServer(async (req, res) => {
     try { if (await renderer.handle(req, res, url)) return; } catch (e) { return json(res, 500, { error: redact(String((e && e.message) || e).slice(0, 300)) }); }
   }
   if (!authed(req)) return json(res, 401, { error: 'unauthorized' });
+  if (!ENABLED && req.method === 'POST' && ['/chat', '/publish', '/merge', '/reset', '/watch'].includes(url.pathname)) return json(res, 403, { error: CC_OFF, off: true }); // v-cc-off
   try {
     if (req.method === 'POST' && url.pathname === '/chat') {
       const b = await body(req);
@@ -313,4 +321,4 @@ await loadWatch();
 setInterval(watchLoop, 60000).unref();
 setTimeout(pulse, 60000).unref();
 setInterval(pulse, PULSE_MS).unref();
-server.listen(PORT, () => console.log('[cc-bridge] listening on ' + PORT + ' · repo ' + REPO_DIR + ' · model ' + MODEL));
+server.listen(PORT, () => console.log('[cc-bridge] listening on ' + PORT + ' · repo ' + REPO_DIR + ' · model ' + MODEL + (ENABLED ? '' : ' · موقوف (CC_ENABLED≠on)')));
