@@ -2033,7 +2033,8 @@ async function mahaCallLoop(){
       const messages = [...mahaSystemMsgs, ...mahaHistory];
 
       let reply = '';
-      const order = ['gemini', 'openai', ...AUTO_FALLBACK_ORDER.filter(p => p !== 'gemini' && p !== 'openai' && p !== 'groq'), 'groq'];
+      const order = ['gemini', 'openai', ...AUTO_FALLBACK_ORDER.filter(p => p !== 'gemini' && p !== 'openai' && p !== 'groq'), 'groq']
+        .filter(p => p !== 'claude' || !(typeof omranOwnerUi === 'function' && omranOwnerUi()) || (localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai')) === 'claude'); // v-owner-solo-all: للمالك لا يدخل كلود احتياط مها إلّا إن اختاره
       let lastErr = null;
       for(const providerKey of order){
         try{ reply = await callProviderAI(providerKey, messages); lastErr = null; break; }

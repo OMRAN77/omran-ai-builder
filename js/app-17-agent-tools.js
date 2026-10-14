@@ -16,7 +16,7 @@
   function provEngine() {
     try {
       if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return undefined;
-      var p = localStorage.getItem('aiapp_provider') || 'openai';
+      var p = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); // v-owner-solo-all: افتراضيّ المالك الحقيقيّ (كروك) لا GPT Image الخام على جهاز جديد
       return p === 'openai' ? 'gpt' : (p === 'gemini' ? 'nano' : undefined);
     } catch (e) { return undefined; } // guard-ok — بلا تخزين = السلسلة المعتادة
   }

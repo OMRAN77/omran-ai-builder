@@ -139,15 +139,16 @@ test('٤. E2: المالك بلا احتفال ولا طمأنة ولا «اقت
   assert.ok(!/بلا مجاملة ولا طمأنة|زميل خبير مباشر/.test(v));
 });
 
-test('٥. E3: منهج Claude Code للمالك داخل الكتلة الثابتة المخزَّنة (cache_control) لكلّ مزوّد — والقاعدة الأولى والدمج التلقائيّ باقيان', async () => {
+test('٥. E3: منهج Claude Code للمالك داخل الكتلة الثابتة المخزَّنة (cache_control) لكلّ مزوّد — والقاعدة الأولى باقية، والدمج بـ«ادمج» وحده', async () => {
   assert.ok(PL.OWNER_METHOD.length > 1500 && PL.OWNER_METHOD.length < 3200, 'حجم معقول: ' + PL.OWNER_METHOD.length);
-  for (const re of [/DECISIONS\.md[^\n]*PITFALLS\.md[^\n]*read_github/, /from= متوازية في دور واحد/, /read_app_errors[^\n]*test_html[^\n]*فقله للمالك في سطر \(Claude Code بطلبه وحده\)/, /أصغر تغيير يحلّ الجذر/,
+  for (const re of [/DECISIONS\.md[^\n]*PITFALLS\.md[^\n]*read_github/, /from= متوازية في دور واحد/, /read_app_errors[^\n]*test_html[^\n]*فقله للمالك في سطر\. ما لم تره/, /أصغر تغيير يحلّ الجذر/,
     /manage_github \(runs ثمّ run_jobs\)[^\n]*لا «تمّ»/, /مفصولًا صراحةً عمّا لم تتحقّق منه/, /طلب عمران الصريح في رسالته الأخيرة = أمر صريح؛ نفّذه الآن/,
     /افحص CI مرّة واحدة[^\n]*قيد العمل فقل ذلك مع الرابط وأنهِ الردّ — لا تكرّر الفحص في الردّ نفسه/, // لا استطلاع لـCI داخل ردّ واحد (MAX_STEPS/MAX_MS)
     /٤\) الحزمة: js\/app-NN-\*\.js تُبنى[^\n]*js\/partials-\*\.js لا تُحزَم: يكفي رفع رقم \?v=/, /للّغات الأربع عشرة \(js\/app-03-i18n-data\.js وi18n\/\*\.js\)/,
     /لا تستأذن ثانيةً — عدا الأبواب الخمسة المقفلة: موافقة صريحة على البند نفسه/,
     /ولا تُنهَ الردّ بعد القراءة وحدها: الجواب أو التعديل في نفس الدور/]) assert.match(PL.OWNER_METHOD, re);
   assert.ok(!/js\/app-\*\.js وjs\/partials-\*\.js تُبنى/.test(PL.OWNER_METHOD), 'partials لا تُبنى في الحزمة');
+  assert.ok(!/Claude Code بطلبه|check_code_task/.test(PL.OWNER_METHOD), 'v-self-only: المنهج لا يدلّ أيّ مزوّد على كودي');
   await withRealBrief(async () => {
     for (const [prov, model] of [['claude', 'claude-opus-5-5'], ['claude', ''], ['openrouter', 'x-ai/grok-4.6']]) {
       const b = upBody(await run('omran', { provider: prov, model, messages: ask('صلّح زر الإرسال') }, okText));
@@ -156,7 +157,8 @@ test('٥. E3: منهج Claude Code للمالك داخل الكتلة الثاب
       if (prov === 'claude') assert.ok(Array.isArray(b.system), 'كلود المباشر: النظام كتل كاش');
       if (Array.isArray(b.system)) { assert.ok(b.system[0].cache_control, prov); assert.ok(b.system[0].text.includes(METHOD_HEAD), prov + ': في الثابت المخزَّن'); }
       assert.match(t, /القاعدة الأولى — تعلو على كلّ ما تحتها: لا فعل قبل أمر مكتوب صريح من عمران/, 'القاعدة الأولى باقية');
-      assert.match(t, /يدمج طلبه تلقائيًّا عند نجاح npm run ci فينشر/, 'سطر الدمج التلقائيّ باقٍ');
+      assert.doesNotMatch(t, /يدمج طلبه تلقائيًّا/, 'v-self-only: سطر «كودي يدمج تلقائيًّا» القديم زال (موقوف منذ v-cc-off)');
+      assert.match(t, /ولا يُدمج طلب إلّا بـ«ادمج» من عمران/, 'الدمج بأمره وحده');
     }
   });
   const v = upBody(await run('vipuser', { provider: 'claude', messages: ask('صلّح زر الإرسال') }, okText));
@@ -262,7 +264,9 @@ test('٨. E5: وصف read_github للمالك يذكر from= المتوازية�
   const o = upBody(await run('omran', { provider: 'claude', messages: ask('اقرأ chat.js كامل') }, okText));
   const ro = o.tools.find((t) => t.name === 'read_github');
   assert.ok(ro.description.startsWith(base.description) && /يجوز طلب عدّة from= متوازية في دور واحد/.test(ro.description), 'وصف المالك');
-  assert.deepEqual(ro.input_schema, base.input_schema, 'المخطّط نفسه');
+  // v-owner-solo-all: المخطّط نفسه + «commit» (التزام واحد بفرقه) في نسخة المالك وحده
+  assert.deepEqual(ro.input_schema.properties.what.enum, base.input_schema.properties.what.enum.concat(['commit']), 'commit للمالك');
+  assert.deepEqual(Object.assign({}, ro.input_schema, { properties: Object.assign({}, ro.input_schema.properties, { what: base.input_schema.properties.what }) }), base.input_schema, 'وبقيّة المخطّط نفسه');
   const names = o.tools.map((t) => t.name);
   assert.deepEqual(names.slice(0, TOOLS.length), TOOLS.map((t) => t.name), 'الترتيب نفسه (الكاش)');
   const v = upBody(await run('vipuser', { provider: 'claude', messages: ask('اقرأ chat.js كامل') }, okText));

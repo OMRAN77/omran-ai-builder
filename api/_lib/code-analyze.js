@@ -574,14 +574,26 @@ async function streamStep(fetchImpl, url, headers, body, o) {
   return { text, stopReason, refusalCategory, toolUses, assistant };
 }
 
+/* v-owner-solo-all (المالك: «كل واحد بروحه»): تقييم الكود كان على كلود (Opus) دائمًا مهما اختار المالك. للمالك وحده الآن مزوّده
+   المختار عبر الوسيط بمعرّفه هو (إن كان من شركة المزوّد) وإلّا افتراضيّه — مرآة OR_MODELS في chat.js (اختبار owner-solo-all يثبّت التطابق).
+   بلا مفتاح الوسيط: خطأ صريح، لا كلود مكانه (v-owner-solo). كلود المختار وغير المالك كما كانا. */
+const OWNER_OR_DEFAULTS = { openai: 'openai/gpt-6-sol', gemini: 'google/gemini-3.8-flash', deepseek: 'deepseek/deepseek-v4-pro', mistral: 'mistralai/mistral-medium-3-5', groq: 'meta-llama/llama-4-maverick', cohere: 'cohere/command-a', openrouter: 'x-ai/grok-4.6', kimi: 'moonshotai/kimi-k3' };
+function ownerOrModel(prov, requested) {
+  const def = OWNER_OR_DEFAULTS[prov];
+  if (!def) return '';
+  return require('./provider-models.js').pickProviderModel(prov, requested, def).model;
+}
+
 async function callPro(prompt, opts) {
   const o = opts || {};
   const env = o.env || process.env;
-  const viaOR = !env.ANTHROPIC_API_KEY && !!env.OPENROUTER_API_KEY;
+  const ownProv = Object.prototype.hasOwnProperty.call(OWNER_OR_DEFAULTS, String(o.ownerProv || '')) ? String(o.ownerProv) : '';
+  if (ownProv && !env.OPENROUTER_API_KEY) throw new Error('لا طريق لهذا المزوّد على الخادم (مفتاح الوسيط غير موجود)');
+  const viaOR = ownProv ? true : (!env.ANTHROPIC_API_KEY && !!env.OPENROUTER_API_KEY);
   const apiKey = viaOR ? env.OPENROUTER_API_KEY : env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY');
   const url = viaOR ? 'https://openrouter.ai/api/v1/messages' : 'https://api.anthropic.com/v1/messages';
-  const base = (env.CODE_ANALYZE_MODEL && String(env.CODE_ANALYZE_MODEL).trim()) || DEFAULT_MODEL;
+  const base = ownProv ? ownerOrModel(ownProv, o.ownerModel) : ((env.CODE_ANALYZE_MODEL && String(env.CODE_ANALYZE_MODEL).trim()) || DEFAULT_MODEL);
   // الوسيط يكتب الإصدار الفرعيّ بنقطة (claude-opus-5-5 ← anthropic/claude-opus-5.5) — v-models-latest.
   const model = viaOR && base.indexOf('/') === -1 ? 'anthropic/' + base.replace(/-(\d+)-(\d+)$/, '-$1.$2') : base;
   const headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
@@ -759,7 +771,7 @@ module.exports = async function handler(req, res) {
         }),
         onDone: (s) => { readStats = s; },
       } : {};
-      text = pro ? await callPro(prompt, Object.assign({ onProgress }, deepOpts)) : await callFree(prompt, { onProgress });
+      text = pro ? await callPro(prompt, Object.assign({ onProgress }, deepOpts, owner ? { ownerProv: String(body.provider || ''), ownerModel: String(body.model || '') } : {})) : await callFree(prompt, { onProgress }); // v-owner-solo-all
     } catch (e) {
       logError('code-analyze/engine', e);
       const msg = e && e.refusal ? 'رفض النموذج تحليل هذا الكود (تصنيف أمان). جرّب ملفًّا آخر أو أزل الجزء الحسّاس.'
@@ -788,4 +800,4 @@ module.exports = async function handler(req, res) {
   }
 };
 
-module.exports.__test = { LIMITS, DEEP, DEEP_TOOLS, DEFAULT_MODEL, FLAG_DEFS, collectFiles, metricsOf, fileMetrics, buildPrompt, splitOutput, extractJson, normalizeReport, gradeOf, langOf, callPro, callFree, numbered, pickEffort, poolReader, deepIndex };
+module.exports.__test = { OWNER_OR_DEFAULTS, ownerOrModel, LIMITS, DEEP, DEEP_TOOLS, DEFAULT_MODEL, FLAG_DEFS, collectFiles, metricsOf, fileMetrics, buildPrompt, splitOutput, extractJson, normalizeReport, gradeOf, langOf, callPro, callFree, numbered, pickEffort, poolReader, deepIndex };

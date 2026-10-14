@@ -1310,6 +1310,9 @@ async function selfHealCode(code, codeType, onStatus){
   /* v-chat-edit: الإصلاح الذاتيّ يطلب الملفّ كاملًا — فوق ما يسعه ردّ واحد (≈٤٥ ألف حرف) لا يُطلب أصلًا، ودونه يُقرأ ردّه
      بحارس التصميم (base) فلا يحلّ محلّه ملفّ انقطع. */
   if(code.length > OMRAN_HEAL_MAX) return code;
+  /* v-owner-solo-all (المالك: «كل واحد بروحه»): للمالك كان خطأ تشغيل في صفحة بناها مزوّده يُرسل بالخفاء لسلسلة غير منفردة
+     (كلود أوّلها بعد مجموعة المزوّد) ويحلّ إصلاحها محلّ كوده. مزوّده عنده test_html ويصلح بنفسه — لا إصلاح من غيره. */
+  if(typeof omranOwnerUi === 'function' && omranOwnerUi()) return code;
   let current = code;
   for(let attempt = 1; attempt <= 2; attempt++){
     let errors;
@@ -2474,7 +2477,11 @@ function __idleGuard(promise, idleMs, getLast){
 async function callAIWithFallback(messages, onDelta, preferredList, opts){
   /* v-owner-solo (المالك ٨ أكتوبر «أيّ واحد أختاره يكون نفسه، وإذا ما فيه رصيد يكتبلي»): solo = المزوّد الأوّل وحده — لا
      احتياط ولا تحويل بعد ردّ رفض، وفشله يُرمى باسمه وسببه فيظهر في الفقاعة. */
-  const __solo = !!(opts && opts.solo);
+  /* v-owner-solo-all (المالك: «كل واحد بروحه»): المستدعون بلا solo (البناء بالصوت، فاحص التطبيق، أدوات الاستوديوهات…) كانوا للمالك
+     على سلسلة مجموعة المزوّد ثمّ كلود/Gemini/GPT/Groq مع تحويل صامت بعد الرفض. للمالك الآن مزوّده المختار وحده، ورسالة النظام
+     الأولى عندهم تعليمات المهمّة نفسها (لا نظام التطبيق الثابت) فتبقى. غير المالك كما كان. */
+  const __ownAuto = !(opts && opts.solo) && typeof omranOwnerUi === 'function' && omranOwnerUi();
+  const __solo = !!(opts && opts.solo) || __ownAuto;
   // 🧹 v308: تعقيم نهائي — أي base64 عملاق داخل نص أي رسالة يُستبدل بعلامة
   // قصيرة قبل الإرسال (الصور المرفقة الحقيقية تبقى في حقل images المنفصل).
   try{
@@ -2519,7 +2526,7 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
       const __viaChat = __solo && TOOL_PROVIDERS.indexOf(providerKey) !== -1 && typeof window.callChatWithTools === 'function';
       if(__viaChat && opts && opts.toolsErr) throw opts.toolsErr; // v-owner-solo: مسار الأدوات لهذا المزوّد فشل للتوّ — لا طلب ثانٍ يكرّر أدواته (تفويض/رفع/صورة)
       const reply = __viaChat
-        ? (await window.callChatWithTools(messages.filter((m, i) => !(i === 0 && m && m.role === 'system')), __od, providerKey, { noTools: true })).reply
+        ? (await window.callChatWithTools(messages.filter((m, i) => __ownAuto || !(i === 0 && m && m.role === 'system')), __od, providerKey, { noTools: true })).reply
         : await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
       // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
       if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }

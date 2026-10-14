@@ -44,6 +44,8 @@ function apiMsg(r, j, what) {
 }
 
 /* ---------- بدء المهمّة ---------- */
+const SELF_ENGINE = { kimi: 'kimi', claude: 'claude' }; // v-self-only: المزوّد ← نسخته الوحيدة في Actions
+const SELF_ONLY_REFUSAL = 'لا تفويض لمزوّد آخر — كلّ مزوّد يشتغل بنفسه. نفّذ الآن بأدواتك: read_github ثمّ edit_github، وما لا تقدر عليه بأدواتك قله للمالك في سطر.';
 async function startTask(input, opts) {
   const o = opts || {};
   const i = input && typeof input === 'object' ? input : {};
@@ -54,7 +56,11 @@ async function startTask(input, opts) {
   if (task.length > 6000) return { error: 'المهمّة أطول من ٦٠٠٠ حرف — اختصرها أو قسّمها.' };
   const base = /^[A-Za-z0-9_.\/-]{1,100}$/.test(String(i.base || '')) ? String(i.base) : 'main';
   // v-kimi-agent: engine=kimi يسلّم المهمّة إلى Kimi Code (kimi-agent.yml) بدل Claude Code
-  const engine = String(i.engine || '').toLowerCase() === 'kimi' ? 'kimi' : 'claude';
+  /* v-self-only (المالك ١٤ أكتوبر: «كودي مايتدخّل — كل واحد بروحه»): من المحادثة (o.prov = مزوّد المالك المختار) لا تسليم إلّا
+     لنسخة المزوّد نفسه في Actions: Kimi ← Kimi Code، وClaude ← Claude Code (موقوف كما في v-cc-off). مزوّد بلا نسخة كود ينفّذ بأدواته. */
+  const self = o.prov ? (SELF_ENGINE[String(o.prov).toLowerCase()] || '') : null;
+  if (self === '' || (self && i.engine && String(i.engine).toLowerCase() !== self)) return { error: SELF_ONLY_REFUSAL };
+  const engine = self || (String(i.engine || '').toLowerCase() === 'kimi' ? 'kimi' : 'claude');
   /* v-cc-off (المالك ١٤ أكتوبر: «وقف كودي من اي شي»): تسليم المهمّة إلى Claude Code في Actions موقوف حتّى يضع المالك CODE_DELEGATE_ENABLED=on */
   if (engine === 'claude' && String((o.env || process.env).CODE_DELEGATE_ENABLED || '').trim().toLowerCase() !== 'on') return { error: 'كودي (Claude Code) موقوف بأمر المالك — لم تُفتح مهمّة ولم يُشغَّل شيء. اعمل التغيير بأدواتك أنت (edit_github/write_github)، ويعود التفويض فقط بـCODE_DELEGATE_ENABLED=on.' };
   const workflow = engine === 'kimi' ? WORKFLOW_KIMI : WORKFLOW;
@@ -180,16 +186,16 @@ function ownerAsksCode(text) {
   if (ASK_CODE_NEG_RE.test(s)) return false;
   return ASK_CODE_RE.test(s);
 }
-const DELEGATE_REFUSAL = '✗ Claude Code ليس الأساسيّ: لا تفويض إلّا إذا طلبه المالك بالاسم («خلّ كودي يسويها» · «Claude Code» · «فوّض») في رسالته الأخيرة. نفّذ أنت الآن: read_github ثمّ edit_github (الحزمة تُبنى تلقائيًّا في الالتزام نفسه)، وما لا تقدر عليه بأدواتك قله له في سطر وهو يقرّر.';
+const DELEGATE_REFUSAL = '✗ لا تفويض: أنت المنفّذ. نفّذ الآن: read_github ثمّ edit_github (الحزمة تُبنى تلقائيًّا في الالتزام نفسه)، وما لا تقدر عليه بأدواتك قله للمالك في سطر وهو يقرّر.'; // v-self-only: بلا عبارات تعلّم المزوّد كيف يطلب من المالك تسليمه لغيره
 
 const START_TOOL = {
   name: 'delegate_code_task',
-  description: 'ليست طريقك الأساسيّ: استدعها فقط إذا طلب المالك في رسالته الأخيرة Claude Code أو «كودي» بالاسم أو قال «فوّض» — وإلّا يرفضها الخادم؛ التعديلات تعملها أنت بـread_github ثمّ edit_github. تسلّم مهمّة كود على مستودع المالك إلى Claude Code داخل GitHub Actions (يقرأ المستودع كاملًا، يعدّل، يعيد بناء الحزمة، يشغّل npm run ci حتّى يمرّ، ويدفع فرعًا) على رصيد Anthropic. للمالك وحده؛ لا للقراءة ولا للأسئلة. اكتب المهمّة كما تكتبها لمهندس زميل: ماذا يتغيّر ولماذا وأين (مسارات الملفّات) وما معيار النجاح. تعود فورًا برقم مسألة وروابط، والتنفيذ يأخذ دقائق — تحقّق لاحقًا بـcheck_code_task.',
+  description: 'ليست طريقك الأساسيّ: استدعها فقط إذا طلب المالك في رسالته الأخيرة «فوّض» — وإلّا يرفضها الخادم؛ التعديلات تعملها أنت بـread_github ثمّ edit_github. تسلّم مهمّة كود على مستودع المالك إلى نسختك أنت داخل GitHub Actions وحدها (Kimi ← Kimi Code؛ Claude ← Claude Code وهو موقوف ما لم يفعّله المالك) — لا لمزوّد آخر (v-self-only): تقرأ المستودع كاملًا، تعدّل، تعيد بناء الحزمة، تشغّل npm run ci حتّى يمرّ، وتدفع فرعًا. للمالك وحده؛ لا للقراءة ولا للأسئلة. اكتب المهمّة كما تكتبها لمهندس زميل: ماذا يتغيّر ولماذا وأين (مسارات الملفّات) وما معيار النجاح. تعود فورًا برقم مسألة وروابط، والتنفيذ يأخذ دقائق — تحقّق لاحقًا بـcheck_code_task.',
   input_schema: {
     type: 'object',
     properties: {
       task: { type: 'string', description: 'وصف المهمّة الكامل (بلا أسرار)' },
-      engine: { type: 'string', enum: ['claude', 'kimi'], description: 'الأخ المنفّذ: claude (Claude Code — الافتراضيّ) أو kimi (Kimi Code — الأخ الثالث، يحتاج KIMI_API_KEY في أسرار المستودع)' },
+      engine: { type: 'string', enum: ['claude', 'kimi'], description: 'نسختك أنت في Actions وحدها (v-self-only): kimi لـKimi (Kimi Code، يحتاج KIMI_API_KEY في أسرار المستودع)، وclaude لـClaude (Claude Code — موقوف ما لم يفعّله المالك). لا تفويض لمزوّد آخر' },
       model: { type: 'string', description: 'نموذج المهمّة: من موديلات Claude لـengine=claude (الافتراضيّ Sonnet 5) أو موديلات Kimi لـengine=kimi (الافتراضيّ kimi-k2.5)' },
       base: { type: 'string', description: 'الفرع الأساس (الافتراضيّ main)' },
       repo: { type: 'string', description: 'owner/repo (الافتراضيّ مستودع التطبيق)' },
@@ -210,4 +216,4 @@ const CHECK_TOOL = {
   },
 };
 
-module.exports = { ownerAsksCode, DELEGATE_REFUSAL, startTask, checkTask, formatStart, formatCheck, parseStatuses, START_TOOL, CHECK_TOOL, WORKFLOW, WORKFLOW_KIMI, KIMI_MODEL_IDS, defaultRepo, slug };
+module.exports = { ownerAsksCode, DELEGATE_REFUSAL, SELF_ONLY_REFUSAL, SELF_ENGINE, startTask, checkTask, formatStart, formatCheck, parseStatuses, START_TOOL, CHECK_TOOL, WORKFLOW, WORKFLOW_KIMI, KIMI_MODEL_IDS, defaultRepo, slug };

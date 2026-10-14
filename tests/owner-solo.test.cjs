@@ -420,3 +420,70 @@ test('٢٣. «انت من» بعد ردود سابقة قالت «أنا مها�
   const vt = sysText(v.calls.find((c) => isOR(c.url)).body);
   assert.match(vt, /أنت وهي مساعد واحد باسمين/); assert.ok(!/\[هويّتك\]/.test(vt), 'غير المالك كما كان');
 });
+
+// ── v-owner-solo-all (المالك: «كل واحد بروحه»): الوسيط مشغول = إعادة كالمباشر، وبحث المالك عن تطبيقه بحثٌ ──
+const orBusy = () => new Response(JSON.stringify({ error: { message: 'Provider returned error', code: 503 } }), { status: 503 });
+test('١٢. v-owner-solo-all: مزوّد المالك عبر الوسيط ٥٠٣ ثمّ ٢٠٠ → يعيد المحاولة على نفسه ويجيب (كان يتوقّف من أوّل خطأ)', async () => {
+  let n = 0;
+  const r = await run('omran', { provider: 'gemini', messages: ask('اشرح لي الفرق بين الضريبة والرسوم') },
+    (u) => (isOR(u) ? (++n === 1 ? orBusy() : sse('من Gemini.')) : isAnth(u) ? sse('من كلود') : new Response('{}', { status: 404 })));
+  assert.equal(r.text, 'من Gemini.');
+  assert.deepEqual(orModels(r.calls), ['google/gemini-3.8-flash', 'google/gemini-3.8-flash'], 'Gemini نفسه مرّتين');
+  assert.ok(!r.calls.some((c) => isAnth(c.url)), 'لا كلود');
+});
+
+test('١٣. v-owner-solo-all: بحث المالك عن خطأ في تطبيقه («omran-ai-builder vercel build error») يُبحث فعلًا — لا «سؤال عن التطبيق نفسه»', async () => {
+  const toolTurn = () => new Response([
+    { type: 'message_start', message: { model: 'x', usage: { input_tokens: 1, output_tokens: 0 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu1', name: 'web_search', input: {} } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify({ query: 'omran-ai-builder vercel build error' }) } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 3 } },
+  ].map((e) => 'event: ' + e.type + '\ndata: ' + JSON.stringify(e) + '\n\n').join(''), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  for (const [user, refused] of [['omran', false], ['vipuser', true]]) {
+    let k = 0;
+    const r = await run(user, { provider: 'claude', messages: ask('ابحث عن سبب فشل بناء omran-ai-builder على vercel') },
+      (u) => ((isAnth(u) || isOR(u)) ? (++k === 1 ? toolTurn() : sse('تمام.')) : new Response('{"results":[]}', { status: 200 })));
+    const back = JSON.stringify(r.calls.filter((c) => isAnth(c.url) || isOR(c.url)).slice(1).map((c) => c.body));
+    assert.equal(/هذا سؤال عن التطبيق نفسه/.test(back), refused, user);
+  }
+});
+
+test('١٤. v-owner-solo-all: الخطوة الأخيرة بلا أدوات (tool_choice none) لغير أنثروبيك على الوسيط أيضًا، وأنثروبيك بلاها (كاشه)', () => {
+  const OL = require(rp('api/_lib/owner-loop.js'));
+  const s = { on: true, final: true };
+  const tools = [{ name: 'x' }];
+  assert.deepEqual(OL.shape({ tools }, Object.assign({}, s), true).tool_choice, { type: 'none' });
+  assert.equal(OL.shape({ tools }, Object.assign({}, s), false).tool_choice, undefined);
+  assert.ok(read('api/_lib/chat.js').includes("__olS, !!__direct || (viaOR && !/^anthropic\\//.test(CHAT_MODEL))"), 'المسار المباشر أو الوسيط لغير أنثروبيك');
+});
+
+test('١٥. v-branch-shots: لقطتا الفرع من manage_github تصلان المزوّد صورًا بعد نتائج خطوته؛ ومن لا يرى يُقال له ذلك بلا صور', async () => {
+  const gmPath = rp('api/_lib/github-manage.js');
+  const real = require(gmPath);
+  require.cache[gmPath] = { id: gmPath, filename: gmPath, loaded: true, exports: Object.assign({}, real, { manage: async () => ({ ok: true, text: '📸 لقطتا الفرع x', runUrl: 'https://github.com/o/r/actions/runs/5', images: [{ label: 'لقطة الحاسوب من الفرع x', path: 'لقطة الحاسوب', mime: 'image/png', b64: 'QUJD', bytes: 3 }, { label: 'لقطة الجوّال من الفرع x', path: 'لقطة الجوّال', mime: 'image/png', b64: 'REVG', bytes: 3 }] }) }) };
+  const toolTurn = () => new Response([
+    { type: 'message_start', message: { model: 'x', usage: { input_tokens: 1, output_tokens: 0 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu9', name: 'manage_github', input: {} } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify({ repo: 'o/r', action: 'shots', branch: 'x' }) } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 3 } },
+  ].map((e) => 'event: ' + e.type + '\ndata: ' + JSON.stringify(e) + '\n\n').join(''), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  try {
+    for (const [prov, sees] of [['claude', true], ['deepseek', false]]) {
+      let k = 0;
+      const r = await run('omran', { provider: prov, messages: ask('صوّر فرعي x وشوف الواجهة') },
+        (u) => ((isAnth(u) || isOR(u)) ? (++k === 1 ? toolTurn() : sse('شفتها.')) : new Response('{}', { status: 404 })));
+      const second = r.calls.filter((c) => isAnth(c.url) || isOR(c.url))[1];
+      const last = second.body.messages[second.body.messages.length - 1];
+      const imgs = (Array.isArray(last.content) ? last.content : []).filter((b) => b.type === 'image');
+      if (sees) {
+        assert.deepEqual(imgs.map((b) => b.source.data), ['QUJD', 'REVG'], prov + ': اللقطتان صورًا');
+        assert.ok(last.content.some((b) => b.type === 'text' && b.text === '[لقطة الحاسوب من الفرع x]'), 'باسمها لا «من المستودع»');
+      } else {
+        assert.equal(imgs.length, 0, prov + ': نصّيّ — بلا صور');
+        assert.match(JSON.stringify(last.content), /موديلك الحاليّ لا يرى الصور/);
+      }
+    }
+  } finally { require.cache[gmPath] = { id: gmPath, filename: gmPath, loaded: true, exports: real }; }
+});

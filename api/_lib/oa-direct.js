@@ -450,6 +450,7 @@ const TPM_NOTE = '[هذا الدور بلا أدوات: حدّ مفتاح Groq �
 /* v-prov-self (٣): «ما أريد كلمة ما أقدر» — في الجسم المقصوص تبقى الأدوات الصغيرة ذات الصلة بالرسالة الأخيرة إن اتّسعت: صورة مرفقة أو رسم ←
    أداتا الصور (نتيجتهما رمز قصير)، وسؤال معلومة ← البحث. أدوات GitHub نتائجها عشرات الآلاف من الحروف فلا تتّسع لحدّ الدقيقة أصلًا. */
 const LEAN_IMG_RE = /(?:ارسم|أرسم|ارسمي|رسمة|صور[ةه]|لوحة|شعار|لوجو|بوستر|image|draw|picture|logo|poster)/i;
+const LEAN_VID_RE = /(?:فيديو|ڤيديو|مقطع|كليب|حرّ?ك|video|animate)/i; // v-owner-solo-all: طلب فيديو يُبقي أداته إن اتّسعت (كانت تُسقط فيقول «ما أقدر»)
 const LEAN_Q_RE = /[؟?]|(?:^|[\s،,])(?:كم|متى|وين|فين|من هو|من هي|ما هو|ما هي|ايش|إيش|شو|وش|أخبار|اخبار|سعر|أسعار|اسعار|طقس|نتيجة|مباراة|who|what|when|where|price|news|weather)(?=$|[\s،,؟?])/i;
 const TPM_NOTE_TOOLS = (names) => '[هذا الدور بأدوات محدودة لضيق حدّ مفتاح Groq في الدقيقة: ' + names.join('، ') + ' فقط. استعملها بنفسك حين تلزم؛ وما ليس معك في هذا الدور فلا تدّعِه — قل في سطر إنّه يحتاج رسالة أقصر أو مفتاح Groq بحدّ أعلى.]';
 function fitGroqTpm(body, errText) {
@@ -486,7 +487,7 @@ function fitGroqTpm(body, errText) {
   const TAIL_HEAD = '\n\n[سياق هذا الدور من النظام', tailAt = luRaw.indexOf(TAIL_HEAD);
   const luText = tailAt >= 0 ? luRaw.slice(0, tailAt) : luRaw, mediaLocked = tailAt >= 0 && /لا تستدعِ generate_image/.test(luRaw.slice(tailAt));
   const luImg = !!(lastUser && Array.isArray(lastUser.content) && lastUser.content.some((x) => x && x.type === 'image_url'));
-  const want = (!mediaLocked && (luImg || LEAN_IMG_RE.test(luText)) ? ['edit_image', 'generate_image'] : []).concat(LEAN_Q_RE.test(luText) ? ['web_search'] : []);
+  const want = (!mediaLocked && LEAN_VID_RE.test(luText) ? ['generate_video'] : []).concat(!mediaLocked && (luImg || LEAN_IMG_RE.test(luText)) ? ['edit_image', 'generate_image'] : []).concat(LEAN_Q_RE.test(luText) ? ['web_search'] : []);
   const wantTools = (body.tools || []).filter((x) => x && x.function && want.indexOf(x.function.name) !== -1);
   /* (٢) بلا أدوات، والنظام: الفقرة الأولى (الهويّة والأسلوب) و[هويّتك] إن كانت آخرها، ثمّ الباقي بترتيبه ما اتّسع لـ٤٠٪ من الحدّ —
      الحدّ للدقيقة كلّها لا للطلب: جسم بستّة آلاف من ثمانية يردّ «مرحبا» ثمّ يرفض الرسالة التالية 429 (لقطة المالك الثانية). */

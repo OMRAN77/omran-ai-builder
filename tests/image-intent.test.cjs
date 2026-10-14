@@ -201,7 +201,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   /* تبديل الحرف بالقناع يعمل على 1280px كأي تعديل */
   assert.match(attach, /const __sc = Math\.min\(1, 1280 \/ Math\.max\(img\.naturalWidth \|\| 1, img\.naturalHeight \|\| 1\)\);/);
   /* الترقية تذهب إلى برو دائمًا — لا تُختطف إلى gpt-image المحافظ حين يبدو المصدر «شاشة تطبيق» */
-  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent \|\| /);
+  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && __optForceEngine !== 'nano' \/\* v-owner-solo-all: Gemini المختار يرسم بـGoogle وحده \*\/ && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent \|\| /);
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */
   assert.ok(!/__duoWouldRun|duoEnabled|duoP\b/.test(maha), 'v-lanes: لا محرّك موازٍ');
   // v-text-gpt-oneshot: مسار النصّ ضربة واحدة بلا مزدوج (v-img-honest: يُقاس، وبرو مرّة فقط إن لم يُنفّذ GPT)

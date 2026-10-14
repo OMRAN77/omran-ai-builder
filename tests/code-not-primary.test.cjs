@@ -71,12 +71,13 @@ test('real chat handler: the owner asks a fix without naming Claude Code → no 
   const b1 = await ownerAsks('صلّح تمرير المحادثة، ما يتبع تحت');
   assert.equal(started.length, 0, 'لا تشغيل لـClaude Code');
   const back = JSON.stringify(b1[1] && b1[1].body);
-  assert.ok(back.includes('Claude Code ليس الأساسيّ'), 'نتيجة الأداة للنموذج: الرفض وسببه');
+  assert.ok(back.includes('لا تفويض: أنت المنفّذ'), 'نتيجة الأداة للنموذج: الرفض وسببه');
+  assert.ok(!/خلّ كودي يسويها|«Claude Code»/.test(back), 'v-self-only: الرفض لا يعلّم المزوّد كيف يطلب تسليمه لكودي');
   assert.ok(back.includes('read_github ثمّ edit_github'), 'وماذا يفعل بدلًا منه');
 
   const b2 = await ownerAsks('خلّ كودي يسويها');
   assert.equal(started.length, 1, 'بالاسم: يُسلَّم مرّة');
-  assert.ok(!JSON.stringify(b2[1] && b2[1].body).includes('Claude Code ليس الأساسيّ'));
+  assert.ok(!JSON.stringify(b2[1] && b2[1].body).includes('لا تفويض: أنت المنفّذ'));
 });
 
 test('instructions everywhere say "you edit"; delegation only when the owner names it — and the agent has the same guard', () => {
