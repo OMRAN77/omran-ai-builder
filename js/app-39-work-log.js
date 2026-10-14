@@ -37,13 +37,19 @@
     var body = mk('div', 'cwTool');
     if(p.cmd){ body.appendChild(mk('div', 'cwLbl', tr('cwRequest', 'Request'))); body.appendChild(pre(p.cmd, false)); }
     body.appendChild(mk('div', 'cwLbl', tr('cwResponse', 'Response')));
-    body.appendChild(p.out ? pre(p.out, !!p.err) : mk('div', 'cwNone', tr('agNoOutput', 'No output')));
+    body.appendChild(p.out ? pre(p.out, !!p.err) : mk('div', 'cwNone', p.run ? '…' : tr('agNoOutput', 'No output'))); // v-interleave-fix: الجارية «…» لا «بلا ناتج»
     var d = item(clip(p.title || p.name || ''), body, open);
     d.classList.add('cwTool');
     if(p.err) d.classList.add('cwFail');
     return d;
   }
-  function textEl(p){ return mk('div', 'cwItem cwPlain', clip(p.s)); }
+  function textEl(p){
+    var s = String(p.s || '').trim();
+    if(s.length <= TITLE_MAX) return mk('div', 'cwItem cwPlain', clip(s));
+    /* v-interleave-fix: كلام الوكيل المحفوظ كان يُقصّ عند ١٢٠ حرفًا بلا فتح — الطويل سطر عنوانه أوّله وينفتح على كامله */
+    var body = mk('div', 'cwThink'); s.split(/\n+/).forEach(function(l){ if(l.trim()) body.appendChild(mk('div', 'cwLine', l.trim())); });
+    return item(clip(s.split(/\n/)[0]), body, false);
+  }
   /* v-interleave: أدوات متتالية من النوع نفسه سطر واحد «آخر عنوان · +N ›» (كـ«git, 2+» في Claude Code)، ينفتح على خطواتها */
   function groupTitle(g){ var n = g.__items.length; return clip(g.__items[n - 1].title || g.__items[n - 1].name || '') + (n > 1 ? '  · +' + (n - 1) : ''); }
   function groupEl(items){

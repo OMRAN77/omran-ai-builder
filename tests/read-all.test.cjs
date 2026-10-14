@@ -65,7 +65,11 @@ test('سطر الأثر في حلقة الأدوات يحمل المُدخل و�
   assert.strictEqual(trailDetail('fetch_page', { url: 'https://a.com' }, 'x'.repeat(2000)).out.length, 400);
   assert.deepStrictEqual(trailDetail('generate_image', { prompt: 'قطّة' }, '__IMG_1__'), {});
   const src = read('api/_lib/chat.js');
-  assert.ok(src.includes("send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p }, trailDetail(cb.name, input, result)));"));
+  assert.ok(src.includes("send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p, tool: cb.name, err:"), 'v-interleave-fix: ومعه اسم الأداة وحكم الفشل');
+  assert.ok(src.includes('trailDetail(cb.name, input, result)));'));
+  /* v-interleave-fix: الرفع والتعديل والدمج ونتيجة الرسم المرفوض تظهر في السجلّ؛ الرسم الناجح بلا ناتج نصّيّ كما كان */
+  assert.deepStrictEqual(trailDetail('write_github', { repo: 'O/r', files: [{ path: 'a.webp' }] }, '✅ رُفع'), { cmd: 'O/r a.webp', out: '✅ رُفع' });
+  assert.strictEqual(trailDetail('generate_image', { prompt: 'قطّة' }, '✗ لم يُنفَّذ').out, '✗ لم يُنفَّذ');
 });
 
 test('الطبقة المجانية تقرأ قبل البثّ وتمرّر المحادثة المقروءة، والملاحظة تأمرها بالتحليل والاستشهاد', () => {

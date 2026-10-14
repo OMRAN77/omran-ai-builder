@@ -269,7 +269,7 @@ test('٩. ردّ الرصيد يُظهر شريط التنبيه مرّة: «ج�
 test('١٠. حدّ المحادثة يُفتح من نهاية مسارها: الخادم يعلّمه، الأدوات تحمله، لا مزوّد آخر يُجرَّب، ونصّه بدل «أدخل مفتاحك»', () => {
   const a18 = read('js/app-18-chat-tools.js');
   assert.match(a18, /if \(ev\.error && ev\.limit === true\) __planLimit = true;/);
-  assert.match(a18, /if \(__planLimit\) __er\.planLimit = true; throw __er;/);
+  assert.match(a18, /if \(__planLimit\) __er\.planLimit = true; __er\.log = __logNow\(\); throw __er;/);
   const a9 = read('js/app-09-attach.js');
   assert.equal((a9.match(/e\.name === 'AbortError' \|\| e\.planLimit\)\) throw e;/g) || []).length, 2, 'المسار الأوّل وفريق الأدوات');
   assert.match(a9, /\} else if\(err && err\.planLimit\)\{\s*\/\/[^\n]*\n\s*cur\.messages\.push\(\{role: 'assistant', content: '⚠️ ' \+ t\('plansWhyLimit'\)\}\);\s*try\{ if\(typeof window\.omranOpenPlans === 'function'\) window\.omranOpenPlans\('limit', 'chat'\);/);

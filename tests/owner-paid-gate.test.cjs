@@ -85,6 +85,9 @@ test('٣. الحارس في الخادم للمحادثة والوكيل، وا�
   assert.ok(read('api/_lib/agent.js').includes('__draws[cb.id] = { p: runInClient(send, cb.name, di) };'), 'رسمات الخطوة متوازية في الوكيل');
   const w = require(rp('api/_lib/github-edit.js')).WORK_NOTE;
   assert.ok(w.includes('لا تكمل طلبًا قديمًا من السجلّ، ولا ترسم لتجرّب أو تشخّص') && !w.includes('ارسم كلّ المطلوب أوّلًا'));
+  // v-interleave-fix: لا سطر «🎨 يرسم صورة…» لرسمة يرفضها الحارس (كان يظهر ثمّ يأتي الرفض)
+  const C = read('api/_lib/chat.js');
+  for (const n of ['generate_image', 'edit_image', 'generate_video']) assert.ok(new RegExp("cb\\.name === '" + n + "' &&[^\\n]*\\(!__ownerReq \\|\\| require\\('\\./owner-media\\.js'\\)\\.askedMedia\\(lastUserText, lastUserHasImage\\)\\)\\) send\\(\\{ status").test(C), n);
   assert.ok(JSON.parse(read('package.json')).scripts.test.includes('node tests/owner-paid-gate.test.cjs'));
 });
 

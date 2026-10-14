@@ -22646,6 +22646,7 @@ function __agLogLive(host){
   host.innerHTML = '';
   const root = document.createElement('div'); root.className = 'agLog';
   const W = window.omranWorkLog || null; // v-interleave: عناصر صندوق المحادثة نفسها
+  const __agT0 = Date.now(); // v-interleave-fix: مدّة التشغيل الحقيقيّة للسجلّ المحفوظ (كانت مجموع التفكير فـ«عمل ١ث»)
   const pill = document.createElement('div'); pill.className = 'agPill';
   host.appendChild(root); host.appendChild(pill);
   const parts = [];
@@ -22683,6 +22684,7 @@ function __agLogLive(host){
         p.run = false; p.err = !a.ok; p.out = String(a.out || '');
         if(W && p.el && p.el.classList.contains('cwItem')){
           const n = W.toolEl(p, p.el.open); p.el.replaceWith(n); p.el = n;
+          if(!(n.parentNode && n.parentNode.parentNode && n.parentNode.parentNode.classList && n.parentNode.parentNode.classList.contains('cwGroup'))) n.__last = p; // v-interleave-fix: صفّ مكتمل يُجمَع مع التالي من النوع نفسه
           const g = n.parentNode && n.parentNode.parentNode; if(g && g.classList && g.classList.contains('cwGroup') && p.err) g.classList.add('cwFail');
         } else __agLogFillTool(p.el, p);
         if(a.code && typeof a.code === 'object'){ p.code = a.code; if(window.omranReadPanel) window.omranReadPanel.live(a.code); } // v-read-panel
@@ -22731,6 +22733,7 @@ function __agLogLive(host){
         return o;
       }).filter(function(p){ return p.t !== 'text' || p.s; });
       const tail = parts.slice(last + 1).filter(function(p){ return p.t === 'text' && !p.note; }).map(function(p){ return p.s; }).join('');
+      if(W) log.unshift({ t: 'meta', ms: Date.now() - __agT0 }); // v-interleave-fix
       if(window.omranReadPanel) window.omranReadPanel.pack(log, tail);
       return { log: log, tail: tail };
     },
@@ -27012,7 +27015,7 @@ DESIGN RULES (non-negotiable):
           role: 'assistant',
           content: partial || (__run.timedOut ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول النتيجة — أعد المحاولة.' : '⚠️ The connection dropped before the result arrived — please try again.') : (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.')),
           _stopped: true,
-          askAllReply: false
+          askAllReply: false, _agParts: (err && Array.isArray(err.log)) ? err.log : undefined, // v-interleave-fix: سجلّ العمل يبقى بعد الإيقاف
         });
       }
       if(__mine()){ promptEl.value = ''; window.__chatEditRequest = null; setChatEditNotice(false); } // v-parallel-chats: لا تمسح ما يكتبه في محادثة أخرى
@@ -27035,7 +27038,7 @@ DESIGN RULES (non-negotiable):
       try{ __primaryErr = String((window.__diagTurn && window.__diagTurn.toolsErr) || '').trim(); }catch(e){ __primaryErr = ''; }
       /* v-owner-solo (المالك: «أيّ شي زائد ما أريده»): للمالك رسالة الفشل وحدها — بلا سطر المسار الأوّل التقنيّ. */
       if(__primaryErr && typeof omranOwnerUi === 'function' && omranOwnerUi()) __primaryErr = '';
-      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
+      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : ''), _agParts: (err && Array.isArray(err.log)) ? err.log : undefined}); // v-interleave-fix: وسجلّه بعد الخطأ
     }
   }finally{
     const __keepReaderPosition = !document.documentElement.classList.contains('mobile-ui') && typeof chatIsNearBottom === 'function' ? !chatIsNearBottom() : false;
@@ -39057,6 +39060,22 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
        واحد بترتيب وصولها (__seq)، وكلّ واحد يصل صندوق العمل حيًّا (__omranThinkNote) مع بداية الدور (t0) لعدّاد الوقت.
        مدّة كلّ تفكير منذ آخر حدث لا منذ بداية الدور. */
     var __seq = [], __tLast = __t0;
+    /* v-interleave-fix (تدقيق ١٤ أكتوبر): الجملة القصيرة قبل الأداة كانت تتراكم في فقاعة الردّ ملتصقة («أقرأ app-17 أوّلًا.الآن أرفع…»).
+       الآن ما كُتب منذ آخر خطوة يصير سطرًا في السجلّ قبلها (كـClaude Code)، والردّ ما بعد آخر خطوة. النصّ الطويل أو الكود يبقى في الردّ
+       ويُفصل بسطر فارغ — لا يُقصّ جواب كتبه النموذج قبل أداة. */
+    var __segFrom = 0, __moved = [];
+    function __moveSeg() {
+      if (full.length <= __segFrom) { __segFrom = full.length; return; }
+      var seg = full.slice(__segFrom), st = seg.trim();
+      if (st && st.length <= 320 && st.indexOf('```') === -1) {
+        full = full.slice(0, __segFrom); __moved.push(seg);
+        var tp = { t: 'text', s: st }; __seq.push(tp);
+        if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ step: tp, t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:seg'); } }
+        if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:seg-delta'); } }
+      } else if (st && !/\n\s*$/.test(full)) full += '\n\n';
+      __segFrom = full.length;
+    }
+    function __logNow() { return __seq.length ? [{ t: 'meta', ms: Date.now() - __t0 }].concat(__seq) : undefined; }
     var __rp = window.omranReadPanel || null; /* v-read-panel: لوحة «الكود المقروء» — ما يُقرأ من GitHub يظهر فيها أثناء البثّ */
     if (__rp) __rp.begin();
 
@@ -39064,7 +39083,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       var chunk;
       try { chunk = await __raceIdle(reader.read(), __toolBusy ? __CHAT_TOOL_MS : __CHAT_IDLE_MS, '__chat_idle__'); }
       catch (e) {
-        if (e && e.name === 'AbortError') throw e; /* إيقاف المستخدم أو الحارس الصلب — يمرّ كما هو */
+        if (e && e.name === 'AbortError') { try { e.log = __logNow(); } catch (_l) { /* guard-ok — السجلّ ترف */ } throw e; } /* إيقاف المستخدم أو الحارس الصلب — يمرّ كما هو، ومعه سجلّ العمل (v-interleave-fix) */
         try { reader.cancel(); } catch (_e) { /* guard-ok — تحرير المجرى */ }
         if (full.trim()) break; /* عندنا نصّ جزئيّ — نعرضه بدل تضييعه */
         throw new Error(serverErr || 'chat: stalled — no response');
@@ -39084,7 +39103,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
         else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status, onDelta && onDelta.__status);  /* v656 */
         if (ev.status && !/^↳/.test(String(ev.status)) && typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ head: String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/, '').trim(), t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:head'); } } /* v-work-log: رأس صندوق العمل = ما يجري الآن */
-        if (ev.think && ev.think.s && __thinks.length < 12) { /* v-interleave (المالك ١٤ أكتوبر «نفس فكرة كلاود كودي»): التفكير بين الأدوات يظهر سطرًا مطويًّا كما يفكّر — كان v-edit-no-talk يحجبه بعد أوّل أداة */
+        if (ev.think && ev.think.s && __thinks.length < 24) { __moveSeg(); /* v-interleave-fix */ /* v-interleave (المالك ١٤ أكتوبر «نفس فكرة كلاود كودي»): التفكير بين الأدوات يظهر سطرًا مطويًّا كما يفكّر — كان v-edit-no-talk يحجبه بعد أوّل أداة */
           var __ts = String(ev.think.s).slice(0, 1200);
           var __tm = Date.now() - __tLast; __tLast = Date.now();
           __thinks.push({ t: 'think', ms: __tm, s: __ts }); __seq.push(__thinks[__thinks.length - 1]); /* محفوظًا مطويًّا: «فكّر N ث ›» يُفتح بالضغط */
@@ -39092,7 +39111,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         }
         if (ev.status && /^↳/.test(String(ev.status)) && !/^↳\s*💭/.test(String(ev.status)) && __steps.length < 24) {
           var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
-          __steps.push({ t: 'tool', name: String(ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: /Fail|Err/.test(String(ev.k || '')) ? 1 : 0, g: 0 });
+          __moveSeg(); /* v-interleave-fix: ما كُتب قبل الخطوة سطر قبلها في السجلّ */
+          __steps.push({ t: 'tool', name: String(ev.tool || ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: (ev.err || /Fail|Err/.test(String(ev.k || ''))) ? 1 : 0, g: 0 }); /* v-interleave-fix: التجميع باسم الأداة لا بمفتاح الترجمة، والفشل أحمر بحكم الخادم */
           var __st = __steps[__steps.length - 1]; __seq.push(__st); __tLast = Date.now();
           if (ev.code && typeof ev.code === 'object') { __st.code = ev.code; __st.g = 1; __st.title = String(ev.code.p || __tt) + '  ' + ev.code.a + '–' + ev.code.b; } /* v-read-panel: يُحفظ مع الخطوة فتعمل الأرقام بعد إعادة التحميل · v-work-log: عنوان قراءة الملفّ مساره وأسطره */
           if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ step: __st, t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:step'); } }
@@ -39109,6 +39129,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         // العرض النهائي). كان يُهمَل هنا فتبقى الروابط المحذوفة ظاهرة للمستخدم.
         if (typeof ev.patch === 'string' && ev.patch.trim()) {
           full = ev.patch;
+          __moved.forEach(function (m) { var mi = full.indexOf(m); if (mi !== -1) full = full.slice(0, mi) + full.slice(mi + m.length); }); /* v-interleave-fix: الردّ المنقّى بلا ما نُقل للسجلّ */
+          full = full.replace(/^\s+/, ''); __segFrom = full.length;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:patch'); } }
         }
         if (Array.isArray(ev.sources)) {
@@ -39130,7 +39152,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     noteEnd(onDelta && onDelta.__status);
 
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم — إلّا حدّ الباقة: لا مسار آخر يتجاوزه.
-    if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er; }
+    if (!full.trim() && __moved.length) full = __moved[__moved.length - 1].trim(); /* v-interleave-fix: انتهى بأداة بلا كلام بعدها — آخر جملة هي الردّ */
+    if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; __er.log = __logNow(); throw __er; } /* v-interleave-fix: السجلّ يبقى مع الخطأ */
     /* v-claude-code-level C3 (المالك: «ما يعطيني شي»): سبب توقّف المالك بعد نصّ (خطأ بعد التمهيد، قطع لطوله، مهلة، رفض) كان يضيع —
        يُلحق تحت الردّ. ownerStop لا يرسله الخادم إلّا للمالك، فغيره كما كان. ردّ قُطع داخل كتلة كود (سياج لم يُغلق) يُغلَق سياجه
        قبل السطر — وإلّا صار السبب جزءًا من الكود المستخرَج (extractReplyRaw) — ويُعلَّم fenceCut ليعرف المستدعي أنّه مقطوع. */
@@ -39138,7 +39161,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     if (__ownerStop && serverErr) { __fenceCut = ((full.match(/```/g) || []).length % 2) === 1; full = full + (__fenceCut ? '\n```' : '') + '\n\n⚠️ ' + serverErr; if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-note'); } } }
     var __p = provider || 'claude';
     if (__rp) { try { __rp.pack(__steps, full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-pack'); } } /* v-read-panel: سقف حجم المقاطع المحفوظة */
-    var __log = __seq.length ? [{ t: 'meta', ms: (__tFirst || Date.now()) - __t0 }].concat(__seq) : undefined; /* v-work-log: بترتيب الوصول، وأوّله مدّة العمل حتّى أوّل حرف من الردّ */
+    var __log = __logNow(); /* v-work-log: بترتيب الوصول، وأوّله مدّة العمل كلّه (v-interleave-fix: كانت حتّى أوّل حرف فـ«عمل ٣ث» لشغل ٣ دقائق) */
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined, cards: __cards || undefined };
   };
 })();
@@ -46118,13 +46141,19 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var body = mk('div', 'cwTool');
     if(p.cmd){ body.appendChild(mk('div', 'cwLbl', tr('cwRequest', 'Request'))); body.appendChild(pre(p.cmd, false)); }
     body.appendChild(mk('div', 'cwLbl', tr('cwResponse', 'Response')));
-    body.appendChild(p.out ? pre(p.out, !!p.err) : mk('div', 'cwNone', tr('agNoOutput', 'No output')));
+    body.appendChild(p.out ? pre(p.out, !!p.err) : mk('div', 'cwNone', p.run ? '…' : tr('agNoOutput', 'No output'))); // v-interleave-fix: الجارية «…» لا «بلا ناتج»
     var d = item(clip(p.title || p.name || ''), body, open);
     d.classList.add('cwTool');
     if(p.err) d.classList.add('cwFail');
     return d;
   }
-  function textEl(p){ return mk('div', 'cwItem cwPlain', clip(p.s)); }
+  function textEl(p){
+    var s = String(p.s || '').trim();
+    if(s.length <= TITLE_MAX) return mk('div', 'cwItem cwPlain', clip(s));
+    /* v-interleave-fix: كلام الوكيل المحفوظ كان يُقصّ عند ١٢٠ حرفًا بلا فتح — الطويل سطر عنوانه أوّله وينفتح على كامله */
+    var body = mk('div', 'cwThink'); s.split(/\n+/).forEach(function(l){ if(l.trim()) body.appendChild(mk('div', 'cwLine', l.trim())); });
+    return item(clip(s.split(/\n/)[0]), body, false);
+  }
   /* v-interleave: أدوات متتالية من النوع نفسه سطر واحد «آخر عنوان · +N ›» (كـ«git, 2+» في Claude Code)، ينفتح على خطواتها */
   function groupTitle(g){ var n = g.__items.length; return clip(g.__items[n - 1].title || g.__items[n - 1].name || '') + (n > 1 ? '  · +' + (n - 1) : ''); }
   function groupEl(items){

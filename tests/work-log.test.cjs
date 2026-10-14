@@ -68,6 +68,8 @@ function mkEl(tag) {
     removeChild(c) { const i = this.childNodes.indexOf(c); if (i >= 0) this.childNodes.splice(i, 1); c.parentNode = null; return c; },
     replaceChild(n, o) { const i = this.childNodes.indexOf(o); if (n.parentNode) n.parentNode.removeChild(n); n.parentNode = this; this.childNodes[i] = n; o.parentNode = null; return o; },
     get lastElementChild() { return this.lastChild; },
+    replaceWith(n) { this.parentNode.replaceChild(n, this); },
+    querySelectorAll(sel) { return sel === 'details.cwItem[open]' ? this.q('cwItem').filter((x) => x.tagName === 'DETAILS' && x.open) : []; },
     querySelector(sel) { return this.q(sel.replace(/^\./, ''))[0] || null; },
     get textContent() { return this._text + this.childNodes.map((c) => c.textContent).join(''); },
     set textContent(v) { this.childNodes = []; this._text = String(v); },
@@ -184,9 +186,9 @@ test('٥. v-interleave (المالك ١٤ أكتوبر «نفس فكرة كلا�
   assert.ok(a9.includes("if(window.omranWorkLog) return window.omranWorkLog.thinkEl(p, false);"), 'تفكير الوكيل سطر مطويّ');
   assert.ok(a9.includes("p.el = W.groupAdd(g, p); g.__last = p;") && a9.includes("p.el = W.toolEl(p, !W.isRead(p));"), 'أدوات الوكيل بالمجموعة والقراءة مطويّة');
   assert.ok(a9.includes("return window.omranWorkLog.render([{ t: 'meta'"), 'سجلّ الوكيل المحفوظ بالصندوق نفسه');
-  assert.ok(read('js/app-18-chat-tools.js').includes('__thinks.length < 12) { /* v-interleave'), 'المحادثة: التفكير بين الأدوات لكلّ المزوّدين');
+  assert.ok(read('js/app-18-chat-tools.js').includes('__thinks.length < 24) { __moveSeg();'), 'المحادثة: التفكير بين الأدوات لكلّ المزوّدين');
   assert.ok(require(path.join(root, 'api/_lib/github-edit.js')).WORK_NOTE.includes('اعمل كما يعمل Claude Code (v-interleave)'), 'تعليمة المزوّدين');
-  for (const s of ['groupAdd: groupAdd', '__thinks.length < 12']) assert.ok(read('js/app.bundle.js').includes(s), 'الحزمة: ' + s);
+  for (const s of ['groupAdd: groupAdd', '__thinks.length < 24']) assert.ok(read('js/app.bundle.js').includes(s), 'الحزمة: ' + s);
 });
 
 test('٦. v-read-fold (المالك ١٤ أكتوبر «يقرى الصفحة اريدها مطوية نفس نظام كلاود»): القراءة مطويّة لكلّ المزوّدين ولو كانت الأحدث، والبحث يبقى مفتوحًا', () => {
@@ -205,4 +207,55 @@ test('٦. v-read-fold (المالك ١٤ أكتوبر «يقرى الصفحة ا
   assert.equal(W.isRead({ t: 'tool', code: { p: 'x.js' } }), true);
   assert.ok(read('js/app-04-i18n-state.js').includes('window.omranCC.foldCode(textDiv)'), 'كود الردّ الطويل يُطوى لكلّ المزوّدين');
   assert.ok(read('js/app-38-read-panel.js').includes('v-read-fold') && !read('js/app-38-read-panel.js').includes('if(first && !isMobile()) reveal()'), 'اللوحة لا تُفتح وحدها');
+});
+
+test('٦. v-interleave-fix: الجملة قبل الأداة سطر في السجلّ لا في الردّ، والتجميع باسم الأداة، والفشل أحمر، والسجلّ يبقى مع الخطأ، والوكيل يجمع بعد اكتمال الأداة', async () => {
+  const { r, notes } = await stream([
+    { delta: 'أقرأ app-17 أوّلًا.' },
+    { status: '↳ قرأتُ GitHub a.js', k: 'trFetch', tool: 'read_github', cmd: 'a.js', out: '📄' },
+    { delta: 'الآن أرفع الصور.' },
+    { status: '↳ استخدمتُ write_github', k: 'trTool', tool: 'write_github', cmd: 'O/r a.webp', out: '✗ لم يُرفع شيء', err: 1 },
+    { delta: 'تمّ — هذا رابط الطلب.' },
+  ]);
+  assert.equal(r.reply, 'تمّ — هذا رابط الطلب.', 'الردّ ما بعد آخر خطوة');
+  const log = plain(r.log);
+  assert.deepEqual(log.map((p) => p.t + (p.t === 'text' ? ':' + p.s : '')), ['meta', 'text:أقرأ app-17 أوّلًا.', 'tool', 'text:الآن أرفع الصور.', 'tool'], 'بترتيب Claude Code');
+  assert.equal(log[2].name, 'read_github'); assert.equal(log[4].name, 'write_github', 'اسم الأداة لا مفتاح الترجمة');
+  assert.equal(log[4].err, 1, 'الفشل أحمر بحكم الخادم');
+  assert.ok(notes.some((n) => n.step && n.step.t === 'text'), 'الجملة تصل الصندوق حيًّا');
+  // ردّ ينتهي بأداة بلا كلام بعدها: آخر جملة هي الردّ
+  const end = await stream([{ delta: 'أرفع الآن.' }, { status: '↳ x', k: 'trTool', tool: 'write_github' }]);
+  assert.equal(end.r.reply, 'أرفع الآن.');
+  // كلام طويل قبل أداة يبقى في الردّ مفصولًا لا يُقصّ
+  const long = 'جواب طويل '.repeat(40).trim();
+  const keep = await stream([{ delta: long }, { status: '↳ x', k: 'trFetch', tool: 'read_github' }, { delta: 'وبعده.' }]);
+  assert.equal(keep.r.reply, long + '\n\nوبعده.');
+  // خطأ بلا نصّ: السجلّ معه
+  let err = null; try { await stream([{ status: '↳ x', k: 'trFetch', tool: 'read_github' }]); } catch (e) { err = e; }
+  assert.ok(err && Array.isArray(err.log) && err.log[0].t === 'meta', 'السجلّ يبقى مع الخطأ');
+  assert.ok(APP09.includes("_agParts: (err && Array.isArray(err.log)) ? err.log : undefined,") && APP09.includes("_agParts: (err && Array.isArray(err.log)) ? err.log : undefined});"), 'الإيقاف والخطأ يحفظان السجلّ');
+
+  // الوكيل: أداة ← اكتمال ← أداة من النوع نفسه = مجموعة واحدة (كان «done» يمحو علامة الصفّ)
+  const { sb } = client({ t: 0 });
+  const LIVE = APP09.slice(APP09.indexOf('const AG_LOG_BUDGET'), APP09.indexOf('async function runOmranAgent('));
+  sb.document.documentElement = { classList: { contains: () => false } };
+  vm.runInContext(LIVE + '\nthis.agLive = __agLogLive;', sb);
+  const host = mkEl('div'); host.__root = 1;
+  const L = sb.agLive(host);
+  for (const [id, f] of [['1', 'a.js'], ['2', 'b.js'], ['3', 'c.js']]) {
+    L.act({ k: 'tool', id, name: 'read_github', t: 'قرأ ' + f, cmd: f });
+    L.act({ k: 'done', id, ok: true, out: 'x' });
+  }
+  const root = host.childNodes[0];
+  assert.equal(root.childNodes.length, 1, 'صفّ واحد');
+  assert.ok(root.childNodes[0].classList.contains('cwGroup'), 'مجموعة');
+  assert.equal(root.childNodes[0].q('cwTitle')[0].textContent, 'قرأ c.js  · +2');
+  const saved = plain(L.split().log);
+  assert.equal(saved[0].t, 'meta', 'مدّة التشغيل الحقيقيّة أوّل السجلّ المحفوظ');
+
+  // النصّ الطويل المحفوظ ينفتح، والأداة الجارية «…» لا «بلا ناتج»
+  const W = sb.window.omranWorkLog;
+  const d = W.render([{ t: 'meta', ms: 1000 }, { t: 'text', s: 'وجدت السبب: ' + 'تفصيل '.repeat(40) }]);
+  assert.equal(d.childNodes[1].childNodes[0].tagName, 'DETAILS', 'الطويل ينفتح على كامله');
+  assert.equal(W.toolEl({ t: 'tool', title: 'x', run: true }, true).q('cwNone')[0].textContent, '…');
 });
