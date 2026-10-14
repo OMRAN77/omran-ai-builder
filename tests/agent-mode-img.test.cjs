@@ -197,3 +197,14 @@ test('٤. العميل: وضع الوكيل يصفّر حالة الرسم لك�
   assert.ok(read('js/app-18-chat-tools.js').includes('window.__genImages = {};'), 'المحادثة تصفّر في كلّ طلب — الوكيل صار مثلها');
   assert.ok(JSON.parse(read('package.json')).scripts.test.includes('node tests/agent-mode-img.test.cjs'));
 });
+
+test('٥. v-agent-img-size: الرسمة فوق ٢٫٥ م.ب تُعاد JPEG قبل الحفظ (حدّ المخزن ٣ م.ب)، وفشل الحفظ يُقال للنموذج بسببه لا بصمت', () => {
+  const c = read('js/app-17-agent-tools.js'), bundle = read('js/app.bundle.js');
+  const save = c.slice(c.indexOf('async function omranAgentSave('));
+  assert.ok(save.indexOf("if (String(b64 || '').length > 2500000) { var sh = await omranAgentShrink(b64, mime);") < save.indexOf("fetch('/api/media?action=img'"), 'التصغير قبل الرفع');
+  assert.ok(c.includes("c.toDataURL('image/jpeg', q)") && c.includes('while (d.length > 2500000 && q > 0.5)'));
+  assert.ok(c.includes("window.__agentSaveWhy = 'HTTP ' + up.status"));
+  assert.ok(c.includes('⚠️ لم تُحفظ في مخزن التطبيق (') && c.includes('لا تُرفع بهذا الرمز؛ أعد رسمها.'));
+  assert.ok(bundle.includes('function omranAgentShrink(b64, mime)'), 'الحزمة مبنيّة');
+  assert.equal(require(rp('api/_lib/img-share.js')).AGENT_TTL_SEC, 86400);
+});
