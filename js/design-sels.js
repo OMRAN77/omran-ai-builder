@@ -306,8 +306,10 @@
   function selImg(id,v){
     if(!v) return '';
     if(id==='designAiLighting'&&LIGHT_POS[v]) return ''; /* v-decor-light-sheet: صورتها من اللوحة في roomBg */
-    return id==='designAiStyle' ? 'assets/design/styles/'+v+'.webp'
-      : 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp';
+    /* v-decor-furn-photos (المالك ١٤ أكتوبر: «الديكور قسم الأثاث مافي صور، حط صور على نفس الأسامي»): الأثاث كان يطلب
+       opts/furniture-*.webp وهي غير موجودة فيختفي. صور الأنماط الخمسة بالأسماء نفسها موجودة (كنبة وطاولة كلّ نمط) — بلا رسم ولا رصيد. */
+    if(id==='designAiStyle' || id==='designAiFurniture') return 'assets/design/styles/'+v+'.webp';
+    return 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp';
   }
   function selTrigger(s){
     var ien=(document.documentElement.lang||'ar')==='en';
