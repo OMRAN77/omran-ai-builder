@@ -27,11 +27,34 @@
   /* v-agent-img: رسمة المزوّد للمالك تُحفظ في مخزن التطبيق يومًا (purpose:'agent' — الخادم يتحقّق أنّه المالك) ويُسجَّل رمزها ←
      معرّفها في المحادثة (agentImgIds) فيرسله app-18 مع كلّ طلب، ويقبل write_github الرمز في دور لاحق أيضًا. يرجع الرابط أو ''. */
   function omranAgentOwner() { try { return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); } catch (e) { return false; } }
+  /* v-agent-img-size (وضع الوكيل ١٤ أكتوبر: من أربع رسمات حُفظت واحدة — JPEG — والثلاث PNG فوق حدّ المخزن ٣ م.ب فرُدّت 413 بصمت):
+     الكبيرة تُعاد JPEG بجودة متدرّجة وأبعاد ≤ ١٦٠٠ قبل الحفظ؛ الرفع يحوّلها لصيغة المسار بعدها. */
+  function omranAgentShrink(b64, mime) {
+    return new Promise(function (resolve) {
+      try {
+        var im = new Image();
+        im.onload = function () {
+          try {
+            var k = Math.min(1, 1600 / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+            var c = document.createElement('canvas');
+            c.width = Math.max(1, Math.round((im.naturalWidth || 1) * k)); c.height = Math.max(1, Math.round((im.naturalHeight || 1) * k));
+            var cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(im, 0, 0, c.width, c.height);
+            var q = 0.92, d = '';
+            do { d = c.toDataURL('image/jpeg', q).split(',')[1] || ''; q -= 0.08; } while (d.length > 2500000 && q > 0.5);
+            resolve(d ? { b64: d, mime: 'image/jpeg' } : null);
+          } catch (e) { resolve(null); }
+        };
+        im.onerror = function () { resolve(null); };
+        im.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
+      } catch (e) { resolve(null); }
+    });
+  }
   async function omranAgentSave(tok, b64, mime) {
     try {
+      if (String(b64 || '').length > 2500000) { var sh = await omranAgentShrink(b64, mime); if (sh) { b64 = sh.b64; mime = sh.mime; } }
       var up = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64, mime: mime || 'image/png', purpose: 'agent', token: (window.authGet && window.authGet('aiapp_auth_token')) || '' }) });
       var uj = null; try { uj = await up.json(); } catch (e2) { uj = null; }
-      if (!up.ok || !uj || !uj.url || !uj.id) return '';
+      if (!up.ok || !uj || !uj.url || !uj.id) { window.__agentSaveWhy = 'HTTP ' + up.status + ((uj && uj.error) ? ' ' + uj.error : ''); return ''; }
       try {
         var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
         if (cur) {
@@ -249,6 +272,7 @@
             var gUrl = await omranAgentSave(tok, j.imageBase64, j.mimeType || 'image/png');
             if (gUrl && args && args.noRef) gLine += ' رابطها في التطبيق: ' + gUrl + ' — ارفعها الآن بـwrite_github ملف {path: مسار الصورة في المستودع كما قرأته, image: "' + gUrl + '"} في هذا الردّ نفسه. لا تنتظر «عمّم».';
             else if (gUrl) gLine += ' رابطها في التطبيق: ' + gUrl + ' — لرفعها إلى المستودع: write_github ملف {path, image: "' + tok + '"}.';
+            else if (omranAgentOwner()) gLine += ' ⚠️ لم تُحفظ في مخزن التطبيق (' + (window.__agentSaveWhy || 'سبب غير معروف') + ') — لا تُرفع بهذا الرمز؛ أعد رسمها.';
           }
           return gLine;
         }
