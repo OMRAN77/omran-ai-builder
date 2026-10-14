@@ -9,7 +9,7 @@
 'use strict';
 
 const INTENT_RE = /(?:^|[\s.،,:؛\n(«-])(?:سأ|سوف\s|راح\s|رح\s|بـ?أ(?:قرأ|حذف|عدّ?ل|شيل|بحث|تتبّ?ع|فحص|رفع|نفّ?ذ)|خلّ?ني\s|دعني\s|الحين\s+(?:أ|ب)|الآن\s+(?:أ|س)|أ(?:قرأ|حدّ?د|تتبّ?ع|بحث|عدّ?ل|حذف|رفع|فحص|شيل|نفّ?ذ|راجع|تأكّ?د|بدأ|كمّ?ل|طبّ?ق)\s|let me\s|i(?:'ll| will| am going to)\s|next,? i\s)/i;
-const ACTION_RE = /(?:احذف|حذف|شيل|امسح|عدّ?ل|غيّ?ر|صلّ?ح|أصلح|اصلح|ضيف|أضف|اضف|سوّ?ي?\s|نفّ?ذ|ارفع|حطّ?|انقل|كبّ?ر|صغّ?ر|خفّ?ف|بدّ?ل|ابن|اكتب\s+(?:كود|ملف)|fix|delete|remove|add|change|update|implement)/i;
+const ACTION_RE = /(?:احذف|حذف|شيل|امسح|عدّ?ل|غيّ?ر|صلّ?ح|أصلح|اصلح|ضيف|أضف|اضف|(?<![\u0600-\u06FF])سوّ?ي?\s|نفّ?ذ|ارفع|حطّ?|انقل|كبّ?ر|صغّ?ر|خفّ?ف|بدّ?ل|ابن|اكتب\s+(?:كود|ملف)|fix|delete|remove|add|change|update|implement)/i;
 const DONE_RE = /github\.com\/[^\s)]+\/(?:pull|commit)\/|✅|تمّ?\s+(?:الرفع|الحذف|التعديل|الدمج)/i;
 
 /** هل توقّف النموذج عند خطّة بلا تنفيذ؟ صرف بلا شبكة (يُختبر وحده). */
@@ -19,6 +19,10 @@ function stalledPlan(text, opts) {
   if (!t || t.length > 1800) return false;
   if (/[?؟]/.test(t.slice(-220))) return false; // يسأل المالك — توقّف مشروع
   if (DONE_RE.test(t) || o.pushed) return false;
+  /* v-owner-paid-gate: شكوى/سؤال/نفي من المالك لا يُحمَل تنفيذًا، وخطّة رسم لا تُحمَل بلا طلب رسم في رسالته الأخيرة (كلّ رسمة من رصيده) */
+  const __om = require('./owner-media.js');
+  if (o.ownerText != null && __om.notACommand(o.ownerText)) return false;
+  if (__om.PLAN_DRAW_RE.test(t) && !__om.askedMedia(o.ownerText, false)) return false;
   const asked = ACTION_RE.test(String(o.ownerText || '')) || ACTION_RE.test(String(o.prevOwnerText || ''));
   if (INTENT_RE.test(t)) return !!(o.usedTools || asked);
   /* v-prov-finish-edit (المالك ١٣ أكتوبر، ثلاث محاولات بلا رفعة): قرأ ثمّ وصف بلا صيغة «سأ…»، فالحمل السابق ما اشتغل. طلب تعديل + قراءة بلا رفع = نفّذ الآن. */

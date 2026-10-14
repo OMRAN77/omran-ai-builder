@@ -38629,7 +38629,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           var ssrc = (window.__genImages || {})[stok] || '';
           if (!ssrc) { try { var scur = getCurrent(); var sms = (scur && scur.messages) || []; for (var si = sms.length - 1; si >= 0 && !ssrc; si--) if (sms[si] && sms[si]._imgCache && sms[si]._imgCache[stok]) ssrc = sms[si]._imgCache[stok]; } catch (e) { ssrc = ''; } }
           var sm = String(ssrc).match(/^data:([^;,]+);base64,(.+)$/);
-          if (!sm) return 'تعذّر: لا صورة للرمز ' + stok + ' في هذا المتصفّح — ارسمها من جديد.';
+          if (!sm) return 'تعذّر: لا صورة للرمز ' + stok + ' في هذا المتصفّح (أُغلقت الصفحة أو ليست هذه المحادثة) — لا تُعِد رسمها من نفسك: قل للمالك السبب، والرسم من جديد بطلبه وحده.'; // v-owner-paid-gate
           var surl = await omranAgentSave(stok, sm[2], sm[1]);
           return surl ? ('✅ حُفظت ' + stok + ': ' + surl) : ('تعذّر حفظ ' + stok + ' (' + (window.__agentSaveWhy || 'سبب غير معروف') + ')');
         }
@@ -38693,7 +38693,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
             var gUrl = await omranAgentSave(tok, j.imageBase64, j.mimeType || 'image/png');
             if (gUrl && args && args.noRef) gLine += ' رابطها في التطبيق: ' + gUrl + ' — ارفعها الآن بـwrite_github ملف {path: مسار الصورة في المستودع كما قرأته, image: "' + gUrl + '"} في هذا الردّ نفسه. لا تنتظر «عمّم».';
             else if (gUrl) gLine += ' رابطها في التطبيق: ' + gUrl + ' — لرفعها إلى المستودع: write_github ملف {path, image: "' + tok + '"}.';
-            else if (omranAgentOwner()) gLine += ' ⚠️ لم تُحفظ في مخزن التطبيق (' + (window.__agentSaveWhy || 'سبب غير معروف') + ') — لا تُرفع بهذا الرمز؛ أعد رسمها.';
+            else if (omranAgentOwner()) gLine += ' ⚠️ لم تُحفظ بعد في مخزن التطبيق (' + (window.__agentSaveWhy || 'سبب غير معروف') + ') — الرسمة في المتصفّح: ارفعها برمزها كما هو (image: "' + tok + '") والخادم يحفظها عند الرفع. لا تُعِد رسمها.'; // v-owner-paid-gate: «أعد رسمها» كانت تكلّف رسمة لكلّ فشل
           }
           return gLine;
         }

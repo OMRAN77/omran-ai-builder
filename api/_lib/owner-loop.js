@@ -37,7 +37,7 @@ function msgText(m) { return !m ? '' : (typeof m.content === 'string' ? m.conten
 /** «كمل» بعد ردّ قطعته الميزانيّة: يُلحق RESUME_NOTE برسالة المالك الأخيرة (نسخة جديدة للمحتوى). يعيد true إن أُلحق. */
 function resume(convo, lastUserText) {
   if (!Array.isArray(convo) || convo.length < 3) return false;
-  const asked = require('./owner-carry.js').ACTION_RE.test(String(lastUserText || ''));
+  const asked = require('./owner-carry.js').ACTION_RE.test(String(lastUserText || '')) && !require('./owner-media.js').notACommand(lastUserText); // v-owner-paid-gate: «ليش يسوي صوره؟» شكوى لا «كمّل»
   if (!isResume(lastUserText) && !asked) return false;
   const last = convo[convo.length - 1];
   if (!last || last.role !== 'user') return false;

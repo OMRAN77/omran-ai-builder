@@ -65,9 +65,10 @@ function validateInput(input, limits, imgIds) {
   const outImages = [];
   for (const f of files) {
     if (!f || typeof f !== 'object' || !validPath(f.path)) return { error: 'مسار ملفّ غير صالح: ' + String(f && f.path).slice(0, 80) };
-    if (typeof f.content !== 'string' && typeof f.image === 'string') { // v-gen-image
+    if (typeof f.image === 'string' && f.image.trim() && typeof f.content === 'string' && f.content.length) return { error: f.path + ': أعطِ content أو image لا الاثنين.' }; // v-owner-paid-gate
+    if (typeof f.image === 'string' && f.image.trim() && !(typeof f.content === 'string' && f.content.length)) { // v-gen-image · v-owner-paid-gate: content "" مع image كان يُرفع ملفًّا فارغًا فوق الصورة
       const tok = require('./agent-img.js').resolveImage(f.image, imgIds); // v-agent-img: «__IMG_N__» رسمة المزوّد في هذه المحادثة
-      if (tok.unknown) return { error: 'الرمز ' + tok.value + ' لـ' + f.path + ' لا صورة محفوظة له في هذه المحادثة — ارسمها أوّلًا بـgenerate_image (للمالك تُحفظ تلقائيًّا ويصلك رابطها) أو أعطِ رابطها /i/….' };
+      if (tok.unknown) return { error: 'الرمز ' + tok.value + ' لـ' + f.path + ' لا صورة محفوظة له في هذه المحادثة، ولم يجدها متصفّح المالك — لا تُعِد رسمها من نفسك: قل للمالك السبب، والرسم من جديد بطلبه وحده (أو أعطِ رابطها /i/… إن كان عندك).' };
       const id = imageIdOf(tok.value);
       if (!id) return { error: 'رابط الصورة لـ' + f.path + ' ليس من التطبيق — أعطِ رمز الرسمة __IMG_N__ أو رابطها مثل /i/abc123def456.jpg.' };
       if (!IMG_PATH_RE.test(f.path)) return { error: f.path + ': الصورة تحتاج مسارًا بامتداد صورة (png أو jpg أو jpeg أو webp أو gif).' };
@@ -151,7 +152,7 @@ async function pushFiles(input, opts) {
   const imgs = [];
   for (const im of v.images || []) {
     const got = await (o.getImage || require('./img-share.js').getImage)(im.id);
-    if (!got || !got.b64) return { error: 'الصورة ' + im.id + ' غير موجودة في التطبيق (انتهت أو حُذفت) — ارسمها من جديد، أو اطلب من المالك «عمّم» عليها.' };
+    if (!got || !got.b64) return { error: 'الصورة ' + im.id + ' غير موجودة في التطبيق (انتهت بعد يوم أو حُذفت) — ارفعها برمزها __IMG_N__ إن كانت رسمة هذه المحادثة (الخادم يحفظها من المتصفّح)، ولا تُعِد رسمها من نفسك: قل للمالك السبب.' };
     /* v-agent-img: امتداد المسار يطابق المحتوى — PNG/JPEG إلى .webp تُحوَّل (والعكس)، وما لا يُحوَّل يُرفض بسببه قبل أيّ نداء لـGitHub */
     const conv = await require('./img-convert.js').toPathFormat(got.b64, im.path);
     if (conv.error) return { error: conv.error };

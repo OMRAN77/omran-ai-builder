@@ -142,7 +142,7 @@ test('١. وضع الوكيل: أداتا الرسم للمالك وحده (بع
   for (const t of toolsFor('omran').filter((x) => /_image$/.test(x.name))) assert.equal(Object.keys(t.input_schema.properties)[0], 'step_title');
   const gen = toolsFor('omran').find((t) => t.name === 'generate_image');
   assert.ok(gen.description.includes('__IMG_1__') && gen.description.includes('write_github'), 'الوصف يقول كيف تُرفع');
-  assert.deepEqual(CLIENT_WAIT_MS, { generate_image: 75000, edit_image: 150000, save_image: 30000 }, 'مهلة chat.js نفسها — لا ٢٥ ثانية');
+  assert.deepEqual(CLIENT_WAIT_MS, { generate_image: 150000, edit_image: 150000, save_image: 30000 }, 'مهلة chat.js نفسها — لا ٢٥ ثانية');
   const src = read('api/_lib/agent.js');
   assert.ok(src.includes('const waitMs = CLIENT_WAIT_MS[name] || 25000;'), 'run_js وtest_html على ٢٥ ثانية كما كانا');
 });
@@ -211,7 +211,7 @@ test('٥. v-agent-img-size: الرسمة فوق ٢٫٥ م.ب تُعاد JPEG ق�
   assert.ok(save.indexOf("if (String(b64 || '').length > 2500000) { var sh = await omranAgentShrink(b64, mime);") < save.indexOf("fetch('/api/media?action=img'"), 'التصغير قبل الرفع');
   assert.ok(c.includes("c.toDataURL('image/jpeg', q)") && c.includes('while (d.length > 2500000 && q > 0.5)'));
   assert.ok(c.includes("window.__agentSaveWhy = 'HTTP ' + up.status"));
-  assert.ok(c.includes('⚠️ لم تُحفظ في مخزن التطبيق (') && c.includes('لا تُرفع بهذا الرمز؛ أعد رسمها.'));
+  assert.ok(c.includes('⚠️ لم تُحفظ بعد في مخزن التطبيق (') && c.includes('ارفعها برمزها كما هو') && c.includes('لا تُعِد رسمها.') && !c.includes('أعد رسمها.'), 'v-owner-paid-gate: الفشل لا يطلب رسمًا جديدًا');
   assert.ok(bundle.includes('function omranAgentShrink(b64, mime)'), 'الحزمة مبنيّة');
   assert.equal(require(rp('api/_lib/img-share.js')).AGENT_TTL_SEC, 86400);
 });

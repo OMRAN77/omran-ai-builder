@@ -60,10 +60,14 @@ async function attachmentLinks(content, opts) {
 }
 
 /** v-agent-img-keep: رموز __IMG_N__ في ملفّات الرفع بلا معرّف بعد ← يُطلب من المتصفّح حفظ الرسمة نفسها (ask = runInClient save_image) */
-async function ensureSaved(input, map, ask) {
+async function ensureSaved(input, map, ask, getImage) {
   const i = input && typeof input === 'object' ? input : {};
   const all = [].concat(Array.isArray(i.files) ? i.files : [], Array.isArray(i.images) ? i.images : []);
-  const want = Array.from(new Set(all.map((f) => String((f && f.image) || '').trim()).filter((t) => TOKEN_RE.test(t) && !(map && map[t])))).slice(0, 10);
+  const toks = Array.from(new Set(all.map((f) => String((f && f.image) || '').trim()).filter((t) => TOKEN_RE.test(t)))).slice(0, 10);
+  /* v-owner-paid-gate: معرّف في الخريطة انتهى عمره (يوم) — يُحفظ من المتصفّح من جديد بلا رسم، لا «ارسمها من جديد» */
+  const get = getImage || ((id) => require('./img-share.js').getImage(id));
+  for (const t of toks) { if (map && map[t]) { let ok = true; try { ok = !!(await get(map[t])); } catch (e) { ok = true; /* guard-ok — عطل القراءة لا يُسقط معرّفًا صالحًا */ } if (!ok) delete map[t]; } }
+  const want = toks.filter((t) => !(map && map[t]));
   for (const t of want) { try { noteTokens(await ask(t), map); } catch (e) { /* guard-ok — يرفضه الرفع بعدها بسببه */ } }
   return map;
 }
@@ -73,7 +77,7 @@ async function ensureSaved(input, map, ask) {
 const DRAW_TOOLS = [
   {
     name: 'generate_image',
-    description: 'ارسم صورة حقيقيّة من وصف نصّي. تُحفظ في مخزن التطبيق يومًا وتعود لك برمز مثل __IMG_1__ ورابطها /i/…. لرفعها إلى المستودع: write_github بملفّ {path: مسار الصورة في المستودع كما قرأته, image: "__IMG_1__"} (أو edit_github بحقل images) — امتداد المسار يحدّد الصيغة، وPNG أو JPEG إلى ‎.webp يتحوّل تلقائيًّا. ارسم كلّ الصور المطلوبة أوّلًا ثمّ ارفعها كلّها في رفعة واحدة. لعرض الصورة في ردّك ضع رمزها وحده في سطر.',
+    description: 'ارسم صورة حقيقيّة من وصف نصّي. تُحفظ في مخزن التطبيق يومًا وتعود لك برمز مثل __IMG_1__ ورابطها /i/…. لرفعها إلى المستودع: write_github بملفّ {path: مسار الصورة في المستودع كما قرأته, image: "__IMG_1__"} (أو edit_github بحقل images) — امتداد المسار يحدّد الصيغة، وPNG أو JPEG إلى ‎.webp يتحوّل تلقائيًّا. ارسم فقط ما يطلبه المالك في رسالته الأخيرة (لا تكمل طلبًا قديمًا ولا ترسم لتجرّب — الخادم يرفضه)، ثمّ ارفعها كلّها في رفعة واحدة. لعرض الصورة في ردّك ضع رمزها وحده في سطر.',
     input_schema: { type: 'object', properties: { prompt: { type: 'string', description: 'وصف الصورة بالإنجليزية، دقيق ومحدّد (نمط، إضاءة، زاوية، تأطير). أيّ كلام يجب أن يظهر مكتوبًا داخل الصورة يُنقل حرفيًّا بلغته بين «».' } }, required: ['prompt'] },
   },
   {

@@ -62,8 +62,9 @@ async function run(ask, script) {
 const outputs = (body) => (body.input || []).filter((x) => x && x.type === 'function_call_output').map((x) => String(x.output));
 
 test('١. askedMedia: طلب الرسم/التعديل/الفيديو في الرسالة الأخيرة نفسها — وعبارات المالك الحقيقيّة', () => {
-  const yes = [['ارسم صور الإضاءة وارفعها'], ['أبي صورة لعماني بكمة'], ['غيّر الصورة هذي'], ['سوّها 3D', true], ['ارسم الأربع صور'], ['صمّم لي شعار'], ['draw a cat'], ['سولي فيديو للمنتج'], ['الحينه شوف هذي الصور اريدك ان تغيرها على نفس الاسامي', true]];
-  const no = ['كمّل', 'جرّب', 'ليش يسوي صوره', 'ارفع صور الإضاءة', 'upload the photos', 'صلّح الزر في الإعدادات', 'عدّل الكود في chat.js', 'خل المزودين يشتغلون', 'تأكد من النشر', 'شو المشكلة'];
+  const yes = [['ارسم صورة عماني بكمة وارفعها مكان assets/x.webp'], ['احذف الخلفية', true], ['make a logo for my shop'], ['تسوي لي صورة للمطبخ'], ['ارسم صور الإضاءة وارفعها'], ['أبي صورة لعماني بكمة'], ['غيّر الصورة هذي'], ['سوّها 3D', true], ['ارسم الأربع صور'], ['صمّم لي شعار'], ['draw a cat'], ['سولي فيديو للمنتج'], ['الحينه شوف هذي الصور اريدك ان تغيرها على نفس الاسامي', true]];
+  const no = ['كمّل', 'جرّب', 'ليش يسوي صوره', 'ارفع صور الإضاءة', 'upload the photos', 'صلّح الزر في الإعدادات', 'عدّل الكود في chat.js', 'خل المزودين يشتغلون', 'تأكد من النشر', 'شو المشكلة',
+    'خلاص لا ترسم', 'لا ترسم صور، بس ارفع اللي عندك', 'ما ابي صور', 'سويها كلها في طلب سحب واحد', 'اعمل طلب سحب للتعديل', 'make the save work', 'create a new branch and push', 'غيّر الكود عشان الصور تنحفظ', 'احذف الصور المكررة من الصفحة', 'الصورة ما انرفعت، عدّل الكود', 'ليش ما انرفعت الصور', 'وش صار بالحفظ؟', 'address the issue', 'ليش يسوي صوره؟ صلّح الحفظ'];
   for (const [t, img] of yes) assert.equal(OM.askedMedia(t, !!img), true, 'يُسمح: ' + t);
   for (const t of no) assert.equal(OM.askedMedia(t, false), false, 'يُمنع: ' + t);
   assert.equal(OM.askedMedia('كمّل\n\n[مرفقات: a.png]', false), false, 'ملحق المرفقات لا يُحسب طلبًا');
@@ -80,8 +81,45 @@ test('٢. المحادثة: «كمّل» بعد طلب رسم قديم ← gener
 
 test('٣. الحارس في الخادم للمحادثة والوكيل، والتعليمة المشتركة تمنع إكمال القديم والرسم للتشخيص', () => {
   assert.ok(read('api/_lib/chat.js').includes("if (__ownerReq && require('./owner-media.js').PAID_MEDIA_TOOLS.indexOf(cb.name) !== -1 && !require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage)) result = require('./owner-media.js').REFUSAL;"));
-  assert.ok(read('api/_lib/agent.js').includes("else if (!require('./owner-media.js').askedMedia(living.lastUserText(messages), false)) result = require('./owner-media.js').REFUSAL;"));
+  assert.ok(read('api/_lib/agent.js').includes("else if (!require('./owner-media.js').askedMedia(living.lastUserText(messages), false)) __draws[cb.id] = { result: require('./owner-media.js').REFUSAL };"));
+  assert.ok(read('api/_lib/agent.js').includes('__draws[cb.id] = { p: runInClient(send, cb.name, di) };'), 'رسمات الخطوة متوازية في الوكيل');
   const w = require(rp('api/_lib/github-edit.js')).WORK_NOTE;
   assert.ok(w.includes('لا تكمل طلبًا قديمًا من السجلّ، ولا ترسم لتجرّب أو تشخّص') && !w.includes('ارسم كلّ المطلوب أوّلًا'));
   assert.ok(JSON.parse(read('package.json')).scripts.test.includes('node tests/owner-paid-gate.test.cjs'));
+});
+
+test('٤. الحمل والإكمال: شكوى/سؤال/نفي لا يُحمَل تنفيذًا، وخطّة رسم لا تُحمَل بلا طلب رسم — وخطّة تعديل الكود تُحمَل كما كانت', () => {
+  const C = require(rp('api/_lib/owner-carry.js')), L = require(rp('api/_lib/owner-loop.js'));
+  const PLAN = 'سأرسم الصورة الأولى وأتأكد أنها تُحفظ قبل ما أكمل.';
+  assert.equal(C.stalledPlan(PLAN, { usedTools: true, ownerText: 'خلاص لا ترسم، قلي ليش ما انحفظت', prevOwnerText: 'ارسم صور الديكور والإضاءة وارفعها' }), false, 'لقطة المالك');
+  assert.equal(C.stalledPlan(PLAN, { usedTools: true, ownerText: 'كمّل', prevOwnerText: 'ارسم صور الديكور' }), false, 'خطّة رسم بلا طلب رسم في الأخيرة');
+  assert.equal(C.stalledPlan(PLAN, { usedTools: true, ownerText: 'ارسم صور الديكور وارفعها' }), true, 'بطلب الرسم تُحمَل');
+  assert.equal(C.stalledPlan('سأعدّل الزر الآن في app-09.', { usedTools: true, ownerText: 'عدّل الزر' }), true, 'تعديل الكود كما كان');
+  assert.ok(!C.ACTION_RE.test('ليش يسوي صوره'), '«سوي» داخل «يسوي» ليست أمرًا');
+  const convo = [{ role: 'user', content: 'ارسم صور الإضاءة' }, { role: 'assistant', content: 'رسمت ' + L.resumeMark() }, { role: 'user', content: 'ليش يسوي صوره؟ صلّح الحفظ' }];
+  assert.equal(L.resume(convo, 'ليش يسوي صوره؟ صلّح الحفظ'), false, 'الشكوى لا تصير «كمّل المهمّة نفسها»');
+});
+
+test('٥. الخادم: حدّ أربع رسمات في الردّ، ومهلة الرسم لا تُفهم «لم يُنفَّذ» فيُعاد الرسم، ورسائل الفشل لا تطلب رسمًا جديدًا', () => {
+  const ch = read('api/_lib/chat.js'), ag = read('api/_lib/agent.js'), c17 = read('js/app-17-agent-tools.js');
+  assert.ok(ch.includes("(__ownerOps.draws = (__ownerOps.draws || 0) + 1) > 4) result = require('./owner-media.js').CAP_REFUSAL;") && ag.includes("else if ((run.draws = (run.draws || 0) + 1) > 4) __draws[cb.id] = { result: require('./owner-media.js').CAP_REFUSAL };"));
+  assert.ok(ch.includes("(lastUserHasImage || __ownerReq) ? 150000 : 75000); if (__ownerReq) result = require('./owner-media.js').waitNote(result);") && ag.includes('generate_image: 150000'));
+  assert.match(OM.waitNote('لم يستجب متصفح المستخدم — لم يُنفَّذ الكود.'), /لا تُعِد الرسم/);
+  assert.equal(OM.waitNote('✅ رُسمت'), '✅ رُسمت');
+  for (const src of [c17, read('api/_lib/github-write.js')]) assert.ok(!src.includes('لا تُرفع بهذا الرمز؛ أعد رسمها') && !src.includes('— ارسمها من جديد') && !src.includes('ارسمها أوّلًا بـgenerate_image'), 'لا «ارسمها من جديد»');
+  assert.ok(ch.includes("require('./owner-media.js').picsReplace(lastUserText)") && OM.picsReplace('غيّر هذي الصور') && !OM.picsReplace('احذف الصور المكررة هنا'));
+  assert.ok(require(rp('api/_lib/prov-self.js')).GEN_HEAD.includes('سجلّ سابق للاطّلاع لا طلبات قائمة'), 'ذاكرة المزوّدين المشتركة ليست طلبًا قائمًا');
+});
+
+test('٦. الرفع: content فارغ مع image لا يُرفع ملفًّا فارغًا فوق الصورة، ومعرّف انتهى عمره يُحفظ من المتصفّح بلا رسم', async () => {
+  const GW = require(rp('api/_lib/github-write.js')), AI = require(rp('api/_lib/agent-img.js'));
+  assert.deepEqual(GW.validateInput({ files: [{ path: 'a/b.webp', content: '', image: '/i/abcdef123456.png' }] }), { files: [], deletes: [], images: [{ path: 'a/b.webp', id: 'abcdef123456' }] });
+  assert.match(GW.validateInput({ files: [{ path: 'a/b.webp', content: 'x', image: '/i/abcdef123456.png' }] }).error, /لا الاثنين/);
+  const map = { __IMG_2__: 'aaaaaaaaaaaa' }, asked = [];
+  await AI.ensureSaved({ files: [{ path: 'x.webp', image: '__IMG_2__' }] }, map, async (t) => { asked.push(t); return '✅ حُفظت ' + t + ': /i/bbbbbbbbbbbb.png'; }, async () => null);
+  assert.deepEqual(asked, ['__IMG_2__'], 'المنتهي يُطلب من المتصفّح');
+  assert.equal(map.__IMG_2__, 'bbbbbbbbbbbb');
+  const map2 = { __IMG_3__: 'cccccccccccc' }, asked2 = [];
+  await AI.ensureSaved({ files: [{ path: 'x.webp', image: '__IMG_3__' }] }, map2, async (t) => { asked2.push(t); return ''; }, async () => ({ b64: 'x' }));
+  assert.deepEqual(asked2, [], 'الموجود لا يُطلب');
 });
