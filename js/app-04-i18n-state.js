@@ -2017,6 +2017,13 @@ function renderMessages(keepScroll){
       } else if(window.omranCC && typeof window.omranCC.foldCode === 'function'){
         /* v-read-fold: كود الصفحة الطويل مطويّ لكلّ المزوّدين كتطبيق Claude — لا وضع Claude Code وحده */
         try{ window.omranCC.foldCode(textDiv); }catch(e){ __swallow(e, 'cc:fold-all'); }
+        /* v-read-fold-in-reply: أدوات المزود سطر مطوي داخل الرد (🔧 استخدم N أدوات) — لا تُدفن في صندوق «عمل لمدّة» */
+        try{
+          if(Array.isArray(m._agParts) && typeof window.omranCC.toolsEl === 'function' && typeof window.omranCC.toolsFromParts === 'function'){
+            const __ccItems = window.omranCC.toolsFromParts(m._agParts);
+            if(__ccItems.length) textDiv.insertBefore(window.omranCC.toolsEl(__ccItems), textDiv.firstChild);
+          }
+        }catch(e){ __swallow(e, 'cc:tools-all'); }
       }
     } else {
       textDiv.textContent = __mc;
