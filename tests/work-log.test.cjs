@@ -42,12 +42,12 @@ test('١. البثّ: الرأس بما يجري، وكلّ تفكير وخطو�
     { status: '↳ بحثتُ عن «x» — حصلتُ 3 نتيجة', k: 'trSearchN', cmd: 'x', out: '1. a' },
     { delta: 'الجواب' },
   ]);
-  assert.deepEqual(notes.map((n) => (n.head ? 'head:' + n.head : n.s ? 'think' : 'step')), ['head:يقرأ سؤالك…', 'think', 'head:يقرأ من GitHub…', 'step', 'step'], 'بعد أوّل أداة لا كلام تفكير');
+  assert.deepEqual(notes.map((n) => (n.head ? 'head:' + n.head : n.s ? 'think' : 'step')), ['head:يقرأ سؤالك…', 'think', 'head:يقرأ من GitHub…', 'step', 'think', 'step'], 'v-interleave: التفكير بين الأدوات يصل الصندوق كما يفكّر');
   assert.ok(notes.every((n) => typeof n.t0 === 'number'), 'بداية الدور لعدّاد الوقت');
   assert.equal(notes[3].step.title, 'api/a.js  1–40', 'قراءة الملفّ: عنوانها مساره وأسطره');
-  assert.equal(notes[4].step.title, 'بحثتُ عن «x» — حصلتُ 3 نتيجة');
+  assert.equal(notes[5].step.title, 'بحثتُ عن «x» — حصلتُ 3 نتيجة');
   const log = plain(r.log);
-  assert.deepEqual(log.map((p) => p.t), ['meta', 'think', 'tool', 'tool'], 'تفكير قبل العمل فقط');
+  assert.deepEqual(log.map((p) => p.t), ['meta', 'think', 'tool', 'think', 'tool'], 'v-interleave: التفكير بين الأدوات بترتيبه');
   assert.ok(log[0].ms >= 0);
   assert.ok(log.filter((p) => p.t === 'think').every((p) => !('open' in p)), 'لا تفكير محفوظ مفتوحًا');
   assert.equal(log[2].code.p, 'api/a.js', 'مقطع لوحة الكود المقروء باقٍ مع خطوته');
@@ -66,6 +66,9 @@ function mkEl(tag) {
     appendChild(c) { if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = this; this.childNodes.push(c); return c; },
     insertBefore(c, ref) { if (c.parentNode) c.parentNode.removeChild(c); const i = this.childNodes.indexOf(ref); c.parentNode = this; this.childNodes.splice(i < 0 ? this.childNodes.length : i, 0, c); return c; },
     removeChild(c) { const i = this.childNodes.indexOf(c); if (i >= 0) this.childNodes.splice(i, 1); c.parentNode = null; return c; },
+    replaceChild(n, o) { const i = this.childNodes.indexOf(o); if (n.parentNode) n.parentNode.removeChild(n); n.parentNode = this; this.childNodes[i] = n; o.parentNode = null; return o; },
+    get lastElementChild() { return this.lastChild; },
+    querySelector(sel) { return this.q(sel.replace(/^\./, ''))[0] || null; },
     get textContent() { return this._text + this.childNodes.map((c) => c.textContent).join(''); },
     set textContent(v) { this.childNodes = []; this._text = String(v); },
     q(cls) { const out = []; const walk = (n) => { n.childNodes.forEach((c) => { if ((' ' + c.className + ' ').includes(' ' + cls + ' ')) out.push(c); walk(c); }); }; walk(this); return out; },
@@ -122,7 +125,7 @@ test('٢. الحيّ: لا صندوق قبل أوّل تفكير أو خطوة؛
   assert.equal(head.childNodes[1].textContent, 'يقرأ من GitHub…', 'الرأس يتبع ما يجري');
   assert.deepEqual(kids(list), ['think', 'tool+'], 'التفكير مطويّ والأداة الأحدث مفتوحة');
   sb.omranShowThink(bubble, { s: 'الآن أعدّل المقطع من جديد داخل التعديل.', ms: 2000, t0: 1000 });
-  assert.deepEqual(kids(list), ['think', 'tool+'], 'تفكير بعد الأداة لا يُضاف');
+  assert.deepEqual(kids(list), ['think', 'tool', 'think'], 'v-interleave: تفكير بعد الأداة سطر مطويّ، والأداة تُطوى');
   const tool = list.childNodes[1];
   assert.deepEqual(tool.q('cwLbl').map((x) => x.textContent), ['الطلب', 'النتيجة']);
   assert.deepEqual(tool.q('cwPre').map((x) => x.textContent + ':' + x.dir), ['OMRAN77/omran-ai-builder api/_lib/chat.js:ltr', '📄 chat.js:ltr']);
@@ -130,8 +133,8 @@ test('٢. الحيّ: لا صندوق قبل أوّل تفكير أو خطوة؛
   timers.forEach((f) => f());
   assert.equal(head.childNodes[2].textContent, '4د 15ث', 'العدّاد كلّ ثانية بالدقائق والثواني');
   sb.omranShowThink(bubble, { step: { t: 'tool', title: 'سجلّ الأخطاء', cmd: '', out: '', err: 1 } });
-  assert.deepEqual(kids(list), ['think', 'tool', 'tool+'], 'أداة جديدة تطوي الأداة قبلها والتفكير مطوي');
-  assert.ok(list.childNodes[2].className.includes('cwFail') && list.childNodes[2].q('cwNone').length === 1, 'الفشل أحمر، وبلا ناتج سطر');
+  assert.deepEqual(kids(list), ['think', 'tool', 'think', 'tool+'], 'أداة جديدة تطوي الأداة قبلها والتفكير مطوي');
+  assert.ok(list.childNodes[3].className.includes('cwFail') && list.childNodes[3].q('cwNone').length === 1, 'الفشل أحمر، وبلا ناتج سطر');
 });
 
 test('٣. المحفوظ: صندوق مطويّ «عمل لمدّة …» وعناصره مطويّة بترتيبها؛ وسجلّ الوكيل القديم بلا meta يُرسم كما كان', () => {
@@ -141,7 +144,7 @@ test('٣. المحفوظ: صندوق مطويّ «عمل لمدّة …» وعن
   ]);
   assert.equal(d.open, false);
   assert.equal(d.childNodes[0].childNodes[1].textContent, 'عمل لمدّة 1د 15ث');
-  assert.deepEqual(kids(d.childNodes[1]), ['think', 'tool'], 'تفكير بعد أداة لا يُرسم (كلام داخل التعديل)');
+  assert.deepEqual(kids(d.childNodes[1]).slice(0, 2), ['think', 'tool'], 'بترتيبها'); assert.equal(d.childNodes[1].childNodes.length, 3, 'v-interleave: التفكير بعد الأداة يُرسم');
   const r = APP09.slice(APP09.indexOf('function __agLogRender('), APP09.indexOf('function __agLogRender(') + 300);
   assert.ok(r.includes("if(parts[0] && parts[0].t === 'meta' && window.omranWorkLog) return window.omranWorkLog.render(parts);"), 'الوكيل بلا meta = مساره القديم');
 });
@@ -159,4 +162,29 @@ test('٤. الواجهة: الأنماط، والجزء خارج النشر ال
   const tag = Number((read('js/app-04-i18n-state.js').match(/sc\.src = 'i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]);
   assert.ok(tag >= 743, 'وسم ملفّات اللغات مرفوع');
   assert.ok(read('js/app.bundle.js').includes('window.omranWorkLog = {'), 'الحزمة مبنيّة من الأجزاء');
+});
+
+test('٥. v-interleave (المالك ١٤ أكتوبر «نفس فكرة كلاود كودي»): أدوات متتالية من النوع نفسه سطر «آخر عنوان · +N» ينفتح عليها، حيًّا ومحفوظًا، والوكيل بالعناصر نفسها', () => {
+  const { sb } = client({ t: 0 });
+  const bubble = mkEl('div'); const host = mkEl('div'); host.__root = 1; host.appendChild(bubble);
+  sb.omranShowThink(bubble, { s: 'أقرأ الملفّات.', ms: 1000, t0: 0 });
+  for (const f of ['a.js', 'b.js', 'c.js']) sb.omranShowThink(bubble, { step: { t: 'tool', name: 'trFetch', title: 'قرأ ' + f, cmd: f, out: 'x', err: 0 } });
+  sb.omranShowThink(bubble, { step: { t: 'tool', name: 'trSearchN', title: 'بحث', cmd: 'q', out: 'y', err: 0 } });
+  const list = host.childNodes[0].childNodes[1];
+  assert.equal(list.childNodes.length, 3, 'تفكير + مجموعة القراءة + البحث');
+  const g = list.childNodes[1];
+  assert.ok(g.classList.contains('cwGroup') && g.open === false);
+  assert.equal(g.q('cwTitle')[0].textContent, 'قرأ c.js  · +2', 'آخر عنوان وعدد ما قبله');
+  assert.equal(g.childNodes[1].childNodes.length, 3, 'ينفتح على خطواته الثلاث');
+  assert.equal(list.childNodes[2].open, true, 'الأداة الأحدث وحدها مفتوحة');
+  const d = sb.window.omranWorkLog.render([{ t: 'meta', ms: 3000 }, { t: 'tool', name: 'r', title: 'x' }, { t: 'tool', name: 'r', title: 'y' }, { t: 'think', s: 'ثمّ.' }, { t: 'tool', name: 'r', title: 'z' }]);
+  assert.equal(d.childNodes[1].childNodes.length, 3, 'محفوظًا: مجموعة ثمّ تفكير ثمّ أداة');
+  assert.equal(d.childNodes[1].childNodes[0].q('cwTitle')[0].textContent, 'y  · +1');
+  const a9 = APP09;
+  assert.ok(a9.includes("if(window.omranWorkLog) return window.omranWorkLog.thinkEl(p, false);"), 'تفكير الوكيل سطر مطويّ');
+  assert.ok(a9.includes("p.el = W.groupAdd(g, p); g.__last = p;") && a9.includes("p.el = W.toolEl(p, true);"), 'أدوات الوكيل بالمجموعة والأحدث مفتوحة');
+  assert.ok(a9.includes("return window.omranWorkLog.render([{ t: 'meta'"), 'سجلّ الوكيل المحفوظ بالصندوق نفسه');
+  assert.ok(read('js/app-18-chat-tools.js').includes('__thinks.length < 12) { /* v-interleave'), 'المحادثة: التفكير بين الأدوات لكلّ المزوّدين');
+  assert.ok(require(path.join(root, 'api/_lib/github-edit.js')).WORK_NOTE.includes('اعمل كما يعمل Claude Code (v-interleave)'), 'تعليمة المزوّدين');
+  for (const s of ['groupAdd: groupAdd', '__thinks.length < 12']) assert.ok(read('js/app.bundle.js').includes(s), 'الحزمة: ' + s);
 });

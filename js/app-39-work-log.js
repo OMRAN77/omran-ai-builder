@@ -44,6 +44,22 @@
     return d;
   }
   function textEl(p){ return mk('div', 'cwItem cwPlain', clip(p.s)); }
+  /* v-interleave: أدوات متتالية من النوع نفسه سطر واحد «آخر عنوان · +N ›» (كـ«git, 2+» في Claude Code)، ينفتح على خطواتها */
+  function groupTitle(g){ var n = g.__items.length; return clip(g.__items[n - 1].title || g.__items[n - 1].name || '') + (n > 1 ? '  · +' + (n - 1) : ''); }
+  function groupEl(items){
+    var body = mk('div', 'cwGroupList');
+    var d = item('', body, false); d.classList.add('cwTool'); d.classList.add('cwGroup'); d.__items = [];
+    items.forEach(function(p){ groupAdd(d, p); });
+    return d;
+  }
+  function groupAdd(g, p){
+    g.__items.push(p);
+    var el = toolEl(p, false); g.lastChild.appendChild(el);
+    g.querySelector('.cwTitle').textContent = groupTitle(g);
+    if(p.err) g.classList.add('cwFail');
+    return el;
+  }
+  function sameKind(a, b){ return !!(a && b && a.t === 'tool' && b.t === 'tool' && a.name && a.name === b.name); }
   function partEl(p, open){
     if(!p) return null;
     if(p.t === 'think') return thinkEl(p, open);
@@ -76,12 +92,14 @@
         el: b.d,
         head: function(txt){ if(txt) b.lb.textContent = txt; },
         add: function(p){
-          var hasTool = false;
-          Array.prototype.forEach.call(b.list.children, function(c){
-            if(c.classList && c.classList.contains('cwTool')) hasTool = true;
-          });
-          /* v-edit-no-talk: بعد أوّل أداة كلام التفكير يملأ الصندوق — لا نضيفه ولا نطوي الأداة */
-          if(p && p.t === 'think' && hasTool) return;
+          /* v-interleave: كلام التفكير بين الأدوات يظهر (كان v-edit-no-talk يحجبه) — مطويًّا، والأداة الأحدث وحدها مفتوحة */
+          var last = b.list.lastElementChild;
+          if(p && p.t === 'tool' && last && last.__last && sameKind(last.__last, p)){
+            var g = last.classList.contains('cwGroup') ? last : null;
+            if(!g){ g = groupEl([last.__last]); b.list.replaceChild(g, last); }
+            groupAdd(g, p); g.__last = p;
+            return;
+          }
           Array.prototype.forEach.call(b.list.children, function(c){
             if(c.classList && c.classList.contains('cwTool')) c.open = false;
           });
@@ -90,7 +108,7 @@
           }
           /* v-think-closed: التفكير مطويّ؛ الأداة الأحدث وحدها تُفتح */
           var el = partEl(p, p && p.t !== 'think');
-          if(el) b.list.appendChild(el);
+          if(el){ el.__last = p; b.list.appendChild(el); }
         },
       };
     },
@@ -99,15 +117,17 @@
       var b = shell(false);
       var meta = parts[0] || {};
       b.lb.textContent = tr('cwWorked', 'Worked for {t}').replace('{t}', dur(meta.ms));
-      var sawTool = false;
       for(var i = 1; i < parts.length; i++){
         var p = parts[i];
-        if(p && p.t === 'think' && sawTool) continue; /* v-edit-no-talk */
-        if(p && p.t === 'tool') sawTool = true;
+        if(p && p.t === 'tool' && sameKind(p, parts[i + 1])){ // v-interleave: المتتالية من النوع نفسه سطر واحد
+          var run = [p]; while(sameKind(p, parts[i + 1])){ run.push(parts[++i]); }
+          b.list.appendChild(groupEl(run)); continue;
+        }
         var el = partEl(p, false); if(el) b.list.appendChild(el);
       }
       return b.d;
     },
+    thinkEl: thinkEl, toolEl: toolEl, groupEl: groupEl, groupAdd: groupAdd, // v-interleave: الوكيل يبني بالعناصر نفسها
     _lines: lines, _dur: dur, // للاختبار
   };
 })();
