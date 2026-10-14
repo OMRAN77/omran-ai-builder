@@ -7847,6 +7847,13 @@ function renderMessages(keepScroll){
       } else if(window.omranCC && typeof window.omranCC.foldCode === 'function'){
         /* v-read-fold: كود الصفحة الطويل مطويّ لكلّ المزوّدين كتطبيق Claude — لا وضع Claude Code وحده */
         try{ window.omranCC.foldCode(textDiv); }catch(e){ __swallow(e, 'cc:fold-all'); }
+        /* v-read-fold-in-reply: أدوات المزود سطر مطوي داخل الرد (🔧 استخدم N أدوات) — لا تُدفن في صندوق «عمل لمدّة» */
+        try{
+          if(Array.isArray(m._agParts) && typeof window.omranCC.toolsEl === 'function' && typeof window.omranCC.toolsFromParts === 'function'){
+            const __ccItems = window.omranCC.toolsFromParts(m._agParts);
+            if(__ccItems.length) textDiv.insertBefore(window.omranCC.toolsEl(__ccItems), textDiv.firstChild);
+          }
+        }catch(e){ __swallow(e, 'cc:tools-all'); }
       }
     } else {
       textDiv.textContent = __mc;
@@ -43609,6 +43616,22 @@ if(document.readyState === 'loading'){
     });
     return d;
   }
+  /* v-read-fold-in-reply: سجلّ المزود (_agParts) → عناصر toolsEl. التفكير يبقى في صندوق العمل؛ الأدوات سطر مطوي داخل الرد كـClaude Code. */
+  function toolsFromParts(parts){
+    if(!Array.isArray(parts)) return [];
+    var out = [];
+    parts.forEach(function(p){
+      if(!p || p.t !== 'tool') return;
+      out.push({
+        name: String(p.name || ''),
+        brief: String(p.title || p.name || 'أداة').replace(/\s+/g, ' ').trim() || 'أداة',
+        detail: String(p.cmd || ''),
+        result: String(p.out || ''),
+        err: !!p.err,
+      });
+    });
+    return out;
+  }
   function foldCode(root){
     Array.prototype.slice.call(root.querySelectorAll('.chat-codeblock')).forEach(function(b){
       var pre = b.querySelector('pre');
@@ -43824,7 +43847,7 @@ if(document.readyState === 'loading'){
     return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status, atts);
   }
 
-  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, foldCode: foldCode, _fold: { push: push, capParts: capParts } };
+  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, foldCode: foldCode, toolsEl: toolsEl, toolsFromParts: toolsFromParts, _fold: { push: push, capParts: capParts } };
 })();
 /* ===== app-29-claude-model — اختيار نموذج كلود (v-claude-models) =====
    v-models-two (أمر عمران ١٤ سبتمبر): القائمة محصورة في Opus 5 + Sonnet 5، والاختيار

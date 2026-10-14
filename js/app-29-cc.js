@@ -173,6 +173,22 @@
     });
     return d;
   }
+  /* v-read-fold-in-reply: سجلّ المزود (_agParts) → عناصر toolsEl. التفكير يبقى في صندوق العمل؛ الأدوات سطر مطوي داخل الرد كـClaude Code. */
+  function toolsFromParts(parts){
+    if(!Array.isArray(parts)) return [];
+    var out = [];
+    parts.forEach(function(p){
+      if(!p || p.t !== 'tool') return;
+      out.push({
+        name: String(p.name || ''),
+        brief: String(p.title || p.name || 'أداة').replace(/\s+/g, ' ').trim() || 'أداة',
+        detail: String(p.cmd || ''),
+        result: String(p.out || ''),
+        err: !!p.err,
+      });
+    });
+    return out;
+  }
   function foldCode(root){
     Array.prototype.slice.call(root.querySelectorAll('.chat-codeblock')).forEach(function(b){
       var pre = b.querySelector('pre');
@@ -388,5 +404,5 @@
     return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status, atts);
   }
 
-  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, foldCode: foldCode, _fold: { push: push, capParts: capParts } };
+  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, foldCode: foldCode, toolsEl: toolsEl, toolsFromParts: toolsFromParts, _fold: { push: push, capParts: capParts } };
 })();
