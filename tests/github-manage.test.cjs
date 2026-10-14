@@ -120,3 +120,51 @@ test('الربط: الأداة للمالك وحده في الوكيل والم�
   assert.match(GE.WORK_NOTE, /لا تخترع ولا تربط بلا دليل/);
   assert.match(read('api/_lib/_knowledge.js'), /خريطة المستودع/);
 });
+
+/* v-run-log (المالك ١٤ أكتوبر: «اريد يكون عندهم معلومات تصحيح الاخطاء»): run_jobs كان يعطي اسم الخطوة الفاشلة وحده فيخمّن المزوّد
+   السبب. run_log يعطي سطور الفشل نفسها من السجلّ — ومفتاح GitHub لا يُرسل إلى رابط السجلّ الموقَّع على المخزن الآخر. */
+test('run_log: سطور الفشل نفسها (الاختبار والتأكيد والمتوقّع)، بلا طوابع ولا ضجيج ولا أسرار، ومفتاح GitHub لا يصل رابط المخزن', async () => {
+  const LOG = [
+    '2026-10-14T15:33:31.1Z ##[group]Run npm run ci',
+    '2026-10-14T15:33:31.2Z > node scripts/run-tests.mjs',
+    '2026-10-14T15:35:01.0Z ✓ tests/a.test.cjs  0.2s',
+    '2026-10-14T15:35:02.0Z ━━━━ ✗ tests/owner-solo.test.cjs (1) ━━━━',
+    '2026-10-14T15:35:02.1Z not ok 8 - ٨. الأسلاك',
+    '2026-10-14T15:35:02.2Z   error: |-',
+    '2026-10-14T15:35:02.3Z     AssertionError [ERR_ASSERTION]: js/app-18-chat-tools.js',
+    '2026-10-14T15:35:02.4Z   expected: true',
+    '2026-10-14T15:35:02.5Z   actual: false',
+    '2026-10-14T15:35:02.6Z   token sk-or-v1-abcdefghijklmnop leaked',
+    '2026-10-14T15:35:09.0Z ##[warning]Node.js 20 is deprecated. The following actions…',
+  ].join('\n');
+  const seen = [];
+  const fetchImpl = async (url, init) => {
+    const u = String(url);
+    seen.push({ u, auth: !!(init && init.headers && init.headers.Authorization) });
+    if (/\/actions\/runs\/77\/jobs/.test(u)) return res({ jobs: [{ id: 5, name: 'lint', conclusion: 'success' }, { id: 9, name: 'test', conclusion: 'failure', steps: [] }] });
+    if (/\/actions\/jobs\/9\/logs$/.test(u)) return { ok: false, status: 302, headers: new Headers({ location: 'https://results.blob.core.windows.net/logs/9.txt?sig=abc' }) };
+    if (/blob\.core\.windows\.net/.test(u)) return { ok: true, status: 200, headers: new Headers(), text: async () => LOG };
+    return res({ message: 'Not Found' }, 404);
+  };
+  const opts = { fetchImpl, lookup, env: { GITHUB_TOKEN: 'tok' } };
+  const r = await GM.manage({ repo: 'o/r', action: 'run_log', job_id: 9 }, opts);
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.match(r.text, /not ok 8 - ٨\. الأسلاك/);
+  assert.match(r.text, /AssertionError \[ERR_ASSERTION\]: js\/app-18-chat-tools\.js/);
+  assert.match(r.text, /expected: true[\s\S]*actual: false/);
+  assert.ok(!/2026-10-14T/.test(r.text), 'بلا طوابع');
+  assert.ok(!/Node\.js 20 is deprecated/.test(r.text), 'بلا ضجيج');
+  assert.ok(!/sk-or-v1-abcdefghijklmnop/.test(r.text), 'السرّ لا يصل النموذج');
+  assert.ok(seen.find((c) => /\/logs$/.test(c.u)).auth, 'طلب API بمفتاحه');
+  assert.equal(seen.find((c) => /blob\.core/.test(c.u)).auth, false, 'الرابط الموقَّع بلا مفتاح GitHub');
+
+  seen.length = 0;
+  const byRun = await GM.manage({ repo: 'o/r', action: 'run_log', run_id: 77 }, opts);
+  assert.match(byRun.text, /سجلّ المهمّة 9/, 'run_id ← أوّل مهمّة فاشلة');
+  assert.match((await GM.manage({ repo: 'o/r', action: 'run_log' }, opts)).error, /job_id/);
+  const jobs = await GM.manage({ repo: 'o/r', action: 'run_jobs', run_id: 77 }, opts);
+  assert.match(jobs.text, /test \(job_id 9\): failure/, 'run_jobs يعطي رقم المهمّة لـrun_log');
+  assert.equal(GM.ownerAllows('run_log', ''), true, 'قراءة بلا إذن');
+  assert.ok(GM.MANAGE_TOOL.description.includes('run_log') && GM.MANAGE_TOOL.input_schema.properties.job_id);
+  assert.ok(require('../api/_lib/provider-level.js').OWNER_METHOD.includes('وإن فشل فاقرأ سببه بـrun_log'), 'منهج المزوّدين يأمر بقراءة السبب قبل الإصلاح');
+});
