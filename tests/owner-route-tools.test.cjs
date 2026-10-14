@@ -32,6 +32,7 @@ const S = {
   sys: cut(A9, '    const __bldRe = /(ابني', '    // v469: Q&A = بروم خفيف'),
   prov: cut(A9, '      const isBuildTask = __routeFix && !__gateNoBuild;', '      if(__gateApprovedText && __toolsWillRun){'),
   notes: cut(A9, '      if(__gateApprovedText && __toolsWillRun){', '      // v469: Q&A system prompt'),
+  repoNote: cut(A9, 'function omranOwnerRepoNote(', '\nasync function __sendPromptCore'),
 };
 const H6 = [
   cut(A6, 'const OMRAN_EDIT_BIG = 24000;', '\n'),
@@ -54,6 +55,7 @@ function makeCtx(owner, toolsOn) {
   window.window = window;
   vm.createContext(ctx);
   vm.runInContext(H6, ctx);
+  vm.runInContext(S.repoNote, ctx); /* v-prov-app-edit: الدالّة خارج __sendPromptCore */
   return ctx;
 }
 
@@ -91,7 +93,7 @@ async function turn(owner, text, cur, toolsOn) {
   return JSON.parse(JSON.stringify(await vm.runInContext(TURN, ctx)(text, cur))); // مصفوفات vm من عالم آخر — تُنسخ للمقارنة
 }
 const GATE = 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن';
-const OPEN = 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق الحيّ)';
+const OPEN = 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق/الواجهة)';
 const FIX = 'صلّح الخطأ في زر الإرسال';
 const BUILD = 'ابني لي لعبة ثعبان';
 const EDIT = 'عدّل لون الزر في الصفحة اللي سويتها';
@@ -172,4 +174,16 @@ test('٨. نيّة بناء المالك تُحفظ من شرط البوّابة
   }
   const other = await turn(false, 'أبي لعبة ثعبان', fresh());
   assert.equal(other.__ownerBuildAsk, false, 'غير المالك: لا شيء'); assert.equal(other.__gateNoBuild, true, 'وبوّابته كما كانت');
+});
+
+const REPO = 'طلب على التطبيق الحيّ = اقرأ بـread_github ثمّ عدّل بـedit_github';
+test('٩. طلب على التطبيق نفسه والمشروع مفتوح: المزوّد يعدّل المستودع لا المعاينة — «عدّل التطبيق» كانت تُمنَع من GitHub', async () => {
+  for (const q of ['عدّل التطبيق: رجّع صور لمسات الديكور', 'غيّر الواجهة', 'صلّح الإعدادات', 'ارفع تعديل على المستودع', 'أفكارك تعديلات على التطبيق المزودين لين الحين مش قادرين']) {
+    const r = await turn(true, q, withCode());
+    assert.equal(r.__toolsWillRun, true, q);
+    assert.ok(r.notes.some((n) => n.includes(REPO)), q + ': تعليمة المستودع — ' + JSON.stringify(r.notes));
+    assert.ok(!r.notes.some((n) => n.includes('مستودع التطبيق فقط إن ذكره صراحةً')), q + ': لا منع GitHub');
+  }
+  const page = await turn(true, EDIT, withCode());
+  assert.deepEqual(page.notes, [OPEN], 'تعديل الصفحة المبنية يبقى على المعاينة');
 });

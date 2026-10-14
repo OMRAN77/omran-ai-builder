@@ -1,4 +1,4 @@
-// v-decor-toggle-img: بطاقات «لمسات ديكورية إضافية» بصور حقيقية بلا نصّ، والاسم من الترجمة بالـ١٤ لغة.
+// v-decor-toggle-img + v-decor-photos: بطاقات «لمسات ديكورية إضافية» بصور حقيقية بلا نصّ، والاسم من الترجمة بالـ١٤ لغة.
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -12,21 +12,23 @@ const IMGS = {
 };
 const KEYS = ['designAiRearrangeLabel', 'designAiDecorPlants', 'designAiDecorArt', 'designAiDecorAccessories'];
 
-// v-decor-art (دمج #1021 بأمر المالك ١٣ أكتوبر «ادمج»): الصورة رسمة SVG بألوان البطاقة بدل الصورة الحقيقيّة،
-// في الخانة الصافية نفسها (بلا تظليل، والاسم المترجم تحتها). ملفّات الصور الحقيقيّة تبقى في المستودع (قرار المالك: الوسائط لا تُحذف).
-test('١. لكل بطاقة رسمتها، وملفّات الصور الحقيقيّة باقية', () => {
-  const KIND = { designAiRearrange: 'furniture', designAiDecorPlants: 'plants', designAiDecorArt: 'art', designAiDecorAccessories: 'accessories' };
-  for (const [id, kind] of Object.entries(KIND)) assert.ok(src.includes(id + ":'" + kind + "'"), 'الرسمة مربوطة: ' + id);
-  assert.ok(!src.includes('CBIMG'), 'لا صورة حقيقيّة مربوطة');
-  for (const name of Object.values(IMGS)) assert.ok(fs.existsSync(path.join(root, 'assets/design/decor/' + name + '.webp')), 'الملفّ باقٍ: ' + name);
+test('١. لكل بطاقة صورتها، والملفّ موجود وصغير', () => {
+  for (const [id, name] of Object.entries(IMGS)) {
+    const rel = 'assets/design/decor/' + name + '.webp';
+    assert.ok(src.includes(id + ":'" + rel + "'"), 'الصورة مربوطة: ' + id);
+    const st = fs.statSync(path.join(root, rel));
+    assert.ok(st.size > 2000 && st.size < 120000, 'حجم معقول: ' + rel);
+  }
+  assert.ok(!src.includes('CBKIND'), 'لا رسمة SVG مربوطة');
+  assert.ok(!src.includes('function cbSvg'), 'دالّة الرسمة أُزيلت من الوجه');
 });
 
-test('٢. الرسمة خلفية الخانة كاملة بلا قصّ، وتدرّج الألوان احتياط تحتها', () => {
-  assert.ok(src.includes("'background:'+cbSvg(c,CBKIND[cb.id]||'furniture').replace('center/cover','center/contain')+','+"), 'الرسمة contain');
-  assert.ok(src.includes('aspect-ratio:4/3'), 'خانة تتّسع للرسمة');
+test('٢. الصورة خلفية البطاقة وتدرّج الألوان احتياط تحتها', () => {
+  assert.match(src, /'background:'\+\(img\?'url\("'\+img\+'"\) center\/cover no-repeat,':''\)\+/);
+  assert.ok(src.includes('aspect-ratio:8/3'), 'الصورة بنسبتها');
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const v = Number((html.match(/design-sels\.js\?v=(\d+)/) || [])[1]);
-  assert.ok(v > 563, 'وسم الملفّ مرفوع فوق نسخة الصور الحقيقيّة (563): ' + v);
+  assert.ok(v > 564, 'وسم الملفّ مرفوع فوق نسخة الرسمة (564): ' + v);
 });
 
 test('٢-ب. الصورة صافية: لا تظليل ولا اسم فوقها — الاسم سطر تحتها', () => {

@@ -73,7 +73,7 @@ function loadPanel(opts) {
 }
 const ex = (p, a, lines) => ({ p, r: '', a, b: a + lines.length - 1, n: 500, l: lines });
 
-test('اللوحة الحيّة: أوّل مقطع في الدور يبدأ لوحة جديدة ويفتحها مرّة على الحاسوب؛ المقاطع تُدمج بأرقامها', () => {
+test('اللوحة الحيّة: أوّل مقطع في الدور يبدأ لوحة جديدة بلا فتح تلقائيّ (v-read-fold مطويّة كـClaude)؛ المقاطع تُدمج بأرقامها', () => {
   const { rp, calls } = loadPanel();
   rp.begin();
   rp.live(ex('api/_lib/chat.js', 1, ['a', 'b']));
@@ -82,7 +82,7 @@ test('اللوحة الحيّة: أوّل مقطع في الدور يبدأ لو
   let st = rp._state();
   assert.equal(st.files.length, 2, 'قراءتان للملفّ نفسه = ملفّ واحد');
   assert.deepEqual(Object.keys(st.files[0].rows).map(Number), [1, 2, 3]);
-  assert.deepEqual(calls, ['tab:read', 'expand'], 'فتح واحد في الدور');
+  assert.deepEqual(calls, [], 'v-read-fold: لا تبويب ولا توسيع وحدهما — كـRead في Claude Code');
   rp.begin();
   rp.live(ex('knowledge/DECISIONS.md', 1, ['#']));
   st = rp._state();

@@ -7844,6 +7844,9 @@ function renderMessages(keepScroll){
       // v-cc-fold: ردّ Claude Code — أدواته وأكواده الطويلة مطويّة بترتيبها داخل الردّ
       if(m._cc && window.omranCC && typeof window.omranCC.decorate === 'function'){
         try{ const __ccw = window.omranCC.decorate(textDiv, m); if(__ccw) msgWordEls = __ccw; }catch(e){ __swallow(e, 'cc:fold'); }
+      } else if(window.omranCC && typeof window.omranCC.foldCode === 'function'){
+        /* v-read-fold: كود الصفحة الطويل مطويّ لكلّ المزوّدين كتطبيق Claude — لا وضع Claude Code وحده */
+        try{ window.omranCC.foldCode(textDiv); }catch(e){ __swallow(e, 'cc:fold-all'); }
       }
     } else {
       textDiv.textContent = __mc;
@@ -22697,7 +22700,7 @@ function __agLogLive(host){
           let g = lastEl.classList.contains('cwGroup') ? lastEl : null;
           if(!g){ const first = lastEl.__last; g = W.groupEl([first]); root.replaceChild(g, lastEl); first.el = g.lastChild.firstChild; }
           p.el = W.groupAdd(g, p); g.__last = p;
-        } else { p.el = W.toolEl(p, true); p.el.__last = p; root.appendChild(p.el); }
+        } else { p.el = W.toolEl(p, !W.isRead(p)); p.el.__last = p; root.appendChild(p.el); } /* v-read-fold: قراءة الصفحة مطويّة كـClaude لكلّ المزوّدين */
         parts.push(p); if(a.id) byId[a.id] = p; grp = null;
         return;
       }
@@ -23406,6 +23409,14 @@ function omranLastImageHero(c, text, ownWords){
     const mime = c.lastEditedImage.mime || 'image/png';
     return { isImage: true, dataUrl: 'data:' + mime + ';base64,' + c.lastEditedImage.b64, mime: mime };
   }catch(e){ return null; } /* حالة غير متوقّعة = بلا بطل كما كان */
+}
+/* v-prov-app-edit (المالك ١٤ أكتوبر «المزودين لين الحين مش قادرين» يعدّلون التطبيق):
+   تعليمة المعاينة كانت تمنع GitHub إلّا إن قال «التطبيق الحيّ» حرفيًّا، فـ«عدّل التطبيق»
+   تُصرف إلى الصفحة المبنية في المحادثة ولا تُفتح رفعة. خارج __sendPromptCore كي لا يكبر سقفها. */
+function omranOwnerRepoNote(text){
+  return /(?:المستودع|GitHub|github|الجيت\s*ه[وب]|قيت\s*ه[وب]|التطبيق(?:\s*الحيّ)?|الواجه[ةه]|الإعدادات|الاعدادات|omran-ai)/i.test(String(text || ''))
+    ? 'طلب على التطبيق الحيّ = اقرأ بـread_github ثمّ عدّل بـedit_github على مستودع OMRAN77/omran-ai-builder. المشروع المفتوح في هذه المحادثة ليس التطبيق.'
+    : 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق/الواجهة)';
 }
 async function __sendPromptCore(){
   /* v-parallel-chats: هذا الطلب يخصّ المحادثة التي بدأ فيها. الرسم باسمَي renderAll/renderMessages مظلَّل هنا:
@@ -26842,8 +26853,7 @@ DESIGN RULES (non-negotiable):
         // 🔒 دور البوابة: صف الفكرة واسأل الإذن — ممنوع البناء الآن.
         apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
       } else if(__ownerFree && !!cur.code && __toolsWillRun){ /* rel-4: كلّ دور والمشروع مفتوح — كان على __routeFix وحده فسقط عن «هل تقدر تضيف…» و«كيف أضيف…؟» */
-        // v-claude-code-level: إصلاح المالك على مشروع مفتوح صار بالأدوات — المعاينة تُعدَّل في الردّ، لا طلب سحب على مستودع التطبيق.
-        apiMessages.push({ role: 'system', content: 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق الحيّ)' });
+        apiMessages.push({ role: 'system', content: omranOwnerRepoNote(text) }); /* v-prov-app-edit: التطبيق/الواجهة/المستودع → GitHub لا المعاينة */
       }
       // v469: Q&A system prompt مدمج في __sys — لا حاجة لـ unshift إضافي.
       let reply, providerKey, switched, requestedKey;
@@ -43814,7 +43824,7 @@ if(document.readyState === 'loading'){
     return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status, atts);
   }
 
-  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, _fold: { push: push, capParts: capParts } };
+  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, foldCode: foldCode, _fold: { push: push, capParts: capParts } };
 })();
 /* ===== app-29-claude-model — اختيار نموذج كلود (v-claude-models) =====
    v-models-two (أمر عمران ١٤ سبتمبر): القائمة محصورة في Opus 5 + Sonnet 5، والاختيار
@@ -46006,8 +46016,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
         var p = host(), shown = p && p.classList.contains('active');
         var follow = first || shown || !cur;
         if(follow) cur = f;
-        if(first && !isMobile()) reveal(); // مرّة في الدور، على الحاسوب وحده — قبل الرسم كي يُحسب التمرير على لوحة ظاهرة
-        render(follow ? x.a : 0); // اللوحة تتبع آخر ما قُرئ: ملفّه وأوّل سطر فيه
+        /* v-read-fold (المالك ١٤ أكتوبر «يقرى الصفحة اريدها مطوية نفس نظام كلاود»): لا فتح تلقائيّ — التبويب يظهر والمستخدم يفتح كـRead في Claude Code. الرقم في الردّ ما زال يفتح السطر (open). */
+        render(follow ? x.a : 0); // اللوحة تتبع آخر ما قُرئ إن كانت ظاهرة: ملفّه وأوّل سطر فيه
       }catch(e){ __swallow(e, 'read:live'); }
     },
     open: function(reads, p, a, b){
@@ -46072,7 +46082,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
 /* v-work-log (المالك ١٣ أكتوبر، لقطة من واجهة Claude وهو يعمل: «سولي نفس هذي بالضبط»): عمل المزوّد في المحادثة صندوق واحد فوق الردّ.
    رأسه: شرارة + ما يفعله الآن + الوقت المنقضي + سهم. داخله إطار، وكلّ عنصر سطر عنوان ينفتح: التفكير أسطرًا قصيرة (جملة في
    السطر، وعنوانه آخر جملة)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا: التفكير مسكّر حتّى يفتحه من يريد (v-think-closed)،
-   وبعد أوّل أداة لا يُضاف كلام تفكير جديد (v-edit-no-talk). أحدث أداة وحدها مفتوحة وما قبلها يُطوى، والوقت يعدّ كلّ ثانية.
+   والتفكير بين الأدوات يظهر مطويًّا (v-interleave). قراءة الصفحة/الملفّ مطويّة ولو كانت الأحدث (v-read-fold)، وغير القراءة الأحدث وحدها مفتوحة.
    محفوظًا (m._agParts وأوّله {t:'meta', ms}): مطويّ في سطر «عمل لمدّة …». سجلّ الوكيل القديم (بلا meta) يرسمه __agLogRender كما كان.
    النصوص: cwWorked وcwRequest وcwResponse وcwTimeM وcwTimeS وcwWorking (١٤ لغة). */
 (function(){
@@ -46131,6 +46141,12 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     return el;
   }
   function sameKind(a, b){ return !!(a && b && a.t === 'tool' && b.t === 'tool' && a.name && a.name === b.name); }
+  /* v-read-fold (المالك ١٤ أكتوبر «يقرى الصفحة اريدها مطوية نفس نظام كلاود»): قراءة الصفحة/الملفّ سطر مطويّ كـRead في Claude Code — لا تُفتح ولو كانت الأحدث. */
+  function isRead(p){
+    if(!p || p.t !== 'tool') return false;
+    if(p.code) return true;
+    return /^(?:trFetch|stFetchPage|trFetchFail|fetch_page|read_github|Read)$/i.test(String(p.name || ''));
+  }
   function partEl(p, open){
     if(!p) return null;
     if(p.t === 'think') return thinkEl(p, open);
@@ -46177,8 +46193,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
           if(p && p.t === 'tool'){
             Array.prototype.forEach.call(b.list.children, function(c){ if(c.classList && c.classList.contains('cwThinkItem')) c.open = false; });
           }
-          /* v-think-closed: التفكير مطويّ؛ الأداة الأحدث وحدها تُفتح */
-          var el = partEl(p, p && p.t !== 'think');
+          /* v-think-closed: التفكير مطويّ. v-read-fold: قراءة الصفحة مطويّة كـClaude؛ غيرها الأحدث تُفتح */
+          var el = partEl(p, p && p.t === 'tool' && !isRead(p));
           if(el){ el.__last = p; b.list.appendChild(el); }
         },
       };
@@ -46198,7 +46214,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       }
       return b.d;
     },
-    thinkEl: thinkEl, toolEl: toolEl, groupEl: groupEl, groupAdd: groupAdd, // v-interleave: الوكيل يبني بالعناصر نفسها
+    thinkEl: thinkEl, toolEl: toolEl, groupEl: groupEl, groupAdd: groupAdd, isRead: isRead, // v-interleave · v-read-fold
     _lines: lines, _dur: dur, // للاختبار
   };
 })();

@@ -2,7 +2,7 @@
   var SELS=['designAiPlace','designAiStyle','designAiLighting','designAiFurniture','designAiFlooring','designAiFabric','designAiWallColor','designAiCurtains'];
   var CBS=['designAiRearrange','designAiDecorPlants','designAiDecorArt','designAiDecorAccessories'];
   var ICONS={
-    designAiLighting:{'':'\u2298',warm:'\u{1F305}',cool:'\u2744\uFE0F',bright:'\u2600\uFE0F',dim:'\u{1F319}'},
+    designAiLighting:{'':'\u2298',warm:'\u{1F305}',cool:'\u2744\uFE0F',bright:'\u2600\uFE0F',dim:'\u{1F319}',natural:'\u{1F324}\uFE0F',neutral:'\u26AA',golden:'\u2728',purple:'\u{1F49C}',sunset:'\u{1F307}',moon:'\u{1F315}'},
     designAiFurniture:{'':'\u2298',modern:'\u{1F532}',classic:'\u{1FAB5}',simple:'\u{1F90D}',luxury:'\u{1F48E}',bohemian:'\u{1F33F}'},
     designAiFlooring:{'':'\u2298',parquet:'\u{1FAB5}',marble:'\u{1FAA8}',ceramic:'\u{1F9F1}',carpet:'\u{1F9F6}'},
     designAiFabric:{'':'\u2298',light:'\u{1F90D}',dark:'\u{1F5A4}',neutral:'\u{1FA76}',bold:'\u{1F534}'},
@@ -172,7 +172,27 @@
       '</svg>';
     return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") center/cover no-repeat';
   }
+  /* v-decor-light-sheet (طلب المالك ١٤ أكتوبر ٢٠٢٦: «اريد صور هذي الصور ضيفها» مع لوحة الإضاءة العشر):
+     اللوحة نفسها ملفّ واحد lighting-sheet.webp (١٠٢٤×١٥٣٦، عمودان × ٥ صفوف)، وكلّ بطاقة تعرض
+     قصّتها ٣:٤ (١٣٥×١٨٠ من وسط الصورة، فوق شريط الاسم المكتوب) بخلفيّة CSS — صور المالك كما هي بلا رسم. */
+  /* v-decor-light-clear (طلب المالك ١٤ أكتوبر ٢٠٢٦: «خلها نفس الصور لكن عدلها خلها واضحه»):
+     القصّة الصغيرة المكبّرة ٧٥٨٪ كانت مغبّشة ومقصوصة. الآن عمود اللوحة = عرض البطاقة (٢٠٠٪ ≈ ١:١)
+     فالصورة كاملة وحادّة في وسط البطاقة، وشريطان داكنان يخفيان الصفّ المجاور وشريط الاسم المكتوب. */
+  var LIGHT_SHEET='assets/design/opts/lighting-sheet.webp';
+  var LIGHT_POS={
+    warm:[0,-24.53], cool:[100,-24.53],
+    bright:[0,8.75], dim:[100,8.75],
+    natural:[0,42.04], neutral:[100,42.04],
+    golden:[0,75.31], purple:[100,75.31],
+    sunset:[0,108.72], moon:[100,108.72]
+  };
+  var LIGHT_MASK='linear-gradient(#141418 0 32.4%,transparent 32.4% 67.6%,#141418 67.6%)';
+  function lightBg(v){
+    var p=LIGHT_POS[v]; if(!p) return '';
+    return LIGHT_MASK+', url("'+LIGHT_SHEET+'") '+p[0]+'% '+p[1]+'% / 200% auto no-repeat, #141418';
+  }
   function roomBg(id,v){
+    if(id==='designAiLighting'&&LIGHT_POS[v]) return lightBg(v);
     var c=(PALS[id]||{})[v]; if(!c) return '';
     return roomSvg(c, ROOM_KIND[v]||'');
   }
@@ -212,7 +232,9 @@
       shop:'واجهة تجارية جذابة', bath:'رخام ونقاء', kids:'مرح آمن وألوان',
       entrance:'أول انطباع لضيوفك', garden:'جلسة خارجية خضراء'
     },
-    designAiLighting:{ warm:'أصفر دافئ مريح', cool:'أبيض بارد منعش', bright:'نهاري ساطع', dim:'خافتة هادئة للمساء' },
+    designAiLighting:{ warm:'أصفر دافئ مريح', cool:'أبيض بارد منعش', bright:'نهاري ساطع', dim:'خافتة هادئة للمساء',
+      natural:'ضوء نهار طبيعي من النافذة', neutral:'أبيض محايد متوازن', golden:'وهج ذهبي دافئ',
+      purple:'أجواء ليلية بنفسجية', sunset:'دفء الغروب الوردي', moon:'ضوء قمر أزرق هادئ' },
     designAiFurniture:{ modern:'قطع عصرية أنيقة', classic:'خشب فخم تقليدي', simple:'عملي بلا تكلّف', luxury:'فخامة في كل قطعة', bohemian:'قطع حرة متنوعة' },
     designAiFlooring:{ parquet:'خشب دافئ تحت قدميك', marble:'رخام لامع فاخر', ceramic:'عملي سهل التنظيف', carpet:'سجاد وثير مريح' },
     designAiFabric:{ light:'أقمشة فاتحة مشرقة', dark:'أقمشة داكنة فخمة', neutral:'درجات هادئة محايدة', bold:'ألوان جريئة لافتة' },
@@ -232,47 +254,14 @@
     designAiDecorArt:['#4a2f5f','#8a5f9e','#d4af37'],
     designAiDecorAccessories:['#1a1a1f','#d4af37','#8a6d2f']
   };
-  /* v-decor-art (طلب المالك ١٣ أكتوبر ٢٠٢٦): رسمة SVG داخل كل بطاقة بدل التدرّج
-     المسطّح — نبتة ولوحة وإكسسوار وأثاث بألوان البطاقة نفسها (الملفّات لا تُرفع،
-     فالرسم مضمّن في الكود ويشتغل فورًا). */
-  var CBKIND={
-    designAiRearrange:'furniture',
-    designAiDecorPlants:'plants',
-    designAiDecorArt:'art',
-    designAiDecorAccessories:'accessories'
+  /* v-decor-photos (طلب المالك ١٤ أكتوبر ٢٠٢٦ «شو فقط فيه صور… ليش الحينه غير موجوده»):
+     الصور الحقيقيّة من لوحته (#1024) وجه البطاقة. رسمة SVG (#1021) أُزيلت من الوجه. */
+  var CBIMG={
+    designAiRearrange:'assets/design/decor/rearrange.webp',
+    designAiDecorPlants:'assets/design/decor/plants.webp',
+    designAiDecorArt:'assets/design/decor/art.webp',
+    designAiDecorAccessories:'assets/design/decor/accessories.webp'
   };
-  function cbSvg(c,kind){
-    var dark=shade(c[0],.55), mid=c[1], light=c[2];
-    var body='';
-    if(kind==='plants'){
-      body='<path d="M150 250 q-40 -30 -52 -86 q44 12 58 74 z" fill="#4a8a4a"/>'+
-        '<path d="M150 250 q40 -30 52 -86 q-44 12 -58 74 z" fill="#5fa85a"/>'+
-        '<path d="M150 248 q-16 -54 4 -96 q20 42 -4 96 z" fill="#6ebd63"/>'+
-        '<rect x="88" y="238" width="124" height="20" rx="8" fill="'+mid+'"/>'+
-        '<path d="M96 258 h108 l-14 74 h-80 z" fill="'+light+'"/>';
-    } else if(kind==='art'){
-      body='<rect x="76" y="92" width="148" height="150" rx="6" fill="'+shade(c[2],.9)+'" stroke="#d4af37" stroke-width="7"/>'+
-        '<path d="M88 224 l36 -56 24 30 20 -38 44 64 z" fill="'+dark+'"/>'+
-        '<circle cx="118" cy="132" r="12" fill="#d4af37"/>';
-    } else if(kind==='accessories'){
-      body='<path d="M120 252 q-8 -70 30 -70 q38 0 30 70 z" fill="#d4af37"/>'+
-        '<rect x="110" y="246" width="80" height="14" rx="6" fill="'+shade('#d4af37',.75)+'"/>'+
-        '<circle cx="150" cy="122" r="22" fill="none" stroke="#d4af37" stroke-width="7"/>'+
-        '<circle cx="150" cy="122" r="8" fill="'+light+'"/>'+
-        '<path d="M150 144 v42" stroke="#d4af37" stroke-width="5"/>';
-    } else {
-      body='<rect x="82" y="168" width="136" height="36" rx="12" fill="'+shade(c[1],.8)+'"/>'+
-        '<rect x="70" y="196" width="160" height="48" rx="14" fill="'+mid+'"/>'+
-        '<rect x="96" y="208" width="44" height="28" rx="8" fill="'+light+'"/>'+
-        '<rect x="160" y="208" width="44" height="28" rx="8" fill="'+shade(c[2],.85)+'"/>'+
-        '<path d="M62 300 l-16 -16 M62 300 l-16 16" stroke="#d4af37" stroke-width="6" fill="none" stroke-linecap="round"/>'+
-        '<path d="M238 300 l16 -16 M238 300 l16 16" stroke="#d4af37" stroke-width="6" fill="none" stroke-linecap="round"/>';
-    }
-    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 340">'+
-      '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+shade(c[0],1.18)+'"/><stop offset="1" stop-color="'+shade(c[0],.8)+'"/></linearGradient></defs>'+
-      '<rect width="300" height="340" fill="url(#g)"/>'+body+'</svg>';
-    return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") center/cover no-repeat';
-  }
   function cbName(cb,sp){
     var key=sp?sp.getAttribute('data-i18n'):'';
     var tx=(key&&typeof window.t==='function')?window.t(key):'';
@@ -283,16 +272,17 @@
     var lab=cb.parentElement, sp=lab?lab.querySelector('span'):null;
     var txt=cbName(cb,sp);
     var c=CBPAL[cb.id]||['#2a2a30','#3d3d45','#55555f'];
+    var img=CBIMG[cb.id];
     var d=document.createElement('div');
     d.setAttribute('data-dtoggle',cb.id);
     /* v-decor-names-only (طلب المالك ١٣ أكتوبر ٢٠٢٦): الاسم وحده بلا وصف.
        v-decor-toggle-img (طلبه: «الصورة واضحة وضوح الشمس»): الصورة صافية بلا تظليل ولا نصّ فوقها، والاسم المترجم سطر تحتها.
-       v-decor-art (دمج #1021 بأمر المالك ١٣ أكتوبر «ادمج»): الصورة رسمة SVG بألوان البطاقة بدل الصورة الحقيقيّة، كاملة بلا قصّ (contain). */
+       v-decor-photos (١٤ أكتوبر): وجه البطاقة الصورة الحقيقيّة لا الرسمة. */
     d.style.cssText='position:relative;border-radius:12px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;';
     var pic=document.createElement('div');
     pic.setAttribute('data-dimg','1');
-    pic.style.cssText='position:relative;width:100%;aspect-ratio:4/3;min-height:72px;'+
-      'background:'+cbSvg(c,CBKIND[cb.id]||'furniture').replace('center/cover','center/contain')+','+
+    pic.style.cssText='position:relative;width:100%;aspect-ratio:8/3;min-height:48px;'+
+      'background:'+(img?'url("'+img+'") center/cover no-repeat,':'')+
       'linear-gradient(155deg,'+c[0]+' 0%,'+c[1]+' 55%,'+c[2]+' 120%);';
     var nm=document.createElement('div');
     nm.textContent=txt;
@@ -315,6 +305,7 @@
      معرضًا ملء الشاشة — نفس نظام أنماط الصور (طلب المالك: كلهم مرة وحدة). */
   function selImg(id,v){
     if(!v) return '';
+    if(id==='designAiLighting'&&LIGHT_POS[v]) return ''; /* v-decor-light-sheet: صورتها من اللوحة في roomBg */
     return id==='designAiStyle' ? 'assets/design/styles/'+v+'.webp'
       : 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp';
   }

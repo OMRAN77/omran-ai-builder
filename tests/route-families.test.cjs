@@ -147,8 +147,10 @@ test('١٠. rel-3: نسخ النصّ مرسًى على الصورة نفسها؛
 test('١١. rel-4: المشروع المفتوح — ملاحظة المالك في كلّ دور تعمل فيه الأدوات، ولا «موضوع جديد» على دور فيه فعل تعديل', () => {
   const ownerLine = h.SRC.slice(h.SRC.indexOf('      } else if(__ownerFree && '), h.SRC.indexOf('\n', h.SRC.indexOf('      } else if(__ownerFree && ')));
   assert.ok(ownerLine.includes('__ownerFree && !!cur.code && __toolsWillRun'), 'لا على __routeFix وحده: ' + ownerLine.slice(0, 80));
-  const note = h.SRC.indexOf("'المشروع المفتوح = عدّله في الردّ", h.SRC.indexOf('      } else if(__ownerFree && '));
-  assert.ok(note > 0 && note - h.SRC.indexOf('      } else if(__ownerFree && ') < 600, 'الملاحظة في هذا الفرع');
+  const branchStart = h.SRC.indexOf('      } else if(__ownerFree && ');
+  const branch = h.SRC.slice(branchStart, h.SRC.indexOf('      // v469: Q&A system prompt', branchStart));
+  assert.ok(branch.includes('omranOwnerRepoNote'), 'طلب التطبيق يُصرف للمستودع لا المعاينة');
+  assert.ok(h.SRC.includes("'المشروع المفتوح = عدّله في الردّ"), 'الملاحظة ما زالت');
   const topic = h.SRC.slice(h.SRC.indexOf("      if(typeof window.omranTopicSwitch === 'function'"), h.SRC.indexOf('\n', h.SRC.indexOf("      if(typeof window.omranTopicSwitch === 'function'")));
   assert.ok(topic.includes('!__editVerbHit'), 'فيتو فعل التعديل على ملاحظة الموضوع');
   // __editVerbHit بنصّه: المشروع مفتوح + فعل تعديل («كم منتج اقدر احط؟» فيها «حط»)
