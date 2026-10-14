@@ -23428,6 +23428,21 @@ function omranOwnerRepoNote(text){
     ? 'طلب على التطبيق الحيّ = اقرأ بـread_github ثمّ عدّل بـedit_github على مستودع OMRAN77/omran-ai-builder. المشروع المفتوح في هذه المحادثة ليس التطبيق.'
     : 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق/الواجهة)';
 }
+/* v-photo-honest (لقطة المالك ١٤ أكتوبر: «هذي صور حقيقية من البحث المباشر 👇» بلا صورة واحدة — «ياكذاب»): روابط صور البحث تُعرض
+   كما وصلت، وكثير منها يرفض العرض خارج موقعه (حماية الربط) أو انتهى، فتختفي والنصّ يدّعيها. الآن تُجرَّب في المتصفّح أوّلًا، ولا
+   يُعرض ولا يُدّعى إلّا ما يفتح فعلًا؛ وإن لم يفتح شيء فالطلب يمرّ للمزوّد كما لو لم تُوجد صور. خارج __sendPromptCore كي لا يكبر سقفها. */
+function __omranImgsThatLoad(urls, ms){
+  const list = (Array.isArray(urls) ? urls : []).map(u => (typeof u === 'string' ? u : (u && u.url) || '')).filter(u => /^https:\/\//i.test(u));
+  return Promise.all(list.map(u => new Promise(res => {
+    try{
+      const im = new Image(); let done = false;
+      const fin = (ok) => { if(done) return; done = true; res(ok && im.naturalWidth > 1 ? u : ''); };
+      im.onload = () => fin(true); im.onerror = () => fin(false);
+      setTimeout(() => fin(false), ms || 6000);
+      im.src = u;
+    }catch(e){ res(''); } // guard-ok — صورة لا تُجرَّب = لا تُعرض
+  }))).then(a => a.filter(Boolean));
+}
 async function __sendPromptCore(){
   /* v-parallel-chats: هذا الطلب يخصّ المحادثة التي بدأ فيها. الرسم باسمَي renderAll/renderMessages مظلَّل هنا:
      يرسم فقط إن كانت محادثته هي المعروضة، وإلّا يحدّث القائمة الجانبيّة وحدها — فلا يكتب طلب في الخلفيّة
@@ -24124,7 +24139,7 @@ function __friendlyErr(e){
     /* v-owner-logo-place (مسبار التوجيه ١٠ أكتوبر): المالك «حط شعار الدائرة الاقتصادية في الصفحة الرئيسية» = تعديل في تطبيقه،
        لا بحث صور شعارات — مكان من واجهة التطبيق في الطلب يُغلق بوّابة الجلب له. */
     const __ownerAppPlace = String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran'
-      && /(?:الصفح[ةه]\s+الرئيسي[ةه]|التطبيق|الواجه[ةه]|الإعدادات|الاعدادات|القائم[ةه]|الشريط|الهيدر|الفوتر|الزر|زرّ)/i.test(text);
+      && /(?:الصفح[ةه]\s+الرئيسي[ةه]|التطبيق|الواجه[ةه]|الإعدادات|الاعدادات|القائم[ةه]|الشريط|الهيدر|الفوتر|الزر|زرّ|قسم|ادخل|(?:^|\s)(?:ت|ي)?حطّ?(?:لي|ها|هم)?(?=\s))/i.test(text); // v-photo-honest: «ادخل الديكور… تحطلي صور» تعديل في تطبيقه لا بحث صور
     const __isLogoFetch = __freshChat && __logoFetchRe.test(text) && !__logoDesignRe.test(text) && !__logoNewRe.test(text) && !__logoRefRe.test(text) && !(cur && cur.code) && !__ownerAppPlace;
     // v-design-img-followup (لقطات عمران ٢٧ أغسطس): «عطني صورة التصميم/الفكرة»
     // بعد نقاش تصميم كان يُخطف لبحث صور حقيقية فيرجع صور أجنبية لا علاقة لها —
@@ -24136,7 +24151,7 @@ function __friendlyErr(e){
     /* v-img-one-road: جلب صور الإنترنت فقط حين يُطلب صراحةً («صور حقيقية»، «من النت») أو بالجمع («عطني صور ليوبارد 8»)؛
        المفرد («أبي صورة قطة») بناء. */
     const __realPhotoCue = /(حقيقي|حقيقية|من\s*النت|من\s*الانترنت|من\s*الإنترنت|من\s*قوقل|من\s*جوجل|\breal\b|\bactual\b|from\s+the\s+(?:web|internet))/i.test(text) || /(?:^|[\s،,])(?:صور)(?!\s*لي(?:$|[\s،,.!]))(?=$|[\s،,.!])|\b(?:photos|pictures|images)\b/i.test(text);
-    const __isPhotoFetch = !__isLogoFetch && __realPhotoCue && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !__designCtxRe.test(text) && !__photoMakeRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
+    const __isPhotoFetch = !__isLogoFetch && !__ownerAppPlace && __realPhotoCue && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !__designCtxRe.test(text) && !__photoMakeRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
     if(!imageAttachments.length && !__editIntent && (__isLogoFetch || __isPhotoFetch)){
       const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
       cur.messages.push(__logoMsg);
@@ -24163,7 +24178,7 @@ function __friendlyErr(e){
           body: JSON.stringify({ query: __photoQ + (__isLogoFetch ? ' logo png' : ''), images: true, lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
         });
         const __ld = await __lr.json();
-        const __imgs = (Array.isArray(__ld.images) ? __ld.images : []).slice(0, 4);
+        const __imgs = (await __omranImgsThatLoad((Array.isArray(__ld.images) ? __ld.images : []).slice(0, 6), 6000)).slice(0, 4); // v-photo-honest: ما يفتح فعلًا وحده
         if(__imgs.length){
           __logoMsg._loading = false;
           __logoMsg.content = lang === 'ar' ? (__isLogoFetch ? 'هذا الشعار الأصلي من البحث المباشر 👇 اضغط على الصورة لعرضها كبيرة، أو حمّلها مباشرة.' : 'هذي صور حقيقية من البحث المباشر 👇 اضغط على أي صورة لعرضها كبيرة، أو حمّلها مباشرة.') : 'Here are real images from live search 👇';

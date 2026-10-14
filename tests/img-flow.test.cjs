@@ -114,7 +114,7 @@ test('٩. صور الإنترنت فقط بطلب صريح أو بالجمع —
   const cue = (x) => r1.test(x) || r2.test(x);
   for (const x of ['عطني صور ليوبارد 8', 'أبي صور حقيقية لبرج خليفة', 'عطني صورة من النت لسيارة كامري', 'show me photos of Paris']) assert.ok(cue(x), x);
   for (const x of ['أبي صورة قطة', 'عطني صورة غروب في دبي', 'صور لي قطة']) assert.ok(!cue(x), x);
-  assert.ok(a.includes('const __isPhotoFetch = !__isLogoFetch && __realPhotoCue && __photoFetchRe.test(text) &&'));
+  assert.ok(a.includes('const __isPhotoFetch = !__isLogoFetch && !__ownerAppPlace && __realPhotoCue && __photoFetchRe.test(text) &&')); // v-photo-honest: طلب المالك على تطبيقه لا يُخطف
 });
 
 test('١٠. مؤشّر الصورة بلا إطار، والوضعان سواء، والشبكة ١٥×١٠ بقوس الزاوية العليا اليسرى', () => {
