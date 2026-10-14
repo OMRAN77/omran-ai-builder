@@ -142,7 +142,7 @@ test('١. وضع الوكيل: أداتا الرسم للمالك وحده (بع
   for (const t of toolsFor('omran').filter((x) => /_image$/.test(x.name))) assert.equal(Object.keys(t.input_schema.properties)[0], 'step_title');
   const gen = toolsFor('omran').find((t) => t.name === 'generate_image');
   assert.ok(gen.description.includes('__IMG_1__') && gen.description.includes('write_github'), 'الوصف يقول كيف تُرفع');
-  assert.deepEqual(CLIENT_WAIT_MS, { generate_image: 75000, edit_image: 150000, save_image: 30000 }, 'مهلة chat.js نفسها — لا ٢٥ ثانية');
+  assert.deepEqual(CLIENT_WAIT_MS, { generate_image: 150000, edit_image: 150000, save_image: 30000 }, 'مهلة chat.js نفسها — لا ٢٥ ثانية');
   const src = read('api/_lib/agent.js');
   assert.ok(src.includes('const waitMs = CLIENT_WAIT_MS[name] || 25000;'), 'run_js وtest_html على ٢٥ ثانية كما كانا');
 });
@@ -211,7 +211,7 @@ test('٥. v-agent-img-size: الرسمة فوق ٢٫٥ م.ب تُعاد JPEG ق�
   assert.ok(save.indexOf("if (String(b64 || '').length > 2500000) { var sh = await omranAgentShrink(b64, mime);") < save.indexOf("fetch('/api/media?action=img'"), 'التصغير قبل الرفع');
   assert.ok(c.includes("c.toDataURL('image/jpeg', q)") && c.includes('while (d.length > 2500000 && q > 0.5)'));
   assert.ok(c.includes("window.__agentSaveWhy = 'HTTP ' + up.status"));
-  assert.ok(c.includes('⚠️ لم تُحفظ في مخزن التطبيق (') && c.includes('لا تُرفع بهذا الرمز؛ أعد رسمها.'));
+  assert.ok(c.includes('⚠️ لم تُحفظ بعد في مخزن التطبيق (') && c.includes('ارفعها برمزها كما هو') && c.includes('لا تُعِد رسمها.') && !c.includes('أعد رسمها.'), 'v-owner-paid-gate: الفشل لا يطلب رسمًا جديدًا');
   assert.ok(bundle.includes('function omranAgentShrink(b64, mime)'), 'الحزمة مبنيّة');
   assert.equal(require(rp('api/_lib/img-share.js')).AGENT_TTL_SEC, 86400);
 });
@@ -236,8 +236,33 @@ test('٦. v-agent-img-keep: رمز رسمة لم تُحفظ ← الخادم ي�
 
 test('٧. v-owner-self-drive: طريقة العمل المشتركة (المحادثة لكلّ المزوّدين والوكيل) — ارسم ثمّ ارفع مرّة، لا رسم لتشخيص، والفشل يجرّب طريقًا آخر', () => {
   const w = require(rp('api/_lib/github-edit.js')).WORK_NOTE;
-  assert.ok(w.includes('ارسم كلّ المطلوب أوّلًا، ثمّ ارفعها كلّها في رفعة واحدة') && w.includes('رسمة «لم تُحفظ» لا تُعاد رسمًا'));
+  assert.ok(w.includes('ارسم المطلوب، ثمّ ارفعها كلّها في رفعة واحدة') && w.includes('لا تكمل طلبًا قديمًا من السجلّ') && w.includes('رسمة «لم تُحفظ» لا تُعاد رسمًا'));
   assert.ok(w.includes('لا تُعِد رسمًا ولا تشغيلًا مكلفًا لتعرف سبب عطل') && w.includes('جرّب الطريق الآخر بنفسك في الردّ نفسه'));
   assert.ok(read('api/_lib/agent.js').includes('const OWNER_ENGINEERING_NOTE = githubEdit.WORK_NOTE;'), 'الوكيل يقرؤها');
   assert.ok(read('api/_lib/chat.js').includes("require('./github-edit.js').WORK_NOTE"), 'والمحادثة لكلّ المزوّدين');
+});
+
+test('٨. v-owner-paid-gate في الوكيل: «كمّل» ← generate_image مرفوضة بلا رسم في المتصفّح (لا رصيد على طلب قديم)', async () => {
+  db.clear(); raw.clear();
+  const r = await run('كمّل', [toolTurn('generate_image', { prompt: 'warm lighting' }), textTurn('ما رسمت.')]);
+  assert.ok(!r.events.some((e) => e.clientTool), 'لا نداء للمتصفّح');
+  assert.ok(toolResults(r.calls[1])[0].startsWith('✗ لم يُنفَّذ: المالك لم يطلب رسمًا'));
+});
+
+test('٩. v-img-tok-unique: رموز رسمات المالك مستمرّة في المحادثة (لا __IMG_1__ في كلّ دور يطغى على رسمة سابقة)', () => {
+  const c = read('js/app-17-agent-tools.js'), vm = require('node:vm');
+  assert.ok(c.includes('var tok = omranNextTok();') && c.includes('var etok = omranNextTok();'));
+  const fn = c.slice(c.indexOf('  function omranNextTok() {'), c.indexOf('  function omranAgentOwner() {'));
+  const cur = { agentImgIds: { __IMG_3__: 'aaaaaaaaaaaa' } };
+  const sb = { window: { __genImages: {} }, getCurrent: () => cur, omranAgentOwner: () => true, Number, Math, Object };
+  vm.runInNewContext(fn + '; this.next = omranNextTok;', sb);
+  assert.equal(sb.next(), '__IMG_4__', 'بعد آخر رمز محفوظ');
+  sb.window.__genImages.__IMG_4__ = 'x';
+  assert.equal(sb.next(), '__IMG_5__', 'الرسمة الثانية في الدور نفسه');
+  sb.window.__genImages = {}; // طلب جديد (app-18 يصفّر)
+  assert.equal(sb.next(), '__IMG_6__', 'الدور التالي يكمل العدّ لا يبدأ من ١');
+  sb.omranAgentOwner = () => false; const sb2 = { window: { __genImages: {} }, getCurrent: () => cur, omranAgentOwner: () => false, Number, Math, Object };
+  vm.runInNewContext(fn + '; this.next = omranNextTok;', sb2);
+  assert.equal(sb2.next(), '__IMG_1__', 'غير المالك كما كان');
+  assert.ok(read('js/app.bundle.js').includes('function omranNextTok()'));
 });

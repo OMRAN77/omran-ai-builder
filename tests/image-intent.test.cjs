@@ -259,7 +259,7 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   /* generate_image على صورة مرفوعة + طلب إبداعي من كلمات المستخدم = يبني على المصدر لا من الوصف وحده */
   assert.match(tools, /if \(gCreative\) return await window\.omranAgentTools\.run\('edit_image', \{ instruction: prompt, userText: gUserText \}\)/);
   assert.match(tools, /var gCreative = !!\(gFirst && gRefB64 && gUserText && gUserText\.length <= 120 && !gNewImage && !gNotEdit/);
-  assert.match(chat, /runInClient\(send, 'generate_image', input, lastUserHasImage \? 150000 : 75000\)/);
+  assert.match(chat, /runInClient\(send, 'generate_image', input, \(lastUserHasImage \|\| __ownerReq\) \? 150000 : 75000\)/ /* v-owner-paid-gate: رسم المالك + حفظه ١٥٠ث */);
   /* v-img-engine-tag-owner (باب مقفل: لا اسم مزوّد لأيّ مستخدم): بصمة المحرّك للمالك وحده، بالاسم الحرفيّ لا حزمة عامّة */
   assert.match(attach, /if\(window\.__chatStatus && String\(authGet\('aiapp_username'\) \|\| ''\)\.trim\(\)\.toLowerCase\(\) === 'omran'\) window\.__chatStatus\.note\('🎨', String\(__data\.engine \|\| '\?'\)\); \}catch\(e\)\{ __swallow\(e, 'ui:img-engine-again'\)/);
   /* زر «نسخة ثانية» لا يُبنى فوق الصورة (كان يغطّي نصّها) — الدالة تبقى بلا زرّ */

@@ -371,7 +371,7 @@ async function fetchPage(url) {
 // اختبار/نشر/صورة) كانت تُسقط الوكيل كلّه بـReferenceError. الآن يُمرَّر send صراحةً
 // كما في chat.js.
 /* v-agent-img-mode: الرسم في المتصفّح يأخذ دقيقة أحيانًا (والتعديل أكثر) — ٢٥ ثانية كانت تكذّب رسمة ناجحة؛ مهلة chat.js نفسها */
-const CLIENT_WAIT_MS = { generate_image: 75000, edit_image: 150000, save_image: 30000 };
+const CLIENT_WAIT_MS = { generate_image: 150000, edit_image: 150000, save_image: 30000 }; // v-owner-paid-gate: الرسم + الحفظ يتجاوز ٧٥ث
 async function runInClient(send, name, input) {
   const { kvGetJSON, kvDel, kvPutJSON, kvExpire } = require('./kv.js');
   const waitMs = CLIENT_WAIT_MS[name] || 25000;
@@ -885,6 +885,20 @@ module.exports = async (req, res) => {
         convo.push({ role: 'assistant', content: assistantContent });
 
         const toolResults = [];
+        /* v-owner-paid-gate: رسمات الخطوة الواحدة تبدأ معًا في المتصفّح (كما في المحادثة) — متتابعةً كانت أربع رسمات (حتّى ١٥٠ث لكلّ واحدة)
+           تتجاوز مهلة التشغيل فيسقط الرفع بعدها وقد دُفع ثمنها. الحارس والحدّ يُقرَّران هنا مرّة لكلّ أداة. */
+        const __draws = {};
+        for (const cb of contentBlocks.filter(Boolean)) {
+          if (cb.type !== 'tool_use' || (cb.name !== 'generate_image' && cb.name !== 'edit_image')) continue;
+          let di = {}; try { di = JSON.parse(cb.inputJson || '{}'); } catch (e) { di = {}; /* guard-ok — يُرفض في الحلقة بسببه */ }
+          if (!isOwner(runUser)) __draws[cb.id] = { result: '✗ الرسم في الوكيل للمالك وحده.' };
+          else if (!require('./owner-media.js').askedMedia(living.lastUserText(messages), false)) __draws[cb.id] = { result: require('./owner-media.js').REFUSAL };
+          else if ((run.draws = (run.draws || 0) + 1) > 4) __draws[cb.id] = { result: require('./owner-media.js').CAP_REFUSAL };
+          else {
+            di.userText = living.lastUserText(messages).slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600);
+            __draws[cb.id] = { p: runInClient(send, cb.name, di) };
+          }
+        }
         for (const cb of contentBlocks.filter(Boolean)) {
           if (cb.type !== 'tool_use') continue;
           let input = {};
@@ -946,13 +960,10 @@ module.exports = async (req, res) => {
             result = isOwner(runUser) ? await appErrors.appErrorsText() : '✗ قراءة أخطاء التطبيق للمالك وحده.';
           }
           /* v-agent-img-mode: الرسم في متصفّح المالك (app-17 يحفظ الرسمة في المخزن ويعيد رمزها ورابطها)، ثمّ يُسجَّل الرمز للرفع */
-          else if (cb.name === 'generate_image' || cb.name === 'edit_image') {
-            if (!isOwner(runUser)) result = '✗ الرسم في الوكيل للمالك وحده.';
-            else {
-              input.userText = living.lastUserText(messages).slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600);
-              result = await runInClient(send, cb.name, input);
-              require('./agent-img.js').noteTokens(result, imgIds);
-            }
+          else if (cb.name === 'generate_image' || cb.name === 'edit_image') { // v-owner-paid-gate: بدأت قبل الحلقة (متوازية) — هنا ناتجها بترتيبه
+            const d = __draws[cb.id] || { result: require('./owner-media.js').REFUSAL };
+            if (d.p) { result = require('./owner-media.js').waitNote(await d.p); require('./agent-img.js').noteTokens(result, imgIds); }
+            else result = d.result;
           }
           else if (cb.name === 'run_js' || cb.name === 'test_html') {
             // التنفيذ في متصفح المستخدم لا هنا: الخادم دالة بلا حالة ومحدودة

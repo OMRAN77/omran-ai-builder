@@ -38429,6 +38429,16 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
      بلا مفاتيح — فيقوله المزوّد كما هو ولا يسمّيه «مشغول». غير المالك كما كان (لا أسماء محرّكات تصل ردّه). */
   /* v-agent-img: رسمة المزوّد للمالك تُحفظ في مخزن التطبيق يومًا (purpose:'agent' — الخادم يتحقّق أنّه المالك) ويُسجَّل رمزها ←
      معرّفها في المحادثة (agentImgIds) فيرسله app-18 مع كلّ طلب، ويقبل write_github الرمز في دور لاحق أيضًا. يرجع الرابط أو ''. */
+  /* v-img-tok-unique: الرموز كانت تبدأ من __IMG_1__ في كلّ طلب (app-18 يصفّر __genImages)، فرسمة الدور الثاني تأخذ رمز الأولى وتحلّ محلّها
+     في خريطة المحادثة — «ارفع صورة العماني» يرفع آخر رسمة لا العماني. للمالك: العدّ مستمرّ في المحادثة (cur.imgSeq)، وغيره كما كان. */
+  function omranNextTok() {
+    var n = Object.keys(window.__genImages || {}).length + 1;
+    try {
+      var cur = (omranAgentOwner() && typeof getCurrent === 'function') ? getCurrent() : null;
+      if (cur) { var base = Number(cur.imgSeq) || 0; Object.keys(cur.agentImgIds || {}).forEach(function (k) { var m = /^__IMG_(\d+)__$/.exec(k); if (m && +m[1] > base) base = +m[1]; }); n = Math.max(n, base + 1); cur.imgSeq = n; }
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:img-seq'); }
+    return '__IMG_' + n + '__';
+  }
   function omranAgentOwner() { try { return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); } catch (e) { return false; } }
   /* v-agent-img-size (وضع الوكيل ١٤ أكتوبر: من أربع رسمات حُفظت واحدة — JPEG — والثلاث PNG فوق حدّ المخزن ٣ م.ب فرُدّت 413 بصمت):
      الكبيرة تُعاد JPEG بجودة متدرّجة وأبعاد ≤ ١٦٠٠ قبل الحفظ؛ الرفع يحوّلها لصيغة المسار بعدها. */
@@ -38629,7 +38639,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           var ssrc = (window.__genImages || {})[stok] || '';
           if (!ssrc) { try { var scur = getCurrent(); var sms = (scur && scur.messages) || []; for (var si = sms.length - 1; si >= 0 && !ssrc; si--) if (sms[si] && sms[si]._imgCache && sms[si]._imgCache[stok]) ssrc = sms[si]._imgCache[stok]; } catch (e) { ssrc = ''; } }
           var sm = String(ssrc).match(/^data:([^;,]+);base64,(.+)$/);
-          if (!sm) return 'تعذّر: لا صورة للرمز ' + stok + ' في هذا المتصفّح — ارسمها من جديد.';
+          if (!sm) return 'تعذّر: لا صورة للرمز ' + stok + ' في هذا المتصفّح (أُغلقت الصفحة أو ليست هذه المحادثة) — لا تُعِد رسمها من نفسك: قل للمالك السبب، والرسم من جديد بطلبه وحده.'; // v-owner-paid-gate
           var surl = await omranAgentSave(stok, sm[2], sm[1]);
           return surl ? ('✅ حُفظت ' + stok + ': ' + surl) : ('تعذّر حفظ ' + stok + ' (' + (window.__agentSaveWhy || 'سبب غير معروف') + ')');
         }
@@ -38679,7 +38689,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
             return 'تعذّر رسم الصورة: ' + (((j && j.error) || ('HTTP ' + resp.status)) + '').slice(0, 120) + engineWhy(j) +
                    '. لا تخترع رابط صورة — استعمل خلفية CSS بدلها.';
           }
-          var tok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
+          var tok = omranNextTok();
           window.__genImages[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
           /* v-tool-chain (لقطة المالك «غير الشخصيات الي 3d» بعد صورة من الأدوات → سؤال نصي): صورة الأدوات لم تكن تدخل سلسلة
              التعديل، فالرسالة التالية تذهب للنموذج النصي. الآن هي آخر صورة وسلسلة جديدة، فتعمل عليها «3d/أقوى/غيّر…» مباشرة. */
@@ -38693,7 +38703,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
             var gUrl = await omranAgentSave(tok, j.imageBase64, j.mimeType || 'image/png');
             if (gUrl && args && args.noRef) gLine += ' رابطها في التطبيق: ' + gUrl + ' — ارفعها الآن بـwrite_github ملف {path: مسار الصورة في المستودع كما قرأته, image: "' + gUrl + '"} في هذا الردّ نفسه. لا تنتظر «عمّم».';
             else if (gUrl) gLine += ' رابطها في التطبيق: ' + gUrl + ' — لرفعها إلى المستودع: write_github ملف {path, image: "' + tok + '"}.';
-            else if (omranAgentOwner()) gLine += ' ⚠️ لم تُحفظ في مخزن التطبيق (' + (window.__agentSaveWhy || 'سبب غير معروف') + ') — لا تُرفع بهذا الرمز؛ أعد رسمها.';
+            else if (omranAgentOwner()) gLine += ' ⚠️ لم تُحفظ بعد في مخزن التطبيق (' + (window.__agentSaveWhy || 'سبب غير معروف') + ') — الرسمة في المتصفّح: ارفعها برمزها كما هو (image: "' + tok + '") والخادم يحفظها عند الرفع. لا تُعِد رسمها.'; // v-owner-paid-gate: «أعد رسمها» كانت تكلّف رسمة لكلّ فشل
           }
           return gLine;
         }
@@ -38741,7 +38751,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
             if (ej && ej.error === 'image_unchanged') return 'لم يُنفَّذ التعديل: رجعت الصورة نفسها بلا تغيير (مقيسة بالبكسل)، فلم تُعرض ولم تُحسب على المستخدم. قل له ذلك بصراحة، لا تدّعِ أنّ شيئًا تغيّر، واقترح صياغة أوضح.';
             return 'تعذّر تعديل الصورة: ' + (((ej && ej.error) || ('HTTP ' + er.status)) + '').slice(0, 120) + engineWhy(ej);
           }
-          var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
+          var etok = omranNextTok();
           window.__genImages[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
           var eUrl = omranAgentOwner() ? await omranAgentSave(etok, ej.imageBase64, ej.mimeType || 'image/png') : ''; // v-agent-img
           /* v-tool-chain: نتيجة أداة التعديل تصير آخر صورة في السلسلة كي تعمل عليها الرسالة التالية مباشرة */
