@@ -24,11 +24,12 @@ const sels = read('js/design-sels.js');
 const posM = sels.match(/var LIGHT_POS=\{([\s\S]*?)\};/);
 assert.ok(posM, 'LIGHT_POS مفقود');
 const pos = {};
-for (const m of posM[1].matchAll(/(\w+):\[([\d.]+),([\d.]+)\]/g)) pos[m[1]] = [Number(m[2]), Number(m[3])];
+for (const m of posM[1].matchAll(/(\w+):\[(-?[\d.]+),(-?[\d.]+)\]/g)) pos[m[1]] = [Number(m[2]), Number(m[3])];
 assert.deepStrictEqual(Object.keys(pos), ORDER, 'مفاتيح LIGHT_POS لا تطابق القائمة');
 ORDER.forEach((v, i) => {
   const [x, y] = pos[v];
-  assert.ok(x >= 0 && x <= 100 && y >= 0 && y <= 100, 'موضع ' + v + ' خارج 0..100');
+  // v-decor-light-clear: الصورة كاملة بعرض البطاقة، فالموضع العمودي يتجاوز 0..100 في الصفّين الطرفيّين
+  assert.ok(x >= 0 && x <= 100 && y >= -50 && y <= 150, 'موضع ' + v + ' خارج المدى');
   assert.ok(i % 2 === 0 ? x < 50 : x > 50, 'عمود ' + v + ' غلط');
   if (i >= 2) assert.ok(y > pos[ORDER[i - 2]][1], 'صفّ ' + v + ' لا ينزل عن الذي فوقه');
 });
@@ -50,5 +51,9 @@ const srv = read('api/_lib/design-create.js');
 const lp = srv.match(/const LIGHTING_PROMPTS = \{([\s\S]*?)\n\};/);
 assert.ok(lp, 'LIGHTING_PROMPTS مفقود');
 ORDER.forEach((v) => assert.ok(new RegExp('\\n\\s*' + v + ": '").test(lp[1]), 'لا أمر توليد لـ' + v));
+
+// ٦) الوضوح: عمود اللوحة بعرض البطاقة لا قصّة مكبّرة، وقناع يخفي الصفوف المجاورة
+assert.ok(sels.includes("/ 200% auto no-repeat"), 'الإضاءة رجعت للقصّة المكبّرة المغبّشة');
+assert.ok(sels.includes('var LIGHT_MASK='), 'قناع الصفوف المجاورة مفقود');
 
 console.log('decor-light-sheet: ok (' + ORDER.length + ' lighting options)');

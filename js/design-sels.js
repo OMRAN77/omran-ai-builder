@@ -175,17 +175,21 @@
   /* v-decor-light-sheet (طلب المالك ١٤ أكتوبر ٢٠٢٦: «اريد صور هذي الصور ضيفها» مع لوحة الإضاءة العشر):
      اللوحة نفسها ملفّ واحد lighting-sheet.webp (١٠٢٤×١٥٣٦، عمودان × ٥ صفوف)، وكلّ بطاقة تعرض
      قصّتها ٣:٤ (١٣٥×١٨٠ من وسط الصورة، فوق شريط الاسم المكتوب) بخلفيّة CSS — صور المالك كما هي بلا رسم. */
+  /* v-decor-light-clear (طلب المالك ١٤ أكتوبر ٢٠٢٦: «خلها نفس الصور لكن عدلها خلها واضحه»):
+     القصّة الصغيرة المكبّرة ٧٥٨٪ كانت مغبّشة ومقصوصة. الآن عمود اللوحة = عرض البطاقة (٢٠٠٪ ≈ ١:١)
+     فالصورة كاملة وحادّة في وسط البطاقة، وشريطان داكنان يخفيان الصفّ المجاور وشريط الاسم المكتوب. */
   var LIGHT_SHEET='assets/design/opts/lighting-sheet.webp';
   var LIGHT_POS={
-    warm:[22.78,3.10], cool:[77.33,3.10],
-    bright:[22.78,24.04], dim:[77.33,24.04],
-    natural:[22.78,44.99], neutral:[77.33,44.99],
-    golden:[22.78,65.93], purple:[77.33,65.93],
-    sunset:[22.78,86.95], moon:[77.33,86.95]
+    warm:[0,-24.53], cool:[100,-24.53],
+    bright:[0,8.75], dim:[100,8.75],
+    natural:[0,42.04], neutral:[100,42.04],
+    golden:[0,75.31], purple:[100,75.31],
+    sunset:[0,108.72], moon:[100,108.72]
   };
+  var LIGHT_MASK='linear-gradient(#141418 0 32.4%,transparent 32.4% 67.6%,#141418 67.6%)';
   function lightBg(v){
     var p=LIGHT_POS[v]; if(!p) return '';
-    return 'url("'+LIGHT_SHEET+'") '+p[0]+'% '+p[1]+'% / 758.52% 853.33% no-repeat, #141418';
+    return LIGHT_MASK+', url("'+LIGHT_SHEET+'") '+p[0]+'% '+p[1]+'% / 200% auto no-repeat, #141418';
   }
   function roomBg(id,v){
     if(id==='designAiLighting'&&LIGHT_POS[v]) return lightBg(v);
