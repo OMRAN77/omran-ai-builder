@@ -24,7 +24,7 @@ const sels = read('js/design-sels.js');
 const posM = sels.match(/var LIGHT_POS=\{([\s\S]*?)\};/);
 assert.ok(posM, 'LIGHT_POS مفقود');
 const pos = {};
-for (const m of posM[1].matchAll(/(\w+):\[([\d.]+),([\d.]+)\]/g)) pos[m[1]] = [Number(m[2]), Number(m[3])];
+for (const m of posM[1].matchAll(/(\w+):\[(-?[\d.]+),(-?[\d.]+)\]/g)) pos[m[1]] = [Number(m[2]), Number(m[3])];
 assert.deepStrictEqual(Object.keys(pos), ORDER, 'مفاتيح LIGHT_POS لا تطابق القائمة');
 ORDER.forEach((v, i) => {
   const [x, y] = pos[v];
