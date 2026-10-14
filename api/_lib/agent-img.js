@@ -59,4 +59,19 @@ async function attachmentLinks(content, opts) {
   return ['[صور رسالة المالك محفوظة في التطبيق يومًا — لرفع إحداها إلى المستودع: write_github بملفّ {path, image: "<الرابط>"}]\n' + lines.join('\n')];
 }
 
-module.exports = { seedTokens, noteTokens, resolveImage, attachmentLinks, TOKEN_RE };
+/* v-agent-img-mode (المالك ١٤ أكتوبر، ردّ الوكيل: «الصور ما تبدّلت… أنت الحين في وضع الوكيل، والوكيل ما وصله منه شي»): وضع الوكيل
+   (agent.js) كان بلا أداة رسم أصلًا. الأداتان هنا بوصف الوكيل، وتنفيذهما في المتصفّح نفسه (omranAgentTools في app-17) — للمالك وحده. */
+const DRAW_TOOLS = [
+  {
+    name: 'generate_image',
+    description: 'ارسم صورة حقيقيّة من وصف نصّي. تُحفظ في مخزن التطبيق يومًا وتعود لك برمز مثل __IMG_1__ ورابطها /i/…. لرفعها إلى المستودع: write_github بملفّ {path: مسار الصورة في المستودع كما قرأته, image: "__IMG_1__"} (أو edit_github بحقل images) — امتداد المسار يحدّد الصيغة، وPNG أو JPEG إلى ‎.webp يتحوّل تلقائيًّا. ارسم كلّ الصور المطلوبة أوّلًا ثمّ ارفعها كلّها في رفعة واحدة. لعرض الصورة في ردّك ضع رمزها وحده في سطر.',
+    input_schema: { type: 'object', properties: { prompt: { type: 'string', description: 'وصف الصورة بالإنجليزية، دقيق ومحدّد (نمط، إضاءة، زاوية، تأطير). أيّ كلام يجب أن يظهر مكتوبًا داخل الصورة يُنقل حرفيًّا بلغته بين «».' } }, required: ['prompt'] },
+  },
+  {
+    name: 'edit_image',
+    description: 'عدّل آخر صورة في هذه المحادثة (آخر ما رسمته أو عدّلته) بتعليمة. تعود برمز __IMG_N__ ورابطها /i/… مثل generate_image، وتُرفع إلى المستودع بالطريقة نفسها.',
+    input_schema: { type: 'object', properties: { instruction: { type: 'string', description: 'تعليمة التعديل بالإنجليزية، دقيقة (ماذا يتغيّر، وماذا يبقى كما هو).' } }, required: ['instruction'] },
+  },
+];
+
+module.exports = { seedTokens, noteTokens, resolveImage, attachmentLinks, TOKEN_RE, DRAW_TOOLS };

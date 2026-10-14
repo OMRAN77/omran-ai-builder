@@ -22735,11 +22735,15 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   /* v-gen-image-agent (أمر المالك ١٣ أكتوبر «اربط صورة عمّم بالوكيل»): «عمّم» من المالك ومعها صورة قريبة تُرسل للوكيل كما للمحادثة (app-18) */
   let __genImg = null;
   try{ const __lu = history.length ? history[history.length - 1] : null; if(__lu && __lu.role === 'user' && typeof window.omranGenImageFor === 'function') __genImg = await window.omranGenImageFor(String(__lu.content || ''), cur); }catch(e){ __swallow(e, 'agent:genImage'); }
+  /* v-agent-img-mode (ردّ الوكيل ١٤ أكتوبر «الصور ما تبدّلت… أنت في وضع الوكيل»): الرسم في الوكيل يمرّ بأداة المحادثة نفسها (app-17)،
+     وحالتها لكلّ ردّ كما يصفّرها app-18: حدّ الأربع صور حدّ تشغيل لا جلسة، ومرجع صورة المحادثة القديم لا يحوّل الرسم تعديلًا. */
+  window.__genImages = {}; window.__chatVideoReference = null; window.__chatLastUserText = '';
+  const __imgIds = (cur && cur.agentImgIds && Object.keys(cur.agentImgIds).length) ? cur.agentImgIds : undefined; // رمز رسمة المحادثة ← معرّفها في المخزن
   const res = await fetch('/api/ai?action=agent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: (thinkingDiv && thinkingDiv.__signal) || (genAbortController ? genAbortController.signal : undefined),
-    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id, agentModel: (function(){ try{ return localStorage.getItem('aiapp_agent_model') || ''; }catch(e){ return ''; } })(), genImage: __genImg || undefined }),
+    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id, agentModel: (function(){ try{ return localStorage.getItem('aiapp_agent_model') || ''; }catch(e){ return ''; } })(), genImage: __genImg || undefined, imgIds: __imgIds }),
   });
   if(!res.ok){
     try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* لم يبدأ تشغيل */ }
