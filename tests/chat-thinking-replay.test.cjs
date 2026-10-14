@@ -150,7 +150,7 @@ test('٣. التبديل إلى الوسيط (401 على المفتاح المب
   assert.equal(or.body.model, 'anthropic/claude-opus-5.5');
   assert.equal(thinkBlocks(r.calls[1].body).length, 2, 'المباشر حملها');
   assert.deepEqual(thinkBlocks(or.body), [], 'توقيعات المباشر لا تصل الوسيط');
-  assert.equal(or.body.thinking, undefined, 'لا عرض ملخّص على الوسيط');
+  assert.deepEqual(or.body.thinking, { type: 'adaptive', display: 'summarized' }, 'v-or-display: العرض الملخّص على الوسيط أيضًا — الهبوط وسط الدور لا يمحو التفكير');
   assert.deepEqual(blocksOf(or.body, 'tool_use').map((x) => x.id), ['tu1']);
   assert.deepEqual(blocksOf(or.body, 'tool_result').map((x) => x.tool_use_id), ['tu1']);
   assert.equal(r.text, 'أكملت عبر الوسيط.');
@@ -383,4 +383,41 @@ test('١٦. وسيط يرفض الحقل بنصّ بلا كلمة thinking ← �
   assert.equal(other.calls.length, 2, 'إعادة واحدة فقط');
   assert.ok(other.events.some((e) => e.ownerStop && /خطأ 400/.test(e.error || '')), '400 لا علاقة له بالحقل يصل بسببه بعد الإعادة');
   OL.__resetTalk();
+});
+
+/* v-or-display (فحص سجلّ العمل، المالك ١٤ أكتوبر «صلّح الثلاثة الباقية»): كلود عبر الوسيط كان بلا display فتصل كتل تفكيره فارغة ولا
+   «↳ 💭» أبدًا. الآن العرض الملخّص على الوسيط بشرط المباشر نفسه؛ ورفضه بأيّ نصّ = إعادة واحدة بلاه، والدور التالي بلاه من البداية. */
+test('١٧. كلود عبر الوسيط: العرض الملخّص يُطلب وملخّصه يصل «↳ 💭»؛ ورفضه بنصّ المزوّد = إعادة واحدة بلاه والدور التالي بلاه', async () => {
+  const key = process.env.ANTHROPIC_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  try {
+    OL.__resetTalk();
+    const r = await run('omran', { provider: 'claude', model: 'claude-opus-5-5', messages: Q }, (u, b, n) => (!isOR(u) ? new Response('{}', { status: 404 })
+      : n === 1 ? thinkTool('SIG-OR', 'read_github', READ, { model: 'anthropic/claude-opus-5.5', summary: 'أقرأ foo أوّلًا\nثمّ أقارن' }) : text('وجدت الخلل.', 'anthropic/claude-opus-5.5')));
+    assert.ok(r.calls.length >= 2 && r.calls.every((c) => isOR(c.url) && c.body.model === 'anthropic/claude-opus-5.5'));
+    assert.ok(r.calls.every((c) => c.body.thinking && c.body.thinking.display === 'summarized'), JSON.stringify(r.calls.map((c) => c.body.thinking)));
+    const talk = r.events.find((e) => e.think && e.think.s);
+    assert.ok(talk && /^↳ 💭 أقرأ foo أوّلًا/.test(talk.status) && talk.think.s.includes('ثمّ أقارن'), 'الملخّص يصل سجلّ العمل');
+    assert.deepEqual(thinkBlocks(r.calls[1].body), [], 'توقيعات الوسيط لا تُعاد');
+
+    OL.__resetTalk();
+    const no = await run('omran', { provider: 'claude', model: 'claude-opus-5-5', messages: Q }, (u, b) => (!isOR(u) ? new Response('{}', { status: 404 })
+      : (b.thinking && b.thinking.display) ? err(400, 'Provider returned error') : text('تم', 'anthropic/claude-opus-5.5')));
+    assert.equal(no.text, 'تم');
+    assert.equal(no.calls.length, 2, 'إعادة واحدة');
+    assert.equal(no.calls[1].body.thinking, undefined, 'الإعادة بلا عرض');
+    assert.ok(logged.includes('chat/thinking-or-display'));
+    const next = await run('omran', { provider: 'claude', model: 'claude-opus-5-5', messages: Q }, (u, b) => (!isOR(u) ? new Response('{}', { status: 404 })
+      : (b.thinking && b.thinking.display) ? err(400, 'Provider returned error') : text('تم ثانيةً', 'anthropic/claude-opus-5.5')));
+    assert.equal(next.calls.length, 1, 'الدور التالي طلب واحد بلا عرض');
+    assert.equal(next.text, 'تم ثانيةً');
+
+    OL.__resetTalk();
+    const other = await run('omran', { provider: 'claude', model: 'claude-opus-5-5', messages: Q }, (u) => (!isOR(u) ? new Response('{}', { status: 404 }) : err(400, 'prompt is too long')));
+    assert.ok(!logged.includes('chat/thinking-or-display'), '400 النافذة/السقف/الرصيد لمعالجه كما كان — لا يُحسب رفضًا للعرض');
+    assert.ok(other.calls[0].body.thinking && other.calls[0].body.thinking.display === 'summarized', 'والعرض لا يُطفأ بسببه');
+  } finally {
+    process.env.ANTHROPIC_API_KEY = key;
+    OL.__resetTalk();
+  }
 });

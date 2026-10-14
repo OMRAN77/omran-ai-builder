@@ -21,7 +21,7 @@ test('الخادم: فشل «بلا صورة راجعة» يحمل __diag أيض
   const block = mi.slice(i, mi.indexOf("return;", i) + 10);
   assert.ok(block.includes('const __diagNoImg = process.env.IMG_DIAG'), 'يبني __diag بنفس مفتاح إيقاف IMG_DIAG=off');
   assert.ok(block.includes("gErr:") && block.includes('finishReason') && block.includes('blockReason'), 'السبب الحقيقيّ (رفض أمنيّ/finishReason) لا نصّ عام');
-  assert.ok(block.includes("res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.', __diag: __diagNoImg });"), 'الرسالة العامّة تبقى + __diag معها');
+  assert.ok(block.includes("res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.', retryable: false, billed: true, __diag: __diagNoImg });"), 'الرسالة العامّة تبقى + __diag معها (v-img-no-rebill: ردّ ٢٠٠ بلا صورة محسوب — لا إعادة)');
 });
 
 test('العميل: التوليد العاديّ يعرض __diag للمالك وحده — لا لبقيّة المستخدمين', () => {

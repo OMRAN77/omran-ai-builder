@@ -31,12 +31,12 @@
   }
 
   /** ينفّذ أداة طلبها الخادم داخل متصفّح المستخدم ويعيد ناتجها عبر نقطة منفصلة. */
-  function serveClientTool(ct) {
+  function serveClientTool(ct, rc) {
     (async function () {
       var out;
       try {
         out = window.omranAgentTools
-          ? await window.omranAgentTools.run(ct.name, ct.input)
+          ? await window.omranAgentTools.run(ct.name, ct.input, rc)
           : 'أداة التنفيذ غير متاحة في هذا المتصفّح.';
       } catch (err) { out = 'تعذّر التنفيذ: ' + ((err && err.message) || err); }
       try {
@@ -141,6 +141,7 @@
   window.omranGenImageFor = __genImageFor; /* v-gen-image-agent: الوكيل (app-09 runOmranAgent) يرسل الصورة نفسها بالقاعدة نفسها */
 
   window.callChatWithTools = async function (messages, onDelta, provider, opts) {
+    var __rcChat = (onDelta && onDelta.__chat) || ((typeof getCurrent === 'function') ? getCurrent() : null); /* v-img-run-bind: محادثة هذا الطلب (app-09 __sigFn) */
     window.__chatVideoResult = null;
     window.__chatCardsResult = null; /* v-cards */
     window.__chatVideoReference = null;
@@ -169,6 +170,9 @@
     // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
     // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
     window.__genImages = {};
+    /* v-img-run-bind: سياق تشغيل هذا الطلب لأدوات الصور (app-17) — طلب محادثة أخرى يصفّر العامّ ولا يمسّ هذه */
+    var __rc = { chat: __rcChat, imgs: window.__genImages, ref: window.__chatVideoReference, userText: window.__chatLastUserText };
+    try { if (__rcChat && __rcChat.id != null) (window.__genImagesByChat = window.__genImagesByChat || {})[__rcChat.id] = __rc.imgs; } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:img-bind'); }
     // v-chat-vision: الصور المرفقة كانت تُقصى من هذا المسار فتسقط لمسار قديم
     // أضعف — الآن تُحوَّل لكتل رؤية بصيغة Anthropic وتمر بنفس الخط المباشر
     // القوي (نفس النموذج ونفس قواعد العمق والأدوات).
@@ -182,7 +186,7 @@
       return { role: m.role, content: content };
     });
     var __genImg = null;
-    try { __genImg = await __genImageFor(window.__chatLastUserText); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:genImage'); } /* v-gen-image */
+    try { __genImg = await __genImageFor(window.__chatLastUserText, __rcChat); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:genImage'); } /* v-gen-image */
     var __sig = (onDelta && onDelta.__signal) || ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined); /* v-parallel-chats */
     var res = await __raceIdle(fetch('/api/ai?action=chat', {
       method: 'POST',
@@ -194,7 +198,7 @@
         ownerUiShot: (typeof window.__ownerUiShotTurn === 'boolean') ? window.__ownerUiShotTurn : undefined, /* v-owner-ui-shot-client: قرار الواجهة لهذا الدور (لقطة المالك يطلب تعديلها) — الخادم يتبعه بدل إعادة التخمين من النصّ */
         noTools: (opts && opts.noTools) ? true : undefined, /* v-owner-solo: المسار القديم للمالك (استئذان/إصلاح) بلا أدوات كما كان — الخادم يقبله للمالك وحده */
         genImage: __genImg || undefined, /* v-gen-image: صورة «عمّم» للمالك وحده؛ undefined لغيرها فيسقط الحقل من JSON */
-        imgIds: (function () { try { var c = (typeof omranOwnerUi === 'function' && omranOwnerUi() && typeof getCurrent === 'function') ? getCurrent() : null; return (c && c.agentImgIds && Object.keys(c.agentImgIds).length) ? c.agentImgIds : undefined; } catch (e) { return undefined; } })(), /* v-agent-img: رمز رسمة المحادثة ← معرّفها في المخزن، للمالك وحده */
+        imgIds: (function () { try { var c = (typeof omranOwnerUi === 'function' && omranOwnerUi()) ? __rcChat : null; return (c && c.agentImgIds && Object.keys(c.agentImgIds).length) ? c.agentImgIds : undefined; } catch (e) { return undefined; } })(), /* v-agent-img: رمز رسمة المحادثة ← معرّفها في المخزن، للمالك وحده */
         histOffset: (opts && Number.isInteger(opts.histOffset) && opts.histOffset >= 0) ? opts.histOffset : undefined, /* v-tokens-window: موضع أوّل رسالة مرسلة في المحادثة — الخادم يثبّت به بداية نافذة التاريخ (كاش)؛ undefined = السلوك القديم */
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
@@ -290,7 +294,7 @@
           if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ step: __st, t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:step'); } }
         }
         if (ev.code && typeof ev.code === 'object' && __rp) { try { __rp.live(ev.code); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-live'); } }
-        if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
+        if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool, __rc); }
         if (ev.delta) {
           if (!__tFirst) __tFirst = Date.now();
           noteEnd(onDelta && onDelta.__status);
@@ -333,6 +337,7 @@
     if (__ownerStop && serverErr) { __fenceCut = ((full.match(/```/g) || []).length % 2) === 1; full = full + (__fenceCut ? '\n```' : '') + '\n\n⚠️ ' + serverErr; if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-note'); } } }
     var __p = provider || 'claude';
     if (__rp) { try { __rp.pack(__steps, full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-pack'); } } /* v-read-panel: سقف حجم المقاطع المحفوظة */
+    window.__genImages = __rc.imgs; /* v-img-run-bind: المستدعي يستبدل رموز الكود (substUserImage) بصور هذا الطلب لا طلب محادثة أخرى */
     var __log = __logNow(); /* v-work-log: بترتيب الوصول، وأوّله مدّة العمل كلّه (v-interleave-fix: كانت حتّى أوّل حرف فـ«عمل ٣ث» لشغل ٣ دقائق) */
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined, cards: __cards || undefined };
   };

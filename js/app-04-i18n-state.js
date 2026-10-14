@@ -1990,7 +1990,7 @@ function renderMessages(keepScroll){
         const tok = a || b;
         // v735 — احتفظ بالصورة داخل الرسالة نفسها حتى بعد إعادة تعيين __genImages
         m._imgCache = m._imgCache || {};
-        const url = m._imgCache[tok] || (window.__genImages || {})[tok];
+        const url = m._imgCache[tok] || (((window.__genImagesByChat || {})[cur && cur.id]) || window.__genImages || {})[tok]; // v-img-run-bind: صور محادثتها لا آخر طلب في أيّ محادثة
         if(url) m._imgCache[tok] = url;
         if(!url) return '';
         if(__genShown.indexOf(url) === -1) __genShown.push(url);
