@@ -96,7 +96,7 @@ function isOwner(user) { return !!user && ownerList().includes(String(user).trim
    القصير — يظهر سطرًا في سجلّ العمل كما يظهر وصف الأمر في Claude Code. أوّل الخصائص كي يُكتب قبل غيره. */
 const STEP_TITLE = { type: 'string', description: 'عنوان قصير لهذه الخطوة يراه المستخدم سطرًا في سجلّ العمل: ٣–٧ كلمات بلغته، مثل «البحث عن مستهلكي code-analyze» أو «قراءة api/_lib/chat.js كاملًا».' };
 function withStepTitle(t) { return Object.assign({}, t, { input_schema: Object.assign({}, t.input_schema, { properties: Object.assign({ step_title: STEP_TITLE }, (t.input_schema || {}).properties) }) }); }
-function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL, appErrors.TOOL]).concat([githubEdit.EDIT_TOOL, githubEdit.MERGE_TOOL, githubManage.MANAGE_TOOL, require('./prov-self.js').SELF_TOOL, require('./prov-self.js').TEACH_TOOL]) : TOOLS).map(withStepTitle); } // v-prov-self: ملفّ Claude والدروس العامّة
+function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL, appErrors.TOOL]).concat([githubEdit.EDIT_TOOL, githubEdit.MERGE_TOOL, githubManage.MANAGE_TOOL, require('./prov-self.js').SELF_TOOL, require('./prov-self.js').TEACH_TOOL]).concat(require('./agent-img.js').DRAW_TOOLS) : TOOLS).map(withStepTitle); } // v-prov-self: ملفّ Claude والدروس العامّة · v-agent-img-mode: الرسم للمالك
 // الأمر كما يُعرض تحت عنوان الخطوة: اسم الأداة ومدخلها بلا العنوان، والنصوص الطويلة (كود، ملفّات) مختصرة.
 function stepCmd(name, input) {
   const o = {};
@@ -164,6 +164,8 @@ function trailDid(name, input) {
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
   if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
   if (name === 'publish') return 'نشرتُ «' + (s(input.title, 40) || 'مشروعًا') + '»';
+  if (name === 'generate_image') return 'رسمتُ صورة: «' + (s(input.prompt, 60) || '؟') + '»'; // v-agent-img-mode
+  if (name === 'edit_image') return 'عدّلتُ الصورة: «' + (s(input.instruction, 60) || '؟') + '»';
   return 'استخدمتُ ' + name;
 }
 function trailGot(name, result) {
@@ -368,8 +370,11 @@ async function fetchPage(url) {
 // الدالّة تستدعي send وهو مُعرَّف داخل المعالج فقط، فأيّ أداة متصفّح (تشغيل كود/
 // اختبار/نشر/صورة) كانت تُسقط الوكيل كلّه بـReferenceError. الآن يُمرَّر send صراحةً
 // كما في chat.js.
+/* v-agent-img-mode: الرسم في المتصفّح يأخذ دقيقة أحيانًا (والتعديل أكثر) — ٢٥ ثانية كانت تكذّب رسمة ناجحة؛ مهلة chat.js نفسها */
+const CLIENT_WAIT_MS = { generate_image: 75000, edit_image: 150000 };
 async function runInClient(send, name, input) {
   const { kvGetJSON, kvDel, kvPutJSON, kvExpire } = require('./kv.js');
+  const waitMs = CLIENT_WAIT_MS[name] || 25000;
   const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const key = 'agent/tool/' + id;
 
@@ -377,14 +382,14 @@ async function runInClient(send, name, input) {
   // غريب حشو ناتج أداة. الآن لا تُقبل إلا معرّفات أصدرها هذا الخادم وما زالت تنتظر.
   try {
     await kvPutJSON('agent/wait/' + id, { at: Date.now() });
-    await kvExpire('agent/wait/' + id, 120);
+    await kvExpire('agent/wait/' + id, Math.max(120, Math.ceil(waitMs / 1000) + 30));
   } catch (e) { console.warn('[agent] claim failed', e && e.message); }
 
   send({ clientTool: { id, name, input } });
 
   // 25 ثانية لا 12: التنفيذ في المتصفح يقف عند 6 ثوانٍ، لكن التبويب في الخلفية
   // يخنق مؤقتاته فيتأخّر بلا أن يفشل. المهلة القصيرة كانت تكذّب نتيجة صحيحة.
-  const deadline = Date.now() + 25000;
+  const deadline = Date.now() + waitMs;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 400));
     let rec = null;
@@ -394,7 +399,7 @@ async function runInClient(send, name, input) {
       return rec.output.slice(0, 4000);
     }
   }
-  return 'لم يستجب متصفح المستخدم خلال 25 ثانية — لم يُنفَّذ. أكمل بلا هذه الأداة أو قل إنك لم تتحقّق.';
+  return 'لم يستجب متصفح المستخدم خلال ' + Math.round(waitMs / 1000) + ' ثانية — لم يُنفَّذ. أكمل بلا هذه الأداة أو قل إنك لم تتحقّق.';
 }
 
 /* v-tokens-agent-cache: علامة الكاش على آخر كتلة في آخر رسالة — نسخة لا تعديل في المكان، وكتلة فارغة تُترك (نمط markLastForCache
@@ -461,6 +466,7 @@ module.exports = async (req, res) => {
   const caller = require('./auth.js').verifyToken(token);
   if (!caller) { res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); return; }
   if (!isOwner(caller)) { res.status(403).json({ error: 'owner_only' }); return; }
+  const imgIds = require('./agent-img.js').seedTokens(body.imgIds); // v-agent-img-mode: رمز رسمة المحادثة ← معرّفها في المخزن (app-09)، وتُكمَّل بنتائج الرسم في هذا التشغيل
 
   if (!messages || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }
 
@@ -821,6 +827,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ phase: 'verifying', status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ phase: 'verifying', status: '🧪 الوكيل يختبر ما بناه…' });
             else if (cb.type === 'tool_use' && cb.name === 'publish') send({ phase: 'executing', status: '🔗 الوكيل ينشر التطبيق…' });
+            else if (cb.type === 'tool_use' && (cb.name === 'generate_image' || cb.name === 'edit_image')) send({ phase: 'executing', status: '🎨 الوكيل يرسم صورة…' }); // v-agent-img-mode
           } else if (ev.type === 'content_block_delta') {
             const cb = contentBlocks[ev.index];
             if (!cb) continue;
@@ -895,7 +902,7 @@ module.exports = async (req, res) => {
             if (!isOwner(runUser)) result = '✗ الرفع إلى GitHub للمالك وحده.';
             else {
               run.pushes = (run.pushes || 0) + 1;
-              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubWrite.pushFiles(input));
+              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubWrite.pushFiles(input, { imgIds })); // v-agent-img-mode: «__IMG_N__»
             }
           }
           /* v-agent-surgical: التعديل الجراحيّ يتشارك سقف الرفعات مع write_github، والدمج بإذن «ادمج» في آخر رسالة المالك
@@ -904,7 +911,7 @@ module.exports = async (req, res) => {
             if (!isOwner(runUser)) result = '✗ التعديل على GitHub للمالك وحده.';
             else {
               run.pushes = (run.pushes || 0) + 1;
-              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubEdit.editFiles(input));
+              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubEdit.editFiles(input, { imgIds })); // v-agent-img-mode
             }
           }
           else if (cb.name === 'merge_github') {
@@ -937,6 +944,15 @@ module.exports = async (req, res) => {
           /* v-provider-errors: أخطاء الإنتاج الحيّة — للمالك وحده، وحارسٌ ثانٍ هنا لا في إخفاء الأداة وحده. */
           else if (cb.name === 'read_app_errors') {
             result = isOwner(runUser) ? await appErrors.appErrorsText() : '✗ قراءة أخطاء التطبيق للمالك وحده.';
+          }
+          /* v-agent-img-mode: الرسم في متصفّح المالك (app-17 يحفظ الرسمة في المخزن ويعيد رمزها ورابطها)، ثمّ يُسجَّل الرمز للرفع */
+          else if (cb.name === 'generate_image' || cb.name === 'edit_image') {
+            if (!isOwner(runUser)) result = '✗ الرسم في الوكيل للمالك وحده.';
+            else {
+              input.userText = living.lastUserText(messages).slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600);
+              result = await runInClient(send, cb.name, input);
+              require('./agent-img.js').noteTokens(result, imgIds);
+            }
           }
           else if (cb.name === 'run_js' || cb.name === 'test_html') {
             // التنفيذ في متصفح المستخدم لا هنا: الخادم دالة بلا حالة ومحدودة
@@ -1024,4 +1040,4 @@ module.exports = async (req, res) => {
   }
 };
 
-module.exports.__test = { runInClient, toolsFor, isOwner, doPublish }; // v-agent-send-scope · v-agent-github-push — للاختبار
+module.exports.__test = { runInClient, toolsFor, isOwner, doPublish, CLIENT_WAIT_MS }; // v-agent-send-scope · v-agent-github-push · v-agent-img-mode — للاختبار
