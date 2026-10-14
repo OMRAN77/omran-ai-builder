@@ -288,6 +288,7 @@ test('٧. edit_github يقبل images [{path, image}] — رمز الرسمة ي
 
 test('٨. الأسلاك: العميل يحفظ رسمة المالك ويرسل خريطة المحادثة، chat.js للمالك وحده، والحزمة مبنيّة، والمكتبة مضمّنة في الدالّة', () => {
   const c17 = read('js/app-17-agent-tools.js'), c18 = read('js/app-18-chat-tools.js'), bundle = read('js/app.bundle.js'), ch = read('api/_lib/chat.js');
+  const ag = read('api/_lib/agent.js'), a9 = read('js/app-09-attach.js');
   assert.ok(c17.includes("purpose: 'agent'") && c17.includes('cur.agentImgIds = m') && c17.includes("if ((args && args.noRef) || omranAgentOwner())"));
   assert.ok(c17.includes('var eUrl = omranAgentOwner() ? await omranAgentSave(etok'), 'edit_image أيضًا');
   assert.ok(c18.includes('imgIds: (function () {') && c18.includes('omranOwnerUi()') && c18.includes('c.agentImgIds'));
@@ -296,6 +297,10 @@ test('٨. الأسلاك: العميل يحفظ رسمة المالك ويرسل
   assert.ok(ch.includes("if (__ownerReq) require('./agent-img.js').noteTokens(result, __ownerOps.imgIds);"));
   assert.ok(ch.includes('(__ownerReq && toolTurn && lastUserHasImage) ? await require(\'./agent-img.js\').attachmentLinks('));
   assert.ok(ch.includes('pushFiles(input, { imgIds: __ownerOps.imgIds })') && ch.includes('editFiles(input, { imgIds: __ownerOps.imgIds })'));
+  assert.ok(ag.includes("name: 'generate_image'") && ag.includes("name: 'edit_image'"), 'وضع الوكيل يملك أداتَي الرسم');
+  assert.ok(ag.includes('agentImg.seedTokens(body && body.imgIds)') && ag.includes('agentImg.noteTokens(result, imgIds)'));
+  assert.ok(ag.includes('pushFiles(input, { imgIds })') && ag.includes('editFiles(input, { imgIds })'));
+  assert.ok(a9.includes('imgIds: (function () {') && a9.includes('cur.agentImgIds'), 'طلب الوكيل يرسل الخريطة');
   const pkg = JSON.parse(read('package.json'));
   assert.ok(pkg.dependencies['@jsquash/webp'], 'مكتبة WebP في الاعتماديّات');
   assert.ok(pkg.scripts.test.includes('tests/agent-img-push.test.cjs'));

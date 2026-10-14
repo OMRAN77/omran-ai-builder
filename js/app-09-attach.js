@@ -2910,7 +2910,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: (thinkingDiv && thinkingDiv.__signal) || (genAbortController ? genAbortController.signal : undefined),
-    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id, agentModel: (function(){ try{ return localStorage.getItem('aiapp_agent_model') || ''; }catch(e){ return ''; } })(), genImage: __genImg || undefined }),
+    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id, agentModel: (function(){ try{ return localStorage.getItem('aiapp_agent_model') || ''; }catch(e){ return ''; } })(), genImage: __genImg || undefined, imgIds: (function () { try { return (cur && cur.agentImgIds && Object.keys(cur.agentImgIds).length) ? cur.agentImgIds : undefined; } catch (e) { return undefined; } })() }), /* v-agent-img-tools: خريطة رموز الرسم تصل وضع الوكيل كما تصل المحادثة */
   });
   if(!res.ok){
     try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* لم يبدأ تشغيل */ }

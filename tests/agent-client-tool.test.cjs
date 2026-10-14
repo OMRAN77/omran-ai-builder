@@ -45,7 +45,7 @@ test('runInClient: emits clientTool through the passed send and returns the brow
 
 test('source guard: every runInClient call site passes send explicitly', () => {
   const src = fs.readFileSync(path.join(root, 'api/_lib/agent.js'), 'utf8');
-  assert.ok(src.includes('async function runInClient(send, name, input)'));
+  assert.ok(src.includes('async function runInClient(send, name, input, waitMs)'));
   const calls = src.match(/runInClient\((?!send\b)[^)]*\)/g) || [];
   const bad = calls.filter((c) => !c.startsWith('runInClient(send'));
   assert.deepEqual(bad, [], 'كلّ استدعاء يمرّر send');
