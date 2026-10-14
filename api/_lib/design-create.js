@@ -89,6 +89,13 @@ const LIGHTING_PROMPTS = {
   cool: 'cool, crisp lighting (white/blue tones)',
   bright: 'bright, well-lit daylight-style lighting',
   dim: 'dim, relaxing night-time mood lighting',
+  /* v-decor-light-sheet (طلب المالك ١٤ أكتوبر ٢٠٢٦): الستة الجديدة من لوحة الإضاءة */
+  natural: 'natural, balanced daylight coming through the windows',
+  neutral: 'neutral white lighting (about 4000K), clean and balanced',
+  golden: 'golden-hour glow lighting with rich amber tones',
+  purple: 'night-time mood lighting with soft purple/violet ambient tones',
+  sunset: 'warm pink-orange sunset light streaming through the windows',
+  moon: 'cool blue moonlight night-time lighting, calm and dim',
 };
 
 const FURNITURE_PROMPTS = {

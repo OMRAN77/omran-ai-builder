@@ -322,6 +322,13 @@
         <option value="cool" data-i18n="designAiLightingCool">باردة</option>
         <option value="bright" data-i18n="designAiLightingBright">ساطعة</option>
         <option value="dim" data-i18n="designAiLightingDim">خافتة/ليلية</option>
+        <!-- v-decor-light-sheet (طلب المالك ١٤ أكتوبر ٢٠٢٦): الستة الباقية من لوحة الإضاءة -->
+        <option value="natural" data-en="Natural">طبيعية</option>
+        <option value="neutral" data-en="Neutral white">أبيض محايد</option>
+        <option value="golden" data-en="Golden glow">وهج ذهبي</option>
+        <option value="purple" data-en="Purple night">ليلة بنفسجية</option>
+        <option value="sunset" data-en="Sunset">غروب</option>
+        <option value="moon" data-en="Moonlight">قمرية</option>
       </select>
     </div>
 
