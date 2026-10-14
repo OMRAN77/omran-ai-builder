@@ -29,10 +29,12 @@ permissions:
 jobs:
   smoke:
     # نشرات المعاينة لا تعنينا: الإنتاج وحده، وبعد نجاحه وحده.
+    # v-smoke-skip-railway: Railway يعلن نشرة «Production» وعنوانها لوحة railway.com لا التطبيق — Cond يحتوي vercel.app فقط.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.deployment_status.state == 'success' &&
-       contains(github.event.deployment_status.environment, 'roduction'))
+       contains(github.event.deployment_status.environment, 'roduction') &&
+       contains(github.event.deployment_status.environment_url, 'vercel.app'))
     runs-on: ubuntu-latest
     steps:
       # الشيفرة عند نفس الالتزام المنشور: smoke تقارن بصمة الحزمة الحيّة
