@@ -388,5 +388,5 @@
     return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status, atts);
   }
 
-  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, _fold: { push: push, capParts: capParts } };
+  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, foldCode: foldCode, _fold: { push: push, capParts: capParts } };
 })();

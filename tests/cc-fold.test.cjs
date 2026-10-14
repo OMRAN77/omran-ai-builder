@@ -50,6 +50,8 @@ const read = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
   const r = read('js/app-04-i18n-state.js');
   assert.match(r, /if\(m\._cc && window\.omranCC && typeof window\.omranCC\.decorate === 'function'\)\{/);
   assert.ok(r.indexOf('window.omranCC.decorate(textDiv, m)') > r.indexOf('msgWordEls = buildSpokenWordSpans(textDiv'), 'بعد الرسم العاديّ');
+  assert.match(cc, /foldCode: foldCode/);
+  assert.match(r, /window\.omranCC\.foldCode\(textDiv\)/, 'v-read-fold: الكود الطويل يُطوى لكلّ المزوّدين لا وضع Claude Code وحده');
 
   console.log('cc-fold: ok');
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -2868,7 +2868,7 @@ function __agLogLive(host){
           let g = lastEl.classList.contains('cwGroup') ? lastEl : null;
           if(!g){ const first = lastEl.__last; g = W.groupEl([first]); root.replaceChild(g, lastEl); first.el = g.lastChild.firstChild; }
           p.el = W.groupAdd(g, p); g.__last = p;
-        } else { p.el = W.toolEl(p, true); p.el.__last = p; root.appendChild(p.el); }
+        } else { p.el = W.toolEl(p, !W.isRead(p)); p.el.__last = p; root.appendChild(p.el); } /* v-read-fold: قراءة الصفحة مطويّة كـClaude لكلّ المزوّدين */
         parts.push(p); if(a.id) byId[a.id] = p; grp = null;
         return;
       }

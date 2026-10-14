@@ -135,8 +135,8 @@
         var p = host(), shown = p && p.classList.contains('active');
         var follow = first || shown || !cur;
         if(follow) cur = f;
-        if(first && !isMobile()) reveal(); // مرّة في الدور، على الحاسوب وحده — قبل الرسم كي يُحسب التمرير على لوحة ظاهرة
-        render(follow ? x.a : 0); // اللوحة تتبع آخر ما قُرئ: ملفّه وأوّل سطر فيه
+        /* v-read-fold (المالك ١٤ أكتوبر «يقرى الصفحة اريدها مطوية نفس نظام كلاود»): لا فتح تلقائيّ — التبويب يظهر والمستخدم يفتح كـRead في Claude Code. الرقم في الردّ ما زال يفتح السطر (open). */
+        render(follow ? x.a : 0); // اللوحة تتبع آخر ما قُرئ إن كانت ظاهرة: ملفّه وأوّل سطر فيه
       }catch(e){ __swallow(e, 'read:live'); }
     },
     open: function(reads, p, a, b){
