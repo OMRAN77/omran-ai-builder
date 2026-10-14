@@ -40,7 +40,8 @@ assert.ok(sels.includes("if(id==='designAiLighting'&&LIGHT_POS[v]) return '';"),
 assert.ok(fs.existsSync(path.join(root, 'assets/design/opts/lighting-sheet.webp')), 'ملفّ اللوحة lighting-sheet.webp مفقود');
 
 // ٤) وصف عربي تحت كلّ خيار
-const subsM = sels.match(/designAiLighting:\{([\s\S]*?)\}/);
+// يُقرأ من SUBS: قائمة الأيقونات فوقها فيها \u{…} وقوسها يقطع المطابقة
+const subsM = sels.slice(sels.indexOf('var SUBS=')).match(/designAiLighting:\{([\s\S]*?)\}/);
 assert.ok(subsM, 'أوصاف الإضاءة مفقودة');
 ORDER.forEach((v) => assert.ok(new RegExp('\\b' + v + ":'").test(subsM[1]), 'لا وصف لـ' + v));
 
