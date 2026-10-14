@@ -26,6 +26,16 @@
      بلا مفاتيح — فيقوله المزوّد كما هو ولا يسمّيه «مشغول». غير المالك كما كان (لا أسماء محرّكات تصل ردّه). */
   /* v-agent-img: رسمة المزوّد للمالك تُحفظ في مخزن التطبيق يومًا (purpose:'agent' — الخادم يتحقّق أنّه المالك) ويُسجَّل رمزها ←
      معرّفها في المحادثة (agentImgIds) فيرسله app-18 مع كلّ طلب، ويقبل write_github الرمز في دور لاحق أيضًا. يرجع الرابط أو ''. */
+  /* v-img-tok-unique: الرموز كانت تبدأ من __IMG_1__ في كلّ طلب (app-18 يصفّر __genImages)، فرسمة الدور الثاني تأخذ رمز الأولى وتحلّ محلّها
+     في خريطة المحادثة — «ارفع صورة العماني» يرفع آخر رسمة لا العماني. للمالك: العدّ مستمرّ في المحادثة (cur.imgSeq)، وغيره كما كان. */
+  function omranNextTok() {
+    var n = Object.keys(window.__genImages || {}).length + 1;
+    try {
+      var cur = (omranAgentOwner() && typeof getCurrent === 'function') ? getCurrent() : null;
+      if (cur) { var base = Number(cur.imgSeq) || 0; Object.keys(cur.agentImgIds || {}).forEach(function (k) { var m = /^__IMG_(\d+)__$/.exec(k); if (m && +m[1] > base) base = +m[1]; }); n = Math.max(n, base + 1); cur.imgSeq = n; }
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:img-seq'); }
+    return '__IMG_' + n + '__';
+  }
   function omranAgentOwner() { try { return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); } catch (e) { return false; } }
   /* v-agent-img-size (وضع الوكيل ١٤ أكتوبر: من أربع رسمات حُفظت واحدة — JPEG — والثلاث PNG فوق حدّ المخزن ٣ م.ب فرُدّت 413 بصمت):
      الكبيرة تُعاد JPEG بجودة متدرّجة وأبعاد ≤ ١٦٠٠ قبل الحفظ؛ الرفع يحوّلها لصيغة المسار بعدها. */
@@ -276,7 +286,7 @@
             return 'تعذّر رسم الصورة: ' + (((j && j.error) || ('HTTP ' + resp.status)) + '').slice(0, 120) + engineWhy(j) +
                    '. لا تخترع رابط صورة — استعمل خلفية CSS بدلها.';
           }
-          var tok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
+          var tok = omranNextTok();
           window.__genImages[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
           /* v-tool-chain (لقطة المالك «غير الشخصيات الي 3d» بعد صورة من الأدوات → سؤال نصي): صورة الأدوات لم تكن تدخل سلسلة
              التعديل، فالرسالة التالية تذهب للنموذج النصي. الآن هي آخر صورة وسلسلة جديدة، فتعمل عليها «3d/أقوى/غيّر…» مباشرة. */
@@ -338,7 +348,7 @@
             if (ej && ej.error === 'image_unchanged') return 'لم يُنفَّذ التعديل: رجعت الصورة نفسها بلا تغيير (مقيسة بالبكسل)، فلم تُعرض ولم تُحسب على المستخدم. قل له ذلك بصراحة، لا تدّعِ أنّ شيئًا تغيّر، واقترح صياغة أوضح.';
             return 'تعذّر تعديل الصورة: ' + (((ej && ej.error) || ('HTTP ' + er.status)) + '').slice(0, 120) + engineWhy(ej);
           }
-          var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
+          var etok = omranNextTok();
           window.__genImages[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
           var eUrl = omranAgentOwner() ? await omranAgentSave(etok, ej.imageBase64, ej.mimeType || 'image/png') : ''; // v-agent-img
           /* v-tool-chain: نتيجة أداة التعديل تصير آخر صورة في السلسلة كي تعمل عليها الرسالة التالية مباشرة */

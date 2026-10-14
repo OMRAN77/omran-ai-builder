@@ -948,6 +948,7 @@ module.exports = async (req, res) => {
           /* v-agent-img-mode: الرسم في متصفّح المالك (app-17 يحفظ الرسمة في المخزن ويعيد رمزها ورابطها)، ثمّ يُسجَّل الرمز للرفع */
           else if (cb.name === 'generate_image' || cb.name === 'edit_image') {
             if (!isOwner(runUser)) result = '✗ الرسم في الوكيل للمالك وحده.';
+            else if (!require('./owner-media.js').askedMedia(living.lastUserText(messages), false)) result = require('./owner-media.js').REFUSAL; // v-owner-paid-gate
             else {
               input.userText = living.lastUserText(messages).slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600);
               result = await runInClient(send, cb.name, input);

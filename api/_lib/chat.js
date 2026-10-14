@@ -2021,7 +2021,7 @@ module.exports = async (req, res) => {
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
         try {
-          if (__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1 && !(cb.name === 'generate_image' && __ownerPicsOk)) result = __askNoMedia ? ASK_NO_MEDIA_REFUSAL : OWNER_NO_MEDIA_REFUSAL; // v-tokens-tools: دور سؤال — لا رسم ولا تعديل ولا فيديو · v-tokens-owner-tools: ولقطة المالك ورسالته الطويلة كما كانتا بلا أدوات الصور
+          if (__ownerReq && require('./owner-media.js').PAID_MEDIA_TOOLS.indexOf(cb.name) !== -1 && !require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage)) result = require('./owner-media.js').REFUSAL; /* v-owner-paid-gate: رسم/تعديل/فيديو بطلب في رسالة المالك الأخيرة وحدها — لا طلب قديم ولا تشخيص */ else if (__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1 && !(cb.name === 'generate_image' && __ownerPicsOk)) result = __askNoMedia ? ASK_NO_MEDIA_REFUSAL : OWNER_NO_MEDIA_REFUSAL; // v-tokens-tools: دور سؤال — لا رسم ولا تعديل ولا فيديو · v-tokens-owner-tools: ولقطة المالك ورسالته الطويلة كما كانتا بلا أدوات الصور
           else if (cb.name === 'web_search') {
             const _q = input.query || '';
             const mySearchNo = ++searchesUsed; // يزداد قبل أول await فالعدّ آمن مع التوازي
