@@ -332,7 +332,7 @@ function shrinkOld(convo) {
    نزع وإعادة واحدة (الاسترداد الموثَّق). العرض الملخّص (display) للمالك وحده في دوره الذي يفكّر فيه، على موديلات المنتقي الأحدث — يغيّر الظهور لا
    الفوترة، ولا ميزانيّة تفكير ولا جهد جديدان (لا إنفاق). وملخّصه يصل سطر «↳ 💭» في سجلّ الردّ. */
 const DISPLAY_RE = /^claude-(?:opus-5-5|opus-5|opus-4-[678]|sonnet-5-5|sonnet-5|sonnet-4-6|fable-5-1|fable-5|haiku-5-5)$/; // v-owner-claude-all: منتقي المالك كلّه عدا Haiku 4.5 (لا تفكير تكيّفيّ — 400)
-const THINK_SHOWN_MAX = 8;
+const THINK_SHOWN_MAX = 24; // v-interleave-fix: ٨ في الدور كانت تنفد في أوّل خطوتين فتظهر بقيّة الأدوات بلا تفكير بينها
 function isThink(b) { return !!b && (b.type === 'thinking' || b.type === 'redacted_thinking'); }
 function hasThink(convo) { return Array.isArray(convo) && convo.some((m) => m && Array.isArray(m.content) && m.content.some(isThink)); }
 // owner: سطور «↳ 💭»؛ show: العرض الملخّص — دور المالك الذي يفكّر فيه الموديل (ownerThinks)، لا المجاملة الفوريّة (v-owner-auto).

@@ -1900,9 +1900,9 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' }); // v-chat-github-read: مفتاح ترجمة قائم، لا نصّ واجهة جديد
             else if (cb.type === 'tool_use' && cb.name === 'read_app_errors') send({ status: '🩺 يقرأ أخطاء التطبيق الحيّة…' }); // v-provider-errors: بلا مفتاح — العميل يعود لنصّ الخادم (أداة المالك وحده)
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
-            else if (cb.type === 'tool_use' && cb.name === 'generate_image' && (!__noMedia || __ownerPicsOk)) send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
-            else if (cb.type === 'tool_use' && cb.name === 'edit_image' && !__noMedia) send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
-            else if (cb.type === 'tool_use' && cb.name === 'generate_video' && !__noMedia) send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_image' && (!__noMedia || __ownerPicsOk) && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎨 يرسم صورة…', k: 'stGenImage' }); /* v-interleave-fix: لا مربّع «جارٍ إنشاء الصورة» لرسم سيرفضه الحارس */
+            else if (cb.type === 'tool_use' && cb.name === 'edit_image' && !__noMedia && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_video' && !__noMedia && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…', k: 'stTestHtml' });
             else if (cb.type === 'tool_use' && cb.name === 'get_location') send({ status: '📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…', k: 'stGeoLoc' });
           } else if (ev.type === 'content_block_delta') {
@@ -2143,7 +2143,7 @@ module.exports = async (req, res) => {
           result = 'فشل تنفيذ الأداة: ' + String((toolErr && toolErr.message) || toolErr).slice(0, 150);
         }
         const __tl = trailLine(cb.name, input, result);
-        if (!(__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1 && !(cb.name === 'generate_image' && __ownerPicsOk))) send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p }, trailDetail(cb.name, input, result))); // v-read-all · v-tokens-tools: الرفض في دور السؤال بلا سطر «↳ تعذّرت الصورة»
+        if (!(__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1 && !(cb.name === 'generate_image' && __ownerPicsOk))) send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p, tool: cb.name, err: /^(?:✗|⚠️|فشل|تعذّر)/.test(String(result == null ? '' : result).trim()) ? 1 : undefined }, trailDetail(cb.name, input, result))); /* v-interleave-fix: اسم الأداة للتجميع، والفشل أحمر */ // v-read-all · v-tokens-tools: الرفض في دور السؤال بلا سطر «↳ تعذّرت الصورة»
         // v-one-brain: بطاقات «المصادر» كانت تأتي من طبقة البحث المحذوفة —
         // الآن تُستخرج من نتيجة أداة البحث نفسها وتُبثّ للعميل ليرسمها.
         if (cb.name === 'web_search') {
@@ -2370,7 +2370,7 @@ module.exports.__vcustom = { customInstructionsBlock, CUSTOM_INSTRUCTIONS_CHARS 
    وحدها؛ ناتج الصور والفيديو رموز داخليّة لا تُعرض. */
 function trailDetail(name, input, result) {
   const i = input || {};
-  const cmd = (name === 'web_search' || name === 'show_cards') ? i.query : name === 'fetch_page' ? i.url : name === 'read_github' ? [i.url, i.path].filter(Boolean).join(' ') : name === 'run_js' ? i.code : '';
+  const cmd = (name === 'web_search' || name === 'show_cards') ? i.query : name === 'fetch_page' ? i.url : name === 'read_github' ? [i.url, i.path].filter(Boolean).join(' ') : name === 'run_js' ? i.code : (name === 'write_github' || name === 'edit_github') ? [i.repo].concat([].concat(Array.isArray(i.files) ? i.files : [], Array.isArray(i.edits) ? i.edits : [], Array.isArray(i.images) ? i.images : []).map((f) => f && f.path)).filter(Boolean).join(' ') || name : name === 'merge_github' ? ('merge #' + (i.number || i.pr || '')) : name === 'manage_github' ? [i.action, i.number].filter(Boolean).join(' ') || name : ((name === 'generate_image' || name === 'edit_image') && !/__IMG_\d+__/.test(String(result == null ? '' : result))) ? String(i.prompt || i.instruction || name) : ''; /* v-interleave-fix: الرفع والتعديل والدمج والإدارة ونتيجة الرسم المرفوض تظهر في السجلّ — كانت «استخدمتُ write_github › بلا ناتج» */
   if (!cmd) return {};
   const o = { cmd: String(cmd).slice(0, 300), out: String(result == null ? '' : result).slice(0, 400) };
   /* v-read-panel: ملفّ قُرئ من GitHub يُرسل مقطعه للوحة «الكود المقروء». read_github تُنفَّذ للمالك وحده — غيره يأخذ نصّ

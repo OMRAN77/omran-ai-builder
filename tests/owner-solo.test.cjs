@@ -208,7 +208,7 @@ test('٨. الأسلاك: العميل يرمي فشل المالك فورًا،
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) {
     const s = read(f);
     assert.ok(s.includes('if (ev.error && ev.ownerStop === true) __ownerStop = true;'), f);
-    assert.ok(s.includes('if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er;'), f);
+    assert.ok(s.includes('if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; __er.log = __logNow(); throw __er;'), f);
   }
 });
 

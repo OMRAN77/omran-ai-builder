@@ -2814,6 +2814,7 @@ function __agLogLive(host){
   host.innerHTML = '';
   const root = document.createElement('div'); root.className = 'agLog';
   const W = window.omranWorkLog || null; // v-interleave: عناصر صندوق المحادثة نفسها
+  const __agT0 = Date.now(); // v-interleave-fix: مدّة التشغيل الحقيقيّة للسجلّ المحفوظ (كانت مجموع التفكير فـ«عمل ١ث»)
   const pill = document.createElement('div'); pill.className = 'agPill';
   host.appendChild(root); host.appendChild(pill);
   const parts = [];
@@ -2851,6 +2852,7 @@ function __agLogLive(host){
         p.run = false; p.err = !a.ok; p.out = String(a.out || '');
         if(W && p.el && p.el.classList.contains('cwItem')){
           const n = W.toolEl(p, p.el.open); p.el.replaceWith(n); p.el = n;
+          if(!(n.parentNode && n.parentNode.parentNode && n.parentNode.parentNode.classList && n.parentNode.parentNode.classList.contains('cwGroup'))) n.__last = p; // v-interleave-fix: صفّ مكتمل يُجمَع مع التالي من النوع نفسه
           const g = n.parentNode && n.parentNode.parentNode; if(g && g.classList && g.classList.contains('cwGroup') && p.err) g.classList.add('cwFail');
         } else __agLogFillTool(p.el, p);
         if(a.code && typeof a.code === 'object'){ p.code = a.code; if(window.omranReadPanel) window.omranReadPanel.live(a.code); } // v-read-panel
@@ -2899,6 +2901,7 @@ function __agLogLive(host){
         return o;
       }).filter(function(p){ return p.t !== 'text' || p.s; });
       const tail = parts.slice(last + 1).filter(function(p){ return p.t === 'text' && !p.note; }).map(function(p){ return p.s; }).join('');
+      if(W) log.unshift({ t: 'meta', ms: Date.now() - __agT0 }); // v-interleave-fix
       if(window.omranReadPanel) window.omranReadPanel.pack(log, tail);
       return { log: log, tail: tail };
     },
@@ -7180,7 +7183,7 @@ DESIGN RULES (non-negotiable):
           role: 'assistant',
           content: partial || (__run.timedOut ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول النتيجة — أعد المحاولة.' : '⚠️ The connection dropped before the result arrived — please try again.') : (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.')),
           _stopped: true,
-          askAllReply: false
+          askAllReply: false, _agParts: (err && Array.isArray(err.log)) ? err.log : undefined, // v-interleave-fix: سجلّ العمل يبقى بعد الإيقاف
         });
       }
       if(__mine()){ promptEl.value = ''; window.__chatEditRequest = null; setChatEditNotice(false); } // v-parallel-chats: لا تمسح ما يكتبه في محادثة أخرى
@@ -7203,7 +7206,7 @@ DESIGN RULES (non-negotiable):
       try{ __primaryErr = String((window.__diagTurn && window.__diagTurn.toolsErr) || '').trim(); }catch(e){ __primaryErr = ''; }
       /* v-owner-solo (المالك: «أيّ شي زائد ما أريده»): للمالك رسالة الفشل وحدها — بلا سطر المسار الأوّل التقنيّ. */
       if(__primaryErr && typeof omranOwnerUi === 'function' && omranOwnerUi()) __primaryErr = '';
-      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
+      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : ''), _agParts: (err && Array.isArray(err.log)) ? err.log : undefined}); // v-interleave-fix: وسجلّه بعد الخطأ
     }
   }finally{
     const __keepReaderPosition = !document.documentElement.classList.contains('mobile-ui') && typeof chatIsNearBottom === 'function' ? !chatIsNearBottom() : false;
