@@ -233,3 +233,11 @@ test('٦. v-agent-img-keep: رمز رسمة لم تُحفظ ← الخادم ي�
   assert.ok(c17.includes('if (u || again) return u;') && c17.includes('return sh ? omranAgentSave1(tok, sh.b64, sh.mime)'), 'الحفظ الفاشل يُعاد مصغّرًا مرّة');
   assert.ok(read('js/app.bundle.js').includes("if (name === 'save_image') {"));
 });
+
+test('٧. v-owner-self-drive: طريقة العمل المشتركة (المحادثة لكلّ المزوّدين والوكيل) — ارسم ثمّ ارفع مرّة، لا رسم لتشخيص، والفشل يجرّب طريقًا آخر', () => {
+  const w = require(rp('api/_lib/github-edit.js')).WORK_NOTE;
+  assert.ok(w.includes('ارسم كلّ المطلوب أوّلًا، ثمّ ارفعها كلّها في رفعة واحدة') && w.includes('رسمة «لم تُحفظ» لا تُعاد رسمًا'));
+  assert.ok(w.includes('لا تُعِد رسمًا ولا تشغيلًا مكلفًا لتعرف سبب عطل') && w.includes('جرّب الطريق الآخر بنفسك في الردّ نفسه'));
+  assert.ok(read('api/_lib/agent.js').includes('const OWNER_ENGINEERING_NOTE = githubEdit.WORK_NOTE;'), 'الوكيل يقرؤها');
+  assert.ok(read('api/_lib/chat.js').includes("require('./github-edit.js').WORK_NOTE"), 'والمحادثة لكلّ المزوّدين');
+});
