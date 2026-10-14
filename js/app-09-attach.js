@@ -3578,6 +3578,14 @@ function omranLastImageHero(c, text, ownWords){
     return { isImage: true, dataUrl: 'data:' + mime + ';base64,' + c.lastEditedImage.b64, mime: mime };
   }catch(e){ return null; } /* حالة غير متوقّعة = بلا بطل كما كان */
 }
+/* v-prov-app-edit (المالك ١٤ أكتوبر «المزودين لين الحين مش قادرين» يعدّلون التطبيق):
+   تعليمة المعاينة كانت تمنع GitHub إلّا إن قال «التطبيق الحيّ» حرفيًّا، فـ«عدّل التطبيق»
+   تُصرف إلى الصفحة المبنية في المحادثة ولا تُفتح رفعة. خارج __sendPromptCore كي لا يكبر سقفها. */
+function omranOwnerRepoNote(text){
+  return /(?:المستودع|GitHub|github|الجيت\s*ه[وب]|قيت\s*ه[وب]|التطبيق(?:\s*الحيّ)?|الواجه[ةه]|الإعدادات|الاعدادات|omran-ai)/i.test(String(text || ''))
+    ? 'طلب على التطبيق الحيّ = اقرأ بـread_github ثمّ عدّل بـedit_github على مستودع OMRAN77/omran-ai-builder. المشروع المفتوح في هذه المحادثة ليس التطبيق.'
+    : 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق/الواجهة)';
+}
 async function __sendPromptCore(){
   /* v-parallel-chats: هذا الطلب يخصّ المحادثة التي بدأ فيها. الرسم باسمَي renderAll/renderMessages مظلَّل هنا:
      يرسم فقط إن كانت محادثته هي المعروضة، وإلّا يحدّث القائمة الجانبيّة وحدها — فلا يكتب طلب في الخلفيّة
@@ -7013,8 +7021,7 @@ DESIGN RULES (non-negotiable):
         // 🔒 دور البوابة: صف الفكرة واسأل الإذن — ممنوع البناء الآن.
         apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
       } else if(__ownerFree && !!cur.code && __toolsWillRun){ /* rel-4: كلّ دور والمشروع مفتوح — كان على __routeFix وحده فسقط عن «هل تقدر تضيف…» و«كيف أضيف…؟» */
-        // v-claude-code-level: إصلاح المالك على مشروع مفتوح صار بالأدوات — المعاينة تُعدَّل في الردّ، لا طلب سحب على مستودع التطبيق.
-        apiMessages.push({ role: 'system', content: 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق الحيّ)' });
+        apiMessages.push({ role: 'system', content: omranOwnerRepoNote(text) }); /* v-prov-app-edit: التطبيق/الواجهة/المستودع → GitHub لا المعاينة */
       }
       // v469: Q&A system prompt مدمج في __sys — لا حاجة لـ unshift إضافي.
       let reply, providerKey, switched, requestedKey;
