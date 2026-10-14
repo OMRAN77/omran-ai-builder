@@ -2929,7 +2929,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   try{ const __lu = history.length ? history[history.length - 1] : null; if(__lu && __lu.role === 'user' && typeof window.omranGenImageFor === 'function') __genImg = await window.omranGenImageFor(String(__lu.content || ''), cur); }catch(e){ __swallow(e, 'agent:genImage'); }
   /* v-agent-img-mode (ردّ الوكيل ١٤ أكتوبر «الصور ما تبدّلت… أنت في وضع الوكيل»): الرسم في الوكيل يمرّ بأداة المحادثة نفسها (app-17)،
      وحالتها لكلّ ردّ كما يصفّرها app-18: حدّ الأربع صور حدّ تشغيل لا جلسة، ومرجع صورة المحادثة القديم لا يحوّل الرسم تعديلًا. */
-  window.__genImages = {}; window.__chatVideoReference = null; window.__chatLastUserText = '';
+  window.__genImages = {}; window.__chatVideoReference = null; window.__chatLastUserText = ''; const __agRc = { chat: cur, imgs: window.__genImages, ref: null, userText: '' }; try{ if(cur && cur.id != null) (window.__genImagesByChat = window.__genImagesByChat || {})[cur.id] = __agRc.imgs; }catch(e){ __swallow(e, 'agent:img-bind'); } // v-img-run-bind: أدوات الصور في هذا التشغيل لمحادثته
   const __imgIds = (cur && cur.agentImgIds && Object.keys(cur.agentImgIds).length) ? cur.agentImgIds : undefined; // رمز رسمة المحادثة ← معرّفها في المخزن
   const res = await fetch('/api/ai?action=agent', {
     method: 'POST',
@@ -2976,7 +2976,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
         // نقطة منفصلة — البث في اتجاه واحد فلا يمكن الرد عليه مباشرة.
         (async function(ct){
           var out;
-          try{ out = await window.omranAgentTools.run(ct.name, ct.input); }
+          try{ out = await window.omranAgentTools.run(ct.name, ct.input, __agRc); }
           catch(err){ out = 'تعذّر التنفيذ: ' + (err && err.message || err); }
           try{
             await fetch('/api/agent-tool-result', {
@@ -4133,7 +4133,7 @@ async function __sendPromptCore(){
   const __runCtl = new AbortController();
   const __run = __omranRunStart(cur.id, __runCtl);
   // دوالّ المزوّدين تأخذ إشارة الإيقاف من ردّ النداء (onDelta.__signal) لا من المرآة العامّة
-  const __sigFn = (fn) => { try{ if(fn){ fn.__signal = __runCtl.signal; fn.__status = chatStatus; } }catch(e){ __swallow(e, 'chat:run-sig'); } return fn; };
+  const __sigFn = (fn) => { try{ if(fn){ fn.__signal = __runCtl.signal; fn.__status = chatStatus; fn.__chat = cur; /* v-img-run-bind */ } }catch(e){ __swallow(e, 'chat:run-sig'); } return fn; };
   /* v-diag-turn (تشخيص «النص الطويل ما يرد»): نلتقط نتيجة الدور لنعرف السبب
      الحقيقي — لو انتهى الدور بلا رد ظاهر نعرض سطرًا فيه المزوّد وطول الرد والوقت
      والخطأ. طول رد>0 بلا ظهور = عطل عرض؛ طول 0 = المزوّد رجّع فارغًا؛ خطأ = مهلة/شبكة. */
@@ -4920,7 +4920,7 @@ function __friendlyErr(e){
             });
             const __cd = await __cr.json().catch(()=>({}));
             if(__cr.ok && __cd.imageBase64){ __cartoonB64 = __cd.imageBase64; __cartoonMime = __cd.mimeType || 'image/png'; }
-            else if(__cr.status === 402 || (__cr.status === 422 && __cd.retryable === false)) break; // v-unchanged-cap: ردّ نهائيّ (الخصم باقٍ أو الرصيد نفد) — الإعادة التلقائيّة تخصم مرّة ثانية بلا صورة؛ عطل الشبكة المردود يُعاد كما كان
+            else if(__cr.status === 402 || (__cr.status === 422 && __cd.retryable === false) || __cd.billed === true) break; // v-unchanged-cap: ردّ نهائيّ (الخصم باقٍ أو الرصيد نفد) — الإعادة التلقائيّة تخصم مرّة ثانية بلا صورة؛ عطل الشبكة المردود يُعاد كما كان
           }
           if(!__cartoonB64) throw new Error(lang==='ar'?'تعذر تحويل الصورة لكرتون، جرّب صورة أوضح.':'Could not cartoonize the image, try a clearer photo.');
           cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎨 صارت شخصية كرتونية ✅ الحين أحرّكها تتكلم…':'🎨 Cartoon character ready ✅ now animating it to talk…'), attachments:[{ name:'cartoon.png', isImage:true, mime:__cartoonMime, dataUrl:'data:'+__cartoonMime+';base64,'+__cartoonB64 }] });
@@ -5759,7 +5759,7 @@ function __showImgLoading(el, ar, en){
             });
             __d = await __r.json().catch(() => ({}));
             __k = __r.ok && !!__d.imageBase64;
-            if(!__k && (__r.status === 402 || (__r.status === 422 && __d.retryable === false))) break; // v-unchanged-cap: ردّ نهائيّ — لا خصم ثانٍ وثالث بلا صورة
+            if(!__k && (__r.status === 402 || (__r.status === 422 && __d.retryable === false) || __d.billed === true)) break; // v-unchanged-cap: ردّ نهائيّ — لا خصم ثانٍ وثالث بلا صورة
           }
         }catch(e){ if(e && e.name === 'AbortError') throw e; }
         return __k ? __d : null;
@@ -5862,7 +5862,7 @@ function __showImgLoading(el, ar, en){
           __gData = await __gRes.json().catch(() => ({}));
           __gOk = __gRes.ok && !!__gData.imageBase64;
           if(!__gOk){ if(!__gData) __gData = {}; __gData.__status = __gRes.status; }
-          if(!__gOk && (__gRes.status === 402 || (__gRes.status === 422 && __gData.retryable === false))) break; // v-unchanged-cap: ردّ نهائيّ — لا خصم ثانٍ بلا صورة
+          if(!__gOk && (__gRes.status === 402 || (__gRes.status === 422 && __gData.retryable === false) || __gData.billed === true)) break; // v-unchanged-cap: ردّ نهائيّ — لا خصم ثانٍ بلا صورة
         }
         if(__gOk){
           let __resolvedText = __genTextSpec.exactText ? await omranSpellFix(__genTextSpec.exactText) : ((__genTextSpec.autoAuthored && typeof __gData.authoredText === 'string') ? __gData.authoredText.trim() : ''); /* v-spell-quran */

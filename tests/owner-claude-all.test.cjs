@@ -169,11 +169,11 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   assert.equal(r.calls[0].body.output_config, undefined);
   assert.equal(r.calls[0].body.thinking, undefined);
   assert.equal(r.calls[0].body.max_tokens, 128000); // v-owner-cap-open
-  // الوسيط: الجهد يصل بالحقل نفسه، بلا عرض (العرض لأنثروبيك المباشر)
+  // الوسيط: الجهد يصل بالحقل نفسه، والعرض الملخّص كالمباشر (v-or-display — كان بلا عرض فلا «↳ 💭» على الوسيط)
   r = await withoutAnth(() => run('omran', { model: 'claude-sonnet-5-5', messages: ask(HARD), effort: 'medium' }));
   assert.equal(r.calls[0].body.model, 'anthropic/claude-sonnet-5.5');
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'medium' });
-  assert.equal(r.calls[0].body.thinking, undefined);
+  assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive', display: 'summarized' });
   // مراجعة GPT: السقف الكبير على الوسيط أيضًا (بدونه يأكل التفكير الردّ)، و402 «can only afford» = إعادة واحدة بالسقف العاديّ وسطر السبب
   r = await withoutAnth(() => run('omran', { messages: ask(HARD), effort: 'max' }));
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'max' });

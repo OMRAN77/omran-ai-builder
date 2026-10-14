@@ -230,7 +230,7 @@ test('٦. v-agent-img-keep: رمز رسمة لم تُحفظ ← الخادم ي�
   assert.ok(ch.includes("ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-write.js').pushFiles("), 'المحادثة: كلّ المزوّدين');
   assert.ok(ch.includes(".then(() => require('./github-edit.js').editFiles("));
   assert.ok(c17.includes("if (name === 'save_image') {") && c17.includes('sms[si]._imgCache[stok]'), 'الرسمة من ذاكرة المتصفّح أو من رسالتها');
-  assert.ok(c17.includes('if (u || again) return u;') && c17.includes('return sh ? omranAgentSave1(tok, sh.b64, sh.mime)'), 'الحفظ الفاشل يُعاد مصغّرًا مرّة');
+  assert.ok(c17.includes('if (u || again) return u;') && c17.includes('return sh ? omranAgentSave1(tok, sh.b64, sh.mime, chat)'), 'الحفظ الفاشل يُعاد مصغّرًا مرّة (v-img-run-bind: في محادثة التشغيل)');
   assert.ok(read('js/app.bundle.js').includes("if (name === 'save_image') {"));
 });
 
@@ -251,8 +251,8 @@ test('٨. v-owner-paid-gate في الوكيل: «كمّل» ← generate_image �
 
 test('٩. v-img-tok-unique: رموز رسمات المالك مستمرّة في المحادثة (لا __IMG_1__ في كلّ دور يطغى على رسمة سابقة)', () => {
   const c = read('js/app-17-agent-tools.js'), vm = require('node:vm');
-  assert.ok(c.includes('var tok = omranNextTok();') && c.includes('var etok = omranNextTok();'));
-  const fn = c.slice(c.indexOf('  function omranNextTok() {'), c.indexOf('  function omranAgentOwner() {'));
+  assert.ok(c.includes('var tok = omranNextTok(IMGS, CHAT());') && c.includes('var etok = omranNextTok(IMGS, CHAT());'), 'v-img-run-bind: عدّ محادثة التشغيل وخريطة صورها');
+  const fn = c.slice(c.indexOf('  function omranNextTok(imgs, chat) {'), c.indexOf('  function omranAgentOwner() {'));
   const cur = { agentImgIds: { __IMG_3__: 'aaaaaaaaaaaa' } };
   const sb = { window: { __genImages: {} }, getCurrent: () => cur, omranAgentOwner: () => true, Number, Math, Object };
   vm.runInNewContext(fn + '; this.next = omranNextTok;', sb);
@@ -264,5 +264,5 @@ test('٩. v-img-tok-unique: رموز رسمات المالك مستمرّة في
   sb.omranAgentOwner = () => false; const sb2 = { window: { __genImages: {} }, getCurrent: () => cur, omranAgentOwner: () => false, Number, Math, Object };
   vm.runInNewContext(fn + '; this.next = omranNextTok;', sb2);
   assert.equal(sb2.next(), '__IMG_1__', 'غير المالك كما كان');
-  assert.ok(read('js/app.bundle.js').includes('function omranNextTok()'));
+  assert.ok(read('js/app.bundle.js').includes('function omranNextTok(imgs, chat)'));
 });

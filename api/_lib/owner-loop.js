@@ -336,7 +336,7 @@ const THINK_SHOWN_MAX = 24; // v-interleave-fix: ٨ في الدور كانت ت�
 function isThink(b) { return !!b && (b.type === 'thinking' || b.type === 'redacted_thinking'); }
 function hasThink(convo) { return Array.isArray(convo) && convo.some((m) => m && Array.isArray(m.content) && m.content.some(isThink)); }
 // owner: سطور «↳ 💭»؛ show: العرض الملخّص — دور المالك الذي يفكّر فيه الموديل (ownerThinks)، لا المجاملة الفوريّة (v-owner-auto).
-function thinkState(owner, show) { return { owner: !!owner, show: !!(owner && show), key: '', sent: '', direct: false, disp: false, noDisplay: false, noTalk: false, talk: false, talkModel: '', shown: 0 }; }
+function thinkState(owner, show) { return { owner: !!owner, show: !!(owner && show), key: '', sent: '', direct: false, disp: false, orDisp: false, noDisplay: false, noTalk: false, talk: false, talkModel: '', shown: 0 }; }
 /* v-talk-400 (لقطة المالك ١٣ أكتوبر: «افحص انماط الصور» ← «خطأ 400» يتكرّر في المزوّدين): موديل وسيط رفض الحقل التكيّفيّ لا يُرسل له
    ثانيةً ٦ ساعات في هذه العمليّة — كان كلّ دور يبدأ بطلب فاشل. الذاكرة في العمليّة وحدها (لا تخزين ولا كلفة)؛ الإقلاع البارد يجرّب مرّة. */
 const NO_TALK = new Map();
@@ -369,11 +369,17 @@ function think(b, t, convo, route) {
     if (Array.isArray(b.messages) && b.messages !== convo) stripThink(b.messages); // نسخة markLastForCache: آخر رسالة منسوخة
   }
   t.disp = false;
+  t.orDisp = false;
   t.talk = false;
   t.effort = !!(b.output_config && b.output_config.effort); // v-owner-light: جهد الردّ العاديّ في هذا الطلب
   // v-think-talk-all: دور المالك الذي يفكّر فيه، على الوسيط لغير كلود — تكيّفيّ بلا display. الوسيط يترجمها إلى تفكير المزوّد نفسه (جهده الافتراضيّ) ويرجع الملخّص كتلة تفكير. كلود المباشر يبقى بالعرض الملخّص في السطر التالي. بعد رفض الحقل (noTalk) يبقى بلاه.
   if (t.show && route === 'or' && !t.noTalk && !talkRefused(model) && b.thinking === undefined && !/^(?:anthropic\/|claude-)/.test(model)) { b.thinking = { type: 'adaptive' }; t.talk = true; t.talkModel = model; }
   if (t.show && t.direct && !t.noDisplay && (b.thinking === undefined || (b.thinking && b.thinking.type === 'adaptive' && !b.thinking.display)) && DISPLAY_RE.test(model)) { b.thinking = { type: 'adaptive', display: 'summarized' }; t.disp = true; } // v-owner-claude-all: تكيّفيّ بلا عرض (جهد المالك على 4.x) يأخذ العرض؛ وبعد رفض العرض (noDisplay) يبقى التفكير بلا عرض
+  /* v-or-display (فحص سجلّ العمل، المالك ١٤ أكتوبر «صلّح الثلاثة الباقية»): كلود عبر الوسيط (anthropic/claude-…) كان بلا عرض ملخّص
+     فتصل كتل تفكيره فارغة ولا سطر «↳ 💭» أبدًا — والهبوط إلى الوسيط وسط الدور يمحو التفكير لبقيّته. الشرط نفسه للمباشر بمعرّفه
+     المطبَّع (anthropic/claude-opus-5.5 ← claude-opus-5-5). رفضه = إعادة واحدة بلاه، ولا يُرسل للموديل ٦ ساعات (think400). */
+  const orId = route === 'or' && /^anthropic\//.test(model) ? model.replace(/^anthropic\//, '').replace(/\./g, '-') : '';
+  if (t.show && orId && !t.noDisplay && !talkRefused(model) && (b.thinking === undefined || (b.thinking && b.thinking.type === 'adaptive' && !b.thinking.display)) && DISPLAY_RE.test(orId)) { b.thinking = { type: 'adaptive', display: 'summarized' }; t.disp = true; t.orDisp = true; t.talkModel = model; }
   return b;
 }
 /* 400 يذكر التفكير أو التوقيع (أو العرض) = تُنزع كلّ الكتل وإعادة واحدة؛ والعرض يُطفأ للدور إن لم يكن الرفض عن كتلة في الرسائل
@@ -386,6 +392,13 @@ async function think400(up, t, convo, again, send) {
   // v-think-talk-all: رفض حقل التكيّفيّ على الوسيط (مزوّد لا يعرفه) = إعادة واحدة بلاه، بصمت — التفكير الافتراضيّ يبقى، ولا يُطفأ الدور.
   // v-talk-400: بأيّ نصّ — الوسيط يترجم الحقل إلى reasoning المزوّد فيصل رفضه بنصّ المزوّد («reasoning…»، «Provider returned error») بلا
   // كلمة thinking. الحقل إضافتنا: 400 عليه = إعادة واحدة بلاه، و400 الإعادة يصل بسببه كما كان (t.talk يُصفَّر في think).
+  // v-or-display: الوسيط يرفض العرض بنصّ المزوّد غالبًا (بلا كلمة display) — إعادة واحدة بلا عرض، والموديل لا يُرسل له ٦ ساعات.
+  if (t.orDisp && !blk && !/max_tokens|too long|context|credit|afford|quota/i.test(why)) { // السقف والنافذة والرصيد لمعالجاتها كما كانت
+    t.noDisplay = true;
+    if (t.talkModel) NO_TALK.set(t.talkModel, Date.now());
+    try { await require('./log-error.js').logErrorAndFlush('chat/thinking-or-display', new Error(why || 'upstream 400'), { action: 'thinking-or-display' }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
+    return again();
+  }
   if (t.talk && !t.disp && !blk) {
     t.noTalk = true;
     if (t.talkModel) NO_TALK.set(t.talkModel, Date.now());

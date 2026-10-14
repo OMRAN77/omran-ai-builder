@@ -627,11 +627,21 @@ module.exports = async (req, res) => {
       try { const cm = require('./cost-meter.js'); await cm.addCost(runUser, cm.tokenCostUsd(runServed || model, runUse), 'chat'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
     };
     const orModel = (m) => 'anthropic/' + String(m || '').replace(/-(\d+)-(\d+)$/, '-$1.$2');
-    const doCallOR = (m) => fetch('https://openrouter.ai/api/v1/messages', {
+    /* v-or-display: على الوسيط كان الوكيل بلا عرض — كتل التفكير فارغة فيبدو صامتًا بعد الهبوط. للمالك العرض نفسه؛ ورفضه (400 بأيّ نصّ)
+       = إعادة واحدة بلاه لبقيّة التشغيل. */
+    let orNoDisp = false;
+    const callOR = (m) => fetch('https://openrouter.ai/api/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + String(process.env.OPENROUTER_API_KEY || '').trim(), 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: orModel(m), max_tokens: deepRun ? 64000 : 32000, system, messages: convo, tools: toolsFor(runUser), stream: true }),
+      body: JSON.stringify(Object.assign({ model: orModel(m), max_tokens: deepRun ? 64000 : 32000, system, messages: convo, tools: toolsFor(runUser), stream: true }, (deepRun && !orNoDisp) ? agentThink(m) : {})),
     });
+    const doCallOR = async (m) => {
+      const up = await callOR(m);
+      if (up.ok || up.status !== 400 || orNoDisp || !deepRun || !agentThink(m).thinking) return up;
+      orNoDisp = true;
+      logError('agent/thinking-or-display', new Error(String(await up.text().catch(() => '')).slice(0, 300)));
+      return callOR(m);
+    };
     const swapNote = (nowWho) => {
       const f = agentFail || {};
       let raw = String(f.text || '');

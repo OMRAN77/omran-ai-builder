@@ -64,6 +64,7 @@ module.exports = async (req, res) => {
     }
   }
 
+  let __billRisk = false; /* v-img-no-rebill («رصيدي يخلص»): محرّك أخرج صورة أو انقطع بلا ردّ أو ردّ ٢٠٠ بلا صورة = قد يُحسب ← billed ولا retryable (كان العميل يعيد السلسلة كلّها) */
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     /* GPT الخام/مسار النصّ لا يحتاج مفتاح Gemini. كان مفتاح OpenAI صالحًا
@@ -275,7 +276,7 @@ module.exports = async (req, res) => {
     const __expectBig = !!editImageBase64 && !extras.length && ((isPersonSwap && !__swapOne) || isRestyle || isReimagine || isElevate || isSceneUpgrade);
     const __vIntent = { personSwap: isPersonSwap && !extras.length, targeted: __swapOne, textEdit: isTextSwap || isTextRemove, restyle: isRestyle, reimagine: isReimagine, elevate: isElevate || isSceneUpgrade, merge: !!extras.length };
     const __settleCtx = { apiKey: apiKey, request: intentText || cleanPrompt, source: editImageBase64 ? { b64: editImageBase64, mime: editMimeType || 'image/jpeg' } : null, measurable: !extras.length, expectBig: __expectBig, intent: __vIntent, skipJudge: !!prayerPlan };
-    async function deliver(first, altFn, polishFn) {
+    async function deliver(first, altFn, polishFn) { __billRisk = true; // v-img-no-rebill: صورة خرجت = محسوبة
       const r = await settleCandidates(Object.assign({ first: first, altFn: altFn, polishFn: polishFn || null, deadlineOk: function () { return __extraBudget() >= 25000; },
         honest: !prayerPlan && !__pureRaw && String(process.env.IMAGE_VERIFY || 'on').toLowerCase() !== 'off' }, __settleCtx));
       if (!r.ok) {
@@ -461,6 +462,7 @@ module.exports = async (req, res) => {
     // v-img-visible: نلتقط سبب فشل خط الإنقاذ (OpenAI) ليظهر مع سبب Gemini في
     // لوحة المالك — كان كل ذلك يذهب لـconsole.error فقط، فيرى المالك «0» بلا سبب.
     let lastRescueErr = '';
+    const __busyOnly = () => !__billRisk && /(?:status=| )(?:429|5\d\d)(?:\s|$)/.test(lastRescueErr); // v-img-no-rebill: GPT وحده يُعاد لزحام بلا خطر احتساب — لا رصيد ولا صلاحيّة ولا سلامة ولا مهلة
     async function openaiRescueImage(promptOverride, imagesOverride, timeoutMs) {
       const __gptPrompt = String(promptOverride || rescuePromptText).slice(0, 3800); /* v-img-honest: المحرّك الآخر قد يُعطى أمر إعادة بلا تناقض */
       /* v-img-mix (خيار «أ»): تلميع الكتابة يرسل ناتج برو أوّلًا والمصدر مرجعًا — مسار الصور المتعدّدة نفسه (image[]).
@@ -526,9 +528,9 @@ module.exports = async (req, res) => {
             }
             const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
             if (b64) return b64;
-            lastRescueErr = 'openai edit ' + m + ' empty-response';
+            lastRescueErr = 'openai edit ' + m + ' empty-response'; __billRisk = true;
             return null;
-          } catch (e) { lastRescueErr = 'openai edit ' + m + ' ' + (e && e.message); console.error('[maha-image] edit-rescue error: ' + (e && e.message)); return null; }
+          } catch (e) { lastRescueErr = 'openai edit ' + m + ' ' + (e && e.message); if (isImageTimeoutError(e)) __billRisk = true; console.error('[maha-image] edit-rescue error: ' + (e && e.message)); return null; }
         }
         return null;
       }
@@ -547,7 +549,7 @@ module.exports = async (req, res) => {
             const d = await r.json().catch(function () { return null; });
             const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
             if (b64) return b64;
-            lastRescueErr = 'openai gen ' + genModels[i] + ' empty-response';
+            lastRescueErr = 'openai gen ' + genModels[i] + ' empty-response'; __billRisk = true;
             return null;
           }
           const t1 = await r.text().catch(function () { return ''; });
@@ -560,7 +562,7 @@ module.exports = async (req, res) => {
           if (!(modelUnavailable || safetyBlocked) || i === genModels.length - 1) { console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
         }
         return null;
-      } catch (e) { lastRescueErr = 'openai gen ' + (e && e.message); console.error('[maha-image] rescue error: ' + (e && e.message)); return null; }
+      } catch (e) { lastRescueErr = 'openai gen ' + (e && e.message); if (isImageTimeoutError(e)) __billRisk = true; console.error('[maha-image] rescue error: ' + (e && e.message)); return null; }
     }
 
     // v-nano-banana (طلب عمران): إذا فشل موديل الصور الأساسي، نجرّب موديل Google
@@ -589,8 +591,8 @@ module.exports = async (req, res) => {
           const p = (((d && d.candidates || [])[0] || {}).content || {}).parts || [];
           const img = p.find(function (x) { return x.inlineData && x.inlineData.data; });
           if (img && img.inlineData.data) return img.inlineData.data;
-          lastNanoErr = models[i] + ' no-image-part';
-        } catch (e) { lastNanoErr = models[i] + ' ' + (e && e.message); }
+          lastNanoErr = models[i] + ' no-image-part'; __billRisk = true;
+        } catch (e) { lastNanoErr = models[i] + ' ' + (e && e.message); if (isImageTimeoutError(e)) __billRisk = true; }
       }
       return null;
     }
@@ -626,7 +628,7 @@ module.exports = async (req, res) => {
         return;
       }
       await refundImageCharge();
-      res.status(502).json({ error: 'image_generation_busy', retryable: true });
+      res.status(502).json({ error: 'image_generation_busy', retryable: __busyOnly(), billed: __billRisk || undefined });
       return;
     }
 
@@ -636,7 +638,7 @@ module.exports = async (req, res) => {
       const __gptB64 = await openaiRescueImage();
       if (__gptB64) { await deliver({ b64: __gptB64, mime: 'image/png', engine: 'openai' }, null); return; } /* الخام خام: بلا محرّك آخر ولا رفض */
       await refundImageCharge(); try { await require('./log-error.js').logErrorAndFlush('maha-image:gpt-forced-failed', new Error('image_generation_busy'), { openai: (lastRescueErr || 'no-rescue').replace(/sk-[A-Za-z0-9_*\-]{6,}/g, 'sk-…').slice(0, 200) }); } catch (e) { /* guard-ok — السجلّ لا يوقف الردّ */ } // v-owner-img-why: فشل GPT المفروض كان لا يُسجَّل — سببه في سجلّ الأخطاء كالمسار العاديّ
-      res.status(502).json({ error: 'image_generation_busy', retryable: true, __diag: process.env.IMG_DIAG === 'off' ? undefined : { forced: 'gpt', openai: (lastRescueErr || 'no-rescue').slice(0, 160) } });
+      res.status(502).json({ error: 'image_generation_busy', retryable: __busyOnly(), billed: __billRisk || undefined, __diag: process.env.IMG_DIAG === 'off' ? undefined : { forced: 'gpt', openai: (lastRescueErr || 'no-rescue').slice(0, 160) } });
       return;
     }
 
@@ -654,17 +656,17 @@ module.exports = async (req, res) => {
           headers: { 'Content-Type': 'application/json' },
           body: reqBody,
         },
-        onRetry: ({ attempt, response, error }) => {
+        onRetry: ({ attempt, response, error }) => { if (error && isImageTimeoutError(error)) __billRisk = true; /* v-img-no-rebill: انقطعت بلا ردّ — قد تُحسب */
           const detail = response ? ('status=' + response.status) : ('error=' + String(error && error.name || 'fetch'));
           console.error('[maha-image] retrying upstream image request after attempt ' + attempt + ' ' + detail);
         },
       });
       const upstream = imageResult.response;
       const data = imageResult.data || {};
-      if (!upstream || !upstream.ok) { __gFail = { imageResult, upstream, data, noPart: false }; return null; }
+      if (!upstream || !upstream.ok) { if (isImageTimeoutError(imageResult.error)) __billRisk = true; __gFail = { imageResult, upstream, data, noPart: false }; return null; }
       let respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
       let imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
-      if (!imgPart) { __gFail = { imageResult, upstream, data, noPart: true }; return null; }
+      if (!imgPart) { __billRisk = true; __gFail = { imageResult, upstream, data, noPart: true }; return null; }
       /* v-lanes: لا حارس هويّة رافض بعد الناتج — النتيجة هي ما أخرجه المحرّك لكلمات المستخدم. */
       // 🔁 تحقّق + إعادة محاولة واحدة: فقط عندما خط الأنابيب فعّال ولديه قيود
       // قابلة للفحص. فشل التحقّق لا يمنع الإرجاع — نستخدم نتيجة إعادة المحاولة
@@ -841,8 +843,8 @@ module.exports = async (req, res) => {
       }
       await refundImageCharge();
       const timedOut = isImageTimeoutError(imageResult.error);
-      const retryable = timedOut || !!(upstream && (upstream.status === 429 || upstream.status >= 500));
-      const errorCode = timedOut ? 'image_generation_timeout' : (retryable ? 'image_generation_busy' : 'image_generation_failed');
+      const busy = !!(upstream && (upstream.status === 429 || upstream.status >= 500)), retryable = busy && !timedOut && !__billRisk; // v-img-no-rebill: زحام بلا ناتج فقط
+      const errorCode = timedOut ? 'image_generation_timeout' : (busy ? 'image_generation_busy' : 'image_generation_failed');
       console.error('[maha-image] upstream image request failed after ' + imageResult.attempts + ' attempt(s)' + (upstream ? ' status=' + upstream.status : ''));
       // v-img-visible: يظهر السبب الحقيقي (رصيد/حصة/موديل) في لوحة المالك.
       try { await require('./log-error.js').logErrorAndFlush('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
@@ -859,7 +861,7 @@ module.exports = async (req, res) => {
         attempts: imageResult.attempts,
         errName: String((imageResult.error && imageResult.error.name) || ''),
       };
-      res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable, __diag });
+      res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable, billed: __billRisk || undefined, __diag });
       return;
     }
 
@@ -885,7 +887,7 @@ module.exports = async (req, res) => {
         openai: (lastRescueErr || 'no-rescue').slice(0, 120),
         free: (lastFreeErr || 'not-tried').slice(0, 120),
       };
-      res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.', __diag: __diagNoImg });
+      res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.', retryable: false, billed: true, __diag: __diagNoImg }); // v-img-no-rebill: ردّ ٢٠٠ بلا صورة محسوب
       return;
     }
 
@@ -893,6 +895,6 @@ module.exports = async (req, res) => {
   } catch (e) {
     await refundImageCharge();
     console.error('[maha-image] proxy exception: ' + (e && e.stack ? e.stack : e));
-    res.status(500).json({ error: 'image_generation_failed', retryable: true });
+    res.status(500).json({ error: 'image_generation_failed', retryable: !__billRisk, billed: __billRisk || undefined });
   }
 };
