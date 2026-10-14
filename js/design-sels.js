@@ -2,7 +2,7 @@
   var SELS=['designAiPlace','designAiStyle','designAiLighting','designAiFurniture','designAiFlooring','designAiFabric','designAiWallColor','designAiCurtains'];
   var CBS=['designAiRearrange','designAiDecorPlants','designAiDecorArt','designAiDecorAccessories'];
   var ICONS={
-    designAiLighting:{'':'\u2298',warm:'\u{1F305}',cool:'\u2744\uFE0F',bright:'\u2600\uFE0F',dim:'\u{1F319}'},
+    designAiLighting:{'':'\u2298',warm:'\u{1F305}',cool:'\u2744\uFE0F',bright:'\u2600\uFE0F',dim:'\u{1F319}',natural:'\u{1F324}\uFE0F',neutral:'\u26AA',golden:'\u2728',purple:'\u{1F49C}',sunset:'\u{1F307}',moon:'\u{1F315}'},
     designAiFurniture:{'':'\u2298',modern:'\u{1F532}',classic:'\u{1FAB5}',simple:'\u{1F90D}',luxury:'\u{1F48E}',bohemian:'\u{1F33F}'},
     designAiFlooring:{'':'\u2298',parquet:'\u{1FAB5}',marble:'\u{1FAA8}',ceramic:'\u{1F9F1}',carpet:'\u{1F9F6}'},
     designAiFabric:{'':'\u2298',light:'\u{1F90D}',dark:'\u{1F5A4}',neutral:'\u{1FA76}',bold:'\u{1F534}'},
@@ -172,7 +172,23 @@
       '</svg>';
     return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") center/cover no-repeat';
   }
+  /* v-decor-light-sheet (طلب المالك ١٤ أكتوبر ٢٠٢٦: «اريد صور هذي الصور ضيفها» مع لوحة الإضاءة العشر):
+     اللوحة نفسها ملفّ واحد lighting-sheet.webp (١٠٢٤×١٥٣٦، عمودان × ٥ صفوف)، وكلّ بطاقة تعرض
+     قصّتها ٣:٤ (١٣٥×١٨٠ من وسط الصورة، فوق شريط الاسم المكتوب) بخلفيّة CSS — صور المالك كما هي بلا رسم. */
+  var LIGHT_SHEET='assets/design/opts/lighting-sheet.webp';
+  var LIGHT_POS={
+    warm:[22.78,3.10], cool:[77.33,3.10],
+    bright:[22.78,24.04], dim:[77.33,24.04],
+    natural:[22.78,44.99], neutral:[77.33,44.99],
+    golden:[22.78,65.93], purple:[77.33,65.93],
+    sunset:[22.78,86.95], moon:[77.33,86.95]
+  };
+  function lightBg(v){
+    var p=LIGHT_POS[v]; if(!p) return '';
+    return 'url("'+LIGHT_SHEET+'") '+p[0]+'% '+p[1]+'% / 758.52% 853.33% no-repeat, #141418';
+  }
   function roomBg(id,v){
+    if(id==='designAiLighting'&&LIGHT_POS[v]) return lightBg(v);
     var c=(PALS[id]||{})[v]; if(!c) return '';
     return roomSvg(c, ROOM_KIND[v]||'');
   }
@@ -212,7 +228,9 @@
       shop:'واجهة تجارية جذابة', bath:'رخام ونقاء', kids:'مرح آمن وألوان',
       entrance:'أول انطباع لضيوفك', garden:'جلسة خارجية خضراء'
     },
-    designAiLighting:{ warm:'أصفر دافئ مريح', cool:'أبيض بارد منعش', bright:'نهاري ساطع', dim:'خافتة هادئة للمساء' },
+    designAiLighting:{ warm:'أصفر دافئ مريح', cool:'أبيض بارد منعش', bright:'نهاري ساطع', dim:'خافتة هادئة للمساء',
+      natural:'ضوء نهار طبيعي من النافذة', neutral:'أبيض محايد متوازن', golden:'وهج ذهبي دافئ',
+      purple:'أجواء ليلية بنفسجية', sunset:'دفء الغروب الوردي', moon:'ضوء قمر أزرق هادئ' },
     designAiFurniture:{ modern:'قطع عصرية أنيقة', classic:'خشب فخم تقليدي', simple:'عملي بلا تكلّف', luxury:'فخامة في كل قطعة', bohemian:'قطع حرة متنوعة' },
     designAiFlooring:{ parquet:'خشب دافئ تحت قدميك', marble:'رخام لامع فاخر', ceramic:'عملي سهل التنظيف', carpet:'سجاد وثير مريح' },
     designAiFabric:{ light:'أقمشة فاتحة مشرقة', dark:'أقمشة داكنة فخمة', neutral:'درجات هادئة محايدة', bold:'ألوان جريئة لافتة' },
@@ -283,6 +301,7 @@
      معرضًا ملء الشاشة — نفس نظام أنماط الصور (طلب المالك: كلهم مرة وحدة). */
   function selImg(id,v){
     if(!v) return '';
+    if(id==='designAiLighting'&&LIGHT_POS[v]) return ''; /* v-decor-light-sheet: صورتها من اللوحة في roomBg */
     return id==='designAiStyle' ? 'assets/design/styles/'+v+'.webp'
       : 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp';
   }
