@@ -543,9 +543,35 @@ async function rememberDeadPick(model, status, text, gone) {
   return true;
 }
 
+/* v-refusal-retry (لقطة المالك ١٥ أكتوبر: «رسم صور الستائر وارفعها» ← «رفض المزوّد الطلب (reasoning_extraction — فُهم السؤال طلبًا لكشف
+   تفكيره الداخليّ…)» ورسالته بلا أيّ كلمة تفكير): مصنّف أنثروبيك يقرأ الدور كلّه لا الرسالة وحدها. والعميل يلصق ملاحظة الرفض في نصّ
+   الردّ المحفوظ («⚠️ رفض المزوّد الطلب … كشف تفكيره الداخليّ … This request was blocked…») فتعود في التاريخ كلامًا عن كشف التفكير.
+   (١) للمالك قبل النداء: تُنزع ملاحظات الرفض من رسائل assistant في النسخة المرسَلة (نصّ التطبيق لا كلام الموديل).
+   (٢) رفض reasoning_extraction بلا كلمة تفكير تُزال: إعادة واحدة على الموديل نفسه بلا كتل التفكير وبلا عرضها، بسطر حالة. */
+const REFUSAL_NOTE_RE = /\n*⚠️\s*رفض المزوّد الطلب[\s\S]*$/;
+const BLOCKED_RE = /\n*[^\n]*This request was blocked as it seems to violate Anthropic[\s\S]*$/;
+function scrubRefusals(convo) {
+  let n = 0;
+  const fix = (s) => { const t = String(s).replace(REFUSAL_NOTE_RE, '').replace(BLOCKED_RE, '').replace(/\s+$/, ''); if (t === s) return s; n++; return t.trim() ? t : '…'; };
+  (Array.isArray(convo) ? convo : []).forEach((m) => {
+    if (!m || m.role !== 'assistant') return;
+    if (typeof m.content === 'string') m.content = fix(m.content);
+    else if (Array.isArray(m.content)) m.content.forEach((b) => { if (b && b.type === 'text' && typeof b.text === 'string') b.text = fix(b.text); });
+  });
+  return n;
+}
+function refusalRetry(convo, t) {
+  scrubRefusals(convo);
+  stripThink(convo, t);
+  if (t) t.noDisplay = true;
+  return true;
+}
+const REFUSAL_RETRY_STATUS = '↳ ⚠️ رفض المزوّد الدور كطلب كشف تفكير — أعيده مرّة بلا عرض التفكير';
+
 module.exports = {
   state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, exitText, stallNote, shrinkOld, overTime,
   isDeadPick, rememberDeadPick, margin,
+  scrubRefusals, refusalRetry, REFUSAL_RETRY_STATUS, // v-refusal-retry
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1
   RESUME_KEY, RESUME_NOTE, resumeMark, isResume, resume, // v-owner-resume
   pulse, pushRef, closeMark, withRef, lateNote, closeTail, CLOSE_AT_MS, PULSE_MAX_MS, // v-turn-close
