@@ -51,6 +51,11 @@ const FAMILIES = [
     strong: 'موديل مفتوح سريع، جيّد في المحادثة والتلخيص والكتابة واتّباع التعليمات.',
     peak: 'ردود واضحة مباشرة، وتعليمات المستخدم حرفيًّا.',
     gap: 'معرفتك أضيق والعربيّة أضعف: لكلّ حقيقة ابحث أوّلًا، والحساب بـrun_js، ولا تخترع.' },
+  /* v-pplx-agent: Perplexity على Agent API بأدوات التطبيق نفسها — قوّته البحث، وضعفه المعتاد أن يكتفي بالبحث والوصف عن العمل */
+  { key: 'sonar', re: /sonar|^perplexity\//i,
+    strong: 'البحث الحيّ في الويب والإجابة من المصادر الحديثة مع ذكرها.',
+    peak: 'في الأخبار والأسعار والحقائق الحديثة: ابحث واقرأ ثمّ أجب مستشهدًا بما قرأت.',
+    gap: 'أنت هنا بأدوات التطبيق كلّها: لطلب على التطبيق اقرأ الكود بـread_github وعدّل بـedit_github بنفسك — لا تكتفِ بالبحث ولا بوصف ما «يمكن» فعله، ولا تقل «عدّلت» قبل نتيجة أداة.' },
 ];
 
 /* موديل صغير أو سريع: قوّته السرعة، وضعفه الذاكرة والتعقيد — فقواعد التعويض أصرم. */
@@ -61,7 +66,7 @@ const SMALL_NOTE = 'أنت موديل خفيف وسريع: قوّتك السرع
    وoa-direct في هذا المستودع) لا من ذاكرة — فلا يقول موديل للمالك إنّ أحدث موجود هو ما انتهى عنده تدريبه. */
 const LANDSCAPE_NOTE = 'معلومة محدّثة (من التطبيق نفسه، أحدث من تدريبك): الموديلات المتاحة في هذا التطبيق الآن — Anthropic: Claude Fable 5.1 (الأقوى) وOpus 5.5 وSonnet 5.5 وHaiku 5.5، والأقدم Opus 5 وFable 5 وSonnet 5 وOpus 4.8/4.7/4.6 وSonnet 4.6 وHaiku 4.5؛ OpenAI: GPT-6 (Sol وAstra وLuna)؛ Google: Gemini 3.8 Flash؛ DeepSeek: V4 Pro؛ Mistral: Medium 3.5؛ Cohere: Command A؛ Moonshot: Kimi K3؛ xAI: Grok 4.6؛ Groq يشغّل GPT-OSS 120B. إن سُئلت عن «أحدث موديل» أو قارنت بين موديلات فانطلق من هذه القائمة لا من ذاكرتك، وللتفاصيل والأرقام ابحث.';
 
-const PROV_DEFAULT = { claude: 'claude', openai: 'gpt', gemini: 'gemini', deepseek: 'deepseek', mistral: 'mistral', cohere: 'cohere', kimi: 'kimi', groq: 'gpt-oss', openrouter: 'grok' }; /* v-grok-first: صفّ الوسيط بلا موديل = كروك */
+const PROV_DEFAULT = { claude: 'claude', openai: 'gpt', gemini: 'gemini', deepseek: 'deepseek', mistral: 'mistral', cohere: 'cohere', kimi: 'kimi', groq: 'gpt-oss', openrouter: 'grok', perplexity: 'sonar' }; /* v-grok-first: صفّ الوسيط بلا موديل = كروك */
 
 function familyOf(prov, model) {
   const m = String(model || '').trim();

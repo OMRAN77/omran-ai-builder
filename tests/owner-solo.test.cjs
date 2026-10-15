@@ -487,3 +487,31 @@ test('١٥. v-branch-shots: لقطتا الفرع من manage_github تصلان 
     }
   } finally { require.cache[gmPath] = { id: gmPath, filename: gmPath, loaded: true, exports: real }; }
 });
+
+test('١٦. v-pplx-agent: المالك على Perplexity → Agent API بأدوات التطبيق ويجيب؛ بلا مفتاحه «لا طريق» لا كلود؛ وغير المالك كما كان', async () => {
+  const isPplx = (u) => /api\.perplexity\.ai\/v1\/responses/.test(u);
+  const rsse = (text) => new Response([
+    { type: 'response.created', response: { model: 'perplexity/sonar' } },
+    { type: 'response.output_text.delta', delta: text },
+    { type: 'response.completed', response: { usage: { input_tokens: 3, output_tokens: 2 } } },
+  ].map((e) => 'data: ' + JSON.stringify(e) + '\n\n').join('') + 'data: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  process.env.PERPLEXITY_API_KEY = 'test-pplx-key';
+  try {
+    const r = await run('omran', { provider: 'perplexity', messages: ask('اقرأ ملفّ chat.js وقل لي كم سطر') },
+      (u) => (isPplx(u) ? rsse('من Perplexity.') : (isAnth(u) || isOR(u)) ? sse('من غيره') : new Response('{}', { status: 404 })));
+    assert.equal(r.text, 'من Perplexity.');
+    const c = r.calls.find((x) => isPplx(x.url));
+    assert.ok(c, 'نداء Agent API');
+    assert.equal(c.body.model, 'perplexity/sonar');
+    assert.ok(c.body.tools.some((t) => t.type === 'function' && t.name === 'read_github'), 'أدوات التطبيق دوالّ أصليّة');
+    assert.ok(!r.calls.some((x) => isAnth(x.url) || isOR(x.url)), 'لا مزوّد آخر');
+
+    const v = await run('vipuser', { provider: 'perplexity', messages: ask('سؤال') },
+      (u) => (isPplx(u) ? rsse('x') : (isAnth(u) || isOR(u)) ? sse('كما كان') : new Response('{}', { status: 404 })));
+    assert.ok(!v.calls.some((x) => isPplx(x.url)), 'غير المالك: لا Agent API');
+  } finally { delete process.env.PERPLEXITY_API_KEY; }
+  const none = await run('omran', { provider: 'perplexity', messages: ask('سؤال') },
+    (u) => ((isAnth(u) || isOR(u)) ? sse('من كلود') : new Response('{}', { status: 404 })));
+  assert.equal(none.text, '', 'لا كلود مكانه');
+  assert.match(String((none.events.find((e) => e.ownerStop) || {}).error), /لا طريق لهذا المزوّد/);
+});

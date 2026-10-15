@@ -2364,6 +2364,9 @@ async function callClaude(messages, onDelta){
 // 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات (مُتحقَّق حيًّا).
 // Perplexity وحده خارجها عمدًا: موديلات Sonar لا تقبل الأدوات أصلًا (بحثها مدمج).
 const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter', 'kimi']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة · v-openrouter-tools: والمزوّد العامّ كذلك، بالمفتاح نفسه */
+/* v-pplx-agent (المالك ١٥ أكتوبر «ابدا في Perplexity»): للمالك Perplexity صار على مسار الأدوات (Agent API بأدوات دوالّ أصليّة — oa-direct)،
+   ولغيره يبقى على مساره القديم. كلّ بوّابة تسأل TOOL_PROVIDERS.indexOf(…) فيجيبها هذا وحده بلا لمس مواضعها. */
+TOOL_PROVIDERS.indexOf = function(p){ const i = Array.prototype.indexOf.call(this, p); return (i === -1 && p === 'perplexity' && typeof omranOwnerUi === 'function' && omranOwnerUi()) ? this.length : i; };
 
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
