@@ -1269,7 +1269,7 @@ module.exports = async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   if (res.flushHeaders) res.flushHeaders();
-  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }; const __cut = watchClientGone(res); // v-tokens-close: العميل ضغط «إيقاف» أو أغلق التبويب = نلغي نداء المزوّد الجاري ولا نبدأ جولة أدوات بعده (انظر watchClientGone)
+  const send = (obj) => { if (res.writableEnded) return; /* v-turn-close: بعد ختام الوقت لا كتابة (كتابة بعد end = خطأ يُسقط العمليّة) */ try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }; const __cut = watchClientGone(res); // v-tokens-close: العميل ضغط «إيقاف» أو أغلق التبويب = نلغي نداء المزوّد الجاري ولا نبدأ جولة أدوات بعده (انظر watchClientGone)
   send({ status: '💭 يقرأ سؤالك…', k: 'stReading' });
   send({ modelId: __pick.picked ? __pick.id : '', modelLabel: __pick.picked ? __pick.label : '' }); // v-claude-models: من يجيب
 
@@ -1632,13 +1632,13 @@ module.exports = async (req, res) => {
        الخادم وهو يعمل، وحارس العميل (٩٠ ث بلا بايت) يستسلم بلا رقم ولا سبب. نبض للدور كلّه مقيّدٌ بميزانيّة الدور (MAX_MS) وبحياة المجرى،
        فدرس #527 محفوظ: تعليق حقيقيّ بعد الميزانيّة يُسكت النبض فيقطعه العميل كما كان. CHAT_KA_MS للاختبار. */
     const __kaMs = Math.max(50, Number(process.env.CHAT_KA_MS) || 4000);
-    const __turnKa = (toolTurn || __ownerReq) ? setInterval(() => { if (res.writableEnded || __cut.gone || Date.now() - t0 > MAX_MS) { clearInterval(__turnKa); return; } try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, __kaMs) : null;
+    const __turnKa = (toolTurn || __ownerReq) ? setInterval(() => { const __pw = (res.writableEnded || __cut.gone) ? 'end' : __ol.pulse(__olS, { t0, MAX_MS }); if (__pw === 'end') { clearInterval(__turnKa); return; } if (__pw === 'close') __turnClose(); try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, __kaMs) : null;
     if (__turnKa && __turnKa.unref) __turnKa.unref();
-    const __turnKaStop = () => { if (__turnKa) clearInterval(__turnKa); };
+    const __turnKaStop = () => { if (__turnKa) clearInterval(__turnKa); }; const __turnClose = () => { __olS.closeAt = fullText.length; const __cm = __ol.closeMark(__ownerOps.lastPush); logError('chat/owner-turn-close', new Error('tools still running at ' + (Date.now() - t0) + 'ms, step ' + steps)); send({ delta: __cm }); fullText += __cm; }; /* v-turn-close: أداة تجاوزت CLOSE_AT_MS = سطر «كمل» قبل قتل الدالّة، والمجرى مفتوح حتّى تخلص (إنهاؤه يجمّد الدالّة) — الحلقة تقف بعدها (closed) */
     if (__turnKa) { const __endRaw = res.end; res.end = function () { __turnKaStop(); return __endRaw.apply(res, arguments); }; } // كلّ خروج (done، catch، خروج مبكّر في الحلقة) يمرّ بـres.end فلا يبقى نبض حيّ بعده (chat-owner-errors يعدّ المؤقّتات)
           while (steps < MAX_STEPS) {
-      if (__cut.gone) break; /* v-tokens-close: العميل رحل — لا جولة جديدة */ if (__ol.overTime(__olS, { t0, MAX_MS, steps })) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; } /* v-prov-close-read: بعد قراءة تجاوزت المهلة خطوة ختام لا قطع */
-      steps++; __ol.beginStep(__olS, { steps, MAX_STEPS, t0, MAX_MS, convo, tools: toolTurn && !(body && body.noTools === true), send, editAsk: __ownerReq && require('./owner-carry.js').ACTION_RE.test(lastUserText), pushed: __ownerOps.pushes > 0 }); // v-claude-code-level C1 · v-prov-finish-edit: طلب تعديل بلا رفع = ختام يبقي الأدوات
+      if (__cut.gone || __olS.closed) break; /* v-tokens-close: العميل رحل — لا جولة جديدة · v-turn-close: خُتم الوقت */ if (__ol.overTime(__olS, { t0, MAX_MS, steps })) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; } /* v-prov-close-read: بعد قراءة تجاوزت المهلة خطوة ختام لا قطع */
+      steps++; __ol.beginStep(__olS, { steps, MAX_STEPS, t0, MAX_MS, convo, tools: toolTurn && !(body && body.noTools === true), send, editAsk: __ownerReq && require('./owner-carry.js').ACTION_RE.test(lastUserText), pushed: __ownerOps.prs > 0 || __ownerOps.pushes >= 3 }); /* v-turn-close: الرفعة الناجحة وحدها (المحاولة الفاشلة كانت تُعدّ فيضيع ختام التعديل)، أو سقف الثلاث استُنفد */ // v-claude-code-level C1 · v-prov-finish-edit: طلب تعديل بلا رفع = ختام يبقي الأدوات
 
       // v-img-read: إعداد دور الصورة (نموذج/جهد) يُجرَّب أوّلًا؛ 400 عليه = إعادة فوريّة
       // بالطلب العاديّ نفسه قبل أيّ هبوط إلى مسار العميل الاحتياطيّ.
@@ -1891,7 +1891,7 @@ module.exports = async (req, res) => {
       // ويهبط الدور إلى الاحتياط القديم. النبض هنا أثناء بثّ المزوّد فقط ويُلغى فور
       // انتهائه، فدرس #527 (لا تغذية للحارس أثناء حلقة الأدوات) محفوظ.
       // v-owner-reason: تفكير الموديل للمالك قد يطول بلا حرف (لا يُبثّ منه شيء) فيأخذ النبض أيضًا — أثناء بثّ المزوّد فقط.
-      let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage || __ownerReq) ? setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000) : null;
+      let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage || __ownerReq) ? setInterval(() => { if (res.writableEnded) return; try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000) : null;
       let streamDone = false; let __midFail = null; // v-claude-code-level C9: بثّ المزوّد انقطع في منتصفه (المالك)
       const __tokStrip = makeTokenStripper(); // v-special-tokens: لكلّ ردّ مزوّد مرشّحه (رمز منقسم بين دلتا لا يفلت)
       try {
@@ -1981,7 +1981,7 @@ module.exports = async (req, res) => {
       if (__oa && (__oa.kind === 'stall' || __oa.kind === 'stop')) { send({ error: __oa.msg, ownerStop: true }); res.end(); return; }
       if (__oa && __oa.kind === 'continue') { send({ status: __oa.status }); continue; }
       if (__oa && __oa.kind === 'note') { send({ error: __oa.msg, ownerStop: true }); __ownerCarried = true; }
-      if (__olS.final && !(__olS.editClose && !__ownerOps.pushes)) __ownerCarried = true; // الجواب الختاميّ لا يُعاد بـ«نفّذ الآن» — إلّا ختام تعديل بلا رفع
+      if (__olS.final && !(__olS.editClose && !__ownerOps.prs)) __ownerCarried = true; // الجواب الختاميّ لا يُعاد بـ«نفّذ الآن» — إلّا ختام تعديل بلا رفع
       /* v-owner-carry: للمالك — نموذج كتب خطّته («أقرأ… أتتبّع… قبل الحذف») وتوقّف بلا تنفيذ يُعاد للحلقة مرّة واحدة. */
       if (stopReason !== 'tool_use' && __ownerReq && toolTurn && !__ownerCarried && steps < MAX_STEPS && Date.now() - t0 < __ol.FN_BUDGET_MS - 20000) {
         const __oc = require('./owner-carry.js');
@@ -1999,7 +1999,7 @@ module.exports = async (req, res) => {
       if (stopReason !== 'tool_use') {
         /* v-owner-resume: الختام أُجبر بالميزانيّة (التنبيه وصل) ولم يُرفع تعديل = الشغل قد يكون ناقصًا — سطر ثابت من الخادم يحفظه العميل في الردّ،
            و«كمل» بعده تحمل تنبيه الإكمال (owner-loop.resume). */
-        if (__ownerReq && __olS.nudged && !__ownerOps.pushes) { const __rm = __ol.resumeMark(); send({ delta: __rm }); fullText += __rm; }
+        if (__ownerReq && __olS.nudged && !__ownerOps.prs) { const __rm = __ol.resumeMark(); send({ delta: __rm }); fullText += __rm; }
         /* v-owner-like-me (المالك ١٣ أكتوبر «كيف انته تجيني في النهاية تقولي ادمج وانشر — اريد كل المزودين نفسك»): رفع في هذا الدور ولم يُدمج
            ولم يسأل المزوّد نفسه = الخادم يختم بالسؤال نفسه، فيعرف المالك أنّ الكلمة التالية «أدمج وأنشر». */
         if (__ownerReq && __ownerOps.prs && !__ownerOps.merges && !/[اأإ]دمج/.test(fullText)) { const __mq = '\n\nأدمج وأنشر؟'; send({ delta: __mq }); fullText += __mq; }
@@ -2036,7 +2036,7 @@ module.exports = async (req, res) => {
       // الواحد وكل بحث رحلة نموذج كاملة — الثالث فما فوق يُرَدّ فورًا بلا شبكة.
       const toolBlocks = blocks.filter(Boolean).filter((cb) => cb.type === 'tool_use');
       const __seeImgs = []; // v-owner-see-repo-img: صور المستودع التي قُرئت في هذه الخطوة
-      const settledTools = await Promise.all(toolBlocks.map(async (cb) => {
+      __olS.busy = true; const settledTools = await Promise.all(toolBlocks.map(async (cb) => { // v-turn-close: الأدوات تعمل — بعد CLOSE_AT_MS يُختم الدور بدل قتل الدالّة
         let input = {};
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
@@ -2116,12 +2116,12 @@ module.exports = async (req, res) => {
           /* v-providers-like-agent: أدوات الوكيل للمالك في المحادثة بحرّاسها نفسها — ثلاث رفعات ومهمّة مفوَّضة واحدة في الدور. */
           else if (cb.name === 'write_github') {
             if (!__ownerReq) result = '✗ الرفع إلى GitHub للمالك وحده.';
-            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./agent-img.js').ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-write.js').pushFiles(input, { imgIds: __ownerOps.imgIds }))); /* v-agent-img: «__IMG_N__» */ result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4 */ if (/^✅ رُفع/.test(result)) __ownerOps.prs = (__ownerOps.prs || 0) + 1; /* v-owner-like-me */ }
+            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./agent-img.js').ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-write.js').pushFiles(input, { imgIds: __ownerOps.imgIds }))); /* v-agent-img: «__IMG_N__» */ result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4 */ if (/^✅ رُفع/.test(result)) { __ownerOps.prs = (__ownerOps.prs || 0) + 1; __ownerOps.lastPush = __ol.pushRef(result); } /* v-owner-like-me */ }
           }
           /* v-agent-surgical: كما في الوكيل — التعديل يتشارك سقف الرفعات، والدمج بإذن «ادمج» في آخر رسالة المالك يفحصه الخادم. */
           else if (cb.name === 'edit_github') {
             if (!__ownerReq) result = '✗ التعديل على GitHub للمالك وحده.';
-            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./agent-img.js').ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-edit.js').editFiles(input, { imgIds: __ownerOps.imgIds }))); /* v-agent-img */ result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4: رفعة تمسّ js/app-NN-*.js = «الحزمة لم تُبنَ» (partials لا تُحزَم) */ if (/^✅ رُفع/.test(result)) __ownerOps.prs = (__ownerOps.prs || 0) + 1; /* v-owner-like-me */ }
+            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./agent-img.js').ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-edit.js').editFiles(input, { imgIds: __ownerOps.imgIds }))); /* v-agent-img */ result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4: رفعة تمسّ js/app-NN-*.js = «الحزمة لم تُبنَ» (partials لا تُحزَم) */ if (/^✅ رُفع/.test(result)) { __ownerOps.prs = (__ownerOps.prs || 0) + 1; __ownerOps.lastPush = __ol.pushRef(result); } /* v-owner-like-me */ }
           }
           else if (cb.name === 'merge_github') {
             const __ge = require('./github-edit.js');
@@ -2163,7 +2163,7 @@ module.exports = async (req, res) => {
           result = 'فشل تنفيذ الأداة: ' + String((toolErr && toolErr.message) || toolErr).slice(0, 150);
         }
         const __tl = trailLine(cb.name, input, result);
-        if (!(__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1 && !(cb.name === 'generate_image' && __ownerPicsOk))) send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p, tool: cb.name, err: /^(?:✗|⚠️|فشل|تعذّر)/.test(String(result == null ? '' : result).trim()) ? 1 : undefined }, trailDetail(cb.name, input, result))); /* v-interleave-fix: اسم الأداة للتجميع، والفشل أحمر */ // v-read-all · v-tokens-tools: الرفض في دور السؤال بلا سطر «↳ تعذّرت الصورة»
+        if (!(__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1 && !(cb.name === 'generate_image' && __ownerPicsOk)) && !__ol.lateNote(__olS, '↳ ' + __tl.text, result)) send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p, tool: cb.name, err: /^(?:✗|⚠️|فشل|تعذّر)/.test(String(result == null ? '' : result).trim()) ? 1 : undefined }, trailDetail(cb.name, input, result))); /* v-interleave-fix: اسم الأداة للتجميع، والفشل أحمر */ // v-read-all · v-tokens-tools: الرفض في دور السؤال بلا سطر «↳ تعذّرت الصورة»
         // v-one-brain: بطاقات «المصادر» كانت تأتي من طبقة البحث المحذوفة —
         // الآن تُستخرج من نتيجة أداة البحث نفسها وتُبثّ للعميل ليرسمها.
         if (cb.name === 'web_search') {
@@ -2182,7 +2182,7 @@ module.exports = async (req, res) => {
           if (__srcs.length) send({ sources: __srcs });
         }
         return { cb, result };
-      }));
+      })); __olS.busy = false;
       const toolResults = [];
       for (const st of settledTools) {
         /* v-github-all-providers: الدفعة العميقة (٢٤ ألف حرف) كانت تُقصّ هنا إلى ٨ آلاف فيضيع ثلثاها —
@@ -2199,7 +2199,7 @@ module.exports = async (req, res) => {
       convo.push({ role: 'user', content: toolResults });
     }
 
-    if (__olS.on && !__ownerOps.pushes) send({ error: __ol.exitText({ t0, MAX_MS, MAX_STEPS }), ownerStop: true }); // v-claude-code-level C1: لا خروج صامت — السبب للمالك (تحت النصّ إن وُجد). رفعة في ختام التعديل = الشغل تمّ، لا «انتهت الميزانيّة»
+    if (__olS.closed) { const __lt = __ol.closeTail(__olS, fullText, __ownerOps.lastPush); if (__lt) { send({ delta: __lt }); fullText += __lt; } } /* v-turn-close: السطر سبق — تحته نتائج ما خلص بعده (دمج، صورة، رابط الرفعة) */ else if (__olS.on && (!__ownerOps.prs || !__olS.final)) send({ error: __ol.withRef(__ol.exitText({ t0, MAX_MS, MAX_STEPS }), __ownerOps.lastPush), ownerStop: true }); /* v-turn-close: الوقت انتهى قبل الختام بعد رفعة سابقة = الشغل قد يكون ناقصًا — «كمل» ورابط الطلب، لا «أدمج وأنشر؟» */ // v-claude-code-level C1: لا خروج صامت — السبب للمالك (تحت النصّ إن وُجد). رفعة في ختام التعديل = الشغل تمّ، لا «انتهت الميزانيّة»
     else if (__ownerReq && __ownerOps.prs && !__ownerOps.merges && !/[اأإ]دمج/.test(fullText)) { const __mq = '\n\nأدمج وأنشر؟'; send({ delta: __mq }); fullText += __mq; }
     await __saveGenReply();
     __turnKaStop(); send({ done: true });

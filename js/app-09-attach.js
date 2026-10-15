@@ -3527,6 +3527,14 @@ function omranOwnerAppNoun(text){
   try{ return /(?:الصفح[ةه]\s+الرئيسي[ةه]|التطبيق|الواجه[ةه]|الإعدادات|الاعدادات|القائم[ةه]|الشريط|الهيدر|الفوتر|الزر|زرّ|(?:^|\s)زر(?=\s)|قسم)/i.test(String(text || '')); }
   catch(e){ __swallow(e, 'ui:owner-app-noun'); return false; }
 }
+/* v-turn-close: الإيقاف أو الحارس الصلب يحفظ نصّ العرض (liveStripCode يقصّ من أوّل سياج كود)، فيضيع سطر الخادم «⏸️ … اكتب «كمل»» إن جاء
+   بعد كود — ومنه وحده يعرف دور «كمل» أنّه إكمال وعلى أيّ طلب سحب. السطر وما تحته يُعاد تحت المحفوظ كما وصل. */
+function omranKeepStopLine(shown, raw){
+  const s = String(shown || '').trim(), r = String(raw || ''), i = r.lastIndexOf('⏸️');
+  if(i === -1) return s;
+  const tail = r.slice(i).trim();
+  return s.indexOf(tail) !== -1 ? s : (s + '\n\n' + tail).trim();
+}
 function omranOwnerUndoIsImage(messages){
   try{
     if(omranPrevTurnHadImage(messages)) return true;
@@ -4263,7 +4271,7 @@ function __friendlyErr(e){
   })();
   const askAll = !!customProviders || __askAllExplicit || (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) /* v-owner-solo: البناء الضمنيّ يفرض كلود — المالك على مزوّده */ && !__gateNoBuild && !__gateApprovedText && !__fileAnalyze && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape && !__rtWantLookup /* v-route-want */) || __strongBuildRe.test(text)) && !__routeFix);
   // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
-  let __lastStreamPartial = '';
+  let __lastStreamPartial = '', __lastStreamRaw = ''; /* v-turn-close: الخام لسطر الخادم بعد الإيقاف */
 
   try{
     // v-social-alive: الردود المخزنة الحرفية حُذفت نهائيًا بطلب
@@ -6978,7 +6986,7 @@ DESIGN RULES (non-negotiable):
         setTimeout(() => { __live.shown = __live.target.length; }, maxMs);
       });
       const onDelta = (partial) => {
-        onDelta._p = partial;
+        onDelta._p = partial; __lastStreamRaw = partial;
         const stripped = liveStripCode(partial);
         __lastStreamPartial = stripped;
         (function(){ try{ if(chatStatus) chatStatus.release(); }catch(e){ __swallow(e, "misc:app-09-attach#26"); } })();
@@ -7208,7 +7216,7 @@ DESIGN RULES (non-negotiable):
       try{ thinkingDiv.remove(); }catch(e){ __swallow(e, 'ui:chat-stop-remove'); }
       const lastMsg = cur.messages[cur.messages.length - 1];
       if(lastMsg && lastMsg.role === 'user'){
-        const partial = String(__lastStreamPartial || '').trim();
+        const partial = omranKeepStopLine(__lastStreamPartial, __lastStreamRaw); // v-turn-close: سطر «كمل» يبقى بعد الإيقاف
         cur.messages.push({
           role: 'assistant',
           content: partial || (__run.timedOut ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول النتيجة — أعد المحاولة.' : '⚠️ The connection dropped before the result arrived — please try again.') : (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.')),

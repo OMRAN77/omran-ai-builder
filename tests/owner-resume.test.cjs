@@ -146,7 +146,7 @@ test('٥. كلمات الإكمال: الصيغ الخليجيّة القصير�
 
 test('٦. لا سطر إكمال إن رُفع تعديل في الدور، وسبب الخروج بالمهلة يحمله أيضًا', () => {
   const src = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
-  assert.ok(src.includes('if (__ownerReq && __olS.nudged && !__ownerOps.pushes) { const __rm = __ol.resumeMark(); send({ delta: __rm }); fullText += __rm; }'), 'الشرط: ختام بالتنبيه وبلا رفع');
+  assert.ok(src.includes('if (__ownerReq && __olS.nudged && !__ownerOps.prs) { const __rm = __ol.resumeMark(); send({ delta: __rm }); fullText += __rm; }'), 'الشرط: ختام بالتنبيه وبلا رفعة ناجحة (v-turn-close: المحاولة الفاشلة لا تُعدّ)');
   assert.ok(/انتهت مهلة الردّ \(240 ث\) قبل الجواب النهائيّ/.test(ol.exitText({ t0: Date.now() - 300000, MAX_MS: 240000, MAX_STEPS: 12, steps: 5 })));
   assert.ok(ol.exitText({ t0: Date.now(), MAX_MS: 240000, MAX_STEPS: 12, steps: 12 }).includes(ol.RESUME_KEY));
   assert.ok(ol.FINAL_NOTE.startsWith('[تنبيه النظام — ليس من المالك]: انتهت ميزانيّة الأدوات'), 'بداية التنبيه كما كانت');
