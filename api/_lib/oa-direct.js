@@ -19,7 +19,12 @@ const DIRECT = {
   /* v-kimi (أمر المالك ٣ أكتوبر «اريد إضافة kimi مزود جديد المفتاح موجود»): Moonshot بصيغة OpenAI (chat/completions + أدوات).
      اسم المتغيّر غير معروف لنا فيُقبل الشائعان: KIMI_API_KEY ثمّ MOONSHOT_API_KEY. */
   kimi: { url: 'https://api.moonshot.ai/v1/chat/completions', keyVar: 'KIMI_API_KEY', altKeyVars: ['MOONSHOT_API_KEY'], label: 'Kimi' },
+  /* v-pplx-agent (المالك ١٥ أكتوبر «ابدا في Perplexity» بعد «اريدهم كل المزودين»): Sonar chat/completions تقاعد ٢٧ سبتمبر ٢٠٢٦،
+     وبديله Agent API بصيغة OpenAI Responses (/v1/responses) بأدوات دوالّ أصليّة (function_call ↔ function_call_output بـcall_id) —
+     المسار نفسه الذي يمرّ به GPT هنا، بلا بروتوكول نصّيّ. للمالك وحده (chat.js). لا احتياط chat/completions (تقاعد). */
+  perplexity: { url: 'https://api.perplexity.ai/v1/responses', responses: 'https://api.perplexity.ai/v1/responses', keyVar: 'PERPLEXITY_API_KEY', label: 'Perplexity', noFallback: true },
 };
+const PPLX_NO_TOOLS = '[هذا الدور بلا أدوات: الموديل على واجهة Perplexity لم يقبل أدوات الدوالّ. أجب ممّا تعرفه، ولا تدّعِ قراءة ملفّ ولا تعديلًا ولا رفعًا؛ وإن طلب المالك تعديلًا على تطبيقه فقل له في سطر إنّ أدوات التعديل لم تُقبل على هذا الموديل.]'; // v-pplx-agent
 
 // مسار مباشر لهذا المزوّد إن كان مفتاحه في البيئة، وإلّا null (يبقى على الوسيط كما كان).
 function directRoute(prov, env) {
@@ -30,6 +35,7 @@ function directRoute(prov, env) {
   if (!key) return null;
   const r = { prov: String(prov).toLowerCase(), url: d.url, key, label: d.label };
   if (d.responses) r.responsesUrl = d.responses;
+  if (d.noFallback) r.noFallback = true; // v-pplx-agent
   return r;
 }
 
@@ -47,6 +53,10 @@ function directModel(prov, requested, env) {
   if (prov === 'gemini') {
     const def = String(e.CHAT_GEMINI_MODEL || '').trim() || 'gemini-flash-latest';
     return { model: def, picked: false, def };
+  }
+  if (prov === 'perplexity') { // v-pplx-agent: معرّفات الـAgent API (perplexity/sonar)؛ معرّفات Sonar القديمة (sonar، sonar-pro…) يرفضها فتُترك للافتراضيّ
+    const def = String(e.CHAT_PERPLEXITY_MODEL || '').trim() || 'perplexity/sonar';
+    return (id && /^perplexity\/[a-z0-9._-]{1,60}$/i.test(id)) ? { model: id, picked: true, def } : { model: def, picked: false, def };
   }
   if (prov === 'kimi') { // v-kimi: معرّفات Moonshot نفسها (kimi-k3، kimi-k2.6…)؛ بادئة الوسيط moonshotai/ تُقصّ
     if (/^moonshotai\//i.test(id)) id = id.slice(11);
@@ -526,6 +536,7 @@ async function directFetch(route, anthropicBody, opts) {
   const sig = o.signal ? { signal: o.signal } : {}; // v-claude-code-level C5: حارس صمت المالك يقطع النداء المباشر أيضًا
   if (route.responsesUrl) {
     let rb = toResponsesBody(anthropicBody);
+    if (route.prov === 'perplexity') { delete rb.store; delete rb.reasoning; } // v-pplx-agent: حقلا OpenAI وحده
     let rl = null;
     let capDropped = false;
     let ownerEff = !!(anthropicBody.output_config && anthropicBody.output_config.effort); // v-owner-gpt-all
@@ -559,8 +570,11 @@ async function directFetch(route, anthropicBody, opts) {
         continue;
       }
       if (!capDropped && r.status === 400 && rb.max_output_tokens && /max_output_tokens/i.test(t)) { capDropped = true; rb = Object.assign({}, rb); delete rb.max_output_tokens; continue; }
+      /* v-pplx-agent: موديل Perplexity رفض أدوات الدوالّ = إعادة واحدة بلاها وبسطر يقول ذلك للموديل — جواب صادق لا «ما قدرت أردّ» */
+      if (route.prov === 'perplexity' && r.status === 400 && rb.tools && /tool|function/i.test(t)) { rb = Object.assign({}, rb, { instructions: (rb.instructions ? rb.instructions + '\n\n' : '') + PPLX_NO_TOOLS }); delete rb.tools; delete rb.tool_choice; continue; }
       break;
     }
+    if (route.noFallback) return rl; // v-pplx-agent: لا chat/completions بعدها (تقاعد) — الفشل وسببه للمالك (v-owner-solo)
     // موديل مرفوض = يُعاد كما هو فيرجع chat.js للافتراضيّ بسطر حالة؛ مفتاح/رصيد/حدّ (401/402/403/429/5xx) = كذلك
     // (المسار القديم بالمفتاح نفسه سيرفض مثله). غير ذلك (400/404 على شكل الطلب) = المسار القديم أدناه، ويُسجَّل السبب.
     const rt = await rl.text();
@@ -617,4 +631,4 @@ function quickEffortRejected(model, effort) {
   quickRejected.set(k, bad);
 }
 
-module.exports = { directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected, __summaryOff: summaryOff };
+module.exports = { PPLX_NO_TOOLS, directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected, __summaryOff: summaryOff };

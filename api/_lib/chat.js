@@ -1204,7 +1204,7 @@ module.exports = async (req, res) => {
   /* v-owner-direct (أمر المالك ٢٢ سبتمبر «اربط Groq مباشرة بمفتاحه… وGPT»): للمالك، Groq وGPT بمفتاح المزوّد نفسه
      على عنوانه الرسميّ (oa-direct.js يترجم البروتوكول في الاتّجاهين فلا تتغيّر حلقة الأدوات). بلا المفتاح = الوسيط كما كان.
      فشل المباشر قبل أوّل حرف = الوسيط للمزوّد نفسه مع سطر حالة (أدناه). */
-  let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai' || prov === 'kimi' /* v-kimi */)) ? require('./oa-direct.js').directRoute(prov) : null;
+  let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai' || prov === 'kimi' /* v-kimi */ || reqProv === 'perplexity')) ? require('./oa-direct.js').directRoute(reqProv === 'perplexity' ? reqProv : prov) : null; if (__direct && __direct.prov === 'perplexity') prov = 'perplexity'; // v-pplx-agent: Perplexity للمالك على Agent API بأدوات الدوالّ الأصليّة كـGPT؛ بلا مفتاحه = «لا طريق» (v-owner-solo) لا كلود مكانه
   let __directFallbacks = null;
   if (__direct) {
     const __dm = require('./oa-direct.js').directModel(prov, body && body.model);
@@ -1750,7 +1750,7 @@ module.exports = async (req, res) => {
         }
       }
       // v-owner-direct: المفتاح المباشر رفض قبل أوّل حرف (رصيد/401/429/5xx) → الوسيط للمزوّد نفسه، بإعلان للمالك.
-      if (!upstream.ok && __direct && __ownerReq && !anyText && process.env.OPENROUTER_API_KEY && prov !== 'groq') { // v-owner-solo: Groq عبر الوسيط ليس Groq
+      if (!upstream.ok && __direct && __ownerReq && !anyText && process.env.OPENROUTER_API_KEY && prov !== 'groq' && prov !== 'perplexity') { // v-owner-solo: Groq عبر الوسيط ليس Groq · v-pplx-agent: ولا Perplexity (لا موديل له في OR_MODELS ولا أدوات عند الوسيط)
         let __dt = '';
         try { __dt = (await upstream.text()).slice(0, 200); } catch (e) { /* جسم غير مقروء */ }
         __ownerFail = { who: __acct(), prov, status: upstream.status, text: __dt }; await logErrorAndFlush('chat/direct-fail-' + upstream.status, new Error(__acct() + ': ' + (__dt || ('upstream ' + upstream.status))), { action: 'owner-direct', prov });
@@ -2209,7 +2209,7 @@ function ownerStopNote(fail, then) {
 /* v-owner-identity (المالك ٨ أكتوبر: «ولا واحد يردّ على أيّ مزوّد باسمه… المزوّدين كلّهم أسامي فقط، شو عرّفني أنّهم بأصلهم»):
    منذ v-owner-full (٢ أكتوبر) يأخذ المالك النظام الكامل، وفي رأسه «أنت عمران… أسماء النماذج والمزوّدين لا تُذكر أبدًا — تقول المحرّك»
    (قاعدة المستخدمين v-no-provider-names). فكلّ مزوّد يقول «أنا عمران». للمالك وحده: هويّته الحقيقيّة واسمه، والباقي كما هو. */
-const OWNER_ID_NAMES = { claude: 'Claude من Anthropic', openai: 'GPT من OpenAI', gemini: 'Gemini من Google', kimi: 'Kimi من Moonshot AI', deepseek: 'DeepSeek من شركة DeepSeek', mistral: 'Mistral من Mistral AI', cohere: 'Command من Cohere', groq: 'موديل يعمل على خوادم Groq' };
+const OWNER_ID_NAMES = { claude: 'Claude من Anthropic', openai: 'GPT من OpenAI', gemini: 'Gemini من Google', kimi: 'Kimi من Moonshot AI', deepseek: 'DeepSeek من شركة DeepSeek', mistral: 'Mistral من Mistral AI', cohere: 'Command من Cohere', groq: 'موديل يعمل على خوادم Groq', perplexity: 'Sonar من Perplexity' };
 const OWNER_OR_VENDORS = { 'x-ai': 'Grok من xAI', qwen: 'Qwen من Alibaba', anthropic: 'Claude من Anthropic', openai: 'GPT من OpenAI', google: 'Gemini من Google', 'meta-llama': 'Llama من Meta', deepseek: 'DeepSeek', mistralai: 'Mistral من Mistral AI', moonshotai: 'Kimi من Moonshot AI', cohere: 'Command من Cohere' };
 function ownerIdentity(text, prov, model, tail) {
   const m = String(model || '').trim();

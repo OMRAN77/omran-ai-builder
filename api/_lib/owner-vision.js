@@ -14,6 +14,7 @@ const VISION = {
   groq: { direct: 'qwen/qwen3.6-27b', or: '' }, // gpt-oss نصّيّ؛ Qwen3.6 27B رؤية + أدوات على Groq، وLlama 4 Maverick يرى عند الوسيط
   deepseek: { or: 'deepseek/deepseek-v4-flash-vision-exp' }, // V4 Pro نصّيّ؛ V4 Flash Vision أوّل موديل رؤية في V4، بأدوات
   cohere: { or: 'cohere/command-a-plus' }, // Command A نصّيّ؛ Command A+ نصّ + صورة + أدوات
+  perplexity: { direct: '' }, // v-pplx-agent: صورة المالك تصل Perplexity نفسه على Agent API (input_image) — رفضه يظهر سببه، لا محرّك آخر مكانه
 };
 
 // خطّة دور الصورة على المسار الحاليّ ('direct' | 'or'): { model, def, forced } — forced = موديل الرؤية حلّ محلّ الاختيار.
