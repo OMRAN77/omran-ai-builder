@@ -56,7 +56,13 @@ test('١. سعر الدور بالتوكنات: الدخل والخرج وقرا
   assert.equal(cm.tokenCostUsd('claude-fable-5-1', { cacheWrite: 1e6 }), 12.5);
   assert.equal(cm.tokenCostUsd('claude-haiku-5-5', { input: 1e6, output: 1e6 }), 0.6);
   assert.equal(cm.tokenCostUsd('openai/gpt-oss-120b', { input: 1e6, output: 1e6 }), 0.75);
-  assert.equal(cm.tokenCostUsd('deepseek/deepseek-v4-pro', { input: 1e6 }), 0.58);
+  // v-deepseek-2026: flash 0.15/0.6 (قراءة كاش 2%)، pro 0.66/1.98 (قراءة كاش 3.3%) — وreasoner معرّف قديم للـ pro.
+  assert.equal(cm.tokenCostUsd('deepseek/deepseek-v4-pro', { input: 1e6 }), 0.66);
+  assert.equal(cm.tokenCostUsd('deepseek/deepseek-reasoner', { input: 1e6 }), 0.66);
+  assert.equal(cm.tokenCostUsd('deepseek/deepseek-v4-pro', { cacheRead: 1e6 }), 0.66 * 0.033);
+  assert.equal(cm.tokenCostUsd('deepseek/deepseek-chat', { input: 1e6 }), 0.15);
+  assert.equal(cm.tokenCostUsd('deepseek-flash', { input: 1e6, output: 1e6 }), 0.75);
+  assert.equal(cm.tokenCostUsd('deepseek-flash', { cacheRead: 1e6 }), 0.15 * 0.02);
   assert.equal(cm.tokenCostUsd('', {}), 0);
 });
 
