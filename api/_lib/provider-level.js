@@ -120,6 +120,7 @@ function ownerBrief(text, noTools) {
   if (!text) return text;
   let s = String(text).replace(' ويُرفع معها.', BUNDLE_TRUTH);
   if (noTools) s = s.replace(/\n\nصلاحيّتك على كود التطبيق[^\n]*/, '');
+  if (noTools) s = s.replace(/\n\nخريطة الكود \(مولَّدة آليًّا[\s\S]*?(?=\n\n\[|$)/, ''); // v-codemap: الخريطة وقاعدتها تسمّيان الأدوات — دور بلا أدوات لا يُؤمر بها
   return s;
 }
 
@@ -146,10 +147,14 @@ const READ_CITE = ' وكلّ موضع تذكره من ملفّ قرأته اكت
 let __readTool = null;
 /* v-owner-solo-all: نسخة المالك تعرف «التزامًا واحدًا بفرقه» (what=commit مع ref = sha) — github-read يدعمه منذ v-agent-deep والوكيل
    وحده كان يراه. الأداة المشتركة لغير المالك كما هي حرفيًّا (كاشهم لا يتغيّر). */
+/* v-codemap: ونسخته تعرف map = خريطة الكود كلّه (github-read.js codeMap) — المحلّيّة بلا نداء GitHub. */
+const MAP_WHAT = ' · map = خريطة كود التطبيق كلّه (كلّ ملفّ: غرضه ودوالّه وأدواته وعناصر واجهته id«نصّها») — بلا path كلّ المجلّدات، path=مجلّد أغراض ملفّاته، path=ملفّ دوالّه، query بحث فيها (نصّ ظاهر من لقطة يعطي id العنصر وملفّه)';
 function withCommit(schema) {
   const p = schema && schema.properties;
-  if (!p || !p.what || !Array.isArray(p.what.enum) || p.what.enum.indexOf('commit') !== -1) return schema;
-  const what = Object.assign({}, p.what, { enum: p.what.enum.concat(['commit']), description: String(p.what.description || '') + ' · commit = التزام واحد بفرقه (ref = sha)' });
+  if (!p || !p.what || !Array.isArray(p.what.enum)) return schema;
+  const add = ['commit', 'map'].filter((w) => p.what.enum.indexOf(w) === -1);
+  if (!add.length) return schema;
+  const what = Object.assign({}, p.what, { enum: p.what.enum.concat(add), description: String(p.what.description || '') + (add.indexOf('commit') !== -1 ? ' · commit = التزام واحد بفرقه (ref = sha)' : '') + (add.indexOf('map') !== -1 ? MAP_WHAT : '') });
   return Object.assign({}, schema, { properties: Object.assign({}, p, { what }) });
 }
 function ownerReadTool(t) {
@@ -157,4 +162,4 @@ function ownerReadTool(t) {
   return __readTool.out;
 }
 
-module.exports = { levelNote, familyOf, FAMILIES, SMALL_RE, OWNER_METHOD, NO_TOOLS_NOTE, ownerBrief, bundleNote, BUNDLE_WARN, ownerReadTool };
+module.exports = { levelNote, familyOf, FAMILIES, SMALL_RE, OWNER_METHOD, NO_TOOLS_NOTE, ownerBrief, bundleNote, BUNDLE_WARN, ownerReadTool, MAP_WHAT };

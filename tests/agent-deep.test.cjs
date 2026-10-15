@@ -165,5 +165,5 @@ test('٧. تعليمات الوكيل: منهج التعمّق، والبحث ق
   assert.match(src, /الجذر لا العَرَض: تتبّع السبب حتّى أصله وسمِّه بالملفّ والسطر/);
   assert.match(src, /ولطلب سحب أو التزام اقرأ الفرق \(diff\) نفسه لا أسماء الملفّات وحدها/);
   assert.match(src, /1ب\.[^\n]*الاستثناء: تحليل كود أو مستودع، أو تشخيص عطل، أو حلّ مسألة/);
-  assert.match(src, /what: \{ type: 'string', enum: \['auto', 'commits', 'commit'\]/);
+  assert.match(src, /what: \{ type: 'string', enum: \['auto', 'commits', 'commit', 'map'\]/);
 });

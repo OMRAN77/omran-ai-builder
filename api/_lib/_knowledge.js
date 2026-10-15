@@ -60,6 +60,32 @@ const BRIEF = `
 - الحلول الدائمة المقترحة: نقل الوسائط من Redis إلى تخزين كائنات، أو ترقية Upstash (Fixed 1GB = $20/شهر).
 `.trim();
 
+/* v-codemap (طلب المالك ١٠ أكتوبر «المزوّدون يكون عندهم كافّة المعلومات… معلومات الكود من الصفر»): خريطة الكود
+   المولَّدة آليًّا (api/_lib/codemap.json — scripts/codemap.mjs، ويعيدها codemap.yml بعد كلّ دمج) تُلحق بالمعرفة:
+   عدد الملفّات بكلّ مجلّد، والملفّات المحوريّة بأغراضها، وقاعدة «الخريطة قبل أيّ حكم». التفصيل الكامل بـread_github what=map. */
+let __mapBrief = null;
+function mapBrief() {
+  if (__mapBrief !== null) return __mapBrief;
+  __mapBrief = '';
+  try {
+    const m = require('./codemap.json');
+    const files = (m && m.files) || [];
+    if (!files.length) return __mapBrief;
+    const count = {};
+    for (const e of files) {
+      const s = e.p.split('/');
+      const g = s.length === 1 ? 'الجذر' : (s[0] === 'api' && s[1] === '_lib' && s.length > 2) ? 'api/_lib' : s[0] === '.github' ? '.github/workflows' : s[0];
+      count[g] = (count[g] || 0) + 1;
+    }
+    const dirs = Object.keys(count).map((g) => g + ' ' + count[g]).join(' · ');
+    const key = files.filter((e) => e.k && e.d).map((e) => '- ' + e.p + ' — ' + e.d).join('\n');
+    __mapBrief = '\n\nخريطة الكود (مولَّدة آليًّا من main بعد كلّ دمج — ' + files.length + ' ملفًّا' + (m.tests ? ' + ' + m.tests + ' اختبارًا في tests/' : '') + '): ' + dirs + '.\n' + key +
+      '\n- الخريطة الكاملة: read_github على OMRAN77/omran-ai-builder بـwhat=map — بلا path كلّ المجلّدات، path=مجلّد أغراض ملفّاته، path=ملفّ دوالّه وصادراته وأدواته وعناصر واجهته، query بحث فيها (النصّ الظاهر في لقطة الشاشة يعطيك id العنصر وملفّه).' +
+      '\n- قبل أيّ عمل أو حكم على كود التطبيق: الخريطة أوّلًا ثمّ الملفّ نفسه بـread_github — لا تخمّن مكان شيء، ولا تقل «ما أعرف مكانه» أو «أرسل لي الكود» قبلها.';
+  } catch (e) { __mapBrief = ''; }
+  return __mapBrief;
+}
+
 /**
  * يُرجع ملخّص المعرفة إن أثبت المنادي أنّه المالك، وإلّا نصًّا فارغًا.
  * لا يرمي أبدًا: فشل التحقّق يعني الصمت، لا تعطيل المحادثة.
@@ -69,10 +95,10 @@ function ownerKnowledge(req, token) {
     // الرمز يُمرَّر صراحةً لأنّ req.body قد يصل نصًّا غير محلَّل، فيضيع منه .token
     // بصمت وتبقى البوّابة مغلقة على مالكها دون سبب ظاهر.
     const probe = token ? { query: {}, body: { token: token } } : req;
-    return isOwner(probe) ? '\n\n' + BRIEF : '';
+    return isOwner(probe) ? '\n\n' + BRIEF + mapBrief() : ''; // v-codemap: + خريطة الكود
   } catch (e) {
     return '';
   }
 }
 
-module.exports = { ownerKnowledge };
+module.exports = { ownerKnowledge, mapBrief };

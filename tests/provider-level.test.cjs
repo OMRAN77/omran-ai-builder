@@ -265,7 +265,7 @@ test('٨. E5: وصف read_github للمالك يذكر from= المتوازية�
   const ro = o.tools.find((t) => t.name === 'read_github');
   assert.ok(ro.description.startsWith(base.description) && /يجوز طلب عدّة from= متوازية في دور واحد/.test(ro.description), 'وصف المالك');
   // v-owner-solo-all: المخطّط نفسه + «commit» (التزام واحد بفرقه) في نسخة المالك وحده
-  assert.deepEqual(ro.input_schema.properties.what.enum, base.input_schema.properties.what.enum.concat(['commit']), 'commit للمالك');
+  assert.deepEqual(ro.input_schema.properties.what.enum, base.input_schema.properties.what.enum.concat(['commit', 'map']), 'commit للمالك (وmap — v-codemap)');
   assert.deepEqual(Object.assign({}, ro.input_schema, { properties: Object.assign({}, ro.input_schema.properties, { what: base.input_schema.properties.what }) }), base.input_schema, 'وبقيّة المخطّط نفسه');
   const names = o.tools.map((t) => t.name);
   assert.deepEqual(names.slice(0, TOOLS.length), TOOLS.map((t) => t.name), 'الترتيب نفسه (الكاش)');
