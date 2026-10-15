@@ -126,8 +126,8 @@ test('١. C3+C4: تمهيد ثمّ 529 في الخطوة ٢ ← إعادتان �
 test('٢. C3: تمهيد ثمّ 529 بلا وسيط ← السبب تحت التمهيد عند المالك (كان يُبلع)', { timeout: 20000 }, async () => {
   const r = await withoutOR(() => run('omran', { provider: 'claude', messages: Q }, (u, b, n) => (isAnth(u) ? (n === 1 ? T.tool('read_github', READ, 'خلني أقرأ الملف أوّلًا.') : busy()) : new Response('{}', { status: 404 }))));
   const stop = r.events.find((e) => e.ownerStop);
-  assert.ok(stop && stop.error === 'ما قدرت أردّ الحين — خطأ 529', JSON.stringify(stop));
-  assert.equal((await client(r.raw)).reply, 'خلني أقرأ الملف أوّلًا.\n\n⚠️ ما قدرت أردّ الحين — خطأ 529');
+  assert.ok(stop && stop.error === 'ما قدرت أردّ الحين — خطأ 529: Overloaded' /* v-why: سبب المزوّد بعد الرقم */, JSON.stringify(stop));
+  assert.equal((await client(r.raw)).reply, 'خلني أقرأ الملف أوّلًا.\n\n⚠️ ما قدرت أردّ الحين — خطأ 529: Overloaded');
 });
 
 test('٣. C4: 529 ثمّ نجاح ← الموديل نفسه بلا وسيط؛ وretry-after أكبر من السقف (٨ ث) = لا انتظار بل السلسلة', { timeout: 20000 }, async () => {

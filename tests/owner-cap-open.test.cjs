@@ -185,7 +185,7 @@ test('٩. GPT المباشر يفشل ثمّ الوسيط 402 حجز السقف 
 
 test('١٠. 402 حجز السقف في ownerStopNote ليس «ما عندي رصيد»؛ نفاد الرصيد يبقى', () => {
   const { ownerStopNote } = chat.__imgWhy;
-  assert.equal(ownerStopNote({ status: 402, text: 'You requested up to 128000 tokens, but can only afford 9000.' }), 'ما قدرت أردّ الحين — خطأ 402');
+  assert.equal(ownerStopNote({ status: 402, text: 'You requested up to 128000 tokens, but can only afford 9000.' }), 'ما قدرت أردّ الحين — خطأ 402: You requested up to 128000 tokens, but can only afford 9000.'); // v-why: سبب المزوّد بعد الرقم
   assert.equal(ownerStopNote({ status: 402, text: 'Insufficient credits. Add more using https://openrouter.ai/settings/credits' }), 'ما عندي رصيد');
   assert.equal(ownerStopNote({ status: 402, text: '' }), 'ما عندي رصيد');
   const src = require('node:fs').readFileSync(require('node:path').join(root, 'api/_lib/chat.js'), 'utf8');

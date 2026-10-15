@@ -1544,7 +1544,7 @@ module.exports = async (req, res) => {
     const MAX_STEPS = Math.max(1, Math.min(20, Number(process.env.CHAT_MAX_STEPS) || 16));
     const MAX_MS = Math.max(20000, Number(process.env.CHAT_MAX_MS) || 240000);
     const t0 = Date.now();
-    let steps = 0; let __ownerCarried = false; const __olS = __ol.state(__ownerReq); const __olT = __ol.thinkState(__ownerReq, __ownerThink); if (__ownerReq) __ol.scrubRefusals(convo); // v-owner-carry: تنبيه «نفّذ الآن» مرّة واحدة في الردّ · v-claude-code-level (D1: كتل التفكير بين الجولات) · v-refusal-retry (١): ملاحظات الرفض السابقة لا تعود للمصنّف
+    let steps = 0; let __ownerCarried = false; let __carryN = 0; /* v-carry-fail */ const __olS = __ol.state(__ownerReq); const __olT = __ol.thinkState(__ownerReq, __ownerThink); if (__ownerReq) __ol.scrubRefusals(convo); // v-owner-carry: تنبيه «نفّذ الآن» مرّة واحدة في الردّ · v-claude-code-level (D1: كتل التفكير بين الجولات) · v-refusal-retry (١): ملاحظات الرفض السابقة لا تعود للمصنّف
     let searchesUsed = 0; // v-chat-parallel-tools: سقف بحثين لكل ردّ
     let anyText = false;
     let fullText = '';   // v608 — نصّ الردّ المتراكم
@@ -1620,8 +1620,8 @@ module.exports = async (req, res) => {
     /* v-owner-cap-open + v-cap-not-credit: سقف خرج المالك ١٢٨ ألف توكن على كلّ المسارات (كلود/وسيط/Groq/OpenAI/Kimi المباشر).
        رفض السقف = إعادة بسقف أدنى تُذكَر (__capCut): 402 «max_tokens/afford» ← حدّ الرصيد من الرسالة (سقف ١٦ ألفًا) لا «ما عندي رصيد» —
        كان `!__direct` يتخطّى GPT ثمّ هبوط الوسيط بـ١٢٨ ألفًا فيحجز أكثر من الموجود؛ 400 حدّ الموديل ← N من النصّ. مرّتان في الدور. غير المالك ١٦ ألفًا. */
-    const OWNER_MAX_TOKENS = 128000, MID_MAX_TOKENS = 64000, PLAIN_MAX_TOKENS = 16000; let __capCut = 0, __capTries = 0, __liveTried = false; /* v-live-default */
-    const __maxTokens = () => (quietSocialTurn ? 350 : (__ownerReq ? (__capCut || OWNER_MAX_TOKENS) : PLAIN_MAX_TOKENS));
+    const OWNER_MAX_TOKENS = 128000, MID_MAX_TOKENS = 64000, PLAIN_MAX_TOKENS = 16000; let __capCut = 0, __capTries = 0, __liveTried = false; /* v-live-default */ if (__ownerReq && viaOR && !__direct && !quietSocialTurn) await require('./provider-models.js').loadModels({ fetch: () => Promise.reject(new Error('kv-only')) }).catch(() => null); /* v-owner-cap-live: حدّ خرج الموديل من القائمة الحيّة — الذاكرة أو KV وحدهما، بلا شبكة في الدور */
+    const __outCap = () => { const __m = (viaOR && !__direct) ? require('./provider-models.js').metaOf(CHAT_MODEL) : null; return (__m && __m.out >= 1024) ? __m.out : Infinity; }; const __maxTokens = () => (quietSocialTurn ? 350 : (__ownerReq ? Math.min(__capCut || OWNER_MAX_TOKENS, __outCap()) : PLAIN_MAX_TOKENS)); /* v-owner-cap-live: لا يُرسل للوسيط فوق أقصى خرج الموديل المعلَن */
     const __kTok = (n) => String(Math.round(n / 1000)).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]) + ' ألف توكن';
     // حدّ الموديل من نصّ 400: أكبر عدد في الرسالة أقلّ من السقف المرسَل (أنثروبيك: «max_tokens: 128000 > 64000, which is the maximum allowed…»)
     const __capFromText = (t, cur) => { let best = 0; for (const m of String(t).match(/\d{4,7}/g) || []) { const n = Number(m); if (n >= 1024 && n < cur && n > best) best = n; } return best; };
@@ -1690,11 +1690,11 @@ module.exports = async (req, res) => {
         }
       } const __cutCap = async (up) => { /* v-cap-not-credit: GPT المباشر وبعد هبوط الوسيط — 402 حجز ≠ محفظة فاضية */
         for (;;) {
-          if (up.ok || !__ownerReq || __capTries >= 2 || (up.status !== 402 && up.status !== 400)) return up;
+          if (up.ok || !__ownerReq || __capTries >= 2 || (up.status !== 402 && up.status !== 400 && up.status !== 404)) return up; // v-owner-cap-live: و404 «can handle»
           let __ct = ''; try { __ct = (await up.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
           const __cur = __maxTokens(); let __next = 0;
           if (up.status === 402 && /max_tokens|afford/i.test(__ct)) { const __aff = Number((/afford\s+(\d{4,7})/i.exec(__ct) || [])[1] || 0); __next = (__aff >= 1024 && __aff < __cur) ? Math.min(PLAIN_MAX_TOKENS, __aff) : PLAIN_MAX_TOKENS; }
-          else if (up.status === 400 && /max_tokens/i.test(__ct)) __next = __capFromText(__ct, __cur) || (__cur > MID_MAX_TOKENS ? MID_MAX_TOKENS : PLAIN_MAX_TOKENS);
+          else if (up.status === 400 && /maximum context length is \d+[^]*?requested about \d+/i.test(__ct)) { const __cx = /maximum context length is (\d+)[^]*?requested about (\d+)/i.exec(__ct); const __h = Number(__cx[1]) - (Number(__cx[2]) - __cur) - 2048; __next = __h >= 4096 ? __h : 0; } /* v-owner-cap-live: نافذة الوسيط */ else if ((up.status === 400 && /max_?(?:completion_?|output_?)?tokens|max tokens|maximum output/i.test(__ct)) || (up.status === 404 && /No endpoints found that can handle/i.test(__ct))) __next = __capFromText(__ct.replace(/(\d+)\s*\(exclusive\)/gi, (__a, __d) => String(Number(__d) - 1)), __cur) || (__cur > MID_MAX_TOKENS ? MID_MAX_TOKENS : PLAIN_MAX_TOKENS); // v-owner-cap-live: نصوص Cohere/Google/OpenAI والحدّ الحصريّ
           if (!(__next && __next < __cur)) return { ok: false, status: up.status, headers: up.headers || null, text: async () => __ct };
           __capTries++; __capCut = __next;
           send({ status: up.status === 402 ? (__direct ? '↳ ⚠️ حجز سقف ' + __kTok(__cur) + ' أكبر من المتاح — أكمل بالسقف العاديّ' : '↳ ⚠️ رصيد الوسيط لا يكفي حجز سقف ' + __kTok(__cur) + ' — أكمل بالسقف العاديّ') : '↳ ⚠️ الموديل لا يقبل سقف ' + __kTok(__cur) + ' — أكمل بسقفه ' + __kTok(__next) });
@@ -1730,13 +1730,13 @@ module.exports = async (req, res) => {
         let __lt = '';
         try { __lt = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
         __liveTried = true;
-        const __alt = isModelErrorStatus(upstream.status, __lt) ? await require('./provider-models.js').liveDefault(prov, CHAT_MODEL) : '';
+        const __alt = (upstream.status === 404 || /model_not_found|does not exist|no longer available|not a valid model|invalid model|unknown model/i.test(__lt)) ? await require('./provider-models.js').liveDefault(prov, CHAT_MODEL) : '';
         if (__alt) {
           await logErrorAndFlush('chat/default-dead-' + upstream.status, new Error(__acct() + ': ' + CHAT_MODEL + ' → ' + __alt + ' · ' + (__lt || ('upstream ' + upstream.status))), { action: 'live-default', prov });
           if (__ownerReq) send({ status: '⚠️ الموديل الافتراضيّ ' + CHAT_MODEL + ' لم يعد عند الوسيط — أكمل بأحدث موديل لشركته: ' + __alt + ' (حدّث OR_MODELS في chat.js).', k: 'stModelFallback', p: { model: __alt } });
           DEFAULT_MODEL = __alt; CHAT_MODEL = __alt;
           if (__imgCfg) __imgCfg = imageTurnConfig(process.env, viaOR, CHAT_MODEL);
-          upstream = await callUpstream(true);
+          upstream = await __cutCap(await __ol.think400(await __ol.retryBusy(await callUpstream(true), () => callUpstream(true), __olS, { direct: __ownerReq, t0, MAX_MS, send }), __olT, convo, () => callUpstream(true), send)); // v-live-default: البديل يمرّ بسلسلة الدور نفسها (زحام، تفكير مرفوض، سقف أعلى من حدّه) — كان 400 بعده «خطأ 400»
           if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false);
         } else {
           upstream = { ok: false, status: upstream.status, text: async () => __lt };
@@ -1907,7 +1907,7 @@ module.exports = async (req, res) => {
       try {
       while (true) {
         const { done, value } = await __ol.read(reader, __olS); // v-claude-code-level C5: أيّ بايت يصفّر حارس الصمت (المالك)
-        if (done) { streamDone = true; break; }
+        if (done) { streamDone = true; if (__olS.on && !stopReason && __ol.toolOpen(blocks)) throw Object.assign(new Error('OA_STREAM_PROTOCOL_ERROR: stream ended without response terminal event'), { code: 'OA_STREAM_PROTOCOL_ERROR' }); break; } // v-sse-error: نهاية بلا stop_reason وأداة ناقصة = بثّ مقطوع
         if (__cut.gone) break; // v-tokens-close: لا نكمل قراءة بثّ لا أحد يستلمه — finally يلغي القارئ فينقطع اتّصال المزوّد
         buf += decoder.decode(value, { stream: true });
         // v-chat-heartbeat REVERTED (كان يُبقي حارس خمول العميل حيًّا للأبد حين
@@ -1920,7 +1920,7 @@ module.exports = async (req, res) => {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           let ev;
-          try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
+          try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; } if (__olS.on && __ol.isSseError(ev)) throw __ol.sseError(ev); // C9 · v-sse-error: خطأ المزوّد داخل البثّ
           if (ev.type === 'content_block_start') {
             const cb = ev.content_block || {};
             blocks[ev.index] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' }; __ol.thinkOpen(blocks[ev.index], cb); // D1
@@ -1942,7 +1942,7 @@ module.exports = async (req, res) => {
             else if (ev.delta && ev.delta.type === 'input_json_delta') cb.inputJson += ev.delta.partial_json;
             else __ol.thinkDelta(cb, ev.delta); // D1: thinking_delta · signature_delta
           } else if (ev.type === 'content_block_stop') {
-            __ol.thinkStop(__olT, blocks[ev.index], send); // D1: ملخّص التفكير سطر «↳ 💭» (المالك)
+            __ol.thinkStop(__olT, blocks[ev.index], send); if (blocks[ev.index]) blocks[ev.index].closed = true; /* v-tool-stop */ // D1: ملخّص التفكير سطر «↳ 💭» (المالك)
           } else if (ev.type === 'message_start') {
             // v-prompt-cache: عدّاد التوكنات — ما جاء من الكاش وما دُفع بالسعر الكامل.
             const u = (ev.message && ev.message.usage) || {};
@@ -1976,7 +1976,7 @@ module.exports = async (req, res) => {
       // v-prompt-cache: المالك وحده يرى الحساب في شارة النموذج: كاش · جديد · خرج (مجموع الجولات).
       if (__ownerReq) send({ modelId: __pick.picked ? __pick.id : 'default', modelLabel: (__pick.label || 'الافتراضيّ') + ' · ' + usageLabel(__usage) + (__ownerThink ? ' · 🧠' : ' · ⚡') }); if (__ownerReq) send({ served: String(__usage.served || CHAT_MODEL || '').slice(0, 120) }); // v-owner-auto: تفكير أم فوريّ · v-owner-identity: الموديل كما أعلنه المزوّد نفسه
 
-      /* v-claude-code-level C5·C6·C2 — للمالك قبل «نفّذ الآن»: صمت المزوّد (الوسيط مرّة)، الرفض (لا يُعاد)، القطع لطوله، الفراغ — بسبب ظاهر. */
+      { const __ts = __ol.toolStop(__olS, stopReason, blocks); if (__ts !== stopReason) { logError('chat/tool-stop', new Error(__acct() + ': ' + prov + ' stop=' + (stopReason || 'none'))); stopReason = __ts; } } /* v-tool-stop */ /* v-claude-code-level C5·C6·C2 — للمالك قبل «نفّذ الآن»: صمت المزوّد (الوسيط مرّة)، الرفض (لا يُعاد)، القطع لطوله، الفراغ — بسبب ظاهر. */
       const __oa = __cut.gone ? null : __ol.afterStream(__olS, { stopReason, blocks, steps, MAX_STEPS, t0, MAX_MS, convo, think: __olT }); // v-tokens-close: عميل رحل = لا إكمال ولا إعادة مدفوعة
       if (__oa && __oa.kind === 'stall' && !sawTextThisStep && prov === 'claude' && !viaOR && !__direct && process.env.OPENROUTER_API_KEY && !__ownerChainSet) {
         __ownerChainSet = true; __ownerFail = __ownerFail || { who: __acct(), prov, status: 504, text: __oa.msg };
@@ -1997,8 +1997,8 @@ module.exports = async (req, res) => {
         const __oc = require('./owner-carry.js');
         const __stepText = blocks.filter((b) => b && b.type === 'text').map((b) => b.text || '').join('');
         const __prevOwner = (function(){ try{ const us = (messages || []).filter((m) => m && m.role === 'user'); const p = us[us.length - 2]; if (!p) return ''; return typeof p.content === 'string' ? p.content : (Array.isArray(p.content) ? p.content.filter((x) => x && x.type === 'text').map((x) => x.text || '').join(' ') : ''); }catch(e){ return ''; } })();
-        if (__oc.stalledPlan(__stepText, { usedTools: steps > 1, pushed: __ownerOps.pushes > 0, ownerText: lastUserText, prevOwnerText: __prevOwner }) || (__resumeTurn && steps === 1 && !__ownerOps.pushes)) { // v-owner-resume: دور الإكمال ختم بنصّ بلا أداة واحدة
-          __ownerCarried = true;
+        if ((__oc.stalledPlan(__stepText, { usedTools: steps > 1, pushed: __ownerOps.prs > 0 || __ownerOps.pushes >= 3, ownerText: lastUserText, prevOwnerText: __prevOwner }) && (!__carryN || __oc.INTENT_RE.test(__stepText))) || (__resumeTurn && steps === 1 && !__ownerOps.prs)) { // v-owner-resume: دور الإكمال ختم بنصّ بلا أداة واحدة
+          __ownerCarried = ++__carryN >= 2; /* v-carry-fail: حمل ثانٍ للوعد وحده */
           convo.push({ role: 'assistant', content: __ol.asSent(__olT, blocks, [{ type: 'text', text: __stepText.trim() || ' ' }]) }); // D1: بتفكير الجولة كما وصل
           convo.push({ role: 'user', content: [{ type: 'text', text: (__ownerPicsOk && __ownerOps.drew) ? __oc.PICS_CARRY_NOTE : __oc.CARRY_NOTE }] }); /* v-img-with-edit: بعد الرسم ارفع الصورة لا edit_github */
           send({ delta: '\n\n' }); fullText += '\n\n';
@@ -2131,7 +2131,7 @@ module.exports = async (req, res) => {
           /* v-agent-surgical: كما في الوكيل — التعديل يتشارك سقف الرفعات، والدمج بإذن «ادمج» في آخر رسالة المالك يفحصه الخادم. */
           else if (cb.name === 'edit_github') {
             if (!__ownerReq) result = '✗ التعديل على GitHub للمالك وحده.';
-            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./agent-img.js').ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-edit.js').editFiles(input, { imgIds: __ownerOps.imgIds }))); /* v-agent-img */ result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4: رفعة تمسّ js/app-NN-*.js = «الحزمة لم تُبنَ» (partials لا تُحزَم) */ if (/^✅ رُفع/.test(result)) { __ownerOps.prs = (__ownerOps.prs || 0) + 1; __ownerOps.lastPush = __ol.pushRef(result); } /* v-owner-like-me */ }
+            else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./agent-img.js').ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-edit.js').editFiles(input, { imgIds: __ownerOps.imgIds })).then((r) => { if (r && r.local) __ownerOps.pushes--; return r; })); /* v-agent-img */ result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4: رفعة تمسّ js/app-NN-*.js = «الحزمة لم تُبنَ» (partials لا تُحزَم) */ if (/^✅ رُفع/.test(result)) { __ownerOps.prs = (__ownerOps.prs || 0) + 1; __ownerOps.lastPush = __ol.pushRef(result); } /* v-owner-like-me */ }
           }
           else if (cb.name === 'merge_github') {
             const __ge = require('./github-edit.js');
@@ -2235,7 +2235,7 @@ function ownerStopNote(fail, then) {
   if (Number(__f.status) === 413 && /tokens per minute|\bTPM\b/i.test(String(__f.text || ''))) return 'ما قدرت أردّ الحين — المحادثة أكبر من حدّ المفتاح في الدقيقة؛ افتح محادثة جديدة';
   // v-groq-tpm: 429 بموعد («try again in 12m3s») بعد انتظار oa-direct القصير = موعد الحدّ نفسه للمالك بدل رقم
   if (Number(__f.status) === 429) { const __w = require('./oa-direct.js').retryAfterOf(null, __f.text); if (__w) return 'ما قدرت أردّ الحين — وصلت حدّ المفتاح؛ جرّب بعد ' + (__w < 90 ? Math.ceil(__w) + ' ثانية' : __w < 5400 ? Math.ceil(__w / 60) + ' دقيقة' : Math.ceil(__w / 3600) + ' ساعة'); return 'ما قدرت أردّ الحين — المزوّد وصل حدّ الطلبات (429) حتّى بعد الانتظار؛ جرّب بعد دقيقة'; } // v-direct-429: بلا موعد = قلها بالعربيّ لا «خطأ 429»
-  return 'ما قدرت أردّ الحين — خطأ ' + (__f.status || '؟');
+  return 'ما قدرت أردّ الحين — خطأ ' + (__f.status || '؟') + __ol.whyTail(__f.text); // v-why: سبب المزوّد بعد الرقم
 }
 /* v-owner-identity (المالك ٨ أكتوبر: «ولا واحد يردّ على أيّ مزوّد باسمه… المزوّدين كلّهم أسامي فقط، شو عرّفني أنّهم بأصلهم»):
    منذ v-owner-full (٢ أكتوبر) يأخذ المالك النظام الكامل، وفي رأسه «أنت عمران… أسماء النماذج والمزوّدين لا تُذكر أبدًا — تقول المحرّك»

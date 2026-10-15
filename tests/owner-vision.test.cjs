@@ -139,7 +139,7 @@ test('اختيار المالك الذي لا يرى في صفّ الوسيط: �
   const q = await ask({ provider: 'openrouter', model: 'qwen/qwen3.6-27b', keys: { OPENROUTER_API_KEY: 'or' }, upstream: blind });
   assert.equal(q.calls.length, 1, 'Qwen لا يُبدَّل بكروك');
   assert.equal(q.calls[0].body.model, 'qwen/qwen3.6-27b');
-  assert.ok(q.events.some((e) => e.ownerStop === true && e.error === 'ما قدرت أردّ الحين — خطأ 404'));
+  assert.ok(q.events.some((e) => e.ownerStop === true && String(e.error).startsWith('ما قدرت أردّ الحين — خطأ 404') /* v-why: وبعده سبب المزوّد */));
 });
 
 test('CHAT_IMAGE_MODEL لا يحوّل صورة المالك عن مزوّده — وكلود يبقى عليه كما كان', async () => {

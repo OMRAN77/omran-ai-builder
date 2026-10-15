@@ -163,7 +163,7 @@ test('the retry lives in directFetch for Groq only, once, after the cap retry; a
   assert.match(src, /if \(!tpmFitted && route\.prov === 'groq' && r\.status === 413\) \{ const fit = fitGroqTpm\(body, t\); if \(fit\) \{ tpmFitted = true; body = fit; continue; \} \}/);
   const { ownerStopNote } = chat.__imgWhy;
   assert.equal(ownerStopNote({ status: 413, text: 'Request too large for model `x` on tokens per minute (TPM): Limit 8000, Requested 9000' }), 'ما قدرت أردّ الحين — المحادثة أكبر من حدّ المفتاح في الدقيقة؛ افتح محادثة جديدة');
-  assert.equal(ownerStopNote({ status: 413, text: 'Request Entity Too Large' }), 'ما قدرت أردّ الحين — خطأ 413', 'غير حدّ الدقيقة كما كان');
+  assert.equal(ownerStopNote({ status: 413, text: 'Request Entity Too Large' }), 'ما قدرت أردّ الحين — خطأ 413: Request Entity Too Large', 'غير حدّ الدقيقة كما كان');
   assert.equal(ownerStopNote({ status: 402, text: '' }), 'ما عندي رصيد');
 });
 
