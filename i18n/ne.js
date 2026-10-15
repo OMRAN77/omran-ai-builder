@@ -1,4 +1,19 @@
 I18N['ne'] = {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "प्राकृतिक",
+    "designAiLightingNeutral": "तटस्थ सेतो",
+    "designAiLightingGolden": "सुनौलो चमक",
+    "designAiLightingPurple": "बैजनी रात",
+    "designAiLightingSunset": "सूर्यास्त",
+    "designAiLightingMoon": "जुनेली",
+    "designAiLightingEmerald": "शान्त पन्ना",
+    "designAiLightingTurquoise": "तटीय फिरोजी",
+    "designAiLightingRose": "नरम गुलाबी",
+    "designAiLightingBurgundy": "सिनेमाई बरगन्डी",
+    "designAiLightingNeon": "दुई रङको नियोन",
+    "designAiLightingCinematic": "सन्तुलित सिनेमाई",
+    "designAiLightingAurora": "ध्रुवीय ज्योतिका रङ",
+
     "notifSectionLabel": "🔔 सूचनाहरू",
     "newsAlertsLabel": "📢 ब्रेकिङ न्युज अलर्ट",
     "newsAlertsHint": "ब्रेकिङ न्युज वा आपतकालीन चेतावनी आउँदा एप बन्द भए पनि सूचना पाउनुहोस्",
