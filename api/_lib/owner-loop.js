@@ -240,7 +240,7 @@ async function retryBusy(up, again, s, o) {
     r = synth(r, t);
     if (/credit|balance|billing|insufficient|quota|payment/i.test(t)) break;
     const ra = retryAfterMs(r.headers);
-    const wait = ra != null ? ra : [800, 2000][i];
+    const wait = ra != null ? ra : [1500, 4000][i]; // v-direct-429: بلا موعد (Perplexity 429) انتظار أطول قليلًا — كان ٠٫٨ ث ثمّ ٢ ث فيفشل قبل أن ينفتح الحدّ
     if (s.retryMs + wait > RETRY_CAP_MS || Date.now() - o.t0 + wait > o.MAX_MS - margin(o.MAX_MS)) break;
     s.retryMs += wait;
     if (o.send) o.send({ status: '⏳ المزوّد مشغول (' + r.status + ') — يعيد المحاولة…' });

@@ -1192,7 +1192,7 @@ module.exports = async (req, res) => {
   // التدفق، وSonnet 5 من نفس الجيل ويكفي المحادثة اليومية بفارق سرعة كبير.
   // Opus يبقى حصريًّا للرد الاحترافي 👑 المدفوع (مساره في claude.js)،
   // وCHAT_CLAUDE_MODEL يرجّع Opus من البيئة بلا نشر. v-chat-economy (أمر المالك ٢٣ سبتمبر): الافتراضيّ Haiku 4.5.
-  let DEFAULT_MODEL = viaOR ? OR_MODELS[prov] : (process.env.CHAT_CLAUDE_MODEL || 'claude-haiku-4-5');
+  let DEFAULT_MODEL = viaOR ? (require('./provider-models.js').liveDefaultOf(prov) || OR_MODELS[prov]) : (process.env.CHAT_CLAUDE_MODEL || 'claude-haiku-4-5'); // v-live-default: الافتراضيّ الحيّ إن مات الثابت
   // v-claude-models: اختيار المستخدم على مسار كلود فقط؛ يعود للافتراضيّ إن رفضه المفتاح (أدناه).
   // v-models-owner (أمر عمران «الأنثروبيك للمالك فقط»): اختيار الموديل للمالك وحده؛
   // غير المالك يبقى على الافتراضيّ (Haiku) كي لا يُستنزف رصيد المالك بموديل غالٍ.
@@ -1237,7 +1237,7 @@ module.exports = async (req, res) => {
     if (!key || !Object.prototype.hasOwnProperty.call(OR_MODELS, p) || (p !== 'claude' && !or)) return false;
     __direct = null; prov = p; viaOR = or; apiKey = key;
     CHAT_URL = or ? 'https://openrouter.ai/api/v1/messages' : 'https://api.anthropic.com/v1/messages';
-    DEFAULT_MODEL = or ? OR_MODELS[p] : (process.env.CHAT_CLAUDE_MODEL || 'claude-haiku-4-5');
+    DEFAULT_MODEL = or ? (require('./provider-models.js').liveDefaultOf(p) || OR_MODELS[p]) : (process.env.CHAT_CLAUDE_MODEL || 'claude-haiku-4-5'); // v-live-default
     const cm = (model && Object.prototype.hasOwnProperty.call(CLAUDE_MODELS, model)) ? (or ? CLAUDE_MODELS[model].or : model) : '';
     CHAT_MODEL = cm || DEFAULT_MODEL;
     return true;
@@ -1409,7 +1409,7 @@ module.exports = async (req, res) => {
   const sysParts = messages
     .filter((m) => m && m.role === 'system' && typeof m.content === 'string' && !isClientMemoryNote(m.content) && !isClientTopicRule(m.content)) // v-tokens-dedupe: قاعدة الموضوع تصل في PERSONA_NOTE أدناه بنصّ أشمل — نسخة العميل كانت تتكرّر في كلّ دور
     .map((m) => m.content); const __nClient = sysParts.length; // v-tokens-s0: ملاحظات العميل (تُعرف بموضعها لا بنصّها)
-  if (!quietSocialTurn) sysParts.unshift(MASTERY_NOTE); if (__ownerReq && !quietSocialTurn) sysParts.splice(1, 0, require('./provider-level.js').OWNER_METHOD); const __clFrom = sysParts.length - __nClient, __clTo = sysParts.length; /* v-tokens-s0: ملاحظات العميل الآن آخر sysParts — كلّ ما يُدفع بعدها (التعليمات · الذاكرة · الحقائق · المخصّصة) ليس منها */ /* v-claude-code-level E3: منهج Claude Code للمالك بعد منهج الإتقان — في الثابت المخزَّن */ // v-provider-mastery: أوّل الثابت، وتعليمات المستخدم بعده أعلى أولويّة
+  if (!quietSocialTurn) sysParts.unshift(MASTERY_NOTE); if (__ownerReq && !quietSocialTurn) sysParts.splice(1, 0, require('./provider-level.js').OWNER_METHOD, require('./repo-map.js').REPO_NOTE); /* v-repo-map: خريطة المستودع بعد المنهج في الثابت المخزَّن */ const __clFrom = sysParts.length - __nClient, __clTo = sysParts.length; /* v-tokens-s0: ملاحظات العميل الآن آخر sysParts — كلّ ما يُدفع بعدها (التعليمات · الذاكرة · الحقائق · المخصّصة) ليس منها */ /* v-claude-code-level E3: منهج Claude Code للمالك بعد منهج الإتقان — في الثابت المخزَّن */ // v-provider-mastery: أوّل الثابت، وتعليمات المستخدم بعده أعلى أولويّة
   if (typeof body.system === 'string' && body.system.trim() && !isClientMemoryNote(body.system)) sysParts.push(body.system);
   if (accountMemory) sysParts.push(accountMemory);
   const __turnNotes = sysParts.filter(isClientTurnNote); // v-tokens-cache: ملاحظات العميل الخاصّة بهذا الدور وحده (موضوع جديد/عودة، أخبار، بناء…) — تخرج من النظام إلى ذيل رسالة المستخدم الأخيرة
@@ -1538,10 +1538,10 @@ module.exports = async (req, res) => {
   // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
 
   try {
-    // ثمان خطوات لا خمس وعشرين: المحادثة ليست بناءً طويلًا، وكلّ خطوة استدعاء
-    // كامل بسياق متراكم. السقفان معًا — خطوات ووقت — يمنعان فاتورة مفتوحة.
+    // ستّ عشرة خطوة (v-provider-max — كانت ١٢ وقبلها ٨) لا خمسًا وعشرين: الوقت (MAX_MS ثمّ حدّ الدالّة ٢٩٠ ث) هو القيد الحقيقيّ،
+    // والخطوة استدعاء كامل بسياق متراكم. السقفان معًا — خطوات ووقت — يمنعان فاتورة مفتوحة.
     let __imgCfg = (lastUserHasImage && !__direct) && !__ownerSeen ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; // v-img-read · v-owner-vision: مزوّد المالك يرى بموديله
-    const MAX_STEPS = Math.max(1, Math.min(16, Number(process.env.CHAT_MAX_STEPS) || 12));
+    const MAX_STEPS = Math.max(1, Math.min(20, Number(process.env.CHAT_MAX_STEPS) || 16));
     const MAX_MS = Math.max(20000, Number(process.env.CHAT_MAX_MS) || 240000);
     const t0 = Date.now();
     let steps = 0; let __ownerCarried = false; const __olS = __ol.state(__ownerReq); const __olT = __ol.thinkState(__ownerReq, __ownerThink); // v-owner-carry: تنبيه «نفّذ الآن» مرّة واحدة في الردّ · v-claude-code-level (D1: كتل التفكير بين الجولات)
@@ -1622,7 +1622,7 @@ module.exports = async (req, res) => {
        وGroq/OpenAI/Kimi المباشر) بدل ١٦ ألفًا؛ سقف لا إنفاق (يُفوتَر المولَّد وحده). رفض السقف = إعادة بسقف أدنى تُذكَر لبقيّة الدور (__capCut،
        فوق حلقة الخطوات): 402 حجز رصيد الوسيط ← السقف العاديّ؛ 400 «max_tokens … > N» من موديل حدّه أقلّ ← حدّه N من نصّ الرسالة (Haiku 4.5
        ‏٦٤ ألفًا، Gemini ‏٦٥٥٣٦…)، وبلا رقم ← ٦٤ ألفًا ثمّ العاديّ. مرّتان في الدور كحدّ (حلقة: ١٢٨ ← ٦٤ ← ١٦ في النداء نفسه). غير المالك ١٦ ألفًا كما كان (مسار الباقة يطابقه — v-model-lock). */
-    const OWNER_MAX_TOKENS = 128000, MID_MAX_TOKENS = 64000, PLAIN_MAX_TOKENS = 16000; let __capCut = 0, __capTries = 0;
+    const OWNER_MAX_TOKENS = 128000, MID_MAX_TOKENS = 64000, PLAIN_MAX_TOKENS = 16000; let __capCut = 0, __capTries = 0, __liveTried = false; /* v-live-default */
     const __maxTokens = () => (quietSocialTurn ? 350 : (__ownerReq ? (__capCut || OWNER_MAX_TOKENS) : PLAIN_MAX_TOKENS));
     const __kTok = (n) => String(Math.round(n / 1000)).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]) + ' ألف توكن';
     // حدّ الموديل من نصّ 400: أكبر عدد في الرسالة أقلّ من السقف المرسَل (أنثروبيك: «max_tokens: 128000 > 64000, which is the maximum allowed…»)
@@ -1712,6 +1712,26 @@ module.exports = async (req, res) => {
         }
       }
 
+      /* v-live-default (لقطة المالك ١٥ أكتوبر: Cohere «ما قدرت أردّ الحين — خطأ 404»): الافتراضيّ الثابت في OR_MODELS (cohere/command-a) لم يعد
+         عند الوسيط، والمنتقي يعرض القائمة الحيّة أصلًا. رفض الوسيط للافتراضيّ (404 أو نصّ «موديل غير موجود») = أحدث موديل بأدوات لشركته
+         من القائمة الحيّة نفسها (provider-models.liveDefault)، إعادة واحدة بالطلب نفسه، سطر حالة للمالك، ويُذكر في الذاكرة الدافئة
+         فلا تتكرّر جولة الـ404 (liveDefaultOf عند اختيار الافتراضيّ). المختار يدويًّا له v-claude-models أعلاه. */
+      if (!upstream.ok && viaOR && !__direct && !__pick.picked && !__liveTried && require('./provider-models.js').OR_VENDOR[prov]) {
+        let __lt = '';
+        try { __lt = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        __liveTried = true;
+        const __alt = isModelErrorStatus(upstream.status, __lt) ? await require('./provider-models.js').liveDefault(prov, CHAT_MODEL) : '';
+        if (__alt) {
+          await logErrorAndFlush('chat/default-dead-' + upstream.status, new Error(__acct() + ': ' + CHAT_MODEL + ' → ' + __alt + ' · ' + (__lt || ('upstream ' + upstream.status))), { action: 'live-default', prov });
+          if (__ownerReq) send({ status: '⚠️ الموديل الافتراضيّ ' + CHAT_MODEL + ' لم يعد عند الوسيط — أكمل بأحدث موديل لشركته: ' + __alt + ' (حدّث OR_MODELS في chat.js).', k: 'stModelFallback', p: { model: __alt } });
+          DEFAULT_MODEL = __alt; CHAT_MODEL = __alt;
+          if (__imgCfg) __imgCfg = imageTurnConfig(process.env, viaOR, CHAT_MODEL);
+          upstream = await callUpstream(true);
+          if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false);
+        } else {
+          upstream = { ok: false, status: upstream.status, text: async () => __lt };
+        }
+      }
       // v-prompt-cache: 400 يذكر cache_control (وسيط لا يمرّر العلامة) = إعادة فوريّة بلا كاش.
       if (!upstream.ok && __cacheOn && upstream.status === 400) {
         let __cc = '';
@@ -1757,7 +1777,7 @@ module.exports = async (req, res) => {
         send({ status: '⚠️ نموذج ' + __direct.label + ' · ' + upstream.status + ' غير متاح على المفتاح الحاليّ — أكمل عبر الوسيط بالموديل نفسه.', k: 'stModelFallback', p: { model: __direct.label + ' · ' + upstream.status } });
         __direct = null; viaOR = true; apiKey = process.env.OPENROUTER_API_KEY;
         CHAT_URL = 'https://openrouter.ai/api/v1/messages';
-        const __dmPrev = CHAT_MODEL; DEFAULT_MODEL = OR_MODELS[prov]; CHAT_MODEL = ((prov === 'openai' || prov === 'kimi') && __dmPrev && __dmPrev.indexOf('/') === -1) ? ((prov === 'openai' ? 'openai/' : 'moonshotai/') + __dmPrev) : DEFAULT_MODEL; __pick.picked = false; __pick.label = ''; // v-owner-solo: الموديل المختار نفسه عند الوسيط
+        const __dmPrev = CHAT_MODEL; DEFAULT_MODEL = require('./provider-models.js').liveDefaultOf(prov) || OR_MODELS[prov]; CHAT_MODEL = ((prov === 'openai' || prov === 'kimi') && __dmPrev && __dmPrev.indexOf('/') === -1) ? ((prov === 'openai' ? 'openai/' : 'moonshotai/') + __dmPrev) : DEFAULT_MODEL; __pick.picked = false; __pick.label = ''; // v-owner-solo: الموديل المختار نفسه عند الوسيط
         if (__ownerSeen) __seeImage(); __imgCfg = (lastUserHasImage && !__ownerSeen) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; // v-owner-vision: رؤية المزوّد نفسه على الوسيط
         upstream = await callUpstream(true);
         if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); if (!upstream.ok && CHAT_MODEL !== DEFAULT_MODEL) { let __om = ''; try { __om = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ } upstream = { ok: false, status: upstream.status, text: async () => __om }; if (isModelErrorStatus(upstream.status, __om)) { send({ status: '⚠️ نموذج ' + CHAT_MODEL + ' غير متاح عند الوسيط — أكمل بالنموذج الافتراضيّ.', k: 'stModelFallback', p: { model: CHAT_MODEL } }); CHAT_MODEL = DEFAULT_MODEL; if (__ownerSeen) __seeImage(); __imgCfg = (lastUserHasImage && !__ownerSeen) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; upstream = await callUpstream(true); if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); } } // v-owner-solo: الموديل المختار ليس عند الوسيط = افتراضيّ الشركة نفسها
@@ -2168,7 +2188,7 @@ module.exports = async (req, res) => {
         /* v-github-all-providers: الدفعة العميقة (٢٤ ألف حرف) كانت تُقصّ هنا إلى ٨ آلاف فيضيع ثلثاها —
            على كلّ المزوّدين وكلود ضمنًا، فالعمق كان اسمًا بلا أثر. نفس ما صحّحه الوكيل للمالك
            (v-agent-deep). الاتّساع لقراءة GitHub وللمالك وحده؛ بقيّة الأدوات وبقيّة المستخدمين على ٨ آلاف. */
-        const __outMax = (__ownerReq && st.cb.name === 'read_github') ? 30000 : 8000;
+        const __outMax = (__ownerReq && st.cb.name === 'read_github') ? 60000 : 8000; // v-deep-read: دفعة ٤٨ ألفًا تمرّ كاملة
         toolResults.push({ type: 'tool_result', tool_use_id: st.cb.id, content: String(st.result).slice(0, __outMax) });
         if (toolCorpus.length < 200000) toolCorpus += ' ' + String(st.result).slice(0, 8000); // v608
         if (st.cb.name === 'web_search' || st.cb.name === 'fetch_page') __searchRan = true;
@@ -2203,7 +2223,7 @@ function ownerStopNote(fail, then) {
   // v-groq-tpm: 413 «tokens per minute» بعد إعادة القصّ في oa-direct = المحادثة نفسها أكبر من حدّ المفتاح في الدقيقة
   if (Number(__f.status) === 413 && /tokens per minute|\bTPM\b/i.test(String(__f.text || ''))) return 'ما قدرت أردّ الحين — المحادثة أكبر من حدّ المفتاح في الدقيقة؛ افتح محادثة جديدة';
   // v-groq-tpm: 429 بموعد («try again in 12m3s») بعد انتظار oa-direct القصير = موعد الحدّ نفسه للمالك بدل رقم
-  if (Number(__f.status) === 429) { const __w = require('./oa-direct.js').groqRetryAfter(__f.text); if (__w) return 'ما قدرت أردّ الحين — وصلت حدّ المفتاح؛ جرّب بعد ' + (__w < 90 ? Math.ceil(__w) + ' ثانية' : __w < 5400 ? Math.ceil(__w / 60) + ' دقيقة' : Math.ceil(__w / 3600) + ' ساعة'); }
+  if (Number(__f.status) === 429) { const __w = require('./oa-direct.js').retryAfterOf(null, __f.text); if (__w) return 'ما قدرت أردّ الحين — وصلت حدّ المفتاح؛ جرّب بعد ' + (__w < 90 ? Math.ceil(__w) + ' ثانية' : __w < 5400 ? Math.ceil(__w / 60) + ' دقيقة' : Math.ceil(__w / 3600) + ' ساعة'); return 'ما قدرت أردّ الحين — المزوّد وصل حدّ الطلبات (429) حتّى بعد الانتظار؛ جرّب بعد دقيقة'; } // v-direct-429: بلا موعد = قلها بالعربيّ لا «خطأ 429»
   return 'ما قدرت أردّ الحين — خطأ ' + (__f.status || '؟');
 }
 /* v-owner-identity (المالك ٨ أكتوبر: «ولا واحد يردّ على أيّ مزوّد باسمه… المزوّدين كلّهم أسامي فقط، شو عرّفني أنّهم بأصلهم»):

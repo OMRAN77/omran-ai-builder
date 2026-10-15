@@ -224,8 +224,8 @@ check(chatServer.includes('(ص٨) تطابق الفئة إلزاميّ') && chat
 
 // v-photo-ctx: «عطني صور السيارة» بعد نقاش ليوبارد 8 جابت سيارات عشوائية.
 check(attach.includes('v-photo-ctx') && attach.includes('__photoQ = __prevU.content'), 'بحث الصور يُثرى بموضوع المحادثة للطلب المُشير القصير');
-// v-clean-links: الرابط العاري كان يُعرض بنصّه المرمّز %D8… فيملأ الشاشة.
-check(bundle.includes('v-clean-links') && bundle.includes(".hostname.replace(/^www\\./, '')"), 'الرابط العاري يُعرض باسم نطاقه فقط ويبقى قابلًا للضغط');
+// v-full-links (المالك ١٥ أكتوبر): الرابط كاملًا لا اسم نطاقه — v-clean-links كان يختصره إلى github.com. تفاصيله في chat-format ٩.
+check(bundle.includes('v-full-links') && !bundle.includes("if(bareM){ __disp = bareM[1].replace(/^www\\./, ''); }"), 'الرابط يُعرض كاملًا ويبقى قابلًا للضغط');
 
 // ═══ الصورة والفيديو التوضيحي ═══
 group('الصورة والفيديو التوضيحي');

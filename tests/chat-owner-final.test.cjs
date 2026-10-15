@@ -93,14 +93,14 @@ async function client(raw) {
 }
 const Q = [{ role: 'user', content: 'اقرأ ملفّات المحادثة في مستودعي واشرح لي كيف يعمل زرّ الإرسال' }];
 
-test('١. حلقة لا تنتهي: الخطوة ١٢ بالتنبيه والأدوات نفسها بلا tool_choice (الكاش)، والطلب إلحاق بالسابق، والردّ نصّ لا فراغ', async () => {
+test('١. حلقة لا تنتهي: الخطوة ١٦ بالتنبيه والأدوات نفسها بلا tool_choice (الكاش)، والطلب إلحاق بالسابق، والردّ نصّ لا فراغ', async () => {
   const r = await run('omran', { provider: 'claude', messages: Q }, (u, b) => {
     if (!isAnth(u)) return new Response('{}', { status: 404 });
     if (isFinal(b)) return T.text('الجواب الختاميّ ممّا قرأت.');
     return T.tool('read_github', { url: 'OMRAN77/omran-ai-builder', path: 'f' + Math.random() + '.js' });
   });
   const anth = r.calls.filter((c) => isAnth(c.url));
-  assert.equal(anth.length, 12, 'الختام في الخطوة ١٢ (وُجد ' + anth.length + ')');
+  assert.equal(anth.length, 16, 'الختام في الخطوة ١٦ — v-provider-max (وُجد ' + anth.length + ')');
   const last = anth[anth.length - 1].body;
   assert.equal(last.tool_choice, undefined, 'لا tool_choice على مسار أنثروبيك — تغييره يُبطل كاش الرسائل');
   assert.deepEqual(last.tools.map((t) => t.name), anth[0].body.tools.map((t) => t.name), 'قائمة الأدوات كما هي (كاش الأدوات والنظام)');
@@ -109,7 +109,7 @@ test('١. حلقة لا تنتهي: الخطوة ١٢ بالتنبيه والأ�
   const prev = noCC(anth[anth.length - 2].body.messages), fin = noCC(last.messages);
   assert.deepEqual(fin.slice(0, prev.length), prev, 'الطلب الختاميّ = السابق + إلحاق (البادئة تُقرأ من الكاش)');
   assert.deepEqual(noCC(last.system), noCC(anth[anth.length - 2].body.system), 'النظام كما هو');
-  assert.equal(toolLog.length, 11, 'لا قراءة في الخطوة الختاميّة');
+  assert.equal(toolLog.length, 15, 'لا قراءة في الخطوة الختاميّة');
   assert.equal(r.text, 'الجواب الختاميّ ممّا قرأت.' + resumeMark());
   assert.ok(!r.events.some((e) => e.ownerStop), 'لا سبب توقّف — جاء الجواب');
   assert.equal((await client(r.raw)).reply, 'الجواب الختاميّ ممّا قرأت.' + resumeMark());
@@ -127,7 +127,7 @@ test('٢. مسار الوقت (CHAT_MAX_MS): بعد (المهلة − الهام
       return T.tool('read_github', { url: 'OMRAN77/omran-ai-builder', path: 'x' + Math.random() + '.js' });
     });
     const anth = r.calls.filter((c) => isAnth(c.url));
-    assert.ok(anth.length < 12 && anth.length >= 2, 'الختام بالوقت لا بالخطوات (وُجد ' + anth.length + ')');
+    assert.ok(anth.length < 16 && anth.length >= 2, 'الختام بالوقت لا بالخطوات (وُجد ' + anth.length + ')');
     assert.ok(isFinal(anth[anth.length - 1].body) && anth[anth.length - 1].body.tool_choice === undefined);
     assert.equal(r.text, 'جواب قبل انتهاء المهلة.' + resumeMark());
   } finally { Date.now = realNow; delete process.env.CHAT_MAX_MS; }
@@ -185,12 +185,12 @@ test('٢د. overTime: بعد المهلة ختام واحد إن بقي حدّ �
   assert.equal(ol.overTime(s, { t0: Date.now() - 280000, MAX_MS: 240000, steps: 1 }), true, 'حدّ الدالّة لا يكفي');
 });
 
-test('٣. موديل يطلب أداة رغم التنبيه: أداة الخطوة ١٢ لا تُنفَّذ، والسبب ظاهر للمالك (لا «ما قدرت أردّ الحين»)', async () => {
+test('٣. موديل يطلب أداة رغم التنبيه: أداة الخطوة ١٦ لا تُنفَّذ، والسبب ظاهر للمالك (لا «ما قدرت أردّ الحين»)', async () => {
   const r = await run('omran', { provider: 'claude', messages: Q }, (u) => (isAnth(u) ? T.tool('read_github', { url: 'OMRAN77/omran-ai-builder', path: 'y' + Math.random() + '.js' }) : new Response('{}', { status: 404 })));
-  assert.equal(r.calls.filter((c) => isAnth(c.url)).length, 12);
-  assert.equal(toolLog.length, 11, 'أداة الختام لم تُنفَّذ');
+  assert.equal(r.calls.filter((c) => isAnth(c.url)).length, 16); // v-provider-max: ١٦ خطوة
+  assert.equal(toolLog.length, 15, 'أداة الختام لم تُنفَّذ — ١٥ أداة قبل الخطوة ١٦');
   const stop = r.events.find((e) => e.ownerStop);
-  assert.ok(stop && /انتهت ميزانيّة الخطوات \(12\)/.test(stop.error), 'السبب: ' + JSON.stringify(stop));
+  assert.ok(stop && /انتهت ميزانيّة الخطوات \(16\)/.test(stop.error), 'السبب: ' + JSON.stringify(stop));
   const c = await client(r.raw);
   assert.equal(c.ownerStop, true); assert.match(c.error, /انتهت ميزانيّة الخطوات/);
 });

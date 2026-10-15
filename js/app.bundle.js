@@ -2861,15 +2861,15 @@ function buildSpokenWordSpans(container, text){
         const href = (rawUrl.indexOf('www.') === 0 || bareM) ? 'https://' + rawUrl : rawUrl;
         const a = document.createElement('a');
         a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
-        // v-clean-links: الرابط العاري كان يُعرض بنصّه الكامل المرمّز
-        // (%D8%A3…) فيملأ الشاشة — يُعرض باسم نطاقه فقط ويبقى الضغط
-        // على الرابط الكامل. ونصّ ماركداون هو نفسه رابط يُعامل كذلك.
+        // v-full-links (المالك ١٥ أكتوبر «الموقع يعطيني الرئيس فقط — أريده كاملًا لكلّ المزوّدين»): كان v-clean-links
+        // يعرض الرابط باسم نطاقه فقط (github.com) فلا يُعرف أيّ طلب أو صفحة. الآن الرابط كاملًا كما كُتب، مفكوك الترميز
+        // (%D8%A3… ← عربيّ مقروء، وهو ما كان v-clean-links يعالجه) وword-break يلفّه. ونصّ ماركداون هو اسم نطاق رابطه
+        // ([github.com](https://github.com/…)) يُعرض رابطه كاملًا؛ وغيره من النصوص يبقى كما كتبه المزوّد.
+        const __decode = function(u){ try { return decodeURIComponent(u); } catch(e){ return u; } };
+        const __hostOf = function(u){ try { return new URL(u).hostname.replace(/^www\./, ''); } catch(e){ return ''; } };
         let __disp = linkM ? linkM[1] : rawUrl;
-        if(bareM){ __disp = bareM[1].replace(/^www\./, ''); } // اسم النطاق فقط
-        else if(/^(https?:\/\/|www\.)/i.test(__disp)){
-          try { __disp = new URL(__disp.indexOf('www.') === 0 ? 'https://' + __disp : __disp).hostname.replace(/^www\./, ''); }
-          catch(e){ try { __disp = decodeURIComponent(__disp).slice(0, 50); } catch(e2){ __disp = __disp.slice(0, 50); } }
-        }
+        if(bareM){ __disp = rawUrl; } // النطاق ومساره كما كُتبا
+        else if(!linkM || __disp.replace(/^www\./, '').toLowerCase() === __hostOf(href).toLowerCase()) __disp = __decode(rawUrl);
         a.textContent = __disp;
         a.title = href;
         a.setAttribute('dir', 'auto'); // v476 bidi
@@ -45386,9 +45386,8 @@ if(document.readyState === 'loading'){
      بطاقة الفيديو العريضة في الفقاعة نفسها؛ تُرفع معها عند وصول النتيجة. */
   var CHAT_VIDEO_RE = /🎬 (?:جاري إنشاء الفيديو|Creating video)/;
 
-  /* الرصد: فقاعة نصّها أحد أسطر «أرسم لك…» ولا بطاقة فيها ← نركّب بطاقة.
-     زمن البداية لكلّ نصّ يُحفظ فلا يصفّره renderAll، ويُنسى حين تختفي الفقاعة. */
-  var t0ByText = Object.create(null);
+  /* ١٥ أكتوبر ٢٠٢٦ — طلب المالك إرجاع انتظار صور المحادثة لما قبل البطاقة:
+     تبقى رسالة «أرسم لك الصورة…» من العارض، بلا عدّاد إضافي. بقية اللوحات كما هي. */
   /* زمن بداية كلّ لوحة: يبقى طول التوليد الواحد (الفيديو يبدّل نصّ حالته 🚀→⏳→🎬)
      ولا يُصفَّر إلا حين ينتهي الاشتغال أو تُزال البطاقة. */
   var t0ByPanel = Object.create(null);
@@ -45431,21 +45430,6 @@ if(document.readyState === 'loading'){
 
   function scan(){
     if(!document.body) return;
-    var active = Object.create(null);
-    var els = document.querySelectorAll('.msg-text');
-    for(var i = 0; i < els.length; i++){
-      var el = els[i];
-      var txt = '';
-      try{ txt = String(el.textContent || '').trim(); }catch(e){ continue; }
-      if(PHRASES.indexOf(txt) === -1) continue;
-      var host = el.parentNode;
-      if(!host || host.querySelector('.genw')) { active[txt] = 1; continue; }
-      active[txt] = 1;
-      if(!t0ByText[txt]) t0ByText[txt] = Date.now();
-      try{ host.appendChild(render({ t0: t0ByText[txt] })); }catch(e){ try{ __swallow(e, 'gen-wait:scan'); }catch(_){ /* لا سجلّ هنا — العرض تجميليّ */ } }
-    }
-    for(var k in t0ByText){ if(!active[k]) delete t0ByText[k]; }
-
     /* فيديو المحادثة: سطر «🎬 جاري إنشاء الفيديو…» الجاري داخل فقاعة التفكير
        (.chat-status-text) ← بطاقة عريضة في الفقاعة؛ اختفى السطر ← تُرفع البطاقة. */
     var cvFound = false;
@@ -46267,6 +46251,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
    رأسه: شرارة + ما يفعله الآن + الوقت المنقضي + سهم. داخله إطار، وكلّ عنصر سطر عنوان ينفتح: التفكير أسطرًا قصيرة (جملة في
    السطر، وعنوانه آخر جملة)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا: التفكير مسكّر حتّى يفتحه من يريد (v-think-closed)،
    والتفكير بين الأدوات يظهر مطويًّا (v-interleave). قراءة الصفحة/الملفّ مطويّة ولو كانت الأحدث (v-read-fold)، وغير القراءة الأحدث وحدها مفتوحة.
+   الصندوق الحيّ نفسه يبدأ مطويًّا (v-live-fold): رأسه يقول ما يجري والوقت، ومن يريد التفاصيل يفتحه — كـClaude. ما يصل بعدها لا يفتحه ولا يطويه.
    محفوظًا (m._agParts وأوّله {t:'meta', ms}): مطويّ في سطر «عمل لمدّة …». سجلّ الوكيل القديم (بلا meta) يرسمه __agLogRender كما كان.
    النصوص: cwWorked وcwRequest وcwResponse وcwTimeM وcwTimeS وcwWorking (١٤ لغة). */
 (function(){
@@ -46356,7 +46341,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   window.omranWorkLog = {
     /** الصندوق الحيّ قبل الفقاعة المؤقّتة: head(نصّ) لما يفعله الآن، add(جزء) لتفكير أو خطوة وصلت. */
     live: function(anchor, t0, head){
-      var b = shell(true);
+      var b = shell(false); // v-live-fold (المالك ١٥ أكتوبر «اريد انطواء الصفحة عندما يبدا»): يبدأ مطويًّا كـClaude، والرأس يكفي
       b.d.classList.add('cwLive'); b.ic.classList.add('chat-status-spark');
       b.lb.textContent = head || tr('cwWorking', 'Working…');
       if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(b.d, anchor);

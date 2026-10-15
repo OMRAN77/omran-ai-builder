@@ -526,6 +526,34 @@ function groqRetryAfter(text) {
   return sec > 0 ? sec : null;
 }
 const GROQ_WAIT_MAX = 40;
+/* v-direct-429 (لقطة المالك ١٥ أكتوبر: Perplexity «ما قدرت أردّ الحين — خطأ 429» على طلب الكود، وطلبه «أريد أن أنسى هذه الأخطاء»):
+   انتظار الحدّ كان لـGroq وحده وبنصّ «try again in». الآن كلّ مزوّد مباشر وعلى المسارين (responses وchat): إن حدّد المزوّد موعدًا
+   (Retry-After ثوانٍ أو تاريخ، أو نصّ الجسم) لا يتجاوز CFG.waitMax (= GROQ_WAIT_MAX، تحت حارس الصمت) نُنتظره مرّة واحدة ونعيد النداء
+   نفسه. بلا موعد = لا انتظار هنا: طبقة C4 في owner-loop تعيد مرّتين بانتظار قصير متدرّج. موعد أبعد من الحدّ = لا نوم (كما كان لـGPT
+   وGroq اليوميّ) فيصل الموعد للمالك سطرًا. نصّ عن الرصيد أو الحصّة (quota/credit) لا يُنتظر عليه — ليس عابرًا. */
+const CFG = { waitMax: GROQ_WAIT_MAX };
+const NOT_TRANSIENT_RE = /quota|credit|balance|insufficient|billing|payment/i;
+function retryAfterOf(headers, text) {
+  let h = '';
+  try { h = (headers && typeof headers.get === 'function') ? String(headers.get('retry-after') || '') : ''; } catch (e) { h = ''; }
+  if (h) {
+    const n = Number(h);
+    if (Number.isFinite(n) && n > 0) return n;
+    const d = Date.parse(h);
+    if (Number.isFinite(d) && d - Date.now() > 0) return (d - Date.now()) / 1000;
+  }
+  const g = groqRetryAfter(text);
+  if (g) return g;
+  const m = /retry[_ -]?after["':\s]+([\d.]+)|retry (?:in|after)\s+([\d.]+)\s*s/i.exec(String(text || ''));
+  const n = m ? Number(m[1] || m[2]) : 0;
+  return n > 0 ? n : null;
+}
+/** الانتظار بالملّي ثانية قبل إعادة الـ429 رقم nth (الأولى فقط)، أو 0 = لا انتظار (بلا موعد، أو موعد أبعد من الحدّ، أو رصيد). */
+function wait429Ms(headers, text, nth) {
+  if (nth >= 1 || NOT_TRANSIENT_RE.test(String(text || ''))) return 0;
+  const hint = retryAfterOf(headers, text);
+  return (hint && hint <= CFG.waitMax) ? Math.ceil(hint * 1000) + 300 : 0;
+}
 const pause = (ms, signal) => new Promise((res) => { const id = setTimeout(res, ms); if (signal) signal.addEventListener('abort', () => { clearTimeout(id); res(); }, { once: true }); });
 
 // يرسل جسم أنثروبيك إلى المزوّد مباشرةً ويرجع كائنًا بشكل Response تقرؤه الحلقة (ok · status · text · body).
@@ -538,13 +566,14 @@ async function directFetch(route, anthropicBody, opts) {
     let rb = toResponsesBody(anthropicBody);
     if (route.prov === 'perplexity') { delete rb.store; delete rb.reasoning; } // v-pplx-agent: حقلا OpenAI وحده
     let rl = null;
-    let capDropped = false;
+    let capDropped = false, waits = 0; // v-direct-429
     let ownerEff = !!(anthropicBody.output_config && anthropicBody.output_config.effort); // v-owner-gpt-all
-    for (let attempt = 0; attempt < 2 + QUICK_EFFORTS.length; attempt++) {
+    for (let attempt = 0; attempt < 4 + QUICK_EFFORTS.length; attempt++) {
       const r = await f(route.responsesUrl, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(rb) }, sig));
       if (r.ok && r.body) return { ok: true, status: r.status, model: rb.model, api: 'responses', text: async () => '', body: responsesToAnthropicStream(r.body, rb.model) };
       const t = await r.text().catch(() => '');
       rl = { ok: false, status: r.status, model: rb.model, api: 'responses', text: async () => t, headers: r.headers || null }; // v-groq-tpm: retry-after يصل إعادة C4 (GPT كان يعيد 429 ثلاثًا بلا انتظار)
+      if (r.status === 429) { const w = wait429Ms(r.headers, t, waits); if (w) { waits++; await pause(w, o.signal); if (o.signal && o.signal.aborted) break; continue; } break; } // v-direct-429
       // v-owner-auto: جهد مرفوض = الدرجة التالية من السلّم، وبعد آخرها بلا reasoning (سلوك ما قبل الإصلاح).
       /* v-owner-gpt-all: جهد اختاره المالك ورُفض = إعادة واحدة بلا reasoning (افتراضيّ الموديل) ويُذكر — لا يُحسب درجة من
          سلّم «بلا تفكير» (كان max المرفوض يقفز إلى none، عكس ما اختاره). */
@@ -592,8 +621,8 @@ async function directFetch(route, anthropicBody, opts) {
   let last = null;
   for (const model of models) {
     let body = Object.assign({}, base, { model });
-    let capDropped = false, tpmFitted = false, waited = false;
-    for (let attempt = 0; attempt < 4; attempt++) {
+    let capDropped = false, tpmFitted = false, waits = 0; // v-direct-429
+    for (let attempt = 0; attempt < 6; attempt++) {
       const r = await f(route.url, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(body) }, sig));
       if (r.ok && r.body) {
         if (route.prov === 'groq') rememberWorking('groq', model);
@@ -603,7 +632,7 @@ async function directFetch(route, anthropicBody, opts) {
       last = { ok: false, status: r.status, model, text: async () => t, headers: r.headers || null }; // v-groq-tpm: retry-after يصل إعادة C4 (owner-loop) فلا تعيد بعد ٠٫٨ ث ما قال Groq إنّه بعد ٣٠
       if (!capDropped && r.status === 400 && body.max_completion_tokens && /max_(?:completion_)?tokens/i.test(t)) { capDropped = true; body = Object.assign({}, body); delete body.max_completion_tokens; continue; }
       if (!tpmFitted && route.prov === 'groq' && r.status === 413) { const fit = fitGroqTpm(body, t); if (fit) { tpmFitted = true; body = fit; continue; } }
-      if (!waited && route.prov === 'groq' && r.status === 429 && /per minute|\bTPM\b|\bRPM\b/i.test(t)) { const w = groqRetryAfter(t); if (w && w <= GROQ_WAIT_MAX) { waited = true; await pause(Math.ceil(w * 1000) + 300, o.signal); if (o.signal && o.signal.aborted) break; continue; } }
+      if (r.status === 429) { const w = wait429Ms(r.headers, t, waits); if (w) { waits++; await pause(w, o.signal); if (o.signal && o.signal.aborted) break; continue; } } // v-direct-429: كلّ مزوّد لا Groq وحده
       break;
     }
     if (!isModelErrorStatus(last.status, await last.text())) break;
@@ -631,4 +660,4 @@ function quickEffortRejected(model, effort) {
   quickRejected.set(k, bad);
 }
 
-module.exports = { PPLX_NO_TOOLS, directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected, __summaryOff: summaryOff };
+module.exports = { PPLX_NO_TOOLS, directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, retryAfterOf, wait429Ms, __cfg: CFG, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected, __summaryOff: summaryOff };

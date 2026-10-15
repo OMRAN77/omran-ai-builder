@@ -138,12 +138,12 @@ test('٤. manage_github deploy: طلب مدموج = حالة Vercel على ال�
     [/\/status$/, res({ statuses: [{ context: 'Vercel', state: 'pending' }] })],
     [/vercel\.app\/js\/app\.bundle\.js/, res('قديم')],
   ]);
-  out = await GM.manage({ repo: 'o/r', action: 'deploy', number: 77, path: 'js/app.bundle.js', find: 'omranChatFollow' }, n.opts);
+  out = await GM.manage({ repo: 'o/r', action: 'deploy', number: 77, path: 'js/app.bundle.js', find: 'omranChatFollow', wait: 0 }, n.opts); // v-deploy-wait: wait=0 نظرة واحدة
   assert.match(out.text, /Vercel: قيد البناء/);
   assert.match(out.text, /✗ الموقع المنشور: «omranChatFollow» غير موجود/);
   // غير مدموج = معاينته لا الإنتاج؛ والمسار خارج الموقع مرفوض بلا طلب
   n = net([[/^\/repos\/o\/r\/pulls\/80$/, res({ number: 80, merged: false, head: { sha: 'bbbbbbbbbbbb' } })], [/\/status$/, res({ statuses: [] })]]);
-  out = await GM.manage({ repo: 'o/r', action: 'deploy', number: 80, path: '../etc/passwd', find: 'x' }, n.opts);
+  out = await GM.manage({ repo: 'o/r', action: 'deploy', number: 80, path: '../etc/passwd', find: 'x', wait: 0 }, n.opts);
   assert.match(out.text, /غير مدموج — هذه معاينته لا الإنتاج/);
   assert.match(out.text, /لا حالة نشر على هذا الالتزام بعد/);
   assert.match(out.text, /✗ مسار غير صالح/);

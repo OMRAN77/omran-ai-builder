@@ -497,7 +497,7 @@ module.exports = async (req, res) => {
   await journal(runUser, run);
 
   let lastTested = ''; // آخر HTML اختبره الوكيل في هذا الطلب — مصدر نشر احتياطي
-  let system = (isOwner(runUser) ? OWNER_SYSTEM : SYSTEM) + require('./_bidi.js').BIDI_RULE + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
+  let system = (isOwner(runUser) ? OWNER_SYSTEM : SYSTEM) + require('./_bidi.js').BIDI_RULE + require('./_knowledge.js').ownerKnowledge(req, token) + (isOwner(runUser) ? '\n\n' + require('./repo-map.js').REPO_NOTE : ''); // معرفة عمران — للمالك وحده · v-repo-map: وخريطة المستودع
   // ملف الحساب نفسه يصل إلى الوكيل والمحادثة على كل جهاز. صيغة الحقن المشتركة
   // تكيّف الأسلوب وتذكّر المشاريع من دون أن تستبدل شخصية الوكيل أو قواعده.
   if (usage.username) {
@@ -988,7 +988,7 @@ module.exports = async (req, res) => {
               ? '✗ نشرتَ ثلاث مرات في هذا التشغيل وهذا حدّ مقصود — سلّم المستخدم آخر رابط حصلتَ عليه.'
               : await doPublish(input, lastCodeIn(run.text) || lastTested, runUser, req.headers && req.headers.host);
           }
-          toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, (deepRun && cb.name === 'read_github') ? 30000 : 8000) }); // v-agent-deep: الدفعة العميقة (٢٤ ألفًا) لا تُقصّ
+          toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, (deepRun && cb.name === 'read_github') ? 60000 : 8000) }); // v-deep-read // v-agent-deep: الدفعة العميقة (٢٤ ألفًا) لا تُقصّ
 
           // سطر واحد صادق لكل أداة: ماذا فعلتُ وماذا حصلتُ. يُبثّ حالًا ويُقيَّد
           // في الدفتر — فالأثر يبقى وإن سقط الاتصال أو أُغلق التبويب.

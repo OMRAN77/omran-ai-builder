@@ -110,7 +110,8 @@ test('٢. الحيّ: لا صندوق قبل أوّل تفكير أو خطوة؛
   sb.omranShowThink(bubble, { s: 'أقرأ سجلّ الأخطاء أوّلًا. ثمّ أتتبّع الكود حتّى عنصر التفكير.', ms: 17000, t0: 1000 });
   const box = msgs.childNodes[0];
   assert.equal(box.className, 'cwBox cwLive', 'الصندوق فوق الفقاعة');
-  assert.ok(box.open && bubble.className.includes('cwOn'), 'مفتوح، وشريط الحالة القديم يختفي');
+  assert.equal(box.open, false, 'v-live-fold: الصندوق الحيّ يبدأ مطويًّا كـClaude — الرأس يكفي');
+  assert.ok(bubble.className.includes('cwOn'), 'شريط الحالة القديم يختفي');
   const [head, list] = box.childNodes;
   assert.equal(head.childNodes[1].textContent, 'يقرأ سؤالك…');
   assert.equal(head.childNodes[2].textContent, '17ث');
@@ -136,6 +137,10 @@ test('٢. الحيّ: لا صندوق قبل أوّل تفكير أو خطوة؛
   assert.equal(head.childNodes[2].textContent, '4د 15ث', 'العدّاد كلّ ثانية بالدقائق والثواني');
   sb.omranShowThink(bubble, { step: { t: 'tool', title: 'سجلّ الأخطاء', cmd: '', out: '', err: 1 } });
   assert.deepEqual(kids(list), ['think', 'tool', 'think', 'tool+'], 'أداة جديدة تطوي الأداة قبلها والتفكير مطوي');
+  assert.equal(box.open, false, 'v-live-fold: ما يصل لا يفتح الصندوق');
+  box.open = true;
+  sb.omranShowThink(bubble, { step: { t: 'tool', name: 'trSearchN', title: 'بحث', cmd: 'q', out: 'y', err: 0 } });
+  assert.equal(box.open, true, 'v-live-fold: من فتحه يبقى مفتوحًا مع ما يصل');
   assert.ok(list.childNodes[3].className.includes('cwFail') && list.childNodes[3].q('cwNone').length === 1, 'الفشل أحمر، وبلا ناتج سطر');
 });
 

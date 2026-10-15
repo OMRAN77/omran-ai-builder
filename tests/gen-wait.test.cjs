@@ -26,7 +26,7 @@ test('المكوّن موجود ويعرّف window.omranGenWait بلا تصاد
   assert.match(src, /الصور تاخذ ~٣٠ ثانية/, 'توقّع صريح للوقت');
 });
 
-test('ذاتيّ بالكامل: يرصد أسطر التوليد الحقيقيّة بلا لمس العارض ولا المسارات', () => {
+test('نصوص انتظار صور المحادثة باقية في مسارات التوليد بلا تغيير', () => {
   const src = read('js/app-34-gen-wait.js');
   assert.match(src, /MutationObserver/, 'رصد تلقائيّ');
   assert.match(src, /🎨 أرسم لك الصورة…/);
@@ -37,6 +37,34 @@ test('ذاتيّ بالكامل: يرصد أسطر التوليد الحقيقي
   const attach = read('js/app-09-attach.js');
   assert.equal((attach.match(/🎨 أرسم لك الصورة…/g) || []).length, 2, 'سطرا التوليد العاديّ والخام');
   assert.match(attach, /🎨 أرسم لك نسخة ثانية…/, 'سطر النسخة الثانية');
+});
+
+test('الرجوع للنص السابق: صور المحادثة لا تركّب بطاقة، ورصد الفيديو واللوحات باقٍ', () => {
+  let created = 0;
+  const selectors = [];
+  const host = { querySelector: () => null, appendChild() {} };
+  const text = { textContent: '🎨 أرسم لك الصورة…', parentNode: host };
+  const sandbox = {
+    window: {},
+    document: {
+      body: {}, documentElement: {},
+      querySelectorAll(sel) { selectors.push(sel); return sel === '.msg-text' ? [text] : []; },
+      querySelector(sel) { selectors.push(sel); return null; },
+      getElementById: () => null,
+      createElement() { created++; throw new Error('unexpected image waiting card'); }
+    },
+    MutationObserver: function() { return { observe() {} }; },
+    setTimeout: () => 0
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(read('js/app-34-gen-wait.js'), sandbox);
+  sandbox.window.omranGenWait.scan();
+  assert.equal(created, 0, 'لا بطاقة أو CSS إضافي لرسالة انتظار الصورة');
+  assert.equal(text.textContent, '🎨 أرسم لك الصورة…', 'الرسالة القديمة كما هي');
+  assert.ok(selectors.includes('.chat-status-text'), 'رصد فيديو المحادثة باقٍ');
+  for (const panel of sandbox.window.omranGenWait.PANELS) {
+    assert.ok(selectors.includes(panel.sel), 'رصد اللوحة باقٍ: ' + panel.id);
+  }
 });
 
 test('لوحات الأدوات: الفيديو والأنماط والأزياء ببادئات تطابق نصوصها الحقيقيّة', () => {
