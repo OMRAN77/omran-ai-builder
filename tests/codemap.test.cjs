@@ -70,8 +70,10 @@ const ROOT = path.join(__dirname, '..');
   const agent = fs.readFileSync(path.join(ROOT, 'api/_lib/agent.js'), 'utf8');
   assert.ok(agent.includes("enum: ['auto', 'commits', 'commit', 'map']"), 'الوكيل: what=map');
 
-  // ٦) تُعاد بعد كلّ دمج — الخريطة وحدها، بلا CI
-  const wf = fs.readFileSync(path.join(ROOT, '.github/workflows/codemap.yml'), 'utf8');
-  assert.ok(/branches: \[main\]/.test(wf) && wf.includes('node scripts/codemap.mjs') && wf.includes('git add -- api/_lib/codemap.json') && wf.includes('[skip ci]'), 'codemap.yml يعيدها بعد الدمج');
-  console.log('✓ codemap: what=map للمالك والوكيل، وcodemap.yml يعيدها بعد كلّ دمج');
+  // ٦) تُعاد بعد كلّ دمج — الخريطة وحدها، بلا CI. الملفّ يضيفه المالك (رفع ملفّات الـworkflows يحتاج صلاحيّة workflows
+  //    لا يملكها تكامل GitHub الذي فتح الطلب) — فيُفحص إن وُجد، ولا يكسر CI قبل إضافته.
+  const wfPath = path.join(ROOT, '.github/workflows/codemap.yml');
+  const wf = fs.existsSync(wfPath) ? fs.readFileSync(wfPath, 'utf8') : '';
+  if (wf) assert.ok(/branches: \[main\]/.test(wf) && wf.includes('node scripts/codemap.mjs') && wf.includes('git add -- api/_lib/codemap.json') && wf.includes('[skip ci]'), 'codemap.yml يعيدها بعد الدمج');
+  console.log('✓ codemap: what=map للمالك والوكيل' + (wf ? '، وcodemap.yml يعيدها بعد كلّ دمج' : ' (codemap.yml لم يُضف بعد)'));
 })().catch((e) => { console.error(e); process.exit(1); });

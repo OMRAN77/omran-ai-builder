@@ -1,4 +1,4 @@
-{"v":1,"tests":410,"files":[
+{"v":1,"tests":411,"files":[
 {"p":".github/workflows/android-release.yml","n":150,"d":"android-release"},
 {"p":".github/workflows/branch-shots.yml","n":62,"d":"Branch shots"},
 {"p":".github/workflows/bundle.yml","n":57,"d":"Rebuild bundle"},
@@ -362,6 +362,7 @@
 {"p":"scripts/build.mjs","n":52,"d":"npm run bundle: يجمع js/app-NN-*.js في js/app.bundle.js ويختم index.html وsw.js","k":1},
 {"p":"scripts/chat-long-probe.mjs","n":87,"d":"مجس المحادثة: يرسل رسالة طويلة (عربي+إنجليزي+كود) لنقطة البثّ /api/ai?action=chat ويسجّل كل حدث SSE (status/delta/clientTool/error) + التوقيت — لكشف…","f":["guestId","run"]},
 {"p":"scripts/chat-probe.mjs","n":80,"d":"مجسّ المحادثة على الإنتاج — يقيس معمارية «العقل الواحد» بالأرقام: أول بايت، أول حرف، حدث المصادر، الزمن الكلي — لسؤال بحث حي وتحية.","f":["signup","probeChat"]},
+{"p":"scripts/codemap.mjs","n":150,"d":"مولّد خريطة الكود هذه","k":1,"f":["files","clip","clean","firstComment","symbols","uiIndex","sizeClass","build","serialize"]},
 {"p":"scripts/cold-start.mjs","n":43,"d":"هل تُحمَّل كلّ دالّة خادم في بيئة عارية؟ العطب الذي كتب هذا الملفّ: /api/auth-google-callback و /api/edu كانا يقرآن AUTH_SECRET في نطاق الوحدة عبر ap…"},
 {"p":"scripts/design-thumbs-free.mjs","n":69,"d":"بطاقات الديكور بصور شبه حقيقية عبر مولّد مجاني (Flux) — لا يحتاج رصيد OpenAI أو Gemini.","f":["grab","el","sleep"]},
 {"p":"scripts/design-thumbs.mjs","n":65,"d":"بطاقات الديكور: معاينة حقيقية لكل نمط (غرفة معيشة بذلك النمط) ولكل نوع مكان، عبر خطّ الإنتاج (design-create النصّي).","f":["el","post","signup"]},
