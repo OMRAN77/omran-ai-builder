@@ -2,6 +2,7 @@
    رأسه: شرارة + ما يفعله الآن + الوقت المنقضي + سهم. داخله إطار، وكلّ عنصر سطر عنوان ينفتح: التفكير أسطرًا قصيرة (جملة في
    السطر، وعنوانه آخر جملة)، والأداة «الطلب» ثمّ «النتيجة» في صندوقي كود. حيًّا: التفكير مسكّر حتّى يفتحه من يريد (v-think-closed)،
    والتفكير بين الأدوات يظهر مطويًّا (v-interleave). قراءة الصفحة/الملفّ مطويّة ولو كانت الأحدث (v-read-fold)، وغير القراءة الأحدث وحدها مفتوحة.
+   الصندوق الحيّ نفسه يبدأ مطويًّا (v-live-fold): رأسه يقول ما يجري والوقت، ومن يريد التفاصيل يفتحه — كـClaude. ما يصل بعدها لا يفتحه ولا يطويه.
    محفوظًا (m._agParts وأوّله {t:'meta', ms}): مطويّ في سطر «عمل لمدّة …». سجلّ الوكيل القديم (بلا meta) يرسمه __agLogRender كما كان.
    النصوص: cwWorked وcwRequest وcwResponse وcwTimeM وcwTimeS وcwWorking (١٤ لغة). */
 (function(){
@@ -91,7 +92,7 @@
   window.omranWorkLog = {
     /** الصندوق الحيّ قبل الفقاعة المؤقّتة: head(نصّ) لما يفعله الآن، add(جزء) لتفكير أو خطوة وصلت. */
     live: function(anchor, t0, head){
-      var b = shell(true);
+      var b = shell(false); // v-live-fold (المالك ١٥ أكتوبر «اريد انطواء الصفحة عندما يبدا»): يبدأ مطويًّا كـClaude، والرأس يكفي
       b.d.classList.add('cwLive'); b.ic.classList.add('chat-status-spark');
       b.lb.textContent = head || tr('cwWorking', 'Working…');
       if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(b.d, anchor);
