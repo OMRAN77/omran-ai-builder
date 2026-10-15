@@ -125,10 +125,10 @@ test('٢. معرض البطاقات: عدّاد صورة المالك كلّه �
   assert.deepEqual([sc.bar.x, sc.bar.y, sc.bar.w, sc.bar.h], [692, 459, 220, 18]); assert.equal(sc.bar.x + sc.bar.w / 2, 802);
   assert.deepEqual([sc.cap.x, sc.cap.y, sc.cap.size], [802, 507, 19]);
   assert.equal((svg.match(/<rect /g) || []).length, 2, 'مجرى الشريط ثمّ الشريط');
-  assert.match(svg, /<rect class="genw-trough" x="692" y="459" width="220" height="18" rx="9" fill="rgba\(255,255,255,\.16\)"><\/rect><rect class="genw-bar" x="692" y="459" width="0" height="18" rx="9" fill="url\(#genwBarG-psGallery\)"/);
+  assert.match(svg, /<rect class="genw-trough" x="692" y="459" width="220" height="18" rx="9" fill="rgba\(30,22,14,\.4\)"><\/rect><rect class="genw-bar" x="692" y="459" width="0" height="18" rx="9" fill="url\(#genwBarG-psGallery\)"/, 'مجرى داكن على زجاج المعرض الفاتح');
   assert.match(svg, /<text class="genw-cap" x="802" y="507"[^>]*font-size="19"[^>]*>0% COMPLETE<\/text>/);
   // الصورة v=2: الشريط الأبيض والنصّ مُحيا (صفوفهما بلون الأسطوانة لا بياض)
-  assert.ok(sc.src.endsWith('?v=2'), 'وسم الصورة مرفوع بعد المحو');
+  assert.match(sc.src, /\?v=[3-9]$/, 'وسم الصورة مرفوع بعد المحو (v=3: محو عمودًا عمودًا بانعكاس النسيج — بلا حافّة)');
   assert.ok(sc.tube && sc.ring.cx > sc.tube.x && sc.ring.cx < sc.tube.x + sc.tube.w && sc.ring.cy > sc.tube.y && sc.ring.cy < sc.tube.y + sc.tube.h, 'الحلقة داخل الأسطوانة');
   assert.match(h, /class="genw-tube" style="left:35%;top:3\.731%;width:30%;height:80\.846%;mix-blend-mode:screen"><span style="-webkit-mask-image:linear-gradient\(180deg/, 'حزام الأنبوب عند الشريط والنصّ');
   assert.ok(/<em style="-webkit-mask-image:radial-gradient\(ellipse/.test(h), 'الجريان مثقوب عند الحلقة');

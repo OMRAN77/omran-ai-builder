@@ -45100,10 +45100,10 @@ if(document.readyState === 'loading'){
      في مواضعه بقياساته (الشريط والنصّ في منتصف الحلقة؛ كانا أيسر منها ببضع بكسلات في الرسم) */
   var PS_GALLERY = (function(){
     var c = PS_HUE.gallery;
-    return { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=2', w: 1600, h: 804, hue: 'gallery', shape: 'cylinder', bg: c.bg, flow: c.flow,
+    return { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=3', w: 1600, h: 804, hue: 'gallery', shape: 'cylinder', bg: c.bg, flow: c.flow,
       ring: { cx: 802, cy: 346, r: 72, sw: 9, hole: 86, disc: PS_DISC, track: PS_TRACK },
       num: { x: 802, y: 366, size: 50, dw: 20, pw: 28 },
-      bar: { x: 692, y: 459, w: 220, h: 18, trough: PS_TROUGH, grad: c.grad },
+      bar: { x: 692, y: 459, w: 220, h: 18, trough: 'rgba(30,22,14,.4)', grad: c.grad }, /* مجرى داكن — زجاج المعرض فاتح فالمجرى الأبيض الخافت لا يُرى */
       cap: { x: 802, y: 507, size: 19, dw: 7.1, rest: 84 },
       tube: { x: 560, y: 30, w: 480, h: 650, blend: 'screen', gap: [449, 517] },
       refl: null, rip: null, ink: c.ink, arc: c.arc, glow: c.glow, capInk: c.capInk };
