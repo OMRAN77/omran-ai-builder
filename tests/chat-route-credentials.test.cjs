@@ -119,7 +119,7 @@ test('owner Groq image cannot be routed to text-only direct model', async () => 
     const r = await ask({ provider: 'groq', image: true, keys });
     assert.equal(r.calls.length, 1);
     assert.match(r.calls[0].url, /api\.groq\.com/);
-    assert.equal(r.calls[0].body.model, 'qwen/qwen3.6-27b');
+    assert.equal(r.calls[0].body.model, 'qwen/qwen3.8-27b'); // v-dead-models
     const img = r.calls[0].body.messages.at(-1).content.find((c) => c && c.type === 'image_url');
     assert.equal(img.image_url.url, 'data:image/png;base64,AAAA');
   }

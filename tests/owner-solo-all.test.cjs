@@ -304,7 +304,7 @@ test('١١. Groq المجّانيّ: طلب فيديو يُبقي أداة ال�
 
 test('١٢. الرؤية والقراءة: مزوّد على موديل رؤيته أصلًا يرى صور المستودع بلا تبديل، ونسخة المالك من read_github تعرف التزامًا واحدًا بفرقه', () => {
   const V = require('../api/_lib/owner-vision.js');
-  assert.deepEqual(V.visionPlan('groq', 'direct', 'qwen/qwen3.6-27b', 'openai/gpt-oss-120b'), { model: 'qwen/qwen3.6-27b', def: 'openai/gpt-oss-120b', forced: false });
+  assert.deepEqual(V.visionPlan('groq', 'direct', 'qwen/qwen3.8-27b', 'openai/gpt-oss-120b'), { model: 'qwen/qwen3.8-27b', def: 'openai/gpt-oss-120b', forced: false });
   assert.equal(V.visionPlan('groq', 'direct', 'openai/gpt-oss-120b', 'openai/gpt-oss-120b').forced, true, 'gpt-oss نصّيّ: التبديل كما كان');
   assert.equal(V.visionPlan('deepseek', 'or', 'deepseek/deepseek-v4-pro', 'x').forced, true);
   const PL = require('../api/_lib/provider-level.js');

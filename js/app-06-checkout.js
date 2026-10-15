@@ -636,7 +636,7 @@ $('#btnSettings').onclick = () => {
   $('#mistralApiKey').value = localStorage.getItem('aiapp_mistral_apikey') || '';
   $('#mistralModel').value = localStorage.getItem('aiapp_mistral_model') || 'mistral-small-latest';
   $('#deepseekApiKey').value = localStorage.getItem('aiapp_deepseek_apikey') || '';
-  $('#deepseekModel').value = localStorage.getItem('aiapp_deepseek_model') || 'deepseek-chat';
+  $('#deepseekModel').value = localStorage.getItem('aiapp_deepseek_model') || 'deepseek-flash';
   $('#cohereApiKey').value = localStorage.getItem('aiapp_cohere_apikey') || '';
   // 'command-r-plus' was retired by Cohere on 2025-09-15; if a visitor's
   // browser still has it saved from before, silently upgrade it so requests
@@ -894,7 +894,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_mistral_apikey', $('#mistralApiKey').value.trim());
   localStorage.setItem('aiapp_mistral_model', $('#mistralModel').value.trim() || 'mistral-small-latest');
   localStorage.setItem('aiapp_deepseek_apikey', $('#deepseekApiKey').value.trim());
-  localStorage.setItem('aiapp_deepseek_model', $('#deepseekModel').value.trim() || 'deepseek-chat');
+  localStorage.setItem('aiapp_deepseek_model', $('#deepseekModel').value.trim() || 'deepseek-flash');
   localStorage.setItem('aiapp_cohere_apikey', $('#cohereApiKey').value.trim());
   { const __cs = localStorage.getItem('aiapp_cohere_model') || '', __cv = normalizeCohereModel($('#cohereModel').value); if(__cv !== normalizeCohereModel(__cs)) localStorage.setItem('aiapp_cohere_model', __cv); } // v-cohere-prefix: حقل لم يُغيَّر لا يمحو بادئة اختيار القائمة
   localStorage.setItem('aiapp_include_openai', $('#chkIncludeOpenAI').checked ? 'true' : 'false');
@@ -1676,7 +1676,7 @@ function toOpenAIVisionMessages(messages){
 // Vision-capable model overrides used ONLY when an image is attached, so "Ask All"
 // still gets every one of the 9 providers to weigh in on an attached image, even
 // though each provider's normal default chat model is text-only.
-const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const GROQ_VISION_MODEL = 'qwen/qwen3.8-27b'; // v-dead-models: Llama 4 Scout أُوقف عند Groq ١٧ يوليو ٢٠٢٦ — Qwen3.8 27B نموذج الرؤية الوحيد الحيّ
 const MISTRAL_VISION_MODEL = 'pixtral-12b-2409';
 const OPENROUTER_VISION_MODEL = 'meta-llama/llama-4-scout';
 
@@ -2141,7 +2141,10 @@ async function callMistral(messages, onDelta){
 
 async function callDeepSeek(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_deepseek_apikey');
-  const model = localStorage.getItem('aiapp_deepseek_model') || 'deepseek-chat';
+  /* v-dead-models: DeepSeek أوقف deepseek-chat وdeepseek-reasoner (٢٤ يوليو ٢٠٢٦) — المفتاح الخاصّ كان يرسل المحفوظ حرفيًّا فيسقط.
+     نفس ترجمة الخادم (api/_lib/deepseek.js): pro/reasoner/r1 ← deepseek-v4-pro، وغيرها ← deepseek-flash. */
+  const __dsSaved = String(localStorage.getItem('aiapp_deepseek_model') || '').toLowerCase();
+  const model = /v4[-_.]?pro|reasoner|\br1\b/.test(__dsSaved) ? 'deepseek-v4-pro' : 'deepseek-flash';
   const plainMessages = await stripImagesWithDescription(messages);
   // If the visitor hasn't entered their own DeepSeek key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
