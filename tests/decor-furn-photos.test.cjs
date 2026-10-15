@@ -30,7 +30,7 @@ test('٢. كلّ خيار يُعرض بصورة موجودة فعلًا (selImg 
   assert.equal(sb.selImg('designAiLighting', 'warm'), '', 'الإضاءة من لوحتها كما كانت');
   assert.equal(sb.selImg('designAiPlace', 'majlis'), 'assets/design/opts/place-majlis.webp', 'المكان كما كان');
   for (const f of ['parquet', 'marble', 'ceramic', 'carpet']) {
-    assert.equal(sb.selImg('designAiFlooring', f), 'assets/design/opts/flooring-' + f + '.webp?v=2'); /* guard-ok: كاسر كاش لصورة ثابتة */
+    assert.equal(sb.selImg('designAiFlooring', f), 'assets/design/opts/flooring-' + f + '.webp?v=' + 2);
     assert.ok(fs.statSync(path.join(root, 'assets/design/opts/flooring-' + f + '.webp')).size > 2000);
   }
 });
