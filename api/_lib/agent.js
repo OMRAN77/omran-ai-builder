@@ -69,7 +69,7 @@ const TOOLS = [
         path: { type: 'string', description: 'مسار ملفّ أو مجلّد داخل المستودع (اختياريّ مع owner/repo)' },
         ref: { type: 'string', description: 'فرع أو وسم أو commit (اختياريّ؛ الافتراضيّ الفرع الرئيسيّ)' },
         from: { type: 'integer', description: 'رقم السطر الذي تبدأ منه قراءة ملفّ طويل (اختياريّ)' },
-        what: { type: 'string', enum: ['auto', 'commits', 'commit'], description: 'commits = آخر الدفعات (الالتزامات) على المستودع/الفرع بدل محتواه؛ commit = التزام واحد بفرقه (ref = sha) (اختياريّ)' },
+        what: { type: 'string', enum: ['auto', 'commits', 'commit', 'map'], description: 'commits = آخر الدفعات (الالتزامات) على المستودع/الفرع بدل محتواه؛ commit = التزام واحد بفرقه (ref = sha)؛ map = خريطة كود التطبيق كلّه (OMRAN77/omran-ai-builder: كلّ ملفّ بغرضه ودوالّه وعناصر واجهته؛ path=مجلّد/ملفّ أو query للبحث فيها) (اختياريّ)' },
         limit: { type: 'integer', description: 'عدد الالتزامات المطلوب مع what=commits، أو عدد نتائج query (الافتراضيّ ١٥، الأقصى ٤٠)' },
         query: { type: 'string', description: 'بحث نصّي داخل المستودع (اسم دالّة، ثابت، رسالة خطأ…) — يرجع كلّ الملفّات المطابقة مع مقتطف من كلّ واحد بدل تخمين مكانها. يُحصر بـpath إن ذُكر.' },
       },
