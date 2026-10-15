@@ -11,7 +11,7 @@
 
 const { ghFetch, parseTarget, resolveGithubToken } = require('./github-read.js');
 
-const ACTIONS = ['status', 'deploy', 'runs', 'run_jobs', 'run_log', 'shots', 'close', 'reopen', 'comment', 'delete_branch', 'rerun_failed', 'cancel_run', 'delete_runs'];
+const ACTIONS = ['status', 'deploy', 'ci', 'runs', 'run_jobs', 'run_log', 'shots', 'close', 'reopen', 'comment', 'delete_branch', 'rerun_failed', 'cancel_run', 'delete_runs'];
 const GATE = { close: 'close', reopen: 'reopen', delete_branch: 'delete', delete_runs: 'delete', cancel_run: 'cancel' };
 const VERBS = {
   close: /سكّ?ر|اغلق|أغلق|إغلاق|قفّ?ل|\bclose\b/i,
@@ -77,6 +77,12 @@ async function siteHas(p, find, o) {
     return '✓ الموقع المنشور: «' + f + '» موجود في ' + url + ' — …' + txt.slice(Math.max(0, at - 60), at + f.length + 60).replace(/\s+/g, ' ') + '…';
   } catch (e) { return '✗ تعذّر فتح ' + url + ': ' + String((e && e.message) || e).slice(0, 120); }
 }
+/* v-deploy-wait (المالك ١٥ أكتوبر «يكون متأكّد نفسك بعد الدمج والنشر»): «قيد البناء — أعد بعد قليل» كانت نهاية ردّ المزوّد. الآن
+   النداء نفسه ينتظر (wait ثوانٍ، الافتراضيّ ٩٠ والأقصى ٢٤٠، كلّ ١٥ ث) حتّى تستقرّ حالة النشر، ومع find حتّى يظهر النصّ في الموقع —
+   فيرجع «نجح + موجود» في نداء واحد. wait=0 = نظرة واحدة كما كان. */
+const WAIT_DEFAULT = 90, WAIT_MAX = 240, POLL_MS = 15000;
+const waitOf = (i) => { const w = i.wait === undefined || i.wait === null || i.wait === '' ? WAIT_DEFAULT : Number(i.wait); return Number.isFinite(w) ? Math.max(0, Math.min(WAIT_MAX, w)) : WAIT_DEFAULT; };
+const sleeper = (o) => (o && typeof o.sleep === 'function') ? o.sleep : ((ms) => new Promise((r) => setTimeout(r, ms)));
 async function deployCheck(R, i, o) {
   const n = posInt(i.number);
   let sha = '', label = '';
@@ -91,13 +97,57 @@ async function deployCheck(R, i, o) {
     if (!r.ok || !j || !j.sha) return ghErr('تعذّرت قراءة آخر التزام', r, j);
     sha = j.sha; label = 'آخر التزام على ' + br + ' (' + sha.slice(0, 7) + ')';
   }
-  const { r: sr, j: sj } = await ghJson(R + '/commits/' + sha + '/status', o);
-  const sts = (sr.ok && sj && Array.isArray(sj.statuses)) ? sj.statuses : [];
-  const lines = [label];
+  const wait = waitOf(i), sleep = sleeper(o), t0 = Date.now();
+  const left = () => wait * 1000 - (Date.now() - t0);
+  let sts = [], site = '';
+  for (;;) { // v-deploy-wait: حتّى تستقرّ الحالة (لا pending ولا فارغة) ومعها النصّ إن طُلب، أو تنفد المهلة
+    const { r: sr, j: sj } = await ghJson(R + '/commits/' + sha + '/status', o);
+    sts = (sr.ok && sj && Array.isArray(sj.statuses)) ? sj.statuses : [];
+    const settled = sts.length && !sts.some((st) => st.state === 'pending');
+    site = (i.find && settled) ? await siteHas(i.path, i.find, o) : '';
+    const done = settled && (!i.find || site.charAt(0) === '✓');
+    if (done || left() < POLL_MS) break;
+    await sleep(Math.min(POLL_MS, left()));
+  }
+  const waited = Math.round((Date.now() - t0) / 1000);
+  const lines = [label + (waited >= 5 ? ' — انتظرتُ ' + waited + ' ث' : '')];
   if (sts.length) for (const st of sts) lines.push('  ' + st.context + ': ' + (STATE_AR[st.state] || st.state) + (st.target_url ? ' · ' + st.target_url : ''));
   else lines.push('  لا حالة نشر على هذا الالتزام بعد — النشر لم يبدأ أو لم يُبلَغ؛ أعد بعد قليل.');
-  if (i.find) lines.push(await siteHas(i.path, i.find, o));
+  if (i.find) lines.push(site || await siteHas(i.path, i.find, o));
+  if (sts.some((st) => st.state === 'pending')) lines.push('  ما زال قيد البناء بعد المهلة — أعد action=deploy بالمدخلات نفسها في ردّك التالي، ولا تقل «نُشر».');
   return { ok: true, text: lines.join('\n') };
+}
+
+/* v-branch-ci (المالك ١٥ أكتوبر «كيف أخلّي المزوّدين… يكون متأكّد نفسك»): Claude Code يشغّل npm run ci قبل الرفع ويرى الفشل بعينه؛
+   المزوّدون لا جهاز لهم. الآن ci.yml نفسه (الأوامر نفسها، بلا مدخلات) يُبدأ على فرعهم بـworkflow_dispatch، وكالتصوير: النداء الأوّل
+   يبدؤه، واللاحق يقرأ تشغيل التزام الفرع الحاليّ (من أيّ حدث: push أو pull_request أو dispatch) — أخضر، أو أحمر مع سطور الفشل نفسها
+   (failLines من سجلّ المهمّة الفاشلة) فلا يُرفع إصلاح أعمى. قراءة بلا إذن. */
+const CI_WORKFLOW = 'ci.yml';
+async function branchCi(R, i, o) {
+  const b = await branchOf(R, i, o);
+  if (b.error) return b;
+  if (!BS.BRANCH_RE.test(b.branch)) return { error: 'أعطِ branch (فرعك بعد الرفع) أو number طلب السحب.' };
+  const { r: cr, j: cj } = await ghJson(R + '/commits/' + encodeURIComponent(b.branch), o);
+  if (!cr.ok || !cj || !cj.sha) return ghErr('تعذّرت قراءة آخر التزام على ' + b.branch, cr, cj);
+  const sha = cj.sha, what = 'الفرع ' + b.branch + ' (' + sha.slice(0, 7) + ')';
+  const { r: lr, j: lj } = await ghJson(R + '/actions/workflows/' + CI_WORKFLOW + '/runs?per_page=30&branch=' + encodeURIComponent(b.branch), o);
+  if (lr.status === 404) return { error: 'ورك فلو CI (' + CI_WORKFLOW + ') غير موجود في المستودع.' };
+  if (!lr.ok || !lj) return ghErr('تعذّرت قراءة تشغيلات CI', lr, lj);
+  const run = (lj.workflow_runs || []).find((x) => x.head_sha === sha);
+  if (!run) {
+    const { r: dr, j: dj } = await ghJson(R + '/actions/workflows/' + CI_WORKFLOW + '/dispatches', post(o, 'POST', { ref: b.branch }));
+    if (dr.status !== 204 && !dr.ok) return ghErr('تعذّر بدء الفحص (يحتاج مفتاح GitHub صلاحيّة Actions: write)', dr, dj);
+    return { ok: true, text: '🧪 بدأتُ الفحص الكامل (npm run ci: الحارس والحزمة وكلّ الاختبارات) على ' + what + ' — يأخذ ثلاث دقائق تقريبًا. أعد manage_github action=ci بالمدخلات نفسها في ردّك التالي لترى النتيجة؛ لا تكرّره في الردّ نفسه ولا تقل «نجح» قبلها.' };
+  }
+  if (run.status !== 'completed') return { ok: true, text: '🧪 فحص ' + what + ' قيد العمل (' + run.html_url + ') — أعد action=ci بعد دقيقتين في ردّك التالي.' };
+  if (run.conclusion === 'success') return { ok: true, text: '✅ الفحص الكامل أخضر على ' + what + ': ' + run.html_url + ' — الآن طلب السحب (أو الدمج إن أمر المالك).' };
+  const { r: jr, j: jj } = await ghJson(R + '/actions/runs/' + run.id + '/jobs?per_page=30', o);
+  const jobs = (jr.ok && jj && jj.jobs) || [];
+  const bad = jobs.find((jb) => jb.conclusion === 'failure') || jobs[0];
+  const head = '✗ الفحص الكامل ' + (STATE_AR[run.conclusion] || run.conclusion) + ' على ' + what + ': ' + run.html_url + ' — أصلح ما يلي قبل أيّ طلب سحب أو دمج.';
+  if (!bad) return { ok: true, text: head };
+  const log = await jobLog(R, bad.id, o);
+  return { ok: true, text: head + '\n' + (log.ok ? log.text : '(تعذّرت قراءة السجلّ: ' + log.error + ' — اقرأه بـrun_log run_id=' + run.id + ')') };
 }
 
 async function deleteBranch(R, branch, o) {
@@ -223,6 +273,7 @@ async function manage(input, opts) {
 
   if (action === 'deploy') return deployCheck(R, i, o); // v-owner-like-me
   if (action === 'shots') return branchShots(R, i, o); // v-branch-shots
+  if (action === 'ci') return branchCi(R, i, o); // v-branch-ci
   if (action === 'status' || action === 'close' || action === 'reopen' || action === 'comment') {
     const ns = nums(i);
     if (!ns.length) return { error: 'أعطِ number أو numbers (حتّى ١٠).' };
@@ -296,7 +347,7 @@ function formatManage(res) {
 
 const MANAGE_TOOL = {
   name: 'manage_github',
-  description: 'أدِر مستودع المالك: status (حالة طلبات سحب/مسائل: مفتوح أو مغلق أو مدموج، والتعارض، والفحوص) · deploy (بعد الدمج: حالة نشر Vercel للطلب number، ومع path وfind هل التغيير في الموقع المنشور — قبل أن تقول «نُشر») · runs (تشغيلات Actions؛ status=failure للفاشلة، workflow=CI) · run_jobs (مهامّ تشغيل وخطواته الفاشلة) · run_log (سطور الفشل نفسها من سجلّ مهمّة: job_id من run_jobs، أو run_id فتُقرأ أوّل مهمّة فاشلة — اقرأه قبل أيّ إصلاح لفشل CI، لا تخمّن السبب من اسم الخطوة) · shots (لقطة شاشة لفرعك حاسوبًا وجوّالًا على جهاز GitHub — branch أو number، وsettings قسم إعدادات مثل accountSection أو click معرّف زرّ مثل #btnX يُفتح قبل اللقطة: النداء الأوّل يبدأ التصوير (~دقيقتان)، والنداء في ردّك التالي بالمدخلات نفسها يرجع اللقطتين صورًا وأخطاء الصفحة — انظر قبل أيّ «تمّ» لتغيير مرئيّ) · close/reopen (طلبات ومسائل؛ delete_branch=true يحذف فرع الطلب) · comment · delete_branch · rerun_failed · cancel_run · delete_runs (يحذف تشغيلات مكتملة، الفاشلة افتراضيًّا، ٥٠ في الاستدعاء). close وreopen والحذف والإلغاء تُرفض إلّا إن قالها المالك صراحةً في رسالته الأخيرة («سكّر»، «افتح»، «احذف»، «وقّف») — الخادم يفحص. افحص بـstatus قبل أن تقول إنّ شيئًا مفتوح أو مدموج، ولا تقل «تمّ» قبل نتيجة الأداة.',
+  description: 'أدِر مستودع المالك: status (حالة طلبات سحب/مسائل: مفتوح أو مغلق أو مدموج، والتعارض، والفحوص) · deploy (بعد الدمج: حالة نشر Vercel للطلب number، ومع path وfind هل التغيير في الموقع المنشور — ينتظر بنفسه حتّى wait ثانية (الافتراضيّ ٩٠) فيرجع «نجح» والنصّ موجودًا في نداء واحد؛ قبل أن تقول «نُشر») · ci (الفحص الكامل npm run ci على فرعك branch أو number في جهاز GitHub — الأوامر نفسها التي تفشل رفعتك عند الدمج: النداء الأوّل يبدؤه (~٣ دقائق)، والنداء في ردّك التالي يرجع أخضر أو أحمر مع سطور الفشل نفسها فتصلحها — قبل طلب السحب، وقبل «تمّ») · runs (تشغيلات Actions؛ status=failure للفاشلة، workflow=CI) · run_jobs (مهامّ تشغيل وخطواته الفاشلة) · run_log (سطور الفشل نفسها من سجلّ مهمّة: job_id من run_jobs، أو run_id فتُقرأ أوّل مهمّة فاشلة — اقرأه قبل أيّ إصلاح لفشل CI، لا تخمّن السبب من اسم الخطوة) · shots (لقطة شاشة لفرعك حاسوبًا وجوّالًا على جهاز GitHub — branch أو number، وsettings قسم إعدادات مثل accountSection أو click معرّف زرّ مثل #btnX يُفتح قبل اللقطة: النداء الأوّل يبدأ التصوير (~دقيقتان)، والنداء في ردّك التالي بالمدخلات نفسها يرجع اللقطتين صورًا وأخطاء الصفحة — انظر قبل أيّ «تمّ» لتغيير مرئيّ) · close/reopen (طلبات ومسائل؛ delete_branch=true يحذف فرع الطلب) · comment · delete_branch · rerun_failed · cancel_run · delete_runs (يحذف تشغيلات مكتملة، الفاشلة افتراضيًّا، ٥٠ في الاستدعاء). close وreopen والحذف والإلغاء تُرفض إلّا إن قالها المالك صراحةً في رسالته الأخيرة («سكّر»، «افتح»، «احذف»، «وقّف») — الخادم يفحص. افحص بـstatus قبل أن تقول إنّ شيئًا مفتوح أو مدموج، ولا تقل «تمّ» قبل نتيجة الأداة.',
   input_schema: {
     type: 'object',
     properties: {
@@ -307,7 +358,8 @@ const MANAGE_TOOL = {
       comment: { type: 'string', description: 'نصّ تعليق (لـcomment، أو يُكتب قبل التسكير)' },
       reason: { type: 'string', enum: ['not_planned', 'completed'], description: 'سبب تسكير المسألة (الافتراضيّ not_planned)' },
       delete_branch: { type: 'boolean', description: 'مع close: احذف فرع طلب السحب' },
-      branch: { type: 'string', description: 'فرع (delete_branch، أو تصفية runs، أو الفرع المصوَّر في shots)' },
+      branch: { type: 'string', description: 'فرع (delete_branch، أو تصفية runs، أو الفرع المصوَّر في shots، أو المفحوص في ci)' },
+      wait: { type: 'integer', description: 'deploy: ثوانٍ ينتظرها النداء حتّى يستقرّ النشر ويظهر النصّ (الافتراضيّ ٩٠، الأقصى ٢٤٠، و0 نظرة واحدة)' },
       settings: { type: 'string', description: 'shots: قسم إعدادات يُفتح قبل اللقطة مثل accountSection (اختياريّ)' },
       click: { type: 'string', description: 'shots: معرّف زرّ يُضغط قبل اللقطة مثل #btnPortraitStyles (اختياريّ)' },
       branches: { type: 'array', items: { type: 'string' } },
