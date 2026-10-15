@@ -48,7 +48,7 @@ test('١. مشهدان — صورتا المالك موضَّحتان في ال�
   assert.equal(W0.KINDS.fashion.est, 40, 'التقدير كما كان');
   assert.equal(W0.KINDS.fashion.scenes, W0._scenes);
   assert.equal(W0._scenes.map((s) => s.id).join(','), 'neon,gold'); // سلسلة لا مصفوفة: مصفوفات vm من نطاق آخر (PITFALLS)
-  for (const k of ['image', 'video', 'styles']) assert.equal(W0.KINDS[k].scenes, undefined, k + ': البطاقة الذهبيّة كما هي');
+  for (const k of ['image', 'video']) assert.equal(W0.KINDS[k].scenes, undefined, k + ': البطاقة الذهبيّة كما هي'); // v-pstyle-scene: الأنماط صار لها مشهد
   assert.equal(NEON.src, '/assets/fashion/gen-scene.webp?v=3');
   assert.equal(GOLD.src, '/assets/fashion/gen-scene-gold.webp?v=1');
   for (const [sc, file] of [[NEON, 'assets/fashion/gen-scene.webp'], [GOLD, 'assets/fashion/gen-scene-gold.webp']]) {

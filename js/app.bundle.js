@@ -44838,8 +44838,15 @@ if(document.readyState === 'loading'){
       busy: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️', '💳'],
       scope: '#videoMakerModal', topSel: '#videoMakerModal .vmk-stage', hideSel: '.vmk-stage',
       top: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️', '💳'] },
+    /* v-pstyle-scene (المالك ١٥ أكتوبر بصورة «معرض البطاقات الزجاجيّ» وعدّاد «12» في وسطه: «ادخل ستايل، شوف كيف توليد الصورة ووين مكانه —
+       نفس الفكرة في أنماط الصور»): المشهد مكان صورة النتيجة (قبل شريط «قبل/بعد» #portraitCompareWrap في لوحة العمل) وتُخفى النتيجة
+       السابقة وزرّا التحميل والمشاركة ما دام؛ النتيجة الجديدة تعود في المكان نفسه. الحالة «⏳ جارٍ التحويل…» (ومسار GIF 🎞️) */
     { id: 'styles', sel: '#portraitStyleStatus', kind: 'styles',
-      busy: ['⏳', '🎞️'] },
+      busy: ['⏳', '🎞️'],
+      /* النطاق الصفحة كلّها: لوحة العمل (#portraitWork بالحالة والشريط) تُنقل مع ورقة الأنماط خارج #portraitStyleModal
+         (تحت #omranWelcome)، فنطاق النافذة كان لا يجد البطاقة ويركّب نسخة في كلّ مسح (٥٣ نسخة في المسبار) */
+      scope: 'body', topSel: '#portraitCompareWrap', top: ['⏳', '🎞️'],
+      hideSel: '#portraitCompareWrap, #portraitStyleDownloadLink, #portraitShareBtn' },
     { id: 'fashion', sel: '#fashionAiStatus', kind: 'fashion',
       busy: ['🎨', 'جاري تطبيق', 'Applying'],
       /* v-gen-scene-exact: البطاقة تُركَّب مكان مربّع الرفع — قبل لوح الصورة، والمربّع يُخفى ما دامت البطاقة؛
@@ -45045,6 +45052,19 @@ if(document.readyState === 'loading'){
   ];
   KINDS.studio.scenes = STYLE_SCENES;
   KINDS.studio.sceneKey = 'aiapp_st_scene';
+  /* v-pstyle-scene: مشهد «أنماط الصور» — صورة المالك (قاعة رخام عاكس، أسطوانة زجاجيّة ببطاقات بورتريه حولها، وعدّاد في وسطها).
+     موضَّحة ×٤ (١٦٠٠×٨٠٤) ومُحي منها ما يُرسم حيًّا فقط: رقم العدّاد (ملء قرصه من بكسلاته الداكنة) وقوسه الساطع (بلون مجراه الخافت).
+     حلقة ورقم فقط — لا شريط ولا نصّ في الصورة (v-scene-kinds: يُرسم ما رُسم فيها لا غير)؛ الجريان داخل الأسطوانة الزجاجيّة خلف العدّاد. */
+  var PORTRAIT_SCENES = [
+    { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=1', w: 1600, h: 804, bg: '#2a221b',
+      ring: { cx: 802, cy: 346, r: 72, sw: 9, hole: 86 },
+      num: { x: 802, y: 366, size: 50, dw: 20, pw: 28 },
+      tube: { x: 560, y: 30, w: 480, h: 650, blend: 'screen' },
+      refl: null, rip: null,
+      ink: '#fff3d6', arc: '#ffe6a8', glow: 'rgba(255,220,150,.35)', flow: '#f1dcb0' }
+  ];
+  KINDS.styles.scenes = PORTRAIT_SCENES;
+  KINDS.styles.sceneKey = 'aiapp_ps_scene';
   /* @vd-scenes:start — مولَّد من قياسات الصور (لا يُحرَّر يدويًّا: يُعاد توليده مع أيّ صورة جديدة) */
   var VD_FONT = { family: "'Bahnschrift','Segoe UI','Helvetica Neue','Roboto',Arial,sans-serif", weight: 300 };
   var VIDEO_SCENES = [
@@ -45547,6 +45567,7 @@ if(document.readyState === 'loading'){
       if(tg && tg.closest && tg.closest('#btnFashionAI')) preloadScenes();
       /* v-style-scene: خمسة مشاهد — يُحمَّل القادم وحده عند فتح الاستوديو وعند كلّ «ولّد» (لا الخمسة) */
       if(tg && tg.closest && tg.closest('#btnStudioAI, #studioAiGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.studio, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(tg && tg.closest && tg.closest('#btnPortraitStyle, #portraitStyleGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.styles, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
       /* v-scene-kinds: القادم وحده لكلّ مجموعة — عند فتح الأداة وعند زرّ التوليد */
       var pre = !tg || !tg.closest ? null : (tg.closest('#btnVideoMaker, #videoMakerGenerateBtn') ? KINDS.vmaker : (tg.closest('#vtGrid, #vtGo') ? KINDS.vtrend : (tg.closest('#btnDesignAI, #designAiGenerateBtn, #designAiIdeaAI') ? KINDS.decor : null)));
       if(pre && pre.scenes && pre.scenes.length){ try{ (new Image()).src = nextScene(pre, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
@@ -45559,7 +45580,7 @@ if(document.readyState === 'loading'){
   window.omranGenWait._sample = sample;
   window.omranGenWait._scenes = SCENES; window.omranGenWait._nextScene = nextScene; window.omranGenWait._sceneHtml = sceneHtml; /* v-gen-scene-exact: للاختبار */
   window.omranGenWait._secDigitEm = SEC_DIGIT_EM; window.omranGenWait._applyHide = applyHide; /* v-gen-steady: للاختبار */
-  window.omranGenWait._styleScenes = STYLE_SCENES; /* v-style-scene: للاختبار */
+  window.omranGenWait._styleScenes = STYLE_SCENES; window.omranGenWait._portraitScenes = PORTRAIT_SCENES; /* v-pstyle-scene: للاختبار */ /* v-style-scene: للاختبار */
   window.omranGenWait._videoScenes = VIDEO_SCENES; window.omranGenWait._trendScenes = TREND_SCENES; window.omranGenWait._decorScenes = DECOR_SCENES; /* v-scene-kinds: للاختبار */
 })();
 /* v-inspire (المالك ٩ أكتوبر «أبدأ بالخطوة الأولى»): «اقتراحات» صارت شاشة بتبويبين — «الإلهام» و«اقتراحات سريعة».
