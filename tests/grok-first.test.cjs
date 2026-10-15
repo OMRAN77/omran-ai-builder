@@ -38,6 +38,17 @@ test('٢. احتياط الخادم لصفّ الوسيط = كروك، لا كل
   assert.match(PL.levelNote('openrouter', ''), /أكمل المهمّة في نفس الردّ/);
 });
 
+test('٥. تغذية كروك: اقرأ المستودع قبل الادّعاء، ولا تجب من التدريب (v-grok-high-feed)', () => {
+  const n = PL.levelNote('openrouter', 'x-ai/grok-4.6');
+  assert.match(n, /أكمل المهمّة في نفس الردّ/);
+  assert.match(n, /صراحة ومباشرة/);
+  assert.match(n, /DECISIONS\.md[^\n]*PITFALLS\.md[^\n]*read_github/);
+  assert.match(n, /لا تجب عن الكود أو الحالة من تدريبك/);
+  assert.match(n, /what=map/);
+  const q = PL.levelNote('openrouter', 'qwen/qwen3.6-27b');
+  assert.ok(!/لا تجب عن الكود أو الحالة من تدريبك/.test(q), 'Qwen لا يأخذ تغذية كروك');
+});
+
 test('٣. منهج العمل يصل كلّ مزوّد: لا تُنهَ الردّ بعد القراءة وحدها', () => {
   assert.match(PL.OWNER_METHOD, /ولا تُنهَ الردّ بعد القراءة وحدها: الجواب أو التعديل في نفس الدور/);
   assert.ok(PL.OWNER_METHOD.length > 1500 && PL.OWNER_METHOD.length < 3200, 'حجم المنهج: ' + PL.OWNER_METHOD.length);
