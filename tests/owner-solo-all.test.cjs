@@ -309,6 +309,6 @@ test('١٢. الرؤية والقراءة: مزوّد على موديل رؤيت
   assert.equal(V.visionPlan('deepseek', 'or', 'deepseek/deepseek-v4-pro', 'x').forced, true);
   const PL = require('../api/_lib/provider-level.js');
   const t = { name: 'read_github', description: 'd', input_schema: { type: 'object', properties: { what: { type: 'string', enum: ['auto', 'commits'], description: 'w' } } } };
-  assert.deepEqual(PL.ownerReadTool(t).input_schema.properties.what.enum, ['auto', 'commits', 'commit']);
+  assert.deepEqual(PL.ownerReadTool(t).input_schema.properties.what.enum, ['auto', 'commits', 'commit', 'map']); // v-codemap: + map
   assert.deepEqual(t.input_schema.properties.what.enum, ['auto', 'commits'], 'المشتركة لغير المالك كما هي (كاشهم)');
 });
