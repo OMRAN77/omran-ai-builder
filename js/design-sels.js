@@ -197,8 +197,12 @@
   }
   function roomBg(id,v){
     if(id==='designAiLighting'&&LIGHT_POS[v]) return lightBg(v);
-    /* v-decor-floor-bg (طلب المالك ١٥ أكتوبر ٢٠٢٦ بلقطة بطاقات الأرضيات): خلفية البطاقة نفسها صورة الأرضية الحقيقية لا رسمة roomSvg الكرتونية. */
-    if(id==='designAiFlooring'&&v&&PALS.designAiFlooring[v]) return 'url("assets/design/opts/flooring-'+v+'.webp?v=2") center/cover no-repeat, #141418';
+    /* v-decor-floor-bg (طلب المالك ١٥ أكتوبر ٢٠٢٦ بلقطة بطاقات الأرضيات): خلفية البطاقة نفسها صورة الأرضية الحقيقية لا رسمة roomSvg الكرتونية.
+       v-decor-floor-full (طلبه ١٥ أكتوبر ٢٠٢٦: «كمل ارفع وادمج»، وقبله «خلها نفس الصور لكن عدلها خلها واضحه» على الإضاءة):
+       البطاقة طولية (٣:٤) وصورة الأرضية عرضية، فـcover كان يعرض شريطًا ضيقًا منها مكبَّرًا فيُقتطع ويُغبَّش. الآن contain:
+       عرض الصورة = عرض البطاقة (ولا تكبير فوق مقاسها فتبقى حادّة)، والغرفة كاملة بأطرافها، و#141418 يملأ ما حولها.
+       وكاسر الكاش ?v=3 يتجاوز نسخة ?v=2 إن كانت مخزّنة في عامل الخدمة أو المتصفّح. */
+    if(id==='designAiFlooring'&&v&&PALS.designAiFlooring[v]) return 'url("assets/design/opts/flooring-'+v+'.webp?v=3") center/contain no-repeat, #141418';
     var c=(PALS[id]||{})[v]; if(!c) return '';
     return roomSvg(c, ROOM_KIND[v]||'');
   }
@@ -318,7 +322,7 @@
     /* v-decor-furn-photos (المالك ١٤ أكتوبر: «الديكور قسم الأثاث مافي صور، حط صور على نفس الأسامي»): الأثاث كان يطلب
        opts/furniture-*.webp وهي غير موجودة فيختفي. صور الأنماط الخمسة بالأسماء نفسها موجودة (كنبة وطاولة كلّ نمط) — بلا رسم ولا رصيد. */
     if(id==='designAiStyle' || id==='designAiFurniture') return 'assets/design/styles/'+v+'.webp';
-    if(id==='designAiFlooring') return 'assets/design/opts/flooring-'+v+'.webp?v=2';
+    if(id==='designAiFlooring') return 'assets/design/opts/flooring-'+v+'.webp?v=3'; /* v-decor-floor-full: نفس كاسر الكاش في roomBg */
     return 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp';
   }
   function selTrigger(s){
