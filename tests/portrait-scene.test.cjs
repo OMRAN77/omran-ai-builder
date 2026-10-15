@@ -4,7 +4,9 @@
    في المعرض: «لا أريدها فوق وين تطلع الصورة»): أنماط الصور تأخذ آليّة «ستايل AI» نفسها (v-style-scene): المشهد مكان صورة النتيجة
    وعدّاد الصورة نفسه حيّ في موضعه، والحركة داخل الأسطوانة خلف العدّاد، والنتيجة تعود في المكان نفسه.
    v-pstyle-mix (ثلاث شبكات ٢×٢ من المالك: «حطّ هذيل كلّهم نفس موضوع الستايل، كلّ مرّة يتغيّر، قصّهم، ١٣ شكل، كلّ مرّة لون وشكل،
-   لا تخلّي نفس الألوان ورا بعض، سوّهم مكس، وأريد الصورة نظيفة»): ١٢ مشهدًا مقصوصًا موضَّحًا يُضاف إلى معرض البطاقات = ١٣ في دور ممزوج. */
+   لا تخلّي نفس الألوان ورا بعض، سوّهم مكس، وأريد الصورة نظيفة»): ١٢ مشهدًا مقصوصًا موضَّحًا يُضاف إلى معرض البطاقات = ١٣ في دور ممزوج.
+   v-pstyle-counter (المالك: «وين العدّاد؟ شيل الكود من ستايل، الفكرة كاملة، وطبّقها في الأنماط — فقط غيّر الأشكال»): عدّاد الستايل نفسه
+   (حلقة ورقم وشريط بتدرّجه ونصّ «NN% COMPLETE» وحزام الأنبوب) على الـ١٣ كلّها في وسط هيكل كلّ شكل، مع قرصه ومجرييه الخافتة لأنّ الصور بلا عدّاد. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -54,7 +56,7 @@ test('١. ١٣ مشهدًا من صور المالك: معرض البطاقات 
   for (const k of ['image', 'video']) assert.equal(w2.KINDS[k].scenes, undefined, k + ': البطاقة الذهبيّة كما هي');
 });
 
-test('٤. الدور ممزوج: لا لون ولا شكل يتكرّر في مشهدين متتاليين (دائريًّا)، ومشاهد الشبكات بلا عدّاد مرسوم فلا حلقة ولا رقم — الجريان داخل هيكلها وحده', () => {
+test('٤. الدور ممزوج: لا لون ولا شكل يتكرّر في مشهدين متتاليين (دائريًّا)؛ وعلى الـ١٢ عدّاد الستايل كاملًا في وسط هيكل كلّ شكل، مع قرصه ومجرييه لأنّ الصور بلا عدّاد', () => {
   const hues = new Set(), shapes = new Set();
   for (let i = 0; i < SC.length; i++) {
     const a = SC[i], b = SC[(i + 1) % SC.length];
@@ -65,45 +67,68 @@ test('٤. الدور ممزوج: لا لون ولا شكل يتكرّر في م�
   }
   assert.deepEqual([...hues].sort(), ['amber', 'blue', 'gallery', 'gold', 'green', 'ice', 'purple'], 'ثلجيّ وذهبيّ ونيون بأربعة ألوان ومعرض البطاقات');
   assert.deepEqual([...shapes].sort(), ['arch', 'cubes', 'cylinder', 'sphere', 'spiral']);
+  // عدّاد الستايل (stScene على ١٢٨٠: حلقة ٣٦٫٦، رقم ٣٠، شريط ١٢٧٫٥×٨، نصّ ١٢٫٨) مكبَّرًا بمعامل واحد على الـ١٢ — لا من رأسي
+  const K = 1.366;
+  const cyPct = {};
   for (const sc of SC.slice(1)) {
-    assert.ok(!sc.ring && !sc.num && !sc.bar && !sc.cap && !sc.refl && !sc.rip, sc.id + ': لا عدّاد في الصورة فلا يُرسم (v-scene-kinds)');
-    assert.ok(sc.tube && sc.tube.blend === 'screen' && sc.flow && sc.bg, sc.id + ': أنبوب جريان بلون المشهد');
-    const t = sc.tube;
+    const r = sc.ring, t = sc.tube;
+    assert.ok(r && sc.num && sc.bar && sc.cap && sc.ink && sc.arc && sc.glow && sc.capInk, sc.id + ': عدّاد الستايل كاملًا');
+    assert.equal(r.cx, 800, sc.id + ': في منتصف العرض — فيبقى على الجوّال حين تُقصّ الجوانب');
+    assert.ok(Math.abs(r.r - 36.6 * K) < 0.1 && Math.abs(r.sw - 3.8 * K) < 0.1 && Math.abs(r.hole - 47.5 * K) < 0.1, sc.id + ': حلقة الستايل مكبَّرة');
+    assert.ok(Math.abs(sc.num.size - 30 * K) < 0.1 && Math.abs(sc.num.y - (r.cy + 11.6 * K)) < 0.1, sc.id + ': رقم الستايل');
+    assert.ok(Math.abs(sc.bar.y - (r.cy + 60.3 * K)) < 0.1 && Math.abs(sc.bar.w - 127.5 * K) < 0.6 && Math.abs(sc.bar.h - 8 * K) < 0.1 && Math.abs(sc.bar.x + sc.bar.w / 2 - 800) < 0.6, sc.id + ': شريط الستايل');
+    assert.ok(Array.isArray(sc.bar.grad) && sc.bar.grad.length === 2, sc.id + ': تدرّج الشريط');
+    assert.ok(Math.abs(sc.cap.y - (r.cy + 86.1 * K)) < 0.1 && Math.abs(sc.cap.size - 12.8 * K) < 0.1, sc.id + ': نصّ الستايل');
+    assert.ok(t.gap && Math.abs(t.gap[0] - (r.cy + 51.8 * K)) < 0.1 && Math.abs(t.gap[1] - (r.cy + 91.8 * K)) < 0.1, sc.id + ': حزام الأنبوب');
+    assert.ok(r.disc && r.track && sc.bar.trough, sc.id + ': قرص ومجرى الحلقة ومجرى الشريط — لا عدّاد في الصورة');
+    // داخل الهيكل: الحلقة والشريط والنصّ كلّها داخل الأنبوب، والأنبوب داخل الصورة وفي منتصفها
     assert.ok(t.x > 0 && t.x + t.w < sc.w && t.y >= 0 && t.y + t.h <= sc.h, sc.id + ': الأنبوب داخل الصورة');
-    assert.ok(Math.abs((t.x + t.w / 2) - sc.w / 2) < 2, sc.id + ': الهيكل في منتصف العرض — فيبقى على الجوّال حين تُقصّ الجوانب');
+    assert.ok(Math.abs((t.x + t.w / 2) - sc.w / 2) < 2, sc.id + ': الأنبوب في منتصف العرض');
+    assert.ok(r.cy - r.r > t.y && sc.cap.y < t.y + t.h && sc.bar.x > t.x && sc.bar.x + sc.bar.w < t.x + t.w, sc.id + ': العدّاد كلّه داخل الهيكل');
     assert.ok(t.w >= 0.2 * sc.w && t.w <= 0.3 * sc.w && t.h >= 0.45 * sc.h, sc.id + ': بحجم الهيكل الزجاجيّ');
+    (cyPct[sc.shape] = cyPct[sc.shape] || new Set()).add(Math.round(r.cy / sc.h * 100));
     const h = W._sceneHtml(sc);
-    assert.ok(h.includes('<svg class="genw-live" viewBox="0 0 ' + sc.w + ' ' + sc.h + '" aria-hidden="true"></svg>'), sc.id + ': لوحة حيّة فارغة — لا قوس ولا رقم ولا شريط');
-    assert.ok(/class="genw-tube" style="left:\d+(\.\d+)?%;top:\d+(\.\d+)?%;width:\d+(\.\d+)?%;height:\d+(\.\d+)?%;mix-blend-mode:screen"><span><em><b>/.test(h), sc.id + ': الأنبوب بلا ثقب (لا حلقة) وبلا حزام');
-    assert.ok(!/genw-rip|genw-arcimg/.test(h), sc.id);
+    const svg = h.slice(h.indexOf('<svg'), h.indexOf('</svg>'));
+    assert.equal((svg.match(/<circle /g) || []).length, 4, sc.id + ': قرص ومجرى وقوس ووهجه');
+    assert.match(svg, new RegExp('<circle class="genw-disc" cx="800" cy="' + r.cy + '" r="[\\d.]+" fill="rgba\\(6,9,18,\\.5\\)"></circle><circle class="genw-track" cx="800" cy="' + r.cy + '" r="' + r.r + '" stroke="rgba\\(255,255,255,\\.2\\)" stroke-width="' + r.sw + '"></circle><circle class="genw-arcg"'));
+    assert.match(svg, /<text class="genw-num" x="800" y="[\d.]+" text-anchor="middle"[^>]*font-size="41"[^>]*>0%<\/text><rect class="genw-trough" [^>]*><\/rect><rect class="genw-bar" [^>]*width="0"[^>]*fill="url\(#genwBarG-/);
+    assert.match(svg, /<text class="genw-cap" x="800" y="[\d.]+" text-anchor="middle"[^>]*font-size="17.5"[^>]*>0% COMPLETE<\/text>/);
+    assert.ok(/<em style="-webkit-mask-image:radial-gradient\(ellipse/.test(h) && /<span style="-webkit-mask-image:linear-gradient\(180deg/.test(h), sc.id + ': الأنبوب مثقوب عند الحلقة وبحزام عند الشريط');
+    assert.ok(!/genw-rip|genw-arcimg|genw-refl/.test(h), sc.id);
   }
-  // الشكل نفسه = أنبوب بالنِّسَب نفسها في ألوانه الثلاثة (الشبكات بالتكوين نفسه)
-  const byShape = {};
-  for (const sc of SC.slice(1)) {
-    const k = [sc.tube.x, sc.tube.w, Math.round(sc.tube.y / sc.h * 100), Math.round((sc.tube.y + sc.tube.h) / sc.h * 100)].join(',');
-    (byShape[sc.shape] = byShape[sc.shape] || new Set()).add(k);
+  // الشكل نفسه = موضع واحد للعدّاد في ألوانه الثلاثة (الشبكات بالتكوين نفسه)، ولكلّ شكل موضعه
+  for (const k in cyPct) assert.equal(cyPct[k].size, 1, k + ': موضع واحد');
+  assert.equal(new Set(Object.values(cyPct).map((s) => [...s][0])).size, 4, 'ولكلّ شكل موضعه');
+  // مشاهد الستايل والأزياء والفيديو كما هي حرفًا: القرص والمجرى والحوض لا يُرسمان إلّا لمن طلبهم
+  for (const sc of [].concat(W._styleScenes, W.KINDS.fashion.scenes)) {
+    const h = W._sceneHtml(sc); assert.ok(!/genw-disc|genw-track|genw-trough/.test(h), sc.id + ': بلا إضافة');
   }
-  for (const k in byShape) assert.equal(byShape[k].size, 1, k + ': نِسَب واحدة');
-  assert.equal(new Set(Object.values(byShape).map((s) => [...s][0])).size, 4, 'ولكلّ شكل نِسَبه');
   const bundle = read('js/app.bundle.js');
   for (const id of ['psNeonSpiral', 'psIceArch']) assert.ok(bundle.includes("'" + id + "'"), 'الحزمة مبنيّة: ' + id);
+  assert.ok(bundle.includes('.genw-live circle.genw-disc{fill:'), 'قرص العدّاد مملوء رغم قاعدة الدوائر بلا ملء');
 });
 
-test('٢. عدّاد الصورة نفسه: حلقة ورقم فقط (كما رُسم فيها — لا شريط ولا نصّ ولا لوحة)، والجريان داخل الأسطوانة مثقوب عند الحلقة', () => {
+test('٢. معرض البطاقات: حلقة الصورة ورقمها بقياسهما (نصف القطر ٧٢)، ومعهما شريط الستايل ونصّه بنسبتها، والجريان داخل الأسطوانة مثقوب عند الحلقة وبحزام عند الشريط', () => {
   const sc = SC[0];
   const h = W._sceneHtml(sc);
   assert.ok(h.includes('<svg class="genw-live" viewBox="0 0 1600 804" aria-hidden="true">'));
   const svg = h.slice(h.indexOf('<svg'), h.indexOf('</svg>'));
-  assert.equal((svg.match(/<circle /g) || []).length, 2, 'القوس ووهجه');
-  for (const c of svg.match(/<circle [^>]+>/g)) assert.match(c, /cx="802" cy="346" r="72"[^>]*stroke-dasharray="[\d.]+" stroke-dashoffset="[\d.]+"/);
-  assert.equal((svg.match(/<rect /g) || []).length, 0, 'لا شريط في الصورة فلا يُرسم');
-  assert.ok(!/genw-cap|genw-plate|genw-hud|genw-refl/.test(svg), 'رقم فقط');
+  assert.equal((svg.match(/<circle /g) || []).length, 4, 'قرص ومجرى وقوس ووهجه');
+  for (const c of svg.match(/<circle class="genw-arcg?" [^>]+>/g)) assert.match(c, /cx="802" cy="346" r="72"[^>]*stroke-dasharray="[\d.]+" stroke-dashoffset="[\d.]+"/);
   assert.match(svg, /<text class="genw-num" x="802" y="366" text-anchor="middle"[^>]*font-size="50"[^>]*>0%<\/text>/);
   assert.ok(sc.num.y > sc.ring.cy && sc.num.y < sc.ring.cy + sc.ring.r, 'خطّ قاعدة الرقم داخل الحلقة');
+  // شريط الستايل ونصّه بنسبة حلقة الصورة (٧٢/٣٦٫٦ من قياسات stScene)
+  const k = 72 / 36.6;
+  assert.ok(Math.abs(sc.bar.y - (346 + 60.3 * k)) < 0.2 && Math.abs(sc.bar.w - 127.5 * k) < 0.6 && Math.abs(sc.bar.x + sc.bar.w / 2 - 802) < 0.6, 'الشريط تحت الحلقة في منتصفها: ' + JSON.stringify(sc.bar));
+  assert.ok(Math.abs(sc.cap.y - (346 + 86.1 * k)) < 0.2 && Math.abs(sc.cap.size - 12.8 * k) < 0.1, 'النصّ تحت الشريط: ' + JSON.stringify(sc.cap));
+  assert.equal((svg.match(/<rect /g) || []).length, 2, 'مجرى الشريط ثمّ الشريط');
+  assert.match(svg, /<rect class="genw-trough" x="676.5" y="[\d.]+" width="251" [^>]*fill="rgba\(255,255,255,\.16\)"><\/rect><rect class="genw-bar" x="676.5" y="[\d.]+" width="0" [^>]*fill="url\(#genwBarG-psGallery\)"/);
+  assert.match(svg, /<text class="genw-cap" x="802" y="515.4"[^>]*font-size="25.2"[^>]*>0% COMPLETE<\/text>/);
   assert.ok(sc.tube && sc.ring.cx > sc.tube.x && sc.ring.cx < sc.tube.x + sc.tube.w && sc.ring.cy > sc.tube.y && sc.ring.cy < sc.tube.y + sc.tube.h, 'الحلقة داخل الأسطوانة');
-  assert.match(h, /class="genw-tube" style="left:35%;top:3\.731%;width:30%;height:80\.846%;mix-blend-mode:screen"/);
+  assert.match(h, /class="genw-tube" style="left:35%;top:3\.731%;width:30%;height:80\.846%;mix-blend-mode:screen"><span style="-webkit-mask-image:linear-gradient\(180deg/, 'حزام الأنبوب عند الشريط والنصّ');
   assert.ok(/<em style="-webkit-mask-image:radial-gradient\(ellipse/.test(h), 'الجريان مثقوب عند الحلقة');
-  assert.ok(!/genw-rip/.test(h), 'بلا تموّجات — أرضه رخام');
+  assert.ok(sc.tube.gap[0] < sc.bar.y && sc.tube.gap[1] > sc.cap.y, 'الحزام يغطّي الشريط والنصّ');
+  assert.ok(!/genw-rip|genw-refl/.test(h), 'بلا تموّجات ولا انعكاس — أرضه رخام');
 });
 
 test('٣. المكان: المشهد مكان صورة النتيجة (قبل شريط «قبل/بعد»)، وتُخفى النتيجة السابقة وزرّا التحميل والمشاركة ما دام؛ الحالة «⏳ جارٍ التحويل…» تبدؤه', () => {

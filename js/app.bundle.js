@@ -45053,26 +45053,56 @@ if(document.readyState === 'loading'){
   KINDS.studio.scenes = STYLE_SCENES;
   KINDS.studio.sceneKey = 'aiapp_st_scene';
   /* v-pstyle-scene: مشهد «أنماط الصور» — صورة المالك (قاعة رخام عاكس، أسطوانة زجاجيّة ببطاقات بورتريه حولها، وعدّاد في وسطها).
-     موضَّحة ×٤ (١٦٠٠×٨٠٤) ومُحي منها ما يُرسم حيًّا فقط: رقم العدّاد (ملء قرصه من بكسلاته الداكنة) وقوسه الساطع (بلون مجراه الخافت).
-     حلقة ورقم فقط — لا شريط ولا نصّ في الصورة (v-scene-kinds: يُرسم ما رُسم فيها لا غير)؛ الجريان داخل الأسطوانة الزجاجيّة خلف العدّاد.
+     موضَّحة ×٤ (١٦٠٠×٨٠٤) ومُحي منها ما يُرسم حيًّا: رقم العدّاد (ملء قرصه من بكسلاته الداكنة) وقوسه الساطع (بلون مجراه الخافت).
      v-pstyle-mix: ١٢ مشهدًا من شبكات المالك الثلاث (٢×٢ لكلّ منها) — ثلاث ألوان (ثلجيّ، ذهبيّ، نيون بأربعة ألوان) × أربعة أشكال
-     (حلزون، مكعّبات، كرة، قوس)، مقصوصة وموضَّحة ×٢ (١٦٠٠ عرضًا). لا عدّاد مرسوم فيها فلا حلقة ولا رقم (القاعدة نفسها)؛ الجريان داخل
-     الهيكل الزجاجيّ وحده (الأنبوب بنِسَب الصورة حسب الشكل). الدور ممزوج: لا لون ولا شكل يتكرّر في مشهدين متتاليين (والدور دائريّ). */
+     (حلزون، مكعّبات، كرة، قوس)، مقصوصة وموضَّحة ×٢ (١٦٠٠ عرضًا). الدور ممزوج: لا لون ولا شكل يتكرّر في مشهدين متتاليين (دائريًّا).
+     v-pstyle-counter (المالك: «وين العدّاد؟ شيل الكود من ستايل، الفكرة كاملة، وطبّقها في الأنماط — فقط غيّر الأشكال»): عدّاد الستايل
+     نفسه (stScene: حلقة ورقم وشريط بتدرّجه ونصّ «NN% COMPLETE» وحزام الأنبوب) على الـ١٣ كلّها، مكبَّرًا بنسبة ١٦٠٠/١٢٨٠ وما فوق، في
+     وسط هيكل كلّ شكل (الأسطوانة، الكتلة، لوح الكرة، فتحة القوس). الصور بلا عدّاد مرسوم فيُرسم معه قرصه الداكن ومجرى حلقته
+     ومجرى شريطه الخافتان (disc/track/trough) — فيُقرأ كما يُقرأ في الستايل. */
   var PS_TUBE = { spiral: [39, 4, 61, 78], cubes: [40, 0, 60, 84], sphere: [37, 1, 63, 71], arch: [37, 24, 63, 80] };
-  var PS_HUE = { ice: ['#2b3a49', '#d9ecff'], gold: ['#3d2d22', '#f1dcb0'], blue: ['#172a52', '#9fd4ff'], green: ['#1c3a24', '#b9ffc8'], purple: ['#331e45', '#e0b8ff'], amber: ['#3d2d1a', '#ffe49a'] };
-  function psScene(id, file, h, hue, shape){
-    var t = PS_TUBE[shape], c = PS_HUE[hue];
-    return { id: id, src: '/assets/portrait/gen-scene-' + file + '.webp?v=1', w: 1600, h: h, hue: hue, shape: shape, bg: c[0], flow: c[1],
-      tube: { x: t[0] * 16, y: Math.round(t[1] * h / 100), w: (t[2] - t[0]) * 16, h: Math.round((t[3] - t[1]) * h / 100), blend: 'screen' },
-      refl: null, rip: null };
+  var PS_CY = { spiral: 47, cubes: 65, sphere: 35, arch: 49 }; /* نسبة مركز الحلقة من الارتفاع — من قياس المنطقة الداكنة وسط كلّ شكل: العدّاد كلّه (من فوق الحلقة إلى تحت النصّ) داخلها */
+  var PS_HUE = {
+    ice: { bg: '#2b3a49', flow: '#d9ecff', ink: '#f0fefe', arc: '#f8ffff', glow: 'rgba(214,244,255,.34)', grad: ['#cfcce9', '#c2f0fa'], capInk: '#edfcfd' },
+    gold: { bg: '#3d2d22', flow: '#f1dcb0', ink: '#fffcd4', arc: '#fffbd8', glow: 'rgba(255,240,190,.38)', grad: ['#f8e0b0', '#fff6cf'], capInk: '#fff7c8' },
+    blue: { bg: '#172a52', flow: '#9fd4ff', ink: '#caf3fb', arc: '#dafeff', glow: 'rgba(150,232,255,.38)', grad: ['#a99fe0', '#8fdcf2'], capInk: '#bbe7f4' },
+    green: { bg: '#1c3a24', flow: '#b9ffc8', ink: '#e3ffe9', arc: '#f0fff3', glow: 'rgba(170,255,200,.38)', grad: ['#8fe3a5', '#c9ffd6'], capInk: '#d4ffdf' },
+    purple: { bg: '#331e45', flow: '#e0b8ff', ink: '#f3e4ff', arc: '#f8efff', glow: 'rgba(220,180,255,.4)', grad: ['#c79bff', '#efd9ff'], capInk: '#ead6ff' },
+    amber: { bg: '#3d2d1a', flow: '#ffe49a', ink: '#fff3cf', arc: '#fff8e6', glow: 'rgba(255,236,190,.35)', grad: ['#f5c96a', '#ffeab0'], capInk: '#ffeeb8' },
+    gallery: { bg: '#2a221b', flow: '#f1dcb0', ink: '#fff3d6', arc: '#ffe6a8', glow: 'rgba(255,220,150,.35)', grad: ['#f8e0b0', '#fff6cf'], capInk: '#fff7c8' }
+  };
+  var PS_DISC = 'rgba(6,9,18,.5)', PS_TRACK = 'rgba(255,255,255,.2)', PS_TROUGH = 'rgba(255,255,255,.16)';
+  /* عدّاد الستايل (stScene على ١٢٨٠) مكبَّرًا بمعامل k حول مركز (cx, cy): مقاديره نِسَب من قياسات صور الستايل نفسها */
+  function psCounter(cx, cy, k){
+    var m = function(v){ return Math.round(v * k * 10) / 10; }, at = function(d){ return Math.round((cy + d * k) * 10) / 10; };
+    return {
+      ring: { cx: cx, cy: cy, r: m(36.6), sw: m(3.8), hole: m(47.5), disc: PS_DISC, track: PS_TRACK },
+      num: { x: cx, y: at(11.6), size: m(30), dw: m(12.5), pw: m(17.6) },
+      bar: { x: Math.round((cx - 63.75 * k) * 2) / 2, y: at(60.3), w: Math.round(127.5 * k * 2) / 2, h: m(8), trough: PS_TROUGH }, /* أنصاف — فجمع x+w في تدرّج الشريط بلا كسور عائمة */
+      cap: { x: cx, y: at(86.1), size: m(12.8), dw: m(4.8), rest: m(56.6) },
+      gap: [at(51.8), at(91.8)]
+    };
   }
-  var PORTRAIT_SCENES = [
-    { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=1', w: 1600, h: 804, bg: '#2a221b', hue: 'gallery', shape: 'cylinder',
-      ring: { cx: 802, cy: 346, r: 72, sw: 9, hole: 86 },
+  function psScene(id, file, h, hue, shape){
+    var t = PS_TUBE[shape], c = PS_HUE[hue], k = psCounter(800, Math.round(PS_CY[shape] * h / 100), 1.366);
+    k.bar.grad = c.grad;
+    return { id: id, src: '/assets/portrait/gen-scene-' + file + '.webp?v=1', w: 1600, h: h, hue: hue, shape: shape, bg: c.bg, flow: c.flow,
+      ring: k.ring, num: k.num, bar: k.bar, cap: k.cap,
+      tube: { x: t[0] * 16, y: Math.round(t[1] * h / 100), w: (t[2] - t[0]) * 16, h: Math.round((t[3] - t[1]) * h / 100), blend: 'screen', gap: k.gap },
+      refl: null, rip: null, ink: c.ink, arc: c.arc, glow: c.glow, capInk: c.capInk };
+  }
+  var PS_GALLERY = (function(){
+    var c = PS_HUE.gallery, k = psCounter(802, 346, 72 / 36.6); /* حلقة الصورة نفسها (نصف قطرها ٧٢) ورقمها بقياسهما، والباقي بنسبتها */
+    k.bar.grad = c.grad;
+    return { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=1', w: 1600, h: 804, hue: 'gallery', shape: 'cylinder', bg: c.bg, flow: c.flow,
+      ring: { cx: 802, cy: 346, r: 72, sw: 9, hole: 86, disc: PS_DISC, track: PS_TRACK },
       num: { x: 802, y: 366, size: 50, dw: 20, pw: 28 },
-      tube: { x: 560, y: 30, w: 480, h: 650, blend: 'screen' },
-      refl: null, rip: null,
-      ink: '#fff3d6', arc: '#ffe6a8', glow: 'rgba(255,220,150,.35)', flow: '#f1dcb0' },
+      bar: k.bar, cap: k.cap,
+      tube: { x: 560, y: 30, w: 480, h: 650, blend: 'screen', gap: k.gap },
+      refl: null, rip: null, ink: c.ink, arc: c.arc, glow: c.glow, capInk: c.capInk };
+  })();
+  var PORTRAIT_SCENES = [
+    PS_GALLERY,
     psScene('psNeonSpiral', 'neon-spiral', 799, 'blue', 'spiral'),
     psScene('psGoldCubes', 'gold-cubes', 798, 'gold', 'cubes'),
     psScene('psIceSphere', 'ice-sphere', 799, 'ice', 'sphere'),
@@ -45174,9 +45204,13 @@ if(document.readyState === 'loading'){
       h += '<defs><linearGradient id="genwBarG-' + sc.id + '" gradientUnits="userSpaceOnUse" x1="' + sc.bar.x + '" y1="0" x2="' + (sc.bar.x + sc.bar.w) + '" y2="0">'
         + '<stop offset="0" stop-color="' + sc.bar.grad[0] + '"/><stop offset="1" stop-color="' + sc.bar.grad[1] + '"/></linearGradient></defs>';
     }
+    /* v-pstyle-counter: صورة بلا عدّاد مرسوم — قرصه الداكن ومجرى حلقته يُرسمان قبل القوس (المشاهد الأخرى: في صورها) */
+    if(r && r.disc) h += '<circle class="genw-disc" cx="' + r.cx + '" cy="' + r.cy + '" r="' + (Math.round((r.r + r.sw * 1.2) * 10) / 10) + '" fill="' + r.disc + '"></circle>';
+    if(r && r.track) h += '<circle class="genw-track" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '" stroke="' + r.track + '" stroke-width="' + r.sw + '"></circle>';
     if(r && !r.img) h += '<circle class="genw-arcg" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.glow + '" stroke-width="' + (Math.round(r.sw * 19) / 10) + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
       + '<circle class="genw-arc" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.arc + '" stroke-width="' + r.sw + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>';
     if(sc.num) h += '<text class="genw-num" x="' + (sc.num.x || r.cx) + '" y="' + sc.num.y + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.num.size + '" fill="' + sc.ink + '"' + fst + '>' + zero + '%</text>';
+    if(sc.bar && sc.bar.trough) h += '<rect class="genw-trough" x="' + sc.bar.x + '" y="' + sc.bar.y + '" width="' + sc.bar.w + '" height="' + sc.bar.h + '" rx="' + (sc.bar.h / 2) + '" fill="' + sc.bar.trough + '"></rect>';
     if(sc.bar) h += '<rect class="genw-bar" x="' + sc.bar.x + '" y="' + sc.bar.y + '" width="0" height="' + sc.bar.h + '" rx="' + (sc.bar.h / 2) + '" fill="' + barFill + '"></rect>';
     if(sc.cap) h += '<text class="genw-cap" x="' + (sc.cap.x || r.cx) + '" y="' + sc.cap.y + '" text-anchor="' + (sc.cap.anchor || 'middle') + '" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.capInk + '">' + zero + '%' + capSfx + '</text>';
     /* حلقات إضافيّة (لوحة جانبيّة ثانية بعدّادها): قوس ووهج ورقم لكلّ واحدة، تمشي مع الرئيسيّة */
@@ -45230,6 +45264,7 @@ if(document.readyState === 'loading'){
     /* عدّاد الصورة: SVG يملأ إطار التأثيرات وإحداثيّاته إحداثيّات الصورة */
     + '.genw-live{position:absolute;top:0;left:0;width:100%;height:100%;z-index:3;overflow:visible;direction:ltr}'
     + '.genw-live circle{fill:none}'
+    + '.genw-live circle.genw-disc{fill:var(--genw-disc,rgba(6,9,18,.5))}'
     + '.genw-arc,.genw-arcg,.genw-xarc,.genw-xarcg{transition:stroke-dashoffset .25s linear}'
     /* قوس الصورة: فوق الجريان وتحت الأرقام، مخفيّ حتى أوّل رسم */
     + '.genw-arcimg{position:absolute;z-index:2;background:center/100% 100% no-repeat;-webkit-mask-image:conic-gradient(#000 0,transparent 0);mask-image:conic-gradient(#000 0,transparent 0)}'
