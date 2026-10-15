@@ -147,6 +147,13 @@ const PLACE_PROMPTS = {
   kids: "a children's bedroom interior",
   entrance: 'a home entrance / foyer interior',
   garden: 'an outdoor garden terrace seating area',
+  /* v-decor-outdoor (طلب المالك ١٥ أكتوبر ٢٠٢٦): أفكار وتصاميم الديكور الخارجي */
+  facade: 'an exterior house/villa front facade and architectural elevation with landscape lighting',
+  pool: 'an outdoor luxury swimming pool and poolside lounge patio area',
+  pergola: 'an outdoor wooden pergola shaded seating area in a landscaped garden',
+  bbq: 'an outdoor barbecue kitchen and cozy firepit seating area',
+  rooftop: 'an outdoor rooftop terrace lounge with ambient lighting and planters',
+  pathway: 'an outdoor landscaped stone walkway and villa entrance garden path',
 };
 
 const DECOR_PROMPTS = {

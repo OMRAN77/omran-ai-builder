@@ -38,10 +38,15 @@ const PLACE_EN = {
   restaurant: 'restaurant', cafe: 'cafe coffee shop', bedroom: 'bedroom', majlis: 'arabic majlis',
   living: 'living room', kitchen: 'kitchen', office: 'office', shop: 'retail shop', bath: 'bathroom',
   kids: 'kids room', entrance: 'home entrance foyer', garden: 'garden terrace',
+  facade: 'modern villa exterior facade landscape', pool: 'outdoor swimming pool patio design',
+  pergola: 'outdoor pergola garden seating', bbq: 'outdoor bbq kitchen firepit seating',
+  rooftop: 'rooftop terrace lounge design', pathway: 'outdoor garden pathway entrance landscape',
 };
 const PLACE_AR = {
   restaurant: 'مطعم', cafe: 'كافيه', bedroom: 'غرفة نوم', majlis: 'مجلس عربي', living: 'صالة', kitchen: 'مطبخ',
   office: 'مكتب', shop: 'محل', bath: 'حمام', kids: 'غرفة أطفال', entrance: 'مدخل', garden: 'حديقة',
+  facade: 'واجهة فيلا خارجية', pool: 'مسبح وجلسة خارجية', pergola: 'برجولا وجلسة حديقة',
+  bbq: 'ركن شواء وجلسة نار خارجية', rooftop: 'جلسة سطح روف خارجية', pathway: 'ممر ومدخل حديقة خارجي',
 };
 
 function cleanQ(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 120); }

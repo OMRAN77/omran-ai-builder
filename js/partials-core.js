@@ -242,6 +242,13 @@
         <option value="kids" data-en="🧸 Kids room" data-i18n="designAiPlaceKids">🧸 غرفة أطفال</option>
         <option value="entrance" data-en="🚪 Entrance" data-i18n="designAiPlaceEntrance">🚪 مدخل</option>
         <option value="garden" data-en="🌳 Garden" data-i18n="designAiPlaceGarden">🌳 حديقة</option>
+        <!-- v-decor-outdoor (طلب المالك ١٥ أكتوبر ٢٠٢٦: «تقدر تحطلي افكار خارجيه في الديكور خارجي»): خيارات الديكور الخارجي -->
+        <option value="facade" data-en="🏡 House Facade">🏡 واجهة منزل</option>
+        <option value="pool" data-en="🏊 Pool &amp; Patio">🏊 مسبح وجلسة</option>
+        <option value="pergola" data-en="⛺ Pergola Seating">⛺ مظلة وبرجولا</option>
+        <option value="bbq" data-en="🔥 BBQ &amp; Firepit">🔥 شواء وجلسة نار</option>
+        <option value="rooftop" data-en="🌇 Rooftop Terrace">🌇 سطح روف</option>
+        <option value="pathway" data-en="🪴 Outdoor Pathway">🪴 ممر ومدخل خارجي</option>
       </select>
     </div>
 
