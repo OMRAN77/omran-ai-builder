@@ -1544,7 +1544,7 @@ module.exports = async (req, res) => {
     const MAX_STEPS = Math.max(1, Math.min(16, Number(process.env.CHAT_MAX_STEPS) || 12));
     const MAX_MS = Math.max(20000, Number(process.env.CHAT_MAX_MS) || 240000);
     const t0 = Date.now();
-    let steps = 0; let __ownerCarried = false; const __olS = __ol.state(__ownerReq); const __olT = __ol.thinkState(__ownerReq, __ownerThink); // v-owner-carry: تنبيه «نفّذ الآن» مرّة واحدة في الردّ · v-claude-code-level (D1: كتل التفكير بين الجولات)
+    let steps = 0; let __ownerCarried = false; const __olS = __ol.state(__ownerReq); const __olT = __ol.thinkState(__ownerReq, __ownerThink); if (__ownerReq) __ol.scrubRefusals(convo); // v-owner-carry: تنبيه «نفّذ الآن» مرّة واحدة في الردّ · v-claude-code-level (D1: كتل التفكير بين الجولات) · v-refusal-retry (١): ملاحظات الرفض السابقة لا تعود للمصنّف
     let searchesUsed = 0; // v-chat-parallel-tools: سقف بحثين لكل ردّ
     let anyText = false;
     let fullText = '';   // v608 — نصّ الردّ المتراكم
@@ -1957,7 +1957,7 @@ module.exports = async (req, res) => {
           steps--; continue;
         }
       }
-      if (__oa && __oa.kind === 'stop' && __ownerReq && !__reRetried && __olS.stopDetails && String(__olS.stopDetails.category || '') === 'reasoning_extraction' && rewriteLastUser(convo, THINK_WORD_RE, 'بدقّة')) { __reRetried = true; if (body) body.effort = 'max'; send({ status: '↳ ⚠️ رُفض كطلب كشف تفكير — أعيد الصياغة بلا «فكّر» وبجهد أعلى' }); steps--; continue; } // v-think-more (٢)
+      if (__oa && __oa.kind === 'stop' && __ownerReq && !__reRetried && __olS.stopDetails && String(__olS.stopDetails.category || '') === 'reasoning_extraction' && rewriteLastUser(convo, THINK_WORD_RE, 'بدقّة')) { __reRetried = true; if (body) body.effort = 'max'; send({ status: '↳ ⚠️ رُفض كطلب كشف تفكير — أعيد الصياغة بلا «فكّر» وبجهد أعلى' }); steps--; continue; } if (__oa && __oa.kind === 'stop' && __ownerReq && !__reRetried && __olS.stopDetails && String(__olS.stopDetails.category || '') === 'reasoning_extraction' && __ol.refusalRetry(convo, __olT)) { __reRetried = true; send({ status: __ol.REFUSAL_RETRY_STATUS }); steps--; continue; } // v-think-more (٢) · v-refusal-retry (٢): بلا كلمة تُزال — مرّة بلا كتل التفكير ولا عرضها
       if (__oa && (__oa.kind === 'stall' || __oa.kind === 'stop')) { send({ error: __oa.msg, ownerStop: true }); res.end(); return; }
       if (__oa && __oa.kind === 'continue') { send({ status: __oa.status }); continue; }
       if (__oa && __oa.kind === 'note') { send({ error: __oa.msg, ownerStop: true }); __ownerCarried = true; }
