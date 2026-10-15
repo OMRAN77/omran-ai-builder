@@ -257,7 +257,7 @@ test('٨. قائمة GPT في السهم من OpenAI نفسه بمفتاح ال�
     assert.deepEqual(out.models.gemini, [['google/gemini-3.5-flash', 'Gemini 3.5 Flash']], 'البقيّة من الوسيط كما كانت');
     assert.ok(seen.some(([u, a]) => u === 'https://api.openai.com/v1/models' && a === 'Bearer sk-openai-test'));
   } finally { delete process.env.OPENAI_API_KEY; }
-  assert.ok(require('fs').readFileSync(rp('api/_lib/provider-models.js'), 'utf8').includes("const KV_KEY = 'provmodels:v4';"), 'المخزَّن القديم (وفيه luna وغير المفلتر) يسقط فورًا');
+  assert.ok(require('fs').readFileSync(rp('api/_lib/provider-models.js'), 'utf8').includes("const KV_KEY = 'provmodels:v5';"), 'المخزَّن القديم (وفيه luna وغير المفلتر) يسقط فورًا — v4 القوائم المفلترة، v5 مع البيانات الوصفيّة (v-model-card)');
 });
 
 test('٩. العميل: الموديل المرفوض يُمسح من الاختيار المحفوظ لذلك المزوّد وحده، واختيار صالح آخر لا يُمسّ', () => {

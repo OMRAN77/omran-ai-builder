@@ -87,8 +87,8 @@ const NAMED = [
   ['api/_lib/chat.js', 1419, 'customInstructionsBlock('],
   ['api/_lib/chat.js', 1543, 'imageTurnConfig('],
   ['api/_lib/chat.js', 1599, 'if (__freeLane || !__visionRoute)'],
-  ['api/_lib/chat.js', 1792, 'while (!upstream.ok && !anyText && __planFallbacks.length)'], // v-plan-routing
-  ['api/_lib/chat.js', 1808, 'v-king-fallback'],
+  ['api/_lib/chat.js', 1812, 'while (!upstream.ok && !anyText && __planFallbacks.length)'], // v-plan-routing
+  ['api/_lib/chat.js', 1828, 'v-king-fallback'],
   ['api/_lib/tier.js', 46, 'const PLAN_ROUTING'], // v-plan-routing
   ['api/_lib/tier.js', 54, 'function isStrongTurn('],
   ['api/_lib/tier.js', 71, 'function planRoute('],

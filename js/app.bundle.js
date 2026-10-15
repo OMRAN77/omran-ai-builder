@@ -15989,7 +15989,7 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
           try{
             const __st = err.status || Number((String(err.message || '').match(/^chat (\d{3})\b/) || [])[1]) || 0;
             /* v-claude-code-level C9 (لقطة المالك ١١ أكتوبر: «⚠️ ما قدرت أردّ الحين» ×٣ بلا شيء): خطأ بلا رقم كان يُمحى سببه — الآن سطره القصير */
-            const __m = String((err && err.message) || ''), __why = __st ? '' : /stalled|__chat_idle__|__chat_no_headers__/.test(__m) ? 'ما وصل شي من الخادم' : /empty reply/.test(__m) ? 'رجع الردّ فارغًا' : /^chat error: /.test(__m) ? 'عطل في الخادم: ' + __m.slice(12, 140) : /Failed to fetch|NetworkError|network|Load failed/i.test(__m) ? 'انقطع الاتّصال' : '';
+            const __m = String((err && err.message) || ''), __why = __st ? '' : /stalled|__chat_idle__|__chat_no_headers__/.test(__m) ? 'ما وصل شي من الخادم' : /empty reply/.test(__m) ? 'رجع الردّ فارغًا' : /^chat error: /.test(__m) ? 'عطل في الخادم: ' + __m.slice(12, 140) : /Failed to fetch|NetworkError|network|Load failed|^chat: cut/i.test(__m) ? 'انقطع الاتّصال' : ''; /* v-turn-close: انقطاع المجرى بعد بدئه */
             err.message = (__st === 402 || /credit|balance|billing|insufficient_quota|payment/i.test(String(err.upstreamText || ''))) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين' + (__st ? ' — خطأ ' + __st : (__why ? ' — ' + __why : '')));
           }catch(e){ __swallow(e, 'fallback:solo-msg'); }
         }
@@ -23377,6 +23377,14 @@ function omranOwnerAppNoun(text){
   try{ return /(?:الصفح[ةه]\s+الرئيسي[ةه]|التطبيق|الواجه[ةه]|الإعدادات|الاعدادات|القائم[ةه]|الشريط|الهيدر|الفوتر|الزر|زرّ|(?:^|\s)زر(?=\s)|قسم)/i.test(String(text || '')); }
   catch(e){ __swallow(e, 'ui:owner-app-noun'); return false; }
 }
+/* v-turn-close: الإيقاف أو الحارس الصلب يحفظ نصّ العرض (liveStripCode يقصّ من أوّل سياج كود)، فيضيع سطر الخادم «⏸️ … اكتب «كمل»» إن جاء
+   بعد كود — ومنه وحده يعرف دور «كمل» أنّه إكمال وعلى أيّ طلب سحب. السطر وما تحته يُعاد تحت المحفوظ كما وصل. */
+function omranKeepStopLine(shown, raw){
+  const s = String(shown || '').trim(), r = String(raw || ''), i = r.lastIndexOf('⏸️');
+  if(i === -1) return s;
+  const tail = r.slice(i).trim();
+  return s.indexOf(tail) !== -1 ? s : (s + '\n\n' + tail).trim();
+}
 function omranOwnerUndoIsImage(messages){
   try{
     if(omranPrevTurnHadImage(messages)) return true;
@@ -24113,7 +24121,7 @@ function __friendlyErr(e){
   })();
   const askAll = !!customProviders || __askAllExplicit || (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) /* v-owner-solo: البناء الضمنيّ يفرض كلود — المالك على مزوّده */ && !__gateNoBuild && !__gateApprovedText && !__fileAnalyze && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape && !__rtWantLookup /* v-route-want */) || __strongBuildRe.test(text)) && !__routeFix);
   // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
-  let __lastStreamPartial = '';
+  let __lastStreamPartial = '', __lastStreamRaw = ''; /* v-turn-close: الخام لسطر الخادم بعد الإيقاف */
 
   try{
     // v-social-alive: الردود المخزنة الحرفية حُذفت نهائيًا بطلب
@@ -26828,7 +26836,7 @@ DESIGN RULES (non-negotiable):
         setTimeout(() => { __live.shown = __live.target.length; }, maxMs);
       });
       const onDelta = (partial) => {
-        onDelta._p = partial;
+        onDelta._p = partial; __lastStreamRaw = partial;
         const stripped = liveStripCode(partial);
         __lastStreamPartial = stripped;
         (function(){ try{ if(chatStatus) chatStatus.release(); }catch(e){ __swallow(e, "misc:app-09-attach#26"); } })();
@@ -27058,7 +27066,7 @@ DESIGN RULES (non-negotiable):
       try{ thinkingDiv.remove(); }catch(e){ __swallow(e, 'ui:chat-stop-remove'); }
       const lastMsg = cur.messages[cur.messages.length - 1];
       if(lastMsg && lastMsg.role === 'user'){
-        const partial = String(__lastStreamPartial || '').trim();
+        const partial = omranKeepStopLine(__lastStreamPartial, __lastStreamRaw); // v-turn-close: سطر «كمل» يبقى بعد الإيقاف
         cur.messages.push({
           role: 'assistant',
           content: partial || (__run.timedOut ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول النتيجة — أعد المحاولة.' : '⚠️ The connection dropped before the result arrived — please try again.') : (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.')),
@@ -39164,9 +39172,14 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       try { chunk = await __raceIdle(reader.read(), __toolBusy ? __CHAT_TOOL_MS : __CHAT_IDLE_MS, '__chat_idle__'); }
       catch (e) {
         if (e && e.name === 'AbortError') { try { e.log = __logNow(); } catch (_l) { /* guard-ok — السجلّ ترف */ } throw e; } /* إيقاف المستخدم أو الحارس الصلب — يمرّ كما هو، ومعه سجلّ العمل (v-interleave-fix) */
-        try { reader.cancel(); } catch (_e) { /* guard-ok — تحرير المجرى */ }
+        try { var __cp = reader.cancel(); if (__cp && __cp.catch) __cp.catch(function () { /* guard-ok — المجرى انقطع أصلًا: إلغاؤه يرفض، وبلا هذا رفضٌ غير معالَج (v-turn-close) */ }); } catch (_e) { /* guard-ok — تحرير المجرى */ }
         if (full.trim()) break; /* عندنا نصّ جزئيّ — نعرضه بدل تضييعه */
-        throw new Error(serverErr || 'chat: stalled — no response');
+        /* v-turn-close (لقطة المالك ١٥ أكتوبر: طلب السحب انفتح والفقاعة «ما وصل شي من الخادم» بلا شيء): انقطاع المقبس كان يُقرأ «صمتًا»،
+           ويضيع معه سجلّ العمل (الخطوات والجمل المنقولة إليه) وعلامة سبب الخادم. الآن: الصمت الظاهر ٩٠ ث «stalled» كما كان (#527)، والانقطاع
+           «cut» بسببه، والسجلّ وownerStop يبقيان مع الخطأ كما في نهاية المجرى الفارغة. */
+        var __se = new Error(serverErr || ((e && e.message === '__chat_idle__') ? 'chat: stalled — no response' : 'chat: cut — ' + String((e && e.message) || e).slice(0, 80)));
+        if (__rp) { try { __rp.pack(__steps, full); } catch (_p) { if (window.__swallow) window.__swallow(_p, 'chatTools:cut-pack'); } } /* سقف المقاطع المحفوظة كالنهاية الناجحة — السجلّ يُحفظ في الرسالة */
+        if (__ownerStop) __se.ownerStop = true; __se.log = __logNow(); throw __se;
       }
       if (chunk.done) break;
       __toolBusy = false; /* وصلت بايتات جديدة من الخادم → لم نعد بانتظار أداة */
@@ -45373,9 +45386,8 @@ if(document.readyState === 'loading'){
      بطاقة الفيديو العريضة في الفقاعة نفسها؛ تُرفع معها عند وصول النتيجة. */
   var CHAT_VIDEO_RE = /🎬 (?:جاري إنشاء الفيديو|Creating video)/;
 
-  /* الرصد: فقاعة نصّها أحد أسطر «أرسم لك…» ولا بطاقة فيها ← نركّب بطاقة.
-     زمن البداية لكلّ نصّ يُحفظ فلا يصفّره renderAll، ويُنسى حين تختفي الفقاعة. */
-  var t0ByText = Object.create(null);
+  /* ١٥ أكتوبر ٢٠٢٦ — طلب المالك إرجاع انتظار صور المحادثة لما قبل البطاقة:
+     تبقى رسالة «أرسم لك الصورة…» من العارض، بلا عدّاد إضافي. بقية اللوحات كما هي. */
   /* زمن بداية كلّ لوحة: يبقى طول التوليد الواحد (الفيديو يبدّل نصّ حالته 🚀→⏳→🎬)
      ولا يُصفَّر إلا حين ينتهي الاشتغال أو تُزال البطاقة. */
   var t0ByPanel = Object.create(null);
@@ -45418,21 +45430,6 @@ if(document.readyState === 'loading'){
 
   function scan(){
     if(!document.body) return;
-    var active = Object.create(null);
-    var els = document.querySelectorAll('.msg-text');
-    for(var i = 0; i < els.length; i++){
-      var el = els[i];
-      var txt = '';
-      try{ txt = String(el.textContent || '').trim(); }catch(e){ continue; }
-      if(PHRASES.indexOf(txt) === -1) continue;
-      var host = el.parentNode;
-      if(!host || host.querySelector('.genw')) { active[txt] = 1; continue; }
-      active[txt] = 1;
-      if(!t0ByText[txt]) t0ByText[txt] = Date.now();
-      try{ host.appendChild(render({ t0: t0ByText[txt] })); }catch(e){ try{ __swallow(e, 'gen-wait:scan'); }catch(_){ /* لا سجلّ هنا — العرض تجميليّ */ } }
-    }
-    for(var k in t0ByText){ if(!active[k]) delete t0ByText[k]; }
-
     /* فيديو المحادثة: سطر «🎬 جاري إنشاء الفيديو…» الجاري داخل فقاعة التفكير
        (.chat-status-text) ← بطاقة عريضة في الفقاعة؛ اختفى السطر ← تُرفع البطاقة. */
     var cvFound = false;

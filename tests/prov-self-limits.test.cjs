@@ -30,9 +30,12 @@ const chat = require(rp('api/_lib/chat.js'));
 const OD = require(rp('api/_lib/oa-direct.js'));
 const tok = () => { const p = Buffer.from(JSON.stringify({ u: 'omran', exp: Date.now() + 6e5 })).toString('base64url'); return p + '.' + crypto.createHmac('sha256', process.env.AUTH_SECRET).update(p).digest('base64url'); };
 
-test('GPT 429 with retry-after 25 s: the direct call is not retried at 0.8 s and 2 s (was three calls), and no other provider answers', async () => {
+test('GPT 429 with retry-after 25 s: the direct call is not retried at 0.8 s and 2 s (was three calls), and no other provider answers; a short retry-after is honored once in-call (v-direct-429)', async () => {
+  const OD = require('../api/_lib/oa-direct.js');
   const calls = [];
   const save = global.fetch;
+  const saveMax = OD.__cfg.waitMax;
+  OD.__cfg.waitMax = 10; // موعد ٢٥ ث أبعد من حدّ النوم داخل النداء — كما لو كان ٤٠ ث على ٦٠ ث
   global.fetch = async (url) => {
     const u = String(url);
     calls.push(u);
@@ -41,9 +44,16 @@ test('GPT 429 with retry-after 25 s: the direct call is not retried at 0.8 s and
   };
   const req = { method: 'POST', headers: {}, body: { token: tok(), provider: 'openai', model: 'openai/gpt-6-astra', messages: [{ role: 'user', content: 'مرحبا' }] } };
   const res = { setHeader() {}, status() { return this; }, json() { return this; }, write() { return true; }, end() {}, flushHeaders() {} };
-  try { await chat(req, res); } finally { global.fetch = save; }
+  try { await chat(req, res); } finally { global.fetch = save; OD.__cfg.waitMax = saveMax; }
   assert.equal(calls.filter((u) => /api\.openai\.com\/v1\/responses/.test(u)).length, 1, 'نداء مباشر واحد: ' + calls.join(' '));
   assert.ok(calls.every((u) => /openai\.com|openrouter\.ai\/api\/v1\/messages/.test(u)), 'GPT نفسه (مباشر ثمّ عبر الوسيط بالموديل نفسه) لا غيره');
+  // v-direct-429: موعد قصير (٠٫٢ ث) يُنتظر مرّة داخل النداء ويُعاد النداء نفسه — لا ٠٫٨ ث ولا ٢ ث
+  const route = OD.directRoute('openai', { OPENAI_API_KEY: 'ok' });
+  let n = 0; const t0 = Date.now();
+  const r = await OD.directFetch(route, { model: 'gpt-6-astra', max_tokens: 50, system: 's', messages: [{ role: 'user', content: 'x' }] }, { fetchImpl: async () => (++n === 1
+    ? new Response(JSON.stringify({ error: { type: 'rate_limit_error', message: 'Rate limit reached.' } }), { status: 429, headers: { 'retry-after': '0.2' } })
+    : new Response('data: ' + JSON.stringify({ type: 'response.created', response: { model: 'gpt-6-astra' } }) + '\n\ndata: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } })) });
+  assert.equal(r.ok, true); assert.equal(n, 2); assert.ok(Date.now() - t0 >= 200, 'انتظر الموعد نفسه');
   assert.match(read('api/_lib/oa-direct.js'), /rl = \{ ok: false, status: r\.status, model: rb\.model, api: 'responses', text: async \(\) => t, headers: r\.headers \|\| null \};/);
 });
 
