@@ -193,6 +193,8 @@
   }
   function roomBg(id,v){
     if(id==='designAiLighting'&&LIGHT_POS[v]) return lightBg(v);
+    /* v-decor-floor-bg (طلب المالك ١٥ أكتوبر ٢٠٢٦ بلقطة بطاقات الأرضيات): خلفية البطاقة نفسها صورة الأرضية الحقيقية لا رسمة roomSvg الكرتونية. */
+    if(id==='designAiFlooring'&&v&&PALS.designAiFlooring[v]) return 'url("assets/design/opts/flooring-'+v+'.webp?v=2") center/cover no-repeat, #141418';
     var c=(PALS[id]||{})[v]; if(!c) return '';
     return roomSvg(c, ROOM_KIND[v]||'');
   }
@@ -309,6 +311,7 @@
     /* v-decor-furn-photos (المالك ١٤ أكتوبر: «الديكور قسم الأثاث مافي صور، حط صور على نفس الأسامي»): الأثاث كان يطلب
        opts/furniture-*.webp وهي غير موجودة فيختفي. صور الأنماط الخمسة بالأسماء نفسها موجودة (كنبة وطاولة كلّ نمط) — بلا رسم ولا رصيد. */
     if(id==='designAiStyle' || id==='designAiFurniture') return 'assets/design/styles/'+v+'.webp';
+    if(id==='designAiFlooring') return 'assets/design/opts/flooring-'+v+'.webp?v=2';
     return 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp';
   }
   function selTrigger(s){
