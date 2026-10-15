@@ -275,6 +275,15 @@
       ask: ask, lang: L(), token: authTok(), guestId: guestId(), githubUrl: S.github || undefined,
       tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return ''; } })(),
     };
+    /* v-owner-solo-all (المالك: «كل واحد بروحه»): للمالك مزوّده المختار وموديله — الخادم يقبلهما له وحده (code-analyze callPro) */
+    try {
+      if (typeof omranOwnerUi === 'function' && omranOwnerUi()) {
+        var sel = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai');
+        payload.provider = sel;
+        var mdl = sel === 'claude' ? (window.claudeModelGet ? window.claudeModelGet() : '') : (window.omranModelFor ? window.omranModelFor(sel) : '');
+        if (mdl) payload.model = mdl;
+      }
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'codescore:owner-prov'); }
     var prep = S.zip ? readB64(S.zip.file).then(function (b64) { payload.fileBase64 = b64; payload.filename = S.zip.name; }) : Promise.resolve();
     prep.then(function () {
       return callApi(payload, function (st) { var p = $id('csProg'); if (p) p.textContent = st; });

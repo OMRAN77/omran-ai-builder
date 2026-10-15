@@ -23,7 +23,7 @@ function visionPlan(prov, route, cur, def) {
   if (!v || !route || !Object.prototype.hasOwnProperty.call(v, route)) return null;
   const m = v[route];
   if (String(prov).toLowerCase() === 'kimi' && route === 'or' && /^moonshotai\/kimi-k(?:3|2\.6)\b/.test(String(cur || ''))) return { model: cur, def, forced: false }; // v-owner-solo: K3 وK2.6 يريان — الاختيار يبقى
-  return m ? { model: m, def: m, forced: true } : { model: cur, def, forced: false };
+  return m ? (m === cur ? { model: cur, def, forced: false } /* v-owner-solo-all: على موديل رؤيته أصلًا (Groq qwen3.6) = يرى بلا تبديل */ : { model: m, def: m, forced: true }) : { model: cur, def, forced: false };
 }
 
 module.exports = { VISION, visionPlan };

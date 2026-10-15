@@ -80,7 +80,7 @@ const TURN = `(async function __turn(INPUT, CUR){
   const chatStatus = { isReleased: () => true, note(){}, phase(){}, release(){} };
   ${S.prov}
   ${S.notes}
-  return { __gateNoBuild, __routeFix, __editIntent, __ownerFree, __effProv, __toolsWillRun,
+  return { text, __gateNoBuild, __routeFix, __editIntent, __ownerFree, __effProv, __toolsWillRun,
     __ownerBuildAsk: typeof __ownerBuildAsk === 'undefined' ? null : __ownerBuildAsk,
     notes: apiMessages.slice(apiMessages.findIndex(m => m.role === 'user') + 1).filter(m => m.role === 'system').map(m => String(m.content)) };
 })`;
@@ -147,14 +147,18 @@ test('٥. غير المالك على طلب بناء: لا ReferenceError (إع�
   assert.ok(gateBranch.indexOf('omranOwnerUi()') < gateBranch.indexOf('&& !omranEditBigOpen(getCurrent())){'), 'قبل المرساة المثبّتة في chat-edit');
 });
 
-test('٦. المالك بلا كود مفتوح: الأسئلة كما كانت (أدوات بلا تعليمات إضافيّة)، وموافقة «نعم» على عرض بناء ما زالت تبني', async () => {
+test('٦. المالك بلا كود مفتوح: الأسئلة كما كانت (أدوات بلا تعليمات إضافيّة)، و«نعم» على عرض مزوّده تصله كما كتبها — غير المالك كما كان', async () => {
   const q = await turn(true, 'وش أخبار الذهب اليوم', fresh());
   assert.equal(q.__toolsWillRun, true); assert.deepEqual(q.notes, []);
-  const offered = fresh();
-  offered.messages.push({ role: 'user', content: 'عندي فكرة لعبة' }, { role: 'assistant', content: 'أقدر أبنيلك لعبة ثعبان بسيطة، تبيني أبدأ البناء؟' });
-  const yes = await turn(true, 'نعم', offered);
+  const offered = () => { const c = fresh(); c.messages.push({ role: 'user', content: 'عندي فكرة لعبة' }, { role: 'assistant', content: 'أقدر أبنيلك لعبة ثعبان بسيطة، تبيني أبدأ البناء؟' }); return c; };
+  /* v-owner-solo-all: كانت «نعم» تُستبدل بأمر «ابنِ ملفّ html واحدًا» — فـ«نعم» على «أسوي لك طلب سحب؟» تبني صفحة محادثة،
+     و«نعم ادمج» بعد «أدمج وأنشر؟» تصل الخادم طلبًا قديمًا فترفض بوّابة «ادمج». مزوّد المالك يرى عرضه في السجلّ ويكمله بنفسه. */
+  const yes = await turn(true, 'نعم', offered());
+  assert.equal(yes.text, 'نعم', 'كلام المالك نفسه');
   assert.equal(yes.__toolsWillRun, true);
-  assert.equal(yes.notes.length, 1); assert.match(yes.notes[0], /^وافق المستخدم على البناء/);
+  assert.deepEqual(yes.notes, [], 'لا أمر «ملفّ html واحد» يُفرض على مزوّده');
+  const other = await turn(false, 'نعم', offered());
+  assert.match(other.text, /^نعم، ابدأ الآن ببناء/, 'غير المالك: الموافقة على العرض تبني كما كانت');
 });
 
 test('٧. المالك ومفتاح الأدوات مطفأ: «صلّح…» يذهب للمسار بلا أدوات، فلا تُرسَل تعليمة المشروع المفتوح (كلامها عن المستودع للأدوات وحدها)', async () => {

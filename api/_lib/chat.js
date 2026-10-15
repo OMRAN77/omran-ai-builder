@@ -1666,9 +1666,9 @@ module.exports = async (req, res) => {
       const callUpstream = (withImg) => __upFetch(CHAT_URL, {
         method: 'POST', // v-tokens-close: غير المالك بلا إشارة — تبقى مهلة _fetch-timeout (٣٠ ث لأوّل بايت)؛ للمالك إشارة owner-loop بحرّاسها (٧٥ ث لأوّل بايت، الصمت، سبب ظاهر) — v-claude-code-level C5
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, signal: __ol.signal(__olS, !!__direct),
-        body: JSON.stringify(__ol.think(__ol.shape(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {}, { max_tokens: __maxTokens() } /* v-owner-cap-open: السقف آخرًا فيغلب سقوف الجهد (٣٢/٦٤ ألفًا) */), __olS, !!__direct), __olT, convo, __direct ? 'x' : (viaOR ? 'or' : 'a'))), // v-claude-code-level D1: تفكير الجولة السابقة يعود كما وصل على المسار نفسه · v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم) /* cross-1: المالك الخامّ بلا نظام ولا ذيل فلا يصله تنبيه «مقفلة» — قائمته بلا أدوات الصور كما كانت (__rawOwner && __ownerNoMedia) */
+        body: JSON.stringify(__ol.think(__ol.shape(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {}, { max_tokens: __maxTokens() } /* v-owner-cap-open: السقف آخرًا فيغلب سقوف الجهد (٣٢/٦٤ ألفًا) */), __olS, !!__direct || (viaOR && !/^anthropic\//.test(CHAT_MODEL)) /* v-owner-solo-all: الخطوة الأخيرة بلا أدوات لغير أنثروبيك على الوسيط أيضًا — الملخّص لا «انتهت الميزانيّة» */), __olT, convo, __direct ? 'x' : (viaOR ? 'or' : 'a'))), // v-claude-code-level D1: تفكير الجولة السابقة يعود كما وصل على المسار نفسه · v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم) /* cross-1: المالك الخامّ بلا نظام ولا ذيل فلا يصله تنبيه «مقفلة» — قائمته بلا أدوات الصور كما كانت (__rawOwner && __ownerNoMedia) */
       }).then((r) => __ol.got(__olS, r), (e) => __ol.fetchFailed(__olS, e)); // v-claude-code-level C5: حارس لكلّ نداء، وقطعه = فشل صريح
-      let upstream = await callUpstream(true); upstream = await __ol.retryBusy(upstream, () => callUpstream(true), __olS, { direct: __ownerReq && !viaOR, t0, MAX_MS, send }); upstream = await __ol.think400(upstream, __olT, convo, () => callUpstream(true), send); // v-claude-code-level C4: مشغول = النداء نفسه · D1: توقيع مرفوض = نزع وإعادة واحدة
+      let upstream = await callUpstream(true); upstream = await __ol.retryBusy(upstream, () => callUpstream(true), __olS, { direct: __ownerReq /* v-owner-solo-all: والوسيط أيضًا — مزوّد المالك لا بديل له، فزحام ٤٢٩/٥xx يُعاد مرّتين كالمباشر */, t0, MAX_MS, send }); upstream = await __ol.think400(upstream, __olT, convo, () => callUpstream(true), send); // v-claude-code-level C4: مشغول = النداء نفسه · D1: توقيع مرفوض = نزع وإعادة واحدة
       // v-img-err: أيّ فشل على إعداد دور الصورة (400 أو 404 نموذج لا يملكه المفتاح أو
       // 403 أو 429…) = إعادة فوريّة بالطلب العاديّ قبل أيّ هبوط — لا 400 وحده.
       if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) {
@@ -2025,7 +2025,7 @@ module.exports = async (req, res) => {
           else if (cb.name === 'web_search') {
             const _q = input.query || '';
             const mySearchNo = ++searchesUsed; // يزداد قبل أول await فالعدّ آمن مع التوازي
-            if (/عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made/i.test(_q)) {
+            if (!__ownerReq /* v-owner-solo-all: بحث المالك عن خطأ في تطبيقه («omran-ai-builder vercel error») بحثٌ لا سؤال عن التطبيق */ && /عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made/i.test(_q)) {
               result = 'هذا سؤال عن التطبيق نفسه — أجب من معلوماتك المحلية بدون بحث.';
             } else if (mySearchNo > 2) {
               result = 'بلغتَ سقف البحث لهذا الردّ (بحثان). لديك نتائج كافية — أجب الآن مما جمعت ولا تطلب بحثًا إضافيًا.';
@@ -2114,13 +2114,13 @@ module.exports = async (req, res) => {
             const __gm = require('./github-manage.js'); const __act = String((input && input.action) || '');
             if (!__ownerReq) result = '✗ إدارة GitHub للمالك وحده.';
             else if (!__gm.ownerAllows(__act, lastUserText)) result = '✗ «' + __act + '» يحتاج أن يقولها المالك صراحةً في رسالته الأخيرة («سكّر» · «افتح» · «احذف» · «وقّف») — اعرض عليه ما ستفعله واسأله.';
-            else { __ownerOps.manages = (__ownerOps.manages || 0) + 1; result = __ownerOps.manages > 8 ? '✗ ثمانية استدعاءات إدارة في الردّ الواحد حدّ مقصود.' : __gm.formatManage(await __gm.manage(input)); }
+            else { __ownerOps.manages = (__ownerOps.manages || 0) + 1; const __mr = __ownerOps.manages > 8 ? null : await __gm.manage(input); result = __mr ? __gm.formatManage(__mr) : '✗ ثمانية استدعاءات إدارة في الردّ الواحد حدّ مقصود.'; if (__mr && Array.isArray(__mr.images) && __mr.images.length) { const __vs = prov === 'claude' || __ownerSeen || (() => { const v = require('./owner-vision.js').visionPlan(prov, __direct ? 'direct' : (viaOR ? 'or' : ''), CHAT_MODEL, DEFAULT_MODEL); return !!(v && !v.forced); })(); if (__vs) __seeImgs.push(...__mr.images.slice(0, 2)); else result += '\n(موديلك الحاليّ لا يرى الصور — اللقطتان في التشغيل: ' + (__mr.runUrl || '') + '؛ قل ذلك للمالك ولا تصفهما.)'; } } /* v-branch-shots: لقطتا الفرع صورًا بعد نتائج الخطوة لمن يرى */
           }
           else if (cb.name === 'delegate_code_task') {
             const __dl = require('./agent-delegate.js');
             if (!__ownerReq) result = '✗ تفويض مهامّ الكود للمالك وحده.';
             else if (!__dl.ownerAsksCode(lastUserText)) result = __dl.DELEGATE_REFUSAL; // v-code-not-primary: بطلب المالك بالاسم وحده
-            else { __ownerOps.delegates++; result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input)); }
+            else { __ownerOps.delegates++; result = __ownerOps.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في الردّ الواحد — سلّم المالك روابط المهمّة الأولى.' : __dl.formatStart(await __dl.startTask(input, { prov: reqProv || prov /* v-self-only: نسخة المزوّد نفسه وحدها */ })); }
           }
           /* v-prov-self: ملفّ المزوّد المختار نفسه (لا غيره)، والدروس العامّة بـ«عمّم» يفحصها الخادم */
           else if (cb.name === 'edit_self') result = await require('./prov-self.js').runSelf(reqProv || prov, input, __ownerReq);
@@ -2175,7 +2175,7 @@ module.exports = async (req, res) => {
         if (st.cb.name === 'show_cards') __searchRan = true; // v-cards: بطاقات البحث بحثٌ فعليّ — حارس التقييمات يعمل عليها أيضًا
       }
       /* v-owner-see-repo-img: بعد نتائج الأدوات (أنثروبيك يشترطها أوّلًا) نصّ المسار ثمّ الصورة — oa-direct يحوّلها input_image / image_url */
-      for (const __im of __seeImgs.slice(0, 4)) toolResults.push({ type: 'text', text: '[صورة من المستودع: ' + __im.path + ']' }, { type: 'image', source: { type: 'base64', media_type: __im.mime, data: __im.b64 } });
+      for (const __im of __seeImgs.slice(0, 4)) toolResults.push({ type: 'text', text: '[' + (__im.label || ('صورة من المستودع: ' + __im.path)) + ']' /* v-branch-shots: اللقطة باسمها */ }, { type: 'image', source: { type: 'base64', media_type: __im.mime, data: __im.b64 } });
       convo.push({ role: 'user', content: toolResults });
     }
 

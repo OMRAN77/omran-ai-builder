@@ -11,7 +11,7 @@
 
 const { ghFetch, parseTarget, resolveGithubToken } = require('./github-read.js');
 
-const ACTIONS = ['status', 'deploy', 'runs', 'run_jobs', 'run_log', 'close', 'reopen', 'comment', 'delete_branch', 'rerun_failed', 'cancel_run', 'delete_runs'];
+const ACTIONS = ['status', 'deploy', 'runs', 'run_jobs', 'run_log', 'shots', 'close', 'reopen', 'comment', 'delete_branch', 'rerun_failed', 'cancel_run', 'delete_runs'];
 const GATE = { close: 'close', reopen: 'reopen', delete_branch: 'delete', delete_runs: 'delete', cancel_run: 'cancel' };
 const VERBS = {
   close: /سكّ?ر|اغلق|أغلق|إغلاق|قفّ?ل|\bclose\b/i,
@@ -149,6 +149,56 @@ async function jobLog(R, jobId, o) {
   return { ok: true, text: 'سجلّ المهمّة ' + jobId + ' — سطور الفشل:\n' + failLines(String(await r.text()).slice(-3000000)) };
 }
 
+/* v-branch-shots (المالك: «الجهاز الي عندك… ابدا»): لقطة الفرع — قراءة بلا إذن. نداء أوّل يبدأ branch-shots.yml على الفرع (أوامر
+   ثابتة: ui-shot حاسوبًا وجوّالًا)، ونداء لاحق بالمدخلات نفسها يقرأ ملفّ التشغيل نفسه (التزام الفرع الحاليّ والعرض نفسه) فيرجع
+   اللقطتين صورًا وأخطاء الصفحة. ملفّ التشغيل على مخزن GitHub آخر — مفتاح GitHub لا يُرسل إليه (كسجلّ run_log). */
+const BS = require('./branch-shots.js');
+async function branchOf(R, i, o) {
+  const n = posInt(i.number);
+  if (!n) return { branch: String(i.branch || '').trim() };
+  const { r, j: p } = await ghJson(R + '/pulls/' + n, o);
+  if (!r.ok || !p || !p.head) return { error: '#' + n + ': طلب سحب غير موجود (HTTP ' + r.status + ')' };
+  return { branch: String(p.head.ref || '') };
+}
+async function branchShots(R, i, o) {
+  const b = await branchOf(R, i, o);
+  if (b.error) return b;
+  if (!BS.BRANCH_RE.test(b.branch)) return { error: 'أعطِ branch (فرعك بعد الرفع، أو main للحال قبل التعديل) أو number طلب السحب.' };
+  const v = BS.viewOf(i);
+  if (v.error) return v;
+  const { r: cr, j: cj } = await ghJson(R + '/commits/' + encodeURIComponent(b.branch), o);
+  if (!cr.ok || !cj || !cj.sha) return ghErr('تعذّرت قراءة آخر التزام على ' + b.branch, cr, cj);
+  const sha = cj.sha, want = BS.titleOf(b.branch, v);
+  const { r: lr, j: lj } = await ghJson(R + '/actions/workflows/' + BS.WORKFLOW + '/runs?event=workflow_dispatch&per_page=20&branch=' + encodeURIComponent(b.branch), o);
+  if (lr.status === 404) return { error: 'أداة التصوير (' + BS.WORKFLOW + ') غير موجودة في المستودع بعد — تصل مع دمج v-branch-shots.' };
+  if (!lr.ok || !lj) return ghErr('تعذّرت قراءة تشغيلات التصوير', lr, lj);
+  const run = (lj.workflow_runs || []).find((x) => x.head_sha === sha && BS.norm(x.display_title) === want);
+  const what = 'الفرع ' + b.branch + ' (' + sha.slice(0, 7) + ')' + (v.settings ? ' · قسم ' + v.settings : '') + (v.click ? ' · بعد الضغط على ' + v.click : '');
+  if (!run) {
+    const { r: dr, j: dj } = await ghJson(R + '/actions/workflows/' + BS.WORKFLOW + '/dispatches', post(o, 'POST', { ref: b.branch, inputs: { ref: b.branch, settings: v.settings, click: v.click } }));
+    if (dr.status !== 204 && !dr.ok) return ghErr('تعذّر بدء التصوير (يحتاج مفتاح GitHub صلاحيّة Actions: write)', dr, dj);
+    return { ok: true, text: '📸 بدأت تصوير ' + what + ' حاسوبًا وجوّالًا — يأخذ دقيقتين تقريبًا. أعد manage_github action=shots بالمدخلات نفسها في ردّك التالي لترى اللقطتين؛ لا تكرّره في الردّ نفسه.' };
+  }
+  if (run.status !== 'completed') return { ok: true, text: '📸 تصوير ' + what + ' قيد العمل (' + run.html_url + ') — أعد action=shots بعد دقيقة في ردّك التالي.' };
+  const { r: ar, j: aj } = await ghJson(R + '/actions/runs/' + run.id + '/artifacts?per_page=10', o);
+  const art = ar.ok && aj && (aj.artifacts || []).find((x) => x.name === BS.ARTIFACT && !x.expired);
+  if (!art) return { error: 'تشغيل التصوير انتهى (' + (run.conclusion || run.status) + ') بلا لقطات: ' + run.html_url + ' — اقرأ سببه بـrun_log run_id=' + run.id + '.' };
+  const f = o.fetchImpl || fetch;
+  const noKey = (url, init) => f(url, /^https:\/\/api\.github\.com\//.test(String(url)) ? init : Object.assign({}, init, { headers: { 'User-Agent': 'OmranAgent/1.0' } }));
+  const zr = await ghFetch(R + '/actions/artifacts/' + art.id + '/zip', Object.assign({}, o, { fetchImpl: noKey, timeoutMs: 30000 }));
+  if (!zr.ok) return ghErr('تعذّر تنزيل اللقطات', zr, null);
+  let got;
+  try { got = BS.pickShots(require('./analyze-zip.js').unzip(Buffer.from(await zr.arrayBuffer()))); } catch (e) { return { error: 'ملفّ اللقطات تالف: ' + String((e && e.message) || e).slice(0, 120) }; }
+  if (!got.images.length) return { error: 'لا لقطات في التشغيل ' + run.html_url + (got.summary && got.summary.note ? ' — ' + got.summary.note : '') };
+  const sm = got.summary || {};
+  const lines = ['📸 لقطتا ' + what + ' — مرفقتان بعد نتائج هذه الخطوة: انظر إليهما بنفسك وقل للمالك ما تراه بالضبط قبل أيّ «تمّ».'];
+  if (sm.rejected) lines.push('⚠️ مدخل مرفوض (' + sm.rejected + ') — صُوّرت الصفحة الرئيسيّة.');
+  lines.push((sm.pageErrors && sm.pageErrors.length) ? '✗ أخطاء الصفحة (' + sm.pageErrors.length + '): ' + sm.pageErrors.slice(0, 8).join(' | ') : '✓ لا أخطاء في الصفحة.');
+  if (sm.consoleErrors && sm.consoleErrors.length) lines.push('أخطاء الكونسول: ' + sm.consoleErrors.slice(0, 5).join(' | '));
+  lines.push('التشغيل: ' + run.html_url);
+  return { ok: true, text: lines.join('\n'), runUrl: run.html_url, images: got.images.map((x) => ({ path: 'لقطة ' + (x.name === 'mobile.png' ? 'الجوّال' : 'الحاسوب') + ' — ' + what, label: 'لقطة ' + (x.name === 'mobile.png' ? 'الجوّال' : 'الحاسوب') + ' من ' + what, mime: 'image/png', b64: x.b64, bytes: x.bytes })) };
+}
+
 async function listRuns(R, i, o) {
   const q = ['per_page=' + Math.min(posInt(i.limit) || 15, 50)];
   if (i.status) q.push('status=' + encodeURIComponent(String(i.status)));
@@ -172,6 +222,7 @@ async function manage(input, opts) {
   const lines = [];
 
   if (action === 'deploy') return deployCheck(R, i, o); // v-owner-like-me
+  if (action === 'shots') return branchShots(R, i, o); // v-branch-shots
   if (action === 'status' || action === 'close' || action === 'reopen' || action === 'comment') {
     const ns = nums(i);
     if (!ns.length) return { error: 'أعطِ number أو numbers (حتّى ١٠).' };
@@ -245,7 +296,7 @@ function formatManage(res) {
 
 const MANAGE_TOOL = {
   name: 'manage_github',
-  description: 'أدِر مستودع المالك: status (حالة طلبات سحب/مسائل: مفتوح أو مغلق أو مدموج، والتعارض، والفحوص) · deploy (بعد الدمج: حالة نشر Vercel للطلب number، ومع path وfind هل التغيير في الموقع المنشور — قبل أن تقول «نُشر») · runs (تشغيلات Actions؛ status=failure للفاشلة، workflow=CI) · run_jobs (مهامّ تشغيل وخطواته الفاشلة) · run_log (سطور الفشل نفسها من سجلّ مهمّة: job_id من run_jobs، أو run_id فتُقرأ أوّل مهمّة فاشلة — اقرأه قبل أيّ إصلاح لفشل CI، لا تخمّن السبب من اسم الخطوة) · close/reopen (طلبات ومسائل؛ delete_branch=true يحذف فرع الطلب) · comment · delete_branch · rerun_failed · cancel_run · delete_runs (يحذف تشغيلات مكتملة، الفاشلة افتراضيًّا، ٥٠ في الاستدعاء). close وreopen والحذف والإلغاء تُرفض إلّا إن قالها المالك صراحةً في رسالته الأخيرة («سكّر»، «افتح»، «احذف»، «وقّف») — الخادم يفحص. افحص بـstatus قبل أن تقول إنّ شيئًا مفتوح أو مدموج، ولا تقل «تمّ» قبل نتيجة الأداة.',
+  description: 'أدِر مستودع المالك: status (حالة طلبات سحب/مسائل: مفتوح أو مغلق أو مدموج، والتعارض، والفحوص) · deploy (بعد الدمج: حالة نشر Vercel للطلب number، ومع path وfind هل التغيير في الموقع المنشور — قبل أن تقول «نُشر») · runs (تشغيلات Actions؛ status=failure للفاشلة، workflow=CI) · run_jobs (مهامّ تشغيل وخطواته الفاشلة) · run_log (سطور الفشل نفسها من سجلّ مهمّة: job_id من run_jobs، أو run_id فتُقرأ أوّل مهمّة فاشلة — اقرأه قبل أيّ إصلاح لفشل CI، لا تخمّن السبب من اسم الخطوة) · shots (لقطة شاشة لفرعك حاسوبًا وجوّالًا على جهاز GitHub — branch أو number، وsettings قسم إعدادات مثل accountSection أو click معرّف زرّ مثل #btnX يُفتح قبل اللقطة: النداء الأوّل يبدأ التصوير (~دقيقتان)، والنداء في ردّك التالي بالمدخلات نفسها يرجع اللقطتين صورًا وأخطاء الصفحة — انظر قبل أيّ «تمّ» لتغيير مرئيّ) · close/reopen (طلبات ومسائل؛ delete_branch=true يحذف فرع الطلب) · comment · delete_branch · rerun_failed · cancel_run · delete_runs (يحذف تشغيلات مكتملة، الفاشلة افتراضيًّا، ٥٠ في الاستدعاء). close وreopen والحذف والإلغاء تُرفض إلّا إن قالها المالك صراحةً في رسالته الأخيرة («سكّر»، «افتح»، «احذف»، «وقّف») — الخادم يفحص. افحص بـstatus قبل أن تقول إنّ شيئًا مفتوح أو مدموج، ولا تقل «تمّ» قبل نتيجة الأداة.',
   input_schema: {
     type: 'object',
     properties: {
@@ -256,7 +307,9 @@ const MANAGE_TOOL = {
       comment: { type: 'string', description: 'نصّ تعليق (لـcomment، أو يُكتب قبل التسكير)' },
       reason: { type: 'string', enum: ['not_planned', 'completed'], description: 'سبب تسكير المسألة (الافتراضيّ not_planned)' },
       delete_branch: { type: 'boolean', description: 'مع close: احذف فرع طلب السحب' },
-      branch: { type: 'string', description: 'فرع (delete_branch، أو تصفية runs)' },
+      branch: { type: 'string', description: 'فرع (delete_branch، أو تصفية runs، أو الفرع المصوَّر في shots)' },
+      settings: { type: 'string', description: 'shots: قسم إعدادات يُفتح قبل اللقطة مثل accountSection (اختياريّ)' },
+      click: { type: 'string', description: 'shots: معرّف زرّ يُضغط قبل اللقطة مثل #btnPortraitStyles (اختياريّ)' },
       branches: { type: 'array', items: { type: 'string' } },
       run_id: { type: 'integer' },
       job_id: { type: 'integer', description: 'run_log: رقم المهمّة كما في run_jobs' },

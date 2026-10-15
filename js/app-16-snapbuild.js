@@ -164,24 +164,45 @@
       return null;
     }
 
+    /* v-owner-solo-all (المالك: «كل واحد بروحه»): القراءة والبناء كانا على كلود دائمًا مهما اختار. للمالك الآن مزوّده المختار (ذو الأدوات)
+       عبر الخادم بلا أدوات — الصور تصله كتل رؤية وowner-vision يعطيه موديل رؤيته. غيره على وسيط كلود كما كان. */
+    function ownerProv() {
+      try {
+        if (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) || typeof window.callChatWithTools !== 'function') return '';
+        var sel = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai');
+        return (typeof TOOL_PROVIDERS !== 'undefined' && TOOL_PROVIDERS.indexOf(sel) !== -1) ? sel : '';
+      } catch (e) { return ''; } // guard-ok — بلا تخزين = المسار القديم
+    }
+    function askText(system, userText, blocks) {
+      var prov = ownerProv();
+      if (prov) {
+        var um = { role: 'user', content: userText };
+        if (blocks && blocks.length) um.images = blocks.map(function (b) { return { dataUrl: 'data:' + b.source.media_type + ';base64,' + b.source.data, mime: b.source.media_type }; });
+        return window.callChatWithTools((system ? [{ role: 'system', content: system }] : []).concat([um]), null, prov, { noTools: true })
+          .then(function (r) { return { text: String((r && r.reply) || ''), data: null }; });
+      }
+      var content = (blocks && blocks.length) ? blocks.concat([{ type: 'text', text: userText }]) : userText;
+      return claudeProxyRequest('claude-sonnet-4-20250514', system ? { content: system } : null, [{ role: 'user', content: content }], false)
+        .then(function (res) { return res.json().catch(function () { return {}; }); })
+        .then(function (data) { return { text: textFrom(data), data: data }; });
+    }
+
     input.addEventListener('change', function () {
       var files = Array.prototype.slice.call(input.files || []).slice(0, 4);
       if (!files.length) return;
       statusMsg('📸 يقرأ الصورة بدقة (الأسعار والنصوص حرفيًا)…');
 
       Promise.all(files.map(fileToBlock)).then(function (blocks) {
-        var content = blocks.concat([{ type: 'text', text: 'اقرأ الصورة/الصور حسب تعليمات النظام وأعد JSON فقط.' }]);
-        return claudeProxyRequest('claude-sonnet-4-20250514', { content: S.READ_PROMPT }, [{ role: 'user', content: content }], false)
-          .then(function (res) { return res.json().catch(function () { return {}; }); });
-      }).then(function (data) {
-        var parsed = S.extract(textFrom(data));
+        return askText(S.READ_PROMPT, 'اقرأ الصورة/الصور حسب تعليمات النظام وأعد JSON فقط.', blocks);
+      }).then(function (rd) {
+        var data = rd.data;
+        var parsed = S.extract(rd.text);
         if (!parsed) throw new Error((data && data.error && (data.error.message || data.error)) || 'لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية');
         var summary = S.summarize(parsed);
         statusMsg('🏗️ يبني من المقروء…');
-        return claudeProxyRequest('claude-sonnet-4-20250514', null, [{ role: 'user', content: S.buildPrompt(parsed) }], false)
-          .then(function (res) { return res.json().catch(function () { return {}; }); })
+        return askText(null, S.buildPrompt(parsed), null)
           .then(function (b) {
-            var code = extractHtml(textFrom(b));
+            var code = extractHtml(b.text);
             if (!code) throw new Error('لم يصل كود صالح — حاول مرة ثانية');
             var cur = {
               id: Date.now().toString(),

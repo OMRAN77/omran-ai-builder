@@ -758,7 +758,7 @@ module.exports = async (req, res) => {
        يلغي v-letter-swap (برو يقود تبديل الحرف) وv-duo-textroute (الحكم على مسار النصّ). الإبداعيّ (أقوى/فكرة/أسلوب/
        ترقية) خارج هذا المسار كما كان، وتوغّل «نانو خام» للمالك يبقى خامًا. فشل GPT → المسار القائم كما هو. */
     const __textIntent = !!editImageBase64 && !__pureRaw && (isTextRemove || isTextSwap || __textCueRe.test(cleanPrompt) || /اكتب|أكتب|كتابة|كتابه|\bwrite\b/i.test(cleanPrompt));
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras.length
+    const __textRoute = !!process.env.OPENAI_API_KEY && __optForceEngine !== 'nano' /* v-owner-solo-all: Gemini المختار يرسم بـGoogle وحده */ && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras.length
       && (__textIntent || (editImageBase64 ? __optTextFaithful : (__optTextFaithful || (!rawMode && __textCueRe.test(cleanPrompt))))); /* v-lanes: بلا مصنّف «نصّ كثيف» */
     /* v-img-mix — خيار «أ» (المالك: «وموضوع الدمج هل فيه تغيّر ولا اسم فقط؟» ← «سوّ الخيار أ»): دمج فعليّ متسلسل لا اختيار فقط.
        ١) برو يرسم المشهد والوجوه (أقواهما فيهما). ٢) لم يُنفَّذ أو ثابت = GPT ينفّذ الطلب كاملًا. ٣) نُفّذ وفي الصورة كتابة =
@@ -829,13 +829,13 @@ module.exports = async (req, res) => {
         try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' failed'), { model: primaryModel, status: upstream ? ('status=' + upstream.status) : 'no-response', creative: isCreativeEdit, detail: String((data && data.error && data.error.message) || '').slice(0, 160) }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
         await deliver({ b64: nanoB64, mime: 'image/png', engine: 'gemini-nano-banana' }, __gptAlt); return;
       }
-      const rescuedB64 = __gptTried ? null : await openaiRescueImage(); /* الدمج جرّب GPT وفشل — لا نداء ثانٍ (مراجعة) */
+      const rescuedB64 = (__gptTried || __optForceEngine === 'nano') ? null : await openaiRescueImage(); /* الدمج جرّب GPT وفشل — لا نداء ثانٍ (مراجعة) · v-owner-solo-all: ولا GPT خفيّ لـGemini المختار */
       /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
          (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
       if (rescuedB64) { await deliver({ b64: rescuedB64, mime: 'image/png', engine: 'openai' }, null); return; }
       // v-free-fallback: فشل المحرّكان المدفوعان (غالبًا نفاد الرصيد) — نُنتج صورة
       // مجانية بدل 502 كي لا يبقى المستخدم بلا نتيجة عند خلوّ الرصيد.
-      const freeImg = await freeFallbackImage();
+      const freeImg = __optForceEngine === 'nano' ? null : await freeFallbackImage();
       if (freeImg) {
         try { await require('./log-error.js').logErrorAndFlush('maha-image:free-fallback', new Error('paid engines failed — used free'), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
         await deliver({ b64: freeImg.b64, mime: freeImg.mime, engine: 'pollinations-free' }, null);
@@ -870,9 +870,9 @@ module.exports = async (req, res) => {
       if (nanoB64b) {
         try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' returned no image part'), { model: primaryModel, status: 'no-image-part', creative: isCreativeEdit }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
         await deliver({ b64: nanoB64b, mime: 'image/png', engine: 'gemini-nano-banana' }, __gptAlt); return; }
-      const rescuedB64b = __gptTried ? null : await openaiRescueImage();
+      const rescuedB64b = (__gptTried || __optForceEngine === 'nano') ? null : await openaiRescueImage();
       if (rescuedB64b) { await deliver({ b64: rescuedB64b, mime: 'image/png', engine: 'openai' }, null); return; }
-      const freeImgB = await freeFallbackImage();
+      const freeImgB = __optForceEngine === 'nano' ? null : await freeFallbackImage();
       if (freeImgB) { await deliver({ b64: freeImgB.b64, mime: freeImgB.mime, engine: 'pollinations-free' }, null); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));

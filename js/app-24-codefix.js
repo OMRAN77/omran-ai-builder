@@ -83,17 +83,31 @@
   }
 
   /* ---------- النداء ---------- */
+  /* v-owner-solo-all (المالك: «كل واحد بروحه»): النافذة كانت على كلود دائمًا (Opus عند المالك) مهما اختار. للمالك الآن مزوّده المختار
+     بموديله، بلا أدوات (body.noTools — للمالك وحده في الخادم) فيبقى عقد الرقع @@ كما هو. غيره كما كان. */
+  function ownerRoute() {
+    try {
+      if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return null;
+      var sel = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai');
+      var prov = (typeof TOOL_PROVIDERS !== 'undefined' && TOOL_PROVIDERS.indexOf(sel) !== -1) ? sel : 'claude';
+      var model = prov === 'claude' ? (window.claudeModelGet ? window.claudeModelGet() : '') : (window.omranModelFor ? window.omranModelFor(prov) : '');
+      return { provider: prov, model: model || '' };
+    } catch (e) { return null; } // guard-ok — بلا تخزين = كلود كما كان
+  }
+
   function askModel(instruction, fileBlock, onStatus, onGrow) {
+    var own = ownerRoute();
     var payload = {
       messages: [
         { role: 'system', content: fileBlock },
         { role: 'user', content: instruction },
       ],
-      provider: 'claude',
+      provider: own ? own.provider : 'claude',
       token: authTok(),
       guestId: guestId(),
       tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return ''; } })(),
     };
+    if (own) { payload.noTools = true; if (own.model) payload.model = own.model; }
     return fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -28,13 +28,13 @@ test('لا بقايا افتراضيّ "claude" لـaiapp_provider في أيّ �
 test('غير المالك يبقى openai: premium والمسارات التي ليست إرسال المالك', () => {
   assert.match(read('js/premium.js'), /getItem\('aiapp_provider'\)\s*\|\|\s*'openai'/);
   assert.match(read('js/app-09-attach.js'), /getItem\('aiapp_provider'\) \|\| 'openai'/);
-  assert.match(read('js/app-17-agent-tools.js'), /getItem\('aiapp_provider'\) \|\| 'openai'/);
 });
 
 test('المالك بلا اختيار = كروك في المسارات الحيّة، وغيره GPT', () => {
   assert.match(read('js/app-05-ui.js'), /function omranDefaultProv\(\)\{ return omranOwnerUi\(\) \? 'openrouter' : 'openai'; \}/);
   assert.match(read('js/modes.js'), /isOwner\(\) \? 'openrouter' : 'openai'/);
-  for (const f of ['js/app-04-i18n-state.js', 'js/app-06-checkout.js', 'js/app-09-attach.js', 'js/app-22-session-new.js']) {
+  // v-owner-solo-all: provEngine في app-17 للمالك وحده (غيره يرجع قبل القراءة) — جهاز جديد بلا اختيار = كروك لا GPT Image الخام
+  for (const f of ['js/app-04-i18n-state.js', 'js/app-06-checkout.js', 'js/app-09-attach.js', 'js/app-22-session-new.js', 'js/app-17-agent-tools.js']) {
     assert.match(read(f), /typeof omranDefaultProv === 'function' \? omranDefaultProv\(\) : 'openai'/, f);
   }
 });

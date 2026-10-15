@@ -3520,6 +3520,21 @@ async function sendPrompt(){
    التلفزيون السابقة» وهو غيّر الموضوع بلا أيّ مرفق): هل الدور السابق مباشرةً حمل صورة حقيقيّة؟
    (المستخدم أرفق صورة، أو المساعد أخرج صورة). صورة الذاكرة memory.png لا تُحفظ في الرسائل فلا تُعدّ،
    فتنقطع السلسلة بعد قفزة واحدة بدل أن تلاحق كلّ رسالة قصيرة إلى الأبد. */
+/* v-owner-solo-all (المالك: «كل واحد بروحه»): «رجّعها/زي أول» للمالك تراجعٌ محلّيّ مجّانيّ عن الصورة فقط حين يكون الدور السابق صورة
+   (مرفقة، أو رسمة مزوّده برمز __IMG_N__ في ردّه)؛ وإلّا («رجّع الكود زي أول»، «revert the last commit») يصل مزوّده. */
+/* v-owner-solo-all: مكان من واجهة التطبيق في نصّ المالك — اسمٌ لا فعل («حط الردّ في PDF» تصدير، لا تعديل على تطبيقه). */
+function omranOwnerAppNoun(text){
+  try{ return /(?:الصفح[ةه]\s+الرئيسي[ةه]|التطبيق|الواجه[ةه]|الإعدادات|الاعدادات|القائم[ةه]|الشريط|الهيدر|الفوتر|الزر|زرّ|(?:^|\s)زر(?=\s)|قسم)/i.test(String(text || '')); }
+  catch(e){ __swallow(e, 'ui:owner-app-noun'); return false; }
+}
+function omranOwnerUndoIsImage(messages){
+  try{
+    if(omranPrevTurnHadImage(messages)) return true;
+    const list = Array.isArray(messages) ? messages : [];
+    for(let i = list.length - 1; i >= 0; i--){ const m = list[i]; if(m && m.role === 'assistant') return /__IMG_\d+__/.test(String(m.content || '')); }
+    return false;
+  }catch(e){ __swallow(e, 'ui:owner-undo'); return false; }
+}
 function omranPrevTurnHadImage(messages){
   try{
     const list = Array.isArray(messages) ? messages : [];
@@ -3675,7 +3690,7 @@ async function __sendPromptCore(){
   const __ownerProvTurn = (function(){
     try{
       if(!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return false;
-      if(window.__omMode || window.__chatToolsOn === false) return false;
+      if((window.__omMode && window.__omMode !== 'web' && window.__omMode !== 'think') || window.__chatToolsOn === false) return false; // v-owner-solo-all: «بحث الويب» و«التفكير العميق» لا يختاران محرّكًا — المزوّد يبقى صاحب الطلب
       const __p = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
       if(window.__agentModeOn === true && __p === 'claude') return false;
       if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(__p) === -1) return false;
@@ -3936,7 +3951,7 @@ async function __sendPromptCore(){
     }
     // شبكة أمان إضافية: لو ضاع الطلب المعلّق نهائيًا، نسترجعه من آخر رسالة
     // بناء كتبها المستخدم في نفس المشروع.
-    if(!__pend && !__offerApproved && text && !__isFullBuildReq && GATE_APPROVE_RE.test(text)){
+    if(!__pend && !__offerApproved && text && !__isFullBuildReq && !(typeof omranOwnerUi === 'function' && omranOwnerUi()) && GATE_APPROVE_RE.test(text)){
       try{
         const __gp = getCurrent();
         const __ms = __gp ? __gp.messages : [];
@@ -3956,13 +3971,13 @@ async function __sendPromptCore(){
       }catch(e){ __swallow(e, "misc:app-09-attach#9"); }
     }
     const __setPend = (v)=>{ window.__pendingBuildPrompt = v; try{ if(v) localStorage.setItem('aiapp_pending_build', v); else localStorage.removeItem('aiapp_pending_build'); }catch(e){ __swallow(e, "save:app-09-attach#10"); } };
-    if(__offerApproved && text && !__isFullBuildReq && GATE_APPROVE_RE.test(text)){
+    if(__offerApproved && text && !__isFullBuildReq && !(typeof omranOwnerUi === 'function' && omranOwnerUi()) /* v-owner-solo-all: «نعم»/«نعم ادمج» من المالك تصل الخادم ومزوّده كما كتبها — بوّابة «ادمج» تقرأ كلامه هو، ومزوّده يرى عرضه في السجلّ */ && GATE_APPROVE_RE.test(text)){
       // موافقة على عرض المزود نفسه → يبني بالضبط ما عرضه، فورًا وبالكامل.
       __gateApprovedText = text;
       text = 'نعم، ابدأ الآن ببناء الأداة/التطبيق الذي عرضته في ردك السابق بالكامل.';
       window.__buildOfferApproved = true;
       __setPend(null);
-    } else if(__pend && text && !__isFullBuildReq && GATE_APPROVE_RE.test(text)){
+    } else if(__pend && text && !__isFullBuildReq && !(typeof omranOwnerUi === 'function' && omranOwnerUi()) && GATE_APPROVE_RE.test(text)){
       // موافقة → نفّذ طلب البناء الأصلي كاملًا الآن (ويظهر بالمحادثة ما كتبه المستخدم فقط).
       __gateApprovedText = text;
       text = __pend;
@@ -3977,8 +3992,8 @@ async function __sendPromptCore(){
     }
     /* v-claude-code-level: «أبي لعبة ثعبان» كانت تمرّ بالبوّابة فتُعلَّم بـ«نعم»؛ المالك بلا بوّابة الآن، فتُحفظ نيّة البناء هنا
        بشرط البوّابة نفسه — والسؤال («how does the app build…»، «كيف…») ليس طلب بناء. */
-    __ownerBuildAsk = !!(typeof omranOwnerUi === 'function' && omranOwnerUi() && __isFullBuildReq && !__IMG_FOLLOW && !__explicitImageTextRequest && !GATE_FIX_RE.test(text)
-      && (__strongBuildRe.test(text) || !/^\s*(?:وش|شو|ايش|إيش|أيش|ليش|ليه|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|how|what|why|where|when|who|which|does|do|is|are)(?=$|[\s،,.!?؟])/i.test(text)));
+    __ownerBuildAsk = !!(typeof omranOwnerUi === 'function' && omranOwnerUi() && (__offerApproved /* v-owner-solo-all: موافقته على عرض بناء — بلا تبديل كلامه */ || __isFullBuildReq && !__IMG_FOLLOW && !__explicitImageTextRequest && !GATE_FIX_RE.test(text)
+      && (__strongBuildRe.test(text) || !/^\s*(?:وش|شو|ايش|إيش|أيش|ليش|ليه|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|how|what|why|where|when|who|which|does|do|is|are)(?=$|[\s،,.!?؟])/i.test(text))));
   }
 
   // Guest gate: users without an account get GUEST_MSG_LIMIT free messages,
@@ -4416,7 +4431,7 @@ function __friendlyErr(e){
     /* v-font-ask (لقطة عمران: «عدل الخط» وحدها راحت لمحرر الصور فطلعت
        «مشغولة»): أمر الخط الناقص يسأل محليًا عن الخط واللون والمكان —
        ويعرض الخطوط الأربعة (v-image-fonts) — بدل مغامرة توليد. */
-    if(/^\s*(?:عدل|عدّل|غير|غيّر|تعديل)\s*(?:الخط|النص|الكتاب[ةه])\s*[.!؟?]*\s*$/i.test(text || '') && cur.imageTextLayer && cur.imageTextLayer.baseB64){
+    if(!__ownerProvTurn /* v-owner-solo-all: مزوّده يسأل بنفسه */ && /^\s*(?:عدل|عدّل|غير|غيّر|تعديل)\s*(?:الخط|النص|الكتاب[ةه])\s*[.!؟?]*\s*$/i.test(text || '') && cur.imageTextLayer && cur.imageTextLayer.baseB64){
       try{ thinkingDiv && thinkingDiv.remove(); }catch(_){ /* guard-ok — cleanup, intentional */ }
       cur.messages.push({role:'assistant',content: lang==='ar'
         ? 'أبشر! قل لي وش تبي بالضبط وأعدّله فورًا على نفس الصورة ✍️\n\n• الخط: ديواني · فارسي · كوفي · ثلث\n• اللون: ذهبي · أبيض · أسود · أخضر · أزرق · أحمر · بيج\n• المكان: الأعلى · الوسط · الأسفل\n\nمثال: «غيّر الخط إلى ديواني ولونه ذهبي في الوسط»'
@@ -4425,7 +4440,7 @@ function __friendlyErr(e){
       return;
     }
     // 🖊️ v727: «تعديل» أو «عدل» لوحدها بعد صورة → نسأل محليًا وش التعديل بدل رد دردشة عشوائي
-    if(/^\s*(?:تعديل|عدل|عدّل|edit)\s*[.!؟?]*\s*$/i.test(text || '') && ((cur.lastEditedImage && cur.lastEditedImage.b64) || pendingAttachments.some(a => a.isImage) || __srcImg)){
+    if(!__ownerProvTurn /* v-owner-solo-all */ && /^\s*(?:تعديل|عدل|عدّل|edit)\s*[.!؟?]*\s*$/i.test(text || '') && ((cur.lastEditedImage && cur.lastEditedImage.b64) || pendingAttachments.some(a => a.isImage) || __srcImg)){
       try{ thinkingDiv && thinkingDiv.remove(); }catch(_){ /* guard-ok — cleanup, intentional */ }
       cur.messages.push({role:'assistant',content: lang==='ar' ? 'تمام — اكتب وش التعديل اللي تبيه على الصورة (مثال: شيل الخلفية، غيّر اللون، اكتب اسم…) ✏️' : 'Sure — describe the edit you want on the image ✏️'});
       renderAll(); saveState();
@@ -4473,7 +4488,7 @@ function __friendlyErr(e){
       text += '\n(ملاحظة للنظام: هذه تفاصيل إضافية للإعلان قيد التصميم — أكمل/حدّث تصميم الإعلان الكامل بهذه التفاصيل حسب قالب ' + (cur.adMode === 'inside' ? 'INSIDE فوق صورة المستخدم background-image:url(\'__USER_IMAGE__\')' : 'OUTSIDE مع src="__USER_IMAGE__"') + ' وأعد الملف كاملًا. ممنوع البحث في الإنترنت وممنوع عرض إعلانات مواقع أخرى وممنوع الرد بنص فقط)';
     }
     // 📄 v314: «حطه في PDF / حوله PDF» → التطبيق نفسه يجهز PDF من آخر رد
-    if(text && !__srcImg && !cur.awaitingAdMode && /(بي\s*دي\s*[اإ]ف|pdf)/i.test(text) && /(حط|حوّ?ل|سو|سوّ?ي|اعمل|أعمل|صدّ?ر|نزّ?ل|انزل|أنزل|اطبع|جهّ?ز|ممكن|ابي|أبي|ابغي|أبغي|اريد|أريد|عطني|أعطني|هات|save|make|convert|export|put)/i.test(text)){
+    if(text && !__srcImg && !cur.awaitingAdMode && !(__ownerProvTurn && omranOwnerAppNoun(text)) /* v-owner-solo-all: «زر PDF في الإعدادات» طلب على تطبيقه لمزوّده، و«حط الردّ PDF» تصدير كما كان */ && /(بي\s*دي\s*[اإ]ف|pdf)/i.test(text) && /(حط|حوّ?ل|سو|سوّ?ي|اعمل|أعمل|صدّ?ر|نزّ?ل|انزل|أنزل|اطبع|جهّ?ز|ممكن|ابي|أبي|ابغي|أبغي|اريد|أريد|عطني|أعطني|هات|save|make|convert|export|put)/i.test(text)){
       let __pdfSrc = null;
       for(let __i = cur.messages.length - 1; __i >= 0; __i--){
         const __m = cur.messages[__i];
@@ -4556,7 +4571,7 @@ function __friendlyErr(e){
       }
       renderAll(); saveState();
       return;
-    } else if(text && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !__IMG_EDIT_VERB_RE.test(text) && !__IMGF_NOT_RE.test(text) && !__adIntentRe.test(text)){
+    } else if(text && !__ownerProvTurn /* v-owner-solo-all: مزوّد المالك يرسمها بأداته (وبوّابة الرسم المدفوع) لا محرّك الطوابع الثابت */ && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !__IMG_EDIT_VERB_RE.test(text) && !__IMGF_NOT_RE.test(text) && !__adIntentRe.test(text)){
       // 🏷️ v725: طوابع المدرسة — صورة الطفل + اسمه → ورقة طوابع جاهزة للطباعة والقص
       // الصورة: إما مرفقة حالاً (__srcImg) أو آخر صورة معدّلة (cur.lastEditedImage)
       const __stSrcB64   = (__srcImg && __srcImg.dataUrl) ? __srcImg.dataUrl.split(',')[1] : (cur.lastEditedImage && cur.lastEditedImage.b64 ? cur.lastEditedImage.b64 : '');
@@ -5188,7 +5203,7 @@ function __showImgLoading(el, ar, en){
        «رجعها»، «تراجع») أو الأصليّة («الأصلية»، «الأولى») من صور المحادثة نفسها — فوريّ بلا نداء محرّك، وتصير هي
        المصدر للتعديل التالي. */
     const __undoRe = /^\s*(?:رجّ?ع(?:ها)?|ارجع(?:ها)?|تراجع|الغ[يِ]?\s*(?:التعديل|آخر\s*تعديل)|undo|go\s*back|revert)(?=$|[\s،,.!])|زي\s*(?:أول|اول|قبل|ما\s*كانت)|(?:النسخة|الصورة)\s*(?:السابقة|الأولى|الاولى|الأصلية|الاصلية)|(?:لل|ل)(?:أصلية|اصلية|أولى|اولى)/i;
-    if(text && text.length <= 80 && (!__srcImg || __srcImg._fromMemory) && cur.lastEditedImage && cur.lastEditedImage.b64 && __undoRe.test(text) && !__nanoQ.test(text)){
+    if(text && text.length <= 80 && (!__srcImg || __srcImg._fromMemory) && cur.lastEditedImage && cur.lastEditedImage.b64 && (!__ownerProvTurn || omranOwnerUndoIsImage(cur.messages)) /* v-owner-solo-all */ && __undoRe.test(text) && !__nanoQ.test(text)){
       const __chain = [];
       /* v-mem-guard2: صور خارج نافذة العرض تعود لمعرّفها في المخزن — تبقى في السلسلة وتُقرأ منه حين تُختار */
       cur.messages.forEach(m => { if(m && Array.isArray(m.attachments)) m.attachments.forEach(a => { if(a && a.isImage && (/^data:image\//.test(a.dataUrl || '') || (a.vaultId && !a.purged))) __chain.push(a); }); });
@@ -5977,10 +5992,10 @@ function __showImgLoading(el, ar, en){
        بدل تحليله — رأى «Submit an app with … features» فاعتبره طلب بناء):
        نص طويل ملصوق (تقرير/رسالة/سجل/خطأ) بلا أمر بناء صريح = تحليل وشرح
        وخطوات، لا بناء ولا كود. (عُرّف __pastedDoc أعلى — v-pasted-no-design) */
-    if(__pastedDoc) apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة نصٌّ ملصوق (تقرير أو رسالة أو سجل أخطاء) وليست طلب بناء. حلّله: ماذا يعني، ما السبب، وما الخطوات العملية المطلوبة من المستخدم بالترتيب — بلغة المستخدم. ممنوع منعًا باتًا بناء تطبيق أو صفحة أو أي كتلة كود ردًّا عليه، حتى لو ورد فيه «app» أو «feature» أو «submit» — إلا إذا كتب المستخدم بنفسه أمر بناء صريحًا.'});
+    if(__pastedDoc && !(__ownerProvTurn && cur.code) /* v-owner-solo-all: سجلّ ملصوق على مشروع المالك المفتوح يُصلَح برقعة — لا «بلا كود» */) apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة نصٌّ ملصوق (تقرير أو رسالة أو سجل أخطاء) وليست طلب بناء. حلّله: ماذا يعني، ما السبب، وما الخطوات العملية المطلوبة من المستخدم بالترتيب — بلغة المستخدم. ممنوع منعًا باتًا بناء تطبيق أو صفحة أو أي كتلة كود ردًّا عليه، حتى لو ورد فيه «app» أو «feature» أو «submit» — إلا إذا كتب المستخدم بنفسه أمر بناء صريحًا.'});
     /* v-topic-memory: الصياغة القديمة «أجب عن الأخيرة وحدها… التاريخ خلفيّة فقط» علّمت النموذج النسيان. */
     if(!__quietSocialTurn) apiMessages.push({role: 'system', content: 'قاعدة الموضوع (أولوية قصوى): رسالة المستخدم الأخيرة تحدّد الموضوع الحاليّ. إن كانت موضوعًا جديدًا فأجب عنه وحده ولا تكمل السابق ولا تخلطه به من تلقاء نفسك. وإن عادت إلى موضوع سابق في هذه المحادثة فأنت تذكره كاملًا بتفاصيله وتبني عليه — لا تقل إنّك لا تعرفه ولا تطلب إعادته. تاريخ المحادثة كلّه ذاكرتك الحاضرة، لا قائمة مهام تُعاد.', __topicRule: true});
-    const __siteGuideTurn = !__quietSocialTurn && !!text && OMRAN_SITE_GUIDE_RE.test(text); // v-site-guide3
+    const __siteGuideTurn = !__quietSocialTurn && !!text && OMRAN_SITE_GUIDE_RE.test(text) && !(__ownerProvTurn && (__ownerAppPlace || cur.code)); // v-site-guide3 · v-owner-solo-all: طلب المالك على تطبيقه ليس دليل موقع خارجيّ
     if(__siteGuideTurn) apiMessages.push({role: 'system', content: OMRAN_SITE_GUIDE_NOTE});
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
     if(window.__buildOfferApproved){

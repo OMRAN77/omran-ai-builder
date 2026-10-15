@@ -1,0 +1,61 @@
+# v-branch-shots — «جهاز» المزوّدين للتحقّق البصريّ (المالك ١٤ أكتوبر: «الجهاز الي عندك… ابدا»).
+# يبدؤه الخادم وحده (manage_github action=shots من محادثة المالك) على فرع المزوّد: لقطتا حاسوب وجوّال بـui-shot (بلا خادم ولا
+# مفاتيح ولا أسرار) وأخطاء الصفحة، تُرفع ملفًّا يقرؤه المزوّد صورًا. أوامر ثابتة: المدخلات تُمرَّر بيئةً لا نصّ صدفة، ويفحصها
+# scripts/branch-shots.mjs بفاحصَي api/_lib/branch-shots.js. صلاحيّة القراءة وحدها — لا رفع ولا دمج من هنا.
+name: Branch shots
+run-name: "shots ${{ inputs.ref }} ${{ inputs.settings }} ${{ inputs.click }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: الفرع المراد تصويره
+        required: true
+        type: string
+      settings:
+        description: قسم إعدادات يُفتح قبل اللقطة (اختياريّ) مثل accountSection
+        required: false
+        default: ''
+        type: string
+      click:
+        description: معرّف زرّ يُضغط قبل اللقطة (اختياريّ) مثل #btnPortraitStyles
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: branch-shots-${{ inputs.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright Chromium
+        run: |
+          npm i --no-save playwright >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+      - name: Desktop and mobile shots
+        env:
+          SHOT_SETTINGS: ${{ inputs.settings }}
+          SHOT_CLICK: ${{ inputs.click }}
+        run: node scripts/branch-shots.mjs
+      - name: Upload shots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shots
+          path: .shots/
+          retention-days: 3
+          if-no-files-found: warn

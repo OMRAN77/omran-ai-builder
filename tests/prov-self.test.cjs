@@ -74,7 +74,7 @@ test('client: for the owner with a tool provider, no media path runs before the 
     assert.ok(i > 0, f);
     const def = s.slice(i, s.indexOf('})();', i) + 5);
     assert.match(def, /omranOwnerUi\(\)\)\) return false;/, 'المالك وحده');
-    assert.match(def, /if\(window\.__omMode \|\| window\.__chatToolsOn === false\) return false;/, 'أوضاع «+» وClaude Code والأدوات المطفأة كما كانت');
+    assert.match(def, /if\(\(window\.__omMode && window\.__omMode !== 'web' && window\.__omMode !== 'think'\) \|\| window\.__chatToolsOn === false\) return false;/, 'أوضاع المحرّكات في «+» وClaude Code والأدوات المطفأة كما كانت؛ «بحث الويب» و«التفكير» لا تطفئه (v-owner-solo-all)');
     assert.match(def, /if\(window\.__agentModeOn === true && __p === 'claude'\) return false;/, 'وكيل Claude كما كان');
     assert.match(def, /TOOL_PROVIDERS\.indexOf\(__p\) === -1\) return false;/, 'مزوّد بلا أدوات (Perplexity) كما كان');
     assert.match(def, /__imgFormatIntent\(text\)\) return false;/, 'تحويل الصيغة المحلّيّ باقٍ');
@@ -99,6 +99,8 @@ test('client tools: an image the provider draws/edits runs on its own company en
   assert.equal(eng('openai'), 'gpt');
   assert.equal(eng('gemini'), 'nano');
   for (const p of ['claude', 'groq', 'deepseek', 'mistral', 'cohere', 'kimi', 'openrouter']) assert.equal(eng(p), undefined, p);
+  ctx.omranDefaultProv = () => 'openrouter'; // v-owner-solo-all: جهاز جديد بلا اختيار = افتراضيّ المالك (كروك) لا GPT Image الخام
+  assert.equal(eng(null), undefined, 'بلا اختيار مخزَّن: سلسلة المحرّكات المعتادة');
   ctx.omranOwnerUi = () => false;
   assert.equal(eng('openai'), undefined, 'غير المالك: لا شيء (والخادم يرفضه لغيره أصلًا)');
   assert.match(read('api/_lib/maha-image.js'), /const __optForceEngine = \(__isOwnerReq && \(body\.forceEngine === 'nano' \|\| body\.forceEngine === 'gpt'\)\) \? body\.forceEngine : '';/);
