@@ -51,6 +51,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let tool = { read: async () => 'FILE js/x.js\n1| x', edit: async () => ({ error: 'لا' }) };
 GR.readGithub = (...a) => tool.read(...a);
 GE.editFiles = (...a) => tool.edit(...a);
+GE.mergePr = (...a) => tool.merge(...a);
 
 function token(u) {
   const p = Buffer.from(JSON.stringify({ u, exp: realNow() + 600000 })).toString('base64url');
@@ -145,7 +146,8 @@ test('٣. أداة تجاوزت CLOSE_AT_MS: سطر «كمل» ورابط الر
   const markAt = writeAt(r, /⏸️ خلص وقت الدور/);
   assert.ok(markAt && markAt < toolDone, 'السطر وصل قبل أن تخلص الأداة — قبل أيّ قتل');
   assert.ok(r.res.endedAt >= toolDone, 'المجرى لم يُنهَ تحت الأداة');
-  assert.ok(r.text.endsWith(OL.closeMark(ref)), 'سطر الختام ومعه رابط الرفعة السابقة، بلا تكرار الرابط');
+  assert.ok(r.text.startsWith(OL.closeMark(ref) + '\n↳ '), 'سطر الختام ومعه رابط الرفعة السابقة، ثمّ سطر القراءة التي خلصت بعده');
+  assert.equal(r.text.split('pull/1073').length, 2, 'الرابط مرّة واحدة');
   assert.equal(r.events.filter((e) => e.done === true).length, 1, 'done مرّة بعد الحفظ');
   assert.ok(!r.res.log.some((x) => x.at > markAt && /"status":"↳/.test(x.c)), 'لا سطر أداة بعد الختام (كان يَنقل السطر إلى السجلّ فيضيع «كمل» من الردّ)');
   assert.deepEqual(r.res.afterEnd, []);
@@ -162,12 +164,37 @@ test('٣ب. الرفعة خلصت بعد السطر: رابطها يُلحق ت�
   const r = await run(ASK, [() => R.call('edit_github', EDIT), () => R.text('لا يُطلب')]);
   const markAt = writeAt(r, /⏸️ خلص وقت الدور/);
   assert.ok(markAt && markAt < toolDone);
-  assert.equal(r.text, OL.closeMark('') + '\nطلب السحب #1073: https://github.com/OMRAN77/omran-ai-builder/pull/1073');
+  assert.ok(r.text.startsWith(OL.closeMark('') + '\n↳ ') && r.text.endsWith('\nطلب السحب #1073: https://github.com/OMRAN77/omran-ai-builder/pull/1073'), JSON.stringify(r.text.slice(-160)));
   assert.equal(r.calls.length, 1);
   assert.ok(!/أدمج وأنشر/.test(r.text) && !r.events.some((e) => e.error));
   const convo = [ASK[0], { role: 'assistant', content: r.text }, { role: 'user', content: 'كمل' }];
   assert.equal(OL.resume(convo, 'كمل'), true, '«كمل» بعده إكمال للمهمّة نفسها');
   assert.equal(r.liveIntervals, 0);
+});
+
+test('٣ج. ما يخلص بعد السطر غير الرفعة (دمج، صورة…) يظهر سطرًا تحته — لا «↳» حيّ ينقل السطر إلى السجلّ، ولا صمت يوحي أنّه لم يتمّ', async () => {
+  let toolDone = 0;
+  tool.merge = async (input) => { skew = 281000; await sleep(400); toolDone = realNow(); return { number: input.number, base: 'main', sha: 'fedcba9876543', url: 'https://github.com/OMRAN77/omran-ai-builder/pull/' + input.number }; };
+  const r = await run([{ role: 'user', content: 'ادمج طلب السحب 1073' }], [() => R.call('merge_github', { repo: 'OMRAN77/omran-ai-builder', number: 1073 }), () => R.text('لا يُطلب')]);
+  const markAt = writeAt(r, /⏸️ خلص وقت الدور/);
+  assert.ok(markAt && markAt < toolDone);
+  assert.ok(r.text.startsWith(OL.closeMark('') + '\n↳ '), 'نتيجة الدمج تحت السطر: ' + JSON.stringify(r.text.slice(-120)));
+  assert.ok(!r.res.log.some((x) => x.at > markAt && /"status":"↳/.test(x.c)), 'لا «↳» حيّ بعد السطر');
+  assert.equal(r.liveIntervals, 0);
+});
+
+test('٣د. ذيل الختام: سطر كلّ أداة ورموز صورها، والرابط يُقارن بما بعد السطر وحده', () => {
+  const ref = 'طلب السحب #1073: https://github.com/OMRAN77/omran-ai-builder/pull/1073';
+  const s = OL.state(true);
+  assert.equal(OL.lateNote(s, '↳ x', 'r'), false, 'قبل السطر: «↳» حيّ كما كان');
+  s.closed = true;
+  const before = 'أكمل على ' + ref + ' الآن.';
+  s.closeAt = before.length;
+  const full = before + OL.closeMark('');
+  assert.equal(OL.lateNote(s, '↳ رسمتُ صورة ✅', 'تمّ: __IMG_3__'), true);
+  assert.equal(OL.closeTail(s, full, ref), '\n↳ رسمتُ صورة ✅\n__IMG_3__\n' + ref, 'الرابط قبل السطر (نقله العميل إلى السجلّ) لا يمنع إلحاقه');
+  const s2 = OL.state(true); s2.closed = true; s2.closeAt = 0;
+  assert.equal(OL.closeTail(s2, OL.closeMark(ref), ref), '', 'في السطر نفسه = لا تكرار');
 });
 
 test('٤. الوقت انتهى قبل الختام بعد رفعة سابقة: السبب بـ«كمل» ورابط الطلب — لا صمت ولا «أدمج وأنشر؟» على شغل ناقص', async () => {
@@ -221,6 +248,22 @@ async function client(lines, rp) {
   try { return { reply: (await ctx.window.callChatWithTools([{ role: 'user', content: 'x' }], null, 'deepseek')).reply }; }
   catch (e) { return { error: e.message, ownerStop: !!e.ownerStop, log: e.log }; }
 }
+
+test('٥ج. العميل: الإيقاف أو الحارس الصلب بعد السطر لا يمحو «كمل» (نصّ العرض يُقصّ من أوّل سياج كود)', () => {
+  const src = read('js/app-09-attach.js');
+  const fn = src.slice(src.indexOf('function omranKeepStopLine('), src.indexOf('function omranOwnerUndoIsImage('));
+  const ctx = {}; vm.runInNewContext(fn + '\nthis.k = omranKeepStopLine;', ctx);
+  const mark = OL.closeMark('طلب السحب #1073: https://github.com/OMRAN77/omran-ai-builder/pull/1073');
+  const raw = 'التعديل:\n```js\nvar CURTAINS = [];\n```\nأرفعه الآن.' + mark;
+  const kept = ctx.k('التعديل:\n⏳ يكتب الكود الآن…', raw);
+  assert.ok(kept.includes(OL.RESUME_KEY) && kept.endsWith('pull/1073'), kept);
+  const convo = [ASK[0], { role: 'assistant', content: kept }, { role: 'user', content: 'كمل' }];
+  assert.equal(OL.resume(convo, 'كمل'), true);
+  assert.equal(ctx.k('نصّ' + mark, 'نصّ' + mark), ('نصّ' + mark).trim(), 'موجود = لا تكرار');
+  assert.equal(ctx.k('نصّ عاديّ', 'نصّ عاديّ'), 'نصّ عاديّ');
+  assert.ok(src.includes('const partial = omranKeepStopLine(__lastStreamPartial, __lastStreamRaw);'));
+  assert.ok(read('js/app.bundle.js').includes('function omranKeepStopLine('));
+});
 
 test('٦. العميل: انقطاع المجرى بعد عمل ليس «ما وصل شي» — سببه «انقطع الاتّصال»، وسجلّ العمل يبقى مع الخطأ، وسبب الخادم وعلامته كما هما', async () => {
   const packed = [];

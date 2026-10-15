@@ -77,7 +77,7 @@ function stepText(blocks) { return (blocks || []).filter((b) => b && b.type === 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); } // انتظار الإعادة جزء من الدور (≤ ٨ ث) — ليس unref
 
 function state(on) {
-  return { on: !!on, final: false, nudged: false, editClose: false, conts: 0, retryMs: 0, noChoice: false, choice: false, slow: false, t0: 0, send: null, ac: null, reader: null, tFirst: null, tIdle: null, stalled: '', lastStall: '', stopDetails: null, midRetried: false, busy: false, closed: false };
+  return { on: !!on, final: false, nudged: false, editClose: false, conts: 0, retryMs: 0, noChoice: false, choice: false, slow: false, t0: 0, send: null, ac: null, reader: null, tFirst: null, tIdle: null, stalled: '', lastStall: '', stopDetails: null, midRetried: false, busy: false, closed: false, closeAt: 0, late: null };
 }
 
 /* C5: الحارس — لكلّ نداء مؤقّت حتّى الترويسة، وبعدها مؤقّت خمول يُصفَّر مع كلّ دفعة. الانطلاق يلغي القارئ
@@ -116,6 +116,20 @@ function pushRef(result) {
 }
 function closeMark(ref) { return '\n\n⏸️ خلص وقت الدور وأداة ما زالت تشتغل — إن خلّصت قبل حدّ الخادم يظهر رابطها تحت هذا السطر. ' + RESUME_KEY + '.' + (ref ? '\n' + ref : ''); }
 function withRef(text, ref) { return ref ? text + '\n' + ref : text; }
+/* بعد السطر لا «↳» حيّ (كان ينقل السطر إلى سجلّ العمل فيضيع «كمل» من الردّ): نتيجة كلّ أداة تخلص بعده — دمج، صورة، تفويض، رفعة —
+   تُحفظ سطرًا ومعها رموز صورها، وتُلحق تحت السطر في الختام. الرابط يُقارن بما بعد السطر وحده (ما قبله قد نقله العميل إلى السجلّ). */
+function lateNote(s, line, result) {
+  if (!s || !s.closed) return false;
+  (s.late = s.late || []).push(String(line || ''));
+  const im = String(result == null ? '' : result).match(/__IMG_\d+__/g);
+  if (im) s.late.push(im.join(' '));
+  return true;
+}
+function closeTail(s, fullText, ref) {
+  const lines = ((s && s.late) || []).filter(Boolean), after = String(fullText || '').slice((s && s.closeAt) || 0);
+  if (ref && after.indexOf(ref) === -1 && !lines.some((l) => l.indexOf(ref) !== -1)) lines.push(ref);
+  return lines.map((l) => '\n' + l).join('');
+}
 function fire(s, b) {
   clear(s);
   s.stalled = b.why || ('المزوّد ما ردّ خلال ' + Math.max(1, Math.round(b.ms / 1000)) + ' ث');
@@ -534,6 +548,6 @@ module.exports = {
   isDeadPick, rememberDeadPick, margin,
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1
   RESUME_KEY, RESUME_NOTE, resumeMark, isResume, resume, // v-owner-resume
-  pulse, pushRef, closeMark, withRef, CLOSE_AT_MS, PULSE_MAX_MS, // v-turn-close
+  pulse, pushRef, closeMark, withRef, lateNote, closeTail, CLOSE_AT_MS, PULSE_MAX_MS, // v-turn-close
   FINAL_NOTE, FINAL_EDIT_NOTE, FN_BUDGET_MS, CONTINUE_NOTE, TOOL_CUT_NOTE, CUT_STOP, EMPTY_STOP, __deadPicks: deadPicks, __resetTalk: () => NO_TALK.clear(), // v-talk-400 · v-prov-finish-edit
 };
