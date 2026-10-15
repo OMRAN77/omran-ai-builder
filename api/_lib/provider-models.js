@@ -134,6 +134,21 @@ async function loadModels(opts) {
   return { models, source: 'network', at: now };
 }
 
+/* v-live-default (لقطة المالك ١٥ أكتوبر: Cohere «خطأ 404» — cohere/command-a لم يعد عند الوسيط): الافتراضيّ الثابت في OR_MODELS يموت
+   مع الزمن (v-models-latest رفعه مرّات بيد). رفض الوسيط له = أحدث موديل بأدوات لشركته من القائمة الحيّة نفسها التي يعرضها المنتقي
+   (الأحدث أوّلًا، بفلترة الأدوات)، ويُحفظ في الذاكرة الدافئة فتبدأ به الرسائل التالية بلا جولة 404. */
+const __live = {};
+async function liveDefault(prov, dead, opts) {
+  const key = String(prov || '').toLowerCase();
+  if (!OR_VENDOR[key]) return '';
+  let list = [];
+  try { list = ((await loadModels(opts)).models || {})[key] || []; } catch (e) { list = []; } // guard-ok — بلا قائمة = بلا بديل، والفشل الأصليّ يصل المالك
+  const alt = list.map((x) => x && x[0]).find((id) => id && id !== dead) || '';
+  if (alt) __live[key] = alt;
+  return alt;
+}
+function liveDefaultOf(prov) { return __live[String(prov || '').toLowerCase()] || ''; }
+
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   let body = req.body;
@@ -153,3 +168,7 @@ module.exports.parseGroqModels = parseGroqModels;
 module.exports.parseOpenAIModels = parseOpenAIModels;
 module.exports.loadModels = loadModels;
 module.exports.OR_VENDOR = OR_VENDOR;
+module.exports.liveDefault = liveDefault; // v-live-default
+module.exports.liveDefaultOf = liveDefaultOf;
+module.exports.__live = __live; // للاختبار
+module.exports.__resetCache = () => { __mem = { at: 0, models: null }; }; // للاختبار
