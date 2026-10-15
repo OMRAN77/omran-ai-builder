@@ -161,3 +161,20 @@ test('٨. ستّة خطوط قراءة حديثة في «نوع الخطّ»، �
   assert.equal(new Set(ids).size, ids.length, 'لا معرّف مكرّر');
   assert.equal(ids.length, 16);
 });
+
+/* v-full-links (المالك ١٥ أكتوبر، لقطة ردّ مزوّد: «الرابط: github.com … Vercel: vercel.com»): «الموقع يعطيني الرئيس فقط أريده أن يكون
+   كاملًا لي كلّ المزودين». v-clean-links كان يعرض كلّ رابط باسم نطاقه. العارض واحد لكلّ المزوّدين (buildSpokenWordSpans). */
+test('٩. v-full-links: الرابط العاري يُعرض كاملًا مفكوك الترميز، ونصّ ماركداون هو اسم النطاق يُعرض رابطه كاملًا، والنصّ الآخر يبقى', () => {
+  const build = load();
+  const links = (txt) => { const box = new El('div'); build(box, txt); const out = []; const walk = (n) => { (n.childNodes || []).forEach((c) => { if(c.tagName === 'a') out.push([c.textContent, c.href]); walk(c); }); }; walk(box); return out; };
+  const pr = 'https://github.com/OMRAN77/omran-ai-builder/pull/1075';
+  assert.deepEqual(links('الرابط: ' + pr + ' .'), [[pr, pr]], 'الرابط العاري كاملًا لا github.com');
+  assert.deepEqual(links('[github.com](' + pr + ')'), [[pr, pr]], 'نصّ ماركداون هو اسم النطاق ← الرابط كاملًا');
+  assert.deepEqual(links('[www.github.com](' + pr + ')'), [[pr, pr]]);
+  assert.deepEqual(links('[طلب السحب](' + pr + ')'), [['طلب السحب', pr]], 'نصّ المزوّد الآخر يبقى كما كتبه');
+  assert.deepEqual(links('https://vercel.com/omran/deployments/abc'), [['https://vercel.com/omran/deployments/abc', 'https://vercel.com/omran/deployments/abc']]);
+  assert.deepEqual(links('https://ar.wikipedia.org/wiki/%D8%AF%D8%A8%D9%8A'), [['https://ar.wikipedia.org/wiki/دبي', 'https://ar.wikipedia.org/wiki/%D8%AF%D8%A8%D9%8A']], 'الترميز مفكوك (ما كان v-clean-links يعالجه) والضغط على الأصل');
+  assert.deepEqual(links('zuma.com/dubai'), [['zuma.com/dubai', 'https://zuma.com/dubai']], 'النطاق العاري بمساره كما كُتب');
+  assert.ok(read('js/app.bundle.js').includes('v-full-links'), 'الحزمة مطابقة');
+});
+

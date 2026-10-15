@@ -2861,15 +2861,15 @@ function buildSpokenWordSpans(container, text){
         const href = (rawUrl.indexOf('www.') === 0 || bareM) ? 'https://' + rawUrl : rawUrl;
         const a = document.createElement('a');
         a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
-        // v-clean-links: الرابط العاري كان يُعرض بنصّه الكامل المرمّز
-        // (%D8%A3…) فيملأ الشاشة — يُعرض باسم نطاقه فقط ويبقى الضغط
-        // على الرابط الكامل. ونصّ ماركداون هو نفسه رابط يُعامل كذلك.
+        // v-full-links (المالك ١٥ أكتوبر «الموقع يعطيني الرئيس فقط — أريده كاملًا لكلّ المزوّدين»): كان v-clean-links
+        // يعرض الرابط باسم نطاقه فقط (github.com) فلا يُعرف أيّ طلب أو صفحة. الآن الرابط كاملًا كما كُتب، مفكوك الترميز
+        // (%D8%A3… ← عربيّ مقروء، وهو ما كان v-clean-links يعالجه) وword-break يلفّه. ونصّ ماركداون هو اسم نطاق رابطه
+        // ([github.com](https://github.com/…)) يُعرض رابطه كاملًا؛ وغيره من النصوص يبقى كما كتبه المزوّد.
+        const __decode = function(u){ try { return decodeURIComponent(u); } catch(e){ return u; } };
+        const __hostOf = function(u){ try { return new URL(u).hostname.replace(/^www\./, ''); } catch(e){ return ''; } };
         let __disp = linkM ? linkM[1] : rawUrl;
-        if(bareM){ __disp = bareM[1].replace(/^www\./, ''); } // اسم النطاق فقط
-        else if(/^(https?:\/\/|www\.)/i.test(__disp)){
-          try { __disp = new URL(__disp.indexOf('www.') === 0 ? 'https://' + __disp : __disp).hostname.replace(/^www\./, ''); }
-          catch(e){ try { __disp = decodeURIComponent(__disp).slice(0, 50); } catch(e2){ __disp = __disp.slice(0, 50); } }
-        }
+        if(bareM){ __disp = rawUrl; } // النطاق ومساره كما كُتبا
+        else if(!linkM || __disp.replace(/^www\./, '').toLowerCase() === __hostOf(href).toLowerCase()) __disp = __decode(rawUrl);
         a.textContent = __disp;
         a.title = href;
         a.setAttribute('dir', 'auto'); // v476 bidi
