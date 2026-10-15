@@ -268,7 +268,7 @@ test('١٣. صفّ الوسيط العامّ: Grok المرفوض (404 نصّ) �
   const r2 = await run('omran', { provider: 'openrouter', model: 'x-ai/grok-4.20', messages: ask('سؤال') },
     (u) => (isOR(u) ? new Response('{"error":{"message":"No endpoints found"}}', { status: 404 }) : new Response('{}', { status: 404 })));
   assert.deepEqual(orModels(r2.calls), ['x-ai/grok-4.20', 'x-ai/grok-4.6'], 'الافتراضيّ إن سقط يتوقّف — لا شركة أخرى');
-  assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما قدرت أردّ الحين — خطأ 404');
+  assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما قدرت أردّ الحين — خطأ 404: No endpoints found'); // v-why: سبب المزوّد بعد الرقم
 });
 
 test('١٤. مزوّد بلا طريق له أو غير معروف للخادم: لا يجيب كلود صامتًا عنه — للمالك وحده', async () => {

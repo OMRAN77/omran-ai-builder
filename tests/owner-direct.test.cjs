@@ -184,7 +184,7 @@ test('٥. المالك + مفتاح Groq مرفوض (401) → سبب الفشل�
     ] });
     assert.equal(r.calls[0].url, 'https://api.groq.com/openai/v1/chat/completions');
     assert.ok(!r.calls.some((c) => /openrouter\.ai/.test(c.url)), 'لا وسيط');
-    assert.ok(r.events.some((e) => e.ownerStop === true && e.error === 'ما قدرت أردّ الحين — خطأ 401'));
+    assert.ok(r.events.some((e) => e.ownerStop === true && String(e.error).startsWith('ما قدرت أردّ الحين — خطأ 401') /* v-why: وبعده سبب المزوّد */));
     assert.equal(r.text, '');
   } finally { delete process.env.GROQ_API_KEY; }
 });

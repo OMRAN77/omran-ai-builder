@@ -25,6 +25,34 @@ const DIRECT = {
   perplexity: { url: 'https://api.perplexity.ai/v1/responses', responses: 'https://api.perplexity.ai/v1/responses', keyVar: 'PERPLEXITY_API_KEY', label: 'Perplexity', noFallback: true },
 };
 const PPLX_NO_TOOLS = '[هذا الدور بلا أدوات: الموديل على واجهة Perplexity لم يقبل أدوات الدوالّ. أجب ممّا تعرفه، ولا تدّعِ قراءة ملفّ ولا تعديلًا ولا رفعًا؛ وإن طلب المالك تعديلًا على تطبيقه فقل له في سطر إنّ أدوات التعديل لم تُقبل على هذا الموديل.]'; // v-pplx-agent
+/* v-pplx-names (لقطة المالك ١٥ أكتوبر، Perplexity Sonar: «أدوات قراءة المستودع وتعديله غير متاحة في هذه المحادثة»): واجهة Perplexity تحجز
+   أسماء أدواتها المدمجة فترفض الطلب كلّه بـ400 «invalid tools in request: custom function name "web_search" is reserved»، وv-pplx-agent يعيده
+   بلا أدوات — فلا قراءة ولا تعديل. على السلك وحده: الاسم المحجوز ← app_<الاسم> في الأدوات وفي نداءات التاريخ، ويعود إلى أصله في البثّ
+   قبل أن تراه الحلقة. باقي الأسماء كما هي. */
+// من دليل Perplexity الرسميّ للترحيل (api-platform-developers: integration-styles.md «RESERVED NAMES») ومن رفض حيّ موثَّق (search_files).
+// «وقد تُحجز أسماء أخرى» — فاسم يرفضه لاحقًا يُضاف هنا تلقائيًّا (pplxReservedIn) ويُعاد الطلب بأدواته مرّة.
+const PPLX_RESERVED = new Set(['web_search', 'search_web', 'people_search', 'search_people', 'fetch_url', 'finance_search', 'sandbox', 'image_search', 'search_files']);
+const PPLX_PREFIX = 'app_';
+const pplxOut = (n) => (PPLX_RESERVED.has(n) ? PPLX_PREFIX + n : n);
+const pplxBack = (n) => (n.indexOf(PPLX_PREFIX) === 0 && PPLX_RESERVED.has(n.slice(PPLX_PREFIX.length)) ? n.slice(PPLX_PREFIX.length) : n);
+// اسم أداة من رفض «custom function name "X" is reserved» (رسالة JSON أو نصّ خام بعلامات مهرَّبة)، إن كان من أدوات هذا الطلب.
+function pplxReservedIn(text, rb) {
+  let m = '';
+  try { const j = JSON.parse(text); m = String((j && j.error && (j.error.message || j.error)) || (j && j.message) || ''); } catch (e) { m = String(text || '').replace(/\\"/g, '"'); }
+  const hit = /custom function name "([^"]+)" is reserved/i.exec(m);
+  const n = hit ? hit[1] : '';
+  return n && Array.isArray(rb.tools) && rb.tools.some((t) => t && t.name === n) && !PPLX_RESERVED.has(n) ? n : '';
+}
+function pplxWire(rb) {
+  if (Array.isArray(rb.tools)) rb.tools = rb.tools.map((t) => (t && t.type === 'function' ? Object.assign({}, t, { name: pplxOut(String(t.name || '')) }) : t));
+  if (Array.isArray(rb.input)) rb.input = rb.input.map((it) => (it && it.type === 'function_call' ? Object.assign({}, it, { name: pplxOut(String(it.name || '')) }) : it));
+  if (rb.tool_choice && rb.tool_choice.type === 'function' && rb.tool_choice.name) rb.tool_choice = Object.assign({}, rb.tool_choice, { name: pplxOut(String(rb.tool_choice.name)) });
+  // التعليمات تسمّي الأداة باسمها الأصليّ (web_search…) — سطر واحد يربطه باسم السلك فلا ينادي الموديل اسمًا غير معلَن
+  const ren = (rb.tools || []).map((t) => String((t && t.name) || '')).filter((n) => pplxBack(n) !== n).map((n) => pplxBack(n) + ' ← ' + n);
+  const note = ren.length ? '[أسماء الأدوات على هذه الواجهة: ' + ren.join('، ') + ']' : '';
+  if (note && String(rb.instructions || '').indexOf(note) === -1) rb.instructions = (rb.instructions ? rb.instructions + '\n\n' : '') + note;
+  return rb;
+}
 
 // مسار مباشر لهذا المزوّد إن كان مفتاحه في البيئة، وإلّا null (يبقى على الوسيط كما كان).
 function directRoute(prov, env) {
@@ -125,7 +153,7 @@ function toOpenAIBody(ab, prov) {
   if (prov === 'openai' || prov === 'kimi') body.stream_options = { include_usage: true };
   if (Array.isArray(ab.tools) && ab.tools.length) {
     body.tools = ab.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description || '', parameters: t.input_schema || { type: 'object', properties: {} } } }));
-    if (ab.tool_choice && ab.tool_choice.type === 'none') body.tool_choice = 'none'; // v-claude-code-level C1: الجواب الختاميّ بلا أدوات، والقائمة كما هي
+    if (ab.tool_choice && ab.tool_choice.type === 'none' && prov !== 'groq') body.tool_choice = 'none'; // v-claude-code-level C1: الجواب الختاميّ بلا أدوات، والقائمة كما هي · v-groq-final: Groq يفرض none برفض التوليد (tool_use_failed) وgpt-oss يستدعي رغمه — يكفيه FINAL_NOTE
   }
   return body;
 }
@@ -204,7 +232,7 @@ function validToolArguments(args) {
     return !!input && typeof input === 'object' && !Array.isArray(input);
   } catch (e) { return false; }
 }
-function responsesToAnthropicStream(upstreamBody, fallbackModel) {
+function responsesToAnthropicStream(upstreamBody, fallbackModel, nameBack) { // nameBack: أسماء السلك ← أسماء الحلقة (v-pplx-names)
   const enc = new TextEncoder();
   const dec = new TextDecoder();
   return new ReadableStream({
@@ -243,7 +271,7 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
         const idx = next++;
         const c = { idx, sent: false, args: '', done: false };
         calls.set(oi, c);
-        emit({ type: 'content_block_start', index: idx, content_block: { type: 'tool_use', id: String(item.call_id || item.id || ('call_' + idx)), name: String(item.name || ''), input: {} } });
+        emit({ type: 'content_block_start', index: idx, content_block: { type: 'tool_use', id: String(item.call_id || item.id || ('call_' + idx)), name: nameBack ? nameBack(String(item.name || '')) : String(item.name || ''), input: {} } });
         return c;
       };
       try {
@@ -564,13 +592,13 @@ async function directFetch(route, anthropicBody, opts) {
   const sig = o.signal ? { signal: o.signal } : {}; // v-claude-code-level C5: حارس صمت المالك يقطع النداء المباشر أيضًا
   if (route.responsesUrl) {
     let rb = toResponsesBody(anthropicBody);
-    if (route.prov === 'perplexity') { delete rb.store; delete rb.reasoning; } // v-pplx-agent: حقلا OpenAI وحده
+    if (route.prov === 'perplexity') { delete rb.store; delete rb.reasoning; pplxWire(rb); } // v-pplx-agent: حقلا OpenAI وحده · v-pplx-names: الأسماء المحجوزة
     let rl = null;
     let capDropped = false, waits = 0; // v-direct-429
     let ownerEff = !!(anthropicBody.output_config && anthropicBody.output_config.effort); // v-owner-gpt-all
     for (let attempt = 0; attempt < 4 + QUICK_EFFORTS.length; attempt++) {
       const r = await f(route.responsesUrl, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(rb) }, sig));
-      if (r.ok && r.body) return { ok: true, status: r.status, model: rb.model, api: 'responses', text: async () => '', body: responsesToAnthropicStream(r.body, rb.model) };
+      if (r.ok && r.body) return { ok: true, status: r.status, model: rb.model, api: 'responses', text: async () => '', body: responsesToAnthropicStream(r.body, rb.model, route.prov === 'perplexity' ? pplxBack : null) };
       const t = await r.text().catch(() => '');
       rl = { ok: false, status: r.status, model: rb.model, api: 'responses', text: async () => t, headers: r.headers || null }; // v-groq-tpm: retry-after يصل إعادة C4 (GPT كان يعيد 429 ثلاثًا بلا انتظار)
       if (r.status === 429) { const w = wait429Ms(r.headers, t, waits); if (w) { waits++; await pause(w, o.signal); if (o.signal && o.signal.aborted) break; continue; } break; } // v-direct-429
@@ -599,6 +627,8 @@ async function directFetch(route, anthropicBody, opts) {
         continue;
       }
       if (!capDropped && r.status === 400 && rb.max_output_tokens && /max_output_tokens/i.test(t)) { capDropped = true; rb = Object.assign({}, rb); delete rb.max_output_tokens; continue; }
+      /* v-pplx-names: اسم محجوز جديد لم نعرفه = يُضاف للمجموعة ويُعاد الطلب بأدواته (مرّة لكلّ اسم) — لا إسقاط الأدوات كلّها */
+      if (route.prov === 'perplexity' && r.status === 400 && rb.tools) { const nr = pplxReservedIn(t, rb); if (nr) { PPLX_RESERVED.add(nr); rb = pplxWire(Object.assign({}, rb)); continue; } }
       /* v-pplx-agent: موديل Perplexity رفض أدوات الدوالّ = إعادة واحدة بلاها وبسطر يقول ذلك للموديل — جواب صادق لا «ما قدرت أردّ» */
       if (route.prov === 'perplexity' && r.status === 400 && rb.tools && /tool|function/i.test(t)) { rb = Object.assign({}, rb, { instructions: (rb.instructions ? rb.instructions + '\n\n' : '') + PPLX_NO_TOOLS }); delete rb.tools; delete rb.tool_choice; continue; }
       break;
@@ -635,7 +665,7 @@ async function directFetch(route, anthropicBody, opts) {
       if (r.status === 429) { const w = wait429Ms(r.headers, t, waits); if (w) { waits++; await pause(w, o.signal); if (o.signal && o.signal.aborted) break; continue; } } // v-direct-429: كلّ مزوّد لا Groq وحده
       break;
     }
-    if (!isModelErrorStatus(last.status, await last.text())) break;
+    { const lt = await last.text(); if (!isModelErrorStatus(last.status, lt) || /tool_use_failed/.test(lt)) break; } // v-groq-final: «model called a tool» رفضٌ للتوليد لا موديل ميّت
     if (route.prov === 'groq' && o.fallbackModels) deadModels.add(model);
   }
   return last;
@@ -660,4 +690,4 @@ function quickEffortRejected(model, effort) {
   quickRejected.set(k, bad);
 }
 
-module.exports = { PPLX_NO_TOOLS, directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, retryAfterOf, wait429Ms, __cfg: CFG, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected, __summaryOff: summaryOff };
+module.exports = { PPLX_NO_TOOLS, PPLX_RESERVED, pplxWire, pplxBack, pplxReservedIn, directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, retryAfterOf, wait429Ms, __cfg: CFG, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected, __summaryOff: summaryOff };

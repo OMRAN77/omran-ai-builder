@@ -114,3 +114,59 @@ test('٦. الرؤية والهويّة والمستوى: صورة المالك 
   assert.equal(PL.familyOf('perplexity', 'perplexity/sonar').key, 'sonar');
   assert.match(PL.levelNote('perplexity', 'perplexity/sonar'), /لا تكتفِ بالبحث ولا بوصف ما «يمكن» فعله/);
 });
+
+/* v-pplx-names (لقطة المالك ١٥ أكتوبر: Perplexity Sonar «أدوات قراءة المستودع وتعديله غير متاحة في هذه المحادثة»): Perplexity يحجز أسماء أدواته
+   المدمجة (web_search…) ويرفض الطلب كلّه بـ400 فكان v-pplx-agent يعيده بلا أدوات. مزوّد مزيّف يرفض الاسم المحجوز كما يرفضه الحقيقيّ. */
+test('٧. الأسماء المحجوزة عند Perplexity تُبدَّل على السلك وتعود في البثّ — الأدوات كلّها تصل ولا إعادة بلا أدوات', async () => {
+  const WS = { name: 'web_search', description: 'ابحث', input_schema: { type: 'object', properties: { query: { type: 'string' } } } };
+  const body = Object.assign({}, AB, { tools: [WS, TOOL], messages: [
+    { role: 'user', content: 'ابحث ثمّ اقرأ' },
+    { role: 'assistant', content: [{ type: 'tool_use', id: 'c0', name: 'web_search', input: { query: 'x' } }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'c0', content: 'نتائج' }] },
+  ] });
+  const sent = [];
+  const fetchImpl = async (url, init) => {
+    const b = JSON.parse(init.body); sent.push(b);
+    const names = (b.tools || []).map((t) => t.name).concat((b.input || []).filter((i) => i.type === 'function_call').map((i) => i.name));
+    const bad = names.find((n) => OD.PPLX_RESERVED.has(n));
+    if (bad) return new Response(JSON.stringify({ error: { message: 'invalid tools in request: custom function name "' + bad + '" is reserved' } }), { status: 400 });
+    return sse([
+      { type: 'response.output_item.added', output_index: 0, item: { type: 'function_call', call_id: 'c1', name: 'app_web_search', arguments: '' } },
+      { type: 'response.output_item.done', output_index: 0, item: { type: 'function_call', call_id: 'c1', name: 'app_web_search', arguments: '{"query":"أرضيات"}', status: 'completed' } },
+      { type: 'response.completed', response: {} },
+    ]);
+  };
+  const r = await OD.directFetch(OD.directRoute('perplexity', { PERPLEXITY_API_KEY: 'pk' }), body, { fetchImpl });
+  assert.equal(sent.length, 1, 'قُبل من أوّل مرّة — لا إعادة بلا أدوات');
+  assert.deepEqual(sent[0].tools.map((t) => t.name), ['app_web_search', 'read_github']);
+  assert.equal(sent[0].input.find((i) => i.type === 'function_call').name, 'app_web_search', 'نداء التاريخ بالاسم نفسه');
+  assert.ok(!sent[0].instructions.includes(OD.PPLX_NO_TOOLS));
+  assert.ok(sent[0].instructions.includes('web_search ← app_web_search'), 'سطر يربط الاسم الأصليّ باسم السلك');
+  const evs = await drain(r.body);
+  assert.equal(evs.find((e) => e.type === 'content_block_start' && e.content_block.type === 'tool_use').content_block.name, 'web_search', 'الحلقة ترى اسمها');
+  // غير Perplexity كما كان: GPT يرسل web_search باسمه
+  const g = []; await OD.directFetch(OD.directRoute('openai', { OPENAI_API_KEY: 'k' }), Object.assign({}, body, { model: 'gpt-6-sol' }), { fetchImpl: async (u, i) => { g.push(JSON.parse(i.body)); return sse([{ type: 'response.completed', response: {} }]); } });
+  assert.ok(g[0].tools.some((t) => t.name === 'web_search'));
+});
+
+test('٨. اسم محجوز جديد لم نعرفه: يُبدَّل ويُعاد الطلب بأدواته مرّة (لا إسقاط الأدوات كلّها)، ويبقى معروفًا للطلبات التالية', async () => {
+  const T2 = { name: 'teach_users', description: 'علّم', input_schema: { type: 'object', properties: {} } };
+  const sent = [];
+  const fetchImpl = async (url, init) => {
+    const b = JSON.parse(init.body); sent.push(b);
+    if ((b.tools || []).some((t) => t.name === 'teach_users')) return new Response(JSON.stringify({ error: { message: 'invalid tools in request: custom function name "teach_users" is reserved' } }), { status: 400 });
+    return sse([{ type: 'response.output_item.done', output_index: 0, item: { type: 'function_call', call_id: 'c9', name: 'app_teach_users', arguments: '{}', status: 'completed' } }, { type: 'response.completed', response: {} }]);
+  };
+  const route = OD.directRoute('perplexity', { PERPLEXITY_API_KEY: 'pk' });
+  try {
+    const r = await OD.directFetch(route, Object.assign({}, AB, { tools: [T2, TOOL] }), { fetchImpl });
+    assert.equal(sent.length, 2);
+    assert.deepEqual(sent[1].tools.map((t) => t.name), ['app_teach_users', 'read_github'], 'الأدوات كلّها في الإعادة');
+    assert.ok(!sent[1].instructions.includes(OD.PPLX_NO_TOOLS));
+    const evs = await drain(r.body);
+    assert.equal(evs.find((e) => e.type === 'content_block_start' && e.content_block.type === 'tool_use').content_block.name, 'teach_users');
+    sent.length = 0;
+    await OD.directFetch(route, Object.assign({}, AB, { tools: [T2, TOOL] }), { fetchImpl });
+    assert.equal(sent.length, 1, 'الطلب التالي بالاسم البديل من أوّل مرّة');
+  } finally { OD.PPLX_RESERVED.delete('teach_users'); }
+});

@@ -380,8 +380,8 @@ test('١٦. وسيط يرفض الحقل بنصّ بلا كلمة thinking ← �
   }
   OL.__resetTalk();
   const other = await run('omran', { provider: 'mistral', messages: Q }, (u, b) => (!isOR(u) ? new Response('{}', { status: 404 }) : err(400, 'prompt is too long')));
-  assert.equal(other.calls.length, 2, 'إعادة واحدة فقط');
-  assert.ok(other.events.some((e) => e.ownerStop && /خطأ 400/.test(e.error || '')), '400 لا علاقة له بالحقل يصل بسببه بعد الإعادة');
+  assert.equal(other.calls.length, 1, 'v-owner-cap-live: رفض النافذة ليس عن حقل التفكير — بلا إعادة مهدرة ولا إطفاء تفكير الموديل');
+  assert.ok(other.events.some((e) => e.ownerStop && /خطأ 400: prompt is too long/.test(e.error || '')), '400 لا علاقة له بالحقل يصل بسببه (v-why)');
   OL.__resetTalk();
 });
 
