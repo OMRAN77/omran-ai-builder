@@ -15989,7 +15989,7 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
           try{
             const __st = err.status || Number((String(err.message || '').match(/^chat (\d{3})\b/) || [])[1]) || 0;
             /* v-claude-code-level C9 (لقطة المالك ١١ أكتوبر: «⚠️ ما قدرت أردّ الحين» ×٣ بلا شيء): خطأ بلا رقم كان يُمحى سببه — الآن سطره القصير */
-            const __m = String((err && err.message) || ''), __why = __st ? '' : /stalled|__chat_idle__|__chat_no_headers__/.test(__m) ? 'ما وصل شي من الخادم' : /empty reply/.test(__m) ? 'رجع الردّ فارغًا' : /^chat error: /.test(__m) ? 'عطل في الخادم: ' + __m.slice(12, 140) : /Failed to fetch|NetworkError|network|Load failed/i.test(__m) ? 'انقطع الاتّصال' : '';
+            const __m = String((err && err.message) || ''), __why = __st ? '' : /stalled|__chat_idle__|__chat_no_headers__/.test(__m) ? 'ما وصل شي من الخادم' : /empty reply/.test(__m) ? 'رجع الردّ فارغًا' : /^chat error: /.test(__m) ? 'عطل في الخادم: ' + __m.slice(12, 140) : /Failed to fetch|NetworkError|network|Load failed|^chat: cut/i.test(__m) ? 'انقطع الاتّصال' : ''; /* v-turn-close: انقطاع المجرى بعد بدئه */
             err.message = (__st === 402 || /credit|balance|billing|insufficient_quota|payment/i.test(String(err.upstreamText || ''))) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين' + (__st ? ' — خطأ ' + __st : (__why ? ' — ' + __why : '')));
           }catch(e){ __swallow(e, 'fallback:solo-msg'); }
         }
@@ -39164,9 +39164,13 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       try { chunk = await __raceIdle(reader.read(), __toolBusy ? __CHAT_TOOL_MS : __CHAT_IDLE_MS, '__chat_idle__'); }
       catch (e) {
         if (e && e.name === 'AbortError') { try { e.log = __logNow(); } catch (_l) { /* guard-ok — السجلّ ترف */ } throw e; } /* إيقاف المستخدم أو الحارس الصلب — يمرّ كما هو، ومعه سجلّ العمل (v-interleave-fix) */
-        try { reader.cancel(); } catch (_e) { /* guard-ok — تحرير المجرى */ }
+        try { var __cp = reader.cancel(); if (__cp && __cp.catch) __cp.catch(function () { /* guard-ok — المجرى انقطع أصلًا: إلغاؤه يرفض، وبلا هذا رفضٌ غير معالَج (v-turn-close) */ }); } catch (_e) { /* guard-ok — تحرير المجرى */ }
         if (full.trim()) break; /* عندنا نصّ جزئيّ — نعرضه بدل تضييعه */
-        throw new Error(serverErr || 'chat: stalled — no response');
+        /* v-turn-close (لقطة المالك ١٥ أكتوبر: طلب السحب انفتح والفقاعة «ما وصل شي من الخادم» بلا شيء): انقطاع المقبس كان يُقرأ «صمتًا»،
+           ويضيع معه سجلّ العمل (الخطوات والجمل المنقولة إليه) وعلامة سبب الخادم. الآن: الصمت الظاهر ٩٠ ث «stalled» كما كان (#527)، والانقطاع
+           «cut» بسببه، والسجلّ وownerStop يبقيان مع الخطأ كما في نهاية المجرى الفارغة. */
+        var __se = new Error(serverErr || ((e && e.message === '__chat_idle__') ? 'chat: stalled — no response' : 'chat: cut — ' + String((e && e.message) || e).slice(0, 80)));
+        if (__ownerStop) __se.ownerStop = true; __se.log = __logNow(); throw __se;
       }
       if (chunk.done) break;
       __toolBusy = false; /* وصلت بايتات جديدة من الخادم → لم نعد بانتظار أداة */

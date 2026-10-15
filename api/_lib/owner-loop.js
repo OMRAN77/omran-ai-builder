@@ -77,7 +77,7 @@ function stepText(blocks) { return (blocks || []).filter((b) => b && b.type === 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); } // انتظار الإعادة جزء من الدور (≤ ٨ ث) — ليس unref
 
 function state(on) {
-  return { on: !!on, final: false, nudged: false, editClose: false, conts: 0, retryMs: 0, noChoice: false, choice: false, slow: false, t0: 0, send: null, ac: null, reader: null, tFirst: null, tIdle: null, stalled: '', lastStall: '', stopDetails: null, midRetried: false };
+  return { on: !!on, final: false, nudged: false, editClose: false, conts: 0, retryMs: 0, noChoice: false, choice: false, slow: false, t0: 0, send: null, ac: null, reader: null, tFirst: null, tIdle: null, stalled: '', lastStall: '', stopDetails: null, midRetried: false, busy: false };
 }
 
 /* C5: الحارس — لكلّ نداء مؤقّت حتّى الترويسة، وبعدها مؤقّت خمول يُصفَّر مع كلّ دفعة. الانطلاق يلغي القارئ
@@ -95,6 +95,26 @@ function budget(s, ms) {
   const m = Math.min(ms, Math.max(0, left));
   return { ms: m, why: m < ms ? 'اقترب حدّ وقت الخادم (300 ث) والمزوّد لم يكمل' : '' };
 }
+/* v-turn-close (لقطة المالك ١٥ أكتوبر: DeepSeek فتح طلب السحب #1073 باختبار وحده ثمّ «⚠️ ما قدرت أردّ الحين — ما وصل شي من الخادم»):
+   حارس الوقت (budget) يغطّي نداء المزوّد وحده؛ أداة بدأت متأخّرة (رفعة GitHub مع بناء الحزمة، صورة، سجلّ طويل) تعمل بلا حدّ حتّى
+   تقتل Vercel الدالّة عند ٣٠٠ ث فينقطع المقبس بلا كلمة، والعميل يقول «ما وصل شي» ويضيع سجلّ العمل. ونبض الدور كان يسكت عند MAX_MS
+   وخطوة الختام بعدها. الآن نبض المالك حيّ حتّى CLOSE_AT_MS، وبعده: أداة ما زالت تعمل = ختام نظيف بسطر «كمل» ورابط آخر رفعة
+   ثمّ نهاية المجرى قبل القتل؛ ونداء مزوّد جارٍ = حارسه يختم بسببه عند ٢٩٠ ث؛ وبعد FN_BUDGET_MS صمت (حدّ #527 باقٍ). غير المالك كما كان. */
+const CLOSE_AT_MS = FN_BUDGET_MS - 10000;
+function pulse(s, o) {
+  const el = Date.now() - Number((o && o.t0) || 0);
+  if (!(s && s.on)) return el > Number((o && o.MAX_MS) || 0) ? 'end' : 'ka';
+  if (el <= CLOSE_AT_MS) return 'ka';
+  if (s.busy) return 'close';
+  return el <= FN_BUDGET_MS ? 'ka' : 'end';
+}
+// مرجع آخر رفعة ناجحة من نصّ formatPush: رابط طلب السحب إن فُتح، وإلّا الفرع — منه يكمل دور «كمل» على الطلب نفسه لا طلبًا جديدًا.
+function pushRef(result) {
+  const t = String(result || ''), pr = t.match(/طلب السحب #\d+: \S+/), br = t.match(/على الفرع «([^»\n]+)»/);
+  return pr ? pr[0] : (br ? 'الفرع «' + br[1] + '»' : '');
+}
+function closeMark(ref) { return '\n\n⏸️ خلص وقت الدور وأداة ما زالت تشتغل — نتيجتها قد تظهر في المستودع بعد هذا السطر. ' + RESUME_KEY + '.' + (ref ? '\n' + ref : ''); }
+function withRef(text, ref) { return ref ? text + '\n' + ref : text; }
 function fire(s, b) {
   clear(s);
   s.stalled = b.why || ('المزوّد ما ردّ خلال ' + Math.max(1, Math.round(b.ms / 1000)) + ' ث');
@@ -513,5 +533,6 @@ module.exports = {
   isDeadPick, rememberDeadPick, margin,
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1
   RESUME_KEY, RESUME_NOTE, resumeMark, isResume, resume, // v-owner-resume
+  pulse, pushRef, closeMark, withRef, CLOSE_AT_MS, // v-turn-close
   FINAL_NOTE, FINAL_EDIT_NOTE, FN_BUDGET_MS, CONTINUE_NOTE, TOOL_CUT_NOTE, CUT_STOP, EMPTY_STOP, __deadPicks: deadPicks, __resetTalk: () => NO_TALK.clear(), // v-talk-400 · v-prov-finish-edit
 };
