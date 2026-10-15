@@ -22,6 +22,7 @@ const ART_STYLES = [
   'tarot', 'stamp', 'moviePoster', 'diorama', 'emoji3d', 'y2k', 'albumCover',
   'sheikh', 'falconry', 'arabianHorse', 'saudiHeritage', 'kuwaitiHeritage',
   'omaniHeritage', 'qatariHeritage', 'bahrainiHeritage', 'henna', 'firstday', 'flagday',
+  'cardGallery', // v-pstyle-card-gallery
 ];
 // الأدوات أيضًا لها معاينات حقيقية (بمعاملات خاصة): إزالة الخلفية على أبيض،
 // الجواز صورة رسمية، المهنة طبيب، الدمج والعائلي بصورة إضافية… إلخ.
@@ -78,6 +79,7 @@ const STYLE_SOURCE = {
   sheikh: 'm3', falconry: 'm3', arabianHorse: 'm3', saudiHeritage: 'm3', kuwaitiHeritage: 'm3',
   omaniHeritage: 'm3', qatariHeritage: 'm3', bahrainiHeritage: 'm3',
   eyefix: 'm1', glasses: 'w2', bokeh: 'm1', henna: 'w1', firstday: 'k2', flagday: 'm3',
+  cardGallery: 'm4', // v-pstyle-card-gallery
 };
 // v-psheet-oneface (فكرة المالك ٥ سبتمبر): وجه مرجعي واحد (m1 — نفس assets/portrait/before.webp)
 // يمرّ على كل الأنماط، فتقرأ البطاقات «قبل → كل الأنماط». ONE_FACE=0 يعيد التنويع القديم.

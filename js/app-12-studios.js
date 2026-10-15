@@ -716,6 +716,7 @@ const STU_XL = {
   'إيموجي ثلاثي الأبعاد': {en:'3D Emoji Style',fr:'Style Emoji 3D',hi:'3D इमोजी शैली',bn:'৩ডি ইমোজি স্টাইল',ne:'3D इमोजी शैली',id:'Gaya Emoji 3D',fil:'3D Emoji na Estilo',tr:'3D Emoji Tarzı',zh:'3D表情符号风格',ru:'Стиль 3D-эмодзи',es:'Estilo Emoji 3D',ml:'3D ഇമോജി ശൈലി'},
   'ستايل Y2K': {en:'Y2K Aesthetic',fr:'Esthétique Y2K',hi:'Y2K सौंदर्यशास्त्र',bn:'Y2K নান্দনিকতা',ne:'Y2K सौन्दर्यशास्त्र',id:'Estetika Y2K',fil:'Y2K na Estilo',tr:'Y2K Estetiği',zh:'Y2K美学风格',ru:'Эстетика Y2K',es:'Estética Y2K',ml:'Y2K സൗന്ദര്യശാസ്ത്രം'},
   'بوستر ألبوم غنائي': {en:'Music Album Cover',fr:'Pochette d\'Album Musical',hi:'संगीत एल्बम कवर',bn:'মিউজিক অ্যালবাম কভার',ne:'सङ्गीत एल्बम कभर',id:'Sampul Album Musik',fil:'Cover ng Music Album',tr:'Müzik Albümü Kapağı',zh:'音乐专辑封面',ru:'Обложка музыкального альбома',es:'Portada de Álbum Musical',ml:'സംഗീത ആൽബം കവർ'},
+  'معرض بطاقات زجاجي فاخر': {en:'Luxury Glass Card Gallery',fr:'Galerie de Cartes en Verre de Luxe',hi:'लक्ज़री ग्लास कार्ड गैलरी',bn:'লাক্সারি গ্লাস কার্ড গ্যালারি',ne:'लक्जरी ग्लास कार्ड ग्यालरी',id:'Galeri Kartu Kaca Mewah',fil:'Luxury Glass Card Gallery',tr:'Lüks Cam Kart Galerisi',zh:'奢华玻璃卡片画廊',ru:'Роскошная стеклянная галерея карточек',es:'Galería de Tarjetas de Cristal de Lujo',ml:'ലക്ഷ്വറി ഗ്ലാസ് കാർഡ് ഗാലറി'},
   'إطلالة شيخ أو شيخة': {en:'Sheikh/Sheikha Look',fr:'Look Cheikh/Cheikha',hi:'शेख/शेखा लुक',bn:'শেখ/শেখা লুক',ne:'शेख/शेखा लुक',id:'Gaya Sheikh/Sheikha',fil:'Itsura ng Sheikh/Sheikha',tr:'Şeyh/Şeyha Görünümü',zh:'酋长/酋长夫人造型',ru:'Образ шейха/шейхи',es:'Look de Jeque/Jequesa',ml:'ഷെയ്ഖ്/ഷെയ്ഖ ലുക്ക്'},
   'صيد بالصقر': {en:'Falconry Portrait',fr:'Portrait de Fauconnerie',hi:'बाज़ शिकार पोर्ट्रेट',bn:'বাজ শিকার প্রতিকৃতি',ne:'बाज सिकार पोट्रेट',id:'Potret Berburu Elang',fil:'Larawan ng Pangangaso gamit ang Falcon',tr:'Doğancılık Portresi',zh:'猎鹰狩猎肖像',ru:'Портрет соколиной охоты',es:'Retrato de Cetrería',ml:'പരുന്ത് വേട്ട ഛായാചിത്രം'},
   'فروسية عربية': {en:'Arabian Horse Equestrian',fr:'Équitation Cheval Arabe',hi:'अरबी घोड़ा सवारी',bn:'আরবি ঘোড়ার আরোহণ',ne:'अरबी घोडा सवारी',id:'Berkuda Kuda Arab',fil:'Pagsakay sa Kabayong Arabo',tr:'Arap Atı Biniciliği',zh:'阿拉伯马术',ru:'Верховая езда на арабской лошади',es:'Equitación en Caballo Árabe',ml:'അറേബ്യൻ കുതിര സവാരി'},
@@ -742,7 +743,7 @@ function stuL(ar, en){
 
 /* v-pstyle-img: وسم إصدار صور الأنماط — /assets/ مخبّأة يومًا كاملًا (وأسبوعًا stale)،
    فاستبدال الملفّ وحده يُبقي الصورة القديمة عند من فتح التطبيق أمس. ارفع الرقم مع كلّ استبدال. */
-const PSTYLE_IMG_V = '15';
+const PSTYLE_IMG_V = '16'; /* v-pstyle-card-gallery: بطاقة cardGallery */
 function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYLE_IMG_V; }
 
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
@@ -819,6 +820,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* v-pstyle-batch-2: ٢١ ستايلًا جديدًا (طلب المالك «رتّبهم كلهم» بعد فكرة أفكار جديدة ٢١ سبتمبر) */
     tarot: 'بطاقة تاروت', stamp: 'طابع بريد قديم', moviePoster: 'بوستر فيلم أكشن', diorama: 'ديوراما مصغّرة',
     emoji3d: 'إيموجي ثلاثي الأبعاد', y2k: 'ستايل Y2K', albumCover: 'بوستر ألبوم غنائي',
+    /* v-pstyle-card-gallery (المالك ١٥ أكتوبر، صورة قاعة زجاجيّة ببطاقات بورتريه: «حطّها في أنماط الصور… سوّ نفسها بالضبط») */
+    cardGallery: 'معرض بطاقات زجاجي فاخر',
     sheikh: 'إطلالة شيخ أو شيخة', falconry: 'صيد بالصقر', arabianHorse: 'فروسية عربية',
     saudiHeritage: 'تراث سعودي', kuwaitiHeritage: 'تراث كويتي', omaniHeritage: 'تراث عماني',
     qatariHeritage: 'تراث قطري', bahrainiHeritage: 'تراث بحريني',

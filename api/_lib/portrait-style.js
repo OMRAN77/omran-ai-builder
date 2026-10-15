@@ -111,6 +111,8 @@ const STYLE_PROMPTS = {
   omaniHeritage: 'a traditional Omani heritage portrait style, wearing an authentic Omani dishdasha with a kummah cap and khanjar dagger belt, a mountain-fort heritage backdrop like Nizwa',
   qatariHeritage: 'a traditional Qatari heritage portrait style, wearing an authentic Qatari thobe and ghutra, pearl-diving dhow and desert-coast heritage motifs softly in the background, warm golden Gulf tones',
   bahrainiHeritage: 'a traditional Bahraini heritage portrait style, wearing an authentic Bahraini thobe and ghutra, pearl-diving heritage and traditional wind-tower (barjeel) architecture softly in the background, warm coastal tones',
+  /* v-pstyle-card-gallery (المالك ١٥ أكتوبر، صورة مرجعيّة: قاعة فاخرة، أسطوانة زجاجيّة في الوسط، بطاقات بورتريه للشخص نفسه حولها، شارة «12» ذهبيّة، رخام عاكس): «سوّ نفسها بالضبط» */
+  cardGallery: 'a luxury glass-showcase gallery scene style: a grand hotel-lobby-like hall with ivory marble walls, warm golden ceiling lights and a polished mirror-like marble floor reflecting everything; in the exact center a tall transparent glass cylinder vitrine glowing softly from inside, and around it (inside and just outside the glass) a ring of about twelve framed vertical portrait cards, each showing this same person in a different elegant outfit, pose and lighting, arranged like a floating card gallery; at the top of the cylinder a round glowing golden badge with the large number "12" and a small caption line beneath it; cream sofas and gold-trimmed wall panels symmetrically on both sides; wide symmetrical cinematic shot, ultra-realistic 3D render quality, luxurious gold-and-ivory palette',
 };
 
 const EDIT_PROMPTS = {

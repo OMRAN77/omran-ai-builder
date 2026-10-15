@@ -547,6 +547,7 @@
         <option value="flagday" data-i18n="portraitStyleFlagday">🇦🇪 يوم العلم الإماراتي</option>
         </optgroup>
         <optgroup label="🆕 ستايلات جديدة" data-i18n="[label]portraitGrpNew">
+        <option value="cardGallery" data-i18n="portraitStyleCardGallery">🏛️ معرض البطاقات الفاخر</option>
         <option value="claymation" data-i18n="portraitStyleClaymation">🏺 صلصال متحرك (كلاي)</option>
         <option value="lowpoly" data-i18n="portraitStyleLowpoly">🔷 ثلاثي الأبعاد هندسي (Low Poly)</option>
         <option value="graffiti" data-i18n="portraitStyleGraffiti">🎨 جرافيتي شوارع</option>
