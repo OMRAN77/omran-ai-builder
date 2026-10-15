@@ -1,4 +1,19 @@
 I18N['fil'] = {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "Natural",
+    "designAiLightingNeutral": "Neutral na puti",
+    "designAiLightingGolden": "Ginintuang liwanag",
+    "designAiLightingPurple": "Lilang gabi",
+    "designAiLightingSunset": "Paglubog ng araw",
+    "designAiLightingMoon": "Liwanag ng buwan",
+    "designAiLightingEmerald": "Payapang esmeralda",
+    "designAiLightingTurquoise": "Turkesang baybayin",
+    "designAiLightingRose": "Banayad na rosas",
+    "designAiLightingBurgundy": "Sinematikong burgundy",
+    "designAiLightingNeon": "Dalawang-kulay na neon",
+    "designAiLightingCinematic": "Balanseng sinematiko",
+    "designAiLightingAurora": "Mga kulay ng aurora",
+
     "notifSectionLabel": "🔔 Mga notipikasyon",
     "newsAlertsLabel": "📢 Mga alerto ng breaking news",
     "newsAlertsHint": "Makatanggap ng notipikasyon para sa breaking news o emergency warning, kahit sarado ang app",

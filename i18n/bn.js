@@ -1,4 +1,19 @@
 I18N['bn'] = {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "প্রাকৃতিক",
+    "designAiLightingNeutral": "নিরপেক্ষ সাদা",
+    "designAiLightingGolden": "সোনালি আভা",
+    "designAiLightingPurple": "বেগুনি রাত",
+    "designAiLightingSunset": "সূর্যাস্ত",
+    "designAiLightingMoon": "চাঁদের আলো",
+    "designAiLightingEmerald": "শান্ত পান্না",
+    "designAiLightingTurquoise": "উপকূলীয় ফিরোজা",
+    "designAiLightingRose": "কোমল গোলাপি",
+    "designAiLightingBurgundy": "সিনেমাটিক বারগান্ডি",
+    "designAiLightingNeon": "দুই রঙের নিয়ন",
+    "designAiLightingCinematic": "সুষম সিনেমাটিক",
+    "designAiLightingAurora": "মেরুজ্যোতির রং",
+
     "notifSectionLabel": "🔔 বিজ্ঞপ্তি",
     "newsAlertsLabel": "📢 ব্রেকিং নিউজ সতর্কতা",
     "newsAlertsHint": "ব্রেকিং নিউজ বা জরুরি সতর্কতা এলে বিজ্ঞপ্তি পান, অ্যাপ বন্ধ থাকলেও",
