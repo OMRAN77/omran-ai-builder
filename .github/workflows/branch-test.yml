@@ -1,0 +1,44 @@
+# v-branch-test — «جهاز» المزوّدين لاختبار واحد (المالك ١٥ أكتوبر: «أوصلهم لمستوى كودي»). يبدؤه الخادم وحده (manage_github
+# action=test من محادثة المالك) على فرع المزوّد: ملفّ اختبار واحد مسجّل في package.json يُشغَّل في نحو دقيقة ويرجع مخرجه (TAP).
+# المدخلان يُمرَّران بيئةً لا نصّ صدفة، ويفحصهما scripts/branch-test.mjs بفاحص api/_lib/branch-test.js وقائمة سماح package.json.
+# صلاحيّة القراءة وحدها. الفشل يحمرّ على التزام الفرع (كـci.yml) فيوقف الدمج — مرغوب.
+name: Branch test
+run-name: "test ${{ inputs.ref }} ${{ inputs.file }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: الفرع
+        required: true
+        type: string
+      file:
+        description: ملفّ اختبار واحد مثل tests/work-log.test.cjs
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: branch-test-${{ inputs.ref }}-${{ inputs.file }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: One test file
+        env:
+          TEST_FILE: ${{ inputs.file }}
+        run: node scripts/branch-test.mjs

@@ -22,7 +22,7 @@ const README_MAX = 2500;        // حروف README المعروضة في نظر�
    (أسطر أكثر بالدفعة الواحدة، شجرة أوسع، README أطول، ملفّات أكبر).
    v-github-all-providers (٢٩ سبتمبر): لم تبقَ حصرًا على كلود — `opts.deep` يُرسل الآن لكلّ
    مزوّد في المحادثة والوكيل، والحصر صار على الطالب لا على المزوّد: المالك وحده. */
-const DEEP_CHUNK = 24000;
+const DEEP_CHUNK = 48000; // v-deep-read (المالك ١٥ أكتوبر «أوصلهم لمستوى كودي»): كان ٢٤ ألفًا فيقرأ المزوّد نصف الملفّ ويحكم؛ الآن ~٨٠٠ سطر في النداء (سقف ناتج الأداة ٦٠ ألفًا في chat.js وagent.js)
 const DEEP_TREE_MAX = 900;
 const DEEP_FILE_MAX = 4000000;
 const DEEP_README_MAX = 7000;
@@ -261,6 +261,28 @@ async function readIssue(t, o) {
    المسار المطلوب فقط** بنداءات متوازية محدودة (لا حدّ جسم كنزول المستودع، فقط عدد ملفّات المسار —
    api/_lib مثلًا ١٦٢ ملفًّا، tests ١٩٨ — كلاهما دون السقف). مطابقة حرفيّة حسّاسة لحالة الأحرف، تمامًا
    كـGrep — موثوقة بلا فهرسة خارجيّة قد تتخلّف. */
+/* v-deep-search (المالك ١٥ أكتوبر «يتعمّقون في تحليل الأكواد»): سطر المطابقة وحده لا يكفي للحكم — مع كلّ مطابقة في ملفّ JS
+   رأس الدالّة الحاوية (بمطابقة الأقواس من الرأس حتّى يعود العمق صفرًا؛ ٣٠٠ سطر رجوعًا)، ولمعرّفٍ عدّ المستدعين في كلّ ملفّ معروض.
+   من النصّ المجلوب نفسه — بلا نداء شبكة إضافيّ. */
+const JS_FILE_RE = /\.(?:c|m)?js$|\.ts$/i;
+const IDENT_RE = /^[A-Za-z_$][\w$]*$/;
+const FN_HEAD_RE = /^\s*(?:export\s+)?(?:async\s+)?function\s*\*?\s*[\w$]+\s*\(|^\s*(?:const|let|var)\s+[\w$]+\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[\w$]+\s*=>)|^\s*(?:async\s+)?(?:static\s+)?(?!(?:if|for|while|switch|catch|with|return|else|do|try|function)\b)[\w$]+\s*\([^)]*\)\s*\{\s*$|^\s*[\w$'"]+\s*:\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>)/;
+const ENCLOSE_LOOKBACK = 300;
+const STR_RE = /(["'`])(?:\\.|(?!\1).)*\1/g;
+function enclosingHead(lines, li) {
+  for (let h = li - 1, back = 0; h >= 0 && back < ENCLOSE_LOOKBACK; h--, back++) {
+    if (!FN_HEAD_RE.test(lines[h])) continue;
+    let depth = 0, opened = false, closedAt = -1;
+    for (let k = h; k < lines.length && k - h < 6000; k++) {
+      const t = lines[k].replace(STR_RE, '""').replace(/\/\/.*$/, '');
+      for (const ch of t) { if (ch === '{') { depth++; opened = true; } else if (ch === '}') depth--; }
+      if (k === h && !opened) break; // سطر رأس بلا قوس فتح (سهم بتعبير واحد) ليس جسمًا يحوي شيئًا
+      if (opened && depth <= 0) { closedAt = k; break; }
+    }
+    if (closedAt >= li) return { n: h + 1, text: lines[h] };
+  }
+  return null;
+}
 const SEARCH_MAX_FILES = 400;   // أكثر من api/_lib (١٦٢) وtests (١٩٨) بمريح؛ أكبر يُطلب تضييق المسار
 const SEARCH_MAX_FILES_DEEP = 700;
 const SEARCH_CONCURRENCY = 15;  // نداءات متوازية — لا تُغرق GitHub ولا الدالّة
@@ -302,6 +324,9 @@ async function readContentSearch(t, o, query, limit) {
   const deadline = Date.now() + SEARCH_BUDGET_MS;
   const hits = [];
   let cursor = 0;
+  const ident = IDENT_RE.test(query); // v-deep-search: معرّف ← عدّ المستدعين في كلّ ملفّ معروض
+  const callRe = ident ? new RegExp('(?<![\\w$])' + query.replace(/\$/g, '\\$') + '\\s*\\(') : null;
+  const defRe = ident ? new RegExp('function\\s*\\*?\\s*' + query.replace(/\$/g, '\\$') + '\\s*\\(|(?:const|let|var)\\s+' + query.replace(/\$/g, '\\$') + '\\s*=|^\\s*' + query.replace(/\$/g, '\\$') + '\\s*[:=](?!=)') : null; // تعريف: function q( · const q = · q: / q = — لا نداء q( في أوّل السطر
   async function worker() {
     while (cursor < candidates.length && hits.length < n && Date.now() < deadline) {
       const e = candidates[cursor++];
@@ -315,8 +340,11 @@ async function readContentSearch(t, o, query, limit) {
       if (text.indexOf(String.fromCharCode(0)) !== -1 || text.indexOf(query) === -1) continue;
       const lines = text.split('\n');
       const matchLines = [];
-      for (let li = 0; li < lines.length && matchLines.length < 3; li++) if (lines[li].indexOf(query) !== -1) matchLines.push({ n: li + 1, text: lines[li] });
-      hits.push({ path: e.path, lines: matchLines });
+      const isJs = JS_FILE_RE.test(e.path);
+      for (let li = 0; li < lines.length && matchLines.length < 3; li++) if (lines[li].indexOf(query) !== -1) matchLines.push({ n: li + 1, text: lines[li], fn: isJs ? enclosingHead(lines, li) : null }); // v-deep-search: رأس الدالّة الحاوية
+      let calls = 0;
+      if (callRe && isJs) for (const ln of lines) if (callRe.test(ln) && !defRe.test(ln)) calls++;
+      hits.push({ path: e.path, lines: matchLines, calls });
     }
   }
   await Promise.all(Array.from({ length: Math.min(SEARCH_CONCURRENCY, candidates.length) }, worker));
@@ -326,9 +354,17 @@ async function readContentSearch(t, o, query, limit) {
   const out = ['🔎 «' + query + '» في ' + repoOf(t) + '/' + t.path + ' — ' + shown.length + (hits.length > shown.length ? '+' : '') + ' ملفّ (بحث فعليّ في محتوى ' + candidates.length + ' ملفًّا):'];
   for (const h of shown) {
     out.push('\n📄 ' + h.path);
-    for (const l of h.lines) out.push('  ' + l.n + '| ' + l.text.trim().slice(0, 200));
+    const seenFn = new Set();
+    for (const l of h.lines) {
+      out.push('  ' + l.n + '| ' + l.text.trim().slice(0, 200));
+      if (l.fn && l.fn.n !== l.n && !seenFn.has(l.fn.n)) { seenFn.add(l.fn.n); out.push('     ↳ داخل ' + l.fn.n + '| ' + l.fn.text.trim().slice(0, 160)); } // v-deep-search
+    }
   }
-  out.push('\nلقراءة ملفّ كاملًا: read_github بمساره.' + skipNote);
+  if (ident) { // v-deep-search: المستدعون من الملفّات المعروضة (المقروءة فعلًا) — قاعدة «الدالّة ومن يستدعيها واختبارها» بنداء واحد
+    const callers = shown.filter((h) => h.calls).map((h) => h.path + ' (' + h.calls + ')');
+    out.push(callers.length ? '\nالمستدعون لـ' + query + '( في الملفّات المعروضة: ' + callers.join('، ') : '\nلا مستدعين لـ' + query + '( في الملفّات المعروضة — تعريف أو ذكر فقط.');
+  }
+  out.push('\nلقراءة ملفّ كاملًا: read_github بمساره (from= للبقيّة).' + skipNote);
   return out.join('\n');
 }
 
@@ -500,4 +536,4 @@ async function fetchRepoZip(target, opts) {
 }
 
 module.exports = { imagePathOf, readImageFile, // v-owner-see-repo-img
-  parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, fileExcerpt, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP, SEARCH_FILE_BYTES_MAX, SEARCH_SKIP_RE };
+  parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, fileExcerpt, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, enclosingHead, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP, SEARCH_FILE_BYTES_MAX, SEARCH_SKIP_RE };

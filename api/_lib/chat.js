@@ -1409,7 +1409,7 @@ module.exports = async (req, res) => {
   const sysParts = messages
     .filter((m) => m && m.role === 'system' && typeof m.content === 'string' && !isClientMemoryNote(m.content) && !isClientTopicRule(m.content)) // v-tokens-dedupe: قاعدة الموضوع تصل في PERSONA_NOTE أدناه بنصّ أشمل — نسخة العميل كانت تتكرّر في كلّ دور
     .map((m) => m.content); const __nClient = sysParts.length; // v-tokens-s0: ملاحظات العميل (تُعرف بموضعها لا بنصّها)
-  if (!quietSocialTurn) sysParts.unshift(MASTERY_NOTE); if (__ownerReq && !quietSocialTurn) sysParts.splice(1, 0, require('./provider-level.js').OWNER_METHOD); const __clFrom = sysParts.length - __nClient, __clTo = sysParts.length; /* v-tokens-s0: ملاحظات العميل الآن آخر sysParts — كلّ ما يُدفع بعدها (التعليمات · الذاكرة · الحقائق · المخصّصة) ليس منها */ /* v-claude-code-level E3: منهج Claude Code للمالك بعد منهج الإتقان — في الثابت المخزَّن */ // v-provider-mastery: أوّل الثابت، وتعليمات المستخدم بعده أعلى أولويّة
+  if (!quietSocialTurn) sysParts.unshift(MASTERY_NOTE); if (__ownerReq && !quietSocialTurn) sysParts.splice(1, 0, require('./provider-level.js').OWNER_METHOD, require('./repo-map.js').REPO_NOTE); /* v-repo-map: خريطة المستودع بعد المنهج في الثابت المخزَّن */ const __clFrom = sysParts.length - __nClient, __clTo = sysParts.length; /* v-tokens-s0: ملاحظات العميل الآن آخر sysParts — كلّ ما يُدفع بعدها (التعليمات · الذاكرة · الحقائق · المخصّصة) ليس منها */ /* v-claude-code-level E3: منهج Claude Code للمالك بعد منهج الإتقان — في الثابت المخزَّن */ // v-provider-mastery: أوّل الثابت، وتعليمات المستخدم بعده أعلى أولويّة
   if (typeof body.system === 'string' && body.system.trim() && !isClientMemoryNote(body.system)) sysParts.push(body.system);
   if (accountMemory) sysParts.push(accountMemory);
   const __turnNotes = sysParts.filter(isClientTurnNote); // v-tokens-cache: ملاحظات العميل الخاصّة بهذا الدور وحده (موضوع جديد/عودة، أخبار، بناء…) — تخرج من النظام إلى ذيل رسالة المستخدم الأخيرة
@@ -1538,10 +1538,10 @@ module.exports = async (req, res) => {
   // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
 
   try {
-    // ثمان خطوات لا خمس وعشرين: المحادثة ليست بناءً طويلًا، وكلّ خطوة استدعاء
-    // كامل بسياق متراكم. السقفان معًا — خطوات ووقت — يمنعان فاتورة مفتوحة.
+    // ستّ عشرة خطوة (v-provider-max — كانت ١٢ وقبلها ٨) لا خمسًا وعشرين: الوقت (MAX_MS ثمّ حدّ الدالّة ٢٩٠ ث) هو القيد الحقيقيّ،
+    // والخطوة استدعاء كامل بسياق متراكم. السقفان معًا — خطوات ووقت — يمنعان فاتورة مفتوحة.
     let __imgCfg = (lastUserHasImage && !__direct) && !__ownerSeen ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; // v-img-read · v-owner-vision: مزوّد المالك يرى بموديله
-    const MAX_STEPS = Math.max(1, Math.min(16, Number(process.env.CHAT_MAX_STEPS) || 12));
+    const MAX_STEPS = Math.max(1, Math.min(20, Number(process.env.CHAT_MAX_STEPS) || 16));
     const MAX_MS = Math.max(20000, Number(process.env.CHAT_MAX_MS) || 240000);
     const t0 = Date.now();
     let steps = 0; let __ownerCarried = false; const __olS = __ol.state(__ownerReq); const __olT = __ol.thinkState(__ownerReq, __ownerThink); // v-owner-carry: تنبيه «نفّذ الآن» مرّة واحدة في الردّ · v-claude-code-level (D1: كتل التفكير بين الجولات)
@@ -2188,7 +2188,7 @@ module.exports = async (req, res) => {
         /* v-github-all-providers: الدفعة العميقة (٢٤ ألف حرف) كانت تُقصّ هنا إلى ٨ آلاف فيضيع ثلثاها —
            على كلّ المزوّدين وكلود ضمنًا، فالعمق كان اسمًا بلا أثر. نفس ما صحّحه الوكيل للمالك
            (v-agent-deep). الاتّساع لقراءة GitHub وللمالك وحده؛ بقيّة الأدوات وبقيّة المستخدمين على ٨ آلاف. */
-        const __outMax = (__ownerReq && st.cb.name === 'read_github') ? 30000 : 8000;
+        const __outMax = (__ownerReq && st.cb.name === 'read_github') ? 60000 : 8000; // v-deep-read: دفعة ٤٨ ألفًا تمرّ كاملة
         toolResults.push({ type: 'tool_result', tool_use_id: st.cb.id, content: String(st.result).slice(0, __outMax) });
         if (toolCorpus.length < 200000) toolCorpus += ' ' + String(st.result).slice(0, 8000); // v608
         if (st.cb.name === 'web_search' || st.cb.name === 'fetch_page') __searchRan = true;

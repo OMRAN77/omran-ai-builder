@@ -50,7 +50,7 @@ test('٢ب. v-prov-tools-filter: القائمة الحيّة تعرض فقط م�
   const out = pm.parseModels({ data });
   assert.deepEqual(out.cohere, [['cohere/command-a-plus', 'Command A+']], 'بلا tools = خارج القائمة (والمفقود الحقل كذلك)');
   assert.deepEqual(out.perplexity, [['perplexity/sonar', 'Sonar'], ['perplexity/sonar-pro', 'Sonar Pro']], 'Perplexity بلا فلترة — مساره بلا أدوات أصلًا');
-  assert.match(read('api/_lib/provider-models.js'), /provmodels:v4/, 'مفتاح الكاش رُفع ليُسقط القوائم غير المفلترة');
+  assert.match(read('api/_lib/provider-models.js'), /provmodels:v5/, 'مفتاح الكاش رُفع (v4 القوائم المفلترة، v5 مع البيانات الوصفيّة)');
 });
 
 test('٣. loadModels: الشبكة مرّة ثمّ الذاكرة؛ والمعالج يرفض غير المالك', async () => {
