@@ -1201,10 +1201,10 @@ module.exports = async (req, res) => {
   // كمعرّف OpenRouter بالبادئة الصحيحة؛ رفضه الوسيط = الرجوع للافتراضيّ أدناه (الآليّة نفسها لكلود).
   const __pick = (prov === 'claude' && __ownerReq) ? pickClaudeModel(body && body.model, viaOR, DEFAULT_MODEL) : ((__ownerReq && viaOR) ? require('./provider-models.js').pickProviderModel(prov, body && body.model, DEFAULT_MODEL) : { model: DEFAULT_MODEL, picked: false, id: '', label: '' });
   let CHAT_MODEL = __pick.model;
-  /* v-owner-direct (أمر المالك ٢٢ سبتمبر «اربط Groq مباشرة بمفتاحه… وGPT»): للمالك، Groq وGPT بمفتاح المزوّد نفسه
+  /* v-owner-direct (أمر المالك ٢٢ سبتمبر «اربط Groq مباشرة بمفتاحه… وGPT»): للمالك، Groq وGPT وKimi وGemini بمفتاح المزوّد نفسه
      على عنوانه الرسميّ (oa-direct.js يترجم البروتوكول في الاتّجاهين فلا تتغيّر حلقة الأدوات). بلا المفتاح = الوسيط كما كان.
-     فشل المباشر قبل أوّل حرف = الوسيط للمزوّد نفسه مع سطر حالة (أدناه). */
-  let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai' || prov === 'kimi' /* v-kimi */ || reqProv === 'perplexity')) ? require('./oa-direct.js').directRoute(reqProv === 'perplexity' ? reqProv : prov) : null; if (__direct && __direct.prov === 'perplexity') prov = 'perplexity'; // v-pplx-agent: Perplexity للمالك على Agent API بأدوات الدوالّ الأصليّة كـGPT؛ بلا مفتاحه = «لا طريق» (v-owner-solo) لا كلود مكانه
+     فشل المباشر قبل أوّل حرف = الوسيط للمزوّد نفسه مع سطر حالة (أدناه). v-gemini-direct: رصيد Gemini في AI Studio كان يُهمَل — المحادثة على الوسيط. */
+  let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai' || prov === 'kimi' /* v-kimi */ || prov === 'gemini' /* v-gemini-direct */ || reqProv === 'perplexity')) ? require('./oa-direct.js').directRoute(reqProv === 'perplexity' ? reqProv : prov) : null; if (__direct && __direct.prov === 'perplexity') prov = 'perplexity'; // v-pplx-agent: Perplexity للمالك على Agent API بأدوات الدوالّ الأصليّة كـGPT؛ بلا مفتاحه = «لا طريق» (v-owner-solo) لا كلود مكانه
   let __directFallbacks = null;
   if (__direct) {
     const __dm = require('./oa-direct.js').directModel(prov, body && body.model);

@@ -118,13 +118,13 @@ prov (من body.provider، افتراضه 'claude')
 (`chat.js:599`) فقط إن كان `prov === 'claude'` **و**الطالب المالك. القائمة المقبولة حصرًا
 `CLAUDE_MODELS` (`chat.js:593`) — أيّ اسم خارجها يسقط للافتراضيّ بلا خطأ.
 
-**v-owner-direct (أمر المالك ٢٢ سبتمبر) — Groq وGPT (وKimi منذ v-kimi) مباشرةً للمالك:** `chat.js:1207` — إن كان الطالب المالك والمزوّد
-`groq` أو `openai` ومفتاحه (`GROQ_API_KEY` / `OPENAI_API_KEY`) في البيئة، يُرسل الطلب إلى عنوان المزوّد نفسه
+**v-owner-direct (أمر المالك ٢٢ سبتمبر) — Groq وGPT وKimi وGemini مباشرةً للمالك:** `chat.js:1207` — إن كان الطالب المالك والمزوّد
+`groq` أو `openai` أو `kimi` أو `gemini` ومفتاحه (`GROQ_API_KEY` / `OPENAI_API_KEY` / `KIMI_API_KEY` / `GEMINI_API_KEY`) في البيئة، يُرسل الطلب إلى عنوان المزوّد نفسه
 (`api.groq.com` بصيغة chat/completions، و`api.openai.com` بصيغة `/v1/responses` — v-oa-responses: GPT المفكّر لا يقبل
-الأدوات في chat/completions — مع chat/completions احتياطًا إن رفض responses الطلب لسبب غير الموديل) عبر
+الأدوات في chat/completions — مع chat/completions احتياطًا إن رفض responses الطلب لسبب غير الموديل، وGemini على `generativelanguage.googleapis.com` بصيغة chat/completions) عبر
 `api/_lib/oa-direct.js` الذي يترجم الطلب والبثّ بين البروتوكولين فلا تتغيّر حلقة الأدوات. فشل المباشر قبل أوّل حرف =
-الوسيط للمزوّد نفسه بسطر حالة `stModelFallback`. قائمة GPT في السهم من `api.openai.com/v1/models` نفسه (v-oa-models)،
-وموديل مختار يرفضه المفتاح يُمسح من اختيار الجهاز (`deadModel`). غير المالك، أو بلا المفتاح: الوسيط كما في المخطّط أعلاه.
+الوسيط للمزوّد نفسه بسطر حالة `stModelFallback` (إلا Groq وPerplexity). قائمة GPT في السهم من `api.openai.com/v1/models` نفسه (v-oa-models)،
+وموديل مختار يرفضه المفتاح يُمسح من اختيار الجهاز (`deadModel`). غير المالك، أو بلا المفتاح: الوسيط كما في المخطّط أعلاه. v-gemini-direct: اختيار `google/gemini-…` يُقصّ إلى معرّف Google.
 
 ### ٣-ب. بوّابة الطبقة والحصّة
 

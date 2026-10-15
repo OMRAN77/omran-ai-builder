@@ -50,9 +50,11 @@ function directModel(prov, requested, env) {
     const def = String(e.CHAT_OPENAI_MODEL || '').trim() || 'gpt-6-sol';
     return (id && DIRECT_ID_RE.test(id) && id.indexOf('/') === -1) ? { model: id, picked: true, def } : { model: def, picked: false, def };
   }
-  if (prov === 'gemini') {
+  if (prov === 'gemini') { // v-gemini-direct: اختيار المالك google/gemini-… → معرّف Google؛ بلا اختيار = flash-latest
+    if (/^google\//i.test(id)) id = id.slice(7);
+    if (/^models\//i.test(id)) id = id.slice(7);
     const def = String(e.CHAT_GEMINI_MODEL || '').trim() || 'gemini-flash-latest';
-    return { model: def, picked: false, def };
+    return (id && /^gemini-[a-z0-9._-]{1,80}$/i.test(id)) ? { model: id, picked: true, def } : { model: def, picked: false, def };
   }
   if (prov === 'perplexity') { // v-pplx-agent: معرّفات الـAgent API (perplexity/sonar)؛ معرّفات Sonar القديمة (sonar، sonar-pro…) يرفضها فتُترك للافتراضيّ
     const def = String(e.CHAT_PERPLEXITY_MODEL || '').trim() || 'perplexity/sonar';
