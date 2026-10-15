@@ -244,8 +244,8 @@ test('٦. البنية: التوجيه قبل فحص الحصّة، والالت
   assert.ok(s.includes('const applyRoute = (p, model, direct, forceOR) => {')); // v-owner-swap: كلود عبر الوسيط حين يفشل مفتاحه المباشر
   for (const v of ['let prov', 'let viaOR', 'let apiKey', 'let CHAT_URL', 'let DEFAULT_MODEL']) assert.ok(s.includes(v + ' '), v);
   assert.ok(s.includes("callUpstream = (withImg) => __upFetch(CHAT_URL"), 'callUpstream يقرأ العنوان لحظة النداء');
-  // v-kimi: Kimi انضمّ لمسار المالك المباشر (مفتاح Moonshot) — Gemini ما زال خارجه · v-pplx-agent: وPerplexity (Agent API) للمالك
-  assert.ok(s.includes("let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai' || prov === 'kimi' /* v-kimi */ || reqProv === 'perplexity'))"), 'Gemini ليس في مسار المالك المباشر');
+  // v-gemini-direct: Gemini على مفتاح Google للمالك كـGPT/Groq/Kimi · v-pplx-agent: وPerplexity (Agent API)
+  assert.ok(s.includes("let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai' || prov === 'kimi' /* v-kimi */ || prov === 'gemini' /* v-gemini-direct */ || reqProv === 'perplexity'))"), 'Gemini في مسار المالك المباشر');
   assert.ok(s.includes('if (!upstream.ok && __direct && __ownerReq && !anyText'), 'سطر «النموذج غير متاح» للمالك وحده');
 });
 

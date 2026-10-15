@@ -1201,10 +1201,10 @@ module.exports = async (req, res) => {
   // كمعرّف OpenRouter بالبادئة الصحيحة؛ رفضه الوسيط = الرجوع للافتراضيّ أدناه (الآليّة نفسها لكلود).
   const __pick = (prov === 'claude' && __ownerReq) ? pickClaudeModel(body && body.model, viaOR, DEFAULT_MODEL) : ((__ownerReq && viaOR) ? require('./provider-models.js').pickProviderModel(prov, body && body.model, DEFAULT_MODEL) : { model: DEFAULT_MODEL, picked: false, id: '', label: '' });
   let CHAT_MODEL = __pick.model;
-  /* v-owner-direct (أمر المالك ٢٢ سبتمبر «اربط Groq مباشرة بمفتاحه… وGPT»): للمالك، Groq وGPT بمفتاح المزوّد نفسه
+  /* v-owner-direct (أمر المالك ٢٢ سبتمبر «اربط Groq مباشرة بمفتاحه… وGPT»): للمالك، Groq وGPT وKimi وGemini بمفتاح المزوّد نفسه
      على عنوانه الرسميّ (oa-direct.js يترجم البروتوكول في الاتّجاهين فلا تتغيّر حلقة الأدوات). بلا المفتاح = الوسيط كما كان.
-     فشل المباشر قبل أوّل حرف = الوسيط للمزوّد نفسه مع سطر حالة (أدناه). */
-  let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai' || prov === 'kimi' /* v-kimi */ || reqProv === 'perplexity')) ? require('./oa-direct.js').directRoute(reqProv === 'perplexity' ? reqProv : prov) : null; if (__direct && __direct.prov === 'perplexity') prov = 'perplexity'; // v-pplx-agent: Perplexity للمالك على Agent API بأدوات الدوالّ الأصليّة كـGPT؛ بلا مفتاحه = «لا طريق» (v-owner-solo) لا كلود مكانه
+     فشل المباشر قبل أوّل حرف = الوسيط للمزوّد نفسه مع سطر حالة (أدناه). v-gemini-direct: رصيد Gemini في AI Studio كان يُهمَل — المحادثة على الوسيط. */
+  let __direct = (__ownerReq && (prov === 'groq' || prov === 'openai' || prov === 'kimi' /* v-kimi */ || prov === 'gemini' /* v-gemini-direct */ || reqProv === 'perplexity')) ? require('./oa-direct.js').directRoute(reqProv === 'perplexity' ? reqProv : prov) : null; if (__direct && __direct.prov === 'perplexity') prov = 'perplexity'; // v-pplx-agent: Perplexity للمالك على Agent API بأدوات الدوالّ الأصليّة كـGPT؛ بلا مفتاحه = «لا طريق» (v-owner-solo) لا كلود مكانه
   let __directFallbacks = null;
   if (__direct) {
     const __dm = require('./oa-direct.js').directModel(prov, body && body.model);
@@ -1617,11 +1617,9 @@ module.exports = async (req, res) => {
       res.end();
       return;
     } if (__ownerReq && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL && await __ol.isDeadPick(CHAT_MODEL)) { send({ status: '⚠️ نموذج ' + __pick.label + ' غير متاح على المفتاح الحاليّ — أكمل بالنموذج الافتراضيّ.', k: 'stModelFallback', p: { model: __pick.label } }); CHAT_MODEL = DEFAULT_MODEL; __pick.picked = false; if (__imgCfg) __imgCfg = imageTurnConfig(process.env, viaOR, CHAT_MODEL); } // v-claude-code-level C8: رُفض «بلا صلاحيّة» سابقًا
-    /* v-owner-cap-open (أمر المالك ١٢ أكتوبر «افتح التوكن للمزوّدين كلّهم — عندي ٤٠٠ سطر بس» ثمّ «اريد تفتح أكثر من هذا»): سقف خرج
-       المالك ١٢٨ ألف توكن — أقصى ما يقبله الجيل ٥ من كلود وGPT (مهارة claude-api) — على كلّ المسارات (كلود المباشر، الوسيط بأيّ مزوّد،
-       وGroq/OpenAI/Kimi المباشر) بدل ١٦ ألفًا؛ سقف لا إنفاق (يُفوتَر المولَّد وحده). رفض السقف = إعادة بسقف أدنى تُذكَر لبقيّة الدور (__capCut،
-       فوق حلقة الخطوات): 402 حجز رصيد الوسيط ← السقف العاديّ؛ 400 «max_tokens … > N» من موديل حدّه أقلّ ← حدّه N من نصّ الرسالة (Haiku 4.5
-       ‏٦٤ ألفًا، Gemini ‏٦٥٥٣٦…)، وبلا رقم ← ٦٤ ألفًا ثمّ العاديّ. مرّتان في الدور كحدّ (حلقة: ١٢٨ ← ٦٤ ← ١٦ في النداء نفسه). غير المالك ١٦ ألفًا كما كان (مسار الباقة يطابقه — v-model-lock). */
+    /* v-owner-cap-open + v-cap-not-credit: سقف خرج المالك ١٢٨ ألف توكن على كلّ المسارات (كلود/وسيط/Groq/OpenAI/Kimi المباشر).
+       رفض السقف = إعادة بسقف أدنى تُذكَر (__capCut): 402 «max_tokens/afford» ← حدّ الرصيد من الرسالة (سقف ١٦ ألفًا) لا «ما عندي رصيد» —
+       كان `!__direct` يتخطّى GPT ثمّ هبوط الوسيط بـ١٢٨ ألفًا فيحجز أكثر من الموجود؛ 400 حدّ الموديل ← N من النصّ. مرّتان في الدور. غير المالك ١٦ ألفًا. */
     const OWNER_MAX_TOKENS = 128000, MID_MAX_TOKENS = 64000, PLAIN_MAX_TOKENS = 16000; let __capCut = 0, __capTries = 0, __liveTried = false; /* v-live-default */
     const __maxTokens = () => (quietSocialTurn ? 350 : (__ownerReq ? (__capCut || OWNER_MAX_TOKENS) : PLAIN_MAX_TOKENS));
     const __kTok = (n) => String(Math.round(n / 1000)).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]) + ' ألف توكن';
@@ -1690,7 +1688,19 @@ module.exports = async (req, res) => {
         } else {
           upstream = { ok: false, status: 400, text: async () => __ot };
         }
-      } for (;;) { if (!(!upstream.ok && (upstream.status === 402 || upstream.status === 400) && __ownerReq && !__direct && __capTries < 2)) break; let __ct = ''; try { __ct = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ } const __cur = __maxTokens(); let __next = 0; if (upstream.status === 402 && /max_tokens|afford/i.test(__ct)) __next = PLAIN_MAX_TOKENS; else if (upstream.status === 400 && /max_tokens/i.test(__ct)) __next = __capFromText(__ct, __cur) || (__cur > MID_MAX_TOKENS ? MID_MAX_TOKENS : PLAIN_MAX_TOKENS); if (__next && __next < __cur) { __capTries++; __capCut = __next; send({ status: upstream.status === 402 ? '↳ ⚠️ رصيد الوسيط لا يكفي حجز سقف ' + __kTok(__cur) + ' — أكمل بالسقف العاديّ' : '↳ ⚠️ الموديل لا يقبل سقف ' + __kTok(__cur) + ' — أكمل بسقفه ' + __kTok(__next) }); upstream = await callUpstream(true); continue; } upstream = { ok: false, status: upstream.status, headers: upstream.headers || null, text: async () => __ct }; break; } // v-owner-cap-open (كان v-owner-claude-all/gpt-all للجهد وحده): السقف الكبير للمالك على كلّ دور؛ 402 حجزه ← العاديّ، و400 حدّ الموديل ← حدّه من الرسالة — يُذكَر لبقيّة الدور
+      } const __cutCap = async (up) => { /* v-cap-not-credit: GPT المباشر وبعد هبوط الوسيط — 402 حجز ≠ محفظة فاضية */
+        for (;;) {
+          if (up.ok || !__ownerReq || __capTries >= 2 || (up.status !== 402 && up.status !== 400)) return up;
+          let __ct = ''; try { __ct = (await up.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+          const __cur = __maxTokens(); let __next = 0;
+          if (up.status === 402 && /max_tokens|afford/i.test(__ct)) { const __aff = Number((/afford\s+(\d{4,7})/i.exec(__ct) || [])[1] || 0); __next = (__aff >= 1024 && __aff < __cur) ? Math.min(PLAIN_MAX_TOKENS, __aff) : PLAIN_MAX_TOKENS; }
+          else if (up.status === 400 && /max_tokens/i.test(__ct)) __next = __capFromText(__ct, __cur) || (__cur > MID_MAX_TOKENS ? MID_MAX_TOKENS : PLAIN_MAX_TOKENS);
+          if (!(__next && __next < __cur)) return { ok: false, status: up.status, headers: up.headers || null, text: async () => __ct };
+          __capTries++; __capCut = __next;
+          send({ status: up.status === 402 ? (__direct ? '↳ ⚠️ حجز سقف ' + __kTok(__cur) + ' أكبر من المتاح — أكمل بالسقف العاديّ' : '↳ ⚠️ رصيد الوسيط لا يكفي حجز سقف ' + __kTok(__cur) + ' — أكمل بالسقف العاديّ') : '↳ ⚠️ الموديل لا يقبل سقف ' + __kTok(__cur) + ' — أكمل بسقفه ' + __kTok(__next) });
+          up = await callUpstream(true);
+        }
+      }; upstream = await __cutCap(upstream); // v-owner-cap-open: السقف الكبير للمالك؛ 402 حجزه ← حدّ الرصيد، و400 حدّ الموديل ← حدّه من الرسالة
       // v-claude-models: نموذج اختاره المستخدم ولا يملكه المفتاح/الوسيط (404، أو 400/403 نصّه
       // عن النموذج) = رجوع فوريّ للافتراضيّ بالطلب نفسه، مع إخبار المستخدم. غير ذلك يمرّ كما هو.
       if (!upstream.ok && __ownerReq && prov === 'openrouter' && String(CHAT_MODEL).split('/')[0] !== String(DEFAULT_MODEL).split('/')[0]) __pick.picked = false; /* v-owner-solo: Grok/Qwen المرفوض لا يجيب عنه موديل شركة أخرى — يتوقّف بسببه. v-grok-first: الافتراضيّ كروك فيرجع موديل xAI إلى كروك نفسه لا لشركة أخرى */ if (!upstream.ok && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL) {
@@ -1780,7 +1790,7 @@ module.exports = async (req, res) => {
         const __dmPrev = CHAT_MODEL; DEFAULT_MODEL = require('./provider-models.js').liveDefaultOf(prov) || OR_MODELS[prov]; CHAT_MODEL = ((prov === 'openai' || prov === 'kimi') && __dmPrev && __dmPrev.indexOf('/') === -1) ? ((prov === 'openai' ? 'openai/' : 'moonshotai/') + __dmPrev) : DEFAULT_MODEL; __pick.picked = false; __pick.label = ''; // v-owner-solo: الموديل المختار نفسه عند الوسيط
         if (__ownerSeen) __seeImage(); __imgCfg = (lastUserHasImage && !__ownerSeen) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; // v-owner-vision: رؤية المزوّد نفسه على الوسيط
         upstream = await callUpstream(true);
-        if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); if (!upstream.ok && CHAT_MODEL !== DEFAULT_MODEL) { let __om = ''; try { __om = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ } upstream = { ok: false, status: upstream.status, text: async () => __om }; if (isModelErrorStatus(upstream.status, __om)) { send({ status: '⚠️ نموذج ' + CHAT_MODEL + ' غير متاح عند الوسيط — أكمل بالنموذج الافتراضيّ.', k: 'stModelFallback', p: { model: CHAT_MODEL } }); CHAT_MODEL = DEFAULT_MODEL; if (__ownerSeen) __seeImage(); __imgCfg = (lastUserHasImage && !__ownerSeen) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; upstream = await callUpstream(true); if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); } } // v-owner-solo: الموديل المختار ليس عند الوسيط = افتراضيّ الشركة نفسها
+        if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); if (!upstream.ok && CHAT_MODEL !== DEFAULT_MODEL) { let __om = ''; try { __om = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ } upstream = { ok: false, status: upstream.status, text: async () => __om }; if (isModelErrorStatus(upstream.status, __om)) { send({ status: '⚠️ نموذج ' + CHAT_MODEL + ' غير متاح عند الوسيط — أكمل بالنموذج الافتراضيّ.', k: 'stModelFallback', p: { model: CHAT_MODEL } }); CHAT_MODEL = DEFAULT_MODEL; if (__ownerSeen) __seeImage(); __imgCfg = (lastUserHasImage && !__ownerSeen) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; upstream = await callUpstream(true); if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); } } upstream = await __cutCap(upstream); // v-cap-not-credit: هبوط الوسيط بـ١٢٨ ألفًا قد 402 وهو فيه رصيد — أعد بالحدّ
       }
       // v-plan-routing: تعطّل مزوّد الباقة قبل أوّل حرف (رصيد/401/429/5xx) → التالي في سلسلة الباقة (أرخص فأرخص)
       // بصمت، قبل الهبوط إلى السلسلة المجّانيّة. مزوّد بلا مفتاح يُتخطّى.
@@ -2217,7 +2227,8 @@ module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 �
 /* v-owner-solo (أمر المالك ٨ أكتوبر: «أيّ واحد أختاره يكون نفسه… إذا ما فيه رصيد عند المزوّد يقولي ما عندي رصيد فقط»):
    مزوّد المالك المختار إن فشل قبل أوّل حرف لا يجيب أحد مكانه — وهذه رسالته وحدها، بلا نصّ تقنيّ (السبب الكامل في سجلّ الأخطاء). */
 function ownerStopNote(fail, then) {
-  const isCredit = (x) => { const f = x || {}; return /credit|balance|billing|insufficient|quota|payment/i.test(String(f.text || '')) || Number(f.status) === 402; };
+  const capHold = (x) => { const f = x || {}; return Number(f.status) === 402 && /max_tokens|afford/i.test(String(f.text || '')); }; // v-cap-not-credit: حجز سقف ١٢٨ ألفًا ≠ محفظة فاضية
+  const isCredit = (x) => { if (capHold(x)) return false; const f = x || {}; return /credit|balance|billing|insufficient|quota|payment/i.test(String(f.text || '')) || Number(f.status) === 402; };
   if (isCredit(fail) || isCredit(then)) return 'ما عندي رصيد';
   const __f = (then || fail) || {};
   // v-groq-tpm: 413 «tokens per minute» بعد إعادة القصّ في oa-direct = المحادثة نفسها أكبر من حدّ المفتاح في الدقيقة
