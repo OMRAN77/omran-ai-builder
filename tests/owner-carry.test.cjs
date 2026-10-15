@@ -46,6 +46,7 @@ test('الربط: المحادثة والوكيل للمالك وحده، مرّ
 
 test('v-owner-ui-shot: «احذف هذا المكان» مع لقطة = تعديل التطبيق لا الصورة، وأدوات الصور تُرفع', () => {
   assert.equal(C.uiEditTurn('احذف هذا المكان'), true);
+  assert.equal(C.uiEditTurn('الستائر في الديكور تقدر تعدل التطبيق'), true, 'v-shot-not-draw: لقطة المالك على الستائر = تعديل التطبيق');
   assert.equal(C.uiEditTurn('شيل الزر هذا'), true);
   assert.equal(C.uiEditTurn('كبّر الخط في القائمة'), true);
   assert.equal(C.uiEditTurn('احذف الخلفية من الصورة'), false);

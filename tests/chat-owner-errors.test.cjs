@@ -156,7 +156,7 @@ test('٤-ب. v-refusal-why: رفض بفئة reasoning_extraction (لقطة ال�
   const ask = (details) => run('omran', { provider: 'claude', model: 'claude-fable-5-1', messages: [{ role: 'user', content: 'لا الكتابة الي فوق المحادثة فكر لمدة الوقت' }] },
     (u) => (isAnth(u) ? T.text('', 'refusal', details) : new Response('{}', { status: 404 })));
   const r = await ask({ type: 'refusal', category: 'reasoning_extraction', explanation: 'The request asks the model to reveal  its internal\nreasoning.' });
-  assert.equal(r.calls.filter((c) => isAnth(c.url)).length, 1, 'لا إعادة ولا وسيط');
+  assert.equal(r.calls.filter((c) => isAnth(c.url)).length, 2, 'إعادة واحدة على الموديل نفسه بلا عرض التفكير (v-refusal-retry) — ثمّ السبب، ولا وسيط');
   const stop = r.events.find((e) => e.ownerStop);
   assert.equal(stop && stop.error, 'رفض المزوّد الطلب (reasoning_extraction — فُهم السؤال طلبًا لكشف تفكيره الداخليّ — اسأل عن الجواب لا عمّا فكّر فيه) — The request asks the model to reveal its internal reasoning.');
   const c = await client(r.raw);
