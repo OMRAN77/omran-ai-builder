@@ -71,10 +71,10 @@ function normBoxes(list) {
 const BOX_SCHEMA = { type: 'ARRAY', items: { type: 'OBJECT', required: ['label', 'box_2d'], properties: { label: { type: 'STRING' }, box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } };
 const AVOID_RULE = 'Also list in "avoid" every human face (label "face") and every person\'s head-and-shoulders area (label "person") as box_2d [ymin, xmin, ymax, xmax] normalized to 0–1000, so text can be placed away from them.';
 
-async function geminiJson(apiKey, parts, schema, fetchImpl) {
+async function geminiJson(apiKey, parts, schema, fetchImpl, o) {
   const upstream = await (fetchImpl || fetch)(GEMINI_URL + apiKey, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { temperature: 0.9, responseMimeType: 'application/json', responseSchema: schema } }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: o && o.signal,
+    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: Object.assign({ temperature: 0.9, responseMimeType: 'application/json', responseSchema: schema }, o && o.noThink ? { thinkingConfig: { thinkingBudget: 0 } } : {}) }),
   });
   const data = await upstream.json().catch(() => ({}));
   if (!upstream.ok) throw new Error('design_upstream_' + upstream.status);
@@ -113,11 +113,14 @@ async function authorTextDesign(apiKey, request, options = {}) {
   throw lastError || new Error('design_failed');
 }
 
+/* v-layout-timeout (لقطة مستخدم ١٥ أكتوبر: صورة + «اكتب تحت الله يشفيج 🤍» → إطار فارغ وزرّ الإيقاف باقٍ): كشف الوجوه نداء تجميليّ
+   والكتابة نفسها محلّيّة، لكنّه كان بلا مهلة وبتفكير Flash الافتراضيّ — فالدور كلّه ينتظره. الآن بلا تفكير (كقرار v-flash-nothink في
+   media-intent وimage-judge على الموديل نفسه) وبمهلة ١٢ ث؛ أيّ فشل = قائمة فارغة كما كان (layoutRoute). التأليف لا يُمسّ. */
 async function detectTextLayout(apiKey, options = {}) {
   const img = okImage(options.imageBase64, options.imageMime);
   if (!img || !apiKey) return { avoid: [] };
   const v = await geminiJson(apiKey, [{ inline_data: { mime_type: img.mime, data: img.data } }, { text: 'Detect where text must NOT be placed on this photo. ' + AVOID_RULE + ' Return JSON {"avoid": [...]} only; an empty list if there are no people.' }],
-    { type: 'OBJECT', required: ['avoid'], properties: { avoid: BOX_SCHEMA } }, options.fetchImpl);
+    { type: 'OBJECT', required: ['avoid'], properties: { avoid: BOX_SCHEMA } }, options.fetchImpl, { noThink: true, signal: AbortSignal.timeout(options.timeoutMs || 12000) });
   return { avoid: normBoxes(v && v.avoid) };
 }
 

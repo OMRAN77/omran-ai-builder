@@ -51,5 +51,8 @@ test('client: Groq vision model gone = describe-then-text fallback, not a dead t
 
 test('client: the error bubble carries the primary (tools path) error next to the fallback error', () => {
   assert.ok(attach.includes("__primaryErr = String((window.__diagTurn && window.__diagTurn.toolsErr) || '').trim();"), 'يقرأ خطأ مسار الأدوات');
-  assert.ok(attach.includes("content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')"), 'ويعرضه في الفقاعة');
+  assert.ok(attach.includes("content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\\n' + omranPrimaryErrLine(__primaryErr, window.__diagTurn && window.__diagTurn.toolsProv, lang)) : '')"), 'ويعرضه في الفقاعة');
+  /* v-chat-img-budget: بالاسم الوظيفيّ للمسار الذي فشل فعلًا، لا «(كلود)» المكتوبة حرفيًّا */
+  assert.ok(!attach.includes("'المسار الأوّل (كلود): '"), 'لا اسم مزوّد في سطر يراه المستخدم');
+  assert.ok(attach.includes('window.__diagTurn.toolsProv = __effProv;'), 'يُسجَّل مسار الأدوات الذي فشل');
 });
