@@ -186,7 +186,7 @@ test('«عمّم» copies that provider’s replies to every provider for the ow
   assert.ok(fact.text.includes('خزنة الأسرار'), 'علامة حذف السرّ تبقى');
   for (const p of ['claude', 'gemini', 'openai', 'groq', 'mistral', 'kimi', 'cohere', 'openrouter']) {
     const r = await turn('omran', p, 'كمّل', [() => textTurn('…')]);
-    assert.ok(r.sys.includes(CODE) && r.sys.includes(FACT) && r.sys.includes('[معلومات معمّمة'), 'تصل المالك · ' + p);
+    assert.ok(r.sys.includes(CODE) && r.sys.includes(FACT) && r.sys.includes(p === 'claude' ? '[سجلّ محادثات عمران السابقة' : '[معلومات معمّمة'), 'تصل المالك · ' + p); // v-claude-full: رأس كلود بلا «اعتمدها كما هي»
   }
   const tenth = await PS.systemBlocks(true, 'perplexity');
   assert.ok(tenth.includes(CODE), 'المزوّد العاشر يقرأ المخزن نفسه');

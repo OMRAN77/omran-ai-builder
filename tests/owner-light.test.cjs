@@ -80,7 +80,8 @@ test('٢. حقول الجهد الأدنى لكلّ مزوّد: GPT وكلود �
   ot.__deadEffort.clear();
   assert.deepEqual(ot.lightEffortFields('openai', 'gpt-6-astra', false, {}, false), { output_config: { effort: 'low' } });
   assert.deepEqual(ot.lightEffortFields('openai', 'openai/gpt-6-astra', true, null, false), { output_config: { effort: 'low' } });
-  assert.deepEqual(ot.lightEffortFields('claude', 'claude-opus-5-5', false, null, false), { output_config: { effort: 'low' } });
+  assert.equal(ot.lightEffortFields('claude', 'claude-opus-5-5', false, null, false), null, 'v-claude-full: كلود بجهده الافتراضيّ في السؤال العاديّ');
+  assert.equal(ot.lightEffortFields('claude', 'anthropic/claude-fable-5.1', true, null, false), null, 'v-claude-full: وعلى الوسيط');
   assert.equal(ot.lightEffortFields('claude', 'claude-haiku-4-5', false, null, false), null, 'Haiku 4.5 يرفض الجهد');
   assert.deepEqual(ot.lightEffortFields('openrouter', 'x-ai/grok-4.6', true, null, false), { output_config: { effort: 'low' } }, 'كروك عبر الوسيط');
   assert.deepEqual(ot.lightEffortFields('gemini', 'google/gemini-3.8-flash', true, null, false), { output_config: { effort: 'low' } });
@@ -133,11 +134,11 @@ test('٥. GPT-6 Astra المباشر: السؤال العاديّ reasoning low 
   } finally { delete process.env.OPENAI_API_KEY; }
 });
 
-test('٦. كلود المباشر (Opus 5.5): السؤال العاديّ low مع عرض التفكير، والثقيل بلا جهد، والتحيّة فوريّة كما كانت', async () => {
+test('٦. كلود المباشر (Opus 5.5): السؤال العاديّ بجهد الموديل الافتراضيّ مع عرض التفكير (v-claude-full)، والثقيل بلا جهد، والتحيّة فوريّة كما كانت', async () => {
   ot.__deadEffort.clear();
   let r = await run({ provider: 'claude', model: 'claude-opus-5-5', text: 'ليش السماء زرقاء؟', script: [() => anthropicText('لأنّ…')] });
   assert.equal(r.calls[0].url, 'https://api.anthropic.com/v1/messages');
-  assert.deepEqual(r.calls[0].body.output_config, { effort: 'low' });
+  assert.equal(r.calls[0].body.output_config, undefined, 'v-claude-full: لا low للسؤال العاديّ');
   assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive', display: 'summarized' }, 'التفكير ظاهر');
   r = await run({ provider: 'claude', model: 'claude-opus-5-5', text: 'اعمل لي موقع لمطعمي', script: [() => anthropicText('تم')] });
   assert.equal(r.calls[0].body.output_config, undefined);

@@ -61,7 +61,7 @@ function lightEffortFields(prov, model, viaOR, direct, noCap) {
   const raw = String(model || '');
   if (!raw || deadEffort.has(raw)) return null;
   if (prov === 'openai') return gptEffortFields(raw, 'low', noCap);
-  if (prov === 'claude') return claudeEffortFields(raw, 'low', noCap);
+  if (prov === 'claude') return null; /* v-claude-full (عمران ١٥ أكتوبر: «الانثروبك ضعيف… فرق شاسع بينه وبين الأصلي»): السؤال العاديّ لكلّ موديلات كلود بجهد الموديل الافتراضيّ (high عند Anthropic) لا low — المجاملة تبقى فوريّة (claudeQuickFields) واختيار المنتقي يغلب */
   if (direct || !viaOR || prov === 'cohere' || /^(?:anthropic\/|claude-|openai\/)/.test(raw)) return null;
   return { output_config: { effort: 'low' } };
 }

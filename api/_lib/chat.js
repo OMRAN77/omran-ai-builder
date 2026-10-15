@@ -2057,8 +2057,8 @@ module.exports = async (req, res) => {
             const mySearchNo = ++searchesUsed; // يزداد قبل أول await فالعدّ آمن مع التوازي
             if (!__ownerReq /* v-owner-solo-all: بحث المالك عن خطأ في تطبيقه («omran-ai-builder vercel error») بحثٌ لا سؤال عن التطبيق */ && /عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made/i.test(_q)) {
               result = 'هذا سؤال عن التطبيق نفسه — أجب من معلوماتك المحلية بدون بحث.';
-            } else if (mySearchNo > 2) {
-              result = 'بلغتَ سقف البحث لهذا الردّ (بحثان). لديك نتائج كافية — أجب الآن مما جمعت ولا تطلب بحثًا إضافيًا.';
+            } else if (mySearchNo > searchCap(__ownerReq, prov)) { // v-claude-full
+              result = searchCapText(searchCap(__ownerReq, prov)) + '. لديك نتائج كافية — أجب الآن مما جمعت ولا تطلب بحثًا إضافيًا.';
             } else {
               /* v-live-social: ويب + تواصل اجتماعيّ بالتوازي، وسقف المشترك ١٠٠ نداء يوميًّا (المالك وVIP بلا حدّ) */
               const __ls = require('./live-social.js');
@@ -2086,7 +2086,7 @@ module.exports = async (req, res) => {
             const __cq = String(input.query || '').trim();
             const mySearchNo = ++searchesUsed;
             if (!__cq) result = 'show_cards تحتاج query — أعد الاستدعاء بعبارة بحث.';
-            else if (mySearchNo > 2) result = 'بلغتَ سقف البحث لهذا الردّ (بحثان). أجب الآن ممّا جمعت.';
+            else if (mySearchNo > searchCap(__ownerReq, prov)) result = searchCapText(searchCap(__ownerReq, prov)) + '. أجب الآن ممّا جمعت.'; // v-claude-full
             else {
               const __ls = require('./live-social.js');
               const __quota = await __ls.searchQuota(token, clientIp(req));
@@ -2255,10 +2255,19 @@ function ownerIdentity(text, prov, model, tail) {
        فردّ بصفتك مها» بقي فأخذه الموديل الصغير اسمًا له. للمالك: «مها» نداء لك لا اسمك. */
     .replace('أنت وهي مساعد واحد باسمين: إذا ناداك المستخدم «مها» فهو يخاطبك أنت، فردّ بصفتك مها (وبصيغة المؤنّث ما دام يخاطبك بها).',
       'إذا ناداك المالك «مها» فهو يخاطبك أنت، لكنّ اسمك الحقيقيّ ' + label + ' — لست «مها» ولا «عمران».')
+    /* v-claude-full (عمران ١٥ أكتوبر: «الانثروبك عندي ضعيف… فرق شاسع بينه وبين الأصلي»): لكلود وحده — سقف البحثين صار CLAUDE_SEARCHES،
+       والبحث يكمّل علمه لا يلغيه (كان يلخّص مقتطفات البحث بدل جوابه العميق كما في تطبيقه الرسميّ). بقيّة المزوّدين كما كانوا حرفيًّا. */
+    .replace(prov === 'claude' ? '(متى وكيف: في وصف الأداة؛ بحثان كحد أقصى في الرد)' : '\u0000', '(متى وكيف: في وصف الأداة؛ بقدر ما يحتاج السؤال)')
+    .replace(prov === 'claude' ? 'تعديل نصّ المستخدم. بحثان كحدّ أقصى في الردّ.' : '\u0000', 'تعديل نصّ المستخدم. ' + CLAUDE_SEARCH_NOTE)
     // آخر ما يقرؤه الموديل (يغلب ما قيل في ردود سابقة من المحادثة). في المرسَل وحده: كتلة الكاش الثابتة تبقى بادئته.
     + (tail ? '\n\n[هويّتك]: أنت ' + label + '. إن سُئلت «من أنت» أو «انت من» أو «ما اسمك» أو عن الموديل أو الشركة فقل ذلك بصدق، ولو قيل غيره في ردود سابقة من هذه المحادثة — لست «عمران» ولا «مها».' : '');
 }
-module.exports.__imgWhy = { ownerFailNote, ownerSwapNote, ownerStopNote, ownerIdentity }; // v-owner-swap // v-img-why — للاختبار
+/* v-claude-full: كلود يبحث بقدر ما يحتاج السؤال (حتّى ٦ بحوث في الردّ) — غيره بحثان كما كان. */
+const CLAUDE_SEARCHES = 6;
+const CLAUDE_SEARCH_NOTE = 'ابحث بقدر ما يحتاج السؤال (حتّى ' + CLAUDE_SEARCHES + ' بحوث في الردّ). البحث يكمّل علمك ولا يلغيه: ابنِ الجواب من فهمك العميق كاملًا، واستعمل النتائج للأحدث والتحقّق والمصادر — لا تلخّص مقتطفات البحث بدل الجواب.';
+function searchCap(owner, prov) { return (owner && prov === 'claude') ? CLAUDE_SEARCHES : 2; }
+function searchCapText(n) { return 'بلغتَ سقف البحث لهذا الردّ (' + (n === 2 ? 'بحثان' : n + ' بحوث') + ')'; }
+module.exports.__imgWhy = { ownerFailNote, ownerSwapNote, ownerStopNote, ownerIdentity, searchCap, CLAUDE_SEARCH_NOTE }; // v-owner-swap // v-img-why — للاختبار
 module.exports.__v610 = { cleanLink }; // v610 — للاختبار
 /* v-img-ask (المالك ١ أكتوبر: سأل «في الصوره نفسها قصدك» على ردّ يشرح، فبدأ «جارٍ إنشاء الصورة»): edit_image موصوفة
    «استخدمها كلما طلب تغييرًا على صورة مرفقة» فقرأ النموذج الاستيضاح طلبًا. سؤال «قصدك…» بلا فعل طلب = دور كلام:
