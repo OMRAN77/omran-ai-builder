@@ -45054,14 +45054,37 @@ if(document.readyState === 'loading'){
   KINDS.studio.sceneKey = 'aiapp_st_scene';
   /* v-pstyle-scene: مشهد «أنماط الصور» — صورة المالك (قاعة رخام عاكس، أسطوانة زجاجيّة ببطاقات بورتريه حولها، وعدّاد في وسطها).
      موضَّحة ×٤ (١٦٠٠×٨٠٤) ومُحي منها ما يُرسم حيًّا فقط: رقم العدّاد (ملء قرصه من بكسلاته الداكنة) وقوسه الساطع (بلون مجراه الخافت).
-     حلقة ورقم فقط — لا شريط ولا نصّ في الصورة (v-scene-kinds: يُرسم ما رُسم فيها لا غير)؛ الجريان داخل الأسطوانة الزجاجيّة خلف العدّاد. */
+     حلقة ورقم فقط — لا شريط ولا نصّ في الصورة (v-scene-kinds: يُرسم ما رُسم فيها لا غير)؛ الجريان داخل الأسطوانة الزجاجيّة خلف العدّاد.
+     v-pstyle-mix: ١٢ مشهدًا من شبكات المالك الثلاث (٢×٢ لكلّ منها) — ثلاث ألوان (ثلجيّ، ذهبيّ، نيون بأربعة ألوان) × أربعة أشكال
+     (حلزون، مكعّبات، كرة، قوس)، مقصوصة وموضَّحة ×٢ (١٦٠٠ عرضًا). لا عدّاد مرسوم فيها فلا حلقة ولا رقم (القاعدة نفسها)؛ الجريان داخل
+     الهيكل الزجاجيّ وحده (الأنبوب بنِسَب الصورة حسب الشكل). الدور ممزوج: لا لون ولا شكل يتكرّر في مشهدين متتاليين (والدور دائريّ). */
+  var PS_TUBE = { spiral: [39, 4, 61, 78], cubes: [40, 0, 60, 84], sphere: [37, 1, 63, 71], arch: [37, 24, 63, 80] };
+  var PS_HUE = { ice: ['#2b3a49', '#d9ecff'], gold: ['#3d2d22', '#f1dcb0'], blue: ['#172a52', '#9fd4ff'], green: ['#1c3a24', '#b9ffc8'], purple: ['#331e45', '#e0b8ff'], amber: ['#3d2d1a', '#ffe49a'] };
+  function psScene(id, file, h, hue, shape){
+    var t = PS_TUBE[shape], c = PS_HUE[hue];
+    return { id: id, src: '/assets/portrait/gen-scene-' + file + '.webp?v=1', w: 1600, h: h, hue: hue, shape: shape, bg: c[0], flow: c[1],
+      tube: { x: t[0] * 16, y: Math.round(t[1] * h / 100), w: (t[2] - t[0]) * 16, h: Math.round((t[3] - t[1]) * h / 100), blend: 'screen' },
+      refl: null, rip: null };
+  }
   var PORTRAIT_SCENES = [
-    { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=1', w: 1600, h: 804, bg: '#2a221b',
+    { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=1', w: 1600, h: 804, bg: '#2a221b', hue: 'gallery', shape: 'cylinder',
       ring: { cx: 802, cy: 346, r: 72, sw: 9, hole: 86 },
       num: { x: 802, y: 366, size: 50, dw: 20, pw: 28 },
       tube: { x: 560, y: 30, w: 480, h: 650, blend: 'screen' },
       refl: null, rip: null,
-      ink: '#fff3d6', arc: '#ffe6a8', glow: 'rgba(255,220,150,.35)', flow: '#f1dcb0' }
+      ink: '#fff3d6', arc: '#ffe6a8', glow: 'rgba(255,220,150,.35)', flow: '#f1dcb0' },
+    psScene('psNeonSpiral', 'neon-spiral', 799, 'blue', 'spiral'),
+    psScene('psGoldCubes', 'gold-cubes', 798, 'gold', 'cubes'),
+    psScene('psIceSphere', 'ice-sphere', 799, 'ice', 'sphere'),
+    psScene('psNeonArch', 'neon-arch', 789, 'amber', 'arch'),
+    psScene('psIceSpiral', 'ice-spiral', 796, 'ice', 'spiral'),
+    psScene('psGoldSphere', 'gold-sphere', 798, 'gold', 'sphere'),
+    psScene('psNeonCubes', 'neon-cubes', 789, 'green', 'cubes'),
+    psScene('psGoldArch', 'gold-arch', 796, 'gold', 'arch'),
+    psScene('psIceCubes', 'ice-cubes', 796, 'ice', 'cubes'),
+    psScene('psGoldSpiral', 'gold-spiral', 800, 'gold', 'spiral'),
+    psScene('psNeonSphere', 'neon-sphere', 799, 'purple', 'sphere'),
+    psScene('psIceArch', 'ice-arch', 799, 'ice', 'arch')
   ];
   KINDS.styles.scenes = PORTRAIT_SCENES;
   KINDS.styles.sceneKey = 'aiapp_ps_scene';
