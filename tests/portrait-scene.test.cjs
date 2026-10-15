@@ -56,7 +56,7 @@ test('١. ١٣ مشهدًا من صور المالك: معرض البطاقات 
   for (const k of ['image', 'video']) assert.equal(w2.KINDS[k].scenes, undefined, k + ': البطاقة الذهبيّة كما هي');
 });
 
-test('٤. الدور ممزوج: لا لون ولا شكل يتكرّر في مشهدين متتاليين (دائريًّا)؛ وعلى الـ١٢ عدّاد الستايل كاملًا في وسط هيكل كلّ شكل، مع قرصه ومجرييه لأنّ الصور بلا عدّاد', () => {
+test('٤. الدور ممزوج: لا لون ولا شكل يتكرّر في مشهدين متتاليين (دائريًّا)؛ وعلى الـ١٢ عدّاد الستايل كاملًا في مركز المنطقة الداكنة وسط كلّ شكل (بمعامل الشكل)، مع قرصه ومجرييه لأنّ الصور بلا عدّاد', () => {
   const hues = new Set(), shapes = new Set();
   for (let i = 0; i < SC.length; i++) {
     const a = SC[i], b = SC[(i + 1) % SC.length];
@@ -67,38 +67,42 @@ test('٤. الدور ممزوج: لا لون ولا شكل يتكرّر في م�
   }
   assert.deepEqual([...hues].sort(), ['amber', 'blue', 'gallery', 'gold', 'green', 'ice', 'purple'], 'ثلجيّ وذهبيّ ونيون بأربعة ألوان ومعرض البطاقات');
   assert.deepEqual([...shapes].sort(), ['arch', 'cubes', 'cylinder', 'sphere', 'spiral']);
-  // عدّاد الستايل (stScene على ١٢٨٠: حلقة ٣٦٫٦، رقم ٣٠، شريط ١٢٧٫٥×٨، نصّ ١٢٫٨) مكبَّرًا بمعامل واحد على الـ١٢ — لا من رأسي
-  const K = 1.366;
-  const cyPct = {};
+  // عدّاد الستايل (stScene على ١٢٨٠: حلقة ٣٦٫٦، رقم ٣٠، شريط ١٢٧٫٥×٨، نصّ ١٢٫٨) مكبَّرًا بمعامل الشكل — لا من رأسي؛ في مركز
+  // المنطقة الداكنة وسط الهيكل (عمود الحلزون يمين المنتصف وضيّق فمعامله أصغر، لوح الكرة يمين المنتصف، كتلة المكعّبات وفتحة القوس)
+  const K = { spiral: 1.1, cubes: 1.366, sphere: 1.366, arch: 1.366 }, CX = { spiral: 872, cubes: 800, sphere: 852, arch: 790 };
+  const pos = {};
   for (const sc of SC.slice(1)) {
-    const r = sc.ring, t = sc.tube;
+    const r = sc.ring, t = sc.tube, k = K[sc.shape];
     assert.ok(r && sc.num && sc.bar && sc.cap && sc.ink && sc.arc && sc.glow && sc.capInk, sc.id + ': عدّاد الستايل كاملًا');
-    assert.equal(r.cx, 800, sc.id + ': في منتصف العرض — فيبقى على الجوّال حين تُقصّ الجوانب');
-    assert.ok(Math.abs(r.r - 36.6 * K) < 0.1 && Math.abs(r.sw - 3.8 * K) < 0.1 && Math.abs(r.hole - 47.5 * K) < 0.1, sc.id + ': حلقة الستايل مكبَّرة');
-    assert.ok(Math.abs(sc.num.size - 30 * K) < 0.1 && Math.abs(sc.num.y - (r.cy + 11.6 * K)) < 0.1, sc.id + ': رقم الستايل');
-    assert.ok(Math.abs(sc.bar.y - (r.cy + 60.3 * K)) < 0.1 && Math.abs(sc.bar.w - 127.5 * K) < 0.6 && Math.abs(sc.bar.h - 8 * K) < 0.1 && Math.abs(sc.bar.x + sc.bar.w / 2 - 800) < 0.6, sc.id + ': شريط الستايل');
+    assert.equal(r.cx, CX[sc.shape], sc.id + ': مركز المنطقة الداكنة');
+    assert.ok(Math.abs(r.r - 36.6 * k) < 0.1 && Math.abs(r.sw - 3.8 * k) < 0.1 && Math.abs(r.hole - 47.5 * k) < 0.1, sc.id + ': حلقة الستايل مكبَّرة');
+    assert.ok(Math.abs(sc.num.size - 30 * k) < 0.1 && Math.abs(sc.num.y - (r.cy + 11.6 * k)) < 0.1, sc.id + ': رقم الستايل');
+    assert.ok(Math.abs(sc.bar.y - (r.cy + 60.3 * k)) < 0.1 && Math.abs(sc.bar.w - 127.5 * k) < 0.6 && Math.abs(sc.bar.h - 8 * k) < 0.1 && Math.abs(sc.bar.x + sc.bar.w / 2 - r.cx) < 0.6, sc.id + ': شريط الستايل');
     assert.ok(Array.isArray(sc.bar.grad) && sc.bar.grad.length === 2, sc.id + ': تدرّج الشريط');
-    assert.ok(Math.abs(sc.cap.y - (r.cy + 86.1 * K)) < 0.1 && Math.abs(sc.cap.size - 12.8 * K) < 0.1, sc.id + ': نصّ الستايل');
-    assert.ok(t.gap && Math.abs(t.gap[0] - (r.cy + 51.8 * K)) < 0.1 && Math.abs(t.gap[1] - (r.cy + 91.8 * K)) < 0.1, sc.id + ': حزام الأنبوب');
+    assert.ok(Math.abs(sc.cap.y - (r.cy + 86.1 * k)) < 0.1 && Math.abs(sc.cap.size - 12.8 * k) < 0.1, sc.id + ': نصّ الستايل');
+    assert.ok(t.gap && Math.abs(t.gap[0] - (r.cy + 51.8 * k)) < 0.1 && Math.abs(t.gap[1] - (r.cy + 91.8 * k)) < 0.1, sc.id + ': حزام الأنبوب');
     assert.ok(r.disc && r.track && sc.bar.trough, sc.id + ': قرص ومجرى الحلقة ومجرى الشريط — لا عدّاد في الصورة');
-    // داخل الهيكل: الحلقة والشريط والنصّ كلّها داخل الأنبوب، والأنبوب داخل الصورة وفي منتصفها
+    // داخل الهيكل: الأنبوب = المنطقة الداكنة، والعدّاد كلّه (من فوق قرصه إلى تحت نصّه) داخله بهامش، والأنبوب داخل الصورة
     assert.ok(t.x > 0 && t.x + t.w < sc.w && t.y >= 0 && t.y + t.h <= sc.h, sc.id + ': الأنبوب داخل الصورة');
-    assert.ok(Math.abs((t.x + t.w / 2) - sc.w / 2) < 2, sc.id + ': الأنبوب في منتصف العرض');
-    assert.ok(r.cy - r.r > t.y && sc.cap.y < t.y + t.h && sc.bar.x > t.x && sc.bar.x + sc.bar.w < t.x + t.w, sc.id + ': العدّاد كلّه داخل الهيكل');
-    assert.ok(t.w >= 0.2 * sc.w && t.w <= 0.3 * sc.w && t.h >= 0.45 * sc.h, sc.id + ': بحجم الهيكل الزجاجيّ');
-    (cyPct[sc.shape] = cyPct[sc.shape] || new Set()).add(Math.round(r.cy / sc.h * 100));
+    assert.ok(Math.abs((t.x + t.w / 2) - r.cx) < 4, sc.id + ': العدّاد في منتصف منطقته');
+    assert.ok(r.cy - r.r - r.sw * 1.2 > t.y + 4 && sc.cap.y + 3 < t.y + t.h - 4 && sc.bar.x > t.x + 8 && sc.bar.x + sc.bar.w < t.x + t.w - 8, sc.id + ': العدّاد كلّه داخل الهيكل بهامش');
+    assert.ok(t.w >= 0.1 * sc.w && t.w <= 0.25 * sc.w && t.h >= 0.2 * sc.h && t.h <= 0.5 * sc.h, sc.id + ': بحجم المنطقة الداكنة لا الهيكل كلّه');
+    // الجوّال يقصّ الجوانب إلى ٥:٤ حول المنتصف — العدّاد وأنبوبه داخل المرئيّ
+    const half = sc.h * 1.25 / 2;
+    assert.ok(t.x > 800 - half + 20 && t.x + t.w < 800 + half - 20, sc.id + ': داخل قصّ الجوّال');
+    (pos[sc.shape] = pos[sc.shape] || new Set()).add([Math.round(r.cy / sc.h * 100), r.cx, k].join(','));
     const h = W._sceneHtml(sc);
     const svg = h.slice(h.indexOf('<svg'), h.indexOf('</svg>'));
     assert.equal((svg.match(/<circle /g) || []).length, 4, sc.id + ': قرص ومجرى وقوس ووهجه');
-    assert.match(svg, new RegExp('<circle class="genw-disc" cx="800" cy="' + r.cy + '" r="[\\d.]+" fill="rgba\\(6,9,18,\\.5\\)"></circle><circle class="genw-track" cx="800" cy="' + r.cy + '" r="' + r.r + '" stroke="rgba\\(255,255,255,\\.2\\)" stroke-width="' + r.sw + '"></circle><circle class="genw-arcg"'));
-    assert.match(svg, /<text class="genw-num" x="800" y="[\d.]+" text-anchor="middle"[^>]*font-size="41"[^>]*>0%<\/text><rect class="genw-trough" [^>]*><\/rect><rect class="genw-bar" [^>]*width="0"[^>]*fill="url\(#genwBarG-/);
-    assert.match(svg, /<text class="genw-cap" x="800" y="[\d.]+" text-anchor="middle"[^>]*font-size="17.5"[^>]*>0% COMPLETE<\/text>/);
+    assert.match(svg, new RegExp('<circle class="genw-disc" cx="' + r.cx + '" cy="' + r.cy + '" r="[\\d.]+" fill="rgba\\(6,9,18,\\.5\\)"></circle><circle class="genw-track" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '" stroke="rgba\\(255,255,255,\\.2\\)" stroke-width="' + r.sw + '"></circle><circle class="genw-arcg"'));
+    assert.match(svg, new RegExp('<text class="genw-num" x="' + r.cx + '" y="[\\d.]+" text-anchor="middle"[^>]*font-size="' + sc.num.size + '"[^>]*>0%</text><rect class="genw-trough" [^>]*></rect><rect class="genw-bar" [^>]*width="0"[^>]*fill="url\\(#genwBarG-'));
+    assert.match(svg, new RegExp('<text class="genw-cap" x="' + r.cx + '" y="[\\d.]+" text-anchor="middle"[^>]*font-size="' + sc.cap.size + '"[^>]*>0% COMPLETE</text>'));
     assert.ok(/<em style="-webkit-mask-image:radial-gradient\(ellipse/.test(h) && /<span style="-webkit-mask-image:linear-gradient\(180deg/.test(h), sc.id + ': الأنبوب مثقوب عند الحلقة وبحزام عند الشريط');
     assert.ok(!/genw-rip|genw-arcimg|genw-refl/.test(h), sc.id);
   }
-  // الشكل نفسه = موضع واحد للعدّاد في ألوانه الثلاثة (الشبكات بالتكوين نفسه)، ولكلّ شكل موضعه
-  for (const k in cyPct) assert.equal(cyPct[k].size, 1, k + ': موضع واحد');
-  assert.equal(new Set(Object.values(cyPct).map((s) => [...s][0])).size, 4, 'ولكلّ شكل موضعه');
+  // الشكل نفسه = موضع ومعامل واحد في ألوانه الثلاثة (الشبكات بالتكوين نفسه)، ولكلّ شكل موضعه
+  for (const k in pos) assert.equal(pos[k].size, 1, k + ': موضع واحد');
+  assert.equal(new Set(Object.values(pos).map((s) => [...s][0])).size, 4, 'ولكلّ شكل موضعه');
   // مشاهد الستايل والأزياء والفيديو كما هي حرفًا: القرص والمجرى والحوض لا يُرسمان إلّا لمن طلبهم
   for (const sc of [].concat(W._styleScenes, W.KINDS.fashion.scenes)) {
     const h = W._sceneHtml(sc); assert.ok(!/genw-disc|genw-track|genw-trough/.test(h), sc.id + ': بلا إضافة');
@@ -108,7 +112,7 @@ test('٤. الدور ممزوج: لا لون ولا شكل يتكرّر في م�
   assert.ok(bundle.includes('.genw-live circle.genw-disc{fill:'), 'قرص العدّاد مملوء رغم قاعدة الدوائر بلا ملء');
 });
 
-test('٢. معرض البطاقات: حلقة الصورة ورقمها بقياسهما (نصف القطر ٧٢)، ومعهما شريط الستايل ونصّه بنسبتها، والجريان داخل الأسطوانة مثقوب عند الحلقة وبحزام عند الشريط', () => {
+test('٢. معرض البطاقات: عدّاد صورة المالك كلّه حيّ في مواضعه — حلقة ٧٢ ورقمها، والشريط والنصّ حيث رُسما (ومُحيا من الصورة)، والجريان داخل الأسطوانة مثقوب عند الحلقة وبحزام عند الشريط', () => {
   const sc = SC[0];
   const h = W._sceneHtml(sc);
   assert.ok(h.includes('<svg class="genw-live" viewBox="0 0 1600 804" aria-hidden="true">'));
@@ -117,13 +121,14 @@ test('٢. معرض البطاقات: حلقة الصورة ورقمها بقيا
   for (const c of svg.match(/<circle class="genw-arcg?" [^>]+>/g)) assert.match(c, /cx="802" cy="346" r="72"[^>]*stroke-dasharray="[\d.]+" stroke-dashoffset="[\d.]+"/);
   assert.match(svg, /<text class="genw-num" x="802" y="366" text-anchor="middle"[^>]*font-size="50"[^>]*>0%<\/text>/);
   assert.ok(sc.num.y > sc.ring.cy && sc.num.y < sc.ring.cy + sc.ring.r, 'خطّ قاعدة الرقم داخل الحلقة');
-  // شريط الستايل ونصّه بنسبة حلقة الصورة (٧٢/٣٦٫٦ من قياسات stScene)
-  const k = 72 / 36.6;
-  assert.ok(Math.abs(sc.bar.y - (346 + 60.3 * k)) < 0.2 && Math.abs(sc.bar.w - 127.5 * k) < 0.6 && Math.abs(sc.bar.x + sc.bar.w / 2 - 802) < 0.6, 'الشريط تحت الحلقة في منتصفها: ' + JSON.stringify(sc.bar));
-  assert.ok(Math.abs(sc.cap.y - (346 + 86.1 * k)) < 0.2 && Math.abs(sc.cap.size - 12.8 * k) < 0.1, 'النصّ تحت الشريط: ' + JSON.stringify(sc.cap));
+  // الشريط حيث رُسم في الصورة (٤٥٨–٤٧٨) والنصّ حيث رُسم (٤٩٠–٥٠٨)، في منتصف الحلقة
+  assert.deepEqual([sc.bar.x, sc.bar.y, sc.bar.w, sc.bar.h], [692, 459, 220, 18]); assert.equal(sc.bar.x + sc.bar.w / 2, 802);
+  assert.deepEqual([sc.cap.x, sc.cap.y, sc.cap.size], [802, 507, 19]);
   assert.equal((svg.match(/<rect /g) || []).length, 2, 'مجرى الشريط ثمّ الشريط');
-  assert.match(svg, /<rect class="genw-trough" x="676.5" y="[\d.]+" width="251" [^>]*fill="rgba\(255,255,255,\.16\)"><\/rect><rect class="genw-bar" x="676.5" y="[\d.]+" width="0" [^>]*fill="url\(#genwBarG-psGallery\)"/);
-  assert.match(svg, /<text class="genw-cap" x="802" y="515.4"[^>]*font-size="25.2"[^>]*>0% COMPLETE<\/text>/);
+  assert.match(svg, /<rect class="genw-trough" x="692" y="459" width="220" height="18" rx="9" fill="rgba\(255,255,255,\.16\)"><\/rect><rect class="genw-bar" x="692" y="459" width="0" height="18" rx="9" fill="url\(#genwBarG-psGallery\)"/);
+  assert.match(svg, /<text class="genw-cap" x="802" y="507"[^>]*font-size="19"[^>]*>0% COMPLETE<\/text>/);
+  // الصورة v=2: الشريط الأبيض والنصّ مُحيا (صفوفهما بلون الأسطوانة لا بياض)
+  assert.ok(sc.src.endsWith('?v=2'), 'وسم الصورة مرفوع بعد المحو');
   assert.ok(sc.tube && sc.ring.cx > sc.tube.x && sc.ring.cx < sc.tube.x + sc.tube.w && sc.ring.cy > sc.tube.y && sc.ring.cy < sc.tube.y + sc.tube.h, 'الحلقة داخل الأسطوانة');
   assert.match(h, /class="genw-tube" style="left:35%;top:3\.731%;width:30%;height:80\.846%;mix-blend-mode:screen"><span style="-webkit-mask-image:linear-gradient\(180deg/, 'حزام الأنبوب عند الشريط والنصّ');
   assert.ok(/<em style="-webkit-mask-image:radial-gradient\(ellipse/.test(h), 'الجريان مثقوب عند الحلقة');

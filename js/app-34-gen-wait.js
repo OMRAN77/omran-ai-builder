@@ -293,8 +293,13 @@
      نفسه (stScene: حلقة ورقم وشريط بتدرّجه ونصّ «NN% COMPLETE» وحزام الأنبوب) على الـ١٣ كلّها، مكبَّرًا بنسبة ١٦٠٠/١٢٨٠ وما فوق، في
      وسط هيكل كلّ شكل (الأسطوانة، الكتلة، لوح الكرة، فتحة القوس). الصور بلا عدّاد مرسوم فيُرسم معه قرصه الداكن ومجرى حلقته
      ومجرى شريطه الخافتان (disc/track/trough) — فيُقرأ كما يُقرأ في الستايل. */
-  var PS_TUBE = { spiral: [39, 4, 61, 78], cubes: [40, 0, 60, 84], sphere: [37, 1, 63, 71], arch: [37, 24, 63, 80] };
-  var PS_CY = { spiral: 47, cubes: 65, sphere: 35, arch: 49 }; /* نسبة مركز الحلقة من الارتفاع — من قياس المنطقة الداكنة وسط كلّ شكل: العدّاد كلّه (من فوق الحلقة إلى تحت النصّ) داخلها */
+  /* الأنبوب (الجريان) = المنطقة الداكنة وسط الهيكل بنِسَب الصورة [x0, y0, x1, y1]٪ — من قياس بكسلات الشبكات: عمود الحلزون يمين
+     المنتصف (٤٩٫٥–٥٩٫٥٪)، كتلة المكعّبات، لوح الكرة (٤٤٫٥–٦٢٪)، فتحة القوس. العدّاد في مركز تلك المنطقة (PS_CX/PS_CY) وبمعامل
+     يناسب عرضها (PS_K: عمود الحلزون ضيّق ١٦٠ بكسل فمعامله ١٫١ وشريطه ١٤٠؛ الباقي ١٫٣٦٦). الهياكل كلّها داخل قصّ الجوّال ٥:٤. */
+  var PS_TUBE = { spiral: [49.5, 18, 59.5, 62], cubes: [39.5, 57, 60.5, 82], sphere: [44.5, 18.5, 62, 51], arch: [40.7, 37, 58.1, 68] };
+  var PS_CX = { spiral: 872, cubes: 800, sphere: 852, arch: 790 };
+  var PS_CY = { spiral: 36, cubes: 65, sphere: 31, arch: 49 };
+  var PS_K = { spiral: 1.1, cubes: 1.366, sphere: 1.366, arch: 1.366 };
   var PS_HUE = {
     ice: { bg: '#2b3a49', flow: '#d9ecff', ink: '#f0fefe', arc: '#f8ffff', glow: 'rgba(214,244,255,.34)', grad: ['#cfcce9', '#c2f0fa'], capInk: '#edfcfd' },
     gold: { bg: '#3d2d22', flow: '#f1dcb0', ink: '#fffcd4', arc: '#fffbd8', glow: 'rgba(255,240,190,.38)', grad: ['#f8e0b0', '#fff6cf'], capInk: '#fff7c8' },
@@ -317,21 +322,23 @@
     };
   }
   function psScene(id, file, h, hue, shape){
-    var t = PS_TUBE[shape], c = PS_HUE[hue], k = psCounter(800, Math.round(PS_CY[shape] * h / 100), 1.366);
+    var t = PS_TUBE[shape], c = PS_HUE[hue], k = psCounter(PS_CX[shape], Math.round(PS_CY[shape] * h / 100), PS_K[shape]);
     k.bar.grad = c.grad;
     return { id: id, src: '/assets/portrait/gen-scene-' + file + '.webp?v=1', w: 1600, h: h, hue: hue, shape: shape, bg: c.bg, flow: c.flow,
       ring: k.ring, num: k.num, bar: k.bar, cap: k.cap,
-      tube: { x: t[0] * 16, y: Math.round(t[1] * h / 100), w: (t[2] - t[0]) * 16, h: Math.round((t[3] - t[1]) * h / 100), blend: 'screen', gap: k.gap },
+      tube: { x: Math.round(t[0] * 16), y: Math.round(t[1] * h / 100), w: Math.round((t[2] - t[0]) * 16), h: Math.round((t[3] - t[1]) * h / 100), blend: 'screen', gap: k.gap },
       refl: null, rip: null, ink: c.ink, arc: c.arc, glow: c.glow, capInk: c.capInk };
   }
+  /* معرض البطاقات: عدّاده مرسوم في صورة المالك (حلقة ٧٢ ورقم، وتحتهما شريط أبيض ٤٥٨–٤٧٨ ونصّ ٤٩٠–٥٠٨) — مُحي كلّه ويُرسم حيًّا
+     في مواضعه بقياساته (الشريط والنصّ في منتصف الحلقة؛ كانا أيسر منها ببضع بكسلات في الرسم) */
   var PS_GALLERY = (function(){
-    var c = PS_HUE.gallery, k = psCounter(802, 346, 72 / 36.6); /* حلقة الصورة نفسها (نصف قطرها ٧٢) ورقمها بقياسهما، والباقي بنسبتها */
-    k.bar.grad = c.grad;
-    return { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=1', w: 1600, h: 804, hue: 'gallery', shape: 'cylinder', bg: c.bg, flow: c.flow,
+    var c = PS_HUE.gallery;
+    return { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=2', w: 1600, h: 804, hue: 'gallery', shape: 'cylinder', bg: c.bg, flow: c.flow,
       ring: { cx: 802, cy: 346, r: 72, sw: 9, hole: 86, disc: PS_DISC, track: PS_TRACK },
       num: { x: 802, y: 366, size: 50, dw: 20, pw: 28 },
-      bar: k.bar, cap: k.cap,
-      tube: { x: 560, y: 30, w: 480, h: 650, blend: 'screen', gap: k.gap },
+      bar: { x: 692, y: 459, w: 220, h: 18, trough: PS_TROUGH, grad: c.grad },
+      cap: { x: 802, y: 507, size: 19, dw: 7.1, rest: 84 },
+      tube: { x: 560, y: 30, w: 480, h: 650, blend: 'screen', gap: [449, 517] },
       refl: null, rip: null, ink: c.ink, arc: c.arc, glow: c.glow, capInk: c.capInk };
   })();
   var PORTRAIT_SCENES = [
