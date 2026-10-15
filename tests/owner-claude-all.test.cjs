@@ -179,7 +179,7 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'max' });
   assert.equal(r.calls[0].body.max_tokens, 128000); // v-owner-cap-open
   r = await withoutAnth(() => run('omran', { messages: ask(HARD), effort: 'max' }, [() => new Response(JSON.stringify({ error: { message: 'This request requires more credits, or fewer max_tokens. You requested up to 64000 tokens, but can only afford 9000.', code: 402 } }), { status: 402 }), () => text('تم')]));
-  assert.deepEqual(r.calls.map((c) => c.body.max_tokens), [128000, 16000]); // v-owner-cap-open
+  assert.deepEqual(r.calls.map((c) => c.body.max_tokens), [128000, 9000]); // v-cap-not-credit: حدّ الرصيد من الرسالة لا ١٦ ألفًا
   assert.deepEqual(r.calls[1].body.output_config, { effort: 'max' }, 'الجهد نفسه');
   assert.ok(r.events.some((e) => /رصيد الوسيط لا يكفي/.test(e.status || '')));
   // مراجعة: دور صورة بموديل CHAT_IMAGE_MODEL آخر لا يأخذ جهدًا حُسب لموديل المحادثة (Haiku 4.5 يرفضه = 400)

@@ -68,6 +68,13 @@ test('١. askedMedia: طلب الرسم/التعديل/الفيديو في ال�
   for (const [t, img] of yes) assert.equal(OM.askedMedia(t, !!img), true, 'يُسمح: ' + t);
   for (const t of no) assert.equal(OM.askedMedia(t, false), false, 'يُمنع: ' + t);
   assert.equal(OM.askedMedia('كمّل\n\n[مرفقات: a.png]', false), false, 'ملحق المرفقات لا يُحسب طلبًا');
+  /* v-shot-not-draw: لقطة + «تعدّل التطبيق» كانت تُفتح رسمًا لأن CODE_RE بلا «التطبيق» */
+  assert.equal(OM.askedMedia('الستائر في الديكور تقدر تعدل التطبيق', true), false, 'لقطة + عدّل التطبيق = كود لا رسم');
+  assert.equal(OM.askedMedia('عدّل التطبيق', true), false);
+  assert.equal(OM.askedMedia('احذف الخلفية', true), true, 'تعديل المرفق بلا كلمة تطبيق يبقى رسمًا');
+  // v-bare-draw (لقطة المالك ١٥ أكتوبر «رسم صور الستائر وارفعها»): «رسم» بلا ألف مع اسم وسيط = طلب؛ شكوى الكود والنفي و«ليش» لا
+  for (const t of ['رسم صور الستائر وارفعها', 'رسم صورة الستائر', 'رسم صور الستائر وارفعها للمستودع']) assert.equal(OM.askedMedia(t, false), true, 'يُسمح: ' + t);
+  for (const t of ['لا رسم صور', 'ليش رسم صور', 'رسم الصور في الصفحة ما يطلع', 'رسم', 'الرسم ينخصم من رصيدك']) assert.equal(OM.askedMedia(t, false), false, 'يُمنع: ' + t);
   assert.deepEqual(OM.PAID_MEDIA_TOOLS, ['generate_image', 'edit_image', 'generate_video']);
 });
 
