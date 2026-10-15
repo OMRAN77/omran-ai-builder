@@ -101,7 +101,7 @@ const FREE_PROVIDER_SPECS = {
     modelsUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/models',
     keyVar: 'GEMINI_API_KEY',
     modelVar: 'FREE_GEMINI_MODEL',
-    models: ['gemini-flash-latest', 'gemini-3-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'],
+    models: ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'], // v-dead-models: «gemini-3-flash» لا وجود له (المعتمد 3.5/3.6/3.8)
     pick: /^(?:models\/)?gemini-[\d.]+-flash(?:-lite)?(?:-preview[\w-]*)?$/i,
     vision: true,
   },
@@ -111,8 +111,8 @@ const FREE_PROVIDER_SPECS = {
     modelsUrl: 'https://api.groq.com/openai/v1/models',
     keyVar: 'GROQ_API_KEY',
     modelVar: 'FREE_GROQ_MODEL',
-    models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.1-8b-instant'], // v-models-latest: Groq أوقف Llama 4/3.x وqwen3-32b (مارس–أغسطس ٢٠٢٦) للمجانيّ والمطوّرين — الحيّ أوّلًا، والميّتان ذيلٌ لحسابات المؤسّسات
-    pick: /gpt-oss-120b|llama-4-maverick|llama-4-scout|llama-3\.3-70b|qwen3-32b|kimi-k2|gpt-oss-20b|llama-3\.1-8b/i,
+    models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'], // v-dead-models: Maverick أُوقف ٩ مارس وllama-3.1-8b-instant ١٦ أغسطس (للمجانيّ) — كانا طلبين ضائعين؛ // v-models-latest: Groq أوقف Llama 4/3.x وqwen3-32b (مارس–أغسطس ٢٠٢٦) للمجانيّ والمطوّرين — الحيّ أوّلًا، والميّتان ذيلٌ لحسابات المؤسّسات
+    pick: /gpt-oss-120b|qwen3\.8-27b|llama-4-maverick|llama-4-scout|llama-3\.3-70b|qwen3-32b|kimi-k2|gpt-oss-20b|llama-3\.1-8b/i,
     vision: false,
   },
   mistral: {
@@ -121,8 +121,8 @@ const FREE_PROVIDER_SPECS = {
     modelsUrl: 'https://api.mistral.ai/v1/models',
     keyVar: 'MISTRAL_API_KEY',
     modelVar: 'FREE_MISTRAL_MODEL',
-    models: ['mistral-small-latest', 'mistral-medium-latest', 'open-mistral-nemo', 'ministral-8b-latest'],
-    pick: /^mistral-small-latest$|^mistral-medium-latest$|^open-mistral-nemo$|^ministral-8b-latest$|^mistral-small/i,
+    models: ['mistral-small-latest', 'mistral-medium-latest', 'ministral-8b-latest', 'ministral-14b-latest'], // v-dead-models: open-mistral-nemo أُوقف ٣١ يوليو ٢٠٢٦، بديله الرسميّ ministral-8b-latest
+    pick: /^mistral-small-latest$|^mistral-medium-latest$|^ministral-(?:8|14)b-latest$|^mistral-small/i,
     vision: false,
   },
   openrouter: {

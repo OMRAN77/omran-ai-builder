@@ -73,7 +73,7 @@ test('freeChain: order from env, providers without keys skipped, model overrides
   assert.match(g.modelsUrl, /\/v1beta\/openai\/models$/);
   assert.equal(tier.freeChain(env)[1].model, 'gemini-flash-latest', 'الاسم المستعار الذي يعمل في بقية الخادم');
   assert.equal(tier.freeChain(env)[0].model, 'openai/gpt-oss-120b');
-  for (const s of tier.freeChain(env)) { assert.equal(typeof s.key, 'string'); assert.ok(s.models.length >= 4, s.id + ' candidates'); assert.ok(s.pick instanceof RegExp); }
+  for (const s of tier.freeChain(env)) { assert.equal(typeof s.key, 'string'); assert.ok(s.models.length >= (s.id === 'groq' ? 3 : 4), s.id + ' candidates'); /* v-dead-models: Groq المجّانيّ بقي له ثلاثة حيّة فقط (gpt-oss ×٢ وqwen3.8) — الموقوفان كانا طلبين ضائعين */ assert.ok(s.pick instanceof RegExp); }
   /* مرشّح الانتقاء يلتقط نماذج flash النصّية فقط عند Gemini، والمجانية فقط عند OpenRouter */
   const specs = tier.FREE_PROVIDER_SPECS;
   assert.ok(specs.gemini.pick.test('models/gemini-3.1-flash-preview')); assert.ok(specs.gemini.pick.test('gemini-2.5-flash-lite'));
