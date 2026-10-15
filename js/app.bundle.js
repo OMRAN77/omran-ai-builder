@@ -39170,6 +39170,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
            ويضيع معه سجلّ العمل (الخطوات والجمل المنقولة إليه) وعلامة سبب الخادم. الآن: الصمت الظاهر ٩٠ ث «stalled» كما كان (#527)، والانقطاع
            «cut» بسببه، والسجلّ وownerStop يبقيان مع الخطأ كما في نهاية المجرى الفارغة. */
         var __se = new Error(serverErr || ((e && e.message === '__chat_idle__') ? 'chat: stalled — no response' : 'chat: cut — ' + String((e && e.message) || e).slice(0, 80)));
+        if (__rp) { try { __rp.pack(__steps, full); } catch (_p) { if (window.__swallow) window.__swallow(_p, 'chatTools:cut-pack'); } } /* سقف المقاطع المحفوظة كالنهاية الناجحة — السجلّ يُحفظ في الرسالة */
         if (__ownerStop) __se.ownerStop = true; __se.log = __logNow(); throw __se;
       }
       if (chunk.done) break;

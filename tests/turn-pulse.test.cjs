@@ -73,8 +73,8 @@ test('١. دور بأدوات: النبض يصل أثناء تنفيذ أداة 
 
 test('٢. الكود: النبض مقيّد بميزانيّة الدور وبحياة المجرى (درس #527)، ويُلغى عند done وبإغلاق المجرى', () => {
   const s = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
-  // v-turn-close: الحدّ صار owner-loop.pulse — غير المالك MAX_MS كما كان، والمالك حتّى CLOSE_AT_MS ثمّ ختام نظيف أو صمت بعد FN_BUDGET_MS (turn-close.test)
-  assert.ok(s.includes("const __turnKa = (toolTurn || __ownerReq) ? setInterval(() => { const __pw = (res.writableEnded || __cut.gone) ? 'end' : __ol.pulse(__olS, { t0, MAX_MS }); if (__pw !== 'ka') { clearInterval(__turnKa); if (__pw === 'close') __turnClose(); return; }"));
+  // v-turn-close: الحدّ صار owner-loop.pulse — غير المالك MAX_MS كما كان، والمالك حتّى FN_BUDGET_MS، وأداة بعد CLOSE_AT_MS = سطر «كمل» والنبض حتّى PULSE_MAX_MS (turn-close.test)
+  assert.ok(s.includes("const __turnKa = (toolTurn || __ownerReq) ? setInterval(() => { const __pw = (res.writableEnded || __cut.gone) ? 'end' : __ol.pulse(__olS, { t0, MAX_MS }); if (__pw === 'end') { clearInterval(__turnKa); return; } if (__pw === 'close') __turnClose();"));
   assert.ok(s.includes('__turnKaStop(); send({ done: true });'));
   assert.ok(!s.includes('__turnKaStop(); } catch'), 'لا إيقاف في catch (خارج نطاق التعريف) — writableEnded بعد res.end يكفي');
   assert.ok(s.includes('let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage || __ownerReq) ? setInterval('), 'نبض البثّ كما هو');

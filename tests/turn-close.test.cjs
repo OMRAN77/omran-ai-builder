@@ -82,8 +82,8 @@ async function run(messages, script) {
     if (!/api\.openai\.com\/v1\/responses/.test(String(url))) return new Response('{}', { status: 404 });
     return script[Math.min(n++, script.length - 1)]();
   };
-  const res = { writableEnded: false, afterEnd: [], endedAt: 0, setHeader() {}, status() { return this; }, json(v) { out.push(JSON.stringify(v)); return this; },
-    write(c) { if (this.writableEnded) { this.afterEnd.push(String(c)); return false; } out.push(String(c)); return true; },
+  const res = { writableEnded: false, afterEnd: [], log: [], endedAt: 0, setHeader() {}, status() { return this; }, json(v) { out.push(JSON.stringify(v)); return this; },
+    write(c) { if (this.writableEnded) { this.afterEnd.push(String(c)); return false; } out.push(String(c)); this.log.push({ at: realNow(), c: String(c) }); return true; },
     end() { if (!this.writableEnded) { this.writableEnded = true; this.endedAt = realNow(); } }, flushHeaders() {} };
   const req = { method: 'POST', headers: {}, body: { token: token('omran'), provider: 'openai', model: 'openai/gpt-6-astra', messages } };
   process.env.OPENAI_API_KEY = 'sk-openai-test';
@@ -99,19 +99,24 @@ const EDIT = { repo: 'OMRAN77/omran-ai-builder', edits: [{ path: 'js/design-sels
 const PUSHED = { repo: 'OMRAN77/omran-ai-builder', branch: 'omran-agent/v-decor-curtain-photos', commit: 'abcdef1234567', commitUrl: 'https://github.com/OMRAN77/omran-ai-builder/commit/abcdef1', files: 1, prUrl: 'https://github.com/OMRAN77/omran-ai-builder/pull/1073', prNumber: 1073 };
 const ASK = [{ role: 'user', content: 'اريد تعديل في التطبيق شوف في الديكور قسم الستاير مافي صور حط صور على نفس الاسامي' }];
 
-test('١. الحدّ: غير المالك عند MAX_MS كما كان؛ المالك حيّ حتّى CLOSE_AT_MS، ثمّ أداة تعمل = ختام، ونداء جارٍ = نبض حتّى حدّ الدالّة، ثمّ صمت (#527)', () => {
+test('١. الحدّ: غير المالك عند MAX_MS كما كان؛ المالك حيّ حتّى حدّ الدالّة، وأداة تعمل بعد CLOSE_AT_MS = سطر الختام مرّة والنبض حيّ حتّى PULSE_MAX_MS، ثمّ صمت (#527)', () => {
   const now = Date.now();
   const o = (el) => ({ t0: now - el, MAX_MS: 240000 });
   const off = OL.state(false), on = OL.state(true);
   assert.equal(OL.pulse(off, o(239000)), 'ka'); assert.equal(OL.pulse(off, o(241000)), 'end', 'غير المالك كما كان');
   off.busy = true; assert.equal(OL.pulse(off, o(285000)), 'end', 'لا ختام لغير المالك');
   assert.equal(OL.CLOSE_AT_MS, OL.FN_BUDGET_MS - 10000);
+  assert.ok(OL.PULSE_MAX_MS < 300000, 'النبض لا يتجاوز حدّ الدالّة (٣٠٠ ث)');
   assert.equal(OL.pulse(on, o(250000)), 'ka', 'المالك بعد MAX_MS: خطوة الختام لا تصمت');
   assert.equal(OL.pulse(on, o(285000)), 'ka', 'نداء/بين خطوتين: حارس النداء يختم عند ٢٩٠');
   assert.equal(OL.pulse(on, o(291000)), 'end', 'بعد حدّ الدالّة لا نبض بلا نهاية');
   on.busy = true;
   assert.equal(OL.pulse(on, o(279000)), 'ka');
   assert.equal(OL.pulse(on, o(281000)), 'close', 'أداة ما زالت تعمل بعد CLOSE_AT_MS');
+  assert.equal(on.closed, true);
+  assert.equal(OL.pulse(on, o(282000)), 'ka', 'السطر مرّة واحدة، والمجرى حيّ والأداة تعمل');
+  assert.equal(OL.pulse(on, o(297000)), 'ka');
+  assert.equal(OL.pulse(on, o(OL.PULSE_MAX_MS + 1000)), 'end');
 });
 
 test('٢. سطر الختام يحمل مفتاح «كمل» ورابط آخر رفعة، و«كمل» بعده تكمل المهمّة نفسها', () => {
@@ -127,20 +132,42 @@ test('٢. سطر الختام يحمل مفتاح «كمل» ورابط آخر �
   assert.ok(convo[2].content.includes(OL.RESUME_NOTE));
 });
 
-test('٣. أداة تجاوزت CLOSE_AT_MS: الدور يُختم نظيفًا قبل قتل الدالّة — سطر «كمل» ورابط الطلب ثمّ done ونهاية المجرى والأداة ما زالت تعمل؛ ولا كتابة بعده ولا جولة', async () => {
+// كتابات المجرى بوقتها الحقيقيّ — متى وصل السطر ومتى انتهى المجرى
+const writeAt = (r, re) => { const w = r.res.log.find((x) => re.test(x.c)); return w ? w.at : 0; };
+
+test('٣. أداة تجاوزت CLOSE_AT_MS: سطر «كمل» ورابط الرفعة السابقة يصلان والأداة ما زالت تعمل، والمجرى يبقى مفتوحًا حتّى تخلص (إنهاؤه يجمّد الدالّة) ثمّ الختام المعتاد بلا جولة', async () => {
   let toolDone = 0;
   tool.edit = async () => PUSHED;
   tool.read = async () => { skew = 281000; await sleep(400); toolDone = realNow(); return 'FILE js/design-sels.js\n1| var X = 1;'; };
   logged.length = 0;
   const r = await run(ASK, [() => R.call('edit_github', EDIT), () => R.call('read_github', { url: 'OMRAN77/omran-ai-builder', path: 'js/design-sels.js' }), () => R.text('ما يُفترض أن يُطلب')]);
-  assert.ok(r.res.endedAt && r.res.endedAt < toolDone, 'المجرى انتهى والأداة ما زالت تعمل');
-  assert.ok(r.text.endsWith(OL.closeMark('طلب السحب #1073: https://github.com/OMRAN77/omran-ai-builder/pull/1073')), 'سطر الختام ومعه رابط الرفعة السابقة');
-  assert.ok(r.events.some((e) => e.done === true));
-  assert.deepEqual(r.res.afterEnd, [], 'لا كتابة بعد end (في Node تُسقط العمليّة)');
+  const ref = 'طلب السحب #1073: https://github.com/OMRAN77/omran-ai-builder/pull/1073';
+  const markAt = writeAt(r, /⏸️ خلص وقت الدور/);
+  assert.ok(markAt && markAt < toolDone, 'السطر وصل قبل أن تخلص الأداة — قبل أيّ قتل');
+  assert.ok(r.res.endedAt >= toolDone, 'المجرى لم يُنهَ تحت الأداة');
+  assert.ok(r.text.endsWith(OL.closeMark(ref)), 'سطر الختام ومعه رابط الرفعة السابقة، بلا تكرار الرابط');
+  assert.equal(r.events.filter((e) => e.done === true).length, 1, 'done مرّة بعد الحفظ');
+  assert.ok(!r.res.log.some((x) => x.at > markAt && /"status":"↳/.test(x.c)), 'لا سطر أداة بعد الختام (كان يَنقل السطر إلى السجلّ فيضيع «كمل» من الردّ)');
+  assert.deepEqual(r.res.afterEnd, []);
   assert.equal(r.calls.length, 2, 'الحلقة وقفت بعد الأداة — لا نداء ثالث بعد الختام');
-  assert.ok(!r.events.some((e) => e.error), 'لا خطأ بعد الختام');
+  assert.ok(!r.events.some((e) => e.error), 'لا سبب مهلة مكرّر تحت السطر');
+  assert.ok(!/أدمج وأنشر/.test(r.text));
   assert.equal(r.liveIntervals, 0);
   assert.ok(logged.includes('chat/owner-turn-close'), 'يُسجَّل للتشخيص');
+});
+
+test('٣ب. الرفعة خلصت بعد السطر: رابطها يُلحق تحته فيعرف دور «كمل» الطلب ولا يفتح طلبًا ثانيًا', async () => {
+  let toolDone = 0;
+  tool.edit = async () => { skew = 281000; await sleep(400); toolDone = realNow(); return PUSHED; };
+  const r = await run(ASK, [() => R.call('edit_github', EDIT), () => R.text('لا يُطلب')]);
+  const markAt = writeAt(r, /⏸️ خلص وقت الدور/);
+  assert.ok(markAt && markAt < toolDone);
+  assert.equal(r.text, OL.closeMark('') + '\nطلب السحب #1073: https://github.com/OMRAN77/omran-ai-builder/pull/1073');
+  assert.equal(r.calls.length, 1);
+  assert.ok(!/أدمج وأنشر/.test(r.text) && !r.events.some((e) => e.error));
+  const convo = [ASK[0], { role: 'assistant', content: r.text }, { role: 'user', content: 'كمل' }];
+  assert.equal(OL.resume(convo, 'كمل'), true, '«كمل» بعده إكمال للمهمّة نفسها');
+  assert.equal(r.liveIntervals, 0);
 });
 
 test('٤. الوقت انتهى قبل الختام بعد رفعة سابقة: السبب بـ«كمل» ورابط الطلب — لا صمت ولا «أدمج وأنشر؟» على شغل ناقص', async () => {
@@ -167,14 +194,28 @@ test('٥. رفعة فاشلة لا تُعدّ رفعة: ختام التعديل 
   } finally { delete process.env.CHAT_MAX_STEPS; }
 });
 
+test('٥ب. سقف الثلاث استُنفد بلا رفعة ناجحة: الختام جواب (لا «نفّذ التعديل» الذي يرفضه السقف)، و«كمل» بعده', async () => {
+  process.env.CHAT_MAX_STEPS = '4';
+  let n = 0;
+  tool.edit = async () => { n++; return { error: 'النصّ القديم غير موجود في js/design-sels.js' }; };
+  try {
+    const r = await run(ASK, [() => R.call('edit_github', EDIT), () => R.call('edit_github', EDIT), () => R.call('edit_github', EDIT), () => R.text('ما قدرت: النصّ القديم غير موجود ثلاث مرّات.')]);
+    assert.equal(n, 3); assert.equal(r.calls.length, 4);
+    const b3 = JSON.stringify(r.calls[3].body);
+    assert.ok(b3.includes('انتهت ميزانيّة الأدوات') && !b3.includes('انتهت ميزانيّة القراءة'), 'ختام الجواب');
+    assert.equal(r.calls[3].body.tool_choice, 'none', 'بلا أدوات على المسار المباشر');
+    assert.ok(r.text.endsWith(OL.resumeMark()));
+  } finally { delete process.env.CHAT_MAX_STEPS; }
+});
+
 // العميل: app-18 الحقيقيّ في vm (الشريحة نفسها في chat-owner-errors) ومجرى ينقطع بعد بدئه
 const app18Core = read('js/app-18-chat-tools.js').slice(0, read('js/app-18-chat-tools.js').indexOf('// v478:'));
 function cutStream(lines) {
   let n = 0;
   return new ReadableStream({ pull(c) { if (n++ === 0) c.enqueue(new TextEncoder().encode(lines.map((l) => 'data: ' + JSON.stringify(l) + '\n\n').join(''))); else c.error(new TypeError('network error')); } });
 }
-async function client(lines) {
-  const ctx = { window: { authGet: () => 'tok', claudeModelGet: () => '' }, fetch: async () => new Response(cutStream(lines), { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
+async function client(lines, rp) {
+  const ctx = { window: { authGet: () => 'tok', claudeModelGet: () => '', omranReadPanel: rp }, fetch: async () => new Response(cutStream(lines), { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
     TextDecoder, setTimeout, clearTimeout, Promise, Error, String, JSON, Date, Array, Math, console, Intl, Object, Number, RegExp };
   vm.runInNewContext(app18Core, ctx);
   try { return { reply: (await ctx.window.callChatWithTools([{ role: 'user', content: 'x' }], null, 'deepseek')).reply }; }
@@ -182,7 +223,10 @@ async function client(lines) {
 }
 
 test('٦. العميل: انقطاع المجرى بعد عمل ليس «ما وصل شي» — سببه «انقطع الاتّصال»، وسجلّ العمل يبقى مع الخطأ، وسبب الخادم وعلامته كما هما', async () => {
-  const c = await client([{ delta: 'أكتب الاختبار أوّلًا.' }, { status: '↳ ✅ رُفع commit abc · طلب السحب #1073' }]);
+  const packed = [];
+  const rp = { begin() {}, live() {}, pack(steps) { packed.push(steps.length); } };
+  const c = await client([{ delta: 'أكتب الاختبار أوّلًا.' }, { status: '↳ ✅ رُفع commit abc · طلب السحب #1073' }], rp);
+  assert.deepEqual(packed, [1], 'سقف المقاطع المحفوظة قبل أن يُرفق السجلّ (كالنهاية الناجحة)');
   assert.match(c.error, /^chat: cut — network error$/);
   assert.equal(c.ownerStop, false);
   assert.ok(Array.isArray(c.log), 'السجلّ مع الخطأ');
