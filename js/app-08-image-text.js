@@ -489,6 +489,34 @@
     const v = cleanVisual(scene).replace(GLUED_EDIT_RE, '$1$2 $3'), visualEdit = v && !isGenericVisual(v) ? v : null;
     return { visualPrompt:!visualEdit ? fallbackVisual(kind, exact) : (isCondolence(exact) && !isCondolence(v) ? 'مشهد تعزية بلا وجوه: ' + v : v), visualEdit };
   }
+  /* v-text-emoji (مشتركة Max ١٦ أكتوبر: صورة + «اكتب اشتقتلج و حط هذيل الإموجي 🤍🌷» كُتب «اشتقتلج و حط هذيل الإموجي» بلا الإيموجي):
+     جملةٌ تسمّي الإيموجي («وحط هذيل الإيموجي»، «ضيف الايموجي»، «مع الإيموجي») أو قلبًا بعد النصّ («وحط قلب ابيض»، «و قلب لون ابيض»)
+     تعليمةٌ تُقرأ ولا تُطبع، ورموز الإيموجي خارج التنصيص تُلحق بالنصّ. بلا تسميةٍ يبقى قرار v-parser-review («اكتب مشكور اخوي 🙏» بلا 🙏). */
+  const EMO_RUN_RE = new RegExp(EMO + '+', 'g');
+  const EMO_NOUN = '[اإأآ]ي?مو?ج[يى](?:ات|ز)?|[اإأ]يموشن(?:ات)?|سمايل(?:ي|ات|ز)?|emojis?';
+  const EMO_VERB = 'حط(?:ي|لي|يلي|ها|ه)?|ضيف(?:ي|لي|ها|ه)?|[أا]ضف|[أا]ضيف|زيد(?:ي)?|خل|خلي|خلّي|ارسم(?:ي|لي)?';
+  const EMO_WITH = 'مع|معاها|معاه|معها|معه|وياها|وياه';
+  const EMO_ASK_RE = new RegExp('(?:^|[\\s،,])(?:و\\s*)?(?:(?:' + EMO_VERB + '|ابي|أبي|ابغى|أبغى|ابغي|ودي|بدي|نبي)\\s+)?(?:(?:' + EMO_WITH + '|لي|لها|له|عليها|عليه|فيها|جنبها|جنبه|بعدها|بعده|بعد|كمان)\\s+){0,2}(?:(?:هذيل|هاذيل|هذول|هاذول|هذولا|هدول|هذي|هاذي|هذا|هاذا|هذه|ذي|ذول|هاي)\\s+)?(?:[وبف]|وب)?(?:ال|هال)?(?:' + EMO_NOUN + ')(?:\\s+(?:هذيل|هذول|هذي|هذا|هذه|ذي|ذول))?(?=[\\s،,.!؟?]|$)', 'gi');
+  const HEART_RE = new RegExp('(?:^|[\\s،,])((?:و\\s*)?(?:' + EMO_VERB + ')(?:\\s+(?:لي|لها|كمان|' + EMO_WITH + '))?|(?:و\\s*)?(?:' + EMO_WITH + ')|و)\\s*(?:(?:ال)?(?:' + EMO_NOUN + ')\\s+)?(?:قلوب|قلب)(?:\\s+(?:ب?لون\\s+|بال|ب)?(?:ال)?(' + COLOR + '))?(?=[\\s،,.!؟?]|$)', 'gi');
+  const HEART_OF = { '#ffd400':'\uD83D\uDC9B', '#f4cf65':'\uD83D\uDC9B', '#111111':'\uD83D\uDDA4', '#2e8b57':'\uD83D\uDC9A', '#18b6a4':'\uD83D\uDC9A', '#5ec8ff':'\uD83D\uDC99', '#1c2f66':'\uD83D\uDC99', '#2979ff':'\uD83D\uDC99',
+    '#ffb3d1':'\uD83D\uDC97', '#ff4f9a':'\uD83D\uDC97', '#a05ad6':'\uD83D\uDC9C', '#ff8a1f':'\uD83E\uDDE1', '#8b5a2b':'\uD83E\uDD0E', '#fdfdfd':'\uD83E\uDD0D', '#d7dbe0':'\uD83E\uDD0D', '#9aa0a6':'\uD83E\uDD0D', '#ead9bd':'\uD83E\uDD0D' };
+  const heartOf = (w) => { const c = w && COLOR_RES.find((x) => x[0].test(w)); return (c && HEART_OF[c[1]]) || '\u2764\uFE0F'; };
+  function emojiAsk(src, marker){
+    const s = String(src || '');
+    if(!marker || !/[اإأآ]ي?مو?ج|يموشن|سمايل|emoji|قلب|قلوب/i.test(s)) return null;
+    const qs = findQuotes(s), cut = [], hearts = [], emo = [];
+    const free = (a, b) => !qs.some((q) => a < q.end && b > q.index) && !cut.some((c) => a < c[1] && b > c[0]);
+    const scan = (re, ok) => { re.lastIndex = 0; let m; while((m = re.exec(s))){ const a = m.index + m[0].length - m[0].replace(/^[\s،,]+/, '').length, b = m.index + m[0].length; if(free(a, b) && ok(m, a)) cut.push([a, b]); } };
+    /* القلب بعد النصّ فقط («ارسم قلب واكتب…» تعديلُ مشهد كما قرّرت الجولة ٣)، و«وقلب» المجرّدة بلا لون نصٌّ («عقل وقلب») */
+    scan(HEART_RE, (m, a) => { if(a < marker.end || !/\S/.test(s.slice(marker.end, a)) || (/^و\s*$/.test(m[1]) && !m[2])) return false; hearts.push(heartOf(m[2])); return true; });
+    scan(EMO_ASK_RE, () => true);
+    if(!cut.length) return null;
+    scan(EMO_RUN_RE, (m) => { emo.push(m[0]); return true; });
+    cut.sort((x, y) => x[0] - y[0]);
+    let rest = '', at = 0;
+    cut.forEach((c) => { rest += s.slice(at, c[0]) + ' '; at = c[1]; });
+    return { rest:(rest + s.slice(at)).replace(/[ \t]{2,}/g, ' ').trim(), emoji:emo.concat(hearts).join('') };
+  }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
     const none = (extra) => Object.assign({ wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', positionFlex:false, styleEditLoose:null }, extra);
@@ -510,6 +538,11 @@
     if(!marker){
       const loose = textStyleEditLoose(source);                                         /* «خله يمين»: الجانب وحده مرن كصيغة «خل الكتابة يمين» */
       return none({ styleEditLoose:loose, positionFlex:!!(loose && loose.position && (positionOf(bare) || {}).flex) });
+    }
+    const ea = emojiAsk(source, marker), em = ea && findMarker(ea.rest);
+    if(em){
+      const w = writeSpec(ea.rest, em);
+      if(w.wantsText && (w.exactText || !w.kind)) return Object.assign(w, { exactText:[w.exactText, ea.emoji].filter(Boolean).join(' ') || null });
     }
     return writeSpec(source, marker);
   }

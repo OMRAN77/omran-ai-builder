@@ -1267,3 +1267,4 @@ Object.assign(I18N["zh"], {"pdfDocPage": "⏳ 正在准备第 {i} / {n} 页…",
 /* v-app-director-voice — «مع صوت / بدون صوت» والصوت الاحتياطيّ (١٤ لغة) */ Object.assign(I18N['zh'], {"vdVoiceLabel": "旁白", "vdVoiceOn": "有配音", "vdVoiceOff": "无配音", "vdVoiceBackup": "备用配音（非玛哈/阿卜杜拉）", "vdFailVoice": "旁白录制失败——请选择“无配音”，用屏幕文字完成视频"});
 /* v-app-director-bridge-check — جسر بنسخة قديمة يُعلَن قبل أيّ صرف (١٤ لغة) */ Object.assign(I18N['zh'], {"vdFailBridgeOld": "桥接服务运行的是不含视频路由的旧版本——请从主分支重新部署"});
 /* v-cards — بطاقات الخيارات: الحالة والأثر والزرّ (١٤ لغة) */ Object.assign(I18N['zh'], {"stCards": "🛍️ 正在整理可选项…", "trCards": "已为「{q}」显示 {n} 张卡片", "trCardsNone": "「{q}」没有卡片", "cardsOpen": "打开"});
+/* v-video-write-ask */ Object.assign(I18N['zh'], {"vwWriteNo": "应用暂不支持直接在视频上写字 — 未扣除任何积分。请发送视频截图（或任意照片）并附上同样的要求，我会把文字写在上面。"});
