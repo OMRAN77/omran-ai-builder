@@ -1218,7 +1218,7 @@ module.exports = async (req, res) => {
   // فلا يبقى اسم المزوّد المطلوب (مثل OpenAI) في حالة المسار الحقيقيّ.
   let __ownerNoRoute = __ownerReq && !!reqProv && reqProv !== prov; if (!__direct && !viaOR && prov !== 'claude' && apiKey) { if (__ownerReq) __ownerNoRoute = true; else prov = 'claude'; } // v-owner-solo: للمالك لا يجيب كلود عن مزوّد غير معروف أو بلا طريق
   let __midUp = null; /* v-mid-credit: خطأ رصيد داخل البثّ (OpenAI: 200 ثمّ حدث insufficient_quota) يُعاد كفشل جاهز 402 تمرّ به سلسلة ما قبل البثّ نفسها بدل نداء جديد — يُستهلك في أوّل __upFetch بعده */ const __upFetch = (url, init) => __midUp ? Promise.resolve(__midUp).then((u) => { __midUp = null; return u; }) : __direct
-    ? require('./oa-direct.js').directFetch(__direct, JSON.parse(init.body), { fallbackModels: __directFallbacks, signal: init.signal /* v-claude-code-level C5 */ })
+    ? require('./oa-direct.js').directFetch(__direct, JSON.parse(init.body), { fallbackModels: __directFallbacks, signal: init.signal /* v-claude-code-level C5 */, owner: __ownerReq /* v-plan-models: ملاحظة الضيق بلا اسم مزوّد لغيره */ })
     : fetch(url, init);
   /* v-err-acct (لقطة «فحص النظام» ٢٣ سبتمبر: «402 … billing_error … This request would exceed your available credit» بلا
      اسم حساب): رسالة الفشل تبدأ باسم الحساب الذي رفض والموديل — فيعرف المالك أيّ رصيد يشحن (Anthropic أم OpenRouter أم
@@ -1231,14 +1231,14 @@ module.exports = async (req, res) => {
   const __ownerOps = { pushes: 0, delegates: 0, merges: 0, imgIds: __ownerReq ? require('./agent-img.js').seedTokens(body && body.imgIds) : {} }; /* v-agent-img: رمز الرسمة ← معرّفها في المخزن (خريطة المحادثة من العميل + نتائج الرسم في هذا الدور) */ // v-providers-like-agent: حرّاس أدوات الوكيل في الدور الواحد
   let __ownerFail = null, __ownerChainSet = false; // v-owner-swap: سبب فشل مزوّد المالك المختار، وسلسلته ذات الأدوات تُبنى مرّة
   let __planVisionAvailable = true, __ownerSeen = false; // v-owner-vision: المزوّد الذي اختاره المالك يرى صورته بنفسه (__seeImage أدناه)
-  const applyRoute = (p, model, direct, forceOR) => { if (direct) { const __od = require('./oa-direct.js'); const d = __od.directRoute(p); if (!d) return false; __direct = d; prov = p; viaOR = false; CHAT_MODEL = DEFAULT_MODEL = __od.directModel(p, '').model; return true; }
+  const applyRoute = (p, model, direct, forceOR) => { if (direct) { const __od = require('./oa-direct.js'); const d = __od.directRoute(p); if (!d) return !!(model && (p === 'openai' || p === 'gemini') && applyRoute(p, (p === 'openai' ? 'openai/' : 'google/') + model, false)); /* v-plan-models: بلا مفتاح المزوّد المباشر = الموديل نفسه عبر الوسيط */ __direct = d; prov = p; viaOR = false; CHAT_MODEL = DEFAULT_MODEL = __od.directModel(p, model || '').model; if (p === 'groq' && !__ownerReq) { const __fc = require('./free-chain.js'); __directFallbacks = __fc.modelsToTry(__fc.providerSpec('groq', 'x'), ''); } return true; } // v-plan-models: موديل المسار (Luna/Sol/Gemini 3.8) لا افتراضيّ المزوّد
     const or = forceOR ? !!process.env.OPENROUTER_API_KEY : (p === 'claude' ? (!process.env.ANTHROPIC_API_KEY && !!process.env.OPENROUTER_API_KEY) : !!process.env.OPENROUTER_API_KEY); // v-owner-swap: كلود عبر الوسيط حين يفشل مفتاحه المباشر
     const key = or ? process.env.OPENROUTER_API_KEY : process.env.ANTHROPIC_API_KEY;
     if (!key || !Object.prototype.hasOwnProperty.call(OR_MODELS, p) || (p !== 'claude' && !or)) return false;
     __direct = null; prov = p; viaOR = or; apiKey = key;
     CHAT_URL = or ? 'https://openrouter.ai/api/v1/messages' : 'https://api.anthropic.com/v1/messages';
     DEFAULT_MODEL = or ? (require('./provider-models.js').liveDefaultOf(p) || OR_MODELS[p]) : (process.env.CHAT_CLAUDE_MODEL || 'claude-haiku-4-5'); // v-live-default
-    const cm = (model && Object.prototype.hasOwnProperty.call(CLAUDE_MODELS, model)) ? (or ? CLAUDE_MODELS[model].or : model) : '';
+    const cm = (model && Object.prototype.hasOwnProperty.call(CLAUDE_MODELS, model)) ? (or ? CLAUDE_MODELS[model].or : model) : ((or && p !== 'claude' && /^[a-z0-9-]+\/[\w.:-]+$/i.test(String(model || ''))) ? model : ''); // v-plan-models: slug الوسيط لمسار الباقة (Mistral Large 3)
     CHAT_MODEL = cm || DEFAULT_MODEL;
     return true;
   }; const __seeImage = () => { const v = require('./owner-vision.js').visionPlan(prov, __direct ? 'direct' : (viaOR ? 'or' : ''), CHAT_MODEL, DEFAULT_MODEL); if (!v) return false; CHAT_MODEL = v.model; DEFAULT_MODEL = v.def; if (v.forced) { __pick.picked = false; __pick.label = 'رؤية'; if (__direct) __directFallbacks = null; } return (__ownerSeen = true); }; // v-owner-vision: موديل رؤية المزوّد المختار على مساره الحاليّ
@@ -1306,10 +1306,10 @@ module.exports = async (req, res) => {
      المزوّد الذي سيخدمها فعلًا: الدردشة على الرخيص، والدور القويّ (برمجة/بناء/رياضيات/ملفّ طويل) على أقوى
      موديل مسموح للباقة، والمزوّد المطلوب من المنتقي يُقبل إن كان في المسموح وإلّا افتراضيّ الباقة.
      سلسلة الالتقاط تُحفظ للاستعمال عند تعطّل المزوّد قبل أوّل حرف. المالك وVIP والمجّانيّ لا يمرّون هنا. */
-  const __planUser = (__tier && __tier.tier === 'sub' && tierLib.PLAN_ROUTING[__tier.plan]) ? require('./auth.js').verifyToken(token) : null; const __planUsed = __planUser ? { haiku: await todayCount(__planUser, 'plan-haiku'), sonnet: await todayCount(__planUser, 'plan-sonnet') } : null; let __planLane = null; // v-meter-atomic: المسار المطبَّق فعلًا
+  const __planUser = (__tier && __tier.tier === 'sub' && tierLib.PLAN_ROUTING[__tier.plan]) ? require('./auth.js').verifyToken(token) : null; const __planUsed = __planUser ? await tierLib.planUsedCounts(__planUser, __tier.plan, todayCount) : null; /* v-plan-models: كلّ مقاييس الباقة (gemini/premium) */ let __planLane = null; // v-meter-atomic: المسار المطبَّق فعلًا
   const __applyPlan = () => { __planRoute = tierLib.planRoute(__tier, reqProv, lastUserText, __planUsed, process.env, lastUserHasImage); if (!__planRoute) return; // v-meter-atomic: يُعاد عند امتلاء المقياس
     // الصورة لا تُجرَّب على DeepSeek/Groq النصّيّين، حتّى عند تعذّر Gemini.
-    const __chain = [{ prov: __planRoute.prov, model: __planRoute.model, direct: __planRoute.direct }].concat(__planRoute.fallback)
+    const __chain = [{ prov: __planRoute.prov, model: __planRoute.model, direct: __planRoute.direct, meter: __planRoute.meter }].concat(__planRoute.fallback) // v-plan-models: المقياس على رأس السلسلة وحده
       .filter((r) => !lastUserHasImage || r.prov === 'gemini' || r.prov === 'claude' || r.prov === 'openai');
     while (__chain.length && !applyRoute(__chain[0].prov, __chain[0].model, __chain[0].direct)) __chain.shift();
     __planVisionAvailable = !lastUserHasImage || !!__chain.length;
@@ -1336,7 +1336,7 @@ module.exports = async (req, res) => {
     res.end();
     return;
   }
-  /* v-meter-atomic (المراجعة المعاكسة): حدّ الموديل داخل الباقة كان todayCount ثمّ bumpCount فتعبره المتزامنة — حجز ذرّيّ للمسار المختار قبل نداء المزوّد؛ رفضه = امتلأ للتوّ فيُعاد التوجيه للتالي (السلّة 'plan' نفسها)، وفشل النداء قبل أن يخدم يردّ الحجز */ let __meterHeld = ''; while (__planRoute && __planRoute.meter && __planUser && __planLane && __planLane.prov === 'claude') { const __mb = 'plan-' + __planRoute.meter; if (await takeMeter(__planUser, __mb, __planRoute.meterCap)) { __meterHeld = __mb; break; } __planUsed[__planRoute.meter] = Infinity; __applyPlan(); } const __giveMeter = async () => { if (!__meterHeld) return; const __b = __meterHeld; __meterHeld = ''; await giveMeter(__planUser, __b); };
+  /* v-meter-atomic (المراجعة المعاكسة): حدّ الموديل داخل الباقة كان todayCount ثمّ bumpCount فتعبره المتزامنة — حجز ذرّيّ للمسار المختار قبل نداء المزوّد؛ رفضه = امتلأ للتوّ فيُعاد التوجيه للتالي (السلّة 'plan' نفسها)، وفشل النداء قبل أن يخدم يردّ الحجز */ let __meterHeld = ''; while (__planRoute && __planRoute.meter && __planUser && __planLane && __planLane.meter) { /* v-plan-models: Gemini لـPro وSol/Sonnet لـMax — لا كلود وحده */ const __mb = 'plan-' + __planRoute.meter; if (await takeMeter(__planUser, __mb, __planRoute.meterCap)) { __meterHeld = __mb; break; } __planUsed[__planRoute.meter] = Infinity; __applyPlan(); } const __giveMeter = async () => { if (!__meterHeld) return; const __b = __meterHeld; __meterHeld = ''; await giveMeter(__planUser, __b); };
   // مسار مجاني = طبقة معروفة وليست اشتراكًا. (غياب الطبقة — كما في الاختبارات
   // التي تحاكي الحصة — يُبقي المسار القديم.)
   const __freeLane = !!(usage.tier && !usage.subscriber);
@@ -1598,7 +1598,7 @@ module.exports = async (req, res) => {
       : !!apiKey && (prov === 'claude' || (viaOR && (prov === 'gemini' || prov === 'openai'))))); if (__ownerNoRoute) { send({ error: 'ما قدرت أردّ الحين — لا طريق لهذا المزوّد على الخادم', ownerStop: true }); res.end(); return; } // v-owner-solo
     if (__freeLane || !__visionRoute) {
       if (__freeLane) send({ tier: usage.tier }); const __pre = await require('./free-read.js').preRead({ convo, send, fetchPage, trailLine }); // v-read-all
-      const __fr = await streamFreeChain({ system: __rawOwner && !__freeLane ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + __provSelfSys /* v-lessons-all (المالك ١٢ أكتوبر «اريدهم كلهم»): الدروس المنشورة للمجّانيّ وللمدفوع بصورة بلا مسار رؤية */, raw: __rawOwner && !__freeLane, convo: __pre.convo, send, requireVision: lastUserHasImage });
+      const __fr = await streamFreeChain({ system: __rawOwner && !__freeLane ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + __provSelfSys /* v-lessons-all (المالك ١٢ أكتوبر «اريدهم كلهم»): الدروس المنشورة للمجّانيّ وللمدفوع بصورة بلا مسار رؤية */, paid: !__freeLane && !!(usage && usage.subscriber) /* v-plan-models: صورة المشترك بلا مسار رؤية — بلا «النسخة الاحترافيّة» */, raw: __rawOwner && !__freeLane, convo: __pre.convo, send, requireVision: lastUserHasImage });
       if (!__fr.ok) {
         // تشخيص للمالك (المجسّ يطبعه، والعميل يتجاهله): أي مزوّد فشل ولماذا — بلا مفاتيح.
         try { logError('free-chain', new Error((__fr.errors || []).join(' | ').slice(0, 400))); } catch (e) { /* التسجيل تحسين */ }
@@ -1844,7 +1844,7 @@ module.exports = async (req, res) => {
           // بدل الصورة فيؤلّف «الصورة غير واضحة»). ولا مزوّد يرى = اعتراف صريح، لا تأليف.
           // v-owner-free: الاحتياط للمالك خام كالمسار الرئيسيّ (v-owner-raw2) — كان يحمل البصمة وملاحظة الوضع
           // المجّانيّ وحدهما قاعدة «لا أسماء»، فيرفض المحرّك أن يعرّف نفسه للمالك حين يهبط الردّ هنا.
-          const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), raw: __rawOwner, convo: __ownerReq ? compactConversation(convo) : convo /* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة */, send, requireVision: lastUserHasImage });
+          const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), raw: __rawOwner, paid: !!(usage && usage.subscriber) /* v-plan-models: المشترك وVIP بلا «النسخة الاحترافيّة» */, convo: __ownerReq ? compactConversation(convo) : convo /* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة */, send, requireVision: lastUserHasImage });
           if (__fb.ok) {
             // v-owner-sees-engine: المالك وحده يرى أيّ محرّك أجاب فعلًا (الصمت للمستخدمين يبقى — v-silent-fallback).
             if (__ownerReq) send({ modelId: 'fallback', modelLabel: 'احتياط · ' + __fb.provider + ' / ' + __fb.model });

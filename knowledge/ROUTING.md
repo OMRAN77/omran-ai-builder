@@ -139,12 +139,13 @@ resolveTier(username)                             tier.js:187
 │
 planRoute(tier, reqProv, lastUserText, used, env, hasImage)   tier.js:71  ← v-plan-routing (مشترك فقط)
 │  الجدول PLAN_ROUTING (tier.js:46، v-plan-jobs): كلّ رسالة وظيفةٌ turnJob (tier.js:60، فوق isStrongTurn tier.js:54) → مزوّدها المختصّ
-│    دردشة: Plus/Pro → Groq مباشر · Max → Haiku (حتّى ١٥٠/يوم) ثمّ Groq
-│    كود: Plus → Haiku (٥/يوم) · Pro → Haiku (١٠/يوم) · Max → Sonnet 5 (٣٠/يوم) ثمّ Haiku — ثمّ DeepSeek
-│    رياضيّات/ملفّ طويل: DeepSeek · صورة مرفقة: Gemini مباشر
-│    الحدود SUB_HAIKU_BASIC/PRO/MAX وSUB_SONNET_MAX، عدّاد لكلّ موديل (plan-haiku/plan-sonnet) يُزاد بعد قبول الحصّة
-│    الالتقاط: Gemini → DeepSeek → Groq (بلا كلود). السقف الكلّيّ في سلّة «plan». لا منتقٍ لأيّ باقة (v-providers-owner: المنتقي للمالك وحده؛ VIP على افتراضيّ التطبيق GPT)
-│  مزوّد مباشر بلا مفتاحه، أو غير كلود بلا مفتاح الوسيط → يُتخطّى (applyRoute تعود false)
+│    (v-plan-models، قرار المالك ١٦ أكتوبر)
+│    Plus: دردشة وحساب GPT-6 Luna (مباشر) · كود Haiku 5.5 — كلاهما بلا حدّ خاصّ (~٠٫٠٠١$ للرسالة)
+│    Pro: دردشة Gemini 3.8 Flash (مباشر، ٤٠/يوم SUB_GEMINI_PRO) ثمّ Luna · كود وملفّ طويل Mistral Large 3 (الوسيط mistralai/mistral-large-2512)
+│    Max: دردشة وحساب GPT-6 Sol (مباشر) · كود Sonnet 5.5 — حدّ مشترك ١٠٠/يوم (SUB_PREMIUM_MAX، عدّاد plan-premium) ثمّ Gemini 3.8 Flash
+│    صورة مرفقة: Gemini مباشر لكلّ الباقات · المقياس يُحجز ذرّيًّا لرأس السلسلة المحدود أيًّا كان مزوّده (takeMeter 'plan-<meter>')
+│    الالتقاط قبل أوّل حرف: باقي موديلات الوظيفة (بلا مقياس) ثمّ Groq المجّانيّ ثمّ Gemini. السقف الكلّيّ في سلّة «plan». لا منتقٍ لأيّ باقة
+│  مزوّد مباشر بلا مفتاحه: OpenAI وGemini بالموديل نفسه عبر الوسيط، وGroq يُتخطّى؛ غير كلود بلا مفتاح الوسيط → يُتخطّى (applyRoute تعود false)
 │  التطبيق في chat.js:1310 (قبل الحصّة كي تُعدّ الرسالة على المزوّد الذي يخدمها فعلًا)
 │  المالك · VIP · المجانيّ · الضيف → null (لا يمرّون هنا)
 │

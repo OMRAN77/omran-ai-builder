@@ -486,7 +486,7 @@
       <div class="pprice"><span class="pnum" data-usd="20">20</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>920</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">100 رسالة يوميًا</li><li data-i18n="plProVoice">حتّى 61 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">صور وفيديو ضمن الباقة</li><li data-i18n="plProAgent">الوكيل الذكي</li><li data-i18n="plProPriority">شارة ذهبية</li></ul>
+      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">100 رسالة يوميًا</li><li data-i18n="plProVoice">حتّى 61 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">صور وفيديو ضمن الباقة</li><li data-i18n="plProPriority">شارة ذهبية</li></ul>
       <button type="button" class="pbtn primary" onclick="openCheckout('pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">

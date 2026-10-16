@@ -91,12 +91,15 @@ module.exports = async (req, res) => {
     if (!privileged) {
       const tierLib = require('./tier.js');
       const meters = require('./_usage');
-      const used = { haiku: await meters.todayCount(usage.username, 'plan-haiku'), sonnet: await meters.todayCount(usage.username, 'plan-sonnet') };
+      const used = await tierLib.planUsedCounts(usage.username, usage.plan, meters.todayCount); // v-plan-models: مقاييس الباقة أيًّا كانت
       /* v-meter-atomic (المراجعة المعاكسة): كان فحصًا (todayCount) ثمّ زيادة (bumpCount) فتعبر المتزامنة الحدّ — الآن حجز ذرّيّ
          للمسار المختار قبل النداء؛ رفضه = امتلأ للتوّ فيُجرَّب التالي (Sonnet ثمّ Haiku)، وبعدها 402 كما كان. */
       let route;
       for (;;) {
         route = tierLib.planRoute({ tier: 'sub', plan: usage.plan, subscriber: true }, 'claude', 'اكتب كود', used, process.env);
+        /* v-plan-models: هذا الرابط يجيب بكلود وحده — كود Pro على Mistral Large 3 وكود Max بعد حدّه على Gemini، فيُؤخذ أوّل كلود في قائمة الوظيفة
+           (Haiku 5.5، بلا مقياس). لا كلود في القائمة = 402 كما كان. */
+        if (route && route.prov !== 'claude') { const c = (route.fallback || []).find((f) => f.prov === 'claude' && f.model); route = c ? Object.assign({}, route, { prov: 'claude', model: c.model, meter: '', meterCap: 0 }) : route; }
         if (!route || route.prov !== 'claude' || !route.model) {
           res.status(402).json({ error: tierLib.FREE_TEXT.engineLimit, reason: 'engine_limit' });
           return;

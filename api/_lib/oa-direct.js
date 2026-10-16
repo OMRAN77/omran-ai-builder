@@ -493,7 +493,11 @@ const LEAN_IMG_RE = /(?:ارسم|أرسم|ارسمي|رسمة|صور[ةه]|لو�
 const LEAN_VID_RE = /(?:فيديو|ڤيديو|مقطع|كليب|حرّ?ك|video|animate)/i; // v-owner-solo-all: طلب فيديو يُبقي أداته إن اتّسعت (كانت تُسقط فيقول «ما أقدر»)
 const LEAN_Q_RE = /[؟?]|(?:^|[\s،,])(?:كم|متى|وين|فين|من هو|من هي|ما هو|ما هي|ايش|إيش|شو|وش|أخبار|اخبار|سعر|أسعار|اسعار|طقس|نتيجة|مباراة|who|what|when|where|price|news|weather)(?=$|[\s،,؟?])/i;
 const TPM_NOTE_TOOLS = (names) => '[هذا الدور بأدوات محدودة لضيق حدّ مفتاح Groq في الدقيقة: ' + names.join('، ') + ' فقط. استعملها بنفسك حين تلزم؛ وما ليس معك في هذا الدور فلا تدّعِه — قل في سطر إنّه يحتاج رسالة أقصر أو مفتاح Groq بحدّ أعلى.]';
-function fitGroqTpm(body, errText) {
+/* v-plan-models (خريطة الباقات ١٥ أكتوبر): الملاحظتان أعلاه للمالك — تسمّيان المزوّد و«عمران» وتأمران الموديل بأن يقول «مفتاح Groq»، وكانتا تُحقنان
+   في إعادة المشترك المقصوصة أيضًا (قاعدة المالك: لا اسم مزوّد في نصّ يراه المستخدم). لغير المالك صيغة محايدة بلا اسم ولا وعد. */
+const TPM_NOTE_USER = '[هذا الدور بلا أدوات لضيق السياق المتاح الآن. أجب ممّا تعرفه، ولا تدّعِ بحثًا ولا قراءة ملفّ ولا تعديلًا؛ وإن طُلب شيء منها فقل في سطر إنّه غير متاح في هذه اللحظة ويمكن إعادة المحاولة بعد قليل.]';
+const TPM_NOTE_TOOLS_USER = (names) => '[هذا الدور بأدوات محدودة لضيق السياق المتاح الآن: ' + names.join('، ') + ' فقط. استعملها حين تلزم؛ وما ليس معك فلا تدّعِه — قل في سطر إنّه غير متاح في هذه اللحظة.]';
+function fitGroqTpm(body, errText, owner) {
   const t = String(errText || '');
   const m = /Limit\s+(\d+)\s*,\s*Requested\s+(\d+)/i.exec(t);
   if (!m || !/tokens per minute|\bTPM\b/i.test(t)) return null;
@@ -537,7 +541,7 @@ function fitGroqTpm(body, errText) {
   const idLast = paras.length > 1 && /^\[هويّتك\]/.test(paras[paras.length - 1]);
   const mid = paras.slice(1, idLast ? -1 : undefined);
   let tools = wantTools.slice();
-  const build = (k) => lean([paras[0] || ''].concat(mid.slice(0, k), idLast ? [paras[paras.length - 1]] : [], [tools.length ? TPM_NOTE_TOOLS(tools.map((x) => x.function.name)) : TPM_NOTE]).filter(Boolean).join('\n\n'), tools);
+  const build = (k) => lean([paras[0] || ''].concat(mid.slice(0, k), idLast ? [paras[paras.length - 1]] : [], [tools.length ? (owner ? TPM_NOTE_TOOLS : TPM_NOTE_TOOLS_USER)(tools.map((x) => x.function.name)) : (owner ? TPM_NOTE : TPM_NOTE_USER)]).filter(Boolean).join('\n\n'), tools);
   while (tools.length && est(build(0)) > budget) tools = tools.slice(0, -1); // الأدوات ذات الصلة ما اتّسعت لأقصر نظام، من الآخر
   if (!fitsAll(build(0))) return null;
   let k = 0;
@@ -663,12 +667,14 @@ async function directFetch(route, anthropicBody, opts) {
       const t = await r.text().catch(() => '');
       last = { ok: false, status: r.status, model, text: async () => t, headers: r.headers || null }; // v-groq-tpm: retry-after يصل إعادة C4 (owner-loop) فلا تعيد بعد ٠٫٨ ث ما قال Groq إنّه بعد ٣٠
       if (!capDropped && r.status === 400 && body.max_completion_tokens && /max_(?:completion_)?tokens/i.test(t)) { capDropped = true; body = Object.assign({}, body); delete body.max_completion_tokens; continue; }
-      if (!tpmFitted && route.prov === 'groq' && r.status === 413) { const fit = fitGroqTpm(body, t); if (fit) { tpmFitted = true; body = fit; continue; } }
+      if (!tpmFitted && route.prov === 'groq' && r.status === 413) { const fit = fitGroqTpm(body, t, !!o.owner); if (fit) { tpmFitted = true; body = fit; continue; } }
       if (r.status === 429) { const w = wait429Ms(r.headers, t, waits); if (w) { waits++; await pause(w, o.signal); if (o.signal && o.signal.aborted) break; continue; } } // v-direct-429: كلّ مزوّد لا Groq وحده
       break;
     }
-    { const lt = await last.text(); if (!isModelErrorStatus(last.status, lt) || /tool_use_failed/.test(lt)) break; } // v-groq-final: «model called a tool» رفضٌ للتوليد لا موديل ميّت
-    if (route.prov === 'groq' && o.fallbackModels) deadModels.add(model);
+    /* v-plan-models: حدود Groq لكلّ موديل — 429/413 على موديل (حدّ دقيقة أو يوم) يجرّب التالي في القائمة قبل أن يخرج من Groq، ولا يُعدّ ميّتًا */
+    const busy = route.prov === 'groq' && o.fallbackModels && (last.status === 429 || last.status === 413);
+    { const lt = await last.text(); if ((!busy && !isModelErrorStatus(last.status, lt)) || /tool_use_failed/.test(lt)) break; } // v-groq-final: «model called a tool» رفضٌ للتوليد لا موديل ميّت
+    if (route.prov === 'groq' && o.fallbackModels && !busy) deadModels.add(model);
   }
   return last;
 }

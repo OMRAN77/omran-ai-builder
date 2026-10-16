@@ -16,7 +16,12 @@ test('سلاسل الطبقة المجّانيّة بلا موديل موقوف'
   const tier = require('../api/_lib/tier.js');
   const S = tier.FREE_PROVIDER_SPECS;
   for (const dead of ['meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.1-8b-instant']) assert.ok(!S.groq.models.includes(dead), 'Groq: ' + dead);
-  assert.deepEqual(S.groq.models.slice(0, 2), ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'], 'الحيّ أوّلًا كما كان');
+  assert.deepEqual(S.groq.models.slice(0, 2), ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'], 'الحيّ أوّلًا — المجّانيّ على 20b ثمّ 120b (v-plan-models: حدود Groq لكلّ موديل)');
+  // v-plan-models: الوسيط المجّانيّ بلا موديل خرج من قائمته (Qwen3-235B أُوقف ٩ أكتوبر، وLlama 4/3.3 وGemma 3 خرجت)
+  for (const dead of ['qwen/qwen3-235b-a22b:free', 'meta-llama/llama-4-maverick:free', 'meta-llama/llama-3.3-70b-instruct:free', 'google/gemma-3-27b-it:free']) assert.ok(!S.openrouter.models.includes(dead), 'OpenRouter: ' + dead);
+  assert.ok(!S.openrouter.visionModels.includes('meta-llama/llama-4-maverick:free'), 'رؤية الوسيط: Maverick خرج');
+  assert.equal(S.openrouter.visionModels[0], 'google/gemma-4-31b-it:free', 'Gemma 4 يرى أوّلًا');
+  for (const m of S.openrouter.models) assert.ok(S.openrouter.pick.test(m), 'استكشاف الوسيط يلتقط ' + m);
   assert.ok(S.groq.pick.test('qwen/qwen3.8-27b'), 'استكشاف /models يلتقط Qwen3.8');
   assert.ok(!S.gemini.models.includes('gemini-3-flash'), 'Gemini: معرّف غير موجود');
   assert.equal(S.gemini.models[0], 'gemini-flash-latest');
