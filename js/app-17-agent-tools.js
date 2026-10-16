@@ -180,6 +180,7 @@
           var va = args || {};
           var vp = String(va.prompt || '').trim();
           if (!vp) return 'وصف الفيديو فارغ — لم يبدأ التوليد.';
+          if (typeof omranVideoWriteAsk === 'function' && omranVideoWriteAsk(UTXT, false)) return 'لم يبدأ أيّ توليد: المستخدم يطلب الكتابة على فيديو قائم، والتطبيق لا يكتب على الفيديو بعد. قل له ذلك بجملة واحدة ولا تدّعِ التنفيذ، واعرض كتابته على لقطة من الفيديو أو صورة يرسلها.'; // v-video-write-ask
           /* v-video-trends: الترند يحدد المحرك والنسبة ويُبنى أمره على الخادم */
           var trendMeta = null;
           try { trendMeta = (window.__VIDEO_TRENDS && va.trend) ? (window.__VIDEO_TRENDS.trends || []).filter(function (t) { return t.key === va.trend; })[0] : null; } catch (e) { trendMeta = null; }
@@ -220,7 +221,7 @@
           var vrsp = window.postWithConfirm ? await window.postWithConfirm(endpoint, payload) : await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
           var vjson = null; try { vjson = await vrsp.json(); } catch (e) { vjson = null; }
           if (vrsp.status === 428) return 'لم يتم تشغيل الفيديو لأن المستخدم لم يؤكد خصم النقاط.';
-          if (!vrsp.ok || !vjson) return 'تعذّر بدء الفيديو: ' + String((vjson && vjson.error) || ('HTTP ' + vrsp.status)).slice(0, 160);
+          if (!vrsp.ok || !vjson) return 'تعذّر بدء الفيديو: ' + String((vjson && typeof omranVideoCodeText === 'function' && omranVideoCodeText(vjson.error, vjson.retryAfter)) || (vjson && vjson.error) || ('HTTP ' + vrsp.status)).slice(0, 160); // v-chat-video-cooldown: النموذج يرى المهلة بالدقائق لا الرمز
           var videoUrl = null;
           var maxPoll = engine === 'veo' ? 34 : 36;
           for (var pi = 0; pi < maxPoll; pi++) {

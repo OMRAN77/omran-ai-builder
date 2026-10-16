@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=746'; /* v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة */
+    sc.src = 'i18n/' + lg + '.js?v=747'; /* v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -625,6 +625,7 @@ function __vaultRead(a){
    التعديل، التراجع). التوليد صورةً صورةً (طابور) كي لا تُفكّ أصول كثيرة معًا. */
 const __VIEW_MAX = 1280;
 const __viewReads = new WeakMap();
+const __viewFailAt = new WeakMap(); /* v-view-blank (مراجعة النقض): نسخة فشلت لا تُعاد مع كلّ رسم تحت ضغط الذاكرة نفسه — دقيقة ثمّ محاولة */
 let __viewQ = Promise.resolve();
 function __isBigDataImg(u){ return typeof u === 'string' && u.length > VAULT_MIN && u.slice(0, 11) === 'data:image/'; }
 function __makeView(src){
@@ -640,12 +641,14 @@ function __makeView(src){
           c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
           const cx = c.getContext('2d', { willReadFrequently: true }); /* لوحة برمجيّة: الأصل 4K لا يُرفع لذاكرة الرسم لصنع نسخته */
           cx.drawImage(im, 0, 0, c.width, c.height);
-          let alpha = false;
-          if(!/^data:image\/jpe?g/i.test(src)){
-            const d = cx.getImageData(0, 0, c.width, c.height).data;
-            for(let i = 3; i < d.length; i += 16){ if(d[i] < 250){ alpha = true; break; } }
-          }
-          const out = alpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.86);
+          /* v-view-blank: WebKit يُسقط drawImage بصمت حين لا يفكّ إطار المصدر (لا استثناء) — لوحة بلا حبر = فشل لا شفافية،
+             فلا تُعرض ولا تُحفظ «معرّف~v» فارغةً للأبد؛ والرسم يرجع للأصل. JPEG بلا شفافيّة: سطر واحد يكفي */
+          const jpg = /^data:image\/jpe?g/i.test(src);
+          const d = cx.getImageData(0, jpg ? c.height >> 1 : 0, c.width, jpg ? 1 : c.height).data;
+          let alpha = false, ink = false;
+          for(let i = 3; i < d.length; i += 16){ if(d[i] > 0) ink = true; if(d[i] < 250) alpha = true; if(ink && alpha) break; }
+          if(!ink){ c.width = c.height = 0; res(''); return; }
+          const out = (alpha && !jpg) ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.86);
           c.width = c.height = 0;
           res(typeof out === 'string' && out.slice(0, 11) === 'data:image/' ? out : '');
         }catch(e){ __swallow(e, 'view:make'); res(''); }
@@ -655,15 +658,27 @@ function __makeView(src){
     }catch(e){ __swallow(e, 'view:make#img'); res(''); }
   });
 }
+/* v-view-blank: نسخة PNG (شفّافة أو فارغة) تُصغَّر ٨×٨ — بلا حبر = فارغة صنعها رسم أسقطه WebKit قبل الإصلاح؛ أيّ تعذّر = تُقبل كما كانت */
+function __viewHasInk(u){
+  return new Promise(res => {
+    try{
+      const im = new Image();
+      im.onload = () => { try{ const c = document.createElement('canvas'); c.width = c.height = 8; const cx = c.getContext('2d', { willReadFrequently: true }); cx.drawImage(im, 0, 0, 8, 8); const d = cx.getImageData(0, 0, 8, 8).data; c.width = c.height = 0; for(let i = 3; i < d.length; i += 4) if(d[i] > 0){ res(true); return; } res(false); }catch(e){ __swallow(e, 'view:ink'); res(true); } };
+      im.onerror = () => res(true);
+      im.src = u;
+    }catch(e){ __swallow(e, 'view:ink#img'); res(true); }
+  });
+}
 /* نسخة العرض لمرفق: من الذاكرة، أو من المخزن، أو تُصنع من الأصل (المخزون يُقرأ عبر القارئ المشترك) وتُحفظ */
 function __imgView(a){
   if(!a) return Promise.resolve('');
   if(a.viewUrl) return Promise.resolve(a.viewUrl);
+  if(Date.now() - (__viewFailAt.get(a) || 0) < 60000) return Promise.resolve('');
   let pr = __viewReads.get(a);
   if(pr) return pr;
   pr = (async () => {
     if(a.vaultId && !a.vaultPending){
-      try{ const v = await idbImgGet(a.vaultId + '~v'); if(typeof v === 'string' && v.slice(0, 11) === 'data:image/'){ a.viewUrl = v; return v; } }catch(e){ __swallow(e, 'view:get'); }
+      try{ const v = await idbImgGet(a.vaultId + '~v'); if(typeof v === 'string' && v.slice(0, 11) === 'data:image/' && (v.slice(0, 14) !== 'data:image/png' || await __viewHasInk(v))){ a.viewUrl = v; return v; } }catch(e){ __swallow(e, 'view:get'); } /* v-view-blank: PNG محفوظة قبل الإصلاح قد تكون فارغة — تُفحص وتُصنع من جديد */
       if(typeof window !== 'undefined' && window.__usingSlimProjects) return ''; /* المرآة المنحّفة تُستبدل بالكاملة قريبًا — لا تُفكّ أصولها */
     }
     const job = __viewQ.then(async () => {
@@ -671,7 +686,7 @@ function __imgView(a){
       if(!src && a.vaultId && !a.vaultPending){ try{ const d = await __vaultRead(a); if(__isBigDataImg(d)) src = d; }catch(e){ __swallow(e, 'view:orig'); } }
       if(!src) return '';
       const v = await __makeView(src);
-      if(!v) return '';
+      if(!v){ __viewFailAt.set(a, Date.now()); return ''; }
       a.viewUrl = v;
       if(a.vaultId && !a.vaultPending) idbImgPutAll([{ id: a.vaultId + '~v', dataUrl: v }]).catch(e => __swallow(e, 'view:put'));
       return v;
@@ -2226,7 +2241,7 @@ function renderMessages(keepScroll){
           else if(a.viewUrl) img.src = a.viewUrl;
           else if(__isBigDataImg(a.dataUrl) || __vaultDegraded(a)){
             if(__isBigDataImg(a.dataUrl) && (!a.vaultId || a.vaultPending)) img.src = a.dataUrl;
-            __imgView(a).then(__showSrc).catch(e => __swallow(e, 'img:view'));
+            __imgView(a).then(u => __showSrc(u || (__isBigDataImg(a.dataUrl) ? a.dataUrl : ''))).catch(e => __swallow(e, 'img:view')); /* v-view-blank: بلا نسخة = الأصل، لا صورة بلا src */
           } else img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
           /* v-image-vault/v-mem-guard2: أدوات المشاركة والحفظ تحتاج الأصل — يُقرأ من المخزن (قراءة مشتركة) وتُلحق حين يصل */
           if(__vaultDegraded(a) && !window.__usingSlimProjects){ __vaultRead(a).then(d => { if(__isBigDataImg(d)) setTimeout(() => { if(img.isConnected && __ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); }, 0); }).catch(e => __swallow(e, 'vault:render')); }
