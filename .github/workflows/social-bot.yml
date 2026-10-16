@@ -1,0 +1,58 @@
+name: Social bot — OM Ai reels
+
+# 5 posts/month = Upload-Post free quota (10 uploads, 2 platforms each)
+on:
+  schedule:
+    - cron: '0 16 1,7,13,19,25 * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Make video only, do not post'
+        type: boolean
+        default: true
+      idea:
+        description: 'Idea number (empty = rotate)'
+        required: false
+        default: ''
+      platforms:
+        description: 'Platforms'
+        required: false
+        default: 'instagram,facebook'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-bot
+  cancel-in-progress: false
+
+jobs:
+  reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser, ffmpeg, fonts
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+          sudo apt-get update -y && sudo apt-get install -y ffmpeg fonts-noto-color-emoji fonts-noto-core
+      - name: Build, record, publish
+        env:
+          UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
+          MONITOR_KEY: ${{ secrets.MONITOR_KEY }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '' }}
+          IDEA_INDEX: ${{ inputs.idea }}
+          PLATFORMS: ${{ inputs.platforms || 'instagram,facebook' }}
+        run: node scripts/social-bot.mjs
+      - name: Video download (Snapchat/TikTok manual)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: omai-reel-${{ github.run_number }}
+          path: social-out/
+          retention-days: 30
+          if-no-files-found: ignore
