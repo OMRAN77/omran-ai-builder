@@ -118,7 +118,7 @@ test('٩) النصّ يحمل رقم الحلقة والترند وموعد ال
   assert.match(c.ig, /🔥 الفكرة من ترند اليوم: أجواء شتوية/);
   assert.match(c.ig, /الحلقة 6 بعد يومين/);
   assert.ok((c.ig.match(/#/g) || []).length <= 30);
-  assert.match(src, /fd\.append\('external_id', EP_ID\(epN\)\)/);
+  assert.match(src, /fd\.append\('external_id', EP_ID\(epN, kind\)\)/);
   assert.match(src, /process\.argv\.includes\('--gate'\)/);
 });
 
@@ -199,7 +199,7 @@ test('١٥) يشتغل بروحه: النوع بالدور من رقم الحل�
   assert.deepEqual(kindOrder(1), ['site', 'video', 'styles']);
   assert.deepEqual(kindOrder(2), ['video', 'styles', 'site']);
   assert.deepEqual(kindOrder(3), ['styles', 'site', 'video']);
-  assert.match(src, /forced \? \[forced\.kind\] : fixedIdea \? \['site'\] : kindOrder\(epN\)/, 'اليدويّ يلتزم بالنوع المطلوب');
+  assert.match(src, /forced \? \[forced\.kind\] : fixedIdea \? \['site'\] : kindOrder\(epN, st\.lastKind\)/, 'اليدويّ يلتزم بالنوع المطلوب');
   assert.match(src, /trying the next kind/);
   const pub = src.indexOf('await publish(out.res.mp4'), loop = src.indexOf('for (const kind of order)');
   assert.ok(loop > 0 && pub > loop, 'النشر مرّة وحدة بعد ما ينجح نوع — ما يتكرّر');
@@ -216,4 +216,29 @@ test('١٦) بوّابة جودة الموقع: الهزيل أو اللي في�
   assert.equal(siteProblem(pad + '<img src="data:image/png;base64,AAwine+beer/QQ">'), '', 'صور base64 ما تنحسب');
   assert.equal(siteText('<style>.wine{}</style><b>أهلًا</b>&nbsp;'), ' أهلًا ');
   assert.match(src, /siteProblem\(cap\.code, MIN_CODE\)/);
+});
+
+test('١٧) الدور يمشي من نوع آخر حلقة منشورة: الحلقة 1 نزلت فيديو احتياطًا ← الحلقة 2 أنماط مو فيديو', async () => {
+  const { seriesFromHistory, kindOrder, kindOfCaption, platformResults } = await load();
+  const st = seriesFromHistory([
+    { external_id: 'omai-ep-1', success: true, upload_timestamp: '2026-10-16T16:51:00Z', post_title: '🎬 الحلقة 1 من سوّها بـ OM Ai\nكتبت سطر واحد… وطلع اسكتش بيكسار خليجي بالصوت في 56 ثانية 🤯' },
+  ]);
+  assert.equal(st.last, 1);
+  assert.equal(st.lastKind, 'video');
+  assert.deepEqual(kindOrder(2, st.lastKind), ['styles', 'site', 'video']);
+  assert.deepEqual(kindOrder(2, ''), ['video', 'styles', 'site'], 'بلا سجلّ نوع: من رقم الحلقة');
+  const st2 = seriesFromHistory([
+    { external_id: 'omai-ep-1', success: true, upload_timestamp: '2026-10-16T16:51:00Z', post_title: 'اسكتش' },
+    { external_id: 'omai-ep-2-styles', success: true, upload_timestamp: '2026-10-18T16:10:00Z', post_title: 'x' },
+  ]);
+  assert.equal(st2.last, 2);
+  assert.equal(st2.lastKind, 'styles');
+  assert.deepEqual(kindOrder(3, st2.lastKind), ['site', 'video', 'styles']);
+  assert.equal(kindOfCaption('سوّيت موقع مقهى «رذاذ» كامل في 40 ثانية'), 'site');
+  assert.equal(kindOfCaption('صورة وحدة… صارت 5 أنماط'), 'styles');
+  assert.deepEqual(platformResults({ results: [{ platform: 'tiktok', success: true, post_url: 'https://t/1', fallback_to_inbox: true }, { platform: 'facebook', success: false, error: 'x', error_message: 'token expired' }] }),
+    [{ platform: 'tiktok', ok: true, url: 'https://t/1', inbox: true, error: '' }, { platform: 'facebook', ok: false, url: '', inbox: false, error: 'token expired' }]);
+  assert.deepEqual(platformResults({ results: { instagram: { success: true, url: 'https://i/1' } } })[0], { platform: 'instagram', ok: true, url: 'https://i/1', inbox: false, error: '' });
+  assert.deepEqual(platformResults(null), []);
+  assert.match(src, /kindOrder\(epN, st\.lastKind\)/);
 });

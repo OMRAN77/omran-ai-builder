@@ -40,14 +40,14 @@ test('٢. الرفع: الصور تُصغَّر JPEG، والـPDF الكبير 
   const s = read('js/edu.js');
   assert.ok(s.includes('var EDU_B64_BUDGET=3200000;'));
   assert.ok(s.includes('eduImagesForUpload(imgs)') && !s.includes("Promise.all(imgs.map(function(f){ return fileToBase64(f)"), 'الصور لا تُرسل خامًا');
-  assert.ok(s.includes('eduPdfPayload(f0).then(function(pl){ pl.lang=appLang(); processContent(pl); })'));
+  assert.ok(s.includes("eduPdfPayload(f0).then(function(pl){ pl.lang=appLang(); processContent(pl,'',meta); })")); /* v-edu-upform: بيانات النموذج تمرّ مع الرفع نفسه */
   assert.ok(s.includes("if(b64.length<=EDU_B64_BUDGET) return {fileBase64:b64,mime:'application/pdf',fileName:file.name};"), 'PDF الصغير كما كان');
   assert.ok(s.includes('window.extractPdfText(file)'), 'نصّ الـPDF الكبير');
   assert.ok(s.includes("if(!allImg&&total>10*1024*1024){ alert(T('tooBig')); return; }"), 'صور الآيفون لا تُرفض قبل التصغير');
   assert.ok(s.includes("return persistLesson(lesson).catch(function(){"), 'فشل الحفظ لا يرمي التحليل');
   assert.ok(s.includes("return listLessons().catch(function(){ return {lessons:[]}; })"));
   assert.ok(read('js/app.bundle.js').includes('async function extractPdfText(file){'), 'الدالة متاحة عالميًّا من الحزمة');
-  assert.ok(read('index.html').includes('/js/edu.js?v=668'));
+  assert.ok(Number((read('index.html').match(/\/js\/edu\.js\?v=(\d+)/) || [])[1]) >= 668); /* v-edu-upform: الوسم يُقرأ من المصدر — رفعه لا يكسر الاختبار */
 });
 
 test('٣. حفظ رابط مشاركة في قاعدة ممتلئة: تنظيف القديم مرّة ثمّ إعادة الحفظ — وخطأ آخر (حدّ الطلبات) يُرمى بلا تنظيف', async () => {
@@ -97,5 +97,5 @@ test('٥. v-edu-ios-files: قائمة ملفّات حيّة (سفاري) تُن�
   input.onchange.call(input);
   assert.equal(got && got.length, 1, 'الملفّ وصل بعد تفريغ الحقل');
   assert.equal(got[0].name, 'Student_Card.pdf');
-  assert.ok(read('index.html').includes('/js/edu.js?v=668'));
+  assert.ok(Number((read('index.html').match(/\/js\/edu\.js\?v=(\d+)/) || [])[1]) >= 668); /* v-edu-upform: الوسم يُقرأ من المصدر — رفعه لا يكسر الاختبار */
 });

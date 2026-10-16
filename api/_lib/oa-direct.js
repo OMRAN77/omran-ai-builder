@@ -112,8 +112,28 @@ function textOf(content) {
   return content.map((b) => (b && b.type === 'text') ? String(b.text || '') : '').filter(Boolean).join('\n');
 }
 
+/* v-pro-lanes (لقطة مشترك Pro ٧٥ ١٦ أكتوبر: «أسعار السياكل» ← «ما قدرت أجيب أسعار» بلا بحث): Gemini 3 على عنوان Google المتوافق
+   يُلحق بأوّل نداء أداة في الخطوة توقيع تفكير (tool_calls[i].extra_content.google.thought_signature) ويرفض الخطوة التالية بـ400
+   «Function call is missing a thought_signature» إن لم يعد كما وصل — كان يُسقط فيفشل كلّ دور بحث عند الخطوة الثانية. التوقيعات
+   تُحفظ لكلّ دور في sigs (من chat.js) بمعرّف النداء وموديله، وتعود كما هي؛ نداء بلا توقيع منه (موديل آخر في الدور نفسه أو موديل
+   Gemini غيره) يأخذ القيمة البديلة الموثّقة لنداءات لم يولّدها Gemini 3. وGemini يقبل enum نصوصًا فقط (enum أرقام = 400 قبل أوّل حرف):
+   القيم تنتقل إلى الوصف. */
+const GEM_SKIP_SIG = 'skip_thought_signature_validator';
+function gemSigOf(tc) { const g = tc && tc.extra_content && tc.extra_content.google; return (g && typeof g.thought_signature === 'string') ? g.thought_signature : ''; }
+function gemSchema(s) {
+  if (Array.isArray(s)) return s.map(gemSchema);
+  if (!s || typeof s !== 'object') return s;
+  const out = {};
+  for (const k of Object.keys(s)) out[k] = (k === 'enum' || k === 'required') ? s[k] : gemSchema(s[k]);
+  if (Array.isArray(out.enum) && out.enum.some((v) => typeof v !== 'string')) {
+    out.description = (out.description ? out.description + ' ' : '') + '(' + out.enum.join(', ') + ')';
+    delete out.enum;
+  }
+  return out;
+}
+
 // جسم أنثروبيك ← جسم chat/completions. الكاش والتفكير وإعدادات الجهد لا مقابل لها فتُسقط.
-function toOpenAIBody(ab, prov) {
+function toOpenAIBody(ab, prov, sigs) {
   const messages = [];
   const sys = textOf(ab.system);
   if (sys) messages.push({ role: 'system', content: sys });
@@ -126,6 +146,10 @@ function toOpenAIBody(ab, prov) {
       const calls = m.content.filter((b) => b && b.type === 'tool_use').map((b) => ({
         id: b.id, type: 'function', function: { name: b.name, arguments: JSON.stringify(b.input || {}) },
       }));
+      if (prov === 'gemini' && calls.length) { // v-pro-lanes: التوقيع كما وصل من الموديل نفسه، وإلّا البديل على أوّل نداء
+        for (const c of calls) { const g = sigs && sigs.get(c.id); if (g && g.sig && g.model === ab.model) c.extra_content = { google: { thought_signature: g.sig } }; }
+        if (!calls[0].extra_content) calls[0].extra_content = { google: { thought_signature: GEM_SKIP_SIG } };
+      }
       const out = { role: 'assistant', content: text || null };
       if (calls.length) out.tool_calls = calls;
       if (text || calls.length) messages.push(out);
@@ -155,6 +179,7 @@ function toOpenAIBody(ab, prov) {
   if (prov === 'openai' || prov === 'kimi') body.stream_options = { include_usage: true };
   if (Array.isArray(ab.tools) && ab.tools.length) {
     body.tools = ab.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description || '', parameters: t.input_schema || { type: 'object', properties: {} } } }));
+    if (prov === 'gemini') for (const t of body.tools) t.function.parameters = gemSchema(t.function.parameters); // v-pro-lanes
     if (ab.tool_choice && ab.tool_choice.type === 'none' && prov !== 'groq') body.tool_choice = 'none'; // v-claude-code-level C1: الجواب الختاميّ بلا أدوات، والقائمة كما هي · v-groq-final: Groq يفرض none برفض التوليد (tool_use_failed) وgpt-oss يستدعي رغمه — يكفيه FINAL_NOTE
   }
   return body;
@@ -355,10 +380,10 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel, nameBack) { // 
 // v-oa-responses: موديل غير موجود أو لا يملكه المفتاح (نصّ OpenAI المعتاد) — غير ذلك من 404/400 رفضٌ للطلب لا للموديل.
 const OA_MODEL_MISSING_RE = /model_not_found|does not exist|do not have access|not have access to (?:the )?model/i;
 
-const STOP = { tool_calls: 'tool_use', function_call: 'tool_use', length: 'max_tokens' };
+const STOP = { tool_calls: 'tool_use', function_call: 'tool_use', length: 'max_tokens', content_filter: 'refusal' }; // مراجعة v-pro-lanes: حجب الرقابة رفض لا «ختام فارغ» يُعاد على مسار آخر
 
 // بثّ chat/completions ← بثّ أحداث أنثروبيك بالأسطر نفسها التي تقرؤها الحلقة (data: {...}).
-function toAnthropicStream(upstreamBody, fallbackModel) {
+function toAnthropicStream(upstreamBody, fallbackModel, sigs) { // sigs: v-pro-lanes — توقيعات Gemini 3 لهذا الدور (معرّف النداء ← {sig, model})
   const enc = new TextEncoder();
   const dec = new TextDecoder();
   return new ReadableStream({
@@ -374,6 +399,7 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
       let textIdx = -1;      // كتلة النصّ المفتوحة
       const toolIdx = new Map(); // فهرس نداء OpenAI ← فهرس كتلة أنثروبيك
       const toolArgs = new Map();
+      const toolIds = new Map(); // v-pro-lanes: معرّف كلّ نداء كما بُثّ (مفتاح التوقيع)
       let stop = null;
       let usage = null;
       let doneMarker = false;
@@ -443,8 +469,12 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
                 const idx = next++;
                 toolIdx.set(k, idx);
                 toolArgs.set(k, '');
-                emit({ type: 'content_block_start', index: idx, content_block: { type: 'tool_use', id: tc.id || ('call_' + idx), name: (tc.function && tc.function.name) || '', input: {} } });
+                let id = tc.id || ('call_' + idx);
+                if (sigs) { const b = id; for (let n = 2; sigs.has(id); n++) id = b + '_' + n; sigs.set(id, { sig: '', model: fallbackModel }); } // v-pro-lanes: معرّف مكرّر بين الخطوات لا يأخذ توقيع غيره
+                toolIds.set(k, id);
+                emit({ type: 'content_block_start', index: idx, content_block: { type: 'tool_use', id, name: (tc.function && tc.function.name) || '', input: {} } });
               }
+              if (sigs) { const g = gemSigOf(tc); if (g) sigs.get(toolIds.get(k)).sig = g; }
               const args = tc.function && tc.function.arguments;
               if (args) {
                 toolArgs.set(k, toolArgs.get(k) + String(args));
@@ -455,6 +485,7 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
           }
         }
         if (!doneMarker || !stop) throw streamProtocolError('stream ended without [DONE] and finish_reason');
+        if (stop === 'end_turn' && toolIdx.size) stop = 'tool_use'; // v-pro-lanes: نداءات كاملة مع finish_reason «stop» (عنوان Google المتوافق) نداءات لا جواب فارغ
         if (stop === 'tool_use') {
           for (const args of toolArgs.values()) {
             if (!validToolArguments(args)) throw streamProtocolError('incomplete tool arguments JSON');
@@ -646,7 +677,8 @@ async function directFetch(route, anthropicBody, opts) {
     if (OA_MODEL_MISSING_RE.test(rt) || (rl.status !== 400 && rl.status !== 404)) return rl;
     try { require('./log-error.js').logError('oa-direct/responses-' + rl.status, new Error(rt.slice(0, 280) || ('responses ' + rl.status)), { action: 'responses-fallback', model: rb.model }); } catch (e) { /* التسجيل تحسين */ }
   }
-  const base = toOpenAIBody(anthropicBody, route.prov);
+  const gSigs = route.prov === 'gemini' ? (o.sigs || null) : null; // v-pro-lanes
+  const base = toOpenAIBody(anthropicBody, route.prov, gSigs);
   let models = [base.model];
   if (route.prov === 'groq' && o.fallbackModels) {
     // موديل رفضه Groq في هذه الدالّة الدافئة لا يُعاد تجريبه أوّلًا في كلّ رسالة.
@@ -662,7 +694,7 @@ async function directFetch(route, anthropicBody, opts) {
       const r = await f(route.url, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(body) }, sig));
       if (r.ok && r.body) {
         if (route.prov === 'groq') rememberWorking('groq-direct', model); // v-plan-models: لا يغيّر ترتيب المجّانيّ (20b أوّلًا) — كان المباشر (120b) يقدّم موديله ستّ ساعات
-        return { ok: true, status: r.status, model, text: async () => '', body: toAnthropicStream(r.body, model) };
+        return { ok: true, status: r.status, model, text: async () => '', body: toAnthropicStream(r.body, model, gSigs) };
       }
       const t = await r.text().catch(() => '');
       last = { ok: false, status: r.status, model, text: async () => t, headers: r.headers || null }; // v-groq-tpm: retry-after يصل إعادة C4 (owner-loop) فلا تعيد بعد ٠٫٨ ث ما قال Groq إنّه بعد ٣٠
@@ -698,4 +730,4 @@ function quickEffortRejected(model, effort) {
   quickRejected.set(k, bad);
 }
 
-module.exports = { PPLX_NO_TOOLS, PPLX_RESERVED, pplxWire, pplxBack, pplxReservedIn, directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, retryAfterOf, wait429Ms, __cfg: CFG, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected, __summaryOff: summaryOff };
+module.exports = { PPLX_NO_TOOLS, PPLX_RESERVED, pplxWire, pplxBack, pplxReservedIn, directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, retryAfterOf, wait429Ms, __cfg: CFG, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, gemSchema, GEM_SKIP_SIG, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected, __summaryOff: summaryOff };
