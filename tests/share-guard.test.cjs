@@ -9,6 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'share-guard-test-secret';
@@ -276,4 +277,16 @@ test('١٠. v-share-bytes: ميزانيّة بايت يوميّة واحدة ل�
   } finally {
     if (prev === undefined) delete process.env.SHARE_BYTES_DAILY; else process.env.SHARE_BYTES_DAILY = prev;
   }
+});
+
+test('٩. v-chunk-fix: ملفّ أكبر من جزء واحد (فيديو ~١٫٥ م.ب) ينزل بايتًا ببايت — كان ينزل ٠ بايت لغياب «:» بعد الاسم', async () => {
+  const raw = crypto.randomBytes(1536 * 1024);
+  const up = await call(file, { method: 'POST', body: { token: makeToken('chunkUser'), data: raw.toString('base64'), name: 'v.mp4', mime: 'video/mp4' } });
+  assert.equal(up.status, 200);
+  assert.ok(String(store.get('db/file/' + up.body.id)).startsWith('chunks:'), 'خُزِّن أجزاءً فعلًا');
+  const got = await call(file, { method: 'GET', query: { id: up.body.id } });
+  assert.equal(got.status, 200);
+  assert.equal(got.headers['content-type'], 'video/mp4');
+  assert.match(got.headers['content-disposition'], /filename="v\.mp4"/);
+  assert.ok(Buffer.compare(got.body, raw) === 0, 'المحتوى مطابق');
 });

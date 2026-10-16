@@ -108,6 +108,10 @@ test('رفع فيديوهات المالك (طلبه: «كيف أرفع الفي
   assert.ok(wf.includes("paths: ['media/samples/raw/**']") && wf.includes('git push origin HEAD:main'));
   assert.ok(fs.existsSync(path.join(root, 'media/samples/raw/README.md')));
   assert.ok(js.includes('tx=(vm&&vm.title)||L(k)'), 'عنوان الفيديو المرفوع يغلب المثال');
+  // v-tab-tut + v-sample-url (المالك ١٧ أكتوبر «حط الفيديوين»): تعليميّ لكلّ قسم، وفيديو يُجلب برابط من نطاق التطبيق ببصمة مطابقة
+  assert.ok(ing.includes("-([12]|tut)\\\\.(mp4|mov|webm|m4v)$") && ing.includes("-([12]|tut)\\\\.url$") && ing.includes("const URL_HOSTS = ['omran-ai-builder.vercel.app']"));
+  assert.ok(ing.includes("createHash('sha256')") && ing.includes('if (got !== want) throw') && ing.includes('!urls.every(hostOk)'), 'بصمة لا تطابق أو نطاق آخر = فشل');
+  assert.ok(js.includes("VIDEOS[m+'-tut']&&ar()") && js.includes('openPlayer(tutUrl(md))'), 'تعليميّ القسم يغلب العامّ بالعربيّ');
   const tut = read('scripts/video-tutorial.mjs');
   assert.ok(tut.includes('deviceScaleFactor: 2') && tut.includes('window.R = function (t)') && tut.includes("viewport: { width: 1920, height: 1080 }"), 'التعليميّ مُمنتَج: لقطات بدقّة مضاعفة وتركيب يُرسم إطارًا إطارًا ١٠٨٠');
   const sm = read('scripts/video-samples.mjs');
