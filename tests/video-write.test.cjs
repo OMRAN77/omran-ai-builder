@@ -65,3 +65,27 @@ test('الربط: التوجيه، السلسلة، الواجهة، النصو�
   assert.ok(h.includes('src="/js/video.js?v=447"') && h.includes('modules.css?v=681'));
   assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=749'"));
 });
+
+test('v-write-fix: سقف ١٦٠٠، وجواب مقطوع يُرفض فتنتقل السلسلة للمزوّد التالي بدل «تعذّرت الكتابة»', async () => {
+  let seen = null;
+  await vw.write({ request: 'x', seconds: 10, chain: async (o) => { seen = o; return { ok: false, errors: [] }; } });
+  assert.equal(seen.max_tokens, 1600);
+  assert.equal(seen.accept('{"scene":"مشهد البحر","narr'), false);
+  assert.equal(seen.accept('{"scene":"مشهد","narration":"هلا"}'), true);
+  const fc = require('../api/_lib/free-chain.js');
+  const calls = [];
+  const completion = (t, fr) => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: t }, finish_reason: fr || 'stop' }] }), text: async () => '' });
+  const fetchImpl = async (url) => { calls.push(url); return /groq/.test(url) ? completion('{"scene":"مشهد مقطو', 'length') : completion('{"scene":"مشهد كامل","narration":"هلا والله"}'); };
+  const env = { GROQ_API_KEY: 'g', GEMINI_API_KEY: 'k', FREE_CHAIN: 'groq,gemini' };
+  const diag = [];
+  const r = await vw.write({ request: 'x', seconds: 8, env, diag, chain: (o) => fc.completeFreeChain(Object.assign({}, o, { fetchImpl, now: 1 })) });
+  assert.equal(r && r.scene, 'مشهد كامل');
+  assert.match(diag.join(' '), /groq: rejected \(length/);
+  assert.ok(calls.some((u) => /groq/.test(u)) && calls.some((u) => /generativelanguage/.test(u)));
+});
+
+test('v-write-fix: سبب الفشل يرجع للمالك وحده', () => {
+  const src = read('api/_lib/video-write.js');
+  assert.match(src, /isOwnerName\(gate\.username\)/);
+  assert.match(src, /owner \? \{ diag \} : \{\}/);
+});

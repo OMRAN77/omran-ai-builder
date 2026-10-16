@@ -61,7 +61,11 @@ async function write(opts) {
   const o = opts || {};
   const sec = o.seconds || 8;
   const chain = o.chain || require('./free-chain.js').completeFreeChain;
-  const r = await chain({ env: o.env, messages: [{ role: 'user', content: buildPrompt(Object.assign({}, o, { seconds: sec })) }], max_tokens: 700, temperature: 0.8, timeoutMs: 15000, fetchImpl: o.fetchImpl });
+  /* v-write-fix (المالك ١٧ أكتوبر، تجربة حيّة: «تعذّرت الكتابة» ثلاث مرّات متتالية): أوّل السلسلة Groq gpt-oss — موديل
+     مفكّر يصرف من max_tokens على التفكير، فبسقف ٧٠٠ يرجع JSON مقطوعًا يرفضه parseReply فيضيع الطلب كلّه.
+     الآن: سقف ١٦٠٠، والسلسلة لا تقبل إلّا جوابًا يُقرأ (accept) فتنتقل للمزوّد التالي بدل الفشل. */
+  const r = await chain({ env: o.env, messages: [{ role: 'user', content: buildPrompt(Object.assign({}, o, { seconds: sec })) }], max_tokens: 1600, temperature: 0.8, timeoutMs: 15000, fetchImpl: o.fetchImpl, accept: (t) => !!parseReply(t, sec, o.characters) });
+  if (Array.isArray(o.diag) && r && Array.isArray(r.errors)) o.diag.push.apply(o.diag, r.errors.slice(0, 6));
   if (!r || !r.ok) return null;
   return parseReply(r.text, sec, o.characters);
 }
@@ -83,9 +87,14 @@ async function handler(req, res) {
   try { gate = await checkAndConsumePlanCustom(body.token, null, clientIp(req), 'video-write', DAILY_LIMIT); } catch (e) { gate = null; /* عطب العدّاد لا يفتح الباب */ }
   if (gate && !gate.allowed) { res.status(200).json({ result: null, reason: gate.reason === 'limit' ? 'limit' : 'auth' }); return; }
   if (!gate || !gate.username) { res.status(200).json({ result: null, reason: 'auth' }); return; }
-  let result = null;
-  try { result = await write({ request, kind, seconds, characters, env: process.env }); } catch (e) { console.error('[video-write] ' + (e && e.message)); }
-  if (!result) { res.status(200).json({ result: null, reason: 'unavailable' }); return; }
+  let result = null; const diag = [];
+  try { result = await write({ request, kind, seconds, characters, env: process.env, diag }); } catch (e) { console.error('[video-write] ' + (e && e.message)); }
+  if (!result) {
+    if (diag.length) console.warn('[video-write] unavailable: ' + diag.join(' | '));
+    /* v-write-fix: سبب الفشل (مزوّد/حالة بلا مفاتيح) يظهر للمالك وحده — كان العطل صامتًا بلا أثر */
+    let owner = false; try { owner = require('./_owner.js').isOwnerName(gate.username); } catch (e) { owner = false; }
+    res.status(200).json(Object.assign({ result: null, reason: 'unavailable' }, owner ? { diag } : {})); return;
+  }
   res.status(200).json({ result, seconds, words: speechBudget(seconds) });
 }
 
