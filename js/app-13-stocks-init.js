@@ -2093,7 +2093,7 @@
      الأظافر صارت معاينة-أوّلًا كالمكياج: يد قريبة بالأظافر المطلوبة من وصفها نفسه، تُولَّد مرّة وتُخزَّن للجميع. */
   const PREVIEW_FIRST = ['makeup', 'nails'];
   function optionImgs(f, v){
-    const asset = 'assets/studio/options/' + f + '-' + v + '.webp';
+    const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     const gen = PREVIEW_API(f, v);
     return PREVIEW_FIRST.indexOf(f) !== -1 ? { img: gen, img2: asset } : { img: asset, img2: gen };
   }

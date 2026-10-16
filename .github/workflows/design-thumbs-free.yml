@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'styles | places | all'
+        description: 'styles | places | all | opts | opts:furniture,flooring,fabric,wall,curtains | sr:<مجموعة>[:ج/ن] (scripts/sr/sets.json)'
         required: false
         default: 'all'
 
@@ -15,11 +15,12 @@ permissions:
   contents: write
 
 concurrency:
-  group: design-thumbs-free      # لا تشغيلان يدفعان لنفس الفرع
+  group: design-thumbs-free-${{ inputs.mode }}   # v-decor-18: أقسام مختلفة تتوازى (كلّ تشغيل عنوان IP مستقلّ)، والدفع يعيد القاعدة
   cancel-in-progress: false
 
 jobs:
   thumbs:
+    if: ${{ !startsWith(inputs.mode, 'sr:') }}
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
@@ -48,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          files=(thumbs/dstyle/*.webp thumbs/dplace/*.webp)
+          files=(thumbs/dstyle/*.webp thumbs/dplace/*.webp thumbs/dopts/*.webp)
           if [ ${#files[@]} -eq 0 ]; then
             echo "::error::لم يُنتج المولّد أي صورة — تحقق من المحرّك المجاني"
             exit 1
@@ -67,11 +68,15 @@ jobs:
       # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
       - name: Push cards to bot branch
         shell: bash
+        env:
+          MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
           shopt -s nullglob
 
           BRANCH=bot/design-thumbs
+          # v-decor-18: صور خيارات الأقسام الخمسة على فرعها الخاصّ — لا تختلط بتشغيلات الأنماط القديمة.
+          case "$MODE" in opts*) BRANCH=bot/decor-opts ;; esac
 
           mkdir -p assets/design/styles assets/design/opts
           if [ -d thumbs/dstyle ]; then
@@ -92,28 +97,92 @@ jobs:
             git checkout -B "$BRANCH"
           fi
 
+          # بعد الانتقال للفرع: نسخة سابقة بالاسم نفسه على الفرع تُستبدل بدل أن تُفشل الانتقال.
+          mkdir -p assets/design/decor-opts
+          for f in thumbs/dopts/*.webp; do
+            cp "$f" "assets/design/decor-opts/$(basename "$f")"
+          done
+
           git add -A -- assets/design
           if git diff --cached --quiet; then
             echo "لا جديد — الصور مطابقة لما هو ملتزم"
             exit 0
           fi
 
-          git commit -m "أصول: بطاقات الديكور شبه الحقيقية (مولّد مجاني)"
-          git push origin "$BRANCH"      # بلا -f: الفرع مبني على أصله فلا حاجة للقسر
+          git commit -m "أصول: بطاقات الديكور شبه الحقيقية (مولّد مجاني) — $MODE"
+          # تشغيلات متوازية تدفع للفرع نفسه بملفّات مختلفة: نعيد القاعدة تحتنا ثمّ ندفع، بثلاث محاولات (كفاحص القنوات).
+          for i in 1 2 3; do
+            git push origin "$BRANCH" && exit 0
+            git pull --rebase origin "$BRANCH" || true
+            sleep 5
+          done
+          echo "فشل الدفع بعد ٣ محاولات" && exit 1
 
       - name: Job summary
         if: always()
         shell: bash
+        env:
+          MODE: ${{ inputs.mode }}      # عبر البيئة لا داخل السطر: الوضع نصّ حرّ (sr:<مجموعة>[:ج/ن])
         run: |
           shopt -s nullglob
           {
             echo "### بطاقات الديكور"
             echo ""
-            echo "الوضع: \`${{ inputs.mode }}\`"
+            echo "الوضع: \`$MODE\`"
             echo ""
             echo "| الملف | الحجم |"
             echo "|---|---|"
-            for f in assets/design/styles/*.webp assets/design/opts/*.webp; do
+            for f in assets/design/styles/*.webp assets/design/opts/*.webp assets/design/decor-opts/*.webp; do
               echo "| $(basename "$f") | $(du -h "$f" | cut -f1) |"
             done
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # v-sharp (المالك ١٦ أكتوبر: «الصور بعدها مغبّشة»): توضيح صور التطبيق الثابتة بـReal-ESRGAN x4 على المعالج — بلا مفتاح ولا رصيد.
+  # كلّ مجموعة (أو جزء منها) تشغيل مستقلّ على جهاز مستقلّ، والنتيجة تُدفع لفرع bot/sharp بإعادة القاعدة.
+  sharpen:
+    if: ${{ startsWith(inputs.mode, 'sr:') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install onnxruntime
+        # مثبّتة بالإصدار (التركيبة نفسها التي وُضّحت بها الصور محلّيًّا) وعجلات جاهزة فقط: لا كود تثبيت من حزمة مصدر
+        # يجري ورمز الدفع (contents: write) محفوظ في .git/config.
+        run: |
+          pip install --quiet --only-binary=:all: onnxruntime==1.29.0 onnx==1.23.2 numpy==2.5.3 pillow==12.3.0
+      - name: Real-ESRGAN x4plus weights → ONNX
+        run: |
+          set -euo pipefail
+          curl -sSL -o x4plus.pth https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth
+          echo "4fa0d38905f75ac06eb49a7951b426670021be3018265fd191d2125df9d682f1  x4plus.pth" | sha256sum -c -
+          python3 -I scripts/sr/pth2onnx.py x4plus.pth x4plus.onnx
+      - name: Sharpen
+        env:
+          MODE: ${{ inputs.mode }}      # عبر البيئة لا داخل السطر: يمنع حقن الأوامر
+        run: python3 scripts/sr/sharpen.py "$MODE" x4plus.onnx sharp-out
+      - name: Push to bot branch
+        shell: bash
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          BRANCH=bot/sharp
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$BRANCH" --depth=1 || true
+          if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then git checkout -B "$BRANCH" "origin/$BRANCH"; else git checkout -B "$BRANCH"; fi
+          cp -r sharp-out/. .
+          git add -A -- assets
+          git diff --cached --quiet && { echo "لا جديد"; exit 0; }
+          git commit -m "أصول: توضيح Real-ESRGAN — $MODE"
+          for i in 1 2 3 4 5; do
+            git push origin "$BRANCH" && exit 0
+            git pull --rebase origin "$BRANCH" || true
+            sleep $((RANDOM % 10 + 5))
+          done
+          echo "فشل الدفع بعد ٥ محاولات" && exit 1
