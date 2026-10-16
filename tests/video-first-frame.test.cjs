@@ -253,7 +253,7 @@ test('١٠. الواجهة: التوقيع لا يقصّ الفيديو، وال
   assert.match(V, /const veoPayload = \{ promptText: veoPrompt, ratio, token, quality: wantQuality \? 'high' : 'fast', style \};/);
   assert.match(V, /async function createVeoScene\([^)]*\)\{\n\s+const payload = \{[^}]*style: styleEl\.value \};/);
   const A = read('js/app-09-attach.js');
-  assert.match(A, /imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true \};/);
+  assert.match(A, /imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true, confirmed: true \};/); // v-talkchar-confirm: الموافقة سبقت (priceCheck)
   const m = /const __ANIM_ONLY_RE = (\/[^\n]+\/i);/.exec(A);
   assert.ok(m, 'مِرشِّح «حرّكها وحدها»');
   const re = vm.runInNewContext(m[1]);

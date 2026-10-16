@@ -20,7 +20,7 @@ const baseline = JSON.parse(fs.readFileSync(path.join(root, 'scripts', 'arch-bas
 // فرفع الأساس ثانيةً حتّى 17 لا يراه شيء. الآن الاختبار ١ يشترط التساوي: من يخفض الأساس يخفض CEILING في الالتزام نفسه،
 // ومن يرفعه يرفع CEILING هنا أيضًا — تغيير معنى يراه المراجع في ملفّين.
 // القيم الأولى: شجرة الدفعة A المدموجة (السقّاطة وُلدت فيها، بعد تعديلات التوجيه والتوكنز؛ ‎3672/264/306/17/80 قبلها).
-const CEILING = { sendPromptCoreLines: 3667, sendPromptCoreRegex: 263, sendPromptCoreTests: 306, verifyTokenDefs: 10, vPinTests: 80 };
+const CEILING = { sendPromptCoreLines: 3667, sendPromptCoreRegex: 259, sendPromptCoreTests: 302, verifyTokenDefs: 10, vPinTests: 80 }; // v-talkchar-confirm: أربع مطابقات تعبير في الشخصيّة الناطقة صارت مساواة
 
 const CORE = fs.readFileSync(path.join(root, 'js', 'app-09-attach.js'), 'utf8');
 function growCore(extra) { // يحقن سطرًا في أوّل جسم __sendPromptCore

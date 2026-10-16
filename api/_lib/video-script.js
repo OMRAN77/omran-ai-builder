@@ -7,6 +7,7 @@
 const { checkOwnerBypass, checkVideoQuota, isOwner } = require('./_videoUsage');
 const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 
+const SCRIPT_FAIL = 'تعذّر إنشاء سيناريو الفيلم الآن. أعد المحاولة.'; // v-video-names: بلا اسم مزوّد ولا مفتاح
 const SCENE_SECONDS = 8; // each Runway scene is generated at this length
 
 module.exports = async (req, res) => {
@@ -58,9 +59,12 @@ module.exports = async (req, res) => {
       }
     }
 
+    /* v-video-names (مراجعة باب المال): أوّل خطوة في «فيلم متكامل» لكلّ حساب — كانت تردّ اسم المفتاح ونصّ المزوّد الخامّ
+       (باسم النموذج) إلى سطر الحالة. التفاصيل للسجلّ، وللمستخدم SCRIPT_FAIL. */
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' });
+      console.error('[video-script] missing provider key');
+      res.status(500).json({ error: SCRIPT_FAIL });
       return;
     }
     if (!topic || String(topic).trim().length < 2) {
@@ -110,14 +114,15 @@ module.exports = async (req, res) => {
 
     if (!upstream.ok) {
       const errText = await upstream.text();
-      res.status(upstream.status).json({ error: 'OpenAI error: ' + errText.slice(0, 500) });
+      console.error('[video-script] upstream ' + upstream.status + ': ' + errText.slice(0, 300));
+      res.status(502).json({ error: SCRIPT_FAIL }); // ٤٠١ المزوّد الممرَّر كان يُقرأ «سجّل الدخول» لمستخدم داخل أصلًا
       return;
     }
 
     const data = await upstream.json();
     const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if (!content) {
-      res.status(500).json({ error: 'Empty response from model' });
+      console.warn('[video-script] empty response'); res.status(500).json({ error: SCRIPT_FAIL });
       return;
     }
 
@@ -125,17 +130,18 @@ module.exports = async (req, res) => {
     try {
       parsed = JSON.parse(content);
     } catch (e) {
-      res.status(500).json({ error: 'Model returned invalid JSON' });
+      console.warn('[video-script] invalid JSON'); res.status(500).json({ error: SCRIPT_FAIL });
       return;
     }
 
     if (!parsed.scenes || !Array.isArray(parsed.scenes) || parsed.scenes.length === 0) {
-      res.status(500).json({ error: 'Model returned no scenes' });
+      console.warn('[video-script] no scenes'); res.status(500).json({ error: SCRIPT_FAIL });
       return;
     }
 
     res.status(200).json({ title: parsed.title || topic, scenes: parsed.scenes, sceneSeconds: SCENE_SECONDS });
   } catch (e) {
-    res.status(500).json({ error: 'Server error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[video-script] ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: SCRIPT_FAIL });
   }
 };

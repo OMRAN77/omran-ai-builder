@@ -14,6 +14,7 @@ function load(action) {
     case 'video-status': return require('./_lib/video-status.js');
     case 'video-upscale-create': return require('./_lib/video-upscale-create.js');
     case 'veo-create': return require('./_lib/veo-create.js');
+    case 'veo-price': return require('./_lib/veo-create.js'); // v-talkchar-confirm: سؤال السعر وحده — إجراء مستقلّ يرفضه موجّه أقدم فلا يصير إنشاءً مدفوعًا
     case 'veo-status': return require('./_lib/veo-status.js');
     case 'veo-download': return require('./_lib/veo-download.js');
     case 'minimax-create': return require('./_lib/minimax-create.js');

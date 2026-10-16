@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
 
     const { key: apiKey, rawId } = resolveTaskId(id);
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing RUNWAY_API_KEY' });
+      console.error('[video-status] missing provider key'); res.status(500).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
       return;
     }
 
@@ -41,7 +41,8 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
-      res.status(upstream.status).json({ error: 'Runway error: ' + JSON.stringify(data).slice(0, 500) });
+      console.error('[video-status] upstream ' + upstream.status + ': ' + JSON.stringify(data).slice(0, 300));
+      res.status(upstream.status).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
       return;
     }
 
@@ -54,6 +55,6 @@ module.exports = async (req, res) => {
     if (st === 'SUCCEEDED') await require('./our-media.js').rememberOurMedia(data.output); // v-dl-ours: حفظه لا يُعدّ على سقف التنزيل
     res.status(200).json(data);
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[video-status] ' + (e && e.stack ? e.stack : e)); res.status(500).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
   }
 };

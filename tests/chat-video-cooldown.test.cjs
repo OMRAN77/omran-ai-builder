@@ -30,17 +30,18 @@ const HELPER = SRC.includes('function omranVideoCodeText(') ? block(SRC, 'functi
 
 async function chatVideo(reply, lg, extra) {
   const calls = [];
+  const bodies = []; // ما أُرسل في كلّ محاولة (confirmed) — reply مصفوفة = ردّ لكلّ محاولة
   const sb = {
     lang: lg || 'ar', text: 'اكتب حياتي و قلب لون ابيض في الفيديو', localStorage: { getItem: () => lg || 'ar' },
     cur: { messages: [] }, thinkingDiv: null, __vidSrc: null, __srcImg: null, __animateRe: /(?!)/, __wantsVideo: true,
     __runCtl: { signal: { aborted: false } }, chatPhase() {}, renderAll() {}, saveState() {}, authGet: () => 'tok', __swallow() {},
     setTimeout: (fn) => fn(), // إعادة المحاولة القائمة بلا انتظار ٦ث
-    postWithConfirm: async (url) => { calls.push(url); return { ok: false, status: reply.status, json: async () => reply.body }; },
+    postWithConfirm: async (url, body) => { calls.push(url); bodies.push(Object.assign({}, body)); const rp = Array.isArray(reply) ? reply[Math.min(bodies.length - 1, reply.length - 1)] : reply; return { ok: rp.status === 200, status: rp.status, json: async () => rp.body }; },
   };
   sb.window = sb; sb.__VIDEO_TRENDS = TRENDS; Object.assign(sb, extra || {});
   vm.runInNewContext(HELPER + '\n' + FRIENDLY + '\nthis.go = async function(){\n' + VIDEO_BLOCK + '\n};', sb);
   await sb.go();
-  return { calls, msg: sb.cur.messages[sb.cur.messages.length - 1] };
+  return { calls, bodies, msg: sb.cur.messages[sb.cur.messages.length - 1] };
 }
 
 test('١. «⚠️ video_cooldown» الخام صار نصّ المهلة المترجم بالدقائق المتبقّية، وطلب واحد لا إعادة عمياء', async () => {
@@ -89,4 +90,14 @@ test('٥. نفاد النقاط بنصّ الباقات القائم، وإلغ�
   const c = await chatVideo({ status: 428, body: undefined }, 'ar', { t: (k) => ({ vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.' })[k] || k });
   assert.deepEqual({ role: c.msg.role, content: c.msg.content }, { role: 'assistant', content: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.' }, 'لا «⚠️ HTTP 428» ولا فقاعة تشخيص');
   assert.equal(c.calls.length, 1, 'لا تأكيد ثانٍ بعد ٦ ث');
+});
+
+test('٦. مراجعة باب المال ٢: الإعادة بعد عطل عابر بالموافقة نفسها (لا نافذة سعر ثانية)، والرفض الدائم (retryable:false) لا يُعاد', async () => {
+  const t = await chatVideo([{ status: 502, body: { error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true } }, { status: 502, body: { error: 'x', retryable: true } }]);
+  assert.equal(t.calls.length, 2);
+  assert.notEqual(t.bodies[0].confirmed, true, 'الأولى تسأل');
+  assert.equal(t.bodies[1].confirmed, true, 'الإعادة تحمل الموافقة فلا 428 ثانية');
+  const bad = await chatVideo({ status: 400, body: { error: 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.', retryable: false } });
+  assert.equal(bad.calls.length, 1, 'لا إعادة عمياء لطلب مرفوض');
+  assert.match(bad.msg.content, /غيّر الوصف أو الصورة/);
 });

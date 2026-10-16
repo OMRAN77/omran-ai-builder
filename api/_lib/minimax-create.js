@@ -13,6 +13,10 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  /* v-video-giveback: خارج try — الرمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) كانت تردّ ٥٠٠ بلا ردّ نقاط ولا فكّ قفل */
+  let chargedUser = null;
+  let videoLocked = null;
+  let chargedPay = null; // v-refund-kind: نتيجة الخصم نفسها — الردّ يعود إلى نوعه
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
@@ -40,12 +44,14 @@ module.exports = async (req, res) => {
     let durSec = parseInt(durationSeconds, 10);
     durSec = (durSec >= 8) ? 10 : 6;
 
+    /* v-video-giveback: فحص المفتاح قبل أيّ خصم (كـveo-create) — كان بعد الخصم والقفل ويردّ اسم المفتاح للمستخدم */
+    const apiKey = process.env.MINIMAX_API_KEY;
+    if (!apiKey) { console.error('[minimax-create] missing provider key'); res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.' }); return; }
+
     // 💰 النقاط: المحرّك الاقتصادي متاح للجميع — المالك بلا حدود، وغيره يدفع
     // minimax_video نقطة. يُسترجع الرصيد تلقائيًا لو فشل الطلب عند المزوّد.
     const pointsLib = require('./points.js');
     const gate = await checkOwnerBypass(token);
-    let chargedUser = null;
-    let videoLocked = null;
     if (!gate.allowed) {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
@@ -63,25 +69,17 @@ module.exports = async (req, res) => {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.minimax_video, points: pay.points || 0 });
         return;
       }
-      chargedUser = username;
+      chargedUser = username; chargedPay = pay;
       // v-plan-routing: فيديو واحد كلّ ٣ دقائق لكلّ حساب — VIP خارجها. القفل يُفكّ لو فشل الطلب.
       if (!pay.owner) {
         const __vl = await require('./abuse-guard.js').videoLock(username);
         if (!__vl.ok) {
-          await pointsLib.refundPoints(username, pointsLib.COSTS.minimax_video);
+          await pointsLib.refundPoints(username, pointsLib.COSTS.minimax_video, pay); chargedUser = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
           res.status(429).json({ error: 'video_cooldown', retryAfter: __vl.retryAfter });
           return;
         }
         videoLocked = username;
       }
-    }
-
-    const apiKey = process.env.MINIMAX_API_KEY;
-    if (!apiKey) {
-      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.minimax_video);
-      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-      res.status(500).json({ error: 'Server is missing MINIMAX_API_KEY' });
-      return;
     }
 
     /* v-video-first-frame (المالك: «كل الفيديوات»): مع صورة ووصف يُبنى أوّل إطار بوجهه في مشهد الوصف وأسلوبه، ثمّ
@@ -114,16 +112,26 @@ module.exports = async (req, res) => {
     // MiniMax يعيد 200 مع base_resp.status_code≠0 عند الرفض المنطقيّ — نعامله كفشل.
     const okCode = data && data.base_resp && Number(data.base_resp.status_code) === 0;
     if (!upstream.ok || !data.task_id || !okCode) {
-      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.minimax_video);
+      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.minimax_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+      chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
       const tech = String((data && data.base_resp && data.base_resp.status_msg) || ('HTTP ' + upstream.status)).slice(0, 160);
-      res.status(upstream.ok ? 502 : upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات. (' + tech + ')', retryable: true });
+      console.error('[minimax-create] upstream ' + upstream.status + ': ' + tech);
+      const fail = require('./_videoFail.js').startFail(upstream.ok ? 502 : upstream.status, tech); /* v-video-names: مؤقّت · عطب عندنا · رفض للطلب (_videoFail.js) */ /* ٢٠٠ برفض منطقيّ = مؤقّت كما كان */
+      res.status(fail.code).json(fail.body);
       return;
     }
     // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم ويفكّ القفل.
-    await require('./video-job.js').rememberVideoJob(data.task_id, { username: chargedUser, cost: pointsLib.COSTS.minimax_video, locked: !!videoLocked });
+    await require('./video-job.js').rememberVideoJob(data.task_id, { username: chargedUser, cost: pointsLib.COSTS.minimax_video, locked: !!videoLocked, pay: chargedPay });
+    chargedUser = null; videoLocked = null; /* v-video-giveback: التذكرة تملك الردّ من هنا — catch لا يردّ مرّتين (كـactor-create) */
     res.status(200).json({ task_id: data.task_id });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    /* v-video-giveback: أيّ رمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) تردّ النقاط وتفكّ القفل كـomni-create — أفضل جهد لا يحجب الردّ */
+    try {
+      if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.minimax_video, chargedPay);
+      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+    } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
+    console.error('[minimax-create] ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
   }
 };

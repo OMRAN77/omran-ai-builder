@@ -91,9 +91,9 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
-  let pointsLib = null, COST = 0, chargedUser = null, videoLocked = null;
+  let pointsLib = null, COST = 0, chargedUser = null, videoLocked = null, chargedPay = null; // v-refund-kind: الردّ يعود إلى نوع الخصم
   const undo = async () => {
-    if (chargedUser) { await pointsLib.refundPoints(chargedUser, COST); chargedUser = null; }
+    if (chargedUser) { await pointsLib.refundPoints(chargedUser, COST, chargedPay); chargedUser = null; }
     if (videoLocked) { await require('./abuse-guard.js').releaseVideoLock(videoLocked); videoLocked = null; }
   };
   try {
@@ -126,7 +126,7 @@ module.exports = async (req, res) => {
       const pay = await pointsLib.spendPoints(username, COST, 'veo_video');
       if (!pay.ok && pay.banned) { res.status(403).json({ error: 'banned' }); return; }
       if (!pay.ok) { res.status(402).json({ error: 'points_insufficient', needed: COST, points: pay.points || 0 }); return; }
-      chargedUser = username;
+      chargedUser = username; chargedPay = pay;
       if (!pay.owner) {
         const vl = await require('./abuse-guard.js').videoLock(username);
         if (!vl.ok) { await undo(); res.status(429).json({ error: 'video_cooldown', retryAfter: vl.retryAfter }); return; }
@@ -165,12 +165,12 @@ module.exports = async (req, res) => {
 
     await require('./kv.js').kvPutJSON('actor/req/' + sub.id, { s: sub.statusUrl, r: sub.responseUrl, at: Date.now() });
     // v-video-refund: تذكرة المهمّة — فشلها عند الاستطلاع يردّ الخصم ويفكّ القفل
-    await require('./video-job.js').rememberVideoJob('actor:' + sub.id, { username: chargedUser, cost: COST, locked: !!videoLocked });
+    await require('./video-job.js').rememberVideoJob('actor:' + sub.id, { username: chargedUser, cost: COST, locked: !!videoLocked, pay: chargedPay });
     chargedUser = null; videoLocked = null; // التذكرة صارت مسؤولة عن الردّ — لا ردّ مزدوج
     res.status(200).json({ id: sub.id, seconds: voice.sec });
   } catch (e) {
     try { await undo(); } catch (e2) { console.error('[actor] refund after error failed: ' + (e2 && e2.message)); }
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[actor] ' + (e && e.stack ? e.stack : e)); res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.' });
   }
 };
 module.exports.ssmlFor = ssmlFor;

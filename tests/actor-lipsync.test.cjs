@@ -90,7 +90,7 @@ test('١. المالك بلا صورة: صوت حمدان الإماراتيّ �
   assert.equal(f.body.prompt, 'رجل إماراتي في مجلس');
   assert.deepEqual(db.get('actor/req/req-12345678').s, 'https://queue.fal.run/fal-ai/bytedance/requests/req-12345678/status');
   assert.equal(pts.spent.length, 0, 'المالك بلا خصم');
-  assert.deepEqual(jobs.remembered, [['actor:req-12345678', { username: null, cost: 400, locked: false }]]);
+  assert.deepEqual(jobs.remembered, [['actor:req-12345678', { username: null, cost: 400, locked: false, pay: null }]]);
 });
 
 test('٢. امرأة + صورة المستخدم: صوت فاطمة، والصورة كما هي بلا إعادة رسم', async () => {
@@ -140,7 +140,7 @@ test('٥. غير المالك: خصم Veo نفسه وقفله؛ وعطب الم�
   reset(); gateFor.v = { allowed: false, reason: 'forbidden' };
   r = await run({ confirmed: true });
   assert.equal(r.res.code, 200);
-  assert.deepEqual(jobs.remembered, [['actor:req-12345678', { username: 'sub-user', cost: 400, locked: true }]]);
+  assert.deepEqual(jobs.remembered, [['actor:req-12345678', { username: 'sub-user', cost: 400, locked: true, pay: { ok: true } }]] /* v-refund-kind: نتيجة الخصم تُحمل ليعود الردّ إلى نوعه */);
   assert.equal(pts.refunded.length, 0, 'النجاح لا يردّ — التذكرة تتولّى');
 });
 

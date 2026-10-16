@@ -147,11 +147,25 @@ async function trySpendMedia(username, pts, reason, opts) {
  * الاسترجاع يمرّ بالمبلغ بالنقاط فقط (المتّصلون لا يعرفون المصدر)، فنطابقه مع آخر
  * خصومات الاشتراك ونعيدها إليه. يرجع ما تبقّى ليُعاد نقاطًا.
  */
-async function refundMedia(username, pts) {
+async function refundMedia(username, pts, pool) {
   let left = Math.floor(Number(pts) || 0);
   if (!username || left <= 0) return left;
   const list = await readTickets(username);
   if (!list.length) return left;
+  /* v-refund-kind (مراجعة ٢): المتّصل يعرف الخانة (نتيجة spendPoints) — آخر تذكرة بالمبلغ نفسه في الخانة نفسها بالضبط، لا المطابقة
+     الجشعة أدناه التي كانت تعيد صورًا ناجحة أحدث بدل الفيديو المتعطّل وتترك فلسه مخصومًا وتردّ الفرق نقاطًا لم تُدفع. */
+  if (pool) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const t = list[i];
+      if (t && t.k === pool && t.p === left) {
+        try { await kvIncrBy(budgetKey(username, t.k), t.f); } catch (e) { console.error('[media] refund failed:', e && e.message); return left; }
+        list.splice(i, 1);
+        await writeTickets(username, list);
+        return 0;
+      }
+    }
+    return left;
+  }
   const keep = [];
   const back = [];
   for (let i = list.length - 1; i >= 0; i--) {
@@ -165,6 +179,27 @@ async function refundMedia(username, pts) {
   }
   await writeTickets(username, keep);
   return left;
+}
+
+/* v-talkchar-confirm (مراجعة ٢): قراءة فقط — لكلّ خدمة (بترتيب خصمها) هل يغطّيها رصيد اشتراك ساري؟ يحاكي trySpendMedia (الخانات
+   بترتيب SPEND_POOLS، والرصيد ينقص بما غُطّي قبله) بلا خصم ولا تذكرة. ما لا يُغطّى يُدفع نقاطًا. دقيقة مها لا تغطّي صورة ولا فيديو. */
+async function coverage(username, reasons, opts) {
+  const o = opts || {};
+  let user = null;
+  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  const left = {};
+  const out = [];
+  for (const reason of reasons || []) {
+    const kind = mediaOf(reason);
+    let hit = false;
+    for (const pool of (kind && kind !== 'maha' ? SPEND_POOLS[kind] : [])) {
+      if (!mediaActive(user, pool, o.now)) continue;
+      if (!(pool in left)) { try { left[pool] = Math.max(0, Number(await kvGetRaw(budgetKey(username, pool))) || 0); } catch (e) { left[pool] = 0; } }
+      if (left[pool] >= UNIT_COST[reason]) { left[pool] -= UNIT_COST[reason]; hit = true; break; }
+    }
+    out.push(hit);
+  }
+  return out;
 }
 
 // v-maha-server-bill: دقيقة الافتتاح دُفعت من رصيد مها ثمّ لم تُفتح الجلسة عند المزوّد — تعود إلى رصيدها نفسه.
@@ -222,5 +257,5 @@ async function mediaStatus(username, opts) {
 
 module.exports = {
   MEDIA_PLANS, UNIT_COST, MEDIA_WINDOW_DAYS, MAHA_CALL_CAP_MIN, MEDIA_KINDS, SPEND_POOLS,
-  mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, refundMahaMinute, mediaStatus, imageQuality, setImageQuality,
+  mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, refundMahaMinute, mediaStatus, imageQuality, setImageQuality, coverage,
 };
