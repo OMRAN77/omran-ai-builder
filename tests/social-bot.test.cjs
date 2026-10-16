@@ -1,5 +1,5 @@
-// v-social-bot: بوت التسويق — سلسلة «تحدّي 30 موقع» حلقة كلّ يومين: الفكرة من الترند (وإلّا القائمة)،
-// رقم الحلقة من سجلّ النشر، والنصّ صادق بالزمن الفعليّ.
+// v-social-bot: بوت التسويق — سلسلة «سوّها بـ OM Ai» حلقة كلّ يومين والنوع بالدور (موقع ← فيديو ← أنماط):
+// الفكرة من الترند (وإلّا القائمة)، رقم الحلقة من سجلّ النشر، والنصّ صادق بالزمن الفعليّ.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -113,11 +113,10 @@ test('٨) الترند: عربيّ/إنجليزيّ فقط، والفكرة تُ
 test('٩) النصّ يحمل رقم الحلقة والترند وموعد الحلقة الجاية، والنشر يوسم الحلقة', async () => {
   const { buildCaption } = await load();
   const c = buildCaption({ name: 'مقهى «رذاذ»', tags: ['#شتاء'], label: 'أجواء شتوية' }, 40, 5);
-  assert.match(c.ig, /^🎬 الحلقة 5 من تحدّي 30 موقع بالذكاء الاصطناعي/);
+  assert.match(c.ig, /^🎬 الحلقة 5 من سوّها بـ OM Ai/);
   assert.match(c.ig, /سوّيت موقع مقهى «رذاذ» كامل في 40 ثانية/);
   assert.match(c.ig, /🔥 الفكرة من ترند اليوم: أجواء شتوية/);
   assert.match(c.ig, /الحلقة 6 بعد يومين/);
-  assert.ok(c.ig.includes('#تحدي_30_موقع'));
   assert.ok((c.ig.match(/#/g) || []).length <= 30);
   assert.match(src, /fd\.append\('external_id', EP_ID\(epN\)\)/);
   assert.match(src, /process\.argv\.includes\('--gate'\)/);
@@ -192,4 +191,29 @@ test('١٤) الاستوديو بنصوص النوع الجديد ما زال ف
   const tl = videoTimeline({ a0: 0, send: 30 }, 8);
   assert.equal(tl.dA, 9);
   assert.ok(tl.total >= 15 && tl.total <= 30, String(tl.total));
+});
+
+test('١٥) يشتغل بروحه: النوع بالدور من رقم الحلقة، وإذا تعثّر نوع ينزل اللي بعده', async () => {
+  const { kindFor, kindOrder } = await load();
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 31].map(kindFor), ['site', 'video', 'styles', 'site', 'video', 'styles', 'site']);
+  assert.deepEqual(kindOrder(1), ['site', 'video', 'styles']);
+  assert.deepEqual(kindOrder(2), ['video', 'styles', 'site']);
+  assert.deepEqual(kindOrder(3), ['styles', 'site', 'video']);
+  assert.match(src, /forced \? \[forced\.kind\] : fixedIdea \? \['site'\] : kindOrder\(epN\)/, 'اليدويّ يلتزم بالنوع المطلوب');
+  assert.match(src, /trying the next kind/);
+  const pub = src.indexOf('await publish(out.res.mp4'), loop = src.indexOf('for (const kind of order)');
+  assert.ok(loop > 0 && pub > loop, 'النشر مرّة وحدة بعد ما ينجح نوع — ما يتكرّر');
+});
+
+test('١٦) بوّابة جودة الموقع: الهزيل أو اللي فيه محرّم ما ينشر (ويعيد بفكرة ثانية)', async () => {
+  const { siteProblem, siteText } = await load();
+  const pad = '<!-- ' + 'x'.repeat(6000) + ' -->';
+  assert.match(siteProblem('<p>قصير</p>'), /too small/);
+  assert.equal(siteProblem(pad + '<h3>شاي بالنعناع</h3><p>مراجعة كبيرة وخمرية اللون</p>'), '', 'مراجعة/كبيرة ما تنحسب');
+  assert.match(siteProblem(pad + '<h3>جعة ليمون</h3>'), /جعة/);
+  assert.match(siteProblem(pad + '<p>والبيرة الباردة</p>'), /بيرة/);
+  assert.match(siteProblem(pad + '<p>Fresh craft beer</p>'), /beer/);
+  assert.equal(siteProblem(pad + '<img src="data:image/png;base64,AAwine+beer/QQ">'), '', 'صور base64 ما تنحسب');
+  assert.equal(siteText('<style>.wine{}</style><b>أهلًا</b>&nbsp;'), ' أهلًا ');
+  assert.match(src, /siteProblem\(cap\.code, MIN_CODE\)/);
 });
