@@ -1192,9 +1192,9 @@
     </div>
 
     <div id="religionTabs" style="display:flex; gap:6px; overflow-x:auto; margin-top:12px; padding-bottom:4px;">
-      <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;" data-i18n="religionTabVerse">🕌 تفسير آية</button>
-      <button type="button" class="btn religionTabBtn" data-tool="hadith" style="white-space:nowrap;" data-i18n="religionTabHadith">📖 بحث حديث</button>
-      <button type="button" class="btn religionTabBtn" data-tool="dream" style="white-space:nowrap;" data-i18n="religionTabDream">🌙 تفسير الأحلام</button>
+      <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;flex:1;justify-content:center;border-radius:var(--r-pill);" data-i18n="religionTabVerse">🕌 تفسير آية</button>
+      <button type="button" class="btn religionTabBtn" data-tool="hadith" style="white-space:nowrap;flex:1;justify-content:center;border-radius:var(--r-pill);" data-i18n="religionTabHadith">📖 بحث حديث</button>
+      <button type="button" class="btn religionTabBtn" data-tool="dream" style="white-space:nowrap;flex:1;justify-content:center;border-radius:var(--r-pill);" data-i18n="religionTabDream">🌙 تفسير الأحلام</button>
     </div>
 
     <div style="margin-top:14px;">

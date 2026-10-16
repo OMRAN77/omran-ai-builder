@@ -23,7 +23,7 @@ test('٢. كلّ قاعدة للوضع الأسود وحده: لا الفاتح 
   assert.ok(sels.length >= 30);
   for (const s of sels) assert.ok(s.startsWith('html:not([data-mode="light"]):not(.skin) '), s);
   // v-three-colors: ثلاثة ألوان فقط — أسود للخلفيّات، ذهبيّ للحدود، رماديّ فاتح للحدّ عند المرور أو الاختيار.
-  for (const b of css.split('}').filter((x) => x.includes('{'))) assert.match(b.split('{')[1], /^(background:(#000|transparent)|border-color:(rgba\(212,175,55,\.6\)|#c9c9c9)) !important;$/, 'ثلاثة ألوان فقط: ' + b);
+  for (const b of css.split('}').filter((x) => x.includes('{'))) assert.match(b.split('{')[1], /^(background:(#000|transparent)|border-color:(rgba\(212,175,55,\.6\)|#c9c9c9)|border-bottom:0) !important;$/, 'ثلاثة ألوان فقط: ' + b);
 });
 
 test('٣. النوافذ التي كانت رماديّة أو شفّافة سوداء، وصناديقها شفّافة فوقها — واستوديو الإعلانات (المجرّة) لا يُمسّ', () => {

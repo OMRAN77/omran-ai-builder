@@ -40,6 +40,9 @@ html:not([data-mode="light"]):not(.skin) #cxIdeas{background:transparent !import
 
 /* ── v-three-colors (المالك ١٦ أكتوبر: «فقط ٣ ألوان» — «الحدود كلّها ذهبي»، «عند التضليل عليها: الحدّ يصير رماديّ أفتح»):
    الأصناف يضعها js/app-41-three-colors.js على الحدود الظاهرة وتعبئات الصناديق داخل الأدوات. ── */
+/* المالك بلقطة الإعدادات: «هذي الخطوط شيلها كلّها» — فواصل صفوف الإعدادات */
+html:not([data-mode="light"]):not(.skin) .settingsNavRow,
+html:not([data-mode="light"]):not(.skin) .settingsNavGroup .settingsNavRow{border-bottom:0 !important;}
 html:not([data-mode="light"]):not(.skin) .om3-line{border-color:rgba(212,175,55,.6) !important;}
 html:not([data-mode="light"]):not(.skin) .om3-hot.om3-line:hover,
 html:not([data-mode="light"]):not(.skin) .om3-line:focus-visible,
