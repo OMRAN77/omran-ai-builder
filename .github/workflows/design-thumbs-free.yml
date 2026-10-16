@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'styles | places | all'
+        description: 'styles | places | all | opts | opts:furniture,flooring,fabric,wall,curtains'
         required: false
         default: 'all'
 
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          files=(thumbs/dstyle/*.webp thumbs/dplace/*.webp)
+          files=(thumbs/dstyle/*.webp thumbs/dplace/*.webp thumbs/dopts/*.webp)
           if [ ${#files[@]} -eq 0 ]; then
             echo "::error::لم يُنتج المولّد أي صورة — تحقق من المحرّك المجاني"
             exit 1
@@ -67,11 +67,15 @@ jobs:
       # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
       - name: Push cards to bot branch
         shell: bash
+        env:
+          MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
           shopt -s nullglob
 
           BRANCH=bot/design-thumbs
+          # v-decor-18: صور خيارات الأقسام الخمسة على فرعها الخاصّ — لا تختلط بتشغيلات الأنماط القديمة.
+          case "$MODE" in opts*) BRANCH=bot/decor-opts ;; esac
 
           mkdir -p assets/design/styles assets/design/opts
           if [ -d thumbs/dstyle ]; then
@@ -92,13 +96,19 @@ jobs:
             git checkout -B "$BRANCH"
           fi
 
+          # بعد الانتقال للفرع: نسخة سابقة بالاسم نفسه على الفرع تُستبدل بدل أن تُفشل الانتقال.
+          mkdir -p assets/design/decor-opts
+          for f in thumbs/dopts/*.webp; do
+            cp "$f" "assets/design/decor-opts/$(basename "$f")"
+          done
+
           git add -A -- assets/design
           if git diff --cached --quiet; then
             echo "لا جديد — الصور مطابقة لما هو ملتزم"
             exit 0
           fi
 
-          git commit -m "أصول: بطاقات الديكور شبه الحقيقية (مولّد مجاني)"
+          git commit -m "أصول: بطاقات الديكور شبه الحقيقية (مولّد مجاني) — $MODE"
           git push origin "$BRANCH"      # بلا -f: الفرع مبني على أصله فلا حاجة للقسر
 
       - name: Job summary
@@ -113,7 +123,7 @@ jobs:
             echo ""
             echo "| الملف | الحجم |"
             echo "|---|---|"
-            for f in assets/design/styles/*.webp assets/design/opts/*.webp; do
+            for f in assets/design/styles/*.webp assets/design/opts/*.webp assets/design/decor-opts/*.webp; do
               echo "| $(basename "$f") | $(du -h "$f" | cut -f1) |"
             done
           } >> "$GITHUB_STEP_SUMMARY"
