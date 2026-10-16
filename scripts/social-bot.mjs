@@ -47,8 +47,9 @@ const BUILD_TIMEOUT_MS = 300000;
 const SERIES = 'سوّها بـ OM Ai';
 const SEASON_LEN = 30;
 const EVERY_H = 36; // الجدول يوميّ؛ الحلقة تنزل إذا مرّ 36 ساعة على السابقة = كلّ يومين بالضبط حتى آخر الشهر
-const EP_ID = (n) => 'omai-ep-' + n;
-const EP_RE = /^omai-ep-(\d+)$/;
+// external_id للحلقة: omai-ep-N-<نوع> (الحلقات الأولى بلا نوع: يُعرف من نصّها).
+const EP_ID = (n, kind) => 'omai-ep-' + n + (kind ? '-' + kind : '');
+const EP_RE = /^omai-ep-(\d+)(?:-(site|video|styles))?$/;
 const TREND_GEOS = ['AE', 'SA', 'KW', 'QA'];
 const SERIES2 = SERIES;
 // أنواع الحلقات: 🌐 موقع من ترند اليوم · 🎬 فيديو ترند من صانع الفيديو · 🖼️ صورة وحدة بعدّة أنماط.
@@ -61,7 +62,18 @@ export const KINDS = {
 const ROTATION = ['site', 'video', 'styles'];
 export const kindFor = (epN) => ROTATION[((Math.max(1, Number(epN) || 1) - 1) % ROTATION.length)];
 // نوع الحلقة أوّلًا، ثمّ البقيّة بالترتيب: لو تعثّر نوع (موقع هزيل، توليد فشل) تنزل الحلقة بالنوع اللي بعده.
-export const kindOrder = (epN) => { const k = ROTATION.indexOf(kindFor(epN)); return ROTATION.map((_, i) => ROTATION[(k + i) % ROTATION.length]); };
+// الدور يمشي من نوع آخر حلقة منشورة فعلًا (لو نزلت حلقة بنوع احتياطيّ ما يتكرّر نفس النوع)، وإلّا من رقم الحلقة.
+export const kindOrder = (epN, lastKind) => {
+  const j = ROTATION.indexOf(lastKind), k = j >= 0 ? (j + 1) % ROTATION.length : ROTATION.indexOf(kindFor(epN));
+  return ROTATION.map((_, i) => ROTATION[(k + i) % ROTATION.length]);
+};
+export function kindOfCaption(t) {
+  t = String(t || '');
+  if (/سوّيت موقع/.test(t)) return 'site';
+  if (/أنماط/.test(t)) return 'styles';
+  if (/اسكتش|ترند «|فيديو الترند/.test(t)) return 'video';
+  return '';
+}
 export function parseKind(raw) {
   const m = /^\s*(site|video|styles?)\s*(?:[:=]\s*([a-z0-9_-]{2,30}))?\s*$/i.exec(String(raw || ''));
   return m ? { kind: /^style/i.test(m[1]) ? 'styles' : m[1].toLowerCase(), arg: (m[2] || '').toLowerCase() } : null;
@@ -144,16 +156,19 @@ export function buildStylesCaption(plan, res, epN) {
 
 // ───────── السلسلة: رقم الحلقة والموعد من سجلّ النشر ─────────
 export function seriesFromHistory(items) {
-  let last = 0, lastAt = 0; const names = [];
+  let last = 0, lastAt = 0, lastKind = ''; const names = [];
   for (const it of items || []) {
     const mm = EP_RE.exec(String((it && it.external_id) || ''));
     if (!mm || it.success === false) continue;
-    last = Math.max(last, Number(mm[1]));
+    const text = String(it.post_title || it.post_caption || ''), n = Number(mm[1]);
+    const kind = mm[2] || kindOfCaption(text);
+    if (n > last || (n === last && !lastKind)) lastKind = kind;
+    last = Math.max(last, n);
     lastAt = Math.max(lastAt, Date.parse(it.upload_timestamp || '') || 0);
-    const nm = /سوّيت موقع (.+?) كامل في/.exec(String(it.post_title || it.post_caption || ''));
+    const nm = /سوّيت موقع (.+?) كامل في/.exec(text);
     if (nm && !names.includes(nm[1])) names.push(nm[1]);
   }
-  return { last, lastAt, names };
+  return { last, lastAt, lastKind, names };
 }
 
 export const dueNow = (lastAt, nowMs, everyH = EVERY_H) => !lastAt || nowMs - lastAt >= everyH * 36e5;
@@ -1062,7 +1077,7 @@ async function upFetch(p, opts = {}) {
   return { status: r.status, ok: r.ok, j };
 }
 
-async function publish(mp4, cover, cap, PLATFORMS, epN) {
+async function publish(mp4, cover, cap, PLATFORMS, epN, kind) {
   const fd = new FormData();
   fd.append('user', UP_USER);
   for (const p of PLATFORMS) fd.append('platform[]', p);
@@ -1086,7 +1101,7 @@ async function publish(mp4, cover, cap, PLATFORMS, epN) {
   if (PLATFORMS.includes('youtube')) { fd.append('youtube_title', (cap.head + ' #shorts').slice(0, 100)); fd.append('youtube_description', cap.fb); }
   const reqId = 'omai-' + Date.now().toString(36) + randomBytes(3).toString('hex');
   fd.append('request_id', reqId); fd.append('async_upload', 'true');
-  if (epN) fd.append('external_id', EP_ID(epN)); // رقم الحلقة يُقرأ من سجلّ النشر في المرّة الجاية
+  if (epN) fd.append('external_id', EP_ID(epN, kind)); // رقم الحلقة ونوعها يُقرآن من سجلّ النشر في المرّة الجاية
   const r = await upFetch('/upload', { method: 'POST', body: fd, headers: { 'Idempotency-Key': reqId } });
   log('upload → ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 300));
   if (!r.ok && r.status !== 202) throw new Error('upload failed ' + r.status);
@@ -1107,6 +1122,15 @@ async function publish(mp4, cover, cap, PLATFORMS, epN) {
 
 // ───────── التشغيل ─────────
 // فحص خفيف قبل تثبيت المتصفّح: الجدول يوميّ، والحلقة تنزل إذا مرّ 36 ساعة على السابقة.
+export function platformResults(st) {
+  const r = (st && (st.results || st.data)) || [];
+  const rows = Array.isArray(r) ? r : Object.entries(r).map(([platform, v]) => ({ platform, ...(v || {}) }));
+  return rows.filter((x) => x && x.platform).map((x) => ({
+    platform: String(x.platform), ok: x.success !== false && !x.error, url: x.post_url || x.url || '',
+    inbox: !!x.fallback_to_inbox, error: x.error ? String(x.error_message || x.error).slice(0, 120) : '',
+  }));
+}
+
 async function gate() {
   let go = true, why = 'manual run';
   if (process.env.GITHUB_EVENT_NAME === 'schedule' && UP_KEY) {
@@ -1143,8 +1167,8 @@ async function main() {
   // النوع: يُفرض من خانة idea، وإلّا بالدور من رقم الحلقة مع البقيّة احتياطًا.
   const forced = parseKind(process.env.KIND) || parseKind(process.env.IDEA_INDEX);
   const fixedIdea = /^-?\d+$/.test(String(process.env.IDEA_INDEX || '').trim());
-  const order = forced ? [forced.kind] : fixedIdea ? ['site'] : kindOrder(epN);
-  log('episode ' + epN + ' (' + ep.short + ') · published so far ' + st.last + ' · kinds ' + order.join(' → ') + (forced || fixedIdea ? ' (manual)' : ' (auto)'));
+  const order = forced ? [forced.kind] : fixedIdea ? ['site'] : kindOrder(epN, st.lastKind);
+  log('episode ' + epN + ' (' + ep.short + ') · published so far ' + st.last + (st.lastKind ? ' (last ' + st.lastKind + ')' : '') + ' · kinds ' + order.join(' → ') + (forced || fixedIdea ? ' (manual)' : ' (auto)'));
   const fr = path.join(OUT, 'frames');
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ executablePath: CHROME, args: CHROME ? ['--no-sandbox'] : [] });
@@ -1170,9 +1194,13 @@ async function main() {
   fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ ...out.meta, vip: acct.vip, seconds: +out.res.tl.total.toFixed(1) }, null, 2));
   if (!live) { log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); gh('notice', 'video ready (not published) · ' + ep.short + ' · ' + out.note); return; }
   const platforms = await resolvePlatforms();
-  await publish(out.res.mp4, out.res.cover, out.caption, platforms, epN);
-  log('published ✓');
-  gh('notice', 'published ✓ ' + ep.short + ' · ' + out.note + ' · ' + platforms.join(','));
+  const pub = await publish(out.res.mp4, out.res.cover, out.caption, platforms, epN, out.meta.kind);
+  // نتيجة كلّ منصّة في ملفّ التحميل وملخّص التشغيل (رابط المنشور أو سبب الرفض) — لا «تمّ» بلا دليل.
+  const per = platformResults(pub);
+  fs.writeFileSync(path.join(OUT, 'publish.json'), JSON.stringify(pub || {}, null, 2));
+  log('published ✓ ' + JSON.stringify(per));
+  gh('notice', 'published ✓ ' + ep.short + ' · ' + out.note + ' · ' + (per.length ? per.map((x) => x.platform + (x.ok ? ' ✓' : ' ✗ ' + x.error) + (x.inbox ? ' (inbox)' : '')).join(' · ') : platforms.join(',')));
+  for (const x of per) if (x.url) gh('notice', x.platform + ': ' + x.url);
 }
 
 // 🌐 حلقة موقع: فكرة من ترند اليوم (وإلّا القائمة)، وإذا طلع الموقع هزيل نعيد مرّة بفكرة ثانية.
