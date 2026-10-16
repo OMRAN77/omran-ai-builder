@@ -96,6 +96,13 @@ const LIGHTING_PROMPTS = {
   purple: 'night-time mood lighting with soft purple/violet ambient tones',
   sunset: 'warm pink-orange sunset light streaming through the windows',
   moon: 'cool blue moonlight night-time lighting, calm and dim',
+  emerald: 'calm emerald-green indirect ambient lighting, elegant soft wall washes, keep furniture colors and material detail recognizable',
+  turquoise: 'coastal turquoise ambient lighting with cyan indirect wall washes and fresh airy atmosphere',
+  rose: 'soft powder-rose pink ambient lighting, delicate and refined, not saturated magenta',
+  burgundy: 'cinematic deep burgundy-red evening lighting, rich wine-red ambient wall washes with readable room details',
+  neon: 'dual-tone neon lighting: cyan from the left and fuchsia from the right, neutral soft key light on furniture, clearly two distinct colors',
+  cinematic: 'balanced cinematic split lighting: cool steel-blue from the left and warm amber from the right, realistic indirect light falloff',
+  aurora: 'aurora-inspired two-tone ambient lighting: emerald-green on the left blending into muted violet on the right, no literal aurora or sky indoors',
 };
 
 const FURNITURE_PROMPTS = {

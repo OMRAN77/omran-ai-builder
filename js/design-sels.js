@@ -176,27 +176,9 @@
       '</svg>';
     return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") center/cover no-repeat';
   }
-  /* v-decor-light-sheet (طلب المالك ١٤ أكتوبر ٢٠٢٦: «اريد صور هذي الصور ضيفها» مع لوحة الإضاءة العشر):
-     اللوحة نفسها ملفّ واحد lighting-sheet.webp (١٠٢٤×١٥٣٦، عمودان × ٥ صفوف)، وكلّ بطاقة تعرض
-     قصّتها ٣:٤ (١٣٥×١٨٠ من وسط الصورة، فوق شريط الاسم المكتوب) بخلفيّة CSS — صور المالك كما هي بلا رسم. */
-  /* v-decor-light-clear (طلب المالك ١٤ أكتوبر ٢٠٢٦: «خلها نفس الصور لكن عدلها خلها واضحه»):
-     القصّة الصغيرة المكبّرة ٧٥٨٪ كانت مغبّشة ومقصوصة. الآن عمود اللوحة = عرض البطاقة (٢٠٠٪ ≈ ١:١)
-     فالصورة كاملة وحادّة في وسط البطاقة، وشريطان داكنان يخفيان الصفّ المجاور وشريط الاسم المكتوب. */
-  var LIGHT_SHEET='assets/design/opts/lighting-sheet.webp';
-  var LIGHT_POS={
-    warm:[0,-24.53], cool:[100,-24.53],
-    bright:[0,8.75], dim:[100,8.75],
-    natural:[0,42.04], neutral:[100,42.04],
-    golden:[0,75.31], purple:[100,75.31],
-    sunset:[0,108.72], moon:[100,108.72]
-  };
-  var LIGHT_MASK='linear-gradient(#141418 0 32.4%,transparent 32.4% 67.6%,#141418 67.6%)';
-  function lightBg(v){
-    var p=LIGHT_POS[v]; if(!p) return '';
-    return LIGHT_MASK+', url("'+LIGHT_SHEET+'") '+p[0]+'% '+p[1]+'% / 200% auto no-repeat, #141418';
-  }
+  /* v-lighting-3d: صور منفصلة حادّة؛ لا قصّ من لوحة مجمّعة ولا أشرطة تخفي الغرفة. */
   function roomBg(id,v){
-    if(id==='designAiLighting'&&LIGHT_POS[v]) return lightBg(v);
+    if(id==='designAiLighting') return v ? '#141418' : 'url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="none" stroke="#7d7d86" stroke-width="3"/><path d="M15 49L49 15" stroke="#7d7d86" stroke-width="3"/></svg>')+'") center /48px 48px no-repeat, #141418';
     /* v-decor-floor-bg (طلب المالك ١٥ أكتوبر ٢٠٢٦ بلقطة بطاقات الأرضيات): خلفية البطاقة نفسها صورة الأرضية الحقيقية لا رسمة roomSvg الكرتونية. */
     if(id==='designAiFlooring'&&v&&PALS.designAiFlooring[v]) return 'url("assets/design/opts/flooring-'+v+'.webp?v=2") center/cover no-repeat, #141418';
     var c=(PALS[id]||{})[v]; if(!c) return '';
@@ -243,7 +225,10 @@
     },
     designAiLighting:{ warm:'أصفر دافئ مريح', cool:'أبيض بارد منعش', bright:'نهاري ساطع', dim:'خافتة هادئة للمساء',
       natural:'ضوء نهار طبيعي من النافذة', neutral:'أبيض محايد متوازن', golden:'وهج ذهبي دافئ',
-      purple:'أجواء ليلية بنفسجية', sunset:'دفء الغروب الوردي', moon:'ضوء قمر أزرق هادئ' },
+      purple:'أجواء ليلية بنفسجية', sunset:'دفء الغروب الوردي', moon:'ضوء قمر أزرق هادئ',
+      emerald:'أخضر فاخر ومريح', turquoise:'انتعاش بأجواء بحرية', rose:'وردي بودري لطيف',
+      burgundy:'أحمر عميق وأجواء مسائية', neon:'سماوي وفوشي بإضاءة متقابلة',
+      cinematic:'أزرق بارد وكهرماني دافئ', aurora:'أخضر زمردي وبنفسجي هادئ' },
     designAiFurniture:{ modern:'قطع عصرية أنيقة', classic:'خشب فخم تقليدي', simple:'عملي بلا تكلّف', luxury:'فخامة في كل قطعة', bohemian:'قطع حرة متنوعة' },
     designAiFlooring:{ parquet:'خشب دافئ تحت قدميك', marble:'رخام لامع فاخر', ceramic:'عملي سهل التنظيف', carpet:'سجاد وثير مريح' },
     designAiFabric:{ light:'أقمشة فاتحة مشرقة', dark:'أقمشة داكنة فخمة', neutral:'درجات هادئة محايدة', bold:'ألوان جريئة لافتة' },
@@ -314,7 +299,7 @@
      معرضًا ملء الشاشة — نفس نظام أنماط الصور (طلب المالك: كلهم مرة وحدة). */
   function selImg(id,v){
     if(!v) return '';
-    if(id==='designAiLighting'&&LIGHT_POS[v]) return ''; /* v-decor-light-sheet: صورتها من اللوحة في roomBg */
+    if(id==='designAiLighting') return 'assets/design/opts/lighting-'+v+'.webp';
     /* v-decor-furn-photos (المالك ١٤ أكتوبر: «الديكور قسم الأثاث مافي صور، حط صور على نفس الأسامي»): الأثاث كان يطلب
        opts/furniture-*.webp وهي غير موجودة فيختفي. صور الأنماط الخمسة بالأسماء نفسها موجودة (كنبة وطاولة كلّ نمط) — بلا رسم ولا رصيد. */
     if(id==='designAiStyle' || id==='designAiFurniture') return 'assets/design/styles/'+v+'.webp';
@@ -334,6 +319,7 @@
     }, function(){
       return {
         title: labTxt,
+        landscape: s.id==='designAiLighting',
         count: s.options.length+' '+(typeof window.t==='function'&&window.t('pickerOptsPick')!=='pickerOptsPick'?window.t('pickerOptsPick'):(ien?'options — pick yours':'خيارًا — اختر ما يناسبك')),
         items: Array.prototype.map.call(s.options,function(o){
           return { v:o.value, title:optTxt(o)||(ien?'None':'بدون'), active:o.value===s.value,

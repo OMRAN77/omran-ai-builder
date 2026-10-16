@@ -1,4 +1,19 @@
 I18N['ur'] = {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "قدرتی",
+    "designAiLightingNeutral": "غیر جانب دار سفید",
+    "designAiLightingGolden": "سنہری چمک",
+    "designAiLightingPurple": "بنفشی رات",
+    "designAiLightingSunset": "غروب آفتاب",
+    "designAiLightingMoon": "چاندنی",
+    "designAiLightingEmerald": "پرسکون زمردی",
+    "designAiLightingTurquoise": "ساحلی فیروزی",
+    "designAiLightingRose": "نرم گلابی",
+    "designAiLightingBurgundy": "سنیما جیسا عنابی",
+    "designAiLightingNeon": "دو رنگی نیون",
+    "designAiLightingCinematic": "متوازن سنیما روشنی",
+    "designAiLightingAurora": "شفق کے رنگ",
+
     "notifSectionLabel": "🔔 اطلاعات",
     "newsAlertsLabel": "📢 بریکنگ نیوز الرٹس",
     "newsAlertsHint": "بریکنگ نیوز یا ہنگامی انتباہ پر اطلاع پائیں، ایپ بند ہونے پر بھی",

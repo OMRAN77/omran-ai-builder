@@ -146,3 +146,23 @@ test('٧. العميل والحزمة: detail يظهر للمالك وحده ب�
   assert.ok(src.includes(line) && bundle.includes(line));
   assert.ok(src.includes("throw new Error((data.error || 'unknown') + __why);"));
 });
+
+// v-lighting-3d: كل لون جديد يصل إلى الطلب الفعلي، مع الصورة وبدونها، بلا شبكة أو رصيد حقيقي.
+test('الإضاءات السبع تصل للتوليد مع صورة وبدون صورة', async () => {
+  const colors = { emerald:'emerald-green', turquoise:'turquoise', rose:'powder-rose', burgundy:'burgundy-red', neon:'cyan from the left and fuchsia from the right', cinematic:'cool steel-blue from the left and warm amber from the right', aurora:'emerald-green on the left blending into muted violet' };
+  for (const [lighting,word] of Object.entries(colors)) {
+    for(const uploaded of [false,true]){
+      const prompts=[];
+      reset((m,init)=>{
+        const body=JSON.parse(init.body);
+        prompts.push(/^gpt-image/.test(m)?body.prompt:body.contents[0].parts.find(p=>p.text).text);
+        return null;
+      });
+      const r=await place({lighting,count:1,...(uploaded?{imageBase64:'test-room',mimeType:'image/png'}:{})});
+      assert.equal(r.code,200,lighting+' '+uploaded);
+      assert.ok(prompts.length>0);
+      assert.ok(prompts.every(p=>p.includes(word)),lighting+' لم يصل للأمر الفعلي');
+      assert.equal(tally(),1,'طلب واحد لا توليد متكرر عند الاختيار');
+    }
+  }
+});

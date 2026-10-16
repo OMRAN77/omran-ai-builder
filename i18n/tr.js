@@ -1,4 +1,19 @@
 I18N['tr'] = {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "Doğal",
+    "designAiLightingNeutral": "Nötr beyaz",
+    "designAiLightingGolden": "Altın parıltı",
+    "designAiLightingPurple": "Mor gece",
+    "designAiLightingSunset": "Gün batımı",
+    "designAiLightingMoon": "Ay ışığı",
+    "designAiLightingEmerald": "Sakin zümrüt",
+    "designAiLightingTurquoise": "Sahil turkuazı",
+    "designAiLightingRose": "Yumuşak pembe",
+    "designAiLightingBurgundy": "Sinematik bordo",
+    "designAiLightingNeon": "Çift renk neon",
+    "designAiLightingCinematic": "Dengeli sinematik",
+    "designAiLightingAurora": "Kutup ışığı renkleri",
+
     "notifSectionLabel": "🔔 Bildirimler",
     "newsAlertsLabel": "📢 Son dakika haber uyarıları",
     "newsAlertsHint": "Son dakika haberi veya acil durum uyarısı olduğunda uygulama kapalıyken bile bildirim alın",

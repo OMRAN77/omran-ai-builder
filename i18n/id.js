@@ -1,4 +1,19 @@
 I18N['id'] = {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "Alami",
+    "designAiLightingNeutral": "Putih netral",
+    "designAiLightingGolden": "Cahaya keemasan",
+    "designAiLightingPurple": "Malam ungu",
+    "designAiLightingSunset": "Matahari terbenam",
+    "designAiLightingMoon": "Cahaya bulan",
+    "designAiLightingEmerald": "Zamrud tenang",
+    "designAiLightingTurquoise": "Pirus pesisir",
+    "designAiLightingRose": "Merah muda lembut",
+    "designAiLightingBurgundy": "Burgundi sinematik",
+    "designAiLightingNeon": "Neon dua warna",
+    "designAiLightingCinematic": "Sinematik seimbang",
+    "designAiLightingAurora": "Warna aurora",
+
     "notifSectionLabel": "🔔 Notifikasi",
     "newsAlertsLabel": "📢 Peringatan berita terkini",
     "newsAlertsHint": "Dapatkan notifikasi untuk berita terkini atau peringatan darurat, meski aplikasi ditutup",
