@@ -122,3 +122,13 @@ test('٩) النصّ يحمل رقم الحلقة والترند وموعد ال
   assert.match(src, /fd\.append\('external_id', EP_ID\(epN\)\)/);
   assert.match(src, /process\.argv\.includes\('--gate'\)/);
 });
+
+test('١٠) آخر الفيديو فيه باركود حقيقيّ لرابط المالك (/app?ref=omran) بشعار في الوسط', async () => {
+  const { qrSVG, studioHTML } = await load();
+  const svg = qrSVG('https://omran-ai-builder.vercel.app/app?ref=omran');
+  assert.match(svg, /^<svg[^>]+viewBox="0 0 \d+ \d+"/);
+  assert.ok((svg.match(/h1v1h-1z/g) || []).length > 300, 'وحدات الباركود مرسومة');
+  const html = studioHTML({ name: 'مقهى «رذاذ»' }, 40, 1);
+  assert.match(html, /<div class="qr"><svg/);
+  assert.match(html, /الحلقة 2 بعد يومين/);
+});

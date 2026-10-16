@@ -20,6 +20,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,6 +36,7 @@ const MONITOR_KEY = process.env.MONITOR_KEY || '';
 const BOT_USER = (process.env.BOT_USER || 'omaisocial').trim().toLowerCase();
 const CHROME = process.env.CHROME_PATH || undefined;
 const SITE = 'omran-ai-builder.vercel.app';
+const QR_URL = 'https://' + SITE + '/app?ref=omran'; // نفس رابط باركود المالك
 
 const W = 1080, H = 1920, VW = 432, VH = 768, DPR = 2.5, FPS = 30;
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
@@ -346,7 +348,16 @@ async function capture(browser, acct, idea, dir) {
 }
 
 // ───────── المونتاج (صفحة استوديو تُرسم إطارًا إطارًا: العربيّة صحيحة الشكل) ─────────
-function studioHTML(idea, secs, epN) {
+// باركود حقيقيّ (تصحيح H يتحمّل الشعار في الوسط) — مكتبة المستودع نفسها، بلا اعتماديّات.
+export function qrSVG(url) {
+  const qr = createRequire(import.meta.url)('./lib/qrcode.cjs')(0, 'H');
+  qr.addData(url); qr.make();
+  const n = qr.getModuleCount(); let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) d += 'M' + c + ' ' + r + 'h1v1h-1z';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + n + ' ' + n + '" shape-rendering="crispEdges"><path fill="#0d0f14" d="' + d + '"/></svg>';
+}
+
+export function studioHTML(idea, secs, epN) {
   const ep = epN ? epLabel(epN) : null;
   const icon = pathToFileURL(path.join(ROOT, 'icons/icon-512-v2.png')).href;
   const brand = pathToFileURL(path.join(ROOT, 'icons/brand-om-s.png')).href;
@@ -374,13 +385,15 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:#000;font-family
 #wm img.i{width:60px;height:60px;border-radius:14px}#wm img.t{height:50px}
 #tap{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;border:8px solid rgba(255,233,168,.95);background:rgba(231,181,74,.25);opacity:0}
 #flash{position:absolute;inset:0;background:#fff;opacity:0}
-#end{display:none;background:radial-gradient(120% 80% at 50% 30%,#2a2113 0%,#0b0a08 60%,#000 100%);text-align:center;padding-top:300px}
-#end img.i{width:360px;height:360px;border-radius:80px;box-shadow:0 0 120px rgba(231,181,74,.45)}
-#end img.t{display:block;margin:50px auto 0;height:150px}
-#end .h{font-size:92px;font-weight:900;margin-top:70px;line-height:1.2}
-#end .s{font-size:52px;font-weight:700;color:#efe7d2;margin-top:34px}
-#end .u{display:inline-block;margin-top:60px;font-size:46px;font-weight:800;padding:22px 46px;border-radius:999px;border:3px solid #e7b54a;direction:ltr;color:#ffe9a8}
-#end .nx{font-size:50px;font-weight:800;color:#efe7d2;margin-top:56px}
+#end{display:none;background:radial-gradient(120% 80% at 50% 30%,#2a2113 0%,#0b0a08 60%,#000 100%);text-align:center;padding-top:190px}
+#end img.t{display:block;margin:0 auto;height:130px}
+#end .h{font-size:88px;font-weight:900;margin-top:46px;line-height:1.2}
+#end .s{font-size:48px;font-weight:700;color:#efe7d2;margin-top:24px}
+#end .qr{position:relative;width:500px;height:500px;margin:48px auto 0;padding:38px;background:#fff;border-radius:44px;border:6px solid #e7b54a;box-shadow:0 0 100px rgba(231,181,74,.4)}
+#end .qr svg{display:block;width:100%;height:100%}
+#end .qr img{position:absolute;left:50%;top:50%;width:104px;height:104px;margin:-52px 0 0 -52px;border-radius:24px;border:5px solid #e7b54a;box-shadow:0 0 0 9px #fff}
+#end .u{display:inline-block;margin-top:40px;font-size:42px;font-weight:800;padding:18px 42px;border-radius:999px;border:3px solid #e7b54a;direction:ltr;color:#ffe9a8}
+#end .nx{font-size:46px;font-weight:800;color:#efe7d2;margin-top:34px}
 #ep{position:absolute;top:40px;right:34px;max-width:600px;white-space:nowrap;overflow:hidden;padding:12px 30px;border-radius:999px;background:linear-gradient(180deg,#ffe9a8,#e7b54a 55%,#b9822a);color:#1a1205;font-size:40px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 </style></head><body><div id="stage">
 <img id="bg"><div id="site"><img id="siteImg"></div>
@@ -390,7 +403,7 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:#000;font-family
 <div id="wm"><img class="i" src="${icon}"><img class="t" src="${brand}"></div>
 ${ep ? '<div id="ep">🎬 ' + esc(ep.short) + ' · تحدّي 30 موقع</div>' : ''}
 <div id="tap"></div><div id="flash"></div>
-<div id="end"><img class="i" src="${icon}"><img class="t" src="${brand}"><div class="h">سوّ موقعك أنت<br><span class="gold">ببلاش</span></div><div class="s">اكتب فكرتك… والذكاء الاصطناعي يسوّيها</div><div class="u">${SITE}</div>${ep ? '<div class="nx">تابعنا… ' + esc(epLabel(epN + 1).short) + ' بعد يومين 👀</div>' : ''}</div>
+<div id="end"><img class="t" src="${brand}"><div class="h">سوّ موقعك أنت<br><span class="gold">ببلاش</span></div><div class="s">اكتب فكرتك… والذكاء الاصطناعي يسوّيها</div><div class="qr">${qrSVG(QR_URL)}<img src="${icon}"></div><div class="u">${SITE}</div>${ep ? '<div class="nx">تابعنا… ' + esc(epLabel(epN + 1).short) + ' بعد يومين 👀</div>' : ''}</div>
 </div><script>
 const $=(id)=>document.getElementById(id);
 let curBg='', curSite='';
@@ -432,7 +445,7 @@ export function timeline(m, siteH) {
   const dB = 3.6;
   const scroll = Math.max(0, siteH - H);
   const dC = scroll > 600 ? 8.5 : 5;
-  const dD = 3.6;
+  const dD = 4.6; // بطاقة النهاية مع الباركود: وقت كافٍ للتصوير
   return { realA, dA, dB, dC, dD, scroll, total: dA + dB + dC + dD };
 }
 
