@@ -25051,17 +25051,17 @@ function __friendlyErr(e){
         const __talkPrompt = 'A cute chibi 3D cartoon character standing and talking directly to the camera, with natural mouth movement and accurate lip-sync, lively friendly facial expression. ' + __motionDesc + '. The character speaks out loud in ' + __voiceLang + (__dialogue ? (', clearly saying: "' + __dialogue.slice(0,300) + '"') : '') + '. Clear spoken voice audio, no background music. Keep the character exactly as in the provided image.';
         /* v-video-first-frame: الشخصيّة الكرتونيّة رُسمت للتوّ لتكون أوّل إطار — keepPhoto يمنع الخادم من رسم إطار ثانٍ فوقها */
         const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'fast', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true };
-        let __op = null, __verr = '';
+        let __op = null, __verr = '', __vra = 0;
         for(let __a = 0; __a < 2 && !__op; __a++){
-          const __r = await fetch('/api/video?action=veo-create', { method:'POST', headers:{'Content-Type':'application/json'}, signal: __runCtl.signal, body: JSON.stringify(__vp) });
+          const __r = await postWithConfirm('/api/video?action=veo-create', __vp, __runCtl.signal); /* v-talkchar-confirm: 428 = سؤال الخصم مرّة ثمّ confirmed:true (كان fetch خامًا فـ«⚠️ confirm_required» لكلّ غير المالك) */
           const __d = await __r.json().catch(()=>({}));
           if(__r.ok && __d.op){ __op = __d.op; }
-          else { __verr = (__d && __d.error) || ('HTTP ' + __r.status); if(/auth_required/.test(__verr) || /points_insufficient/.test(__verr)) break; if(__a === 0) await new Promise(r=>setTimeout(r,6000)); }
+          else { __verr = (__d && __d.error) || ('HTTP ' + __r.status); __vra = (__d && __d.retryAfter) || 0; if(__verr === 'auth_required' || __verr === 'points_insufficient' || __verr === 'video_cooldown' || __r.status === 428) break; if(__a === 0) await new Promise(r=>setTimeout(r,6000)); } /* المهلة والنقاط والإلغاء بلا إعادة (ولا تأكيد ثانٍ) */
         }
         if(!__op){
-          if(/auth_required/.test(__verr)) throw new Error(lang==='ar'?'سجّل الدخول أولًا عشان أسوي لك الفيديو.':'Please log in first to create videos.');
-          if(/points_insufficient/.test(__verr)) throw new Error(lang==='ar'?'رصيدك غير كافٍ لإنشاء فيديو ناطق.':'Not enough balance for a talking video.');
-          throw new Error(__verr);
+          if(__verr === 'auth_required') throw new Error(lang==='ar'?'سجّل الدخول أولًا عشان أسوي لك الفيديو.':'Please log in first to create videos.');
+          if(__verr === 'points_insufficient') throw new Error(omranVideoCodeText(__verr) || (lang==='ar'?'رصيدك غير كافٍ لإنشاء فيديو ناطق.':'Not enough balance for a talking video.'));
+          if(__verr === 'HTTP 428') throw Object.assign(new Error(t('vidCancelled')), { __note: true }); throw new Error(omranVideoCodeText(__verr, __vra) || __verr);
         }
         let __vurl = null; const __vt0 = Date.now();
         while(!__vurl){
@@ -25077,7 +25077,7 @@ function __friendlyErr(e){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎬 شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)':'🎬 Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)'), attachments:[{ name:'talking-character.mp4', isVideo:true, url:__vurl }] });
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
-        if(!(e && e.name === 'AbortError')){ cur.messages.push({ role:'assistant', content:'⚠️ ' + __friendlyErr(e) }); }
+        if(!(e && e.name === 'AbortError')){ cur.messages.push({ role:'assistant', content:(e && e.__note) ? String(e.message) : '⚠️ ' + __friendlyErr(e) }); }
       }
       cur.lastMsgWasImageEdit = false;
       renderAll(); saveState();
@@ -27519,10 +27519,10 @@ if('speechSynthesis' in window){
 /* ───────── تأكيد قبل صرف النقاط ─────────
    الخادم يرجع 428 مع السعر بدل التنفيذ الصامت. هنا نعرضه ونعيد الطلب
    بـ confirmed:true فقط بعد موافقة صريحة. */
-async function postWithConfirm(url, payload){
+async function postWithConfirm(url, payload, sig){
   const send = (body) => fetch(url, {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body),
-    signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    signal: sig || ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined), /* v-talkchar-confirm: إشارة الطلب نفسه إن مُرّرت */
   });
   let res = await send(payload);
   if(res.status !== 428) return res;

@@ -170,7 +170,7 @@ module.exports = async (req, res) => {
     res.status(200).json({ id: sub.id, seconds: voice.sec });
   } catch (e) {
     try { await undo(); } catch (e2) { console.error('[actor] refund after error failed: ' + (e2 && e2.message)); }
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[actor] ' + (e && e.stack ? e.stack : e)); res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.' });
   }
 };
 module.exports.ssmlFor = ssmlFor;

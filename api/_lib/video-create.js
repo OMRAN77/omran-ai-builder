@@ -52,6 +52,9 @@ module.exports = async (req, res) => {
     return;
   }
 
+  /* v-video-giveback: خارج try — الرمية بعد الخصم تسقط في الـcatch الأخير، وكان يردّ ٥٠٠ بلا ردّ نقاط ولا فكّ قفل */
+  let chargedUser = null;
+  let videoLocked = null;
   try {
     let body = req.body;
     if (!body || typeof body === 'string') {
@@ -69,6 +72,12 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Missing promptText' });
       return;
     }
+
+    /* v-video-giveback: فحص المفتاح قبل أيّ حجز أو خصم (كـveo-create، v-video-stream) — كان بعد spendPoints وvideoLock
+       ويردّ ٥٠٠ باسم المفتاح بلا ردّ ولا فكّ: النقاط تحترق وإعادة المحاولة ترجع video_cooldown. */
+    const picked = pickKey();
+    if (!picked) { console.error('[video-create] missing provider key'); res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.' }); return; }
+    const apiKey = picked.key;
 
     // "Long video" mode (many chained scenes for a multi-minute video) is
     // restricted to the owner's own account and bypasses the small daily
@@ -100,10 +109,8 @@ module.exports = async (req, res) => {
     // 💰 نظام النقاط: فيديو Runway = 60 نقطة لغير المالك. يُخصم قبل
     // الإنشاء ويُسترجع تلقائيًا لو فشل الطلب عند Runway.
     const pointsLib = require('./points.js');
-    let chargedUser = null;
-    let videoLocked = null;
     if (usageResult.username && !pointsLib.isOwnerUsername(usageResult.username)) {
-      const gateRw = pointsLib.requireConfirmation(body, pointsLib.COSTS.runway_video, 'فيديو Runway');
+      const gateRw = pointsLib.requireConfirmation(body, pointsLib.COSTS.runway_video, 'فيديو بالذكاء الاصطناعي');
       if (gateRw) { res.status(gateRw.status).json(gateRw.payload); return; }
       const pay = await pointsLib.spendPoints(usageResult.username, pointsLib.COSTS.runway_video, 'runway_video');
       if (!pay.ok) {
@@ -122,13 +129,6 @@ module.exports = async (req, res) => {
         videoLocked = chargedUser;
       }
     }
-
-    const picked = pickKey();
-    if (!picked) {
-      res.status(500).json({ error: 'Server is missing RUNWAY_API_KEY' });
-      return;
-    }
-    const apiKey = picked.key;
 
     const allowedRatios = ['1280:720', '720:1280'];
     const finalRatio = allowedRatios.includes(ratio) ? ratio : '1280:720';
@@ -192,9 +192,10 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-      // رسالة مفهومة للمستخدم + ذيل تقني قصير للتشخيص — لا JSON خام بطول شاشة.
+      // v-video-names: رسالة مفهومة للمستخدم، والذيل التقنيّ (قد يسمّي المزوّد أو نماذجه) للسجلّ وحده.
       const tech = String((data && (data.error || (data.issues && data.issues[0] && data.issues[0].message))) || ('HTTP ' + upstream.status)).slice(0, 160);
-      res.status(upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات. (' + tech + ')', retryable: true });
+      console.error('[video-create] upstream ' + upstream.status + ': ' + tech);
+      res.status(upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
       return;
     }
 
@@ -206,9 +207,16 @@ module.exports = async (req, res) => {
     const clientTaskId = encodeTaskId(picked.index, data.id);
     // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم والقفل وحصّة اليوم.
     await require('./video-job.js').rememberVideoJob(clientTaskId, { username: chargedUser, cost: pointsLib.COSTS.runway_video, locked: !!videoLocked, quota: longMode !== true });
+    chargedUser = null; videoLocked = null; /* v-video-giveback: التذكرة تملك الردّ من هنا — catch لا يردّ مرّتين (كـactor-create) */
     res.status(200).json({ id: clientTaskId, remaining });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    /* v-video-giveback: أيّ رمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) تردّ النقاط وتفكّ القفل كـomni-create — أفضل جهد لا يحجب الردّ */
+    try {
+      if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.runway_video);
+      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+    } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
+    console.error('[video-create] ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
   }
 };
 module.exports.buildRunwayPrompt = buildRunwayPrompt;

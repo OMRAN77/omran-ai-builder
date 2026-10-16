@@ -13,6 +13,9 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  /* v-video-giveback: خارج try — الرمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) كانت تردّ ٥٠٠ بلا ردّ نقاط ولا فكّ قفل */
+  let chargedUser = null;
+  let videoLocked = null;
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
@@ -40,12 +43,14 @@ module.exports = async (req, res) => {
     let durSec = parseInt(durationSeconds, 10);
     durSec = (durSec >= 8) ? 10 : 6;
 
+    /* v-video-giveback: فحص المفتاح قبل أيّ خصم (كـveo-create) — كان بعد الخصم والقفل ويردّ اسم المفتاح للمستخدم */
+    const apiKey = process.env.MINIMAX_API_KEY;
+    if (!apiKey) { console.error('[minimax-create] missing provider key'); res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.' }); return; }
+
     // 💰 النقاط: المحرّك الاقتصادي متاح للجميع — المالك بلا حدود، وغيره يدفع
     // minimax_video نقطة. يُسترجع الرصيد تلقائيًا لو فشل الطلب عند المزوّد.
     const pointsLib = require('./points.js');
     const gate = await checkOwnerBypass(token);
-    let chargedUser = null;
-    let videoLocked = null;
     if (!gate.allowed) {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
@@ -74,14 +79,6 @@ module.exports = async (req, res) => {
         }
         videoLocked = username;
       }
-    }
-
-    const apiKey = process.env.MINIMAX_API_KEY;
-    if (!apiKey) {
-      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.minimax_video);
-      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-      res.status(500).json({ error: 'Server is missing MINIMAX_API_KEY' });
-      return;
     }
 
     /* v-video-first-frame (المالك: «كل الفيديوات»): مع صورة ووصف يُبنى أوّل إطار بوجهه في مشهد الوصف وأسلوبه، ثمّ
@@ -117,13 +114,21 @@ module.exports = async (req, res) => {
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.minimax_video);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       const tech = String((data && data.base_resp && data.base_resp.status_msg) || ('HTTP ' + upstream.status)).slice(0, 160);
-      res.status(upstream.ok ? 502 : upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات. (' + tech + ')', retryable: true });
+      console.error('[minimax-create] upstream ' + upstream.status + ': ' + tech);
+      res.status(upstream.ok ? 502 : upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
       return;
     }
     // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم ويفكّ القفل.
     await require('./video-job.js').rememberVideoJob(data.task_id, { username: chargedUser, cost: pointsLib.COSTS.minimax_video, locked: !!videoLocked });
+    chargedUser = null; videoLocked = null; /* v-video-giveback: التذكرة تملك الردّ من هنا — catch لا يردّ مرّتين (كـactor-create) */
     res.status(200).json({ task_id: data.task_id });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    /* v-video-giveback: أيّ رمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) تردّ النقاط وتفكّ القفل كـomni-create — أفضل جهد لا يحجب الردّ */
+    try {
+      if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.minimax_video);
+      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+    } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
+    console.error('[minimax-create] ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
   }
 };

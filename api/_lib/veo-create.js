@@ -17,6 +17,9 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  /* v-video-giveback: خارج try — الرمية بعد الخصم (نداء الإنشاء أو إطار المجموعة) كانت تردّ ٥٠٠ بلا ردّ نقاط ولا فكّ قفل */
+  let chargedUser = null;
+  let videoLocked = null;
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
@@ -71,8 +74,6 @@ module.exports = async (req, res) => {
     // 400 نقطة للفيديو الواحد. يُسترجع الرصيد تلقائيًا لو فشل الطلب.
     const pointsLib = require('./points.js');
     const gate = await checkOwnerBypass(token);
-    let chargedUser = null;
-    let videoLocked = null;
     if (!gate.allowed) {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
@@ -82,7 +83,7 @@ module.exports = async (req, res) => {
       let pay = (body.trend && (await require('./_planVideos.js').planVideoLeft(username)) > 0)
         ? await pointsLib.spendPoints(username, pointsLib.COSTS.veo_video, 'veo_video', { planVideoOnly: true }) : null;
       if (!pay || !pay.ok) {
-        const gateVeo = pointsLib.requireConfirmation(body, pointsLib.COSTS.veo_video, 'فيديو Veo 3');
+        const gateVeo = pointsLib.requireConfirmation(body, pointsLib.COSTS.veo_video, 'فيديو سينمائي بالصوت');
         if (gateVeo) { res.status(gateVeo.status).json(gateVeo.payload); return; }
         pay = await pointsLib.spendPoints(username, pointsLib.COSTS.veo_video, 'veo_video');
       }
@@ -180,14 +181,22 @@ module.exports = async (req, res) => {
       const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-      res.status(upstream.status).json({ error: 'Veo error: ' + String(msg).slice(0, 500) });
+      console.error('[veo-create] upstream ' + upstream.status + ': ' + String(msg).slice(0, 300));
+      res.status(upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.' });
       return;
     }
     // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم ويفكّ القفل.
     await require('./video-job.js').rememberVideoJob(data.name, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked });
+    chargedUser = null; videoLocked = null; /* v-video-giveback: التذكرة تملك الردّ من هنا — catch لا يردّ مرّتين (كـactor-create) */
     res.status(200).json({ op: data.name });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    /* v-video-giveback: أيّ رمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) تردّ النقاط وتفكّ القفل كـomni-create — أفضل جهد لا يحجب الردّ */
+    try {
+      if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.veo_video);
+      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+    } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
+    console.error('[veo-create] ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
   }
 };
 module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;

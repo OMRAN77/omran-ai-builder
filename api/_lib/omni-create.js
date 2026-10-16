@@ -154,7 +154,8 @@ module.exports = async (req, res) => {
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.omni_video);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
-      res.status(upstream.status).json({ error: 'تعذّر توليد الفيديو — أعد المحاولة. (' + String(msg).slice(0, 200) + ')', retryable: true });
+      console.error('[omni-create] upstream ' + upstream.status + ': ' + String(msg).slice(0, 300));
+      res.status(upstream.status).json({ error: 'تعذّر توليد الفيديو — أعد المحاولة.', retryable: true });
       return;
     }
 
