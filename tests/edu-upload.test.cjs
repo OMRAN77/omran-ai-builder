@@ -47,7 +47,7 @@ test('٢. الرفع: الصور تُصغَّر JPEG، والـPDF الكبير 
   assert.ok(s.includes("return persistLesson(lesson).catch(function(){"), 'فشل الحفظ لا يرمي التحليل');
   assert.ok(s.includes("return listLessons().catch(function(){ return {lessons:[]}; })"));
   assert.ok(read('js/app.bundle.js').includes('async function extractPdfText(file){'), 'الدالة متاحة عالميًّا من الحزمة');
-  assert.ok(read('index.html').includes('/js/edu.js?v=668'));
+  assert.ok(Number((read('index.html').match(/\/js\/edu\.js\?v=(\d+)/) || [])[1]) >= 668); /* v-edu-upform: الوسم يُقرأ من المصدر — رفعه لا يكسر الاختبار */
 });
 
 test('٣. حفظ رابط مشاركة في قاعدة ممتلئة: تنظيف القديم مرّة ثمّ إعادة الحفظ — وخطأ آخر (حدّ الطلبات) يُرمى بلا تنظيف', async () => {
@@ -97,5 +97,5 @@ test('٥. v-edu-ios-files: قائمة ملفّات حيّة (سفاري) تُن�
   input.onchange.call(input);
   assert.equal(got && got.length, 1, 'الملفّ وصل بعد تفريغ الحقل');
   assert.equal(got[0].name, 'Student_Card.pdf');
-  assert.ok(read('index.html').includes('/js/edu.js?v=668'));
+  assert.ok(Number((read('index.html').match(/\/js\/edu\.js\?v=(\d+)/) || [])[1]) >= 668); /* v-edu-upform: الوسم يُقرأ من المصدر — رفعه لا يكسر الاختبار */
 });
