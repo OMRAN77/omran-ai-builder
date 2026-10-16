@@ -207,15 +207,23 @@ async function meterOp(username, reason) {
 }
 
 // يعيد نقاطًا للمستخدم (استرجاع عند فشل توليد بعد الخصم).
-async function refundPoints(username, amount) {
+// v-refund-kind (مراجعة باب المال ١٦ أكتوبر): how اختياريّ = نتيجة spendPoints نفسها، فيعود الردّ بنوع الخصم: صلاحيّة الباقة لها
+// (ضياع تذكرتها = نقاطًا كي لا يخرج بلا شيء)، ورصيد الاشتراك له ثمّ النقاط، والنقاط للنقاط وحدها. بلا how يُطابَق بالمبلغ كما كان —
+// وهناك كانت تذكرة صلاحيّة قديمة بالمبلغ نفسه (فيديو ترند نجح قبل ساعة) تبتلع ردّ فيديو دُفع نقاطًا، فتبقى النقاط مخصومة.
+async function refundPoints(username, amount, how) {
   if (!username || isOwner(username)) return;
   if (await isVip(username)) return; // لم يُخصم منه شيء، فلا شيء يُعاد.
   let amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (!amt) return;
-  try { amt = await planVideos.refundPlanVideo(username, amt); } catch (e) { console.warn('[points] plan video refund skipped:', e && e.message); } // v-plan-videos
-  if (!amt) return;
-  try { amt = await media.refundMedia(username, amt); } catch (e) { console.warn('[points] media refund skipped:', e && e.message); }
-  if (!amt) return;
+  const kind = (how && typeof how === 'object') ? (how.planVideo ? 'plan' : (how.media ? 'media' : 'points')) : '';
+  if (!kind || kind === 'plan') {
+    try { amt = await planVideos.refundPlanVideo(username, amt); } catch (e) { console.warn('[points] plan video refund skipped:', e && e.message); } // v-plan-videos
+    if (!amt) return;
+  }
+  if (!kind || kind === 'media') {
+    try { amt = await media.refundMedia(username, amt); } catch (e) { console.warn('[points] media refund skipped:', e && e.message); }
+    if (!amt) return;
+  }
   // Must go through the same atomic counter as the deduction. A read-modify-
   // write refund running next to a concurrent spend would overwrite it and
   // silently hand back points that were legitimately taken.
@@ -226,6 +234,17 @@ async function refundPoints(username, amount) {
   } catch (e) {
     console.error('[points] refund failed for ' + username + ':', e && e.message);
   }
+}
+
+/* v-talkchar-confirm (مراجعة باب المال): هل يكفي ما عنده لـamount؟ قراءة فقط — لا خصم ولا تذكرة؛ الحكم عند السباق لـspendPoints.
+   المالك وVIP نعم، والموقوف لا، ومشترك وسائط ساري يُترك لمسار الخصم نفسه (رصيد اشتراكه يُحسب بالفلس لكلّ خدمة) فنعم.
+   الباقي رصيد النقاط. يُسأل قبل خطوة مدفوعة تسبق الفيديو (كرتنة الشخصيّة الناطقة) كي لا تُخصم ثمّ يرجع points_insufficient. */
+async function canAfford(username, amount) {
+  if (!username) return false;
+  if (isOwner(username) || (await isVip(username))) return true;
+  if (await isBanned(username)) return false;
+  try { if (Object.keys(await media.mediaStatus(username)).length) return true; } catch (e) { return true; } // عطب القراءة لا يمنع — الخصم يحكم
+  try { return (await ensureBalance(username)) >= Math.max(0, Math.floor(Number(amount) || 0)); } catch (e) { return true; }
 }
 
 /* v-video-enhance-pro: ردّ بالنقاط وحدها — لخدمة سببها خارج جدول الوسائط (UNIT_COST) فخُصمت من النقاط لا من رصيد اشتراك.
@@ -380,6 +399,7 @@ module.exports.ensureBalance = ensureBalance; // v-pay-seed: الشحن يبذر
 module.exports.spendByToken = spendByToken;
 module.exports.refundPoints = refundPoints;
 module.exports.refundPointsOnly = refundPointsOnly; // v-video-enhance-pro: ردّ لا يمرّ بتذاكر الباقات
+module.exports.canAfford = canAfford; // v-talkchar-confirm: قراءة فقط قبل خطوة مدفوعة تسبق الفيديو
 module.exports.readPoints = readPoints;
 module.exports.isOwnerUsername = isOwner;
 module.exports.verifyPointsToken = verifyToken;

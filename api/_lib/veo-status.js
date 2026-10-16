@@ -2,6 +2,15 @@
 // same-origin download URL (proxied through veo-download so the API key
 // never reaches the browser).
 const GL = 'https://generativelanguage.googleapis.com/v1beta';
+/* v-video-names (مراجعة باب المال): سبب الفشل كان يصل المستخدم بنصّ المزوّد نفسه (اسم النموذج والمنصّة) في الترند وأداة الوكيل
+   والشخصيّة الناطقة. النصّ للسجلّ، وللمستخدم سبب عربيّ ثابت مع failureCode: safety = الرقابة (العميل يترجمه)، failed = غيرها. */
+const SAFETY_RE = /safety|moderat|filter|responsible ai|\brai\b|guideline|content policy|prohibited|sensitive/i;
+const FAIL_SAFETY = 'الرقابة رفضت المحتوى — جرّب صورة أو وصفًا آخر.';
+const FAIL_OTHER = 'جرّب صورة أو وصفًا آخر.'; // كلّ متّصل يسبقه بـ«فشل إنشاء الفيديو» فلا يتكرّر
+function failed(res, why) {
+  const safety = SAFETY_RE.test(String(why || ''));
+  res.status(200).json({ status: 'FAILED', failure: safety ? FAIL_SAFETY : FAIL_OTHER, failureCode: safety ? 'safety' : 'failed' });
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,7 +33,9 @@ module.exports = async (req, res) => {
     const settle = (ok) => require('./video-job.js').settleVideoJob(op, ok);
     if (data.error) {
       await settle(false);
-      res.status(200).json({ status: 'FAILED', failure: String(data.error.message || '').slice(0, 300) });
+      const why = String(data.error.message || '');
+      console.error('[veo-status] failed: ' + why.slice(0, 300));
+      failed(res, why);
       return;
     }
     const r = data.response || {};
@@ -40,9 +51,9 @@ module.exports = async (req, res) => {
       await settle(false);
       let why = 'no video in response';
       const rai = gvr.raiMediaFilteredReasons || r.raiMediaFilteredReasons;
-      if (rai && rai.length) why = 'filtered: ' + String(rai.join(' | ')).slice(0, 400);
+      if (rai && rai.length) { why = 'filtered: ' + String(rai.join(' | ')).slice(0, 400); console.warn('[veo-status] ' + why); }
       else console.error('[veo-status] no video, raw: ' + JSON.stringify(r).slice(0, 300)); // v-video-names: الخامّ (@type googleapis…) للسجلّ لا للمستخدم
-      res.status(200).json({ status: 'FAILED', failure: why });
+      failed(res, why);
       return;
     }
     await settle(true);

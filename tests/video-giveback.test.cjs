@@ -172,3 +172,82 @@ test('٥. النجاح والمهلة كما كانا حرفيًّا: خصم و�
     assert.equal(locked(u), true, name + ': المهلة لا تفكّ قفل الفيديو الجاري');
   }
 });
+
+// v-refund-kind (مراجعة باب المال ١٦ أكتوبر): الاسترجاع كان يُطابَق بالمبلغ وحده، وتذكرة صلاحيّة الباقة لا تُمحى عند نجاح الفيديو —
+// فمشترك Pro صرف صلاحيّتيه (فيديوان نجحا) ثمّ دفع الثالث نقاطًا وتعطّل: ردّه يطابق تذكرة قديمة بالمبلغ نفسه فيعيد صلاحيّة لم تُصرف له
+// ويترك ٤٠ نقطة مخصومة (الشيء نفسه للتسوية عند الاستطلاع). الآن الردّ يعود إلى نوع الخصم نفسه (نتيجة spendPoints).
+test('٦. الردّ بنوع الخصم: فيديو مدفوع نقاطًا بعد نفاد الصلاحيّة يعيد نقاطه لا صلاحيّة قديمة؛ وفيديو الصلاحيّة يعيد صلاحيّته', async () => {
+  const pv = require(rp('api/_lib/_planVideos.js'));
+  const job = require(rp('api/_lib/video-job.js'));
+  const MM = points.COSTS.minimax_video;
+  const pro = (u) => { user(u, 1000); users.set(u, Object.assign(users.get(u), { plan: 'pro', planUpdatedAt: Date.now() - 3 * DAY })); };
+  const unlock = (u) => kv.delete('abuse:video:' + u);
+  const left = async (u) => (await pv.planVideoStatus(u)).left;
+
+  reset(); pro('pro-a');
+  assert.equal((await mm('pro-a')).code, 200); unlock('pro-a');
+  assert.equal((await mm('pro-a')).code, 200); unlock('pro-a');
+  assert.equal(await left('pro-a'), 0, 'الصلاحيّتان صُرفتا');
+  assert.equal(bal('pro-a'), 1000, 'الصلاحيّة لا تخصم نقاطًا');
+  mode.minimax = 'throw';
+  const r = await mm('pro-a');
+  assert.equal(r.code, 500);
+  assert.equal(bal('pro-a'), 1000, 'النقاط عادت: ' + bal('pro-a'));
+  assert.equal(await left('pro-a'), 0, 'لا صلاحيّة هديّة من تذكرة قديمة');
+  assert.equal(locked('pro-a'), false);
+
+  // التسوية عند الاستطلاع: المهمّة المدفوعة نقاطًا تُردّ نقاطًا رغم تذاكر الصلاحيّة الباقية.
+  mode.minimax = 'ok';
+  const paid = await mm('pro-a');
+  assert.equal(paid.code, 200);
+  assert.equal(bal('pro-a'), 1000 - MM);
+  const s = await job.settleVideoJob(paid.body.task_id, false);
+  assert.equal(s && s.refunded, true);
+  assert.equal(bal('pro-a'), 1000, 'التسوية ردّت النقاط');
+  assert.equal(await left('pro-a'), 0, 'والصلاحيّة كما هي');
+
+  // فيديو الصلاحيّة نفسه يتعطّل: تعود الصلاحيّة لا النقاط.
+  reset(); pro('pro-b');
+  mode.minimax = 'throw';
+  assert.equal((await mm('pro-b')).code, 500);
+  assert.equal(await left('pro-b'), 2, 'الصلاحيّة عادت');
+  assert.equal(bal('pro-b'), 1000, 'بلا نقاط هديّة');
+
+  // تذكرة مهمّة قديمة (قبل هذا الإصلاح، بلا k) تبقى على المطابقة بالمبلغ كما كانت.
+  reset(); pro('pro-c');
+  const okc = await mm('pro-c');
+  assert.equal(await left('pro-c'), 1);
+  const tk = job.ticketKey(okc.body.task_id);
+  const old = JSON.parse(kv.get(tk)); assert.equal(old.k, 'v', 'نوع الخصم في التذكرة'); delete old.k; kv.set(tk, JSON.stringify(old));
+  await job.settleVideoJob(okc.body.task_id, false);
+  assert.equal(await left('pro-c'), 2, 'المطابقة بالمبلغ للتذكرة القديمة');
+});
+
+// v-talkchar-confirm (مراجعة باب المال): سؤال السعر قبل الكرتنة على المعالج وabuse-guard الحقيقيّين — قراءة فقط.
+test('٧. priceCheck: المهلة والرصيد قبل السؤال، والسعر يشمل الكرتون؛ لا خصم ولا قفل ولا نداء مزوّد', async () => {
+  const guard = require(rp('api/_lib/abuse-guard.js'));
+  reset(); user('pc-a', 1000);
+  assert.equal(await guard.videoCooldownLeft('pc-a'), 0, 'لا قفل = ٠');
+  const before = sent.length;
+  const q = await vo('pc-a', { priceCheck: true, withCartoon: true, confirmed: undefined });
+  assert.equal(q.code, 428);
+  assert.equal(q.body.cost, points.COSTS.veo_video + points.COSTS.image);
+  const ok = await vo('pc-a', { priceCheck: true, withCartoon: true });
+  assert.equal(ok.code, 200);
+  assert.equal(sent.length, before, 'لا نداء مزوّد');
+  assert.equal(bal('pc-a'), 1000);
+  assert.equal(locked('pc-a'), false);
+  assert.equal((await vo('pc-a')).code, 200, 'الفيديو نفسه');
+  const left = await guard.videoCooldownLeft('pc-a');
+  assert.ok(left >= 1 && left <= guard.VIDEO_COOLDOWN_SEC, 'المتبقّي ' + left);
+  const cd = await vo('pc-a', { priceCheck: true, withCartoon: true });
+  assert.equal(cd.code, 429);
+  assert.equal(cd.body.error, 'video_cooldown');
+  assert.equal(bal('pc-a'), 1000 - points.COSTS.veo_video, 'المهلة لا تخصم');
+  user('pc-b', points.COSTS.veo_video); // يكفي الفيديو وحده لا الفيديو + الكرتون
+  const lo = await vo('pc-b', { priceCheck: true, withCartoon: true });
+  assert.equal(lo.code, 402);
+  assert.equal(lo.body.error, 'points_insufficient');
+  assert.equal((await vo('pc-b', { priceCheck: true })).code, 200, 'بلا كرتون يكفي');
+  assert.equal(bal('pc-b'), points.COSTS.veo_video);
+});

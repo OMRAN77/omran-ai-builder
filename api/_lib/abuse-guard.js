@@ -63,6 +63,20 @@ async function videoLock(username, o) {
   }
 }
 
+/** v-talkchar-confirm: قراءة فقط — ثوانٍ باقية من قفل الفيديو (٠ = لا قفل). يُسأل قبل خطوة مدفوعة تسبق الفيديو (كرتنة الشخصيّة
+    الناطقة) كي لا تُخصم ثمّ يرجع video_cooldown؛ الحكم عند السباق يبقى لـvideoLock. عطب القراءة = ٠ فلا يمنع. */
+async function videoCooldownLeft(username, o) {
+  const opt = o || {};
+  const kv = opt.kv || require('./kv.js');
+  if (!username) return 0;
+  const key = 'abuse:video:' + userKey(username);
+  try {
+    const v = await kv.kvGetRaw(key);
+    if (v === null || v === undefined || String(v) === '') return 0;
+  } catch (e) { return 0; } // أفضل جهد — videoLock يحكم بعدها
+  return cooldownLeft(kv, key, opt.ttl || VIDEO_COOLDOWN_SEC);
+}
+
 /** فشل المزوّد بعد القفل = يُفكّ القفل مع ردّ النقاط كي لا يُعاقَب المستخدم على عطب ليس منه. */
 async function releaseVideoLock(username, o) {
   const opt = o || {};
@@ -71,4 +85,4 @@ async function releaseVideoLock(username, o) {
   try { await kv.kvDel('abuse:video:' + userKey(username)); } catch (e) { /* أفضل جهد — القفل يسقط بعد ٣ دقائق */ }
 }
 
-module.exports = { IMAGE_HOURLY_MAX, VIDEO_COOLDOWN_SEC, imageHourlyGuard, videoLock, releaseVideoLock };
+module.exports = { IMAGE_HOURLY_MAX, VIDEO_COOLDOWN_SEC, imageHourlyGuard, videoLock, releaseVideoLock, videoCooldownLeft };

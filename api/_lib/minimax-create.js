@@ -16,6 +16,7 @@ module.exports = async (req, res) => {
   /* v-video-giveback: خارج try — الرمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) كانت تردّ ٥٠٠ بلا ردّ نقاط ولا فكّ قفل */
   let chargedUser = null;
   let videoLocked = null;
+  let chargedPay = null; // v-refund-kind: نتيجة الخصم نفسها — الردّ يعود إلى نوعه
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
@@ -68,12 +69,12 @@ module.exports = async (req, res) => {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.minimax_video, points: pay.points || 0 });
         return;
       }
-      chargedUser = username;
+      chargedUser = username; chargedPay = pay;
       // v-plan-routing: فيديو واحد كلّ ٣ دقائق لكلّ حساب — VIP خارجها. القفل يُفكّ لو فشل الطلب.
       if (!pay.owner) {
         const __vl = await require('./abuse-guard.js').videoLock(username);
         if (!__vl.ok) {
-          await pointsLib.refundPoints(username, pointsLib.COSTS.minimax_video);
+          await pointsLib.refundPoints(username, pointsLib.COSTS.minimax_video, pay); chargedUser = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
           res.status(429).json({ error: 'video_cooldown', retryAfter: __vl.retryAfter });
           return;
         }
@@ -111,21 +112,23 @@ module.exports = async (req, res) => {
     // MiniMax يعيد 200 مع base_resp.status_code≠0 عند الرفض المنطقيّ — نعامله كفشل.
     const okCode = data && data.base_resp && Number(data.base_resp.status_code) === 0;
     if (!upstream.ok || !data.task_id || !okCode) {
-      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.minimax_video);
+      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.minimax_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+      chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
       const tech = String((data && data.base_resp && data.base_resp.status_msg) || ('HTTP ' + upstream.status)).slice(0, 160);
       console.error('[minimax-create] upstream ' + upstream.status + ': ' + tech);
-      res.status(upstream.ok ? 502 : upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
+      const temp = upstream.ok || upstream.status === 429 || upstream.status >= 500; /* v-video-names (مراجعة): ٤٢٩ و٥xx مؤقّتة تُعاد، وغيرها رفضٌ للطلب نفسه (وصف أو صورة) — «أعد بعد لحظات» كان يعيده كما هو فيفشل ثانيةً */
+      res.status(upstream.ok ? 502 : upstream.status).json({ error: temp ? 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.' : 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.', retryable: temp });
       return;
     }
     // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم ويفكّ القفل.
-    await require('./video-job.js').rememberVideoJob(data.task_id, { username: chargedUser, cost: pointsLib.COSTS.minimax_video, locked: !!videoLocked });
+    await require('./video-job.js').rememberVideoJob(data.task_id, { username: chargedUser, cost: pointsLib.COSTS.minimax_video, locked: !!videoLocked, pay: chargedPay });
     chargedUser = null; videoLocked = null; /* v-video-giveback: التذكرة تملك الردّ من هنا — catch لا يردّ مرّتين (كـactor-create) */
     res.status(200).json({ task_id: data.task_id });
   } catch (e) {
     /* v-video-giveback: أيّ رمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) تردّ النقاط وتفكّ القفل كـomni-create — أفضل جهد لا يحجب الردّ */
     try {
-      if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.minimax_video);
+      if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.minimax_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
     } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
     console.error('[minimax-create] ' + (e && e.stack ? e.stack : e));

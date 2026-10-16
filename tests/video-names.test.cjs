@@ -32,6 +32,7 @@ stub('_videoUsage.js', {
   checkVideoQuota: async () => ({ allowed: true, username: 'sara' }),
   consumeVideo: async () => 1,
   checkOwnerBypass: async () => ({ allowed: false, reason: 'not_owner' }),
+  isOwner: () => false,
 });
 stub('abuse-guard.js', { videoLock: async () => ({ ok: true }), releaseVideoLock: async (u) => { log.unlocks.push(u); } });
 stub('video-job.js', { rememberVideoJob: async () => true, settleVideoJob: async () => null });
@@ -51,7 +52,7 @@ function resObj() {
   return { code: 0, body: null, setHeader() {}, status(c) { this.code = c; return this; }, json(v) { this.body = v; return this; }, end() { return this; } };
 }
 const shown = (b) => (b ? [b.message_ar, b.label, b.error, b.failure].filter((x) => typeof x === 'string') : []);
-const KEYS = ['GEMINI_API_KEY', 'MINIMAX_API_KEY', 'FAL_KEY'];
+const KEYS = ['GEMINI_API_KEY', 'MINIMAX_API_KEY', 'FAL_KEY', 'OPENAI_API_KEY'];
 
 async function call(file, req, fetchImpl, opt) {
   const o = opt || {};
@@ -149,9 +150,38 @@ test('٤. أخطاء الاستطلاع (Runway · Veo · الممثّل): بل�
 });
 
 test('٥. لا رسالة مستخدم خامّة في ملفّات الفيديو المدفوع (حارس ثابت ضدّ العودة)', () => {
-  for (const f of ['video-create', 'veo-create', 'omni-create', 'minimax-create', 'actor-create', 'video-status', 'veo-status', 'actor-status']) {
+  for (const f of ['video-create', 'veo-create', 'omni-create', 'minimax-create', 'actor-create', 'video-status', 'veo-status', 'actor-status', 'video-script']) {
     const src = read('api/_lib/' + f + '.js');
-    assert.doesNotMatch(src, /error: '(?:Server is missing|Proxy error|Runway error|Veo error)/, f);
+    assert.doesNotMatch(src, /error: '(?:Server is missing|Proxy error|Runway error|Veo error|OpenAI error|Server error)/, f);
+    assert.doesNotMatch(src, /failure: String\(data\.error/, f + ': سبب الفشل بنصّ المزوّد');
     assert.doesNotMatch(src, /error: '[^']*\(' \+ (?:tech|String\(msg\))/, f + ': ذيل المزوّد بين قوسين في رسالة المستخدم');
+  }
+});
+
+test('٦. مراجعة باب المال: سبب فشل Veo عند الاستطلاع، وخطوة سيناريو الفيلم — عربيّ ثابت بلا اسم مزوّد، والنصّ للسجلّ', async () => {
+  const op = GET({ op: 'models/veo/operations/3' });
+  const err = await call('veo-status.js', op, reply(200, { done: true, error: { code: 3, message: 'models/veo-3.1-fast-generate-preview: Veo could not process the input image (Gemini API).' } }));
+  assert.equal(err.body.status, 'FAILED');
+  assert.equal(err.body.failureCode, 'failed');
+  clean(err, 'veo-status خطأ العمليّة');
+  assert.ok(err.errors.some((e) => /could not process/.test(e)), 'النصّ في السجلّ للتشخيص');
+  const safe = await call('veo-status.js', op, reply(200, { done: true, error: { code: 3, message: 'Video generation failed due to Responsible AI safety filters on Vertex AI.' } }));
+  assert.equal(safe.body.failureCode, 'safety', 'الرقابة يعرفها العميل بالرمز فيترجمها');
+  clean(safe, 'veo-status رقابة');
+  const rai = await call('veo-status.js', op, reply(200, { done: true, response: { generateVideoResponse: { raiMediaFilteredReasons: ['Gemini blocked this: celebrity likeness (Veo policy)'] } } }));
+  assert.equal(rai.body.failureCode, 'safety');
+  clean(rai, 'veo-status حجب بسبب');
+
+  const script = (net, opt) => call('video-script.js', POST({ topic: 'رحلة إلى البحر', mode: 'film' }), net, opt);
+  const replyT = (status, body) => async () => ({ ok: false, status, json: async () => body, text: async () => JSON.stringify(body) });
+  for (const [what, r] of [
+    ['بلا مفتاح', await script(null, { key: false })],
+    ['رفض المزوّد باسم النموذج', await script(replyT(429, { error: { message: 'Rate limit reached for gpt-5.5-mini in organization org-x on OpenAI' } }))],
+    ['انقطاع', await script(offline)],
+  ]) {
+    assert.ok(r.code >= 400, 'video-script ' + what);
+    clean(r, 'video-script ' + what);
+    assert.match(r.texts.join(' '), /سيناريو الفيلم/, what);
+    assert.ok(r.errors.length > 0, 'video-script ' + what + ': التفصيل لم يُسجَّل');
   }
 });

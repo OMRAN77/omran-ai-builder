@@ -55,6 +55,7 @@ module.exports = async (req, res) => {
   /* v-video-giveback: خارج try — الرمية بعد الخصم تسقط في الـcatch الأخير، وكان يردّ ٥٠٠ بلا ردّ نقاط ولا فكّ قفل */
   let chargedUser = null;
   let videoLocked = null;
+  let chargedPay = null; // v-refund-kind: نتيجة الخصم نفسها — الردّ يعود إلى نوعه
   try {
     let body = req.body;
     if (!body || typeof body === 'string') {
@@ -117,12 +118,12 @@ module.exports = async (req, res) => {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.runway_video, points: pay.points || 0 });
         return;
       }
-      chargedUser = usageResult.username;
+      chargedUser = usageResult.username; chargedPay = pay;
       // v-plan-routing: فيديو واحد كلّ ٣ دقائق لكلّ حساب — المالك وVIP خارجها (pay.owner). القفل يُفكّ لو فشل Runway.
       if (!pay.owner) {
         const __vl = await require('./abuse-guard.js').videoLock(chargedUser);
         if (!__vl.ok) {
-          await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video);
+          await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video, pay); chargedUser = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
           res.status(429).json({ error: 'video_cooldown', retryAfter: __vl.retryAfter });
           return;
         }
@@ -190,12 +191,14 @@ module.exports = async (req, res) => {
       }
     }
     if (!upstream.ok) {
-      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video);
+      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+      chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
       // v-video-names: رسالة مفهومة للمستخدم، والذيل التقنيّ (قد يسمّي المزوّد أو نماذجه) للسجلّ وحده.
       const tech = String((data && (data.error || (data.issues && data.issues[0] && data.issues[0].message))) || ('HTTP ' + upstream.status)).slice(0, 160);
       console.error('[video-create] upstream ' + upstream.status + ': ' + tech);
-      res.status(upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
+      const temp = upstream.status === 429 || upstream.status >= 500; /* v-video-names (مراجعة): ٤٢٩ و٥xx مؤقّتة تُعاد، وغيرها رفضٌ للطلب نفسه (وصف أو صورة) — «أعد بعد لحظات» كان يعيده كما هو فيفشل ثانيةً */
+      res.status(upstream.status).json({ error: temp ? 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.' : 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.', retryable: temp });
       return;
     }
 
@@ -206,13 +209,13 @@ module.exports = async (req, res) => {
     await saveLastTask(picked.index, data.id);
     const clientTaskId = encodeTaskId(picked.index, data.id);
     // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم والقفل وحصّة اليوم.
-    await require('./video-job.js').rememberVideoJob(clientTaskId, { username: chargedUser, cost: pointsLib.COSTS.runway_video, locked: !!videoLocked, quota: longMode !== true });
+    await require('./video-job.js').rememberVideoJob(clientTaskId, { username: chargedUser, cost: pointsLib.COSTS.runway_video, locked: !!videoLocked, quota: longMode !== true, pay: chargedPay });
     chargedUser = null; videoLocked = null; /* v-video-giveback: التذكرة تملك الردّ من هنا — catch لا يردّ مرّتين (كـactor-create) */
     res.status(200).json({ id: clientTaskId, remaining });
   } catch (e) {
     /* v-video-giveback: أيّ رمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) تردّ النقاط وتفكّ القفل كـomni-create — أفضل جهد لا يحجب الردّ */
     try {
-      if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.runway_video);
+      if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.runway_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
     } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
     console.error('[video-create] ' + (e && e.stack ? e.stack : e));

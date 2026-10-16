@@ -23662,6 +23662,20 @@ function omranVideoCodeText(code, retryAfter){
   const m = Math.max(1, Math.ceil((Number(retryAfter) || 180) / 60));
   return s ? s.replace('⏳', '').trim().replace('{m}', String(m)) : '';
 }
+/* v-talkchar-confirm (مراجعة باب المال): الشخصيّة الناطقة تُسعَّر قبل أيّ خطوة مدفوعة — الكرتنة (صورة مدفوعة) كانت تُخصم ثمّ يأتي سؤال
+   الفيديو، فالإلغاء يقول «لم تُخصم أيّ نقاط» وقد خُصمت، ومن لا يكفيه رصيده يدفع الكرتون ثمّ يرجع points_insufficient. priceCheck في
+   veo-create لا يخصم ولا يقفل ولا ينادي المزوّد. يرجع بعد الموافقة (أو بلا سؤال للمالك) فيحمل المتّصل confirmed:true إلى الإنشاء
+   وإعادته — سؤال واحد — وإلّا يرمي الخطأ نفسه الذي كان سيظهر بعد الكرتنة. خارج __sendPromptCore كي لا يكبر سقفها. */
+async function omranTalkPriceCheck(withCartoon, sig){
+  const r = await postWithConfirm('/api/video?action=veo-create', { priceCheck: true, withCartoon: !!withCartoon, promptText: 'talking character', token: authGet('aiapp_auth_token') }, sig);
+  if(r.ok) return true;
+  const d = await r.json().catch(()=>({}));
+  const e = (d && d.error) || ('HTTP ' + r.status);
+  if(e === 'HTTP 428') throw Object.assign(new Error(t('vidCancelled')), { __note: true });
+  const isAr = (typeof lang === 'undefined' || lang === 'ar');
+  if(e === 'auth_required') throw new Error(isAr ? 'سجّل الدخول أولًا عشان أسوي لك الفيديو.' : 'Please log in first to create videos.');
+  throw new Error(omranVideoCodeText(e, d && d.retryAfter) || e);
+}
 /* مراجعة الدفعة A (rel-1 · rel-5): ما لا يحسمه التعبير وحده يُبنى صورةً فقط إن قال المصنّف image — لا «ليس none»، فالتعذّر (null) لا يكفي
    ولوحة/خلفية ليستا كلمتَي وسائط فلا يُسأل عنهما أصلًا: (أ) «ممكن/تقدر ترسم…» بلا مفعول صورة («ممكن ترسم لي مسار مهني» مجاز)؛
    (ب) أفعال الرغبة + صورة/رسمة/لوحة/خلفية («نبغى صورة واضحة عن الوضع المالي»، «حاب لوحة مفاتيح»، «نبي لوحة تحكم» كلام)؛
@@ -25019,7 +25033,7 @@ function __friendlyErr(e){
       }
       const __tcMotion = __tcChoice.motion, __tcDur = __tcChoice.duration;
       try{
-        let __cartoonB64 = '', __cartoonMime = 'image/png';
+        let __cartoonB64 = '', __cartoonMime = 'image/png'; await omranTalkPriceCheck(!__alreadyCartoon, __runCtl.signal); /* v-talkchar-confirm: السعر قبل الكرتنة المدفوعة */
         if(__alreadyCartoon){
           // الشخصية الجاهزة كرتونية أصلًا — نستخدمها مباشرة بدون تحويل
           __cartoonB64 = __charImg.b64; __cartoonMime = __charImg.mime || 'image/png';
@@ -25050,13 +25064,13 @@ function __friendlyErr(e){
           : 'The character is lively and animated: gentle body movement, waving hand gestures and expressive motion while talking';
         const __talkPrompt = 'A cute chibi 3D cartoon character standing and talking directly to the camera, with natural mouth movement and accurate lip-sync, lively friendly facial expression. ' + __motionDesc + '. The character speaks out loud in ' + __voiceLang + (__dialogue ? (', clearly saying: "' + __dialogue.slice(0,300) + '"') : '') + '. Clear spoken voice audio, no background music. Keep the character exactly as in the provided image.';
         /* v-video-first-frame: الشخصيّة الكرتونيّة رُسمت للتوّ لتكون أوّل إطار — keepPhoto يمنع الخادم من رسم إطار ثانٍ فوقها */
-        const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'fast', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true };
+        const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'fast', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true, confirmed: true }; /* v-talkchar-confirm: الموافقة سبقت (omranTalkPriceCheck) فلا سؤال ثانٍ ولا عند الإعادة */
         let __op = null, __verr = '', __vra = 0;
         for(let __a = 0; __a < 2 && !__op; __a++){
           const __r = await postWithConfirm('/api/video?action=veo-create', __vp, __runCtl.signal); /* v-talkchar-confirm: 428 = سؤال الخصم مرّة ثمّ confirmed:true (كان fetch خامًا فـ«⚠️ confirm_required» لكلّ غير المالك) */
           const __d = await __r.json().catch(()=>({}));
           if(__r.ok && __d.op){ __op = __d.op; }
-          else { __verr = (__d && __d.error) || ('HTTP ' + __r.status); __vra = (__d && __d.retryAfter) || 0; if(__verr === 'auth_required' || __verr === 'points_insufficient' || __verr === 'video_cooldown' || __r.status === 428) break; if(__a === 0) await new Promise(r=>setTimeout(r,6000)); } /* المهلة والنقاط والإلغاء بلا إعادة (ولا تأكيد ثانٍ) */
+          else { __verr = (__d && __d.error) || ('HTTP ' + __r.status); __vra = (__d && __d.retryAfter) || 0; if(__verr === 'auth_required' || __verr === 'points_insufficient' || __verr === 'video_cooldown' || __r.status === 428 || __d.retryable === false) break; if(__a === 0) await new Promise(r=>setTimeout(r,6000)); } /* المهلة والنقاط والإلغاء بلا إعادة (ولا تأكيد ثانٍ) */
         }
         if(!__op){
           if(__verr === 'auth_required') throw new Error(lang==='ar'?'سجّل الدخول أولًا عشان أسوي لك الفيديو.':'Please log in first to create videos.');
@@ -25071,7 +25085,7 @@ function __friendlyErr(e){
           const __sr = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(__op), { signal: __runCtl.signal });
           const __sd = await __sr.json().catch(()=>({}));
           if(__sd.status === 'SUCCEEDED'){ __vurl = Array.isArray(__sd.output) ? __sd.output[0] : __sd.output; }
-          else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(/moderation|SAFETY|filtered|content did not pass/i.test(__fr)){ __fr = (lang==='ar')?'الرقابة رفضت المحتوى — جرّب صورة ثانية':'Content rejected by safety filters — try another photo'; } throw new Error((lang==='ar'?'فشل إنشاء الفيديو':'Video generation failed') + (__fr?(' — '+__fr):'')); }
+          else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(__sd.failureCode === 'safety' || /moderation|SAFETY|filtered|content did not pass/i.test(__fr)){ __fr = (lang==='ar')?'الرقابة رفضت المحتوى — جرّب صورة ثانية':'Content rejected by safety filters — try another photo'; } throw new Error((lang==='ar'?'فشل إنشاء الفيديو':'Video generation failed') + (__fr?(' — '+__fr):'')); }
           else { chatPhase('🎬', (lang==='ar'?'جاري تحريك الشخصية بصوت… ':'Animating with voice… ') + (__sd.status || ''), thinkingDiv); }
         }
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎬 شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)':'🎬 Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)'), attachments:[{ name:'talking-character.mp4', isVideo:true, url:__vurl }] });

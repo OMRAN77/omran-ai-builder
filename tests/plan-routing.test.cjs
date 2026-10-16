@@ -459,7 +459,7 @@ test('٩. abuse-guard: ٢٠ صورة في الساعة ثمّ 429 حتّى ال�
   assert.match(mi, /mahaImgChargedAmount = __imgCost;\n\s+\/\/ v-plan-routing[^\n]*\n\s+if \(!pay\.owner\) \{\n\s+const __hg = await require\('\.\/abuse-guard\.js'\)\.imageHourlyGuard\(mahaImgUser\);\n\s+if \(!__hg\.ok\) \{\n\s+await refundImageCharge\(\);\n\s+res\.status\(429\)\.json\(\{ error: 'image_hourly_limit'/);
   for (const [f, cost] of [['video-create', 'runway_video'], ['veo-create', 'veo_video']]) {
     const s = read('api/_lib/' + f + '.js');
-    assert.match(s, new RegExp("if \\(!pay\\.owner\\) \\{\\n\\s+const __vl = await require\\('\\./abuse-guard\\.js'\\)\\.videoLock\\(\\w+\\);\\n\\s+if \\(!__vl\\.ok\\) \\{\\n\\s+await pointsLib\\.refundPoints\\(\\w+, pointsLib\\.COSTS\\." + cost + "\\);\\n\\s+res\\.status\\(429\\)\\.json\\(\\{ error: 'video_cooldown'"), f);
+    assert.match(s, new RegExp("if \\(!pay\\.owner\\) \\{\\n\\s+const __vl = await require\\('\\./abuse-guard\\.js'\\)\\.videoLock\\(\\w+\\);\\n\\s+if \\(!__vl\\.ok\\) \\{\\n\\s+await pointsLib\\.refundPoints\\(\\w+, pointsLib\\.COSTS\\." + cost + ", pay\\); chargedUser = null;[^\\n]*\\n\\s+res\\.status\\(429\\)\\.json\\(\\{ error: 'video_cooldown'"), f);
     assert.match(s, /if \(videoLocked\) await require\('\.\/abuse-guard\.js'\)\.releaseVideoLock\(videoLocked\);/, f + ': الفكّ عند الفشل');
   }
 });

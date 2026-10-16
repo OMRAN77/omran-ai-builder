@@ -92,12 +92,12 @@ test('٤. تخزين معطّل = لا تسوية ولا انفجار (سلوك 
 
 test('٥. التوصيل: المحرّكات الثلاثة تسجّل التذكرة عند القبول', () => {
   const veo = read('api/_lib/veo-create.js');
-  assert.match(veo, /rememberVideoJob\(data\.name, \{ username: chargedUser, cost: pointsLib\.COSTS\.veo_video, locked: !!videoLocked \}\)/);
+  assert.match(veo, /rememberVideoJob\(data\.name, \{ username: chargedUser, cost: pointsLib\.COSTS\.veo_video, locked: !!videoLocked, pay: chargedPay \}\)/);
   assert.ok(veo.indexOf('rememberVideoJob') < veo.indexOf("res.status(200).json({ op: data.name })"), 'قبل الردّ');
   const mm = read('api/_lib/minimax-create.js');
-  assert.match(mm, /rememberVideoJob\(data\.task_id, \{ username: chargedUser, cost: pointsLib\.COSTS\.minimax_video, locked: !!videoLocked \}\)/);
+  assert.match(mm, /rememberVideoJob\(data\.task_id, \{ username: chargedUser, cost: pointsLib\.COSTS\.minimax_video, locked: !!videoLocked, pay: chargedPay \}\)/);
   const rw = read('api/_lib/video-create.js');
-  assert.match(rw, /rememberVideoJob\(clientTaskId, \{ username: chargedUser, cost: pointsLib\.COSTS\.runway_video, locked: !!videoLocked, quota: longMode !== true \}\)/);
+  assert.match(rw, /rememberVideoJob\(clientTaskId, \{ username: chargedUser, cost: pointsLib\.COSTS\.runway_video, locked: !!videoLocked, quota: longMode !== true, pay: chargedPay \}\)/);
   assert.match(rw, /res\.status\(200\)\.json\(\{ id: clientTaskId, remaining \}\)/);
 });
 
@@ -122,7 +122,9 @@ test('٦. التوصيل: نقاط الحالة الثلاث تسوّي عند �
   await handler({ method: 'GET', query: { op: 'models/veo/operations/X' } }, res);
   global.fetch = realFetch;
   assert.equal(res.body.status, 'FAILED');
-  assert.match(res.body.failure, /filtered: blocked/);
+  // v-video-names (مراجعة): سبب الرقابة يصل عربيًّا ثابتًا مع رمزه، ونصّ المزوّد للسجلّ وحده.
+  assert.equal(res.body.failureCode, 'safety');
+  assert.doesNotMatch(res.body.failure, /filtered|blocked/);
 });
 
 test('٧. حصّة اليوم تُعاد لليوم نفسه فقط ولا تنزل تحت الصفر', () => {
