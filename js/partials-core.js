@@ -1053,7 +1053,7 @@
         <input type="file" id="studioAiFileInputA" accept="image/*" style="display:none;">
         <div class="stSlot omUpArt omUpStyle om3-skip" id="studioAiSlotA" data-slot="A" role="button" tabindex="0">
           <img id="studioAiSourcePreviewA" alt="" style="display:none;">
-          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="fileChooseBtn">📁 اختيار ملف</span></div>
+          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="fileChooseBtn">📁 اختيار ملف</span><span class="omUpL" data-i18n="studioPlateLabel">ستايل</span></div>
           <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
         </div>
         <button type="button" class="btn" id="studioAiFileBtnA" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
@@ -1064,7 +1064,7 @@
         <input type="file" id="studioAiFileInputB" accept="image/*" style="display:none;">
         <div class="stSlot omUpArt omUpStyle om3-skip" id="studioAiSlotB" data-slot="B" role="button" tabindex="0">
           <img id="studioAiSourcePreviewB" alt="" style="display:none;">
-          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="fileChooseBtn">📁 اختيار ملف</span></div>
+          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="fileChooseBtn">📁 اختيار ملف</span><span class="omUpL" data-i18n="studioPlateLabel">ستايل</span></div>
           <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
         </div>
         <button type="button" class="btn" id="studioAiFileBtnB" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>

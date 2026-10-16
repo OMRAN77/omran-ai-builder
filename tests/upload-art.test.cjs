@@ -33,12 +33,18 @@ test('٢. CSS: العربيّة بالصورة المكتوبة ونصّها م�
   const css = read('css/رفع-الصور.css');
   for (const t of ['decor', 'fashion', 'style']) {
     const cls = '.omUp' + t[0].toUpperCase() + t.slice(1);
-    assert.ok(css.includes(cls + '{--t:') && css.includes('url(/assets/upload-art/' + t + '.webp?v='), t + ' نظيفة');
+    assert.ok(css.includes(cls + '{background-image:url(/assets/upload-art/' + t + '.webp?v='), t + ' نظيفة');
     assert.ok(css.includes('html[lang="ar"] ' + cls + '{background-image:url(/assets/upload-art/' + t + '-ar.webp?v='), t + ' عربيّة');
   }
-  assert.ok(css.includes('html[lang="ar"] .omUpArt :is(.omUpT,.omUpH,.omUpB){opacity:0;}'), 'نصّ HTML يختفي تحت الصورة المكتوبة (والنقر باقٍ)');
+  assert.ok(css.includes('html[lang="ar"] .omUpArt :is(.omUpT,.omUpH,.omUpB,.omUpL){opacity:0;}'), 'نصّ HTML يختفي تحت الصورة المكتوبة (والنقر باقٍ)');
   assert.ok(css.includes('.omUpArt{position:relative !important') && css.includes('aspect-ratio:2/1'), 'إطار 2:1 ثابت فالمواضع نسبٌ');
   assert.match(read('index.html'), /css\/رفع-الصور\.css\?v=\d+/);
+  // الجولة ٢ («دقّق… كلّهم»): المواضع المقيسة من الصور العربيّة (مركز السطر %)، الحجم بـcqw، والذهبيّ المتدرّج كالعربيّ
+  assert.ok(css.includes('.omUpDecor{--t:43.5%;--h:52.5%;--b:75.5%;'), 'الديكور: عنوان/تلميح/لوحة');
+  assert.ok(css.includes('.omUpFashion{--t:28.5%;--h:37.5%;--b:75.5%;'), 'الأزياء');
+  assert.ok(css.includes('.omUpStyle{--b:59%;--l:82.5%;') && css.includes('.omUpStyle :is(.omUpT,.omUpH){opacity:0;}'), 'الستايل: اللوحتان ولا عنوان كالعربيّة');
+  assert.ok(css.includes('.omUpArt{container-type:inline-size;}') && css.includes('var(--ts,3.8cqw)'), 'الحجم من عرض المربّع');
+  assert.ok(css.includes('-webkit-background-clip:text !important'), 'نصّ ذهبيّ متدرّج');
 });
 
 test('٣. المربّعات الثلاثة تحمل الأصناف، والعنوان الجديد بالـ١٤ لغة، ومصنّف الألوان الثلاثة يتخطّاها', () => {
@@ -46,11 +52,14 @@ test('٣. المربّعات الثلاثة تحمل الأصناف، والعن
   assert.ok(core.includes('id="fashionAiDropZone" class="omUpArt omUpFashion om3-skip"'), 'الأزياء');
   assert.equal((core.match(/class="stSlot omUpArt omUpStyle om3-skip"/g) || []).length, 2, 'الستايل: الخانتان');
   assert.equal((core.match(/<span class="omUpB" data-i18n="fileChooseBtn">/g) || []).length, 2, 'زرّ الملفّ فوق اللوحة في الستايل');
+  assert.equal((core.match(/<span class="omUpL" data-i18n="studioPlateLabel">/g) || []).length, 2, 'كلمة «ستايل» على اللوحة الصغيرة');
   const sels = read('js/design-sels.js');
-  assert.ok(sels.includes("dz.className='dzArea omUpArt omUpDecor om3-skip';") && sels.includes('<b class="omUpT" data-i18n="designDropTitle">'), 'الديكور');
+  assert.ok(sels.includes("dz.className='dzArea omUpArt omUpDecor om3-skip';") && sels.includes('<b class="omUpT" data-i18n="designDropTitle">') && sels.includes('<small class="omUpH" data-i18n="designDropHint">'), 'الديكور');
   const data = read('js/app-03-i18n-data.js');
-  assert.equal((data.match(/\n\s*designDropTitle: '[^']+',/g) || []).length, 2, 'العربيّة والإنجليزيّة');
-  for (const l of LANGS) assert.match(read('i18n/' + l + '.js'), /\n\s*designDropTitle: "[^"]+",/, l);
+  for (const k of ['designDropTitle', 'designDropHint', 'studioPlateLabel']) {
+    assert.equal((data.match(new RegExp('\\n\\s*' + k + ": '[^']+',", 'g')) || []).length, 2, k + ': العربيّة والإنجليزيّة');
+    for (const l of LANGS) assert.match(read('i18n/' + l + '.js'), new RegExp('\\n\\s*' + k + ': "[^"]+",'), k + ' ' + l);
+  }
   const black = read('css/أدوات-أسود.css');
   assert.ok(!black.includes('#fashionAiDropZone') && !black.includes('#studioAiModal .stSlot'), 'لا تسويد للمربّعات (كانت تخفي الصورة)');
 });

@@ -1045,6 +1045,8 @@ Object.assign(I18N["fr"], {
     portraitStyleSheetTitle: "🎨 Styles de photos",
     fashionDropTitle: "Téléchargez une photo en pied",
     designDropTitle: "Téléchargez une photo de votre pièce",
+    designDropHint: "Assurez-vous que la photo est nette et de bonne qualité",
+    studioPlateLabel: "Style",
     fashionDropHint: "De la tête aux pieds · éclairage clair",
     agentSectionTitle: "🤖 L'agent",
     agentSectionDesc: "Mode agent : il planifie et exécute seul — il construit, modifie et teste le code avant la livraison, vérifie des sources en direct et continue même si la page se ferme. Activez-le puis tapez votre demande dans le chat.",
