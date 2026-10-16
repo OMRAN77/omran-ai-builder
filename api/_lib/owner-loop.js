@@ -343,10 +343,15 @@ function midStream(s, e, o) {
 /* v-pro-lanes (لقطة مشترك Pro ٧٥ ١٦ أكتوبر): لغير المالك — مسار الباقة الذي فشل قبل أيّ حرف (حدث خطأ داخل البثّ، انقطاع، مهلة أوّل بايت)
    كان يصل catch الأعلى فيرى العميل «chat error» ويهبط لسلسلته القديمة بلا أدوات، ولا يُجرَّب المسار التالي. هنا الحالة التي يُعامل بها
    كفشل ما قبل البثّ: 402 للرصيد/الحصّة، 504 للمهلة، 502 للباقي. خطأ برمجيّ (TypeError من الكود نفسه) = 0 فيمضي كما كان. */
+/* مراجعة v-pro-lanes: حدّ الطلبات ليس رصيدًا — 429 Gemini «RESOURCE_EXHAUSTED … check your plan and billing details» كان يُقرأ نفاد رصيد فيصل
+   المالك إشعار «الرصيد نفد» كاذب ويُحجب الصادق ٦ ساعات. نفاد الحصّة الحقيقيّ (insufficient_quota) يبقى رصيدًا. */
+const RATE_RE = /\b429\b|RESOURCE_EXHAUSTED|rate[- ]?limit|check quota|too many requests|requests per/i;
+const HARD_CREDIT_RE = /insufficient_quota|credit balance|insufficient (?:credits|funds|balance)|purchase credits|billing_error/i;
+function rateLimited(t) { const s = String(t || ''); return RATE_RE.test(s) && !HARD_CREDIT_RE.test(s); }
 function laneFail(e) {
   if (!e) return 0;
   const m = String(e.message || '');
-  if (e.code === 'OA_STREAM_PROTOCOL_ERROR') return CREDIT_RE.test(m) ? 402 : 502;
+  if (e.code === 'OA_STREAM_PROTOCOL_ERROR') return /content_filter/.test(m) ? 0 : (CREDIT_RE.test(m) && !rateLimited(m)) ? 402 : 502; // رفض الرقابة لا يُعاد على مسار آخر (يمضي كما كان)
   if (e.name === 'UpstreamTimeoutError') return 504;
   return (NET_RE.test(m) || NET_RE.test(String((e.cause && (e.cause.code || e.cause.message)) || ''))) ? 502 : 0;
 }
@@ -629,7 +634,7 @@ function refusalRetry(convo, t) {
 const REFUSAL_RETRY_STATUS = '↳ ⚠️ رفض المزوّد الدور كطلب كشف تفكير — أعيده مرّة بلا عرض التفكير';
 
 module.exports = {
-  state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, laneFail, exitText, stallNote, shrinkOld, overTime,
+  state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, laneFail, rateLimited, exitText, stallNote, shrinkOld, overTime,
   isDeadPick, rememberDeadPick, margin,
   scrubRefusals, refusalRetry, REFUSAL_RETRY_STATUS, // v-refusal-retry
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1

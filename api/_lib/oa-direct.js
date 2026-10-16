@@ -380,7 +380,7 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel, nameBack) { // 
 // v-oa-responses: موديل غير موجود أو لا يملكه المفتاح (نصّ OpenAI المعتاد) — غير ذلك من 404/400 رفضٌ للطلب لا للموديل.
 const OA_MODEL_MISSING_RE = /model_not_found|does not exist|do not have access|not have access to (?:the )?model/i;
 
-const STOP = { tool_calls: 'tool_use', function_call: 'tool_use', length: 'max_tokens' };
+const STOP = { tool_calls: 'tool_use', function_call: 'tool_use', length: 'max_tokens', content_filter: 'refusal' }; // مراجعة v-pro-lanes: حجب الرقابة رفض لا «ختام فارغ» يُعاد على مسار آخر
 
 // بثّ chat/completions ← بثّ أحداث أنثروبيك بالأسطر نفسها التي تقرؤها الحلقة (data: {...}).
 function toAnthropicStream(upstreamBody, fallbackModel, sigs) { // sigs: v-pro-lanes — توقيعات Gemini 3 لهذا الدور (معرّف النداء ← {sig, model})

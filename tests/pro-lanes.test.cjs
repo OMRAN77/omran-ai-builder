@@ -44,7 +44,7 @@ function geminiSigCheck(body, want) {
   }
   return null;
 }
-const gemTool = (finish) => sse([{ choices: [{ delta: { role: 'assistant', tool_calls: [{ id: 'function-call-1', type: 'function', function: { name: 'web_search', arguments: JSON.stringify({ query: 'bicycle prices UAE' }) }, extra_content: { google: { thought_signature: 'SIG-A' } } }] }, finish_reason: finish, index: 0 }], model: 'gemini-3.8-flash' }, '[DONE]']);
+const gemTool = (finish, sig = 'SIG-A') => sse([{ choices: [{ delta: { role: 'assistant', tool_calls: [{ id: 'function-call-1', type: 'function', function: { name: 'web_search', arguments: JSON.stringify({ query: 'bicycle prices UAE' }) }, extra_content: { google: { thought_signature: sig } } }] }, finish_reason: finish, index: 0 }], model: 'gemini-3.8-flash' }, '[DONE]']);
 const gemText = (t) => sse([{ choices: [{ delta: { role: 'assistant', content: t }, index: 0 }], model: 'gemini-3.8-flash' }, { choices: [{ delta: {}, finish_reason: 'stop', index: 0 }] }, '[DONE]']);
 const lunaText = (t) => sse([{ type: 'response.created', response: { model: 'gpt-6-luna' } }, { type: 'response.output_text.delta', output_index: 0, delta: t }, { type: 'response.completed', response: { status: 'completed', usage: { input_tokens: 1, output_tokens: 1 } } }]);
 const lunaQuota = () => sse([{ type: 'response.created', response: { model: 'gpt-6-luna' } }, { type: 'error', error: { type: 'insufficient_quota', code: 'insufficient_quota', message: 'You exceeded your current quota.' } }]);
@@ -107,11 +107,15 @@ test('٢ المحوّل: enum أرقام ← الوصف لـGemini وحده، و
   assert.equal(tc(od.toOpenAIBody(ab(step), 'groq', sigs))[0].extra_content, undefined, 'غير Gemini بلا حقل جديد');
   const m = new Map();
   for (const sig of ['S1', 'S2']) {
-    const txt = await new Response(od.toAnthropicStream(gemTool('tool_calls').body, 'gemini-3.8-flash', m)).text();
+    const txt = await new Response(od.toAnthropicStream(gemTool('tool_calls', sig).body, 'gemini-3.8-flash', m)).text();
     if (sig === 'S2') assert.match(txt, /"id":"function-call-1_2"/, 'المعرّف المكرّر في الخطوة الثانية صار فريدًا');
   }
   assert.deepEqual([...m.keys()], ['function-call-1', 'function-call-1_2']);
-  assert.equal(m.get('function-call-1').sig, 'SIG-A');
+  assert.equal(m.get('function-call-1').sig, 'S1', 'توقيع الخطوة الأولى لم يُكتب فوقه');
+  assert.equal(m.get('function-call-1_2').sig, 'S2', 'توقيع الخطوة الثانية على معرّفها الفريد');
+  const two = [{ role: 'user', content: 'x' }];
+  for (const id of ['function-call-1', 'function-call-1_2']) two.push({ role: 'assistant', content: [{ type: 'tool_use', id, name: 'web_search', input: {} }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'r' }] });
+  assert.deepEqual(od.toOpenAIBody(ab(two), 'gemini', m).messages.filter((x) => x.tool_calls).map((x) => x.tool_calls[0].extra_content.google.thought_signature), ['S1', 'S2'], 'كلّ خطوة تعود بتوقيعها');
 });
 
 test('٣ Luna ينفد رصيدها داخل البثّ ← Haiku يجيب، لا «chat error»، والمالك يُشعَر بالرصيد', async () => {
@@ -162,4 +166,24 @@ test('٨ خطأ بعد أن بدأ النصّ لا يُعاد على مسار آ
   assert.match(r.said, /نصف جواب/);
   assert.doesNotMatch(r.said, /مكرّر/);
   assert.ok(r.logs.some((l) => /chat\/plan-error/.test(l)), 'دور المشترك الساقط يترك أثرًا للمالك');
+});
+
+test('٩ حدّ طلبات Gemini (429 RESOURCE_EXHAUSTED بنصّ «billing») ليس رصيدًا: لا إشعار «الرصيد نفد» قبل البثّ ولا داخله', async () => {
+  const rl = [{ error: { code: 429, message: 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits.', status: 'RESOURCE_EXHAUSTED' } }];
+  let r = await run({ gemini: async () => err(429, rl), luna: async () => lunaText('جواب بالأدوات') });
+  assert.deepEqual(r.lanes, ['gemini', 'luna']); assert.match(r.said, /جواب بالأدوات/);
+  assert.deepEqual(alerts, [], 'لا مفتاح إشعار رصيد لحدّ طلبات');
+  r = await run({ gemini: async () => sse([{ error: { code: 429, message: 'Resource has been exhausted (e.g. check quota).' } }]), luna: async () => lunaText('جواب ثانٍ') });
+  assert.deepEqual(r.lanes, ['gemini', 'luna']); assert.match(r.said, /جواب ثانٍ/);
+  assert.deepEqual(alerts, [], 'حدّ الطلبات داخل البثّ ليس 402');
+});
+
+test('١٠ الرفض وحجب الرقابة لا يُعرضان على مسار آخر', async () => {
+  const refusal = () => sse([{ type: 'message_start', message: { model: 'claude-haiku-5-5', usage: { input_tokens: 1 } } }, { type: 'message_delta', delta: { stop_reason: 'refusal' } }, { type: 'message_stop' }]);
+  const busy = async () => err(429, { error: { message: 'Rate limit reached', type: 'rate_limit_exceeded' } });
+  let r = await run({ gemini: busy, luna: busy, haiku: async () => refusal(), groq: async () => gemText('امتثل'), or: async () => gemText('امتثل') });
+  assert.ok(!r.lanes.includes('groq') && !r.lanes.includes('or'), 'رفض Haiku لا يصل Groq ولا الاحتياط: ' + r.lanes.join(','));
+  assert.doesNotMatch(r.said, /امتثل/);
+  r = await run({ gemini: async () => sse([{ choices: [{ delta: {}, finish_reason: 'content_filter', index: 0 }] }, '[DONE]']), luna: async () => lunaText('امتثل') });
+  assert.deepEqual(r.lanes, ['gemini'], 'حجب Gemini لا يصل Luna');
 });
