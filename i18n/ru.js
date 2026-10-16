@@ -1,4 +1,19 @@
 I18N['ru'] = {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "Естественное",
+    "designAiLightingNeutral": "Нейтральный белый",
+    "designAiLightingGolden": "Золотое сияние",
+    "designAiLightingPurple": "Фиолетовая ночь",
+    "designAiLightingSunset": "Закат",
+    "designAiLightingMoon": "Лунный свет",
+    "designAiLightingEmerald": "Спокойный изумруд",
+    "designAiLightingTurquoise": "Прибрежная бирюза",
+    "designAiLightingRose": "Нежно-розовый",
+    "designAiLightingBurgundy": "Кинематографичный бордовый",
+    "designAiLightingNeon": "Двухцветный неон",
+    "designAiLightingCinematic": "Сбалансированный кинокадр",
+    "designAiLightingAurora": "Цвета сияния",
+
     "notifSectionLabel": "🔔 Уведомления",
     "newsAlertsLabel": "📢 Срочные новости",
     "newsAlertsHint": "Получайте уведомление о срочных новостях и экстренных предупреждениях, даже когда приложение закрыто",

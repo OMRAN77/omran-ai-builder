@@ -1,4 +1,19 @@
 I18N['zh'] = {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "自然光",
+    "designAiLightingNeutral": "中性白光",
+    "designAiLightingGolden": "金色光辉",
+    "designAiLightingPurple": "紫色夜景",
+    "designAiLightingSunset": "日落",
+    "designAiLightingMoon": "月光",
+    "designAiLightingEmerald": "宁静翡翠绿",
+    "designAiLightingTurquoise": "海岸绿松石色",
+    "designAiLightingRose": "柔和玫瑰色",
+    "designAiLightingBurgundy": "电影酒红色",
+    "designAiLightingNeon": "双色霓虹",
+    "designAiLightingCinematic": "均衡电影光",
+    "designAiLightingAurora": "极光色彩",
+
     "notifSectionLabel": "🔔 通知",
     "newsAlertsLabel": "📢 突发新闻提醒",
     "newsAlertsHint": "有突发新闻或紧急警报时向您推送通知，即使应用已关闭",

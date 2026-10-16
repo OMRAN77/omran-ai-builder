@@ -131,13 +131,13 @@ const FREE_PROVIDER_SPECS = {
     modelsUrl: 'https://openrouter.ai/api/v1/models',
     keyVar: 'OPENROUTER_API_KEY',
     modelVar: 'FREE_OPENROUTER_MODEL',
-    models: ['google/gemma-4-31b-it:free', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'z-ai/glm-5.2:free', 'mistralai/mistral-small-3.2-24b-instruct:free'], // v-plan-models: Llama 4 وLlama 3.3 وQwen3-235B (أُوقف ٩ أكتوبر) وGemma 3 خرجت من قائمة الوسيط المجّانيّة
+    models: ['google/gemma-4-31b-it:free', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3-super-120b-a12b:free', 'nvidia/nemotron-3.5-lightning:free'], // v-plan-models: Llama 4 وLlama 3.3 وQwen3-235B (أُوقف ٩ أكتوبر) وGemma 3 خرجت من قائمة الوسيط المجّانيّة، وGLM 5.2 وMistral Small 3.2 المجّانيّان ميّتان في فحص ١٦ أكتوبر الحيّ (v-models-live)
     pick: /^(?:google\/gemma-[34]|nvidia\/nemotron|z-ai\/glm|meta-llama\/llama-4|meta-llama\/llama-3\.3|qwen\/qwen3|deepseek\/deepseek-chat|mistralai\/mistral-small)[\w.-]*:free$/i,
     vision: false,
     /* v-img-why (لقطة المالك ٣ أكتوبر: «ما قدرت أقرأ الصورة الحين» مرّتين): Gemini كان وحده من يرى في الاحتياط المجّانيّ،
        فتعثّره مع تعثّر المحرّك الأساسيّ = لا قراءة. هذه نماذج مجّانيّة ترى الصور (نصّ + صورة) — تُجرَّب في دور الصورة وحده
        وبعد Gemini، ولا يُرسَل إليها غيرها في هذا الدور (لا نموذج أعمى يستلم صورة). */
-    visionModels: ['google/gemma-4-31b-it:free', 'google/gemma-3-27b-it:free', 'mistralai/mistral-small-3.2-24b-instruct:free', 'qwen/qwen2.5-vl-72b-instruct:free'], // v-plan-models: Gemma 4 يرى أوّلًا
+    visionModels: ['google/gemma-4-31b-it:free'], // v-plan-models: Gemma 4 وحده — Gemma 3 وMistral Small 3.2 وQwen2.5-VL المجّانيّة ميّتة في فحص ١٦ أكتوبر الحيّ
   },
 };
 // v-plan-routing (قرار المالك ٢٠ سبتمبر: «المجّاني ٥ رسائل على Groq من غير أيّ شي»): Groq أوّلًا،

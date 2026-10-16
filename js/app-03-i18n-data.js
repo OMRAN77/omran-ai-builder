@@ -4,6 +4,21 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "طبيعية",
+    "designAiLightingNeutral": "أبيض محايد",
+    "designAiLightingGolden": "وهج ذهبي",
+    "designAiLightingPurple": "ليلة بنفسجية",
+    "designAiLightingSunset": "غروب",
+    "designAiLightingMoon": "قمرية",
+    "designAiLightingEmerald": "زمردية هادئة",
+    "designAiLightingTurquoise": "فيروزية ساحلية",
+    "designAiLightingRose": "وردية ناعمة",
+    "designAiLightingBurgundy": "خمرية سينمائية",
+    "designAiLightingNeon": "نيون ثنائي",
+    "designAiLightingCinematic": "سينمائية متوازنة",
+    "designAiLightingAurora": "ألوان الشفق",
+
     notifSectionLabel: '🔔 التنبيهات',
     newsAlertsLabel: '📢 تنبيهات الأخبار العاجلة',
     newsAlertsHint: 'يصلك إشعار عند وجود خبر عاجل أو تحذير طارئ حتى والتطبيق مغلق',
@@ -1136,6 +1151,21 @@ const I18N = {
     /* v-app-director: قسم «مخرج التطبيق» للمالك وحده — ٢٦ نصًّا (١٤ لغة) */ vdTab: "مخرج التطبيق", vdSub: "اكتب ما تريد فيديو عنه واختر اللغة والمتحدّث والمدّة — يكتب الفكرة والسيناريو، يصوّر شاشات التطبيق الحقيقيّة، يجهّز نماذج الأنماط، يسجّل التعليق ويجمّع الفيديو كاملًا.", vdPh: "مثال: فيديو عن أنماط الصور بصوت مها", vdLang: "اللغة", vdSpeaker: "المتحدّث", vdMinutes: "المدّة بالدقائق", vdRef: "صورتك مرجعًا لنماذج الأنماط (اختياريّ)", vdGo: "سوّ الفيديو", vdStepPlan: "يكتب الفكرة والسيناريو", vdStepShots: "يصوّر شاشات التطبيق", vdStepSamples: "يجهّز نماذج الأنماط", vdStepVoice: "يسجّل التعليق", vdStepJoin: "يجمّع الفيديو", vdScene: "المشهد {i} من {n}", vdQueued: "في الانتظار على الجسر", vdDone: "جاهز — {m} دقيقة و{s} ثانية", vdDownload: "تحميل الفيديو", vdFail: "ما قدرت أكمل الفيديو", vdFailPlan: "تعذّر كتابة السيناريو — تحقّق من مفتاح المخرج في الخادم", vdFailBridge: "تعذّر الوصول إلى الجسر — تحقّق من عنوان الجسر وسرّه في الخادم", vdFailRender: "فشل التصوير أو الدمج على الجسر", vdSaved: "حُفظ في فيديوهاتي", vdWarnSamples: "{n} نموذج لم يُولَّد فصار لقطة شاشة", vdEmpty: "اكتب الطلب أوّلًا", vdMaha: "مها", vdAbdullah: "عبدالله", /* v-app-director-voice: مع صوت/بدون صوت + الصوت الاحتياطيّ */ vdVoiceLabel: "التعليق الصوتيّ", vdVoiceOn: "مع صوت", vdVoiceOff: "بدون صوت", vdVoiceBackup: "صوت احتياطيّ (غير صوت مها وعبدالله)", vdFailVoice: "تعذّر تسجيل التعليق — اختر «بدون صوت» ليكتمل الفيديو بنصّ على الشاشة", vdFailBridgeOld: "الجسر يعمل بنسخة قديمة لا تعرف مسار الفيديو — أعد نشره من الفرع الرئيسيّ",
   },
   en: {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "Natural",
+    "designAiLightingNeutral": "Neutral white",
+    "designAiLightingGolden": "Golden glow",
+    "designAiLightingPurple": "Purple night",
+    "designAiLightingSunset": "Sunset",
+    "designAiLightingMoon": "Moonlight",
+    "designAiLightingEmerald": "Calm emerald",
+    "designAiLightingTurquoise": "Coastal turquoise",
+    "designAiLightingRose": "Soft rose",
+    "designAiLightingBurgundy": "Cinematic burgundy",
+    "designAiLightingNeon": "Dual-tone neon",
+    "designAiLightingCinematic": "Balanced cinematic",
+    "designAiLightingAurora": "Aurora colors",
+
     notifSectionLabel: '🔔 Notifications',
     newsAlertsLabel: '📢 Breaking news alerts',
     newsAlertsHint: 'Get a notification for breaking news or emergency warnings, even when the app is closed',

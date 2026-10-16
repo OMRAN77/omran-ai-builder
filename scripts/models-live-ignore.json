@@ -1,0 +1,15 @@
+{
+  "_": "v-models-live: أسماء يراها الفاحص في سلاسل الكود ولا يناديها التطبيق — لا تُفحص. أضف هنا اسمًا قديمًا مقصودًا (قائمة ترحيل) أو سلسلة ليست معرّف موديل، مع سببه في reasons.",
+  "ids": [
+    "command-r", "command-r-plus", "command-r-03-2024", "command-r-plus-04-2024", "command-light",
+    "gemini-1.5-flash", "llama-3.1-70b-versatile", "llama-3.3-70b-versatile", "mistral-large-latest",
+    "deepseek/code-rule-inject", "gpt-oss", "gemini-nano-banana"
+  ],
+  "reasons": {
+    "command-r…command-light": "DEPRECATED_MODELS في api/_lib/cohere.js — تُترجم إلى Command A",
+    "gemini-1.5-flash، llama-3.x-versatile، mistral-large-latest": "RETIRED_MODELS في api/_lib/free-chain.js — تُستبدل بالمرشّحين الحاليّين",
+    "deepseek/code-rule-inject": "وسم سجلّ أخطاء",
+    "gpt-oss": "مفتاح عائلة في provider-level.js",
+    "gemini-nano-banana": "اسم محرّك في ناتج الصورة"
+  }
+}

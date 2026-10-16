@@ -1,4 +1,19 @@
 I18N['ml'] = {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "സ്വാഭാവികം",
+    "designAiLightingNeutral": "ന്യൂട്രൽ വെള്ള",
+    "designAiLightingGolden": "സ്വർണപ്രഭ",
+    "designAiLightingPurple": "പർപ്പിൾ രാത്രി",
+    "designAiLightingSunset": "സൂര്യാസ്തമയം",
+    "designAiLightingMoon": "നിലാവ്",
+    "designAiLightingEmerald": "ശാന്തമായ മരതകം",
+    "designAiLightingTurquoise": "തീരദേശ ടർക്കോയിസ്",
+    "designAiLightingRose": "മൃദുവായ പിങ്ക്",
+    "designAiLightingBurgundy": "സിനിമാറ്റിക് ബർഗണ്ടി",
+    "designAiLightingNeon": "രണ്ടുനിറ നിയോൺ",
+    "designAiLightingCinematic": "സന്തുലിത സിനിമാറ്റിക്",
+    "designAiLightingAurora": "ധ്രുവദീപ്തി നിറങ്ങൾ",
+
     "notifSectionLabel": "🔔 അറിയിപ്പുകൾ",
     "newsAlertsLabel": "📢 ബ്രേക്കിംഗ് ന്യൂസ് അലേർട്ടുകൾ",
     "newsAlertsHint": "ബ്രേക്കിംഗ് ന്യൂസോ അടിയന്തര മുന്നറിയിപ്പോ വരുമ്പോൾ ആപ്പ് അടച്ചിരുന്നാലും അറിയിപ്പ് ലഭിക്കും",
