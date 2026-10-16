@@ -12,6 +12,8 @@
 //                        كلمة سرّ حساب البوت مشتقّة من UPLOAD_POST_API_KEY — لا سرّ جديد
 //   BOT_USER             اسم حساب البوت (الافتراضيّ omaisocial)
 //   IDEA_INDEX           رقم فكرة محدّد من القائمة؛ وإلّا فكرة من الترند (IDEA_SOURCE=list للقائمة وحدها)
+//                        أو نوع الحلقة: video (اسكتش بيكسار من الترند) · video:<ترند> · styles · styles:<man|falcon|grandpa|woman>
+//   KIND                 مثل خانة idea للنوع (site|video|styles)
 //   EPISODE              رقم حلقة محدّد؛ وإلّا آخر حلقة منشورة + 1
 //   --gate               فحص خفيف قبل التثبيت: الجدول يومي، والحلقة تنزل إذا مرّ 36 ساعة على السابقة
 //   DRY_RUN=1            صناعة الفيديو دون نشر
@@ -47,6 +49,19 @@ const EVERY_H = 36; // الجدول يوميّ؛ الحلقة تنزل إذا م
 const EP_ID = (n) => 'omai-ep-' + n;
 const EP_RE = /^omai-ep-(\d+)$/;
 const TREND_GEOS = ['AE', 'SA', 'KW', 'QA'];
+const SERIES2 = 'سوّها بـ OM Ai';
+// أنواع الحلقات: 🌐 موقع من ترند اليوم · 🎬 فيديو ترند من صانع الفيديو · 🖼️ صورة وحدة بعدّة أنماط.
+// الافتراضيّ الموقع؛ النوع يُفرض من خانة idea في التشغيل اليدويّ: video · video:legofy · styles · styles:falcon
+export const KINDS = {
+  site: { tag: 'تحدّي 30 موقع', series: SERIES },
+  video: { tag: 'ترند فيديو', series: SERIES2 },
+  styles: { tag: 'أنماط الصور', series: SERIES2 },
+};
+export function parseKind(raw) {
+  const m = /^\s*(site|video|styles?)\s*(?:[:=]\s*([a-z0-9_-]{2,30}))?\s*$/i.exec(String(raw || ''));
+  return m ? { kind: /^style/i.test(m[1]) ? 'styles' : m[1].toLowerCase(), arg: (m[2] || '').toLowerCase() } : null;
+}
+const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const log = (...a) => console.log('[social-bot]', ...a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -70,11 +85,21 @@ export function secWord(n) {
 }
 
 // رقم الحلقة المطلق → حلقة الموسم (30 حلقة لكلّ موسم).
-export function epLabel(n) {
+export function epLabel(n, series = SERIES) {
   const season = Math.floor((n - 1) / SEASON_LEN) + 1, ep = ((n - 1) % SEASON_LEN) + 1;
   const sx = season > 1 ? ' · الموسم ' + season : '';
-  return { n, season, ep, short: 'الحلقة ' + ep + sx, full: 'الحلقة ' + ep + ' من ' + SERIES + sx };
+  return { n, season, ep, short: 'الحلقة ' + ep + sx, full: 'الحلقة ' + ep + ' من ' + series + sx };
 }
+
+// المدّة بالكلام: «دقيقة و24 ثانية» (الفيديو يأخذ أكثر من دقيقة).
+export function durWord(n) {
+  n = Math.max(1, Math.round(n));
+  if (n < 60) return secWord(n);
+  const mi = Math.floor(n / 60), se = n % 60;
+  const mw = mi === 1 ? 'دقيقة' : mi === 2 ? 'دقيقتين' : mi + ' دقايق';
+  return se ? mw + ' و' + secWord(se) : mw;
+}
+const clock = (n) => { n = Math.max(0, Math.round(n)); return n < 60 ? String(n) : Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0'); };
 
 export function buildCaption(idea, secs, epN) {
   const base = ['#ذكاء_اصطناعي', '#تصميم_مواقع', '#برمجة', '#مواقع', '#مشاريع', '#OMAi', '#AI', '#الامارات', '#السعودية', '#الكويت', '#قطر', '#عمان', '#البحرين'];
@@ -86,6 +111,30 @@ export function buildCaption(idea, secs, epN) {
   const ig = [...top, '', 'جرّب تسوّي موقعك ببلاش 👈 الرابط في البايو 🔗', ...next, '', tags].join('\n');
   const fb = [...top, '', 'جرّب تسوّي موقعك ببلاش 👈 https://' + SITE + '/?ref=fb', ...next, '', tags].join('\n');
   return { ig, fb, head };
+}
+
+const GULF_TAGS = ['#OMAi', '#AI', '#ذكاء_اصطناعي', '#الامارات', '#السعودية', '#الكويت', '#قطر', '#عمان', '#البحرين'];
+function captionOf(epN, kind, top, cta, tags) {
+  const ep = epN ? epLabel(epN, KINDS[kind].series) : null;
+  const t = [...new Set(tags)].slice(0, 20).join(' ');
+  const head = top[0];
+  const lines = [ep ? '🎬 ' + ep.full : '', ...top].filter(Boolean);
+  const next = ep ? ['تابعنا… ' + epLabel(epN + 1).short + ' بعد يومين 👀'] : [];
+  return { ig: [...lines, '', cta + ' 👈 الرابط في البايو 🔗', ...next, '', t].join('\n'), fb: [...lines, '', cta + ' 👈 https://' + SITE + '/?ref=fb', ...next, '', t].join('\n'), head };
+}
+
+export function buildVideoCaption(vi, secs, epN) {
+  const sketch = vi.key === SKETCH_KEY;
+  const head = sketch ? 'كتبت سطر واحد… وطلع اسكتش بيكسار خليجي بالصوت في ' + durWord(secs) + ' 🤯' : 'ترند «' + vi.cardTitle + '» جاهز في ' + durWord(secs) + ' 🤯';
+  return captionOf(epN, 'video', [head, vi.label ? '🔥 الفكرة من ترند اليوم: ' + vi.label : '', sketch ? '🎭 الموقف: ' + vi.scene : '', 'اخترت الترند من صانع الفيديو في OM Ai… والباقي عليه ✨'],
+    'سوّ فيديو الترند حقّك ببلاش', ['#ترند', '#فيديو_ذكاء_اصطناعي', ...(sketch ? ['#بيكسار', '#اسكتش'] : []), ...(vi.tags || []), ...GULF_TAGS]);
+}
+
+export function buildStylesCaption(plan, res, epN) {
+  const n = res.items.length;
+  const head = 'صورة وحدة… صارت ' + n + ' أنماط، كل نمط في ' + secWord(res.avg) + ' 🤯';
+  return captionOf(epN, 'styles', [head, '🎨 ' + res.items.map((x) => x.label).join(' · '), 'ارفع صورتك واختر النمط… وOM Ai يسوّي الباقي ✨', '📸 الشخص في الفيديو مولّد بالذكاء الاصطناعي'],
+    'حوّل صورتك ببلاش', ['#أنماط_الصور', '#جيبلي', '#تعديل_الصور', '#صور_ذكاء_اصطناعي', ...GULF_TAGS]);
 }
 
 // ───────── السلسلة: رقم الحلقة والموعد من سجلّ النشر ─────────
@@ -199,6 +248,123 @@ export async function trendIdea(token, recent) {
   return null;
 }
 
+// ───────── 🎬 فكرة فيديو الترند: موقف كوميديّ خليجيّ لاسكتش بيكسار من ترند اليوم ─────────
+const SKETCH_KEY = 'pixarsketch';
+const VIDEO_SCENES = [
+  { label: 'حرّ الصيف', title: 'المكيّف خرب', scene: 'أبو سعيد يحاول يصلّح المكيّف بنفسه في عزّ الحرّ، وأم سعيد والعيال يضحكون عليه من ورا الباب', tags: ['#الصيف', '#مكيف'] },
+  { label: 'الواجبات المدرسية', title: 'الواجب بالذكاء', scene: 'حمدان يقنع أبوه إنه حلّ الواجب بنفسه، والأب يكتشف إن الجواب مكتوب فيه «بصفتي ذكاء اصطناعي»', tags: ['#المدرسة', '#واجبات'] },
+  { label: 'سيلفي العائلة', title: 'سيلفي اليدّة', scene: 'اليدّة تتعلّم تصوّر سيلفي لأوّل مرة، وكل الصور تطلع لإصبعها، والعيال يحاولون يعلّمونها', tags: ['#سيلفي', '#العائلة'] },
+  { label: 'الطلبات أونلاين', title: 'الدليفري الغلط', scene: 'أبو خالد يطلب عشا دليفري ويستنّى ساعة، وبعدين يكتشف إن المطعم في البيت اللي جنبه', tags: ['#دليفري', '#عشا'] },
+  { label: 'نظارة الوالدة', title: 'وين النظارة؟', scene: 'أم راشد تدوّر نظارتها في كل البيت والكل يدوّر معها، والنظارة طول الوقت فوق راسها', tags: ['#البيت', '#ضحك'] },
+];
+
+export function validVideoIdea(j) {
+  if (!j || typeof j !== 'object') return null;
+  const scene = String(j.scene || '').trim(), title = String(j.title || '').trim(), label = String(j.label || '').trim();
+  if (scene.length < 30 || scene.length > 150 || !/\p{Script=Arabic}/u.test(scene)) return null;
+  if (!title || title.length > 24 || !label || label.length > 30) return null;
+  const tags = (Array.isArray(j.tags) ? j.tags : []).map((t) => String(t).trim()).filter((t) => /^#[^\s#]{2,30}$/.test(t)).slice(0, 3);
+  if (BAD_TOPIC.test([scene, title, label, j.trend || '', ...tags].join(' '))) return null;
+  return { scene, title, label, tags, trend: String(j.trend || '').slice(0, 80), src: 'trend' };
+}
+
+export function videoAsk(trends, today) {
+  const list = trends.map((t, i) => (i + 1) + '. ' + t.title + (t.news ? ' | ' + t.news : '')).join('\n');
+  return [
+    'أنت كاتب كوميديا خليجية لحساب OM Ai. نسوّي اسكتش قصير بأسلوب بيكسار ثلاثي الأبعاد (عائلة خليجية، حوار بلهجة خليجية) من ترند اليوم.',
+    'اليوم ' + today + '. هذي ترندات البحث الحين في الإمارات والسعودية والكويت وقطر (العنوان | خبر):',
+    list || '(ما في ترندات اليوم)',
+    '',
+    'اختر ترند واحد يصلح لموقف عائلي يومي مضحك ولطيف (طقس، مدرسة، أكل، سفر، مباراة، تقنية، مناسبة…). إذا ما في مناسب، خذ موقف من الحياة اليومية في الخليج قريب من تاريخ اليوم.',
+    'ممنوع منعًا باتًا: السياسة والحروب والأخبار العاجلة والوفيات والحوادث والجرائم والدين والبنوك والقمار، والشخصيات الحقيقية (حكّام، شيوخ، مشاهير، لاعبين)، والسخرية من أيّ شعب أو فئة.',
+    'رجّع JSON فقط بلا أيّ كلام ثاني، بهالشكل:',
+    '{"trend":"عنوان الترند كما هو","label":"وصف قصير للترند من 2 إلى 4 كلمات","title":"عنوان الموقف من 2 إلى 3 كلمات","scene":"الموقف بسطر واحد","tags":["#وسم","#وسم"]}',
+    'الشروط: scene بلهجة خليجية من 60 إلى 130 حرف: شخصيتين أو ثلاث بأسماء خليجية خيالية (أبو سعيد، أم راشد، حمدان…) وموقف واضح فيه مفارقة مضحكة. tags وسمين عربية بلا مسافات.',
+  ].join('\n');
+}
+
+export async function videoIdea(token, epN) {
+  try {
+    const trends = await fetchTrends();
+    log('trends: ' + trends.length);
+    const today = new Intl.DateTimeFormat('ar-AE', { dateStyle: 'full', timeZone: 'Asia/Dubai' }).format(new Date());
+    for (let i = 0; i < 2; i++) {
+      try {
+        const txt = await askAI(token, videoAsk(trends, today));
+        const mm = /\{[\s\S]*\}/.exec(txt);
+        const idea = validVideoIdea(mm ? JSON.parse(mm[0]) : null);
+        if (idea) return idea;
+        log('video idea rejected: ' + String(txt).replace(/\s+/g, ' ').slice(0, 200));
+      } catch (e) { log('video idea failed: ' + (e && e.message)); }
+    }
+  } catch (e) { log('trends failed: ' + (e && e.message)); }
+  return { ...VIDEO_SCENES[((epN || 1) - 1) % VIDEO_SCENES.length], src: 'list' };
+}
+
+// ───────── 🖼️ أنماط الصور: صورة شخص مولّدة (لا شخص حقيقيّ) + خمسة أنماط من التطبيق ─────────
+const PHOTO_SUBJECTS = [
+  { key: 'man', ar: 'شاب إماراتي', prompt: 'Photorealistic vertical 3:4 smartphone portrait photo of a smiling young Emirati man in his late twenties wearing a crisp white kandura and white ghutra with black agal, standing outdoors in a modern Dubai street at golden hour, natural skin texture, sharp face, upper body, no text, no watermark' },
+  { key: 'falcon', ar: 'صقّار', prompt: 'Photorealistic vertical 3:4 portrait photo of a proud young Emirati man in a beige kandura and white ghutra holding a falcon on a leather glove, desert dunes at sunset behind him, natural skin texture, sharp face, upper body, no text, no watermark' },
+  { key: 'grandpa', ar: 'الوالد', prompt: 'Photorealistic vertical 3:4 portrait photo of a cheerful Emirati grandfather in his sixties with a neat white beard, white kandura and ghutra, sitting in a traditional majlis with an Arabic coffee dallah, warm light, sharp face, upper body, no text, no watermark' },
+  { key: 'woman', ar: 'شابة إماراتية', prompt: 'Photorealistic vertical 3:4 portrait photo of a smiling young Emirati woman wearing an elegant black abaya and a modest black shayla hijab, in a bright modern cafe, natural skin texture, sharp face, upper body, no text, no watermark' },
+];
+const STYLE_AR = { ghibli: 'جيبلي', disney: 'بيكسار', lego: 'ليغو', anime: 'أنمي', figurine: 'فيغر أكشن', claymation: 'صلصال', chibi: 'تشيبي', royal: 'لوحة ملكية', cyberpunk: 'سايبربنك', statue: 'تمثال رخام', gulf: 'تراثي إماراتي', superhero: 'بطل خارق', oil: 'لوحة زيتية', comic: 'كوميكس', watercolor: 'ألوان مائية' };
+const STYLE_POOL = Object.keys(STYLE_AR);
+export const STYLES_PER_EP = 5;
+
+export function stylesPlan(epN, arg) {
+  const k = Math.max(0, (Number(epN) || 1) - 1);
+  const subject = PHOTO_SUBJECTS.find((x) => x.key === arg) || PHOTO_SUBJECTS[k % PHOTO_SUBJECTS.length];
+  const start = (k * STYLES_PER_EP) % STYLE_POOL.length;
+  const styles = Array.from({ length: STYLES_PER_EP }, (_, i) => STYLE_POOL[(start + i) % STYLE_POOL.length]);
+  return { subject, styles: styles.map((key) => ({ key, label: STYLE_AR[key] })) };
+}
+
+const b64Ext = (mime) => (/png/i.test(mime || '') ? '.png' : /webp/i.test(mime || '') ? '.webp' : '.jpg');
+
+// صورة الشخص من مولّد الصور في التطبيق نفسه (حساب البوت VIP: بلا خصم).
+async function makePhoto(acct, subject, dir) {
+  for (let i = 0; i < 2; i++) {
+    const r = await postJSON(BASE + '/api/maha-image', { prompt: subject.prompt, userText: subject.prompt, token: acct.token });
+    if (r.j && r.j.imageBase64) {
+      const file = path.join(dir, 'source' + b64Ext(r.j.mimeType));
+      fs.writeFileSync(file, Buffer.from(r.j.imageBase64, 'base64'));
+      log('source photo (' + subject.key + ') ' + (fs.statSync(file).size / 1e3).toFixed(0) + 'KB');
+      return { file, b64: r.j.imageBase64, mime: r.j.mimeType || 'image/png' };
+    }
+    log('source photo failed ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 160));
+  }
+  throw new Error('source photo failed');
+}
+
+export async function makeStyles(acct, plan, dir) {
+  fs.mkdirSync(dir, { recursive: true });
+  const src = await makePhoto(acct, plan.subject, dir);
+  const items = [];
+  const one = async (st) => {
+    for (let a = 0; a < 2; a++) {
+      const t0 = Date.now();
+      const r = await postJSON(BASE + '/api/portrait-style', { imageBase64: src.b64, mimeType: src.mime, style: st.key, token: acct.token });
+      if (r.j && r.j.imageBase64) {
+        const file = path.join(dir, st.key + b64Ext(r.j.mimeType));
+        fs.writeFileSync(file, Buffer.from(r.j.imageBase64, 'base64'));
+        return { ...st, file, secs: (Date.now() - t0) / 1000 };
+      }
+      log('style ' + st.key + ' failed ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 140));
+    }
+    return null;
+  };
+  // اثنين اثنين: أسرع، وكلّ نمط يُحسب زمنه وحده (الزمن المكتوب = متوسّط النمط الواحد الفعليّ).
+  for (let i = 0; i < plan.styles.length; i += 2) {
+    const got = await Promise.all(plan.styles.slice(i, i + 2).map(one));
+    for (const g of got) if (g) items.push(g);
+  }
+  if (items.length < 3) throw new Error('styles: only ' + items.length + ' of ' + plan.styles.length + ' worked — not publishing');
+  const avg = Math.max(1, Math.round(items.reduce((a, x) => a + x.secs, 0) / items.length));
+  log('styles ' + items.map((x) => x.key + ' ' + x.secs.toFixed(0) + 's').join(' · ') + ' · avg ' + avg + 's');
+  return { src: src.file, items, avg };
+}
+
 // ───────── المنصّات الموصولة ─────────
 async function resolvePlatforms() {
   if (PLATFORMS_RAW !== 'auto') return PLATFORMS_RAW.split(',').map((s) => s.trim()).filter(Boolean);
@@ -264,7 +430,8 @@ async function botAccount() {
 }
 
 // ───────── التصوير ─────────
-async function capture(browser, acct, idea, dir) {
+// صفحة التطبيق الحقيقيّ بحساب البوت (جوال)، بلا نوافذ الترحيب.
+async function appPage(browser, acct) {
   const ctx = await browser.newContext({ viewport: { width: VW, height: VH }, deviceScaleFactor: DPR, isMobile: true, hasTouch: true, locale: 'ar', userAgent: IPHONE_UA });
   await ctx.addInitScript(([t, u]) => {
     try {
@@ -284,7 +451,11 @@ async function capture(browser, acct, idea, dir) {
     const st = document.createElement('style'); st.textContent = '#prompt{font-size:17px!important;line-height:1.45!important}'; document.head.appendChild(st);
   });
   await page.waitForTimeout(600);
+  return { ctx, page };
+}
 
+// تسجيل الشاشة إطارًا إطارًا (CDP)؛ كلّ إطار يحمل زمنه ومقطعه (A قبل الإرسال، B بعده).
+async function startRec(ctx, page, dir) {
   const frames = []; let seg = 'A';
   const cdp = await ctx.newCDPSession(page);
   cdp.on('Page.screencastFrame', (f) => {
@@ -294,6 +465,13 @@ async function capture(browser, acct, idea, dir) {
     cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {});
   });
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: W, maxHeight: H, everyNthFrame: 1 });
+  return { frames, seg: (x) => { seg = x; }, stop: () => cdp.send('Page.stopScreencast').catch(() => {}) };
+}
+
+async function capture(browser, acct, idea, dir) {
+  const { ctx, page } = await appPage(browser, acct);
+  const rec = await startRec(ctx, page, dir);
+  const frames = rec.frames;
   const m = { a0: now() };
   await page.waitForTimeout(900);
   await page.locator('#prompt').tap().catch(() => page.locator('#prompt').click());
@@ -308,7 +486,7 @@ async function capture(browser, acct, idea, dir) {
   m.tap = sb ? { x: (sb.x + sb.width / 2) * DPR, y: (sb.y + sb.height / 2) * DPR } : null;
   m.send = now();
   await page.locator('#btnSend').tap().catch(() => page.locator('#btnSend').click());
-  seg = 'B';
+  rec.seg('B');
 
   let lastLen = 0, lastChange = m.send, doneAt = 0;
   const t0 = Date.now();
@@ -325,7 +503,7 @@ async function capture(browser, acct, idea, dir) {
   await page.waitForTimeout(1600);
   m.b1 = now();
   m.secs = Math.max(1, Math.round(doneAt - m.send));
-  await cdp.send('Page.stopScreencast').catch(() => {});
+  await rec.stop();
   const code = await page.evaluate(() => document.getElementById('previewFrame').srcdoc || '');
   await page.close(); await ctx.close();
 
@@ -347,6 +525,110 @@ async function capture(browser, acct, idea, dir) {
   return { frames, m, sitePng, siteH: Math.round(capH * DPR), codeLen: code.length };
 }
 
+// ───────── 🎬 تصوير فيديو الترند: صانع الفيديو الحقيقيّ في التطبيق ─────────
+// يكتب «سوّ لي فيديو» في المحادثة (يفتح صانع الفيديو)، يختار بطاقة الترند، يكتب الموقف، يضغط «اصنع»،
+// وينتظر الفيديو الحقيقيّ. الزمن المكتوب = من ضغطة «اصنع» إلى ظهور الفيديو.
+export async function captureVideo(browser, acct, vi, dir, opt = {}) {
+  const { ctx, page } = await appPage(browser, acct);
+  page.on('dialog', (d) => d.accept().catch(() => {})); // سؤال تأكيد النقاط (حساب VIP لا يُخصم منه)
+  const rec = await startRec(ctx, page, dir);
+  const m = { a0: now(), taps: [], typing: [] };
+  const tapAt = async (loc) => {
+    const b = await loc.boundingBox().catch(() => null);
+    if (b) m.taps.push({ t: now(), x: (b.x + b.width / 2) * DPR, y: (b.y + b.height / 2) * DPR });
+    await loc.tap({ timeout: 5000 }).catch(() => loc.click({ timeout: 5000 }));
+  };
+  const typeIn = async (loc, text, total = 3.2) => {
+    const delay = Math.max(24, Math.min(55, Math.round(total * 1000 / Math.max(1, text.length))));
+    const t0 = now(); await loc.pressSequentially(text, { delay }); m.typing.push([t0, now(), delay / 1000]);
+  };
+  await page.waitForTimeout(900);
+  await tapAt(page.locator('#prompt'));
+  await page.waitForTimeout(300);
+  await typeIn(page.locator('#prompt'), 'سوّ لي فيديو ترند', 1.4);
+  await page.waitForTimeout(400);
+  await tapAt(page.locator('#btnSend'));
+  const isOpen = () => page.evaluate(() => { const v = document.getElementById('videoMakerModal'); return !!(v && getComputedStyle(v).display !== 'none' && document.querySelector('#vtGrid > div')); });
+  for (let i = 0; i < 20 && !(await isOpen()); i++) await page.waitForTimeout(250);
+  if (!(await isOpen())) {
+    log('video maker did not open from chat — opening it directly');
+    await page.evaluate(() => window.omranOpenVideoMaker && window.omranOpenVideoMaker(''));
+    for (let i = 0; i < 12 && !(await isOpen()); i++) await page.waitForTimeout(250);
+    if (!(await isOpen())) throw new Error('video maker did not open');
+  }
+  m.open = now();
+  const info = await page.evaluate((k) => {
+    const D = window.__VIDEO_TRENDS; const i = D.trends.findIndex((t) => t.key === k); const t = D.trends[i];
+    const clean = (x) => String(x || '').replace(/\p{Extended_Pictographic}|\uFE0F/gu, '').replace(/\s{2,}/g, ' ').trim();
+    return t ? { i, photo: t.photo, kind: t.kind, scenes: t.scenes || 1, title: clean(t.title && t.title.ar) || k } : null;
+  }, vi.key);
+  if (!info) throw new Error('trend not found: ' + vi.key);
+  if (info.scenes > 1) throw new Error('trend ' + vi.key + ' has ' + info.scenes + ' scenes — pick a one-scene trend');
+  if (info.photo === 'req' && !opt.photo) throw new Error('trend ' + vi.key + ' needs a photo');
+  await page.waitForFunction(() => [...document.querySelectorAll('#vtGrid img')].slice(0, 6).every((im) => im.complete), null, { timeout: 9000 }).catch(() => {});
+  await page.waitForTimeout(700);
+  const card = page.locator('#vtGrid > div').nth(info.i);
+  await card.scrollIntoViewIfNeeded().catch(() => {});
+  await page.waitForTimeout(600);
+  await tapAt(card);
+  await page.waitForSelector('#vtGo', { timeout: 8000 });
+  await page.waitForTimeout(900);
+  if (opt.photo && info.photo !== 'none') {
+    const slot = page.locator('#vtPeople > div').last();
+    await slot.scrollIntoViewIfNeeded().catch(() => {});
+    const [fc] = await Promise.all([page.waitForEvent('filechooser', { timeout: 6000 }), tapAt(slot)]);
+    await fc.setFiles(opt.photo);
+    await page.waitForFunction(() => document.querySelectorAll('#vtPeople img').length > 0, null, { timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(900);
+  }
+  const text = info.kind === 'scene' ? vi.scene : info.kind === 'none' ? '' : vi.title;
+  if (text && (await page.locator('#vtText').count())) {
+    const ta = page.locator('#vtText');
+    await ta.scrollIntoViewIfNeeded().catch(() => {});
+    await tapAt(ta);
+    await page.waitForTimeout(250);
+    await typeIn(ta, text, 3.4);
+    await page.waitForTimeout(450);
+  }
+  const go = page.locator('#vtGo');
+  await go.scrollIntoViewIfNeeded().catch(() => {});
+  await page.waitForTimeout(450);
+  await tapAt(go);
+  m.send = now();
+  rec.seg('B');
+  const clip = path.join(dir, '..', 'clip.mp4');
+  if (opt.fakeClip) { await page.waitForTimeout(4000); fs.copyFileSync(opt.fakeClip, clip); m.done = now(); }
+  else {
+    let src = '';
+    const t0 = Date.now();
+    while (!src && Date.now() - t0 < 8 * 60000) {
+      await page.waitForTimeout(1000);
+      const st = await page.evaluate(() => {
+        const v = document.querySelector('#vtOut video'), s = document.getElementById('vtStatus'), g = document.getElementById('vtGo');
+        return { src: v ? v.currentSrc || v.src : '', st: s ? s.textContent : '', busy: !!(g && g.disabled) };
+      });
+      if (st.src) src = st.src;
+      else if (!st.busy && st.st && now() - m.send > 4) throw new Error('trend video failed: ' + st.st.slice(0, 160));
+    }
+    if (!src) throw new Error('trend video timed out');
+    m.done = now();
+    const r = await fetch(new URL(src, BASE));
+    if (!r.ok) throw new Error('clip download ' + r.status);
+    fs.writeFileSync(clip, Buffer.from(await r.arrayBuffer()));
+  }
+  // النتيجة داخل التطبيق: الفيديو يظهر في صانع الفيديو (لحظتين) ثمّ يُعرض ملء الشاشة في المونتاج.
+  await page.evaluate(() => { const v = document.querySelector('#vtOut video'); if (v) { v.muted = true; v.scrollIntoView({ block: 'center' }); v.play().catch(() => {}); } }).catch(() => {});
+  await page.waitForTimeout(2200);
+  m.b1 = now();
+  m.secs = Math.max(1, Math.round(m.done - m.send));
+  await rec.stop();
+  await page.close(); await ctx.close();
+  const size = fs.statSync(clip).size;
+  if (size < 150e3) throw new Error('clip too small (' + size + ' bytes)');
+  log('captured frames=' + rec.frames.length + ' trend=' + vi.key + ' video ready in ' + m.secs + 's clip=' + (size / 1e6).toFixed(1) + 'MB');
+  return { frames: rec.frames, m, clip, title: info.title };
+}
+
 // ───────── المونتاج (صفحة استوديو تُرسم إطارًا إطارًا: العربيّة صحيحة الشكل) ─────────
 // باركود حقيقيّ (تصحيح H يتحمّل الشعار في الوسط) — مكتبة المستودع نفسها، بلا اعتماديّات.
 export function qrSVG(url) {
@@ -357,7 +639,17 @@ export function qrSVG(url) {
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + n + ' ' + n + '" shape-rendering="crispEdges"><path fill="#0d0f14" d="' + d + '"/></svg>';
 }
 
-export function studioHTML(idea, secs, epN) {
+// نصوص الشاشة لكلّ نوع حلقة (الافتراضيّ: الموقع كما كان).
+function screenText(idea, secs, o) {
+  return {
+    tag: KINDS.site.tag, hookS: 'بجملة وحدة بس ✍️', hook1: 'موقع ' + idea.name, hook2: 'في ' + secWord(secs) + ' ⚡',
+    timerL: 'OM Ai يبني الموقع…', readyPre: 'جاهز في', readyGold: secWord(secs),
+    endH: 'سوّ موقعك أنت', endS: 'اكتب فكرتك… والذكاء الاصطناعي يسوّيها', ...(o || {}),
+  };
+}
+
+export function studioHTML(idea, secs, epN, o) {
+  const x = screenText(idea, secs, o);
   const ep = epN ? epLabel(epN) : null;
   const icon = pathToFileURL(path.join(ROOT, 'icons/icon-512-v2.png')).href;
   const brand = pathToFileURL(path.join(ROOT, 'icons/brand-om-s.png')).href;
@@ -373,7 +665,7 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:#000;font-family
 #site{overflow:hidden;display:none;background:#fff}
 #siteImg{position:absolute;top:0;left:0;width:${W}px;transform-origin:50% 0}
 .gold{background:linear-gradient(180deg,#ffe9a8,#e7b54a 55%,#b9822a);-webkit-background-clip:text;background-clip:text;color:transparent}
-#hook{position:absolute;top:150px;left:60px;right:60px;padding:38px 40px;border-radius:44px;background:rgba(10,10,12,.82);border:3px solid rgba(231,181,74,.75);box-shadow:0 30px 80px rgba(0,0,0,.6);text-align:center}
+#hook{position:absolute;top:150px;left:60px;right:60px;padding:38px 40px;border-radius:44px;background:rgba(10,10,12,.95);border:3px solid rgba(231,181,74,.75);box-shadow:0 30px 80px rgba(0,0,0,.6);text-align:center}
 #hook .s{font-size:46px;font-weight:700;color:#e8e2d0;margin-bottom:10px}
 #hook .b{font-size:74px;font-weight:900;line-height:1.25}
 #hook .b .ln{display:block;white-space:nowrap;overflow:hidden}
@@ -394,20 +686,37 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:#000;font-family
 #end .qr img{position:absolute;left:50%;top:50%;width:104px;height:104px;margin:-52px 0 0 -52px;border-radius:24px;border:5px solid #e7b54a;box-shadow:0 0 0 9px #fff}
 #end .u{display:inline-block;margin-top:40px;font-size:42px;font-weight:800;padding:18px 42px;border-radius:999px;border:3px solid #e7b54a;direction:ltr;color:#ffe9a8}
 #end .nx{font-size:46px;font-weight:800;color:#efe7d2;margin-top:34px}
+#sty{position:absolute;inset:0;display:none;background:#000;overflow:hidden}
+#sty .bl{position:absolute;left:-80px;top:-80px;width:${W + 160}px;height:${H + 160}px;object-fit:cover;filter:blur(46px) brightness(.42) saturate(1.2)}
+#card{position:absolute;left:60px;top:330px;width:960px;height:1280px;border-radius:46px;overflow:hidden;border:5px solid rgba(231,181,74,.9);box-shadow:0 30px 100px rgba(0,0,0,.75);background:#111}
+#card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#divd{position:absolute;top:0;bottom:0;width:10px;margin-left:-5px;background:linear-gradient(180deg,#ffe9a8,#e7b54a 55%,#b9822a);box-shadow:0 0 40px rgba(231,181,74,.9)}
+.tg{position:absolute;top:26px;padding:10px 28px;border-radius:999px;background:rgba(0,0,0,.66);font-size:38px;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,.35)}
+#tgA{left:26px}#tgB{right:26px;color:#1a1205;background:linear-gradient(180deg,#ffe9a8,#e7b54a 55%,#b9822a);border-color:transparent}
+#lbl{position:absolute;top:1660px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:22px 58px;border-radius:999px;background:rgba(10,10,12,.9);border:3px solid #e7b54a;font-size:66px;font-weight:900;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+#lbl small{font-size:40px;color:#e8e2d0;font-weight:700;margin-inline-start:14px}
+#grid{position:absolute;inset:0;display:none;text-align:center}
+#grid .gt{margin-top:400px;font-size:70px;font-weight:900}
+#grid .gw{display:grid;grid-template-columns:repeat(3,300px);gap:24px;justify-content:center;margin-top:60px}
+#grid .gi{position:relative;width:300px;height:400px;border-radius:28px;overflow:hidden;border:4px solid rgba(231,181,74,.85);box-shadow:0 14px 40px rgba(0,0,0,.6)}
+#grid .gi img{width:100%;height:100%;object-fit:cover}
+#grid .gi span{position:absolute;inset:auto 0 0 0;padding:10px 0 12px;font-size:32px;font-weight:800;background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0))}
+#grid .gs{margin-top:56px;font-size:52px;font-weight:800;color:#efe7d2}
 #ep{position:absolute;top:40px;right:34px;max-width:600px;white-space:nowrap;overflow:hidden;padding:12px 30px;border-radius:999px;background:linear-gradient(180deg,#ffe9a8,#e7b54a 55%,#b9822a);color:#1a1205;font-size:40px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 </style></head><body><div id="stage">
 <img id="bg"><div id="site"><img id="siteImg"></div>
-<div id="hook"><div class="s">بجملة وحدة بس ✍️</div><div class="b"><span class="ln gold">موقع ${esc(idea.name)}</span><span class="ln">في ${esc(secWord(secs))} ⚡</span></div></div>
-<div id="timer"><div class="n gold">0</div><div class="l">OM Ai يبني الموقع…</div></div>
-<div id="ready">✅ جاهز في <span class="gold">${esc(secWord(secs))}</span></div>
+${x.styles ? stylesLayer(x.styles) : ''}
+<div id="hook"><div class="s">${esc(x.hookS)}</div><div class="b"><span class="ln gold">${esc(x.hook1)}</span><span class="ln">${esc(x.hook2)}</span></div></div>
+<div id="timer"><div class="n gold">0</div><div class="l">${esc(x.timerL)}</div></div>
+<div id="ready">✅ ${esc(x.readyPre)} <span class="gold">${esc(x.readyGold)}</span></div>
 <div id="wm"><img class="i" src="${icon}"><img class="t" src="${brand}"></div>
-${ep ? '<div id="ep">🎬 ' + esc(ep.short) + ' · تحدّي 30 موقع</div>' : ''}
+${ep ? '<div id="ep">🎬 ' + esc(ep.short) + ' · ' + esc(x.tag) + '</div>' : ''}
 <div id="tap"></div><div id="flash"></div>
-<div id="end"><img class="t" src="${brand}"><div class="h">سوّ موقعك أنت<br><span class="gold">ببلاش</span></div><div class="s">اكتب فكرتك… والذكاء الاصطناعي يسوّيها</div><div class="qr">${qrSVG(QR_URL)}<img src="${icon}"></div><div class="u">${SITE}</div>${ep ? '<div class="nx">تابعنا… ' + esc(epLabel(epN + 1).short) + ' بعد يومين 👀</div>' : ''}</div>
+<div id="end"><img class="t" src="${brand}"><div class="h">${esc(x.endH)}<br><span class="gold">ببلاش</span></div><div class="s">${esc(x.endS)}</div><div class="qr">${qrSVG(QR_URL)}<img src="${icon}"></div><div class="u">${SITE}</div>${ep ? '<div class="nx">تابعنا… ' + esc(epLabel(epN + 1).short) + ' بعد يومين 👀</div>' : ''}</div>
 </div><script>
 const $=(id)=>document.getElementById(id);
 let curBg='', curSite='';
-window.fitAll=()=>{document.querySelectorAll('#hook .ln,#ready,#ep').forEach((el)=>{let fs=parseFloat(getComputedStyle(el).fontSize);while(el.scrollWidth>el.clientWidth+1&&fs>28){fs-=2;el.style.fontSize=fs+'px';}});return true;};
+window.fitAll=()=>{document.querySelectorAll('#hook .ln,#ready,#ep,#lbl').forEach((el)=>{let fs=parseFloat(getComputedStyle(el).fontSize);while(el.scrollWidth>el.clientWidth+1&&fs>28){fs-=2;el.style.fontSize=fs+'px';}});return true;};
 window.apply=async(s)=>{
   const bg=$('bg');
   if(s.bg&&s.bg!==curBg){curBg=s.bg;bg.src=s.bg;try{await bg.decode()}catch(e){}}
@@ -423,6 +732,18 @@ window.apply=async(s)=>{
   if($('ep'))set('ep',s.wm,null);
   const t=$('tap');t.style.opacity=s.tap;if(s.tapXY){t.style.left=s.tapXY.x+'px';t.style.top=s.tapXY.y+'px';t.style.transform='scale('+(0.6+0.6*(1-s.tap))+')';}
   $('flash').style.opacity=s.flash;
+  if($('sty')){const y=s.sty||null;$('sty').style.display=y?'block':'none';
+    if(y){const ia=$('ia'),ib=$('ib'),bl=$('blr');
+      if(ia.dataset.k!==y.a){ia.dataset.k=y.a;ia.src=y.a;try{await ia.decode()}catch(e){}}
+      if(ib.dataset.k!==y.b){ib.dataset.k=y.b;ib.src=y.b;try{await ib.decode()}catch(e){}}
+      const bsrc=y.p>0.5?y.b:y.a;if(bl.dataset.k!==bsrc){bl.dataset.k=bsrc;bl.src=bsrc;try{await bl.decode()}catch(e){}}
+      ib.style.clipPath='inset(0 0 0 '+((1-y.p)*100)+'%)';
+      $('divd').style.left=((1-y.p)*100)+'%';$('divd').style.opacity=(y.p>0.01&&y.p<0.99)?1:0;
+      $('card').style.transform='scale('+(y.z||1)+')';$('card').style.opacity=1-y.grid;
+      $('tgA').style.opacity=y.tagA;$('tgB').style.opacity=y.tagB;
+      const l=$('lbl');l.style.opacity=y.lblO*(1-y.grid);if(l.dataset.k!==y.lbl){l.dataset.k=y.lbl;l.innerHTML=y.lbl;}
+      l.style.transform='translateX(-50%) scale('+(0.9+0.1*y.lblO)+')';
+      const g=$('grid');g.style.display=y.grid>0?'block':'none';g.style.opacity=y.grid;g.style.transform='scale('+(0.94+0.06*y.grid)+')';}}
   $('end').style.display=s.end>0?'block':'none';$('end').style.opacity=s.end;
   return true;
 };
@@ -512,6 +833,181 @@ async function compose(browser, cap, idea, outDir, epN) {
   fs.rmSync(fdir, { recursive: true, force: true });
   log('video ' + tl.total.toFixed(1) + 's → ' + mp4 + ' (' + (fs.statSync(mp4).size / 1e6).toFixed(1) + 'MB)');
   return { mp4, cover, tl };
+}
+
+const probe = (f, args) => { try { return execFileSync('ffprobe', ['-v', 'error', ...args, '-of', 'csv=p=0', f], { encoding: 'utf8' }).trim(); } catch (e) { return ''; } };
+
+// إطارات الصفحة → mp4 (+ صوت الفيديو الناتج نفسه فوق الخلفيّة إن وُجد).
+function encode(fdir, wav, mp4, mix) {
+  const args = ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(fdir, '%05d.jpg'), '-i', wav];
+  if (mix) {
+    args.push('-i', mix.file, '-filter_complex', '[2:a]atrim=0:' + mix.dur.toFixed(2) + ',adelay=' + Math.round(mix.at * 1000) + ':all=1,volume=1.15[c];[1:a][c]amix=inputs=2:duration=first:normalize=0[a]', '-map', '0:v', '-map', '[a]');
+  }
+  execFileSync('ffmpeg', [...args, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-preset', 'medium', '-crf', '20', '-r', String(FPS),
+    '-c:a', 'aac', '-b:a', '160k', '-shortest', '-movflags', '+faststart', mp4], { stdio: 'inherit' });
+  fs.rmSync(fdir, { recursive: true, force: true });
+}
+
+async function studioPage(browser, outDir, html) {
+  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
+  const sp = await ctx.newPage();
+  const studio = path.join(outDir, 'studio.html');
+  fs.writeFileSync(studio, html);
+  await sp.goto(pathToFileURL(studio).href, { waitUntil: 'load' });
+  await sp.evaluate(() => document.fonts.ready).catch(() => {});
+  await sp.evaluate(() => { const r = document.getElementById('ready'); r.style.display = ''; window.fitAll(); r.style.display = 'none'; return true; });
+  const fdir = path.join(outDir, 'out'); fs.mkdirSync(fdir, { recursive: true });
+  const shot = async (i, s) => { await sp.evaluate((x) => window.apply(x), s); await sp.screenshot({ path: path.join(fdir, String(i).padStart(5, '0') + '.jpg'), type: 'jpeg', quality: 90 }); };
+  return { ctx, sp, fdir, shot };
+}
+const S0 = () => ({ bg: '', bgZ: 1, site: '', siteY: 0, siteZ: 1, hook: 0, timer: 0, timerN: '0', ready: 0, wm: 1, tap: 0, tapXY: null, flash: 0, end: 0, sty: null });
+
+export function videoTimeline(m, clipDur) {
+  const realA = (m.send + 0.45) - m.a0;
+  const dA = Math.min(realA, 9);
+  return { realA, dA, dB: 3.4, dC: Math.min(Math.max(clipDur, 3), 10), dD: 4.6, get total() { return this.dA + this.dB + this.dC + this.dD; } };
+}
+
+// 🎬 تطبيق (مسرَّع) ← عدّاد التوليد ← الفيديو الناتج ملء الشاشة بصوته ← بطاقة النهاية.
+export async function composeVideo(browser, cap, vi, outDir, epN) {
+  const { frames, m, clip } = cap;
+  const A = frames.filter((f) => f.seg === 'A'), B = frames.filter((f) => f.seg === 'B');
+  if (!A.length) throw new Error('no frames captured');
+  const cdir = path.join(outDir, 'clipf'); fs.mkdirSync(cdir, { recursive: true });
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', clip, '-vf', 'scale=' + W + ':' + H + ':force_original_aspect_ratio=increase,crop=' + W + ':' + H + ',fps=' + FPS, '-q:v', '3', path.join(cdir, '%05d.jpg')]);
+  const cf = fs.readdirSync(cdir).filter((f) => f.endsWith('.jpg')).sort();
+  if (!cf.length) throw new Error('clip has no frames');
+  const clipDur = cf.length / FPS;
+  const tl = videoTimeline(m, clipDur);
+  const sketch = vi.key === SKETCH_KEY;
+  const html = studioHTML({ name: '' }, m.secs, epN, {
+    tag: KINDS.video.tag, hookS: sketch ? 'سطر واحد بس ✍️' : 'ترند فيديو بضغطة وحدة 👆', hook1: sketch ? 'اسكتش بيكسار خليجي' : cap.title, hook2: sketch ? 'بالصوت والصورة 🎬' : 'من صانع الفيديو 🎬',
+    timerL: 'OM Ai يصوّر الفيديو…', readyPre: 'جاهز في', readyGold: durWord(m.secs), endH: 'سوّ فيديو الترند حقّك', endS: 'اختر الترند… واكتب فكرتك',
+  });
+  const { ctx, sp, fdir, shot } = await studioPage(browser, outDir, html);
+  const k = tl.dA / tl.realA;
+  const tB = tl.dA, tC = tB + tl.dB, tD = tC + tl.dC, N = Math.round(tl.total * FPS);
+  const hookEnd = Math.min(tB - 0.2, Math.max(2.4, (m.open - m.a0) * k));
+  const taps = m.taps.filter((p) => p.t < m.send + 0.5).map((p) => ({ t: (p.t - m.a0) * k, xy: p }));
+  const st = (t) => {
+    const s = S0();
+    if (t < tC) {
+      const r = t < tB ? m.a0 + t / k : (m.send + 0.45) + (t - tB) / tl.dB * (m.b1 - (m.send + 0.45));
+      s.bg = pathToFileURL(frameAt(t < tB || !B.length ? A : B, r).fn).href;
+      s.hook = ramp(t, 0.15, hookEnd, 0.3);
+      for (const p of taps) if (t > p.t - 0.05 && t < p.t + 0.5) { s.tap = clamp(1 - (t - p.t) / 0.5); s.tapXY = { x: p.xy.x, y: p.xy.y }; }
+      if (t >= tB) { const p = clamp((t - tB) / (tl.dB - 0.5)); s.timer = ramp(t, tB, tC, 0.25); s.timerN = clock(Math.min(m.secs, Math.round(p * m.secs))); }
+      if (t > tC - 0.12) s.flash = clamp((t - (tC - 0.12)) / 0.12);
+    } else if (t < tD) {
+      const lt = t - tC;
+      s.bg = pathToFileURL(path.join(cdir, cf[Math.min(cf.length - 1, Math.floor(lt * FPS))])).href;
+      s.ready = ramp(t, tC + 0.15, tC + 2.6, 0.3);
+      s.flash = clamp(1 - lt / 0.25);
+      if (t > tD - 0.3) s.end = clamp((t - (tD - 0.3)) / 0.3);
+    } else { s.end = 1; s.bg = pathToFileURL(path.join(cdir, cf[cf.length - 1])).href; }
+    return s;
+  };
+  for (let i = 0; i < N; i++) await shot(i, st(i / FPS));
+  // الغلاف: لقطة من منتصف الفيديو الناتج مع شارة الزمن.
+  await sp.evaluate((x) => window.apply(x), { ...st(tC + Math.min(1.4, tl.dC / 2)), flash: 0, ready: 1 });
+  const cover = path.join(outDir, 'cover.jpg');
+  await sp.screenshot({ path: cover, type: 'jpeg', quality: 90 });
+  await ctx.close();
+  const wav = path.join(outDir, 'audio.wav');
+  synthAudio(wav, tl.total, {
+    typing: m.typing.map(([a, b, d]) => [(a - m.a0) * k, (b - m.a0) * k, d * k]), taps: taps.map((p) => p.t),
+    ticks: [tB, tl.dB], chimes: [tC, tD], duck: [tC, tD],
+  });
+  const hasAudio = !!probe(clip, ['-select_streams', 'a', '-show_entries', 'stream=index']);
+  const mp4 = path.join(outDir, 'omai-reel.mp4');
+  encode(fdir, wav, mp4, hasAudio ? { file: clip, at: tC, dur: tl.dC } : null);
+  fs.rmSync(cdir, { recursive: true, force: true });
+  log('video ' + tl.total.toFixed(1) + 's → ' + mp4 + ' (' + (fs.statSync(mp4).size / 1e6).toFixed(1) + 'MB) clip audio=' + (hasAudio ? 'yes' : 'no'));
+  return { mp4, cover, tl };
+}
+
+function stylesLayer(x) {
+  return '<div id="sty"><img class="bl" id="blr"><div id="card"><img id="ia"><img id="ib"><div id="divd"></div><div class="tg" id="tgA">قبل</div><div class="tg" id="tgB">بعد</div></div><div id="lbl"></div>' +
+    '<div id="grid"><div class="gt">✨ <span class="gold">كلها من صورة وحدة</span></div><div class="gw">' +
+    x.grid.map((g) => '<div class="gi"><img src="' + g.src + '"><span>' + escH(g.label) + '</span></div>').join('') +
+    '</div><div class="gs">' + escH(x.foot) + '</div></div></div>';
+}
+
+export function stylesTimeline(n) {
+  const dH = 2.8, dS = 2.5, dG = 3.4, dD = 4.6;
+  return { dH, dS, dG, dD, n, total: dH + n * dS + dG + dD };
+}
+
+// 🖼️ الصورة الأصليّة ← كشف كلّ نمط بخطّ ذهبيّ (قبل/بعد) ← شبكة الكلّ ← بطاقة النهاية.
+export async function composeStyles(browser, res, plan, outDir, epN) {
+  const url = (f) => pathToFileURL(f).href;
+  const items = res.items, n = items.length, tl = stylesTimeline(n);
+  const html = studioHTML({ name: '' }, res.avg, epN, {
+    tag: KINDS.styles.tag, hookS: 'صورة وحدة بس 📸', hook1: n + ' أنماط', hook2: 'كل نمط في ' + secWord(res.avg) + ' ⚡',
+    endH: 'حوّل صورتك', endS: 'ارفع صورتك… واختر النمط',
+    styles: { grid: [{ src: url(res.src), label: 'الأصلية' }, ...items.slice(0, 5).map((x) => ({ src: url(x.file), label: x.label }))], foot: 'كل نمط في ' + secWord(res.avg) + ' ⚡ — من OM Ai' },
+  });
+  const { ctx, sp, fdir, shot } = await studioPage(browser, outDir, html);
+  const tS = tl.dH, tG = tS + n * tl.dS, tD = tG + tl.dG, N = Math.round(tl.total * FPS);
+  const lab = (i) => '🎨 ' + escH(items[i].label) + '<small>' + (i + 1) + '/' + n + '</small>';
+  const st = (t) => {
+    const s = S0();
+    const y = { a: url(res.src), b: url(items[0].file), p: 0, z: 1, tagA: 0, tagB: 0, lbl: '', lblO: 0, grid: 0 };
+    if (t < tS) {
+      y.z = 1 + 0.03 * ease(t / tl.dH); s.hook = ramp(t, 0.15, tS - 0.1, 0.3);
+      y.lbl = '📸 الصورة الأصلية'; y.lblO = ramp(t, 0.4, tS - 0.1, 0.3);
+    } else if (t < tG) {
+      const i = Math.min(n - 1, Math.floor((t - tS) / tl.dS)), lt = t - tS - i * tl.dS;
+      y.b = url(items[i].file); // كلّ نمط يُكشف من الصورة الأصليّة نفسها: قبل ← بعد
+      y.p = ease((lt - 0.15) / 0.9); y.z = 1 + 0.025 * ease(lt / tl.dS);
+      y.tagA = clamp(1 - (lt - 0.6) / 0.4); y.tagB = clamp((lt - 0.3) / 0.3);
+      y.lbl = lab(i); y.lblO = clamp((lt - 0.35) / 0.3) * clamp((tl.dS - lt) / 0.2 + (i === n - 1 ? 1 : 0));
+    } else if (t < tD) {
+      y.a = url(items[n - 1].file); y.b = y.a; y.p = 1; y.grid = clamp((t - tG) / 0.45);
+      if (t > tD - 0.3) s.end = clamp((t - (tD - 0.3)) / 0.3);
+    } else { y.grid = 1; s.end = 1; }
+    s.sty = y;
+    return s;
+  };
+  for (let i = 0; i < N; i++) await shot(i, st(i / FPS));
+  // الغلاف: نصف الصورة أصليّة ونصفها جيبلي/أوّل نمط — «قبل/بعد» واضح.
+  await sp.evaluate((x) => window.apply(x), (() => { const s = st(tS + 0.5); s.sty.p = 0.5; s.sty.tagA = 1; s.sty.tagB = 1; s.sty.lblO = 1; s.hook = 1; return s; })());
+  const cover = path.join(outDir, 'cover.jpg');
+  await sp.screenshot({ path: cover, type: 'jpeg', quality: 90 });
+  await ctx.close();
+  const wav = path.join(outDir, 'audio.wav');
+  synthAudio(wav, tl.total, { whoosh: items.map((_, i) => tS + i * tl.dS), chimes: [tG, tD] });
+  const mp4 = path.join(outDir, 'omai-reel.mp4');
+  encode(fdir, wav, mp4, null);
+  log('video ' + tl.total.toFixed(1) + 's → ' + mp4 + ' (' + (fs.statSync(mp4).size / 1e6).toFixed(1) + 'MB)');
+  return { mp4, cover, tl };
+}
+
+// صوت مولَّد عامّ: خلفيّة هادئة (تخفت تحت صوت الفيديو الناتج) + كتابة + نقرات + تكتكة + جرس + «ووش».
+function synthAudio(file, total, ev) {
+  const SR = 44100, n = Math.ceil(total * SR), buf = new Float32Array(n);
+  const add = (t0, dur, fn) => { const s = Math.floor(t0 * SR); for (let i = 0; i < dur * SR && s + i < n; i++) if (s + i >= 0) buf[s + i] += fn(i / SR); };
+  const chords = [[220, 277.18, 329.63], [196, 246.94, 293.66], [174.61, 220, 261.63], [196, 246.94, 329.63]];
+  const duck = ev.duck || null;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR, c = chords[Math.floor(t / 2.4) % chords.length];
+    let env = clamp(t / 1.5) * clamp((total - t) / 1.2);
+    if (duck) env *= 1 - 0.85 * clamp(Math.min((t - duck[0]) / 0.3, (duck[1] - t) / 0.3));
+    let v = 0; for (const f of c) v += Math.sin(2 * Math.PI * f * t) + 0.35 * Math.sin(4 * Math.PI * f * t);
+    buf[i] += v * 0.02 * env * (0.8 + 0.2 * Math.sin(2 * Math.PI * 0.25 * t));
+  }
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) * 2 - 1;
+  for (const [a, b, d] of ev.typing || []) for (let t = a; t < b; t += d) add(t, 0.03, (x) => rnd() * 0.22 * Math.exp(-x * 160));
+  for (const t of ev.taps || []) add(t, 0.12, (x) => Math.sin(2 * Math.PI * 900 * x) * 0.25 * Math.exp(-x * 40));
+  if (ev.ticks) for (let j = 0; j < 8; j++) add(ev.ticks[0] + j * (ev.ticks[1] / 8), 0.05, (x) => Math.sin(2 * Math.PI * 1500 * x) * 0.07 * Math.exp(-x * 90));
+  for (const t of ev.whoosh || []) add(t, 0.7, (x) => rnd() * 0.16 * Math.sin(Math.PI * clamp(x / 0.7)) * (0.5 + 0.5 * Math.sin(2 * Math.PI * (300 + 900 * x) * x)));
+  (ev.chimes || []).forEach((t, j) => add(t, 1.7, (x) => (Math.sin(2 * Math.PI * (j ? 784 : 1046.5) * x) + 0.6 * Math.sin(2 * Math.PI * (j ? 1174.7 : 1568) * x)) * 0.18 * Math.exp(-x * 3)));
+  const pcm = Buffer.alloc(44 + n * 2);
+  pcm.write('RIFF', 0); pcm.writeUInt32LE(36 + n * 2, 4); pcm.write('WAVE', 8); pcm.write('fmt ', 12);
+  pcm.writeUInt32LE(16, 16); pcm.writeUInt16LE(1, 20); pcm.writeUInt16LE(1, 22); pcm.writeUInt32LE(SR, 24); pcm.writeUInt32LE(SR * 2, 28);
+  pcm.writeUInt16LE(2, 32); pcm.writeUInt16LE(16, 34); pcm.write('data', 36); pcm.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++) pcm.writeInt16LE(Math.round(clamp(buf[i], -1, 1) * 32767), 44 + i * 2);
+  fs.writeFileSync(file, pcm);
 }
 
 // ───────── صوت خفيف مُولَّد (بلا موسيقى محميّة): نقرات الكتابة + جرس الاكتمال + خلفيّة هادئة ─────────
@@ -630,9 +1126,11 @@ async function main() {
   if (!acct.vip && !/^(1|true)$/i.test(process.env.ALLOW_WEAK || '')) {
     throw new Error('bot account "' + acct.user + '" is not VIP (tier=' + acct.tier + ') — add "' + BOT_USER + '" in Settings → owner panel → ⭐ VIP, then re-run');
   }
+  const forced = parseKind(process.env.KIND) || parseKind(process.env.IDEA_INDEX);
+  if (forced && forced.kind !== 'site') { await runMedia(forced.kind, forced.arg, acct, epN, live, fr); return; }
   // الفكرة: من ترند اليوم، وإلّا من القائمة الثابتة (بدون تكرار المنشور).
   let idea = null, idx = -1;
-  const fixed = String(process.env.IDEA_INDEX || '').trim() !== '';
+  const fixed = /^-?\d+$/.test(String(process.env.IDEA_INDEX || '').trim());
   if (!fixed && !/^list$/i.test(process.env.IDEA_SOURCE || '')) idea = await trendIdea(acct.token, st.names);
   if (!idea) {
     let k = epN - 1;
@@ -664,6 +1162,46 @@ async function main() {
   await publish(res.mp4, res.cover, caption, platforms, epN);
   log('published ✓');
   gh('notice', 'published ✓ ' + ep.short + ' · ' + idea.name + ' · ' + res.secs + 's · ' + platforms.join(','));
+}
+
+// 🎬/🖼️ حلقة فيديو ترند أو أنماط صور: نفس السلسلة والنشر وبطاقة النهاية.
+async function runMedia(kind, arg, acct, epN, live, fr) {
+  const ep = epLabel(epN, KINDS[kind].series);
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch({ executablePath: CHROME, args: CHROME ? ['--no-sandbox'] : [] });
+  let res, caption, meta;
+  try {
+    if (kind === 'video') {
+      const vi = { ...(await videoIdea(acct.token, epN)), key: arg || SKETCH_KEY };
+      log('video idea ' + (vi.src === 'trend' ? 'trend «' + vi.trend + '» → ' : 'list: ') + vi.title + ' · ' + vi.scene + ' · ' + vi.key);
+      gh('notice', ep.short + ' · video ' + vi.key + ' · ' + (vi.src === 'trend' ? 'trend: ' + vi.trend + ' → ' : '') + vi.title);
+      let photo = null;
+      if (vi.key !== SKETCH_KEY) photo = (await makePhoto(acct, PHOTO_SUBJECTS[(epN - 1) % PHOTO_SUBJECTS.length], OUT)).file;
+      const cap = await captureVideo(browser, acct, vi, fr, { photo });
+      vi.cardTitle = cap.title;
+      res = await composeVideo(browser, cap, vi, OUT, epN);
+      res.secs = cap.m.secs;
+      caption = buildVideoCaption(vi, res.secs, epN);
+      meta = { kind, episode: epN, trendKey: vi.key, source: vi.src, trend: vi.trend || '', title: vi.title, scene: vi.scene, secs: res.secs };
+    } else {
+      const plan = stylesPlan(epN, arg);
+      log('styles plan: ' + plan.subject.key + ' · ' + plan.styles.map((x) => x.key).join(','));
+      gh('notice', ep.short + ' · styles: ' + plan.subject.ar + ' → ' + plan.styles.map((x) => x.label).join('، '));
+      const made = await makeStyles(acct, plan, path.join(OUT, 'styles'));
+      res = await composeStyles(browser, made, plan, OUT, epN);
+      res.secs = made.avg;
+      caption = buildStylesCaption(plan, made, epN);
+      meta = { kind, episode: epN, subject: plan.subject.key, styles: made.items.map((x) => ({ key: x.key, secs: +x.secs.toFixed(1) })), avg: made.avg };
+    }
+  } finally { await browser.close(); }
+  fs.rmSync(fr, { recursive: true, force: true });
+  fs.writeFileSync(path.join(OUT, 'caption.txt'), caption.ig + '\n');
+  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ ...meta, vip: acct.vip, seconds: +res.tl.total.toFixed(1) }, null, 2));
+  if (!live) { log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); gh('notice', 'video ready (not published) · ' + ep.short + ' · ' + kind + ' · ' + res.secs + 's'); return; }
+  const platforms = await resolvePlatforms();
+  await publish(res.mp4, res.cover, caption, platforms, epN);
+  log('published ✓');
+  gh('notice', 'published ✓ ' + ep.short + ' · ' + kind + ' · ' + platforms.join(','));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
