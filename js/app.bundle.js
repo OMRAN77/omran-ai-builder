@@ -45180,7 +45180,7 @@ if(document.readyState === 'loading'){
   function psScene(id, file, h, hue, shape){
     var t = PS_TUBE[shape], c = PS_HUE[hue], k = psCounter(PS_CX[shape], Math.round(PS_CY[shape] * h / 100), PS_K[shape]);
     k.bar.grad = c.grad;
-    return { id: id, src: '/assets/portrait/gen-scene-' + file + '.webp?v=1', w: 1600, h: h, hue: hue, shape: shape, bg: c.bg, flow: c.flow,
+    return { id: id, src: '/assets/portrait/gen-scene-' + file + '.webp?v=2', w: 1600, h: h, hue: hue, shape: shape, bg: c.bg, flow: c.flow,
       ring: k.ring, num: k.num, bar: k.bar, cap: k.cap,
       tube: { x: Math.round(t[0] * 16), y: Math.round(t[1] * h / 100), w: Math.round((t[2] - t[0]) * 16), h: Math.round((t[3] - t[1]) * h / 100), blend: 'screen', gap: k.gap },
       refl: null, rip: null, ink: c.ink, arc: c.arc, glow: c.glow, capInk: c.capInk };
@@ -45189,7 +45189,7 @@ if(document.readyState === 'loading'){
      في مواضعه بقياساته (الشريط والنصّ في منتصف الحلقة؛ كانا أيسر منها ببضع بكسلات في الرسم) */
   var PS_GALLERY = (function(){
     var c = PS_HUE.gallery;
-    return { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=3', w: 1600, h: 804, hue: 'gallery', shape: 'cylinder', bg: c.bg, flow: c.flow,
+    return { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=4', w: 1600, h: 804, hue: 'gallery', shape: 'cylinder', bg: c.bg, flow: c.flow,
       ring: { cx: 802, cy: 346, r: 72, sw: 9, hole: 86, disc: PS_DISC, track: PS_TRACK },
       num: { x: 802, y: 366, size: 50, dw: 20, pw: 28 },
       bar: { x: 692, y: 459, w: 220, h: 18, trough: 'rgba(30,22,14,.4)', grad: c.grad }, /* مجرى داكن — زجاج المعرض فاتح فالمجرى الأبيض الخافت لا يُرى */
@@ -45199,18 +45199,18 @@ if(document.readyState === 'loading'){
   })();
   var PORTRAIT_SCENES = [
     PS_GALLERY,
-    psScene('psNeonSpiral', 'neon-spiral', 799, 'blue', 'spiral'),
-    psScene('psGoldCubes', 'gold-cubes', 798, 'gold', 'cubes'),
-    psScene('psIceSphere', 'ice-sphere', 799, 'ice', 'sphere'),
-    psScene('psNeonArch', 'neon-arch', 789, 'amber', 'arch'),
-    psScene('psIceSpiral', 'ice-spiral', 796, 'ice', 'spiral'),
+    psScene('psNeonSpiral', 'neon-spiral', 796, 'blue', 'spiral'),
+    psScene('psGoldCubes', 'gold-cubes', 797, 'gold', 'cubes'),
+    psScene('psIceSphere', 'ice-sphere', 797, 'ice', 'sphere'),
+    psScene('psNeonArch', 'neon-arch', 790, 'amber', 'arch'),
+    psScene('psIceSpiral', 'ice-spiral', 792, 'ice', 'spiral'),
     psScene('psGoldSphere', 'gold-sphere', 798, 'gold', 'sphere'),
-    psScene('psNeonCubes', 'neon-cubes', 789, 'green', 'cubes'),
-    psScene('psGoldArch', 'gold-arch', 796, 'gold', 'arch'),
+    psScene('psNeonCubes', 'neon-cubes', 782, 'green', 'cubes'),
+    psScene('psGoldArch', 'gold-arch', 801, 'gold', 'arch'),
     psScene('psIceCubes', 'ice-cubes', 796, 'ice', 'cubes'),
-    psScene('psGoldSpiral', 'gold-spiral', 800, 'gold', 'spiral'),
-    psScene('psNeonSphere', 'neon-sphere', 799, 'purple', 'sphere'),
-    psScene('psIceArch', 'ice-arch', 799, 'ice', 'arch')
+    psScene('psGoldSpiral', 'gold-spiral', 793, 'gold', 'spiral'),
+    psScene('psNeonSphere', 'neon-sphere', 804, 'purple', 'sphere'),
+    psScene('psIceArch', 'ice-arch', 801, 'ice', 'arch')
   ];
   KINDS.styles.scenes = PORTRAIT_SCENES;
   KINDS.styles.sceneKey = 'aiapp_ps_scene';
