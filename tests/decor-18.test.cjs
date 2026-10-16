@@ -30,7 +30,7 @@ test('١. كلّ قسم ١٨ بطاقة: «بدون تغيير» + ١٧ خيار
 
 test('٢. الأسماء بالأربع عشرة لغة: العربيّة والإنجليزيّة في الحزمة، والبقيّة في ملفّات اللغات', () => {
   const data = read('js/app-03-i18n-data.js');
-  const dict = (l) => { const sec = data.slice(data.indexOf('\n  ' + l + ': {')); const d = {}; for (const m of sec.matchAll(/"(designAi\w+)": "([^"]+)"/g)) if (!d[m[1]]) d[m[1]] = m[2]; return d; };
+  const dict = (l) => { const at = data.indexOf('\n  ' + l + ': {'); const end = data.indexOf('\n  en: {', at + 1); const sec = data.slice(at, l === 'ar' && end > at ? end : undefined); const d = {}; /* العربيّة حتّى بداية الإنجليزيّة لا آخر الملفّ (مراجعة نقض) */ for (const m of sec.matchAll(/"(designAi\w+)": "([^"]+)"/g)) if (!d[m[1]]) d[m[1]] = m[2]; return d; };
   const ctx = { I18N: { ar: dict('ar'), en: dict('en') }, window: {} };
   vm.createContext(ctx);
   for (const l of LANGS) vm.runInContext(read('i18n/' + l + '.js'), ctx);

@@ -155,7 +155,7 @@ const FABRIC_PROMPTS = {
   // v-decor-18 (المالك ١٦ أكتوبر: «تضيف لكلّ واحد ١٨»): سبعة عشر خيارًا + «بدون تغيير» كالإضاءة.
   cream: 'soft cream and ivory fabrics for sofas/cushions/curtains',
   navy: 'deep navy blue fabrics for sofas/cushions/curtains',
-  emerald: 'rich emerald green velvet fabrics for sofas/cushions/curtains',
+  emerald: 'rich emerald green fabrics for sofas/cushions/curtains',
   mustard: 'warm mustard yellow fabrics for sofas/cushions/curtains',
   terracotta: 'earthy terracotta orange fabrics for sofas/cushions/curtains',
   blush: 'soft blush pink fabrics for sofas/cushions/curtains',
