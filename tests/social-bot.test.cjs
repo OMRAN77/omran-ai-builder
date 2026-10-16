@@ -259,3 +259,12 @@ test('١٨) تشخيص الموقع الهزيل: من أجاب ومسار ال�
   assert.match(src, /finally \{ await browser\.close\(\); saveWeak\(\); \}/);
   assert.match(src, /window\.__diagTurn/);
 });
+
+test('١٩) الأسعار بالدرهم: طلب الموقع ينتهي بـ«والأسعار بالدرهم» إلا لو فيه العملة', async () => {
+  const { withAED } = await load();
+  assert.equal(withAED('سوّ لي موقع حق مقهى «ليالي الشتا» مع المنيو وحجز الجلسات ورقم واتساب'), 'سوّ لي موقع حق مقهى «ليالي الشتا» مع المنيو وحجز الجلسات ورقم واتساب والأسعار بالدرهم');
+  assert.equal(withAED('سوّ لي موقع لمخبز «تنور». '), 'سوّ لي موقع لمخبز «تنور» والأسعار بالدرهم');
+  assert.equal(withAED('سوّ لي متجر «نخلة» والأسعار بالدرهم'), 'سوّ لي متجر «نخلة» والأسعار بالدرهم');
+  assert.equal(withAED('سوّ لي متجر «تك» بأسعار AED'), 'سوّ لي متجر «تك» بأسعار AED');
+  assert.match(src, /idea = \{ \.\.\.idea, prompt: withAED\(idea\.prompt\) \};/);
+});

@@ -261,6 +261,12 @@ export function diagLine(d) {
   return parts.join(' · ').slice(0, 900);
 }
 
+// الأسعار بالدرهم: المشاريع إماراتيّة، والنموذج كتب «ر.س» لمّا ما انقال له (تجربة ١٦ أكتوبر).
+export function withAED(prompt) {
+  const p = String(prompt || '').trim().replace(/[.،!؟\s]+$/u, '');
+  return /درهم|دراهم|AED|د\.إ/i.test(p) ? p : p + ' والأسعار بالدرهم';
+}
+
 export function validTrendIdea(j) {
   if (!j || typeof j !== 'object') return null;
   const name = String(j.name || '').trim(), prompt = String(j.prompt || '').trim(), label = String(j.label || '').trim();
@@ -1276,6 +1282,7 @@ async function makeSite(browser, acct, epN, st, ideas, fr, fixedIdea) {
       if (!fixedIdea) for (let i = 0; i < ideas.length && avoid.includes(pickIdea(ideas, '', k, 0).idea.name); i++) k++;
       ({ idx, idea } = pickIdea(ideas, fixedIdea ? process.env.IDEA_INDEX : '', k, 0));
     }
+    idea = { ...idea, prompt: withAED(idea.prompt) };
     log('idea ' + (idea.src === 'trend' ? 'trend «' + idea.trend + '» → ' : '#' + idx + ': ') + idea.name + ' · ' + idea.prompt);
     gh('notice', ep.short + ' · ' + (idea.src === 'trend' ? 'trend: ' + idea.trend + ' → ' : 'list #' + idx + ': ') + idea.name);
     fs.rmSync(fr, { recursive: true, force: true }); fs.mkdirSync(fr, { recursive: true });
