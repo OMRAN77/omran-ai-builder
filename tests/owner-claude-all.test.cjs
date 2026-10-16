@@ -325,7 +325,7 @@ test('١٠. الإعدادات لا تكتب فوق اختيار المالك، 
     const f = read('i18n/' + lg + '.js');
     for (const k of K) assert.ok(f.includes('"' + k + '":'), lg + ' ' + k);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=748';"));
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=749';"));
   assert.ok(read('index.html').includes('/js/modes.js?v=m131026g'));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.claudeEffortGet = effortGet;') && bundle.includes("return (__p === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined)"), 'الحزمة أُعيد بناؤها');

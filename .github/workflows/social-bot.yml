@@ -1,9 +1,11 @@
 name: Social bot — OM Ai reels
 
-# 5 posts/month = Upload-Post free quota (10 uploads, 2 platforms each)
+# Series «سوّها بـ OM Ai»: daily check at 8pm UAE, an episode goes out every 2 days
+# (the script's gate skips the day after an episode). The kind rotates by itself:
+# site → trend video → photo styles → … (if one fails, the next kind goes out instead).
 on:
   schedule:
-    - cron: '0 16 1,7,13,19,25 * *'
+    - cron: '0 16 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -11,13 +13,13 @@ on:
         type: boolean
         default: true
       idea:
-        description: 'Idea number (empty = rotate)'
+        description: 'Empty = automatic. Or: site / video / styles / idea number'
         required: false
         default: ''
       platforms:
-        description: 'Platforms'
+        description: 'Platforms (auto = all connected)'
         required: false
-        default: 'instagram,facebook'
+        default: 'auto'
 
 permissions:
   contents: read
@@ -29,27 +31,34 @@ concurrency:
 jobs:
   reel:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Episode due?
+        id: gate
+        env:
+          UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
+        run: node scripts/social-bot.mjs --gate
       - name: Browser, ffmpeg, fonts
+        if: steps.gate.outputs.go == '1'
         run: |
           npm i --no-save playwright
           npx playwright install --with-deps chromium
           sudo apt-get update -y && sudo apt-get install -y ffmpeg fonts-noto-color-emoji fonts-noto-core
       - name: Build, record, publish
+        if: steps.gate.outputs.go == '1'
         env:
           UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
           MONITOR_KEY: ${{ secrets.MONITOR_KEY }}
           DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '' }}
           IDEA_INDEX: ${{ inputs.idea }}
-          PLATFORMS: ${{ inputs.platforms || 'instagram,facebook' }}
+          PLATFORMS: ${{ inputs.platforms || 'auto' }}
         run: node scripts/social-bot.mjs
-      - name: Video download (Snapchat/TikTok manual)
-        if: always()
+      - name: Video download (Snapchat manual)
+        if: always() && steps.gate.outputs.go == '1'
         uses: actions/upload-artifact@v4
         with:
           name: omai-reel-${{ github.run_number }}

@@ -56,10 +56,10 @@
       },
       ok(){ errors = 0; },
       // خطأ شبكة: نتسامح مع العابر ونستسلم بعد ستّ محاولات متتالية فاشلة
-      fail(iv){
+      fail(iv, msg){
         if(++errors < 6) return;
         clearInterval(iv);
-        reject(new Error(bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.')));
+        reject(new Error(msg || bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.'))); /* v-ai-video-speed: نصّ الخادم إن جاء خطؤه منه */
       },
     };
   }
@@ -492,18 +492,29 @@
   // user actually requests scene-chaining or narration — most single-scene,
   // no-narration videos never need this, keeping the feature lightweight.
   let ffmpegInstance = null;
-  async function getFFmpeg(){
-    if (ffmpegInstance) return ffmpegInstance;
+  /* v-ai-video-speed: التحميل يبدأ مبكّرًا بالتوازي مع الفيديو، فنداءان متزامنان ينتظران الوعد نفسه لا تحميلين (٣١ ميغا) */
+  let ffmpegLoading = null;
+  function getFFmpeg(){
+    if (ffmpegInstance) return Promise.resolve(ffmpegInstance);
+    if (!ffmpegLoading) ffmpegLoading = loadFFmpeg().catch((e) => { ffmpegLoading = null; throw e; });
+    return ffmpegLoading;
+  }
+  async function loadFFmpeg(){
     const { FFmpeg } = await import('/ffmpeg/lib/index.js');
     const ffmpeg = new FFmpeg();
-    await Promise.race([
-      ffmpeg.load({
-        coreURL: '/ffmpeg/core/ffmpeg-core.js',
-        wasmURL: '/ffmpeg/core/ffmpeg-core.wasm',
-        classWorkerURL: '/ffmpeg/lib/worker.js',
-      }),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('ffmpeg load timeout')), 90000)),
-    ]);
+    try{
+      await Promise.race([
+        ffmpeg.load({
+          coreURL: '/ffmpeg/core/ffmpeg-core.js',
+          wasmURL: '/ffmpeg/core/ffmpeg-core.wasm',
+          classWorkerURL: '/ffmpeg/lib/worker.js',
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('ffmpeg load timeout')), 90000)),
+      ]);
+    } catch(e){
+      try{ ffmpeg.terminate(); }catch(e2){ __swallow(e2, 'video:ff-terminate'); } /* v-ai-video-speed: لا عاملين حيّين بعد مهلة التحميل المسبق */
+      throw e;
+    }
     ffmpegInstance = ffmpeg;
     return ffmpeg;
   }
@@ -528,14 +539,21 @@
     return new Blob([data.buffer], { type: 'video/mp4' });
   }
 
+  let muxN = 0;
   async function muxNarration(videoSrc, audioBlob){
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
-    await ffmpeg.writeFile('v.mp4', await fetchFile(videoSrc));
-    await ffmpeg.writeFile('a.mp3', await fetchFile(audioBlob));
-    await ffmpeg.exec(['-i', 'v.mp4', '-i', 'a.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', 'out2.mp4']);
-    const data = await ffmpeg.readFile('out2.mp4');
-    return new Blob([data.buffer], { type: 'video/mp4' });
+    /* v-ai-video-speed: أسماء ملفّات لكلّ دمج — ترقية الخلفية قد تدمج والطلب التالي يدمج على النسخة نفسها من المحرّك */
+    const n = ++muxN, v = 'mxv' + n + '.mp4', a = 'mxa' + n + '.mp3', o = 'mxo' + n + '.mp4';
+    try{
+      await ffmpeg.writeFile(v, await fetchFile(videoSrc));
+      await ffmpeg.writeFile(a, await fetchFile(audioBlob));
+      await ffmpeg.exec(['-i', v, '-i', a, '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', o]);
+      const data = await ffmpeg.readFile(o);
+      return new Blob([data.buffer], { type: 'video/mp4' });
+    } finally {
+      for(const f of [v, a, o]){ try{ await ffmpeg.deleteFile(f); }catch(e){ __swallow(e, 'video:mux-clean'); } }
+    }
   }
 
   // Builds one long final video out of many {videoUrl, audioBlob} scenes:
@@ -572,7 +590,7 @@
     return new Blob([data.buffer], { type: 'video/mp4' });
   }
 
-  function pollTaskOnce(id){
+  function pollTaskOnce(id, quiet){
     return new Promise((resolve, reject) => {
       const guard = makePollGuard(reject, 5000);
       const iv = setInterval(async () => {
@@ -580,19 +598,30 @@
         try{
           const res = await fetch('/api/video-status?id=' + encodeURIComponent(id));
           const data = await res.json();
+          /* v-ai-video-speed: خطأ الاستطلاع عابر في الغالب (مهلة، ٥xx) — كان يرمي المهمّة الجارية فيُنشئ createSceneWithRetry مهمّة جديدة
+             من الصفر (+٧٠ ث محاكاةً، وتذكرة ثانية). الآن يُعدّ كعطب شبكة على المهمّة نفسها: ستّ مرّات متتالية ثمّ رسالة صريحة. */
+          if(data.error){
+            if(res.status >= 500 || res.status === 429){ guard.fail(iv, data.error); return; }
+            clearInterval(iv); reject(new Error(data.error)); return; /* 4xx نهائيّ (مهمّة مجهولة…) لا يُنتظر ٣٠ ث */
+          }
           guard.ok();
-          if(data.error){ clearInterval(iv); reject(new Error(data.error)); return; }
           if(data.status === 'SUCCEEDED'){
             clearInterval(iv);
             resolve(Array.isArray(data.output) ? data.output[0] : data.output);
           } else if(data.status === 'FAILED'){
             clearInterval(iv);
             let reason = data.failure || data.failureCode || (data.error) || '';
-            if(/moderation|SAFETY|content did not pass/i.test(reason)){
+            const moderated = /moderation|SAFETY|content did not pass/i.test(reason);
+            if(moderated){
               reason = bT('الرقابة رفضت المحتوى — جرّب وصفًا أهدأ (بدون عنف أو خطر)، أو شِل صورة الشخص وحاول من جديد.','Content was rejected by safety filters — try a calmer description, or remove the person photo.');
             }
-            reject(new Error((bT('فشل إنشاء الفيديو.','Video generation failed.')) + (reason ? (' — ' + reason) : '')));
-          } else {
+            /* v-ai-video-speed: رفض الرقابة يتكرّر للطلب نفسه — لا يُعاد مرّتين بلا فائدة (noRetry) */
+            reject(Object.assign(new Error((bT('فشل إنشاء الفيديو.','Video generation failed.')) + (reason ? (' — ' + reason) : '')), { noRetry: moderated }));
+          } else if(data.status === 'CANCELLED'){
+            /* v-ai-video-speed: الملغاة نهائيّة — كانت تُستطلع ربع ساعة حتّى الحارس ثمّ تُعاد مرّتين (٤٥ دقيقة محاكاةً) */
+            clearInterval(iv);
+            reject(Object.assign(new Error(bT('أُلغي الفيديو عند المحرّك — أعد المحاولة.','The video was cancelled by the engine — please try again.')), { code: 'cancelled' }));
+          } else if(!quiet){
             setStatus((bT('⏳ الحالة: ','⏳ Status: ')) + (data.status || '...'));
           }
         } catch(e){ guard.fail(iv); }
@@ -823,6 +852,55 @@
     autoSaveVideo(finalUrl);
   }
 
+  /* v-ai-video-speed (المالك ١٦ أكتوبر: «طول كثير»): «جودة أعلى» كانت ترقية ثانية كاملة عند المزوّد بعد اكتمال الفيديو، والفيديو الجاهز
+     مخفيّ حتّى تنتهي (حتّى حارس الربع ساعة، وفشلها مبلوع). الآن يظهر الفيديو فور جاهزيّته، والترقية تجري في الخلفية بحالة هادئة
+     (✅/✨ لا تُظهر بطاقة الانتظار فوق النتيجة) ثمّ تستبدل المشغّل ورابط التحميل — ومع التعليق الصوتيّ يُدمَج الصوت نفسه على النسخة
+     الأعلى. runSeq: طلب أحدث بدأ = لا استبدال. */
+  let genSeq = 0;
+  async function upgradeInBackground(rawUrl, token, audioBlob, runSeq){
+    setStatus(bT('✅ الفيديو جاهز — ✨ نجهّز نسخة أعلى جودة في الخلفية وتستبدله تلقائيًّا…','✅ Video ready — ✨ preparing a higher-quality version in the background…'));
+    try{
+      const upRes = await fetch('/api/video-upscale-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl: rawUrl, token, resolution: '2k' }),
+      });
+      const upData = await upRes.json();
+      if(!upRes.ok || upData.error || !upData.id) throw new Error(upData.error || 'upscale');
+      const upUrl = await pollTaskOnce(upData.id, true);
+      if(runSeq !== genSeq) return;
+      let player, dl;
+      if(audioBlob){
+        const merged = await muxNarration(upUrl, audioBlob);
+        player = URL.createObjectURL(merged); dl = player;
+      } else {
+        dl = proxyVideoUrl(upUrl);
+        try{
+          const vres = await proxyFetch(upUrl);
+          if(!vres.ok) throw new Error('proxy ' + vres.status);
+          player = URL.createObjectURL(await vres.blob());
+        } catch(e){ player = upUrl; } // آخر ملاذ للمشغّل فقط (كالمسار الأساسيّ v525)
+      }
+      if(runSeq !== genSeq) return;
+      const at = resultEl.currentTime || 0, wasPlaying = !resultEl.paused, old = resultEl.src;
+      resultEl.src = player;
+      try{ resultEl.currentTime = at; }catch(e){ /* guard-ok — بعض المتصفّحات ترفض قبل التحميل؛ يبدأ من أوّله */ }
+      /* المشغّل بخاصيّة autoplay: تبديل المصدر يشغّله ولو أوقفه المستخدم أو أغلق النافذة (صوت التعليق من نافذة مغلقة) */
+      if(wasPlaying) resultEl.play().catch(function(){ /* autoplay may be blocked */ }); else resultEl.pause();
+      downloadEl.href = dl;
+      if(/^blob:/.test(old || '') && old !== dl && old !== player){ try{ URL.revokeObjectURL(old); }catch(e){ __swallow(e, 'video:revoke'); } }
+      setStatus(bT('✅ تم — صار الفيديو بجودة أعلى.','✅ Done — upgraded to higher quality.'));
+    } catch(e){
+      if(runSeq === genSeq) setStatus(bT('✅ تم الانتهاء! (تعذّرت النسخة الأعلى جودة — فيديوك الحاليّ جاهز)','✅ Done! (The higher-quality version was unavailable — your video is ready)'));
+    }
+  }
+
+  /* v-ai-video-speed: «إلغاء» في نافذة الخصم يرجع ردّ 428 نفسه مقروء الجسم — كان json() يرمي («body stream already read» خامًا في
+     السينمائيّ والاقتصاديّ)، وفي createScene يُعاد الطلب بعد ٦ و١٢ ث وتُفتح النافذة ثانيةً */
+  function throwIfDeclined(res){
+    if(res && res.status === 428) throw Object.assign(new Error((typeof window.t === 'function' && window.t('vidCancelled') !== 'vidCancelled') ? window.t('vidCancelled') : 'cancelled'), { code: 'confirm_declined' });
+  }
+
   async function createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime){
     const payload = { promptText: text, style, duration, ratio, token, longMode: !!longMode };
     if(imageBase64){ payload.imageBase64 = imageBase64; payload.imageMime = imageMime || 'image/jpeg'; }
@@ -832,8 +910,9 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }));
+    throwIfDeclined(res);
     const data = await res.json();
-    if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error, retryAfter: data.retryAfter || 0 });
+    if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error, retryAfter: data.retryAfter || 0, retryable: data.retryable });
     return data.id;
   }
 
@@ -844,12 +923,13 @@
   // with the video description. To make this invisible to the user, we
   // automatically recreate and retry the task a couple of times (with a
   // short backoff) before giving up and showing a real error.
-  async function createSceneWithRetry(text, style, duration, ratio, token, longMode, onRetryStatus, imageBase64, imageMime){
+  async function createSceneWithRetry(text, style, duration, ratio, token, longMode, onRetryStatus, imageBase64, imageMime, onAccepted){
     const maxAttempts = 3;
     let lastErr;
     for(let attempt = 1; attempt <= maxAttempts; attempt++){
       try{
         const id = await createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime);
+        if(onAccepted){ try{ onAccepted(id); }catch(e){ __swallow(e, 'video:accepted'); } } /* v-ai-video-speed: المزوّد قبِل — ما يُجهَّز بالتوازي يبدأ الآن */
         const url = await pollTaskOnce(id);
         return url;
       } catch(e){
@@ -859,6 +939,8 @@
         if(e && e.code === 'owner_only') throw e;
         /* v-video-refund: مهلة الثلاث دقائق لا تُعالَج بإعادة بعد ٦ ثوانٍ — ارفعها للمستخدم برسالة مفهومة. */
         if(e && e.code === 'video_cooldown') throw e;
+        /* v-ai-video-speed: ما لا تحلّه الإعادة لا يُعاد — إلغاء الخصم، نفاد النقاط، رفض دائم للطلب (retryable:false)، ورفض الرقابة */
+        if(e && (e.code === 'confirm_declined' || e.code === 'points_insufficient' || e.retryable === false || e.noRetry)) throw e;
         if(attempt < maxAttempts){
           if(onRetryStatus) onRetryStatus(attempt, maxAttempts);
           await new Promise((r) => setTimeout(r, 6000 * attempt));
@@ -996,6 +1078,8 @@
     const wantNarration = narrationToggle.checked;
     const wantQuality = qualityToggle.checked && !isLong;
 
+    const runSeq = ++genSeq; /* v-ai-video-speed: ترقية الجودة في الخلفية لا تستبدل نتيجة طلب أحدث — يُعدّ هنا بعد التحقّق (نقرة بلا وصف لا تُسقط ترقية مدفوعة) */
+    let scenesDone = 0; /* v-ai-video-speed: مشاهد اكتملت (وحُسبت) قبل إلغاء نافذة خصم مشهد لاحق */
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
@@ -1003,12 +1087,16 @@
     function friendlyError(err){
       const code = err && err.code;
       if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
-      if(code === 'daily_limit_reached') return isEn() ? "⏳ You have reached today's free video limit. Try again tomorrow." : '⏳ لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
+      /* v-ai-video-speed: ⏳ «مشغول» في بطاقة الانتظار — رسالة الخطأ به كانت تُبقي بطاقة «يتولّد» وعدّادها فوق المشهد بلا نهاية → 🕒 */
+      if(code === 'daily_limit_reached') return isEn() ? "🕒 You have reached today's free video limit. Try again tomorrow." : '🕒 لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
       /* v-video-refund: بدل رمز «video_cooldown» الخام — مهلة بين فيديو وآخر، والانتظار بالدقائق. */
       if(code === 'video_cooldown'){
         const m = Math.max(1, Math.ceil((Number(err && err.retryAfter) || 180) / 60));
-        return isEn() ? ('⏳ One video every few minutes. Try again in about ' + m + ' min.') : ('⏳ فيديو واحد كل بضع دقائق. جرّب بعد ' + m + ' دقيقة تقريبًا.');
+        return isEn() ? ('🕒 One video every few minutes. Try again in about ' + m + ' min.') : ('🕒 فيديو واحد كل بضع دقائق. جرّب بعد ' + m + ' دقيقة تقريبًا.');
       }
+      /* v-ai-video-speed: الإلغاء سطر هادئ بلا ❌، ونفاد النقاط بنصّ الباقات القائم (١٤ لغة) لا الرمز الخامّ */
+      if(code === 'confirm_declined') return scenesDone > 0 ? bT('⛔ توقّف الفيديو عند إلغائك — المشاهد التي اكتملت قبله حُسبت.','⛔ Stopped at your cancel — the scenes completed before it were charged.') : err.message;
+      if(code === 'points_insufficient' && typeof window.t === 'function' && window.t('plansWhyPoints') !== 'plansWhyPoints') return '⚠️ ' + window.t('plansWhyPoints');
       return (bT('❌ خطأ: ','❌ Error: ')) + (err && err.message ? err.message : String(err));
     }
 
@@ -1129,6 +1217,7 @@
                   ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
                   : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
               }, filmHeroBase64, filmHeroMime));
+          scenesDone++;
           setStatus((bT('🎙️ جاري تسجيل سرد المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
@@ -1233,6 +1322,7 @@
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=omni-create', payload)
           : fetch('/api/video?action=omni-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
+        throwIfDeclined(cr);
         const d = await cr.json();
         if(!cr.ok || d.error) throw Object.assign(new Error(d.error || 'omni failed'), { code: d.error });
         const videoUrl = d.url || d.dataUrl;
@@ -1267,6 +1357,7 @@
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=minimax-create', payload)
           : fetch('/api/video?action=minimax-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
+        throwIfDeclined(cr);
         const crData = await cr.json();
         if(!cr.ok || crData.error || !crData.task_id) throw Object.assign(new Error(crData.error || 'create failed'), { code: crData.error });
         const videoUrl = await new Promise((resolve, reject) => {
@@ -1505,6 +1596,18 @@
 
     try{
       let sceneUrls = [];
+      /* v-ai-video-speed: التعليق الصوتيّ يتجهّز مع الفيديو لا بعده (كان يبدأ بعد اكتماله)، ومحرّك الدمج (٣١ ميغا) يُحمَّل بالتوازي —
+         من لحظة قبول المزوّد (onAccepted) لا من الضغطة: إلغاء نافذة الخصم أو الرصيد أو المهلة لا يستهلك نداء صوت من السقف اليوميّ. */
+      let ttsEarly = null;
+      const startNarration = () => {
+        if(!wantNarration || ttsEarly) return;
+        ttsEarly = fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: (narrationText.value || '').trim() || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+        }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
+        getFFmpeg().catch(() => null);
+      };
       const okBal2 = await ensureRunwayCredits(isLong ? 100 : 50);
       if(!okBal2){ btnGenerate.disabled = false; return; }
       if(isLong){
@@ -1518,8 +1621,8 @@
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-          }, filmHeroBase64, filmHeroMime));
-          sceneUrls.push(url);
+          }, filmHeroBase64, filmHeroMime, startNarration));
+          sceneUrls.push(url); scenesDone++;
         }
       } else {
         setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
@@ -1527,7 +1630,7 @@
           setStatus(isEn()
             ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
             : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-        }, filmHeroBase64, filmHeroMime);
+        }, filmHeroBase64, filmHeroMime, startNarration);
         sceneUrls.push(url);
       }
 
@@ -1545,39 +1648,19 @@
         }
       }
 
-      if(wantQuality){
-        try{
-          setStatus(bT('🔎 جاري ترقية جودة الفيديو...','🔎 Upscaling video quality...'));
-          const upRes = await fetch('/api/video-upscale-create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ videoUrl: sceneUrls[0], token, resolution: '2k' }),
-          });
-          const upData = await upRes.json();
-          if(upRes.ok && !upData.error){
-            const upUrl = await pollTaskOnce(upData.id);
-            finalSrc = upUrl;
-            finalIsBlob = false;
-          }
-        } catch(e){ /* upscale is a best-effort enhancement; ignore failures */ }
-      }
-
+      let narrationBlob = null;
       if(wantNarration){
         try{
           setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
-          const narrationInput = (narrationText.value || '').trim() || text;
-          const ttsRes = await fetch('/api/tts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
-          });
-          if(ttsRes.ok){
-            const audioBlob = await ttsRes.blob();
+          startNarration(); // احتياط: لم يُنادَ onAccepted (لا يحدث في هذا المسار)
+          const audioBlob = await ttsEarly;
+          if(audioBlob){
             setStatus(bT('🎚️ جاري إضافة التعليق الصوتي للفيديو...','🎚️ Adding narration to the video...'));
             const merged = await muxNarration(finalSrc, audioBlob);
             finalSrc = merged;
             finalIsBlob = true;
-          }
+            narrationBlob = audioBlob;
+          } else throw new Error('tts');
         } catch(e){
           setStatus(bT('⚠️ تعذّر إضافة التعليق الصوتي؛ سيتم عرض الفيديو بدونه.','⚠️ Could not add narration; showing the video without it.'));
         }
@@ -1607,6 +1690,8 @@
       resultEl.play().catch(function(){ /* autoplay may be blocked */ });
       downloadEl.href = dlUrl;
       downloadEl.style.display = 'block';
+      /* v-ai-video-speed: الترقية بعد ظهور الفيديو لا قبله (مشهد واحد؛ الطويل بلا ترقية أصلًا) */
+      if(wantQuality && sceneUrls.length === 1) upgradeInBackground(sceneUrls[0], token, narrationBlob, runSeq);
     } catch(e){
       setStatus(friendlyError(e));
     } finally {

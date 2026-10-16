@@ -178,3 +178,20 @@ test('٩. v-full-links: الرابط العاري يُعرض كاملًا مفك
   assert.ok(read('js/app.bundle.js').includes('v-full-links'), 'الحزمة مطابقة');
 });
 
+
+/* v-link-wrap (لقطتا المالك من آيفون ١٦ أكتوبر: روابط متاجر السياكل «https://www.d» ثمّ «ecathlon.ae» في سطر تالٍ): العارض كان يضع
+   word-break:break-all على الرابط نفسه فيغلب قاعدة v569 في tokens.css (.msg a{word-break:normal}) — ظهر بعد v-full-links لأنّ الرابط
+   صار كاملًا. لقطة ui-shot بعرض آيفون (368px): الروابط الأربعة كانت سطرين كلّ واحد، وصارت سطرًا واحدًا. */
+test('١٠. v-link-wrap: الرابط بلا break-all (لا يُكسر في منتصفه)، وقاعدة v569 هي من تلفّه', () => {
+  const build = load();
+  const box = new El('div');
+  build(box, 'تقدر تدور على السياكل في هالمواقع داخل الإمارات:\n\n- ديكاتلون الإمارات (Decathlon UAE): https://www.decathlon.ae\n- نون الإمارات (noon): https://www.noon.com/uae-en/\n- أمازون الإمارات (Amazon.ae): https://www.amazon.ae\n\nشيّك المقاس قبل الشراء.');
+  const as = []; const walk = (n) => { (n.childNodes || []).forEach((c) => { if(c.tagName === 'a') as.push(c); walk(c); }); }; walk(box);
+  assert.deepEqual(as.map((a) => a.textContent), ['https://www.decathlon.ae', 'https://www.noon.com/uae-en/', 'https://www.amazon.ae']);
+  for (const a of as) {
+    assert.ok(!/break-all/.test(String(a.style.cssText || '')), a.textContent + ': break-all يكسره عند أيّ حرف');
+    assert.match(String(a.style.cssText), /unicode-bidi:isolate/, 'العزل كما كان');
+  }
+  assert.ok(read('css/tokens.css').includes('.msg a, .msg-text a{overflow-wrap:break-word; word-break:normal; hyphens:none;}'), 'قاعدة v569: ينتقل كاملًا ويُكسر فقط إن كان أطول من السطر');
+  assert.ok(!read('js/app.bundle.js').includes("text-decoration:underline; word-break:break-all; unicode-bidi:isolate;"), 'الحزمة مطابقة');
+});
