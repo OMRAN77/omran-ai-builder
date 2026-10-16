@@ -176,6 +176,7 @@
     if(att) um.attachments = [{ name: att.name, isImage: false, isVideoWatch: true, label: att.label, durationSec: Math.round(att.durationSec || 0) }];
     cur.messages.push(um); cur.updatedAt = Date.now();
     window.__chatEditRequest = null;
+    try{ if(typeof setChatEditNotice === 'function') setChatEditNotice(false); }catch(e){ __swallow(e, 'vwrite:edit'); }
     var promptEl = $('#prompt'); if(promptEl) promptEl.value = '';
     try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, 'vwrite:grow'); }
     if(att){ pendingAttachments = pendingAttachments.filter(function(a){ return a !== att; }); renderAttachStrip(); }

@@ -4637,6 +4637,7 @@ const I18N = {
     plansLater: 'لاحقًا',
     vwUnavailable: 'خدمة تحليل الفيديو متوقّفة مؤقّتًا — لم تُخصم أيّ نقاط. جرّب بعد قليل.',
     vwWriteNo: 'الكتابة على الفيديو نفسه غير متاحة بعد في التطبيق — لم تُخصم أيّ نقاط. أرسل لقطة من الفيديو (أو أيّ صورة) مع الطلب نفسه وأكتبه لك عليها.',
+    vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.',
     /* v-google-login-help */
     authGoogleHint: 'إن كنت سجّلت بحساب Google فاضغط «{btn}» — كلمة مرور Gmail لا تعمل هنا.',
     pricingTestNote: '🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية',
@@ -4938,6 +4939,7 @@ const I18N = {
     plansLater: 'Later',
     vwUnavailable: 'Video analysis is temporarily unavailable — no points were used. Please try again shortly.',
     vwWriteNo: 'Writing on the video itself isn’t available in the app yet — no points were used. Send a screenshot from the video (or any photo) with the same request and I’ll write it on that.',
+    vidCancelled: 'Video cancelled — no points were used.',
     /* v-google-login-help */
     authGoogleHint: 'Signed up with Google? Tap “{btn}” — your Gmail password doesn’t work here.',
     logoutTitle: 'Log out',
@@ -6487,6 +6489,7 @@ function __vaultRead(a){
    التعديل، التراجع). التوليد صورةً صورةً (طابور) كي لا تُفكّ أصول كثيرة معًا. */
 const __VIEW_MAX = 1280;
 const __viewReads = new WeakMap();
+const __viewFailAt = new WeakMap(); /* v-view-blank (مراجعة النقض): نسخة فشلت لا تُعاد مع كلّ رسم تحت ضغط الذاكرة نفسه — دقيقة ثمّ محاولة */
 let __viewQ = Promise.resolve();
 function __isBigDataImg(u){ return typeof u === 'string' && u.length > VAULT_MIN && u.slice(0, 11) === 'data:image/'; }
 function __makeView(src){
@@ -6534,6 +6537,7 @@ function __viewHasInk(u){
 function __imgView(a){
   if(!a) return Promise.resolve('');
   if(a.viewUrl) return Promise.resolve(a.viewUrl);
+  if(Date.now() - (__viewFailAt.get(a) || 0) < 60000) return Promise.resolve('');
   let pr = __viewReads.get(a);
   if(pr) return pr;
   pr = (async () => {
@@ -6546,7 +6550,7 @@ function __imgView(a){
       if(!src && a.vaultId && !a.vaultPending){ try{ const d = await __vaultRead(a); if(__isBigDataImg(d)) src = d; }catch(e){ __swallow(e, 'view:orig'); } }
       if(!src) return '';
       const v = await __makeView(src);
-      if(!v) return '';
+      if(!v){ __viewFailAt.set(a, Date.now()); return ''; }
       a.viewUrl = v;
       if(a.vaultId && !a.vaultPending) idbImgPutAll([{ id: a.vaultId + '~v', dataUrl: v }]).catch(e => __swallow(e, 'view:put'));
       return v;
@@ -16734,7 +16738,7 @@ async function postWithConfirm(url, payload){
     '|مبروك[ةه]?|مبارك|[أا]لف|كل\\s+عام|كل\\s+سن[ةه]|عيد\\S*|(?:الله|ربي)\\s+ي\\S{2,}|عساك|عساه|عساها|تستاهل\\S*|يستاهل|تهاني(?:نا)?|شكر[اًا]*|مشكور[ةه]?|يعطيك|صباح|مساء|تصبح\\S*|سلامات|سلامتك|الحمد\\s+لله\\s+على|حمد\\s+لله|يا\\s+\\S+|[أا]هلا|هلا|مرحبا|حياك\\S*|نورت\\S*|منور[ةه]?|[أا]حبك|بحبك|وحشتني|happy|congrat\\S*|thank\\S*|welcome|good\\s+(?:morning|night|luck)';
   const TABLES = [
     { name:'filler', L:'لي|لنا|(?:له|لها|لهم|لك|لكم)(?=[\\s:：]+(?:' + FOR_FRAME + ')(?![' + AL + ']))|تكفى|تكفا|بس|كذا|بال(?:عربي|انجليزي|إنجليزي|انقليزي|إنقليزي)|in\\s+(?:english|arabic)|[وف]?(?:عليها|عليه|فيها|فوقها|فوقه)|(?:على|فوق|في)\\s+(?:هذه\\s+|هذي\\s+)?(?:ال|هال)صور[ةه](?:\\s+نفسها)?|on\\s+(?:it|(?:the|this)\\s+(?:image|photo|picture))|بدال(?:ها|ه)|مكان(?:ها|ه)|لو\\s+سمحت|من\\s+فضلك|please',
-      R:'(?:على|فوق|في)\\s+(?:هذه\\s+|هذي\\s+)?(?:ال|هال)صور[ةه](?:\\s+نفسها)?|عليها|فيها|لو\\s+سمحت|لو\\s+تكرمت|من\\s+فضلك|تكفى|تكفا|تكفين|تكفون|و\\s*بس|و?\\s*خلاص|(?:مثل|زي)\\s+ما\\s+قلت(?:\\s+لك)?|please|pls|plz|' +
+      R:'(?:على|فوق|في)\\s+(?:هذه\\s+|هذي\\s+)?(?:ال|هال)(?:صور[ةه]|فيديو|مقطع|لقط[ةه])(?:\\s+نفسها)?|(?:بال|عال|بهال)(?:فيديو|مقطع|لقط[ةه])|عليها|فيها|لو\\s+سمحت|لو\\s+تكرمت|من\\s+فضلك|تكفى|تكفا|تكفين|تكفون|و\\s*بس|و?\\s*خلاص|(?:مثل|زي)\\s+ما\\s+قلت(?:\\s+لك)?|please|pls|plz|' +
         '(?:و\\s*)?(?:(?:ال)?صور[ةه]\\s+)?(?:لا|ما)\\s+(?:تغير|تغيّر|تعدل|تعدّل|تلمس|تمس|تخرب)(?:ها|ين|ون)(?:\\s+(?:ابد[اًا]?|أبد[اًا]?))?|(?:on|to)\\s+(?:it|(?:the|this)\\s+(?:image|photo|picture))|(?:بدون|بلا|دون|من\\s+غير)\\s*(?:أي\\s*)?(?:تغيير|تغير|تعديل|مساس|لمس)(?:\\s*(?:في|على|ل)?\\s*(?:ال)?صور[ةه])?' +
         '|(?:و\\s*)?(?:(?:لا|ما)\\s+|بدون\\s+ما\\s+)(?:تغير|تغيّر|تعدل|تعدّل|تلمس|تمس|تخرب)(?:\\s+(?:شي|شيء|أي\\s+شي|اي\\s+شي))?(?:\\s+(?:في|على|ب))?\\s*(?:ال)?صور[ةه](?:\\s+(?:ابد[اًا]?|أبد[اًا]?))?' },
     { name:'position', L:POS_RUN, R:POS_RUN },
@@ -17135,26 +17139,40 @@ async function postWithConfirm(url, payload){
   const EMO_NOUN = '[اإأآ]ي?مو?ج[يى](?:ات|ز)?|[اإأ]يموشن(?:ات)?|سمايل(?:ي|ات|ز)?|emojis?';
   const EMO_VERB = 'حط(?:ي|لي|يلي|ها|ه)?|ضيف(?:ي|لي|ها|ه)?|[أا]ضف|[أا]ضيف|زيد(?:ي)?|خل|خلي|خلّي|ارسم(?:ي|لي)?';
   const EMO_WITH = 'مع|معاها|معاه|معها|معه|وياها|وياه';
-  const EMO_ASK_RE = new RegExp('(?:^|[\\s،,])(?:و\\s*)?(?:(?:' + EMO_VERB + '|ابي|أبي|ابغى|أبغى|ابغي|ودي|بدي|نبي)\\s+)?(?:(?:' + EMO_WITH + '|لي|لها|له|عليها|عليه|فيها|جنبها|جنبه|بعدها|بعده|بعد|كمان)\\s+){0,2}(?:(?:هذيل|هاذيل|هذول|هاذول|هذولا|هدول|هذي|هاذي|هذا|هاذا|هذه|ذي|ذول|هاي)\\s+)?(?:[وبف]|وب)?(?:ال|هال)?(?:' + EMO_NOUN + ')(?:\\s+(?:هذيل|هذول|هذي|هذا|هذه|ذي|ذول))?(?=[\\s،,.!؟?]|$)', 'gi');
-  const HEART_RE = new RegExp('(?:^|[\\s،,])((?:و\\s*)?(?:' + EMO_VERB + ')(?:\\s+(?:لي|لها|كمان|' + EMO_WITH + '))?|(?:و\\s*)?(?:' + EMO_WITH + ')|و)\\s*(?:(?:ال)?(?:' + EMO_NOUN + ')\\s+)?(?:قلوب|قلب)(?:\\s+(?:ب?لون\\s+|بال|ب)?(?:ال)?(' + COLOR + '))?(?=[\\s،,.!؟?]|$)', 'gi');
+  /* مراجعة النقض: «وحط ايموجي ورد» كان يطبع «ورد» — الكلمة التي تسمّي الإيموجي تصير رمزه (رموز يونيكود ≤١٢)، وغيرها يبقى نصًّا */
+  const EMO_NAMED = [[/^(?:ورد|ورده|وردة|ورود)$/, '\uD83C\uDF39'], [/^شمس$/, '\u2600\uFE0F'], [/^(?:نجم|نجمه|نجمة|نجوم)$/, '\u2B50'], [/^قمر$/, '\uD83C\uDF19'],
+    [/^(?:كيك|كيكه|كيكة|كعكه|كعكة)$/, '\uD83C\uDF82'], [/^(?:هديه|هدية)$/, '\uD83C\uDF81'], [/^(?:بالون|بالونات)$/, '\uD83C\uDF88'], [/^تاج$/, '\uD83D\uDC51'], [/^نار$/, '\uD83D\uDD25'],
+    [/^(?:ضحك|ضحكه|ضحكة)$/, '\uD83D\uDE02'], [/^(?:فراشه|فراشة)$/, '\uD83E\uDD8B'], [/^(?:فرح|فرحان|ابتسامه|ابتسامة)$/, '\uD83D\uDE0A']];
+  const EMO_NAMED_W = 'ورد|ورده|وردة|ورود|شمس|نجم|نجمه|نجمة|نجوم|قمر|كيك|كيكه|كيكة|كعكه|كعكة|هديه|هدية|بالون|بالونات|تاج|نار|ضحك|ضحكه|ضحكة|فراشه|فراشة|فرح|فرحان|ابتسامه|ابتسامة';
+  const emoNamed = (w) => { const x = w && EMO_NAMED.find((p) => p[0].test(w)); return x ? x[1] : ''; };
+  /* «بدون ايموجي/ولا تحط ايموجي/شيل الايموجي/without emoji» = لا إيموجي: الجملة تُقرأ وتُحذف ورموزها لا تُضاف */
+  const EMO_NEG_RE = new RegExp('(?:^|[\\s،,])(?:بدون|بلا|من\\s*غير|و?\\s*لا\\s*ت?حط(?:ين|ي)?|ما\\s*[اأ]بي|شيل(?:ي)?|[اأ]حذف|without|no)\\s+(?:ال|هال|the\\s+|any\\s+)?(?:' + '[اإأآ]ي?مو?ج[يى](?:ات|ز)?|[اإأ]يموشن(?:ات)?|سمايل(?:ي|ات|ز)?|emojis?|قلوب|قلب|hearts?' + ')(?:\\s+(?:هذيل|هذول|هذي|هذا|هذه|ذي|ذول))?(?=[\\s،,.!؟?]|$)', 'gi');
+  const EMO_ASK_RE = new RegExp('(?:^|[\\s،,])(?:و\\s*)?(?:(?:' + EMO_VERB + '|ابي|أبي|ابغى|أبغى|ابغي|ودي|بدي|نبي|(?:and\\s+)?(?:add|put|include))\\s+)?(?:(?:' + EMO_WITH + '|لي|لها|له|عليها|عليه|فيها|جنبها|جنبه|بعدها|بعده|بعد|كمان|with|and)\\s+){0,2}(?:(?:هذيل|هاذيل|هذول|هاذول|هذولا|هدول|هذي|هاذي|هذا|هاذا|هذه|ذي|ذول|هاي|the|this|these|an?)\\s+)?(?:[وبف]|وب)?(?:ال|هال)?(?:' + EMO_NOUN + ')(?:\\s+(?:هذيل|هذول|هذي|هذا|هذه|ذي|ذول))?(?:\\s+(?:ال)?(' + EMO_NAMED_W + '))?(?=[\\s،,.!؟?]|$)', 'gi');
+  const HEART_SIZE = 'صغير|صغيره|صغيرة|كبير|كبيره|كبيرة|جنب\\s+(?:ال)?كلم[ةه]|جنبها|جنبه|بجنبها|بجانبها|بجانب\\s+(?:ال)?كلم[ةه]|بعد\\s+(?:ال)?كلم[ةه]';
+  const HEART_RE = new RegExp('(?:^|[\\s،,])((?:و\\s*)?(?:' + EMO_VERB + ')(?:\\s+(?:لي|لها|كمان|' + EMO_WITH + '))?|(?:و\\s*)?(?:' + EMO_WITH + ')|و)\\s*(?:(?:ال)?(?:' + EMO_NOUN + ')\\s+)?(?:قلوب|قلب)(?:\\s+(?:' + HEART_SIZE + '))?(?:\\s+(?:ب?لون\\s+|بال|ب)?(?:ال)?(' + COLOR + '))?(?:\\s+(?:' + HEART_SIZE + '))?(?=[\\s،,.!؟?]|$)', 'gi');
   const HEART_OF = { '#ffd400':'\uD83D\uDC9B', '#f4cf65':'\uD83D\uDC9B', '#111111':'\uD83D\uDDA4', '#2e8b57':'\uD83D\uDC9A', '#18b6a4':'\uD83D\uDC9A', '#5ec8ff':'\uD83D\uDC99', '#1c2f66':'\uD83D\uDC99', '#2979ff':'\uD83D\uDC99',
     '#ffb3d1':'\uD83D\uDC97', '#ff4f9a':'\uD83D\uDC97', '#a05ad6':'\uD83D\uDC9C', '#ff8a1f':'\uD83E\uDDE1', '#8b5a2b':'\uD83E\uDD0E', '#fdfdfd':'\uD83E\uDD0D', '#d7dbe0':'\uD83E\uDD0D', '#9aa0a6':'\uD83E\uDD0D', '#ead9bd':'\uD83E\uDD0D' };
   const heartOf = (w) => { const c = w && COLOR_RES.find((x) => x[0].test(w)); return (c && HEART_OF[c[1]]) || '\u2764\uFE0F'; };
   function emojiAsk(src, marker){
     const s = String(src || '');
-    if(!marker || !/[اإأآ]ي?مو?ج|يموشن|سمايل|emoji|قلب|قلوب/i.test(s)) return null;
+    if(!marker || !/[اإأآ]ي?مو?ج|يموشن|سمايل|emoji|قلب|قلوب|heart/i.test(s)) return null;
     const qs = findQuotes(s), cut = [], hearts = [], emo = [];
+    let neg = false;
     const free = (a, b) => !qs.some((q) => a < q.end && b > q.index) && !cut.some((c) => a < c[1] && b > c[0]);
     const scan = (re, ok) => { re.lastIndex = 0; let m; while((m = re.exec(s))){ const a = m.index + m[0].length - m[0].replace(/^[\s،,]+/, '').length, b = m.index + m[0].length; if(free(a, b) && ok(m, a)) cut.push([a, b]); } };
     /* القلب بعد النصّ فقط («ارسم قلب واكتب…» تعديلُ مشهد كما قرّرت الجولة ٣)، و«وقلب» المجرّدة بلا لون نصٌّ («عقل وقلب») */
-    scan(HEART_RE, (m, a) => { if(a < marker.end || !/\S/.test(s.slice(marker.end, a)) || (/^و\s*$/.test(m[1]) && !m[2])) return false; hearts.push(heartOf(m[2])); return true; });
-    scan(EMO_ASK_RE, () => true);
+    const heartOk = (m, a) => { if(a < marker.end || !/\S/.test(s.slice(marker.end, a)) || (/^و\s*$/.test(m[1]) && !m[2])) return false; hearts.push(heartOf(m[2])); return true; };
+    scan(EMO_NEG_RE, () => { neg = true; return true; });
+    if(!neg) scan(HEART_RE, heartOk);
+    scan(EMO_ASK_RE, (m) => { const n = emoNamed(m[1]); if(n) hearts.push(n); return true; });
     if(!cut.length) return null;
-    scan(EMO_RUN_RE, (m) => { emo.push(m[0]); return true; });
+    /* الرموز بعد أوّل جملة أو ملاصقة لها قبلها تُلحق (أو تُحذف مع النفي)؛ رمز وسط نصّ المستخدم يبقى في مكانه */
+    const first = Math.min.apply(null, cut.map((c) => c[0]));
+    scan(EMO_RUN_RE, (m) => { if(m.index < first && /\S/.test(s.slice(m.index + m[0].length, first))) return false; if(!neg) emo.push(m[0]); return true; });
     cut.sort((x, y) => x[0] - y[0]);
     let rest = '', at = 0;
     cut.forEach((c) => { rest += s.slice(at, c[0]) + ' '; at = c[1]; });
-    return { rest:(rest + s.slice(at)).replace(/[ \t]{2,}/g, ' ').trim(), emoji:emo.concat(hearts).join('') };
+    return { rest:(rest + s.slice(at)).replace(/[ \t]{2,}/g, ' ').trim(), emoji:neg ? '' : emo.concat(hearts.filter((h) => emo.join('').indexOf(h) < 0)).join('') }; /* «ورد 🌹» لا يُكرَّر */
   }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
@@ -23592,13 +23610,29 @@ const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|ط�
 /* v-video-write-ask (لقطة مشترك Max ١٦ أكتوبر: «اكتب حياتي و قلب لون ابيض في الفيديو» بعد فيديو في المحادثة ← فيديو مدفوع جديد وصفُه الطلب
    نفسه بعد نافذتَي خصم، ثمّ «⚠️ video_cooldown»): الكتابة أو وضع نصّ/إيموجي/قلب على فيديو قائم ليست إنشاء فيديو، ولا كتابة على الفيديو في
    التطبيق بعد (قرار المالك) — جواب صادق بلا شبكة ولا خصم. «اكتب سكربت/ملخص/وش يقول في الفيديو» كلام عن الفيديو. خارج __sendPromptCore (السقّاطة). */
-const __VW_PUT_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])و?(?:اكتب|أكتب|اكتبي|اكتبلي|أكتبلي|تكتب|تكتبي|تكتبلي|نكتب|حط|حطي|حطلي|تحط|ضيف|ضيفي|ضيفلي|تضيف|أضف|اضف|ضع|write|add|put|type)(?=$|[\s،,.!؟?()"'«»:؛-])/i;
-const __VW_ON_RE = /(?:^|[\s،,])(?:على|في|فوق|تحت|داخل|وسط)\s*(?:هال|ال)?(?:فيديو|ڤيديو|مقطع|كليب)(?![ء-ي])|(?:^|[\s،,])(?:بال|عال|بهال)(?:فيديو|ڤيديو|مقطع|كليب)(?![ء-ي])|\b(?:on|onto|in|over|into)\s+(?:the|this|my|that)\s+(?:video|clip)\b/i;
+const __VW_PUT_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])و?(?:[اأتني]كتب(?:ي|ين|لي|يلي|ها|ه)?|اكتبلي|أكتبلي|ت?حطّ?(?:ي|ين|لي|يلي|ها|ه)?|ت?ضيف(?:ي|ين|لي|يلي|ها|ه)?|[أا]ضف|ضع|write|add|put|type)(?=$|[\s،,.!؟?()"'«»:؛-])/i;
+const __VW_ON_RE = /(?:^|[\s،,])(?:على|في|فوق|تحت|داخل|وسط)\s*(?:هال|ال)?(?:فيديو|ڤيديو|مقطع|كليب)(?![ء-ي])|(?:^|[\s،,])(?:بال|عال|بهال)(?:فيديو|ڤيديو|مقطع|كليب)(?![ء-ي])|\b(?:on|onto|in|over|into|to)\s+(?:the|this|my|that)\s+(?:video|clip)\b/i;
 const __VW_PLACE_RE = /(?:^|[\s،,])(?:على|عليه|فوق|فوقه|تحت|تحته|يمين|يسار|وسط|أعلى|اعلى|أسفل|اسفل|بالأعلى|بالاعلى|بالأسفل|بالاسفل|بلون|باللون|لون|بخط|قلب|إيموجي|ايموجي|اموجي)(?![ء-ي])|\b(?:on|top|bottom|emoji|heart)\b/i;
-const __VW_ABOUT_RE = /(?:^|[\s،,])(?:ال)?(?:ملخص|تلخيص|لخص|شرح|اشرح|وصف|اوصف|تفريغ|فرغ|ترجم|ترجمة|ترجمه|كابشن|سكربت|سكريبت|سيناريو|قص[ةه]|قصيد[ةه]|تعليق|تقرير|مقال|وش|شو|ايش|إيش|كيف|ليش|اللي|الي|التي|الذي|يقول|تقول|يقولون|الكلام|المكتوب|زر|زرّ|صفح[ةه]|الصفح[ةه]|موقع|الموقع|تطبيق|التطبيق|كود|مشغل|summary|summari[sz]e|transcri\w*|translat\w*|caption|script|describe|what|which|button|page|site|app|player|html|css)(?=$|[\s،,.!؟?])/i;
+const __VW_ABOUT_RE = /(?:^|[\s،,])(?:ال)?(?:ملخص|تلخيص|لخص|شرح|اشرح|وصف|اوصف|تفريغ|فرغ|ترجم|ترجمة|ترجمه|كابشن|سكربت|سكريبت|سيناريو|قص[ةه]|قصيد[ةه]|تعليق|تقرير|مقال|وش|شو|ايش|إيش|كيف|ليش|رد|ردّ|ملاحظات|ملاحظاتك|ملاحظة|رأي|رأيك|رايك|كلمات|مكونات|المكونات|خطوات|الخطوات|الموجود|الموجودة|موجود|خاصية|خاصيه|ميزة|ميزه|يقول|تقول|يقولون|الكلام|المكتوب|زر|زرّ|صفح[ةه]|الصفح[ةه]|موقع|الموقع|تطبيق|التطبيق|كود|مشغل|summary|summari[sz]e|transcri\w*|translat\w*|caption|script|describe|what|which|button|page|site|app|player|html|css|feedback|notes|lyrics|ingredients|steps|review|opinion|thoughts|feature)(?=$|[\s،,.!؟?])/i;
+const __VW_MAKE_RE = /(?:^|[\s،,])(?:سو[يّ]|سوّي|سولي|اعمل|أعمل|اصنع|أصنع|انشئ|أنشئ|ولد|ولّد|make|create|generate)\S*\s+(?:[^\s،,.!؟?]+\s+){0,2}(?:فيديو|ڤيديو|video)/i;
 function omranVideoWriteAsk(text, hasVideo){
   const t = String(text || '');
-  return !!t && __VW_PUT_RE.test(t) && !__VW_ABOUT_RE.test(t) && (__VW_ON_RE.test(t) || (!!hasVideo && __VW_PLACE_RE.test(t)));
+  return !!t && __VW_PUT_RE.test(t) && !__VW_ABOUT_RE.test(t) && !__VW_MAKE_RE.test(t) && (__VW_ON_RE.test(t) || (!!hasVideo && __VW_PLACE_RE.test(t)));
+}
+/* مراجعة النقض: يُعترض فقط حين يوجد فيديو فعلًا — مرفق، أو في آخر ٨ رسائل — ولا صورة مرفقة (لقطة الفيديو = مسار الكتابة على الصورة،
+   وهو ما يقترحه الجواب)، ولا مشروع كود مفتوح ولا وضع cc/agent (فيديو في صفحة يُعدَّل بالكود). «مقطع» قصيدة بلا فيديو = كلام عاديّ. */
+function omranRecentVideo(c){
+  const ms = (c && Array.isArray(c.messages)) ? c.messages : [];
+  for(let i = ms.length - 1, k = 0; i >= 0 && k < 8; i--, k++){ const at = ms[i] && ms[i].attachments; if(Array.isArray(at) && at.some(a => a && (a.isVideo || a.isVideoWatch))) return true; }
+  return false;
+}
+function omranVideoWriteGate(text, vwAtt){
+  if(pendingAttachments.some(a => a && a.isImage)) return false;
+  const m = String(window.__omMode || '');
+  if(m === 'cc' || m === 'agent') return false;
+  const c = typeof getCurrent === 'function' ? getCurrent() : null;
+  if(c && String(c.code || '').trim()) return false;
+  return (!!vwAtt || omranRecentVideo(c)) && omranVideoWriteAsk(text, !!vwAtt);
 }
 /* مصنّف النيّة على الخادم (Gemini Flash، حرارة صفر): 'image' | 'video' | 'none' | null عند التعذّر أو المهلة. */
 async function omranMediaIntent(text){
@@ -23727,7 +23761,7 @@ async function __sendPromptCore(){
   }
   /* v-video-watch: فيديو مرفق = يُشاهَد ويُسمَع (app-32) — قبل بوّابات الوسائط كي لا يُفهم «وش يقول في الفيديو؟» طلبَ إنشاء فيديو. */
   const __vwAtt = pendingAttachments.find(a => a && a.isVideoWatch);
-  if(typeof window.omranVideoWriteSend === 'function' && omranVideoWriteAsk(text, !!__vwAtt)){ await window.omranVideoWriteSend(text, __vwAtt); return; } if(__vwAtt && typeof window.omranVideoWatchSend === 'function'){ await window.omranVideoWatchSend(text, __vwAtt); return; }
+  if(typeof window.omranVideoWriteSend === 'function' && omranVideoWriteGate(text, __vwAtt)){ await window.omranVideoWriteSend(text, __vwAtt); return; } if(__vwAtt && typeof window.omranVideoWatchSend === 'function'){ await window.omranVideoWatchSend(text, __vwAtt); return; }
 
   /* v-media-gate: طبقتان قبل أيّ مسار وسائط كلماتيّ — (١) كلام «عن» الوسائط = لا إنشاء؛ (٢) وإلّا المصنّف الرخيص
      على الخادم. يُستدعى فقط حين تحوي الرسالة كلمة وسائط وبلا صورة مرفقة؛ تعذّره = null فتحكم التعابير المضيَّقة. */
@@ -23962,7 +23996,7 @@ async function __sendPromptCore(){
     /* v-route-gate: أسماء التصميم (بوستر/شعار/لوجو/بطاقة/دعوة/شهادة/تهنئة) خرجت من كلمات البناء — «صمّم لي بوستر لليوم الوطني»
        كانت تُسأل «تبيني أبدأ البناء الحين؟» ثمّ «نعم» تبني صفحة HTML. طلب التصميم يذهب للبانِي المباشر (v-route-design أدناه). */
     const GATE_BUILD_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b/i;
-    const GATE_CMD_RE = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|\bwant\b|\bgive\b|\bcan you\b)/i;
+    const GATE_CMD_RE = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|ممكن|ابغي|أبغي|ابغى|أبغى|ابي(?!ض)|أبي(?!ض)|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|\bwant\b|\bgive\b|\bcan you\b)/i;
     const GATE_FIX_RE = /(صلح|أصلح|اصلح|إصلاح|اصلاح|خطأ|خطا|أخطاء|اخطاء|مشكل|عطل|توقف|خرب|ما\s*يشتغل|مو\s*شغال|لا\s*يعمل|\bfix\b|\berror\b|\bbug\b|\bdebug\b|\bbroken\b)/i;
     /* v-loc-not-build (لقطة المالك ١ أكتوبر: «دي تو دي عجمان — عطني الموقع» فرجع ردّ فارغ): «موقع» + «عطني» كانتا تفتحان
        بوّابة البناء فتُطفأ الأدوات (لا بحث) ويُطلب من النموذج «تبيني أبدأ البناء؟». «الموقع/موقعه» المعرّف أو المضاف طلبُ
@@ -24274,7 +24308,7 @@ function __friendlyErr(e){
   const __editVerbHit = !!cur.code && __editVerbRe.test(text), __editIntent = !__imgWriteAsk && __editVerbHit && (__editObjRe.test(text) || (!__questionStartRe.test(text.trim()) && text.trim().length <= 90)); /* rel-4: __editVerbHit يفتو «موضوع جديد» على المشروع المفتوح */
   const __routeFix = (__routeFixRe.test(text) || __editIntent) && !!cur.code && !__imgWriteAsk;
   // البناء لا يبدأ إلا بفعل أمر صريح (ابني/بناء/سوي/اعمل...) + كلمة تطبيق/موقع/بوت.
-  const __routeCmdRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|اضف|أضف|عدل|عدّل|(?:^|\s)و?طوّ?ر|حدث|حدّث|كمل|أكمل|اكمل|ممكن|ابغي|أبغي|ابغى|أبغى|ابي(?!ض)|أبي(?!ض)|بغيت|اريد|أريد|عطني|أعطني|اعطني|(?:^|\s)و?هات(?!ف)|سولي|سوّلي|(?:^|\s)سو\s|build|create|make|design|develop|add|update|improve|\bwant\b|\bgive\b|\bcan you\b)/i;
+  const __routeCmdRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|كمل|أكمل|اكمل|ممكن|ابغي|أبغي|ابغى|أبغى|ابي(?!ض)|أبي(?!ض)|بغيت|اريد|أريد|عطني|أعطني|اعطني|(?:^|\s)و?هات(?!ف)|سولي|سوّلي|(?:^|\s)سو\s|build|create|make|design|develop|add|update|improve|\bwant\b|\bgive\b|\bcan you\b)/i;
   // 🚫 قرار نهائي (26/7): "اسأل الكل" ملغي بالكامل — لا زر ولا كتابة.
   // كلود يبني ويرد بروحه دائمًا (وGPT احتياط صامت إذا فشل).
   const __askAllExplicit = false;
@@ -25140,7 +25174,7 @@ function __friendlyErr(e){
         if(!__vid){
           if(__verr === 'auth_required') throw new Error(lang === 'ar' ? 'سجّل الدخول أولًا عشان أسوي لك الفيديو.' : 'Please log in first to create videos.');
           if(__verr === 'daily_limit_reached') throw new Error(lang === 'ar' ? 'وصلت حد الفيديوهات اليومي، جرّب بكرة.' : 'Daily video limit reached, try again tomorrow.');
-          if(__verr === 'HTTP 428') throw Object.assign(new Error('aborted'), { name: 'AbortError' }); throw new Error(omranVideoCodeText(__verr, __vra) || __verr); /* v-chat-video-cooldown: ألغى المستخدم التأكيد = لا فقاعة خطأ */
+          if(__verr === 'HTTP 428') throw Object.assign(new Error(t('vidCancelled')), { __note: true }); throw new Error(omranVideoCodeText(__verr, __vra) || __verr); /* v-chat-video-cooldown: ألغى المستخدم التأكيد = سطر «أُلغي — لم تُخصم نقاط» بلا ⚠️ (بلا ردّ = فقاعة تشخيص finally) */
         }
         let __vurl = null;
         const __vt0 = Date.now();
@@ -25158,7 +25192,7 @@ function __friendlyErr(e){
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
         if(!(e && e.name === 'AbortError')){
-          cur.messages.push({ role: 'assistant', content: '⚠️ ' + __friendlyErr(e) });
+          cur.messages.push({ role: 'assistant', content: (e && e.__note) ? String(e.message) : '⚠️ ' + __friendlyErr(e) });
         }
       }
       cur.lastMsgWasImageEdit = false;
@@ -44770,6 +44804,7 @@ if(document.readyState === 'loading'){
     if(att) um.attachments = [{ name: att.name, isImage: false, isVideoWatch: true, label: att.label, durationSec: Math.round(att.durationSec || 0) }];
     cur.messages.push(um); cur.updatedAt = Date.now();
     window.__chatEditRequest = null;
+    try{ if(typeof setChatEditNotice === 'function') setChatEditNotice(false); }catch(e){ __swallow(e, 'vwrite:edit'); }
     var promptEl = $('#prompt'); if(promptEl) promptEl.value = '';
     try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, 'vwrite:grow'); }
     if(att){ pendingAttachments = pendingAttachments.filter(function(a){ return a !== att; }); renderAttachStrip(); }

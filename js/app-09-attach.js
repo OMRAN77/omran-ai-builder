@@ -3659,13 +3659,29 @@ const __MEDIA_TALK_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:كيف|كيفية|ط�
 /* v-video-write-ask (لقطة مشترك Max ١٦ أكتوبر: «اكتب حياتي و قلب لون ابيض في الفيديو» بعد فيديو في المحادثة ← فيديو مدفوع جديد وصفُه الطلب
    نفسه بعد نافذتَي خصم، ثمّ «⚠️ video_cooldown»): الكتابة أو وضع نصّ/إيموجي/قلب على فيديو قائم ليست إنشاء فيديو، ولا كتابة على الفيديو في
    التطبيق بعد (قرار المالك) — جواب صادق بلا شبكة ولا خصم. «اكتب سكربت/ملخص/وش يقول في الفيديو» كلام عن الفيديو. خارج __sendPromptCore (السقّاطة). */
-const __VW_PUT_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])و?(?:اكتب|أكتب|اكتبي|اكتبلي|أكتبلي|تكتب|تكتبي|تكتبلي|نكتب|حط|حطي|حطلي|تحط|ضيف|ضيفي|ضيفلي|تضيف|أضف|اضف|ضع|write|add|put|type)(?=$|[\s،,.!؟?()"'«»:؛-])/i;
-const __VW_ON_RE = /(?:^|[\s،,])(?:على|في|فوق|تحت|داخل|وسط)\s*(?:هال|ال)?(?:فيديو|ڤيديو|مقطع|كليب)(?![ء-ي])|(?:^|[\s،,])(?:بال|عال|بهال)(?:فيديو|ڤيديو|مقطع|كليب)(?![ء-ي])|\b(?:on|onto|in|over|into)\s+(?:the|this|my|that)\s+(?:video|clip)\b/i;
+const __VW_PUT_RE = /(?:^|[\s،,.!؟?()"'«»:؛-])و?(?:[اأتني]كتب(?:ي|ين|لي|يلي|ها|ه)?|اكتبلي|أكتبلي|ت?حطّ?(?:ي|ين|لي|يلي|ها|ه)?|ت?ضيف(?:ي|ين|لي|يلي|ها|ه)?|[أا]ضف|ضع|write|add|put|type)(?=$|[\s،,.!؟?()"'«»:؛-])/i;
+const __VW_ON_RE = /(?:^|[\s،,])(?:على|في|فوق|تحت|داخل|وسط)\s*(?:هال|ال)?(?:فيديو|ڤيديو|مقطع|كليب)(?![ء-ي])|(?:^|[\s،,])(?:بال|عال|بهال)(?:فيديو|ڤيديو|مقطع|كليب)(?![ء-ي])|\b(?:on|onto|in|over|into|to)\s+(?:the|this|my|that)\s+(?:video|clip)\b/i;
 const __VW_PLACE_RE = /(?:^|[\s،,])(?:على|عليه|فوق|فوقه|تحت|تحته|يمين|يسار|وسط|أعلى|اعلى|أسفل|اسفل|بالأعلى|بالاعلى|بالأسفل|بالاسفل|بلون|باللون|لون|بخط|قلب|إيموجي|ايموجي|اموجي)(?![ء-ي])|\b(?:on|top|bottom|emoji|heart)\b/i;
-const __VW_ABOUT_RE = /(?:^|[\s،,])(?:ال)?(?:ملخص|تلخيص|لخص|شرح|اشرح|وصف|اوصف|تفريغ|فرغ|ترجم|ترجمة|ترجمه|كابشن|سكربت|سكريبت|سيناريو|قص[ةه]|قصيد[ةه]|تعليق|تقرير|مقال|وش|شو|ايش|إيش|كيف|ليش|اللي|الي|التي|الذي|يقول|تقول|يقولون|الكلام|المكتوب|زر|زرّ|صفح[ةه]|الصفح[ةه]|موقع|الموقع|تطبيق|التطبيق|كود|مشغل|summary|summari[sz]e|transcri\w*|translat\w*|caption|script|describe|what|which|button|page|site|app|player|html|css)(?=$|[\s،,.!؟?])/i;
+const __VW_ABOUT_RE = /(?:^|[\s،,])(?:ال)?(?:ملخص|تلخيص|لخص|شرح|اشرح|وصف|اوصف|تفريغ|فرغ|ترجم|ترجمة|ترجمه|كابشن|سكربت|سكريبت|سيناريو|قص[ةه]|قصيد[ةه]|تعليق|تقرير|مقال|وش|شو|ايش|إيش|كيف|ليش|رد|ردّ|ملاحظات|ملاحظاتك|ملاحظة|رأي|رأيك|رايك|كلمات|مكونات|المكونات|خطوات|الخطوات|الموجود|الموجودة|موجود|خاصية|خاصيه|ميزة|ميزه|يقول|تقول|يقولون|الكلام|المكتوب|زر|زرّ|صفح[ةه]|الصفح[ةه]|موقع|الموقع|تطبيق|التطبيق|كود|مشغل|summary|summari[sz]e|transcri\w*|translat\w*|caption|script|describe|what|which|button|page|site|app|player|html|css|feedback|notes|lyrics|ingredients|steps|review|opinion|thoughts|feature)(?=$|[\s،,.!؟?])/i;
+const __VW_MAKE_RE = /(?:^|[\s،,])(?:سو[يّ]|سوّي|سولي|اعمل|أعمل|اصنع|أصنع|انشئ|أنشئ|ولد|ولّد|make|create|generate)\S*\s+(?:[^\s،,.!؟?]+\s+){0,2}(?:فيديو|ڤيديو|video)/i;
 function omranVideoWriteAsk(text, hasVideo){
   const t = String(text || '');
-  return !!t && __VW_PUT_RE.test(t) && !__VW_ABOUT_RE.test(t) && (__VW_ON_RE.test(t) || (!!hasVideo && __VW_PLACE_RE.test(t)));
+  return !!t && __VW_PUT_RE.test(t) && !__VW_ABOUT_RE.test(t) && !__VW_MAKE_RE.test(t) && (__VW_ON_RE.test(t) || (!!hasVideo && __VW_PLACE_RE.test(t)));
+}
+/* مراجعة النقض: يُعترض فقط حين يوجد فيديو فعلًا — مرفق، أو في آخر ٨ رسائل — ولا صورة مرفقة (لقطة الفيديو = مسار الكتابة على الصورة،
+   وهو ما يقترحه الجواب)، ولا مشروع كود مفتوح ولا وضع cc/agent (فيديو في صفحة يُعدَّل بالكود). «مقطع» قصيدة بلا فيديو = كلام عاديّ. */
+function omranRecentVideo(c){
+  const ms = (c && Array.isArray(c.messages)) ? c.messages : [];
+  for(let i = ms.length - 1, k = 0; i >= 0 && k < 8; i--, k++){ const at = ms[i] && ms[i].attachments; if(Array.isArray(at) && at.some(a => a && (a.isVideo || a.isVideoWatch))) return true; }
+  return false;
+}
+function omranVideoWriteGate(text, vwAtt){
+  if(pendingAttachments.some(a => a && a.isImage)) return false;
+  const m = String(window.__omMode || '');
+  if(m === 'cc' || m === 'agent') return false;
+  const c = typeof getCurrent === 'function' ? getCurrent() : null;
+  if(c && String(c.code || '').trim()) return false;
+  return (!!vwAtt || omranRecentVideo(c)) && omranVideoWriteAsk(text, !!vwAtt);
 }
 /* مصنّف النيّة على الخادم (Gemini Flash، حرارة صفر): 'image' | 'video' | 'none' | null عند التعذّر أو المهلة. */
 async function omranMediaIntent(text){
@@ -3794,7 +3810,7 @@ async function __sendPromptCore(){
   }
   /* v-video-watch: فيديو مرفق = يُشاهَد ويُسمَع (app-32) — قبل بوّابات الوسائط كي لا يُفهم «وش يقول في الفيديو؟» طلبَ إنشاء فيديو. */
   const __vwAtt = pendingAttachments.find(a => a && a.isVideoWatch);
-  if(typeof window.omranVideoWriteSend === 'function' && omranVideoWriteAsk(text, !!__vwAtt)){ await window.omranVideoWriteSend(text, __vwAtt); return; } if(__vwAtt && typeof window.omranVideoWatchSend === 'function'){ await window.omranVideoWatchSend(text, __vwAtt); return; }
+  if(typeof window.omranVideoWriteSend === 'function' && omranVideoWriteGate(text, __vwAtt)){ await window.omranVideoWriteSend(text, __vwAtt); return; } if(__vwAtt && typeof window.omranVideoWatchSend === 'function'){ await window.omranVideoWatchSend(text, __vwAtt); return; }
 
   /* v-media-gate: طبقتان قبل أيّ مسار وسائط كلماتيّ — (١) كلام «عن» الوسائط = لا إنشاء؛ (٢) وإلّا المصنّف الرخيص
      على الخادم. يُستدعى فقط حين تحوي الرسالة كلمة وسائط وبلا صورة مرفقة؛ تعذّره = null فتحكم التعابير المضيَّقة. */
@@ -4029,7 +4045,7 @@ async function __sendPromptCore(){
     /* v-route-gate: أسماء التصميم (بوستر/شعار/لوجو/بطاقة/دعوة/شهادة/تهنئة) خرجت من كلمات البناء — «صمّم لي بوستر لليوم الوطني»
        كانت تُسأل «تبيني أبدأ البناء الحين؟» ثمّ «نعم» تبني صفحة HTML. طلب التصميم يذهب للبانِي المباشر (v-route-design أدناه). */
     const GATE_BUILD_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b/i;
-    const GATE_CMD_RE = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|\bwant\b|\bgive\b|\bcan you\b)/i;
+    const GATE_CMD_RE = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|ممكن|ابغي|أبغي|ابغى|أبغى|ابي(?!ض)|أبي(?!ض)|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|\bwant\b|\bgive\b|\bcan you\b)/i;
     const GATE_FIX_RE = /(صلح|أصلح|اصلح|إصلاح|اصلاح|خطأ|خطا|أخطاء|اخطاء|مشكل|عطل|توقف|خرب|ما\s*يشتغل|مو\s*شغال|لا\s*يعمل|\bfix\b|\berror\b|\bbug\b|\bdebug\b|\bbroken\b)/i;
     /* v-loc-not-build (لقطة المالك ١ أكتوبر: «دي تو دي عجمان — عطني الموقع» فرجع ردّ فارغ): «موقع» + «عطني» كانتا تفتحان
        بوّابة البناء فتُطفأ الأدوات (لا بحث) ويُطلب من النموذج «تبيني أبدأ البناء؟». «الموقع/موقعه» المعرّف أو المضاف طلبُ
@@ -4341,7 +4357,7 @@ function __friendlyErr(e){
   const __editVerbHit = !!cur.code && __editVerbRe.test(text), __editIntent = !__imgWriteAsk && __editVerbHit && (__editObjRe.test(text) || (!__questionStartRe.test(text.trim()) && text.trim().length <= 90)); /* rel-4: __editVerbHit يفتو «موضوع جديد» على المشروع المفتوح */
   const __routeFix = (__routeFixRe.test(text) || __editIntent) && !!cur.code && !__imgWriteAsk;
   // البناء لا يبدأ إلا بفعل أمر صريح (ابني/بناء/سوي/اعمل...) + كلمة تطبيق/موقع/بوت.
-  const __routeCmdRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|اضف|أضف|عدل|عدّل|(?:^|\s)و?طوّ?ر|حدث|حدّث|كمل|أكمل|اكمل|ممكن|ابغي|أبغي|ابغى|أبغى|ابي(?!ض)|أبي(?!ض)|بغيت|اريد|أريد|عطني|أعطني|اعطني|(?:^|\s)و?هات(?!ف)|سولي|سوّلي|(?:^|\s)سو\s|build|create|make|design|develop|add|update|improve|\bwant\b|\bgive\b|\bcan you\b)/i;
+  const __routeCmdRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|كمل|أكمل|اكمل|ممكن|ابغي|أبغي|ابغى|أبغى|ابي(?!ض)|أبي(?!ض)|بغيت|اريد|أريد|عطني|أعطني|اعطني|(?:^|\s)و?هات(?!ف)|سولي|سوّلي|(?:^|\s)سو\s|build|create|make|design|develop|add|update|improve|\bwant\b|\bgive\b|\bcan you\b)/i;
   // 🚫 قرار نهائي (26/7): "اسأل الكل" ملغي بالكامل — لا زر ولا كتابة.
   // كلود يبني ويرد بروحه دائمًا (وGPT احتياط صامت إذا فشل).
   const __askAllExplicit = false;
@@ -5207,7 +5223,7 @@ function __friendlyErr(e){
         if(!__vid){
           if(__verr === 'auth_required') throw new Error(lang === 'ar' ? 'سجّل الدخول أولًا عشان أسوي لك الفيديو.' : 'Please log in first to create videos.');
           if(__verr === 'daily_limit_reached') throw new Error(lang === 'ar' ? 'وصلت حد الفيديوهات اليومي، جرّب بكرة.' : 'Daily video limit reached, try again tomorrow.');
-          if(__verr === 'HTTP 428') throw Object.assign(new Error('aborted'), { name: 'AbortError' }); throw new Error(omranVideoCodeText(__verr, __vra) || __verr); /* v-chat-video-cooldown: ألغى المستخدم التأكيد = لا فقاعة خطأ */
+          if(__verr === 'HTTP 428') throw Object.assign(new Error(t('vidCancelled')), { __note: true }); throw new Error(omranVideoCodeText(__verr, __vra) || __verr); /* v-chat-video-cooldown: ألغى المستخدم التأكيد = سطر «أُلغي — لم تُخصم نقاط» بلا ⚠️ (بلا ردّ = فقاعة تشخيص finally) */
         }
         let __vurl = null;
         const __vt0 = Date.now();
@@ -5225,7 +5241,7 @@ function __friendlyErr(e){
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
         if(!(e && e.name === 'AbortError')){
-          cur.messages.push({ role: 'assistant', content: '⚠️ ' + __friendlyErr(e) });
+          cur.messages.push({ role: 'assistant', content: (e && e.__note) ? String(e.message) : '⚠️ ' + __friendlyErr(e) });
         }
       }
       cur.lastMsgWasImageEdit = false;

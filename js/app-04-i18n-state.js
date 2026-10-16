@@ -625,6 +625,7 @@ function __vaultRead(a){
    التعديل، التراجع). التوليد صورةً صورةً (طابور) كي لا تُفكّ أصول كثيرة معًا. */
 const __VIEW_MAX = 1280;
 const __viewReads = new WeakMap();
+const __viewFailAt = new WeakMap(); /* v-view-blank (مراجعة النقض): نسخة فشلت لا تُعاد مع كلّ رسم تحت ضغط الذاكرة نفسه — دقيقة ثمّ محاولة */
 let __viewQ = Promise.resolve();
 function __isBigDataImg(u){ return typeof u === 'string' && u.length > VAULT_MIN && u.slice(0, 11) === 'data:image/'; }
 function __makeView(src){
@@ -672,6 +673,7 @@ function __viewHasInk(u){
 function __imgView(a){
   if(!a) return Promise.resolve('');
   if(a.viewUrl) return Promise.resolve(a.viewUrl);
+  if(Date.now() - (__viewFailAt.get(a) || 0) < 60000) return Promise.resolve('');
   let pr = __viewReads.get(a);
   if(pr) return pr;
   pr = (async () => {
@@ -684,7 +686,7 @@ function __imgView(a){
       if(!src && a.vaultId && !a.vaultPending){ try{ const d = await __vaultRead(a); if(__isBigDataImg(d)) src = d; }catch(e){ __swallow(e, 'view:orig'); } }
       if(!src) return '';
       const v = await __makeView(src);
-      if(!v) return '';
+      if(!v){ __viewFailAt.set(a, Date.now()); return ''; }
       a.viewUrl = v;
       if(a.vaultId && !a.vaultPending) idbImgPutAll([{ id: a.vaultId + '~v', dataUrl: v }]).catch(e => __swallow(e, 'view:put'));
       return v;

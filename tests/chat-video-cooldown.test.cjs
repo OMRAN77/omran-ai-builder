@@ -5,7 +5,7 @@
 // (throw new Error(__verr)) فيعرضه '⚠️ ' + __friendlyErr(e)، ويعيد الطلب بعد ٦ث على مهلة الثلاث دقائق (إعادة عمياء
 // أوقفها v-video-refund في صانع الفيديو). الترجمة القائمة (ui.cooldown بالـ14 لغة) في الترندات وحدها.
 // القرار: النصّ المترجم نفسه بالدقائق المتبقّية (retryAfter)، بلا إعادة على المهلة، وأداة generate_video للنموذج كذلك؛
-// ونفاد النقاط بنصّ الباقات القائم، وإلغاء تأكيد النقاط يُغلق بلا فقاعة ولا تأكيد ثانٍ (كان «⚠️ HTTP 428» بعد سؤالين).
+// ونفاد النقاط بنصّ الباقات القائم، وإلغاء تأكيد النقاط بسطر vidCancelled (١٤ لغة) بلا تأكيد ثانٍ (كان «⚠️ HTTP 428» بعد سؤالين).
 // الاختبار: كتلة المسار بنصّها من __sendPromptCore و__friendlyErr في vm — تفشل قبل الإصلاح وتنجح بعده.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -79,13 +79,14 @@ test('٤. أداة generate_video (المحادثة بالأدوات): النم�
   assert.equal(out, 'تعذّر بدء الفيديو: ' + coolText('ar', 2));
 });
 
-test('٥. نفاد النقاط بنصّ الباقات القائم، وإلغاء تأكيد النقاط بلا فقاعة ولا سؤال ثانٍ', async () => {
+test('٥. نفاد النقاط بنصّ الباقات القائم، وإلغاء تأكيد النقاط بسطر «أُلغي — لم تُخصم نقاط» بلا سؤال ثانٍ', async () => {
   const I18N = { plansWhyPoints: 'نقاطك خلصت — اشحن من الباقات وكمّل مباشرة.' };
   const p = await chatVideo({ status: 402, body: { error: 'points_insufficient', points: 3, needed: 55 } }, 'ar', { t: (k) => I18N[k] || k });
   assert.equal(p.msg.content, '⚠️ ' + I18N.plansWhyPoints);
   assert.equal(p.calls.length, 1, 'لا إعادة على نفاد النقاط');
   // postWithConfirm يرجع ردّ 428 نفسه حين يضغط المستخدم «إلغاء» — جسمه مقروء فيصير الخطأ 'HTTP 428'
-  const c = await chatVideo({ status: 428, body: undefined });
-  assert.equal(c.msg, undefined, 'لا فقاعة «⚠️ HTTP 428»');
+  /* مراجعة النقض: بلا ردّ يدفع finally فقاعة «🔧 تشخيص الرد الغائب» لكلّ المستخدمين — فسطر قصير بلغته، بلا ⚠️ */
+  const c = await chatVideo({ status: 428, body: undefined }, 'ar', { t: (k) => ({ vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.' })[k] || k });
+  assert.deepEqual({ role: c.msg.role, content: c.msg.content }, { role: 'assistant', content: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.' }, 'لا «⚠️ HTTP 428» ولا فقاعة تشخيص');
   assert.equal(c.calls.length, 1, 'لا تأكيد ثانٍ بعد ٦ ث');
 });

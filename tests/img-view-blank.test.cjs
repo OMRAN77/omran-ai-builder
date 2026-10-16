@@ -17,7 +17,7 @@ const fakeDom = (env) => {
   const document = { createElement: () => {
     const c = { width: 0, height: 0, drawn: null };
     c.getContext = () => ({
-      drawImage(im){ if(env.draw === 'drop') return; c.drawn = (env.kind && env.kind[im._u.slice(0, 40)]) || 'opaque'; },
+      drawImage(im){ env.n = (env.n || 0) + 1; if(env.draw === 'drop') return; c.drawn = (env.kind && env.kind[im._u.slice(0, 40)]) || 'opaque'; },
       getImageData(x, y, w, h){ const d = new Uint8ClampedArray(w * h * 4); if(c.drawn) for(let i = 3; i < d.length; i += 4) d[i] = c.drawn === 'sticker' ? ((i >> 2) % 3 ? 0 : 255) : 255; return { data: d }; }
     });
     c.toDataURL = (type) => 'data:' + type + ';base64,' + (c.drawn ? 'INK' : 'BLANK') + (c.drawn || '');
@@ -53,10 +53,14 @@ const big = 'data:image/png;base64,' + 'X'.repeat(200000);
 
 test('٣. صورة مخزونة ورسمها أُسقط: __imgView لا يعيد ولا يحفظ نسخة فارغة (كانت تُكتب «معرّف~v» وتُعرض في كلّ فتح)', async () => {
   const vault = { a1: big }, a = { isImage: true, vaultId: 'a1', dataUrl: big };
-  const L = vaultLib(vault, { draw: 'drop' });
+  const env = { draw: 'drop' }, L = vaultLib(vault, env);
   assert.equal(await L.__imgView(a), '');
   assert.equal(vault['a1~v'], undefined, 'لا نسخة فارغة في المخزن');
   assert.equal(a.viewUrl, undefined);
+  /* مراجعة النقض: الفشل لا يُعاد مع كلّ رسم تحت ضغط الذاكرة نفسه (فكّ الأصل كاملًا ثانيةً) — دقيقة ثمّ محاولة */
+  assert.equal(env.n, 1);
+  assert.equal(await L.__imgView(a), '');
+  assert.equal(env.n, 1, 'لا فكّ ثانٍ للأصل فورًا');
   /* تعافى المحرّك: الفتح التالي يصنع النسخة الحقيقيّة */
   const L2 = vaultLib(vault, { draw: 'ok' });
   assert.match(await L2.__imgView(a), /^data:image\/jpeg;base64,INK/);
