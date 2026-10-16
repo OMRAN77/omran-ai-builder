@@ -74,6 +74,10 @@ source-code.zip
 # Scratch output from the in-browser ffmpeg pipeline.
 videos_tmp/
 
+# v-root-tidy: ملفّات قديمة نُقلت من الجذر (لقطات تشخيص، أرشيف مصدر، مقاطع ffmpeg مؤقّتة) —
+# محفوظة في المستودع ولا تُنشر.
+archive/
+
 # Marketing renders and demo clips. Nothing in the app links to these paths —
 # the two demo videos the UI actually plays are served from Vercel Blob
 # storage (6tfgxvttzyoiavtu.public.blob.vercel-storage.com), not from here.

@@ -3799,6 +3799,8 @@ async function postWithConfirm(url, payload){
   window.omranPicker = { open: function(cfg){
     var sheet = el('pickerSheet'), grid = el('pickerSheetGrid');
     if(!sheet || !grid) return;
+    /* v-lighting-3d: العرض الأفقي للإضاءة وحدها، ويُصفّر عند فتح معرض آخر. */
+    grid.style.gridTemplateColumns = cfg.landscape ? 'repeat(auto-fill,minmax(min(100%,240px),1fr))' : '';
     el('pickerSheetTitle').textContent = cfg.title || '';
     el('pickerSheetCount').textContent = cfg.count || '';
     grid.innerHTML = '';
@@ -3807,7 +3809,7 @@ async function postWithConfirm(url, payload){
       card.style.cssText = 'border-radius:14px;overflow:hidden;cursor:pointer;background:#17171b;' +
         (it.active ? 'border:2px solid #d4af37;box-shadow:0 0 14px rgba(212,175,55,.3);' : 'border:1px solid #2a2a30;');
       var wrap = document.createElement('div');
-      wrap.style.cssText = 'position:relative;aspect-ratio:3/4;background:linear-gradient(160deg,#23232a,#101014);display:flex;align-items:center;justify-content:center;';
+      wrap.style.cssText = 'position:relative;aspect-ratio:'+(cfg.landscape ? '16/9' : '3/4')+';background:linear-gradient(160deg,#23232a,#101014);display:flex;align-items:center;justify-content:center;';
       // it.bg (لوحة ألوان النمط) تعطي بطاقة احترافية بلا شارة إيموجي إطلاقًا.
       if(it.bg){ wrap.style.background = it.bg; }
       else {

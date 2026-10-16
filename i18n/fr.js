@@ -1,4 +1,19 @@
 I18N['fr'] = {
+    /* v-lighting-3d: أسماء إضاءات الديكور. */
+    "designAiLightingNatural": "Naturelle",
+    "designAiLightingNeutral": "Blanc neutre",
+    "designAiLightingGolden": "Lueur dorée",
+    "designAiLightingPurple": "Nuit violette",
+    "designAiLightingSunset": "Coucher de soleil",
+    "designAiLightingMoon": "Clair de lune",
+    "designAiLightingEmerald": "Émeraude apaisante",
+    "designAiLightingTurquoise": "Turquoise côtière",
+    "designAiLightingRose": "Rose doux",
+    "designAiLightingBurgundy": "Bordeaux cinématique",
+    "designAiLightingNeon": "Néon bicolore",
+    "designAiLightingCinematic": "Cinématique équilibrée",
+    "designAiLightingAurora": "Couleurs aurorales",
+
     "notifSectionLabel": "🔔 Notifications",
     "newsAlertsLabel": "📢 Alertes d’actualités urgentes",
     "newsAlertsHint": "Recevez une notification pour les actualités urgentes ou les alertes d’urgence, même app fermée",
