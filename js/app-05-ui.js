@@ -3799,8 +3799,10 @@ async function postWithConfirm(url, payload){
   window.omranPicker = { open: function(cfg){
     var sheet = el('pickerSheet'), grid = el('pickerSheetGrid');
     if(!sheet || !grid) return;
-    /* v-lighting-3d: العرض الأفقي للإضاءة وحدها، ويُصفّر عند فتح معرض آخر. */
-    grid.style.gridTemplateColumns = cfg.landscape ? 'repeat(auto-fill,minmax(min(100%,240px),1fr))' : '';
+    /* v-lighting-3d: العرض الأفقي للإضاءة وحدها، ويُصفّر عند فتح معرض آخر.
+       v-picker-cols (المالك ١٦ أكتوبر: «صور مغبّشة أكثرها»): '' كانت تمحو الأعمدة المكتوبة في وسم الشبكة نفسه (partials-core)،
+       فكلّ معرض غير الإضاءة صار بطاقة واحدة بعرض الشاشة وصورة ٣٦٠ بكسل ممطوطة ٤ أضعاف. الافتراضيّ يُكتب صريحًا. */
+    grid.style.gridTemplateColumns = cfg.landscape ? 'repeat(auto-fill,minmax(min(100%,240px),1fr))' : 'repeat(auto-fill,minmax(150px,1fr))';
     el('pickerSheetTitle').textContent = cfg.title || '';
     el('pickerSheetCount').textContent = cfg.count || '';
     grid.innerHTML = '';
