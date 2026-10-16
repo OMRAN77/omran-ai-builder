@@ -33,14 +33,14 @@ test('engine=kimi: يشغّل kimi-agent.yml بفرع kimi-agent/ ونموذج k
     ['POST', /^\/repos\/OMRAN77\/omran-ai-builder\/issues$/, (u, b) => res({ number: 42, html_url: 'https://github.com/OMRAN77/omran-ai-builder/issues/42', title: b.title }, 201)],
     ['POST', /^\/repos\/OMRAN77\/omran-ai-builder\/actions\/workflows\/kimi-agent\.yml\/dispatches$/, res(null, 204)],
   ]);
-  const r = await D.startTask({ task: 'أضف زرّ تصدير المحادثة نصًّا في شريط الأدوات', engine: 'kimi', model: 'kimi-k2.5' }, n.opts);
+  const r = await D.startTask({ task: 'أضف زرّ تصدير المحادثة نصًّا في شريط الأدوات', engine: 'kimi', model: 'kimi-k3' }, n.opts);
   assert.equal(r.ok, true);
   assert.equal(r.engine, 'kimi');
   assert.match(r.branch, /^kimi-agent\/[a-z0-9-]*-[a-z0-9]+$/, 'فرع بالبادئة kimi-agent/');
   assert.ok(r.actionsUrl.endsWith('/kimi-agent.yml'), 'رابط التشغيلات يشير إلى kimi-agent.yml');
   const d = n.calls[1];
   assert.equal(d.method, 'POST');
-  assert.deepEqual(d.body, { ref: 'main', inputs: { task: 'أضف زرّ تصدير المحادثة نصًّا في شريط الأدوات', branch: r.branch, issue: '42', base: 'main', model: 'kimi-k2.5' } });
+  assert.deepEqual(d.body, { ref: 'main', inputs: { task: 'أضف زرّ تصدير المحادثة نصًّا في شريط الأدوات', branch: r.branch, issue: '42', base: 'main', model: 'kimi-k3' } });
   const txt = D.formatStart(r);
   assert.ok(txt.startsWith('🚀') && txt.includes('Kimi Code'), 'الناتج يسمّي Kimi Code');
 });
@@ -100,7 +100,7 @@ test('ورك فلو kimi-agent.yml: المدخلات، التثبيت، kimi -p�
     'git push -u origin "$TASK_BRANCH"',
     '<!-- kimi-agent {"phase":"start"', '<!-- kimi-agent {"phase":"done"',
     'concurrency:', 'timeout-minutes:', 'if: always()', 'gh issue comment "$TASK_ISSUE"',
-    'AGENT_SUMMARY.md', 'kimi-k2.5']) {
+    'AGENT_SUMMARY.md', "default: 'kimi-k3'"]) {
     assert.ok(wf.includes(frag), 'الورك فلو يحوي: ' + frag);
   }
   assert.ok(/permissions:\n\s+contents: write\n\s+pull-requests: write\n\s+issues: write/.test(wf), 'الصلاحيّات');
@@ -114,7 +114,10 @@ test('package.json يسجّل الاختبار بأمر node خاصّ به', () 
 
 test('الأداة تعرّف engine وتصدّر الثوابت الجديدة', () => {
   assert.equal(D.WORKFLOW_KIMI, 'kimi-agent.yml');
-  assert.ok(Array.isArray(D.KIMI_MODEL_IDS) && D.KIMI_MODEL_IDS.includes('kimi-k2.5'));
+  assert.ok(Array.isArray(D.KIMI_MODEL_IDS) && D.KIMI_MODEL_IDS.includes('kimi-k3'));
+  /* v-kimi-k3-delegate: الموقوفة عند Moonshot (k2.5 وسلسلة k2) وموديل اشتراك Kimi Code لا تُمرَّر إلى api.moonshot.ai */
+  for (const dead of ['kimi-k2.5', 'kimi-k2-thinking', 'kimi-k2-thinking-turbo', 'kimi-for-coding']) assert.ok(!D.KIMI_MODEL_IDS.includes(dead), dead + ' موقوف أو ليس على المنصّة المفتوحة');
+  assert.equal(D.KIMI_MODEL_IDS[0], 'kimi-k3');
   const props = D.START_TOOL.input_schema.properties;
   assert.deepEqual(props.engine.enum, ['claude', 'kimi']);
 });

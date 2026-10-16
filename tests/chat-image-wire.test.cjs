@@ -29,7 +29,7 @@ test('the current turn carries its images and its computed API text on the reque
   // الصور: من مرفقات هذا الدور حين لا يحمل السجلّ apiImages (لم يُكتب يومًا)
   assert.ok(client.includes('const __turnImgs = (__lastM && __lastM.apiImages && __lastM.apiImages.length) ? __lastM.apiImages'), 'apiImages إن وُجد');
   assert.ok(client.includes("((__lastM === __nextUserMessage) ? imageAttachments.filter(function(a){ return a && a.isImage && a.dataUrl; })"), 'وإلا مرفقات الدور الحاليّ');
-  assert.ok(client.includes("if(__lastTurn && __lastTurn.role === 'user' && !cur.adMode && __turnImgs.length) __lastTurn.images = __turnImgs;"), 'تُلحق بالدور الأخير');
+  assert.ok(client.includes("if(__lastTurn && __lastTurn.role === 'user' && !cur.adMode && __turnImgs.length) await omranApplyChatImgBudget(__lastTurn, __turnImgs, __turns);"), 'تُلحق بالدور الأخير — عبر ميزانيّة السلك (v-chat-img-budget)');
   // النصّ: apiText + ما أُضيف إلى text بعد الدفع
   assert.ok(client.includes("const __textAtPush = String(text || '');"), 'مرجع النصّ عند الدفع');
   assert.ok(client.includes('const __curApiText = (function(){'), 'حساب نصّ الدور');

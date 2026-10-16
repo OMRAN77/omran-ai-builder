@@ -219,7 +219,7 @@
     </label>
     <input type="password" id="deepseekApiKey" placeholder="sk-...">
     <label data-i18n="deepseekModelLabel">اسم النموذج</label>
-    <input type="text" id="deepseekModel" placeholder="deepseek-chat">
+    <input type="text" id="deepseekModel" placeholder="deepseek-flash">
   </div>
   <div class="api-provider-card" style="display:none; border-inline-start:4px solid #d18ee2; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
     <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
@@ -230,7 +230,7 @@
     </label>
     <input type="password" id="cohereApiKey" placeholder="...">
     <label data-i18n="cohereModelLabel">اسم النموذج</label>
-    <input type="text" id="cohereModel" placeholder="command-r-plus">
+    <input type="text" id="cohereModel" placeholder="command-a-03-2025">
   </div>
   <div class="api-provider-card" style="border-inline-start:4px solid #4285f4; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
     <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
