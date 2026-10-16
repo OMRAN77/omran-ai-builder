@@ -68,11 +68,37 @@ test('٤. لمسة الضغط: على فراغ القائمة ترسم، وعل�
   assert.equal(a.raf(), 1, 'الرسم يبدأ مع الضغط وحده');
   a.workarea.listeners.pointerdown(ev(true));
   assert.equal(a.made.length, 1, 'الأزرار والخانات بلا أثر');
-  for (const o of [{ cls: ['mobile-ui'] }, { cls: ['bgimg'] }, { cls: ['skin'] }, { cls: ['omCpu'] }, { reduce: true }, { w: 700 }]) {
+  const m = run({ cls: ['mobile-ui'], w: 390 }); m.sidebar.listeners.pointerdown(ev(false));
+  assert.equal(m.made.length, 1, 'v-frame-gold-mobile: الجوال أيضًا في دُرجَيه');
+  for (const o of [{ cls: ['bgimg'] }, { cls: ['skin'] }, { cls: ['skin-wood'] }, { cls: ['omCpu'] }, { reduce: true }]) {
     const b = run(o); b.sidebar.listeners.pointerdown(ev(false));
     assert.equal(b.made.length, 0, JSON.stringify(o));
   }
   assert.ok(a.winLs.pointerup, 'الإفلات على النافذة');
   assert.match(rd('index.html'), /<script defer src="\/js\/app\.bundle\.js\?v=[0-9a-f]+"><\/script>\n    <script defer src="\/js\/frame-touch\.js\?v=(\d+)"><\/script>/, 'تُحمَّل بعد الحزمة');
   assert.doesNotMatch(rd('js/frame-touch.js'), /\?\.|\?\?|=>|\blet\b|\bconst\b/, 'ES5 للمتصفّحات القديمة');
+});
+
+test('٥. v-frame-gold-mobile (أمر المالك: «غيّر في الهواتف بعد»): الجوال وحده، بلا الثيمات، ألوان وخطوط لا مقاسات', () => {
+  const M = rd('css/إطارات-الجوال.css');
+  const body = M.replace(/\/\*[\s\S]*?\*\//g, '');
+  const sels = [...body.matchAll(/([^{}]+)\{[^{}]*\}/g)].map((x) => x[1].trim()).filter(Boolean);
+  assert.ok(sels.length > 15);
+  const top = (list) => { const out = []; let d = 0, cur = ''; for (const ch of list) { if (ch === '(') d++; if (ch === ')') d--; if (ch === ',' && !d) { out.push(cur.trim()); cur = ''; } else cur += ch; } out.push(cur.trim()); return out; };
+  for (const list of sels) for (const sel of top(list)) {
+    assert.ok(/^html(\.kb-open)?\.mobile-ui/.test(sel), 'قاعدة قد تمسّ الكمبيوتر: ' + sel);
+    assert.ok(/:not\(\.bgimg\):not\(\.skin\):not\(\.skin-wood\)/.test(sel), 'الثيمات كما هي: ' + sel);
+  }
+  // لا مقاس يتغيّر: لا padding/margin/width/height/font-size على شيء
+  assert.doesNotMatch(body.replace(/body::after\{[^}]*\}/, ''), /(^|[;{\s])(padding|margin|width|height|font-size|inset)\s*:/m);
+  assert.match(M, /--om-panel:linear-gradient\(#000,#000\)/);
+  assert.match(M, /html\.mobile-ui:not\(\[data-mode="light"\]\):not\(\.bgimg\):not\(\.skin\):not\(\.skin-wood\) #code\{ background:#000 !important; \}/);
+  assert.match(M, /html\.mobile-ui\[data-mode="light"\][^{]*\{[^}]*--bg:#f9f2e4 !important;/);
+  assert.match(M, /body::after\{[^}]*pointer-events:none;[^}]*bottom:calc\(48px \+ env\(safe-area-inset-bottom,0px\) \+ 3px\);[^}]*border-radius:22px;/);
+  assert.match(rd('css/redesign.css'), /html\.mobile-ui main\{padding-bottom:calc\(48px \+ env\(safe-area-inset-bottom, 0px\)\);\}/, 'الإطار فوق الشريط السفليّ بحجزه نفسه');
+  assert.match(M, /border-inline-end-width:1px !important;[^}]*border-start-end-radius:22px !important; border-end-end-radius:22px !important;/);
+  assert.match(M, /#sidebarBrand \.omStars\{ display:none !important; \}/);
+  const html = rd('index.html');
+  const a = html.indexOf('css/إطارات.css?v='), b = html.indexOf('css/إطارات-الجوال.css?v=');
+  assert.ok(a > 0 && b > a, 'بعد ملفّ الكمبيوتر');
 });
