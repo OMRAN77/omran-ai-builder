@@ -19,13 +19,13 @@ function webpSize(b) {
   return [0, 0];
 }
 
-test('١. ستّ صور 1280×720… بل 2:1 (1280×640): لكلّ أداة نظيفة ومكتوبة بالعربيّة', () => {
+test('١. ستّ صور 2:1 بعرض ١٩٢٠ (موضَّحة بـReal-ESRGAN من أصل ١٢٨٠ — «الصور مغبّشة»): لكلّ أداة نظيفة ومكتوبة بالعربيّة', () => {
   for (const t of ['decor', 'fashion', 'style']) for (const suf of ['', '-ar']) {
     const f = path.join(root, 'assets/upload-art/' + t + suf + '.webp');
     assert.ok(fs.existsSync(f), f);
     const [w, h] = webpSize(fs.readFileSync(f));
-    assert.deepEqual([w, h], [1280, 640], t + suf + ': ' + w + '×' + h);
-    assert.ok(fs.statSync(f).size < 260000, t + suf + ' أثقل من ٢٥٠ك');
+    assert.deepEqual([w, h], [1920, 960], t + suf + ': ' + w + '×' + h);
+    assert.ok(fs.statSync(f).size < 900000, t + suf + ' أثقل من ٩٠٠ك');
   }
 });
 

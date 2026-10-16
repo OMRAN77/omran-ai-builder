@@ -5,12 +5,12 @@
 .omUpArt{position:relative !important;display:block !important;aspect-ratio:2/1;height:auto !important;min-height:0 !important;padding:0 !important;margin-top:12px;
   border:1px solid rgba(212,175,55,.6) !important;border-radius:14px !important;overflow:hidden;cursor:pointer;
   background:#000 center/cover no-repeat !important;text-align:center;}
-.omUpDecor{--t:38%;--b:75%;background-image:url(/assets/upload-art/decor.webp?v=1) !important;}
-.omUpFashion{--t:25%;--b:81%;background-image:url(/assets/upload-art/fashion.webp?v=1) !important;}
-.omUpStyle{--t:47%;--b:83%;background-image:url(/assets/upload-art/style.webp?v=1) !important;}
-html[lang="ar"] .omUpDecor{background-image:url(/assets/upload-art/decor-ar.webp?v=1) !important;}
-html[lang="ar"] .omUpFashion{background-image:url(/assets/upload-art/fashion-ar.webp?v=1) !important;}
-html[lang="ar"] .omUpStyle{background-image:url(/assets/upload-art/style-ar.webp?v=1) !important;}
+.omUpDecor{--t:38%;--b:75%;background-image:url(/assets/upload-art/decor.webp?v=2) !important;}
+.omUpFashion{--t:25%;--b:81%;background-image:url(/assets/upload-art/fashion.webp?v=2) !important;}
+.omUpStyle{--t:47%;--b:83%;background-image:url(/assets/upload-art/style.webp?v=2) !important;}
+html[lang="ar"] .omUpDecor{background-image:url(/assets/upload-art/decor-ar.webp?v=2) !important;}
+html[lang="ar"] .omUpFashion{background-image:url(/assets/upload-art/fashion-ar.webp?v=2) !important;}
+html[lang="ar"] .omUpStyle{background-image:url(/assets/upload-art/style-ar.webp?v=2) !important;}
 .omUpArt .omUpIco,.omUpArt > svg{display:none !important;}
 .omUpArt .stSlotEmpty,.omUpArt .dzT{position:static !important;padding:0 !important;margin:0 !important;}
 .omUpArt .omUpT,.omUpArt .omUpH,.omUpArt .omUpB,.omUpArt .omUpN{position:absolute !important;left:6% !important;right:6% !important;margin:0 !important;text-align:center;line-height:1.3;}
