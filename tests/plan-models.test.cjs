@@ -175,3 +175,40 @@ test('chat.js: نداءا الاحتياط المجّانيّ للمشترك ك�
   assert.ok(s.includes('paid: !!(usage && usage.subscriber) /* v-plan-models'));
   assert.equal((s.match(/streamFreeChain\(\{/g) || []).length, (s.match(/paid: !/g) || []).length, 'كلّ نداء له العلامة');
 });
+
+test('مراجعة النقض: 413 (حدّ الدقيقة لموديل) مثل 429 عند Groq — يجرّب التالي في السلسلة والإكمال', async () => {
+  const TPM = '{"error":{"message":"Request too large for model `openai/gpt-oss-20b` on tokens per minute (TPM): Limit 8000, Requested 9100"}}';
+  fc.__workingModel.clear();
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    const b = JSON.parse(init.body); calls.push((/groq/.test(url) ? 'groq:' : 'gemini:') + b.model);
+    if (/groq/.test(url) && b.model === 'openai/gpt-oss-20b') return new Response(TPM, { status: 413 });
+    return new Response(sse(['هلا']), { status: 200 });
+  };
+  const r = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: () => {}, env: { GROQ_API_KEY: 'q', GEMINI_API_KEY: 'g' }, fetchImpl, log: () => {} });
+  assert.equal(r.provider, 'groq');
+  assert.deepEqual(calls, ['groq:openai/gpt-oss-20b', 'groq:openai/gpt-oss-120b']);
+  fc.__workingModel.clear();
+  const c2 = [];
+  const r2 = await fc.completeJson('groq', { env: { GROQ_API_KEY: 'q' }, messages: [{ role: 'user', content: 'x' }], fetchImpl: async (u, init) => { const b = JSON.parse(init.body); c2.push(b.model); return b.model === 'openai/gpt-oss-20b' ? new Response(TPM, { status: 413 }) : new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), { status: 200 }); } });
+  assert.equal(r2.ok, true); assert.deepEqual(c2, ['openai/gpt-oss-20b', 'openai/gpt-oss-120b']);
+  fc.__workingModel.clear();
+});
+
+test('مراجعة النقض: تغيير الاسم لا يصفّر مقياسَي Pro وMax، والمباشر لا يغيّر ترتيب المجّانيّ', () => {
+  const { MOVE_BUCKETS } = require('../api/_lib/_usage.js');
+  for (const [plan, r] of Object.entries(tier.PLAN_ROUTING)) for (const m of Object.keys(r.meters)) assert.ok(MOVE_BUCKETS.includes('plan-' + m), plan + ': plan-' + m + ' ينتقل مع الحساب');
+  const od = read('api/_lib/oa-direct.js');
+  assert.ok(od.includes("rememberWorking('groq-direct', model)") && !od.includes("rememberWorking('groq', model)"));
+});
+
+test('مراجعة النقض: Luna/Sol للمشترك بلا تفكير افتراضيّ إلّا الحساب، وموديل الباقة المرفوض عند الوسيط يكمل بمسارها لا بأحدث موديل لشركته', () => {
+  const s = read('api/_lib/chat.js');
+  assert.ok(s.includes("if (!__ownerReq && __direct && __direct.prov === 'openai' && !(__planRoute && __planRoute.job === 'math')) return { thinking: { type: 'disabled' } };"));
+  assert.ok(s.includes('!__liveTried && !__planRoute /* v-plan-models'));
+  // الإطفاء يصل /v1/responses سلّمًا (لا تفكير ولا ملخّص) لا حقلًا خامًا
+  const rb = OD.toResponsesBody({ model: 'gpt-6-luna', max_tokens: 350, thinking: { type: 'disabled' }, messages: [{ role: 'user', content: 'السلام عليكم' }] });
+  assert.ok(rb.reasoning && typeof rb.reasoning.effort === 'string' && rb.reasoning.effort, 'أدنى جهد يقبله الموديل');
+  assert.ok(!rb.reasoning.summary, 'بلا ملخّص تفكير');
+  assert.equal(rb.max_output_tokens, 350);
+});

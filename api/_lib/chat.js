@@ -1652,7 +1652,7 @@ module.exports = async (req, res) => {
       let __qfLast = {}; // v-owner-claude-all/gpt-all: حقول الجهد الأخيرة المرسَلة (للإعادة على 400 الجهد)
       const __quickFields = () => (__qfLast = __quickFor());
       const __quickFor = () => { if (__ownerReq && prov === 'openai' && body && body.effort && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __gf = require('./owner-think.js').gptEffortFields(CHAT_MODEL, body.effort, viaOR && !!__capCut); if (__gf) return __gf; } /* v-owner-gpt-all: جهد المالك لـGPT على المسارين (المباشر يترجمه oa-direct) */ if (__ownerReq && prov === 'claude' && !__direct && body && body.effort && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __ef = require('./owner-think.js').claudeEffortFields(CHAT_MODEL, body.effort, viaOR && !!__capCut); if (__ef) return __ef; } /* v-owner-claude-all: جهد المالك المختار من المنتقي يغلب التلقائيّ في كلّ دور، على المسارين — إلّا دور صورة بموديل CHAT_IMAGE_MODEL آخر (جهده لغير موديله = 400) */
-        if (__ownerLight && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __lf = require('./owner-think.js').lightEffortFields(prov, CHAT_MODEL, viaOR, __direct, viaOR && !!__capCut); if (__lf) return __lf; } /* v-owner-light: بعد جهد المنتقي — الردّ العاديّ low، والرفض (400) يُنسى ويُعاد بلاه */ if (__ownerReq && !__ownerThink && __direct) return __direct.prov === 'openai' ? { thinking: { type: 'disabled' } } : {};
+        if (__ownerLight && !(__imgCfg && __imgCfg.model !== CHAT_MODEL)) { const __lf = require('./owner-think.js').lightEffortFields(prov, CHAT_MODEL, viaOR, __direct, viaOR && !!__capCut); if (__lf) return __lf; } /* v-owner-light: بعد جهد المنتقي — الردّ العاديّ low، والرفض (400) يُنسى ويُعاد بلاه */ if (__ownerReq && !__ownerThink && __direct) return __direct.prov === 'openai' ? { thinking: { type: 'disabled' } } : {}; if (!__ownerReq && __direct && __direct.prov === 'openai' && !(__planRoute && __planRoute.job === 'math')) return { thinking: { type: 'disabled' } }; /* v-plan-models: Luna/Sol للمشترك بلا تفكير افتراضيّ (التحيّة بسقف ٣٥٠ كانت تُستهلك تفكيرًا فيفرغ الردّ، وكلفة) — الحساب يفكّر */
         if (__ownerReq && !__ownerThink && !viaOR && prov === 'claude') return require('./owner-think.js').claudeQuickFields(CHAT_MODEL);
         /* v-cohere-reasoning (لقطة المالك ٤ أكتوبر ٩:٤٣: «<EOS_TOKEN>» ثمّ «يبدو أن المستخدم يطلب…» في الردّ): Cohere Command A موديل تفكير؛ إطفاؤه بـthinking:disabled
            وreasoning.enabled=false يخرج تفكيره نصًّا في الردّ بدل كتلة تفكير منفصلة تتجاهلها الواجهة. فلا حقول إطفاء لـCohere (غير مجرَّب على المزوّد الحيّ). */
@@ -1726,7 +1726,7 @@ module.exports = async (req, res) => {
          عند الوسيط، والمنتقي يعرض القائمة الحيّة أصلًا. رفض الوسيط للافتراضيّ (404 أو نصّ «موديل غير موجود») = أحدث موديل بأدوات لشركته
          من القائمة الحيّة نفسها (provider-models.liveDefault)، إعادة واحدة بالطلب نفسه، سطر حالة للمالك، ويُذكر في الذاكرة الدافئة
          فلا تتكرّر جولة الـ404 (liveDefaultOf عند اختيار الافتراضيّ). المختار يدويًّا له v-claude-models أعلاه. */
-      if (!upstream.ok && viaOR && !__direct && !__pick.picked && !__liveTried && require('./provider-models.js').OR_VENDOR[prov]) {
+      if (!upstream.ok && viaOR && !__direct && !__pick.picked && !__liveTried && !__planRoute /* v-plan-models: موديل الباقة المرفوض يكمل بمسارها التالي لا بأحدث موديل لشركته */ && require('./provider-models.js').OR_VENDOR[prov]) {
         let __lt = '';
         try { __lt = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
         __liveTried = true;

@@ -661,7 +661,7 @@ async function directFetch(route, anthropicBody, opts) {
     for (let attempt = 0; attempt < 6; attempt++) {
       const r = await f(route.url, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(body) }, sig));
       if (r.ok && r.body) {
-        if (route.prov === 'groq') rememberWorking('groq', model);
+        if (route.prov === 'groq') rememberWorking('groq-direct', model); // v-plan-models: لا يغيّر ترتيب المجّانيّ (20b أوّلًا) — كان المباشر (120b) يقدّم موديله ستّ ساعات
         return { ok: true, status: r.status, model, text: async () => '', body: toAnthropicStream(r.body, model) };
       }
       const t = await r.text().catch(() => '');
