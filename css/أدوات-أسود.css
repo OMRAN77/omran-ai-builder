@@ -1,0 +1,39 @@
+/* v-tools-black (المالك ١٦ أكتوبر: «تغيّر الخلفيّات داخل الأدوات فقط — إذا مختار اللون الأسود يكونون كلّهم نفس درجة لون
+   المحادثة… كلّها لون واحد»): في الوضع الأسود وحده (لا الفاتح ولا الثيمات html.skin) خلفيّة كلّ نافذة أداة وصناديقها الكبيرة
+   أسود المحادثة نفسه (#000). البطاقات والصور والأزرار والحقول والحدود كما هي. استوديو الإعلانات صفحة مستقلّة بخلفيّة المجرّة
+   (تصميم المالك ٥ سبتمبر) فلا تُمسّ هنا. */
+
+/* ── النوافذ: كانت شفّافة تُظهر المحادثة خلفها أو رماديّة ── */
+html:not([data-mode="light"]):not(.skin) #portraitStyleSheet,
+html:not([data-mode="light"]):not(.skin) #portraitStyleFoot,
+html:not([data-mode="light"]):not(.skin) #inspireScreen,
+html:not([data-mode="light"]):not(.skin) #videoMakerModal,
+html:not([data-mode="light"]):not(.skin) #videoMakerModal .vmk-studio,
+html:not([data-mode="light"]):not(.skin) #stocksModal,
+html:not([data-mode="light"]):not(.skin) #expModal,
+html:not([data-mode="light"]):not(.skin) #expModal .expWrap,
+html:not([data-mode="light"]):not(.skin) #eduHubModal,
+html:not([data-mode="light"]):not(.skin) #eduHubModal .eduWrap,
+html:not([data-mode="light"]):not(.skin) #omranEduModal,
+html:not([data-mode="light"]):not(.skin) #cvModal,
+html:not([data-mode="light"]):not(.skin) #docModal,
+html:not([data-mode="light"]):not(.skin) .xmWrap,
+html:not([data-mode="light"]):not(.skin) #fbOverlay,
+html:not([data-mode="light"]):not(.skin) #fbInner{background:#000 !important;}
+
+/* ── الصناديق الكبيرة داخلها: كانت رماديّة أو بمسحة ذهبيّة أو تدرّج — شفّافة فوق الأسود (الحدود باقية) ── */
+html:not([data-mode="light"]):not(.skin) #vmkTabs,
+html:not([data-mode="light"]):not(.skin) #vtRoot,
+html:not([data-mode="light"]):not(.skin) #designAiIdeas,
+html:not([data-mode="light"]):not(.skin) #fashionAiDropZone,
+html:not([data-mode="light"]):not(.skin) #fxCustomBar,
+html:not([data-mode="light"]):not(.skin) #studioAiModal .stSlot,
+html:not([data-mode="light"]):not(.skin) #expModal .expHead,
+html:not([data-mode="light"]):not(.skin) #expDrop,
+html:not([data-mode="light"]):not(.skin) #eduHubModal .eduHead,
+html:not([data-mode="light"]):not(.skin) .xmHead,
+html:not([data-mode="light"]):not(.skin) #docDrop,
+html:not([data-mode="light"]):not(.skin) #constructionModal .cx-head,
+html:not([data-mode="light"]):not(.skin) #cxBrief,
+html:not([data-mode="light"]):not(.skin) #cxStart,
+html:not([data-mode="light"]):not(.skin) #cxIdeas{background:transparent !important;}
