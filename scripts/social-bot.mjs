@@ -228,6 +228,39 @@ export function siteProblem(code, min = 5000) {
   return bad ? 'generated site mentions «' + (bad[1] || bad[2]) + '»' : '';
 }
 
+// تشخيص الموقع الهزيل: ما الذي أجاب فعلًا؟ ملخّص بثّ المحادثة (data: {…}) بلا نصّ الردّ نفسه —
+// عدد الحروف، وأنواع الأحداث، وسطور الحالة/الخطأ/الطبقة التي يرسلها الخادم.
+export function sseSummary(text) {
+  const s = { chars: 0, events: {}, notes: [] };
+  const t = String(text || '').trim();
+  const note = (k, v) => { if (s.notes.length < 8) s.notes.push(k + ': ' + String(typeof v === 'object' ? JSON.stringify(v) : v).slice(0, 160)); };
+  if (t[0] === '{') { // ردّ JSON عاديّ (مسار المزوّد القديم)
+    try { const j = JSON.parse(t); Object.keys(j).forEach((k) => { s.events[k] = 1; }); s.chars = String(j.reply || j.text || j.content || '').length; if (j.error) note('error', j.error); } catch (e) { note('parse', 'bad json'); }
+    return s;
+  }
+  for (const line of t.split('\n')) {
+    const m = /^data:\s*(\{.*\})\s*$/.exec(line.trim()); if (!m) continue;
+    let ev; try { ev = JSON.parse(m[1]); } catch (e) { continue; }
+    for (const k of Object.keys(ev)) s.events[k] = (s.events[k] || 0) + 1;
+    if (typeof ev.delta === 'string') s.chars += ev.delta.length;
+    for (const k of ['status', 'error', 'tier', 'tierDiag', 'modelLabel', 'limit']) if (ev[k] !== undefined && ev[k] !== null && ev[k] !== '') note(k, ev[k]);
+  }
+  return s;
+}
+// سطر واحد للملخّص: المسار (tools = مسار الخادم، fallback = المسار القديم بعد فشله) والمزوّد وطول الردّ،
+// ونداءات /api/ai بحالتها، وسطور «… يكتب…» التي ظهرت للمستخدم.
+export function diagLine(d) {
+  if (!d) return 'no diag';
+  const t = d.turn || {};
+  const parts = ['path=' + (t.path || '?') + ' provider=' + (t.provider || '?') + ' reply=' + (t.replyLen ?? '?')];
+  if (t.toolsErr) parts.push('toolsErr=' + String(t.toolsErr).slice(0, 100));
+  if (t.err) parts.push('err=' + String(t.err).slice(0, 100));
+  const calls = (d.calls || []).filter((c) => c.action !== 'models');
+  if (calls.length) parts.push('calls ' + calls.map((c) => (c.action || '?') + ' ' + c.status + (c.chars !== undefined ? ' ' + c.chars + 'ch' : '') + (c.notes && c.notes.length ? ' [' + c.notes.join(' | ') + ']' : '')).join(', '));
+  if (d.statuses && d.statuses.length) parts.push('status: ' + d.statuses.join(' | '));
+  return parts.join(' · ').slice(0, 900);
+}
+
 export function validTrendIdea(j) {
   if (!j || typeof j !== 'object') return null;
   const name = String(j.name || '').trim(), prompt = String(j.prompt || '').trim(), label = String(j.label || '').trim();
@@ -516,6 +549,14 @@ async function capture(browser, acct, idea, dir) {
   await page.waitForTimeout(500);
   const sb = await page.locator('#btnSend').boundingBox().catch(() => null);
   m.tap = sb ? { x: (sb.x + sb.width / 2) * DPR, y: (sb.y + sb.height / 2) * DPR } : null;
+  // تشخيص: نداءات /api/ai وحالتها وملخّص بثّها، وسطور الحالة الظاهرة — لمعرفة من أجاب حين يطلع الموقع هزيلًا.
+  const calls = [], statuses = new Set();
+  page.on('response', (r) => {
+    const u = r.url(); if (!/\/api\/ai\b/.test(u)) return;
+    const c = { action: (/[?&]action=([\w-]+)/.exec(u) || [])[1] || '', status: r.status() };
+    calls.push(c);
+    c.p = r.text().then((t) => Object.assign(c, sseSummary(t))).catch((e) => { c.bodyErr = String((e && e.message) || e).slice(0, 80); });
+  });
   m.send = now();
   await page.locator('#btnSend').tap().catch(() => page.locator('#btnSend').click());
   rec.seg('B');
@@ -526,13 +567,18 @@ async function capture(browser, acct, idea, dir) {
     await page.waitForTimeout(500);
     const st = await page.evaluate(() => {
       const f = document.getElementById('previewFrame'); const b = document.getElementById('btnSend');
-      return { len: f ? (f.srcdoc || '').length : 0, busy: !!(b && b.disabled) };
+      const ss = [...document.querySelectorAll('.chat-status-text, .chat-status-row')].map((e) => (e.textContent || '').trim()).filter(Boolean).slice(-6);
+      return { len: f ? (f.srcdoc || '').length : 0, busy: !!(b && b.disabled), ss };
     });
+    for (const x of st.ss) if (statuses.size < 12) statuses.add(x.slice(0, 80));
     if (st.len !== lastLen) { lastLen = st.len; lastChange = now(); }
     if (lastLen > 1200 && !st.busy && now() - lastChange > 4) { doneAt = lastChange; break; }
   }
   if (!doneAt) throw new Error('build did not finish (len=' + lastLen + ')');
   await page.waitForTimeout(1600);
+  const turn = await page.evaluate(() => window.__diagTurn || null).catch(() => null);
+  await Promise.race([Promise.all(calls.map((c) => c.p)), new Promise((r) => setTimeout(r, 8000))]);
+  const diag = { turn, statuses: [...statuses], calls: calls.map(({ p, ...c }) => c) };
   m.b1 = now();
   m.secs = Math.max(1, Math.round(doneAt - m.send));
   await rec.stop();
@@ -554,7 +600,8 @@ async function capture(browser, acct, idea, dir) {
   await sp.close(); await sctx.close();
   fs.writeFileSync(path.join(dir, '..', 'site.html'), code);
   log('captured frames=' + frames.length + ' build=' + m.secs + 's code=' + code.length + 'ch site=' + VW + 'x' + capH);
-  return { frames, m, sitePng, siteH: Math.round(capH * DPR), codeLen: code.length, code };
+  log('diag ' + diagLine(diag));
+  return { frames, m, sitePng, siteH: Math.round(capH * DPR), codeLen: code.length, code, diag };
 }
 
 // ───────── 🎬 تصوير فيديو الترند: صانع الفيديو الحقيقيّ في التطبيق ─────────
@@ -1187,7 +1234,7 @@ async function main() {
         for (const c of browser.contexts()) await c.close().catch(() => {});
       }
     }
-  } finally { await browser.close(); }
+  } finally { await browser.close(); saveWeak(); }
   if (!out) throw lastErr || new Error('no episode made');
   fs.rmSync(fr, { recursive: true, force: true });
   fs.writeFileSync(path.join(OUT, 'caption.txt'), out.caption.ig + '\n');
@@ -1201,6 +1248,17 @@ async function main() {
   log('published ✓ ' + JSON.stringify(per));
   gh('notice', 'published ✓ ' + ep.short + ' · ' + out.note + ' · ' + (per.length ? per.map((x) => x.platform + (x.ok ? ' ✓' : ' ✗ ' + x.error) + (x.inbox ? ' (inbox)' : '')).join(' · ') : platforms.join(',')));
   for (const x of per) if (x.url) gh('notice', x.platform + ': ' + x.url);
+}
+
+// المواقع الهزيلة تُحفظ في ملفّ التحميل (social-out/weak/) مع تشخيصها، ولو نُشر نوع آخر بدلها.
+const WEAK = [];
+function saveWeak() {
+  if (!WEAK.length) return;
+  const dir = path.join(OUT, 'weak'); fs.mkdirSync(dir, { recursive: true });
+  WEAK.forEach((w, i) => {
+    fs.writeFileSync(path.join(dir, 'site-' + (i + 1) + '.html'), w.code || '');
+    fs.writeFileSync(path.join(dir, 'diag-' + (i + 1) + '.json'), JSON.stringify({ name: w.name, prompt: w.prompt, why: w.why, len: (w.code || '').length, ...w.diag }, null, 2));
+  });
 }
 
 // 🌐 حلقة موقع: فكرة من ترند اليوم (وإلّا القائمة)، وإذا طلع الموقع هزيل نعيد مرّة بفكرة ثانية.
@@ -1223,7 +1281,12 @@ async function makeSite(browser, acct, epN, st, ideas, fr, fixedIdea) {
     fs.rmSync(fr, { recursive: true, force: true }); fs.mkdirSync(fr, { recursive: true });
     const cap = await capture(browser, acct, idea, fr);
     why = siteProblem(cap.code, MIN_CODE);
-    if (why && !weakOK) { log('quality gate: ' + why + ' — ' + (attempt ? 'giving up' : 'one more try')); avoid.push(idea.name); continue; }
+    if (why && !weakOK) {
+      log('quality gate: ' + why + ' — ' + (attempt ? 'giving up' : 'one more try'));
+      gh('warning', 'weak site «' + idea.name + '»: ' + why + ' · ' + diagLine(cap.diag));
+      WEAK.push({ name: idea.name, prompt: idea.prompt, why, code: cap.code, diag: cap.diag });
+      avoid.push(idea.name); continue;
+    }
     const res = await compose(browser, cap, idea, OUT, epN);
     res.secs = cap.m.secs;
     return {

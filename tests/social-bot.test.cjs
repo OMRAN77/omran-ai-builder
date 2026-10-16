@@ -242,3 +242,20 @@ test('١٧) الدور يمشي من نوع آخر حلقة منشورة: الح
   assert.deepEqual(platformResults(null), []);
   assert.match(src, /kindOrder\(epN, st\.lastKind\)/);
 });
+
+test('١٨) تشخيص الموقع الهزيل: من أجاب ومسار الردّ وسطور الحالة — يُحفظ في weak/ وينكتب تحذيرًا', async () => {
+  const { sseSummary, diagLine } = await load();
+  const sse = 'data: {"delta":"<html>"}\n\ndata: {"status":"⚠️ x"}\n\ndata: {"delta":"abc"}\n\ndata: {"tierDiag":["groq 429"]}\n\ndata: {"done":true}\n\n';
+  const s = sseSummary(sse);
+  assert.equal(s.chars, 9);
+  assert.deepEqual(s.events, { delta: 2, status: 1, tierDiag: 1, done: 1 });
+  assert.deepEqual(s.notes, ['status: ⚠️ x', 'tierDiag: ["groq 429"]']);
+  assert.deepEqual(sseSummary('{"reply":"hello","error":"no key"}'), { chars: 5, events: { reply: 1, error: 1 }, notes: ['error: no key'] });
+  assert.equal(sseSummary('').chars, 0);
+  const line = diagLine({ turn: { path: 'fallback', provider: 'deepseek', replyLen: 2400, toolsErr: 'Error: chat upstream 402' }, statuses: ['الكينج يكتب…'], calls: [{ action: 'models', status: 200 }, { action: 'chat', status: 200, chars: 0, notes: ['error: chat upstream 402'] }, { action: 'deepseek', status: 200, chars: 2400, notes: [] }] });
+  assert.equal(line, 'path=fallback provider=deepseek reply=2400 · toolsErr=Error: chat upstream 402 · calls chat 200 0ch [error: chat upstream 402], deepseek 200 2400ch · status: الكينج يكتب…');
+  assert.equal(diagLine(null), 'no diag');
+  assert.match(src, /gh\('warning', 'weak site «'/);
+  assert.match(src, /finally \{ await browser\.close\(\); saveWeak\(\); \}/);
+  assert.match(src, /window\.__diagTurn/);
+});
