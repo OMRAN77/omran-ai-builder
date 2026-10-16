@@ -412,7 +412,7 @@ var modal=document.getElementById('eduHubModal');
 var body=document.getElementById('eduBody');
 var backBtn=document.getElementById('eduBackBtn');
 var navStack=[];
-var eduUploadMeta=null; /* v-edu-upform: بيانات نموذج الرفع إلى processContent — تُستهلك مرّة وتُفرَّغ */
+var eduUpCloseFn=null; /* v-edu-upform: إغلاق بطاقة الرفع المفتوحة — يناديه closeModal وshowHome والسحب للرجوع */
 function setBack(show){ backBtn.style.display=show?'':'none'; }
 function openModal(){
   modal.classList.add('open');
@@ -420,14 +420,16 @@ function openModal(){
   document.getElementById('eduTitleTxt').textContent=T('title');
   renderStreak(); showHome();
 }
-function closeModal(){ modal.classList.remove('open'); navStack=[]; }
+function closeModal(){ if(eduUpCloseFn) eduUpCloseFn(); modal.classList.remove('open'); navStack=[]; }
+/* v-edu-upform (مراجعة): السحب للرجوع يغلق بطاقة الرفع أوّلًا لا التعليم كلّه (نمط ptOverlay في app-10) */
+(function(){ var prev=modal.__omranSwipeBackStep; modal.__omranSwipeBackStep=function(){ if(eduUpCloseFn){ eduUpCloseFn(); return true; } return typeof prev==='function'?prev():false; }; })();
 document.getElementById('eduCloseBtn').onclick=closeModal;
 backBtn.onclick=function(){ var fn=navStack.pop(); if(fn) fn(); else showHome(); };
 modal.addEventListener('click',function(e){ if(e.target===modal) closeModal(); });
 /* ---------- HOME ---------- */
 function subjectColor(subjects,name){ var i=subjects.indexOf(name); return PALETTE[(i>=0?i:subjects.length)%PALETTE.length]; }
 function showHome(){
-  setBack(false); navStack=[]; eduUploadMeta=null; /* v-edu-upform: لا تبقى بيانات نموذج قديم لعمليّة لاحقة (لصق، منهج) */
+  setBack(false); navStack=[]; if(eduUpCloseFn) eduUpCloseFn(); /* v-edu-upform: لا تبقى بطاقة رفع معلّقة فوق شاشة جديدة */
   body.innerHTML=''
    +'<button class="eduUploadBtn" id="eduUploadBtn">'
    +'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>'
@@ -945,6 +947,7 @@ function eduUpCss(){
    +'#eduHubModal .eduUpList .eduUpRow{margin:0;border:none;border-radius:0;border-bottom:1px solid rgba(255,255,255,.08);gap:12px;}'
    +'#eduHubModal .eduUpList .eduUpRow:last-child{border-bottom:none;}'
    +'#eduHubModal .eduUpRow svg{flex:0 0 auto;opacity:.75;}'
+   +'#eduHubModal .eduUpRow .eduLessonTitle{overflow-wrap:anywhere;}'
    +'html[data-mode="light"] #eduHubModal .eduUpOv{background:rgba(0,0,0,.12);}'
    +'html[data-mode="light"] #eduHubModal .eduUpCard{background:#ffffff;color:var(--text);border-color:rgba(0,0,0,.08);box-shadow:0 18px 50px rgba(0,0,0,.18);}'
    +'html[data-mode="light"] #eduHubModal .eduUpFld{border-color:rgba(0,0,0,.2);}'
@@ -963,7 +966,7 @@ function eduUpTypeOk(files){
 }
 function showUploadForm(){
   eduUpCss();
-  var old=document.getElementById('eduUpOv'); if(old) old.remove();
+  if(eduUpCloseFn) eduUpCloseFn(); var old=document.getElementById('eduUpOv'); if(old) old.remove();
   var ov=document.createElement('div'); ov.className='eduUpOv'; ov.id='eduUpOv';
   ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true'); ov.setAttribute('aria-label',T('upload'));
   ov.setAttribute('dir',isRTL()?'rtl':'ltr');
@@ -990,14 +993,18 @@ function showUploadForm(){
   try{ var ub=document.getElementById('eduUploadBtn'), ob=ov.getBoundingClientRect(); if(ub){ var ubr=ub.getBoundingClientRect(); if(ubr.bottom>0&&ubr.bottom<window.innerHeight*0.6) ov.style.paddingTop=Math.round(ubr.bottom-ob.top+10)+'px'; } }catch(e){ __swallow(e,'edu:upform-pos'); }
   var picked=[];
   var $=function(id){ return document.getElementById(id); };
-  function close(){ document.removeEventListener('keydown',onKey,true); if(ov.parentNode) ov.parentNode.removeChild(ov); }
-  function onKey(e){ if(e.key==='Escape'){ e.stopPropagation(); close(); } }
+  function close(){ document.removeEventListener('keydown',onKey,true); if(ov.parentNode) ov.parentNode.removeChild(ov); if(eduUpCloseFn===close) eduUpCloseFn=null; }
+  function onKey(e){ if(e.key==='Escape'&&ov.parentNode){ e.stopPropagation(); close(); } }
   document.addEventListener('keydown',onKey,true);
-  ov.addEventListener('click',function(e){ if(e.target===ov) close(); });
+  eduUpCloseFn=close;
+  /* الخلفيّة تغلق فقط حين يبدأ الضغط عليها وينتهي (لا سحب تحديد نصّ إلى خارج البطاقة، ولا النقرة الثانية من نقرتين على الزرّ) */
+  var downOnOv=false;
+  ov.addEventListener('pointerdown',function(e){ downOnOv=(e.target===ov); });
+  ov.addEventListener('click',function(e){ if(e.target===ov&&downOnOv&&!(e.detail>1)) close(); });
   function setFiles(list){
     picked=Array.prototype.slice.call(list||[]);
     var names=picked.map(function(f){ return f.name||''; });
-    $('eduUpFiles').textContent=names.length?(names.slice(0,3).join('، ')+(names.length>3?' +'+(names.length-3):'')):T('uploadSub');
+    $('eduUpFiles').textContent=names.length?(names.slice(0,3).join(isRTL()?'، ':', ')+(names.length>3?' +'+(names.length-3):'')):T('uploadSub');
     $('eduUpDrop').classList.remove('bad');
   }
   $('eduUpPick').onclick=function(){ $('eduUpInput').click(); };
@@ -1007,6 +1014,9 @@ function showUploadForm(){
   drop.addEventListener('dragover',function(e){ e.preventDefault(); drop.classList.add('drag'); });
   drop.addEventListener('dragleave',function(){ drop.classList.remove('drag'); });
   drop.addEventListener('drop',function(e){ e.preventDefault(); drop.classList.remove('drag'); var fl=e.dataTransfer&&e.dataTransfer.files; if(fl&&fl.length) setFiles(Array.prototype.slice.call(fl)); });
+  /* إفلات على أيّ مكان من البطاقة أو خلفيّتها يذهب للنموذج — وإلّا التقطه مُفلِت المحادثة العامّ (app-09) فصار مرفقًا مخفيًّا للرسالة التالية */
+  ov.addEventListener('dragover',function(e){ e.preventDefault(); });
+  ov.addEventListener('drop',function(e){ if(e.defaultPrevented) return; e.preventDefault(); var fl=e.dataTransfer&&e.dataTransfer.files; if(fl&&fl.length) setFiles(Array.prototype.slice.call(fl)); });
   listLessons().then(function(r){
     var seen={}, opts='';
     (r.lessons||[]).forEach(function(l){ var s=l&&l.subject; if(s&&!seen[s]){ seen[s]=1; opts+='<option value="'+esc(s)+'">'; } });
@@ -1023,9 +1033,9 @@ function showUploadForm(){
     var allImg=picked.every(function(f){ return /^image\//.test(f.type||''); });
     var total=picked.reduce(function(a,f){ return a+(f.size||0); },0);
     if(!allImg&&total>10*1024*1024){ drop.classList.add('bad'); err.textContent=T('tooBig'); err.style.display='block'; return; }
-    eduUploadMeta={ title:name, subject:subj, term:term, note:desc, fileName:(picked[0]&&picked[0].name)||'', src:'upload' };
+    var meta={ title:name, subject:subj, term:term, note:desc, fileName:(picked[0]&&picked[0].name)||'', src:'upload' };
     close();
-    handleFiles(picked);
+    handleFiles(picked,meta);
   };
   setTimeout(function(){ try{ $('eduUpName').focus(); }catch(e){ /* guard-ok — التركيز ترف؛ النموذج يعمل بدونه */ } },30);
 }
@@ -1050,9 +1060,10 @@ function renderUploads(lessons){
     };
   });
 }
-function processContent(payload,__act){
-  /* v-edu-upform: ما كتبه الطالب في النموذج (اسم، موضوع، فصل، وصف) — للتحليل وحده لا لـ«ألّف لي الدرس»، ويُفرَّغ هنا مرّة */
-  var meta=(!__act&&eduUploadMeta)||null; eduUploadMeta=null;
+function processContent(payload,__act,__meta){
+  /* v-edu-upform: ما كتبه الطالب في النموذج (اسم، موضوع، فصل، وصف) يُمرَّر مع الرفع نفسه — لا متغيّرًا عامًّا يمسحه فتح التعليم
+     من جديد أثناء تجهيز الملفّ (مراجعة عدائيّة). للتحليل وحده لا لـ«ألّف لي الدرس». */
+  var meta=(!__act&&__meta)||null;
   var upInfo=meta?{upTitle:meta.title,upSubject:meta.subject,note:meta.note}:{};
   showBusy();
   api(Object.assign({action:__act||'process',nativeLang:eduNativeLang(),examLang:eduExamLang()},payload,upInfo)).then(function(j){
@@ -1088,7 +1099,7 @@ function fileToBase64(file){
     r.readAsDataURL(file);
   });
 }
-function handleFiles(files){
+function handleFiles(files,meta){ /* v-edu-upform: meta = بيانات نموذج الرفع، تمرّ مع كلّ فرع حتّى processContent */
   files=Array.prototype.slice.call(files||[]);
   if(!files.length) return;
   var total=files.reduce(function(a,f){return a+f.size;},0);
@@ -1097,12 +1108,12 @@ function handleFiles(files){
   if(!allImg&&total>10*1024*1024){ alert(T('tooBig')); return; }
   var f0=files[0];
   var name=(f0.name||'').toLowerCase();
-  if(/\.docx$/.test(name)){ handleDocx(f0); return; }
+  if(/\.docx$/.test(name)){ handleDocx(f0,meta); return; }
   // v412: الأرشيف كان يسقط في «حدث خطأ» بلا دلالة — الآن يُفكّ ويُستخرج نصّه هنا.
-  if(/\.(zip|jar)$/.test(name)){ handleArchive(f0); return; }
+  if(/\.(zip|jar)$/.test(name)){ handleArchive(f0,meta); return; }
   if(/pdf/.test(f0.type)||/\.pdf$/.test(name)){
     showBusy();
-    eduPdfPayload(f0).then(function(pl){ pl.lang=appLang(); processContent(pl); })
+    eduPdfPayload(f0).then(function(pl){ pl.lang=appLang(); processContent(pl,'',meta); })
       .catch(function(e){ alert(e.message||T('err')); showHome(); });
     return;
   }
@@ -1117,14 +1128,14 @@ function handleFiles(files){
   }
   showBusy();
   eduImagesForUpload(imgs)
-    .then(function(arr){ processContent({images:arr,lang:appLang()}); })
+    .then(function(arr){ processContent({images:arr,lang:appLang()},'',meta); })
     .catch(function(e){ alert(e.message||T('err')); showHome(); });
 }
 // بعض نسخ الواجهة القديمة كانت تستدعي الدالة من معالج HTML عام. إبقاء هذا
 // الاسم متاحًا يمنع ReferenceError عند تداخل كاش الـPWA أثناء التحديث.
 window.handleFiles=handleFiles;
 /* v412: فكّ الأرشيف داخل المتصفح واستخراج نصّه للتحليل التعليمي */
-function handleArchive(file){
+function handleArchive(file,meta){
   showBusy();
   function fail(msg){
     body.innerHTML='<div class="eduCenter"><p style="font-size: var(--fs-3);line-height:1.9">'+esc(msg)+'</p>'+
@@ -1145,7 +1156,7 @@ function handleArchive(file){
       })
       .then(function(txt){
         if(!txt.trim()) throw new Error(eduL('الأرشيف فارغ من النصوص.','The archive contains no text.'));
-        processContent({text:txt,lang:appLang()});
+        processContent({text:txt,lang:appLang()},'',meta);
       })
       .catch(function(e){ fail(e.message||eduL('تعذّر فتح الأرشيف.','Could not open the archive.')); });
   }
@@ -1157,7 +1168,7 @@ function handleArchive(file){
     document.head.appendChild(sc);
   }
 }
-function handleDocx(file){
+function handleDocx(file,meta){
   showBusy();
   function fail(){ body.innerHTML='<div class="eduCenter"><p style="font-size: var(--fs-3);">'+esc(T('docxFail'))+'</p><button class="eduPrimary" id="eduErrBack">OK</button></div>'; document.getElementById('eduErrBack').onclick=showHome; setBack(true); navStack=[showHome]; }
   function run(){
@@ -1166,7 +1177,7 @@ function handleDocx(file){
       .then(function(xml){
         var text=xml.replace(/<w:p[ >]/g,'\n<w:p ').replace(/<[^>]+>/g,' ').replace(/[ \t]+/g,' ').replace(/\n\s*/g,'\n').trim();
         if(!text||text.length<20) throw new Error('empty');
-        processContent({text:text.slice(0,180000),lang:appLang()});
+        processContent({text:text.slice(0,180000),lang:appLang()},'',meta);
       }).catch(fail);
   }
   if(window.JSZip){ run(); return; }

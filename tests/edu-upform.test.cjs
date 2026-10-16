@@ -128,11 +128,11 @@ function varSrc(name) {
   return found;
 }
 
-test('٣. processContent: بيانات النموذج تسمّي الدرس ومادّته (لا تخمين النموذج)، وتُحفظ معه، وتصل التحليل، ثمّ تُفرَّغ؛ و«ألّف لي الدرس» لا يأخذها', async () => {
+test('٣. processContent: بيانات النموذج (تمرّ مع الرفع نفسه) تسمّي الدرس ومادّته لا تخمين النموذج، وتُحفظ معه، وتصل التحليل؛ واللصق و«ألّف لي الدرس» بلاها', async () => {
   const sent = [], persisted = [];
   const sb = {
     console, Promise, JSON, Object, Date, Math, String,
-    PALETTE: ['#a', '#b'], eduUploadMeta: null,
+    PALETTE: ['#a', '#b'],
     showBusy() {}, eduNativeLang: () => 'ar', eduExamLang: () => '', eduL: (a) => a, T: (k) => k, esc: (s) => s,
     api: async (p) => { sent.push(p); return { lesson: { title: 'عنوان النموذج', subject: 'مادّة النموذج', summary: 'ملخّص', flashcards: [], quiz: [], written: [] } }; },
     listLessons: async () => ({ lessons: [] }),
@@ -142,8 +142,8 @@ test('٣. processContent: بيانات النموذج تسمّي الدرس وم
   };
   vm.createContext(sb);
   vm.runInContext(fnSrc('processContent') + ';this.pc=processContent;', sb);
-  sb.eduUploadMeta = { title: 'مقدمة في الجبر', subject: 'رياضيات', term: 't1', note: 'ركّز على المعادلات', fileName: 'lec.png', src: 'upload' };
-  sb.pc({ images: [{ base64: 'QQ==', mime: 'image/png' }], lang: 'ar' });
+  const META = { title: 'مقدمة في الجبر', subject: 'رياضيات', term: 't1', note: 'ركّز على المعادلات', fileName: 'lec.png', src: 'upload' };
+  sb.pc({ images: [{ base64: 'QQ==', mime: 'image/png' }], lang: 'ar' }, '', META);
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(sent[0].action, 'process');
   assert.equal(sent[0].upTitle, 'مقدمة في الجبر'); assert.equal(sent[0].upSubject, 'رياضيات'); assert.equal(sent[0].note, 'ركّز على المعادلات');
@@ -151,16 +151,47 @@ test('٣. processContent: بيانات النموذج تسمّي الدرس وم
   assert.equal(L.title, 'مقدمة في الجبر', 'اسم الطالب لا عنوان النموذج');
   assert.equal(L.subject, 'رياضيات', 'مادّة الطالب لا تخمين النموذج');
   assert.deepEqual([L.src, L.term, L.note, L.fileName], ['upload', 't1', 'ركّز على المعادلات', 'lec.png']);
-  assert.equal(sb.eduUploadMeta, null, 'تُستهلك مرّة');
   sb.pc({ text: 'نصّ ملصوق', lang: 'ar' });
   await new Promise((r) => setTimeout(r, 20));
-  assert.equal(persisted[1].title, 'عنوان النموذج', 'اللصق بعده بلا بيانات قديمة');
+  assert.equal(persisted[1].title, 'عنوان النموذج', 'اللصق بلا بيانات نموذج');
   assert.ok(!('src' in persisted[1]) && !('upTitle' in sent[1]));
-  sb.eduUploadMeta = { title: 'x', subject: 'y', src: 'upload' };
-  sb.pc({ subject: 'رياضيات', lesson: 'المعادلات' }, 'explain');
+  sb.pc({ subject: 'رياضيات', lesson: 'المعادلات' }, 'explain', META);
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(sent[2].action, 'explain'); assert.ok(!('upTitle' in sent[2]), '«ألّف لي الدرس» لا يأخذ بيانات النموذج');
-  assert.equal(sb.eduUploadMeta, null, 'وتُفرَّغ فلا تتسرّب');
+  assert.ok(!/eduUploadMeta/.test(EDU), 'لا متغيّر عامّ يمسحه فتح التعليم أثناء التجهيز');
+});
+
+test('٣ب. handleFiles: بيانات النموذج تمرّ في كلّ فرع (PDF، صور، DOCX، أرشيف) حتّى processContent', async () => {
+  const got = [];
+  const sb = {
+    Array, Promise, alert() {}, T: (k) => k, eduL: (a) => a, appLang: () => 'ar', showBusy() {}, showHome() {},
+    eduPdfPayload: async () => ({ fileBase64: 'QQ==', mime: 'application/pdf' }),
+    eduImagesForUpload: async (imgs) => imgs.map(() => ({ base64: 'QQ==', mime: 'image/jpeg' })),
+    processContent: (p, a, m) => got.push(['pc', a, m]),
+    handleDocx: (f, m) => got.push(['docx', m]), handleArchive: (f, m) => got.push(['zip', m]),
+    window: {},
+  };
+  vm.createContext(sb);
+  vm.runInContext(fnSrc('handleFiles') + ';this.hf=handleFiles;', sb);
+  const M = { title: 't', src: 'upload' };
+  sb.hf([{ name: 'a.pdf', type: 'application/pdf', size: 10 }], M);
+  sb.hf([{ name: 'p.png', type: 'image/png', size: 10 }], M);
+  sb.hf([{ name: 'a.docx', type: '', size: 10 }], M);
+  sb.hf([{ name: 'a.zip', type: '', size: 10 }], M);
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(got.length, 4);
+  assert.ok(got.every((g) => g[g.length - 1] === M), JSON.stringify(got.map((g) => g[0])));
+});
+
+test('٣ج. البطاقة تُغلق مع التعليم ومع شاشة جديدة، والسحب للرجوع يغلقها هي أوّلًا، والخلفيّة لا تُغلق بنقرتين أو سحب تحديد، والإفلات على البطاقة كلّها', () => {
+  assert.ok(fnSrc('closeModal').includes('if(eduUpCloseFn) eduUpCloseFn();'), 'إغلاق التعليم يغلق البطاقة ومستمع Escape');
+  assert.ok(fnSrc('showHome').includes('if(eduUpCloseFn) eduUpCloseFn();'), 'فتح التعليم من جديد لا يُظهر بطاقة قديمة');
+  assert.ok(EDU.includes('modal.__omranSwipeBackStep=function(){ if(eduUpCloseFn){ eduUpCloseFn(); return true; }'), 'السحب: البطاقة أوّلًا');
+  const form = fnSrc('showUploadForm');
+  assert.ok(form.includes("ov.addEventListener('pointerdown',function(e){ downOnOv=(e.target===ov); });") && form.includes('e.target===ov&&downOnOv&&!(e.detail>1)'), 'الخلفيّة');
+  assert.ok(form.includes("ov.addEventListener('drop',function(e){ if(e.defaultPrevented) return; e.preventDefault();"), 'الإفلات خارج المربّع المنقّط');
+  assert.ok(form.includes("if(eduUpCloseFn===close) eduUpCloseFn=null;") && form.includes("if(e.key==='Escape'&&ov.parentNode)"), 'لا مستمع يبتلع Escape بعد الإغلاق');
+  assert.ok(form.includes("join(isRTL()?'، ':', ')"), 'فاصلة اللغة');
 });
 
 test('٤. «محاضراتك المرفوعة»: المرفوعة من النموذج وحدها، بتاريخ رفعها yyyy/mm/dd وفصلها، والضغط يفتح الدرس؛ وبلا مرفوعة لا قسم', () => {
@@ -199,7 +230,7 @@ test('٦. الزرّ يفتح النموذج، والحقول بترتيب ال�
   const order = ["id=\"eduUpName\"", "id=\"eduUpSubject\"", "id=\"eduUpTerm\"", "id=\"eduUpDrop\"", "id=\"eduUpDesc\"", "id=\"eduUpSave\""].map((x) => form.indexOf(x));
   assert.ok(order.every((i, k) => i > 0 && (k === 0 || i > order[k - 1])), 'الاسم ← الموضوع ← الفصل ← الملفّ ← الوصف ← حفظ ورفع: ' + order);
   assert.ok(form.includes("drop.addEventListener('drop'") && form.includes('dataTransfer'), 'السحب والإفلات');
-  assert.ok(form.includes('handleFiles(picked)'), 'المسار القائم نفسه');
+  assert.ok(form.includes('handleFiles(picked,meta)'), 'المسار القائم نفسه، والبيانات معه');
   const i = EDU.indexOf('var EX3={'), j = EDU.indexOf('};', i);
   const EX3 = vm.runInNewContext('(' + EDU.slice(i + 'var EX3='.length, j + 1) + ')');
   const KEYS = ['upName', 'upNamePh', 'upSubject', 'upSubjectPh', 'upTerm', 'upTerm1', 'upTerm2', 'upTerm3', 'upTermS', 'upFile', 'upDrop', 'upPick', 'upDesc', 'upDescPh', 'upSave', 'upNeed', 'upBadType', 'myUploads', 'upOn'];

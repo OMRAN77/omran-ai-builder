@@ -40,7 +40,7 @@ test('٢. الرفع: الصور تُصغَّر JPEG، والـPDF الكبير 
   const s = read('js/edu.js');
   assert.ok(s.includes('var EDU_B64_BUDGET=3200000;'));
   assert.ok(s.includes('eduImagesForUpload(imgs)') && !s.includes("Promise.all(imgs.map(function(f){ return fileToBase64(f)"), 'الصور لا تُرسل خامًا');
-  assert.ok(s.includes('eduPdfPayload(f0).then(function(pl){ pl.lang=appLang(); processContent(pl); })'));
+  assert.ok(s.includes("eduPdfPayload(f0).then(function(pl){ pl.lang=appLang(); processContent(pl,'',meta); })")); /* v-edu-upform: بيانات النموذج تمرّ مع الرفع نفسه */
   assert.ok(s.includes("if(b64.length<=EDU_B64_BUDGET) return {fileBase64:b64,mime:'application/pdf',fileName:file.name};"), 'PDF الصغير كما كان');
   assert.ok(s.includes('window.extractPdfText(file)'), 'نصّ الـPDF الكبير');
   assert.ok(s.includes("if(!allImg&&total>10*1024*1024){ alert(T('tooBig')); return; }"), 'صور الآيفون لا تُرفض قبل التصغير');
