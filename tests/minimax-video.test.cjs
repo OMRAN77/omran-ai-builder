@@ -142,7 +142,7 @@ test('٦. الرفض المنطقيّ (٢٠٠ بلا status وبـbase_resp) = F
 test('٧. حلقات الاستطلاع (خمس منذ v-actor-lipsync) محروسة بعمر وبأخطاء متتالية، ولا ابتلاع صامت', () => {
   const src = read('js/app-11-video.js');
   assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 5, 'حلقة استطلاع بلا حارس');
-  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 5, 'خطأ شبكة ما زال يُبتلع بصمت');
+  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 5, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
   assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 5, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
   assert.doesNotMatch(src, /catch\(e\)\{ \/\* keep polling \*\/ \}/, 'بقي ابتلاع صامت');
   assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 5, /* v-actor-lipsync: حلقة الممثّل */ 'عدد الحلقات تغيّر — راجع الحراسة');
@@ -150,7 +150,7 @@ test('٧. حلقات الاستطلاع (خمس منذ v-actor-lipsync) محرو
   assert.ok(read('js/app.bundle.js').includes('function makePollGuard('), 'الحارس ليس في الحزمة — شغّل npm run bundle');
   // سلوك الحارس نفسه: العمر ينتهي، والأخطاء المتتالية تُنهي، والنجاح يصفّرها
   const vm = require('node:vm');
-  const body = src.slice(src.indexOf('function makePollGuard('), src.indexOf('\n  }', src.indexOf('fail(iv){')) + 4);
+  const body = src.slice(src.indexOf('function makePollGuard('), src.indexOf('\n  }', src.indexOf('fail(iv, msg){')) + 4);
   const ctx = { bT: (a) => a, clearInterval: () => { ctx.cleared++; }, cleared: 0 };
   vm.runInNewContext(body + '\nglobalThis.__g = makePollGuard;', ctx);
   let err = null;
