@@ -193,6 +193,9 @@ test('الأقسام الخمسة: كلّ خيار من القائمة له وص
       assert.ok(prompts.every((p) => p.includes(P[v])), id + '/' + v + ' لم يصل للأمر الفعليّ');
     }
   }
+  // خيار الرخام يجب أن يصل لأمر التوليد مثل بقية خيارات الأرضيات.
+  const marblePrompts = await promptsOf({ flooring: 'marble' });
+  assert.ok(marblePrompts.every((p) => p.includes(grab('FLOORING_PROMPTS').marble)), 'اختيار الرخام لا يصل لأمر التوليد');
   const pick = { lighting: 'aurora', furniture: 'velvet', flooring: 'terrazzo', fabric: 'emerald', wallColor: 'navy', curtains: 'linen' };
   for (const uploaded of [false, true]) {
     const prompts = await promptsOf(Object.assign({}, pick, uploaded ? { imageBase64: 'test-room', mimeType: 'image/png' } : {}));
