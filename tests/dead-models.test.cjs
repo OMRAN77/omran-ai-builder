@@ -96,3 +96,18 @@ test('الدفعة الثانية: لا Sonnet 4 في العميل، ولا مع
   assert.equal(run('mistralai/mistral-7b-instruct:free'), 'nvidia/nemotron-3-ultra-550b-a55b:free', 'الترحيل القديم لا يقود إلى اسم ميّت');
   assert.equal(run('google/gemma-4-31b-it:free'), 'google/gemma-4-31b-it:free', 'الحيّ لا يُمسّ');
 });
+
+test('دراسة الإنشاء: نصّها على Flash الحيّ بلا تفكير، واسمه مرئيّ لفحص v-models-live (gemini-2.0-flash كان مخفيًّا داخل الرابط وميّتًا)', () => {
+  const src = read('api/_lib/construction-create.js');
+  const line = src.split('\n').find((l) => l.includes('const textModel = '));
+  assert.ok(line && line.includes("const textModel = 'gemini-flash-latest';") && line.includes("/v1beta/models/' + textModel + ':generateContent?key='"));
+  assert.ok(!/gemini-2\.0-flash/.test(src.replace(/\/\/[^\n]*/g, '')), 'لا اسم ميّت في الكود (التعليق وحده يذكره)');
+  const body = src.split('\n').find((l) => l.includes('const textReqBody = '));
+  const textReqBody = new Function('textPrompt', body.replace(/^\s*const textReqBody = /, 'return ').replace(/;\s*\/\/.*$/, ';'))('خطة');
+  assert.deepEqual(textReqBody, { contents: [{ parts: [{ text: 'خطة' }] }], generationConfig: { thinkingConfig: { thinkingBudget: 0 } } });
+  const L = require('../scripts/lib/models-live.cjs');
+  const { models } = L.extractModels(path.join(__dirname, '..'), require('../scripts/models-live-ignore.json'));
+  const at = models.find((m) => m.id === 'gemini-flash-latest');
+  assert.ok(at && at.where.some((w) => w.startsWith('api/_lib/construction-create.js:')), 'الفحص يرى موديل الدراسة الآن');
+  assert.ok(!models.some((m) => ['gemini-2.0-flash', 'claude-sonnet-4-20250514', 'gemini-2.5-flash-image-preview', 'z-ai/glm-5.2:free'].includes(m.id)), 'الأسماء الأربعة الميّتة لا يناديها الكود');
+});
