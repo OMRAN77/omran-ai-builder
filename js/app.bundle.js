@@ -2873,7 +2873,10 @@ function buildSpokenWordSpans(container, text){
         a.textContent = __disp;
         a.title = href;
         a.setAttribute('dir', 'auto'); // v476 bidi
-        a.style.cssText = 'color:var(--om-hl,#e3b341); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;'; /* v-hl-yellow: الروابط صفراء (طلب المالك) */
+        /* v-link-wrap (لقطتا المالك من آيفون ١٦ أكتوبر: «https://www.d» ثمّ «ecathlon.ae» في السطر التالي): break-all هنا كان يغلب قاعدة v569
+           في tokens.css (.msg a{word-break:normal; overflow-wrap:break-word}) فيُكسر الرابط عند أيّ حرف. لم يظهر قبل v-full-links لأنّ
+           الرابط كان اسم نطاقه القصير؛ صار كاملًا فانكسر في منتصفه. الآن ينتقل كاملًا للسطر التالي، ويُكسر فقط إن كان أطول من السطر. */
+        a.style.cssText = 'color:var(--om-hl,#e3b341); text-decoration:underline; unicode-bidi:isolate;'; /* v-hl-yellow: الروابط صفراء (طلب المالك) */
         span.appendChild(a);
         const trail = linkM ? linkM[3] : (urlM ? urlM[2] : bareM[3]);
         if(trail) span.appendChild(document.createTextNode(trail));
