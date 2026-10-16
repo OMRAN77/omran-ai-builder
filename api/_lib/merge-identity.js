@@ -98,7 +98,7 @@ async function detectFaces(apiKey, img, opts) {
       generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: { box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } } } } },
     }),
   });
-  if (!r.ok) return [];
+  if (!r.ok) return []; // عطب الكشف: stats.faces يبقى بلا قيمة — لا يُقرأ «لا وجوه»
   const d = await r.json().catch(() => null);
   const txt = ((((d && d.candidates) || [])[0] || {}).content || {}).parts || [];
   const s = txt.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -111,7 +111,10 @@ async function detectFaces(apiKey, img, opts) {
     return box[2] > box[0] && box[3] > box[1] ? { box } : null;
   }).filter(Boolean).sort((a, b) => area(b.box) - area(a.box));
   /* صندوق مكرّر للوجه نفسه (تقاطع > ٥٠٪) يُسقط */
-  return boxes.filter((f, i) => !boxes.slice(0, i).some((g) => iou(f.box, g.box) > 0.5)).slice(0, 12);
+  const out = boxes.filter((f, i) => !boxes.slice(0, i).some((g) => iou(f.box, g.box) > 0.5)).slice(0, 12);
+  /* v-ai-video-speed: عدد الوجوه حين نجح الكشف فعلًا — faceCrops يرجع [] أيضًا لوجه يملأ الصورة ولجماعة ولعطب، فلا يكفي ليقول «لا شخص» */
+  if (o.stats && typeof o.stats === 'object' && o.stats.faces === undefined) o.stats.faces = out.length;
+  return out;
 }
 function area(b) { return (b[2] - b[0]) * (b[3] - b[1]); }
 function iou(a, b) {

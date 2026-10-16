@@ -169,13 +169,19 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     const hit = FRAME_CACHE.get(key);
     if (hit && Date.now() - hit.t < FRAME_CACHE_TTL) return { b64: hit.b64, mime: hit.mime, ref: hit.ref, people: hit.people, cached: true };
     let crops = [];
-    try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, [shaped], { timeoutMs: Math.min(15000, budget), fetchImpl: opt.fetchImpl }); } catch (e) { console.warn('[trend-people] solo face crop skipped: ' + (e && e.message)); crops = []; }
+    const stats = {}; // v-ai-video-speed: stats.faces = عدد الوجوه حين نجح الكشف (لا قيمة عند العطب)
+    try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, [shaped], { timeoutMs: Math.min(15000, budget), fetchImpl: opt.fetchImpl, stats }); } catch (e) { console.warn('[trend-people] solo face crop skipped: ' + (e && e.message)); crops = []; }
     /* وجه واحد بارز: لقطته (v-pstyle-closeup). v-two-people: وجهان بارزان ولكلٍّ لقطته = كلّ لقطة بعنوان موضعها
        («the person on the left/right» كخطّ الدمج v-merge-faces) — كان الوجهان بلا لقطة فيُرسم الثاني من جديد.
        لقطة لأحد الوجهين وحده تبقى ممنوعة: تسحب ملامحه إلى الآخر. */
     const two = crops.length === 2 && crops.every((c) => c.who && c.who !== 'the person');
     const crop = (crops.length === 1 && crops[0].who === 'the person') ? crops[0] : null;
     const people = two ? 2 : (crop ? 1 : 0);
+    /* v-ai-video-speed (المالك ١٦ أكتوبر بلقطة «١٥٦ث» على صورة عطر في «فيديو AI فقط»): صورة كشفنا فيها صفر وجوه (منتج، مكان)
+       في الوصف الحرّ لا تحتاج إطارًا مرسومًا — المحرّك يبدأ من الصورة نفسها. كان يُرسم إطار «شخص حقيقي» لزجاجة عطر
+       (١٥–٤٠ ث، حتّى ٩٠) قبل أن يبدأ الفيديو أصلًا. needPerson يطلبه المتّصل؛ الأسلوب الفنّيّ يبقى (تحويله يحتاج الإطار)،
+       وعطب الكشف (لا stats.faces) يبقى كما كان. */
+    if (opt.needPerson && stats.faces === 0 && !art) return { error: 'no-person', noPerson: true };
     const parts = [{ text: 'Photo 1 — the user\'s own photo of the real ' + (two ? 'people' : 'person') + ' to feature:' }, { inlineData: { mimeType: shaped.mime, data: shaped.data } }];
     if (crop) parts.push({ text: SOLO_CLOSEUP_LABEL }, { inlineData: { mimeType: crop.mime, data: crop.data } });
     if (two) crops.forEach((c, k) => parts.push({ text: 'Close-up ' + (k + 1) + ' — the face of ' + c.who + ' in Photo 1, cropped and zoomed in from that same photo (identity reference for that one person only: NOT an extra person, never drawn as an extra face, an inset or a frame):' }, { inlineData: { mimeType: c.mime, data: c.data } }));

@@ -84,6 +84,10 @@ async function saveLastTask(index, taskId) {
 // Checks the previously-remembered task for this key; if it exists and is
 // not yet finished (SUCCEEDED/FAILED), cancels it on Runway so the account's
 // single concurrency slot is freed up for the new request about to start.
+/* v-ai-video-speed (المالك ١٦ أكتوبر: «طول كثير»): المفتاح مشترك بين المستخدمين، و«آخر مهمّة» عليه قد تكون فيديو مستخدم آخر
+   يتولّد الآن — كان يُلغى فيبقى صاحبه ينتظر حتّى حارس الربع ساعة ثمّ يُعاد من الصفر. يُلغى الآن العالق فعلًا وحده: عمره فوق
+   STUCK_MS (عمر حارس الاستطلاع عند العميل؛ بعده لا أحد ينتظره). الحيّ يبقى، والجديد ينتظر دوره في طابور المزوّد (THROTTLED). */
+const STUCK_MS = 15 * 60 * 1000;
 async function clearStuckTask(index, apiKey) {
   const prevId = await getLastTask(index);
   if (!prevId) return;
@@ -93,7 +97,9 @@ async function clearStuckTask(index, apiKey) {
     });
     if (!r.ok) return; // already gone/expired
     const data = await r.json().catch(() => ({}));
-    if (data.status === 'SUCCEEDED' || data.status === 'FAILED') return;
+    if (data.status === 'SUCCEEDED' || data.status === 'FAILED' || data.status === 'CANCELLED') return;
+    const age = Date.now() - Date.parse(data.createdAt || '');
+    if (!(age > STUCK_MS)) return; // حيّ (أو عمره مجهول): لا يُلغى فيديو أحد
     // Still pending/running/throttled: cancel it to free the concurrency slot.
     await fetch(RUNWAY_API_BASE + '/v1/tasks/' + prevId, {
       method: 'DELETE',
@@ -104,4 +110,4 @@ async function clearStuckTask(index, apiKey) {
   }
 }
 
-module.exports = { getKeys, pickKey, encodeTaskId, resolveTaskId, getLastTask, saveLastTask, clearStuckTask, RUNWAY_API_BASE };
+module.exports = { getKeys, pickKey, encodeTaskId, resolveTaskId, getLastTask, saveLastTask, clearStuckTask, RUNWAY_API_BASE, STUCK_MS };
