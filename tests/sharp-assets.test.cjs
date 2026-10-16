@@ -47,18 +47,22 @@ test('١. المصغّرات بالمقاس الذي يحتاجه الجوّال
 });
 
 test('٢. كلّ رابط إلى صورة موضَّحة يحمل وسمًا يكسر الكاش', () => {
+  // الوسم يُقرأ ولا يُثبَّت (سقّاطة vPinTests): كلّ رابط يحمل ?v= برقم ≥ ٢ (الرقم الأوّل بعد التوضيح).
+  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tag = (src, lit) => { const m = new RegExp(esc(lit) + '\\?v=(\\d+)').exec(src); return m ? Number(m[1]) : 0; };
   const sels = read('js/design-sels.js');
-  assert.ok(sels.includes("return 'assets/design/styles/'+v+'.webp?v=2';") && sels.includes("+'-'+v+'.webp?v=2';"), 'الأنماط والأماكن');
+  assert.ok(tag(sels, "return 'assets/design/styles/'+v+'.webp") >= 2 && tag(sels, ".toLowerCase()+'-'+v+'.webp") >= 2, 'الأنماط والأماكن');
   const studios = read('js/app-12-studios.js');
   assert.match(studios, /const PSTYLE_IMG_V = '(\d+)';/); assert.ok(Number(studios.match(/const PSTYLE_IMG_V = '(\d+)';/)[1]) >= 16);
-  for (const s of ["'assets/portrait/before.webp?v=2'", "'assets/fashion/looks/' + gender + '/' + value + '.webp?v=2'", "'assets/fashion/looks/' + g + '/' + v + '.webp?v=2'", "'assets/design/styles/' + v + '.webp?v=2'"]) assert.ok(studios.includes(s), s);
+  for (const s of ["'assets/portrait/before.webp", "'assets/fashion/looks/' + gender + '/' + value + '.webp", "'assets/fashion/looks/' + g + '/' + v + '.webp", "'assets/design/styles/' + v + '.webp"]) assert.ok(tag(studios, s) >= 2, s);
   assert.ok(!/'assets\/portrait\/before\.webp'/.test(studios), 'لا رابط بلا وسم');
-  assert.ok(read('js/app-13-stocks-init.js').includes("const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=2';"));
+  assert.ok(tag(read('js/app-13-stocks-init.js'), "const asset = 'assets/studio/options/' + f + '-' + v + '.webp") >= 2, 'خيارات الاستوديو');
   const gen = read('js/design-gen.js');
-  assert.equal((gen.match(/\.webp\?v=2'/g) || []).length, 4, 'روابط الأزياء الأربعة');
-  assert.ok(!/LOOKS\+[^;]*\.webp'(?!\?)/.test(gen.replace(/\.webp\?v=2'/g, '')), 'لا رابط أزياء بلا وسم');
+  const looks = [...gen.matchAll(/\.webp\?v=(\d+)'/g)];
+  assert.ok(looks.length === 4 && looks.every((m) => Number(m[1]) >= 2), 'روابط الأزياء الأربعة');
+  assert.ok(!/LOOKS\+[^;]*\.webp'(?!\?)/.test(gen.replace(/\.webp\?v=\d+'/g, '')), 'لا رابط أزياء بلا وسم');
   const html = read('index.html');
-  assert.ok(html.includes('/js/design-gen.js?v=611'), 'وسم design-gen المنفصل');
+  assert.ok(tag(html, '/js/design-gen.js') >= 611, 'وسم design-gen المنفصل');
 });
 
 test('٣. أداة التوضيح: الأوزان مثبّتة ببصمتها، والمجموعات تطابق ما على القرص، ولا torch', () => {

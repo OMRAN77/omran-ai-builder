@@ -25,18 +25,22 @@ test('٢. كلّ خيار يُعرض بصورة موجودة فعلًا (selImg 
   const fn = src.slice(src.indexOf('  function selImg(id,v){'), src.indexOf('  function optTxt(o){'));
   const opt = src.match(/  var OPT_FILE=\{[^}]+\};/)[0];
   const sb = {};
+  // الوسم يُقرأ ولا يُثبَّت (سقّاطة vPinTests): المسار بلا الوسم، والرقم ≥ الحدّ الأدنى.
+  const bare = (r) => r.replace(/\?v=\d+$/, '');
+  const ver = (r) => Number((/\?v=(\d+)$/.exec(r) || [])[1] || 0);
   vm.runInNewContext(opt + '\n' + fn + '\nthis.selImg = selImg;', sb);
   const sel = read('js/partials-core.js').match(/<select id="designAiFurniture"[\s\S]*?<\/select>/)[0];
   for (const v of [...sel.matchAll(/<option value="([^"]+)"/g)].map((m) => m[1])) {
     const rel = sb.selImg('designAiFurniture', v);
-    assert.equal(rel, 'assets/design/decor-opts/furniture-' + v + '.webp?v=1');
+    assert.equal(bare(rel), 'assets/design/decor-opts/furniture-' + v + '.webp'); assert.ok(ver(rel) >= 1, 'وسم كاش: ' + rel);
     assert.ok(fs.statSync(path.join(root, rel.replace(/\?.*$/, ''))).size > 2000, 'الملفّ موجود وليس فارغًا: ' + rel);
   }
   assert.equal(sb.selImg('designAiFurniture', ''), '', '«بدون تغيير» بلا صورة — علامة ⊘');
   assert.equal(sb.selImg('designAiLighting', 'warm'), 'assets/design/opts/lighting-warm.webp', 'الإضاءة من صورتها المنفصلة الواضحة');
-  assert.equal(sb.selImg('designAiPlace', 'majlis'), 'assets/design/opts/place-majlis.webp?v=2', 'المكان (موضَّح — v-sharp)');
-  assert.equal(sb.selImg('designAiStyle', 'modern'), 'assets/design/styles/modern.webp?v=2', 'النمط (موضَّح — v-sharp)');
-  assert.equal(sb.selImg('designAiFlooring', 'parquet'), 'assets/design/decor-opts/flooring-parquet.webp?v=1');
+  const place = sb.selImg('designAiPlace', 'majlis'), style = sb.selImg('designAiStyle', 'modern'), floor = sb.selImg('designAiFlooring', 'parquet');
+  assert.ok(bare(place) === 'assets/design/opts/place-majlis.webp' && ver(place) >= 2, 'المكان (موضَّح — v-sharp): ' + place);
+  assert.ok(bare(style) === 'assets/design/styles/modern.webp' && ver(style) >= 2, 'النمط (موضَّح — v-sharp): ' + style);
+  assert.ok(bare(floor) === 'assets/design/decor-opts/flooring-parquet.webp' && ver(floor) >= 1, floor);
 });
 
 test('٣. وسم design-sels مرفوع فلا تبقى النسخة القديمة في الكاش، والاختبار مسجّل', () => {

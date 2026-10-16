@@ -70,7 +70,7 @@ test('٤. البطاقات: صورة لكلّ خيار من decor-opts، و«ب�
     pick('  function selImg(id,v){', '  function optTxt(o){') + '\nthis.selImg=selImg; this.roomBg=roomBg; this.OPT6=OPT6; this.COVER=COVER; this.NONE_BG=NONE_BG;', Object.assign(sb, { encodeURIComponent }));
   assert.deepEqual([...sb.OPT6], ['designAiLighting'].concat(Object.keys(SECS)));
   for (const [id, sec] of Object.entries(SECS)) {
-    for (const x of options(id).slice(1)) assert.equal(sb.selImg(id, x.v), 'assets/design/decor-opts/' + sec + '-' + x.v + '.webp?v=1');
+    for (const x of options(id).slice(1)) { const r = sb.selImg(id, x.v); assert.match(r, /\?v=\d+$/, 'وسم كاش: ' + r); assert.equal(r.replace(/\?v=\d+$/, ''), 'assets/design/decor-opts/' + sec + '-' + x.v + '.webp'); }
     assert.equal(sb.roomBg(id, ''), sb.NONE_BG, id + ': ⊘ كالإضاءة');
     assert.ok(!/svg\+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20400/.test(sb.roomBg(id, 'x')), 'لا رسمة غرفة');
     assert.ok(options(id).some((x) => x.v === sb.COVER[id]), id + ': غلاف البطاقة خيار موجود');

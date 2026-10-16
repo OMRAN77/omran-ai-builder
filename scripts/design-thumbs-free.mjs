@@ -64,7 +64,8 @@ const THUMB = {
   // v-decor-18d (الجولة الثانية بالعين): الستائر تخرج شيفونًا أبيض لأغلب الأنواع — اللون والشكل مصرّح بهما.
   curtains: {
     velvet: 'heavy deep-burgundy velvet floor-length drapes with rich folds',
-    blackout: 'thick dark navy blackout curtains fully closed and covering the whole window, no daylight, the room is dark and moody',
+    // v-decor-18e: ثلاث محاولات بـ«غرفة مظلمة بلا ضوء» أعطت شيفونًا — الصياغة نفسها التي نجحت للمخمل.
+    blackout: 'heavy charcoal-grey floor-length blackout drapes with rich folds, drawn fully closed across the whole window, thick opaque fabric',
     embroidered: 'cream curtains with wide gold Arabic embroidered borders and gold tassels',
     luxury: 'luxurious heavy gold and cream damask drapes with swags and tasselled tiebacks',
     pelmet: 'grey drapes under a large upholstered pelmet box valance spanning the top of the window',
@@ -75,13 +76,14 @@ const THUMB = {
   },
 };
 // أرضيّات النقش: الموديل يضع النقش على الطاولة — هذه تُصوَّر من أعلى بلا أثاث، والنقش يملأ الصورة.
+// v-decor-18e: الهيرنقبون والسداسيّ فشلا ثلاث مرّات — الأوّل قصّ من صورة الباركيه الحقيقيّة (opts/flooring-parquet)، والثاني بلاط مرسوم من خامة السيراميك الحقيقيّة؛ موجودان فلا يُعاد توليدهما.
 const FLOOR_TOPDOWN = {
   checker: 'classic black and white checkerboard marble floor tiles',
   herringbone: 'golden oak parquet laid in a herringbone (V-shaped zig-zag) pattern of many small rectangular planks',
   hexagon: 'hexagonal honeycomb-shaped floor tiles, each tile a six-sided hexagon outlined by dark grout lines',
   moroccan: 'colorful blue and white patterned Moroccan cement floor tiles',
 };
-const SEED_ALT = { 'curtains-blackout': 3515, 'flooring-herringbone': 3212, 'flooring-hexagon': 3212, 'wall-forest': 3434, 'wall-mocha': 3414, 'wall-terracotta': 3414, 'wall-olive': 3424, 'furniture-curved': 3111, 'furniture-rattan': 3111, 'furniture-rustic': 3111 };
+const SEED_ALT = { 'flooring-herringbone': 3212, 'flooring-hexagon': 3212, 'wall-forest': 3434, 'wall-mocha': 3414, 'wall-terracotta': 3414, 'wall-olive': 3424, 'furniture-curved': 3111, 'furniture-rattan': 3111, 'furniture-rustic': 3111 };
 const OPTS = {
   furniture: { map: 'FURNITURE_PROMPTS', seed: 3101, scene: (d) => 'Interior design photo of a living room featuring ' + d + '. The furniture is large in the frame and is the clear focus. Plain light walls, light oak floor, ' + ROOM },
   flooring: { map: 'FLOORING_PROMPTS', seed: 3202, scene: (d) => 'Close-up interior photo looking down at the floor: ' + d + ' fills most of the image, its texture and pattern clearly visible, only the edge of a sofa and a coffee table leg at the top of the frame, soft daylight, photorealistic, high detail, sharp focus.' },
