@@ -34,13 +34,28 @@ test('قفل الخيط: الاختيار الصريح (المالك) يتجاو
   assert.equal(ctx.lock(conv, 'openai', false, false, false), 'claude', 'غير المالك: الخيط مقفول على أوّل مزوّد');
 });
 
-test('الخادم: الاحتياط المجّانيّ خام للمالك المتحقَّق منه (بلا بصمة ولا ملاحظة الوضع المجّانيّ)', () => {
-  assert.ok(chat.includes("const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\\n' + baseSystem + nowNote(body && body.tz), raw: __rawOwner, convo: __ownerReq ? compactConversation(convo) : convo /* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة */, send, requireVision: lastUserHasImage });"));
+test('الخادم: الاحتياط المجّانيّ خام للمالك المتحقَّق منه (بلا بصمة ولا ملاحظة الوضع المجّانيّ)', async () => {
+  // v-plan-models: الاستدعاء صار يحمل paid (المشترك وVIP بصيغة محايدة) — والمالك مشترك أيضًا، فـraw يغلب paid عنده
+  assert.ok(chat.includes("const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\\n' + baseSystem + nowNote(body && body.tz), raw: __rawOwner, paid: !!(usage && usage.subscriber) /* v-plan-models: المشترك وVIP بلا «النسخة الاحترافيّة» */, convo: __ownerReq ? compactConversation(convo) : convo /* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة */, send, requireVision: lastUserHasImage });"));
   assert.ok(chat.includes('const __rawOwner = __ownerReq && !!(body && body.raw === true);'), 'v-owner-full: الخام للمالك اختياريّ (raw:true)، بتوثيق الرمز على الخادم');
   const fc = fs.readFileSync('api/_lib/free-chain.js', 'utf8');
-  assert.ok(fc.includes("const system = args.raw ? '' : String(args.system || '') + FREE_NOTE;"));
-  const { toOpenAIMessages } = require('../api/_lib/free-chain.js');
+  assert.ok(fc.includes("const system = args.raw ? '' : String(args.system || '') + (args.paid ? PAID_NOTE : FREE_NOTE);"), 'raw أوّلًا: لا ملاحظة أيًّا كانت للمالك الخام');
+  const freeChain = require('../api/_lib/free-chain.js');
+  const { toOpenAIMessages } = freeChain;
   const convo = [{ role: 'user', content: 'انته اي محرك' }];
   assert.equal(toOpenAIMessages('', convo, false).filter((m) => m.role === 'system').length, 0, 'نظام فارغ = لا رسالة نظام');
   assert.equal(toOpenAIMessages('x', convo, false).filter((m) => m.role === 'system').length, 1);
+  // سلوكيًّا عبر السلسلة نفسها: raw (مع paid كما يصل للمالك المشترك) = لا رسالة نظام أصلًا؛ وبلا raw يبقى النظام وملاحظته
+  const sse = 'data: ' + JSON.stringify({ choices: [{ delta: { content: 'أنا' } }] }) + '\ndata: [DONE]\n';
+  const sentSys = async (extra) => {
+    const bodies = [];
+    const r = await freeChain.streamFreeChain(Object.assign({ system: 'SYS', convo, send: () => {}, env: { GROQ_API_KEY: 'q', FREE_CHAIN: 'groq' }, log: () => {},
+      fetchImpl: async (url, init) => { bodies.push(JSON.parse(init.body)); return new Response(sse, { status: 200 }); } }, extra));
+    assert.equal(r.ok, true); assert.equal(r.text, 'أنا');
+    return bodies[0].messages.filter((m) => m.role === 'system').map((m) => m.content);
+  };
+  assert.deepEqual(await sentSys({ system: '', raw: true, paid: true }), [], 'المالك الخام: لا بصمة ولا ملاحظة مجّانيّة ولا محايدة');
+  const paidSys = await sentSys({ paid: true });
+  assert.ok(paidSys.length === 1 && paidSys[0].startsWith('SYS') && paidSys[0] !== 'SYS' && !paidSys[0].includes(freeChain.FREE_NOTE.trim()), 'غير الخام المشترك: نظامه وملاحظة محايدة لا FREE_NOTE');
+  assert.deepEqual(await sentSys({}), ['SYS' + freeChain.FREE_NOTE], 'المجّانيّ كما كان');
 });

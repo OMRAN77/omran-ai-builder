@@ -19,7 +19,9 @@ const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(
 const WHO = {
   free: { allowed: true, username: 'fay', tier: 'free', subscriber: false, plan: null },
   plus: { allowed: true, username: 'pam', tier: 'sub', subscriber: true, plan: 'basic' },
+  pro: { allowed: true, username: 'pro1', tier: 'sub', subscriber: true, plan: 'pro' },
   max: { allowed: true, username: 'max1', tier: 'sub', subscriber: true, plan: 'max' },
+  legacy: { allowed: true, username: 'leg', tier: 'sub', subscriber: true, plan: 'legacy' }, // اشتراك بباقة لا جدول لها = لا كلود
   owner: { allowed: true, username: 'omran', tier: 'owner', subscriber: true },
 };
 const counts = {};
@@ -30,11 +32,12 @@ mock('api/_lib/_usage.js', {
   todayCount: async (u, b) => counts[u + ':' + b] || 0,
   bumpCount: async (u, b) => { counts[u + ':' + b] = (counts[u + ':' + b] || 0) + 1; },
   // v-meter-atomic: حجز ذرّيّ — fillOnTake يحاكي طلبًا متزامنًا ملأ المقياس بين القراءة والحجز
-  takeMeter: async (u, b, cap) => { const k = u + ':' + b; if (fillOnTake.includes(b)) counts[k] = cap; if ((counts[k] || 0) >= cap) return false; counts[k] = (counts[k] || 0) + 1; return true; },
+  takeMeter: async (u, b, cap) => { const k = u + ':' + b; taken.push(k); if (fillOnTake.includes(b)) counts[k] = cap; if ((counts[k] || 0) >= cap) return false; counts[k] = (counts[k] || 0) + 1; return true; },
   giveMeter: async (u, b) => { const k = u + ':' + b; given.push(k); counts[k] = Math.max(0, (counts[k] || 0) - 1); },
 });
 let fillOnTake = [];
 const given = [];
+const taken = []; // كلّ محاولة حجز (مقبولة أو مرفوضة)
 mock('api/_lib/kv.js', { kvGetRaw: async () => null, kvGetJSON: async () => null, kvPutJSON: async () => {}, kvPipeline: async (c) => c.map(() => null) });
 
 const { guardModel } = require(rp('api/_lib/_model-guard.js'));
@@ -55,8 +58,11 @@ async function hit(file, body) {
 }
 
 test('١. الحارس: غير المالك يُعاد لنموذج رخيص مسموح، والمالك وVIP كما طلبا', () => {
-  assert.equal(guardModel('openrouter', 'anthropic/claude-opus-4.6', false), 'meta-llama/llama-4-maverick:free');
+  assert.equal(guardModel('openrouter', 'anthropic/claude-opus-4.6', false), 'google/gemma-4-31b-it:free'); // v-plan-models: أوّل :free الحيّ
   assert.equal(guardModel('openrouter', 'qwen/qwen3-235b-a22b:free', false), 'qwen/qwen3-235b-a22b:free');
+  assert.equal(guardModel('openrouter', 'z-ai/glm-5.2:free', false), 'z-ai/glm-5.2:free');
+  assert.equal(guardModel('openrouter', 'nvidia/nemotron-3-ultra-550b-a55b:free', false), 'nvidia/nemotron-3-ultra-550b-a55b:free');
+  assert.equal(guardModel('openrouter', 'z-ai/glm-5.2', false), 'google/gemma-4-31b-it:free', 'النسخة المدفوعة (بلا :free) لا تمرّ');
   assert.equal(guardModel('openrouter', 'anthropic/claude-opus-4.6', true), 'anthropic/claude-opus-4.6');
   assert.equal(guardModel('gemini', 'gemini-3.1-pro-preview', false), 'gemini-flash-latest');
   assert.equal(guardModel('gemini', 'gemini-2.5-flash-image', false), 'gemini-flash-latest', 'لا نماذج صور ببلاش');
@@ -64,12 +70,13 @@ test('١. الحارس: غير المالك يُعاد لنموذج رخيص م�
   assert.equal(guardModel('mistral', 'mistral-large-latest', false), 'mistral-small-latest');
   assert.equal(guardModel('perplexity', 'sonar-deep-research', false), 'sonar');
   assert.equal(guardModel('groq', 'openai/gpt-oss-120b', false), 'openai/gpt-oss-120b');
+  assert.equal(guardModel('groq', 'openai/gpt-oss-20b', false), 'openai/gpt-oss-20b');
   assert.equal(guardModel('groq', 'some/expensive-model', false), '', 'الفارغ = مرشّحو Groq المعروفون');
 });
 
 test('٢. /api/openrouter: المجّانيّ يطلب Opus ← نموذج :free، والمالك يصل ما طلب', async () => {
   let r = await hit('openrouter.js', { token: 'free', model: 'anthropic/claude-opus-4.6' });
-  assert.equal(r.sent[0].body.model, 'meta-llama/llama-4-maverick:free');
+  assert.equal(r.sent[0].body.model, 'google/gemma-4-31b-it:free');
   r = await hit('openrouter.js', { token: 'owner', model: 'anthropic/claude-opus-4.6' });
   assert.equal(r.sent[0].body.model, 'anthropic/claude-opus-4.6');
 });
@@ -81,43 +88,61 @@ test('٣. /api/gemini: المجّانيّ يطلب Pro أو نموذج صور �
   }
 });
 
-test('٤. /api/claude: Plus ‏Haiku بحدّه، Max ‏Sonnet ثمّ Haiku، وبعد الحدود 402 بلا نداء؛ المالك كما طلب', async () => {
+test('٤. /api/claude (v-plan-models): Plus ‏Haiku 5.5 بلا مقياس، Pro (كوده Mistral) ‏Haiku 5.5، Max ‏Sonnet 5.5 بحدّه ثمّ Haiku 5.5، وباقة بلا كلود 402 بلا نداء؛ المالك كما طلب', async () => {
   let r = await hit('claude.js', { token: 'plus', model: 'claude-opus-5' });
-  assert.equal(r.sent[0].body.model, 'claude-haiku-4-5');
+  assert.equal(r.sent[0].body.model, 'claude-haiku-5-5');
   assert.equal(r.sent[0].body.max_tokens, 16000);
-  assert.equal(counts['pam:plan-haiku'], 1, 'يُعدّ في حدّ Haiku اليوميّ نفسه');
-  counts['pam:plan-haiku'] = 5;
+  assert.deepEqual(taken, [], 'Plus بلا مقياس للموديل — سقفه سلّة الباقة وحدها');
+  counts['pam:plan-haiku'] = 5; // المقياس القديم (٥ Haiku) لم يعد يقفل Plus
   r = await hit('claude.js', { token: 'plus', model: 'claude-opus-5' });
+  assert.equal(r.res.code, 200);
+  assert.equal(r.sent.length, 1);
+  assert.equal(r.sent[0].body.model, 'claude-haiku-5-5', 'لا نموذج العميل (Opus) ولا 402');
+  r = await hit('claude.js', { token: 'pro', model: 'claude-opus-5' });
+  assert.equal(r.sent[0].body.model, 'claude-haiku-5-5', 'كود Pro على Mistral Large 3 — هذا الرابط كلود وحده فأوّل كلود في الوظيفة');
+  assert.equal(r.sent[0].body.max_tokens, 16000);
+  assert.deepEqual(taken, [], 'Haiku 5.5 في Pro بلا مقياس — لا يُحجز مقياس Gemini');
+  r = await hit('claude.js', { token: 'max', model: 'claude-opus-5' });
+  assert.equal(r.sent[0].body.model, 'claude-sonnet-5-5');
+  assert.equal(counts['max1:plan-premium'], 1, 'يُعدّ في حدّ Max المميّز اليوميّ (Sol وSonnet 5.5 معًا)');
+  counts['max1:plan-premium'] = 100;
+  r = await hit('claude.js', { token: 'max', model: 'claude-opus-5' });
+  assert.equal(r.sent[0].body.model, 'claude-haiku-5-5', 'بعد ١٠٠ مميّز ← Haiku 5.5');
+  assert.equal(counts['max1:plan-premium'], 100, 'لا حجز فوق الحدّ');
+  r = await hit('claude.js', { token: 'legacy', model: 'claude-opus-5' });
   assert.equal(r.res.code, 402);
   assert.equal(r.res.j.reason, 'engine_limit');
-  assert.equal(r.sent.length, 0, 'لا نداء بعد الحدّ');
-  r = await hit('claude.js', { token: 'max', model: 'claude-opus-5' });
-  assert.equal(r.sent[0].body.model, 'claude-sonnet-5');
-  counts['max1:plan-sonnet'] = 30;
-  r = await hit('claude.js', { token: 'max', model: 'claude-opus-5' });
-  assert.equal(r.sent[0].body.model, 'claude-haiku-4-5', 'بعد ٣٠ Sonnet ← Haiku');
+  assert.equal(r.sent.length, 0, 'لا كلود في جدول الباقة = لا نداء');
   r = await hit('claude.js', { token: 'owner', model: 'claude-opus-5' });
   assert.equal(r.sent[0].body.model, 'claude-opus-5');
   assert.equal(r.sent[0].body.max_tokens, 32000);
 });
 
-test('٤-ب. v-meter-atomic: /api/claude — مقياس امتلأ للتوّ يُعيد التوجيه (Sonnet ← Haiku) أو 402، وفشل المزوّد يردّ الحجز', async () => {
+test('٤-ب. v-meter-atomic: /api/claude — مقياس امتلأ للتوّ يُعيد التوجيه (Sonnet 5.5 ← Haiku 5.5)، والمسار بلا مقياس لا يحجز، وفشل المزوّد يردّ الحجز', async () => {
   for (const k of Object.keys(counts)) delete counts[k];
-  fillOnTake = ['plan-sonnet'];
+  taken.length = 0;
+  fillOnTake = ['plan-premium'];
   let r = await hit('claude.js', { token: 'max', model: 'claude-opus-5' });
-  assert.equal(r.sent[0].body.model, 'claude-haiku-4-5', 'Sonnet امتلأ بين القراءة والحجز');
-  assert.deepEqual([counts['max1:plan-sonnet'], counts['max1:plan-haiku']], [30, 1]);
-  fillOnTake = ['plan-haiku'];
+  assert.equal(r.sent[0].body.model, 'claude-haiku-5-5', 'المميّز امتلأ بين القراءة والحجز');
+  assert.deepEqual(taken, ['max1:plan-premium'], 'حجز واحد رُفض ثمّ Haiku 5.5 بلا حجز');
+  assert.deepEqual(counts, { 'max1:plan-premium': 100 }, 'لا عدّاد فوق الحدّ');
+  fillOnTake = ['plan-haiku', 'plan-premium', 'plan-gemini'];
+  taken.length = 0;
   r = await hit('claude.js', { token: 'plus', model: 'x' });
-  assert.equal(r.res.code, 402, 'Plus بلا Haiku متاح = حدّ المحرّك كما كان');
-  assert.equal(r.sent.length, 0);
+  assert.equal(r.sent[0].body.model, 'claude-haiku-5-5', 'Plus بلا مقياس — لا شيء يمتلئ');
+  assert.deepEqual(taken, [], 'لا takeMeter لمسار بلا مقياس');
   fillOnTake = [];
   for (const k of Object.keys(counts)) delete counts[k];
+  assert.deepEqual(given, [], 'ما خدمه المزوّد لا يُردّ');
   const realFetch = global.fetch;
+  global.fetch = async () => new Response('{"error":"overloaded"}', { status: 400 });
+  try { r = await hit('claude.js', { token: 'max', model: 'x' }); } finally { global.fetch = realFetch; }
+  assert.equal(r.res.code, 400);
+  assert.deepEqual([given, counts['max1:plan-premium']], [['max1:plan-premium'], 0], 'لم يخدم المزوّد — الحجز رُدّ');
   global.fetch = async () => new Response('{"error":"overloaded"}', { status: 400 });
   try { r = await hit('claude.js', { token: 'plus', model: 'x' }); } finally { global.fetch = realFetch; }
   assert.equal(r.res.code, 400);
-  assert.deepEqual([given, counts['pam:plan-haiku']], [['pam:plan-haiku'], 0], 'لم يخدم المزوّد — الحجز رُدّ');
+  assert.deepEqual(given, ['max1:plan-premium'], 'بلا حجز لا ردّ');
 });
 
 test('٥. /api/openai بلا 👑: اسم النموذج الاحترافيّ لا يتخطّى خصم النقاط — الخفيف الافتراضيّ', async () => {

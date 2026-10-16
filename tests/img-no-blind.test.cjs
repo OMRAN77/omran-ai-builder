@@ -83,7 +83,8 @@ test('الصورة تفرض الرؤية تلقائيًّا حتى دون requir
 
 test('chat.js: هبوط الملك يطلب الرؤية لدور الصورة، ويعترف عند الفشل، والمالك يرى المحرّك', () => {
   const chat = read('api/_lib/chat.js');
-  assert.match(chat, /const __fb = await streamFreeChain\(\{ system: __rawOwner \? '' : PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), raw: __rawOwner, convo: __ownerReq \? compactConversation\(convo\) : convo \/\* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة \*\/, send, requireVision: lastUserHasImage \}\);/); // v-owner-free: خام للمالك
+  // v-owner-free: خام للمالك؛ v-plan-models: المشترك/VIP يأخذ الملاحظة المحايدة (paid) لا ملاحظة الوضع المجّانيّ
+  assert.match(chat, /const __fb = await streamFreeChain\(\{ system: __rawOwner \? '' : PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), raw: __rawOwner, paid: !!\(usage && usage\.subscriber\) (?:\/\*[^*]*\*\/)?, convo: __ownerReq \? compactConversation\(convo\) : convo \/\* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة \*\/, send, requireVision: lastUserHasImage \}\);/);
   // v-img-why: الرسالة الصادقة نفسها، وسطر السبب للمالك وحده، ثمّ الخروج
   assert.match(chat, /send\(\{ delta: tierLib\.FREE_TEXT\.imageBusy \+ \(__ownerReq \? ownerFailNote\(upstream\.status, errText, __fb\.errors\) : ''\) \}\);\n\s+send\(\{ done: true \}\); res\.end\(\); return;/);
   assert.match(chat, /if \(__ownerReq\) send\(\{ modelId: 'fallback', modelLabel: 'احتياط · ' \+ __fb\.provider \+ ' \/ ' \+ __fb\.model \}\);/);
