@@ -36782,6 +36782,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const menu = document.createElement('div'); menu.id = 'studioSrcMenu'; menu.className = 'stSrcMenu';
     const add = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.onclick = (e) => { e.stopPropagation(); studioCloseMenu(); fn(); }; menu.appendChild(b); };
     let coarse = false; try{ coarse = window.matchMedia('(pointer:coarse)').matches; }catch(e){ coarse = false; }
+    /* v-upload-art (لقطة المالك «ما يحوّلك تطلع كلمة المعرض»): على الحاسوب لا كاميرا، فالقائمة كانت زرًّا واحدًا «المعرض» يطفو
+       فوق الخانة — تُفتح الملفّات مباشرةً بلا قائمة؛ اللمس يبقى بورقة الكاميرا/المعرض. */
+    if(!coarse){ (which === 'A' ? fileInputA : fileInputB).click(); return; }
     if(coarse) add(t('studioSrcCamera'), () => studioCamera(which));
     add(t('studioSrcGallery'), () => (which === 'A' ? fileInputA : fileInputB).click());
     /* v-studio-sheet (لقطة المالك «شوف وين تتحرك عند الإضافة»): القائمة كانت تطفو وسط الشاشة فوق الميزات بعيدًا

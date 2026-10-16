@@ -54,3 +54,11 @@ test('٣. المربّعات الثلاثة تحمل الأصناف، والعن
   const black = read('css/أدوات-أسود.css');
   assert.ok(!black.includes('#fashionAiDropZone') && !black.includes('#studioAiModal .stSlot'), 'لا تسويد للمربّعات (كانت تخفي الصورة)');
 });
+
+test('٤. الستايل على الحاسوب: الضغط على الخانة يفتح الملفّات مباشرةً — لا قائمة «المعرض» وحدها تطفو (لقطة المالك)', () => {
+  const src = read('js/app-13-stocks-init.js');
+  const fn = src.slice(src.indexOf('function studioOpenMenu(which){'), src.indexOf('function studioOpenMenu(which){') + 1400);
+  const direct = fn.indexOf("if(!coarse){ (which === 'A' ? fileInputA : fileInputB).click(); return; }");
+  assert.ok(direct > 0, 'فتح مباشر بلا قائمة');
+  assert.ok(direct < fn.indexOf("add(t('studioSrcGallery')"), 'قبل بناء القائمة');
+});
