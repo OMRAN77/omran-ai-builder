@@ -63,19 +63,22 @@ function lastTaskPath(index) {
   return 'db/runway-last-task-' + index + '.json';
 }
 
+/* v-ai-video-speed (مراجعة): السجلّ { id: آخر مهمّة، hold: أقدم مهمّة حيّة لم تنتهِ بعد } — بلا hold كانت المهمّة العالقة فعلًا تُنسى
+   حين تأتي بعدها مهمّة خلال ربع ساعة (تُكتب فوقها)، فيبقى المفتاح مسدودًا ما دام عليه طلب. */
+async function readSlot(index) {
+  try { return (await kvGetJSON(lastTaskPath(index))) || {}; } catch (e) { return {}; }
+}
+
 async function getLastTask(index) {
-  try {
-    const data = await kvGetJSON(lastTaskPath(index));
-    return data && data.id ? data.id : null;
-  } catch (e) {
-    return null;
-  }
+  const data = await readSlot(index);
+  return data && data.id ? data.id : null;
 }
 
 async function saveLastTask(index, taskId) {
   if (!process.env.UPSTASH_REDIS_REST_URL) return;
   try {
-    await kvPutJSON(lastTaskPath(index), { id: taskId });
+    const prev = await readSlot(index);
+    await kvPutJSON(lastTaskPath(index), Object.assign({ id: taskId }, prev.hold ? { hold: prev.hold } : {}));
   } catch (e) {
     // best-effort only
   }
@@ -88,25 +91,36 @@ async function saveLastTask(index, taskId) {
    يتولّد الآن — كان يُلغى فيبقى صاحبه ينتظر حتّى حارس الربع ساعة ثمّ يُعاد من الصفر. يُلغى الآن العالق فعلًا وحده: عمره فوق
    STUCK_MS (عمر حارس الاستطلاع عند العميل؛ بعده لا أحد ينتظره). الحيّ يبقى، والجديد ينتظر دوره في طابور المزوّد (THROTTLED). */
 const STUCK_MS = 15 * 60 * 1000;
-async function clearStuckTask(index, apiKey) {
-  const prevId = await getLastTask(index);
-  if (!prevId) return;
+// 'done' انتهت أو اختفت · 'stuck' لم تنتهِ وعمرها فوق STUCK_MS · 'live' تتولّد الآن أو عمرها مجهول (لا تُلغى)
+async function taskState(id, apiKey) {
   try {
-    const r = await fetch(RUNWAY_API_BASE + '/v1/tasks/' + prevId, {
+    const r = await fetch(RUNWAY_API_BASE + '/v1/tasks/' + id, {
       headers: { Authorization: 'Bearer ' + apiKey, 'X-Runway-Version': RUNWAY_VERSION },
     });
-    if (!r.ok) return; // already gone/expired
+    if (!r.ok) return 'done'; // already gone/expired
     const data = await r.json().catch(() => ({}));
-    if (data.status === 'SUCCEEDED' || data.status === 'FAILED' || data.status === 'CANCELLED') return;
+    if (data.status === 'SUCCEEDED' || data.status === 'FAILED' || data.status === 'CANCELLED') return 'done';
     const age = Date.now() - Date.parse(data.createdAt || '');
-    if (!(age > STUCK_MS)) return; // حيّ (أو عمره مجهول): لا يُلغى فيديو أحد
-    // Still pending/running/throttled: cancel it to free the concurrency slot.
-    await fetch(RUNWAY_API_BASE + '/v1/tasks/' + prevId, {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + apiKey, 'X-Runway-Version': RUNWAY_VERSION },
-    }).catch(() => {});
+    return age > STUCK_MS ? 'stuck' : 'live';
   } catch (e) {
-    // best-effort only
+    return 'live'; // best-effort only — لا يُلغى ما لم نره
+  }
+}
+async function clearStuckTask(index, apiKey) {
+  const slot = await readSlot(index);
+  const ids = [...new Set([slot.hold, slot.id].filter(Boolean))];
+  if (!ids.length) return;
+  const states = await Promise.all(ids.map((id) => taskState(id, apiKey)));
+  // Still pending/running/throttled past STUCK_MS: cancel it to free the concurrency slot.
+  await Promise.all(ids.map((id, i) => (states[i] !== 'stuck' ? null : fetch(RUNWAY_API_BASE + '/v1/tasks/' + id, {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer ' + apiKey, 'X-Runway-Version': RUNWAY_VERSION },
+  }).catch(() => {}))));
+  // hold = أقدم حيّة نراقبها حتّى تنتهي — العالقة لا تضيع حين تُكتب مهمّة جديدة فوق id
+  const live = (id) => ids.indexOf(id) >= 0 && states[ids.indexOf(id)] === 'live';
+  const hold = live(slot.hold) ? slot.hold : (live(slot.id) ? slot.id : null);
+  if ((hold || null) !== (slot.hold || null) && process.env.UPSTASH_REDIS_REST_URL) {
+    try { await kvPutJSON(lastTaskPath(index), Object.assign({ id: slot.id }, hold ? { hold } : {})); } catch (e) { /* guard-ok — أفضل جهد */ }
   }
 }
 

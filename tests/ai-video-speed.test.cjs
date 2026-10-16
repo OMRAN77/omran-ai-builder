@@ -52,6 +52,17 @@ test('٢. كشف الوجوه يعلن العدد حين ينجح فقط (stats.
   assert.equal(s2.faces, 2);
   const s3 = {}; await mi.detectFaces('k', img, { fetchImpl: async () => ({ ok: false, status: 503 }), stats: s3 });
   assert.equal(s3.faces, undefined, '٥٠٣ ليس «لا وجوه»');
+  // مراجعة: ٢٠٠ بلا جواب فعليّ = عطب لا «صفر وجوه» (كان يُسقط قفل الهويّة عن صورة شخص)
+  for (const [what, body] of [
+    ['حجب الطلب', { promptFeedback: { blockReason: 'OTHER' } }],
+    ['SAFETY بلا محتوى', { candidates: [{ finishReason: 'SAFETY' }] }],
+    ['أفكار فقط', { candidates: [{ content: { parts: [{ text: 'thinking…', thought: true }] } }] }],
+    ['جسم لا يُقرأ', null],
+  ]) {
+    const st = {};
+    try { await mi.detectFaces('k', img, { fetchImpl: async () => ({ ok: true, json: async () => { if (body === null) throw new Error('bad'); return body; } }), stats: st }); } catch (e) { /* لا يعني شيئًا هنا */ }
+    assert.equal(st.faces, undefined, what);
+  }
 });
 
 test('٣. video-create بصورة عطر: الصورة نفسها أوّل إطار، ومرساة «الشيء كما هو» لا «شخص حقيقيّ»', async () => {
@@ -115,6 +126,34 @@ test('٤. clearStuckTask: لا يلغي فيديو مستخدم آخر يتول�
     assert.equal(await run({ status: 'PENDING', createdAt: iso(RK.STUCK_MS + 60 * 1000) }), 1, 'العالق فوق ربع ساعة يُلغى كما كان');
   } finally {
     global.fetch = realFetch;
+  }
+  // مراجعة: المهمّة العالقة لا تضيع حين تأتي بعدها مهمّة خلال ربع ساعة (كانت تُكتب فوقها فيبقى المفتاح مسدودًا) — hold يراقبها حتّى تنتهي
+  const store = {};
+  require.cache[kvKey] = { id: kvKey, filename: kvKey, loaded: true, exports: { kvGetJSON: async (k) => (store[k] ? JSON.parse(store[k]) : null), kvPutJSON: async (k, v) => { store[k] = JSON.stringify(v); return true; } } };
+  delete require.cache[rp('api/_lib/runway-keys.js')];
+  const RK2 = require(rp('api/_lib/runway-keys.js'));
+  const upEnv = process.env.UPSTASH_REDIS_REST_URL; process.env.UPSTASH_REDIS_REST_URL = 'https://kv.test';
+  const tasks = {}; const deleted = [];
+  global.fetch = async (url, init) => {
+    const id = String(url).split('/').pop();
+    if (init && init.method === 'DELETE') { deleted.push(id); tasks[id].status = 'CANCELLED'; return new Response('', { status: 204 }); }
+    return new Response(JSON.stringify(tasks[id] || {}), { status: tasks[id] ? 200 : 404 });
+  };
+  try {
+    const t0 = Date.now();
+    tasks.A = { status: 'RUNNING', createdAt: new Date(t0 - 60 * 1000).toISOString() }; // A تعلق لاحقًا
+    await RK2.saveLastTask(0, 'A');
+    await RK2.clearStuckTask(0, 'k'); // طلب B بعد دقيقة: A حيّة → تبقى، وتُحفظ في hold
+    tasks.B = { status: 'RUNNING', createdAt: new Date(t0).toISOString() };
+    await RK2.saveLastTask(0, 'B');
+    assert.deepEqual(deleted, [], 'لا يُلغى فيديو حيّ');
+    tasks.A.createdAt = new Date(t0 - RK2.STUCK_MS - 60 * 1000).toISOString(); // مرّ ربع ساعة وA ما زالت معلّقة
+    tasks.B.status = 'SUCCEEDED';
+    await RK2.clearStuckTask(0, 'k'); // طلب C: A عالقة رغم أنّ «آخر مهمّة» صارت B
+    assert.deepEqual(deleted, ['A'], 'العالقة تُلغى ولو كُتبت فوقها مهمّة أحدث');
+  } finally {
+    global.fetch = realFetch;
+    if (upEnv === undefined) delete process.env.UPSTASH_REDIS_REST_URL; else process.env.UPSTASH_REDIS_REST_URL = upEnv;
     if (savedKv) require.cache[kvKey] = savedKv; else delete require.cache[kvKey];
     delete require.cache[rp('api/_lib/runway-keys.js')];
   }
@@ -160,11 +199,12 @@ function clientBox(net) {
     setInterval: (fn) => { const id = nid++; timers.set(id, 1); (async () => { await new Promise((r) => setImmediate(r)); while (timers.has(id)) { await fn(); await new Promise((r) => setImmediate(r)); } })(); return id; },
     clearInterval: (id) => timers.delete(id),
     setTimeout: (fn) => { setImmediate(fn); return 0; },
-    fetch: net, creates: 0, polls: 0,
+    fetch: net, creates: 0, polls: 0, accepted: [], __swallow() {},
   };
   sb.window.postWithConfirm = undefined;
-  const code = [sliceFn('function makePollGuard('), sliceFn('function pollTaskOnce('), sliceFn('async function createScene('), sliceFn('async function createSceneWithRetry(')].join('\n');
-  vm.runInNewContext(code + '\nthis.cswr = createSceneWithRetry; this.poll = pollTaskOnce;', sb);
+  const code = [sliceFn('function makePollGuard('), sliceFn('function pollTaskOnce('), sliceFn('function throwIfDeclined('), sliceFn('async function createScene('), sliceFn('async function createSceneWithRetry(')].join('\n');
+  sb.sb = sb;
+  vm.runInNewContext(code + '\nthis.cswr = function(){ var a = [].slice.call(arguments); while (a.length < 9) a.push(undefined); a.push(function(id){ sb.accepted.push(id); }); return createSceneWithRetry.apply(null, a); }; this.poll = pollTaskOnce;', sb);
   return sb;
 }
 
@@ -174,10 +214,19 @@ test('٦. الاستطلاع: خطأ عابر لا يرمي الفيديو ال�
   let sb = clientBox(async (url, init) => {
     if (String(url).startsWith('/api/video-create')) { sb.creates++; return new Response(JSON.stringify({ id: 'T' + sb.creates }), { status: 200 }); }
     sb.polls++; const s = seq.shift() || 'SUCCEEDED';
-    return new Response(JSON.stringify(s === 'ERR' ? { error: 'تعذّر متابعة الفيديو الآن.' } : { status: s, output: ['https://cdn/v.mp4'] }), { status: 200 });
+    return new Response(JSON.stringify(s === 'ERR' ? { error: 'تعذّر متابعة الفيديو الآن.' } : { status: s, output: ['https://cdn/v.mp4'] }), { status: s === 'ERR' ? 503 : 200 });
   });
   assert.equal(await sb.cswr('قطّة', 'realistic', '5', '1280:720', 't', false, null), 'https://cdn/v.mp4');
   assert.equal(sb.creates, 1, 'العابر كان يُنشئ مهمّة ثانية من الصفر');
+  assert.deepEqual(sb.accepted, ['T1'], 'onAccepted مرّة لمّا قبِل المزوّد (يبدأ التعليق الصوتيّ وقتها لا قبل)');
+
+  // (أ٢) 4xx من الاستطلاع نهائيّ: لا ٣٠ ث انتظار ثمّ «تحقّق من الشبكة»
+  sb = clientBox(async (url) => {
+    if (String(url).startsWith('/api/video-create')) { sb.creates++; return new Response(JSON.stringify({ id: 'N' + sb.creates }), { status: 200 }); }
+    sb.polls++; return new Response(JSON.stringify({ error: 'Missing id' }), { status: 400 });
+  });
+  await assert.rejects(sb.cswr('قطّة', 'realistic', '5', '1280:720', 't', false, null), /Missing id/);
+  assert.ok(sb.polls <= 3, 'استطلاع واحد لكلّ محاولة: ' + sb.polls);
 
   // (ب) CANCELLED نهائيّة: لا ربع ساعة استطلاع (١٨٠ دورة)
   sb = clientBox(async (url) => {
@@ -198,6 +247,7 @@ test('٦. الاستطلاع: خطأ عابر لا يرمي الفيديو ال�
   };
   let r = await once(() => { const x = new Response('{"error":"confirm_required"}', { status: 428 }); x.json(); return x; }, {});
   assert.equal(r.err.code, 'confirm_declined'); assert.equal(r.b.creates, 1, 'كانت تُفتح النافذة ثانيةً بعد ٦ و١٢ ث');
+  assert.deepEqual(r.b.accepted, [], 'إلغاء النافذة لا يبدأ التعليق الصوتيّ');
   r = await once(() => new Response('{"error":"points_insufficient"}', { status: 402 }), {});
   assert.equal(r.err.code, 'points_insufficient'); assert.equal(r.b.creates, 1);
   r = await once(() => new Response('{"error":"تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.","retryable":false}', { status: 400 }), {});
@@ -222,8 +272,10 @@ test('٧. «جودة أعلى» بعد ظهور الفيديو لا قبله: ا
       pollTaskOnce: async (id, quiet) => { sb.quiet = quiet; if (bump) sb.bump(); return 'https://cdn/up.mp4'; },
       proxyVideoUrl: (u) => '/api/video-download?u=' + u, proxyFetch: async () => new Response('vid', { status: 200 }),
       muxNarration: async () => new Blob(['m']), Blob,
-      resultEl: { src: 'blob:raw', currentTime: 3, paused: true, play: () => Promise.resolve() }, downloadEl: { href: '/dl/raw' },
+      resultEl: { src: 'blob:raw', currentTime: 3, paused: true, play: () => { sb.played = true; return Promise.resolve(); }, pause: () => { sb.paused = true; } }, downloadEl: { href: '/dl/raw' },
+      __swallow() {}, revoked: [],
     };
+    sb.URL.revokeObjectURL = (u) => sb.revoked.push(u);
     vm.runInNewContext(fnSrc + '\nthis.go = upgradeInBackground; this.bump = function(){ genSeq++; }; this.seq = function(){ return ++genSeq; };', sb);
     return sb;
   };
@@ -231,6 +283,8 @@ test('٧. «جودة أعلى» بعد ظهور الفيديو لا قبله: ا
   await sb.go('https://cdn/raw.mp4', 't', null, sb.seq());
   assert.equal(sb.resultEl.src, 'blob:up'); assert.equal(sb.downloadEl.href, '/api/video-download?u=https://cdn/up.mp4');
   assert.equal(sb.quiet, true, 'استطلاع هادئ — «⏳ الحالة» كانت ستُظهر بطاقة الانتظار فوق النتيجة');
+  assert.equal(sb.played, undefined, 'لا تشغيل لفيديو أوقفه المستخدم أو أغلق نافذته'); assert.equal(sb.paused, true, 'autoplay يُلغى بالإيقاف');
+  assert.deepEqual(sb.revoked, ['blob:raw'], 'النسخة القديمة تُحرَّر من الذاكرة');
   assert.ok(sb.statuses.every((s) => /^✅/.test(s)), 'حالات الخلفية ليست «مشغول»: ' + sb.statuses.join(' | '));
   sb = mk(false, true);
   await sb.go('https://cdn/raw.mp4', 't', null, sb.seq());
@@ -241,8 +295,10 @@ test('٧. «جودة أعلى» بعد ظهور الفيديو لا قبله: ا
 });
 
 test('٨. التعليق الصوتيّ مع الفيديو لا بعده، وffmpeg يُحمَّل مرّة لنداءين متزامنين، وعدّاد الانتظار لا يُصفَّر عند ⬇️', async () => {
-  const runway = SRC.slice(SRC.indexOf('      const ttsEarly = '), SRC.indexOf('      let finalSrc = sceneUrls[0];'));
-  assert.ok(runway.indexOf('ttsEarly') < runway.indexOf('ensureRunwayCredits('), 'TTS يبدأ قبل فحص الرصيد والإنشاء');
+  const runway = SRC.slice(SRC.indexOf('      let ttsEarly = null;'), SRC.indexOf('      let finalSrc = sceneUrls[0];'));
+  assert.ok(runway.indexOf("ttsEarly = fetch('/api/tts'") > 0 && runway.indexOf("ttsEarly = fetch('/api/tts'") < runway.indexOf('const okBal2'), 'TTS معرّف داخل startNarration');
+  assert.ok(!/^\s*ttsEarly = fetch/m.test(runway.slice(runway.indexOf('const okBal2'))), 'لا TTS قبل قبول المزوّد');
+  assert.equal((runway.match(/filmHeroBase64, filmHeroMime, startNarration\)/g) || []).length, 2, 'يبدأ من onAccepted في المشهد الواحد والمشهدين');
   const after = SRC.slice(SRC.indexOf('      let finalSrc = sceneUrls[0];'), SRC.indexOf('upgradeInBackground(sceneUrls[0]'));
   assert.ok(after.includes('await ttsEarly') && !after.includes("fetch('/api/tts'"), 'لا نداء TTS ثانٍ بعد الفيديو');
   const memo = SRC.slice(SRC.indexOf('  let ffmpegLoading = null;'), SRC.indexOf('  async function loadFFmpeg(){'));
@@ -255,4 +311,20 @@ test('٨. التعليق الصوتيّ مع الفيديو لا بعده، وff
   const vrow = gw.slice(gw.indexOf("{ id: 'video', sel: '#videoMakerStatus'"), gw.indexOf("top: ['🚀'", gw.indexOf("{ id: 'video', sel: '#videoMakerStatus'")) + 80);
   assert.ok(/busy: \[[^\]]*'⬇️'/.test(vrow) && /top: \[[^\]]*'⬇️'/.test(vrow), 'تحميل الناتج جزء من الانتظار');
   assert.ok(!/busy: \[[^\]]*'✅'/.test(vrow) && !/busy: \[[^\]]*'✨'/.test(vrow), 'حالة الترقية في الخلفية ليست انتظارًا');
+});
+
+test('٩. رسائل لا تعلّق بطاقة الانتظار، وإلغاء مشهد لاحق لا يقول «لم تُخصم أيّ نقاط»، والسينمائيّ والاقتصاديّ يعرفان إلغاء النافذة', () => {
+  assert.ok(!/'⏳ One video every few minutes|"⏳ You have reached today/.test(SRC) && SRC.includes("'🕒 One video every few minutes"), 'المهلة وحدّ اليوم ببادئة ليست «مشغول»');
+  const busy = (read('js/app-34-gen-wait.js').match(/\{ id: 'video'[\s\S]*?busy: \[([^\]]*)\]/) || [])[1] || '';
+  assert.ok(busy && !busy.includes('🕒') && !busy.includes('⛔'));
+  assert.match(SRC, /if\(code === 'confirm_declined'\) return scenesDone > 0 \? bT\('⛔ /);
+  assert.equal((SRC.match(/scenesDone\+\+/g) || []).length, 2, 'الفيلم والمشهدان يعدّان ما اكتمل');
+  assert.equal((SRC.match(/throwIfDeclined\(cr\);/g) || []).length, 2, 'السينمائيّ والاقتصاديّ (كان «body stream already read» خامًا)');
+  const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'];
+  const KEYS = ['✅ Video ready — ✨ preparing a higher-quality version in the background…', '✅ Done — upgraded to higher quality.', '✅ Done! (The higher-quality version was unavailable — your video is ready)', 'The video was cancelled by the engine — please try again.', '⛔ Stopped at your cancel — the scenes completed before it were charged.'];
+  KEYS.forEach((k) => assert.ok(SRC.includes("'" + k + "'"), 'النصّ في الكود: ' + k));
+  LANGS.forEach((lg) => { const t = read('i18n/' + lg + '.js'); KEYS.forEach((k) => assert.ok(t.includes(JSON.stringify(k)), lg + ' ← ' + k)); });
+  // وسم اللغات مرفوع عن ٧٤٨ (الرقم يُقرأ من الكود لا يُثبَّت — سقّاطة vPinTests)
+  const iv = Number((read('js/app-04-i18n-state.js').match(/'i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]);
+  assert.ok(iv > 748, 'وسم اللغات: ' + iv);
 });

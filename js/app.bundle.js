@@ -6017,7 +6017,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=748'; /* v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج */
+    sc.src = 'i18n/' + lg + '.js?v=749'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -29698,10 +29698,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       },
       ok(){ errors = 0; },
       // خطأ شبكة: نتسامح مع العابر ونستسلم بعد ستّ محاولات متتالية فاشلة
-      fail(iv){
+      fail(iv, msg){
         if(++errors < 6) return;
         clearInterval(iv);
-        reject(new Error(bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.')));
+        reject(new Error(msg || bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.'))); /* v-ai-video-speed: نصّ الخادم إن جاء خطؤه منه */
       },
     };
   }
@@ -30144,14 +30144,19 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   async function loadFFmpeg(){
     const { FFmpeg } = await import('/ffmpeg/lib/index.js');
     const ffmpeg = new FFmpeg();
-    await Promise.race([
-      ffmpeg.load({
-        coreURL: '/ffmpeg/core/ffmpeg-core.js',
-        wasmURL: '/ffmpeg/core/ffmpeg-core.wasm',
-        classWorkerURL: '/ffmpeg/lib/worker.js',
-      }),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('ffmpeg load timeout')), 90000)),
-    ]);
+    try{
+      await Promise.race([
+        ffmpeg.load({
+          coreURL: '/ffmpeg/core/ffmpeg-core.js',
+          wasmURL: '/ffmpeg/core/ffmpeg-core.wasm',
+          classWorkerURL: '/ffmpeg/lib/worker.js',
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('ffmpeg load timeout')), 90000)),
+      ]);
+    } catch(e){
+      try{ ffmpeg.terminate(); }catch(e2){ __swallow(e2, 'video:ff-terminate'); } /* v-ai-video-speed: لا عاملين حيّين بعد مهلة التحميل المسبق */
+      throw e;
+    }
     ffmpegInstance = ffmpeg;
     return ffmpeg;
   }
@@ -30237,7 +30242,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           const data = await res.json();
           /* v-ai-video-speed: خطأ الاستطلاع عابر في الغالب (مهلة، ٥xx) — كان يرمي المهمّة الجارية فيُنشئ createSceneWithRetry مهمّة جديدة
              من الصفر (+٧٠ ث محاكاةً، وتذكرة ثانية). الآن يُعدّ كعطب شبكة على المهمّة نفسها: ستّ مرّات متتالية ثمّ رسالة صريحة. */
-          if(data.error){ guard.fail(iv); return; }
+          if(data.error){
+            if(res.status >= 500 || res.status === 429){ guard.fail(iv, data.error); return; }
+            clearInterval(iv); reject(new Error(data.error)); return; /* 4xx نهائيّ (مهمّة مجهولة…) لا يُنتظر ٣٠ ث */
+          }
           guard.ok();
           if(data.status === 'SUCCEEDED'){
             clearInterval(iv);
@@ -30516,15 +30524,23 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         } catch(e){ player = upUrl; } // آخر ملاذ للمشغّل فقط (كالمسار الأساسيّ v525)
       }
       if(runSeq !== genSeq) return;
-      const at = resultEl.currentTime || 0, wasPlaying = !resultEl.paused;
+      const at = resultEl.currentTime || 0, wasPlaying = !resultEl.paused, old = resultEl.src;
       resultEl.src = player;
       try{ resultEl.currentTime = at; }catch(e){ /* guard-ok — بعض المتصفّحات ترفض قبل التحميل؛ يبدأ من أوّله */ }
-      if(wasPlaying) resultEl.play().catch(function(){ /* autoplay may be blocked */ });
+      /* المشغّل بخاصيّة autoplay: تبديل المصدر يشغّله ولو أوقفه المستخدم أو أغلق النافذة (صوت التعليق من نافذة مغلقة) */
+      if(wasPlaying) resultEl.play().catch(function(){ /* autoplay may be blocked */ }); else resultEl.pause();
       downloadEl.href = dl;
+      if(/^blob:/.test(old || '') && old !== dl && old !== player){ try{ URL.revokeObjectURL(old); }catch(e){ __swallow(e, 'video:revoke'); } }
       setStatus(bT('✅ تم — صار الفيديو بجودة أعلى.','✅ Done — upgraded to higher quality.'));
     } catch(e){
       if(runSeq === genSeq) setStatus(bT('✅ تم الانتهاء! (تعذّرت النسخة الأعلى جودة — فيديوك الحاليّ جاهز)','✅ Done! (The higher-quality version was unavailable — your video is ready)'));
     }
+  }
+
+  /* v-ai-video-speed: «إلغاء» في نافذة الخصم يرجع ردّ 428 نفسه مقروء الجسم — كان json() يرمي («body stream already read» خامًا في
+     السينمائيّ والاقتصاديّ)، وفي createScene يُعاد الطلب بعد ٦ و١٢ ث وتُفتح النافذة ثانيةً */
+  function throwIfDeclined(res){
+    if(res && res.status === 428) throw Object.assign(new Error((typeof window.t === 'function' && window.t('vidCancelled') !== 'vidCancelled') ? window.t('vidCancelled') : 'cancelled'), { code: 'confirm_declined' });
   }
 
   async function createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime){
@@ -30536,8 +30552,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }));
-    /* v-ai-video-speed: «إلغاء» في نافذة الخصم يرجع ردّ 428 نفسه مقروء الجسم — كان res.json() يرمي فيُعاد الطلب بعد ٦ و١٢ ث وتُفتح النافذة ثانيةً */
-    if(res.status === 428) throw Object.assign(new Error((typeof window.t === 'function' && window.t('vidCancelled') !== 'vidCancelled') ? window.t('vidCancelled') : 'cancelled'), { code: 'confirm_declined' });
+    throwIfDeclined(res);
     const data = await res.json();
     if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error, retryAfter: data.retryAfter || 0, retryable: data.retryable });
     return data.id;
@@ -30550,12 +30565,13 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   // with the video description. To make this invisible to the user, we
   // automatically recreate and retry the task a couple of times (with a
   // short backoff) before giving up and showing a real error.
-  async function createSceneWithRetry(text, style, duration, ratio, token, longMode, onRetryStatus, imageBase64, imageMime){
+  async function createSceneWithRetry(text, style, duration, ratio, token, longMode, onRetryStatus, imageBase64, imageMime, onAccepted){
     const maxAttempts = 3;
     let lastErr;
     for(let attempt = 1; attempt <= maxAttempts; attempt++){
       try{
         const id = await createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime);
+        if(onAccepted){ try{ onAccepted(id); }catch(e){ __swallow(e, 'video:accepted'); } } /* v-ai-video-speed: المزوّد قبِل — ما يُجهَّز بالتوازي يبدأ الآن */
         const url = await pollTaskOnce(id);
         return url;
       } catch(e){
@@ -30683,7 +30699,6 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   })();
 
   btnGenerate.onclick = async () => {
-    const runSeq = ++genSeq; /* v-ai-video-speed: ترقية الجودة في الخلفية لا تستبدل نتيجة طلب أحدث */
     const text = (promptEl.value || '').trim();
     if(!text && modeEl.value !== 'actor'){
       setStatus((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (bT('⚠️ اكتب وصف الفيديو أولًا.','⚠️ Please describe the video first.')));
@@ -30705,6 +30720,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     const wantNarration = narrationToggle.checked;
     const wantQuality = qualityToggle.checked && !isLong;
 
+    const runSeq = ++genSeq; /* v-ai-video-speed: ترقية الجودة في الخلفية لا تستبدل نتيجة طلب أحدث — يُعدّ هنا بعد التحقّق (نقرة بلا وصف لا تُسقط ترقية مدفوعة) */
+    let scenesDone = 0; /* v-ai-video-speed: مشاهد اكتملت (وحُسبت) قبل إلغاء نافذة خصم مشهد لاحق */
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
@@ -30712,14 +30729,15 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     function friendlyError(err){
       const code = err && err.code;
       if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
-      if(code === 'daily_limit_reached') return isEn() ? "⏳ You have reached today's free video limit. Try again tomorrow." : '⏳ لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
+      /* v-ai-video-speed: ⏳ «مشغول» في بطاقة الانتظار — رسالة الخطأ به كانت تُبقي بطاقة «يتولّد» وعدّادها فوق المشهد بلا نهاية → 🕒 */
+      if(code === 'daily_limit_reached') return isEn() ? "🕒 You have reached today's free video limit. Try again tomorrow." : '🕒 لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
       /* v-video-refund: بدل رمز «video_cooldown» الخام — مهلة بين فيديو وآخر، والانتظار بالدقائق. */
       if(code === 'video_cooldown'){
         const m = Math.max(1, Math.ceil((Number(err && err.retryAfter) || 180) / 60));
-        return isEn() ? ('⏳ One video every few minutes. Try again in about ' + m + ' min.') : ('⏳ فيديو واحد كل بضع دقائق. جرّب بعد ' + m + ' دقيقة تقريبًا.');
+        return isEn() ? ('🕒 One video every few minutes. Try again in about ' + m + ' min.') : ('🕒 فيديو واحد كل بضع دقائق. جرّب بعد ' + m + ' دقيقة تقريبًا.');
       }
       /* v-ai-video-speed: الإلغاء سطر هادئ بلا ❌، ونفاد النقاط بنصّ الباقات القائم (١٤ لغة) لا الرمز الخامّ */
-      if(code === 'confirm_declined') return err.message;
+      if(code === 'confirm_declined') return scenesDone > 0 ? bT('⛔ توقّف الفيديو عند إلغائك — المشاهد التي اكتملت قبله حُسبت.','⛔ Stopped at your cancel — the scenes completed before it were charged.') : err.message;
       if(code === 'points_insufficient' && typeof window.t === 'function' && window.t('plansWhyPoints') !== 'plansWhyPoints') return '⚠️ ' + window.t('plansWhyPoints');
       return (bT('❌ خطأ: ','❌ Error: ')) + (err && err.message ? err.message : String(err));
     }
@@ -30841,6 +30859,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
                   ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
                   : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
               }, filmHeroBase64, filmHeroMime));
+          scenesDone++;
           setStatus((bT('🎙️ جاري تسجيل سرد المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
@@ -30945,6 +30964,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=omni-create', payload)
           : fetch('/api/video?action=omni-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
+        throwIfDeclined(cr);
         const d = await cr.json();
         if(!cr.ok || d.error) throw Object.assign(new Error(d.error || 'omni failed'), { code: d.error });
         const videoUrl = d.url || d.dataUrl;
@@ -30979,6 +30999,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=minimax-create', payload)
           : fetch('/api/video?action=minimax-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
+        throwIfDeclined(cr);
         const crData = await cr.json();
         if(!cr.ok || crData.error || !crData.task_id) throw Object.assign(new Error(crData.error || 'create failed'), { code: crData.error });
         const videoUrl = await new Promise((resolve, reject) => {
@@ -31217,14 +31238,18 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
 
     try{
       let sceneUrls = [];
-      /* v-ai-video-speed: التعليق الصوتيّ يتجهّز مع الفيديو لا بعده — نصّه معروف من البداية (كان يبدأ بعد اكتمال الفيديو)،
-         ومحرّك الدمج (٣١ ميغا) يُحمَّل بالتوازي. TTS لا يخصم نقاطًا (سقف يوميّ فقط). */
-      const ttsEarly = wantNarration ? fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: (narrationText.value || '').trim() || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
-      }).then((r) => (r.ok ? r.blob() : null)).catch(() => null) : null;
-      if(wantNarration) getFFmpeg().catch(() => null);
+      /* v-ai-video-speed: التعليق الصوتيّ يتجهّز مع الفيديو لا بعده (كان يبدأ بعد اكتماله)، ومحرّك الدمج (٣١ ميغا) يُحمَّل بالتوازي —
+         من لحظة قبول المزوّد (onAccepted) لا من الضغطة: إلغاء نافذة الخصم أو الرصيد أو المهلة لا يستهلك نداء صوت من السقف اليوميّ. */
+      let ttsEarly = null;
+      const startNarration = () => {
+        if(!wantNarration || ttsEarly) return;
+        ttsEarly = fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: (narrationText.value || '').trim() || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+        }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
+        getFFmpeg().catch(() => null);
+      };
       const okBal2 = await ensureRunwayCredits(isLong ? 100 : 50);
       if(!okBal2){ btnGenerate.disabled = false; return; }
       if(isLong){
@@ -31238,8 +31263,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-          }, filmHeroBase64, filmHeroMime));
-          sceneUrls.push(url);
+          }, filmHeroBase64, filmHeroMime, startNarration));
+          sceneUrls.push(url); scenesDone++;
         }
       } else {
         setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
@@ -31247,7 +31272,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           setStatus(isEn()
             ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
             : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-        }, filmHeroBase64, filmHeroMime);
+        }, filmHeroBase64, filmHeroMime, startNarration);
         sceneUrls.push(url);
       }
 
@@ -31269,6 +31294,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       if(wantNarration){
         try{
           setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
+          startNarration(); // احتياط: لم يُنادَ onAccepted (لا يحدث في هذا المسار)
           const audioBlob = await ttsEarly;
           if(audioBlob){
             setStatus(bT('🎚️ جاري إضافة التعليق الصوتي للفيديو...','🎚️ Adding narration to the video...'));

@@ -116,5 +116,5 @@ test('٦. وسوم الكاش مرفوعة: partials-core وdesign-sels وملف
   const html = read('index.html');
   assert.ok(Number(html.match(/partials-core\.js\?v=(\d+)/)[1]) >= 659);
   assert.ok(Number(html.match(/design-sels\.js\?v=(\d+)/)[1]) >= 571);
-  assert.ok(Number(read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)/)[1]) >= 748); // ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج — وسم مشترك يُخدم من الكاش بلا أسماء الديكور
+  assert.ok(Number(read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)/)[1]) >= 749); // ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج — وسم مشترك يُخدم من الكاش بلا أسماء الديكور
 });
