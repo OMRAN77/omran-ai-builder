@@ -3531,6 +3531,72 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
+    "designAiFurnitureScandinavian": "سكندنافي",
+    "designAiFurnitureJapandi": "جابندي",
+    "designAiFurnitureIndustrial": "صناعي",
+    "designAiFurnitureMidcentury": "ميدسنشري",
+    "designAiFurnitureArtdeco": "آرت ديكو",
+    "designAiFurnitureRattan": "خيزران وراتان",
+    "designAiFurnitureVelvet": "مخمل فاخر",
+    "designAiFurnitureLeather": "جلد كلاسيكي",
+    "designAiFurnitureMajlis": "جلسة أرضية عربية",
+    "designAiFurnitureModular": "كنب زاوية مودولار",
+    "designAiFurnitureCurved": "كنب منحني",
+    "designAiFurnitureRustic": "ريفي خشبي",
+    "designAiFlooringHerringbone": "باركيه سمكة",
+    "designAiFlooringDarkwood": "خشب داكن",
+    "designAiFlooringLightwood": "خشب فاتح",
+    "designAiFlooringBlackmarble": "رخام أسود",
+    "designAiFlooringTravertine": "ترافرتين",
+    "designAiFlooringTerrazzo": "تيرازو",
+    "designAiFlooringConcrete": "خرسانة مصقولة",
+    "designAiFlooringPorcelain": "بورسلان كبير",
+    "designAiFlooringMoroccan": "بلاط مغربي",
+    "designAiFlooringHexagon": "بلاط سداسي",
+    "designAiFlooringChecker": "أبيض وأسود",
+    "designAiFlooringStone": "حجر طبيعي",
+    "designAiFlooringPersianrug": "سجاد فارسي",
+    "designAiFabricCream": "كريمي",
+    "designAiFabricNavy": "كحلي",
+    "designAiFabricEmerald": "زمردي",
+    "designAiFabricMustard": "خردلي",
+    "designAiFabricTerracotta": "تيراكوتا",
+    "designAiFabricBlush": "وردي بودري",
+    "designAiFabricSage": "أخضر مريمي",
+    "designAiFabricCharcoal": "فحمي",
+    "designAiFabricBurgundy": "عنابي",
+    "designAiFabricTeal": "أزرق مخضر",
+    "designAiFabricCamel": "جملي",
+    "designAiFabricLavender": "لافندر",
+    "designAiFabricSkyblue": "سماوي",
+    "designAiWallColorIvory": "عاجي",
+    "designAiWallColorGreige": "رمادي بيج",
+    "designAiWallColorTaupe": "توبي",
+    "designAiWallColorSage": "أخضر مريمي",
+    "designAiWallColorOlive": "زيتي",
+    "designAiWallColorNavy": "كحلي",
+    "designAiWallColorForest": "أخضر غامق",
+    "designAiWallColorTerracotta": "تيراكوتا",
+    "designAiWallColorBlush": "وردي ناعم",
+    "designAiWallColorLightblue": "أزرق فاتح",
+    "designAiWallColorCharcoal": "فحمي",
+    "designAiWallColorMocha": "موكا",
+    "designAiWallColorBlack": "أسود مطفي",
+    "designAiCurtainsSheer": "شيفون شفاف",
+    "designAiCurtainsLinen": "كتان طبيعي",
+    "designAiCurtainsVelvet": "مخمل",
+    "designAiCurtainsBlackout": "معتمة",
+    "designAiCurtainsRoman": "ستائر رومانية",
+    "designAiCurtainsRoller": "رول",
+    "designAiCurtainsWooden": "شيش خشبي",
+    "designAiCurtainsVertical": "شرائح عمودية",
+    "designAiCurtainsWave": "ويفي",
+    "designAiCurtainsDouble": "طبقتين",
+    "designAiCurtainsEmbroidered": "مطرزة عربية",
+    "designAiCurtainsMotorized": "كهربائية ذكية",
+    "designAiCurtainsBamboo": "خيزران",
+    "designAiCurtainsPelmet": "بكورنيش",
     /* v-lighting-3d: أسماء إضاءات الديكور. */
     "designAiLightingNatural": "طبيعية",
     "designAiLightingNeutral": "أبيض محايد",
@@ -4678,6 +4744,72 @@ const I18N = {
     /* v-app-director: قسم «مخرج التطبيق» للمالك وحده — ٢٦ نصًّا (١٤ لغة) */ vdTab: "مخرج التطبيق", vdSub: "اكتب ما تريد فيديو عنه واختر اللغة والمتحدّث والمدّة — يكتب الفكرة والسيناريو، يصوّر شاشات التطبيق الحقيقيّة، يجهّز نماذج الأنماط، يسجّل التعليق ويجمّع الفيديو كاملًا.", vdPh: "مثال: فيديو عن أنماط الصور بصوت مها", vdLang: "اللغة", vdSpeaker: "المتحدّث", vdMinutes: "المدّة بالدقائق", vdRef: "صورتك مرجعًا لنماذج الأنماط (اختياريّ)", vdGo: "سوّ الفيديو", vdStepPlan: "يكتب الفكرة والسيناريو", vdStepShots: "يصوّر شاشات التطبيق", vdStepSamples: "يجهّز نماذج الأنماط", vdStepVoice: "يسجّل التعليق", vdStepJoin: "يجمّع الفيديو", vdScene: "المشهد {i} من {n}", vdQueued: "في الانتظار على الجسر", vdDone: "جاهز — {m} دقيقة و{s} ثانية", vdDownload: "تحميل الفيديو", vdFail: "ما قدرت أكمل الفيديو", vdFailPlan: "تعذّر كتابة السيناريو — تحقّق من مفتاح المخرج في الخادم", vdFailBridge: "تعذّر الوصول إلى الجسر — تحقّق من عنوان الجسر وسرّه في الخادم", vdFailRender: "فشل التصوير أو الدمج على الجسر", vdSaved: "حُفظ في فيديوهاتي", vdWarnSamples: "{n} نموذج لم يُولَّد فصار لقطة شاشة", vdEmpty: "اكتب الطلب أوّلًا", vdMaha: "مها", vdAbdullah: "عبدالله", /* v-app-director-voice: مع صوت/بدون صوت + الصوت الاحتياطيّ */ vdVoiceLabel: "التعليق الصوتيّ", vdVoiceOn: "مع صوت", vdVoiceOff: "بدون صوت", vdVoiceBackup: "صوت احتياطيّ (غير صوت مها وعبدالله)", vdFailVoice: "تعذّر تسجيل التعليق — اختر «بدون صوت» ليكتمل الفيديو بنصّ على الشاشة", vdFailBridgeOld: "الجسر يعمل بنسخة قديمة لا تعرف مسار الفيديو — أعد نشره من الفرع الرئيسيّ",
   },
   en: {
+    /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
+    "designAiFurnitureScandinavian": "Scandinavian",
+    "designAiFurnitureJapandi": "Japandi",
+    "designAiFurnitureIndustrial": "Industrial",
+    "designAiFurnitureMidcentury": "Mid-century",
+    "designAiFurnitureArtdeco": "Art Deco",
+    "designAiFurnitureRattan": "Rattan",
+    "designAiFurnitureVelvet": "Velvet",
+    "designAiFurnitureLeather": "Leather",
+    "designAiFurnitureMajlis": "Arabic floor seating",
+    "designAiFurnitureModular": "Modular sectional",
+    "designAiFurnitureCurved": "Curved sofa",
+    "designAiFurnitureRustic": "Rustic wood",
+    "designAiFlooringHerringbone": "Herringbone parquet",
+    "designAiFlooringDarkwood": "Dark wood",
+    "designAiFlooringLightwood": "Light wood",
+    "designAiFlooringBlackmarble": "Black marble",
+    "designAiFlooringTravertine": "Travertine",
+    "designAiFlooringTerrazzo": "Terrazzo",
+    "designAiFlooringConcrete": "Polished concrete",
+    "designAiFlooringPorcelain": "Large porcelain",
+    "designAiFlooringMoroccan": "Moroccan tiles",
+    "designAiFlooringHexagon": "Hexagon tiles",
+    "designAiFlooringChecker": "Checkerboard",
+    "designAiFlooringStone": "Natural stone",
+    "designAiFlooringPersianrug": "Persian rug",
+    "designAiFabricCream": "Cream",
+    "designAiFabricNavy": "Navy",
+    "designAiFabricEmerald": "Emerald",
+    "designAiFabricMustard": "Mustard",
+    "designAiFabricTerracotta": "Terracotta",
+    "designAiFabricBlush": "Blush pink",
+    "designAiFabricSage": "Sage green",
+    "designAiFabricCharcoal": "Charcoal",
+    "designAiFabricBurgundy": "Burgundy",
+    "designAiFabricTeal": "Teal",
+    "designAiFabricCamel": "Camel",
+    "designAiFabricLavender": "Lavender",
+    "designAiFabricSkyblue": "Sky blue",
+    "designAiWallColorIvory": "Ivory",
+    "designAiWallColorGreige": "Greige",
+    "designAiWallColorTaupe": "Taupe",
+    "designAiWallColorSage": "Sage green",
+    "designAiWallColorOlive": "Olive",
+    "designAiWallColorNavy": "Navy",
+    "designAiWallColorForest": "Forest green",
+    "designAiWallColorTerracotta": "Terracotta",
+    "designAiWallColorBlush": "Blush pink",
+    "designAiWallColorLightblue": "Light blue",
+    "designAiWallColorCharcoal": "Charcoal",
+    "designAiWallColorMocha": "Mocha",
+    "designAiWallColorBlack": "Matte black",
+    "designAiCurtainsSheer": "Sheer",
+    "designAiCurtainsLinen": "Linen",
+    "designAiCurtainsVelvet": "Velvet",
+    "designAiCurtainsBlackout": "Blackout",
+    "designAiCurtainsRoman": "Roman shades",
+    "designAiCurtainsRoller": "Roller blinds",
+    "designAiCurtainsWooden": "Wooden blinds",
+    "designAiCurtainsVertical": "Vertical blinds",
+    "designAiCurtainsWave": "Wave curtains",
+    "designAiCurtainsDouble": "Double layer",
+    "designAiCurtainsEmbroidered": "Embroidered",
+    "designAiCurtainsMotorized": "Motorized",
+    "designAiCurtainsBamboo": "Bamboo shades",
+    "designAiCurtainsPelmet": "With pelmet",
     /* v-lighting-3d: أسماء إضاءات الديكور. */
     "designAiLightingNatural": "Natural",
     "designAiLightingNeutral": "Neutral white",
@@ -5881,7 +6013,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=746'; /* v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة */
+    sc.src = 'i18n/' + lg + '.js?v=747'; /* v-decor-18 (747): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -13209,7 +13341,8 @@ async function postWithConfirm(url, payload){
     /* v-lighting-3d: العرض الأفقي للإضاءة وحدها، ويُصفّر عند فتح معرض آخر.
        v-picker-cols (المالك ١٦ أكتوبر: «صور مغبّشة أكثرها»): '' كانت تمحو الأعمدة المكتوبة في وسم الشبكة نفسه (partials-core)،
        فكلّ معرض غير الإضاءة صار بطاقة واحدة بعرض الشاشة وصورة ٣٦٠ بكسل ممطوطة ٤ أضعاف. الافتراضيّ يُكتب صريحًا. */
-    grid.style.gridTemplateColumns = cfg.landscape ? 'repeat(auto-fill,minmax(min(100%,240px),1fr))' : 'repeat(auto-fill,minmax(150px,1fr))';
+    /* v-decor-18 (المالك: «على شكل الفيديوهات مش بالطول»): الأفقيّ عمودان على الجوّال لا بطاقة واحدة بعرض الشاشة. */
+    grid.style.gridTemplateColumns = cfg.landscape ? 'repeat(auto-fill,minmax(min(45%,230px),1fr))' : 'repeat(auto-fill,minmax(150px,1fr))';
     el('pickerSheetTitle').textContent = cfg.title || '';
     el('pickerSheetCount').textContent = cfg.count || '';
     grid.innerHTML = '';
@@ -13245,16 +13378,19 @@ async function postWithConfirm(url, payload){
       }
       var info = document.createElement('div');
       info.style.cssText = 'padding:9px 10px 11px;text-align:center;';
+      /* v-decor-18: بطاقة الترندات — الصورة تملأ البطاقة والاسم فوقها في أسفلها، بلا سطر وصف تحتها. */
+      if(cfg.overlay) info.style.cssText = 'position:absolute;inset:auto 0 0 0;padding:22px 8px 8px;text-align:center;background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       var nm = document.createElement('div');
       nm.textContent = it.title || '';
       nm.style.cssText = 'font-size:12.5px;font-weight:700;color:' + (it.active ? '#d4af37' : '#eef0f6') + ';';
       info.appendChild(nm);
-      if(it.sub){
+      if(it.sub && !cfg.overlay){
         var sb = document.createElement('div'); sb.textContent = it.sub;
         sb.style.cssText = 'font-size:10.5px;color:#9a9a9e;margin-top:3px;';
         info.appendChild(sb);
       }
-      card.appendChild(wrap); card.appendChild(info);
+      if(cfg.overlay){ nm.style.color = it.active ? '#e9c75a' : '#fff'; wrap.appendChild(info); card.appendChild(wrap); }
+      else { card.appendChild(wrap); card.appendChild(info); }
       card.onclick = function(){ shut(); if(cfg.onPick) cfg.onPick(it.v); };
       grid.appendChild(card);
     });

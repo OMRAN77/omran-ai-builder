@@ -34,7 +34,7 @@ test('١. معرض عاديّ بعد معرض الإضاءة الأفقيّ يع
   const def = grid.style.gridTemplateColumns;
   assert.equal(def, 'repeat(auto-fill,minmax(150px,1fr))', 'افتراضيّ الوسم');
   window.omranPicker.open({ title: 'الإضاءة', items, landscape: true });
-  assert.match(grid.style.gridTemplateColumns, /minmax\(min\(100%,240px\),1fr\)/, 'الأفقيّ للإضاءة');
+  assert.match(grid.style.gridTemplateColumns, /minmax\(min\(45%,230px\),1fr\)/, 'الأفقيّ عمودان على الجوّال (v-decor-18)');
   window.omranPicker.open({ title: 'نمط الديكور', items });
   assert.equal(grid.style.gridTemplateColumns, def, 'الأعمدة رجعت — لا ""');
 });

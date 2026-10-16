@@ -40,7 +40,8 @@ for(const [l,d] of Object.entries(ctx.I18N)) for(const o of options.slice(5)){
   const k=o[2].match(/data-i18n="([^"]+)"/)[1];assert.ok(d[k],l+' بلا ترجمة '+k);
 }
 const ui=read('js/app-05-ui.js');
-assert.ok(sels.includes("landscape: s.id==='designAiLighting'"));
+// v-decor-18: الأفقيّ صار للأقسام الستّة كلّها (الإضاءة أوّلها) بالاسم فوق الصورة كبطاقات الترندات، وبقيّة المعارض كما هي.
+assert.ok(sels.includes("var OPT6=['designAiLighting',") && sels.includes('landscape: six, overlay: six,'));
 assert.ok(ui.includes("(cfg.landscape ? '16/9' : '3/4')"),'فقط الإضاءة أفقية');
 assert.ok(ui.includes("grid.style.gridTemplateColumns = cfg.landscape ?"),'تصفير شبكة المعرض عند تغيير القسم');
 const pick=sels.match(/onPick: function\(v\)\{[^}]+\}/)[0];

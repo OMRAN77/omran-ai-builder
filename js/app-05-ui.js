@@ -3802,7 +3802,8 @@ async function postWithConfirm(url, payload){
     /* v-lighting-3d: العرض الأفقي للإضاءة وحدها، ويُصفّر عند فتح معرض آخر.
        v-picker-cols (المالك ١٦ أكتوبر: «صور مغبّشة أكثرها»): '' كانت تمحو الأعمدة المكتوبة في وسم الشبكة نفسه (partials-core)،
        فكلّ معرض غير الإضاءة صار بطاقة واحدة بعرض الشاشة وصورة ٣٦٠ بكسل ممطوطة ٤ أضعاف. الافتراضيّ يُكتب صريحًا. */
-    grid.style.gridTemplateColumns = cfg.landscape ? 'repeat(auto-fill,minmax(min(100%,240px),1fr))' : 'repeat(auto-fill,minmax(150px,1fr))';
+    /* v-decor-18 (المالك: «على شكل الفيديوهات مش بالطول»): الأفقيّ عمودان على الجوّال لا بطاقة واحدة بعرض الشاشة. */
+    grid.style.gridTemplateColumns = cfg.landscape ? 'repeat(auto-fill,minmax(min(45%,230px),1fr))' : 'repeat(auto-fill,minmax(150px,1fr))';
     el('pickerSheetTitle').textContent = cfg.title || '';
     el('pickerSheetCount').textContent = cfg.count || '';
     grid.innerHTML = '';
@@ -3838,16 +3839,19 @@ async function postWithConfirm(url, payload){
       }
       var info = document.createElement('div');
       info.style.cssText = 'padding:9px 10px 11px;text-align:center;';
+      /* v-decor-18: بطاقة الترندات — الصورة تملأ البطاقة والاسم فوقها في أسفلها، بلا سطر وصف تحتها. */
+      if(cfg.overlay) info.style.cssText = 'position:absolute;inset:auto 0 0 0;padding:22px 8px 8px;text-align:center;background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       var nm = document.createElement('div');
       nm.textContent = it.title || '';
       nm.style.cssText = 'font-size:12.5px;font-weight:700;color:' + (it.active ? '#d4af37' : '#eef0f6') + ';';
       info.appendChild(nm);
-      if(it.sub){
+      if(it.sub && !cfg.overlay){
         var sb = document.createElement('div'); sb.textContent = it.sub;
         sb.style.cssText = 'font-size:10.5px;color:#9a9a9e;margin-top:3px;';
         info.appendChild(sb);
       }
-      card.appendChild(wrap); card.appendChild(info);
+      if(cfg.overlay){ nm.style.color = it.active ? '#e9c75a' : '#fff'; wrap.appendChild(info); card.appendChild(wrap); }
+      else { card.appendChild(wrap); card.appendChild(info); }
       card.onclick = function(){ shut(); if(cfg.onPick) cfg.onPick(it.v); };
       grid.appendChild(card);
     });

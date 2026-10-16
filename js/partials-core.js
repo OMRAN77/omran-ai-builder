@@ -355,6 +355,19 @@
         <option value="simple" data-i18n="designAiFurnitureSimple">بسيط</option>
         <option value="luxury" data-i18n="designAiFurnitureLuxury">فاخر</option>
         <option value="bohemian" data-i18n="designAiFurnitureBohemian">بوهيمي</option>
+        <!-- v-decor-18 (المالك ١٦ أكتوبر): سبعة عشر خيارًا كالإضاءة، ولكلّ خيار صورته -->
+        <option value="scandinavian" data-i18n="designAiFurnitureScandinavian" data-en="Scandinavian">سكندنافي</option>
+        <option value="japandi" data-i18n="designAiFurnitureJapandi" data-en="Japandi">جابندي</option>
+        <option value="industrial" data-i18n="designAiFurnitureIndustrial" data-en="Industrial">صناعي</option>
+        <option value="midcentury" data-i18n="designAiFurnitureMidcentury" data-en="Mid-century">ميدسنشري</option>
+        <option value="artdeco" data-i18n="designAiFurnitureArtdeco" data-en="Art Deco">آرت ديكو</option>
+        <option value="rattan" data-i18n="designAiFurnitureRattan" data-en="Rattan">خيزران وراتان</option>
+        <option value="velvet" data-i18n="designAiFurnitureVelvet" data-en="Velvet">مخمل فاخر</option>
+        <option value="leather" data-i18n="designAiFurnitureLeather" data-en="Leather">جلد كلاسيكي</option>
+        <option value="majlis" data-i18n="designAiFurnitureMajlis" data-en="Arabic floor seating">جلسة أرضية عربية</option>
+        <option value="modular" data-i18n="designAiFurnitureModular" data-en="Modular sectional">كنب زاوية مودولار</option>
+        <option value="curved" data-i18n="designAiFurnitureCurved" data-en="Curved sofa">كنب منحني</option>
+        <option value="rustic" data-i18n="designAiFurnitureRustic" data-en="Rustic wood">ريفي خشبي</option>
       </select>
     </div>
 
@@ -366,6 +379,20 @@
         <option value="marble" data-i18n="designAiFlooringMarble">رخام</option>
         <option value="ceramic" data-i18n="designAiFlooringCeramic">سيراميك</option>
         <option value="carpet" data-i18n="designAiFlooringCarpet">سجاد</option>
+        <!-- v-decor-18 (المالك ١٦ أكتوبر): سبعة عشر خيارًا كالإضاءة، ولكلّ خيار صورته -->
+        <option value="herringbone" data-i18n="designAiFlooringHerringbone" data-en="Herringbone parquet">باركيه سمكة</option>
+        <option value="darkwood" data-i18n="designAiFlooringDarkwood" data-en="Dark wood">خشب داكن</option>
+        <option value="lightwood" data-i18n="designAiFlooringLightwood" data-en="Light wood">خشب فاتح</option>
+        <option value="blackmarble" data-i18n="designAiFlooringBlackmarble" data-en="Black marble">رخام أسود</option>
+        <option value="travertine" data-i18n="designAiFlooringTravertine" data-en="Travertine">ترافرتين</option>
+        <option value="terrazzo" data-i18n="designAiFlooringTerrazzo" data-en="Terrazzo">تيرازو</option>
+        <option value="concrete" data-i18n="designAiFlooringConcrete" data-en="Polished concrete">خرسانة مصقولة</option>
+        <option value="porcelain" data-i18n="designAiFlooringPorcelain" data-en="Large porcelain">بورسلان كبير</option>
+        <option value="moroccan" data-i18n="designAiFlooringMoroccan" data-en="Moroccan tiles">بلاط مغربي</option>
+        <option value="hexagon" data-i18n="designAiFlooringHexagon" data-en="Hexagon tiles">بلاط سداسي</option>
+        <option value="checker" data-i18n="designAiFlooringChecker" data-en="Checkerboard">أبيض وأسود</option>
+        <option value="stone" data-i18n="designAiFlooringStone" data-en="Natural stone">حجر طبيعي</option>
+        <option value="persianrug" data-i18n="designAiFlooringPersianrug" data-en="Persian rug">سجاد فارسي</option>
       </select>
     </div>
 
@@ -377,6 +404,20 @@
         <option value="dark" data-i18n="designAiFabricDark">داكنة</option>
         <option value="neutral" data-i18n="designAiFabricNeutral">محايدة</option>
         <option value="bold" data-i18n="designAiFabricBold">جريئة</option>
+        <!-- v-decor-18 (المالك ١٦ أكتوبر): سبعة عشر خيارًا كالإضاءة، ولكلّ خيار صورته -->
+        <option value="cream" data-i18n="designAiFabricCream" data-en="Cream">كريمي</option>
+        <option value="navy" data-i18n="designAiFabricNavy" data-en="Navy">كحلي</option>
+        <option value="emerald" data-i18n="designAiFabricEmerald" data-en="Emerald">زمردي</option>
+        <option value="mustard" data-i18n="designAiFabricMustard" data-en="Mustard">خردلي</option>
+        <option value="terracotta" data-i18n="designAiFabricTerracotta" data-en="Terracotta">تيراكوتا</option>
+        <option value="blush" data-i18n="designAiFabricBlush" data-en="Blush pink">وردي بودري</option>
+        <option value="sage" data-i18n="designAiFabricSage" data-en="Sage green">أخضر مريمي</option>
+        <option value="charcoal" data-i18n="designAiFabricCharcoal" data-en="Charcoal">فحمي</option>
+        <option value="burgundy" data-i18n="designAiFabricBurgundy" data-en="Burgundy">عنابي</option>
+        <option value="teal" data-i18n="designAiFabricTeal" data-en="Teal">أزرق مخضر</option>
+        <option value="camel" data-i18n="designAiFabricCamel" data-en="Camel">جملي</option>
+        <option value="lavender" data-i18n="designAiFabricLavender" data-en="Lavender">لافندر</option>
+        <option value="skyblue" data-i18n="designAiFabricSkyblue" data-en="Sky blue">سماوي</option>
       </select>
     </div>
 
@@ -388,6 +429,20 @@
         <option value="beige" data-i18n="designAiWallColorBeige">بيج</option>
         <option value="gray" data-i18n="designAiWallColorGray">رمادي</option>
         <option value="bold" data-i18n="designAiWallColorBold">جريئة</option>
+        <!-- v-decor-18 (المالك ١٦ أكتوبر): سبعة عشر خيارًا كالإضاءة، ولكلّ خيار صورته -->
+        <option value="ivory" data-i18n="designAiWallColorIvory" data-en="Ivory">عاجي</option>
+        <option value="greige" data-i18n="designAiWallColorGreige" data-en="Greige">رمادي بيج</option>
+        <option value="taupe" data-i18n="designAiWallColorTaupe" data-en="Taupe">توبي</option>
+        <option value="sage" data-i18n="designAiWallColorSage" data-en="Sage green">أخضر مريمي</option>
+        <option value="olive" data-i18n="designAiWallColorOlive" data-en="Olive">زيتي</option>
+        <option value="navy" data-i18n="designAiWallColorNavy" data-en="Navy">كحلي</option>
+        <option value="forest" data-i18n="designAiWallColorForest" data-en="Forest green">أخضر غامق</option>
+        <option value="terracotta" data-i18n="designAiWallColorTerracotta" data-en="Terracotta">تيراكوتا</option>
+        <option value="blush" data-i18n="designAiWallColorBlush" data-en="Blush pink">وردي ناعم</option>
+        <option value="lightblue" data-i18n="designAiWallColorLightblue" data-en="Light blue">أزرق فاتح</option>
+        <option value="charcoal" data-i18n="designAiWallColorCharcoal" data-en="Charcoal">فحمي</option>
+        <option value="mocha" data-i18n="designAiWallColorMocha" data-en="Mocha">موكا</option>
+        <option value="black" data-i18n="designAiWallColorBlack" data-en="Matte black">أسود مطفي</option>
       </select>
     </div>
 
@@ -398,6 +453,21 @@
         <option value="simple" data-i18n="designAiCurtainsSimple">بسيطة</option>
         <option value="luxury" data-i18n="designAiCurtainsLuxury">فخمة</option>
         <option value="remove" data-i18n="designAiCurtainsRemove">بدون ستائر</option>
+        <!-- v-decor-18 (المالك ١٦ أكتوبر): سبعة عشر خيارًا كالإضاءة، ولكلّ خيار صورته -->
+        <option value="sheer" data-i18n="designAiCurtainsSheer" data-en="Sheer">شيفون شفاف</option>
+        <option value="linen" data-i18n="designAiCurtainsLinen" data-en="Linen">كتان طبيعي</option>
+        <option value="velvet" data-i18n="designAiCurtainsVelvet" data-en="Velvet">مخمل</option>
+        <option value="blackout" data-i18n="designAiCurtainsBlackout" data-en="Blackout">معتمة</option>
+        <option value="roman" data-i18n="designAiCurtainsRoman" data-en="Roman shades">ستائر رومانية</option>
+        <option value="roller" data-i18n="designAiCurtainsRoller" data-en="Roller blinds">رول</option>
+        <option value="wooden" data-i18n="designAiCurtainsWooden" data-en="Wooden blinds">شيش خشبي</option>
+        <option value="vertical" data-i18n="designAiCurtainsVertical" data-en="Vertical blinds">شرائح عمودية</option>
+        <option value="wave" data-i18n="designAiCurtainsWave" data-en="Wave curtains">ويفي</option>
+        <option value="double" data-i18n="designAiCurtainsDouble" data-en="Double layer">طبقتين</option>
+        <option value="embroidered" data-i18n="designAiCurtainsEmbroidered" data-en="Embroidered">مطرزة عربية</option>
+        <option value="motorized" data-i18n="designAiCurtainsMotorized" data-en="Motorized">كهربائية ذكية</option>
+        <option value="bamboo" data-i18n="designAiCurtainsBamboo" data-en="Bamboo shades">خيزران</option>
+        <option value="pelmet" data-i18n="designAiCurtainsPelmet" data-en="With pelmet">بكورنيش</option>
       </select>
     </div>
 

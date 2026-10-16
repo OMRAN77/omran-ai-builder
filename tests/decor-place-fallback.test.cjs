@@ -166,3 +166,37 @@ test('الإضاءات السبع تصل للتوليد مع صورة وبدون
     }
   }
 });
+
+// v-decor-18 (المالك ١٦ أكتوبر: «تضيف لكلّ واحد ١٨… ويكونون يشتغلون على نفس الطلب»): كلّ خيار من الأقسام الخمسة (١٧ لكلّ قسم)
+// يصل وصفه إلى أمر التوليد الفعليّ، والأقسام الستّة معًا في الطلب نفسه — بصورة وبدونها، طلب واحد بلا رصيد حقيقيّ.
+test('الأقسام الخمسة: كلّ خيار من القائمة له وصف يصل للأمر، والستّة معًا في طلب واحد', async () => {
+  const core = fs.readFileSync(path.join(root, 'js/partials-core.js'), 'utf8');
+  const srv = fs.readFileSync(path.join(root, 'api/_lib/design-create.js'), 'utf8');
+  const grab = (n) => new Function('return {' + srv.match(new RegExp('const ' + n + ' = \\{([\\s\\S]*?)\\n\\};'))[1] + '}')();
+  const SECS = { furniture: ['designAiFurniture', 'FURNITURE_PROMPTS'], flooring: ['designAiFlooring', 'FLOORING_PROMPTS'], fabric: ['designAiFabric', 'FABRIC_PROMPTS'], wallColor: ['designAiWallColor', 'WALLCOLOR_PROMPTS'], curtains: ['designAiCurtains', 'CURTAIN_PROMPTS'] };
+  const promptsOf = async (extra) => {
+    const prompts = [];
+    reset((m, init) => { const body = JSON.parse(init.body); prompts.push(/^gpt-image/.test(m) ? body.prompt : body.contents[0].parts.find((p) => p.text).text); return null; });
+    const r = await place(Object.assign({ count: 1 }, extra));
+    assert.equal(r.code, 200);
+    assert.ok(prompts.length > 0);
+    assert.equal(tally(), 1, 'طلب واحد');
+    return prompts;
+  };
+  for (const [field, [id, map]] of Object.entries(SECS)) {
+    const vals = [...core.match(new RegExp('<select id="' + id + '"[\\s\\S]*?</select>'))[0].matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]).filter(Boolean);
+    assert.equal(vals.length, 17, id + ': ١٧ خيارًا + «بدون تغيير»');
+    const P = grab(map);
+    for (const v of vals) {
+      assert.ok(P[v], id + ': لا وصف توليد لـ' + v);
+      const prompts = await promptsOf({ [field]: v });
+      assert.ok(prompts.every((p) => p.includes(P[v])), id + '/' + v + ' لم يصل للأمر الفعليّ');
+    }
+  }
+  const pick = { lighting: 'aurora', furniture: 'velvet', flooring: 'terrazzo', fabric: 'emerald', wallColor: 'navy', curtains: 'linen' };
+  for (const uploaded of [false, true]) {
+    const prompts = await promptsOf(Object.assign({}, pick, uploaded ? { imageBase64: 'test-room', mimeType: 'image/png' } : {}));
+    const want = [grab('LIGHTING_PROMPTS').aurora, grab('FURNITURE_PROMPTS').velvet, grab('FLOORING_PROMPTS').terrazzo, grab('FABRIC_PROMPTS').emerald, grab('WALLCOLOR_PROMPTS').navy, grab('CURTAIN_PROMPTS').linen];
+    for (const p of prompts) for (const w of want) assert.ok(p.includes(w), (uploaded ? 'بصورة' : 'بلا صورة') + ': ' + w);
+  }
+});
