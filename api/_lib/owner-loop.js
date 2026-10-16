@@ -340,6 +340,17 @@ function midStream(s, e, o) {
   return { kind: 'stop', msg: why };
 }
 
+/* v-pro-lanes (لقطة مشترك Pro ٧٥ ١٦ أكتوبر): لغير المالك — مسار الباقة الذي فشل قبل أيّ حرف (حدث خطأ داخل البثّ، انقطاع، مهلة أوّل بايت)
+   كان يصل catch الأعلى فيرى العميل «chat error» ويهبط لسلسلته القديمة بلا أدوات، ولا يُجرَّب المسار التالي. هنا الحالة التي يُعامل بها
+   كفشل ما قبل البثّ: 402 للرصيد/الحصّة، 504 للمهلة، 502 للباقي. خطأ برمجيّ (TypeError من الكود نفسه) = 0 فيمضي كما كان. */
+function laneFail(e) {
+  if (!e) return 0;
+  const m = String(e.message || '');
+  if (e.code === 'OA_STREAM_PROTOCOL_ERROR') return CREDIT_RE.test(m) ? 402 : 502;
+  if (e.name === 'UpstreamTimeoutError') return 504;
+  return (NET_RE.test(m) || NET_RE.test(String((e.cause && (e.cause.code || e.cause.message)) || ''))) ? 502 : 0;
+}
+
 /* v-sse-error (فحص المزوّدين ١٥ أكتوبر، بعد لقطة DeepSeek «أرفع الرقعة…» بلا رفعة): خطأ المزوّد داخل البثّ بعد ٢٠٠ — event: error
    ({"type":"error","error":{…}} عند أنثروبيك) أو كائن error في أعلى الدفعة (الوسيط) — كان يُتجاهل فينتهي الدور «ناجحًا» على نصّ ناقص أو
    فارغًا بلا سبب ولا سجلّ، وأداة نصف مبثوثة تضيع. الآن يُرمى خطأ بروتوكول بكوده فيمرّ بمسار C9 نفسه (إعادة مرّة قبل أيّ نصّ، وإلّا سبب ظاهر). */
@@ -618,7 +629,7 @@ function refusalRetry(convo, t) {
 const REFUSAL_RETRY_STATUS = '↳ ⚠️ رفض المزوّد الدور كطلب كشف تفكير — أعيده مرّة بلا عرض التفكير';
 
 module.exports = {
-  state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, exitText, stallNote, shrinkOld, overTime,
+  state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, laneFail, exitText, stallNote, shrinkOld, overTime,
   isDeadPick, rememberDeadPick, margin,
   scrubRefusals, refusalRetry, REFUSAL_RETRY_STATUS, // v-refusal-retry
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1
