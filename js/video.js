@@ -187,7 +187,7 @@
     var box=id('vmkSamples'); if(!box) return;
     var md=(id('videoMakerMode')||{}).value||''; box.innerHTML='';
     if(tab==='trend'||!md) return;
-    var c=Cap(md), keys=['videoIdea'+c,'videoIdea'+c+'2'];
+    var c=Cap(md), keys=['videoIdea'+c] /* v-vmk-light: بطاقتان — «كيف تسوي فيديو» ثمّ فيديو الجودة */;
     var tt0=L('vcTutorial');
     if(tt0){
       var te=document.createElement('div'); te.className='vmk-sm vmk-sm-tut'; te.setAttribute('role','button'); te.tabIndex=0;
@@ -267,16 +267,22 @@
     if(!more){
       more=document.createElement('details'); more.id='vmkMore'; more.className='vmk-more';
       more.innerHTML='<summary></summary><div class="vmk-more-b"></div>';
-      var go=id('videoMakerGenerateBtn'); main.insertBefore(more,go||null);
+      main.appendChild(more);
     }
+    /* v-vmk-light (المالك ١٧ أكتوبر: «اريد ترتيب ثاني خفيف»): الوصف ← المدّة والشكل ← زرّ الإنشاء ← «خيارات إضافية» مطويّة
+       (فيها مساعد الكتابة) ← الأمثلة آخر شي: «كيف تسوي فيديو» ثمّ فيديو الجودة */
+    var gob=id('videoMakerGenerateBtn'); if(gob&&gob.parentNode===main&&more.previousElementSibling!==gob) main.insertBefore(more,gob.nextSibling);
+    var smp=id('vmkSamples'); if(smp&&more.parentNode===main&&more.nextElementSibling!==smp) main.insertBefore(smp,more.nextSibling);
     var body=more.querySelector('.vmk-more-b');
     more.querySelector('summary').textContent=L('vcMore');
     var st=id('videoMakerStyle'), stBox=st&&st.parentElement;
     var nt=id('videoMakerNarrationToggle'), ntLab=nt&&nt.closest('label');
-    [id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerLongMinutesRow'),
+    [id('vmkWrite'),id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerLongMinutesRow'),
      ntLab,id('videoMakerVoiceGenderRow'),id('videoMakerNarrationRow'),M.querySelector('details.vmk-adv')].forEach(function(e){
       if(e&&e.parentNode!==body) body.appendChild(e);
     });
+    /* v-vmk-light: «خيارات متقدّمة» صارت فارغة بعد نقل محتواها (وكانت تُظهر نصّ لغة أخرى) — تختفي ما دامت فارغة */
+    var adv=M.querySelector('details.vmk-adv'); if(adv) adv.hidden=adv.children.length<=1;
     /* صورة البطل ظاهرة تحت الوصف مباشرة (أمر المالك): بطاقة كبيرة بزرّ رفع واضح، لا مدفونة في «خيارات إضافية» */
     var hr=id('videoMakerHeroRow'), pw=id('videoMakerPrompt'), prw=pw&&pw.parentElement;
     if(hr&&prw&&hr.previousElementSibling!==prw){

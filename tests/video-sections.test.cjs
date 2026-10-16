@@ -25,7 +25,7 @@ test('الأقسام: الترندات أوّلًا ثمّ كلّ وضع، وا�
 });
 
 test('النماذج: ثلاث بطاقات لكلّ وضع (فيديو تعليميّ + مثالان) من مفاتيح اللغة، والفيديو يُقرأ من الجدول بلا طلب شبكة، وبلا عنوان «نماذج جاهزة»', () => {
-  assert.ok(js.includes("keys=['videoIdea'+c,'videoIdea'+c+'2']"));
+  assert.ok(js.includes("keys=['videoIdea'+c]"));
   assert.ok(js.includes("var VIDEOS={}") && js.includes("/media/samples/"));
   assert.ok(!/نماذج جاهزة/.test(js) && !/نماذج جاهزة/.test(read('js/app-03-i18n-data.js')));
 });
