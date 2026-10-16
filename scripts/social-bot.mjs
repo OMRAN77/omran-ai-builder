@@ -1,4 +1,5 @@
-// بوت التسويق الآلي (طلب المالك): سلسلة «تحدّي 30 موقع بالذكاء الاصطناعي» — حلقة كلّ يومين.
+// بوت التسويق الآلي (طلب المالك): سلسلة «سوّها بـ OM Ai» — حلقة كلّ يومين، والنوع يتبدّل وحده:
+// 🌐 موقع ← 🎬 فيديو ترند ← 🖼️ أنماط صور ← … (وإذا تعثّر نوع جرّب اللي بعده بدل ما تفوت الحلقة).
 // يختار فكرة من ترندات البحث في الخليج (وإلّا من القائمة الثابتة)، يبنيها بـ OM Ai الحقيقي
 // على الإنتاج من حساب البوت، يصوّر العملية فيديو عموديًّا 1080×1920 («الحلقة N» + «سوّيته في X ثانية»
 // + الشعار)، ثمّ ينشره على كلّ منصّة موصولة في Upload-Post. الزمن المكتوب هو الزمن الفعليّ
@@ -13,7 +14,7 @@
 //   BOT_USER             اسم حساب البوت (الافتراضيّ omaisocial)
 //   IDEA_INDEX           رقم فكرة محدّد من القائمة؛ وإلّا فكرة من الترند (IDEA_SOURCE=list للقائمة وحدها)
 //                        أو نوع الحلقة: video (اسكتش بيكسار من الترند) · video:<ترند> · styles · styles:<man|falcon|grandpa|woman>
-//   KIND                 مثل خانة idea للنوع (site|video|styles)
+//   KIND                 مثل خانة idea للنوع (site|video|styles)؛ بدونهما النوع بالدور من رقم الحلقة
 //   EPISODE              رقم حلقة محدّد؛ وإلّا آخر حلقة منشورة + 1
 //   --gate               فحص خفيف قبل التثبيت: الجدول يومي، والحلقة تنزل إذا مرّ 36 ساعة على السابقة
 //   DRY_RUN=1            صناعة الفيديو دون نشر
@@ -43,20 +44,24 @@ const QR_URL = 'https://' + SITE + '/app?ref=omran'; // نفس رابط بارك
 const W = 1080, H = 1920, VW = 432, VH = 768, DPR = 2.5, FPS = 30;
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 const BUILD_TIMEOUT_MS = 300000;
-const SERIES = 'تحدّي 30 موقع بالذكاء الاصطناعي';
+const SERIES = 'سوّها بـ OM Ai';
 const SEASON_LEN = 30;
 const EVERY_H = 36; // الجدول يوميّ؛ الحلقة تنزل إذا مرّ 36 ساعة على السابقة = كلّ يومين بالضبط حتى آخر الشهر
 const EP_ID = (n) => 'omai-ep-' + n;
 const EP_RE = /^omai-ep-(\d+)$/;
 const TREND_GEOS = ['AE', 'SA', 'KW', 'QA'];
-const SERIES2 = 'سوّها بـ OM Ai';
+const SERIES2 = SERIES;
 // أنواع الحلقات: 🌐 موقع من ترند اليوم · 🎬 فيديو ترند من صانع الفيديو · 🖼️ صورة وحدة بعدّة أنماط.
-// الافتراضيّ الموقع؛ النوع يُفرض من خانة idea في التشغيل اليدويّ: video · video:legofy · styles · styles:falcon
+// النوع بالدور من رقم الحلقة (1 موقع، 2 فيديو، 3 أنماط، 4 موقع…)، ويُفرض من خانة idea: site · video · video:legofy · styles · styles:falcon
 export const KINDS = {
-  site: { tag: 'تحدّي 30 موقع', series: SERIES },
+  site: { tag: 'موقع بجملة', series: SERIES },
   video: { tag: 'ترند فيديو', series: SERIES2 },
   styles: { tag: 'أنماط الصور', series: SERIES2 },
 };
+const ROTATION = ['site', 'video', 'styles'];
+export const kindFor = (epN) => ROTATION[((Math.max(1, Number(epN) || 1) - 1) % ROTATION.length)];
+// نوع الحلقة أوّلًا، ثمّ البقيّة بالترتيب: لو تعثّر نوع (موقع هزيل، توليد فشل) تنزل الحلقة بالنوع اللي بعده.
+export const kindOrder = (epN) => { const k = ROTATION.indexOf(kindFor(epN)); return ROTATION.map((_, i) => ROTATION[(k + i) % ROTATION.length]); };
 export function parseKind(raw) {
   const m = /^\s*(site|video|styles?)\s*(?:[:=]\s*([a-z0-9_-]{2,30}))?\s*$/i.exec(String(raw || ''));
   return m ? { kind: /^style/i.test(m[1]) ? 'styles' : m[1].toLowerCase(), arg: (m[2] || '').toLowerCase() } : null;
@@ -104,7 +109,7 @@ const clock = (n) => { n = Math.max(0, Math.round(n)); return n < 60 ? String(n)
 export function buildCaption(idea, secs, epN) {
   const base = ['#ذكاء_اصطناعي', '#تصميم_مواقع', '#برمجة', '#مواقع', '#مشاريع', '#OMAi', '#AI', '#الامارات', '#السعودية', '#الكويت', '#قطر', '#عمان', '#البحرين'];
   const ep = epN ? epLabel(epN) : null;
-  const tags = [...new Set([...(ep ? ['#تحدي_30_موقع'] : []), ...(idea.tags || []), ...base])].slice(0, 20).join(' ');
+  const tags = [...new Set([...(idea.tags || []), ...base])].slice(0, 20).join(' ');
   const head = 'سوّيت موقع ' + idea.name + ' كامل في ' + secWord(secs) + ' بس 🤯';
   const top = [ep ? '🎬 ' + ep.full : '', head, idea.label ? '🔥 الفكرة من ترند اليوم: ' + idea.label : '', 'كتبت جملة وحدة… وOM Ai سوّى الباقي ✨'].filter(Boolean);
   const next = ep ? ['تابعنا… ' + epLabel(epN + 1).short + ' بعد يومين 👀'] : [];
@@ -196,6 +201,18 @@ async function fetchTrends() {
 // يُرفض ما يمسّ السياسة والحروب والدين والأشخاص الحقيقيّين والبنوك… حتى لو مرّ من النموذج.
 const BAD_TOPIC = /سياس|حرب|حروب|جيش|عسكر|صاروخ|هجوم|قصف|وفا[ةه]|توفي|مقتل|قتل|حادث|جريم|سجن|إيران|ايران|إسرائيل|اسرائيل|غزة|هرمز|بنك|مصرف|قمار|رهان|خمر|كحول|حزب|انتخاب|شيخ|أمير|ملك |رئيس/;
 
+// بوّابة جودة الموقع قبل النشر باسم البراند: لا موقع هزيل، ولا ذكر لمحرّم (نموذج ضعيف كتب «جعة ليمون» مرّة).
+const HARAM_RE = /(?<!\p{L})(?:[وفبل])?(?:ال)?(جعة|بيرة|نبيذ|خمر|خمور|كحولية|فودكا|ويسكي|خنزير|كازينو)(?!\p{L})|\b(beer|wine|vodka|whiske?y|pork|bacon|casino)\b/iu;
+export function siteText(code) {
+  return String(code || '').replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ').replace(/data:[^"')\s]+/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ');
+}
+export function siteProblem(code, min = 5000) {
+  const n = String(code || '').length;
+  if (n < min) return 'generated site too small (' + n + ' < ' + min + ' chars)';
+  const bad = HARAM_RE.exec(siteText(code));
+  return bad ? 'generated site mentions «' + (bad[1] || bad[2]) + '»' : '';
+}
+
 export function validTrendIdea(j) {
   if (!j || typeof j !== 'object') return null;
   const name = String(j.name || '').trim(), prompt = String(j.prompt || '').trim(), label = String(j.label || '').trim();
@@ -210,7 +227,7 @@ export function validTrendIdea(j) {
 export function trendAsk(trends, recent, today) {
   const list = trends.map((t, i) => (i + 1) + '. ' + t.title + (t.traffic ? ' | ' + t.traffic + '+ بحث' : '') + (t.news ? ' | ' + t.news : '')).join('\n');
   return [
-    'أنت مخطّط محتوى لحساب OM Ai (منصّة تبني مواقع كاملة بالذكاء الاصطناعي من جملة وحدة). عندنا سلسلة ريلز «' + SERIES + '»: كلّ حلقة نبني موقع لمشروع تجاري خليجي من جملة وحدة.',
+    'أنت مخطّط محتوى لحساب OM Ai (منصّة تبني مواقع كاملة بالذكاء الاصطناعي من جملة وحدة). عندنا سلسلة ريلز «' + SERIES + '»، وحلقة اليوم: نبني موقع لمشروع تجاري خليجي من جملة وحدة.',
     'اليوم ' + today + '. هذي ترندات البحث الحين في الإمارات والسعودية والكويت وقطر (العنوان | البحث | خبر):',
     list || '(ما في ترندات اليوم)',
     '',
@@ -522,7 +539,7 @@ async function capture(browser, acct, idea, dir) {
   await sp.close(); await sctx.close();
   fs.writeFileSync(path.join(dir, '..', 'site.html'), code);
   log('captured frames=' + frames.length + ' build=' + m.secs + 's code=' + code.length + 'ch site=' + VW + 'x' + capH);
-  return { frames, m, sitePng, siteH: Math.round(capH * DPR), codeLen: code.length };
+  return { frames, m, sitePng, siteH: Math.round(capH * DPR), codeLen: code.length, code };
 }
 
 // ───────── 🎬 تصوير فيديو الترند: صانع الفيديو الحقيقيّ في التطبيق ─────────
@@ -1119,89 +1136,98 @@ async function main() {
   }
   const epN = Number.parseInt(process.env.EPISODE || '', 10) || st.last + 1;
   const ep = epLabel(epN);
-  log('episode ' + epN + ' (' + ep.short + ') · published so far ' + st.last);
-  fs.rmSync(OUT, { recursive: true, force: true });
-  const fr = path.join(OUT, 'frames'); fs.mkdirSync(fr, { recursive: true });
   const acct = await botAccount();
   if (!acct.vip && !/^(1|true)$/i.test(process.env.ALLOW_WEAK || '')) {
     throw new Error('bot account "' + acct.user + '" is not VIP (tier=' + acct.tier + ') — add "' + BOT_USER + '" in Settings → owner panel → ⭐ VIP, then re-run');
   }
+  // النوع: يُفرض من خانة idea، وإلّا بالدور من رقم الحلقة مع البقيّة احتياطًا.
   const forced = parseKind(process.env.KIND) || parseKind(process.env.IDEA_INDEX);
-  if (forced && forced.kind !== 'site') { await runMedia(forced.kind, forced.arg, acct, epN, live, fr); return; }
-  // الفكرة: من ترند اليوم، وإلّا من القائمة الثابتة (بدون تكرار المنشور).
-  let idea = null, idx = -1;
-  const fixed = /^-?\d+$/.test(String(process.env.IDEA_INDEX || '').trim());
-  if (!fixed && !/^list$/i.test(process.env.IDEA_SOURCE || '')) idea = await trendIdea(acct.token, st.names);
-  if (!idea) {
-    let k = epN - 1;
-    if (!fixed) for (let i = 0; i < ideas.length && st.names.includes(pickIdea(ideas, '', k, 0).idea.name); i++) k++;
-    ({ idx, idea } = pickIdea(ideas, process.env.IDEA_INDEX, k, 0));
-  }
-  log('idea ' + (idea.src === 'trend' ? 'trend «' + idea.trend + '» → ' : '#' + idx + ': ') + idea.name + ' · ' + idea.prompt);
-  gh('notice', ep.short + ' · ' + (idea.src === 'trend' ? 'trend: ' + idea.trend + ' → ' : 'list #' + idx + ': ') + idea.name);
+  const fixedIdea = /^-?\d+$/.test(String(process.env.IDEA_INDEX || '').trim());
+  const order = forced ? [forced.kind] : fixedIdea ? ['site'] : kindOrder(epN);
+  log('episode ' + epN + ' (' + ep.short + ') · published so far ' + st.last + ' · kinds ' + order.join(' → ') + (forced || fixedIdea ? ' (manual)' : ' (auto)'));
+  const fr = path.join(OUT, 'frames');
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ executablePath: CHROME, args: CHROME ? ['--no-sandbox'] : [] });
-  let res;
+  let out = null, lastErr = null;
   try {
-    const cap = await capture(browser, acct, idea, fr);
-    res = await compose(browser, cap, idea, OUT, epN);
-    res.secs = cap.m.secs;
-    res.codeLen = cap.codeLen;
+    for (const kind of order) {
+      fs.rmSync(OUT, { recursive: true, force: true }); fs.mkdirSync(fr, { recursive: true });
+      try {
+        out = kind === 'site' ? await makeSite(browser, acct, epN, st, ideas, fr, fixedIdea) : await makeMedia(browser, kind, forced ? forced.arg : '', acct, epN, fr);
+        break;
+      } catch (e) {
+        lastErr = e;
+        const msg = (e && e.message) || String(e);
+        log(kind + ' failed: ' + msg);
+        if (order.length > 1) gh('warning', kind + ' failed (' + msg.slice(0, 140) + ') — trying the next kind');
+        for (const c of browser.contexts()) await c.close().catch(() => {});
+      }
+    }
   } finally { await browser.close(); }
+  if (!out) throw lastErr || new Error('no episode made');
   fs.rmSync(fr, { recursive: true, force: true });
-  const caption = buildCaption(idea, res.secs, epN);
-  fs.writeFileSync(path.join(OUT, 'caption.txt'), caption.ig + '\n');
-  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ episode: epN, idea: idx, source: idea.src || 'list', trend: idea.trend || '', name: idea.name, prompt: idea.prompt, secs: res.secs, vip: acct.vip, codeLen: res.codeLen, seconds: +res.tl.total.toFixed(1) }, null, 2));
-  // بوّابة الجودة: موقع هزيل (نموذج مجانيّ/ردّ قصير) لا يُنشر باسم البراند.
-  const MIN_CODE = Number(process.env.MIN_CODE || 5000);
-  if (res.codeLen < MIN_CODE && !/^(1|true)$/i.test(process.env.ALLOW_WEAK || '')) {
-    throw new Error('quality gate: generated site too small (' + res.codeLen + ' < ' + MIN_CODE + ' chars) — not publishing');
-  }
-  if (!live) { log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); gh('notice', 'video ready (not published) · ' + ep.short + ' · ' + idea.name + ' · build ' + res.secs + 's · site ' + res.codeLen + ' chars'); return; }
+  fs.writeFileSync(path.join(OUT, 'caption.txt'), out.caption.ig + '\n');
+  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ ...out.meta, vip: acct.vip, seconds: +out.res.tl.total.toFixed(1) }, null, 2));
+  if (!live) { log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); gh('notice', 'video ready (not published) · ' + ep.short + ' · ' + out.note); return; }
   const platforms = await resolvePlatforms();
-  await publish(res.mp4, res.cover, caption, platforms, epN);
+  await publish(out.res.mp4, out.res.cover, out.caption, platforms, epN);
   log('published ✓');
-  gh('notice', 'published ✓ ' + ep.short + ' · ' + idea.name + ' · ' + res.secs + 's · ' + platforms.join(','));
+  gh('notice', 'published ✓ ' + ep.short + ' · ' + out.note + ' · ' + platforms.join(','));
+}
+
+// 🌐 حلقة موقع: فكرة من ترند اليوم (وإلّا القائمة)، وإذا طلع الموقع هزيل نعيد مرّة بفكرة ثانية.
+async function makeSite(browser, acct, epN, st, ideas, fr, fixedIdea) {
+  const ep = epLabel(epN);
+  const MIN_CODE = Number(process.env.MIN_CODE || 5000);
+  const weakOK = /^(1|true)$/i.test(process.env.ALLOW_WEAK || '');
+  const avoid = [...st.names];
+  let why = '';
+  for (let attempt = 0; attempt < (fixedIdea ? 1 : 2); attempt++) {
+    let idea = null, idx = -1;
+    if (!fixedIdea && attempt === 0 && !/^list$/i.test(process.env.IDEA_SOURCE || '')) idea = await trendIdea(acct.token, avoid);
+    if (!idea) {
+      let k = epN - 1 + attempt;
+      if (!fixedIdea) for (let i = 0; i < ideas.length && avoid.includes(pickIdea(ideas, '', k, 0).idea.name); i++) k++;
+      ({ idx, idea } = pickIdea(ideas, fixedIdea ? process.env.IDEA_INDEX : '', k, 0));
+    }
+    log('idea ' + (idea.src === 'trend' ? 'trend «' + idea.trend + '» → ' : '#' + idx + ': ') + idea.name + ' · ' + idea.prompt);
+    gh('notice', ep.short + ' · ' + (idea.src === 'trend' ? 'trend: ' + idea.trend + ' → ' : 'list #' + idx + ': ') + idea.name);
+    fs.rmSync(fr, { recursive: true, force: true }); fs.mkdirSync(fr, { recursive: true });
+    const cap = await capture(browser, acct, idea, fr);
+    why = siteProblem(cap.code, MIN_CODE);
+    if (why && !weakOK) { log('quality gate: ' + why + ' — ' + (attempt ? 'giving up' : 'one more try')); avoid.push(idea.name); continue; }
+    const res = await compose(browser, cap, idea, OUT, epN);
+    res.secs = cap.m.secs;
+    return {
+      res, caption: buildCaption(idea, res.secs, epN), note: 'site · ' + idea.name + ' · build ' + res.secs + 's · ' + cap.codeLen + ' chars',
+      meta: { kind: 'site', episode: epN, idea: idx, source: idea.src || 'list', trend: idea.trend || '', name: idea.name, prompt: idea.prompt, secs: res.secs, codeLen: cap.codeLen },
+    };
+  }
+  throw new Error('quality gate: ' + why + ' — not publishing');
 }
 
 // 🎬/🖼️ حلقة فيديو ترند أو أنماط صور: نفس السلسلة والنشر وبطاقة النهاية.
-async function runMedia(kind, arg, acct, epN, live, fr) {
+async function makeMedia(browser, kind, arg, acct, epN, fr) {
   const ep = epLabel(epN, KINDS[kind].series);
-  const { chromium } = await import('playwright');
-  const browser = await chromium.launch({ executablePath: CHROME, args: CHROME ? ['--no-sandbox'] : [] });
-  let res, caption, meta;
-  try {
-    if (kind === 'video') {
-      const vi = { ...(await videoIdea(acct.token, epN)), key: arg || SKETCH_KEY };
-      log('video idea ' + (vi.src === 'trend' ? 'trend «' + vi.trend + '» → ' : 'list: ') + vi.title + ' · ' + vi.scene + ' · ' + vi.key);
-      gh('notice', ep.short + ' · video ' + vi.key + ' · ' + (vi.src === 'trend' ? 'trend: ' + vi.trend + ' → ' : '') + vi.title);
-      let photo = null;
-      if (vi.key !== SKETCH_KEY) photo = (await makePhoto(acct, PHOTO_SUBJECTS[(epN - 1) % PHOTO_SUBJECTS.length], OUT)).file;
-      const cap = await captureVideo(browser, acct, vi, fr, { photo });
-      vi.cardTitle = cap.title;
-      res = await composeVideo(browser, cap, vi, OUT, epN);
-      res.secs = cap.m.secs;
-      caption = buildVideoCaption(vi, res.secs, epN);
-      meta = { kind, episode: epN, trendKey: vi.key, source: vi.src, trend: vi.trend || '', title: vi.title, scene: vi.scene, secs: res.secs };
-    } else {
-      const plan = stylesPlan(epN, arg);
-      log('styles plan: ' + plan.subject.key + ' · ' + plan.styles.map((x) => x.key).join(','));
-      gh('notice', ep.short + ' · styles: ' + plan.subject.ar + ' → ' + plan.styles.map((x) => x.label).join('، '));
-      const made = await makeStyles(acct, plan, path.join(OUT, 'styles'));
-      res = await composeStyles(browser, made, plan, OUT, epN);
-      res.secs = made.avg;
-      caption = buildStylesCaption(plan, made, epN);
-      meta = { kind, episode: epN, subject: plan.subject.key, styles: made.items.map((x) => ({ key: x.key, secs: +x.secs.toFixed(1) })), avg: made.avg };
-    }
-  } finally { await browser.close(); }
-  fs.rmSync(fr, { recursive: true, force: true });
-  fs.writeFileSync(path.join(OUT, 'caption.txt'), caption.ig + '\n');
-  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ ...meta, vip: acct.vip, seconds: +res.tl.total.toFixed(1) }, null, 2));
-  if (!live) { log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); gh('notice', 'video ready (not published) · ' + ep.short + ' · ' + kind + ' · ' + res.secs + 's'); return; }
-  const platforms = await resolvePlatforms();
-  await publish(res.mp4, res.cover, caption, platforms, epN);
-  log('published ✓');
-  gh('notice', 'published ✓ ' + ep.short + ' · ' + kind + ' · ' + platforms.join(','));
+  if (kind === 'video') {
+    const vi = { ...(await videoIdea(acct.token, epN)), key: arg || SKETCH_KEY };
+    log('video idea ' + (vi.src === 'trend' ? 'trend «' + vi.trend + '» → ' : 'list: ') + vi.title + ' · ' + vi.scene + ' · ' + vi.key);
+    gh('notice', ep.short + ' · video ' + vi.key + ' · ' + (vi.src === 'trend' ? 'trend: ' + vi.trend + ' → ' : '') + vi.title);
+    let photo = null;
+    if (vi.key !== SKETCH_KEY) photo = (await makePhoto(acct, PHOTO_SUBJECTS[(epN - 1) % PHOTO_SUBJECTS.length], OUT)).file;
+    const cap = await captureVideo(browser, acct, vi, fr, { photo });
+    vi.cardTitle = cap.title;
+    const res = await composeVideo(browser, cap, vi, OUT, epN);
+    res.secs = cap.m.secs;
+    return { res, caption: buildVideoCaption(vi, res.secs, epN), note: 'video · ' + vi.title + ' · ' + res.secs + 's', meta: { kind, episode: epN, trendKey: vi.key, source: vi.src, trend: vi.trend || '', title: vi.title, scene: vi.scene, secs: res.secs } };
+  }
+  const plan = stylesPlan(epN, arg);
+  log('styles plan: ' + plan.subject.key + ' · ' + plan.styles.map((x) => x.key).join(','));
+  gh('notice', ep.short + ' · styles: ' + plan.subject.ar + ' → ' + plan.styles.map((x) => x.label).join('، '));
+  const made = await makeStyles(acct, plan, path.join(OUT, 'styles'));
+  const res = await composeStyles(browser, made, plan, OUT, epN);
+  res.secs = made.avg;
+  return { res, caption: buildStylesCaption(plan, made, epN), note: 'styles · ' + made.items.length + ' · ' + res.secs + 's each', meta: { kind, episode: epN, subject: plan.subject.key, styles: made.items.map((x) => ({ key: x.key, secs: +x.secs.toFixed(1) })), avg: made.avg } };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
