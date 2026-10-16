@@ -105,6 +105,17 @@
   /* ═══ v-vmk-sections: شريط الأقسام (الترندات + الأوضاع) ═══ */
   var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor','clean'];
   var tab='trend';
+  /* v-owner-modes (المالك ١٧ أكتوبر: «أخفي الثلاثة وخلها لي المالك فقط»): «فيديو اقتصادي» و«فيديو سينمائي» (Omni) و«دمج الاثنين»
+     تكرّر غيرها وتلخبط الزبون — تختفي لغير المالك (تبويب وبطاقة وخيار)، ويرجع وضعه إلى «فيديو AI» لو كان عليها */
+  var OWNER_MODES={minimax:1,omni:1,hybrid:1};
+  /* v-owner-modes: «ممثل يتكلم — لهجة إماراتية» كانت صورته وجوهًا لا تشبه أهل الإمارات — رجل بالغترة من صور التطبيق (أعلى الصورة) */
+  var TAB_ART={actor:'/assets/studio/options/heritage-emirati.webp'};
+  function tabsFor(){ var own=drOwner(); return TABS.filter(function(v){ return own||!OWNER_MODES[v]; }); }
+  function guardModes(){
+    var sel=id('videoMakerMode'), own=drOwner(); if(!sel) return;
+    [].slice.call(sel.options).forEach(function(o){ o.hidden=o.disabled=!own&&!!OWNER_MODES[o.value]; });
+    if(!own&&OWNER_MODES[sel.value]){ sel.value='runway'; sel.dispatchEvent(new Event('change')); }
+  }
   /* ملفّات النماذج الجاهزة: '<الوضع>-<١..٣>': true حين يُرفع /media/samples/<الوضع>-<رقم>.mp4 — بلا ملفّ تظهر البطاقة بنصّ المثال فقط */
   var VIDEOS={};
   /* فيديو تعليميّ حقيقيّ مسجَّل من شاشة الصانع نفسه (scripts/video-tutorial.mjs) — عربيّ، والباقي بالإنجليزيّة */
@@ -152,13 +163,13 @@
     if(tb.previousElementSibling!==card.firstElementChild) card.insertBefore(tb,card.firstElementChild.nextSibling);
     tb.innerHTML='';
     /* v-app-director: قسم «مخرج التطبيق» آخر الشريط للمالك وحده — لغير المالك لا زرّ ولا لوحة في DOM */
-    TABS.concat(drOwner()?['director']:[]).forEach(function(v){
+    tabsFor().concat(drOwner()?['director']:[]).forEach(function(v){
       var b=document.createElement('button'); b.type='button'; b.className='vmk-tab'; b.dataset.tab=v;
       b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(v===tab));
       /* v-vmk-tab-art (المالك ١١ أكتوبر بلوحة التبويبات: «شوف الصور مقاس واحد كلهم»): صورة مربّعة واحدة المقاس فوق اسم كلّ قسم */
       /* v-app-director: قسم المخرج بلا صورة (طلب المالك «بدون أيقونات») — لا <img> فلا أيقونة مكسورة بجانب صور الأقسام */
       if(v==='director'){ var dlb=document.createElement('span'); dlb.className='vmk-tab-lbl'; dlb.textContent=tabLabel(v); b.classList.add('vmk-tab-noimg'); b.appendChild(dlb); tb.appendChild(b); return; }
-      var im=document.createElement('img'); im.className='vmk-tab-img'; im.alt=''; im.loading='lazy'; im.src='/assets/videos/tabs/'+v+'.jpg?v=2';
+      var im=document.createElement('img'); im.className='vmk-tab-img'; im.alt=''; im.loading='lazy'; im.src=TAB_ART[v]||'/assets/videos/tabs/'+v+'.jpg?v=2'; if(TAB_ART[v]) im.style.objectPosition='50% 0';;
       var lb=document.createElement('span'); lb.className='vmk-tab-lbl'; lb.textContent=tabLabel(v);
       b.appendChild(im); b.appendChild(lb); tb.appendChild(b);
     });
@@ -167,7 +178,7 @@
     card.classList.toggle('vmk-tab-director',tab==='director');
   }
   function setTab(v){
-    if(TABS.indexOf(v)<0&&!(v==='director'&&drOwner())) return; tab=v;
+    if(tabsFor().indexOf(v)<0&&!(v==='director'&&drOwner())) return; tab=v;
     var sel=(v==='director')?null:id('videoMakerMode'); /* v-app-director: المخرج لا يمسّ الوضع */
     if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
     buildTabs(); sync(); scrub();
@@ -1087,6 +1098,7 @@
     }
     g.innerHTML='';
     [].slice.call(sel.options).forEach(function(o){
+      if(o.hidden&&sel.id==='videoMakerMode') return; /* v-owner-modes */
       var t=(o.textContent||'').trim(), m=t.match(ICO), ic=m?m[1]:'', tx=short(t.slice(ic.length))||o.value;
       var el=document.createElement('div'); el.className=(kind==='card'?'vmk-card':'vmk-pill');
       el.setAttribute('role','radio'); el.dataset.v=o.value;
@@ -1142,7 +1154,7 @@
     card.classList.add('vmk-trends-top');
     if(vt.parentElement!==card||vt.nextElementSibling!==side) card.insertBefore(vt,side);
   }
-  function enhance(){ if(!on()) return; loadManifest(); build(); buildTabs(); buildDirector(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
+  function enhance(){ if(!on()) return; loadManifest(); guardModes(); build(); buildTabs(); buildDirector(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
   var wasOpen=false;
   new MutationObserver(function(){
     var open=!!(M.style.display&&M.style.display!=='none');
