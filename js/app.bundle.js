@@ -23302,17 +23302,72 @@ function __imgEngineLine(engine, d){
   return tag + '\n\n⚙️ ' + e;
 }
 
+// v660: مؤشر تحميل الصور — خلفية نجوم + شريط تقدم + مراحل نصية
+/* v-img-dots-plus (المالك بلقطة «محرّك GPT (خام)» وتحت طلبه سطر «أرسم لك الصورة» وحده: «شوف الشعار الي يرسم غير موجود»):
+   مربّع النقاط كان داخل __sendPromptCore فلا تبلغه مسارات «+» (نانو/GPT خام، «إنشاء صورة») — فانتظارها سطر نصّ،
+   ورسم القائمة يُسقط فقاعة الانتظار. صار هنا مشتركًا: __showImgLoading يفكّ شريط الحالة ثمّ يرسمه، و__omranImgWait يرسمه لتلك المسارات.
+   mine: محادثة الطلب هي المعروضة (v-parallel-chats) — لا يُلصق مربّع طلبٍ في الخلفيّة داخل محادثة أخرى. */
+function __omranImgDots(el, mine){
+  if(!el) return;
+  /* v-img-box (فحص المالك ٢٣ سبتمبر «كلّ ما أريد بناء صورة في مربّع يطلع»): مسار «عطني صور…» يعيد رسم القائمة حين لا
+     يجد صورًا في البحث فيهبط للتوليد — فكانت البطاقة تُرسم في عنصر خرج من الصفحة ولا تظهر. تُعاد إلى آخر المحادثة. */
+  try{ if(!el.isConnected && mine && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el); }catch(e){ /* guard-ok — العرض اختياريّ */ }
+  /* v-img-gold-dots (المالك ٢٣ سبتمبر، بعد ثلاث معاينات: «الخلفية سوداء، والنقاط بدرجة هذا الذهبي، هي اللي تتحرّك في المربّع
+     كامل منظّمة مش عشوائيّة»؛ رفض الموجة بخطوط ثمّ «الانفجار» من الوسط): شبكة نقاط ذهبيّة وإضاءة تمشي
+     عليها بخطوط قُطريّة من فوق يمين إلى تحت يسار — كلّ قُطر يلمع معًا ثمّ الذي بعده. CSS + تأخير لكلّ نقطة، وتتوقّف مع
+     prefers-reduced-motion.
+     v-img-dots-nobox (المالك بلقطة: «عند إنشاء الصور أريده فقط الإضاءة بدون المستطيل البرواز»): البطاقة
+     السوداء ذات الزوايا المستديرة وقصّها أُزيلت كلّها — تبقى النقاط
+     والعنوان وحدها فوق ما خلفها. الأبعاد باقية لأنّها هندسة الشبكة لا إطارًا، وoverflow:visible كي لا
+     تُقصّ هالة النقاط الطرفيّة. الوضع الفاتح كان بلا إطار أصلًا فلم يُمسّ.
+     v-img-dots-15x10 (المالك: «الطول ١٥ والعرض ١٠… والطرف شبه دائري ٤ إلى ٥ من طرف اليسار»، و«غيّر
+     اللون الأبيض بعد سوّه نفس الشي»): الشبكة صارت ١٥ صفًّا × ١٠ أعمدة بقوس على زاويتَي اليسار،
+     والوضع الفاتح صار مطابقًا للداكن — حُذفت الدائرة البيضاء والدوّامة (--lx/--ly/--ld) ولم يبقَ له
+     إلّا لون العنوان الداكن ليُقرأ على أبيض. */
+  if(!document.getElementById('omran-imggen-css2')){
+    const st = document.createElement('style'); st.id = 'omran-imggen-css2';
+    st.textContent = ".omGen{position:relative;width:min(220px,55vw);aspect-ratio:9/14;max-width:100%;overflow:visible;margin:6px 0;background:transparent}.omGenTxt{position:absolute;top:0;right:6px;z-index:2;color:#ffd978;font-size:14px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}html[data-mode=\"light\"] .omGenTxt{color:#8a6500;text-shadow:none}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
+    document.head.appendChild(st);
+  }
+  /* الشبكة ١٥ طولًا × ١٠ عرضًا (أمر المالك)، وقوس خفيف على الزاوية العليا اليسرى
+     على **الزاوية العليا اليسرى وحدها** كما رسمها المالك بيده، والزوايا الثلاث قائمة. ونصف القوس ١
+     بعد جولتَي تخفيف («مش هذي فوق، بس قليل يعني خفيف… ومن تحت خلّه سيده مش قوسي» ثمّ «أخفّ قليل»):
+     تُحذف نقطة الزاوية وحدها، فالصفّ الأوّل والعمود الأوّل مستقيمان بعدها مباشرة.
+     الإضاءة القُطريّة كما هي: كلّ قُطر من فوق يمين إلى تحت يسار يلمع معًا ثمّ الذي بعده. */
+  const __C = 10, __R = 15, __steps = (__C - 1) + (__R - 1), __arc = 1;
+  let __dots = '';
+  for(let y = 0; y < __R; y++) for(let x = 0; x < __C; x++){
+    /* الزاوية العليا اليسرى وحدها مقوّسة؛ الثلاث الباقية قائمة (رسمة المالك) */
+    if(x < __arc && y < __arc && Math.hypot(x - __arc, y - __arc) > __arc + 0.01) continue;
+    __dots += '<i class="omDot" style="left:' + (8 + x * 84 / (__C - 1)).toFixed(2) + '%;top:' + (12 + y * 84 / (__R - 1)).toFixed(2) + '%;--d:' + (((__C - 1 - x) + y) / __steps * 1.9).toFixed(3) + 's"></i>';
+  }
+  /* v-img-dots-plus (مراجعة): العنوان بلغة الواجهة — العربيّة كما اختارها المالك، وغيرها من مفتاح stGenImage القائم في اللغات الـ١٤
+     (كان عربيًّا لكلّ اللغات؛ ومسار «إنشاء صورة» كان يعرض لهم سطره الإنجليزيّ) */
+  const __ar = (typeof lang === 'undefined' || lang === 'ar');
+  const __lbl = __ar ? 'جارٍ إنشاء الصورة' : String((typeof t === 'function' && t('stGenImage')) || 'Drawing an image…').replace(/^\s*🎨\s*/, '').replace(/[<>"&]/g, '');
+  el.innerHTML = '<div class="omGen" role="status" aria-label="' + __lbl + '"><div class="omGenTxt" dir="' + (__ar ? 'rtl' : 'auto') + '">' + __lbl + '</div>' + __dots + '</div>';
+}
+/* v-img-dots-plus: انتظار مسارات «+» — المربّع في فقاعة الانتظار، ورسالة النتيجة تُضاف حين تصل (put) فلا يمحو رسمُ القائمة المربّع.
+   بلا فقاعة (omranAnotherVersion البرمجيّة بلا زرّ تمرّر null) يبقى سطر «🎨 أرسم لك…» كما كان. */
+function __omranImgWait(cur, m, el){
+  /* __omImgWait: ما دام الانتظار حيًّا يُعيد __omranSyncRunView الفقاعة بعد أيّ رسم كامل للمحادثة نفسها («عرض الرسائل الأقدم»،
+     تبديل اللغة) — كانت رسالة الانتظار في القائمة فتنجو من الرسم، والمربّع في فقاعة يُسقطها الرسم. يُطفأ قبل وضع النتيجة. */
+  if(el){ el.__omImgWait = true; __omranImgDots(el, String(state.currentId) === String(cur.id)); }
+  else { cur.messages.push(m); renderAll(); }
+  return function(){ if(el) el.__omImgWait = false; if(cur.messages.indexOf(m) < 0) cur.messages.push(m); };
+}
 async function omModeGenerateImage(cur, promptText, thinkingDiv){
   const textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(promptText) : { wantsText:false, exactText:null, visualPrompt:promptText };
   const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
-  cur.messages.push(__m); renderAll();
   if(textSpec.wantsText && !textSpec.exactText && !textSpec.autoAuthored){
     __m._loading = false;
     __m.content = lang === 'ar' ? 'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.' : 'Send the exact wording you want on the image, and I will reproduce it verbatim.';
+    cur.messages.push(__m); /* v-img-dots-plus: سؤال لا انتظار — بلا مربّع */
     renderAll(); saveState();
     try{ thinkingDiv && thinkingDiv.remove(); }catch(e){ /* guard-ok — cleanup, intentional */ }
     return;
   }
+  const __put = __omranImgWait(cur, __m, thinkingDiv); /* v-img-dots-plus: مربّع النقاط بدل سطر النصّ */
   try{
     const __r = await fetch('/api/maha-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -23328,7 +23383,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
       })()))
     });
     const __d = await __r.json().catch(() => ({}));
-    __m._loading = false;
+    __put(); __m._loading = false;
     if(__r.ok && __d && __d.imageBase64){
       let __mime = __d.mimeType || 'image/png', __b64 = __d.imageBase64;
       const __baseB64 = __b64, __baseMime = __mime;
@@ -23363,7 +23418,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
       __m.content = (lang === 'ar' ? 'تعذّر توليد الصورة الآن — ' : 'Image generation failed — ') + ((__d && __d.error) || ('HTTP ' + __r.status)) + __why;
     }
   }catch(e){
-    __m._loading = false;
+    __put(); __m._loading = false;
     __m.content = (e && e.name === 'AbortError') ? (window.__omranTimedOut ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول الصورة — أعد المحاولة.' : '⚠️ The connection dropped before the image arrived — please try again.') : (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.')) : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
   }
   renderAll(); saveState();
@@ -23375,7 +23430,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
    مع صورة مرفقة (تعديل) أو بدونها (توليد). الخادم يُجبَر على الخام والمحرّك المفروض. */
 async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtts){
   const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
-  cur.messages.push(__m); renderAll();
+  const __put = __omranImgWait(cur, __m, thinkingDiv); /* v-img-dots-plus: مربّع النقاط بدل سطر النصّ */
   /* v-gpt-multi-merge: يقبل صورة وحدة (توافقًا قديمًا) أو مصفوفة صور — دمج عدّة صور بالوضع الخام
      صار ممكنًا فعليًّا (نانو وGPT كلاهما يقبلان مراجع متعدّدة الآن)، لا صورة واحدة فقط كما كان. */
   const __atts = Array.isArray(imgAtts) ? imgAtts.filter(a => a && a.dataUrl) : (imgAtts && imgAtts.dataUrl ? [imgAtts] : []);
@@ -23405,7 +23460,7 @@ async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtts){
       body: JSON.stringify(__body)
     });
     const __d = await __r.json().catch(() => ({}));
-    __m._loading = false;
+    __put(); __m._loading = false;
     if(__r.ok && __d && __d.imageBase64){
       let __mime = __d.mimeType || 'image/png', __b64 = __d.imageBase64;
       __m.content = '';
@@ -23422,7 +23477,7 @@ async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtts){
       __m.content = (lang === 'ar' ? 'تعذّر توليد الصورة الآن — ' : 'Image generation failed — ') + ((__d && __d.error) || ('HTTP ' + __r.status)) + __why;
     }
   }catch(e){
-    __m._loading = false;
+    __put(); __m._loading = false;
     __m.content = (e && e.name === 'AbortError') ? (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.') : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
   }
   renderAll(); saveState();
@@ -23605,7 +23660,8 @@ function __omranSyncRunView(){
       if(b && !b.disabled){ b.disabled = true; b.innerHTML = '<span class="spinner"></span>'; }
       if(stop) stop.classList.add('live');
       __omranRunViewLive = true;
-      if(pid !== __omranRunViewPid && r.thinking && !r.thinking.isConnected && !r.thinking.__gone
+      /* v-img-dots-plus: وانتظار صورة «+» حيّ (__omImgWait) يُعاد بعد كلّ رسم للمحادثة نفسها أيضًا — النتيجة لم تُوضع بعد فلا تكرار فوقها */
+      if((pid !== __omranRunViewPid || (r.thinking && r.thinking.__omImgWait)) && r.thinking && !r.thinking.isConnected && !r.thinking.__gone
         && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(r.thinking);
     } else if(__omranRunViewLive){
       __omranRunViewLive = false;
@@ -23684,10 +23740,10 @@ async function sendPrompt(){
       var __c = (typeof getCurrent === 'function') ? getCurrent() : null;
       var __m = '⚠️ ' + (typeof __friendlyErr === 'function' ? __friendlyErr(e) : ((e && e.message) || e))
         + '\n(تشخيص: ' + String((e && (e.name + ': ' + e.message)) || e).slice(0, 160) + ')';
-      if(__c && Array.isArray(__c.messages)){ __c.messages.push({ role:'assistant', content: __m }); try{ renderAll(); saveState(); }catch(_1){} }
-      else { try{ alert(__m); }catch(_2){} }
-    }catch(_3){}
-    try{ var __sb=$('#btnSend'); if(__sb){ __sb.disabled=false; } }catch(_4){}
+      if(__c && Array.isArray(__c.messages)){ __c.messages.push({ role:'assistant', content: __m }); try{ renderAll(); saveState(); }catch(_1){ /* guard-ok — مسار الخطأ القاتل: الرسم أفضل جهد، والخطأ الأصليّ يُطبع بـconsole.error أدناه */ } }
+      else { try{ alert(__m); }catch(_2){ /* guard-ok — مسار الخطأ القاتل: التنبيه أفضل جهد */ } }
+    }catch(_3){ /* guard-ok — مسار الخطأ القاتل: عرضه أفضل جهد، والخطأ يُطبع أدناه */ }
+    try{ var __sb=$('#btnSend'); if(__sb){ __sb.disabled=false; } }catch(_4){ /* guard-ok — فكّ زرّ الإرسال أفضل جهد */ }
     console.error('[sendPrompt] fatal', e);
   }
 }
@@ -24521,11 +24577,11 @@ function __friendlyErr(e){
     // 🎯 v526: الوضع الصريح @صورة — يتخطّى كلّ الكواشف ويولّد مباشرة
     // 🍌🤖 «نانو/GPT خام» (المالك): نصّ حرفيّ للمحرّك بلا تفسير، ومع صورة مرفقة أو بدونها.
     if((window.__omMode === 'image_nano' || window.__omMode === 'image_gpt') && text){
-      await omModeRawImage(cur, text, thinkingDiv, window.__omMode === 'image_gpt' ? 'gpt' : 'nano', imageAttachments);
+      try{ chatStatus.release(); }catch(e){ __swallow(e, 'img:plus-status'); } await omModeRawImage(cur, text, thinkingDiv, window.__omMode === 'image_gpt' ? 'gpt' : 'nano', imageAttachments); /* v-img-dots-plus: الشريط يُفكّ كـ__showImgLoading — وإلّا كتب chatPhase محادثة أخرى فوق المربّع */
       return;
     }
     if(String(window.__omMode || '').indexOf('image') === 0 && apiText && !imageAttachments.length){
-      await omModeGenerateImage(cur, apiText, thinkingDiv);
+      try{ chatStatus.release(); }catch(e){ __swallow(e, 'img:plus-status'); } await omModeGenerateImage(cur, apiText, thinkingDiv); /* v-img-dots-plus: كما فوق */
       return;
     }
     // 🏛️ شعارات الجهات الحقيقية: "عطني شعار شرطة دبي" → جلب الشعار الأصلي
@@ -25353,44 +25409,11 @@ function __friendlyErr(e){
       return;
     }
     
-// v660: مؤشر تحميل الصور — خلفية نجوم + شريط تقدم + مراحل نصية
+// v660 + v-img-dots-plus: الرسم نفسه في __omranImgDots (خارج هذه الدالّة) ليبلغه كلّ مسار صورة
 function __showImgLoading(el, ar, en){
   const _st = chatStatus;
   if(_st && !_st.isReleased()){ try{ _st.release(); }catch(e){ /* guard-ok — cleanup, intentional */ } }
-  if(!el) return;
-  /* v-img-box (فحص المالك ٢٣ سبتمبر «كلّ ما أريد بناء صورة في مربّع يطلع»): مسار «عطني صور…» يعيد رسم القائمة حين لا
-     يجد صورًا في البحث فيهبط للتوليد — فكانت البطاقة تُرسم في عنصر خرج من الصفحة ولا تظهر. تُعاد إلى آخر المحادثة. */
-  try{ if(!el.isConnected && __mine() && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el); }catch(e){ /* guard-ok — العرض اختياريّ */ }
-  /* v-img-gold-dots (المالك ٢٣ سبتمبر، بعد ثلاث معاينات: «الخلفية سوداء، والنقاط بدرجة هذا الذهبي، هي اللي تتحرّك في المربّع
-     كامل منظّمة مش عشوائيّة»؛ رفض الموجة بخطوط ثمّ «الانفجار» من الوسط): شبكة نقاط ذهبيّة وإضاءة تمشي
-     عليها بخطوط قُطريّة من فوق يمين إلى تحت يسار — كلّ قُطر يلمع معًا ثمّ الذي بعده. CSS + تأخير لكلّ نقطة، وتتوقّف مع
-     prefers-reduced-motion.
-     v-img-dots-nobox (المالك بلقطة: «عند إنشاء الصور أريده فقط الإضاءة بدون المستطيل البرواز»): البطاقة
-     السوداء ذات الزوايا المستديرة وقصّها أُزيلت كلّها — تبقى النقاط
-     والعنوان وحدها فوق ما خلفها. الأبعاد باقية لأنّها هندسة الشبكة لا إطارًا، وoverflow:visible كي لا
-     تُقصّ هالة النقاط الطرفيّة. الوضع الفاتح كان بلا إطار أصلًا فلم يُمسّ.
-     v-img-dots-15x10 (المالك: «الطول ١٥ والعرض ١٠… والطرف شبه دائري ٤ إلى ٥ من طرف اليسار»، و«غيّر
-     اللون الأبيض بعد سوّه نفس الشي»): الشبكة صارت ١٥ صفًّا × ١٠ أعمدة بقوس على زاويتَي اليسار،
-     والوضع الفاتح صار مطابقًا للداكن — حُذفت الدائرة البيضاء والدوّامة (--lx/--ly/--ld) ولم يبقَ له
-     إلّا لون العنوان الداكن ليُقرأ على أبيض. */
-  if(!document.getElementById('omran-imggen-css2')){
-    const st = document.createElement('style'); st.id = 'omran-imggen-css2';
-    st.textContent = ".omGen{position:relative;width:min(220px,55vw);aspect-ratio:9/14;max-width:100%;overflow:visible;margin:6px 0;background:transparent}.omGenTxt{position:absolute;top:0;right:6px;z-index:2;color:#ffd978;font-size:14px;text-shadow:0 0 12px rgba(224,172,43,.5)}.omDot{position:absolute;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:#e0ac2b;opacity:.35;animation:omPulse 2.8s ease-in-out infinite;animation-delay:var(--d)}@keyframes omPulse{0%,100%{transform:scale(.8);opacity:.3;background:#e0ac2b;box-shadow:none}12%{transform:scale(1.6);opacity:1;background:#ffd45a;box-shadow:0 0 6px 2px rgba(255,200,70,.75),0 0 16px 4px rgba(224,172,43,.35)}30%{transform:scale(.9);opacity:.45;background:#e0ac2b;box-shadow:none}}html[data-mode=\"light\"] .omGenTxt{color:#8a6500;text-shadow:none}@media (prefers-reduced-motion:reduce){.omDot{animation:none;opacity:.6}}";
-    document.head.appendChild(st);
-  }
-  /* الشبكة ١٥ طولًا × ١٠ عرضًا (أمر المالك)، وقوس خفيف على الزاوية العليا اليسرى
-     على **الزاوية العليا اليسرى وحدها** كما رسمها المالك بيده، والزوايا الثلاث قائمة. ونصف القوس ١
-     بعد جولتَي تخفيف («مش هذي فوق، بس قليل يعني خفيف… ومن تحت خلّه سيده مش قوسي» ثمّ «أخفّ قليل»):
-     تُحذف نقطة الزاوية وحدها، فالصفّ الأوّل والعمود الأوّل مستقيمان بعدها مباشرة.
-     الإضاءة القُطريّة كما هي: كلّ قُطر من فوق يمين إلى تحت يسار يلمع معًا ثمّ الذي بعده. */
-  const __C = 10, __R = 15, __steps = (__C - 1) + (__R - 1), __arc = 1;
-  let __dots = '';
-  for(let y = 0; y < __R; y++) for(let x = 0; x < __C; x++){
-    /* الزاوية العليا اليسرى وحدها مقوّسة؛ الثلاث الباقية قائمة (رسمة المالك) */
-    if(x < __arc && y < __arc && Math.hypot(x - __arc, y - __arc) > __arc + 0.01) continue;
-    __dots += '<i class="omDot" style="left:' + (8 + x * 84 / (__C - 1)).toFixed(2) + '%;top:' + (12 + y * 84 / (__R - 1)).toFixed(2) + '%;--d:' + (((__C - 1 - x) + y) / __steps * 1.9).toFixed(3) + 's"></i>';
-  }
-  el.innerHTML = '<div class="omGen" role="status" aria-label="جارٍ إنشاء الصورة"><div class="omGenTxt" dir="rtl">جارٍ إنشاء الصورة</div>' + __dots + '</div>';
+  __omranImgDots(el, __mine());
 }
 
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
