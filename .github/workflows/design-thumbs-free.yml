@@ -121,12 +121,14 @@ jobs:
       - name: Job summary
         if: always()
         shell: bash
+        env:
+          MODE: ${{ inputs.mode }}      # عبر البيئة لا داخل السطر: الوضع نصّ حرّ (sr:<مجموعة>[:ج/ن])
         run: |
           shopt -s nullglob
           {
             echo "### بطاقات الديكور"
             echo ""
-            echo "الوضع: \`${{ inputs.mode }}\`"
+            echo "الوضع: \`$MODE\`"
             echo ""
             echo "| الملف | الحجم |"
             echo "|---|---|"
@@ -147,9 +149,12 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
       - name: Install onnxruntime
-        run: pip install --quiet onnxruntime onnx numpy pillow
+        # مثبّتة بالإصدار (التركيبة نفسها التي وُضّحت بها الصور محلّيًّا) وعجلات جاهزة فقط: لا كود تثبيت من حزمة مصدر
+        # يجري ورمز الدفع (contents: write) محفوظ في .git/config.
+        run: |
+          pip install --quiet --only-binary=:all: onnxruntime==1.29.0 onnx==1.23.2 numpy==2.5.3 pillow==12.3.0
       - name: Real-ESRGAN x4plus weights → ONNX
         run: |
           set -euo pipefail

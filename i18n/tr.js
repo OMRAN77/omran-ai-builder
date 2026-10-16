@@ -49,7 +49,7 @@ I18N['tr'] = {
     "designAiWallColorBlush": "Pudra pembe",
     "designAiWallColorLightblue": "Açık mavi",
     "designAiWallColorCharcoal": "Antrasit",
-    "designAiWallColorMocha": "Mocha",
+    "designAiWallColorMocha": "Moka",
     "designAiWallColorBlack": "Mat siyah",
     "designAiCurtainsSheer": "Tül",
     "designAiCurtainsLinen": "Keten",

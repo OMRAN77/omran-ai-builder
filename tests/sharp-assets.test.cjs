@@ -71,6 +71,12 @@ test('٣. أداة التوضيح: الأوزان مثبّتة ببصمتها، 
   assert.match(wf, /sharpen:\n\s+if: \$\{\{ startsWith\(inputs\.mode, 'sr:'\) \}\}/);
   assert.match(wf, /thumbs:\n\s+if: \$\{\{ !startsWith\(inputs\.mode, 'sr:'\) \}\}/);
   assert.ok(wf.includes('MODE: ${{ inputs.mode }}      # عبر البيئة لا داخل السطر'), 'لا حقن أوامر');
+  // مراجعة نقض: سطر ملخّص المهمّة كان يضع الوضع (نصّ حرّ) خامًا في run:، وحزم التوضيح بلا إصدار ورمز الدفع محفوظ في .git/config.
+  const modeLines = wf.split('\n').filter((l) => l.includes('inputs.mode'));
+  assert.ok(modeLines.length >= 5 && modeLines.every((l) => /^\s*(MODE:|group:|if:)/.test(l)), 'الوضع لا يدخل سطر أوامر: ' + modeLines.filter((l) => !/^\s*(MODE:|group:|if:)/.test(l)).join(' | '));
+  assert.match(wf, /pip install --quiet --only-binary=:all: onnxruntime==\d+\.\d+\.\d+ onnx==\d+\.\d+\.\d+ numpy==\d+\.\d+\.\d+ pillow==\d+\.\d+\.\d+/, 'حزم مثبّتة الإصدار وعجلات فقط');
+  const sh = read('scripts/sr/sharpen.py');
+  assert.ok(sh.includes('if not 1 <= k <= n:') && sh.includes('if not fs:') && sh.includes("if name not in SETS or name == '_':"), 'الوضع الخاطئ يفشل برسالة لا بتتبّع خام');
   const sets = JSON.parse(read('scripts/sr/sets.json'));
   for (const k of ['decor', 'fashion', 'extras', 'studio', 'portrait', 'scenes', 'decoropts']) assert.ok(sets[k] && sets[k].globs.length, k);
   // بطاقات الأدوات مستثناة عمدًا: v-gpu-lite (600×360 ≤ 0.9 م.ب مفكوكة) — الأكبر يرسم مستطيلات سوداء في WebView أندرويد.

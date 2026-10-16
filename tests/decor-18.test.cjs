@@ -35,12 +35,25 @@ test('٢. الأسماء بالأربع عشرة لغة: العربيّة وال
   vm.createContext(ctx);
   for (const l of LANGS) vm.runInContext(read('i18n/' + l + '.js'), ctx);
   let n = 0;
+  const OLD = /^designAi(Furniture|Flooring|Fabric|WallColor|Curtains)(Modern|Classic|Simple|Luxury|Bohemian|Parquet|Marble|Ceramic|Carpet|Light|Dark|Neutral|Bold|White|Beige|Gray|Remove)$/;
+  const NEW = [];
   for (const id of Object.keys(SECS)) for (const x of options(id).slice(1)) {
     const k = x.attrs.match(/data-i18n="([^"]+)"/)[1];
-    for (const l of ['ar', 'en'].concat(LANGS)) { assert.ok(ctx.I18N[l][k] || /^designAi(Furniture|Flooring|Fabric|WallColor|Curtains)(Modern|Classic|Simple|Luxury|Bohemian|Parquet|Marble|Ceramic|Carpet|Light|Dark|Neutral|Bold|White|Beige|Gray|Remove)$/.test(k), l + ' بلا ترجمة ' + k); }
+    for (const l of ['ar', 'en'].concat(LANGS)) { assert.ok(ctx.I18N[l][k] || OLD.test(k), l + ' بلا ترجمة ' + k); }
+    if (!OLD.test(k)) NEW.push(k);
     n++;
   }
   assert.equal(n, 85);
+  assert.equal(NEW.length, 65);
+  // مراجعة نقض (١٦ أكتوبر): الفلبينيّة تركت ٣٨ اسمًا جديدًا بالإنجليزيّة حرفيًّا («Cream»، «Navy blue»)، و«रतन/رتن» (جوهرة) كُتبت للخيزران،
+  // و«Taupe» نُقلت صوتيًّا («top»، و«ٹوپ» = قبّعة) في خمس لغات. الأسماء الدخيلة الحقيقيّة (Japandi، Art Deco، Terrazzo…) مقبولة — حتّى عشرة.
+  for (const l of LANGS) {
+    const same = NEW.filter((k) => ctx.I18N[l][k].trim().toLowerCase() === ctx.I18N.en[k].trim().toLowerCase());
+    assert.ok(same.length <= 10, l + ': ' + same.length + ' اسمًا بالإنجليزيّة: ' + same.join(', '));
+    assert.ok(!/blue$/i.test(ctx.I18N[l].designAiFabricNavy) || l === 'en', l + ': كحلي');
+  }
+  assert.ok(ctx.I18N.hi.designAiFurnitureRattan !== 'रतन' && ctx.I18N.ur.designAiFurnitureRattan !== 'رتن', 'الخيزران لا «الجوهرة»');
+  for (const l of ['hi', 'bn', 'ne', 'ml', 'ur']) assert.ok(!/^(टॉप|টপ|टप|ടോപ്പ്|ٹوپ)$/.test(ctx.I18N[l].designAiWallColorTaupe), l + ': Taupe لون لا «top»');
   assert.equal(ctx.I18N.ar.designAiWallColorNavy, 'كحلي');
   assert.equal(ctx.I18N.fr.designAiCurtainsSheer, 'Voilages');
 });
@@ -86,6 +99,9 @@ test('٥. الترتيب كالترندات: الأقسام الستّة شبك�
   assert.ok(src.includes("s.style.display='none'; s.parentElement.style.display='none';"), 'الصفوف الطويلة تختفي');
   assert.ok(src.includes('if(OPT6.indexOf(id)!==-1&&window.omranPicker) return;'), 'لا صفّ «عرض الكل» مكرّر للأقسام الستّة');
   assert.ok(src.includes('    secGrid();\n'), 'الشبكة تُبنى مع كلّ بناء (وتغيير اللغة)');
+  // مراجعة نقض: outline المضمَّن للاختيار كان يمحو إطار تركيز لوحة المفاتيح (:focus-visible) — البطاقة تُفتح بـEnter ولا يُرى أين التركيز.
+  const card = src.slice(src.indexOf('  function secCard(s){'), src.indexOf('  function secGrid(){'));
+  assert.ok(!/\.style\.outline/.test(card) && card.includes("ring.style.boxShadow=v?"), 'حلقة الاختيار طبقة فوق الصورة لا outline');
   const onPick = src.match(/onPick: function\(v\)\{[^\n]+/)[0];
   assert.ok(!/fetch|Generate|click\(/.test(onPick), 'اختيار البطاقة يحفظ القيمة فقط');
   const ui = read('js/app-05-ui.js');

@@ -13,12 +13,21 @@ SETS = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '
 
 def files_of(mode):
     parts = mode.split(':')
-    name = parts[1]
+    name = parts[1] if len(parts) > 1 else ''
+    if name not in SETS or name == '_':
+        sys.exit('مجموعة غير معروفة: %r — المتاح: %s' % (name, ', '.join(k for k in SETS if k != '_')))
     s = SETS[name]
     fs = sorted(set(f for g in s['globs'] for f in glob.glob(g)))
     if len(parts) > 2:
-        k, n = map(int, parts[2].split('/'))
+        try:
+            k, n = map(int, parts[2].split('/'))
+        except ValueError:
+            k = n = 0
+        if not 1 <= k <= n:
+            sys.exit('جزء غير صالح: %r — الصيغة ج/ن و١ ≤ ج ≤ ن (مثل 2/3)' % parts[2])
         fs = fs[k - 1::n]
+    if not fs:
+        sys.exit('%s: لا ملفّات تطابق المجموعة — لا شيء للتوضيح' % mode)
     return s, fs
 
 def esrgan(sess, a, T=160, P=16, S=4):

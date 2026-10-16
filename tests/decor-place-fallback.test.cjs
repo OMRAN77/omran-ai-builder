@@ -196,7 +196,10 @@ test('الأقسام الخمسة: كلّ خيار من القائمة له وص
   const pick = { lighting: 'aurora', furniture: 'velvet', flooring: 'terrazzo', fabric: 'emerald', wallColor: 'navy', curtains: 'linen' };
   for (const uploaded of [false, true]) {
     const prompts = await promptsOf(Object.assign({}, pick, uploaded ? { imageBase64: 'test-room', mimeType: 'image/png' } : {}));
-    const want = [grab('LIGHTING_PROMPTS').aurora, grab('FURNITURE_PROMPTS').velvet, grab('FLOORING_PROMPTS').terrazzo, grab('FABRIC_PROMPTS').emerald, grab('WALLCOLOR_PROMPTS').navy, grab('CURTAIN_PROMPTS').linen];
+    // مراجعة نقض: لون القماش لا يلوّن الستائر حين اختار المستخدم ستارة بعينها (كان الأمر يقول «ستائر زمرّديّة» و«ستائر كتّان» معًا).
+    const fabric = grab('FABRIC_PROMPTS').emerald;
+    const want = [grab('LIGHTING_PROMPTS').aurora, grab('FURNITURE_PROMPTS').velvet, grab('FLOORING_PROMPTS').terrazzo, fabric.replace('sofas/cushions/curtains', 'sofas and cushions'), grab('WALLCOLOR_PROMPTS').navy, grab('CURTAIN_PROMPTS').linen];
     for (const p of prompts) for (const w of want) assert.ok(p.includes(w), (uploaded ? 'بصورة' : 'بلا صورة') + ': ' + w);
+    for (const p of prompts) assert.ok(!p.includes(fabric), 'لون القماش لا يناقض الستارة المختارة');
   }
 });

@@ -40,7 +40,7 @@ I18N['bn'] = {
     "designAiFabricSkyblue": "আকাশি নীল",
     "designAiWallColorIvory": "আইভরি",
     "designAiWallColorGreige": "গ্রেইজ",
-    "designAiWallColorTaupe": "টপ",
+    "designAiWallColorTaupe": "ধূসর-বাদামি",
     "designAiWallColorSage": "সেজ সবুজ",
     "designAiWallColorOlive": "জলপাই",
     "designAiWallColorNavy": "নেভি নীল",

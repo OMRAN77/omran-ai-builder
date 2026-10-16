@@ -359,7 +359,9 @@ module.exports = async (req, res) => {
     if (LIGHTING_PROMPTS[lighting]) extras.push(LIGHTING_PROMPTS[lighting]);
     if (FURNITURE_PROMPTS[furniture]) extras.push(FURNITURE_PROMPTS[furniture]);
     if (FLOORING_PROMPTS[flooring]) extras.push(FLOORING_PROMPTS[flooring]);
-    if (FABRIC_PROMPTS[fabric]) extras.push(FABRIC_PROMPTS[fabric]);
+    /* v-decor-18 (مراجعة نقض): لون القماش يقول «للكنب والمخدّات والستائر»؛ إن اختار المستخدم ستارة بعينها (شيفون أبيض، بلا ستائر…)
+       فاللون للكنب والمخدّات فقط — وإلّا تناقض الأمر نفسه وضاع أحد الاختيارين. */
+    if (FABRIC_PROMPTS[fabric]) extras.push(CURTAIN_PROMPTS[curtains] ? FABRIC_PROMPTS[fabric].replace('sofas/cushions/curtains', 'sofas and cushions') : FABRIC_PROMPTS[fabric]);
     if (WALLCOLOR_PROMPTS[wallColor]) extras.push(WALLCOLOR_PROMPTS[wallColor]);
     if (CURTAIN_PROMPTS[curtains]) extras.push(CURTAIN_PROMPTS[curtains]);
     if (rearrange) extras.push('rearrange the furniture layout for better flow while keeping the room structure');

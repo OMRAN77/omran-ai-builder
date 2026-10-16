@@ -40,7 +40,7 @@ I18N['ml'] = {
     "designAiFabricSkyblue": "ആകാശനീല",
     "designAiWallColorIvory": "ആനക്കൊമ്പ് നിറം",
     "designAiWallColorGreige": "ഗ്രേജ്",
-    "designAiWallColorTaupe": "ടോപ്പ്",
+    "designAiWallColorTaupe": "ചാരത്തവിട്ട്",
     "designAiWallColorSage": "സേജ് പച്ച",
     "designAiWallColorOlive": "ഒലിവ് പച്ച",
     "designAiWallColorNavy": "നേവി നീല",

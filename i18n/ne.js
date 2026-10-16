@@ -40,7 +40,7 @@ I18N['ne'] = {
     "designAiFabricSkyblue": "आकाशे निलो",
     "designAiWallColorIvory": "हात्तीदाँत",
     "designAiWallColorGreige": "ग्रेज",
-    "designAiWallColorTaupe": "टप",
+    "designAiWallColorTaupe": "खैरो-खरानी",
     "designAiWallColorSage": "सेज हरियो",
     "designAiWallColorOlive": "जैतुनी",
     "designAiWallColorNavy": "नेभी निलो",

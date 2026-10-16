@@ -357,7 +357,9 @@
     var sec=document.createElement('div'); sec.style.cssText='font-size:11px;font-weight:700;color:#e9d58f;';
     var nm=document.createElement('div'); nm.style.cssText='font-size:12.5px;font-weight:800;color:#fff;';
     cap.appendChild(sec); cap.appendChild(nm);
-    c.appendChild(im); c.appendChild(tk); c.appendChild(cap);
+    /* حلقة الاختيار طبقة فوق الصورة لا outline — فيبقى outline لإطار تركيز لوحة المفاتيح (:focus-visible) كبقيّة التطبيق. */
+    var ring=document.createElement('div'); ring.style.cssText='position:absolute;inset:0;border-radius:inherit;pointer-events:none;';
+    c.appendChild(im); c.appendChild(tk); c.appendChild(cap); c.appendChild(ring);
     function refresh(){
       var o=curOpt(s), v=o?o.value:'';
       var src=selImg(s.id, v||COVER[s.id]);
@@ -365,7 +367,7 @@
       im.style.visibility='visible';
       im.style.filter=v?'none':'saturate(.55) brightness(.6)';
       sec.textContent=secTitle(s); nm.textContent=o?optTxt(o):'';
-      c.style.outline=v?'2px solid #d4af37':'1px solid rgba(127,127,127,.25)'; c.style.outlineOffset='-2px';
+      ring.style.boxShadow=v?'inset 0 0 0 2px #d4af37':'inset 0 0 0 1px rgba(127,127,127,.25)';
       tk.style.display=v?'flex':'none';
     }
     function open(){ window.omranPicker.open(openCfg(s,refresh)); }
