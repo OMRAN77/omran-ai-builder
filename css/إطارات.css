@@ -129,4 +129,28 @@
 
   /* ── شاشة الأدوات: لا أسهم دائريّة على الصفوف (أمر المالك) — التمرير بالماوس و«عرض الكل» باقيان ── */
   html:not(.mobile-ui) #sectionsToolsPopup .ptShelfArrow{ display:none !important; }
+
+  /* ── v-frame-gold: الإطار الخارجيّ بخطّ ذهبيّ واحد (أمر المالك بعد معاينة الصورتين، الأسود والعاجيّ: «ادمج»).
+     للكمبيوتر وحده، والخلفيّات والثيمات (bgimg/skin/skin-wood) كما هي. يغلب ما قبله بالترتيب والتحديد، والقواعد القديمة باقية:
+       • خطّ ذهبيّ متدرّج واحد ١px حول اللوحات الثلاث، زواياها ٢٢px، بلا الخطّ الجوّانيّ (::after).
+       • الأسود: كلّه أسود صافٍ #000 (الصفحة واللوحات ومكان الكود) بلا توهّج ذهبيّ، ونقاط ذهبيّة خافتة كلّ ٢٢px.
+       • العاجيّ: كلّه #f9f2e4 مع توهّج أسفل اللوحات ونقاط بنّيّة خافتة.
+       • الشعار نفسه بلا النجوم الملوّنة؛ أدوات أسفل القائمة في صينيّة واحدة؛ زرّ المعاينة المختار ذهبيّ.
+       • لمسة الضغط (حروف وأرقام تنتشر ذهبيّة) في js/app-31-إطارات.js. الكتابة وزرّ «محادثة جديدة» كما هما. ── */
+  html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood){ --om-gold-line:linear-gradient(160deg,rgba(212,175,55,.6),rgba(212,175,55,.14) 32%,rgba(63,60,47,.55) 62%,rgba(212,175,55,.38)); --om-dots:radial-gradient(rgba(206,181,98,.14) 1px,transparent 1.3px); --om-panel:linear-gradient(#000,#000); --om-glow:linear-gradient(transparent,transparent); }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood){ --om-gold-line:linear-gradient(160deg,rgba(184,144,44,.7),rgba(184,144,44,.2) 32%,rgba(150,120,60,.35) 62%,rgba(184,144,44,.5)); --om-dots:radial-gradient(rgba(150,112,40,.22) 1px,transparent 1.3px); --om-panel:linear-gradient(#f9f2e4,#f9f2e4); --om-glow:radial-gradient(120% 38% at 50% 100%,rgba(236,206,140,.32),transparent 70%); background:#f9f2e4 !important; }
+  html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #sidebar, html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #workarea, html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #omFrameCenter{ border:1px solid transparent !important; border-radius:22px !important; box-shadow:none !important; }
+  html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #sidebar::after, html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #workarea::after, html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #omFrameCenter::after{ display:none !important; }
+  html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #sidebar, html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #workarea{ background:var(--om-dots) 0 0 / 22px 22px padding-box, var(--om-glow) padding-box, var(--om-panel) padding-box, var(--om-gold-line) border-box !important; }
+  html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #omFrameCenter{ background:var(--om-glow) padding-box, var(--om-panel) padding-box, var(--om-gold-line) border-box !important; }
+  html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood), html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) body, html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) body.omranWelcome{ background:#000 !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) body, html[data-mode="light"]:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) body.omranWelcome{ background:#f9f2e4 !important; }
+  html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #code{ background:#000 !important; }
+  html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #sidebarBrand .omStars{ display:none !important; }
+  html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #omranSidebarFoot{ background:rgba(16,16,19,.85) !important; border:1px solid rgba(212,175,55,.14) !important; border-radius:16px !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #omranSidebarFoot{ background:rgba(255,255,255,.55) !important; border:1px solid rgba(184,144,44,.25) !important; border-radius:16px !important; }
+  html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #tabs .tab.active{ background:linear-gradient(135deg,rgba(212,175,55,.2),rgba(212,175,55,.06)) !important; box-shadow:inset 0 0 0 1px rgba(212,175,55,.35) !important; border-radius:10px !important; }
+  html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #tabs .tab.active svg{ color:#e9c869 !important; stroke:#e9c869 !important; }
+  html[data-mode="light"]:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) #tabs .tab.active{ background:linear-gradient(135deg,rgba(184,144,44,.22),rgba(184,144,44,.08)) !important; box-shadow:inset 0 0 0 1px rgba(184,144,44,.45) !important; border-radius:10px !important; }
+  html:not(.mobile-ui):not(.bgimg):not(.skin):not(.skin-wood) .omFx{ position:absolute; inset:0; z-index:-1; pointer-events:none; border-radius:22px; }
 }
