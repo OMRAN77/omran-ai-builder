@@ -132,3 +132,64 @@ test('١٠) آخر الفيديو فيه باركود حقيقيّ لرابط ا
   assert.match(html, /<div class="qr"><svg/);
   assert.match(html, /الحلقة 2 بعد يومين/);
 });
+
+test('١١) نوع الحلقة من خانة idea: video · video:legofy · styles:falcon، والرقم يبقى فكرة موقع', async () => {
+  const { parseKind, durWord } = await load();
+  assert.deepEqual(parseKind('video'), { kind: 'video', arg: '' });
+  assert.deepEqual(parseKind(' Video:LEGOFY '), { kind: 'video', arg: 'legofy' });
+  assert.deepEqual(parseKind('style'), { kind: 'styles', arg: '' });
+  assert.deepEqual(parseKind('styles:falcon'), { kind: 'styles', arg: 'falcon' });
+  assert.deepEqual(parseKind('site'), { kind: 'site', arg: '' });
+  assert.equal(parseKind('5'), null);
+  assert.equal(parseKind(''), null);
+  assert.equal(parseKind('video; rm -rf'), null);
+  assert.equal(durWord(40), '40 ثانية');
+  assert.equal(durWord(60), 'دقيقة');
+  assert.equal(durWord(84), 'دقيقة و24 ثانية');
+  assert.equal(durWord(125), 'دقيقتين و5 ثواني');
+});
+
+test('١٢) فكرة فيديو الترند: موقف خليجيّ قصير بلا سياسة، والنصّ صادق بالزمن', async () => {
+  const { validVideoIdea, videoAsk, buildVideoCaption } = await load();
+  const good = { trend: 'المطر', label: 'أمطار الخير', title: 'المطر والغسيل', scene: 'أم راشد تنشر الغسيل فوق السطح، وأبو راشد يبشّرها إن الجو صحو، وفجأة تنزل المطر على الكل', tags: ['#مطر', 'bad tag'] };
+  const v = validVideoIdea(good);
+  assert.equal(v.title, 'المطر والغسيل');
+  assert.deepEqual(v.tags, ['#مطر']);
+  assert.equal(validVideoIdea({ ...good, scene: 'قصير' }), null);
+  assert.equal(validVideoIdea({ ...good, trend: 'حرب', label: 'أخبار الحرب' }), null);
+  assert.equal(validVideoIdea(null), null);
+  assert.match(videoAsk([{ title: 'المطر', news: 'أمطار' }], 'الجمعة'), /بيكسار[\s\S]*المطر \| أمطار[\s\S]*ممنوع/);
+  const c = buildVideoCaption({ ...v, key: 'pixarsketch' }, 84, 2);
+  assert.match(c.ig, /^🎬 الحلقة 2 من سوّها بـ OM Ai/);
+  assert.match(c.ig, /دقيقة و24 ثانية/);
+  assert.match(c.ig, /🎭 الموقف: أم راشد/);
+  assert.match(c.fb, /\?ref=fb/);
+  assert.ok((c.ig.match(/#/g) || []).length <= 30);
+});
+
+test('١٣) أنماط الصور: خمسة أنماط مختلفة تدور كلّ حلقة، والشخص مولّد ومذكور في النصّ', async () => {
+  const { stylesPlan, STYLES_PER_EP, buildStylesCaption, stylesTimeline } = await load();
+  const p1 = stylesPlan(1, '');
+  assert.deepEqual(p1.styles.map((s) => s.key), ['ghibli', 'disney', 'lego', 'anime', 'figurine']);
+  assert.equal(p1.styles.length, STYLES_PER_EP);
+  assert.equal(new Set(stylesPlan(3, '').styles.map((s) => s.key)).size, STYLES_PER_EP);
+  assert.notDeepEqual(stylesPlan(2, '').styles, p1.styles);
+  assert.equal(stylesPlan(1, 'falcon').subject.key, 'falcon');
+  assert.ok(p1.styles.every((s) => s.label && /\p{Script=Arabic}/u.test(s.label)));
+  const c = buildStylesCaption(p1, { items: p1.styles.slice(0, 4), avg: 12 }, 3);
+  assert.match(c.ig, /صارت 4 أنماط، كل نمط في 12 ثانية/);
+  assert.match(c.ig, /مولّد بالذكاء الاصطناعي/);
+  const tl = stylesTimeline(5);
+  assert.ok(tl.total >= 15 && tl.total <= 30, String(tl.total));
+});
+
+test('١٤) الاستوديو بنصوص النوع الجديد ما زال فيه الباركود والحلقة الجاية', async () => {
+  const { studioHTML, videoTimeline } = await load();
+  const html = studioHTML({ name: '' }, 84, 4, { endH: 'سوّ فيديو الترند حقّك', hook1: 'ترند «x»' });
+  assert.match(html, /<div class="qr"><svg/);
+  assert.match(html, /الحلقة 5 بعد يومين/);
+  assert.ok(html.includes('سوّ فيديو الترند حقّك'));
+  const tl = videoTimeline({ a0: 0, send: 30 }, 8);
+  assert.equal(tl.dA, 9);
+  assert.ok(tl.total >= 15 && tl.total <= 30, String(tl.total));
+});
