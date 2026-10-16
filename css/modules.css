@@ -492,7 +492,8 @@ html[data-mode="light"] #videoMakerModal .vmk-ai-f{color:var(--muted)}
 #videoMakerModal .vmk-studio.vmk-tab-trend>.vmk-side,#videoMakerModal .vmk-studio.vmk-tab-trend>.vmk-main{display:none!important}
 #videoMakerModal .vmk-studio:not(.vmk-tab-trend)>#vtRoot{display:none!important}
 #videoMakerModal .vmk-cards,#videoMakerModal .vmk-main label[data-i18n="videoModeLabel"]{display:none!important}
-#videoMakerModal .vmk-samples{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0 4px;max-width:440px} /* v-vmk-light: بطاقتان أصغر آخر النموذج */
+#videoMakerModal .vmk-samples{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:4px 0;max-width:440px} /* v-vmk-light: بطاقتان تحت المعاينة */
+#videoMakerModal .vmk-studio.vmk-tab-clean #vmkSamples{display:none!important}
 #videoMakerModal .vmk-samples:empty{display:none}
 #videoMakerModal .vmk-sm{border-radius:var(--r-3);overflow:hidden;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(var(--accent-tint-rgb,255,255,255),.04);cursor:pointer;transition:.15s}
 #videoMakerModal .vmk-sm:hover,#videoMakerModal .vmk-sm:focus-visible{border-color:rgba(var(--accent-rgb,232,161,60),.6);transform:translateY(-2px);outline:0}

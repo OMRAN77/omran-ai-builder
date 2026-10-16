@@ -269,15 +269,17 @@
       more.innerHTML='<summary></summary><div class="vmk-more-b"></div>';
       main.appendChild(more);
     }
-    /* v-vmk-light (المالك ١٧ أكتوبر: «اريد ترتيب ثاني خفيف»): الوصف ← المدّة والشكل ← زرّ الإنشاء ← «خيارات إضافية» مطويّة
-       (فيها مساعد الكتابة) ← الأمثلة آخر شي: «كيف تسوي فيديو» ثمّ فيديو الجودة */
+    /* v-vmk-light (المالك ١٧ أكتوبر: «اريد ترتيب ثاني خفيف… اريد شي سهل»): الوصف ← مساعد الكتابة مفتوح ← المدّة والشكل ←
+       زرّ الإنشاء ← «خيارات إضافية» مطويّة. والأمثلة («كيف تسوي فيديو» ثمّ فيديو الجودة) تحت المعاينة على الحاسوب
+       (المالك: «خلها تحت الفيديوات توليد الفيديو») — وعلى الجوّال المعاينة فوق فتنزل الأمثلة آخر النموذج */
     var gob=id('videoMakerGenerateBtn'); if(gob&&gob.parentNode===main&&more.previousElementSibling!==gob) main.insertBefore(more,gob.nextSibling);
-    var smp=id('vmkSamples'); if(smp&&more.parentNode===main&&more.nextElementSibling!==smp) main.insertBefore(smp,more.nextSibling);
+    var smp=id('vmkSamples'), sdx=M.querySelector('.vmk-side'), nrw=!!(window.matchMedia&&window.matchMedia('(max-width:860px)').matches), hst=nrw?main:sdx;
+    if(smp&&hst&&hst.lastElementChild!==smp) hst.appendChild(smp);
     var body=more.querySelector('.vmk-more-b');
     more.querySelector('summary').textContent=L('vcMore');
     var st=id('videoMakerStyle'), stBox=st&&st.parentElement;
     var nt=id('videoMakerNarrationToggle'), ntLab=nt&&nt.closest('label');
-    [id('vmkWrite'),id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerLongMinutesRow'),
+    [id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerLongMinutesRow'),
      ntLab,id('videoMakerVoiceGenderRow'),id('videoMakerNarrationRow'),M.querySelector('details.vmk-adv')].forEach(function(e){
       if(e&&e.parentNode!==body) body.appendChild(e);
     });
