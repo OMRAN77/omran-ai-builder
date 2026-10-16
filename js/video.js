@@ -127,7 +127,9 @@
       if(j&&typeof j==='object'&&Object.keys(j).length){ VIDEOS=j; sync(); }
     }).catch(function(){ /* guard-ok — لا قائمة = لا فيديوهات نماذج */ });
   }
-  function tutUrl(){ return '/media/samples/tutorial-'+(ar()?'ar':'en')+'.mp4'; }
+  /* v-tab-tut (المالك ١٧ أكتوبر «حط الفيديوين»): «كيف تسوي فيديو» من محرّك القسم نفسه بصوت الراوي — '<الوضع>-tut' في index.json
+     يغلب التعليميّ العامّ لذلك القسم (بالعربيّ فقط، فالراوي عربيّ)؛ بلا ملفّ أو بالإنجليزيّ يبقى العامّ */
+  function tutUrl(m){ return (m&&VIDEOS[m+'-tut']&&ar())?'/media/samples/'+m+'-tut.mp4':'/media/samples/tutorial-'+(ar()?'ar':'en')+'.mp4'; }
   function openPlayer(src){
     var lb=document.createElement('div'); lb.className='vmk-lb';
     var vd=document.createElement('video'); vd.src=src; vd.controls=true; vd.autoplay=true; vd.playsInline=true;
@@ -191,10 +193,10 @@
     var tt0=L('vcTutorial');
     if(tt0){
       var te=document.createElement('div'); te.className='vmk-sm vmk-sm-tut'; te.setAttribute('role','button'); te.tabIndex=0;
-      var tp=document.createElement('div'); tp.className='vmk-sm-p'; tp.style.backgroundImage='url('+tutUrl().replace('.mp4','.jpg')+')';
+      var tp=document.createElement('div'); tp.className='vmk-sm-p'; tp.style.backgroundImage='url('+tutUrl(md).replace('.mp4','.jpg')+')';
       var tpl=document.createElement('span'); tpl.className='vmk-sm-play'; tp.appendChild(tpl);
       var tb=document.createElement('b'); tb.textContent=tt0; te.classList.add('has-vid'); te.appendChild(tp); te.appendChild(tb);
-      var tgo=function(){ openPlayer(tutUrl()); };
+      var tgo=function(){ openPlayer(tutUrl(md)); };
       te.addEventListener('click',tgo); te.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tgo(); } });
       box.appendChild(te);
     }
