@@ -2873,7 +2873,10 @@ function buildSpokenWordSpans(container, text){
         a.textContent = __disp;
         a.title = href;
         a.setAttribute('dir', 'auto'); // v476 bidi
-        a.style.cssText = 'color:var(--om-hl,#e3b341); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;'; /* v-hl-yellow: الروابط صفراء (طلب المالك) */
+        /* v-link-wrap (لقطتا المالك من آيفون ١٦ أكتوبر: «https://www.d» ثمّ «ecathlon.ae» في السطر التالي): break-all هنا كان يغلب قاعدة v569
+           في tokens.css (.msg a{word-break:normal; overflow-wrap:break-word}) فيُكسر الرابط عند أيّ حرف. لم يظهر قبل v-full-links لأنّ
+           الرابط كان اسم نطاقه القصير؛ صار كاملًا فانكسر في منتصفه. الآن ينتقل كاملًا للسطر التالي، ويُكسر فقط إن كان أطول من السطر. */
+        a.style.cssText = 'color:var(--om-hl,#e3b341); text-decoration:underline; unicode-bidi:isolate;'; /* v-hl-yellow: الروابط صفراء (طلب المالك) */
         span.appendChild(a);
         const trail = linkM ? linkM[3] : (urlM ? urlM[2] : bareM[3]);
         if(trail) span.appendChild(document.createTextNode(trail));
@@ -8674,16 +8677,20 @@ function renderMessages(keepScroll){
 (function(){
   'use strict';
   var STOP = {};
-  ('في من على عن إلى الى مع هذا هذه هذي ذاك ذلك تلك انا أنا انت أنت هو هي هم نحن كان كانت يكون تكون ما لا لم لن ليس ليست كل بعض اي أي أين متى كيف لماذا ليش هل او أو ثم بس فقط جدا جدًا جداً كثير قليل شي شيء شوي لو اذا إذا ان أن إن حتى حتّى عند عندي عندك لي لك له لها لنا لهم بعد قبل الآن الان اليوم امس أمس غدا غدًا ابي أبي ابغى أبغى اريد أريد ممكن سمحت ياليت رجاء فضلك اكتب أكتب اكتبلي سوي سوّي اعمل أعمل قل قلي عطني أعطني هات ايش وش شو ليه كذا هنا هناك يا نعم لا طيب تمام اوكي أوكي '
+  ('في من على عن إلى الى مع هذا هذه هذي ذاك ذلك تلك انا أنا انت أنت هو هي هم نحن كان كانت يكون تكون ما لا لم لن ليس ليست كل بعض اي أي أين متى كيف لماذا ليش هل او أو ثم بس فقط جدا جدًا جداً كثير قليل شي شيء شوي لو اذا إذا ان أن إن حتى حتّى عند عندي عندك لي لك له لها لنا لهم بعد قبل الآن الان اليوم امس أمس غدا غدًا ابي أبي ابغى أبغى اريد أريد ممكن سمحت ياليت رجاء فضلك اكتب أكتب اكتبلي سوي سوّي اعمل أعمل قل قلي عطني أعطني هات ايش وش شو ليه كذا هنا هناك يا نعم لا طيب تمام اوكي أوكي وين فين منو مين شنو '
    + 'the a an and or of to in on for with is are was were be been it this that these those i you he she we they my your our their me us them will would can could should do does did not no yes please make write give tell about how what why when where which').split(/\s+/).forEach(function(w){ if(w) STOP[w] = 1; });
   function norm(w){
     return String(w || '').toLowerCase().replace(/[ً-ٰٟ]/g, '').replace(/^(?:و|ف|ب|ل|ك)?ال/, '').replace(/[إأآ]/g, 'ا').replace(/ة$/, 'ه').replace(/ى$/, 'ي');
   }
-  /** كلمات المحتوى بعد التطبيع وحذف كلمات الوقف (٣ أحرف فأكثر بعد التطبيع). */
+  /** كلمات المحتوى بعد التطبيع وحذف كلمات الوقف (٣ أحرف فأكثر بعد التطبيع).
+      v-topic-and (لقطة المالك ١٦ أكتوبر: «وين افضل كوفي في عجمان» ثمّ «وفي الشارقه» صُنّفت موضوعًا جديدًا فحُرم النموذج سياق القهوة):
+      كلمة الوقف بواو العطف أو فائه («وفي»، «وكيف»، «فهل») وقفٌ أيضًا — كانت تُحسب كلمة محتوى. و«وين/فين/شنو/منو/مين» أدوات سؤال
+      خليجيّة لا موضوع؛ «وين» المشتركة كانت تجعل سؤال الكوفي متابعةً لسؤال المتاجر. */
   function words(s){
     var out = [];
     String(s || '').replace(/[؀-ۿ\w]{2,}/g, function(w){
       var lw = w.toLowerCase(); if(STOP[lw]) return '';
+      var bare = lw.replace(/^[وف]/, ''); if(bare !== lw && STOP[bare]) return '';
       var n = norm(w); if(n.length >= 3 && !STOP[n]) out.push(n);
       return '';
     });
