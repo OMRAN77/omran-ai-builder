@@ -1,12 +1,79 @@
 {
   "_": "v-sharp: مجموعات التوضيح — scale = مضاعف المقاس الحاليّ، width = عرض ثابت بالنسبة نفسها، prescale/prescale_to = التصغير إلى دقّة المصدر قبل ×٤. الأرقام من فحص الغباش (١٦ أكتوبر): الجوّال يكبّر المصغّرات ٣٦٠ بكسل ١٫٤ مرّة.",
-  "decor":     { "globs": ["assets/design/styles/*.webp", "assets/design/opts/place-*.webp"], "scale": 1.5, "q": 82 },
-  "fashion":   { "globs": ["assets/fashion/looks/women/*.webp", "assets/fashion/looks/men/*.webp", "assets/fashion/looks/kids/*.webp", "assets/fashion/looks/occasion/*.webp", "assets/fashion/looks/season/*.webp", "assets/fashion/looks/category/*.webp"], "scale": 1.5, "q": 82 },
-  "extras":    { "globs": ["assets/fashion/looks/extras/*.webp"], "scale": 3, "q": 80 },
-  "studio":    { "globs": ["assets/studio/options/*.webp"], "scale": 1.5, "q": 82 },
-  "portrait":  { "globs": ["assets/portrait/styles/*.webp", "assets/portrait/before.webp"], "scale": 1.5, "q": 82 },
-  "tools":     { "globs": ["assets/tool-cards/s/*.jpg"], "scale": 2, "q": 84 },
-  "scenes":    { "globs": ["assets/fashion/gen-scene.webp", "assets/fashion/gen-scene-gold.webp"], "width": 1600, "q": 88,
-                 "prescale_to": { "assets/fashion/gen-scene.webp": [1024, 559], "assets/fashion/gen-scene-gold.webp": [1280, 699] } },
-  "decoropts": { "globs": ["assets/design/decor-opts/*.webp"], "prescale": 0.6667, "width": 1280, "q": 82 }
+  "decor": {
+    "globs": [
+      "assets/design/styles/*.webp",
+      "assets/design/opts/place-*.webp"
+    ],
+    "scale": 1.5,
+    "q": 82
+  },
+  "fashion": {
+    "globs": [
+      "assets/fashion/looks/women/*.webp",
+      "assets/fashion/looks/men/*.webp",
+      "assets/fashion/looks/kids/*.webp",
+      "assets/fashion/looks/occasion/*.webp",
+      "assets/fashion/looks/season/*.webp",
+      "assets/fashion/looks/category/*.webp"
+    ],
+    "scale": 1.5,
+    "q": 82
+  },
+  "extras": {
+    "globs": [
+      "assets/fashion/looks/extras/*.webp"
+    ],
+    "scale": 3,
+    "q": 80
+  },
+  "studio": {
+    "globs": [
+      "assets/studio/options/*.webp"
+    ],
+    "scale": 1.5,
+    "q": 82
+  },
+  "portrait": {
+    "globs": [
+      "assets/portrait/styles/*.webp",
+      "assets/portrait/before.webp"
+    ],
+    "scale": 1.5,
+    "q": 82
+  },
+  "tools": {
+    "globs": [
+      "assets/tool-cards/s/*.jpg"
+    ],
+    "scale": 1.8,
+    "q": 80,
+    "_": "١٢٠٠ ثمّ ١٠٨٠×٦٤٨ q80: الجوّال يحتاج ~١٠٧٤ بكسل لبطاقة بعرض الشاشة، وهي أوّل شاشة يفتحها المستخدم فالحجم مهمّ"
+  },
+  "scenes": {
+    "globs": [
+      "assets/fashion/gen-scene.webp",
+      "assets/fashion/gen-scene-gold.webp"
+    ],
+    "width": 1600,
+    "q": 88,
+    "prescale_to": {
+      "assets/fashion/gen-scene.webp": [
+        1024,
+        559
+      ],
+      "assets/fashion/gen-scene-gold.webp": [
+        1280,
+        699
+      ]
+    }
+  },
+  "decoropts": {
+    "globs": [
+      "assets/design/decor-opts/*.webp"
+    ],
+    "prescale": 0.6667,
+    "width": 1280,
+    "q": 82
+  }
 }
