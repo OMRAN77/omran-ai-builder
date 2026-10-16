@@ -1095,6 +1095,7 @@ Object.assign(I18N["fil"], {
     portraitStyleBrowseAll: "Tingnan lahat ›",
     portraitStyleSheetTitle: "🎨 Mga istilo ng litrato",
     fashionDropTitle: "Mag-upload ng buong-katawang litrato",
+    designDropTitle: "Mag-upload ng larawan ng iyong kuwarto",
     fashionDropHint: "Ulo hanggang paa · malinaw na ilaw",
     agentSectionTitle: "🤖 Ahente",
     agentSectionDesc: "Agent mode: nagpaplano at gumagawa mag-isa — binubuo, ineedit at tinetest ang code bago ihatid, tumitingin sa live na source, at patuloy na gumagana kahit sarado ang page. I-on ito, tapos i-type ang request mo sa chat.",

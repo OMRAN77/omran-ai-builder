@@ -30,6 +30,6 @@ test('٣. النوافذ التي كانت رماديّة أو شفّافة سو
   const css = read(CSS);
   const black = css.slice(0, css.indexOf('{background:#000'));
   for (const id of ['#portraitStyleSheet', '#inspireScreen', '#videoMakerModal', '#stocksModal', '#expModal', '#eduHubModal', '#cvModal', '#docModal', '#fbOverlay']) assert.ok(black.includes(id), id);
-  for (const id of ['#vmkTabs', '#vtRoot', '#designAiIdeas', '#fashionAiDropZone', '#cxStart', '#cxIdeas', '#expDrop', '#docDrop']) assert.ok(css.includes(id + ',') || css.includes(id + '{'), id);
+  for (const id of ['#vmkTabs', '#vtRoot', '#designAiIdeas', '#cxStart', '#cxIdeas', '#expDrop', '#docDrop']) assert.ok(css.includes(id + ',') || css.includes(id + '{'), id);
   assert.ok(!/ad-studio|\.hero|body\{/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), 'صفحة الإعلانات مستقلّة');
 });

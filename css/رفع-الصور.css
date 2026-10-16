@@ -1,0 +1,26 @@
+/* v-upload-art (المالك ١٦ أكتوبر بستّ صور: «حطّهم كلّهم في الأزياء والديكور ستايل رتّبهم مع ١٤ لغة» ثمّ «الأُوَل خلّها بالعربي وهذي بالـ١٤ لغة»):
+   مربّع رفع الصورة في الديكور والأزياء والستايل صورة المالك (assets/upload-art، 1280×640 = 2:1). العربيّة: الصورة المكتوبة نفسها
+   (النصّ مطبوع فيها فيُخفى نصّ HTML مع بقاء النقر)؛ بقيّة اللغات: الصورة النظيفة والعنوان والزرّ فوق لوحة الصورة نصًّا مترجمًا.
+   مواضع النصّ (--t العنوان، --b الزرّ) نسبٌ من الإطار 2:1 فتثبت على كلّ عرض. كلّ الأوضاع والثيمات (صورة لا لون). */
+.omUpArt{position:relative !important;display:block !important;aspect-ratio:2/1;height:auto !important;min-height:0 !important;padding:0 !important;margin-top:12px;
+  border:1px solid rgba(212,175,55,.6) !important;border-radius:14px !important;overflow:hidden;cursor:pointer;
+  background:#000 center/cover no-repeat !important;text-align:center;}
+.omUpDecor{--t:38%;--b:70%;background-image:url(/assets/upload-art/decor.webp?v=1) !important;}
+.omUpFashion{--t:25%;--b:73%;background-image:url(/assets/upload-art/fashion.webp?v=1) !important;}
+.omUpStyle{--t:49%;--b:76%;background-image:url(/assets/upload-art/style.webp?v=1) !important;}
+html[lang="ar"] .omUpDecor{background-image:url(/assets/upload-art/decor-ar.webp?v=1) !important;}
+html[lang="ar"] .omUpFashion{background-image:url(/assets/upload-art/fashion-ar.webp?v=1) !important;}
+html[lang="ar"] .omUpStyle{background-image:url(/assets/upload-art/style-ar.webp?v=1) !important;}
+.omUpArt .omUpIco,.omUpArt > svg{display:none !important;}
+.omUpArt .stSlotEmpty,.omUpArt .dzT{position:static !important;padding:0 !important;margin:0 !important;}
+.omUpArt .omUpT,.omUpArt .omUpH,.omUpArt .omUpB,.omUpArt .omUpN{position:absolute !important;left:6% !important;right:6% !important;margin:0 !important;text-align:center;line-height:1.3;}
+.omUpArt .omUpT{top:var(--t);font-weight:800;font-size:clamp(13px,2.3vw,21px);color:#fff !important;text-shadow:0 1px 4px #000,0 0 16px rgba(0,0,0,.9);}
+.omUpArt .omUpH{top:calc(var(--t) + 12%);font-size:clamp(10px,1.4vw,13px);color:#f3e7c6 !important;text-shadow:0 1px 4px #000,0 0 12px rgba(0,0,0,.9);}
+.omUpArt .omUpB{top:var(--b);transform:translateY(-50%);left:30% !important;right:30% !important;display:block;background:none !important;border:0 !important;box-shadow:none !important;
+  padding:0 !important;width:auto !important;font-weight:800;font-size:clamp(12px,1.9vw,17px);color:#2a1d00 !important;text-shadow:0 1px 0 rgba(255,235,170,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.omUpArt .omUpN{bottom:3%;font-size:11px;color:#e6d9b3 !important;text-shadow:0 1px 3px #000;max-width:none !important;}
+html[lang="ar"] .omUpArt :is(.omUpT,.omUpH,.omUpB){opacity:0;}
+.omUpArt:hover,.omUpArt.over{border-color:#c9c9c9 !important;}
+.omUpStyle .omUpB{color:#f7e7b4 !important;text-shadow:0 1px 3px #000;} /* لوحة الستايل السفليّة نحاس داكن */
+.stSlot.omUpArt.has{background-image:none !important;}
+.stSlot.omUpArt .stSlotX{z-index:2;}

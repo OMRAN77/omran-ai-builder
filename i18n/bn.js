@@ -1043,6 +1043,7 @@ Object.assign(I18N["bn"], {
     portraitStyleBrowseAll: "সব দেখুন ›",
     portraitStyleSheetTitle: "🎨 ছবির স্টাইল",
     fashionDropTitle: "সম্পূর্ণ দেহের ছবি আপলোড করুন",
+    designDropTitle: "আপনার ঘরের ছবি আপলোড করুন",
     fashionDropHint: "মাথা থেকে পা · পরিষ্কার আলো",
     agentSectionTitle: "🤖 এজেন্ট",
     agentSectionDesc: "এজেন্ট মোড: নিজেই পরিকল্পনা করে ও কাজ করে — ডেলিভারির আগে কোড তৈরি, সম্পাদনা ও পরীক্ষা করে, লাইভ সোর্স যাচাই করে, পেজ বন্ধ হলেও কাজ চালিয়ে যায়। চালু করুন, তারপর চ্যাটে আপনার অনুরোধ লিখুন।",

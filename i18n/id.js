@@ -1092,6 +1092,7 @@ Object.assign(I18N["id"], {
     portraitStyleBrowseAll: "Lihat semua ›",
     portraitStyleSheetTitle: "🎨 Gaya foto",
     fashionDropTitle: "Unggah foto seluruh badan",
+    designDropTitle: "Unggah foto ruangan Anda",
     fashionDropHint: "Dari kepala sampai kaki · pencahayaan jelas",
     agentSectionTitle: "🤖 Agen",
     agentSectionDesc: "Mode agen: merencanakan dan mengeksekusi sendiri — membangun, mengedit, dan menguji kode sebelum diserahkan, memeriksa sumber langsung, dan terus bekerja meski halaman ditutup. Aktifkan, lalu ketik permintaan Anda di obrolan.",

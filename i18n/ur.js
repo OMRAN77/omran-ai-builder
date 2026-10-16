@@ -1041,6 +1041,7 @@ Object.assign(I18N["ur"], {
     portraitStyleBrowseAll: "سب دیکھیں ›",
     portraitStyleSheetTitle: "🎨 تصویری انداز",
     fashionDropTitle: "پورے قد کی تصویر اپ لوڈ کریں",
+    designDropTitle: "اپنے کمرے کی تصویر اپ لوڈ کریں",
     fashionDropHint: "سر سے پاؤں تک · صاف روشنی",
     agentSectionTitle: "🤖 ایجنٹ",
     agentSectionDesc: "ایجنٹ موڈ: خود منصوبہ بناتا اور عمل کرتا ہے — ڈیلیوری سے پہلے کوڈ بناتا، بدلتا اور جانچتا ہے، لائیو ذرائع دیکھتا ہے، اور صفحہ بند ہونے پر بھی کام جاری رکھتا ہے۔ اسے آن کریں، پھر چیٹ میں اپنی درخواست لکھیں۔",

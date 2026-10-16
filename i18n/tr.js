@@ -1091,6 +1091,7 @@ Object.assign(I18N["tr"], {
     portraitStyleBrowseAll: "Tümünü gör ›",
     portraitStyleSheetTitle: "🎨 Fotoğraf tarzları",
     fashionDropTitle: "Boydan bir fotoğraf yükleyin",
+    designDropTitle: "Odanızın fotoğrafını yükleyin",
     fashionDropHint: "Baştan ayağa · net aydınlatma",
     agentSectionTitle: "🤖 Ajan",
     agentSectionDesc: "Ajan modu: kendi başına planlar ve uygular — teslimden önce kodu kurar, düzenler ve test eder, canlı kaynakları kontrol eder ve sayfa kapansa bile çalışmaya devam eder. Açın, sonra isteğinizi sohbete yazın.",

@@ -1042,6 +1042,7 @@ Object.assign(I18N["hi"], {
     portraitStyleBrowseAll: "सभी देखें ›",
     portraitStyleSheetTitle: "🎨 फोटो स्टाइल",
     fashionDropTitle: "पूरे शरीर की फोटो अपलोड करें",
+    designDropTitle: "अपने कमरे की फ़ोटो अपलोड करें",
     fashionDropHint: "सिर से पैर तक · साफ़ रोशनी",
     agentSectionTitle: "🤖 एजेंट",
     agentSectionDesc: "एजेंट मोड: यह खुद योजना बनाता और काम करता है — डिलीवरी से पहले कोड बनाता, बदलता और जाँचता है, लाइव स्रोत देखता है, और पेज बंद होने पर भी काम जारी रखता है। इसे चालू करें, फिर चैट में अपना अनुरोध लिखें।",
