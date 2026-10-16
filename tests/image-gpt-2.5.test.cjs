@@ -27,7 +27,7 @@ test('التوليد عبر GPT: يجرّب Flare الأحدث ثمّ gpt-image-
 });
 
 test('نانو الاحتياطيّ (بعد فشل المحرّك الأساسيّ): Nano Banana 2 (gemini-3.1-flash-image) قبل ٢٫٥', () => {
-  assert.ok(mi.includes("const models = ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'].filter("), 'الأحدث أوّلًا و٢٫٥ يبقى خط إنقاذ');
+  assert.ok(mi.includes("const models = ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image'].filter("), 'الأحدث أوّلًا و٢٫٥ يبقى خط إنقاذ (معاينة ٢٫٥ ميّتة في فحص ١٦ أكتوبر الحيّ — v-dead-models-2)');
 });
 
 test('gpt-image-1 لم يعد المصدر الوحيد — لا يظهر مثبَّتًا بمفرده في أيّ نداء GPT حيّ', () => {

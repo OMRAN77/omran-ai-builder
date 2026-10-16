@@ -27575,7 +27575,8 @@ const btnInstall = $('#btnInstall');
        كانت رسائله تفشل. تهاجر لأقرب بديل حي (متحقَّق في ورشة model-probe). */
     const __orRemap = {
       'google/gemini-flash-1.5:free': 'google/gemma-4-31b-it:free',
-      'mistralai/mistral-7b-instruct:free': 'z-ai/glm-5.2:free',
+      'mistralai/mistral-7b-instruct:free': 'nvidia/nemotron-3-ultra-550b-a55b:free',
+      'z-ai/glm-5.2:free': 'nvidia/nemotron-3-ultra-550b-a55b:free', /* v-dead-models-2: GLM 5.2 المجّانيّ خرج من الوسيط (٧ سبتمبر) — ميّت في فحص ١٦ أكتوبر الحيّ */
       'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-5',
       'google/gemini-pro-1.5': 'google/gemini-3.8-flash',
       /* v-models-family: بدائل الجيل السابق في المنسدلة المدفوعة → معرّفاتها الحاليّة. */
@@ -38540,7 +38541,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           .then(function (r) { return { text: String((r && r.reply) || ''), data: null }; });
       }
       var content = (blocks && blocks.length) ? blocks.concat([{ type: 'text', text: userText }]) : userText;
-      return claudeProxyRequest('claude-sonnet-4-20250514', system ? { content: system } : null, [{ role: 'user', content: content }], false)
+      return claudeProxyRequest('claude-sonnet-5', system ? { content: system } : null, [{ role: 'user', content: content }], false)
         .then(function (res) { return res.json().catch(function () { return {}; }); })
         .then(function (data) { return { text: textFrom(data), data: data }; });
     }

@@ -173,7 +173,7 @@
              (ورشة model-probe) — أربعة خيارات قديمة كانت ميتة فتفشل رسائل من اختارها. -->
         <option value="nvidia/nemotron-3-super-120b-a12b:free">Nemotron 3 Super 120B (free)</option>
         <option value="google/gemma-4-31b-it:free">Google Gemma 4 31B (free)</option>
-        <option value="z-ai/glm-5.2:free">GLM 5.2 (free)</option>
+        <option value="nvidia/nemotron-3-ultra-550b-a55b:free">Nemotron 3 Ultra 550B (free)</option>
       </optgroup>
       <optgroup label="💰 Paid" data-i18n="[label]orPaidGroup">
         <!-- v-models-family: رُفعت للجيل الحاليّ (معرّفات تطابق OR_MODELS في الخادم). -->
@@ -264,7 +264,7 @@
     <input type="password" id="claudeApiKey" placeholder="sk-ant-...">
     <label data-i18n="claudeModelLabel">اسم نموذج Claude</label>
     <div style="display:flex; gap:6px;">
-      <input type="text" id="claudeModel" placeholder="claude-sonnet-4-20250514" style="flex:1;">
+      <input type="text" id="claudeModel" placeholder="claude-sonnet-5" style="flex:1;">
       <button type="button" id="fetchClaudeModelsBtn" style="white-space:nowrap; padding:6px 10px;" data-i18n="fetchModelsBtn">جلب الموديلات المتاحة</button>
     </div>
     <select id="claudeModelList" style="display:none; margin-top:6px;"></select>

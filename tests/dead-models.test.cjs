@@ -64,3 +64,35 @@ test('تفويض Kimi Code: kimi-k3 افتراضيًّا في الأداة وا�
   assert.ok(wf.includes("default: 'kimi-k3'") && !wf.includes("default: 'kimi-k2.5'"));
   assert.ok(wf.includes('KIMI_MODEL_BASE_URL: https://api.moonshot.ai/v1'), 'المنصّة المفتوحة — kimi-for-coding ليس عليها');
 });
+
+// v-dead-models-2 (طلب المالك «أبدأ» ١٦ أكتوبر): الأسماء الثلاثة التي بقيت ميّتة في فحص v-models-live على الفرع بعد #1099 —
+// وخيار GLM في منتقي OpenRouter الذي لا يقرؤه الفحص (قيم <option> في الجزء لا تُستخرج).
+test('الدفعة الثانية: لا Sonnet 4 في العميل، ولا معاينة نانو ٢٫٥، ولا GLM 5.2 في المنتقي — والمحفوظ قديمًا يهاجر', () => {
+  const snap = read('js/app-16-snapbuild.js');
+  assert.ok(snap.includes("return claudeProxyRequest('claude-sonnet-5', ") && !snap.includes('claude-sonnet-4-20250514'), 'snapbuild بالاسم الذي يترجمه الخادم أصلًا');
+  assert.match(read('api/_lib/claude.js'), /useModel === 'claude-sonnet-4-20250514'\) useModel = 'claude-sonnet-5';/, 'الترجمة في الخادم باقية للعميل القديم في الكاش');
+  const mi = read('api/_lib/maha-image.js');
+  assert.ok(!mi.includes("'gemini-2.5-flash-image-preview'") && mi.includes("'gemini-2.5-flash-image'].filter("), 'خطّ الإنقاذ ٢٫٥ الحيّ وحده');
+
+  const ps = read('js/partials-settings.js');
+  assert.ok(!ps.includes('value="z-ai/glm-5.2:free"') && ps.includes('placeholder="claude-sonnet-5"') && !ps.includes('claude-sonnet-4-20250514'));
+  const sel = ps.slice(ps.indexOf('<select id="openrouterModelSelect">'), ps.indexOf('</optgroup>', ps.indexOf('<select id="openrouterModelSelect">')));
+  const free = [...sel.matchAll(/<option value="([^"]+)"/g)].map((m) => m[1]);
+  const S = require('../api/_lib/tier.js').FREE_PROVIDER_SPECS.openrouter;
+  assert.ok(free.length >= 3);
+  for (const m of free) assert.ok(S.models.includes(m), 'خيار المنتقي المجّانيّ من قائمة الوسيط التي يفحصها v-models-live: ' + m);
+  const v = Number((read('index.html').match(/partials-settings\.js\?v=(\d+)/) || [])[1] || 0);
+  assert.ok(v > 697, 'كسر كاش الجزء بعد تغييره');
+
+  const ft = read('js/app-10-features.js');
+  const i = ft.indexOf('(function migrateOpenrouterModel(){'), j = ft.indexOf('})();', i) + 5;
+  const run = (saved) => {
+    const store = { aiapp_openrouter_model: saved };
+    const ls = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, val) => { store[k] = String(val); } };
+    new Function('localStorage', '__swallow', ft.slice(i, j))(ls, () => {});
+    return store.aiapp_openrouter_model;
+  };
+  assert.equal(run('z-ai/glm-5.2:free'), 'nvidia/nemotron-3-ultra-550b-a55b:free', 'من اختار GLM 5.2 قديمًا');
+  assert.equal(run('mistralai/mistral-7b-instruct:free'), 'nvidia/nemotron-3-ultra-550b-a55b:free', 'الترحيل القديم لا يقود إلى اسم ميّت');
+  assert.equal(run('google/gemma-4-31b-it:free'), 'google/gemma-4-31b-it:free', 'الحيّ لا يُمسّ');
+});
