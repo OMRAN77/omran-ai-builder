@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>مشروع مشترك — Omran AI Builder</title>
+<!-- v-made-with-badge: معاينة الرابط في واتساب وغيره تعرّف بالمنصّة -->
+<meta name="description" content="مشروع صُنع بـ OM Ai — سوّ موقعك أو تطبيقك بالذكاء الاصطناعي ببلاش.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OM Ai">
+<meta property="og:title" content="مشروع صُنع بـ OM Ai">
+<meta property="og:description" content="سوّ موقعك أو تطبيقك بالذكاء الاصطناعي ببلاش — بالمحادثة وبدون برمجة.">
+<meta property="og:image" content="https://omran-ai-builder.vercel.app/icons/og-omran.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   html,body{margin:0; padding:0; height:100%; background:#0f1115; font-family:'Segoe UI',Tahoma,Arial,sans-serif; color:#eee;}
   #topbar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; background:#161922; border-bottom:1px solid #262b36; flex-wrap:wrap;}
@@ -21,6 +31,13 @@
   .shMsg.user{background:#2b3a55; align-self:flex-start; border:1px solid #35486b;}
   .shMsg.assistant{background:#1b1e27; align-self:flex-end; border:1px solid #262b36;}
   .shMsg .who{display:block; font-size:11px; color:#9aa3b2; margin-bottom:4px; font-weight:bold;}
+  /* v-made-with-badge: شارة «صُنع بـ OM Ai» فوق المشروع (خارج كود المستخدم، لا تُحقن في الإطار) */
+  #omMadeWith{position:fixed; bottom:calc(14px + env(safe-area-inset-bottom,0px)); left:14px; z-index:50; display:flex; align-items:center; gap:2px; padding:1px; border-radius:999px; background:linear-gradient(135deg,#f5d77a,#b8862b 55%,#f3d27a); box-shadow:0 6px 18px rgba(0,0,0,.35); font-family:'Segoe UI',Tahoma,Arial,sans-serif;}
+  #omMadeWith a{display:flex; align-items:center; gap:7px; padding:7px 13px 7px 11px; border-radius:999px; background:#0b0b0b; color:#e9dcc0; text-decoration:none; font-size:12.5px; line-height:1; white-space:nowrap;}
+  #omMadeWith a b{background:linear-gradient(135deg,#f7dc86,#c9973a); -webkit-background-clip:text; background-clip:text; color:transparent; font-size:13.5px; letter-spacing:.3px;}
+  #omMadeWith a .cta{color:#c9b98f; font-size:11.5px; padding-inline-start:7px; border-inline-start:1px solid rgba(233,207,140,.28);}
+  #omMadeWith button{position:absolute; top:-7px; right:-7px; width:20px; height:20px; border-radius:50%; border:1px solid rgba(233,207,140,.45); background:#0b0b0b; color:#c9b98f; font-size:12px; line-height:18px; padding:0; cursor:pointer;}
+  @media (max-width:420px){ #omMadeWith a .cta{display:none;} }
 </style>
 </head>
 <body>
@@ -36,6 +53,7 @@
     <iframe id="frame" sandbox="allow-scripts" style="display:none;"></iframe>
     <div id="chatWrap"><div id="chatInner"></div></div>
   </div>
+  <div id="omMadeWith" dir="rtl"><a href="/?ref=badge" target="_top" rel="noopener"><span>صُنع بـ</span><b dir="ltr">OM Ai</b><span class="cta">سوّ موقعك ببلاش ←</span></a><button type="button" aria-label="إخفاء" title="إخفاء" onclick="this.parentNode.remove()">×</button></div>
 
 <script>
 (function(){
