@@ -185,3 +185,25 @@ test('٦. مراجعة باب المال: سبب فشل Veo عند الاستط�
     assert.ok(r.errors.length > 0, 'video-script ' + what + ': التفصيل لم يُسجَّل');
   }
 });
+
+test('٧. مراجعة ٢: رفض المزوّد عند البدء ثلاثة — مؤقّت يُعاد، وعطب عندنا (مفتاح/صلاحيّة/نموذج) لا يُلام عليه المستخدم ولا يُمرَّر ٤٠١، ورفض للطلب نفسه', () => {
+  const { startFail, TEMP, OURS, BAD } = require(path.join(root, 'api/_lib/_videoFail.js'));
+  const cases = [
+    [503, 'Service Unavailable', 503, TEMP, true],
+    [429, 'Resource has been exhausted (e.g. check quota).', 429, TEMP, true],
+    [400, 'API key not valid. Please pass a valid API key.', 502, OURS, false],
+    [401, 'Unauthorized', 502, OURS, false], // كان يُمرَّر ٤٠١ فتفتح الترندات «سجّل الدخول»
+    [403, 'The caller does not have permission', 502, OURS, false],
+    [404, 'models/veo-3.1-fast-generate-preview is not found for API version v1beta', 502, OURS, false],
+    [400, 'Model gen4.5 is not available. Expected one of gen4.5 | kling3.0_pro', 502, OURS, false],
+    [400, 'Your prompt was flagged by our content moderation system.', 400, BAD, false],
+    [422, 'Invalid asset: image could not be decoded', 422, BAD, false],
+  ];
+  for (const [st, tech, code, text, retry] of cases) {
+    const f = startFail(st, tech);
+    assert.equal(f.code, code, st + ' ' + tech);
+    assert.equal(f.body.error, text, st + ' ' + tech);
+    assert.equal(f.body.retryable, retry, st + ' ' + tech);
+    assert.doesNotMatch(f.body.error, BANNED);
+  }
+});

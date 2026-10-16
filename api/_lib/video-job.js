@@ -28,11 +28,11 @@ async function rememberVideoJob(taskId, job, o) {
   const cost = Math.max(0, Math.floor(Number(j.cost) || 0));
   if (!taskId || !j.username || !cost) return false;
   try {
-    // v-refund-kind: k = نوع الخصم (v صلاحيّة الباقة · m رصيد الاشتراك · p نقاط) ليعود الردّ إليه — بلا pay يبقى كما كان.
+    // v-refund-kind: k = نوع الخصم (v صلاحيّة الباقة · m رصيد الاشتراك · p نقاط) وpl خانة الاشتراك، ليعود الردّ إليهما — بلا pay كما كان.
     const pay = j.pay && typeof j.pay === 'object' ? j.pay : null;
     await kv.kvSetRaw(ticketKey(taskId), JSON.stringify(Object.assign({
       u: String(j.username), c: cost, l: !!j.locked, q: !!j.quota,
-    }, pay ? { k: pay.planVideo ? 'v' : (pay.media ? 'm' : 'p') } : {})), TICKET_TTL_SEC);
+    }, pay ? { k: pay.planVideo ? 'v' : (pay.media ? 'm' : 'p') } : {}, pay && pay.media && pay.pool ? { pl: String(pay.pool) } : {})), TICKET_TTL_SEC);
     return true;
   } catch (e) {
     console.error('[video-job] ticket write failed: ' + (e && e.message));
@@ -68,7 +68,7 @@ async function settleVideoJob(taskId, ok, o) {
   const points = opt.points || require('./points.js');
   const guard = opt.guard || require('./abuse-guard.js');
   const usage = opt.usage || require('./_videoUsage.js');
-  const how = job.k ? { planVideo: job.k === 'v', media: job.k === 'm' } : undefined; // تذكرة قديمة بلا k = المطابقة بالمبلغ كما كانت
+  const how = job.k ? { planVideo: job.k === 'v', media: job.k === 'm', pool: job.pl || '' } : undefined; // تذكرة قديمة بلا k = المطابقة بالمبلغ كما كانت
   try { await points.refundPoints(job.u, job.c, how); } catch (e) { console.error('[video-job] refund failed: ' + (e && e.message)); }
   if (job.l) {
     try { await guard.releaseVideoLock(job.u); } catch (e) { console.error('[video-job] unlock failed: ' + (e && e.message)); }

@@ -117,8 +117,8 @@ module.exports = async (req, res) => {
       chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
       const tech = String((data && data.base_resp && data.base_resp.status_msg) || ('HTTP ' + upstream.status)).slice(0, 160);
       console.error('[minimax-create] upstream ' + upstream.status + ': ' + tech);
-      const temp = upstream.ok || upstream.status === 429 || upstream.status >= 500; /* v-video-names (مراجعة): ٤٢٩ و٥xx مؤقّتة تُعاد، وغيرها رفضٌ للطلب نفسه (وصف أو صورة) — «أعد بعد لحظات» كان يعيده كما هو فيفشل ثانيةً */
-      res.status(upstream.ok ? 502 : upstream.status).json({ error: temp ? 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.' : 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.', retryable: temp });
+      const fail = require('./_videoFail.js').startFail(upstream.ok ? 502 : upstream.status, tech); /* v-video-names: مؤقّت · عطب عندنا · رفض للطلب (_videoFail.js) */ /* ٢٠٠ برفض منطقيّ = مؤقّت كما كان */
+      res.status(fail.code).json(fail.body);
       return;
     }
     // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم ويفكّ القفل.

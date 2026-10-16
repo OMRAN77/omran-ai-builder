@@ -75,15 +75,16 @@ global.fetch = async (url) => {
   return Response.json({}, { status: 404 });
 };
 
-async function call(handler, body) {
+async function call(handler, body, query) {
   const res = { code: 0, body: null, setHeader() {}, status(c) { this.code = c; return this; }, json(v) { this.body = v; return this; }, send(v) { this.body = v; return this; }, end() { return this; } };
-  await handler({ method: 'POST', body }, res);
+  await handler({ method: 'POST', query: query || {}, body }, res);
   // حجز حصّة اليوم (v-atomic-quota) يُردّ قبل خروج الردّ — الردّ نفسه قد يتأجّل دورة.
   for (let i = 0; i < 3; i++) await new Promise((r) => setImmediate(r));
   return res;
 }
 const rw = (u, extra) => call(runway, Object.assign({ token: token(u), promptText: 'قطّة تلعب على الشاطئ', confirmed: true }, extra || {}));
 const vo = (u, extra) => call(veo, Object.assign({ token: token(u), promptText: 'غروب فوق البحر', confirmed: true }, extra || {}));
+const vp = (u, extra) => call(veo, Object.assign({ token: token(u), promptText: 'talking character' }, extra || {}), { action: 'veo-price' }); // v-talkchar-confirm
 const mm = (u, extra) => call(minimax, Object.assign({ token: token(u), promptText: 'قطّة تلعب على الشاطئ', confirmed: true }, extra || {}));
 function reset() { Object.assign(mode, { runway: 'ok', veo: 'ok', minimax: 'ok', image: 'ok' }); process.env.RUNWAY_API_KEY = 'rw-test'; process.env.MINIMAX_API_KEY = 'mm-test'; }
 
@@ -224,15 +225,15 @@ test('٦. الردّ بنوع الخصم: فيديو مدفوع نقاطًا ب�
 });
 
 // v-talkchar-confirm (مراجعة باب المال): سؤال السعر قبل الكرتنة على المعالج وabuse-guard الحقيقيّين — قراءة فقط.
-test('٧. priceCheck: المهلة والرصيد قبل السؤال، والسعر يشمل الكرتون؛ لا خصم ولا قفل ولا نداء مزوّد', async () => {
+test('٧. veo-price: المهلة والرصيد قبل السؤال، والسعر يشمل الكرتون؛ لا خصم ولا قفل ولا نداء مزوّد', async () => {
   const guard = require(rp('api/_lib/abuse-guard.js'));
   reset(); user('pc-a', 1000);
   assert.equal(await guard.videoCooldownLeft('pc-a'), 0, 'لا قفل = ٠');
   const before = sent.length;
-  const q = await vo('pc-a', { priceCheck: true, withCartoon: true, confirmed: undefined });
+  const q = await vp('pc-a', { withCartoon: true });
   assert.equal(q.code, 428);
-  assert.equal(q.body.cost, points.COSTS.veo_video + points.COSTS.image);
-  const ok = await vo('pc-a', { priceCheck: true, withCartoon: true });
+  assert.equal(q.body.cost, points.COSTS.veo_video + points.COSTS.image_creative, 'الكرتنة إبداعيّة: ٢٠ ثمّ فرق ١٥');
+  const ok = await vp('pc-a', { withCartoon: true, confirmed: true });
   assert.equal(ok.code, 200);
   assert.equal(sent.length, before, 'لا نداء مزوّد');
   assert.equal(bal('pc-a'), 1000);
@@ -240,14 +241,34 @@ test('٧. priceCheck: المهلة والرصيد قبل السؤال، والس
   assert.equal((await vo('pc-a')).code, 200, 'الفيديو نفسه');
   const left = await guard.videoCooldownLeft('pc-a');
   assert.ok(left >= 1 && left <= guard.VIDEO_COOLDOWN_SEC, 'المتبقّي ' + left);
-  const cd = await vo('pc-a', { priceCheck: true, withCartoon: true });
+  const cd = await vp('pc-a', { withCartoon: true, confirmed: true });
   assert.equal(cd.code, 429);
   assert.equal(cd.body.error, 'video_cooldown');
   assert.equal(bal('pc-a'), 1000 - points.COSTS.veo_video, 'المهلة لا تخصم');
   user('pc-b', points.COSTS.veo_video); // يكفي الفيديو وحده لا الفيديو + الكرتون
-  const lo = await vo('pc-b', { priceCheck: true, withCartoon: true });
+  const lo = await vp('pc-b', { withCartoon: true, confirmed: true });
   assert.equal(lo.code, 402);
   assert.equal(lo.body.error, 'points_insufficient');
-  assert.equal((await vo('pc-b', { priceCheck: true })).code, 200, 'بلا كرتون يكفي');
+  assert.equal((await vp('pc-b', { confirmed: true })).code, 200, 'بلا كرتون يكفي');
   assert.equal(bal('pc-b'), points.COSTS.veo_video);
+});
+
+// v-refund-kind (مراجعة ٢): ردّ رصيد الاشتراك بالمبلغ جشعًا كان يعيد صورًا ناجحة أحدث بدل الفيديو المتعطّل، ويترك فلسه مخصومًا،
+// ويردّ الفرق نقاطًا لم تُدفع. الآن الخانة نفسها من نتيجة الخصم (وتذكرة المهمّة pl).
+test('٨. فيديو من رصيد الاشتراك يتعطّل عند الاستطلاع بعد صور أحدث: يعود فلسه إلى خانته بالضبط، والصور والنقاط كما هي', async () => {
+  const job = require(rp('api/_lib/video-job.js'));
+  reset(); user('med-a', 1000);
+  users.set('med-a', Object.assign(users.get('med-a'), { media: { mix: { plan: 'media_pro', at: Date.now() - 3 * DAY } } }));
+  kv.set('media:mix:med-a', '2500');
+  const v = await vo('med-a');
+  assert.equal(v.code, 200);
+  assert.equal(Number(kv.get('media:mix:med-a')), 2060, 'الفيديو من الاشتراك (٤٤٠ فلسًا)');
+  assert.equal(bal('med-a'), 1000);
+  const t = JSON.parse(kv.get(job.ticketKey(v.body.op)));
+  assert.equal(t.k, 'm'); assert.equal(t.pl, 'mix');
+  for (let i = 0; i < 2; i++) assert.equal((await points.spendPoints('med-a', points.COSTS.image, 'image')).media, 'image');
+  assert.equal(Number(kv.get('media:mix:med-a')), 1960);
+  await job.settleVideoJob(v.body.op, false);
+  assert.equal(Number(kv.get('media:mix:med-a')), 2400, 'فلس الفيديو وحده عاد: ' + kv.get('media:mix:med-a'));
+  assert.equal(bal('med-a'), 1000, 'بلا نقاط هديّة');
 });

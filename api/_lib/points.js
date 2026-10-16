@@ -221,7 +221,7 @@ async function refundPoints(username, amount, how) {
     if (!amt) return;
   }
   if (!kind || kind === 'media') {
-    try { amt = await media.refundMedia(username, amt); } catch (e) { console.warn('[points] media refund skipped:', e && e.message); }
+    try { amt = await media.refundMedia(username, amt, kind === 'media' ? (how.pool || '') : ''); } catch (e) { console.warn('[points] media refund skipped:', e && e.message); } // بالخانة نفسها حين تُعرف
     if (!amt) return;
   }
   // Must go through the same atomic counter as the deduction. A read-modify-
@@ -236,15 +236,22 @@ async function refundPoints(username, amount, how) {
   }
 }
 
-/* v-talkchar-confirm (مراجعة باب المال): هل يكفي ما عنده لـamount؟ قراءة فقط — لا خصم ولا تذكرة؛ الحكم عند السباق لـspendPoints.
-   المالك وVIP نعم، والموقوف لا، ومشترك وسائط ساري يُترك لمسار الخصم نفسه (رصيد اشتراكه يُحسب بالفلس لكلّ خدمة) فنعم.
-   الباقي رصيد النقاط. يُسأل قبل خطوة مدفوعة تسبق الفيديو (كرتنة الشخصيّة الناطقة) كي لا تُخصم ثمّ يرجع points_insufficient. */
-async function canAfford(username, amount) {
+/* v-talkchar-confirm (مراجعة باب المال): هل يكفي ما عنده لسلسلة خصوم؟ steps = [[السبب، النقاط]…] بترتيب خصمها. قراءة فقط — لا خصم
+   ولا تذكرة؛ الحكم عند السباق لـspendPoints. المالك وVIP نعم، والموقوف لا. كلّ خطوة يغطّيها رصيد اشتراك ساري (media.coverage، كما
+   يصرفه trySpendMedia بالفلس) لا تُحسب نقاطًا، والباقي يُقارن برصيد النقاط. يُسأل قبل خطوة مدفوعة تسبق الفيديو (كرتنة الشخصيّة
+   الناطقة) كي لا تُخصم ثمّ يرجع points_insufficient. عطب القراءة لا يمنع — الخصم يحكم. */
+async function canAfford(username, steps) {
   if (!username) return false;
   if (isOwner(username) || (await isVip(username))) return true;
   if (await isBanned(username)) return false;
-  try { if (Object.keys(await media.mediaStatus(username)).length) return true; } catch (e) { return true; } // عطب القراءة لا يمنع — الخصم يحكم
-  try { return (await ensureBalance(username)) >= Math.max(0, Math.floor(Number(amount) || 0)); } catch (e) { return true; }
+  const list = Array.isArray(steps) ? steps : [];
+  let need = 0;
+  try {
+    const covered = await media.coverage(username, list.map((s) => s[0]));
+    list.forEach((s, i) => { if (!covered[i]) need += Math.max(0, Math.floor(Number(s[1]) || 0)); });
+  } catch (e) { return true; }
+  if (!need) return true;
+  try { return (await ensureBalance(username)) >= need; } catch (e) { return true; }
 }
 
 /* v-video-enhance-pro: ردّ بالنقاط وحدها — لخدمة سببها خارج جدول الوسائط (UNIT_COST) فخُصمت من النقاط لا من رصيد اشتراك.

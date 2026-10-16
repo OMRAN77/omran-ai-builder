@@ -13,6 +13,23 @@ const VEO_FREE_MAX = 1500;
 /* v-video-first-frame: قفل «الإطار جاهز — حرّكه كما هو» صار في trend-people.js يشترك فيه كلّ محرّك (نصّه كما هو). */
 const { FRAME_LOCK } = require('./trend-people.js');
 
+/* v-talkchar-confirm (مراجعة ٢): خطوات الشخصيّة الناطقة بترتيب خصمها — [سبب، نقاط] كما يخصمها maha-image ثمّ هذا الملفّ. أمر الكرتنة
+   «تحويل أسلوب» (3D/chibi) فهو إبداعيّ: الأساس ثمّ فرق الإبداعيّ (image_creative كاملًا)، إلّا «العاديّة» المدفوعة من رصيد اشتراك الصور
+   (بلا فرق). كان السعر ١٧٥+٢٠ والخصم ١٧٥+٣٥ — أكثر ممّا وافق عليه، ومن رصيده ١٩٥–٢٠٩ يدفع الكرتون ثمّ points_insufficient. */
+async function talkSteps(username, withCartoon, C) {
+  const steps = [];
+  if (withCartoon) {
+    const media = require('./_mediaPlans.js');
+    const q = await media.imageQuality(username, '').catch(() => null);
+    const base = q === 'normal' ? 'image_normal' : 'image';
+    const baseCovered = (await media.coverage(username, [base]).catch(() => [false]))[0];
+    steps.push([base, C.image]);
+    if (!(baseCovered && q === 'normal')) steps.push(['image_creative', C.image_creative - C.image]);
+  }
+  steps.push(['veo_video', C.veo_video]);
+  return steps;
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
@@ -78,18 +95,19 @@ module.exports = async (req, res) => {
     /* v-talkchar-confirm (مراجعة باب المال): سؤال السعر وحده قبل خطوة مدفوعة تسبق الفيديو (كرتنة الشخصيّة الناطقة) — كانت الكرتنة
        تُخصم ثمّ يأتي سؤال الفيديو، فالإلغاء يقول «لم تُخصم أيّ نقاط» وقد خُصمت، ومن رصيده لا يكفي الفيديو يدفع الكرتون ثمّ يُردّ.
        لا خصم هنا ولا قفل ولا نداء مزوّد ولا صلاحيّة باقة؛ الموافقة يحملها العميل إلى الإنشاء (confirmed:true). */
-    if (body.priceCheck === true) {
-      if (gate.allowed) { res.status(200).json({ ok: true }); return; }
+    if (req.query && req.query.action === 'veo-price') { /* إجراء مستقلّ لا علم في الجسم: موجّه أقدم يرفضه (404) فلا يصير إنشاءً مدفوعًا عند تراجع النشر */
+      if (gate.allowed) { res.status(200).json({ ok: true, priceOk: true }); return; }
       const pcUser = gate.reason === 'auth' ? null : pointsLib.verifyPointsToken(token);
       if (!pcUser) { res.status(401).json({ error: 'auth_required' }); return; }
       const withCartoon = body.withCartoon === true;
-      const pcCost = pointsLib.COSTS.veo_video + (withCartoon ? pointsLib.COSTS.image : 0);
+      const pcSteps = await talkSteps(pcUser, withCartoon, pointsLib.COSTS);
+      const pcCost = pcSteps.reduce((a, s) => a + s[1], 0);
       const pcLeft = await require('./abuse-guard.js').videoCooldownLeft(pcUser); // VIP خارج المهلة كما في videoLock أدناه (pay.owner)
       if (pcLeft > 0 && !(await require('./_vip.js').isVip(pcUser))) { res.status(429).json({ error: 'video_cooldown', retryAfter: pcLeft }); return; }
-      if (!(await pointsLib.canAfford(pcUser, pcCost))) { res.status(402).json({ error: 'points_insufficient', needed: pcCost }); return; }
+      if (!(await pointsLib.canAfford(pcUser, pcSteps))) { res.status(402).json({ error: 'points_insufficient', needed: pcCost }); return; }
       const pcGate = withCartoon ? pointsLib.requireConfirmation(body, pcCost, 'شخصيّة كرتونيّة ناطقة') : pointsLib.requireConfirmation(body, pcCost, 'فيديو سينمائي بالصوت');
       if (pcGate) { res.status(pcGate.status).json(pcGate.payload); return; }
-      res.status(200).json({ ok: true });
+      res.status(200).json({ ok: true, priceOk: true });
       return;
     }
     if (!gate.allowed) {
@@ -202,8 +220,8 @@ module.exports = async (req, res) => {
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
       console.error('[veo-create] upstream ' + upstream.status + ': ' + String(msg).slice(0, 300));
-      const temp = upstream.status === 429 || upstream.status >= 500; /* v-video-names (مراجعة): ٤٢٩ و٥xx مؤقّتة تُعاد، وغيرها رفضٌ للطلب نفسه (وصف أو صورة) — «أعد بعد لحظات» كان يعيده كما هو فيفشل ثانيةً */
-      res.status(upstream.status).json({ error: temp ? 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.' : 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.', retryable: temp });
+      const fail = require('./_videoFail.js').startFail(upstream.status, msg); /* v-video-names: مؤقّت · عطب عندنا · رفض للطلب (_videoFail.js) */
+      res.status(fail.code).json(fail.body);
       return;
     }
     // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم ويفكّ القفل.

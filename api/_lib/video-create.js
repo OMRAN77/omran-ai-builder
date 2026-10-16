@@ -197,8 +197,8 @@ module.exports = async (req, res) => {
       // v-video-names: رسالة مفهومة للمستخدم، والذيل التقنيّ (قد يسمّي المزوّد أو نماذجه) للسجلّ وحده.
       const tech = String((data && (data.error || (data.issues && data.issues[0] && data.issues[0].message))) || ('HTTP ' + upstream.status)).slice(0, 160);
       console.error('[video-create] upstream ' + upstream.status + ': ' + tech);
-      const temp = upstream.status === 429 || upstream.status >= 500; /* v-video-names (مراجعة): ٤٢٩ و٥xx مؤقّتة تُعاد، وغيرها رفضٌ للطلب نفسه (وصف أو صورة) — «أعد بعد لحظات» كان يعيده كما هو فيفشل ثانيةً */
-      res.status(upstream.status).json({ error: temp ? 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.' : 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.', retryable: temp });
+      const fail = require('./_videoFail.js').startFail(upstream.status, tech); /* v-video-names: مؤقّت · عطب عندنا · رفض للطلب (_videoFail.js) */
+      res.status(fail.code).json(fail.body);
       return;
     }
 

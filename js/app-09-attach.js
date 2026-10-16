@@ -3710,13 +3710,14 @@ function omranVideoCodeText(code, retryAfter){
   return s ? s.replace('⏳', '').trim().replace('{m}', String(m)) : '';
 }
 /* v-talkchar-confirm (مراجعة باب المال): الشخصيّة الناطقة تُسعَّر قبل أيّ خطوة مدفوعة — الكرتنة (صورة مدفوعة) كانت تُخصم ثمّ يأتي سؤال
-   الفيديو، فالإلغاء يقول «لم تُخصم أيّ نقاط» وقد خُصمت، ومن لا يكفيه رصيده يدفع الكرتون ثمّ يرجع points_insufficient. priceCheck في
-   veo-create لا يخصم ولا يقفل ولا ينادي المزوّد. يرجع بعد الموافقة (أو بلا سؤال للمالك) فيحمل المتّصل confirmed:true إلى الإنشاء
-   وإعادته — سؤال واحد — وإلّا يرمي الخطأ نفسه الذي كان سيظهر بعد الكرتنة. خارج __sendPromptCore كي لا يكبر سقفها. */
+   الفيديو، فالإلغاء يقول «لم تُخصم أيّ نقاط» وقد خُصمت، ومن لا يكفيه رصيده يدفع الكرتون ثمّ يرجع points_insufficient. الإجراء
+   veo-price لا يخصم ولا يقفل ولا ينادي المزوّد. يرجع بعد الموافقة (أو بلا سؤال للمالك) فيحمل المتّصل confirmed:true إلى الإنشاء
+   وإعادته — سؤال واحد — وإلّا يرمي الخطأ نفسه الذي كان سيظهر بعد الكرتنة. priceOk شرط: ردّ ٢٠٠ بلاه ليس سؤال سعر فلا يُكمل.
+   خارج __sendPromptCore كي لا يكبر سقفها. */
 async function omranTalkPriceCheck(withCartoon, sig){
-  const r = await postWithConfirm('/api/video?action=veo-create', { priceCheck: true, withCartoon: !!withCartoon, promptText: 'talking character', token: authGet('aiapp_auth_token') }, sig);
-  if(r.ok) return true;
+  const r = await postWithConfirm('/api/video?action=veo-price', { withCartoon: !!withCartoon, promptText: 'talking character', token: authGet('aiapp_auth_token') }, sig);
   const d = await r.json().catch(()=>({}));
+  if(r.ok && d && d.priceOk === true) return true;
   const e = (d && d.error) || ('HTTP ' + r.status);
   if(e === 'HTTP 428') throw Object.assign(new Error(t('vidCancelled')), { __note: true });
   const isAr = (typeof lang === 'undefined' || lang === 'ar');
@@ -5230,7 +5231,7 @@ function __friendlyErr(e){
           if(__r.ok && __d.id){ __vid = __d.id; }
           else {
             __verr = (__d && __d.error) || ('HTTP ' + __r.status); __vra = (__d && __d.retryAfter) || 0;
-            if(__verr === 'auth_required' || __verr === 'daily_limit_reached' || __verr === 'video_cooldown' || __verr === 'points_insufficient' || __r.status === 428) break; /* v-chat-video-cooldown: المهلة والنقاط وإلغاء التأكيد لا يُعاد طلبها بعد ٦ ث (ولا تأكيد ثانٍ) */
+            if(__verr === 'auth_required' || __verr === 'daily_limit_reached' || __verr === 'video_cooldown' || __verr === 'points_insufficient' || __r.status === 428 || __d.retryable === false) break; __vp.confirmed = true; /* v-chat-video-cooldown: المهلة والنقاط وإلغاء التأكيد والرفض الدائم لا يُعاد طلبها بعد ٦ ث؛ والإعادة بالموافقة نفسها (v-talkchar-confirm: كانت تفتح نافذة السعر ثانيةً) */
             if(__a === 0) await new Promise(r => setTimeout(r, 6000));
           }
         }

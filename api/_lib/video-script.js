@@ -115,7 +115,7 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       const errText = await upstream.text();
       console.error('[video-script] upstream ' + upstream.status + ': ' + errText.slice(0, 300));
-      res.status(upstream.status).json({ error: SCRIPT_FAIL });
+      res.status(502).json({ error: SCRIPT_FAIL }); // ٤٠١ المزوّد الممرَّر كان يُقرأ «سجّل الدخول» لمستخدم داخل أصلًا
       return;
     }
 

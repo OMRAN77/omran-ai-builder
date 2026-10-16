@@ -52,7 +52,8 @@ mock('api/_lib/abuse-guard.js', {
 });
 const veo = require(rp('api/_lib/veo-create.js'));
 const COST = require(rp('api/_lib/points.js')).COSTS.veo_video;
-const IMG = require(rp('api/_lib/points.js')).COSTS.image;
+// الكرتنة «تحويل أسلوب» فهي إبداعيّة عند maha-image: الأساس ٢٠ ثمّ فرق الإبداعيّ = image_creative كاملًا (الاختبار ١١ يثبت التصنيف).
+const IMG = require(rp('api/_lib/points.js')).COSTS.image_creative;
 
 const DAY = 86400000;
 const token = (u) => { const p = Buffer.from(JSON.stringify({ u, exp: Date.now() + DAY })).toString('base64url'); return p + '.' + crypto.createHmac('sha256', process.env.AUTH_SECRET).update(p).digest('base64url'); };
@@ -66,9 +67,9 @@ global.fetch = async (url) => {
   return st === 200 ? new Response(JSON.stringify({ name: 'operations/veo-' + (++upstream) }), { status: 200 })
     : new Response(JSON.stringify({ error: { message: 'models/veo-x: upstream ' + st } }), { status: st });
 };
-async function serve(body) {
+async function serve(body, action) {
   const res = { code: 200, body: null, setHeader() {}, status(c) { this.code = c; return this; }, end() { return this; }, json(v) { this.body = v; return this; } };
-  await veo({ method: 'POST', body }, res);
+  await veo({ method: 'POST', query: { action: action || 'veo-create' }, body }, res);
   return res;
 }
 
@@ -104,11 +105,12 @@ async function talk(u, opt) {
         if (u !== 'omran') kv.set('points:' + u, String(bal(u) - IMG));
         return new Response(JSON.stringify({ imageBase64: 'Q0FSVE9PTg==', mimeType: 'image/png' }), { status: 200 });
       }
-      if (String(url).startsWith('/api/video?action=veo-create')) {
+      const act = (String(url).match(/^\/api\/video\?action=(veo-create|veo-price)$/) || [])[1];
+      if (act) {
         const body = JSON.parse(init.body);
-        log.seq.push(body.priceCheck === true ? 'price' : 'create');
-        log.creates.push({ price: body.priceCheck === true, confirmed: body.confirmed === true, runSignal: init.signal === runSignal });
-        const r = await serve(body);
+        log.seq.push(act === 'veo-price' ? 'price' : 'create');
+        log.creates.push({ price: act === 'veo-price', confirmed: body.confirmed === true, runSignal: init.signal === runSignal });
+        const r = await serve(body, act);
         return new Response(JSON.stringify(r.body), { status: r.code }); // جسم يُقرأ مرّة كما في المتصفّح
       }
       if (String(url).startsWith('/api/video?action=veo-status')) { log.polls++; return new Response(JSON.stringify({ status: 'SUCCEEDED', output: ['/api/video?action=veo-download&f=x'] }), { status: 200 }); }
@@ -175,24 +177,29 @@ test('٥. المالك: بلا سؤال، فحص السعر يمرّ ثمّ إن
   assert.equal(r.video, true);
 });
 
-test('٦. الخادم: الوصف الحرّ من غير المالك (VIP أيضًا) يطلب التأكيد، وpriceCheck لا يخصم ولا يقفل ولا ينادي المزوّد ويسعّر الكرتون', async () => {
+test('٦. الخادم: الوصف الحرّ من غير المالك (VIP أيضًا) يطلب التأكيد، وveo-price لا يخصم ولا يقفل ولا ينادي المزوّد ويسعّر الكرتون', async () => {
   user('v1', 1000); vip.add('v1');
   const body = { promptText: 'talk', ratio: '720:1280', quality: 'fast', durationSeconds: 6, imageBase64: 'iVBORw0KGgo=', imageMime: 'image/png', keepPhoto: true };
   assert.equal((await serve(Object.assign({ token: token('v1') }, body))).code, 428);
   assert.equal((await serve(Object.assign({ token: token('omran') }, body))).code, 200);
   user('pc', 1000);
   const before = upstream;
-  const q = await serve({ priceCheck: true, withCartoon: true, promptText: 'talking character', token: token('pc') });
+  const q = await serve({ withCartoon: true, promptText: 'talking character', token: token('pc') }, 'veo-price');
   assert.equal(q.code, 428);
   assert.equal(q.body.cost, COST + IMG, 'الكرتون ضمن السعر');
   assert.ok(q.body.message_ar.includes(String(COST + IMG)), q.body.message_ar);
   assert.doesNotMatch(q.body.message_ar, /Veo|Gemini|Google|Runway/i);
-  const ok = await serve({ priceCheck: true, withCartoon: true, confirmed: true, promptText: 'talking character', token: token('pc') });
+  const ok = await serve({ withCartoon: true, confirmed: true, promptText: 'talking character', token: token('pc') }, 'veo-price');
   assert.equal(ok.code, 200);
+  assert.equal(ok.body.priceOk, true, 'العميل لا يكمل بلا priceOk');
   assert.equal(bal('pc'), 1000, 'لا خصم');
   assert.equal(locks.has('pc'), false, 'لا قفل');
   assert.equal(upstream, before, 'لا نداء مزوّد');
-  assert.equal((await serve({ priceCheck: true, promptText: 'x', token: 'bad' })).code, 401);
+  assert.equal((await serve({ promptText: 'x', token: 'bad' }, 'veo-price')).code, 401);
+  // علم في الجسم لا يحوّل الإنشاء المدفوع إلى سؤال سعر — السؤال إجراء مستقلّ (موجّه أقدم يرفضه بدل أن يخصم)
+  const flag = await serve({ priceCheck: true, confirmed: true, promptText: 'talk', token: token('pc') });
+  assert.equal(flag.code, 200); assert.ok(flag.body.op, 'إنشاء حقيقيّ');
+  assert.equal(bal('pc'), 1000 - COST);
 });
 
 test('٧. صورة المستخدم: السعر (مع الكرتون) يُسأل قبل الكرتنة المدفوعة — الإلغاء لا يكرتن ولا يخصم، والموافقة سؤال واحد', async () => {
@@ -236,4 +243,32 @@ test('١٠. رفض دائم للطلب (400): لا إعادة عمياء، نص�
   assert.doesNotMatch(r.content, /veo|models\//i);
   assert.equal(bal('lama'), 1000);
   assert.equal(locks.has('lama'), false);
+});
+
+test('١١. سعر الكرتون = ما يخصمه maha-image فعلًا: أمر الكرتنة في الواجهة «تحويل أسلوب» إبداعيّ (الأساس ثمّ فرق الإبداعيّ)', () => {
+  const m = SRC.match(/const __cartoonPrompt = '([^']+)';/);
+  assert.ok(m, 'أمر الكرتنة في app-09');
+  const it = require(rp('api/_lib/image-intent.js')).detectEditIntent(m[1]);
+  assert.ok(it.restyle || it.reimagine || it.elevate, 'غيّر أمر الكرتنة؟ إن لم يعد إبداعيًّا فسعر veo-price (image_creative) يجب أن يتغيّر معه: ' + JSON.stringify(it));
+  const src = fs.readFileSync(path.join(root, 'api/_lib/maha-image.js'), 'utf8');
+  assert.match(src, /const __extra = Math\.max\(0, pointsLib\.COSTS\.image_creative - mahaImgChargedAmount\);/, 'فرق الإبداعيّ يكمل إلى image_creative');
+});
+
+test('١٢. باقات الوسائط: تُحسب فقط حين تغطّي الخطوة فعلًا — مها وحدها لا تدفع الكرتون ولا الفيديو، والمدموجة الكافية تدفعهما', async () => {
+  const sub = (u, pts, plan, kind, fils) => {
+    user(u, pts);
+    users.set(u, Object.assign(users.get(u), { media: { [kind]: { plan, at: Date.now() - DAY } } }));
+    kv.set('media:' + kind + ':' + u, String(fils));
+  };
+  const price = (u) => serve({ withCartoon: true, confirmed: true, promptText: 'talking character', token: token(u) }, 'veo-price');
+  sub('maha1', 100, 'maha_pro', 'maha', 5000);
+  assert.equal((await price('maha1')).code, 402, 'دقائق مها لا تغطّي صورة ولا فيديو، و١٠٠ نقطة لا تكفي ٢١٠');
+  sub('mix1', 0, 'media_pro', 'mix', 2500);
+  assert.equal((await price('mix1')).code, 200, 'المدموجة تغطّي الكرتون والفيديو بالفلس');
+  sub('mix2', 100, 'media_pro', 'mix', 300);
+  assert.equal((await price('mix2')).code, 402, 'المدموجة بـ٣٠٠ فلس تغطّي الكرتون لا الفيديو (٤٤٠)، و١٠٠ نقطة لا تكفي ١٧٥');
+  sub('mix3', 200, 'media_pro', 'mix', 300);
+  assert.equal((await price('mix3')).code, 200, 'الكرتون من الاشتراك والفيديو من النقاط');
+  assert.equal(bal('mix3'), 200, 'قراءة فقط');
+  assert.equal(kv.get('media:mix:mix3'), '300');
 });
