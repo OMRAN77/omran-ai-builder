@@ -1,4 +1,4 @@
-{"v":1,"tests":423,"files":[
+{"v":1,"tests":424,"files":[
 {"p":".github/workflows/android-release.yml","n":150,"d":"android-release"},
 {"p":".github/workflows/branch-shots.yml","n":62,"d":"Branch shots"},
 {"p":".github/workflows/branch-test.yml","n":45,"d":"Branch test"},
@@ -354,7 +354,7 @@
 {"p":"js/ui-wiring.js","n":300,"d":"Omran redesign wiring (واجهة فقط — يستخدم الأزرار/الدوال الموجودة)","f":["$","tap","fillPrompt","syncHwChatting","syncWelcome","rebindResizer","workMax"],"x":["__omranBootOk"]},
 {"p":"js/video.js","n":1150,"d":"— يحوّل نافذة الفيديو إلى استوديو غني.","f":["cleanArgs","proEstimate","proCheck","proErrKey","ar","on","id","noEmoji","scrub","short","build","loadManifest","tutUrl","openPlayer","Cap","setVal","tabLabel","buildTabs","setTab","syncSamples","charBlock","compose","renderChars","syncChars","simplify","drOwner","drTok","drUiLang","drT","buildDirector","syncDirector","drStageShow","drStagePct","drStageNext","drStageTick","drStageStart","drStageStop","drStep","drMsg","drReset","drPickRef","drPool","drB64","drJson","drLabels","drWrap","drCaptionSample","drFail","drPlanCall","drRun","clMaxMB","clRevoke","clFF","stageDims","clStage","clMsg","clProgress","clRender","clPick","clRun","clCancel","syncClean","proTok","proSleep","proText","proDiag","proQuoteText","proWallets","proSeenId","proForget","proSeen","proDrop","proIdle","proStage","proBusy","proClock","proApi","proInfo","proPut","proFail","clPro","proConfirm","proWatch","proShow","proPark","proLeave","proCancel","proResume","L","wireWrite","syncWrite","group","sync","syncTutLink","trendsTop","enhance"]},
 {"p":"login-done.html","n":64,"d":"تم تسجيل الدخول ✅"},
-{"p":"p.html","n":93,"d":"مشروع مشترك — Omran AI Builder","u":["topbar","pTitle«جارِ التحميل...»","pMeta","frameWrap","state«جارِ تحميل المشروع...»","frame","chatWrap","chatInner"]},
+{"p":"p.html","n":100,"d":"مشروع مشترك — Omran AI Builder","u":["topbar","pTitle«جارِ التحميل...»","pMeta","frameWrap","state«جارِ تحميل المشروع...»","frame","chatWrap","chatInner","omMadeWith"]},
 {"p":"package.json","n":37,"d":"السكربتات: bundle (بناء الحزمة) · check · guard · verify · test · ci (كلّها) — والاختبارات مسجّلة في test","k":1},
 {"p":"privacy.html","n":250,"d":"سياسة الخصوصية | Omran AI Builder"},
 {"p":"raw.html","n":150,"d":"نافذة خام","u":["via«بلا توجيه · بلا أدوات · بلا قوالب»","model«النموذج»","toggleSys«تعليمات النظام»","clear«محادثة جديدة»","sysWrap","sys","note«فارغ = النموذج كما هو، بلا سطر واحد يُم…»","main","log","send«إرسال»"]},

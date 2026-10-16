@@ -1,5 +1,5 @@
 /* js/frame-touch.js — v-frame-gold: لمسة الضغط (مع css/إطارات.css) (أمر المالك بعد معاينتها: «ادمج»): الضغط على فراغ القائمة أو المعاينة ينثر حروفًا وأرقامًا
-   ذهبيّة (A-Z a-z 0-9) تتبدّل وتخفت، وموجة تتّسع من مكان الضغط، والسحب يرسم أثرًا. للكمبيوتر وحده بلا الخلفيّات والثيمات،
+   ذهبيّة (A-Z a-z 0-9) تتبدّل وتخفت، وموجة تتّسع من مكان الضغط، والسحب يرسم أثرًا. للكمبيوتر وللجوال في دُرجَيه (v-frame-gold-mobile: «غيّر في الهواتف بعد») بلا الخلفيّات والثيمات،
    ولا تعمل على الأزرار والخانات، ولا في «قلّل الحركة» ولا في الرسم البرمجيّ (html.omCpu). الرسم لا يدور إلّا والحروف ظاهرة. */
 (function(){
   var قائمة = document.getElementById('sidebar'), عمل = document.getElementById('workarea');
@@ -10,8 +10,7 @@
   function مسموح(){
     try{
       var c = html.classList;
-      if(c.contains('mobile-ui') || c.contains('bgimg') || c.contains('skin') || c.contains('skin-wood') || c.contains('omCpu')) return false;
-      if((window.innerWidth || 0) < 861) return false;
+      if(c.contains('bgimg') || c.contains('skin') || c.contains('skin-wood') || c.contains('omCpu')) return false;
       if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
       return true;
     }catch(e){ /* guard-ok: فحص بيئة فقط */ return false; }
