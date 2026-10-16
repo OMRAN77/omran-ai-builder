@@ -7,7 +7,8 @@
 //   UPLOAD_POST_API_KEY  مفتاح Upload-Post (بدونه: يُصنع الفيديو ولا يُنشر)
 //   UPLOAD_POST_USER     ملفّ Upload-Post (الافتراضيّ omranaibuilder)
 //   PLATFORMS            instagram,facebook (الافتراضيّ)
-//   MONITOR_KEY          لاشتقاق كلمة سرّ حساب البوت الثابت وإضافته لقائمة VIP (أفضل نموذج)
+//   MONITOR_KEY          اختياريّ: يضيف حساب البوت لقائمة VIP تلقائيًّا (وإلّا يضيفه المالك من لوحة التحكّم)
+//                        كلمة سرّ حساب البوت مشتقّة من UPLOAD_POST_API_KEY — لا سرّ جديد
 //   BOT_USER             اسم حساب البوت (الافتراضيّ omaisocial)
 //   IDEA_INDEX           رقم فكرة محدّد؛ وإلّا تدور الأفكار برقم التشغيل
 //   DRY_RUN=1            صناعة الفيديو دون نشر
@@ -73,24 +74,47 @@ async function postJSON(url, body) {
   return { status: r.status, ok: r.ok, j };
 }
 
+// تعليقات GitHub تظهر في ملخّص التشغيل (تُقرأ بلا صلاحية سجلّات).
+const gh = (level, msg) => { if (process.env.GITHUB_ACTIONS) console.log('::' + level + ' title=social-bot::' + String(msg).replace(/\r?\n/g, ' ')); };
+
+async function tierOf(token) {
+  const r = await postJSON(BASE + '/api/points', { action: 'balance', token }).catch(() => ({ j: {} }));
+  return (r.j && r.j.tier) || (r.j && r.j.vip ? 'vip' : 'free');
+}
+
+// حساب البوت ثابت: كلمة سرّه مشتقّة من سرّ موجود في المستودع (لا سرّ جديد).
+// صلاحية VIP: تلقائيًّا بـ MONITOR_KEY إن وُجد، وإلّا يضيفه المالك مرّة من لوحة التحكّم ← ⭐ صلاحيات VIP.
 async function botAccount() {
-  if (MONITOR_KEY) {
-    const pw = 'Sb!' + createHash('sha256').update('omai-social|' + BOT_USER + '|' + MONITOR_KEY).digest('hex').slice(0, 24);
-    let r = await postJSON(BASE + '/api/account?action=auth', { action: 'login', username: BOT_USER, password: pw, lang: 'ar' });
-    if (!r.j.token) r = await postJSON(BASE + '/api/account?action=auth', { action: 'signup', username: BOT_USER, password: pw, lang: 'ar' });
-    if (r.j.token) {
-      const v = await postJSON(BASE + '/api/account?action=vip&key=' + encodeURIComponent(MONITOR_KEY), { id: BOT_USER });
-      log('bot account ' + BOT_USER + ' ready · vip=' + (v.ok ? 'yes' : 'no(' + v.status + ')'));
-      return { user: BOT_USER, token: r.j.token, vip: v.ok };
-    }
-    log('bot account failed (' + r.status + ') — falling back to a temporary account');
-  } else {
-    log('MONITOR_KEY missing — temporary free account (lower model tier)');
+  const seeds = [UP_KEY, MONITOR_KEY].filter(Boolean);
+  const pwOf = (seed) => 'Sb!' + createHash('sha256').update('omai-social|' + BOT_USER + '|' + seed).digest('hex').slice(0, 24);
+  const diag = ['monitorKey=' + (MONITOR_KEY ? 'yes' : 'no')];
+  let token = '';
+  for (const seed of seeds) {
+    const r = await postJSON(BASE + '/api/account?action=auth', { action: 'login', username: BOT_USER, password: pwOf(seed), lang: 'ar' });
+    if (r.j.token) { token = r.j.token; diag.push('login=ok'); break; }
   }
+  if (!token && seeds.length) {
+    const r = await postJSON(BASE + '/api/account?action=auth', { action: 'signup', username: BOT_USER, password: pwOf(seeds[0]), lang: 'ar' });
+    if (r.j.token) { token = r.j.token; diag.push('signup=ok'); } else diag.push('signup=' + r.status);
+  }
+  if (token) {
+    if (MONITOR_KEY) {
+      const v = await postJSON(BASE + '/api/account?action=vip&key=' + encodeURIComponent(MONITOR_KEY), { id: BOT_USER });
+      diag.push('vipAdd=' + v.status);
+      if (v.ok) await sleep(1500);
+    }
+    const tier = await tierOf(token);
+    diag.push('tier=' + tier);
+    log('bot account ' + BOT_USER + ' · ' + diag.join(' '));
+    gh('notice', 'account ' + BOT_USER + ' · ' + diag.join(' '));
+    return { user: BOT_USER, token, vip: tier === 'vip' || tier === 'owner', tier };
+  }
+  log('bot account unavailable (' + diag.join(' ') + ') — temporary free account');
+  gh('warning', 'bot account unavailable · ' + diag.join(' '));
   const u = 'zzcheck' + randomBytes(3).toString('hex');
   const r = await postJSON(BASE + '/api/account?action=auth', { action: 'signup', username: u, password: 'Pp1!' + randomBytes(8).toString('hex'), lang: 'ar' });
   if (!r.j.token) throw new Error('signup failed: ' + r.status);
-  return { user: u, token: r.j.token, vip: false };
+  return { user: u, token: r.j.token, vip: false, tier: 'free' };
 }
 
 // ───────── التصوير ─────────
@@ -410,6 +434,9 @@ async function main() {
   fs.rmSync(OUT, { recursive: true, force: true });
   const fr = path.join(OUT, 'frames'); fs.mkdirSync(fr, { recursive: true });
   const acct = await botAccount();
+  if (!acct.vip && !/^(1|true)$/i.test(process.env.ALLOW_WEAK || '')) {
+    throw new Error('bot account "' + acct.user + '" is not VIP (tier=' + acct.tier + ') — add "' + BOT_USER + '" in Settings → owner panel → ⭐ VIP, then re-run');
+  }
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ executablePath: CHROME, args: CHROME ? ['--no-sandbox'] : [] });
   let res;
@@ -428,11 +455,12 @@ async function main() {
   if (res.codeLen < MIN_CODE && !/^(1|true)$/i.test(process.env.ALLOW_WEAK || '')) {
     throw new Error('quality gate: generated site too small (' + res.codeLen + ' < ' + MIN_CODE + ' chars) — not publishing');
   }
-  if (DRY || !UP_KEY) { log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); return; }
+  if (DRY || !UP_KEY) { log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); gh('notice', 'video ready (not published) · ' + idea.name + ' · build ' + res.secs + 's · site ' + res.codeLen + ' chars'); return; }
   await publish(res.mp4, res.cover, caption);
   log('published ✓');
+  gh('notice', 'published ✓ ' + idea.name + ' · ' + res.secs + 's');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main().then(() => process.exit(0)).catch((e) => { console.error('[social-bot] FAILED:', e && e.message ? e.message : e); process.exit(1); });
+  main().then(() => process.exit(0)).catch((e) => { const msg = e && e.message ? e.message : String(e); console.error('[social-bot] FAILED:', msg); gh('error', msg); process.exit(1); });
 }
