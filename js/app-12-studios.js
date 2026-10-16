@@ -548,7 +548,7 @@ async function __safeJson(res){
       const pal = (typeof window.__decorPal === 'function') ? window.__decorPal('designAiStyle', v) : '';
       if(pal) card.style.background = pal;
       const img = document.createElement('img');
-      img.src = 'assets/design/styles/' + v + '.webp';
+      img.src = 'assets/design/styles/' + v + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
       img.onerror = function(){ img.remove(); };
@@ -742,7 +742,7 @@ function stuL(ar, en){
 
 /* v-pstyle-img: وسم إصدار صور الأنماط — /assets/ مخبّأة يومًا كاملًا (وأسبوعًا stale)،
    فاستبدال الملفّ وحده يُبقي الصورة القديمة عند من فتح التطبيق أمس. ارفع الرقم مع كلّ استبدال. */
-const PSTYLE_IMG_V = '15';
+const PSTYLE_IMG_V = '16'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
 function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYLE_IMG_V; }
 
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
@@ -953,7 +953,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(!hero){
       hero = document.createElement('div'); hero.id = 'portraitStyleHero'; hero.className = 'pstyleHero';
       const c = document.createElement('div'); c.className = 'pstyleHeroC';
-      const ci = document.createElement('img'); ci.src = 'assets/portrait/before.webp'; ci.alt = ''; ci.onerror = function(){ ci.remove(); };
+      const ci = document.createElement('img'); ci.src = 'assets/portrait/before.webp?v=2'; ci.alt = ''; ci.onerror = function(){ ci.remove(); };
       const cl = document.createElement('span'); cl.textContent = gt('psheetBefore', 'قبل', 'Before');
       c.appendChild(ci); c.appendChild(cl); hero.appendChild(c);
       const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli'];
@@ -1069,7 +1069,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const bc = document.createElement('div'); bc.className = 'pstyleCard pstyleBefore'; bc.setAttribute('data-pstyle-before', '1');
       bc.style.cssText = 'border-radius:14px; overflow:hidden; background:#17171b; border:1px solid var(--border,#2a2a30);';
       const w = document.createElement('div'); w.style.cssText = 'position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#23232a,#101014);';
-      const im = document.createElement('img'); im.src = window.__portraitPhotoUrl || 'assets/portrait/before.webp'; im.alt = ''; im.loading = 'eager';
+      const im = document.createElement('img'); im.src = window.__portraitPhotoUrl || 'assets/portrait/before.webp?v=2'; im.alt = ''; im.loading = 'eager';
       im.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;'; im.onerror = function(){ im.remove(); };
       const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before');
       tag.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; padding:3px 9px; border-radius:999px; background:#d4af37; color:#141414; font-weight:800; font-size:11.5px;';
@@ -1579,7 +1579,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
        فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
        التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
-    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
@@ -1602,7 +1602,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const opt = fashionOptFor(v);
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
-          img: 'assets/fashion/looks/' + g + '/' + v + '.webp',
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=2',
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
       }).filter(Boolean),

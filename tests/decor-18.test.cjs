@@ -89,7 +89,7 @@ test('٥. الترتيب كالترندات: الأقسام الستّة شبك�
   const onPick = src.match(/onPick: function\(v\)\{[^\n]+/)[0];
   assert.ok(!/fetch|Generate|click\(/.test(onPick), 'اختيار البطاقة يحفظ القيمة فقط');
   const ui = read('js/app-05-ui.js');
-  assert.ok(ui.includes("grid.style.gridTemplateColumns = cfg.landscape ? 'repeat(auto-fill,minmax(min(45%,230px),1fr))' : '';"), 'عمودان على الجوّال');
+  assert.ok(ui.includes("grid.style.gridTemplateColumns = cfg.landscape ? 'repeat(auto-fill,minmax(min(45%,230px),1fr))' : 'repeat(auto-fill,minmax(150px,1fr))';"), 'عمودان على الجوّال');
   assert.ok(ui.includes("if(cfg.overlay) info.style.cssText = 'position:absolute;inset:auto 0 0 0;") && ui.includes('wrap.appendChild(info); card.appendChild(wrap);'), 'الاسم فوق الصورة في المعرض');
   assert.ok(ui.includes('if(it.sub && !cfg.overlay){'), 'بلا سطر وصف تحت البطاقة كالترندات');
   const bundle = read('js/app.bundle.js');

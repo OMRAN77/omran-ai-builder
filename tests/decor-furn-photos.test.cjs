@@ -34,8 +34,8 @@ test('٢. كلّ خيار يُعرض بصورة موجودة فعلًا (selImg 
   }
   assert.equal(sb.selImg('designAiFurniture', ''), '', '«بدون تغيير» بلا صورة — علامة ⊘');
   assert.equal(sb.selImg('designAiLighting', 'warm'), 'assets/design/opts/lighting-warm.webp', 'الإضاءة من صورتها المنفصلة الواضحة');
-  assert.equal(sb.selImg('designAiPlace', 'majlis'), 'assets/design/opts/place-majlis.webp', 'المكان كما كان');
-  assert.equal(sb.selImg('designAiStyle', 'modern'), 'assets/design/styles/modern.webp', 'النمط كما كان');
+  assert.equal(sb.selImg('designAiPlace', 'majlis'), 'assets/design/opts/place-majlis.webp?v=2', 'المكان (موضَّح — v-sharp)');
+  assert.equal(sb.selImg('designAiStyle', 'modern'), 'assets/design/styles/modern.webp?v=2', 'النمط (موضَّح — v-sharp)');
   assert.equal(sb.selImg('designAiFlooring', 'parquet'), 'assets/design/decor-opts/flooring-parquet.webp?v=1');
 });
 

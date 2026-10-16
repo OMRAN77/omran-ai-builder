@@ -31940,7 +31940,7 @@ async function __safeJson(res){
       const pal = (typeof window.__decorPal === 'function') ? window.__decorPal('designAiStyle', v) : '';
       if(pal) card.style.background = pal;
       const img = document.createElement('img');
-      img.src = 'assets/design/styles/' + v + '.webp';
+      img.src = 'assets/design/styles/' + v + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
       img.onerror = function(){ img.remove(); };
@@ -32134,7 +32134,7 @@ function stuL(ar, en){
 
 /* v-pstyle-img: وسم إصدار صور الأنماط — /assets/ مخبّأة يومًا كاملًا (وأسبوعًا stale)،
    فاستبدال الملفّ وحده يُبقي الصورة القديمة عند من فتح التطبيق أمس. ارفع الرقم مع كلّ استبدال. */
-const PSTYLE_IMG_V = '15';
+const PSTYLE_IMG_V = '16'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
 function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYLE_IMG_V; }
 
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
@@ -32345,7 +32345,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(!hero){
       hero = document.createElement('div'); hero.id = 'portraitStyleHero'; hero.className = 'pstyleHero';
       const c = document.createElement('div'); c.className = 'pstyleHeroC';
-      const ci = document.createElement('img'); ci.src = 'assets/portrait/before.webp'; ci.alt = ''; ci.onerror = function(){ ci.remove(); };
+      const ci = document.createElement('img'); ci.src = 'assets/portrait/before.webp?v=2'; ci.alt = ''; ci.onerror = function(){ ci.remove(); };
       const cl = document.createElement('span'); cl.textContent = gt('psheetBefore', 'قبل', 'Before');
       c.appendChild(ci); c.appendChild(cl); hero.appendChild(c);
       const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli'];
@@ -32461,7 +32461,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const bc = document.createElement('div'); bc.className = 'pstyleCard pstyleBefore'; bc.setAttribute('data-pstyle-before', '1');
       bc.style.cssText = 'border-radius:14px; overflow:hidden; background:#17171b; border:1px solid var(--border,#2a2a30);';
       const w = document.createElement('div'); w.style.cssText = 'position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#23232a,#101014);';
-      const im = document.createElement('img'); im.src = window.__portraitPhotoUrl || 'assets/portrait/before.webp'; im.alt = ''; im.loading = 'eager';
+      const im = document.createElement('img'); im.src = window.__portraitPhotoUrl || 'assets/portrait/before.webp?v=2'; im.alt = ''; im.loading = 'eager';
       im.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;'; im.onerror = function(){ im.remove(); };
       const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before');
       tag.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; padding:3px 9px; border-radius:999px; background:#d4af37; color:#141414; font-weight:800; font-size:11.5px;';
@@ -32971,7 +32971,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
        فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
        التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
-    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
@@ -32994,7 +32994,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const opt = fashionOptFor(v);
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
-          img: 'assets/fashion/looks/' + g + '/' + v + '.webp',
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=2',
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
       }).filter(Boolean),
@@ -36100,7 +36100,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
      الأظافر صارت معاينة-أوّلًا كالمكياج: يد قريبة بالأظافر المطلوبة من وصفها نفسه، تُولَّد مرّة وتُخزَّن للجميع. */
   const PREVIEW_FIRST = ['makeup', 'nails'];
   function optionImgs(f, v){
-    const asset = 'assets/studio/options/' + f + '-' + v + '.webp';
+    const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     const gen = PREVIEW_API(f, v);
     return PREVIEW_FIRST.indexOf(f) !== -1 ? { img: gen, img2: asset } : { img: asset, img2: gen };
   }
@@ -45251,7 +45251,7 @@ if(document.readyState === 'loading'){
      («75%» و«75% COMPLETE»)؛ bar = تعبئة الشريط؛ refl = انعكاس النصّ على الأرضيّة؛ tube = عمود الضوء الذي تجري فيه
      الحركة — ينتهي فوق الشريط فلا يمسّه ولا النصّ؛ rip = بركة قاعدته. داخل الحلقة قرص الصورة نفسه (مُنظَّف من أرقامه). */
   var SCENES = [
-    { id: 'neon', src: '/assets/fashion/gen-scene.webp?v=3', w: 1024, h: 559,
+    { id: 'neon', src: '/assets/fashion/gen-scene.webp?v=4', w: 1024, h: 559,
       ring: { cx: 512, cy: 297, r: 39.3, sw: 4.2, hole: 43.4 },
       num: { y: 310.6, size: 37, dw: 13.5, pw: 19 },
       bar: { x: 424.6, y: 357.3, w: 175, h: 7.8 },
@@ -45260,7 +45260,7 @@ if(document.readyState === 'loading'){
       tube: { x: 366, y: 0, w: 293, h: 350, blend: 'screen' },
       rip: { x: 322, y: 405, w: 380, h: 85, color: 'rgba(190,236,255,.75)' },
       ink: '#aee8f9', arc: '#e6f8ff', glow: 'rgba(190,235,255,.3)', barFill: '#dbe9ff', capInk: '#a5e1f6', flow: '#d6f2ff' },
-    { id: 'gold', src: '/assets/fashion/gen-scene-gold.webp?v=1', w: 1280, h: 699,
+    { id: 'gold', src: '/assets/fashion/gen-scene-gold.webp?v=2', w: 1280, h: 699,
       ring: { cx: 640, cy: 372, r: 49.6, sw: 6.7, hole: 57.5 },
       num: { y: 388.2, size: 45, dw: 16.6, pw: 23.5 },
       bar: { x: 530, y: 446.4, w: 229, h: 10.4 },

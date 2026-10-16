@@ -224,7 +224,7 @@
      («75%» و«75% COMPLETE»)؛ bar = تعبئة الشريط؛ refl = انعكاس النصّ على الأرضيّة؛ tube = عمود الضوء الذي تجري فيه
      الحركة — ينتهي فوق الشريط فلا يمسّه ولا النصّ؛ rip = بركة قاعدته. داخل الحلقة قرص الصورة نفسه (مُنظَّف من أرقامه). */
   var SCENES = [
-    { id: 'neon', src: '/assets/fashion/gen-scene.webp?v=3', w: 1024, h: 559,
+    { id: 'neon', src: '/assets/fashion/gen-scene.webp?v=4', w: 1024, h: 559,
       ring: { cx: 512, cy: 297, r: 39.3, sw: 4.2, hole: 43.4 },
       num: { y: 310.6, size: 37, dw: 13.5, pw: 19 },
       bar: { x: 424.6, y: 357.3, w: 175, h: 7.8 },
@@ -233,7 +233,7 @@
       tube: { x: 366, y: 0, w: 293, h: 350, blend: 'screen' },
       rip: { x: 322, y: 405, w: 380, h: 85, color: 'rgba(190,236,255,.75)' },
       ink: '#aee8f9', arc: '#e6f8ff', glow: 'rgba(190,235,255,.3)', barFill: '#dbe9ff', capInk: '#a5e1f6', flow: '#d6f2ff' },
-    { id: 'gold', src: '/assets/fashion/gen-scene-gold.webp?v=1', w: 1280, h: 699,
+    { id: 'gold', src: '/assets/fashion/gen-scene-gold.webp?v=2', w: 1280, h: 699,
       ring: { cx: 640, cy: 372, r: 49.6, sw: 6.7, hole: 57.5 },
       num: { y: 388.2, size: 45, dw: 16.6, pw: 23.5 },
       bar: { x: 530, y: 446.4, w: 229, h: 10.4 },

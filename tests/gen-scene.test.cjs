@@ -49,8 +49,8 @@ test('١. مشهدان — صورتا المالك موضَّحتان في ال�
   assert.equal(W0.KINDS.fashion.scenes, W0._scenes);
   assert.equal(W0._scenes.map((s) => s.id).join(','), 'neon,gold'); // سلسلة لا مصفوفة: مصفوفات vm من نطاق آخر (PITFALLS)
   for (const k of ['image', 'video']) assert.equal(W0.KINDS[k].scenes, undefined, k + ': البطاقة الذهبيّة كما هي'); // v-pstyle-scene: الأنماط صار لها مشهد
-  assert.equal(NEON.src, '/assets/fashion/gen-scene.webp?v=3');
-  assert.equal(GOLD.src, '/assets/fashion/gen-scene-gold.webp?v=1');
+  assert.equal(NEON.src, '/assets/fashion/gen-scene.webp?v=4');
+  assert.equal(GOLD.src, '/assets/fashion/gen-scene-gold.webp?v=2');
   for (const [sc, file] of [[NEON, 'assets/fashion/gen-scene.webp'], [GOLD, 'assets/fashion/gen-scene-gold.webp']]) {
     const buf = fs.readFileSync(path.join(root, file));
     assert.equal(buf.slice(0, 4).toString('latin1'), 'RIFF', file);
@@ -439,7 +439,7 @@ test('١٢. «أصلحه»: شريط «قبل/بعد» — «قبل» منطبق
 test('١٣. لا اسم مزوّد، والحزمة والتسجيل والقرار', () => {
   assert.doesNotMatch(SRC, /Gemini|GPT|OpenAI|Runway|Claude/i, 'لا اسم مزوّد');
   const bundle = read('js/app.bundle.js');
-  assert.ok(bundle.includes("src: '/assets/fashion/gen-scene.webp?v=3'") && bundle.includes("src: '/assets/fashion/gen-scene-gold.webp?v=1'"), 'الحزمة تحمل المشهدين');
+  assert.ok(bundle.includes("src: '/assets/fashion/gen-scene.webp?v=4'") && bundle.includes("src: '/assets/fashion/gen-scene-gold.webp?v=2'"), 'الحزمة تحمل المشهدين');
   assert.ok(bundle.includes('function sceneHtml(sc){') && bundle.includes('function nextScene(cfg, peek){'), 'الحزمة تحمل البناء والتبادل');
   assert.ok(bundle.includes('function panelBusy(p, ptxt){'), 'الحزمة تحمل إصلاح القراءة');
   assert.ok(!bundle.includes('genw-hud') && !bundle.includes('genw-face') && !bundle.includes('genw-rain'), 'الحزمة بلا اللوحة الداكنة ولا القرص ولا مطر الصورة كلّها');
