@@ -1217,8 +1217,8 @@ module.exports = async (req, res) => {
   // بلا مفتاح مباشر ولا وسيط: الاحتياط القديم على Anthropic يجيب بكلود فعلًا،
   // فلا يبقى اسم المزوّد المطلوب (مثل OpenAI) في حالة المسار الحقيقيّ.
   let __ownerNoRoute = __ownerReq && !!reqProv && reqProv !== prov; if (!__direct && !viaOR && prov !== 'claude' && apiKey) { if (__ownerReq) __ownerNoRoute = true; else prov = 'claude'; } // v-owner-solo: للمالك لا يجيب كلود عن مزوّد غير معروف أو بلا طريق
-  let __midUp = null; /* v-mid-credit: خطأ رصيد داخل البثّ (OpenAI: 200 ثمّ حدث insufficient_quota) يُعاد كفشل جاهز 402 تمرّ به سلسلة ما قبل البثّ نفسها بدل نداء جديد — يُستهلك في أوّل __upFetch بعده */ const __upFetch = (url, init) => __midUp ? Promise.resolve(__midUp).then((u) => { __midUp = null; return u; }) : __direct
-    ? require('./oa-direct.js').directFetch(__direct, JSON.parse(init.body), { fallbackModels: __directFallbacks, signal: init.signal /* v-claude-code-level C5 */, owner: __ownerReq /* v-plan-models: ملاحظة الضيق بلا اسم مزوّد لغيره */ })
+  const __gemSigs = new Map(); /* v-pro-lanes: توقيعات Gemini 3 لنداءات هذا الدور — تعود معها في الخطوة التالية (oa-direct) */ let __midUp = null; /* v-mid-credit: خطأ رصيد داخل البثّ (OpenAI: 200 ثمّ حدث insufficient_quota) يُعاد كفشل جاهز 402 تمرّ به سلسلة ما قبل البثّ نفسها بدل نداء جديد — يُستهلك في أوّل __upFetch بعده */ const __upFetch = (url, init) => __midUp ? Promise.resolve(__midUp).then((u) => { __midUp = null; return u; }) : __direct
+    ? require('./oa-direct.js').directFetch(__direct, JSON.parse(init.body), { fallbackModels: __directFallbacks, signal: init.signal /* v-claude-code-level C5 */, owner: __ownerReq /* v-plan-models: ملاحظة الضيق بلا اسم مزوّد لغيره */, sigs: __gemSigs })
     : fetch(url, init);
   /* v-err-acct (لقطة «فحص النظام» ٢٣ سبتمبر: «402 … billing_error … This request would exceed your available credit» بلا
      اسم حساب): رسالة الفشل تبدأ باسم الحساب الذي رفض والموديل — فيعرف المالك أيّ رصيد يشحن (Anthropic أم OpenRouter أم
@@ -1336,7 +1336,7 @@ module.exports = async (req, res) => {
     res.end();
     return;
   }
-  /* v-meter-atomic (المراجعة المعاكسة): حدّ الموديل داخل الباقة كان todayCount ثمّ bumpCount فتعبره المتزامنة — حجز ذرّيّ للمسار المختار قبل نداء المزوّد؛ رفضه = امتلأ للتوّ فيُعاد التوجيه للتالي (السلّة 'plan' نفسها)، وفشل النداء قبل أن يخدم يردّ الحجز */ let __meterHeld = ''; while (__planRoute && __planRoute.meter && __planUser && __planLane && __planLane.meter) { /* v-plan-models: Gemini لـPro وSol/Sonnet لـMax — لا كلود وحده */ const __mb = 'plan-' + __planRoute.meter; if (await takeMeter(__planUser, __mb, __planRoute.meterCap)) { __meterHeld = __mb; break; } __planUsed[__planRoute.meter] = Infinity; __applyPlan(); } const __giveMeter = async () => { if (!__meterHeld) return; const __b = __meterHeld; __meterHeld = ''; await giveMeter(__planUser, __b); };
+  /* v-meter-atomic (المراجعة المعاكسة): حدّ الموديل داخل الباقة كان todayCount ثمّ bumpCount فتعبره المتزامنة — حجز ذرّيّ للمسار المختار قبل نداء المزوّد؛ رفضه = امتلأ للتوّ فيُعاد التوجيه للتالي (السلّة 'plan' نفسها)، وفشل النداء قبل أن يخدم يردّ الحجز */ let __meterHeld = ''; let __meterSpent = ''; /* v-pro-lanes: حجز صار استهلاكًا ببدء البثّ — يُردّ إن فشل المسار قبل أيّ حرف في الخطوة الأولى */ while (__planRoute && __planRoute.meter && __planUser && __planLane && __planLane.meter) { /* v-plan-models: Gemini لـPro وSol/Sonnet لـMax — لا كلود وحده */ const __mb = 'plan-' + __planRoute.meter; if (await takeMeter(__planUser, __mb, __planRoute.meterCap)) { __meterHeld = __mb; break; } __planUsed[__planRoute.meter] = Infinity; __applyPlan(); } const __giveMeter = async () => { if (!__meterHeld) return; const __b = __meterHeld; __meterHeld = ''; await giveMeter(__planUser, __b); };
   // مسار مجاني = طبقة معروفة وليست اشتراكًا. (غياب الطبقة — كما في الاختبارات
   // التي تحاكي الحصة — يُبقي المسار القديم.)
   const __freeLane = !!(usage.tier && !usage.subscriber);
@@ -1547,7 +1547,7 @@ module.exports = async (req, res) => {
     let steps = 0; let __ownerCarried = false; let __carryN = 0; /* v-carry-fail */ const __olS = __ol.state(__ownerReq); const __olT = __ol.thinkState(__ownerReq, __ownerThink); if (__ownerReq) __ol.scrubRefusals(convo); // v-owner-carry: تنبيه «نفّذ الآن» مرّة واحدة في الردّ · v-claude-code-level (D1: كتل التفكير بين الجولات) · v-refusal-retry (١): ملاحظات الرفض السابقة لا تعود للمصنّف
     let searchesUsed = 0; // v-chat-parallel-tools: سقف بحثين لكل ردّ
     let anyText = false;
-    let fullText = '';   // v608 — نصّ الردّ المتراكم
+    let fullText = ''; const __planSoft = () => !__ownerReq && !!__planRoute && !anyText && !__cut.gone; // v608 — نصّ الردّ المتراكم · v-pro-lanes: فشل مسار الباقة قبل أيّ حرف = المسار التالي، لا «chat error»
     const __saveGenReply = async () => { // v-prov-one: كل دور للمالك يُنسخ إلى العشرة؛ «لا تعمّم» لا تُنسخ
       if (!__ownerReq) return;
       try { const __ps = require('./prov-self.js'); await __ps.captureOwnerTurn(messages, fullText, reqProv || prov, lastUserText); }
@@ -1665,7 +1665,7 @@ module.exports = async (req, res) => {
         method: 'POST', // v-tokens-close: غير المالك بلا إشارة — تبقى مهلة _fetch-timeout (٣٠ ث لأوّل بايت)؛ للمالك إشارة owner-loop بحرّاسها (٧٥ ث لأوّل بايت، الصمت، سبب ظاهر) — v-claude-code-level C5
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, signal: __ol.signal(__olS, !!__direct),
         body: JSON.stringify(__ol.think(__ol.shape(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {}, { max_tokens: __maxTokens() } /* v-owner-cap-open: السقف آخرًا فيغلب سقوف الجهد (٣٢/٦٤ ألفًا) */), __olS, !!__direct || (viaOR && !/^anthropic\//.test(CHAT_MODEL)) /* v-owner-solo-all: الخطوة الأخيرة بلا أدوات لغير أنثروبيك على الوسيط أيضًا — الملخّص لا «انتهت الميزانيّة» */), __olT, convo, __direct ? 'x' : (viaOR ? 'or' : 'a'))), // v-claude-code-level D1: تفكير الجولة السابقة يعود كما وصل على المسار نفسه · v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم) /* cross-1: المالك الخامّ بلا نظام ولا ذيل فلا يصله تنبيه «مقفلة» — قائمته بلا أدوات الصور كما كانت (__rawOwner && __ownerNoMedia) */
-      }).then((r) => __ol.got(__olS, r), (e) => __ol.fetchFailed(__olS, e)); // v-claude-code-level C5: حارس لكلّ نداء، وقطعه = فشل صريح
+      }).then((r) => __ol.got(__olS, r), (e) => { const __lf = __planSoft() ? __ol.laneFail(e) : 0; if (__lf) return { ok: false, status: __lf, headers: null, text: async () => String((e && e.message) || e).slice(0, 200) }; return __ol.fetchFailed(__olS, e); }); // v-claude-code-level C5: حارس لكلّ نداء، وقطعه = فشل صريح · v-pro-lanes: انقطاع/مهلة مسار الباقة = فشل ما قبل البثّ
       let upstream = await callUpstream(true); upstream = await __ol.retryBusy(upstream, () => callUpstream(true), __olS, { direct: __ownerReq /* v-owner-solo-all: والوسيط أيضًا — مزوّد المالك لا بديل له، فزحام ٤٢٩/٥xx يُعاد مرّتين كالمباشر */, t0, MAX_MS, send }); upstream = await __ol.think400(upstream, __olT, convo, () => callUpstream(true), send); // v-claude-code-level C4: مشغول = النداء نفسه · D1: توقيع مرفوض = نزع وإعادة واحدة
       // v-img-err: أيّ فشل على إعداد دور الصورة (400 أو 404 نموذج لا يملكه المفتاح أو
       // 403 أو 429…) = إعادة فوريّة بالطلب العاديّ قبل أيّ هبوط — لا 400 وحده.
@@ -1813,7 +1813,7 @@ module.exports = async (req, res) => {
         if (steps === 1) await __giveMeter(); const __nx = __planFallbacks.shift(); // v-meter-atomic: مسار المقياس لم يخدم — الحجز يُردّ قبل الالتقاط
         let __ft = '';
         try { __ft = (await upstream.text()).slice(0, 200); } catch (e) { /* جسم غير مقروء */ } upstream = { ok: false, status: upstream.status, text: async () => __ft };
-        await logErrorAndFlush('chat/plan-fallback-' + upstream.status, new Error(__acct() + ': ' + (__ft || ('upstream ' + upstream.status))), { action: 'plan-fallback', from: prov, to: __nx.prov, plan: __planRoute && __planRoute.plan });
+        await logErrorAndFlush('chat/plan-fallback-' + upstream.status, new Error(__acct() + ': ' + (__ft || ('upstream ' + upstream.status))), { action: 'plan-fallback', from: prov, to: __nx.prov, plan: __planRoute && __planRoute.plan }); if (!__ol.rateLimited(__ft)) try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: __ft }); } catch (e) { /* guard-ok — حدّ الطلبات ليس رصيدًا · v-pro-lanes: رصيد مسار باقة فرغ والمشترك يُحوَّل بصمت = إشعار المالك (مرّة كلّ ٦ ساعات)؛ الإشعار تحسين لا شرط */ }
         if (lastUserHasImage && __nx.prov !== 'gemini' && __nx.prov !== 'claude' && __nx.prov !== 'openai') continue;
         if (!applyRoute(__nx.prov, __nx.model, __nx.direct, __nx.forceOR)) continue;
         __imgCfg = (lastUserHasImage && !__direct) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null;
@@ -1845,7 +1845,7 @@ module.exports = async (req, res) => {
           // v-owner-free: الاحتياط للمالك خام كالمسار الرئيسيّ (v-owner-raw2) — كان يحمل البصمة وملاحظة الوضع
           // المجّانيّ وحدهما قاعدة «لا أسماء»، فيرفض المحرّك أن يعرّف نفسه للمالك حين يهبط الردّ هنا.
           const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), raw: __rawOwner, paid: !!(usage && usage.subscriber) /* v-plan-models: المشترك وVIP بلا «النسخة الاحترافيّة» */, convo: __ownerReq ? compactConversation(convo) : convo /* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة */, send, requireVision: lastUserHasImage });
-          if (__fb.ok) {
+          if (__fb.ok) { if (!__ownerReq && usage && usage.subscriber) await logErrorAndFlush('chat/plan-silent-fallback', new Error(String((__planRoute && __planRoute.plan) || (__tier && __tier.tier) || 'sub') + ': ' + upstream.status + ' ' + __acct() + ': ' + errText.slice(0, 160)), { action: 'plan-silent', plan: __planRoute && __planRoute.plan }); // v-pro-lanes: مشترك يدفع أجابه الاحتياط بلا أدوات — يظهر في لوحة صحّة المالك ويصله إشعار الخطأ الجديد
             // v-owner-sees-engine: المالك وحده يرى أيّ محرّك أجاب فعلًا (الصمت للمستخدمين يبقى — v-silent-fallback).
             if (__ownerReq) send({ modelId: 'fallback', modelLabel: 'احتياط · ' + __fb.provider + ' / ' + __fb.model });
             if (__ownerReq) send({ delta: ownerSwapNote(__ownerFail || { who: __acct(), status: upstream.status, text: errText }, 'احتياط بلا أدوات · ' + __fb.provider + ' / ' + __fb.model) }); // v-owner-swap
@@ -1869,7 +1869,7 @@ module.exports = async (req, res) => {
         return;
       }
 
-      __meterHeld = ''; // v-meter-atomic: قبل المزوّد الطلب — الحجز صار استهلاكًا لا يُردّ
+      __meterSpent = __meterHeld || __meterSpent; __meterHeld = ''; // v-meter-atomic: قبل المزوّد الطلب — الحجز صار استهلاكًا لا يُردّ (إلّا v-pro-lanes)
       const reader = upstream.body.getReader();
       const decoder = new TextDecoder();
       let buf = '';
@@ -1920,7 +1920,7 @@ module.exports = async (req, res) => {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           let ev;
-          try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; } if (__olS.on && __ol.isSseError(ev)) throw __ol.sseError(ev); // C9 · v-sse-error: خطأ المزوّد داخل البثّ
+          try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; } if ((__olS.on || __planSoft()) && __ol.isSseError(ev)) throw __ol.sseError(ev); // C9 · v-sse-error: خطأ المزوّد داخل البثّ · v-pro-lanes: ولمسار الباقة قبل أيّ حرف
           if (ev.type === 'content_block_start') {
             const cb = ev.content_block || {};
             blocks[ev.index] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' }; __ol.thinkOpen(blocks[ev.index], cb); // D1
@@ -1963,16 +1963,16 @@ module.exports = async (req, res) => {
           }
         }
       }
-      } catch (__se) { __midFail = __cut.gone ? null : __ol.midStream(__olS, __se, { sawText: sawTextThisStep }); if (!__midFail) throw __se; __midFail.text = String((__se && __se.message) || __se).slice(0, 300); // C9: غير المالك وغير هذا الخطأ إلى catch الأعلى كما كان
+      } catch (__se) { __midFail = __cut.gone ? null : __ol.midStream(__olS, __se, { sawText: sawTextThisStep }); if (!__midFail && __planSoft() && __ol.laneFail(__se)) __midFail = { kind: 'lane', status: __ol.laneFail(__se) }; if (!__midFail) throw __se; __midFail.text = String((__se && __se.message) || __se).slice(0, 300); // C9: غير المالك وغير هذا الخطأ إلى catch الأعلى كما كان
       } finally {
         if (kaTimer) { clearInterval(kaTimer); kaTimer = null; } // أوقف النبض أيضًا عند فشل قراءة البثّ
         __ol.stop(__olS); // v-claude-code-level C5: الحارس للبثّ وحده، لا لتنفيذ الأدوات
         if (!streamDone) { try { await reader.cancel(); } catch (e) { /* المجرى أغلق مع الخطأ */ } }
         try { reader.releaseLock(); } catch (e) { /* المجرى أغلق مع الخطأ */ }
       }
-      if (__midFail) { await logErrorAndFlush('chat/mid-stream', new Error(__acct() + ': ' + __midFail.text), { action: __midFail.kind, prov }); if (__midFail.kind === 'retry') { send({ status: __midFail.status }); steps--; continue; } if (__midFail.kind === 'fail') { __midUp = { ok: false, status: __midFail.status, text: async () => __midFail.text }; steps--; continue; } /* v-mid-credit: رصيد داخل البثّ = الخطوة نفسها من جديد بفشل جاهز تمرّ به سلسلة ما قبل البثّ (الوسيط ثمّ «ما عندي رصيد») */ send({ error: __midFail.msg, ownerStop: true }); res.end(); return; } // C9: النداء نفسه مرّة، ثمّ السبب للمالك (تحت النصّ إن وُجد)
+      if (__midFail) { await logErrorAndFlush('chat/mid-stream', new Error(__acct() + ': ' + __midFail.text), { action: __midFail.kind, prov }); if (__midFail.kind === 'retry') { send({ status: __midFail.status }); steps--; continue; } if (__midFail.kind === 'fail' || __midFail.kind === 'lane') { if (__midFail.kind === 'lane' && steps === 1 && __meterSpent) { __meterHeld = __meterSpent; __meterSpent = ''; } __midUp = { ok: false, status: __midFail.status, text: async () => __midFail.text }; steps--; continue; } /* v-pro-lanes: lane = مسار الباقة التالي بالفشل الجاهز (سلسلة ما قبل البثّ نفسها) */ /* v-mid-credit: رصيد داخل البثّ = الخطوة نفسها من جديد بفشل جاهز تمرّ به سلسلة ما قبل البثّ (الوسيط ثمّ «ما عندي رصيد») */ send({ error: __midFail.msg, ownerStop: true }); res.end(); return; } // C9: النداء نفسه مرّة، ثمّ السبب للمالك (تحت النصّ إن وُجد)
       { const __rest = __tokStrip.flush(); if (__rest) { const __tb = blocks.filter((b) => b && b.type === 'text').pop(); if (__tb) __tb.text += __rest; fullText += __rest; anyText = true; send({ delta: __rest }); } } // v-special-tokens: ذيل محجوز لم يكتمل رمزًا
-      __usage.output += __usage.stepOut; __usage.stepOut = 0;
+      if (__planSoft() && stopReason !== 'tool_use' && stopReason !== 'refusal' && !blocks.some((b) => b && b.type === 'tool_use')) { /* v-pro-lanes: ردّ فارغ بلا نداء (٢٠٠ ثمّ لا شيء) = المسار التالي — كان يصل المشترك فقاعة فارغة؛ الرفض لا يُعرض على مسار أليَن */ logError('chat/plan-empty', new Error(__acct() + ': stop=' + (stopReason || 'none')), { action: 'plan-empty', plan: __planRoute.plan }); if (steps === 1 && __meterSpent) { __meterHeld = __meterSpent; __meterSpent = ''; } __midUp = { ok: false, status: 502, text: async () => 'empty reply (stop=' + (stopReason || 'none') + ')' }; steps--; continue; } __usage.output += __usage.stepOut; __usage.stepOut = 0;
       // v-prompt-cache: المالك وحده يرى الحساب في شارة النموذج: كاش · جديد · خرج (مجموع الجولات).
       if (__ownerReq) send({ modelId: __pick.picked ? __pick.id : 'default', modelLabel: (__pick.label || 'الافتراضيّ') + ' · ' + usageLabel(__usage) + (__ownerThink ? ' · 🧠' : ' · ⚡') }); if (__ownerReq) send({ served: String(__usage.served || CHAT_MODEL || '').slice(0, 120) }); // v-owner-auto: تفكير أم فوريّ · v-owner-identity: الموديل كما أعلنه المزوّد نفسه
 
@@ -2218,7 +2218,7 @@ module.exports = async (req, res) => {
   } catch (e) {
     await __giveMeter(); // v-meter-atomic: عطل قبل أن يقبل المزوّد الطلب — الحجز يُردّ (بعد قبوله صار استهلاكًا: لا شيء يُردّ)
     if (__cut.gone) { await __meterTurn(); try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا */ } return; } // v-tokens-close: الإلغاء المقصود (AbortError) ليس عطلًا — يُقاس ما صُرف ولا رسالة خطأ لعميل رحل
-    send(__ownerReq ? { error: 'ما قدرت أردّ الحين — عطل في الخادم: ' + String((e && e.message) || e).slice(0, 160), ownerStop: true } : { error: 'chat error: ' + String((e && e.message) || e).slice(0, 200) }); // C9: المالك يرى السبب — بلا ownerStop كان العميل يمحوه إلى «ما قدرت أردّ الحين» عارية
+    if (!__ownerReq && __planRoute) await logErrorAndFlush('chat/plan-error', e, { action: 'plan-error', plan: __planRoute.plan }); /* v-pro-lanes: دور مشترك سقط هنا كان لا يترك أثرًا للمالك */ send(__ownerReq ? { error: 'ما قدرت أردّ الحين — عطل في الخادم: ' + String((e && e.message) || e).slice(0, 160), ownerStop: true } : { error: 'chat error: ' + String((e && e.message) || e).slice(0, 200) }); // C9: المالك يرى السبب — بلا ownerStop كان العميل يمحوه إلى «ما قدرت أردّ الحين» عارية
     try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا */ }
   }
 };

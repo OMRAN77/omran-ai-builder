@@ -39,7 +39,14 @@ const SITES_Q = 'تمام وين المواقع الي اقد احصله', SITES
 const COF_Q = 'وين افضل كوفي في عجمان', COF_A = 'يعتمد على جوّك، لكن كافيه أرابيكا (Café Arábica) في الزوراء خيار حلو للقهوة والأجواء الهادية. وإذا تفضّل كوفي بإطلالة بحرية، جرّب الكافيهات على كورنيش عجمان.';
 assert.strictEqual(d('وفي الشارقه', COF_Q, COF_A, [SITES_Q]), 'follow', '«وفي الشارقه» تكمل سؤال الكوفي');
 assert.strictEqual(d('طيب وفي دبي؟', COF_Q, COF_A), 'follow');
-assert.strictEqual(d(COF_Q, SITES_Q, SITES_A), 'new', '«وين» وحدها لا تجعل الكوفي متابعةً للسياكل');
+// v-topic-and2 (مراجعة عدائيّة بعد الدمج): «وين/مين/منو» ليست وقفًا — متابعة بأداة السؤال نفسها وضمير تبقى متابعة؛ والواو/الفاء
+// لا تُقصّ عن «فلم/فله/فان/فهم» (لم/له/ان/هم وقفٌ لكنّها ليست من CONJ_FN) فتبقى العودة لموضوع الفلم عودة.
+assert.strictEqual(d('مين حكم بعده', 'مين اول رئيس لدولة الامارات', 'الشيخ زايد بن سلطان آل نهيان'), 'follow');
+assert.strictEqual(d('وين نتغدى قريب منه', 'وين اروح في دبي بالويكند مع العيال', 'روح دبي مول وبعدين الممشى'), 'follow');
+assert.strictEqual(d('منو ارخص واحد فيهم', 'منو احسن دكتور جلدية في دبي', 'عيادات كثيرة'), 'follow');
+const filmBack = D('طيب الفلم كم مدته', 'كيف اسوي كبسة دجاج', 'الكبسة تحتاج رز', ['اقترح لي فلم رعب حلو']);
+assert.strictEqual(filmBack.kind, 'back'); assert.strictEqual(filmBack.backIndex, 0, 'العودة لسؤال الفلم');
+assert.strictEqual(JSON.stringify(ctx.window.omranTopicWords('فلم فله فان فهم')), JSON.stringify(['فلم', 'فله', 'فان', 'فهم']), 'كلمات حقيقيّة لا وقف');
 assert.strictEqual(JSON.stringify(ctx.window.omranTopicWords('وفي الشارقه وكيف الأسعار فهل')), JSON.stringify(['شارقه', 'اسعار']), 'وقف بواو العطف أو فائه');
 assert.strictEqual(JSON.stringify(ctx.window.omranTopicWords('وطن فيلم')), JSON.stringify(['وطن', 'فيلم']), 'الواو والفاء من أصل الكلمة تبقى');
 // الكلمات: تطبيع «ال» والتاء المربوطة وحذف كلمات الوقف
