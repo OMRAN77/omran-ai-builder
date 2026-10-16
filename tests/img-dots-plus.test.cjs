@@ -64,7 +64,7 @@ function makeEnv(opt = {}) {
   sb.getGuestId = () => 'g';
   if (opt.parse) sb.__parseImageTextSpec = opt.parse;
   vm.createContext(sb);
-  vm.runInContext([top('__omranImgDots'), top('__omranImgWait'), top('omModeGenerateImage'), top('omModeRawImage')].join('\n'), sb);
+  vm.runInContext([top('__omranImgDots'), top('__omranImgWait'), top('omModeGenerateImage'), top('omModeRawImage')].concat(opt.extra || []).join('\n'), sb);
   return { sb, dom, calls, pending };
 }
 function thinking(env) {
@@ -188,4 +188,78 @@ test('٦. المسار العاديّ: __showImgLoading داخل __sendPromptCor
   const body = SRC.slice(fn.body.start, fn.body.end);
   assert.ok(body.indexOf('_st.release()') > 0 && body.indexOf('__omranImgDots(el, __mine());') > body.indexOf('_st.release()'), 'يفكّ الشريط ثمّ يرسم');
   assert.ok(!/omDot|omran-imggen-css2/.test(body), 'الرسم نفسه خرج من الدالّة');
+});
+
+/* ── مراجعة عدائيّة (ثلاث ملاحظات حقيقيّة على الالتزام الأوّل) ── */
+
+test('٧. شريط حالة الطلب يُفكّ قبل مسارَي «+» — فلا يكتب chatPhase محادثة أخرى (فيديو جارٍ) فوق المربّع', async () => {
+  /* السطر الحقيقيّ في __sendPromptCore: الفكّ ثمّ النداء في العبارة نفسها، للمسارين */
+  for (const call of ['await omModeRawImage(cur, text, thinkingDiv,', 'await omModeGenerateImage(cur, apiText, thinkingDiv);']) {
+    const line = SRC.split('\n').find((l) => l.includes(call));
+    assert.ok(line, call);
+    assert.ok(line.indexOf('try{ chatStatus.release(); }') >= 0 && line.indexOf('try{ chatStatus.release(); }') < line.indexOf(call), 'يُفكّ قبل: ' + call);
+  }
+  /* والأثر بالدوالّ الحقيقيّة: شريط مفكوك بلا خطوات لا يرسم شيئًا، وchatPhase محادثة أخرى يكتب في عنصرها هي */
+  const env = makeEnv({ extra: [top('makeChatStatus'), top('chatPhase')] });
+  const cur = { id: 'c1', messages: [] };
+  const th = thinking(env);
+  const A = env.sb.makeChatStatus(th);
+  env.sb.__chatStatus = A; /* آخر طلب بدأ = هذه المحادثة */
+  A.release(); /* ما يفعله السطر أعلاه */
+  const run = env.sb.omModeRawImage(cur, 'قطة', th, 'gpt', []);
+  await flush();
+  const other = env.dom.document.createElement('div');
+  env.sb.chatPhase('🎬', 'جاري إنشاء الفيديو… RUNNING', other); /* حلقة فيديو محادثة أخرى كلّ ٥ ث */
+  assert.match(th.innerHTML, /class="omGen"/, 'المربّع باقٍ');
+  assert.equal(other.textContent, '🎬 جاري إنشاء الفيديو… RUNNING', 'نصّ الفيديو في محادثته');
+  env.pending[0].resolve(okRes(IMG));
+  await run;
+});
+
+test('٨. رسم كامل للمحادثة نفسها أثناء الانتظار («عرض الرسائل الأقدم»، اللغة) يعيد المربّع، وبعد النتيجة لا يعيده فوقها', async () => {
+  const runCode = ['var __OMRAN_WD_HARD_MS = 300000;', 'var __omranRuns = {};', 'var __omranRunViewPid = null, __omranRunViewLive = false;',
+    top('__omranRunStart'), top('__omranRunEnd'), top('__omranAbortRun'), top('__omranSyncRunView')];
+  const env = makeEnv({ extra: runCode });
+  const sb = env.sb;
+  sb.clearTimeout = clearTimeout; sb.Date = Date; sb.__omranRestoreSendBtn = () => {};
+  env.dom.document.querySelectorAll = () => [];
+  const seen = [];
+  /* كالعارض الحقيقيّ: الرسم الكامل يفرغ القائمة، وغلاف renderMessages ينادي __omranSyncRunView بعده */
+  sb.renderAll = () => { sb.renders++; env.dom.messagesEl.children.slice().forEach((c) => env.dom.El.prototype.remove.call(c)); sb.__omranSyncRunView(); seen.push(th.isConnected); };
+  const cur = { id: 'c1', messages: [] };
+  const r = sb.__omranRunStart('c1', new AbortController());
+  const th = thinking(env);
+  r.thinking = th;
+  try {
+  const run = sb.omModeRawImage(cur, 'قطة', th, 'gpt', []);
+  await flush();
+  sb.renderAll(); /* «⬆ عرض الرسائل الأقدم» */
+  assert.equal(seen[0], true, 'أُعيدت الفقاعة بعد الرسم');
+  assert.match(th.innerHTML, /class="omGen"/, 'وفيها المربّع');
+  sb.renderAll();
+  assert.equal(env.dom.messagesEl.children.filter((c) => c === th).length, 1, 'مرّة واحدة لا نسختان');
+  env.pending[0].resolve(okRes(IMG));
+  await run;
+  assert.equal(seen[seen.length - 1], false, 'رسم النتيجة لا يعيد المربّع فوقها');
+  assert.ok(!th.isConnected && th.__gone);
+  } finally { sb.__omranRunEnd(r); /* حارس الطلب (٣٠٠ ث) لا يبقي العمليّة حيّة إن فشل شيء */ }
+});
+
+test('٩. عنوان المربّع بلغة الواجهة: العربيّة كما هي، وغيرها من مفتاح stGenImage القائم (كان عربيًّا للّغات الـ١٤ كلّها)', () => {
+  const tr = { en: '🎨 Drawing an image…', fr: "🎨 Dessin d'une image…", ur: '🎨 تصویر بنا رہا ہوں…' };
+  for (const [lg, want, dir] of [['ar', 'جارٍ إنشاء الصورة', 'rtl'], ['en', 'Drawing an image…', 'auto'], ['fr', "Dessin d'une image…", 'auto'], ['ur', 'تصویر بنا رہا ہوں…', 'auto']]) {
+    const env = makeEnv();
+    env.sb.lang = lg;
+    env.sb.t = (k) => (k === 'stGenImage' ? tr[lg] : k);
+    const el = env.dom.document.createElement('div');
+    env.sb.__omranImgDots(el, false);
+    assert.ok(el.innerHTML.includes('aria-label="' + want + '"'), lg + ': aria-label');
+    assert.ok(el.innerHTML.includes('<div class="omGenTxt" dir="' + dir + '">' + want + '</div>'), lg + ': العنوان');
+    assert.equal(dotsIn(el), 149, lg);
+  }
+  const d = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-03-i18n-data.js'), 'utf8');
+  assert.equal((d.match(/stGenImage:/g) || []).length, 2, 'المفتاح بالعربيّة والإنجليزيّة');
+  for (const lg of ['fr', 'hi', 'ur', 'bn', 'ne', 'id', 'fil', 'tr', 'zh', 'ru', 'es', 'ml']) {
+    assert.ok(fs.readFileSync(path.join(__dirname, '..', 'i18n', lg + '.js'), 'utf8').includes('"stGenImage"'), 'stGenImage في ' + lg);
+  }
 });

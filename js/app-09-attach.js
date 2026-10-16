@@ -3252,14 +3252,20 @@ function __omranImgDots(el, mine){
     if(x < __arc && y < __arc && Math.hypot(x - __arc, y - __arc) > __arc + 0.01) continue;
     __dots += '<i class="omDot" style="left:' + (8 + x * 84 / (__C - 1)).toFixed(2) + '%;top:' + (12 + y * 84 / (__R - 1)).toFixed(2) + '%;--d:' + (((__C - 1 - x) + y) / __steps * 1.9).toFixed(3) + 's"></i>';
   }
-  el.innerHTML = '<div class="omGen" role="status" aria-label="جارٍ إنشاء الصورة"><div class="omGenTxt" dir="rtl">جارٍ إنشاء الصورة</div>' + __dots + '</div>';
+  /* v-img-dots-plus (مراجعة): العنوان بلغة الواجهة — العربيّة كما اختارها المالك، وغيرها من مفتاح stGenImage القائم في اللغات الـ١٤
+     (كان عربيًّا لكلّ اللغات؛ ومسار «إنشاء صورة» كان يعرض لهم سطره الإنجليزيّ) */
+  const __ar = (typeof lang === 'undefined' || lang === 'ar');
+  const __lbl = __ar ? 'جارٍ إنشاء الصورة' : String((typeof t === 'function' && t('stGenImage')) || 'Drawing an image…').replace(/^\s*🎨\s*/, '').replace(/[<>"&]/g, '');
+  el.innerHTML = '<div class="omGen" role="status" aria-label="' + __lbl + '"><div class="omGenTxt" dir="' + (__ar ? 'rtl' : 'auto') + '">' + __lbl + '</div>' + __dots + '</div>';
 }
 /* v-img-dots-plus: انتظار مسارات «+» — المربّع في فقاعة الانتظار، ورسالة النتيجة تُضاف حين تصل (put) فلا يمحو رسمُ القائمة المربّع.
    بلا فقاعة (omranAnotherVersion البرمجيّة بلا زرّ تمرّر null) يبقى سطر «🎨 أرسم لك…» كما كان. */
 function __omranImgWait(cur, m, el){
-  if(el) __omranImgDots(el, String(state.currentId) === String(cur.id));
+  /* __omImgWait: ما دام الانتظار حيًّا يُعيد __omranSyncRunView الفقاعة بعد أيّ رسم كامل للمحادثة نفسها («عرض الرسائل الأقدم»،
+     تبديل اللغة) — كانت رسالة الانتظار في القائمة فتنجو من الرسم، والمربّع في فقاعة يُسقطها الرسم. يُطفأ قبل وضع النتيجة. */
+  if(el){ el.__omImgWait = true; __omranImgDots(el, String(state.currentId) === String(cur.id)); }
   else { cur.messages.push(m); renderAll(); }
-  return function(){ if(cur.messages.indexOf(m) < 0) cur.messages.push(m); };
+  return function(){ if(el) el.__omImgWait = false; if(cur.messages.indexOf(m) < 0) cur.messages.push(m); };
 }
 async function omModeGenerateImage(cur, promptText, thinkingDiv){
   const textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(promptText) : { wantsText:false, exactText:null, visualPrompt:promptText };
@@ -3565,7 +3571,8 @@ function __omranSyncRunView(){
       if(b && !b.disabled){ b.disabled = true; b.innerHTML = '<span class="spinner"></span>'; }
       if(stop) stop.classList.add('live');
       __omranRunViewLive = true;
-      if(pid !== __omranRunViewPid && r.thinking && !r.thinking.isConnected && !r.thinking.__gone
+      /* v-img-dots-plus: وانتظار صورة «+» حيّ (__omImgWait) يُعاد بعد كلّ رسم للمحادثة نفسها أيضًا — النتيجة لم تُوضع بعد فلا تكرار فوقها */
+      if((pid !== __omranRunViewPid || (r.thinking && r.thinking.__omImgWait)) && r.thinking && !r.thinking.isConnected && !r.thinking.__gone
         && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(r.thinking);
     } else if(__omranRunViewLive){
       __omranRunViewLive = false;
@@ -4481,11 +4488,11 @@ function __friendlyErr(e){
     // 🎯 v526: الوضع الصريح @صورة — يتخطّى كلّ الكواشف ويولّد مباشرة
     // 🍌🤖 «نانو/GPT خام» (المالك): نصّ حرفيّ للمحرّك بلا تفسير، ومع صورة مرفقة أو بدونها.
     if((window.__omMode === 'image_nano' || window.__omMode === 'image_gpt') && text){
-      await omModeRawImage(cur, text, thinkingDiv, window.__omMode === 'image_gpt' ? 'gpt' : 'nano', imageAttachments);
+      try{ chatStatus.release(); }catch(e){ __swallow(e, 'img:plus-status'); } await omModeRawImage(cur, text, thinkingDiv, window.__omMode === 'image_gpt' ? 'gpt' : 'nano', imageAttachments); /* v-img-dots-plus: الشريط يُفكّ كـ__showImgLoading — وإلّا كتب chatPhase محادثة أخرى فوق المربّع */
       return;
     }
     if(String(window.__omMode || '').indexOf('image') === 0 && apiText && !imageAttachments.length){
-      await omModeGenerateImage(cur, apiText, thinkingDiv);
+      try{ chatStatus.release(); }catch(e){ __swallow(e, 'img:plus-status'); } await omModeGenerateImage(cur, apiText, thinkingDiv); /* v-img-dots-plus: كما فوق */
       return;
     }
     // 🏛️ شعارات الجهات الحقيقية: "عطني شعار شرطة دبي" → جلب الشعار الأصلي
