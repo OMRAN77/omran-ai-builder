@@ -1,0 +1,44 @@
+/* v-upload-art (المالك ١٦ أكتوبر بستّ صور: «حطّهم كلّهم في الأزياء والديكور ستايل رتّبهم مع ١٤ لغة» ثمّ «الأُوَل خلّها بالعربي وهذي بالـ١٤ لغة»):
+   مربّع رفع الصورة في الديكور والأزياء والستايل صورة المالك (assets/upload-art، 1920×960 = 2:1). العربيّة: الصورة المكتوبة نفسها
+   (النصّ مطبوع فيها فيُخفى نصّ HTML مع بقاء النقر)؛ بقيّة اللغات: الصورة النظيفة والعنوان والزرّ فوق لوحة الصورة نصًّا مترجمًا.
+   مواضع النصّ (--t العنوان، --b الزرّ) نسبٌ من الإطار 2:1 فتثبت على كلّ عرض. كلّ الأوضاع والثيمات (صورة لا لون). */
+.omUpArt{position:relative !important;display:block !important;aspect-ratio:2/1;height:auto !important;min-height:0 !important;padding:0 !important;margin-top:12px;
+  border:1px solid rgba(212,175,55,.6) !important;border-radius:14px !important;overflow:hidden;cursor:pointer;
+  background:#000 center/cover no-repeat !important;text-align:center;}
+.omUpDecor{background-image:url(/assets/upload-art/decor.webp?v=2) !important;}
+.omUpFashion{background-image:url(/assets/upload-art/fashion.webp?v=2) !important;}
+.omUpStyle{background-image:url(/assets/upload-art/style.webp?v=2) !important;}
+html[lang="ar"] .omUpDecor{background-image:url(/assets/upload-art/decor-ar.webp?v=2) !important;}
+html[lang="ar"] .omUpFashion{background-image:url(/assets/upload-art/fashion-ar.webp?v=2) !important;}
+html[lang="ar"] .omUpStyle{background-image:url(/assets/upload-art/style-ar.webp?v=2) !important;}
+.omUpArt .omUpIco,.omUpArt > svg{display:none !important;}
+.omUpArt .stSlotEmpty,.omUpArt .dzT{position:static !important;padding:0 !important;margin:0 !important;}
+.omUpArt .omUpT,.omUpArt .omUpH,.omUpArt .omUpB,.omUpArt .omUpL,.omUpArt .omUpN{position:absolute !important;left:6% !important;right:6% !important;margin:0 !important;text-align:center;line-height:1.15;transform:translateY(-50%);}
+/* v-upload-art ٢ («دقّق، ما أريد شغل عشوائيّ… كلّهم مش بس الفلبّين»): النصّ المترجم يقع حيث يقع العربيّ في صورة المالك حرفيًّا —
+   المواضع مقيسة بالشبكة من الصور العربيّة (مركز السطر نسبةً من الارتفاع)، والحجم نسبةً من عرض المربّع (cqw) فيكبر ويصغر مع الصورة،
+   والعنوان والتلميح ذهبيّان متدرّجان كالعربيّ، وزرّ الملفّ بلون نقش لوحته (ذهبيّ على اللوحة الداكنة، داكن على الذهبيّة). */
+.omUpArt{container-type:inline-size;}
+.omUpArt .omUpGold,.omUpArt .omUpT,.omUpArt .omUpH{background:linear-gradient(180deg,#fff6cf 0%,#f3d77f 42%,#c9a12e 68%,#8a6612 100%) !important;-webkit-background-clip:text !important;background-clip:text !important;
+  color:transparent !important;text-shadow:none !important;filter:drop-shadow(0 2px 1px rgba(0,0,0,.9)) drop-shadow(0 0 8px rgba(0,0,0,.55));}
+.omUpArt .omUpT{top:var(--t);font-weight:900;font-size:clamp(14px,2.6vw,26px) !important;font-size:max(14px,var(--ts,3.8cqw)) !important;letter-spacing:.01em;}
+.omUpArt .omUpH{top:var(--h);font-weight:700;font-size:clamp(11px,1.5vw,14px) !important;font-size:max(11px,2cqw) !important;}
+.omUpArt .omUpB,.omUpArt .omUpL{top:var(--b);left:36% !important;right:36% !important;display:block !important;transform:translateY(-50%) !important;background:none !important;border:0 !important;box-shadow:none !important;
+  padding:0 !important;width:auto !important;height:auto !important;min-height:0 !important;font-weight:800 !important;line-height:1.15 !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.omUpArt .omUpL{top:var(--l);}
+.omUpArt .omUpB{font-size:clamp(12px,1.6vw,17px) !important;font-size:max(12px,var(--bs,1.7cqw)) !important;color:#2a1d00 !important;text-shadow:0 1px 0 rgba(255,235,170,.6);}
+.omUpArt .omUpN{top:auto;bottom:3%;transform:none;font-size:11px !important;color:#e6d9b3 !important;text-shadow:0 1px 3px #000;max-width:none !important;}
+/* الديكور: العنوان على الجدار فوق اللوحة، التلميح تحته، والزرّ ذهبيّ على اللوحة الداكنة */
+.omUpDecor{--t:43.5%;--h:52.5%;--b:75.5%;--ts:3.4cqw;--bs:2cqw;}
+.omUpDecor .omUpB{left:40% !important;right:40% !important;background:linear-gradient(180deg,#fff6cf 0%,#f3d77f 42%,#c9a12e 68%,#8a6612 100%) !important;-webkit-background-clip:text !important;background-clip:text !important;color:transparent !important;text-shadow:none !important;filter:drop-shadow(0 1px 1px rgba(0,0,0,.9));}
+/* الأزياء: العنوان بين الثريّا والمانيكان، التلميح تحته، والزرّ نقش داكن على اللوحة الذهبيّة */
+.omUpFashion{--t:28.5%;--h:37.5%;--b:75.5%;--ts:3.8cqw;--bs:1.7cqw;}
+/* الستايل: صورة المالك العربيّة فيها الزرّ على اللوحة الكبيرة وكلمة «ستايل» على الصغيرة ولا عنوان — كذلك بكلّ اللغات */
+.omUpStyle{--b:59%;--l:82.5%;--bs:3.2cqw;}
+.omUpStyle .omUpB{left:38% !important;right:38% !important;font-weight:900 !important;background:linear-gradient(180deg,#fff6cf 0%,#f3d77f 42%,#c9a12e 68%,#8a6612 100%) !important;-webkit-background-clip:text !important;background-clip:text !important;color:transparent !important;text-shadow:none !important;filter:drop-shadow(0 2px 1px rgba(0,0,0,.9));}
+.omUpStyle .omUpL{font-size:clamp(11px,1.5vw,15px) !important;font-size:max(11px,1.6cqw) !important;color:#2a1d00 !important;text-shadow:0 1px 0 rgba(255,235,170,.6);}
+.omUpStyle :is(.omUpT,.omUpH){opacity:0;}
+html[lang="ar"] .omUpArt :is(.omUpT,.omUpH,.omUpB,.omUpL){opacity:0;}
+.omUpArt:hover,.omUpArt.over{border-color:#c9c9c9 !important;}
+.stSlot.omUpArt.has{background-image:none !important;}
+.stSlot.omUpArt.has :is(.omUpB,.omUpL){display:none !important;}
+.stSlot.omUpArt .stSlotX{z-index:2;}

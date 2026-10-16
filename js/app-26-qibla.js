@@ -253,7 +253,8 @@
     var mOpts = METHODS.map(function(m){ return '<option value="' + m.v + '"' + (String(m.v) === String(storedMethod()) ? ' selected' : '') + ' style="background:#141420;color:#fff;">' + methodName(m) + (m.v === 'auto' ? ' — ' + (METHODS.filter(function(x){ return x.v === getMethod(); })[0] ? methodName(METHODS.filter(function(x){ return x.v === getMethod(); })[0]) : getMethod()) : '') + '</option>'; }).join('');
     var rows = PRAYERS.map(function(k){
       var isNext = np && np.key === k;
-      return '<div style="display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:12px;margin-bottom:7px;' +
+      /* v-three-colors: الصلاة القادمة «مختارة» (sel) — حدّها رماديّ فاتح في الوضع الأسود حين يُوحَّد بقيّة الصفّ أسود بحدّ ذهبيّ */
+      return '<div' + (isNext ? ' class="sel"' : '') + ' style="display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:12px;margin-bottom:7px;' +
         (isNext ? 'background:rgba(212,175,55,.14);border:1px solid var(--omGoldSoft,rgba(212,175,55,.4));' : 'background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.07));') + '">' +
         '<span style="font-size:15px;font-weight:' + (isNext ? '800' : '600') + ';flex:1;">' + prName(k) + (isNext ? ' •' : '') + '</span>' +
         '<span style="font-size:16px;font-weight:700;letter-spacing:.5px;">' + (S.timings[k] || '--') + '</span>' +

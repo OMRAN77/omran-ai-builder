@@ -19,16 +19,17 @@ test('١. الملفّ محمّل بعد الثيمات بوسم كاش', () => 
 
 test('٢. كلّ قاعدة للوضع الأسود وحده: لا الفاتح ولا الثيمات (html.skin)', () => {
   const css = read(CSS).replace(/\/\*[\s\S]*?\*\//g, '');
-  const sels = css.split('}').map((b) => b.split('{')[0]).filter((s) => s.trim()).flatMap((s) => s.split(',')).map((s) => s.trim());
+  const sels = css.split('}').map((b) => b.split('{')[0]).filter((s) => s.trim()).flatMap((s) => s.split(/,(?![^()]*\))/)).map((s) => s.trim());
   assert.ok(sels.length >= 30);
   for (const s of sels) assert.ok(s.startsWith('html:not([data-mode="light"]):not(.skin) '), s);
-  for (const b of css.split('}').filter((x) => x.includes('{'))) assert.match(b.split('{')[1], /^background:(#000|transparent) !important;$/, 'لون واحد فقط: ' + b);
+  // v-three-colors: ثلاثة ألوان فقط — أسود للخلفيّات، ذهبيّ للحدود، رماديّ فاتح للحدّ عند المرور أو الاختيار.
+  for (const b of css.split('}').filter((x) => x.includes('{'))) assert.match(b.split('{')[1], /^(background:(#000|transparent)|border-color:(rgba\(212,175,55,\.6\)|#c9c9c9)|border-bottom:0) !important;$/, 'ثلاثة ألوان فقط: ' + b);
 });
 
 test('٣. النوافذ التي كانت رماديّة أو شفّافة سوداء، وصناديقها شفّافة فوقها — واستوديو الإعلانات (المجرّة) لا يُمسّ', () => {
   const css = read(CSS);
   const black = css.slice(0, css.indexOf('{background:#000'));
   for (const id of ['#portraitStyleSheet', '#inspireScreen', '#videoMakerModal', '#stocksModal', '#expModal', '#eduHubModal', '#cvModal', '#docModal', '#fbOverlay']) assert.ok(black.includes(id), id);
-  for (const id of ['#vmkTabs', '#vtRoot', '#designAiIdeas', '#fashionAiDropZone', '#cxStart', '#cxIdeas', '#expDrop', '#docDrop']) assert.ok(css.includes(id + ',') || css.includes(id + '{'), id);
+  for (const id of ['#vmkTabs', '#vtRoot', '#designAiIdeas', '#cxStart', '#cxIdeas', '#expDrop', '#docDrop']) assert.ok(css.includes(id + ',') || css.includes(id + '{'), id);
   assert.ok(!/ad-studio|\.hero|body\{/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), 'صفحة الإعلانات مستقلّة');
 });

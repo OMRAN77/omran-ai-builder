@@ -815,12 +815,12 @@
 
     <div id="fashionAiImagePane">
       <input type="file" id="fashionAiFileInput" accept="image/*" style="display:none;">
-      <div id="fashionAiDropZone" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:150px; margin-top:12px; border:1.5px dashed rgba(212,175,55,.45); border-radius:14px; background:rgba(212,175,55,.04); cursor:pointer; text-align:center; padding:14px;">
-        <div style="font-size:26px;">📸</div>
-        <div style="font-size:14px; font-weight:600;" data-i18n="fashionDropTitle">ارفعي صورتك كاملة</div>
-        <div style="font-size:11.5px; color:var(--muted);" data-i18n="fashionDropHint">من الرأس إلى القدم · إضاءة واضحة</div>
-        <button type="button" class="btn" id="fashionAiFileBtn" style="width:auto; white-space:nowrap; border-color:rgba(212,175,55,.5);" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
-        <span id="fashionAiFileName" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
+      <div id="fashionAiDropZone" class="omUpArt omUpFashion om3-skip" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:150px; margin-top:12px; border:1.5px dashed rgba(212,175,55,.45); border-radius:14px; background:rgba(212,175,55,.04); cursor:pointer; text-align:center; padding:14px;">
+        <div class="omUpIco" style="font-size:26px;">📸</div>
+        <div class="omUpT" style="font-size:14px; font-weight:600;" data-i18n="fashionDropTitle">ارفعي صورتك كاملة</div>
+        <div class="omUpH" style="font-size:11.5px; color:var(--muted);" data-i18n="fashionDropHint">من الرأس إلى القدم · إضاءة واضحة</div>
+        <button type="button" class="btn omUpB" id="fashionAiFileBtn" style="width:auto; white-space:nowrap; border-color:rgba(212,175,55,.5);" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
+        <span id="fashionAiFileName" class="omUpN" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
       </div>
       <img id="fashionAiSourcePreview" style="display:none; width:100%; margin-top:10px; border-radius:var(--r-2); max-height:220px; object-fit:contain; background:#000;">
     </div>
@@ -1051,9 +1051,9 @@
       <div id="studioAiImageAWrap" class="stSlotWrap">
         <label class="stSlotLbl" id="studioAiImageALabelEl" data-i18n="studioAiImageALabel">الصورة الأولى</label>
         <input type="file" id="studioAiFileInputA" accept="image/*" style="display:none;">
-        <div class="stSlot" id="studioAiSlotA" data-slot="A" role="button" tabindex="0">
+        <div class="stSlot omUpArt omUpStyle om3-skip" id="studioAiSlotA" data-slot="A" role="button" tabindex="0">
           <img id="studioAiSourcePreviewA" alt="" style="display:none;">
-          <div class="stSlotEmpty"><b data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small></div>
+          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="fileChooseBtn">📁 اختيار ملف</span><span class="omUpL" data-i18n="studioPlateLabel">ستايل</span></div>
           <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
         </div>
         <button type="button" class="btn" id="studioAiFileBtnA" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
@@ -1062,9 +1062,9 @@
       <div id="studioAiImageBWrap" class="stSlotWrap" style="display:none;">
         <label class="stSlotLbl" data-i18n="studioAiImageBLabel">الصورة الثانية</label>
         <input type="file" id="studioAiFileInputB" accept="image/*" style="display:none;">
-        <div class="stSlot" id="studioAiSlotB" data-slot="B" role="button" tabindex="0">
+        <div class="stSlot omUpArt omUpStyle om3-skip" id="studioAiSlotB" data-slot="B" role="button" tabindex="0">
           <img id="studioAiSourcePreviewB" alt="" style="display:none;">
-          <div class="stSlotEmpty"><b data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small></div>
+          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="fileChooseBtn">📁 اختيار ملف</span><span class="omUpL" data-i18n="studioPlateLabel">ستايل</span></div>
           <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
         </div>
         <button type="button" class="btn" id="studioAiFileBtnB" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
@@ -1192,9 +1192,9 @@
     </div>
 
     <div id="religionTabs" style="display:flex; gap:6px; overflow-x:auto; margin-top:12px; padding-bottom:4px;">
-      <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;" data-i18n="religionTabVerse">🕌 تفسير آية</button>
-      <button type="button" class="btn religionTabBtn" data-tool="hadith" style="white-space:nowrap;" data-i18n="religionTabHadith">📖 بحث حديث</button>
-      <button type="button" class="btn religionTabBtn" data-tool="dream" style="white-space:nowrap;" data-i18n="religionTabDream">🌙 تفسير الأحلام</button>
+      <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;flex:1;justify-content:center;border-radius:var(--r-pill);" data-i18n="religionTabVerse">🕌 تفسير آية</button>
+      <button type="button" class="btn religionTabBtn" data-tool="hadith" style="white-space:nowrap;flex:1;justify-content:center;border-radius:var(--r-pill);" data-i18n="religionTabHadith">📖 بحث حديث</button>
+      <button type="button" class="btn religionTabBtn" data-tool="dream" style="white-space:nowrap;flex:1;justify-content:center;border-radius:var(--r-pill);" data-i18n="religionTabDream">🌙 تفسير الأحلام</button>
     </div>
 
     <div style="margin-top:14px;">
