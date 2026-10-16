@@ -31,7 +31,7 @@ test('صورة لكلّ قسم من التسعة بمقاس واحد ٣٢٠×٣�
 
 test('التبويب صورة ثمّ اسم مترجم، والصفّ لا يُعصر في الشبكة ولا في عمود الجوّال', () => {
   const js = read('js/video.js');
-  assert.match(js, /im\.src='\/assets\/videos\/tabs\/'\+v\+'\.jpg\?v=2'/);
+  assert.match(js, /im\.src=TAB_ART\[v\]\|\|'\/assets\/videos\/tabs\/'\+v\+'\.jpg\?v=2'/);
   assert.match(js, /lb\.className='vmk-tab-lbl'; lb\.textContent=tabLabel\(v\)/);
   assert.match(js, /b\.appendChild\(im\); b\.appendChild\(lb\); tb\.appendChild\(b\);/);
   const css = read('css/modules.css');
@@ -42,5 +42,5 @@ test('التبويب صورة ثمّ اسم مترجم، والصفّ لا يُ�
   assert.ok(!/overflow-x:auto/.test(desktop), 'لا تمرير أفقيّ على الحاسوب');
   assert.ok(css.includes('@media (max-width:640px){#videoMakerModal .vmk-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-height:max-content;flex-shrink:0;width:100%}}'));
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=447"') && h.includes('modules.css?v=681'));
+  assert.ok(h.includes('src="/js/video.js?v=448"') && h.includes('modules.css?v=682'));
 });

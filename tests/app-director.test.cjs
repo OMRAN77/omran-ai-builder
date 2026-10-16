@@ -257,9 +257,9 @@ test('٦. المعالج: الرمز للمالك مع عنوان الجسر م�
 
 test('٧. القسم في شريط صانع الفيديو للمالك وحده وبلا إيموجي، ويقود المسار كاملًا من المتصفّح بلا سرّ ولا عنوان جسر', () => {
   const js = read('js/video.js');
-  assert.ok(js.includes("TABS.concat(drOwner()?['director']:[])"), 'الزرّ يُبنى للمالك فقط');
+  assert.ok(js.includes("tabsFor().concat(drOwner()?['director']:[])"), 'الزرّ يُبنى للمالك فقط');
   assert.ok(js.includes("if(!card||!drOwner()||id('vmkDirector')) return;"), 'اللوحة لا تُنشأ لغير المالك — لا أثر في DOM');
-  assert.ok(js.includes("if(TABS.indexOf(v)<0&&!(v==='director'&&drOwner())) return;"));
+  assert.ok(js.includes("if(tabsFor().indexOf(v)<0&&!(v==='director'&&drOwner())) return;"));
   assert.ok(js.includes("if(v==='director') return L('vdTab')||'مخرج التطبيق';"));
   for (const k of ['action=app-director-plan', 'action=app-director-token', 'action=app-director-voice', "'/api/media?action=tts'", "'/api/media?action=maha-image'", "'/api/portrait-style'", "bridge+'/render'", "bridge+'/render/'+encodeURIComponent(jobId)", 'setTimeout(x,3000)', 'window.autoSaveVideo(DR.out']) assert.ok(js.includes(k), k);
   assert.ok(js.includes("voice:'maha',lang:lang,gender:speaker"), 'التعليق بصوت مها/عبدالله باللغة المختارة');
@@ -320,7 +320,7 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
     seen[lg] = obj.vdTab;
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=447'));
+  assert.ok(read('index.html').includes('/js/video.js?v=448'));
   assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=749';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });
@@ -457,7 +457,7 @@ test('١٢. الواجهة: خيار «مع صوت / بدون صوت»، وال�
   assert.equal(drWrap(ctx, 'كلمةطويلةجداجداجدا', 50).join('|'), 'كلمةطويلةجداجداجدا', 'كلمة أطول من السطر تبقى كاملة');
   const css = read('css/modules.css');
   assert.ok(css.includes('.vmk-dir-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}') && css.includes('#videoMakerModal .vmk-dir-row{grid-template-columns:1fr 1fr}'), 'أربعة خيارات في صفّ، وعلى الجوّال صفّان');
-  assert.ok(read('index.html').includes('css/modules.css?v=681'));
+  assert.ok(read('index.html').includes('css/modules.css?v=682'));
   // النصوص الأربعة بالـ١٤ لغة، بلا اسم مزوّد
   const core = read('js/app-03-i18n-data.js');
   const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
@@ -546,5 +546,5 @@ test('١٣. الجسر يُفحص قبل أيّ صرف: جسر بنسخة قدي
     assert.ok(t && t.length > 20, lg); assert.doesNotMatch(t, BANNED, lg); seenT.add(t);
   }
   assert.equal(seenT.size, LANGS.length, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=447'));
+  assert.ok(read('index.html').includes('/js/video.js?v=448'));
 });
