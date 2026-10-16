@@ -465,6 +465,21 @@ html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-con
 .hintx{color:#7e868f;font:600 11px 'Tajawal';margin-top:8px;line-height:1.7}
 @media (max-width:760px){.cgrid{grid-template-columns:1fr}}
 
+/* ===== v-three-colors (المالك ١٦ أكتوبر: «صفحة استوديو الإعلانات أسود بدل المجرّة… فقط ٣ ألوان» — «الحدود كلّها ذهبي»،
+   «عند التضليل عليها الحدّ يصير رماديّ أفتح»): أسود للخلفيّات، ذهبيّ للحدود، رماديّ فاتح عند المرور. ألوان قوالب الإعلانات
+   (--ac داخل .canvas) محتوى الإعلان نفسه فلا تُمسّ. ===== */
+body{background:#000 !important}
+.hero{background:none !important}
+.hero .core{box-shadow:none !important;background:#000 !important}
+.hero .tile i{background:#000 !important;border-color:rgba(212,175,55,.6) !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+.hero .tile:hover i,.hero .tile:focus-visible i{border-color:#c9c9c9 !important;box-shadow:none !important}
+.chat{background:#000 !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;border-color:rgba(212,175,55,.6) !important}
+.chead,.comp{border-color:rgba(212,175,55,.6) !important}
+.m.u span{background:#000 !important;border:1px solid rgba(212,175,55,.6)}
+.chip,.comp input,.rst,.rstAll,.rtb button,#genOut a,.pick,a.back{background:#000 !important;border-color:rgba(212,175,55,.6) !important}
+.chip:hover,.comp input:focus,.rst:hover,.rstAll:hover,.rtb button:hover,.rtb button.on,#genOut a:hover,.pick:hover,a.back:hover{background:#000 !important;border-color:#c9c9c9 !important}
+.gwait{border-color:rgba(212,175,55,.6) !important}
+.note{background:#000 !important;border-color:rgba(212,175,55,.6) !important;color:#c9c9c9 !important}
 </style>
 </head>
 <body>

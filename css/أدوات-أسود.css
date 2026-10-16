@@ -37,3 +37,12 @@ html:not([data-mode="light"]):not(.skin) #constructionModal .cx-head,
 html:not([data-mode="light"]):not(.skin) #cxBrief,
 html:not([data-mode="light"]):not(.skin) #cxStart,
 html:not([data-mode="light"]):not(.skin) #cxIdeas{background:transparent !important;}
+
+/* ── v-three-colors (المالك ١٦ أكتوبر: «فقط ٣ ألوان» — «الحدود كلّها ذهبي»، «عند التضليل عليها: الحدّ يصير رماديّ أفتح»):
+   الأصناف يضعها js/app-41-three-colors.js على الحدود الظاهرة وتعبئات الصناديق داخل الأدوات. ── */
+html:not([data-mode="light"]):not(.skin) .om3-line{border-color:rgba(212,175,55,.6) !important;}
+html:not([data-mode="light"]):not(.skin) .om3-hot.om3-line:hover,
+html:not([data-mode="light"]):not(.skin) .om3-line:focus-visible,
+html:not([data-mode="light"]):not(.skin) .om3-line:is(input,textarea,select):focus,
+html:not([data-mode="light"]):not(.skin) .om3-line:is(.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:#c9c9c9 !important;}
+html:not([data-mode="light"]):not(.skin) .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]){background:#000 !important;}
