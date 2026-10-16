@@ -1,4 +1,5 @@
-// v-social-bot: بوت التسويق — الفكرة تدور، النصّ صادق بالزمن الفعليّ، والجدول لا يتخطّى حصّة Upload-Post المجانيّة.
+// v-social-bot: بوت التسويق — سلسلة «تحدّي 30 موقع» حلقة كلّ يومين: الفكرة من الترند (وإلّا القائمة)،
+// رقم الحلقة من سجلّ النشر، والنصّ صادق بالزمن الفعليّ.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -53,4 +54,71 @@ test('٥) المونتاج ضمن مدّة الريلز (15–30 ث)', async () 
     const tl = timeline(m, siteH);
     assert.ok(tl.total >= 15 && tl.total <= 30, String(tl.total));
   }
+});
+
+test('٦) رقم الحلقة من سجلّ النشر: آخر external_id ناجح + 1، والموسم كلّ 30 حلقة', async () => {
+  const { seriesFromHistory, epLabel } = await load();
+  const st = seriesFromHistory([
+    { external_id: 'omai-ep-3', success: true, upload_timestamp: '2026-10-20T16:05:00Z', post_title: '🎬 x\nسوّيت موقع مقهى «رذاذ» كامل في 40 ثانية بس 🤯' },
+    { external_id: 'omai-ep-3', success: true, upload_timestamp: '2026-10-20T16:04:00Z', platform: 'facebook' },
+    { external_id: 'omai-ep-9', success: false, upload_timestamp: '2026-10-22T16:00:00Z' },
+    { external_id: 'other', success: true, upload_timestamp: '2026-10-23T16:00:00Z' },
+    { external_id: 'omai-ep-2', success: true, upload_timestamp: '2026-10-18T16:00:00Z' },
+  ]);
+  assert.equal(st.last, 3);
+  assert.equal(st.lastAt, Date.parse('2026-10-20T16:05:00Z'));
+  assert.deepEqual(st.names, ['مقهى «رذاذ»']);
+  assert.equal(seriesFromHistory([]).last, 0);
+  assert.equal(epLabel(1).short, 'الحلقة 1');
+  assert.equal(epLabel(30).short, 'الحلقة 30');
+  assert.equal(epLabel(31).short, 'الحلقة 1 · الموسم 2');
+});
+
+test('٧) كلّ يومين: الجدول يوميّ والحلقة تنزل بعد 36 ساعة من السابقة', async () => {
+  const { dueNow } = await load();
+  const h = 36e5, last = Date.parse('2026-10-20T16:05:00Z');
+  assert.equal(dueNow(0, last), true, 'أوّل حلقة');
+  assert.equal(dueNow(last, last + 23.9 * h), false, 'بكرة: لا');
+  assert.equal(dueNow(last, last + 47.5 * h), true, 'بعد يومين ولو تأخّر جدول GitHub');
+  assert.equal(dueNow(last, last + 70 * h), true, 'فاتت حلقة: تنزل اليوم');
+});
+
+test('٨) الترند: عربيّ/إنجليزيّ فقط، والفكرة تُرفض إذا مسّت السياسة/الأشخاص أو خالفت الشكل', async () => {
+  const { parseTrendsRss, validTrendIdea, trendAsk } = await load();
+  const xml = '<rss><channel><title>Daily Search Trends</title>'
+    + '<item><title>الطقس</title><ht:approx_traffic>2000+</ht:approx_traffic><ht:news_item_title>أمطار &amp; رياح</ht:news_item_title></item>'
+    + '<item><title>भारतीय टीम</title><ht:approx_traffic>500+</ht:approx_traffic></item>'
+    + '<item><title>apple store</title><ht:approx_traffic>1000+</ht:approx_traffic></item></channel></rss>';
+  const t = parseTrendsRss(xml);
+  assert.deepEqual(t.map((x) => x.title), ['الطقس', 'apple store']);
+  assert.equal(t[0].traffic, 2000);
+  assert.equal(t[0].news, 'أمطار & رياح');
+  const good = { trend: 'الطقس', label: 'أجواء شتوية', name: 'مقهى «رذاذ»', prompt: 'سوّ لي موقع لمقهى «رذاذ» فيه المنيو الشتوي وجلسات خارجية مع حجز وواتساب', tags: ['#شتاء', '#مقهى', 'bad tag'] };
+  const v = validTrendIdea(good);
+  assert.equal(v.name, 'مقهى «رذاذ»');
+  assert.deepEqual(v.tags, ['#شتاء', '#مقهى']);
+  assert.equal(v.src, 'trend');
+  assert.ok(v.prompt.length <= 100, 'الطلب يُكتب حيًّا في الفيديو');
+  assert.equal(validTrendIdea({ ...good, trend: 'strait of hormuz', label: 'مضيق هرمز' }), null);
+  assert.equal(validTrendIdea({ ...good, name: 'مقهى رذاذ' }), null, 'الاسم بين «»');
+  assert.equal(validTrendIdea({ ...good, prompt: 'موقع مقهى' }), null);
+  assert.equal(validTrendIdea({ ...good, prompt: 'سوّ لي موقع لمقهى «غيم» فيه المنيو الشتوي وجلسات خارجية مع حجز وواتساب' }), null, 'الطلب فيه نفس الاسم');
+  assert.equal(validTrendIdea(null), null);
+  const ask = trendAsk(t, ['مقهى «رذاذ»'], 'الجمعة');
+  assert.match(ask, /الطقس \| 2000\+ بحث/);
+  assert.match(ask, /لا تكرّر.*مقهى «رذاذ»/);
+  assert.match(ask, /السياسة/);
+});
+
+test('٩) النصّ يحمل رقم الحلقة والترند وموعد الحلقة الجاية، والنشر يوسم الحلقة', async () => {
+  const { buildCaption } = await load();
+  const c = buildCaption({ name: 'مقهى «رذاذ»', tags: ['#شتاء'], label: 'أجواء شتوية' }, 40, 5);
+  assert.match(c.ig, /^🎬 الحلقة 5 من تحدّي 30 موقع بالذكاء الاصطناعي/);
+  assert.match(c.ig, /سوّيت موقع مقهى «رذاذ» كامل في 40 ثانية/);
+  assert.match(c.ig, /🔥 الفكرة من ترند اليوم: أجواء شتوية/);
+  assert.match(c.ig, /الحلقة 6 بعد يومين/);
+  assert.ok(c.ig.includes('#تحدي_30_موقع'));
+  assert.ok((c.ig.match(/#/g) || []).length <= 30);
+  assert.match(src, /fd\.append\('external_id', EP_ID\(epN\)\)/);
+  assert.match(src, /process\.argv\.includes\('--gate'\)/);
 });

@@ -1,16 +1,19 @@
-// بوت التسويق الآلي (طلب المالك): يختار فكرة، يبنيها بـ OM Ai الحقيقي على الإنتاج
-// من حساب البوت، يصوّر العملية فيديو عموديًّا 1080×1920 («سوّيته في X ثانية» + الشعار)،
-// ثمّ ينشره على إنستقرام وفيسبوك عبر Upload-Post. الزمن المكتوب هو الزمن الفعليّ
-// من ضغطة الإرسال إلى اكتمال الموقع — لا رقم مُختلَق.
+// بوت التسويق الآلي (طلب المالك): سلسلة «تحدّي 30 موقع بالذكاء الاصطناعي» — حلقة كلّ يومين.
+// يختار فكرة من ترندات البحث في الخليج (وإلّا من القائمة الثابتة)، يبنيها بـ OM Ai الحقيقي
+// على الإنتاج من حساب البوت، يصوّر العملية فيديو عموديًّا 1080×1920 («الحلقة N» + «سوّيته في X ثانية»
+// + الشعار)، ثمّ ينشره على كلّ منصّة موصولة في Upload-Post. الزمن المكتوب هو الزمن الفعليّ
+// من ضغطة الإرسال إلى اكتمال الموقع — لا رقم مُختلَق. رقم الحلقة من سجلّ النشر نفسه (external_id).
 //
 // البيئة:
 //   UPLOAD_POST_API_KEY  مفتاح Upload-Post (بدونه: يُصنع الفيديو ولا يُنشر)
 //   UPLOAD_POST_USER     ملفّ Upload-Post (الافتراضيّ omranaibuilder)
-//   PLATFORMS            instagram,facebook (الافتراضيّ)
+//   PLATFORMS            auto (الافتراضيّ: كلّ الموصول من instagram,facebook,tiktok,youtube) أو قائمة بفواصل
 //   MONITOR_KEY          اختياريّ: يضيف حساب البوت لقائمة VIP تلقائيًّا (وإلّا يضيفه المالك من لوحة التحكّم)
 //                        كلمة سرّ حساب البوت مشتقّة من UPLOAD_POST_API_KEY — لا سرّ جديد
 //   BOT_USER             اسم حساب البوت (الافتراضيّ omaisocial)
-//   IDEA_INDEX           رقم فكرة محدّد؛ وإلّا تدور الأفكار برقم التشغيل
+//   IDEA_INDEX           رقم فكرة محدّد من القائمة؛ وإلّا فكرة من الترند (IDEA_SOURCE=list للقائمة وحدها)
+//   EPISODE              رقم حلقة محدّد؛ وإلّا آخر حلقة منشورة + 1
+//   --gate               فحص خفيف قبل التثبيت: الجدول يومي، والحلقة تنزل إذا مرّ 36 ساعة على السابقة
 //   DRY_RUN=1            صناعة الفيديو دون نشر
 //   BASE                 الموقع (الافتراضيّ الإنتاج) · OUT_DIR مجلّد المخرجات · CHROME_PATH متصفّح محلّيّ
 import { createHash, randomBytes } from 'node:crypto';
@@ -26,7 +29,8 @@ const DRY = /^(1|true|yes)$/i.test(process.env.DRY_RUN || '');
 const UP_KEY = process.env.UPLOAD_POST_API_KEY || '';
 const UP_USER = process.env.UPLOAD_POST_USER || 'omranaibuilder';
 const UP_API = 'https://api.upload-post.com/api';
-const PLATFORMS = (process.env.PLATFORMS || 'instagram,facebook').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+const PLATFORMS_RAW = (process.env.PLATFORMS || 'auto').trim().toLowerCase();
+const AUTO_PLATFORMS = ['instagram', 'facebook', 'tiktok', 'youtube'];
 const MONITOR_KEY = process.env.MONITOR_KEY || '';
 const BOT_USER = (process.env.BOT_USER || 'omaisocial').trim().toLowerCase();
 const CHROME = process.env.CHROME_PATH || undefined;
@@ -35,6 +39,12 @@ const SITE = 'omran-ai-builder.vercel.app';
 const W = 1080, H = 1920, VW = 432, VH = 768, DPR = 2.5, FPS = 30;
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 const BUILD_TIMEOUT_MS = 300000;
+const SERIES = 'تحدّي 30 موقع بالذكاء الاصطناعي';
+const SEASON_LEN = 30;
+const EVERY_H = 36; // الجدول يوميّ؛ الحلقة تنزل إذا مرّ 36 ساعة على السابقة = كلّ يومين بالضبط حتى آخر الشهر
+const EP_ID = (n) => 'omai-ep-' + n;
+const EP_RE = /^omai-ep-(\d+)$/;
+const TREND_GEOS = ['AE', 'SA', 'KW', 'QA'];
 
 const log = (...a) => console.log('[social-bot]', ...a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -57,14 +67,148 @@ export function secWord(n) {
   return n + ' ثانية';
 }
 
-export function buildCaption(idea, secs) {
+// رقم الحلقة المطلق → حلقة الموسم (30 حلقة لكلّ موسم).
+export function epLabel(n) {
+  const season = Math.floor((n - 1) / SEASON_LEN) + 1, ep = ((n - 1) % SEASON_LEN) + 1;
+  const sx = season > 1 ? ' · الموسم ' + season : '';
+  return { n, season, ep, short: 'الحلقة ' + ep + sx, full: 'الحلقة ' + ep + ' من ' + SERIES + sx };
+}
+
+export function buildCaption(idea, secs, epN) {
   const base = ['#ذكاء_اصطناعي', '#تصميم_مواقع', '#برمجة', '#مواقع', '#مشاريع', '#OMAi', '#AI', '#الامارات', '#السعودية', '#الكويت', '#قطر', '#عمان', '#البحرين'];
-  const tags = [...new Set([...(idea.tags || []), ...base])].slice(0, 20).join(' ');
+  const ep = epN ? epLabel(epN) : null;
+  const tags = [...new Set([...(ep ? ['#تحدي_30_موقع'] : []), ...(idea.tags || []), ...base])].slice(0, 20).join(' ');
   const head = 'سوّيت موقع ' + idea.name + ' كامل في ' + secWord(secs) + ' بس 🤯';
-  const body = 'كتبت جملة وحدة… وOM Ai سوّى الباقي ✨';
-  const ig = [head, body, '', 'جرّب تسوّي موقعك ببلاش 👈 الرابط في البايو 🔗', '', tags].join('\n');
-  const fb = [head, body, '', 'جرّب تسوّي موقعك ببلاش 👈 https://' + SITE + '/?ref=fb', '', tags].join('\n');
+  const top = [ep ? '🎬 ' + ep.full : '', head, idea.label ? '🔥 الفكرة من ترند اليوم: ' + idea.label : '', 'كتبت جملة وحدة… وOM Ai سوّى الباقي ✨'].filter(Boolean);
+  const next = ep ? ['تابعنا… ' + epLabel(epN + 1).short + ' بعد يومين 👀'] : [];
+  const ig = [...top, '', 'جرّب تسوّي موقعك ببلاش 👈 الرابط في البايو 🔗', ...next, '', tags].join('\n');
+  const fb = [...top, '', 'جرّب تسوّي موقعك ببلاش 👈 https://' + SITE + '/?ref=fb', ...next, '', tags].join('\n');
   return { ig, fb, head };
+}
+
+// ───────── السلسلة: رقم الحلقة والموعد من سجلّ النشر ─────────
+export function seriesFromHistory(items) {
+  let last = 0, lastAt = 0; const names = [];
+  for (const it of items || []) {
+    const mm = EP_RE.exec(String((it && it.external_id) || ''));
+    if (!mm || it.success === false) continue;
+    last = Math.max(last, Number(mm[1]));
+    lastAt = Math.max(lastAt, Date.parse(it.upload_timestamp || '') || 0);
+    const nm = /سوّيت موقع (.+?) كامل في/.exec(String(it.post_title || it.post_caption || ''));
+    if (nm && !names.includes(nm[1])) names.push(nm[1]);
+  }
+  return { last, lastAt, names };
+}
+
+export const dueNow = (lastAt, nowMs, everyH = EVERY_H) => !lastAt || nowMs - lastAt >= everyH * 36e5;
+
+async function seriesState() {
+  const items = [];
+  for (let page = 1; page <= 3; page++) {
+    const r = await upFetch('/uploadposts/history?limit=100&status=success&page=' + page + '&profile_username=' + encodeURIComponent(UP_USER));
+    if (!r.ok) throw new Error('upload history ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 160));
+    const h = (r.j && r.j.history) || [];
+    items.push(...h);
+    if (h.length < 100) break;
+  }
+  return seriesFromHistory(items);
+}
+
+// ───────── فكرة من الترند ─────────
+const unXml = (s) => String(s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+  .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').trim();
+
+export function parseTrendsRss(xml) {
+  const out = [];
+  for (const it of String(xml || '').split('<item>').slice(1)) {
+    const title = unXml((/<title>([\s\S]*?)<\/title>/.exec(it) || [])[1]);
+    if (!title || !/^[\p{Script=Arabic}\p{Script=Latin}\p{N}\s\-–'’.&:،,!؟?()]+$/u.test(title)) continue; // عربيّ/إنجليزيّ فقط
+    const traffic = parseInt(String((/<ht:approx_traffic>([^<]*)/.exec(it) || [])[1] || '').replace(/\D/g, ''), 10) || 0;
+    const news = unXml((/<ht:news_item_title>([\s\S]*?)<\/ht:news_item_title>/.exec(it) || [])[1]).slice(0, 110);
+    out.push({ title, traffic, news });
+  }
+  return out;
+}
+
+async function fetchTrends() {
+  const seen = new Set(), all = [];
+  for (const g of TREND_GEOS) {
+    try {
+      const r = await fetch('https://trends.google.com/trending/rss?geo=' + g, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(15000) });
+      if (!r.ok) { log('trends ' + g + ' → ' + r.status); continue; }
+      for (const t of parseTrendsRss(await r.text())) { const k = t.title.toLowerCase(); if (!seen.has(k)) { seen.add(k); all.push(t); } }
+    } catch (e) { log('trends ' + g + ' failed: ' + (e && e.message)); }
+  }
+  return all.sort((a, b) => b.traffic - a.traffic).slice(0, 25);
+}
+
+// يُرفض ما يمسّ السياسة والحروب والدين والأشخاص الحقيقيّين والبنوك… حتى لو مرّ من النموذج.
+const BAD_TOPIC = /سياس|حرب|حروب|جيش|عسكر|صاروخ|هجوم|قصف|وفا[ةه]|توفي|مقتل|قتل|حادث|جريم|سجن|إيران|ايران|إسرائيل|اسرائيل|غزة|هرمز|بنك|مصرف|قمار|رهان|خمر|كحول|حزب|انتخاب|شيخ|أمير|ملك |رئيس/;
+
+export function validTrendIdea(j) {
+  if (!j || typeof j !== 'object') return null;
+  const name = String(j.name || '').trim(), prompt = String(j.prompt || '').trim(), label = String(j.label || '').trim();
+  if (!name || name.length > 28 || !/«[^»]{2,18}»/.test(name)) return null;
+  if (!/^سو/.test(prompt) || prompt.length < 35 || prompt.length > 100 || !prompt.includes(name.replace(/^.*«/, '').replace(/».*$/, ''))) return null;
+  if (!label || label.length > 30) return null;
+  const tags = (Array.isArray(j.tags) ? j.tags : []).map((t) => String(t).trim()).filter((t) => /^#[^\s#]{2,30}$/.test(t)).slice(0, 4);
+  if (BAD_TOPIC.test([name, prompt, label, j.trend || '', ...tags].join(' '))) return null;
+  return { name, prompt, tags, label, trend: String(j.trend || '').slice(0, 80), src: 'trend' };
+}
+
+export function trendAsk(trends, recent, today) {
+  const list = trends.map((t, i) => (i + 1) + '. ' + t.title + (t.traffic ? ' | ' + t.traffic + '+ بحث' : '') + (t.news ? ' | ' + t.news : '')).join('\n');
+  return [
+    'أنت مخطّط محتوى لحساب OM Ai (منصّة تبني مواقع كاملة بالذكاء الاصطناعي من جملة وحدة). عندنا سلسلة ريلز «' + SERIES + '»: كلّ حلقة نبني موقع لمشروع تجاري خليجي من جملة وحدة.',
+    'اليوم ' + today + '. هذي ترندات البحث الحين في الإمارات والسعودية والكويت وقطر (العنوان | البحث | خبر):',
+    list || '(ما في ترندات اليوم)',
+    '',
+    'اختر ترند واحد يُلهم فكرة مشروع تجاري محلّي لطيف ومناسب للعائلة (مقهى، مطعم، متجر، خدمة، نادي، فعالية…). إذا ما في ترند مناسب، اختر مناسبة أو موسم خليجي قريب من تاريخ اليوم.',
+    'ممنوع منعًا باتًا: السياسة والحروب والجيش والأخبار العاجلة والوفيات والحوادث والجرائم والدين والبنوك والقمار والكحول، والشخصيات الحقيقية (حكّام، شيوخ، مشاهير، لاعبين)، وأيّ شي حزين أو مثير للجدل.',
+    'الاسم التجاري من تأليفك وقصير، وممنوع يحتوي اسم علامة تجارية أو نادي أو شخص حقيقي.',
+    recent && recent.length ? 'لا تكرّر هذي الأفكار المنشورة: ' + recent.join('، ') : '',
+    'رجّع JSON فقط بلا أيّ كلام ثاني، بهالشكل:',
+    '{"trend":"عنوان الترند كما هو","label":"وصف قصير للترند بالعربي من 2 إلى 4 كلمات","name":"نوع المشروع «الاسم»","prompt":"سوّ لي موقع …","tags":["#وسم","#وسم","#وسم"]}',
+    'الشروط: name أقصاه 24 حرف مثل: مقهى «ركن الديربي». prompt بلهجة خليجية يبدأ بـ «سوّ لي موقع»، طوله من 50 إلى 95 حرف، فيه الاسم نفسه بين «» ومحتوى الموقع (منيو أو خدمات أو أسعار أو حجز أو واتساب). tags ثلاث وسوم عربية بلا مسافات للمشروع والترند (بدون أسماء أشخاص).',
+  ].filter(Boolean).join('\n');
+}
+
+async function askAI(token, text) {
+  const r = await postJSON(BASE + '/api/ai?action=gemini', { token, contents: [{ role: 'user', parts: [{ text }] }] });
+  const parts = (r.j && r.j.candidates && r.j.candidates[0] && r.j.candidates[0].content && r.j.candidates[0].content.parts) || [];
+  if (!r.ok) throw new Error('ai ' + r.status + ' ' + String((r.j && r.j.error) || '').slice(0, 120));
+  return parts.map((p) => p.text || '').join('');
+}
+
+export async function trendIdea(token, recent) {
+  const trends = await fetchTrends();
+  log('trends: ' + trends.length + (trends.length ? ' · ' + trends.slice(0, 8).map((t) => t.title).join(' | ') : ''));
+  const today = new Intl.DateTimeFormat('ar-AE', { dateStyle: 'full', timeZone: 'Asia/Dubai' }).format(new Date());
+  const ask = trendAsk(trends, recent, today);
+  for (let i = 0; i < 2; i++) {
+    try {
+      const txt = await askAI(token, ask);
+      const mm = /\{[\s\S]*\}/.exec(txt);
+      const idea = validTrendIdea(mm ? JSON.parse(mm[0]) : null);
+      if (idea && !recent.includes(idea.name)) return idea;
+      log('trend idea rejected: ' + String(txt).replace(/\s+/g, ' ').slice(0, 200));
+    } catch (e) { log('trend idea failed: ' + (e && e.message)); }
+  }
+  return null;
+}
+
+// ───────── المنصّات الموصولة ─────────
+async function resolvePlatforms() {
+  if (PLATFORMS_RAW !== 'auto') return PLATFORMS_RAW.split(',').map((s) => s.trim()).filter(Boolean);
+  const fallback = ['instagram', 'facebook'];
+  if (!UP_KEY) return fallback;
+  const r = await upFetch('/uploadposts/users').catch(() => ({ ok: false, j: {} }));
+  const profs = (r.j && (r.j.profiles || (r.j.profile ? [r.j.profile] : []))) || [];
+  const prof = profs.find((p) => p && p.username === UP_USER) || null;
+  const sa = (prof && prof.social_accounts) || {};
+  const on = AUTO_PLATFORMS.filter((p) => sa[p] && typeof sa[p] === 'object' && !sa[p].reauth_required);
+  log('connected: ' + (on.join(',') || 'none') + (r.ok ? '' : ' (users ' + r.status + ')'));
+  return on.length ? on : fallback;
 }
 
 // ───────── حساب البوت ─────────
@@ -202,7 +346,8 @@ async function capture(browser, acct, idea, dir) {
 }
 
 // ───────── المونتاج (صفحة استوديو تُرسم إطارًا إطارًا: العربيّة صحيحة الشكل) ─────────
-function studioHTML(idea, secs) {
+function studioHTML(idea, secs, epN) {
+  const ep = epN ? epLabel(epN) : null;
   const icon = pathToFileURL(path.join(ROOT, 'icons/icon-512-v2.png')).href;
   const brand = pathToFileURL(path.join(ROOT, 'icons/brand-om-s.png')).href;
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -235,18 +380,21 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:#000;font-family
 #end .h{font-size:92px;font-weight:900;margin-top:70px;line-height:1.2}
 #end .s{font-size:52px;font-weight:700;color:#efe7d2;margin-top:34px}
 #end .u{display:inline-block;margin-top:60px;font-size:46px;font-weight:800;padding:22px 46px;border-radius:999px;border:3px solid #e7b54a;direction:ltr;color:#ffe9a8}
+#end .nx{font-size:50px;font-weight:800;color:#efe7d2;margin-top:56px}
+#ep{position:absolute;top:40px;right:34px;max-width:600px;white-space:nowrap;overflow:hidden;padding:12px 30px;border-radius:999px;background:linear-gradient(180deg,#ffe9a8,#e7b54a 55%,#b9822a);color:#1a1205;font-size:40px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 </style></head><body><div id="stage">
 <img id="bg"><div id="site"><img id="siteImg"></div>
 <div id="hook"><div class="s">بجملة وحدة بس ✍️</div><div class="b"><span class="ln gold">موقع ${esc(idea.name)}</span><span class="ln">في ${esc(secWord(secs))} ⚡</span></div></div>
 <div id="timer"><div class="n gold">0</div><div class="l">OM Ai يبني الموقع…</div></div>
 <div id="ready">✅ جاهز في <span class="gold">${esc(secWord(secs))}</span></div>
 <div id="wm"><img class="i" src="${icon}"><img class="t" src="${brand}"></div>
+${ep ? '<div id="ep">🎬 ' + esc(ep.short) + ' · تحدّي 30 موقع</div>' : ''}
 <div id="tap"></div><div id="flash"></div>
-<div id="end"><img class="i" src="${icon}"><img class="t" src="${brand}"><div class="h">سوّ موقعك أنت<br><span class="gold">ببلاش</span></div><div class="s">اكتب فكرتك… والذكاء الاصطناعي يسوّيها</div><div class="u">${SITE}</div></div>
+<div id="end"><img class="i" src="${icon}"><img class="t" src="${brand}"><div class="h">سوّ موقعك أنت<br><span class="gold">ببلاش</span></div><div class="s">اكتب فكرتك… والذكاء الاصطناعي يسوّيها</div><div class="u">${SITE}</div>${ep ? '<div class="nx">تابعنا… ' + esc(epLabel(epN + 1).short) + ' بعد يومين 👀</div>' : ''}</div>
 </div><script>
 const $=(id)=>document.getElementById(id);
 let curBg='', curSite='';
-window.fitAll=()=>{document.querySelectorAll('#hook .ln,#ready').forEach((el)=>{let fs=parseFloat(getComputedStyle(el).fontSize);while(el.scrollWidth>el.clientWidth+1&&fs>28){fs-=2;el.style.fontSize=fs+'px';}});return true;};
+window.fitAll=()=>{document.querySelectorAll('#hook .ln,#ready,#ep').forEach((el)=>{let fs=parseFloat(getComputedStyle(el).fontSize);while(el.scrollWidth>el.clientWidth+1&&fs>28){fs-=2;el.style.fontSize=fs+'px';}});return true;};
 window.apply=async(s)=>{
   const bg=$('bg');
   if(s.bg&&s.bg!==curBg){curBg=s.bg;bg.src=s.bg;try{await bg.decode()}catch(e){}}
@@ -259,6 +407,7 @@ window.apply=async(s)=>{
   $('timer').querySelector('.n').textContent=s.timerN;
   set('ready',s.ready,'translateX(-50%) scale('+(0.9+0.1*s.ready)+')');
   set('wm',s.wm,null);
+  if($('ep'))set('ep',s.wm,null);
   const t=$('tap');t.style.opacity=s.tap;if(s.tapXY){t.style.left=s.tapXY.x+'px';t.style.top=s.tapXY.y+'px';t.style.transform='scale('+(0.6+0.6*(1-s.tap))+')';}
   $('flash').style.opacity=s.flash;
   $('end').style.display=s.end>0?'block':'none';$('end').style.opacity=s.end;
@@ -287,7 +436,7 @@ export function timeline(m, siteH) {
   return { realA, dA, dB, dC, dD, scroll, total: dA + dB + dC + dD };
 }
 
-async function compose(browser, cap, idea, outDir) {
+async function compose(browser, cap, idea, outDir, epN) {
   const { frames, m, sitePng, siteH } = cap;
   const tl = timeline(m, siteH);
   const A = frames.filter((f) => f.seg === 'A'), B = frames.filter((f) => f.seg === 'B');
@@ -295,7 +444,7 @@ async function compose(browser, cap, idea, outDir) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
   const sp = await ctx.newPage();
   const studio = path.join(outDir, 'studio.html');
-  fs.writeFileSync(studio, studioHTML(idea, m.secs));
+  fs.writeFileSync(studio, studioHTML(idea, m.secs, epN));
   await sp.goto(pathToFileURL(studio).href, { waitUntil: 'load' });
   await sp.evaluate(() => document.fonts.ready).catch(() => {});
   await sp.evaluate(() => { const r = document.getElementById('ready'); r.style.display = ''; window.fitAll(); r.style.display = 'none'; return true; });
@@ -387,7 +536,7 @@ async function upFetch(p, opts = {}) {
   return { status: r.status, ok: r.ok, j };
 }
 
-async function publish(mp4, cover, cap) {
+async function publish(mp4, cover, cap, PLATFORMS, epN) {
   const fd = new FormData();
   fd.append('user', UP_USER);
   for (const p of PLATFORMS) fd.append('platform[]', p);
@@ -404,10 +553,14 @@ async function publish(mp4, cover, cap) {
     if (page) { fd.append('facebook_page_id', String(page.id)); log('facebook page: ' + page.name); } else log('no facebook page found (' + pg.status + ')');
     fd.append('facebook_title', cap.fb); fd.append('facebook_description', cap.fb); fd.append('facebook_media_type', 'REELS');
   }
-  if (PLATFORMS.includes('tiktok')) fd.append('tiktok_title', cap.ig.slice(0, 2200));
+  if (PLATFORMS.includes('tiktok')) {
+    fd.append('tiktok_title', cap.ig.slice(0, 2200));
+    fd.append('privacy_level', 'PUBLIC_TO_EVERYONE'); fd.append('brand_organic_toggle', 'true'); // ترويج لمشروعنا نحن
+  }
   if (PLATFORMS.includes('youtube')) { fd.append('youtube_title', (cap.head + ' #shorts').slice(0, 100)); fd.append('youtube_description', cap.fb); }
   const reqId = 'omai-' + Date.now().toString(36) + randomBytes(3).toString('hex');
   fd.append('request_id', reqId); fd.append('async_upload', 'true');
+  if (epN) fd.append('external_id', EP_ID(epN)); // رقم الحلقة يُقرأ من سجلّ النشر في المرّة الجاية
   const r = await upFetch('/upload', { method: 'POST', body: fd, headers: { 'Idempotency-Key': reqId } });
   log('upload → ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 300));
   if (!r.ok && r.status !== 202) throw new Error('upload failed ' + r.status);
@@ -427,40 +580,79 @@ async function publish(mp4, cover, cap) {
 }
 
 // ───────── التشغيل ─────────
+// فحص خفيف قبل تثبيت المتصفّح: الجدول يوميّ، والحلقة تنزل إذا مرّ 36 ساعة على السابقة.
+async function gate() {
+  let go = true, why = 'manual run';
+  if (process.env.GITHUB_EVENT_NAME === 'schedule' && UP_KEY) {
+    try {
+      const st = await seriesState();
+      go = dueNow(st.lastAt, Date.now());
+      why = st.last ? 'last episode ' + st.last + ' ' + ((Date.now() - st.lastAt) / 36e5).toFixed(1) + 'h ago' : 'no episode yet';
+    } catch (e) { why = 'history unavailable (' + (e && e.message) + ')'; }
+  }
+  log('gate: go=' + (go ? 1 : 0) + ' · ' + why);
+  if (!go) gh('notice', 'no episode today (' + why + ') — next one tomorrow');
+  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, 'go=' + (go ? 1 : 0) + '\n');
+}
+
 async function main() {
   const ideas = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/social-bot-ideas.json'), 'utf8'));
-  const { idx, idea } = pickIdea(ideas, process.env.IDEA_INDEX, process.env.GITHUB_RUN_NUMBER, Math.floor(Date.now() / 864e5));
-  log('idea #' + idx + ': ' + idea.name);
+  const live = !DRY && !!UP_KEY;
+  // رقم الحلقة: آخر حلقة منشورة + 1 (سجلّ Upload-Post). في النشر الفعليّ لا نخمّن رقمًا.
+  let st = { last: 0, lastAt: 0, names: [] };
+  if (UP_KEY) {
+    try { st = await seriesState(); } catch (e) { if (live) throw new Error('cannot read episode number: ' + e.message); log('history: ' + e.message); }
+  }
+  // حماية ثانية للجدول (لو شغّله ملفّ تشغيل بلا خطوة الفحص): لا حلقتين خلال 36 ساعة.
+  if (live && process.env.GITHUB_EVENT_NAME === 'schedule' && !dueNow(st.lastAt, Date.now())) {
+    log('episode ' + st.last + ' went out ' + ((Date.now() - st.lastAt) / 36e5).toFixed(1) + 'h ago — next one tomorrow');
+    gh('notice', 'no episode today — next one tomorrow'); return;
+  }
+  const epN = Number.parseInt(process.env.EPISODE || '', 10) || st.last + 1;
+  const ep = epLabel(epN);
+  log('episode ' + epN + ' (' + ep.short + ') · published so far ' + st.last);
   fs.rmSync(OUT, { recursive: true, force: true });
   const fr = path.join(OUT, 'frames'); fs.mkdirSync(fr, { recursive: true });
   const acct = await botAccount();
   if (!acct.vip && !/^(1|true)$/i.test(process.env.ALLOW_WEAK || '')) {
     throw new Error('bot account "' + acct.user + '" is not VIP (tier=' + acct.tier + ') — add "' + BOT_USER + '" in Settings → owner panel → ⭐ VIP, then re-run');
   }
+  // الفكرة: من ترند اليوم، وإلّا من القائمة الثابتة (بدون تكرار المنشور).
+  let idea = null, idx = -1;
+  const fixed = String(process.env.IDEA_INDEX || '').trim() !== '';
+  if (!fixed && !/^list$/i.test(process.env.IDEA_SOURCE || '')) idea = await trendIdea(acct.token, st.names);
+  if (!idea) {
+    let k = epN - 1;
+    if (!fixed) for (let i = 0; i < ideas.length && st.names.includes(pickIdea(ideas, '', k, 0).idea.name); i++) k++;
+    ({ idx, idea } = pickIdea(ideas, process.env.IDEA_INDEX, k, 0));
+  }
+  log('idea ' + (idea.src === 'trend' ? 'trend «' + idea.trend + '» → ' : '#' + idx + ': ') + idea.name + ' · ' + idea.prompt);
+  gh('notice', ep.short + ' · ' + (idea.src === 'trend' ? 'trend: ' + idea.trend + ' → ' : 'list #' + idx + ': ') + idea.name);
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ executablePath: CHROME, args: CHROME ? ['--no-sandbox'] : [] });
   let res;
   try {
     const cap = await capture(browser, acct, idea, fr);
-    res = await compose(browser, cap, idea, OUT);
+    res = await compose(browser, cap, idea, OUT, epN);
     res.secs = cap.m.secs;
     res.codeLen = cap.codeLen;
   } finally { await browser.close(); }
   fs.rmSync(fr, { recursive: true, force: true });
-  const caption = buildCaption(idea, res.secs);
+  const caption = buildCaption(idea, res.secs, epN);
   fs.writeFileSync(path.join(OUT, 'caption.txt'), caption.ig + '\n');
-  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ idea: idx, name: idea.name, secs: res.secs, vip: acct.vip, codeLen: res.codeLen, seconds: +res.tl.total.toFixed(1) }, null, 2));
+  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ episode: epN, idea: idx, source: idea.src || 'list', trend: idea.trend || '', name: idea.name, prompt: idea.prompt, secs: res.secs, vip: acct.vip, codeLen: res.codeLen, seconds: +res.tl.total.toFixed(1) }, null, 2));
   // بوّابة الجودة: موقع هزيل (نموذج مجانيّ/ردّ قصير) لا يُنشر باسم البراند.
   const MIN_CODE = Number(process.env.MIN_CODE || 5000);
   if (res.codeLen < MIN_CODE && !/^(1|true)$/i.test(process.env.ALLOW_WEAK || '')) {
     throw new Error('quality gate: generated site too small (' + res.codeLen + ' < ' + MIN_CODE + ' chars) — not publishing');
   }
-  if (DRY || !UP_KEY) { log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); gh('notice', 'video ready (not published) · ' + idea.name + ' · build ' + res.secs + 's · site ' + res.codeLen + ' chars'); return; }
-  await publish(res.mp4, res.cover, caption);
+  if (!live) { log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); gh('notice', 'video ready (not published) · ' + ep.short + ' · ' + idea.name + ' · build ' + res.secs + 's · site ' + res.codeLen + ' chars'); return; }
+  const platforms = await resolvePlatforms();
+  await publish(res.mp4, res.cover, caption, platforms, epN);
   log('published ✓');
-  gh('notice', 'published ✓ ' + idea.name + ' · ' + res.secs + 's');
+  gh('notice', 'published ✓ ' + ep.short + ' · ' + idea.name + ' · ' + res.secs + 's · ' + platforms.join(','));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main().then(() => process.exit(0)).catch((e) => { const msg = e && e.message ? e.message : String(e); console.error('[social-bot] FAILED:', msg); gh('error', msg); process.exit(1); });
+  (process.argv.includes('--gate') ? gate() : main()).then(() => process.exit(0)).catch((e) => { const msg = e && e.message ? e.message : String(e); console.error('[social-bot] FAILED:', msg); gh('error', msg); process.exit(1); });
 }
