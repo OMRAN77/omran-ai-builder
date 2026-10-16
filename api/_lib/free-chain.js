@@ -326,7 +326,10 @@ async function completeFreeChain(opts) {
     try { r = await completeJson(spec.id, { env, messages: o.messages, max_tokens: o.max_tokens || 1500, temperature: typeof o.temperature === 'number' ? o.temperature : 0.5, timeoutMs: o.timeoutMs, fetchImpl: o.fetchImpl, now: o.now }); }
     catch (e) { errors.push(spec.id + ': ' + String((e && e.message) || e).slice(0, 120)); continue; }
     const text = r && r.ok && r.json && r.json.choices && r.json.choices[0] && r.json.choices[0].message && String(r.json.choices[0].message.content || '').trim();
-    if (text) return { ok: true, text, provider: spec.id, model: r.model, errors };
+    /* v-write-fix: «accept» اختياريّ — نصّ لا يقبله المستدعي (JSON مقطوع لأنّ موديلًا مفكّرًا صرف ميزانيّته في التفكير)
+       لا يوقف السلسلة؛ يُسجَّل «rejected» ويُجرَّب المزوّد التالي بدل أن يرجع للمستخدم «تعذّرت الكتابة». */
+    if (text && (typeof o.accept !== 'function' || o.accept(text))) return { ok: true, text, provider: spec.id, model: r.model, errors };
+    if (text) { errors.push(spec.id + ': rejected (' + String((r.json.choices[0].finish_reason) || '?') + ', ' + text.length + ' chars)'); continue; }
     errors.push(spec.id + ': ' + (r && r.ok ? 'empty' : ('http ' + (r && r.status) + ' ' + String((r && r.body) || '').replace(/[A-Za-z0-9_-]{24,}/g, '…').slice(0, 120))));
   }
   return { ok: false, text: '', provider: null, model: null, errors };
