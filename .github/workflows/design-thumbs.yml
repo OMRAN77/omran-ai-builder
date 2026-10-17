@@ -1,40 +1,76 @@
-# بطاقات الديكور: معاينة كل نمط وكل نوع مكان عبر خطّ الإنتاج النصّي،
-# تصغير webp، ودفع لفرع بوت لتُراجع وتُلتزم.
-name: Design thumbs
+name: Thumbs paid (design-thumbs.yml — الاسم القديم مسجَّل عند GitHub فيُستدعى به)
+
+# صور التطبيق الثابتة بمولّد الموقع المدفوع (gpt-image-2.5 / Gemini) بأعلى دقّة وبلا نصّ داخل الصورة — قرار المالك ١٧ أكتوبر
+# («وقف pollinations وReal-ESRGAN نهائيًّا… أنا موافق على التكلفة»). WebP q90 بالدقّة الأصليّة، تُدفع لفرع bot/paid-thumbs لتُراجع مكبّرة قبل الدمج.
 
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'styles | places | all'
+        description: 'poster | upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio'
+        required: true
+        default: 'opts'
+      skip_existing:
+        description: 'توليد الناقص فقط (ما له ملفّ في assets يُترك) — لإكمال تشغيلة فشل بعضها'
         required: false
-        default: 'all'
+        default: 'no'
 
 permissions:
   contents: write
 
+concurrency:
+  group: thumbs-paid-${{ inputs.mode }}
+  cancel-in-progress: false
+
 jobs:
   thumbs:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 190
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Generate style and place previews on production
-        run: node scripts/design-thumbs.mjs "https://omran-ai-builder.vercel.app" "${{ github.event.inputs.mode }}"
-      - name: Resize to webp cards
-        run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs
-      # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
-      - name: Push cards to bot branch
+          node-version: 24
+      - name: Install sharp
+        run: npm i --no-save sharp
+      - name: Generate on the paid engines
+        timeout-minutes: 175
+        env:
+          MODE: ${{ inputs.mode }}      # عبر البيئة لا داخل السطر: يمنع حقن الأوامر
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          THUMBS_BUDGET_MIN: 170
+          THUMBS_SKIP_EXISTING: ${{ inputs.skip_existing == 'yes' && '1' || '0' }}
+        run: node scripts/thumbs-paid.mjs "$MODE"
+      - name: Push to bot branch
+        shell: bash
+        env:
+          MODE: ${{ inputs.mode }}
         run: |
-          mkdir -p assets/design/styles assets/design/opts
-          [ -d thumbs/dstyle ] && cp -r thumbs/dstyle/. assets/design/styles/ || true
-          if [ -d thumbs/dplace ]; then for f in thumbs/dplace/*.webp; do cp "$f" "assets/design/opts/place-$(basename "$f")"; done; fi
-          git config user.name "github-actions[bot]"
+          set -euo pipefail
+          shopt -s nullglob
+          BRANCH=bot/paid-thumbs
+          git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B bot/design-thumbs
-          git add assets/design
-          git commit -m "أصول: بطاقات الديكور (أنماط وأماكن)"
-          git push -f origin bot/design-thumbs
+          git fetch origin "$BRANCH" --depth=1 || true
+          if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then git checkout -B "$BRANCH" "origin/$BRANCH"; else git checkout -B "$BRANCH"; fi
+          # بعد الانتقال للفرع (لا قبله): الملفّات المستبدَلة متتبَّعة ونسخها قبل checkout يُفشله.
+          copy() { mkdir -p "$2"; for f in thumbs/$1/*.webp; do cp "$f" "$2/$(basename "$f")"; done; }
+          copy dopts assets/design/decor-opts
+          copy dstyle assets/design/styles
+          copy dplace assets/design/opts
+          for g in women men kids category occasion season extras; do copy "$g" "assets/fashion/looks/$g"; done
+          copy studioopt assets/studio/options
+          copy upart assets/upload-art
+          copy poster assets/decor/chips
+          git add -A -- assets
+          if git diff --cached --quiet; then echo "لا جديد"; exit 0; fi
+          git commit -m "أصول: صور بمولّد الموقع المدفوع بأعلى دقّة — $MODE"
+          for i in 1 2 3 4 5; do
+            git push origin "$BRANCH" && exit 0
+            git pull --rebase origin "$BRANCH" || true
+            sleep $((RANDOM % 10 + 5))
+          done
+          echo "فشل الدفع بعد ٥ محاولات" && exit 1

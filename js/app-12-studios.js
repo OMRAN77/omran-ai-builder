@@ -119,26 +119,26 @@ async function __safeJson(res){
   const ideaGo = document.getElementById('designAiIdeaGo');
   const ideaTitle = document.getElementById('designAiIdeasTitle');
   /* v-decor-poster: البوستر نفسه هو الأزرار — كل غرفة نقطة نقر، والمخ = أعطني أفكارًا */
-  const POSTER_SRC = 'assets/decor/chips/001.jpg';
+  /* v-poster-notext (أمر المالك ١٧ أكتوبر «أولّده»): بوستر مولَّد بمولّد الموقع المدفوع بلا أيّ نصّ، 1640×1230 (ضعفا عرض العرض ٨٢٠)،
+     الغرف الـ١٢ شبكة ٤×٣ والمواضع مقيسة بالشبكة المئويّة من الصورة نفسها (scratchpad grid.mjs). الأسماء HTML فوقه لكلّ اللغات. */
+  const POSTER_SRC = 'assets/decor/chips/poster.webp';
   const POSTER_HOT = {
-    restaurant: [4.3, 20.5, 21.0, 24.0],
-    cafe:       [22.5, 15.5, 19.0, 24.0],
-    bedroom:    [40.7, 12.0, 20.0, 24.0],
-    majlis:     [60.5, 14.0, 18.5, 25.0],
-    living:     [76.5, 22.0, 21.0, 23.0],
-    kitchen:    [20.0, 38.5, 18.5, 21.5],
-    office:     [63.7, 39.0, 18.0, 22.0],
-    kids:       [80.5, 42.5, 19.0, 21.5],
-    shop:       [6.0, 58.0, 17.5, 24.0],
-    bath:       [23.8, 59.8, 17.5, 22.5],
-    entrance:   [60.4, 58.8, 18.5, 23.5],
-    garden:     [78.5, 60.0, 19.5, 22.0]
+    restaurant: [4.5, 5.0, 21.5, 29.0],
+    cafe:       [27.3, 5.0, 21.5, 29.0],
+    bedroom:    [50.3, 5.0, 22.5, 29.0],
+    majlis:     [74.0, 5.0, 22.5, 29.0],
+    living:     [4.5, 36.0, 21.5, 29.0],
+    kitchen:    [27.3, 36.0, 21.5, 29.0],
+    office:     [50.3, 36.0, 22.5, 29.0],
+    kids:       [74.0, 36.0, 22.5, 29.0],
+    shop:       [4.5, 66.5, 21.5, 29.0],
+    bath:       [27.3, 66.5, 21.5, 29.0],
+    entrance:   [50.3, 66.5, 22.5, 29.0],
+    garden:     [74.0, 66.5, 22.5, 29.0]
   };
-  const POSTER_BRAIN = [41.5, 35.8, 19.0, 22.5];
   function buildIdeaChips(){
     if(!ideaChips || !placeEl) return;
     ideaChips.innerHTML = '';
-    const isAr = ((document.documentElement.lang || 'ar') + '').indexOf('ar') === 0;
 
     function optName(o){ return (window.__optT ? window.__optT(o) : o.textContent).trim(); }
 
@@ -156,10 +156,8 @@ async function __safeJson(res){
     }
 
     const wrap = document.createElement('div');
-    /* v-photo-only: om3-skip — مصنّف الألوان الثلاثة كان يقرأ المنطقة في منتصف انتقال المرور (مسحة ذهبيّة .15) فيسوّدها، فتبقى كلّ غرفة
-       لُمست مربّعًا أسود بإطار ذهبيّ فوق البوستر (لقطة المالك «أفكار بلا صورة»). */
-    wrap.className = 'om3-skip';
-    wrap.style.cssText = 'position:relative; width:100%; max-width:820px; margin:0 auto; line-height:0;';
+    wrap.style.cssText = 'position:relative; width:100%; max-width:820px; margin:0 auto; line-height:0; container-type:inline-size;';
+    wrap.className = 'om3-skip'; /* v-three-colors: أزرار المواقع شفّافة فوق الصورة — لا تعبئة ولا حدّ (لقطة المالك ١٧ أكتوبر) */
     const poster = document.createElement('img');
     poster.src = POSTER_SRC;
     poster.alt = ''; poster.loading = 'lazy';
@@ -186,22 +184,19 @@ async function __safeJson(res){
       const name = optName(o);
       const b = hotBtn(box, name, false);
       b.dataset.place = o.value;
-      if(!isAr){
+      /* v-poster-notext: البوستر الجديد بلا أيّ نصّ مطبوع (قواعد الصور) — الاسم HTML لكلّ اللغات والعربيّة معها */
+      {
         const cap = document.createElement('span');
         cap.textContent = name;
-        cap.style.cssText = 'position:absolute; left:50%; bottom:5%; transform:translateX(-50%); white-space:nowrap;' +
-          ' font-size:11px; font-weight:700; color:#fff; background:rgba(0,0,0,.75); padding:2px 9px; border-radius:999px;';
+        cap.style.cssText = 'position:absolute; left:50%; bottom:3%; transform:translateX(-50%); white-space:nowrap; max-width:96%; overflow:hidden; text-overflow:ellipsis;' +
+          ' font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
         b.appendChild(cap);
       }
       b.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
       wrap.appendChild(b);
     });
 
-    const brainName = bT('أعطني أفكارًا', 'Give me ideas');
-    const brain = hotBtn(POSTER_BRAIN, brainName, true);
-    brain.onclick = function(){ if(ideaGo && typeof ideaGo.onclick === 'function') ideaGo.onclick(); };
-    wrap.appendChild(brain);
-
+    /* لا «مخ» في البوستر الجديد — زرّ «أعطني أفكارًا» الحقيقيّ (designAiIdeaGo) يبقى تحت البوستر */
     ideaChips.appendChild(wrap);
 
      if(ideaTitle){
@@ -210,9 +205,11 @@ async function __safeJson(res){
       ideaTitle.textContent = '💡 ' + (__g || bT('أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد', 'Ideas without a photo — tap a place in the image or describe what you want'));
     }
     if(ideaText) ideaText.placeholder = bT('مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
-    if(ideaGo){ ideaGo.textContent = '✨ ' + brainName; ideaGo.style.display = 'none'; }
+    if(ideaGo){ ideaGo.textContent = '✨ ' + bT('أعطني أفكارًا', 'Give me ideas'); ideaGo.style.display = ''; } /* v-poster-notext: الزرّ ظاهر — لا مخ في البوستر */
   }
   buildIdeaChips();
+  /* v-poster-notext: الأسماء فوق البوستر HTML فتُعاد عند تبديل اللغة (applyLanguage يكتب html.lang) */
+  try{ new MutationObserver(function(){ buildIdeaChips(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); }catch(e){ /* guard-ok — المتصفّحات القديمة: تبقى لغة التحميل */ }
   /* v-decor-gallery: معرض صور حقيقية (عشرات) من الويب — يفتح فورًا، والتوليد بالذكاء زرّ منفصل */
   const ideaStatusEl = document.getElementById('designAiIdeaStatus');
   const ideaGallery = document.getElementById('designAiIdeaGallery');
@@ -559,7 +556,7 @@ async function __safeJson(res){
       const pal = (typeof window.__decorPal === 'function') ? window.__decorPal('designAiStyle', v) : '';
       if(pal) card.style.background = pal;
       const img = document.createElement('img');
-      img.src = 'assets/design/styles/' + v + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
+      img.src = 'assets/design/styles/' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
       img.onerror = function(){ img.remove(); };
@@ -1586,7 +1583,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
        فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
        التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
-    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
@@ -1609,7 +1606,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const opt = fashionOptFor(v);
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
-          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=2',
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=3',
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
       }).filter(Boolean),

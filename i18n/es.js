@@ -1096,6 +1096,7 @@ Object.assign(I18N["es"], {
     designDropTitle: "Sube una foto de tu habitación",
     designDropHint: "Asegúrate de que la foto sea nítida y de buena calidad",
     studioPlateLabel: "Estilo",
+    uploadPlateBtn: "Elegir archivo",
     fashionDropHint: "De pies a cabeza · buena iluminación",
     agentSectionTitle: "🤖 El agente",
     agentSectionDesc: "Modo agente: planifica y ejecuta por sí solo — construye, edita y prueba el código antes de entregarlo, consulta fuentes en vivo y sigue trabajando aunque cierres la página. Actívalo y escribe tu solicitud en el chat.",

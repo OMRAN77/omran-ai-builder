@@ -39,11 +39,17 @@ html:not([data-mode="light"]):not(.skin) #cxIdeas{background:transparent !import
 /* ── v-three-colors (المالك ١٦ أكتوبر: «فقط ٣ ألوان» — «الحدود كلّها ذهبي»، «عند التضليل عليها: الحدّ يصير رماديّ أفتح»):
    الأصناف يضعها js/app-41-three-colors.js على الحدود الظاهرة وتعبئات الصناديق داخل الأدوات. ── */
 /* المالك بلقطة الإعدادات: «هذي الخطوط شيلها كلّها» — فواصل صفوف الإعدادات */
+html:not([data-mode="light"]):not(.skin) #portraitStyleSheetHeader, /* لقطة المالك ١٧ أكتوبر: «الخطوط الزايدة» — خطّ رأس ورقة أنماط الصور */
 html:not([data-mode="light"]):not(.skin) .settingsNavRow,
 html:not([data-mode="light"]):not(.skin) .settingsNavGroup .settingsNavRow{border-bottom:0 !important;}
-html:not([data-mode="light"]):not(.skin) .om3-line{border-color:rgba(212,175,55,.6) !important;}
+/* v-no-lines (المالك: «شيل كلّ الخطوط… الذهبي بس لما أمرّ عليها… والخلفيّات لونين أسود بس: #000 و#101013»):
+   الحدود شفّافة (مكانها باقٍ فلا يقفز شيء)، والذهبيّ عند المرور والتركيز والاختيار فقط. */
+html:not([data-mode="light"]):not(.skin) .om3-line{border-color:transparent !important;}
 html:not([data-mode="light"]):not(.skin) .om3-hot.om3-line:hover,
 html:not([data-mode="light"]):not(.skin) .om3-line:focus-visible,
 html:not([data-mode="light"]):not(.skin) .om3-line:is(input,textarea,select):focus,
-html:not([data-mode="light"]):not(.skin) .om3-line:is(.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:#c9c9c9 !important;}
-html:not([data-mode="light"]):not(.skin) .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]){background:#000 !important;}
+html:not([data-mode="light"]):not(.skin) .om3-line:is(.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:rgba(212,175,55,.85) !important;}
+/* الصناديق داخل الأدوات بالتناوب: فوق نافذة #000 تعبئة #101013، وداخلها #000، وداخل ذلك #101013 — فتبين بلا خطوط */
+html:not([data-mode="light"]):not(.skin) .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]){background:#101013 !important;}
+html:not([data-mode="light"]):not(.skin) .om3-fill .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]){background:#000 !important;}
+html:not([data-mode="light"]):not(.skin) .om3-fill .om3-fill .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]){background:#101013 !important;}

@@ -87,6 +87,10 @@
           else add(r.target, true); /* style تغيّر (تبويب، حالة) */
         }
       }).observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['style'] });
+      /* لقطة المالك ١٧ أكتوبر (مربّعات سوداء بحدّ ذهبيّ فوق ملصق الديكور): زرّ شفّاف يتلوّن عند المرور بانتقال .15s — تغيّر style
+         يُقرأ في منتصف الانتقال (خلفيّة .05 وحدّ ذهبيّ باهت) فيُصنَّف تعبئةً وحدًّا ويعلق أسود بعد مغادرة الفأرة. نعيد التصنيف
+         عند انتهاء كلّ انتقال فتُقرأ الحالة الساكنة. */
+      document.addEventListener('transitionend', function(e){ if(e.target && e.target.nodeType === 1) add(e.target, true); }, true);
     }catch(e){ __swallow(e, "three-colors:observe"); }
   }
   window.__om3Mark = function(root){ add(root || document.body); };

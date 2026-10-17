@@ -82,8 +82,8 @@ test('٥. الأوسمة مرفوعة والحزمة مبنيّة', () => {
   const html = read('index.html');
   const tag = (s, name) => { const i = s.indexOf(name); assert.ok(i >= 0, name); return Number((/v=(\d+)/.exec(s.slice(i, i + 40)) || [])[1] || 0); };
   assert.ok(tag(html, 'css/modules.css') >= 684, 'modules.css');
-  assert.ok(tag(html, '/js/partials-core.js') >= 663, 'partials-core.js');
-  assert.ok(tag(html, '/js/design-sels.js') >= 574, 'design-sels.js');
+  assert.ok(tag(html, '/js/partials-core.js') >= 664, 'partials-core.js');
+  assert.ok(tag(html, '/js/design-sels.js') >= 575, 'design-sels.js');
   assert.ok(tag(html, '/js/design-gen.js') >= 613, 'design-gen.js');
   assert.ok(tag(html, '/js/video.js') >= 450, 'video.js');
   const b = read('js/app.bundle.js');

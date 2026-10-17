@@ -34,8 +34,12 @@ test('٢. الحدّ: الظاهر الموحَّد الجوانب فقط — ل
 
 test('٣. الألوان الثلاثة في CSS للوضع الأسود وحده، والصلاة القادمة «مختارة»، واستوديو الإعلانات أسود', () => {
   const css = read('css/أدوات-أسود.css');
-  assert.ok(css.includes('html:not([data-mode="light"]):not(.skin) .om3-line{border-color:rgba(212,175,55,.6) !important;}'), 'ذهبيّ');
-  assert.ok(css.includes('.om3-hot.om3-line:hover') && css.includes('{border-color:#c9c9c9 !important;}'), 'رماديّ فاتح عند المرور والاختيار');
+  // v-no-lines (المالك: «شيل كلّ الخطوط… الذهبي بس لما أمرّ عليها»، «الخلفيّات لونين أسود بس: #000 و#101013»)
+  assert.ok(css.includes('html:not([data-mode="light"]):not(.skin) .om3-line{border-color:transparent !important;}'), 'بلا خطوط');
+  assert.ok(css.includes('.om3-hot.om3-line:hover') && css.includes('[aria-checked="true"]){border-color:rgba(212,175,55,.85) !important;}'), 'ذهبيّ عند المرور والاختيار فقط');
+  assert.ok(!/#c9c9c9|212,175,55,\.6\)/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), 'لا رماديّ ولا ذهبيّ دائم');
+  const fills = [...css.matchAll(/\.om3-fill[^{]*\{background:(#[0-9a-f]+) !important;\}/gi)].map((m) => m[1]);
+  assert.deepEqual(fills, ['#101013', '#000', '#101013'], 'تناوب الأسودين');
   assert.ok(Number((read('index.html').match(/css\/أدوات-أسود\.css\?v=(\d+)/) || [])[1]) >= 2, 'وسم الكاش مرفوع');
   assert.ok(read('js/app-26-qibla.js').includes("'<div' + (isNext ? ' class=\"sel\"' : '') + ' style="), 'الصلاة القادمة مختارة');
   const ad = read('ad-studio.html');
