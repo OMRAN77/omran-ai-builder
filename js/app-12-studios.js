@@ -2,7 +2,12 @@
 // يمنع خطأ «Request Entity Too Large» (413) في كل مودالات الاستوديو.
 function __compressImg(file, onDone, MAX){
   MAX = MAX || 1024;
+  if(file && !file.__omranNorm && (/hei[cf]/i.test(file.type || '') || /\.hei[cf]$/i.test(file.name || '')) && typeof omranNormalizeImageFile === 'function'){
+    omranNormalizeImageFile(file).then(function(f){ try{ f.__omranNorm = true; }catch(e){ /* guard-ok */ } __compressImg(f, onDone, MAX); }, function(){ onDone(''); });
+    return;
+  }
   const reader = new FileReader();
+  reader.onerror = function(){ onDone(''); };
   reader.onload = function(){
     const img = new Image();
     img.onload = function(){
@@ -13,6 +18,7 @@ function __compressImg(file, onDone, MAX){
       c.getContext('2d').drawImage(img,0,0,w,h);
       onDone(c.toDataURL('image/jpeg',0.85));
     };
+    img.onerror = function(){ onDone(''); };
     img.src = String(reader.result||'');
   };
   reader.readAsDataURL(file);
@@ -99,6 +105,7 @@ async function __safeJson(res){
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
     __compressImg(file, function(dataUrl){
+      if(!dataUrl){ selectedBase64 = ''; sourcePreview.style.display = 'none'; return; }
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
@@ -270,7 +277,8 @@ async function __safeJson(res){
 
   btnGenerate.onclick = async () => {
     const idea = ideaText ? ideaText.value.trim() : '';
-    const placeVal = (placeEl ? placeEl.value : '') || (idea && !selectedBase64 ? 'custom' : '');
+    const photoOn = !!(selectedBase64 && sourcePreview && sourcePreview.style.display !== 'none'); // v-tool-drop: صورة المستخدم الظاهرة تُرسل — مكان من الملصق قبلها كان يُسقطها بصمت
+    const placeVal = photoOn ? '' : ((placeEl ? placeEl.value : '') || (idea && !selectedBase64 ? 'custom' : ''));
     const notesEl = document.getElementById('designAiNotes');
     if(!selectedBase64 && !placeVal){
       setStatus(t('designAiNeedPick'));
@@ -1287,6 +1295,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
     __compressImg(file, function(dataUrl){
+      if(!dataUrl){ selectedBase64 = ''; sourcePreview.style.display = 'none'; return; }
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
@@ -1877,6 +1886,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
     __compressImg(file, function(dataUrl){
+      if(!dataUrl){ selectedBase64 = ''; sourcePreview.style.display = 'none'; return; }
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
