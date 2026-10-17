@@ -16116,7 +16116,11 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
   /* v-owner-solo-all (المالك: «كل واحد بروحه»): المستدعون بلا solo (البناء بالصوت، فاحص التطبيق، أدوات الاستوديوهات…) كانوا للمالك
      على سلسلة مجموعة المزوّد ثمّ كلود/Gemini/GPT/Groq مع تحويل صامت بعد الرفض. للمالك الآن مزوّده المختار وحده، ورسالة النظام
      الأولى عندهم تعليمات المهمّة نفسها (لا نظام التطبيق الثابت) فتبقى. غير المالك كما كان. */
-  const __ownAuto = !(opts && opts.solo) && typeof omranOwnerUi === 'function' && omranOwnerUi();
+  /* v-religion-chain (المالك ١٧ أكتوبر عن «التفسير الديني»: «اريده نفس قبل… الديانات كلها نفس قبل»): taskPrompt = رسالة النظام
+     الأولى موجّه الأداة وهو تعليماتها كلّها. المالك يأخذ فيها السلسلة القديمة نفسها (قبل v-owner-solo-all) — كان مساره الجديد مسار
+     المحادثة بمنهج المستودع وخريطته فوق الموجّه — ولا يُحذف الموجّه في مسار Kimi (كان يُنزع ظنًّا أنّه نظام التطبيق الثابت). */
+  const __task = !!(opts && opts.taskPrompt);
+  const __ownAuto = !(opts && opts.solo) && !__task && typeof omranOwnerUi === 'function' && omranOwnerUi();
   const __solo = !!(opts && opts.solo) || __ownAuto;
   // 🧹 v308: تعقيم نهائي — أي base64 عملاق داخل نص أي رسالة يُستبدل بعلامة
   // قصيرة قبل الإرسال (الصور المرفقة الحقيقية تبقى في حقل images المنفصل).
@@ -16163,7 +16167,9 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
       if(__viaChat && opts && opts.toolsErr) throw opts.toolsErr; // v-owner-solo: مسار الأدوات لهذا المزوّد فشل للتوّ — لا طلب ثانٍ يكرّر أدواته (تفويض/رفع/صورة)
       const reply = __viaChat
         ? (await window.callChatWithTools(messages.filter((m, i) => __ownAuto || !(i === 0 && m && m.role === 'system')), __od, providerKey, { noTools: true })).reply
-        : await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
+        : await __idleGuard((__task && providerKey === 'kimi' && typeof window.callChatWithTools === 'function')
+            ? window.callChatWithTools(messages, __od, 'kimi', { noTools: true }).then(function(r){ return r && r.reply; }) // v-religion-chain: الموجّه يصل Kimi، بلا أدوات المستودع (كمسار المالك القديم)
+            : callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
       // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
       if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }
       if(!__solo && isRefusalReply(reply) && refusalTries < 2){
@@ -33944,9 +33950,35 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     statusEl.textContent = text || '';
   }
 
+  /* v-religion-paint (لقطة المالك ١٧ أكتوبر: «##» و«**» ظاهرة في النتيجة): الردّ كان textContent خامًا — يُرسم الآن بعارض
+     المحادثة نفسه (عناوين وخطّ عريض وقوائم)، حيًّا أثناء البثّ ثمّ رسمًا نهائيًّا. */
+  function paint(text, final){
+    try{
+      if(!final && typeof renderStreamingAssistant === 'function'){ renderStreamingAssistant(resultEl, text); return; }
+      resultEl.classList.remove('msg-streaming');
+      resultEl._omStreamHead = null; resultEl._omStreamHeadEl = null; resultEl._omStreamTailEl = null;
+      if(typeof buildSpokenWordSpans === 'function') buildSpokenWordSpans(resultEl, text);
+      else resultEl.textContent = text;
+    }catch(e){ __swallow(e, 'religion:paint'); resultEl.textContent = text; }
+  }
+
+  /* v-religion-race (فحص ١٧ أكتوبر): تغيير التبويب أثناء الكتابة كان يُكمل الطلب القديم في صندوق مخفيّ، فيكتب التبويب الجديد
+     «تم التفسير» بلا شيء وزرّ «فسّر» معطّل حتّى ينتهي. لكلّ طلب رقم: تغيير التبويب أو الإغلاق يلغيه (إشارة إيقاف خاصّة به،
+     لا إشارة المحادثة) ويتجاهل ما يصل منه. */
+  let run = 0, ctl = null;
+  function stopRun(){
+    run++;
+    if(ctl){ try{ ctl.abort(); }catch(e){ __swallow(e, 'religion:abort'); } ctl = null; }
+    btnGenerate.disabled = false;
+  }
+  function closeModal(){ stopRun(); modal.style.display = 'none'; }
+
   function setTool(next){
+    stopRun();
     tool = next;
-    tabsWrap.querySelectorAll('.religionTabBtn').forEach(b => b.classList.toggle('active', b.dataset.tool === next));
+    /* v-religion-tabs («التبويبات… نفس فسّر بالضبط»، بلا فرق للمختار): علامة المختار relOn لا active — مصنّف الألوان الثلاثة
+       يستثني .active من تعبئة الأسود فيبقى المختار بخلفيّة أفتح من «فسّر» */
+    tabsWrap.querySelectorAll('.religionTabBtn').forEach(b => b.classList.toggle('relOn', b.dataset.tool === next));
     const labelKey = 'religionInputLabel' + next.charAt(0).toUpperCase() + next.slice(1);
     const placeholderKey = 'religionInputPlaceholder' + next.charAt(0).toUpperCase() + next.slice(1);
     if(inputLabelEl) inputLabelEl.textContent = t(labelKey);
@@ -33962,37 +33994,64 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     setTool(b.dataset.tool);
   });
 
+  /* v-religion-field (المالك ١٧ أكتوبر: مكان الكتابة «مايكون مربع… ويكون علو نفس المستوى»): الحقل سطر واحد بارتفاع «فسّر» والتبويبات،
+     ويطول مع النصّ الطويل حتّى ١٥٠px (كصندوق المحادثة)؛ والميكروفون دائرة بالارتفاع نفسه. */
+  const micBtn = modal.querySelector('.mini-mic-btn');
+  function fitInput(){
+    try{
+      const min = btnGenerate.offsetHeight || 33;
+      inputEl.style.height = min + 'px';
+      if(inputEl.scrollHeight > inputEl.clientHeight + 1){
+        const frame = inputEl.offsetHeight - inputEl.clientHeight; // الحدّ — الارتفاع border-box
+        inputEl.style.height = Math.min(inputEl.scrollHeight + frame, 150) + 'px';
+      }
+      if(micBtn){ micBtn.style.width = min + 'px'; micBtn.style.height = min + 'px'; }
+    }catch(e){ __swallow(e, 'religion:fit'); }
+  }
+  inputEl.addEventListener('input', fitInput);
+
   btnOpen.addEventListener('click', () => {
     modal.style.display = 'flex';
     setTool(tool);
+    fitInput();
     if(typeof closeHeaderMenu === 'function') closeHeaderMenu();
   });
-  btnClose.addEventListener('click', () => { modal.style.display = 'none'; });
-  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+  btnClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
 
   btnGenerate.addEventListener('click', async () => {
     const query = (inputEl.value || '').trim();
     if(!query){ setStatus(t('religionNeedInput')); return; }
+    stopRun();
+    const my = run;
+    ctl = (typeof AbortController === 'function') ? new AbortController() : null;
     btnGenerate.disabled = true;
     setStatus(t('religionGenerating'));
     resultEl.style.display = 'block';
     resultEl.textContent = '';
+    let done = false; // مزوّد تجاوزه حارس الخمول قد يكمل البثّ بعد الجواب أو الخطأ — لا يُرسم فوقهما
     try{
       const messages = [
         { role: 'system', content: SYSTEM_PROMPTS[tool] },
         { role: 'user', content: query },
       ];
-      const onDelta = (partial) => { resultEl.textContent = partial; };
+      const onDelta = (partial) => { if(my === run && !done) paint(partial); };
+      if(ctl) onDelta.__signal = ctl.signal;
       /* v-religion-rescue: كانت مربوطة بمزوّد واحد (Gemini) — أول 429 يميت
          الأداة كلها (لقطة المالك). الآن سلسلة الاحتياط الكاملة: أي مزوّد
-         مشحون واحد يبقيها حيّة. */
-      const res = await callAIWithFallback(messages, onDelta);
-      resultEl.textContent = (res && res.reply) || '';
+         مشحون واحد يبقيها حيّة.
+         v-religion-chain (المالك ١٧ أكتوبر: «اريده نفس قبل… الديانات كلها نفس قبل ومااريد ازرار زياده»): taskPrompt = موجّه
+         التبويب هو التعليمات كلّها — السلسلة القديمة نفسها حتّى للمالك، ولا يُحذف الموجّه في أيّ مسار (Kimi). */
+      const res = await callAIWithFallback(messages, onDelta, null, { taskPrompt: true });
+      if(my !== run) return;
+      done = true;
+      paint((res && res.reply) || '', true);
       setStatus(t('religionDone'));
     }catch(e){
+      if(my !== run) return;
       setStatus(t('religionError') + (e && e.message ? (': ' + e.message) : ''));
     }finally{
-      btnGenerate.disabled = false;
+      if(my === run){ done = true; btnGenerate.disabled = false; ctl = null; }
     }
   });
 })();

@@ -82,7 +82,7 @@ test('٤. ثلاثة تبويبات فقط (آية، حديث، أحلام) ول
   const core = fs.readFileSync(path.join(root, 'js/partials-core.js'), 'utf8');
   const tabsAt = core.indexOf('id="religionTabs"');
   const tabsHtml = core.slice(tabsAt, core.indexOf('</div>', tabsAt));
-  const tools = [...tabsHtml.matchAll(/class="btn religionTabBtn[^"]*" data-tool="([a-z]+)"/g)].map((m) => m[1]);
+  const tools = [...tabsHtml.matchAll(/class="btn (?:primary )?religionTabBtn[^"]*" data-tool="([a-z]+)"/g)].map((m) => m[1]); /* v-religion-tabs: التبويبات بصنف «فسّر» */
   assert.deepEqual(tools, ['verse', 'hadith', 'dream']);
   const keys = [...PROMPTS.matchAll(/\n\s{4}([a-z]+): '/g)].map((m) => m[1]);
   assert.deepEqual(keys, ['verse', 'hadith', 'dream'], 'SYSTEM_PROMPTS مطابق للتبويبات — لا تبويب بلا موجّه ولا موجّه بلا تبويب');
