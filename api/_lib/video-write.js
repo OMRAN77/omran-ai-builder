@@ -19,18 +19,41 @@ function speechBudget(sec) { return Math.max(4, Math.floor(sec * WORDS_PER_SEC))
 function sceneCount(sec) { return sec <= 6 ? 1 : sec <= 12 ? 2 : sec <= 24 ? 3 : 5; }
 const KINDS = ['story', 'ad', 'dialogue', 'scene'];
 
+/* v-emirati (المالك ١٧ أكتوبر بعد فيديوَي الموقع: «الي اريده بي اللغه الامارتيه»): الراوي خرج خليطًا — «محتاج… أكتب
+   (بدل تكتب)… وسهولة!» و«وهو بيطير… زي النهار» (مصريّ/شاميّ). بالعربيّ: قواعد إماراتيّة صريحة مع مثال، وفاحص كلمات
+   دخيلة واضحة (لا تُقال في الإمارات) — الجواب الذي فيه منها يُرفض فتنتقل السلسلة للمزوّد التالي؛ وإن لم يسلم أحد
+   يرجع أوّل جواب مقروء (أفضل من «تعذّرت الكتابة»). */
+const EMIRATI_RULES = [
+  'ARABIC = PURE EMIRATI (UAE) DIALECT ONLY, as Emiratis in Dubai/Abu Dhabi speak it. No Egyptian, Levantine, Iraqi or Najdi words.',
+  'Use Emirati words: شو (what), وايد (very/a lot), الحين (now), تبا/تبي (you want), عسب (so that), هني (here), زين، حلو، خلاص، يالله، ترا، بعد، مب (not), ليش، جي/جذي (like this), مثل (like).',
+  'NEVER use: عايز، عاوز، كده، كدا، دلوقتي، إزاي، ليه، مش، هيك، كتير، بدّي، شلون، زي، اوي. Present tense without the Egyptian/Levantine بـ (say «وهو يطير» not «وهو بيطير»); «مرة» never means "very" (say وايد).',
+  'Talk TO the viewer in second person (تكتب، تختار، تضغط) — not «أكتب» when you mean "you write". Every phrase must be a real, meaningful Emirati phrase; no invented words.',
+  'Example of the right tone: «تبا فيديو بسرعة؟ تكتب الوصف، تختار المدة والشكل، وتضغط إنشاء… وفي دقايق الفيديو جاهز!»',
+].join('\n');
+const AR_RE = /[\u0600-\u06FF]/;
+function isArabic(s) { return AR_RE.test(String(s || '')); }
+const NON_EMIRATI = ['عايز', 'عايزة', 'عاوز', 'عاوزة', 'كده', 'كدا', 'دلوقتي', 'إزاي', 'ازاي', 'ليه', 'مش', 'هيك', 'كتير', 'كتيرة', 'بدّي', 'بدي', 'شلون', 'زي', 'اوي', 'أوي', 'خالص', 'بيطير', 'بيكتب', 'بيعمل', 'بنعمل', 'هنعمل', 'حنعمل', 'عشان كده'];
+const NON_EMIRATI_RE = new RegExp('(?:^|[\\s،,.!؟?:؛"\'«»()\\-…])و?(?:' + NON_EMIRATI.join('|') + ')(?=$|[\\s،,.!؟?:؛"\'«»()\\-…])');
+/** كلمة دخيلة واضحة في الكلام المنطوق (الراوي والأسطر والعنوان) — المشهد وصف للمولّد فلا يُفحص */
+function nonEmirati(r) {
+  if (!r) return false;
+  const spoken = [r.narration, r.onScreen].concat((r.lines || []).map((l) => l && l.text)).filter(Boolean).join(' ');
+  return NON_EMIRATI_RE.test(spoken);
+}
+
 function buildPrompt(o) {
   const sec = o.seconds, words = speechBudget(sec), scenes = sceneCount(sec);
   const names = (o.characters || []).slice(0, MAX_CHARS);
   return [
     'You are a video scriptwriter for short social videos in the UAE. Write in the user\'s language; Arabic means natural Emirati/Gulf dialect, never stiff formal Arabic.',
+    isArabic(o.request) ? EMIRATI_RULES : '',
     'The video lasts EXACTLY ' + sec + ' seconds, so ALL spoken words together must be at most ' + words + ' words. Be tight: a hook in the first second, one idea, a clear ending' + (o.kind === 'ad' ? ' with a short call to action' : '') + '.',
     'Plan ' + scenes + ' scene(s). "scene" is a visual description for a video generator (setting, action, camera, light) in at most ' + (scenes * 35) + ' words, no dialogue inside it.',
     names.length ? 'Characters (use these exact names for "who"): ' + names.join(', ') + '.' : 'No named characters: put any speech in "narration".',
     'Kind: ' + o.kind + (o.kind === 'dialogue' ? ' — a short exchange between the characters' : o.kind === 'story' ? ' — a tiny story with a beginning and an end' : o.kind === 'ad' ? ' — a persuasive ad' : ' — a visual scene') + '.',
     'Reply with JSON only, no prose: {"scene":"...","narration":"..." or "","lines":[{"who":"name","text":"..."}],"onScreen":"short title/price/phrase, max 6 words" or ""}',
     'Request: "' + String(o.request || '').replace(/["\n]+/g, ' ').slice(0, MAX_REQ) + '"',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 function clip(s, n) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n); }
@@ -64,9 +87,15 @@ async function write(opts) {
   /* v-write-fix (المالك ١٧ أكتوبر، تجربة حيّة: «تعذّرت الكتابة» ثلاث مرّات متتالية): أوّل السلسلة Groq gpt-oss — موديل
      مفكّر يصرف من max_tokens على التفكير، فبسقف ٧٠٠ يرجع JSON مقطوعًا يرفضه parseReply فيضيع الطلب كلّه.
      الآن: سقف ١٦٠٠، والسلسلة لا تقبل إلّا جوابًا يُقرأ (accept) فتنتقل للمزوّد التالي بدل الفشل. */
-  const r = await chain({ env: o.env, messages: [{ role: 'user', content: buildPrompt(Object.assign({}, o, { seconds: sec })) }], max_tokens: 1600, temperature: 0.8, timeoutMs: 15000, fetchImpl: o.fetchImpl, accept: (t) => !!parseReply(t, sec, o.characters) });
+  const ar = isArabic(o.request); let fallback = null;
+  const accept = (t) => {
+    const p = parseReply(t, sec, o.characters); if (!p) return false;
+    if (ar && nonEmirati(p)) { if (!fallback) fallback = p; return false; } /* v-emirati: دخيل ← المزوّد التالي */
+    return true;
+  };
+  const r = await chain({ env: o.env, messages: [{ role: 'user', content: buildPrompt(Object.assign({}, o, { seconds: sec })) }], max_tokens: 1600, temperature: 0.7, timeoutMs: 15000, fetchImpl: o.fetchImpl, accept });
   if (Array.isArray(o.diag) && r && Array.isArray(r.errors)) o.diag.push.apply(o.diag, r.errors.slice(0, 6));
-  if (!r || !r.ok) return null;
+  if (!r || !r.ok) return fallback;
   return parseReply(r.text, sec, o.characters);
 }
 
@@ -106,3 +135,5 @@ module.exports.sceneCount = sceneCount;
 module.exports.buildPrompt = buildPrompt;
 module.exports.parseReply = parseReply;
 module.exports.write = write;
+module.exports.nonEmirati = nonEmirati;
+module.exports.isArabic = isArabic;
