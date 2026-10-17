@@ -389,6 +389,7 @@ window.__omranErrLive = function(e, build, now){
           if(c && c.messages && c.messages.some(function(m){ return m && m._loading; })) return true;
           var pr = document.getElementById('prompt');
           if(pr && pr.value && pr.value.trim()) return true;
+          if(window.omranSwipeBack && window.omranSwipeBack.top()) return true; // v-tool-drop: أداة مفتوحة — منتقي الصور يخفي الصفحة، فلا إعادة تحميل تحته (كانت ترجعه للدردشة وتضيع الصورة)
         }catch(e){ return true; }
         return false;
       };
