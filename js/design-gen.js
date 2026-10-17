@@ -79,12 +79,14 @@
     EXT.forEach(function(r){
       var d=document.createElement('div'); d.className='optChip fxAccCard';
       d.style.cssText='display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;min-width:0;border-radius:12px;overflow:hidden;';
-      d.innerHTML='<div class="fxAccPic"><span class="oi"></span><span class="ck"></span></div><div class="ct"></div>';
+      /* v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي»): الاسم .ct داخل المربّع فوق أسفل الصورة بتدرّج، لا شريط تحتها
+         (يبقى عقدةً: app-12-fx-simple.js يقرأ نصّه لتلميح الأزرار) */
+      d.innerHTML='<div class="fxAccPic"><span class="oi"></span><span class="ck"></span><div class="ct"></div></div>';
       var pic=d.querySelector('.fxAccPic'), oi=d.querySelector('.oi'), ck=d.querySelector('.ck'), ct=d.querySelector('.ct');
       pic.style.cssText='position:relative;aspect-ratio:1;overflow:hidden;background:linear-gradient(160deg,#23232a,#101014);';
       oi.textContent=r[1]; oi.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;';
       ck.textContent='✓'; ck.style.cssText='position:absolute;top:6px;inset-inline-end:6px;z-index:2;width:22px;height:22px;border-radius:50%;border:1.5px solid;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;';
-      ct.textContent=r[1]+' '+T(r[2]); ct.style.cssText='padding:7px 4px 8px;font-size:12.5px;font-weight:700;text-align:center;line-height:1.25;overflow-wrap:anywhere;';
+      ct.textContent=r[1]+' '+T(r[2]); ct.style.cssText='position:absolute;inset:auto 0 0 0;z-index:2;pointer-events:none;padding:18px 4px 6px;font-size:12.5px;font-weight:700;text-align:center;line-height:1.25;overflow-wrap:anywhere;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       var im=document.createElement('img'); im.alt=''; im.loading='lazy';
       im.style.cssText=focusCss(EXT_FOCUS[r[0]]||[.5,.5,1]);
       im.onerror=function(){ im.remove(); };

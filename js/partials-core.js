@@ -1039,7 +1039,8 @@
       .stCmp{position:relative; display:flex; flex-direction:column; border:1px solid var(--border,#2a2a30); border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;}
       .stCmp input{position:absolute; opacity:0; pointer-events:none;}
       .stCmp img{width:100%; aspect-ratio:3/4; object-fit:cover; background:linear-gradient(160deg,#23232a,#101014); display:block;}
-      .stCmp span{font-size:12px; font-weight:700; color:#eef0f6; padding:8px 6px 9px; text-align:center; line-height:1.3;}
+      /* v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي»): الاسم فوق أسفل الصورة بتدرّج، لا شريط تحتها */
+      .stCmp span{position:absolute; inset:auto 0 0 0; pointer-events:none; font-size:12px; font-weight:700; color:#eef0f6; padding:20px 6px 7px; text-align:center; line-height:1.3; text-shadow:0 1px 3px rgba(0,0,0,.9); background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));}
       .stCmp.on{border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);}
       .stCmp.on span{color:#d4af37;}
       .stCmp.on::after{content:"✓"; position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center;}

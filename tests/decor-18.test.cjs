@@ -106,10 +106,12 @@ test('٥. الترتيب كالترندات: الأقسام الستّة شبك�
   assert.ok(!/fetch|Generate|click\(/.test(onPick), 'اختيار البطاقة يحفظ القيمة فقط');
   const ui = read('js/app-05-ui.js');
   assert.ok(ui.includes("grid.style.gridTemplateColumns = cfg.landscape ? 'repeat(auto-fill,minmax(min(45%,230px),1fr))' : 'repeat(auto-fill,minmax(150px,1fr))';"), 'عمودان على الجوّال');
-  assert.ok(ui.includes("if(cfg.overlay) info.style.cssText = 'position:absolute;inset:auto 0 0 0;") && ui.includes('wrap.appendChild(info); card.appendChild(wrap);'), 'الاسم فوق الصورة في المعرض');
-  assert.ok(ui.includes('if(it.sub && !cfg.overlay){'), 'بلا سطر وصف تحت البطاقة كالترندات');
+  // v-photo-only: صار الاسم فوق الصورة في كلّ معرض «عرض الكل» لا في الأقسام الستّة وحدها (tests/gallery-photo-only.test.cjs).
+  const pk = ui.slice(ui.indexOf('window.omranPicker = { open: function(cfg){'), ui.indexOf("sheet.style.display = 'flex';"));
+  assert.ok(pk.includes("info.style.cssText = 'position:absolute;inset:auto 0 0 0;") && pk.includes('wrap.appendChild(info); card.appendChild(wrap);'), 'الاسم فوق الصورة في المعرض');
+  assert.ok(!/it\.sub/.test(pk) && !pk.includes('card.appendChild(info)'), 'بلا سطر وصف تحت البطاقة كالترندات');
   const bundle = read('js/app.bundle.js');
-  assert.ok(bundle.includes("if(cfg.overlay) info.style.cssText"), 'الحزمة مبنيّة');
+  assert.ok(bundle.includes("info.style.cssText = 'position:absolute;inset:auto 0 0 0;padding:22px 8px 8px;text-align:center;pointer-events:none;"), 'الحزمة مبنيّة');
 });
 
 test('٦. وسوم الكاش مرفوعة: partials-core وdesign-sels وملفّات اللغات', () => {

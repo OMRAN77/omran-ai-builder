@@ -25,6 +25,15 @@
     for(var i = 0; i < stops.length; i++){ var c = rgba(stops[i]); if(c && c[3] > 0 && !boxFill(c)) return false; }
     return true;
   }
+  /* v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي»): طبقة مطلقة فوق صورة أخيها (img/video أو خلفيّة url لأبيها) —
+     تظليل اسم أو شارة على الصورة لا صندوق؛ تسويدها كان يجعل التدرّج شريطًا أسود صلبًا على أسفل كلّ صورة (أزياء، ديكور، ترندات،
+     ستايل، «عرض الكل»)، ومناطق بوستر الديكور مربّعات سوداء بعد المرور عليها. */
+  function overImage(el, cs){
+    var p = cs.position === 'absolute' && el.parentElement;
+    if(!p) return false;
+    for(var k = p.firstElementChild; k; k = k.nextElementSibling){ if(k !== el && (k.tagName === 'IMG' || k.tagName === 'VIDEO')) return true; }
+    return /url\(/.test(getComputedStyle(p).backgroundImage);
+  }
   function lineOf(cs){
     if(cs.animationName && cs.animationName !== 'none') return false;
     var sides = ['Top', 'Right', 'Bottom', 'Left'], col = null, any = false;
@@ -43,7 +52,7 @@
     el.classList.remove('om3-line', 'om3-fill', 'om3-hot');
     var cs = getComputedStyle(el);
     if(lineOf(cs)){ el.classList.add('om3-line'); if(cs.cursor === 'pointer' || /^(BUTTON|A|INPUT|TEXTAREA|SELECT|LABEL)$/.test(el.tagName)) el.classList.add('om3-hot'); }
-    if(inTool){
+    if(inTool && !overImage(el, cs)){
       var bi = cs.backgroundImage;
       if((bi === 'none' && boxFill(rgba(cs.backgroundColor))) || (bi !== 'none' && gradBox(bi))) el.classList.add('om3-fill');
     }
