@@ -26,7 +26,7 @@ jobs:
   thumbs:
     if: ${{ !startsWith(inputs.mode, 'sr:') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 170   # قواعد الصور: بالدقّة الأصليّة كلّ صورة ~٧٠ ث (المولّد يردّ 402 مرّتين ثمّ ينجح) — ٤٧ نمطًا ≈ ٥٥ دقيقة
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,7 +40,7 @@ jobs:
         run: npm i --no-save sharp      # قبل التوليد: لا تكتشف فشل التثبيت بعد 40 دقيقة
 
       - name: Generate near-real previews (free engine)
-        timeout-minutes: 40
+        timeout-minutes: 150
         env:
           MODE: ${{ inputs.mode }}      # عبر البيئة لا داخل السطر: يمنع حقن الأوامر
           THUMBS_FORCE: ${{ inputs.force == 'yes' && '1' || '0' }}

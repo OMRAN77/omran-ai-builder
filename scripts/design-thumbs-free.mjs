@@ -117,9 +117,13 @@ const t0 = Date.now();
 const el = () => String(Date.now() - t0).padStart(7, ' ') + 'ms';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// ميزانية وقت داخليّة (كمولّد الأزياء): نتوقّف قبل مهلة الخطوة فيُدفع ما أُنجز بدل أن يضيع كلّه عند انتهاء المهلة
+// (تشغيلة ١٧ أكتوبر: ٤٠ دقيقة انتهت بعد ٣٠ صورة ولم يُدفع شيء — المولّد يردّ 402 مرّتين ثمّ ينجح، ~٧٠ ث للصورة).
+const BUDGET_MS = (Number(process.env.THUMBS_BUDGET_MIN) || 140) * 60000;
 mkdirSync('thumbs-raw', { recursive: true });
 let failed = 0;
 for (let i = 0; i < JOBS.length; i++) {
+  if (Date.now() - t0 > BUDGET_MS) { console.log('⏱️ الميزانية انتهت — تبقّى ' + (JOBS.length - i) + ' للتشغيلة القادمة'); break; }
   const j = JOBS[i];
   const url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(j.prompt) +
     // قواعد الصور: الأفقيّ يُطلب 1376×776 فيُقصّ 1280×720 من أعلى اليسار (علامة المولّد في الركن الأيمن السفليّ تخرج) بلا أيّ تكبير.
