@@ -92,8 +92,8 @@ test('v-write-fix: سبب الفشل يرجع للمالك وحده', () => {
 
 test('v-emirati: بالعربيّ قواعد إماراتيّة صريحة، والكلام الدخيل (مصريّ/شاميّ) يُرفض فتنتقل السلسلة، وإن لم يسلم أحد يرجع أوّل جواب', async () => {
   const p = vw.buildPrompt({ request: 'اكتب لي إعلان', kind: 'ad', seconds: 10 });
-  assert.ok(p.includes('PURE EMIRATI') && p.includes('وايد') && p.includes('NEVER use') && p.includes('second person'));
-  assert.ok(!vw.buildPrompt({ request: 'write an ad', kind: 'ad', seconds: 10 }).includes('PURE EMIRATI'), 'غير العربيّ بلا قواعد اللهجة');
+  assert.ok(p.includes('MEANING FIRST') && p.includes('Never stuff dialect words') && p.includes('وايد') && p.includes('NEVER use') && p.includes('second person'));
+  assert.ok(!vw.buildPrompt({ request: 'write an ad', kind: 'ad', seconds: 10 }).includes('MEANING FIRST'), 'غير العربيّ بلا قواعد اللهجة');
   // جمل الراوي في فيديوَي الموقع (١٧ أكتوبر)
   assert.equal(vw.nonEmirati({ narration: 'تفصيل الصقر وهو بيطير واضح زي النهار!' }), true);
   assert.equal(vw.nonEmirati({ narration: 'هلا', lines: [{ who: 'أ', text: 'عايز فيديو كده' }] }), true);
