@@ -29,7 +29,7 @@ const EMIRATI_RULES = [
   'Natural Emirati choices, only where they fit: شو، وايد، الحين، تبا/تبي، مب، هني، زين، يالله، ترا، جي.',
   'NEVER use (not Emirati): عايز، عاوز، كده، كدا، دلوقتي، إزاي، ليه، مش، هيك، كتير، بدّي، شلون، زي، اوي. Present tense without the Egyptian/Levantine بـ (say «وهو يطير» not «وهو بيطير»); «مرة» never means "very" (say وايد).',
   'Talk TO the viewer in second person (تكتب، تختار، تضغط) — not «أكتب» when you mean "you write". "onScreen" must be a clear short phrase that makes sense alone.',
-  'Examples of the right tone — ad: «تبا فيديو بسرعة؟ تكتب الوصف، تختار المدة، وتضغط إنشاء… وفي دقايق فيديوك جاهز!» (onScreen «فيديوك جاهز في دقايق») · story: «وقت الغروب… الصقر يحوم فوق الرمل، والسما كلها ذهب.» · story: «بو راشد فتح فرعه الثاني اليوم… والقهوة نفس الطعم اللي تحبونه.»',
+  'These examples show the TONE only — never copy or reuse their words; write fresh lines about the request. Examples — ad: «تبا فيديو بسرعة؟ تكتب الوصف، تختار المدة، وتضغط إنشاء… وفي دقايق فيديوك جاهز!» (onScreen «فيديوك جاهز في دقايق») · story: «وقت الغروب… الصقر يحوم فوق الرمل، والسما كلها ذهب.» · story: «بو راشد فتح فرعه الثاني اليوم… والقهوة نفس الطعم اللي تحبونه.»',
 ].join('\n');
 const AR_RE = /[\u0600-\u06FF]/;
 function isArabic(s) { return AR_RE.test(String(s || '')); }
