@@ -44,3 +44,12 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.om
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn:not(.active):not(:hover){border-color:transparent !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.omUpArt:is(:hover,.over),
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn:not(.active):hover{border-color:rgba(212,175,55,.85) !important;}
+/* v-main-lines (المالك ١٧ أكتوبر: «فقط ثبت الخطوط في الشاشة الرئيسه»): خطوط الشاشة الرئيسيّة ثابتة بذهبيّ المرور نفسه بلا مرور —
+   إطار المحادثة واللوحتين، وصندوق الكتابة، وحلقة زرّ الإرسال، وصندوق أسفل الشريط؛ وفي الجوال إطار المحادثة (body::after) وحافّة الدُّرجين.
+   الأدوات والنوافذ تبقى بلا خطوط والذهبيّ عند المرور فقط. ‎:not(#om3-a#om3-b)‎ لتغلب شفافيّة om3-line (صندوق الكتابة وأسفل الشريط والبحث معلَّمة بها)، وbody::after بصنف زائد. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) :is(#sidebar,#workarea,#omFrameCenter){--om-gold-line:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85));}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg).mobile-ui body::after{background-image:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85)) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox#composerBox:not(#om3-a#om3-b),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox > #btnSend:not(#om3-a#om3-b),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #omranSidebarFoot#omranSidebarFoot:not(#om3-a#om3-b),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #sbSearchWrap:not(#om3-a#om3-b){border-color:rgba(212,175,55,.85) !important;}

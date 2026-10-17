@@ -19,7 +19,7 @@ test('١. الملفّ مربوط بوسم كاش بعد أدوات-أسود.css
 
 test('٢. كلّ قاعدة للوضع الأسود وحده: لا الفاتح ولا الثيمات ولا الخشبيّ ولا صور الخلفيّة', () => {
   assert.ok(rules.length >= 10);
-  for (const r of rules) for (const s of r.sels) assert.ok(s.startsWith(P + ' ') || s.startsWith(P + ':not(.mobile-ui) '), s);
+  for (const r of rules) for (const s of r.sels) assert.ok(s.startsWith(P + ' ') || s.startsWith(P + ':not(.mobile-ui) ') || s.startsWith(P + '.mobile-ui '), s);
 });
 
 test('٣. الألوان: شفّاف، أو ذهبيّ المرور rgba(212,175,55,.85)، أو #101013 — لا رماديّ ولا أبيض', () => {
@@ -42,4 +42,17 @@ test('٥. صندوق الكتابة وزرّ الإرسال وأسفل الشر�
   for (const f of ['#composerBox#composerBox:is(:hover,:focus-within)', '#composerBox > #btnSend:is(:hover', '.om3-hot.om3-line:not(#om3-a#om3-b):hover', '.omUpArt.omUpArt:is(:hover', '#videoMakerModal .vmk-tab:hover']) assert.ok(find(f, 'rgba(212,175,55,.85)'), f);
   /* om3 (أولويّة معرّفين) يسبق قواعد صندوق الكتابة، وإلّا غلب تذهيبَه عند المرور */
   assert.ok(bare.indexOf('.om3-line:not(#om3-a#om3-b){') < bare.indexOf('#composerBox#composerBox:is(:hover'));
+});
+
+test('٦. v-main-lines («فقط ثبت الخطوط في الشاشة الرئيسه»): خطوط الشاشة الرئيسيّة ثابتة ذهبيّة بلا مرور، وآخر الملفّ', () => {
+  const G = 'rgba(212,175,55,.85)';
+  const perm = rules.find((r) => r.sels.includes(P + ' :is(#sidebar,#workarea,#omFrameCenter)'));
+  assert.ok(perm && perm.body.includes('--om-gold-line:linear-gradient(' + G + ',' + G + ')'), 'اللوحات والمحادثة بلا :hover');
+  assert.ok(rules.some((r) => r.sels.includes(P + '.mobile-ui body::after') && r.body.includes('background-image:linear-gradient(' + G + ',' + G + ') !important')), 'إطار المحادثة في الجوال');
+  const fix = rules.find((r) => r.sels.includes(P + ' #composerBox#composerBox:not(#om3-a#om3-b)'));
+  assert.ok(fix && fix.body === 'border-color:' + G + ' !important;');
+  for (const f of ['#composerBox > #btnSend:not(#om3-a#om3-b)', '#omranSidebarFoot#omranSidebarFoot:not(#om3-a#om3-b)', '#sbSearchWrap:not(#om3-a#om3-b)']) assert.ok(fix.sels.includes(P + ' ' + f), f);
+  /* بعد قواعد الشفافيّة (نفس الأولويّة أو أعلى) فتغلبها */
+  assert.ok(bare.lastIndexOf('#composerBox#composerBox:not(#om3-a#om3-b)') > bare.indexOf('.om3-line:not(#om3-a#om3-b){border-color:transparent'));
+  assert.ok(bare.indexOf(P + '.mobile-ui body::after') > bare.indexOf(P + ' body::after{background-image:none'));
 });
