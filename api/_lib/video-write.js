@@ -34,12 +34,13 @@ const EMIRATI_RULES = [
 const AR_RE = /[\u0600-\u06FF]/;
 function isArabic(s) { return AR_RE.test(String(s || '')); }
 const NON_EMIRATI = ['عايز', 'عايزة', 'عاوز', 'عاوزة', 'كده', 'كدا', 'دلوقتي', 'إزاي', 'ازاي', 'ليه', 'مش', 'هيك', 'كتير', 'كتيرة', 'بدّي', 'بدي', 'شلون', 'زي', 'اوي', 'أوي', 'خالص', 'بيطير', 'بيكتب', 'بيعمل', 'بنعمل', 'هنعمل', 'حنعمل', 'عشان كده'];
+const NEG_SH_RE = /(?:^|[\s،,.!؟?])ما\s+\S*[^\sي]ش(?=$|[\s،,.!؟?…])/; /* «ما يمنعش/ما تقدرش» مصريّ/شاميّ — «ما يعيش» إماراتيّ */
 const NON_EMIRATI_RE = new RegExp('(?:^|[\\s،,.!؟?:؛"\'«»()\\-…])و?(?:' + NON_EMIRATI.join('|') + ')(?=$|[\\s،,.!؟?:؛"\'«»()\\-…])');
 /** كلمة دخيلة واضحة في الكلام المنطوق (الراوي والأسطر والعنوان) — المشهد وصف للمولّد فلا يُفحص */
 function nonEmirati(r) {
   if (!r) return false;
   const spoken = [r.narration, r.onScreen].concat((r.lines || []).map((l) => l && l.text)).filter(Boolean).join(' ');
-  return NON_EMIRATI_RE.test(spoken);
+  return NON_EMIRATI_RE.test(spoken) || NEG_SH_RE.test(spoken);
 }
 
 function buildPrompt(o) {
@@ -94,7 +95,22 @@ async function write(opts) {
     if (ar && nonEmirati(p)) { if (!fallback) fallback = p; return false; } /* v-emirati: دخيل ← المزوّد التالي */
     return true;
   };
-  const r = await chain({ env: o.env, messages: [{ role: 'user', content: buildPrompt(Object.assign({}, o, { seconds: sec })) }], max_tokens: 1600, temperature: 0.6, timeoutMs: 15000, fetchImpl: o.fetchImpl, accept });
+  const messages = [{ role: 'user', content: buildPrompt(Object.assign({}, o, { seconds: sec })) }];
+  /* v-emirati-oa (تجربة حيّة بعد #1130: Groq/Mistral يكتبون «مش بس أكل» و«ما يمنعش» وجملًا بلا معنى، وGemini لا يردّ):
+     بالعربيّ يُجرَّب أوّلًا موديل OpenAI الخفيف (أرخص من gpt-4o-mini، ونحو جزء من الفلس للطلب) — أمتن عربيّةً
+     خليجيّة بفارق واضح؛ وفشله أو كلامه الدخيل = السلسلة المجّانيّة كما كانت. بلا مفتاح = السلسلة مباشرة. */
+  const env = o.env || process.env, oaKey = String((env && env.OPENAI_API_KEY) || '').trim();
+  if (ar && oaKey && !o.chain) {
+    try {
+      const { oaLightFetch } = require('./_oa-light.js');
+      const res = await oaLightFetch(oaKey, { messages, max_tokens: 1600, temperature: 0.6 }, { fetchImpl: o.fetchImpl, signal: AbortSignal.timeout(20000) });
+      const j = res && res.ok ? await res.json() : null;
+      const text = j && j.choices && j.choices[0] && j.choices[0].message && String(j.choices[0].message.content || '').trim();
+      if (text && accept(text)) { if (o.info) o.info.provider = 'openai:' + (j.model || '?'); return parseReply(text, sec, o.characters); }
+      if (Array.isArray(o.diag)) o.diag.push('openai: ' + (text ? 'rejected' : 'http ' + (res && res.status)));
+    } catch (e) { if (Array.isArray(o.diag)) o.diag.push('openai: ' + String((e && e.message) || e).slice(0, 80)); }
+  }
+  const r = await chain({ env: o.env, messages, max_tokens: 1600, temperature: 0.6, timeoutMs: 15000, fetchImpl: o.fetchImpl, accept });
   if (Array.isArray(o.diag) && r && Array.isArray(r.errors)) o.diag.push.apply(o.diag, r.errors.slice(0, 6));
   if (o.info && r) o.info.provider = r.ok ? r.provider : (fallback ? 'fallback' : ''); /* للمالك: أيّ مزوّد كتب */
   if (!r || !r.ok) return fallback;

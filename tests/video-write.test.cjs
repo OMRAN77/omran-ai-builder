@@ -110,3 +110,28 @@ test('v-emirati: بالعربيّ قواعد إماراتيّة صريحة، و�
   const en = await vw.write({ request: 'falcon video', seconds: 8, chain: async (o) => (o.accept(EG) ? { ok: true, text: EG } : { ok: false }) });
   assert.equal(en.narration, 'الصقر بيطير زي النهار', 'طلب غير عربيّ لا يُفحص');
 });
+
+test('v-emirati-oa: بالعربيّ OpenAI الخفيف أوّلًا، وكلامه الدخيل أو فشله = السلسلة المجّانيّة؛ وبلا مفتاح أو بغير العربيّ لا نداء له', async () => {
+  assert.equal(vw.nonEmirati({ narration: 'الخوف ما يمنعش من التعلم' }), true, 'نفي بالشين');
+  assert.equal(vw.nonEmirati({ narration: 'الصقر ما يعيش إلا هني' }), false, '«ما يعيش» إماراتيّ');
+  const calls = [];
+  const oa = (content, status) => async (url, init) => { calls.push({ url, body: JSON.parse(init.body) }); return new Response(JSON.stringify({ model: 'gpt-6-luna', choices: [{ message: { content } }] }), { status: status || 200, headers: { 'Content-Type': 'application/json' } }); };
+  const AE = '{"scene":"صحراء","narration":"الصقر يحوم فوق الرمل، شي وايد حلو"}';
+  const fc = require('../api/_lib/free-chain.js');
+  const env = { OPENAI_API_KEY: 'sk-test' };
+  const info = {};
+  const r1 = await vw.write({ request: 'اكتب عن صقر', seconds: 8, env, info, fetchImpl: oa(AE) });
+  assert.equal(r1.narration, 'الصقر يحوم فوق الرمل، شي وايد حلو');
+  assert.equal(info.provider, 'openai:gpt-6-luna');
+  assert.ok(calls[0].url.includes('api.openai.com') && calls[0].body.messages[0].content.includes('MEANING FIRST'));
+  // دخيل من OpenAI ← السلسلة (بلا مفاتيح هنا فلا شيء) ← أوّل جواب مقروء
+  calls.length = 0; const diag = [];
+  const r2 = await vw.write({ request: 'اكتب عن صقر', seconds: 8, env, diag, fetchImpl: oa('{"scene":"x","narration":"الصقر بيطير زي النهار"}') });
+  assert.equal(r2.narration, 'الصقر بيطير زي النهار');
+  assert.ok(diag[0] === 'openai: rejected', diag.join('|'));
+  // غير العربيّ: لا نداء لـOpenAI
+  calls.length = 0;
+  await vw.write({ request: 'falcon video', seconds: 8, env, fetchImpl: oa(AE) });
+  assert.ok(!calls.some((c) => c.url.includes('api.openai.com')));
+  assert.ok(fc && typeof fc.completeFreeChain === 'function');
+});
