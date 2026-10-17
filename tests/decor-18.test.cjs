@@ -69,7 +69,7 @@ test('٣. لكلّ خيار صورة WebP حقيقيّة 1280×720 مختلفة 
     const w = chunk === 'VP8X' ? b.readUIntLE(24, 3) + 1 : chunk === 'VP8 ' ? b.readUInt16LE(26) & 0x3fff : 0;
     const h = chunk === 'VP8X' ? b.readUIntLE(27, 3) + 1 : chunk === 'VP8 ' ? b.readUInt16LE(28) & 0x3fff : 0;
     assert.deepEqual([w, h], [1280, 720], sec + '-' + x.v);
-    assert.ok(b.length > 15000 && b.length < 900000, 'حجم معقول (q90 بلا تكبير): ' + sec + '-' + x.v);
+    assert.ok(b.length > 15000 && b.length < 260000, 'حجم معقول: ' + sec + '-' + x.v);
     seen.add(crypto.createHash('sha256').update(b).digest('hex'));
   }
   assert.equal(seen.size, 85, 'صورة لكلّ خيار لا صورة مكرّرة');
