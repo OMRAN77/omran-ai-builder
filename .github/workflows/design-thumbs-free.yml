@@ -83,14 +83,6 @@ jobs:
           # v-decor-18: صور خيارات الأقسام الخمسة على فرعها الخاصّ — لا تختلط بتشغيلات الأنماط القديمة.
           case "$MODE" in opts*) BRANCH=bot/decor-opts ;; esac
 
-          mkdir -p assets/design/styles assets/design/opts
-          if [ -d thumbs/dstyle ]; then
-            cp -r thumbs/dstyle/. assets/design/styles/
-          fi
-          for f in thumbs/dplace/*.webp; do
-            cp "$f" "assets/design/opts/place-$(basename "$f")"
-          done
-
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -102,8 +94,15 @@ jobs:
             git checkout -B "$BRANCH"
           fi
 
-          # بعد الانتقال للفرع: نسخة سابقة بالاسم نفسه على الفرع تُستبدل بدل أن تُفشل الانتقال.
-          mkdir -p assets/design/decor-opts
+          # بعد الانتقال للفرع (لا قبله): بوضع force تُستبدل ملفّات متتبَّعة، ونسخها قبل checkout يُفشله
+          # («Please commit your changes or stash them» — تشغيلتا الأنماط والأماكن ١٧ أكتوبر ضاعتا هكذا).
+          mkdir -p assets/design/styles assets/design/opts assets/design/decor-opts
+          if [ -d thumbs/dstyle ]; then
+            cp -r thumbs/dstyle/. assets/design/styles/
+          fi
+          for f in thumbs/dplace/*.webp; do
+            cp "$f" "assets/design/opts/place-$(basename "$f")"
+          done
           for f in thumbs/dopts/*.webp; do
             cp "$f" "assets/design/decor-opts/$(basename "$f")"
           done
