@@ -1,0 +1,46 @@
+/* v-no-lines-2 — أمر المالك: «الخطوط الزائده والموجوده الحينه كامله شلها، فقط عند تمرير الماوس على المكان يكون لون ذهبي،
+   اريدها في التطبيق كامله، وتكون الخلفيه فقط لونين نفس درجة الاسود».
+   • الإطار الذهبيّ حول اللوحات والمحادثة (إطارات.css و إطارات-الجوال.css) ونقاط الخلفيّة الذهبيّة تختفي؛ واللوحة تتذهّب عند المرور فقط (#omFrameCenter إطار فارغ خلف #chatcol، فيتذهّب بـ :has).
+   • حدود صندوق الكتابة وصندوق أسفل الشريط الجانبيّ وحلقة زرّ الإرسال شفّافة، والذهبيّ عند المرور أو التركيز.
+   • للوضع الأسود وحده: الفاتح والثيمات (html.skin) والخشبيّ وصور الخلفيّة (bgimg) لا تُمسّ. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) body{--om-gold-line:linear-gradient(transparent,transparent); --om-dots:linear-gradient(transparent,transparent);}
+/* الخطوط التي علّمها js/app-41-three-colors.js بـ om3-line كانت تغلبها قواعد بمعرّفات (#cxBrief، #constructionArea…) فتبقى ظاهرة —
+   :not(#om3-a#om3-b) لا يطابق أيّ عنصر لكنّه يرفع الأولويّة بمعرّفين فتغلب، والذهبيّ عند المرور والتركيز والاختيار بنفس الأولويّة */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b){border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-hot.om3-line:not(#om3-a#om3-b):hover,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b):is(:focus-visible,:focus-within,.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:rgba(212,175,55,.85) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter):hover,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) main:has(#chatcol:hover) > #omFrameCenter{--om-gold-line:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85));}
+/* المعرّفات مضاعفة/متسلسلة عمدًا لتغلب قواعد أقدم بمعرّفين (redesign.css: html #composerBox > #btnSend، إطارات.css: #omranSidebarFoot بخمس :not) */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox#composerBox,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox > #btnSend,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #omranSidebarFoot#omranSidebarFoot{border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox#composerBox,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox:not(.typing) > #btnSend{box-shadow:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox#composerBox:is(:hover,:focus-within),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox > #btnSend:is(:hover,:focus-visible),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #omranSidebarFoot#omranSidebarFoot:is(:hover,:focus-within){border-color:rgba(212,175,55,.85) !important;}
+/* حدود بيضاء/رماديّة مكتوبة داخل عناصر يبنيها الجافاسكربت (style="border:1px solid rgba(255,255,255,…)") — شفّافة، وذهبيّة عند المرور */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255,255,255"],
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255, 255, 255"]{border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255,255,255"]:is(:hover,:focus-visible,:focus-within),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255, 255, 255"]:is(:hover,:focus-visible,:focus-within){border-color:rgba(212,175,55,.85) !important;}
+/* الخلفيّة لونان فقط: حبيبات الضجيج الخفيفة فوق الأسود (body::after على الكمبيوتر) تختفي */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) body::after{background-image:none !important;}
+/* صانع الفيديو: خطّ الإطار (--lux-line) وخطّ رأس الاستوديو وخطّ «الإعدادات المتقدّمة» وإطارات صور التبويبات */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal{--lux-line:transparent;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-studio>div:first-child,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal details.vmk-adv,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-tab-img{border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-tab[aria-selected=true] .vmk-tab-img{box-shadow:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-tab:hover .vmk-tab-img{border-color:rgba(212,175,55,.85) !important;}
+/* بطاقات «أنماط الصور» وحدودها المكتوبة داخل العنصر (border:1px solid var(--border…)) وخلفيّتها #17171b → #101013؛ المختارة (#d4af37) تبقى ذهبيّة */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid var(--border"]:not(:hover):not(:focus-visible),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .pstyleCard:not([style*="#d4af37"]):not(:hover):not(:focus-visible){border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid var(--border"]:is(:hover,:focus-visible){border-color:rgba(212,175,55,.85) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .pstyleCard{background-color:#101013 !important;}
+/* مربّعات الرفع بصور المالك (رفع-الصور.css) وتبويبات «ستايل AI» غير المختارة */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.omUpArt:not(:hover):not(.over),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn:not(.active):not(:hover){border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.omUpArt:is(:hover,.over),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn:not(.active):hover{border-color:rgba(212,175,55,.85) !important;}

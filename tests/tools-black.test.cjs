@@ -22,8 +22,8 @@ test('٢. كلّ قاعدة للوضع الأسود وحده: لا الفاتح 
   const sels = css.split('}').map((b) => b.split('{')[0]).filter((s) => s.trim()).flatMap((s) => s.split(/,(?![^()]*\))/)).map((s) => s.trim());
   assert.ok(sels.length >= 30);
   for (const s of sels) assert.ok(s.startsWith('html:not([data-mode="light"]):not(.skin) '), s);
-  // v-three-colors: ثلاثة ألوان فقط — أسود للخلفيّات، ذهبيّ للحدود، رماديّ فاتح للحدّ عند المرور أو الاختيار.
-  for (const b of css.split('}').filter((x) => x.includes('{'))) assert.match(b.split('{')[1], /^(background:(#000|transparent)|border-color:(rgba\(212,175,55,\.6\)|#c9c9c9)|border-bottom:0) !important;$/, 'ثلاثة ألوان فقط: ' + b);
+  // v-no-lines: خلفيّتان فقط (#000 و#101013)، الحدود شفّافة، والذهبيّ عند المرور أو التركيز أو الاختيار فقط.
+  for (const b of css.split('}').filter((x) => x.includes('{'))) assert.match(b.split('{')[1], /^(background:(#000|#101013|transparent)|border-color:(transparent|rgba\(212,175,55,\.85\))|border-bottom:0) !important;$/, 'لونان أسودان وذهبيّ المرور فقط: ' + b);
 });
 
 test('٣. النوافذ التي كانت رماديّة أو شفّافة سوداء، وصناديقها شفّافة فوقها — واستوديو الإعلانات (المجرّة) لا يُمسّ', () => {
