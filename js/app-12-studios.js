@@ -901,6 +901,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function ensurePsheetCss(){
     if(document.getElementById('psheetCss')) return;
     const st = document.createElement('style'); st.id = 'psheetCss';
+    const B = 'html:not([data-mode="light"]):not(.skin) '; /* الوضع الأسود وحده — لا الفاتح ولا الثيمات */
     st.textContent = '.pstyleCard{transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; position:relative;}'
       + '.pstyleCard:hover,.pstyleCard:focus-visible{transform:scale(1.035); border-color:#d4af37 !important; box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 12px 30px rgba(0,0,0,.45), 0 0 26px rgba(212,175,55,.35) !important; outline:none; z-index:1;}'
       + '.pstyleCard::after{content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,transparent 40%,rgba(255,238,180,.22) 50%,transparent 60%); background-size:250% 100%; background-position:160% 0; opacity:0; transition:opacity .18s;}'
@@ -941,7 +942,29 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + '#portraitStyleSheetCount{transition:opacity .18s ease, max-height .22s ease, margin-top .22s ease; overflow:hidden; max-height:16px;}'
       + '#portraitStyleSheetHeader.pstyleHeaderSmall{padding-top:calc(6px + max(env(safe-area-inset-top,0px), 30px)) !important; padding-bottom:8px !important;}'
       + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetTitle{font-size:14.5px !important;}'
-      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}';
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}'
+      /* v-psheet-nogold (المالك ١٧ أكتوبر، أنماط الصور أوّلًا): «بدون خطوط… ما أريد الذهبي، الذهبي فقط عند التمرير على الصور،
+         واحذف الخيط الذهبي». الوضع الأسود وحده: لا حدّ ولا ذهبيّ في السكون؛ الرقائق والأزرار كـ«صمم الغرفة» (أسود، نصّ أبيض)
+         وحدّ رفيع هادئ عند التمرير؛ المختارة بالحدّ الهادئ نفسه؛ البطاقات والحلقة بلا حدّ، وتوهّج ذهبيّ عند التمرير على الصورة فقط. */
+      + B + '.pstyleChip{border:1px solid transparent !important; background:transparent !important; color:#bdbdbd !important;}'
+      + B + '.pstyleChip:hover,' + B + '.pstyleChip.on{border-color:rgba(255,255,255,.45) !important; color:#fff !important; background:transparent !important;}'
+      + B + '.pstyleCard{border:1px solid transparent !important; box-shadow:none !important;}'
+      + B + '.pstyleCard.on{border-color:rgba(255,255,255,.45) !important;}'
+      + B + '.pstyleCard:hover,' + B + '.pstyleCard:focus-visible{border-color:#d4af37 !important; box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 12px 30px rgba(0,0,0,.45), 0 0 26px rgba(212,175,55,.35) !important;}'
+      + B + '.pstyleCard [data-pstyle-name]{color:#fff !important;}'
+      + B + '.pstyleCard .pstyleEn{color:#9a9a9e !important;}'
+      + B + '.pstyleCard [data-pstyle-tick]{background:#fff !important; color:#000 !important;}'
+      + B + '.pstyleBefore [data-pstyle-before-tag], ' + B + '.pstyleHero .pstyleHeroC span{background:#000 !important; color:#fff !important; border:1px solid rgba(255,255,255,.45) !important;}'
+      + B + '.pstyleBefore > div:last-child > div:first-child{color:#fff !important;}'
+      + B + '.pstyleCard > div:first-child > div:first-child{border-color:rgba(255,255,255,.25) !important; background:transparent !important;}'
+      + B + '.pstyleHero{background:none !important;}'
+      + B + '.pstyleHero .pstyleHeroC{border-color:transparent !important; box-shadow:none !important;}'
+      + B + '.pstyleHero .pstyleHeroT{border-color:transparent !important;}'
+      + B + '.pstyleHero .pstyleHeroT:hover{box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 0 22px rgba(212,175,55,.6) !important;}'
+      + B + '.pstyleFoot{border-top:0 !important;}'
+      + B + '.pstyleCta, ' + B + '.pstyleFoot #portraitFootPhoto{background:#000 !important; color:#fff !important; border:1px solid transparent !important; box-shadow:0 0 18px rgba(255,255,255,.08) !important;}'
+      + B + '.pstyleCta:hover, ' + B + '.pstyleFoot #portraitFootPhoto:hover{border-color:rgba(255,255,255,.45) !important;}'
+      + B + '.pstyleFoot #portraitFavStarBtn{color:#fff !important;}';
     document.head.appendChild(st);
   }
   /* الرأس (العنوان + العدّاد) يصغر ويرتفع فور بدء تمرير المعرض، ويعود لحجمه عند القمّة */
@@ -1038,6 +1061,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(!styleCardsGrid) return;
     styleCardsGrid.querySelectorAll('[data-pstyle-card]').forEach((c) => {
       const on = c.getAttribute('data-pstyle-card') === v;
+      c.classList.toggle('on', on); /* v-psheet-nogold: الوضع الأسود يميّز المختارة بالصنف لا بالذهبيّ */
       c.style.border = on ? '2px solid #d4af37' : '1px solid var(--border,#2a2a30)';
       c.style.boxShadow = on ? '0 0 14px rgba(212,175,55,.3)' : '';
       const tk = c.querySelector('[data-pstyle-tick]'); if(tk) tk.style.display = on ? 'flex' : 'none';
@@ -1079,7 +1103,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const w = document.createElement('div'); w.style.cssText = 'position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#23232a,#101014);';
       const im = document.createElement('img'); im.src = window.__portraitPhotoUrl || 'assets/portrait/before.webp?v=2'; im.alt = ''; im.loading = 'eager';
       im.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;'; im.onerror = function(){ im.remove(); };
-      const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before');
+      const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before'); tag.setAttribute('data-pstyle-before-tag', '1');
       tag.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; padding:3px 9px; border-radius:999px; background:#d4af37; color:#141414; font-weight:800; font-size:11.5px;';
       w.appendChild(im); w.appendChild(tag);
       const info = document.createElement('div'); info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
@@ -1093,7 +1117,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const active = v === styleEl.value;
       const title = optLabel(opt).trim();
       const card = document.createElement('div');
-      card.setAttribute('data-pstyle-card', v); card.className = 'pstyleCard'; card.tabIndex = 0;
+      card.setAttribute('data-pstyle-card', v); card.className = 'pstyleCard' + (active ? ' on' : ''); card.tabIndex = 0;
       card.style.cssText = 'border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;' +
         (active ? ' border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);' : ' border:1px solid var(--border,#2a2a30);');
       const imgWrap = document.createElement('div');
