@@ -21398,6 +21398,12 @@ function omranOpenImageTool(target){
   try{ const box = target && target.closest ? target.closest('#studioAiModal,#fashionAiModal,#designAiModal,#portraitStyleSheet') : null; if(box && omranToolShown(box)) hit = list.find((x) => x[0] === box.id) || null; }catch(e){ hit = null; }
   if(!hit) hit = list.find((x) => omranToolShown(document.getElementById(x[0]))) || null;
   if(!hit) return null;
+  if(hit[0] === 'portraitStyleSheet'){ // «دمج شخصين»/«ستايل عائلي»: صورة الشخص الثاني لخانة الصور الإضافية لا فوق صورتك
+    const mw = document.getElementById('portraitMultiWrap'), pw = document.getElementById('portraitMultiPreviewWrap');
+    const inMw = !!(target && target.closest && target.closest('#portraitMultiWrap'));
+    const sv = (document.getElementById('portraitStyleSelect') || {}).value;
+    if(mw && (sv === 'merge2' || sv === 'familystyle') && ((inMw && omranToolShown(mw)) || (window.__portraitHasPhoto && !(pw && pw.querySelector('img'))))) return { id: hit[0], input: document.getElementById('portraitMultiFileInput'), ownPaste: false };
+  }
   if(hit[0] === 'studioAiModal'){ // الخانة الثانية إن كانت ظاهرة فارغة والأولى ممتلئة (الدمج)، وإلّا الأولى
     const a = document.getElementById('studioAiSlotA'), b = document.getElementById('studioAiSlotB'), bw = document.getElementById('studioAiImageBWrap');
     const useB = !!(a && a.classList.contains('has') && b && !b.classList.contains('has') && omranToolShown(bw));
@@ -21408,6 +21414,8 @@ function omranOpenImageTool(target){
 function omranFilesToTool(files, tool){
   const f = Array.from(files || []).find((x) => x && (/^image\//.test(x.type || '') || /\.(heic|heif|jpe?g|png|webp)$/i.test(x.name || '')));
   if(!f || !tool || !tool.input) return false;
+  if(tool.id === 'portraitStyleSheet') window.__portraitAutoRun = false; // صورة مُفلَتة تُحمَّل وتنتظر «حوّلها» كزرّ 📁 — لا توليد بنفسه (حتّى بعد «جرّب على صورتك» ملغًى)
+  if(tool.id === 'fashionAiModal'){ const ti = document.getElementById('fashionAiTabImage'); if(ti && !ti.classList.contains('primary')) ti.click(); } // لوح الصورة مخفيّ في «من وصف نصّي»
   try{ const dt = new DataTransfer(); dt.items.add(f); tool.input.files = dt.files; tool.input.dispatchEvent(new Event('change', { bubbles: true })); return true; }
   catch(e){ __swallow(e, 'attach:tool-drop'); return false; }
 }
@@ -21517,6 +21525,10 @@ $('#attachInput').addEventListener('change', async (e) => {
     document.addEventListener('dragenter', (e) => { if(!hasFiles(e)) return; __dragDepth++; on(); });
     document.addEventListener('dragover', (e) => { if(!hasFiles(e)) return; e.preventDefault(); });
     document.addEventListener('dragleave', (e) => { if(!hasFiles(e)) return; __dragDepth = Math.max(0, __dragDepth - 1); if(!__dragDepth) off(); });
+    /* v-tool-drop (المراجعة العدائيّة — مسار المالك الحقيقيّ): الضغط على صورة بطاقة نمط/ديكور/ستايل مع حركة يد بسيطة يبدأ سحبًا أصليًّا للصورة
+       فلا يصل click (البطاقة لا تُختار)، ويضع المتصفّح صورة العيّنة نفسها ملفًّا في الإفلات — فكانت تصير مرفق دردشة («على طول تتحول الي
+       الدردشة الصوره الموجوده»). صور الأدوات لا تُسحب: الضغطة تبقى ضغطة. الملفّات من خارج الصفحة لا dragstart لها هنا فتمرّ كما هي. */
+    document.addEventListener('dragstart', (e) => { try{ const tg = e.target; if(tg && tg.tagName === 'IMG' && tg.closest && tg.closest('#portraitStyleSheet,#designAiModal,#fashionAiModal,#studioAiModal,#pickerSheet')) e.preventDefault(); }catch(_){ /* guard-ok — صور العيّنات لا تُسحب */ } }, true);
     document.addEventListener('drop', (e) => {
       if(!hasFiles(e)) return;
       off();
@@ -21533,7 +21545,7 @@ $('#attachInput').addEventListener('change', async (e) => {
         if(ae && ae.id !== 'prompt' && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
         const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
         const files = items.filter(i => i.kind === 'file' && /^image\//.test(i.type)).map(i => i.getAsFile()).filter(Boolean);
-        if(files.length){ const __tool = omranOpenImageTool(ae); if(__tool){ if(!__tool.ownPaste){ e.preventDefault(); omranFilesToTool(files, __tool); } return; } } // v-tool-drop: لصق صورة والأداة مفتوحة = للأداة (الاستوديو يلصق بنفسه)
+        if(files.length){ const __tool = omranOpenImageTool(ae); if(__tool){ if(!__tool.ownPaste || (ae && ae.id === 'prompt')){ e.preventDefault(); omranFilesToTool(files, __tool); } return; } } /* الاستوديو يلصق بنفسه إلّا والتركيز في صندوق الدردشة المخفيّ تحته (معالجه يتخطّى الحقول فتضيع الصورة) */ // v-tool-drop: لصق صورة والأداة مفتوحة = للأداة (الاستوديو يلصق بنفسه)
         if(!files.length){
           /* v-paste-attach: لصق نصّ طويل → مرفق قابل للفتح في تبويب «الكود» */
           try{
@@ -31695,7 +31707,12 @@ window.__STUDIO_MORE = {"features":[{"key":"idphoto","labels":{"ar":"🪪 صور
 // يمنع خطأ «Request Entity Too Large» (413) في كل مودالات الاستوديو.
 function __compressImg(file, onDone, MAX){
   MAX = MAX || 1024;
+  if(file && !file.__omranNorm && (/hei[cf]/i.test(file.type || '') || /\.hei[cf]$/i.test(file.name || '')) && typeof omranNormalizeImageFile === 'function'){
+    omranNormalizeImageFile(file).then(function(f){ try{ f.__omranNorm = true; }catch(e){ /* guard-ok */ } __compressImg(f, onDone, MAX); }, function(){ onDone(''); });
+    return;
+  }
   const reader = new FileReader();
+  reader.onerror = function(){ onDone(''); };
   reader.onload = function(){
     const img = new Image();
     img.onload = function(){
@@ -31706,6 +31723,7 @@ function __compressImg(file, onDone, MAX){
       c.getContext('2d').drawImage(img,0,0,w,h);
       onDone(c.toDataURL('image/jpeg',0.85));
     };
+    img.onerror = function(){ onDone(''); };
     img.src = String(reader.result||'');
   };
   reader.readAsDataURL(file);
@@ -31792,6 +31810,7 @@ async function __safeJson(res){
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
     __compressImg(file, function(dataUrl){
+      if(!dataUrl){ selectedBase64 = ''; sourcePreview.style.display = 'none'; return; }
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
@@ -31963,7 +31982,8 @@ async function __safeJson(res){
 
   btnGenerate.onclick = async () => {
     const idea = ideaText ? ideaText.value.trim() : '';
-    const placeVal = (placeEl ? placeEl.value : '') || (idea && !selectedBase64 ? 'custom' : '');
+    const photoOn = !!(selectedBase64 && sourcePreview && sourcePreview.style.display !== 'none'); // v-tool-drop: صورة المستخدم الظاهرة تُرسل — مكان من الملصق قبلها كان يُسقطها بصمت
+    const placeVal = photoOn ? '' : ((placeEl ? placeEl.value : '') || (idea && !selectedBase64 ? 'custom' : ''));
     const notesEl = document.getElementById('designAiNotes');
     if(!selectedBase64 && !placeVal){
       setStatus(t('designAiNeedPick'));
@@ -32980,6 +33000,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
     __compressImg(file, function(dataUrl){
+      if(!dataUrl){ selectedBase64 = ''; sourcePreview.style.display = 'none'; return; }
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
@@ -33570,6 +33591,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
     __compressImg(file, function(dataUrl){
+      if(!dataUrl){ selectedBase64 = ''; sourcePreview.style.display = 'none'; return; }
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
