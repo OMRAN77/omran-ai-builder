@@ -43,8 +43,15 @@ test('٣. بقيّة المعارض: مقارنة الستايل، إضافات 
   assert.ok(tc.includes("<span style=\"" + OVER), 'اسم الشخصيّة فوق صورتها');
   const css = cut(read('css/modules.css'), '/* v-photo-only', '/* بطاقتا النماذج');
   assert.ok(css.includes('html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg) .vmk-tab-lbl{' + OVER), 'اسم التبويب فوق صورته');
-  assert.ok(css.includes('html #videoMakerModal .vmk-tab[aria-selected=true]:not(.vmk-tab-noimg){'), 'المختار بإطار ذهبيّ');
-  assert.ok(read('css/modules.css').includes('#videoMakerModal .vmk-sm.has-vid>b{display:none}'), 'لا شريط تحت غلاف النموذج (عنوانه مرسوم فيه)');
+  assert.ok(css.includes('html #videoMakerModal .vmk-tab[aria-selected=true]:not(.vmk-tab-noimg){'), 'المختار بإطاره واسم ذهبيّ');
+  assert.ok(css.includes('@media (min-width:641px) and (max-width:860px){html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg){min-width:0;max-width:none}}'), 'التابلت: يملأ خانته');
+  const mods = read('css/modules.css');
+  assert.ok(mods.includes('#videoMakerModal .vmk-sm.has-vid>b{display:none}'), 'لا شريط تحت غلاف النموذج (عنوانه مرسوم فيه)');
+  // مراجعة بصريّة: الصفّ يمتدّ لأطول بطاقة، فبلا هذا يبقى فراغ تحت غلاف البطاقة التعليميّة بجانب نموذج نصّيّ
+  assert.ok(mods.includes('#videoMakerModal .vmk-sm.has-vid{display:flex;flex-direction:column}') && mods.includes('#videoMakerModal .vmk-sm.has-vid .vmk-sm-p{flex:1 1 auto}'), 'الغلاف يملأ بطاقته');
+  assert.ok(mods.includes('#studioAiTabs .studioAiTabBtn:not(.active) > img ~ span{color:#fff}'), 'اسم تبويب الستايل يُقرأ فوق صورته في الفاتح');
+  assert.ok(ins.includes('#inspireScreen .insCard.busy .insTxt, #inspireScreen .insCard.fail .insTxt{visibility:hidden;}'), 'رسالة التحميل/الفشل وحدها لا فوق العنوان');
+  assert.ok(gen.includes("var ct=d.querySelector('.ct'); if(ct) ct.style.color=on?'#d4af37':'#fff';"), 'اسم الإضافة المختارة ذهبيّ');
   const vid = read('js/video.js');
   assert.ok(vid.includes("te.setAttribute('aria-label',tt0); te.title=tt0;") && vid.includes("el.setAttribute('aria-label',tx); el.title=tx;"), 'العنوان باقٍ تلميحًا');
   const ad = read('ad-studio.html');
@@ -74,10 +81,10 @@ test('٤. الوضع الأسود: الطبقة فوق صورة لا تُسوَ�
 test('٥. الأوسمة مرفوعة والحزمة مبنيّة', () => {
   const html = read('index.html');
   const tag = (s, name) => { const i = s.indexOf(name); assert.ok(i >= 0, name); return Number((/v=(\d+)/.exec(s.slice(i, i + 40)) || [])[1] || 0); };
-  assert.ok(tag(html, 'css/modules.css') >= 683, 'modules.css');
+  assert.ok(tag(html, 'css/modules.css') >= 684, 'modules.css');
   assert.ok(tag(html, '/js/partials-core.js') >= 663, 'partials-core.js');
   assert.ok(tag(html, '/js/design-sels.js') >= 574, 'design-sels.js');
-  assert.ok(tag(html, '/js/design-gen.js') >= 612, 'design-gen.js');
+  assert.ok(tag(html, '/js/design-gen.js') >= 613, 'design-gen.js');
   assert.ok(tag(html, '/js/video.js') >= 450, 'video.js');
   const b = read('js/app.bundle.js');
   assert.ok(b.includes('if(inTool && !overImage(el, cs)){') && b.includes("wrap.className = 'om3-skip';") && b.includes('imgWrap.appendChild(info);'), 'الحزمة');

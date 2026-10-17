@@ -72,6 +72,7 @@
     var ck=d.querySelector('.ck');
     ck.style.background=on?'#d4af37':'rgba(0,0,0,.45)'; ck.style.color=on?'#141414':'transparent'; ck.style.borderColor=on?'#d4af37':'rgba(212,175,55,.7)';
     d.style.boxShadow=on?'0 0 0 1px #d4af37,0 6px 18px -8px rgba(212,175,55,.6)':'none';
+    var ct=d.querySelector('.ct'); if(ct) ct.style.color=on?'#d4af37':'#fff'; /* v-photo-only: لون الاسم مضمَّن فوق الصورة فلا يرث ذهب .sel */
   }
   function extrasRow(){
     var w=document.createElement('div'); w.className='fxAccGrid f417';

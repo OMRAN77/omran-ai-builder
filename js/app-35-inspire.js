@@ -131,6 +131,8 @@ const INSPIRE_LIVE_TXT = {
 #inspireScreen .insCard .insCD{display:none;}
 #inspireScreen .insCard .insBusy{position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); font-size:13px; font-weight:700;}
 #inspireScreen .insCard.busy .insBusy, #inspireScreen .insCard.fail .insBusy{display:flex;}
+#inspireScreen .insCard .insBusy{color:#fff;}
+#inspireScreen .insCard.busy .insTxt, #inspireScreen .insCard.fail .insTxt{visibility:hidden;} /* v-photo-only: الرسالة وحدها لا فوق العنوان */
 #inspireScreen .insCard.fail .insBusy{background:rgba(120,20,20,.72); padding:10px; text-align:center;}
 #inspireScreen .insGrid.loading .insCard:not(.busy){opacity:.55; pointer-events:none;}
 #inspireScreen .insErr{margin:0 0 12px; font-size:13px; color:var(--danger, #e88);}

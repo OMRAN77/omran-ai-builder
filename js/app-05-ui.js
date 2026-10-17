@@ -3844,7 +3844,7 @@ async function postWithConfirm(url, payload){
       info.style.cssText = 'position:absolute;inset:auto 0 0 0;padding:22px 8px 8px;text-align:center;pointer-events:none;background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       var nm = document.createElement('div');
       nm.textContent = it.title || '';
-      nm.style.cssText = 'font-size:12.5px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.9);color:' + (it.active ? '#e9c75a' : '#fff') + ';';
+      nm.style.cssText = 'font-size:12.5px;font-weight:700;line-height:1.3;text-shadow:0 1px 3px rgba(0,0,0,.9);color:' + (it.active ? '#e9c75a' : '#fff') + ';';
       info.appendChild(nm);
       wrap.appendChild(info); card.appendChild(wrap);
       card.onclick = function(){ shut(); if(cfg.onPick) cfg.onPick(it.v); };

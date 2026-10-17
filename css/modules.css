@@ -808,7 +808,8 @@ html[data-mode="light"] #videoMakerModal .vmk-dir-diag{background:rgba(0,0,0,.05
 #videoMakerModal .vmk-dir-row select:disabled{opacity:.45}
 
 /* v-photo-only (المالك ١٧ أكتوبر: «انماط الصور والاستايل والازياء… اي صوره تحتها احذفها نهائي»):
-   تبويب القسم صورته وحدها والاسم فوق أسفلها بتدرّج — لا سطر تحت الصورة؛ المختار بإطار ذهبيّ واسم ذهبيّ لا بخلفيّة ذهبيّة حولها.
+   تبويب القسم صورته وحدها والاسم فوق أسفلها بتدرّج — لا سطر تحت الصورة؛ المختار بإطاره واسم ذهبيّ لا بخلفيّة ذهبيّة حولها
+   (الإطار ذهبيّ في الفاتح، ورماديّ فاتح في الأسود بقاعدة الألوان الثلاثة للمختار).
    ارتفاعه ارتفاع تبويب المخرج النصّيّ (١١٥). html أوّلًا ليغلب قواعد الوضع الفاتح. */
 html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg){position:relative;padding:0;gap:0;min-width:96px;max-width:112px;min-height:115px;overflow:hidden;border-radius:14px;border:2px solid transparent;background:#101216;box-shadow:none}
 html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg) .vmk-tab-img{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:0;box-shadow:none}
@@ -816,5 +817,12 @@ html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg) .vmk-tab-lbl{position:absolut
 html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg):hover{border-color:rgba(232,194,122,.55)}
 html #videoMakerModal .vmk-tab[aria-selected=true]:not(.vmk-tab-noimg){background:#101216;border-color:var(--lux-gold,#e8c27a);box-shadow:0 6px 18px -8px rgba(232,194,122,.7)}
 html #videoMakerModal .vmk-tab[aria-selected=true]:not(.vmk-tab-noimg) .vmk-tab-lbl{color:var(--lux-gold,#e8c27a)}
+@media (min-width:641px) and (max-width:860px){html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg){min-width:0;max-width:none}} /* التابلت: يملأ خانة شبكة الأعمدة الخمسة */
 /* بطاقتا النماذج: العنوان مرسوم داخل صورة الغلاف أصلًا (قوالب متحرّكة والتعليميّة) فلا شريط يكرّره تحتها؛ النصّ باقٍ تلميحًا (aria-label/title) */
 #videoMakerModal .vmk-sm.has-vid>b{display:none}
+/* الصفّ يمتدّ لأطول بطاقة (النموذج النصّيّ في سينمائي/الممثل…): الغلاف يملأ بطاقته فلا فراغ تحت الصورة بعد إخفاء الشريط */
+#videoMakerModal .vmk-sm.has-vid{display:flex;flex-direction:column}
+#videoMakerModal .vmk-sm.has-vid .vmk-sm-p{flex:1 1 auto}
+/* v-photo-only: اسم تبويب الستايل فوق صورته — أبيض بظلّ في الوضعين (في الفاتح كان بنّيًّا على التدرّج الأسود لا يُقرأ)، والمختار ذهبيّ كما هو */
+#studioAiTabs .studioAiTabBtn > img ~ span{text-shadow:0 1px 3px rgba(0,0,0,.9)}
+#studioAiTabs .studioAiTabBtn:not(.active) > img ~ span{color:#fff}

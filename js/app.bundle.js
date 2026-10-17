@@ -13419,7 +13419,7 @@ async function postWithConfirm(url, payload){
       info.style.cssText = 'position:absolute;inset:auto 0 0 0;padding:22px 8px 8px;text-align:center;pointer-events:none;background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       var nm = document.createElement('div');
       nm.textContent = it.title || '';
-      nm.style.cssText = 'font-size:12.5px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.9);color:' + (it.active ? '#e9c75a' : '#fff') + ';';
+      nm.style.cssText = 'font-size:12.5px;font-weight:700;line-height:1.3;text-shadow:0 1px 3px rgba(0,0,0,.9);color:' + (it.active ? '#e9c75a' : '#fff') + ';';
       info.appendChild(nm);
       wrap.appendChild(info); card.appendChild(wrap);
       card.onclick = function(){ shut(); if(cfg.onPick) cfg.onPick(it.v); };
@@ -32827,7 +32827,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       info.style.cssText = 'position:absolute; inset:auto 0 0 0; padding:22px 8px 8px; text-align:center; pointer-events:none; background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       const nameEl = document.createElement('div');
       nameEl.textContent = title; nameEl.setAttribute('data-pstyle-name', '1');
-      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; text-shadow:0 1px 3px rgba(0,0,0,.9); color:' + (active ? '#d4af37' : '#eef0f6') + ';';
+      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; line-height:1.3; text-shadow:0 1px 3px rgba(0,0,0,.9); color:' + (active ? '#d4af37' : '#eef0f6') + ';';
       info.appendChild(nameEl); imgWrap.appendChild(info);
       card.appendChild(imgWrap);
       card.onclick = function(){ selectPortraitStyle(v); };
@@ -46384,6 +46384,8 @@ const INSPIRE_LIVE_TXT = {
 #inspireScreen .insCard .insCD{display:none;}
 #inspireScreen .insCard .insBusy{position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); font-size:13px; font-weight:700;}
 #inspireScreen .insCard.busy .insBusy, #inspireScreen .insCard.fail .insBusy{display:flex;}
+#inspireScreen .insCard .insBusy{color:#fff;}
+#inspireScreen .insCard.busy .insTxt, #inspireScreen .insCard.fail .insTxt{visibility:hidden;} /* v-photo-only: الرسالة وحدها لا فوق العنوان */
 #inspireScreen .insCard.fail .insBusy{background:rgba(120,20,20,.72); padding:10px; text-align:center;}
 #inspireScreen .insGrid.loading .insCard:not(.busy){opacity:.55; pointer-events:none;}
 #inspireScreen .insErr{margin:0 0 12px; font-size:13px; color:var(--danger, #e88);}

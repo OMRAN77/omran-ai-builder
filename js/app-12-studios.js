@@ -1124,7 +1124,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       info.style.cssText = 'position:absolute; inset:auto 0 0 0; padding:22px 8px 8px; text-align:center; pointer-events:none; background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       const nameEl = document.createElement('div');
       nameEl.textContent = title; nameEl.setAttribute('data-pstyle-name', '1');
-      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; text-shadow:0 1px 3px rgba(0,0,0,.9); color:' + (active ? '#d4af37' : '#eef0f6') + ';';
+      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; line-height:1.3; text-shadow:0 1px 3px rgba(0,0,0,.9); color:' + (active ? '#d4af37' : '#eef0f6') + ';';
       info.appendChild(nameEl); imgWrap.appendChild(info);
       card.appendChild(imgWrap);
       card.onclick = function(){ selectPortraitStyle(v); };
