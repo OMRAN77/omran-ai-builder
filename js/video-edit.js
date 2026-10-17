@@ -4,7 +4,9 @@
    v2: إخفاء كتابة محروقة في الفيديو (مسح delogo / تمويه / تغطية بلون) والكتابة مكانها، خطوط التطبيق نفسها،
    وتحريك الكتابة بالسحب على المعاينة (أزرار تشغيل خاصّة بدل أزرار المتصفّح كي يستقبل الرسم اللمس).
    الكتابة تُرسَم على canvas (العربيّة تتشكّل صحيحة) ثمّ تُركَّب overlay — لا drawtext (النواة بلا harfbuzz).
-   المعاينة والتصدير يرسمان بالدالّة نفسها فما تراه هو ما يخرج. */
+   المعاينة والتصدير يرسمان بالدالّة نفسها فما تراه هو ما يخرج.
+   v3 (المالك ١٧ أكتوبر «حق اهني» بصورته): مربّع اختيار الفيديو صورة المالك نظيفة بلا نصّ (css/ved-art.css تُحمَّل عند أوّل فتح)
+   والنصّ فوقها HTML بالـ١٤ لغة في مواضع العربيّ المقيسة من صورته، والمربّع كلّه يضغط. */
 (function(){
   'use strict';
   var MAX_SEC = 180, MAX_TEXTS = 60, MAX_REGIONS = 10;
@@ -217,7 +219,26 @@
     return args;
   }
 
-  var pure = { outDims: outDims, parseProbe: parseProbe, wrapLines: wrapLines, layoutItem: layoutItem,
+  /* نصوص مربّع الاختيار بالـ١٤ لغة: [العنوان، الزرّ، الحدّ] — {n} = الحدّ بالميغا */
+  var PICK = {
+    ar: ['اختر الفيديو', 'اختر فيديو من جهازك', 'حتى {n} ميغا'],
+    en: ['Choose video', 'Choose from your device', 'Up to {n} MB'],
+    fr: ['Choisir la vidéo', 'Choisir sur l’appareil', 'Jusqu’à {n} Mo'],
+    es: ['Elige el vídeo', 'Elegir del dispositivo', 'Hasta {n} MB'],
+    tr: ['Videoyu seç', 'Cihazından seç', 'En fazla {n} MB'],
+    ru: ['Выберите видео', 'Выбрать с устройства', 'До {n} МБ'],
+    hi: ['वीडियो चुनें', 'डिवाइस से चुनें', '{n} MB तक'],
+    ur: ['ویڈیو منتخب کریں', 'آلے سے منتخب کریں', '{n} MB تک'],
+    bn: ['ভিডিও বেছে নিন', 'ডিভাইস থেকে বেছে নিন', '{n} MB পর্যন্ত'],
+    ne: ['भिडियो छान्नुहोस्', 'डिभाइसबाट छान्नुहोस्', '{n} MB सम्म'],
+    fil: ['Pumili ng video', 'Pumili sa device mo', 'Hanggang {n} MB'],
+    id: ['Pilih video', 'Pilih dari perangkat', 'Hingga {n} MB'],
+    zh: ['选择视频', '从设备中选择视频', '最大 {n} MB'],
+    ml: ['വീഡിയോ തിരഞ്ഞെടുക്കുക', 'ഉപകരണത്തിൽ നിന്ന് എടുക്കുക', '{n} MB വരെ']
+  };
+  function pickText(l, i, n){ var a = PICK[l] || PICK.en; return String(a[i]).split('{n}').join(String(n)); }
+
+  var pure = { pickText: pickText, PICK: PICK, outDims: outDims, parseProbe: parseProbe, wrapLines: wrapLines, layoutItem: layoutItem,
     segToTexts: segToTexts, buildArgs: buildArgs, fontPx: fontPx, isRtl: isRtl, regionPx: regionPx, hexColor: hexColor,
     FONTS: FONTS, fontById: fontById, lineK: lineK, fontCss: fontCss, MAX_SEC: MAX_SEC, MAX_TEXTS: MAX_TEXTS, MAX_REGIONS: MAX_REGIONS };
   if(typeof window !== 'undefined') window.__ved = pure;
@@ -499,8 +520,15 @@
       '#vedModal .ved-btn{background:#101013;color:inherit;border:1px solid transparent;border-radius:999px;padding:8px 14px;font-size:13.5px;transition:border-color .15s}',
       '#vedModal .ved-pri{color:#e8b04a;font-weight:700}',
       '#vedModal .ved-hint{font-size:12px;opacity:.7;margin-top:6px}',
-      '#vedModal .ved-pick{text-align:center;padding:26px 8px;background:#101013;border:1px solid transparent;border-radius:14px}',
-      '#vedModal .ved-pick .ved-btn{background:#000}',
+      /* صورة المالك 1280×585: المواضع مقيسة من نصّه العربيّ (px→٪)، والحجم بعرض المربّع (cqw) */
+      '#vedModal .ved-pick{position:relative;aspect-ratio:1280/585;container-type:inline-size;background:#000 center/cover no-repeat;border:1px solid transparent;border-radius:14px;overflow:hidden;cursor:pointer;transition:border-color .15s}',
+      '#vedModal .ved-pick .ved-pt,#vedModal .ved-pick .ved-pb,#vedModal .ved-pick .ved-ph{position:absolute;margin:0;padding:0;white-space:nowrap;overflow:hidden;line-height:1.25;transform:translateY(-50%);' +
+        'background:linear-gradient(180deg,#fff6cf 0%,#f3d77f 42%,#c9a12e 68%,#8a6612 100%) 0 0/100% 1.25em repeat-y;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 1px rgba(0,0,0,.9)) drop-shadow(0 0 6px rgba(0,0,0,.5))}',
+      '#vedModal .ved-pick .ved-pt{top:18.6%;left:61.5%;right:13.4%;text-align:right;font-weight:800;font-size:max(12px,4cqw)}',
+      '#vedModal .ved-pick .ved-pb{top:53.3%;left:35%;right:35%;text-align:center;font-weight:800;font-size:max(10px,3cqw);border:0;border-radius:0;cursor:pointer}',
+      '#vedModal .ved-pick .ved-ph{top:70.6%;left:22%;right:22%;text-align:center;font-weight:500;font-size:max(10px,2.3cqw)}',
+      '#vedModal .ved-pick .ved-pb:focus-visible{outline:none}',
+      '#vedModal .ved-pick:focus-within{border-color:rgba(212,175,55,.85)}',
       '#vedModal .ved-stage{position:relative;margin:0 auto;background:#000;border-radius:10px;overflow:hidden}',
       '#vedModal .ved-stage video,#vedModal .ved-stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}',
       '#vedModal .ved-stage canvas{touch-action:none;cursor:pointer;-webkit-user-select:none;user-select:none}',
@@ -555,7 +583,7 @@
     M.innerHTML =
       '<div class="ved-card">' +
         '<div class="ved-head"><b></b><button type="button" class="ved-x" aria-label="">×</button></div>' +
-        '<div class="ved-pick"><button type="button" class="ved-btn ved-pri" data-k="pickBtn"></button><div class="ved-hint" data-k="pickHint"></div>' +
+        '<div class="ved-pick"><div class="ved-pt" data-k="pickT" aria-hidden="true"></div><button type="button" class="ved-pb" data-k="pickBtn"></button><div class="ved-ph" data-k="pickHint"></div>' +
           '<input type="file" accept="video/*" data-k="vfile" hidden></div>' +
         '<div class="ved-main" hidden>' +
           '<div class="ved-stage"><video playsinline preload="auto"></video><canvas></canvas></div>' +
@@ -589,9 +617,9 @@
     M.querySelector('.ved-x').setAttribute('aria-label', T_('close'));
     M.querySelector('.ved-x').onclick = close;
     M.addEventListener('click', function(e){ if(e.target === M && !st.busy) close(); });
-    K('pickBtn').textContent = T_('pick');
-    K('pickHint').textContent = T_('pickHint', { n: maxMB() });
-    K('pickBtn').onclick = function(){ K('vfile').click(); };
+    artCss();
+    /* المربّع كلّه يفتح الاختيار (الزرّ داخله يصعد إليه فلا فتح مرّتين، والملفّ نفسه مستثنى) */
+    Q('.ved-pick').onclick = function(e){ if(e.target !== K('vfile')) K('vfile').click(); };
     K('change').textContent = T_('change'); K('change').onclick = function(){ if(!st.busy) K('vfile').click(); };
     K('vfile').onchange = function(){ var f = this.files && this.files[0]; this.value = ''; if(f) loadVideo(f); };
     K('hRegs').textContent = T_('regs'); K('regHint').textContent = T_('regHint');
@@ -644,7 +672,7 @@
     K('seek').addEventListener('pointerdown', function(){ seeking = true; });
     K('seek').addEventListener('change', function(){ seeking = false; syncCtl(); });
     bindCanvas(Q('.ved-stage canvas'));
-    window.addEventListener('resize', function(){ if(M.classList.contains('open')) sizeStage(); });
+    window.addEventListener('resize', function(){ if(M.classList.contains('open')){ sizeStage(); fitPick(); } });
     M.__K = K;
   }
   function K(k){ return M.__K(k); }
@@ -668,10 +696,42 @@
   }
   var seeking = false;
 
+  /* صورة المربّع (data URI ‎~200KB‎) في ملفّ مستقلّ يُحمَّل عند أوّل فتح فقط — لا تثقل الصفحة */
+  function artCss(){
+    if(document.getElementById('vedArtCss')) return;
+    var l = document.createElement('link'); l.id = 'vedArtCss'; l.rel = 'stylesheet'; l.href = '/css/ved-art.css?v=1';
+    document.head.appendChild(l);
+  }
+  function pickTexts(){
+    var l = lang(), n = maxMB(), t = Q('[data-k="pickT"]'), b = Q('[data-k="pickBtn"]'), h = Q('[data-k="pickHint"]');
+    if(!t || !b || !h) return;
+    t.textContent = pickText(l, 0, n); b.textContent = pickText(l, 1, n); h.textContent = pickText(l, 2, n);
+    b.title = T_('pickHint', { n: n });
+    fitPick();
+  }
+  /* النصّ داخل موضعه من الصورة: سطر واحد يصغر حتّى يتّسع، وإن ضاق جدًّا (لغات طويلة/جوال) فسطران داخل الحيّز نفسه */
+  function fitOne(x, maxH){
+    x.style.fontSize = ''; x.style.whiteSpace = '';
+    var base = parseFloat(getComputedStyle(x).fontSize) || 12, fs = base, i = 0, min = Math.max(9, base * 0.7);
+    var over = function(){ return x.scrollWidth > x.clientWidth + 1 || (maxH > 0 && x.scrollHeight > maxH + 1); };
+    while(over() && fs > min && i++ < 60){ fs -= 0.5; x.style.fontSize = fs + 'px'; }
+    if(!over()) return;
+    if(maxH > 0){ x.style.whiteSpace = 'normal'; fs = base; x.style.fontSize = fs + 'px'; }
+    i = 0; while(over() && fs > 7 && i++ < 80){ fs -= 0.5; x.style.fontSize = fs + 'px'; }
+  }
+  function fitPick(){
+    var box = Q('.ved-pick'); if(!box || box.hidden || !box.clientWidth) return;
+    var h = box.clientHeight;
+    fitOne(box.querySelector('.ved-pt'), h * 0.2);   /* بين أعلى الصورة والزخرفة */
+    fitOne(box.querySelector('.ved-pb'), h * 0.15);  /* داخل الزرّ الذهبيّ */
+    fitOne(box.querySelector('.ved-ph'), 0);
+  }
   function open(){
     if(!M) build();
     M.setAttribute('dir', dirRtl() ? 'rtl' : 'ltr');
     M.classList.add('open');
+    pickTexts();
+    try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitPick); }catch(e){ /* guard-ok — الحجم الأوّل يكفي */ }
     loadFont('default').then(redraw);
     if(st.file) sizeStage();
   }
