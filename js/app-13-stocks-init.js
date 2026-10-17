@@ -2548,6 +2548,45 @@
     b.onclick = () => setFeature(b.dataset.feature);
   });
 
+  /* v-studio-strip-desktop (المالك ١٧ أكتوبر: «شريط اختر التعديل مايتحرك» على الكمبيوتر، ثمّ «يتحرّك بعجلة الماوس والسحب، بدون أيّ
+     تغيير ثاني، والجوّال ما ينلمس»): الشريط ٢٤ تبويبًا والحاسوب يعرض نصفها، وشريط التمرير مخفيّ في التطبيق كلّه (v-noscroll-all)،
+     فالعجلة تحرّك الصفحة والسحب لا يفعل شيئًا — نصف الميزات (منها «دمج صور») لا تُبلغ إلّا من الجوّال. على الحاسوب وحده: العجلة تحرّك
+     الشريط أفقيًّا ما دام فيه مكان (وعند طرفه تكمل الصفحة)، والسحب بالماوس يحرّكه، والضغطة بعد سحب لا تختار تبويبًا. اللمس والجوّال كما هما. */
+  function stripDesktopScroll(el){
+    if(!el) return;
+    const phone = () => document.documentElement.classList.contains('mobile-ui');
+    const room = () => Math.max(0, el.scrollWidth - el.clientWidth);
+    const rtl = () => getComputedStyle(el).direction === 'rtl';
+    el.addEventListener('wheel', (e) => {
+      if(phone() || e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const max = room(); if(!max) return;
+      const pos = Math.abs(el.scrollLeft); // RTL: ‎0 ← -max‎ في المتصفّحات الحديثة
+      if(e.deltaY > 0 ? pos >= max - 1 : pos <= 1) return;
+      e.preventDefault();
+      const d = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * el.clientWidth : e.deltaY);
+      el.scrollLeft += rtl() ? -d : d;
+    }, { passive: false });
+    let drag = null, dragEnd = 0;
+    el.addEventListener('pointerdown', (e) => {
+      if(phone() || e.pointerType !== 'mouse' || e.button !== 0 || !room()) return;
+      e.preventDefault(); // لا تحديد نصّ أثناء السحب — الضغطة نفسها تبقى
+      drag = { x: e.clientX, left: el.scrollLeft, moved: false };
+    });
+    window.addEventListener('pointermove', (e) => {
+      if(!drag) return;
+      const dx = e.clientX - drag.x;
+      if(!drag.moved && Math.abs(dx) < 5) return;
+      drag.moved = true;
+      el.scrollLeft = drag.left - dx;
+    });
+    const end = () => { if(drag && drag.moved) dragEnd = Date.now(); drag = null; };
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    el.addEventListener('click', (e) => { if(Date.now() - dragEnd < 350){ e.stopPropagation(); e.preventDefault(); } }, true);
+    el.addEventListener('dragstart', (e) => { if(!phone()) e.preventDefault(); });
+  }
+  stripDesktopScroll(tabsWrap);
+
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
     closeHeaderMenu();
