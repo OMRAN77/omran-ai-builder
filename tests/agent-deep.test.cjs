@@ -11,6 +11,7 @@ const crypto = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs');
 
+process.env.OWNER_AGENT_CLAUDE = 'on'; // v-agent-claude-off: الاختبار يفحص الوكيل وهو شغّال
 process.env.AUTH_SECRET = 'agent-deep-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 const root = path.resolve(__dirname, '..');

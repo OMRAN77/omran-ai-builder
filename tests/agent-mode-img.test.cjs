@@ -9,6 +9,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
+process.env.OWNER_AGENT_CLAUDE = 'on'; // v-agent-claude-off: الاختبار يفحص الوكيل وهو شغّال
 process.env.AUTH_SECRET = 'agent-mode-img-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 process.env.GITHUB_TOKEN = 'gh-test-token';
