@@ -740,10 +740,23 @@
     const inName = isWebmSource ? 'vin.webm' : 'vin.mp4';
     await ffmpeg.writeFile(inName, await fetchFile(videoSrc));
     await ffmpeg.writeFile('ain.mp3', await fetchFile(audioBlob));
-    const vcodec = isWebmSource ? ['-c:v', 'libx264', '-pix_fmt', 'yuv420p'] : ['-c:v', 'copy'];
-    await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', ...vcodec, '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.mp4']);
-    const data = await ffmpeg.readFile('muxout.mp4');
-    return new Blob([data.buffer], { type: 'video/mp4' });
+    /* v-canvas-mux-fast: إعادة ترميز libx264 داخل المتصفّح (خيط واحد) كانت تعلق دقائق عند «جاري دمج الصوت» لفيديو القوالب —
+       الآن ننسخ صورة WebM كما هي ونضيف الصوت (opus) بأقلّ من ثانية؛ ترميز ultrafast احتياط فقط، وكلّ خطوة لها مهلة */
+    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); }catch(e){ __swallow(e, 'video:mux-any-clean'); } };
+    try{
+      if(isWebmSource){
+        if(await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', '-c:v', 'copy', '-c:a', 'libopus', '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.webm'], 60000) === 0){
+          const w = await ffmpeg.readFile('muxout.webm');
+          if(w && w.length > 1000) return new Blob([w.buffer], { type: 'video/webm' });
+        }
+      }
+      const vcodec = isWebmSource ? ['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'] : ['-c:v', 'copy'];
+      if(await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', ...vcodec, '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.mp4'], 180000) !== 0) throw new Error('mux failed');
+      const data = await ffmpeg.readFile('muxout.mp4');
+      return new Blob([data.buffer], { type: 'video/mp4' });
+    } finally {
+      for(const f of [inName, 'ain.mp3', 'muxout.webm', 'muxout.mp4']) await rm(f);
+    }
   }
 
   async function runCanvasOnly(text, ratio, seconds, signature, wantNarration, narrationVal){
