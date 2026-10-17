@@ -52,7 +52,7 @@ function extractFn(){
 }
 
 function proj(n, opts){
-  return Object.assign({ id: 'p_' + String(1700000000 + n).padStart(13, '0'), title: 'محادثة ' + n, provider: 'openai' }, opts);
+  return Object.assign({ id: 'p_' + String(1700000000 + n).padStart(13, '0'), title: 'محادثة ' + n, provider: 'openai', messages: [{ role: 'user', content: 'س' + n }] }, opts); // v-hide-empty-proj: الفارغ لا يُعرض
 }
 
 test('١. بصمة التغيّر: رسم ثانٍ مطابق لا يمسح القائمة ولا يعيد بناءها', () => {
