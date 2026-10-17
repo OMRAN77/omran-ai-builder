@@ -89,3 +89,24 @@ test('v-write-fix: سبب الفشل يرجع للمالك وحده', () => {
   assert.match(src, /isOwnerName\(gate\.username\)/);
   assert.match(src, /owner \? \{ diag \} : \{\}/);
 });
+
+test('v-emirati: بالعربيّ قواعد إماراتيّة صريحة، والكلام الدخيل (مصريّ/شاميّ) يُرفض فتنتقل السلسلة، وإن لم يسلم أحد يرجع أوّل جواب', async () => {
+  const p = vw.buildPrompt({ request: 'اكتب لي إعلان', kind: 'ad', seconds: 10 });
+  assert.ok(p.includes('PURE EMIRATI') && p.includes('وايد') && p.includes('NEVER use') && p.includes('second person'));
+  assert.ok(!vw.buildPrompt({ request: 'write an ad', kind: 'ad', seconds: 10 }).includes('PURE EMIRATI'), 'غير العربيّ بلا قواعد اللهجة');
+  // جمل الراوي في فيديوَي الموقع (١٧ أكتوبر)
+  assert.equal(vw.nonEmirati({ narration: 'تفصيل الصقر وهو بيطير واضح زي النهار!' }), true);
+  assert.equal(vw.nonEmirati({ narration: 'هلا', lines: [{ who: 'أ', text: 'عايز فيديو كده' }] }), true);
+  assert.equal(vw.nonEmirati({ narration: 'تبا فيديو بسرعة؟ تكتب الوصف، وتضغط إنشاء… والحين جاهز، مب مشكلة!' }), false);
+  assert.equal(vw.nonEmirati({ narration: 'مشمش ومشكلة وزيت' }), false, 'الكلمة كاملة لا جزء منها');
+  assert.equal(vw.nonEmirati({ scene: 'زي تقليدي', narration: 'الصقر يطير' }), false, 'المشهد وصف للمولّد فلا يُفحص');
+  const EG = '{"scene":"صحراء","narration":"الصقر بيطير زي النهار"}', AE = '{"scene":"صحراء","narration":"الصقر يطير فوق الرمل، شي وايد حلو"}';
+  let acc = null;
+  const two = await vw.write({ request: 'اكتب عن صقر', seconds: 8, chain: async (o) => { acc = o.accept; return o.accept(EG) ? { ok: true, text: EG } : o.accept(AE) ? { ok: true, text: AE } : { ok: false }; } });
+  assert.equal(two.narration, 'الصقر يطير فوق الرمل، شي وايد حلو', 'المزوّد التالي الإماراتيّ');
+  assert.equal(acc('{"scene":"x","narration":"hello like that"}'), true);
+  const only = await vw.write({ request: 'اكتب عن صقر', seconds: 8, chain: async (o) => { o.accept(EG); return { ok: false, errors: [] }; } });
+  assert.equal(only.narration, 'الصقر بيطير زي النهار', 'لا أحد سلم ← أوّل جواب مقروء بدل «تعذّرت الكتابة»');
+  const en = await vw.write({ request: 'falcon video', seconds: 8, chain: async (o) => (o.accept(EG) ? { ok: true, text: EG } : { ok: false }) });
+  assert.equal(en.narration, 'الصقر بيطير زي النهار', 'طلب غير عربيّ لا يُفحص');
+});
