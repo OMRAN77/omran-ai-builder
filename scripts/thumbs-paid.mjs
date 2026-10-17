@@ -5,7 +5,7 @@
 // قواعد الصور (CLAUDE.md): لا نصّ مطبوع، الدقّة الأصليّة للمولّد كما هي (لا تصغير ولا تكبير)، WebP q90.
 //
 //   OPENAI_API_KEY=… GEMINI_API_KEY=… node scripts/thumbs-paid.mjs <mode>
-//   mode: upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio
+//   mode: poster | upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio
 //
 // الأوصاف من مصادر الحقيقة نفسها في الخادم (design-create / fashion-create / STUDIO_OPTIONS) + الصياغات التي راجعها المالك بالعين
 // (v-decor-18c/d/e) لخيارات الديكور. المخرجات في thumbs/<نوع>/<اسم>.webp ثمّ ينسخها الورك فلو إلى assets/.
@@ -203,7 +203,22 @@ if (isMode('studio')) {
 if (isMode('upload-art')) {
   Object.entries(UPLOAD_ART).forEach(([k, p]) => JOBS.push({ kind: 'upart', name: k, shape: 'wide2', prompt: p + ' Absolutely no text, no letters, no numbers, no signage, no watermark, no logo anywhere in the image.' }));
 }
-const OUT_DIR = { dopts: 'assets/design/decor-opts', dstyle: 'assets/design/styles', dplace: 'assets/design/opts', women: 'assets/fashion/looks/women', men: 'assets/fashion/looks/men', kids: 'assets/fashion/looks/kids', category: 'assets/fashion/looks/category', occasion: 'assets/fashion/looks/occasion', season: 'assets/fashion/looks/season', extras: 'assets/fashion/looks/extras', studioopt: 'assets/studio/options', upart: 'assets/upload-art' };
+// ---------- بوستر الديكور (أمر المالك ١٧ أكتوبر «أولّده»): الغرف الـ١٢ في شبكة ٤×٣ بلا أيّ نصّ — الأسماء HTML فوقه، والنقاط تُقاس من الصورة ----------
+const POSTER_ROOMS = [
+  ['a fine-dining restaurant with set tables and chairs', 'a cozy coffee shop with an espresso bar and stools', 'a serene master bedroom with a made bed and wardrobe', 'a traditional Arabic majlis with low patterned floor seating and ornate carpets'],
+  ['a modern living room with a sofa, TV wall and plants', 'a modern kitchen with cabinets, island and appliances', 'a home office with a desk, computer monitor and bookshelves', "a colorful children's bedroom with a small bed and toys"],
+  ['a boutique clothing shop with racks and a display window', 'a bathroom with a walk-in shower, vanity and mirror', 'a house entrance with a wooden front door, lantern and plant pots', 'a small garden with lawn, trees, flowers and a stone path'],
+];
+if (isMode('poster')) {
+  JOBS.push({ kind: 'poster', name: 'poster', shape: 'poster', prompt:
+    'Isometric 3D diorama poster on a dark charcoal reflective stage with subtle gold accents and a faint glowing network of thin golden lines in the background.' +
+    ' Exactly twelve miniature open-box room dioramas, each on its own square marble plinth, arranged in a strict, evenly spaced grid of three rows and four columns' +
+    ' that fills the frame with equal margins. Every diorama is the same size, viewed from the same isometric angle, cutaway with two walls removed so the interior is fully visible.' +
+    ' Row 1 left to right: ' + POSTER_ROOMS[0].join('; ') + '. Row 2 left to right: ' + POSTER_ROOMS[1].join('; ') + '. Row 3 left to right: ' + POSTER_ROOMS[2].join('; ') + '.' +
+    ' Warm interior lights inside each room, photoreal materials, crisp detail, cinematic studio lighting. Nothing between or above the rooms, no central object, no signs, no plaques, no labels on the plinths.' +
+    ' Absolutely no text, no letters, no numbers, no captions, no watermark, no logo anywhere.' });
+}
+const OUT_DIR = { poster: 'assets/decor/chips', dopts: 'assets/design/decor-opts', dstyle: 'assets/design/styles', dplace: 'assets/design/opts', women: 'assets/fashion/looks/women', men: 'assets/fashion/looks/men', kids: 'assets/fashion/looks/kids', category: 'assets/fashion/looks/category', occasion: 'assets/fashion/looks/occasion', season: 'assets/fashion/looks/season', extras: 'assets/fashion/looks/extras', studioopt: 'assets/studio/options', upart: 'assets/upload-art' };
 const outName = (j) => (j.kind === 'dplace' ? 'place-' : '') + j.name + '.webp';
 const jobs = SKIP_EXISTING ? JOBS.filter((j) => !existsSync(OUT_DIR[j.kind] + '/' + outName(j))) : JOBS;
 if (!jobs.length) { console.log('لا مهامّ للوضع «' + MODE + '»'); process.exit(MODE ? 0 : 1); }
@@ -265,7 +280,7 @@ const sharp = (await import('sharp')).default;
 async function save(j, buf) {
   const meta = await sharp(buf).metadata();
   let img = sharp(buf);
-  const want = j.shape === 'land16' ? 16 / 9 : j.shape === 'wide2' ? 2 : 0; // 0 = كما هي (3:4 و2:3 تُقصّ بـobject-fit عند العرض)
+  const want = j.shape === 'land16' ? 16 / 9 : j.shape === 'wide2' ? 2 : j.shape === 'poster' ? 4 / 3 : 0; // 0 = كما هي (3:4 و2:3 تُقصّ بـobject-fit عند العرض)
   if (want) {
     const w = meta.width, h = meta.height;
     const cw = Math.min(w, Math.round(h * want)), ch = Math.min(h, Math.round(w / want));
@@ -273,7 +288,7 @@ async function save(j, buf) {
   }
   // المولّد يرجع أكبر من المطلوب (1792×2400 / 5376×2688): تصغير واحد بـLanczos من الخام إلى ضعفَي أكبر عرض عرضٍ في التطبيق
   // (بطاقة ≤ ٣٦٠ → 1024، بطاقة عريضة ≤ ٢٣١ وغطاء الجوّال → 1536، مربّع الرفع ≤ ١٣٧٥ → 3072) — لا تكبير أبدًا (withoutEnlargement).
-  const CAP = { port: 1024, land16: 1536, wide2: 3072 }[j.shape] || 1024;
+  const CAP = { port: 1024, land16: 1536, wide2: 3072, poster: 1640 }[j.shape] || 1024; // البوستر يُعرض بعرض ≤ ٨٢٠
   img = img.resize({ width: CAP, withoutEnlargement: true, kernel: 'lanczos3' });
   mkdirSync('thumbs/' + j.kind, { recursive: true });
   const out = 'thumbs/' + j.kind + '/' + outName(j);
@@ -283,7 +298,10 @@ async function save(j, buf) {
 
 async function run(j) {
   let buf = null;
-  if (j.shape === 'wide2') {
+  if (j.shape === 'poster') {
+    buf = await gemini(j.prompt, '4:3', '4K');
+    if (!buf && OPENAI_KEY) buf = await openai(j.prompt, '1536x1024');
+  } else if (j.shape === 'wide2') {
     // أعلى دقّة متاحة: Gemini 3 Pro 4K بنسبة 21:9 ثمّ قصّ 2:1 (~3500×1750) — gpt-image حدّه 1536
     buf = await gemini(j.prompt, '21:9', '4K');
     if (!buf && OPENAI_KEY) buf = await openai(j.prompt, '1536x1024');

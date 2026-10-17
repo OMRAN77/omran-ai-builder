@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio'
+        description: 'poster | upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio'
         required: true
         default: 'opts'
       skip_existing:
@@ -64,6 +64,7 @@ jobs:
           for g in women men kids category occasion season extras; do copy "$g" "assets/fashion/looks/$g"; done
           copy studioopt assets/studio/options
           copy upart assets/upload-art
+          copy poster assets/decor/chips
           git add -A -- assets
           if git diff --cached --quiet; then echo "لا جديد"; exit 0; fi
           git commit -m "أصول: صور بمولّد الموقع المدفوع بأعلى دقّة — $MODE"
