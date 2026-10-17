@@ -31563,7 +31563,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   function renderThumbs(){
     var box = $('fxCustomThumbs'); if(!box) return;
     var cards = document.querySelectorAll('#fashionAiModal .fxAccCard[data-ext]');
-    if(box.childElementCount !== cards.length){
+    /* v-fx-gender-pics: البطاقات تُبنى من جديد عند تغيّر الفئة (💼 🧴 للرجل) — الدوائر تتبع إيموجيها لا عددها وحده */
+    var sig = Array.prototype.map.call(cards, function(c){ var o = c.querySelector('.oi'); return c.getAttribute('data-ext') + (o ? o.textContent : ''); }).join('|');
+    if(box.childElementCount !== cards.length || box.getAttribute('data-sig') !== sig){
+      box.setAttribute('data-sig', sig);
       box.innerHTML = '';
       Array.prototype.forEach.call(cards, function(card){
         var key = card.getAttribute('data-ext');
@@ -31620,7 +31623,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     lab.style.cssText = 'font-size:12.5px;color:var(--muted,#999);align-self:center;';
     box.appendChild(lab);
     var bag = q('.fxAccCard[data-ext="Handbag"]');
-    if(bag && !bag.classList.contains('sel')) box.appendChild(chip(T(TX.bag), function(){ bag.click(); }));
+    var bagOi = bag && bag.querySelector('.oi'); /* 💼 للرجل بدل 👜 */
+    if(bag && !bag.classList.contains('sel')) box.appendChild(chip(T(TX.bag).replace(/^\S+/, (bagOi && bagOi.textContent) || '👜'), function(){ bag.click(); }));
     var sea = $('fashionAiSeason');
     if(sea){
       var to = sea.value === 'winter' ? 'summer' : 'winter';
@@ -33321,7 +33325,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
-      if(!img.__flat){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; }
+      if(!img.__flat && gender === 'women'){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; } /* v-fx-gender-pics: الاحتياط صورة امرأة — لا لرجل أو طفل */
       else img.remove();
     };
     return img;
@@ -33341,7 +33345,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
           img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=3',
-          img2: 'assets/fashion/looks/' + v + '.webp',
+          img2: g === 'women' ? 'assets/fashion/looks/' + v + '.webp' : '',
         };
       }).filter(Boolean),
       onPick: function(v){ styleEl.value = v; fxStyleManual = v; renderStyleCards(); },
@@ -33723,11 +33727,23 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     refineBtn.onclick = __doRefine;
     refineInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); __doRefine(); } });
   }
+  /* v-fx-gender-pics: سطر التعديل تحت نتيجة رجل أو طفل كان «غيّري لون الفستان» و«عدّلي» — لغير النساء نصّ الفئة
+     (لغة بلا مدخل = المفتاح الأصليّ، وهو محايد فيها؛ العربيّة وحدها تؤنّث الفعل، و«الفستان» في كلّ اللغات) */
+  const FX_REFINE_G = {
+    ph: { ar:'مثال: غيّر لون القميص إلى أزرق فقط', en:'e.g. change only the shirt colour to blue', fr:'ex. : changez seulement la couleur de la chemise en bleu', es:'ej.: cambia solo el color de la camisa a azul', tr:'örn. sadece gömleğin rengini maviye çevir', ru:'напр.: измени только цвет рубашки на синий', hi:'जैसे: केवल शर्ट का रंग नीला करें', ur:'مثلاً: صرف قمیص کا رنگ نیلا کریں', bn:'যেমন: শুধু শার্টের রং নীল করুন', ne:'जस्तै: सर्टको रङ मात्र नीलो बनाउनुहोस्', fil:'hal.: palitan lang ang kulay ng polo sa asul', id:'mis.: ubah hanya warna kemeja menjadi biru', zh:'例如：只把衬衫颜色改成蓝色', ml:'ഉദാ: ഷർട്ടിന്റെ നിറം മാത്രം നീലയാക്കൂ' },
+    btn: { ar:'✏️ عدّل شيئًا محددًا' },
+    need: { ar:'اكتب التعديل المطلوب أولًا' },
+  };
+  function __refineG(k, key, ar, en){
+    const o = currentGender() !== 'women' ? FX_REFINE_G[k] : null;
+    return (o && o[lang7()]) || __gt2(key, ar, en);
+  }
   function __refineTexts(){
     if(!refineInput) return;
-    refineInput.placeholder = __gt2('fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
-    refineBtn.textContent = __gt2('fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
+    refineInput.placeholder = __refineG('ph', 'fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
+    refineBtn.textContent = __refineG('btn', 'fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
   }
+  window.addEventListener('fashion-gender-change', __refineTexts); /* سطر ظاهر يتبع الفئة فورًا */
   function __refineRemember(b64, mime){
     __lastFxB64 = b64; __lastFxMime = mime;
     __buildRefineRow();
@@ -33737,7 +33753,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   async function __doRefine(){
     if(!__lastFxB64) return;
     const reqTxt = (refineInput.value || '').trim();
-    if(!reqTxt){ setStatus(__gt2('fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
+    if(!reqTxt){ setStatus(__refineG('need', 'fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
     refineBtn.disabled = true; btnGenerate.disabled = true;
@@ -33791,6 +33807,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const payload = {
         occasion: occasionEl.value, season: seasonEl.value,
         profile: loadProfile(), lang: lang7(), token,
+        gender: currentGender(), /* v-fx-gender-pics: بلاها تقترح إطلالات نسائيّة لرجل أو طفل */
       };
       if(mode === 'image' && selectedBase64){
         payload.imageBase64 = selectedBase64;
@@ -33820,7 +33837,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           '</div>' +
           '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.clothing || '') + '</p>' +
           '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0;">🎨 ' + (s.colors || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">👜 ' + (s.accessories || '') + '</p>' +
+          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">' + (currentGender() === 'men' ? '💼 ' : '👜 ') + (s.accessories || '') + '</p>' + /* v-fx-gender-pics: كبطاقة الحقيبة */
           '<button type="button" class="btn primary useLookBtn" style="width:100%; font-size:12px; padding:5px;">' + t('fashionUseThisLook') + '</button>';
         card.querySelector('.useLookBtn').onclick = () => {
           if(mode === 'text' || !selectedBase64){
@@ -36921,6 +36938,50 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     });
   }
   photoizeStudioTabs();
+  /* v-studio-tabs-move (المالك ١٧ أكتوبر: «شريط اختر التعديل مايتحرك»): ٢٤ تبويبًا يظهر منها ١٣ على الكمبيوتر، وأشرطة التمرير مخفيّة
+     في التطبيق كلّه (tokens.css) — فلا شيء يحرّكه بالفأرة (العجلة رأسيّة والسحب يسحب صورة التبويب). العجلة فوقه تمرّره أفقيًّا
+     (وعند طرفه تعود الصفحة تتمرّر)، والسحب بالفأرة يحرّكه ولا يُحسب نقرة على تبويب. اللمس على الجوّال كما هو (تمرير المتصفّح). */
+  function stHScroll(el){
+    if(!el || el.__hs) return;
+    el.__hs = 1;
+    el.addEventListener('wheel', (e) => {
+      if(e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return; /* الأفقيّ (لوحة اللمس) يمرّره المتصفّح أصلًا */
+      if(el.scrollWidth - el.clientWidth < 2) return;
+      const step = e.deltaY * (e.deltaMode === 1 ? 40 : (e.deltaMode === 2 ? el.clientWidth : 1));
+      const before = el.scrollLeft;
+      el.scrollLeft = before + (getComputedStyle(el).direction === 'rtl' ? -step : step); /* للأمام = التبويبات التالية */
+      if(el.scrollLeft !== before) e.preventDefault();
+    }, { passive: false });
+    let down = null, moved = false;
+    el.addEventListener('dragstart', (e) => e.preventDefault()); /* صورة التبويب لا تُسحب بدل الشريط */
+    el.addEventListener('pointerdown', (e) => {
+      if(e.pointerType !== 'mouse' || e.button !== 0) return;
+      down = { x: e.clientX, sl: el.scrollLeft, id: e.pointerId };
+      moved = false;
+      /* الإفلات خارج الشريط قبل بدء السحب لا يصل pointerup الشريط — يُنهى من النافذة وإلّا خطف الشريط سحبًا لاحقًا يمرّ فوقه */
+      window.addEventListener('pointerup', end, { capture: true, once: true });
+      window.addEventListener('pointercancel', end, { capture: true, once: true });
+    });
+    el.addEventListener('pointermove', (e) => {
+      if(!down || e.pointerId !== down.id) return;
+      if(!(e.buttons & 1)){ end(); return; } /* أُفلت الزرّ خارج الشريط قبل أن يبدأ السحب — لا يتبع الشريط فأرة بلا ضغط */
+      const dx = e.clientX - down.x;
+      if(!moved && Math.abs(dx) < 6) return;
+      if(!moved){
+        moved = true;
+        el.style.cursor = 'grabbing';
+        el.style.userSelect = 'none'; /* السحب من الفراغ بين التبويبات لا يظلّل أسماءها */
+        try{ const s = window.getSelection && window.getSelection(); if(s) s.removeAllRanges(); }catch(err){ __swallow(err, 'studio:tabs-select'); }
+        try{ el.setPointerCapture(e.pointerId); }catch(err){ __swallow(err, 'studio:tabs-capture'); }
+      }
+      el.scrollLeft = down.sl - dx;
+    });
+    function end(){ down = null; el.style.cursor = ''; el.style.userSelect = ''; setTimeout(() => { moved = false; }, 0); }
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('click', (e) => { if(moved){ e.stopPropagation(); e.preventDefault(); } }, true); /* نهاية السحب ليست اختيارًا */
+  }
+  stHScroll(tabsWrap);
   function setFeature(next){
     feature = next;
     photoizeStudioTabs(); // ترجمة i18n تمسح حقن الصور — أعد حقن ما نقص

@@ -2514,6 +2514,50 @@
     });
   }
   photoizeStudioTabs();
+  /* v-studio-tabs-move (المالك ١٧ أكتوبر: «شريط اختر التعديل مايتحرك»): ٢٤ تبويبًا يظهر منها ١٣ على الكمبيوتر، وأشرطة التمرير مخفيّة
+     في التطبيق كلّه (tokens.css) — فلا شيء يحرّكه بالفأرة (العجلة رأسيّة والسحب يسحب صورة التبويب). العجلة فوقه تمرّره أفقيًّا
+     (وعند طرفه تعود الصفحة تتمرّر)، والسحب بالفأرة يحرّكه ولا يُحسب نقرة على تبويب. اللمس على الجوّال كما هو (تمرير المتصفّح). */
+  function stHScroll(el){
+    if(!el || el.__hs) return;
+    el.__hs = 1;
+    el.addEventListener('wheel', (e) => {
+      if(e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return; /* الأفقيّ (لوحة اللمس) يمرّره المتصفّح أصلًا */
+      if(el.scrollWidth - el.clientWidth < 2) return;
+      const step = e.deltaY * (e.deltaMode === 1 ? 40 : (e.deltaMode === 2 ? el.clientWidth : 1));
+      const before = el.scrollLeft;
+      el.scrollLeft = before + (getComputedStyle(el).direction === 'rtl' ? -step : step); /* للأمام = التبويبات التالية */
+      if(el.scrollLeft !== before) e.preventDefault();
+    }, { passive: false });
+    let down = null, moved = false;
+    el.addEventListener('dragstart', (e) => e.preventDefault()); /* صورة التبويب لا تُسحب بدل الشريط */
+    el.addEventListener('pointerdown', (e) => {
+      if(e.pointerType !== 'mouse' || e.button !== 0) return;
+      down = { x: e.clientX, sl: el.scrollLeft, id: e.pointerId };
+      moved = false;
+      /* الإفلات خارج الشريط قبل بدء السحب لا يصل pointerup الشريط — يُنهى من النافذة وإلّا خطف الشريط سحبًا لاحقًا يمرّ فوقه */
+      window.addEventListener('pointerup', end, { capture: true, once: true });
+      window.addEventListener('pointercancel', end, { capture: true, once: true });
+    });
+    el.addEventListener('pointermove', (e) => {
+      if(!down || e.pointerId !== down.id) return;
+      if(!(e.buttons & 1)){ end(); return; } /* أُفلت الزرّ خارج الشريط قبل أن يبدأ السحب — لا يتبع الشريط فأرة بلا ضغط */
+      const dx = e.clientX - down.x;
+      if(!moved && Math.abs(dx) < 6) return;
+      if(!moved){
+        moved = true;
+        el.style.cursor = 'grabbing';
+        el.style.userSelect = 'none'; /* السحب من الفراغ بين التبويبات لا يظلّل أسماءها */
+        try{ const s = window.getSelection && window.getSelection(); if(s) s.removeAllRanges(); }catch(err){ __swallow(err, 'studio:tabs-select'); }
+        try{ el.setPointerCapture(e.pointerId); }catch(err){ __swallow(err, 'studio:tabs-capture'); }
+      }
+      el.scrollLeft = down.sl - dx;
+    });
+    function end(){ down = null; el.style.cursor = ''; el.style.userSelect = ''; setTimeout(() => { moved = false; }, 0); }
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('click', (e) => { if(moved){ e.stopPropagation(); e.preventDefault(); } }, true); /* نهاية السحب ليست اختيارًا */
+  }
+  stHScroll(tabsWrap);
   function setFeature(next){
     feature = next;
     photoizeStudioTabs(); // ترجمة i18n تمسح حقن الصور — أعد حقن ما نقص

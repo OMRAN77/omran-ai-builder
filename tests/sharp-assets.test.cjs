@@ -59,7 +59,7 @@ test('٢. كلّ رابط إلى صورة موضَّحة يحمل وسمًا ي�
   assert.ok(tag(read('js/app-13-stocks-init.js'), "const asset = 'assets/studio/options/' + f + '-' + v + '.webp") >= 2, 'خيارات الاستوديو');
   const gen = read('js/design-gen.js');
   const looks = [...gen.matchAll(/\.webp\?v=(\d+)'/g)];
-  assert.ok(looks.length === 4 && looks.every((m) => Number(m[1]) >= 2), 'روابط الأزياء الأربعة');
+  assert.ok(looks.length >= 4 && looks.every((m) => Number(m[1]) >= 2), 'روابط الأزياء الأربعة (وصور الإضافات لكلّ فئة — v-fx-gender-pics) كلّها موسومة');
   assert.ok(!/LOOKS\+[^;]*\.webp'(?!\?)/.test(gen.replace(/\.webp\?v=\d+'/g, '')), 'لا رابط أزياء بلا وسم');
   const html = read('index.html');
   assert.ok(tag(html, '/js/design-gen.js') >= 611, 'وسم design-gen المنفصل');

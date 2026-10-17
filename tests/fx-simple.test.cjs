@@ -166,7 +166,7 @@ test('٨. مراسي design-gen ووسم إصداره، والنصوص بالـ1
   const dg = read('js/design-gen.js');
   assert.match(dg, /d\.setAttribute\('data-col',r\[0\]\);/);
   assert.match(dg, /d\.setAttribute\('data-ext',r\[0\]\);/);
-  assert.ok(read('index.html').includes('/js/design-gen.js?v=613'), 'وسم الإصدار رُفع');
+  assert.ok(Number((/\/js\/design-gen\.js\?v=(\d+)/.exec(read('index.html')) || [])[1]) >= 613, 'وسم الإصدار رُفع');
   const ctx = {};
   vm.runInNewContext(block(SRC, 'var TX = {', '\n  };', true) + '\nthis.TX = TX;', ctx);
   const LANGS = ['ar', 'en', 'fr', 'es', 'tr', 'ru', 'hi', 'ur', 'bn', 'ne', 'fil', 'id', 'zh', 'ml'];
