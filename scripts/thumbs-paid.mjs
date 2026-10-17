@@ -128,6 +128,7 @@ const FEAT_SHOT = {
   anime: (l) => l + ' anime art style illustrated portrait of a young character,',
   heritage: (l) => 'studio portrait of a person in ' + l + ' traditional heritage attire,',
 };
+const STUDIO_CARDS = new Set(["anime-chibi", "anime-classic", "anime-cyberpunk", "anime-ghibli", "anime-kawaii", "anime-manga", "anime-retro90s", "anime-shonenstudio", "anime-webtoon", "beard-anchor", "beard-boxed", "beard-clean", "beard-faded", "beard-full", "beard-goatee", "beard-longbeard", "beard-mustache", "beard-stubble", "beard-vandyke", "glasses-aviator", "glasses-catseye", "glasses-clearframe", "glasses-goldframe", "glasses-hexagon", "glasses-oversized", "glasses-retroglasses", "glasses-rimless", "glasses-round", "glasses-sportglasses", "glasses-sunglasses", "glasses-wayfarer", "hair-black", "hair-blonde", "hair-blue", "hair-bob", "hair-brown", "hair-burgundy", "hair-colorful", "hair-curly", "hair-highlights", "hair-longlayers", "hair-ombre", "hair-pixie", "hair-platinum", "hair-red", "hair-rose", "hair-silver", "hair-straight", "hair-waves", "heritage-abaya", "heritage-bisht", "heritage-embroidered", "heritage-emirati", "heritage-kandora", "heritage-moroccanher", "heritage-omani", "heritage-palestinian", "heritage-saudi", "heritage-saudimen2", "makeup-bridal", "makeup-dewy", "makeup-editorial", "makeup-glam", "makeup-kohl", "makeup-matte", "makeup-natural", "makeup-redlips", "makeup-smokey", "makeup-softglam", "nails-artnails", "nails-black", "nails-chrome", "nails-french", "nails-glitter", "nails-gold", "nails-marble", "nails-mattegray", "nails-nude", "nails-ombrenails", "nails-pink", "nails-red", "skin-circles", "skin-freckles", "skin-glow", "skin-matteskin", "skin-subtle", "skin-tan", "tattoo-arabictattoo", "tattoo-back", "tattoo-custom", "tattoo-floraltattoo", "tattoo-geometric", "tattoo-minimalline", "tattoo-sleeve", "tattoo-tribal", "tattoo-wrist"]);
 const S_LOOK = ' Professional studio photography, warm golden lighting, dark elegant backdrop, photorealistic, high detail.';
 function grabStudioOptions() {
   const s = readFileSync('js/app-13-stocks-init.js', 'utf8');
@@ -194,8 +195,8 @@ if (isMode('studio')) {
   const SO = grabStudioOptions();
   Object.entries(SO).forEach(([feat, list]) => {
     if (!Array.isArray(list) || !FEAT_SHOT[feat]) return;
-    // الكتالوج ١٠١٧ خيارًا ومعاينات أغلبها حيّة؛ البطاقات الثابتة هي الـ٩٦ الموجودة في assets/studio/options — هذه وحدها تُعاد.
-    list.filter((o) => existsSync('assets/studio/options/' + feat + '-' + o.value + '.webp'))
+    // الكتالوج ١٠١٧ خيارًا ومعاينات أغلبها حيّة؛ البطاقات الثابتة هي الـ٩٦ المسمّاة في STUDIO_CARDS — هذه وحدها تُعاد.
+    list.filter((o) => STUDIO_CARDS.has(feat + '-' + o.value))
       .forEach((o) => JOBS.push({ kind: 'studioopt', name: feat + '-' + o.value, shape: 'port', prompt: FEAT_SHOT[feat](o.en || o.value) + S_LOOK + ' No text, no letters, no watermark, no logo.' }));
   });
 }
