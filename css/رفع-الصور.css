@@ -5,9 +5,9 @@
 .omUpArt{position:relative !important;display:block !important;aspect-ratio:2/1;height:auto !important;min-height:0 !important;padding:0 !important;margin-top:12px;
   border:1px solid rgba(212,175,55,.6) !important;border-radius:14px !important;overflow:hidden;cursor:pointer;
   background:#000 center/cover no-repeat !important;text-align:center;}
-.omUpDecor{background-image:url(/assets/upload-art/decor.webp?v=3) !important;}
-.omUpFashion{background-image:url(/assets/upload-art/fashion.webp?v=3) !important;}
-.omUpStyle{background-image:url(/assets/upload-art/style.webp?v=3) !important;}
+.omUpDecor{background-image:url(/assets/upload-art/decor.webp?v=4) !important;}
+.omUpFashion{background-image:url(/assets/upload-art/fashion.webp?v=4) !important;}
+.omUpStyle{background-image:url(/assets/upload-art/style.webp?v=4) !important;}
 .omUpArt .omUpIco,.omUpArt > svg{display:none !important;}
 .omUpArt .stSlotEmpty,.omUpArt .dzT{position:static !important;padding:0 !important;margin:0 !important;}
 .omUpArt .omUpT,.omUpArt .omUpH,.omUpArt .omUpB,.omUpArt .omUpL,.omUpArt .omUpN{position:absolute !important;left:6% !important;right:6% !important;margin:0 !important;text-align:center;line-height:1.15;transform:translateY(-50%);}
@@ -24,15 +24,16 @@
 .omUpArt .omUpL{top:var(--l);}
 .omUpArt .omUpB{font-size:clamp(12px,1.6vw,17px) !important;font-size:max(12px,var(--bs,1.7cqw)) !important;color:#2a1d00 !important;text-shadow:0 1px 0 rgba(255,235,170,.6);}
 .omUpArt .omUpN{top:auto;bottom:3%;transform:none;font-size:11px !important;color:#e6d9b3 !important;text-shadow:0 1px 3px #000;max-width:none !important;}
-/* الديكور: العنوان على الجدار فوق اللوحة، التلميح تحته، والزرّ ذهبيّ على اللوحة الداكنة */
-.omUpDecor{--t:43.5%;--h:52.5%;--b:75.5%;--ts:3.4cqw;--bs:2cqw;}
-.omUpDecor .omUpB{left:40% !important;right:40% !important;background:linear-gradient(180deg,#fff6cf 0%,#f3d77f 42%,#c9a12e 68%,#8a6612 100%) !important;-webkit-background-clip:text !important;background-clip:text !important;color:transparent !important;text-shadow:none !important;filter:drop-shadow(0 1px 1px rgba(0,0,0,.9));}
-/* الأزياء: العنوان بين الثريّا والمانيكان، التلميح تحته، والزرّ نقش داكن على اللوحة الذهبيّة */
-.omUpFashion{--t:28.5%;--h:37.5%;--b:75.5%;--ts:3.8cqw;--bs:1.7cqw;}
-/* الستايل: صورة المالك العربيّة فيها الزرّ على اللوحة الكبيرة وكلمة «ستايل» على الصغيرة ولا عنوان — كذلك بكلّ اللغات */
-.omUpStyle{--b:59%;--l:82.5%;--bs:3.2cqw;}
-.omUpStyle .omUpB{left:38% !important;right:38% !important;font-weight:900 !important;background:linear-gradient(180deg,#fff6cf 0%,#f3d77f 42%,#c9a12e 68%,#8a6612 100%) !important;-webkit-background-clip:text !important;background-clip:text !important;color:transparent !important;text-shadow:none !important;filter:drop-shadow(0 2px 1px rgba(0,0,0,.9));}
-.omUpStyle .omUpL{font-size:clamp(11px,1.5vw,15px) !important;font-size:max(11px,1.6cqw) !important;color:#2a1d00 !important;text-shadow:0 1px 0 rgba(255,235,170,.6);}
+/* الصور المولَّدة ١٧ أكتوبر (gpt-image/Gemini 4K، بلا نصّ): المواضع مقيسة بالشبكة من كلّ صورة — الديكور: جدار رخاميّ صافٍ ١٥–٥٧٪ للعنوان والتلميح،
+   لوحة ذهبيّة على الكونسول ٦٢–٧٨٪ (الأعمدة ٣٣–٦٧٪) للزرّ بنقش داكن */
+.omUpDecor{--t:32%;--h:45%;--b:70%;--ts:3.6cqw;--bs:2cqw;}
+.omUpDecor .omUpB{left:34% !important;right:34% !important;}
+/* الأزياء: الجدار الرخاميّ ١٠–٧٢٪ (رأس المانيكان عند ٤٠٪ يسار الوسط) → العنوان ٢٦٪ والتلميح ٣٦٪؛ الصحن الذهبيّ ٧٦–٨٣٪ (٣٦–٦٤٪) للزرّ */
+.omUpFashion{--t:26%;--h:36%;--b:79.5%;--ts:3.6cqw;--bs:1.7cqw;}
+/* الستايل: لوحة المنصّة الذهبيّة ٦٩–٨٠٪ (٤٢–٥٨٪) لزرّ الملفّ، واللوحة الصغيرة على الأرض ٨٨–٩٣٪ (٤١–٥٩٪) لكلمة «ستايل»، ولا عنوان (كتصميم المالك) */
+.omUpStyle{--b:74.5%;--l:90.5%;--bs:2.2cqw;}
+.omUpStyle .omUpB{left:42% !important;right:42% !important;font-weight:900 !important;}
+.omUpStyle .omUpL{left:42% !important;right:42% !important;font-size:clamp(11px,1.4vw,14px) !important;font-size:max(11px,1.4cqw) !important;color:#2a1d00 !important;text-shadow:0 1px 0 rgba(255,235,170,.6);}
 .omUpStyle :is(.omUpT,.omUpH){opacity:0;}
 .omUpArt:hover,.omUpArt.over{border-color:#c9c9c9 !important;}
 .stSlot.omUpArt.has{background-image:none !important;}
