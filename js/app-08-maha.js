@@ -1386,6 +1386,7 @@ async function mahaStartRealtimeCall(){
       voiceGender: mahaReadVoiceGender(),
       voiceSpeed: 'normal', // v-speed-chat-only
       lastCallAgoMs: mahaPrevCallAgoMs, // v-maha-close
+      app: mahaAppHello(), // v-maha-app: أدوات الشاشة الظاهرة له بأسمائها في لغته
       desktop: !document.documentElement.classList.contains('mobile-ui'),
     }),
   });
@@ -1398,6 +1399,7 @@ async function mahaStartRealtimeCall(){
     throw new Error((tokenData && tokenData.error) ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status));
   }
   mahaStartPointsMeter(tokenData.mahaBudget);
+  mahaAppControl = tokenData.appControl === true; // v-maha-app: الخادم وحده يقرّر
   mahaRtNatural = tokenData.turn === 'natural';
   const EPHEMERAL_KEY = tokenData.clientSecret;
   if(mahaRtCancelled) throw new Error('cancelled');
@@ -1708,6 +1710,8 @@ async function mahaHandleRtFunctionCall(ev){
           output = r.ok ? { ok: true, message: 'Saved to long-term memory silently. Continue the conversation naturally without mentioning it.' } : { ok: false, message: 'Memory save failed silently; continue normally.' };
         }
       }catch(e){ output = { ok: false, message: 'Memory save failed silently; continue normally.' }; }
+    }else if(ev.name === 'open_in_app' || ev.name === 'app_action'){
+      output = await mahaAppTool(ev.name, args); // v-maha-app
     }else if(ev.name === 'set_reminder'){
       const r = await mahaSetReminder(args);
       output = r.ok ? { ok: true, message: 'Reminder set successfully.' } : { ok: false, message: 'Could not set reminder: ' + (r.error || 'unknown error') };
@@ -2042,6 +2046,7 @@ async function mahaCallLoop(){
         const mahaMemMsg = (typeof window.memorySystemMsg === 'function') ? window.memorySystemMsg() : null;
         if(mahaMemMsg) mahaSystemMsgs.push(mahaMemMsg);
       }catch(e){ __swallow(e, "misc:app-08-maha#mem"); }
+      try{ const mahaBrief = mahaAppBrief(); if(mahaBrief) mahaSystemMsgs.push({ role: 'system', content: mahaBrief }); }catch(e){ __swallow(e, 'maha:app-brief'); } // v-maha-app: المسار الاحتياطيّ يعرف أدوات التطبيق أيضًا
       if(!mahaIntroduced){
         // v-maha-close: التعريف بالاسم في أوّل مكالمة على الجهاز وحدها — من يعرفها لا تعرّفه بنفسها كلّ مرّة.
         if(mahaPrevCallAgoMs < 0) mahaSystemMsgs.push({ role: 'system', content: `This is the very first reply of the call. Before answering the user's message, briefly introduce yourself by saying your name is "${mahaPersonaName}" (in the same language/dialect you are replying in), then answer their message naturally in the same short reply - e.g. like "I'm ${mahaPersonaName}, ..." followed by your actual answer. Do this ONLY this one time.` });
@@ -2175,11 +2180,15 @@ function mahaShowComposer(){
    تتكلّم أو تفكّر) يُنهيها؛ (٣) «م» ثانيةً (على زرّه). التسجيل بعد فتح المكالمة فلا تُمسك ضغطة البدء نفسها. */
 const MAHA_SILENCE_END_MS = 20000;
 let mahaCloseWatch = null;
+/* v-maha-app: >0 أثناء نقرة يجريها منفّذ تحكّم مها نفسه (js/app-43-maha-app.js) — نقرته ليست يد المستخدم فلا تُنهي المكالمة.
+   نقرات المستخدم الحقيقيّة (ومنها نقرات آيفون التي يعيد التطبيق إطلاقها برمجيًّا) تُنهيها كما كانت (v-maha-band). */
+let mahaActing = 0;
 function mahaStartCloseWatch(){
   mahaStopCloseWatch();
   mahaLastActivity = Date.now();
   const onTap = (e) => {
     if(!mahaCallActive || mahaCallMode === 'builder') return;
+    if(mahaActing > 0) return; // v-maha-app
     const tgt = e.target;
     if(tgt && tgt.closest && tgt.closest('#btnMahaCamera, #mahaCamPreview, #mahaGenImage, #mahaImageLightbox')) return;
     e.preventDefault();
@@ -2222,6 +2231,7 @@ function mahaEndCall(){
   try{ if(window.mahaGoldWave) window.mahaGoldWave.end(); }catch(e){ __swallow(e, 'maha:goldwave-end'); } // v-maha-goldwave
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');
+  document.body.classList.remove('maha-win'); // v-maha-app
   mahaCallMode = 'assistant';
 }
 

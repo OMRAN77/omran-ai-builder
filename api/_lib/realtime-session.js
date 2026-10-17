@@ -8,6 +8,8 @@ const { logError } = require('./log-error.js');
 // v-session-shape (الدفعة A، أمان): نسخة التحقّق اليدويّة هنا (rtVerifyToken) كانت تقبل حمولة موقّعة بلا exp جلسةً لا تنتهي،
 // وتقرأ السرّ في نطاق الوحدة. الهويّة هنا لتحميل الذاكرة وحده — الحصّة والفوترة كما هي (checkAndConsume).
 const { sessionUser: rtVerifyToken } = require('./_session.js');
+// v-maha-app: معرفة التطبيق الحيّة (لكلّ مستخدمي مها) والتحكّم فيه (للمشترك وحده) — api/_lib/maha-app.js
+const mahaApp = require('./maha-app.js');
 
 const BUILDER_REALTIME_INSTRUCTIONS = "You are a fast, friendly voice assistant helping the user build a website/app by talking out loud, inside an AI app-builder tool - never call yourself Maha or any other name, and never introduce yourself. CRITICAL RULES: 1) Detect the language the user just spoke in and ALWAYS reply in that exact same language/dialect (natural Khaleeji Gulf Arabic if they speak Arabic, never Fus-ha, unless they clearly use another dialect). 2) Keep every reply EXTREMELY short - a single brief confirmation sentence, like 'تم! شوف النتيجة' or 'Done, check the preview!' - never explain code, never describe the image/app in detail, never chat casually, never ask unrelated follow-up questions. 3) Never use markdown, asterisks, emojis, or symbols - speech only. 4) You have real tools: generate_image (create a new picture from a description), edit_image (modify the picture just generated in this call), build_app (build or update the actual website/app code shown in the code+preview panels from a description), and make_video (start generating a short video from a description). Only ONE image is allowed per project: whenever the user asks - by voice - to draw/design/make a picture or logo, and NO picture exists yet in this project, call generate_image with a prompt describing that subject. But if a picture ALREADY exists in this project, ALWAYS call edit_image instead for any further image request, no matter what it asks for - even if it names a totally different subject/type/model - never call generate_image again in that case. The image only ever changes to something brand new when the user starts a new project. Whenever they ask to build, create, add a feature to, or change the app/website/page, call build_app with a clear description of exactly what they want. Whenever they ask for a video, call make_video. ALWAYS call the matching tool immediately instead of just describing what you would do, then give ONE short spoken confirmation after it finishes. 5) If the user just asks a normal question unrelated to building (general chat), answer briefly and naturally in 1-2 short sentences - but if it involves current/time-sensitive info or specific vehicle/car/motorcycle/airplane models, brands, specs, or model years (especially recent ones), ALWAYS call search_web first instead of guessing, then answer using the results.";
 
@@ -101,20 +103,6 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "",
   "# Education Mode",
   "EDUCATION MODE (school + university): when the user is a student asking about studies - summarize a lesson/lecture, exam questions, solve a problem, homework, research - act as an expert tutor: summaries = organized key points + the most important exam ideas; exam questions = varied (multiple choice, true/false, short essay) with answers stated after; problem solving = step by step, naming the rule/theory used in each step so they learn the method, ending with the final answer clearly; adapt depth to their level - school students (they mention their grade or it is obvious) get simple age-appropriate explanations with everyday examples, university students get proper academic depth for any year or major; if the topic needs current or factual info you are unsure of, call search_web first, then answer.",
-  "",
-  "# Context - App Knowledge",
-  "APP KNOWLEDGE (answer from this if asked about the app): You are the voice assistant of 'Omran AI Builder' (omran-ai-builder.vercel.app), an Arabic-first AI app builder made by فريق عمران AI.",
-  "Users describe an app/site/game in chat and the AI builds it with live preview and code, downloadable as HTML or ZIP.",
-  "It supports 9 AI providers (OpenAI, Claude, Gemini, Groq, Cohere, DeepSeek, Mistral, OpenRouter, Perplexity) - each provider keeps its own separate chat and projects.",
-  "14 languages: Arabic, English, French, Hindi, Urdu, Bengali, Nepali, Indonesian, Filipino, Turkish, Chinese, Russian, Spanish, Malayalam (change from ⚙️ Settings > اللغة).",
-  "It also works as a full study assistant for school and university students directly from the chat: summarize lectures, generate exam questions, solve problems step by step, and write research with real references.",
-  "Main tabs: 💬 محادثة chat, 👁️ معاينة live preview, 💻 كود code, 🎙️ الصوت voice.",
-  "The ⋮ menu has sections: 📂 المشاريع projects, 🤖 وكيل عمران AI agent for Pro users, 📋 قوالب جاهزة templates, 🌍 استكشف explore public projects, 🎬 صانع الفيديو video maker, 🏗️ المقاولات construction planner with 2D plans and cost estimates, 🚗 السيارات cars, 🕌 التفسير الديني religious tafsir, 💄 ديكور AI decor, 👗 أزياء AI fashion, 🎨 ستوديو AI image studio, 📚 التعليم education, 📧 مساعد البريد Gmail assistant, 📲 تثبيت install as app (PWA on Android/iPhone), ↗️ مشاركة share.",
-  "Other features: mic dictation, listen 🔊 read-aloud, image upload and editing, project export/import, referral system, community feedback, 20 animated 3D backgrounds from ⚙️ > 🎨 تخصيص.",
-  "Plans: free guest 20 messages, then login; paid plans in ⚙️ > 💳.",
-  "Account stuff (password, email, stats) is in ⚙️ > 👤 حسابي.",
-  "If asked who made the app: فريق عمران AI.",
-  "Keep app answers short and spoken-friendly; offer more details only if asked.",
 ].join('\n');
 
 // Appended ONLY when the user picked the male voice. Overrides the name and
@@ -239,11 +227,17 @@ module.exports = async (req, res) => {
     const pointsLib = require('./points.js');
     const rtUser = pointsLib.verifyPointsToken(token);
     let mahaBudget;
+    /* v-maha-app: التحكّم في التطبيق للمشترك وحده — بالرمز الصارم (لا verifyPointsToken المتساهل)، ومن سجلّه الطازج أدناه.
+       لا يلمس الفوترة: سطر حساب مستقلّ في كلّ فرع. */
+    const rtStrictUser = rtVerifyToken(token);
+    let appControl = false;
     if (rtUser && pointsLib.isOwnerUsername(rtUser)) {
       mahaBudget = { unlimited: true };
+      appControl = rtStrictUser === rtUser;
     } else if (rtUser) {
       const rec = await pointsLib.readPoints(rtUser);
       if (!rec) { res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); return; }
+      appControl = rtStrictUser === rtUser && await mahaApp.controlAllowed(rtUser, rec.user);
       const mediaLib = require('./_mediaPlans.js');
       const cost = pointsLib.COSTS.maha_minute;
       /* v-maha-server-bill (فحص الاشتراكات ٥ أكتوبر): الخادم كان يتأكّد من الرصيد ولا يخصم شيئًا، والمتصفّح يخصم بعد
@@ -383,6 +377,7 @@ module.exports = async (req, res) => {
         instructions: (mode === 'builder'
           ? BUILDER_REALTIME_INSTRUCTIONS
           : (voiceGender === 'male' ? toMalePersona(MAHA_REALTIME_INSTRUCTIONS) : MAHA_REALTIME_INSTRUCTIONS))
+          + (mode === 'builder' ? '' : '\n\n' + mahaApp.knowledge({ lang: body.app && body.app.lang, tools: mahaApp.cleanTools(body.app && body.app.tools) }) + mahaApp.controlNote(appControl))
           + timeContext + memoryContext
           + (mode === 'builder' ? '' : callHistoryLine(body.lastCallAgoMs))
           + (mode === 'builder' ? '' : voiceSpeedInstruction),
@@ -555,6 +550,7 @@ module.exports = async (req, res) => {
                 required: ['question'],
               },
             },
+            ...(appControl ? mahaApp.controlTools() : []), // v-maha-app
           ]),
         ],
         tool_choice: 'auto',
@@ -646,7 +642,7 @@ module.exports = async (req, res) => {
 
     // v-cost-meter: دقيقة التجربة مجّانيّة للمستخدم لكنّها تكلّفنا — تُحسب في عدّاد الشهر (المدفوعة حسبها الخصم نفسه).
     if (rtUser && mahaBudget && mahaBudget.prepaid === 'trial') { try { await require('./cost-meter.js').meterOp(rtUser, 'maha_minute'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } }
-    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget, turn: naturalTurn ? 'natural' : 'classic' });
+    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget, turn: naturalTurn ? 'natural' : 'classic', appControl: mode !== 'builder' && appControl });
   } catch (e) {
     if (undoBill) { try { await undoBill(); } catch (e2) { console.error('[realtime-session] opening refund failed:', e2 && e2.message); } }
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
