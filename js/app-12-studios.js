@@ -1081,11 +1081,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       im.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;'; im.onerror = function(){ im.remove(); };
       const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before');
       tag.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; padding:3px 9px; border-radius:999px; background:#d4af37; color:#141414; font-weight:800; font-size:11.5px;';
-      w.appendChild(im); w.appendChild(tag);
-      const info = document.createElement('div'); info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
-      const n = document.createElement('div'); n.textContent = gt('psheetBefore', 'قبل', 'Before'); n.style.cssText = 'font-size:12.5px; font-weight:700; color:#d4af37;';
-      const sb = document.createElement('div'); sb.textContent = gt('psheetBeforeSub', 'صورة واحدة → كل الستايلات', 'One photo → every style'); sb.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
-      info.appendChild(n); info.appendChild(sb); bc.appendChild(w); bc.appendChild(info);
+      /* v-photo-only (المالك ١٧ أكتوبر: «انماط الصور والاستايل والازياء… اي صوره تحتها احذفها نهائي»): البطاقة صورتها وحدها —
+         شارة «قبل» فوق الصورة تكفي، فلا شريط عنوان ووصف تحتها. */
+      w.appendChild(im); w.appendChild(tag); bc.appendChild(w);
       styleCardsGrid.appendChild(bc);
     })();
     opts.forEach((opt) => {
@@ -1118,17 +1116,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         tick.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:' + (active ? 'flex' : 'none') + '; align-items:center; justify-content:center;';
         imgWrap.appendChild(tick);
       }
+      /* v-photo-only: اسم النمط نصّ فوق أسفل الصورة بتدرّج — لا شريط تحتها ولا وصف ولا اسم إنجليزيّ. */
       const info = document.createElement('div');
-      info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
+      info.style.cssText = 'position:absolute; inset:auto 0 0 0; padding:22px 8px 8px; text-align:center; pointer-events:none; background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       const nameEl = document.createElement('div');
       nameEl.textContent = title; nameEl.setAttribute('data-pstyle-name', '1');
-      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; color:' + (active ? '#d4af37' : '#eef0f6') + ';';
-      const subEl = document.createElement('div');
-      subEl.textContent = pstyleSub(v);
-      subEl.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
-      info.appendChild(nameEl); info.appendChild(subEl);
-      if(pstyleLang().indexOf('en') !== 0){ const en = pstyleEn(v); if(en && en !== title){ const enEl = document.createElement('div'); enEl.className = 'pstyleEn'; enEl.textContent = en; info.appendChild(enEl); } }
-      card.appendChild(imgWrap); card.appendChild(info);
+      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; line-height:1.3; text-shadow:0 1px 3px rgba(0,0,0,.9); color:' + (active ? '#d4af37' : '#eef0f6') + ';';
+      info.appendChild(nameEl); imgWrap.appendChild(info);
+      card.appendChild(imgWrap);
       card.onclick = function(){ selectPortraitStyle(v); };
       styleCardsGrid.appendChild(card);
     });

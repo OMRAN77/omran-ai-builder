@@ -196,6 +196,7 @@
       var tp=document.createElement('div'); tp.className='vmk-sm-p'; tp.style.backgroundImage='url('+tutUrl(md).replace('.mp4','.jpg')+')';
       var tpl=document.createElement('span'); tpl.className='vmk-sm-play'; tp.appendChild(tpl);
       var tb=document.createElement('b'); tb.textContent=tt0; te.classList.add('has-vid'); te.appendChild(tp); te.appendChild(tb);
+      te.setAttribute('aria-label',tt0); te.title=tt0; /* v-photo-only: الشريط تحت الصورة مخفيّ — العنوان تلميح */
       var tgo=function(){ openPlayer(tutUrl(md)); };
       te.addEventListener('click',tgo); te.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tgo(); } });
       box.appendChild(te);
@@ -215,7 +216,7 @@
       }
       if(VIDEOS[md+'-'+(i+1)]){ var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl); }
       var tt=document.createElement('b'); tt.textContent=tx;
-      if(vsrc){ el.classList.add('has-vid'); el.appendChild(pv); el.appendChild(tt); } else { pv.appendChild(tt); el.appendChild(pv); }
+      if(vsrc){ el.classList.add('has-vid'); el.appendChild(pv); el.appendChild(tt); el.setAttribute('aria-label',tx); el.title=tx; } else { pv.appendChild(tt); el.appendChild(pv); }
       var pick=function(){ var pe=id('videoMakerPrompt'); setVal(pe,tx); if(pe) pe.focus(); if(vsrc) openPlayer(vsrc); };
       el.addEventListener('click',pick);
       el.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pick(); } });

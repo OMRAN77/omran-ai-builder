@@ -13414,21 +13414,16 @@ async function postWithConfirm(url, payload){
         tk.style.cssText = 'position:absolute;top:6px;inset-inline-start:7px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;';
         wrap.appendChild(tk);
       }
+      /* v-decor-18: بطاقة الترندات — الصورة تملأ البطاقة والاسم فوقها في أسفلها، بلا سطر وصف تحتها.
+         v-photo-only (المالك ١٧ أكتوبر: «انماط الصور والاستايل والازياء… اي صوره تحتها احذفها نهائي»): هذا لكلّ معرض «عرض الكل»
+         (الستايل والأزياء والديكور)، لا للترندات وحدها — لا شريط اسم ووصف تحت الصورة. */
       var info = document.createElement('div');
-      info.style.cssText = 'padding:9px 10px 11px;text-align:center;';
-      /* v-decor-18: بطاقة الترندات — الصورة تملأ البطاقة والاسم فوقها في أسفلها، بلا سطر وصف تحتها. */
-      if(cfg.overlay) info.style.cssText = 'position:absolute;inset:auto 0 0 0;padding:22px 8px 8px;text-align:center;background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
+      info.style.cssText = 'position:absolute;inset:auto 0 0 0;padding:22px 8px 8px;text-align:center;pointer-events:none;background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       var nm = document.createElement('div');
       nm.textContent = it.title || '';
-      nm.style.cssText = 'font-size:12.5px;font-weight:700;color:' + (it.active ? '#d4af37' : '#eef0f6') + ';';
+      nm.style.cssText = 'font-size:12.5px;font-weight:700;line-height:1.3;text-shadow:0 1px 3px rgba(0,0,0,.9);color:' + (it.active ? '#e9c75a' : '#fff') + ';';
       info.appendChild(nm);
-      if(it.sub && !cfg.overlay){
-        var sb = document.createElement('div'); sb.textContent = it.sub;
-        sb.style.cssText = 'font-size:10.5px;color:#9a9a9e;margin-top:3px;';
-        info.appendChild(sb);
-      }
-      if(cfg.overlay){ nm.style.color = it.active ? '#e9c75a' : '#fff'; wrap.appendChild(info); card.appendChild(wrap); }
-      else { card.appendChild(wrap); card.appendChild(info); }
+      wrap.appendChild(info); card.appendChild(wrap);
       card.onclick = function(){ shut(); if(cfg.onPick) cfg.onPick(it.v); };
       grid.appendChild(card);
     });
@@ -25202,9 +25197,9 @@ function __friendlyErr(e){
         const dir=isAr?'rtl':'ltr';
         let grid='';
         chars.forEach(function(c){
-          grid += '<button class="__pcItem" data-id="'+c.id+'" style="border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-radius:14px;padding:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;">'
-            + '<img src="/assets/characters/'+c.id+'.png" style="width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:10px;background:#111;" loading="lazy">'
-            + '<span style="font-size:11.5px;color:#ddd;">'+c.name+'</span></button>';
+          grid += '<button class="__pcItem" data-id="'+c.id+'" style="position:relative;border:2px solid rgba(255,255,255,.12);background:#111;border-radius:14px;padding:0;overflow:hidden;cursor:pointer;display:block;">' /* v-photo-only (المالك ١٧ أكتوبر): الصورة وحدها والاسم فوق أسفلها لا تحتها */
+            + '<img src="/assets/characters/'+c.id+'.png" style="display:block;width:100%;aspect-ratio:9/16;object-fit:cover;background:#111;" loading="lazy">'
+            + '<span style="position:absolute;inset:auto 0 0 0;padding:16px 4px 6px;font-size:11.5px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));pointer-events:none;">'+c.name+'</span></button>';
         });
         ov.innerHTML='<div dir="'+dir+'" style="width:100%;max-width:380px;max-height:88vh;overflow:auto;background:#1c1c24;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px;color:#fff;font-family:inherit;box-shadow:0 18px 50px rgba(0,0,0,.5);">'
           + '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">'+(isAr?'اختر شخصية تتكلم 🎭':'Pick a talking character 🎭')+'</div>'
@@ -32791,11 +32786,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       im.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;'; im.onerror = function(){ im.remove(); };
       const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before');
       tag.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; padding:3px 9px; border-radius:999px; background:#d4af37; color:#141414; font-weight:800; font-size:11.5px;';
-      w.appendChild(im); w.appendChild(tag);
-      const info = document.createElement('div'); info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
-      const n = document.createElement('div'); n.textContent = gt('psheetBefore', 'قبل', 'Before'); n.style.cssText = 'font-size:12.5px; font-weight:700; color:#d4af37;';
-      const sb = document.createElement('div'); sb.textContent = gt('psheetBeforeSub', 'صورة واحدة → كل الستايلات', 'One photo → every style'); sb.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
-      info.appendChild(n); info.appendChild(sb); bc.appendChild(w); bc.appendChild(info);
+      /* v-photo-only (المالك ١٧ أكتوبر: «انماط الصور والاستايل والازياء… اي صوره تحتها احذفها نهائي»): البطاقة صورتها وحدها —
+         شارة «قبل» فوق الصورة تكفي، فلا شريط عنوان ووصف تحتها. */
+      w.appendChild(im); w.appendChild(tag); bc.appendChild(w);
       styleCardsGrid.appendChild(bc);
     })();
     opts.forEach((opt) => {
@@ -32828,17 +32821,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         tick.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:' + (active ? 'flex' : 'none') + '; align-items:center; justify-content:center;';
         imgWrap.appendChild(tick);
       }
+      /* v-photo-only: اسم النمط نصّ فوق أسفل الصورة بتدرّج — لا شريط تحتها ولا وصف ولا اسم إنجليزيّ. */
       const info = document.createElement('div');
-      info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
+      info.style.cssText = 'position:absolute; inset:auto 0 0 0; padding:22px 8px 8px; text-align:center; pointer-events:none; background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       const nameEl = document.createElement('div');
       nameEl.textContent = title; nameEl.setAttribute('data-pstyle-name', '1');
-      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; color:' + (active ? '#d4af37' : '#eef0f6') + ';';
-      const subEl = document.createElement('div');
-      subEl.textContent = pstyleSub(v);
-      subEl.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
-      info.appendChild(nameEl); info.appendChild(subEl);
-      if(pstyleLang().indexOf('en') !== 0){ const en = pstyleEn(v); if(en && en !== title){ const enEl = document.createElement('div'); enEl.className = 'pstyleEn'; enEl.textContent = en; info.appendChild(enEl); } }
-      card.appendChild(imgWrap); card.appendChild(info);
+      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; line-height:1.3; text-shadow:0 1px 3px rgba(0,0,0,.9); color:' + (active ? '#d4af37' : '#eef0f6') + ';';
+      info.appendChild(nameEl); imgWrap.appendChild(info);
+      card.appendChild(imgWrap);
       card.onclick = function(){ selectPortraitStyle(v); };
       styleCardsGrid.appendChild(card);
     });
@@ -46387,11 +46377,14 @@ const INSPIRE_LIVE_TXT = {
 #inspireScreen .insCard{position:relative; display:flex; flex-direction:column; text-align:start; background:rgba(255,255,255,.03); border:1px solid var(--border, #262b36); border-radius:14px; overflow:hidden; padding:0; color:inherit; font:inherit; cursor:pointer; transition:border-color .15s, transform .15s;}
 #inspireScreen .insCard:hover{border-color:var(--accent, #c9a45c); transform:translateY(-2px);}
 #inspireScreen .insCard img{display:block; width:100%; height:auto; aspect-ratio:5/3; object-fit:cover; background:#0b0d12;}
-#inspireScreen .insCard .insTxt{padding:10px 12px 12px;}
-#inspireScreen .insCard .insCT{font-size:14.5px; font-weight:800; margin-bottom:4px; line-height:1.4;}
-#inspireScreen .insCard .insCD{font-size:12.5px; opacity:.74; line-height:1.55;}
+/* v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي»): البطاقة صورتها وحدها — العنوان فوق أسفلها بتدرّج، والوصف تلميح (title) لا شريط تحتها */
+#inspireScreen .insCard .insTxt{position:absolute; inset:auto 0 0 0; padding:26px 12px 10px; color:#fff; pointer-events:none; background:linear-gradient(0deg, rgba(0,0,0,.85), rgba(0,0,0,0));}
+#inspireScreen .insCard .insCT{font-size:14.5px; font-weight:800; line-height:1.4; text-shadow:0 1px 3px rgba(0,0,0,.9);}
+#inspireScreen .insCard .insCD{display:none;}
 #inspireScreen .insCard .insBusy{position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); font-size:13px; font-weight:700;}
 #inspireScreen .insCard.busy .insBusy, #inspireScreen .insCard.fail .insBusy{display:flex;}
+#inspireScreen .insCard .insBusy{color:#fff;}
+#inspireScreen .insCard.busy .insTxt, #inspireScreen .insCard.fail .insTxt{visibility:hidden;} /* v-photo-only: الرسالة وحدها لا فوق العنوان */
 #inspireScreen .insCard.fail .insBusy{background:rgba(120,20,20,.72); padding:10px; text-align:center;}
 #inspireScreen .insGrid.loading .insCard:not(.busy){opacity:.55; pointer-events:none;}
 #inspireScreen .insErr{margin:0 0 12px; font-size:13px; color:var(--danger, #e88);}
@@ -46444,13 +46437,13 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       return;
     }
     body.innerHTML = '<h3 class="insSecT">' + esc(L(INSPIRE_LIVE_TXT.t)) + '</h3>'
-      + '<div class="insGrid insLive">' + INSPIRE_LIVE.filter((c) => !c.owner || liveOwner()).map((c) => '<button type="button" class="insCard" data-live="' + c.id + '">'
+      + '<div class="insGrid insLive">' + INSPIRE_LIVE.filter((c) => !c.owner || liveOwner()).map((c) => '<button type="button" class="insCard" data-live="' + c.id + '" title="' + esc(L(c.d)) + '">'
         + '<img src="/assets/inspire/live/' + c.id + '.jpg?v=1" alt="" loading="lazy" decoding="async" width="600" height="360">'
         + '<div class="insTxt"><div class="insCT">' + esc(L(c.t)) + '</div><div class="insCD">' + esc(L(c.d)) + '</div></div></button>').join('') + '</div>'
       + '<h3 class="insSecT">' + esc(tx('inspCityTitle', 'مدينتك الحقيقيّة')) + '</h3>'
       + '<p class="insSecS">' + esc(tx('inspCitySub', '')) + '</p>'
       + '<p class="insErr" role="alert" hidden></p>'
-      + '<div class="insGrid">' + INSPIRE_CITY.map((c) => '<button type="button" class="insCard" data-id="' + c.id + '">'
+      + '<div class="insGrid">' + INSPIRE_CITY.map((c) => '<button type="button" class="insCard" data-id="' + c.id + '" title="' + esc(L(c.d)) + '">'
         + '<img src="/assets/inspire/city/' + c.id + '.jpg?v=1" alt="" loading="lazy" decoding="async" width="600" height="360">'
         + '<div class="insTxt"><div class="insCT">' + esc(L(c.t)) + '</div><div class="insCD">' + esc(L(c.d)) + '</div></div>'
         + '<div class="insBusy">' + esc(tx('inspLoading', 'يجهّز…')) + '</div></button>').join('') + '</div>';
@@ -47164,6 +47157,15 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     for(var i = 0; i < stops.length; i++){ var c = rgba(stops[i]); if(c && c[3] > 0 && !boxFill(c)) return false; }
     return true;
   }
+  /* v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي»): طبقة مطلقة فوق صورة أخيها (img/video أو خلفيّة url لأبيها) —
+     تظليل اسم أو شارة على الصورة لا صندوق؛ تسويدها كان يجعل التدرّج شريطًا أسود صلبًا على أسفل كلّ صورة (أزياء، ديكور، ترندات،
+     ستايل، «عرض الكل»)، ومناطق بوستر الديكور مربّعات سوداء بعد المرور عليها. */
+  function overImage(el, cs){
+    var p = cs.position === 'absolute' && el.parentElement;
+    if(!p) return false;
+    for(var k = p.firstElementChild; k; k = k.nextElementSibling){ if(k !== el && (k.tagName === 'IMG' || k.tagName === 'VIDEO')) return true; }
+    return /url\(/.test(getComputedStyle(p).backgroundImage);
+  }
   function lineOf(cs){
     if(cs.animationName && cs.animationName !== 'none') return false;
     var sides = ['Top', 'Right', 'Bottom', 'Left'], col = null, any = false;
@@ -47182,7 +47184,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     el.classList.remove('om3-line', 'om3-fill', 'om3-hot');
     var cs = getComputedStyle(el);
     if(lineOf(cs)){ el.classList.add('om3-line'); if(cs.cursor === 'pointer' || /^(BUTTON|A|INPUT|TEXTAREA|SELECT|LABEL)$/.test(el.tagName)) el.classList.add('om3-hot'); }
-    if(inTool){
+    if(inTool && !overImage(el, cs)){
       var bi = cs.backgroundImage;
       if((bi === 'none' && boxFill(rgba(cs.backgroundColor))) || (bi !== 'none' && gradBox(bi))) el.classList.add('om3-fill');
     }
