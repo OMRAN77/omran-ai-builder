@@ -24,11 +24,12 @@ const KINDS = ['story', 'ad', 'dialogue', 'scene'];
    دخيلة واضحة (لا تُقال في الإمارات) — الجواب الذي فيه منها يُرفض فتنتقل السلسلة للمزوّد التالي؛ وإن لم يسلم أحد
    يرجع أوّل جواب مقروء (أفضل من «تعذّرت الكتابة»). */
 const EMIRATI_RULES = [
-  'ARABIC = PURE EMIRATI (UAE) DIALECT ONLY, as Emiratis in Dubai/Abu Dhabi speak it. No Egyptian, Levantine, Iraqi or Najdi words.',
-  'Use Emirati words: شو (what), وايد (very/a lot), الحين (now), تبا/تبي (you want), عسب (so that), هني (here), زين، حلو، خلاص، يالله، ترا، بعد، مب (not), ليش، جي/جذي (like this), مثل (like).',
-  'NEVER use: عايز، عاوز، كده، كدا، دلوقتي، إزاي، ليه، مش، هيك، كتير، بدّي، شلون، زي، اوي. Present tense without the Egyptian/Levantine بـ (say «وهو يطير» not «وهو بيطير»); «مرة» never means "very" (say وايد).',
-  'Talk TO the viewer in second person (تكتب، تختار، تضغط) — not «أكتب» when you mean "you write". Every phrase must be a real, meaningful Emirati phrase; no invented words.',
-  'Example of the right tone: «تبا فيديو بسرعة؟ تكتب الوصف، تختار المدة والشكل، وتضغط إنشاء… وفي دقايق الفيديو جاهز!»',
+  'ARABIC: write like an Emirati content creator talking to a friend — natural UAE dialect (Dubai/Abu Dhabi), clear and simple.',
+  'MEANING FIRST: every sentence must be something an Emirati would really say and must make sense on its own. Never stuff dialect words where they do not fit; never invent phrases. Simple and clear beats "more dialect".',
+  'Natural Emirati choices, only where they fit: شو، وايد، الحين، تبا/تبي، مب، هني، زين، يالله، ترا، جي.',
+  'NEVER use (not Emirati): عايز، عاوز، كده، كدا، دلوقتي، إزاي، ليه، مش، هيك، كتير، بدّي، شلون، زي، اوي. Present tense without the Egyptian/Levantine بـ (say «وهو يطير» not «وهو بيطير»); «مرة» never means "very" (say وايد).',
+  'Talk TO the viewer in second person (تكتب، تختار، تضغط) — not «أكتب» when you mean "you write". "onScreen" must be a clear short phrase that makes sense alone.',
+  'Examples of the right tone — ad: «تبا فيديو بسرعة؟ تكتب الوصف، تختار المدة، وتضغط إنشاء… وفي دقايق فيديوك جاهز!» (onScreen «فيديوك جاهز في دقايق») · story: «وقت الغروب… الصقر يحوم فوق الرمل، والسما كلها ذهب.» · story: «بو راشد فتح فرعه الثاني اليوم… والقهوة نفس الطعم اللي تحبونه.»',
 ].join('\n');
 const AR_RE = /[\u0600-\u06FF]/;
 function isArabic(s) { return AR_RE.test(String(s || '')); }
@@ -93,8 +94,9 @@ async function write(opts) {
     if (ar && nonEmirati(p)) { if (!fallback) fallback = p; return false; } /* v-emirati: دخيل ← المزوّد التالي */
     return true;
   };
-  const r = await chain({ env: o.env, messages: [{ role: 'user', content: buildPrompt(Object.assign({}, o, { seconds: sec })) }], max_tokens: 1600, temperature: 0.7, timeoutMs: 15000, fetchImpl: o.fetchImpl, accept });
+  const r = await chain({ env: o.env, messages: [{ role: 'user', content: buildPrompt(Object.assign({}, o, { seconds: sec })) }], max_tokens: 1600, temperature: 0.6, timeoutMs: 15000, fetchImpl: o.fetchImpl, accept });
   if (Array.isArray(o.diag) && r && Array.isArray(r.errors)) o.diag.push.apply(o.diag, r.errors.slice(0, 6));
+  if (o.info && r) o.info.provider = r.ok ? r.provider : (fallback ? 'fallback' : ''); /* للمالك: أيّ مزوّد كتب */
   if (!r || !r.ok) return fallback;
   return parseReply(r.text, sec, o.characters);
 }
@@ -116,15 +118,15 @@ async function handler(req, res) {
   try { gate = await checkAndConsumePlanCustom(body.token, null, clientIp(req), 'video-write', DAILY_LIMIT); } catch (e) { gate = null; /* عطب العدّاد لا يفتح الباب */ }
   if (gate && !gate.allowed) { res.status(200).json({ result: null, reason: gate.reason === 'limit' ? 'limit' : 'auth' }); return; }
   if (!gate || !gate.username) { res.status(200).json({ result: null, reason: 'auth' }); return; }
-  let result = null; const diag = [];
-  try { result = await write({ request, kind, seconds, characters, env: process.env, diag }); } catch (e) { console.error('[video-write] ' + (e && e.message)); }
+  let result = null; const diag = [], info = {};
+  try { result = await write({ request, kind, seconds, characters, env: process.env, diag, info }); } catch (e) { console.error('[video-write] ' + (e && e.message)); }
+  let owner = false; try { owner = require('./_owner.js').isOwnerName(gate.username); } catch (e) { owner = false; }
   if (!result) {
     if (diag.length) console.warn('[video-write] unavailable: ' + diag.join(' | '));
     /* v-write-fix: سبب الفشل (مزوّد/حالة بلا مفاتيح) يظهر للمالك وحده — كان العطل صامتًا بلا أثر */
-    let owner = false; try { owner = require('./_owner.js').isOwnerName(gate.username); } catch (e) { owner = false; }
     res.status(200).json(Object.assign({ result: null, reason: 'unavailable' }, owner ? { diag } : {})); return;
   }
-  res.status(200).json({ result, seconds, words: speechBudget(seconds) });
+  res.status(200).json(Object.assign({ result, seconds, words: speechBudget(seconds) }, owner && info.provider ? { provider: info.provider } : {}));
 }
 
 module.exports = handler;
