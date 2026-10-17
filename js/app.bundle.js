@@ -21384,6 +21384,33 @@ function omranOwnerUiShotTurn(text, att){
     return !!(att._screenshot || OMRAN_UI_NAMED_RE.test(s));
   }catch(e){ return false; }
 }
+/* v-tool-drop (المالك ١٧ أكتوبر: «اذا اختار اي صوره من الانماط او الديكور اوالاستايل من اي مكان على طول تتحول الي الدردشة الصوره
+   الموجوده مش الي انا اضيفها»): الإفلات واللصق يُلتقطان على مستوى الصفحة (أدناه) فيصيران مرفق دردشة ما لم يقعا على المربّع المنقّط نفسه —
+   صورة المستخدم تذهب للدردشة والأداة تبقى بصورتها القديمة. نافذة أداة صور مفتوحة = الصورة لملفّ الأداة نفسها بحدث change الذي يطلقه
+   «اختيار ملف» (كما يفعل مربّع الديكور)، والاستوديو يتولّى لصقه بنفسه (v-studio-slots). */
+function omranToolShown(el){
+  if(!el) return false;
+  try{ const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0; }catch(e){ return false; }
+}
+function omranOpenImageTool(target){
+  const list = [['studioAiModal', ''], ['fashionAiModal', 'fashionAiFileInput'], ['designAiModal', 'designAiFileInput'], ['portraitStyleSheet', 'portraitStyleFileInput']];
+  let hit = null;
+  try{ const box = target && target.closest ? target.closest('#studioAiModal,#fashionAiModal,#designAiModal,#portraitStyleSheet') : null; if(box && omranToolShown(box)) hit = list.find((x) => x[0] === box.id) || null; }catch(e){ hit = null; }
+  if(!hit) hit = list.find((x) => omranToolShown(document.getElementById(x[0]))) || null;
+  if(!hit) return null;
+  if(hit[0] === 'studioAiModal'){ // الخانة الثانية إن كانت ظاهرة فارغة والأولى ممتلئة (الدمج)، وإلّا الأولى
+    const a = document.getElementById('studioAiSlotA'), b = document.getElementById('studioAiSlotB'), bw = document.getElementById('studioAiImageBWrap');
+    const useB = !!(a && a.classList.contains('has') && b && !b.classList.contains('has') && omranToolShown(bw));
+    return { id: hit[0], input: document.getElementById(useB ? 'studioAiFileInputB' : 'studioAiFileInputA'), ownPaste: true };
+  }
+  return { id: hit[0], input: document.getElementById(hit[1]), ownPaste: false };
+}
+function omranFilesToTool(files, tool){
+  const f = Array.from(files || []).find((x) => x && (/^image\//.test(x.type || '') || /\.(heic|heif|jpe?g|png|webp)$/i.test(x.name || '')));
+  if(!f || !tool || !tool.input) return false;
+  try{ const dt = new DataTransfer(); dt.items.add(f); tool.input.files = dt.files; tool.input.dispatchEvent(new Event('change', { bubbles: true })); return true; }
+  catch(e){ __swallow(e, 'attach:tool-drop'); return false; }
+}
 async function omranIngestFiles(files, opts){
   files = Array.from(files || []);
   opts = opts || {};
@@ -21497,6 +21524,7 @@ $('#attachInput').addEventListener('change', async (e) => {
       e.preventDefault();
       const files = Array.from(e.dataTransfer.files || []);
       if(!files.length) return;
+      const __tool = omranOpenImageTool(e.target); if(__tool){ omranFilesToTool(files, __tool); return; } // v-tool-drop: نافذة أداة صور مفتوحة = لملفّها لا للدردشة
       omranIngestFiles(files).then(() => { try{ $('#prompt').focus(); }catch(_){ /* guard-ok — cleanup, intentional */ } });
     });
     document.addEventListener('paste', (e) => {
@@ -21505,6 +21533,7 @@ $('#attachInput').addEventListener('change', async (e) => {
         if(ae && ae.id !== 'prompt' && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
         const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
         const files = items.filter(i => i.kind === 'file' && /^image\//.test(i.type)).map(i => i.getAsFile()).filter(Boolean);
+        if(files.length){ const __tool = omranOpenImageTool(ae); if(__tool){ if(!__tool.ownPaste){ e.preventDefault(); omranFilesToTool(files, __tool); } return; } } // v-tool-drop: لصق صورة والأداة مفتوحة = للأداة (الاستوديو يلصق بنفسه)
         if(!files.length){
           /* v-paste-attach: لصق نصّ طويل → مرفق قابل للفتح في تبويب «الكود» */
           try{
