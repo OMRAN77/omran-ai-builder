@@ -19,14 +19,14 @@ function webpSize(b) {
   return [0, 0];
 }
 
-test('١. ثلاث صور نظيفة 2:1 من أصل المالك بلا تكبير (قواعد الصور ١٧ أكتوبر: لا نصّ مطبوع ولا upscale، WebP q≥90)', () => {
+test('١. ثلاث صور مولَّدة 2:1 بلا نصّ (قواعد الصور ١٧ أكتوبر: Gemini 4K ثمّ تصغير واحد بـLanczos إلى 3072×1536 = ضعفا عرض المربّع، WebP q90)', () => {
   for (const t of ['decor', 'fashion', 'style']) {
     const f = path.join(root, 'assets/upload-art/' + t + '.webp');
     assert.ok(fs.existsSync(f), f);
     assert.ok(!fs.existsSync(path.join(root, 'assets/upload-art/' + t + '-ar.webp')), t + ': لا صورة بنصّ مطبوع');
     const b = fs.readFileSync(f); const [w, h] = webpSize(b);
-    assert.ok(w >= 1270 && w <= 1280 && h === w / 2, t + ': ' + w + '×' + h + ' (أصل المالك ١٢٨٠ بلا تكبير، 2:1)');
-    assert.ok(b.length > 150000 && b.length < 600000, t + ': جودة ٩٠ لا ضغط فوق ضغط (' + b.length + ')');
+    assert.deepEqual([w, h], [3072, 1536], t + ': ' + w + '×' + h);
+    assert.ok(b.length > 200000 && b.length < 1500000, t + ': جودة ٩٠ (' + b.length + ')');
   }
 });
 
@@ -40,9 +40,9 @@ test('٢. CSS: الصورة النظيفة لكلّ اللغات والنصّ ف
   assert.ok(css.includes('.omUpArt{position:relative !important') && css.includes('aspect-ratio:2/1'), 'إطار 2:1 ثابت فالمواضع نسبٌ');
   assert.match(read('index.html'), /css\/رفع-الصور\.css\?v=\d+/);
   // الجولة ٢ («دقّق… كلّهم»): المواضع المقيسة من الصور العربيّة (مركز السطر %)، الحجم بـcqw، والذهبيّ المتدرّج كالعربيّ
-  assert.ok(css.includes('.omUpDecor{--t:43.5%;--h:52.5%;--b:75.5%;'), 'الديكور: عنوان/تلميح/لوحة');
-  assert.ok(css.includes('.omUpFashion{--t:28.5%;--h:37.5%;--b:75.5%;'), 'الأزياء');
-  assert.ok(css.includes('.omUpStyle{--b:59%;--l:82.5%;') && css.includes('.omUpStyle :is(.omUpT,.omUpH){opacity:0;}'), 'الستايل: اللوحتان ولا عنوان كالعربيّة');
+  assert.ok(css.includes('.omUpDecor{--t:32%;--h:45%;--b:70%;'), 'الديكور: عنوان/تلميح/لوحة');
+  assert.ok(css.includes('.omUpFashion{--t:26%;--h:36%;--b:79.5%;'), 'الأزياء');
+  assert.ok(css.includes('.omUpStyle{--b:74.5%;--l:90.5%;') && css.includes('.omUpStyle :is(.omUpT,.omUpH){opacity:0;}'), 'الستايل: اللوحتان ولا عنوان كتصميم المالك');
   assert.ok(css.includes('.omUpArt{container-type:inline-size;}') && css.includes('var(--ts,3.8cqw)'), 'الحجم من عرض المربّع');
   assert.ok(css.includes('-webkit-background-clip:text !important'), 'نصّ ذهبيّ متدرّج');
 });
