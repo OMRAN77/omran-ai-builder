@@ -16,9 +16,10 @@ const FN = SRC.slice(A, B);
 
 function setup({ dir = 'rtl', phone = false, sw = 2238, cw = 1136 } = {}) {
   const on = {}, win = {};
-  const el = { scrollWidth: sw, clientWidth: cw, scrollLeft: 0, addEventListener: (t, f, o) => { (on[t] = on[t] || []).push({ f, cap: o === true }); } };
+  const clock = { t: 1e12 }; // ساعة مضبوطة لاختبار الفجوات الزمنيّة
+  const el = { scrollWidth: sw, clientWidth: cw, scrollLeft: 0, contains: (n) => n === 'inside', addEventListener: (t, f, o) => { (on[t] = on[t] || []).push({ f, cap: o === true }); } };
   const ctx = {
-    Math, Date,
+    Math, Date: { now: () => clock.t },
     document: { documentElement: { classList: { contains: (c) => c === 'mobile-ui' && phone } } },
     window: { addEventListener: (t, f) => { (win[t] = win[t] || []).push(f); } },
     getComputedStyle: () => ({ direction: dir }),
@@ -29,8 +30,26 @@ function setup({ dir = 'rtl', phone = false, sw = 2238, cw = 1136 } = {}) {
   const ev = (o) => Object.assign({ prevented: false, stopped: false, preventDefault() { this.prevented = true; }, stopPropagation() { this.stopped = true; } }, o);
   const fire = (t, o) => { const e = ev(o); for (const h of on[t] || []) h.f(e); return e; };
   const fireWin = (t, o) => { const e = ev(o); for (const f of win[t] || []) f(e); return e; };
-  return { el, fire, fireWin };
+  return { el, fire, fireWin, clock };
 }
+
+test('٥. v-strip-wheel-latch: تمرير الصفحة يكمل فوق الشريط ما دام متّصلًا، وبعد توقّف قصير تحرّك العجلة الشريط', () => {
+  const s = setup();
+  s.fireWin('wheel', { target: 'outside', deltaY: 100 }); // الصفحة تُمرَّر
+  for (let i = 0; i < 5; i++) {
+    s.clock.t += 120;
+    const e = s.fire('wheel', { deltaY: 100, deltaX: 0, deltaMode: 0 });
+    assert.equal(e.prevented, false, 'الصفحة تكمل والمؤشّر فوق الشريط');
+  }
+  assert.equal(s.el.scrollLeft, 0, 'الشريط لم يتحرّك أثناء تمرير الصفحة');
+  s.clock.t += 600; // توقّف
+  const e = s.fire('wheel', { deltaY: 100, deltaX: 0, deltaMode: 0 });
+  assert.equal(e.prevented, true);
+  assert.equal(s.el.scrollLeft, -100, 'بعد التوقّف العجلة تحرّك الشريط');
+  s.fireWin('wheel', { target: 'inside', deltaY: 100 });
+  s.clock.t += 100;
+  assert.equal(s.fire('wheel', { deltaY: 100, deltaX: 0, deltaMode: 0 }).prevented, true, 'عجلة داخل الشريط لا تُحسب تمرير صفحة');
+});
 
 test('١. العجلة تحرّك الشريط أفقيًّا (العربيّة RTL: نحو السالب)، وتمنع تمرير الصفحة فقط ما دام فيه مكان', () => {
   const s = setup();
@@ -45,6 +64,7 @@ test('١. العجلة تحرّك الشريط أفقيًّا (العربيّة 
   assert.equal(s.el.scrollLeft, -(2238 - 1136));
   s.el.scrollLeft = 0;
   assert.equal(s.fire('wheel', { deltaY: -100, deltaX: 0, deltaMode: 0 }).prevented, false, 'في البداية والعجلة للأعلى: الصفحة');
+  s.clock.t += 600; // حركة جديدة بعد توقّف (v-strip-wheel-latch: المتّصلة بتمرير الصفحة تبقى للصفحة)
   const lines = s.fire('wheel', { deltaY: 3, deltaX: 0, deltaMode: 1 });
   assert.equal(lines.prevented, true);
   assert.equal(s.el.scrollLeft, -48, 'وضع الأسطر = ١٦px للسطر');

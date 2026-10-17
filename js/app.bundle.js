@@ -36964,11 +36964,17 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const phone = () => document.documentElement.classList.contains('mobile-ui');
     const room = () => Math.max(0, el.scrollWidth - el.clientWidth);
     const rtl = () => getComputedStyle(el).direction === 'rtl';
+    /* v-strip-wheel-latch (المالك ١٧ أكتوبر: «لو كنت أمرّر الصفحة ومرّ الماوس فوق الشريط، الصفحة تكمّل وما توقف»): عجلة تمرّر الصفحة
+       تبقى للصفحة ما دامت متّصلة (أقلّ من ٥٠٠ms بين دفعاتها) ولو مرّ المؤشّر فوق الشريط — كانت الصفحة تقف حتّى يبلغ الشريط طرفه
+       (~١١ دفعة). بعد توقّف قصير تحرّك العجلة الشريط كما كانت. */
+    let pageWheel = 0;
+    window.addEventListener('wheel', (e) => { if(!el.contains(e.target)) pageWheel = Date.now(); }, { passive: true, capture: true });
     el.addEventListener('wheel', (e) => {
       if(phone() || e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if(Date.now() - pageWheel < 500){ pageWheel = Date.now(); return; } // الصفحة تُمرَّر الآن — تكمل
       const max = room(); if(!max) return;
       const pos = Math.abs(el.scrollLeft); // RTL: ‎0 ← -max‎ في المتصفّحات الحديثة
-      if(e.deltaY > 0 ? pos >= max - 1 : pos <= 1) return;
+      if(e.deltaY > 0 ? pos >= max - 1 : pos <= 1){ pageWheel = Date.now(); return; } // الطرف: الصفحة تكمل وتبقى لها
       e.preventDefault();
       const d = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * el.clientWidth : e.deltaY);
       el.scrollLeft += rtl() ? -d : d;
