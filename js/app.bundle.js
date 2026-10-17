@@ -2487,19 +2487,36 @@ function omranMdTableMark(text){
   return { text: out.join('\n'), list: list };
 }
 const OMRAN_IC_AR = /[\u0600-\u06FF]/; // كود مضمّن بحروف عربيّة: رقاقة <span> بخطّ النصّ — الخطّ الثابت يفكّك الحروف
-/** خليّة جدول: **عريض** و`كود` و[نصّ](رابط) — عُقدًا لا HTML. */
+/** خليّة جدول: **عريض** و`كود` و[نصّ](رابط) — عُقدًا لا HTML. v-reply-blocks: الرابط شارة مصدر (أيقونة الموقع + اسمه، ولو
+    كان **[نصّ](رابط)**)، وأرقام الهواتف في النصّ معزولة LTR فلا تنقلب مجموعاتها. */
 function omranMdInline(el, s){
-  const re = /\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  const re = /\*{0,2}\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)\*{0,2}|\*\*([^*]+)\*\*|`([^`]+)`/g;
   let m, last = 0;
   s = String(s || '');
   while((m = re.exec(s))){
-    if(m.index > last) el.appendChild(document.createTextNode(s.slice(last, m.index)));
+    if(m.index > last) omranMdText(el, s.slice(last, m.index));
     let k;
-    if(m[1] !== undefined){ k = document.createElement('strong'); k.textContent = m[1]; }
-    else if(m[2] !== undefined){ const ar = OMRAN_IC_AR.test(m[2]); k = document.createElement(ar ? 'span' : 'code'); k.className = 'md-ic' + (ar ? ' md-ic-ar' : ''); k.textContent = m[2]; }
-    else { k = document.createElement('a'); k.href = m[4]; k.target = '_blank'; k.rel = 'noopener noreferrer'; k.textContent = m[3]; }
+    if(m[1] !== undefined) k = omranSrcChip(m[2], m[1]);
+    else if(m[3] !== undefined){ k = document.createElement('strong'); omranMdText(k, m[3]); }
+    else { const ar = OMRAN_IC_AR.test(m[4]); k = document.createElement(ar ? 'span' : 'code'); k.className = 'md-ic' + (ar ? ' md-ic-ar' : ''); k.textContent = m[4]; }
     el.appendChild(k);
     last = m.index + m[0].length;
+  }
+  if(last < s.length) omranMdText(el, s.slice(last));
+}
+/** نصّ خليّة: رقم هاتف (٧ خانات فأكثر بمسافاته وشرطاته) عنصر LTR معزول، والباقي نصّ كما هو. الرقم الملاصق لـ«: , . /»
+    أو لرقم آخر (وقت «9:00 - 17:00»، سعر «1,000 - 2,000»، كسر) ليس هاتفًا فيبقى نصًّا. بلا lookbehind (سفاري القديم): السابق يُلتقط. */
+function omranMdText(el, s){
+  const re = /(^|[^0-9٠-٩۰-۹:,.\/])((?:\+|00)?[0-9٠-٩۰-۹](?:[0-9٠-٩۰-۹]|[ \-](?=[0-9٠-٩۰-۹])){5,}[0-9٠-٩۰-۹])(?![0-9٠-٩۰-۹:,.\/])/g;
+  let m, last = 0;
+  s = String(s || '');
+  while((m = re.exec(s))){
+    if((m[2].match(/[0-9٠-٩۰-۹]/g) || []).length < 7) continue;
+    const at = m.index + m[1].length;
+    if(at > last) el.appendChild(document.createTextNode(s.slice(last, at)));
+    const sp = document.createElement('span'); sp.className = 'md-ltr'; sp.setAttribute('dir', 'ltr'); sp.textContent = m[2];
+    el.appendChild(sp);
+    last = at + m[2].length;
   }
   if(last < s.length) el.appendChild(document.createTextNode(s.slice(last)));
 }
@@ -2547,7 +2564,7 @@ function omranImgItems(body){
 function omranImgPartial(l){
   const t = String(l || '').trim();
   if(!t || /\]\]$/.test(t)) return false;
-  return /^\[\[IMG:/i.test(t) || '[[IMG:'.indexOf(t.toUpperCase()) === 0;
+  return /^\[\[(?:IMG|CONTACT):/i.test(t) || '[[IMG:'.indexOf(t.toUpperCase()) === 0 || '[[CONTACT:'.indexOf(t.toUpperCase()) === 0; // v-reply-blocks: وسطر بطاقة التواصل
 }
 function omranMdImgMark(text){
   const lines = String(text || '').split('\n'), out = [], list = [];
@@ -2555,6 +2572,17 @@ function omranMdImgMark(text){
   for(let i = 0; i < lines.length; i++){
     const l = lines[i];
     if(/^\s*```/.test(l)) fence = !fence;
+    const __c = !fence && OMRAN_CT_LINE.exec(l), __ci = __c && omranCtItem(__c[1]);
+    if(__ci){ // v-reply-blocks: أسطر التواصل المتتالية (ولو بينها سطر فارغ) شبكة بطاقات واحدة
+      const g = { kind: 'contact', items: [__ci], extra: (l.match(/\S+/g) || []).length };
+      for(let j = i + 1; j < lines.length; j++){
+        if(!lines[j].trim()) continue;
+        const c2 = OMRAN_CT_LINE.exec(lines[j]), ci2 = c2 && omranCtItem(c2[1]);
+        if(!ci2) break;
+        g.items.push(ci2); g.extra += (lines[j].match(/\S+/g) || []).length; i = j;
+      }
+      list.push(g); out.push(String.fromCharCode(0xE004) + (list.length - 1) + String.fromCharCode(0xE005)); continue;
+    }
     const m = !fence && OMRAN_IMG_LINE.exec(l);
     if(m){
       const items = omranImgItems(m[1]);
@@ -2650,9 +2678,116 @@ function omranGalleryEl(it){
 }
 /** القراءة الصوتيّة: كلمات سطر الصور تبقى بعددها (محاذاة tts-word) لكنّها لا تُنطق. */
 function omranSpeechNoImg(text){
+  text = omranSpeechNoCt(text); // v-reply-blocks: وأسطر بطاقات التواصل كذلك
   const s = String(text || '');
   if(s.indexOf('[[IMG') < 0 && s.indexOf('[[img') < 0) return s;
   return s.split('\n').map(function(l){ return OMRAN_IMG_LINE.test(l) ? l.replace(/\S+/g, '\u2060') : l; }).join('\n');
+}
+/* v-reply-blocks (\u0644\u0642\u0637\u0627\u062a \u0627\u0644\u0645\u0627\u0644\u0643 \u0661\u0667 \u0623\u0643\u062a\u0648\u0628\u0631\u060c ChatGPT: \u00ab\u0623\u0631\u0642\u0627\u0645 \u0645\u0643\u0627\u062a\u0628 \u0639\u0642\u0627\u0631\u064a\u0651\u0629 \u0641\u064a \u0627\u0644\u0634\u0627\u0631\u0642\u0629\u00bb \u0628\u0637\u0627\u0642\u0627\u062a \u0628\u0627\u0644\u0627\u0633\u0645 \u0648\u0627\u0644\u0631\u0642\u0645 \u0627\u0644\u0643\u0628\u064a\u0631 \u0648\u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u0648\u00ab\u0646\u0633\u062e \u0627\u0644\u0631\u0642\u0645\u00bb\u060c
+   \u0648\u062c\u062f\u0648\u0644 \u0628\u0627\u0626\u0639\u064a\u0646 \u0628\u0634\u0627\u0631\u0629 \u0627\u0644\u0645\u0635\u062f\u0631 \u062c\u0646\u0628 \u0643\u0644\u0651 \u0631\u0642\u0645): \u0633\u0637\u0631 \u0627\u0644\u0645\u0632\u0648\u0651\u062f [[CONTACT: \u0627\u0644\u0627\u0633\u0645 | \u0627\u0644\u0631\u0642\u0645 | \u0627\u0644\u0645\u0646\u0637\u0642\u0629 | [\u0627\u0644\u0645\u0648\u0642\u0639](\u0627\u0644\u0631\u0627\u0628\u0637)]] \u0628\u0637\u0627\u0642\u0629\u060c \u0648\u0627\u0644\u0623\u0633\u0637\u0631
+   \u0627\u0644\u0645\u062a\u062a\u0627\u0644\u064a\u0629 \u0634\u0628\u0643\u0629 \u0648\u0627\u062d\u062f\u0629 \u0643\u062a\u0644\u0629\u064b \u0643\u0627\u0644\u0645\u0639\u0631\u0636 (\u0643\u0644\u0645\u0627\u062a\u0647\u0627 tts-word \u0645\u062e\u0641\u064a\u0651\u0629 \u0641\u0644\u0627 \u062a\u0646\u0632\u0627\u062d \u0627\u0644\u0642\u0631\u0627\u0621\u0629\u060c \u0648\u0644\u0627 \u062a\u064f\u0646\u0637\u0642). \u0627\u0644\u0631\u0642\u0645 LTR \u0645\u0639\u0632\u0648\u0644: \u0628\u0644\u0627 \u0639\u0632\u0644 \u062a\u0646\u0642\u0644\u0628
+   \u0645\u062c\u0645\u0648\u0639\u0627\u062a\u0647 \u0641\u064a \u0627\u0644\u0633\u064a\u0627\u0642 \u0627\u0644\u0639\u0631\u0628\u064a\u0651 (\u00ab7465 171 050\u00bb \u0639\u0646\u062f ChatGPT \u0646\u0641\u0633\u0647). \u0627\u0644\u062e\u0627\u062f\u0645 \u064a\u062d\u0630\u0641 \u0631\u0642\u0645\u064b\u0627 \u0644\u0645 \u064a\u0638\u0647\u0631 \u0641\u064a \u0646\u062a\u0627\u0626\u062c \u0627\u0644\u0628\u062d\u062b (keepSourcedContacts).
+   \u0627\u0644\u0628\u0637\u0627\u0642\u0629 \u0628\u0644\u0627 \u062d\u062f\u0651 (\u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u062f\u0627\u0643\u0646 \u064a\u062d\u0648\u0651\u0644 \u0643\u0644\u0651 \u062d\u062f\u0651 \u0625\u0644\u0649 \u0634\u0628\u062d \u0628\u062a\u0648\u0647\u0651\u062c \u0623\u0628\u064a\u0636)\u060c \u0648\u0627\u0644\u0631\u0642\u0645 \u0628\u0644\u0648\u0646 \u0627\u0644\u0646\u0635\u0651 \u0644\u0627 \u0627\u0644\u0630\u0647\u0628\u064a\u0651 (\u0627\u0644\u0630\u0647\u0628\u064a\u0651 \u0644\u0644\u0631\u0648\u0627\u0628\u0637 \u0648\u062d\u062f\u0647\u0627). */
+const OMRAN_CT_LINE = /^\s*\[\[CONTACT:\s*(.*)\]\]\s*$/i;
+function omranCtItem(body){
+  const f = String(body || '').split('|').map(function(x){ return x.replace(/\s+/g, ' ').trim(); });
+  const name = f[0] || '', phone = f[1] || '';
+  if(!name || (phone.match(/[0-9\u0660-\u0669\u06f0-\u06f9]/g) || []).length < 3) return null;
+  const rest = f.slice(3).join('|').trim();
+  const ml = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/.exec(rest);
+  const mu = !ml && /https?:\/\/[^\s)\]]+/.exec(rest);
+  const src = ml ? { label: ml[1].trim(), url: ml[2] } : (mu ? { label: '', url: mu[0] } : (rest ? { label: rest, url: '' } : null));
+  return { name: name, phone: phone, area: f[2] || '', src: src };
+}
+/** حقل الرقم قد يحمل رقمين («04 555 4321 / 800 2384»): كلّ رقم وحده (لا يُقسم الرقم نفسه). */
+function omranCtNums(phone){
+  const parts = String(phone || '').split(/\s*(?:\/|,|،|;|؛|\s(?:أو|او|or)\s)\s*/).map(function(x){ return x.trim(); }).filter(function(x){ return (x.match(/[0-9٠-٩۰-۹]/g) || []).length >= 3; });
+  return parts.length ? parts : [String(phone || '').trim()];
+}
+function omranSpeechNoCt(text){
+  const s = String(text || '');
+  if(!/\[\[CONTACT:/i.test(s)) return text;
+  const z = String.fromCharCode(0x2060);
+  return s.split('\n').map(function(l){ return OMRAN_CT_LINE.test(l) ? l.replace(/\S+/g, z) : l; }).join('\n');
+}
+function omranBlocksCss(){
+  if(document.getElementById('omranBlocksCss')) return;
+  const st = document.createElement('style');
+  st.id = 'omranBlocksCss';
+  st.textContent = '.md-contacts{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:8px 0 12px;width:100%;align-self:stretch;box-sizing:border-box;}'
+    + 'html.mobile-ui .md-contacts{grid-template-columns:1fr;}'
+    + '.md-ct{display:flex;flex-direction:column;gap:3px;min-width:0;padding:12px 14px;border-radius:var(--r-3,14px);background:rgba(127,127,127,.10);box-sizing:border-box;text-align:start;}'
+    + '.msg-text .md-contacts,.msg-text .md-contacts div{unicode-bidi:isolate;}' /* plaintext الموروث (.msg-text div) يحاذي الاسم اللاتينيّ يسارًا والمنطقة يمينًا — البطاقة تتبع dir الكتلة */
+    + 'html body .msg .md-table a.md-src.md-src,.md-table .md-src{max-width:8.5em;min-width:0;padding:2px 7px;font-size:11.5px;}' /* أعلى من قاعدة الشارة العامّة وإلّا عرّض الجدول خارج الفقاعة */
+    + 'html[data-mode="light"] .md-ct{background:#f3f4f8;}'
+    + '.md-ct-name{font-size:14.5px;font-weight:800;line-height:1.35;color:var(--text,#eee);overflow-wrap:anywhere;}'
+    + '.md-ct-num{display:flex;flex-wrap:wrap;column-gap:12px;font-size:22px;font-weight:800;line-height:1.35;color:var(--text,#eee);font-variant-numeric:tabular-nums;}'
+    + '.md-ct-num bdi,.md-ltr{unicode-bidi:isolate;white-space:nowrap;}'
+    + '.md-ct-area{font-size:12.5px;color:var(--muted,#9aa3b2);}'
+    + '.md-ct-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px;}'
+    + '.md-ct-copy{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border:0;border-radius:999px;background:rgba(127,127,127,.18);color:var(--text,#eee);font:inherit;font-size:12.5px;font-weight:700;line-height:1.4;cursor:pointer;}'
+    + '.md-ct-copy::before{content:"";width:9px;height:10px;border:1.6px solid currentColor;border-radius:2px;box-shadow:-3px 3px 0 -1.6px currentColor;}'
+    + '.md-ct-copy.ok{background:rgba(127,127,127,.34);}'
+    + 'html body .msg a.md-src.md-src,.md-src{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:3px 9px;border-radius:999px;background:rgba(127,127,127,.16);color:var(--muted,#9aa3b2) !important;font-size:12px;font-weight:600 !important;line-height:1.5;text-decoration:none !important;vertical-align:middle;white-space:nowrap;overflow:hidden;}'
+    + 'html body .msg a.md-src.md-src:hover{color:var(--text,#eee) !important;}'
+    + '.md-src img{width:14px;height:14px;border-radius:3px;flex:0 0 auto;}'
+    + '.md-src span{overflow:hidden;text-overflow:ellipsis;min-width:0;}';
+  document.head.appendChild(st);
+}
+/** \u0634\u0627\u0631\u0629 \u0627\u0644\u0645\u0635\u062f\u0631: \u0623\u064a\u0642\u0648\u0646\u0629 \u0627\u0644\u0645\u0648\u0642\u0639 + \u0627\u0633\u0645\u0647 (\u0623\u0648 \u0646\u0637\u0627\u0642\u0647)\u060c \u0631\u0627\u0628\u0637 \u064a\u0641\u062a\u062d \u0641\u064a \u0635\u0641\u062d\u0629 \u062c\u062f\u064a\u062f\u0629\u061b \u0628\u0644\u0627 \u0631\u0627\u0628\u0637 = \u0627\u0633\u0645 \u0641\u0642\u0637. */
+function omranSrcChip(url, label){
+  omranBlocksCss();
+  let host = '';
+  if(/^https?:\/\//i.test(String(url || ''))){ try{ host = new URL(url).hostname.replace(/^www\./, ''); }catch(e){ host = ''; } }
+  const c = document.createElement(host ? 'a' : 'span');
+  c.className = 'md-src';
+  if(host){
+    c.href = url; c.target = '_blank'; c.rel = 'noopener noreferrer'; c.title = host;
+    const fav = document.createElement('img');
+    fav.src = 'https://www.google.com/s2/favicons?sz=64&domain=' + encodeURIComponent(host); fav.alt = ''; fav.loading = 'lazy'; fav.referrerPolicy = 'no-referrer';
+    fav.onerror = function(){ fav.style.display = 'none'; };
+    c.appendChild(fav);
+  }
+  const tx = document.createElement('span'); tx.textContent = String(label || host || ''); c.appendChild(tx);
+  return c;
+}
+function omranCopyNum(num, btn){
+  const v = String(num || '').trim();
+  const flash = function(ok){
+    try{ if(typeof settingsToast === 'function') settingsToast(t(ok ? 'copiedToast' : 'msgCopyFailed')); }catch(e){ __swallow(e, 'ct:toast'); }
+    if(ok && btn){ btn.classList.add('ok'); setTimeout(function(){ btn.classList.remove('ok'); }, 1400); }
+  };
+  const legacy = function(){
+    try{
+      const ta = document.createElement('textarea'); ta.value = v; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); document.body.removeChild(ta); flash(ok);
+    }catch(e){ __swallow(e, 'ct:copy'); flash(false); }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(function(){ flash(true); }, legacy);
+  else legacy();
+}
+function omranContactsEl(it){
+  omranBlocksCss();
+  const g = document.createElement('div');
+  g.className = 'md-contacts';
+  g.setAttribute('contenteditable', 'false');
+  g.setAttribute('dir', /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/.test(it.items.map(function(c){ return c.name + ' ' + c.area; }).join(' ')) ? 'rtl' : 'ltr');
+  it.items.forEach(function(c){
+    const card = document.createElement('div'); card.className = 'md-ct';
+    const nm = document.createElement('div'); nm.className = 'md-ct-name'; nm.textContent = c.name; card.appendChild(nm);
+    const num = document.createElement('div'); num.className = 'md-ct-num';
+    omranCtNums(c.phone).forEach(function(p){ const b = document.createElement('bdi'); b.setAttribute('dir', 'ltr'); b.textContent = p; num.appendChild(b); }); // رقمان في الحقل سطران لا خروج من البطاقة
+    card.appendChild(num);
+    if(c.area){ const ar = document.createElement('div'); ar.className = 'md-ct-area'; ar.textContent = c.area; card.appendChild(ar); }
+    const acts = document.createElement('div'); acts.className = 'md-ct-acts';
+    const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'md-ct-copy'; cp.textContent = t('copyCode');
+    cp.onclick = function(e){ if(e && e.stopPropagation) e.stopPropagation(); omranCopyNum(c.phone, cp); };
+    acts.appendChild(cp);
+    if(c.src && (c.src.url || c.src.label)) acts.appendChild(omranSrcChip(c.src.url, c.src.label));
+    card.appendChild(acts);
+    g.appendChild(card);
+  });
+  return g;
 }
 function buildSpokenWordSpans(container, text){
   let __im = { text: text, list: [] };
@@ -2751,7 +2886,7 @@ function buildSpokenWordSpans(container, text){
     if(__imm){ // v-rich-reply: المعرض كتلة، وكلمات سطره عناصر مخفيّة داخله
       const __g = __im.list[+__imm[1]];
       if(__g){
-        const __w = omranGalleryEl(__g);
+        const __w = __g.kind === 'contact' ? omranContactsEl(__g) : omranGalleryEl(__g); // v-reply-blocks
         for(let __k = 0; __k < __g.extra; __k++){ const __h = document.createElement('span'); __h.className = 'tts-word'; __h.style.display = 'none'; __w.appendChild(__h); wordEls.push(__h); }
         container.appendChild(__w);
       }
@@ -2958,6 +3093,7 @@ function omranMdBlocks(container, text){
   const newLine = function(){ cur = document.createElement('div'); cur.className = 'md-line'; out.push(cur); };
   newLine();
   nodes.forEach(function(n){
+    if(n.nodeType === 1 && n.className === 'md-contacts'){ out.push(n); newLine(); return; } // v-reply-blocks: بطاقات التواصل كتلة كالمعرض
     if(n.nodeType === 1 && (n.className === 'chat-codeblock' || n.className === 'md-table-wrap' || n.className === 'md-gallery')){ out.push(n); newLine(); return; } // v-gpt-format: الجدول كتلة · v-rich-reply: والمعرض
     if(n.nodeType === 3){
       const parts = String(n.textContent).split('\n');
@@ -3490,6 +3626,7 @@ function omranMathOpenBlock(h){
 function renderStreamingAssistant(el, text){
   if(!el) return;
   el.classList.add('msg-streaming');
+  { const __raw = String(text || ''), __rl = __raw.lastIndexOf('\n'); if(omranImgPartial(__raw.slice(__rl + 1))) text = __raw.slice(0, __rl + 1).trimEnd(); } // v-reply-blocks: سطر [[…]] الناقص يُخفى قبل أن يقصّ العرض أوّل «[» منه
   let __st = streamingMarkdownDisplayText(text);
   if(__st && __st.indexOf('[[') >= 0) __st = __st.replace(/\[\[(?:OPT|MULTI)\]\][\s\S]*$/, '').trimEnd();
   if(__st){ const __nl = __st.lastIndexOf('\n'); if(omranImgPartial(__st.slice(__nl + 1))) __st = __st.slice(0, __nl + 1).trimEnd(); } // v-rich-reply
@@ -46764,7 +46901,22 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       + '.omCardSite img{width:12px;height:12px;border-radius:3px;flex:0 0 auto;}'
       + '.msg .omCardOpen{margin-top:4px;align-self:flex-start;font-size:12px;font-weight:700;color:var(--accent2,#a78bfa) !important;}'
       + 'html[data-mode="light"] .omCard{background:#fff;}'
-      + 'html[data-mode="light"] .omCardImg{background:#f3f4f8;}';
+      + 'html[data-mode="light"] .omCardImg{background:#f3f4f8;}'
+      /* v-reply-blocks: الإعلانات صفوف (ChatGPT «عقارات للبيع»): الصورة بجانب العنوان والوصف والسعر، ثمّ «افتح ↗» وشارة الموقع — عمود واحد بلا تمرير أفقيّ */
+      + '.omCards.omList{grid-template-columns:minmax(0,1fr);gap:10px;}'
+      + 'html.mobile-ui .omCards.omList{grid-template-columns:minmax(0,1fr);}'
+      + '.omRow{display:flex;gap:12px;min-width:0;padding:10px;border-radius:var(--r-3,14px);background:rgba(127,127,127,.10);}'
+      + 'html[data-mode="light"] .omRow{background:#f3f4f8;}'
+      + '.msg .omRowImg{position:relative;flex:0 0 34%;max-width:150px;aspect-ratio:4/3;align-self:flex-start;border-radius:10px;overflow:hidden;background:rgba(127,127,127,.16);display:flex;align-items:center;justify-content:center;}'
+      + '.omRowImg img{width:100%;height:100%;object-fit:cover;display:block;}'
+      + '.omRowImg img.omCardFav{width:36px;height:36px;object-fit:contain;opacity:.8;border-radius:8px;}'
+      + '.omRowBody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}'
+      /* العنوان رابط لكنّه أبيض كعناوين بطاقات المنتجات: قاعدة الذهبيّ (.msg.assistant a !important) أعلى تخصيصًا من .msg a.x فيُرفع التخصيص */
+      + 'html body .msg a.omRowTitle.omRowTitle{color:var(--text,#eee) !important;font-size:14.5px;font-weight:800 !important;line-height:1.35;text-decoration:none !important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}'
+      + '.msg .omRowDesc{color:var(--muted,#9aa3b2) !important;font-size:12.5px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}'
+      + '.msg .omRowPrice{font-size:14px;font-weight:800;color:var(--text,#eee) !important;}'
+      + '.omRowFoot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:4px;}'
+      + 'html body .msg a.omRowOpen.omRowOpen{font-size:12.5px;text-decoration:none !important;}';
     document.head.appendChild(st);
   }
   function https(u){ u = String(u || ''); return /^https:\/\//i.test(u) ? u : ''; }
@@ -46807,6 +46959,35 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     a.appendChild(body);
     return a;
   }
+  function link(url, cls){
+    var a = document.createElement('a');
+    a.className = cls; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    return a;
+  }
+  /* v-reply-blocks: صفّ إعلان — الصورة (أو أيقونة الموقع) بجانب العنوان والوصف والسعر، ثمّ «افتح ↗» وشارة الموقع */
+  function row(it, i){
+    var url = https(it && it.url); if(!url) return null;
+    var r = document.createElement('div'); r.className = 'omRow';
+    var im = link(url, 'omRowImg');
+    var img = document.createElement('img');
+    img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.alt = '';
+    var src = https(it.image);
+    if(src){ img.src = src; img.addEventListener('error', function(){ img.className = 'omCardFav'; img.src = fav(it.site); }); }
+    else { img.className = 'omCardFav'; img.src = fav(it.site); }
+    im.appendChild(img);
+    var no = document.createElement('span'); no.className = 'omCardNo'; no.textContent = String(i + 1); im.appendChild(no);
+    r.appendChild(im);
+    var body = document.createElement('div'); body.className = 'omRowBody';
+    var ti = link(url, 'omRowTitle'); ti.textContent = String(it.title || it.site || ''); body.appendChild(ti);
+    if(it.snippet){ var ds = document.createElement('div'); ds.className = 'omRowDesc'; ds.textContent = String(it.snippet); body.appendChild(ds); }
+    if(it.price){ var pr = document.createElement('div'); pr.className = 'omRowPrice'; pr.textContent = String(it.price); body.appendChild(pr); }
+    var foot = document.createElement('div'); foot.className = 'omRowFoot';
+    var op = link(url, 'omRowOpen'); op.textContent = tt('cardsOpen', 'افتح') + ' ↗'; foot.appendChild(op);
+    if(typeof omranSrcChip === 'function') foot.appendChild(omranSrcChip(url, String(it.site || '')));
+    body.appendChild(foot);
+    r.appendChild(body);
+    return r;
+  }
   window.omranRenderCards = function(cards){
     css();
     var wrap = document.createElement('div');
@@ -46814,8 +46995,9 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     wrap.setAttribute('data-keep-emoji', '1');
     var chips = chipsRow(cards && cards.chips); if(chips) wrap.appendChild(chips);
     var items = (cards && Array.isArray(cards.items)) ? cards.items : [];
-    var grid = document.createElement('div'); grid.className = 'omCards';
-    items.slice(0, 8).forEach(function(it, i){ var c = card(it, i); if(c) grid.appendChild(c); });
+    var list = !!(cards && cards.kind === 'listing');
+    var grid = document.createElement('div'); grid.className = list ? 'omCards omList' : 'omCards';
+    items.slice(0, 8).forEach(function(it, i){ var c = list ? row(it, i) : card(it, i); if(c) grid.appendChild(c); });
     if(grid.childNodes.length) wrap.appendChild(grid);
     return wrap;
   };

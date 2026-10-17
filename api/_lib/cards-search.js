@@ -14,7 +14,7 @@ const TOOL = {
     properties: {
       query: { type: 'string', description: 'عبارة البحث: المطلوب كما طُلب وفي مكانه' },
       chips: { type: 'array', items: { type: 'string' }, description: '٣–٦ فروقات لنفس المطلوب في نفس المكان' },
-      kind: { type: 'string', enum: ['product', 'service', 'place', 'site', 'other'], description: 'نوع المطلوب' },
+      kind: { type: 'string', enum: ['product', 'service', 'place', 'site', 'listing', 'other'], description: 'نوع المطلوب — listing لإعلانات البيع والإيجار: تُرسم صفوفًا، الصورة بجانب العنوان والوصف والسعر ورابط الإعلانات' }, // v-reply-blocks
     },
     required: ['query'],
   },

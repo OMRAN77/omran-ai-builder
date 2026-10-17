@@ -28,7 +28,22 @@
       + '.omCardSite img{width:12px;height:12px;border-radius:3px;flex:0 0 auto;}'
       + '.msg .omCardOpen{margin-top:4px;align-self:flex-start;font-size:12px;font-weight:700;color:var(--accent2,#a78bfa) !important;}'
       + 'html[data-mode="light"] .omCard{background:#fff;}'
-      + 'html[data-mode="light"] .omCardImg{background:#f3f4f8;}';
+      + 'html[data-mode="light"] .omCardImg{background:#f3f4f8;}'
+      /* v-reply-blocks: الإعلانات صفوف (ChatGPT «عقارات للبيع»): الصورة بجانب العنوان والوصف والسعر، ثمّ «افتح ↗» وشارة الموقع — عمود واحد بلا تمرير أفقيّ */
+      + '.omCards.omList{grid-template-columns:minmax(0,1fr);gap:10px;}'
+      + 'html.mobile-ui .omCards.omList{grid-template-columns:minmax(0,1fr);}'
+      + '.omRow{display:flex;gap:12px;min-width:0;padding:10px;border-radius:var(--r-3,14px);background:rgba(127,127,127,.10);}'
+      + 'html[data-mode="light"] .omRow{background:#f3f4f8;}'
+      + '.msg .omRowImg{position:relative;flex:0 0 34%;max-width:150px;aspect-ratio:4/3;align-self:flex-start;border-radius:10px;overflow:hidden;background:rgba(127,127,127,.16);display:flex;align-items:center;justify-content:center;}'
+      + '.omRowImg img{width:100%;height:100%;object-fit:cover;display:block;}'
+      + '.omRowImg img.omCardFav{width:36px;height:36px;object-fit:contain;opacity:.8;border-radius:8px;}'
+      + '.omRowBody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}'
+      /* العنوان رابط لكنّه أبيض كعناوين بطاقات المنتجات: قاعدة الذهبيّ (.msg.assistant a !important) أعلى تخصيصًا من .msg a.x فيُرفع التخصيص */
+      + 'html body .msg a.omRowTitle.omRowTitle{color:var(--text,#eee) !important;font-size:14.5px;font-weight:800 !important;line-height:1.35;text-decoration:none !important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}'
+      + '.msg .omRowDesc{color:var(--muted,#9aa3b2) !important;font-size:12.5px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}'
+      + '.msg .omRowPrice{font-size:14px;font-weight:800;color:var(--text,#eee) !important;}'
+      + '.omRowFoot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:4px;}'
+      + 'html body .msg a.omRowOpen.omRowOpen{font-size:12.5px;text-decoration:none !important;}';
     document.head.appendChild(st);
   }
   function https(u){ u = String(u || ''); return /^https:\/\//i.test(u) ? u : ''; }
@@ -71,6 +86,35 @@
     a.appendChild(body);
     return a;
   }
+  function link(url, cls){
+    var a = document.createElement('a');
+    a.className = cls; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    return a;
+  }
+  /* v-reply-blocks: صفّ إعلان — الصورة (أو أيقونة الموقع) بجانب العنوان والوصف والسعر، ثمّ «افتح ↗» وشارة الموقع */
+  function row(it, i){
+    var url = https(it && it.url); if(!url) return null;
+    var r = document.createElement('div'); r.className = 'omRow';
+    var im = link(url, 'omRowImg');
+    var img = document.createElement('img');
+    img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.alt = '';
+    var src = https(it.image);
+    if(src){ img.src = src; img.addEventListener('error', function(){ img.className = 'omCardFav'; img.src = fav(it.site); }); }
+    else { img.className = 'omCardFav'; img.src = fav(it.site); }
+    im.appendChild(img);
+    var no = document.createElement('span'); no.className = 'omCardNo'; no.textContent = String(i + 1); im.appendChild(no);
+    r.appendChild(im);
+    var body = document.createElement('div'); body.className = 'omRowBody';
+    var ti = link(url, 'omRowTitle'); ti.textContent = String(it.title || it.site || ''); body.appendChild(ti);
+    if(it.snippet){ var ds = document.createElement('div'); ds.className = 'omRowDesc'; ds.textContent = String(it.snippet); body.appendChild(ds); }
+    if(it.price){ var pr = document.createElement('div'); pr.className = 'omRowPrice'; pr.textContent = String(it.price); body.appendChild(pr); }
+    var foot = document.createElement('div'); foot.className = 'omRowFoot';
+    var op = link(url, 'omRowOpen'); op.textContent = tt('cardsOpen', 'افتح') + ' ↗'; foot.appendChild(op);
+    if(typeof omranSrcChip === 'function') foot.appendChild(omranSrcChip(url, String(it.site || '')));
+    body.appendChild(foot);
+    r.appendChild(body);
+    return r;
+  }
   window.omranRenderCards = function(cards){
     css();
     var wrap = document.createElement('div');
@@ -78,8 +122,9 @@
     wrap.setAttribute('data-keep-emoji', '1');
     var chips = chipsRow(cards && cards.chips); if(chips) wrap.appendChild(chips);
     var items = (cards && Array.isArray(cards.items)) ? cards.items : [];
-    var grid = document.createElement('div'); grid.className = 'omCards';
-    items.slice(0, 8).forEach(function(it, i){ var c = card(it, i); if(c) grid.appendChild(c); });
+    var list = !!(cards && cards.kind === 'listing');
+    var grid = document.createElement('div'); grid.className = list ? 'omCards omList' : 'omCards';
+    items.slice(0, 8).forEach(function(it, i){ var c = list ? row(it, i) : card(it, i); if(c) grid.appendChild(c); });
     if(grid.childNodes.length) wrap.appendChild(grid);
     return wrap;
   };
