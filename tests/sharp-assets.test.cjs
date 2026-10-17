@@ -76,7 +76,7 @@ test('٣. قرار المالك ١٧ أكتوبر: لا pollinations ولا Real
   assert.ok(modeLines.length >= 3 && modeLines.every((l) => /^\s*(MODE:|group:|if:)/.test(l)), 'الوضع لا يدخل سطر أوامر');
   const sc = read('scripts/thumbs-paid.mjs');
   assert.ok(!/image\.pollinations\.ai|onnxruntime|RealESRGAN_x4plus|esrgan\(/i.test(sc), 'لا محرّك مجّانيّ ولا تكبير');
-  assert.ok(sc.includes(".webp({ quality: 90 })") && !/\.resize\(/.test(sc), 'WebP q90 بالدقّة الأصليّة بلا تصغير ولا تكبير');
+  assert.ok(sc.includes(".webp({ quality: 90 })") && sc.includes("withoutEnlargement: true, kernel: 'lanczos3'"), 'WebP q90، تصغير واحد بـLanczos من الخام ولا تكبير أبدًا');
   assert.ok(sc.includes("quality: 'high'") && sc.includes("'1536x1024'") && sc.includes("'1024x1536'") && sc.includes("imageSize") , 'أعلى دقّة للمحرّكين');
   assert.ok(/no text, no letters/i.test(sc), 'لا نصّ داخل الصورة');
 });

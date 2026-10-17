@@ -270,6 +270,10 @@ async function save(j, buf) {
     const cw = Math.min(w, Math.round(h * want)), ch = Math.min(h, Math.round(w / want));
     img = img.extract({ left: Math.floor((w - cw) / 2), top: Math.floor((h - ch) / 2), width: cw, height: ch });
   }
+  // المولّد يرجع أكبر من المطلوب (1792×2400 / 5376×2688): تصغير واحد بـLanczos من الخام إلى ضعفَي أكبر عرض عرضٍ في التطبيق
+  // (بطاقة ≤ ٣٦٠ → 1024، بطاقة عريضة ≤ ٢٣١ وغطاء الجوّال → 1536، مربّع الرفع ≤ ١٣٧٥ → 3072) — لا تكبير أبدًا (withoutEnlargement).
+  const CAP = { port: 1024, land16: 1536, wide2: 3072 }[j.shape] || 1024;
+  img = img.resize({ width: CAP, withoutEnlargement: true, kernel: 'lanczos3' });
   mkdirSync('thumbs/' + j.kind, { recursive: true });
   const out = 'thumbs/' + j.kind + '/' + outName(j);
   const info = await img.webp({ quality: 90 }).toFile(out);
