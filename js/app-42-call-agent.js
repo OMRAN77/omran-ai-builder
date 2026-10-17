@@ -26,7 +26,7 @@
   var SETUP_MAX_MS = 20000;                   // تجهيز أطول من هذا = فشل صريح لا انتظار بلا نهاية
   var END_GRACE_MS = 1200, END_MAX_MS = 8000; // end_call: ننتظر انتهاء جملة الوداع، وبحدّ أقصى
   var LINES_MAX = 40, LINE_CHARS = 400;
-  var CUT_MARK = ' …', TRACE_MAX = 80, RTP_MS = 5000; // v-call-agent-cut: علامة السطر المقطوع، وسقف الأثر، وفترة قراءة إحصاءات الصوت الوارد
+  var CUT_MARK = ' …', TRACE_HEAD = 30, TRACE_TAIL = 50, RTP_MS = 5000; // v-call-agent-cut: علامة السطر المقطوع، وسقف الأثر، وفترة قراءة إحصاءات الصوت الوارد
   var RT_URL = 'https://api.openai.com/v1/realtime/calls'; // تبادل SDP كمسار مها نفسه — عنوان شبكة لا نصّ ظاهر
   var ACTIVE = { mic: 1, connecting: 1, live: 1, queued: 1, ringing: 1, 'in-progress': 1 };
   var PHONE_STATES = { queued: 1, ringing: 1, 'in-progress': 1, completed: 1, busy: 1, 'no-answer': 1, failed: 1, canceled: 1 };
@@ -266,13 +266,16 @@
   function syncLines(box, lines, mk){
     var keys = lines.map(function(l){ return l.who + '\u0001' + l.text; });
     var old = box.__omKeys || [], d = 0;
-    // v-call-agent-cut: سطر عُلِّم «مقطوعًا» في مكانه (العدد نفسه) ← يُستبدل وحده، فلا يُعاد بناء الصندوق ولا يقفز تمريره
+    // v-call-agent-cut: سطر عُلِّم «مقطوعًا» في مكانه (العدد نفسه، والفرق علامة القطع وحدها) ← يُستبدل وحده، فلا يُعاد بناء الصندوق؛
+    // وإن كان الصندوق على آخره يبقى عليه (العلامة قد تلفّ سطرًا جديدًا)
     if(old.length && old.length === keys.length && box.childNodes && box.childNodes.length === old.length){
-      var diff = 0;
-      for(var x = 0; x < keys.length; x++) if(old[x] !== keys[x]) diff++;
-      if(diff && diff <= 2){
+      var diff = 0, onlyMarks = true;
+      for(var x = 0; x < keys.length; x++) if(old[x] !== keys[x]){ diff++; if(keys[x].slice(-CUT_MARK.length) !== CUT_MARK || old[x].slice(-CUT_MARK.length) === CUT_MARK) onlyMarks = false; }
+      if(diff && onlyMarks){
+        var pinned = (box.scrollHeight - box.scrollTop - box.clientHeight) < 24;
         for(var y = 0; y < keys.length; y++) if(old[y] !== keys[y]) box.replaceChild(mk(lines[y]), box.childNodes[y]);
         box.__omKeys = keys;
+        if(pinned) box.scrollTop = box.scrollHeight;
         return;
       }
     }
@@ -465,9 +468,11 @@
   }
   /* أثر التجربة (يُرسل مرّة عند النهاية): رموز قصيرة بالثانية من الجاهزيّة — بلا أيّ نصّ من المكالمة ولا سرّ */
   function code4(v){ return String(v == null ? '' : v).replace(/[^\w.\-]/g, '').slice(-4); }
+  /* أوّل ٣٠ رمزًا تبقى (الافتتاح — موضع القطع الأغلب) وآخر ٥٠ تتجدّد */
   function trace(s, c){
-    s.diag.push(((now() - (s.readyAt || s.t0)) / 1000).toFixed(1) + c);
-    if(s.diag.length > TRACE_MAX) s.diag.shift();
+    var x = ((now() - (s.readyAt || s.t0)) / 1000).toFixed(1) + c;
+    if(s.diagHead.length < TRACE_HEAD) s.diagHead.push(x);
+    else { s.diag.push(x); if(s.diag.length > TRACE_TAIL){ s.diag.shift(); s.diagCut = true; } }
   }
   function traceEv(s, ty, ev){
     var r = ev.response || {}, why = r.status_details && r.status_details.reason;
@@ -502,7 +507,7 @@
     if(!s.readyAt) return; // فشل التجهيز لا أثر له هنا — ملاحظة البطاقة تكفي
     var msg = 'call-trial ' + s.id + ' end=' + st + ' dur=' + dur + 's lines=' + s.lines.length + ' cut=' + s.cutN + ' clr=' + s.clr
       + (s.rtp ? ' rtp=' + s.rtp.join('/') : '');
-    var stack = s.diag.join(' ').slice(-1500);
+    var stack = s.diagHead.concat(s.diagCut ? ['~'] : [], s.diag).join(' ').slice(0, 1500);
     try{ (console.info || console.log).call(console, '[call-agent] trace', msg, stack); }catch(e){ __swallow(e, 'call-agent:trace-log'); }
     try{
       fetch('/api/system?action=client-errors', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
@@ -746,7 +751,7 @@
     notes[id] = '';
     var s = trial = { id: id, business: clip(c.business, 80), ended: false, pc: null, dc: null, stream: null, audio: audio, ov: null,
       timers: [], lines: [], outcome: null, heard: false, speaking: false, endPending: false, endTimer: null, wd: null,
-      readyAt: 0, t0: now(), byResp: {}, cutResp: {}, played: {}, lastRid: '', clr: 0, cutN: 0, diag: [], rtp: null, fnSeen: {}, fnNames: {}, maxSec: Math.max(30, Math.min(600, Math.round(Number(c.maxMin) || 4) * 60)), halt: null, haltRes: null };
+      readyAt: 0, t0: now(), byResp: {}, cutResp: {}, played: {}, lastRid: '', clr: 0, cutN: 0, diagHead: [], diag: [], diagCut: false, rtp: null, fnSeen: {}, fnNames: {}, maxSec: Math.max(30, Math.min(600, Math.round(Number(c.maxMin) || 4) * 60)), halt: null, haltRes: null };
     s.halt = new Promise(function(res){ s.haltRes = res; });
     patch(id, { transport: 'trial', state: 'mic', callId: '', outcome: null, transcript: [], startedAt: now(), endedAt: 0, durationSec: 0, resultPushed: false });
     mark(id);

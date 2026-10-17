@@ -937,20 +937,30 @@ test('٢٠. v-call-agent-cut: سطر قطعت المقاطعة صوته يُعل
   assert.equal(c.call().transcript[1].text, 'معك مساعد آلي، أتّصل نيابةً عن عمران.', 'سُمع كلّه');
   assert.equal(c.call().transcript[2].text, 'أبغى موعد تنظيف يوم الخميس …', 'عُلِّم عند وصوله');
   assert.match(c.card().q('omCallLines')[0].textContent, /تسمح لي أكمل؟ …/);
-  // r4: أُلغي (turn_detected) بلا مسح — والسطر يُستبدل وحده في الصندوقين
+  // ردّان سُمعا كاملين (الصندوق يفيض فيُختبر التمرير) ثمّ r4: أُلغي (turn_detected) بلا مسح — والسطر يُستبدل وحده في الصندوقين
+  for (const [rid, t] of [['resp_h1', 'تمام.'], ['resp_h2', 'الخميس يناسب؟']]) {
+    pc.dc.emit({ type: 'response.created', response: { id: rid } });
+    pc.dc.emit({ type: 'output_audio_buffer.started', response_id: rid });
+    pc.dc.emit({ type: 'response.output_audio_transcript.done', response_id: rid, transcript: t });
+    pc.dc.emit({ type: 'output_audio_buffer.stopped', response_id: rid });
+  }
   pc.dc.emit({ type: 'response.created', response: { id: 'resp_r4' } });
   pc.dc.emit({ type: 'response.output_audio_transcript.done', response_id: 'resp_r4', transcript: 'بعد العصر لو سمحت' });
   await flush();
   const ovBox = c.overlay().q('omCallOvLines')[0], cardBox = c.card().q('omCallLines')[0];
-  const ov0 = ovBox.childNodes[0], card0 = cardBox.childNodes[0], ov3 = ovBox.childNodes[3];
+  const ov0 = ovBox.childNodes[0], card0 = cardBox.childNodes[0], ov5 = ovBox.childNodes[5];
+  ovBox.scrollTop = 0; // القارئ رفع صندوق النافذة ليقرأ — التعليم لا يسرق تمريره
   pc.dc.emit({ type: 'response.done', response: { id: 'resp_r4', status: 'cancelled', status_details: { type: 'cancelled', reason: 'turn_detected' }, output: [] } });
+  await flush();
+  assert.equal(c.call().transcript[5].text, 'بعد العصر لو سمحت …', 'الإلغاء وحده (بلا مسح) يعلّم');
+  assert.equal(ovBox.scrollTop, 0);
   pc.dc.emit({ type: 'output_audio_buffer.cleared', response_id: 'resp_r4' });
   pc.dc.emit({ type: 'output_audio_buffer.cleared', response_id: 'resp_r1' });
   await flush();
-  assert.deepEqual(plain(c.call().transcript).map((l) => l.text), [OPEN + ' …', 'معك مساعد آلي، أتّصل نيابةً عن عمران.', 'أبغى موعد تنظيف يوم الخميس …', 'بعد العصر لو سمحت …'], 'علامة واحدة لكلّ ردّ مهما تكرّر القطع');
+  assert.deepEqual(plain(c.call().transcript).map((l) => l.text), [OPEN + ' …', 'معك مساعد آلي، أتّصل نيابةً عن عمران.', 'أبغى موعد تنظيف يوم الخميس …', 'تمام.', 'الخميس يناسب؟', 'بعد العصر لو سمحت …'], 'علامة واحدة لكلّ ردّ مهما تكرّر القطع');
   assert.equal(ovBox.childNodes[0], ov0, 'النافذة: الأسطر الأخرى لم يُعَد بناؤها');
-  assert.notEqual(ovBox.childNodes[3], ov3);
-  assert.match(ovBox.childNodes[3].textContent, /بعد العصر لو سمحت …$/);
+  assert.notEqual(ovBox.childNodes[5], ov5);
+  assert.match(ovBox.childNodes[5].textContent, /بعد العصر لو سمحت …$/);
   assert.equal(c.card().q('omCallLines')[0].childNodes[0], card0, 'البطاقة: كذلك');
   assert.deepEqual(pc.dc.sent, [{ type: 'response.create' }], 'التعليم لا يرسل شيئًا للجلسة');
 });
@@ -983,14 +993,19 @@ test('٢١. v-call-agent-cut: كلّ تجربة بدأت ترسل عند نها�
   assert.equal(n.call().state, 'failed');
   assert.equal(n.calls('client-errors').length, 0);
 
-  // إغلاق الصفحة أثناء المكالمة: أثر واحد end=dropped، ومئتا حدث لا تتجاوز ٨٠ رمزًا
+  // إغلاق الصفحة أثناء المكالمة: أثر واحد end=dropped، ومئتا حدث = أوّل ٣٠ رمزًا (الافتتاح) + «~» + آخر ٥٠
   const p = sandbox();
   const pc2 = await liveTrial(p);
+  await p.advance(3000);
+  pc2.dc.emit({ type: 'output_audio_buffer.cleared', response_id: 'resp_open' });
   for (let i = 0; i < 200; i++) pc2.dc.emit({ type: 'input_audio_buffer.speech_started' });
+  pc2.dc.emit({ type: 'input_audio_buffer.speech_stopped' });
   p.listeners.pagehide.forEach((f) => f());
   await flush();
   const d2 = p.calls('client-errors');
   assert.equal(d2.length, 1);
   assert.match(d2[0].body.message, /^call-trial cp1 end=dropped /);
-  assert.equal(d2[0].body.stack.split(' ').length, 80);
+  const t2 = d2[0].body.stack.split(' ');
+  assert.equal(t2.length, 81);
+  assert.deepEqual([t2[0], t2[1], t2[30], t2[80]], ['3.0cr:open', '3.0oc:open', '~', '3.0sp'], 'الافتتاح محفوظ رغم الطول، والذيل آخر ما جرى');
 });

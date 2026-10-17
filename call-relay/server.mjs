@@ -410,6 +410,7 @@ export function createRelay(opts) {
     let idleTimer = null, idleEnding = false;
     const cutItems = new Set(), cutResps = new Set();   // عناصر وردود قطعتها المقاطعة: بقاياها المتأخّرة لا تصل الخطّ
     const lineOfItem = new Map();                       // v-call-agent-cut: عنصر ← { line, cut } — سطره يُعلَّم « …» إن قُطع صوته
+    const itemEnd = new Map(), cutShown = new Set();    // نهاية صوت كلّ عنصر على الخطّ، وما قُطع صوته وهو يُسمع فعلًا (المسموع كلّه لا يُعلَّم)
     let respId = '';
 
     on(tw, 'message', (data) => onLine(textOf(data)));
@@ -536,7 +537,7 @@ export function createRelay(opts) {
       store.put(call);
     }
     function onAgentText(ev) {
-      const cut = !!((ev.itemId && cutItems.has(ev.itemId)) || (ev.responseId && cutResps.has(ev.responseId)));
+      const cut = !!((ev.itemId && cutShown.has(ev.itemId)) || (ev.responseId && cutResps.has(ev.responseId)));
       const line = addLine('agent', ev.text, cut);
       if (line && ev.itemId) lineOfItem.set(ev.itemId, { line, cut });
     }
@@ -553,6 +554,8 @@ export function createRelay(opts) {
           const ms = L.pcmuMs(ev.delta);
           itemMs += ms;
           playhead = Math.max(playhead, t) + ms;
+          for (const [k, end] of itemEnd) if (end <= t) itemEnd.delete(k);
+          itemEnd.set(ev.itemId, playhead);
           audioSinceMark = true;
           sendLine(L.twilioMedia(streamSid, ev.delta));
           armIdle();
@@ -582,7 +585,9 @@ export function createRelay(opts) {
       if (hangupPending) return;             // الوداع يُكمَل ثمّ يُغلق الخطّ
       const t = now();
       if (!responseActive && !(playhead > t)) return;
-      if (itemId) { cutItems.add(itemId); markCut(itemId); }
+      if (itemId) cutItems.add(itemId);
+      for (const [k, end] of itemEnd) if (end > t) { cutShown.add(k); markCut(k); }   // كلّ عنصر ما زال صوته في الطابور (قد يكون اثنين)
+      itemEnd.clear();
       if (responseActive && respId) cutResps.add(respId);
       sendLine(L.twilioClear(streamSid));
       if (responseActive) sendAgent({ type: 'response.cancel' });

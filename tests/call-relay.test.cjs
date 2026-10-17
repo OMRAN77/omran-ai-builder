@@ -1035,6 +1035,12 @@ test('٢١. v-call-agent-cut: سطر الوكيل الذي قطعت المقاط
     ctx.clock.advance(1000);
     agent.recv({ type: 'input_audio_buffer.speech_started' });
     assert.equal(tx()[1], 'معك مساعد آلي.', 'سُمع كلّه');
+    // ٢ب) ردّ تالٍ بدأ بلا صوت بعد (أو report_outcome وحده) فتكلّم الطرف الآخر ← السطر المسموع قبله لا يُعلَّم
+    agent.recv({ type: 'response.created', response: { id: 'resp_2b' } });
+    ctx.clock.advance(200);
+    agent.recv({ type: 'input_audio_buffer.speech_started' });
+    agent.recv({ type: 'response.done', response: { id: 'resp_2b', status: 'cancelled' } });
+    assert.equal(tx()[1], 'معك مساعد آلي.', 'المسموع كلّه لا يُعلَّم ولو كان ردّ جديد جاريًا');
     // ٣) القطع قبل وصول النصّ ← يُعلَّم عند وصوله؛ ومقاطعة ثانية لا تضاعف العلامة
     agent.recv({ type: 'response.created', response: { id: 'resp_3' } });
     agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_3', item_id: 'item_3', delta: d });
@@ -1042,6 +1048,17 @@ test('٢١. v-call-agent-cut: سطر الوكيل الذي قطعت المقاط
     agent.recv({ type: 'response.output_audio_transcript.done', response_id: 'resp_3', item_id: 'item_3', transcript: 'أبغى موعد الخميس' });
     agent.recv({ type: 'input_audio_buffer.speech_started' });
     assert.deepEqual(tx(), [OPEN + ' …', 'معك مساعد آلي.', 'أبغى موعد الخميس …']);
+    agent.recv({ type: 'response.done', response: { id: 'resp_3', status: 'cancelled' } });
+    // ٤) عنصران في الطابور معًا (كلام ثمّ كلام) والمقاطعة أثناء الأوّل ← يُعلَّم الاثنان
+    ctx.clock.advance(1000);
+    agent.recv({ type: 'response.created', response: { id: 'resp_4' } });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_4', item_id: 'item_4a', delta: d });
+    agent.recv({ type: 'response.output_audio_transcript.done', response_id: 'resp_4', item_id: 'item_4a', transcript: 'تمام.' });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_4', item_id: 'item_4b', delta: d });
+    agent.recv({ type: 'response.output_audio_transcript.done', response_id: 'resp_4', item_id: 'item_4b', transcript: 'الخميس الساعة ٥ باسم محمد، صح؟' });
+    ctx.clock.advance(50);
+    agent.recv({ type: 'input_audio_buffer.speech_started' });
+    assert.deepEqual(tx().slice(3), ['تمام. …', 'الخميس الساعة ٥ باسم محمد، صح؟ …']);
     assert.deepEqual(Object.keys(ctx.relay.store.get(ID).transcript[0]).sort(), ['text', 'who'], 'السطر المحفوظ بلا حقول داخليّة');
   } finally { await ctx.stop(); }
 });
