@@ -22,11 +22,11 @@ test('٢. كلّ قاعدة للوضع الأسود وحده: لا الفاتح 
   for (const r of rules) for (const s of r.sels) assert.ok(s.startsWith(P + ' ') || s.startsWith(P + ':not(.mobile-ui) ') || s.startsWith(P + '.mobile-ui '), s);
 });
 
-test('٣. الألوان: شفّاف، أو ذهبيّ المرور rgba(212,175,55,.85)، أو #101013 — لا رماديّ ولا أبيض', () => {
+test('٣. الألوان: شفّاف، أو ذهبيّ إطار اللوحات rgba(212,175,55,.85)، أو #101013، أو توهّج «فسّر» الأبيض، أو الحدّ الشبح — لا رماديّ', () => {
   const noAttr = bare.replace(/\[style\*="[^"]*"\]/g, ''); /* محدِّدات [style*="…"] تطابق نصّ الحدّ داخل العنصر، ليست ألوانًا */
   const vals = noAttr.match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/gi) || [];
   assert.ok(vals.length >= 8);
-  for (const v of vals) assert.match(v.replace(/\s/g, ''), /^(rgba\(212,175,55,\.85\)|#101013)$/i, v);
+  for (const v of vals) assert.match(v.replace(/\s/g, ''), /^(rgba\(212,175,55,\.85\)|#101013|#fff|rgba\(255,255,255,\.35\)|rgba\(0,0,0,\.06\))$/i, v);
 });
 
 test('٤. الإطار الذهبيّ ونقاط الخلفيّة وحبيبات الضجيج تختفي، واللوحات تتذهّب عند المرور فقط', () => {
@@ -36,23 +36,40 @@ test('٤. الإطار الذهبيّ ونقاط الخلفيّة وحبيبات
   assert.ok(bare.includes(P + ' body::after{background-image:none !important;}'));
 });
 
-test('٥. صندوق الكتابة وزرّ الإرسال وأسفل الشريط وخطوط om3-line: شفّافة، وذهبيّة عند المرور أو التركيز', () => {
-  const find = (frag, val) => rules.some((r) => r.sels.some((s) => s.includes(frag)) && r.body.includes('border-color:' + val + ' !important'));
-  for (const f of ['#composerBox#composerBox', '#composerBox > #btnSend', '#omranSidebarFoot#omranSidebarFoot', '.om3-line:not(#om3-a#om3-b)', '.omUpArt.omUpArt', '.pstyleCard']) assert.ok(find(f, 'transparent'), f);
-  for (const f of ['#composerBox#composerBox:is(:hover,:focus-within)', '#composerBox > #btnSend:is(:hover', '.om3-hot.om3-line:not(#om3-a#om3-b):hover', '.omUpArt.omUpArt:is(:hover', '#videoMakerModal .vmk-tab:hover']) assert.ok(find(f, 'rgba(212,175,55,.85)'), f);
-  /* om3 (أولويّة معرّفين) يسبق قواعد صندوق الكتابة، وإلّا غلب تذهيبَه عند المرور */
+test('٥. صندوق الكتابة وزرّ الإرسال وأسفل الشريط وخطوط om3-line: بلا حدّ، والمرور والتركيز توهّج أبيض مثل «فسّر» لا ذهبيّ', () => {
+  const GLOW = 'box-shadow:0 4px 18px rgba(255,255,255,.35) !important';
+  const find = (frag, val) => rules.some((r) => r.sels.some((s) => s.includes(frag)) && r.body.includes(val));
+  for (const f of ['#composerBox#composerBox', '#composerBox > #btnSend', '#omranSidebarFoot#omranSidebarFoot', '.omUpArt.omUpArt', '.pstyleCard.pstyleCard']) assert.ok(find(f, 'border-color:transparent !important'), f);
+  /* خطوط om3-line بالحدّ الشبح (أسود .06) لا transparent: app-41-three-colors.js يعيد التصنيف عند انتهاء كلّ انتقال، والشفّاف يُقرأ «بلا حدّ» فيومض الحدّ الرماديّ بلا نهاية */
+  assert.ok(find('.om3-line:not(#om3-a#om3-b)', 'border-color:rgba(0,0,0,.06) !important'));
+  for (const f of ['#composerBox#composerBox:is(:hover,:focus-within)', '#composerBox > #btnSend:is(:hover', '.om3-hot.om3-line:not(#om3-a#om3-b):hover', '.omUpArt.omUpArt:is(:hover', '#videoMakerModal .vmk-tab:hover', '.pstyleCard.pstyleCard:is(', '#studioAiTabs .studioAiTabBtn.studioAiTabBtn:is(.active,:hover)']) assert.ok(find(f, GLOW), f);
+  /* om3 (أولويّة معرّفين) يسبق قواعد صندوق الكتابة */
   assert.ok(bare.indexOf('.om3-line:not(#om3-a#om3-b){') < bare.indexOf('#composerBox#composerBox:is(:hover'));
 });
 
-test('٦. v-main-lines («فقط ثبت الخطوط في الشاشة الرئيسه»): خطوط الشاشة الرئيسيّة ثابتة ذهبيّة بلا مرور، وآخر الملفّ', () => {
+test('٦. v-main-lines: إطار المحادثة واللوحتين ثابت ذهبيّ، وإطار الجوال؛ ولا حدّ ذهبيّ لأيّ عنصر داخل الشاشة', () => {
   const G = 'rgba(212,175,55,.85)';
   const perm = rules.find((r) => r.sels.includes(P + ' :is(#sidebar,#workarea,#omFrameCenter)'));
   assert.ok(perm && perm.body.includes('--om-gold-line:linear-gradient(' + G + ',' + G + ')'), 'اللوحات والمحادثة بلا :hover');
   assert.ok(rules.some((r) => r.sels.includes(P + '.mobile-ui body::after') && r.body.includes('background-image:linear-gradient(' + G + ',' + G + ') !important')), 'إطار المحادثة في الجوال');
-  const fix = rules.find((r) => r.sels.includes(P + ' #composerBox#composerBox:not(#om3-a#om3-b)'));
-  assert.ok(fix && fix.body === 'border-color:' + G + ' !important;');
-  for (const f of ['#composerBox > #btnSend:not(#om3-a#om3-b)', '#omranSidebarFoot#omranSidebarFoot:not(#om3-a#om3-b)', '#sbSearchWrap:not(#om3-a#om3-b)']) assert.ok(fix.sels.includes(P + ' ' + f), f);
-  /* بعد قواعد الشفافيّة (نفس الأولويّة أو أعلى) فتغلبها */
-  assert.ok(bare.lastIndexOf('#composerBox#composerBox:not(#om3-a#om3-b)') > bare.indexOf('.om3-line:not(#om3-a#om3-b){border-color:transparent'));
   assert.ok(bare.indexOf(P + '.mobile-ui body::after') > bare.indexOf(P + ' body::after{background-image:none'));
+  assert.ok(!bare.includes('border-color:' + G), 'لا حدود ذهبيّة داخل الشاشة');
+  assert.ok(!bare.includes('#sbSearchWrap'), 'مربّع البحث بلا حدّ ثابت');
+});
+
+test('٧. v-white-glow: المحادثة المختارة وتبويبات المعاينة والكود والتبويبات المختارة في الأدوات مثل «فسّر» — #101013 وتوهّج أبيض ونصّ أبيض', () => {
+  const GLOW = 'box-shadow:0 4px 18px rgba(255,255,255,.35) !important';
+  const hist = rules.find((r) => r.sels.includes(P + ' .hist-item.hist-item:is(.active,:hover)'));
+  assert.ok(hist && hist.body.includes('background:#101013 !important') && hist.body.includes('color:#fff !important') && hist.body.includes(GLOW));
+  assert.ok(rules.some((r) => r.sels.includes(P + ' .hist-item.hist-item:is(.active,:hover) :is(.hist-title,.hist-thumb,.hist-menu-btn)') && r.body.includes('color:#fff !important')));
+  const tab = rules.find((r) => r.sels.includes(P + ' #tabs .tab.tab:not(#om3-a):is(.active,:hover)'));
+  assert.ok(tab && tab.body.includes('background:#101013 !important') && tab.body.includes('border-color:transparent !important') && tab.body.includes(GLOW));
+  assert.ok(rules.some((r) => r.sels.includes(P + ' #tabs .tab.tab:not(#om3-a):is(.active,:hover) svg') && r.body.includes('stroke:#fff !important')));
+  assert.ok(rules.some((r) => r.sels.includes(P + ' #tabs .tab.tab.active::after') && r.body.includes('background:none !important')), 'بلا خطّ ذهبيّ تحت التبويب');
+  assert.ok(rules.some((r) => r.sels.some((s) => s.includes('.om3-fill.om3-line:not(#om3-a#om3-b):is(.sel,.selected,.active')) && r.body.includes('background-color:#101013 !important')), 'المختار نفس الدرجة');
+  /* صفوف التبويبات المنزلقة لا تقصّ التوهّج */
+  assert.ok(rules.some((r) => r.sels.includes(P + ' :is(#religionTabs,#studioAiTabs)') && /padding:14px 18px 22px/.test(r.body) && /margin-left:-18px/.test(r.body)));
+  const VED = fs.readFileSync(path.join(ROOT, 'js', 'video-edit.js'), 'utf8');
+  assert.ok(VED.includes('#vedModal .ved-item.sel{border-color:transparent;box-shadow:0 4px 18px rgba(255,255,255,.35)}'), 'محرّر الفيديو: المرور والمختار توهّج');
+  assert.ok(!/ved-pick:focus-within\{border-color/.test(VED));
 });
