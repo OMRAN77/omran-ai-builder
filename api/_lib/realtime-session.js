@@ -231,6 +231,8 @@ module.exports = async (req, res) => {
        لا يلمس الفوترة: سطر حساب مستقلّ في كلّ فرع. */
     const rtStrictUser = rtVerifyToken(token);
     let appControl = false;
+    // حزمة قديمة مخزَّنة (قبل المنفّذ) لا ترسل app — لا تُعطى أداتين لا يعرفهما معالجها فتقول «ما نجح» لكلّ أمر
+    const clientCanAct = !!(body.app && Array.isArray(body.app.tools));
     if (rtUser && pointsLib.isOwnerUsername(rtUser)) {
       mahaBudget = { unlimited: true };
       appControl = rtStrictUser === rtUser;
@@ -377,7 +379,7 @@ module.exports = async (req, res) => {
         instructions: (mode === 'builder'
           ? BUILDER_REALTIME_INSTRUCTIONS
           : (voiceGender === 'male' ? toMalePersona(MAHA_REALTIME_INSTRUCTIONS) : MAHA_REALTIME_INSTRUCTIONS))
-          + (mode === 'builder' ? '' : '\n\n' + mahaApp.knowledge({ lang: body.app && body.app.lang, tools: mahaApp.cleanTools(body.app && body.app.tools) }) + mahaApp.controlNote(appControl))
+          + (mode === 'builder' ? '' : '\n\n' + mahaApp.knowledge({ lang: body.app && body.app.lang, tools: mahaApp.cleanTools(body.app && body.app.tools) }) + mahaApp.controlNote(appControl && clientCanAct, appControl && !clientCanAct))
           + timeContext + memoryContext
           + (mode === 'builder' ? '' : callHistoryLine(body.lastCallAgoMs))
           + (mode === 'builder' ? '' : voiceSpeedInstruction),
@@ -550,7 +552,7 @@ module.exports = async (req, res) => {
                 required: ['question'],
               },
             },
-            ...(appControl ? mahaApp.controlTools() : []), // v-maha-app
+            ...(appControl && clientCanAct ? mahaApp.controlTools() : []), // v-maha-app
           ]),
         ],
         tool_choice: 'auto',
@@ -642,7 +644,7 @@ module.exports = async (req, res) => {
 
     // v-cost-meter: دقيقة التجربة مجّانيّة للمستخدم لكنّها تكلّفنا — تُحسب في عدّاد الشهر (المدفوعة حسبها الخصم نفسه).
     if (rtUser && mahaBudget && mahaBudget.prepaid === 'trial') { try { await require('./cost-meter.js').meterOp(rtUser, 'maha_minute'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } }
-    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget, turn: naturalTurn ? 'natural' : 'classic', appControl: mode !== 'builder' && appControl });
+    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget, turn: naturalTurn ? 'natural' : 'classic', appControl: mode !== 'builder' && appControl && clientCanAct });
   } catch (e) {
     if (undoBill) { try { await undoBill(); } catch (e2) { console.error('[realtime-session] opening refund failed:', e2 && e2.message); } }
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

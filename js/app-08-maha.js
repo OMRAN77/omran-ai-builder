@@ -1455,6 +1455,7 @@ async function mahaStartRealtimeCall(){
         return;
       }    if(ev.type === 'input_audio_buffer.speech_started'){
         mahaLastActivity = Date.now(); // v-maha-band
+        if(typeof mahaAppHeard === 'function') mahaAppHeard(); // v-maha-app: المستخدم تكلّم — ما قرأته مها قبله لم يعد آخر ما سُمع
         mahaClearRtResponseWatchdog();
         // A detected first utterance must never wait forever for speech_stopped.
         // A normal stop replaces this with the fast completion guard below.
@@ -1677,7 +1678,10 @@ async function mahaHandleRtFunctionCall(ev){
   let output = { ok: false };
   try{
     mahaSetState('thinking');
-    if(ev.name === 'generate_image'){
+    const appGate = mahaAppGate(ev.name); // v-maha-app: بعد قراءة ردّ المحادثة لا أداة لها أثر حتّى يتكلّم المستخدم
+    if(appGate){
+      output = appGate;
+    }else if(ev.name === 'generate_image'){
       const r = await mahaGenerateOrEditImage(args.prompt || '', false, args.text_to_write || '', args.font_style || '', args.text_color || '', false, args.text_position || 'auto', false);
       output = r.ok ? { ok: true, message: 'Image generated and shown to the user on screen.' } : { ok: false, message: 'Image generation failed: ' + (r.error || 'unknown error') };
     }else if(ev.name === 'edit_image'){

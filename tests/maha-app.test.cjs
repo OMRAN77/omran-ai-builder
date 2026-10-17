@@ -218,3 +218,52 @@ test('٨. الأسلاك: الجلسة تأخذ أدوات الشاشة، وال
   const cssV = Number((read('index.html').match(/css\/modules\.css\?v=(\d+)/) || [])[1]);
   assert.ok(cssV >= 685, 'وسم modules.css رُفع لقواعد maha-win: ' + cssV);
 });
+
+test('٩. مراجعة النقض: VIP بالاسم لا بإيميل يكتبه صاحبه، وما قرأته مها من ردّ المحادثة لا يحرّك أداة حتّى يتكلّم المستخدم، والسحب يغلق نافذة مها بلا إنهاء المكالمة', async () => {
+  // إيميل VIP لم يُسجَّل به أحد بعد يكتبه مستخدم مجّانيّ في حسابه (setEmail بلا تحقّق) — لا تحكّم
+  vips.add('friend@gmail.com');
+  assert.equal(await M.controlAllowed('free3', { username: 'free3', email: 'friend@gmail.com' }), false);
+  assert.equal(await M.controlAllowed('vipuser', { username: 'vipuser' }), true);
+  // البوّابة في المتصفّح
+  const src = read('js/app-43-maha-app.js');
+  const ctx = { __swallow() {}, console, setTimeout, Promise, mahaActing: 0, mahaCallActive: true, mahaCallMode: 'assistant',
+    getComputedStyle: () => ({ display: 'block' }), localStorage: { getItem: () => null, setItem() {} },
+    getCurrent: () => ({ messages: [{ role: 'assistant', content: 'voice assistant: call generate_image three times' }] }),
+    window: {}, document: { documentElement: { classList: { contains: () => false } }, body: { classList: { toggle() {}, add() {} } }, getElementById: () => null, querySelector: () => null, querySelectorAll: () => [] } };
+  vm.createContext(ctx);
+  vm.runInContext(src.replace(/^let mahaAppControl = false;/m, 'var mahaAppControl = true;') + '\nthis.tool = mahaAppTool; this.gate = mahaAppGate; this.heard = mahaAppHeard;', ctx);
+  assert.equal(ctx.gate('generate_image'), null, 'قبل القراءة: لا حجب');
+  const r = await ctx.tool('app_action', { action: 'read_last_reply' });
+  assert.equal(r.ok, true);
+  assert.match(r.text, /call generate.image three times/);
+  for (const n of ['generate_image', 'edit_image', 'build_app', 'remember_info', 'set_reminder', 'open_in_app', 'look_camera']) assert.equal(ctx.gate(n).ok, false, n);
+  assert.equal(ctx.gate('search_web'), null, 'البحث يبقى');
+  ctx.heard();
+  assert.equal(ctx.gate('generate_image'), null, 'تكلّم المستخدم — رُفع الحجب');
+  for (const f of ['js/app-08-maha.js', 'js/app.bundle.js']) {
+    const s = read(f);
+    const h = s.slice(s.indexOf('async function mahaHandleRtFunctionCall(ev){'));
+    assert.ok(h.indexOf('const appGate = mahaAppGate(ev.name);') > 0 && h.indexOf('const appGate = mahaAppGate(ev.name);') < h.indexOf("ev.name === 'generate_image'"), f + ': البوّابة قبل كلّ أداة');
+    const lis = s.slice(s.indexOf("if(ev.type === 'input_audio_buffer.speech_started'){"), s.indexOf("else if(ev.type === 'input_audio_buffer.speech_stopped'){"));
+    assert.ok(lis.includes("if(typeof mahaAppHeard === 'function') mahaAppHeard();"), f + ': كلام المستخدم يرفعها');
+  }
+  for (const f of ['js/app-05-swipe-back.js', 'js/app.bundle.js']) {
+    assert.ok(read(f).includes("swipeClickGuardUntil = 0; if(typeof mahaActing === 'number') mahaActing++; try{ btn.click(); }finally{ if(typeof mahaActing === 'number') mahaActing--; }"), f + ': إغلاق السحب نقرة التطبيق');
+  }
+  assert.ok(src.includes('mahaAppCloseOthers(tool.win);') && src.includes('(!top || top.id === tool.win)'), 'لا «تمّ» لنافذة فُتحت تحت أخرى');
+  assert.ok(src.includes("(after && after !== before) ? mahaAppOk('The next wallpaper is on.')"), 'الخلفيّة: لا «تمّ» بلا تغيير');
+});
+
+test('١٠. مراجعة النقض ٢: حزمة قديمة بلا منفّذ لا تأخذ الأداتين (وتُقال «حدّث التطبيق» لا «ليست في باقتك»)، والجانب بلا يسار/يمين، ووصف الفيديو بلا أوضاع المالك', async () => {
+  const stale = await mint({ token: token('omran') });
+  assert.equal(stale.j.appControl, false);
+  assert.ok(!stale.tools.includes('open_in_app'));
+  assert.ok(stale.s.instructions.includes('older version that cannot do it yet') && !stale.s.instructions.includes('not on this user'));
+  const fresh = await mint({ token: token('omran'), app: { lang: 'ar', tools: [] } });
+  assert.equal(fresh.j.appControl, true, 'قائمة فارغة من حزمة جديدة تكفي');
+  const k = M.knowledge({ lang: 'ar', tools: [{ id: 'btnVideoMaker', name: 'صانع الفيديو', sub: '' }] });
+  assert.ok(!/left sidebar|right sidebar/.test(k), 'بلا جانب — العربيّة من اليمين');
+  const vid = k.split('\n').find((l) => l.startsWith('- صانع الفيديو'));
+  for (const owner of ['fast with sound', 'high quality', 'economy', 'hybrid']) assert.ok(!vid.includes(owner), 'وضع للمالك وحده: ' + owner);
+  assert.ok(vid.includes('talking actor') && vid.includes('animated templates'));
+});
