@@ -1086,6 +1086,7 @@ Object.assign(I18N["zh"], {
     designDropTitle: "上传您房间的照片",
     designDropHint: "请确保照片清晰且质量良好",
     studioPlateLabel: "风格",
+    uploadPlateBtn: "选择文件",
     fashionDropHint: "从头到脚 · 光线清晰",
     agentSectionTitle: "🤖 智能代理",
     agentSectionDesc: "代理模式：自主规划并执行——交付前构建、修改并测试代码，核查实时来源，即使页面关闭也会继续工作。开启后，在聊天中输入您的请求。",

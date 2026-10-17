@@ -30,13 +30,13 @@ function dims(rel) {
   return null;
 }
 
-test('١. المصغّرات بالمقاس الذي يحتاجه الجوّال (لا ٣٦٠ ممطوطة)', () => {
+test('١. المصغّرات بدقّتها الأصليّة أو بالمقاس الذي يحتاجه الجوّال (لا ٣٦٠ ممطوطة)', () => {
   const sets = [
-    [ls('assets/design/styles', /\.webp$/).concat(ls('assets/design/opts', /^place-.*\.webp$/)), 540],
-    [['women', 'men', 'kids', 'occasion', 'season', 'category'].flatMap((d) => ls('assets/fashion/looks/' + d, /\.webp$/)), 540],
-    [ls('assets/studio/options', /\.webp$/), 540],
+    // قواعد الصور (١٧ أكتوبر): المجموعات أُعيد توليدها بمولّد الموقع المدفوع بدقّته الأصليّة 1024×1536 (لا ٣٦٠ مكبَّرة إلى ٥٤٠)
+    [ls('assets/design/styles', /\.webp$/).concat(ls('assets/design/opts', /^place-.*\.webp$/)), 1024],
+    [['women', 'men', 'kids', 'occasion', 'season', 'category', 'extras'].flatMap((d) => ls('assets/fashion/looks/' + d, /\.webp$/)), 1024],
+    [ls('assets/studio/options', /\.webp$/), 1024],
     [ls('assets/portrait/styles', /\.webp$/).concat(['assets/portrait/before.webp']), 540],
-    [ls('assets/fashion/looks/extras', /\.webp$/), 1080],
   ];
   let n = 0;
   for (const [files, w] of sets) {
@@ -65,22 +65,19 @@ test('٢. كلّ رابط إلى صورة موضَّحة يحمل وسمًا ي�
   assert.ok(tag(html, '/js/design-gen.js') >= 611, 'وسم design-gen المنفصل');
 });
 
-test('٣. أداة التوضيح: الأوزان مثبّتة ببصمتها، والمجموعات تطابق ما على القرص، ولا torch', () => {
-  const wf = read('.github/workflows/design-thumbs-free.yml');
-  assert.ok(wf.includes('4fa0d38905f75ac06eb49a7951b426670021be3018265fd191d2125df9d682f1  x4plus.pth" | sha256sum -c -'), 'بصمة RealESRGAN_x4plus');
-  assert.match(wf, /sharpen:\n\s+if: \$\{\{ startsWith\(inputs\.mode, 'sr:'\) \}\}/);
-  assert.match(wf, /thumbs:\n\s+if: \$\{\{ !startsWith\(inputs\.mode, 'sr:'\) \}\}/);
-  assert.ok(wf.includes('MODE: ${{ inputs.mode }}      # عبر البيئة لا داخل السطر'), 'لا حقن أوامر');
-  // مراجعة نقض: سطر ملخّص المهمّة كان يضع الوضع (نصّ حرّ) خامًا في run:، وحزم التوضيح بلا إصدار ورمز الدفع محفوظ في .git/config.
+test('٣. قرار المالك ١٧ أكتوبر: لا pollinations ولا Real-ESRGAN في المستودع — التوليد بمولّد الموقع المدفوع وحده (thumbs-paid)', () => {
+  for (const f of ['.github/workflows/design-thumbs-free.yml', '.github/workflows/wardrobe-thumbs-free.yml', '.github/workflows/img-engine-probe.yml',
+    'scripts/design-thumbs-free.mjs', 'scripts/wardrobe-thumbs-free.mjs', 'scripts/img-engine-probe.mjs', 'scripts/sr/sharpen.py', 'scripts/sr/pth2onnx.py', 'scripts/sr/sets.json']) {
+    assert.ok(!fs.existsSync(path.join(root, f)), 'أُزيل: ' + f);
+  }
+  const wf = read('.github/workflows/design-thumbs.yml');
+  assert.ok(wf.includes('OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}') && wf.includes('GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}'), 'مفاتيح الموقع من أسرار المستودع');
   const modeLines = wf.split('\n').filter((l) => l.includes('inputs.mode'));
-  assert.ok(modeLines.length >= 5 && modeLines.every((l) => /^\s*(MODE:|group:|if:)/.test(l)), 'الوضع لا يدخل سطر أوامر: ' + modeLines.filter((l) => !/^\s*(MODE:|group:|if:)/.test(l)).join(' | '));
-  assert.match(wf, /pip install --quiet --only-binary=:all: onnxruntime==\d+\.\d+\.\d+ onnx==\d+\.\d+\.\d+ numpy==\d+\.\d+\.\d+ pillow==\d+\.\d+\.\d+/, 'حزم مثبّتة الإصدار وعجلات فقط');
-  const sh = read('scripts/sr/sharpen.py');
-  assert.ok(sh.includes('if not 1 <= k <= n:') && sh.includes('if not fs:') && sh.includes("if name not in SETS or name == '_':"), 'الوضع الخاطئ يفشل برسالة لا بتتبّع خام');
-  const sets = JSON.parse(read('scripts/sr/sets.json'));
-  for (const k of ['decor', 'fashion', 'extras', 'studio', 'portrait', 'scenes', 'decoropts']) assert.ok(sets[k] && sets[k].globs.length, k);
-  // بطاقات الأدوات مستثناة عمدًا: v-gpu-lite (600×360 ≤ 0.9 م.ب مفكوكة) — الأكبر يرسم مستطيلات سوداء في WebView أندرويد.
-  assert.ok(!sets.tools && !Object.values(sets).some((x) => x && x.globs && x.globs.some((g) => g.includes('tool-cards'))), 'لا توضيح لبطاقات الأدوات');
-  const conv = read('scripts/sr/pth2onnx.py');
-  assert.ok(conv.includes("raise pickle.UnpicklingError") && !/import torch/.test(conv), 'مفكّك مقيّد بلا torch');
+  assert.ok(modeLines.length >= 3 && modeLines.every((l) => /^\s*(MODE:|group:|if:)/.test(l)), 'الوضع لا يدخل سطر أوامر');
+  const sc = read('scripts/thumbs-paid.mjs');
+  assert.ok(!/image\.pollinations\.ai|onnxruntime|RealESRGAN_x4plus|esrgan\(/i.test(sc), 'لا محرّك مجّانيّ ولا تكبير');
+  assert.ok(sc.includes(".webp({ quality: 90 })") && sc.includes("withoutEnlargement: true, kernel: 'lanczos3'"), 'WebP q90، تصغير واحد بـLanczos من الخام ولا تكبير أبدًا');
+  assert.ok(sc.includes("quality: 'high'") && sc.includes("'1536x1024'") && sc.includes("'1024x1536'") && sc.includes("imageSize") , 'أعلى دقّة للمحرّكين');
+  assert.ok(/no text, no letters/i.test(sc), 'لا نصّ داخل الصورة');
 });
+

@@ -4226,6 +4226,7 @@ const I18N = {
     designDropTitle: 'ارفع صورة غرفتك',
     designDropHint: 'تأكّد من وضوح الصورة وجودتها',
     studioPlateLabel: 'ستايل',
+    uploadPlateBtn: 'اختيار الملف',
     fashionDropHint: 'من الرأس إلى القدم · إضاءة واضحة',
     fashionAiTabImage: '📷 من صورة',
     fashionAiTabText: '✍️ من وصف نصي',
@@ -5706,6 +5707,7 @@ const I18N = {
     designDropTitle: 'Upload a photo of your room',
     designDropHint: 'Make sure the photo is clear and sharp',
     studioPlateLabel: 'Style',
+    uploadPlateBtn: 'Choose file',
     fashionDropHint: 'Head to toe · clear lighting',
     fashionAiTabImage: '📷 From photo',
     fashionAiTabText: '✍️ From description',
@@ -31865,6 +31867,7 @@ async function __safeJson(res){
 
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:relative; width:100%; max-width:820px; margin:0 auto; line-height:0;';
+    wrap.className = 'om3-skip'; /* v-three-colors: أزرار المواقع شفّافة فوق الصورة — لا تعبئة ولا حدّ (لقطة المالك ١٧ أكتوبر) */
     const poster = document.createElement('img');
     poster.src = POSTER_SRC;
     poster.alt = ''; poster.loading = 'lazy';
@@ -32264,7 +32267,7 @@ async function __safeJson(res){
       const pal = (typeof window.__decorPal === 'function') ? window.__decorPal('designAiStyle', v) : '';
       if(pal) card.style.background = pal;
       const img = document.createElement('img');
-      img.src = 'assets/design/styles/' + v + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
+      img.src = 'assets/design/styles/' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
       img.onerror = function(){ img.remove(); };
@@ -33296,7 +33299,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
        فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
        التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
-    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
@@ -33319,7 +33322,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const opt = fashionOptFor(v);
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
-          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=2',
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=3',
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
       }).filter(Boolean),
@@ -36426,7 +36429,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
      الأظافر صارت معاينة-أوّلًا كالمكياج: يد قريبة بالأظافر المطلوبة من وصفها نفسه، تُولَّد مرّة وتُخزَّن للجميع. */
   const PREVIEW_FIRST = ['makeup', 'nails'];
   function optionImgs(f, v){
-    const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
+    const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     const gen = PREVIEW_API(f, v);
     return PREVIEW_FIRST.indexOf(f) !== -1 ? { img: gen, img2: asset } : { img: asset, img2: gen };
   }
@@ -47215,6 +47218,10 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
           else add(r.target, true); /* style تغيّر (تبويب، حالة) */
         }
       }).observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['style'] });
+      /* لقطة المالك ١٧ أكتوبر (مربّعات سوداء بحدّ ذهبيّ فوق ملصق الديكور): زرّ شفّاف يتلوّن عند المرور بانتقال .15s — تغيّر style
+         يُقرأ في منتصف الانتقال (خلفيّة .05 وحدّ ذهبيّ باهت) فيُصنَّف تعبئةً وحدًّا ويعلق أسود بعد مغادرة الفأرة. نعيد التصنيف
+         عند انتهاء كلّ انتقال فتُقرأ الحالة الساكنة. */
+      document.addEventListener('transitionend', function(e){ if(e.target && e.target.nodeType === 1) add(e.target, true); }, true);
     }catch(e){ __swallow(e, "three-colors:observe"); }
   }
   window.__om3Mark = function(root){ add(root || document.body); };

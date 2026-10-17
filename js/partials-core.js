@@ -819,7 +819,7 @@
         <div class="omUpIco" style="font-size:26px;">📸</div>
         <div class="omUpT" style="font-size:14px; font-weight:600;" data-i18n="fashionDropTitle">ارفعي صورتك كاملة</div>
         <div class="omUpH" style="font-size:11.5px; color:var(--muted);" data-i18n="fashionDropHint">من الرأس إلى القدم · إضاءة واضحة</div>
-        <button type="button" class="btn omUpB" id="fashionAiFileBtn" style="width:auto; white-space:nowrap; border-color:rgba(212,175,55,.5);" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
+        <button type="button" class="btn omUpB" id="fashionAiFileBtn" style="width:auto; white-space:nowrap; border-color:rgba(212,175,55,.5);" data-i18n="uploadPlateBtn">اختيار الملف</button>
         <span id="fashionAiFileName" class="omUpN" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
       </div>
       <img id="fashionAiSourcePreview" style="display:none; width:100%; margin-top:10px; border-radius:var(--r-2); max-height:220px; object-fit:contain; background:#000;">
@@ -1053,7 +1053,7 @@
         <input type="file" id="studioAiFileInputA" accept="image/*" style="display:none;">
         <div class="stSlot omUpArt omUpStyle om3-skip" id="studioAiSlotA" data-slot="A" role="button" tabindex="0">
           <img id="studioAiSourcePreviewA" alt="" style="display:none;">
-          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="fileChooseBtn">📁 اختيار ملف</span><span class="omUpL" data-i18n="studioPlateLabel">ستايل</span></div>
+          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="uploadPlateBtn">اختيار الملف</span><span class="omUpL" data-i18n="studioPlateLabel">ستايل</span></div>
           <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
         </div>
         <button type="button" class="btn" id="studioAiFileBtnA" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
@@ -1064,7 +1064,7 @@
         <input type="file" id="studioAiFileInputB" accept="image/*" style="display:none;">
         <div class="stSlot omUpArt omUpStyle om3-skip" id="studioAiSlotB" data-slot="B" role="button" tabindex="0">
           <img id="studioAiSourcePreviewB" alt="" style="display:none;">
-          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="fileChooseBtn">📁 اختيار ملف</span><span class="omUpL" data-i18n="studioPlateLabel">ستايل</span></div>
+          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="uploadPlateBtn">اختيار الملف</span><span class="omUpL" data-i18n="studioPlateLabel">ستايل</span></div>
           <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
         </div>
         <button type="button" class="btn" id="studioAiFileBtnB" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>

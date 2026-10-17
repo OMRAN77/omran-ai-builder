@@ -778,7 +778,7 @@ html[data-mode="light"] #videoMakerModal .vmk-dir-dl{color:#8a5a12;background:#f
 }
 
 /* v-app-director-reliable: تبويب المخرج بلا صورة («بدون أيقونات») بمقاس تبويبات الصور نفسه */
-#videoMakerModal .vmk-tab.vmk-tab-noimg{justify-content:center;min-height:115px;border:1px dashed rgba(232,194,122,.35)}
+#videoMakerModal .vmk-tab.vmk-tab-noimg{justify-content:center;min-height:115px} /* v-no-extra-lines: كان متقطّعًا — «الخطوط الزايدة ما أريدها» (لقطة ١٧ أكتوبر)؛ الحدّ المتّصل يرثه من .vmk-tab */
 #videoMakerModal .vmk-tab.vmk-tab-noimg .vmk-tab-lbl{white-space:normal;font-weight:700;line-height:1.5}
 #videoMakerModal .vmk-tab.vmk-tab-noimg[aria-selected=true]{border-color:transparent}
 /* v-app-director-motion: الشاشة الحيّة أثناء التوليد (ضوء يتحرّك، شريط لقطات، نصّ المشهد، نماذج الأنماط بحركة كاميرا، عدّاد وشريط تقدّم) */

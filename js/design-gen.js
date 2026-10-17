@@ -37,7 +37,7 @@
       var c=document.createElement('div'); c.className='optCard'+(st.gender===r[0]?' sel':'');
       c.innerHTML='<span class="oi"></span><span class="ol"></span>';
       c.querySelector('.oi').textContent=r[1]; c.querySelector('.ol').textContent=T(r[2]);
-      photoize(c,LOOKS+GENDER_FACE[r[0]]+'.webp?v=2',true);
+      photoize(c,LOOKS+GENDER_FACE[r[0]]+'.webp?v=3',true);
       c.onclick=function(){ st.gender=r[0]; Array.prototype.forEach.call(g.children,function(x,i){ x.classList.toggle('sel',GEN[i][0]===st.gender); }); try{ window.dispatchEvent(new CustomEvent('fashion-gender-change',{detail:{gender:st.gender}})); }catch(e){ /* guard-ok: بثّ تجميلي — فشله لا يمسّ اختيار الفئة نفسه */ } };
       g.appendChild(c);
     });
@@ -90,7 +90,7 @@
       im.onerror=function(){ im.remove(); };
       pic.insertBefore(im,ck);
       /* التأجيل على المربّع لا على الصورة: الصورة المزاحة للتقريب تقع خارج قصّ المربّع قبل تحميلها فلا تتقاطع أبدًا */
-      var url=LOOKS+'extras/'+r[0].toLowerCase()+'.webp?v=2';
+      var url=LOOKS+'extras/'+r[0].toLowerCase()+'.webp?v=3';
       if(window.__omranWhenSeen) window.__omranWhenSeen(pic,function(){ im.src=url; });
       else im.src=url;
       d.setAttribute('data-ext',r[0]); /* v-fx-simple: مرساة ثابتة للشريط المطويّ واقتراحات ما بعد النتيجة */
@@ -120,7 +120,7 @@
       function cur(){ var os=sel.options; for(var i=0;i<os.length;i++) if(os[i].value===sel.value) return os[i]; return os[0]; }
       var tr=window.omranPicker.trigger(function(){
         var o=cur();
-        return o && { name:optTxt(o), img:o.value?LOOKS+kind+'/'+o.value+'.webp?v=2':'',
+        return o && { name:optTxt(o), img:o.value?LOOKS+kind+'/'+o.value+'.webp?v=3':'',
           sub:sel.options.length+' '+(typeof window.t==='function'&&window.t('pickerOptsWord')!=='pickerOptsWord'?window.t('pickerOptsWord'):((((document.documentElement.lang||'ar')==='en')?'options':'خيارًا'))) };
       }, function(){
         return {
@@ -128,7 +128,7 @@
           /* v657: العدّاد يتبع اللغة كما في design-sels. */
           count: sel.options.length+' '+((typeof window.t==='function'&&window.t('pickerOptsPick')!=='pickerOptsPick')?window.t('pickerOptsPick'):(((document.documentElement.lang||'ar')==='en')?'options — pick yours':'خيارًا — اختر ما يناسبك')),
           items: Array.prototype.map.call(sel.options,function(o){
-            return { v:o.value, title:optTxt(o), active:o.value===sel.value, img:o.value?LOOKS+kind+'/'+o.value+'.webp?v=2':'' };
+            return { v:o.value, title:optTxt(o), active:o.value===sel.value, img:o.value?LOOKS+kind+'/'+o.value+'.webp?v=3':'' };
           }),
           onPick: function(v){ sel.value=v; sel.dispatchEvent(new Event('change',{bubbles:true})); tr.refresh(); }
         };

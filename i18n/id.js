@@ -1095,6 +1095,7 @@ Object.assign(I18N["id"], {
     designDropTitle: "Unggah foto ruangan Anda",
     designDropHint: "Pastikan foto jelas dan berkualitas baik",
     studioPlateLabel: "Gaya",
+    uploadPlateBtn: "Pilih file",
     fashionDropHint: "Dari kepala sampai kaki · pencahayaan jelas",
     agentSectionTitle: "🤖 Agen",
     agentSectionDesc: "Mode agen: merencanakan dan mengeksekusi sendiri — membangun, mengedit, dan menguji kode sebelum diserahkan, memeriksa sumber langsung, dan terus bekerja meski halaman ditutup. Aktifkan, lalu ketik permintaan Anda di obrolan.",
