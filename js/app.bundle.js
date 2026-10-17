@@ -31816,6 +31816,7 @@ async function __safeJson(res){
 
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:relative; width:100%; max-width:820px; margin:0 auto; line-height:0;';
+    wrap.className = 'om3-skip'; /* v-three-colors: أزرار المواقع شفّافة فوق الصورة — لا تعبئة ولا حدّ (لقطة المالك ١٧ أكتوبر) */
     const poster = document.createElement('img');
     poster.src = POSTER_SRC;
     poster.alt = ''; poster.loading = 'lazy';
@@ -47163,6 +47164,10 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
           else add(r.target, true); /* style تغيّر (تبويب، حالة) */
         }
       }).observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['style'] });
+      /* لقطة المالك ١٧ أكتوبر (مربّعات سوداء بحدّ ذهبيّ فوق ملصق الديكور): زرّ شفّاف يتلوّن عند المرور بانتقال .15s — تغيّر style
+         يُقرأ في منتصف الانتقال (خلفيّة .05 وحدّ ذهبيّ باهت) فيُصنَّف تعبئةً وحدًّا ويعلق أسود بعد مغادرة الفأرة. نعيد التصنيف
+         عند انتهاء كلّ انتقال فتُقرأ الحالة الساكنة. */
+      document.addEventListener('transitionend', function(e){ if(e.target && e.target.nodeType === 1) add(e.target, true); }, true);
     }catch(e){ __swallow(e, "three-colors:observe"); }
   }
   window.__om3Mark = function(root){ add(root || document.body); };

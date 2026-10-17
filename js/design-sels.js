@@ -307,7 +307,7 @@
     if(id==='designAiLighting') return 'assets/design/opts/lighting-'+v+'.webp';
     /* v-decor-18: الأقسام الخمسة الأخرى صورة لكلّ خيار من assets/design/decor-opts (الغرفة نفسها والمتغيّر الخيار وحده).
        كان الأثاث يستعير صور الأنماط (v-decor-furn-photos) والأرضيات صور قريبة عموديّة — صارت كلّها بمقاس الإضاءة. */
-    if(OPT_FILE[id]) return 'assets/design/decor-opts/'+OPT_FILE[id]+'-'+v+'.webp?v=2';
+    if(OPT_FILE[id]) return 'assets/design/decor-opts/'+OPT_FILE[id]+'-'+v+'.webp?v=3';
     if(id==='designAiStyle') return 'assets/design/styles/'+v+'.webp?v=3'; /* قواعد الصور ١٧ أكتوبر: أُعيد توليدها بدقّتها الأصليّة (لا تكبير) */
     return 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp?v=3';
   }

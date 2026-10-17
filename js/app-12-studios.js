@@ -150,6 +150,7 @@ async function __safeJson(res){
 
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:relative; width:100%; max-width:820px; margin:0 auto; line-height:0;';
+    wrap.className = 'om3-skip'; /* v-three-colors: أزرار المواقع شفّافة فوق الصورة — لا تعبئة ولا حدّ (لقطة المالك ١٧ أكتوبر) */
     const poster = document.createElement('img');
     poster.src = POSTER_SRC;
     poster.alt = ''; poster.loading = 'lazy';
