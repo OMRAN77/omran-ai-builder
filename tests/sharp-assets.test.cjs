@@ -70,7 +70,7 @@ test('٣. قرار المالك ١٧ أكتوبر: لا pollinations ولا Real
     'scripts/design-thumbs-free.mjs', 'scripts/wardrobe-thumbs-free.mjs', 'scripts/img-engine-probe.mjs', 'scripts/sr/sharpen.py', 'scripts/sr/pth2onnx.py', 'scripts/sr/sets.json']) {
     assert.ok(!fs.existsSync(path.join(root, f)), 'أُزيل: ' + f);
   }
-  const wf = read('.github/workflows/thumbs-paid.yml');
+  const wf = read('.github/workflows/design-thumbs.yml');
   assert.ok(wf.includes('OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}') && wf.includes('GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}'), 'مفاتيح الموقع من أسرار المستودع');
   const modeLines = wf.split('\n').filter((l) => l.includes('inputs.mode'));
   assert.ok(modeLines.length >= 3 && modeLines.every((l) => /^\s*(MODE:|group:|if:)/.test(l)), 'الوضع لا يدخل سطر أوامر');
