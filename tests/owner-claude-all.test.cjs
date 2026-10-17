@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'owner-claude-all-secret';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
@@ -326,7 +327,7 @@ test('١٠. الإعدادات لا تكتب فوق اختيار المالك، 
     for (const k of K) assert.ok(f.includes('"' + k + '":'), lg + ' ' + k);
   }
   assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=749';"));
-  assert.ok(read('index.html').includes('/js/modes.js?v=m131026g'));
+  assert.ok(read('index.html').includes('/js/modes.js?v=m171026a'));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.claudeEffortGet = effortGet;') && bundle.includes("return (__p === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined)"), 'الحزمة أُعيد بناؤها');
 });
