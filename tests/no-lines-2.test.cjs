@@ -19,14 +19,14 @@ test('١. الملفّ مربوط بوسم كاش بعد أدوات-أسود.css
 
 test('٢. كلّ قاعدة للوضع الأسود وحده: لا الفاتح ولا الثيمات ولا الخشبيّ ولا صور الخلفيّة', () => {
   assert.ok(rules.length >= 10);
-  for (const r of rules) for (const s of r.sels) assert.ok(s.startsWith(P + ' ') || s.startsWith(P + ':not(.mobile-ui) ') || s.startsWith(P + '.mobile-ui '), s);
+  for (const r of rules) for (const s of r.sels) assert.ok(s.startsWith(P + ' ') || s.startsWith(P + ':not(.mobile-ui) ') || s.startsWith(P + '.mobile-ui ') || s.startsWith('.omran-selected'), s); /* .omran-selected: الأخضر يُحذف في كلّ الأوضاع (v-no-green) */
 });
 
 test('٣. الألوان: شفّاف، أو ذهبيّ إطار اللوحات rgba(212,175,55,.85)، أو #101013، أو توهّج «فسّر» الأبيض، أو الحدّ الشبح — لا رماديّ', () => {
   const noAttr = bare.replace(/\[style\*="[^"]*"\]/g, ''); /* محدِّدات [style*="…"] تطابق نصّ الحدّ داخل العنصر، ليست ألوانًا */
   const vals = noAttr.match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/gi) || [];
   assert.ok(vals.length >= 8);
-  for (const v of vals) assert.match(v.replace(/\s/g, ''), /^(rgba\(212,175,55,\.85\)|#101013|#fff|rgba\(255,255,255,\.35\)|rgba\(0,0,0,\.06\))$/i, v);
+  for (const v of vals) assert.match(v.replace(/\s/g, ''), /^(rgba\(212,175,55,\.85\)|#101013|#fff|rgba\(255,255,255,\.35\)|rgba\(0,0,0,\.06\)|rgba\(0,0,0,\.22\))$/i, v);
 });
 
 test('٤. الإطار الذهبيّ ونقاط الخلفيّة وحبيبات الضجيج تختفي، واللوحات تتذهّب عند المرور فقط', () => {
@@ -72,4 +72,15 @@ test('٧. v-white-glow: المحادثة المختارة وتبويبات ال�
   const VED = fs.readFileSync(path.join(ROOT, 'js', 'video-edit.js'), 'utf8');
   assert.ok(VED.includes('#vedModal .ved-item.sel{border-color:transparent;box-shadow:0 4px 18px rgba(255,255,255,.35)}'), 'محرّر الفيديو: المرور والمختار توهّج');
   assert.ok(!/ved-pick:focus-within\{border-color/.test(VED));
+});
+
+test('٨. v-no-green («ليش هذا الاخضر احذفه نهائي»): وضع التحديد بلا أخضر — المحدَّد بلا إطار، وتوهّج أبيض في الأسود، ودائرة الصحّ بيضاء/سوداء', () => {
+  const base = rules.find((r) => r.sels.includes('.omran-selected.omran-selected'));
+  assert.ok(base && base.body.includes('outline:0 !important') && !/16a34a|22,163,74|green/i.test(bare));
+  const dark = rules.find((r) => r.sels.includes(P + ' .omran-selected.omran-selected'));
+  assert.ok(dark && dark.body.includes('background:#101013 !important') && dark.body.includes('box-shadow:0 4px 18px rgba(255,255,255,.35) !important'));
+  assert.ok(rules.some((r) => r.sels.includes(P + ' .omran-selected .omran-select-mark.omran-select-mark') && r.body.includes('background:#fff')));
+  /* أولويّة أعلى من أنماط delete-confirm.js (‎.omran-selected .omran-select-mark‎ بلا important، يُحقن بعد الأوراق) */
+  assert.ok(rules.some((r) => r.sels.includes('.omran-selected .omran-select-mark.omran-select-mark')));
+  assert.ok(fs.readFileSync(path.join(ROOT, 'js', 'delete-confirm.js'), 'utf8').includes('.omran-selected .omran-select-mark{'), 'المحدِّد الذي نغلبه ما زال كما هو');
 });
