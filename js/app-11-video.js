@@ -654,8 +654,22 @@
     lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
   }
 
+  /* v-canvas-font: «sans-serif» يقع على خطّ أحاديّ العرض في بعض الأجهزة فتتفكّك الحروف العربيّة في فيديو القوالب —
+     Tajawal محمّل أصلًا في الموقع (Google Fonts)، ننتظر مجموعة الحروف العربيّة منه (مهلة ٢٫٥ث) قبل الرسم */
+  const CANVAS_FONT = "Tajawal, 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif";
+  function canvasFontsReady(text){
+    try{
+      if(!document.fonts || !document.fonts.load) return Promise.resolve();
+      const sample = String(text || '') + ' عربي';
+      return Promise.race([
+        Promise.all([document.fonts.load('bold 40px Tajawal', sample), document.fonts.load('40px Tajawal', sample)]),
+        new Promise((r) => setTimeout(r, 2500)),
+      ]).catch((e) => { __swallow(e, 'video:canvas-font'); });
+    }catch(e){ __swallow(e, 'video:canvas-font'); return Promise.resolve(); }
+  }
+
   function recordCanvasClip({ title, signature, seconds, ratio }){
-    return new Promise((resolve, reject) => {
+    return canvasFontsReady(String(title || '') + ' ' + String(signature || '')).then(() => new Promise((resolve, reject) => {
       const { w, h } = ratioDims(ratio);
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
@@ -694,13 +708,13 @@
         if(title){
           ctx.fillStyle = '#fff';
           ctx.textAlign = 'center';
-          ctx.font = 'bold ' + Math.round(w * 0.045) + 'px sans-serif';
+          ctx.font = 'bold ' + Math.round(w * 0.045) + 'px ' + CANVAS_FONT;
           wrapCanvasText(ctx, title, w / 2, h / 2, w * 0.8, Math.round(w * 0.06));
         }
         if(signature){
           ctx.fillStyle = 'rgba(255,255,255,0.85)';
           ctx.textAlign = 'center';
-          ctx.font = Math.round(w * 0.028) + 'px sans-serif';
+          ctx.font = Math.round(w * 0.028) + 'px ' + CANVAS_FONT;
           ctx.fillText(signature, w / 2, h - h * 0.08);
         }
         raf = requestAnimationFrame(draw);
@@ -711,7 +725,7 @@
         cancelAnimationFrame(raf);
         recorder.stop();
       }, Math.max(800, seconds * 1000));
-    });
+    }));
   }
 
   function makeWatermarkPng(signature, ratio){
@@ -722,7 +736,7 @@
       canvas.width = w; canvas.height = barH;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = Math.round(barH * 0.5) + 'px sans-serif';
+      ctx.font = Math.round(barH * 0.5) + 'px ' + CANVAS_FONT;
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'right';
       const textW = ctx.measureText(signature).width + 24;
@@ -740,10 +754,24 @@
     const inName = isWebmSource ? 'vin.webm' : 'vin.mp4';
     await ffmpeg.writeFile(inName, await fetchFile(videoSrc));
     await ffmpeg.writeFile('ain.mp3', await fetchFile(audioBlob));
-    const vcodec = isWebmSource ? ['-c:v', 'libx264', '-pix_fmt', 'yuv420p'] : ['-c:v', 'copy'];
-    await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', ...vcodec, '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.mp4']);
-    const data = await ffmpeg.readFile('muxout.mp4');
-    return new Blob([data.buffer], { type: 'video/mp4' });
+    /* v-canvas-mux-fast: إعادة ترميز libx264 داخل المتصفّح (خيط واحد) كانت تعلق دقائق عند «جاري دمج الصوت» لفيديو القوالب —
+       الآن ننسخ صورة WebM كما هي ونضيف الصوت (opus) بأقلّ من ثانية؛ ترميز ultrafast احتياط فقط، وكلّ خطوة لها مهلة.
+       apad + shortest: الفيديو يبقى بالمدّة المختارة (كان تعليق ٥ث يقصّ فيديو ١٠ث إلى ٥ث) والتعليق الأطول يُقصّ عند نهايته */
+    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); }catch(e){ __swallow(e, 'video:mux-any-clean'); } };
+    try{
+      if(isWebmSource){
+        if(await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', '-c:v', 'copy', '-c:a', 'libopus', '-af', 'apad', '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.webm'], 60000) === 0){
+          const w = await ffmpeg.readFile('muxout.webm');
+          if(w && w.length > 1000) return new Blob([w.buffer], { type: 'video/webm' });
+        }
+      }
+      const vcodec = isWebmSource ? ['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'] : ['-c:v', 'copy'];
+      if(await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', ...vcodec, '-af', 'apad', '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.mp4'], 180000) !== 0) throw new Error('mux failed');
+      const data = await ffmpeg.readFile('muxout.mp4');
+      return new Blob([data.buffer], { type: 'video/mp4' });
+    } finally {
+      for(const f of [inName, 'ain.mp3', 'muxout.webm', 'muxout.mp4']) await rm(f);
+    }
   }
 
   async function runCanvasOnly(text, ratio, seconds, signature, wantNarration, narrationVal){
