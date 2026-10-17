@@ -204,15 +204,15 @@ window.__omranWhenSeen = (function () {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap"></noscript>
 <link rel="stylesheet" href="css/tokens.css?v=732">
-<link rel="stylesheet" href="css/redesign.css?v=691">
-<link rel="stylesheet" href="css/modules.css?v=683">
+<link rel="stylesheet" href="css/redesign.css?v=692">
+<link rel="stylesheet" href="css/modules.css?v=684">
 <link rel="stylesheet" href="css/خلفيات.css?v=3">
 <link rel="stylesheet" href="css/إطارات.css?v=6"><!-- v-frame-design: التصميم الجديد للكمبيوتر -->
 <link rel="stylesheet" href="css/إطارات-الجوال.css?v=1"><!-- v-frame-gold-mobile: تصميم الكمبيوتر الجديد على الجوال -->
 <link rel="stylesheet" href="css/ثيم-خشبي.css?v=3"><!-- v-skin-wood: كلّه تحت html.skin-wood -->
 <link rel="stylesheet" href="css/ثيمات.css?v=8"><!-- v-themes: الثيمات الثلاثة عشر، كلّها تحت html.skin -->
-<link rel="stylesheet" href="css/أدوات-أسود.css?v=5">
-<link rel="stylesheet" href="css/رفع-الصور.css?v=4"><!-- v-upload-art: صور المالك خلفيّات مربّعات الرفع (الديكور، الأزياء، الستايل) --><!-- v-tools-black: خلفيّات الأدوات بلون المحادثة في الوضع الأسود -->
+<link rel="stylesheet" href="css/أدوات-أسود.css?v=6">
+<link rel="stylesheet" href="css/رفع-الصور.css?v=4"><link rel="stylesheet" href="css/بلا-خطوط.css?v=1"><!-- v-no-lines-2: بلا إطارات ذهبيّة، الذهبيّ عند المرور فقط --><!-- v-upload-art: صور المالك خلفيّات مربّعات الرفع (الديكور، الأزياء، الستايل) --><!-- v-tools-black: خلفيّات الأدوات بلون المحادثة في الوضع الأسود -->
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -670,12 +670,12 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script defer src="/js/partials-core.js?v=663"></script>
+<script defer src="/js/partials-core.js?v=664"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
-<script defer src="/js/design-sels.js?v=574"></script>
+<script defer src="/js/design-sels.js?v=575"></script>
 <!-- v417 · أزياء AI: فئة + بطاقات نمط/موسم/مناسبة + دائرات ألوان + رقاقات إضافات. الحقول الجديدة تصل إلى /api/fashion-create عبر window.omranFashionExtras. القوائم الأصلية باقية مخفيّة. -->
-<script defer src="/js/design-gen.js?v=612"></script>
+<script defer src="/js/design-gen.js?v=613"></script>
 
 
 <header>
@@ -1012,7 +1012,7 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 <script src="/js/selfdiag.js?v=hw-twa-9"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=b27b310a"></script>
+    <script defer src="/js/app.bundle.js?v=edcdbbce"></script>
     <script defer src="/js/frame-touch.js?v=2"></script><!-- v-frame-gold: لمسة الضغط للكمبيوتر والجوال -->
     <script defer src="/js/modes.js?v=m171026b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
@@ -1068,9 +1068,9 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
   <button type="button" class="omNavBtn" data-omnav="files"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg><span data-i18n="omNavFiles">الملفات</span></button>
   <button type="button" class="omNavBtn" data-omnav="settings"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span data-i18n="omNavSettings">الإعدادات</span></button>
 </nav>
-<script defer src="/js/ui-wiring.js?v=661"></script>
+<script defer src="/js/ui-wiring.js?v=662"></script>
 <!-- v412 — استوديو صانع الفيديو (كمبيوتر فقط، لا يلمس الجوّال) -->
-<script defer src="/js/video.js?v=449"></script>
+<script defer src="/js/video.js?v=450"></script>
 <!-- v-video-edit: «كتابة وصوت على الفيديو» — زرّ في قائمة + بالمحادثة وقسم في صانع الفيديو -->
 <script defer src="/js/video-edit.js?v=2"></script>
 

@@ -5094,9 +5094,9 @@ function __friendlyErr(e){
         const dir=isAr?'rtl':'ltr';
         let grid='';
         chars.forEach(function(c){
-          grid += '<button class="__pcItem" data-id="'+c.id+'" style="border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-radius:14px;padding:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;">'
-            + '<img src="/assets/characters/'+c.id+'.png" style="width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:10px;background:#111;" loading="lazy">'
-            + '<span style="font-size:11.5px;color:#ddd;">'+c.name+'</span></button>';
+          grid += '<button class="__pcItem" data-id="'+c.id+'" style="position:relative;border:2px solid rgba(255,255,255,.12);background:#111;border-radius:14px;padding:0;overflow:hidden;cursor:pointer;display:block;">' /* v-photo-only (المالك ١٧ أكتوبر): الصورة وحدها والاسم فوق أسفلها لا تحتها */
+            + '<img src="/assets/characters/'+c.id+'.png" style="display:block;width:100%;aspect-ratio:9/16;object-fit:cover;background:#111;" loading="lazy">'
+            + '<span style="position:absolute;inset:auto 0 0 0;padding:16px 4px 6px;font-size:11.5px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));pointer-events:none;">'+c.name+'</span></button>';
         });
         ov.innerHTML='<div dir="'+dir+'" style="width:100%;max-width:380px;max-height:88vh;overflow:auto;background:#1c1c24;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px;color:#fff;font-family:inherit;box-shadow:0 18px 50px rgba(0,0,0,.5);">'
           + '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">'+(isAr?'اختر شخصية تتكلم 🎭':'Pick a talking character 🎭')+'</div>'

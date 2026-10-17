@@ -285,7 +285,9 @@
       'linear-gradient(155deg,'+c[0]+' 0%,'+c[1]+' 55%,'+c[2]+' 120%);';
     var nm=document.createElement('div');
     nm.textContent=txt;
-    nm.style.cssText='padding:6px 9px 7px;font-size:12.5px;font-weight:800;color:var(--text,#fff);line-height:1.3;';
+    /* v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي» — أحدث من «الاسم سطر تحتها» في v-decor-toggle-img):
+       البطاقة صورتها وحدها، والاسم المترجم فوق أسفلها بتدرّج كبقيّة معارض التطبيق. */
+    nm.style.cssText='position:absolute;inset:auto 0 0 0;pointer-events:none;padding:16px 9px 6px;font-size:12.5px;font-weight:800;color:#fff;line-height:1.3;text-shadow:0 1px 3px rgba(0,0,0,.9);background:linear-gradient(0deg,rgba(0,0,0,.8),rgba(0,0,0,0));';
     var tk=document.createElement('div'); tk.textContent='✓';
     tk.style.cssText='position:absolute;top:7px;inset-inline-start:8px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:none;align-items:center;justify-content:center;';
     function paint(){
@@ -293,10 +295,10 @@
       d.style.outlineOffset='-2px';
       d.style.boxShadow=cb.checked?'0 0 12px rgba(212,175,55,.35)':'none';
       tk.style.display=cb.checked?'flex':'none';
-      nm.style.color=cb.checked?'#d4af37':'var(--text,#fff)';
+      nm.style.color=cb.checked?'#d4af37':'#fff';
     }
     paint();
-    pic.appendChild(tk); d.appendChild(pic); d.appendChild(nm);
+    pic.appendChild(tk); pic.appendChild(nm); d.appendChild(pic);
     d.onclick=function(){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change',{bubbles:true})); paint(); };
     return d;
   }

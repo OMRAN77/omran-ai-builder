@@ -806,3 +806,22 @@ html[data-mode="light"] #videoMakerModal .vmk-dir-dl{color:#8a5a12;background:#f
 #videoMakerModal .vmk-dir-diag{display:block;margin-top:6px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.05);font:12px/1.6 ui-monospace,Consolas,monospace;color:#ffb4ab;text-align:left;white-space:pre-wrap;word-break:break-word;user-select:all}
 html[data-mode="light"] #videoMakerModal .vmk-dir-diag{background:rgba(0,0,0,.05);color:#8a1c12}
 #videoMakerModal .vmk-dir-row select:disabled{opacity:.45}
+
+/* v-photo-only (المالك ١٧ أكتوبر: «انماط الصور والاستايل والازياء… اي صوره تحتها احذفها نهائي»):
+   تبويب القسم صورته وحدها والاسم فوق أسفلها بتدرّج — لا سطر تحت الصورة؛ المختار بإطار ذهبيّ واسم ذهبيّ لا بخلفيّة ذهبيّة حولها.
+   ارتفاعه ارتفاع تبويب المخرج النصّيّ (١١٥). html أوّلًا ليغلب قواعد الوضع الفاتح. */
+html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg){position:relative;padding:0;gap:0;min-width:96px;max-width:112px;min-height:115px;overflow:hidden;border-radius:14px;border:2px solid transparent;background:#101216;box-shadow:none}
+html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg) .vmk-tab-img{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:0;box-shadow:none}
+html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg) .vmk-tab-lbl{position:absolute;inset:auto 0 0 0;z-index:1;padding:18px 4px 6px;font-size:11px;font-weight:700;line-height:1.3;color:#fff;white-space:normal;text-shadow:0 1px 3px rgba(0,0,0,.95);background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));pointer-events:none}
+html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg):hover{border-color:rgba(232,194,122,.55)}
+html #videoMakerModal .vmk-tab[aria-selected=true]:not(.vmk-tab-noimg){background:#101216;border-color:var(--lux-gold,#e8c27a);box-shadow:0 6px 18px -8px rgba(232,194,122,.7)}
+html #videoMakerModal .vmk-tab[aria-selected=true]:not(.vmk-tab-noimg) .vmk-tab-lbl{color:var(--lux-gold,#e8c27a)}
+@media (min-width:641px) and (max-width:860px){html #videoMakerModal .vmk-tab:not(.vmk-tab-noimg){min-width:0;max-width:none}} /* التابلت: يملأ خانة شبكة الأعمدة الخمسة */
+/* بطاقتا النماذج: العنوان مرسوم داخل صورة الغلاف أصلًا (قوالب متحرّكة والتعليميّة) فلا شريط يكرّره تحتها؛ النصّ باقٍ تلميحًا (aria-label/title) */
+#videoMakerModal .vmk-sm.has-vid>b{display:none}
+/* الصفّ يمتدّ لأطول بطاقة (النموذج النصّيّ في سينمائي/الممثل…): الغلاف يملأ بطاقته فلا فراغ تحت الصورة بعد إخفاء الشريط */
+#videoMakerModal .vmk-sm.has-vid{display:flex;flex-direction:column}
+#videoMakerModal .vmk-sm.has-vid .vmk-sm-p{flex:1 1 auto}
+/* v-photo-only: اسم تبويب الستايل فوق صورته — أبيض بظلّ في الوضعين (في الفاتح كان بنّيًّا على التدرّج الأسود لا يُقرأ)، والمختار ذهبيّ كما هو */
+#studioAiTabs .studioAiTabBtn > img ~ span{text-shadow:0 1px 3px rgba(0,0,0,.9)}
+#studioAiTabs .studioAiTabBtn:not(.active) > img ~ span{color:#fff}
