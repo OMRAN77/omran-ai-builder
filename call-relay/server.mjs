@@ -409,6 +409,7 @@ export function createRelay(opts) {
     const startTimer = later(() => { if (!started) { log('stream ' + id + ': no valid start in time'); close('no_start', 1008); } }, L.LIMITS.startTimeoutMs);
     let idleTimer = null, idleEnding = false;
     const cutItems = new Set(), cutResps = new Set();   // عناصر وردود قطعتها المقاطعة: بقاياها المتأخّرة لا تصل الخطّ
+    const lineOfItem = new Map();                       // v-call-agent-cut: عنصر ← { line, cut } — سطره يُعلَّم « …» إن قُطع صوته
     let respId = '';
 
     on(tw, 'message', (data) => onLine(textOf(data)));
@@ -513,12 +514,31 @@ export function createRelay(opts) {
       marks.add(name);
       sendLine(L.twilioMark(streamSid, name));
     }
-    function addLine(who, text) {
-      const t = L.clip(text, L.LIMITS.lineChars);
-      if (!t || call.transcript.length >= L.LIMITS.transcriptLines) return;
-      call.transcript.push({ who, text: t });
+    function addLine(who, text, cut) {
+      const t = cut ? cutText(text) : L.clip(text, L.LIMITS.lineChars);
+      if (!t || call.transcript.length >= L.LIMITS.transcriptLines) return null;
+      const line = { who, text: t };
+      call.transcript.push(line);
       call.updatedAt = now();
       store.put(call);
+      return line;
+    }
+    /* v-call-agent-cut: نصّ الردّ يصل كاملًا قبل صوته — ما قطعته المقاطعة يُعلَّم فلا توهم البطاقة أنّه قيل كلّه */
+    function cutText(text) { const t = L.clip(text, L.LIMITS.lineChars - 2); return t ? t + ' …' : ''; }
+    function markCut(id) {
+      const e = id && lineOfItem.get(id);
+      if (!e || e.cut) return;
+      e.cut = true;
+      const i = call.transcript.indexOf(e.line);
+      if (i < 0) return;
+      call.transcript[i] = e.line = { who: e.line.who, text: cutText(e.line.text) };
+      call.updatedAt = now();
+      store.put(call);
+    }
+    function onAgentText(ev) {
+      const cut = !!((ev.itemId && cutItems.has(ev.itemId)) || (ev.responseId && cutResps.has(ev.responseId)));
+      const line = addLine('agent', ev.text, cut);
+      if (line && ev.itemId) lineOfItem.set(ev.itemId, { line, cut });
     }
     function onAgent(text) {
       const ev = L.agentEvent(text);
@@ -541,7 +561,7 @@ export function createRelay(opts) {
         }
         case 'audio_done': sendMark(); return;
         case 'speech_started': onBargeIn(); armIdle(); return;
-        case 'agent_text': return addLine('agent', ev.text);
+        case 'agent_text': return onAgentText(ev);
         case 'callee_text': return addLine('callee', ev.text);
         case 'tool_item': if (ev.callId && ev.name) toolNames.set(ev.callId, ev.name); return;
         case 'tool': return onTool(ev);
@@ -562,7 +582,7 @@ export function createRelay(opts) {
       if (hangupPending) return;             // الوداع يُكمَل ثمّ يُغلق الخطّ
       const t = now();
       if (!responseActive && !(playhead > t)) return;
-      if (itemId) cutItems.add(itemId);
+      if (itemId) { cutItems.add(itemId); markCut(itemId); }
       if (responseActive && respId) cutResps.add(respId);
       sendLine(L.twilioClear(streamSid));
       if (responseActive) sendAgent({ type: 'response.cancel' });

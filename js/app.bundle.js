@@ -47368,7 +47368,11 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
  * واحدة في المحادثة نفسها. DOM فقط: نصّ الخادم يدخل textContent ولا يُفسَّر HTML أبدًا. لا اسم مزوّد ولا خدمة اتّصال في أيّ نصّ ظاهر (١٤ لغة).
  * v-call-agent-r2 (المراجعة): البطاقة تُحدَّث في مكانها لا بـrenderAll (حارس الرسم يتخطّاه ما لم تتغيّر الرسائل)، تدفّق واحد لكلّ
  * بطاقة، تجربة قُطعت بإغلاق الصفحة تُحسم في التحميل التالي، أسطر النصّ تُلحق إلحاقًا، والعقد v2: اسم المحلّ من الخرائط والمتّصَل
- * باسمه والتفاصيل على البطاقة وفي التأكيد. */
+ * باسمه والتفاصيل على البطاقة وفي التأكيد.
+ * v-call-agent-cut (المالك: «الصوت يقطع لكن المحادثة الي هي الكتابة موجوده»): نصّ الجملة يصل كاملًا قبل صوتها، فإن قاطعها كلام
+ * الطرف الآخر (المقاطعة في الخادم تمسح ما لم يُسمع) بقيت كاملة على الشاشة والصوت مقطوع. الآن سطر الردّ المقطوع يُعلَّم « …»
+ * (بمعرّف الردّ، في أيّ ترتيب وصل النصّ والقطع)، و«قل ألو» لا يظهر قبل أن يُفتح المايك، وكلّ تجربة بدأت ترسل عند نهايتها أثرًا
+ * واحدًا بلا نصّ (diag:call-trial) يفرّق بين مقاطعة وصدى وشبكة. */
 (function(){
   'use strict';
   var PTS_LAND = 50, PTS_MOB = 45;           // سعر المستخدم لاحقًا (المالك مجّانًا) — من العقد
@@ -47377,6 +47381,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   var SETUP_MAX_MS = 20000;                   // تجهيز أطول من هذا = فشل صريح لا انتظار بلا نهاية
   var END_GRACE_MS = 1200, END_MAX_MS = 8000; // end_call: ننتظر انتهاء جملة الوداع، وبحدّ أقصى
   var LINES_MAX = 40, LINE_CHARS = 400;
+  var CUT_MARK = ' …', TRACE_MAX = 80, RTP_MS = 5000; // v-call-agent-cut: علامة السطر المقطوع، وسقف الأثر، وفترة قراءة إحصاءات الصوت الوارد
   var RT_URL = 'https://api.openai.com/v1/realtime/calls'; // تبادل SDP كمسار مها نفسه — عنوان شبكة لا نصّ ظاهر
   var ACTIVE = { mic: 1, connecting: 1, live: 1, queued: 1, ringing: 1, 'in-progress': 1 };
   var PHONE_STATES = { queued: 1, ringing: 1, 'in-progress': 1, completed: 1, busy: 1, 'no-answer': 1, failed: 1, canceled: 1 };
@@ -47562,6 +47567,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       + '.omCallOvTime{font-variant-numeric:tabular-nums;unicode-bidi:isolate;direction:ltr;}'
       + '.omCallOvLines{display:flex;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto;font-size:13px;line-height:1.55;}'
       + '.omCallOvLines:empty{display:none;}'
+      + '.omCallOvHint:empty{display:none;}'
       + '#omranCallOverlay .omCallOvLines b{color:#a78bfa !important;}'
       + '#omranCallOverlay .omCallOvEnd{-webkit-appearance:none;appearance:none;min-height:44px;padding:11px;border:0 !important;border-radius:999px;background:#dc2626 !important;color:#fff !important;font:inherit;font-size:14px;font-weight:800;cursor:pointer;}'
       + '@keyframes omCallPulse{0%,100%{opacity:1}50%{opacity:.35}}'
@@ -47615,6 +47621,16 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   function syncLines(box, lines, mk){
     var keys = lines.map(function(l){ return l.who + '\u0001' + l.text; });
     var old = box.__omKeys || [], d = 0;
+    // v-call-agent-cut: سطر عُلِّم «مقطوعًا» في مكانه (العدد نفسه) ← يُستبدل وحده، فلا يُعاد بناء الصندوق ولا يقفز تمريره
+    if(old.length && old.length === keys.length && box.childNodes && box.childNodes.length === old.length){
+      var diff = 0;
+      for(var x = 0; x < keys.length; x++) if(old[x] !== keys[x]) diff++;
+      if(diff && diff <= 2){
+        for(var y = 0; y < keys.length; y++) if(old[y] !== keys[y]) box.replaceChild(mk(lines[y]), box.childNodes[y]);
+        box.__omKeys = keys;
+        return;
+      }
+    }
     for(; d < old.length; d++){ // أصغر إزاحة يصير بعدها القديم بداية الجديد؛ لا تداخل = بناء كامل
       var hit = old.length - d <= keys.length;
       for(var i = d; hit && i < old.length; i++) if(old[i] !== keys[i - d]) hit = false;
@@ -47781,11 +47797,76 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     if(s.ov) s.ov.state.textContent = stateLabel(st);
   }
   function ovLines(s){ if(s.ov) syncLines(s.ov.lines, s.lines.slice(-6), lineRow('omCallOvLine')); }
-  function addLine(s, who, text){
+  function cutText(text){ return clip(text, LINE_CHARS - CUT_MARK.length).replace(/…$/, '') + CUT_MARK; }
+  /* rid = معرّف الردّ: نصّ ردّ قطعته المقاطعة قبل وصوله يُعلَّم عند وصوله */
+  function addLine(s, who, text, rid){
     text = clip(text, LINE_CHARS); if(!text) return;
-    s.lines.push({ who: who, text: text });
+    var l = { who: who, text: (rid && s.cutResp[rid]) ? cutText(text) : text };
+    if(rid) s.byResp[rid] = l;
+    s.lines.push(l);
     if(s.lines.length > LINES_MAX) s.lines.shift();
     patch(s.id, { transcript: s.lines.slice() }); persist(); refresh(s.id); ovLines(s);
+  }
+  /* v-call-agent-cut: صوت الردّ قُطع (مقاطعة) — النصّ المعروض وصل قبل الصوت كاملًا، فيُعلَّم « …» بدل أن يوهم أنّه قيل كلّه.
+     ردّ انتهى صوته (stopped) لا يُعلَّم أبدًا؛ وكلّ ردّ يُعلَّم مرّة واحدة. */
+  function cutLine(s, rid){
+    rid = rid || s.lastRid;
+    if(!rid || s.cutResp[rid] || s.played[rid]) return;
+    s.cutResp[rid] = 1; s.cutN++;
+    var l = s.byResp[rid], i = l ? s.lines.indexOf(l) : -1;
+    if(i < 0) return; // النصّ لم يصل بعد (أو خرج من نافذة الأسطر)
+    s.lines[i] = s.byResp[rid] = { who: l.who, text: cutText(l.text) };
+    patch(s.id, { transcript: s.lines.slice() }); persist(); refresh(s.id); ovLines(s);
+  }
+  /* أثر التجربة (يُرسل مرّة عند النهاية): رموز قصيرة بالثانية من الجاهزيّة — بلا أيّ نصّ من المكالمة ولا سرّ */
+  function code4(v){ return String(v == null ? '' : v).replace(/[^\w.\-]/g, '').slice(-4); }
+  function trace(s, c){
+    s.diag.push(((now() - (s.readyAt || s.t0)) / 1000).toFixed(1) + c);
+    if(s.diag.length > TRACE_MAX) s.diag.shift();
+  }
+  function traceEv(s, ty, ev){
+    var r = ev.response || {}, why = r.status_details && r.status_details.reason;
+    if(ty === 'input_audio_buffer.speech_started') trace(s, 'ss');
+    else if(ty === 'input_audio_buffer.speech_stopped') trace(s, 'sp');
+    else if(ty === 'response.created') trace(s, 'rc:' + code4(r.id));
+    else if(ty === 'output_audio_buffer.started') trace(s, 'os:' + code4(ev.response_id));
+    else if(ty === 'output_audio_buffer.stopped') trace(s, 'ot:' + code4(ev.response_id));
+    else if(ty === 'output_audio_buffer.cleared') trace(s, 'oc:' + code4(ev.response_id));
+    else if(ty === 'response.output_audio_transcript.done' || ty === 'response.audio_transcript.done') trace(s, 'tx:' + code4(ev.response_id) + '/' + String(ev.transcript || '').length);
+    else if(ty === 'conversation.item.truncated') trace(s, 'tr:' + (Math.round(Number(ev.audio_end_ms)) || 0));
+    else if(ty === 'response.done') trace(s, 'rd:' + code4(r.id) + '/' + String(r.status || '').replace(/[^\w]/g, '').slice(0, 16) + (why ? '/' + String(why).replace(/[^\w]/g, '').slice(0, 24) : ''));
+    else if(ty === 'error') trace(s, 'er:' + String((ev.error && (ev.error.code || ev.error.type)) || '').replace(/[^\w.\-]/g, '').slice(0, 40));
+  }
+  /* كلّ طلب ردّ من العميل يُسجَّل بسببه في الأثر (الحمولة كما كانت) */
+  function create(s, why){ trace(s, 'cr:' + why); send(s, { type: 'response.create' }); }
+  /* إحصاءات الصوت الوارد (مفقود/مُرقَّع/مستلَم/اهتزاز) — تفرّق تقطّع الشبكة عن المقاطعة */
+  function rtpLoop(s){
+    if(gone(s) || !s.pc || typeof s.pc.getStats !== 'function') return;
+    try{
+      s.pc.getStats().then(function(rep){
+        if(!rep || typeof rep.forEach !== 'function') return;
+        rep.forEach(function(x){
+          if(x && x.type === 'inbound-rtp' && (x.kind || x.mediaType) === 'audio')
+            s.rtp = [x.packetsLost | 0, x.concealedSamples | 0, x.totalSamplesReceived | 0, Math.round((Number(x.jitter) || 0) * 1000)];
+        });
+      }).catch(function(e){ __swallow(e, 'call-agent:rtp'); });
+    }catch(e){ __swallow(e, 'call-agent:rtp'); }
+    later(s, function(){ rtpLoop(s); }, RTP_MS);
+  }
+  function sendDiag(s, st, dur){
+    if(!s.readyAt) return; // فشل التجهيز لا أثر له هنا — ملاحظة البطاقة تكفي
+    var msg = 'call-trial ' + s.id + ' end=' + st + ' dur=' + dur + 's lines=' + s.lines.length + ' cut=' + s.cutN + ' clr=' + s.clr
+      + (s.rtp ? ' rtp=' + s.rtp.join('/') : '');
+    var stack = s.diag.join(' ').slice(-1500);
+    try{ (console.info || console.log).call(console, '[call-agent] trace', msg, stack); }catch(e){ __swallow(e, 'call-agent:trace-log'); }
+    try{
+      fetch('/api/system?action=client-errors', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, source: 'diag:call-trial', line: 0, col: 0, stack: stack,
+          url: (typeof location !== 'undefined' && location) ? String(location.pathname || '') : '',
+          ua: (typeof navigator !== 'undefined' && navigator && navigator.userAgent) || '',
+          build: (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '' }) })
+        .catch(function(e){ __swallow(e, 'call-agent:diag'); });
+    }catch(e){ __swallow(e, 'call-agent:diag'); }
   }
   function overlayClose(){
     try{ var o = document.getElementById('omranCallOverlay'); if(o && o.parentNode) o.parentNode.removeChild(o); }catch(e){ __swallow(e, 'call-agent:ov-close'); }
@@ -47807,12 +47888,13 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     tm.setAttribute('dir', 'ltr');
     top.appendChild(tm);
     o.appendChild(top);
-    o.appendChild(el('div', 'omCallOvHint', fill(tt('callAgentTrialHint'), { b: clip(s.business, 60) })));
+    var hint = el('div', 'omCallOvHint', ''); // v-call-agent-cut: «قل ألو» حين يُفتح المايك فقط — قبله تضيع الكلمة
+    o.appendChild(hint);
     var lines = el('div', 'omCallOvLines');
     o.appendChild(lines);
     o.appendChild(btn('omCallOvEnd', tt('callAgentEnd'), function(){ if(trial === s) finish(s, 'canceled'); }));
     document.body.appendChild(o);
-    s.ov = { root: o, state: stl, time: tm, lines: lines };
+    s.ov = { root: o, state: stl, time: tm, lines: lines, hint: hint };
   }
   function tick(s){
     if(gone(s) || !s.ov) return;
@@ -47821,7 +47903,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   }
   function clearWd(s){ if(s.wd){ clearTimeout(s.wd); s.wd = null; } }
   // الكلام انتهى ولم يبدأ ردّ خلال المهلة ← نطلبه صراحة (جلسة بلا ردّ تلقائيّ لا تجيب أبدًا)
-  function armWd(s, ms){ clearWd(s); if(!s.readyAt) return; s.wd = later(s, function(){ s.wd = null; send(s, { type: 'response.create' }); }, ms); }
+  function armWd(s, ms){ clearWd(s); if(!s.readyAt) return; s.wd = later(s, function(){ s.wd = null; create(s, 'wd'); }, ms); }
   function armEnd(s, ms){
     if(s.endTimer) clearTimeout(s.endTimer);
     s.endTimer = later(s, function(){ s.endTimer = null; if(!s.speaking) finish(s, 'completed'); }, ms);
@@ -47834,7 +47916,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       s.outcome = cleanOutcome(args);
       patch(s.id, { outcome: s.outcome }); persist(); refresh(s.id);
       output(s, callId, { ok: true });
-      send(s, { type: 'response.create' });
+      create(s, 'tool');
       return;
     }
     if(name === 'end_call'){
@@ -47845,20 +47927,30 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       return;
     }
     output(s, callId, { ok: false, error: 'unknown_tool' });
-    send(s, { type: 'response.create' });
+    create(s, 'unk');
   }
   function onEvent(s, e, ready){
     if(gone(s)) return;
     var ev;
     try{ ev = JSON.parse(e.data); }catch(err){ return; /* guard-ok: رسالة قناة غير JSON لا تخصّنا */ }
     var ty = ev && ev.type;
+    if(ty) traceEv(s, ty, ev);
     if(ty === 'session.created' || ty === 'session.updated'){ ready(); return; }
     if(ty === 'input_audio_buffer.speech_started'){ s.heard = true; armWd(s, 20000); return; }
     if(ty === 'input_audio_buffer.speech_stopped'){ armWd(s, 1800); return; }
-    if(ty === 'response.created'){ clearWd(s); return; }
-    if(ty === 'output_audio_buffer.started' || ty === 'response.output_audio.delta' || ty === 'response.audio.delta'){ s.speaking = true; clearWd(s); return; }
-    if(ty === 'output_audio_buffer.stopped' || ty === 'output_audio_buffer.cleared'){ s.speaking = false; if(s.endPending) armEnd(s, 400); return; }
-    if(ty === 'response.output_audio_transcript.done' || ty === 'response.audio_transcript.done'){ addLine(s, 'agent', ev.transcript); return; }
+    if(ty === 'response.created'){ clearWd(s); if(ev.response && ev.response.id) s.lastRid = String(ev.response.id); return; }
+    if(ty === 'output_audio_buffer.started' || ty === 'response.output_audio.delta' || ty === 'response.audio.delta'){
+      s.speaking = true; clearWd(s);
+      if(ev.response_id) s.lastRid = String(ev.response_id);
+      return;
+    }
+    if(ty === 'output_audio_buffer.stopped' || ty === 'output_audio_buffer.cleared'){
+      // v-call-agent-cut: المسح = مقاطعة قطعت صوت الردّ (لا انتهاؤه) ← سطره يُعلَّم؛ التوقّف الطبيعيّ يحمي سطره من أيّ علامة لاحقة
+      if(ty === 'output_audio_buffer.cleared'){ s.clr++; cutLine(s, ev.response_id ? String(ev.response_id) : ''); }
+      else if(ev.response_id) s.played[String(ev.response_id)] = 1;
+      s.speaking = false; if(s.endPending) armEnd(s, 400); return;
+    }
+    if(ty === 'response.output_audio_transcript.done' || ty === 'response.audio_transcript.done'){ addLine(s, 'agent', ev.transcript, ev.response_id ? String(ev.response_id) : ''); return; }
     if(ty === 'response.output_item.added' || ty === 'response.output_item.done'){
       var it = ev.item;
       if(it && it.type === 'function_call' && it.call_id){
@@ -47869,6 +47961,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     }
     if(ty === 'response.function_call_arguments.done'){ onTool(s, ev.name || s.fnNames[ev.call_id], ev.call_id, ev.arguments); return; }
     if(ty === 'response.done'){
+      if(ev.response && ev.response.status === 'cancelled' && ev.response.id) cutLine(s, String(ev.response.id)); // أُلغي قبل أن يُسمع كلّه
       var out = ev.response && Array.isArray(ev.response.output) ? ev.response.output : [];
       out.forEach(function(x){ if(x && x.type === 'function_call') onTool(s, x.name, x.call_id, x.arguments); });
       if(s.endPending && !s.speaking) armEnd(s, END_GRACE_MS);
@@ -47900,6 +47993,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     pc.addEventListener('connectionstatechange', function(){
       if(gone(s) || pc !== s.pc) return;
       var cs = pc.connectionState;
+      trace(s, 'cs:' + ({ connecting: 'cg', connected: 'ok', disconnected: 'dc', failed: 'fl', closed: 'cl' }[cs] || 'x'));
       if(cs === 'connected'){ if(h){ clearTimeout(h); h = null; } return; }
       if(cs === 'failed' || cs === 'closed'){ finish(s, 'dropped'); return; }
       if(cs === 'disconnected' && !h) h = later(s, function(){ h = null; if(pc.connectionState !== 'connected') finish(s, 'dropped'); }, 2500);
@@ -47918,6 +48012,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     if(trial === s) trial = null;
     overlayClose();
     var dur = s.readyAt ? Math.round((now() - s.readyAt) / 1000) : 0;
+    sendDiag(s, st, dur);
     patch(s.id, { state: s.outcome ? 'completed' : st, endedAt: now(), durationSec: dur, transcript: s.lines.slice(), outcome: s.outcome });
     notes[s.id] = err ? (/^callAgent[A-Z]\w*$/.test(err) ? tt(err) : clip(err, 240)) : '';
     var pushed = s.readyAt ? pushResult(s.id) : false; // مكالمة بدأت فعلًا = رسالة نتيجة واحدة؛ فشل التجهيز ملاحظة على البطاقة فقط
@@ -47976,16 +48071,18 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     if(track) track.enabled = true;
     s.readyAt = now();
     setState(s, 'live');
+    if(s.ov && s.ov.hint) s.ov.hint.textContent = fill(tt('callAgentTrialHint'), { b: clip(s.business, 60) });
     watchConn(s);
     tick(s);
+    later(s, function(){ rtpLoop(s); }, RTP_MS);
     // المالك يبدأ («ألو») كمن يردّ على الهاتف؛ صمت ٣ث ← المساعد يبادر بجملة التعريف من تعليمات الجلسة
-    later(s, function(){ if(!s.heard && !s.speaking) send(s, { type: 'response.create' }); }, SILENT_OPEN_MS);
+    later(s, function(){ if(!s.heard && !s.speaking) create(s, 'open'); }, SILENT_OPEN_MS);
     // قبل السقف بعشرين ثانية: تذكير عنصرًا في المحادثة ثمّ ردّ عارٍ — response.instructions كانت تحلّ محلّ تعليمات الجلسة لذلك
     // الردّ (الهويّة الآليّة والحقائق ولغة الملخّص) في أهمّ لحظة: آخر report_outcome
     if(s.maxSec > 40) later(s, function(){
       send(s, { type: 'conversation.item.create', item: { type: 'message', role: 'system', content: [{ type: 'input_text',
         text: 'Time is almost up. Wrap up now in one or two short sentences: call report_outcome with what you know, say a polite goodbye, then call end_call.' }] } });
-      send(s, { type: 'response.create' });
+      create(s, 'nudge');
     }, (s.maxSec - 20) * 1000);
     later(s, function(){ finish(s, 'completed'); }, s.maxSec * 1000);
   }
@@ -48004,7 +48101,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     notes[id] = '';
     var s = trial = { id: id, business: clip(c.business, 80), ended: false, pc: null, dc: null, stream: null, audio: audio, ov: null,
       timers: [], lines: [], outcome: null, heard: false, speaking: false, endPending: false, endTimer: null, wd: null,
-      readyAt: 0, fnSeen: {}, fnNames: {}, maxSec: Math.max(30, Math.min(600, Math.round(Number(c.maxMin) || 4) * 60)), halt: null, haltRes: null };
+      readyAt: 0, t0: now(), byResp: {}, cutResp: {}, played: {}, lastRid: '', clr: 0, cutN: 0, diag: [], rtp: null, fnSeen: {}, fnNames: {}, maxSec: Math.max(30, Math.min(600, Math.round(Number(c.maxMin) || 4) * 60)), halt: null, haltRes: null };
     s.halt = new Promise(function(res){ s.haltRes = res; });
     patch(id, { transport: 'trial', state: 'mic', callId: '', outcome: null, transcript: [], startedAt: now(), endedAt: 0, durationSec: 0, resultPushed: false });
     mark(id);

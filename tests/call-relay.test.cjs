@@ -243,7 +243,9 @@ test('٥. ترجمة الأحداث: أسماء GA والتجريبيّة، ال
   for (const t of ['response.output_audio.delta', 'response.audio.delta']) assert.deepEqual(lib.agentEvent(j({ type: t, item_id: 'i1', delta: 'QQ==' })), { kind: 'audio', delta: 'QQ==', itemId: 'i1', responseId: '' });
   assert.equal(lib.agentEvent(j({ type: 'response.output_audio.delta', response_id: 'resp_9', item_id: 'i1', delta: 'QQ==' })).responseId, 'resp_9', 'رقم الردّ يُحمل لإسقاط بقايا الردّ المقطوع');
   assert.deepEqual(lib.agentEvent(j({ type: 'response.created', response: { id: 'resp_9' } })), { kind: 'response_created', id: 'resp_9' });
-  for (const t of ['response.output_audio_transcript.done', 'response.audio_transcript.done']) assert.deepEqual(lib.agentEvent(j({ type: t, transcript: 'مرحبا' })), { kind: 'agent_text', text: 'مرحبا' });
+  for (const t of ['response.output_audio_transcript.done', 'response.audio_transcript.done']) assert.deepEqual(lib.agentEvent(j({ type: t, transcript: 'مرحبا' })), { kind: 'agent_text', text: 'مرحبا', itemId: '', responseId: '' });
+  assert.deepEqual(lib.agentEvent(j({ type: 'response.output_audio_transcript.done', item_id: 'item_1', response_id: 'resp_1', transcript: 'مرحبا' })),
+    { kind: 'agent_text', text: 'مرحبا', itemId: 'item_1', responseId: 'resp_1' }, 'v-call-agent-cut: العنصر والردّ يُحملان لتعليم السطر المقطوع');
   assert.deepEqual(lib.agentEvent(j({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'نعم' })), { kind: 'callee_text', text: 'نعم' });
   assert.equal(lib.agentEvent(j({ type: 'input_audio_buffer.speech_started' })).kind, 'speech_started');
   assert.deepEqual(lib.agentEvent(j({ type: 'response.function_call_arguments.done', name: 'end_call', call_id: 'c1', arguments: '{"reason":"done"}' })), { kind: 'tool', name: 'end_call', callId: 'c1', args: { reason: 'done' } });
@@ -1002,5 +1004,44 @@ test('٢٠. الطلب غير الموقّع أو القديم أو الكبير
     // الموقّع الصحيح ما زال يمرّ
     const g = await signedReq(ctx, lib, 'GET', '/call/cp-early-1', null);
     assert.equal(g.status, 200);
+  } finally { await ctx.stop(); }
+});
+
+test('٢١. v-call-agent-cut: سطر الوكيل الذي قطعت المقاطعة صوته يُعلَّم « …» على البطاقة (قبل وصول نصّه أو بعده)، والمسموع كاملًا لا يُعلَّم', async () => {
+  const lib = await load('lib.mjs');
+  const ctx = await makeRelay();
+  const ID = 'cp-cut-1';
+  try {
+    const token = await createCall(ctx, lib, ID);
+    const { agent } = await openStream(ctx, ID, token);
+    ctx.clock.advance(2500);
+    const d = 'f'.repeat(1600);
+    const tx = () => ctx.relay.store.get(ID).transcript.map((l) => l.text);
+    const OPEN = 'السلام عليكم، معك مساعد آلي من تطبيق عمران AI، أتّصل نيابةً عن محمد بخصوص حجز موعد. تسمح لي أكمل؟';
+    // ١) النصّ وصل كاملًا ثمّ قاطع الطرف الآخر («وعليكم السلام»)
+    agent.recv({ type: 'response.created', response: { id: 'resp_1' } });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_1', item_id: 'item_1', delta: d });
+    agent.recv({ type: 'response.output_audio_transcript.done', response_id: 'resp_1', item_id: 'item_1', transcript: OPEN });
+    assert.deepEqual(tx(), [OPEN]);
+    agent.recv({ type: 'input_audio_buffer.speech_started' });
+    assert.deepEqual(tx(), [OPEN + ' …']);
+    agent.recv({ type: 'response.done', response: { id: 'resp_1', status: 'cancelled' } });
+    // ٢) ردّ سُمع كاملًا ثمّ تكلّم الطرف الآخر بعده ← لا علامة
+    agent.recv({ type: 'response.created', response: { id: 'resp_2' } });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_2', item_id: 'item_2', delta: d });
+    agent.recv({ type: 'response.output_audio.done', response_id: 'resp_2', item_id: 'item_2' });
+    agent.recv({ type: 'response.output_audio_transcript.done', response_id: 'resp_2', item_id: 'item_2', transcript: 'معك مساعد آلي.' });
+    agent.recv({ type: 'response.done', response: { id: 'resp_2', status: 'completed' } });
+    ctx.clock.advance(1000);
+    agent.recv({ type: 'input_audio_buffer.speech_started' });
+    assert.equal(tx()[1], 'معك مساعد آلي.', 'سُمع كلّه');
+    // ٣) القطع قبل وصول النصّ ← يُعلَّم عند وصوله؛ ومقاطعة ثانية لا تضاعف العلامة
+    agent.recv({ type: 'response.created', response: { id: 'resp_3' } });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_3', item_id: 'item_3', delta: d });
+    agent.recv({ type: 'input_audio_buffer.speech_started' });
+    agent.recv({ type: 'response.output_audio_transcript.done', response_id: 'resp_3', item_id: 'item_3', transcript: 'أبغى موعد الخميس' });
+    agent.recv({ type: 'input_audio_buffer.speech_started' });
+    assert.deepEqual(tx(), [OPEN + ' …', 'معك مساعد آلي.', 'أبغى موعد الخميس …']);
+    assert.deepEqual(Object.keys(ctx.relay.store.get(ID).transcript[0]).sort(), ['text', 'who'], 'السطر المحفوظ بلا حقول داخليّة');
   } finally { await ctx.stop(); }
 });
