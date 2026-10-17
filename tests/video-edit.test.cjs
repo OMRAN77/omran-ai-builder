@@ -47,6 +47,56 @@ assert.equal(V.wrapLines('a b c d e f g h i j', 1, (s) => s.length * 10, 3).leng
 }
 assert.equal(V.isRtl('مرحبا'), true); assert.equal(V.isRtl('hello'), false);
 
+// ── v2: المكان الحرّ بالسحب (px/py مركز نسبيّ) — داخل الإطار دائمًا ──
+{
+  const it = { text: 'مرحبا بكم', size: 'm', color: '#ffffff', box: true };
+  const c = V.layoutItem(Object.assign({}, it, { px: 0.5, py: 0.5 }), 720, 1280, meas);
+  assert.ok(Math.abs(c.x + c.w / 2 - 360) <= 2 && Math.abs(c.y + c.h / 2 - 640) <= 2, 'المركز حيث سُحب');
+  const tl = V.layoutItem(Object.assign({}, it, { px: 0, py: 0 }), 720, 1280, meas);
+  assert.equal(tl.x, 0); assert.equal(tl.y, 0);
+  const br = V.layoutItem(Object.assign({}, it, { px: 1, py: 1 }), 720, 1280, meas);
+  assert.equal(br.x + br.w, 720); assert.equal(br.y + br.h, 1280);
+  const q = V.layoutItem(Object.assign({}, it, { px: 0.3, py: 0.2 }), 720, 1280, meas);
+  assert.equal(q.x % 2, 0); assert.equal(q.y % 2, 0);
+  // بلا px/py: يرجع لـpos (الترجمة التلقائيّة تحت)
+  assert.ok(V.layoutItem(Object.assign({}, it, { pos: 'bottom' }), 720, 1280, meas).y > 640);
+}
+
+// ── v2: خطوط التطبيق نفسها، والزخرفيّة بسطر أطول ──
+{
+  const ids = V.FONTS.map((f) => f.id);
+  ['default', 'tajawal', 'cairo', 'almarai', 'readex', 'notokufi', 'vazir', 'messiri', 'kufi', 'naskh', 'naskh2', 'thuluth', 'farsi', 'diwani', 'ruqaa', 'quran']
+    .forEach((id) => assert.ok(ids.includes(id), 'خط ' + id));
+  assert.equal(V.fontById('thuluth').url, '/assets/fonts/tholoth.woff2');
+  assert.equal(V.fontById('diwani').url, '/assets/fonts/ukij-diwani-tom.woff2');
+  assert.equal(V.fontById('nope').id, 'default');
+  assert.ok(V.fontCss(40, 'farsi').startsWith('400 40px "Gulzar"'), 'الخطوط ذات الوزن الواحد ٤٠٠');
+  assert.ok(V.fontCss(40, 'cairo').startsWith('700 40px "Cairo"'));
+  // كلّ خطّ في app-19-fonts موجود هنا
+  const app = fs.readFileSync(path.join(root, 'js/app-19-fonts.js'), 'utf8');
+  const fams = [...app.matchAll(/\{id:'[^']+'[^\n]*?family:"'([^']+)'"/g)].map((m) => m[1]);
+  assert.ok(fams.length >= 16);
+  fams.forEach((fam) => assert.ok(V.FONTS.some((f) => f.fam === fam), 'الخط ' + fam));
+  const it = { text: 'سطر أول\nسطر ثاني', size: 'm', color: '#ffffff', box: true };
+  assert.ok(V.layoutItem(Object.assign({ font: 'farsi' }, it), 720, 1280, meas).h > V.layoutItem(it, 720, 1280, meas).h, 'الفارسي أطول سطرًا');
+  let gotFont = '';
+  V.layoutItem(Object.assign({ font: 'ruqaa' }, it), 720, 1280, (s, px, f) => { gotFont = f; return s.length * px * 0.5; });
+  assert.equal(gotFont, 'ruqaa', 'القياس بالخط المختار');
+}
+
+// ── v2: مناطق الكتابة القديمة → بكسلات زوجيّة داخل الإطار (المسح بهامش ٢) ──
+{
+  const e = V.regionPx({ x: 0, y: 0, w: 1, h: 0.1, kind: 'erase' }, 720, 1280);
+  assert.ok(e.x >= 2 && e.y >= 2 && e.x + e.w <= 718 && e.y + e.h <= 1278, 'delogo داخل الإطار');
+  const c = V.regionPx({ x: 0, y: 0.9, w: 1, h: 0.2, kind: 'color' }, 720, 1280);
+  assert.equal(c.x, 0); assert.equal(c.w, 720); assert.ok(c.y + c.h <= 1280);
+  const o = V.regionPx({ x: 0.3333, y: 0.4141, w: 0.2222, h: 0.0533, kind: 'blur' }, 720, 1280);
+  [o.x, o.y, o.w, o.h].forEach((n) => assert.equal(n % 2, 0));
+  const tiny = V.regionPx({ x: 0.999, y: 0.999, w: 0, h: 0, kind: 'erase' }, 720, 1280);
+  assert.ok(tiny.w >= 4 && tiny.h >= 4 && tiny.x + tiny.w <= 718 && tiny.y + tiny.h <= 1278);
+  assert.equal(V.hexColor('#a1b2c3'), '0xA1B2C3'); assert.equal(V.hexColor('red;x'), 'black');
+}
+
 // ── مقاطع Whisper → أسطر ترجمة ──
 {
   const rows = V.segToTexts([
@@ -67,10 +117,10 @@ const has = (a, ...seq) => a.join('\u0001').includes(seq.join('\u0001'));
   const a = V.buildArgs({ inName: 'in.mp4', dur: 12, W: 720, H: 1280, fps: 60, overlays: [{ name: 't0.png', x: 20, y: 1000, a: 0, b: 2.5 }, { name: 't1.png', x: 40, y: 80, a: 1, b: 12 }],
     audio: null, hasAudio: true, copyVideo: false, out: 'out.mp4' });
   const fc = a[a.indexOf('-filter_complex') + 1];
-  assert.ok(fc.startsWith('[0:v]scale=720:1280,setsar=1,fps=30[b0]'), '٦٠ إطارًا → ٣٠ للسرعة');
-  assert.ok(fc.includes("[b0][1:v]overlay=20:1000:enable='between(t,0,2.5)'[b1]"));
-  assert.ok(fc.includes("[b1][2:v]overlay=40:80:enable='between(t,1,12)'[b2]"));
-  assert.ok(fc.endsWith('[b2]format=yuv420p[vout]'));
+  assert.ok(fc.startsWith('[0:v]scale=720:1280,setsar=1,fps=30[v0]'), '٦٠ إطارًا → ٣٠ للسرعة');
+  assert.ok(fc.includes("[v0][1:v]overlay=20:1000:enable='between(t,0,2.5)'[v1]"));
+  assert.ok(fc.includes("[v1][2:v]overlay=40:80:enable='between(t,1,12)'[v2]"));
+  assert.ok(fc.endsWith('[v2]format=yuv420p[vout]'));
   assert.ok(has(a, '-map', '[vout]') && has(a, '-map', '0:a?') && has(a, '-c:v', 'libx264') && has(a, '-c:a', 'aac'));
   assert.ok(has(a, '-t', '12') && a[a.length - 1] === 'out.mp4' && has(a, '-movflags', '+faststart'));
 }
@@ -95,6 +145,28 @@ const has = (a, ...seq) => a.join('\u0001').includes(seq.join('\u0001'));
   assert.ok(mute.includes('-an') && !mute.includes('-filter_complex') && !mute.includes('0:a?'));
 }
 
+// ── v2: الإخفاء قبل الكتابة (تُكتب الجديدة مكان القديمة)، ولا نسخ للفيديو مع مناطق ──
+{
+  const regions = [
+    { x: 100, y: 1000, w: 520, h: 80, a: 0, b: 8, kind: 'erase' },
+    { x: 40, y: 200, w: 300, h: 60, a: 1, b: 3.5, kind: 'blur' },
+    { x: 0, y: 0, w: 720, h: 100, a: 0, b: 8, kind: 'color', color: '#112233' },
+  ];
+  const a = V.buildArgs({ inName: 'in.mp4', dur: 8, W: 720, H: 1280, fps: 30, regions, overlays: [{ name: 't0.png', x: 120, y: 1004, a: 0, b: 8 }],
+    audio: null, hasAudio: true, copyVideo: true, vcodec: 'h264' });
+  const fc = a[a.indexOf('-filter_complex') + 1];
+  assert.ok(fc.startsWith('[0:v]scale=720:1280,setsar=1[v0];'));
+  assert.ok(fc.includes("[v0]delogo=x=100:y=1000:w=520:h=80:enable='between(t,0,8)'[v1]"));
+  assert.ok(fc.includes('[v1]split[v2m][v2c];[v2c]crop=300:60:40:200,gblur=sigma=20[v2b];'));
+  assert.ok(fc.includes("[v2m][v2b]overlay=40:200:enable='between(t,1,3.5)'[v2]"));
+  assert.ok(fc.includes("[v2]drawbox=x=0:y=0:w=720:h=100:color=0x112233:t=fill:enable='between(t,0,8)'[v3]"));
+  assert.ok(fc.includes("[v3][1:v]overlay=120:1004:enable='between(t,0,8)'[v4]"), 'الكتابة بعد الإخفاء');
+  assert.ok(fc.endsWith('[v4]format=yuv420p[vout]'));
+  assert.ok(has(a, '-c:v', 'libx264') && !a.includes('copy'), 'المناطق تحتاج ترميزًا');
+  const only = V.buildArgs({ inName: 'in.mp4', dur: 8, W: 720, H: 1280, regions: [regions[0]], overlays: [], audio: null, hasAudio: true, copyVideo: true, vcodec: 'h264' });
+  assert.ok(has(only, '-map', '[vout]'), 'مسح فقط بلا كتابة يكفي للتصدير');
+}
+
 // ── الصفحة: السكربت محمَّل (الرقم لا يُثبَّت حرفيًّا) ──
 {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
@@ -102,6 +174,8 @@ const has = (a, ...seq) => a.join('\u0001').includes(seq.join('\u0001'));
   const src = fs.readFileSync(path.join(root, 'js/video-edit.js'), 'utf8');
   assert.ok(src.includes("getElementById('plusToolsPopup')") && src.includes("getElementById('vmkTabs')"), 'نقطتا الدخول: المحادثة وصانع الفيديو');
   assert.ok(!/drawtext/.test(src.replace(/\/\*[\s\S]*?\*\//g, '')), 'الكتابة canvas لا drawtext (العربيّة)');
+  assert.ok(src.includes('touch-action:none') && !/<video[^>]*\scontrols[^>]*><\/video><canvas>/.test(src), 'المعاينة تستقبل السحب (أزرار تشغيل خاصّة)');
+  assert.ok(!/border(-top)?:1px solid rgba\(255,255,255/.test(src), 'بلا خطوط حدود في المحرّر');
 }
 
 // ── /api/stt: segments:true يعيد المقاطع بتوقيتها، مرشّحة، بلا تصحيح LLM ──
