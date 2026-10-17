@@ -116,6 +116,7 @@
     return r;
   }
   window.omranRenderCards = function(cards){
+    if(cards && cards.kind === 'call' && typeof window.omranCallCard === 'function') return window.omranCallCard(cards.call, cards); // v-call-agent: بطاقة المكالمة (app-42)
     css();
     var wrap = document.createElement('div');
     wrap.className = 'omCardsWrap';
