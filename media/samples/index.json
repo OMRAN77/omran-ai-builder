@@ -1,8 +1,11 @@
 {
- "canvas-1": true,
+ "canvas-1": {
+  "title": "٣ نصائح للتوفير: سجّل مصاريفك، ادّخر أول الشهر، ولا تشتري اللي ما تحتاجه"
+ },
  "canvas-2": true,
  "runway-1": {
   "title": "صقر يطير فوق صحراء الإمارات وقت الغروب"
  },
- "runway-tut": true
+ "runway-tut": true,
+ "canvas-tut": true
 }
