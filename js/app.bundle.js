@@ -7389,7 +7389,7 @@ function renderHistory(){
      كتبها المستخدم (p.updatedAt، يُحفظ ويتزامن)، وإلّا وقت الإنشاء من المعرّف. ثابت بين الفتحات والمزامنات (v-stable-order)
      لأنّه محفوظ في المشروع لا مستمدّ من ترتيب المصفوفة؛ يتغيّر فقط حين يكتب المستخدم. */
   const __histTs = (p) => { const u = Number(p && p.updatedAt) || 0; if(u) return u; const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
-  const __histSorted = [...state.projects].sort((a, b) => __histTs(b) - __histTs(a));
+  const __histSorted = [...state.projects].filter(p => p && ((p.messages && p.messages.length) || p.code)).sort((a, b) => __histTs(b) - __histTs(a)); /* v-hide-empty-proj (المالك ١٧ أكتوبر «احذف مشروع جديد»): المشروع الفارغ لا يظهر في القائمة حتّى يُكتب فيه */
   // v-perf-history-guard (المالك ٢٩ سبتمبر: «الشاشة تتأخر وتعلّق»): renderHistory تبني <iframe>
   // كاملة لكلّ محادثة فيها كود، وتُستدعى بعد كلّ رسالة وعند كلّ نبضة مزامنة حيّة (٢٠ث) حتّى لو لم
   // يتغيّر شيء فعليًّا. بصمة خفيفة بنفس فكرة v-render-guard في renderMessages أعلاه: إن طابقت آخر
