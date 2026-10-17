@@ -1,21 +1,24 @@
 /* js/frame-touch.js — v-frame-gold: لمسة الضغط (مع css/إطارات.css) (أمر المالك بعد معاينتها: «ادمج»): الضغط على فراغ القائمة أو المعاينة ينثر حروفًا وأرقامًا
    ذهبيّة (A-Z a-z 0-9) تتبدّل وتخفت، وموجة تتّسع من مكان الضغط، والسحب يرسم أثرًا. للكمبيوتر وللجوال في دُرجَيه (v-frame-gold-mobile: «غيّر في الهواتف بعد») بلا الخلفيّات والثيمات،
-   ولا تعمل على الأزرار والخانات، ولا في «قلّل الحركة» ولا في الرسم البرمجيّ (html.omCpu). الرسم لا يدور إلّا والحروف ظاهرة. */
+   ولا تعمل على الأزرار والخانات، ولا في «قلّل الحركة». الرسم لا يدور إلّا والحروف ظاهرة.
+   v-touch-mobile (المالك بلقطة الحروف: «الي في الجوال مايشغل الي انته سويته هذي»): على الجوال الشاشة الظاهرة هي المحادثة (#chatcol) والدُّرجان
+   مخفيّان، وتطبيق هواوي يرسم بالمعالج المركزيّ (html.omCpu) فكانت مطفأة — الآن تعمل على فراغ المحادثة في الجوال (لا على الفقاعات وخانة الكتابة)،
+   وفي omCpu أيضًا لأنّها تدوم ثانيتين بعد الضغط فقط لا حركة دائمة، وبكثافة ١ هناك ليخفّ الرسم. */
 (function(){
-  var قائمة = document.getElementById('sidebar'), عمل = document.getElementById('workarea');
-  if(!قائمة && !عمل) return;
+  var قائمة = document.getElementById('sidebar'), عمل = document.getElementById('workarea'), محادثة = document.getElementById('chatcol');
+  if(!قائمة && !عمل && !محادثة) return;
   var html = document.documentElement;
   var حروف = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', CW = 11, CH = 16;
   function حرف(){ return حروف.charAt((Math.random() * حروف.length) | 0); }
   function مسموح(){
     try{
       var c = html.classList;
-      if(c.contains('bgimg') || c.contains('skin') || c.contains('skin-wood') || c.contains('omCpu')) return false;
+      if(c.contains('bgimg') || c.contains('skin') || c.contains('skin-wood')) return false;
       if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
       return true;
     }catch(e){ /* guard-ok: فحص بيئة فقط */ return false; }
   }
-  function لمسة(host){
+  function لمسة(host, جوال){
     if(!host || !host.addEventListener || !document.createElement) return;
     var cv = null, ctx = null, W = 0, H = 0, cols = 0, rows = 0, I = null, C = null, waves = [], down = false, on = false, dpr = 1;
     function جهّز(){
@@ -25,13 +28,18 @@
         cv.className = 'omFx';
         cv.setAttribute('aria-hidden', 'true');
         cv.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:-1;border-radius:22px;';
+        if(جوال){ /* المحادثة بلا سياق تراكب: بدونه تنزل اللوحة (z-index:-1) تحت خلفيّتها فلا تُرى */
+          var cs = window.getComputedStyle ? window.getComputedStyle(host) : null;
+          if(cs && cs.position === 'static') host.style.position = 'relative';
+          host.style.isolation = 'isolate';
+        }
         host.insertBefore(cv, host.firstChild);
         ctx = cv.getContext('2d');
       }catch(e){ /* guard-ok: بلا لوحة رسم فلا أثر */ ctx = null; }
       return !!ctx;
     }
     function قِس(){
-      dpr = window.devicePixelRatio || 1;
+      dpr = html.classList.contains('omCpu') ? 1 : (window.devicePixelRatio || 1);
       W = host.clientWidth; H = host.clientHeight;
       cv.width = Math.max(1, Math.round(W * dpr)); cv.height = Math.max(1, Math.round(H * dpr));
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
@@ -90,8 +98,10 @@
     }
     host.addEventListener('pointerdown', function(e){
       if(!مسموح()) return;
+      if(جوال && !html.classList.contains('mobile-ui')) return;
       var t = e.target;
       if(t && t.closest && t.closest('button,a,input,textarea,select,label,[role=button],[contenteditable],iframe')) return;
+      if(جوال && t && t.closest && t.closest('.msg,#inputbar,#composerBox')) return;
       if(!جهّز()) return;
       if(!on || W !== host.clientWidth || H !== host.clientHeight) قِس();
       down = true;
@@ -106,5 +116,5 @@
   function إفلات(){ for(var i = 0; i < مفلتات.length; i++) مفلتات[i](); }
   window.addEventListener('pointerup', إفلات);
   window.addEventListener('pointercancel', إفلات);
-  لمسة(قائمة); لمسة(عمل);
+  لمسة(قائمة); لمسة(عمل); لمسة(محادثة, true);
 })();
