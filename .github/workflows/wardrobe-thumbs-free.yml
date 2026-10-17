@@ -9,6 +9,10 @@ on:
         description: 'fashion | studio | all'
         required: false
         default: 'all'
+      force:
+        description: 'إعادة توليد الموجود أيضًا (قواعد الصور: بدل المصغّرات المكبّرة)'
+        required: false
+        default: 'no'
 
 permissions:
   contents: write
@@ -25,6 +29,7 @@ jobs:
       - name: Generate missing previews (free engine)
         env:
           THUMBS_BUDGET_MIN: 300
+          THUMBS_FORCE: ${{ inputs.force == 'yes' && '1' || '0' }}
         run: node scripts/wardrobe-thumbs-free.mjs "${{ github.event.inputs.mode }}"
       - name: Resize to webp cards
         run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs

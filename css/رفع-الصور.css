@@ -1,16 +1,13 @@
 /* v-upload-art (المالك ١٦ أكتوبر بستّ صور: «حطّهم كلّهم في الأزياء والديكور ستايل رتّبهم مع ١٤ لغة» ثمّ «الأُوَل خلّها بالعربي وهذي بالـ١٤ لغة»):
-   مربّع رفع الصورة في الديكور والأزياء والستايل صورة المالك (assets/upload-art، 1920×960 = 2:1). العربيّة: الصورة المكتوبة نفسها
-   (النصّ مطبوع فيها فيُخفى نصّ HTML مع بقاء النقر)؛ بقيّة اللغات: الصورة النظيفة والعنوان والزرّ فوق لوحة الصورة نصًّا مترجمًا.
+   مربّع رفع الصورة في الديكور والأزياء والستايل صورة المالك النظيفة (assets/upload-art، أصله ~1280 عرضًا قصّ 2:1 بلا تكبير، WebP q90).
+   قواعد الصور (CLAUDE.md ١٧ أكتوبر): لا نصّ داخل الصورة ولا تكبير — النصّ بالـ١٤ لغة (والعربيّة معها) فوقها بـHTML حادًّا بأيّ مقاس.
    مواضع النصّ (--t العنوان، --b الزرّ) نسبٌ من الإطار 2:1 فتثبت على كلّ عرض. كلّ الأوضاع والثيمات (صورة لا لون). */
 .omUpArt{position:relative !important;display:block !important;aspect-ratio:2/1;height:auto !important;min-height:0 !important;padding:0 !important;margin-top:12px;
   border:1px solid rgba(212,175,55,.6) !important;border-radius:14px !important;overflow:hidden;cursor:pointer;
   background:#000 center/cover no-repeat !important;text-align:center;}
-.omUpDecor{background-image:url(/assets/upload-art/decor.webp?v=2) !important;}
-.omUpFashion{background-image:url(/assets/upload-art/fashion.webp?v=2) !important;}
-.omUpStyle{background-image:url(/assets/upload-art/style.webp?v=2) !important;}
-html[lang="ar"] .omUpDecor{background-image:url(/assets/upload-art/decor-ar.webp?v=2) !important;}
-html[lang="ar"] .omUpFashion{background-image:url(/assets/upload-art/fashion-ar.webp?v=2) !important;}
-html[lang="ar"] .omUpStyle{background-image:url(/assets/upload-art/style-ar.webp?v=2) !important;}
+.omUpDecor{background-image:url(/assets/upload-art/decor.webp?v=3) !important;}
+.omUpFashion{background-image:url(/assets/upload-art/fashion.webp?v=3) !important;}
+.omUpStyle{background-image:url(/assets/upload-art/style.webp?v=3) !important;}
 .omUpArt .omUpIco,.omUpArt > svg{display:none !important;}
 .omUpArt .stSlotEmpty,.omUpArt .dzT{position:static !important;padding:0 !important;margin:0 !important;}
 .omUpArt .omUpT,.omUpArt .omUpH,.omUpArt .omUpB,.omUpArt .omUpL,.omUpArt .omUpN{position:absolute !important;left:6% !important;right:6% !important;margin:0 !important;text-align:center;line-height:1.15;transform:translateY(-50%);}
@@ -37,7 +34,6 @@ html[lang="ar"] .omUpStyle{background-image:url(/assets/upload-art/style-ar.webp
 .omUpStyle .omUpB{left:38% !important;right:38% !important;font-weight:900 !important;background:linear-gradient(180deg,#fff6cf 0%,#f3d77f 42%,#c9a12e 68%,#8a6612 100%) !important;-webkit-background-clip:text !important;background-clip:text !important;color:transparent !important;text-shadow:none !important;filter:drop-shadow(0 2px 1px rgba(0,0,0,.9));}
 .omUpStyle .omUpL{font-size:clamp(11px,1.5vw,15px) !important;font-size:max(11px,1.6cqw) !important;color:#2a1d00 !important;text-shadow:0 1px 0 rgba(255,235,170,.6);}
 .omUpStyle :is(.omUpT,.omUpH){opacity:0;}
-html[lang="ar"] .omUpArt :is(.omUpT,.omUpH,.omUpB,.omUpL){opacity:0;}
 .omUpArt:hover,.omUpArt.over{border-color:#c9c9c9 !important;}
 .stSlot.omUpArt.has{background-image:none !important;}
 .stSlot.omUpArt.has :is(.omUpB,.omUpL){display:none !important;}

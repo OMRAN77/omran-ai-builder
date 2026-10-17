@@ -1094,6 +1094,7 @@ Object.assign(I18N["tr"], {
     designDropTitle: "Odanızın fotoğrafını yükleyin",
     designDropHint: "Fotoğrafın net ve kaliteli olduğundan emin olun",
     studioPlateLabel: "Stil",
+    uploadPlateBtn: "Dosya seç",
     fashionDropHint: "Baştan ayağa · net aydınlatma",
     agentSectionTitle: "🤖 Ajan",
     agentSectionDesc: "Ajan modu: kendi başına planlar ve uygular — teslimden önce kodu kurar, düzenler ve test eder, canlı kaynakları kontrol eder ve sayfa kapansa bile çalışmaya devam eder. Açın, sonra isteğinizi sohbete yazın.",

@@ -10,6 +10,10 @@ on:
         description: 'styles | places | all | opts | opts:furniture,flooring,fabric,wall,curtains | sr:<مجموعة>[:ج/ن] (scripts/sr/sets.json)'
         required: false
         default: 'all'
+      force:
+        description: 'إعادة توليد الموجود أيضًا (قواعد الصور: بدل المصغّرات المكبّرة)'
+        required: false
+        default: 'no'
 
 permissions:
   contents: write
@@ -39,6 +43,7 @@ jobs:
         timeout-minutes: 40
         env:
           MODE: ${{ inputs.mode }}      # عبر البيئة لا داخل السطر: يمنع حقن الأوامر
+          THUMBS_FORCE: ${{ inputs.force == 'yes' && '1' || '0' }}
         run: node scripts/design-thumbs-free.mjs "$MODE"
 
       - name: Resize to webp cards

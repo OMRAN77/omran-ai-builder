@@ -6,6 +6,8 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 
 const MODE = process.argv[2] || 'all';
+// قواعد الصور (١٧ أكتوبر): THUMBS_FORCE=1 يعيد توليد الموجود أيضًا — لاستبدال المصغّرات المكبّرة بالدقّة الأصليّة.
+const FORCE = process.env.THUMBS_FORCE === '1';
 
 // أوصاف الأزياء من الخادم نفسه — مصدر واحد للحقيقة.
 const fsrc = readFileSync('api/_lib/fashion-create.js', 'utf8');
@@ -54,7 +56,7 @@ const JOBS = [];
 if (MODE === 'fashion' || MODE === 'all') {
   for (const [g, map] of [['women', WOMEN], ['men', MEN], ['kids', KIDS]]) {
     Object.entries(map).forEach(([v, desc], i) => {
-      if (existsSync('assets/fashion/looks/' + g + '/' + v + '.webp')) return; // الموجود لا يُعاد
+      if (!FORCE && existsSync('assets/fashion/looks/' + g + '/' + v + '.webp')) return; // الموجود لا يُعاد إلّا بـTHUMBS_FORCE
       JOBS.push({ kind: g, name: v, seed: 1000 + (g === 'men' ? 200 : g === 'kids' ? 400 : 0) + i,
         prompt: 'Fashion catalog photo of ' + PERSON[g] + desc + '.' + LOOK });
     });
@@ -66,7 +68,7 @@ if (MODE === 'studio' || MODE === 'all') {
     if (!Array.isArray(list) || !FEAT_SHOT[feat]) return;
     list.forEach((o, i) => {
       const file = feat + '-' + o.value;
-      if (existsSync('assets/studio/options/' + file + '.webp')) return;
+      if (!FORCE && existsSync('assets/studio/options/' + file + '.webp')) return;
       JOBS.push({ kind: 'studioopt', name: file, seed: 3000 + i * 7 + feat.length,
         prompt: FEAT_SHOT[feat](o.en || o.value) + FEAT_LOOK });
     });

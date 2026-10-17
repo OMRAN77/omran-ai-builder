@@ -6,6 +6,8 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 
 const MODE = process.argv[2] || 'all';
+// قواعد الصور (١٧ أكتوبر): THUMBS_FORCE=1 يعيد توليد الموجود أيضًا (استبدال المصغّرات المكبّرة بالدقّة الأصليّة).
+const FORCE = process.env.THUMBS_FORCE === '1';
 
 // نقرأ خرائط الأوصاف من الخادم نفسه — مصدر واحد للحقيقة.
 const src = readFileSync('api/_lib/design-create.js', 'utf8');
@@ -99,7 +101,7 @@ if (MODE === 'opts' || MODE.startsWith('opts:')) {
     const map = grab(o.map);
     Object.entries(map).forEach(([v, desc]) => {
       const name = OPT_FILE[sec] + '-' + v;
-      if (existsSync('assets/design/decor-opts/' + name + '.webp')) return;
+      if (!FORCE && existsSync('assets/design/decor-opts/' + name + '.webp')) return;
       if (sec === 'curtains' && v === 'remove') desc = 'no curtains at all, a bare uncovered window';
       if (THUMB[sec] && THUMB[sec][v]) desc = sec === 'wall' ? THUMB[sec][v] + ' wall paint' : THUMB[sec][v];
       const scene = (sec === 'flooring' && FLOOR_TOPDOWN[v])
@@ -120,7 +122,8 @@ let failed = 0;
 for (let i = 0; i < JOBS.length; i++) {
   const j = JOBS[i];
   const url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(j.prompt) +
-    (j.wide ? '?width=1280&height=720' : '?width=768&height=1024') + '&model=flux&nologo=true&seed=' + j.seed;
+    // قواعد الصور: الأفقيّ يُطلب 1376×776 فيُقصّ 1280×720 من أعلى اليسار (علامة المولّد في الركن الأيمن السفليّ تخرج) بلا أيّ تكبير.
+    (j.wide ? '?width=1376&height=776' : '?width=768&height=1024') + '&model=flux&nologo=true&seed=' + j.seed;
   let ok = false;
   for (let a = 1; a <= (j.wide ? 6 : 3) && !ok; a++) {
     try {
@@ -134,10 +137,10 @@ for (let i = 0; i < JOBS.length; i++) {
           // v-decor-18: 960×540 WebP مباشرة (مقاس صور الإضاءة) — لا تمرّ بتصغير البطاقات العموديّة إلى ٣٦٠.
           const sharp = (await import('sharp')).default;
           mkdirSync('thumbs/dopts', { recursive: true });
-          // علامة المولّد المجّانيّ في الركن الأيمن السفليّ: نقصّ ١٦:٩ من الأعلى يسارًا يتركها خارجًا (٩٣٪ من الصورة).
+          // علامة المولّد المجّانيّ في الركن الأيمن السفليّ: قصّ 1280×720 من أعلى اليسار يتركها خارجًا — بلا تصغير ولا تكبير، WebP q90 (قواعد الصور).
           const meta = await sharp(buf).metadata();
-          const cw = Math.round(meta.width * 0.93), ch = Math.round(cw * 9 / 16);
-          await sharp(buf).extract({ left: 0, top: 0, width: cw, height: Math.min(ch, meta.height) }).resize(960, 540, { fit: 'cover' }).webp({ quality: 84 }).toFile('thumbs/dopts/' + j.name + '.webp');
+          const cw = Math.min(1280, meta.width), ch = Math.min(720, meta.height);
+          await sharp(buf).extract({ left: 0, top: 0, width: cw, height: ch }).webp({ quality: 90 }).toFile('thumbs/dopts/' + j.name + '.webp');
         } else writeFileSync('thumbs-raw/' + j.kind + '-' + j.name + '.png', buf);
         console.log(el(), '✓ ' + j.kind + '/' + j.name + ' — ' + Math.round(buf.length / 1024) + 'KB');
         ok = true;

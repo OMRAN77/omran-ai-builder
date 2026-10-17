@@ -1098,6 +1098,7 @@ Object.assign(I18N["fil"], {
     designDropTitle: "Mag-upload ng larawan ng iyong kuwarto",
     designDropHint: "Siguraduhing malinaw at de-kalidad ang larawan",
     studioPlateLabel: "Istilo",
+    uploadPlateBtn: "Pumili ng file",
     fashionDropHint: "Ulo hanggang paa · malinaw na ilaw",
     agentSectionTitle: "🤖 Ahente",
     agentSectionDesc: "Agent mode: nagpaplano at gumagawa mag-isa — binubuo, ineedit at tinetest ang code bago ihatid, tumitingin sa live na source, at patuloy na gumagana kahit sarado ang page. I-on ito, tapos i-type ang request mo sa chat.",
