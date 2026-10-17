@@ -1,8 +1,7 @@
 // tests/fx-gender-pics.test.cjs — طلب المالك (١٧ أكتوبر): «افحص الازياء… اختار نسائي يكون كجول والموسم نسائي واذا ختار رجالي
 // ولا اطفال يثبت نسائي وشريط اختر التعديل مايتحرك» ثمّ «شريط في الصور مايعمل».
 // (١) v-fx-gender-pics: صورتا المناسبة والموسم (البطاقة ومعرضها) تتبعان الفئة — كانت من occasion/ وseason/ (امرأة) لكلّ الفئات.
-// (٢) v-studio-tabs-move: شريط «② اختر التعديل» في ستايل (٢٤ تبويبًا مصوّرًا، يظهر ١٣) يتحرّك بالعجلة والسحب بالفأرة —
-//     أشرطة التمرير مخفيّة في التطبيق كلّه فلم يكن على الكمبيوتر طريق للباقي.
+// (الشريط أصلحته v-studio-strip-desktop في main واختباره studio-strip-desktop.)
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -12,7 +11,6 @@ const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
 const DG = read('js/design-gen.js');
-const A13 = read('js/app-13-stocks-init.js');
 const PARTIAL = read('js/partials-core.js');
 
 function block(src, start, end, keepEnd) {
@@ -73,107 +71,6 @@ test('٢. البطاقة ومعرضها يأخذان صورة الفئة، وا�
   assert.ok(Number((/\/js\/design-gen\.js\?v=(\d+)/.exec(html) || [])[1]) >= 614, 'وسم design-gen رُفع');
 });
 
-/* عنصر وهميّ بقدر ما يحتاجه stHScroll: مستمعون، تمرير محدود بالاتّجاه (RTL من ٠ إلى السالب كما في كروميوم)، وأسر المؤشّر */
-function fakeStrip(dir, sw, cw) {
-  const h = {};
-  let sl = 0;
-  const max = sw - cw;
-  const el = {
-    scrollWidth: sw, clientWidth: cw, style: {}, captured: null,
-    get scrollLeft() { return sl; },
-    set scrollLeft(v) { sl = dir === 'rtl' ? Math.max(-max, Math.min(0, v)) : Math.max(0, Math.min(max, v)); },
-    addEventListener(t, fn) { (h[t] = h[t] || []).push(fn); },
-    setPointerCapture(id) { this.captured = id; },
-    fire(t, ev) { const e = Object.assign({ defaultPrevented: false, stopped: false, preventDefault() { this.defaultPrevented = true; }, stopPropagation() { this.stopped = true; } }, ev); (h[t] || []).forEach((fn) => fn(e)); return e; },
-  };
-  return el;
-}
-function runHScroll(el) {
-  const timers = [];
-  const ctx = { getComputedStyle: () => ({ direction: el.__dir }), setTimeout: (fn) => timers.push(fn), __swallow() {}, window: { getSelection: () => ({ removeAllRanges() { el.cleared = (el.cleared || 0) + 1; } }),
-    addEventListener(t, fn, o) { (el.winListeners = el.winListeners || []).push({ t, fn, o }); } } };
-  vm.runInNewContext(block(A13, '  function stHScroll(el){', '\n  stHScroll(tabsWrap);', false) + '\nthis.f = stHScroll;', ctx);
-  ctx.f(el);
-  return () => { timers.splice(0).forEach((fn) => fn()); };
-}
-
-test('٣. العجلة فوق الشريط تمرّره للتبويبات التالية (RTL وLTR)، وعند الطرف تترك الصفحة تتمرّر', () => {
-  for (const dir of ['rtl', 'ltr']) {
-    const el = fakeStrip(dir, 2238, 1136); el.__dir = dir;
-    runHScroll(el);
-    let e = el.fire('wheel', { deltaY: 100, deltaX: 0, deltaMode: 0 });
-    assert.equal(el.scrollLeft, dir === 'rtl' ? -100 : 100, dir + ': نزول العجلة = التبويبات التالية');
-    assert.ok(e.defaultPrevented, 'لا تتمرّر الصفحة معه');
-    for (let i = 0; i < 30; i++) el.fire('wheel', { deltaY: 100, deltaX: 0, deltaMode: 0 });
-    assert.equal(Math.abs(el.scrollLeft), 1102, 'بلغ آخر تبويب');
-    e = el.fire('wheel', { deltaY: 100, deltaX: 0, deltaMode: 0 });
-    assert.ok(!e.defaultPrevented, 'عند الطرف تعود الصفحة تتمرّر');
-    e = el.fire('wheel', { deltaY: -3, deltaX: 0, deltaMode: 1 });
-    assert.equal(Math.abs(el.scrollLeft), 1102 - 120, 'وضع الأسطر (٤٠ بكسل للسطر)');
-    e = el.fire('wheel', { deltaY: 10, deltaX: 80, deltaMode: 0 });
-    assert.ok(!e.defaultPrevented, 'الأفقيّ من لوحة اللمس للمتصفّح');
-    e = el.fire('wheel', { deltaY: 100, deltaX: 0, deltaMode: 0, ctrlKey: true });
-    assert.ok(!e.defaultPrevented, 'Ctrl+عجلة تكبير لا تمرير');
-  }
-  const fit = fakeStrip('rtl', 600, 600); fit.__dir = 'rtl';
-  runHScroll(fit);
-  assert.ok(!fit.fire('wheel', { deltaY: 100, deltaX: 0, deltaMode: 0 }).defaultPrevented, 'شريط يتّسع كلّه لا يمسّ العجلة');
-});
-
-test('٤. السحب بالفأرة يحرّك الشريط ولا يختار التبويب الذي انتهى عنده، والنقرة العاديّة تختار، واللمس للمتصفّح', () => {
-  const el = fakeStrip('rtl', 2238, 1136); el.__dir = 'rtl';
-  const flush = runHScroll(el);
-  assert.ok(el.fire('dragstart', {}).defaultPrevented, 'صورة التبويب لا تُسحب');
-  el.fire('pointerdown', { pointerType: 'mouse', button: 0, clientX: 200, pointerId: 1 });
-  el.fire('pointermove', { pointerId: 1, clientX: 203, buttons: 1 });
-  assert.equal(el.scrollLeft, 0, 'رجفة صغيرة ليست سحبًا');
-  el.fire('pointermove', { pointerId: 1, clientX: 800, buttons: 1 });
-  assert.equal(el.scrollLeft, -600, 'المحتوى يتبع الفأرة: سحب لليمين يكشف التالي في RTL');
-  assert.equal(el.captured, 1);
-  assert.equal(el.style.userSelect, 'none', 'السحب لا يظلّل أسماء التبويبات');
-  assert.equal(el.cleared, 1, 'والتظليل الذي بدأ يُمسح');
-  el.fire('pointerup', { pointerId: 1 });
-  const c = el.fire('click', {});
-  assert.ok(c.stopped && c.defaultPrevented, 'نهاية السحب ليست نقرة على تبويب');
-  assert.equal(el.style.userSelect, '');
-  flush();
-  // الإفلات خارج الشريط: pointerup النافذة (التقاط، مرّة واحدة) يُنهي الضغطة فلا يخطف الشريط سحبًا لاحقًا يبدأ في مكان آخر
-  el.winListeners = [];
-  el.fire('pointerdown', { pointerType: 'mouse', button: 0, clientX: 300, pointerId: 1 });
-  assert.deepEqual(el.winListeners.map((w) => w.t + ':' + w.o.capture + ':' + w.o.once), ['pointerup:true:true', 'pointercancel:true:true']);
-  el.winListeners[0].fn({});
-  el.fire('pointermove', { pointerId: 1, clientX: 900, buttons: 1 });
-  assert.equal(el.scrollLeft, -600, 'سحب بدأ خارج الشريط ومرّ فوقه لا يحرّكه');
-  flush();
-  // ضغطة أُفلتت خارج الشريط قبل ٦ بكسل: المرور بعدها بلا ضغط لا يحرّكه ولا يبتلع النقرة التالية
-  el.fire('pointerdown', { pointerType: 'mouse', button: 0, clientX: 300, pointerId: 1 });
-  el.fire('pointermove', { pointerId: 1, clientX: 900, buttons: 0 });
-  assert.equal(el.scrollLeft, -600, 'لا يتبع فأرة بلا ضغط');
-  flush();
-  assert.ok(!el.fire('click', {}).stopped, 'ونقرة لوحة المفاتيح بعدها تمرّ');
-  // نقرة بلا سحب تمرّ
-  el.fire('pointerdown', { pointerType: 'mouse', button: 0, clientX: 300, pointerId: 2 });
-  el.fire('pointerup', { pointerId: 2 });
-  assert.ok(!el.fire('click', {}).stopped, 'النقرة العاديّة تختار');
-  flush();
-  // اللمس: لا نتدخّل (تمرير المتصفّح الأصليّ على الجوّال كما كان)
-  el.fire('pointerdown', { pointerType: 'touch', button: 0, clientX: 300, pointerId: 3 });
-  el.fire('pointermove', { pointerId: 3, clientX: 900, buttons: 1 });
-  assert.equal(el.scrollLeft, -600, 'اللمس لا يحرّكه هذا الكود');
-  // الزرّ الأيمن لا يبدأ سحبًا
-  el.fire('pointerdown', { pointerType: 'mouse', button: 2, clientX: 300, pointerId: 4 });
-  el.fire('pointermove', { pointerId: 4, clientX: 900, buttons: 2 });
-  assert.equal(el.scrollLeft, -600);
-});
-
-test('٥. مربوط بشريط «اختر التعديل» وحده بعد حقن الصور، ومبنيّ في الحزمة', () => {
-  const i = A13.indexOf('  photoizeStudioTabs();\n');
-  assert.ok(i > 0 && A13.indexOf('  stHScroll(tabsWrap);', i) > i, 'بعد حقن الصور');
-  assert.match(A13, /el\.addEventListener\('wheel', \(e\) => \{[\s\S]{0,900}\}, \{ passive: false \}\);/, 'passive:false وإلّا لا يمنع تمرير الصفحة');
-  const bundle = read('js/app.bundle.js');
-  assert.ok(bundle.includes('stHScroll(tabsWrap);') && bundle.includes('v-studio-tabs-move'), 'الحزمة مبنيّة من الأجزاء');
-});
-
 /* ── «تأكّد يغيّر أشكال الشخصيات»: فحص شامل لكلّ صورة شخص في الاستوديو (٥٧ موضعًا) — ما بقي نسائيًّا أُصلح هنا ── */
 const LANGS = ['ar', 'en', 'fr', 'es', 'tr', 'ru', 'hi', 'ur', 'bn', 'ne', 'fil', 'id', 'zh', 'ml'];
 function dgCtx(gender, extra) {
@@ -185,7 +82,7 @@ function dgCtx(gender, extra) {
   return ctx;
 }
 
-test('٦. الإضافات: لا صورة امرأة لرجل أو طفل — صورة فئته إن وُجدت (والملفّ موجود)، وإلّا مربّع الإيموجي', () => {
+test('٣. الإضافات: لا صورة امرأة لرجل أو طفل — صورة فئته إن وُجدت (والملفّ موجود)، وإلّا مربّع الإيموجي', () => {
   const ext = DG.match(/var EXT=\[[^\n]*\];/)[0];
   const keys = [...ext.matchAll(/\['(\w+)','/g)].map((m) => m[1]);
   assert.deepEqual(keys, ['Glasses', 'Watch', 'Handbag', 'Shoes', 'Scarf', 'Makeup']);
@@ -213,7 +110,7 @@ test('٦. الإضافات: لا صورة امرأة لرجل أو طفل — ص
   assert.equal(m.extLabel(['Glasses', '🕶️', 'fxAccGlasses']), 'T:fxAccGlasses');
 });
 
-test('٧. تغيير الفئة يعيد بناء الإضافات ويحفظ الفئة ويبدّل النصوص، والإقلاع يقرأ المحفوظ (نسائي/رجالي/أطفال فقط)', () => {
+test('٤. تغيير الفئة يعيد بناء الإضافات ويحفظ الفئة ويبدّل النصوص، والإقلاع يقرأ المحفوظ (نسائي/رجالي/أطفال فقط)', () => {
   const grid = block(DG, '  function genderGrid(){', '\n  function colorRow(){', false);
   const click = grid.slice(grid.indexOf('c.onclick='));
   const at = (s) => { const i = click.indexOf(s); assert.ok(i > 0, s); return i; };
@@ -237,7 +134,7 @@ test('٧. تغيير الفئة يعيد بناء الإضافات ويحفظ ا
   assert.ok(fx.includes("T(TX.bag).replace(/^\\S+/, (bagOi && bagOi.textContent) || '👜')"));
 });
 
-test('٨. نصوص الفئة بالـ١٤ لغة بلا اسم مزوّد، و«ارفعي» للنساء وحدهنّ، و«فستان زفاف» لا يظهر تحت عريس', () => {
+test('٥. نصوص الفئة بالـ١٤ لغة بلا اسم مزوّد، و«ارفعي» للنساء وحدهنّ، و«فستان زفاف» لا يظهر تحت عريس', () => {
   const { TXG, swapI18n, pickTx } = dgCtx('men');
   for (const k of ['grooming', 'sparkle', 'bag', 'dropKids', 'descMen', 'descKids']) {
     assert.deepEqual(Object.keys(TXG[k]).sort(), LANGS.slice().sort(), 'لغات ناقصة: ' + k);
@@ -270,7 +167,7 @@ test('٨. نصوص الفئة بالـ١٤ لغة بلا اسم مزوّد، و�
   for (const lg of LANGS.filter((l) => l !== 'ar' && l !== 'en')) assert.match(read('i18n/' + lg + '.js'), /fashionOccasionWedding/, lg);
 });
 
-test('٩. صورة النمط الاحتياطيّة (امرأة) للنساء وحدهنّ، و«اقترح لي إطلالة» يرسل الفئة', () => {
+test('٦. صورة النمط الاحتياطيّة (امرأة) للنساء وحدهنّ، و«اقترح لي إطلالة» يرسل الفئة', () => {
   const s = read('js/app-12-studios.js');
   assert.ok(s.includes("if(!img.__flat && gender === 'women'){ img.__flat = 1;"));
   assert.ok(s.includes("img2: g === 'women' ? 'assets/fashion/looks/' + v + '.webp' : '',"));
@@ -280,7 +177,7 @@ test('٩. صورة النمط الاحتياطيّة (امرأة) للنساء �
   assert.ok(read('js/app.bundle.js').includes('gender: currentGender(), /* v-fx-gender-pics'));
 });
 
-test('١٠. الخادم: الاقتراح لفئته (المعالج الحقيقيّ بنموذج وهميّ)، وقيمة غريبة = نسائي', async () => {
+test('٧. الخادم: الاقتراح لفئته (المعالج الحقيقيّ بنموذج وهميّ)، وقيمة غريبة = نسائي', async () => {
   const lib = path.join(root, 'api/_lib');
   const stub = (rel, exp) => { const f = require.resolve(path.join(lib, rel)); require.cache[f] = { id: f, filename: f, loaded: true, exports: exp }; };
   stub('_fashionUsage', { checkFashionQuota: async () => ({ allowed: true }) });
@@ -313,7 +210,7 @@ test('١٠. الخادم: الاقتراح لفئته (المعالج الحقي
   }
 });
 
-test('١١. سطر التعديل واقتراح الإطلالة بعد نتيجة رجل/طفل: لا «عدّلي» ولا «الفستان» ولا 👜 للرجل', () => {
+test('٨. سطر التعديل واقتراح الإطلالة بعد نتيجة رجل/طفل: لا «عدّلي» ولا «الفستان» ولا 👜 للرجل', () => {
   const src = read('js/app-12-studios.js');
   const ctx = { gender: 'men', lg: 'ar' };
   vm.runInNewContext(block(src, '  const FX_REFINE_G = {', '\n  };', true) + '\n' + block(src, '  function __refineG(', '\n  }', true) +

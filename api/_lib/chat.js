@@ -151,7 +151,7 @@ const TOOLS = [
    (v-owner-raw2) — فوصفُها هو تعليمتُها الوحيدة التي تصله. */
 /* v-providers-like-agent (أمر المالك ٤ أكتوبر «خلّهم كلّهم نفس الي عند الوكيل، نفس الخاصيّة في الكتابة وكلّ شي»): أدوات المالك
    في المحادثة هي أدوات وكيله نفسها — الرفع إلى GitHub وتفويض مهمّة الكود والتحقّق منها وأخطاء الإنتاج — لكلّ مزوّد. */
-const OWNER_TOOLS = [require('./app-errors.js').TOOL, require('./github-write.js').TOOL, require('./agent-delegate.js').START_TOOL, require('./agent-delegate.js').CHECK_TOOL, require('./github-edit.js').EDIT_TOOL, require('./github-edit.js').MERGE_TOOL, require('./github-manage.js').MANAGE_TOOL, require('./prov-self.js').SELF_TOOL, require('./prov-self.js').TEACH_TOOL]; // v-prov-self: ملفّ المزوّد والدروس العامّة · v-agent-surgical: التعديل الجراحيّ والدمج بـ«ادمج»
+const OWNER_TOOLS = [require('./app-errors.js').TOOL, require('./github-write.js').TOOL, require('./agent-delegate.js').START_TOOL, require('./agent-delegate.js').CHECK_TOOL, require('./github-edit.js').EDIT_TOOL, require('./github-edit.js').MERGE_TOOL, require('./github-manage.js').MANAGE_TOOL, require('./prov-self.js').SELF_TOOL, require('./prov-self.js').TEACH_TOOL, require('./call-agent.js').TOOL]; // v-call-agent: كرت اتّصال الوكيل بالمحلّ (لا اتّصال بلا ضغطة) · v-prov-self: ملفّ المزوّد والدروس العامّة · v-agent-surgical: التعديل الجراحيّ والدمج بـ«ادمج»
 const toolsFor = (owner, noMedia) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).map((t) => (owner && t.name === 'read_github' ? require('./provider-level.js').ownerReadTool(t) : t)).concat(owner ? OWNER_TOOLS : []); // v-claude-code-level E5: وصف read_github للمالك يذكر from= المتوازية — غيره بالكائنات نفسها حرفيًّا
 
 const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — سبع، وهي تعمل فعلًا الآن]:\n' +
@@ -1930,6 +1930,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' }); // v-chat-github-read: مفتاح ترجمة قائم، لا نصّ واجهة جديد
             else if (cb.type === 'tool_use' && cb.name === 'read_app_errors') send({ status: '🩺 يقرأ أخطاء التطبيق الحيّة…' }); // v-provider-errors: بلا مفتاح — العميل يعود لنصّ الخادم (أداة المالك وحده)
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
+            else if (cb.type === 'tool_use' && cb.name === 'propose_call') send({ status: '📞 يجهّز كرت الاتّصال…', k: 'stCall' }); // v-call-agent · v-call-agent-r2: مفتاح ترجمة في اللغات الأربع عشرة
             else if (cb.type === 'tool_use' && cb.name === 'generate_image' && (!__noMedia || __ownerPicsOk) && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎨 يرسم صورة…', k: 'stGenImage' }); /* v-interleave-fix: لا مربّع «جارٍ إنشاء الصورة» لرسم سيرفضه الحارس */
             else if (cb.type === 'tool_use' && cb.name === 'edit_image' && !__noMedia && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_video' && !__noMedia && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
@@ -2158,6 +2159,14 @@ module.exports = async (req, res) => {
           else if (cb.name === 'check_code_task') {
             const __dl = require('./agent-delegate.js');
             result = __ownerReq ? __dl.formatCheck(await __dl.checkTask(input)) : '✗ التحقّق من مهامّ الكود للمالك وحده.';
+          }
+          /* v-call-agent: كرت اتّصال الوكيل بالمحلّ — للمالك وحده، والرقم من نصّه أو بحث الأماكن في الخادم؛ لا اتّصال هنا. */
+          else if (cb.name === 'propose_call') {
+            const __pc = await require('./call-agent.js').proposeCall(input, { owner: __ownerReq, user: __ownerReq ? require('./auth.js').verifyToken(token) : null, lastUserText, lang: /[\u0600-\u06FF]/.test(lastUserText || '') ? 'ar' : 'en', placesKey: process.env.GOOGLE_PLACES_API_KEY, kv: require('./kv.js'),
+              /* v-call-agent-r2: مصدر الرقم كلّ رسائل المالك في المحادثة (نصّها وحده — لا ردود المساعد ولا نتائج الأدوات) */
+              ownerText: (messages || []).filter((m) => m && m.role === 'user').map((m) => (typeof m.content === 'string' ? m.content : (Array.isArray(m.content) ? m.content.filter((x) => x && x.type === 'text').map((x) => String(x.text || '')).join('\n') : ''))).join('\n') });
+            if (__pc.event) { send(__pc.event); __ownerCarried = true; } // v-call-agent-r2: «سوي/حط لي…» + سطر «جهّزت الكرت» ليس خطّة متوقّفة — لا «نفّذ الآن» بعد الكرت
+            result = __pc.result;
           }
           else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
           /* v-nano-pro-edit: كلمات المستخدم نفسها تُرافق أمر النموذج الإنجليزي — منها يقرأ الخادم نيّة «أقوى/فكرة ثانية» */

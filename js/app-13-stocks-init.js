@@ -2514,50 +2514,6 @@
     });
   }
   photoizeStudioTabs();
-  /* v-studio-tabs-move (المالك ١٧ أكتوبر: «شريط اختر التعديل مايتحرك»): ٢٤ تبويبًا يظهر منها ١٣ على الكمبيوتر، وأشرطة التمرير مخفيّة
-     في التطبيق كلّه (tokens.css) — فلا شيء يحرّكه بالفأرة (العجلة رأسيّة والسحب يسحب صورة التبويب). العجلة فوقه تمرّره أفقيًّا
-     (وعند طرفه تعود الصفحة تتمرّر)، والسحب بالفأرة يحرّكه ولا يُحسب نقرة على تبويب. اللمس على الجوّال كما هو (تمرير المتصفّح). */
-  function stHScroll(el){
-    if(!el || el.__hs) return;
-    el.__hs = 1;
-    el.addEventListener('wheel', (e) => {
-      if(e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return; /* الأفقيّ (لوحة اللمس) يمرّره المتصفّح أصلًا */
-      if(el.scrollWidth - el.clientWidth < 2) return;
-      const step = e.deltaY * (e.deltaMode === 1 ? 40 : (e.deltaMode === 2 ? el.clientWidth : 1));
-      const before = el.scrollLeft;
-      el.scrollLeft = before + (getComputedStyle(el).direction === 'rtl' ? -step : step); /* للأمام = التبويبات التالية */
-      if(el.scrollLeft !== before) e.preventDefault();
-    }, { passive: false });
-    let down = null, moved = false;
-    el.addEventListener('dragstart', (e) => e.preventDefault()); /* صورة التبويب لا تُسحب بدل الشريط */
-    el.addEventListener('pointerdown', (e) => {
-      if(e.pointerType !== 'mouse' || e.button !== 0) return;
-      down = { x: e.clientX, sl: el.scrollLeft, id: e.pointerId };
-      moved = false;
-      /* الإفلات خارج الشريط قبل بدء السحب لا يصل pointerup الشريط — يُنهى من النافذة وإلّا خطف الشريط سحبًا لاحقًا يمرّ فوقه */
-      window.addEventListener('pointerup', end, { capture: true, once: true });
-      window.addEventListener('pointercancel', end, { capture: true, once: true });
-    });
-    el.addEventListener('pointermove', (e) => {
-      if(!down || e.pointerId !== down.id) return;
-      if(!(e.buttons & 1)){ end(); return; } /* أُفلت الزرّ خارج الشريط قبل أن يبدأ السحب — لا يتبع الشريط فأرة بلا ضغط */
-      const dx = e.clientX - down.x;
-      if(!moved && Math.abs(dx) < 6) return;
-      if(!moved){
-        moved = true;
-        el.style.cursor = 'grabbing';
-        el.style.userSelect = 'none'; /* السحب من الفراغ بين التبويبات لا يظلّل أسماءها */
-        try{ const s = window.getSelection && window.getSelection(); if(s) s.removeAllRanges(); }catch(err){ __swallow(err, 'studio:tabs-select'); }
-        try{ el.setPointerCapture(e.pointerId); }catch(err){ __swallow(err, 'studio:tabs-capture'); }
-      }
-      el.scrollLeft = down.sl - dx;
-    });
-    function end(){ down = null; el.style.cursor = ''; el.style.userSelect = ''; setTimeout(() => { moved = false; }, 0); }
-    el.addEventListener('pointerup', end);
-    el.addEventListener('pointercancel', end);
-    el.addEventListener('click', (e) => { if(moved){ e.stopPropagation(); e.preventDefault(); } }, true); /* نهاية السحب ليست اختيارًا */
-  }
-  stHScroll(tabsWrap);
   function setFeature(next){
     feature = next;
     photoizeStudioTabs(); // ترجمة i18n تمسح حقن الصور — أعد حقن ما نقص
@@ -2591,6 +2547,45 @@
   Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
     b.onclick = () => setFeature(b.dataset.feature);
   });
+
+  /* v-studio-strip-desktop (المالك ١٧ أكتوبر: «شريط اختر التعديل مايتحرك» على الكمبيوتر، ثمّ «يتحرّك بعجلة الماوس والسحب، بدون أيّ
+     تغيير ثاني، والجوّال ما ينلمس»): الشريط ٢٤ تبويبًا والحاسوب يعرض نصفها، وشريط التمرير مخفيّ في التطبيق كلّه (v-noscroll-all)،
+     فالعجلة تحرّك الصفحة والسحب لا يفعل شيئًا — نصف الميزات (منها «دمج صور») لا تُبلغ إلّا من الجوّال. على الحاسوب وحده: العجلة تحرّك
+     الشريط أفقيًّا ما دام فيه مكان (وعند طرفه تكمل الصفحة)، والسحب بالماوس يحرّكه، والضغطة بعد سحب لا تختار تبويبًا. اللمس والجوّال كما هما. */
+  function stripDesktopScroll(el){
+    if(!el) return;
+    const phone = () => document.documentElement.classList.contains('mobile-ui');
+    const room = () => Math.max(0, el.scrollWidth - el.clientWidth);
+    const rtl = () => getComputedStyle(el).direction === 'rtl';
+    el.addEventListener('wheel', (e) => {
+      if(phone() || e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const max = room(); if(!max) return;
+      const pos = Math.abs(el.scrollLeft); // RTL: ‎0 ← -max‎ في المتصفّحات الحديثة
+      if(e.deltaY > 0 ? pos >= max - 1 : pos <= 1) return;
+      e.preventDefault();
+      const d = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * el.clientWidth : e.deltaY);
+      el.scrollLeft += rtl() ? -d : d;
+    }, { passive: false });
+    let drag = null, dragEnd = 0;
+    el.addEventListener('pointerdown', (e) => {
+      if(phone() || e.pointerType !== 'mouse' || e.button !== 0 || !room()) return;
+      e.preventDefault(); // لا تحديد نصّ أثناء السحب — الضغطة نفسها تبقى
+      drag = { x: e.clientX, left: el.scrollLeft, moved: false };
+    });
+    window.addEventListener('pointermove', (e) => {
+      if(!drag) return;
+      const dx = e.clientX - drag.x;
+      if(!drag.moved && Math.abs(dx) < 5) return;
+      drag.moved = true;
+      el.scrollLeft = drag.left - dx;
+    });
+    const end = () => { if(drag && drag.moved) dragEnd = Date.now(); drag = null; };
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    el.addEventListener('click', (e) => { if(Date.now() - dragEnd < 350){ e.stopPropagation(); e.preventDefault(); } }, true);
+    el.addEventListener('dragstart', (e) => { if(!phone()) e.preventDefault(); });
+  }
+  stripDesktopScroll(tabsWrap);
 
   btnOpen.onclick = () => {
     modal.style.display = 'flex';

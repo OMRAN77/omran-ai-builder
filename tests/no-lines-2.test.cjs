@@ -1,5 +1,6 @@
 /* v-no-lines-2 — أمر المالك: «الخطوط الزائده والموجوده الحينه كامله شلها، فقط عند تمرير الماوس على المكان يكون لون ذهبي، اريدها في التطبيق كامله،
    وتكون الخلفيه فقط لونين نفس درجة الاسود». css/بلا-خطوط.css يُحمَّل آخرًا ويخفي الإطارات الذهبيّة وحدود صندوق الكتابة والأدوات، والذهبيّ عند المرور فقط. */
+// v-no-phone-frame: «احذف برواز الهاتف» — على الجوال لا إطار ذهبي حول الشاشة (body::after بلا خلفية).
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -19,7 +20,7 @@ test('١. الملفّ مربوط بوسم كاش بعد أدوات-أسود.css
 
 test('٢. كلّ قاعدة للوضع الأسود وحده: لا الفاتح ولا الثيمات ولا الخشبيّ ولا صور الخلفيّة', () => {
   assert.ok(rules.length >= 10);
-  for (const r of rules) for (const s of r.sels) assert.ok(s.startsWith(P + ' ') || s.startsWith(P + ':not(.mobile-ui) ') || s.startsWith(P + '.mobile-ui ') || s.startsWith('.omran-selected'), s); /* .omran-selected: الأخضر يُحذف في كلّ الأوضاع (v-no-green) */
+  for (const r of rules) for (const s of r.sels) assert.ok(s.startsWith(P + ' ') || s.startsWith(P + ':not(.mobile-ui) ') || s.startsWith(P + '.mobile-ui ') || s.startsWith('.omran-selected') || s === 'html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after', s); /* .omran-selected: الأخضر يُحذف في كلّ الأوضاع (v-no-green) */
 });
 
 test('٣. الألوان: شفّاف، أو ذهبيّ إطار اللوحات rgba(212,175,55,.85)، أو #101013، أو توهّج «فسّر» الأبيض، أو الحدّ الشبح — لا رماديّ', () => {
@@ -47,12 +48,15 @@ test('٥. صندوق الكتابة وزرّ الإرسال وأسفل الشر�
   assert.ok(bare.indexOf('.om3-line:not(#om3-a#om3-b){') < bare.indexOf('#composerBox#composerBox:is(:hover'));
 });
 
-test('٦. v-main-lines: إطار المحادثة واللوحتين ثابت ذهبيّ، وإطار الجوال؛ ولا حدّ ذهبيّ لأيّ عنصر داخل الشاشة', () => {
+test('٦. v-main-lines: إطار المحادثة واللوحتين ثابت ذهبيّ على الكمبيوتر وحده؛ v-no-phone-frame: لا برواز في الجوال؛ ولا حدّ ذهبيّ لأيّ عنصر داخل الشاشة', () => {
   const G = 'rgba(212,175,55,.85)';
-  const perm = rules.find((r) => r.sels.includes(P + ' :is(#sidebar,#workarea,#omFrameCenter)'));
-  assert.ok(perm && perm.body.includes('--om-gold-line:linear-gradient(' + G + ',' + G + ')'), 'اللوحات والمحادثة بلا :hover');
-  assert.ok(rules.some((r) => r.sels.includes(P + '.mobile-ui body::after') && r.body.includes('background-image:linear-gradient(' + G + ',' + G + ') !important')), 'إطار المحادثة في الجوال');
-  assert.ok(bare.indexOf(P + '.mobile-ui body::after') > bare.indexOf(P + ' body::after{background-image:none'));
+  const perm = rules.find((r) => r.sels.includes(P + ':not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter)'));
+  assert.ok(perm && perm.body.includes('--om-gold-line:linear-gradient(' + G + ',' + G + ')'), 'اللوحات والمحادثة بلا :hover، على الكمبيوتر');
+  assert.ok(!rules.some((r) => r.sels.includes(P + ' :is(#sidebar,#workarea,#omFrameCenter)')), 'لا حافّة ذهبيّة للدُّرجين في الجوال');
+  assert.ok(!/mobile-ui body::after\{background-image:linear-gradient/.test(bare), 'لا برواز ذهبيّ في الجوال');
+  assert.ok(rules.some((r) => r.sels.includes('html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after') && r.body === 'background:none !important;'), 'برواز الجوال محذوف في كلّ الأوضاع');
+  /* نطاق الحذف = نطاق قاعدة الإطار في إطارات-الجوال.css نفسها */
+  assert.ok(fs.readFileSync(path.join(ROOT, 'css', 'إطارات-الجوال.css'), 'utf8').includes('html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after{'));
   assert.ok(!bare.includes('border-color:' + G), 'لا حدود ذهبيّة داخل الشاشة');
   assert.ok(!bare.includes('#sbSearchWrap'), 'مربّع البحث بلا حدّ ثابت');
 });
