@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
+process.env.OWNER_AGENT_CLAUDE = 'on'; // v-agent-claude-off: الاختبار يفحص الوكيل وهو شغّال
 process.env.AUTH_SECRET = 'living-memory-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 const root = path.resolve(__dirname, '..');

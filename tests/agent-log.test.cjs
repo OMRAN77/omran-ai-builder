@@ -11,6 +11,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
+process.env.OWNER_AGENT_CLAUDE = 'on'; // v-agent-claude-off: الاختبار يفحص الوكيل وهو شغّال
 process.env.AUTH_SECRET = 'agent-log-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 const root = path.resolve(__dirname, '..');

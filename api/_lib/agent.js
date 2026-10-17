@@ -465,7 +465,7 @@ module.exports = async (req, res) => {
      /api/agent-tool-result لا يمرّ من هنا ويبقى مفتوحًا للمحادثة. */
   const caller = require('./auth.js').verifyToken(token);
   if (!caller) { res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); return; }
-  if (!isOwner(caller)) { res.status(403).json({ error: 'owner_only' }); return; }
+  if (!isOwner(caller)) { res.status(403).json({ error: 'owner_only' }); return; } if (String(process.env.OWNER_AGENT_CLAUDE || '').trim().toLowerCase() !== 'on') { res.status(200); res.setHeader('Content-Type', 'text/event-stream; charset=utf-8'); res.setHeader('Cache-Control', 'no-cache, no-transform'); res.write('data: ' + JSON.stringify({ delta: 'الوكيل موقوف الحين عشان ما يصرف من رصيد Anthropic. يرجع لما تضيف OWNER_AGENT_CLAUDE=on في Vercel وتسوي Redeploy.' }) + '\n\n'); res.end(); return; } /* v-agent-claude-off (المالك ١٧ أكتوبر «والوكيل بعد»): الوكيل (Opus) موقوف قبل أيّ حصّة أو نداء نموذج حتّى OWNER_AGENT_CLAUDE=on — الزرّ باقٍ مكانه */
   const imgIds = require('./agent-img.js').seedTokens(body.imgIds); // v-agent-img-mode: رمز رسمة المحادثة ← معرّفها في المخزن (app-09)، وتُكمَّل بنتائج الرسم في هذا التشغيل
 
   if (!messages || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }

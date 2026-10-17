@@ -77,7 +77,7 @@
       chip.title = AR ? 'المزوّد والنموذج' : 'Provider & model';
       chip.style.cssText = CHIP_CSS;
       chip.innerHTML = '<span class="omModelName"></span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>';
-      var CLAUDE_OFF = true; /* v-claude-chat-off: Claude خارج منتقي المالك */ var pop = document.createElement('div');
+      var pop = document.createElement('div');
       pop.id = 'omModelPopup';
       pop.style.cssText = 'display:none; position:absolute; bottom:calc(100% + 6px); inset-inline-end:0; z-index:2200; max-height:70vh; overflow-y:auto; background:var(--panel,#161513); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.5); padding:5px; min-width:210px;';
       function agentLabel(){ try{ if(typeof t === 'function'){ var v = t('premiumToggleLabel'); if(v && v !== 'premiumToggleLabel') return v; } }catch(e){ /* i18n لم يجهز — الاحتياط */ } return AR ? 'الوكيل' : 'Agent'; }
@@ -185,13 +185,13 @@
       }
       /* v-cc-remove (طلب المالك «شيله عشان ما يلخبط»): أُزيل زرّ «Claude Code» المربوط
          بجسر Railway المكسور — الوكيل يملك صلاحيات Claude Code الكاملة عبر GitHub Actions. */
-      function renderPop(){ pop.innerHTML = optRow('agent', agentLabel(), 'premiumToggleLabel') + divider + provsHTML(); if(CLAUDE_OFF){ var cx = pop.querySelectorAll('.omProvHead[data-prov="claude"], .omProvModels[data-for="claude"]'); for(var ci=0;ci<cx.length;ci++) cx[ci].remove(); } } /* v-claude-chat-off: لا صفّ Claude في منتقي المالك */
+      function renderPop(){ pop.innerHTML = optRow('agent', agentLabel(), 'premiumToggleLabel') + divider + provsHTML(); }
       // v-perf-idle-timers: الميزة كلّها «للمالك وحده» (bar.style.display أعلاه none لغير المالك، وpop
       // داخله فلا يُرى أبدًا) لكنّ renderPop() كانت تُستدعى فورًا للجميع — بناء DOM كامل لتسعة مزوّدين
       // وعشرات الأزرار غير مستخدَم أصلًا. الآن تُبنى فقط للمالك؛ لا فرق مرئيّ لغير المالك (كان مخفيًّا دومًا).
       /* v-owner-gpt-all: مرّة واحدة على جهاز المالك — اختيار GPT المحفوظ قبل اليوم يُمسح فيسري Astra (أمره ١١ أكتوبر)، وما يختاره بعدها يبقى */
       if(isOwner()){ try{ if(!localStorage.getItem('aiapp_owner_astra_v1')){ localStorage.removeItem('aiapp_model'); localStorage.setItem('aiapp_owner_astra_v1', '1'); } }catch(e){ /* guard-ok: تخزين محجوب */ } }
-      if(isOwner()) renderPop(); if(CLAUDE_OFF && isOwner()){ try{ if(localStorage.getItem('aiapp_provider') === 'claude') localStorage.setItem('aiapp_provider', 'openrouter'); }catch(e){ /* guard-ok: تخزين محجوب */ } } /* v-claude-chat-off (المالك ١٧ أكتوبر «اريد ان الغيه»): اختيار Claude محفوظ قديم يصير كروك فتطابق الشريحة من يردّ (الخادم يحوّل) */
+      if(isOwner()) renderPop(); /* v-claude-back (المالك ١٧ أكتوبر «خلهم مكانهم… رجعهم نفس ماكانو»): صفوف Claude رجعت للمنتقي؛ الإيقاف في الخادم وحده (OWNER_CLAUDE_CHAT) */
       /* v-provider-models: القائمة الحيّة من الخادم تُلحق بالافتراضيّ الثابت؛ OpenAI يرتّب الثلاثة العامّة أولًا. */
       if(isOwner()){
         try{
