@@ -1,0 +1,56 @@
+name: Bridge image
+
+# لماذا هذا الملفّ موجود:
+# ١٢ أكتوبر ٢٠٢٦ — «مخرج التطبيق» دُمج ثلاث مرّات (#986، #994، #996) والجسر على Railway بقي
+# على نسخة ٢٠ سبتمبر، فلم يُبنَ Dockerfile الجديد (ffmpeg والخطوط) ولم يُصوَّر داخل الحاوية شيء قطّ.
+# اختبارات المستودع تفحص دوالّ render.mjs بـffmpeg ثابت حديث على جهاز التطوير؛ الحاوية المنشورة
+# شيء آخر: ffmpeg من apt، Chromium من Playwright، مستخدم غير root، وقرص مركَّب.
+#
+# هذا يبني الصورة من الـDockerfile نفسه الذي يبنيه Railway، يقلعها، ويصوّر فيديو قصيرًا داخلها
+# (scripts/bridge-smoke.mjs): بطاقات عناوين، شاشتان حقيقيّتان من هذه الشجرة، نموذج نمط، وصوت WAV —
+# ثمّ يفحص الناتج بـffprobe الحاوية، ويتأكّد أنّ في الصورة خطًّا لكلّ لغة واجهة.
+# لا مفاتيح ولا نشر: السرّ يُولَّد لكلّ تشغيل.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'cc-bridge/**'
+      - 'scripts/bridge-smoke.mjs'
+      - '.github/workflows/bridge-image.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'cc-bridge/**'
+      - 'scripts/bridge-smoke.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bridge-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # الصورة كما يبنيها Railway: المجلّد cc-bridge جذرًا، والـDockerfile الذي فيه.
+      - name: Build the bridge image
+        run: docker build -t omran-cc-bridge cc-bridge
+      - name: Boot it and render a short video inside the container
+        run: node scripts/bridge-smoke.mjs --image omran-cc-bridge --out smoke-out
+      # الفيديو ولوحة الإطارات وسجلّ الحاوية: تُرفع دائمًا ليُرى الناتج بالعين، أو سبب الفشل.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bridge-smoke
+          path: smoke-out
+          if-no-files-found: ignore
+          retention-days: 7
