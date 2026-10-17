@@ -64,3 +64,10 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #tabs .tab.
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) :is(#religionTabs,#studioAiTabs){padding:14px 18px 22px !important; margin-left:-18px !important; margin-right:-18px !important; margin-bottom:-18px !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #religionTabs{margin-top:-2px !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs{margin-top:-14px !important;}
+/* v-no-green (المالك: «ليش هذا الاخضر احذفه نهائي»): وضع التحديد بالضغط المطوّل على المحادثات (js/delete-confirm.js) كان يرسم إطارًا أخضر
+   وخلفيّة خضراء ودائرة صحّ خضراء — بلا أخضر في كلّ الأوضاع: المحدَّد مثل المختار (#101013 وتوهّج أبيض بلا حدّ)، ودائرة الصحّ بيضاء بعلامة سوداء.
+   استثناء وحيد من «الوضع الأسود وحده» لأنّ الأخضر يُحذف في الفاتح والثيمات أيضًا (هناك ظلّ رماديّ خفيف). */
+.omran-selected.omran-selected{outline:0 !important; background:rgba(0,0,0,.06) !important; box-shadow:0 4px 18px rgba(0,0,0,.22) !important;}
+.omran-selected .omran-select-mark.omran-select-mark{background:#101013; border-color:#101013; color:#fff;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omran-selected.omran-selected{background:#101013 !important; color:#fff !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omran-selected .omran-select-mark.omran-select-mark{background:#fff; border-color:#fff; color:#101013;}
