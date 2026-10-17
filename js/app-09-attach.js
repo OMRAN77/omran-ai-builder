@@ -1422,7 +1422,10 @@ $('#attachInput').addEventListener('change', async (e) => {
     /* v-tool-drop (المراجعة العدائيّة — مسار المالك الحقيقيّ): الضغط على صورة بطاقة نمط/ديكور/ستايل مع حركة يد بسيطة يبدأ سحبًا أصليًّا للصورة
        فلا يصل click (البطاقة لا تُختار)، ويضع المتصفّح صورة العيّنة نفسها ملفًّا في الإفلات — فكانت تصير مرفق دردشة («على طول تتحول الي
        الدردشة الصوره الموجوده»). صور الأدوات لا تُسحب: الضغطة تبقى ضغطة. الملفّات من خارج الصفحة لا dragstart لها هنا فتمرّ كما هي. */
-    document.addEventListener('dragstart', (e) => { try{ const tg = e.target; if(tg && tg.tagName === 'IMG' && tg.closest && tg.closest('#portraitStyleSheet,#designAiModal,#fashionAiModal,#studioAiModal,#pickerSheet')) e.preventDefault(); }catch(_){ /* guard-ok — صور العيّنات لا تُسحب */ } }, true);
+    /* v-tool-drop٢ (لقطة المالك بعد الدمج: أربع عيّنات «أنماط الصور» مرفقات في الدردشة — «نفس الشي … من اي مكان»): المنع كان لنوافذ الأدوات
+       الأربع وحدها، وصور البطاقات في كلّ مكان آخر (بطاقات الأدوات، الأقسام، المعارض) تُسحب بالضغطة المرتجفة نفسها فتصير مرفقًا. لا ميزة في
+       التطبيق تعتمد سحب الصور (مها بمؤشّر لا بسحب HTML) — كلّ صورة تُمنع من السحب إلّا صور المحادثة نفسها (حفظها بسحبها إلى سطح المكتب). */
+    document.addEventListener('dragstart', (e) => { try{ const tg = e.target; if(tg && tg.tagName === 'IMG' && tg.closest && !tg.closest('#messages')) e.preventDefault(); }catch(_){ /* guard-ok — صور العيّنات لا تُسحب */ } }, true);
     document.addEventListener('drop', (e) => {
       if(!hasFiles(e)) return;
       off();

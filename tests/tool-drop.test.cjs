@@ -142,12 +142,17 @@ test('٨ الصورة المُفلتة في الأنماط لا تولّد بن�
   assert.equal(tab.clicks, 1, 'لوح الصورة ظاهر أصلًا ← لا ضغطة');
 });
 
-test('٩ صور البطاقات داخل الأدوات لا تُسحب (المسار الحقيقيّ: ضغطة بحركة يد بسيطة = صورة العيّنة تُفلت)', () => {
+test('٩ الصور لا تُسحب في التطبيق كلّه إلّا صور المحادثة (المسار الحقيقيّ: ضغطة بحركة يد بسيطة = صورة العيّنة تُفلت مرفقًا)', () => {
   const m = /document\.addEventListener\('dragstart', \(e\) => \{([^\n]*)\}, true\);/.exec(SRC);
   assert.ok(m, 'مستمع dragstart في مرحلة الالتقاط');
   assert.match(m[1], /tagName === 'IMG'/);
-  for (const id of ['#portraitStyleSheet', '#designAiModal', '#fashionAiModal', '#studioAiModal', '#pickerSheet']) assert.ok(m[1].indexOf(id) >= 0, id);
+  assert.match(m[1], /!tg\.closest\('#messages'\)/, 'كلّ صورة خارج المحادثة — بطاقات الأدوات والأقسام والمعارض لا نوافذ الأدوات الأربع وحدها');
   assert.match(m[1], /e\.preventDefault\(\)/);
+  const ctx = { e: null }; vm.createContext(ctx);
+  const run = (tag, inChat) => { const ev = { target: { tagName: tag, closest: (q) => (q === '#messages' && inChat ? {} : null) }, prevented: false, preventDefault() { this.prevented = true; } }; vm.runInContext('(function(e){' + m[1] + '})', ctx)(ev); return ev.prevented; };
+  assert.equal(run('IMG', false), true, 'عيّنة نمط أو بطاقة أداة: لا سحب');
+  assert.equal(run('IMG', true), false, 'صورة في المحادثة: تُسحب لحفظها');
+  assert.equal(run('A', false), false, 'الروابط والنصوص كما هي');
   const paste = SRC.slice(SRC.indexOf("document.addEventListener('paste', (e) => {"));
   assert.match(paste, /if\(!__tool\.ownPaste \|\| \(ae && ae\.id === 'prompt'\)\)\{ e\.preventDefault\(\); omranFilesToTool\(files, __tool\); \}/, 'الاستوديو والتركيز في صندوق الدردشة المخفيّ: لا تضيع الصورة');
 });
