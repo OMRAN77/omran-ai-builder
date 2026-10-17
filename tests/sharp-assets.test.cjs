@@ -30,11 +30,13 @@ function dims(rel) {
   return null;
 }
 
-test('١. المصغّرات بالمقاس الذي يحتاجه الجوّال (لا ٣٦٠ ممطوطة)', () => {
+test('١. المصغّرات بدقّتها الأصليّة أو بالمقاس الذي يحتاجه الجوّال (لا ٣٦٠ ممطوطة)', () => {
   const sets = [
-    [ls('assets/design/styles', /\.webp$/).concat(ls('assets/design/opts', /^place-.*\.webp$/)), 540],
-    [['women', 'men', 'kids', 'occasion', 'season', 'category'].flatMap((d) => ls('assets/fashion/looks/' + d, /\.webp$/)), 540],
-    [ls('assets/studio/options', /\.webp$/), 540],
+    // قواعد الصور (١٧ أكتوبر): المجموعات من المولّد المجّانيّ أُعيد توليدها بدقّتها الأصليّة 768 (لا ٣٦٠ مكبَّرة إلى ٥٤٠)
+    [ls('assets/design/styles', /\.webp$/).concat(ls('assets/design/opts', /^place-.*\.webp$/)), 768],
+    [['women', 'men', 'kids'].flatMap((d) => ls('assets/fashion/looks/' + d, /\.webp$/)), 768],
+    [['occasion', 'season', 'category'].flatMap((d) => ls('assets/fashion/looks/' + d, /\.webp$/)), 540],
+    [ls('assets/studio/options', /\.webp$/), 768],
     [ls('assets/portrait/styles', /\.webp$/).concat(['assets/portrait/before.webp']), 540],
     [ls('assets/fashion/looks/extras', /\.webp$/), 1080],
   ];

@@ -548,7 +548,7 @@ async function __safeJson(res){
       const pal = (typeof window.__decorPal === 'function') ? window.__decorPal('designAiStyle', v) : '';
       if(pal) card.style.background = pal;
       const img = document.createElement('img');
-      img.src = 'assets/design/styles/' + v + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
+      img.src = 'assets/design/styles/' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
       img.onerror = function(){ img.remove(); };
@@ -1579,7 +1579,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
        فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
        التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
-    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=2'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
@@ -1602,7 +1602,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const opt = fashionOptFor(v);
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
-          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=2',
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=3',
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
       }).filter(Boolean),
