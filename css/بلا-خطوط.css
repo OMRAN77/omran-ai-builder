@@ -6,9 +6,10 @@
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) body{--om-gold-line:linear-gradient(transparent,transparent); --om-dots:linear-gradient(transparent,transparent);}
 /* الخطوط التي علّمها js/app-41-three-colors.js بـ om3-line كانت تغلبها قواعد بمعرّفات (#cxBrief، #constructionArea…) فتبقى ظاهرة —
    :not(#om3-a#om3-b) لا يطابق أيّ عنصر لكنّه يرفع الأولويّة بمعرّفين فتغلب، والذهبيّ عند المرور والتركيز والاختيار بنفس الأولويّة */
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b){border-color:transparent !important;}
+/* لون الحدّ «شبح» (أسود بشفافيّة .06 لا يُرى على الأسود) بدل transparent: js/app-41-three-colors.js يعيد تصنيف العنصر عند انتهاء كلّ انتقال فينزع om3-line ويقرأ الحدّ فورًا — الشفّاف يُقرأ «بلا حدّ» فيعود الحدّ الرماديّ ثمّ يتكرّر الوميض بلا نهاية؛ الشبح (> .04) يُقرأ حدًّا فيبقى الصنف ثابتًا */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b){border-color:rgba(0,0,0,.06) !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-hot.om3-line:not(#om3-a#om3-b):hover,
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b):is(:focus-visible,:focus-within,.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:rgba(212,175,55,.85) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b):is(:focus-visible,:focus-within,.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:rgba(0,0,0,.06) !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter):hover,
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) main:has(#chatcol:hover) > #omFrameCenter{--om-gold-line:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85));}
 /* المعرّفات مضاعفة/متسلسلة عمدًا لتغلب قواعد أقدم بمعرّفين (redesign.css: html #composerBox > #btnSend، إطارات.css: #omranSidebarFoot بخمس :not) */
@@ -19,12 +20,12 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBo
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox:not(.typing) > #btnSend{box-shadow:none !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox#composerBox:is(:hover,:focus-within),
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox > #btnSend:is(:hover,:focus-visible),
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #omranSidebarFoot#omranSidebarFoot:is(:hover,:focus-within){border-color:rgba(212,175,55,.85) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #omranSidebarFoot#omranSidebarFoot:is(:hover,:focus-within){border-color:transparent !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
 /* حدود بيضاء/رماديّة مكتوبة داخل عناصر يبنيها الجافاسكربت (style="border:1px solid rgba(255,255,255,…)") — شفّافة، وذهبيّة عند المرور */
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255,255,255"],
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255, 255, 255"]{border-color:transparent !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255,255,255"]:is(:hover,:focus-visible,:focus-within),
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255, 255, 255"]:is(:hover,:focus-visible,:focus-within){border-color:rgba(212,175,55,.85) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255, 255, 255"]:is(:hover,:focus-visible,:focus-within){border-color:transparent !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
 /* الخلفيّة لونان فقط: حبيبات الضجيج الخفيفة فوق الأسود (body::after على الكمبيوتر) تختفي */
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) body::after{background-image:none !important;}
 /* صانع الفيديو: خطّ الإطار (--lux-line) وخطّ رأس الاستوديو وخطّ «الإعدادات المتقدّمة» وإطارات صور التبويبات */
@@ -33,14 +34,42 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMaker
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal details.vmk-adv,
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-tab-img{border-color:transparent !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-tab[aria-selected=true] .vmk-tab-img{box-shadow:none !important;}
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-tab:hover .vmk-tab-img{border-color:rgba(212,175,55,.85) !important;}
-/* بطاقات «أنماط الصور» وحدودها المكتوبة داخل العنصر (border:1px solid var(--border…)) وخلفيّتها #17171b → #101013؛ المختارة (#d4af37) تبقى ذهبيّة */
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid var(--border"]:not(:hover):not(:focus-visible),
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .pstyleCard:not([style*="#d4af37"]):not(:hover):not(:focus-visible){border-color:transparent !important;}
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid var(--border"]:is(:hover,:focus-visible){border-color:rgba(212,175,55,.85) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-tab:hover .vmk-tab-img{border-color:transparent !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+/* بطاقات «أنماط الصور» وحدودها المكتوبة داخل العنصر (border:1px solid var(--border…)) وخلفيّتها #17171b → #101013؛ بلا حدّ دائمًا، والمختارة (#d4af37) والمرور توهّج أبيض */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid var(--border"],
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .pstyleCard.pstyleCard{border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid var(--border"]:is(:hover,:focus-visible),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .pstyleCard.pstyleCard:is([style*="#d4af37"],:hover,:focus-visible){box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .pstyleCard{background-color:#101013 !important;}
-/* مربّعات الرفع بصور المالك (رفع-الصور.css) وتبويبات «ستايل AI» غير المختارة */
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.omUpArt:not(:hover):not(.over),
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn:not(.active):not(:hover){border-color:transparent !important;}
+/* مربّعات الرفع بصور المالك (رفع-الصور.css) وتبويبات «ستايل AI» — بلا حدّ، والمرور والمختار توهّج أبيض */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.omUpArt,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn{border-color:transparent !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.omUpArt:is(:hover,.over),
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn:not(.active):hover{border-color:rgba(212,175,55,.85) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn:is(.active,:hover){box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn.active,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn.active > span{color:#fff !important;}
+/* v-main-lines (المالك ١٧ أكتوبر: «فقط ثبت الخطوط في الشاشة الرئيسه»): إطار المحادثة واللوحتين ثابت ذهبيّ على الكمبيوتر فقط. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter){--om-gold-line:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85));}
+/* v-no-phone-frame (المالك: «احذف برواز الهاتف»): في الجوال لا إطار حول المحادثة (body::after من إطارات-الجوال.css) ولا حافّة ذهبيّة للدُّرجين،
+   وفي كلّ الأوضاع (الفاتح أيضًا) — استثناء من «الوضع الأسود وحده» بنطاق قاعدة الإطار نفسها. */
+html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after{background:none !important;}
+/* v-white-glow (المالك: «نفس فسّر… اذا اشر عليه يكون نفس الدرجه وبدون حد… واذا امرر السهم عليه نفس الفكر… مااريد حدود عليهم»):
+   كلّ ما داخل الشاشة مثل زرّ «فسّر»: بلا حدّ، والمرور والمختار نفس الدرجة #101013 بتوهّج أبيض ونصّ أبيض بدل الذهبيّ —
+   المحادثة المختارة في الشريط، وتبويبات المعاينة والكود فوق، والتبويبات المختارة في الأدوات. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-fill.om3-line:not(#om3-a#om3-b):is(.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"]){background-color:#101013 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .hist-item.hist-item:is(.active,:hover){background:#101013 !important; border-color:rgba(0,0,0,.06) !important; color:#fff !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .hist-item.hist-item:is(.active,:hover) :is(.hist-title,.hist-thumb,.hist-menu-btn){color:#fff !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #tabs .tab.tab:not(#om3-a):is(.active,:hover){background:#101013 !important; border-color:transparent !important; color:#fff !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #tabs .tab.tab:not(#om3-a):is(.active,:hover) svg{color:#fff !important; stroke:#fff !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #tabs .tab.tab.active::after{background:none !important;}
+/* صفوف التبويبات المنزلقة (overflow-x:auto) تقصّ التوهّج فيظهر مستطيلًا حادًّا — مساحة داخليّة بقدر التوهّج يقابلها هامش سالب فلا يتغيّر مكانها */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) :is(#religionTabs,#studioAiTabs){padding:14px 18px 22px !important; margin-left:-18px !important; margin-right:-18px !important; margin-bottom:-18px !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #religionTabs{margin-top:-2px !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs{margin-top:-14px !important;}
+/* v-no-green (المالك: «ليش هذا الاخضر احذفه نهائي»): وضع التحديد بالضغط المطوّل على المحادثات (js/delete-confirm.js) كان يرسم إطارًا أخضر
+   وخلفيّة خضراء ودائرة صحّ خضراء — بلا أخضر في كلّ الأوضاع: المحدَّد مثل المختار (#101013 وتوهّج أبيض بلا حدّ)، ودائرة الصحّ بيضاء بعلامة سوداء.
+   استثناء وحيد من «الوضع الأسود وحده» لأنّ الأخضر يُحذف في الفاتح والثيمات أيضًا (هناك ظلّ رماديّ خفيف). */
+.omran-selected.omran-selected{outline:0 !important; background:rgba(0,0,0,.06) !important; box-shadow:0 4px 18px rgba(0,0,0,.22) !important;}
+.omran-selected .omran-select-mark.omran-select-mark{background:#101013; border-color:#101013; color:#fff;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omran-selected.omran-selected{background:#101013 !important; color:#fff !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omran-selected .omran-select-mark.omran-select-mark{background:#fff; border-color:#fff; color:#101013;}

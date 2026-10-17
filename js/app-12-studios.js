@@ -901,6 +901,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function ensurePsheetCss(){
     if(document.getElementById('psheetCss')) return;
     const st = document.createElement('style'); st.id = 'psheetCss';
+    const B = 'html:not([data-mode="light"]):not(.skin) '; /* الوضع الأسود وحده — لا الفاتح ولا الثيمات */
     st.textContent = '.pstyleCard{transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; position:relative;}'
       + '.pstyleCard:hover,.pstyleCard:focus-visible{transform:scale(1.035); border-color:#d4af37 !important; box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 12px 30px rgba(0,0,0,.45), 0 0 26px rgba(212,175,55,.35) !important; outline:none; z-index:1;}'
       + '.pstyleCard::after{content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,transparent 40%,rgba(255,238,180,.22) 50%,transparent 60%); background-size:250% 100%; background-position:160% 0; opacity:0; transition:opacity .18s;}'
@@ -941,7 +942,28 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + '#portraitStyleSheetCount{transition:opacity .18s ease, max-height .22s ease, margin-top .22s ease; overflow:hidden; max-height:16px;}'
       + '#portraitStyleSheetHeader.pstyleHeaderSmall{padding-top:calc(6px + max(env(safe-area-inset-top,0px), 30px)) !important; padding-bottom:8px !important;}'
       + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetTitle{font-size:14.5px !important;}'
-      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}';
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}'
+      /* v-psheet-nogold (المالك ١٧ أكتوبر، أنماط الصور أوّلًا): «بدون خطوط… ما أريد الذهبي، الذهبي فقط عند التمرير على الصور،
+         واحذف الخيط الذهبي». الوضع الأسود وحده: لا حدّ ولا ذهبيّ في السكون؛ الرقائق والأزرار كـ«صمم الغرفة» (أسود، نصّ أبيض)
+         والإنارة بالنصّ الأبيض عند التمرير وللمختارة («سوّ الكتابة فقط» — كلّهم بلا حدود)؛ البطاقات والحلقة بلا حدّ، وتوهّج ذهبيّ عند التمرير على الصورة فقط. */
+      + B + '.pstyleChip{border:1px solid transparent !important; background:transparent !important; color:#bdbdbd !important;}'
+      + B + '.pstyleChip:hover,' + B + '.pstyleChip.on{color:#fff !important; text-shadow:0 0 10px rgba(255,255,255,.45); background:transparent !important;}' /* «سوّ الكتابة فقط»: الإنارة بالنصّ لا بالحدّ */
+      + B + '.pstyleCard{border:1px solid transparent !important; box-shadow:none !important;}'
+            + B + '.pstyleCard:hover,' + B + '.pstyleCard:focus-visible{border-color:#d4af37 !important; box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 12px 30px rgba(0,0,0,.45), 0 0 26px rgba(212,175,55,.35) !important;}'
+      + B + '.pstyleCard [data-pstyle-name]{color:#fff !important;}'
+      + B + '.pstyleCard .pstyleEn{color:#9a9a9e !important;}'
+      + B + '.pstyleCard [data-pstyle-tick]{background:#fff !important; color:#000 !important;}'
+      + B + '.pstyleBefore [data-pstyle-before-tag], ' + B + '.pstyleHero .pstyleHeroC span{background:#000 !important; color:#fff !important; border:1px solid rgba(255,255,255,.45) !important;}'
+      + B + '.pstyleBefore > div:last-child > div:first-child{color:#fff !important;}'
+      + B + '.pstyleCard > div:first-child > div:first-child{border-color:rgba(255,255,255,.25) !important; background:transparent !important;}'
+      + B + '.pstyleHero{background:none !important;}'
+      + B + '.pstyleHero .pstyleHeroC{border-color:transparent !important; box-shadow:none !important;}'
+      + B + '.pstyleHero .pstyleHeroT{border-color:transparent !important;}'
+      + B + '.pstyleHero .pstyleHeroT:hover{box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 0 22px rgba(212,175,55,.6) !important;}'
+      + B + '.pstyleFoot{border-top:0 !important;}'
+      + B + '.pstyleCta, ' + B + '.pstyleFoot #portraitFootPhoto{background:#000 !important; color:#fff !important; border:1px solid transparent !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}' /* نفس درجة «صمم الغرفة» (.btn.primary في الأسود) — «خلّها نفس الديكور» */
+      + B + '.pstyleCta:hover, ' + B + '.pstyleFoot #portraitFootPhoto:hover{box-shadow:0 6px 24px rgba(255,255,255,.5) !important;}'
+      + B + '.pstyleFoot #portraitFavStarBtn{color:#fff !important;}';
     document.head.appendChild(st);
   }
   /* الرأس (العنوان + العدّاد) يصغر ويرتفع فور بدء تمرير المعرض، ويعود لحجمه عند القمّة */
@@ -1038,6 +1060,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(!styleCardsGrid) return;
     styleCardsGrid.querySelectorAll('[data-pstyle-card]').forEach((c) => {
       const on = c.getAttribute('data-pstyle-card') === v;
+      c.classList.toggle('on', on); /* v-psheet-nogold: الوضع الأسود يميّز المختارة بالصنف لا بالذهبيّ */
       c.style.border = on ? '2px solid #d4af37' : '1px solid var(--border,#2a2a30)';
       c.style.boxShadow = on ? '0 0 14px rgba(212,175,55,.3)' : '';
       const tk = c.querySelector('[data-pstyle-tick]'); if(tk) tk.style.display = on ? 'flex' : 'none';
@@ -1079,7 +1102,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const w = document.createElement('div'); w.style.cssText = 'position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#23232a,#101014);';
       const im = document.createElement('img'); im.src = window.__portraitPhotoUrl || 'assets/portrait/before.webp?v=2'; im.alt = ''; im.loading = 'eager';
       im.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;'; im.onerror = function(){ im.remove(); };
-      const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before');
+      const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before'); tag.setAttribute('data-pstyle-before-tag', '1');
       tag.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; padding:3px 9px; border-radius:999px; background:#d4af37; color:#141414; font-weight:800; font-size:11.5px;';
       /* v-photo-only (المالك ١٧ أكتوبر: «انماط الصور والاستايل والازياء… اي صوره تحتها احذفها نهائي»): البطاقة صورتها وحدها —
          شارة «قبل» فوق الصورة تكفي، فلا شريط عنوان ووصف تحتها. */
@@ -1091,7 +1114,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const active = v === styleEl.value;
       const title = optLabel(opt).trim();
       const card = document.createElement('div');
-      card.setAttribute('data-pstyle-card', v); card.className = 'pstyleCard'; card.tabIndex = 0;
+      card.setAttribute('data-pstyle-card', v); card.className = 'pstyleCard' + (active ? ' on' : ''); card.tabIndex = 0;
       card.style.cssText = 'border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;' +
         (active ? ' border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);' : ' border:1px solid var(--border,#2a2a30);');
       const imgWrap = document.createElement('div');
@@ -2216,9 +2239,35 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     statusEl.textContent = text || '';
   }
 
+  /* v-religion-paint (لقطة المالك ١٧ أكتوبر: «##» و«**» ظاهرة في النتيجة): الردّ كان textContent خامًا — يُرسم الآن بعارض
+     المحادثة نفسه (عناوين وخطّ عريض وقوائم)، حيًّا أثناء البثّ ثمّ رسمًا نهائيًّا. */
+  function paint(text, final){
+    try{
+      if(!final && typeof renderStreamingAssistant === 'function'){ renderStreamingAssistant(resultEl, text); return; }
+      resultEl.classList.remove('msg-streaming');
+      resultEl._omStreamHead = null; resultEl._omStreamHeadEl = null; resultEl._omStreamTailEl = null;
+      if(typeof buildSpokenWordSpans === 'function') buildSpokenWordSpans(resultEl, text);
+      else resultEl.textContent = text;
+    }catch(e){ __swallow(e, 'religion:paint'); resultEl.textContent = text; }
+  }
+
+  /* v-religion-race (فحص ١٧ أكتوبر): تغيير التبويب أثناء الكتابة كان يُكمل الطلب القديم في صندوق مخفيّ، فيكتب التبويب الجديد
+     «تم التفسير» بلا شيء وزرّ «فسّر» معطّل حتّى ينتهي. لكلّ طلب رقم: تغيير التبويب أو الإغلاق يلغيه (إشارة إيقاف خاصّة به،
+     لا إشارة المحادثة) ويتجاهل ما يصل منه. */
+  let run = 0, ctl = null;
+  function stopRun(){
+    run++;
+    if(ctl){ try{ ctl.abort(); }catch(e){ __swallow(e, 'religion:abort'); } ctl = null; }
+    btnGenerate.disabled = false;
+  }
+  function closeModal(){ stopRun(); modal.style.display = 'none'; }
+
   function setTool(next){
+    stopRun();
     tool = next;
-    tabsWrap.querySelectorAll('.religionTabBtn').forEach(b => b.classList.toggle('active', b.dataset.tool === next));
+    /* v-religion-tabs («التبويبات… نفس فسّر بالضبط»، بلا فرق للمختار): علامة المختار relOn لا active — مصنّف الألوان الثلاثة
+       يستثني .active من تعبئة الأسود فيبقى المختار بخلفيّة أفتح من «فسّر» */
+    tabsWrap.querySelectorAll('.religionTabBtn').forEach(b => b.classList.toggle('relOn', b.dataset.tool === next));
     const labelKey = 'religionInputLabel' + next.charAt(0).toUpperCase() + next.slice(1);
     const placeholderKey = 'religionInputPlaceholder' + next.charAt(0).toUpperCase() + next.slice(1);
     if(inputLabelEl) inputLabelEl.textContent = t(labelKey);
@@ -2234,37 +2283,64 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     setTool(b.dataset.tool);
   });
 
+  /* v-religion-field (المالك ١٧ أكتوبر: مكان الكتابة «مايكون مربع… ويكون علو نفس المستوى»): الحقل سطر واحد بارتفاع «فسّر» والتبويبات،
+     ويطول مع النصّ الطويل حتّى ١٥٠px (كصندوق المحادثة)؛ والميكروفون دائرة بالارتفاع نفسه. */
+  const micBtn = modal.querySelector('.mini-mic-btn');
+  function fitInput(){
+    try{
+      const min = btnGenerate.offsetHeight || 33;
+      inputEl.style.height = min + 'px';
+      if(inputEl.scrollHeight > inputEl.clientHeight + 1){
+        const frame = inputEl.offsetHeight - inputEl.clientHeight; // الحدّ — الارتفاع border-box
+        inputEl.style.height = Math.min(inputEl.scrollHeight + frame, 150) + 'px';
+      }
+      if(micBtn){ micBtn.style.width = min + 'px'; micBtn.style.height = min + 'px'; }
+    }catch(e){ __swallow(e, 'religion:fit'); }
+  }
+  inputEl.addEventListener('input', fitInput);
+
   btnOpen.addEventListener('click', () => {
     modal.style.display = 'flex';
     setTool(tool);
+    fitInput();
     if(typeof closeHeaderMenu === 'function') closeHeaderMenu();
   });
-  btnClose.addEventListener('click', () => { modal.style.display = 'none'; });
-  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+  btnClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
 
   btnGenerate.addEventListener('click', async () => {
     const query = (inputEl.value || '').trim();
     if(!query){ setStatus(t('religionNeedInput')); return; }
+    stopRun();
+    const my = run;
+    ctl = (typeof AbortController === 'function') ? new AbortController() : null;
     btnGenerate.disabled = true;
     setStatus(t('religionGenerating'));
     resultEl.style.display = 'block';
     resultEl.textContent = '';
+    let done = false; // مزوّد تجاوزه حارس الخمول قد يكمل البثّ بعد الجواب أو الخطأ — لا يُرسم فوقهما
     try{
       const messages = [
         { role: 'system', content: SYSTEM_PROMPTS[tool] },
         { role: 'user', content: query },
       ];
-      const onDelta = (partial) => { resultEl.textContent = partial; };
+      const onDelta = (partial) => { if(my === run && !done) paint(partial); };
+      if(ctl) onDelta.__signal = ctl.signal;
       /* v-religion-rescue: كانت مربوطة بمزوّد واحد (Gemini) — أول 429 يميت
          الأداة كلها (لقطة المالك). الآن سلسلة الاحتياط الكاملة: أي مزوّد
-         مشحون واحد يبقيها حيّة. */
-      const res = await callAIWithFallback(messages, onDelta);
-      resultEl.textContent = (res && res.reply) || '';
+         مشحون واحد يبقيها حيّة.
+         v-religion-chain (المالك ١٧ أكتوبر: «اريده نفس قبل… الديانات كلها نفس قبل ومااريد ازرار زياده»): taskPrompt = موجّه
+         التبويب هو التعليمات كلّها — السلسلة القديمة نفسها حتّى للمالك، ولا يُحذف الموجّه في أيّ مسار (Kimi). */
+      const res = await callAIWithFallback(messages, onDelta, null, { taskPrompt: true });
+      if(my !== run) return;
+      done = true;
+      paint((res && res.reply) || '', true);
       setStatus(t('religionDone'));
     }catch(e){
+      if(my !== run) return;
       setStatus(t('religionError') + (e && e.message ? (': ' + e.message) : ''));
     }finally{
-      btnGenerate.disabled = false;
+      if(my === run){ done = true; btnGenerate.disabled = false; ctl = null; }
     }
   });
 })();

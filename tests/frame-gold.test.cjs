@@ -43,19 +43,19 @@ test('٣. الشعار بلا النجوم، وصينيّة الأدوات، و�
 
 function run(opts) {
   const made = []; const ls = {}; const winLs = {}; let raf = 0;
-  const mk = () => ({ listeners: {}, addEventListener(ev, fn) { this.listeners[ev] = fn; }, insertBefore(n) { made.push(n); }, firstChild: null, clientWidth: 300, clientHeight: 500, getBoundingClientRect: () => ({ left: 0, top: 0 }) });
-  const sidebar = mk(), workarea = mk();
+  const mk = () => ({ listeners: {}, addEventListener(ev, fn) { this.listeners[ev] = fn; }, insertBefore(n) { made.push(n); }, firstChild: null, style: {}, clientWidth: 300, clientHeight: 500, getBoundingClientRect: () => ({ left: 0, top: 0 }) });
+  const sidebar = mk(), workarea = mk(), chatcol = mk();
   const cls = new Set(opts.cls || []);
   const ctx2d = { setTransform() {}, clearRect() {}, fillText() {} };
   const document = {
     documentElement: { classList: { contains: (c) => cls.has(c), toggle() {} }, getAttribute: () => null, style: { setProperty() {}, removeProperty() {} } },
-    getElementById: (id) => (id === 'sidebar' ? sidebar : id === 'workarea' ? workarea : null),
+    getElementById: (id) => (id === 'sidebar' ? sidebar : id === 'workarea' ? workarea : id === 'chatcol' ? chatcol : null),
     createElement: () => ({ style: {}, setAttribute() {}, getContext: () => ctx2d }),
   };
   const window = { innerWidth: opts.w || 1400, devicePixelRatio: 1, addEventListener(ev, fn) { winLs[ev] = fn; }, matchMedia: () => ({ matches: !!opts.reduce }), performance: { now: () => 0 } };
   window.window = window;
   vm.runInNewContext(rd('js/frame-touch.js'), { window, document, Math, Float32Array, Date, requestAnimationFrame: () => { raf++; } });
-  return { sidebar, workarea, made, winLs, raf: () => raf };
+  return { sidebar, workarea, chatcol, made, winLs, raf: () => raf };
 }
 
 test('٤. لمسة الضغط: على فراغ القائمة ترسم، وعلى الأزرار لا، ولا على الجوّال/الثيمات/«قلّل الحركة»', () => {
@@ -70,7 +70,17 @@ test('٤. لمسة الضغط: على فراغ القائمة ترسم، وعل�
   assert.equal(a.made.length, 1, 'الأزرار والخانات بلا أثر');
   const m = run({ cls: ['mobile-ui'], w: 390 }); m.sidebar.listeners.pointerdown(ev(false));
   assert.equal(m.made.length, 1, 'v-frame-gold-mobile: الجوال أيضًا في دُرجَيه');
-  for (const o of [{ cls: ['bgimg'] }, { cls: ['skin'] }, { cls: ['skin-wood'] }, { cls: ['omCpu'] }, { reduce: true }]) {
+  /* v-touch-mobile (المالك: «الي في الجوال مايشغل الي انته سويته هذي»): فراغ المحادثة في الجوال، لا الفقاعات ولا خانة الكتابة، ولا محادثة الكمبيوتر؛ وتعمل في omCpu (تطبيق هواوي) */
+  const mc = run({ cls: ['mobile-ui'], w: 390 }); mc.chatcol.listeners.pointerdown(ev(false));
+  assert.equal(mc.made.length, 1, 'فراغ المحادثة في الجوال يرسم');
+  assert.equal(mc.chatcol.style.isolation, 'isolate', 'سياق تراكب لتظهر اللوحة فوق خلفيّة المحادثة');
+  const mb = run({ cls: ['mobile-ui'], w: 390 }); mb.chatcol.listeners.pointerdown({ clientX: 5, clientY: 5, target: { closest: (q) => (/\.msg/.test(q) ? {} : null) } });
+  assert.equal(mb.made.length, 0, 'الفقاعات وخانة الكتابة بلا أثر');
+  const dc = run({}); dc.chatcol.listeners.pointerdown(ev(false));
+  assert.equal(dc.made.length, 0, 'محادثة الكمبيوتر كما كانت');
+  const cpu = run({ cls: ['mobile-ui', 'omCpu'], w: 390 }); cpu.chatcol.listeners.pointerdown(ev(false));
+  assert.equal(cpu.made.length, 1, 'omCpu: تعمل (ثانيتان بعد الضغط فقط)');
+  for (const o of [{ cls: ['bgimg'] }, { cls: ['skin'] }, { cls: ['skin-wood'] }, { reduce: true }]) {
     const b = run(o); b.sidebar.listeners.pointerdown(ev(false));
     assert.equal(b.made.length, 0, JSON.stringify(o));
   }
