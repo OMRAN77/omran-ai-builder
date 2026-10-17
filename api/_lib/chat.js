@@ -1930,7 +1930,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' }); // v-chat-github-read: مفتاح ترجمة قائم، لا نصّ واجهة جديد
             else if (cb.type === 'tool_use' && cb.name === 'read_app_errors') send({ status: '🩺 يقرأ أخطاء التطبيق الحيّة…' }); // v-provider-errors: بلا مفتاح — العميل يعود لنصّ الخادم (أداة المالك وحده)
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
-            else if (cb.type === 'tool_use' && cb.name === 'propose_call') send({ status: '📞 يجهّز كرت الاتّصال…' }); // v-call-agent: بلا مفتاح — أداة المالك وحده
+            else if (cb.type === 'tool_use' && cb.name === 'propose_call') send({ status: '📞 يجهّز كرت الاتّصال…', k: 'stCall' }); // v-call-agent · v-call-agent-r2: مفتاح ترجمة في اللغات الأربع عشرة
             else if (cb.type === 'tool_use' && cb.name === 'generate_image' && (!__noMedia || __ownerPicsOk) && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎨 يرسم صورة…', k: 'stGenImage' }); /* v-interleave-fix: لا مربّع «جارٍ إنشاء الصورة» لرسم سيرفضه الحارس */
             else if (cb.type === 'tool_use' && cb.name === 'edit_image' && !__noMedia && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_video' && !__noMedia && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
@@ -2162,8 +2162,10 @@ module.exports = async (req, res) => {
           }
           /* v-call-agent: كرت اتّصال الوكيل بالمحلّ — للمالك وحده، والرقم من نصّه أو بحث الأماكن في الخادم؛ لا اتّصال هنا. */
           else if (cb.name === 'propose_call') {
-            const __pc = await require('./call-agent.js').proposeCall(input, { owner: __ownerReq, user: __ownerReq ? require('./auth.js').verifyToken(token) : null, lastUserText, lang: /[\u0600-\u06FF]/.test(lastUserText || '') ? 'ar' : 'en', placesKey: process.env.GOOGLE_PLACES_API_KEY, kv: require('./kv.js') });
-            if (__pc.event) send(__pc.event);
+            const __pc = await require('./call-agent.js').proposeCall(input, { owner: __ownerReq, user: __ownerReq ? require('./auth.js').verifyToken(token) : null, lastUserText, lang: /[\u0600-\u06FF]/.test(lastUserText || '') ? 'ar' : 'en', placesKey: process.env.GOOGLE_PLACES_API_KEY, kv: require('./kv.js'),
+              /* v-call-agent-r2: مصدر الرقم كلّ رسائل المالك في المحادثة (نصّها وحده — لا ردود المساعد ولا نتائج الأدوات) */
+              ownerText: (messages || []).filter((m) => m && m.role === 'user').map((m) => (typeof m.content === 'string' ? m.content : (Array.isArray(m.content) ? m.content.filter((x) => x && x.type === 'text').map((x) => String(x.text || '')).join('\n') : ''))).join('\n') });
+            if (__pc.event) { send(__pc.event); __ownerCarried = true; } // v-call-agent-r2: «سوي/حط لي…» + سطر «جهّزت الكرت» ليس خطّة متوقّفة — لا «نفّذ الآن» بعد الكرت
             result = __pc.result;
           }
           else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);

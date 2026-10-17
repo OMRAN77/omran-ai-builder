@@ -2390,7 +2390,7 @@ function mahaOpenPlans(guest){
 }
 async function mahaStartCall(mode){
   if(mahaCallActive || mahaCallStarting) return;
-  if(typeof window.callAgentBusy === 'function' && window.callAgentBusy()) return; // v-call-agent: مكالمة تجريبيّة للوكيل جارية (app-42) — لا مايك ثانٍ فوقها
+  if(typeof window.callAgentBusy === 'function' && window.callAgentBusy()){ try{ if(typeof settingsToast === 'function') settingsToast(t('callAgentErrTrialBusy')); }catch(e){ __swallow(e, 'maha:call-agent-busy'); } return; } // v-call-agent: مكالمة تجريبيّة للوكيل جارية (app-42) — لا مايك ثانٍ فوقها، ورفض ظاهر لا صامت (v-call-agent-r2)
   mahaCallStarting = true;
   try{ return await mahaStartCallInner(mode); }
   finally{ mahaCallStarting = false; }

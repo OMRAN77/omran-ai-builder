@@ -47,7 +47,23 @@ function makeDom() {
     constructor(tag) { this.tagName = String(tag).toUpperCase(); this.childNodes = []; this.parentNode = null; this.className = ''; this._text = ''; this.attrs = {}; this.listeners = {}; this.style = {}; this.disabled = false; this.id = ''; this.type = ''; }
     get firstChild() { return this.childNodes[0] || null; }
     appendChild(c) { if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = this; this.childNodes.push(c); return c; }
-    removeChild(c) { const i = this.childNodes.indexOf(c); if (i >= 0) this.childNodes.splice(i, 1); c.parentNode = null; return c; }
+    removeChild(c) { const i = this.childNodes.indexOf(c); if (i < 0) throw new Error('removeChild: ليس ابنًا'); this.childNodes.splice(i, 1); c.parentNode = null; return c; }
+    insertBefore(c, ref) {
+      if (!ref) return this.appendChild(c);
+      if (c.parentNode) c.parentNode.removeChild(c);
+      const i = this.childNodes.indexOf(ref); if (i < 0) throw new Error('insertBefore: المرجع ليس ابنًا');
+      c.parentNode = this; this.childNodes.splice(i, 0, c); return c;
+    }
+    replaceChild(nu, old) {
+      const i = this.childNodes.indexOf(old); if (i < 0) throw new Error('replaceChild: ليس ابنًا');
+      if (nu.parentNode) nu.parentNode.removeChild(nu);
+      this.childNodes[i] = nu; nu.parentNode = this; old.parentNode = null; return old;
+    }
+    /* تمرير مصغّر: كلّ ابن ٢٠ بكسل، والمرئيّ ٦٠ — والعنصر غير الموصول لا يمرَّر (كالمتصفّح: لا تخطيط قبل الإلحاق) */
+    get scrollHeight() { return this.childNodes.length * 20; }
+    get clientHeight() { return 60; }
+    get scrollTop() { return this._st || 0; }
+    set scrollTop(v) { if (!this.isConnected) return; this._st = Math.max(0, Math.min(Number(v) || 0, Math.max(0, this.scrollHeight - this.clientHeight))); }
     get textContent() { return this._text + this.childNodes.map((c) => c.textContent).join(''); }
     set textContent(v) { this.childNodes = []; this._text = String(v); }
     setAttribute(k, v) { this.attrs[k] = String(v); }
@@ -103,12 +119,18 @@ function sandbox(opts = {}) {
   ctx.msgs = () => ctx.state.projects[0].messages;
   ctx.call = () => ctx.msgs()[1].cards.call;
   ctx.getCurrent = () => ctx.state.projects.find((p) => p.id === ctx.state.currentId);
+  if (opts.state) ctx.state = opts.state; // «التحميل التالي»: ما وصل التخزين قبل إغلاق الصفحة
   ctx.saves = 0; ctx.saveState = () => { ctx.saves++; };
-  /* renderAll الحقيقيّ يعيد بناء الرسائل من الحالة المحفوظة — هنا يعيد رسم بطاقة الرسالة في مضيفها */
+  /* renderAll الحقيقيّ يعيد بناء الرسائل من الحالة المحفوظة — هنا يعيد رسم بطاقة الرسالة في مضيفها، ومعه حارسه
+     (v-render-guard في renderMessages): بصمة المحادثة · عدد الرسائل · مجموع أطوال النصّ؛ إن طابقت آخر رسم والقائمة
+     معروضة يُتخطّى كلّيًّا — فتغيّر m.cards.call وحده لا يعيد الرسم أبدًا */
   const host = ctx.document.createElement('div'); host.className = 'msg assistant'; ctx.document.body.appendChild(host);
-  ctx.renders = 0;
-  const draw = () => { while (host.firstChild) host.removeChild(host.firstChild); host.appendChild(ctx.omranRenderCards(ctx.msgs()[1].cards)); };
-  ctx.renderAll = () => { ctx.renders++; draw(); };
+  ctx.renders = 0; ctx.draws = 0;
+  const draw = () => { ctx.draws++; while (host.firstChild) host.removeChild(host.firstChild); host.appendChild(ctx.omranRenderCards(ctx.msgs()[1].cards)); };
+  let sig = null;
+  const sigOf = () => { let n = 0; for (const m of ctx.msgs()) if (m && typeof m.content === 'string') n += m.content.length; return ctx.state.currentId + '|' + ctx.msgs().length + '|' + n; };
+  ctx.renderAll = () => { ctx.renders++; const s = sigOf(); if (s === sig && host.firstChild) return; sig = s; draw(); };
+  ctx.redraw = () => { sig = null; ctx.renderAll(); }; // رسم كامل حقيقيّ (فتح المحادثة من جديد، تغيير اللغة)
   ctx.card = () => host.firstChild;
   ctx.btn = (cls) => ctx.card().q(cls)[0];
   ctx.overlay = () => ctx.document.getElementById('omranCallOverlay');
@@ -154,12 +176,15 @@ function sandbox(opts = {}) {
   ctx.mahaMicPreflight = async () => null;
   ctx.gum = 0; ctx.mahaGetUserMediaRetry = async () => { ctx.gum++; return ctx.stream; };
   ctx.confirmed = []; ctx.confirm = (s) => { ctx.confirmed.push(s); return opts.confirm !== false; };
-  ctx.addEventListener = () => {};
+  ctx.listeners = {}; ctx.addEventListener = (ty, f) => { (ctx.listeners[ty] = ctx.listeners[ty] || []).push(f); };
+  ctx.flushes = []; ctx.__saveFlush = (force) => { ctx.flushes.push(!!force); };
+  ctx.mirrors = 0; ctx.__writeChatsMirror = () => { ctx.mirrors++; };
+  ctx.localStorage = opts.storage || (() => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, removeItem: (k) => { m.delete(k); } }; })();
 
   vm.createContext(ctx);
   vm.runInContext(CARDS, ctx, { filename: 'app-37-cards.js' });
   vm.runInContext(PART, ctx, { filename: 'app-42-call-agent.js' });
-  draw();
+  ctx.renderAll(); ctx.renders = 0;
   ctx.advance = async (ms) => {
     const end = clock.now + ms;
     for (;;) {
@@ -209,7 +234,7 @@ test('١. البطاقة للمالك: الجهة والرقم المقنّع و
   assert.ok(css && /!important/.test(css.textContent), 'ألوان مثبّتة كبطاقات app-37');
   assert.ok(css.textContent.includes('html[data-mode="light"] .msg .omCall{'), 'الوضع الفاتح');
   assert.ok(css.textContent.includes('html.mobile-ui #omranCallOverlay{'), 'نافذة التجربة شريط سفليّ في الجوّال');
-  c.renderAll(); c.renderAll();
+  c.redraw(); c.redraw();
   assert.equal(c.document.head.childNodes.filter((n) => n.id === 'omranCallCss').length, 1, 'الأنماط مرّة واحدة');
   // غير المالك (لاحقًا): سعر نوع الرقم بدل «مجانيّة»
   const u = sandbox({ owner: false });
@@ -250,7 +275,7 @@ test('٣. التجربة ترفض ومها جارية أو تبدأ (ولا شب
   // الاتّجاه الآخر: سطر مستقلّ في mahaStartCall بعد الحارس الأصليّ (maha-subscribers يثبّت الحارس ولا «owner» فيه)
   for (const src of [read('js/app-08-maha.js'), read('js/app.bundle.js')]) {
     const s = src.slice(src.indexOf('async function mahaStartCall('), src.indexOf('if(btnMahaEl) btnMahaEl.onclick'));
-    assert.match(s, /if\(mahaCallActive \|\| mahaCallStarting\) return;\n  if\(typeof window\.callAgentBusy === 'function' && window\.callAgentBusy\(\)\) return;/);
+    assert.match(s, /if\(mahaCallActive \|\| mahaCallStarting\) return;\n  if\(typeof window\.callAgentBusy === 'function' && window\.callAgentBusy\(\)\)\{ try\{ if\(typeof settingsToast === 'function'\) settingsToast\(t\('callAgentErrTrialBusy'\)\); \}catch\(e\)\{ __swallow\(e, 'maha:call-agent-busy'\); \} return; \}/);
     assert.doesNotMatch(s, /omran|owner|Paused/i);
   }
 });
@@ -369,10 +394,18 @@ test('٥. لا إعادة اتّصال: انقطاع الاتّصال ينهيه
   const pc2 = await liveTrial(k);
   pc2.dc.emit({ type: 'input_audio_buffer.speech_started' });
   await k.advance(99000);
-  assert.ok(!pc2.dc.sent.some((m) => m.response && m.response.instructions), 'لا تنبيه قبل وقته');
+  const isNote = (m) => m.type === 'conversation.item.create' && m.item && m.item.type === 'message';
+  assert.ok(!pc2.dc.sent.some(isNote), 'لا تنبيه قبل وقته');
   await k.advance(2000);
-  const wrap = pc2.dc.sent.find((m) => m.response && m.response.instructions);
-  assert.ok(wrap && /report_outcome/.test(wrap.response.instructions) && /end_call/.test(wrap.response.instructions), 'قبل السقف بعشرين ثانية: اختم');
+  const at = pc2.dc.sent.findIndex(isNote);
+  assert.ok(at >= 0, 'قبل السقف بعشرين ثانية: اختم');
+  const note = pc2.dc.sent[at].item;
+  assert.equal(note.role, 'system');
+  assert.equal(note.content.length, 1);
+  assert.equal(note.content[0].type, 'input_text');
+  assert.ok(/report_outcome/.test(note.content[0].text) && /end_call/.test(note.content[0].text));
+  assert.deepEqual(plain(pc2.dc.sent[at + 1]), { type: 'response.create' }, 'ثمّ ردّ عاريًا — تعليمات الجلسة (الهويّة الآليّة والحقائق ولغة الملخّص) تبقى سارية');
+  assert.ok(!pc2.dc.sent.some((m) => m.response), 'لا response.create بتعليمات خاصّة تحلّ محلّ تعليمات الجلسة');
   await k.advance(19500);
   assert.equal(k.callAgentBusy(), false, 'السقف ١٢٠ث');
   assert.equal(k.call().state, 'completed');
@@ -444,7 +477,7 @@ test('٧. الاتّصال الفعليّ: تأكيد ← call-start ← call-st
   await c.advance(60000);
   assert.equal(c.calls('call-status').length, 3, 'ended أوقف المتابعة');
   assert.equal(c.msgs().length, 3, 'رسالة نتيجة واحدة');
-  c.renderAll();
+  c.redraw();
   await c.advance(10000);
   assert.equal(c.calls('call-status').length, 3, 'إعادة الرسم لا تستأنف مكالمة منتهية');
 });
@@ -510,6 +543,9 @@ test('٩. المتابعة تتوقّف بعد ١٠ دقائق، وبعد إعا
   assert.match(s.card().q('omCallState')[0].textContent, /انقطعت المكالمة/);
   assert.ok(s.btn('omCallTry'), 'لا زرّ إنهاء لجلسة غير موجودة');
   assert.equal(s.call().state, 'live', 'العرض وحده — لا كتابة أثناء الرسم');
+  await s.advance(0);
+  assert.equal(s.call().state, 'dropped', 'بعد الرسم تُحسم: قديمة بلا مالك حيّ ← انقطعت');
+  assert.match(s.msgs()[2].content, /انقطعت المكالمة/);
 });
 
 test('١٠. النصوص: كلّ مفاتيح callAgent* بالـ١٤ لغة بنفس المواضع، بلا اسم مزوّد في القاموس ولا في البطاقة والنافذة والنتيجة', async () => {
@@ -558,4 +594,302 @@ test('١١. الربط: سطر app-37 أوّل omranRenderCards، والجزء �
   assert.doesNotMatch(PART, /catch\s*\([^)]*\)\s*\{\s*\}/, 'لا كتمة صامتة');
   const v = /i18n\/' \+ lg \+ '\.js\?v=(\d+)'/.exec(read('js/app-04-i18n-state.js'));
   assert.ok(v && Number(v[1]) > 749, 'وسم ملفّات اللغات رُفع فوق ٧٤٩ (نصوص v-call-agent)');
+});
+
+/* ── جولة المراجعة (v-call-agent-r2) ── */
+
+test('١٢. حارس الرسم: تغيّر حالة البطاقة وحده يتخطّاه renderAll — فالبطاقة تُحدَّث في مكانها: خطأ التجهيز يظهر بلا زرّ إنهاء عالق، والإلغاء يظهر فور البدء، و«تعذّرت» من المتابعة', async () => {
+  const cases = [
+    [() => [404, { error: 'proposal_not_found' }], 'انتهت صلاحيّة هذه البطاقة — اطلب المكالمة من جديد.'],
+    [() => [500, { error: 'no_key' }], 'الخدمة غير مهيّأة بعد.'],
+    [() => [502, { error: 'upstream', status: 500 }], 'تعذّر بدء المكالمة — حاول مرّة ثانية.'],
+  ];
+  for (const [route, text] of cases) {
+    const x = sandbox({ routes: { 'call-session': route } });
+    const wrap = x.card();
+    x.btn('omCallTry').click();
+    assert.equal(x.btn('omCallStop').textContent, 'إنهاء المكالمة', 'الإنهاء أثناء التجهيز');
+    await flush();
+    assert.equal(x.call().state, 'failed');
+    assert.equal(x.draws, 1, 'لا رسم كامل — الحارس تخطّى renderAll');
+    assert.equal(x.card(), wrap, 'الغلاف المرسوم نفسه حُدِّث');
+    assert.equal(x.card().q('omCallStop').length, 0, 'لا زرّ إنهاء لجلسة انتهت');
+    assert.ok(x.btn('omCallTry') && x.btn('omCallDial'), 'عاد الزرّان');
+    assert.equal(x.card().q('omCallNote')[0].textContent, text);
+    assert.match(x.card().q('omCallState')[0].textContent, /تعذّرت المكالمة/);
+  }
+  // الإنهاء من البطاقة نفسها أثناء التجهيز يختفي فورًا
+  let release;
+  const e = sandbox({ routes: { 'call-session': () => new Promise((r) => { release = () => r([200, { clientSecret: 'ek', maxSec: 240 }]); }) } });
+  e.btn('omCallTry').click();
+  await flush();
+  e.btn('omCallStop').click();
+  assert.equal(e.card().q('omCallStop').length, 0);
+  assert.match(e.card().q('omCallState')[0].textContent, /أُلغيت المكالمة/);
+  release(); await e.advance(1000);
+  // الفعليّ: الإلغاء فور قبول البدء (لا انتظار أوّل استطلاع)، ثمّ 404 من المتابعة
+  const p = sandbox({ routes: { 'call-start': () => [200, { callId: 'call_g', state: 'queued' }], 'call-status': () => [404, { error: 'call_not_found' }] } });
+  p.btn('omCallDial').click();
+  await flush();
+  assert.equal(p.btn('omCallStop').textContent, 'إلغاء المكالمة');
+  assert.match(p.card().q('omCallState')[0].textContent, /يبدأ الاتّصال/);
+  await p.advance(2000);
+  assert.equal(p.call().state, 'failed');
+  assert.match(p.card().q('omCallState')[0].textContent, /تعذّرت المكالمة/);
+  assert.equal(p.card().q('omCallStop').length, 0, 'لا إلغاء لمكالمة انتهت');
+  assert.ok(p.btn('omCallNote') && p.btn('omCallDial'));
+  assert.equal(p.draws, 1);
+});
+
+test('١٣. تدفّق واحد لكلّ بطاقة: «جرّب عليّ» معطّل وممنوع أثناء بدء الاتّصال الفعليّ، و«اتّصل فعليًّا» ممنوع أثناء التجربة', async () => {
+  let release;
+  const c = sandbox({ routes: {
+    'call-start': () => new Promise((r) => { release = () => r([200, { callId: 'call_x', state: 'queued' }]); }),
+    'call-status': () => [200, { state: 'ringing', transcript: [], ended: false }],
+  } });
+  const oldTry = c.btn('omCallTry');
+  c.btn('omCallDial').click();
+  await flush();
+  assert.equal(c.calls('call-start').length, 1);
+  assert.equal(c.btn('omCallTry').disabled, true, 'التجربة معطّلة أثناء البدء');
+  assert.equal(c.btn('omCallDial').disabled, true);
+  oldTry.click(); // ضغطة وصلت قبل التعطيل أو لزرّ رُسم قبله
+  c.btn('omCallTry').click();
+  await flush();
+  assert.equal(c.calls('call-session').length, 0, 'لا تجربة فوق اتّصال يبدأ');
+  assert.equal(c.overlay(), null);
+  assert.equal(c.callAgentBusy(), false);
+  release();
+  await flush();
+  assert.equal(c.call().transport, 'phone');
+  assert.equal(c.call().callId, 'call_x');
+  assert.equal(c.btn('omCallStop').textContent, 'إلغاء المكالمة');
+  assert.equal(c.card().q('omCallTry').length, 0);
+  oldTry.click();
+  await c.advance(2000);
+  assert.equal(c.calls('call-session').length, 0, 'ولا فوق مكالمة فعليّة جارية');
+  assert.equal(c.call().transport, 'phone');
+  // الاتّجاه الآخر: زرّ «اتّصل فعليًّا» القديم أثناء التجربة لا يسأل ولا يتّصل
+  const t = sandbox();
+  const oldDial = t.btn('omCallDial');
+  await liveTrial(t);
+  assert.equal(t.card().q('omCallDial').length, 0, 'لا اتّصال فعليّ أثناء التجربة');
+  oldDial.click();
+  await flush();
+  assert.equal(t.confirmed.length, 0);
+  assert.equal(t.calls('call-start').length, 0);
+  assert.equal(t.call().transport, 'trial');
+});
+
+const BOOKED = { status: 'booked', summary: 'تمّ حجز موعد الخميس ٥ العصر.', confirmed_details: 'الخميس ٥:٠٠ م', follow_up: '' };
+
+test('١٤. الإغلاق أو إعادة التحميل أثناء التجربة: pagehide يحفظ فورًا، والتحميل التالي يكتب النتيجة الناقصة مرّة واحدة — ولا يمسّ تجربة قد تكون حيّة في جهاز آخر', async () => {
+  const c = sandbox();
+  const pc = await liveTrial(c);
+  assert.equal(c.localStorage.getItem('omranCallTrialLive'), 'cp1', 'علامة «تجربة جارية في هذا المتصفّح»');
+  pc.dc.emit({ type: 'response.output_audio_transcript.done', transcript: 'أبغى أحجز موعد.' });
+  pc.dc.emit({ type: 'response.function_call_arguments.done', name: 'report_outcome', call_id: 'f1', arguments: JSON.stringify(BOOKED) });
+  await flush();
+  const before = plain(c.state); // آخر ما وصل التخزين: «جارية» بنتيجتها، ولا رسالة
+  assert.equal(before.projects[0].messages[1].cards.call.state, 'live');
+  assert.ok(c.listeners.pagehide && c.listeners.pagehide.length === 1);
+  c.listeners.pagehide[0]();
+  assert.equal(c.call().state, 'completed');
+  assert.equal(c.msgs().length, 3);
+  assert.deepEqual(c.flushes, [true], 'حفظ فوريّ — مؤقّت saveState لا ينطلق أثناء الإغلاق');
+  assert.equal(c.mirrors, 1, 'والمرآة المتزامنة');
+  assert.equal(c.localStorage.getItem('omranCallTrialLive'), 'cp1', 'العلامة تبقى للتحميل التالي');
+
+  // التحميل التالي: الحفظ غير المتزامن لم يكتمل ← «جارية» بنتيجة ولا رسالة
+  const n = sandbox({ state: before, storage: c.localStorage });
+  assert.match(n.card().q('omCallState')[0].textContent, /انقطعت المكالمة/);
+  assert.equal(n.call().state, 'live', 'لا كتابة أثناء الرسم');
+  await n.advance(0);
+  assert.equal(n.call().state, 'completed', 'بنتيجة = اكتملت');
+  assert.equal(n.call().resultPushed, true);
+  assert.equal(n.msgs().length, 3);
+  assert.match(n.msgs()[2].content, /^📞 نتيجة المكالمة مع «عيادة النور للأسنان»: تمّ الحجز\nتمّ حجز موعد الخميس/);
+  assert.ok(n.saves > 0, 'حُفظت');
+  assert.equal(n.localStorage.getItem('omranCallTrialLive'), null, 'العلامة أُزيلت');
+  assert.match(n.card().q('omCallOutcome')[0].textContent, /^تمّ الحجز/);
+  n.redraw(); await n.advance(1000);
+  assert.equal(n.msgs().length, 3, 'مرّة واحدة');
+
+  // جهاز آخر (بلا العلامة) وتجربة حديثة: عرض «انقطعت» فقط، لا كتابة — قد تكون حيّة هناك
+  const o = sandbox({ call: { transport: 'trial', state: 'live', startedAt: 1_000_000 - 30_000, maxMin: 4, transcript: [{ who: 'agent', text: 'مرحبًا' }] } });
+  await o.advance(0);
+  assert.equal(o.call().state, 'live');
+  assert.equal(o.msgs().length, 2);
+  o.clock.now += 5 * 60 * 1000; // تجاوزت سقفها في كلّ مكان
+  o.redraw(); await o.advance(0);
+  assert.equal(o.call().state, 'dropped');
+  assert.match(o.msgs()[2].content, /انقطعت المكالمة\nانتهت المكالمة بلا نتيجة مسجّلة\./);
+  // تجربة لم تتجاوز التجهيز: «انقطعت» بلا رسالة (كفشل التجهيز)
+  const m = sandbox({ call: { transport: 'trial', state: 'connecting', startedAt: 0 } });
+  await m.advance(0);
+  assert.equal(m.call().state, 'dropped');
+  assert.equal(m.msgs().length, 2);
+  // انتهت طبيعيًّا ← العلامة تُزال
+  const f = sandbox();
+  await liveTrial(f);
+  f.overlay().q('omCallOvEnd')[0].click();
+  assert.equal(f.localStorage.getItem('omranCallTrialLive'), null);
+});
+
+test('١٥. صندوق النصّ الحيّ يُلحق إلحاقًا: لا يُعاد بناؤه، يتبع آخر سطر، ولا يسرق تمرير القارئ ولا زرّ الإلغاء من تحت إصبعه', async () => {
+  const c = sandbox();
+  const pc = await liveTrial(c);
+  const say = (s) => pc.dc.emit({ type: 'response.output_audio_transcript.done', transcript: s });
+  for (let i = 1; i <= 5; i++) say('سطر ' + i);
+  await flush();
+  const box = c.card().q('omCallLines')[0];
+  const first = box.childNodes[0];
+  assert.equal(box.childNodes.length, 5);
+  assert.equal(box.scrollTop, 5 * 20 - 60, 'يتبع آخر سطر');
+  const stop = c.btn('omCallStop');
+  say('سطر 6'); await flush();
+  assert.equal(c.card().q('omCallLines')[0], box, 'الصندوق نفسه');
+  assert.equal(box.childNodes[0], first, 'الأسطر المرسومة لم تُبنَ من جديد');
+  assert.equal(box.childNodes.length, 6);
+  assert.equal(box.childNodes[5].textContent, 'المساعد: سطر 6');
+  assert.equal(box.scrollTop, 6 * 20 - 60);
+  assert.equal(c.btn('omCallStop'), stop, 'زرّ الإنهاء نفسه');
+  box.scrollTop = 0; // القارئ رفع ليقرأ أوّلها
+  say('سطر 7'); await flush();
+  assert.equal(box.scrollTop, 0, 'لا قفز تحت القارئ');
+  assert.equal(box.childNodes.length, 7);
+  box.scrollTop = 1e9; // عاد للأسفل ← يتبع من جديد
+  say('سطر 8'); await flush();
+  assert.equal(box.scrollTop, 8 * 20 - 60);
+  const ov = c.overlay().q('omCallOvLines')[0];
+  assert.equal(ov.childNodes.length, 6, 'آخر ستّة في النافذة');
+  assert.equal(ov.childNodes[5].textContent, 'المساعد: سطر 8');
+  assert.equal(ov.scrollTop, ov.scrollHeight - ov.clientHeight, 'والنافذة تتبع آخر سطر');
+  for (let i = 9; i <= 45; i++) say('سطر ' + i);
+  await flush();
+  assert.equal(box.childNodes.length, 40, 'سقف الأربعين');
+  assert.equal(box.childNodes[0].textContent, 'المساعد: سطر 6');
+  assert.equal(box.childNodes[39].textContent, 'المساعد: سطر 45');
+  // الفعليّ: كلّ استطلاع يُلحق الجديد، وزرّ الإلغاء نفسه طوال المكالمة
+  const seq = [
+    { state: 'ringing', transcript: [], ended: false },
+    { state: 'in-progress', durationSec: 5, transcript: [{ who: 'agent', text: 'السلام عليكم' }], ended: false },
+    { state: 'in-progress', durationSec: 7, transcript: [{ who: 'agent', text: 'السلام عليكم' }, { who: 'callee', text: 'هلا' }], ended: false },
+    { state: 'in-progress', durationSec: 9, transcript: [{ who: 'agent', text: 'السلام عليكم' }, { who: 'callee', text: 'هلا' }, { who: 'agent', text: 'أبغى موعد' }], ended: false },
+  ];
+  let i = 0;
+  const p = sandbox({ routes: { 'call-start': () => [200, { callId: 'call_t', state: 'queued' }], 'call-status': () => [200, seq[Math.min(i++, seq.length - 1)]] } });
+  p.btn('omCallDial').click();
+  await flush();
+  const cancel = p.btn('omCallStop');
+  await p.advance(2000 * 2);
+  const pl = p.card().q('omCallLines')[0];
+  const r0 = pl.childNodes[0];
+  await p.advance(2000 * 2);
+  assert.equal(p.btn('omCallStop'), cancel, 'زرّ الإلغاء لم يُستبدل بين الاستطلاعات');
+  assert.equal(p.card().q('omCallLines')[0], pl);
+  assert.equal(pl.childNodes[0], r0);
+  assert.equal(pl.childNodes.length, 3);
+  assert.equal(pl.childNodes[1].textContent, 'الطرف الآخر: هلا');
+  assert.equal(pl.scrollTop, 3 * 20 - 60);
+  assert.match(p.card().q('omCallState')[0].textContent, /0:09/);
+  assert.equal(p.draws, 1);
+});
+
+test('١٦. المتابعة تحفظ فقط حين يتغيّر شيء: استطلاعات متطابقة لا تستدعي saveState، والمدّة وحدها تُعرض بلا حفظ', async () => {
+  const seq = [
+    { state: 'ringing', transcript: [], outcome: null, ended: false },
+    { state: 'ringing', transcript: [], outcome: null, ended: false },
+    { state: 'ringing', transcript: [], outcome: null, ended: false },
+    { state: 'ringing', transcript: [], outcome: null, ended: false },
+    { state: 'in-progress', durationSec: 3, transcript: [], outcome: null, ended: false },
+    { state: 'in-progress', durationSec: 5, transcript: [], outcome: null, ended: false },
+    { state: 'in-progress', durationSec: 7, transcript: [{ who: 'agent', text: 'مرحبًا' }], outcome: null, ended: false },
+    { state: 'in-progress', durationSec: 9, transcript: [{ who: 'agent', text: 'مرحبًا' }], outcome: null, ended: false },
+    { state: 'completed', durationSec: 11, transcript: [{ who: 'agent', text: 'مرحبًا' }], outcome: { status: 'no_answer', summary: 'لم يردّ أحد.' }, ended: true },
+  ];
+  let i = 0;
+  const c = sandbox({ routes: { 'call-start': () => [200, { callId: 'call_s', state: 'queued' }], 'call-status': () => [200, seq[Math.min(i++, seq.length - 1)]] } });
+  c.btn('omCallDial').click();
+  await flush();
+  const s0 = c.saves;
+  await c.advance(2000);
+  assert.equal(c.saves, s0 + 1, 'queued ← ringing: حفظ');
+  await c.advance(2000 * 3);
+  assert.equal(c.saves, s0 + 1, 'ثلاثة استطلاعات متطابقة: لا حفظ');
+  await c.advance(2000);
+  assert.equal(c.saves, s0 + 2, 'ringing ← in-progress: حفظ');
+  await c.advance(2000);
+  assert.equal(c.saves, s0 + 2, 'المدّة وحدها: لا حفظ');
+  assert.match(c.card().q('omCallState')[0].textContent, /0:05/, '…لكنّها تُعرض');
+  await c.advance(2000);
+  assert.equal(c.saves, s0 + 3, 'سطر جديد: حفظ');
+  await c.advance(2000);
+  assert.equal(c.saves, s0 + 3);
+  await c.advance(2000);
+  assert.ok(c.saves > s0 + 3, 'النهاية تُحفظ');
+  assert.equal(c.call().durationSec, 11);
+  assert.equal(c.msgs().length, 3);
+});
+
+test('١٧. مها ترفض أثناء التجربة برسالة ظاهرة (مفتاح بالـ١٤ لغة)، وبلاها تفتح كالمعتاد', async () => {
+  for (const src of [read('js/app-08-maha.js'), read('js/app.bundle.js')]) {
+    const body = src.slice(src.indexOf('async function mahaStartCall('), src.indexOf('if(btnMahaEl) btnMahaEl.onclick'));
+    for (const busy of [true, false]) {
+      const toasts = [], inner = [];
+      const run = new Function('window', 'settingsToast', 't', '__swallow', 'mahaStartCallInner',
+        'let mahaCallActive = false, mahaCallStarting = false;\n' + body + '\nreturn mahaStartCall;')(
+        { callAgentBusy: () => busy }, (m) => toasts.push(m), (k) => D.ar[k] || k, () => {}, async (mode) => { inner.push(mode); });
+      await run('x');
+      assert.deepEqual(toasts, busy ? ['أنهِ المكالمة التجريبيّة أوّلًا.'] : [], 'busy=' + busy);
+      assert.deepEqual(inner, busy ? [] : ['x']);
+    }
+  }
+  assert.equal(D.en.callAgentErrTrialBusy, 'End the trial call first.');
+});
+
+test('١٨. العقد v2: البطاقة ونصّ التأكيد يعرضان اسم المحلّ من الخرائط والاسم الذي يتّصل به والتفاصيل التي قد يذكرها', async () => {
+  const extra = { placeName: 'Smile Dental Clinic Al Barsha', callerName: 'عمران', details: 'الحجز باسم عمران، شخص واحد' };
+  const c = sandbox({ call: extra });
+  const card = c.card();
+  const pl = card.q('omCallPlace')[0];
+  assert.equal(pl.textContent, 'الرقم من الخرائط: Smile Dental Clinic Al Barsha');
+  assert.equal(pl.childNodes[1].getAttribute('dir'), 'auto', 'اسم لاتينيّ معزول الاتّجاه');
+  assert.equal(card.q('omCallWho')[0].textContent, 'يتّصل نيابةً عن: عمران');
+  assert.equal(card.q('omCallShare')[0].textContent, 'قد يذكر للجهة: الحجز باسم عمران، شخص واحد');
+  const order = card.all().map((n) => n.className).filter((k) => /^omCall(Biz|Phone|Place|Goal|Who|Share|Meta)$/.test(k));
+  assert.deepEqual(order, ['omCallBiz', 'omCallPhone', 'omCallPlace', 'omCallGoal', 'omCallWho', 'omCallShare', 'omCallMeta']);
+  c.btn('omCallDial').click();
+  await flush();
+  assert.equal(c.confirmed[0], 'سيتّصل المساعد الآن فعليًّا بـ«عيادة النور للأسنان». متابعة؟\n\n'
+    + 'الرقم من الخرائط: Smile Dental Clinic Al Barsha\nيتّصل نيابةً عن: عمران\nالهدف: حجز موعد تنظيف أسنان يوم الخميس بعد العصر\nقد يذكر للجهة: الحجز باسم عمران، شخص واحد');
+  // بالإنجليزيّة
+  const e = sandbox({ lang: 'en', call: extra });
+  assert.equal(e.card().q('omCallPlace')[0].textContent, 'Number from the map: Smile Dental Clinic Al Barsha');
+  assert.equal(e.card().q('omCallWho')[0].textContent, 'On behalf of: عمران');
+  e.btn('omCallDial').click();
+  await flush();
+  assert.match(e.confirmed[0], /\n\nNumber from the map: Smile Dental Clinic Al Barsha\nOn behalf of: عمران\nGoal: /);
+  // بلاها: لا أسطر فارغة
+  const n = sandbox();
+  for (const k of ['omCallPlace', 'omCallWho', 'omCallShare']) assert.equal(n.card().q(k).length, 0, k);
+  n.btn('omCallDial').click();
+  await flush();
+  assert.doesNotMatch(n.confirmed[0], /الخرائط|نيابةً عن|قد يذكر/);
+  assert.match(n.confirmed[0], /متابعة؟\n\nالهدف: حجز موعد/);
+});
+
+test('١٩. سطر حالة propose_call (k: stCall) مترجم بالـ١٤ لغة بلا اسم مزوّد', () => {
+  const src = read('js/app-03-i18n-data.js');
+  const vals = [...src.matchAll(/\bstCall:\s*("(?:\\.|[^"\\])*")/g)].map((m) => JSON.parse(m[1]));
+  assert.equal(vals.length, 2, 'ar ثمّ en');
+  assert.equal(vals[0], '📞 يجهّز كرت الاتّصال…', 'نصّ الخادم نفسه');
+  assert.equal(vals[1], '📞 Preparing the call card…');
+  for (const lg of LANGS) {
+    const v = langFile(lg).stCall;
+    assert.ok(typeof v === 'string' && /^📞 \S/.test(v), lg);
+    assert.doesNotMatch(v, BANNED, lg);
+  }
+  // الترجمة تمرّ بمسار tStatus القائم (k ← t(k)) كـstCards
+  assert.match(read('js/app-04-i18n-state.js'), /function tStatus\(ev\)\{[\s\S]{0,80}if\(ev && ev\.k\)\{\s*var v = t\(ev\.k\);/);
 });

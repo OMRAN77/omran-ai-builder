@@ -12,6 +12,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const http = require('node:http');
+const net = require('node:net');
 const { pathToFileURL } = require('node:url');
 
 const root = path.resolve(__dirname, '..');
@@ -28,6 +29,7 @@ const PHONE = '+971501234567';
 const CALL_SID = 'CA' + 'feedface'.repeat(4);
 const PUBLIC = 'https://relay.example.test';
 const T0 = Date.UTC(2026, 9, 17, 8, 0, 0);   // ١٢:٠٠ بتوقيت دبي
+const L_END_CAP = 15000;                       // LIMITS.endCapMs: أقصى انتظار لوداع الوكيل
 
 /* ───────── أدوات المحاكاة ───────── */
 function fakeClock(start) {
@@ -88,7 +90,7 @@ async function makeRelay(over) {
   const logs = [], agents = [], lines = [];
   class Agent extends FakeSocket { constructor(url, opts) { super(); this.url = url; this.opts = opts; agents.push(this); } }
   class FakeWSS { constructor(o) { this.o = o; } handleUpgrade(req, socket, head, cb) { const s = new FakeSocket(); s.readyState = 1; lines.push(s); cb(s); } close() { return 0; } }
-  const fetch = fakeTwilioFetch();
+  const fetch = x.fetch || fakeTwilioFetch();
   const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'call-relay-'));
   const config = Object.assign({ port: 0, twilioFrom: '+15005550006', publicUrl: PUBLIC, model: 'gpt-realtime-2.1', voice: 'cedar', stateDir }, SECRETS, x.config || {});
   const relay = createRelay({
@@ -238,7 +240,9 @@ test('٥. ترجمة الأحداث: أسماء GA والتجريبيّة، ال
   assert.deepEqual(lib.twilioEvent(j({ event: 'mark', mark: { name: 'r1' } })), { kind: 'mark', name: 'r1' });
   assert.equal(lib.twilioEvent(j({ event: 'stop' })).kind, 'stop');
   assert.equal(lib.twilioEvent('not json').kind, 'invalid');
-  for (const t of ['response.output_audio.delta', 'response.audio.delta']) assert.deepEqual(lib.agentEvent(j({ type: t, item_id: 'i1', delta: 'QQ==' })), { kind: 'audio', delta: 'QQ==', itemId: 'i1' });
+  for (const t of ['response.output_audio.delta', 'response.audio.delta']) assert.deepEqual(lib.agentEvent(j({ type: t, item_id: 'i1', delta: 'QQ==' })), { kind: 'audio', delta: 'QQ==', itemId: 'i1', responseId: '' });
+  assert.equal(lib.agentEvent(j({ type: 'response.output_audio.delta', response_id: 'resp_9', item_id: 'i1', delta: 'QQ==' })).responseId, 'resp_9', 'رقم الردّ يُحمل لإسقاط بقايا الردّ المقطوع');
+  assert.deepEqual(lib.agentEvent(j({ type: 'response.created', response: { id: 'resp_9' } })), { kind: 'response_created', id: 'resp_9' });
   for (const t of ['response.output_audio_transcript.done', 'response.audio_transcript.done']) assert.deepEqual(lib.agentEvent(j({ type: t, transcript: 'مرحبا' })), { kind: 'agent_text', text: 'مرحبا' });
   assert.deepEqual(lib.agentEvent(j({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'نعم' })), { kind: 'callee_text', text: 'نعم' });
   assert.equal(lib.agentEvent(j({ type: 'input_audio_buffer.speech_started' })).kind, 'speech_started');
@@ -457,12 +461,12 @@ test('١٠. مكالمة كاملة بمقابس مزيّفة: صوت في ال�
     await ctx.relay.upgrade({ url: '/stream/' + ID, headers: { 'x-twilio-signature': 'abc' } }, fakeNetSocket(), Buffer.alloc(0));
     assert.equal(ctx.lines.length, 1);
     const line = ctx.lines[0];
-    const twice = fakeNetSocket();
-    await ctx.relay.upgrade({ url: '/stream/' + ID, headers: {} }, twice, Buffer.alloc(0));
-    assert.match(twice.written, /^HTTP\/1\.1 404/, 'بثّ ثانٍ لنفس المكالمة مرفوض');
 
     line.recv({ event: 'connected', protocol: 'Call', version: '1.0.0' });
     line.recv(startMsg(token));
+    const twice = fakeNetSocket();
+    await ctx.relay.upgrade({ url: '/stream/' + ID, headers: {} }, twice, Buffer.alloc(0));
+    assert.match(twice.written, /^HTTP\/1\.1 404/, 'بثّ ثانٍ لنفس المكالمة بعد start صالح مرفوض');
     assert.equal(ctx.agents.length, 1);
     const agent = ctx.agents[0];
     assert.equal(agent.url, 'wss://api.openai.com/v1/realtime?model=gpt-realtime-2.1');
@@ -702,4 +706,301 @@ test('١٤. المصدر: ws كسول (لا استيراد عُلويّ)، لا 
   const mod = await load('server.mjs');
   assert.equal(typeof mod.createRelay, 'function');
   assert.equal(typeof mod.main, 'function');
+});
+
+/* ───────── ٤. ما كشفته المراجعة ───────── */
+test('١٥. مقبس يسبق Twilio إلى /stream/<id> ولا يرسل start صالحًا لا يقتل المكالمة: الربط بالمكالمة بعد الرمز فقط', async () => {
+  const lib = await load('lib.mjs');
+  const ctx = await makeRelay();
+  const ID = 'cp-squat-1';
+  try {
+    const token = await createCall(ctx, lib, ID);
+    // (أ) مقبس يتّصل أثناء الرنين ثمّ ينقطع قبل start
+    await ctx.relay.upgrade({ url: '/stream/' + ID, headers: {} }, fakeNetSocket(), Buffer.alloc(0));
+    ctx.lines.at(-1).drop(1006);
+    assert.equal(ctx.relay.live.get(ID).bridge, null, 'إغلاق قبل start = فكّ، لا نهاية المكالمة');
+    assert.ok(ctx.relay.live.get(ID).session, 'جلسة المكالمة باقية لبثّها الحقيقيّ');
+    // (ب) مقبس صامت ما زال مفتوحًا حين يصل بثّ Twilio الحقيقيّ
+    await ctx.relay.upgrade({ url: '/stream/' + ID, headers: {} }, fakeNetSocket(), Buffer.alloc(0));
+    const mute = ctx.lines.at(-1);
+    await ctx.relay.upgrade({ url: '/stream/' + ID, headers: {} }, fakeNetSocket(), Buffer.alloc(0));
+    const late = ctx.lines.at(-1);
+    const real = fakeNetSocket();
+    await ctx.relay.upgrade({ url: '/stream/' + ID, headers: {} }, real, Buffer.alloc(0));
+    assert.equal(real.written, '', 'البثّ الحقيقيّ لم يُرفض بـ404');
+    const line = ctx.lines.at(-1);
+    assert.notEqual(line, mute);
+    line.recv(startMsg(token));
+    assert.equal(ctx.agents.length, 1);
+    const agent = ctx.agents[0];
+    agent.open();
+    assert.equal(agent.sent[0].type, 'session.update');
+    assert.equal(agent.sent[0].session.instructions, SESSION.instructions);
+    assert.equal(ctx.relay.store.get(ID).state, 'in-progress');
+    // مقبس معلّق يرسل start صحيحًا بعد ربط البثّ: يُغلق ولا يستبدل الجسر
+    late.recv(startMsg(token, 'MZlate'));
+    assert.equal(late.readyState, 3); assert.equal(late.closeCode, 1008);
+    assert.equal(ctx.agents.length, 1, 'لا جلسة صوت ثانية');
+    // الصامت يُغلق بعد ٥ ث (1008) والمكالمة ماضية
+    ctx.clock.advance(5100); await settle();
+    assert.equal(mute.readyState, 3); assert.equal(mute.closeCode, 1008);
+    assert.equal(line.readyState, 1); assert.equal(agent.readyState, 1);
+    const third = fakeNetSocket();
+    await ctx.relay.upgrade({ url: '/stream/' + ID, headers: {} }, third, Buffer.alloc(0));
+    assert.match(third.written, /^HTTP\/1\.1 404/, 'بعد ربط البثّ: مقبس آخر مرفوض');
+    ctx.clock.advance(25000); await settle();
+    assert.equal(hangups(ctx).length, 0, 'المكالمة لم تُغلق');
+    const c = ctx.relay.store.get(ID);
+    assert.equal(c.state, 'in-progress'); assert.equal(c.endReason, '');
+    line.recv(media('CCCC'));
+    assert.deepEqual(agent.sent.at(-1), { type: 'input_audio_buffer.append', audio: 'CCCC' });
+  } finally { await ctx.stop(); }
+});
+
+test('١٦. المقاطعة أثناء الإفصاح: بقايا الردّ المقطوع لا تصل الخطّ بعد clear، والردّ التالي (يعيد الإفصاح) يُمرَّر كاملًا', async () => {
+  const lib = await load('lib.mjs');
+  const ctx = await makeRelay();
+  const ID = 'cp-barge-1';
+  try {
+    const token = await createCall(ctx, lib, ID);
+    const { line, agent } = await openStream(ctx, ID, token);
+    const creates = () => agent.sent.filter((e) => e.type === 'response.create').length;
+    ctx.clock.advance(2500);
+    assert.equal(creates(), 1, 'الافتتاح');
+    const d = 'f'.repeat(1600);
+    agent.recv({ type: 'response.created', response: { id: 'resp_1' } });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_1', item_id: 'item_1', delta: d });
+    ctx.clock.advance(50);
+    agent.recv({ type: 'input_audio_buffer.speech_started' });
+    assert.deepEqual(line.sent.at(-1), { event: 'clear', streamSid: 'MZ1' });
+    const cut = line.sent.length;
+    // ما كان في الطريق من الردّ المقطوع: العنصر نفسه (بالاسمين)، وعنصر آخر من الردّ نفسه
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_1', item_id: 'item_1', delta: d });
+    agent.recv({ type: 'response.audio.delta', item_id: 'item_1', delta: d });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_1', item_id: 'item_1b', delta: d });
+    agent.recv({ type: 'response.output_audio.done', response_id: 'resp_1', item_id: 'item_1' });
+    agent.recv({ type: 'response.done', response: { id: 'resp_1', status: 'cancelled' } });
+    assert.deepEqual(line.sent.slice(cut), [], 'لا صوت ولا علامة من الردّ المقطوع بعد clear');
+
+    // الردّ التالي ينشئه اكتشاف الدور عند الخادم — المرحّل لا يكتمه ولا يضيف ردًّا من عنده
+    agent.recv({ type: 'conversation.item.input_audio_transcription.completed', transcript: 'ألو؟ نعم' });
+    agent.recv({ type: 'response.created', response: { id: 'resp_2' } });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_2', item_id: 'item_2', delta: d });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_2', item_id: 'item_2', delta: d });
+    agent.recv({ type: 'response.output_audio.done', response_id: 'resp_2', item_id: 'item_2' });
+    const after = line.sent.slice(cut);
+    assert.deepEqual(after.filter((e) => e.event === 'media').map((e) => e.media.payload), [d, d], 'الردّ التالي يصل الخطّ كاملًا');
+    assert.equal(after.at(-1).event, 'mark');
+    agent.recv({ type: 'response.output_audio_transcript.done', transcript: 'السلام عليكم، معك مساعد آلي يتّصل نيابةً عن محمد. المكالمة تُعالَج آليًّا ولا تُسجَّل. تسمح لي أكمل؟' });
+    agent.recv({ type: 'response.done', response: { id: 'resp_2', status: 'completed' } });
+    assert.equal(creates(), 1, 'لا response.create إضافيّ من المرحّل');
+    assert.equal(agent.sent.filter((e) => e.type === 'response.cancel').length, 1, 'الردّ الثاني لم يُلغَ');
+    assert.deepEqual(ctx.relay.store.get(ID).transcript.map((l) => l.who), ['callee', 'agent']);
+    // مقاطعة ثانية أثناء الردّ الثالث ما زالت تعمل
+    agent.recv({ type: 'response.created', response: { id: 'resp_3' } });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'resp_3', item_id: 'item_3', delta: d });
+    agent.recv({ type: 'input_audio_buffer.speech_started' });
+    assert.deepEqual(line.sent.at(-1), { event: 'clear', streamSid: 'MZ1' });
+    assert.equal(agent.sent.filter((e) => e.type === 'response.cancel').length, 2);
+  } finally { await ctx.stop(); }
+});
+
+test('١٧. كلّ مكالمة منتهية لها نتيجة (العقد v2): بلا report_outcome تُبنى من سبب النهاية — no_answer إن لم يُردّ، وfailed غير ذلك', async () => {
+  const lib = await load('lib.mjs');
+  const mk = (o) => Object.assign(lib.newCall({ callId: 'cp-fb-1', now: 1 }), o);
+  const cases = [
+    [{ state: 'busy' }, 'no_answer'],
+    [{ state: 'no-answer' }, 'no_answer'],
+    [{ state: 'completed' }, 'no_answer'],
+    [{ state: 'canceled', endReason: 'canceled' }, 'no_answer'],
+    [{ state: 'canceled', endReason: 'canceled', answeredAt: 5 }, 'failed'],
+    [{ state: 'completed', answeredAt: 5, endReason: 'line_stop' }, 'failed'],
+    [{ state: 'completed', answeredAt: 5, endReason: 'call_completed' }, 'failed'],
+    [{ state: 'completed', answeredAt: 5, endReason: 'max_duration' }, 'failed'],
+    [{ state: 'completed', answeredAt: 5, endReason: 'agent_disconnected' }, 'failed'],
+    [{ state: 'completed', answeredAt: 5, endReason: 'no_speech' }, 'no_answer'],
+    [{ state: 'failed', endReason: 'twilio_21215' }, 'failed'],
+    [{ state: 'failed', answeredAt: 5, endReason: 'relay_restart' }, 'failed'],
+    [{ state: 'failed' }, 'failed'],
+  ];
+  const seen = new Set();
+  for (const [o, want] of cases) {
+    const v = lib.publicView(mk(o), 10);
+    assert.equal(v.ended, true);
+    assert.ok(v.outcome, JSON.stringify(o));
+    assert.equal(v.outcome.status, want, JSON.stringify(o));
+    assert.match(v.outcome.summary, /[؀-ۿ]{3}/, 'ملخّص عربيّ');
+    assert.doesNotMatch(v.outcome.summary, /twilio|openai|realtime|gpt/i, 'بلا اسم مزوّد');
+    assert.equal(v.outcome.confirmed_details, ''); assert.equal(v.outcome.follow_up, '');
+    assert.deepEqual(Object.keys(v.outcome), ['status', 'summary', 'confirmed_details', 'follow_up']);
+    seen.add(v.outcome.summary);
+  }
+  assert.ok(seen.size >= 8, 'الملخّص يقول سبب النهاية');
+  assert.equal(lib.publicView(mk({ state: 'in-progress', answeredAt: 5 }), 10).outcome, null, 'الجارية بلا نتيجة بعد');
+  const own = { status: 'booked', summary: 'تمّ الحجز', confirmed_details: 'الخميس', follow_up: '' };
+  assert.deepEqual(lib.publicView(mk({ state: 'completed', answeredAt: 5, endReason: 'line_stop', outcome: own }), 10).outcome, own, 'نتيجة الوكيل تبقى كما هي');
+
+  const ctx = await makeRelay();
+  try {
+    // أغلق الطرف الآخر الخطّ قبل report_outcome
+    const t1 = await createCall(ctx, lib, 'cp-fb-call');
+    const a = await openStream(ctx, 'cp-fb-call', t1);
+    a.agent.recv({ type: 'response.output_audio_transcript.done', transcript: 'تمام، الخميس الساعة ٥ باسم محمد؟' });
+    a.line.recv({ event: 'stop', streamSid: 'MZ1' });
+    await settle();
+    assert.equal((await twilioStatus(ctx, lib, 'cp-fb-call', { CallSid: CALL_SID, CallStatus: 'completed', CallDuration: '31' })).status, 204);
+    let g = await signedReq(ctx, lib, 'GET', '/call/cp-fb-call', null);
+    assert.equal(g.json.ended, true);
+    assert.equal(g.json.outcome.status, 'failed');
+    assert.match(g.json.outcome.summary, /أغلق الطرف الآخر/);
+    // رنّ ولم يردّ أحد (لم يُفتح بثّ أصلًا)
+    await createCall(ctx, lib, 'cp-fb-nora');
+    assert.equal((await twilioStatus(ctx, lib, 'cp-fb-nora', { CallSid: CALL_SID, CallStatus: 'no-answer' })).status, 204);
+    g = await signedReq(ctx, lib, 'GET', '/call/cp-fb-nora', null);
+    assert.equal(g.json.state, 'no-answer');
+    assert.equal(g.json.outcome.status, 'no_answer');
+    assert.match(g.json.outcome.summary, /لم يردّ أحد/);
+  } finally { await ctx.stop(); }
+
+  // Twilio رفض الطلب: المكالمة لم تخرج ⇒ failed بنتيجة
+  const bad = await makeRelay({ fetch: async () => ({ ok: false, status: 400, text: async () => JSON.stringify({ code: 21215, message: 'geo' }) }) });
+  try {
+    const r = await signedReq(bad, lib, 'POST', '/call', { callId: 'cp-fb-dial', to: PHONE, maxSec: 240, session: SESSION });
+    assert.equal(r.status, 502);
+    const g = await signedReq(bad, lib, 'GET', '/call/cp-fb-dial', null);
+    assert.equal(g.json.ended, true);
+    assert.equal(g.json.outcome.status, 'failed');
+  } finally { await bad.stop(); }
+});
+
+test('١٨. صمت ٤٠ ث بعد الردّ (لا كلام من الطرف الآخر ولا صوت من الوكيل) ⇒ وداع مهذّب ثمّ إغلاق، والنتيجة no_answer', async () => {
+  const lib = await load('lib.mjs');
+  const ctx = await makeRelay();
+  try {
+    const t1 = await createCall(ctx, lib, 'cp-idle-1');
+    const { line, agent } = await openStream(ctx, 'cp-idle-1', t1);
+    const nudges = () => agent.sent.filter((e) => e.type === 'conversation.item.create' && e.item && e.item.type === 'message');
+    const creates = () => agent.sent.filter((e) => e.type === 'response.create').length;
+    ctx.clock.advance(2500);
+    const d = 'f'.repeat(1600);   // ١٥٠ م.ث
+    agent.recv({ type: 'response.created', response: { id: 'r1' } });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'r1', item_id: 'i1', delta: d });
+    agent.recv({ type: 'response.output_audio.done', response_id: 'r1', item_id: 'i1' });
+    line.recv({ event: 'mark', streamSid: 'MZ1', mark: { name: line.sent.at(-1).mark.name } });
+    agent.recv({ type: 'response.done', response: { id: 'r1', status: 'completed' } });
+    ctx.clock.advance(30000);
+    agent.recv({ type: 'input_audio_buffer.speech_started' });   // الطرف الآخر تكلّم ⇒ العدّ من جديد
+    ctx.clock.advance(39900); await settle();
+    assert.equal(nudges().length, 0, 'لم تمضِ ٤٠ ث على آخر كلام');
+    assert.equal(ctx.relay.store.get('cp-idle-1').outcome, null);
+    ctx.clock.advance(200); await settle();
+    assert.equal(nudges().length, 1, 'طلب الوداع');
+    assert.equal(nudges()[0].item.role, 'system');
+    assert.match(nudges()[0].item.content[0].text, /goodbye/i);
+    assert.match(nudges()[0].item.content[0].text, /no_answer/);
+    assert.equal(agent.sent.at(-1).type, 'response.create');
+    const before = creates();
+    const c = ctx.relay.store.get('cp-idle-1');
+    assert.equal(c.outcome.status, 'no_answer');
+    assert.equal(c.endReason, 'no_speech');
+    assert.equal(hangups(ctx).length, 0, 'الوداع أوّلًا');
+    // الوكيل يودّع ثمّ end_call ⇒ الإغلاق بعد عودة العلامة
+    agent.recv({ type: 'response.created', response: { id: 'r2' } });
+    agent.recv({ type: 'response.output_audio.delta', response_id: 'r2', item_id: 'i2', delta: d });
+    agent.recv({ type: 'response.output_audio.done', response_id: 'r2', item_id: 'i2' });
+    const mark = line.sent.at(-1);
+    assert.equal(mark.event, 'mark');
+    agent.recv({ type: 'response.function_call_arguments.done', name: 'end_call', call_id: 'ce1', arguments: '{"reason":"silence"}' });
+    agent.recv({ type: 'response.done', response: { id: 'r2', status: 'completed' } });
+    line.recv({ event: 'mark', streamSid: 'MZ1', mark: { name: mark.mark.name } });
+    ctx.clock.advance(300); await settle();
+    assert.equal(hangups(ctx).length, 1);
+    assert.equal(creates(), before, 'لا ردّ زائد بعد end_call');
+    assert.equal((await twilioStatus(ctx, lib, 'cp-idle-1', { CallSid: CALL_SID, CallStatus: 'completed', CallDuration: '75' })).status, 204);
+    const g = await signedReq(ctx, lib, 'GET', '/call/cp-idle-1', null);
+    assert.equal(g.json.endReason, 'no_speech');
+    assert.equal(g.json.outcome.status, 'no_answer');
+    assert.match(g.json.outcome.summary, /[؀-ۿ]{3}/);
+
+    // وكيل لا يستجيب لطلب الوداع: الإغلاق بعد مهلة قصوى
+    const t2 = await createCall(ctx, lib, 'cp-idle-2');
+    await openStream(ctx, 'cp-idle-2', t2);
+    ctx.clock.advance(39900); await settle();
+    assert.equal(hangups(ctx).length, 1);
+    ctx.clock.advance(200); await settle();
+    assert.equal(hangups(ctx).length, 1, 'ينتظر الوداع');
+    ctx.clock.advance(L_END_CAP); await settle();
+    assert.equal(hangups(ctx).length, 2);
+    assert.equal(ctx.relay.store.get('cp-idle-2').endReason, 'no_speech');
+    assert.equal(ctx.relay.store.get('cp-idle-2').outcome.status, 'no_answer');
+  } finally { await ctx.stop(); }
+});
+
+test('١٩. مهلة طلب Twilio ٨ ث (Vercel ينتظرنا ١٥ ث): طلب معلّق يُقطع عند ٨ ث فيعود 502 قبل أن يستسلم Vercel', async () => {
+  const lib = await load('lib.mjs');
+  assert.equal(lib.LIMITS.twilioMs, 8000);
+  const seen = [];
+  const hang = (url, init) => { seen.push(init); return new Promise((resolve, reject) => { init.signal.addEventListener('abort', () => reject(new Error('aborted'))); }); };
+  const ctx = await makeRelay({ fetch: hang });
+  try {
+    const pending = signedReq(ctx, lib, 'POST', '/call', { callId: 'cp-slow-1', to: PHONE, maxSec: 240, session: SESSION });
+    for (let i = 0; i < 400 && !seen.length; i++) await new Promise((r) => setTimeout(r, 5));
+    assert.equal(seen.length, 1, 'الطلب وصل Twilio');
+    ctx.clock.advance(7999); await settle();
+    assert.equal(seen[0].signal.aborted, false, 'قبل ٨ ث لا قطع');
+    ctx.clock.advance(1); await settle();
+    assert.equal(seen[0].signal.aborted, true, 'عند ٨ ث يُقطع');
+    const r = await pending;
+    assert.equal(r.status, 502); assert.equal(r.json.error, 'twilio');
+    const g = await signedReq(ctx, lib, 'GET', '/call/cp-slow-1', null);
+    assert.equal(g.json.state, 'failed'); assert.equal(g.json.outcome.status, 'failed');
+  } finally { await ctx.stop(); }
+});
+
+/** يرسل سطر الطلب ورؤوسه فقط (بلا جسم) ويعيد سطر الحال إن ردّ الخادم قبل أن يصله الجسم. */
+function headOnly(port, head, ms) {
+  return new Promise((resolve) => {
+    const s = net.connect(port, '127.0.0.1');
+    let d = '', done = false;
+    const fin = (timedOut) => { if (done) return; done = true; clearTimeout(t); s.destroy(); resolve({ status: Number((/^HTTP\/1\.1 (\d{3})/.exec(d) || [])[1] || 0), timedOut }); };
+    const t = setTimeout(() => fin(true), ms || 1500);
+    s.setEncoding('utf8');
+    s.on('data', (c) => { d += c; if (d.includes('\r\n\r\n')) fin(false); });
+    s.on('error', () => fin(false));
+    s.on('close', () => fin(false));
+    s.write(head);
+  });
+}
+test('٢٠. الطلب غير الموقّع أو القديم أو الكبير يُرفض قبل قراءة جسمه، وردّ حال Twilio بلا توقيع كذلك؛ حدّ الجسم ٣٢ ك.ب', async () => {
+  const lib = await load('lib.mjs');
+  assert.ok(lib.LIMITS.bodyBytes <= 32 * 1024 && lib.LIMITS.bodyBytes >= 16 * 1024);
+  assert.ok(lib.LIMITS.formBytes <= 16 * 1024);
+  assert.deepEqual(lib.precheckRelay({ secret: SECRETS.secret, ts: String(T0), sig: 'a'.repeat(64), now: T0 }), { ok: true });
+  assert.equal(lib.precheckRelay({ secret: SECRETS.secret, ts: '', sig: '', now: T0 }).why, 'missing');
+  assert.equal(lib.precheckRelay({ secret: SECRETS.secret, ts: String(T0 - 61000), sig: 'a'.repeat(64), now: T0 }).why, 'expired');
+  assert.equal(lib.precheckRelay({ secret: '', ts: String(T0), sig: 'a'.repeat(64), now: T0 }).why, 'not_configured');
+  const ctx = await makeRelay();
+  try {
+    await createCall(ctx, lib, 'cp-early-1');
+    const before = ctx.fetch.calls.length;
+    const H = (lines) => lines.join('\r\n') + '\r\n\r\n';
+    const now = ctx.clock.now();
+    let r = await headOnly(ctx.port, H(['POST /call HTTP/1.1', 'Host: relay', 'Content-Type: application/json', 'Content-Length: 20000']));
+    assert.equal(r.timedOut, false, 'لم ينتظر الجسم'); assert.equal(r.status, 401);
+    r = await headOnly(ctx.port, H(['POST /call/cp-early-1/cancel HTTP/1.1', 'Host: relay', 'Content-Length: 900']));
+    assert.equal(r.timedOut, false); assert.equal(r.status, 401);
+    r = await headOnly(ctx.port, H(['POST /call HTTP/1.1', 'Host: relay', 'x-call-ts: ' + (now - 61000), 'x-call-sig: ' + 'a'.repeat(64), 'Content-Length: 900']));
+    assert.equal(r.timedOut, false, 'الطابع القديم يُرفض من الرؤوس'); assert.equal(r.status, 401);
+    r = await headOnly(ctx.port, H(['POST /call HTTP/1.1', 'Host: relay', 'x-call-ts: ' + now, 'x-call-sig: ' + 'a'.repeat(64), 'Content-Length: 40000']));
+    assert.equal(r.timedOut, false, 'الكبير يُرفض من Content-Length'); assert.equal(r.status, 413);
+    r = await headOnly(ctx.port, H(['POST /twilio/status/cp-early-1 HTTP/1.1', 'Host: relay', 'Content-Type: application/x-www-form-urlencoded', 'Content-Length: 5000']));
+    assert.equal(r.timedOut, false, 'ردّ حال بلا X-Twilio-Signature لا يُقرأ'); assert.equal(r.status, 403);
+    r = await headOnly(ctx.port, H(['POST /twilio/status/cp-early-1 HTTP/1.1', 'Host: relay', 'X-Twilio-Signature: abc', 'Content-Length: 40000']));
+    assert.equal(r.timedOut, false); assert.equal(r.status, 413);
+    assert.equal(ctx.fetch.calls.length, before, 'لا شيء وصل Twilio');
+    assert.equal(ctx.relay.store.get('cp-early-1').state, 'queued', 'المكالمة لم تُمسّ');
+    // الموقّع الصحيح ما زال يمرّ
+    const g = await signedReq(ctx, lib, 'GET', '/call/cp-early-1', null);
+    assert.equal(g.status, 200);
+  } finally { await ctx.stop(); }
 });

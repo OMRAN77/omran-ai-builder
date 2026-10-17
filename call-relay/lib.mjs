@@ -19,8 +19,9 @@ export const LIMITS = {
   minSecret: 24,                  // أقصر سرّ مقبول (كالجسر)
   minSec: 30, maxSec: 900, defaultSec: 240,   // حدود مدّة المكالمة (TimeLimit)
   ringSec: 30,                    // مهلة الرنين قبل «لا ردّ»
-  bodyBytes: 256 * 1024,          // جسم POST /call (الجلسة كاملة مع التعليمات)
-  formBytes: 64 * 1024,           // جسم ردّ حالة Twilio
+  bodyBytes: 32 * 1024,           // جسم POST /call (الجلسة كاملة مع التعليمات ≈ ٥ ك.ب في أقصاها)؛ يُفحص قبل القراءة
+  formBytes: 16 * 1024,           // جسم ردّ حالة Twilio (≈ ٢ ك.ب)
+  twilioMs: 8000,                 // مهلة طلب Twilio REST — أقلّ بوضوح من انتظار Vercel لنا (١٥ ث)
   transcriptLines: 80, lineChars: 400, outcomeChars: 600, reasonChars: 200,
   maxActive: 3,                   // مكالمات متزامنة على المرحّل كلّه (Vercel يقصرها على واحدة لكلّ مستخدم)
   openerMs: 2500,                 // صمت الطرف الآخر بعد الردّ ⇒ الوكيل يبدأ بجملة الإفصاح
@@ -33,6 +34,7 @@ export const LIMITS = {
   finalizeMs: 20000,              // لم يصل ردّ «completed» من Twilio ⇒ نختم الحال بأنفسنا
   preOpenFrames: 100,             // ≈ ثانيتان من صوت الطرف الآخر قبل جاهزيّة الجلسة
   callSafetyExtraMs: 120000,      // صمّام أمان للمكالمة كلّها: maxSec + دقيقتان من إنشائها
+  idleMs: 40000,                  // بعد الردّ: لا كلام من الطرف الآخر ولا صوت من الوكيل ٤٠ ث ⇒ وداع مهذّب وإنهاء (no_answer)
   dubaiOpenHour: 8, dubaiCloseHour: 22,
 };
 
@@ -67,15 +69,23 @@ export function signRelayHeaders(secret, method, path, rawBody, now) {
   const ts = String(Math.round(now == null ? Date.now() : now));
   return { 'x-call-ts': ts, 'x-call-sig': relaySignature(secret, ts, method, path, rawBody) };
 }
-/** {ok:true} أو {ok:false, why: not_configured|missing|expired|signature} */
-export function verifyRelay(o) {
+/** فحص الرؤوس وحدها (السرّ مضبوط، الطابع والتوقيع بصيغتهما، الطابع داخل النافذة) — يُستدعى قبل قراءة الجسم، فطلب
+    بلا توقيع أو قديم يُرفض دون أن يُحجز له بايت في الذاكرة. {ok:true} أو {ok:false, why: not_configured|missing|expired} */
+export function precheckRelay(o) {
   const secret = String((o && o.secret) || '');
   if (secret.length < LIMITS.minSecret) return { ok: false, why: 'not_configured' };
   const ts = String((o && o.ts) || '');
-  const sig = String((o && o.sig) || '').toLowerCase();
-  if (!/^\d{10,16}$/.test(ts) || !/^[0-9a-f]{64}$/.test(sig)) return { ok: false, why: 'missing' };
+  const sig = String((o && o.sig) || '');
+  if (!/^\d{10,16}$/.test(ts) || !/^[0-9a-fA-F]{64}$/.test(sig)) return { ok: false, why: 'missing' };
   const now = o.now == null ? Date.now() : o.now;
   if (Math.abs(now - Number(ts)) > (o.skewMs || LIMITS.skewMs)) return { ok: false, why: 'expired' };
+  return { ok: true };
+}
+/** {ok:true} أو {ok:false, why: not_configured|missing|expired|signature} */
+export function verifyRelay(o) {
+  const pre = precheckRelay(o);
+  if (!pre.ok) return pre;
+  const secret = String(o.secret), ts = String(o.ts), sig = String(o.sig).toLowerCase();
   const want = Buffer.from(relaySignature(secret, ts, o.method, o.path, o.rawBody), 'hex');
   const got = Buffer.from(sig, 'hex');
   if (got.length !== want.length || !timingSafeEqual(got, want)) return { ok: false, why: 'signature' };
@@ -271,7 +281,7 @@ export function agentEvent(text) {
   const ev = parseJson(text);
   if (!ev || typeof ev.type !== 'string') return { kind: 'invalid' };
   const t = ev.type;
-  if (AUDIO_DELTA.has(t)) return typeof ev.delta === 'string' && ev.delta ? { kind: 'audio', delta: ev.delta, itemId: String(ev.item_id || '') } : { kind: 'other', type: t };
+  if (AUDIO_DELTA.has(t)) return typeof ev.delta === 'string' && ev.delta ? { kind: 'audio', delta: ev.delta, itemId: String(ev.item_id || ''), responseId: String(ev.response_id || '') } : { kind: 'other', type: t };
   if (AUDIO_DONE.has(t)) return { kind: 'audio_done' };
   if (t === 'input_audio_buffer.speech_started') return { kind: 'speech_started' };
   if (AGENT_TEXT.has(t)) return { kind: 'agent_text', text: String(ev.transcript || '') };
@@ -284,8 +294,8 @@ export function agentEvent(text) {
     const args = parseJson(ev.arguments);
     return { kind: 'tool', name: String(ev.name || ''), callId: String(ev.call_id || ''), args: args && typeof args === 'object' ? args : {} };
   }
-  if (t === 'response.created') return { kind: 'response_created' };
-  if (t === 'response.done') return { kind: 'response_done', status: String((ev.response || {}).status || '') };
+  if (t === 'response.created') return { kind: 'response_created', id: String((ev.response || {}).id || '') };
+  if (t === 'response.done') return { kind: 'response_done', status: String((ev.response || {}).status || ''), id: String((ev.response || {}).id || '') };
   if (t === 'session.created' || t === 'session.updated') return { kind: 'session', type: t };
   if (t === 'error') { const e = ev.error || {}; return { kind: 'error', code: String(e.code || e.type || ''), message: String(e.message || '') }; }
   return { kind: 'other', type: t };
@@ -307,6 +317,42 @@ export function cleanOutcome(args) {
     confirmed_details: clip(a.confirmed_details, LIMITS.outcomeChars),
     follow_up: clip(a.follow_up, LIMITS.outcomeChars),
   };
+}
+
+/* ───────── نتيجة لم يسجّلها الوكيل (العقد v2) ─────────
+   كلّ مكالمة انتهت لها نتيجة: إن أُغلق الخطّ قبل report_outcome (أغلق الطرف الآخر، انتهى الوقت، انقطعت الخدمة) تُبنى
+   من سبب النهاية. لم يردّ أحد (مشغول، لا ردّ، انتهت أو أُلغيت قبل الردّ، أو سكوت بعد الردّ) ⇒ no_answer؛ وما عدا ذلك
+   ⇒ failed (ومنه فشل الطلب نفسه: المكالمة لم تخرج أصلًا، فليست «لم يردّوا»). الملخّص جملة عربيّة قصيرة بلا اسم مزوّد. */
+const ENDED_SUMMARY = {
+  busy: 'الخطّ مشغول ولم يردّ أحد.',
+  'no-answer': 'رنّ الهاتف ولم يردّ أحد.',
+  canceled_early: 'أُلغيت المكالمة قبل أن يردّ أحد.',
+  unanswered: 'انتهت المكالمة قبل أن يردّ أحد.',
+  no_speech: 'ردّ الخطّ ثمّ لم يتكلّم أحد، فأنهى الوكيل المكالمة بلطف.',
+  canceled: 'أُلغيت المكالمة أثناءها قبل أن تُسجَّل نتيجة.',
+  hung_up: 'أغلق الطرف الآخر الخطّ قبل أن تُسجَّل نتيجة؛ راجع نصّ المكالمة.',
+  time: 'انتهى وقت المكالمة قبل أن تُسجَّل نتيجة؛ راجع نصّ المكالمة.',
+  agent: 'انقطعت خدمة الصوت أثناء المكالمة.',
+  restart: 'أُعيد تشغيل خدمة الاتّصال فانقطعت المكالمة.',
+  dial: 'تعذّر إجراء المكالمة عبر شبكة الهاتف.',
+  unreachable: 'تعذّر الوصول إلى الرقم.',
+  other: 'انتهت المكالمة دون أن تُسجَّل نتيجة؛ راجع نصّ المكالمة.',
+};
+export function fallbackOutcome(call) {
+  const c = call || {};
+  const why = String(c.endReason || '');
+  const answered = !!c.answeredAt;
+  const out = (status, key) => ({ status, summary: ENDED_SUMMARY[key], confirmed_details: '', follow_up: '' });
+  if (why === 'no_speech') return out('no_answer', 'no_speech');
+  if (c.state === 'busy' || c.state === 'no-answer') return out('no_answer', c.state);
+  if (why === 'relay_restart') return out('failed', 'restart');
+  if (/^twilio_/.test(why)) return out('failed', 'dial');
+  if (c.state === 'canceled') return answered ? out('failed', 'canceled') : out('no_answer', 'canceled_early');
+  if (!answered) return c.state === 'failed' ? out('failed', 'unreachable') : out('no_answer', 'unanswered');
+  if (/^(line_|call_)/.test(why)) return out('failed', 'hung_up');
+  if (why === 'max_duration' || why === 'safety_timeout') return out('failed', 'time');
+  if (/^agent_/.test(why)) return out('failed', 'agent');
+  return out('failed', 'other');
 }
 
 /* ───────── سجلّ المكالمة ─────────
@@ -337,12 +383,14 @@ export function publicView(call, now) {
   const dur = call.durationSec != null
     ? call.durationSec
     : (call.answeredAt ? Math.max(0, Math.round(((call.endedAt || now) - call.answeredAt) / 1000)) : 0);
+  const ended = TERMINAL.has(call.state);
   return {
     state: call.state,
     durationSec: dur,
     transcript: (call.transcript || []).map((l) => ({ who: l.who, text: l.text })),
-    outcome: call.outcome ? Object.assign({}, call.outcome) : null,
-    ended: TERMINAL.has(call.state),
+    /* المنتهية بلا report_outcome تُبنى نتيجتها من سبب النهاية عند القراءة — فتشمل كلّ طرق النهاية، ومنها ما خُتم بعد إعادة التشغيل */
+    outcome: call.outcome ? Object.assign({}, call.outcome) : (ended ? fallbackOutcome(call) : null),
+    ended,
     endReason: call.endReason || '',
   };
 }

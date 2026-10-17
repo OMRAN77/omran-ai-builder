@@ -56,7 +56,8 @@ async function ask(user, question, turns) {
     return new Response('{}', { status: 404 });
   };
   let written = '';
-  const req = { method: 'POST', headers: {}, body: { messages: [{ role: 'user', content: question }], token: token(user), provider: 'deepseek' } };
+  const msgs = Array.isArray(question) ? question : [{ role: 'user', content: question }]; // v-call-agent-r2: محادثة بعدّة رسائل
+  const req = { method: 'POST', headers: {}, body: { messages: msgs, token: token(user), provider: 'deepseek' } };
   const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('json ' + JSON.stringify(v)); }, write(c) { written += String(c || ''); }, end() {}, writableEnded: false };
   try { await chat(req, res); } finally { global.fetch = saved; }
   const events = written.split('\n').filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch (e) { return null; } }).filter(Boolean);
@@ -87,4 +88,56 @@ test('٢. غير المالك: لا أداة propose_call في قائمته (ا�
   assert.ok(r.log.model[0], 'نداء موديل واحد على الأقلّ');
   const tools = r.log.model[0].tools || [];
   assert.ok(!tools.some((t) => t.name === 'propose_call'));
+});
+
+/* ── v-call-agent-r2 (مراجعة الخصم) ── */
+
+test('٣. «سوي لي حجز…»: بعد كرت الاتّصال لا «نفّذ الآن» — نداءان للموديل بالضبط، وسطر الحالة بمفتاح ترجمة', async () => {
+  for (const q of ['سوي لي حجز في عيادة ابتسامة ٠٥٠١٢٣٤٥٦٧ الأحد العصر', 'حط لي موعد عند صالون ليلى بكرة ٥ رقمهم 0501234567']) {
+    db.clear();
+    const r = await ask('omran', q, [
+      () => toolTurn('propose_call', { business: 'عيادة ابتسامة', phone: '0501234567', goal: 'حجز الأحد العصر' }),
+      () => textTurn('جهّزت كرت الاتّصال، ما اتّصلت بأحد بعد. اضغط «جرّب عليّ» أو «اتّصل فعليًّا»'),
+      () => textTurn('(نداء زائد)'),
+    ]);
+    assert.ok(r.events.some((e) => e.cards && e.cards.kind === 'call'), 'الكرت وصل');
+    assert.ok(!r.events.some((e) => e.k === 'stCarry'), 'لا «🛠️ ينفّذ…» بعد الكرت: ' + q);
+    assert.equal(r.log.model.length, 2, 'نداءان بالضبط: ' + q);
+    const st = r.events.find((e) => typeof e.status === 'string' && /كرت الاتّصال/.test(e.status));
+    assert.ok(st, 'سطر الحالة وصل');
+    assert.equal(st.k, 'stCall', 'سطر الحالة يُترجم في اللغات الأربع عشرة');
+  }
+});
+
+test('٤. رقم كتبه المالك في رسالة سابقة يُقبل: المحادثة كلّها مصدر لا آخر رسالة وحدها', async () => {
+  db.clear();
+  const r = await ask('omran', [
+    { role: 'user', content: 'ابي احجز في عيادة ابتسامة، رقمهم 0501234567' },
+    { role: 'assistant', content: 'متى يناسبك؟' },
+    { role: 'user', content: 'الأحد بعد العصر' },
+  ], [
+    () => toolTurn('propose_call', { business: 'عيادة ابتسامة', phone: '0501234567', goal: 'حجز الأحد بعد العصر' }),
+    () => textTurn('جهّزت كرت الاتّصال، ما اتّصلت بأحد بعد.'),
+  ]);
+  const card = r.events.find((e) => e.cards && e.cards.kind === 'call');
+  assert.ok(card);
+  assert.equal(card.cards.call.phoneReady, true, 'الرقم من الرسالة الأولى قُبل');
+  assert.equal(card.cards.call.phoneMasked, '+971 50 *** 4567');
+  const stored = [...db.entries()].find(([k]) => k.startsWith('call/prop/'));
+  assert.equal(JSON.parse(stored[1]).from, 'user');
+});
+
+test('٥. نصّ المساعد ليس مصدرًا: رقم في ردّ سابق للمساعد لا يُقبل', async () => {
+  db.clear();
+  const r = await ask('omran', [
+    { role: 'user', content: 'احجز لي في عيادة ابتسامة' },
+    { role: 'assistant', content: 'لقيت رقمهم في موقعهم: 0501234567' },
+    { role: 'user', content: 'تمام الأحد العصر' },
+  ], [
+    () => toolTurn('propose_call', { business: 'عيادة ابتسامة', phone: '0501234567', goal: 'حجز الأحد' }),
+    () => textTurn('جهّزت كرت التجربة.'),
+  ]);
+  const card = r.events.find((e) => e.cards && e.cards.kind === 'call');
+  assert.ok(card);
+  assert.equal(card.cards.call.phoneReady, false, 'الرقم من كلام المساعد لا من المالك');
 });

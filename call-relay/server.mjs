@@ -17,6 +17,9 @@ import { pathToFileURL } from 'node:url';
 import * as L from './lib.mjs';
 
 const AGENT_WS = 'wss://api.openai.com/v1/realtime?model=';
+/* رسالة نظام للوكيل حين يصمت الخطّ ٤٠ ث (لا تُعرض لأحد) — الوداع بلغة المكالمة، ثمّ النتيجة إن لم تُسجَّل، ثمّ end_call */
+const IDLE_BYE = 'No one has spoken on the line for a long time. Say one short, polite goodbye in the language of this call. '
+  + 'If you have not called report_outcome yet, call it with status "no_answer". Then call end_call.';
 const TWILIO_API = 'https://api.twilio.com/2010-04-01/Accounts/';
 
 const OPEN = 1;
@@ -45,12 +48,19 @@ export function createRelay(opts) {
   const live = new Map();        // callId → { token, session, model, bridge, safety }  (ذاكرة فقط، لا قرص)
   const finalizers = new Map();  // callId → مؤقّت الختم إن لم يصل «completed»
   const seenSigs = new Map();    // توقيع POST → انتهاؤه (منع إعادة الإرسال داخل نافذة الدقيقة)
+  const limbo = new Set();       // مقابس فُتحت ولم ترسل start صالحًا بعد — لا تحجز مكالمتها
   let wsMod = null, wss = null;
 
   function json(res, code, obj) {
     res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(obj));
   }
+  /** ردّ قبل قراءة الجسم: الاتّصال يُغلق بعده فلا يُنتظر جسم لن نقرأه. */
+  function early(res, code, obj) {
+    res.setHeader('Connection', 'close');
+    return json(res, code, obj);
+  }
+  const declared = (req) => Number((req.headers || {})['content-length']) || 0;
   async function readRaw(req, limit) {
     const chunks = [];
     let size = 0;
@@ -70,6 +80,9 @@ export function createRelay(opts) {
   /* ───────── Twilio REST ───────── */
   async function twilioApi(path, form) {
     const url = TWILIO_API + encodeURIComponent(cfg.twilioSid) + '/' + path;
+    /* ٨ ث لا ١٥: Vercel ينتظر ردّنا ١٥ ث؛ لو تساوت المهلتان لاستسلم Vercel أوّلًا وخرجت مكالمة لا يراها التطبيق ولا يلغيها */
+    const ac = new AbortController();
+    const timer = T.setTimeout(() => ac.abort(), L.LIMITS.twilioMs);
     try {
       const r = await fetchImpl(url, {
         method: 'POST',
@@ -78,7 +91,7 @@ export function createRelay(opts) {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: form.toString(),
-        signal: AbortSignal.timeout(15000),
+        signal: ac.signal,
       });
       const data = L.parseJson(await r.text()) || {};
       if (!r.ok) log('twilio ' + path.split('/')[0] + ' -> ' + r.status + ' ' + (data.code || '') + ' ' + L.clip(data.message, 160));
@@ -86,6 +99,8 @@ export function createRelay(opts) {
     } catch (e) {
       log('twilio request failed: ' + L.clip(e && e.message, 160));
       return { ok: false, status: 0, code: 0, data: {} };
+    } finally {
+      T.clearTimeout(timer);
     }
   }
 
@@ -212,8 +227,10 @@ export function createRelay(opts) {
     return [200, { ok: true }];
   }
   async function onStatus(req, res, url, id) {
+    if (!cfg.twilioToken || !cfg.publicUrl) return early(res, 503, { error: 'not_configured' });
+    if (!req.headers['x-twilio-signature']) { log('status ' + id + ': no signature'); return early(res, 403, { error: 'forbidden' }); }
+    if (declared(req) > L.LIMITS.formBytes) return early(res, 413, { error: 'too_large' });
     const raw = await readRaw(req, L.LIMITS.formBytes);
-    if (!cfg.twilioToken || !cfg.publicUrl) return json(res, 503, { error: 'not_configured' });
     const params = new URLSearchParams(raw.toString('utf8'));
     const full = cfg.publicUrl + url.pathname + url.search;
     if (!L.verifyTwilio(cfg.twilioToken, req.headers['x-twilio-signature'], full, params)) {
@@ -241,17 +258,22 @@ export function createRelay(opts) {
     res.end();
   }
   async function signed(req, res, url, fn) {
+    const refused = (send, why) => {
+      log('refused ' + req.method + ' ' + url.pathname + ': ' + why);
+      return why === 'not_configured'
+        ? send(res, 503, { error: 'not_configured', missing: ['CALL_RELAY_SECRET'] })
+        : send(res, 401, { error: 'unauthorized', why });
+    };
+    /* الرؤوس أوّلًا (الطابع والتوقيع والنافذة والحجم المعلن): العنوان عامّ، فطلب بلا توقيع لا يُحجز له جسم في الذاكرة */
+    const pre = L.precheckRelay({ secret: cfg.secret, ts: req.headers['x-call-ts'], sig: req.headers['x-call-sig'], now: now() });
+    if (!pre.ok) return refused(early, pre.why);
+    if (declared(req) > L.LIMITS.bodyBytes) return early(res, 413, { error: 'too_large' });
     const raw = await readRaw(req, L.LIMITS.bodyBytes);
     const v = L.verifyRelay({
       secret: cfg.secret, ts: req.headers['x-call-ts'], sig: req.headers['x-call-sig'],
       method: req.method, path: url.pathname, rawBody: raw, now: now(),
     });
-    if (!v.ok) {
-      log('refused ' + req.method + ' ' + url.pathname + ': ' + v.why);
-      return v.why === 'not_configured'
-        ? json(res, 503, { error: 'not_configured', missing: ['CALL_RELAY_SECRET'] })
-        : json(res, 401, { error: 'unauthorized', why: v.why });
-    }
+    if (!v.ok) return refused(json, v.why);
     if (req.method === 'POST') {
       const t = now();
       for (const [k, exp] of seenSigs) if (exp < t) seenSigs.delete(k);
@@ -330,7 +352,8 @@ export function createRelay(opts) {
     return o.WebSocket || (wsMod && (wsMod.WebSocket || wsMod.default)) || globalThis.WebSocket;
   }
 
-  /** يربط مقبس Twilio بمكالمته. يعيد الجسر أو null (ويغلق المقبس) إن لم تكن المكالمة تنتظر بثًّا. */
+  /** يستقبل مقبس Twilio لمكالمته. يعيد الجسر أو null (ويغلق المقبس) إن لم تكن المكالمة تنتظر بثًّا. الجسر لا يُربط
+      بالمكالمة (lv.bridge) إلّا بعد start برمزها: مقبس سبق Twilio ولم يرسل رمزًا لا يحجز مكانها ولا يُنهيها. */
   function attachStream(ws, id) {
     const c = store.get(id);
     const lv = live.get(id);
@@ -338,8 +361,7 @@ export function createRelay(opts) {
       try { ws.close(1008); } catch (e) { /* مغلق أصلًا */ }
       return null;
     }
-    lv.bridge = createBridge(id, ws, lv);
-    return lv.bridge;
+    return createBridge(id, ws, lv);
   }
 
   /* ───────── الجسر: خطّ واحد ⇄ جلسة صوت حيّ واحدة ───────── */
@@ -385,6 +407,9 @@ export function createRelay(opts) {
     };
 
     const startTimer = later(() => { if (!started) { log('stream ' + id + ': no valid start in time'); close('no_start', 1008); } }, L.LIMITS.startTimeoutMs);
+    let idleTimer = null, idleEnding = false;
+    const cutItems = new Set(), cutResps = new Set();   // عناصر وردود قطعتها المقاطعة: بقاياها المتأخّرة لا تصل الخطّ
+    let respId = '';
 
     on(tw, 'message', (data) => onLine(textOf(data)));
     on(tw, 'close', () => { if (!closed) { log('stream ' + id + ' closed by the line'); close('line_closed'); } });
@@ -406,9 +431,16 @@ export function createRelay(opts) {
       if (started) return;
       if (!m.streamSid || !L.safeEqual(m.token, lv.token)) {
         log('stream ' + id + ': bad token');
-        close('bad_token', 1008, true);
+        close('bad_token', 1008);
         return;
       }
+      if (live.get(id) !== lv || lv.bridge || L.TERMINAL.has(call.state)) {
+        log('stream ' + id + ': call is not waiting for a stream');
+        close('not_waiting', 1008);
+        return;
+      }
+      lv.bridge = api;
+      limbo.delete(api);
       started = true;
       cancel(startTimer);
       streamSid = m.streamSid;
@@ -418,6 +450,7 @@ export function createRelay(opts) {
       log('stream ' + id + ' started');
       later(() => stop('max_duration'), call.maxSec * 1000 + L.LIMITS.hardStopExtraMs);
       later(openerFire, L.LIMITS.openerMs);
+      armIdle();
       connectAgent();
     }
     function connectAgent() {
@@ -452,6 +485,27 @@ export function createRelay(opts) {
       opened = true;
       sendAgent({ type: 'response.create' });
     }
+    /** صمت الخطّ: يُعاد العدّ مع كلّ كلام من الطرف الآخر وكلّ صوت من الوكيل (من نهاية تشغيله المقدّرة). */
+    function armIdle() {
+      if (idleEnding || closed) return;
+      cancel(idleTimer);
+      idleTimer = later(onIdle, Math.max(0, playhead - now()) + L.LIMITS.idleMs);
+    }
+    /** ٤٠ ث بلا كلام ولا صوت بعد الردّ ⇒ النتيجة no_answer، ويُطلب من الوكيل وداع قصير ثمّ end_call، وإلّا يُغلق بعد المهلة القصوى. */
+    function onIdle() {
+      idleTimer = null;
+      if (closed || stopping || hangupPending || idleEnding) return;
+      idleEnding = true;
+      log('stream ' + id + ': no speech for ' + Math.round(L.LIMITS.idleMs / 1000) + 's, ending');
+      if (!call.endReason) call.endReason = 'no_speech';
+      if (!call.outcome) call.outcome = L.fallbackOutcome({ state: 'completed', answeredAt: call.answeredAt, endReason: 'no_speech' });
+      call.updatedAt = now();
+      store.put(call);
+      if (!agentOpen) { stop('no_speech'); return; }
+      sendAgent({ type: 'conversation.item.create', item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: IDLE_BYE }] } });
+      if (responseActive) needResponse = true; else sendAgent({ type: 'response.create' });
+      later(() => stop('no_speech'), L.LIMITS.endCapMs);
+    }
     function sendMark() {
       if (!audioSinceMark || !streamSid) return;
       audioSinceMark = false;
@@ -470,9 +524,10 @@ export function createRelay(opts) {
       const ev = L.agentEvent(text);
       switch (ev.kind) {
         case 'session': if (ev.type === 'session.created') log('agent session ' + id + ' ready'); return;
-        case 'response_created': responseActive = true; opened = true; return;
+        case 'response_created': responseActive = true; opened = true; respId = ev.id; return;
         case 'audio': {
           if (!streamSid) return;
+          if ((ev.itemId && cutItems.has(ev.itemId)) || (ev.responseId && cutResps.has(ev.responseId))) return;   // بقايا ردّ مقطوع بعد clear
           const t = now();
           if (ev.itemId !== itemId) { itemId = ev.itemId; itemMs = 0; itemStartAt = Math.max(t, playhead); }
           const ms = L.pcmuMs(ev.delta);
@@ -480,11 +535,12 @@ export function createRelay(opts) {
           playhead = Math.max(playhead, t) + ms;
           audioSinceMark = true;
           sendLine(L.twilioMedia(streamSid, ev.delta));
+          armIdle();
           if (hangupPending) armGrace();
           return;
         }
         case 'audio_done': sendMark(); return;
-        case 'speech_started': return onBargeIn();
+        case 'speech_started': onBargeIn(); armIdle(); return;
         case 'agent_text': return addLine('agent', ev.text);
         case 'callee_text': return addLine('callee', ev.text);
         case 'tool_item': if (ev.callId && ev.name) toolNames.set(ev.callId, ev.name); return;
@@ -506,6 +562,8 @@ export function createRelay(opts) {
       if (hangupPending) return;             // الوداع يُكمَل ثمّ يُغلق الخطّ
       const t = now();
       if (!responseActive && !(playhead > t)) return;
+      if (itemId) cutItems.add(itemId);
+      if (responseActive && respId) cutResps.add(respId);
       sendLine(L.twilioClear(streamSid));
       if (responseActive) sendAgent({ type: 'response.cancel' });
       if (itemId && itemMs > 0) {
@@ -565,17 +623,19 @@ export function createRelay(opts) {
       if (!call.endReason) { call.endReason = reason; store.put(call); }
       stop(reason);
     }
-    /** يغلق المقبسين ويوقف كلّ المؤقّتات. detach: مقبس مزيّف (رمز خاطئ) — المكالمة نفسها تبقى تنتظر بثّها الحقيقيّ. */
-    function close(reason, code, detach) {
+    /** يغلق المقبسين ويوقف كلّ المؤقّتات. قبل start صالح (رمز خاطئ، صمت، انقطاع) = فكّ فقط: المكالمة لم تُربط بهذا
+        المقبس أصلًا، فتبقى تنتظر بثّها الحقيقيّ. */
+    function close(reason, code) {
       if (closed) return;
       closed = true;
+      limbo.delete(api);
       for (const h of timers) T.clearTimeout(h);
       timers.clear();
       agentOpen = false;
       pending.length = 0;
       closeSock(tw, code || 1000);
       closeSock(agent, 1000);
-      if (detach) { if (lv.bridge === api) lv.bridge = null; return; }
+      if (!started) return;
       onBridgeClosed(id, reason);
     }
     const api = {
@@ -583,10 +643,12 @@ export function createRelay(opts) {
       get closed() { return closed; },
       get streamSid() { return streamSid; },
     };
+    limbo.add(api);
     return api;
   }
 
   function closeAll() {
+    for (const b of [...limbo]) b.close('shutdown');
     for (const [, lv] of live) if (lv.bridge) lv.bridge.close('shutdown');
     for (const [id] of live) dropLive(id);
     for (const [, h] of finalizers) T.clearTimeout(h);
