@@ -48,9 +48,11 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.om
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn:is(.active,:hover){box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn.active,
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn.active > span{color:#fff !important;}
-/* v-main-lines (المالك ١٧ أكتوبر: «فقط ثبت الخطوط في الشاشة الرئيسه»): إطار المحادثة واللوحتين ثابت ذهبيّ، وفي الجوال إطار المحادثة (body::after) بصنف زائد. */
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) :is(#sidebar,#workarea,#omFrameCenter){--om-gold-line:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85));}
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg).mobile-ui body::after{background-image:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85)) !important;}
+/* v-main-lines (المالك ١٧ أكتوبر: «فقط ثبت الخطوط في الشاشة الرئيسه»): إطار المحادثة واللوحتين ثابت ذهبيّ على الكمبيوتر فقط. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter){--om-gold-line:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85));}
+/* v-no-phone-frame (المالك: «احذف برواز الهاتف»): في الجوال لا إطار حول المحادثة (body::after من إطارات-الجوال.css) ولا حافّة ذهبيّة للدُّرجين،
+   وفي كلّ الأوضاع (الفاتح أيضًا) — استثناء من «الوضع الأسود وحده» بنطاق قاعدة الإطار نفسها. */
+html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after{background:none !important;}
 /* v-white-glow (المالك: «نفس فسّر… اذا اشر عليه يكون نفس الدرجه وبدون حد… واذا امرر السهم عليه نفس الفكر… مااريد حدود عليهم»):
    كلّ ما داخل الشاشة مثل زرّ «فسّر»: بلا حدّ، والمرور والمختار نفس الدرجة #101013 بتوهّج أبيض ونصّ أبيض بدل الذهبيّ —
    المحادثة المختارة في الشريط، وتبويبات المعاينة والكود فوق، والتبويبات المختارة في الأدوات. */
