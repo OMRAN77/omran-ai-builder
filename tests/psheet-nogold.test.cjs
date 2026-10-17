@@ -33,6 +33,6 @@ test('٤. الخيط الذهبيّ محذوف: لا أشعّة في الحلق�
   assert.ok(css.includes("'.pstyleHero .pstyleHeroT{border-color:transparent !important;}'"));
   assert.ok(css.includes("'.pstyleFoot{border-top:0 !important;}'"));
   assert.ok(/\.pstyleCta, ' \+ B \+ '\.pstyleFoot #portraitFootPhoto\{background:#000 !important; color:#fff !important; border:1px solid transparent !important/.test(css));
-  assert.ok(/\.pstyleCta:hover, ' \+ B \+ '\.pstyleFoot #portraitFootPhoto:hover\{text-shadow:/.test(css), 'إنارة النصّ لا حدّ');
+  assert.ok(css.includes('box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}') && /#portraitFootPhoto:hover\{box-shadow:0 6px 24px rgba\(255,255,255,\.5\) !important;\}/.test(css), 'إنارة الزرّ بدرجة «صمم الغرفة» (.35 → .5) لا حدّ');
   assert.ok(/\[data-pstyle-before-tag\], ' \+ B \+ '\.pstyleHero \.pstyleHeroC span\{background:#000 !important; color:#fff !important; border:1px solid rgba\(255,255,255,\.45\) !important;\}/.test(css), 'شارة «قبل» بلا ذهبيّ ولا يعيد المصنّف تذهيبها');
 });

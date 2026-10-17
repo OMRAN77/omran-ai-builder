@@ -32671,8 +32671,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + B + '.pstyleHero .pstyleHeroT{border-color:transparent !important;}'
       + B + '.pstyleHero .pstyleHeroT:hover{box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 0 22px rgba(212,175,55,.6) !important;}'
       + B + '.pstyleFoot{border-top:0 !important;}'
-      + B + '.pstyleCta, ' + B + '.pstyleFoot #portraitFootPhoto{background:#000 !important; color:#fff !important; border:1px solid transparent !important; box-shadow:0 0 18px rgba(255,255,255,.08) !important;}'
-      + B + '.pstyleCta:hover, ' + B + '.pstyleFoot #portraitFootPhoto:hover{text-shadow:0 0 10px rgba(255,255,255,.55); box-shadow:0 0 24px rgba(255,255,255,.14) !important;}'
+      + B + '.pstyleCta, ' + B + '.pstyleFoot #portraitFootPhoto{background:#000 !important; color:#fff !important; border:1px solid transparent !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}' /* نفس درجة «صمم الغرفة» (.btn.primary في الأسود) — «خلّها نفس الديكور» */
+      + B + '.pstyleCta:hover, ' + B + '.pstyleFoot #portraitFootPhoto:hover{box-shadow:0 6px 24px rgba(255,255,255,.5) !important;}'
       + B + '.pstyleFoot #portraitFavStarBtn{color:#fff !important;}';
     document.head.appendChild(st);
   }
