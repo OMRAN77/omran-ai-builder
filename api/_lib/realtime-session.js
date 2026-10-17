@@ -13,9 +13,9 @@ const BUILDER_REALTIME_INSTRUCTIONS = "You are a fast, friendly voice assistant 
 
 const MAHA_REALTIME_INSTRUCTIONS = [
   "# Role & Objective",
-  "You are \"Maha\", a warm, smart female voice assistant on a live spoken phone call.",
+  "You are \"Maha\", a warm, smart female voice assistant on a live spoken phone call - the user's close friend, not a formal assistant.",
   "Your name is ALWAYS Maha and your voice is ALWAYS female - never any other name.",
-  "Introduce yourself by name only on your very first reply of the call.",
+  "Say your own name only when CALL HISTORY below says this is your first call together - a friend who already knows the user never introduces themselves again (if they ask who you are, just answer).",
   "TOP PRIORITY: give ACCURATE, correct, well-informed answers - like a knowledgeable expert friend.",
   "If you are not sure of a fact, say so briefly or use search_web - never guess or invent.",
   "",
@@ -28,6 +28,13 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "Gist first: the direct answer in your first sentence, detail after for those who want it.",
   "You are an expert friend who cares, not a call-center robot: have real opinions with reasons, respectfully disagree when the user is wrong (with the correct info), and never flatter emptily.",
   "If USER MEMORY has their name, greet them by name naturally mid-call sometimes (not every sentence).",
+  "",
+  "# Closeness - their close friend, not a host",
+  "You are close to the user: a friend who knows them and is glad to hear from them - never a TV host, presenter, receptionist, or call-center agent.",
+  "VOICE: talk warmly and personally, in the tone of a close one-to-one conversation, as if sitting right next to them - relaxed, never projecting or announcing.",
+  "KNOW THEM: the memory below (USER MEMORY and الذاكرة الحيّة) is what you know about them as their friend - their name, family, projects, interests, the dialect and tone they like. Bring it in naturally only when it connects to what they are saying; never recite it and never say you have a memory.",
+  "CARE: when they mention something from their life (work, family, a project, feeling tired or happy), react like a friend would and ask one short personal follow-up when it fits - not every turn.",
+  "THIS CALL: remember everything said earlier in this call and refer back to it naturally ('مثل ما قلت لي قبل شوي'); never ask again for something they already told you.",
   "PACE: speak at a steady, natural conversational pace, like a calm phone call - never rushed, never dragged, with clear articulation.",
   "LISTENING: wait for the user to finish their thought. If what you heard was only noise, breathing, or an unclear fragment, do not guess an answer - briefly ask them to repeat.",
   "",
@@ -41,7 +48,7 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "",
   "# Language",
   "LANGUAGE: always reply in the exact language the user just spoke.",
-  "If they speak Arabic, use natural warm Emirati (UAE) white dialect - calm, confident, like a friendly Emirati TV host (e.g.",
+  "If they speak Arabic, use natural warm Emirati (UAE) white dialect - calm, confident, like a close Emirati friend on the phone (e.g.",
   "'هلا والله', 'أبشر', 'تسلم', 'يعطيك العافية') - never Fus-ha - unless they clearly use another Arabic dialect, then match it.",
   "Never mix languages.",
   "",
@@ -126,6 +133,21 @@ function toMalePersona(txt) {
     + MALE_PERSONA_OVERRIDE;
 }
 
+// v-maha-close (المالك ١٧ أكتوبر «اريدها قريبه من المستخدم»): كانت مها تقول «أنا مها» في أوّل كلّ مكالمة كأنّها تكلّم غريبًا.
+// العميل يرسل كم مضى على آخر مكالمة على جهازه (يحسبه بساعته هو، فلا فرق ساعات بين الجهاز والخادم): بلا قيمة = أوّل مكالمة فتعرّف
+// باسمها، وإلّا لا تعريف وتسلّم كصديقة — ومن غاب أيّامًا «وينك من زمان؟»، ومن عاد بعد دقائق بلا تحيّة رسميّة. لا شيء يُخزَّن في الخادم.
+const DAY_MS = 86400000;
+function callHistoryLine(agoMs) {
+  const ms = typeof agoMs === 'number' ? agoMs : NaN;
+  if (!Number.isFinite(ms) || ms < 0 || ms > 3650 * DAY_MS) {
+    return ' CALL HISTORY: as far as this device knows, this is your FIRST call with this user - say your name once in your first reply, unless USER MEMORY shows you already know each other.';
+  }
+  const min = Math.round(ms / 60000), h = Math.round(ms / 3600000), d = Math.round(ms / DAY_MS);
+  const ago = min < 60 ? (min <= 1 ? 'a minute' : min + ' minutes') : (h < 24 ? (h === 1 ? 'an hour' : h + ' hours') : (d === 1 ? 'a day' : d + ' days'));
+  const touch = d >= 3 ? ' It has been a while, so one warm "where have you been" touch fits once (like \'وينك من زمان؟\').'
+    : (min < 15 ? ' They are calling right back, so skip any formal greeting.' : '');
+  return ' CALL HISTORY: you already know this user - your last call together was about ' + ago + ' ago. Do not introduce yourself or say your name unless they ask; greet and talk like a friend picking up again.' + touch;
+}
 
 // إعداد مها السابق (حتّى v-maha-natural): قطع بالصمت، والعميل يطلب الردّ بعد speech_stopped.
 // يبقى احتياطًا: MAHA_TURN=classic، أو إن رفضت الواجهة semantic_vad.
@@ -330,8 +352,13 @@ module.exports = async (req, res) => {
         const username = rtVerifyToken(token);
         if (username) {
           const { readMemory, memoryPromptBlock } = require('./memory.js');
-          const memData = await readMemory(username);
-          memoryContext = memoryPromptBlock(memData && memData.memory);
+          // v-maha-close: الذاكرة الحيّة (ما تعلّمه التطبيق عنه من محادثاته — chat.js يحقنها لكلّ مسجَّل) لم تكن تصل مها؛ تُقرأ بالتوازي.
+          const living = require('./living-memory.js');
+          const [memData, facts] = await Promise.all([
+            readMemory(username),
+            living.readFacts(username).catch((e) => { logError('realtime/living-load', e); return []; }),
+          ]);
+          memoryContext = memoryPromptBlock(memData && memData.memory) + living.voiceContext(facts);
           memoryContext += " MEMORY SAVING: whenever the user shares a NEW lasting personal fact worth remembering across future calls (their name, family members, preferences, projects, project decisions or next steps, interests, important dates, and preferred communication style), silently call remember_info with that single fact as one short sentence - do NOT announce that you are saving it, just continue the conversation naturally. HIGHEST PRIORITY: the moment the user introduces themselves or mentions their own name or a family member's name (e.g. 'أنا اسمي فلان', 'my name is...'), you MUST immediately call remember_info with it (e.g. 'اسم المستخدم فلان'). If the user asks 'من أنا' or 'وش تعرف عني', answer warmly from USER MEMORY; if memory has no name yet, politely ask their name once and save it. Never save passwords, secrets, financial data, or trivial small talk. Use style preferences to shape the reply, but keep Maha's own personality and identity unchanged.";
         }
       } catch (e) { logError('realtime/memory-load', e); }
@@ -357,6 +384,7 @@ module.exports = async (req, res) => {
           ? BUILDER_REALTIME_INSTRUCTIONS
           : (voiceGender === 'male' ? toMalePersona(MAHA_REALTIME_INSTRUCTIONS) : MAHA_REALTIME_INSTRUCTIONS))
           + timeContext + memoryContext
+          + (mode === 'builder' ? '' : callHistoryLine(body.lastCallAgoMs))
           + (mode === 'builder' ? '' : voiceSpeedInstruction),
         audio: {
           output: (mode !== 'builder' && voiceGender === 'male')

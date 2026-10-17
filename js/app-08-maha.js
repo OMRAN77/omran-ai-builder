@@ -20,6 +20,19 @@ let mahaCallActive = false, mahaState = 'idle'; // idle | listening | thinking |
 let mahaLastActivity = 0; // v-maha-band: آخر كلام أو ردّ — مهلة السكوت تُحسب منه
 let mahaHistory = [];
 let mahaIntroduced = false;
+/* v-maha-close (المالك ١٧ أكتوبر «اريدها قريبه من المستخدم»): متى كانت آخر مكالمة على هذا الجهاز — مها لا تعرّف بنفسها لمن
+   يعرفها، وتسلّم عليه كصديقة. يُقرأ مرّة لكلّ مكالمة قبل أن يُكتب وقتها، وإعادة الاتّصال وسط المكالمة تستعمل المقروء نفسه. */
+const MAHA_LAST_CALL_KEY = 'aiapp_maha_last_call';
+let mahaPrevCallAgoMs = -1; // -1 = لا مكالمة سابقة معروفة
+function mahaReadPrevCallAgo(){
+  try{
+    const at = Number(localStorage.getItem(MAHA_LAST_CALL_KEY));
+    return (at > 0 && at <= Date.now()) ? Date.now() - at : -1;
+  }catch(e){ return -1; }
+}
+function mahaMarkCallAt(){
+  try{ localStorage.setItem(MAHA_LAST_CALL_KEY, String(Date.now())); }catch(e){ __swallow(e, 'maha:last-call'); }
+}
 let mahaCurrentAudio = null;
 // A single reusable <audio> element that gets "unlocked" synchronously inside
 // the user's click gesture, so later async .play() calls (after awaiting
@@ -1372,6 +1385,7 @@ async function mahaStartRealtimeCall(){
       mode: mahaCallMode,
       voiceGender: mahaReadVoiceGender(),
       voiceSpeed: 'normal', // v-speed-chat-only
+      lastCallAgoMs: mahaPrevCallAgoMs, // v-maha-close
       desktop: !document.documentElement.classList.contains('mobile-ui'),
     }),
   });
@@ -1538,7 +1552,7 @@ async function mahaStartRealtimeCall(){
          لا تحيّة إن قال المستخدم شيئًا أثناء التجهيز (جملته تأخذ ردّها)، ولا في إعادة الاتّصال، ولا في البنّاء. كلامه يقاطعها. */
       if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){
         try{
-          dc.send(JSON.stringify({ type: 'response.create', response: { instructions: 'Open the call now, like a real person answering: greet the user warmly in ONE short natural sentence, say your name, and invite them to talk. Speak the language of the app interface (code "' + String(typeof lang === 'string' ? lang : 'ar') + '"); for Arabic use your usual warm Emirati dialect. If USER MEMORY has their name, greet them by it. Nothing else.' } }));
+          dc.send(JSON.stringify({ type: 'response.create', response: { instructions: 'Open the call now like a close friend picking up: greet the user warmly in ONE short natural sentence and invite them to talk. Follow CALL HISTORY: on a first call say your name; otherwise do not introduce yourself - greet them as someone you know (by their name if your memory has it; a greeting that fits their local time of day is natural). Speak the language of the app interface (code "' + String(typeof lang === 'string' ? lang : 'ar') + '"); for Arabic use your usual warm Emirati dialect. Nothing else.' } }));
         }catch(e){ __swallow(e, 'maha:greet'); }
       }
       // إشارة «تكلم الآن» صريحة: قبلها أي كلام يروح بالهوا لأن المايك مقفول
@@ -2006,8 +2020,11 @@ async function mahaCallLoop(){
         continue;
       }
 
-      const mahaNowStr = new Date().toLocaleString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' });
-      const mahaDateSystemMsg = `The current real-world date and time right now is: ${mahaNowStr} (Gulf Standard Time, UAE). Always treat this as the true current date - never assume any other date, and never assume events after this date "haven't happened yet" just because you are unsure; if something is dated on or before this date, treat it as already having happened, and answer using your best knowledge plus common sense reasoning about the timeline. If truly asked about something very recent you can't know for certain, say so briefly instead of guessing wrong.`;
+      // v-maha-close: وقت المستخدم المحلّيّ كالوضع الفائق — كان توقيت دبي لكلّ أحد أينما كان.
+      let mahaTz = 'Asia/Dubai';
+      try{ mahaTz = Intl.DateTimeFormat().resolvedOptions().timeZone || mahaTz; }catch(e){ __swallow(e, 'maha:tz'); }
+      const mahaNowStr = new Date().toLocaleString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: mahaTz });
+      const mahaDateSystemMsg = `The current real-world date and time right now is: ${mahaNowStr} (the user's local time, timezone ${mahaTz}). Always treat this as the true current date - never assume any other date, and never assume events after this date "haven't happened yet" just because you are unsure; if something is dated on or before this date, treat it as already having happened, and answer using your best knowledge plus common sense reasoning about the timeline. If truly asked about something very recent you can't know for certain, say so briefly instead of guessing wrong.`;
 
       const mahaSearchSystemMsg = await mahaMaybeSearch(transcript);
       // Persona swap: male caller -> "Abdullah" (male voice/persona), female
@@ -2026,7 +2043,8 @@ async function mahaCallLoop(){
         if(mahaMemMsg) mahaSystemMsgs.push(mahaMemMsg);
       }catch(e){ __swallow(e, "misc:app-08-maha#mem"); }
       if(!mahaIntroduced){
-        mahaSystemMsgs.push({ role: 'system', content: `This is the very first reply of the call. Before answering the user's message, briefly introduce yourself by saying your name is "${mahaPersonaName}" (in the same language/dialect you are replying in), then answer their message naturally in the same short reply - e.g. like "I'm ${mahaPersonaName}, ..." followed by your actual answer. Do this ONLY this one time.` });
+        // v-maha-close: التعريف بالاسم في أوّل مكالمة على الجهاز وحدها — من يعرفها لا تعرّفه بنفسها كلّ مرّة.
+        if(mahaPrevCallAgoMs < 0) mahaSystemMsgs.push({ role: 'system', content: `This is the very first reply of the call. Before answering the user's message, briefly introduce yourself by saying your name is "${mahaPersonaName}" (in the same language/dialect you are replying in), then answer their message naturally in the same short reply - e.g. like "I'm ${mahaPersonaName}, ..." followed by your actual answer. Do this ONLY this one time.` });
         mahaIntroduced = true;
       }
       if(mahaSearchSystemMsg) mahaSystemMsgs.push({ role: 'system', content: mahaSearchSystemMsg.note });
@@ -2296,6 +2314,7 @@ async function mahaStartCallInner(mode){
   mahaLangCandidate = null;
   mahaDetectedGender = mahaReadVoiceGender();
   mahaIntroduced = false;
+  mahaPrevCallAgoMs = mahaReadPrevCallAgo(); // v-maha-close
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
   const mahaImgElStart = document.getElementById('mahaGenImage');
   if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
@@ -2337,6 +2356,7 @@ async function mahaStartCallInner(mode){
       new Promise((_, reject) => setTimeout(() => reject(new Error('Realtime setup timed out')), 12000)),
     ]);
     mahaShowModeTag('hd');
+    if(mahaCallMode !== 'builder') mahaMarkCallAt(); // v-maha-close
     return;
   }catch(e){
     /* v-maha-subs (أمر المالك ٤ أكتوبر، بعد فحص #800): مها صارت للجميع بعد رفع v-maha-pause، فالهبوط للوضع الأساسيّ عند
@@ -2360,6 +2380,7 @@ async function mahaStartCallInner(mode){
   // Skip the spoken greeting - jump straight to listening so Maha replies
   // to whatever the user says first, without any intro audio.
   mahaShowModeTag('basic');
+  if(mahaCallMode !== 'builder') mahaMarkCallAt(); // v-maha-close
   if(mahaCallActive) mahaCallLoop();
 }
 
