@@ -93,7 +93,7 @@ test('نماذج الجودة (طلب المالك «سوّ الفيديوهات
 test('نماذج الكانفا (مجّانيّة، مولَّدة من الصانع نفسه): ملفّان مسجَّلان في القائمة وبحجم معقول', () => {
   const idx = JSON.parse(read('media/samples/index.json'));
   ['canvas-1', 'canvas-2'].forEach((k) => {
-    assert.equal(idx[k], true, k + ' في القائمة');
+    assert.ok(idx[k] === true || (idx[k] && typeof idx[k].title === 'string' && idx[k].title.length > 0), k + ' في القائمة'); // v-sample-url: الرفع بعنوان يسجّل { title } (samples-ingest: index[key] = title ? { title } : true)
     ['mp4', 'jpg'].forEach((x) => assert.ok(fs.existsSync(path.join(root, 'media/samples/' + k + '.' + x)), k + '.' + x));
     assert.ok(fs.statSync(path.join(root, 'media/samples/' + k + '.mp4')).size < 4 * 1024 * 1024, 'حجم معقول');
   });
