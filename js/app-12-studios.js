@@ -945,12 +945,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}'
       /* v-psheet-nogold (المالك ١٧ أكتوبر، أنماط الصور أوّلًا): «بدون خطوط… ما أريد الذهبي، الذهبي فقط عند التمرير على الصور،
          واحذف الخيط الذهبي». الوضع الأسود وحده: لا حدّ ولا ذهبيّ في السكون؛ الرقائق والأزرار كـ«صمم الغرفة» (أسود، نصّ أبيض)
-         وحدّ رفيع هادئ عند التمرير؛ المختارة بالحدّ الهادئ نفسه؛ البطاقات والحلقة بلا حدّ، وتوهّج ذهبيّ عند التمرير على الصورة فقط. */
+         والإنارة بالنصّ الأبيض عند التمرير وللمختارة («سوّ الكتابة فقط» — كلّهم بلا حدود)؛ البطاقات والحلقة بلا حدّ، وتوهّج ذهبيّ عند التمرير على الصورة فقط. */
       + B + '.pstyleChip{border:1px solid transparent !important; background:transparent !important; color:#bdbdbd !important;}'
-      + B + '.pstyleChip:hover,' + B + '.pstyleChip.on{border-color:rgba(255,255,255,.45) !important; color:#fff !important; background:transparent !important;}'
+      + B + '.pstyleChip:hover,' + B + '.pstyleChip.on{color:#fff !important; text-shadow:0 0 10px rgba(255,255,255,.45); background:transparent !important;}' /* «سوّ الكتابة فقط»: الإنارة بالنصّ لا بالحدّ */
       + B + '.pstyleCard{border:1px solid transparent !important; box-shadow:none !important;}'
-      + B + '.pstyleCard.on{border-color:rgba(255,255,255,.45) !important;}'
-      + B + '.pstyleCard:hover,' + B + '.pstyleCard:focus-visible{border-color:#d4af37 !important; box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 12px 30px rgba(0,0,0,.45), 0 0 26px rgba(212,175,55,.35) !important;}'
+            + B + '.pstyleCard:hover,' + B + '.pstyleCard:focus-visible{border-color:#d4af37 !important; box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 12px 30px rgba(0,0,0,.45), 0 0 26px rgba(212,175,55,.35) !important;}'
       + B + '.pstyleCard [data-pstyle-name]{color:#fff !important;}'
       + B + '.pstyleCard .pstyleEn{color:#9a9a9e !important;}'
       + B + '.pstyleCard [data-pstyle-tick]{background:#fff !important; color:#000 !important;}'
@@ -963,7 +962,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + B + '.pstyleHero .pstyleHeroT:hover{box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 0 22px rgba(212,175,55,.6) !important;}'
       + B + '.pstyleFoot{border-top:0 !important;}'
       + B + '.pstyleCta, ' + B + '.pstyleFoot #portraitFootPhoto{background:#000 !important; color:#fff !important; border:1px solid transparent !important; box-shadow:0 0 18px rgba(255,255,255,.08) !important;}'
-      + B + '.pstyleCta:hover, ' + B + '.pstyleFoot #portraitFootPhoto:hover{border-color:rgba(255,255,255,.45) !important;}'
+      + B + '.pstyleCta:hover, ' + B + '.pstyleFoot #portraitFootPhoto:hover{text-shadow:0 0 10px rgba(255,255,255,.55); box-shadow:0 0 24px rgba(255,255,255,.14) !important;}'
       + B + '.pstyleFoot #portraitFavStarBtn{color:#fff !important;}';
     document.head.appendChild(st);
   }
