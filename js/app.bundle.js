@@ -47746,8 +47746,10 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
  * واحدًا بلا نصّ (diag:call-trial) يفرّق بين مقاطعة وصدى وشبكة.
  * v-call-agent-paid (المالك ١٨ أكتوبر: «الاتصال الالي مايشتغل لي المستخدمين» ← المشتركين بباقة، والتجربة بنفس السعر): لغير
  * المالك سعر الدقيقة وسطر الحجز على البطاقة، وتأكيد بلغته فيه السعر قبل التجربة والاتّصال الفعليّ (الطلب يحمل confirmed فلا يظهر
- * تأكيد الخادم العربيّ ٤٢٨)، والتجربة ترسل نهايتها call-trial-end (keepalive، ويُعاد إرسالها في التحميل التالي حتّى يقبلها الخادم)
- * ليُرجع ما زاد عن الدقائق المبدوءة. plan_required وpoints_insufficient برسالتين بالـ١٤ لغة. */
+ * تأكيد الخادم العربيّ ٤٢٨)، والتجربة ترسل نهايتها call-trial-end (keepalive، ويُعاد إرسالها حتّى يقبلها الخادم) ليُرجع ما زاد عن
+ * الدقائق المبدوءة. plan_required وpoints_insufficient برسالتين بالـ١٤ لغة. المراجعة: معرّف التجربة يولّده العميل ويحفظه في الكرت قبل
+ * الطلب (c.trialEnds لكلّ تجربة على حدة)، والتحميل يمرّ على كلّ الكروت (sweep) لنهايات معلّقة ومكالمات لم تُحسم تسويتها، والاستطلاع
+ * يكمل بعد «انتهت» ما دامت التسوية لم تُحسم (billing: null). */
 (function(){
   'use strict';
   var PTS_LAND = 50, PTS_MOB = 45;           // سعر الدقيقة لغير المالك (المالك مجّانًا) — من العقد؛ الكرت يحمل ptsPerMin من الخادم
@@ -47776,8 +47778,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   var notes = {};     // id ← ملاحظة عابرة على البطاقة (خطأ أو رفض) — لا تُحفظ
   var starting = {};  // id ← بدء اتّصال فعليّ جارٍ (ضغطتان سريعتان = طلب واحد)
   var settling = {};  // id ← حسم تجربة معلّقة بعد إعادة التحميل مجدول (مرّة واحدة)
-  var ending = {};    // id ← إرسال نهاية تجربة مدفوعة جارٍ (لا طلبان معًا)
-  var tried = {};     // id ← عدد محاولات إرسال النهاية في هذه الصفحة (ثانية بعد مهلة، والباقي في التحميل التالي)
+  var ending = {};    // معرّف التجربة ← إرسال نهايتها جارٍ (لا طلبان معًا)
+  var tried = {};     // معرّف التجربة ← محاولات إرسال نهايتها في هذه الصفحة (ثانية بعد مهلة، والباقي في التحميل التالي)
   var MARK = 'omranCallTrialLive'; // id التجربة الجارية في هذا المتصفّح: التحميل التالي يعرف أنّها انقطعت هنا لا أنّها حيّة في جهاز آخر
 
   /* ── أدوات صغيرة ── */
@@ -48152,7 +48154,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     fillCard(wrap, c);
     resume(c);
     settleTrial(c);
-    if(c.trialPending && c.id && !tried[c.id]) setTimeout(function(){ trialEnd(c.id); }, 0); // v-call-agent-paid: نهاية تجربة لم يؤكّدها الخادم بعد (تحميل جديد)
+    if(c.id && c.trialEnds && Object.keys(c.trialEnds).length) setTimeout(function(){ trialEnd(c.id, true); }, 0); // v-call-agent-paid: نهايات لم يؤكّدها الخادم بعد
     return wrap;
   };
 
@@ -48172,24 +48174,36 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   function errText(r){ var k = errKey(r); return k === 'callAgentErrPoints' ? fill(tt(k), { n: Math.max(0, Math.round(Number(r.data.needed) || 0)) }) : tt(k); }
   function note(id, key){ notes[id] = key ? tt(key) : ''; refresh(id); }
 
-  /* v-call-agent-paid: نهاية تجربة مدفوعة ← الخادم يُرجع ما زاد عن الدقائق المبدوءة. keepalive يعبر إغلاق الصفحة، والعلامة
-   * trialPending في الكرت تُعيد الإرسال في التحميل التالي حتّى يقبله الخادم (التسوية عنده مرّة واحدة مهما تكرّر الطلب). */
+  /* v-call-agent-paid: نهاية تجربة مدفوعة ← الخادم يُرجع ما زاد عن الدقائق المبدوءة. كلّ تجربة بمعرّفها في c.trialEnds ({ معرّف: ثوانٍ،
+   * و-1 = لم تنتهِ بعد}) يولّده العميل ويحفظه قبل طلب الجلسة — ردّ ضائع أو تجربة ثانية على الكرت نفسه لا يُسقط نهاية أخرى (المراجعة).
+   * keepalive يعبر إغلاق الصفحة، ومحاولة ثانية بعد ١٠ ث، ثمّ التحميل التالي يمرّ على كلّ الكروت (sweep). يُحذف ما أقرّه الخادم وحده. */
   var END_RETRY_MS = 10000;
-  function trialEnd(id){
+  function newTrialId(){
+    var hex = '';
+    try{ var b = new Uint8Array(9); crypto.getRandomValues(b); for(var i = 0; i < b.length; i++) hex += (b[i] < 16 ? '0' : '') + b[i].toString(16); }
+    catch(e){ __swallow(e, 'call-agent:trial-id'); hex = ''; for(var k = 0; k < 18; k++) hex += Math.floor(Math.random() * 16).toString(16); }
+    return 'ct' + hex;
+  }
+  function trialEnd(id, freshOnly){ // freshOnly: رسم الكرت والمرور بعد التحميل يرسلان ما لم يُجرَّب في هذه الصفحة وحده — الإعادة لمؤقّتها
     var c = find(id);
-    if(!c || !c.trialPending || !c.trialId || ending[id] || !token()) return;
-    ending[id] = true;
-    tried[id] = (tried[id] || 0) + 1;
-    var done = function(ok){
-      delete ending[id];
-      if(ok){ patch(id, { trialPending: false }); persist(); }
-      else if(tried[id] < 2) setTimeout(function(){ trialEnd(id); }, END_RETRY_MS);
-    };
-    try{
-      fetch('/api/system?action=call-trial-end', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token(), trialId: String(c.trialId), durationSec: Math.max(0, Math.round(Number(c.trialSec) || 0)) }) })
-        .then(function(r){ done(!!r.ok || r.status === 404); }, function(e){ __swallow(e, 'call-agent:trial-end'); done(false); });
-    }catch(e){ __swallow(e, 'call-agent:trial-end'); done(false); }
+    var map = (c && c.trialEnds && typeof c.trialEnds === 'object') ? c.trialEnds : null;
+    if(!map || !token()) return;
+    Object.keys(map).forEach(function(tid){
+      if(!/^ct[a-f0-9]{18}$/.test(tid) || ending[tid] || (tried[tid] || 0) >= (freshOnly ? 1 : 2)) return;
+      if(Number(map[tid]) < 0 && trial && trial.trialId === tid) return; // ما زالت حيّة في هذه الصفحة — نهايتها من finish
+      ending[tid] = true;
+      tried[tid] = (tried[tid] || 0) + 1;
+      var done = function(ok){
+        delete ending[tid];
+        if(ok){ var x = find(id), m = Object.assign({}, (x && x.trialEnds) || {}); delete m[tid]; patch(id, { trialEnds: m }); persist(); }
+        else if(tried[tid] < 2) setTimeout(function(){ trialEnd(id); }, END_RETRY_MS);
+      };
+      try{
+        fetch('/api/system?action=call-trial-end', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token(), trialId: tid, durationSec: Math.max(0, Math.round(Number(map[tid]) || 0)) }) })
+          .then(function(r){ done(!!r.ok || r.status === 404); }, function(e){ __swallow(e, 'call-agent:trial-end'); done(false); });
+      }catch(e){ __swallow(e, 'call-agent:trial-end'); done(false); }
+    });
   }
 
   /* ── التجربة في المتصفّح ── */
@@ -48424,7 +48438,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var dur = s.readyAt ? Math.round((now() - s.readyAt) / 1000) : 0;
     sendDiag(s, st, dur);
     patch(s.id, { state: s.outcome ? 'completed' : st, endedAt: now(), durationSec: dur, transcript: s.lines.slice(), outcome: s.outcome });
-    if(s.trialId){ patch(s.id, { trialId: s.trialId, trialSec: dur, trialPending: true }); trialEnd(s.id); } // v-call-agent-paid
+    if(s.trialId){ var te = Object.assign({}, (find(s.id) || {}).trialEnds || {}); te[s.trialId] = dur; patch(s.id, { trialEnds: te }); trialEnd(s.id); } // v-call-agent-paid
     notes[s.id] = err ? (/^callAgent[A-Z]\w*$/.test(err) ? tt(err) : clip(err, 240)) : '';
     var pushed = s.readyAt ? pushResult(s.id) : false; // مكالمة بدأت فعلًا = رسالة نتيجة واحدة؛ فشل التجهيز ملاحظة على البطاقة فقط
     if(!s.unloading) unmark(s.id); // إغلاق الصفحة: العلامة تبقى ليُكمل التحميل التالي ما لم يصل حفظه
@@ -48444,9 +48458,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     if(micErr){ finish(s, 'failed', micErr); return; }
     setState(s, 'connecting');
     later(s, function(){ if(!s.readyAt) finish(s, 'failed', 'callAgentErrGeneric'); }, SETUP_MAX_MS);
-    var r = await post('call-session', paidBody({ id: s.id }));
-    if(r.ok && r.data.trialId) s.trialId = clip(r.data.trialId, 60); // v-call-agent-paid: حجز التجربة — يُسوّى في finish ولو أُلغيت أثناء التجهيز
-    if(gone(s)){ if(s.trialId){ patch(s.id, { trialId: s.trialId, trialSec: 0, trialPending: true }); trialEnd(s.id); persist(); } return; }
+    var r = await post('call-session', s.trialId ? paidBody({ id: s.id, trialId: s.trialId }) : paidBody({ id: s.id })); // v-call-agent-paid: المعرّف محفوظ قبل الطلب
+    if(gone(s)) return; // أُلغيت أثناء التجهيز: finish سجّل نهايتها (٠ ث) وأرسلها
     if(!r.ok || !r.data.clientSecret){ finish(s, 'failed', errText(r)); return; }
     var srvMax = Number(r.data.maxSec);
     if(srvMax > 0) s.maxSec = Math.min(s.maxSec, srvMax);
@@ -48523,6 +48536,10 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       readyAt: 0, t0: now(), byResp: {}, cutResp: {}, played: {}, lastRid: '', clr: 0, cutN: 0, diagHead: [], diag: [], diagCut: false, rtp: null, fnSeen: {}, fnNames: {}, maxSec: Math.max(30, Math.min(600, Math.round(Number(c.maxMin) || 4) * 60)), halt: null, haltRes: null };
     s.halt = new Promise(function(res){ s.haltRes = res; });
     patch(id, { transport: 'trial', state: 'mic', callId: '', outcome: null, transcript: [], startedAt: now(), endedAt: 0, durationSec: 0, resultPushed: false });
+    if(!isOwner()){ // v-call-agent-paid: معرّف التجربة في الكرت قبل الطلب (-1 = لم تنتهِ) — persist تحت يحفظه قبل أيّ شبكة
+      s.trialId = newTrialId();
+      var te0 = Object.assign({}, c.trialEnds || {}); te0[s.trialId] = -1; patch(id, { trialEnds: te0 });
+    }
     mark(id);
     overlayOpen(s);
     persist(); refresh(id);
@@ -48552,13 +48569,20 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       var shown = changed || upd.durationSec !== (Number(c0.durationSec) || 0);
       if(shown) patch(p.id, upd);
       if(d.ended){
-        stopPoll(callId);
+        // v-call-agent-paid (المراجعة): billing: null = انتهت ولم تُحسم تسويتها (عطل عابر) ← النتيجة تظهر، والاستطلاع يكمل أبطأ حتّى تُحسم
+        var unsettled = Object.prototype.hasOwnProperty.call(d, 'billing') && d.billing === null;
+        if(!unsettled) stopPoll(callId);
         var c = find(p.id);
         if(c && ACTIVE[String(c.state)]) patch(p.id, { state: 'completed' }); // انتهت ولم يصل وصف حالتها
-        patch(p.id, { endedAt: now() });
+        if(!c || !c.endedAt) patch(p.id, { endedAt: now() });
+        if(d.billing) patch(p.id, { billed: true });
         var pushed = pushResult(p.id);
         persist(); refresh(p.id);
         if(pushed) rerender();
+        if(unsettled){
+          if(now() < p.deadline){ p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS * 5); return; }
+          stopPoll(callId);
+        }
         return;
       }
       if(changed) persist();
@@ -48614,6 +48638,30 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     notes[id] = r.ok ? '' : tt('callAgentErrCancel'); // الحالة النهائيّة تصل مع الاستطلاع التالي
     refresh(id);
   }
+
+  /* v-call-agent-paid (المراجعة): بعد التحميل يُمرّ على كلّ كروت الاتّصال في كلّ المحادثات — لا المفتوحة وحدها: نهايات تجارب لم يقبلها
+   * الخادم، ومكالمات حقيقيّة انتهت ولم تُحسم تسويتها (سؤال حالة واحد يسوّيها عند الخادم)، وجارية تُستأنف متابعتها. */
+  async function settlePhone(c){
+    var r = await post('call-status', { callId: c.callId });
+    if((r.ok && r.data.billing) || r.status === 404){ patch(c.id, { billed: true }); persist(); }
+  }
+  function sweep(){
+    try{
+      if(!token()) return;
+      var ps = (typeof state !== 'undefined' && state && Array.isArray(state.projects)) ? state.projects : [];
+      ps.forEach(function(p){
+        (p && Array.isArray(p.messages) ? p.messages : []).forEach(function(m){
+          var c = m && m.cards && m.cards.kind === 'call' && m.cards.call;
+          if(!c || !c.id) return;
+          if(c.trialEnds && Object.keys(c.trialEnds).length) trialEnd(c.id, true);
+          if(c.transport !== 'phone' || !c.callId || polls[c.callId]) return;
+          if(ACTIVE[String(c.state)]) resume(c);
+          else if(!c.billed && !isOwner()) settlePhone(c).catch(function(e){ __swallow(e, 'call-agent:sweep-phone'); });
+        });
+      });
+    }catch(e){ __swallow(e, 'call-agent:sweep'); }
+  }
+  setTimeout(sweep, 4000); setTimeout(sweep, 30000);
 
   /* مها تسأل قبل أن تفتح المايك: تجربة جارية = لا مكالمة ثانية فوقها (الاتّصال الفعليّ لا يمسّ المايك) */
   window.callAgentBusy = function(){ return !!trial; };

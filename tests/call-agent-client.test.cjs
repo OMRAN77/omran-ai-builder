@@ -1014,7 +1014,7 @@ test('٢١. v-call-agent-cut: كلّ تجربة بدأت ترسل عند نها�
   assert.deepEqual([t2[0], t2[1], t2[30], t2[80]], ['3.0cr:open', '3.0oc:open', '~', '3.0sp'], 'الافتتاح محفوظ رغم الطول، والذيل آخر ما جرى');
 });
 
-test('٢٢. غير المالك (v-call-agent-paid): تأكيد بالسعر قبل التجربة والاتّصال، confirmed في الطلب، ونهاية التجربة تُرسل وتُعاد حتّى تُقبل', async () => {
+test('٢٢. غير المالك (v-call-agent-paid): تأكيد بالسعر قبل التجربة والاتّصال، confirmed في الطلب، ومعرّف التجربة في الكرت قبل الطلب ونهايتها تُعاد حتّى تُقبل', async () => {
   // التجربة: تأكيد واحد بلغته فيه السعر والحجز — قبل المايك وأيّ طلب
   const n = sandbox({ owner: false, confirm: false });
   n.btn('omCallTry').click();
@@ -1022,36 +1022,70 @@ test('٢٢. غير المالك (v-call-agent-paid): تأكيد بالسعر ق�
   assert.equal(n.confirmed.length, 1);
   assert.match(n.confirmed[0], /^المكالمة التجريبيّة بنفس سعر المكالمة الحقيقيّة\. متابعة؟\n\n45 نقطة لكلّ دقيقة\nيُحجز 180 نقطة/);
   assert.equal(n.fetchLog.length, 0, 'رفض = لا طلب'); assert.equal(n.call().state, undefined); assert.equal(n.overlay(), null);
+  assert.equal(n.call().trialEnds, undefined, 'لا معرّف تجربة بلا موافقة');
 
   const ends = [];
   let endOk = false;
   const c = sandbox({ owner: false, routes: {
-    'call-session': (b) => [200, { clientSecret: 'ek_test', model: 'm', maxSec: 240, trialId: 'ct1a2b', brief: { business: 'عيادة النور للأسنان' } }],
+    'call-session': (b) => { assert.ok(c.call().trialEnds && c.call().trialEnds[b.trialId] === -1, 'المعرّف محفوظ في الكرت قبل وصول الطلب'); return [200, { clientSecret: 'ek_test', model: 'm', maxSec: 240, trialId: b.trialId, brief: { business: 'عيادة النور للأسنان' } }]; },
     'call-trial-end': (b) => { ends.push(b); return endOk ? [200, { ok: true, billing: { charged: 45, refunded: 135 } }] : [503, { error: 'settle_pending' }]; },
   } });
   await liveTrial(c);
-  assert.deepEqual(plain(c.calls('call-session')[0].body), { confirmed: true, token: 'tok-owner', id: 'cp1' });
+  const sb = plain(c.calls('call-session')[0].body);
+  assert.match(sb.trialId, /^ct[a-f0-9]{18}$/, 'العميل يولّد المعرّف');
+  assert.deepEqual(sb, { confirmed: true, token: 'tok-owner', id: 'cp1', trialId: sb.trialId });
+  assert.ok(c.saves > 0, 'حُفظ قبل الطلب');
   await c.advance(50000);
   c.btn('omCallStop').click();
   await c.advance(100);
   assert.equal(ends.length, 1);
-  assert.deepEqual(plain(ends[0]), { token: 'tok-owner', trialId: 'ct1a2b', durationSec: 50 });
+  assert.deepEqual(plain(ends[0]), { token: 'tok-owner', trialId: sb.trialId, durationSec: 50 });
   assert.equal(c.calls('call-trial-end')[0].keepalive, true, 'يعبر إغلاق الصفحة');
-  assert.equal(c.call().trialPending, true, 'الخادم لم يقبلها بعد — تبقى للإعادة');
+  assert.deepEqual(plain(c.call().trialEnds), { [sb.trialId]: 50 }, 'الخادم لم يقبلها بعد — تبقى للإعادة');
   c.redraw(); await c.advance(100);
   assert.equal(ends.length, 1, 'إعادة الرسم لا تعيد الإرسال فورًا');
   await c.advance(10000);
   assert.equal(ends.length, 2, 'محاولة ثانية واحدة بعد مهلة في الصفحة نفسها');
   await c.advance(60000);
   assert.equal(ends.length, 2, 'لا ثالثة في الصفحة نفسها — التحميل التالي يكمل');
-  // «التحميل التالي»: الكرت المحفوظ يعيد الإرسال حتّى يُقبل
+
+  // تجربة ثانية على الكرت نفسه والأولى لم تُقبل بعد: لكلّ تجربة نهايتها (المراجعة — كانت الثانية تمحو الأولى)
+  c.btn('omCallTry').click();
+  await flush();
+  const pc2 = c.pcs[c.pcs.length - 1]; // التجربة الثانية على اتّصالها هي (liveTrial يأخذ الأوّل)
+  pc2.dc.emit({ type: 'session.created' });
+  await flush();
+  const t2 = c.calls('call-session')[1].body.trialId;
+  assert.notEqual(t2, sb.trialId);
+  await c.advance(20000);
+  c.btn('omCallStop').click();
+  await c.advance(100);
+  assert.deepEqual(plain(ends[2]), { token: 'tok-owner', trialId: t2, durationSec: 20 });
+  assert.deepEqual(Object.keys(plain(c.call().trialEnds)).sort(), [sb.trialId, t2].sort(), 'النهايتان معلّقتان معًا');
+
+  // «التحميل التالي»: الكرت المحفوظ يعيد إرسال الاثنتين حتّى تُقبلا، ولا يُرسل بعدها
   endOk = true;
   const r = sandbox({ owner: false, state: c.state, routes: { 'call-trial-end': (b) => { ends.push(b); return [200, { ok: true }]; } } });
   await r.advance(10);
-  assert.equal(ends.length, 3); assert.deepEqual(plain(ends[2]), plain(ends[0]));
-  assert.equal(r.call().trialPending, false);
-  await r.advance(10); r.redraw(); await r.advance(20000);
-  assert.equal(ends.length, 3, 'قُبلت = لا إرسال بعدها');
+  assert.deepEqual(ends.slice(3).map((b) => b.trialId).sort(), [sb.trialId, t2].sort());
+  assert.deepEqual(plain(r.call().trialEnds), {});
+  await r.advance(10); r.redraw(); await r.advance(40000);
+  assert.equal(ends.length, 5, 'قُبلتا = لا إرسال بعدها (ولا من المرور على الكروت)');
+
+  // إنهاء أثناء التجهيز وردّ الجلسة بطيء: النهاية تُرسل بمعرّفها وبصفر ثانية — لا حجز بلا نهاية
+  let release; const slow = new Promise((res) => { release = res; });
+  const e2 = []; const x = sandbox({ owner: false, routes: {
+    'call-session': async (b) => { await slow; return [200, { clientSecret: 'ek_test', model: 'm', maxSec: 240, trialId: b.trialId }]; },
+    'call-trial-end': (b) => { e2.push(b); return [200, { ok: true }]; },
+  } });
+  x.btn('omCallTry').click();
+  await x.advance(100);
+  x.btn('omCallStop').click();
+  await x.advance(100);
+  const xt = x.calls('call-session')[0].body.trialId;
+  assert.deepEqual(plain(e2), [{ token: 'tok-owner', trialId: xt, durationSec: 0 }]);
+  release(); await x.advance(100);
+  assert.equal(x.pcs.length, 0, 'لا اتّصال بعد الإلغاء');
 
   // الاتّصال الفعليّ: السعر والحجز في التأكيد نفسه، وconfirmed في الطلب
   const ph = sandbox({ owner: false, routes: { 'call-start': () => [200, { callId: 'cl1', state: 'queued' }], 'call-status': () => [200, { state: 'ringing' }] } });
@@ -1059,10 +1093,49 @@ test('٢٢. غير المالك (v-call-agent-paid): تأكيد بالسعر ق�
   await ph.advance(100);
   assert.match(ph.confirmed[0], /\n45 نقطة لكلّ دقيقة\nيُحجز 180 نقطة/);
   assert.deepEqual(plain(ph.calls('call-start')[0].body), { confirmed: true, token: 'tok-owner', id: 'cp1' });
-  // المالك: لا confirmed ولا سطر سعر (الأجسام كما كانت)
+  // المالك: لا confirmed ولا معرّف تجربة ولا سطر سعر (الأجسام كما كانت)
   const o = sandbox({ routes: { 'call-start': () => [200, { callId: 'cl2', state: 'queued' }] } });
   o.btn('omCallDial').click();
   await o.advance(100);
   assert.doesNotMatch(o.confirmed[0], /نقطة لكلّ دقيقة/);
   assert.deepEqual(plain(o.calls('call-start')[0].body), { token: 'tok-owner', id: 'cp1' });
+});
+
+test('٢٣. التسوية لم تُحسم (billing: null): النتيجة تظهر والمتابعة تكمل أبطأ حتّى تُحسم؛ والمرور على الكروت يسوّي المعلّق في محادثة أخرى', async () => {
+  let billing = null;
+  const c = sandbox({ owner: false, routes: {
+    'call-start': () => [200, { callId: 'cl9', state: 'queued' }],
+    'call-status': () => [200, { state: 'completed', durationSec: 70, ended: true, outcome: { status: 'booked', summary: 'تمّ' }, billing }],
+  } });
+  c.btn('omCallDial').click();
+  await c.advance(2100);
+  assert.equal(c.call().state, 'completed');
+  assert.equal(c.msgs().length, 3, 'النتيجة ظهرت مرّة');
+  const n1 = c.calls('call-status').length;
+  await c.advance(10100);
+  assert.equal(c.calls('call-status').length, n1 + 1, 'استطلاع بعد ١٠ ث ما دامت التسوية معلّقة');
+  assert.notEqual(c.call().billed, true);
+  billing = { charged: 90, refunded: 90 };
+  await c.advance(10100);
+  assert.equal(c.call().billed, true);
+  const n2 = c.calls('call-status').length;
+  await c.advance(60000);
+  assert.equal(c.calls('call-status').length, n2, 'حُسمت = توقّفت');
+  assert.equal(c.msgs().length, 3, 'لا نتيجة ثانية');
+
+  // محادثة أخرى غير مفتوحة فيها مكالمة انتهت بلا تسوية ونهاية تجربة معلّقة: المرور بعد التحميل يسوّيهما
+  const other = { id: 'p2', messages: [{ role: 'assistant', content: 'x', cards: { kind: 'call', q: 'ب', chips: [], items: [], call: {
+    id: 'cp2', business: 'ب', kind: 'mobile', maxMin: 4, ptsPerMin: 45, transport: 'phone', callId: 'cl7', state: 'completed', trialEnds: { ct0123456789abcdef01: 30 } } } }] };
+  const sent = { status: [], ends: [] };
+  const w = sandbox({ owner: false, routes: {
+    'call-status': (b) => { sent.status.push(b.callId); return [200, { state: 'completed', ended: true, billing: { charged: 45, refunded: 135 } }]; },
+    'call-trial-end': (b) => { sent.ends.push(b.trialId); return [200, { ok: true }]; },
+  } });
+  w.state.projects.push(other);
+  await w.advance(4100);
+  assert.deepEqual(sent.status, ['cl7']); assert.deepEqual(sent.ends, ['ct0123456789abcdef01']);
+  assert.equal(other.messages[0].cards.call.billed, true);
+  assert.deepEqual(plain(other.messages[0].cards.call.trialEnds), {});
+  await w.advance(30000);
+  assert.deepEqual(sent.status, ['cl7'], 'المرور الثاني لا يعيد ما حُسم');
 });

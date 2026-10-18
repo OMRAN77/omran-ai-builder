@@ -17,9 +17,9 @@ const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(
 const kv = new Map();
 const users = new Map();
 const vip = new Set();
-const fail = { pipe: false }; // points.js يفكّك دوالّ kv عند التحميل — الحقن بعلامة داخل الدالّة نفسها
+const fail = { pipe: false, get: null, lost: false }; // points.js يفكّك دوالّ kv عند التحميل — الحقن بعلامة داخل الدالّة نفسها
 const KV = {
-  kvGetRaw: async (k) => kv.has(k) ? String(kv.get(k)) : null,
+  kvGetRaw: async (k) => { if (fail.get && fail.get.test(k)) throw new Error('kv down'); return kv.has(k) ? String(kv.get(k)) : null; },
   kvSetRaw: async (k, v) => { kv.set(k, String(v)); },
   kvSetIfAbsent: async (k, v) => { if (kv.has(k)) return false; kv.set(k, String(v)); return true; },
   kvIncrBy: async (k, n) => { const v = Number(kv.get(k) || 0) + Number(n); kv.set(k, String(v)); return v; },
@@ -27,7 +27,7 @@ const KV = {
   kvGetJSON: async (k) => { try { return kv.has(k) ? JSON.parse(kv.get(k)) : null; } catch (e) { return null; } },
   kvPutJSON: async (k, v) => { kv.set(k, JSON.stringify(v)); }, kvDel: async (k) => { kv.delete(k); }, kvExpire: async () => {},
   kvIncr: async (k) => { const v = Number(kv.get(k) || 0) + 1; kv.set(k, String(v)); return v; }, kvList: async () => [],
-  kvPipeline: async (cmds) => fail.pipe ? cmds.map(() => null) : cmds.map(([op, k, v]) => { if (op === 'INCRBY') { const x = Number(kv.get(k) || 0) + Number(v); kv.set(k, String(x)); return x; } kv.set(k, String(v)); return 'OK'; }),
+  kvPipeline: async (cmds) => { if (fail.lost) { cmds.forEach(([op, k, v]) => { if (op === 'INCRBY') kv.set(k, String(Number(kv.get(k) || 0) + Number(v))); else kv.set(k, String(v)); }); throw new Error('reply lost'); } return fail.pipe ? cmds.map(() => null) : cmds.map(([op, k, v]) => { if (op === 'INCRBY') { const x = Number(kv.get(k) || 0) + Number(v); kv.set(k, String(x)); return x; } kv.set(k, String(v)); return 'OK'; }); },
 };
 mock('api/_lib/kv.js', KV);
 mock('api/_lib/auth.js', {
@@ -72,7 +72,7 @@ async function card(u, opts) {
     { owner: u === 'omran', paid: u !== 'omran', user: u, lastUserText: o.phone === '' ? 'احجز لي' : (o.phone || '0501234567'), kv: KV });
   return p.event.cards.call;
 }
-function reset() { kv.clear(); users.clear(); vip.clear(); relay.calls.length = 0; relay.status = {}; relay.post = 202; relay.mint = 200; }
+function reset() { kv.clear(); users.clear(); vip.clear(); relay.calls.length = 0; relay.status = {}; relay.post = 202; relay.mint = 200; fail.pipe = false; fail.get = null; }
 
 test('١. بلا باقة سارية (مجّانيّ، منتهية منذ ٣٦ يومًا) = plan_required قبل أيّ نقاط أو خدمة', async () => {
   reset();
@@ -224,4 +224,126 @@ test('٩. ردّ فشل ومصيره مجهول لا يُضيّع ولا يُض�
   const second = await hit('call-status', 'subby', { callId: s.body.callId });
   assert.deepEqual(second.body.billing, { charged: 90, refunded: 90 });
   assert.equal(bal('subby'), 910);
+});
+
+const TID = (n) => 'ct' + String(n).repeat(18).slice(0, 18);
+
+test('١٠. التجربة بمعرّف العميل: نهاية سبقت طلبها تختمه فلا يُحجز بعدها؛ وتجربة حيّة واحدة لكلّ مستخدم حتّى تصل نهايتها', async () => {
+  reset(); person('subby', 'pro', 1000);
+  const c = await card('subby', { phone: '' });
+  const early = await hit('call-trial-end', 'subby', { trialId: TID('a'), durationSec: 0 });
+  assert.deepEqual(early.body.billing, { charged: 0, refunded: 0 });
+  const late = await hit('call-session', 'subby', { id: c.id, confirmed: true, trialId: TID('a') });
+  assert.equal(late.code, 409); assert.equal(late.body.error, 'trial_exists');
+  assert.equal(bal('subby'), 1000, 'لا حجز لتجربة خُتمت نهايتها');
+  assert.equal(relay.calls.length, 0, 'ولا مفتاح جلسة');
+
+  const one = await hit('call-session', 'subby', { id: c.id, confirmed: true, trialId: TID('b') });
+  assert.equal(one.code, 200); assert.equal(one.body.trialId, TID('b'), 'معرّف العميل نفسه');
+  const two = await hit('call-session', 'subby', { id: c.id, confirmed: true, trialId: TID('c') });
+  assert.equal(two.code, 409); assert.equal(two.body.error, 'busy', 'تجربة حيّة واحدة');
+  assert.equal(bal('subby'), 800);
+  await hit('call-trial-end', 'subby', { trialId: TID('b'), durationSec: 30 }, NOON + 40000);
+  assert.equal(bal('subby'), 950);
+  const three = await hit('call-session', 'subby', { id: c.id, confirmed: true, trialId: TID('c') });
+  assert.equal(three.code, 200, 'بعد النهاية تُفتح التالية');
+  const junk = await hit('call-session', 'subby', { id: c.id, confirmed: true, trialId: 'x' });
+  assert.equal(junk.code, 409, 'معرّف بغير صيغته يولّده الخادم — والتجربة الحيّة ما زالت قائمة');
+});
+
+test('١١. فشل فتح الجلسة يردّ الحجز ويعيد المعرّف ويفكّ التجربة؛ ونهاية تصل بعده لا تخصم', async () => {
+  reset(); person('subby', 'pro', 1000);
+  const c = await card('subby', { phone: '' });
+  relay.mint = 503;
+  const bad = await hit('call-session', 'subby', { id: c.id, confirmed: true, trialId: TID('d') });
+  assert.equal(bad.code, 502); assert.equal(bad.body.trialId, TID('d'));
+  assert.equal(bal('subby'), 1000);
+  const end = await hit('call-trial-end', 'subby', { trialId: TID('d'), durationSec: 0 });
+  assert.deepEqual(end.body.billing, { charged: 0, refunded: 200 }, 'التسوية الأولى (ردّ كامل) تحكم');
+  assert.equal(bal('subby'), 1000);
+  relay.mint = 200;
+  assert.equal((await hit('call-session', 'subby', { id: c.id, confirmed: true, trialId: TID('e') })).code, 200, 'لا قفل تجربة عالق');
+});
+
+test('١٢. عطل KV عابر = 503 يُعاد لا 404 يُنهي: المتابعة ونهاية التجربة', async () => {
+  reset(); person('subby', 'pro', 1000);
+  const c = await card('subby');
+  const s = await hit('call-start', 'subby', { id: c.id, confirmed: true });
+  fail.get = /^call\/rec\//;
+  const st = await hit('call-status', 'subby', { callId: s.body.callId });
+  assert.equal(st.code, 503);
+  fail.get = /^call\/trial\//;
+  assert.equal((await hit('call-trial-end', 'subby', { trialId: TID('f'), durationSec: 0 })).code, 503);
+  fail.get = null;
+  assert.deepEqual((await hit('call-status', 'subby', { callId: s.body.callId })).body.billing, { charged: 90, refunded: 90 });
+});
+
+test('١٣. ردّ سابق يصل قبل فحص الرصيد: حجز مكالمة لم يُستطلع آخرها لا يمنع التالية بـ402', async () => {
+  reset(); person('subby', 'pro', 250);
+  const c1 = await card('subby');
+  const s1 = await hit('call-start', 'subby', { id: c1.id, confirmed: true });
+  assert.equal(bal('subby'), 70);
+  relay.status[s1.body.callId] = { state: 'completed', durationSec: 30, ended: true };
+  kv.delete('call/active/subby');
+  const c2 = await card('subby');
+  const s2 = await hit('call-start', 'subby', { id: c2.id, confirmed: true });
+  assert.equal(s2.code, 200, 'الأولى سُوّيت (+١٣٥) قبل فحص الرصيد');
+  assert.equal(bal('subby'), 250 - 45 - 180);
+});
+
+test('١٤. مكالمة تبدأ الآن (تملك القفل) لا تُقرأ ضائعة: بدء ثانٍ متزامن = 409 بلا لمس حجز الأولى', async () => {
+  reset(); person('subby', 'pro', 1000);
+  const c = await card('subby');
+  const s1 = await hit('call-start', 'subby', { id: c.id, confirmed: true });
+  relay.status[s1.body.callId] = 404; // الخدمة لم تسجّلها بعد
+  const s2 = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true });
+  assert.equal(s2.code, 409);
+  assert.equal(bal('subby'), 820, 'حجز الأولى باقٍ');
+  assert.equal(kv.has('call/settled/' + s1.body.callId), false);
+});
+
+test('١٥. إعادة تشغيل الخدمة أثناء المكالمة = فشل من جهتنا ← ردّ كامل؛ ورفض الخدمة مع تعذّر الردّ يُبقي السجلّ فيُسوّى لاحقًا', async () => {
+  reset(); person('subby', 'pro', 1000);
+  let c = await card('subby');
+  let s = await hit('call-start', 'subby', { id: c.id, confirmed: true });
+  relay.status[s.body.callId] = { state: 'failed', durationSec: 200, ended: true, endReason: 'relay_restart' };
+  assert.deepEqual((await hit('call-status', 'subby', { callId: s.body.callId })).body.billing, { charged: 0, refunded: 180 });
+  assert.equal(bal('subby'), 1000);
+
+  relay.post = 400; fail.pipe = true;
+  c = await card('subby');
+  s = await hit('call-start', 'subby', { id: c.id, confirmed: true });
+  assert.equal(s.code, 502);
+  assert.equal(bal('subby'), 820, 'الردّ لم يقع');
+  const kept = [...kv.keys()].filter((k) => k.startsWith('call/rec/'));
+  assert.equal(kept.length, 2, 'السجلّ باقٍ ليُعاد');
+  relay.post = 202; fail.pipe = false;
+  const refused = JSON.parse(kv.get('call/open/subby')).slice(-1)[0];
+  relay.status[refused] = 404;
+  const s3 = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true });
+  assert.equal(s3.code, 200);
+  assert.equal(bal('subby'), 1000 - 180, 'المرفوضة رُدّت كاملة قبل حجز الجديدة');
+});
+
+test('١٦. ردّ وقع وضاع جوابه والقراءة بعده متعذّرة: المطالبة لا تُحذف — فلا ردّ ثانٍ، والختم يحكم بعدها', async () => {
+  reset(); person('subby', 'pro', 1000);
+  const P = require(rp('api/_lib/points.js'));
+  const tr = { id: TID('9'), user: 'subby', kind: 'landline', held: 200 };
+  kv.set('points:subby', '800');
+  fail.lost = true; fail.get = /^call\/settled\//;
+  assert.equal(await ca.settleHold(KV, P, tr, 0, NOON), null, 'المصير مجهول');
+  fail.lost = false; fail.get = null;
+  assert.equal(bal('subby'), 1000, 'القيد وقع');
+  assert.equal(kv.get('call/settled/' + tr.id), 'd:0', 'وختمه معه');
+  assert.deepEqual(await ca.settleHold(KV, P, tr, 0, NOON + 300000), { charged: 0, refunded: 200 });
+  assert.equal(bal('subby'), 1000, 'لا ردّ ثانٍ ولو بعد مدّة المطالبة القديمة');
+  // ردّ ثبت أنّه لم يقع (القيد أجاب null): المطالبة تُحذف فيعيده الاستطلاع التالي
+  const t2 = { id: TID('8'), user: 'subby', kind: 'landline', held: 200 };
+  kv.set('points:subby', '800');
+  fail.pipe = true;
+  assert.equal(await ca.settleHold(KV, P, t2, 0, NOON), null);
+  assert.equal(kv.has('call/settled/' + t2.id), false);
+  fail.pipe = false;
+  assert.deepEqual(await ca.settleHold(KV, P, t2, 0, NOON + 1000), { charged: 0, refunded: 200 });
+  assert.equal(bal('subby'), 1000);
 });
