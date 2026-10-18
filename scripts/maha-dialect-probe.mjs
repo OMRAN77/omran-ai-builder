@@ -227,8 +227,18 @@ async function runOne(reqItem) {
   await new Promise((resolve, reject) => {
     const stall = setTimeout(() => { try { ws.terminate(); } catch (x) { /* مغلق أصلًا */ } reject(new Error('handshake timeout')); }, 15000);
     ws.on('error', (err) => { clearTimeout(stall); reject(err); });
-    ws.on('close', () => { clearTimeout(stall); reject(new Error('closed before session')); });
-    ws.on('message', function first(raw) { const e = JSON.parse(raw.toString()); if (e.type === 'session.created' || e.type === 'session.updated') { clearTimeout(stall); ws.off('message', first); resolve(); } });
+    let why = '';
+    ws.on('unexpected-response', (rq, rs) => { // ردّ HTTP بدل الترقية (٤٢٩ رصيد/حدّ، ٤٠١ مفتاح): سببه في جسمه
+      let body = '';
+      rs.on('data', (c) => { body += c; });
+      rs.on('end', () => { clearTimeout(stall); reject(new Error('HTTP ' + rs.statusCode + ' ' + body.slice(0, 200))); });
+    });
+    ws.on('close', (code, reason) => { clearTimeout(stall); reject(new Error('closed before session ' + code + ' ' + String(reason || '').slice(0, 160) + (why ? ' ' + why : ''))); });
+    ws.on('message', function first(raw) {
+      const e = JSON.parse(raw.toString());
+      if (e.type === 'error') why = String((e.error && (e.error.code || '') + ' ' + (e.error.message || '')) || 'error').slice(0, 200); // سبب المزوّد (رصيد، حدّ، مفتاح)
+      if (e.type === 'session.created' || e.type === 'session.updated') { clearTimeout(stall); ws.off('message', first); resolve(); }
+    });
   });
   if (CTX_ITEM) ws.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: CTX_ITEM }] } }));
   // بإيقاع الكلام الحقيقيّ على جدول مطلق (١٠٠م.ث لكلّ قطعة، بلا انجراف يؤخّر نهاية الجملة عن tSpeechEnd)
