@@ -48139,6 +48139,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   'use strict';
   var PTS_LAND = 50, PTS_MOB = 45;           // سعر الدقيقة لغير المالك (المالك مجّانًا) — من العقد؛ الكرت يحمل ptsPerMin من الخادم
   var POLL_MS = 2000, POLL_MAX_MS = 10 * 60 * 1000;
+  var SETTLE_WAIT_MS = 15 * 60 * 1000; // أوّل billing: null يمدّ المتابعة مرّة: مطالبة تسوية عالقة تُعاد بعد ٦ دقائق عند الخادم (CLAIM_STALE_MS) — المراجعة الرابعة
   var SILENT_OPEN_MS = 3000;                  // صمت ٣ث بعد الجاهزيّة ← المساعد يبادر
   var SETUP_MAX_MS = 20000;                   // تجهيز أطول من هذا = فشل صريح لا انتظار بلا نهاية
   var END_GRACE_MS = 1200, END_MAX_MS = 8000; // end_call: ننتظر انتهاء جملة الوداع، وبحدّ أقصى
@@ -49005,6 +49006,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
         persist(); refresh(p.id);
         if(pushed) rerender();
         if(unsettled){
+          if(!p.ext){ p.ext = true; p.deadline = Math.max(p.deadline, now() + SETTLE_WAIT_MS); }
           if(now() < p.deadline){ p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS * 5); return; }
           stopPoll(callId);
         }
@@ -49021,11 +49023,13 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     }
     if(now() >= p.deadline){
       stopPoll(callId);
-      patch(p.id, { state: 'timeout' });
+      var cx = find(p.id);
+      if(!(cx && cx.endedAt)) patch(p.id, { state: 'timeout' }); // انتهت وتسويتها معلّقة: لا تصير «انتهت المهلة»
       persist(); refresh(p.id);
       return;
     }
-    p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS);
+    var ce = find(p.id);
+    p.timer = setTimeout(function(){ pollOnce(p, callId); }, ce && ce.endedAt ? POLL_MS * 5 : POLL_MS); // انتهت وتنتظر تسويتها: عطل عابر لا يستطلع كلّ ثانيتين
   }
   /* العقد v2: التأكيد يعرض كلّ ما قد يقوله المساعد للجهة — اسم المحلّ من الخرائط، والاسم الذي يتّصل به، والهدف، والتفاصيل */
   function confirmText(c){

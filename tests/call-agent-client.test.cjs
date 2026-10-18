@@ -1258,3 +1258,58 @@ test('٢٥. المراجعة الثالثة: «جرّب» تعيد نهاية م
   assert.equal(c.pcs.length, 1, 'الجلسة فُتحت');
   assert.deepEqual(plain(other.messages[0].cards.call.trialEnds), {});
 });
+
+test('٢٦. المراجعة الرابعة: «جرّب» بعد «إنهاء» مباشرة تنتظر النهاية الجارية قبل طلب الجلسة، وبحدّ ٣ ث إن علقت؛ وأوّل billing: null يمدّ المتابعة فتُحسم في الصفحة', async () => {
+  // النهاية ما زالت في الطريق عند الضغط: الطلب ينتظرها (كان يسبقها إلى قفل التجربة فيُرفض «مكالمة جارية»)
+  let locked = null; const order = [];
+  const c = sandbox({ owner: false, routes: {
+    'call-trial-end': async (b) => { await new Promise((r) => c.setTimeout(r, 1000)); if (locked === b.trialId) locked = null; order.push('end:' + b.durationSec); return [200, { ok: true }]; },
+    'call-session': (b) => { order.push('session'); if (locked) return [409, { error: 'busy' }]; locked = b.trialId; return [200, { clientSecret: 'ek_test', model: 'm', maxSec: 240, trialId: b.trialId }]; },
+  } });
+  await liveTrial(c);
+  await c.advance(30000);
+  c.btn('omCallStop').click();
+  await flush();
+  assert.equal(c.calls('call-trial-end').length, 1, 'النهاية أُرسلت وما زالت جارية');
+  c.btn('omCallTry').click();
+  await c.advance(1500);
+  assert.deepEqual(order, ['session', 'end:30', 'session']);
+  assert.notEqual(c.call().state, 'failed');
+  assert.equal(c.pcs.length, 2, 'الجلسة الثانية فُتحت');
+
+  // نهاية معلّقة لا يأتي ردّها أبدًا: الطلب يمضي بعد ٣ ث لا يعلق في «المايك»
+  const h = sandbox({ owner: false, call: { trialEnds: { ct0123456789abcdef01: 60 } }, routes: {
+    'call-trial-end': () => new Promise(() => {}),
+    'call-session': (b) => [200, { clientSecret: 'ek_test', model: 'm', maxSec: 240, trialId: b.trialId }],
+  } });
+  h.btn('omCallTry').click();
+  await h.advance(2900);
+  assert.equal(h.calls('call-session').length, 0, 'ينتظر');
+  await h.advance(200);
+  assert.equal(h.calls('call-session').length, 1, 'وبعد ٣ ث يمضي');
+
+  // مطالبة تسوية عالقة عند الخادم تُعاد بعد ٦ دقائق: انتهت قرب السقف وbilling: null حتّى الدقيقة ١١ ← المتابعة تمتدّ وتُحسم في الصفحة
+  const t0 = 1_000_000;
+  const k = sandbox({ owner: false, routes: {
+    'call-start': () => [200, { callId: 'cl5', state: 'queued' }],
+    'call-status': () => [200, { state: 'completed', durationSec: 170, ended: true, outcome: { status: 'booked', summary: 'تمّ' },
+      billing: k.clock.now < t0 + 11 * 60000 ? null : { charged: 135, refunded: 45 } }],
+  } });
+  k.btn('omCallDial').click();
+  await k.advance(11 * 60000 + 30000);
+  assert.equal(k.call().billed, true, 'حُسمت بعد حدّ العشر دقائق القديم');
+  assert.equal(k.call().state, 'completed');
+  // وتسوية لا تأتي أبدًا وعطل في آخرها: المتابعة تقف بحدّها، والمكالمة المنتهية لا تصير «انتهت المهلة»
+  let n = 0;
+  const z = sandbox({ owner: false, routes: {
+    'call-start': () => [200, { callId: 'cl6', state: 'queued' }],
+    'call-status': () => (++n < 3 ? [200, { state: 'completed', durationSec: 60, ended: true, outcome: { status: 'booked', summary: 'تمّ' }, billing: null }] : [503, { error: 'storage' }]),
+  } });
+  z.btn('omCallDial').click();
+  await z.advance(40 * 60000);
+  assert.equal(z.call().state, 'completed');
+  assert.ok(z.calls('call-status').length < 100, 'عطل بعد انتهائها يُستطلع كلّ ١٠ ث لا ثانيتين: ' + z.calls('call-status').length);
+  const m = z.calls('call-status').length;
+  await z.advance(10 * 60000);
+  assert.equal(z.calls('call-status').length, m, 'وقفت بحدّها');
+});
