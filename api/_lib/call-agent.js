@@ -22,6 +22,7 @@ const TRIAL_TTL_SEC = 7 * 86400;
 const SETTLE_TTL_SEC = 8 * 86400; // أطول من السجلّ: ختم «سُوّيت» لا يسقط قبل آخر استطلاع ممكن
 const CLAIM_STALE_MS = 120000;    // مطالبة تسوية بلا ختم أقدم من هذا = عملية ماتت في منتصفها؛ تُحذف ويعيدها الاستطلاع التالي
 const CALL_REASON = 'call_agent';
+const RELAY_KEEP_MS = 23 * 3600000; // خدمة الاتّصال تنسى المكالمة بعد ٢٤ ساعة (call-relay LIMITS.ttlMs) — 404 بعدها ليس «ضاعت»
 const OPEN_ASK_MAX = 1, OPEN_ASK_MS = 3000; // تسوية حجز سابق عند بدء مكالمة: سؤال واحد للخدمة بمهلة قصيرة (حدّ Vercel ١٥ ث)
 const HOURS = { from: 8, to: 22 }; // بتوقيت دبي — لا اتّصال حقيقيّ بمحلّ قبل الثامنة صباحًا ولا بعد العاشرة ليلًا
 
@@ -463,17 +464,23 @@ async function settleOpen(kv, pts, env, user, fetchImpl, now) {
     let r = null;
     try { r = await relayFetch(env, 'GET', '/call/' + id, null, fetchImpl, OPEN_ASK_MS); } catch (e) { r = null; } // الخدمة لا تجيب ← تبقى
     let b = null;
-    if (r && r.status === 404) b = await settleHold(kv, pts, holdOf(rec), 0, now);
+    if (r && r.status === 404) b = await settleHold(kv, pts, holdOf(rec), lostSec(rec, now), now);
     else if (r && r.ok && r.json && r.json.ended) b = await settleHold(kv, pts, holdOf(rec), billedSec(r.json), now);
     if (!b) keep.push(id);
   }
   return keep;
+}
+async function settleOpenIds(kv, user) {
+  try { const v = JSON.parse((await kv.kvGetRaw(openKey(user))) || '[]'); return Array.isArray(v) ? v.map(String).slice(-5) : []; } catch (e) { return null; } // تعذّرت = null
 }
 async function trackOpen(kv, user, ids) {
   try { await kv.kvSetRaw(openKey(user), JSON.stringify(ids.slice(-5)), REC_TTL_SEC); } catch (e) { /* guard-ok — استطلاع الكرت يسوّي أيضًا */ }
 }
 /* المدّة المحسوبة من حالة الخدمة: إعادة تشغيلها أثناء المكالمة تحسب المدّة إلى وقت عودتها (يشمل التوقّف) — فشل من جهتنا = صفر */
 function billedSec(s) { return String((s && s.endReason) || '') === 'relay_restart' ? 0 : Math.max(0, Math.floor(Number(s && s.durationSec) || 0)); }
+/* المراجعة الثانية: 404 من الخدمة لمكالمة أقدم من حفظها (٢٤ ساعة) يعني «نسيتها» لا «ضاعت» — المدّة مجهولة فيُخصم الحجز (السلوك قبل
+   تمديد السجلّ إلى أسبوع)؛ أحدث من ذلك = ضاعت فعلًا ← ردّ كامل. */
+function lostSec(rec, now) { return (now - (Number(rec && rec.startedAt) || 0)) >= RELAY_KEEP_MS ? (Number(rec && rec.maxSec) || MAX_MIN * 60) : 0; }
 
 /* v-call-agent-paid: معرّف التجربة يولّده العميل ويحفظه في الكرت قبل الطلب (المراجعة: ردّ ضاع بإغلاق الصفحة أو انقطاع الشبكة كان
    يترك الحجز بلا معرّف عند أحد) — بصيغته وحدها، وإلّا يولّده الخادم. */
@@ -586,15 +593,15 @@ async function handler(req, res, deps) {
     const callId = 'cl' + crypto.randomBytes(9).toString('hex');
     const lock = await kv.kvSetIfAbsent(lockKey(user), callId, maxSec + 120);
     if (!lock) return send(res, 409, { error: 'busy' });
-    let open = [];
+    let open = null; // null = قائمة المفتوحة تعذّرت قراءتها — لا تُكتب فوقها (المراجعة الثانية: كانت تُستبدل بالمكالمة الجديدة وحدها)
     if (!acc.owner) {
       const keep = await settleOpen(kv, pts, env, user, fetchImpl, now);
-      open = keep || [];
+      open = keep;
       const pg = await payGate(q);
       if (pg) { if (keep) await trackOpen(kv, user, keep); await releaseLock(kv, user, callId); return send(res, pg[0], pg[1]); }
     }
     const h = await hold(q);
-    if (Array.isArray(h)) { if (open.length) await trackOpen(kv, user, open); await releaseLock(kv, user, callId); return send(res, h[0], h[1]); }
+    if (Array.isArray(h)) { if (open) await trackOpen(kv, user, open); await releaseLock(kv, user, callId); return send(res, h[0], h[1]); }
     const rec = { callId, user, propId: prop.id, kind: ph.kind, business: prop.business, startedAt: now, held: h.held, maxSec };
     // v-call-agent-r2: السجلّ قبل نداء الخدمة — مكالمة تبدأ بعد مهلتنا (أو بعد عطل في KV) تبقى قابلة للمتابعة والإلغاء
     try { await kv.kvSetRaw('call/rec/' + callId, JSON.stringify(rec), REC_TTL_SEC); }
@@ -605,7 +612,8 @@ async function handler(req, res, deps) {
       await releaseLock(kv, user, callId);
       return send(res, 500, { error: 'storage' });
     }
-    if (h.held) await trackOpen(kv, user, open.concat(callId));
+    if (h.held && open) await trackOpen(kv, user, open.concat(callId));
+    else if (h.held) { const again = await settleOpenIds(kv, user); if (again) await trackOpen(kv, user, again.concat(callId)); } // قراءة ثانية؛ تعذّرت = المتابعة وحدها تسوّيها
     let r;
     try { r = await relayFetch(env, 'POST', '/call', { callId, to: ph.e164, maxSec, session: buildSession(prop, 'phone', now) }, fetchImpl); }
     catch (e) { r = { ok: false, status: 0, json: null }; } // مهلة أو شبكة — قد تكون الخدمة اتّصلت فعلًا؛ يُعالج تحت
@@ -617,7 +625,8 @@ async function handler(req, res, deps) {
         const b = await settleHold(kv, pts, holdOf(rec), 0, now);
         if (b) { try { await kv.kvDel('call/rec/' + callId); } catch (e) { /* guard-ok — السجلّ ينتهي بمدّته */ } }
         await releaseLock(kv, user, callId);
-        return send(res, 502, { error: 'relay_error', status: r.status });
+        // لم يُحسم الردّ: رقم المكالمة يعود للعميل فيسأل حالتها (الخدمة لا تعرفها ← ردّ كامل) بلا انتظار مكالمة تالية
+        return send(res, 502, Object.assign({ error: 'relay_error', status: r.status }, b ? {} : { callId, unsettled: true }));
       }
       return send(res, 200, { callId, state: 'queued', unconfirmed: true });
     }
@@ -636,7 +645,7 @@ async function handler(req, res, deps) {
     let tr = lr.v;
     if (!tr) {
       let stamped = false;
-      try { stamped = await kv.kvSetIfAbsent('call/trial/' + tid, JSON.stringify({ id: tid, user, state: 'void', mintedAt: now }), TRIAL_TTL_SEC); } catch (e) { stamped = false; }
+      try { stamped = await kv.kvSetIfAbsent('call/trial/' + tid, JSON.stringify({ id: tid, user, state: 'void', mintedAt: now }), 3600); } catch (e) { stamped = false; } // ساعة تكفي سباق طلب الجلسة
       if (stamped) return send(res, 200, { ok: true, billing: { charged: 0, refunded: 0 } });
       const lr2 = await loadRec(kv, 'call/trial/' + tid); // سبقه طلب الجلسة لحظة الختم
       if (lr2.err || !lr2.v) return send(res, 503, { error: 'settle_pending' });
@@ -644,7 +653,15 @@ async function handler(req, res, deps) {
     }
     if (tr.user !== user) return send(res, 404, { error: 'trial_not_found' });
     if (tr.state === 'void') return send(res, 200, { ok: true, billing: { charged: 0, refunded: 0 } });
-    if (tr.state !== 'held') return send(res, 503, { error: 'settle_pending' });
+    if (tr.state !== 'held') {
+      // قيد الحجز: طلب الجلسة ما زال يجري ← يُعاد. عالق أكثر من دقيقتين = الدالّة ماتت بين الحجز والكتابة ← يُختم فارغًا (المراجعة الثانية:
+      // كان 503 إلى الأبد وإعادة كلّ تحميل أسبوعًا). خصمٌ وقع في تلك النافذة بلا سجلّ يُسجَّل للمالك.
+      if (now - (Number(tr.mintedAt) || 0) < CLAIM_STALE_MS) return send(res, 503, { error: 'settle_pending' });
+      try { await kv.kvSetRaw('call/trial/' + tid, JSON.stringify({ id: tid, user, state: 'void', mintedAt: Number(tr.mintedAt) || now }), TRIAL_TTL_SEC); } catch (e) { return send(res, 503, { error: 'settle_pending' }); }
+      require('./log-error.js').logError('call-agent:trial-pending-stale', new Error('pending'), {});
+      await releaseLock(kv, user, tid, trialLockKey(user));
+      return send(res, 200, { ok: true, billing: { charged: 0, refunded: 0 } });
+    }
     const maxSec = Number(tr.maxSec) || MAX_MIN * 60;
     const elapsed = Math.max(0, Math.floor((now - (Number(tr.mintedAt) || now)) / 1000));
     const sec = Math.min(maxSec, elapsed, Math.max(0, Math.floor(Number(body.durationSec) || 0)));
@@ -666,7 +683,7 @@ async function handler(req, res, deps) {
       let r;
       try { r = await relayFetch(env, 'POST', '/call/' + callId + '/cancel', {}, fetchImpl); } catch (e) { r = { ok: false, status: 0 }; } // الخدمة لا تجيب
       // v-call-agent-r2: الخدمة لا تعرف المكالمة (أُعيد تشغيلها أو لم تصلها قطّ) = لا شيء يُلغى: نجاح ويُفكّ قفلها، والحجز يُردّ كاملًا
-      if (r.status === 404) { await settleHold(kv, pts, holdOf(rec), 0, now); await releaseLock(kv, user, callId); return send(res, 200, { ok: true }); }
+      if (r.status === 404) { await settleHold(kv, pts, holdOf(rec), lostSec(rec, now), now); await releaseLock(kv, user, callId); return send(res, 200, { ok: true }); }
       return send(res, r.ok ? 200 : 502, r.ok ? { ok: true } : { error: 'relay_error', status: r.status });
     }
     let r;
@@ -674,10 +691,14 @@ async function handler(req, res, deps) {
     // v-call-agent-r2 (العقد v2): 404 = ضاعت المكالمة من الخدمة (إعادة تشغيل تمسح ‎/tmp/calls) — كانت 502 إلى الأبد فيدور العميل
     // عشر دقائق ويبقى القفل. الآن: انتهت بفشل وملخّص عربيّ، ويُفكّ القفل إن كان لها. v-call-agent-paid: بلا مدّة معروفة ← ردّ كامل.
     if (r.status === 404) {
-      const billing = await settleHold(kv, pts, holdOf(rec), 0, now);
+      const forgot = lostSec(rec, now) > 0;
+      const billing = await settleHold(kv, pts, holdOf(rec), lostSec(rec, now), now);
       await releaseLock(kv, user, callId);
-      return send(res, 200, { state: 'failed', durationSec: 0, transcript: [], ended: true, billing,
-        outcome: { status: 'failed', summary: 'خدمة الاتّصال فقدت هذه المكالمة (أُعيد تشغيلها أو لم تصلها)، فلا نتيجة مسجّلة لها.', confirmed_details: '', follow_up: '' } });
+      return send(res, 200, forgot
+        ? { state: 'completed', durationSec: 0, transcript: [], ended: true, billing,
+          outcome: { status: 'needs_user', summary: 'انتهت المكالمة منذ أكثر من يوم ولم تُحفظ نتيجتها عندنا، فتحقّق من المحلّ مباشرة.', confirmed_details: '', follow_up: '' } }
+        : { state: 'failed', durationSec: 0, transcript: [], ended: true, billing,
+          outcome: { status: 'failed', summary: 'خدمة الاتّصال فقدت هذه المكالمة (أُعيد تشغيلها أو لم تصلها)، فلا نتيجة مسجّلة لها.', confirmed_details: '', follow_up: '' } });
     }
     if (!r.ok || !r.json) return send(res, 502, { error: 'relay_error', status: r.status });
     const s = r.json;

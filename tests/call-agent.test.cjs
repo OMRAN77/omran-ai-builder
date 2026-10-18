@@ -338,14 +338,14 @@ test('١١. call-start يحفظ السجلّ قبل الخدمة، ومهلة ا
   assert.equal((await hit('call-start', { token: owner, id }, { kv, env: RELAY_ENV, fetch: slow, now: NOON })).body.error, 'busy');
   // الخدمة لا تعرف المكالمة (أُعيد تشغيلها أو لم تصلها) ← انتهت بفشل ويُفكّ القفل
   const lost = async () => ({ ok: false, status: 404, json: async () => ({ error: 'not_found' }) });
-  const s = await hit('call-status', { token: owner, callId }, { kv, env: RELAY_ENV, fetch: lost });
+  const s = await hit('call-status', { token: owner, callId }, { kv, env: RELAY_ENV, fetch: lost, now: NOON + 60000 }); // وقت ثابت: بعد ٢٣ ساعة يصير 404 «نسيتها» (v-call-agent-paid)
   assert.equal(s.code, 200);
   assert.equal(s.body.state, 'failed');
   assert.equal(s.body.ended, true);
   assert.equal(s.body.outcome.status, 'failed');
   assert.match(s.body.outcome.summary, /[؀-ۿ]/, 'ملخّص عربيّ');
   assert.equal(kv.m.has('call/active/omran'), false);
-  assert.deepEqual((await hit('call-cancel', { token: owner, callId }, { kv, env: RELAY_ENV, fetch: lost })).body, { ok: true }, 'إلغاء مكالمة ضائعة لا يفشل');
+  assert.deepEqual((await hit('call-cancel', { token: owner, callId }, { kv, env: RELAY_ENV, fetch: lost, now: NOON + 60000 })).body, { ok: true }, 'إلغاء مكالمة ضائعة لا يفشل');
   // رفض صريح من الخدمة (JSON) يفكّ قفله هو ويحذف سجلّه
   const refuse = async () => ({ ok: false, status: 502, json: async () => ({ error: 'twilio' }) });
   const bad = await hit('call-start', { token: owner, id }, { kv, env: RELAY_ENV, fetch: refuse, now: NOON });

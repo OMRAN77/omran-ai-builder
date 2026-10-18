@@ -464,18 +464,25 @@
     if(!map || !token()) return;
     Object.keys(map).forEach(function(tid){
       if(!/^ct[a-f0-9]{18}$/.test(tid) || ending[tid] || (tried[tid] || 0) >= (freshOnly ? 1 : 2)) return;
-      if(Number(map[tid]) < 0 && trial && trial.trialId === tid) return; // ما زالت حيّة في هذه الصفحة — نهايتها من finish
+      var sec = Number(map[tid]);
+      if(sec < 0){
+        // المراجعة الثانية: «-1» = لم تنتهِ — قد تكون حيّة في تبويب أو جهاز آخر، فلا تُرسل «صفرًا». بعد نافذة حياتها (السقف + التجهيز +
+        // دقيقة) = تعطّل قبل أن تُسجَّل نهايتها: تُرسل بالسقف (المدّة مجهولة) فيُفكّ قفل التجربة وتُحسم.
+        if((trial && trial.trialId === tid) || now() - (Number(c.startedAt) || 0) < (capMin(c) * 60 + SETUP_MAX_MS / 1000 + 60) * 1000) return;
+        sec = capMin(c) * 60;
+      }
       ending[tid] = true;
       tried[tid] = (tried[tid] || 0) + 1;
-      var done = function(ok){
+      var done = function(ok, gone404){
         delete ending[tid];
         if(ok){ var x = find(id), m = Object.assign({}, (x && x.trialEnds) || {}); delete m[tid]; patch(id, { trialEnds: m }); persist(); }
+        else if(gone404) tried[tid] = 2; // تجربة حساب آخر (متصفّح مشترك): تبقى لصاحبها، ولا إعادة في هذه الصفحة
         else if(tried[tid] < 2) setTimeout(function(){ trialEnd(id); }, END_RETRY_MS);
       };
       try{
         fetch('/api/system?action=call-trial-end', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: token(), trialId: tid, durationSec: Math.max(0, Math.round(Number(map[tid]) || 0)) }) })
-          .then(function(r){ done(!!r.ok || r.status === 404); }, function(e){ __swallow(e, 'call-agent:trial-end'); done(false); });
+          body: JSON.stringify({ token: token(), trialId: tid, durationSec: Math.max(0, Math.round(sec) || 0) }) })
+          .then(function(r){ done(!!r.ok, r.status === 404); }, function(e){ __swallow(e, 'call-agent:trial-end'); done(false); });
       }catch(e){ __swallow(e, 'call-agent:trial-end'); done(false); }
     });
   }
@@ -811,6 +818,9 @@
     s.halt = new Promise(function(res){ s.haltRes = res; });
     patch(id, { transport: 'trial', state: 'mic', callId: '', outcome: null, transcript: [], startedAt: now(), endedAt: 0, durationSec: 0, resultPushed: false });
     if(!isOwner()){ // v-call-agent-paid: معرّف التجربة في الكرت قبل الطلب (-1 = لم تنتهِ) — persist تحت يحفظه قبل أيّ شبكة
+      // نهايات سابقة لم تُقبل بعد تُعاد الآن (المراجعة الثانية: قفل «تجربة حيّة واحدة» كان يبقى حتّى التحميل التالي)
+      Object.keys(c.trialEnds || {}).forEach(function(k){ if(Number(c.trialEnds[k]) >= 0 && tried[k] >= 2) tried[k] = 1; });
+      trialEnd(id);
       s.trialId = newTrialId();
       var te0 = Object.assign({}, c.trialEnds || {}); te0[s.trialId] = -1; patch(id, { trialEnds: te0 });
     }
@@ -831,6 +841,13 @@
     if(polls[callId] !== p) return;
     var r = await post('call-status', { callId: callId });
     if(polls[callId] !== p) return;
+    var cur = find(p.id);
+    if(!cur || cur.callId !== callId){ // المراجعة الثانية: الكرت انتقل لمكالمة أو تجربة أحدث — هذه تُسوّى بصمت ولا تكتب فوقه
+      var still = r.ok && r.data.ended && Object.prototype.hasOwnProperty.call(r.data, 'billing') && r.data.billing === null;
+      if((r.ok && r.data.ended && !still) || r.status === 403 || r.status === 404 || now() >= p.deadline){ stopPoll(callId); return; }
+      p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS * 5);
+      return;
+    }
     if(r.ok){
       var d = r.data, c0 = find(p.id) || {}, upd = { durationSec: Math.max(0, Math.round(Number(d.durationSec) || 0)) };
       if(PHONE_STATES[d.state]) upd.state = d.state;
@@ -899,10 +916,15 @@
     var r;
     try{ r = await post('call-start', paidBody({ id: id })); }
     finally{ starting[id] = false; }
+    if(!r.ok && r.data.callId && r.data.unsettled){ // رفض الخدمة ولم يُحسم ردّ الحجز: الكرت يحمل رقمها فيسوّيها سؤال الحالة والمرور بعد التحميل
+      patch(id, { transport: 'phone', callId: clip(r.data.callId, 80), state: 'failed', outcome: null, transcript: [], startedAt: now(), endedAt: now(), durationSec: 0, resultPushed: true, billed: false });
+      persist();
+      settlePhone(find(id)).catch(function(e){ __swallow(e, 'call-agent:refused-settle'); });
+    }
     if(!r.ok || !r.data.callId){ notes[id] = errText(r); refresh(id); return; }
     var callId = clip(r.data.callId, 80), at = now();
     patch(id, { transport: 'phone', callId: callId, state: PHONE_STATES[r.data.state] ? r.data.state : 'queued', outcome: null,
-      transcript: [], startedAt: at, endedAt: 0, durationSec: 0, resultPushed: false });
+      transcript: [], startedAt: at, endedAt: 0, durationSec: 0, resultPushed: false, billed: false });
     persist(); refresh(id);
     schedulePoll(id, callId, at + POLL_MAX_MS);
   }
@@ -916,7 +938,9 @@
   /* v-call-agent-paid (المراجعة): بعد التحميل يُمرّ على كلّ كروت الاتّصال في كلّ المحادثات — لا المفتوحة وحدها: نهايات تجارب لم يقبلها
    * الخادم، ومكالمات حقيقيّة انتهت ولم تُحسم تسويتها (سؤال حالة واحد يسوّيها عند الخادم)، وجارية تُستأنف متابعتها. */
   async function settlePhone(c){
-    var r = await post('call-status', { callId: c.callId });
+    var callId = c.callId, r = await post('call-status', { callId: callId });
+    var cur = find(c.id);
+    if(!cur || cur.callId !== callId) return; // الكرت انتقل لمكالمة أحدث أثناء السؤال — لا تُعلَّم هي مسوّاة
     if((r.ok && r.data.billing) || r.status === 404){ patch(c.id, { billed: true }); persist(); }
   }
   function sweep(){

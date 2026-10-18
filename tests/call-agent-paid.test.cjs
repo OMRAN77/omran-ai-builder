@@ -347,3 +347,79 @@ test('١٦. ردّ وقع وضاع جوابه والقراءة بعده متعذ
   assert.deepEqual(await ca.settleHold(KV, P, t2, 0, NOON + 1000), { charged: 0, refunded: 200 });
   assert.equal(bal('subby'), 1000);
 });
+
+test('١٧. المراجعة الثانية: 404 بعد يوم = «نسيتها» تُخصم كاملة (المتابعة والإلغاء وبدء التالية)؛ وقبله ردّ كامل', async () => {
+  reset(); person('subby', 'pro', 2000);
+  const H = 3600000;
+  // المتابعة بعد ٢٥ ساعة: الخدمة نسيتها (حفظها ٢٤ ساعة) — المدّة مجهولة فيُخصم الحجز، والنتيجة «تحقّق بنفسك» لا «فشلت»
+  let s = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true });
+  relay.status[s.body.callId] = 404;
+  const st = await hit('call-status', 'subby', { callId: s.body.callId }, NOON + 25 * H);
+  assert.equal(st.code, 200); assert.equal(st.body.state, 'completed'); assert.equal(st.body.outcome.status, 'needs_user');
+  assert.deepEqual(st.body.billing, { charged: 180, refunded: 0 });
+  assert.equal(bal('subby'), 1820);
+  // الإلغاء بعد ٢٥ ساعة: نفس الحكم
+  s = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true });
+  relay.status[s.body.callId] = 404;
+  assert.equal((await hit('call-cancel', 'subby', { callId: s.body.callId }, NOON + 25 * H)).code, 200);
+  assert.equal(bal('subby'), 1640);
+  assert.equal(kv.get('call/settled/' + s.body.callId), 'd:180');
+  // بدء التالية بعد ٢٥ ساعة يسوّي المفتوحة المنسيّة كاملة — وبعد ساعة واحدة فقط يردّها كاملة (ضاعت فعلًا)
+  s = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true });
+  relay.status[s.body.callId] = 404; kv.delete('call/active/subby');
+  const n = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true }, NOON + 25 * H);
+  assert.equal(n.code, 200);
+  assert.equal(kv.get('call/settled/' + s.body.callId), 'd:180');
+  assert.equal(bal('subby'), 1640 - 180 - 180);
+  relay.status[n.body.callId] = 404; kv.delete('call/active/subby');
+  const m = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true }, NOON + 26 * H);
+  assert.equal(m.code, 200);
+  assert.equal(kv.get('call/settled/' + n.body.callId), 'd:0', 'ساعة واحدة = ضاعت ← ردّ كامل');
+  assert.equal(bal('subby'), 1640 - 180 - 180);
+});
+
+test('١٨. المراجعة الثانية: تعذّر قراءة قائمة المفتوحة لا يكتب فوقها؛ رفض بلا تسوية يعيد رقم المكالمة؛ تجربة عالقة في «pending» تُختم بعد دقيقتين؛ والختم المبكر ساعة', async () => {
+  reset(); person('subby', 'pro', 1000);
+  const s1 = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true });
+  relay.status[s1.body.callId] = { state: 'in-progress', durationSec: 20 }; kv.delete('call/active/subby');
+  fail.get = /^call\/open\//;
+  const s2 = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true });
+  fail.get = null;
+  assert.equal(s2.code, 200);
+  assert.deepEqual(JSON.parse(kv.get('call/open/subby')), [s1.body.callId], 'الأولى باقية في القائمة (كانت تُستبدل بالجديدة وحدها)');
+
+  // رفض صريح والردّ لم يُحسم: 502 ومعه رقم المكالمة وunsettled — والمتابعة بالرقم تردّ كاملًا
+  reset(); person('subby', 'pro', 1000);
+  relay.post = 400; fail.pipe = true;
+  const r = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true });
+  relay.post = 202; fail.pipe = false;
+  assert.equal(r.code, 502); assert.equal(r.body.unsettled, true); assert.match(r.body.callId, /^cl[a-f0-9]+$/);
+  assert.equal(bal('subby'), 820);
+  relay.status[r.body.callId] = 404;
+  assert.deepEqual((await hit('call-status', 'subby', { callId: r.body.callId })).body.billing, { charged: 0, refunded: 180 });
+  assert.equal(bal('subby'), 1000);
+  // رفض حُسم ردّه: لا رقم (الكرت لا يحمل شيئًا يُتابع)
+  relay.post = 400;
+  const r2 = await hit('call-start', 'subby', { id: (await card('subby')).id, confirmed: true });
+  relay.post = 202;
+  assert.equal(r2.code, 502); assert.equal(r2.body.callId, undefined);
+
+  // تجربة عالقة في pending (مات الطلب بين الحجز والختم): قبل دقيقتين 503 يُعاد، بعدها تُختم void ويُفكّ قفلها
+  reset(); person('subby', 'pro', 1000);
+  const tid = TID('c');
+  kv.set('call/trial/' + tid, JSON.stringify({ id: tid, user: 'subby', state: 'pending', mintedAt: NOON }));
+  kv.set('call/trial-live/subby', tid);
+  assert.equal((await hit('call-trial-end', 'subby', { trialId: tid, durationSec: 30 }, NOON + 60000)).code, 503);
+  const late = await hit('call-trial-end', 'subby', { trialId: tid, durationSec: 30 }, NOON + 130000);
+  assert.equal(late.code, 200);
+  assert.equal(JSON.parse(kv.get('call/trial/' + tid)).state, 'void');
+  assert.equal(kv.has('call/trial-live/subby'), false, 'قفل التجربة فُكّ');
+  assert.equal(bal('subby'), 1000);
+
+  // نهاية سبقت طلبها: الختم المبكر بمدّة ساعة (لا أسبوع يمنع المعرّف)
+  const ttl = []; const real = KV.kvSetIfAbsent;
+  KV.kvSetIfAbsent = async (k, v, t) => { if (k.startsWith('call/trial/')) ttl.push(t); return real(k, v, t); };
+  try { assert.equal((await hit('call-trial-end', 'subby', { trialId: TID('d'), durationSec: 0 })).code, 200); }
+  finally { KV.kvSetIfAbsent = real; }
+  assert.deepEqual(ttl, [3600]);
+});
