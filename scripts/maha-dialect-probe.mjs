@@ -223,6 +223,7 @@ async function runOne(reqItem) {
     ws.on('error', reject);
     ws.on('message', function first(raw) { const e = JSON.parse(raw.toString()); if (e.type === 'session.created' || e.type === 'session.updated') { ws.off('message', first); resolve(); } });
   });
+  if (CTX_ITEM) ws.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: CTX_ITEM }] } }));
   // بإيقاع الكلام الحقيقيّ على جدول مطلق (١٠٠م.ث لكلّ قطعة، بلا انجراف يؤخّر نهاية الجملة عن tSpeechEnd)
   const CH = 4800;
   const tStream = t();
@@ -266,6 +267,7 @@ if (DRY) {
 
 // MAHA_SESSION_PATCH (الوضع المحلّيّ وحده): تجربة إعداد جلسة على الطلبات نفسها قبل كتابته في المعالج — JSON يُدمج في session
 // قبل وصوله المزوّد (null يحذف الحقل). مثال: {"reasoning":{"effort":"minimal"}}. الرفض يظهر خطأ «session 400» في الصفّ.
+let CTX_ITEM = '';
 const PATCH = (() => { try { return JSON.parse(process.env.MAHA_SESSION_PATCH || 'null'); } catch (e) { console.error('✗ MAHA_SESSION_PATCH ليس JSON'); process.exit(2); } })();
 if (PATCH && MODE === 'local') {
   const realFetch = globalThis.fetch;
@@ -277,10 +279,14 @@ if (PATCH && MODE === 'local') {
     }
     return a;
   };
+  const { __ctxItem, ...rest } = PATCH;
   globalThis.fetch = async (url, opts) => {
     if (String(url).includes('/realtime/client_secrets')) {
       const b = JSON.parse(opts.body);
-      merge(b.session, PATCH);
+      merge(b.session, rest);
+      // __ctxItem: ما يتغيّر كلّ مكالمة (الوقت وما بعده) يخرج من التعليمات إلى عنصر نظام أوّل المحادثة — هل يُخبَّأ الباقي كلّه؟
+      const i = __ctxItem ? b.session.instructions.indexOf(' CURRENT DATE/TIME:') : -1;
+      if (i > 0) { CTX_ITEM = b.session.instructions.slice(i).trim(); b.session.instructions = b.session.instructions.slice(0, i); }
       opts = { ...opts, body: JSON.stringify(b) };
     }
     return realFetch(url, opts);
