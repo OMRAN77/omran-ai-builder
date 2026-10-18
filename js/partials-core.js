@@ -175,9 +175,15 @@
     </div>
     <p id="videoMakerHeroVeoNote" style="display:none; font-size:11.5px; color:#e8a13c; margin-top:10px;" data-i18n="videoMakerHeroVeoNote">ℹ️ صورة البطل تعمل مع محرّك «فيديو بالذكاء الاصطناعي» فقط — المحرّك السينمائيّ لا يقبل صورة في وضع الفيلم.</p>
 
-    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size: var(--fs-3); cursor:pointer;">
+    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size: var(--fs-3); cursor:pointer; flex-wrap:wrap;">
       <input type="checkbox" id="videoMakerNarrationToggle">
       <span data-i18n="videoMakerNarrationToggleLabel">🎙️ إضافة تعليق صوتي (صوت مُولّد)</span>
+      <!-- v-video-voice-speed: سرعة التعليق جنب «إضافة تعليق صوتي» (عادي / سريع / سريع جدًّا) — الافتراضيّ «سريع»؛ مفاتيح الترجمة نفسها لسرعة صوت مها (٤ لغات→١٤) -->
+      <select id="videoMakerNarrationSpeed" title="سرعة الصوت" data-i18n-title="voiceSpeedLabel" aria-label="سرعة الصوت" data-i18n="[aria-label]voiceSpeedLabel" style="margin-inline-start:auto; font-size:12.5px; padding:5px 10px; border-radius:8px; cursor:pointer; background:var(--panel2,#161616); color:var(--text,#eef0f6); border:1px solid var(--border,#333);">
+        <option value="normal" data-i18n="voiceSpeedNormal">عادي</option>
+        <option value="fast" data-i18n="voiceSpeedFast" selected>سريع</option>
+        <option value="xfast" data-i18n="voiceSpeedXFast">سريع جدًا</option>
+      </select>
     </label>
     <!-- اختيار الصوت: ذكر/أنثى -->
     <div id="videoMakerVoiceGenderRow" style="display:none; margin-top:8px; margin-bottom:2px; gap:16px; flex-wrap:wrap;" class="mini-mic-field-row">
