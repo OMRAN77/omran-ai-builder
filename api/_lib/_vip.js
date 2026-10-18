@@ -97,17 +97,17 @@ async function isVip(identifier) {
 }
 
 // v-vip-verified: بريدٌ ثبت للتوّ لصاحبه (رمز «حسابي»، حساب أنشأه رمز البريد، دخول Google). إن كان في القائمة إيميلًا خامًا —
-// أضافه المالك ولا مؤكَّد يحمله يومها (vip.js لا يحوّل إيميلًا إلّا إلى حساب أثبته) — يحلّ محلّه اسم الحساب، كما كان سيحدث لو
-// كان مؤكَّدًا لحظة الإضافة. لا يرمي (القاعدة ١): الدخول وحفظ الإيميل لا يفشلان بسبب القائمة.
+// أضافه المالك ولا مؤكَّد يحمله يومها (vip.js لا يحوّل إيميلًا إلّا إلى حساب أثبته) — يُضاف اسم الحساب بجانبه، كما كان سيحدث لو
+// كان مؤكَّدًا لحظة الإضافة. الإيميل الخام يبقى: لا يطابق إلّا اسمًا قديمًا هو نفسه (قبل v-name-no-at — قرار المالك: لا يُمسّ)، ونزعه
+// كان يسحب VIP ذلك الحساب بنقاطه وسجلّه وينقله إلى حساب جديد فارغ (مراجعة النقض). لا يرمي (القاعدة ١).
 async function promoteVerifiedEmail(email, username) {
   try {
     const e = normalizeId(email);
     const u = normalizeId(username);
     if (!e || !u || e.indexOf('@') === -1) return false;
     const list = await getVipList({ fresh: true });
-    if (list.indexOf(e) === -1) return false;
-    const next = list.filter((x) => x !== e);
-    if (next.indexOf(u) === -1) next.push(u);
+    if (list.indexOf(e) === -1 || list.indexOf(u) !== -1) return false;
+    const next = list.concat([u]);
     await kvPutJSON(VIP_KEY, next);
     invalidateCache();
     cache = next;

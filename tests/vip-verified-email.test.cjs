@@ -114,7 +114,7 @@ test('١. (طلب المالك) من يحطّ إيميل VIP بدون تحقّق
   assert.equal(await isVip('mona'), false);
 });
 
-test('٢. «حسابي»: الرمز على الإيميل الجديد يحفظه مؤكَّدًا — ومدخل VIP الخام بهذا الإيميل يصير اسم صاحبه', async () => {
+test('٢. «حسابي»: الرمز على الإيميل الجديد يحفظه مؤكَّدًا — ويُضاف اسم صاحبه بجانب مدخل VIP الخام بهذا الإيميل', async () => {
   const tok = auth.makeToken('mona');
   const r = await changeEmail(tok, 'friend@vip.com');
   assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -129,7 +129,7 @@ test('٢. «حسابي»: الرمز على الإيميل الجديد يحفظ
   assert.equal(rec.verifiedEmail, 'friend@vip.com');
   assert.deepEqual(JSON.parse(store.get('db/email-index/friend@vip.com')).username, 'mona');
   const list = await vipList.getVipList({ fresh: true });
-  assert.ok(list.includes('mona') && !list.includes('friend@vip.com'), JSON.stringify(list));
+  assert.ok(list.includes('mona') && list.includes('friend@vip.com'), JSON.stringify(list));
   assert.equal(await isVip('mona'), true, 'أثبت الإيميل فأخذ VIP');
   assert.equal((await call({ action: 'getProfile', token: tok })).body.emailVerified, true);
   // الرمز يُحرق بعد استعماله، وطلب رمز لإيميلك المؤكَّد نفسه لا يرسل شيئًا
@@ -265,4 +265,42 @@ test('٨. الجرد للمالك: من يحمل إيميلًا من القائ�
   assert.equal((await vip('GET', { token: auth.makeToken('named'), audit: '1' })).status, 403);
   // الجرد لا يحذف ولا يعدّل
   assert.ok((await user('holder1')) && (await user('named')));
+});
+
+test('٩. (مراجعة النقض) اسم قديم هو إيميل في القائمة يبقى VIP حين يؤكّد صاحب البريد بريده — الخام لا يُنزع (قرار المالك: القديم لا يُمسّ)', async () => {
+  const seed = await user('mona');
+  await auth.putUser('sami@mail.com', Object.assign({}, seed, { username: 'sami@mail.com', email: null, verifiedEmail: undefined })); // قبل v-name-no-at
+  await addVip('sami@mail.com');
+  assert.equal(await isVip('sami@mail.com'), true, 'VIP بالاسم كما كان');
+  googleProfile = { email: 'sami@mail.com', email_verified: true, name: 'Sami', picture: null };
+  const res = { code: 0, writeHead(c) { this.code = c; }, end() {}, setHeader() {}, status(c) { this.code = c; return this; }, json() {} };
+  await googleCb({ query: { code: 'c', state: 'st9' }, headers: {} }, res);
+  assert.equal(await isVip('g_sami@mail.com'), true, 'صاحب البريد المؤكَّد');
+  assert.equal(await isVip('sami@mail.com'), true, 'والحساب القديم بنقاطه وسجلّه باقٍ VIP');
+});
+
+test('١٠. (مراجعة النقض) الحدود: غريبٌ لا يستنفد حصّة صاحب البريد، و«مرتبط بحساب آخر» خلف الحدّ لا سؤالًا بلا حدّ', async () => {
+  const stranger = await signup('stranger1');
+  for (let i = 0; i < 5; i++) await changeEmail(stranger, 'target@mail.com');
+  assert.equal((await changeEmail(stranger, 'target@mail.com')).status, 429, 'الغريب نفسه محدود');
+  const owner = await signup('target1');
+  assert.equal((await changeEmail(owner, 'target@mail.com')).status, 200, 'صاحب البريد يأخذ رمزه');
+  // بريد مؤكَّد عند غيرك: بعد ثلاث محاولات للبريد نفسه من حساب واحد ٤٢٩ لا ٤٠٩ — لا تعداد حسابات بلا حدّ
+  const prober = await signup('prober1');
+  const codes = [];
+  for (let i = 0; i < 5; i++) codes.push((await changeEmail(prober, 'nour@mail.com')).status);
+  assert.deepEqual(codes, [409, 409, 409, 429, 429]);
+});
+
+test('١١. (مراجعة النقض) لوحة VIP: المعرّف في data-id لا داخل JS، والجرد بزرّ لا عند كلّ إقلاع', () => {
+  const fs = require('fs');
+  const cl = fs.readFileSync(path.join(root, 'js', 'app-01-boot-auth.js'), 'utf8');
+  assert.ok(cl.includes(`'<button type="button" data-id="' + vipEscape(id) + '" onclick="removeVipUser(this.dataset.id)"`));
+  assert.ok(!cl.includes('const safeAttr = '), 'لا تهريب يدويّ لـ« \' » وحده');
+  const load = cl.slice(cl.indexOf('window.loadVipList = async function loadVipList(){'), cl.indexOf('function vipAuditButton(){'));
+  assert.ok(load.includes('vipAuditButton();') && !load.includes('loadVipAudit();'), 'الجرد يقرأ كلّ الحسابات — بزرّ');
+  // vipEscape يهرّب « " » فلا يخرج المعرّف من السمة؛ و« \\ » و« ' » بلا معنى داخلها
+  const esc = (s2) => String(s2).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const evil = "z\\');alert(1);//\"><img src=x onerror=alert(2)>";
+  assert.ok(!/"[^"]*"\s*onerror|<img/.test('data-id="' + esc(evil) + '"'), 'لا خروج من السمة');
 });

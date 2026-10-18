@@ -603,9 +603,13 @@ async function emailChangeRequest(req, res, body, m) {
   if (!user || user.deleted) { res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') }); return; }
   if (user.banned) { res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true }); return; }
   if (user.email === key && emailVerifiedFor(u, user)) { res.status(200).json({ ok: true, verified: true, email: key }); return; }
-  if (await verifiedHolderOf(key, u)) { res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'), code: 'email_taken' }); return; }
-  const mins = (await rateWait('mail-change-acct', u, 5, 15 * 60 * 1000)) || (await rateWait('mail-change-to', key, 3, 15 * 60 * 1000));
+  // الحدود قبل فحص «مرتبط بحساب آخر» (كان قبلها سؤالًا بلا حدّ: هل لهذا البريد حساب؟ — مراجعة النقض). حدّ البريد لكلّ زوج (حساب، بريد)
+  // فغريبٌ لا يستنفد حصّة صاحب البريد؛ وسقف أوسع للبريد من كلّ الحسابات يمنع إغراق صندوقه.
+  const mins = (await rateWait('mail-change-acct', u, 5, 15 * 60 * 1000))
+    || (await rateWait('mail-change-to', u + '|' + key, 3, 15 * 60 * 1000))
+    || (await rateWait('mail-change-all', key, 10, 60 * 60 * 1000));
   if (mins) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins }); return; }
+  if (await verifiedHolderOf(key, u)) { res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'), code: 'email_taken' }); return; }
   if (!RESEND_API_KEY) { res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin'), code: 'mail_off' }); return; }
   const otpCode = genNumericOtp();
   await kvPutJSON(emailChangeKey(u), { email: key, otp: otpCode, exp: Date.now() + EMAIL_CHANGE_TTL_MS });

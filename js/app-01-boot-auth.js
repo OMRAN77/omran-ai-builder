@@ -644,11 +644,12 @@ try{
     if(!box) return;
     const items = list || [];
     if(!items.length){ box.innerHTML = '<div style="opacity:.6;padding:8px">لا أحد في قائمة VIP.</div>'; return; }
+    // v-vip-verified (مراجعة النقض): المعرّف في data-id لا داخل JS السطر — كان « ' » وحده يُهرَّب، فاسم مستخدم بـ« \\ » يكسر
+    // السلسلة وينفّذ كودًا في جلسة المالك عند 🗑️؛ والأسماء تدخل القائمة الآن تلقائيًّا حين يؤكّد صاحب إيميل بريده.
     box.innerHTML = items.map(id => {
-      const safeAttr = String(id).replace(/'/g,"\\'");
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
         + '<span style="flex:1;min-width:110px;font-weight:500">⭐ ' + vipEscape(id) + '</span>'
-        + '<button type="button" onclick="removeVipUser(\'' + vipEscape(safeAttr) + '\')" title="إزالة من VIP" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+        + '<button type="button" data-id="' + vipEscape(id) + '" onclick="removeVipUser(this.dataset.id)" title="إزالة من VIP" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
         + '</div>';
     }).join('');
   }
@@ -662,14 +663,25 @@ try{
       const data = await res.json();
       if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
       renderVipList(data.list || []);
-      loadVipAudit();
+      vipAuditButton();
     }catch(e){
       box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
     }
   };
   /* v-vip-verified (أمر المالك: «أرسل لي قائمة الحسابات اللي عندها الحين إيميل من قائمة VIP وهي غير متحقّق منها»): الجرد من
      الخادم لجلسة المالك وحدها، ويُعرض هنا — لا في سجلّ ورك فلو ولا طلب سحب (المستودع علنيّ). مربّع شقيق لقائمة VIP، فإعادة
-     رسمها بعد إضافة أو إزالة لا تمسحه. لا حذف ولا تعديل من هنا. */
+     رسمها بعد إضافة أو إزالة لا تمسحه. بزرّ لا عند كلّ إقلاع: الجرد يقرأ كلّ الحسابات (كلوحة الإحصاء بزرّ تحديثها). لا حذف ولا تعديل. */
+  function vipAuditButton(){
+    const list = document.getElementById('vipListBox');
+    if(!list || !list.parentNode || document.getElementById('vipAuditBtn')) return;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'vipAuditBtn';
+    b.textContent = '🔎 إيميلات VIP غير المؤكَّدة';
+    b.style.cssText = 'margin-top:8px;background:none;border:1px solid var(--border,#333);color:inherit;border-radius:6px;padding:6px 10px;cursor:pointer';
+    b.onclick = () => loadVipAudit();
+    list.parentNode.insertBefore(b, list.nextSibling);
+  }
   const VIP_AUDIT_KIND = {
     'email': 'يحمل إيميلًا من قائمة VIP غير مؤكَّد — لا يأخذ VIP حتّى يؤكّده من «حسابي»',
     'legacy-name': 'اسمه القديم إيميل في القائمة — VIP بالاسم كما كان، وإيميله غير مؤكَّد',
@@ -683,7 +695,8 @@ try{
       box = document.createElement('div');
       box.id = 'vipAuditBox';
       box.style.cssText = 'margin-top:8px;font-size:13px;';
-      list.parentNode.insertBefore(box, list.nextSibling);
+      const btn = document.getElementById('vipAuditBtn');
+      list.parentNode.insertBefore(box, (btn || list).nextSibling);
     }
     box.textContent = '⏳ جرد الإيميلات غير المؤكَّدة...';
     try{
@@ -715,7 +728,7 @@ try{
       renderVipList(data.list || []);
       // v-vip-verified: إيميل بلا حساب أثبته يبقى خامًا ولا يعطي أحدًا شيئًا حتّى يؤكّده صاحبه.
       if(data.pending) alert('أُضيف كإيميل: يصير VIP لصاحبه لما يؤكّد إيميله (دخول Google أو رمز من «حسابي»).');
-      loadVipAudit();
+      if(document.getElementById('vipAuditBox')) loadVipAudit();
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
   window.removeVipUser = async function removeVipUser(id){
@@ -730,7 +743,7 @@ try{
       const data = await res.json();
       if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
       renderVipList(data.list || []);
-      loadVipAudit();
+      if(document.getElementById('vipAuditBox')) loadVipAudit();
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
 
