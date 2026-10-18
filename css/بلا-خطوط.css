@@ -48,8 +48,7 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.om
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn:is(.active,:hover){box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn.active,
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn.active > span{color:#fff !important;}
-/* v-main-lines (المالك ١٧ أكتوبر: «فقط ثبت الخطوط في الشاشة الرئيسه»): إطار المحادثة واللوحتين ثابت ذهبيّ على الكمبيوتر فقط. */
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter){--om-gold-line:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85));}
+/* v-main-lines (المالك ١٧ أكتوبر: «فقط ثبت الخطوط في الشاشة الرئيسه») نُسخت في ١٨ أكتوبر بـv-no-lines-3 أدناه: لا إطار حول اللوحات، وخطّان عموديّان بدلها. */
 /* v-no-phone-frame (المالك: «احذف برواز الهاتف»): في الجوال لا إطار حول المحادثة (body::after من إطارات-الجوال.css) ولا حافّة ذهبيّة للدُّرجين،
    وفي كلّ الأوضاع (الفاتح أيضًا) — استثناء من «الوضع الأسود وحده» بنطاق قاعدة الإطار نفسها. */
 html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after{background:none !important;}
@@ -73,3 +72,30 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTa
 .omran-selected .omran-select-mark.omran-select-mark{background:#101013; border-color:#101013; color:#fff;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omran-selected.omran-selected{background:#101013 !important; color:#fff !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omran-selected .omran-select-mark.omran-select-mark{background:#fff; border-color:#fff; color:#101013;}
+/* ══ v-no-lines-3 (المالك ١٨ أكتوبر بصورتين): تصميم الكمبيوتر في الوضع الأسود وحده — لا الفاتح ولا الثيمات ولا الجوّال ولا «المجرّة».
+   ① لا إطارات ذهبيّة حول اللوحات الثلاث (ولا عند المرور)؛ خطّان عموديّان من أعلى الشاشة إلى أسفلها في منتصف الفراغين (المقابض .resizer، ١٤px)
+      بالـCSS (::before) بلون 240,222,170 يذوب في الطرفين وتوهّج خفيف.
+   ② أسفل القائمة (#omranSidebarFoot): بلا صندوق أبدًا، وخطّ رفيع فوقه من ١٢٪ إلى ١٢٪.
+   ③ أزرار الشريط: نصّ وأيقونة rgba(255,255,255,.86) بلا خلفيّة ولا إطار؛ عند المرور أبيض متوهّج (نصّ وأيقونة)، بلا صندوق.
+   ④ «محادثة جديدة»: بلا إطار ولا خلفيّة ولا ظلّ؛ النصّ أبيض يتوهّج عند المرور، و«+» ذهبيّة تتوهّج ذهبيًّا. ══ */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter):hover,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) main:has(#chatcol:hover) > #omFrameCenter{--om-gold-line:linear-gradient(transparent,transparent); --om-dots:linear-gradient(transparent,transparent); --om-glow:linear-gradient(transparent,transparent); border-color:transparent !important; box-shadow:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omFrameCenter{background:#000 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) .resizer::before{content:""; position:absolute; top:-13px; bottom:-13px; left:50%; width:1px; transform:translateX(-50%); pointer-events:none; z-index:0;
+  background:linear-gradient(to bottom, rgba(240,222,170,0) 0%, rgba(240,222,170,.55) 8%, rgba(240,222,170,.55) 92%, rgba(240,222,170,0) 100%);
+  box-shadow:0 0 6px rgba(240,222,170,.22), 0 0 14px rgba(240,222,170,.08);}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot#omranSidebarFoot,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot#omranSidebarFoot:is(:hover,:focus-within){position:relative; background:transparent !important; border:0 !important; box-shadow:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot::before{content:""; position:absolute; top:0; left:12%; right:12%; height:1px; pointer-events:none;
+  background:linear-gradient(90deg, rgba(240,222,170,0), rgba(240,222,170,.45), rgba(240,222,170,0));}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot :is(.omNavBtn,.omIconBtn,.omModeNav){color:rgba(255,255,255,.86) !important; background:transparent !important; border:0 !important; box-shadow:none !important; filter:none !important; transition:color .2s, text-shadow .2s, filter .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot :is(.omNavBtn,.omIconBtn,.omModeNav) svg{stroke:rgba(255,255,255,.86); transition:stroke .2s, filter .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot :is(.omNavBtn,.omIconBtn,.omModeNav):is(:hover,:focus-visible){color:#fff !important; text-shadow:0 0 8px rgba(255,255,255,.7), 0 0 16px rgba(255,255,255,.3); background:transparent !important; filter:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot :is(.omNavBtn,.omIconBtn,.omModeNav):is(:hover,:focus-visible) svg{stroke:#fff; filter:drop-shadow(0 0 5px rgba(255,255,255,.8));}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn#omranNewChatBtn,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn#omranNewChatBtn:is(:hover,:focus-visible){background:transparent !important; background-image:none !important; border:0 !important; box-shadow:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn .ncLabel{color:rgba(255,255,255,.9); transition:color .2s, text-shadow .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn:is(:hover,:focus-visible) .ncLabel{color:#fff; text-shadow:0 0 8px rgba(255,255,255,.75), 0 0 18px rgba(255,255,255,.35);}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn svg{transition:filter .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn:is(:hover,:focus-visible) svg{filter:drop-shadow(0 0 6px rgba(240,222,170,.9));}
