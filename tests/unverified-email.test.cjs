@@ -300,6 +300,7 @@ test('١٠. التوصيل: الجدول اليوميّ وموجّهه، ورس�
   assert.deepEqual(vj.crons, [{ path: '/api/email-sweep', schedule: '23 3 * * *' }], 'مرّة يوميًّا (حدّ الخطّة المجّانيّة)');
   assert.equal(vj.rewrites.find((r) => r.source === '/api/email-sweep').destination, '/api/system?action=email-sweep');
   assert.ok(read('api/system.js').includes("case 'email-sweep': return require('./_lib/email-sweep.js');"));
+  assert.ok(read('scripts/smoke.mjs').includes("get('/api/email-sweep', { method: 'POST', redirect: 'manual' })"), 'الدخان بعد كلّ نشر يثبت المسار (٤٠٥) بلا تشغيل');
   const boot = read('js/app-01-boot-auth.js');
   assert.ok(boot.includes("(data.code === 'email_unverified' && curT().authEmailUnverified)"), 'الدخول والاسترجاع');
   assert.equal((boot.match(/d\.code === 'email_unverified' && window\.curT && window\.curT\(\)\.authEmailUnverified/g) || []).length, 2, 'رمز الدخول: الطلب والتحقّق');
