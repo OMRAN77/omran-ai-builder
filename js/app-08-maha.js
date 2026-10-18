@@ -2193,6 +2193,7 @@ function mahaStartCloseWatch(){
   const onTap = (e) => {
     if(!mahaCallActive || mahaCallMode === 'builder') return;
     if(mahaActing > 0) return; // v-maha-app
+    if(typeof mahaAppInside === 'function' && mahaAppInside(e)){ mahaLastActivity = Date.now(); return; } // v-maha-win-touch: داخل نافذة فتحتها مها
     const tgt = e.target;
     if(tgt && tgt.closest && tgt.closest('#btnMahaCamera, #mahaCamPreview, #mahaGenImage, #mahaImageLightbox')) return;
     e.preventDefault();
@@ -2236,6 +2237,7 @@ function mahaEndCall(){
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');
   document.body.classList.remove('maha-win'); // v-maha-app
+  if(typeof mahaAppDockMirror === 'function') mahaAppDockMirror(false); // v-maha-win-touch: «م» داخل الإعدادات يذهب مع المكالمة
   mahaCallMode = 'assistant';
 }
 

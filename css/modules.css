@@ -481,6 +481,9 @@ body.maha-band-on.maha-win #sidebar, body.maha-band-on.maha-win #workarea{z-inde
 body.maha-band-on.maha-win #omSkyLayer{z-index:902;}
 /* شاشة الأدوات تسكن داخل صندوق الكتابة (index.html) فترث إخفاءه أثناء المكالمة (v-maha-hide-composer) — تظهر حين تُفتح كزرّ «م» */
 #inputbar.maha-calling #sectionsToolsOverlay.show{visibility:visible;}
+/* v-maha-win-touch (المالك: «اللمس برّاها أو زر الإنهاء يقفلها مثل قبل»): «م» في مكانه يرتفع فوق نافذة مها (أعلاها ١٠٠٨٠) — كانت
+   النافذة تغطّيه، وأغلب النوافذ تملأ الشاشة فلا «برّا» تُلمس، فلا لمسة تُنهي المكالمة. */
+body.maha-band-on.maha-win #btnMahaDock{position:relative; z-index:10100;}
 
 /* v-video-write: الوضع الفاتح لمساعد الكتابة وشريحة المثال (نفس وصفة vmk-pill/vmk-card أعلاه) */
 html[data-mode="light"] #videoMakerModal details.vmk-ai{background:#ffffff;border-color:rgba(0,0,0,.10)}

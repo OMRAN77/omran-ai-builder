@@ -230,5 +230,7 @@
   setInterval(ensureBound, 900);
   /* الشاشات التي تُنشأ عند فتحها (التلفزيون): نربطها لحظة أول لمسة قبل وصول الحدث إليها */
   document.addEventListener('touchstart', ensureBound, { capture: true, passive: true });
-  window.omranSwipeBack = { close: function(){ var t = topTool(); return t ? closeTool(t) : false; }, top: topTool };
+  /* v-maha-win-touch: ids/sheet لمراقبة إغلاق مها — «داخل النافذة» يُقرأ من الخريطة نفسها لا من نسخة */
+  window.omranSwipeBack = { close: function(){ var t = topTool(); return t ? closeTool(t) : false; }, top: topTool,
+    ids: function(){ return Object.keys(MAP); }, sheet: function(id){ return !!SELF[id]; } };
 })();

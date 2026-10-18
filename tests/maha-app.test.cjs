@@ -267,3 +267,52 @@ test('١٠. مراجعة النقض ٢: حزمة قديمة بلا منفّذ ل
   for (const owner of ['fast with sound', 'high quality', 'economy', 'hybrid']) assert.ok(!vid.includes(owner), 'وضع للمالك وحده: ' + owner);
   assert.ok(vid.includes('talking actor') && vid.includes('animated templates'));
 });
+
+test('١١. v-maha-win-touch (المالك: «اللمس داخل النافذة اللي فتحتها مها ما يقفل المكالمة. اللمس برّاها أو زر الإنهاء يقفلها مثل قبل»)', () => {
+  const src = read('js/app-08-maha.js');
+  const slice = src.slice(src.indexOf('const MAHA_SILENCE_END_MS = 20000;'), src.indexOf('function mahaEndCall(){'));
+  const listeners = [];
+  let ended = 0, now = 5000;
+  const ctx = {
+    mahaCallActive: true, mahaCallMode: 'assistant', mahaState: 'listening', mahaLastActivity: 0, Date: { now: () => now },
+    mahaEndCall: () => { ended++; }, setTimeout: (fn) => { fn(); return 1; }, clearTimeout() {}, setInterval: () => 2, clearInterval() {},
+    document: { addEventListener: (t, fn) => listeners.push(fn), removeEventListener() {} },
+    mahaAppInside: (e) => e.inside === true,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(slice + '\nmahaStartCloseWatch(); this.act = () => mahaLastActivity;', ctx);
+  const tap = (inside) => { const e = { inside, target: { closest: () => null }, prevented: false, preventDefault() { this.prevented = true; }, stopPropagation() {} }; listeners.forEach((fn) => fn(e)); return e; };
+  now = 9000;
+  const a = tap(true);
+  assert.equal(ended, 0, 'داخل النافذة: لا إنهاء');
+  assert.equal(a.prevented, false, 'والضغطة تصل النافذة');
+  assert.equal(ctx.act(), 9000, 'وتُحسب نشاطًا (مهلة السكوت تبدأ من جديد)');
+  const b = tap(false);
+  assert.equal(ended, 1, 'برّاها: إنهاء كما كان');
+  assert.equal(b.prevented, true);
+  // الأسلاك: الشرط بعد mahaActing وقبل الإنهاء، في المصدر والحزمة؛ وفحص «داخلها» يقرأ خريطة نوافذ السحب نفسها
+  for (const f of ['js/app-08-maha.js', 'js/app.bundle.js']) {
+    const s = read(f);
+    const w = s.slice(s.indexOf('const onTap = (e) => {'), s.indexOf('mahaEndCall();', s.indexOf('const onTap = (e) => {')));
+    assert.ok(w.indexOf('if(mahaActing > 0) return;') < w.indexOf("if(typeof mahaAppInside === 'function' && mahaAppInside(e)){ mahaLastActivity = Date.now(); return; }"), f);
+  }
+  const app = read('js/app-43-maha-app.js');
+  assert.ok(app.includes('const ids = window.omranSwipeBack.ids();') && app.includes("if(tgt === w && !window.omranSwipeBack.sheet(ids[i])) return false;"), 'الخلفيّة المعتمة برّاها');
+  assert.ok(app.includes('return tgt !== d || mahaAppPointIn(d, e);'), 'خلفيّة الإعدادات برّاها');
+  assert.ok(app.includes("mahaAppDialog = true; // v-maha-win-touch"), 'الإعدادات التي فتحتها مها وحدها');
+  assert.ok(read('js/app-05-swipe-back.js').includes("ids: function(){ return Object.keys(MAP); }, sheet: function(id){ return !!SELF[id]; } };"));
+  // مراجعة النقض: نقرة كود التطبيق نفسه (اختيار ملفّ، تنزيل) والنافذة مفتوحة، واللوحة التي فتحتها مها، وطبقة تضيفها أداة إلى <body>،
+  // و«م» فوق النافذة يُنهي — والمسبار بنقرات يد حقيقيّة غطّاها كلّها (DECISIONS v-maha-win-touch)
+  assert.ok(app.includes('if(e.isTrusted === false && mahaAppActive()) return true;'), 'نقرة الكود والنافذة مفتوحة');
+  assert.ok(app.includes("if(mahaAppPanelOn() && document.getElementById(mahaAppPanel).contains(tgt)) return true;") && app.includes("mahaAppPanel = 'sidebar'; // v-maha-win-touch") && app.includes("mahaAppPanel = 'workarea'; // v-maha-win-touch"), 'اللوحة');
+  assert.ok(app.includes('if(mahaAppToolLayer(tgt)){ setTimeout(mahaAppWinSync, 400); return true; }') && app.includes("el.id === 'mahaCallScreen' || el.id === 'mahaSkyLayer'"), 'طبقة الأداة لا الشريط');
+  assert.ok(read('css/modules.css').includes('body.maha-band-on.maha-win #btnMahaDock{position:relative; z-index:10100;}'), '«م» فوق النافذة');
+  // الجولة الثانية: الإعدادات في الطبقة العليا تملأ الجوّال — نسخة «م» داخلها تُنهي؛ وإعادة الاتّصال لا تمسح ما فتحته مها
+  assert.ok(app.includes("if(tgt.closest('#mahaDockMirror')) return false;") && app.includes('mahaAppDockMirror(true);'), '«م» داخل الإعدادات زرّ الإنهاء');
+  assert.ok(app.includes('function mahaAppHello(){ if(!mahaRtReconnecting){ mahaAppDialog = false; mahaAppPanel = \'\'; } return'), 'إعادة الاتّصال لا تمسح');
+  for (const f of ['js/app-08-maha.js', 'js/app.bundle.js']) {
+    const s = read(f);
+    const end = s.slice(s.indexOf('function mahaEndCall(){'), s.indexOf('let mahaCallMode = '));
+    assert.ok(end.includes("if(typeof mahaAppDockMirror === 'function') mahaAppDockMirror(false);"), f + ': النسخة تذهب مع المكالمة');
+  }
+});
