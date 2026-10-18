@@ -31,7 +31,7 @@ function run({ phone = false } = {}) {
     getComputedStyle: () => ({ direction: 'rtl' }),
   };
   vm.createContext(ctx);
-  vm.runInContext(A13.slice(A, B) + '\n' + A13.slice(W0, W1), ctx);
+  vm.runInContext(A13.slice(A, A13.lastIndexOf('\n', B)) + '\n' + A13.slice(W0, W1), ctx); // بعد #1163 النداء «const stripUnlatch = stripDesktopScroll(tabsWrap);» — القصّ عند بداية سطره
   return { els, shelves, window, win };
 }
 
@@ -40,14 +40,19 @@ test('١. الدالّة نفسها (#1154) بلا تعديل، وغلاف يُ�
   const r = run();
   assert.equal(typeof r.window.omranStripDesktopScroll, 'function');
   for (const id of ['fashionAiCompareChecks', 'designCompareChecks', 'designCompareResults']) {
-    assert.equal(r.els[id].__deskStrip, 1, id);
+    assert.equal(typeof r.els[id].__deskStrip, 'function', id + ': مربوط ومعه «فكّ القفل» (#1163)');
     assert.ok(r.els[id].n >= 4, id + ': العجلة والسحب والنقر وسحب الصورة');
   }
-  r.shelves.forEach((s) => assert.equal(s.__deskStrip, 1));
+  r.shelves.forEach((s) => assert.equal(typeof s.__deskStrip, 'function'));
   const n0 = r.els.fashionAiCompareChecks.n;
-  r.window.omranStripDesktopScroll(r.els.fashionAiCompareChecks);
+  const u = r.window.omranStripDesktopScroll(r.els.fashionAiCompareChecks);
   assert.equal(r.els.fashionAiCompareChecks.n, n0, 'لا ربط مرّتين');
-  r.window.omranStripDesktopScroll(null); // لا خطأ
+  assert.equal(u, r.els.fashionAiCompareChecks.__deskStrip, 'يرجع «فكّ القفل» نفسه');
+  assert.equal(r.window.omranStripDesktopScroll(null), null, 'لا خطأ');
+  // فتح نافذتي الأزياء والديكور يفكّ قفل صفّيهما كما يفعل الاستوديو (#1163)
+  const tail = A13.slice(W1, A13.indexOf('\n  btnOpen.onclick', W1));
+  assert.ok(tail.includes("[['btnFashionAI', ['fashionAiCompareChecks']], ['btnDesignAI', ['designCompareChecks', 'designCompareResults']]]"));
+  assert.ok(tail.includes("if(b) b.addEventListener('click', () => ids.forEach((id) => { const u = omranDeskStrip(document.getElementById(id)); if(u) u(); }));"));
 });
 
 test('٢. الجزء الذي يبني الرفوف يربط ما يُبنى بعده، و«الملفات» يفرد اللوحة على الكمبيوتر وحده', () => {
