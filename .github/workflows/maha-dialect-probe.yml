@@ -1,6 +1,6 @@
 # مسبار لهجة مها: ٣٠ طلبًا إماراتيًّا بصوت حقيقيّ على جلسة مها كما يبنيها الإنتاج — هل فهمت، هل ردّت بالخليجي، أيّ نافذة
 # فتحت، وكم م.ث من نهاية الكلام إلى أوّل صوت منها. يُشغَّل يدويًّا، أو بدفعة رسالة التزامها فيها [maha-probe].
-# كلفة: مكالمات صوتيّة قصيرة بمفتاح المستودع — لا تُشغَّل إلّا بطلب.
+# كلفة: مكالمات صوتيّة قصيرة على حساب المالك — لا تُشغَّل إلّا بطلب. كلام مها في السجلّ مختوم (ذاكرة المالك تصلها).
 name: maha-dialect-probe
 
 on:
@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   probe:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[maha-probe]')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[maha-probe')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -35,15 +35,27 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund && npm i --no-save --ignore-scripts --no-audit --no-fund ws@8.18.0
+      - run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
       # الصوت نفسه في كلّ تشغيلة (قبل/بعد): مخبّأ ببصمة ملفّ الطلبات
       - uses: actions/cache@v4
         with:
           path: .maha-tts-cache
-          key: maha-tts-${{ hashFiles('scripts/maha-dialect-requests.json') }}-v1
+          # المفتاح ثابت لا يُكتب فوقه: كلّ تشغيلة تحفظ نسختها وتستعيد آخر نسخة بالبادئة (تجربة طلبين ثمّ الثلاثون بالصوت نفسه)
+          key: maha-tts-${{ hashFiles('scripts/maha-dialect-requests.json') }}-v1-${{ github.run_id }}
+          restore-keys: maha-tts-${{ hashFiles('scripts/maha-dialect-requests.json') }}-v1-
       - name: Probe Maha
         env:
+          # الموقع المنشور برمز جلسة المالك (السرّ نفسه الذي يستعمله video-samples) — بلا حدّ دقائق؛ رمز غيره يوقف المسبار.
+          MAHA_TOKEN: ${{ secrets.SAMPLE_TOKEN }}
+          # احتياط محلّيّ إن غاب الرمز: معالج الجلسة في العمليّة نفسها بمفتاح المستودع
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: node scripts/maha-dialect-probe.mjs --cache .maha-tts-cache --out maha-dialect-results.json ${{ inputs.only && format('--only {0}', inputs.only) || '' }}
+          ONLY_INPUT: ${{ inputs.only }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        # [maha-probe:1,9] في رسالة الالتزام = هذه الطلبات وحدها (تجربة المسبار قبل الثلاثين)
+        run: |
+          ONLY="$ONLY_INPUT"
+          if [ -z "$ONLY" ]; then ONLY=$(printf '%s' "$COMMIT_MSG" | grep -o '\[maha-probe:[0-9,]*\]' | head -1 | sed 's/.*://; s/\]//' || true); fi
+          node scripts/maha-dialect-probe.mjs --cache .maha-tts-cache --out maha-dialect-results.json ${ONLY:+--only "$ONLY"}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -1,49 +1,69 @@
 // scripts/maha-dialect-probe.mjs — مسبار لهجة مها (أمر المالك ١٨ أكتوبر: «جرّبها كلها على مها، وسجّل لكل طلب: فهمته صح؟ ردّت
 // بالخليجي مو بالفصحى؟ فتحت النافذة الصح؟ كم ثانية لين بدت تتكلم؟»).
 //
-// يشغّل معالج الجلسة الحقيقيّ api/_lib/realtime-session.js كما في الإنتاج — التعليمات والأدوات وكشف نهاية الكلام والنموذج
-// والصوت من الكود نفسه — لمشترك يتحكّم في التطبيق، بذاكرة فارغة (لا بيانات مستخدم في السجلّ العامّ)، بتوقيت أبوظبي. ثمّ يكلّمها
-// بصوت: كلّ طلب يُنطق بلهجة إماراتيّة (تحويل نصّ إلى كلام، يُخبّأ فتسمع التشغيلات كلّها الصوت نفسه)، ويُبثّ بإيقاع الكلام
-// الحقيقيّ على WebSocket الجلسة، ويُسجَّل: أوّل صوت منها بعد نهاية الكلام (م.ث)، وكلامها مكتوبًا، والأدوات التي نادتها.
-// الأدوات لا تُنفَّذ: ردّ نجاح مصطنع بشكل ردّ المتصفّح (فلا صورة ولا فيديو ولا تذكير ولا ذاكرة تُكتب ولا إنفاق).
+// كلّ طلب من scripts/maha-dialect-requests.json يُنطق بصوت رجل إماراتيّ (مخبّأ: القبل والبعد يسمعان الصوت نفسه)، ويُبثّ بإيقاع
+// الكلام الحقيقيّ على جلسة مها، ويُسجَّل: أوّل صوت منها بعد نهاية الكلام (م.ث)، وكلامها مكتوبًا، والأدوات التي نادتها.
+// الأدوات لا تُنفَّذ: ردّ نجاح مصطنع بشكل ردّ المتصفّح (لا صورة ولا تذكير ولا ذاكرة تُكتب ولا إنفاق غير المكالمة نفسها).
 //
-// الشغل في GitHub Actions (maha-dialect-probe.yml) بمفتاح المستودع OPENAI_API_KEY. محلّيًّا:
-//   OPENAI_API_KEY=… node scripts/maha-dialect-probe.mjs [--only 3,9] [--cache /tmp/maha-tts] [--out results.json]
+// وضعان:
+//   prod  (MAHA_TOKEN): الموقع المنشور نفسه — /api/realtime-session كما يناديه التطبيق، و/api/tts لصوت الطلب. الرمز رمز جلسة
+//         المالك (SAMPLE_TOKEN)؛ ما لم تكن الجلسة بلا حدّ يتوقّف (لا تُخصم دقائق مشترك). ذاكرة المالك تصل مها، فكلامها ومعاملات
+//         أدواتها تُختم بالمفتاح العامّ scripts/maha-probe-seal.pub.pem (السجلّ العامّ يرى الأرقام وأسماء الأدوات وحدها).
+//   local (OPENAI_API_KEY): معالج الجلسة الحقيقيّ api/_lib/realtime-session.js في العمليّة نفسها لمالك بذاكرة فارغة.
+//   --dry: يسكّ جلسة محلّيّة ويطبع ما يصل المزوّد بلا مكالمة (اختبار المسبار نفسه).
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i === -1 ? d : process.argv[i + 1]; };
+const DRY = process.argv.includes('--dry');
 const ONLY = String(arg('only', '') || '').split(',').map(Number).filter(Boolean);
 const CACHE = arg('cache', process.env.MAHA_TTS_CACHE || path.join(ROOT, '.maha-tts-cache'));
 const OUT = arg('out', process.env.MAHA_PROBE_OUT || 'maha-dialect-results.json');
+const BASE = String(process.env.MAHA_BASE || 'https://omran-ai-builder.vercel.app').replace(/\/+$/, '');
+const TOKEN = String(process.env.MAHA_TOKEN || '').trim();
 const KEY = String(process.env.OPENAI_API_KEY || '').trim();
-if (!KEY) { console.error('✗ OPENAI_API_KEY غائب'); process.exit(2); }
+const MODE = DRY ? 'local' : (TOKEN ? 'prod' : 'local');
+if (MODE === 'local' && !KEY) { console.error('✗ لا MAHA_TOKEN ولا OPENAI_API_KEY'); process.exit(2); }
 
 const REQUESTS = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'maha-dialect-requests.json'), 'utf8'))
   .filter((r) => !ONLY.length || ONLY.includes(r.id));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ── ١) الصوت: كلّ طلب بلهجة إماراتيّة، PCM ‎24kHz 16‑bit أحاديّ (صيغة الجلسة نفسها)، مخبّأ ببصمة النصّ والإعداد ──
+// ── ١) الصوت: PCM ‎24kHz 16‑bit أحاديّ (صيغة الجلسة)، مخبّأ ببصمة النصّ والإعداد ──
 const TTS = { model: 'gpt-4o-mini-tts', voice: 'ash', instructions: 'You are a native Emirati man from Abu Dhabi talking casually to a voice assistant on the phone. Speak natural everyday Emirati Arabic exactly as written (pronounce چ as ch, ي in يديدة as y), relaxed conversational pace, no Fus-ha.' };
 async function speech(text) {
   fs.mkdirSync(CACHE, { recursive: true });
   const f = path.join(CACHE, crypto.createHash('sha256').update(JSON.stringify([TTS, text])).digest('hex').slice(0, 24) + '.pcm');
   if (fs.existsSync(f)) return fs.readFileSync(f);
-  const r = await fetch('https://api.openai.com/v1/audio/speech', {
-    method: 'POST', headers: { Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...TTS, input: text, response_format: 'pcm' }),
-  });
-  if (!r.ok) throw new Error('tts ' + r.status + ' ' + (await r.text()).slice(0, 200));
-  const buf = Buffer.from(await r.arrayBuffer());
-  fs.writeFileSync(f, buf);
-  return buf;
+  let pcm;
+  if (MODE === 'prod') {
+    let mp3 = null;
+    for (let a = 1; a <= 3 && !mp3; a++) {
+      const r = await fetch(BASE + '/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...TTS, text, lang: 'ar', token: TOKEN }) });
+      const b = Buffer.from(await r.arrayBuffer());
+      if (r.ok && b.length > 2000) mp3 = b; else await sleep(3000 * a);
+      if (!mp3 && a === 3) throw new Error('tts ' + r.status + ' ' + b.toString('utf8', 0, 160));
+    }
+    pcm = execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', 'pipe:0', '-f', 's16le', '-ac', '1', '-ar', '24000', 'pipe:1'], { input: mp3, maxBuffer: 64 << 20 });
+  } else {
+    const r = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...TTS, input: text, response_format: 'pcm' }),
+    });
+    if (!r.ok) throw new Error('tts ' + r.status + ' ' + (await r.text()).slice(0, 200));
+    pcm = Buffer.from(await r.arrayBuffer());
+  }
+  fs.writeFileSync(f, pcm);
+  return pcm;
 }
-// نهاية الكلام الفعليّة داخل الصوت (بلا الصمت في ذيله): آخر نافذة ٢٠م.ث تتجاوز عتبة الطاقة
+// نهاية الكلام الفعليّة داخل الصوت (بلا صمت الذيل): آخر نافذة ٢٠م.ث تتجاوز عتبة الطاقة
 function speechEndMs(pcm) {
-  const win = 480 * 2; // 20ms @24kHz × 2 بايت
+  const win = 480 * 2;
   let last = 0;
   for (let o = 0; o + win <= pcm.length; o += win) {
     let s = 0;
@@ -53,48 +73,65 @@ function speechEndMs(pcm) {
   return Math.round(last / 48);
 }
 
-// ── ٢) الجلسة: معالج الإنتاج نفسه، بتخزين في الذاكرة وحصّة مفتوحة — مشترك (المالك) يتحكّم في التطبيق ──
-process.env.AUTH_SECRET = process.env.AUTH_SECRET || crypto.randomBytes(24).toString('hex');
-process.env.UPSTASH_REDIS_REST_URL = 'https://redis.invalid';
-process.env.UPSTASH_REDIS_REST_TOKEN = 'x';
-delete process.env.MAHA_TURN; // إعداد الإنتاج الافتراضيّ
-const lib = (f) => require.resolve(path.join(ROOT, 'api', '_lib', f));
-const mock = (f, exports) => { const id = lib(f); require.cache[id] = { id, filename: id, loaded: true, exports }; };
-const store = new Map();
-const kv = {
-  kvGetJSON: async (k) => (store.has(k) ? JSON.parse(store.get(k)) : null),
-  kvPutJSON: async (k, v) => { store.set(k, JSON.stringify(v)); },
-  kvGetRaw: async (k) => (store.has(k) ? store.get(k) : null),
-  kvSetRaw: async (k, v) => { store.set(k, String(v)); },
-  kvSetIfAbsent: async (k, v) => { if (store.has(k)) return false; store.set(k, String(v)); return true; },
-  kvIncr: async (k) => { const v = Number(store.get(k) || 0) + 1; store.set(k, String(v)); return v; },
-  kvIncrBy: async (k, n) => { const v = Number(store.get(k) || 0) + Number(n); store.set(k, String(v)); return v; },
-  kvDecrBy: async (k, n) => { const v = Number(store.get(k) || 0) - Number(n); store.set(k, String(v)); return v; },
-  kvDel: async (k) => { store.delete(k); },
-  kvExpire: async () => {},
-  kvList: async (p) => [...store.keys()].filter((k) => k.startsWith(p)),
-};
-mock('kv.js', new Proxy(kv, { get: (t, p) => t[p] || (async () => null) }));
-mock('log-error.js', { logError: () => {}, logErrorAndFlush: async () => {} });
-mock('_usage.js', { checkAndConsume: async () => ({ allowed: true }), DAILY_LIMIT: 99, clientIp: () => '203.0.113.7' });
-const auth = require(lib('auth.js'));
-const mahaApp = require(lib('maha-app.js'));
-const handler = require(lib('realtime-session.js'));
-const OWNER_TOKEN = auth.makeToken(require(lib('_owner.js')).ownerList()[0] || 'omran');
-
-async function mintSession() {
-  const body = {
-    token: OWNER_TOKEN, timezone: 'Asia/Dubai', mode: 'assistant', voiceGender: 'female', voiceSpeed: 'normal',
-    lastCallAgoMs: 2 * 86400000, // صديقة تعرفه: لا «أنا مها» في كلّ طلب
-    app: { lang: 'ar', tools: mahaApp.knownTools('ar') }, desktop: true,
+// ── ٢) الجلسة ──
+const SESSION_BODY = (tools) => ({
+  timezone: 'Asia/Dubai', mode: 'assistant', voiceGender: 'female', voiceSpeed: 'normal',
+  lastCallAgoMs: 2 * 86400000, // صديقة تعرفه: لا «أنا مها» في كلّ طلب
+  app: { lang: 'ar', tools }, desktop: true,
+});
+let localHandler = null, localToken = '', localTools = null;
+function loadLocal() {
+  if (localHandler) return;
+  process.env.AUTH_SECRET = process.env.AUTH_SECRET || crypto.randomBytes(24).toString('hex');
+  process.env.UPSTASH_REDIS_REST_URL = 'https://redis.invalid';
+  process.env.UPSTASH_REDIS_REST_TOKEN = 'x';
+  delete process.env.MAHA_TURN;
+  const lib = (f) => require.resolve(path.join(ROOT, 'api', '_lib', f));
+  const mock = (f, exports) => { const id = lib(f); require.cache[id] = { id, filename: id, loaded: true, exports }; };
+  const store = new Map();
+  const kv = {
+    kvGetJSON: async (k) => (store.has(k) ? JSON.parse(store.get(k)) : null),
+    kvPutJSON: async (k, v) => { store.set(k, JSON.stringify(v)); },
+    kvGetRaw: async (k) => (store.has(k) ? store.get(k) : null),
+    kvSetRaw: async (k, v) => { store.set(k, String(v)); },
+    kvSetIfAbsent: async (k, v) => { if (store.has(k)) return false; store.set(k, String(v)); return true; },
+    kvIncr: async (k) => { const v = Number(store.get(k) || 0) + 1; store.set(k, String(v)); return v; },
+    kvIncrBy: async (k, n) => { const v = Number(store.get(k) || 0) + Number(n); store.set(k, String(v)); return v; },
+    kvDecrBy: async (k, n) => { const v = Number(store.get(k) || 0) - Number(n); store.set(k, String(v)); return v; },
+    kvDel: async (k) => { store.delete(k); },
+    kvExpire: async () => {},
+    kvList: async (p) => [...store.keys()].filter((k) => k.startsWith(p)),
   };
+  mock('kv.js', new Proxy(kv, { get: (t, p) => t[p] || (async () => null) }));
+  mock('log-error.js', { logError: () => {}, logErrorAndFlush: async () => {} });
+  mock('_usage.js', { checkAndConsume: async () => ({ allowed: true }), DAILY_LIMIT: 99, clientIp: () => '203.0.113.7' });
+  const auth = require(lib('auth.js'));
+  localTools = require(lib('maha-app.js')).knownTools('ar');
+  localHandler = require(lib('realtime-session.js'));
+  localToken = auth.makeToken(require(lib('_owner.js')).ownerList()[0] || 'omran');
+}
+function appTools() {
+  if (MODE === 'local') { loadLocal(); return localTools; }
+  // أدوات الشاشة كما يرسلها المتصفّح — من مصدرها في الخادم (بلا تحميل معالج الجلسة)
+  return require(path.join(ROOT, 'api', '_lib', 'maha-app.js')).knownTools('ar');
+}
+async function mintSession() {
+  if (MODE === 'prod') {
+    const r = await fetch(BASE + '/api/realtime-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: TOKEN, ...SESSION_BODY(appTools()) }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.clientSecret) throw new Error('session ' + r.status + ' ' + String(j.error || '').slice(0, 160));
+    if (!(j.mahaBudget && j.mahaBudget.unlimited) && process.env.MAHA_ALLOW_PAID !== '1') { console.error('✗ الرمز ليس للمالك (الجلسة تُخصم دقائق) — توقّف'); process.exit(3); }
+    return j;
+  }
+  loadLocal();
+  const body = { token: localToken, ...SESSION_BODY(localTools) };
   return new Promise((resolve, reject) => {
     const res = {
       _s: 200, setHeader() { return this; }, status(c) { this._s = c; return this; }, end() { reject(new Error('session ' + this._s)); },
       json(b) { (this._s === 200 && b.clientSecret) ? resolve(b) : reject(new Error('session ' + this._s + ' ' + JSON.stringify(b).slice(0, 300))); },
       send(t) { reject(new Error('session ' + this._s + ' ' + String(t).slice(0, 300))); },
     };
-    Promise.resolve(handler({ method: 'POST', headers: {}, body }, res)).catch(reject);
+    Promise.resolve(localHandler({ method: 'POST', headers: {}, body }, res)).catch(reject);
   });
 }
 
@@ -107,7 +144,7 @@ function fakeOutput(name, args) {
     case 'find_real_photo': return { ok: true, message: 'A real photo was found on the web and shown to the user on screen - do not describe it in detail, just briefly confirm you found and showed it.' };
     case 'search_web': {
       const q = String(args.query || '');
-      if (/جو|طقس|حرار|weather|العين/i.test(q)) return { ok: true, results: 'طقس العين غدًا: مشمس وحارّ نسبيًّا، العظمى ٣٧ والصغرى ٢٤، رطوبة منخفضة ورياح خفيفة.' };
+      if (/جو|طقس|حرار|weather|العين|al ?ain/i.test(q)) return { ok: true, results: 'طقس العين غدًا: مشمس وحارّ نسبيًّا، العظمى ٣٧ والصغرى ٢٤، رطوبة منخفضة ورياح خفيفة.' };
       return { ok: false, message: 'No useful search results found; answer from your own knowledge and say briefly if unsure.' };
     }
     case 'set_reminder': return { ok: true, message: 'Reminder saved: ' + (args.message || '') };
@@ -124,17 +161,15 @@ async function runOne(reqItem) {
   const sess = await mintSession();
   const { default: WebSocket } = await import('ws');
   const ws = new WebSocket('wss://api.openai.com/v1/realtime?model=' + encodeURIComponent(sess.model), { headers: { Authorization: 'Bearer ' + sess.clientSecret } });
-  const ev = [];
   const out = { id: reqItem.id, text: reqItem.text, kind: reqItem.kind, speechMs: speechEnd, turn: sess.turn, appControl: sess.appControl, tools: [], transcript: [], errors: [] };
   const t = () => Date.now();
-  let tStream = 0, tSpeechEnd = 0, tStopped = 0, tFirstAudio = 0, responses = 0, pendingCalls = 0, done = false;
+  let tSpeechEnd = 0, tStopped = 0, tFirstAudio = 0, responses = 0, pendingCalls = 0, done = false;
   const finish = new Promise((resolve) => {
     const cap = setTimeout(() => { out.errors.push('timeout'); resolve(); }, 45000);
     let idle = null;
     const settle = () => { clearTimeout(idle); idle = setTimeout(() => { if (!pendingCalls) { done = true; clearTimeout(cap); resolve(); } }, 2500); };
     ws.on('message', (raw) => {
       let e; try { e = JSON.parse(raw.toString()); } catch (x) { return; }
-      ev.push(e.type);
       if (e.type === 'error') out.errors.push((e.error && (e.error.code || e.error.message)) || 'error');
       if (e.type === 'input_audio_buffer.speech_stopped' && !tStopped) tStopped = t();
       if ((e.type === 'response.output_audio.delta' || e.type === 'response.audio.delta') && !tFirstAudio) tFirstAudio = t();
@@ -158,14 +193,14 @@ async function runOne(reqItem) {
   });
   // بإيقاع الكلام الحقيقيّ: ١٠٠م.ث كلّ ١٠٠م.ث، ثمّ صمت حتّى تقرّر الجلسة أنّ الجملة انتهت (٤ث على الأكثر)
   const CH = 4800;
-  tStream = t();
+  const tStream = t();
   tSpeechEnd = tStream + speechEnd;
   for (let o = 0; o < pcm.length; o += CH) {
     ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcm.subarray(o, o + CH).toString('base64') }));
-    await new Promise((r) => setTimeout(r, 100));
+    await sleep(100);
   }
   const silence = Buffer.alloc(CH).toString('base64');
-  for (let i = 0; i < 40 && !tStopped; i++) { ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: silence })); await new Promise((r) => setTimeout(r, 100)); }
+  for (let i = 0; i < 40 && !tStopped; i++) { ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: silence })); await sleep(100); }
   await finish;
   ws.close();
   out.firstVoiceMs = tFirstAudio ? tFirstAudio - tSpeechEnd : null; // من نهاية كلامه إلى أوّل صوت منها
@@ -175,8 +210,8 @@ async function runOne(reqItem) {
   return out;
 }
 
-// --dry: يسكّ جلسة واحدة ويطبع ما وصل المزوّد (طول التعليمات، الأدوات، كشف نهاية الكلام) بلا مكالمة — فحص المسبار نفسه.
-if (process.argv.includes('--dry')) {
+// --dry: يسكّ جلسة محلّيّة ويطبع ما وصل المزوّد (طول التعليمات، الأدوات، كشف نهاية الكلام) بلا مكالمة — فحص المسبار نفسه.
+if (DRY) {
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (url, opts) => {
     if (String(url).includes('/realtime/client_secrets')) {
@@ -186,20 +221,37 @@ if (process.argv.includes('--dry')) {
     }
     return realFetch(url, opts);
   };
+  process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'sk-dry';
   const s = await mintSession();
   console.log('MAHA_DRY_SESSION ' + JSON.stringify({ turn: s.turn, appControl: s.appControl, model: s.model }));
   process.exit(0);
 }
 
+// الختم: في الإنتاج تصل ذاكرة المالك مها — كلامها ومعاملات أدواتها لا تُطبع في السجلّ العامّ إلّا مختومة.
+function seal(obj) {
+  const pubF = path.join(ROOT, 'scripts', 'maha-probe-seal.pub.pem');
+  const k = crypto.randomBytes(32), iv = crypto.randomBytes(12);
+  const c = crypto.createCipheriv('aes-256-gcm', k, iv);
+  const data = Buffer.concat([c.update(JSON.stringify(obj), 'utf8'), c.final()]);
+  const ek = crypto.publicEncrypt({ key: fs.readFileSync(pubF, 'utf8'), oaepHash: 'sha256', padding: crypto.constants.RSA_PKCS1_OAEP_PADDING }, k);
+  return [ek, iv, c.getAuthTag(), data].map((b) => b.toString('base64')).join('.');
+}
+const brief = (r) => ({ id: r.id, firstVoiceMs: r.firstVoiceMs, vadMs: r.vadMs, responses: r.responses, tools: (r.tools || []).map((x) => x.name + (x.args && x.args.target ? ':' + x.args.target : x.args && x.args.action ? ':' + x.args.action : '')), spokeChars: (r.transcript || []).join(' ').length, errors: r.errors });
+
+console.log('MAHA_MODE ' + MODE + (MODE === 'prod' ? ' ' + BASE : ''));
 const results = [];
 for (const r of REQUESTS) {
   let res;
-  try { res = await runOne(r); } catch (e) { res = { id: r.id, text: r.text, kind: r.kind, errors: [String(e && e.message || e).slice(0, 300)] }; }
+  try { res = await runOne(r); } catch (e) { res = { id: r.id, text: r.text, kind: r.kind, tools: [], transcript: [], errors: [String(e && e.message || e).slice(0, 300)] }; }
   results.push(res);
-  console.log('MAHA_RESULT ' + JSON.stringify(res));
+  console.log((MODE === 'prod' ? 'MAHA_ROW ' + JSON.stringify(brief(res)) : 'MAHA_RESULT ' + JSON.stringify(res)));
 }
-fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), requests: REQUESTS.length, results }, null, 2));
+const payload = { at: new Date().toISOString(), mode: MODE, base: MODE === 'prod' ? BASE : null, requests: REQUESTS.length, results };
+if (MODE === 'prod') {
+  const blob = seal(payload);
+  for (let i = 0; i < blob.length; i += 3000) console.log('MAHA_SEALED ' + Math.floor(i / 3000) + ' ' + blob.slice(i, i + 3000));
+  fs.writeFileSync(OUT, JSON.stringify({ sealed: blob }));
+} else fs.writeFileSync(OUT, JSON.stringify(payload, null, 2));
 const ok = results.filter((r) => r.firstVoiceMs != null).map((r) => r.firstVoiceMs).sort((a, b) => a - b);
-const med = ok.length ? ok[Math.floor(ok.length / 2)] : null;
-console.log('MAHA_SUMMARY ' + JSON.stringify({ runs: results.length, voiced: ok.length, medianFirstVoiceMs: med, errors: results.filter((r) => r.errors && r.errors.length).length }));
+console.log('MAHA_SUMMARY ' + JSON.stringify({ mode: MODE, runs: results.length, voiced: ok.length, medianFirstVoiceMs: ok.length ? ok[Math.floor(ok.length / 2)] : null, errors: results.filter((r) => r.errors && r.errors.length).length }));
 process.exit(0);

@@ -48,10 +48,14 @@ test('٢. المسبار يبني الجلسة من معالج الإنتاج ن
 
 test('٣. الورك فلو لا يصرف إلّا بطلب: يدويّ، أو دفعة رسالتها [maha-probe] — والصوت مخبّأ فالقبل والبعد يسمعان الشيء نفسه', () => {
   const y = read('.github/workflows/maha-dialect-probe.yml');
-  assert.ok(y.includes("if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[maha-probe]')"));
-  assert.ok(y.includes('OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}'));
+  assert.ok(y.includes("if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[maha-probe')"));
+  assert.ok(y.includes('MAHA_TOKEN: ${{ secrets.SAMPLE_TOKEN }}'), 'الموقع المنشور برمز المالك وحده (لا رمز مشترك تُخصم دقائقه)');
   assert.ok(/actions\/cache@v4[\s\S]*?path: \.maha-tts-cache/.test(y));
   const p = read('scripts/maha-dialect-probe.mjs');
   assert.ok(p.includes("require(lib('realtime-session.js'))"), 'المعالج الحقيقيّ');
-  assert.ok(!/console\.log\([^)]*KEY/.test(p), 'لا طباعة للمفتاح');
+  assert.ok(!/console\.log\([^)]*(KEY|TOKEN)/.test(p), 'لا طباعة للمفتاح ولا للرمز');
+  assert.ok(p.includes("if (!(j.mahaBudget && j.mahaBudget.unlimited) && process.env.MAHA_ALLOW_PAID !== '1')"), 'يتوقّف إن كانت الجلسة تُخصم');
+  // في الإنتاج: كلامها ومعاملات أدواتها مختومة — السجلّ العامّ يرى الأرقام وأسماء الأدوات وحدها
+  assert.ok(p.includes("console.log((MODE === 'prod' ? 'MAHA_ROW ' + JSON.stringify(brief(res)) : 'MAHA_RESULT ' + JSON.stringify(res)))"));
+  assert.ok(/^-----BEGIN PUBLIC KEY-----/.test(read('scripts/maha-probe-seal.pub.pem')), 'مفتاح الختم العامّ وحده في المستودع');
 });
