@@ -1245,6 +1245,7 @@
       <p id="emailAssistDisclaimer" data-i18n="emailAsst_disclaimer" style="margin:10px 0 0; font-size:12px; color:var(--muted);">⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.</p>
       <div id="emailAssistStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted); white-space:pre-line;"></div>
       <div id="emailAssistList" style="margin-top:14px; display:flex; flex-direction:column; gap:14px;"></div>
+      <button type="button" class="btn" id="emailAssistMoreBtn" data-i18n="emailAsst_more" style="display:none; width:100%; margin-top:14px;">المزيد</button>
     </div>
   </div>
 </div>

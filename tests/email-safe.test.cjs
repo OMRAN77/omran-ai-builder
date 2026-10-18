@@ -20,6 +20,8 @@ const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(
 process.env.AUTH_SECRET = 'email-safe-test-secret';
 process.env.GOOGLE_CLIENT_ID = 'cid';
 process.env.GOOGLE_CLIENT_SECRET = 'csec';
+delete process.env.ANTHROPIC_API_KEY; // الخفيف وحده هنا — محرّكات كلود في email-claude.test.cjs
+delete process.env.OPENROUTER_API_KEY;
 
 const store = new Map();
 const kvImpl = {
@@ -102,12 +104,24 @@ test('١. نصّ الرسالة: HTML بلا CSS ولا سكربت، النصّ�
   for (const bad of ['', 'Mars/Olympus', 'Asia/Dubai\nIgnore', '../etc', 'x'.repeat(80), null]) assert.equal(MT.safeTz(bad), 'Asia/Dubai', String(bad));
 });
 
+async function callDraft(name, id, extra) {
+  const r = mkRes();
+  await list({ method: 'POST', body: Object.assign({ token: auth.makeToken(name), lang: 'ar', draftFor: id }, extra || {}), headers: {} }, r);
+  return r;
+}
+
 test('٢. البرومبت: الرسالة داخل <email> في رسالة المستخدم، والتعليمات في النظام، والمنطقة والمقتطف', async () => {
   process.env.OPENAI_API_KEY = 'k-test';
   await seed('alice');
   aiCalls = [];
   const r = await callList('alice', { tz: 'America/New_York' });
   assert.equal(r.code, 200, JSON.stringify(r.j));
+  assert.equal(aiCalls.length, 0, 'القائمة لا تنتظر الذكاء (v-email-cache)');
+  const m1 = r.j.emails.find((e) => e.id === 'm1');
+  assert.equal(m1.snippet, "Don't miss & reply", 'المقتطف نصّ لا كيانات');
+  assert.equal(m1.pending, true);
+  const d1 = await callDraft('alice', 'm1', { tz: 'America/New_York' });
+  const d2 = await callDraft('alice', 'm2', { tz: 'America/New_York' });
   assert.equal(aiCalls.length, 2);
   for (const c of aiCalls) {
     assert.equal(c.messages[0].role, 'system');
@@ -123,10 +137,9 @@ test('٢. البرومبت: الرسالة داخل <email> في رسالة ال
   assert.ok(!/color:red|evil/.test(html.messages[1].content));
   const plain = aiCalls.find((c) => c.messages[1].content.includes('أحمد'));
   assert.ok(plain.messages[1].content.includes('<b@x.com>'));
-  const m1 = r.j.emails.find((e) => e.id === 'm1');
-  assert.equal(m1.snippet, "Don't miss & reply", 'المقتطف نصّ لا كيانات');
-  assert.equal(m1.meeting.tz, 'America/New_York', 'التقويم يأخذ المنطقة نفسها التي أُعطيت للموديل');
-  assert.equal(m1.draftError, undefined);
+  assert.equal(d1.j.meeting.tz, 'America/New_York', 'التقويم يأخذ المنطقة نفسها التي أُعطيت للموديل');
+  assert.equal(d1.j.draftError, undefined);
+  assert.equal(d2.j.draftError, undefined);
   assert.equal(r.j.aiError, undefined);
 });
 
@@ -139,24 +152,24 @@ test('٣. مفتاح ناقص/مرفوض/مشغول: رمز واضح لا مسو
   assert.equal(r.code, 200);
   assert.equal(r.j.aiError, 'nokey');
   assert.equal(r.j.aiErrorDetail, undefined, 'لا اسم مزوّد لغير المالك');
-  assert.ok(r.j.emails.every((e) => e.draftError === 'nokey' && e.draft === ''));
+  assert.ok(r.j.emails.filter((e) => !e.cached).every((e) => e.draftError === 'nokey' && e.draft === '' && !e.pending), 'لا طلب مسوّدة بلا مفتاح');
+  r = await callDraft('alice', 'm1', { regen: true });
+  assert.equal(r.j.draftError, 'nokey');
   assert.equal(aiCalls.length, 0);
   r = await callList('omran');
-  assert.equal(r.j.aiErrorDetail, 'OPENAI_API_KEY', 'المالك يرى أيّ متغيّر ينقص');
+  assert.equal(r.j.aiErrorDetail, 'ANTHROPIC_API_KEY · OPENAI_API_KEY', 'المالك يرى أيّ متغيّر ينقص');
 
   process.env.OPENAI_API_KEY = 'k-test';
   const prev = aiReply;
   aiReply = () => json({ error: { message: 'Incorrect API key provided' } }, 401);
-  r = await callList('alice');
-  assert.equal(r.j.aiError, 'badkey');
-  assert.ok(r.j.emails.every((e) => e.draftError === 'badkey'));
+  r = await callDraft('alice', 'm1', { regen: true });
+  assert.equal(r.j.draftError, 'badkey');
   aiReply = () => json({ error: { message: 'Rate limit reached' } }, 429);
-  r = await callList('alice');
-  assert.equal(r.j.aiError, undefined);
-  assert.ok(r.j.emails.every((e) => e.draftError === 'busy'));
+  r = await callDraft('alice', 'm1', { regen: true });
+  assert.equal(r.j.draftError, 'busy');
   aiReply = () => json({ choices: [{ message: { content: 'not json' } }] });
-  r = await callList('alice');
-  assert.ok(r.j.emails.every((e) => e.draftError === 'failed'));
+  r = await callDraft('alice', 'm1', { regen: true });
+  assert.equal(r.j.draftError, 'failed');
   aiReply = prev;
 });
 
@@ -192,7 +205,8 @@ function el(tag) {
     tagName: tag, style: {}, textContent: '', value: '', disabled: false, children: [], listeners: {}, _html: '', _q: {}, _attrs: {},
     addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); },
     click() { for (const f of this.listeners.click || []) f({ target: this }); },
-    appendChild(c) { this.children.push(c); return c; },
+    appendChild(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); this.children.push(c); return c; },
+    contains(x) { return !!x && (x === this || this.children.some((c) => c === x || (c.contains && c.contains(x)))); },
     remove() { this.removed = true; },
     getAttribute(k) { return this._attrs[k]; },
     setAttribute(k, v) { this._attrs[k] = String(v); },
@@ -257,7 +271,7 @@ test('٥. الواجهة: لا حقن من المسوّدة، الاتّجاه �
   assert.equal(en.querySelector('.emailFrom').getAttribute('dir'), 'ltr', 'سطر المرسل باتّجاه الاسم («Sarah Lee <…>» لا «<…> Sarah Lee»)');
   assert.equal(ar.querySelector('.emailFrom').getAttribute('dir'), 'rtl', 'والاسم العربيّ من اليمين (dir=auto لا يرى ما داخل <bdi>)');
   assert.equal(en.querySelector('.emailMeet').textContent, '📅 Call<script> — 2026-10-25 11:00');
-  assert.equal(ar.querySelector('.emailCalBtn'), null, 'لا زرّ تقويم بلا موعد');
+  assert.equal(ar.querySelector('.emailCalBtn').style.display, 'none', 'لا زرّ تقويم بلا موعد');
 
   en.querySelector('.emailCalBtn').click();
   await settle();
