@@ -5,7 +5,9 @@
    في كلّ دالّة فلا يتغيّر شيء (جوجل الحاليّ ثمّ Tavily كما كانا). الاشتراك إنفاق: المفتاح يضيفه المالك وحده بعد موافقته.
    الشكل الموحّد لكلّ مزوّد: organic → [{ title, link, snippet, date }]، وshopping (Serper وحده، وبـCARDS_SHOPPING=on) →
    [{ title, link, source, price, image }]. نتائج التسوّق عند SearchApi وSerpApi روابطها صفحات جوجل لا المتجر (توثيقهما)، فلا تسوّق لهما.
-   لا يرمي أبدًا: أيّ فشل شبكة أو HTTP أو JSON = null، فالسلسلة تنتقل للتالي. ولا يطبع المفتاح ولا يضعه في رابط Serper/SearchApi. */
+   لا يرمي أبدًا: أيّ فشل شبكة أو HTTP أو JSON = null، فالسلسلة تنتقل للتالي. ولا يطبع المفتاح ولا يضعه في رابط Serper/SearchApi.
+   v-serp-modules: المحوّل نفسه أمام نداءات Custom Search الباقية — design-ideas (صور)، live-social (site:)، search.js (الحسابات والويب
+   وشريط الصور) — وimages للصور بـSafeSearch (SearchApi وSerpApi وحدهما). */
 
 const SERPER_URL = 'https://google.serper.dev';
 const SEARCHAPI_URL = 'https://www.searchapi.io/api/v1/search';
@@ -32,11 +34,13 @@ function glOf(v) { const g = clean(v, 4).toLowerCase(); return /^[a-z]{2}$/.test
 
 async function getJSON(url, init, o) {
   const f = (o && o.fetch) || globalThis.fetch;
+  /* v-serp-modules: o.onFail(رمز HTTP أو 'net') لمن يعرض سبب الفشل (حالة design-ideas) — اختياريّ */
+  const fail = (o && typeof o.onFail === 'function') ? o.onFail : () => {};
   try {
     const r = await f(url, Object.assign({ signal: AbortSignal.timeout((o && o.timeoutMs) || 12000) }, init));
-    if (!r || !r.ok) { console.warn('[serp] HTTP ' + (r && r.status)); return null; }
+    if (!r || !r.ok) { console.warn('[serp] HTTP ' + (r && r.status)); fail((r && r.status) || 1); return null; }
     return await r.json();
-  } catch (e) { console.warn('[serp] ' + (e && e.name)); return null; } // شبكة أو مهلة أو JSON مكسور = التالي في السلسلة
+  } catch (e) { console.warn('[serp] ' + (e && e.name)); fail('net'); return null; } // شبكة أو مهلة أو JSON مكسور = التالي في السلسلة
 }
 function normOrganic(arr) {
   return (Array.isArray(arr) ? arr : []).map((x) => (x && x.link ? { title: clean(x.title, 200), link: clean(x.link, 2000), snippet: clean(x.snippet, 400), date: clean(x.date, 40) } : null)).filter(Boolean);
@@ -78,6 +82,32 @@ async function shopping(query, opts) {
   return (Array.isArray(d.shopping) ? d.shopping : []).map((x) => (x && x.link ? { title: clean(x.title, 200), link: clean(x.link, 2000), source: clean(x.source, 80), price: clean(x.price, 40), image: clean(x.imageUrl, 2000) } : null)).filter(Boolean);
 }
 
+/* v-serp-modules — بحث الصور (مكان Custom Search بـsearchType=image&safe=active في design-ideas وشريط صور search.js).
+   SafeSearch شرط (v-ideas-safe: المالك أوقف كلّ مصدر بلا تصفية مضمونة): SearchApi وSerpApi يوثّقان safe=active لمحرّك google_images؛
+   Serper لا يوثّق بحث صور ولا SafeSearch أصلًا، فلا صور منه — أوّل مفتاح من الاثنين، وبلاهما null بلا نداء. */
+function imagesProviderOf(env) {
+  const e = env || process.env;
+  if (keyOf(e, 'SEARCHAPI_API_KEY')) return 'searchapi';
+  if (keyOf(e, 'SERPAPI_API_KEY')) return 'serpapi';
+  return '';
+}
+/* o: { env, fetch, num (١٠ كما كان Custom Search), timeoutMs, onFail } → [{ image, thumb, title, page }] */
+async function images(query, opts) {
+  const o = opts || {};
+  const env = o.env || process.env;
+  const q = clean(query, 300);
+  const p = imagesProviderOf(env);
+  if (!q || !p) return null;
+  const n = Math.max(1, Math.min(Number(o.num) || 10, 100));
+  const pick = (arr, f) => (Array.isArray(arr) ? arr : []).map((x) => (x ? f(x) : null)).filter((x) => x && x.image).slice(0, n);
+  if (p === 'searchapi') {
+    const d = await getJSON(SEARCHAPI_URL + '?engine=google_images&safe=active&q=' + encodeURIComponent(q), { headers: { Authorization: 'Bearer ' + keyOf(env, 'SEARCHAPI_API_KEY') } }, o);
+    return d ? pick(d.images, (x) => ({ image: clean(x.original && x.original.link, 2000), thumb: clean(x.thumbnail, 2000), title: clean(x.title, 200), page: clean(x.source && x.source.link, 2000) })) : null;
+  }
+  const d = await getJSON(SERPAPI_URL + '?engine=google_images&safe=active&q=' + encodeURIComponent(q) + '&api_key=' + encodeURIComponent(keyOf(env, 'SERPAPI_API_KEY')), {}, o);
+  return d ? pick(d.images_results, (x) => ({ image: clean(x.original, 2000), thumb: clean(x.thumbnail, 2000), title: clean(x.title, 200), page: clean(x.link, 2000) })) : null;
+}
+
 /* خطوة البحث الحيّ (مكان gcseSearch قبله): ستّ نتائج مرقّمة بالصيغة نفسها، والمصدر باسم وظيفيّ (قد ينقله الموديل للمستخدم) */
 async function liveText(query, opts) {
   const items = await organic(query, opts);
@@ -86,4 +116,4 @@ async function liveText(query, opts) {
     + '\n\nالمصدر: بحث الويب.';
 }
 
-module.exports = { providerOf, shoppingOn, organic, shopping, liveText, __glOf: glOf };
+module.exports = { providerOf, imagesProviderOf, shoppingOn, organic, shopping, images, liveText, __glOf: glOf };

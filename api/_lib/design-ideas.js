@@ -11,6 +11,7 @@ const TAVILY = 'https://api.tavily.com/search';
 const crypto = require('crypto');
 const { checkAndConsumeCustom, refundCustom, clientIp } = require('./_usage.js');
 const { verifyToken } = require('./auth.js');
+const serp = require('./serp-search.js'); // v-serp-modules: بديل Google صور بمفتاحه (Custom Search يتوقّف ١ يناير ٢٠٢٧)
 
 /* v-open-tools-cap (المالك: «مفتوحة على مفاتيحك بلا حدّ»): المعرض كان بلا رمز ولا عدّاد ولا IP — كلّ نصّ جديد يطلق
    حتّى ١٦ استعلام Tavily و٤ Google (مفاتيح البحث في المحادثة نفسها). الآن: جلسة شرط (التسجيل أوّلًا)، وسقف ثابت
@@ -84,7 +85,20 @@ async function tavilyImages(queries, apiKey, state) {
   });
   return out;
 }
+/* v-serp-modules: Custom Search يتوقّف ١ يناير ٢٠٢٧ — بديل الصور بمفتاحه أوّلًا (serp-search.images، SafeSearch مفروض)، ردّه الناجح
+   مدفوع فيُعدّ (v-ideas-paid-count) وفشله في googleFail/googleErr نفسيهما؛ وإن لم يُعطِ صورة فـCustom Search كما كان. بلا مفتاح لا نداء. */
+async function serpImages(queries, state) {
+  const onFail = (s) => { if (s === 'net') state.googleErr = true; else state.googleFail = s; };
+  const runs = await Promise.all(queries.map(norm).filter(Boolean).map((q) => serp.images(q, { num: 10, onFail }).then((l) => {
+    if (l) state.paid = (state.paid || 0) + 1;
+    return l || [];
+  })));
+  const out = [];
+  runs.forEach((l) => l.forEach((it) => out.push(it.image)));
+  return out;
+}
 async function googleImages(queries, state) {
+  if (serp.imagesProviderOf()) { const alt = await serpImages(queries, state); if (alt.length) return alt; }
   const gKey = (process.env.GOOGLE_SEARCH_API_KEY || '').trim();
   const gCx = (process.env.GOOGLE_SEARCH_CX || '').trim();
   if (!gKey || !gCx) return [];
@@ -226,7 +240,7 @@ async function gather(apiKey, wave1, wave2, gq) {
   const out = { images: images.slice(0, 80), count: Math.min(images.length, 80), source };
   const detail = {
     tavily: state.tavilyFail || (state.tavilyErr ? 'net' : (apiKey ? 'ok' : 'off')),
-    google: state.googleFail || (state.googleErr ? 'net' : ((process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX) ? 'ok' : 'off')),
+    google: state.googleFail || (state.googleErr ? 'net' : (((process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX) || serp.imagesProviderOf()) ? 'ok' : 'off')),
     pexels: state.pexelsFail || (state.pexelsErr ? 'net' : (process.env.PEXELS_API_KEY ? 'ok' : 'off')),
     unsplash: state.unsplashFail || (state.unsplashErr ? 'net' : (process.env.UNSPLASH_ACCESS_KEY ? 'ok' : 'off')),
     openverse: state.ovFail || (state.ovErr ? 'net' : 'ok'),
@@ -243,7 +257,7 @@ async function gather(apiKey, wave1, wave2, gq) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   const apiKey = (process.env.TAVILY_API_KEY || '').trim();
-  const hasGoogle = !!((process.env.GOOGLE_SEARCH_API_KEY || '').trim() && (process.env.GOOGLE_SEARCH_CX || '').trim());
+  const hasGoogle = !!((process.env.GOOGLE_SEARCH_API_KEY || '').trim() && (process.env.GOOGLE_SEARCH_CX || '').trim()) || !!serp.imagesProviderOf(); // v-serp-modules
   if (!apiKey && !hasGoogle) { res.status(500).json({ error: 'Server is missing TAVILY_API_KEY' }); return; }
   let body = req.body;
   if (!body || typeof body === 'string') { try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; } }

@@ -10,6 +10,7 @@
 // account unlimited.
 const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
 const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: البحث (والعميق) بنسبة سقف الباقة؛ المصنّف ثابت
+const serp = require('./serp-search.js'); // v-serp-modules: بديل Custom Search (يتوقّف ١ يناير ٢٠٢٧) بمفتاحه، وبلاه لا نداء
 const SEARCH_DAILY_LIMIT = 40;
 const CLASSIFY_DAILY_LIMIT = 200; // v-open-tools-cap: مصنّف «هل يحتاج بحثًا؟» — سقف ثابت لكلّ حساب أو IP
 
@@ -278,10 +279,13 @@ async function fetchSocial(apiKey, query) {
     } catch (e) { /* نكمل للبديل */ }
     // بديل Google CSE
     try {
+      const q = socialQuery(query) + ' site:instagram.com OR site:tiktok.com';
+      // v-serp-modules: البديل بمفتاحه أوّلًا بالاستعلام نفسه؛ بلا مفتاح أو بلا نتيجة فـCSE كما كان
+      const alt = await serp.organic(q);
+      if (alt && alt.length) return pickSocial(alt.map(it => ({ url: it.link, title: it.title, score: null })), true);
       const gKey = process.env.GOOGLE_SEARCH_API_KEY;
       const gCx = process.env.GOOGLE_SEARCH_CX;
       if (!gKey || !gCx) return [];
-      const q = socialQuery(query) + ' site:instagram.com OR site:tiktok.com';
       const gr = await fetch('https://www.googleapis.com/customsearch/v1?key=' + gKey + '&cx=' + gCx + '&q=' + encodeURIComponent(q) + '&num=8');
       if (!gr.ok) return [];
       const gj = await gr.json();
@@ -301,6 +305,14 @@ function mergeSocial(a, b) {
   });
   out.sort((x, y) => (y.isAccount ? 1 : 0) - (x.isAccount ? 1 : 0));
   return out.slice(0, 4);
+}
+
+// v-serp-modules — نتائج Google للبحث العادي: البديل بمفتاحه أوّلًا (latestNews = نافذة يوم كـdateRestrict=d1؛ لا ترتيب بالتاريخ عنده)،
+// وإن لم يُعطِ شيئًا فـCustom Search كما كان. بلا مفتاح: النداء القديم نفسه في اللحظة نفسها (لا await قبله).
+function webAltOrGoogle(query, latestNews, googleUrl) {
+  const old = () => (googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null));
+  if (!serp.providerOf()) return old();
+  return serp.organic(query, { win: latestNews ? 'day' : '' }).then((alt) => (alt && alt.length ? { serpItems: alt } : old()));
 }
 
 // 📍 v617 — كاشف أسئلة الأماكن ورمز الدولة: رُفِعا إلى مستوى الوحدة لتستعملهما
@@ -738,7 +750,7 @@ module.exports = async (req, res) => {
           ...(__techAsk ? { exclude_domains: ['dubizzle.com', 'dubicars.com', 'yallamotor.com', 'cars24.ae', 'ae.opensooq.com', 'opensooq.com', 'mourjan.com', 'barbahar.com'] } : {}),
         }),
       }),
-      googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
+      webAltOrGoogle(query, latestNews, googleUrl),
       latestNews ? Promise.resolve([]) : fetchSocial(apiKey, (wantsLocalGeo(query) ? (query + ' ' + (geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE')) : query)),
       latestNews ? Promise.resolve([]) : (isPlaces ? fetchPlaces(placesKey, query, lang, (regionOf(query) || geoCode)) : Promise.resolve([])),
     ]);
@@ -834,9 +846,12 @@ module.exports = async (req, res) => {
     let images = wantImages && Array.isArray(data.images) ? data.images.slice(0, 4) : [];
     // v610 — صور الشريط كانت من Tavily وحده، وهو ساقط حيًّا، فيخرج الشريط فارغًا.
     // احتياطيّ: صور Google Custom Search بالمفتاح الموجود نفسه (بلا شراء جديد).
-    if (wantImages && !images.length && gKey && gCx) {
+    // v-serp-modules: بديل الصور بمفتاحه أوّلًا (SafeSearch مفروض فيه)، وإن لم يُعطِ صورة https فـCustom Search كما كان.
+    if (wantImages && !images.length && ((gKey && gCx) || serp.imagesProviderOf())) {
       try {
-        const giRes = await fetch(`https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(imgQuery)}&searchType=image&num=4&safe=active`);
+        const alt = await serp.images(imgQuery); // عشر صور في النداء نفسه، فيبقى أربع بعد ترشيح https
+        if (alt && alt.length) images = alt.map((it) => it.image).filter((u) => typeof u === 'string' && /^https:\/\//.test(u)).slice(0, 4);
+        const giRes = (!images.length && gKey && gCx) ? await fetch(`https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(imgQuery)}&searchType=image&num=4&safe=active`) : null;
         if (giRes && giRes.ok) {
           const gi = await giRes.json();
           images = (Array.isArray(gi.items) ? gi.items : [])
@@ -849,7 +864,13 @@ module.exports = async (req, res) => {
 
     let googleItems = [];
     try {
-      if (googleResp && googleResp.ok) {
+      if (googleResp && googleResp.serpItems) { // v-serp-modules: نتائج البديل بالشكل نفسه
+        googleItems = withoutRemovedSearchSources(googleResp.serpItems.slice(0, 3).map(it => ({
+          title: withoutRemovedSourceMentions(it.title),
+          url: it.link,
+          content: withoutRemovedSourceMentions((it.snippet || '').slice(0, 350)),
+        })));
+      } else if (googleResp && googleResp.ok) {
         const gData = await googleResp.json();
         googleItems = withoutRemovedSearchSources(Array.isArray(gData.items) ? gData.items.slice(0, 3).map(it => ({
           title: withoutRemovedSourceMentions(it.title),
