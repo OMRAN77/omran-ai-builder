@@ -8,12 +8,13 @@
 
 const TOOL = {
   name: 'show_cards',
-  description: 'اعرض للمستخدم خيارات منظّمة في بطاقات (صورة · اسم · سعر · متجر · رابط) تُرسم له تلقائيًّا. استعملها بدل web_search كلّما طلب شيئًا عامًّا ليختار منه: منتجًا أو سلعة («أبغى رنقات كربون بكم»، «بذور زراعة»، «جوّال بالتقسيط»)، أو خدمة أو محلًّا أو موقعًا أو مكانًا أو خطّة أو «أفضل X» — بأيّ صيغة، ولو لم يقل «بكم» أو «أسعار» أو «للبيع»: اسم شيء يُشترى أو يُختار يكفي («ثياب مخوّر»، «جوال للتصوير»). مرّة واحدة في الردّ. query = المطلوب كما قاله + مكانه: إن سمّى بلدًا أو مدينة فهما، وإلّا دولة تسوّقه. بالإنجليزيّة للمنتجات والخدمات، وبالعربيّة إن كان الطلب محلّيًّا صرفًا. لا توسّع لصنف آخر. chips: ٣–٦ فروقات لنفس المطلوب في نفس المكان (سعر · مقاس · لون · طراز) بلغة المستخدم — لا منتج آخر ولا بلد آخر. بعد البطاقات لا تعِد سردها نصًّا: سطر أو سطران، ثمّ سؤال متابعة واحد يضيّق نفس المطلوب، وعند جوابه رشّح الأفضل واحدًا بسبب ورابط.',
+  description: 'اعرض للمستخدم خيارات منظّمة في بطاقات (صورة · اسم · سعر · متجر · رابط) تُرسم له تلقائيًّا. استعملها بدل web_search كلّما طلب شيئًا عامًّا ليختار منه: منتجًا أو سلعة («أبغى رنقات كربون بكم»، «بذور زراعة»، «جوّال بالتقسيط»)، أو خدمة أو محلًّا أو موقعًا أو مكانًا أو خطّة أو «أفضل X» — بأيّ صيغة، ولو لم يقل «بكم» أو «أسعار» أو «للبيع»: اسم شيء يُشترى أو يُختار يكفي («ثياب مخوّر»، «جوال للتصوير»). وإن كان «أفضل X» أو توصية فاختر أنت ٣–٦ خيارات بأسمائها في items (بطاقة لكلّ خيار). مرّة واحدة في الردّ، ولا web_search قبلها ولا بعدها في الردّ نفسه. query = المطلوب كما قاله + مكانه: إن سمّى بلدًا أو مدينة فهما، وإلّا دولة تسوّقه. بالإنجليزيّة للمنتجات والخدمات، وبالعربيّة إن كان الطلب محلّيًّا صرفًا. لا توسّع لصنف آخر. chips: ٣–٦ فروقات لنفس المطلوب في نفس المكان (سعر · مقاس · لون · طراز) بلغة المستخدم — لا منتج آخر ولا بلد آخر. بعد البطاقات لا تعِد سردها نصًّا: سطر أو سطران، ثمّ سؤال متابعة واحد يضيّق نفس المطلوب، وعند جوابه رشّح الأفضل واحدًا بسبب ورابط.',
   input_schema: {
     type: 'object',
     properties: {
       query: { type: 'string', description: 'عبارة البحث: المطلوب كما طُلب وفي مكانه' },
       chips: { type: 'array', items: { type: 'string' }, description: '٣–٦ فروقات لنفس المطلوب في نفس المكان' },
+      items: { type: 'array', items: { type: 'string' }, description: 'لـ«أفضل X» أو توصية أو مقارنة: ٣–٦ خيارات تختارها أنت بأسمائها الدقيقة الرسميّة كما يكتبها المتجر (بالإنجليزيّة للطرازات والمنتجات: «MG 5»، «iPhone 17 Pro»؛ ومحلّ أو خدمة باسمه) — بطاقة لكلّ خيار بصورته وسعره ورابطه. للطلب العامّ اتركها فارغة.' }, // v-google-cards
       kind: { type: 'string', enum: ['product', 'service', 'place', 'site', 'listing', 'other'], description: 'نوع المطلوب — listing لإعلانات البيع والإيجار: تُرسم صفوفًا، الصورة بجانب العنوان والوصف والسعر ورابط الإعلانات' }, // v-reply-blocks
     },
     required: ['query'],
@@ -47,9 +48,16 @@ function placeLabel(cc) {
 }
 function glOf(cc) { const c = ccOf(cc); return !c ? '' : (c === 'GB' ? 'uk' : c.toLowerCase()); }
 function crOf(cc) { const c = ccOf(cc); return c ? 'country' + c : ''; }
+/* v-google-cards (مراجعة: «أفضل … صينية اقتصادية» بُحثت في الصين فسقط كلّ وكيل إماراتيّ): صفة المنشأ ليست مكان التسوّق — «صينية،
+   يابانية، كورية، ألمانية، Japanese…» تُحذف قبل كشف المكان، والاسم يبقى مكانًا («الصين، كوريا، ألمانيا، Germany»). */
+/* سابقة واحدة مسموحة («وكورية»، «بالصيني»، «للصينيين»)، والاسم بعدها حرف لا يكون صفة («وكوريا»، «والصين» تبقى أماكن) */
+const ORIGIN_ADJ_AR = /(^|[^ء-ي])(?:[وفبك]?(?:ال)?|لل)(?:إيطالي|ايطالي|فرنسي|صيني|ياباني|هندي|تركي|لبناني|مكسيكي|تايلندي|تايلاندي|كوري|إسباني|اسباني|يوناني|مغربي|أمريكي|امريكي|إيراني|ايراني|فيتنامي|إندونيسي|اندونيسي|ألماني|الماني|بريطاني|إنجليزي|انجليزي|سويسري|أوروبي|اوروبي|روسي|برازيلي|كندي|أسترالي|استرالي|هولندي|سويدي|ماليزي|باكستاني|مصري|أردني|اردني|سوري|عراقي|كويتي|قطري|بحريني|عماني|إماراتي|اماراتي)(?:ّ?ة|ه|ين|ون|ات|تين)?(?![ء-ي])/g;
+const ORIGIN_ADJ_EN = /\b(?:japanese|korean|german|american|italian|french|turkish|indian|british|english|chinese|spanish|mexican|thai|swiss|european|russian|brazilian|canadian|australian|dutch|swedish|malaysian|pakistani|egyptian|emirati|omani|kuwaiti|qatari|bahraini)s?\b/gi;
+function placeRegion(text) {
+  return geo().regionOf(String(text || '').replace(ORIGIN_ADJ_AR, '$1 ').replace(ORIGIN_ADJ_EN, ' '));
+}
 function placeOf(ask, query, country) {
-  const g = geo();
-  return g.regionOf(ask) || g.regionOf(query) || ccOf(country);
+  return placeRegion(ask) || placeRegion(query) || ccOf(country);
 }
 function pinQuery(query, o) {
   const ask = clean(o && o.ask, 300);
@@ -63,8 +71,8 @@ function pinQuery(query, o) {
   }
   const cc = placeOf(ask, q, o && o.country);
   const lab = placeLabel(cc);
-  if (lab && !geo().regionOf(q) && !new RegExp(lab.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(q)) q = q + ' ' + lab;
-  else if (lab && geo().regionOf(ask) && geo().regionOf(q) && geo().regionOf(ask) !== geo().regionOf(q) && !new RegExp(lab.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(q)) q = q + ' ' + lab;
+  if (lab && !placeRegion(q) && !new RegExp(lab.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(q)) q = q + ' ' + lab;
+  else if (lab && placeRegion(ask) && placeRegion(q) && placeRegion(ask) !== placeRegion(q) && !new RegExp(lab.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(q)) q = q + ' ' + lab;
   return clean(q, 380);
 }
 function tldCc(url) {
@@ -84,7 +92,7 @@ function placeOk(text, cc) {
   const g = geo();
   const blob = String(text || '');
   if (g.hasRegion(blob, cc)) return true;
-  const other = g.regionOf(blob);
+  const other = placeRegion(blob); // «Chery Arrizo 6 — Chinese sedan» ليس صفحة من الصين
   if (other && other !== cc) return false;
   return true;
 }
@@ -141,13 +149,22 @@ function shopSignal(pm, pr) {
   return !!(pr.from === 'schema' || (Array.isArray(p.product) && p.product.length) || (Array.isArray(p.offer) && p.offer.length) || /product/i.test(String(m['og:type'] || '')));
 }
 
+/* v-google-cards (لقطة المالك: طلب «أفضل X اقتصاديّ» ← بطاقة خبر من ياهو فاينانس): مقالة أو خبر أو تدوينة ليست خيارًا يُختار —
+   من بنية الصفحة (pagemap/og:type) لا من كلماتها. صفحة منتج فيها مراجعات تبقى منتجًا. */
+function articleSignal(pm, shop) {
+  if (shop) return false;
+  const p = pm || {};
+  const m = Array.isArray(p.metatags) && p.metatags[0] ? p.metatags[0] : {};
+  return ['newsarticle', 'article', 'blogposting', 'reportagenewsarticle'].some((k) => Array.isArray(p[k]) && p[k].length) || /^article$/i.test(String(m['og:type'] || '').trim());
+}
 function cardFromGoogle(it) {
   const url = httpsOnly(it && it.link);
   if (!url) return null;
   const title = clean(it.title, 110);
   const snippet = clean(it.snippet, 180);
   const pr = priceInfo(it.pagemap, title, snippet);
-  return { title: title || hostOf(url), url, site: hostOf(url), image: imageOf(it.pagemap), price: pr.price, priceFrom: pr.from, shop: shopSignal(it.pagemap, pr), src: 'g', snippet };
+  const shop = shopSignal(it.pagemap, pr);
+  return { title: title || hostOf(url), url, site: hostOf(url), image: imageOf(it.pagemap), price: pr.price, priceFrom: pr.from, shop, article: articleSignal(it.pagemap, shop), src: 'g', snippet };
 }
 function cardFromTavily(x) {
   const url = httpsOnly(x && x.url);
@@ -234,8 +251,10 @@ function pageMetaFrom(html, base) {
     cur = meta['product:price:currency'] || meta['og:price:currency'] || meta.pricecurrency || '';
     if (!(Number(String(amount).replace(/,/g, '')) > 0)) amount = '';
   }
+  const isProduct = !!(product || amount || /product/i.test(String(meta['og:type'] || '')));
+  const isArticle = !isProduct && (ld.some((o) => ['article', 'newsarticle', 'blogposting', 'reportagenewsarticle'].some((t) => isType(o, t))) || /^article$/i.test(String(meta['og:type'] || '').trim()));
   return { image, price: amount ? clean((cur ? String(cur).toUpperCase() + ' ' : '') + fmtAmount(amount), 32) : '',
-    product: !!(product || amount || /product/i.test(String(meta['og:type'] || ''))) }; // صفحة منتج أو سعر منظّم = متجر
+    product: isProduct, article: isArticle }; // صفحة منتج أو سعر منظّم = متجر؛ مقالة/خبر = ليست خيارًا
 }
 /* قراءة صفحة المتجر: HTML فقط، بسقف وقت وحجم؛ أيّ فشل = لا شيء (البطاقة تُقرّر بما عندها) */
 async function pageMeta(url, o) {
@@ -267,8 +286,9 @@ async function enrichCards(items, opts) {
     if (needImg && m.image) c.image = m.image;
     if (needPrice) { c.price = m.price || ''; c.priceFrom = m.price ? 'page' : ''; }
     if (m.product) c.shop = true;
+    if (m.article && !c.shop) c.article = true;
   }));
-  return list.filter((c) => !!c.image).slice(0, MAX_CARDS);
+  return list.filter((c) => !!c.image && !c.article).slice(0, MAX_CARDS); // بلا صورة أو مقالة/خبر = لا بطاقة
 }
 /* نتائج متجر لا مقالات: نتيجتان فأكثر فيهما علامة متجر */
 function shoppingLike(items) {
@@ -329,8 +349,76 @@ async function tavilyCards(query, o) {
 }
 
 /* البحث المنظّم: Google أوّلًا (صور وأسعار)، فإن غاب مفتاحه أو خلت نتائجه فـTavily. يرجع { items, sites } — items فارغة = لا بطاقات. */
+/* v-google-cards (المالك: «اريد بحث شامل… المستخدم ما يفكّر»): «أفضل X» أو توصية = المزوّد يختار الخيارات بأسمائها (items)، والخادم
+   يبحث عن كلّ خيار وحده بالتوازي فتكون بطاقة لكلّ خيار بصورته وسعر متجره ورابطه — بحث عامّ بعبارة واحدة يرجع مقالات لا خيارات.
+   لكلّ خيار: نتائجه على اسمه وفي مكانه، بلا مقالات، المتجر أوّلًا، وأوّل ثلاثة تُقرأ صفحاتها عند الحاجة؛ خيار بلا صورة يسقط. */
+const MAX_ITEMS = 6;
+/* كلمات الاسم بعد التطبيع (حركات، همزات، تاء مربوطة، «ال») — لمطابقة الخيار بصفحته */
+function normWords(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').normalize('NFC').toLowerCase() // é→e (التركيب يعيد همزات العربيّة)
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660)).replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x6F0))
+    .replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+    .split(/[^a-z0-9ء-ي]+/).filter(Boolean).map((w) => (/^ال[ء-ي]{2,}/.test(w) ? w.slice(2) : w));
+}
+const ITEM_STOP = new Set(['the', 'and', 'with', 'for', 'new', 'price', 'prices', 'buy', 'في', 'من', 'مع', 'على', 'سعر', 'افضل']);
+/* كلمات الطراز الأعلى: صفحة «iPhone 17 Pro Max» ليست «iPhone 17» حين توجد صفحة بلا زيادة */
+const VARIANT_WORDS = new Set(['pro', 'max', 'plus', 'ultra', 'mini', 'lite', 'fe', 'edge', 'cross', 'neo', 'air', 'برو', 'ماكس', 'بلس', 'ترا', 'الترا', 'ميني', 'لايت']);
+/* الصفحة للخيار نفسه: كلّ كلمة مميّزة من اسمه في عنوانها أو رابطها، والرقم رقمًا كاملًا («MG 5» لا «MG ZS»، «Arrizo 6» لا «Arrizo 8»).
+   الملتصق والمفصول سواء: «MG 5» ↔ «MG5»، «Fold7» ↔ «Fold 7». */
+function nameMatches(name, c) {
+  const req = normWords(name).filter((w) => !ITEM_STOP.has(w));
+  if (!req.length) return true;
+  let url = String(c && c.url || '');
+  try { url = decodeURIComponent(url); } catch (e) { /* رابط بترميز مكسور — يُقارَن كما هو */ }
+  const set = new Set(normWords(String(c && c.title || '') + ' ' + url));
+  const found = req.map((w) => {
+    if (set.has(w)) return true;
+    const m = /^([a-z]+)(\d+[a-z]*)$/.exec(w) || /^(\d+)([a-z]+)$/.exec(w);
+    return !!(m && set.has(m[1]) && set.has(m[2]));
+  });
+  for (let i = 0; i + 1 < req.length; i++) if (!(found[i] && found[i + 1]) && set.has(req[i] + req[i + 1])) { found[i] = true; found[i + 1] = true; }
+  return found.every(Boolean);
+}
+function variantExtras(name, c) {
+  const req = new Set(normWords(name));
+  return normWords(c && c.title).filter((w) => VARIANT_WORDS.has(w) && !req.has(w)).length;
+}
+async function searchItemCards(names, o) {
+  const list = Array.from(new Set((names || []).map((n) => clean(n, 80)).filter(Boolean))).slice(0, MAX_ITEMS);
+  const priced = !/^(place|site)$/i.test(String(o.kind || '').trim());
+  /* المكان مرّة واحدة من نصّ المستخدم أو دولته (لا من صفة المنشأ)، وعبارة كلّ خيار اسمه وحده + مكانه — لا أسماء الخيارات الأخرى */
+  const cc = placeOf(o.ask, o.query, o.country); // عبارة المزوّد تحمل المكان في المتابعة (رقاقة «فنادق ٥ نجوم» بعد «فنادق باريس»)
+  const label = placeLabel(cc);
+  const oo = Object.assign({}, o, { gl: glOf(cc), cr: crOf(cc) });
+  const per = await Promise.all(list.map(async (name) => {
+    const q = clean(name + (priced ? ' price' : '') + (label && !placeRegion(name) ? ' ' + label : ''), 300);
+    let found = null;
+    try { found = await googleCards(q, oo); } catch (e) { found = null; }
+    if (!found || !found.length) { try { found = await tavilyCards(q, oo); } catch (e) { found = null; } }
+    /* اسم فيه مكان («Qatar Airways»، «Paris Gallery») لا يُرفض بمكان التسوّق — gl/cr يكفيان */
+    const base = placeRegion(name) ? (found || []).filter(Boolean) : keepOnRequest(found || [], '', cc);
+    const rank = (a, b) => (variantExtras(name, a) - variantExtras(name, b)) || ((b.shop ? 1 : 0) - (a.shop ? 1 : 0));
+    const cands = base.filter((c) => !c.article && nameMatches(name, c)).sort(rank);
+    const ok = (await enrichCards(cands.slice(0, 3), oo)).sort(rank);
+    return { name, ok };
+  }));
+  /* صفحة اختارها خيار سابق ← الخيار يأخذ مرشّحه التالي، لا يسقط */
+  const used = new Set(), items = [];
+  for (const p of per) {
+    const best = p.ok.find((c) => !used.has(c.url));
+    if (!best) continue;
+    used.add(best.url);
+    items.push(Object.assign({}, best, { title: p.name, snippet: best.title }));
+  }
+  return { items, sites: sitesOf(items) };
+}
+
 async function searchCards(query, opts) {
   const o = Object.assign({ env: process.env, fetch: globalThis.fetch, timeoutMs: 12000 }, opts || {});
+  if (Array.isArray(o.items) && o.items.filter((n) => clean(n, 80)).length >= 2) { // v-google-cards: بطاقة لكلّ خيار
+    const r = await searchItemCards(o.items, Object.assign({}, o, { query }));
+    if (r.items.length) return r; // لا خيار طابق صفحته (أسماء بلغة غير لغة المتاجر) ← البحث العامّ بعبارة المزوّد لا صفر بطاقات
+  }
   const pinned = pinQuery(query, o);
   const cc = placeOf(o.ask, pinned, o.country);
   o.gl = glOf(cc); o.cr = crOf(cc);
@@ -382,4 +470,4 @@ function cardsEvent(query, input, items, scope) {
 }
 
 module.exports = { TOOL, searchCards, cardsText, cardsEvent, pinQuery, placeOf, keepOnRequest, scopeChips, PRICE_RE, __imageOf: imageOf, __priceOf: priceOf,
-  enrichCards, pageMetaFrom, safePageUrl, shoppingLike, sitesOf, pickAsk, pickAsCards, liftIdeas }; // v-google-cards
+  enrichCards, pageMetaFrom, safePageUrl, shoppingLike, sitesOf, pickAsk, pickAsCards, liftIdeas, __nameMatches: nameMatches }; // v-google-cards

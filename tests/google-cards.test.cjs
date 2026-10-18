@@ -46,16 +46,22 @@ const htmlRes = (s) => new Response(s, { status: 200, headers: { 'Content-Type':
 
 test('١. صفحة المتجر: صورة المنتج وسعره المنظّم من JSON-LD ثمّ وسوم og/product، والروابط النسبيّة تُحلّ، وhttp لا', () => {
   let m = CS.pageMetaFrom(html('<meta content="https://cdn.x.ae/og.jpg" property="og:image">' + ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'Product', image: ['/img/p.jpg'], offers: { '@type': 'Offer', price: '1450.00', priceCurrency: 'aed' } }] })), 'https://shop.x.ae/p/1');
-  assert.deepEqual(m, { image: 'https://shop.x.ae/img/p.jpg', price: 'AED 1,450.00', product: true }, 'JSON-LD المنتج أوّلًا');
+  assert.deepEqual(m, { image: 'https://shop.x.ae/img/p.jpg', price: 'AED 1,450.00', product: true, article: false }, 'JSON-LD المنتج أوّلًا');
   m = CS.pageMetaFrom(html(ld([{ '@type': ['Product'], image: { url: 'https://cdn.y.com/a.png' }, offers: [{ '@type': 'AggregateOffer', lowPrice: 99, priceCurrency: 'AED' }] }])), 'https://y.com/p');
-  assert.deepEqual(m, { image: 'https://cdn.y.com/a.png', price: 'AED 99', product: true }, 'مصفوفة وAggregateOffer');
+  assert.deepEqual(m, { image: 'https://cdn.y.com/a.png', price: 'AED 99', product: true, article: false }, 'مصفوفة وAggregateOffer');
   m = CS.pageMetaFrom(html('<meta property="og:image" content="//img.z.ae/a&amp;b.jpg"><meta property="product:price:amount" content="2,499"><meta property="product:price:currency" content="AED">'), 'https://z.ae/p');
-  assert.deepEqual(m, { image: 'https://img.z.ae/a&b.jpg', price: 'AED 2,499', product: true }, 'وسوم og وproduct');
+  assert.deepEqual(m, { image: 'https://img.z.ae/a&b.jpg', price: 'AED 2,499', product: true, article: false }, 'وسوم og وproduct');
   m = CS.pageMetaFrom(html('<meta name="twitter:image" content="https://t.q.com/t.jpg"><script type="application/ld+json">{broken</script>'), 'https://q.com');
-  assert.deepEqual(m, { image: 'https://t.q.com/t.jpg', price: '', product: false }, 'JSON-LD مكسور يُتجاهل، وبلا سعر = فارغ، ومقال ليس متجرًا');
+  assert.deepEqual(m, { image: 'https://t.q.com/t.jpg', price: '', product: false, article: false }, 'JSON-LD مكسور يُتجاهل، وبلا سعر = فارغ، ومقال ليس متجرًا');
   m = CS.pageMetaFrom(html('<link rel="image_src" href="/s.jpg"><meta property="product:price:amount" content="0">'), 'https://w.com/x');
-  assert.deepEqual(m, { image: 'https://w.com/s.jpg', price: '', product: false }, 'سعر صفر ليس سعرًا');
-  assert.deepEqual(CS.pageMetaFrom(html('<meta property="og:image" content="http://insecure.com/a.jpg">'), 'https://a.com'), { image: '', price: '', product: false });
+  assert.deepEqual(m, { image: 'https://w.com/s.jpg', price: '', product: false, article: false }, 'سعر صفر ليس سعرًا');
+  assert.deepEqual(CS.pageMetaFrom(html('<meta property="og:image" content="http://insecure.com/a.jpg">'), 'https://a.com'), { image: '', price: '', product: false, article: false });
+  m = CS.pageMetaFrom(html('<meta property="og:type" content="article"><meta property="og:image" content="https://n.com/a.jpg">'), 'https://n.com/x');
+  assert.equal(m.article, true, 'og:type article = مقالة');
+  m = CS.pageMetaFrom(html(ld({ '@type': 'NewsArticle', image: 'https://n.com/b.jpg' })), 'https://n.com/y');
+  assert.deepEqual([m.article, m.product], [true, false], 'خبر JSON-LD');
+  m = CS.pageMetaFrom(html('<meta property="og:type" content="article">' + ld({ '@type': 'Product', offers: { price: 5, priceCurrency: 'AED' } })), 'https://n.com/z');
+  assert.deepEqual([m.article, m.product], [false, true], 'صفحة منتج فيها og:type article تبقى منتجًا');
   for (const u of ['http://a.com', 'https://127.0.0.1/x', 'https://localhost/x', 'https://[::1]/x', 'https://metadata.internal/x', 'https://intranet/x', 'nope']) assert.equal(CS.safePageUrl(u), '', u);
   assert.equal(CS.safePageUrl('https://www.amazon.ae/dp/1'), 'https://www.amazon.ae/dp/1');
 });
@@ -131,7 +137,38 @@ const GOLD = { items: [
   { title: 'Gold rate Dubai — Khaleej Times', link: 'https://www.khaleejtimes.com/gold-forex', snippet: '24K AED 312.50, 22K AED 289.25', pagemap: { cse_image: [{ src: 'https://www.khaleejtimes.com/kt.jpg' }] } },
   { title: 'Live gold price UAE', link: 'https://www.livepriceofgold.com/uae', snippet: 'Gold price per gram AED 312', pagemap: { cse_image: [{ src: 'https://www.livepriceofgold.com/g.png' }] } },
 ] };
+/* خيارات يسمّيها المزوّد («أفضل X»): لكلّ خيار خبر بصورة (يسقط) ثمّ صفحة وكيل بعرض وصورة؛ وخيار نتائجه أخبار فقط يسقط كلّه */
+const OPTIONS = ['Alpha 5', 'Bravo Arrizo', 'Charlie Emgrand', 'Ghost Model'];
+function optionResults(name) {
+  const slug = name.toLowerCase().replace(/\s+/g, '-');
+  const news = { title: name + ' sales jump — Finance news', link: 'https://finance.example.com/' + slug, snippet: name + ' investments boost', pagemap: { newsarticle: [{ headline: 'x' }], cse_image: [{ src: 'https://finance.example.com/' + slug + '.jpg' }] } };
+  if (name === 'Ghost Model') return { items: [news] };
+  return { items: [news, { title: name + ' 2026 — dealer UAE', link: 'https://dealer-' + slug + '.ae/' + slug, snippet: name + ' from the dealer', pagemap: { cse_image: [{ src: 'https://dealer-' + slug + '.ae/' + slug + '.jpg' }], offer: [{ price: '45000', pricecurrency: 'AED' }] } }] };
+}
+/* طرازات بأرقام: صفحة طراز آخر من الماركة نفسها بعرض أوّلًا (تُرفض)، ثمّ صفحة الوكيل للطراز نفسه */
+const CARS = {
+  'MG 5': [
+    { title: 'MG ZS 2026 price in UAE — dealer', link: 'https://dealer.ae/mg-zs', snippet: 'MG ZS', pagemap: { cse_image: [{ src: 'https://dealer.ae/mg-zs.jpg' }], offer: [{ price: '62000', pricecurrency: 'AED' }] } },
+    { title: 'MG5 2026 | MG Motor UAE', link: 'https://mgmotor.ae/mg5', snippet: 'official', pagemap: { cse_image: [{ src: 'https://mgmotor.ae/mg5.jpg' }] } },
+    { title: 'MG 5 2026 for sale — dealer', link: 'https://dealer.ae/mg-5', snippet: 'MG 5', pagemap: { cse_image: [{ src: 'https://dealer.ae/mg-5.jpg' }], offer: [{ price: '52000', pricecurrency: 'AED' }] } },
+  ],
+  'Chery Arrizo 6': [
+    { title: 'Chery Arrizo 8 price UAE', link: 'https://dealer.ae/arrizo-8', snippet: 'Arrizo 8', pagemap: { cse_image: [{ src: 'https://dealer.ae/arrizo-8.jpg' }], offer: [{ price: '88000', pricecurrency: 'AED' }] } },
+    { title: 'Chery Arrizo 6 2026 price UAE', link: 'https://chery.ae/arrizo-6', snippet: 'Arrizo 6', pagemap: { cse_image: [{ src: 'https://chery.ae/arrizo-6.jpg' }], offer: [{ price: '58000', pricecurrency: 'AED' }] } },
+  ],
+  'Geely Emgrand': [
+    { title: 'Geely Emgrand 2026 — Geely UAE', link: 'https://geely.ae/emgrand', snippet: 'Emgrand', pagemap: { cse_image: [{ src: 'https://geely.ae/emgrand.jpg' }], offer: [{ price: '55000', pricecurrency: 'AED' }] } },
+  ],
+};
 function cseFor(q) {
+  const car = Object.keys(CARS).find((n) => String(q).indexOf(n + ' ') === 0);
+  if (car) return { items: CARS[car] };
+  const opt = OPTIONS.find((n) => String(q).indexOf(n) >= 0);
+  if (opt) return optionResults(opt);
+  if (/store item A/.test(String(q))) return { items: [
+    { title: 'Chinese investments boost store item A makers', link: 'https://finance.yahoo.com/news/x', snippet: 'news about store item A', pagemap: { newsarticle: [{ headline: 'x' }], cse_image: [{ src: 'https://s.yimg.com/x.jpg' }] } },
+    { title: 'Store item A', link: 'https://store-a.ae/p', snippet: 'item', pagemap: { cse_image: [{ src: 'https://store-a.ae/p.jpg' }], offer: [{ price: '99', pricecurrency: 'AED' }] } },
+  ] };
   if (/ذهب|gold/i.test(String(q))) return GOLD;
   const key = Object.keys(SAMPLES).find((k) => String(q).indexOf(k) >= 0);
   if (!key) return { items: [{ title: 'مقال عام عن ' + q, link: 'https://wiki.example.org/a', snippet: 'شرح ' + q, pagemap: {} }, { title: q + ' — مدوّنة', link: 'https://blog.example.org/b', snippet: 'مقال عن ' + q, pagemap: {} }] };
@@ -170,7 +207,7 @@ async function ask(question, turns, opt) {
     return new Response('{}', { status: 404 });
   };
   let written = '';
-  const req = { method: 'POST', headers: {}, body: { messages: [{ role: 'user', content: question }], token: token('sub-user'), provider: 'deepseek' } };
+  const req = { method: 'POST', headers: o.headers || {}, body: { messages: [{ role: 'user', content: question }], token: token('sub-user'), provider: 'deepseek' } };
   const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('json ' + JSON.stringify(v)); }, write(c) { written += String(c || ''); }, end() {} };
   try { await chat(req, res); } finally { global.fetch = saved; }
   const events = written.split('\n').filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch (e) { return null; } }).filter(Boolean);
@@ -237,6 +274,98 @@ test('٧. جوجل معطّل (٤٢٩) ← البديل يجيب بطاقات ب
   ev = r.events.find((e) => e.cards);
   assert.ok(ev && ev.cards.items.length >= 2 && ev.cards.items.every((c) => /^https:\/\//.test(c.image)), 'show_cards كذلك بصور');
   assert.deepEqual(ev.cards.chips, ['55 بوصة', '75 بوصة']);
+});
+
+test('٨أ. «أفضل X» (لقطة المالك): المزوّد يسمّي الخيارات في items ← بطاقة لكلّ خيار بصورته وسعر وكيله، والخبر يسقط، وخيار بلا متجر ولا صورة يسقط', async () => {
+  const r = await ask('أفضل خيار اقتصادي', [() => toolTurn('show_cards', { query: 'best economical option UAE', items: OPTIONS, kind: 'product' }), () => textTurn('هذي الخيارات. تبغى أيّ ميزانيّة؟')]);
+  const ev = r.events.find((e) => e.cards);
+  assert.ok(ev, 'حدث بطاقات');
+  assert.deepEqual(ev.cards.items.map((c) => [c.title, c.site, c.price]), [['Alpha 5', 'dealer-alpha-5.ae', 'AED 45000'], ['Bravo Arrizo', 'dealer-bravo-arrizo.ae', 'AED 45000'], ['Charlie Emgrand', 'dealer-charlie-emgrand.ae', 'AED 45000']], 'بطاقة لكلّ خيار باسمه، لا خبر ياهو');
+  assert.ok(ev.cards.items.every((c) => /^https:\/\/dealer-/.test(c.image)), 'صورة الخيار نفسه');
+  assert.equal(r.log.google.length, 4, 'بحث لكلّ خيار (بالتوازي)');
+  assert.ok(r.log.google.every((u) => /price/.test(decodeURIComponent(u))), 'بحث الخيار عن سعره');
+  assert.match(r.toolResult, /^\[عُرضت للمستخدم 3 بطاقات/);
+  assert.match(r.toolResult, /\n1\. Alpha 5 — AED 45000 — dealer-alpha-5\.ae/);
+  const sys = JSON.stringify(r.log.model[0].system || '');
+  assert.ok(sys.includes('ومرّرها في items') && sys.includes('ولا web_search قبلها ولا بعدها في الردّ نفسه'), 'القاعدة: خيارات بأسمائها وجولة واحدة');
+  assert.ok(CS.TOOL.input_schema.properties.items && /بطاقة لكلّ خيار/.test(CS.TOOL.input_schema.properties.items.description));
+});
+
+test('٨ج. جملة المالك حرفيًّا «أفضل سيارة صينية اقتصادية» من الإمارات: البحث في الإمارات لا الصين، وبطاقة لكلّ طراز بوكيله', async () => {
+  const r = await ask('أفضل سيارة صينية اقتصادية', [() => toolTurn('show_cards', { query: 'best economical Chinese car UAE', items: ['MG 5', 'Chery Arrizo 6', 'Geely Emgrand'], kind: 'product' }), () => textTurn('هذي الخيارات.')], { headers: { 'x-vercel-ip-country': 'AE' } });
+  const qs = r.log.google.map((u) => new URL(u));
+  assert.equal(qs.length, 3);
+  assert.ok(qs.every((u) => u.searchParams.get('gl') === 'ae' && u.searchParams.get('cr') === 'countryAE'), '«صينية» صفة منشأ لا مكان');
+  assert.ok(qs.every((u) => /United Arab Emirates$/.test(u.searchParams.get('q')) && !/China/.test(u.searchParams.get('q'))));
+  assert.deepEqual(qs.map((u) => u.searchParams.get('q')), ['MG 5 price United Arab Emirates', 'Chery Arrizo 6 price United Arab Emirates', 'Geely Emgrand price United Arab Emirates'], 'كلّ خيار باسمه وحده');
+  const ev = r.events.find((e) => e.cards);
+  assert.deepEqual(ev.cards.items.map((c) => [c.title, c.url, c.price]), [
+    ['MG 5', 'https://dealer.ae/mg-5', 'AED 52000'], ['Chery Arrizo 6', 'https://chery.ae/arrizo-6', 'AED 58000'], ['Geely Emgrand', 'https://geely.ae/emgrand', 'AED 55000']],
+    'MG ZS وArrizo 8 رُفضا (طراز آخر)، والوكيل بعرضه قبل صفحة الشركة');
+});
+
+test('٨د. المقارنة: عبارة كلّ خيار بلا أسماء الآخرين، والمطابقة الصارمة، وصفحة اختارها خيار سابق ← مرشّح الخيار التالي', async () => {
+  const qs = [];
+  const fetchImpl = async (u) => {
+    u = String(u);
+    if (/customsearch/.test(u)) { const q = new URL(u).searchParams.get('q'); qs.push(q);
+      const shared = { title: 'Alpha One and Alpha Two deals', link: 'https://shared.ae/alpha', snippet: 'both', pagemap: { cse_image: [{ src: 'https://shared.ae/a.jpg' }], offer: [{ price: '10', pricecurrency: 'AED' }] } };
+      const own = (n) => ({ title: n + ' official', link: 'https://own.ae/' + n.replace(/\s+/g, '-').toLowerCase(), snippet: n, pagemap: { cse_image: [{ src: 'https://own.ae/x.jpg' }], offer: [{ price: '20', pricecurrency: 'AED' }] } });
+      return new Response(JSON.stringify({ items: [shared, own(/Alpha One/.test(q) ? 'Alpha One' : 'Alpha Two')] }), { status: 200 }); }
+    return new Response('', { status: 404 });
+  };
+  const r = await CS.searchCards('x', { ask: 'قارن بين Alpha One و Alpha Two', country: 'AE', enrich: true, items: ['Alpha One', 'Alpha Two'], kind: 'product', fetch: fetchImpl, env: { GOOGLE_SEARCH_API_KEY: 'k', GOOGLE_SEARCH_CX: 'c' } });
+  assert.deepEqual(qs.sort(), ['Alpha One price United Arab Emirates', 'Alpha Two price United Arab Emirates'], 'لا أسماء الخيارات الأخرى في العبارة');
+  assert.deepEqual(r.items.map((c) => [c.title, c.url]), [['Alpha One', 'https://shared.ae/alpha'], ['Alpha Two', 'https://own.ae/alpha-two']], 'الثاني أخذ مرشّحه التالي');
+  for (const [n, t, u, ok] of [['MG 5', 'MG5 2026 | MG Motor', 'https://mgmotor.ae/mg5', true], ['MG 5', 'MG ZS 2026', 'https://dealer.ae/mg-zs', false], ['iPhone 17', 'Apple iPhone 16 Pro Max', 'https://x.ae/iphone-16', false],
+    ['iPhone 17', 'Apple iPhone 17 Pro 256GB', 'https://x.ae/p', true], ['Chery Tiggo 4 Pro', 'Chery Arrizo 8', 'https://x.ae/a8', false], ['عطر عود ملكي', 'عطر العود الملكي 100 مل', 'https://x.ae/o', true]])
+    assert.equal(CS.__nameMatches(n, { title: t, url: u }), ok, n + ' ← ' + t);
+  for (const [a, cc] of [['أفضل سيارة صينية اقتصادية', 'AE'], ['best Japanese car', 'AE'], ['أفضل جوال كوري', 'AE'], ['ساعات في اليابان', 'JP'], ['cars in Germany', 'DE'], ['كوريا الجنوبية', 'KR']])
+    assert.equal(CS.placeOf(a, '', 'AE'), cc, a);
+});
+
+test('٨هـ. بحث محوَّل ثمّ show_cards بخيارات في خطوة لاحقة: بطاقات show_cards تبقى، ولا يُعاد حدث التحويل القديم في آخر الدور', async () => {
+  const r = await ask('جوال للتصوير', [() => toolTurn('web_search', { query: 'جوال للتصوير' }), () => toolTurn('show_cards', { query: 'x', items: ['Alpha 5', 'Bravo Arrizo'], kind: 'product' }), () => textTurn('خيارات.\n[[OPT]]أ|ب[[/OPT]]\nسؤال؟')]);
+  const evs = r.events.filter((e) => e.cards);
+  assert.equal(evs.length, 2, 'التحويل ثمّ show_cards — بلا إعادة');
+  assert.deepEqual(evs[evs.length - 1].cards.items.map((c) => c.title), ['Alpha 5', 'Bravo Arrizo'], 'الأخير (يحفظه العميل) بطاقات الخيارات');
+});
+
+test('٨و. المراجعة الخامسة: مكان المتابعة من عبارة المزوّد، والسابقة مع صفة المنشأ، والطراز الأعلى لا يسرق صفحة الأدنى، والملتصق والمفصول، والرجوع للبحث العامّ، واسم فيه مكان', async () => {
+  for (const [a, q, cc] of [['أفضل سيارات يابانية وكورية اقتصادية', '', 'AE'], ['سيارة صينية ويابانية', '', 'AE'], ['أبغى سيارة بالصيني', '', 'AE'], ['وكوريا', '', 'KR'], ['بتركيا', '', 'TR'],
+    ['فنادق ٥ نجوم', 'best 5 star hotels Paris', 'FR'], ['عطر عماني', '', 'AE']]) assert.equal(CS.placeOf(a, q, 'AE'), cc, a + ' | ' + q);
+  for (const [n, t, ok] of [['MG5', 'MG 5 2026 price UAE', true], ['Galaxy Z Fold7', 'Samsung Galaxy Z Fold 7 512GB', true], ['Lexus ES350', 'Lexus ES 350 2026', true], ['iPhone ١٧', 'Apple iPhone 17 256GB', true], ['Citroën C4', 'Citroen C4 2026', true], ['MG5', 'MG ZS 2026', false]])
+    assert.equal(CS.__nameMatches(n, { title: t, url: 'https://x.ae/p' }), ok, n + ' ← ' + t);
+  const log = [];
+  const page = (title, link, price) => ({ title, link, snippet: title, pagemap: { cse_image: [{ src: link + '.jpg' }], offer: [{ price, pricecurrency: 'AED' }] } });
+  const env = { GOOGLE_SEARCH_API_KEY: 'k', GOOGLE_SEARCH_CX: 'c' };
+  const fetchImpl = async (u) => {
+    u = String(u); if (!/customsearch/.test(u)) return new Response('', { status: 404 });
+    const p = new URL(u).searchParams, q = p.get('q'); log.push({ q, gl: p.get('gl') });
+    let items = [];
+    if (/^iPhone 17 Pro Max /.test(q)) items = [page('Apple iPhone 17 Pro Max 256GB', 'https://sharafdg.com/iphone-17-pro-max', '5099')];
+    else if (/^iPhone 17 /.test(q)) items = [page('Apple iPhone 17 Pro Max 256GB', 'https://sharafdg.com/iphone-17-pro-max', '5099'), page('Apple iPhone 17 256GB', 'https://noon.com/iphone-17', '3399')];
+    else if (/Le Bristol|Ritz Paris/.test(q)) items = [page(q.split(' ')[0] + ' ' + q.split(' ')[1] + ' Paris hotel', 'https://' + q.split(' ')[1].toLowerCase() + '.fr/hotel', '1200')];
+    else if (/Qatar Airways/.test(q)) items = [page('Qatar Airways — book flights from Doha', 'https://qatarairways.com/en-ae', '900')];
+    else items = [page('Toyota Corolla economy car 2026', 'https://toyota.ae/corolla', '72000'), page('Nissan Sunny economy car 2026', 'https://nissan.ae/sunny', '59000')];
+    return new Response(JSON.stringify({ items }), { status: 200 });
+  };
+  let r = await CS.searchCards('iPhone 17 vs Pro Max UAE', { ask: 'قارن', country: 'AE', enrich: true, items: ['iPhone 17', 'iPhone 17 Pro Max'], fetch: fetchImpl, env });
+  assert.deepEqual(r.items.map((c) => [c.title, c.url, c.price]), [['iPhone 17', 'https://noon.com/iphone-17', 'AED 3399'], ['iPhone 17 Pro Max', 'https://sharafdg.com/iphone-17-pro-max', 'AED 5099']], 'الطراز الأعلى لا يسرق صفحة الأدنى');
+  log.length = 0;
+  r = await CS.searchCards('best 5 star hotels Paris', { ask: 'فنادق ٥ نجوم', country: 'AE', enrich: true, items: ['Le Bristol', 'Ritz Paris'], kind: 'place', fetch: fetchImpl, env });
+  assert.ok(log.length === 2 && log.every((x) => x.gl === 'fr' && !/price/.test(x.q)), 'المتابعة بالرقاقة تبقى في باريس، وبلا price للأماكن: ' + JSON.stringify(log));
+  assert.equal(r.items.length, 2);
+  r = await CS.searchCards('economy car UAE', { ask: 'وش أفضل سيارة اقتصادية؟', country: 'AE', enrich: true, items: ['تويوتا كورولا', 'نيسان صني'], fetch: fetchImpl, env });
+  assert.deepEqual(r.items.map((c) => c.site), ['toyota.ae', 'nissan.ae'], 'أسماء عربيّة لا تطابق صفحات إنجليزيّة ← البحث العامّ بعبارة المزوّد لا صفر');
+  r = await CS.searchCards('airlines', { ask: 'أفضل طيران', country: 'AE', enrich: true, items: ['Qatar Airways', 'Le Bristol Paris'], kind: 'service', fetch: fetchImpl, env });
+  assert.ok(r.items.some((c) => c.title === 'Qatar Airways'), 'اسم فيه مكان لا يُرفض بمكان التسوّق');
+});
+
+test('٨ب. المسار العامّ: نتيجة خبر أو مقالة بصورة لا تصير بطاقة (خبر ياهو في لقطة المالك)', async () => {
+  const r = await ask('أبغى خيارات', [() => toolTurn('show_cards', { query: 'store item A', kind: 'product' }), () => textTurn('تم')]);
+  const ev = r.events.find((e) => e.cards);
+  assert.deepEqual(ev.cards.items.map((c) => c.site), ['store-a.ae'], 'الخبر سقط والمتجر بقي');
 });
 
 // ── الواجهة ──
