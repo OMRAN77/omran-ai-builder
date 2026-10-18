@@ -132,3 +132,28 @@ test('١٣. «محادثة جديدة»: بلا إطار ولا خلفيّة و�
   assert.ok(block.includes(D + '#omranNewChatBtn:is(:hover,:focus-visible) svg{filter:drop-shadow(0 0 6px rgba(240,222,170,.9));}'));
   const tag = HTML.match(/href="css\/بلا-خطوط\.css\?v=(\d+)"/); assert.ok(tag && Number(tag[1]) >= 2, 'الوسم مرفوع فوق 1 (الذي شحن v-no-lines-2)');
 });
+
+test('١٤. v-tab-glow-only: تبويبات المعاينة والكود بلا مستطيل — الأيقونة وحدها تتوهّج أبيض أقوى قليلًا (الكمبيوتر في الأسود وحده)', () => {
+  const box = rules.find((r) => r.sels.includes(D + '#tabs .tab.tab:not(#om3-a):is(.active,:hover)'));
+  assert.ok(box && box.body.includes('background:transparent !important') && box.body.includes('box-shadow:none !important') && box.body.includes('border-color:transparent !important'), 'لا صندوق');
+  const glow = rules.find((r) => r.sels.includes(D + '#tabs .tab.tab:not(#om3-a):is(.active,:hover) svg'));
+  assert.ok(glow && glow.body.includes('stroke:#fff !important') && glow.body.includes('filter:drop-shadow(0 0 6px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(255,255,255,.55))'), 'وميض الأيقونة');
+  assert.ok(rules.some((r) => r.sels.includes(D + '#tabs .tab.tab svg') && r.body.includes('transition:filter .2s')));
+  /* الكتلة بعد قاعدة v-white-glow (#101013) فتغلبها بالترتيب والتحديد */
+  assert.ok(bare.indexOf(D + '#tabs .tab.tab:not(#om3-a):is(.active,:hover){background:transparent') > bare.indexOf('#tabs .tab.tab:not(#om3-a):is(.active,:hover){background:#101013'));
+  const tag = HTML.match(/href="css\/بلا-خطوط\.css\?v=(\d+)"/); assert.ok(tag && Number(tag[1]) >= 7);
+});
+
+test('١٥. زرّ ✕ (طيّ اللوحة) و⋮ (خيارات الملفّ) في شريط التبويبات: بلا مستطيل، والمرور وميض أبيض على الأيقونة', () => {
+  const box = rules.find((r) => r.sels.includes(D + '#tabs :is(#waCollapseBtn,#btnTabsMenu)') && r.sels.includes(D + '#tabs :is(#waCollapseBtn,#btnTabsMenu):is(:hover,:focus-visible)'));
+  assert.ok(box && box.body.includes('background:transparent !important') && box.body.includes('border:0 !important') && box.body.includes('box-shadow:none !important'), 'لا صندوق في الحالتين');
+  const glow = rules.find((r) => r.sels.includes(D + '#tabs :is(#waCollapseBtn,#btnTabsMenu):is(:hover,:focus-visible) svg'));
+  assert.ok(glow && glow.body.includes('stroke:#fff !important') && glow.body.includes('drop-shadow(0 0 6px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(255,255,255,.55))'));
+  assert.ok(fs.readFileSync(path.join(ROOT, 'js', 'app-05-ui.js'), 'utf8').includes("btn.id = 'waCollapseBtn'"), 'الزرّ يُبنى في app-05 داخل #tabs');
+  /* ✕ الحقيقيّ: أزرار شريط عارض الكود (حدّ أبيض مضمّن وخلفيّة مرور من onmouseenter) — !important يغلب المضمّن */
+  const vb = rules.find((r) => r.sels.includes(D + '#omranCodeViewerBar button') && r.sels.includes(D + '#omranCodeViewerBar button:is(:hover,:focus-visible)'));
+  assert.ok(vb && vb.body.includes('background:transparent !important') && vb.body.includes('border-color:transparent !important') && vb.body.includes('box-shadow:none !important'), 'عارض الكود بلا مستطيل');
+  assert.ok(rules.some((r) => r.sels.includes(D + '#omranCodeViewerBar button:is(:hover,:focus-visible) svg') && r.body.includes('drop-shadow(0 0 6px rgba(255,255,255,.95))')), 'وميض ✕');
+  assert.ok(fs.readFileSync(path.join(ROOT, 'js', 'app-05-ui.js'), 'utf8').includes("b.style.background = 'rgba(255,255,255,.07)'"), 'المضمّن الذي نغلبه ما زال كما هو');
+  const tag = HTML.match(/href="css\/بلا-خطوط\.css\?v=(\d+)"/); assert.ok(tag && Number(tag[1]) >= 9);
+});

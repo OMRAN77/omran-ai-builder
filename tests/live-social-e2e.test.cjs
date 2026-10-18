@@ -124,7 +124,9 @@ test('٣. الحداثة: سنة ذاكرة النموذج تُحذف، والو
   const r = await ask('كم سعر الذهب في دبي؟', 'gold price Dubai 2024', {
     tavily: (b) => (b.include_domains ? posts(3) : { results: [{ url: 'https://www.goldprice.org/ae', title: 'Gold price UAE', content: '...', published_date: '2026-09-30' }] }),
   });
-  const web = r.log.tavily.find((b) => !b.include_domains);
+  // v-google-cards: «كم سعر الذهب» طلب قصير فيُفحص أوّلًا بحثَ بطاقات (Tavily بلا include_answer — لا جوجل هنا)، ونتائجه ليست متاجر فيكمل
+  // بحث الويب؛ نداء الويب هو الذي يطلب include_answer
+  const web = r.log.tavily.find((b) => !b.include_domains && b.include_answer);
   const social = r.log.tavily.find((b) => b.include_domains);
   assert.equal(web.query, 'gold price Dubai', 'سنة لم يذكرها المستخدم تُحذف من استعلام الويب');
   assert.equal(social.query, 'gold price Dubai', 'ومن استعلام التواصل');

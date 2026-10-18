@@ -137,15 +137,19 @@ test('٣. المعالج: show_cards ← حدث cards (رقائق وبطاقات
   assert.ok(cards, 'حدث البطاقات');
   assert.deepEqual(cards.cards.chips, ['ENVE SES 3.4', 'رنقات كربون أرخص']);
   assert.equal(cards.cards.kind, 'product');
-  assert.equal(cards.cards.items.length, 3);
+  // v-google-cards (مواصفات المالك ١٨ أكتوبر «كلّ بطاقة لازم فيها صورة… وإذا ما لقيت صورة أبداً لا تعرض البطاقة»): bikeradar بلا صورة في
+  // pagemap وصفحتها لا تعطي og:image (٤٠٤ هنا) فتسقط — كانت تظهر بأيقونة الموقع
+  assert.equal(cards.cards.items.length, 2);
+  assert.ok(!cards.cards.items.some((c) => c.site === 'bikeradar.com'), 'بلا صورة = لا بطاقة');
+  assert.ok(cards.cards.items.every((c) => /^https:\/\//.test(c.image)), 'كلّ بطاقة بصورة');
   assert.equal(cards.cards.items[0].image, 'https://www.ventum.me/cdn/ses45.jpg');
   assert.equal(cards.cards.items[0].price, 'AED 12999');
   const src = r.events.find((e) => Array.isArray(e.sources));
-  assert.deepEqual(src.sources.map((s) => s.title), ['ventum.me', 'wolfis.ae', 'bikeradar.com'], 'المواقع حدث المصادر القائم');
+  assert.deepEqual(src.sources.map((s) => s.title), ['ventum.me', 'wolfis.ae'], 'المواقع حدث المصادر القائم');
   assert.ok(r.events.indexOf(cards) < r.events.indexOf(src), 'البطاقات قبل المواقع');
-  assert.match(r.toolResult, /^\[عُرضت للمستخدم 3 بطاقات/);
+  assert.match(r.toolResult, /^\[عُرضت للمستخدم 2 بطاقات/);
   assert.match(r.toolResult, /\n2\. ENVE SES 3\.4/);
-  const trail = r.events.find((e) => e.k === 'trCards'); assert.ok(trail && trail.p.n === 3 && /ENVE SES wheels/.test(trail.p.q), 'سطر الأثر بعدد البطاقات');
+  const trail = r.events.find((e) => e.k === 'trCards'); assert.ok(trail && trail.p.n === 2 && /ENVE SES wheels/.test(trail.p.q), 'سطر الأثر بعدد البطاقات');
   assert.equal(trail.cmd, 'ENVE SES wheels price UAE', 'تفصيل الأثر يحمل عبارة البحث');
   assert.deepEqual(quota.calls, [{ bucket: 'chat-search', limit: 100 }], 'يُعدّ على حصّة البحث نفسها');
   assert.ok(r.events.some((e) => e.delta === 'هذي الخيارات. كم ميزانيتك؟'));
@@ -205,8 +209,8 @@ test('٦. المكان من كلام المستخدم يغلب الشبكة: أ�
   assert.deepEqual(CS.scopeChips(['أبيض', 'كندوه في الإمارات', 'مقاس كبير'], 'US'), ['أبيض', 'مقاس كبير']);
   quota.calls.length = 0; quota.allow = true;
   const mixed = { items: [
-    { title: 'White Kandura USA', link: 'https://shop.example.us/k', snippet: 'New York mens kandura $90', pagemap: {} },
-    { title: 'Kandura Dubai', link: 'https://store.ae/k', snippet: 'ثوب في دبي AED 200', pagemap: {} },
+    { title: 'White Kandura USA', link: 'https://shop.example.us/k', snippet: 'New York mens kandura $90', pagemap: { cse_image: [{ src: 'https://shop.example.us/k.jpg' }] } }, // v-google-cards: بطاقة بلا صورة تسقط
+    { title: 'Kandura Dubai', link: 'https://store.ae/k', snippet: 'ثوب في دبي AED 200', pagemap: { cse_image: [{ src: 'https://store.ae/k.jpg' }] } },
   ] };
   const r = await ask('كندوه رجالي في أمريكا', [() => toolTurn('show_cards', { query: 'kandura UAE', chips: ['أبيض', 'كندوه في الإمارات'], kind: 'product' }), () => textTurn('كم ميزانيتك؟')], mixed, { 'x-vercel-ip-country': 'AE' });
   assert.match(r.log.google[0], /gl=us/);
