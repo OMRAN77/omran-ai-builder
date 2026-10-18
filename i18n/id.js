@@ -309,6 +309,7 @@ I18N['id'] = {
     "acctFillUsername": "Masukkan nama pengguna yang valid (minimal 3 karakter)",
     "acctFillPasswords": "Masukkan kata sandi Anda saat ini dan kata sandi baru (minimal 4 karakter)",
     "acctGenericError": "Terjadi kesalahan, coba lagi",
+    "nameNoAt": "Pilih nama pengguna tanpa @ — Anda bisa menambahkan email di Akun saya setelah mendaftar",
     "acctNetError": "Tidak dapat terhubung ke server, periksa koneksi Anda",
     "acctAvatarTooBig": "Gambar terlalu besar, pilih yang lebih kecil",
     "providerColorsLabel": "🤖 Warna setiap penyedia AI (ditampilkan di samping namanya dalam obrolan)",

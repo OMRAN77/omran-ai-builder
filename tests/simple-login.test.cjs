@@ -47,8 +47,13 @@ test('الخادم: الدخول بالإيميل أو الاسم، والخطأ
   assert.equal(none.body.error, bad.body.error, 'لا يكشف هل الإيميل مسجَّل');
 });
 
-test('الخادم: اسم مستخدم فيه @ يُقدَّم على فهرس الإيميل', async () => {
-  await call({ action: 'signup', username: 'ali@home.com', password: 'alipass123' });
+test('الخادم: اسم مستخدم فيه @ (حساب قديم) يُقدَّم على فهرس الإيميل', async () => {
+  /* v-name-no-at: التسجيل الجديد لا يقبل @ في الاسم — الحسابات القديمة بأسمائها كما هي، فيُصنع الحساب القديم مباشرةً في المخزن */
+  const fresh = await call({ action: 'signup', username: 'ali@home.com', password: 'alipass123' });
+  assert.equal(fresh.code, 400, 'تسجيل جديد باسم فيه @ مرفوض');
+  await call({ action: 'signup', username: 'ali-legacy', password: 'alipass123' });
+  const legacy = await auth.getUser('ali-legacy');
+  await auth.putUser('ali@home.com', Object.assign({}, legacy, { username: 'ali@home.com' }));
   await call({ action: 'signup', username: 'other', password: 'otherpass1', email: 'ali@home.com' });
   const r = await call({ action: 'login', username: 'ali@home.com', password: 'alipass123' });
   assert.equal(r.code, 200);
@@ -99,5 +104,5 @@ test('النصوص الجديدة بالـ١٤ لغة', () => {
     const s = read('i18n/' + l + '.js');
     for (const k of ['authIdPlaceholder', 'authCreateAccount', 'authHaveAccount', 'authSubmitForgotEmail']) assert.match(s, new RegExp('"?' + k + '"?:\\s*"[^"]+"'), l + ': ' + k);
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=751'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=752'/);
 });

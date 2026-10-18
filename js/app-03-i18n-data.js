@@ -354,6 +354,7 @@ const I18N = {
     acctFillUsername: 'أدخل اسم مستخدم صحيح (3 أحرف على الأقل)',
     acctFillPasswords: 'أدخل كلمة المرور الحالية وكلمة مرور جديدة (4 أحرف على الأقل)',
     acctGenericError: 'حدث خطأ، حاول مرة أخرى',
+    nameNoAt: 'اختر اسم مستخدم بدون @ — تقدر تضيف إيميلك من «حسابي» بعد التسجيل', // v-name-no-at
     acctNetError: 'تعذر الاتصال بالخادم، تحقق من الإنترنت',
     acctAvatarTooBig: 'الصورة كبيرة جدًا، اختر صورة أصغر',
     logout: 'خروج',
@@ -1658,6 +1659,7 @@ const I18N = {
     acctFillUsername: 'Enter a valid username (at least 3 characters)',
     acctFillPasswords: 'Enter your current password and a new password (at least 4 characters)',
     acctGenericError: 'Something went wrong, try again',
+    nameNoAt: 'Choose a username without @ — you can add your email in My account after signing up', // v-name-no-at
     acctNetError: 'Could not reach the server, check your connection',
     acctAvatarTooBig: 'The image is too large, choose a smaller one',
     providerColorsLabel: '🤖 Each AI provider color (shown next to its name in chat)',

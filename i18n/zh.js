@@ -304,6 +304,7 @@ I18N['zh'] = {
     "acctFillUsername": "请输入有效的用户名(至少 3 个字符)",
     "acctFillPasswords": "请输入当前密码和新密码(至少 4 个字符)",
     "acctGenericError": "出错了，请重试",
+    "nameNoAt": "请选择不含 @ 的用户名——注册后可在“我的账户”中添加邮箱",
     "acctNetError": "无法连接到服务器，请检查您的网络连接",
     "acctAvatarTooBig": "图片太大，请选择较小的图片",
     "providerColorsLabel": "🤖 各 AI 提供商的颜色(显示在聊天界面的名称旁)",

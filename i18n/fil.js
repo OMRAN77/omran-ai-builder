@@ -311,6 +311,7 @@ I18N['fil'] = {
     "acctFillUsername": "Maglagay ng valid na username (hindi bababa sa 3 karakter)",
     "acctFillPasswords": "Ilagay ang kasalukuyan mong password at bagong password (hindi bababa sa 4 na karakter)",
     "acctGenericError": "May nangyaring mali, subukan ulit",
+    "nameNoAt": "Pumili ng username na walang @ — maaari mong idagdag ang email mo sa Aking account pagkatapos mag-sign up",
     "acctNetError": "Hindi ma-reach ang server, tingnan ang iyong koneksyon",
     "acctAvatarTooBig": "Masyadong malaki ang larawan, pumili ng mas maliit",
     "providerColorsLabel": "🤖 Kulay ng bawat AI provider (ipinapakita sa tabi ng pangalan nito sa chat)",
