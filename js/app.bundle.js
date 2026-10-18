@@ -2487,19 +2487,36 @@ function omranMdTableMark(text){
   return { text: out.join('\n'), list: list };
 }
 const OMRAN_IC_AR = /[\u0600-\u06FF]/; // كود مضمّن بحروف عربيّة: رقاقة <span> بخطّ النصّ — الخطّ الثابت يفكّك الحروف
-/** خليّة جدول: **عريض** و`كود` و[نصّ](رابط) — عُقدًا لا HTML. */
+/** خليّة جدول: **عريض** و`كود` و[نصّ](رابط) — عُقدًا لا HTML. v-reply-blocks: الرابط شارة مصدر (أيقونة الموقع + اسمه، ولو
+    كان **[نصّ](رابط)**)، وأرقام الهواتف في النصّ معزولة LTR فلا تنقلب مجموعاتها. */
 function omranMdInline(el, s){
-  const re = /\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  const re = /\*{0,2}\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)\*{0,2}|\*\*([^*]+)\*\*|`([^`]+)`/g;
   let m, last = 0;
   s = String(s || '');
   while((m = re.exec(s))){
-    if(m.index > last) el.appendChild(document.createTextNode(s.slice(last, m.index)));
+    if(m.index > last) omranMdText(el, s.slice(last, m.index));
     let k;
-    if(m[1] !== undefined){ k = document.createElement('strong'); k.textContent = m[1]; }
-    else if(m[2] !== undefined){ const ar = OMRAN_IC_AR.test(m[2]); k = document.createElement(ar ? 'span' : 'code'); k.className = 'md-ic' + (ar ? ' md-ic-ar' : ''); k.textContent = m[2]; }
-    else { k = document.createElement('a'); k.href = m[4]; k.target = '_blank'; k.rel = 'noopener noreferrer'; k.textContent = m[3]; }
+    if(m[1] !== undefined) k = omranSrcChip(m[2], m[1]);
+    else if(m[3] !== undefined){ k = document.createElement('strong'); omranMdText(k, m[3]); }
+    else { const ar = OMRAN_IC_AR.test(m[4]); k = document.createElement(ar ? 'span' : 'code'); k.className = 'md-ic' + (ar ? ' md-ic-ar' : ''); k.textContent = m[4]; }
     el.appendChild(k);
     last = m.index + m[0].length;
+  }
+  if(last < s.length) omranMdText(el, s.slice(last));
+}
+/** نصّ خليّة: رقم هاتف (٧ خانات فأكثر بمسافاته وشرطاته) عنصر LTR معزول، والباقي نصّ كما هو. الرقم الملاصق لـ«: , . /»
+    أو لرقم آخر (وقت «9:00 - 17:00»، سعر «1,000 - 2,000»، كسر) ليس هاتفًا فيبقى نصًّا. بلا lookbehind (سفاري القديم): السابق يُلتقط. */
+function omranMdText(el, s){
+  const re = /(^|[^0-9٠-٩۰-۹:,.\/])((?:\+|00)?[0-9٠-٩۰-۹](?:[0-9٠-٩۰-۹]|[ \-](?=[0-9٠-٩۰-۹])){5,}[0-9٠-٩۰-۹])(?![0-9٠-٩۰-۹:,.\/])/g;
+  let m, last = 0;
+  s = String(s || '');
+  while((m = re.exec(s))){
+    if((m[2].match(/[0-9٠-٩۰-۹]/g) || []).length < 7) continue;
+    const at = m.index + m[1].length;
+    if(at > last) el.appendChild(document.createTextNode(s.slice(last, at)));
+    const sp = document.createElement('span'); sp.className = 'md-ltr'; sp.setAttribute('dir', 'ltr'); sp.textContent = m[2];
+    el.appendChild(sp);
+    last = at + m[2].length;
   }
   if(last < s.length) el.appendChild(document.createTextNode(s.slice(last)));
 }
@@ -2547,7 +2564,7 @@ function omranImgItems(body){
 function omranImgPartial(l){
   const t = String(l || '').trim();
   if(!t || /\]\]$/.test(t)) return false;
-  return /^\[\[IMG:/i.test(t) || '[[IMG:'.indexOf(t.toUpperCase()) === 0;
+  return /^\[\[(?:IMG|CONTACT):/i.test(t) || '[[IMG:'.indexOf(t.toUpperCase()) === 0 || '[[CONTACT:'.indexOf(t.toUpperCase()) === 0; // v-reply-blocks: وسطر بطاقة التواصل
 }
 function omranMdImgMark(text){
   const lines = String(text || '').split('\n'), out = [], list = [];
@@ -2555,6 +2572,17 @@ function omranMdImgMark(text){
   for(let i = 0; i < lines.length; i++){
     const l = lines[i];
     if(/^\s*```/.test(l)) fence = !fence;
+    const __c = !fence && OMRAN_CT_LINE.exec(l), __ci = __c && omranCtItem(__c[1]);
+    if(__ci){ // v-reply-blocks: أسطر التواصل المتتالية (ولو بينها سطر فارغ) شبكة بطاقات واحدة
+      const g = { kind: 'contact', items: [__ci], extra: (l.match(/\S+/g) || []).length };
+      for(let j = i + 1; j < lines.length; j++){
+        if(!lines[j].trim()) continue;
+        const c2 = OMRAN_CT_LINE.exec(lines[j]), ci2 = c2 && omranCtItem(c2[1]);
+        if(!ci2) break;
+        g.items.push(ci2); g.extra += (lines[j].match(/\S+/g) || []).length; i = j;
+      }
+      list.push(g); out.push(String.fromCharCode(0xE004) + (list.length - 1) + String.fromCharCode(0xE005)); continue;
+    }
     const m = !fence && OMRAN_IMG_LINE.exec(l);
     if(m){
       const items = omranImgItems(m[1]);
@@ -2650,9 +2678,116 @@ function omranGalleryEl(it){
 }
 /** القراءة الصوتيّة: كلمات سطر الصور تبقى بعددها (محاذاة tts-word) لكنّها لا تُنطق. */
 function omranSpeechNoImg(text){
+  text = omranSpeechNoCt(text); // v-reply-blocks: وأسطر بطاقات التواصل كذلك
   const s = String(text || '');
   if(s.indexOf('[[IMG') < 0 && s.indexOf('[[img') < 0) return s;
   return s.split('\n').map(function(l){ return OMRAN_IMG_LINE.test(l) ? l.replace(/\S+/g, '\u2060') : l; }).join('\n');
+}
+/* v-reply-blocks (\u0644\u0642\u0637\u0627\u062a \u0627\u0644\u0645\u0627\u0644\u0643 \u0661\u0667 \u0623\u0643\u062a\u0648\u0628\u0631\u060c ChatGPT: \u00ab\u0623\u0631\u0642\u0627\u0645 \u0645\u0643\u0627\u062a\u0628 \u0639\u0642\u0627\u0631\u064a\u0651\u0629 \u0641\u064a \u0627\u0644\u0634\u0627\u0631\u0642\u0629\u00bb \u0628\u0637\u0627\u0642\u0627\u062a \u0628\u0627\u0644\u0627\u0633\u0645 \u0648\u0627\u0644\u0631\u0642\u0645 \u0627\u0644\u0643\u0628\u064a\u0631 \u0648\u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u0648\u00ab\u0646\u0633\u062e \u0627\u0644\u0631\u0642\u0645\u00bb\u060c
+   \u0648\u062c\u062f\u0648\u0644 \u0628\u0627\u0626\u0639\u064a\u0646 \u0628\u0634\u0627\u0631\u0629 \u0627\u0644\u0645\u0635\u062f\u0631 \u062c\u0646\u0628 \u0643\u0644\u0651 \u0631\u0642\u0645): \u0633\u0637\u0631 \u0627\u0644\u0645\u0632\u0648\u0651\u062f [[CONTACT: \u0627\u0644\u0627\u0633\u0645 | \u0627\u0644\u0631\u0642\u0645 | \u0627\u0644\u0645\u0646\u0637\u0642\u0629 | [\u0627\u0644\u0645\u0648\u0642\u0639](\u0627\u0644\u0631\u0627\u0628\u0637)]] \u0628\u0637\u0627\u0642\u0629\u060c \u0648\u0627\u0644\u0623\u0633\u0637\u0631
+   \u0627\u0644\u0645\u062a\u062a\u0627\u0644\u064a\u0629 \u0634\u0628\u0643\u0629 \u0648\u0627\u062d\u062f\u0629 \u0643\u062a\u0644\u0629\u064b \u0643\u0627\u0644\u0645\u0639\u0631\u0636 (\u0643\u0644\u0645\u0627\u062a\u0647\u0627 tts-word \u0645\u062e\u0641\u064a\u0651\u0629 \u0641\u0644\u0627 \u062a\u0646\u0632\u0627\u062d \u0627\u0644\u0642\u0631\u0627\u0621\u0629\u060c \u0648\u0644\u0627 \u062a\u064f\u0646\u0637\u0642). \u0627\u0644\u0631\u0642\u0645 LTR \u0645\u0639\u0632\u0648\u0644: \u0628\u0644\u0627 \u0639\u0632\u0644 \u062a\u0646\u0642\u0644\u0628
+   \u0645\u062c\u0645\u0648\u0639\u0627\u062a\u0647 \u0641\u064a \u0627\u0644\u0633\u064a\u0627\u0642 \u0627\u0644\u0639\u0631\u0628\u064a\u0651 (\u00ab7465 171 050\u00bb \u0639\u0646\u062f ChatGPT \u0646\u0641\u0633\u0647). \u0627\u0644\u062e\u0627\u062f\u0645 \u064a\u062d\u0630\u0641 \u0631\u0642\u0645\u064b\u0627 \u0644\u0645 \u064a\u0638\u0647\u0631 \u0641\u064a \u0646\u062a\u0627\u0626\u062c \u0627\u0644\u0628\u062d\u062b (keepSourcedContacts).
+   \u0627\u0644\u0628\u0637\u0627\u0642\u0629 \u0628\u0644\u0627 \u062d\u062f\u0651 (\u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u062f\u0627\u0643\u0646 \u064a\u062d\u0648\u0651\u0644 \u0643\u0644\u0651 \u062d\u062f\u0651 \u0625\u0644\u0649 \u0634\u0628\u062d \u0628\u062a\u0648\u0647\u0651\u062c \u0623\u0628\u064a\u0636)\u060c \u0648\u0627\u0644\u0631\u0642\u0645 \u0628\u0644\u0648\u0646 \u0627\u0644\u0646\u0635\u0651 \u0644\u0627 \u0627\u0644\u0630\u0647\u0628\u064a\u0651 (\u0627\u0644\u0630\u0647\u0628\u064a\u0651 \u0644\u0644\u0631\u0648\u0627\u0628\u0637 \u0648\u062d\u062f\u0647\u0627). */
+const OMRAN_CT_LINE = /^\s*\[\[CONTACT:\s*(.*)\]\]\s*$/i;
+function omranCtItem(body){
+  const f = String(body || '').split('|').map(function(x){ return x.replace(/\s+/g, ' ').trim(); });
+  const name = f[0] || '', phone = f[1] || '';
+  if(!name || (phone.match(/[0-9\u0660-\u0669\u06f0-\u06f9]/g) || []).length < 3) return null;
+  const rest = f.slice(3).join('|').trim();
+  const ml = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/.exec(rest);
+  const mu = !ml && /https?:\/\/[^\s)\]]+/.exec(rest);
+  const src = ml ? { label: ml[1].trim(), url: ml[2] } : (mu ? { label: '', url: mu[0] } : (rest ? { label: rest, url: '' } : null));
+  return { name: name, phone: phone, area: f[2] || '', src: src };
+}
+/** حقل الرقم قد يحمل رقمين («04 555 4321 / 800 2384»): كلّ رقم وحده (لا يُقسم الرقم نفسه). */
+function omranCtNums(phone){
+  const parts = String(phone || '').split(/\s*(?:\/|,|،|;|؛|\s(?:أو|او|or)\s)\s*/).map(function(x){ return x.trim(); }).filter(function(x){ return (x.match(/[0-9٠-٩۰-۹]/g) || []).length >= 3; });
+  return parts.length ? parts : [String(phone || '').trim()];
+}
+function omranSpeechNoCt(text){
+  const s = String(text || '');
+  if(!/\[\[CONTACT:/i.test(s)) return text;
+  const z = String.fromCharCode(0x2060);
+  return s.split('\n').map(function(l){ return OMRAN_CT_LINE.test(l) ? l.replace(/\S+/g, z) : l; }).join('\n');
+}
+function omranBlocksCss(){
+  if(document.getElementById('omranBlocksCss')) return;
+  const st = document.createElement('style');
+  st.id = 'omranBlocksCss';
+  st.textContent = '.md-contacts{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:8px 0 12px;width:100%;align-self:stretch;box-sizing:border-box;}'
+    + 'html.mobile-ui .md-contacts{grid-template-columns:1fr;}'
+    + '.md-ct{display:flex;flex-direction:column;gap:3px;min-width:0;padding:12px 14px;border-radius:var(--r-3,14px);background:rgba(127,127,127,.10);box-sizing:border-box;text-align:start;}'
+    + '.msg-text .md-contacts,.msg-text .md-contacts div{unicode-bidi:isolate;}' /* plaintext الموروث (.msg-text div) يحاذي الاسم اللاتينيّ يسارًا والمنطقة يمينًا — البطاقة تتبع dir الكتلة */
+    + 'html body .msg .md-table a.md-src.md-src,.md-table .md-src{max-width:8.5em;min-width:0;padding:2px 7px;font-size:11.5px;}' /* أعلى من قاعدة الشارة العامّة وإلّا عرّض الجدول خارج الفقاعة */
+    + 'html[data-mode="light"] .md-ct{background:#f3f4f8;}'
+    + '.md-ct-name{font-size:14.5px;font-weight:800;line-height:1.35;color:var(--text,#eee);overflow-wrap:anywhere;}'
+    + '.md-ct-num{display:flex;flex-wrap:wrap;column-gap:12px;font-size:22px;font-weight:800;line-height:1.35;color:var(--text,#eee);font-variant-numeric:tabular-nums;}'
+    + '.md-ct-num bdi,.md-ltr{unicode-bidi:isolate;white-space:nowrap;}'
+    + '.md-ct-area{font-size:12.5px;color:var(--muted,#9aa3b2);}'
+    + '.md-ct-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px;}'
+    + '.md-ct-copy{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border:0;border-radius:999px;background:rgba(127,127,127,.18);color:var(--text,#eee);font:inherit;font-size:12.5px;font-weight:700;line-height:1.4;cursor:pointer;}'
+    + '.md-ct-copy::before{content:"";width:9px;height:10px;border:1.6px solid currentColor;border-radius:2px;box-shadow:-3px 3px 0 -1.6px currentColor;}'
+    + '.md-ct-copy.ok{background:rgba(127,127,127,.34);}'
+    + 'html body .msg a.md-src.md-src,.md-src{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:3px 9px;border-radius:999px;background:rgba(127,127,127,.16);color:var(--muted,#9aa3b2) !important;font-size:12px;font-weight:600 !important;line-height:1.5;text-decoration:none !important;vertical-align:middle;white-space:nowrap;overflow:hidden;}'
+    + 'html body .msg a.md-src.md-src:hover{color:var(--text,#eee) !important;}'
+    + '.md-src img{width:14px;height:14px;border-radius:3px;flex:0 0 auto;}'
+    + '.md-src span{overflow:hidden;text-overflow:ellipsis;min-width:0;}';
+  document.head.appendChild(st);
+}
+/** \u0634\u0627\u0631\u0629 \u0627\u0644\u0645\u0635\u062f\u0631: \u0623\u064a\u0642\u0648\u0646\u0629 \u0627\u0644\u0645\u0648\u0642\u0639 + \u0627\u0633\u0645\u0647 (\u0623\u0648 \u0646\u0637\u0627\u0642\u0647)\u060c \u0631\u0627\u0628\u0637 \u064a\u0641\u062a\u062d \u0641\u064a \u0635\u0641\u062d\u0629 \u062c\u062f\u064a\u062f\u0629\u061b \u0628\u0644\u0627 \u0631\u0627\u0628\u0637 = \u0627\u0633\u0645 \u0641\u0642\u0637. */
+function omranSrcChip(url, label){
+  omranBlocksCss();
+  let host = '';
+  if(/^https?:\/\//i.test(String(url || ''))){ try{ host = new URL(url).hostname.replace(/^www\./, ''); }catch(e){ host = ''; } }
+  const c = document.createElement(host ? 'a' : 'span');
+  c.className = 'md-src';
+  if(host){
+    c.href = url; c.target = '_blank'; c.rel = 'noopener noreferrer'; c.title = host;
+    const fav = document.createElement('img');
+    fav.src = 'https://www.google.com/s2/favicons?sz=64&domain=' + encodeURIComponent(host); fav.alt = ''; fav.loading = 'lazy'; fav.referrerPolicy = 'no-referrer';
+    fav.onerror = function(){ fav.style.display = 'none'; };
+    c.appendChild(fav);
+  }
+  const tx = document.createElement('span'); tx.textContent = String(label || host || ''); c.appendChild(tx);
+  return c;
+}
+function omranCopyNum(num, btn){
+  const v = String(num || '').trim();
+  const flash = function(ok){
+    try{ if(typeof settingsToast === 'function') settingsToast(t(ok ? 'copiedToast' : 'msgCopyFailed')); }catch(e){ __swallow(e, 'ct:toast'); }
+    if(ok && btn){ btn.classList.add('ok'); setTimeout(function(){ btn.classList.remove('ok'); }, 1400); }
+  };
+  const legacy = function(){
+    try{
+      const ta = document.createElement('textarea'); ta.value = v; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); document.body.removeChild(ta); flash(ok);
+    }catch(e){ __swallow(e, 'ct:copy'); flash(false); }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(function(){ flash(true); }, legacy);
+  else legacy();
+}
+function omranContactsEl(it){
+  omranBlocksCss();
+  const g = document.createElement('div');
+  g.className = 'md-contacts';
+  g.setAttribute('contenteditable', 'false');
+  g.setAttribute('dir', /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/.test(it.items.map(function(c){ return c.name + ' ' + c.area; }).join(' ')) ? 'rtl' : 'ltr');
+  it.items.forEach(function(c){
+    const card = document.createElement('div'); card.className = 'md-ct';
+    const nm = document.createElement('div'); nm.className = 'md-ct-name'; nm.textContent = c.name; card.appendChild(nm);
+    const num = document.createElement('div'); num.className = 'md-ct-num';
+    omranCtNums(c.phone).forEach(function(p){ const b = document.createElement('bdi'); b.setAttribute('dir', 'ltr'); b.textContent = p; num.appendChild(b); }); // رقمان في الحقل سطران لا خروج من البطاقة
+    card.appendChild(num);
+    if(c.area){ const ar = document.createElement('div'); ar.className = 'md-ct-area'; ar.textContent = c.area; card.appendChild(ar); }
+    const acts = document.createElement('div'); acts.className = 'md-ct-acts';
+    const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'md-ct-copy'; cp.textContent = t('copyCode');
+    cp.onclick = function(e){ if(e && e.stopPropagation) e.stopPropagation(); omranCopyNum(c.phone, cp); };
+    acts.appendChild(cp);
+    if(c.src && (c.src.url || c.src.label)) acts.appendChild(omranSrcChip(c.src.url, c.src.label));
+    card.appendChild(acts);
+    g.appendChild(card);
+  });
+  return g;
 }
 function buildSpokenWordSpans(container, text){
   let __im = { text: text, list: [] };
@@ -2751,7 +2886,7 @@ function buildSpokenWordSpans(container, text){
     if(__imm){ // v-rich-reply: المعرض كتلة، وكلمات سطره عناصر مخفيّة داخله
       const __g = __im.list[+__imm[1]];
       if(__g){
-        const __w = omranGalleryEl(__g);
+        const __w = __g.kind === 'contact' ? omranContactsEl(__g) : omranGalleryEl(__g); // v-reply-blocks
         for(let __k = 0; __k < __g.extra; __k++){ const __h = document.createElement('span'); __h.className = 'tts-word'; __h.style.display = 'none'; __w.appendChild(__h); wordEls.push(__h); }
         container.appendChild(__w);
       }
@@ -2958,6 +3093,7 @@ function omranMdBlocks(container, text){
   const newLine = function(){ cur = document.createElement('div'); cur.className = 'md-line'; out.push(cur); };
   newLine();
   nodes.forEach(function(n){
+    if(n.nodeType === 1 && n.className === 'md-contacts'){ out.push(n); newLine(); return; } // v-reply-blocks: بطاقات التواصل كتلة كالمعرض
     if(n.nodeType === 1 && (n.className === 'chat-codeblock' || n.className === 'md-table-wrap' || n.className === 'md-gallery')){ out.push(n); newLine(); return; } // v-gpt-format: الجدول كتلة · v-rich-reply: والمعرض
     if(n.nodeType === 3){
       const parts = String(n.textContent).split('\n');
@@ -3490,6 +3626,7 @@ function omranMathOpenBlock(h){
 function renderStreamingAssistant(el, text){
   if(!el) return;
   el.classList.add('msg-streaming');
+  { const __raw = String(text || ''), __rl = __raw.lastIndexOf('\n'); if(omranImgPartial(__raw.slice(__rl + 1))) text = __raw.slice(0, __rl + 1).trimEnd(); } // v-reply-blocks: سطر [[…]] الناقص يُخفى قبل أن يقصّ العرض أوّل «[» منه
   let __st = streamingMarkdownDisplayText(text);
   if(__st && __st.indexOf('[[') >= 0) __st = __st.replace(/\[\[(?:OPT|MULTI)\]\][\s\S]*$/, '').trimEnd();
   if(__st){ const __nl = __st.lastIndexOf('\n'); if(omranImgPartial(__st.slice(__nl + 1))) __st = __st.slice(0, __nl + 1).trimEnd(); } // v-rich-reply
@@ -3631,7 +3768,7 @@ const I18N = {
     imgUndoPrev: "رجّعتها للنسخة السابقة 👆 وش تبي أغيّر فيها؟", imgUndoOrig: "رجّعتها للصورة الأصليّة 👆 وش تبي أغيّر فيها؟", imgUndoNone: "هذي هي أوّل نسخة، ما قبلها شي 👆 وش تبي أغيّر فيها؟", /* v-img-undo */
     imgUnchanged: "⚠️ ما تنفّذ التعديل: الصورة رجعت نفسها بدون تغيير، فما عرضتها ولا انحسبت عليك. وضّح وش يتغيّر بالضبط أو اكتب الطلب بصيغة ثانية.", /* v-img-honest */
     /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ حوّلتها إلى {fmt} — نفس الصورة بدون أي تغيير، وجاهزة للحفظ.", imgConvertSame: "الصورة أصلًا بصيغة {fmt} — هذي هي جاهزة للحفظ.", imgConvertAsk: "أيّ صيغة تبيها؟ PNG (أنقى جودة) أو JPG (أصغر حجمًا) أو WEBP (أخفّ للمواقع). اكتب مثلًا: حوّلها jpg", imgConvertGuess: "(فهمت «{word}» على أنّها {fmt} — إذا تبي صيغة ثانية قل: حوّلها jpg)", imgConvertFail: "تعذّر تحويل الصيغة في هذا المتصفّح — جرّب PNG أو JPG.",
-    /* v-cards: بطاقات الخيارات */ stCards: "🛍️ يجمع لك خيارات منظّمة…", trCards: "عرضتُ {n} بطاقات لـ«{q}»", trCardsNone: "لا بطاقات لـ«{q}»", cardsOpen: "افتح",
+    /* v-cards: بطاقات الخيارات */ stCards: "🛍️ يجمع لك خيارات منظّمة…", trCards: "عرضتُ {n} بطاقات لـ«{q}»", trCardsNone: "لا بطاقات لـ«{q}»", cardsOpen: "افتح", cardsPriceSite: "السعر في الموقع" /* v-google-cards */,
     /* v-call-agent: بطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (app-42) */ callAgentTitle: "مكالمة بالنيابة عنك", callAgentGoal: "الهدف", callAgentMax: "حدّ المكالمة {n} دقائق", callAgentFreeOwner: "مجانيّة للمالك", callAgentUserPrice: "للمستخدم: {land} نقطة/دقيقة أرضي · {mob} موبايل", callAgentPrice: "{n} نقطة لكلّ دقيقة", callAgentTry: "🎧 جرّب عليّ", callAgentDial: "📞 اتّصل فعليًّا", callAgentEnd: "إنهاء المكالمة", callAgentCancel: "إلغاء المكالمة", callAgentDisclosure: "يعرّف المساعد بنفسه أنّه آليّ في أوّل المكالمة، ولا يُسجَّل الصوت.", callAgentConfirm: "سيتّصل المساعد الآن فعليًّا بـ«{b}». متابعة؟", callAgentTrialTitle: "مكالمة تجريبيّة", callAgentTrialHint: "أنت تمثّل «{b}» — قل «ألو» ويبدأ المساعد.", callAgentStConnecting: "يجهّز المكالمة…", callAgentStMic: "بانتظار إذن المايك…", callAgentStLive: "المكالمة جارية", callAgentStQueued: "يبدأ الاتّصال…", callAgentStRinging: "يرنّ…", callAgentStCompleted: "انتهت المكالمة", callAgentStBusy: "الخطّ مشغول", callAgentStNoAnswer: "لم يردّ أحد", callAgentStFailed: "تعذّرت المكالمة", callAgentStCanceled: "أُلغيت المكالمة", callAgentStDropped: "انقطعت المكالمة", callAgentStTimeout: "توقّفت المتابعة — راجعها لاحقًا", callAgentWhoAgent: "المساعد", callAgentWhoCallee: "الطرف الآخر", callAgentOcBooked: "تمّ الحجز", callAgentOcNotAvailable: "غير متاح", callAgentOcNeedsUser: "يحتاج قرارك", callAgentOcDeclined: "اعتذر الطرف الآخر", callAgentOcFailed: "لم تنجح", callAgentDetails: "المؤكَّد", callAgentFollowUp: "الخطوة التالية", callAgentDuration: "المدّة", callAgentResultHead: "📞 نتيجة المكالمة مع «{b}»: {s}", callAgentResultNone: "انتهت المكالمة بلا نتيجة مسجّلة.", callAgentErrOwner: "متاحة للمالك فقط حاليًّا.", callAgentErrExpired: "انتهت صلاحيّة هذه البطاقة — اطلب المكالمة من جديد.", callAgentErrNoKey: "الخدمة غير مهيّأة بعد.", callAgentErrRelay: "الاتّصال الفعليّ غير مفعّل بعد — استعمل «جرّب عليّ».", callAgentErrNoPhone: "لا يوجد رقم لهذه الجهة.", callAgentErrBadPhone: "الرقم غير مسموح: أرقام الإمارات فقط، بلا طوارئ ولا أرقام خدمات.", callAgentErrBusy: "عندك مكالمة جارية — انتظر حتّى تنتهي.", callAgentErrHours: "الاتّصال الفعليّ متاح من ٨ صباحًا إلى ١٠ مساءً بتوقيت الإمارات.", callAgentErrGeneric: "تعذّر بدء المكالمة — حاول مرّة ثانية.", callAgentErrMaha: "أنهِ مكالمة {voice} أوّلًا.", callAgentErrActive: "في مكالمة جارية الآن.", callAgentErrNoRtc: "هذا المتصفّح لا يدعم المكالمات الصوتيّة.", callAgentErrCancel: "تعذّر الإلغاء — حاول مرّة ثانية.", /* v-call-agent-r2 */ callAgentPlace: "الرقم من الخرائط", callAgentCaller: "يتّصل نيابةً عن", callAgentShare: "قد يذكر للجهة", callAgentErrTrialBusy: "أنهِ المكالمة التجريبيّة أوّلًا.", stCall: "📞 يجهّز كرت الاتّصال…",
     aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
@@ -4852,7 +4989,7 @@ const I18N = {
     imgUndoPrev: "Back to the previous version 👆 What should I change?", imgUndoOrig: "Back to the original 👆 What should I change?", imgUndoNone: "This is the first version — nothing before it 👆 What should I change?", /* v-img-undo */
     imgUnchanged: "⚠️ The edit wasn't applied: the picture came back unchanged, so I didn't show it and it wasn't counted against you. Say exactly what should change, or phrase it differently.", /* v-img-honest */
     /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ Converted to {fmt} — the same picture, unchanged, ready to save.", imgConvertSame: "The picture is already {fmt} — here it is, ready to save.", imgConvertAsk: "Which format do you want? PNG (best quality), JPG (smaller file) or WEBP (lighter for websites). For example: convert to jpg", imgConvertGuess: "(I read «{word}» as {fmt} — for another format say: convert to jpg)", imgConvertFail: "This browser couldn't convert the format — try PNG or JPG.",
-    /* v-cards */ stCards: "🛍️ Gathering organized options…", trCards: "Showed {n} cards for “{q}”", trCardsNone: "No cards for “{q}”", cardsOpen: "Open",
+    /* v-cards */ stCards: "🛍️ Gathering organized options…", trCards: "Showed {n} cards for “{q}”", trCardsNone: "No cards for “{q}”", cardsOpen: "Open", cardsPriceSite: "Price on site" /* v-google-cards */,
     /* v-call-agent */ callAgentTitle: "Call on your behalf", callAgentGoal: "Goal", callAgentMax: "Call limit: {n} min", callAgentFreeOwner: "Free for the owner", callAgentUserPrice: "For users: {land} points/min landline · {mob} mobile", callAgentPrice: "{n} points per minute", callAgentTry: "🎧 Try it on me", callAgentDial: "📞 Call for real", callAgentEnd: "End call", callAgentCancel: "Cancel call", callAgentDisclosure: "The assistant says it is automated at the start of the call. No audio is recorded.", callAgentConfirm: "The assistant will now really call “{b}”. Continue?", callAgentTrialTitle: "Trial call", callAgentTrialHint: "You play “{b}”. Say “hello” and the assistant begins.", callAgentStConnecting: "Setting up the call…", callAgentStMic: "Waiting for microphone permission…", callAgentStLive: "Call in progress", callAgentStQueued: "Starting the call…", callAgentStRinging: "Ringing…", callAgentStCompleted: "Call ended", callAgentStBusy: "Line busy", callAgentStNoAnswer: "No answer", callAgentStFailed: "Call failed", callAgentStCanceled: "Call cancelled", callAgentStDropped: "Call dropped", callAgentStTimeout: "Stopped following — check back later", callAgentWhoAgent: "Assistant", callAgentWhoCallee: "Other side", callAgentOcBooked: "Booked", callAgentOcNotAvailable: "Not available", callAgentOcNeedsUser: "Needs your decision", callAgentOcDeclined: "Declined", callAgentOcFailed: "Did not succeed", callAgentDetails: "Confirmed", callAgentFollowUp: "Next step", callAgentDuration: "Duration", callAgentResultHead: "📞 Call result with “{b}”: {s}", callAgentResultNone: "The call ended with no recorded result.", callAgentErrOwner: "Available to the owner only for now.", callAgentErrExpired: "This card has expired. Ask for the call again.", callAgentErrNoKey: "The service is not set up yet.", callAgentErrRelay: "Real calls are not enabled yet. Use “Try it on me”.", callAgentErrNoPhone: "There is no number for this place.", callAgentErrBadPhone: "Number not allowed: UAE numbers only, no emergency or service numbers.", callAgentErrBusy: "You already have a call in progress. Wait for it to end.", callAgentErrHours: "Real calls are available from 8 AM to 10 PM UAE time.", callAgentErrGeneric: "Could not start the call. Try again.", callAgentErrMaha: "End the call with {voice} first.", callAgentErrActive: "A call is already in progress.", callAgentErrNoRtc: "This browser does not support voice calls.", callAgentErrCancel: "Could not cancel. Try again.", /* v-call-agent-r2 */ callAgentPlace: "Number from the map", callAgentCaller: "On behalf of", callAgentShare: "May tell them", callAgentErrTrialBusy: "End the trial call first.", stCall: "📞 Preparing the call card…",
     aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
@@ -6032,7 +6169,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=751'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة */
+    sc.src = 'i18n/' + lg + '.js?v=752'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -46848,7 +46985,25 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       + '.omCardSite img{width:12px;height:12px;border-radius:3px;flex:0 0 auto;}'
       + '.msg .omCardOpen{margin-top:4px;align-self:flex-start;font-size:12px;font-weight:700;color:var(--accent2,#a78bfa) !important;}'
       + 'html[data-mode="light"] .omCard{background:#fff;}'
-      + 'html[data-mode="light"] .omCardImg{background:#f3f4f8;}';
+      + 'html[data-mode="light"] .omCardImg{background:#f3f4f8;}'
+      /* v-reply-blocks: الإعلانات صفوف (ChatGPT «عقارات للبيع»): الصورة بجانب العنوان والوصف والسعر، ثمّ «افتح ↗» وشارة الموقع — عمود واحد بلا تمرير أفقيّ */
+      + '.omCards.omList{grid-template-columns:minmax(0,1fr);gap:10px;}'
+      + 'html.mobile-ui .omCards.omList{grid-template-columns:minmax(0,1fr);}'
+      + '.omRow{display:flex;gap:12px;min-width:0;padding:10px;border-radius:var(--r-3,14px);background:rgba(127,127,127,.10);}'
+      + 'html[data-mode="light"] .omRow{background:#f3f4f8;}'
+      + '.msg .omRowImg{position:relative;flex:0 0 34%;max-width:150px;aspect-ratio:4/3;align-self:flex-start;border-radius:10px;overflow:hidden;background:rgba(127,127,127,.16);display:flex;align-items:center;justify-content:center;}'
+      + '.omRowImg img{width:100%;height:100%;object-fit:cover;display:block;}'
+      + '.omRowImg img.omCardFav{width:36px;height:36px;object-fit:contain;opacity:.8;border-radius:8px;}'
+      + '.omRowBody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}'
+      /* العنوان رابط لكنّه أبيض كعناوين بطاقات المنتجات: قاعدة الذهبيّ (.msg.assistant a !important) أعلى تخصيصًا من .msg a.x فيُرفع التخصيص */
+      + 'html body .msg a.omRowTitle.omRowTitle{color:var(--text,#eee) !important;font-size:14.5px;font-weight:800 !important;line-height:1.35;text-decoration:none !important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}'
+      + '.msg .omRowDesc{color:var(--muted,#9aa3b2) !important;font-size:12.5px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}'
+      + '.msg .omRowPrice{font-size:14px;font-weight:800;color:var(--text,#eee) !important;}'
+      + '.omRowFoot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:4px;}'
+      + 'html body .msg a.omRowOpen.omRowOpen{font-size:12.5px;text-decoration:none !important;}'
+      /* v-google-cards: «السعر في الموقع» أخفّ من السعر الحقيقيّ، والأفكار القريبة تحت البطاقات */
+      + '.msg .omCardPrice.omCardPriceSite,.msg .omRowPrice.omCardPriceSite{font-size:12.5px;font-weight:600;color:var(--muted,#9aa3b2) !important;}'
+      + '.omCardsWrap .omCardChips{margin:10px 0 0;}';
     document.head.appendChild(st);
   }
   function https(u){ u = String(u || ''); return /^https:\/\//i.test(u) ? u : ''; }
@@ -46868,22 +47023,30 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     });
     return row.childNodes.length ? row : null;
   }
+  /* v-google-cards (مواصفات المالك ١٨ أكتوبر): «كلّ بطاقة لازم فيها صورة… وإذا ما لقيت صورة أبداً لا تعرض البطاقة» — بلا صورة لا بطاقة،
+     وصورة لم تُحمَّل تُسقط بطاقتها (كانت أيقونة الموقع مكانها). وبلا سعر: «السعر في الموقع» لا فراغ. */
+  function dropOnError(img, el){ img.addEventListener('error', function(){ if(el.parentNode) el.parentNode.removeChild(el); }); }
+  function priceEl(it, cls){
+    var pr = document.createElement('div');
+    if(it.price){ pr.className = cls; pr.textContent = String(it.price); }
+    else { pr.className = cls + ' omCardPriceSite'; pr.textContent = tt('cardsPriceSite', 'السعر في الموقع'); }
+    return pr;
+  }
   function card(it, i){
     var url = https(it && it.url); if(!url) return null;
+    var src = https(it.image); if(!src) return null;
     var a = document.createElement('a');
     a.className = 'omCard'; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
     var im = document.createElement('div'); im.className = 'omCardImg';
     var img = document.createElement('img');
     img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.alt = '';
-    var src = https(it.image);
-    if(src){ img.src = src; img.addEventListener('error', function(){ img.className = 'omCardFav'; img.src = fav(it.site); }); }
-    else { img.className = 'omCardFav'; img.src = fav(it.site); }
+    img.src = src; dropOnError(img, a);
     im.appendChild(img);
     var no = document.createElement('span'); no.className = 'omCardNo'; no.textContent = String(i + 1); im.appendChild(no);
     a.appendChild(im);
     var body = document.createElement('div'); body.className = 'omCardBody';
     var ti = document.createElement('div'); ti.className = 'omCardTitle'; ti.textContent = String(it.title || it.site || ''); body.appendChild(ti);
-    if(it.price){ var pr = document.createElement('div'); pr.className = 'omCardPrice'; pr.textContent = String(it.price); body.appendChild(pr); }
+    body.appendChild(priceEl(it, 'omCardPrice'));
     var si = document.createElement('div'); si.className = 'omCardSite';
     var fi = document.createElement('img'); fi.src = fav(it.site); fi.alt = ''; fi.loading = 'lazy'; si.appendChild(fi);
     si.appendChild(document.createTextNode(String(it.site || ''))); body.appendChild(si);
@@ -46891,17 +47054,46 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     a.appendChild(body);
     return a;
   }
+  function link(url, cls){
+    var a = document.createElement('a');
+    a.className = cls; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    return a;
+  }
+  /* v-reply-blocks: صفّ إعلان — الصورة (أو أيقونة الموقع) بجانب العنوان والوصف والسعر، ثمّ «افتح ↗» وشارة الموقع */
+  function row(it, i){
+    var url = https(it && it.url); if(!url) return null;
+    var src = https(it.image); if(!src) return null;
+    var r = document.createElement('div'); r.className = 'omRow';
+    var im = link(url, 'omRowImg');
+    var img = document.createElement('img');
+    img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.alt = '';
+    img.src = src; dropOnError(img, r);
+    im.appendChild(img);
+    var no = document.createElement('span'); no.className = 'omCardNo'; no.textContent = String(i + 1); im.appendChild(no);
+    r.appendChild(im);
+    var body = document.createElement('div'); body.className = 'omRowBody';
+    var ti = link(url, 'omRowTitle'); ti.textContent = String(it.title || it.site || ''); body.appendChild(ti);
+    if(it.snippet){ var ds = document.createElement('div'); ds.className = 'omRowDesc'; ds.textContent = String(it.snippet); body.appendChild(ds); }
+    body.appendChild(priceEl(it, 'omRowPrice'));
+    var foot = document.createElement('div'); foot.className = 'omRowFoot';
+    var op = link(url, 'omRowOpen'); op.textContent = tt('cardsOpen', 'افتح') + ' ↗'; foot.appendChild(op);
+    if(typeof omranSrcChip === 'function') foot.appendChild(omranSrcChip(url, String(it.site || '')));
+    body.appendChild(foot);
+    r.appendChild(body);
+    return r;
+  }
   window.omranRenderCards = function(cards){
     if(cards && cards.kind === 'call' && typeof window.omranCallCard === 'function') return window.omranCallCard(cards.call, cards); // v-call-agent: بطاقة المكالمة (app-42)
     css();
     var wrap = document.createElement('div');
     wrap.className = 'omCardsWrap';
     wrap.setAttribute('data-keep-emoji', '1');
-    var chips = chipsRow(cards && cards.chips); if(chips) wrap.appendChild(chips);
     var items = (cards && Array.isArray(cards.items)) ? cards.items : [];
-    var grid = document.createElement('div'); grid.className = 'omCards';
-    items.slice(0, 8).forEach(function(it, i){ var c = card(it, i); if(c) grid.appendChild(c); });
+    var list = !!(cards && cards.kind === 'listing');
+    var grid = document.createElement('div'); grid.className = list ? 'omCards omList' : 'omCards';
+    items.slice(0, 8).forEach(function(it, i){ var c = list ? row(it, i) : card(it, i); if(c) grid.appendChild(c); });
     if(grid.childNodes.length) wrap.appendChild(grid);
+    var chips = chipsRow(cards && cards.chips); if(chips) wrap.appendChild(chips); // v-google-cards: الأفكار القريبة بعد البطاقات (مواصفات المالك ٦)
     return wrap;
   };
 })();

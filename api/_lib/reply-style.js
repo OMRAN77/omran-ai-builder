@@ -42,4 +42,83 @@ async function withSocialGrace(webP, socialP, ms) {
   return [web, social];
 }
 
-module.exports = { isInfoAsk, wantsRichReply, RICH_REPLY_NOTE, withSocialGrace, SOCIAL_GRACE_MS, INFO_RE };
+/* v-reply-blocks (لقطات المالك ١٧ أكتوبر، ChatGPT: «أرقام مكاتب عقاريّة في الشارقة» بطاقات فيها الاسم والرقم بخطّ كبير والمنطقة وزرّ
+   «نسخ الرقم»، وجدول بائعين بشارة المصدر جنب كلّ رقم، وإعلانات بصورة بجانب الوصف، و«عطني أرقام السيارات للبيع» يسمّي المعنيين ثمّ يجيب):
+   - isContactAsk: طلب أرقام تواصل مع جهة («أرقام مكاتب…»، «أرقام هواتف معارض…»، «رقم التواصل») — لا أرقام مميّزة للبيع. يُخرج الطلب من
+     مسار اللوحات (NUM_ASK_RE كان يحوّل «أرقام هواتف معارض السيارات» إلى مواقع اللوحات السبعة) ومن الخرائط (أسماء بلا أرقام).
+   - keepSourcedContacts: رقم في سطر [[CONTACT]] لم يظهر في نتائج أدوات هذا الدور يُحذف (يبقى الاسم والمنطقة) — لا رقم مخترع.
+   - REPLY_BLOCKS_NOTE: الصيغ للمزوّد، في آخر [البحث] من النظام (ثابت بين الأدوار فلا يكسر الكاش). */
+const CT_PHONE = '(?:هواتف|هاتف|جوالات|جوال|تلفونات|تلفون|موبايلات|موبايل|واتساب|واتس)';
+const CT_ENT = '(?:لل|ل|ال)?(?:مكاتب|مكتب|معارض|معرض|شركات|شركة|شركه|محلات|محل|وكلاء|وكالات|وكالة|وكيل|أصحاب|اصحاب|بائعين|بائع|ملاك|سماسرة|سمسار|وسطاء|وسيط|مطاعم|مطعم|عيادات|عيادة|مستشفيات|مستشفى|فنادق|فندق|ورش|ورشة|كراجات|كراج|مقاولين|مقاول|مدارس|مدرسة|صالونات|صالون|صيدليات|صيدلية|مندوبين|مندوب|موظفين|خدمة العملاء)';
+// نهاية الكلمة (بعد ضمير متّصل إن وُجد: «مكاتبهم»، «هواتفهم»): «اتصال» لا «اتصالات» (أرقام اتصالات المميّزة سوق أرقام)، و«محل» لا
+// «محلّية» — الحركات والشدّة من الحروف هنا
+const CT_PRON = '(?:ه|ها|هم|هن|كم|ك|نا)';
+const CT_END = CT_PRON + '?(?![\\u0621-\\u0670])';
+const CONTACT_ASK_RE = new RegExp('(?:[أا]رقام|رقم)\\s+(?:' + CT_PHONE + '\\s+)?(?:(?:لل|ل|ال)?(?:تواصل|اتصال)|' + CT_ENT + ')' + CT_END
+  + '|(?:[أا]رقام|رقم)\\s+' + CT_PHONE + CT_PRON + '(?![\\u0621-\\u0670])'
+  + '|' + CT_PHONE + '\\s+' + CT_ENT + CT_END
+  + '|(?:للتواصل|[أا]تواصل|نتواصل|[أا]تصل|نتصل)\\s+(?:مع|ب)'
+  + '|(?:contact|phone|telephone|whatsapp)\\s*(?:numbers?|no\\.?|details|info)', 'i');
+/** طلب أرقام تواصل مع جهة (مكتب، معرض، شركة…) — لا رقم مميّز ولا لوحة للبيع. */
+function isContactAsk(s) {
+  const t = String(s || '');
+  return !!t.trim() && t.length <= 400 && CONTACT_ASK_RE.test(t);
+}
+
+const CONTACT_LINE_RE = /^(\s*)\[\[CONTACT:\s*(.*)\]\]\s*$/i;
+const toAsciiDigits = (s) => String(s || '').replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660)).replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x6F0));
+const digitsOf = (s) => toAsciiDigits(s).replace(/\D/g, '');
+/** كلّ رقم في نصّ الأدوات أرقامًا صافية (المسافات والشرطات والأقواس داخله لا تقطعه). */
+function corpusNumbers(corpus) {
+  const out = [];
+  const re = /[+0-9٠-٩۰-۹][0-9٠-٩۰-۹ \-().]*[0-9٠-٩۰-۹]/g;
+  let m;
+  while ((m = re.exec(String(corpus || '')))) { const d = digitsOf(m[0]); if (d.length >= 3) out.push(d); }
+  return out;
+}
+/** الرقم ظهر في المصدر: آخر ٨ أرقام منه داخل رقم من المصدر (+971 و0 المحلّيّة سواء)؛ والقصير (٣–٦) يطابق رقمًا كاملًا أو آخره. */
+function phoneSourced(phone, nums) {
+  const d = digitsOf(phone);
+  if (d.length < 3) return false;
+  if (d.length >= 7) { const tail = d.slice(-8); return nums.some((n) => n.indexOf(tail) >= 0); }
+  return nums.some((n) => n === d || (n.length > d.length && n.slice(-d.length) === d));
+}
+/** نصّ المحادثة السابقة (رقم ظهر فيها — من بحث سابق أو كتبه المستخدم — ليس مخترعًا حين يُعاد في ردّ متابعة). */
+function textOfMessages(messages) {
+  return (Array.isArray(messages) ? messages : []).map((m) => {
+    const c = m && m.content;
+    if (typeof c === 'string') return c;
+    return Array.isArray(c) ? c.map((p) => (p && typeof p.text === 'string' ? p.text : '')).join(' ') : '';
+  }).join('\n').slice(-120000);
+}
+/** سطر [[CONTACT: الاسم | الرقم | المنطقة | المصدر]] رقمه ليس في نتائج أدوات الدور ← سطر بالاسم والمنطقة بلا رقم. ما داخل ``` كما هو. */
+function keepSourcedContacts(text, corpus) {
+  const s = String(text == null ? '' : text);
+  if (!/\[\[CONTACT:/i.test(s)) return text;
+  const nums = corpusNumbers(corpus);
+  let fence = false;
+  return s.split('\n').map((l) => {
+    if (/^\s*```/.test(l)) { fence = !fence; return l; }
+    const m = !fence && CONTACT_LINE_RE.exec(l);
+    if (!m) return l;
+    const f = m[2].split('|').map((x) => x.trim());
+    // الحقل قد يحمل رقمين («04 555 4321 / 800 2384»): كلّ رقم يُفحص وحده، وما لم يظهر يسقط ويبقى الباقي
+    const parts = String(f[1] || '').split(/\s*(?:\/|,|،|;|؛|\s(?:أو|او|or)\s)\s*/).filter((p) => digitsOf(p).length >= 3);
+    const ok = parts.filter((p) => phoneSourced(p, nums));
+    if (f[0] && ok.length === parts.length && ok.length) return l;
+    if (f[0] && ok.length) { const g = m[2].split('|'); g[1] = ' ' + ok.join(' / ') + ' '; return m[1] + '[[CONTACT: ' + g.join('|').trim() + ']]'; }
+    return f[0] ? m[1] + '• **' + f[0] + '**' + (f[2] ? ' — ' + f[2] : '') : '';
+  }).join('\n');
+}
+
+const REPLY_BLOCKS_NOTE = '\n\n[أرقام التواصل]: إذا طلب أرقام تواصل أو هواتف لجهات (مكاتب، معارض، شركات، محلّات، عيادات…) فاستدعِ web_search لا show_cards وابدأ عبارته بـ«أرقام تواصل»، '
+  + 'ثمّ اكتب كلّ جهة في سطر وحده بهذه الصيغة حرفيًّا: [[CONTACT: الاسم | الرقم | المنطقة | [اسم الموقع](رابط المصدر)]] — أسطر متتالية بلا ترقيم ولا نقاط، '
+  + 'تُرسم له بطاقات فيها الرقم بخطّ كبير وزرّ نسخه وشارة الموقع. الرقم كما ظهر في نتائج البحث حرفيًّا؛ رقم لم يظهر فيها لا تكتبه (يُحذف تلقائيًّا). '
+  + 'من ٣ إلى ٨ جهات، قبلها سطر واحد وبعدها سؤال متابعة واحد.'
+  + '\n[المصدر جنب كلّ صفّ]: جدول بائعين أو أسعار أو أرقام آخر عمود فيه «المصدر» وخليّته [اسم الموقع](الرابط) — تُرسم شارة بأيقونة الموقع.'
+  + '\n[الإعلانات]: طلب إعلانات بيع أو إيجار (معروض للبيع، مستعمل، إيجار) → show_cards بـkind="listing": تُرسم صفوفًا، الصورة بجانب العنوان والوصف والسعر ورابط الإعلانات.'
+  + '\n[المعنيان]: إن احتمل الطلب معنيين مختلفين تتغيّر بهما النتيجة كلّها (مثل «أرقام سيارات للبيع»: لوحات أم أرقام تواصل مع المعارض)، فأوّل سطر سؤال قصير يسمّي المعنيين، '
+  + 'ثمّ أجب فورًا في الردّ نفسه على أرجحهما («إذا قصدك …، هذي …»)، واختم بالمعنى الآخر زرًّا: [[OPT]]المعنى الآخر بصيغة طلب كامل[[/OPT]]. لا تسأل وتتوقّف.';
+
+module.exports = { isInfoAsk, wantsRichReply, RICH_REPLY_NOTE, withSocialGrace, SOCIAL_GRACE_MS, INFO_RE,
+  isContactAsk, CONTACT_ASK_RE, keepSourcedContacts, textOfMessages, REPLY_BLOCKS_NOTE };
