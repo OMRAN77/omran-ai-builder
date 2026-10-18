@@ -1192,16 +1192,20 @@
       <button type="button" class="btn iconBtn" id="religionCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
 
-    <div id="religionTabs" style="display:flex; gap:6px; overflow-x:auto; margin-top:12px; padding-bottom:4px;">
-      <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;flex:1;justify-content:center;border-radius:var(--r-pill);" data-i18n="religionTabVerse">🕌 تفسير آية</button>
-      <button type="button" class="btn religionTabBtn" data-tool="hadith" style="white-space:nowrap;flex:1;justify-content:center;border-radius:var(--r-pill);" data-i18n="religionTabHadith">📖 بحث حديث</button>
-      <button type="button" class="btn religionTabBtn" data-tool="dream" style="white-space:nowrap;flex:1;justify-content:center;border-radius:var(--r-pill);" data-i18n="religionTabDream">🌙 تفسير الأحلام</button>
+    <div id="religionTabs" style="display:flex; gap:6px; overflow-x:auto; margin:-10px -18px -18px; padding:16px 18px 22px;">
+      <!-- v-religion-tabs (المالك ١٧ أكتوبر: «التبويبات يصير نفس فسّر» — «نفس فسّر بالضبط»، بلا فرق للمختار): صنف «فسّر» نفسه. الصفّ يبقى
+           يتمرّر (الأسماء الطويلة بالإنجليزيّة والمليالم لا تتّسع في الجوّال)، وحشوه يتّسع لوهج «فسّر» فلا يُقصّ شريطًا رماديًّا؛ والهوامش
+           السالبة تُبقي موضعه ومسافاته كما كانت -->
+
+      <button type="button" class="btn primary religionTabBtn relOn" data-tool="verse" style="white-space:nowrap;flex:1;" data-i18n="religionTabVerse">🕌 تفسير آية</button>
+      <button type="button" class="btn primary religionTabBtn" data-tool="hadith" style="white-space:nowrap;flex:1;" data-i18n="religionTabHadith">📖 بحث حديث</button>
+      <button type="button" class="btn primary religionTabBtn" data-tool="dream" style="white-space:nowrap;flex:1;" data-i18n="religionTabDream">🌙 تفسير الأحلام</button>
     </div>
 
     <div style="margin-top:14px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" id="religionInputLabel" data-i18n="religionInputLabelVerse">اكتب الآية أو رقمها (مثال: البقرة 255)</label>
       <div class="mini-mic-field-row">
-      <textarea id="religionInput" rows="3" style="width:100%; resize:vertical;" data-i18n-placeholder="religionInputPlaceholderVerse" placeholder="مثال: سورة البقرة آية 255 (آية الكرسي)"></textarea>
+      <textarea id="religionInput" rows="1" style="width:100%;"data-i18n-placeholder="religionInputPlaceholderVerse" placeholder="مثال: سورة البقرة آية 255 (آية الكرسي)"></textarea>
       <button type="button" class="mini-mic-btn" data-target="religionInput" title="🎤" data-i18n-title="micTitle">🎤</button>
       </div>
     </div>
@@ -1209,7 +1213,7 @@
     <button type="button" class="btn primary" id="religionGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="religionGenerateBtn">✨ فسّر</button>
 
     <div id="religionStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
-    <div id="religionResult" style="display:none; margin-top:14px; white-space:pre-wrap; line-height:1.9; font-size: var(--fs-3); background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:var(--r-2); padding:14px;"></div>
+    <div id="religionResult" class="msg-text" style="display:none; margin-top:14px; white-space:pre-wrap; line-height:1.9; font-size: var(--fs-3); background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:var(--r-2); padding:14px;"></div>
   </div>
 </div>
 

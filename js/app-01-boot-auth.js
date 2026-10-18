@@ -1195,7 +1195,7 @@ try{
       });
       const data = await res.json();
       if(!res.ok || data.error){
-        errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+        errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-name-no-at: بلغة الواجهة
         if(mode === 'login' && res.status === 401 && username.indexOf('@') !== -1) googleLoginHint(); // v-google-login-help
         return;
       }
@@ -1422,7 +1422,7 @@ try{
         });
         const data = await res.json();
         if(!res.ok || data.error){
-          acctUsernameMsg.textContent = data.error || t2.acctGenericError;
+          acctUsernameMsg.textContent = (data.code === 'name_at' && t2.nameNoAt) || data.error || t2.acctGenericError; // v-name-no-at
           acctUsernameMsg.style.color = '#ef4444';
           return;
         }

@@ -1264,6 +1264,10 @@ html.mobile-ui[dir="rtl"] #constructionModal > div{padding-left:66px !important;
 html.mobile-ui[dir="ltr"] #constructionModal > div{padding-right:66px !important;}
 html.mobile-ui[dir="rtl"] #religionModal > div{padding-left:66px !important;}
 html.mobile-ui[dir="ltr"] #religionModal > div{padding-right:66px !important;}
+/* v-religion-field (المالك ١٧ أكتوبر: مكان الكتابة «مايكون مربع نفس البقيه ويكون علو نفس المستوى» — بلا أصفر): زوايا «فسّر» والتبويبات
+   (‎.btn‎) وحشوها، بلا لون جديد؛ الارتفاع من app-12-studios.js (ارتفاع «فسّر»، ويطول مع النصّ). والميكروفون دائرة بالارتفاع نفسه. */
+#religionModal #religionInput{display:block; box-sizing:border-box; border-radius:var(--r-2); padding:7px 16px; font:inherit; font-size:var(--fs-3); line-height:16px; resize:none; overflow-y:auto;}#religionModal .mini-mic-field-row{align-items:flex-start;}
+#religionModal .mini-mic-btn{margin-top:0; border-radius:50%;}
 html.mobile-ui[dir="rtl"] #emailAssistModal > div{padding-left:66px !important;}
 html.mobile-ui[dir="ltr"] #emailAssistModal > div{padding-right:66px !important;}
 html.mobile-ui[dir="rtl"] #videoMakerModal > div{padding-left:66px !important;}

@@ -178,6 +178,28 @@ const has = (a, ...seq) => a.join('\u0001').includes(seq.join('\u0001'));
   assert.ok(!/border(-top)?:1px solid rgba\(255,255,255/.test(src), 'بلا خطوط حدود في المحرّر');
 }
 
+// ── v3 مربّع «اختر الفيديو» بصورة المالك: النصّ HTML بالـ١٤ لغة فوق صورة بلا نصّ، والصورة ملفّ CSS يُحمَّل عند الفتح ──
+{
+  const L = ['ar', 'en', 'fr', 'es', 'tr', 'ru', 'hi', 'ur', 'bn', 'ne', 'fil', 'id', 'zh', 'ml'];
+  assert.deepEqual(Object.keys(V.PICK).sort(), L.slice().sort(), 'الـ١٤ لغة');
+  for (const l of L) { assert.equal(V.PICK[l].length, 3); assert.ok(V.PICK[l][2].includes('{n}'), 'الحدّ برقمه: ' + l); }
+  for (let i = 0; i < 3; i++) assert.ok(new Set(L.map((l) => V.PICK[l][i])).size >= 13, 'ترجمات لا نسخ: ' + i);
+  assert.equal(V.pickText('ar', 0, 80), 'اختر الفيديو');
+  assert.equal(V.pickText('ar', 1, 80), 'اختر فيديو من جهازك');
+  assert.equal(V.pickText('ar', 2, 80), 'حتى 80 ميغا');
+  assert.equal(V.pickText('xx', 2, 200), 'Up to 200 MB', 'لغة مجهولة = إنجليزيّ');
+  const src = fs.readFileSync(path.join(root, 'js/video-edit.js'), 'utf8');
+  assert.ok(src.includes("'/css/ved-art.css?v="), 'الصورة تُحمَّل عند الفتح');
+  assert.ok(src.includes('aspect-ratio:1280/585') && src.includes('container-type:inline-size'), 'مقاس صورة المالك والنصّ بعرضها');
+  assert.ok(/Q\('\.ved-pick'\)\.onclick/.test(src), 'المربّع كلّه يضغط');
+  const art = fs.readFileSync(path.join(root, 'css/ved-art.css'), 'utf8');
+  const m = art.match(/url\("data:image\/webp;base64,([A-Za-z0-9+/=]+)"\)/);
+  assert.ok(m, 'WebP مضمّنة');
+  const buf = Buffer.from(m[1], 'base64');
+  assert.equal(buf.toString('latin1', 0, 4) + buf.toString('latin1', 8, 12), 'RIFFWEBP');
+  assert.ok(buf.length > 60000 && buf.length < 260000, 'حجم معقول: ' + buf.length);
+}
+
 // ── /api/stt: segments:true يعيد المقاطع بتوقيتها، مرشّحة، بلا تصحيح LLM ──
 process.env.GROQ_API_KEY = 'test-groq-key';
 const usagePath = require.resolve('../api/_lib/_usage.js');

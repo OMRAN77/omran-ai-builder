@@ -472,6 +472,18 @@ body.maha-band-on #mahaSkyLayer{display:block;}
 #mahaSkyLayer .omSkyStar{position:absolute; width:var(--sz); height:var(--sz); background:#ffd76a; clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%); filter:drop-shadow(0 0 5px rgba(255,215,106,.85)); opacity:0; animation:omSkyTwinkle var(--dur) ease-in-out infinite var(--dly);}
 body.maha-band-on #omSkyLayer{z-index:100001;}
 @media (prefers-reduced-motion:reduce){ #mahaSkyLayer{display:none !important;} }
+/* v-maha-app (المالك: «اريدها تتحكم في التطبيق لي المشتركين»): نافذة تفتحها مها بصوتها تظهر كاملة — الشريط (99999) والنجوم
+   (99998) والجانبيّ واللوحة (100000) كانت تغطّي وسطها وجانبيها. ما دامت النافذة مفتوحة (body.maha-win) ينزل الشريط تحت كلّ
+   نوافذ الأدوات (أدناها شاشة الأدوات ٩٤٠) ويبقى الجانبيّ واللوحة فوقه كما في v-maha-band-under. تُزال بإغلاق النافذة أو المكالمة. */
+body.maha-band-on.maha-win #mahaCallScreen.maha-goldband{z-index:900 !important;}
+body.maha-band-on.maha-win #mahaSkyLayer{z-index:899;}
+body.maha-band-on.maha-win #sidebar, body.maha-band-on.maha-win #workarea{z-index:901;}
+body.maha-band-on.maha-win #omSkyLayer{z-index:902;}
+/* شاشة الأدوات تسكن داخل صندوق الكتابة (index.html) فترث إخفاءه أثناء المكالمة (v-maha-hide-composer) — تظهر حين تُفتح كزرّ «م» */
+#inputbar.maha-calling #sectionsToolsOverlay.show{visibility:visible;}
+/* v-maha-win-touch (المالك: «اللمس برّاها أو زر الإنهاء يقفلها مثل قبل»): «م» في مكانه يرتفع فوق نافذة مها (أعلاها ١٠٠٨٠) — كانت
+   النافذة تغطّيه، وأغلب النوافذ تملأ الشاشة فلا «برّا» تُلمس، فلا لمسة تُنهي المكالمة. */
+body.maha-band-on.maha-win #btnMahaDock{position:relative; z-index:10100;}
 
 /* v-video-write: الوضع الفاتح لمساعد الكتابة وشريحة المثال (نفس وصفة vmk-pill/vmk-card أعلاه) */
 html[data-mode="light"] #videoMakerModal details.vmk-ai{background:#ffffff;border-color:rgba(0,0,0,.10)}
