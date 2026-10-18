@@ -114,6 +114,7 @@
       }
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');
+      bar.id = 'ownerHealthBar'; // v-maha-dock-bar: ينزل تحت شريط «م» العلويّ أثناء نافذة مها (css/modules.css)
       /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): كانت
          position:fixed;top:0 بـz-index أعلى من الهيدر الثابت (٩٩٩٩٩ مقابل ٩٠٠)
          فتغطّي الهيدر بالكامل (شريط الأسهم وكل أزراره) خلفها بصمت — والمالك

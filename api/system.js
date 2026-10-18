@@ -28,6 +28,7 @@ function load(action) {
     case 'tv-resolve': return require('./_lib/tv-resolve.js');
     case 'ip-geo': return require('./_lib/ip-geo.js');
     case 'health': return require('./_lib/health.js');
+    case 'deploy-probe': return require('./_lib/deploy-probe.js'); // v-deploy-probe: /deploy-probe.txt ← التزام النشرة الحيّة
     case 'feedback': return require('./_lib/feedback.js');
     case 'revgeo': return require('./_lib/revgeo.js');
     case 'maps-key': return require('./_lib/maps-key.js'); // v-real3d: مفتاح المباني الحقيقيّة
