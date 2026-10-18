@@ -60,3 +60,16 @@ test('٣. الورك فلو لا يصرف إلّا بطلب: يدويّ، أو �
   assert.ok(p.includes("console.log((MODE === 'prod' ? 'MAHA_ROW ' + JSON.stringify(brief(res)) : 'MAHA_RESULT ' + JSON.stringify(res)))"));
   assert.ok(/^-----BEGIN PUBLIC KEY-----/.test(read('scripts/maha-probe-seal.pub.pem')), 'مفتاح الختم العامّ وحده في المستودع');
 });
+
+test('٤. طلبات الحارس (--requests): لهجات أخرى وصوت امرأة — كلّ طلب بصوته وتعليمته، والأهداف موجودة فعلًا', () => {
+  const G = JSON.parse(read('scripts/maha-dialect-guard.json'));
+  const targets = require(path.join(ROOT, 'api/_lib/maha-app.js')).OPEN_TARGETS;
+  assert.ok(G.length >= 4 && new Set(G.map((r) => r.id)).size === G.length && G.every((r) => r.id > 100), 'أرقام لا تتداخل مع الثلاثين');
+  for (const r of G) {
+    assert.ok(r.tts && r.tts.voice && /native/.test(r.tts.instructions), r.id + ' صوته');
+    (r.expect.open || []).forEach((x) => assert.ok(targets.includes(x), r.id + ' هدف ' + x));
+  }
+  assert.ok(G.some((r) => /woman/.test(r.tts.instructions)) && G.some((r) => /Saudi|Kuwaiti|Egyptian|Lebanese/.test(r.tts.instructions)));
+  const p = read('scripts/maha-dialect-probe.mjs');
+  assert.ok(p.includes("arg('requests', 'scripts/maha-dialect-requests.json')") && p.includes('await speech(reqItem.text, reqItem.tts)'));
+});

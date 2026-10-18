@@ -15,6 +15,9 @@ on:
       code_ref:
         description: 'كود مها من التزام آخر (realtime-session.js وmaha-app.js) — لقياس «قبل» ثانٍ بالمسبار نفسه؛ فارغ = هذا الفرع'
         default: ''
+      requests:
+        description: 'ملفّ طلبات آخر (مثل scripts/maha-dialect-guard.json) — فارغ = الثلاثون'
+        default: ''
   push:
     paths:
       - 'scripts/maha-dialect-probe.mjs'
@@ -72,13 +75,14 @@ jobs:
           # احتياط محلّيّ إن غاب الرمز: معالج الجلسة في العمليّة نفسها بمفتاح المستودع
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ONLY_INPUT: ${{ inputs.only }}
+          REQS: ${{ inputs.requests }}
           MAHA_SESSION_PATCH: ${{ inputs.patch }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         # [maha-probe:1,9] في رسالة الالتزام = هذه الطلبات وحدها (تجربة المسبار قبل الثلاثين)
         run: |
           ONLY="$ONLY_INPUT"
           if [ -z "$ONLY" ]; then ONLY=$(printf '%s' "$COMMIT_MSG" | grep -o '\[maha-probe:[0-9,]*\]' | head -1 | sed 's/.*://; s/\]//' || true); fi
-          node scripts/maha-dialect-probe.mjs --cache .maha-tts-cache --out maha-dialect-results.json ${ONLY:+--only "$ONLY"}
+          node scripts/maha-dialect-probe.mjs --cache .maha-tts-cache --out maha-dialect-results.json ${ONLY:+--only "$ONLY"} ${REQS:+--requests "$REQS"}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

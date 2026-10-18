@@ -30,21 +30,23 @@ const KEY = String(process.env.OPENAI_API_KEY || '').trim();
 const MODE = DRY ? 'local' : (TOKEN ? 'prod' : 'local');
 if (MODE === 'local' && !KEY) { console.error('✗ لا MAHA_TOKEN ولا OPENAI_API_KEY'); process.exit(2); }
 
-const REQUESTS = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'maha-dialect-requests.json'), 'utf8'))
+// --requests: ملفّ طلبات آخر (scripts/maha-dialect-guard.json: لهجات أخرى وصوت امرأة — حارس أنّ الإماراتيّ لم يُفرض على غير أهله)
+const REQUESTS = JSON.parse(fs.readFileSync(path.resolve(ROOT, arg('requests', 'scripts/maha-dialect-requests.json')), 'utf8'))
   .filter((r) => !ONLY.length || ONLY.includes(r.id));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── ١) الصوت: PCM ‎24kHz 16‑bit أحاديّ (صيغة الجلسة)، مخبّأ ببصمة النصّ والإعداد ──
 const TTS = { model: 'gpt-4o-mini-tts', voice: 'ash', instructions: 'You are a native Emirati man from Abu Dhabi talking casually to a voice assistant on the phone. Speak natural everyday Emirati Arabic exactly as written (pronounce چ as ch, ي in يديدة as y), relaxed conversational pace, no Fus-ha.' };
-async function speech(text) {
+async function speech(text, over) {
+  const tts = over ? { ...TTS, ...over } : TTS; // صوت الطلب نفسه (امرأة، لهجة أخرى) إن حدّده
   fs.mkdirSync(CACHE, { recursive: true });
-  const f = path.join(CACHE, crypto.createHash('sha256').update(JSON.stringify([TTS, text])).digest('hex').slice(0, 24) + '.pcm');
+  const f = path.join(CACHE, crypto.createHash('sha256').update(JSON.stringify([tts, text])).digest('hex').slice(0, 24) + '.pcm');
   if (fs.existsSync(f)) return fs.readFileSync(f);
   let pcm;
   if (MODE === 'prod') {
     let mp3 = null;
     for (let a = 1; a <= 3 && !mp3; a++) {
-      const r = await fetch(BASE + '/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...TTS, text, lang: 'ar', token: TOKEN }) });
+      const r = await fetch(BASE + '/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...tts, text, lang: 'ar', token: TOKEN }) });
       const b = Buffer.from(await r.arrayBuffer());
       if (r.ok && b.length > 2000) mp3 = b; else await sleep(3000 * a);
       if (!mp3 && a === 3) throw new Error('tts ' + r.status + ' ' + b.toString('utf8', 0, 160));
@@ -53,7 +55,7 @@ async function speech(text) {
   } else {
     const r = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST', headers: { Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...TTS, input: text, response_format: 'pcm' }),
+      body: JSON.stringify({ ...tts, input: text, response_format: 'pcm' }),
     });
     if (!r.ok) throw new Error('tts ' + r.status + ' ' + (await r.text()).slice(0, 200));
     pcm = Buffer.from(await r.arrayBuffer());
@@ -172,7 +174,7 @@ function fakeOutput(name, args) {
 // كالمايك المفتوح: الكلام بإيقاعه ثمّ صمت متّصل حتّى تنتهي المكالمة. التشغيلة الأولى (39155532362) أوقفت الصمت عند أوّل
 // speech_stopped، فوقفة عند فاصلة وسط الجملة («مها، أبا…») أنهت البثّ قبل أن تكمل الجملة — سبعة طلبات بلا ردّ لم تكن من مها.
 async function runOne(reqItem) {
-  const pcm = await speech(reqItem.text);
+  const pcm = await speech(reqItem.text, reqItem.tts);
   const speechEnd = speechEndMs(pcm);
   const sess = await mintSession();
   const { default: WebSocket } = await import('ws');
