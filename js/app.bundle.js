@@ -37258,17 +37258,40 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const phone = () => document.documentElement.classList.contains('mobile-ui');
     const room = () => Math.max(0, el.scrollWidth - el.clientWidth);
     const rtl = () => getComputedStyle(el).direction === 'rtl';
+    /* v-strip-wheel-latch (المالك ١٧ أكتوبر: «لو كنت أمرّر الصفحة ومرّ الماوس فوق الشريط، الصفحة تكمّل وما توقف»): بعد عجلة تمرّر
+       الصفحة لا يأخذ الشريط العجلة ما دام الدوران متّصلًا أو الصفحة تقدر تتحرّك في اتّجاهها — حتّى يتحرّك الماوس فوقه فعلًا (١٠px بعد
+       آخر دفعة) أو يُضغط أو تُفتح النافذة من جديد. المؤقّت وحده لا يكفي: Chrome/Edge يقفلان هدف العجلة ٥٠٠ms، وبعد أيّ توقّف أطول كان
+       الشريط يأكل ~١١ دفعة. حدث غير قابل للإلغاء في أوّل تسلسل يعني أنّ المتصفّح مرّر الصفحة قبل أن يصلنا: لا نحرّك الشريط معها؛ أمّا
+       بقيّة تسلسل بدأ على طرف الشريط (يصل غير قابل للإلغاء أيضًا) فكما في #1154. */
+    let lastPage = 0, armed = false, moved = 0, edgeAt = 0;
+    const scroller = () => { for(let n = el.parentElement; n; n = n.parentElement){ const oy = getComputedStyle(n).overflowY; if((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight) return n; } return document.scrollingElement; };
+    const canPage = (dy) => { const p = scroller(); return !!p && (dy > 0 ? p.scrollTop < p.scrollHeight - p.clientHeight - 1 : p.scrollTop > 0); };
+    const pageTurn = () => { lastPage = Date.now(); armed = true; moved = 0; };
+    window.addEventListener('wheel', (e) => {
+      if(phone() || e.ctrlKey || !el.offsetParent || el.contains(e.target) || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if(canPage(e.deltaY)) pageTurn();
+    }, { passive: true, capture: true });
+    el.addEventListener('pointermove', (e) => {
+      if(e.pointerType !== 'mouse' || !armed || Date.now() - lastPage < 150) return; // انجراف لحظة الدفعة لا يُحسب
+      moved += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0);
+      if(moved >= 10) armed = false; // حركة حقيقيّة فوق الشريط بعد آخر دفعة = يريد الشريط
+    });
     el.addEventListener('wheel', (e) => {
       if(phone() || e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if(!e.cancelable){
+        if(Date.now() - edgeAt >= 500){ pageTurn(); return; } // المتصفّح مرّر الصفحة قبل أن يصلنا
+        edgeAt = Date.now(); // بقيّة تسلسل بدأ على طرف الشريط
+      } else if(armed && (Date.now() - lastPage < 500 || canPage(e.deltaY))){ pageTurn(); return; } // الصفحة تُمرَّر — تكمل، والدوران المتّصل يبقى لها حتّى في آخرها؛ الحركة تفكّه كقفل المتصفّح
       const max = room(); if(!max) return;
       const pos = Math.abs(el.scrollLeft); // RTL: ‎0 ← -max‎ في المتصفّحات الحديثة
-      if(e.deltaY > 0 ? pos >= max - 1 : pos <= 1) return;
+      if(e.deltaY > 0 ? pos >= max - 1 : pos <= 1){ edgeAt = Date.now(); return; }
       e.preventDefault();
       const d = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * el.clientWidth : e.deltaY);
       el.scrollLeft += rtl() ? -d : d;
     }, { passive: false });
     let drag = null, dragEnd = 0;
     el.addEventListener('pointerdown', (e) => {
+      if(e.pointerType === 'mouse') armed = false;
       if(phone() || e.pointerType !== 'mouse' || e.button !== 0 || !room()) return;
       e.preventDefault(); // لا تحديد نصّ أثناء السحب — الضغطة نفسها تبقى
       drag = { x: e.clientX, left: el.scrollLeft, moved: false };
@@ -37285,10 +37308,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     window.addEventListener('pointercancel', end);
     el.addEventListener('click', (e) => { if(Date.now() - dragEnd < 350){ e.stopPropagation(); e.preventDefault(); } }, true);
     el.addEventListener('dragstart', (e) => { if(!phone()) e.preventDefault(); });
+    return () => { armed = false; };
   }
-  stripDesktopScroll(tabsWrap);
+  const stripUnlatch = stripDesktopScroll(tabsWrap);
 
   btnOpen.onclick = () => {
+    if(stripUnlatch) stripUnlatch(); // v-strip-wheel-latch: تمرير زيارة سابقة لا يقرّر عن الشريط الآن
     modal.style.display = 'flex';
     closeHeaderMenu();
     setFeature(feature);
