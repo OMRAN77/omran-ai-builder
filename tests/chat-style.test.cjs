@@ -143,9 +143,9 @@ check(chatServer.includes('quietSocialTurn ? [lastUser] : messages'), 'الخا�
 // ═══ الأدوات والبحث ═══
 group('الأدوات والبحث');
 
-check(chatServer.includes('tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined'), // v-providers-like-agent: أدوات المالك له دائمًا · v-tokens-owner-tools: القائمة لا تتبدّل (الصور تُرفض عند التنفيذ — tokens-share)
+check(chatServer.includes('tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia, __callPaid) : undefined'), // v-providers-like-agent: أدوات المالك له دائمًا · v-tokens-owner-tools: القائمة لا تتبدّل (الصور تُرفض عند التنفيذ — tokens-share)
       'الأدوات تُمرَّر خلف toolTurn لا دائمًا'); // v-img-ask: دور الاستيضاح بلا أدوات الصورة؛ v-provider-errors: أداة المالك تُضاف له وحده
-check(chatServer.includes("const toolsFor = (owner, noMedia) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).map((t) => (owner && t.name === 'read_github' ? require('./provider-level.js').ownerReadTool(t) : t)).concat(owner ? OWNER_TOOLS : []);"), 'أدوات المالك تُضاف له وحده ولا تُعرض لغيره (ووصف read_github الموسَّع له وحده — v-claude-code-level E5)');
+check(chatServer.includes("const toolsFor = (owner, noMedia, callPaid) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).map((t) => (owner && t.name === 'read_github' ? require('./provider-level.js').ownerReadTool(t) : t)).concat(owner ? OWNER_TOOLS : []).concat((owner || callPaid) ? CALL_TOOLS : []);"), 'أدوات المالك تُضاف له وحده ولا تُعرض لغيره (ووصف read_github الموسَّع له وحده — v-claude-code-level E5)');
 // v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»
 // — قِيس بالمِجسّ ردٌّ بلا بحث يطلب التاريخ. القرار الآن للنموذج في كل دور غير اجتماعي.
 check(chatServer.includes('const toolTurn = !quietSocialTurn && (!__analyzeDoc || __ownerReq);'), 'كل دور غير اجتماعي (عدا تحليل مستند لغير المالك) يحمل الأدوات والتاريخ والموقع'); // v-providers-like-agent

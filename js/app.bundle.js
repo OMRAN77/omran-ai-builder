@@ -3930,7 +3930,7 @@ const I18N = {
     imgUnchanged: "⚠️ ما تنفّذ التعديل: الصورة رجعت نفسها بدون تغيير، فما عرضتها ولا انحسبت عليك. وضّح وش يتغيّر بالضبط أو اكتب الطلب بصيغة ثانية.", /* v-img-honest */
     /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ حوّلتها إلى {fmt} — نفس الصورة بدون أي تغيير، وجاهزة للحفظ.", imgConvertSame: "الصورة أصلًا بصيغة {fmt} — هذي هي جاهزة للحفظ.", imgConvertAsk: "أيّ صيغة تبيها؟ PNG (أنقى جودة) أو JPG (أصغر حجمًا) أو WEBP (أخفّ للمواقع). اكتب مثلًا: حوّلها jpg", imgConvertGuess: "(فهمت «{word}» على أنّها {fmt} — إذا تبي صيغة ثانية قل: حوّلها jpg)", imgConvertFail: "تعذّر تحويل الصيغة في هذا المتصفّح — جرّب PNG أو JPG.",
     /* v-cards: بطاقات الخيارات */ stCards: "🛍️ يجمع لك خيارات منظّمة…", trCards: "عرضتُ {n} بطاقات لـ«{q}»", trCardsNone: "لا بطاقات لـ«{q}»", cardsOpen: "افتح", cardsPriceSite: "السعر في الموقع" /* v-google-cards */,
-    /* v-call-agent: بطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (app-42) */ callAgentTitle: "مكالمة بالنيابة عنك", callAgentGoal: "الهدف", callAgentMax: "حدّ المكالمة {n} دقائق", callAgentFreeOwner: "مجانيّة للمالك", callAgentUserPrice: "للمستخدم: {land} نقطة/دقيقة أرضي · {mob} موبايل", callAgentPrice: "{n} نقطة لكلّ دقيقة", callAgentTry: "🎧 جرّب عليّ", callAgentDial: "📞 اتّصل فعليًّا", callAgentEnd: "إنهاء المكالمة", callAgentCancel: "إلغاء المكالمة", callAgentDisclosure: "يعرّف المساعد بنفسه أنّه آليّ في أوّل المكالمة، ولا يُسجَّل الصوت.", callAgentConfirm: "سيتّصل المساعد الآن فعليًّا بـ«{b}». متابعة؟", callAgentTrialTitle: "مكالمة تجريبيّة", callAgentTrialHint: "أنت تمثّل «{b}» — قل «ألو» ويبدأ المساعد.", callAgentStConnecting: "يجهّز المكالمة…", callAgentStMic: "بانتظار إذن المايك…", callAgentStLive: "المكالمة جارية", callAgentStQueued: "يبدأ الاتّصال…", callAgentStRinging: "يرنّ…", callAgentStCompleted: "انتهت المكالمة", callAgentStBusy: "الخطّ مشغول", callAgentStNoAnswer: "لم يردّ أحد", callAgentStFailed: "تعذّرت المكالمة", callAgentStCanceled: "أُلغيت المكالمة", callAgentStDropped: "انقطعت المكالمة", callAgentStTimeout: "توقّفت المتابعة — راجعها لاحقًا", callAgentWhoAgent: "المساعد", callAgentWhoCallee: "الطرف الآخر", callAgentOcBooked: "تمّ الحجز", callAgentOcNotAvailable: "غير متاح", callAgentOcNeedsUser: "يحتاج قرارك", callAgentOcDeclined: "اعتذر الطرف الآخر", callAgentOcFailed: "لم تنجح", callAgentDetails: "المؤكَّد", callAgentFollowUp: "الخطوة التالية", callAgentDuration: "المدّة", callAgentResultHead: "📞 نتيجة المكالمة مع «{b}»: {s}", callAgentResultNone: "انتهت المكالمة بلا نتيجة مسجّلة.", callAgentErrOwner: "متاحة للمالك فقط حاليًّا.", callAgentErrExpired: "انتهت صلاحيّة هذه البطاقة — اطلب المكالمة من جديد.", callAgentErrNoKey: "الخدمة غير مهيّأة بعد.", callAgentErrRelay: "الاتّصال الفعليّ غير مفعّل بعد — استعمل «جرّب عليّ».", callAgentErrNoPhone: "لا يوجد رقم لهذه الجهة.", callAgentErrBadPhone: "الرقم غير مسموح: أرقام الإمارات فقط، بلا طوارئ ولا أرقام خدمات.", callAgentErrBusy: "عندك مكالمة جارية — انتظر حتّى تنتهي.", callAgentErrHours: "الاتّصال الفعليّ متاح من ٨ صباحًا إلى ١٠ مساءً بتوقيت الإمارات.", callAgentErrGeneric: "تعذّر بدء المكالمة — حاول مرّة ثانية.", callAgentErrMaha: "أنهِ مكالمة {voice} أوّلًا.", callAgentErrActive: "في مكالمة جارية الآن.", callAgentErrNoRtc: "هذا المتصفّح لا يدعم المكالمات الصوتيّة.", callAgentErrCancel: "تعذّر الإلغاء — حاول مرّة ثانية.", /* v-call-agent-r2 */ callAgentPlace: "الرقم من الخرائط", callAgentCaller: "يتّصل نيابةً عن", callAgentShare: "قد يذكر للجهة", callAgentErrTrialBusy: "أنهِ المكالمة التجريبيّة أوّلًا.", stCall: "📞 يجهّز كرت الاتّصال…",
+    /* v-call-agent: بطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (app-42) */ callAgentTitle: "مكالمة بالنيابة عنك", callAgentGoal: "الهدف", callAgentMax: "حدّ المكالمة {n} دقائق", callAgentFreeOwner: "مجانيّة للمالك", callAgentUserPrice: "للمستخدم: {land} نقطة/دقيقة أرضي · {mob} موبايل", callAgentPrice: "{n} نقطة لكلّ دقيقة", callAgentTry: "🎧 جرّب عليّ", callAgentDial: "📞 اتّصل فعليًّا", callAgentEnd: "إنهاء المكالمة", callAgentCancel: "إلغاء المكالمة", callAgentDisclosure: "يعرّف المساعد بنفسه أنّه آليّ في أوّل المكالمة، ولا يُسجَّل الصوت.", callAgentConfirm: "سيتّصل المساعد الآن فعليًّا بـ«{b}». متابعة؟", callAgentTrialTitle: "مكالمة تجريبيّة", callAgentTrialHint: "أنت تمثّل «{b}» — قل «ألو» ويبدأ المساعد.", callAgentStConnecting: "يجهّز المكالمة…", callAgentStMic: "بانتظار إذن المايك…", callAgentStLive: "المكالمة جارية", callAgentStQueued: "يبدأ الاتّصال…", callAgentStRinging: "يرنّ…", callAgentStCompleted: "انتهت المكالمة", callAgentStBusy: "الخطّ مشغول", callAgentStNoAnswer: "لم يردّ أحد", callAgentStFailed: "تعذّرت المكالمة", callAgentStCanceled: "أُلغيت المكالمة", callAgentStDropped: "انقطعت المكالمة", callAgentStTimeout: "توقّفت المتابعة — راجعها لاحقًا", callAgentWhoAgent: "المساعد", callAgentWhoCallee: "الطرف الآخر", callAgentOcBooked: "تمّ الحجز", callAgentOcNotAvailable: "غير متاح", callAgentOcNeedsUser: "يحتاج قرارك", callAgentOcDeclined: "اعتذر الطرف الآخر", callAgentOcFailed: "لم تنجح", callAgentDetails: "المؤكَّد", callAgentFollowUp: "الخطوة التالية", callAgentDuration: "المدّة", callAgentResultHead: "📞 نتيجة المكالمة مع «{b}»: {s}", callAgentResultNone: "انتهت المكالمة بلا نتيجة مسجّلة.", callAgentErrOwner: "متاحة للمالك فقط حاليًّا.", callAgentErrExpired: "انتهت صلاحيّة هذه البطاقة — اطلب المكالمة من جديد.", callAgentErrNoKey: "الخدمة غير مهيّأة بعد.", callAgentErrRelay: "الاتّصال الفعليّ غير مفعّل بعد — استعمل «جرّب عليّ».", callAgentErrNoPhone: "لا يوجد رقم لهذه الجهة.", callAgentErrBadPhone: "الرقم غير مسموح: أرقام الإمارات فقط، بلا طوارئ ولا أرقام خدمات.", callAgentErrBusy: "عندك مكالمة جارية — انتظر حتّى تنتهي.", callAgentErrHours: "الاتّصال الفعليّ متاح من ٨ صباحًا إلى ١٠ مساءً بتوقيت الإمارات.", callAgentErrGeneric: "تعذّر بدء المكالمة — حاول مرّة ثانية.", callAgentErrMaha: "أنهِ مكالمة {voice} أوّلًا.", callAgentErrActive: "في مكالمة جارية الآن.", callAgentErrNoRtc: "هذا المتصفّح لا يدعم المكالمات الصوتيّة.", callAgentErrCancel: "تعذّر الإلغاء — حاول مرّة ثانية.", /* v-call-agent-r2 */ callAgentPlace: "الرقم من الخرائط", callAgentCaller: "يتّصل نيابةً عن", callAgentShare: "قد يذكر للجهة", callAgentErrTrialBusy: "أنهِ المكالمة التجريبيّة أوّلًا." /* v-call-agent-paid */, callAgentErrPlan: "المكالمة الآليّة للمشتركين بباقة سارية.", callAgentErrPoints: "رصيدك لا يكفي — المكالمة تحجز {n} نقطة.", callAgentHold: "يُحجز {n} نقطة قبل المكالمة ويُرجع الباقي حسب المدّة، والمكالمة التي لا يُردّ عليها مجّانيّة.", callAgentTrialConfirm: "المكالمة التجريبيّة بنفس سعر المكالمة الحقيقيّة. متابعة؟", stCall: "📞 يجهّز كرت الاتّصال…",
     aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
@@ -5159,7 +5159,7 @@ const I18N = {
     imgUnchanged: "⚠️ The edit wasn't applied: the picture came back unchanged, so I didn't show it and it wasn't counted against you. Say exactly what should change, or phrase it differently.", /* v-img-honest */
     /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ Converted to {fmt} — the same picture, unchanged, ready to save.", imgConvertSame: "The picture is already {fmt} — here it is, ready to save.", imgConvertAsk: "Which format do you want? PNG (best quality), JPG (smaller file) or WEBP (lighter for websites). For example: convert to jpg", imgConvertGuess: "(I read «{word}» as {fmt} — for another format say: convert to jpg)", imgConvertFail: "This browser couldn't convert the format — try PNG or JPG.",
     /* v-cards */ stCards: "🛍️ Gathering organized options…", trCards: "Showed {n} cards for “{q}”", trCardsNone: "No cards for “{q}”", cardsOpen: "Open", cardsPriceSite: "Price on site" /* v-google-cards */,
-    /* v-call-agent */ callAgentTitle: "Call on your behalf", callAgentGoal: "Goal", callAgentMax: "Call limit: {n} min", callAgentFreeOwner: "Free for the owner", callAgentUserPrice: "For users: {land} points/min landline · {mob} mobile", callAgentPrice: "{n} points per minute", callAgentTry: "🎧 Try it on me", callAgentDial: "📞 Call for real", callAgentEnd: "End call", callAgentCancel: "Cancel call", callAgentDisclosure: "The assistant says it is automated at the start of the call. No audio is recorded.", callAgentConfirm: "The assistant will now really call “{b}”. Continue?", callAgentTrialTitle: "Trial call", callAgentTrialHint: "You play “{b}”. Say “hello” and the assistant begins.", callAgentStConnecting: "Setting up the call…", callAgentStMic: "Waiting for microphone permission…", callAgentStLive: "Call in progress", callAgentStQueued: "Starting the call…", callAgentStRinging: "Ringing…", callAgentStCompleted: "Call ended", callAgentStBusy: "Line busy", callAgentStNoAnswer: "No answer", callAgentStFailed: "Call failed", callAgentStCanceled: "Call cancelled", callAgentStDropped: "Call dropped", callAgentStTimeout: "Stopped following — check back later", callAgentWhoAgent: "Assistant", callAgentWhoCallee: "Other side", callAgentOcBooked: "Booked", callAgentOcNotAvailable: "Not available", callAgentOcNeedsUser: "Needs your decision", callAgentOcDeclined: "Declined", callAgentOcFailed: "Did not succeed", callAgentDetails: "Confirmed", callAgentFollowUp: "Next step", callAgentDuration: "Duration", callAgentResultHead: "📞 Call result with “{b}”: {s}", callAgentResultNone: "The call ended with no recorded result.", callAgentErrOwner: "Available to the owner only for now.", callAgentErrExpired: "This card has expired. Ask for the call again.", callAgentErrNoKey: "The service is not set up yet.", callAgentErrRelay: "Real calls are not enabled yet. Use “Try it on me”.", callAgentErrNoPhone: "There is no number for this place.", callAgentErrBadPhone: "Number not allowed: UAE numbers only, no emergency or service numbers.", callAgentErrBusy: "You already have a call in progress. Wait for it to end.", callAgentErrHours: "Real calls are available from 8 AM to 10 PM UAE time.", callAgentErrGeneric: "Could not start the call. Try again.", callAgentErrMaha: "End the call with {voice} first.", callAgentErrActive: "A call is already in progress.", callAgentErrNoRtc: "This browser does not support voice calls.", callAgentErrCancel: "Could not cancel. Try again.", /* v-call-agent-r2 */ callAgentPlace: "Number from the map", callAgentCaller: "On behalf of", callAgentShare: "May tell them", callAgentErrTrialBusy: "End the trial call first.", stCall: "📞 Preparing the call card…",
+    /* v-call-agent */ callAgentTitle: "Call on your behalf", callAgentGoal: "Goal", callAgentMax: "Call limit: {n} min", callAgentFreeOwner: "Free for the owner", callAgentUserPrice: "For users: {land} points/min landline · {mob} mobile", callAgentPrice: "{n} points per minute", callAgentTry: "🎧 Try it on me", callAgentDial: "📞 Call for real", callAgentEnd: "End call", callAgentCancel: "Cancel call", callAgentDisclosure: "The assistant says it is automated at the start of the call. No audio is recorded.", callAgentConfirm: "The assistant will now really call “{b}”. Continue?", callAgentTrialTitle: "Trial call", callAgentTrialHint: "You play “{b}”. Say “hello” and the assistant begins.", callAgentStConnecting: "Setting up the call…", callAgentStMic: "Waiting for microphone permission…", callAgentStLive: "Call in progress", callAgentStQueued: "Starting the call…", callAgentStRinging: "Ringing…", callAgentStCompleted: "Call ended", callAgentStBusy: "Line busy", callAgentStNoAnswer: "No answer", callAgentStFailed: "Call failed", callAgentStCanceled: "Call cancelled", callAgentStDropped: "Call dropped", callAgentStTimeout: "Stopped following — check back later", callAgentWhoAgent: "Assistant", callAgentWhoCallee: "Other side", callAgentOcBooked: "Booked", callAgentOcNotAvailable: "Not available", callAgentOcNeedsUser: "Needs your decision", callAgentOcDeclined: "Declined", callAgentOcFailed: "Did not succeed", callAgentDetails: "Confirmed", callAgentFollowUp: "Next step", callAgentDuration: "Duration", callAgentResultHead: "📞 Call result with “{b}”: {s}", callAgentResultNone: "The call ended with no recorded result.", callAgentErrOwner: "Available to the owner only for now.", callAgentErrExpired: "This card has expired. Ask for the call again.", callAgentErrNoKey: "The service is not set up yet.", callAgentErrRelay: "Real calls are not enabled yet. Use “Try it on me”.", callAgentErrNoPhone: "There is no number for this place.", callAgentErrBadPhone: "Number not allowed: UAE numbers only, no emergency or service numbers.", callAgentErrBusy: "You already have a call in progress. Wait for it to end.", callAgentErrHours: "Real calls are available from 8 AM to 10 PM UAE time.", callAgentErrGeneric: "Could not start the call. Try again.", callAgentErrMaha: "End the call with {voice} first.", callAgentErrActive: "A call is already in progress.", callAgentErrNoRtc: "This browser does not support voice calls.", callAgentErrCancel: "Could not cancel. Try again.", /* v-call-agent-r2 */ callAgentPlace: "Number from the map", callAgentCaller: "On behalf of", callAgentShare: "May tell them", callAgentErrTrialBusy: "End the trial call first." /* v-call-agent-paid */, callAgentErrPlan: "Automated calls are for users with an active plan.", callAgentErrPoints: "Not enough points — the call holds {n} points.", callAgentHold: "{n} points are held before the call; the rest comes back based on its length. Unanswered calls are free.", callAgentTrialConfirm: "The trial call costs the same as a real call. Continue?", stCall: "📞 Preparing the call card…",
     aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
@@ -6346,7 +6346,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=759'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */
+    sc.src = 'i18n/' + lg + '.js?v=760'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -48176,7 +48176,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 /* ───────── v-call-agent: بطاقة «اتّصل بالنيابة عنّي» ومكالمتها (أمر المالك ١٧ أكتوبر: الوكيل يتّصل بالعيادة أو الصالون أو
- * المطعم ويحجز عنه — للمالك وحده الآن) ─────────
+ * المطعم ويحجز عنه — المالك مجّانًا، والمشترك بباقة سارية بالنقاط: v-call-agent-paid) ─────────
  * الخادم (أداة المالك) يبثّ حدث cards بنوع call فيُحفظ في رسالة المساعد (m.cards.call) ويُرسم هنا بدل شبكة البطاقات — سطر
  * واحد أوّل window.omranRenderCards في app-37. زرّان:
  *  «🎧 جرّب عليّ» — جلسة صوت حيّة مستقلّة في المتصفّح (call-session): المساعد «يتّصل» بالمالك وهو يمثّل الجهة.
@@ -48194,11 +48194,18 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
  * v-call-agent-cut (المالك: «الصوت يقطع لكن المحادثة الي هي الكتابة موجوده»): نصّ الجملة يصل كاملًا قبل صوتها، فإن قاطعها كلام
  * الطرف الآخر (المقاطعة في الخادم تمسح ما لم يُسمع) بقيت كاملة على الشاشة والصوت مقطوع. الآن سطر الردّ المقطوع يُعلَّم « …»
  * (بمعرّف الردّ، في أيّ ترتيب وصل النصّ والقطع)، و«قل ألو» لا يظهر قبل أن يُفتح المايك، وكلّ تجربة بدأت ترسل عند نهايتها أثرًا
- * واحدًا بلا نصّ (diag:call-trial) يفرّق بين مقاطعة وصدى وشبكة. */
+ * واحدًا بلا نصّ (diag:call-trial) يفرّق بين مقاطعة وصدى وشبكة.
+ * v-call-agent-paid (المالك ١٨ أكتوبر: «الاتصال الالي مايشتغل لي المستخدمين» ← المشتركين بباقة، والتجربة بنفس السعر): لغير
+ * المالك سعر الدقيقة وسطر الحجز على البطاقة، وتأكيد بلغته فيه السعر قبل التجربة والاتّصال الفعليّ (الطلب يحمل confirmed فلا يظهر
+ * تأكيد الخادم العربيّ ٤٢٨)، والتجربة ترسل نهايتها call-trial-end (keepalive، ويُعاد إرسالها حتّى يقبلها الخادم) ليُرجع ما زاد عن
+ * الدقائق المبدوءة. plan_required وpoints_insufficient برسالتين بالـ١٤ لغة. المراجعة: معرّف التجربة يولّده العميل ويحفظه في الكرت قبل
+ * الطلب (c.trialEnds لكلّ تجربة على حدة)، والتحميل يمرّ على كلّ الكروت (sweep) لنهايات معلّقة ومكالمات لم تُحسم تسويتها، والاستطلاع
+ * يكمل بعد «انتهت» ما دامت التسوية لم تُحسم (billing: null). */
 (function(){
   'use strict';
-  var PTS_LAND = 50, PTS_MOB = 45;           // سعر المستخدم لاحقًا (المالك مجّانًا) — من العقد
+  var PTS_LAND = 50, PTS_MOB = 45;           // سعر الدقيقة لغير المالك (المالك مجّانًا) — من العقد؛ الكرت يحمل ptsPerMin من الخادم
   var POLL_MS = 2000, POLL_MAX_MS = 10 * 60 * 1000;
+  var SETTLE_WAIT_MS = 15 * 60 * 1000; // أوّل billing: null يمدّ المتابعة مرّة: مطالبة تسوية عالقة تُعاد بعد ٦ دقائق عند الخادم (CLAIM_STALE_MS) — المراجعة الرابعة
   var SILENT_OPEN_MS = 3000;                  // صمت ٣ث بعد الجاهزيّة ← المساعد يبادر
   var SETUP_MAX_MS = 20000;                   // تجهيز أطول من هذا = فشل صريح لا انتظار بلا نهاية
   var END_GRACE_MS = 1200, END_MAX_MS = 8000; // end_call: ننتظر انتهاء جملة الوداع، وبحدّ أقصى
@@ -48215,7 +48222,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     declined: 'callAgentOcDeclined', no_answer: 'callAgentStNoAnswer', failed: 'callAgentOcFailed' };
   var ERR = { owner_only: 'callAgentErrOwner', proposal_not_found: 'callAgentErrExpired', no_key: 'callAgentErrNoKey',
     relay_not_configured: 'callAgentErrRelay', no_phone: 'callAgentErrNoPhone', bad_phone: 'callAgentErrBadPhone',
-    busy: 'callAgentErrBusy', outside_hours: 'callAgentErrHours' };
+    busy: 'callAgentErrBusy', outside_hours: 'callAgentErrHours', plan_required: 'callAgentErrPlan', points_insufficient: 'callAgentErrPoints' };
 
   var trial = null;   // جلسة التجربة الحيّة الوحيدة في هذا التبويب
   var polls = {};     // callId ← متابعة الاتّصال الفعليّ
@@ -48223,6 +48230,9 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   var notes = {};     // id ← ملاحظة عابرة على البطاقة (خطأ أو رفض) — لا تُحفظ
   var starting = {};  // id ← بدء اتّصال فعليّ جارٍ (ضغطتان سريعتان = طلب واحد)
   var settling = {};  // id ← حسم تجربة معلّقة بعد إعادة التحميل مجدول (مرّة واحدة)
+  var ending = {};    // معرّف التجربة ← إرسال نهايتها جارٍ (لا طلبان معًا)
+  var tried = {};     // معرّف التجربة ← محاولات إرسال نهايتها في هذه الصفحة (ثانية بعد مهلة، والباقي في التحميل التالي)
+  var inflight = {};  // معرّف التجربة ← وعد إرسال نهايتها الجاري (تنتظره «جرّب» قبل طلب جلسة جديدة)
   var MARK = 'omranCallTrialLive'; // id التجربة الجارية في هذا المتصفّح: التحميل التالي يعرف أنّها انقطعت هنا لا أنّها حيّة في جهاز آخر
 
   /* ── أدوات صغيرة ── */
@@ -48243,6 +48253,11 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   function mmss(sec){ sec = Math.max(0, Math.round(Number(sec) || 0)); var m = Math.floor(sec / 60), s = sec % 60; return m + ':' + (s < 10 ? '0' : '') + s; }
   function isOwner(){ try{ return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); }catch(e){ return false; } }
   function token(){ try{ return (typeof authGet === 'function' && authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+  /* v-call-agent-paid: سعر الدقيقة وسقف المكالمة كما يحجزهما الخادم (quote: الدقائق × السعر) */
+  function perMin(c){ return Number(c.ptsPerMin) || (c.kind === 'mobile' ? PTS_MOB : PTS_LAND); }
+  function capMin(c){ return Math.max(1, Math.min(10, Math.round(Number(c.maxMin) || 4))); }
+  function priceLines(c){ return fill(tt('callAgentPrice'), { n: perMin(c) }) + '\n' + fill(tt('callAgentHold'), { n: perMin(c) * capMin(c) }); }
+  function paidBody(b){ return isOwner() ? b : Object.assign({ confirmed: true }, b); } // العميل سأل بلغته وفيه السعر — لا تأكيد ثانٍ من الخادم
   function mahaBusy(){
     try{ return (typeof mahaCallActive !== 'undefined' && !!mahaCallActive) || (typeof mahaCallStarting !== 'undefined' && !!mahaCallStarting); }
     catch(e){ return false; }
@@ -48348,6 +48363,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       + '.omCallMeta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:12.5px;}'
       + '.msg .omCallMeta span{color:var(--muted,#9aa3b2) !important;}'
       + '.msg .omCallMeta .omCallFree{color:#10b981 !important;font-weight:700;}'
+      + '.msg .omCallMeta .omCallCost{font-weight:700;}'
       + '.msg .omCallPrice{font-size:11.5px;line-height:1.5;color:var(--muted,#9aa3b2) !important;}'
       + '.omCallState{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;}'
       + '.msg .omCallState span{color:var(--text,#eee) !important;}'
@@ -48494,17 +48510,17 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       ['share', 'omCallShare', 'callAgentShare', clip(c.details, 500)]].forEach(function(f){
       part(v, f[0], f[3] ? tt(f[2]) + '\u0001' + f[3] : '', function(){ return labeled(f[1], tt(f[2]), f[3]); });
     });
-    var maxMin = Math.max(1, Math.min(10, Math.round(Number(c.maxMin) || 4)));
+    var maxMin = capMin(c);
     var owner = isOwner();
     var metaTxt = [fill(tt('callAgentMax'), { n: maxMin }),
-      owner ? tt('callAgentFreeOwner') : fill(tt('callAgentPrice'), { n: Number(c.ptsPerMin) || (c.kind === 'mobile' ? PTS_MOB : PTS_LAND) })];
+      owner ? tt('callAgentFreeOwner') : fill(tt('callAgentPrice'), { n: perMin(c) }), owner ? 'omCallFree' : 'omCallCost'];
     part(v, 'meta', JSON.stringify(metaTxt), function(){
       var meta = el('div', 'omCallMeta');
       meta.appendChild(el('span', '', metaTxt[0]));
-      meta.appendChild(el('span', 'omCallFree', metaTxt[1]));
+      meta.appendChild(el('span', metaTxt[2], metaTxt[1])); // v-call-agent-paid: سعر المشترك بلون الكرت لا أخضر «مجّانيّة»
       return meta;
     });
-    var priceTxt = owner ? fill(tt('callAgentUserPrice'), { land: PTS_LAND, mob: PTS_MOB }) : '';
+    var priceTxt = owner ? fill(tt('callAgentUserPrice'), { land: PTS_LAND, mob: PTS_MOB }) : fill(tt('callAgentHold'), { n: perMin(c) * maxMin });
     part(v, 'price', priceTxt, function(){ return el('div', 'omCallPrice', priceTxt); });
 
     var vs = viewState(c);
@@ -48591,6 +48607,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     fillCard(wrap, c);
     resume(c);
     settleTrial(c);
+    if(c.id && c.trialEnds && Object.keys(c.trialEnds).length) setTimeout(function(){ trialEnd(c.id, true); }, 0); // v-call-agent-paid: نهايات لم يؤكّدها الخادم بعد
     return wrap;
   };
 
@@ -48607,7 +48624,62 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     }catch(e){ __swallow(e, 'call-agent:net'); return { ok: false, status: 0, data: {} }; }
   }
   function errKey(r){ var e = r && r.data && r.data.error; return ERR[e] || 'callAgentErrGeneric'; }
+  function errText(r){ var k = errKey(r); return k === 'callAgentErrPoints' ? fill(tt(k), { n: Math.max(0, Math.round(Number(r.data.needed) || 0)) }) : tt(k); }
   function note(id, key){ notes[id] = key ? tt(key) : ''; refresh(id); }
+
+  /* v-call-agent-paid: نهاية تجربة مدفوعة ← الخادم يُرجع ما زاد عن الدقائق المبدوءة. كلّ تجربة بمعرّفها في c.trialEnds ({ معرّف: ثوانٍ،
+   * و-1 = لم تنتهِ بعد}) يولّده العميل ويحفظه قبل طلب الجلسة — ردّ ضائع أو تجربة ثانية على الكرت نفسه لا يُسقط نهاية أخرى (المراجعة).
+   * keepalive يعبر إغلاق الصفحة، ومحاولة ثانية بعد ١٠ ث، ثمّ التحميل التالي يمرّ على كلّ الكروت (sweep). يُحذف ما أقرّه الخادم وحده. */
+  var END_RETRY_MS = 10000;
+  function newTrialId(){
+    var hex = '';
+    try{ var b = new Uint8Array(9); crypto.getRandomValues(b); for(var i = 0; i < b.length; i++) hex += (b[i] < 16 ? '0' : '') + b[i].toString(16); }
+    catch(e){ __swallow(e, 'call-agent:trial-id'); hex = ''; for(var k = 0; k < 18; k++) hex += Math.floor(Math.random() * 16).toString(16); }
+    return 'ct' + hex;
+  }
+  function trialEnd(id, freshOnly){ // freshOnly: رسم الكرت والمرور بعد التحميل يرسلان ما لم يُجرَّب في هذه الصفحة وحده — الإعادة لمؤقّتها
+    var c = find(id);
+    var map = (c && c.trialEnds && typeof c.trialEnds === 'object') ? c.trialEnds : null;
+    if(!map || !token()) return Promise.resolve();
+    var ps = [];
+    Object.keys(map).forEach(function(tid){
+      if(ending[tid] && inflight[tid]){ ps.push(inflight[tid]); return; }
+      if(!/^ct[a-f0-9]{18}$/.test(tid) || ending[tid] || (tried[tid] || 0) >= (freshOnly ? 1 : 2)) return;
+      var sec = Number(map[tid]);
+      // «-1» = لم تنتهِ في الصفحة التي بدأتها — قد تكون حيّة في تبويب أو جهاز آخر (ساعته غير ساعتنا): لا تُرسل من هنا أبدًا (المراجعة
+      // الثالثة: إرسالها «صفرًا» كان يردّ حجز تجربة جارية، و«بالسقف» يسبق نهايتها الحقيقيّة الأقصر). الحجز يبقى كما هو حتّى تصل نهايتها
+      // من صفحتها، وقفل التجربة ينتهي بمدّته. بعد عمر سجلّ الخادم (٧ أيّام) تُمحى محلّيًّا.
+      if(sec < 0){
+        if(!(trial && trial.trialId === tid) && now() - (Number(c.startedAt) || 0) > 8 * 86400000){ var mm = Object.assign({}, find(id).trialEnds || {}); delete mm[tid]; patch(id, { trialEnds: mm }); }
+        return;
+      }
+      ending[tid] = true;
+      tried[tid] = (tried[tid] || 0) + 1;
+      var fin; inflight[tid] = new Promise(function(r){ fin = r; }); ps.push(inflight[tid]);
+      var done = function(ok, gone404){
+        delete ending[tid]; delete inflight[tid]; fin();
+        if(ok){ var x = find(id), m = Object.assign({}, (x && x.trialEnds) || {}); delete m[tid]; patch(id, { trialEnds: m }); persist(); }
+        else if(gone404) tried[tid] = 2; // تجربة حساب آخر (متصفّح مشترك): تبقى لصاحبها، ولا إعادة في هذه الصفحة
+        else if(tried[tid] < 2) setTimeout(function(){ trialEnd(id); }, END_RETRY_MS);
+      };
+      try{
+        fetch('/api/system?action=call-trial-end', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token(), trialId: tid, durationSec: Math.max(0, Math.round(sec) || 0) }) })
+          .then(function(r){ done(!!r.ok, r.status === 404); }, function(e){ __swallow(e, 'call-agent:trial-end'); done(false); });
+      }catch(e){ __swallow(e, 'call-agent:trial-end'); done(false); }
+    });
+    return Promise.all(ps);
+  }
+  /* كلّ كروت الاتّصال في كلّ المحادثات (لا المفتوحة وحدها) */
+  function eachCallCard(fn){
+    var ps = (typeof state !== 'undefined' && state && Array.isArray(state.projects)) ? state.projects : [];
+    ps.forEach(function(p){
+      (p && Array.isArray(p.messages) ? p.messages : []).forEach(function(m){
+        var c = m && m.cards && m.cards.kind === 'call' && m.cards.call;
+        if(c && c.id) fn(c);
+      });
+    });
+  }
 
   /* ── التجربة في المتصفّح ── */
   function gone(s){ return s.ended || trial !== s; }
@@ -48841,6 +48913,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var dur = s.readyAt ? Math.round((now() - s.readyAt) / 1000) : 0;
     sendDiag(s, st, dur);
     patch(s.id, { state: s.outcome ? 'completed' : st, endedAt: now(), durationSec: dur, transcript: s.lines.slice(), outcome: s.outcome });
+    if(s.trialId){ var te = Object.assign({}, (find(s.id) || {}).trialEnds || {}); te[s.trialId] = dur; patch(s.id, { trialEnds: te }); trialEnd(s.id); } // v-call-agent-paid
     notes[s.id] = err ? (/^callAgent[A-Z]\w*$/.test(err) ? tt(err) : clip(err, 240)) : '';
     var pushed = s.readyAt ? pushResult(s.id) : false; // مكالمة بدأت فعلًا = رسالة نتيجة واحدة؛ فشل التجهيز ملاحظة على البطاقة فقط
     if(!s.unloading) unmark(s.id); // إغلاق الصفحة: العلامة تبقى ليُكمل التحميل التالي ما لم يصل حفظه
@@ -48858,11 +48931,12 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var micErr = (typeof mahaMicPreflight === 'function') ? await mahaMicPreflight() : null;
     if(gone(s)) return;
     if(micErr){ finish(s, 'failed', micErr); return; }
+    if(s.pre){ await s.pre; if(gone(s)) return; } // نهايات سابقة تُقبل أوّلًا فيُفكّ قفل التجربة قبل طلب الجديدة
     setState(s, 'connecting');
     later(s, function(){ if(!s.readyAt) finish(s, 'failed', 'callAgentErrGeneric'); }, SETUP_MAX_MS);
-    var r = await post('call-session', { id: s.id });
-    if(gone(s)) return;
-    if(!r.ok || !r.data.clientSecret){ finish(s, 'failed', errKey(r)); return; }
+    var r = await post('call-session', s.trialId ? paidBody({ id: s.id, trialId: s.trialId }) : paidBody({ id: s.id })); // v-call-agent-paid: المعرّف محفوظ قبل الطلب
+    if(gone(s)) return; // أُلغيت أثناء التجهيز: finish سجّل نهايتها (٠ ث) وأرسلها
+    if(!r.ok || !r.data.clientSecret){ finish(s, 'failed', errText(r)); return; }
     var srvMax = Number(r.data.maxSec);
     if(srvMax > 0) s.maxSec = Math.min(s.maxSec, srvMax);
     if(r.data.brief && r.data.brief.business) s.business = clip(r.data.brief.business, 80);
@@ -48920,17 +48994,37 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     if(trial){ note(id, 'callAgentErrActive'); return; }
     if(mahaBusy()){ note(id, 'callAgentErrMaha'); return; }
     if(typeof RTCPeerConnection !== 'function' || typeof navigator === 'undefined' || !navigator.mediaDevices){ note(id, 'callAgentErrNoRtc'); return; }
-    // داخل الضغطة نفسها: فتح الصوت لسياسة التشغيل التلقائيّ في الجوّال، وإيقاف قراءة ردّ جارية
+    // داخل الضغطة نفسها: فتح الصوت لسياسة التشغيل التلقائيّ في الجوّال (قبل التأكيد — نافذته قد تستهلك مهلة الضغطة)، وإيقاف قراءة ردّ جارية
     try{ if(typeof mahaUnlockAudio === 'function') mahaUnlockAudio(); }catch(e){ __swallow(e, 'call-agent:unlock'); }
-    try{ if(typeof stopAllSpeaking === 'function') stopAllSpeaking(); }catch(e){ __swallow(e, 'call-agent:tts-stop'); }
     var audio = null;
     try{ audio = new Audio(); audio.autoplay = true; audio.setAttribute('playsinline', ''); }catch(e){ __swallow(e, 'call-agent:audio'); }
+    // v-call-agent-paid: غير المالك يرى سعر التجربة وحجزها ويوافق قبل أيّ طلب (التجربة بنفس سعر الاتّصال الفعليّ)
+    if(!isOwner()){
+      var okPaid = false;
+      try{ okPaid = (typeof confirm === 'function') ? !!confirm(tt('callAgentTrialConfirm') + '\n\n' + priceLines(c)) : false; }
+      catch(e){ okPaid = false; __swallow(e, 'call-agent:trial-confirm'); }
+      if(!okPaid) return;
+    }
+    try{ if(typeof stopAllSpeaking === 'function') stopAllSpeaking(); }catch(e){ __swallow(e, 'call-agent:tts-stop'); }
     notes[id] = '';
     var s = trial = { id: id, business: clip(c.business, 80), ended: false, pc: null, dc: null, stream: null, audio: audio, ov: null,
       timers: [], lines: [], outcome: null, heard: false, speaking: false, endPending: false, endTimer: null, wd: null,
       readyAt: 0, t0: now(), byResp: {}, cutResp: {}, played: {}, lastRid: '', clr: 0, cutN: 0, diagHead: [], diag: [], diagCut: false, rtp: null, fnSeen: {}, fnNames: {}, maxSec: Math.max(30, Math.min(600, Math.round(Number(c.maxMin) || 4) * 60)), halt: null, haltRes: null };
     s.halt = new Promise(function(res){ s.haltRes = res; });
     patch(id, { transport: 'trial', state: 'mic', callId: '', outcome: null, transcript: [], startedAt: now(), endedAt: 0, durationSec: 0, resultPushed: false });
+    if(!isOwner()){ // v-call-agent-paid: معرّف التجربة في الكرت قبل الطلب (-1 = لم تنتهِ) — persist تحت يحفظه قبل أيّ شبكة
+      // نهايات سابقة لم تُقبل بعد تُعاد الآن، من كلّ الكروت لا هذا وحده (قفل «تجربة حيّة واحدة» للمستخدم كلّه — المراجعتان الثانية
+      // والثالثة)، وطلب الجلسة ينتظرها حتّى ٣ ث فلا يسبقها إلى القفل
+      var pend = [];
+      eachCallCard(function(x){
+        var te = x.trialEnds || {}, any = false;
+        Object.keys(te).forEach(function(k){ if(Number(te[k]) >= 0){ any = true; if(tried[k] >= 2) tried[k] = 1; } });
+        if(any) pend.push(trialEnd(x.id));
+      });
+      if(pend.length) s.pre = Promise.race([Promise.all(pend), new Promise(function(r){ setTimeout(r, 3000); })]);
+      s.trialId = newTrialId();
+      var te0 = Object.assign({}, c.trialEnds || {}); te0[s.trialId] = -1; patch(id, { trialEnds: te0 });
+    }
     mark(id);
     overlayOpen(s);
     persist(); refresh(id);
@@ -48948,6 +49042,13 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     if(polls[callId] !== p) return;
     var r = await post('call-status', { callId: callId });
     if(polls[callId] !== p) return;
+    var cur = find(p.id);
+    if(!cur || cur.callId !== callId){ // المراجعة الثانية: الكرت انتقل لمكالمة أو تجربة أحدث — هذه تُسوّى بصمت ولا تكتب فوقه
+      var still = r.ok && r.data.ended && Object.prototype.hasOwnProperty.call(r.data, 'billing') && r.data.billing === null;
+      if((r.ok && r.data.ended && !still) || r.status === 403 || r.status === 404 || now() >= p.deadline){ stopPoll(callId); return; }
+      p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS * 5);
+      return;
+    }
     if(r.ok){
       var d = r.data, c0 = find(p.id) || {}, upd = { durationSec: Math.max(0, Math.round(Number(d.durationSec) || 0)) };
       if(PHONE_STATES[d.state]) upd.state = d.state;
@@ -48960,13 +49061,22 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       var shown = changed || upd.durationSec !== (Number(c0.durationSec) || 0);
       if(shown) patch(p.id, upd);
       if(d.ended){
-        stopPoll(callId);
-        var c = find(p.id);
-        if(c && ACTIVE[String(c.state)]) patch(p.id, { state: 'completed' }); // انتهت ولم يصل وصف حالتها
-        patch(p.id, { endedAt: now() });
+        // v-call-agent-paid (المراجعة): billing: null = انتهت ولم تُحسم تسويتها (عطل عابر) ← النتيجة تظهر، والاستطلاع يكمل أبطأ حتّى تُحسم
+        var unsettled = Object.prototype.hasOwnProperty.call(d, 'billing') && d.billing === null;
+        if(!unsettled) stopPoll(callId);
+        var c = find(p.id), dirty = shown;
+        if(c && ACTIVE[String(c.state)]){ patch(p.id, { state: 'completed' }); dirty = true; } // انتهت ولم يصل وصف حالتها
+        if(!c || !c.endedAt){ patch(p.id, { endedAt: now() }); dirty = true; }
+        if(d.billing){ patch(p.id, { billed: true }); dirty = true; }
         var pushed = pushResult(p.id);
-        persist(); refresh(p.id);
+        if(dirty || pushed) persist(); // ردّ «لم تُحسم» مطابق لا يحفظ المحادثات ويزامنها كلّ ١٠ ث (المراجعة الخامسة)
+        refresh(p.id);
         if(pushed) rerender();
+        if(unsettled){
+          if(!p.ext){ p.ext = true; p.deadline = Math.max(p.deadline, now() + SETTLE_WAIT_MS); }
+          if(now() < p.deadline){ p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS * 5); return; }
+          stopPoll(callId);
+        }
         return;
       }
       if(changed) persist();
@@ -48974,17 +49084,22 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     } else if(r.status === 403 || r.status === 404){
       stopPoll(callId);
       patch(p.id, { state: 'failed', endedAt: now() });
-      notes[p.id] = tt(errKey(r));
+      notes[p.id] = errText(r);
       persist(); refresh(p.id);
       return;
     }
     if(now() >= p.deadline){
+      var cx = find(p.id);
+      // المراجعة الخامسة: عطل عابر عند الحدّ (عودة بعد إغلاق أو تجميد التبويب، والمكالمة انتهت عند الخادم) لا يحكم «انتهت المهلة» من ردّ
+      // واحد فتضيع نتيجة مكالمة مدفوعة — مهلة سماح واحدة دقيقتين
+      if(!r.ok && !p.grace && !(cx && cx.endedAt)){ p.grace = true; p.deadline = now() + 2 * 60000; p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS * 5); return; }
       stopPoll(callId);
-      patch(p.id, { state: 'timeout' });
+      if(!(cx && cx.endedAt)) patch(p.id, { state: 'timeout' }); // انتهت وتسويتها معلّقة: لا تصير «انتهت المهلة»
       persist(); refresh(p.id);
       return;
     }
-    p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS);
+    var ce = find(p.id);
+    p.timer = setTimeout(function(){ pollOnce(p, callId); }, (ce && ce.endedAt) || p.grace ? POLL_MS * 5 : POLL_MS); // انتهت وتنتظر تسويتها: عطل عابر لا يستطلع كلّ ثانيتين
   }
   /* العقد v2: التأكيد يعرض كلّ ما قد يقوله المساعد للجهة — اسم المحلّ من الخرائط، والاسم الذي يتّصل به، والهدف، والتفاصيل */
   function confirmText(c){
@@ -48994,6 +49109,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     if(c.goal) rows.push(tt('callAgentGoal') + ': ' + clip(c.goal, 300));
     if(c.details) rows.push(tt('callAgentShare') + ': ' + clip(c.details, 500));
     var head = fill(tt('callAgentConfirm'), { b: clip(c.business, 80) });
+    if(!isOwner()) rows.push(priceLines(c)); // v-call-agent-paid: السعر والحجز في التأكيد نفسه
     return rows.length ? head + '\n\n' + rows.join('\n') : head;
   }
   async function startPhone(id){
@@ -49006,12 +49122,17 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     if(!ok) return;
     starting[id] = true; notes[id] = ''; refresh(id);
     var r;
-    try{ r = await post('call-start', { id: id }); }
+    try{ r = await post('call-start', paidBody({ id: id })); }
     finally{ starting[id] = false; }
-    if(!r.ok || !r.data.callId){ notes[id] = tt(errKey(r)); refresh(id); return; }
+    if(!r.ok && r.data.callId && r.data.unsettled){ // رفض الخدمة ولم يُحسم ردّ الحجز: الكرت يحمل رقمها فيسوّيها سؤال الحالة والمرور بعد التحميل
+      patch(id, { transport: 'phone', callId: clip(r.data.callId, 80), state: 'failed', outcome: null, transcript: [], startedAt: now(), endedAt: now(), durationSec: 0, resultPushed: true, billed: false });
+      persist();
+      settlePhone(find(id)).catch(function(e){ __swallow(e, 'call-agent:refused-settle'); });
+    }
+    if(!r.ok || !r.data.callId){ notes[id] = errText(r); refresh(id); return; }
     var callId = clip(r.data.callId, 80), at = now();
     patch(id, { transport: 'phone', callId: callId, state: PHONE_STATES[r.data.state] ? r.data.state : 'queued', outcome: null,
-      transcript: [], startedAt: at, endedAt: 0, durationSec: 0, resultPushed: false });
+      transcript: [], startedAt: at, endedAt: 0, durationSec: 0, resultPushed: false, billed: false });
     persist(); refresh(id);
     schedulePoll(id, callId, at + POLL_MAX_MS);
   }
@@ -49021,6 +49142,27 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     notes[id] = r.ok ? '' : tt('callAgentErrCancel'); // الحالة النهائيّة تصل مع الاستطلاع التالي
     refresh(id);
   }
+
+  /* v-call-agent-paid (المراجعة): بعد التحميل يُمرّ على كلّ كروت الاتّصال في كلّ المحادثات — لا المفتوحة وحدها: نهايات تجارب لم يقبلها
+   * الخادم، ومكالمات حقيقيّة انتهت ولم تُحسم تسويتها (سؤال حالة واحد يسوّيها عند الخادم)، وجارية تُستأنف متابعتها. */
+  async function settlePhone(c){
+    var callId = c.callId, r = await post('call-status', { callId: callId });
+    var cur = find(c.id);
+    if(!cur || cur.callId !== callId) return; // الكرت انتقل لمكالمة أحدث أثناء السؤال — لا تُعلَّم هي مسوّاة
+    if((r.ok && r.data.billing) || r.status === 404){ patch(c.id, { billed: true }); persist(); }
+  }
+  function sweep(){
+    try{
+      if(!token()) return;
+      eachCallCard(function(c){
+        if(c.trialEnds && Object.keys(c.trialEnds).length) trialEnd(c.id, true);
+        if(c.transport !== 'phone' || !c.callId || polls[c.callId]) return;
+        if(ACTIVE[String(c.state)]) resume(c);
+        else if(!c.billed && !isOwner()) settlePhone(c).catch(function(e){ __swallow(e, 'call-agent:sweep-phone'); });
+      });
+    }catch(e){ __swallow(e, 'call-agent:sweep'); }
+  }
+  setTimeout(sweep, 4000); setTimeout(sweep, 30000);
 
   /* مها تسأل قبل أن تفتح المايك: تجربة جارية = لا مكالمة ثانية فوقها (الاتّصال الفعليّ لا يمسّ المايك) */
   window.callAgentBusy = function(){ return !!trial; };

@@ -38,7 +38,7 @@ function load(action) {
     case 'osm': return require('./_lib/osm.js'); // v-city-life: شوارع وأرصفة للزحمة والمشاة (مخبّأة في الشبكة)
     case 'secrets': return require('./_lib/secrets.js'); // v-secret-vault: خزنة أسرار المالك
     case 'cc': return require('./_lib/cc.js'); // v-cc-bridge: Claude Code الخام للمالك عبر جسره
-    case 'call-session': case 'call-start': case 'call-status': case 'call-cancel': return require('./_lib/call-agent.js'); // v-call-agent: الوكيل يتّصل بالمحلّ (للمالك)
+    case 'call-session': case 'call-start': case 'call-status': case 'call-cancel': case 'call-trial-end': return require('./_lib/call-agent.js'); // v-call-agent: الوكيل يتّصل بالمحلّ (المالك مجّانًا، والمشترك بالنقاط — v-call-agent-paid)
     default: return null;
   }
 }
