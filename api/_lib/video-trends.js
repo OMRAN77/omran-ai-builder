@@ -736,10 +736,13 @@ function sceneParams(key, params) {
   if (!t || !t.scenes || !t.scenes.length) return p;
   const sp = splitScenes(p.extra);
   if (sp.scenes.length) { p.scenes = sp.scenes; p.extra = sp.rest; }
+  /* v-chat-trend-scenes: مقطع المحادثة الواحد — قصّة بلا علامات ولا مشاهد هي المشهد نفسه، لا توجيهًا على مشهد الصباح */
+  else if (p.oneClip && !(Array.isArray(p.scenes) && p.scenes.length) && clean(p.extra)) { p.scenes = [p.extra]; p.extra = ''; }
   return p;
 }
-/** يبني أمر الفيديو لترند معيّن. params: {name, text, sceneIndex, scenes, extra, hasImage, people, bg}
+/** يبني أمر الفيديو لترند معيّن. params: {name, text, sceneIndex, scenes, oneClip, extra, hasImage, people, bg}
  *  scenes (ترند المشاهد): نصّ المستخدم لكلّ مشهد، أو رقم مشهد افتراضيّ لم يُعدَّل (فيبقى أمره الإنجليزيّ).
+ *  oneClip (المحادثة): مشاهد المستخدم كلّها لقطات في مقطع واحد (sceneCount ١) — بلاها المشهد الأوّل الافتراضيّ.
  *  opts.cap (من الخادم وحده): سقف الأمر الذي تُحسب منه مساحة «اكتب اللي تبيه» — veo-create يمرّر حدّه الحقيقيّ. */
 function buildTrendPrompt(key, params, opts) {
   const t = TRENDS[key];
@@ -755,7 +758,18 @@ function buildTrendPrompt(key, params, opts) {
     const scenes = list.length ? list : t.scenes;
     n = scenes.length;
     const i = Math.max(0, Math.min(n - 1, parseInt(p.sceneIndex, 10) || 0));
-    const scene = scenes[i].replace(/\{name\}/g, name || 'the child').replace(/[\s.。]+$/, ''); /* القالب يضع النقطة بعده */
+    const fill = (s) => s.replace(/\{name\}/g, name || 'the child').replace(/[\s.。]+$/, ''); /* القالب يضع النقطة بعده */
+    let scene = fill(scenes[i]);
+    /* v-chat-trend-scenes (المالك، الخيار «أ»): المحادثة تصنع مقطعًا واحدًا ٨ ثوانٍ — مشاهد المستخدم كلّها لقطات فيه بالترتيب
+       بدل «scene 1 of n» الذي يصنع أوّلها وحده. حصّة كلّ مشهد من ١٠٠٠ حرف فلا يُقصّ آخرها ولا قفل الذيل. بلا مشاهد مستخدم
+       = المشهد الأوّل الافتراضيّ كما كان. */
+    if (p.oneClip && list.length) {
+      const share = Math.min(400, Math.floor(1000 / n));
+      const shots = list.map((s) => fill(s.slice(0, share)));
+      scene = n > 1 ? 'one short story told in ' + n + ' consecutive shots within this single clip, in this exact order — '
+        + shots.map((s, k) => 'shot ' + (k + 1) + ': ' + s).join('; ') : shots[0];
+      n = 1;
+    }
     /* مشهد واحد: «scene 1 of 1» لا معنى لها؛ وبلا اسم: «child named ,» تصير «child» */
     prompt = prompt.replace(n > 1 ? '{i}' : ' {i} of {n}', n > 1 ? String(i + 1) : '').replace('{n}', String(n))
       .replace('{scene}', () => scene).replace(' named {name}', name ? ' named {name}' : '')
