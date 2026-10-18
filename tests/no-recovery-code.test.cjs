@@ -45,7 +45,7 @@ for (const f of langs) {
   new vm.Script(src, { filename: f });
 }
 
-assert.ok(R('index.html').includes('/js/partials-core.js?v=665'), 'وسم partials-core رُفع إلى 657');
+assert.ok(R('index.html').includes('/js/partials-core.js?v=666'), 'وسم partials-core رُفع إلى 657');
 assert.ok(R('js/app-04-i18n-state.js').includes("'.js?v=754'"), 'وسم ملفّات اللغات رُفع إلى 733 بعد حذف المفاتيح');
 assert.ok(!R('scripts/e2e-prod.mjs').includes('authRecoveryModal'), 'المسبار لا ينتظر النافذة');
 console.log('✓ no-recovery-code: لا رمز استرجاع في العميل ولا الخادم ولا الحزمة ولا الـ١٤ لغة');
