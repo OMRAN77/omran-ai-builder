@@ -104,3 +104,15 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs .tab.tab:not(#om3-a):is(.active,:hover){background:transparent !important; background-image:none !important; box-shadow:none !important; border-color:transparent !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs .tab.tab svg{transition:filter .2s, stroke .2s;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs .tab.tab:not(#om3-a):is(.active,:hover) svg{color:#fff !important; stroke:#fff !important; filter:drop-shadow(0 0 6px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(255,255,255,.55));}
+/* المالك: «✕ الموجود بعده شيل عنه المستطيل» — زرّ طيّ اللوحة (#waCollapseBtn) وزرّ خيارات الملفّ (⋮ #btnTabsMenu) في الشريط نفسه: بلا صندوق أبدًا، والمرور وميض أبيض على الأيقونة كالتبويبات */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs :is(#waCollapseBtn,#btnTabsMenu),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs :is(#waCollapseBtn,#btnTabsMenu):is(:hover,:focus-visible){background:transparent !important; background-image:none !important; border:0 !important; box-shadow:none !important; outline:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs :is(#waCollapseBtn,#btnTabsMenu) svg{transition:filter .2s, stroke .2s, color .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs :is(#waCollapseBtn,#btnTabsMenu):is(:hover,:focus-visible) svg{color:#fff !important; stroke:#fff !important; filter:drop-shadow(0 0 6px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(255,255,255,.55));}
+/* ✕ الحقيقيّ الذي قصده المالك: أزرار شريط عارض الكود (#omranCodeViewerBar: تحرير/حفظ/إغلاق) تُبنى في app-05 بحدّ أبيض مكتوب داخل العنصر
+   وخلفيّة عند المرور (onmouseenter) — الـ!important يغلب النمط المضمّن: بلا مستطيل أبدًا، والمرور وميض أبيض على الأيقونة */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranCodeViewerBar button,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranCodeViewerBar button:is(:hover,:focus-visible){background:transparent !important; border-color:transparent !important; box-shadow:none !important; outline:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranCodeViewerBar button svg{transition:filter .2s, stroke .2s, color .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranCodeViewerBar button:is(:hover,:focus-visible){color:#fff !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranCodeViewerBar button:is(:hover,:focus-visible) svg{color:#fff !important; stroke:#fff !important; filter:drop-shadow(0 0 6px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(255,255,255,.55));}
