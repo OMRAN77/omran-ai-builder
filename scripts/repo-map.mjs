@@ -32,7 +32,7 @@ const LIB_PURPOSE = {
   'oa-direct': 'المسارات المباشرة (OpenAI، Groq، Kimi، Gemini، Perplexity) وترجمة البروتوكول',
   'free-chain': 'سلاسل الاحتياط لغير المالك وكشف «موديل غير موجود»',
   'tier': 'الباقات وتوجيهها والدور الصعب (isStrongTurn)',
-  'github-read': 'read_github: شجرة، ملفّ بأسطر، بحث محتوى (الدالّة الحاوية والمستدعون)، التزامات وفروق',
+  'github-read': 'read_github: شجرة، ملفّ بأسطر، بحث (الحاوية والمستدعون)، التزامات وفروق',
   'github-edit': 'edit_github برقع حرفيّة، merge_github، WORK_NOTE (قواعد العمل لكلّ مزوّد)',
   'github-write': 'write_github للملفّات والصور الجديدة وطلب السحب والحزمة التلقائيّة',
   'github-manage': 'manage_github: status · deploy · ci · test · shots · runs · run_log · close…',

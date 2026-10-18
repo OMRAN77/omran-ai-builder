@@ -478,6 +478,7 @@ try{
   // entry point: shows "🔑 Login" for guests (opens the auth overlay) and
   // "🚪 Logout" once signed in (clears the session).
   function doLogout(){
+    emailConfirmAlert(null); // v-unverified-email: تنبيه الحساب لا يبقى بعد خروجه
     authRemove('aiapp_auth_token');
     authRemove('aiapp_username');
     localStorage.removeItem('aiapp_avatar');
@@ -1185,7 +1186,7 @@ try{
         });
         const data = await res.json();
         if(!res.ok || data.error){
-          errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+          errBox.textContent = (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-unverified-email
           return;
         }
         infoMsg.textContent = data.message || (isEn ? 'Check your email' : 'تحقق من بريدك');
@@ -1245,7 +1246,7 @@ try{
       });
       const data = await res.json();
       if(!res.ok || data.error){
-        errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-name-no-at: بلغة الواجهة
+        errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-name-no-at · v-unverified-email: بلغة الواجهة
         if(mode === 'login' && res.status === 401 && username.indexOf('@') !== -1) googleLoginHint(); // v-google-login-help
         return;
       }
@@ -1254,6 +1255,7 @@ try{
         localStorage.removeItem('aiapp_pending_ref');
       }
       onAuthed(data.username, data.avatar);
+      emailConfirmAlert(data.emailToConfirm); // v-unverified-email
     } catch(e){
       errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
     } finally {
@@ -1442,6 +1444,59 @@ try{
       }
     };
   }
+  /* v-unverified-email (أمر المالك ١٨ أكتوبر: «أي حساب إيميله غير متأكَّد، أول ما يدخل يطلع له تنبيه «أكّد إيميلك» وزرّ يرسل
+     الكود»): الخادم يعيد emailToConfirm مع الدخول ومع التحقّق عند كلّ فتح ما دام البريد غير مؤكَّد. الزرّ يفتح «حسابي» ويرسل الرمز
+     من مسار «حفظ» نفسه (purpose:'change') فتظهر خانة الرمز هناك. ✕ يخفيه لهذه الجلسة. بعد ٣٠ يومًا بلا تأكيد يُشال البريد فلا تنبيه. */
+  function emailConfirmAlert(email){
+    const old = $('#emailConfirmBar');
+    if(old) old.remove();
+    email = String(email || '').trim();
+    if(!email || !acctEmail || !acctEmailSaveBtn) return;
+    try{ if(sessionStorage.getItem('omran_email_confirm_x') === email) return; }catch(e){ __swallow(e, 'email-confirm:read'); }
+    const t2 = curT();
+    let top = 8;
+    try{ const h = document.querySelector('header'); if(h) top = Math.max(0, h.getBoundingClientRect().bottom) + 8; }catch(e){ __swallow(e, 'email-confirm:top'); }
+    const bar = document.createElement('div');
+    bar.id = 'emailConfirmBar';
+    bar.setAttribute('role', 'alert');
+    bar.style.cssText = 'position:fixed; top:' + top + 'px; left:50%; transform:translateX(-50%); z-index:9000; width:min(460px, calc(100vw - 24px)); box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--th-dlg2, #1c1c20); color:var(--text, #eee); border:1px solid var(--th-line2, rgba(255,255,255,.16)); border-radius:var(--r-3, 14px); box-shadow:var(--sh-2, 0 8px 24px rgba(0,0,0,.45));';
+    const txt = document.createElement('div');
+    txt.style.cssText = 'flex:1; min-width:0; line-height:1.4;';
+    const title = document.createElement('div');
+    title.style.fontWeight = '700';
+    title.textContent = t2.emailConfirmTitle || '';
+    const addr = document.createElement('div');
+    addr.style.cssText = 'font-size:var(--fs-4, 12.5px); color:var(--muted, #999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+    addr.appendChild(document.createElement('bdi')).textContent = email; // يحاذي العنوان، والبريد باتّجاهه
+    txt.append(title, addr);
+    const send = document.createElement('button');
+    send.type = 'button';
+    send.className = 'btn primary';
+    send.style.cssText = 'flex:none; white-space:nowrap;';
+    send.textContent = t2.emailConfirmSend || '';
+    send.onclick = () => {
+      bar.remove();
+      const sb = document.getElementById('btnSettings');
+      if(sb) sb.click();
+      if(typeof showSettingsPage === 'function') showSettingsPage('accountSection');
+      const row = document.getElementById('acctRowEmail'); // صفّ الإيميل مطويّ — خانة الرمز داخله
+      if(row && row.style.display === 'none' && typeof window.acctToggleRow === 'function') window.acctToggleRow('acctRowEmail', row.previousElementSibling);
+      acctEmail.value = email;
+      acctEmailSaveBtn.onclick();
+    };
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '✕';
+    x.setAttribute('aria-label', '✕');
+    x.style.cssText = 'flex:none; background:none; border:none; color:var(--muted, #999); font-size:16px; line-height:1; cursor:pointer; padding:4px;';
+    x.onclick = () => {
+      bar.remove();
+      try{ sessionStorage.setItem('omran_email_confirm_x', email); }catch(e){ __swallow(e, 'email-confirm:dismiss'); }
+    };
+    bar.append(txt, send, x);
+    document.body.appendChild(bar);
+  }
+  window.emailConfirmAlert = emailConfirmAlert;
   // v-perf-boot-defer: كان يُستدعى أيضًا عند DOMContentLoaded — نداء fetch(getProfile) إضافيّ يتزاحم
   // مع verify الحرج عند كلّ إقلاع، لحقل بريد في لوحة إعدادات لا يراها أحد قبل فتحها فعليًّا. النداء
   // الوحيد الباقي (أدناه) يُحدَّث حين يُفتح فعلًا، وهو يكفي — لا فرق مرئيّ لأنّ اللوحة مخفيّة أصلًا.
@@ -1657,6 +1712,7 @@ try{
         if(data.token) authSet('aiapp_auth_token', data.token);
         noteSession('تحقّق-ناجح');
         onAuthed(data.username, data.avatar);
+        emailConfirmAlert(data.emailToConfirm); // v-unverified-email: عند كلّ فتح ما دام البريد غير مؤكَّد
         if(data.adminMessage && data.adminMessage.text){
           setTimeout(() => { alert('📩 رسالة من الإدارة:\n\n' + data.adminMessage.text); }, 600);
         }
@@ -1855,7 +1911,7 @@ try{
           otpSubmitBtn.textContent = isEn ? 'Verify' : (t.authOtpVerifyBtn || 'تحقق');
           otpCodeInput.focus();
         } else {
-          otpError.textContent = d.error || (isEn ? 'Failed to send code' : 'فشل إرسال الرمز');
+          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || (isEn ? 'Failed to send code' : 'فشل إرسال الرمز'); // v-unverified-email
         }
       } catch(e){
         otpError.textContent = isEn ? 'Connection error' : 'خطأ في الاتصال';
@@ -1885,7 +1941,7 @@ try{
           otpCodeInput.value = '';
           window.onAuthed(d.username, d.avatar || null);
         } else {
-          otpError.textContent = d.error || (isEn ? 'Invalid code' : 'رمز غير صحيح');
+          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || (isEn ? 'Invalid code' : 'رمز غير صحيح'); // v-unverified-email
         }
       } catch(e){
         otpError.textContent = isEn ? 'Connection error' : 'خطأ في الاتصال';

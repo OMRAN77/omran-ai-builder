@@ -74,7 +74,7 @@ test('الخادم: اسم مستخدم فيه @ (حساب قديم) يُقدَ�
 test('الخادم: نسيت كلمة المرور يقبل الإيميل أيضًا', async () => {
   const src = read('api/_lib/auth.js');
   assert.match(src, /if \(action === 'forgotPassword'\) \{[\s\S]*?const \{ key, user \} = await resolveLoginUser\(username\);/);
-  assert.match(src, /if \(action === 'login'\) \{[\s\S]*?const \{ key, user \} = await resolveLoginUser\(username\);/);
+  assert.match(src, /if \(action === 'login'\) \{[\s\S]*?const \{ key, user, emailUnverified \} = await resolveLoginUser\(username\);/); // v-unverified-email
   const r = await call({ action: 'forgotPassword', username: 'ghost@example.com' });
   assert.notEqual(r.code, 404, 'v-account-email: البريد غير المسجَّل لا يُكشف بـ«الحساب غير موجود»');
   assert.equal((await call({ action: 'forgotPassword', username: 'ghost-name' })).code, 404, 'الاسم كما كان');
@@ -115,5 +115,5 @@ test('النصوص الجديدة بالـ١٤ لغة', () => {
     const s = read('i18n/' + l + '.js');
     for (const k of ['authIdPlaceholder', 'authCreateAccount', 'authHaveAccount', 'authSubmitForgotEmail']) assert.match(s, new RegExp('"?' + k + '"?:\\s*"[^"]+"'), l + ': ' + k);
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=755'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=756'/);
 });

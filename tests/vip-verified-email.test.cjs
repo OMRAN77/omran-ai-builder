@@ -227,13 +227,13 @@ test('٧. حساب أنشأه رمز البريد مؤكَّد — والدخو�
   const key = auth.verifyToken(r.body.token);
   assert.equal((await user(key)).verifiedEmail, 'fresh@mail.com');
   assert.equal(await isVip(key), true);
-  // حساب قائم بإيميل غير مؤكَّد يستقبل دخول رمز ذلك الإيميل — لا ختم
+  // حساب قائم بإيميل غير مؤكَّد — كان يستقبل دخول رمز ذلك الإيميل بلا ختم؛ v-unverified-email: لا رمز له أصلًا، ولا ختم
   await signup('host');
   await legacyEmail('host', 'victim@mail.com');
-  assert.equal((await call({ action: 'email-otp-request', email: 'victim@mail.com', lang: 'ar' })).status, 200);
-  const l = await call({ action: 'email-otp-verify', email: 'victim@mail.com', otp: mail['victim@mail.com'].code, lang: 'ar' });
-  assert.equal(l.status, 200);
-  assert.equal(auth.verifyToken(l.body.token), 'host');
+  const l = await call({ action: 'email-otp-request', email: 'victim@mail.com', lang: 'ar' });
+  assert.equal(l.status, 403);
+  assert.equal(l.body.code, 'email_unverified');
+  assert.equal(mail['victim@mail.com'], undefined, 'لا رمز يصل');
   assert.equal((await user('host')).verifiedEmail, undefined);
 });
 
