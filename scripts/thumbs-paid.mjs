@@ -195,12 +195,14 @@ if (isMode('fashion')) {
   const want = sub('fashion') || ['women', 'men', 'kids', 'category', 'occasion', 'season', 'extras'];
   const W = grabFrom('api/_lib/fashion-create.js', 'STYLE_PROMPTS'), M = grabFrom('api/_lib/fashion-create.js', 'STYLE_PROMPTS_MEN'), K = grabFrom('api/_lib/fashion-create.js', 'STYLE_PROMPTS_KIDS');
   const styleOf = (g, s) => ((g === 'men' ? M : g === 'kids' ? K : null) || {})[s] || W[s] || W.evening;
+  // v-fx-mukhawara: البطاقة على صورة المالك المرجعيّة نفسها («هذا شكل المخوره») لا على الوصف القصير
+  const CARD_DESC = { women: { mukhawara: 'a traditional Emirati mukhawar: a flowing floor-length A-line dress with long wide sleeves, a stand collar opening into a V, a sequined metallic talli-embroidered panel down the front with a row of small buttons, matching embroidered cuffs, in printed floral chiffon over a lining with metallic embroidered swirls and sequins, modest' } };
   for (const g of want) {
     if (CARD_SETS[g]) {
       CARD_SETS[g].forEach((c) => JOBS.push({ kind: g, name: c.name, shape: 'port', prompt: 'Fashion catalog photo of ' + PERSON[c.gender] + styleOf(c.gender, c.style) + ' — ' + c.d + '.' + F_LOOK + ' No text, no letters, no watermark, no logo.' }));
     } else {
       const map = g === 'men' ? M : g === 'kids' ? K : g === 'women' ? W : null; if (!map) continue;
-      Object.entries(map).forEach(([v, desc]) => JOBS.push({ kind: g, name: v, shape: 'port', prompt: 'Fashion catalog photo of ' + PERSON[g] + desc + '.' + F_LOOK + ' No text, no letters, no watermark, no logo.' }));
+      Object.entries(map).forEach(([v, desc]) => JOBS.push({ kind: g, name: v, shape: 'port', prompt: 'Fashion catalog photo of ' + PERSON[g] + (((CARD_DESC[g] || {})[v]) || desc) + '.' + F_LOOK + ' No text, no letters, no watermark, no logo.' }));
     }
   }
 }

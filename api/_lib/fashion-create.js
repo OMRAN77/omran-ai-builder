@@ -70,7 +70,8 @@ const STYLE_PROMPTS = {
   jalabiya: 'an elegant Gulf jalabiya style, soft fabric, delicate embellishment',
   // v-fx-mukhawara (المالك ١٨ أكتوبر: «اريد اضافة مخوره لبس» ثمّ صورة مرجعيّة «هذا شكل المخوره»): فستان طويل واسع، ياقة واقفة تنفتح على V،
   // لوحة تطريز لامعة على الصدر بصفّ أزرار، أكمام عريضة بأساور مطرّزة، وقماش مطبوع بالورود بزخارف لامعة
-  mukhawara: 'a traditional Emirati mukhawar dress: a loose floor-length A-line gown with long wide sleeves, a stand collar opening into a V, a sequined metallic talli-embroidered panel down the front with a row of small buttons, matching embroidered sleeve cuffs, often in a printed floral fabric with metallic embroidery swirls, festive and modest',
+  // قصير عمدًا: الوصف + التصميم + قفلا العدالة والاحتشام يجب أن تدخل حدّ الحارس (٨٠٠ حرف) — التفاصيل في كتالوج التصاميم
+  mukhawara: 'an Emirati mukhawar: loose floor-length long-sleeved dress with talli embroidery, festive and modest',
   hijabchic: 'a chic modern modest outfit with a stylish hijab, coordinated colors',
   oldmoney: 'an old-money quiet-luxury style, tailored neutral pieces, timeless elegance',
   streetwear: 'a trendy streetwear style, oversized layers, sneakers, urban attitude',

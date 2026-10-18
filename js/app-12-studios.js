@@ -1650,7 +1650,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     trig.id = 'fashionStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
     const img = lookImg(g, styleEl.value, opt ? optLabel(opt) : '');
-    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    /* v-fx-mukhawara: الصورة في صندوق ثابت يحمل التدرّج — نمط بلا صورة بعد (المخورة حتّى تُعتمد صورتها) كان يُزيل الصورة فتنكمش البطاقة ~٢٠ بكسل */
+    const thumb = document.createElement('div');
+    thumb.style.cssText = 'width:44px; height:58px; border-radius:8px; overflow:hidden; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    img.style.cssText = 'display:block; width:100%; height:100%; object-fit:cover;';
+    thumb.appendChild(img);
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
@@ -1665,7 +1669,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const all = document.createElement('span');
     all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (bT('عرض الكل ›','Browse all ›'));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
-    trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
+    trig.appendChild(thumb); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openFashionPicker;
     styleCardsEl.appendChild(trig);
   }
