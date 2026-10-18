@@ -76,6 +76,8 @@ test('٣. التعليمات: الإفصاح الآليّ أوّلًا وعدم 
   const sw = ca.buildSession(brief, 'webrtc', NOON);
   assert.equal(sw.audio.input.format, undefined, 'المتصفّح يتفاوض على الصوت');
   assert.deepEqual(sw.audio.input.noise_reduction, { type: 'near_field' });
+  // v-call-agent-cut: المقاطعة باقية (الطرف الآخر يقدر يقاطع الوكيل) في الطريقين — الإصلاح في التعليمات والعرض لا في إطفائها
+  for (const x of [sp, sw]) assert.deepEqual(x.audio.input.turn_detection, { type: 'semantic_vad', eagerness: 'medium', create_response: true, interrupt_response: true });
 });
 
 test('٤. propose_call: المالك وحده، الرقم من نصّه أو من الأماكن، والكرت بلا الرقم كاملًا', async () => {
@@ -366,7 +368,7 @@ test('١٢. أسرار الخدمة تُقصّ: سطر جديد أو مسافة 
   assert.equal((await hit('call-start', { token: owner, id }, { kv, env: { CALL_RELAY_URL: ' ', CALL_RELAY_SECRET: '\n' }, now: NOON })).body.error, 'relay_not_configured');
 });
 
-test('١٣. الكرت يحمل اسم المتّصل والتفاصيل؛ والتعليمات: الموجز بيانات مقتبسة والقواعد فوقه، والإفصاح بالغرض الحقيقيّ، ويُعاد إن قوطع، والصمت، والنتيجة قبل الوداع', async () => {
+test('١٣. الكرت يحمل اسم المتّصل والتفاصيل؛ والتعليمات: الموجز بيانات مقتبسة والقواعد فوقه، والإفصاح بالغرض الحقيقيّ، ويكمل من حيث قُطع (v-call-agent-cut)، والصمت، والنتيجة قبل الوداع', async () => {
   const kv = fakeKV();
   const p = await ca.proposeCall({ business: 'صالون ليلى', goal: 'حجز قصّ شعر بكرة ٥', details: 'شخصين', caller_name: 'سارة', phone: '0501234567' },
     { owner: true, user: 'omran', lastUserText: 'صالون ليلى 0501234567', kv });
@@ -383,7 +385,17 @@ test('١٣. الكرت يحمل اسم المتّصل والتفاصيل؛ وا�
   assert.match(ins, /"متجر \\"X\\""/, 'الاقتباس لا يُكسر');
   const iData = ins.indexOf('the business prefers'), iOver = ins.search(/override/i);
   assert.ok(iOver > iData, 'القواعد بعد الموجز وتعلو عليه');
-  assert.match(ins, /interrupted[^\n]*repeat the (whole|full) opening/i);
+  // v-call-agent-cut: «وعليكم السلام» وسط الإفصاح يقطع الصوت — يكمل من حيث قُطع لا من «السلام عليكم» (كانت حلقة: يُعاد فيُقطع)
+  for (const tr of ['phone', 'webrtc']) {
+    const x = ca.buildInstructions(brief, tr, NOON);
+    assert.doesNotMatch(x, /repeat the (whole|full) opening before anything else/i, tr);
+    assert.match(x, /do NOT start over from «السلام عليكم»/, tr);
+    assert.match(x, /وعليكم السلام/, tr);
+    assert.match(x, /continue the opening from the first part they did not hear/i, tr);
+    assert.match(x, /has been heard once/i, 'لا يتقدّم قبل أن يُسمع كلّ جزء من الإفصاح — ' + tr);
+    assert.match(x, /Only if they say they did not hear you, say the whole opening once more/, tr);
+    assert.match(x, /never restart a sentence they already heard/i, tr);
+  }
   assert.match(ins, /8 seconds/);
   assert.match(ins, /no_answer/);
   assert.match(ins, /report_outcome FIRST/);

@@ -284,7 +284,7 @@ export function agentEvent(text) {
   if (AUDIO_DELTA.has(t)) return typeof ev.delta === 'string' && ev.delta ? { kind: 'audio', delta: ev.delta, itemId: String(ev.item_id || ''), responseId: String(ev.response_id || '') } : { kind: 'other', type: t };
   if (AUDIO_DONE.has(t)) return { kind: 'audio_done' };
   if (t === 'input_audio_buffer.speech_started') return { kind: 'speech_started' };
-  if (AGENT_TEXT.has(t)) return { kind: 'agent_text', text: String(ev.transcript || '') };
+  if (AGENT_TEXT.has(t)) return { kind: 'agent_text', text: String(ev.transcript || ''), itemId: String(ev.item_id || ''), responseId: String(ev.response_id || '') };
   if (t === 'conversation.item.input_audio_transcription.completed') return { kind: 'callee_text', text: String(ev.transcript || '') };
   if (t === 'response.output_item.added' || t === 'response.output_item.done') {
     const it = ev.item || {};
