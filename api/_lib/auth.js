@@ -335,13 +335,13 @@ function emailVerifiedFor(key, user) {
 // عن صاحبه بـ409 للأبد) — سجلّه يبقى كما هو، والفهرس ينتقل إلى من أثبت.
 async function verifiedHolderOf(emailKey, exceptKey) {
   try {
-    const idx = await kvGetJSON('db/email-index/' + emailKey);
+    // الفهرس وحساب Google معًا لا تتابعًا (يمرّ هنا تنبيه «أكّد إيميلك» عند كلّ فتح — v-unverified-email)؛ الفهرس يسبق كما كان.
+    const [idx, g] = await Promise.all([kvGetJSON('db/email-index/' + emailKey), googleAccountFor(emailKey)]);
     const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
     if (uname && uname !== exceptKey) {
       const user = await getUser(uname, 1);
       if (user && user.email === emailKey && emailVerifiedFor(uname, user)) return uname;
     }
-    const g = await googleAccountFor(emailKey);
     if (g && g.key !== exceptKey && (g.key !== 'g_' + emailKey || g.user.googleAuth === true)) return g.key;
   } catch (e) { logError('auth:email-holder', e); }
   return null;
@@ -350,7 +350,8 @@ async function verifiedHolderOf(emailKey, exceptKey) {
 // بريد ثبت للتوّ لصاحبه: مدخل VIP بهذا البريد خامًا (أضافه المالك قبل أن يُعرف صاحبه) يصير اسم حسابه. _vip.js يُستبدل في
 // بعض الاختبارات بـ{ isVip } وحدها، فالفحص بـtypeof. لا يرمي: الدخول لا يفشل بسبب القائمة.
 // v-unverified-email (مراجعة النقض): الترقية قراءة القائمة ثمّ كتابتها — الجرد يختم ٢٥ حسابًا معًا فتتسابق وتضيع إحداها للأبد
-// (علامة «رُقّي» تُكتب قبل القائمة). سلسلة واحدة في العمليّة تجعلها واحدة بعد واحدة.
+// (علامة «رُقّي» تُكتب قبل القائمة). سلسلة واحدة في العمليّة تجعلها واحدة بعد واحدة — وكلّ حلقة تُحرَّر بعد ٥ ثوانٍ على الأكثر:
+// طلب KV عالق (fetch بلا مهلة ≈ ٣٠٠ ث) لا يحبس تسجيلات وتأكيدات الآخرين خلفه (المراجعة الثانية).
 let vipPromoteChain = Promise.resolve();
 function promoteVip(emailKey, key) {
   const run = vipPromoteChain.then(async () => {
@@ -359,7 +360,7 @@ function promoteVip(emailKey, key) {
       if (typeof vip.promoteVerifiedEmail === 'function') await vip.promoteVerifiedEmail(emailKey, key);
     } catch (e) { logError('auth:vip-promote', e); }
   });
-  vipPromoteChain = run.catch(() => {});
+  vipPromoteChain = Promise.race([run.catch(() => {}), new Promise((r) => { const t = setTimeout(r, 5000); if (t && t.unref) t.unref(); })]);
   return run;
 }
 
@@ -403,12 +404,13 @@ async function emailProven(key, user) {
 async function stampLegacyEmail(key, user) {
   let fresh = null;
   try { fresh = await getUser(key, 1); } catch (e) { logError('auth:legacy-email-read', e); }
-  if (!fresh || fresh.deleted || fresh.email !== user.email) return false;
+  if (fresh && (fresh.deleted || fresh.email !== user.email)) return false;
+  user.verifiedEmail = user.email;
+  delete user.emailUnverified;
+  if (!fresh) return true; // قراءة عابرة فارغة: الدليل من نسخة المستدعي — لا ختم ولا ترقية الآن، ولا «غير مؤكَّد» لصاحبه
   fresh.verifiedEmail = fresh.email;
   delete fresh.emailUnverified;
   try { await putUser(key, fresh); } catch (e) { logError('auth:legacy-email-stamp', e); }
-  user.verifiedEmail = user.email;
-  delete user.emailUnverified;
   await promoteVip(user.email, key);
   return true;
 }
@@ -456,10 +458,12 @@ async function unverifiedHolderOf(emailKey) {
 // «أكّد إيميلك» بعد الدخول والتحقّق عند الإقلاع: البريد إن بقي غير مؤكَّد بعد التسوية، وإلّا null. عطبٌ هنا لا يُفشل الدخول.
 async function emailToConfirmFor(key, user) {
   try {
+    // حساب آخر أثبته (برمز أو Google): زرّ «أرسل الكود» يعود ٤٠٩ دائمًا — لا تنبيه، والعدّاد يمضي فيُشال. يُسأل مع التسوية لا بعدها،
+    // وللبريد غير المختوم وحده (المؤكَّد لا يدفع شيئًا). verifiedHolderOf لا يرمي.
+    const held = (user && user.email && !emailVerifiedFor(key, user)) ? verifiedHolderOf(user.email, key) : null;
     const r = await settleUnverifiedEmail(key, user);
     if (r.state !== 'pending') return null;
-    // حساب آخر أثبته (برمز أو Google): زرّ «أرسل الكود» يعود ٤٠٩ دائمًا — لا تنبيه، والعدّاد يمضي فيُشال.
-    if (await verifiedHolderOf(r.email, key)) return null;
+    if (held && (await held)) return null;
     return r.email;
   } catch (e) { logError('auth:email-confirm-hint', e); return null; }
 }

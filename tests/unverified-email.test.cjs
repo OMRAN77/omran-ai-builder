@@ -26,8 +26,9 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(f), loaded: true, exports }; };
 
 const store = new Map();
+let getHook = null; // الوحدات تلتقط kvGetJSON عند تحميلها — الاعتراض من داخله (١٤ و١٥)
 const kvImpl = {
-  kvGetJSON: async (k) => (store.has(k) ? JSON.parse(store.get(k)) : null),
+  kvGetJSON: async (k) => { const h = getHook && getHook(k); if (h !== undefined && h !== null) return h; return store.has(k) ? JSON.parse(store.get(k)) : null; },
   kvPutJSON: async (k, v) => { store.set(k, JSON.stringify(v)); },
   kvGetRaw: async (k) => (store.has(k) ? String(store.get(k)) : null),
   kvSetRaw: async (k, v) => { store.set(k, String(v)); },
@@ -380,4 +381,47 @@ test('١٣. (مراجعة النقض) الجرد يختم حسابات رمز ق
   await auth.sweepUnverifiedEmails(Date.now());
   const list = JSON.parse(store.get(vip.VIP_KEY));
   for (const n of names) assert.ok(list.includes(n), n + ' في القائمة: ' + JSON.stringify(list));
+});
+
+test('١٤. (المراجعة الثانية) قراءة عابرة فارغة عند الختم لا تجعل حساب الرمز القديم «غير مؤكَّد» — ولا تكتب شيئًا', async () => {
+  const created = Date.now() - 45 * DAY;
+  await auth.putUser('salim_9f8e7d', { username: 'salim_9f8e7d', email: 'salim@mail.com', otpOnly: true, createdAt: created, points: 0, salt: 'x', hash: 'y' });
+  store.set('db/email-index/salim@mail.com', JSON.stringify({ username: 'salim_9f8e7d', at: created + 80 }));
+  const rec = await user('salim_9f8e7d');
+  const path = auth.userPath('salim_9f8e7d');
+  let blips = 0;
+  getHook = (k) => { if (k === path && blips < 1) { blips++; return Promise.resolve(null); } return undefined; };
+  try {
+    assert.equal(await auth.emailProven('salim_9f8e7d', rec), true, 'الدليل من نسخة المستدعي');
+  } finally { getHook = null; }
+  assert.equal(blips, 1);
+  assert.equal((await user('salim_9f8e7d')).verifiedEmail, undefined, 'لا ختم بلا قراءة طازجة — يُختم في المرّة التالية');
+  assert.equal(await auth.emailProven('salim_9f8e7d', await user('salim_9f8e7d')), true);
+  assert.equal((await user('salim_9f8e7d')).verifiedEmail, 'salim@mail.com');
+});
+
+test('١٥. (المراجعة الثانية) ترقية VIP عالقة لا تحبس ختم غيرها أكثر من ٥ ثوانٍ', { timeout: 30000 }, async () => {
+  const vip = require(rp('api/_lib/_vip.js'));
+  const keepAlive = setInterval(() => {}, 1000); // الحلقة حيّة كما في طلب حقيقيّ (مؤقّت السلسلة unref)
+  const created = Date.now() - 45 * DAY;
+  for (const n of ['stuck_aaaaaa', 'next_bbbbbb']) {
+    const email = n.split('_')[0] + '@vip.com';
+    await auth.putUser(n, { username: n, email, otpOnly: true, createdAt: created, points: 0, salt: 'x', hash: 'y' });
+    store.set('db/email-index/' + email, JSON.stringify({ username: n, at: created + 30 }));
+  }
+  store.set(vip.VIP_KEY, JSON.stringify(['stuck@vip.com', 'next@vip.com']));
+  vip.invalidateCache();
+  let hung = false;
+  getHook = (k) => { if (k === vip.VIP_KEY && !hung) { hung = true; return new Promise(() => {}); } return undefined; };
+  try {
+    auth.emailProven('stuck_aaaaaa', await user('stuck_aaaaaa')); // يعلق في قراءة القائمة — بلا انتظار
+    await new Promise((r) => setTimeout(r, 50));
+    assert.ok(hung, 'الأولى علقت');
+    const t0 = Date.now();
+    assert.equal(await auth.emailProven('next_bbbbbb', await user('next_bbbbbb')), true);
+    const waited = Date.now() - t0;
+    assert.ok(waited < 7000, 'انتظرت ' + waited + ' م.ث');
+    assert.equal((await user('next_bbbbbb')).verifiedEmail, 'next@vip.com');
+    assert.ok(JSON.parse(store.get(vip.VIP_KEY)).includes('next_bbbbbb'), 'وترقيتها وصلت');
+  } finally { getHook = null; clearInterval(keepAlive); }
 });
