@@ -2580,7 +2580,7 @@
       if(!e.cancelable){
         if(Date.now() - edgeAt >= 500){ pageTurn(); return; } // المتصفّح مرّر الصفحة قبل أن يصلنا
         edgeAt = Date.now(); // بقيّة تسلسل بدأ على طرف الشريط
-      } else if(Date.now() - lastPage < 500 || (armed && canPage(e.deltaY))){ pageTurn(); return; } // الصفحة تُمرَّر — تكمل، والدوران المتّصل يبقى لها حتّى في آخرها كقفل المتصفّح
+      } else if(armed && (Date.now() - lastPage < 500 || canPage(e.deltaY))){ pageTurn(); return; } // الصفحة تُمرَّر — تكمل، والدوران المتّصل يبقى لها حتّى في آخرها؛ الحركة تفكّه كقفل المتصفّح
       const max = room(); if(!max) return;
       const pos = Math.abs(el.scrollLeft); // RTL: ‎0 ← -max‎ في المتصفّحات الحديثة
       if(e.deltaY > 0 ? pos >= max - 1 : pos <= 1){ edgeAt = Date.now(); return; }

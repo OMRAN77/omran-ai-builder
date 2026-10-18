@@ -68,6 +68,9 @@ test('٥. v-strip-wheel-latch: بعد تمرير الصفحة تكمل الصف�
   q.clock.t += 1500;
   assert.equal(q.fire('wheel', W).prevented, true, 'حركة سريعة إلى الشريط بعد دفعة تُحسب');
 
+  const qq = setup(); page(qq); qq.clock.t += 200;
+  qq.fire('pointermove', { pointerType: 'mouse', movementX: 0, movementY: 30 }); qq.clock.t += 200;
+  assert.equal(qq.fire('wheel', W).prevented, true, 'الحركة تفكّ القفل ولو جاءت العجلة خلال ٥٠٠ms من الدفعة (كقفل المتصفّح يُفكّ بالحركة)');
   const p = setup(); page(p); p.clock.t += 600;
   p.fire('pointerdown', { pointerType: 'mouse', button: 0, clientX: 500 }); p.fireWin('pointerup', {}); p.clock.t += 400;
   assert.equal(p.fire('wheel', W).prevented, true, 'الضغط على الشريط يعيد العجلة له');
