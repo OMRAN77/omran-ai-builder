@@ -355,6 +355,11 @@ const I18N = {
     acctFillPasswords: 'أدخل كلمة المرور الحالية وكلمة مرور جديدة (4 أحرف على الأقل)',
     acctGenericError: 'حدث خطأ، حاول مرة أخرى',
     nameNoAt: 'اختر اسم مستخدم بدون @ — تقدر تضيف إيميلك من «حسابي» بعد التسجيل', // v-name-no-at
+    acctEmailCodeSent: 'أرسلنا رمزًا إلى {email} — اكتبه هنا ثمّ اضغط «حفظ»', // v-vip-verified
+    acctEmailBadCode: 'الرمز غير صحيح أو انتهى — امسح الخانة واضغط «حفظ» لرمز جديد', // v-vip-verified
+    acctEmailTaken: 'هذا الإيميل مؤكَّد في حساب آخر', // v-vip-verified
+    acctEmailUnverified: 'هذا الإيميل غير مؤكَّد — اضغط «حفظ» ليصلك رمز التأكيد', // v-vip-verified
+    acctEmailTooMany: 'محاولات كثيرة — جرّب بعد {minutes} دقيقة', // v-vip-verified
     acctNetError: 'تعذر الاتصال بالخادم، تحقق من الإنترنت',
     acctAvatarTooBig: 'الصورة كبيرة جدًا، اختر صورة أصغر',
     logout: 'خروج',
@@ -1660,6 +1665,11 @@ const I18N = {
     acctFillPasswords: 'Enter your current password and a new password (at least 4 characters)',
     acctGenericError: 'Something went wrong, try again',
     nameNoAt: 'Choose a username without @ — you can add your email in My account after signing up', // v-name-no-at
+    acctEmailCodeSent: 'We sent a code to {email} — type it here, then press Save', // v-vip-verified
+    acctEmailBadCode: 'Wrong or expired code — clear the box and press Save for a new one', // v-vip-verified
+    acctEmailTaken: 'This email is already confirmed on another account', // v-vip-verified
+    acctEmailUnverified: 'This email is not confirmed — press Save to get a confirmation code', // v-vip-verified
+    acctEmailTooMany: 'Too many attempts — try again in {minutes} min', // v-vip-verified
     acctNetError: 'Could not reach the server, check your connection',
     acctAvatarTooBig: 'The image is too large, choose a smaller one',
     providerColorsLabel: '🤖 Each AI provider color (shown next to its name in chat)',

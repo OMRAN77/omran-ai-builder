@@ -73,23 +73,80 @@ function mahaAppPointIn(el, e){
   const r = el.getBoundingClientRect();
   return typeof e.clientX === 'number' && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
 }
-/* الإعدادات في الطبقة العليا للمتصفّح وتملأ شاشة الجوّال، فلا «م» يُرى ولا «برّا» تُلمس — نسخة من «م» في مكانه داخل الحوار تُنهي المكالمة */
-function mahaAppDockMirror(on){
-  let m = document.getElementById('mahaDockMirror');
-  if(!on){ if(m) m.remove(); return; }
-  const d = document.getElementById('settingsDialog'), dock = document.getElementById('btnMahaDock');
-  if(!d || !dock || !mahaCallActive || mahaCallMode === 'builder') return;
-  const r = dock.getBoundingClientRect();
-  if(!(r.width > 0 && r.height > 0)) return;
-  if(!m){ m = dock.cloneNode(true); m.id = 'mahaDockMirror'; m.removeAttribute('onclick'); }
-  m.style.position = 'fixed'; m.style.left = r.left + 'px'; m.style.top = r.top + 'px'; m.style.width = r.width + 'px'; m.style.height = r.height + 'px';
-  m.style.margin = '0'; m.style.zIndex = '10'; m.style.visibility = 'visible';
-  if(m.parentNode !== d) d.appendChild(m);
+/* v-maha-dock-bar (المالك ١٨ أكتوبر: ««م» فوق نافذة مها: لا يغطي شي من محتوى النافذة… وتأكد إن ما في شي مخفي تحته»): كان «م»
+   يرتفع في مكانه فوق النافذة فيغطّي بطاقاتها وأزرارها. الآن شريط علويّ فيه «م» والنافذة تبدأ تحته (css/modules.css). الشريط يتبع
+   الحالة: نافذة أداة (body.maha-win) أو إعدادات فتحتها مها (body.maha-dlg — الشريط داخل الحوار لأنّه في الطبقة العليا للمتصفّح).
+   «م» فيه زرّ الإنهاء (mahaAppInside يعدّه برّا)، والشريط الفارغ من النافذة. مزامنة دوريّة ما دام ظاهرًا: نافذة يغلقها كودها، أو
+   الإعدادات تُغلق برجوع أو Esc، لا تترك شريطًا معتمًا فوق التطبيق. */
+let mahaAppBarTimer = 0;
+function mahaAppGapCss(){
+  const d = document.getElementById('settingsDialog');
+  if(d && !d.__mahaBarClose){
+    d.__mahaBarClose = true; // إغلاق الإعدادات (رجوع، Esc، زرّ) يعيد الشريط إلى النافذة تحتها أو يزيله فورًا
+    d.addEventListener('close', () => { mahaAppDialog = false; mahaAppWinSync(); });
+  }
+  if(document.getElementById('mahaWinGapCss') || !window.omranSwipeBack || typeof window.omranSwipeBack.ids !== 'function') return;
+  // نوافذ الخريطة، ونافذتا الشراء والمشاركة (خارجها، تحت الشريط) — تبدأ كلّها تحت الشريط
+  const ids = window.omranSwipeBack.ids().concat(['checkoutModalOverlay', 'shareModal', 'vedModal']);
+  const st = document.createElement('style');
+  st.id = 'mahaWinGapCss';
+  // ومعها عارض فيديو الصانع (.vmk-lb) ومحرّر «كتابة وصوت» (#vedModal): يفتحان من داخل نافذة مها فوقها (مراجعة النقض: زرّ إغلاقهما تحت «م»)
+  st.textContent = ids.map((id) => 'body.maha-band-on.maha-win:not(.maha-dlg) #' + CSS.escape(id)).concat(['body.maha-band-on.maha-win:not(.maha-dlg) .vmk-lb', 'body.maha-band-on.maha-win:not(.maha-dlg) > .maha-gap-shift']).join(',') + '{top:var(--maha-gap) !important;}';
+  document.head.appendChild(st);
+}
+/* طبقة أخرى تفتحها نافذة مها فوق نفسها على <body> (قوائم الأدوات وعوارضها) — ثابتة من أعلى الشاشة (top:0) وطبقتها بين النوافذ (٩٤٠)
+   والشريط: تنزل تحته مثلها، وإلّا كان رأسها وزرّ إغلاقها تحت «م». ما يتوسّط بـtop:50% لا يُمسّ، وما فوق الشريط (عارض الصور) يغطّيه هو. */
+function mahaAppShiftLayers(on){
+  if(!on){ document.querySelectorAll('.maha-gap-shift').forEach((el) => el.classList.remove('maha-gap-shift')); return; }
+  for(const el of Array.from(document.body.children)){
+    if(el.id === 'mahaWinBar' || el.classList.contains('maha-gap-shift')) continue;
+    const cs = getComputedStyle(el);
+    if(cs.position !== 'fixed' || cs.display === 'none' || cs.top !== '0px') continue;
+    const z = parseInt(cs.zIndex, 10) || 0;
+    if(z >= 940 && z < 10090) el.classList.add('maha-gap-shift');
+  }
+}
+function mahaAppDockBar(force){
+  try{ mahaAppDockBarSet(force); }catch(e){ __swallow(e, 'maha-app:dock-bar'); } // عطب الشريط لا يكسر أداة ولا إنهاء المكالمة
+}
+function mahaAppDockBarSet(force){
+  const live = force !== false && mahaCallActive && mahaCallMode !== 'builder';
+  const d = document.getElementById('settingsDialog');
+  const dlg = live && mahaAppDialog && !!d && d.open;
+  document.body.classList.toggle('maha-dlg', dlg);
+  let bar = document.getElementById('mahaWinBar');
+  if(!live || !(dlg || document.body.classList.contains('maha-win'))){
+    mahaAppShiftLayers(false);
+    if(bar) bar.remove();
+    if(mahaAppBarTimer){ clearInterval(mahaAppBarTimer); mahaAppBarTimer = 0; }
+    return;
+  }
+  mahaAppGapCss();
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'mahaWinBar';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'mahaDockMirror';
+    const dock = document.getElementById('btnMahaDock');
+    const face = dock && dock.querySelector('img.personaGlyph');
+    b.title = (dock && dock.title) || '';
+    b.setAttribute('aria-label', b.title || 'م');
+    if(face && face.getAttribute('src')){ const i = document.createElement('img'); i.src = face.getAttribute('src'); i.alt = ''; b.appendChild(i); }
+    else b.textContent = 'م';
+    bar.appendChild(b);
+  }
+  const host = dlg ? d : document.body;
+  if(bar.parentNode !== host) host.appendChild(bar);
+  if(dlg){ const r = d.getBoundingClientRect(); bar.style.left = r.left + 'px'; bar.style.width = r.width + 'px'; bar.style.right = 'auto'; }
+  else { bar.style.left = ''; bar.style.width = ''; bar.style.right = ''; }
+  mahaAppShiftLayers(!dlg);
+  if(!mahaAppBarTimer) mahaAppBarTimer = setInterval(mahaAppWinSync, 700);
 }
 function mahaAppInside(e){
   const tgt = e && e.target;
   if(!tgt || typeof tgt.closest !== 'function') return false;
-  if(tgt.closest('#mahaDockMirror')) return false; // «م» داخل الإعدادات = زرّ الإنهاء
+  if(tgt.closest('#mahaDockMirror')) return false; // «م» في الشريط العلويّ = زرّ الإنهاء (v-maha-dock-bar)
   /* نقرة يطلقها كود التطبيق نفسه (input.click() لاختيار ملفّ، رابط تنزيل…) والنافذة مفتوحة: ليست يد المستخدم. اللمس الحقيقيّ
      isTrusted، ونقرة آيفون المعادة (ui-wiring) لأزرار الشريط السفليّ تحت النافذة فلا تصلها اليد أصلًا. */
   if(e.isTrusted === false && mahaAppActive()) return true;
@@ -115,6 +172,7 @@ function mahaAppInside(e){
 function mahaAppWinSync(){
   const top = !!(window.omranSwipeBack && window.omranSwipeBack.top());
   document.body.classList.toggle('maha-win', top && mahaCallActive && mahaCallMode !== 'builder');
+  mahaAppDockBar(); // v-maha-dock-bar
 }
 
 /* أدوات شاشة الأدوات الظاهرة لهذا المستخدم بأسمائها في لغته — ما يعرفه الخادم عن التطبيق يأتي منها أوّلًا */
@@ -196,7 +254,7 @@ async function mahaAppOpen(target){
   const tool = MAHA_APP_TOOLS[target];
   if(tool){
     mahaAppCloseOthers(tool.win);
-    if(mahaCallActive && mahaCallMode !== 'builder') document.body.classList.add('maha-win');
+    if(mahaCallActive && mahaCallMode !== 'builder'){ document.body.classList.add('maha-win'); mahaAppDockBar(); }
     tool.open();
     await mahaAppWait(450);
     const top = window.omranSwipeBack && window.omranSwipeBack.top();
@@ -227,7 +285,7 @@ async function mahaAppOpen(target){
     const b = document.getElementById('btnSettings');
     if(!(d && d.open)){ if(!b || typeof b.onclick !== 'function') return mahaAppNo('Settings are not available here.'); b.onclick(); }
     mahaAppDialog = true; // v-maha-win-touch: اللمس داخلها لا يُنهي المكالمة
-    mahaAppDockMirror(true);
+    mahaAppDockBar(); // v-maha-dock-bar: الشريط و«م» داخل الحوار، والحوار ينزل تحته
     if(sid){
       showSettingsPage(sid);
       if(sid === 'memorySection' && typeof window.renderMemorySection === 'function') window.renderMemorySection();
