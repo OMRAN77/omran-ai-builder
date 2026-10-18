@@ -12,6 +12,9 @@ on:
       patch:
         description: 'تجربة إعداد جلسة (JSON يُدمج في session، الوضع المحلّيّ) — فارغ = كما في المعالج'
         default: ''
+      code_ref:
+        description: 'كود مها من التزام آخر (realtime-session.js وmaha-app.js) — لقياس «قبل» ثانٍ بالمسبار نفسه؛ فارغ = هذا الفرع'
+        default: ''
   push:
     paths:
       - 'scripts/maha-dialect-probe.mjs'
@@ -54,6 +57,14 @@ jobs:
           D: ${{ secrets.OPENAI_API_KEY }}
         run: |
           for p in "SAMPLE_TOKEN:$A" "EVAL_TOKEN:$B" "PROBE_TOKEN:$C" "OPENAI_API_KEY:$D"; do n="${p%%:*}"; v="${p#*:}"; [ -n "$v" ] && echo "$n: set" || echo "$n: empty"; done
+      - name: Maha code from another ref
+        if: inputs.code_ref != ''
+        env:
+          REF: ${{ inputs.code_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$REF"
+          git checkout FETCH_HEAD -- api/_lib/realtime-session.js api/_lib/maha-app.js
+          echo "MAHA_CODE_REF $(git rev-parse FETCH_HEAD)"
       - name: Probe Maha
         env:
           # الموقع المنشور برمز جلسة المالك (السرّ نفسه الذي يستعمله video-samples) — بلا حدّ دقائق؛ رمز غيره يوقف المسبار.

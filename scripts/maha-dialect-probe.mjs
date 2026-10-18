@@ -190,6 +190,8 @@ async function runOne(reqItem) {
       const now = t();
       if (e.type === 'error') out.errors.push((e.error && (e.error.code || e.error.message)) || 'error');
       if (e.type === 'input_audio_buffer.speech_started') clearTimeout(idle);
+      // تفريغ كلامه (حين تطلبه تجربة patch: audio.input.transcription) — ماذا سُمع منه، للتشخيص وحده
+      if (e.type === 'conversation.item.input_audio_transcription.completed') (out.userHeard = out.userHeard || []).push(e.transcript || '');
       // وقفة وسط جملته (قبل نهايتها بأكثر من ٣٠٠م.ث) ليست نهاية كلامه
       if (e.type === 'input_audio_buffer.speech_stopped') { if (now < tSpeechEnd - 300) out.earlyStops++; else if (!tStopped) tStopped = now; }
       if (e.type === 'response.output_audio.delta' || e.type === 'response.audio.delta') {

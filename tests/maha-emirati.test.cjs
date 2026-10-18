@@ -57,7 +57,7 @@ test('٢. تفهم الكلمات المحلّيّة التي أخطأتها ف�
   const f = await mint({});
   const und = f.split('\n').find((l) => l.startsWith('UNDERSTAND EMIRATI:'));
   assert.ok(und, 'سطر الفهم');
-  assert.ok(/ياهل\/يهال = a child\/children \(never a man\)/.test(und));
+  assert.ok(/ياهل\/يهال = a child\/children \(never a man - an image prompt says 'a little boy' or 'a child'\)/.test(und));
   assert.ok(/البوش = camels \(never Porsche\)/.test(und));
   assert.ok(/ريّال = a man/.test(und) && /باچر = tomorrow/.test(und) && /العين = the city Al Ain/.test(und));
 });
@@ -83,10 +83,11 @@ test('٥. أداة التطبيق لا الويب: سطر المعرفة لكل�
   const k = mahaApp.knowledge({ lang: 'ar' });
   assert.ok(k.includes('never search the web for it and never recommend outside apps, websites or freelancers'));
   const allowed = mahaApp.controlNote(true, false);
-  assert.ok(allowed.includes('a free animation = video-templates, someone talking about their shop = video-actor, a man\'s voice = settings-voice'));
-  assert.ok(allowed.includes('where it is (the Tools tab, then its name)') && allowed.includes('never say you are opening something you will not open'));
+  assert.ok(allowed.includes('a free animation = video-templates, someone talking about their shop = video-actor, «وين أغيّر صوتج» or «أبا صوت ريّال» = your own voice, so settings-voice where the male voice عبدالله is'));
+  assert.ok(allowed.includes('where it is (the Tools tab - «الأدوات» - then its name)') && k.includes('«الأدوات» in Arabic') && allowed.includes('never say you are opening something you will not open'));
   for (const t of ['video-templates', 'video-actor', 'settings-voice']) assert.ok(mahaApp.OPEN_TARGETS.includes(t), 'هدف موجود: ' + t);
   const m = await mint({ voiceGender: 'male' });
   for (const l of ['EMIRATI WORDS TO SAY:', 'NEVER SAY (Fus-ha or other dialects):', 'UNDERSTAND EMIRATI:', 'WHO IS TALKING:']) assert.ok(m.includes(l), 'عبدالله: ' + l);
   assert.ok(m.includes('You are "عبدالله" (Abdullah)'));
 });
+
