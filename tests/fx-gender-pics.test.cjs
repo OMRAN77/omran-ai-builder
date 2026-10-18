@@ -88,11 +88,12 @@ test('٣. الإضافات: لا صورة امرأة لرجل أو طفل — ص
   assert.deepEqual(keys, ['Glasses', 'Watch', 'Handbag', 'Shoes', 'Scarf', 'Makeup']);
   const { EXT_PIC } = dgCtx('men');
   for (const g of ['men', 'kids']) {
+    assert.deepEqual(Object.keys(EXT_PIC[g]).sort(), keys.slice().sort(), g + ': صورة لكلّ إضافة (مولّد الموقع)');
     for (const [k, v] of Object.entries(EXT_PIC[g])) {
       assert.ok(keys.includes(k), k);
       const file = v[0].replace(/\?v=\d+$/, '');
       assert.ok(fs.existsSync(path.join(root, file)), g + '/' + k + ': ' + file);
-      assert.doesNotMatch(file, /looks\/(extras|women|occasion|season)\//, g + '/' + k + ' صورة نسائيّة');
+      assert.equal(file, 'assets/fashion/looks/extras/' + g + '-' + k.toLowerCase() + '.webp', g + '/' + k + ': صورة فئته لا صورة المرأة');
       assert.equal(v[1].length, 4, 'نسبة الصورة الحقيقيّة (٣:٤) لا ٢:٣ الممطوطة');
     }
   }
