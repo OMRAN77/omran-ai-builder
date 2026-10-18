@@ -223,9 +223,12 @@ async function runOne(reqItem) {
       }
     });
   });
+  // اتّصال لا يبدأ (يُغلق بلا خطأ، أو لا session.created) يُرفض خلال ١٥ث — كان يُبقي الوعد معلّقًا فتخرج node برمز ١٣ (التشغيلة 39165095491)
   await new Promise((resolve, reject) => {
-    ws.on('error', reject);
-    ws.on('message', function first(raw) { const e = JSON.parse(raw.toString()); if (e.type === 'session.created' || e.type === 'session.updated') { ws.off('message', first); resolve(); } });
+    const stall = setTimeout(() => { try { ws.terminate(); } catch (x) { /* مغلق أصلًا */ } reject(new Error('handshake timeout')); }, 15000);
+    ws.on('error', (err) => { clearTimeout(stall); reject(err); });
+    ws.on('close', () => { clearTimeout(stall); reject(new Error('closed before session')); });
+    ws.on('message', function first(raw) { const e = JSON.parse(raw.toString()); if (e.type === 'session.created' || e.type === 'session.updated') { clearTimeout(stall); ws.off('message', first); resolve(); } });
   });
   if (CTX_ITEM) ws.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: CTX_ITEM }] } }));
   // بإيقاع الكلام الحقيقيّ على جدول مطلق (١٠٠م.ث لكلّ قطعة، بلا انجراف يؤخّر نهاية الجملة عن tSpeechEnd)
