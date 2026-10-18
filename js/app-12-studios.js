@@ -2405,6 +2405,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     urgent: t('emailAsst_urgent'),
     normal: t('emailAsst_normal'),
     low: t('emailAsst_low'),
+    regen: t('emailAsst_regen'), // v-email-cache
+    more: t('emailAsst_more'),
+    drafting: t('emailAsst_drafting'),
   });
 
   function setStatus(text){
@@ -2448,134 +2451,241 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     return (code === 'nokey' || code === 'badkey') ? t('emailAsst_draftNoKey') : (code === 'busy' ? t('emailAsst_draftBusy') : t('emailAsst_draftFailed'));
   }
 
-  function renderEmails(emails, aiError){
+  /* v-email-cache (البندان ١ و٩): القائمة تُرسم فورًا بلا انتظار ذكاء، والمسوّدات الناقصة تُطلب رسالةً رسالة (ثلاث معًا)
+     فتملأ بطاقاتها، والمحفوظ يأتي جاهزًا من الخادم. «إعادة توليد» وحدها تكتب المسوّدة من جديد، و«المزيد» يُلحق الصفحة
+     التالية. حين تكتمل كلّها تُرتَّب البطاقات بالأولويّة — إلّا إن كان المستخدم داخل إحداها (لا تقفز البطاقة من تحته). */
+  const EM_ORDER = { urgent: 0, normal: 1, low: 2 };
+  const moreBtn = $('#emailAssistMoreBtn');
+  let emRun = 0;
+  let emQueue = [];
+  let emActive = 0;
+  let emNext = '';
+  let emKeyShown = false;
+
+  function emRank(p){ return Object.prototype.hasOwnProperty.call(EM_ORDER, p) ? EM_ORDER[p] : 1; }
+  function emBody(extra){
+    return JSON.stringify(Object.assign({ token: localStorage.getItem('aiapp_auth_token'), lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar', tz: emTz() }, extra || {}));
+  }
+  function emKeyLine(code, detail){ // سطر المفتاح مرّة واحدة فوق القائمة، لا في كلّ بطاقة
+    if(emKeyShown) return;
+    emKeyShown = true;
+    const line = (code === 'fallback' ? t('emailAsst_draftFallback') : emAiMsg(code)) + (detail ? ' (' + detail + ')' : '');
+    setStatus([statusEl.style.display === 'none' ? '' : statusEl.textContent, line].filter(Boolean).join('\n'));
+  }
+
+  function fillCard(card, mail){
     const tr = T();
-    listEl.innerHTML = '';
-    if(!emails || !emails.length){
+    const dir = emDir(mail.lang);
+    const draftEl = card.querySelector('.emailDraftInput');
+    const st = card.querySelector('.emailCardStatus');
+    const meet = card.querySelector('.emailMeet');
+    card.querySelector('.emailSnip').setAttribute('dir', dir);
+    draftEl.setAttribute('dir', dir);
+    draftEl.value = mail.draft || '';
+    draftEl.disabled = !!mail.pending;
+    draftEl.placeholder = mail.pending ? tr.drafting : '';
+    card.querySelector('.emailPrio').textContent = mail.priority ? priorityLabel(mail.priority) : '';
+    card.querySelector('.emailSendBtn').disabled = !!mail.pending;
+    card.querySelector('.emailRegenBtn').disabled = !!mail.pending;
+    card.querySelector('.emailCalBtn').style.display = mail.meeting ? '' : 'none';
+    meet.style.display = mail.meeting ? '' : 'none';
+    meet.textContent = mail.meeting ? '📅 ' + String(mail.meeting.title || '') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') : '';
+    const keyErr = mail.draftError === 'nokey' || mail.draftError === 'badkey';
+    const msg = mail.draftError && !(keyErr && emKeyShown) ? emAiMsg(mail.draftError) : '';
+    st.style.display = msg ? 'block' : 'none';
+    st.textContent = msg;
+  }
+
+  function buildCard(mail){
+    const tr = T();
+    const card = document.createElement('div');
+    card.__emMail = mail;
+    card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
+    card.innerHTML =
+      '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
+        '<div style="min-width:0;">' +
+          '<div class="emailSubj" dir="auto" style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>' +
+          '<div class="emailFrom" style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><bdi class="emailFromName"></bdi> <bdi class="emailFromAddr" dir="ltr"></bdi></div>' +
+        '</div>' +
+        '<span class="emailPrio" style="font-size:11.5px; white-space:nowrap;"></span>' +
+      '</div>' +
+      '<div class="emailSnip" style="font-size:12px; color:var(--muted,#999); margin-top:6px;"></div>' +
+      '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px; font-family:inherit; line-height:1.6;"></textarea>' +
+      '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
+        '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailRegenBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px; display:none;"></button>' +
+      '</div>' +
+      '<div class="emailMeet" dir="auto" style="font-size:11.5px; color:var(--muted,#999); margin-top:6px; display:none;"></div>' +
+      '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
+
+    const sendBtn = card.querySelector('.emailSendBtn');
+    const regenBtn = card.querySelector('.emailRegenBtn');
+    const ignoreBtn = card.querySelector('.emailIgnoreBtn');
+    const draftEl = card.querySelector('.emailDraftInput');
+    const cardStatus = card.querySelector('.emailCardStatus');
+    const calBtn = card.querySelector('.emailCalBtn');
+    const who = emSender(mail.from);
+    card.querySelector('.emailSubj').textContent = mail.subject || '';
+    card.querySelector('.emailFrom').setAttribute('dir', emTextDir(who.name || who.addr));
+    card.querySelector('.emailFromName').textContent = who.name;
+    card.querySelector('.emailFromAddr').textContent = who.name ? '<' + who.addr + '>' : who.addr;
+    card.querySelector('.emailSnip').textContent = mail.snippet || '';
+    sendBtn.textContent = tr.send;
+    regenBtn.textContent = tr.regen;
+    ignoreBtn.textContent = tr.ignore;
+    calBtn.textContent = tr.addToCalendar;
+    fillCard(card, mail);
+
+    regenBtn.addEventListener('click', () => { emQueueDraft(card, mail, true); });
+
+    calBtn.addEventListener('click', async () => {
+      if(!mail.meeting) return;
+      calBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      cardStatus.textContent = tr.addingEvent;
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const r = await fetch('/api/email-calendar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, tz: mail.meeting.tz || emTz(), description: (mail.subject || '') + '\n' + (mail.from || '') }),
+        });
+        const d = await r.json();
+        if(!r.ok){
+          if(d && d.needsReauth) throw new Error(tr.calReauth);
+          throw new Error((d && d.error) || 'calendar failed');
+        }
+        cardStatus.textContent = tr.eventAdded;
+        calBtn.textContent = tr.eventAdded;
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        calBtn.disabled = false;
+      }
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      const text = (draftEl.value || '').trim();
+      if(!text) return;
+      sendBtn.disabled = true; ignoreBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      cardStatus.textContent = tr.sending;
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const r = await fetch('/api/email-send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
+        });
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.error || 'send failed');
+        cardStatus.textContent = tr.sent;
+        setTimeout(() => { card.remove(); }, 1200);
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        sendBtn.disabled = false; ignoreBtn.disabled = false;
+      }
+    });
+
+    ignoreBtn.addEventListener('click', async () => {
+      sendBtn.disabled = true; ignoreBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const pattern = extractEmailAddress(mail.from);
+        const r = await fetch('/api/email-ignore', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, pattern }),
+        });
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.error || 'ignore failed');
+        cardStatus.textContent = tr.ignored;
+        setTimeout(() => { card.remove(); }, 1000);
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        sendBtn.disabled = false; ignoreBtn.disabled = false;
+      }
+    });
+    return card;
+  }
+
+  function emQueueDraft(card, mail, regen){
+    mail.pending = true;
+    mail.draftError = undefined;
+    fillCard(card, mail);
+    emQueue.push({ card, mail, regen: !!regen, run: emRun });
+    emPump();
+  }
+  function emPump(){
+    while(emActive < 3 && emQueue.length){
+      const job = emQueue.shift();
+      emActive++;
+      emDraft(job).finally(() => {
+        emActive--;
+        emPump();
+        if(!emActive && !emQueue.length && job.run === emRun) emSortCards();
+      });
+    }
+  }
+  async function emDraft(job){
+    const mail = job.mail;
+    try{
+      const r = await fetch('/api/email-list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: emBody({ draftFor: mail.id, regen: job.regen }) });
+      const d = await r.json();
+      if(job.run !== emRun) return;
+      if(!r.ok) throw new Error((d && d.error) || 'draft failed');
+      if(d.draft){ // فشل «إعادة توليد» لا يمسح المسوّدة القائمة
+        mail.draft = d.draft;
+        mail.priority = d.priority || 'normal';
+        mail.lang = d.lang || '';
+        mail.meeting = d.meeting || null;
+      }
+      mail.draftError = d.draftError || undefined;
+      if(d.draftError === 'nokey' || d.draftError === 'badkey') emKeyLine(d.draftError, d.aiErrorDetail || '');
+      else if(d.ownerNote) emKeyLine('fallback', d.ownerNote);
+    }catch(e){
+      if(job.run !== emRun) return;
+      __swallow(e, "misc:app-12-studios#6");
+      mail.draftError = 'failed';
+    }
+    mail.pending = false;
+    fillCard(job.card, mail);
+  }
+  function emSortCards(){
+    const ae = document.activeElement;
+    if(ae && listEl.contains(ae)) return;
+    const cards = Array.prototype.slice.call(listEl.children).filter((c) => c.__emMail);
+    const sorted = cards.map((c, i) => ({ c, i })).sort((a, b) => (emRank(a.c.__emMail.priority) - emRank(b.c.__emMail.priority)) || (a.i - b.i));
+    if(sorted.every((x, k) => x.i === k)) return;
+    sorted.forEach((x) => listEl.appendChild(x.c));
+  }
+
+  function renderEmails(emails, append){
+    const tr = T();
+    if(!append) listEl.innerHTML = '';
+    if(!append && (!emails || !emails.length)){
       listEl.innerHTML = '<div style="text-align:center; font-size:13px; color:var(--muted,#999); padding:20px 0;">' + tr.empty + '</div>';
       return;
     }
-    emails.forEach((mail) => {
-      const card = document.createElement('div');
-      card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
-      const dir = emDir(mail.lang);
-      card.innerHTML =
-        '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
-          '<div style="min-width:0;">' +
-            '<div class="emailSubj" dir="auto" style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>' +
-            '<div class="emailFrom" style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><bdi class="emailFromName"></bdi> <bdi class="emailFromAddr" dir="ltr"></bdi></div>' +
-          '</div>' +
-          '<span class="emailPrio" style="font-size:11.5px; white-space:nowrap;"></span>' +
-        '</div>' +
-        '<div class="emailSnip" dir="' + dir + '" style="font-size:12px; color:var(--muted,#999); margin-top:6px;"></div>' +
-        '<textarea class="emailDraftInput" dir="' + dir + '" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px; font-family:inherit; line-height:1.6;"></textarea>' +
-        '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
-          '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;"></button>' +
-          '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;"></button>' +
-          (mail.meeting ? '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px;"></button>' : '') +
-        '</div>' +
-        (mail.meeting ? '<div class="emailMeet" dir="auto" style="font-size:11.5px; color:var(--muted,#999); margin-top:6px;"></div>' : '') +
-        '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
-
-      const sendBtn = card.querySelector('.emailSendBtn');
-      const ignoreBtn = card.querySelector('.emailIgnoreBtn');
-      const draftEl = card.querySelector('.emailDraftInput');
-      const cardStatus = card.querySelector('.emailCardStatus');
-      const calBtn = card.querySelector('.emailCalBtn');
-      const who = emSender(mail.from);
-      card.querySelector('.emailSubj').textContent = mail.subject || '';
-      card.querySelector('.emailFrom').setAttribute('dir', emTextDir(who.name || who.addr));
-      card.querySelector('.emailFromName').textContent = who.name;
-      card.querySelector('.emailFromAddr').textContent = who.name ? '<' + who.addr + '>' : who.addr;
-      card.querySelector('.emailPrio').textContent = priorityLabel(mail.priority);
-      card.querySelector('.emailSnip').textContent = mail.snippet || '';
-      draftEl.value = mail.draft || '';
-      sendBtn.textContent = tr.send;
-      ignoreBtn.textContent = tr.ignore;
-      if(calBtn) calBtn.textContent = tr.addToCalendar;
-      if(mail.meeting) card.querySelector('.emailMeet').textContent = '📅 ' + String(mail.meeting.title || '') + ' — ' + String(mail.meeting.start || '').replace('T', ' ');
-      if(mail.draftError && !aiError){ cardStatus.style.display = 'block'; cardStatus.textContent = emAiMsg(mail.draftError); }
-
-      if(calBtn) calBtn.addEventListener('click', async () => {
-        calBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        cardStatus.textContent = tr.addingEvent;
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const r = await fetch('/api/email-calendar', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, tz: mail.meeting.tz || emTz(), description: (mail.subject || '') + '\n' + (mail.from || '') }),
-          });
-          const d = await r.json();
-          if(!r.ok){
-            if(d && d.needsReauth) throw new Error(tr.calReauth);
-            throw new Error((d && d.error) || 'calendar failed');
-          }
-          cardStatus.textContent = tr.eventAdded;
-          calBtn.textContent = tr.eventAdded;
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          calBtn.disabled = false;
-        }
-      });
-
-      sendBtn.addEventListener('click', async () => {
-        const text = (draftEl.value || '').trim();
-        if(!text) return;
-        sendBtn.disabled = true; ignoreBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        cardStatus.textContent = tr.sending;
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const r = await fetch('/api/email-send', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
-          });
-          const d = await r.json();
-          if(!r.ok) throw new Error(d.error || 'send failed');
-          cardStatus.textContent = tr.sent;
-          setTimeout(() => { card.remove(); }, 1200);
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          sendBtn.disabled = false; ignoreBtn.disabled = false;
-        }
-      });
-
-      ignoreBtn.addEventListener('click', async () => {
-        sendBtn.disabled = true; ignoreBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const pattern = extractEmailAddress(mail.from);
-          const r = await fetch('/api/email-ignore', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, pattern }),
-          });
-          const d = await r.json();
-          if(!r.ok) throw new Error(d.error || 'ignore failed');
-          cardStatus.textContent = tr.ignored;
-          setTimeout(() => { card.remove(); }, 1000);
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          sendBtn.disabled = false; ignoreBtn.disabled = false;
-        }
-      });
-
+    (emails || []).forEach((mail) => {
+      const card = buildCard(mail);
       listEl.appendChild(card);
+      if(mail.pending) emQueueDraft(card, mail, false);
     });
   }
 
-  async function loadEmails(){
+  async function loadEmails(append){
     const tr = T();
-    setStatus(tr.loading);
-    listEl.innerHTML = '';
+    const more = append === true; // نقرة «تحديث» تمرّر حدثًا لا true
+    if(!more){ emRun++; emQueue = []; emNext = ''; emKeyShown = false; lastLoadedEmails = []; listEl.innerHTML = ''; setStatus(tr.loading); }
+    if(moreBtn) moreBtn.style.display = 'none';
+    const run = emRun;
     try{
-      const token = localStorage.getItem('aiapp_auth_token');
       const r = await fetch('/api/email-list', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar', tz: emTz() }),
+        body: emBody(more && emNext ? { page: emNext } : {}),
       });
       const d = await r.json();
+      if(run !== emRun) return;
       if(!r.ok){
         if(d.notConnected || /invalid_grant/i.test(String(d.error || ''))){
           connectBox.style.display = 'block';
@@ -2587,16 +2697,24 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         throw new Error(d.error || 'load failed');
       }
       gmailLabel.textContent = d.gmailAddress || '';
-      // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
-      // v-email-safe: ومفتاح الكتابة الناقص أو المرفوض سطرٌ واضح فوق القائمة (اسم المتغيّر للمالك وحده من الخادم).
-      const aiLine = d.aiError ? emAiMsg(d.aiError) + (d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '') : '';
-      setStatus([d.note || '', aiLine].filter(Boolean).join('\n'));
-      lastLoadedEmails = d.emails || [];
-      renderEmails(d.emails, d.aiError);
+      if(!more){
+        // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
+        // v-email-safe: ومفتاح الكتابة الناقص سطرٌ واضح فوق القائمة؛ v-email-claude: والاحتياط للمالك (اسم المتغيّر للمالك وحده من الخادم).
+        const detail = d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '';
+        const aiLine = d.aiError ? emAiMsg(d.aiError) + detail : (d.aiNote ? t('emailAsst_draftFallback') + detail : '');
+        if(aiLine) emKeyShown = true;
+        setStatus([d.note || '', aiLine].filter(Boolean).join('\n'));
+      }
+      const emails = d.emails || [];
+      lastLoadedEmails = lastLoadedEmails.concat(emails);
+      renderEmails(emails, more);
+      emNext = d.next || '';
+      if(moreBtn){ moreBtn.style.display = emNext ? '' : 'none'; moreBtn.disabled = false; }
     }catch(e){
       setStatus(tr.error + (e && e.message ? e.message : String(e)));
     }
   }
+  if(moreBtn) moreBtn.addEventListener('click', () => { moreBtn.disabled = true; loadEmails(true); });
 
   function applyStaticText(){
     const tr = T();
@@ -2607,6 +2725,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(connectBtn) connectBtn.textContent = tr.connectBtn;
     setTxt('#emailAssistRefreshLabel', tr.refresh);
     setTxt('#emailAssistVoiceLabel', tr.voiceBtn);
+    setTxt('#emailAssistMoreBtn', tr.more);
   }
 
   function buildEmailSummaryText(){
