@@ -28241,7 +28241,11 @@ function switchWorkTab(tabName){
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tabName));
 }
-btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl); };
+btnToggleHistory.onclick = () => {
+  switchWorkTab('code'); openDrawer(workareaEl);
+  /* v-desk-strips: على الكمبيوتر openDrawer لا يُظهر شيئًا واللوحة مطويّة (display:none) — يُفرَد كما في كلّ طريق آخر يُظهرها */
+  if(!document.documentElement.classList.contains('mobile-ui') && typeof window.waAutoExpand === 'function') window.waAutoExpand();
+};
 
 // 🧠 Ask-All toggle button + first-time hint
 (function(){
@@ -28547,6 +28551,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     window.addEventListener('popstate', () => { if(allState) closeAll(true); });
     ptSectionsView.querySelectorAll('.ptSection').forEach(section => {
       const viewport = section.querySelector('.ptCarousel');
+      if(viewport && typeof window.omranStripDesktopScroll === 'function') window.omranStripDesktopScroll(viewport); /* v-desk-strips: العجلة والسحب على الكمبيوتر — «التمرير بالماوس» الذي يذكره قرار إخفاء الأسهم */
       const start = section.querySelector('.ptSentinelStart'), end = section.querySelector('.ptSentinelEnd');
       const all = section.querySelector('.ptViewAll'), prev = section.querySelector('.ptShelfPrev'), next = section.querySelector('.ptShelfNext');
       const edge = { start:false, end:false, seenStart:false, seenEnd:false };
@@ -37059,6 +37064,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     el.addEventListener('dragstart', (e) => { if(!phone()) e.preventDefault(); });
   }
   stripDesktopScroll(tabsWrap);
+  /* v-desk-strips (المالك ١٨ أكتوبر: «في اشياء موجوده في الهاتف وغير موجوده في الكمبيوتر»): صفوف أفقيّة يسحبها الهاتف باللمس وكانت
+     مقصوصة على الكمبيوتر (أشرطة التمرير مخفيّة في التطبيق كلّه): «قارن بين إطلالات» في الأزياء (٣ من ٣٧)، و«غرفتي بكل الأنماط» ونتائجها في
+     الديكور (١٠ من ٤٨)، ورفوف شاشة الأدوات. الدالّة نفسها (للحاسوب وحده، الفأرة وحدها) بغلاف لا يربط العنصر مرّتين؛ والالتقاط (snap)
+     يُلغى على الكمبيوتر في redesign.css وإلّا ترجع كلّ نقرة عجلة لنفس البطاقة. */
+  const omranDeskStrip = (el) => { if(!el || el.__deskStrip) return; el.__deskStrip = 1; stripDesktopScroll(el); };
+  window.omranStripDesktopScroll = omranDeskStrip;
+  ['fashionAiCompareChecks', 'designCompareChecks', 'designCompareResults'].forEach((id) => omranDeskStrip(document.getElementById(id)));
+  document.querySelectorAll('#sectionsToolsPopup .ptCarousel').forEach(omranDeskStrip); /* رفوف بُنيت قبل هذا الجزء؛ اللاحقة من app-10 */
 
   btnOpen.onclick = () => {
     modal.style.display = 'flex';

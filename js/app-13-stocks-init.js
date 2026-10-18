@@ -2586,6 +2586,14 @@
     el.addEventListener('dragstart', (e) => { if(!phone()) e.preventDefault(); });
   }
   stripDesktopScroll(tabsWrap);
+  /* v-desk-strips (المالك ١٨ أكتوبر: «في اشياء موجوده في الهاتف وغير موجوده في الكمبيوتر»): صفوف أفقيّة يسحبها الهاتف باللمس وكانت
+     مقصوصة على الكمبيوتر (أشرطة التمرير مخفيّة في التطبيق كلّه): «قارن بين إطلالات» في الأزياء (٣ من ٣٧)، و«غرفتي بكل الأنماط» ونتائجها في
+     الديكور (١٠ من ٤٨)، ورفوف شاشة الأدوات. الدالّة نفسها (للحاسوب وحده، الفأرة وحدها) بغلاف لا يربط العنصر مرّتين؛ والالتقاط (snap)
+     يُلغى على الكمبيوتر في redesign.css وإلّا ترجع كلّ نقرة عجلة لنفس البطاقة. */
+  const omranDeskStrip = (el) => { if(!el || el.__deskStrip) return; el.__deskStrip = 1; stripDesktopScroll(el); };
+  window.omranStripDesktopScroll = omranDeskStrip;
+  ['fashionAiCompareChecks', 'designCompareChecks', 'designCompareResults'].forEach((id) => omranDeskStrip(document.getElementById(id)));
+  document.querySelectorAll('#sectionsToolsPopup .ptCarousel').forEach(omranDeskStrip); /* رفوف بُنيت قبل هذا الجزء؛ اللاحقة من app-10 */
 
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
