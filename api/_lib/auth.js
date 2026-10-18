@@ -317,17 +317,6 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/* v-account-email (أمر المالك ٤ أكتوبر، بعد فحص #792): مالك البريد الحيّ من الفهرس — مدخل يشير إلى حساب محذوف أو غيّر
-   بريده لا يُحسب. يمنع حسابين ببريد واحد (كان الاسترجاع بالبريد يذهب للأوّل). */
-async function emailOwner(emailKey) {
-  try {
-    const idx = await kvGetJSON('db/email-index/' + emailKey);
-    if (!idx || !idx.username) return null;
-    const user = await getUser(String(idx.username).trim().toLowerCase());
-    if (user && !user.deleted && user.email === emailKey) return { key: String(idx.username).trim().toLowerCase(), user };
-  } catch (e) { logError('auth:email-owner', e); }
-  return null;
-}
 
 /* v-vip-verified (أمر المالك ١٨ أكتوبر: «VIP بالإيميل ما ينعطى إلا لإيميل متحقّق منه… تغيير الإيميل في «حسابي» ما ينحفظ إلا بعد
    ما يدخل المستخدم الكود… أي إيميل محفوظ وما تحقّقنا منه ما يعطي VIP»). الختم verifiedEmail = البريد نفسه الذي ثبت لا true:
@@ -740,22 +729,17 @@ module.exports = async (req, res) => {
         res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
         return;
       }
-      if (email && !isValidEmail(email)) {
-        res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
-        return;
-      }
-      // v-account-email: الإيميل كالاسم — حساب واحد لكلّ بريد، وإلّا ضاع الاسترجاع بالبريد بين حسابين.
-      if (email && await emailOwner(String(email).trim().toLowerCase())) {
-        res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.') });
-        return;
-      }
+      /* v-signup-no-email (أمر المالك ١٨ أكتوبر: «التسجيل ما يحفظ إيميل أبدًا، والإيميل ينضاف بس من «حسابي» بالكود»): كان التسجيل
+         من الـAPI يقبل email بلا تحقّق (الواجهة بلا خانة منذ v-simple-login) ويكتب فهرسه — فيزرع أحدٌ إيميل صديق المالك عند تسجيله،
+         فيصل صاحب البريد حسابَ الزارع بالاسترجاع أو برمز البريد ويؤكّده هناك (v-vip-verified، مراجعة النقض). الحقل يُتجاهل كلّه:
+         لا تحقّق صيغة، ولا «مرتبط بحساب آخر» (سؤال عن وجود الحساب)، ولا حفظ، ولا فهرس. يُضاف من «حسابي» برمز يصل البريد (purpose:'change'). */
       // v-welcome-cap: الهديّة تُحجز بعد كلّ رفض (محاولة فاشلة لا تأكل حصّة)، وفوق السقف حساب برصيد 0 لا رفض.
       const giftOut = {}; // v-farm-gate: capped = سقف الشبكة رفض الهديّة (free-tier.js)
       const gift = await takeWelcomeGift(req, { out: giftOut });
       const { salt, hash } = hashPassword(password);
       const user = {
         username: String(username).trim(), salt, hash,
-        email: email ? String(email).trim().toLowerCase() : null,
+        email: null, // v-signup-no-email
         avatar: null,
         createdAt: Date.now(),
         // 🎁 هدية الترحيب: 70 نقطة عند التسجيل = فيديو واحد (60) + صورة واحدة (10).
@@ -764,20 +748,7 @@ module.exports = async (req, res) => {
         welcomeGift: gift,
         giftCapped: giftOut.capped === true,
       };
-      await putUser(key, user);
-      // v380: فهرس الإيميل → الدخول بجوجل بنفس الإيميل يفتح هذا الحساب نفسه
-      // الفهرس يُكتب مرة واحدة فقط (أول من يدّعي البريد)، ولا يُستخدم للدخول
-      // إلا بموافقة صريحة عبر ALLOW_EMAIL_AUTOLINK. الكتابة فوق مدخل قائم كانت
-      // هي الخطوة التي تسمح بانتحال بريد شخص آخر.
-      if (user.email) {
-        try {
-          const existingIdx = await kvGetJSON('db/email-index/' + user.email);
-          // v-account-email: مدخل لحساب محذوف أو غيّر بريده لا يحجز البريد — لا مالك حيّ (فُحص قبل الإنشاء) = يُكتب للجديد.
-          if (!existingIdx || !existingIdx.username || !(await emailOwner(user.email))) {
-            await kvPutJSON('db/email-index/' + user.email, { username: key, at: Date.now() });
-          }
-        } catch (e) { logError('auth:email-index', e); }
-      }
+      await putUser(key, user); // v-signup-no-email: ولا فهرس بريد — يكتبه تأكيد «حسابي» وحده
       await notifyNewAccount({ key, user, method: 'password', req }); // v-signup-notify: بعد الكتابة الناجحة وحدها — في الخلفيّة
       await markKnownNet(key, req);
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: null });

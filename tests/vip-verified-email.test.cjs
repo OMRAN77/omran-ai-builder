@@ -353,3 +353,41 @@ test('١٤. (مراجعة النقض ٢) «حسابي»: إعادة فتح ال�
     assert.match(f, /"?acctEmailTooMany"?: "[^"]*\{minutes\}/, lg);
   }
 });
+
+test('١٥. (طلب المالك، v-signup-no-email) من يسجّل من الـAPI بإيميل صاحب VIP لا يحجزه ولا يتأكّد على حسابه — صاحبه يؤكّده من حسابه فيأخذ VIP هو', async () => {
+  await addVip('vipfriend@mail.com'); // المالك أضاف إيميل صديقه قبل أن يؤكّده
+  // الزارع يسجّل بإيميل الصديق مباشرة من الـAPI
+  const planter = await call({ action: 'signup', username: 'planter', password: 'pass12345', email: 'vipfriend@mail.com' });
+  assert.equal(planter.status, 200);
+  assert.equal((await user('planter')).email, null, 'التسجيل لا يحفظ الإيميل');
+  assert.equal(store.has('db/email-index/vipfriend@mail.com'), false, 'ولا فهرسه — لا دخول ولا استرجاع بالبريد يصل حساب الزارع');
+  assert.equal((await call({ action: 'login', username: 'vipfriend@mail.com', password: 'pass12345' })).status, 401, 'كلمة الزارع لا تفتح بالبريد');
+  // دخول برمز البريد قبل أن يؤكّده صاحبه: حساب جديد لصاحب الصندوق — لا حساب الزارع
+  assert.equal((await call({ action: 'email-otp-request', email: 'vipfriend@mail.com', lang: 'ar' })).status, 200);
+  const otp = await call({ action: 'email-otp-verify', email: 'vipfriend@mail.com', otp: mail['vipfriend@mail.com'].code, lang: 'ar' });
+  assert.equal(otp.status, 200);
+  assert.notEqual(auth.verifyToken(otp.body.token), 'planter', 'رمز البريد لا يُدخل صاحبه حساب الزارع');
+  // الصديق يؤكّد إيميله من حسابه هو في «حسابي»
+  const friend = await signup('vipfriend');
+  assert.equal((await changeEmail(friend, 'vipfriend@mail.com')).status, 409, 'أكّده للتوّ حساب الرمز (لصاحب الصندوق نفسه): واحد لكلّ بريد');
+  // صاحب الصندوق نفسه — حساب الرمز — هو المؤكَّد؛ والزارع لا شيء
+  const otpKey = auth.verifyToken(otp.body.token);
+  assert.equal((await user(otpKey)).verifiedEmail, 'vipfriend@mail.com');
+  assert.equal(await isVip(otpKey), true, 'VIP لمن أثبت الصندوق');
+  const p = await user('planter');
+  assert.equal(p.email, null);
+  assert.equal(p.verifiedEmail, undefined, 'الإيميل لم يتأكّد على حساب الزارع');
+  assert.equal(await isVip('planter'), false);
+  // ومسار «حسابي» وحده (بلا دخول برمز): زارع ثانٍ، ثمّ صاحب البريد يؤكّده من حسابه
+  await addVip('vipfriend2@mail.com');
+  assert.equal((await call({ action: 'signup', username: 'planter2', password: 'pass12345', email: 'vipfriend2@mail.com' })).status, 200);
+  const friend2 = await signup('vipfriend2');
+  assert.equal((await changeEmail(friend2, 'vipfriend2@mail.com')).status, 200);
+  assert.equal((await changeEmail(friend2, 'vipfriend2@mail.com', mail['vipfriend2@mail.com'].code)).status, 200);
+  assert.equal((await user('vipfriend2')).verifiedEmail, 'vipfriend2@mail.com');
+  assert.equal(JSON.parse(store.get('db/email-index/vipfriend2@mail.com')).username, 'vipfriend2');
+  assert.equal(await isVip('vipfriend2'), true);
+  const p2 = await user('planter2');
+  assert.ok(p2.email === null && p2.verifiedEmail === undefined, 'الزارع الثاني بلا إيميل ولا ختم');
+  assert.equal(await isVip('planter2'), false);
+});
