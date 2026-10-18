@@ -99,3 +99,8 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn:is(:hover,:focus-visible) .ncLabel{color:#fff; text-shadow:0 0 8px rgba(255,255,255,.75), 0 0 18px rgba(255,255,255,.35);}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn svg{transition:filter .2s;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn:is(:hover,:focus-visible) svg{filter:drop-shadow(0 0 6px rgba(240,222,170,.9));}
+/* v-tab-glow-only (المالك ١٨ أكتوبر بصورة تبويب الكود: «بدون مستطيل، وأريد وميضًا فقط، زد من الوميض قليلًا»): تبويبات المعاينة والكود فوق
+   بلا صندوق ولا خلفيّة ولا ظلّ حول المختار أو عند المرور — الأيقونة وحدها بيضاء تتوهّج أبيض (أقوى قليلًا من توهّج «فسّر»). الكمبيوتر في الأسود وحده. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs .tab.tab:not(#om3-a):is(.active,:hover){background:transparent !important; background-image:none !important; box-shadow:none !important; border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs .tab.tab svg{transition:filter .2s, stroke .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs .tab.tab:not(#om3-a):is(.active,:hover) svg{color:#fff !important; stroke:#fff !important; filter:drop-shadow(0 0 6px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(255,255,255,.55));}

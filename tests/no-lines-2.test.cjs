@@ -132,3 +132,14 @@ test('١٣. «محادثة جديدة»: بلا إطار ولا خلفيّة و�
   assert.ok(block.includes(D + '#omranNewChatBtn:is(:hover,:focus-visible) svg{filter:drop-shadow(0 0 6px rgba(240,222,170,.9));}'));
   const tag = HTML.match(/href="css\/بلا-خطوط\.css\?v=(\d+)"/); assert.ok(tag && Number(tag[1]) >= 2, 'الوسم مرفوع فوق 1 (الذي شحن v-no-lines-2)');
 });
+
+test('١٤. v-tab-glow-only: تبويبات المعاينة والكود بلا مستطيل — الأيقونة وحدها تتوهّج أبيض أقوى قليلًا (الكمبيوتر في الأسود وحده)', () => {
+  const box = rules.find((r) => r.sels.includes(D + '#tabs .tab.tab:not(#om3-a):is(.active,:hover)'));
+  assert.ok(box && box.body.includes('background:transparent !important') && box.body.includes('box-shadow:none !important') && box.body.includes('border-color:transparent !important'), 'لا صندوق');
+  const glow = rules.find((r) => r.sels.includes(D + '#tabs .tab.tab:not(#om3-a):is(.active,:hover) svg'));
+  assert.ok(glow && glow.body.includes('stroke:#fff !important') && glow.body.includes('filter:drop-shadow(0 0 6px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(255,255,255,.55))'), 'وميض الأيقونة');
+  assert.ok(rules.some((r) => r.sels.includes(D + '#tabs .tab.tab svg') && r.body.includes('transition:filter .2s')));
+  /* الكتلة بعد قاعدة v-white-glow (#101013) فتغلبها بالترتيب والتحديد */
+  assert.ok(bare.indexOf(D + '#tabs .tab.tab:not(#om3-a):is(.active,:hover){background:transparent') > bare.indexOf('#tabs .tab.tab:not(#om3-a):is(.active,:hover){background:#101013'));
+  const tag = HTML.match(/href="css\/بلا-خطوط\.css\?v=(\d+)"/); assert.ok(tag && Number(tag[1]) >= 7);
+});
