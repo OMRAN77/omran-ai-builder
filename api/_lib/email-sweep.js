@@ -9,6 +9,8 @@ const LOCK_SEC = 20 * 60 * 60;
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
+  // الجدول ينادي GET وحده؛ غيره ٤٠٥ بلا جرد — فيُثبت وجود المسار على الإنتاج دون تشغيله.
+  if (req.method !== 'GET') { res.status(405).json({ ok: false }); return; }
   const secret = String(process.env.CRON_SECRET || '').trim();
   if (secret && String((req.headers && req.headers.authorization) || '') !== 'Bearer ' + secret) {
     res.status(401).json({ ok: false });

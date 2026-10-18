@@ -64,9 +64,9 @@ const call = (body, ip) => new Promise((resolve) => {
   const res = { _s: 200, setHeader() {}, status(c) { this._s = c; return this; }, json(b) { resolve({ status: this._s, body: b }); }, end() { resolve({ status: this._s }); } };
   Promise.resolve(auth({ method: 'POST', headers: { 'x-forwarded-for': ip || '7.7.7.7' }, query: {}, body }, res)).catch((e) => resolve({ status: 'throw', body: String(e) }));
 });
-const runSweep = (headers) => new Promise((resolve) => {
+const runSweep = (headers, method) => new Promise((resolve) => {
   const res = { _s: 200, setHeader() {}, status(c) { this._s = c; return this; }, json(b) { resolve({ status: this._s, body: b }); } };
-  Promise.resolve(sweep({ method: 'GET', headers: headers || {}, query: {} }, res)).catch((e) => resolve({ status: 'throw', body: String(e) }));
+  Promise.resolve(sweep({ method: method || 'GET', headers: headers || {}, query: {} }, res)).catch((e) => resolve({ status: 'throw', body: String(e) }));
 });
 const user = (name) => auth.getUser(name, 1);
 const mailTo = (to) => mail.filter((m) => m.to === to);
@@ -267,6 +267,9 @@ test('٨. الجرد اليوميّ: يختم القديم المُثبت، وي
   store.set('db/email-index/stale8@mail.com', JSON.stringify({ username: 'stale8', at: now }));
   await auth.putUser('ok8', { username: 'ok8', email: 'ok8@mail.com', verifiedEmail: 'ok8@mail.com', createdAt: now, points: 9, salt: 'x', hash: 'y' });
   await auth.putUser('none8', { username: 'none8', email: null, createdAt: now, points: 1, salt: 'x', hash: 'y' });
+  assert.equal((await runSweep({}, 'POST')).status, 405, 'غير GET لا يجرد');
+  assert.equal(store.has('db/email-sweep/lock'), false);
+  assert.equal((await user('fresh8')).emailUnverified, undefined);
   const r = await runSweep();
   assert.deepEqual(r, { status: 200, body: { ok: true, ran: true } }, 'لا أعداد في الردّ');
   assert.equal((await user('fresh8')).emailUnverified.email, 'fresh8@mail.com', 'بدأ عدّاده');
