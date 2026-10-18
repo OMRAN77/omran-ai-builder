@@ -1143,7 +1143,7 @@ test('٢٣. التسوية لم تُحسم (billing: null): النتيجة تظ�
   assert.deepEqual(sent.status, ['cl7'], 'المرور الثاني لا يعيد ما حُسم');
 });
 
-test('٢٤. المراجعة الثانية: «-1» من تبويب آخر لا يُرسل صفرًا، وبعد نافذته يُرسل بالسقف؛ 404 يُبقي النهاية؛ مكالمة قديمة لا تكتب فوق الأحدث؛ billed يُصفَّر؛ رفضٌ بلا تسوية يُسوّى', async () => {
+test('٢٤. المراجعتان الثانية والثالثة: «-1» من تبويب أو جهاز آخر لا يُرسل أبدًا (ويُمحى بعد عمر السجلّ)؛ 404 يُبقي النهاية؛ مكالمة قديمة لا تكتب فوق الأحدث؛ billed يُصفَّر؛ رفضٌ بلا تسوية يُسوّى', async () => {
   const TID = 'ct0123456789abcdef01';
   // تجربة «حيّة» في تبويب آخر (-1 وبدأت للتوّ): لا تُرسل هنا أبدًا — كان يُرسل صفرًا فيُرجَع الحجز كلّه والتجربة جارية
   const sentA = [];
@@ -1151,12 +1151,19 @@ test('٢٤. المراجعة الثانية: «-1» من تبويب آخر لا 
     routes: { 'call-trial-end': (b) => { sentA.push(b); return [200, { ok: true }]; } } });
   await a.advance(31000);
   assert.equal(sentA.length, 0, 'داخل نافذة حياتها = لا إرسال');
-  // بعد نافذتها (٤ دقائق + التجهيز + دقيقة): تعطّلت قبل أن تُسجَّل نهايتها ← تُرسل بالسقف وتُحسم
+  // ولا بعد مدّتها (المراجعة الثالثة: ساعة جهاز متقدّمة كانت تُنهي تجربة حيّة مبكرًا، و«بالسقف» كان يسبق نهايتها الحقيقيّة الأقصر من
+  // صفحتها) — الحجز يبقى حتّى تصل نهايتها من صفحتها
   const b = sandbox({ owner: false, call: { transport: 'trial', startedAt: 1_000_000 - 400_000, trialEnds: { [TID]: -1 } },
     routes: { 'call-trial-end': (x) => { sentA.push(x); return [200, { ok: true }]; } } });
-  await b.advance(100);
-  assert.deepEqual(plain(sentA), [{ token: 'tok-owner', trialId: TID, durationSec: 240 }]);
-  assert.deepEqual(plain(b.call().trialEnds), {});
+  await b.advance(31000);
+  assert.equal(sentA.length, 0);
+  assert.deepEqual(plain(b.call().trialEnds), { [TID]: -1 }, 'تبقى لصفحتها');
+  // بعد عمر سجلّ الخادم (٧ أيّام) لا فائدة منها: تُمحى محلّيًّا بلا إرسال
+  const b9 = sandbox({ owner: false, call: { transport: 'trial', startedAt: 1_000_000 - 9 * 86400000, trialEnds: { [TID]: -1, ct11111111111111111a: 40 } },
+    routes: { 'call-trial-end': (x) => { sentA.push(x); return [200, { ok: true }]; } } });
+  await b9.advance(100);
+  assert.deepEqual(sentA.map((x) => x.trialId), ['ct11111111111111111a'], 'المنتهية تُرسل، و«-1» لا');
+  assert.deepEqual(plain(b9.call().trialEnds), {});
 
   // 404 (تجربة حساب آخر على متصفّح مشترك): تبقى النهاية لصاحبها ولا تُعاد في هذه الصفحة
   const sentB = [];
@@ -1197,6 +1204,7 @@ test('٢٤. المراجعة الثانية: «-1» من تبويب آخر لا 
   assert.equal(c.call().callId, 'cl3'); assert.equal(c.call().state, 'ringing', 'لم تكتب فوق الأحدث');
   assert.equal(c.call().outcome, null); assert.equal(c.msgs().length, m4, 'لا نتيجة من القديمة');
   const n3 = c.calls('call-status').filter((f) => f.body.callId === 'cl2').length;
+  assert.equal(n3, n2 + 2, 'القديمة أُعيد استطلاعها بعد billing:null فحُسمت (المراجعة الثالثة: لم يكن هذا مفحوصًا)');
   await c.advance(60000);
   assert.equal(c.calls('call-status').filter((f) => f.body.callId === 'cl2').length, n3, 'حُسمت = توقّفت');
 
@@ -1222,4 +1230,31 @@ test('٢٤. المراجعة الثانية: «-1» من تبويب آخر لا 
   Object.assign(w.call(), { callId: 'cl9', state: 'ringing', billed: false });
   go(); await w.advance(100);
   assert.equal(w.call().billed, false);
+});
+
+test('٢٥. المراجعة الثالثة: «جرّب» تعيد نهاية معلّقة على كرت في محادثة أخرى وتنتظرها قبل طلب الجلسة — قفل التجربة للمستخدم كلّه', async () => {
+  const T1 = 'ct0123456789abcdef01';
+  const other = { id: 'p2', messages: [{ role: 'assistant', content: 'x', cards: { kind: 'call', q: 'ب', chips: [], items: [], call: {
+    id: 'cp2', business: 'ب', kind: 'mobile', maxMin: 4, ptsPerMin: 45, transport: 'trial', state: 'completed', trialEnds: { [T1]: 60 } } } }] };
+  let down = true, locked = T1; // قفل «تجربة حيّة» عند الخادم لـT1 حتّى تُقبل نهايتها
+  const order = [];
+  const c = sandbox({ owner: false, routes: {
+    'call-trial-end': async (b) => {
+      if (down) throw new Error('offline');
+      await new Promise((r) => c.setTimeout(r, 1000)); // ردّ بطيء: الجلسة لا تسبقه إلى القفل
+      if (locked === b.trialId) locked = null;
+      order.push('end:' + b.trialId); return [200, { ok: true }];
+    },
+    'call-session': (b) => { order.push('session'); return locked ? [409, { error: 'busy' }] : [200, { clientSecret: 'ek_test', model: 'm', maxSec: 240, trialId: b.trialId }]; },
+  } });
+  c.state.projects.push(other);
+  await c.advance(31000); // المرور بعد التحميل + إعادة واحدة — كلاهما فشل والشبكة مقطوعة
+  assert.equal(c.calls('call-trial-end').length, 2);
+  down = false;
+  c.btn('omCallTry').click();
+  await c.advance(1500);
+  assert.deepEqual(order, ['end:' + T1, 'session'], 'النهاية القديمة قُبلت أوّلًا ثمّ طُلبت الجلسة');
+  assert.notEqual(c.call().state, 'failed', 'لا «عندك مكالمة جارية»');
+  assert.equal(c.pcs.length, 1, 'الجلسة فُتحت');
+  assert.deepEqual(plain(other.messages[0].cards.call.trialEnds), {});
 });

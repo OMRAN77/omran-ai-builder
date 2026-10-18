@@ -48165,6 +48165,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   var settling = {};  // id ← حسم تجربة معلّقة بعد إعادة التحميل مجدول (مرّة واحدة)
   var ending = {};    // معرّف التجربة ← إرسال نهايتها جارٍ (لا طلبان معًا)
   var tried = {};     // معرّف التجربة ← محاولات إرسال نهايتها في هذه الصفحة (ثانية بعد مهلة، والباقي في التحميل التالي)
+  var inflight = {};  // معرّف التجربة ← وعد إرسال نهايتها الجاري (تنتظره «جرّب» قبل طلب جلسة جديدة)
   var MARK = 'omranCallTrialLive'; // id التجربة الجارية في هذا المتصفّح: التحميل التالي يعرف أنّها انقطعت هنا لا أنّها حيّة في جهاز آخر
 
   /* ── أدوات صغيرة ── */
@@ -48572,20 +48573,24 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   function trialEnd(id, freshOnly){ // freshOnly: رسم الكرت والمرور بعد التحميل يرسلان ما لم يُجرَّب في هذه الصفحة وحده — الإعادة لمؤقّتها
     var c = find(id);
     var map = (c && c.trialEnds && typeof c.trialEnds === 'object') ? c.trialEnds : null;
-    if(!map || !token()) return;
+    if(!map || !token()) return Promise.resolve();
+    var ps = [];
     Object.keys(map).forEach(function(tid){
+      if(ending[tid] && inflight[tid]){ ps.push(inflight[tid]); return; }
       if(!/^ct[a-f0-9]{18}$/.test(tid) || ending[tid] || (tried[tid] || 0) >= (freshOnly ? 1 : 2)) return;
       var sec = Number(map[tid]);
+      // «-1» = لم تنتهِ في الصفحة التي بدأتها — قد تكون حيّة في تبويب أو جهاز آخر (ساعته غير ساعتنا): لا تُرسل من هنا أبدًا (المراجعة
+      // الثالثة: إرسالها «صفرًا» كان يردّ حجز تجربة جارية، و«بالسقف» يسبق نهايتها الحقيقيّة الأقصر). الحجز يبقى كما هو حتّى تصل نهايتها
+      // من صفحتها، وقفل التجربة ينتهي بمدّته. بعد عمر سجلّ الخادم (٧ أيّام) تُمحى محلّيًّا.
       if(sec < 0){
-        // المراجعة الثانية: «-1» = لم تنتهِ — قد تكون حيّة في تبويب أو جهاز آخر، فلا تُرسل «صفرًا». بعد نافذة حياتها (السقف + التجهيز +
-        // دقيقة) = تعطّل قبل أن تُسجَّل نهايتها: تُرسل بالسقف (المدّة مجهولة) فيُفكّ قفل التجربة وتُحسم.
-        if((trial && trial.trialId === tid) || now() - (Number(c.startedAt) || 0) < (capMin(c) * 60 + SETUP_MAX_MS / 1000 + 60) * 1000) return;
-        sec = capMin(c) * 60;
+        if(!(trial && trial.trialId === tid) && now() - (Number(c.startedAt) || 0) > 8 * 86400000){ var mm = Object.assign({}, find(id).trialEnds || {}); delete mm[tid]; patch(id, { trialEnds: mm }); }
+        return;
       }
       ending[tid] = true;
       tried[tid] = (tried[tid] || 0) + 1;
+      var fin; inflight[tid] = new Promise(function(r){ fin = r; }); ps.push(inflight[tid]);
       var done = function(ok, gone404){
-        delete ending[tid];
+        delete ending[tid]; delete inflight[tid]; fin();
         if(ok){ var x = find(id), m = Object.assign({}, (x && x.trialEnds) || {}); delete m[tid]; patch(id, { trialEnds: m }); persist(); }
         else if(gone404) tried[tid] = 2; // تجربة حساب آخر (متصفّح مشترك): تبقى لصاحبها، ولا إعادة في هذه الصفحة
         else if(tried[tid] < 2) setTimeout(function(){ trialEnd(id); }, END_RETRY_MS);
@@ -48595,6 +48600,17 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
           body: JSON.stringify({ token: token(), trialId: tid, durationSec: Math.max(0, Math.round(sec) || 0) }) })
           .then(function(r){ done(!!r.ok, r.status === 404); }, function(e){ __swallow(e, 'call-agent:trial-end'); done(false); });
       }catch(e){ __swallow(e, 'call-agent:trial-end'); done(false); }
+    });
+    return Promise.all(ps);
+  }
+  /* كلّ كروت الاتّصال في كلّ المحادثات (لا المفتوحة وحدها) */
+  function eachCallCard(fn){
+    var ps = (typeof state !== 'undefined' && state && Array.isArray(state.projects)) ? state.projects : [];
+    ps.forEach(function(p){
+      (p && Array.isArray(p.messages) ? p.messages : []).forEach(function(m){
+        var c = m && m.cards && m.cards.kind === 'call' && m.cards.call;
+        if(c && c.id) fn(c);
+      });
     });
   }
 
@@ -48848,6 +48864,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var micErr = (typeof mahaMicPreflight === 'function') ? await mahaMicPreflight() : null;
     if(gone(s)) return;
     if(micErr){ finish(s, 'failed', micErr); return; }
+    if(s.pre){ await s.pre; if(gone(s)) return; } // نهايات سابقة تُقبل أوّلًا فيُفكّ قفل التجربة قبل طلب الجديدة
     setState(s, 'connecting');
     later(s, function(){ if(!s.readyAt) finish(s, 'failed', 'callAgentErrGeneric'); }, SETUP_MAX_MS);
     var r = await post('call-session', s.trialId ? paidBody({ id: s.id, trialId: s.trialId }) : paidBody({ id: s.id })); // v-call-agent-paid: المعرّف محفوظ قبل الطلب
@@ -48929,9 +48946,15 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     s.halt = new Promise(function(res){ s.haltRes = res; });
     patch(id, { transport: 'trial', state: 'mic', callId: '', outcome: null, transcript: [], startedAt: now(), endedAt: 0, durationSec: 0, resultPushed: false });
     if(!isOwner()){ // v-call-agent-paid: معرّف التجربة في الكرت قبل الطلب (-1 = لم تنتهِ) — persist تحت يحفظه قبل أيّ شبكة
-      // نهايات سابقة لم تُقبل بعد تُعاد الآن (المراجعة الثانية: قفل «تجربة حيّة واحدة» كان يبقى حتّى التحميل التالي)
-      Object.keys(c.trialEnds || {}).forEach(function(k){ if(Number(c.trialEnds[k]) >= 0 && tried[k] >= 2) tried[k] = 1; });
-      trialEnd(id);
+      // نهايات سابقة لم تُقبل بعد تُعاد الآن، من كلّ الكروت لا هذا وحده (قفل «تجربة حيّة واحدة» للمستخدم كلّه — المراجعتان الثانية
+      // والثالثة)، وطلب الجلسة ينتظرها حتّى ٣ ث فلا يسبقها إلى القفل
+      var pend = [];
+      eachCallCard(function(x){
+        var te = x.trialEnds || {}, any = false;
+        Object.keys(te).forEach(function(k){ if(Number(te[k]) >= 0){ any = true; if(tried[k] >= 2) tried[k] = 1; } });
+        if(any) pend.push(trialEnd(x.id));
+      });
+      if(pend.length) s.pre = Promise.race([Promise.all(pend), new Promise(function(r){ setTimeout(r, 3000); })]);
       s.trialId = newTrialId();
       var te0 = Object.assign({}, c.trialEnds || {}); te0[s.trialId] = -1; patch(id, { trialEnds: te0 });
     }
@@ -49057,16 +49080,11 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   function sweep(){
     try{
       if(!token()) return;
-      var ps = (typeof state !== 'undefined' && state && Array.isArray(state.projects)) ? state.projects : [];
-      ps.forEach(function(p){
-        (p && Array.isArray(p.messages) ? p.messages : []).forEach(function(m){
-          var c = m && m.cards && m.cards.kind === 'call' && m.cards.call;
-          if(!c || !c.id) return;
-          if(c.trialEnds && Object.keys(c.trialEnds).length) trialEnd(c.id, true);
-          if(c.transport !== 'phone' || !c.callId || polls[c.callId]) return;
-          if(ACTIVE[String(c.state)]) resume(c);
-          else if(!c.billed && !isOwner()) settlePhone(c).catch(function(e){ __swallow(e, 'call-agent:sweep-phone'); });
-        });
+      eachCallCard(function(c){
+        if(c.trialEnds && Object.keys(c.trialEnds).length) trialEnd(c.id, true);
+        if(c.transport !== 'phone' || !c.callId || polls[c.callId]) return;
+        if(ACTIVE[String(c.state)]) resume(c);
+        else if(!c.billed && !isOwner()) settlePhone(c).catch(function(e){ __swallow(e, 'call-agent:sweep-phone'); });
       });
     }catch(e){ __swallow(e, 'call-agent:sweep'); }
   }

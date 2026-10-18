@@ -20,7 +20,8 @@ const PROP_TTL_SEC = 1800;
 const REC_TTL_SEC = 7 * 86400;    // v-call-agent-paid (المراجعة): سجلّ المكالمة يعيش أسبوعًا — حجز لم يُسوَّ لا يسقط مع سجلّه بعد يوم
 const TRIAL_TTL_SEC = 7 * 86400;
 const SETTLE_TTL_SEC = 8 * 86400; // أطول من السجلّ: ختم «سُوّيت» لا يسقط قبل آخر استطلاع ممكن
-const CLAIM_STALE_MS = 120000;    // مطالبة تسوية بلا ختم أقدم من هذا = عملية ماتت في منتصفها؛ تُحذف ويعيدها الاستطلاع التالي
+const CLAIM_STALE_MS = 6 * 60000; // مطالبة تسوية (أو تجربة pending) بلا ختم أقدم من هذا = عملية ماتت في منتصفها؛ تُحذف ويعيدها الاستطلاع التالي.
+                                  // المراجعة الثالثة: أطول من عمر الدالّة (maxDuration 300 ث في vercel.json) — نداءات KV بلا مهلة، فعمليّة «بطيئة» دون ذلك ما زالت حيّة
 const CALL_REASON = 'call_agent';
 const RELAY_KEEP_MS = 23 * 3600000; // خدمة الاتّصال تنسى المكالمة بعد ٢٤ ساعة (call-relay LIMITS.ttlMs) — 404 بعدها ليس «ضاعت»
 const OPEN_ASK_MAX = 1, OPEN_ASK_MS = 3000; // تسوية حجز سابق عند بدء مكالمة: سؤال واحد للخدمة بمهلة قصيرة (حدّ Vercel ١٥ ث)
@@ -398,11 +399,11 @@ async function releaseLock(kv, user, callId, key) {
 /* v-call-agent-paid: من يبدأ مكالمة (تجربة أو حقيقيّة)؟ المالك، أو صاحب باقة محادثة سارية — السجلّ يُقرأ طازجًا لحظة المال لا من
    ذاكرة tier المؤقّتة (٦٠ ث): باقة انتهت أو رُدّت بعد ظهور الكرت لا تبدأ مكالمة. المتابعة والإلغاء والتسوية لصاحب المكالمة وحده بلا
    فحص باقة — باقة تنتهي أثناء مكالمة لا تحبس حجزها. (VIP لا يصله الكرت: المحادثة تعطي الأداة لفئة sub وحدها.) */
-async function callAccess(user, d) {
+async function callAccess(user, d, now) {
   if (require('./_owner.js').isOwnerName(user)) return { ok: true, owner: true };
   let rec = null;
   try { rec = await ((d && d.getUser) || require('./auth.js').getUser)(user); } catch (e) { rec = null; } // عطل القراءة = لا باقة مؤكَّدة
-  return { ok: !!require('./tier.js').planActive(rec), owner: false };
+  return { ok: !!require('./tier.js').planActive(rec, now), owner: false }; // ساعة المعالج (المراجعة الثالثة: الاختبارات كانت تتبع ساعة الجهاز)
 }
 
 /* v-call-agent-paid — التسوية مرّة واحدة لكلّ حجز (مكالمة أو تجربة)، على نمط video-enhance.failJob: مطالبة SET NX، ثمّ ردّ الباقي
@@ -480,7 +481,10 @@ async function trackOpen(kv, user, ids) {
 function billedSec(s) { return String((s && s.endReason) || '') === 'relay_restart' ? 0 : Math.max(0, Math.floor(Number(s && s.durationSec) || 0)); }
 /* المراجعة الثانية: 404 من الخدمة لمكالمة أقدم من حفظها (٢٤ ساعة) يعني «نسيتها» لا «ضاعت» — المدّة مجهولة فيُخصم الحجز (السلوك قبل
    تمديد السجلّ إلى أسبوع)؛ أحدث من ذلك = ضاعت فعلًا ← ردّ كامل. */
-function lostSec(rec, now) { return (now - (Number(rec && rec.startedAt) || 0)) >= RELAY_KEEP_MS ? (Number(rec && rec.maxSec) || MAX_MIN * 60) : 0; }
+function lostSec(rec, now) {
+  if (rec && rec.refused) return 0; // المراجعة الثالثة: رفضتها الخدمة صراحةً = لم يُتّصل بأحد — لا «نسيتها» مهما طال
+  return (now - (Number(rec && rec.startedAt) || 0)) >= RELAY_KEEP_MS ? (Number(rec && rec.maxSec) || MAX_MIN * 60) : 0;
+}
 
 /* v-call-agent-paid: معرّف التجربة يولّده العميل ويحفظه في الكرت قبل الطلب (المراجعة: ردّ ضاع بإغلاق الصفحة أو انقطاع الشبكة كان
    يترك الحجز بلا معرّف عند أحد) — بصيغته وحدها، وإلّا يولّده الخادم. */
@@ -503,7 +507,7 @@ async function handler(req, res, deps) {
   const pts = d.points || require('./points.js');
 
   if (action === 'call-session' || action === 'call-start') {
-    const acc = await callAccess(user, d);
+    const acc = await callAccess(user, d, now);
     if (!acc.ok) return send(res, 403, { error: 'plan_required' });
     const prop = await loadJSON(kv, 'call/prop/' + String(body.id || '').replace(/[^a-z0-9]/gi, '').slice(0, 40));
     if (!prop || prop.owner !== user) return send(res, 404, { error: 'proposal_not_found' });
@@ -622,6 +626,8 @@ async function handler(req, res, deps) {
       // المكالمة التالية: الخدمة لا تعرفه ← ردّ كامل) ويُفكّ قفل هذه المكالمة. غير ذلك (مهلة، شبكة، صفحة خطأ من الوسيط) لا نعرف: يبقى
       // السجلّ والقفل والحجز ويتابع العميل الحالة — 404 من الخدمة يُنهيها «فشلت» بردّ كامل (call-status تحت).
       if (r.status >= 400 && r.json && typeof r.json === 'object') {
+        // العلامة قبل التسوية (المراجعة الثالثة): ردّ لم يُحسم ويُسوّى بعد ٢٣ ساعة كان يُقرأ «نسيتها» فيُخصم كاملًا
+        try { await kv.kvSetRaw('call/rec/' + callId, JSON.stringify(Object.assign({}, rec, { refused: true })), REC_TTL_SEC); } catch (e) { /* guard-ok — بلا العلامة يُردّ كاملًا ما سُوّي خلال ٢٣ ساعة */ }
         const b = await settleHold(kv, pts, holdOf(rec), 0, now);
         if (b) { try { await kv.kvDel('call/rec/' + callId); } catch (e) { /* guard-ok — السجلّ ينتهي بمدّته */ } }
         await releaseLock(kv, user, callId);
