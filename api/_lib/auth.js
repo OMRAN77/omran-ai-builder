@@ -349,11 +349,18 @@ async function verifiedHolderOf(emailKey, exceptKey) {
 
 // بريد ثبت للتوّ لصاحبه: مدخل VIP بهذا البريد خامًا (أضافه المالك قبل أن يُعرف صاحبه) يصير اسم حسابه. _vip.js يُستبدل في
 // بعض الاختبارات بـ{ isVip } وحدها، فالفحص بـtypeof. لا يرمي: الدخول لا يفشل بسبب القائمة.
-async function promoteVip(emailKey, key) {
-  try {
-    const vip = require('./_vip.js');
-    if (typeof vip.promoteVerifiedEmail === 'function') await vip.promoteVerifiedEmail(emailKey, key);
-  } catch (e) { logError('auth:vip-promote', e); }
+// v-unverified-email (مراجعة النقض): الترقية قراءة القائمة ثمّ كتابتها — الجرد يختم ٢٥ حسابًا معًا فتتسابق وتضيع إحداها للأبد
+// (علامة «رُقّي» تُكتب قبل القائمة). سلسلة واحدة في العمليّة تجعلها واحدة بعد واحدة.
+let vipPromoteChain = Promise.resolve();
+function promoteVip(emailKey, key) {
+  const run = vipPromoteChain.then(async () => {
+    try {
+      const vip = require('./_vip.js');
+      if (typeof vip.promoteVerifiedEmail === 'function') await vip.promoteVerifiedEmail(emailKey, key);
+    } catch (e) { logError('auth:vip-promote', e); }
+  });
+  vipPromoteChain = run.catch(() => {});
+  return run;
 }
 
 /* v-unverified-email (أمر المالك ١٨ أكتوبر: «الدخول واسترجاع الحساب بالإيميل يشتغلون بس على إيميل متأكَّد… أي حساب إيميله غير
@@ -364,36 +371,51 @@ const UNVERIFIED_EMAIL_AR = 'هذا الإيميل غير مؤكَّد، ادخ�
 const UNVERIFIED_EMAIL_EN = 'This email is not confirmed — sign in with your username and confirm it in My account';
 const UNVERIFIED_EMAIL_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 
-// سجلّات أُثبت بريدها قبل الختم (١٨ أكتوبر) تُختم مرّة بدليل من السجلّ نفسه — لا تُعامَل كالمزروعة.
-// حساب أنشأه رمز البريد قبل الختم (v-vip-verified): بريده ثبت عند إنشائه ولا كلمة مرور يعرفها صاحبه — معاملته «غير مؤكَّد» تقفله
-// عن نفسه. الدليل من الإنشاء نفسه: otpOnly، واسمه <مقدّمة البريد>_<٦ ست عشريّة>، وفهرس البريد له كُتب في الطلب نفسه (at ضمن دقيقة
-// من createdAt) — setEmail القديم كان يكتب الفهرس وقت التغيير لا الإنشاء. يُختم مرّة فيصير مؤكَّدًا كغيره (ومدخل VIP الخامّ له).
+// سجلّات أُثبت بريدها قبل الختم (١٨ أكتوبر) تُختم مرّة بدليل من السجلّ نفسه — لا تُعامَل كالمزروعة، ولا تُقفل عن أصحابها:
+// • حساب Google غيّر اسمه: googleAuth (لا يضعه إلّا الكولباك) ومفتاحه الأوّل g_<البريد> في prevUsernames (منذ ٥ أكتوبر) أو شاهده يقود إليه.
+// • هويّة Google دمجها المالك فيه (db/alias/g_<البريد> ← هذا الحساب): كلّ دخول Google بهذا البريد يصله.
+// • حساب أنشأه رمز البريد (otpOnly، بلا كلمة مرور يعرفها صاحبه): اسم الإنشاء <مقدّمة البريد>_<٦ ست عشريّة>، وفهرس البريد له كُتب في
+//   الطلب نفسه (٠–١٠ ثوانٍ بعد createdAt؛ setEmail القديم كتبه وقت التغيير)، فإن غيّر اسمه بعدها فشاهد اسم الإنشاء يقود إليه.
 function otpNamePrefix(email) { return String(email).split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase() || 'user'; }
+async function leadsHere(fromKey, key) {
+  try { return await tombstoneLeadsTo(await getUser(fromKey, 1), key); } catch (e) { logError('auth:legacy-chain', e); return false; }
+}
 async function emailProven(key, user) {
   if (emailVerifiedFor(key, user)) return true;
   if (!user || user.deleted || !user.email) return false;
-  // حساب Google غيّر اسمه قبل الختم: مفتاحه الأوّل g_<البريد> في prevUsernames (يكتبه تغيير الاسم وحده)، وgoogleAuth لا يضعه إلّا
-  // الكولباك — فبريده أثبتته Google. بلا هذا يُعامَل غير مؤكَّد ويُشال بعد ثلاثين يومًا.
-  if (user.googleAuth === true && Array.isArray(user.prevUsernames) && user.prevUsernames.indexOf('g_' + user.email) !== -1) return stampLegacyEmail(key, user);
+  if (user.googleAuth === true && ((Array.isArray(user.prevUsernames) && user.prevUsernames.indexOf('g_' + user.email) !== -1)
+      || await leadsHere('g_' + user.email, key))) return stampLegacyEmail(key, user);
+  try {
+    const alias = await kvGetJSON('db/alias/g_' + user.email);
+    if (alias && alias.primary && String(alias.primary).trim().toLowerCase() === key) return stampLegacyEmail(key, user);
+  } catch (e) { logError('auth:legacy-alias', e); }
   if (user.otpOnly !== true) return false;
   let idx = null;
   try { idx = await kvGetJSON('db/email-index/' + user.email); } catch (e) { logError('auth:otp-legacy-index', e); return false; }
-  const named = new RegExp('^' + otpNamePrefix(user.email) + '_[0-9a-f]{6}$').test(key) || /^user_[0-9a-f]{12}$/.test(key);
-  const sameRequest = !!idx && String(idx.username || '').trim().toLowerCase() === key && Math.abs(Number(idx.at) - Number(user.createdAt)) <= 60 * 1000;
-  if (!named || !sameRequest) return false;
+  const origin = idx ? String(idx.username || '').trim().toLowerCase() : '';
+  const named = new RegExp('^' + otpNamePrefix(user.email) + '_[0-9a-f]{6}$').test(origin) || /^user_[0-9a-f]{12}$/.test(origin);
+  const gap = Number(idx && idx.at) - Number(user.createdAt);
+  if (!origin || !named || !(gap >= 0 && gap <= 10 * 1000)) return false;
+  if (origin !== key && !(await leadsHere(origin, key))) return false;
   return stampLegacyEmail(key, user);
 }
+// الختم على نسخة تُقرأ الآن لا على ما بيد المستدعي (بين قراءته وهنا كلمة مرور وscrypt): تأكيد أو تغيير اسم في الفجوة لا يُمحى ولا يُبعث.
 async function stampLegacyEmail(key, user) {
+  let fresh = null;
+  try { fresh = await getUser(key, 1); } catch (e) { logError('auth:legacy-email-read', e); }
+  if (!fresh || fresh.deleted || fresh.email !== user.email) return false;
+  fresh.verifiedEmail = fresh.email;
+  delete fresh.emailUnverified;
+  try { await putUser(key, fresh); } catch (e) { logError('auth:legacy-email-stamp', e); }
   user.verifiedEmail = user.email;
   delete user.emailUnverified;
-  try { await putUser(key, user); } catch (e) { logError('auth:legacy-email-stamp', e); }
   await promoteVip(user.email, key);
   return true;
 }
 
 // عدّاد الثلاثين يومًا يبدأ أوّل ما يُرى البريد غير المؤكَّد (الدخول، أو الجرد اليوميّ) — لا من تاريخ قديم، فلا يُشال شيء يوم النشر.
 // بعده يُشال البريد (email=null) وفهرسه إن كان يشير لهذا الحساب (لا فهرس من أكّده بعده)، والحساب وكلّ ما فيه باقٍ. السجلّ يُقرأ من
-// جديد قبل الكتابة: تأكيد في اللحظة نفسها لا يُمحى. الحالات: none · verified · pending {email, removeAt} · removed · changed.
+// جديد قبل الكتابة فتضيق نافذة تأكيد متزامن إلى رحلة واحدة (لا قفل؛ ككلّ كاتب آخر للسجلّ). الحالات: none · verified · pending · removed · changed.
 async function settleUnverifiedEmail(key, user, now) {
   now = now || Date.now();
   if (!user || user.deleted || !user.email) return { state: 'none' };
@@ -435,7 +457,10 @@ async function unverifiedHolderOf(emailKey) {
 async function emailToConfirmFor(key, user) {
   try {
     const r = await settleUnverifiedEmail(key, user);
-    return r.state === 'pending' ? r.email : null;
+    if (r.state !== 'pending') return null;
+    // حساب آخر أثبته (برمز أو Google): زرّ «أرسل الكود» يعود ٤٠٩ دائمًا — لا تنبيه، والعدّاد يمضي فيُشال.
+    if (await verifiedHolderOf(r.email, key)) return null;
+    return r.email;
   } catch (e) { logError('auth:email-confirm-hint', e); return null; }
 }
 

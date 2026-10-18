@@ -1567,6 +1567,7 @@ try{
           acctEmailPending = '';
           acctEmailCodeBox(false);
           acctEmailState = { email: emailKey, verified: true };
+          emailConfirmAlert(null); // v-unverified-email: تأكّد — لا يبقى التنبيه
           say(t2.acctSaved, '#22c55e');
           return;
         }
@@ -1584,7 +1585,8 @@ try{
   }
   /* v-unverified-email (أمر المالك ١٨ أكتوبر: «أي حساب إيميله غير متأكَّد، أول ما يدخل يطلع له تنبيه «أكّد إيميلك» وزرّ يرسل
      الكود»): الخادم يعيد emailToConfirm مع الدخول ومع التحقّق عند كلّ فتح ما دام البريد غير مؤكَّد. الزرّ يفتح «حسابي» ويرسل الرمز
-     من مسار «حفظ» نفسه (purpose:'change') فتظهر خانة الرمز هناك. ✕ يخفيه لهذه الجلسة. بعد ٣٠ يومًا بلا تأكيد يُشال البريد فلا تنبيه. */
+     من مسار «حفظ» نفسه (purpose:'change') فتظهر خانة الرمز هناك. ✕ يخفيه لهذه الجلسة. بعد ٣٠ يومًا بلا تأكيد يُشال البريد فلا تنبيه.
+     ألوانه كشريط الباقات (#plansNoticeBar) فيُقرأ في الفاتح والداكن والثيمات؛ z-index ٥٠: فوق المحادثة وتحت الدُّرج والأدوات والهيدر. */
   function emailConfirmAlert(email){
     const old = $('#emailConfirmBar');
     if(old) old.remove();
@@ -1597,11 +1599,12 @@ try{
     const bar = document.createElement('div');
     bar.id = 'emailConfirmBar';
     bar.setAttribute('role', 'alert');
-    bar.style.cssText = 'position:fixed; top:' + top + 'px; left:50%; transform:translateX(-50%); z-index:9000; width:min(460px, calc(100vw - 24px)); box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--th-dlg2, #1c1c20); color:var(--text, #eee); border:1px solid var(--th-line2, rgba(255,255,255,.16)); border-radius:var(--r-3, 14px); box-shadow:var(--sh-2, 0 8px 24px rgba(0,0,0,.45));';
+    bar.style.cssText = 'position:fixed; top:' + top + 'px; left:50%; transform:translateX(-50%); z-index:50; width:min(460px, calc(100vw - 24px)); box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--panel2, #1c2230); color:var(--text, #eee); border:1px solid rgba(201,162,39,.45); border-radius:var(--r-3, 14px); box-shadow:var(--sh-2, 0 8px 24px rgba(0,0,0,.45));';
     const txt = document.createElement('div');
     txt.style.cssText = 'flex:1; min-width:0; line-height:1.4;';
     const title = document.createElement('div');
     title.style.fontWeight = '700';
+    title.setAttribute('data-i18n', 'emailConfirmTitle'); // ملفّ اللغة يصل لاحقًا أو تتغيّر اللغة: applyLanguage يعيده
     title.textContent = t2.emailConfirmTitle || '';
     const addr = document.createElement('div');
     addr.style.cssText = 'font-size:var(--fs-4, 12.5px); color:var(--muted, #999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
@@ -1611,6 +1614,7 @@ try{
     send.type = 'button';
     send.className = 'btn primary';
     send.style.cssText = 'flex:none; white-space:nowrap;';
+    send.setAttribute('data-i18n', 'emailConfirmSend');
     send.textContent = t2.emailConfirmSend || '';
     send.onclick = () => {
       bar.remove();

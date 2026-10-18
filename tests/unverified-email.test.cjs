@@ -306,6 +306,9 @@ test('١٠. التوصيل: الجدول اليوميّ وموجّهه، ورس�
   assert.equal((boot.match(/emailConfirmAlert\(data\.emailToConfirm\)/g) || []).length, 2, 'بعد الدخول وعند الفتح');
   assert.ok(/function emailConfirmAlert\(email\)[\s\S]*?showSettingsPage\('accountSection'\)[\s\S]*?acctToggleRow\('acctRowEmail'[\s\S]*?acctEmailSaveBtn\.onclick\(\)/.test(boot), 'الزرّ يفتح «حسابي» وصفّ الإيميل ويرسل الرمز');
   assert.ok(boot.includes('emailConfirmAlert(null); // v-unverified-email'), 'الخروج يزيله');
+  assert.ok(/acctEmailState = \{ email: emailKey, verified: true \};\s*emailConfirmAlert\(null\);/.test(boot), 'التأكيد من «حسابي» يزيله');
+  assert.ok(boot.includes("title.setAttribute('data-i18n', 'emailConfirmTitle')") && boot.includes("send.setAttribute('data-i18n', 'emailConfirmSend')"), 'يُترجم مع تغيّر اللغة');
+  assert.ok(boot.includes("z-index:50; width:min(460px, calc(100vw - 24px));") && boot.includes('background:var(--panel2, #1c2230); color:var(--text, #eee); border:1px solid rgba(201,162,39,.45);'), 'ألوان شريط الباقات وتحت الدُّرج');
   const data = read('js/app-03-i18n-data.js');
   assert.ok(data.includes("authEmailUnverified: '" + AR + "'"), 'نصّ المالك حرفيًّا');
   for (const k of ['authEmailUnverified', 'emailConfirmTitle', 'emailConfirmSend']) {
@@ -318,4 +321,62 @@ test('١٠. التوصيل: الجدول اليوميّ وموجّهه، ورس�
   const tag = Number((read('js/app-04-i18n-state.js').match(/sc\.src = 'i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]);
   assert.ok(tag >= 756, 'وسم ملفّات اللغات ' + tag);
   assert.ok(!/claude|gemini|groq|gpt|openai|anthropic/i.test(data.match(/emailConfirm\w+: '[^']*'/g).join(' ')), 'بلا اسم مزوّد');
+});
+
+test('١١. (مراجعة النقض) سجلّات مُثبتة غيّرت اسمها أو دُمجت لا تُقفل: حساب الرمز بعد تغيير اسمه، وGoogle قبل ٥ أكتوبر، والدمج', async () => {
+  const created = Date.now() - 60 * DAY;
+  // حساب أنشأه الرمز ثمّ غيّر صاحبه اسمه من «حسابي» (المسار الحقيقيّ)
+  await auth.putUser('reem_0a1b2c', { username: 'reem_0a1b2c', email: 'reem@mail.com', otpOnly: true, createdAt: created, points: 3, salt: 'x', hash: 'y' });
+  store.set('db/email-index/reem@mail.com', JSON.stringify({ username: 'reem_0a1b2c', at: created + 300 }));
+  const ren = await call({ action: 'changeUsername', token: auth.makeToken('reem_0a1b2c'), newUsername: 'reem' }, '9.8.0.1');
+  assert.equal(ren.status, 200, JSON.stringify(ren.body));
+  assert.equal(await auth.emailProven('reem', await user('reem')), true, 'شاهد اسم الإنشاء يقود إليه');
+  mail.length = 0;
+  assert.equal((await call({ action: 'forgotPassword', username: 'reem', lang: 'ar' }, '9.8.0.2')).status, 200, 'استرجاعه الوحيد باقٍ');
+  assert.equal(mailTo('reem@mail.com').length, 1);
+  assert.equal((await auth.settleUnverifiedEmail('reem', await user('reem'), Date.now() + 31 * DAY)).state, 'verified', 'ولا يُشال');
+  // Google غيّر اسمه قبل ٥ أكتوبر: بلا prevUsernames، وشاهد g_<البريد> يقود إليه
+  await auth.putUser('layla', { username: 'layla', email: 'layla@gmail.com', googleAuth: true, createdAt: created, points: 0, salt: 'x', hash: 'y' });
+  await auth.putUser('g_layla@gmail.com', { deleted: true, movedTo: 'layla' });
+  assert.equal(await auth.emailProven('layla', await user('layla')), true);
+  // هويّة Google دمجها المالك في حساب بالبريد نفسه
+  await auth.putUser('primary1', { username: 'primary1', email: 'p1@gmail.com', createdAt: created, points: 0, salt: 'x', hash: 'y' });
+  store.set('db/alias/g_p1@gmail.com', JSON.stringify({ primary: 'primary1' }));
+  assert.equal(await auth.emailProven('primary1', await user('primary1')), true);
+  await auth.putUser('other1', { username: 'other1', email: 'p2@gmail.com', createdAt: created, points: 0, salt: 'x', hash: 'y' });
+  store.set('db/alias/g_p2@gmail.com', JSON.stringify({ primary: 'someone-else' }));
+  assert.equal(await auth.emailProven('other1', await user('other1')), false, 'دمج لحساب آخر لا يُثبته');
+  // نافذة الطلب الواحد: ٠–١٠ ثوانٍ بعد الإنشاء — لا قبلها ولا بعد ٢٥ ثانية (setEmail قديم سريع)
+  for (const [name, gap, want] of [['mona_abc123', 25000, false], ['huda_abc123', -5000, false], ['dana_abc123', 300, true]]) {
+    const email = name.split('_')[0] + '@gmail.com';
+    await auth.putUser(name, { username: name, email, otpOnly: true, createdAt: created, points: 0, salt: 'x', hash: 'y' });
+    store.set('db/email-index/' + email, JSON.stringify({ username: name, at: created + gap }));
+    assert.equal(await auth.emailProven(name, await user(name)), want, name + ' ' + gap);
+  }
+});
+
+test('١٢. (مراجعة النقض) لا تنبيه إن أثبت البريدَ حسابٌ آخر (زرّه يعود ٤٠٩ دائمًا) — والعدّاد يمضي', async () => {
+  await signup('hamad');
+  await plant('hamad', 'hamad@gmail.com');
+  await auth.putUser('g_hamad@gmail.com', { username: 'Hamad', email: 'hamad@gmail.com', googleAuth: true, createdAt: Date.now(), points: 0, salt: 'x', hash: 'y' });
+  const login = await call({ action: 'login', username: 'hamad', password: PASS }, '9.9.0.1');
+  assert.equal(login.status, 200);
+  assert.equal(login.body.emailToConfirm, null);
+  assert.ok((await user('hamad')).emailUnverified.since > 0, 'العدّاد بدأ فيُشال بعد ٣٠ يومًا');
+});
+
+test('١٣. (مراجعة النقض) الجرد يختم حسابات رمز قديمة ببريد في VIP معًا — كلّ ترقية تصل القائمة، لا تتسابق فتضيع', async () => {
+  const vip = require(rp('api/_lib/_vip.js'));
+  const created = Date.now() - 50 * DAY;
+  const names = ['aa_111111', 'bb_222222', 'cc_333333', 'dd_444444'];
+  store.set(vip.VIP_KEY, JSON.stringify(names.map((n) => n.split('_')[0] + '@vip.com')));
+  vip.invalidateCache();
+  for (const n of names) {
+    const email = n.split('_')[0] + '@vip.com';
+    await auth.putUser(n, { username: n, email, otpOnly: true, createdAt: created, points: 0, salt: 'x', hash: 'y' });
+    store.set('db/email-index/' + email, JSON.stringify({ username: n, at: created + 50 }));
+  }
+  await auth.sweepUnverifiedEmails(Date.now());
+  const list = JSON.parse(store.get(vip.VIP_KEY));
+  for (const n of names) assert.ok(list.includes(n), n + ' في القائمة: ' + JSON.stringify(list));
 });
