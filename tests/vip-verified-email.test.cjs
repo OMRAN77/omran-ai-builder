@@ -304,3 +304,52 @@ test('١١. (مراجعة النقض) لوحة VIP: المعرّف في data-id 
   const evil = "z\\');alert(1);//\"><img src=x onerror=alert(2)>";
   assert.ok(!/"[^"]*"\s*onerror|<img/.test('data-id="' + esc(evil) + '"'), 'لا خروج من السمة');
 });
+
+test('١٢. (مراجعة النقض ٢) الترقية مرّة لكلّ إيميل: حساب ثانٍ يثبت البريد نفسه لا يأخذ VIP، وما يزيله المالك لا يعود بالدخول التالي، وإعادة الإضافة تعيده', async () => {
+  // lina رُقّيت في ٦ — حساب ثانٍ لصاحبة البريد نفسها (رمز البريد ينشئ حسابًا جديدًا لا فهرس له؟ الفهرس فارغ لـGoogle) لا يأخذ VIP
+  assert.equal((await call({ action: 'email-otp-request', email: 'lina@gmail.com', lang: 'ar' })).status, 200);
+  const r = await call({ action: 'email-otp-verify', email: 'lina@gmail.com', otp: mail['lina@gmail.com'].code, lang: 'ar' });
+  assert.equal(r.status, 200);
+  const second = auth.verifyToken(r.body.token);
+  assert.notEqual(second, 'g_lina@gmail.com');
+  assert.equal(await isVip(second), false, 'لا VIP بلا عدد من إيميل واحد');
+  // المالك يزيل المرقّى — دخول Google التالي لا يعيده
+  assert.equal((await vip('DELETE', { token: OWNER, id: 'g_lina@gmail.com' })).status, 200);
+  assert.equal(await isVip('g_lina@gmail.com'), false);
+  googleProfile = { email: 'lina@gmail.com', email_verified: true, name: 'Lina', picture: null };
+  const res = { code: 0, writeHead(c) { this.code = c; }, end() {}, setHeader() {}, status(c) { this.code = c; return this; }, json() {} };
+  await googleCb({ query: { code: 'c', state: 'st12' }, headers: {} }, res);
+  assert.equal(await isVip('g_lina@gmail.com'), false, 'إزالة المالك نهائيّة');
+  // المالك يعيد إضافة الإيميل → حساب Google بمفتاحه
+  assert.equal((await addVip('lina@gmail.com')).body.id, 'g_lina@gmail.com');
+  assert.equal(await isVip('g_lina@gmail.com'), true);
+});
+
+test('١٣. (مراجعة النقض ٢) غرباء يستنفدون السقف العامّ لبريدٍ لا يقفلونه عن الحساب الذي يحمله', async () => {
+  const victim = await signup('victim2');
+  await legacyEmail('victim2', 'victim2@mail.com');
+  for (let i = 0; i < 4; i++) {
+    const t = await signup('bomber' + i);
+    for (let j = 0; j < 3; j++) await changeEmail(t, 'victim2@mail.com');
+  }
+  const late = await signup('bomber9');
+  assert.equal((await changeEmail(late, 'victim2@mail.com')).status, 429, 'السقف العامّ (١٠ في الساعة) يمنع إغراق الصندوق');
+  assert.equal((await changeEmail(victim, 'victim2@mail.com')).status, 200, 'صاحب البريد المحفوظ يأخذ رمزه');
+});
+
+test('١٤. (مراجعة النقض ٢) «حسابي»: إعادة فتح الإعدادات لا تعيد الإيميل القديم والرمز معلَّق، وخانة الرمز 000000، وأخطاء الحدّ والجلسة بلغة الواجهة', () => {
+  const fs = require('fs');
+  const cl = fs.readFileSync(path.join(root, 'js', 'app-01-boot-auth.js'), 'utf8');
+  assert.ok(cl.includes("if(acctEmail) acctEmail.value = acctEmailPending || data.email || '';"));
+  assert.ok(cl.includes("if(emailKey === acctEmailState.email && acctEmailState.verified){ acctEmailPending = ''; acctEmailCodeBox(false);"));
+  assert.ok(cl.includes("box.placeholder = '000000';"));
+  assert.ok(cl.includes("too_many: String(t2.acctEmailTooMany || '').replace('{minutes}', String(Number(data.minutes) || 15)),"));
+  const d = fs.readFileSync(path.join(root, 'js', 'app-03-i18n-data.js'), 'utf8');
+  assert.equal((d.match(/acctEmailTooMany: '[^']*\{minutes\}[^']*'/g) || []).length, 2);
+  for (const lg of ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil']) {
+    const f = fs.readFileSync(path.join(root, 'i18n', lg + '.js'), 'utf8');
+    for (const k of ['acctEmailCodeSent', 'acctEmailBadCode', 'acctEmailTaken', 'acctEmailUnverified', 'acctEmailTooMany']) assert.match(f, new RegExp('"?' + k + '"?: "'), lg + ' ' + k);
+    assert.match(f, /"?acctEmailCodeSent"?: "[^"]*\{email\}/, lg);
+    assert.match(f, /"?acctEmailTooMany"?: "[^"]*\{minutes\}/, lg);
+  }
+});

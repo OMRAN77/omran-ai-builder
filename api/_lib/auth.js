@@ -605,9 +605,10 @@ async function emailChangeRequest(req, res, body, m) {
   if (user.email === key && emailVerifiedFor(u, user)) { res.status(200).json({ ok: true, verified: true, email: key }); return; }
   // الحدود قبل فحص «مرتبط بحساب آخر» (كان قبلها سؤالًا بلا حدّ: هل لهذا البريد حساب؟ — مراجعة النقض). حدّ البريد لكلّ زوج (حساب، بريد)
   // فغريبٌ لا يستنفد حصّة صاحب البريد؛ وسقف أوسع للبريد من كلّ الحسابات يمنع إغراق صندوقه.
+  // الحساب الذي يحمل هذا البريد محفوظًا (من يؤكّد بريده القائم) خارج السقف العامّ: غرباء يستنفدونه لا يقفلونه عنه (مراجعة النقض).
   const mins = (await rateWait('mail-change-acct', u, 5, 15 * 60 * 1000))
     || (await rateWait('mail-change-to', u + '|' + key, 3, 15 * 60 * 1000))
-    || (await rateWait('mail-change-all', key, 10, 60 * 60 * 1000));
+    || (user.email === key ? 0 : await rateWait('mail-change-all', key, 10, 60 * 60 * 1000));
   if (mins) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins }); return; }
   if (await verifiedHolderOf(key, u)) { res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'), code: 'email_taken' }); return; }
   if (!RESEND_API_KEY) { res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin'), code: 'mail_off' }); return; }

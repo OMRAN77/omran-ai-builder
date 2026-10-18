@@ -314,6 +314,7 @@ I18N['tr'] = {
     "acctEmailBadCode": "Kod yanlış veya süresi dolmuş — kutuyu temizleyip yeni kod için Kaydet'e basın",
     "acctEmailTaken": "Bu e-posta başka bir hesapta zaten doğrulanmış",
     "acctEmailUnverified": "Bu e-posta doğrulanmadı — doğrulama kodu almak için Kaydet'e basın",
+    "acctEmailTooMany": "Çok fazla deneme — {minutes} dakika sonra tekrar deneyin",
     "acctNetError": "Sunucuya ulaşılamadı, bağlantınızı kontrol edin",
     "acctAvatarTooBig": "Görsel çok büyük, daha küçük bir tane seçin",
     "providerColorsLabel": "🤖 Her AI sağlayıcısının rengi (sohbette adının yanında gösterilir)",

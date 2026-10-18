@@ -309,6 +309,7 @@ I18N['zh'] = {
     "acctEmailBadCode": "验证码错误或已过期——清空输入框后点击“保存”获取新验证码",
     "acctEmailTaken": "该邮箱已在另一个账户中验证",
     "acctEmailUnverified": "该邮箱尚未验证——点击“保存”获取验证码",
+    "acctEmailTooMany": "尝试次数过多——请在 {minutes} 分钟后重试",
     "acctNetError": "无法连接到服务器，请检查您的网络连接",
     "acctAvatarTooBig": "图片太大，请选择较小的图片",
     "providerColorsLabel": "🤖 各 AI 提供商的颜色(显示在聊天界面的名称旁)",

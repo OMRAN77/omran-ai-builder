@@ -1281,6 +1281,7 @@ try{
      partials-settings (لا وسم ?v= يُرفع). الإيميل المحفوظ قبل اليوم غير مؤكَّد: «حفظ» بالقيمة نفسها يرسل رمزه. */
   let acctEmailState = { email: '', verified: false };
   let acctEmailPending = '';
+  let acctEmailPendingUser = ''; // رمز معلَّق لحساب آخر (خروج ودخول في التبويب نفسه) لا يظهر لهذا
   function acctEmailCodeBox(show){
     let box = $('#acctEmailCode');
     if(!box && show && acctEmailMsg && acctEmailMsg.parentNode){
@@ -1295,7 +1296,7 @@ try{
     }
     if(box){
       box.style.display = show ? 'block' : 'none';
-      box.placeholder = curT().authOtpCodeLabel || '';
+      box.placeholder = '000000'; // كخانة رمز الدخول — نصّ «رمز التحقّق» يُقصّ بخطّها الكبير، والتعليمات في السطر تحته
       if(!show) box.value = '';
     }
     return box;
@@ -1313,7 +1314,9 @@ try{
           body: JSON.stringify({ action: 'getProfile', token }),
         }).then(r => r.json()).then(data => {
           if(!data || !data.ok) return;
-          if(acctEmail) acctEmail.value = data.email || '';
+          if(acctEmailPending && acctEmailPendingUser !== (authGet('aiapp_username') || '')){ acctEmailPending = ''; acctEmailCodeBox(false); }
+          // رمز معلَّق لإيميل جديد: إعادة فتح الإعدادات (لقراءة البريد) لا تعيد الإيميل القديم إلى الخانة فيضيع الجديد
+          if(acctEmail) acctEmail.value = acctEmailPending || data.email || '';
           acctEmailState = { email: String(data.email || '').toLowerCase(), verified: data.emailVerified === true }; // v-vip-verified
           if(acctEmailMsg && !acctEmailPending){
             acctEmailMsg.textContent = (data.email && data.emailVerified !== true) ? (curT().acctEmailUnverified || '') : '';
@@ -1394,7 +1397,7 @@ try{
         say(t2.acctInvalidEmail, '#ef4444');
         return;
       }
-      if(emailKey === acctEmailState.email && acctEmailState.verified){ say(t2.acctSaved, '#22c55e'); return; }
+      if(emailKey === acctEmailState.email && acctEmailState.verified){ acctEmailPending = ''; acctEmailCodeBox(false); say(t2.acctSaved, '#22c55e'); return; }
       const codeEl = $('#acctEmailCode');
       const code = (codeEl && codeEl.style.display !== 'none') ? codeEl.value.trim() : '';
       const confirming = !!acctEmailPending && acctEmailPending === emailKey && code !== '';
@@ -1413,7 +1416,10 @@ try{
         });
         const data = await res.json().catch(() => ({}));
         if(!res.ok || data.error){
-          const byCode = { bad_otp: t2.acctEmailBadCode, email_taken: t2.acctEmailTaken, bad_email: t2.acctInvalidEmail }[data.code];
+          // رسالة الخادم عربيّة/إنجليزيّة فقط — الحالات المعروفة بنصّ الواجهة بلغتها الـ١٤
+          const byCode = { bad_otp: t2.acctEmailBadCode, email_taken: t2.acctEmailTaken, bad_email: t2.acctInvalidEmail,
+            too_many: String(t2.acctEmailTooMany || '').replace('{minutes}', String(Number(data.minutes) || 15)),
+            session: t2.acctGenericError, mail_off: t2.acctGenericError, mail_failed: t2.acctGenericError }[data.code];
           say(byCode || data.error || t2.acctGenericError, '#ef4444');
           return;
         }
@@ -1425,6 +1431,7 @@ try{
           return;
         }
         acctEmailPending = emailKey;
+        acctEmailPendingUser = authGet('aiapp_username') || '';
         const box = acctEmailCodeBox(true);
         if(box){ box.value = ''; box.focus(); }
         say(String(t2.acctEmailCodeSent || '').replace('{email}', emailVal), 'var(--muted,#999)');

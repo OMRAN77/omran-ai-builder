@@ -346,6 +346,7 @@ I18N['fr'] = {
     acctEmailBadCode: "Code incorrect ou expiré — videz la case et appuyez sur Enregistrer pour en recevoir un nouveau",
     acctEmailTaken: "Cet e-mail est déjà confirmé sur un autre compte",
     acctEmailUnverified: "Cet e-mail n'est pas confirmé — appuyez sur Enregistrer pour recevoir un code de confirmation",
+    acctEmailTooMany: "Trop de tentatives — réessayez dans {minutes} min",
     acctNetError: "Impossible de contacter le serveur, vérifiez votre connexion",
     acctAvatarTooBig: "L'image est trop grande, choisissez-en une plus petite",
     providerColorsLabel: "🤖 Couleur de chaque fournisseur IA (affichée à côté de son nom dans le chat)",

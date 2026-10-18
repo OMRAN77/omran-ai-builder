@@ -314,6 +314,7 @@ I18N['id'] = {
     "acctEmailBadCode": "Kode salah atau kedaluwarsa — kosongkan kotak lalu tekan Simpan untuk kode baru",
     "acctEmailTaken": "Email ini sudah dikonfirmasi di akun lain",
     "acctEmailUnverified": "Email ini belum dikonfirmasi — tekan Simpan untuk menerima kode konfirmasi",
+    "acctEmailTooMany": "Terlalu banyak percobaan — coba lagi dalam {minutes} menit",
     "acctNetError": "Tidak dapat terhubung ke server, periksa koneksi Anda",
     "acctAvatarTooBig": "Gambar terlalu besar, pilih yang lebih kecil",
     "providerColorsLabel": "🤖 Warna setiap penyedia AI (ditampilkan di samping namanya dalam obrolan)",

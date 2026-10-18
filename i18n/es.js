@@ -315,6 +315,7 @@ I18N['es'] = {
     "acctEmailBadCode": "Código incorrecto o caducado: borra la casilla y pulsa Guardar para recibir otro",
     "acctEmailTaken": "Este correo ya está confirmado en otra cuenta",
     "acctEmailUnverified": "Este correo no está confirmado: pulsa Guardar para recibir un código de confirmación",
+    "acctEmailTooMany": "Demasiados intentos: inténtalo de nuevo en {minutes} min",
     "acctNetError": "No se pudo conectar con el servidor, verifica tu conexión",
     "acctAvatarTooBig": "La imagen es demasiado grande, elige una más pequeña",
     "providerColorsLabel": "🤖 Color de cada proveedor de IA (se muestra junto a su nombre en el chat)",

@@ -14,7 +14,7 @@
 // متصفّحات قديمة) لا يرسل جسمًا مع DELETE، فكان الطلب يصل بلا معرّف.
 const { isOwner, isOwnerName } = require('./_owner.js');
 const { sessionUser } = require('./_session.js');
-const { getVipList, addVip, removeVip, normalizeId } = require('./_vip.js');
+const { getVipList, addVip, removeVip, normalizeId, promotedKey } = require('./_vip.js');
 
 const MAX_ID_LEN = 190;
 const MAX_LIST = 500;
@@ -85,6 +85,8 @@ module.exports = async (req, res) => {
       // يُطابِق شيئًا أبدًا. إن تعذّر التحويل نخزّن الإيميل كما جاء.
       // v-vip-verified: لا يتحوّل إلّا إلى حساب أثبت البريد؛ وإلّا يبقى خامًا (pending) حتّى يثبته صاحبه (_vip.promoteVerifiedEmail).
       const raw = normalizeId(rawId);
+      // إضافة الإيميل من جديد تعيد فرصة الترقية مرّة (_vip.promoteVerifiedEmail يرقّي أوّل من يثبته فقط)
+      if (raw.indexOf('@') !== -1) { try { await require('./kv.js').kvDel(promotedKey(raw)); } catch (e) { /* عطب KV: تبقى العلامة، والإضافة تمضي */ } }
       const id = await resolveToUsername(raw);
       const list = await addVip(id);
       send(res, 200, { ok: true, id, list, pending: id === raw && raw.indexOf('@') !== -1 });
