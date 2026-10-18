@@ -8,6 +8,7 @@
 const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 const { logError } = require('./log-error.js');
+const { notifyNewAccount } = require('./signup-notify.js'); // v-signup-notify: إيميل للمالك عند كلّ حساب جديد
 const { takeWelcomeGift } = require('./welcome-gift.js'); // v-welcome-cap
 
 // ⏳ القراءة مؤجَّلة عمدًا. _secrets.AUTH_SECRET رامٍ (getter)، وقراءته هنا —
@@ -97,8 +98,8 @@ const RENAME_MAX = 2;
 const RENAME_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // مرسِل البريد. onboarding@resend.dev هو مرسِل Resend التجريبيّ ولا يصل إلّا
-// لصاحب الحساب نفسه — أي أنّ رسائل الاسترجاع والرموز لا تصل مستخدميك، ويرجع
-// الكود ok:true لأنّ Resend قبلت الطلب. فشل صامت تامّ.
+// لصاحب حساب Resend نفسه — لغيره تردّ Resend بـ403 فيُسجَّل auth:mail resend_403
+// (v-signup-notify: التعليق القديم قال «ok:true» وهذا خلاف وثائق Resend).
 // وثّق نطاقك في Resend واضبط MAIL_FROM.
 const MAIL_FROM = process.env.MAIL_FROM || 'Omran AI Builder <onboarding@resend.dev>';
 
@@ -633,6 +634,7 @@ module.exports = async (req, res) => {
           }
         } catch (e) { logError('auth:email-index', e); }
       }
+      await notifyNewAccount({ key, user, method: 'password', req }); // v-signup-notify: بعد الكتابة الناجحة وحدها — في الخلفيّة
       await markKnownNet(key, req);
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: null });
       return;
@@ -1143,6 +1145,7 @@ module.exports = async (req, res) => {
           }
         } catch (e) { logError('auth:email-index', e); }
         isNew = true;
+        await notifyNewAccount({ key: userKey, user, method: 'email-otp', req }); // v-signup-notify
       }
 
       if (user.banned) {
@@ -1177,6 +1180,8 @@ module.exports.decryptUserBlob = decryptUserBlob;
 module.exports.UndecryptableUserRecord = UndecryptableUserRecord;
 module.exports.userPath = userPath;
 module.exports.RESERVED_USERNAMES = RESERVED_USERNAMES;
+module.exports.sendMail = sendMail;     // v-signup-notify
+module.exports.escapeHtml = escapeHtml; // v-signup-notify
 
 // A ban set from the admin panel only ever guarded the *login* endpoint.
 // Any session token minted before the ban stayed valid for its full 30 days,

@@ -69,6 +69,8 @@ const SPEC = {
   FINNHUB_API_KEY:        ['feature', 'شريط الأسهم'],
   TWELVEDATA_API_KEY:     ['feature', 'شريط الأسهم — بديل'],
   RESEND_API_KEY:         ['feature', 'البريد'],
+  OWNER_NOTIFY_EMAIL:     ['feature', 'إيميل المالك لإشعار كلّ حساب جديد — v-signup-notify'],
+  MAIL_FROM:              ['tunable', 'مرسِل البريد (نطاق موثَّق في Resend؛ الافتراضيّ resend.dev يصل صاحب حساب Resend وحده) — v-signup-notify'],
   TELEGRAM_BOT_TOKEN:     ['feature', 'تلغرام'],
   TELEGRAM_BOT_USERNAME:  ['tunable', 'اسم بوت تلغرام لرابط ربط الهاتف (افتراضيًّا OmranAIBuilder_bot) — v-phone-link'],
   WHATSAPP_NUMBER:        ['feature', 'رقم واتساب للأعمال الذي يستقبل رموز ربط الهاتف (أرقام فقط) — v-phone-link'],
