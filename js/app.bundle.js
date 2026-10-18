@@ -37029,7 +37029,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     el.addEventListener('wheel', (e) => {
       if(phone() || e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
       if(!e.cancelable){ pageTurn(); return; }
-      if(armed && canPage(e.deltaY)){ pageTurn(); return; } // الصفحة تُمرَّر — تكمل
+      if(Date.now() - lastPage < 500 || (armed && canPage(e.deltaY))){ pageTurn(); return; } // الصفحة تُمرَّر — تكمل، والدوران المتّصل يبقى لها حتّى في آخرها كقفل المتصفّح
       const max = room(); if(!max) return;
       const pos = Math.abs(el.scrollLeft); // RTL: ‎0 ← -max‎ في المتصفّحات الحديثة
       if(e.deltaY > 0 ? pos >= max - 1 : pos <= 1) return;

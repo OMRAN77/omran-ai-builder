@@ -56,7 +56,10 @@ test('٥. v-strip-wheel-latch: بعد تمرير الصفحة تكمل الصف�
   p.fire('pointerdown', { pointerType: 'mouse', button: 0, clientX: 500 }); p.fireWin('pointerup', {}); p.clock.t += 400;
   assert.equal(p.fire('wheel', W).prevented, true, 'الضغط على الشريط يعيد العجلة له');
   const end = setup(); end.fireWin('wheel', { target: 'outside', deltaY: 100, deltaX: 0 }); end.box.scrollTop = 334;
-  assert.equal(end.fire('wheel', W).prevented, true, 'الصفحة في آخرها: الشريط يتحرّك كما كان');
+  end.clock.t += 100;
+  assert.equal(end.fire('wheel', W).prevented, false, 'الدوران المتّصل يبقى للصفحة ولو بلغت آخرها (كقفل المتصفّح)');
+  end.clock.t += 600;
+  assert.equal(end.fire('wheel', W).prevented, true, 'بعد توقّف والصفحة في آخرها: الشريط يتحرّك كما كان');
   const idle = setup(); idle.box.scrollTop = 334; idle.fireWin('wheel', { target: 'outside', deltaY: 100, deltaX: 0 });
   assert.equal(idle.fire('wheel', W).prevented, true, 'عجلة خارج الشريط لم تمرّر شيئًا لا تجمّده');
   const ins = setup(); ins.fireWin('wheel', { target: 'inside', deltaY: 100, deltaX: 0 });
