@@ -320,8 +320,8 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
     seen[lg] = obj.vdTab;
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=450'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=756';"));
+  assert.ok(read('index.html').includes('/js/video.js?v=451'));
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=759';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });
 
@@ -439,7 +439,7 @@ test('١٢. الواجهة: خيار «مع صوت / بدون صوت»، وال�
   assert.ok(js.includes("var voiceOn=((id('vdVoice')||{}).value!=='off')") && js.includes('minutes:minutes,voice:voiceOn,token:tk'), 'الخيار يبلغ كاتب الخطّة');
   assert.ok(js.includes('var voiced=voiceOn?scenes.filter(function(s){ return !!s.narration; }):[],') && js.includes("if(!voiceOn) drStep('voice','ok',L('vdVoiceOff'));"), 'بلا صوت: لا نداء صوت واحد');
   assert.ok(js.includes('o.cap=voiceOn?o.text:(o.narration||o.text);') && js.includes("text:(s.type==='screen'?s.cap:s.text)") && js.includes("o.sub=voiceOn?(sc.highlight||''):(o.narration||sc.highlight||'');"), 'بلا صوت: جملة المشهد هي النصّ المعروض');
-  assert.ok(js.includes("drJson('/api/ai?action=app-director-voice',{text:s.narration,lang:lang,speaker:speaker,model:vModel||undefined,token:tk})") && js.includes('if(br.ok&&br.json&&br.json.audio){ s.audio=br.json.audio; vModel=br.json.model||vModel; }'), 'الصوت الاحتياطيّ من الخادم');
+  assert.ok(js.includes("drJson('/api/ai?action=app-director-voice',{text:vvClean(s.narration),lang:lang,speaker:speaker,model:vModel||undefined,token:tk})") && js.includes('if(br.ok&&br.json&&br.json.audio){ s.audio=br.json.audio; vModel=br.json.model||vModel; }'), 'الصوت الاحتياطيّ من الخادم');
   assert.ok(js.includes('if(vres.dead||vres.miss>vLimit){\n          scenes.forEach(') && js.includes("scenes.forEach(function(s){ s.audio=''; }); backupVoice=true;") && js.includes('vres=await voiceRun(true);'), 'الرفض النهائيّ ← الاحتياطيّ للفيديو كلّه (لا خلط صوتين)');
   assert.ok(js.includes("drStep('voice','ok',backupVoice?L('vdVoiceBackup'):(vres.miss?("), 'الصوت الاحتياطيّ يُعلَن في الخطوة');
   assert.ok(js.includes("(backupVoice?('main: '+mainWhy+' | backup: '+vres.last):vres.last)"), 'فشل الاثنين: سبب كلٍّ منهما في السطر');
@@ -546,5 +546,5 @@ test('١٣. الجسر يُفحص قبل أيّ صرف: جسر بنسخة قدي
     assert.ok(t && t.length > 20, lg); assert.doesNotMatch(t, BANNED, lg); seenT.add(t);
   }
   assert.equal(seenT.size, LANGS.length, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=450'));
+  assert.ok(read('index.html').includes('/js/video.js?v=451'));
 });
