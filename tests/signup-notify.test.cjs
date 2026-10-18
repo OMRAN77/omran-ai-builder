@@ -26,9 +26,19 @@ const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(
 const store = new Map();
 let scans = 0;
 const tick = () => new Promise((r) => setImmediate(r));
+// حاجز الكتابة (الاختبار ٥): كتابة المفتاح المحجوز تنتظر حتّى يصلها n كاتب — أي مرّوا كلّهم فحص «غير موجود» قبل أن يكتب
+// أحدهم — أو حتّى يُفتح يدويًّا (انتهى طلب بلا كتابة: يفشل التأكيد بدل أن يعلق الاختبار).
+let writeGate = null;
+function barrier(key, n) {
+  const waiting = [];
+  const g = { key, arrived: 0, open: false };
+  g.release = () => { g.open = true; waiting.splice(0).forEach((r) => r()); };
+  g.arrive = () => { g.arrived++; if (g.open || g.arrived >= n) { g.release(); return Promise.resolve(); } return new Promise((r) => waiting.push(r)); };
+  return g;
+}
 const kvImpl = {
   kvGetJSON: async (k) => { await tick(); return store.has(k) ? JSON.parse(store.get(k)) : null; },
-  kvPutJSON: async (k, v) => { await tick(); store.set(k, JSON.stringify(v)); },
+  kvPutJSON: async (k, v) => { await tick(); if (writeGate && k === writeGate.key) await writeGate.arrive(); store.set(k, JSON.stringify(v)); },
   kvGetRaw: async (k) => { await tick(); return store.has(k) ? String(store.get(k)) : null; },
   kvSetRaw: async (k, v) => { await tick(); store.set(k, String(v)); },
   kvSetIfAbsent: async (k, v) => { await tick(); if (store.has(k)) return false; store.set(k, String(v)); return true; },
@@ -198,10 +208,17 @@ test('٤. رمز البريد: حساب جديد = إيميل بالبريد؛ �
 
 test('٥. تسجيلان متزامنان بالاسم نفسه = إيميل واحد (الكتابة ليست SET NX — العلامة هي التي تمنع الثاني)', async () => {
   reset();
-  const [a, b] = await Promise.all([signup('twin1'), signup('twin1')]);
+  // السباق مفروض لا متروك للتوقيت: كان الأوّل يسبق أحيانًا إلى الكتابة قبل فحص الثاني فيُردّ الثاني ٤٠٩ (CI على #1163).
+  // الحاجز يمسك كتابة السجلّ حتّى يصلها التسجيلان، فيمرّ كلاهما فحص «غير موجود» قبل أيّ كتابة في كلّ تشغيل.
+  const gate = writeGate = barrier(auth.userPath('twin1'), 2);
+  let a, b;
+  try {
+    const one = () => signup('twin1').finally(() => gate.release());
+    [a, b] = await Promise.all([one(), one()]);
+  } finally { writeGate = null; }
   assert.deepEqual([a.code, b.code], [200, 200], 'السباق حقيقيّ: كلاهما مرّ فحص «غير موجود» وكتب');
   await drain();
-  assert.equal(mails.length, 1);
+  assert.equal(mails.length, 1, 'العلامة تمنع الإيميل الثاني');
 });
 
 test('٦. فشل الإيميل لا يوقف التسجيل ولا يؤخّره: ٥٠٠ ورمي وتعليق بلا ردّ — الحساب يُنشأ والردّ ٢٠٠ فورًا', async () => {
