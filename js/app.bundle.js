@@ -800,10 +800,43 @@ try{
       const data = await res.json();
       if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
       renderVipList(data.list || []);
+      loadVipAudit();
     }catch(e){
       box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
     }
   };
+  /* v-vip-verified (أمر المالك: «أرسل لي قائمة الحسابات اللي عندها الحين إيميل من قائمة VIP وهي غير متحقّق منها»): الجرد من
+     الخادم لجلسة المالك وحدها، ويُعرض هنا — لا في سجلّ ورك فلو ولا طلب سحب (المستودع علنيّ). مربّع شقيق لقائمة VIP، فإعادة
+     رسمها بعد إضافة أو إزالة لا تمسحه. لا حذف ولا تعديل من هنا. */
+  const VIP_AUDIT_KIND = {
+    'email': 'يحمل إيميلًا من قائمة VIP غير مؤكَّد — لا يأخذ VIP حتّى يؤكّده من «حسابي»',
+    'legacy-name': 'اسمه القديم إيميل في القائمة — VIP بالاسم كما كان، وإيميله غير مؤكَّد',
+    'vip-name': 'في القائمة باسمه وإيميله غير مؤكَّد — لو أضفته بإيميله قبل اليوم فراجعه',
+  };
+  async function loadVipAudit(){
+    const list = document.getElementById('vipListBox');
+    if(!list || !list.parentNode) return;
+    let box = document.getElementById('vipAuditBox');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'vipAuditBox';
+      box.style.cssText = 'margin-top:8px;font-size:13px;';
+      list.parentNode.insertBefore(box, list.nextSibling);
+    }
+    box.textContent = '⏳ جرد الإيميلات غير المؤكَّدة...';
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/vip?audit=1&token=' + encodeURIComponent(token || ''));
+      const data = await res.json();
+      if(!res.ok || !data.audit){ box.textContent = '❌ ' + (data.error || 'تعذّر الجرد'); return; }
+      const rows = data.audit.rows || [];
+      box.innerHTML = '<div style="font-weight:600;margin:6px 0">إيميلات VIP غير مؤكَّدة: ' + rows.length + ' (فُحص ' + Number(data.audit.scanned || 0) + ' حسابًا)</div>'
+        + (rows.length ? rows.map(r => '<div style="padding:6px;border-bottom:1px solid var(--border,#333)"><b>' + vipEscape(r.username) + '</b> · <span dir="ltr">' + vipEscape(r.email || '—') + '</span>'
+          + '<div style="opacity:.75">' + vipEscape(VIP_AUDIT_KIND[r.kind] || r.kind) + '</div></div>').join('') : '<div style="opacity:.6;padding:6px">لا أحد.</div>');
+    }catch(e){
+      box.textContent = '❌ تعذّر الجرد: ' + (e && e.message || e);
+    }
+  }
   window.addVipUser = async function addVipUser(){
     const input = document.getElementById('vipInput');
     const id = input ? String(input.value || '').trim() : '';
@@ -818,6 +851,9 @@ try{
       if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
       if(input) input.value = '';
       renderVipList(data.list || []);
+      // v-vip-verified: إيميل بلا حساب أثبته يبقى خامًا ولا يعطي أحدًا شيئًا حتّى يؤكّده صاحبه.
+      if(data.pending) alert('أُضيف كإيميل: يصير VIP لصاحبه لما يؤكّد إيميله (دخول Google أو رمز من «حسابي»).');
+      loadVipAudit();
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
   window.removeVipUser = async function removeVipUser(id){
@@ -832,6 +868,7 @@ try{
       const data = await res.json();
       if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
       renderVipList(data.list || []);
+      loadVipAudit();
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
 
@@ -1364,6 +1401,30 @@ try{
   const acctEmail = $('#acctEmail');
   const acctEmailSaveBtn = $('#acctEmailSaveBtn');
   const acctEmailMsg = $('#acctEmailMsg');
+  /* v-vip-verified (أمر المالك ١٨ أكتوبر: «تغيير الإيميل في «حسابي» ما ينحفظ إلا بعد ما يدخل المستخدم الكود اللي يوصله على
+     الإيميل الجديد»): «حفظ» الأولى ترسل الرمز وتُظهر خانته، و«حفظ» بعد كتابته تؤكّده وتحفظ. الخانة تُصنع هنا لا في
+     partials-settings (لا وسم ?v= يُرفع). الإيميل المحفوظ قبل اليوم غير مؤكَّد: «حفظ» بالقيمة نفسها يرسل رمزه. */
+  let acctEmailState = { email: '', verified: false };
+  let acctEmailPending = '';
+  function acctEmailCodeBox(show){
+    let box = $('#acctEmailCode');
+    if(!box && show && acctEmailMsg && acctEmailMsg.parentNode){
+      box = document.createElement('input');
+      box.type = 'text';
+      box.id = 'acctEmailCode';
+      box.setAttribute('autocomplete', 'one-time-code');
+      box.setAttribute('inputmode', 'numeric');
+      box.setAttribute('maxlength', '6');
+      box.style.cssText = 'display:block; width:100%; box-sizing:border-box; height:44px; margin-top:8px; padding:0 10px; border-radius:var(--r-2); direction:ltr; text-align:center; font-size:20px; letter-spacing:8px; font-weight:bold;';
+      acctEmailMsg.parentNode.insertBefore(box, acctEmailMsg);
+    }
+    if(box){
+      box.style.display = show ? 'block' : 'none';
+      box.placeholder = curT().authOtpCodeLabel || '';
+      if(!show) box.value = '';
+    }
+    return box;
+  }
 
   function prefillAccountFields(){
     if(acctUsername) acctUsername.value = authGet('aiapp_username') || '';
@@ -1378,6 +1439,11 @@ try{
         }).then(r => r.json()).then(data => {
           if(!data || !data.ok) return;
           if(acctEmail) acctEmail.value = data.email || '';
+          acctEmailState = { email: String(data.email || '').toLowerCase(), verified: data.emailVerified === true }; // v-vip-verified
+          if(acctEmailMsg && !acctEmailPending){
+            acctEmailMsg.textContent = (data.email && data.emailVerified !== true) ? (curT().acctEmailUnverified || '') : '';
+            acctEmailMsg.style.color = 'var(--muted,#999)';
+          }
           // v-phone-link: الرقم المربوط مكان «غير مربوط» — بلا data-i18n كي لا يعيده تبديل اللغة
           const pv = $('#acctPhoneVal');
           if(pv && data.phone){ pv.removeAttribute('data-i18n'); pv.textContent = data.phone; }
@@ -1447,33 +1513,48 @@ try{
     acctEmailSaveBtn.onclick = async () => {
       const t2 = curT();
       const emailVal = acctEmail.value.trim();
-      acctEmailMsg.textContent = '';
+      const emailKey = emailVal.toLowerCase();
+      const say = (txt, color) => { acctEmailMsg.textContent = txt || ''; acctEmailMsg.style.color = color; };
       if(!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)){
-        acctEmailMsg.textContent = t2.acctInvalidEmail;
-        acctEmailMsg.style.color = '#ef4444';
+        say(t2.acctInvalidEmail, '#ef4444');
         return;
       }
-      acctEmailMsg.textContent = t2.acctSaving;
-      acctEmailMsg.style.color = 'var(--muted,#999)';
+      if(emailKey === acctEmailState.email && acctEmailState.verified){ say(t2.acctSaved, '#22c55e'); return; }
+      const codeEl = $('#acctEmailCode');
+      const code = (codeEl && codeEl.style.display !== 'none') ? codeEl.value.trim() : '';
+      const confirming = !!acctEmailPending && acctEmailPending === emailKey && code !== '';
+      if(confirming && !/^\d{6}$/.test(code)){ say(t2.acctEmailBadCode, '#ef4444'); return; }
+      say(t2.acctSaving, 'var(--muted,#999)');
       acctEmailSaveBtn.disabled = true;
       try {
         const token = authGet('aiapp_auth_token');
+        const lang = localStorage.getItem('aiapp_lang') || 'ar';
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'setEmail', token, email: emailVal }),
+          body: JSON.stringify(confirming
+            ? { action: 'email-otp-verify', purpose: 'change', token, email: emailVal, otp: code, lang }
+            : { action: 'email-otp-request', purpose: 'change', token, email: emailVal, lang }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if(!res.ok || data.error){
-          acctEmailMsg.textContent = data.error || t2.acctGenericError;
-          acctEmailMsg.style.color = '#ef4444';
+          const byCode = { bad_otp: t2.acctEmailBadCode, email_taken: t2.acctEmailTaken, bad_email: t2.acctInvalidEmail }[data.code];
+          say(byCode || data.error || t2.acctGenericError, '#ef4444');
           return;
         }
-        acctEmailMsg.textContent = t2.acctSaved;
-        acctEmailMsg.style.color = '#22c55e';
+        if(confirming || data.verified === true){
+          acctEmailPending = '';
+          acctEmailCodeBox(false);
+          acctEmailState = { email: emailKey, verified: true };
+          say(t2.acctSaved, '#22c55e');
+          return;
+        }
+        acctEmailPending = emailKey;
+        const box = acctEmailCodeBox(true);
+        if(box){ box.value = ''; box.focus(); }
+        say(String(t2.acctEmailCodeSent || '').replace('{email}', emailVal), 'var(--muted,#999)');
       } catch(e){
-        acctEmailMsg.textContent = t2.acctNetError;
-        acctEmailMsg.style.color = '#ef4444';
+        say(t2.acctNetError, '#ef4444');
       } finally {
         acctEmailSaveBtn.disabled = false;
       }
@@ -3885,6 +3966,10 @@ const I18N = {
     acctFillPasswords: 'أدخل كلمة المرور الحالية وكلمة مرور جديدة (4 أحرف على الأقل)',
     acctGenericError: 'حدث خطأ، حاول مرة أخرى',
     nameNoAt: 'اختر اسم مستخدم بدون @ — تقدر تضيف إيميلك من «حسابي» بعد التسجيل', // v-name-no-at
+    acctEmailCodeSent: 'أرسلنا رمزًا إلى {email} — اكتبه هنا ثمّ اضغط «حفظ»', // v-vip-verified
+    acctEmailBadCode: 'الرمز غير صحيح أو انتهى — امسح الخانة واضغط «حفظ» لرمز جديد', // v-vip-verified
+    acctEmailTaken: 'هذا الإيميل مؤكَّد في حساب آخر', // v-vip-verified
+    acctEmailUnverified: 'هذا الإيميل غير مؤكَّد — اضغط «حفظ» ليصلك رمز التأكيد', // v-vip-verified
     acctNetError: 'تعذر الاتصال بالخادم، تحقق من الإنترنت',
     acctAvatarTooBig: 'الصورة كبيرة جدًا، اختر صورة أصغر',
     logout: 'خروج',
@@ -5190,6 +5275,10 @@ const I18N = {
     acctFillPasswords: 'Enter your current password and a new password (at least 4 characters)',
     acctGenericError: 'Something went wrong, try again',
     nameNoAt: 'Choose a username without @ — you can add your email in My account after signing up', // v-name-no-at
+    acctEmailCodeSent: 'We sent a code to {email} — type it here, then press Save', // v-vip-verified
+    acctEmailBadCode: 'Wrong or expired code — clear the box and press Save for a new one', // v-vip-verified
+    acctEmailTaken: 'This email is already confirmed on another account', // v-vip-verified
+    acctEmailUnverified: 'This email is not confirmed — press Save to get a confirmation code', // v-vip-verified
     acctNetError: 'Could not reach the server, check your connection',
     acctAvatarTooBig: 'The image is too large, choose a smaller one',
     providerColorsLabel: '🤖 Each AI provider color (shown next to its name in chat)',
@@ -6032,7 +6121,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=751'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة */
+    sc.src = 'i18n/' + lg + '.js?v=752'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-vip-verified (752): أربعة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -19677,7 +19766,7 @@ function mahaEndCall(){
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');
   document.body.classList.remove('maha-win'); // v-maha-app
-  if(typeof mahaAppDockMirror === 'function') mahaAppDockMirror(false); // v-maha-win-touch: «م» داخل الإعدادات يذهب مع المكالمة
+  if(typeof mahaAppDockBar === 'function') mahaAppDockBar(false); // v-maha-dock-bar: الشريط و«م» العلويّ يذهبان مع المكالمة
   mahaCallMode = 'assistant';
 }
 
@@ -29888,6 +29977,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       }
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');
+      bar.id = 'ownerHealthBar'; // v-maha-dock-bar: ينزل تحت شريط «م» العلويّ أثناء نافذة مها (css/modules.css)
       /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): كانت
          position:fixed;top:0 بـz-index أعلى من الهيدر الثابت (٩٩٩٩٩ مقابل ٩٠٠)
          فتغطّي الهيدر بالكامل (شريط الأسهم وكل أزراره) خلفها بصمت — والمالك
@@ -48227,23 +48317,65 @@ function mahaAppPointIn(el, e){
   const r = el.getBoundingClientRect();
   return typeof e.clientX === 'number' && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
 }
-/* الإعدادات في الطبقة العليا للمتصفّح وتملأ شاشة الجوّال، فلا «م» يُرى ولا «برّا» تُلمس — نسخة من «م» في مكانه داخل الحوار تُنهي المكالمة */
-function mahaAppDockMirror(on){
-  let m = document.getElementById('mahaDockMirror');
-  if(!on){ if(m) m.remove(); return; }
-  const d = document.getElementById('settingsDialog'), dock = document.getElementById('btnMahaDock');
-  if(!d || !dock || !mahaCallActive || mahaCallMode === 'builder') return;
-  const r = dock.getBoundingClientRect();
-  if(!(r.width > 0 && r.height > 0)) return;
-  if(!m){ m = dock.cloneNode(true); m.id = 'mahaDockMirror'; m.removeAttribute('onclick'); }
-  m.style.position = 'fixed'; m.style.left = r.left + 'px'; m.style.top = r.top + 'px'; m.style.width = r.width + 'px'; m.style.height = r.height + 'px';
-  m.style.margin = '0'; m.style.zIndex = '10'; m.style.visibility = 'visible';
-  if(m.parentNode !== d) d.appendChild(m);
+/* v-maha-dock-bar (المالك ١٨ أكتوبر: ««م» فوق نافذة مها: لا يغطي شي من محتوى النافذة… وتأكد إن ما في شي مخفي تحته»): كان «م»
+   يرتفع في مكانه فوق النافذة فيغطّي بطاقاتها وأزرارها. الآن شريط علويّ فيه «م» والنافذة تبدأ تحته (css/modules.css). الشريط يتبع
+   الحالة: نافذة أداة (body.maha-win) أو إعدادات فتحتها مها (body.maha-dlg — الشريط داخل الحوار لأنّه في الطبقة العليا للمتصفّح).
+   «م» فيه زرّ الإنهاء (mahaAppInside يعدّه برّا)، والشريط الفارغ من النافذة. مزامنة دوريّة ما دام ظاهرًا: نافذة يغلقها كودها، أو
+   الإعدادات تُغلق برجوع أو Esc، لا تترك شريطًا معتمًا فوق التطبيق. */
+let mahaAppBarTimer = 0;
+function mahaAppGapCss(){
+  const d = document.getElementById('settingsDialog');
+  if(d && !d.__mahaBarClose){
+    d.__mahaBarClose = true; // إغلاق الإعدادات (رجوع، Esc، زرّ) يعيد الشريط إلى النافذة تحتها أو يزيله فورًا
+    d.addEventListener('close', () => { mahaAppDialog = false; mahaAppWinSync(); });
+  }
+  if(document.getElementById('mahaWinGapCss') || !window.omranSwipeBack || typeof window.omranSwipeBack.ids !== 'function') return;
+  // نوافذ الخريطة، ونافذتا الشراء والمشاركة (خارجها، تحت الشريط) — تبدأ كلّها تحت الشريط
+  const ids = window.omranSwipeBack.ids().concat(['checkoutModalOverlay', 'shareModal']);
+  const st = document.createElement('style');
+  st.id = 'mahaWinGapCss';
+  st.textContent = ids.map((id) => 'body.maha-band-on.maha-win:not(.maha-dlg) #' + CSS.escape(id)).join(',') + '{top:var(--maha-gap) !important;}';
+  document.head.appendChild(st);
+}
+function mahaAppDockBar(force){
+  try{ mahaAppDockBarSet(force); }catch(e){ __swallow(e, 'maha-app:dock-bar'); } // عطب الشريط لا يكسر أداة ولا إنهاء المكالمة
+}
+function mahaAppDockBarSet(force){
+  const live = force !== false && mahaCallActive && mahaCallMode !== 'builder';
+  const d = document.getElementById('settingsDialog');
+  const dlg = live && mahaAppDialog && !!d && d.open;
+  document.body.classList.toggle('maha-dlg', dlg);
+  let bar = document.getElementById('mahaWinBar');
+  if(!live || !(dlg || document.body.classList.contains('maha-win'))){
+    if(bar) bar.remove();
+    if(mahaAppBarTimer){ clearInterval(mahaAppBarTimer); mahaAppBarTimer = 0; }
+    return;
+  }
+  mahaAppGapCss();
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'mahaWinBar';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'mahaDockMirror';
+    const dock = document.getElementById('btnMahaDock');
+    const face = dock && dock.querySelector('img.personaGlyph');
+    b.title = (dock && dock.title) || '';
+    b.setAttribute('aria-label', b.title || 'م');
+    if(face && face.getAttribute('src')){ const i = document.createElement('img'); i.src = face.getAttribute('src'); i.alt = ''; b.appendChild(i); }
+    else b.textContent = 'م';
+    bar.appendChild(b);
+  }
+  const host = dlg ? d : document.body;
+  if(bar.parentNode !== host) host.appendChild(bar);
+  if(dlg){ const r = d.getBoundingClientRect(); bar.style.left = r.left + 'px'; bar.style.width = r.width + 'px'; bar.style.right = 'auto'; }
+  else { bar.style.left = ''; bar.style.width = ''; bar.style.right = ''; }
+  if(!mahaAppBarTimer) mahaAppBarTimer = setInterval(mahaAppWinSync, 700);
 }
 function mahaAppInside(e){
   const tgt = e && e.target;
   if(!tgt || typeof tgt.closest !== 'function') return false;
-  if(tgt.closest('#mahaDockMirror')) return false; // «م» داخل الإعدادات = زرّ الإنهاء
+  if(tgt.closest('#mahaDockMirror')) return false; // «م» في الشريط العلويّ = زرّ الإنهاء (v-maha-dock-bar)
   /* نقرة يطلقها كود التطبيق نفسه (input.click() لاختيار ملفّ، رابط تنزيل…) والنافذة مفتوحة: ليست يد المستخدم. اللمس الحقيقيّ
      isTrusted، ونقرة آيفون المعادة (ui-wiring) لأزرار الشريط السفليّ تحت النافذة فلا تصلها اليد أصلًا. */
   if(e.isTrusted === false && mahaAppActive()) return true;
@@ -48269,6 +48401,7 @@ function mahaAppInside(e){
 function mahaAppWinSync(){
   const top = !!(window.omranSwipeBack && window.omranSwipeBack.top());
   document.body.classList.toggle('maha-win', top && mahaCallActive && mahaCallMode !== 'builder');
+  mahaAppDockBar(); // v-maha-dock-bar
 }
 
 /* أدوات شاشة الأدوات الظاهرة لهذا المستخدم بأسمائها في لغته — ما يعرفه الخادم عن التطبيق يأتي منها أوّلًا */
@@ -48350,7 +48483,7 @@ async function mahaAppOpen(target){
   const tool = MAHA_APP_TOOLS[target];
   if(tool){
     mahaAppCloseOthers(tool.win);
-    if(mahaCallActive && mahaCallMode !== 'builder') document.body.classList.add('maha-win');
+    if(mahaCallActive && mahaCallMode !== 'builder'){ document.body.classList.add('maha-win'); mahaAppDockBar(); }
     tool.open();
     await mahaAppWait(450);
     const top = window.omranSwipeBack && window.omranSwipeBack.top();
@@ -48381,7 +48514,7 @@ async function mahaAppOpen(target){
     const b = document.getElementById('btnSettings');
     if(!(d && d.open)){ if(!b || typeof b.onclick !== 'function') return mahaAppNo('Settings are not available here.'); b.onclick(); }
     mahaAppDialog = true; // v-maha-win-touch: اللمس داخلها لا يُنهي المكالمة
-    mahaAppDockMirror(true);
+    mahaAppDockBar(); // v-maha-dock-bar: الشريط و«م» داخل الحوار، والحوار ينزل تحته
     if(sid){
       showSettingsPage(sid);
       if(sid === 'memorySection' && typeof window.renderMemorySection === 'function') window.renderMemorySection();

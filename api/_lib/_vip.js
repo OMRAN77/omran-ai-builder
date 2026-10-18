@@ -96,4 +96,26 @@ async function isVip(identifier) {
   }
 }
 
-module.exports = { getVipList, addVip, removeVip, isVip, normalizeId, invalidateCache, VIP_KEY };
+// v-vip-verified: بريدٌ ثبت للتوّ لصاحبه (رمز «حسابي»، حساب أنشأه رمز البريد، دخول Google). إن كان في القائمة إيميلًا خامًا —
+// أضافه المالك ولا مؤكَّد يحمله يومها (vip.js لا يحوّل إيميلًا إلّا إلى حساب أثبته) — يحلّ محلّه اسم الحساب، كما كان سيحدث لو
+// كان مؤكَّدًا لحظة الإضافة. لا يرمي (القاعدة ١): الدخول وحفظ الإيميل لا يفشلان بسبب القائمة.
+async function promoteVerifiedEmail(email, username) {
+  try {
+    const e = normalizeId(email);
+    const u = normalizeId(username);
+    if (!e || !u || e.indexOf('@') === -1) return false;
+    const list = await getVipList({ fresh: true });
+    if (list.indexOf(e) === -1) return false;
+    const next = list.filter((x) => x !== e);
+    if (next.indexOf(u) === -1) next.push(u);
+    await kvPutJSON(VIP_KEY, next);
+    invalidateCache();
+    cache = next;
+    cacheAt = Date.now();
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+module.exports = { getVipList, addVip, removeVip, isVip, normalizeId, invalidateCache, promoteVerifiedEmail, VIP_KEY };

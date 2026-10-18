@@ -2237,7 +2237,7 @@ function mahaEndCall(){
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');
   document.body.classList.remove('maha-win'); // v-maha-app
-  if(typeof mahaAppDockMirror === 'function') mahaAppDockMirror(false); // v-maha-win-touch: «م» داخل الإعدادات يذهب مع المكالمة
+  if(typeof mahaAppDockBar === 'function') mahaAppDockBar(false); // v-maha-dock-bar: الشريط و«م» العلويّ يذهبان مع المكالمة
   mahaCallMode = 'assistant';
 }
 
