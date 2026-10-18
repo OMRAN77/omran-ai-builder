@@ -2610,6 +2610,19 @@
     return () => { armed = false; };
   }
   const stripUnlatch = stripDesktopScroll(tabsWrap);
+  /* v-desk-strips (المالك ١٨ أكتوبر: «في اشياء موجوده في الهاتف وغير موجوده في الكمبيوتر»): صفوف أفقيّة يسحبها الهاتف باللمس وكانت
+     مقصوصة على الكمبيوتر (أشرطة التمرير مخفيّة في التطبيق كلّه): «قارن بين إطلالات» في الأزياء (٣ من ٣٧)، و«غرفتي بكل الأنماط» ونتائجها في
+     الديكور (١٠ من ٤٨)، ورفوف شاشة الأدوات. الدالّة نفسها (للحاسوب وحده، الفأرة وحدها) بغلاف لا يربط العنصر مرّتين؛ والالتقاط (snap)
+     يُلغى على الكمبيوتر في redesign.css وإلّا ترجع كلّ نقرة عجلة لنفس البطاقة. */
+  /* بعد #1163 الدالّة ترجع «فكّ القفل»: الغلاف يحفظه لكلّ عنصر ويرجعه، وفتح النافذة يفكّ قفل صفّها كما يفعل الاستوديو. */
+  const omranDeskStrip = (el) => { if(!el) return null; if(!el.__deskStrip) el.__deskStrip = stripDesktopScroll(el) || (() => {}); return el.__deskStrip; };
+  window.omranStripDesktopScroll = omranDeskStrip;
+  ['fashionAiCompareChecks', 'designCompareChecks', 'designCompareResults'].forEach((id) => omranDeskStrip(document.getElementById(id)));
+  document.querySelectorAll('#sectionsToolsPopup .ptCarousel').forEach(omranDeskStrip); /* رفوف بُنيت قبل هذا الجزء؛ اللاحقة من app-10 */
+  [['btnFashionAI', ['fashionAiCompareChecks']], ['btnDesignAI', ['designCompareChecks', 'designCompareResults']]].forEach(([btn, ids]) => {
+    const b = document.getElementById(btn);
+    if(b) b.addEventListener('click', () => ids.forEach((id) => { const u = omranDeskStrip(document.getElementById(id)); if(u) u(); }));
+  });
 
   btnOpen.onclick = () => {
     if(stripUnlatch) stripUnlatch(); // v-strip-wheel-latch: تمرير زيارة سابقة لا يقرّر عن الشريط الآن
