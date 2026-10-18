@@ -121,7 +121,7 @@ const CARD_SETS = {
     { name: 'men-scarf', style: 'winterlux', gender: 'men', d: 'close-up on a cashmere scarf draped loosely over the model coat' },
     { name: 'men-makeup', style: 'formal', gender: 'men', d: 'close-up grooming portrait: subtle natural grooming with matte even skin and tidy brows, the beard neatly kept' },
     { name: 'kids-glasses', style: 'casual', gender: 'kids', d: 'close-up on round kids sunglasses worn by the smiling child' },
-    { name: 'kids-watch', style: 'casual', gender: 'kids', d: 'close-up on a colorful analog kids watch on the child wrist; the dial shows only simple dot markers, no numbers, no letters, no logo' },
+    { name: 'kids-watch', style: 'casual', gender: 'kids', d: 'extreme close-up macro shot of a colorful analog kids watch on the child wrist, the watch filling most of the frame; the dial shows only simple dot markers, no numbers, no letters, no logo' },
     { name: 'kids-handbag', style: 'casual', gender: 'kids', d: 'close-up on a mini crossbody purse carried by the child' },
     { name: 'kids-shoes', style: 'casual', gender: 'kids', d: 'close-up on clean new low-top canvas sneakers with plain socks worn by the child, no logos, no prints, no marks' },
     { name: 'kids-scarf', style: 'winterlux', gender: 'kids', d: 'close-up on a soft knit scarf worn by the child' },
