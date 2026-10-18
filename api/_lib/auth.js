@@ -67,6 +67,12 @@ const RESERVED_USERNAMES = new Set([
    (غائب عن تغييرات ما قبل ٥ أكتوبر، ومقصوص إلى عشرة، ولا يقول من حمل الاسم أخيرًا). وحساب Google مفتاحه g_<البريد>
    (الكولباك)، فهذه المساحة لا تُختار اسمًا — وإلّا سجّلها غيرك قبلك بكلمة مرور يعرفها، ودخولك بزرّ Google يفتح حسابه. */
 function isGoogleKey(key) { return /^g_.*@/.test(String(key || '')); }
+/* v-name-no-at (أمر المالك ١٨ أكتوبر: «امنع حرف @ في اسم المستخدم عند التسجيل الجديد. الحسابات القديمة لا تلمسها»): قائمة VIP تقبل
+   إيميلًا، وإن لم يكن له حساب بعد يبقى نصًّا خامًا فيها — فمن سجّل اسمه بذلك الإيميل نفسه صار VIP كاملًا في كلّ خصم (يُطابَق
+   بالاسم). الاسم الجديد بلا @ (التسجيل وتغيير الاسم)؛ الحسابات القائمة بأسمائها، والدخول بالاسم أو الإيميل كما كان. */
+// النصّ هنا احتياط بالعربيّة/الإنجليزيّة؛ الواجهة تعرض nameNoAt بلغتها الـ١٤ متى وصل code: 'name_at'.
+const NAME_AT_AR = 'اختر اسم مستخدم بدون @ — تقدر تضيف إيميلك من «حسابي» بعد التسجيل';
+const NAME_AT_EN = 'Choose a username without @ — you can add your email in My account after signing up';
 
 // سجلّ محذوف يعود لهذا الحساب فقط إن قادت شواهده (كلّها {deleted, movedTo}) إليه. حذف المالك (بلا movedTo) أو سلسلة
 // تنتهي عند حساب حيّ آخر = ليس لك. سجلّ مقفل في الطريق = ليس لك أيضًا.
@@ -580,6 +586,10 @@ module.exports = async (req, res) => {
         res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
         return;
       }
+      if (key.includes('@')) { // v-name-no-at
+        res.status(400).json({ error: m(NAME_AT_AR, NAME_AT_EN), code: 'name_at' });
+        return;
+      }
       const existing = await getUser(key);
       if (existing) { // v-name-reuse: والمحذوف أيضًا — الاسم لا يُعاد لغير صاحبه
         res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
@@ -674,6 +684,12 @@ module.exports = async (req, res) => {
         }
         if (clash && !ownPrev) {
           res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
+          return;
+        }
+        // v-name-no-at: الاسم الجديد وحده — الاسم القائم (newKey === oldKey أعلاه) والعودة إلى اسمك القديم بسلسلة شواهده (ownPrev) لا يُمسّان.
+        // مساحة Google (g_…) على ردّها أعلاه.
+        if (newKey.includes('@') && !isGoogleKey(newKey) && !ownPrev) {
+          res.status(400).json({ error: m(NAME_AT_AR, NAME_AT_EN), code: 'name_at' });
           return;
         }
         // المراجعة العدائيّة (img422-1، farm-6، INT-1): التغيير بالرمز وحده وبلا حدّ كان يصفّر في حلقةٍ كلَّ ما يُعدّ بالاسم ولم يُنقل.

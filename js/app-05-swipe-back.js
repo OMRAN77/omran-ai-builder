@@ -56,7 +56,8 @@
       try{ if(el.__omranSwipeBackStep()) return true; }catch(e){ /* guard-ok */ }
     }
     var btn = el && document.getElementById(MAP[el.id]);
-    if(btn){ try{ swipeClickGuardUntil = 0; btn.click(); return true; }catch(e){ /* guard-ok */ } }
+    /* v-maha-app: أثناء مكالمة مها كانت مراقبة الإغلاق تبتلع هذه النقرة البرمجيّة فتنتهي المكالمة وتبقى النافذة — السحب وEsc يغلقان النافذة وحدها */
+    if(btn){ try{ swipeClickGuardUntil = 0; if(typeof mahaActing === 'number') mahaActing++; try{ btn.click(); }finally{ if(typeof mahaActing === 'number') mahaActing--; } if(typeof mahaAppWinSync === 'function') mahaAppWinSync(); return true; }catch(e){ /* guard-ok */ } }
     return false;
   }
   /* الجزء الذي يتحرك مع الإصبع: صندوق المحتوى (أول ابن كبير) وإلا الحاوية نفسها */
@@ -229,5 +230,7 @@
   setInterval(ensureBound, 900);
   /* الشاشات التي تُنشأ عند فتحها (التلفزيون): نربطها لحظة أول لمسة قبل وصول الحدث إليها */
   document.addEventListener('touchstart', ensureBound, { capture: true, passive: true });
-  window.omranSwipeBack = { close: function(){ var t = topTool(); return t ? closeTool(t) : false; }, top: topTool };
+  /* v-maha-win-touch: ids/sheet لمراقبة إغلاق مها — «داخل النافذة» يُقرأ من الخريطة نفسها لا من نسخة */
+  window.omranSwipeBack = { close: function(){ var t = topTool(); return t ? closeTool(t) : false; }, top: topTool,
+    ids: function(){ return Object.keys(MAP); }, sheet: function(id){ return !!SELF[id]; } };
 })();
