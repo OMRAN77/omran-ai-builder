@@ -1242,8 +1242,10 @@
         <button type="button" class="btn" id="emailAssistVoiceBtn" data-i18n="eaVoiceBtn" style="padding:6px 12px; font-size:12.5px;">🔊 <span id="emailAssistVoiceLabel" data-i18n="voiceSummaryBtn">ملخص صوتي</span></button>
         <button type="button" class="btn" id="emailAssistRefreshBtn" data-i18n="eaRefreshBtn" style="padding:6px 12px; font-size:12.5px;">🔄 <span id="emailAssistRefreshLabel" data-i18n="refreshBtn">تحديث</span></button>
       </div>
-      <div id="emailAssistStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
+      <p id="emailAssistDisclaimer" data-i18n="emailAsst_disclaimer" style="margin:10px 0 0; font-size:12px; color:var(--muted);">⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.</p>
+      <div id="emailAssistStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted); white-space:pre-line;"></div>
       <div id="emailAssistList" style="margin-top:14px; display:flex; flex-direction:column; gap:14px;"></div>
+      <button type="button" class="btn" id="emailAssistMoreBtn" data-i18n="emailAsst_more" style="display:none; width:100%; margin-top:14px;">المزيد</button>
     </div>
   </div>
 </div>

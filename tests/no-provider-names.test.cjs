@@ -53,6 +53,6 @@ test('٢. نصّ القالب الاحتياطيّ (قبل الترجمة) وأ�
 });
 
 test('٣. وسما الملفّين المحمَّلين منفصلين مرفوعان (النسخة المخبّأة لا تبقى بالأسماء القديمة)', () => {
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=667'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=755';"));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=669'));
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=758';"));
 });

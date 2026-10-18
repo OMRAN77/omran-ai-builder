@@ -4994,7 +4994,7 @@ const I18N = {
     /* v601: مساعد البريد الذكيّ — 24 نصًّا كانت en()?:  مباشرةً (لغتان فقط) */
     emailAsst_connectText: "اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.", emailAsst_connectBtn: "🔗 ربط Gmail", emailAsst_disclaimer: "⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.", emailAsst_title: "📧 مساعد البريد الذكي", emailAsst_refresh: "تحديث", emailAsst_loading: "جارٍ فحص بريدك…", emailAsst_empty: "لا توجد إيميلات جديدة تحتاج ردًا الآن.",
     emailAsst_notConnected: "لم يتم ربط Gmail، يرجى إعادة الربط.", emailAsst_send: "✅ إرسال", emailAsst_ignore: "🚫 تجاهل هذا المرسل", emailAsst_sending: "جارٍ الإرسال…", emailAsst_sent: "✅ تم الإرسال", emailAsst_ignored: "🚫 تم التجاهل — لن يظهر مرة أخرى", emailAsst_error: "❌ خطأ: ", emailAsst_voiceBtn: "ملخص صوتي", emailAsst_addToCalendar: "📅 أضف للتقويم", emailAsst_addingEvent: "جارٍ إضافة الموعد…",
-    emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض",
+    emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض", /* v-email-safe: مفتاح ناقص/مشغول/فشل بدل مسوّدة فارغة */ emailAsst_draftNoKey: "المسوّدات متوقّفة الآن: خدمة الكتابة غير مضبوطة في الخادم.", emailAsst_draftBusy: "خدمة الكتابة مشغولة أو بلغت حدّها الآن — حاول بعد قليل.", emailAsst_draftFailed: "تعذّرت كتابة مسوّدة لهذه الرسالة — اضغط «تحديث» وحاول مرّة ثانية.", /* v-email-cache: إعادة توليد / المزيد / جارٍ الكتابة / الاحتياط (للمالك) */ emailAsst_regen: "إعادة توليد", emailAsst_more: "المزيد", emailAsst_drafting: "جارٍ كتابة المسوّدة…", emailAsst_draftFallback: "المسوّدات بالمحرّك الاحتياطيّ الآن: مفتاح الكتابة الأساسيّ ناقص أو مرفوض.", /* v-email-thread: الترجمة / معنى الردّ */ emailAsst_translation: "الترجمة:", emailAsst_draftMeaning: "معنى الردّ:",
     /* v-app-director: قسم «مخرج التطبيق» للمالك وحده — ٢٦ نصًّا (١٤ لغة) */ vdTab: "مخرج التطبيق", vdSub: "اكتب ما تريد فيديو عنه واختر اللغة والمتحدّث والمدّة — يكتب الفكرة والسيناريو، يصوّر شاشات التطبيق الحقيقيّة، يجهّز نماذج الأنماط، يسجّل التعليق ويجمّع الفيديو كاملًا.", vdPh: "مثال: فيديو عن أنماط الصور بصوت مها", vdLang: "اللغة", vdSpeaker: "المتحدّث", vdMinutes: "المدّة بالدقائق", vdRef: "صورتك مرجعًا لنماذج الأنماط (اختياريّ)", vdGo: "سوّ الفيديو", vdStepPlan: "يكتب الفكرة والسيناريو", vdStepShots: "يصوّر شاشات التطبيق", vdStepSamples: "يجهّز نماذج الأنماط", vdStepVoice: "يسجّل التعليق", vdStepJoin: "يجمّع الفيديو", vdScene: "المشهد {i} من {n}", vdQueued: "في الانتظار على الجسر", vdDone: "جاهز — {m} دقيقة و{s} ثانية", vdDownload: "تحميل الفيديو", vdFail: "ما قدرت أكمل الفيديو", vdFailPlan: "تعذّر كتابة السيناريو — تحقّق من مفتاح المخرج في الخادم", vdFailBridge: "تعذّر الوصول إلى الجسر — تحقّق من عنوان الجسر وسرّه في الخادم", vdFailRender: "فشل التصوير أو الدمج على الجسر", vdSaved: "حُفظ في فيديوهاتي", vdWarnSamples: "{n} نموذج لم يُولَّد فصار لقطة شاشة", vdEmpty: "اكتب الطلب أوّلًا", vdMaha: "مها", vdAbdullah: "عبدالله", /* v-app-director-voice: مع صوت/بدون صوت + الصوت الاحتياطيّ */ vdVoiceLabel: "التعليق الصوتيّ", vdVoiceOn: "مع صوت", vdVoiceOff: "بدون صوت", vdVoiceBackup: "صوت احتياطيّ (غير صوت مها وعبدالله)", vdFailVoice: "تعذّر تسجيل التعليق — اختر «بدون صوت» ليكتمل الفيديو بنصّ على الشاشة", vdFailBridgeOld: "الجسر يعمل بنسخة قديمة لا تعرف مسار الفيديو — أعد نشره من الفرع الرئيسيّ",
   },
   en: {
@@ -6218,7 +6218,7 @@ Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic 
     /* v601: مساعد البريد الذكيّ — 24 نصًّا كانت en()?:  مباشرةً (لغتان فقط) */
     emailAsst_connectText: "Connect your Gmail account so the AI can read your emails and suggest ready replies you approve before sending.", emailAsst_connectBtn: "🔗 Connect Gmail", emailAsst_disclaimer: "⚠️ No reply is ever sent without your explicit approval on each message.", emailAsst_title: "📧 AI Email Assistant", emailAsst_refresh: "Refresh", emailAsst_loading: "Scanning your inbox…",
     emailAsst_empty: "No new emails need a reply right now.", emailAsst_notConnected: "Gmail is not connected, please reconnect.", emailAsst_send: "✅ Send", emailAsst_ignore: "🚫 Ignore this sender", emailAsst_sending: "Sending…", emailAsst_sent: "✅ Sent", emailAsst_ignored: "🚫 Ignored — won't show again", emailAsst_error: "❌ Error: ", emailAsst_voiceBtn: "Voice summary", emailAsst_addToCalendar: "📅 Add to Calendar",
-    emailAsst_addingEvent: "Adding event…", emailAsst_eventAdded: "✅ Added to your calendar", emailAsst_calReauth: "Reconnect Gmail to allow calendar access", emailAsst_voiceLoading: "🔊 Preparing voice summary…", emailAsst_voiceEmpty: "No emails to summarize.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Low",
+    emailAsst_addingEvent: "Adding event…", emailAsst_eventAdded: "✅ Added to your calendar", emailAsst_calReauth: "Reconnect Gmail to allow calendar access", emailAsst_voiceLoading: "🔊 Preparing voice summary…", emailAsst_voiceEmpty: "No emails to summarize.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Low", /* v-email-safe: مفتاح ناقص/مشغول/فشل بدل مسوّدة فارغة */ emailAsst_draftNoKey: "Drafts are paused: the writing service is not set up on the server.", emailAsst_draftBusy: "The writing service is busy or at its limit right now — try again shortly.", emailAsst_draftFailed: "Couldn’t write a draft for this email — tap Refresh and try again.", /* v-email-cache: إعادة توليد / المزيد / جارٍ الكتابة / الاحتياط (للمالك) */ emailAsst_regen: "Regenerate", emailAsst_more: "Load more", emailAsst_drafting: "Writing the draft…", emailAsst_draftFallback: "Drafts are using the backup engine: the main writing key is missing or rejected.", /* v-email-thread: الترجمة / معنى الردّ */ emailAsst_translation: "Translation:", emailAsst_draftMeaning: "What the reply says:",
     /* v-app-director: قسم «مخرج التطبيق» للمالك وحده — ٢٦ نصًّا (١٤ لغة) */ vdTab: "App Director", vdSub: "Describe the video you want, pick the language, the speaker and the length — it writes the idea and script, captures real app screens, prepares style samples, records the narration and assembles the full video.", vdPh: "Example: a video about portrait styles narrated by Maha", vdLang: "Language", vdSpeaker: "Speaker", vdMinutes: "Length in minutes", vdRef: "Your photo as a reference for style samples (optional)", vdGo: "Make the video", vdStepPlan: "Writing the idea and script", vdStepShots: "Capturing app screens", vdStepSamples: "Preparing style samples", vdStepVoice: "Recording the narration", vdStepJoin: "Assembling the video", vdScene: "Scene {i} of {n}", vdQueued: "Waiting on the bridge", vdDone: "Ready — {m} min {s} s", vdDownload: "Download video", vdFail: "Could not finish the video", vdFailPlan: "Could not write the script — check the director key on the server", vdFailBridge: "Could not reach the bridge — check the bridge URL and secret on the server", vdFailRender: "Capture or assembly failed on the bridge", vdSaved: "Saved to My videos", vdWarnSamples: "{n} sample(s) could not be generated and became screenshots", vdEmpty: "Write the request first", vdMaha: "Maha", vdAbdullah: "Abdullah", /* v-app-director-voice: مع صوت/بدون صوت + الصوت الاحتياطيّ */ vdVoiceLabel: "Narration", vdVoiceOn: "With voice", vdVoiceOff: "No voice", vdVoiceBackup: "Backup voice (not Maha/Abdullah)", vdFailVoice: "The narration could not be recorded — choose “No voice” to finish the video with on-screen text", vdFailBridgeOld: "The bridge is running an old version without the video route — redeploy it from the main branch",
   }
 };window.I18N = I18N;
@@ -6280,7 +6280,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=755'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */
+    sc.src = 'i18n/' + lg + '.js?v=758'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -34575,6 +34575,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     urgent: t('emailAsst_urgent'),
     normal: t('emailAsst_normal'),
     low: t('emailAsst_low'),
+    regen: t('emailAsst_regen'), // v-email-cache
+    more: t('emailAsst_more'),
+    drafting: t('emailAsst_drafting'),
+    translation: t('emailAsst_translation'), // v-email-thread
+    draftMeaning: t('emailAsst_draftMeaning'),
   });
 
   function setStatus(text){
@@ -34592,120 +34597,283 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     return m ? m[1] : String(fromHeader || '').trim();
   }
 
-  function renderEmails(emails){
+  /* v-email-safe: (١) المسوّدة كانت تُلصق داخل <textarea> في innerHTML بلا تهريب — ردّ فيه </textarea> (إيميل يحقن
+     الموديل) يصير HTML وسكربتًا في صفحتنا. الآن كلّ نصّ من البريد أو الموديل يُكتب بـtextContent/value، والقالب ثابت.
+     (٢) المسوّدة الإنجليزيّة كانت تُعرض من اليمين («,Hi Sarah») — الاتّجاه من لغة الرسالة، وإلّا auto؛ والخطّ خطّ
+     الواجهة لا خطّ الكود. (٣) المرسل اسمًا وعنوانًا معزولَين (bdi) فلا تنقلب الأقواس. */
+  const EM_RTL = /^(ar|fa|ur|he|ps|yi|dv|ckb|sd|ug)$/i;
+  function emDir(lang2){ return lang2 ? (EM_RTL.test(lang2) ? 'rtl' : 'ltr') : 'auto'; }
+  // اتّجاه سطر المرسل من أوّل حرف في اسمه — dir="auto" لا يرى ما داخل <bdi> فيرجع ltr للاسم العربيّ أيضًا
+  function emTextDir(s){
+    for(const ch of String(s || '')){
+      if(/[֐-ࣿיִ-﷿ﹰ-﻿]/.test(ch)) return 'rtl';
+      if(/[A-Za-zÀ-ɏͰ-῿぀-鿿가-힯]/.test(ch)) return 'ltr';
+    }
+    return 'ltr';
+  }
+  function emSender(fromHeader){
+    const s = String(fromHeader || '').trim();
+    const m = s.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+    return m ? { name: m[1].trim(), addr: m[2].trim() } : { name: '', addr: s };
+  }
+  function emTz(){ // منطقة جهاز المستخدم للبرومبت والتقويم — الخادم يتحقّق منها ويرجع لدبي إن لم تصحّ
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }catch(e){ __swallow(e, "misc:app-12-studios#5"); return ''; }
+  }
+  function emAiMsg(code){
+    return (code === 'nokey' || code === 'badkey') ? t('emailAsst_draftNoKey') : (code === 'busy' ? t('emailAsst_draftBusy') : t('emailAsst_draftFailed'));
+  }
+
+  /* v-email-cache (البندان ١ و٩): القائمة تُرسم فورًا بلا انتظار ذكاء، والمسوّدات الناقصة تُطلب رسالةً رسالة (ثلاث معًا)
+     فتملأ بطاقاتها، والمحفوظ يأتي جاهزًا من الخادم. «إعادة توليد» وحدها تكتب المسوّدة من جديد، و«المزيد» يُلحق الصفحة
+     التالية. حين تكتمل كلّها تُرتَّب البطاقات بالأولويّة — إلّا إن كان المستخدم داخل إحداها (لا تقفز البطاقة من تحته). */
+  const EM_ORDER = { urgent: 0, normal: 1, low: 2 };
+  const moreBtn = $('#emailAssistMoreBtn');
+  let emRun = 0;
+  let emQueue = [];
+  let emActive = 0;
+  let emNext = '';
+  let emKeyShown = false;
+
+  function emRank(p){ return Object.prototype.hasOwnProperty.call(EM_ORDER, p) ? EM_ORDER[p] : 1; }
+  function emBody(extra){
+    return JSON.stringify(Object.assign({ token: localStorage.getItem('aiapp_auth_token'), lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar', tz: emTz() }, extra || {}));
+  }
+  function emKeyLine(code, detail){ // سطر المفتاح مرّة واحدة فوق القائمة، لا في كلّ بطاقة
+    if(emKeyShown) return;
+    emKeyShown = true;
+    const line = (code === 'fallback' ? t('emailAsst_draftFallback') : emAiMsg(code)) + (detail ? ' (' + detail + ')' : '');
+    setStatus([statusEl.style.display === 'none' ? '' : statusEl.textContent, line].filter(Boolean).join('\n'));
+  }
+
+  function fillCard(card, mail){
     const tr = T();
-    listEl.innerHTML = '';
-    if(!emails || !emails.length){
+    const dir = emDir(mail.lang);
+    const draftEl = card.querySelector('.emailDraftInput');
+    const st = card.querySelector('.emailCardStatus');
+    const meet = card.querySelector('.emailMeet');
+    card.querySelector('.emailSnip').setAttribute('dir', dir);
+    draftEl.setAttribute('dir', dir);
+    draftEl.value = mail.draft || '';
+    draftEl.disabled = !!mail.pending;
+    draftEl.placeholder = mail.pending ? tr.drafting : '';
+    card.querySelector('.emailPrio').textContent = mail.priority ? priorityLabel(mail.priority) : '';
+    card.querySelector('.emailSendBtn').disabled = !!mail.pending;
+    card.querySelector('.emailRegenBtn').disabled = !!mail.pending;
+    card.querySelector('.emailCalBtn').style.display = mail.meeting ? '' : 'none';
+    meet.style.display = mail.meeting ? '' : 'none';
+    meet.textContent = mail.meeting ? '📅 ' + String(mail.meeting.title || '') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') : '';
+    const trans = card.querySelector('.emailTrans');
+    const gloss = card.querySelector('.emailGloss');
+    trans.style.display = mail.translation ? '' : 'none';
+    card.querySelector('.emailTransTxt').textContent = mail.translation || '';
+    gloss.style.display = mail.draftGloss && !mail.pending ? '' : 'none';
+    card.querySelector('.emailGlossTxt').textContent = mail.draftGloss || '';
+    const keyErr = mail.draftError === 'nokey' || mail.draftError === 'badkey';
+    const msg = mail.draftError && !(keyErr && emKeyShown) ? emAiMsg(mail.draftError) : '';
+    st.style.display = msg ? 'block' : 'none';
+    st.textContent = msg;
+  }
+
+  function buildCard(mail){
+    const tr = T();
+    const card = document.createElement('div');
+    card.__emMail = mail;
+    card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
+    card.innerHTML =
+      '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
+        '<div style="min-width:0;">' +
+          '<div class="emailSubj" dir="auto" style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>' +
+          '<div class="emailFrom" style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><bdi class="emailFromName"></bdi> <bdi class="emailFromAddr" dir="ltr"></bdi></div>' +
+        '</div>' +
+        '<span class="emailPrio" style="font-size:11.5px; white-space:nowrap;"></span>' +
+      '</div>' +
+      '<div class="emailSnip" style="font-size:12px; color:var(--muted,#999); margin-top:6px;"></div>' +
+      '<div class="emailTrans" dir="auto" style="display:none; font-size:12px; margin-top:6px; padding:8px 10px; border-radius:8px; background:var(--panel,#1a1a1a); border:1px solid var(--border,#333); line-height:1.7;"><b class="emailTransLbl"></b> <span class="emailTransTxt"></span></div>' +
+      '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px; font-family:inherit; line-height:1.6;"></textarea>' +
+      '<div class="emailGloss" dir="auto" style="display:none; font-size:11.5px; color:var(--muted,#999); margin-top:4px; line-height:1.7;"><b class="emailGlossLbl"></b> <span class="emailGlossTxt"></span></div>' +
+      '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
+        '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailRegenBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px; display:none;"></button>' +
+      '</div>' +
+      '<div class="emailMeet" dir="auto" style="font-size:11.5px; color:var(--muted,#999); margin-top:6px; display:none;"></div>' +
+      '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
+
+    const sendBtn = card.querySelector('.emailSendBtn');
+    const regenBtn = card.querySelector('.emailRegenBtn');
+    const ignoreBtn = card.querySelector('.emailIgnoreBtn');
+    const draftEl = card.querySelector('.emailDraftInput');
+    const cardStatus = card.querySelector('.emailCardStatus');
+    const calBtn = card.querySelector('.emailCalBtn');
+    const who = emSender(mail.from);
+    card.querySelector('.emailSubj').textContent = mail.subject || '';
+    card.querySelector('.emailFrom').setAttribute('dir', emTextDir(who.name || who.addr));
+    card.querySelector('.emailFromName').textContent = who.name;
+    card.querySelector('.emailFromAddr').textContent = who.name ? '<' + who.addr + '>' : who.addr;
+    card.querySelector('.emailSnip').textContent = mail.snippet || '';
+    card.querySelector('.emailTransLbl').textContent = tr.translation;
+    card.querySelector('.emailGlossLbl').textContent = tr.draftMeaning;
+    sendBtn.textContent = tr.send;
+    regenBtn.textContent = tr.regen;
+    ignoreBtn.textContent = tr.ignore;
+    calBtn.textContent = tr.addToCalendar;
+    fillCard(card, mail);
+
+    regenBtn.addEventListener('click', () => { emQueueDraft(card, mail, true); });
+
+    calBtn.addEventListener('click', async () => {
+      if(!mail.meeting) return;
+      calBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      cardStatus.textContent = tr.addingEvent;
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const r = await fetch('/api/email-calendar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, tz: mail.meeting.tz || emTz(), description: (mail.subject || '') + '\n' + (mail.from || '') }),
+        });
+        const d = await r.json();
+        if(!r.ok){
+          if(d && d.needsReauth) throw new Error(tr.calReauth);
+          throw new Error((d && d.error) || 'calendar failed');
+        }
+        cardStatus.textContent = tr.eventAdded;
+        calBtn.textContent = tr.eventAdded;
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        calBtn.disabled = false;
+      }
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      const text = (draftEl.value || '').trim();
+      if(!text) return;
+      sendBtn.disabled = true; ignoreBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      cardStatus.textContent = tr.sending;
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const r = await fetch('/api/email-send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
+        });
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.error || 'send failed');
+        cardStatus.textContent = tr.sent;
+        setTimeout(() => { card.remove(); }, 1200);
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        sendBtn.disabled = false; ignoreBtn.disabled = false;
+      }
+    });
+
+    ignoreBtn.addEventListener('click', async () => {
+      sendBtn.disabled = true; ignoreBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const pattern = extractEmailAddress(mail.from);
+        const r = await fetch('/api/email-ignore', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, pattern }),
+        });
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.error || 'ignore failed');
+        cardStatus.textContent = tr.ignored;
+        setTimeout(() => { card.remove(); }, 1000);
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        sendBtn.disabled = false; ignoreBtn.disabled = false;
+      }
+    });
+    return card;
+  }
+
+  function emQueueDraft(card, mail, regen){
+    mail.pending = true;
+    mail.draftError = undefined;
+    fillCard(card, mail);
+    emQueue.push({ card, mail, regen: !!regen, run: emRun });
+    emPump();
+  }
+  function emPump(){
+    while(emActive < 3 && emQueue.length){
+      const job = emQueue.shift();
+      emActive++;
+      emDraft(job).finally(() => {
+        emActive--;
+        emPump();
+        if(!emActive && !emQueue.length && job.run === emRun) emSortCards();
+      });
+    }
+  }
+  async function emDraft(job){
+    const mail = job.mail;
+    try{
+      const r = await fetch('/api/email-list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: emBody({ draftFor: mail.id, threadId: mail.threadId || '', regen: job.regen }) });
+      const d = await r.json();
+      if(job.run !== emRun) return;
+      if(!r.ok) throw new Error((d && d.error) || 'draft failed');
+      if(d.draft){ // فشل «إعادة توليد» لا يمسح المسوّدة القائمة
+        mail.draft = d.draft;
+        mail.priority = d.priority || 'normal';
+        mail.lang = d.lang || '';
+        mail.meeting = d.meeting || null;
+        mail.translation = d.translation || '';
+        mail.draftGloss = d.draftGloss || '';
+      }
+      mail.draftError = d.draftError || undefined;
+      if(d.draftError === 'nokey' || d.draftError === 'badkey') emKeyLine(d.draftError, d.aiErrorDetail || '');
+      else if(d.ownerNote) emKeyLine('fallback', d.ownerNote);
+    }catch(e){
+      if(job.run !== emRun) return;
+      __swallow(e, "misc:app-12-studios#6");
+      mail.draftError = 'failed';
+    }
+    mail.pending = false;
+    fillCard(job.card, mail);
+  }
+  function emSortCards(){
+    const ae = document.activeElement;
+    if(ae && listEl.contains(ae)) return;
+    const cards = Array.prototype.slice.call(listEl.children).filter((c) => c.__emMail);
+    const sorted = cards.map((c, i) => ({ c, i })).sort((a, b) => (emRank(a.c.__emMail.priority) - emRank(b.c.__emMail.priority)) || (a.i - b.i));
+    if(sorted.every((x, k) => x.i === k)) return;
+    sorted.forEach((x) => listEl.appendChild(x.c));
+  }
+
+  function renderEmails(emails, append){
+    const tr = T();
+    if(!append) listEl.innerHTML = '';
+    if(!append && (!emails || !emails.length)){
       listEl.innerHTML = '<div style="text-align:center; font-size:13px; color:var(--muted,#999); padding:20px 0;">' + tr.empty + '</div>';
       return;
     }
-    emails.forEach((mail) => {
-      const card = document.createElement('div');
-      card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
-      card.innerHTML =
-        '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
-          '<div style="min-width:0;">' +
-            '<div style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.subject || '').replace(/</g,'&lt;') + '</div>' +
-            '<div style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.from || '').replace(/</g,'&lt;') + '</div>' +
-          '</div>' +
-          '<span style="font-size:11.5px; white-space:nowrap;">' + priorityLabel(mail.priority) + '</span>' +
-        '</div>' +
-        '<div style="font-size:12px; color:var(--muted,#999); margin-top:6px;">' + (mail.snippet || '').replace(/</g,'&lt;') + '</div>' +
-        '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px;">' + (mail.draft || '') + '</textarea>' +
-        '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
-          '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;">' + tr.send + '</button>' +
-          '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;">' + tr.ignore + '</button>' +
-          (mail.meeting ? '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px;">' + tr.addToCalendar + '</button>' : '') +
-        '</div>' +
-        (mail.meeting ? '<div style="font-size:11.5px; color:var(--muted,#999); margin-top:6px;">📅 ' + String(mail.meeting.title || '').replace(/</g,'&lt;') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') + '</div>' : '') +
-        '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
-
-      const sendBtn = card.querySelector('.emailSendBtn');
-      const ignoreBtn = card.querySelector('.emailIgnoreBtn');
-      const draftEl = card.querySelector('.emailDraftInput');
-      const cardStatus = card.querySelector('.emailCardStatus');
-      const calBtn = card.querySelector('.emailCalBtn');
-
-      if(calBtn) calBtn.addEventListener('click', async () => {
-        calBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        cardStatus.textContent = tr.addingEvent;
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const r = await fetch('/api/email-calendar', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, description: (mail.subject || '') + '\n' + (mail.from || '') }),
-          });
-          const d = await r.json();
-          if(!r.ok){
-            if(d && d.needsReauth) throw new Error(tr.calReauth);
-            throw new Error((d && d.error) || 'calendar failed');
-          }
-          cardStatus.textContent = tr.eventAdded;
-          calBtn.textContent = tr.eventAdded;
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          calBtn.disabled = false;
-        }
-      });
-
-      sendBtn.addEventListener('click', async () => {
-        const text = (draftEl.value || '').trim();
-        if(!text) return;
-        sendBtn.disabled = true; ignoreBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        cardStatus.textContent = tr.sending;
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const r = await fetch('/api/email-send', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
-          });
-          const d = await r.json();
-          if(!r.ok) throw new Error(d.error || 'send failed');
-          cardStatus.textContent = tr.sent;
-          setTimeout(() => { card.remove(); }, 1200);
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          sendBtn.disabled = false; ignoreBtn.disabled = false;
-        }
-      });
-
-      ignoreBtn.addEventListener('click', async () => {
-        sendBtn.disabled = true; ignoreBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const pattern = extractEmailAddress(mail.from);
-          const r = await fetch('/api/email-ignore', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, pattern }),
-          });
-          const d = await r.json();
-          if(!r.ok) throw new Error(d.error || 'ignore failed');
-          cardStatus.textContent = tr.ignored;
-          setTimeout(() => { card.remove(); }, 1000);
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          sendBtn.disabled = false; ignoreBtn.disabled = false;
-        }
-      });
-
+    const shown = {};
+    if(append) Array.prototype.slice.call(listEl.children).forEach((c) => { if(c.__emMail && c.__emMail.threadId) shown[c.__emMail.threadId] = 1; });
+    (emails || []).forEach((mail) => {
+      if(mail.threadId && shown[mail.threadId]) return; // v-email-thread: المحادثة بطاقة واحدة حتّى عبر الصفحات
+      if(mail.threadId) shown[mail.threadId] = 1;
+      const card = buildCard(mail);
       listEl.appendChild(card);
+      if(mail.pending) emQueueDraft(card, mail, false);
     });
   }
 
-  async function loadEmails(){
+  async function loadEmails(append){
     const tr = T();
-    setStatus(tr.loading);
-    listEl.innerHTML = '';
+    const more = append === true; // نقرة «تحديث» تمرّر حدثًا لا true
+    if(!more){ emRun++; emQueue = []; emNext = ''; emKeyShown = false; lastLoadedEmails = []; listEl.innerHTML = ''; setStatus(tr.loading); }
+    if(moreBtn) moreBtn.style.display = 'none';
+    const run = emRun;
     try{
-      const token = localStorage.getItem('aiapp_auth_token');
       const r = await fetch('/api/email-list', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
+        body: emBody(more && emNext ? { page: emNext } : {}),
       });
       const d = await r.json();
+      if(run !== emRun) return;
       if(!r.ok){
         if(d.notConnected || /invalid_grant/i.test(String(d.error || ''))){
           connectBox.style.display = 'block';
@@ -34717,14 +34885,24 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         throw new Error(d.error || 'load failed');
       }
       gmailLabel.textContent = d.gmailAddress || '';
-      // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
-      setStatus(d.note || '');
-      lastLoadedEmails = d.emails || [];
-      renderEmails(d.emails);
+      if(!more){
+        // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
+        // v-email-safe: ومفتاح الكتابة الناقص سطرٌ واضح فوق القائمة؛ v-email-claude: والاحتياط للمالك (اسم المتغيّر للمالك وحده من الخادم).
+        const detail = d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '';
+        const aiLine = d.aiError ? emAiMsg(d.aiError) + detail : (d.aiNote ? t('emailAsst_draftFallback') + detail : '');
+        if(aiLine) emKeyShown = true;
+        setStatus([d.note || '', aiLine].filter(Boolean).join('\n'));
+      }
+      const emails = d.emails || [];
+      lastLoadedEmails = lastLoadedEmails.concat(emails);
+      renderEmails(emails, more);
+      emNext = d.next || '';
+      if(moreBtn){ moreBtn.style.display = emNext ? '' : 'none'; moreBtn.disabled = false; }
     }catch(e){
       setStatus(tr.error + (e && e.message ? e.message : String(e)));
     }
   }
+  if(moreBtn) moreBtn.addEventListener('click', () => { moreBtn.disabled = true; loadEmails(true); });
 
   function applyStaticText(){
     const tr = T();
@@ -34735,6 +34913,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(connectBtn) connectBtn.textContent = tr.connectBtn;
     setTxt('#emailAssistRefreshLabel', tr.refresh);
     setTxt('#emailAssistVoiceLabel', tr.voiceBtn);
+    setTxt('#emailAssistMoreBtn', tr.more);
   }
 
   function buildEmailSummaryText(){

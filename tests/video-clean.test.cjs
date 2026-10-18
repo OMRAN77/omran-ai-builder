@@ -117,5 +117,5 @@ test('النصوص بالـ١٤ لغة والوسوم مرفوعة', () => {
   });
   const h = read('index.html');
   assert.ok(h.includes('src="/js/video.js?v=451"') && h.includes('modules.css?v=687'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=755'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=758'"));
 });
