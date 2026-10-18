@@ -39,30 +39,3 @@ jobs:
               st = scrub(it.get('stack'))[:300]
               if st: print('stack:', st)
           EOF
-
-      # v-signup-notify: ليش ما وصل إيميل الحساب الجديد؟ أخطاء الخادم (log-error.js ← KV) لا يقرؤها التقرير أعلاه وحده.
-      # منقّحة: أخطاء الإيميل وحدها (الموضع والرسالة والعدد)، وحضور ثلاثة متغيّرات بلا قيمها.
-      - name: Signup-mail diagnosis (filtered)
-        env:
-          MONITOR_KEY: ${{ secrets.MONITOR_KEY }}
-        run: |
-          curl -sS "https://omran-ai-builder.vercel.app/api/system?action=health&key=${MONITOR_KEY}" -o /tmp/health.json
-          python3 - <<'EOF'
-          import json, re
-          def scrub(s):
-              return re.sub(r'(key|token|sig|state|secret)=[^&\s"\']+', r'\1=***', str(s or ''), flags=re.I)
-          try:
-              d = json.load(open('/tmp/health.json'))
-          except Exception as e:
-              print('parse failed:', e, open('/tmp/health.json').read()[:120]); raise SystemExit(1)
-          env = d.get('env') or {}
-          missing = {x.get('name') for k in ('core', 'feature', 'tunable', 'money') for x in (env.get(k) or [])}
-          print('deploy:', d.get('deploy'))
-          for n in ('OWNER_NOTIFY_EMAIL', 'RESEND_API_KEY', 'MAIL_FROM'):
-              print(n, ':', 'MISSING' if n in missing else 'set')
-          hits = [e for e in (d.get('serverErrors') or []) if re.search(r'signup-notify|auth:mail|resend', str(e.get('route')) + ' ' + str(e.get('message')), re.I)]
-          print('mail-related server errors:', len(hits))
-          for e in hits:
-              print('-' * 60)
-              print('route:', scrub(e.get('route')), '| msg:', scrub(e.get('message'))[:160], '| x', e.get('count'), '| last:', e.get('lastAt') or e.get('at'), '| deploy:', e.get('deploy'))
-          EOF
