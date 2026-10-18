@@ -74,9 +74,17 @@ test('٢. «نسيت كلمة المرور» لحساب Google: بريد إرش�
   assert.ok(!gu.resetTokenHash, 'لا رمز إعادة يُحفظ على حساب Google');
 });
 
+// v-signup-no-email: التسجيل لا يحفظ إيميلًا — حساب أكّد إيميله من «حسابي» (السجلّ والختم والفهرس كما يكتبها التأكيد بالرمز)
+async function confirmedEmail(key, email) {
+  const u = await auth.getUser(key);
+  await auth.putUser(key, Object.assign({}, u, { email, verifiedEmail: email }));
+  store.set('db/email-index/' + email, JSON.stringify({ username: key, at: Date.now() }));
+}
+
 test('٣. حساب بكلمة مرور يبقى كما كان (رابط إعادة)، وحساب Google المدموج (alias) أو المحذوف', async () => {
   mails.length = 0;
-  assert.equal((await call({ action: 'signup', username: 'huda', password: 'pass12345', email: 'huda@example.com' })).code, 200);
+  assert.equal((await call({ action: 'signup', username: 'huda', password: 'pass12345' })).code, 200);
+  await confirmedEmail('huda', 'huda@example.com');
   await call({ action: 'forgotPassword', username: 'huda@example.com' });
   assert.equal(mails.length, 1);
   assert.match(mails[0].subject, /إعادة تعيين كلمة المرور/);
@@ -122,7 +130,7 @@ test('٥. النصّ بالـ١٤ لغة باسم الزرّ نفسه، ووسم
     const o = JSON.parse(m[2]);
     assert.ok(o.authGoogleHint && o.authGoogleHint.includes('{btn}') && /Gmail/.test(o.authGoogleHint), lg);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=755'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=759'"));
 });
 
 test('٦. أندرويد الخام (; wv) وحده يأخذ مسار «ارجع للتطبيق» — Chrome والآيفون كما كانا', () => {

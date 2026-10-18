@@ -121,6 +121,106 @@
     strip.appendChild(add); strip.appendChild(fi);
   }
 
+  /* v-trend-scenes (المالك: «كتبت مشهدين عن البحر وطلع الفيديو عن المدرسة»): مشاهد الترند (بيكسار: صباح، مدرسة،
+     مساء) كانت مخفيّة وثابتة على الخادم، وما يُكتب في «اكتب اللي تبيه» يُلحق بعدها فقط. الآن تظهر في خانات تتعدّل
+     بنصّها الافتراضيّ بلغة المستخدم؛ المكتوب يحلّ محلّ المشهد، والخانة الفاضية تنشال، و«المشهد الأول: … المشهد
+     الثاني: …» في «اكتب اللي تبيه» تنقسم إلى الخانات وعدد المقاطع بعددها. الخانة الباقية على نصّها الافتراضيّ تُرسَل
+     برقمها فيبقى أمرها الإنجليزيّ على الخادم كما كان، وبلا أيّ تعديل لا تُرسَل المشاهد أصلًا (السلوك القديم حرفيًّا).
+     splitScenes نسخة حرفيّة من api/_lib/video-trends.js — اختبار trend-scenes يطابقهما. */
+  function splitScenes(text){
+    var s = String(text == null ? '' : text).slice(0, 1000); /* الخانة ٤٠٠ — والحدّ يمنع كلفة التعابير على نصّ ضخم من خارج الواجهة */
+    var MAX = 5;
+    var SP = '[ \\t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*';
+    var NUM = '[0-9\u0660-\u0669\u06F0-\u06F9\u0966-\u096F\u09E6-\u09EF]+';
+    var ORD = '(?:ال)?(?:[أاإ]و[\u064B-\u0652]*لى?|ثان[يى]ة?|ثالثة?|رابعة?|خامسة?|سادسة?|سابعة?|ثامنة?|تاسعة?|عاشرة?|[أا]خيرة?)[\u064B-\u0652]*';
+    var MARK = new RegExp('[وف]?(?:المشهد|مشهد|اللقطة|لقطة|المقطع|مقطع)' + SP + '(?:رقم' + SP + ')?(\\()?' + SP + '(?:(?:ال\u0640*)?' + NUM + '|' + ORD + ')'
+      + '|(?:scene|scène|escena|sahne|сцена|eksena|adegan|दृश्य|منظر|দৃশ্য|രംഗം)' + SP + '(?:#|no\\.?' + SP + ')?(\\()?' + SP + '(?:' + NUM + '|one|two|three|four|five|six|seven|eight|nine|ten)'
+      + '|(?:first|second|third|fourth|fifth|last)' + SP + 'scene'
+      + '|第' + SP + '[0-9一二三四五六七八九十]+' + SP + '幕|场景' + SP + '[0-9一二三四五六七八九十]+', 'gi');
+    var WORD = /[A-Za-z0-9_\u00C0-\u024F\u0400-\u04FF\u0621-\u063A\u0641-\u065F\u0660-\u0669\u0670-\u06D3\u06FA-\u06FF\u0900-\u097F\u0980-\u09FF\u0D00-\u0D7F]/;
+    var cands = [], m;
+    while((m = MARK.exec(s))){
+      var at = m.index, end = at + m[0].length, cjk = /^[第场]/.test(m[0]);
+      if(!cjk && at > 0 && WORD.test(s.charAt(at - 1))) continue; /* «بالمشهد» و«obscene 1» ليستا علامة */
+      var close = /^[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*\)/.exec(s.slice(end));
+      if(close) end += close[0].length;
+      var sep = /^[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*(?:[:：;؛]|[\-–—.](?!\S)|\r?\n)/.exec(s.slice(end));
+      var strong = !!sep || (!!close && !(m[1] || m[2])); /* «المشهد ١)» فاصل؛ «المشهد (١)» قوس فقط */
+      if(!strong && !cjk && end < s.length && !/[\s,،\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/.test(s.charAt(end))) continue; /* «one-shot» */
+      cands.push({ at: at, body: end + (sep ? sep[0].length : 0), strong: strong });
+    }
+    if(!cands.length) return { scenes: [], rest: s.trim() };
+    var LISTNUM = /(?:(?:^|\s)[0-9\u0660-\u0669\u06F0-\u06F9]{1,2}[ \t]*[\-–—.)]|(?:^|\n)[ \t]*[0-9\u0660-\u0669\u06F0-\u06F9]{1,2})[ \t]*$/;
+    var tidy = function(x){
+      var y = x.replace(LISTNUM, '').replace(/^[\s,،؛;:.\-–—\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+/, '');
+      for(var r = 0; r < 3; r++){
+        y = y.replace(/[\s,،؛;\-–—\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+$/, '').replace(/(^|[\s,،])(?:و?ثم[\u064B-\u0652]*|و?بعدين|و?بعدها|and then|and|then|و)$/i, '');
+      }
+      return y;
+    };
+    /* بلا فاصل («المشهد الأول سالم… المشهد الثاني…») تُعدّ العلامات فقط إن بدأ بها النصّ (أو بعد نهاية جملة):
+       «غيّر المشهد الثاني والمشهد الثالث…» و«زي المشهد الأول بس بالليل» إشارة إلى المشاهد لا قائمة مشاهد */
+    var head = s.slice(0, cands[0].at).replace(LISTNUM, '').replace(/[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+$/, '');
+    var weakOK = !head.trim() || /[.!?؟:：;؛\n]$/.test(head);
+    var marks = (weakOK && cands.length > 1) ? cands : cands.filter(function(c){ return c.strong; });
+    if(!marks.length) return { scenes: [], rest: s.trim() };
+    var scenes = [];
+    for(var k = 0; k < marks.length; k++){
+      var body = tidy(s.slice(marks[k].body, k + 1 < marks.length ? marks[k + 1].at : s.length));
+      if(body) scenes.push(body);
+    }
+    if(scenes.length > MAX) scenes = scenes.slice(0, MAX - 1).concat([scenes.slice(MAX - 1).join(' ')]);
+    var rest = tidy(s.slice(0, marks[0].at));
+    return { scenes: scenes, rest: /^[\s\uD800-\uDFFF\u2600-\u27BF\uFE0F\u200D]*$/.test(rest) ? '' : rest }; /* «🌊» وحدها ليست توجيهًا */
+  }
+  var MAX_SCENES = 5;
+  function sceneTrend(t){ return !!(t && t.scenes > 1 && t.sceneText && t.sceneText.length); }
+  function sceneBoxes(){ var w = $('vtScenes'); return w ? Array.prototype.slice.call(w.querySelectorAll('textarea')) : []; }
+  function readScenes(){
+    return sceneBoxes().map(function(ta){
+      var v = ta.value.trim(), d = ta.getAttribute('data-def');
+      return { text: v, def: (d !== null && v === String(ta.getAttribute('data-orig') || '').trim()) ? parseInt(d, 10) : null };
+    }).filter(function(x){ return x.text.replace(/["`\\<>\s]/g, ''); }); /* ما يمحوه تنظيف الخادم = خانة فاضية، فيتّفق العدّان */
+  }
+  function goLabel(t){
+    var go = $('vtGo'); if(!go) return;
+    var n = sceneTrend(t) ? (readScenes().length || t.scenes) : (t.scenes || 1);
+    go.textContent = ui('make') + (n > 1 ? ' (' + n + ')' : '');
+  }
+  function setScenes(t, list){
+    var w = $('vtScenes'); if(!w) return;
+    var box = w.querySelector('[data-boxes]'); box.innerHTML = '';
+    list.slice(0, MAX_SCENES).forEach(function(it, i){
+      var lab = document.createElement('label'); lab.style.cssText = 'display:block;font-size:12px;color:#9a9a9e;margin:10px 0 4px;';
+      lab.textContent = ui('sceneN').replace('{i}', String(i + 1));
+      var ta = document.createElement('textarea'); ta.rows = 2; ta.maxLength = 400; ta.id = 'vtScene' + (i + 1); lab.htmlFor = ta.id;
+      ta.value = String(it.text || '').slice(0, 400);
+      if(it.def != null){ ta.setAttribute('data-def', String(it.def)); ta.setAttribute('data-orig', ta.value); }
+      ta.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;resize:vertical;';
+      ta.oninput = function(){ fitBox(ta); goLabel(t); };
+      box.appendChild(lab); box.appendChild(ta); fitBox(ta);
+    });
+    goLabel(t);
+  }
+  /* الخانة بطول نصّها (سطران على الأقلّ): المشهد الافتراضيّ ثلاثة أسطر في الجوّال وكان يُقصّ داخل خانة بسطرين */
+  function fitBox(ta){
+    try{
+      ta.style.height = 'auto';
+      var cs = getComputedStyle(ta);
+      var adj = cs.boxSizing === 'border-box' ? (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0) : -((parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0));
+      if(ta.scrollHeight) ta.style.height = (ta.scrollHeight + adj) + 'px';
+    }catch(e){ /* guard-ok — بلا قياس: ارتفاع الخانة الافتراضيّ */ }
+  }
+  function defaultScenes(t){ return t.sceneText.map(function(x, i){ return { text: noEmoji(T(x)), def: i }; }); }
+  /* «المشهد الأول: …» في «اكتب اللي تبيه» ← الخانات، وما قبل أوّل علامة يبقى توجيهًا عامًّا لكلّ المشاهد */
+  function pullScenes(t){
+    var x = $('vtExtra'); if(!sceneTrend(t) || !x) return false;
+    var sp = splitScenes(x.value); if(!sp.scenes.length) return false;
+    setScenes(t, sp.scenes.map(function(v){ return { text: v, def: null }; }));
+    x.value = sp.rest;
+    return true;
+  }
+
   /* مساعد الكتابة داخل نموذج الترند (المالك: «في الترندات المحادثة غير موجودة»): نفس إجراء video-write، ويضع الناتج في خانتَي الترند */
   function W(k){ var v = (typeof window.t === 'function') ? window.t(k) : ''; return v && v !== k ? noEmoji(v) : ''; }
   function assistant(t){
@@ -141,7 +241,7 @@
       var q = inp.value.trim(); if(!q || busyA) return; busyA = true; btn.disabled = true; inp.value = '';
       bubble(q, true); var wait = bubble(W('vwBusy'), false);
       var kind = /إعلان|اعلان|\bad\b|advert/i.test(q) ? 'ad' : /حوار|dialog/i.test(q) ? 'dialogue' : 'story';
-      fetch('/api/tools?action=video-write', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ request:q, kind:kind, duration:'8', token:tokenOf(), characters:[] }) })
+      fetch('/api/tools?action=video-write', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ request:q, kind:kind, duration:'8', scenes: sceneTrend(t) ? (readScenes().length || t.scenes) : undefined, token:tokenOf(), characters:[] }) })
         .then(function(r){ return r.json(); }).then(function(r){
           wait.remove();
           var x = r && r.result;
@@ -150,8 +250,13 @@
           var all = [x.scene].concat((x.lines || []).map(function(l){ return (l.who ? l.who + ': ' : '') + l.text; }), x.narration ? [x.narration] : []).filter(Boolean).join('\n');
           var b = bubble(all, false);
           var main = $('vtText'), extra = $('vtExtra');
-          if(main) b.appendChild(chip(W('vwToScene'), function(){ put(main, t.kind === 'sentence' ? (speech || x.scene) : (x.scene || speech)); }));
-          if(extra) b.appendChild(chip(W('vcToExtra'), function(){ put(extra, all); }));
+          if(sceneTrend(t)) b.appendChild(chip(W('vwToScene'), function(){
+            var arr = (x.scenes && x.scenes.length) ? x.scenes : splitScenes(x.scene || '').scenes;
+            if(!arr.length && x.scene) arr = [x.scene];
+            if(arr.length) setScenes(t, arr.map(function(v){ return { text: v, def: null }; }));
+          }));
+          else if(main) b.appendChild(chip(W('vwToScene'), function(){ put(main, t.kind === 'sentence' ? (speech || x.scene) : (x.scene || speech)); }));
+          if(extra) b.appendChild(chip(W('vcToExtra'), function(){ put(extra, all); pullScenes(t); }));
         }).catch(function(){ wait.remove(); bubble(W('vwErr'), false); })
         .then(function(){ busyA = false; btn.disabled = false; });
     };
@@ -185,18 +290,25 @@
       inp.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;';
       panel.appendChild(lab); panel.appendChild(inp);
     }
+    if(sceneTrend(t)){
+      var sw = document.createElement('div'); sw.id = 'vtScenes';
+      var boxes = document.createElement('div'); boxes.setAttribute('data-boxes', '');
+      var sh = document.createElement('div'); sh.style.cssText = 'font-size:11.5px;color:#9a9a9e;margin:8px 0 0;line-height:1.7;'; sh.textContent = ui('scenesHint');
+      sw.appendChild(boxes); sw.appendChild(sh); panel.appendChild(sw);
+    }
     /* v-trend-extra (المالك: «ليش ما أقدر أكتب اللي أريده؟»): ٤٦ من ٥٥ ترندًا كانت بلا خانة كتابة —
        الآن لكلّ ترند «اكتب اللي تبيه» اختياريّة تُدمج في الأمر توجيهًا يعدّل الترند. */
     var xlab = document.createElement('label'); xlab.style.cssText = 'display:block;font-size:12px;color:#9a9a9e;margin:10px 0 4px;';
     xlab.textContent = ui('extra');
     var xinp = document.createElement('textarea'); xinp.rows = 2; xinp.id = 'vtExtra'; xinp.maxLength = 400; xinp.placeholder = ui('extraPh');
     xinp.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;resize:vertical;';
+    xinp.onchange = function(){ pullScenes(t); };
     panel.appendChild(xlab); panel.appendChild(xinp);
     panel.appendChild(assistant(t));
     var go = document.createElement('button'); go.type = 'button'; go.className = 'btn primary'; go.id = 'vtGo'; go.style.cssText = 'width:100%;margin-top:12px;font-weight:800;';
-    go.textContent = ui('make') + (t.scenes > 1 ? ' (' + t.scenes + ')' : '');
     go.onclick = function(){ make(t); };
     panel.appendChild(go);
+    if(sceneTrend(t)) setScenes(t, defaultScenes(t)); else goLabel(t);
     var st = document.createElement('div'); st.id = 'vtStatus'; st.style.cssText = 'display:none;margin-top:10px;font-size:13px;line-height:1.7;';
     /* v-scene-kinds: مشهد التوليد يُركَّب تحت سطر الحالة — حيث تظهر النتيجة — فالنتيجة بعرضه (٧٦٠ موسَّطة) */
     var out = document.createElement('div'); out.id = 'vtOut'; out.style.cssText = 'margin-top:10px;max-width:760px;margin-inline:auto;';
@@ -273,9 +385,24 @@
     if(t.photo === 'req' && !photos.length){ status(ui('photoReq')); return; }
     var txt = ($('vtText') ? $('vtText').value.trim() : '');
     var params = { name: txt, text: txt };
+    pullScenes(t); /* v-trend-scenes: مشاهد مكتوبة في «اكتب اللي تبيه» ← الخانات قبل قراءتها */
     /* v-trend-extra + v-trend-backdrops: ما كتبه المستخدم، ورقم خلفيّة جديد لكلّ فيديو من هذا الترند */
     var extra = ($('vtExtra') ? $('vtExtra').value.trim() : '');
     if(extra) params.extra = extra;
+    /* v-trend-scenes: خانات معدّلة ← params.scenes وعدد المقاطع بعددها؛ بلا تعديل لا يُرسَل شيء (الأمر القديم حرفيًّا).
+       كلّ الخانات فاضية: «اكتب اللي تبيه» هو المشهد الوحيد (يُنقل لخانة ليُرى) — لا ترجع المشاهد الافتراضيّة بصمت؛
+       وبلا أيّ نصّ: تنبيه بلا توليد. */
+    var n = t.scenes || 1;
+    if(sceneTrend(t)){
+      var list = readScenes();
+      if(!list.length){
+        if(!extra){ status(ui('scenesNone')); return; }
+        setScenes(t, [{ text: extra, def: null }]); $('vtExtra').value = ''; delete params.extra;
+        list = readScenes();
+      }
+      var same = list.length === t.scenes && list.every(function(x, k){ return x.def === k; });
+      if(!same){ params.scenes = list.map(function(x){ return x.def != null ? x.def : x.text; }); n = list.length; }
+    }
     try{
       var bk = 'aiapp_trend_bg_' + t.key;
       params.bg = (parseInt(localStorage.getItem(bk) || '0', 10) || 0) + 1;
@@ -285,7 +412,6 @@
     status(ui('working'));
     try{
       var urls = [];
-      var n = t.scenes || 1;
       for(var i = 0; i < n; i++){
         if(n > 1) status(ui('scene').replace('{i}', i + 1).replace('{n}', n) + ' ' + ui('working'));
         urls.push(await clipInSequence(t, Object.assign({ sceneIndex: i }, params), token, i + 1, n));

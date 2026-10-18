@@ -105,7 +105,10 @@
   function renderThumbs(){
     var box = $('fxCustomThumbs'); if(!box) return;
     var cards = document.querySelectorAll('#fashionAiModal .fxAccCard[data-ext]');
-    if(box.childElementCount !== cards.length){
+    /* v-fx-gender-pics: البطاقات تُبنى من جديد عند تغيّر الفئة (💼 🧴 للرجل) — الدوائر تتبع إيموجيها لا عددها وحده */
+    var sig = Array.prototype.map.call(cards, function(c){ var o = c.querySelector('.oi'); return c.getAttribute('data-ext') + (o ? o.textContent : ''); }).join('|');
+    if(box.childElementCount !== cards.length || box.getAttribute('data-sig') !== sig){
+      box.setAttribute('data-sig', sig);
       box.innerHTML = '';
       Array.prototype.forEach.call(cards, function(card){
         var key = card.getAttribute('data-ext');
@@ -162,7 +165,8 @@
     lab.style.cssText = 'font-size:12.5px;color:var(--muted,#999);align-self:center;';
     box.appendChild(lab);
     var bag = q('.fxAccCard[data-ext="Handbag"]');
-    if(bag && !bag.classList.contains('sel')) box.appendChild(chip(T(TX.bag), function(){ bag.click(); }));
+    var bagOi = bag && bag.querySelector('.oi'); /* 💼 للرجل بدل 👜 */
+    if(bag && !bag.classList.contains('sel')) box.appendChild(chip(T(TX.bag).replace(/^\S+/, (bagOi && bagOi.textContent) || '👜'), function(){ bag.click(); }));
     var sea = $('fashionAiSeason');
     if(sea){
       var to = sea.value === 'winter' ? 'summer' : 'winter';

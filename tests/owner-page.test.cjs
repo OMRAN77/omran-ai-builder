@@ -69,6 +69,6 @@ test('٣. العنوان بالـ١٤ لغة، والقائمة تُعاد بن�
   assert.match(read('js/app-01-boot-auth.js'), /if\(typeof renderSettingsNavList === 'function'\) renderSettingsNavList\(\);/);
   const html = read('index.html');
   assert.match(html, /js\/partials-settings\.js\?v=699/);
-  assert.match(html, /css\/tokens\.css\?v=733/);
-  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=755'/); // وسم تحميل اللغات الحاليّ
+  assert.match(html, /css\/tokens\.css\?v=734/);
+  assert.match(read('js/app-04-i18n-state.js'), /\.js\?v=759'/); // وسم تحميل اللغات الحاليّ
 });

@@ -1,7 +1,8 @@
 // Vercel Serverless Function: adds a detected meeting/appointment from an email
-// to the user's Google Calendar (primary calendar, Asia/Dubai timezone).
+// to the user's Google Calendar (primary calendar, in the user's own time zone — Asia/Dubai if unknown).
 const { getUser, verifyToken } = require('./auth.js');
 const { decrypt } = require('./_emailCrypto.js');
+const { safeTz } = require('./_mail.js'); // v-email-safe
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -37,6 +38,16 @@ module.exports = async (req, res) => {
     if (!username) { res.status(401).json({ error: 'الجلسة منتهية، سجل الدخول من جديد' }); return; }
     if (!title || !start) { res.status(400).json({ error: 'بيانات الموعد ناقصة' }); return; }
 
+    /* v-email-safe: الوقت كان يُقرأ بتوقيت دبي دائمًا (+04:00) — مستخدم في الرياض أو لندن يُحجز موعده بساعة خطأ.
+       الآن ساعة الحائط كما كتبها الموديل بمنطقة المستخدم نفسها (التي أُعطيت للموديل في email-list)، وجوجل
+       تفسّرها بـtimeZone. الحساب بساعة الحائط (UTC كحاوية) والتحقّق قبل نداء جوجل. */
+    const tz = safeTz(body.tz);
+    const sm = String(start).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    const wall = sm ? Date.UTC(+sm[1], +sm[2] - 1, +sm[3], +sm[4], +sm[5]) : NaN;
+    const wallStr = (ms) => new Date(ms).toISOString().slice(0, 19);
+    if (!sm || isNaN(wall) || wallStr(wall).slice(0, 16) !== sm[0]) { res.status(400).json({ error: 'صيغة الوقت غير صحيحة' }); return; }
+    const mins = Math.min(Number(durationMin) > 0 ? Number(durationMin) : 60, 24 * 60);
+
     const user = await getUser(username);
     if (!user || !user.emailAssist || !user.emailAssist.connected) {
       res.status(400).json({ error: 'لم يتم ربط Gmail بعد', notConnected: true });
@@ -47,20 +58,14 @@ module.exports = async (req, res) => {
 
     const accessToken = await getAccessToken(refreshToken);
 
-    // start format: YYYY-MM-DDTHH:MM (Dubai local time)
-    const startISO = String(start).length === 16 ? start + ':00' : start;
-    const startDate = new Date(startISO + '+04:00');
-    if (isNaN(startDate.getTime())) { res.status(400).json({ error: 'صيغة الوقت غير صحيحة' }); return; }
-    const endDate = new Date(startDate.getTime() + (Number(durationMin) > 0 ? Number(durationMin) : 60) * 60000);
-
     const evRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + accessToken },
       body: JSON.stringify({
         summary: title,
         description: description || 'أُضيف تلقائيًا من مساعد البريد الذكي — Omran AI Builder',
-        start: { dateTime: startDate.toISOString(), timeZone: 'Asia/Dubai' },
-        end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Dubai' },
+        start: { dateTime: wallStr(wall), timeZone: tz },
+        end: { dateTime: wallStr(wall + mins * 60000), timeZone: tz },
         reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 30 }] },
       }),
     });

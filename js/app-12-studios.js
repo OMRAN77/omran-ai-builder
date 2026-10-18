@@ -1569,7 +1569,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   // looks/<الفئة>/، وما لم يُولَّد بعد يسقط لصور النساء ثم للتدرّج الأنيق.
   // v-fashion-78: نسائي 36 · رجالي 24 · أطفال 18 — «٣٠-٥٠ كلام آخر».
   const GENDER_STYLES = {
-    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional', 'kaftan', 'jalabiya', 'hijabchic', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'cocktail', 'ballgown', 'boho', 'vintage', 'y2k', 'minimal', 'glam', 'leather', 'denim', 'pastel', 'monochrome', 'floral', 'velvet', 'silk', 'suitf', 'turkish', 'indian', 'princess', 'safari', 'preppy', 'artgown'],
+    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional', 'kaftan', 'jalabiya', 'mukhawara', 'hijabchic', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'cocktail', 'ballgown', 'boho', 'vintage', 'y2k', 'minimal', 'glam', 'leather', 'denim', 'pastel', 'monochrome', 'floral', 'velvet', 'silk', 'suitf', 'turkish', 'indian', 'princess', 'safari', 'preppy', 'artgown'],
     men: ['evening', 'formal', 'casual', 'wedding', 'traditional', 'bisht', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'leather', 'denim', 'minimal', 'monochrome', 'vintage', 'smartcasual', 'threepiece', 'safari', 'preppy', 'athleisure', 'rockstar', 'moroccan'],
     kids: ['evening', 'formal', 'casual', 'wedding', 'traditional', 'sporty', 'winterlux', 'summer', 'school', 'denim', 'pastel', 'floral', 'streetwear', 'minimal', 'vintage', 'preppy', 'eidkids', 'princess'],
   };
@@ -1610,7 +1610,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
-      if(!img.__flat){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; }
+      if(!img.__flat && gender === 'women'){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; } /* v-fx-gender-pics: الاحتياط صورة امرأة — لا لرجل أو طفل */
       else img.remove();
     };
     return img;
@@ -1630,7 +1630,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
           img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=3',
-          img2: 'assets/fashion/looks/' + v + '.webp',
+          img2: g === 'women' ? 'assets/fashion/looks/' + v + '.webp' : '',
         };
       }).filter(Boolean),
       onPick: function(v){ styleEl.value = v; fxStyleManual = v; renderStyleCards(); },
@@ -1650,7 +1650,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     trig.id = 'fashionStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
     const img = lookImg(g, styleEl.value, opt ? optLabel(opt) : '');
-    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    /* v-fx-mukhawara: الصورة في صندوق ثابت يحمل التدرّج — نمط بلا صورة بعد (المخورة حتّى تُعتمد صورتها) كان يُزيل الصورة فتنكمش البطاقة ~٢٠ بكسل */
+    const thumb = document.createElement('div');
+    thumb.style.cssText = 'width:44px; height:58px; border-radius:8px; overflow:hidden; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    img.style.cssText = 'display:block; width:100%; height:100%; object-fit:cover;';
+    thumb.appendChild(img);
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
@@ -1665,7 +1669,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const all = document.createElement('span');
     all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (bT('عرض الكل ›','Browse all ›'));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
-    trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
+    trig.appendChild(thumb); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openFashionPicker;
     styleCardsEl.appendChild(trig);
   }
@@ -2012,11 +2016,23 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     refineBtn.onclick = __doRefine;
     refineInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); __doRefine(); } });
   }
+  /* v-fx-gender-pics: سطر التعديل تحت نتيجة رجل أو طفل كان «غيّري لون الفستان» و«عدّلي» — لغير النساء نصّ الفئة
+     (لغة بلا مدخل = المفتاح الأصليّ، وهو محايد فيها؛ العربيّة وحدها تؤنّث الفعل، و«الفستان» في كلّ اللغات) */
+  const FX_REFINE_G = {
+    ph: { ar:'مثال: غيّر لون القميص إلى أزرق فقط', en:'e.g. change only the shirt colour to blue', fr:'ex. : changez seulement la couleur de la chemise en bleu', es:'ej.: cambia solo el color de la camisa a azul', tr:'örn. sadece gömleğin rengini maviye çevir', ru:'напр.: измени только цвет рубашки на синий', hi:'जैसे: केवल शर्ट का रंग नीला करें', ur:'مثلاً: صرف قمیص کا رنگ نیلا کریں', bn:'যেমন: শুধু শার্টের রং নীল করুন', ne:'जस्तै: सर्टको रङ मात्र नीलो बनाउनुहोस्', fil:'hal.: palitan lang ang kulay ng polo sa asul', id:'mis.: ubah hanya warna kemeja menjadi biru', zh:'例如：只把衬衫颜色改成蓝色', ml:'ഉദാ: ഷർട്ടിന്റെ നിറം മാത്രം നീലയാക്കൂ' },
+    btn: { ar:'✏️ عدّل شيئًا محددًا' },
+    need: { ar:'اكتب التعديل المطلوب أولًا' },
+  };
+  function __refineG(k, key, ar, en){
+    const o = currentGender() !== 'women' ? FX_REFINE_G[k] : null;
+    return (o && o[lang7()]) || __gt2(key, ar, en);
+  }
   function __refineTexts(){
     if(!refineInput) return;
-    refineInput.placeholder = __gt2('fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
-    refineBtn.textContent = __gt2('fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
+    refineInput.placeholder = __refineG('ph', 'fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
+    refineBtn.textContent = __refineG('btn', 'fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
   }
+  window.addEventListener('fashion-gender-change', __refineTexts); /* سطر ظاهر يتبع الفئة فورًا */
   function __refineRemember(b64, mime){
     __lastFxB64 = b64; __lastFxMime = mime;
     __buildRefineRow();
@@ -2026,7 +2042,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   async function __doRefine(){
     if(!__lastFxB64) return;
     const reqTxt = (refineInput.value || '').trim();
-    if(!reqTxt){ setStatus(__gt2('fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
+    if(!reqTxt){ setStatus(__refineG('need', 'fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
     refineBtn.disabled = true; btnGenerate.disabled = true;
@@ -2080,6 +2096,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const payload = {
         occasion: occasionEl.value, season: seasonEl.value,
         profile: loadProfile(), lang: lang7(), token,
+        gender: currentGender(), /* v-fx-gender-pics: بلاها تقترح إطلالات نسائيّة لرجل أو طفل */
       };
       if(mode === 'image' && selectedBase64){
         payload.imageBase64 = selectedBase64;
@@ -2109,7 +2126,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           '</div>' +
           '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.clothing || '') + '</p>' +
           '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0;">🎨 ' + (s.colors || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">👜 ' + (s.accessories || '') + '</p>' +
+          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">' + (currentGender() === 'men' ? '💼 ' : '👜 ') + (s.accessories || '') + '</p>' + /* v-fx-gender-pics: كبطاقة الحقيبة */
           '<button type="button" class="btn primary useLookBtn" style="width:100%; font-size:12px; padding:5px;">' + t('fashionUseThisLook') + '</button>';
         card.querySelector('.useLookBtn').onclick = () => {
           if(mode === 'text' || !selectedBase64){
@@ -2388,6 +2405,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     urgent: t('emailAsst_urgent'),
     normal: t('emailAsst_normal'),
     low: t('emailAsst_low'),
+    regen: t('emailAsst_regen'), // v-email-cache
+    more: t('emailAsst_more'),
+    drafting: t('emailAsst_drafting'),
+    translation: t('emailAsst_translation'), // v-email-thread
+    draftMeaning: t('emailAsst_draftMeaning'),
   });
 
   function setStatus(text){
@@ -2405,120 +2427,283 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     return m ? m[1] : String(fromHeader || '').trim();
   }
 
-  function renderEmails(emails){
+  /* v-email-safe: (١) المسوّدة كانت تُلصق داخل <textarea> في innerHTML بلا تهريب — ردّ فيه </textarea> (إيميل يحقن
+     الموديل) يصير HTML وسكربتًا في صفحتنا. الآن كلّ نصّ من البريد أو الموديل يُكتب بـtextContent/value، والقالب ثابت.
+     (٢) المسوّدة الإنجليزيّة كانت تُعرض من اليمين («,Hi Sarah») — الاتّجاه من لغة الرسالة، وإلّا auto؛ والخطّ خطّ
+     الواجهة لا خطّ الكود. (٣) المرسل اسمًا وعنوانًا معزولَين (bdi) فلا تنقلب الأقواس. */
+  const EM_RTL = /^(ar|fa|ur|he|ps|yi|dv|ckb|sd|ug)$/i;
+  function emDir(lang2){ return lang2 ? (EM_RTL.test(lang2) ? 'rtl' : 'ltr') : 'auto'; }
+  // اتّجاه سطر المرسل من أوّل حرف في اسمه — dir="auto" لا يرى ما داخل <bdi> فيرجع ltr للاسم العربيّ أيضًا
+  function emTextDir(s){
+    for(const ch of String(s || '')){
+      if(/[֐-ࣿיִ-﷿ﹰ-﻿]/.test(ch)) return 'rtl';
+      if(/[A-Za-zÀ-ɏͰ-῿぀-鿿가-힯]/.test(ch)) return 'ltr';
+    }
+    return 'ltr';
+  }
+  function emSender(fromHeader){
+    const s = String(fromHeader || '').trim();
+    const m = s.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+    return m ? { name: m[1].trim(), addr: m[2].trim() } : { name: '', addr: s };
+  }
+  function emTz(){ // منطقة جهاز المستخدم للبرومبت والتقويم — الخادم يتحقّق منها ويرجع لدبي إن لم تصحّ
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }catch(e){ __swallow(e, "misc:app-12-studios#5"); return ''; }
+  }
+  function emAiMsg(code){
+    return (code === 'nokey' || code === 'badkey') ? t('emailAsst_draftNoKey') : (code === 'busy' ? t('emailAsst_draftBusy') : t('emailAsst_draftFailed'));
+  }
+
+  /* v-email-cache (البندان ١ و٩): القائمة تُرسم فورًا بلا انتظار ذكاء، والمسوّدات الناقصة تُطلب رسالةً رسالة (ثلاث معًا)
+     فتملأ بطاقاتها، والمحفوظ يأتي جاهزًا من الخادم. «إعادة توليد» وحدها تكتب المسوّدة من جديد، و«المزيد» يُلحق الصفحة
+     التالية. حين تكتمل كلّها تُرتَّب البطاقات بالأولويّة — إلّا إن كان المستخدم داخل إحداها (لا تقفز البطاقة من تحته). */
+  const EM_ORDER = { urgent: 0, normal: 1, low: 2 };
+  const moreBtn = $('#emailAssistMoreBtn');
+  let emRun = 0;
+  let emQueue = [];
+  let emActive = 0;
+  let emNext = '';
+  let emKeyShown = false;
+
+  function emRank(p){ return Object.prototype.hasOwnProperty.call(EM_ORDER, p) ? EM_ORDER[p] : 1; }
+  function emBody(extra){
+    return JSON.stringify(Object.assign({ token: localStorage.getItem('aiapp_auth_token'), lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar', tz: emTz() }, extra || {}));
+  }
+  function emKeyLine(code, detail){ // سطر المفتاح مرّة واحدة فوق القائمة، لا في كلّ بطاقة
+    if(emKeyShown) return;
+    emKeyShown = true;
+    const line = (code === 'fallback' ? t('emailAsst_draftFallback') : emAiMsg(code)) + (detail ? ' (' + detail + ')' : '');
+    setStatus([statusEl.style.display === 'none' ? '' : statusEl.textContent, line].filter(Boolean).join('\n'));
+  }
+
+  function fillCard(card, mail){
     const tr = T();
-    listEl.innerHTML = '';
-    if(!emails || !emails.length){
+    const dir = emDir(mail.lang);
+    const draftEl = card.querySelector('.emailDraftInput');
+    const st = card.querySelector('.emailCardStatus');
+    const meet = card.querySelector('.emailMeet');
+    card.querySelector('.emailSnip').setAttribute('dir', dir);
+    draftEl.setAttribute('dir', dir);
+    draftEl.value = mail.draft || '';
+    draftEl.disabled = !!mail.pending;
+    draftEl.placeholder = mail.pending ? tr.drafting : '';
+    card.querySelector('.emailPrio').textContent = mail.priority ? priorityLabel(mail.priority) : '';
+    card.querySelector('.emailSendBtn').disabled = !!mail.pending;
+    card.querySelector('.emailRegenBtn').disabled = !!mail.pending;
+    card.querySelector('.emailCalBtn').style.display = mail.meeting ? '' : 'none';
+    meet.style.display = mail.meeting ? '' : 'none';
+    meet.textContent = mail.meeting ? '📅 ' + String(mail.meeting.title || '') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') : '';
+    const trans = card.querySelector('.emailTrans');
+    const gloss = card.querySelector('.emailGloss');
+    trans.style.display = mail.translation ? '' : 'none';
+    card.querySelector('.emailTransTxt').textContent = mail.translation || '';
+    gloss.style.display = mail.draftGloss && !mail.pending ? '' : 'none';
+    card.querySelector('.emailGlossTxt').textContent = mail.draftGloss || '';
+    const keyErr = mail.draftError === 'nokey' || mail.draftError === 'badkey';
+    const msg = mail.draftError && !(keyErr && emKeyShown) ? emAiMsg(mail.draftError) : '';
+    st.style.display = msg ? 'block' : 'none';
+    st.textContent = msg;
+  }
+
+  function buildCard(mail){
+    const tr = T();
+    const card = document.createElement('div');
+    card.__emMail = mail;
+    card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
+    card.innerHTML =
+      '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
+        '<div style="min-width:0;">' +
+          '<div class="emailSubj" dir="auto" style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>' +
+          '<div class="emailFrom" style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><bdi class="emailFromName"></bdi> <bdi class="emailFromAddr" dir="ltr"></bdi></div>' +
+        '</div>' +
+        '<span class="emailPrio" style="font-size:11.5px; white-space:nowrap;"></span>' +
+      '</div>' +
+      '<div class="emailSnip" style="font-size:12px; color:var(--muted,#999); margin-top:6px;"></div>' +
+      '<div class="emailTrans" dir="auto" style="display:none; font-size:12px; margin-top:6px; padding:8px 10px; border-radius:8px; background:var(--panel,#1a1a1a); border:1px solid var(--border,#333); line-height:1.7;"><b class="emailTransLbl"></b> <span class="emailTransTxt"></span></div>' +
+      '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px; font-family:inherit; line-height:1.6;"></textarea>' +
+      '<div class="emailGloss" dir="auto" style="display:none; font-size:11.5px; color:var(--muted,#999); margin-top:4px; line-height:1.7;"><b class="emailGlossLbl"></b> <span class="emailGlossTxt"></span></div>' +
+      '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
+        '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailRegenBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px; display:none;"></button>' +
+      '</div>' +
+      '<div class="emailMeet" dir="auto" style="font-size:11.5px; color:var(--muted,#999); margin-top:6px; display:none;"></div>' +
+      '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
+
+    const sendBtn = card.querySelector('.emailSendBtn');
+    const regenBtn = card.querySelector('.emailRegenBtn');
+    const ignoreBtn = card.querySelector('.emailIgnoreBtn');
+    const draftEl = card.querySelector('.emailDraftInput');
+    const cardStatus = card.querySelector('.emailCardStatus');
+    const calBtn = card.querySelector('.emailCalBtn');
+    const who = emSender(mail.from);
+    card.querySelector('.emailSubj').textContent = mail.subject || '';
+    card.querySelector('.emailFrom').setAttribute('dir', emTextDir(who.name || who.addr));
+    card.querySelector('.emailFromName').textContent = who.name;
+    card.querySelector('.emailFromAddr').textContent = who.name ? '<' + who.addr + '>' : who.addr;
+    card.querySelector('.emailSnip').textContent = mail.snippet || '';
+    card.querySelector('.emailTransLbl').textContent = tr.translation;
+    card.querySelector('.emailGlossLbl').textContent = tr.draftMeaning;
+    sendBtn.textContent = tr.send;
+    regenBtn.textContent = tr.regen;
+    ignoreBtn.textContent = tr.ignore;
+    calBtn.textContent = tr.addToCalendar;
+    fillCard(card, mail);
+
+    regenBtn.addEventListener('click', () => { emQueueDraft(card, mail, true); });
+
+    calBtn.addEventListener('click', async () => {
+      if(!mail.meeting) return;
+      calBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      cardStatus.textContent = tr.addingEvent;
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const r = await fetch('/api/email-calendar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, tz: mail.meeting.tz || emTz(), description: (mail.subject || '') + '\n' + (mail.from || '') }),
+        });
+        const d = await r.json();
+        if(!r.ok){
+          if(d && d.needsReauth) throw new Error(tr.calReauth);
+          throw new Error((d && d.error) || 'calendar failed');
+        }
+        cardStatus.textContent = tr.eventAdded;
+        calBtn.textContent = tr.eventAdded;
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        calBtn.disabled = false;
+      }
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      const text = (draftEl.value || '').trim();
+      if(!text) return;
+      sendBtn.disabled = true; ignoreBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      cardStatus.textContent = tr.sending;
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const r = await fetch('/api/email-send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
+        });
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.error || 'send failed');
+        cardStatus.textContent = tr.sent;
+        setTimeout(() => { card.remove(); }, 1200);
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        sendBtn.disabled = false; ignoreBtn.disabled = false;
+      }
+    });
+
+    ignoreBtn.addEventListener('click', async () => {
+      sendBtn.disabled = true; ignoreBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const pattern = extractEmailAddress(mail.from);
+        const r = await fetch('/api/email-ignore', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, pattern }),
+        });
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.error || 'ignore failed');
+        cardStatus.textContent = tr.ignored;
+        setTimeout(() => { card.remove(); }, 1000);
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        sendBtn.disabled = false; ignoreBtn.disabled = false;
+      }
+    });
+    return card;
+  }
+
+  function emQueueDraft(card, mail, regen){
+    mail.pending = true;
+    mail.draftError = undefined;
+    fillCard(card, mail);
+    emQueue.push({ card, mail, regen: !!regen, run: emRun });
+    emPump();
+  }
+  function emPump(){
+    while(emActive < 3 && emQueue.length){
+      const job = emQueue.shift();
+      emActive++;
+      emDraft(job).finally(() => {
+        emActive--;
+        emPump();
+        if(!emActive && !emQueue.length && job.run === emRun) emSortCards();
+      });
+    }
+  }
+  async function emDraft(job){
+    const mail = job.mail;
+    try{
+      const r = await fetch('/api/email-list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: emBody({ draftFor: mail.id, threadId: mail.threadId || '', regen: job.regen }) });
+      const d = await r.json();
+      if(job.run !== emRun) return;
+      if(!r.ok) throw new Error((d && d.error) || 'draft failed');
+      if(d.draft){ // فشل «إعادة توليد» لا يمسح المسوّدة القائمة
+        mail.draft = d.draft;
+        mail.priority = d.priority || 'normal';
+        mail.lang = d.lang || '';
+        mail.meeting = d.meeting || null;
+        mail.translation = d.translation || '';
+        mail.draftGloss = d.draftGloss || '';
+      }
+      mail.draftError = d.draftError || undefined;
+      if(d.draftError === 'nokey' || d.draftError === 'badkey') emKeyLine(d.draftError, d.aiErrorDetail || '');
+      else if(d.ownerNote) emKeyLine('fallback', d.ownerNote);
+    }catch(e){
+      if(job.run !== emRun) return;
+      __swallow(e, "misc:app-12-studios#6");
+      mail.draftError = 'failed';
+    }
+    mail.pending = false;
+    fillCard(job.card, mail);
+  }
+  function emSortCards(){
+    const ae = document.activeElement;
+    if(ae && listEl.contains(ae)) return;
+    const cards = Array.prototype.slice.call(listEl.children).filter((c) => c.__emMail);
+    const sorted = cards.map((c, i) => ({ c, i })).sort((a, b) => (emRank(a.c.__emMail.priority) - emRank(b.c.__emMail.priority)) || (a.i - b.i));
+    if(sorted.every((x, k) => x.i === k)) return;
+    sorted.forEach((x) => listEl.appendChild(x.c));
+  }
+
+  function renderEmails(emails, append){
+    const tr = T();
+    if(!append) listEl.innerHTML = '';
+    if(!append && (!emails || !emails.length)){
       listEl.innerHTML = '<div style="text-align:center; font-size:13px; color:var(--muted,#999); padding:20px 0;">' + tr.empty + '</div>';
       return;
     }
-    emails.forEach((mail) => {
-      const card = document.createElement('div');
-      card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
-      card.innerHTML =
-        '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
-          '<div style="min-width:0;">' +
-            '<div style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.subject || '').replace(/</g,'&lt;') + '</div>' +
-            '<div style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.from || '').replace(/</g,'&lt;') + '</div>' +
-          '</div>' +
-          '<span style="font-size:11.5px; white-space:nowrap;">' + priorityLabel(mail.priority) + '</span>' +
-        '</div>' +
-        '<div style="font-size:12px; color:var(--muted,#999); margin-top:6px;">' + (mail.snippet || '').replace(/</g,'&lt;') + '</div>' +
-        '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px;">' + (mail.draft || '') + '</textarea>' +
-        '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
-          '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;">' + tr.send + '</button>' +
-          '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;">' + tr.ignore + '</button>' +
-          (mail.meeting ? '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px;">' + tr.addToCalendar + '</button>' : '') +
-        '</div>' +
-        (mail.meeting ? '<div style="font-size:11.5px; color:var(--muted,#999); margin-top:6px;">📅 ' + String(mail.meeting.title || '').replace(/</g,'&lt;') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') + '</div>' : '') +
-        '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
-
-      const sendBtn = card.querySelector('.emailSendBtn');
-      const ignoreBtn = card.querySelector('.emailIgnoreBtn');
-      const draftEl = card.querySelector('.emailDraftInput');
-      const cardStatus = card.querySelector('.emailCardStatus');
-      const calBtn = card.querySelector('.emailCalBtn');
-
-      if(calBtn) calBtn.addEventListener('click', async () => {
-        calBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        cardStatus.textContent = tr.addingEvent;
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const r = await fetch('/api/email-calendar', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, description: (mail.subject || '') + '\n' + (mail.from || '') }),
-          });
-          const d = await r.json();
-          if(!r.ok){
-            if(d && d.needsReauth) throw new Error(tr.calReauth);
-            throw new Error((d && d.error) || 'calendar failed');
-          }
-          cardStatus.textContent = tr.eventAdded;
-          calBtn.textContent = tr.eventAdded;
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          calBtn.disabled = false;
-        }
-      });
-
-      sendBtn.addEventListener('click', async () => {
-        const text = (draftEl.value || '').trim();
-        if(!text) return;
-        sendBtn.disabled = true; ignoreBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        cardStatus.textContent = tr.sending;
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const r = await fetch('/api/email-send', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
-          });
-          const d = await r.json();
-          if(!r.ok) throw new Error(d.error || 'send failed');
-          cardStatus.textContent = tr.sent;
-          setTimeout(() => { card.remove(); }, 1200);
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          sendBtn.disabled = false; ignoreBtn.disabled = false;
-        }
-      });
-
-      ignoreBtn.addEventListener('click', async () => {
-        sendBtn.disabled = true; ignoreBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const pattern = extractEmailAddress(mail.from);
-          const r = await fetch('/api/email-ignore', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, pattern }),
-          });
-          const d = await r.json();
-          if(!r.ok) throw new Error(d.error || 'ignore failed');
-          cardStatus.textContent = tr.ignored;
-          setTimeout(() => { card.remove(); }, 1000);
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          sendBtn.disabled = false; ignoreBtn.disabled = false;
-        }
-      });
-
+    const shown = {};
+    if(append) Array.prototype.slice.call(listEl.children).forEach((c) => { if(c.__emMail && c.__emMail.threadId) shown[c.__emMail.threadId] = 1; });
+    (emails || []).forEach((mail) => {
+      if(mail.threadId && shown[mail.threadId]) return; // v-email-thread: المحادثة بطاقة واحدة حتّى عبر الصفحات
+      if(mail.threadId) shown[mail.threadId] = 1;
+      const card = buildCard(mail);
       listEl.appendChild(card);
+      if(mail.pending) emQueueDraft(card, mail, false);
     });
   }
 
-  async function loadEmails(){
+  async function loadEmails(append){
     const tr = T();
-    setStatus(tr.loading);
-    listEl.innerHTML = '';
+    const more = append === true; // نقرة «تحديث» تمرّر حدثًا لا true
+    if(!more){ emRun++; emQueue = []; emNext = ''; emKeyShown = false; lastLoadedEmails = []; listEl.innerHTML = ''; setStatus(tr.loading); }
+    if(moreBtn) moreBtn.style.display = 'none';
+    const run = emRun;
     try{
-      const token = localStorage.getItem('aiapp_auth_token');
       const r = await fetch('/api/email-list', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
+        body: emBody(more && emNext ? { page: emNext } : {}),
       });
       const d = await r.json();
+      if(run !== emRun) return;
       if(!r.ok){
         if(d.notConnected || /invalid_grant/i.test(String(d.error || ''))){
           connectBox.style.display = 'block';
@@ -2530,14 +2715,24 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         throw new Error(d.error || 'load failed');
       }
       gmailLabel.textContent = d.gmailAddress || '';
-      // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
-      setStatus(d.note || '');
-      lastLoadedEmails = d.emails || [];
-      renderEmails(d.emails);
+      if(!more){
+        // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
+        // v-email-safe: ومفتاح الكتابة الناقص سطرٌ واضح فوق القائمة؛ v-email-claude: والاحتياط للمالك (اسم المتغيّر للمالك وحده من الخادم).
+        const detail = d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '';
+        const aiLine = d.aiError ? emAiMsg(d.aiError) + detail : (d.aiNote ? t('emailAsst_draftFallback') + detail : '');
+        if(aiLine) emKeyShown = true;
+        setStatus([d.note || '', aiLine].filter(Boolean).join('\n'));
+      }
+      const emails = d.emails || [];
+      lastLoadedEmails = lastLoadedEmails.concat(emails);
+      renderEmails(emails, more);
+      emNext = d.next || '';
+      if(moreBtn){ moreBtn.style.display = emNext ? '' : 'none'; moreBtn.disabled = false; }
     }catch(e){
       setStatus(tr.error + (e && e.message ? e.message : String(e)));
     }
   }
+  if(moreBtn) moreBtn.addEventListener('click', () => { moreBtn.disabled = true; loadEmails(true); });
 
   function applyStaticText(){
     const tr = T();
@@ -2548,6 +2743,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(connectBtn) connectBtn.textContent = tr.connectBtn;
     setTxt('#emailAssistRefreshLabel', tr.refresh);
     setTxt('#emailAssistVoiceLabel', tr.voiceBtn);
+    setTxt('#emailAssistMoreBtn', tr.more);
   }
 
   function buildEmailSummaryText(){
