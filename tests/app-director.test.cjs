@@ -321,7 +321,7 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
   assert.ok(read('index.html').includes('/js/video.js?v=450'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=752';"));
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=754';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });
 
@@ -457,7 +457,7 @@ test('١٢. الواجهة: خيار «مع صوت / بدون صوت»، وال�
   assert.equal(drWrap(ctx, 'كلمةطويلةجداجداجدا', 50).join('|'), 'كلمةطويلةجداجداجدا', 'كلمة أطول من السطر تبقى كاملة');
   const css = read('css/modules.css');
   assert.ok(css.includes('.vmk-dir-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}') && css.includes('#videoMakerModal .vmk-dir-row{grid-template-columns:1fr 1fr}'), 'أربعة خيارات في صفّ، وعلى الجوّال صفّان');
-  assert.ok(read('index.html').includes('css/modules.css?v=686'));
+  assert.ok(read('index.html').includes('css/modules.css?v=687'));
   // النصوص الأربعة بالـ١٤ لغة، بلا اسم مزوّد
   const core = read('js/app-03-i18n-data.js');
   const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
