@@ -66,7 +66,6 @@
      على الدوام — والخلفيّة لون واحد صلب في كلّ الأوضاع فلا شيء يُرى يتحرّك. */
   body{background-size:auto; animation:none;}
   @keyframes bgShift{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
-  #btnInstall{display:inline-flex;}
   #headerMenuWrap{position:relative; display:inline-flex;}
   #headerMenuDropdown{
     display:none; position:absolute; top:calc(100% + 6px); inset-inline-end:0;
