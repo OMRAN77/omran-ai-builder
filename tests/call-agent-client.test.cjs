@@ -1328,12 +1328,15 @@ test('٢٧. المراجعة الخامسة: عودة بعد حدّ المتاب
   assert.equal(v.msgs().length, 3, 'النتيجة وصلت المحادثة');
   assert.equal(v.call().billed, true);
   // والعطل الدائم بعد الحدّ: مهلة السماح وحدها ثمّ «انتهت المهلة» ويقف
+  let wFirst = 0, wLast = 0;
   const w = sandbox({ owner: false, call: { transport: 'phone', callId: 'cl9', state: 'in-progress', startedAt: 1_000_000 - 12 * 60000, endedAt: 0 },
-    routes: { 'call-status': () => [502, { error: 'relay_error' }] } });
-  await w.advance(5 * 60000);
+    routes: { 'call-status': () => { if (!wFirst) wFirst = w.clock.now; wLast = w.clock.now; return [502, { error: 'relay_error' }]; } } });
+  await w.advance(100000);
+  assert.equal(w.call().state, 'in-progress', 'داخل السماح (دقيقتان) لا حكم بعد');
+  await w.advance(4 * 60000);
   assert.equal(w.call().state, 'timeout');
   const nw = w.calls('call-status').length;
-  assert.ok(nw > 1 && nw < 20, 'سماح واحد بحدّه: ' + nw);
+  assert.ok(wLast - wFirst >= 110000 && nw >= 10 && nw < 20, 'سماح واحد دقيقتان كلّ ١٠ ث: ' + nw + ' في ' + (wLast - wFirst));
   await w.advance(10 * 60000);
   assert.equal(w.calls('call-status').length, nw);
 
@@ -1354,4 +1357,21 @@ test('٢٧. المراجعة الخامسة: عودة بعد حدّ المتاب
   await y.advance(10 * 60000);
   assert.equal(y.calls('call-status').length, ny, 'لا استطلاع بعد حدّها');
   assert.equal(y.call().state, 'completed');
+
+  // والوجه الآخر للحفظ (المراجعة السادسة): ردّ منتهٍ لاحق غيّر الملخّص أو المدّة يُحفظ، والمطابق لا، وbilled بعد nulls يُحفظ
+  let k = 0;
+  const q = sandbox({ owner: false, routes: {
+    'call-start': () => [200, { callId: 'cl6', state: 'queued' }],
+    'call-status': () => { k++;
+      return [200, { state: 'completed', ended: true, durationSec: k < 3 ? 60 : 62,
+        outcome: { status: 'booked', summary: k < 3 ? 'تمّ' : 'تمّ الحجز الخميس ٥ م' }, billing: k < 5 ? null : { charged: 45, refunded: 135 } }]; },
+  } });
+  q.btn('omCallDial').click();
+  const step = async (n) => { while (k < n) await q.advance(1000); };
+  await step(2); const s2 = q.saves; assert.ok(!q.call().billed);
+  await step(3); assert.equal(q.saves, s2 + 1, 'تغيّر الملخّص والمدّة: يُحفظ');
+  assert.equal(q.call().outcome.summary, 'تمّ الحجز الخميس ٥ م');
+  await step(4); assert.equal(q.saves, s2 + 1, 'المطابق: لا حفظ');
+  await step(5); assert.equal(q.call().billed, true); assert.equal(q.saves, s2 + 2, 'billed بعد nulls يُحفظ');
+  const n5 = q.calls('call-status').length; await q.advance(5 * 60000); assert.equal(q.calls('call-status').length, n5);
 });
