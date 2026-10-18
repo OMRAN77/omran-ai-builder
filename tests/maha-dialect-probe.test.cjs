@@ -49,7 +49,8 @@ test('٢. المسبار يبني الجلسة من معالج الإنتاج ن
 test('٣. الورك فلو لا يصرف إلّا بطلب: يدويّ، أو دفعة رسالتها [maha-probe] — والصوت مخبّأ فالقبل والبعد يسمعان الشيء نفسه', () => {
   const y = read('.github/workflows/maha-dialect-probe.yml');
   assert.ok(y.includes("if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[maha-probe')"));
-  assert.ok(y.includes('MAHA_TOKEN: ${{ secrets.SAMPLE_TOKEN }}'), 'الموقع المنشور برمز المالك وحده (لا رمز مشترك تُخصم دقائقه)');
+  assert.ok(y.includes('MAHA_TOKEN: ${{ secrets.SAMPLE_TOKEN || secrets.EVAL_TOKEN || secrets.PROBE_TOKEN }}'));
+  assert.ok(/async function mintSession\(\) \{\n  if \(MODE === 'prod'\) \{\n    await ownerCheck\(\);/.test(read('scripts/maha-dialect-probe.mjs')), 'صاحب الرمز قبل أيّ جلسة (لا دقائق تُخصم من غير المالك)');
   assert.ok(/actions\/cache@v4[\s\S]*?path: \.maha-tts-cache/.test(y));
   const p = read('scripts/maha-dialect-probe.mjs');
   assert.ok(p.includes("require(lib('realtime-session.js'))"), 'المعالج الحقيقيّ');

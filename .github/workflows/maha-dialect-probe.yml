@@ -43,10 +43,18 @@ jobs:
           # المفتاح ثابت لا يُكتب فوقه: كلّ تشغيلة تحفظ نسختها وتستعيد آخر نسخة بالبادئة (تجربة طلبين ثمّ الثلاثون بالصوت نفسه)
           key: maha-tts-${{ hashFiles('scripts/maha-dialect-requests.json') }}-v1-${{ github.run_id }}
           restore-keys: maha-tts-${{ hashFiles('scripts/maha-dialect-requests.json') }}-v1-
+      - name: Credentials present (names only)
+        env:
+          A: ${{ secrets.SAMPLE_TOKEN }}
+          B: ${{ secrets.EVAL_TOKEN }}
+          C: ${{ secrets.PROBE_TOKEN }}
+          D: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          for p in "SAMPLE_TOKEN:$A" "EVAL_TOKEN:$B" "PROBE_TOKEN:$C" "OPENAI_API_KEY:$D"; do n="${p%%:*}"; v="${p#*:}"; [ -n "$v" ] && echo "$n: set" || echo "$n: empty"; done
       - name: Probe Maha
         env:
           # الموقع المنشور برمز جلسة المالك (السرّ نفسه الذي يستعمله video-samples) — بلا حدّ دقائق؛ رمز غيره يوقف المسبار.
-          MAHA_TOKEN: ${{ secrets.SAMPLE_TOKEN }}
+          MAHA_TOKEN: ${{ secrets.SAMPLE_TOKEN || secrets.EVAL_TOKEN || secrets.PROBE_TOKEN }}
           # احتياط محلّيّ إن غاب الرمز: معالج الجلسة في العمليّة نفسها بمفتاح المستودع
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ONLY_INPUT: ${{ inputs.only }}

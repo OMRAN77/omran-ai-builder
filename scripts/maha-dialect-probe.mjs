@@ -115,8 +115,22 @@ function appTools() {
   // أدوات الشاشة كما يرسلها المتصفّح — من مصدرها في الخادم (بلا تحميل معالج الجلسة)
   return require(path.join(ROOT, 'api', '_lib', 'maha-app.js')).knownTools('ar');
 }
+// رمز غير المالك = دقائق تُخصم من حساب آخر: التحقّق من صاحب الرمز (verify لا يخصم شيئًا) قبل أيّ جلسة.
+let ownerChecked = false;
+async function ownerCheck() {
+  if (ownerChecked) return;
+  const r = await fetch(BASE + '/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'verify', token: TOKEN }) });
+  const j = await r.json().catch(() => ({}));
+  const owners = String(process.env.MAHA_OWNER || 'omran').toLowerCase().split(',').map((x) => x.trim());
+  if (!r.ok || !owners.includes(String(j.username || '').trim().toLowerCase())) {
+    console.error('✗ الرمز ليس رمز المالك (' + (r.ok ? 'حساب آخر' : 'HTTP ' + r.status) + ') — لا مكالمة');
+    process.exit(3);
+  }
+  ownerChecked = true;
+}
 async function mintSession() {
   if (MODE === 'prod') {
+    await ownerCheck();
     const r = await fetch(BASE + '/api/realtime-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: TOKEN, ...SESSION_BODY(appTools()) }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.clientSecret) throw new Error('session ' + r.status + ' ' + String(j.error || '').slice(0, 160));
