@@ -209,6 +209,8 @@ async function runOne(reqItem) {
       }
       if (e.type === 'response.done') {
         const id = (e.response && e.response.id) || '';
+        const u = e.response && e.response.usage; // هل ثابت التعليمات مخبّأ عند المزوّد؟ (الأوّل وحده: يحمل التعليمات كاملة)
+        if (u && !out.usage) out.usage = { input: u.input_tokens, cached: (u.input_token_details || {}).cached_tokens || 0, output: u.output_tokens };
         const cancelled = e.response && e.response.status === 'cancelled';
         (cancelled ? out.cut : out.transcript).push(...(said.get(id) || []));
         said.delete(id);
@@ -295,7 +297,7 @@ function seal(obj) {
   const ek = crypto.publicEncrypt({ key: fs.readFileSync(pubF, 'utf8'), oaepHash: 'sha256', padding: crypto.constants.RSA_PKCS1_OAEP_PADDING }, k);
   return [ek, iv, c.getAuthTag(), data].map((b) => b.toString('base64')).join('.');
 }
-const brief = (r) => ({ id: r.id, firstVoiceMs: r.firstVoiceMs, vadMs: r.vadMs, talkedOverMs: r.talkedOverMs, earlyStops: r.earlyStops, responses: r.responses, tools: (r.tools || []).map((x) => x.name + (x.args && x.args.target ? ':' + x.args.target : x.args && x.args.action ? ':' + x.args.action : '')), spokeChars: (r.transcript || []).join(' ').length, errors: r.errors });
+const brief = (r) => ({ id: r.id, firstVoiceMs: r.firstVoiceMs, vadMs: r.vadMs, talkedOverMs: r.talkedOverMs, earlyStops: r.earlyStops, usage: r.usage, responses: r.responses, tools: (r.tools || []).map((x) => x.name + (x.args && x.args.target ? ':' + x.args.target : x.args && x.args.action ? ':' + x.args.action : '')), spokeChars: (r.transcript || []).join(' ').length, errors: r.errors });
 
 console.log('MAHA_MODE ' + MODE + (MODE === 'prod' ? ' ' + BASE : ''));
 const results = [];
