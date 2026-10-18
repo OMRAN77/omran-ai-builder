@@ -1,10 +1,14 @@
 'use strict';
 /* v-call-agent (المالك ١٧ أكتوبر: «الوكيل الي يشغل عندك ويخذ المواعيد ويتصل» — «اول شي سوها اجرب انا كيف بتكون… لاتوقف لين ماتخلص»):
-   الوكيل يتّصل بمحلّ (عيادة، صالون، مطعم) نيابةً عن المستخدم ليحجز موعدًا. للمالك وحده الآن، والفتح للمستخدمين قراره بعد التجربة.
-   - propose_call (أداة المحادثة للمالك): اقتراح محفوظ في KV ‏call/prop/<id> ‏(٣٠ دقيقة) وكرت «اتّصال» — لا اتّصال بلا ضغطة.
+   الوكيل يتّصل بمحلّ (عيادة، صالون، مطعم) نيابةً عن المستخدم ليحجز موعدًا.
+   v-call-agent-paid (المالك ١٨ أكتوبر: «الاتصال الالي مايشتغل لي المستخدمين» ← «المشتركين بباقة فقط»، والتجربة «بنفس سعر النقاط»):
+   المالك مجّانًا، وصاحب باقة محادثة سارية (tier.planActive، يُقرأ سجلّه طازجًا لحظة المال) بالنقاط: يُحجز سقف المكالمة قبلها
+   ويُسوّى مرّة واحدة بعدها بالدقيقة المبدوءة (callAccess · settleHold). غيرهما plan_required.
+   - propose_call (أداة المحادثة للمالك والمشترك): اقتراح محفوظ في KV ‏call/prop/<id> ‏(٣٠ دقيقة) وكرت «اتّصال» — لا اتّصال بلا ضغطة.
    - call-session: تجربة داخل المتصفّح — الوكيل «يتّصل» بالمالك وهو يمثّل دور المحلّ (Realtime WebRTC كمها، جلسة منفصلة عنها).
    - call-start / call-status / call-cancel: اتّصال حقيقيّ عبر خدمة call-relay (Railway) ← Twilio ↔ Realtime. بلا مفاتيحها: relay_not_configured.
-   السعران (لغير المالك عند الفتح): ٥٠ نقطة/دقيقة للأرضيّ و٤٥ للموبايل، بالدقيقة المبدوءة — خارج COSTS عمدًا (consume يقبل أيّ قيمة فيها).
+   السعران (لغير المالك): ٥٠ نقطة/دقيقة للأرضيّ و٤٥ للموبايل، بالدقيقة المبدوءة — خارج COSTS عمدًا (consume يقبل أيّ قيمة فيها)،
+   وسبب الخصم call_agent خارج جدول الوسائط فيُخصم من النقاط وحدها ويُردّ بـrefundPointsOnly.
    القانون: أوّل ما يقوله الوكيل أنّه مساعد آليّ يتّصل نيابةً عن فلان وأنّ المكالمة لا تُسجَّل، ويستأذن؛ لا تسجيل صوت في أيّ مكان؛
    الرقم من نصّ المستخدم أو من بحث الأماكن في الخادم وحده، إماراتيّ، بلا طوارئ ولا أرقام خاصّة. الأسرار تُقرأ داخل المعالج لا في نطاق الوحدة. */
 const crypto = require('crypto');
@@ -14,6 +18,11 @@ const MAX_MIN = 4;
 const CALL_PTS_PER_MIN = { landline: 50, mobile: 45 };
 const PROP_TTL_SEC = 1800;
 const REC_TTL_SEC = 86400;
+const TRIAL_TTL_SEC = 86400;
+const SETTLE_TTL_SEC = 2 * 86400; // أطول من السجلّ: ختم «سُوّيت» لا يسقط قبل آخر استطلاع ممكن
+const CLAIM_STALE_MS = 120000;    // مطالبة تسوية بلا ختم أقدم من هذا = عملية ماتت في منتصفها؛ تُحذف ويعيدها الاستطلاع التالي
+const CALL_REASON = 'call_agent';
+const OPEN_ASK_MAX = 1, OPEN_ASK_MS = 3000; // تسوية حجز سابق عند بدء مكالمة: سؤال واحد للخدمة بمهلة قصيرة (حدّ Vercel ١٥ ث)
 const HOURS = { from: 8, to: 22 }; // بتوقيت دبي — لا اتّصال حقيقيّ بمحلّ قبل الثامنة صباحًا ولا بعد العاشرة ليلًا
 
 /* الأرقام العربيّة والفارسيّة إلى لاتينيّة، ثمّ الأرقام وحدها مع + في أوّلها إن وُجد. */
@@ -252,7 +261,7 @@ function relayConf(env) {
   const e = env || {};
   return { base: String(e.CALL_RELAY_URL || '').trim().replace(/\/+$/, ''), secret: String(e.CALL_RELAY_SECRET || '').trim() };
 }
-async function relayFetch(env, method, pathname, bodyObj, fetchImpl) {
+async function relayFetch(env, method, pathname, bodyObj, fetchImpl, timeoutMs) {
   const { base, secret } = relayConf(env);
   const body = bodyObj ? JSON.stringify(bodyObj) : '';
   const ts = String(Date.now());
@@ -260,7 +269,7 @@ async function relayFetch(env, method, pathname, bodyObj, fetchImpl) {
     method,
     headers: Object.assign({ 'x-call-ts': ts, 'x-call-sig': signRelay(secret, method, pathname, body, ts) }, body ? { 'Content-Type': 'application/json' } : {}),
     body: body || undefined,
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(timeoutMs || 15000),
   });
   let j = null;
   try { j = await r.json(); } catch (e) { j = null; } // جسم ليس JSON = فشل الخدمة يُعامل بحالته
@@ -296,7 +305,7 @@ async function lookupPhone(key, business, lang, fetchImpl) {
 
 const TOOL = {
   name: 'propose_call',
-  description: 'OWNER ONLY. Prepare a phone call where an automated voice assistant calls a business (clinic, salon, restaurant…) on the user\'s behalf to book or ask. '
+  description: 'For the app owner and for users with an active paid plan (they pay in points per started minute; the card shows the price and nothing is charged before they confirm). Prepare a phone call where an automated voice assistant calls a business (clinic, salon, restaurant…) on the user\'s behalf to book or ask. '
     + 'This does NOT call anyone: it shows the user a call card; the call starts only when the user taps it (a rehearsal where the assistant calls the user, or a real call). '
     + 'Fill goal precisely (what, which day/time, for whom, flexibility). phone: only a number the user typed in this conversation; otherwise leave it empty and the server looks up the business number. '
     + 'After the tool returns, write ONE short line saying the card is ready and nothing was dialled yet. Never say a call happened or a booking was made.',
@@ -316,7 +325,8 @@ const TOOL = {
 /* تنفيذ الأداة في دور المحادثة: يرجع { result: نصّ للنموذج، event: حدث كرت أو null }. لا يتّصل بأحد. */
 async function proposeCall(input, ctx) {
   const c = ctx || {};
-  if (!c.owner) return { result: 'الاتّصال نيابةً عن المستخدم متاح للمالك وحده الآن. أخبر المستخدم بلطف أنّه غير متاح له بعد.', event: null };
+  // v-call-agent-paid: chat.js يمرّر paid لصاحب باقة سارية (tier 'sub')؛ المعالج يعيد الفحص طازجًا قبل أيّ خصم
+  if (!c.owner && !c.paid) return { result: 'الاتّصال نيابةً عن المستخدم للمشتركين بباقة مدفوعة. أخبر المستخدم بلطف أنّه يحتاج باقة (الإعدادات ← الباقات) ثمّ يطلبه.', event: null };
   const inp = input || {};
   const business = clean(inp.business, 80);
   const goal = clean(inp.goal, 300);
@@ -352,24 +362,98 @@ async function proposeCall(input, ctx) {
   } } };
   const src = placeName ? ' — الرقم من الخرائط لمحلّ مسجّل باسم «' + placeName + '»' : '';
   const result = prop.phone
-    ? '✓ ظهر للمالك كرت اتّصال بـ«' + business + '» (' + maskPhone(prop.phone) + src + '). لم يُتّصل بأحد: الاتّصال يبدأ حين يضغط «جرّب عليّ» (تجربة يمثّل فيها دور المحلّ) أو «اتّصل فعليًّا». اكتب سطرًا واحدًا بهذا وانتظر.'
-    : '✓ ظهر للمالك كرت اتّصال بـ«' + business + '» للتجربة فقط: لم أجد رقمًا موثوقًا للمحلّ. لم يُتّصل بأحد. اكتب سطرًا واحدًا: التجربة جاهزة، وللاتّصال الفعليّ يرسل رقم المحلّ في رسالة.';
+    ? '✓ ظهر للمستخدم كرت اتّصال بـ«' + business + '» (' + maskPhone(prop.phone) + src + '). لم يُتّصل بأحد: الاتّصال يبدأ حين يضغط «جرّب عليّ» (تجربة يمثّل فيها دور المحلّ) أو «اتّصل فعليًّا». اكتب سطرًا واحدًا بهذا وانتظر.'
+    : '✓ ظهر للمستخدم كرت اتّصال بـ«' + business + '» للتجربة فقط: لم أجد رقمًا موثوقًا للمحلّ. لم يُتّصل بأحد. اكتب سطرًا واحدًا: التجربة جاهزة، وللاتّصال الفعليّ يرسل رقم المحلّ في رسالة.';
   return { result, event };
 }
 
-/* ── المعالج: /api/system?action=call-session|call-start|call-status|call-cancel ── */
+/* ── المعالج: /api/system?action=call-session|call-start|call-status|call-cancel|call-trial-end ── */
 function send(res, status, obj) { res.status(status).json(obj); }
 
 async function loadJSON(kv, key) {
   try { const raw = await kv.kvGetRaw(key); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } // مفتاح مفقود أو تالف = لا شيء
 }
+async function readRaw(kv, key) {
+  try { return String((await kv.kvGetRaw(key)) || ''); } catch (e) { return ''; } // عطل KV = كأن لا ختم؛ الاستطلاع التالي يعيد
+}
 
 /* v-call-agent-r2 — قفل «مكالمة واحدة لكلّ مستخدم» قيمته رقم المكالمة: يُحذف فقط إن كان ما زال لهذه المكالمة (قارن ثمّ احذف).
-   kv.js بلا أمر ذرّيّ لذلك؛ النافذة بين القراءة والحذف أجزاء من الثانية، وقفل مكالمة أخرى لا يُكتب فيها إلّا إن انتهت مدّة هذا معها. */
+   kv.js بلا أمر ذرّيّ لذلك؛ النافذة بين القراءة والحذف أجزاء من الثانية، وقفل مكالمة أخرى لا يُكتب فيها إلّا إن انتهت مدّة هذا القفل. */
 function lockKey(user) { return 'call/active/' + user; }
 async function releaseLock(kv, user, callId) {
   try { if ((await kv.kvGetRaw(lockKey(user))) === callId) await kv.kvDel(lockKey(user)); }
   catch (e) { /* guard-ok — عطل KV: القفل ينتهي بمدّته */ }
+}
+
+/* v-call-agent-paid: من يبدأ مكالمة (تجربة أو حقيقيّة)؟ المالك، أو صاحب باقة محادثة سارية — السجلّ يُقرأ طازجًا لحظة المال لا من
+   ذاكرة tier المؤقّتة (٦٠ ث): باقة انتهت أو رُدّت بعد ظهور الكرت لا تبدأ مكالمة. VIP ليس باقة. المتابعة والإلغاء والتسوية لصاحب
+   المكالمة وحده بلا فحص باقة — باقة تنتهي أثناء مكالمة لا تحبس حجزها. */
+async function callAccess(user, d) {
+  if (require('./_owner.js').isOwnerName(user)) return { ok: true, owner: true };
+  let rec = null;
+  try { rec = await ((d && d.getUser) || require('./auth.js').getUser)(user); } catch (e) { rec = null; } // عطل القراءة = لا باقة مؤكَّدة
+  return { ok: !!require('./tier.js').planActive(rec), owner: false };
+}
+
+/* v-call-agent-paid — التسوية مرّة واحدة لكلّ حجز (مكالمة أو تجربة)، على نمط video-enhance.failJob: مطالبة SET NX، ثمّ ردّ الباقي
+   بالنقاط وحدها مع ختم «سُوّيت» في نداء Redis نفسه (refundPointsOnly + mark). ردّ لم يُعرف مصيره يُقرأ ختمه؛ بلا ختم تُحذف المطالبة
+   فيعيدها الاستطلاع التالي. الخصم = الدقيقة المبدوءة بحدّ الحجز (مدّة Twilio قد تزيد ثوانيَ عن السقف). يرجع { charged, refunded }
+   أو null = لم تُحسم بعد (مطالبة جارية أو عطل) — لا ردّ مزدوج ولا ردّ ضائع. */
+function holdOf(r) { return { id: r.callId || r.id, user: r.user, kind: r.kind, held: r.held }; }
+async function settleHold(kv, pts, h, durationSec, now) {
+  const held = Math.max(0, Math.floor(Number(h && h.held) || 0));
+  if (!held || !h.id || !h.user) return { charged: 0, refunded: 0 };
+  const charged = Math.min(held, chargeFor(h.kind, durationSec));
+  const rest = held - charged;
+  const key = 'call/settled/' + h.id, done = 'd:' + charged;
+  const t = typeof now === 'number' ? now : Date.now();
+  let claimed = false;
+  try { claimed = await kv.kvSetIfAbsent(key, 'c:' + t, SETTLE_TTL_SEC); } catch (e) { return null; } // KV معطّل — يُعاد لاحقًا
+  if (!claimed) {
+    const v = await readRaw(kv, key);
+    if (v.startsWith('d:')) { const c2 = Math.max(0, Math.floor(Number(v.slice(2)) || 0)); return { charged: c2, refunded: Math.max(0, held - c2) }; }
+    if (v.startsWith('c:') && t - (Number(v.slice(2)) || 0) >= CLAIM_STALE_MS) {
+      try { await kv.kvDel(key); } catch (e) { /* guard-ok — المطالبة تنتهي بمدّتها */ }
+    }
+    return null;
+  }
+  if (rest > 0) {
+    let ok = false;
+    try { ok = await pts.refundPointsOnly(h.user, rest, [key, done, SETTLE_TTL_SEC]); } catch (e) { ok = false; } // مصير مجهول ← الختم يحكم
+    if (!ok) {
+      if ((await readRaw(kv, key)) === done) return { charged, refunded: rest }; // وقع الردّ وضاع جوابه
+      try { await kv.kvDel(key); } catch (e) { /* guard-ok — المطالبة تنتهي بمدّتها ويعيدها استطلاع بعدها */ }
+      return null;
+    }
+  }
+  try { await kv.kvSetRaw(key, done, SETTLE_TTL_SEC); } catch (e) { /* guard-ok — الختم كُتب مع القيد، أو لا باقي يُردّ */ }
+  return { charged, refunded: rest };
+}
+
+/* v-call-agent-paid: حجوزات مكالمات حقيقيّة لم تُسوَّ بعد (المتابعة في الكرت تتوقّف بعد ١٠ دقائق أو بإغلاق الصفحة) — تُسوّى عند
+   بدء مكالمة جديدة لنفس المستخدم: انتهت عند الخدمة ← بمدّتها، ضاعت منها (404) ← ردّ كامل، جارية أو مجهولة ← تبقى للمرّة التالية. */
+function openKey(user) { return 'call/open/' + user; }
+async function settleOpen(kv, pts, env, user, fetchImpl, now) {
+  let ids = [];
+  try { const v = JSON.parse((await kv.kvGetRaw(openKey(user))) || '[]'); if (Array.isArray(v)) ids = v.map(String).slice(-5); } catch (e) { ids = []; } // تالف = لا شيء
+  if (!ids.length) return [];
+  const keep = [];
+  let asked = 0;
+  for (const id of ids) {
+    const rec = await loadJSON(kv, 'call/rec/' + id);
+    if (!rec || !rec.held) continue;
+    if (asked++ >= OPEN_ASK_MAX) { keep.push(id); continue; } // بدء المكالمة لا ينتظر أكثر من سؤال واحد قصير — الباقي في المرّة التالية
+    let r = null;
+    try { r = await relayFetch(env, 'GET', '/call/' + id, null, fetchImpl, OPEN_ASK_MS); } catch (e) { r = null; } // الخدمة لا تجيب ← تبقى
+    let b = null;
+    if (r && r.status === 404) b = await settleHold(kv, pts, holdOf(rec), 0, now);
+    else if (r && r.ok && r.json && r.json.ended) b = await settleHold(kv, pts, holdOf(rec), Math.floor(Number(r.json.durationSec) || 0), now);
+    if (!b) keep.push(id);
+  }
+  return keep;
+}
+async function trackOpen(kv, user, ids) {
+  try { await kv.kvSetRaw(openKey(user), JSON.stringify(ids.slice(-5)), REC_TTL_SEC); } catch (e) { /* guard-ok — استطلاع الكرت يسوّي أيضًا */ }
 }
 
 async function handler(req, res, deps) {
@@ -385,24 +469,57 @@ async function handler(req, res, deps) {
   const { sessionUser, tokenOf } = require('./_session.js');
   const user = sessionUser(tokenOf(req));
   if (!user) return send(res, 401, { error: 'auth' });
-  if (!require('./_owner.js').isOwnerName(user)) return send(res, 403, { error: 'owner_only' });
+  const pts = d.points || require('./points.js');
 
   if (action === 'call-session' || action === 'call-start') {
+    const acc = await callAccess(user, d);
+    if (!acc.ok) return send(res, 403, { error: 'plan_required' });
     const prop = await loadJSON(kv, 'call/prop/' + String(body.id || '').replace(/[^a-z0-9]/gi, '').slice(0, 40));
     if (!prop || prop.owner !== user) return send(res, 404, { error: 'proposal_not_found' });
+    /* v-call-agent-paid: غير المالك — رصيد يكفي سقف المكالمة، ثمّ تأكيد بالسعر (العميل يسأل بلغته ويرسل confirmed)، ثمّ الحجز بعد
+       كلّ فحص رخيص وقبل أيّ نداء خارجيّ. المالك لا يمرّ هنا ولا يُحجز له شيء. */
+    const payGate = async (q) => {
+      if (acc.owner) return null;
+      if (!(await pts.canAfford(user, [[CALL_REASON, q.maxPts]]))) return [402, { error: 'points_insufficient', needed: q.maxPts }];
+      const g = pts.requireConfirmation(body, q.maxPts, 'حجز مكالمة آليّة: تُحسب الدقيقة المبدوءة ويُرجع الباقي بعدها');
+      return g ? [g.status, Object.assign({}, g.payload, { ptsPerMin: q.ptsPerMin, maxMin: q.maxMin })] : null;
+    };
+    const hold = async (q) => {
+      if (acc.owner) return { held: 0 };
+      const pay = await pts.spendPoints(user, q.maxPts, CALL_REASON);
+      if (!pay || !pay.ok) return (pay && pay.banned) ? [403, { error: 'auth' }] : [402, { error: 'points_insufficient', needed: q.maxPts }];
+      return { held: pay.owner ? 0 : q.maxPts }; // VIP: لم يُخصم شيء فلا شيء يُردّ
+    };
     if (action === 'call-session') {
       const key = env.OPENAI_API_KEY;
       if (!key) return send(res, 500, { error: 'no_key' });
+      const q = quote(prop.kind || 'landline', prop.maxMin);
+      const pg = await payGate(q);
+      if (pg) return send(res, pg[0], pg[1]);
+      const h = await hold(q);
+      if (Array.isArray(h)) return send(res, h[0], h[1]);
+      const maxSec = prop.maxMin * 60;
+      // v-call-agent-paid: التجربة بنفس السعر — الحجز سجلّ call/trial/<id> يُسوّى بـcall-trial-end (مدّة المتصفّح بحدّ الوقت الفعليّ)
+      const tr = h.held ? { id: 'ct' + crypto.randomBytes(9).toString('hex'), user, kind: prop.kind || 'landline', held: h.held, mintedAt: now, maxSec } : null;
+      if (tr) {
+        try { await kv.kvSetRaw('call/trial/' + tr.id, JSON.stringify(tr), TRIAL_TTL_SEC); }
+        catch (e) { await settleHold(kv, pts, tr, 0, now); return send(res, 500, { error: 'storage' }); } // لا جلسة فُتحت — يُردّ كاملًا
+      }
       const session = buildSession(prop, 'webrtc', now);
-      const r = await fetchImpl('https://api.openai.com/v1/realtime/client_secrets', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session, expires_after: { anchor: 'created_at', seconds: 60 } }),
-      });
-      let j = null;
-      try { j = await r.json(); } catch (e) { j = null; } // جسم الخطأ قد لا يكون JSON
-      if (!r.ok || !j || !j.value) return send(res, 502, { error: 'upstream', status: r.status });
-      return send(res, 200, { clientSecret: j.value, model: MODEL, maxSec: prop.maxMin * 60, brief: { business: prop.business, goal: prop.goal, callerName: prop.callerName } });
+      let r = null, j = null;
+      try {
+        r = await fetchImpl('https://api.openai.com/v1/realtime/client_secrets', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session, expires_after: { anchor: 'created_at', seconds: 60 } }),
+        });
+        try { j = await r.json(); } catch (e) { j = null; } // جسم الخطأ قد لا يكون JSON
+      } catch (e) { r = null; } // شبكة أو مهلة — لم تُفتح جلسة
+      if (!r || !r.ok || !j || !j.value) {
+        if (tr) await settleHold(kv, pts, tr, 0, now);
+        return send(res, 502, { error: 'upstream', status: r ? r.status : 0 });
+      }
+      return send(res, 200, Object.assign({ clientSecret: j.value, model: MODEL, maxSec, brief: { business: prop.business, goal: prop.goal, callerName: prop.callerName } }, tr ? { trialId: tr.id } : {}));
     }
     const rc = relayConf(env);
     if (!rc.base || !rc.secret) return send(res, 503, { error: 'relay_not_configured' });
@@ -410,28 +527,49 @@ async function handler(req, res, deps) {
     const ph = normPhone(prop.phone);
     if (!ph.e164) return send(res, 400, { error: 'bad_phone' });
     if (!withinHours(now)) return send(res, 403, { error: 'outside_hours', from: HOURS.from, to: HOURS.to });
+    const q = quote(ph.kind || prop.kind || 'landline', prop.maxMin);
+    const pg = await payGate(q);
+    if (pg) return send(res, pg[0], pg[1]);
+    const open = acc.owner ? [] : await settleOpen(kv, pts, env, user, fetchImpl, now);
     const maxSec = prop.maxMin * 60;
     // v-call-agent-r2: قيمة القفل رقم المكالمة نفسها — لا يفكّه إلّا انتهاء هذه المكالمة أو فشلها (releaseLock)
     const callId = 'cl' + crypto.randomBytes(9).toString('hex');
     const lock = await kv.kvSetIfAbsent(lockKey(user), callId, maxSec + 120);
     if (!lock) return send(res, 409, { error: 'busy' });
+    const h = await hold(q);
+    if (Array.isArray(h)) { await releaseLock(kv, user, callId); return send(res, h[0], h[1]); }
+    const rec = { callId, user, propId: prop.id, kind: ph.kind, business: prop.business, startedAt: now, held: h.held };
     // v-call-agent-r2: السجلّ قبل نداء الخدمة — مكالمة تبدأ بعد مهلتنا (أو بعد عطل في KV) تبقى قابلة للمتابعة والإلغاء
-    try { await kv.kvSetRaw('call/rec/' + callId, JSON.stringify({ callId, user, propId: prop.id, kind: ph.kind, business: prop.business, startedAt: now }), REC_TTL_SEC); }
-    catch (e) { await releaseLock(kv, user, callId); return send(res, 500, { error: 'storage' }); } // لم يُتّصل بأحد بعد — القفل يُفكّ
+    try { await kv.kvSetRaw('call/rec/' + callId, JSON.stringify(rec), REC_TTL_SEC); }
+    catch (e) { await settleHold(kv, pts, holdOf(rec), 0, now); await releaseLock(kv, user, callId); return send(res, 500, { error: 'storage' }); } // لم يُتّصل بأحد بعد — يُردّ الحجز ويُفكّ القفل
+    if (h.held) await trackOpen(kv, user, open.concat(callId));
     let r;
     try { r = await relayFetch(env, 'POST', '/call', { callId, to: ph.e164, maxSec, session: buildSession(prop, 'phone', now) }, fetchImpl); }
     catch (e) { r = { ok: false, status: 0, json: null }; } // مهلة أو شبكة — قد تكون الخدمة اتّصلت فعلًا؛ يُعالج تحت
     if (!r.ok) {
-      // رفض صريح من الخدمة (جسم JSON) = لم تتّصل: يُحذف السجلّ ويُفكّ قفل هذه المكالمة. غير ذلك (مهلة، شبكة، صفحة خطأ من الوسيط)
-      // لا نعرف: يبقى السجلّ والقفل ويتابع العميل الحالة — 404 من الخدمة يُنهيها «فشلت» (call-status تحت) ولا تتكرّر المكالمة بضغطة ثانية.
+      // رفض صريح من الخدمة (جسم JSON) = لم تتّصل: يُحذف السجلّ ويُردّ الحجز ويُفكّ قفل هذه المكالمة. غير ذلك (مهلة، شبكة، صفحة خطأ من الوسيط)
+      // لا نعرف: يبقى السجلّ والقفل والحجز ويتابع العميل الحالة — 404 من الخدمة يُنهيها «فشلت» بردّ كامل (call-status تحت).
       if (r.status >= 400 && r.json && typeof r.json === 'object') {
         try { await kv.kvDel('call/rec/' + callId); } catch (e) { /* guard-ok — السجلّ ينتهي بمدّته، والقفل يُفكّ تحت */ }
+        await settleHold(kv, pts, holdOf(rec), 0, now);
         await releaseLock(kv, user, callId);
         return send(res, 502, { error: 'relay_error', status: r.status });
       }
       return send(res, 200, { callId, state: 'queued', unconfirmed: true });
     }
     return send(res, 200, { callId, state: (r.json && r.json.state) || 'queued' });
+  }
+
+  /* v-call-agent-paid: نهاية التجربة — الصوت يمرّ بين المتصفّح وخدمة الصوت فلا يقيس الخادم مدّته؛ تُؤخذ مدّة المتصفّح (من الجاهزيّة)
+     بحدّ سقف الجلسة والوقت الفعليّ منذ فتحها، وتُسوّى مرّة. تجربة لم يصل نهايتها (تعطّل المتصفّح قبل pagehide) يبقى حجزها كاملًا. */
+  if (action === 'call-trial-end') {
+    const tid = String(body.trialId || '').replace(/[^a-z0-9]/gi, '').slice(0, 40);
+    const tr = await loadJSON(kv, 'call/trial/' + tid);
+    if (!tr || tr.user !== user) return send(res, 404, { error: 'trial_not_found' });
+    const elapsed = Math.max(0, Math.floor((now - (Number(tr.mintedAt) || now)) / 1000));
+    const sec = Math.max(0, Math.min(Math.floor(Number(body.durationSec) || 0), Number(tr.maxSec) || MAX_MIN * 60, elapsed));
+    const b = await settleHold(kv, pts, tr, sec, now);
+    return b ? send(res, 200, { ok: true, billing: b }) : send(res, 503, { error: 'settle_pending' });
   }
 
   if (action === 'call-status' || action === 'call-cancel') {
@@ -443,17 +581,18 @@ async function handler(req, res, deps) {
     if (action === 'call-cancel') {
       let r;
       try { r = await relayFetch(env, 'POST', '/call/' + callId + '/cancel', {}, fetchImpl); } catch (e) { r = { ok: false, status: 0 }; } // الخدمة لا تجيب
-      // v-call-agent-r2: الخدمة لا تعرف المكالمة (أُعيد تشغيلها أو لم تصلها قطّ) = لا شيء يُلغى: نجاح ويُفكّ قفلها
-      if (r.status === 404) { await releaseLock(kv, user, callId); return send(res, 200, { ok: true }); }
+      // v-call-agent-r2: الخدمة لا تعرف المكالمة (أُعيد تشغيلها أو لم تصلها قطّ) = لا شيء يُلغى: نجاح ويُفكّ قفلها، والحجز يُردّ كاملًا
+      if (r.status === 404) { await settleHold(kv, pts, holdOf(rec), 0, now); await releaseLock(kv, user, callId); return send(res, 200, { ok: true }); }
       return send(res, r.ok ? 200 : 502, r.ok ? { ok: true } : { error: 'relay_error', status: r.status });
     }
     let r;
     try { r = await relayFetch(env, 'GET', '/call/' + callId, null, fetchImpl); } catch (e) { r = { ok: false, status: 0, json: null }; } // مهلة أو شبكة
     // v-call-agent-r2 (العقد v2): 404 = ضاعت المكالمة من الخدمة (إعادة تشغيل تمسح ‎/tmp/calls) — كانت 502 إلى الأبد فيدور العميل
-    // عشر دقائق ويبقى القفل. الآن: انتهت بفشل وملخّص عربيّ، ويُفكّ القفل إن كان لها.
+    // عشر دقائق ويبقى القفل. الآن: انتهت بفشل وملخّص عربيّ، ويُفكّ القفل إن كان لها. v-call-agent-paid: بلا مدّة معروفة ← ردّ كامل.
     if (r.status === 404) {
+      const billing = await settleHold(kv, pts, holdOf(rec), 0, now);
       await releaseLock(kv, user, callId);
-      return send(res, 200, { state: 'failed', durationSec: 0, transcript: [], ended: true,
+      return send(res, 200, { state: 'failed', durationSec: 0, transcript: [], ended: true, billing,
         outcome: { status: 'failed', summary: 'خدمة الاتّصال فقدت هذه المكالمة (أُعيد تشغيلها أو لم تصلها)، فلا نتيجة مسجّلة لها.', confirmed_details: '', follow_up: '' } });
     }
     if (!r.ok || !r.json) return send(res, 502, { error: 'relay_error', status: r.status });
@@ -464,7 +603,10 @@ async function handler(req, res, deps) {
       outcome: s.outcome && typeof s.outcome === 'object' ? { status: clean(s.outcome.status, 20), summary: clean(s.outcome.summary, 600), confirmed_details: clean(s.outcome.confirmed_details, 400), follow_up: clean(s.outcome.follow_up, 400) } : null,
       ended: !!s.ended,
     };
-    if (out.ended) await releaseLock(kv, user, callId); // v-call-agent-r2: قفل هذه المكالمة وحدها — كرت قديم على جهاز آخر لا يفكّ قفل مكالمة أحدث
+    if (out.ended) {
+      out.billing = await settleHold(kv, pts, holdOf(rec), out.durationSec, now); // v-call-agent-paid: مرّة واحدة مهما تكرّر الاستطلاع ومن أيّ جهاز
+      await releaseLock(kv, user, callId); // v-call-agent-r2: قفل هذه المكالمة وحدها — كرت قديم على جهاز آخر لا يفكّ قفل مكالمة أحدث
+    }
     return send(res, 200, out);
   }
   return send(res, 400, { error: 'action' });
@@ -473,5 +615,5 @@ async function handler(req, res, deps) {
 module.exports = (req, res) => handler(req, res);
 Object.assign(module.exports, {
   handler, TOOL, proposeCall, normPhone, maskPhone, phonesInText, quote, chargeFor, withinHours, buildInstructions, buildSession,
-  signRelay, lookupPhone, namesMatch, CALL_PTS_PER_MIN, MAX_MIN, MODEL,
+  signRelay, lookupPhone, namesMatch, CALL_PTS_PER_MIN, MAX_MIN, MODEL, callAccess, settleHold, CALL_REASON,
 });

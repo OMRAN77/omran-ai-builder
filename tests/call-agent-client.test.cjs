@@ -236,10 +236,12 @@ test('١. البطاقة للمالك: الجهة والرقم المقنّع و
   assert.ok(css.textContent.includes('html.mobile-ui #omranCallOverlay{'), 'نافذة التجربة شريط سفليّ في الجوّال');
   c.redraw(); c.redraw();
   assert.equal(c.document.head.childNodes.filter((n) => n.id === 'omranCallCss').length, 1, 'الأنماط مرّة واحدة');
-  // غير المالك (لاحقًا): سعر نوع الرقم بدل «مجانيّة»
+  // غير المالك (v-call-agent-paid): سعر نوع الرقم بدل «مجانيّة» بلون الكرت، وسطر الحجز (السقف × السعر) مكان سطر سعر المستخدم
   const u = sandbox({ owner: false });
   assert.doesNotMatch(u.card().textContent, /مجانيّة للمالك|للمستخدم:/);
   assert.match(u.card().q('omCallMeta')[0].textContent, /45 نقطة لكلّ دقيقة/);
+  assert.equal(u.card().q('omCallFree').length, 0); assert.equal(u.card().q('omCallCost').length, 1);
+  assert.match(u.card().q('omCallPrice')[0].textContent, /^يُحجز 180 نقطة قبل المكالمة ويُرجع الباقي حسب المدّة/);
   // بالإنجليزيّة
   const e = sandbox({ lang: 'en' });
   assert.equal(e.btn('omCallTry').textContent, '🎧 Try it on me');
@@ -506,10 +508,12 @@ test('٨. إلغاء الاتّصال الفعليّ، وأخطاء البدء �
     [409, 'busy', 'عندك مكالمة جارية — انتظر حتّى تنتهي.'],
     [400, 'bad_phone', 'الرقم غير مسموح: أرقام الإمارات فقط، بلا طوارئ ولا أرقام خدمات.'],
     [403, 'owner_only', 'متاحة للمالك فقط حاليًّا.'],
+    [403, 'plan_required', 'المكالمة الآليّة للمشتركين بباقة سارية.'], // v-call-agent-paid
+    [402, 'points_insufficient', 'رصيدك لا يكفي — المكالمة تحجز 180 نقطة.'],
     [502, 'relay_error', 'تعذّر بدء المكالمة — حاول مرّة ثانية.'],
   ];
   for (const [status, error, text] of cases) {
-    const e = sandbox({ routes: { 'call-start': () => [status, { error }] } });
+    const e = sandbox({ routes: { 'call-start': () => [status, Object.assign({ error }, error === 'points_insufficient' ? { needed: 180 } : {})] } });
     e.btn('omCallDial').click();
     await e.advance(5000);
     assert.equal(e.card().q('omCallNote')[0].textContent, text, error);
@@ -1008,4 +1012,57 @@ test('٢١. v-call-agent-cut: كلّ تجربة بدأت ترسل عند نها�
   const t2 = d2[0].body.stack.split(' ');
   assert.equal(t2.length, 81);
   assert.deepEqual([t2[0], t2[1], t2[30], t2[80]], ['3.0cr:open', '3.0oc:open', '~', '3.0sp'], 'الافتتاح محفوظ رغم الطول، والذيل آخر ما جرى');
+});
+
+test('٢٢. غير المالك (v-call-agent-paid): تأكيد بالسعر قبل التجربة والاتّصال، confirmed في الطلب، ونهاية التجربة تُرسل وتُعاد حتّى تُقبل', async () => {
+  // التجربة: تأكيد واحد بلغته فيه السعر والحجز — قبل المايك وأيّ طلب
+  const n = sandbox({ owner: false, confirm: false });
+  n.btn('omCallTry').click();
+  await n.advance(1000);
+  assert.equal(n.confirmed.length, 1);
+  assert.match(n.confirmed[0], /^المكالمة التجريبيّة بنفس سعر المكالمة الحقيقيّة\. متابعة؟\n\n45 نقطة لكلّ دقيقة\nيُحجز 180 نقطة/);
+  assert.equal(n.fetchLog.length, 0, 'رفض = لا طلب'); assert.equal(n.call().state, undefined); assert.equal(n.overlay(), null);
+
+  const ends = [];
+  let endOk = false;
+  const c = sandbox({ owner: false, routes: {
+    'call-session': (b) => [200, { clientSecret: 'ek_test', model: 'm', maxSec: 240, trialId: 'ct1a2b', brief: { business: 'عيادة النور للأسنان' } }],
+    'call-trial-end': (b) => { ends.push(b); return endOk ? [200, { ok: true, billing: { charged: 45, refunded: 135 } }] : [503, { error: 'settle_pending' }]; },
+  } });
+  await liveTrial(c);
+  assert.deepEqual(plain(c.calls('call-session')[0].body), { confirmed: true, token: 'tok-owner', id: 'cp1' });
+  await c.advance(50000);
+  c.btn('omCallStop').click();
+  await c.advance(100);
+  assert.equal(ends.length, 1);
+  assert.deepEqual(plain(ends[0]), { token: 'tok-owner', trialId: 'ct1a2b', durationSec: 50 });
+  assert.equal(c.calls('call-trial-end')[0].keepalive, true, 'يعبر إغلاق الصفحة');
+  assert.equal(c.call().trialPending, true, 'الخادم لم يقبلها بعد — تبقى للإعادة');
+  c.redraw(); await c.advance(100);
+  assert.equal(ends.length, 1, 'إعادة الرسم لا تعيد الإرسال فورًا');
+  await c.advance(10000);
+  assert.equal(ends.length, 2, 'محاولة ثانية واحدة بعد مهلة في الصفحة نفسها');
+  await c.advance(60000);
+  assert.equal(ends.length, 2, 'لا ثالثة في الصفحة نفسها — التحميل التالي يكمل');
+  // «التحميل التالي»: الكرت المحفوظ يعيد الإرسال حتّى يُقبل
+  endOk = true;
+  const r = sandbox({ owner: false, state: c.state, routes: { 'call-trial-end': (b) => { ends.push(b); return [200, { ok: true }]; } } });
+  await r.advance(10);
+  assert.equal(ends.length, 3); assert.deepEqual(plain(ends[2]), plain(ends[0]));
+  assert.equal(r.call().trialPending, false);
+  await r.advance(10); r.redraw(); await r.advance(20000);
+  assert.equal(ends.length, 3, 'قُبلت = لا إرسال بعدها');
+
+  // الاتّصال الفعليّ: السعر والحجز في التأكيد نفسه، وconfirmed في الطلب
+  const ph = sandbox({ owner: false, routes: { 'call-start': () => [200, { callId: 'cl1', state: 'queued' }], 'call-status': () => [200, { state: 'ringing' }] } });
+  ph.btn('omCallDial').click();
+  await ph.advance(100);
+  assert.match(ph.confirmed[0], /\n45 نقطة لكلّ دقيقة\nيُحجز 180 نقطة/);
+  assert.deepEqual(plain(ph.calls('call-start')[0].body), { confirmed: true, token: 'tok-owner', id: 'cp1' });
+  // المالك: لا confirmed ولا سطر سعر (الأجسام كما كانت)
+  const o = sandbox({ routes: { 'call-start': () => [200, { callId: 'cl2', state: 'queued' }] } });
+  o.btn('omCallDial').click();
+  await o.advance(100);
+  assert.doesNotMatch(o.confirmed[0], /نقطة لكلّ دقيقة/);
+  assert.deepEqual(plain(o.calls('call-start')[0].body), { token: 'tok-owner', id: 'cp1' });
 });

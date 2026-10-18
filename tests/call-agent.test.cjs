@@ -1,7 +1,8 @@
 'use strict';
 /* v-call-agent (المالك ١٧ أكتوبر: «الوكيل الي يشغل عندك ويخذ المواعيد ويتصل» — «اول شي سوها اجرب انا كيف بتكون»):
    الخادم — الرقم الإماراتيّ وحده بلا طوارئ ولا أرقام خاصّة، مصدره نصّ المستخدم أو بحث الأماكن، الكرت بلا الرقم كاملًا، الإفصاح الآليّ
-   أوّل المكالمة، السعران (٥٠ أرضيّ · ٤٥ موبايل)، المالك وحده، والتوقيع مع خدمة الاتّصال. */
+   أوّل المكالمة، السعران (٥٠ أرضيّ · ٤٥ موبايل)، المالك مجّانًا والمشترك بالنقاط (v-call-agent-paid: tests/call-agent-paid.test.cjs)،
+   والتوقيع مع خدمة الاتّصال. */
 process.env.AUTH_SECRET = 'test-secret-call-agent-0123456789abcdef';
 process.env.OWNER_USERNAME = 'omran';
 const test = require('node:test');
@@ -80,10 +81,11 @@ test('٣. التعليمات: الإفصاح الآليّ أوّلًا وعدم 
   for (const x of [sp, sw]) assert.deepEqual(x.audio.input.turn_detection, { type: 'semantic_vad', eagerness: 'medium', create_response: true, interrupt_response: true });
 });
 
-test('٤. propose_call: المالك وحده، الرقم من نصّه أو من الأماكن، والكرت بلا الرقم كاملًا', async () => {
+test('٤. propose_call: المالك أو صاحب الباقة وحدهما، الرقم من نصّه أو من الأماكن، والكرت بلا الرقم كاملًا', async () => {
   const kv = fakeKV();
   const notOwner = await ca.proposeCall({ business: 'X', goal: 'Y' }, { owner: false, kv });
   assert.equal(notOwner.event, null);
+  assert.match(notOwner.result, /للمشتركين بباقة/);
   assert.equal(kv.m.size, 0);
 
   const a = await ca.proposeCall({ business: 'عيادة ابتسامة', goal: 'حجز الأحد', phone: '0501234567' },
@@ -129,11 +131,11 @@ async function hit(action, body, deps) {
   return res;
 }
 
-test('٥. المعالج: المالك وحده، التجربة تسكّ مفتاح جلسة بالإفصاح، والاتّصال الحقيقيّ موقَّع إلى الخدمة وبقفل واحد', async () => {
+test('٥. المعالج: بلا باقة plan_required، التجربة تسكّ مفتاح جلسة بالإفصاح، والاتّصال الحقيقيّ موقَّع إلى الخدمة وبقفل واحد', async () => {
   const kv = fakeKV();
   const owner = auth.makeToken('omran');
   assert.equal((await hit('call-session', { id: 'x' }, { kv, env: {} })).code, 401);
-  assert.equal((await hit('call-session', { token: auth.makeToken('sara'), id: 'x' }, { kv, env: {} })).body.error, 'owner_only');
+  assert.equal((await hit('call-session', { token: auth.makeToken('sara'), id: 'x' }, { kv, env: {} })).body.error, 'plan_required'); // v-call-agent-paid: بلا باقة سارية
   const p = await ca.proposeCall({ business: 'عيادة ابتسامة', goal: 'حجز الأحد', phone: '0501234567' },
     { owner: true, user: 'omran', lastUserText: '0501234567', kv });
   const id = p.event.cards.call.id;
@@ -186,14 +188,16 @@ test('٥. المعالج: المالك وحده، التجربة تسكّ مفت
   assert.equal(kv.m.has('call/active/omran'), false);
 });
 
-test('٦. الربط: الأداة في أدوات المالك، والمسارات الأربعة في موجّه system، ولا أسرار في نطاق الوحدة', () => {
+test('٦. الربط: الأداة للمالك وللمشترك (آخر القائمة)، والمسارات الخمسة في موجّه system، ولا أسرار في نطاق الوحدة', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const rd = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
   const chat = rd('api/_lib/chat.js');
-  assert.match(chat, /require\('\.\/prov-self\.js'\)\.TEACH_TOOL, require\('\.\/call-agent\.js'\)\.TOOL\];/);
-  assert.match(chat, /else if \(cb\.name === 'propose_call'\) \{\n\s+const __pc = await require\('\.\/call-agent\.js'\)\.proposeCall\(input, \{ owner: __ownerReq,/);
-  assert.match(rd('api/system.js'), /case 'call-session': case 'call-start': case 'call-status': case 'call-cancel': return require\('\.\/_lib\/call-agent\.js'\);/);
+  assert.match(chat, /const CALL_TOOLS = \[require\('\.\/call-agent\.js'\)\.TOOL\];/);
+  assert.match(chat, /\.concat\(owner \? OWNER_TOOLS : \[\]\)\.concat\(\(owner \|\| callPaid\) \? CALL_TOOLS : \[\]\);/);
+  assert.match(chat, /const __callPaid = !__ownerReq && !!\(__tier && __tier\.tier === 'sub'\);/);
+  assert.match(chat, /else if \(cb\.name === 'propose_call'\) \{\n\s+const __pc = await require\('\.\/call-agent\.js'\)\.proposeCall\(input, \{ owner: __ownerReq, paid: __callPaid, user: \(__ownerReq \|\| __callPaid\)/);
+  assert.match(rd('api/system.js'), /case 'call-session': case 'call-start': case 'call-status': case 'call-cancel': case 'call-trial-end': return require\('\.\/_lib\/call-agent\.js'\);/);
   const src = rd('api/_lib/call-agent.js');
   const top = src.split('\n').filter((l) => /^(const|let|var) /.test(l)).join('\n');
   assert.doesNotMatch(top, /process\.env/, 'الأسرار تُقرأ داخل المعالج');
