@@ -41,16 +41,21 @@ async function mint(body) {
   return sessions[sessions.length - 1].instructions;
 }
 
-test('١. لهجة إماراتيّة بكلماتها: ما تقوله وما لا تقوله، وبلا إنجليزيّ وسط العربيّ', async () => {
+test('١. لهجة إماراتيّة افتراضيّة بكلماتها، والفصحى ممنوعة في كلّ لهجة — ومن يتكلّم لهجة أخرى يأخذ كلماتها، وبلا إنجليزيّ وسط العربيّ', async () => {
   const f = await mint({});
   assert.ok(f.includes('like a close Emirati friend on the phone'), 'السطر القديم باقٍ');
+  assert.ok(f.includes('unless they clearly use another Arabic dialect, then match it'), 'مجاراة لهجته باقية');
   assert.ok(f.includes('inside Arabic speech every word is Arabic') && f.includes('no English words'));
-  const say = f.split('\n').find((l) => l.startsWith('EMIRATI WORDS TO SAY:'));
-  const never = f.split('\n').find((l) => l.startsWith('NEVER SAY (Fus-ha or other dialects):'));
+  assert.ok(f.includes('in Arabic a plain Emirati verb (فتحته لك، ضبطته، سكّرتها، كبّرت الخط), never «تمّ + noun» or الآن'), 'تأكيد الأداة بفعل إماراتيّ لا «تمّ فتح»');
+  const say = f.split('\n').find((l) => l.startsWith('EMIRATI WORDS (your default Arabic):'));
+  const never = f.split('\n').find((l) => l.startsWith('NEVER SAY (Fus-ha, in any dialect):'));
   assert.ok(say && never, 'السطران');
-  for (const w of ['الحين', 'شو', 'تبا/تبي', 'وايد', 'باچر', 'مب', 'هيه', 'شحالك']) assert.ok(say.includes(w), 'تقول: ' + w);
-  for (const w of ['الآن', 'ماذا', 'تبغى/تبغين', 'كيف أنت', 'بكرة', 'سوف', 'رح', 'تمّ إغلاق']) assert.ok(never.includes(w), 'لا تقول: ' + w);
-  for (const w of ['الحين', 'شو', 'وايد', 'باچر', 'مب']) assert.ok(!never.includes(w + '،'), 'كلمة إماراتيّة ليست في الممنوع: ' + w);
+  for (const w of ['الحين', 'شو', 'تبا/تبي', 'وايد', 'باچر', 'مب', 'هيه', 'شحالك/شحالج', 'خبّرني/خبّريني']) assert.ok(say.includes(w), 'تقول: ' + w);
+  for (const w of ['الآن', 'ماذا', 'كيف أنت', 'غدًا', 'سوف', 'تمّ إغلاق']) assert.ok(never.includes(w), 'فصحى ممنوعة: ' + w);
+  // مراجعة النقض: كلمات اللهجات الأخرى ليست «ممنوعة» على أهلها — ممنوعة في الردّ الإماراتيّ وحده
+  for (const w of ['إيش', 'تبغى', 'بكرة', 'مو', 'رح', 'بدّك', 'تريد']) assert.ok(!never.includes(w), 'ليست في الممنوع العامّ: ' + w);
+  assert.ok(say.includes('in Emirati never the other-dialect words إيش، تبغى/تبغين، تريد، بكرة، رح، هلّق، بدّك'));
+  assert.ok(say.includes('clearly speaks another dialect') && say.includes("gets their own dialect's words instead"));
 });
 
 test('٢. تفهم الكلمات المحلّيّة التي أخطأتها في المسبار: ياهل طفل، البوش إبل، ريّال رجل', async () => {
@@ -62,11 +67,13 @@ test('٢. تفهم الكلمات المحلّيّة التي أخطأتها ف�
   assert.ok(/ريّال = a man/.test(und) && /باچر = tomorrow/.test(und) && /العين = the city Al Ain/.test(und));
 });
 
-test('٣. تخاطب الرجل بالمذكّر — «افتحي» موجّهة لها لا تعاد له — والمؤنّث لمن تتكلّم عن نفسها بالمؤنّث', async () => {
+test('٣. صيغ المؤنّث الموجّهة لها لا تعاد له ولا تدلّ عليه — والجنس من الذاكرة ثمّ كلامه عن نفسه ثمّ صوته، وإلّا صيغة محايدة', async () => {
   const f = await mint({});
   const who = f.split('\n').find((l) => l.startsWith('WHO IS TALKING:'));
-  assert.ok(who && who.includes('addressed to YOU - never echo them back'));
-  assert.ok(who.includes('Talk to the user as a man') && who.includes('unless they speak of themselves as a woman'));
+  assert.ok(who && who.includes('addressed to YOU - never echo them back; they say nothing about the user'));
+  assert.ok(who.includes('USER MEMORY says, then by how they speak of themselves') && who.includes('then by their voice'));
+  assert.ok(who.includes("a woman's voice: تبين، قولي، اختاري") && who.includes('use neutral wording'));
+  assert.ok(!who.includes('Talk to the user as a man'), 'لا مذكّر افتراضيّ للنساء');
 });
 
 test('٤. لا عبارات محفوظة تُنسخ: «اطمّن، واضحة وبنحلها» و«كفو عليك» لم تعودا في تعليماتها، والطمأنة للمنزعج وحده', async () => {
@@ -81,13 +88,15 @@ test('٤. لا عبارات محفوظة تُنسخ: «اطمّن، واضحة �
 test('٥. أداة التطبيق لا الويب: سطر المعرفة لكلّ أحد، وأمثلة الفتح وموضع مساعد البريد للمشترك — وعبدالله يرث اللهجة كلّها', async () => {
   const mahaApp = require(rp('api/_lib/maha-app.js'));
   const k = mahaApp.knowledge({ lang: 'ar' });
-  assert.ok(k.includes('never search the web for it and never recommend outside apps, websites or freelancers'));
+  assert.ok(k.includes('When the user wants to MAKE something one of these tools makes') && k.includes('never send them to outside apps, websites or freelancers for it'));
+  assert.ok(k.includes('Information, news, real-world or social-media trends, links and shopping still follow your search rules (search_web)'), 'البحث والروابط والأخبار كما هي');
   const allowed = mahaApp.controlNote(true, false);
   assert.ok(allowed.includes('a free animation = video-templates, someone talking about their shop = video-actor, «وين أغيّر صوتج» or «أبا صوت ريّال» = your own voice, so settings-voice where the male voice عبدالله is'));
+  assert.ok(allowed.includes('ONLY after ok:true (in Arabic a plain Emirati verb like «فتحته لك» - never «تمّ فتح»)'));
   assert.ok(allowed.includes('where it is (the Tools tab - «الأدوات» - then its name)') && k.includes('«الأدوات» in Arabic') && allowed.includes('never say you are opening something you will not open'));
   for (const t of ['video-templates', 'video-actor', 'settings-voice']) assert.ok(mahaApp.OPEN_TARGETS.includes(t), 'هدف موجود: ' + t);
   const m = await mint({ voiceGender: 'male' });
-  for (const l of ['EMIRATI WORDS TO SAY:', 'NEVER SAY (Fus-ha or other dialects):', 'UNDERSTAND EMIRATI:', 'WHO IS TALKING:']) assert.ok(m.includes(l), 'عبدالله: ' + l);
+  for (const l of ['EMIRATI WORDS (your default Arabic):', 'NEVER SAY (Fus-ha, in any dialect):', 'UNDERSTAND EMIRATI:', 'WHO IS TALKING:']) assert.ok(m.includes(l), 'عبدالله: ' + l);
   assert.ok(m.includes('You are "عبدالله" (Abdullah)'));
 });
 
