@@ -169,35 +169,51 @@ function fakeOutput(name, args) {
 }
 
 // ── ٤) مكالمة واحدة لكلّ طلب ──
+// كالمايك المفتوح: الكلام بإيقاعه ثمّ صمت متّصل حتّى تنتهي المكالمة. التشغيلة الأولى (39155532362) أوقفت الصمت عند أوّل
+// speech_stopped، فوقفة عند فاصلة وسط الجملة («مها، أبا…») أنهت البثّ قبل أن تكمل الجملة — سبعة طلبات بلا ردّ لم تكن من مها.
 async function runOne(reqItem) {
   const pcm = await speech(reqItem.text);
   const speechEnd = speechEndMs(pcm);
   const sess = await mintSession();
   const { default: WebSocket } = await import('ws');
   const ws = new WebSocket('wss://api.openai.com/v1/realtime?model=' + encodeURIComponent(sess.model), { headers: { Authorization: 'Bearer ' + sess.clientSecret } });
-  const out = { id: reqItem.id, text: reqItem.text, kind: reqItem.kind, speechMs: speechEnd, turn: sess.turn, appControl: sess.appControl, tools: [], transcript: [], errors: [] };
+  const out = { id: reqItem.id, text: reqItem.text, kind: reqItem.kind, speechMs: speechEnd, turn: sess.turn, appControl: sess.appControl, tools: [], transcript: [], cut: [], earlyStops: 0, errors: [] };
   const t = () => Date.now();
-  let tSpeechEnd = 0, tStopped = 0, tFirstAudio = 0, responses = 0, pendingCalls = 0, done = false;
+  let tSpeechEnd = 0, tStopped = 0, tFirstAudio = 0, tEarlyAudio = 0, responses = 0, pendingCalls = 0, done = false;
+  const said = new Map(); // كلامها لكلّ ردّ — الردّ الذي قطعته بقيّة جملته (cancelled) يُعزل في cut
   const finish = new Promise((resolve) => {
     const cap = setTimeout(() => { out.errors.push('timeout'); resolve(); }, 45000);
     let idle = null;
     const settle = () => { clearTimeout(idle); idle = setTimeout(() => { if (!pendingCalls) { done = true; clearTimeout(cap); resolve(); } }, 2500); };
     ws.on('message', (raw) => {
       let e; try { e = JSON.parse(raw.toString()); } catch (x) { return; }
+      const now = t();
       if (e.type === 'error') out.errors.push((e.error && (e.error.code || e.error.message)) || 'error');
-      if (e.type === 'input_audio_buffer.speech_stopped' && !tStopped) tStopped = t();
-      if ((e.type === 'response.output_audio.delta' || e.type === 'response.audio.delta') && !tFirstAudio) tFirstAudio = t();
-      if (e.type === 'response.output_audio_transcript.done' || e.type === 'response.audio_transcript.done') out.transcript.push(e.transcript || '');
+      if (e.type === 'input_audio_buffer.speech_started') clearTimeout(idle);
+      // وقفة وسط جملته (قبل نهايتها بأكثر من ٣٠٠م.ث) ليست نهاية كلامه
+      if (e.type === 'input_audio_buffer.speech_stopped') { if (now < tSpeechEnd - 300) out.earlyStops++; else if (!tStopped) tStopped = now; }
+      if (e.type === 'response.output_audio.delta' || e.type === 'response.audio.delta') {
+        if (now >= tSpeechEnd) { if (!tFirstAudio) tFirstAudio = now; } else if (!tEarlyAudio) tEarlyAudio = now; // تكلّمت وهو لم يكمل
+      }
+      if (e.type === 'response.output_audio_transcript.done' || e.type === 'response.audio_transcript.done') {
+        const k = e.response_id || '';
+        if (!said.has(k)) said.set(k, []);
+        said.get(k).push(e.transcript || '');
+      }
       if (e.type === 'response.created') { responses++; clearTimeout(idle); }
       if (e.type === 'response.function_call_arguments.done') {
         let a = {}; try { a = JSON.parse(e.arguments || '{}'); } catch (x) { a = {}; }
-        out.tools.push({ name: e.name, args: a, atMs: tSpeechEnd ? t() - tSpeechEnd : null });
+        out.tools.push({ name: e.name, args: a, atMs: tSpeechEnd ? now - tSpeechEnd : null });
         pendingCalls++;
         ws.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: e.call_id, output: JSON.stringify(fakeOutput(e.name, a)) } }));
       }
       if (e.type === 'response.done') {
+        const id = (e.response && e.response.id) || '';
+        const cancelled = e.response && e.response.status === 'cancelled';
+        (cancelled ? out.cut : out.transcript).push(...(said.get(id) || []));
+        said.delete(id);
         if (pendingCalls) { pendingCalls = 0; ws.send(JSON.stringify({ type: 'response.create' })); } // كالمتصفّح: الردّ بعد ناتج الأداة
-        else settle();
+        else if (!cancelled && now >= tSpeechEnd) settle();
       }
     });
   });
@@ -205,20 +221,25 @@ async function runOne(reqItem) {
     ws.on('error', reject);
     ws.on('message', function first(raw) { const e = JSON.parse(raw.toString()); if (e.type === 'session.created' || e.type === 'session.updated') { ws.off('message', first); resolve(); } });
   });
-  // بإيقاع الكلام الحقيقيّ: ١٠٠م.ث كلّ ١٠٠م.ث، ثمّ صمت حتّى تقرّر الجلسة أنّ الجملة انتهت (٤ث على الأكثر)
+  // بإيقاع الكلام الحقيقيّ على جدول مطلق (١٠٠م.ث لكلّ قطعة، بلا انجراف يؤخّر نهاية الجملة عن tSpeechEnd)
   const CH = 4800;
   const tStream = t();
   tSpeechEnd = tStream + speechEnd;
+  let n = 0;
+  const pace = () => sleep(Math.max(0, tStream + ++n * 100 - t()));
   for (let o = 0; o < pcm.length; o += CH) {
     ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcm.subarray(o, o + CH).toString('base64') }));
-    await sleep(100);
+    await pace();
   }
+  let ended = false;
+  finish.then(() => { ended = true; });
   const silence = Buffer.alloc(CH).toString('base64');
-  for (let i = 0; i < 40 && !tStopped; i++) { ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: silence })); await sleep(100); }
+  while (!ended && ws.readyState === 1) { ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: silence })); await pace(); }
   await finish;
   ws.close();
   out.firstVoiceMs = tFirstAudio ? tFirstAudio - tSpeechEnd : null; // من نهاية كلامه إلى أوّل صوت منها
   out.vadMs = tStopped ? tStopped - tSpeechEnd : null;           // متى قرّرت أنّه خلّص
+  out.talkedOverMs = tEarlyAudio ? tEarlyAudio - tSpeechEnd : null; // سالب = بدأت تتكلّم قبل أن يكمل
   out.responses = responses;
   out.done = done;
   return out;
@@ -250,7 +271,7 @@ function seal(obj) {
   const ek = crypto.publicEncrypt({ key: fs.readFileSync(pubF, 'utf8'), oaepHash: 'sha256', padding: crypto.constants.RSA_PKCS1_OAEP_PADDING }, k);
   return [ek, iv, c.getAuthTag(), data].map((b) => b.toString('base64')).join('.');
 }
-const brief = (r) => ({ id: r.id, firstVoiceMs: r.firstVoiceMs, vadMs: r.vadMs, responses: r.responses, tools: (r.tools || []).map((x) => x.name + (x.args && x.args.target ? ':' + x.args.target : x.args && x.args.action ? ':' + x.args.action : '')), spokeChars: (r.transcript || []).join(' ').length, errors: r.errors });
+const brief = (r) => ({ id: r.id, firstVoiceMs: r.firstVoiceMs, vadMs: r.vadMs, talkedOverMs: r.talkedOverMs, earlyStops: r.earlyStops, responses: r.responses, tools: (r.tools || []).map((x) => x.name + (x.args && x.args.target ? ':' + x.args.target : x.args && x.args.action ? ':' + x.args.action : '')), spokeChars: (r.transcript || []).join(' ').length, errors: r.errors });
 
 console.log('MAHA_MODE ' + MODE + (MODE === 'prod' ? ' ' + BASE : ''));
 const results = [];
