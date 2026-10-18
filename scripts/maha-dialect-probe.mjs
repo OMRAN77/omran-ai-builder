@@ -262,6 +262,30 @@ if (DRY) {
   process.exit(0);
 }
 
+// MAHA_SESSION_PATCH (الوضع المحلّيّ وحده): تجربة إعداد جلسة على الطلبات نفسها قبل كتابته في المعالج — JSON يُدمج في session
+// قبل وصوله المزوّد (null يحذف الحقل). مثال: {"reasoning":{"effort":"minimal"}}. الرفض يظهر خطأ «session 400» في الصفّ.
+const PATCH = (() => { try { return JSON.parse(process.env.MAHA_SESSION_PATCH || 'null'); } catch (e) { console.error('✗ MAHA_SESSION_PATCH ليس JSON'); process.exit(2); } })();
+if (PATCH && MODE === 'local') {
+  const realFetch = globalThis.fetch;
+  const merge = (a, b) => {
+    for (const [k, v] of Object.entries(b)) {
+      if (v === null) delete a[k];
+      else if (typeof v === 'object' && !Array.isArray(v) && a[k] && typeof a[k] === 'object') merge(a[k], v);
+      else a[k] = v;
+    }
+    return a;
+  };
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).includes('/realtime/client_secrets')) {
+      const b = JSON.parse(opts.body);
+      merge(b.session, PATCH);
+      opts = { ...opts, body: JSON.stringify(b) };
+    }
+    return realFetch(url, opts);
+  };
+  console.log('MAHA_PATCH ' + JSON.stringify(PATCH));
+}
+
 // الختم: في الإنتاج تصل ذاكرة المالك مها — كلامها ومعاملات أدواتها لا تُطبع في السجلّ العامّ إلّا مختومة.
 function seal(obj) {
   const pubF = path.join(ROOT, 'scripts', 'maha-probe-seal.pub.pem');

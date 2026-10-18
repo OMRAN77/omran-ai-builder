@@ -9,6 +9,9 @@ on:
       only:
         description: 'أرقام طلبات مفصولة بفواصل (فارغ = الثلاثون)'
         default: ''
+      patch:
+        description: 'تجربة إعداد جلسة (JSON يُدمج في session، الوضع المحلّيّ) — فارغ = كما في المعالج'
+        default: ''
   push:
     paths:
       - 'scripts/maha-dialect-probe.mjs'
@@ -58,6 +61,7 @@ jobs:
           # احتياط محلّيّ إن غاب الرمز: معالج الجلسة في العمليّة نفسها بمفتاح المستودع
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ONLY_INPUT: ${{ inputs.only }}
+          MAHA_SESSION_PATCH: ${{ inputs.patch }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         # [maha-probe:1,9] في رسالة الالتزام = هذه الطلبات وحدها (تجربة المسبار قبل الثلاثين)
         run: |
