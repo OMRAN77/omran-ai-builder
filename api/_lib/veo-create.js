@@ -12,6 +12,8 @@ const VEO_FREE_IMAGE_MAX = 2000;
 const VEO_FREE_MAX = 1500;
 /* v-video-first-frame: قفل «الإطار جاهز — حرّكه كما هو» صار في trend-people.js يشترك فيه كلّ محرّك (نصّه كما هو). */
 const { FRAME_LOCK } = require('./trend-people.js');
+/* v-trend-scenes: مساحة «اكتب اللي تبيه» تُحسب من حدّ Veo نفسه بعد حجز قفل الإطار الأوّل (كان ١٤٨٠/١١٧٠ فيسقط مع الصورة) */
+const TREND_OPTS = { cap: VEO_PROMPT_MAX - FRAME_LOCK.length };
 
 /* v-talkchar-confirm (مراجعة ٢): خطوات الشخصيّة الناطقة بترتيب خصمها — [سبب، نقاط] كما يخصمها maha-image ثمّ هذا الملفّ. أمر الكرتنة
    «تحويل أسلوب» (3D/chibi) فهو إبداعيّ: الأساس ثمّ فرق الإبداعيّ (image_creative كاملًا)، إلّا «العاديّة» المدفوعة من رصيد اشتراك الصور
@@ -61,15 +63,15 @@ module.exports = async (req, res) => {
     let trendParams = null; /* v-two-people: لإعادة بناء أمر الترند بصيغة الجمع إن كشف الإطار شخصين في صورة واحدة */
     if (body.trend) {
       const trendsLib = require('./video-trends.js');
-      const bParams = Object.assign({}, body.params || {}, { hasImage });
+      const bParams = trendsLib.sceneParams(String(body.trend), Object.assign({}, body.params || {}, { hasImage })); /* v-trend-scenes: قبل القصّ */
       trendParams = bParams;
-      let built = trendsLib.buildTrendPrompt(String(body.trend), bParams);
+      let built = trendsLib.buildTrendPrompt(String(body.trend), bParams, TREND_OPTS);
       if (!built) { res.status(400).json({ error: 'unknown trend' }); return; }
       /* v-video-photo-identity: قفل الإطار الأوّل (FRAME_LOCK) يُلحق بعد البناء لترندات الأشخاص — فيُحجز له
          مكانه هنا: يُقصّ كلام المستخدم وحده (الاسم يتكرّر في بعض القوالب) لا الأقفال. أطول حالة قيست: ٢٧٨٩. */
       for (let keep = 360; (trendPeople.length > 1 || soloWanted) && built.prompt.length + FRAME_LOCK.length > VEO_PROMPT_MAX && keep >= 0; keep -= 40) {
         const cut = (v) => String(v || '').slice(0, keep);
-        built = trendsLib.buildTrendPrompt(String(body.trend), Object.assign({}, bParams, { name: cut(bParams.name), text: cut(bParams.text), extra: cut(bParams.extra) })) || built;
+        built = trendsLib.buildTrendPrompt(String(body.trend), Object.assign({}, bParams, { name: cut(bParams.name), text: cut(bParams.text), extra: cut(bParams.extra) }), TREND_OPTS) || built;
       }
       promptText = built.prompt; ratio = ratio || built.ratio; if (!durationSeconds) durationSeconds = 8;
     } else if (hasImage && promptText) {
@@ -176,7 +178,7 @@ module.exports = async (req, res) => {
         if (solo.people > 1) {
           const vt = require('./video-trends.js');
           if (body.trend) {
-            const b2 = vt.buildTrendPrompt(String(body.trend), Object.assign({}, trendParams, { people: solo.people }));
+            const b2 = vt.buildTrendPrompt(String(body.trend), Object.assign({}, trendParams, { people: solo.people }), TREND_OPTS);
             if (b2 && b2.prompt.length + FRAME_LOCK.length <= VEO_PROMPT_MAX) promptText = b2.prompt;
           } else {
             promptText = vt.withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, undefined, solo.people);
