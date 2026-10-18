@@ -251,7 +251,7 @@ I18N['tr'] = {
     "pricingTestNote": "🧪 Şimdilik test modu — ticari lisans alındıktan sonra tam etkinleştirilecek",
     "termsLink": "Şartlar ve Koşullar",
     "privacyLink": "Gizlilik Politikası",
-    "aboutSectionTitle": "ℹ️ Uygulama Hakkında ve Tanıtım Videoları",
+    "aboutSectionTitle": "ℹ️ Uygulama Hakkında",
     "feedbackSectionTitle": "💬 Geri Bildirim ve Öneriler",
     "fbTagBug": "🐛 Hata",
     "fbTagIdea": "💡 Fikir",
@@ -1277,7 +1277,7 @@ Object.assign(I18N['tr'], {
 Object.assign(I18N['tr'], {
   "aboutSupportTitle": "📞 Müşteri hizmetleri ve destek",
   "aboutSupportDesc": "Sorularınızı 24–48 saat içinde yanıtlıyoruz.",
-  "aboutCopyright": "© Omran AI ekibi — BAE'de sevgiyle yapıldı 🇦🇪",
+  "aboutCopyright": "© Omran AI ekibi",
   "adminPanelTitle": "🛠️ Yönetim paneli (yalnızca sahibi)"
 });
 Object.assign(I18N['tr'], {"videoBadgeShort":"Kısa","videoBadgeFull":"Tam"});

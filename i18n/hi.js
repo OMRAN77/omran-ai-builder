@@ -263,7 +263,7 @@ I18N['hi'] = {
     pricingTestNote: "🧪 फिलहाल परीक्षण मोड — व्यावसायिक लाइसेंस मिलने पर पूर्ण सक्रियण होगा",
     termsLink: "नियम व शर्तें",
     privacyLink: "गोपनीयता नीति",
-    aboutSectionTitle: "ℹ️ ऐप के बारे में और परिचय वीडियो",
+    aboutSectionTitle: "ℹ️ ऐप के बारे में",
     feedbackSectionTitle: '💬 आपकी राय मायने रखती है',
     fbTagBug: '🐛 समस्या',
     fbTagIdea: '💡 सुझाव',
@@ -1228,7 +1228,7 @@ Object.assign(I18N['hi'], {
 Object.assign(I18N['hi'], {
   "aboutSupportTitle": "📞 ग्राहक सेवा और सहायता",
   "aboutSupportDesc": "हम आपके प्रश्नों का उत्तर 24–48 घंटों में देते हैं।",
-  "aboutCopyright": "© Omran AI टीम — यूएई में प्यार से बनाया गया 🇦🇪",
+  "aboutCopyright": "© Omran AI टीम",
   "adminPanelTitle": "🛠️ एडमिन पैनल (केवल मालिक के लिए)"
 });
 Object.assign(I18N['hi'], {"videoBadgeShort":"छोटा","videoBadgeFull":"पूरा"});

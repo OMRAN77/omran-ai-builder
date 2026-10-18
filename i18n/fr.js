@@ -280,7 +280,7 @@ I18N['fr'] = {
     pricingTestNote: "🧪 Mode test pour le moment — activation complète dès l'obtention de la licence commerciale",
     termsLink: "Conditions Générales",
     privacyLink: "Politique de Confidentialité",
-    aboutSectionTitle: "ℹ️ À propos de l'application et vidéos de présentation",
+    aboutSectionTitle: "ℹ️ À propos de l'application",
     feedbackSectionTitle: '💬 Votre avis compte',
     fbTagBug: '🐛 Problème',
     fbTagIdea: '💡 Suggestion',
@@ -1230,7 +1230,7 @@ Object.assign(I18N['fr'], {
 Object.assign(I18N['fr'], {
   "aboutSupportTitle": "📞 Service client & support",
   "aboutSupportDesc": "Nous répondons à vos demandes sous 24–48 h.",
-  "aboutCopyright": "© Équipe Omran AI — Fait avec amour aux Émirats 🇦🇪",
+  "aboutCopyright": "© Équipe Omran AI",
   "adminPanelTitle": "🛠️ Panneau d'administration (propriétaire uniquement)"
 });
 Object.assign(I18N['fr'], {"videoBadgeShort":"Court","videoBadgeFull":"Complet"});

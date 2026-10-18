@@ -252,7 +252,7 @@ I18N['ru'] = {
     "pricingTestNote": "🧪 Пока в тестовом режиме — полная активация после получения бизнес-лицензии",
     "termsLink": "Условия использования",
     "privacyLink": "Политика конфиденциальности",
-    "aboutSectionTitle": "ℹ️ О приложении и вводные видео",
+    "aboutSectionTitle": "ℹ️ О приложении",
     "feedbackSectionTitle": "💬 Отзывы и предложения",
     "fbTagBug": "🐛 Ошибка",
     "fbTagIdea": "💡 Идея",
@@ -1280,7 +1280,7 @@ Object.assign(I18N['ru'], {
 Object.assign(I18N['ru'], {
   "aboutSupportTitle": "📞 Служба поддержки клиентов",
   "aboutSupportDesc": "Мы отвечаем на ваши запросы в течение 24–48 часов.",
-  "aboutCopyright": "© Команда Omran AI — сделано с любовью в ОАЭ 🇦🇪",
+  "aboutCopyright": "© Команда Omran AI",
   "adminPanelTitle": "🛠️ Панель управления (только для владельца)"
 });
 Object.assign(I18N['ru'], {"videoBadgeShort":"Короткое","videoBadgeFull":"Полное"});

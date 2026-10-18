@@ -251,7 +251,7 @@ I18N['id'] = {
     "pricingTestNote": "🧪 Masih dalam mode uji coba — aktivasi penuh setelah lisensi bisnis diperoleh",
     "termsLink": "Syarat & Ketentuan",
     "privacyLink": "Kebijakan Privasi",
-    "aboutSectionTitle": "ℹ️ Tentang Aplikasi & Video Perkenalan",
+    "aboutSectionTitle": "ℹ️ Tentang Aplikasi",
     "feedbackSectionTitle": "💬 Masukan & Saran",
     "fbTagBug": "🐛 Bug",
     "fbTagIdea": "💡 Ide",
@@ -1278,7 +1278,7 @@ Object.assign(I18N['id'], {
 Object.assign(I18N['id'], {
   "aboutSupportTitle": "📞 Layanan pelanggan & dukungan",
   "aboutSupportDesc": "Kami menjawab pertanyaan Anda dalam 24–48 jam.",
-  "aboutCopyright": "© Tim Omran AI — Dibuat dengan cinta di UEA 🇦🇪",
+  "aboutCopyright": "© Tim Omran AI",
   "adminPanelTitle": "🛠️ Panel admin (khusus pemilik)"
 });
 Object.assign(I18N['id'], {"videoBadgeShort":"Singkat","videoBadgeFull":"Lengkap"});

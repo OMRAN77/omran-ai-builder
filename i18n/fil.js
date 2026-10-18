@@ -253,7 +253,7 @@ I18N['fil'] = {
     "pricingTestNote": "🧪 Nasa test mode pa muna — buong aktibasyon kapag nakuha na ang business license",
     "termsLink": "Mga Tuntunin at Kundisyon",
     "privacyLink": "Patakaran sa Privacy",
-    "aboutSectionTitle": "ℹ️ Tungkol sa App at Intro Videos",
+    "aboutSectionTitle": "ℹ️ Tungkol sa App",
     "feedbackSectionTitle": "💬 Feedback at Mga Mungkahi",
     "fbTagBug": "🐛 Bug",
     "fbTagIdea": "💡 Ideya",
@@ -1281,7 +1281,7 @@ Object.assign(I18N['fil'], {
 Object.assign(I18N['fil'], {
   "aboutSupportTitle": "📞 Serbisyo sa customer at suporta",
   "aboutSupportDesc": "Sinasagot namin ang inyong mga tanong sa loob ng 24–48 oras.",
-  "aboutCopyright": "© Omran AI team — Gawa nang may pagmamahal sa UAE 🇦🇪",
+  "aboutCopyright": "© Omran AI team",
   "adminPanelTitle": "🛠️ Admin panel (para lang sa may-ari)"
 });
 Object.assign(I18N['fil'], {"videoBadgeShort":"Maikli","videoBadgeFull":"Buo"});

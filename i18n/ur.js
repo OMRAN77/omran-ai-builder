@@ -262,7 +262,7 @@ I18N['ur'] = {
     pricingTestNote: "🧪 فی الحال ٹیسٹ موڈ — کاروباری لائسنس ملنے پر مکمل ایکٹیویشن ہوگی",
     termsLink: "شرائط و ضوابط",
     privacyLink: "رازداری کی پالیسی",
-    aboutSectionTitle: "ℹ️ ایپ کے بارے میں اور تعارفی ویڈیوز",
+    aboutSectionTitle: "ℹ️ ایپ کے بارے میں",
     feedbackSectionTitle: '💬 آپ کی رائے اہم ہے',
     fbTagBug: '🐛 مسئلہ',
     fbTagIdea: '💡 تجویز',
@@ -1227,7 +1227,7 @@ Object.assign(I18N['ur'], {
 Object.assign(I18N['ur'], {
   "aboutSupportTitle": "📞 کسٹمر سروس اور معاونت",
   "aboutSupportDesc": "ہم آپ کے سوالات کا جواب 24–48 گھنٹوں میں دیتے ہیں۔",
-  "aboutCopyright": "© عمران AI ٹیم — متحدہ عرب امارات میں محبت سے بنایا گیا 🇦🇪",
+  "aboutCopyright": "© عمران AI ٹیم",
   "adminPanelTitle": "🛠️ ایڈمن پینل (صرف مالک کے لیے)"
 });
 Object.assign(I18N['ur'], {"videoBadgeShort":"مختصر","videoBadgeFull":"مکمل"});

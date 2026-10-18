@@ -136,7 +136,7 @@ test('٧. كلود: Opus 5.5 في الوكيل وتحليل الكود والم�
   assert.ok(m.includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"));
   assert.ok(read('js/app.bundle.js').includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"), 'الحزمة أُعيد بناؤها');
   assert.ok(read('js/modes.js').includes("['claude-opus-5-5','Opus 5.5']"));
-  assert.ok(read('index.html').includes('js/modes.js?v=m171026b') && read('index.html').includes('js/partials-settings.js?v=698'), 'وسوم الكاش رُفعت');
+  assert.ok(read('index.html').includes('js/modes.js?v=m171026b') && read('index.html').includes('js/partials-settings.js?v=699'), 'وسوم الكاش رُفعت');
   assert.ok(read('js/app-10-features.js').includes("'anthropic/claude-opus-5': 'anthropic/claude-opus-5.5',"), 'اختيار الوسيط المحفوظ يهاجر');
 });
 
