@@ -8,6 +8,8 @@ const { logError } = require('./log-error.js');
 const METHOD_LABEL = { password: 'اسم مستخدم وكلمة مرور', google: 'Google', 'email-otp': 'رمز البريد (بدون كلمة مرور)' };
 const NOTE_LABEL = { 'over-deleted': 'فوق حساب محذوف بالمفتاح نفسه' };
 const DEDUPE_TTL_SEC = 3600;   // تسجيلان متزامنان بالاسم نفسه (الكتابة ليست SET NX) = رسالة واحدة
+const RACE_MS = 15000;         // العلامة نفسها بفارق أكبر في createdAt = حساب أُعيد إنشاؤه (Google فوق محذوف) لا سباق
+const COUNT_KEY = 'db/stats/accounts-total', COUNT_TTL_SEC = 86400; // عدّاد يُبذَر من مسح واحد يوميًّا — لا مسح لكلّ تسجيل
 const FALLBACK_WAIT_MS = 1200; // بلا waitUntil: انتظار محدود ثمّ يكمل الردّ (الإرسال المتروك بعد الردّ قد يُجمَّد ويضيع)
 
 const _seam = { waitUntil: null }; // للاختبارات وحدها
@@ -34,14 +36,29 @@ function uaeTime(ms) {
   catch (e) { return new Date(ms + 4 * 3600000).toISOString().replace('T', ' ').slice(0, 16) + ' (UTC+4)'; } // guard-ok — Intl ناقص: الساعة يدويًّا
 }
 
+/* إجمالي الحسابات (رقم «إجمالي الحسابات» في لوحة المالك نفسه: مفاتيح db/users/ بعد الكتابة). عدّاد INCR؛ غيابه (أوّل مرّة أو بعد يوم)
+   يُبذَر بمسح واحد — فسيل تسجيلات لا يمسح Redis كلّه مع كلّ واحد، وانحراف الحذف لا يتجاوز يومًا. */
+async function countAccounts(kv) {
+  try {
+    const n = Number(await kv.kvIncr(COUNT_KEY));
+    if (n > 1) return n;
+    const keys = await kv.kvList('db/users/');
+    if (!Array.isArray(keys)) return null;
+    await kv.kvSetRaw(COUNT_KEY, String(keys.length), COUNT_TTL_SEC);
+    return keys.length;
+  } catch (e) { logError('signup-notify:count', e); return null; }
+}
+
 async function send(info) {
   const { to, key, user, method, req, note } = info;
   const kv = require('./kv.js');
-  const fresh = await kv.kvSetIfAbsent('db/notify/new-account/' + encodeURIComponent(key), String(user.createdAt || Date.now()), DEDUPE_TTL_SEC);
-  if (!fresh) return 'dup';
-  let total = null;
-  try { const keys = await kv.kvList('db/users/'); if (Array.isArray(keys)) total = keys.length; }
-  catch (e) { logError('signup-notify:count', e); }
+  const mark = 'db/notify/new-account/' + encodeURIComponent(key), born = Number(user.createdAt) || Date.now();
+  if (!(await kv.kvSetIfAbsent(mark, String(born), DEDUPE_TTL_SEC))) {
+    const prev = Number(await kv.kvGetRaw(mark)) || 0;
+    if (Math.abs(prev - born) < RACE_MS) return 'dup';
+    await kv.kvSetRaw(mark, String(born), DEDUPE_TTL_SEC); // إنشاء جديد للمفتاح نفسه بعد حذف — يُبلَّغ
+  }
+  const total = await countAccounts(kv);
   const { sendMail, escapeHtml } = require('./auth.js'); // متأخّر: auth.js يطلب هذا الملفّ
   const name = String(user.username || key);
   const rows = [

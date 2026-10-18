@@ -24,6 +24,7 @@ const rp = (f) => require.resolve(path.join(root, f));
 const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(f), loaded: true, exports }; };
 
 const store = new Map();
+let scans = 0;
 const tick = () => new Promise((r) => setImmediate(r));
 const kvImpl = {
   kvGetJSON: async (k) => { await tick(); return store.has(k) ? JSON.parse(store.get(k)) : null; },
@@ -36,7 +37,7 @@ const kvImpl = {
   kvDecrBy: async (k, n) => { await tick(); const v = Number(store.get(k) || 0) - Number(n); store.set(k, String(v)); return v; },
   kvExpire: async () => { await tick(); },
   kvDel: async (k) => { await tick(); store.delete(k); },
-  kvList: async (p) => { await tick(); return [...store.keys()].filter((k) => k.startsWith(p)); },
+  kvList: async (p) => { await tick(); if (p === 'db/users/') scans++; return [...store.keys()].filter((k) => k.startsWith(p)); },
 };
 mock('api/_lib/kv.js', new Proxy(kvImpl, { get: (t, p) => t[p] || (async () => null) }));
 const logged = [];
@@ -54,7 +55,7 @@ global.fetch = async (url, init) => {
     if (resendMode === 'hang') return new Promise(() => {});
     return new Response('{"id":"e1"}', { status: resendMode === '500' ? 500 : 200 });
   }
-  if (/oauth2\.googleapis\.com\/token/.test(u)) return new Response(JSON.stringify({ access_token: 'at' }), { status: 200 });
+  if (/oauth2\.googleapis\.com\/token/.test(u)) return new Response(JSON.stringify({ access_token: 'AT-SECRET-XYZ' }), { status: 200 });
   if (/oauth2\/v3\/userinfo/.test(u)) return new Response(JSON.stringify(Object.assign({ email_verified: true }, profile)), { status: 200 });
   return new Response('{}', { status: 404 });
 };
@@ -67,7 +68,7 @@ notify._seam.waitUntil = (p) => { pending.push(p); };
 const drain = async () => { const p = pending; pending = []; await Promise.all(p); };
 
 function reset(env) {
-  store.clear(); mails = []; pending = []; logged.length = 0; resendMode = 'ok';
+  store.clear(); mails = []; pending = []; logged.length = 0; resendMode = 'ok'; scans = 0;
   process.env.OWNER_NOTIFY_EMAIL = OWNER;
   Object.assign(process.env, env || {});
 }
@@ -89,7 +90,7 @@ async function otpVerify(email) {
 async function google(p) {
   profile = p;
   const res = fakeRes();
-  await googleCb({ query: { code: 'c', state: 'abcdef0123456789' }, headers: HDR }, res);
+  await googleCb({ query: { code: 'CODE-SECRET-XYZ', state: 'abcdef0123456789' }, headers: HDR }, res);
   return res;
 }
 const html = (m) => String(m.html);
@@ -140,7 +141,7 @@ test('٣. Google: حساب جديد = إيميل بالبريد وطريقة Goo
   assert.ok(h.includes('ali@gmail.com') && h.includes('<b>Google</b>'), 'البريد والطريقة');
   assert.ok(h.includes('Ali &lt;b&gt;X&lt;/b&gt;') && !h.includes('Ali <b>X</b>'), 'اسم Google يُهرَّب (HTML)');
   assert.ok(h.includes('المفتاح: g_ali@gmail.com'));
-  for (const s of ['at', 'code', 'abcdef0123456789']) assert.ok(!h.includes('>' + s + '<'), 'لا رمز Google ولا state');
+  for (const s of ['AT-SECRET-XYZ', 'CODE-SECRET-XYZ', 'abcdef0123456789', 'csec']) assert.ok(!h.includes(s) && !mails[0].subject.includes(s), 'لا رمز Google ولا state ولا السرّ: ' + s);
   mails = [];
   await google({ email: 'ali@gmail.com', name: 'Ali' }); await drain();
   assert.equal(mails.length, 0, 'دخول Google لحساب قائم');
@@ -160,6 +161,8 @@ test('٣. Google: حساب جديد = إيميل بالبريد وطريقة Goo
   try {
     const rr = await google({ email: 'sealed@gmail.com', name: 'S' });
     assert.equal(rr.code, 302);
+    assert.match(rr.headers.Location, /gtoken=/, 'استُعيد فعلًا (لا تحويل خطأ)');
+    assert.doesNotMatch(rr.headers.Location, /gerror=|error=/);
     await drain();
     assert.equal(mails.length, 0, 'الاستعادة لا ترسل ولو غابت علامة «أُبلغ»');
   } finally { process.env.AUTH_SECRET = prev; }
@@ -242,4 +245,48 @@ test('٨. المسارات الثلاثة وحدها تنادي المُبلِّ
   const lib = fs.readFileSync(rp('api/_lib/signup-notify.js'), 'utf8');
   assert.match(lib, /process\.env\.OWNER_NOTIFY_EMAIL/);
   assert.doesNotMatch(lib + a + g, /@gmail\.com['"]/, 'لا عنوان حقيقيّ في الكود');
+});
+
+test('٩. Google: حساب أُنشئ ثمّ حُذف ثمّ أُعيد إنشاؤه بعد دقائق = إيميل ثانٍ بالملاحظة (العلامة لا تبتلعه)، والسطر الجديد في العنوان لا يكسر الموضوع', async () => {
+  reset();
+  await google({ email: 'zed@gmail.com', name: 'Zed' }); await drain();
+  assert.equal(mails.length, 1);
+  const mark = 'db/notify/new-account/' + encodeURIComponent('g_zed@gmail.com');
+  store.set(mark, String(Date.now() - 5 * 60000)); // الإنشاء الأوّل قبل خمس دقائق (العلامة ما زالت حيّة ساعة)
+  const u = await auth.getUser('g_zed@gmail.com', 1);
+  u.deleted = true; await auth.putUser('g_zed@gmail.com', u); // كما يحذف المالك (admin-actions)
+  mails = [];
+  await google({ email: 'zed@gmail.com', name: 'Zed' }); await drain();
+  assert.equal(mails.length, 1, 'إعادة الإنشاء حساب جديد');
+  assert.ok(html(mails[0]).includes('فوق حساب محذوف بالمفتاح نفسه'));
+  mails = [];
+  await google({ email: 'crlf@gmail.com', name: 'A\r\nBcc: x@y.test' }); await drain();
+  assert.equal(mails.length, 1);
+  assert.doesNotMatch(mails[0].subject, /[\r\n]/, 'لا حقن ترويسة في الموضوع');
+});
+
+test('١٠. العدد عدّاد: عشرة تسجيلات = مسح واحد لـRedis (البذرة) لا عشرة، والعدد صحيح بعد كلّ واحد', async () => {
+  reset();
+  for (let i = 0; i < 10; i++) { await signup('cnt' + i); await drain(); }
+  assert.equal(scans, 1, 'مسح واحد للبذرة');
+  assert.equal(mails.length, 10);
+  for (let i = 0; i < 10; i++) assert.ok(html(mails[i]).includes('<b>' + (i + 1) + '</b>'), 'العدد بعد التسجيل ' + (i + 1));
+});
+
+test('١١. على Vercel: waitUntil المنصّة يستلم الإرسال فيرجع التسجيل فورًا ولو علّق Resend (بلا بذرة الاختبار)', async () => {
+  reset();
+  resendMode = 'hang';
+  const seam = notify._seam.waitUntil, sym = Symbol.for('@vercel/request-context');
+  const got = [];
+  const ctx = { waitUntil(p) { assert.equal(this, ctx, 'this محفوظ'); got.push(p); } };
+  notify._seam.waitUntil = null;
+  globalThis[sym] = { get: () => ctx };
+  try {
+    const t0 = Date.now();
+    const r = await signup('vercel1');
+    assert.equal(r.code, 200);
+    assert.ok(Date.now() - t0 < 600, 'لا انتظار الحدّ ١٫٢ ث');
+    assert.equal(got.length, 1);
+    assert.equal(typeof got[0].then, 'function');
+  } finally { delete globalThis[sym]; notify._seam.waitUntil = seam; }
 });
