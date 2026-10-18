@@ -118,17 +118,24 @@ test('١. حساب جديد باسم وكلمة مرور = إيميل واحد �
   assert.ok(store.has('db/notify/new-account/noura_77'), 'علامة «أُبلغ» للحساب');
 });
 
-test('٢. تسجيل الدخول لا يرسل، والتسجيل المرفوض لا يرسل (اسم مأخوذ، @ في الاسم، كلمة مرور قصيرة، اسم محجوز، إيميل لغيره)', async () => {
+test('٢. تسجيل الدخول لا يرسل، والتسجيل المرفوض لا يرسل (اسم مأخوذ، @ في الاسم، كلمة مرور قصيرة، اسم محجوز)', async () => {
   reset();
   await signup('sara1', 'pass12345', { email: 'sara@example.com' }); await drain();
   assert.equal(mails.length, 1);
+  assert.ok(html(mails[0]).includes('لا يوجد') && !html(mails[0]).includes('sara@example.com'), 'v-signup-no-email: التسجيل لا يحفظ الإيميل');
   mails = [];
   const li = await call({ action: 'login', username: 'sara1', password: 'pass12345' });
   assert.equal(li.code, 200, JSON.stringify(li.body));
-  const rejected = [await signup('sara1'), await signup('sara@x'), await signup('shortpw', 'abc'), await signup('admin'), await signup('other1', 'pass12345', { email: 'sara@example.com' })];
+  const rejected = [await signup('sara1'), await signup('sara@x'), await signup('shortpw', 'abc'), await signup('admin')];
   for (const r of rejected) assert.notEqual(r.code, 200, JSON.stringify(r.body));
   await drain();
   assert.equal(mails.length, 0, 'لا إيميل للدخول ولا للمرفوض');
+  // v-signup-no-email: إيميل غيره في التسجيل لا يُرفض ولا يُحفظ — حساب جديد بلا إيميل (والإيميل يُضاف من «حسابي» برمز)
+  const other = await signup('other1', 'pass12345', { email: 'sara@example.com' }); await drain();
+  assert.equal(other.code, 200);
+  assert.equal((await auth.getUser('other1')).email, null);
+  assert.equal(mails.length, 1, 'حساب جديد = إيميل واحد');
+  mails = [];
 });
 
 test('٣. Google: حساب جديد = إيميل بالبريد وطريقة Google؛ الدخول ثانيةً لا يرسل؛ فوق حساب محذوف إيميل بملاحظة؛ استعادة سجلّ مقفل لا ترسل', async () => {
