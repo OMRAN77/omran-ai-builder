@@ -1019,7 +1019,8 @@ module.exports = async (req, res) => {
       }
 
       const otpCode = genNumericOtp();
-      await kvPutJSON('db/otp/' + key, { otp: otpCode, exp: now + 300000 });
+      // n: هويّة هذا الرمز لعدّاد محاولاته — exp بالملّي ثانية كان يتكرّر لرمزين صدرا في الملّي ثانية نفسها فيرث الثاني محاولات الأوّل
+      await kvPutJSON('db/otp/' + key, { otp: otpCode, exp: now + 300000, n: crypto.randomBytes(6).toString('hex') });
 
       const sent = await sendOtpEmail(key, otpCode, isEn);
       if (!sent) {
@@ -1065,9 +1066,10 @@ module.exports = async (req, res) => {
       const burnOtp = async () => { try { await kvPutJSON('db/otp/' + key, { otp: null, exp: 0 }); } catch (e) { logError('auth:otp-burn', e); } };
       let tries = 0;
       try {
-        // العدّاد لهذا الرمز بعينه (exp يميّز كلّ رمز صادر) ويعيش عمره — الرمز الجديد يبدأ من صفر.
+        // العدّاد لهذا الرمز بعينه ويعيش عمره — الرمز الجديد يبدأ من صفر. هويّته n (رمز صدر قبلها: exp كما كان).
         const ttl = Math.max(1, Math.ceil((Number(record.exp) - Date.now()) / 1000)) || 300;
-        tries = (await hitCounter('db/otp-fail/' + key + '/' + Number(record.exp), ttl)).n;
+        const codeId = /^[0-9a-f]{12}$/.test(String(record.n || '')) ? record.n : String(Number(record.exp));
+        tries = (await hitCounter('db/otp-fail/' + key + '/' + codeId, ttl)).n;
       } catch (e) { logError('auth:otp-tries', e); }
       if (tries > OTP_MAX_TRIES) {
         await burnOtp();

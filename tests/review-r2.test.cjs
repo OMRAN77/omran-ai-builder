@@ -183,7 +183,9 @@ test('ج. البروكسي يقبل ترويسة Bearer، وتذكرة التن�
   assert.equal(upstream.calls.length, 3);
   assert.equal(await tally('g_ticket@gmail.com', 'video-download'), 1, 'التنزيل بالتذكرة لا يُعدّ ثانية');
   assert.equal((await dl({ url: 'https://cdn.example/other.mp4', dt: t })).code, 401, 'التذكرة لرابطها وحده');
-  assert.equal((await dl({ url: URL1, dt: t.slice(0, -2) + (t.endsWith('A') ? 'BB' : 'AA') })).code, 401, 'تذكرة معدّلة');
+  // حرف في الوسط لا آخر حرفين: آخر حرف في base64url يحمل بتات يتجاهلها الفكّ، فتعديله قد يبقي البايتات نفسها (≈٠٫٢٪ — فشل عشوائيّ)
+  const mid = t.length >> 1;
+  assert.equal((await dl({ url: URL1, dt: t.slice(0, mid) + (t[mid] === 'A' ? 'B' : 'A') + t.slice(mid + 1) })).code, 401, 'تذكرة معدّلة');
   assert.equal((await dl({ url: URL1, dt: t, action: 'ticket' })).code, 401, 'تذكرة لا تصدر تذكرة');
   const realNow = Date.now;
   Date.now = () => realNow() + 61 * 60 * 1000;
