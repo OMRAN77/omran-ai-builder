@@ -53,6 +53,11 @@ const WOMEN = {
     'a loose straight jalabiya | an A-line jalabiya with side godets | a wrap-style jalabiya | a jalabiya with a flowing trumpet hem | a tiered jalabiya | a kaftan-style jalabiya with a drawstring waist' +
     ' // wide sleeves with embroidered cuffs | bell sleeves | batwing sleeves | long straight sleeves | puff sleeves gathered at the wrist | kimono sleeves' +
     ' // soft cotton with a hand-embroidered yoke | printed chiffon over a lining | crinkled viscose with a beaded neckline | linen with contrast piping | satin with crystal buttons | !sheer voile with lace insets',
+  mukhawara: // v-fx-mukhawara
+    // الخيار الأوّل في كلّ محور = صورة المالك المرجعيّة
+    'a flowing floor-length A-line mukhawar | a classic loose straight mukhawar falling to the floor | a mukhawar with a gathered yoke and a full flowing skirt | a wide kaftan-cut mukhawar | a mukhawar layered over matching embroidered sirwal trousers | a tiered mukhawar with a softly ruffled hem' +
+    ' // a stand collar opening into a V with a sequined talli-embroidered front panel, a row of small buttons and long wide sleeves with embroidered cuffs | a round neckline with a talli-trimmed front opening | wide bell sleeves edged with talli | a V-shaped embroidered yoke with long straight sleeves | a square embroidered chest panel with kimono sleeves | a keyhole neckline with batwing sleeves trimmed in talli' +
+    ' // printed floral organza with metallic embroidered swirls and sequins | soft georgette with dense metallic talli at the neck and cuffs | crinkled chiffon over a satin lining with hand-sewn talli bands | silk brocade with a talli-framed chest panel | velvet with fine talli embroidery along the hem | satin with pearl-studded talli on the sleeves',
   hijabchic:
     'wide-leg palazzo trousers with a long tunic | a maxi skirt with an oversized shirt | a long shirt dress over wide trousers | a longline blazer over a maxi dress | a pleated maxi skirt with a long knit | a wide jumpsuit with a long open kimono' +
     ' // a draped jersey hijab | a silk hijab with soft pleats | a chiffon hijab wrapped neatly | a turban-style wrap | a printed satin hijab | a crinkle-cotton hijab' +

@@ -113,6 +113,19 @@ const CARD_SETS = {
     { name: 'shoes', style: 'evening', gender: 'women', d: 'close-up on elegant designer heels worn by a model' },
     { name: 'scarf', style: 'casual', gender: 'women', d: 'close-up on an elegant silk scarf styled on a model' },
     { name: 'makeup', style: 'evening', gender: 'women', d: 'close-up beauty portrait with elegant evening makeup' },
+    // v-fx-gender-pics: إضافات الرجال والأطفال (كانت صور امرأة لكلّ الفئات) — القطعة الأولى من كتالوج الخادم نفسه (fashion-variety ACCESSORIES)
+    { name: 'men-glasses', style: 'casual', gender: 'men', d: 'close-up on aviator glasses with gold metal frames worn by the model' },
+    { name: 'men-watch', style: 'formal', gender: 'men', d: 'close-up on a classic dress watch with a steel case on the model wrist and shirt cuff' },
+    { name: 'men-handbag', style: 'formal', gender: 'men', d: 'close-up on a cognac leather briefcase held by the model' },
+    { name: 'men-shoes', style: 'formal', gender: 'men', d: 'close-up on polished oxford shoes worn by the model' },
+    { name: 'men-scarf', style: 'winterlux', gender: 'men', d: 'close-up on a cashmere scarf draped loosely over the model coat' },
+    { name: 'men-makeup', style: 'formal', gender: 'men', d: 'close-up grooming portrait: subtle natural grooming with matte even skin and tidy brows, the beard neatly kept' },
+    { name: 'kids-glasses', style: 'casual', gender: 'kids', d: 'close-up on round kids sunglasses worn by the smiling child' },
+    { name: 'kids-watch', style: 'casual', gender: 'kids', d: 'close-up on a colorful analog kids watch on the child wrist' },
+    { name: 'kids-handbag', style: 'casual', gender: 'kids', d: 'close-up on a mini crossbody purse carried by the child' },
+    { name: 'kids-shoes', style: 'casual', gender: 'kids', d: 'close-up on low-top sneakers worn by the child' },
+    { name: 'kids-scarf', style: 'winterlux', gender: 'kids', d: 'close-up on a soft knit scarf worn by the child' },
+    { name: 'kids-makeup', style: 'eidkids', gender: 'kids', d: 'close-up portrait of the child with a natural face and a little festive cheek glitter, no adult makeup' },
   ],
 };
 

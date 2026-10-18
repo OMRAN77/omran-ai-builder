@@ -23,7 +23,7 @@ const MODEST_LOCK =
   'no tight or sheer fabrics, no exposed chest or back. Elegant and dignified.';
 
 // الأنماط التي تستوجب الاحتشام تلقائيًّا حتى بلا طلب صريح.
-const MODEST_STYLES = ['abaya', 'traditional'];
+const MODEST_STYLES = ['abaya', 'traditional', 'mukhawara']; // v-fx-mukhawara
 
 // v-fashion-variety: شرط الاحتشام نفسه يحتاجه كتالوج التنويع (يُسقط الخيارات المكشوفة) — مصدر واحد.
 function needsModest(opts) {
