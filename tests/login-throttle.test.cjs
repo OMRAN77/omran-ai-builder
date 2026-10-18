@@ -150,7 +150,8 @@ test('٧. المحظور بكلمته الصحيحة 403 كما كان، وال�
 });
 
 test('٨. rateWait ذرّيّ: ٥٠ «نسيت كلمة المرور» متوازية لبريد واحد = ثلاث رسائل على الأكثر والباقي ٤٢٩', async () => {
-  await account('rana', { email: 'rana@example.com' });
+  // v-unverified-email: الاسترجاع لبريد مؤكَّد على حسابه وحده — البذرة بختمها كما يكتبه التأكيد بالرمز
+  await account('rana', { email: 'rana@example.com', verifiedEmail: 'rana@example.com' });
   store.set('db/email-index/rana@example.com', JSON.stringify({ username: 'rana', at: Date.now() }));
   mails = 0;
   const rs = await Promise.all(Array.from({ length: 50 }, (_, i) => call({ action: 'forgotPassword', email: 'rana@example.com' }, '70.0.' + i + '.1')));
@@ -182,7 +183,7 @@ test('٩. كلّ نجاح موثَّق يحفظ شبكته: تسجيل من S، 
 });
 
 test('١٠. الاسترجاع برابط البريد يحفظ شبكته أيضًا، وعطب KV في الحفظ لا يُفشل الدخول', async () => {
-  await account('resetter', { email: 'resetter@example.com' });
+  await account('resetter', { email: 'resetter@example.com', verifiedEmail: 'resetter@example.com' }); // v-unverified-email: الرابط لبريد مؤكَّد
   const rt = 'reset-token-abc';
   const rec = await auth.getUser('resetter');
   rec.resetTokenHash = crypto.createHash('sha256').update(rt).digest('hex');

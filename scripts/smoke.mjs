@@ -253,6 +253,9 @@ async function navRoutes() {
         : no(`${label} → ${r.status} (خطأ خادم)`);
     } else ok(`${label} → ${r.status}`);
   }
+  // v-unverified-email: الجرد اليوميّ موصول (إعادة الكتابة ← system) — POST يُرفض ٤٠٥ بلا جرد؛ ٤٠٤ = غير موصول، والجدول يفشل بصمت.
+  const sweepR = await get('/api/email-sweep', { method: 'POST', redirect: 'manual' });
+  sweepR.status === 405 ? ok('/api/email-sweep [POST] → 405 (الجرد موصول ولم يُشغَّل)') : no('/api/email-sweep [POST] → ' + (sweepR.status || sweepR.err) + ' (المتوقّع ٤٠٥)');
 }
 
 const vHash = await page();

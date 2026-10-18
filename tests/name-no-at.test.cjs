@@ -85,7 +85,7 @@ test('٤. الرسالة بلغة الواجهة الـ١٤ (قاعدة الما
   assert.equal((rd('js/app-03-i18n-data.js').match(/nameNoAt: '[^']*@[^']*'/g) || []).length, 2, 'العربيّة والإنجليزيّة');
   for (const lg of ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil']) assert.match(rd('i18n/' + lg + '.js'), /"?nameNoAt"?: "[^"]*@[^"]*"/, lg);
   const cl = rd('js/app-01-boot-auth.js');
-  assert.ok(cl.includes("errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || data.error"), 'التسجيل');
+  assert.ok(cl.includes("errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error"), 'التسجيل'); // v-unverified-email: ورسالة الإيميل غير المؤكَّد بجانبها
   assert.ok(cl.includes("acctUsernameMsg.textContent = (data.code === 'name_at' && t2.nameNoAt) || data.error || t2.acctGenericError;"), 'تغيير الاسم');
   const v = Number((rd('js/app-04-i18n-state.js').match(/sc\.src = 'i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]);
   assert.ok(v >= 751, 'وسم ملفّات اللغات رُفع: ' + v);

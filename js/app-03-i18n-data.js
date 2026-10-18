@@ -360,6 +360,9 @@ const I18N = {
     acctEmailTaken: 'هذا الإيميل مؤكَّد في حساب آخر', // v-vip-verified
     acctEmailUnverified: 'هذا الإيميل غير مؤكَّد — اضغط «حفظ» ليصلك رمز التأكيد', // v-vip-verified
     acctEmailTooMany: 'محاولات كثيرة — جرّب بعد {minutes} دقيقة', // v-vip-verified
+    authEmailUnverified: 'هذا الإيميل غير مؤكَّد، ادخل باسم المستخدم وأكّده من حسابي', // v-unverified-email
+    emailConfirmTitle: 'أكّد إيميلك', // v-unverified-email
+    emailConfirmSend: 'أرسل الكود', // v-unverified-email
     acctNetError: 'تعذر الاتصال بالخادم، تحقق من الإنترنت',
     acctAvatarTooBig: 'الصورة كبيرة جدًا، اختر صورة أصغر',
     logout: 'خروج',
@@ -1670,6 +1673,9 @@ const I18N = {
     acctEmailTaken: 'This email is already confirmed on another account', // v-vip-verified
     acctEmailUnverified: 'This email is not confirmed — press Save to get a confirmation code', // v-vip-verified
     acctEmailTooMany: 'Too many attempts — try again in {minutes} min', // v-vip-verified
+    authEmailUnverified: 'This email is not confirmed — sign in with your username and confirm it in My account', // v-unverified-email
+    emailConfirmTitle: 'Confirm your email', // v-unverified-email
+    emailConfirmSend: 'Send the code', // v-unverified-email
     acctNetError: 'Could not reach the server, check your connection',
     acctAvatarTooBig: 'The image is too large, choose a smaller one',
     providerColorsLabel: '🤖 Each AI provider color (shown next to its name in chat)',
