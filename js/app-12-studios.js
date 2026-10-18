@@ -2408,6 +2408,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     regen: t('emailAsst_regen'), // v-email-cache
     more: t('emailAsst_more'),
     drafting: t('emailAsst_drafting'),
+    translation: t('emailAsst_translation'), // v-email-thread
+    draftMeaning: t('emailAsst_draftMeaning'),
   });
 
   function setStatus(text){
@@ -2490,6 +2492,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     card.querySelector('.emailCalBtn').style.display = mail.meeting ? '' : 'none';
     meet.style.display = mail.meeting ? '' : 'none';
     meet.textContent = mail.meeting ? '📅 ' + String(mail.meeting.title || '') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') : '';
+    const trans = card.querySelector('.emailTrans');
+    const gloss = card.querySelector('.emailGloss');
+    trans.style.display = mail.translation ? '' : 'none';
+    card.querySelector('.emailTransTxt').textContent = mail.translation || '';
+    gloss.style.display = mail.draftGloss && !mail.pending ? '' : 'none';
+    card.querySelector('.emailGlossTxt').textContent = mail.draftGloss || '';
     const keyErr = mail.draftError === 'nokey' || mail.draftError === 'badkey';
     const msg = mail.draftError && !(keyErr && emKeyShown) ? emAiMsg(mail.draftError) : '';
     st.style.display = msg ? 'block' : 'none';
@@ -2510,7 +2518,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         '<span class="emailPrio" style="font-size:11.5px; white-space:nowrap;"></span>' +
       '</div>' +
       '<div class="emailSnip" style="font-size:12px; color:var(--muted,#999); margin-top:6px;"></div>' +
+      '<div class="emailTrans" dir="auto" style="display:none; font-size:12px; margin-top:6px; padding:8px 10px; border-radius:8px; background:var(--panel,#1a1a1a); border:1px solid var(--border,#333); line-height:1.7;"><b class="emailTransLbl"></b> <span class="emailTransTxt"></span></div>' +
       '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px; font-family:inherit; line-height:1.6;"></textarea>' +
+      '<div class="emailGloss" dir="auto" style="display:none; font-size:11.5px; color:var(--muted,#999); margin-top:4px; line-height:1.7;"><b class="emailGlossLbl"></b> <span class="emailGlossTxt"></span></div>' +
       '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
         '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;"></button>' +
         '<button type="button" class="btn emailRegenBtn" style="flex:1; min-width:110px;"></button>' +
@@ -2532,6 +2542,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     card.querySelector('.emailFromName').textContent = who.name;
     card.querySelector('.emailFromAddr').textContent = who.name ? '<' + who.addr + '>' : who.addr;
     card.querySelector('.emailSnip').textContent = mail.snippet || '';
+    card.querySelector('.emailTransLbl').textContent = tr.translation;
+    card.querySelector('.emailGlossLbl').textContent = tr.draftMeaning;
     sendBtn.textContent = tr.send;
     regenBtn.textContent = tr.regen;
     ignoreBtn.textContent = tr.ignore;
@@ -2629,7 +2641,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   async function emDraft(job){
     const mail = job.mail;
     try{
-      const r = await fetch('/api/email-list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: emBody({ draftFor: mail.id, regen: job.regen }) });
+      const r = await fetch('/api/email-list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: emBody({ draftFor: mail.id, threadId: mail.threadId || '', regen: job.regen }) });
       const d = await r.json();
       if(job.run !== emRun) return;
       if(!r.ok) throw new Error((d && d.error) || 'draft failed');
@@ -2638,6 +2650,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         mail.priority = d.priority || 'normal';
         mail.lang = d.lang || '';
         mail.meeting = d.meeting || null;
+        mail.translation = d.translation || '';
+        mail.draftGloss = d.draftGloss || '';
       }
       mail.draftError = d.draftError || undefined;
       if(d.draftError === 'nokey' || d.draftError === 'badkey') emKeyLine(d.draftError, d.aiErrorDetail || '');
@@ -2666,7 +2680,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       listEl.innerHTML = '<div style="text-align:center; font-size:13px; color:var(--muted,#999); padding:20px 0;">' + tr.empty + '</div>';
       return;
     }
+    const shown = {};
+    if(append) Array.prototype.slice.call(listEl.children).forEach((c) => { if(c.__emMail && c.__emMail.threadId) shown[c.__emMail.threadId] = 1; });
     (emails || []).forEach((mail) => {
+      if(mail.threadId && shown[mail.threadId]) return; // v-email-thread: المحادثة بطاقة واحدة حتّى عبر الصفحات
+      if(mail.threadId) shown[mail.threadId] = 1;
       const card = buildCard(mail);
       listEl.appendChild(card);
       if(mail.pending) emQueueDraft(card, mail, false);
