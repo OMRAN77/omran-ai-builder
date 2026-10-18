@@ -1313,3 +1313,45 @@ test('٢٦. المراجعة الرابعة: «جرّب» بعد «إنهاء» 
   await z.advance(10 * 60000);
   assert.equal(z.calls('call-status').length, m, 'وقفت بحدّها');
 });
+
+test('٢٧. المراجعة الخامسة: عودة بعد حدّ المتابعة وأوّل ردّ عطل عابر لا يحكم «انتهت المهلة» فتضيع النتيجة؛ وbilling: null دائم يمتدّ مرّة ويقف بلا حفظ مكرّر', async () => {
+  // أُغلق التبويب أثناء المكالمة وعاد بعد ١٢ دقيقة من بدئها: الحدّ فات، وأوّل سؤال 503 ثمّ تصل النتيجة
+  let first = true;
+  const v = sandbox({ owner: false, call: { transport: 'phone', callId: 'cl8', state: 'in-progress', startedAt: 1_000_000 - 12 * 60000, endedAt: 0 },
+    routes: { 'call-status': () => {
+      if (first) { first = false; return [503, { error: 'storage' }]; }
+      return [200, { state: 'completed', durationSec: 95, ended: true, outcome: { status: 'booked', summary: 'تمّ الحجز' }, billing: { charged: 90, refunded: 90 } }];
+    } } });
+  await v.advance(30000);
+  assert.equal(v.call().state, 'completed', 'لا «انتهت المهلة» من عطل واحد');
+  assert.equal(v.call().outcome && v.call().outcome.status, 'booked');
+  assert.equal(v.msgs().length, 3, 'النتيجة وصلت المحادثة');
+  assert.equal(v.call().billed, true);
+  // والعطل الدائم بعد الحدّ: مهلة السماح وحدها ثمّ «انتهت المهلة» ويقف
+  const w = sandbox({ owner: false, call: { transport: 'phone', callId: 'cl9', state: 'in-progress', startedAt: 1_000_000 - 12 * 60000, endedAt: 0 },
+    routes: { 'call-status': () => [502, { error: 'relay_error' }] } });
+  await w.advance(5 * 60000);
+  assert.equal(w.call().state, 'timeout');
+  const nw = w.calls('call-status').length;
+  assert.ok(nw > 1 && nw < 20, 'سماح واحد بحدّه: ' + nw);
+  await w.advance(10 * 60000);
+  assert.equal(w.calls('call-status').length, nw);
+
+  // billing: null في كلّ ردّ: المتابعة تمتدّ مرّة واحدة ١٥ دقيقة من أوّل null وتقف، والردّ المطابق لا يحفظ المحادثات
+  let firstNull = 0, lastPoll = 0;
+  const y = sandbox({ owner: false, routes: {
+    'call-start': () => [200, { callId: 'cl7', state: 'queued' }],
+    'call-status': () => { if (!firstNull) firstNull = y.clock.now; lastPoll = y.clock.now;
+      return [200, { state: 'completed', durationSec: 60, ended: true, outcome: { status: 'booked', summary: 'تمّ' }, billing: null }]; },
+  } });
+  y.btn('omCallDial').click();
+  await y.advance(60000);
+  const s1 = y.saves;
+  await y.advance(39 * 60000);
+  assert.equal(y.saves, s1, 'ردود مطابقة لا تحفظ');
+  const ny = y.calls('call-status').length;
+  assert.ok(lastPoll - firstNull >= 14 * 60000 && lastPoll - firstNull <= 15 * 60000, 'تمتدّ مرّة واحدة ١٥ دقيقة: ' + (lastPoll - firstNull));
+  await y.advance(10 * 60000);
+  assert.equal(y.calls('call-status').length, ny, 'لا استطلاع بعد حدّها');
+  assert.equal(y.call().state, 'completed');
+});

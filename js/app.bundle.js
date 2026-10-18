@@ -48998,12 +48998,13 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
         // v-call-agent-paid (المراجعة): billing: null = انتهت ولم تُحسم تسويتها (عطل عابر) ← النتيجة تظهر، والاستطلاع يكمل أبطأ حتّى تُحسم
         var unsettled = Object.prototype.hasOwnProperty.call(d, 'billing') && d.billing === null;
         if(!unsettled) stopPoll(callId);
-        var c = find(p.id);
-        if(c && ACTIVE[String(c.state)]) patch(p.id, { state: 'completed' }); // انتهت ولم يصل وصف حالتها
-        if(!c || !c.endedAt) patch(p.id, { endedAt: now() });
-        if(d.billing) patch(p.id, { billed: true });
+        var c = find(p.id), dirty = shown;
+        if(c && ACTIVE[String(c.state)]){ patch(p.id, { state: 'completed' }); dirty = true; } // انتهت ولم يصل وصف حالتها
+        if(!c || !c.endedAt){ patch(p.id, { endedAt: now() }); dirty = true; }
+        if(d.billing){ patch(p.id, { billed: true }); dirty = true; }
         var pushed = pushResult(p.id);
-        persist(); refresh(p.id);
+        if(dirty || pushed) persist(); // ردّ «لم تُحسم» مطابق لا يحفظ المحادثات ويزامنها كلّ ١٠ ث (المراجعة الخامسة)
+        refresh(p.id);
         if(pushed) rerender();
         if(unsettled){
           if(!p.ext){ p.ext = true; p.deadline = Math.max(p.deadline, now() + SETTLE_WAIT_MS); }
@@ -49022,14 +49023,17 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       return;
     }
     if(now() >= p.deadline){
-      stopPoll(callId);
       var cx = find(p.id);
+      // المراجعة الخامسة: عطل عابر عند الحدّ (عودة بعد إغلاق أو تجميد التبويب، والمكالمة انتهت عند الخادم) لا يحكم «انتهت المهلة» من ردّ
+      // واحد فتضيع نتيجة مكالمة مدفوعة — مهلة سماح واحدة دقيقتين
+      if(!r.ok && !p.grace && !(cx && cx.endedAt)){ p.grace = true; p.deadline = now() + 2 * 60000; p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS * 5); return; }
+      stopPoll(callId);
       if(!(cx && cx.endedAt)) patch(p.id, { state: 'timeout' }); // انتهت وتسويتها معلّقة: لا تصير «انتهت المهلة»
       persist(); refresh(p.id);
       return;
     }
     var ce = find(p.id);
-    p.timer = setTimeout(function(){ pollOnce(p, callId); }, ce && ce.endedAt ? POLL_MS * 5 : POLL_MS); // انتهت وتنتظر تسويتها: عطل عابر لا يستطلع كلّ ثانيتين
+    p.timer = setTimeout(function(){ pollOnce(p, callId); }, (ce && ce.endedAt) || p.grace ? POLL_MS * 5 : POLL_MS); // انتهت وتنتظر تسويتها: عطل عابر لا يستطلع كلّ ثانيتين
   }
   /* العقد v2: التأكيد يعرض كلّ ما قد يقوله المساعد للجهة — اسم المحلّ من الخرائط، والاسم الذي يتّصل به، والهدف، والتفاصيل */
   function confirmText(c){
