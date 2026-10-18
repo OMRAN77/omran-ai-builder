@@ -805,3 +805,8 @@ html[data-mode="light"] .hwToolCard .tcMeta{
 .hwToolCard .tcSub,.hwToolCard .tcArrow{display:none !important;}
 .hwToolCard .btnLabel,
 html[data-mode="light"] .hwToolCard .btnLabel{color:#f3d77a !important; text-shadow:0 1px 3px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.6);}
+/* v-desk-strips (المالك ١٨ أكتوبر: «في اشياء موجوده في الهاتف وغير موجوده في الكمبيوتر»): للكمبيوتر وحده —
+   (١) صفوف تمرّرها الفأرة الآن (stripDesktopScroll) بلا التقاط، وإلّا تعيد كلّ نقرة عجلة البطاقة نفسها؛
+   (٢) أسماء ملفّات «الكود المقروء» تلتفّ أسطرًا (حتّى ثلاثة ثمّ تمرير رأسيّ بالعجلة) بدل أن تُقصّ بعد الرابع. الهاتف كما هو. */
+html:not(.mobile-ui) :is(#fashionAiCompareChecks, #designCompareChecks, #designCompareResults, #sectionsToolsPopup .ptCarousel){ scroll-snap-type:none !important; }
+html:not(.mobile-ui) .rdFiles{ flex-wrap:wrap; max-height:92px; overflow-y:auto; }

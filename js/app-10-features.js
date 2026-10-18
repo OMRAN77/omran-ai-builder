@@ -420,7 +420,11 @@ function switchWorkTab(tabName){
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tabName));
 }
-btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl); };
+btnToggleHistory.onclick = () => {
+  switchWorkTab('code'); openDrawer(workareaEl);
+  /* v-desk-strips: على الكمبيوتر openDrawer لا يُظهر شيئًا واللوحة مطويّة (display:none) — يُفرَد كما في كلّ طريق آخر يُظهرها */
+  if(!document.documentElement.classList.contains('mobile-ui') && typeof window.waAutoExpand === 'function') window.waAutoExpand();
+};
 
 // 🧠 Ask-All toggle button + first-time hint
 (function(){
@@ -726,6 +730,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     window.addEventListener('popstate', () => { if(allState) closeAll(true); });
     ptSectionsView.querySelectorAll('.ptSection').forEach(section => {
       const viewport = section.querySelector('.ptCarousel');
+      if(viewport && typeof window.omranStripDesktopScroll === 'function') window.omranStripDesktopScroll(viewport); /* v-desk-strips: العجلة والسحب على الكمبيوتر — «التمرير بالماوس» الذي يذكره قرار إخفاء الأسهم */
       const start = section.querySelector('.ptSentinelStart'), end = section.querySelector('.ptSentinelEnd');
       const all = section.querySelector('.ptViewAll'), prev = section.querySelector('.ptShelfPrev'), next = section.querySelector('.ptShelfNext');
       const edge = { start:false, end:false, seenStart:false, seenEnd:false };

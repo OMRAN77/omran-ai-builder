@@ -38,6 +38,13 @@ const SEASON_NAMES = {
   summer: 'summer/hot weather', autumn: 'autumn/cool weather',
   winter: 'winter/cold weather', spring: 'spring/mild weather',
 };
+// v-fx-gender-pics: فئة الاستوديو (نسائي/رجالي/أطفال) كما في fashion-create.js
+const WHO = {
+  women: 'womenswear for a woman',
+  men: 'menswear for a man (no dresses, skirts, handbags or high heels)',
+  kids: "age-appropriate children's wear for a child (no adult makeup, heels or revealing cuts)",
+};
+const ACC_HINT = { women: 'bag/shoes/jewelry', men: 'shoes/watch/belt or briefcase', kids: 'shoes/cap/small backpack' };
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -65,7 +72,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { imageBase64, mimeType, description, occasion, season, profile, lang, token } = body;
+    const { imageBase64, mimeType, description, occasion, season, profile, lang, token, gender } = body;
 
     if (!imageBase64 && !description) {
       res.status(400).json({ error: 'Missing imageBase64 or description' });
@@ -89,7 +96,10 @@ module.exports = async (req, res) => {
     const langNames = { en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali' };
     const targetLang = langNames[lang] || 'Arabic';
 
-    let contextText = 'Occasion: ' + (OCCASION_NAMES[occasion] || 'a casual day out') + '. ' +
+    const g = (gender === 'men' || gender === 'kids') ? gender : 'women'; // قيمة غريبة = نسائي كما كان
+    // v-fx-gender-pics: الفئة المختارة في الاستوديو — بلاها كانت الاقتراحات نسائيّة (فستان، حقيبة يد، كعب) لرجل أو طفل
+    let contextText = 'Category: ' + WHO[g] + '. ' +
+      'Occasion: ' + (OCCASION_NAMES[occasion] || 'a casual day out') + '. ' +
       'Season: ' + (SEASON_NAMES[season] || 'summer/hot weather') + '. ';
     if (profile && (profile.height || profile.weight || profile.skin || profile.hair)) {
       contextText += 'Person profile — ' +
@@ -108,7 +118,7 @@ module.exports = async (req, res) => {
       'Suggest exactly 3 complete outfit looks suited to the occasion and season above. ' +
       'For each look include: a short catchy title, the clothing pieces, 2-3 recommended colors that suit ' +
       (imageBase64 ? 'this specific person' : 'the described preference') +
-      ', 1-2 accessory suggestions (bag/shoes/jewelry), and a "matchPercent" integer 70-99 representing how well ' +
+      ', 1-2 accessory suggestions (' + ACC_HINT[g] + '), and a "matchPercent" integer 70-99 representing how well ' +
       'this look matches the person/occasion. Respond in ' + targetLang + '. ' +
       'Respond ONLY with a valid JSON array of exactly 3 objects, nothing else, no markdown, in this exact shape: ' +
       '[{"title":"...","clothing":"...","colors":"...","accessories":"...","matchPercent":92}, ...]';
