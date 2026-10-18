@@ -116,6 +116,10 @@
   },
   "rewrites": [
     {
+      "source": "/deploy-probe.txt",
+      "destination": "/api/system?action=deploy-probe"
+    },
+    {
       "source": "/i/:id",
       "destination": "/api/media?action=img&id=:id"
     },
