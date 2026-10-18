@@ -306,13 +306,31 @@ test('١١. v-maha-win-touch (المالك: «اللمس داخل النافذة
   assert.ok(app.includes('if(e.isTrusted === false && mahaAppActive()) return true;'), 'نقرة الكود والنافذة مفتوحة');
   assert.ok(app.includes("if(mahaAppPanelOn() && document.getElementById(mahaAppPanel).contains(tgt)) return true;") && app.includes("mahaAppPanel = 'sidebar'; // v-maha-win-touch") && app.includes("mahaAppPanel = 'workarea'; // v-maha-win-touch"), 'اللوحة');
   assert.ok(app.includes('if(mahaAppToolLayer(tgt)){ setTimeout(mahaAppWinSync, 400); return true; }') && app.includes("el.id === 'mahaCallScreen' || el.id === 'mahaSkyLayer'"), 'طبقة الأداة لا الشريط');
-  assert.ok(read('css/modules.css').includes('body.maha-band-on.maha-win #btnMahaDock{position:relative; z-index:10100;}'), '«م» فوق النافذة');
-  // الجولة الثانية: الإعدادات في الطبقة العليا تملأ الجوّال — نسخة «م» داخلها تُنهي؛ وإعادة الاتّصال لا تمسح ما فتحته مها
-  assert.ok(app.includes("if(tgt.closest('#mahaDockMirror')) return false;") && app.includes('mahaAppDockMirror(true);'), '«م» داخل الإعدادات زرّ الإنهاء');
+  // v-maha-dock-bar (المالك: ««م» فوق نافذة مها: لا يغطي شي من محتوى النافذة»): لا رفع لـ«م» فوق النافذة — شريط علويّ فيه «م»
+  // والنافذة تبدأ تحته؛ والإعدادات التي فتحتها مها تنزل والشريط داخلها. «م» العلويّ زرّ الإنهاء، والشريط الفارغ من النافذة.
+  const css = read('css/modules.css');
+  assert.ok(!css.includes('#btnMahaDock{position:relative; z-index:10100;}'), 'لا «م» فوق محتوى النافذة');
+  assert.ok(css.includes('body.maha-band-on.maha-win #mahaWinBar, body.maha-band-on.maha-dlg #mahaWinBar{display:flex;}'), 'الشريط');
+  assert.ok(css.includes('body.maha-band-on.maha-dlg #settingsDialog{top:var(--maha-gap) !important; height:calc(100dvh - var(--maha-gap)) !important;'), 'الإعدادات تنزل تحته');
+  assert.ok(css.includes('body.maha-band-on.maha-win #btnMahaDock, body.maha-band-on.maha-dlg #btnMahaDock{visibility:hidden !important;}'), '«م» الأصليّ لا يظهر باهتًا خلف البطاقة');
+  assert.ok(app.includes("st.textContent = ids.map((id) => 'body.maha-band-on.maha-win:not(.maha-dlg) #' + CSS.escape(id)).concat(")
+    && app.includes(".join(',') + '{top:var(--maha-gap) !important;}';"), 'كلّ نافذة من الخريطة تبدأ تحت الشريط');
+  assert.ok(app.includes("if(tgt.closest('#mahaDockMirror')) return false;") && app.includes("b.id = 'mahaDockMirror';"), '«م» العلويّ زرّ الإنهاء');
+  assert.ok(app.includes('if(!mahaAppBarTimer) mahaAppBarTimer = setInterval(mahaAppWinSync, 700);') && app.includes("mahaAppDockBar(); // v-maha-dock-bar\n}"), 'مزامنة: لا شريط عالق بعد إغلاق النافذة');
+  assert.ok(app.includes("mahaAppDockBar(); // v-maha-dock-bar: الشريط و«م» داخل الحوار"), 'الإعدادات');
+  assert.ok(css.includes('body.maha-band-on.maha-win #ownerHealthBar, body.maha-band-on.maha-dlg #ownerHealthBar{display:none !important;}')
+    && read('js/app-11-video.js').includes("bar.id = 'ownerHealthBar';"), 'تنبيه المالك لا يغطّي «م» ولا صفّ النافذة الأوّل');
+  // مراجعة النقض: طبقة تفتحها نافذة مها فوق نفسها (عارض فيديو الصانع، «كتابة وصوت»، وأيّ طبقة ثابتة من الأعلى بين ٩٤٠ والشريط) تنزل تحته
+  assert.ok(app.includes("const ids = window.omranSwipeBack.ids().concat(['checkoutModalOverlay', 'shareModal', 'vedModal']);")
+    && app.includes("'body.maha-band-on.maha-win:not(.maha-dlg) .vmk-lb', 'body.maha-band-on.maha-win:not(.maha-dlg) > .maha-gap-shift'"), 'العارض والمحرّر');
+  assert.ok(app.includes("if(cs.position !== 'fixed' || cs.display === 'none' || cs.top !== '0px') continue;") && app.includes('if(z >= 940 && z < 10090) el.classList.add(\'maha-gap-shift\');')
+    && app.includes('mahaAppShiftLayers(!dlg);') && app.includes('mahaAppShiftLayers(false);'), 'الطبقات العامّة تنزل وتعود');
+  assert.ok(app.includes("try{ mahaAppDockBarSet(force); }catch(e){ __swallow(e, 'maha-app:dock-bar'); }"), 'عطب الشريط لا يكسر الأدوات ولا الإنهاء');
+  // الجولة الثانية: إعادة الاتّصال لا تمسح ما فتحته مها
   assert.ok(app.includes('function mahaAppHello(){ if(!mahaRtReconnecting){ mahaAppDialog = false; mahaAppPanel = \'\'; } return'), 'إعادة الاتّصال لا تمسح');
   for (const f of ['js/app-08-maha.js', 'js/app.bundle.js']) {
     const s = read(f);
     const end = s.slice(s.indexOf('function mahaEndCall(){'), s.indexOf('let mahaCallMode = '));
-    assert.ok(end.includes("if(typeof mahaAppDockMirror === 'function') mahaAppDockMirror(false);"), f + ': النسخة تذهب مع المكالمة');
+    assert.ok(end.includes("if(typeof mahaAppDockBar === 'function') mahaAppDockBar(false);"), f + ': الشريط يذهب مع المكالمة');
   }
 });

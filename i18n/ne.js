@@ -263,7 +263,7 @@ I18N['ne'] = {
     pricingTestNote: "🧪 अहिलेको लागि परीक्षण मोड — व्यापार इजाजतपत्र प्राप्त भएपछि पूर्ण सक्रियता",
     termsLink: "नियम र सर्तहरू",
     privacyLink: "गोपनीयता नीति",
-    aboutSectionTitle: "ℹ️ एप र परिचय भिडियोहरूको बारेमा",
+    aboutSectionTitle: "ℹ️ एपको बारेमा",
     feedbackSectionTitle: '💬 तपाईंको राय महत्त्वपूर्ण छ',
     fbTagBug: '🐛 समस्या',
     fbTagIdea: '💡 सुझाव',
@@ -325,6 +325,11 @@ I18N['ne'] = {
     acctFillPasswords: "आफ्नो हालको पासवर्ड र नयाँ पासवर्ड प्रविष्ट गर्नुहोस् (कम्तिमा 4 वर्णहरू)",
     acctGenericError: "केही गडबड भयो, फेरि प्रयास गर्नुहोस्",
     nameNoAt: "@ बिनाको प्रयोगकर्ता नाम छान्नुहोस् — साइन अप पछि «मेरो खाता» मा इमेल थप्न सक्नुहुन्छ",
+    acctEmailCodeSent: "हामीले {email} मा कोड पठायौं — यहाँ लेखेर बचत गर्नुहोस् थिच्नुहोस्",
+    acctEmailBadCode: "कोड गलत छ वा म्याद सकियो — बाकस खाली गरी नयाँ कोडका लागि बचत गर्नुहोस् थिच्नुहोस्",
+    acctEmailTaken: "यो इमेल अर्को खातामा पहिले नै पुष्टि भइसकेको छ",
+    acctEmailUnverified: "यो इमेल पुष्टि भएको छैन — पुष्टि कोड पाउन बचत गर्नुहोस् थिच्नुहोस्",
+    acctEmailTooMany: "धेरै प्रयास भए — {minutes} मिनेटपछि फेरि प्रयास गर्नुहोस्",
     acctNetError: "सर्भरमा पुग्न सकेन, आफ्नो जडान जाँच गर्नुहोस्",
     acctAvatarTooBig: "छवि धेरै ठूलो छ, एउटा सानो छान्नुहोस्",
     providerColorsLabel: "🤖 प्रत्येक AI प्रदायकको रंग (च्याटमा यसको नामको छेउमा देखाइएको छ)",
@@ -1223,7 +1228,7 @@ Object.assign(I18N['ne'], {
 Object.assign(I18N['ne'], {
   "aboutSupportTitle": "📞 ग्राहक सेवा र सहायता",
   "aboutSupportDesc": "हामी तपाईंका प्रश्नहरूको जवाफ २४–४८ घण्टाभित्र दिन्छौं।",
-  "aboutCopyright": "© Omran AI टोली — UAE मा मायाले बनाइएको 🇦🇪",
+  "aboutCopyright": "© Omran AI टोली",
   "adminPanelTitle": "🛠️ एड्मिन प्यानल (मालिकका लागि मात्र)"
 });
 Object.assign(I18N['ne'], {"videoBadgeShort":"छोटो","videoBadgeFull":"पूरा"});

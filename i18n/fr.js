@@ -280,7 +280,7 @@ I18N['fr'] = {
     pricingTestNote: "🧪 Mode test pour le moment — activation complète dès l'obtention de la licence commerciale",
     termsLink: "Conditions Générales",
     privacyLink: "Politique de Confidentialité",
-    aboutSectionTitle: "ℹ️ À propos de l'application et vidéos de présentation",
+    aboutSectionTitle: "ℹ️ À propos de l'application",
     feedbackSectionTitle: '💬 Votre avis compte',
     fbTagBug: '🐛 Problème',
     fbTagIdea: '💡 Suggestion',
@@ -342,6 +342,11 @@ I18N['fr'] = {
     acctFillPasswords: "Entrez votre mot de passe actuel et un nouveau mot de passe (au moins 4 caractères)",
     acctGenericError: "Une erreur s'est produite, réessayez",
     nameNoAt: "Choisissez un nom d'utilisateur sans @ — vous pourrez ajouter votre e-mail dans Mon compte après l'inscription",
+    acctEmailCodeSent: "Nous avons envoyé un code à {email} — saisissez-le ici, puis appuyez sur Enregistrer",
+    acctEmailBadCode: "Code incorrect ou expiré — videz la case et appuyez sur Enregistrer pour en recevoir un nouveau",
+    acctEmailTaken: "Cet e-mail est déjà confirmé sur un autre compte",
+    acctEmailUnverified: "Cet e-mail n'est pas confirmé — appuyez sur Enregistrer pour recevoir un code de confirmation",
+    acctEmailTooMany: "Trop de tentatives — réessayez dans {minutes} min",
     acctNetError: "Impossible de contacter le serveur, vérifiez votre connexion",
     acctAvatarTooBig: "L'image est trop grande, choisissez-en une plus petite",
     providerColorsLabel: "🤖 Couleur de chaque fournisseur IA (affichée à côté de son nom dans le chat)",
@@ -1225,7 +1230,7 @@ Object.assign(I18N['fr'], {
 Object.assign(I18N['fr'], {
   "aboutSupportTitle": "📞 Service client & support",
   "aboutSupportDesc": "Nous répondons à vos demandes sous 24–48 h.",
-  "aboutCopyright": "© Équipe Omran AI — Fait avec amour aux Émirats 🇦🇪",
+  "aboutCopyright": "© Équipe Omran AI",
   "adminPanelTitle": "🛠️ Panneau d'administration (propriétaire uniquement)"
 });
 Object.assign(I18N['fr'], {"videoBadgeShort":"Court","videoBadgeFull":"Complet"});

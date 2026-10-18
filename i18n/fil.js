@@ -253,7 +253,7 @@ I18N['fil'] = {
     "pricingTestNote": "🧪 Nasa test mode pa muna — buong aktibasyon kapag nakuha na ang business license",
     "termsLink": "Mga Tuntunin at Kundisyon",
     "privacyLink": "Patakaran sa Privacy",
-    "aboutSectionTitle": "ℹ️ Tungkol sa App at Intro Videos",
+    "aboutSectionTitle": "ℹ️ Tungkol sa App",
     "feedbackSectionTitle": "💬 Feedback at Mga Mungkahi",
     "fbTagBug": "🐛 Bug",
     "fbTagIdea": "💡 Ideya",
@@ -312,6 +312,11 @@ I18N['fil'] = {
     "acctFillPasswords": "Ilagay ang kasalukuyan mong password at bagong password (hindi bababa sa 4 na karakter)",
     "acctGenericError": "May nangyaring mali, subukan ulit",
     "nameNoAt": "Pumili ng username na walang @ — maaari mong idagdag ang email mo sa Aking account pagkatapos mag-sign up",
+    "acctEmailCodeSent": "Nagpadala kami ng code sa {email} — i-type ito rito, saka pindutin ang I-save",
+    "acctEmailBadCode": "Mali o expired na ang code — burahin ang laman at pindutin ang I-save para sa bagong code",
+    "acctEmailTaken": "Kumpirmado na ang email na ito sa ibang account",
+    "acctEmailUnverified": "Hindi pa kumpirmado ang email na ito — pindutin ang I-save para makatanggap ng code",
+    "acctEmailTooMany": "Masyadong maraming pagsubok — subukan ulit pagkalipas ng {minutes} minuto",
     "acctNetError": "Hindi ma-reach ang server, tingnan ang iyong koneksyon",
     "acctAvatarTooBig": "Masyadong malaki ang larawan, pumili ng mas maliit",
     "providerColorsLabel": "🤖 Kulay ng bawat AI provider (ipinapakita sa tabi ng pangalan nito sa chat)",
@@ -1276,7 +1281,7 @@ Object.assign(I18N['fil'], {
 Object.assign(I18N['fil'], {
   "aboutSupportTitle": "📞 Serbisyo sa customer at suporta",
   "aboutSupportDesc": "Sinasagot namin ang inyong mga tanong sa loob ng 24–48 oras.",
-  "aboutCopyright": "© Omran AI team — Gawa nang may pagmamahal sa UAE 🇦🇪",
+  "aboutCopyright": "© Omran AI team",
   "adminPanelTitle": "🛠️ Admin panel (para lang sa may-ari)"
 });
 Object.assign(I18N['fil'], {"videoBadgeShort":"Maikli","videoBadgeFull":"Buo"});

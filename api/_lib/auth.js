@@ -328,6 +328,42 @@ async function emailOwner(emailKey) {
   } catch (e) { logError('auth:email-owner', e); }
   return null;
 }
+
+/* v-vip-verified (أمر المالك ١٨ أكتوبر: «VIP بالإيميل ما ينعطى إلا لإيميل متحقّق منه… تغيير الإيميل في «حسابي» ما ينحفظ إلا بعد
+   ما يدخل المستخدم الكود… أي إيميل محفوظ وما تحقّقنا منه ما يعطي VIP»). الختم verifiedEmail = البريد نفسه الذي ثبت لا true:
+   كلّ كتابة أخرى للبريد (التسجيل بإيميل من الـAPI، سجلّ قديم، كتابة متأخّرة لنسخة قديمة) تتركه غير مؤكَّد من تلقاء نفسها.
+   يُختم في ثلاثة مواضع فقط: رمز «حسابي» المربوط بالحساب (emailChange*)، وحساب أنشأه رمز البريد، وحساب g_<البريد> عند دخول
+   Google. لا يُختم عند الدخول برمز إلى حساب قائم: من وضع بريد غيره في حسابه يستقبل دخول صاحب البريد، والختم هناك يجعله صاحبه.
+   حساب Google هويّته مفتاحه g_<البريد> (تثبته Google في كلّ دخول)، فهو مؤكَّد لبريد مفتاحه. */
+function emailVerifiedFor(key, user) {
+  if (!user || user.deleted || !user.email) return false;
+  return user.verifiedEmail === user.email || (user.googleAuth === true && String(key) === 'g_' + user.email);
+}
+
+// حساب آخر أثبت هذا البريد (برمز أو بـGoogle): هو صاحبه، ولا يأخذه غيره. من وضعه بلا إثبات لا يحجزه (كان أوّل من يكتبه يحجبه
+// عن صاحبه بـ409 للأبد) — سجلّه يبقى كما هو، والفهرس ينتقل إلى من أثبت.
+async function verifiedHolderOf(emailKey, exceptKey) {
+  try {
+    const idx = await kvGetJSON('db/email-index/' + emailKey);
+    const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
+    if (uname && uname !== exceptKey) {
+      const user = await getUser(uname, 1);
+      if (user && user.email === emailKey && emailVerifiedFor(uname, user)) return uname;
+    }
+    const g = await googleAccountFor(emailKey);
+    if (g && g.key !== exceptKey && (g.key !== 'g_' + emailKey || g.user.googleAuth === true)) return g.key;
+  } catch (e) { logError('auth:email-holder', e); }
+  return null;
+}
+
+// بريد ثبت للتوّ لصاحبه: مدخل VIP بهذا البريد خامًا (أضافه المالك قبل أن يُعرف صاحبه) يصير اسم حسابه. _vip.js يُستبدل في
+// بعض الاختبارات بـ{ isVip } وحدها، فالفحص بـtypeof. لا يرمي: الدخول لا يفشل بسبب القائمة.
+async function promoteVip(emailKey, key) {
+  try {
+    const vip = require('./_vip.js');
+    if (typeof vip.promoteVerifiedEmail === 'function') await vip.promoteVerifiedEmail(emailKey, key);
+  } catch (e) { logError('auth:vip-promote', e); }
+}
 /* v-auth-throttle (الدفعة A، أمان): عدّادات المحاولات ذرّيّة. كانت rateWait وقفل الدخول وعدّاد رموز البريد قراءةً ثمّ كتابة،
    فالطلبات المتوازية تقرأ العدد نفسه وتمرّ كلّها (المسبار: ٢٠٠ كلمة مرور خاطئة متوازية = ٢٠٠ تقييم، والقفل لم يقع).
    الآن INCR ذرّيّ، والعمر يُضبط مع إنشاء المفتاح (SET NX EX) فلا مفتاح أبديّ، والنافذة تبدأ من أوّل محاولة كما كانت
@@ -529,6 +565,114 @@ async function sendOtpEmail(toEmail, otpCode, isEn) {
   return sendMail(toEmail, subject, html);
 }
 
+// v-vip-verified: رسالة رمز التغيير بصياغتها (لا «لتسجيل الدخول» — من يطلب تغيير بريده ثمّ يرى «دخول» يُخدع أو يرتبك).
+async function sendEmailChangeOtp(toEmail, otpCode, lang) {
+  const isEn = !!lang && lang !== 'ar';
+  const subject = isEn ? 'Confirm your email — Omran AI Builder' : 'تأكيد الإيميل — Omran AI Builder';
+  const html = isEn
+    ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
+        <h2 style="margin-bottom:4px">Confirm this email for your account</h2>
+        <p style="color:#888;font-size:13px;margin-top:0">Enter this code in My account to link this email. It expires in 10 minutes.</p>
+        <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otpCode}</div>
+        <p style="color:#888;font-size:13px">If you didn't request this, ignore this email — nothing changes.</p>
+       </div>`
+    : `<div dir="rtl" style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
+        <h2 style="margin-bottom:4px">تأكيد هذا الإيميل لحسابك</h2>
+        <p style="color:#888;font-size:13px;margin-top:0">اكتب هذا الرمز في «حسابي» لربط الإيميل بحسابك. صالح لمدة 10 دقائق.</p>
+        <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otpCode}</div>
+        <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل — لا شيء يتغيّر.</p>
+       </div>`;
+  return sendMail(toEmail, subject, html);
+}
+
+/* v-vip-verified: تغيير الإيميل في «حسابي» بخطوتين — email-otp-request ثمّ email-otp-verify بـpurpose:'change' ورمز الجلسة.
+   الرمز مربوط بالحساب والبريد الجديد معًا (db/otp-change/<الاسم>)، وفي مفتاح وحدود غير رمز الدخول (db/otp/<البريد>): رمز الدخول
+   لا يؤكّد تغييرًا، ورمز التغيير لا يُدخل ولا يُنشئ حسابًا، ومن يطلب رموز دخول لبريدٍ لا يُتلف رمز تغييره. الحفظ بعد الرمز وحده،
+   ومعه الختم والفهرس ومدخل VIP. الأخطاء برمز code تعرضه الواجهة بلغتها الـ١٤. */
+const EMAIL_CHANGE_TTL_MS = 10 * 60 * 1000;
+const EMAIL_CHANGE_MAX_TRIES = 5;
+const EMAIL_CHANGE_NET_MAX = 30;
+const EMAIL_CHANGE_NET_WINDOW_MS = 15 * 60 * 1000;
+function emailChangeKey(u) { return 'db/otp-change/' + encodeURIComponent(u); }
+
+async function emailChangeRequest(req, res, body, m) {
+  const u = verifyToken(body.token);
+  if (!u) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
+  if (!body.email || !isValidEmail(body.email)) { res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format'), code: 'bad_email' }); return; }
+  const key = String(body.email).trim().toLowerCase();
+  const user = await getUser(u);
+  if (!user || user.deleted) { res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') }); return; }
+  if (user.banned) { res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true }); return; }
+  if (user.email === key && emailVerifiedFor(u, user)) { res.status(200).json({ ok: true, verified: true, email: key }); return; }
+  // الحدود قبل فحص «مرتبط بحساب آخر» (كان قبلها سؤالًا بلا حدّ: هل لهذا البريد حساب؟ — مراجعة النقض). حدّ البريد لكلّ زوج (حساب، بريد)
+  // فغريبٌ لا يستنفد حصّة صاحب البريد؛ وسقف أوسع للبريد من كلّ الحسابات يمنع إغراق صندوقه.
+  // الحساب الذي يحمل هذا البريد محفوظًا (من يؤكّد بريده القائم) خارج السقف العامّ: غرباء يستنفدونه لا يقفلونه عنه (مراجعة النقض).
+  const mins = (await rateWait('mail-change-acct', u, 5, 15 * 60 * 1000))
+    || (await rateWait('mail-change-to', u + '|' + key, 3, 15 * 60 * 1000))
+    || (user.email === key ? 0 : await rateWait('mail-change-all', key, 10, 60 * 60 * 1000));
+  if (mins) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins }); return; }
+  if (await verifiedHolderOf(key, u)) { res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'), code: 'email_taken' }); return; }
+  if (!RESEND_API_KEY) { res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin'), code: 'mail_off' }); return; }
+  const otpCode = genNumericOtp();
+  await kvPutJSON(emailChangeKey(u), { email: key, otp: otpCode, exp: Date.now() + EMAIL_CHANGE_TTL_MS });
+  if (!(await sendEmailChangeOtp(key, otpCode, body.lang))) {
+    res.status(500).json({ error: m('تعذر إرسال الإيميل، حاول لاحقًا', 'Could not send the email, try again later'), code: 'mail_failed' });
+    return;
+  }
+  res.status(200).json({ ok: true, sent: true });
+}
+
+async function emailChangeVerify(req, res, body, m) {
+  const bad = () => res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code'), code: 'bad_otp' });
+  const u = verifyToken(body.token);
+  if (!u) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
+  if (!body.email || !isValidEmail(body.email) || !body.otp) { bad(); return; }
+  const key = String(body.email).trim().toLowerCase();
+  // حدّ الشبكة كرمز الدخول (v-otp-cap): ٣٠ محاولة فاشلة في ربع ساعة، والناجحة تُرَدّ.
+  let netBase = null;
+  try {
+    const { clientIp, giftNet } = require('./welcome-gift.js');
+    const net = giftNet(clientIp(req));
+    if (net) netBase = 'db/otp-verify-net/' + encodeURIComponent(net);
+    if (netBase && (await windowHit(netBase, EMAIL_CHANGE_NET_WINDOW_MS)) > EMAIL_CHANGE_NET_MAX) {
+      const mins = await windowMinutes(netBase, EMAIL_CHANGE_NET_WINDOW_MS);
+      res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins });
+      return;
+    }
+  } catch (e) { logError('auth:change-net', e); netBase = null; }
+  let record = null;
+  try { record = await kvGetJSON(emailChangeKey(u)); } catch (e) { logError('auth:change-read', e); record = null; }
+  if (!record || record.email !== key || typeof record.otp !== 'string' || !record.exp || record.exp < Date.now()) { bad(); return; }
+  const burn = async () => { try { await kvPutJSON(emailChangeKey(u), { otp: null, exp: 0 }); } catch (e) { logError('auth:change-burn', e); } };
+  let tries = 0;
+  try {
+    const ttl = Math.max(1, Math.ceil((Number(record.exp) - Date.now()) / 1000)) || 600;
+    tries = (await hitCounter('db/otp-change-fail/' + encodeURIComponent(u) + '/' + Number(record.exp), ttl)).n;
+  } catch (e) { logError('auth:change-tries', e); }
+  if (tries > EMAIL_CHANGE_MAX_TRIES) { await burn(); bad(); return; }
+  const submitted = String(body.otp).trim();
+  const known = Buffer.from(record.otp);
+  const given = Buffer.from(submitted.padEnd(known.length, '\0'));
+  const matches = submitted.length === record.otp.length && given.length === known.length && crypto.timingSafeEqual(given, known);
+  if (!matches) {
+    if (tries >= EMAIL_CHANGE_MAX_TRIES) await burn();
+    bad();
+    return;
+  }
+  if (netBase) await windowBack(netBase);
+  await burn();
+  const user = await getUser(u);
+  if (!user || user.deleted) { res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') }); return; }
+  // سباق: أثبته حساب آخر بين الطلب والتأكيد.
+  if (await verifiedHolderOf(key, u)) { res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'), code: 'email_taken' }); return; }
+  user.email = key;
+  user.verifiedEmail = key;
+  await putUser(u, user);
+  try { await kvPutJSON('db/email-index/' + key, { username: u, at: Date.now() }); } catch (e) { logError('auth:email-index', e); }
+  await promoteVip(key, u);
+  res.status(200).json({ ok: true, email: key, verified: true });
+}
+
 // ---------------------------------------------------------------------------
 
 module.exports = async (req, res) => {
@@ -558,7 +702,7 @@ module.exports = async (req, res) => {
     const {
       action, username, password, token, newPassword,
       newUsername, currentPassword, avatarDataUrl, lang,
-      email, resetToken, otp,
+      email, resetToken, otp, purpose,
     } = body;
 
     const isEn = lang === 'en';
@@ -775,44 +919,16 @@ module.exports = async (req, res) => {
         res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
         return;
       }
-      res.status(200).json({ ok: true, email: user.email || null, phone: user.phone || null }); // v-phone-link
+      // v-vip-verified: «حسابي» يعرف إن كان الإيميل مؤكَّدًا — المحفوظ قبل اليوم غير مؤكَّد، وحفظه بالقيمة نفسها يطلب رمزه.
+      res.status(200).json({ ok: true, email: user.email || null, emailVerified: emailVerifiedFor(u, user), phone: user.phone || null }); // v-phone-link
       return;
     }
 
     if (action === 'setEmail') {
-      const u = verifyToken(token);
-      if (!u) {
-        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
-        return;
-      }
-      if (!email || !isValidEmail(email)) {
-        res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
-        return;
-      }
-      const user = await getUser(u);
-      if (!user || user.deleted) {
-        res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
-        return;
-      }
-      const nextEmail = String(email).trim().toLowerCase();
-      // بريد مرتبط بحساب آخر لا يُدّعى. هذا هو الباب الذي كان يسمح بالاستيلاء
-      // على مدخل الفهرس ثم توجيه دخول جوجل الخاص بالضحية.
-      try {
-        const claimed = await kvGetJSON('db/email-index/' + nextEmail);
-        if (claimed && claimed.username && String(claimed.username) !== u) {
-          res.status(409).json({
-            error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'),
-          });
-          return;
-        }
-      } catch (e) { logError('auth:email-claim', e); }
-      user.email = nextEmail;
-      await putUser(u, user);
-      try {
-        const existingIdx = await kvGetJSON('db/email-index/' + nextEmail);
-        if (!existingIdx || !existingIdx.username) await kvPutJSON('db/email-index/' + nextEmail, { username: u, at: Date.now() });
-      } catch (e) { logError('auth:email-index', e); }
-      res.status(200).json({ ok: true, email: user.email });
+      // v-vip-verified: لا حفظ بلا رمز — «حسابي» يطلب الرمز (email-otp-request) ويؤكّده (email-otp-verify) بـpurpose:'change'.
+      // كان يحفظ أيّ بريد بلا أيّ تحقّق، فيضع أحدٌ إيميل صديق للمالك في حسابه قبل أن يضيفه المالك إلى VIP فيأخذها هو.
+      // نسخة قديمة مخزَّنة من التطبيق ما زالت تنادي هذا: رسالة واضحة لا حفظًا.
+      res.status(400).json({ error: m('تغيير الإيميل صار برمز يصلك عليه — حدّث التطبيق وجرّب من «حسابي»', 'Changing your email now needs a code sent to it — update the app and try again from My account'), code: 'email_code_required' });
       return;
     }
 
@@ -996,6 +1112,13 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // v-vip-verified: purpose:'change' = تغيير الإيميل في «حسابي» برمز الجلسة — مسار منفصل لا يمسّ الدخول بالرمز.
+    if ((action === 'email-otp-request' || action === 'email-otp-verify') && purpose === 'change') {
+      if (action === 'email-otp-request') await emailChangeRequest(req, res, body, m);
+      else await emailChangeVerify(req, res, body, m);
+      return;
+    }
+
     if (action === 'email-otp-request') {
       if (!email || !isValidEmail(email)) {
         res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
@@ -1131,6 +1254,7 @@ module.exports = async (req, res) => {
         user = {
           username: candidateKey, salt, hash,
           email: key,
+          verifiedEmail: key, // v-vip-verified: الرمز وصل هذا البريد وأنشأ له الحساب — لا مالك آخر له
           avatar: null,
           createdAt: Date.now(),
           points: gift ? OTP_SIGNUP_GIFT : 0,
@@ -1146,6 +1270,7 @@ module.exports = async (req, res) => {
             await kvPutJSON('db/email-index/' + key, { username: userKey, at: Date.now() });
           }
         } catch (e) { logError('auth:email-index', e); }
+        await promoteVip(key, userKey);
         isNew = true;
         await notifyNewAccount({ key: userKey, user, method: 'email-otp', req }); // v-signup-notify
       }
@@ -1220,3 +1345,4 @@ async function isBanned(username) {
   return v;
 }
 module.exports.isBanned = isBanned;
+module.exports.emailVerifiedFor = emailVerifiedFor; // v-vip-verified: vip.js يحوّل الإيميل إلى حساب أثبته وحده

@@ -252,7 +252,7 @@ I18N['es'] = {
     "pricingTestNote": "🧪 Modo de prueba por ahora — activación completa una vez que se obtenga la licencia comercial",
     "termsLink": "Términos y condiciones",
     "privacyLink": "Política de privacidad",
-    "aboutSectionTitle": "ℹ️ Acerca de la app y videos de introducción",
+    "aboutSectionTitle": "ℹ️ Acerca de la app",
     "feedbackSectionTitle": "💬 Comentarios y sugerencias",
     "fbTagBug": "🐛 Error",
     "fbTagIdea": "💡 Idea",
@@ -311,6 +311,11 @@ I18N['es'] = {
     "acctFillPasswords": "Ingresa tu contraseña actual y una nueva contraseña (al menos 4 caracteres)",
     "acctGenericError": "Algo salió mal, inténtalo de nuevo",
     "nameNoAt": "Elige un nombre de usuario sin @: puedes añadir tu correo en Mi cuenta después de registrarte",
+    "acctEmailCodeSent": "Enviamos un código a {email}: escríbelo aquí y pulsa Guardar",
+    "acctEmailBadCode": "Código incorrecto o caducado: borra la casilla y pulsa Guardar para recibir otro",
+    "acctEmailTaken": "Este correo ya está confirmado en otra cuenta",
+    "acctEmailUnverified": "Este correo no está confirmado: pulsa Guardar para recibir un código de confirmación",
+    "acctEmailTooMany": "Demasiados intentos: inténtalo de nuevo en {minutes} min",
     "acctNetError": "No se pudo conectar con el servidor, verifica tu conexión",
     "acctAvatarTooBig": "La imagen es demasiado grande, elige una más pequeña",
     "providerColorsLabel": "🤖 Color de cada proveedor de IA (se muestra junto a su nombre en el chat)",
@@ -1274,7 +1279,7 @@ Object.assign(I18N['es'], {
 Object.assign(I18N['es'], {
   "aboutSupportTitle": "📞 Atención al cliente y soporte",
   "aboutSupportDesc": "Respondemos a tus consultas en 24–48 horas.",
-  "aboutCopyright": "© Equipo Omran AI — Hecho con amor en los EAU 🇦🇪",
+  "aboutCopyright": "© Equipo Omran AI",
   "adminPanelTitle": "🛠️ Panel de administración (solo propietario)"
 });
 Object.assign(I18N['es'], {"videoBadgeShort":"Corto","videoBadgeFull":"Completo"});

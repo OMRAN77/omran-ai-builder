@@ -251,7 +251,7 @@ I18N['id'] = {
     "pricingTestNote": "🧪 Masih dalam mode uji coba — aktivasi penuh setelah lisensi bisnis diperoleh",
     "termsLink": "Syarat & Ketentuan",
     "privacyLink": "Kebijakan Privasi",
-    "aboutSectionTitle": "ℹ️ Tentang Aplikasi & Video Perkenalan",
+    "aboutSectionTitle": "ℹ️ Tentang Aplikasi",
     "feedbackSectionTitle": "💬 Masukan & Saran",
     "fbTagBug": "🐛 Bug",
     "fbTagIdea": "💡 Ide",
@@ -310,6 +310,11 @@ I18N['id'] = {
     "acctFillPasswords": "Masukkan kata sandi Anda saat ini dan kata sandi baru (minimal 4 karakter)",
     "acctGenericError": "Terjadi kesalahan, coba lagi",
     "nameNoAt": "Pilih nama pengguna tanpa @ — Anda bisa menambahkan email di Akun saya setelah mendaftar",
+    "acctEmailCodeSent": "Kami mengirim kode ke {email} — ketik di sini, lalu tekan Simpan",
+    "acctEmailBadCode": "Kode salah atau kedaluwarsa — kosongkan kotak lalu tekan Simpan untuk kode baru",
+    "acctEmailTaken": "Email ini sudah dikonfirmasi di akun lain",
+    "acctEmailUnverified": "Email ini belum dikonfirmasi — tekan Simpan untuk menerima kode konfirmasi",
+    "acctEmailTooMany": "Terlalu banyak percobaan — coba lagi dalam {minutes} menit",
     "acctNetError": "Tidak dapat terhubung ke server, periksa koneksi Anda",
     "acctAvatarTooBig": "Gambar terlalu besar, pilih yang lebih kecil",
     "providerColorsLabel": "🤖 Warna setiap penyedia AI (ditampilkan di samping namanya dalam obrolan)",
@@ -1273,7 +1278,7 @@ Object.assign(I18N['id'], {
 Object.assign(I18N['id'], {
   "aboutSupportTitle": "📞 Layanan pelanggan & dukungan",
   "aboutSupportDesc": "Kami menjawab pertanyaan Anda dalam 24–48 jam.",
-  "aboutCopyright": "© Tim Omran AI — Dibuat dengan cinta di UEA 🇦🇪",
+  "aboutCopyright": "© Tim Omran AI",
   "adminPanelTitle": "🛠️ Panel admin (khusus pemilik)"
 });
 Object.assign(I18N['id'], {"videoBadgeShort":"Singkat","videoBadgeFull":"Lengkap"});

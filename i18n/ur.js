@@ -262,7 +262,7 @@ I18N['ur'] = {
     pricingTestNote: "🧪 فی الحال ٹیسٹ موڈ — کاروباری لائسنس ملنے پر مکمل ایکٹیویشن ہوگی",
     termsLink: "شرائط و ضوابط",
     privacyLink: "رازداری کی پالیسی",
-    aboutSectionTitle: "ℹ️ ایپ کے بارے میں اور تعارفی ویڈیوز",
+    aboutSectionTitle: "ℹ️ ایپ کے بارے میں",
     feedbackSectionTitle: '💬 آپ کی رائے اہم ہے',
     fbTagBug: '🐛 مسئلہ',
     fbTagIdea: '💡 تجویز',
@@ -324,6 +324,11 @@ I18N['ur'] = {
     acctFillPasswords: "اپنا موجودہ پاس ورڈ اور نیا پاس ورڈ درج کریں (کم از کم 4 حروف)",
     acctGenericError: "کچھ غلط ہو گیا، دوبارہ کوشش کریں",
     nameNoAt: "@ کے بغیر صارف نام منتخب کریں — سائن اپ کے بعد اپنا ای میل «میرا اکاؤنٹ» میں شامل کر سکتے ہیں",
+    acctEmailCodeSent: "ہم نے {email} پر ایک کوڈ بھیجا ہے — اسے یہاں لکھیں، پھر محفوظ کریں دبائیں",
+    acctEmailBadCode: "کوڈ غلط ہے یا اس کی میعاد ختم ہو گئی — خانہ خالی کریں اور نئے کوڈ کے لیے محفوظ کریں دبائیں",
+    acctEmailTaken: "یہ ای میل پہلے ہی کسی دوسرے اکاؤنٹ میں تصدیق شدہ ہے",
+    acctEmailUnverified: "یہ ای میل تصدیق شدہ نہیں — تصدیقی کوڈ کے لیے محفوظ کریں دبائیں",
+    acctEmailTooMany: "بہت زیادہ کوششیں — {minutes} منٹ بعد دوبارہ کوشش کریں",
     acctNetError: "سرور سے رابطہ نہیں ہو سکا، اپنا کنکشن چیک کریں",
     acctAvatarTooBig: "تصویر بہت بڑی ہے، چھوٹی تصویر منتخب کریں",
     providerColorsLabel: "🤖 ہر اے آئی پرووائیڈر کا رنگ (چیٹ میں نام کے ساتھ دکھایا جاتا ہے)",
@@ -1222,7 +1227,7 @@ Object.assign(I18N['ur'], {
 Object.assign(I18N['ur'], {
   "aboutSupportTitle": "📞 کسٹمر سروس اور معاونت",
   "aboutSupportDesc": "ہم آپ کے سوالات کا جواب 24–48 گھنٹوں میں دیتے ہیں۔",
-  "aboutCopyright": "© عمران AI ٹیم — متحدہ عرب امارات میں محبت سے بنایا گیا 🇦🇪",
+  "aboutCopyright": "© عمران AI ٹیم",
   "adminPanelTitle": "🛠️ ایڈمن پینل (صرف مالک کے لیے)"
 });
 Object.assign(I18N['ur'], {"videoBadgeShort":"مختصر","videoBadgeFull":"مکمل"});

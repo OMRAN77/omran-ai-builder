@@ -253,7 +253,7 @@ const I18N = {
     acctSectionTitle: 'حسابي',
     aboutSupportTitle: '📞 خدمة العملاء والدعم',
     aboutSupportDesc: 'نرد على استفساراتك خلال ٢٤-٤٨ ساعة.',
-    aboutCopyright: '© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪',
+    aboutCopyright: '© فريق عمران AI',
     adminPanelTitle: '🛠️ لوحة التحكم (خاص بالمالك)',
     ownerSectionTitle: '👑 صفحة المالك',
     videoBadgeShort: 'قصير',
@@ -355,6 +355,11 @@ const I18N = {
     acctFillPasswords: 'أدخل كلمة المرور الحالية وكلمة مرور جديدة (4 أحرف على الأقل)',
     acctGenericError: 'حدث خطأ، حاول مرة أخرى',
     nameNoAt: 'اختر اسم مستخدم بدون @ — تقدر تضيف إيميلك من «حسابي» بعد التسجيل', // v-name-no-at
+    acctEmailCodeSent: 'أرسلنا رمزًا إلى {email} — اكتبه هنا ثمّ اضغط «حفظ»', // v-vip-verified
+    acctEmailBadCode: 'الرمز غير صحيح أو انتهى — امسح الخانة واضغط «حفظ» لرمز جديد', // v-vip-verified
+    acctEmailTaken: 'هذا الإيميل مؤكَّد في حساب آخر', // v-vip-verified
+    acctEmailUnverified: 'هذا الإيميل غير مؤكَّد — اضغط «حفظ» ليصلك رمز التأكيد', // v-vip-verified
+    acctEmailTooMany: 'محاولات كثيرة — جرّب بعد {minutes} دقيقة', // v-vip-verified
     acctNetError: 'تعذر الاتصال بالخادم، تحقق من الإنترنت',
     acctAvatarTooBig: 'الصورة كبيرة جدًا، اختر صورة أصغر',
     logout: 'خروج',
@@ -1188,7 +1193,7 @@ const I18N = {
     pricingTestNote: '🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية',
     termsLink: 'الشروط والأحكام',
     privacyLink: 'سياسة الخصوصية',
-    aboutSectionTitle: 'ℹ️ عن البرنامج والفيديوهات التعريفية',
+    aboutSectionTitle: 'ℹ️ عن البرنامج',
     feedbackSectionTitle: '💬 رأيك يهمنا',
     fbTagBug: '🐛 مشكلة',
     fbTagIdea: '💡 اقتراح',
@@ -1492,7 +1497,7 @@ const I18N = {
     pricingTestNote: '🧪 Test mode for now — full activation once the business license is obtained',
     termsLink: 'Terms & Conditions',
     privacyLink: 'Privacy Policy',
-    aboutSectionTitle: 'ℹ️ About the App & Intro Videos',
+    aboutSectionTitle: 'ℹ️ About the App',
     feedbackSectionTitle: '💬 Feedback & Suggestions',
     fbTagBug: '🐛 Bug',
     fbTagIdea: '💡 Idea',
@@ -1559,7 +1564,7 @@ const I18N = {
     acctSectionTitle: 'My account',
     aboutSupportTitle: '📞 Customer service & support',
     aboutSupportDesc: 'We answer your inquiries within 24–48 hours.',
-    aboutCopyright: '© Omran AI team — Made with love in the UAE 🇦🇪',
+    aboutCopyright: '© Omran AI team',
     adminPanelTitle: '🛠️ Admin panel (owner only)',
     ownerSectionTitle: '👑 Owner page',
     videoBadgeShort: 'Short',
@@ -1660,6 +1665,11 @@ const I18N = {
     acctFillPasswords: 'Enter your current password and a new password (at least 4 characters)',
     acctGenericError: 'Something went wrong, try again',
     nameNoAt: 'Choose a username without @ — you can add your email in My account after signing up', // v-name-no-at
+    acctEmailCodeSent: 'We sent a code to {email} — type it here, then press Save', // v-vip-verified
+    acctEmailBadCode: 'Wrong or expired code — clear the box and press Save for a new one', // v-vip-verified
+    acctEmailTaken: 'This email is already confirmed on another account', // v-vip-verified
+    acctEmailUnverified: 'This email is not confirmed — press Save to get a confirmation code', // v-vip-verified
+    acctEmailTooMany: 'Too many attempts — try again in {minutes} min', // v-vip-verified
     acctNetError: 'Could not reach the server, check your connection',
     acctAvatarTooBig: 'The image is too large, choose a smaller one',
     providerColorsLabel: '🤖 Each AI provider color (shown next to its name in chat)',

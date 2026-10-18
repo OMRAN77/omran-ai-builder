@@ -263,7 +263,7 @@ I18N['hi'] = {
     pricingTestNote: "🧪 फिलहाल परीक्षण मोड — व्यावसायिक लाइसेंस मिलने पर पूर्ण सक्रियण होगा",
     termsLink: "नियम व शर्तें",
     privacyLink: "गोपनीयता नीति",
-    aboutSectionTitle: "ℹ️ ऐप के बारे में और परिचय वीडियो",
+    aboutSectionTitle: "ℹ️ ऐप के बारे में",
     feedbackSectionTitle: '💬 आपकी राय मायने रखती है',
     fbTagBug: '🐛 समस्या',
     fbTagIdea: '💡 सुझाव',
@@ -325,6 +325,11 @@ I18N['hi'] = {
     acctFillPasswords: "अपना वर्तमान पासवर्ड और नया पासवर्ड दर्ज करें (कम से कम 4 अक्षर)",
     acctGenericError: "कुछ गड़बड़ हुई, फिर से प्रयास करें",
     nameNoAt: "@ के बिना उपयोगकर्ता नाम चुनें — साइन अप के बाद आप अपना ईमेल «मेरा खाता» में जोड़ सकते हैं",
+    acctEmailCodeSent: "हमने {email} पर एक कोड भेजा है — उसे यहाँ लिखें, फिर सहेजें दबाएँ",
+    acctEmailBadCode: "कोड गलत है या उसकी अवधि समाप्त हो गई — बॉक्स खाली करें और नए कोड के लिए सहेजें दबाएँ",
+    acctEmailTaken: "यह ईमेल पहले से किसी दूसरे खाते में पुष्ट है",
+    acctEmailUnverified: "यह ईमेल पुष्ट नहीं है — पुष्टि कोड पाने के लिए सहेजें दबाएँ",
+    acctEmailTooMany: "बहुत अधिक प्रयास — {minutes} मिनट बाद फिर कोशिश करें",
     acctNetError: "सर्वर से संपर्क नहीं हो सका, अपना कनेक्शन जांचें",
     acctAvatarTooBig: "छवि बहुत बड़ी है, छोटी छवि चुनें",
     providerColorsLabel: "🤖 प्रत्येक एआई प्रोवाइडर का रंग (चैट में नाम के बगल में दिखता है)",
@@ -1223,7 +1228,7 @@ Object.assign(I18N['hi'], {
 Object.assign(I18N['hi'], {
   "aboutSupportTitle": "📞 ग्राहक सेवा और सहायता",
   "aboutSupportDesc": "हम आपके प्रश्नों का उत्तर 24–48 घंटों में देते हैं।",
-  "aboutCopyright": "© Omran AI टीम — यूएई में प्यार से बनाया गया 🇦🇪",
+  "aboutCopyright": "© Omran AI टीम",
   "adminPanelTitle": "🛠️ एडमिन पैनल (केवल मालिक के लिए)"
 });
 Object.assign(I18N['hi'], {"videoBadgeShort":"छोटा","videoBadgeFull":"पूरा"});
