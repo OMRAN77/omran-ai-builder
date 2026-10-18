@@ -2422,7 +2422,33 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     return m ? m[1] : String(fromHeader || '').trim();
   }
 
-  function renderEmails(emails){
+  /* v-email-safe: (١) المسوّدة كانت تُلصق داخل <textarea> في innerHTML بلا تهريب — ردّ فيه </textarea> (إيميل يحقن
+     الموديل) يصير HTML وسكربتًا في صفحتنا. الآن كلّ نصّ من البريد أو الموديل يُكتب بـtextContent/value، والقالب ثابت.
+     (٢) المسوّدة الإنجليزيّة كانت تُعرض من اليمين («,Hi Sarah») — الاتّجاه من لغة الرسالة، وإلّا auto؛ والخطّ خطّ
+     الواجهة لا خطّ الكود. (٣) المرسل اسمًا وعنوانًا معزولَين (bdi) فلا تنقلب الأقواس. */
+  const EM_RTL = /^(ar|fa|ur|he|ps|yi|dv|ckb|sd|ug)$/i;
+  function emDir(lang2){ return lang2 ? (EM_RTL.test(lang2) ? 'rtl' : 'ltr') : 'auto'; }
+  // اتّجاه سطر المرسل من أوّل حرف في اسمه — dir="auto" لا يرى ما داخل <bdi> فيرجع ltr للاسم العربيّ أيضًا
+  function emTextDir(s){
+    for(const ch of String(s || '')){
+      if(/[֐-ࣿיִ-﷿ﹰ-﻿]/.test(ch)) return 'rtl';
+      if(/[A-Za-zÀ-ɏͰ-῿぀-鿿가-힯]/.test(ch)) return 'ltr';
+    }
+    return 'ltr';
+  }
+  function emSender(fromHeader){
+    const s = String(fromHeader || '').trim();
+    const m = s.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+    return m ? { name: m[1].trim(), addr: m[2].trim() } : { name: '', addr: s };
+  }
+  function emTz(){ // منطقة جهاز المستخدم للبرومبت والتقويم — الخادم يتحقّق منها ويرجع لدبي إن لم تصحّ
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }catch(e){ __swallow(e, "misc:app-12-studios#5"); return ''; }
+  }
+  function emAiMsg(code){
+    return (code === 'nokey' || code === 'badkey') ? t('emailAsst_draftNoKey') : (code === 'busy' ? t('emailAsst_draftBusy') : t('emailAsst_draftFailed'));
+  }
+
+  function renderEmails(emails, aiError){
     const tr = T();
     listEl.innerHTML = '';
     if(!emails || !emails.length){
@@ -2432,22 +2458,23 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     emails.forEach((mail) => {
       const card = document.createElement('div');
       card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
+      const dir = emDir(mail.lang);
       card.innerHTML =
         '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
           '<div style="min-width:0;">' +
-            '<div style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.subject || '').replace(/</g,'&lt;') + '</div>' +
-            '<div style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.from || '').replace(/</g,'&lt;') + '</div>' +
+            '<div class="emailSubj" dir="auto" style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>' +
+            '<div class="emailFrom" style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><bdi class="emailFromName"></bdi> <bdi class="emailFromAddr" dir="ltr"></bdi></div>' +
           '</div>' +
-          '<span style="font-size:11.5px; white-space:nowrap;">' + priorityLabel(mail.priority) + '</span>' +
+          '<span class="emailPrio" style="font-size:11.5px; white-space:nowrap;"></span>' +
         '</div>' +
-        '<div style="font-size:12px; color:var(--muted,#999); margin-top:6px;">' + (mail.snippet || '').replace(/</g,'&lt;') + '</div>' +
-        '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px;">' + (mail.draft || '') + '</textarea>' +
+        '<div class="emailSnip" dir="' + dir + '" style="font-size:12px; color:var(--muted,#999); margin-top:6px;"></div>' +
+        '<textarea class="emailDraftInput" dir="' + dir + '" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px; font-family:inherit; line-height:1.6;"></textarea>' +
         '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
-          '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;">' + tr.send + '</button>' +
-          '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;">' + tr.ignore + '</button>' +
-          (mail.meeting ? '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px;">' + tr.addToCalendar + '</button>' : '') +
+          '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;"></button>' +
+          '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;"></button>' +
+          (mail.meeting ? '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px;"></button>' : '') +
         '</div>' +
-        (mail.meeting ? '<div style="font-size:11.5px; color:var(--muted,#999); margin-top:6px;">📅 ' + String(mail.meeting.title || '').replace(/</g,'&lt;') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') + '</div>' : '') +
+        (mail.meeting ? '<div class="emailMeet" dir="auto" style="font-size:11.5px; color:var(--muted,#999); margin-top:6px;"></div>' : '') +
         '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
 
       const sendBtn = card.querySelector('.emailSendBtn');
@@ -2455,6 +2482,19 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const draftEl = card.querySelector('.emailDraftInput');
       const cardStatus = card.querySelector('.emailCardStatus');
       const calBtn = card.querySelector('.emailCalBtn');
+      const who = emSender(mail.from);
+      card.querySelector('.emailSubj').textContent = mail.subject || '';
+      card.querySelector('.emailFrom').setAttribute('dir', emTextDir(who.name || who.addr));
+      card.querySelector('.emailFromName').textContent = who.name;
+      card.querySelector('.emailFromAddr').textContent = who.name ? '<' + who.addr + '>' : who.addr;
+      card.querySelector('.emailPrio').textContent = priorityLabel(mail.priority);
+      card.querySelector('.emailSnip').textContent = mail.snippet || '';
+      draftEl.value = mail.draft || '';
+      sendBtn.textContent = tr.send;
+      ignoreBtn.textContent = tr.ignore;
+      if(calBtn) calBtn.textContent = tr.addToCalendar;
+      if(mail.meeting) card.querySelector('.emailMeet').textContent = '📅 ' + String(mail.meeting.title || '') + ' — ' + String(mail.meeting.start || '').replace('T', ' ');
+      if(mail.draftError && !aiError){ cardStatus.style.display = 'block'; cardStatus.textContent = emAiMsg(mail.draftError); }
 
       if(calBtn) calBtn.addEventListener('click', async () => {
         calBtn.disabled = true;
@@ -2464,7 +2504,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           const token = localStorage.getItem('aiapp_auth_token');
           const r = await fetch('/api/email-calendar', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, description: (mail.subject || '') + '\n' + (mail.from || '') }),
+            body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, tz: mail.meeting.tz || emTz(), description: (mail.subject || '') + '\n' + (mail.from || '') }),
           });
           const d = await r.json();
           if(!r.ok){
@@ -2533,7 +2573,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const token = localStorage.getItem('aiapp_auth_token');
       const r = await fetch('/api/email-list', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
+        body: JSON.stringify({ token, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar', tz: emTz() }),
       });
       const d = await r.json();
       if(!r.ok){
@@ -2548,9 +2588,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       }
       gmailLabel.textContent = d.gmailAddress || '';
       // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
-      setStatus(d.note || '');
+      // v-email-safe: ومفتاح الكتابة الناقص أو المرفوض سطرٌ واضح فوق القائمة (اسم المتغيّر للمالك وحده من الخادم).
+      const aiLine = d.aiError ? emAiMsg(d.aiError) + (d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '') : '';
+      setStatus([d.note || '', aiLine].filter(Boolean).join('\n'));
       lastLoadedEmails = d.emails || [];
-      renderEmails(d.emails);
+      renderEmails(d.emails, d.aiError);
     }catch(e){
       setStatus(tr.error + (e && e.message ? e.message : String(e)));
     }
