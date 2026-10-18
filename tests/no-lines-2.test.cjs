@@ -22,11 +22,54 @@ test('٢. كلّ قاعدة للوضع الأسود وحده: لا الفاتح 
   for (const r of rules) for (const s of r.sels) assert.ok(s.startsWith(P + ' ') || s.startsWith(P + ':not(.mobile-ui) '), s);
 });
 
-test('٣. الألوان: شفّاف، أو ذهبيّ المرور rgba(212,175,55,.85)، أو #101013 — لا رماديّ ولا أبيض', () => {
-  const noAttr = bare.replace(/\[style\*="[^"]*"\]/g, ''); /* محدِّدات [style*="…"] تطابق نصّ الحدّ داخل العنصر، ليست ألوانًا */
+test('٣. الألوان: شفّاف، أو ذهبيّ المرور rgba(212,175,55,.85)، أو #101013 — لا رماديّ ولا أبيض (قبل كتلة v-no-lines-3)', () => {
+  const noAttr = bare.slice(0, bare.indexOf(':not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter),')).replace(/\[style\*="[^"]*"\]/g, ''); /* محدِّدات [style*="…"] تطابق نصّ الحدّ داخل العنصر، ليست ألوانًا */
   const vals = noAttr.match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/gi) || [];
   assert.ok(vals.length >= 8);
   for (const v of vals) assert.match(v.replace(/\s/g, ''), /^(rgba\(212,175,55,\.85\)|#101013)$/i, v);
+});
+
+/* v-no-lines-3 (المالك ١٨ أكتوبر بصورتين): الكمبيوتر في الأسود وحده — خطّان عموديّان بدل الإطارات، أسفل القائمة بلا صندوق وبخطّ رفيع فوقه،
+   أزرار الشريط و«محادثة جديدة» بلا صندوق والإنارة بالنصّ/الأيقونة عند المرور. */
+const D = P + ':not(.mobile-ui) ';
+const block = bare.slice(bare.indexOf(D + ':is(#sidebar,#workarea,#omFrameCenter),'));
+test('٦. v-no-lines-3: الإطارات الذهبيّة تختفي عن اللوحات الثلاث حتّى عند المرور، و#omFrameCenter أسود، وكلّ القواعد للكمبيوتر في الأسود وحده', () => {
+  assert.ok(block.length > 500, 'الكتلة موجودة');
+  for (const r of block.split('}').filter((b) => b.includes('{'))) for (const s of r.split('{')[0].split(/,(?![^()]*\))/).map((x) => x.trim()).filter(Boolean)) assert.ok(s.startsWith(D), s);
+  const panels = block.slice(0, block.indexOf('}'));
+  assert.ok(panels.includes(':is(#sidebar,#workarea,#omFrameCenter):hover') && panels.includes('main:has(#chatcol:hover) > #omFrameCenter'));
+  assert.ok(/--om-gold-line:linear-gradient\(transparent,transparent\); --om-dots:linear-gradient\(transparent,transparent\); --om-glow:linear-gradient\(transparent,transparent\); border-color:transparent !important; box-shadow:none !important;/.test(panels));
+  assert.ok(block.includes(D + '#omFrameCenter{background:#000 !important;}'));
+});
+test('٧. الخطّان العموديّان: ::before على المقبضين، من أعلى الشاشة إلى أسفلها (−13px حشوة الصفحة)، 1px، التدرّج والتوهّج المطلوبان، بلا التقاط للماوس', () => {
+  const m = block.match(/\.resizer::before\{([^}]*)\}/); assert.ok(m, 'القاعدة');
+  const b = m[1].replace(/\s+/g, ' ');
+  for (const frag of ['content:""', 'position:absolute', 'top:-13px', 'bottom:-13px', 'left:50%', 'width:1px', 'translateX(-50%)', 'pointer-events:none',
+    'linear-gradient(to bottom, rgba(240,222,170,0) 0%, rgba(240,222,170,.55) 8%, rgba(240,222,170,.55) 92%, rgba(240,222,170,0) 100%)',
+    'box-shadow:0 0 6px rgba(240,222,170,.22), 0 0 14px rgba(240,222,170,.08)']) assert.ok(b.includes(frag), frag);
+});
+test('٨. أسفل القائمة: بلا صندوق (حتّى عند المرور والتركيز) وخطّ رفيع فوقه من ١٢٪ إلى ١٢٪', () => {
+  const foot = block.match(/#omranSidebarFoot#omranSidebarFoot,[^{]*#omranSidebarFoot#omranSidebarFoot:is\(:hover,:focus-within\)\{([^}]*)\}/); assert.ok(foot, 'قاعدة الصندوق');
+  assert.ok(/position:relative; background:transparent !important; border:0 !important; box-shadow:none !important;/.test(foot[1]));
+  const line = block.match(/#omranSidebarFoot::before\{([^}]*)\}/); assert.ok(line, 'الخطّ');
+  const l = line[1].replace(/\s+/g, ' ');
+  for (const frag of ['top:0', 'left:12%', 'right:12%', 'height:1px', 'linear-gradient(90deg, rgba(240,222,170,0), rgba(240,222,170,.45), rgba(240,222,170,0))']) assert.ok(l.includes(frag), frag);
+});
+test('٩. أزرار الشريط: rgba(255,255,255,.86) بلا خلفيّة ولا إطار ولا brightness؛ عند المرور أبيض متوهّج والأيقونة بيضاء بظلّ، انتقال .2s', () => {
+  const rest = block.match(/#omranSidebarFoot :is\(\.omNavBtn,\.omIconBtn,\.omModeNav\)\{([^}]*)\}/); assert.ok(rest);
+  for (const frag of ['color:rgba(255,255,255,.86) !important', 'background:transparent !important', 'border:0 !important', 'filter:none !important', 'transition:color .2s']) assert.ok(rest[1].includes(frag), frag);
+  const hov = block.match(/#omranSidebarFoot :is\(\.omNavBtn,\.omIconBtn,\.omModeNav\):is\(:hover,:focus-visible\)\{([^}]*)\}/); assert.ok(hov);
+  assert.ok(hov[1].includes('color:#fff !important; text-shadow:0 0 8px rgba(255,255,255,.7), 0 0 16px rgba(255,255,255,.3); background:transparent !important; filter:none !important'));
+  const svg = block.match(/#omranSidebarFoot :is\(\.omNavBtn,\.omIconBtn,\.omModeNav\):is\(:hover,:focus-visible\) svg\{([^}]*)\}/); assert.ok(svg);
+  assert.ok(svg[1].includes('stroke:#fff; filter:drop-shadow(0 0 5px rgba(255,255,255,.8))'));
+});
+test('١٠. «محادثة جديدة»: بلا إطار ولا خلفيّة ولا ظلّ في الحالتين؛ النصّ rgba(255,255,255,.9) → أبيض متوهّج؛ «+» تتوهّج ذهبيًّا', () => {
+  const box = block.match(/#omranNewChatBtn#omranNewChatBtn,[^{]*#omranNewChatBtn#omranNewChatBtn:is\(:hover,:focus-visible\)\{([^}]*)\}/); assert.ok(box);
+  assert.ok(box[1].includes('background:transparent !important; background-image:none !important; border:0 !important; box-shadow:none !important;'));
+  assert.ok(block.includes(D + '#omranNewChatBtn .ncLabel{color:rgba(255,255,255,.9); transition:color .2s, text-shadow .2s;}'));
+  assert.ok(block.includes(D + '#omranNewChatBtn:is(:hover,:focus-visible) .ncLabel{color:#fff; text-shadow:0 0 8px rgba(255,255,255,.75), 0 0 18px rgba(255,255,255,.35);}'));
+  assert.ok(block.includes(D + '#omranNewChatBtn:is(:hover,:focus-visible) svg{filter:drop-shadow(0 0 6px rgba(240,222,170,.9));}'));
+  const tag = HTML.match(/href="css\/بلا-خطوط\.css\?v=(\d+)"/); assert.ok(tag && Number(tag[1]) >= 2, 'الوسم مرفوع فوق 1 (الذي شحن v-no-lines-2)');
 });
 
 test('٤. الإطار الذهبيّ ونقاط الخلفيّة وحبيبات الضجيج تختفي، واللوحات تتذهّب عند المرور فقط', () => {
