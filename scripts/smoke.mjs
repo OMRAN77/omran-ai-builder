@@ -136,6 +136,14 @@ function expectedCommit() {
   if (env) return env.toLowerCase();
   try { return execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim().toLowerCase(); } catch (e) { return ''; }
 }
+// دمجان متتاليان: النطاق قد يخدم النشرة الأحدث قبل أن يصله فحص الأقدم — وهي تحوي التزامه، فالدمج حيّ (مراجعة النقض: كان ✗ كاذبًا
+// «من نشرة أخرى»). سلف بالـgit: محلّيًّا أوّلًا، وإلّا جلب تاريخ الحيّ من origin (نسخة الورك فلو ضحلة). أيّ عطب = ليس سلفًا = ✗.
+// الجلب فقط حين لا يوجد الحيّ محلّيًّا؛ SMOKE_FETCH=0 يمنعه (الاختبار بلا شبكة).
+function isAncestor(want, got) {
+  const git = (c) => { try { execSync('git ' + c, { stdio: 'ignore', timeout: 30000 }); return true; } catch (e) { return false; } };
+  if (!git('cat-file -e ' + got + '^{commit}') && (process.env.SMOKE_FETCH === '0' || !git('fetch --quiet --depth=200 origin ' + got))) return false;
+  return git('merge-base --is-ancestor ' + want + ' ' + got);
+}
 async function probe() {
   console.log('② مِجسّ النشرة');
   const want = expectedCommit();
@@ -146,9 +154,9 @@ async function probe() {
   if (!got) { no('المِجسّ بلا رقم التزام'); return; }
   // الرقمان كاملان عادةً (٤٠)؛ إن قَصُر أحدهما فالمطابقة على طول الأقصر، ولا أقلّ من ٧.
   const n = Math.min(got.length, want.length);
-  got.slice(0, n) === want.slice(0, n)
-    ? ok(`المِجسّ يطابق: commit=${got.slice(0, 7)}`)
-    : no(`المِجسّ من نشرة أخرى: حيّ=${got.slice(0, 7)} ≠ منتظَر=${want.slice(0, 7)}`);
+  if (got.slice(0, n) === want.slice(0, n)) ok(`المِجسّ يطابق: commit=${got.slice(0, 7)}`);
+  else if (got.length === 40 && want.length === 40 && isAncestor(want, got)) ok(`المِجسّ: نشرة أحدث تحوي الالتزام — حيّ=${got.slice(0, 7)} ⊇ منتظَر=${want.slice(0, 7)}`);
+  else no(`المِجسّ من نشرة أخرى: حيّ=${got.slice(0, 7)} ≠ منتظَر=${want.slice(0, 7)}`);
 }
 
 async function identity() {

@@ -59,7 +59,7 @@ function serve(probeStatus, probeBody) {
 }
 function smoke(base, expect) {
   return new Promise((resolve) => {
-    const env = Object.assign({}, process.env, { MONITOR_KEY: '' });
+    const env = Object.assign({}, process.env, { MONITOR_KEY: '', SMOKE_FETCH: '0' });
     if (expect === null) delete env.EXPECT_COMMIT; else env.EXPECT_COMMIT = expect;
     execFile(process.execPath, [path.join(ROOT, 'scripts', 'smoke.mjs'), base], { env, cwd: ROOT, timeout: 60000 }, (err, stdout) => {
       const lines = String(stdout).split('\n');
@@ -97,4 +97,13 @@ test('٤. بلا EXPECT_COMMIT يُنتظر HEAD النسخة (smoke.yml يسح�
   assert.match(line, new RegExp('✓ المِجسّ يطابق: commit=' + head.slice(0, 7)));
   const yml = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'smoke.yml'), 'utf8');
   assert.ok(yml.includes('ref: ${{ github.event.deployment.sha || github.sha }}'), 'الدخان يسحب التزام النشرة');
+});
+
+test('٥. (مراجعة النقض) دمجان متتاليان: النطاق على نشرة أحدث تحوي الالتزام = ✓؛ نشرة أقدم أو غريبة = ✗', async () => {
+  const git = (c) => { try { return require('child_process').execSync('git ' + c, { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch (e) { return ''; } };
+  const head = git('rev-parse HEAD'), prev = git('rev-parse HEAD~1');
+  if (!/^[0-9a-f]{40}$/.test(prev)) return; // نسخة ضحلة بلا أب: البند ٣ يغطّي المطابقة والرفض
+  const run = async (live, expect) => { const srv = await serve(200, 'omran-deploy-probe\ncommit=' + live + '\n'); const l = await smoke('http://127.0.0.1:' + srv.address().port, expect); srv.close(); return l; };
+  assert.match(await run(head, prev), /✓ المِجسّ: نشرة أحدث تحوي الالتزام/, 'الأحدث يحوي الدمج');
+  assert.match(await run(prev, head), /✗ المِجسّ من نشرة أخرى/, 'الأقدم لا يحويه');
 });
