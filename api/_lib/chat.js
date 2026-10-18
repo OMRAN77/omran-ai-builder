@@ -1467,7 +1467,7 @@ module.exports = async (req, res) => {
     const SEARCH_RULE_NOTE = '\n\n[البحث]: لأيّ سؤال يطلب معلومة أو حقيقة استدعِ web_search أوّلًا حتّى لو ظننت أنّك تعرف — يبحث في الويب والتواصل الاجتماعي معًا. '
       + 'اذكر من أين جاءت كلّ معلومة (موقع أو منصّة). لا بحث للتحيّة والمجاملة والكتابة الإبداعيّة والترجمة وتعديل نصّ المستخدم. بحثان كحدّ أقصى في الردّ.'
       /* v-cards (أمر المالك ١٢ أكتوبر «نفس جوجل: نماذج وعقب المواقع… والتتبع على نفس الموضوع ويعطيه الأفضل»): الطلب العامّ ← بطاقات لا سرد، ثمّ سؤال واحد، ثمّ الأفضل */
-      + '\n\n[البطاقات]: حين يطلب المستخدم شيئًا عامًّا ليختار منه — منتجًا أو سلعة أو خدمة أو محلًّا أو موقعًا أو مكانًا أو خطّة أو «أفضل X» («أبغى رنقات ENVE بكم»، «بذور زراعة»، «جوّال بالتقسيط») — استدعِ show_cards (مرّة واحدة) بدل web_search؛ البطاقات تُرسم له تلقائيًّا بصورها وأسعارها ومواقعها، فلا تعِد سردها نصًّا. query = المطلوب كما قاله + مكانه (البلد الذي سمّاه، وإلّا دولة تسوّقه) — لا صنف آخر ولا بلد آخر. الرقاقات فروقات لنفس المطلوب في نفس المكان (سعر · مقاس · لون · طراز). بعدها: سطر أو سطران عمّا وجدت، ثمّ سؤال متابعة واحد فقط يضيّق نفس المطلوب في نفس المكان وتوقّف. حين يجيب: ابقَ على المطلوب نفسه في مكانه ورشّح له الأفضل واحدًا — ⭐ الأفضل لك: الاسم — السبب في سطر — الرابط — وإن ضاق الطلب فاستدعِ show_cards ثانيةً بالصياغة الأضيق. لا تقل «لا أقدر أعرض صورًا أو أسعارًا».' + require('./reply-style.js').REPLY_BLOCKS_NOTE /* v-reply-blocks: بطاقات التواصل والمصدر في الجدول والإعلانات والمعنيان */;
+      + '\n\n[البطاقات]: حين يطلب المستخدم شيئًا عامًّا ليختار منه — منتجًا أو سلعة أو خدمة أو محلًّا أو موقعًا أو مكانًا أو خطّة أو «أفضل X» («أبغى رنقات ENVE بكم»، «بذور زراعة»، «جوّال بالتقسيط») — بأيّ صيغة، ولو بلا «بكم» أو «أسعار» أو «للبيع»: اسم شيء يُشترى أو يُختار يكفي («ثياب مخوّر»، «جوال للتصوير») — استدعِ show_cards (مرّة واحدة) بدل web_search؛ البطاقات تُرسم له تلقائيًّا بصورها وأسعارها ومواقعها، فلا تعِد سردها نصًّا. query = المطلوب كما قاله + مكانه (البلد الذي سمّاه، وإلّا دولة تسوّقه) — لا صنف آخر ولا بلد آخر. الرقاقات فروقات لنفس المطلوب في نفس المكان (سعر · مقاس · لون · طراز). بعدها: سطر أو سطران عمّا وجدت، ثمّ سؤال متابعة واحد فقط يضيّق نفس المطلوب في نفس المكان وتوقّف. حين يجيب: ابقَ على المطلوب نفسه في مكانه ورشّح له الأفضل واحدًا — ⭐ الأفضل لك: الاسم — السبب في سطر — الرابط — وإن ضاق الطلب فاستدعِ show_cards ثانيةً بالصياغة الأضيق. لا تقل «لا أقدر أعرض صورًا أو أسعارًا».' + require('./reply-style.js').REPLY_BLOCKS_NOTE /* v-reply-blocks: بطاقات التواصل والمصدر في الجدول والإعلانات والمعنيان */;
     /* v-prov-self: آخر النظام (فيبقى الثابت بادئة الكاش) — للمالك ملفّ المزوّد المختار والدروس كلّها، ولغيره الدروس المنشورة بـ«عمّم» */
     let __provSelfSys = '', __genImg = null;
     /* v-gen-image: «عمّم» من المالك ومعها صورة (الواجهة ترسلها مضغوطة في genImage) = تُحفظ برابط من التطبيق ويصل رابطها العشرة. بلا الكلمة أو لغيره لا شيء. */
@@ -1553,7 +1553,7 @@ module.exports = async (req, res) => {
       try { const __ps = require('./prov-self.js'); await __ps.captureOwnerTurn(messages, fullText, reqProv || prov, lastUserText); }
       catch (e) { logError('chat/owner-gen-reply', e); }
     };
-    let toolCorpus = '', __searchRan = false; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور · v-rating-guard-search: هل بحث فعليّ (web_search/fetch_page) جرى؟
+    let toolCorpus = '', __searchRan = false, __cardsSent = null; /* v-google-cards: بطاقات هذا الردّ (مجموعة واحدة؛ العميل يحفظ آخرها) */ // v608 — ناتج الأدوات الحقيقيّ في هذا الدور · v-rating-guard-search: هل بحث فعليّ (web_search/fetch_page) جرى؟
 
     // إزالة تكرار المواقع عبر استدعاءات البحث في نفس الدور
       const seenHostnames = new Set();
@@ -2019,6 +2019,12 @@ module.exports = async (req, res) => {
           logError('chat/unsourced-rating', new Error('ratings absent from tool output: ' + badRatings.join(', ')));
           send({ delta: ratingWarning(fullText) });
         }
+        /* v-google-cards: في التحويل لا رقائق من المزوّد — أفكاره القريبة ([[OPT]] الأولى في ردّه) تُرفع رقائق تحت البطاقات (قبل النصّ والسؤال)
+           بإعادة حدث البطاقات (العميل يحفظ آخره)، وتُحذف من النصّ بتصحيح */
+        if (__cardsSent && __cardsSent.converted && __cardsSent.ev) {
+          const __li = require('./cards-search.js').liftIdeas(fullText);
+          if (__li.chips.length) { __cardsSent.ev.cards.chips = __li.chips; send(__cardsSent.ev); send({ patch: __li.text }); fullText = __li.text; }
+        }
         const _cleaned = stripSpecialTokens(stripMemoryUrls(fullText, toolCorpus)); // v-special-tokens: حزام ثانٍ للتصحيح الختاميّ
           if (_cleaned !== fullText) { send({ patch: _cleaned }); }
           // v-owner-solo (المالك ٨ أكتوبر «أريد المحادثة فقط، أيّ شي زائد عليها ما أريده»): لا سطر سبب تحت الردّ.
@@ -2065,6 +2071,20 @@ module.exports = async (req, res) => {
               const __ls = require('./live-social.js');
               const __quota = await __ls.searchQuota(token, clientIp(req));
               if (!__quota.ok) result = __ls.QUOTA_TEXT;
+              /* v-google-cards (مواصفات المالك ١٨ أكتوبر): طلب يُختار منه ولو بلا «بكم» — والمزوّد اختار web_search — يصير بطاقات إن كانت نتائجه
+                 متاجر. لا يُحوَّل: أرقام التواصل، واللوحات، والقوائم المنسّقة (عقار/فنادق)، و«وين»، والأخبار، وطلب المعلومات أو المقارنة. */
+              else if (!__cardsSent && (cb.__cards = await (async () => {
+                const __lf0 = require('./live-fresh.js'), __rs0 = require('./reply-style.js');
+                const __q0 = __lf0.stripStaleYears(_q, __lf0.userTextOf(messages, 3));
+                const __ct0 = !foreignTurn && !!lastUser && __rs0.isContactAsk(lastUserText);
+                const __pl0 = !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUserText)) && !__ct0;
+                if (__ct0 || __pl0 || isCuratedSearch(__q0, reC, __pl0) || WHERE_ASK_RE.test(String(lastUserText || '')) || FRESH_RE.test(__q0) || DEALS_RE.test(__q0) /* العروض مسارها (بلد ونافذة شهر) */ || __rs0.wantsRichReply(lastUserText)) return null;
+                __cardsSent = { converted: true, ev: null }; // يُحجز قبل أوّل انتظار: بحث ثانٍ متوازٍ في الخطوة نفسها يكمل ويبًا
+                const __pc = await require('./cards-search.js').pickAsCards(__q0, { ask: lastUserText, country });
+                if (!__pc) { __cardsSent = null; return null; }
+                __cardsSent.ev = __pc.ev; send(__pc.ev); send({ sources: __pc.sites });
+                return __pc.text;
+              })())) result = cb.__cards;
               else {
                 /* v-live-fresh: «ما اريد ابحث اليوم ويعطيني تاريخ قديم» — سنة ذاكرة النموذج تُحذف من الاستعلام، ولكلّ بحث
                    نافذة زمنيّة (أخبار أسبوع، عروض شهر، والباقي سنة؛ بلا قيد إن سأل المستخدم عن الماضي)، ومع النتيجة تاريخ اليوم. */
@@ -2087,6 +2107,7 @@ module.exports = async (req, res) => {
           else if (cb.name === 'show_cards') { /* v-cards: بحث منظّم ← حدث cards للعميل (يرسم البطاقات) + حدث sources (المواقع) + نصّ مرقّم للموديل. السقف والحصّة كبحث الويب نفسه. */
             const __cq = String(input.query || '').trim();
             const mySearchNo = ++searchesUsed;
+            if (!__cardsSent) __cardsSent = { converted: false, ev: null }; // v-google-cards: show_cards في الردّ = لا تحويل لبحث ويب معه
             if (!__cq) result = 'show_cards تحتاج query — أعد الاستدعاء بعبارة بحث.';
             else if (mySearchNo > 2) result = 'بلغتَ سقف البحث لهذا الردّ (بحثان). أجب الآن ممّا جمعت.';
             else {
@@ -2095,7 +2116,7 @@ module.exports = async (req, res) => {
               if (!__quota.ok) result = __ls.QUOTA_TEXT;
               else {
                 const __cs = require('./cards-search.js');
-                const __found = await __cs.searchCards(__cq, { ask: lastUserText, country });
+                const __found = await __cs.searchCards(__cq, { ask: lastUserText, country, enrich: true }); // v-google-cards: صورة لكلّ بطاقة وسعر المتجر
                 if (__found.items.length) { send(__cs.cardsEvent(__cq, input, __found.items, { ask: lastUserText, country })); send({ sources: __found.sites }); }
                 result = __cs.cardsText(__found.items, __cq);
               }
@@ -2186,7 +2207,7 @@ module.exports = async (req, res) => {
         if (!(__noMedia && MEDIA_TOOL_NAMES.indexOf(cb.name) !== -1 && !(cb.name === 'generate_image' && __ownerPicsOk)) && !__ol.lateNote(__olS, '↳ ' + __tl.text, result)) send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p, tool: cb.name, err: /^(?:✗|⚠️|فشل|تعذّر)/.test(String(result == null ? '' : result).trim()) ? 1 : undefined }, trailDetail(cb.name, input, result))); /* v-interleave-fix: اسم الأداة للتجميع، والفشل أحمر */ // v-read-all · v-tokens-tools: الرفض في دور السؤال بلا سطر «↳ تعذّرت الصورة»
         // v-one-brain: بطاقات «المصادر» كانت تأتي من طبقة البحث المحذوفة —
         // الآن تُستخرج من نتيجة أداة البحث نفسها وتُبثّ للعميل ليرسمها.
-        if (cb.name === 'web_search') {
+        if (cb.name === 'web_search' && !cb.__cards) { // v-google-cards: البحث المحوَّل بثّ بطاقاته ومصادره
           const __srcs = [];
           const __seen = new Set();
           const __uRe = /https?:\/\/[^\s)\]»"'<>]+/g;

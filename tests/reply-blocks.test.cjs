@@ -288,8 +288,9 @@ function loadApp37(){
 }
 const ITEMS = [
   { title: 'Studio for sale in Al Zahia', url: 'https://www.bayut.com/property/1', site: 'bayut.com', image: 'https://images.bayut.com/1.jpg', price: 'AED 480,000', snippet: 'Furnished studio in Uptown Al Zahia, ready to move.' },
-  { title: 'Villas for sale in Sharjah', url: 'https://www.propertyfinder.ae/en/buy/sharjah/villas', site: 'propertyfinder.ae', image: '', price: '', snippet: '' },
-  { title: 'http only', url: 'http://plain.example/x', site: 'plain.example', image: '', price: '', snippet: '' },
+  { title: 'Villas for sale in Sharjah', url: 'https://www.propertyfinder.ae/en/buy/sharjah/villas', site: 'propertyfinder.ae', image: 'https://static.propertyfinder.ae/v.jpg', price: '', snippet: '' },
+  { title: 'http only', url: 'http://plain.example/x', site: 'plain.example', image: 'https://plain.example/x.jpg', price: '', snippet: '' },
+  { title: 'no image', url: 'https://noimg.example.ae/x', site: 'noimg.example.ae', image: '', price: 'AED 1', snippet: '' }, // v-google-cards: بلا صورة لا صفّ
 ];
 
 test('١٠. بطاقات kind=listing صفوف: صورة (أو أيقونة الموقع) بجانب العنوان والوصف والسعر، ثمّ «افتح ↗» وشارة الموقع؛ والمنتجات كما كانت', () => {
@@ -307,7 +308,8 @@ test('١٠. بطاقات kind=listing صفوف: صورة (أو أيقونة ال
   assert.equal(all(rows[0], (n) => n.className === 'omRowPrice')[0].textContent, 'AED 480,000');
   const open = all(rows[0], (n) => n.className === 'omRowOpen')[0];
   assert.equal(open.textContent, 'افتح ↗'); assert.equal(open.href, 'https://www.bayut.com/property/1'); assert.equal(open.target, '_blank');
-  assert.equal(all(rows[1], (n) => n.tagName === 'IMG')[0].className, 'omCardFav', 'بلا صورة = أيقونة الموقع');
+  assert.equal(all(rows[1], (n) => /omCardPriceSite/.test(n.className))[0].textContent, 'السعر في الموقع', 'v-google-cards: بلا سعر = «السعر في الموقع»');
+  assert.ok(!rows.some((r) => all(r, (n) => n.textContent === 'no image').length), 'v-google-cards: بلا صورة لا صفّ');
   assert.equal(all(rows[1], (n) => n.className === 'omRowDesc').length, 0);
   assert.deepEqual(chipCalls, [['https://www.bayut.com/property/1', 'bayut.com'], ['https://www.propertyfinder.ae/en/buy/sharjah/villas', 'propertyfinder.ae']]);
   const p = ctx.window.omranRenderCards({ kind: 'product', items: ITEMS });

@@ -8,7 +8,7 @@
 
 const TOOL = {
   name: 'show_cards',
-  description: 'اعرض للمستخدم خيارات منظّمة في بطاقات (صورة · اسم · سعر · متجر · رابط) تُرسم له تلقائيًّا. استعملها بدل web_search كلّما طلب شيئًا عامًّا ليختار منه: منتجًا أو سلعة («أبغى رنقات كربون بكم»، «بذور زراعة»، «جوّال بالتقسيط»)، أو خدمة أو محلًّا أو موقعًا أو مكانًا أو خطّة أو «أفضل X». مرّة واحدة في الردّ. query = المطلوب كما قاله + مكانه: إن سمّى بلدًا أو مدينة فهما، وإلّا دولة تسوّقه. بالإنجليزيّة للمنتجات والخدمات، وبالعربيّة إن كان الطلب محلّيًّا صرفًا. لا توسّع لصنف آخر. chips: ٣–٦ فروقات لنفس المطلوب في نفس المكان (سعر · مقاس · لون · طراز) بلغة المستخدم — لا منتج آخر ولا بلد آخر. بعد البطاقات لا تعِد سردها نصًّا: سطر أو سطران، ثمّ سؤال متابعة واحد يضيّق نفس المطلوب، وعند جوابه رشّح الأفضل واحدًا بسبب ورابط.',
+  description: 'اعرض للمستخدم خيارات منظّمة في بطاقات (صورة · اسم · سعر · متجر · رابط) تُرسم له تلقائيًّا. استعملها بدل web_search كلّما طلب شيئًا عامًّا ليختار منه: منتجًا أو سلعة («أبغى رنقات كربون بكم»، «بذور زراعة»، «جوّال بالتقسيط»)، أو خدمة أو محلًّا أو موقعًا أو مكانًا أو خطّة أو «أفضل X» — بأيّ صيغة، ولو لم يقل «بكم» أو «أسعار» أو «للبيع»: اسم شيء يُشترى أو يُختار يكفي («ثياب مخوّر»، «جوال للتصوير»). مرّة واحدة في الردّ. query = المطلوب كما قاله + مكانه: إن سمّى بلدًا أو مدينة فهما، وإلّا دولة تسوّقه. بالإنجليزيّة للمنتجات والخدمات، وبالعربيّة إن كان الطلب محلّيًّا صرفًا. لا توسّع لصنف آخر. chips: ٣–٦ فروقات لنفس المطلوب في نفس المكان (سعر · مقاس · لون · طراز) بلغة المستخدم — لا منتج آخر ولا بلد آخر. بعد البطاقات لا تعِد سردها نصًّا: سطر أو سطران، ثمّ سؤال متابعة واحد يضيّق نفس المطلوب، وعند جوابه رشّح الأفضل واحدًا بسبب ورابط.',
   input_schema: {
     type: 'object',
     properties: {
@@ -121,15 +121,24 @@ function imageOf(pm) {
   const first = (arr, key) => (Array.isArray(arr) && arr[0] && arr[0][key]) ? httpsOnly(arr[0][key]) : '';
   return first(p.cse_image, 'src') || first(p.metatags, 'og:image') || first(p.product, 'image') || first(p.cse_thumbnail, 'src') || '';
 }
-/* السعر من pagemap (offer / product / metatags) ثمّ من العنوان والمقتطف */
-function priceOf(pm, title, snippet) {
+/* السعر من pagemap (offer / product / metatags) ثمّ من العنوان والمقتطف. from: schema = بيانات المتجر المنظّمة، text = نصّ */
+function priceInfo(pm, title, snippet) {
   const p = pm || {};
   const o = Array.isArray(p.offer) && p.offer[0] ? p.offer[0] : null;
-  if (o && o.price) return clean((o.pricecurrency ? o.pricecurrency + ' ' : '') + o.price, 32);
+  if (o && o.price) return { price: clean((o.pricecurrency ? o.pricecurrency + ' ' : '') + o.price, 32), from: 'schema' };
   const m = Array.isArray(p.metatags) && p.metatags[0] ? p.metatags[0] : {};
   const amt = m['product:price:amount'] || m['og:price:amount'] || '';
-  if (amt) return clean((m['product:price:currency'] || m['og:price:currency'] || '') + ' ' + amt, 32);
-  return priceIn(title) || priceIn(snippet);
+  if (amt) return { price: clean((m['product:price:currency'] || m['og:price:currency'] || '') + ' ' + amt, 32), from: 'schema' };
+  const t = priceIn(title) || priceIn(snippet);
+  return { price: t, from: t ? 'text' : '' };
+}
+function priceOf(pm, title, snippet) { return priceInfo(pm, title, snippet).price; }
+/* علامة متجر في النتيجة (لا في كلام المستخدم): بيانات منتج/عرض منظّمة أو سعر منظّم أو og:type منتج — لا سعر المقتطف (صفحة سعر الذهب
+   أو الصرف فيها «AED 312.50» وليست متجرًا) */
+function shopSignal(pm, pr) {
+  const p = pm || {};
+  const m = Array.isArray(p.metatags) && p.metatags[0] ? p.metatags[0] : {};
+  return !!(pr.from === 'schema' || (Array.isArray(p.product) && p.product.length) || (Array.isArray(p.offer) && p.offer.length) || /product/i.test(String(m['og:type'] || '')));
 }
 
 function cardFromGoogle(it) {
@@ -137,14 +146,159 @@ function cardFromGoogle(it) {
   if (!url) return null;
   const title = clean(it.title, 110);
   const snippet = clean(it.snippet, 180);
-  return { title: title || hostOf(url), url, site: hostOf(url), image: imageOf(it.pagemap), price: priceOf(it.pagemap, title, snippet), snippet };
+  const pr = priceInfo(it.pagemap, title, snippet);
+  return { title: title || hostOf(url), url, site: hostOf(url), image: imageOf(it.pagemap), price: pr.price, priceFrom: pr.from, shop: shopSignal(it.pagemap, pr), src: 'g', snippet };
 }
 function cardFromTavily(x) {
   const url = httpsOnly(x && x.url);
   if (!url) return null;
   const title = clean(x.title, 110), snippet = clean(x.content, 180);
-  return { title: title || hostOf(url), url, site: hostOf(url), image: '', price: priceIn(title) || priceIn(x.content), snippet };
+  const price = priceIn(title) || priceIn(x.content);
+  return { title: title || hostOf(url), url, site: hostOf(url), image: '', price, priceFrom: price ? 'text' : '', shop: false, src: 't', snippet }; // علامة المتجر من صفحته بعد قراءتها
 }
+
+/* ── v-google-cards (مواصفات المالك ١٨ أكتوبر: «البحث في المحادثة يصير مثل المنتجات في جوجل… كلّ بطاقة لازم فيها صورة… السعر من صفحة
+   المتجر وإلّا السعر في الموقع… البديل لازم يجيب صور بعد»): صفحة المتجر نفسها تُقرأ (وسوم og وJSON-LD) لكلّ بطاقة بلا صورة أو بلا سعر
+   منظّم. بطاقة بلا صورة أبدًا تسقط، والسعر النصّيّ من المقتطف لا يُعتمد (قد يكون لمنتج آخر في الصفحة) — إمّا سعر المتجر المنظّم وإمّا لا سعر. ── */
+const PAGE_TIMEOUT_MS = 2500;
+const PAGE_MAX_BYTES = 600000;
+const PAGE_UA = 'Mozilla/5.0 (compatible; OmranLinkPreview/1.0; +https://omran-ai-builder.vercel.app)';
+/* لا عناوين داخليّة: الرابط من نتائج البحث، لكنّ الخادم لا يطلب IP خامًا ولا localhost (SSRF) */
+function safePageUrl(u) {
+  let x = null;
+  try { x = new URL(String(u)); } catch (e) { return ''; }
+  if (x.protocol !== 'https:') return '';
+  const h = x.hostname.toLowerCase();
+  if (!h || h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal') || /^[\d.]+$/.test(h) || h.indexOf(':') >= 0 || h.indexOf('.') < 0) return '';
+  return x.href;
+}
+function decodeEnt(s) {
+  return String(s || '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&#x([0-9a-f]+);/gi, (m, h) => String.fromCharCode(parseInt(h, 16))).replace(/&#(\d+);/g, (m, d) => String.fromCharCode(Number(d)));
+}
+/* وسوم <meta>: property/name/itemprop ← content (أوّل قيمة لكلّ مفتاح) */
+function metaMap(html) {
+  const out = {};
+  const tagRe = /<meta\b[^>]*>/gi, attrRe = /([a-zA-Z_:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/g;
+  let t;
+  while ((t = tagRe.exec(html))) {
+    const a = {}; let m;
+    attrRe.lastIndex = 0;
+    while ((m = attrRe.exec(t[0]))) a[m[1].toLowerCase()] = decodeEnt(m[2] != null ? m[2] : (m[3] != null ? m[3] : m[4]));
+    const k = String(a.property || a.name || a.itemprop || '').toLowerCase();
+    if (k && a.content != null && out[k] == null) out[k] = a.content.trim();
+  }
+  return out;
+}
+/* كائنات JSON-LD مسطّحة (@graph والمصفوفات) */
+function ldObjects(html) {
+  const out = [];
+  const re = /<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  const walk = (v, d) => { if (!v || d > 6) return; if (Array.isArray(v)) { v.forEach((x) => walk(x, d + 1)); return; } if (typeof v !== 'object') return; out.push(v); if (v['@graph']) walk(v['@graph'], d + 1); };
+  while ((m = re.exec(html))) { try { walk(JSON.parse(m[1].trim()), 0); } catch (e) { /* JSON-LD مكسور في صفحة المتجر — يُتجاهل كأنّه غير موجود */ } }
+  return out;
+}
+const isType = (o, t) => { const v = o && o['@type']; return Array.isArray(v) ? v.some((x) => String(x).toLowerCase() === t) : String(v || '').toLowerCase() === t; };
+function fmtAmount(a) {
+  const s = String(a == null ? '' : a).trim().replace(/,/g, '');
+  if (!/^\d+(?:\.\d+)?$/.test(s)) return clean(a, 24);
+  const n = Number(s);
+  return n.toLocaleString('en-US', { minimumFractionDigits: /\.\d/.test(s) ? 2 : 0, maximumFractionDigits: 2 });
+}
+function ldImage(v) {
+  if (!v) return '';
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v)) return ldImage(v[0]);
+  return String(v.url || v.contentUrl || '');
+}
+/* صورة المنتج وسعره المنظّم من HTML صفحة المتجر (base لحلّ الروابط النسبيّة) */
+function pageMetaFrom(html, base) {
+  const meta = metaMap(html), ld = ldObjects(html);
+  const product = ld.filter((o) => isType(o, 'product'))[0] || null;
+  let img = (product && ldImage(product.image)) || meta['og:image:secure_url'] || meta['og:image'] || meta['twitter:image'] || meta['twitter:image:src'] || meta.image || '';
+  if (!img) { const l = /<link\b[^>]*rel\s*=\s*["']image_src["'][^>]*>/i.exec(html); const h = l && /href\s*=\s*["']([^"']+)["']/i.exec(l[0]); img = h ? decodeEnt(h[1]) : ''; }
+  let image = '';
+  try { image = img ? new URL(img, base).href : ''; } catch (e) { image = ''; }
+  if (!/^https:\/\//i.test(image)) image = '';
+  let amount = '', cur = '';
+  const offers = product && product.offers ? [].concat(product.offers) : ld.filter((o) => isType(o, 'offer') || isType(o, 'aggregateoffer'));
+  for (const o of offers) {
+    if (!o || typeof o !== 'object') continue;
+    const sp = o.priceSpecification && !Array.isArray(o.priceSpecification) ? o.priceSpecification : null;
+    const a = o.price != null ? o.price : (o.lowPrice != null ? o.lowPrice : (sp && sp.price != null ? sp.price : ''));
+    if (a !== '' && a != null && Number(String(a).replace(/,/g, '')) > 0) { amount = a; cur = o.priceCurrency || (sp && sp.priceCurrency) || ''; break; }
+  }
+  if (!amount) {
+    amount = meta['product:price:amount'] || meta['og:price:amount'] || meta.price || '';
+    cur = meta['product:price:currency'] || meta['og:price:currency'] || meta.pricecurrency || '';
+    if (!(Number(String(amount).replace(/,/g, '')) > 0)) amount = '';
+  }
+  return { image, price: amount ? clean((cur ? String(cur).toUpperCase() + ' ' : '') + fmtAmount(amount), 32) : '',
+    product: !!(product || amount || /product/i.test(String(meta['og:type'] || ''))) }; // صفحة منتج أو سعر منظّم = متجر
+}
+/* قراءة صفحة المتجر: HTML فقط، بسقف وقت وحجم؛ أيّ فشل = لا شيء (البطاقة تُقرّر بما عندها) */
+async function pageMeta(url, o) {
+  const u = safePageUrl(url);
+  if (!u) return {};
+  /* الجالب الآمن (safe-url): يحلّ الاسم ويرفض العنوان الخاصّ في كلّ تحويل — صفحة تحوّل إلى 169.254.x أو 127.0.0.1 لا تُقرأ */
+  const r = await require('./safe-url.js').fetchPublicUrl(u, { headers: { 'User-Agent': PAGE_UA, Accept: 'text/html,application/xhtml+xml', 'Accept-Language': 'ar,en;q=0.8' }, signal: AbortSignal.timeout(o.pageTimeoutMs || PAGE_TIMEOUT_MS) },
+    Object.assign({ maxRedirects: 3 }, o.fetch ? { fetchFn: o.fetch } : {}, o.lookup ? { lookup: o.lookup } : {}));
+  if (!r || !r.ok) return {};
+  const ct = String((r.headers && r.headers.get && r.headers.get('content-type')) || '');
+  if (ct && !/html/i.test(ct)) return {};
+  let html = '';
+  if (r.body && typeof r.body.getReader === 'function') {
+    const rd = r.body.getReader(), dec = new TextDecoder();
+    let n = 0;
+    for (;;) { const c = await rd.read(); if (c.done) break; n += c.value.length; html += dec.decode(c.value, { stream: true }); if (n >= PAGE_MAX_BYTES) { try { rd.cancel(); } catch (e) { /* القطع عند السقف — ما قُرئ يكفي */ } break; } }
+  } else html = String(await r.text()).slice(0, PAGE_MAX_BYTES);
+  return pageMetaFrom(html, r.url || u);
+}
+/* الإثراء: صفحة كلّ بطاقة بلا صورة أو بلا سعر منظّم تُقرأ بالتوازي. بعدها: بلا صورة = تسقط، والسعر النصّيّ يُستبدل بسعر الصفحة أو يُفرَّغ */
+async function enrichCards(items, opts) {
+  const o = Object.assign({ fetch: globalThis.fetch }, opts || {});
+  const list = (items || []).filter(Boolean);
+  await Promise.all(list.map(async (c) => {
+    const needImg = !c.image, needPrice = c.priceFrom !== 'schema';
+    if (!needImg && !needPrice) return;
+    let m = {};
+    try { m = await pageMeta(c.url, o); } catch (e) { m = {}; }
+    if (needImg && m.image) c.image = m.image;
+    if (needPrice) { c.price = m.price || ''; c.priceFrom = m.price ? 'page' : ''; }
+    if (m.product) c.shop = true;
+  }));
+  return list.filter((c) => !!c.image).slice(0, MAX_CARDS);
+}
+/* نتائج متجر لا مقالات: نتيجتان فأكثر فيهما علامة متجر */
+function shoppingLike(items) {
+  return (items || []).filter((c) => c && c.shop).length >= 2;
+}
+function sitesOf(items) {
+  const seen = new Set(), sites = [];
+  for (const c of items || []) { if (c.site && !seen.has(c.site)) { seen.add(c.site); sites.push({ url: c.url, title: c.site }); } }
+  return sites;
+}
+/* مرشّح للبطاقات: طلب قصير (٨ كلمات فأقلّ) لا يبدأ بسؤال شرح أو سبب أو وقت أو شخص («كيف/ليش/متى/مين/هل/اشرح…»). «وش أفضل جوال؟»
+   و«عندكم عطر عود؟» مرشّحة. الحكم الأخير لنتائج البحث (shoppingLike) لا لكلمات المستخدم — بلا «بكم» ولا «للبيع» ولا قائمة أصناف. */
+/* «من وين أشتري…» ليست «من هو»، و«how much» ليست «how to»، و«هل في…» طلب — الحكم الحقيقيّ للنتائج المنظّمة، فالمرشّح واسع */
+const ASK_START = /^\s*(?:و|ف)?(?:كيف|ليش|ليه|لماذا|لم|متى|من(?!\s+(?:وين|أين|اين|فين))|مين|منو|اشرح|عرّف|عرف|ترجم|اكتب|لخّص|لخص|how(?!\s+(?:much|many))|why|when|who|explain|translate|write)(?=$|[\s،,.:؛؟?!])/i;
+function pickAsk(text) {
+  const t = clean(text, 400);
+  if (!t || t.length > 200 || ASK_START.test(t)) return false;
+  return t.split(/\s+/).filter(Boolean).length <= 16;
+}
+/* v-google-cards: أوّل كتلة [[OPT]]…[[/OPT]] في ردّ التحويل = الأفكار القريبة ← رقائق تحت البطاقات (قبل النصّ والسؤال)، وتُرفع من النصّ */
+function liftIdeas(text) {
+  const s = String(text == null ? '' : text);
+  const m = /\[\[OPT\]\]([\s\S]*?)\[\[\/OPT\]\]/.exec(s);
+  if (!m) return { chips: [], text: s };
+  const chips = m[1].split('|').map((x) => clean(x, 40)).filter(Boolean).slice(0, 6);
+  if (chips.length < 2) return { chips: [], text: s };
+  const out = (s.slice(0, m.index).replace(/[ \t]+$/, '') + '\n' + s.slice(m.index + m[0].length).replace(/^[ \t]+/, '')).replace(/\n{3,}/g, '\n\n').trim();
+  return { chips, text: out };
+}
+
 function dedupe(cards, cap) {
   const max = cap || MAX_CARDS;
   const seen = new Set(), out = [];
@@ -183,18 +337,41 @@ async function searchCards(query, opts) {
   let items = null;
   try { items = await googleCards(pinned, o); } catch (e) { items = null; }
   if (!items || !items.length) { try { items = await tavilyCards(pinned, o); } catch (e) { items = null; } }
-  items = keepOnRequest(items || [], pinned, cc).slice(0, MAX_CARDS);
-  const seen = new Set(), sites = [];
-  for (const c of items) { if (c.site && !seen.has(c.site)) { seen.add(c.site); sites.push({ url: c.url, title: c.site }); } }
-  return { items, sites };
+  items = keepOnRequest(items || [], pinned, cc);
+  /* v-google-cards: الإثراء قبل القصّ — بطاقة تسقط بلا صورة فتأخذ مكانها التالية (جوجل يرجع ١٠ والبطاقات ٨) */
+  items = o.enrich ? await enrichCards(items, o) : items.slice(0, MAX_CARDS);
+  return { items, sites: sitesOf(items) };
 }
 
-/* ما يصل الموديل: قائمة مرقّمة مضغوطة بالأرقام نفسها التي يراها المستخدم على البطاقات (يرشّح برقم البطاقة) */
-function cardsText(items, query) {
+/* ما يصل الموديل: قائمة مرقّمة مضغوطة بالأرقام نفسها التي يراها المستخدم على البطاقات (يرشّح برقم البطاقة).
+   v-google-cards: بلا سعر = «السعر في الموقع» (لا يخترع الموديل سعرًا)؛ وفي التحويل من web_search لا رقائق من الموديل، فالأفكار القريبة
+   يكتبها هو أزرارًا [[OPT]]. */
+function cardsText(items, query, opts) {
   if (!items || !items.length) return 'لا نتائج منظّمة لـ«' + clean(query, 80) + '» — جرّب web_search بصياغة أخرى، أو أجب نصًّا.';
-  const lines = items.map((c, i) => (i + 1) + '. ' + c.title + (c.price ? ' — ' + c.price : '') + ' — ' + c.site + '\n' + c.url + (c.snippet ? '\n' + c.snippet : ''));
-  return '[عُرضت للمستخدم ' + items.length + ' بطاقات منظّمة (صورة · اسم · سعر · متجر · رابط) بهذه الأرقام — لا تعِد سردها نصًّا]\n\n'
-    + lines.join('\n\n') + '\n\nالآن: سطر أو سطران عن ما وجدت، ثمّ سؤال متابعة واحد فقط يضيّق نفس المطلوب في نفس المكان (الميزانيّة، المقاس، اللون، الطراز). حين يجيب: رشّح الأفضل واحدًا برقمه واسمه وسببه ورابطه.';
+  const lines = items.map((c, i) => (i + 1) + '. ' + c.title + ' — ' + (c.price || 'السعر في الموقع') + ' — ' + c.site + '\n' + c.url + (c.snippet ? '\n' + c.snippet : ''));
+  const ideas = opts && opts.converted
+    ? 'سطر واحد عمّا وجدت، ثمّ أفكار قريبة من نفس المطلوب (٣–٥: لون، مقاس، سعر، طراز) أزرارًا بهذه الصيغة حرفيًّا [[OPT]]فكرة١|فكرة٢|فكرة٣[[/OPT]]، ثمّ '
+    : 'سطر أو سطران عن ما وجدت، ثمّ ';
+  return '[عُرضت للمستخدم ' + items.length + ' بطاقات منظّمة (صورة · اسم · سعر · متجر · رابط) بهذه الأرقام — لا تعِد سردها نصًّا، ولا تذكر سعرًا غير المكتوب هنا]\n\n'
+    + lines.join('\n\n') + '\n\nالآن: ' + ideas + 'سؤال متابعة واحد فقط يضيّق نفس المطلوب في نفس المكان (الميزانيّة، المقاس، اللون، الطراز). حين يجيب: رشّح الأفضل واحدًا برقمه واسمه وسببه ورابطه.';
+}
+
+/* v-google-cards: web_search لطلب يُختار منه ← بطاقات. المرشّح من نصّ المستخدم (pickAsk)، والحكم من النتائج نفسها (shoppingLike):
+   مقالات بلا متجر = يكمل بحث الويب كما كان. بطاقتان حقيقيّتان (بصورة) فأكثر وإلّا بحث الويب. يرجع نصّ الموديل أو null. */
+async function pickAsCards(query, opts) {
+  const o = opts || {};
+  if (!pickAsk(o.ask)) return null;
+  const io = {}; // مفتاح بقيمة undefined في Object.assign يمحو الافتراضيّ (fetch العامّ) — يُمرَّر الموجود فقط
+  if (o.env) io.env = o.env;
+  if (o.fetch) io.fetch = o.fetch;
+  if (o.lookup) io.lookup = o.lookup;
+  const raw = await searchCards(query, Object.assign({ ask: o.ask, country: o.country }, io));
+  /* نتائج جوجل تحمل بيانات المتجر المنظّمة فيُحكم قبل قراءة الصفحات؛ البديل (Tavily) بلا بيانات فتُقرأ صفحاته أوّلًا ثمّ يُحكم */
+  const fromGoogle = raw.items.some((c) => c.src === 'g');
+  if (fromGoogle && !shoppingLike(raw.items)) return null;
+  const items = (await enrichCards(raw.items, io)).filter((c) => c.shop); // المقالات والمراجعات وويكيبيديا ليست بطاقات منتج
+  if (!shoppingLike(items)) return null;
+  return { text: cardsText(items, query, { converted: true }), ev: cardsEvent(query, { kind: 'product' }, items, { ask: o.ask, country: o.country }), sites: sitesOf(items) };
 }
 
 /* حمولة الحدث للعميل — بلا حقول زائدة، والرقائق نصوص قصيرة ≤ ٦ */
@@ -204,4 +381,5 @@ function cardsEvent(query, input, items, scope) {
   return { cards: { q: clean(query, 120), kind: clean(input && input.kind, 12) || 'other', chips, items: items.map((c) => ({ title: c.title, url: c.url, site: c.site, image: c.image || '', price: c.price || '', snippet: c.snippet || '' })) } };
 }
 
-module.exports = { TOOL, searchCards, cardsText, cardsEvent, pinQuery, placeOf, keepOnRequest, scopeChips, PRICE_RE, __imageOf: imageOf, __priceOf: priceOf };
+module.exports = { TOOL, searchCards, cardsText, cardsEvent, pinQuery, placeOf, keepOnRequest, scopeChips, PRICE_RE, __imageOf: imageOf, __priceOf: priceOf,
+  enrichCards, pageMetaFrom, safePageUrl, shoppingLike, sitesOf, pickAsk, pickAsCards, liftIdeas }; // v-google-cards

@@ -43,7 +43,10 @@
       + '.msg .omRowDesc{color:var(--muted,#9aa3b2) !important;font-size:12.5px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}'
       + '.msg .omRowPrice{font-size:14px;font-weight:800;color:var(--text,#eee) !important;}'
       + '.omRowFoot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:4px;}'
-      + 'html body .msg a.omRowOpen.omRowOpen{font-size:12.5px;text-decoration:none !important;}';
+      + 'html body .msg a.omRowOpen.omRowOpen{font-size:12.5px;text-decoration:none !important;}'
+      /* v-google-cards: «السعر في الموقع» أخفّ من السعر الحقيقيّ، والأفكار القريبة تحت البطاقات */
+      + '.msg .omCardPrice.omCardPriceSite,.msg .omRowPrice.omCardPriceSite{font-size:12.5px;font-weight:600;color:var(--muted,#9aa3b2) !important;}'
+      + '.omCardsWrap .omCardChips{margin:10px 0 0;}';
     document.head.appendChild(st);
   }
   function https(u){ u = String(u || ''); return /^https:\/\//i.test(u) ? u : ''; }
@@ -63,22 +66,30 @@
     });
     return row.childNodes.length ? row : null;
   }
+  /* v-google-cards (مواصفات المالك ١٨ أكتوبر): «كلّ بطاقة لازم فيها صورة… وإذا ما لقيت صورة أبداً لا تعرض البطاقة» — بلا صورة لا بطاقة،
+     وصورة لم تُحمَّل تُسقط بطاقتها (كانت أيقونة الموقع مكانها). وبلا سعر: «السعر في الموقع» لا فراغ. */
+  function dropOnError(img, el){ img.addEventListener('error', function(){ if(el.parentNode) el.parentNode.removeChild(el); }); }
+  function priceEl(it, cls){
+    var pr = document.createElement('div');
+    if(it.price){ pr.className = cls; pr.textContent = String(it.price); }
+    else { pr.className = cls + ' omCardPriceSite'; pr.textContent = tt('cardsPriceSite', 'السعر في الموقع'); }
+    return pr;
+  }
   function card(it, i){
     var url = https(it && it.url); if(!url) return null;
+    var src = https(it.image); if(!src) return null;
     var a = document.createElement('a');
     a.className = 'omCard'; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
     var im = document.createElement('div'); im.className = 'omCardImg';
     var img = document.createElement('img');
     img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.alt = '';
-    var src = https(it.image);
-    if(src){ img.src = src; img.addEventListener('error', function(){ img.className = 'omCardFav'; img.src = fav(it.site); }); }
-    else { img.className = 'omCardFav'; img.src = fav(it.site); }
+    img.src = src; dropOnError(img, a);
     im.appendChild(img);
     var no = document.createElement('span'); no.className = 'omCardNo'; no.textContent = String(i + 1); im.appendChild(no);
     a.appendChild(im);
     var body = document.createElement('div'); body.className = 'omCardBody';
     var ti = document.createElement('div'); ti.className = 'omCardTitle'; ti.textContent = String(it.title || it.site || ''); body.appendChild(ti);
-    if(it.price){ var pr = document.createElement('div'); pr.className = 'omCardPrice'; pr.textContent = String(it.price); body.appendChild(pr); }
+    body.appendChild(priceEl(it, 'omCardPrice'));
     var si = document.createElement('div'); si.className = 'omCardSite';
     var fi = document.createElement('img'); fi.src = fav(it.site); fi.alt = ''; fi.loading = 'lazy'; si.appendChild(fi);
     si.appendChild(document.createTextNode(String(it.site || ''))); body.appendChild(si);
@@ -94,20 +105,19 @@
   /* v-reply-blocks: صفّ إعلان — الصورة (أو أيقونة الموقع) بجانب العنوان والوصف والسعر، ثمّ «افتح ↗» وشارة الموقع */
   function row(it, i){
     var url = https(it && it.url); if(!url) return null;
+    var src = https(it.image); if(!src) return null;
     var r = document.createElement('div'); r.className = 'omRow';
     var im = link(url, 'omRowImg');
     var img = document.createElement('img');
     img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.alt = '';
-    var src = https(it.image);
-    if(src){ img.src = src; img.addEventListener('error', function(){ img.className = 'omCardFav'; img.src = fav(it.site); }); }
-    else { img.className = 'omCardFav'; img.src = fav(it.site); }
+    img.src = src; dropOnError(img, r);
     im.appendChild(img);
     var no = document.createElement('span'); no.className = 'omCardNo'; no.textContent = String(i + 1); im.appendChild(no);
     r.appendChild(im);
     var body = document.createElement('div'); body.className = 'omRowBody';
     var ti = link(url, 'omRowTitle'); ti.textContent = String(it.title || it.site || ''); body.appendChild(ti);
     if(it.snippet){ var ds = document.createElement('div'); ds.className = 'omRowDesc'; ds.textContent = String(it.snippet); body.appendChild(ds); }
-    if(it.price){ var pr = document.createElement('div'); pr.className = 'omRowPrice'; pr.textContent = String(it.price); body.appendChild(pr); }
+    body.appendChild(priceEl(it, 'omRowPrice'));
     var foot = document.createElement('div'); foot.className = 'omRowFoot';
     var op = link(url, 'omRowOpen'); op.textContent = tt('cardsOpen', 'افتح') + ' ↗'; foot.appendChild(op);
     if(typeof omranSrcChip === 'function') foot.appendChild(omranSrcChip(url, String(it.site || '')));
@@ -121,12 +131,12 @@
     var wrap = document.createElement('div');
     wrap.className = 'omCardsWrap';
     wrap.setAttribute('data-keep-emoji', '1');
-    var chips = chipsRow(cards && cards.chips); if(chips) wrap.appendChild(chips);
     var items = (cards && Array.isArray(cards.items)) ? cards.items : [];
     var list = !!(cards && cards.kind === 'listing');
     var grid = document.createElement('div'); grid.className = list ? 'omCards omList' : 'omCards';
     items.slice(0, 8).forEach(function(it, i){ var c = list ? row(it, i) : card(it, i); if(c) grid.appendChild(c); });
     if(grid.childNodes.length) wrap.appendChild(grid);
+    var chips = chipsRow(cards && cards.chips); if(chips) wrap.appendChild(chips); // v-google-cards: الأفكار القريبة بعد البطاقات (مواصفات المالك ٦)
     return wrap;
   };
 })();
