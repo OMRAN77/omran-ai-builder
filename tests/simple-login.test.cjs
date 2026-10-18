@@ -31,9 +31,19 @@ async function call(body) {
   return res;
 }
 
+// v-signup-no-email: التسجيل لا يحفظ إيميلًا — حساب أكّد إيميله من «حسابي» (السجلّ والختم والفهرس كما يكتبها التأكيد بالرمز)
+async function confirmedEmail(key, email) {
+  const u = await auth.getUser(key);
+  await auth.putUser(key, Object.assign({}, u, { email, verifiedEmail: email }));
+  store.set('db/email-index/' + email, JSON.stringify({ username: key, at: Date.now() }));
+}
+
 test('الخادم: الدخول بالإيميل أو الاسم، والخطأ واحد للحالتين', async () => {
   const su = await call({ action: 'signup', username: 'Sara', password: 'pass12345', email: 'Sara@Example.com' });
   assert.equal(su.code, 200, JSON.stringify(su.body));
+  assert.equal((await auth.getUser('sara')).email, null, 'v-signup-no-email: التسجيل لا يحفظ الإيميل');
+  assert.equal((await call({ action: 'login', username: 'sara@example.com', password: 'pass12345' })).code, 401, 'ولا دخول به قبل تأكيده');
+  await confirmedEmail('sara', 'sara@example.com');
   const byName = await call({ action: 'login', username: 'sara', password: 'pass12345' });
   assert.equal(byName.code, 200);
   const byEmail = await call({ action: 'login', username: '  SARA@example.com ', password: 'pass12345' });
@@ -54,7 +64,8 @@ test('الخادم: اسم مستخدم فيه @ (حساب قديم) يُقدَ�
   await call({ action: 'signup', username: 'ali-legacy', password: 'alipass123' });
   const legacy = await auth.getUser('ali-legacy');
   await auth.putUser('ali@home.com', Object.assign({}, legacy, { username: 'ali@home.com' }));
-  await call({ action: 'signup', username: 'other', password: 'otherpass1', email: 'ali@home.com' });
+  await call({ action: 'signup', username: 'other', password: 'otherpass1' });
+  await confirmedEmail('other', 'ali@home.com');
   const r = await call({ action: 'login', username: 'ali@home.com', password: 'alipass123' });
   assert.equal(r.code, 200);
   assert.equal(r.body.username, 'ali@home.com');

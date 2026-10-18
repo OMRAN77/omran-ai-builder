@@ -35,22 +35,38 @@ async function call(body) {
   return res;
 }
 
-test('١. إيميل واحد لكلّ حساب: الثاني بنفس البريد يُرفض، وبريد حساب محذوف يُقبل', async () => {
-  assert.equal((await call({ action: 'signup', username: 'nora', password: 'pass12345', email: 'Nora@Example.com' })).code, 200);
-  const dup = await call({ action: 'signup', username: 'nora2', password: 'pass12345', email: ' nora@example.com ' });
+// v-signup-no-email (أمر المالك ١٨ أكتوبر): التسجيل لا يحفظ إيميلًا أبدًا — يُضاف من «حسابي» برمز يصل البريد (purpose:'change').
+async function addEmail(token, email) {
+  mails.length = 0;
+  const r = await call({ action: 'email-otp-request', purpose: 'change', token, email, lang: 'ar' });
+  if (r.code !== 200 || r.body.verified) return r;
+  const code = (String((mails[0] || {}).html || '').match(/>(\d{6})</) || [])[1];
+  return call({ action: 'email-otp-verify', purpose: 'change', token, email, otp: code, lang: 'ar' });
+}
+
+test('١. إيميل واحد لكلّ حساب: الثاني بنفس البريد يُرفض، وبريد حساب محذوف يُقبل — والإيميل من «حسابي» برمز لا من التسجيل', async () => {
+  const su = await call({ action: 'signup', username: 'nora', password: 'pass12345', email: 'Nora@Example.com' });
+  assert.equal(su.code, 200);
+  assert.equal((await auth.getUser('nora')).email, null, 'التسجيل لا يحفظ الإيميل');
+  assert.equal(store.has('db/email-index/nora@example.com'), false, 'ولا فهرسه');
+  assert.equal((await addEmail(su.body.token, 'Nora@Example.com')).code, 200);
+  const su2 = await call({ action: 'signup', username: 'nora2', password: 'pass12345' });
+  const dup = await addEmail(su2.body.token, ' nora@example.com ');
   assert.equal(dup.code, 409, JSON.stringify(dup.body));
   assert.match(dup.body.error, /مرتبط بحساب آخر/);
-  assert.equal(await auth.getUser('nora2'), null, 'لم يُنشأ الحساب الثاني');
+  assert.equal((await auth.getUser('nora2')).email, null, 'لم يأخذ البريد');
   // حساب حُذف: بريده يعود حرًّا
-  const u = await auth.getUser('nora'); u.deleted = true; store.set('db/users/nora.json', JSON.stringify(u));
-  assert.equal((await call({ action: 'signup', username: 'nora3', password: 'pass12345', email: 'nora@example.com' })).code, 200);
+  const u = await auth.getUser('nora'); u.deleted = true; await auth.putUser('nora', u);
+  const su3 = await call({ action: 'signup', username: 'nora3', password: 'pass12345' });
+  assert.equal((await addEmail(su3.body.token, 'nora@example.com')).code, 200);
   const li = await call({ action: 'login', username: 'nora@example.com', password: 'pass12345' });
   assert.equal(li.code, 200, 'الفهرس صار للحساب الحيّ الجديد');
   assert.equal(auth.verifyToken(li.body.token), 'nora3');
 });
 
 test('٢. نسيت كلمة المرور بالإيميل: ردّ واحد للموجود وغير الموجود، والرابط يصل الموجود وحده', async () => {
-  await call({ action: 'signup', username: 'huda', password: 'pass12345', email: 'huda@example.com' });
+  const su = await call({ action: 'signup', username: 'huda', password: 'pass12345' });
+  assert.equal((await addEmail(su.body.token, 'huda@example.com')).code, 200);
   mails.length = 0;
   const yes = await call({ action: 'forgotPassword', username: 'HUDA@example.com' });
   const no = await call({ action: 'forgotPassword', username: 'ghost@example.com' });

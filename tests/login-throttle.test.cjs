@@ -163,8 +163,12 @@ test('٨. rateWait ذرّيّ: ٥٠ «نسيت كلمة المرور» متوا�
 // مراجعة الدفعة A (sec-1): «الشبكة المعروفة» كانت تُكتب بعد الدخول بكلمة المرور وحده — من سجّل ثمّ بقي بالتحقّق المنزلق
 // (المالك نادرًا ما يدخل بكلمته) أو دخل برمز البريد يُقفَل حتّى من بيته برشّ ٥٠ كلمة خاطئة من شبكات متفرّقة (المسبار: ٤٢٩).
 test('٩. كلّ نجاح موثَّق يحفظ شبكته: تسجيل من S، تحقّق منزلق من V، رمز بريد من O — بعد رشّ ٦٠ موزَّعًا كلمته من الثلاث 200', async () => {
-  const su = await call({ action: 'signup', username: 'homeowner', password: PASS, email: 'homeowner@example.com' }, '10.7.7.1');
+  const su = await call({ action: 'signup', username: 'homeowner', password: PASS }, '10.7.7.1');
   assert.equal(su.status, 200);
+  // v-signup-no-email: التسجيل لا يحفظ الإيميل — أكّده من «حسابي» (السجلّ والختم والفهرس كما يكتبها التأكيد بالرمز) ليصله رمز الدخول
+  const ho = await auth.getUser('homeowner');
+  await auth.putUser('homeowner', Object.assign({}, ho, { email: 'homeowner@example.com', verifiedEmail: 'homeowner@example.com' }));
+  store.set('db/email-index/homeowner@example.com', JSON.stringify({ username: 'homeowner', at: Date.now() }));
   assert.equal((await call({ action: 'verify', token: su.body.token }, '10.7.8.1')).status, 200, 'تحقّق منزلق من شبكة أخرى بلا دخول بكلمة');
   assert.equal((await call({ action: 'email-otp-request', email: 'homeowner@example.com' }, '10.7.9.1')).status, 200);
   const code = JSON.parse(store.get('db/otp/homeowner@example.com')).otp;
