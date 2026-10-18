@@ -644,11 +644,12 @@ try{
     if(!box) return;
     const items = list || [];
     if(!items.length){ box.innerHTML = '<div style="opacity:.6;padding:8px">لا أحد في قائمة VIP.</div>'; return; }
+    // v-vip-verified (مراجعة النقض): المعرّف في data-id لا داخل JS السطر — كان « ' » وحده يُهرَّب، فاسم مستخدم بـ« \\ » يكسر
+    // السلسلة وينفّذ كودًا في جلسة المالك عند 🗑️؛ والأسماء تدخل القائمة الآن تلقائيًّا حين يؤكّد صاحب إيميل بريده.
     box.innerHTML = items.map(id => {
-      const safeAttr = String(id).replace(/'/g,"\\'");
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
         + '<span style="flex:1;min-width:110px;font-weight:500">⭐ ' + vipEscape(id) + '</span>'
-        + '<button type="button" onclick="removeVipUser(\'' + vipEscape(safeAttr) + '\')" title="إزالة من VIP" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+        + '<button type="button" data-id="' + vipEscape(id) + '" onclick="removeVipUser(this.dataset.id)" title="إزالة من VIP" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
         + '</div>';
     }).join('');
   }
@@ -662,10 +663,55 @@ try{
       const data = await res.json();
       if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
       renderVipList(data.list || []);
+      vipAuditButton();
     }catch(e){
       box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
     }
   };
+  /* v-vip-verified (أمر المالك: «أرسل لي قائمة الحسابات اللي عندها الحين إيميل من قائمة VIP وهي غير متحقّق منها»): الجرد من
+     الخادم لجلسة المالك وحدها، ويُعرض هنا — لا في سجلّ ورك فلو ولا طلب سحب (المستودع علنيّ). مربّع شقيق لقائمة VIP، فإعادة
+     رسمها بعد إضافة أو إزالة لا تمسحه. بزرّ لا عند كلّ إقلاع: الجرد يقرأ كلّ الحسابات (كلوحة الإحصاء بزرّ تحديثها). لا حذف ولا تعديل. */
+  function vipAuditButton(){
+    const list = document.getElementById('vipListBox');
+    if(!list || !list.parentNode || document.getElementById('vipAuditBtn')) return;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'vipAuditBtn';
+    b.textContent = '🔎 إيميلات VIP غير المؤكَّدة';
+    b.style.cssText = 'margin-top:8px;background:none;border:1px solid var(--border,#333);color:inherit;border-radius:6px;padding:6px 10px;cursor:pointer';
+    b.onclick = () => loadVipAudit();
+    list.parentNode.insertBefore(b, list.nextSibling);
+  }
+  const VIP_AUDIT_KIND = {
+    'email': 'يحمل إيميلًا من قائمة VIP غير مؤكَّد — لا يأخذ VIP حتّى يؤكّده من «حسابي»',
+    'legacy-name': 'اسمه القديم إيميل في القائمة — VIP بالاسم كما كان، وإيميله غير مؤكَّد',
+    'vip-name': 'في القائمة باسمه وإيميله غير مؤكَّد — لو أضفته بإيميله قبل اليوم فراجعه',
+  };
+  async function loadVipAudit(){
+    const list = document.getElementById('vipListBox');
+    if(!list || !list.parentNode) return;
+    let box = document.getElementById('vipAuditBox');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'vipAuditBox';
+      box.style.cssText = 'margin-top:8px;font-size:13px;';
+      const btn = document.getElementById('vipAuditBtn');
+      list.parentNode.insertBefore(box, (btn || list).nextSibling);
+    }
+    box.textContent = '⏳ جرد الإيميلات غير المؤكَّدة...';
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/vip?audit=1&token=' + encodeURIComponent(token || ''));
+      const data = await res.json();
+      if(!res.ok || !data.audit){ box.textContent = '❌ ' + (data.error || 'تعذّر الجرد'); return; }
+      const rows = data.audit.rows || [];
+      box.innerHTML = '<div style="font-weight:600;margin:6px 0">إيميلات VIP غير مؤكَّدة: ' + rows.length + ' (فُحص ' + Number(data.audit.scanned || 0) + ' حسابًا)</div>'
+        + (rows.length ? rows.map(r => '<div style="padding:6px;border-bottom:1px solid var(--border,#333)"><b>' + vipEscape(r.username) + '</b> · <span dir="ltr">' + vipEscape(r.email || '—') + '</span>'
+          + '<div style="opacity:.75">' + vipEscape(VIP_AUDIT_KIND[r.kind] || r.kind) + '</div></div>').join('') : '<div style="opacity:.6;padding:6px">لا أحد.</div>');
+    }catch(e){
+      box.textContent = '❌ تعذّر الجرد: ' + (e && e.message || e);
+    }
+  }
   window.addVipUser = async function addVipUser(){
     const input = document.getElementById('vipInput');
     const id = input ? String(input.value || '').trim() : '';
@@ -680,6 +726,9 @@ try{
       if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
       if(input) input.value = '';
       renderVipList(data.list || []);
+      // v-vip-verified: إيميل بلا حساب أثبته يبقى خامًا ولا يعطي أحدًا شيئًا حتّى يؤكّده صاحبه.
+      if(data.pending) alert('أُضيف كإيميل: يصير VIP لصاحبه لما يؤكّد إيميله (دخول Google أو رمز من «حسابي»).');
+      if(document.getElementById('vipAuditBox')) loadVipAudit();
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
   window.removeVipUser = async function removeVipUser(id){
@@ -694,6 +743,7 @@ try{
       const data = await res.json();
       if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
       renderVipList(data.list || []);
+      if(document.getElementById('vipAuditBox')) loadVipAudit();
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
 
@@ -1226,6 +1276,31 @@ try{
   const acctEmail = $('#acctEmail');
   const acctEmailSaveBtn = $('#acctEmailSaveBtn');
   const acctEmailMsg = $('#acctEmailMsg');
+  /* v-vip-verified (أمر المالك ١٨ أكتوبر: «تغيير الإيميل في «حسابي» ما ينحفظ إلا بعد ما يدخل المستخدم الكود اللي يوصله على
+     الإيميل الجديد»): «حفظ» الأولى ترسل الرمز وتُظهر خانته، و«حفظ» بعد كتابته تؤكّده وتحفظ. الخانة تُصنع هنا لا في
+     partials-settings (لا وسم ?v= يُرفع). الإيميل المحفوظ قبل اليوم غير مؤكَّد: «حفظ» بالقيمة نفسها يرسل رمزه. */
+  let acctEmailState = { email: '', verified: false };
+  let acctEmailPending = '';
+  let acctEmailPendingUser = ''; // رمز معلَّق لحساب آخر (خروج ودخول في التبويب نفسه) لا يظهر لهذا
+  function acctEmailCodeBox(show){
+    let box = $('#acctEmailCode');
+    if(!box && show && acctEmailMsg && acctEmailMsg.parentNode){
+      box = document.createElement('input');
+      box.type = 'text';
+      box.id = 'acctEmailCode';
+      box.setAttribute('autocomplete', 'one-time-code');
+      box.setAttribute('inputmode', 'numeric');
+      box.setAttribute('maxlength', '6');
+      box.style.cssText = 'display:block; width:100%; box-sizing:border-box; height:44px; margin-top:8px; padding:0 10px; border-radius:var(--r-2); direction:ltr; text-align:center; font-size:20px; letter-spacing:8px; font-weight:bold;';
+      acctEmailMsg.parentNode.insertBefore(box, acctEmailMsg);
+    }
+    if(box){
+      box.style.display = show ? 'block' : 'none';
+      box.placeholder = '000000'; // كخانة رمز الدخول — نصّ «رمز التحقّق» يُقصّ بخطّها الكبير، والتعليمات في السطر تحته
+      if(!show) box.value = '';
+    }
+    return box;
+  }
 
   function prefillAccountFields(){
     if(acctUsername) acctUsername.value = authGet('aiapp_username') || '';
@@ -1239,7 +1314,14 @@ try{
           body: JSON.stringify({ action: 'getProfile', token }),
         }).then(r => r.json()).then(data => {
           if(!data || !data.ok) return;
-          if(acctEmail) acctEmail.value = data.email || '';
+          if(acctEmailPending && acctEmailPendingUser !== (authGet('aiapp_username') || '')){ acctEmailPending = ''; acctEmailCodeBox(false); }
+          // رمز معلَّق لإيميل جديد: إعادة فتح الإعدادات (لقراءة البريد) لا تعيد الإيميل القديم إلى الخانة فيضيع الجديد
+          if(acctEmail) acctEmail.value = acctEmailPending || data.email || '';
+          acctEmailState = { email: String(data.email || '').toLowerCase(), verified: data.emailVerified === true }; // v-vip-verified
+          if(acctEmailMsg && !acctEmailPending){
+            acctEmailMsg.textContent = (data.email && data.emailVerified !== true) ? (curT().acctEmailUnverified || '') : '';
+            acctEmailMsg.style.color = 'var(--muted,#999)';
+          }
           // v-phone-link: الرقم المربوط مكان «غير مربوط» — بلا data-i18n كي لا يعيده تبديل اللغة
           const pv = $('#acctPhoneVal');
           if(pv && data.phone){ pv.removeAttribute('data-i18n'); pv.textContent = data.phone; }
@@ -1309,33 +1391,52 @@ try{
     acctEmailSaveBtn.onclick = async () => {
       const t2 = curT();
       const emailVal = acctEmail.value.trim();
-      acctEmailMsg.textContent = '';
+      const emailKey = emailVal.toLowerCase();
+      const say = (txt, color) => { acctEmailMsg.textContent = txt || ''; acctEmailMsg.style.color = color; };
       if(!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)){
-        acctEmailMsg.textContent = t2.acctInvalidEmail;
-        acctEmailMsg.style.color = '#ef4444';
+        say(t2.acctInvalidEmail, '#ef4444');
         return;
       }
-      acctEmailMsg.textContent = t2.acctSaving;
-      acctEmailMsg.style.color = 'var(--muted,#999)';
+      if(emailKey === acctEmailState.email && acctEmailState.verified){ acctEmailPending = ''; acctEmailCodeBox(false); say(t2.acctSaved, '#22c55e'); return; }
+      const codeEl = $('#acctEmailCode');
+      const code = (codeEl && codeEl.style.display !== 'none') ? codeEl.value.trim() : '';
+      const confirming = !!acctEmailPending && acctEmailPending === emailKey && code !== '';
+      if(confirming && !/^\d{6}$/.test(code)){ say(t2.acctEmailBadCode, '#ef4444'); return; }
+      say(t2.acctSaving, 'var(--muted,#999)');
       acctEmailSaveBtn.disabled = true;
       try {
         const token = authGet('aiapp_auth_token');
+        const lang = localStorage.getItem('aiapp_lang') || 'ar';
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'setEmail', token, email: emailVal }),
+          body: JSON.stringify(confirming
+            ? { action: 'email-otp-verify', purpose: 'change', token, email: emailVal, otp: code, lang }
+            : { action: 'email-otp-request', purpose: 'change', token, email: emailVal, lang }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if(!res.ok || data.error){
-          acctEmailMsg.textContent = data.error || t2.acctGenericError;
-          acctEmailMsg.style.color = '#ef4444';
+          // رسالة الخادم عربيّة/إنجليزيّة فقط — الحالات المعروفة بنصّ الواجهة بلغتها الـ١٤
+          const byCode = { bad_otp: t2.acctEmailBadCode, email_taken: t2.acctEmailTaken, bad_email: t2.acctInvalidEmail,
+            too_many: String(t2.acctEmailTooMany || '').replace('{minutes}', String(Number(data.minutes) || 15)),
+            session: t2.acctGenericError, mail_off: t2.acctGenericError, mail_failed: t2.acctGenericError }[data.code];
+          say(byCode || data.error || t2.acctGenericError, '#ef4444');
           return;
         }
-        acctEmailMsg.textContent = t2.acctSaved;
-        acctEmailMsg.style.color = '#22c55e';
+        if(confirming || data.verified === true){
+          acctEmailPending = '';
+          acctEmailCodeBox(false);
+          acctEmailState = { email: emailKey, verified: true };
+          say(t2.acctSaved, '#22c55e');
+          return;
+        }
+        acctEmailPending = emailKey;
+        acctEmailPendingUser = authGet('aiapp_username') || '';
+        const box = acctEmailCodeBox(true);
+        if(box){ box.value = ''; box.focus(); }
+        say(String(t2.acctEmailCodeSent || '').replace('{email}', emailVal), 'var(--muted,#999)');
       } catch(e){
-        acctEmailMsg.textContent = t2.acctNetError;
-        acctEmailMsg.style.color = '#ef4444';
+        say(t2.acctNetError, '#ef4444');
       } finally {
         acctEmailSaveBtn.disabled = false;
       }

@@ -96,4 +96,31 @@ async function isVip(identifier) {
   }
 }
 
-module.exports = { getVipList, addVip, removeVip, isVip, normalizeId, invalidateCache, VIP_KEY };
+// v-vip-verified: بريدٌ ثبت للتوّ لصاحبه (رمز «حسابي»، حساب أنشأه رمز البريد، دخول Google). إن كان في القائمة إيميلًا خامًا —
+// أضافه المالك ولا مؤكَّد يحمله يومها (vip.js لا يحوّل إيميلًا إلّا إلى حساب أثبته) — يُضاف اسم الحساب بجانبه، كما كان سيحدث لو
+// كان مؤكَّدًا لحظة الإضافة. الإيميل الخام يبقى: لا يطابق إلّا اسمًا قديمًا هو نفسه (قبل v-name-no-at — قرار المالك: لا يُمسّ)، ونزعه
+// كان يسحب VIP ذلك الحساب بنقاطه وسجلّه وينقله إلى حساب جديد فارغ (مراجعة النقض). مرّة واحدة لكلّ إيميل (db/vip-promoted/):
+// وإلّا كلّ حساب يثبت البريد نفسه (حسابات صاحبه، أو من يعطيه الرمز) يأخذ VIP بلا عدد، وما يزيله المالك يعود مع الدخول التالي.
+// المالك يعيد الفرصة بإضافة الإيميل من جديد (vip.js). لا يرمي (القاعدة ١).
+const MAX_LIST = 500;
+function promotedKey(email) { return 'db/vip-promoted/' + encodeURIComponent(email); }
+async function promoteVerifiedEmail(email, username) {
+  try {
+    const e = normalizeId(email);
+    const u = normalizeId(username);
+    if (!e || !u || e.indexOf('@') === -1) return false;
+    const list = await getVipList({ fresh: true });
+    if (list.indexOf(e) === -1 || list.indexOf(u) !== -1 || list.length >= MAX_LIST) return false;
+    if (!(await require('./kv.js').kvSetIfAbsent(promotedKey(e), u))) return false;
+    const next = list.concat([u]);
+    await kvPutJSON(VIP_KEY, next);
+    invalidateCache();
+    cache = next;
+    cacheAt = Date.now();
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+module.exports = { getVipList, addVip, removeVip, isVip, normalizeId, invalidateCache, promoteVerifiedEmail, promotedKey, VIP_KEY };

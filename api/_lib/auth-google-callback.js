@@ -150,6 +150,7 @@ module.exports = async (req, res) => {
         username: profile.name || email.split('@')[0],
         salt, hash,
         email,
+        verifiedEmail: email, // v-vip-verified: Google أثبتته (email_verified أعلاه)
         avatar: profile.picture || null,
         googleAuth: true,
         createdAt: Date.now(),
@@ -159,6 +160,19 @@ module.exports = async (req, res) => {
       };
       await putUser(key, user);
       if (!reclaimed) await notifyNewAccount({ key, user, method: 'google', req, note: wasDeleted ? 'over-deleted' : undefined }); // v-signup-notify
+    }
+
+    // v-vip-verified: Google أثبتت البريد للتوّ — حساب مفتاحه g_<البريد> نفسه يُختم به (لا الاسم المستعار ولا الربط التلقائيّ:
+    // صاحب ذلك الحساب قد لا يكون صاحب البريد)، ومدخل VIP بهذا البريد خامًا يصير اسم الحساب. عطبٌ هنا لا يُفشل الدخول.
+    if (key === 'g_' + email && user.googleAuth === true) {
+      if (user.email === email && user.verifiedEmail !== email) {
+        user.verifiedEmail = email;
+        try { await putUser(key, user); } catch (e) { console.warn('[auth] verified-email mark failed:', e && e.message); }
+      }
+      try {
+        const vip = require('./_vip.js');
+        if (typeof vip.promoteVerifiedEmail === 'function') await vip.promoteVerifiedEmail(email, key);
+      } catch (e) { console.warn('[auth] vip promote failed:', e && e.message); }
     }
 
     const token = makeToken(key);

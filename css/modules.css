@@ -481,9 +481,23 @@ body.maha-band-on.maha-win #sidebar, body.maha-band-on.maha-win #workarea{z-inde
 body.maha-band-on.maha-win #omSkyLayer{z-index:902;}
 /* شاشة الأدوات تسكن داخل صندوق الكتابة (index.html) فترث إخفاءه أثناء المكالمة (v-maha-hide-composer) — تظهر حين تُفتح كزرّ «م» */
 #inputbar.maha-calling #sectionsToolsOverlay.show{visibility:visible;}
-/* v-maha-win-touch (المالك: «اللمس برّاها أو زر الإنهاء يقفلها مثل قبل»): «م» في مكانه يرتفع فوق نافذة مها (أعلاها ١٠٠٨٠) — كانت
-   النافذة تغطّيه، وأغلب النوافذ تملأ الشاشة فلا «برّا» تُلمس، فلا لمسة تُنهي المكالمة. */
-body.maha-band-on.maha-win #btnMahaDock{position:relative; z-index:10100;}
+/* v-maha-dock-bar (المالك ١٨ أكتوبر: ««م» فوق نافذة مها: لا يغطي شي من محتوى النافذة. خلّ النافذة تترك له مكان (مسافة فوق بقدر
+   حجم الزر)، أو حطه في شريط النافذة العلوي. وتأكد إن ما في شي مخفي تحته»). كان «م» يرتفع في مكانه فوق النافذة (v-maha-win-touch)
+   فيغطّي ما تحته من بطاقات وأزرار. الآن ما دامت نافذة لمها ظاهرة: شريط علويّ (#mahaWinBar، js/app-43) بارتفاع الزرّ وهامشيه فيه
+   «م» (#mahaDockMirror = زرّ الإنهاء) في جهة الإغلاق، وكلّ نافذة تبدأ تحته (top:var(--maha-gap) — القواعد تُبنى من خريطة النوافذ)،
+   والإعدادات التي فتحتها مها تنزل بالمقدار نفسه والشريط داخلها (الطبقة العليا). «م» الأصليّ يبقى في مكانه مخفيًّا تحت النافذة
+   (لا نسخة باهتة خلف خلفيّة البطاقات). الشريط فوق النوافذ (أعلاها ١٠٠٨٠) وتحت الطبقات العابرة (عارض الصور ١٠٠٠٠٠) فلا يغطّيها. */
+body.maha-band-on.maha-win, body.maha-band-on.maha-dlg{--maha-sat:min(var(--omran-sat, env(safe-area-inset-top, 0px)), 62px); --maha-gap:calc(52px + var(--maha-sat));}
+body.maha-band-on.maha-win #btnMahaDock, body.maha-band-on.maha-dlg #btnMahaDock{visibility:hidden !important;}
+#mahaWinBar{display:none; position:fixed; top:0; left:0; right:0; height:var(--maha-gap, 52px); box-sizing:border-box; padding:var(--maha-sat, 0px) 12px 0; align-items:center; justify-content:flex-end; background:var(--panel, #141420); border-bottom:1px solid var(--border, rgba(255,255,255,.08)); z-index:10090;}
+body.maha-band-on.maha-win #mahaWinBar, body.maha-band-on.maha-dlg #mahaWinBar{display:flex;}
+#mahaDockMirror{all:unset; box-sizing:border-box; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text, #fff); font-weight:700;}
+#mahaDockMirror img{width:36px; height:36px; border-radius:50%; pointer-events:none;}
+#mahaDockMirror:focus-visible{outline:2px solid var(--accent, #d4a64a); outline-offset:2px;}
+body.maha-band-on.maha-dlg #settingsDialog{top:var(--maha-gap) !important; height:calc(100dvh - var(--maha-gap)) !important; max-height:calc(100dvh - var(--maha-gap)) !important;}
+/* تنبيه المالك (٩٩٩٩٩، تحت الهيدر) كان يغطّي نصف «م» على الجوّال، وإنزاله تحت الشريط غطّى الصفّ الأوّل من النافذة (مراجعة النقض):
+   يختفي ما دامت نافذة مها ظاهرة ويعود بعدها — للمالك وحده ويُغلق بـ✕ أصلًا. */
+body.maha-band-on.maha-win #ownerHealthBar, body.maha-band-on.maha-dlg #ownerHealthBar{display:none !important;}
 
 /* v-video-write: الوضع الفاتح لمساعد الكتابة وشريحة المثال (نفس وصفة vmk-pill/vmk-card أعلاه) */
 html[data-mode="light"] #videoMakerModal details.vmk-ai{background:#ffffff;border-color:rgba(0,0,0,.10)}
