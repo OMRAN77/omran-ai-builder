@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { getUser, putUser, makeToken, markKnownNet } = require('./auth.js'); // داخل _lib
 const { takeWelcomeGift, giftNet, clientIp } = require('./welcome-gift.js'); // v-welcome-cap · v-oauth-bind
+const { notifyNewAccount } = require('./signup-notify.js'); // v-signup-notify
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -116,10 +117,11 @@ module.exports = async (req, res) => {
       console.warn('[auth] account unification lookup failed:', e && e.message);
     }
 
-    let user = null;
+    let user = null, reclaimed = false;
     try { user = await getUser(key); }
     catch (e) {
       if (e && e.code === 'USER_RECORD_UNDECRYPTABLE') {
+        reclaimed = true; // v-signup-notify: الشخص نفسه يستعيد حسابه — ليس حسابًا جديدًا
         // السجلّ القديم مقفل بسرّ ضاع — وجوجل أثبتت للتوّ ملكيّة البريد نفسه.
         // فالاسترداد هنا مشروع: يُنشأ السجلّ من جديد فوق المقفل، ويعود صاحب
         // البريد إلى حسابه بدل server_error أبديّة. (بخلاف signup بالاسم وحده،
@@ -138,6 +140,7 @@ module.exports = async (req, res) => {
     }
 
     if (!user || user.deleted) {
+      const wasDeleted = !!(user && user.deleted);
       // v-welcome-cap: كان السجلّ بلا points فيمنحه readPoints ٧٠ بلا أيّ حدّ — الآن من حصّة العنوان واليوم، و0 رقمًا فوقها.
       // دخول حساب قائم لا يمرّ هنا فلا يمسّ العدّادات.
       const giftOut = {}; // v-farm-gate: capped = سقف الشبكة رفض الهديّة (free-tier.js)
@@ -156,6 +159,7 @@ module.exports = async (req, res) => {
         giftCapped: giftOut.capped === true,
       };
       await putUser(key, user);
+      if (!reclaimed) await notifyNewAccount({ key, user, method: 'google', req, note: wasDeleted ? 'over-deleted' : undefined }); // v-signup-notify
     }
 
     // v-vip-verified: Google أثبتت البريد للتوّ — حساب مفتاحه g_<البريد> نفسه يُختم به (لا الاسم المستعار ولا الربط التلقائيّ:
