@@ -341,6 +341,7 @@ I18N['fr'] = {
     acctFillUsername: "Entrez un nom d'utilisateur valide (au moins 3 caractères)",
     acctFillPasswords: "Entrez votre mot de passe actuel et un nouveau mot de passe (au moins 4 caractères)",
     acctGenericError: "Une erreur s'est produite, réessayez",
+    nameNoAt: "Choisissez un nom d'utilisateur sans @ — vous pourrez ajouter votre e-mail dans Mon compte après l'inscription",
     acctNetError: "Impossible de contacter le serveur, vérifiez votre connexion",
     acctAvatarTooBig: "L'image est trop grande, choisissez-en une plus petite",
     providerColorsLabel: "🤖 Couleur de chaque fournisseur IA (affichée à côté de son nom dans le chat)",

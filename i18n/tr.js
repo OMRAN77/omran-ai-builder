@@ -309,6 +309,7 @@ I18N['tr'] = {
     "acctFillUsername": "Geçerli bir kullanıcı adı girin (en az 3 karakter)",
     "acctFillPasswords": "Mevcut parolanızı ve yeni bir parolayı girin (en az 4 karakter)",
     "acctGenericError": "Bir şeyler ters gitti, tekrar deneyin",
+    "nameNoAt": "@ içermeyen bir kullanıcı adı seçin — e-postanızı kayıttan sonra Hesabım bölümünden ekleyebilirsiniz",
     "acctNetError": "Sunucuya ulaşılamadı, bağlantınızı kontrol edin",
     "acctAvatarTooBig": "Görsel çok büyük, daha küçük bir tane seçin",
     "providerColorsLabel": "🤖 Her AI sağlayıcısının rengi (sohbette adının yanında gösterilir)",

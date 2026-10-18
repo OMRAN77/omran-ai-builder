@@ -310,6 +310,7 @@ I18N['es'] = {
     "acctFillUsername": "Ingresa un nombre de usuario válido (al menos 3 caracteres)",
     "acctFillPasswords": "Ingresa tu contraseña actual y una nueva contraseña (al menos 4 caracteres)",
     "acctGenericError": "Algo salió mal, inténtalo de nuevo",
+    "nameNoAt": "Elige un nombre de usuario sin @: puedes añadir tu correo en Mi cuenta después de registrarte",
     "acctNetError": "No se pudo conectar con el servidor, verifica tu conexión",
     "acctAvatarTooBig": "La imagen es demasiado grande, elige una más pequeña",
     "providerColorsLabel": "🤖 Color de cada proveedor de IA (se muestra junto a su nombre en el chat)",
