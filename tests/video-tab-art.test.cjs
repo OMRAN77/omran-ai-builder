@@ -42,5 +42,5 @@ test('التبويب صورة ثمّ اسم مترجم، والصفّ لا يُ�
   assert.ok(!/overflow-x:auto/.test(desktop), 'لا تمرير أفقيّ على الحاسوب');
   assert.ok(css.includes('@media (max-width:640px){#videoMakerModal .vmk-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-height:max-content;flex-shrink:0;width:100%}}'));
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=450"') && h.includes('modules.css?v=687'));
+  assert.ok(h.includes('src="/js/video.js?v=451"') && h.includes('modules.css?v=687'));
 });

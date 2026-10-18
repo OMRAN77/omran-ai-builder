@@ -529,6 +529,9 @@
          ومع الصوت، صوت مها/عبدالله العاجز (مرفوض نهائيًّا، أو صامت فوق خُمس المشاهد بعد كلّ الإعادات) يُستبدل للفيديو كلّه بالصوت
          الاحتياطيّ (لا خلط صوتين) ويُعلَن ذلك في الخطوة. */
       var voiced=voiceOn?scenes.filter(function(s){ return !!s.narration; }):[], vLimit=Math.max(1,Math.floor(voiced.length*0.2));
+      /* v-video-voice-speed: speed وتنظيف النصّ من app-11-video.js (window.__vmkVoice)؛ لو غاب: «fast» والنصّ كما هو */
+      var vvSpeed=function(){ try{ var V=window.__vmkVoice; return (V&&V.speed&&V.speed())||'fast'; }catch(e){ return 'fast'; /* guard-ok — الافتراضيّ سريع */ } };
+      var vvClean=function(t){ try{ var V=window.__vmkVoice; return (V&&V.clean)?V.clean(t):t; }catch(e){ return t; /* guard-ok — النصّ كما هو */ } };
       var voiceRun=async function(backup){
         var done=0, miss=0, got=0, last='', cool=0, dead=false, vModel='';
         await drPool(voiced,2,async function(s){
@@ -538,7 +541,7 @@
             if(dead) break;
             try{
               if(backup){
-                var br=await drJson('/api/ai?action=app-director-voice',{text:s.narration,lang:lang,speaker:speaker,model:vModel||undefined,token:tk});
+                var br=await drJson('/api/ai?action=app-director-voice',{text:vvClean(s.narration),lang:lang,speaker:speaker,model:vModel||undefined,token:tk});
                 if(br.ok&&br.json&&br.json.audio){ s.audio=br.json.audio; vModel=br.json.model||vModel; }
                 else {
                   last=br.status+' '+((br.json&&(br.json.why||br.json.error))||'')+(br.json&&br.json.diag?' · '+br.json.diag:'');
@@ -546,7 +549,7 @@
                 }
               } else {
                 var ctl=new AbortController(); var tm=setTimeout(function(){ ctl.abort(); },60000);
-                var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s.narration,voice:'maha',lang:lang,gender:speaker,token:tk}),signal:ctl.signal});
+                var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:vvClean(s.narration),voice:'maha',lang:lang,gender:speaker,speed:vvSpeed(),token:tk}),signal:ctl.signal});
                 clearTimeout(tm);
                 if(r.ok){ var b=await r.blob(); if(b.size>200) s.audio=await drB64(b); else last='empty'; }
                 else {

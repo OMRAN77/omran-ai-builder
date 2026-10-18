@@ -30812,7 +30812,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -30889,7 +30889,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -31042,6 +31042,36 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     const el = document.querySelector('input[name="videoVoiceGender"]:checked');
     return el ? el.value : 'female';
   }
+
+  /* v-video-voice-speed (المالك ١٨ أكتوبر: «التعليق الصوتي في صانع الفيديو بطيء — فحصت «جرّب التطبيق وشوفوه» أخذت 2.7 ثانية مع وقفات
+     بين الكلمات والطبقة طبيعية؛ السبب إنّ صانع الفيديو ما يرسل speed لـ/api/tts فيطلع دائمًا normal»): كلّ نداء صوت في صانع الفيديو يرسل speed
+     (الافتراضيّ «fast» = +١٠٪ native في Azure/OpenAI، لا playbackRate فلا تتغيّر الطبقة) من اختيار «سرعة الصوت» جنب «إضافة تعليق صوتي»،
+     والنصّ يُنظَّف قبل الإرسال: «...» و«…» والفواصل المتتالية أو الزائدة تصنع وقفات في الصوت. window.__vmkVoice يشاركه video.js (المخرج) وvideo-edit.js. */
+  const NARRATION_SPEEDS = ['normal', 'fast', 'xfast'];
+  const NARRATION_SPEED_KEY = 'aiapp_video_voice_speed';
+  function getNarrationSpeed(){
+    const el = document.getElementById('videoMakerNarrationSpeed');
+    const v = el ? el.value : '';
+    return NARRATION_SPEEDS.indexOf(v) >= 0 ? v : 'fast';
+  }
+  function cleanNarrationText(t){
+    let s = String(t == null ? '' : t);
+    s = s.replace(/(?:\.{2,}|[…⋯])+/g, ' ');            // «...» و«…» ← مسافة (كانت وقفة طويلة)
+    s = s.replace(/([,،])(?:\s*[,،])+/g, '$1');          // فواصل متتالية ← واحدة
+    s = s.replace(/\s+([,،.!?؟:])/g, '$1');              // لا مسافة قبل العلامة
+    s = s.replace(/[,،]+(\s*)([.!?؟])/g, '$2$1');        // فاصلة قبل نقطة/تعجّب/سؤال ← تسقط
+    s = s.replace(/^[\s,،]+/, '');                        // فاصلة أو مسافة في الأوّل
+    s = s.replace(/[ \t]{2,}/g, ' ');
+    return s.trim();
+  }
+  (function(){
+    const sel = document.getElementById('videoMakerNarrationSpeed');
+    if(sel){
+      try{ const saved = localStorage.getItem(NARRATION_SPEED_KEY); if(NARRATION_SPEEDS.indexOf(saved) >= 0) sel.value = saved; }catch(e){ /* guard-ok — بلا تخزين: الافتراضيّ سريع */ }
+      sel.addEventListener('change', () => { try{ localStorage.setItem(NARRATION_SPEED_KEY, getNarrationSpeed()); }catch(e){ /* guard-ok — تفضيل فقط */ } });
+    }
+    window.__vmkVoice = { speed: getNarrationSpeed, clean: cleanNarrationText };
+  })();
 
   (function(){
     const btn = document.getElementById('videoMakerHeroBtn');
@@ -31282,7 +31312,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -31623,7 +31653,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -31660,7 +31690,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         ttsEarly = fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: (narrationText.value || '').trim() || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
         }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
         getFFmpeg().catch(() => null);
       };
