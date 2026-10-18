@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getUser, putUser, makeToken, markKnownNet } = require('./auth.js'); // داخل _lib
+const { getUser, putUser, makeToken, markKnownNet, emailProven } = require('./auth.js'); // داخل _lib
 const { takeWelcomeGift, giftNet, clientIp } = require('./welcome-gift.js'); // v-welcome-cap · v-oauth-bind
 const { notifyNewAccount } = require('./signup-notify.js'); // v-signup-notify
 
@@ -106,7 +106,9 @@ module.exports = async (req, res) => {
         const idx = await kvGetJSON('db/email-index/' + email);
         if (idx && idx.username) {
           const candidate = await getUser(String(idx.username));
-          if (candidate && !candidate.deleted && String(candidate.email || '').toLowerCase() === email) {
+          // v-unverified-email: الربط إلى حساب بريده مؤكَّد عليه وحده — وإلّا حساب g_<البريد> الخاصّ (كما دون الربط).
+          if (candidate && !candidate.deleted && String(candidate.email || '').toLowerCase() === email
+              && await emailProven(String(idx.username).trim().toLowerCase(), candidate)) {
             key = String(idx.username);
           } else {
             console.warn('[auth] stale email-index entry ignored for ' + email);
