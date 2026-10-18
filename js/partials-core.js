@@ -904,6 +904,7 @@
         <option value="traditional" data-i18n="fashionAiStyleTraditional">🌴 خليجي تقليدي</option>
         <option value="kaftan" data-en="👘 Kaftan">👘 قفطان مغربي</option>
         <option value="jalabiya" data-en="🌙 Jalabiya">🌙 جلابية</option>
+        <option value="mukhawara" data-en="🪡 Emirati mukhawar">🪡 مخورة إماراتية</option>
         <option value="hijabchic" data-en="🧕 Hijab chic">🧕 محجبة عصرية</option>
         <option value="oldmoney" data-en="🎩 Old money">🎩 أولد موني</option>
         <option value="streetwear" data-en="🛹 Streetwear">🛹 ستريت وير</option>

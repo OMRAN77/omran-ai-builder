@@ -203,8 +203,8 @@ window.__omranWhenSeen = (function () {
      noscript احتياطيّ لمن عطّل JS. Tajawal تبقى fallback لأيّ فشل (v-fonts في tokens.css). -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap"></noscript>
-<link rel="stylesheet" href="css/tokens.css?v=733">
-<link rel="stylesheet" href="css/redesign.css?v=692">
+<link rel="stylesheet" href="css/tokens.css?v=734">
+<link rel="stylesheet" href="css/redesign.css?v=693">
 <link rel="stylesheet" href="css/modules.css?v=687">
 <link rel="stylesheet" href="css/خلفيات.css?v=3">
 <link rel="stylesheet" href="css/إطارات.css?v=6"><!-- v-frame-design: التصميم الجديد للكمبيوتر -->
@@ -243,7 +243,9 @@ window.__omranWhenSeen = (function () {
 
 <style>
 /* v473 — إخفاء ٥ عناصر بأمر عمران (٨ أغسطس ٢٠٢٦). الرجوع: احذف هذه الكتلة كاملةً. */
-/* v-browser-install (طلب المالك ٢٦ سبتمبر «أريد التطبيق في المتصفّحات»): #btnInstall عاد للقائمة؛ يخفيه الكود حين يعمل التطبيق مثبّتًا. */
+/* v-browser-install (طلب المالك ٢٦ سبتمبر «أريد التطبيق في المتصفّحات»): #btnInstall عاد للقائمة؛ يخفيه الكود حين يعمل التطبيق مثبّتًا.
+   v-no-install (المالك ١٨ أكتوبر، بعد معاينة مكانه على الكمبيوتر: «احذفها نهائي»): الزرّ حُذف من الصفحة نهائيًّا. manifest باقٍ (المتجر وتطبيق أندرويد
+   وتثبيت المتصفّح من شريط عنوانه)، وكود التثبيت في app-10 بلا زرّ يربطه. */
 #btnTemplates, #btnAgentMode, #btnInstallHeader, #btnShareApp, #btnGov { display: none !important; }
 /* v474 — لون روابط الردّ. v-hl-gold (طلب المالك ١٩ سبتمبر): ذهبيّ بدل الفيروزيّ. الرجوع: احذف هذه الكتلة. */
 .msg-text a{ color:#d4af37 !important; }
@@ -670,12 +672,12 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script defer src="/js/partials-core.js?v=666"></script>
+<script defer src="/js/partials-core.js?v=667"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
 <script defer src="/js/design-sels.js?v=575"></script>
 <!-- v417 · أزياء AI: فئة + بطاقات نمط/موسم/مناسبة + دائرات ألوان + رقاقات إضافات. الحقول الجديدة تصل إلى /api/fashion-create عبر window.omranFashionExtras. القوائم الأصلية باقية مخفيّة. -->
-<script defer src="/js/design-gen.js?v=613"></script>
+<script defer src="/js/design-gen.js?v=614"></script>
 
 
 <header>
@@ -733,7 +735,6 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
         <button class="btn" id="btnStocks" title="سوق الأسهم العالمي" data-i18n-title="stocksTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg> <span class="btnLabel" data-i18n="stocksTitle">سوق الأسهم العالمي</span></button>
         <button class="btn" id="btnConstruction" title="تصاميم المقاولات والبناء" data-i18n-title="constructionTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg> <span class="btnLabel" data-i18n="constructionTitle">تصاميم المقاولات والبناء</span></button>
         <button class="btn" id="btnEmailAssist" title="مساعد البريد الذكي" data-i18n-title="emailAssistTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> <span class="btnLabel" data-i18n="emailAssistTitle">مساعد البريد الذكي</span></button>
-        <button class="btn" id="btnInstall"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> <span class="btnLabel" data-i18n="install">تثبيت التطبيق</span></button>
         <button class="btn" id="btnShareApp" title="مشاركة التطبيق" data-i18n-title="shareAppBtn"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg> <span class="btnLabel" data-i18n="shareAppBtn">مشاركة التطبيق</span></button>
       </div>
     </div>
@@ -1012,7 +1013,7 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 <script src="/js/selfdiag.js?v=hw-twa-9"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=eb00fc63"></script>
+    <script defer src="/js/app.bundle.js?v=63d2af64"></script>
     <script defer src="/js/frame-touch.js?v=3"></script><!-- v-frame-gold: لمسة الضغط للكمبيوتر والجوال (v-touch-mobile: وفراغ المحادثة في الجوال) -->
     <script defer src="/js/modes.js?v=m171026b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->

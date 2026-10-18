@@ -1569,7 +1569,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   // looks/<الفئة>/، وما لم يُولَّد بعد يسقط لصور النساء ثم للتدرّج الأنيق.
   // v-fashion-78: نسائي 36 · رجالي 24 · أطفال 18 — «٣٠-٥٠ كلام آخر».
   const GENDER_STYLES = {
-    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional', 'kaftan', 'jalabiya', 'hijabchic', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'cocktail', 'ballgown', 'boho', 'vintage', 'y2k', 'minimal', 'glam', 'leather', 'denim', 'pastel', 'monochrome', 'floral', 'velvet', 'silk', 'suitf', 'turkish', 'indian', 'princess', 'safari', 'preppy', 'artgown'],
+    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional', 'kaftan', 'jalabiya', 'mukhawara', 'hijabchic', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'cocktail', 'ballgown', 'boho', 'vintage', 'y2k', 'minimal', 'glam', 'leather', 'denim', 'pastel', 'monochrome', 'floral', 'velvet', 'silk', 'suitf', 'turkish', 'indian', 'princess', 'safari', 'preppy', 'artgown'],
     men: ['evening', 'formal', 'casual', 'wedding', 'traditional', 'bisht', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'leather', 'denim', 'minimal', 'monochrome', 'vintage', 'smartcasual', 'threepiece', 'safari', 'preppy', 'athleisure', 'rockstar', 'moroccan'],
     kids: ['evening', 'formal', 'casual', 'wedding', 'traditional', 'sporty', 'winterlux', 'summer', 'school', 'denim', 'pastel', 'floral', 'streetwear', 'minimal', 'vintage', 'preppy', 'eidkids', 'princess'],
   };
@@ -1610,7 +1610,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
-      if(!img.__flat){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; }
+      if(!img.__flat && gender === 'women'){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; } /* v-fx-gender-pics: الاحتياط صورة امرأة — لا لرجل أو طفل */
       else img.remove();
     };
     return img;
@@ -1630,7 +1630,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
           img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=3',
-          img2: 'assets/fashion/looks/' + v + '.webp',
+          img2: g === 'women' ? 'assets/fashion/looks/' + v + '.webp' : '',
         };
       }).filter(Boolean),
       onPick: function(v){ styleEl.value = v; fxStyleManual = v; renderStyleCards(); },
@@ -1650,7 +1650,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     trig.id = 'fashionStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
     const img = lookImg(g, styleEl.value, opt ? optLabel(opt) : '');
-    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    /* v-fx-mukhawara: الصورة في صندوق ثابت يحمل التدرّج — نمط بلا صورة بعد (المخورة حتّى تُعتمد صورتها) كان يُزيل الصورة فتنكمش البطاقة ~٢٠ بكسل */
+    const thumb = document.createElement('div');
+    thumb.style.cssText = 'width:44px; height:58px; border-radius:8px; overflow:hidden; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    img.style.cssText = 'display:block; width:100%; height:100%; object-fit:cover;';
+    thumb.appendChild(img);
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
@@ -1665,7 +1669,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const all = document.createElement('span');
     all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (bT('عرض الكل ›','Browse all ›'));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
-    trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
+    trig.appendChild(thumb); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openFashionPicker;
     styleCardsEl.appendChild(trig);
   }
@@ -2012,11 +2016,23 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     refineBtn.onclick = __doRefine;
     refineInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); __doRefine(); } });
   }
+  /* v-fx-gender-pics: سطر التعديل تحت نتيجة رجل أو طفل كان «غيّري لون الفستان» و«عدّلي» — لغير النساء نصّ الفئة
+     (لغة بلا مدخل = المفتاح الأصليّ، وهو محايد فيها؛ العربيّة وحدها تؤنّث الفعل، و«الفستان» في كلّ اللغات) */
+  const FX_REFINE_G = {
+    ph: { ar:'مثال: غيّر لون القميص إلى أزرق فقط', en:'e.g. change only the shirt colour to blue', fr:'ex. : changez seulement la couleur de la chemise en bleu', es:'ej.: cambia solo el color de la camisa a azul', tr:'örn. sadece gömleğin rengini maviye çevir', ru:'напр.: измени только цвет рубашки на синий', hi:'जैसे: केवल शर्ट का रंग नीला करें', ur:'مثلاً: صرف قمیص کا رنگ نیلا کریں', bn:'যেমন: শুধু শার্টের রং নীল করুন', ne:'जस्तै: सर्टको रङ मात्र नीलो बनाउनुहोस्', fil:'hal.: palitan lang ang kulay ng polo sa asul', id:'mis.: ubah hanya warna kemeja menjadi biru', zh:'例如：只把衬衫颜色改成蓝色', ml:'ഉദാ: ഷർട്ടിന്റെ നിറം മാത്രം നീലയാക്കൂ' },
+    btn: { ar:'✏️ عدّل شيئًا محددًا' },
+    need: { ar:'اكتب التعديل المطلوب أولًا' },
+  };
+  function __refineG(k, key, ar, en){
+    const o = currentGender() !== 'women' ? FX_REFINE_G[k] : null;
+    return (o && o[lang7()]) || __gt2(key, ar, en);
+  }
   function __refineTexts(){
     if(!refineInput) return;
-    refineInput.placeholder = __gt2('fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
-    refineBtn.textContent = __gt2('fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
+    refineInput.placeholder = __refineG('ph', 'fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
+    refineBtn.textContent = __refineG('btn', 'fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
   }
+  window.addEventListener('fashion-gender-change', __refineTexts); /* سطر ظاهر يتبع الفئة فورًا */
   function __refineRemember(b64, mime){
     __lastFxB64 = b64; __lastFxMime = mime;
     __buildRefineRow();
@@ -2026,7 +2042,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   async function __doRefine(){
     if(!__lastFxB64) return;
     const reqTxt = (refineInput.value || '').trim();
-    if(!reqTxt){ setStatus(__gt2('fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
+    if(!reqTxt){ setStatus(__refineG('need', 'fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
     refineBtn.disabled = true; btnGenerate.disabled = true;
@@ -2080,6 +2096,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const payload = {
         occasion: occasionEl.value, season: seasonEl.value,
         profile: loadProfile(), lang: lang7(), token,
+        gender: currentGender(), /* v-fx-gender-pics: بلاها تقترح إطلالات نسائيّة لرجل أو طفل */
       };
       if(mode === 'image' && selectedBase64){
         payload.imageBase64 = selectedBase64;
@@ -2109,7 +2126,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           '</div>' +
           '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.clothing || '') + '</p>' +
           '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0;">🎨 ' + (s.colors || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">👜 ' + (s.accessories || '') + '</p>' +
+          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">' + (currentGender() === 'men' ? '💼 ' : '👜 ') + (s.accessories || '') + '</p>' + /* v-fx-gender-pics: كبطاقة الحقيبة */
           '<button type="button" class="btn primary useLookBtn" style="width:100%; font-size:12px; padding:5px;">' + t('fashionUseThisLook') + '</button>';
         card.querySelector('.useLookBtn').onclick = () => {
           if(mode === 'text' || !selectedBase64){
