@@ -48647,11 +48647,24 @@ function mahaAppGapCss(){
   }
   if(document.getElementById('mahaWinGapCss') || !window.omranSwipeBack || typeof window.omranSwipeBack.ids !== 'function') return;
   // نوافذ الخريطة، ونافذتا الشراء والمشاركة (خارجها، تحت الشريط) — تبدأ كلّها تحت الشريط
-  const ids = window.omranSwipeBack.ids().concat(['checkoutModalOverlay', 'shareModal']);
+  const ids = window.omranSwipeBack.ids().concat(['checkoutModalOverlay', 'shareModal', 'vedModal']);
   const st = document.createElement('style');
   st.id = 'mahaWinGapCss';
-  st.textContent = ids.map((id) => 'body.maha-band-on.maha-win:not(.maha-dlg) #' + CSS.escape(id)).join(',') + '{top:var(--maha-gap) !important;}';
+  // ومعها عارض فيديو الصانع (.vmk-lb) ومحرّر «كتابة وصوت» (#vedModal): يفتحان من داخل نافذة مها فوقها (مراجعة النقض: زرّ إغلاقهما تحت «م»)
+  st.textContent = ids.map((id) => 'body.maha-band-on.maha-win:not(.maha-dlg) #' + CSS.escape(id)).concat(['body.maha-band-on.maha-win:not(.maha-dlg) .vmk-lb', 'body.maha-band-on.maha-win:not(.maha-dlg) > .maha-gap-shift']).join(',') + '{top:var(--maha-gap) !important;}';
   document.head.appendChild(st);
+}
+/* طبقة أخرى تفتحها نافذة مها فوق نفسها على <body> (قوائم الأدوات وعوارضها) — ثابتة من أعلى الشاشة (top:0) وطبقتها بين النوافذ (٩٤٠)
+   والشريط: تنزل تحته مثلها، وإلّا كان رأسها وزرّ إغلاقها تحت «م». ما يتوسّط بـtop:50% لا يُمسّ، وما فوق الشريط (عارض الصور) يغطّيه هو. */
+function mahaAppShiftLayers(on){
+  if(!on){ document.querySelectorAll('.maha-gap-shift').forEach((el) => el.classList.remove('maha-gap-shift')); return; }
+  for(const el of Array.from(document.body.children)){
+    if(el.id === 'mahaWinBar' || el.classList.contains('maha-gap-shift')) continue;
+    const cs = getComputedStyle(el);
+    if(cs.position !== 'fixed' || cs.display === 'none' || cs.top !== '0px') continue;
+    const z = parseInt(cs.zIndex, 10) || 0;
+    if(z >= 940 && z < 10090) el.classList.add('maha-gap-shift');
+  }
 }
 function mahaAppDockBar(force){
   try{ mahaAppDockBarSet(force); }catch(e){ __swallow(e, 'maha-app:dock-bar'); } // عطب الشريط لا يكسر أداة ولا إنهاء المكالمة
@@ -48663,6 +48676,7 @@ function mahaAppDockBarSet(force){
   document.body.classList.toggle('maha-dlg', dlg);
   let bar = document.getElementById('mahaWinBar');
   if(!live || !(dlg || document.body.classList.contains('maha-win'))){
+    mahaAppShiftLayers(false);
     if(bar) bar.remove();
     if(mahaAppBarTimer){ clearInterval(mahaAppBarTimer); mahaAppBarTimer = 0; }
     return;
@@ -48686,6 +48700,7 @@ function mahaAppDockBarSet(force){
   if(bar.parentNode !== host) host.appendChild(bar);
   if(dlg){ const r = d.getBoundingClientRect(); bar.style.left = r.left + 'px'; bar.style.width = r.width + 'px'; bar.style.right = 'auto'; }
   else { bar.style.left = ''; bar.style.width = ''; bar.style.right = ''; }
+  mahaAppShiftLayers(!dlg);
   if(!mahaAppBarTimer) mahaAppBarTimer = setInterval(mahaAppWinSync, 700);
 }
 function mahaAppInside(e){

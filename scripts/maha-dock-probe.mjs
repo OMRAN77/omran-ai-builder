@@ -140,6 +140,30 @@ try {
       }
       if (!(await page.evaluate(() => mahaCallActive))) await startCall();
     }
+    // طبقات تفتحها نافذة مها فوق نفسها (مراجعة النقض): عارض فيديو الصانع ومحرّر «كتابة وصوت» — زرّ الإغلاق يُلمس هو لا «م» ولا الشريط
+    if (!(await page.evaluate(() => mahaCallActive))) await startCall();
+    await page.evaluate(async () => mahaAppTool('open_in_app', { target: 'video' }));
+    await page.waitForTimeout(800);
+    const base0 = await page.evaluate(() => Array.from(document.querySelectorAll('.maha-gap-shift')).map((e) => e.id || e.className));
+    const nested = [];
+    for (const [label, opener, sel] of [['عارض الفيديو', '#vmkTutLink', '.vmk-lb .vmk-lb-x'], ['كتابة وصوت', '#vedTabBtn', '#vedModal .ved-x']]) {
+      const opened = await page.evaluate((o) => { const b = document.querySelector(o); if (!b) return false; b.click(); return true; }, opener);
+      await page.waitForTimeout(900);
+      const r = await page.evaluate((sel) => {
+        const x = document.querySelector(sel); if (!x) return { missing: true };
+        const q = x.getBoundingClientRect(); const h = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+        return { self: !!h && (h === x || x.contains(h)), hit: h && (h.id || h.className), top: Math.round(q.top) };
+      }, sel);
+      const okN = opened && !r.missing && r.self;
+      if (!okN) fails++;
+      nested.push(label);
+      console.log((okN ? '✓ ' : '✗ ') + kind + ' ' + label + ': زرّ الإغلاق ' + (r.missing ? 'غائب' : (r.self ? 'يُلمس (أعلاه ' + r.top + 'px)' : 'تحت ' + r.hit)) + (opened ? '' : ' (لم يُفتح)'));
+      await page.evaluate((sel) => { const x = document.querySelector(sel); if (x) x.click(); }, sel);
+      await page.waitForTimeout(400);
+    }
+    console.log('  مُزاح بلا طبقة مفتوحة: ' + JSON.stringify(base0));
+    await page.evaluate(async () => { await mahaAppTool('app_action', { action: 'close_window' }); });
+    await page.waitForTimeout(400);
     // لمسات يد حقيقيّة: داخل النافذة لا تُنهي، الشريط الفارغ لا يُنهي، «م» يُنهي
     await page.evaluate(() => { mahaEndCall = window.__origEnd; window.__ended = 0; });
     if (!(await page.evaluate(() => mahaCallActive))) await startCall();

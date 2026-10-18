@@ -313,13 +313,18 @@ test('١١. v-maha-win-touch (المالك: «اللمس داخل النافذة
   assert.ok(css.includes('body.maha-band-on.maha-win #mahaWinBar, body.maha-band-on.maha-dlg #mahaWinBar{display:flex;}'), 'الشريط');
   assert.ok(css.includes('body.maha-band-on.maha-dlg #settingsDialog{top:var(--maha-gap) !important; height:calc(100dvh - var(--maha-gap)) !important;'), 'الإعدادات تنزل تحته');
   assert.ok(css.includes('body.maha-band-on.maha-win #btnMahaDock, body.maha-band-on.maha-dlg #btnMahaDock{visibility:hidden !important;}'), '«م» الأصليّ لا يظهر باهتًا خلف البطاقة');
-  assert.ok(app.includes("st.textContent = ids.map((id) => 'body.maha-band-on.maha-win:not(.maha-dlg) #' + CSS.escape(id)).join(',') + '{top:var(--maha-gap) !important;}';")
-    && app.includes("const ids = window.omranSwipeBack.ids().concat(['checkoutModalOverlay', 'shareModal']);"), 'كلّ نافذة من الخريطة تبدأ تحت الشريط');
+  assert.ok(app.includes("st.textContent = ids.map((id) => 'body.maha-band-on.maha-win:not(.maha-dlg) #' + CSS.escape(id)).concat(")
+    && app.includes(".join(',') + '{top:var(--maha-gap) !important;}';"), 'كلّ نافذة من الخريطة تبدأ تحت الشريط');
   assert.ok(app.includes("if(tgt.closest('#mahaDockMirror')) return false;") && app.includes("b.id = 'mahaDockMirror';"), '«م» العلويّ زرّ الإنهاء');
   assert.ok(app.includes('if(!mahaAppBarTimer) mahaAppBarTimer = setInterval(mahaAppWinSync, 700);') && app.includes("mahaAppDockBar(); // v-maha-dock-bar\n}"), 'مزامنة: لا شريط عالق بعد إغلاق النافذة');
   assert.ok(app.includes("mahaAppDockBar(); // v-maha-dock-bar: الشريط و«م» داخل الحوار"), 'الإعدادات');
-  assert.ok(css.includes('body.maha-band-on.maha-win #ownerHealthBar, body.maha-band-on.maha-dlg #ownerHealthBar{top:var(--maha-gap) !important;}')
-    && read('js/app-11-video.js').includes("bar.id = 'ownerHealthBar';"), 'تنبيه المالك لا يغطّي «م»');
+  assert.ok(css.includes('body.maha-band-on.maha-win #ownerHealthBar, body.maha-band-on.maha-dlg #ownerHealthBar{display:none !important;}')
+    && read('js/app-11-video.js').includes("bar.id = 'ownerHealthBar';"), 'تنبيه المالك لا يغطّي «م» ولا صفّ النافذة الأوّل');
+  // مراجعة النقض: طبقة تفتحها نافذة مها فوق نفسها (عارض فيديو الصانع، «كتابة وصوت»، وأيّ طبقة ثابتة من الأعلى بين ٩٤٠ والشريط) تنزل تحته
+  assert.ok(app.includes("const ids = window.omranSwipeBack.ids().concat(['checkoutModalOverlay', 'shareModal', 'vedModal']);")
+    && app.includes("'body.maha-band-on.maha-win:not(.maha-dlg) .vmk-lb', 'body.maha-band-on.maha-win:not(.maha-dlg) > .maha-gap-shift'"), 'العارض والمحرّر');
+  assert.ok(app.includes("if(cs.position !== 'fixed' || cs.display === 'none' || cs.top !== '0px') continue;") && app.includes('if(z >= 940 && z < 10090) el.classList.add(\'maha-gap-shift\');')
+    && app.includes('mahaAppShiftLayers(!dlg);') && app.includes('mahaAppShiftLayers(false);'), 'الطبقات العامّة تنزل وتعود');
   assert.ok(app.includes("try{ mahaAppDockBarSet(force); }catch(e){ __swallow(e, 'maha-app:dock-bar'); }"), 'عطب الشريط لا يكسر الأدوات ولا الإنهاء');
   // الجولة الثانية: إعادة الاتّصال لا تمسح ما فتحته مها
   assert.ok(app.includes('function mahaAppHello(){ if(!mahaRtReconnecting){ mahaAppDialog = false; mahaAppPanel = \'\'; } return'), 'إعادة الاتّصال لا تمسح');

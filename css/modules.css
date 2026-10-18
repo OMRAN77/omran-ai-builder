@@ -495,8 +495,9 @@ body.maha-band-on.maha-win #mahaWinBar, body.maha-band-on.maha-dlg #mahaWinBar{d
 #mahaDockMirror img{width:36px; height:36px; border-radius:50%; pointer-events:none;}
 #mahaDockMirror:focus-visible{outline:2px solid var(--accent, #d4a64a); outline-offset:2px;}
 body.maha-band-on.maha-dlg #settingsDialog{top:var(--maha-gap) !important; height:calc(100dvh - var(--maha-gap)) !important; max-height:calc(100dvh - var(--maha-gap)) !important;}
-/* تنبيه المالك (٩٩٩٩٩، تحت الهيدر — على الجوّال ٣٦px) كان يغطّي نصف «م» العلويّ: ينزل تحت الشريط ما دام ظاهرًا */
-body.maha-band-on.maha-win #ownerHealthBar, body.maha-band-on.maha-dlg #ownerHealthBar{top:var(--maha-gap) !important;}
+/* تنبيه المالك (٩٩٩٩٩، تحت الهيدر) كان يغطّي نصف «م» على الجوّال، وإنزاله تحت الشريط غطّى الصفّ الأوّل من النافذة (مراجعة النقض):
+   يختفي ما دامت نافذة مها ظاهرة ويعود بعدها — للمالك وحده ويُغلق بـ✕ أصلًا. */
+body.maha-band-on.maha-win #ownerHealthBar, body.maha-band-on.maha-dlg #ownerHealthBar{display:none !important;}
 
 /* v-video-write: الوضع الفاتح لمساعد الكتابة وشريحة المثال (نفس وصفة vmk-pill/vmk-card أعلاه) */
 html[data-mode="light"] #videoMakerModal details.vmk-ai{background:#ffffff;border-color:rgba(0,0,0,.10)}
