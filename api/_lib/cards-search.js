@@ -4,7 +4,8 @@
    بالتقسيط») لا يُجاب سردًا، بل بطاقات منظّمة (صورة · عنوان · سعر · متجر · رابط) تُبثّ للعميل حدثًا `cards`، ومواقعها حدث `sources`
    القائم، واقتراحات قريبة (رقائق) يختارها الموديل، ثمّ سؤال متابعة واحد على الموضوع نفسه وترشيح الأفضل (تعليمة CARDS_NOTE في chat.js).
    v-cards-place (المالك ١٣ أكتوبر): البحث والرقاقات على نفس المطلوب في نفس المكان الذي طلبه (أو دولة تسوّقه) — بلا قائمة أصناف.
-   المصدر: Google Custom Search بحقل pagemap (الصورة والسعر)، وTavily احتياطًا بلا صور. لا مفتاح جديد. */
+   المصدر: Google Custom Search بحقل pagemap (الصورة والسعر)، وTavily احتياطًا بلا صور. لا مفتاح جديد.
+   v-serp-cards: جوجل يوقف هذا المصدر في ١ يناير ٢٠٢٧ — بمفتاح بديل (serp-search.js) يصير أوّل السلسلة، وبلاه لا يتغيّر شيء. */
 
 const TOOL = {
   name: 'show_cards',
@@ -173,6 +174,23 @@ function cardFromTavily(x) {
   const price = priceIn(title) || priceIn(x.content);
   return { title: title || hostOf(url), url, site: hostOf(url), image: '', price, priceFrom: price ? 'text' : '', shop: false, src: 't', snippet }; // علامة المتجر من صفحته بعد قراءتها
 }
+/* v-serp-cards (تحضير بديل جوجل قبل ١ يناير ٢٠٢٧ — serp-search.js): النتيجة العضويّة بلا pagemap، فهي كبديل Tavily: الصورة والسعر
+   وعلامة المتجر من صفحته بعد قراءتها. ونتيجة التسوّق: سعرها من المتجر نفسه (لا يُستبدل)، وصورتها المصغّرة احتياط لصورة صفحته،
+   ورابطها إلى المتجر شرط — رابط صفحة جوجل لا يصير بطاقة (اسم مزوّد على البطاقة، ولا تُقرأ صفحته). */
+function cardFromSerp(x) {
+  const url = httpsOnly(x && x.link);
+  if (!url) return null;
+  const title = clean(x.title, 110), snippet = clean(x.snippet, 180);
+  const price = priceIn(title) || priceIn(snippet);
+  return { title: title || hostOf(url), url, site: hostOf(url), image: '', price, priceFrom: price ? 'text' : '', shop: false, src: 'w', snippet };
+}
+function cardFromShop(x) {
+  const url = httpsOnly(x && x.link);
+  if (!url || /(^|\.)google\.[a-z.]+$/i.test(hostOf(url))) return null;
+  const price = priceIn(x.price);
+  return { title: clean(x.title, 110) || hostOf(url), url, site: hostOf(url), image: '', thumb: /^https:\/\//i.test(String(x.image || '')) ? clean(x.image, 2000) : '',
+    price, priceFrom: price ? 'schema' : '', shop: true, article: false, src: 's', snippet: clean(x.source, 80) };
+}
 
 /* ── v-google-cards (مواصفات المالك ١٨ أكتوبر: «البحث في المحادثة يصير مثل المنتجات في جوجل… كلّ بطاقة لازم فيها صورة… السعر من صفحة
    المتجر وإلّا السعر في الموقع… البديل لازم يجيب صور بعد»): صفحة المتجر نفسها تُقرأ (وسوم og وJSON-LD) لكلّ بطاقة بلا صورة أو بلا سعر
@@ -283,7 +301,7 @@ async function enrichCards(items, opts) {
     if (!needImg && !needPrice) return;
     let m = {};
     try { m = await pageMeta(c.url, o); } catch (e) { m = {}; }
-    if (needImg && m.image) c.image = m.image;
+    if (needImg) c.image = m.image || c.thumb || ''; // v-serp-cards: صورة صفحة المتجر أوّلًا، ومصغّرة التسوّق احتياطها
     if (needPrice) { c.price = m.price || ''; c.priceFrom = m.price ? 'page' : ''; }
     if (m.product) c.shop = true;
     if (m.article && !c.shop) c.article = true;
@@ -347,6 +365,27 @@ async function tavilyCards(query, o) {
   let d = null; try { d = await r.json(); } catch (e) { return null; }
   return dedupe(((d && d.results) || []).map(cardFromTavily), FETCH_CAP);
 }
+/* v-serp-cards: بلا مفتاح بديل = null فورًا (لا نداء). للمنتجات مع CARDS_SHOPPING=on: التسوّق أوّلًا، ومتجران فأكثر برابطهما تكفي؛
+   وإلّا النتائج العضويّة */
+async function serpCards(query, o) {
+  const S = require('./serp-search.js');
+  if (!S.providerOf(o.env)) return null;
+  if (o.shop && S.shoppingOn(o.env)) {
+    const cards = dedupe(((await S.shopping(query, o)) || []).map(cardFromShop), FETCH_CAP);
+    if (cards.length >= 2) return cards;
+  }
+  const org = await S.organic(query, o);
+  return org ? dedupe(org.map(cardFromSerp), FETCH_CAP) : null;
+}
+/* السلسلة: البديل بمفتاحه ← جوجل ← Tavily — أوّل نتائج غير فارغة؛ فشل مزوّد أو خلوّه = التالي */
+async function chainCards(query, o) {
+  for (const f of [serpCards, googleCards, tavilyCards]) {
+    let r = null;
+    try { r = await f(query, o); } catch (e) { r = null; } // فشل المزوّد = التالي في السلسلة
+    if (r && r.length) return r;
+  }
+  return null;
+}
 
 /* البحث المنظّم: Google أوّلًا (صور وأسعار)، فإن غاب مفتاحه أو خلت نتائجه فـTavily. يرجع { items, sites } — items فارغة = لا بطاقات. */
 /* v-google-cards (المالك: «اريد بحث شامل… المستخدم ما يفكّر»): «أفضل X» أو توصية = المزوّد يختار الخيارات بأسمائها (items)، والخادم
@@ -392,9 +431,7 @@ async function searchItemCards(names, o) {
   const oo = Object.assign({}, o, { gl: glOf(cc), cr: crOf(cc) });
   const per = await Promise.all(list.map(async (name) => {
     const q = clean(name + (priced ? ' price' : '') + (label && !placeRegion(name) ? ' ' + label : ''), 300);
-    let found = null;
-    try { found = await googleCards(q, oo); } catch (e) { found = null; }
-    if (!found || !found.length) { try { found = await tavilyCards(q, oo); } catch (e) { found = null; } }
+    const found = await chainCards(q, oo); // v-serp-cards: نتائج عضويّة لكلّ خيار (بلا تسوّق — حدّ الستّة بحوث للطلب)
     /* اسم فيه مكان («Qatar Airways»، «Paris Gallery») لا يُرفض بمكان التسوّق — gl/cr يكفيان */
     const base = placeRegion(name) ? (found || []).filter(Boolean) : keepOnRequest(found || [], '', cc);
     const rank = (a, b) => (variantExtras(name, a) - variantExtras(name, b)) || ((b.shop ? 1 : 0) - (a.shop ? 1 : 0));
@@ -422,9 +459,7 @@ async function searchCards(query, opts) {
   const pinned = pinQuery(query, o);
   const cc = placeOf(o.ask, pinned, o.country);
   o.gl = glOf(cc); o.cr = crOf(cc);
-  let items = null;
-  try { items = await googleCards(pinned, o); } catch (e) { items = null; }
-  if (!items || !items.length) { try { items = await tavilyCards(pinned, o); } catch (e) { items = null; } }
+  let items = await chainCards(pinned, Object.assign({}, o, { shop: /^product$/i.test(String(o.kind || '').trim()) })); // v-serp-cards
   items = keepOnRequest(items || [], pinned, cc);
   /* v-google-cards: الإثراء قبل القصّ — بطاقة تسقط بلا صورة فتأخذ مكانها التالية (جوجل يرجع ١٠ والبطاقات ٨) */
   items = o.enrich ? await enrichCards(items, o) : items.slice(0, MAX_CARDS);
@@ -453,6 +488,7 @@ async function pickAsCards(query, opts) {
   if (o.env) io.env = o.env;
   if (o.fetch) io.fetch = o.fetch;
   if (o.lookup) io.lookup = o.lookup;
+  /* v-serp-cards: بلا kind عمدًا — نتائج التسوّق موجودة لـ«سعر الذهب» أيضًا، والحكم هنا لبنية الصفحات لا لوجود سلعة */
   const raw = await searchCards(query, Object.assign({ ask: o.ask, country: o.country }, io));
   /* نتائج جوجل تحمل بيانات المتجر المنظّمة فيُحكم قبل قراءة الصفحات؛ البديل (Tavily) بلا بيانات فتُقرأ صفحاته أوّلًا ثمّ يُحكم */
   const fromGoogle = raw.items.some((c) => c.src === 'g');
