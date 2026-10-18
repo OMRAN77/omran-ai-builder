@@ -19,12 +19,12 @@ function run(ctx) {
   return sent;
 }
 
-test('١. المكالمة تفتح ← تحيّة واحدة بلغة الواجهة واسمها', () => {
+test('١. المكالمة تفتح ← تحيّة واحدة بلغة الواجهة، واسمها في أوّل مكالمة فقط (v-maha-close)', () => {
   assert.ok(a > 0);
   const sent = run({});
   assert.equal(sent.length, 1);
   assert.equal(sent[0].type, 'response.create');
-  assert.match(sent[0].response.instructions, /greet the user warmly in ONE short natural sentence, say your name/);
+  assert.match(sent[0].response.instructions, /greet the user warmly in ONE short natural sentence and invite them to talk\. Follow CALL HISTORY: on a first call say your name/);
   assert.match(sent[0].response.instructions, /code "ar"/);
   assert.match(run({ lang: 'en' })[0].response.instructions, /code "en"/);
 });
