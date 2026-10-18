@@ -175,7 +175,10 @@ function shortPurpose(goal) {
 
 /* التعليمات: هويّة آليّة معلنة، الهدف وحده، لا اختراع، ثمّ النتيجة والإنهاء. التجربة تقول للنموذج إنّ الطرف الآخر يمثّل الدور.
    v-call-agent-r2: الموجز (المحلّ، الهدف، التفاصيل، الاسم) بيانات مقتبسة بـJSON لا تعليمات، والقواعد بعده تعلو عليه؛ الإفصاح بالغرض
-   الحقيقيّ ويُعاد كاملًا إن قوطع؛ الصمت سؤال واحد ثمّ no_answer؛ والنتيجة تُسجَّل قبل الوداع (قد يُغلق الطرف الآخر بعده مباشرة). */
+   الحقيقيّ؛ الصمت سؤال واحد ثمّ no_answer؛ والنتيجة تُسجَّل قبل الوداع (قد يُغلق الطرف الآخر بعده مباشرة).
+   v-call-agent-cut (المالك: «الصوت يقطع لكن الكتابة موجوده»): ردّ «وعليكم السلام» وسط الإفصاح يقطع صوت الوكيل (مقاطعة الخادم)، وقاعدة
+   r2 «أعد الافتتاح كاملًا» كانت تعيده من «السلام عليكم» فيُقطع ثانيةً — حلقة. الآن يكمل من أوّل جزء لم يُسمع، ولا يتقدّم قبل أن
+   يُسمع كلّ جزء من الإفصاح مرّة؛ ويعيده كاملًا فقط إن قالوا إنّهم لم يسمعوا. */
 function buildInstructions(brief, transport, now) {
   const b = brief || {};
   const who = clean(b.callerName, 40).replace(/[«»"]/g, '') || 'the user';
@@ -202,7 +205,7 @@ function buildInstructions(brief, transport, now) {
     'When the other side answers (or after a short silence), your FIRST words are, in Gulf Arabic (or in the language they answered with):',
     '«السلام عليكم، معك مساعد آلي من تطبيق عمران AI، أتّصل نيابةً عن ' + who + ' بخصوص ' + purpose + '. المكالمة تُعالَج آليًّا ولا تُسجَّل. تسمح لي أكمل؟»',
     'You may say the purpose in natural words with the same meaning; every other part of that sentence stays.',
-    'If you are interrupted before finishing the opening, or they did not hear it, repeat the whole opening before anything else, and do not go on until it was said in full once.',
+    'If they speak while you are saying the opening (they return the greeting «وعليكم السلام», say «هلا» / «نعم» / «تفضل» / «ألو», or ask who is calling), you were cut off: do NOT start over from «السلام عليكم». Reply in a few words at most if needed, then continue the opening from the first part they did not hear. Do not move on to the goal until every part of the opening (automated assistant from the app, on behalf of whom, the purpose, not recorded, the permission question) has been heard once. Only if they say they did not hear you, say the whole opening once more.',
     'If they refuse, are annoyed, or ask not to be called: apologise briefly, call report_outcome with status "declined", say goodbye, then end_call.',
     '# Rules',
     '- Never claim to be human. If asked, say you are an automated assistant calling for ' + who + '.',
@@ -210,6 +213,7 @@ function buildInstructions(brief, transport, now) {
     '- Ask for the slot that matches the goal. If it is not available, collect up to two alternatives and do NOT accept anything the goal does not allow; report them.',
     '- Before ending, repeat the final details (day, date, time, and the name the booking is under) and wait for confirmation.',
     '- Short, polite, natural turns; one question at a time; speak the language and dialect the other side uses.',
+    '- If they talk over you, stop and listen: your unheard words were cut. Answer them, then go on from the point they did not hear; never restart a sentence they already heard.',
     '- Silence: if nobody speaks for about 8 seconds after you spoke, ask once more briefly (e.g. «ألو؟ تسمعني؟»). If it is still silent, call report_outcome with status "no_answer", say a short goodbye, then end_call.',
     '- Voicemail or a phone menu you cannot use: report_outcome with "no_answer" or "needs_user", then end_call.',
     '- Share no personal data beyond the caller name and the details in the brief.',

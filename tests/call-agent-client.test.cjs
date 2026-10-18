@@ -146,7 +146,7 @@ function sandbox(opts = {}) {
     let body = init && init.body;
     if (typeof body === 'string' && body[0] === '{') body = JSON.parse(body);
     const action = (/[?&]action=([\w-]+)/.exec(url) || [])[1];
-    ctx.fetchLog.push({ url, action, body, headers: (init && init.headers) || {} });
+    ctx.fetchLog.push({ url, action, body, headers: (init && init.headers) || {}, keepalive: !!(init && init.keepalive) });
     const h = ctx.routes[action || url];
     if (!h) return new Response('{}', { status: 404 });
     const [status, payload] = await h(body);
@@ -301,6 +301,8 @@ test('٤. التجربة كاملة: جلسة مستقلّة ← المالك ي
   assert.equal(sdp.body, 'v=0 offer');
   assert.equal(c.call().state, 'connecting');
   assert.equal(c.track.enabled, false, 'المايك صامت قبل جاهزيّة الجلسة');
+  assert.equal(c.overlay().q('omCallOvHint')[0].textContent, '', 'v-call-agent-cut: «قل ألو» لا يظهر والمايك مغلق — كلمته كانت تضيع ثمّ يكرّرها فوق مبادرة المساعد');
+  assert.ok(PART.includes(".omCallOvHint:empty{display:none;}"), 'السطر الفارغ لا يأخذ مكانًا');
   assert.equal(c.btn('omCallStop').textContent, 'إنهاء المكالمة', 'البطاقة تعرض الإنهاء أثناء التجهيز');
   pc.dc.emit({ type: 'session.created' });
   await flush();
@@ -892,4 +894,118 @@ test('١٩. سطر حالة propose_call (k: stCall) مترجم بالـ١٤ ل�
   }
   // الترجمة تمرّ بمسار tStatus القائم (k ← t(k)) كـstCards
   assert.match(read('js/app-04-i18n-state.js'), /function tStatus\(ev\)\{[\s\S]{0,80}if\(ev && ev\.k\)\{\s*var v = t\(ev\.k\);/);
+});
+
+/* v-call-agent-cut (المالك: «الصوت يقطع لكن المحادثة الي هي الكتابة موجوده»): نصّ الردّ يصل كاملًا قبل صوته، والمقاطعة في الخادم
+   تمسح ما لم يُسمع (output_audio_buffer.cleared) أو تلغي الردّ (response.done cancelled/turn_detected) */
+const OPEN = 'السلام عليكم، معك مساعد آلي من تطبيق عمران AI، أتّصل نيابةً عن عمران بخصوص حجز موعد. تسمح لي أكمل؟';
+async function cutFlow(c, pc) {
+  const e = (ev) => pc.dc.emit(ev);
+  // r1: النصّ كاملًا ثمّ «وعليكم السلام» من المالك ← مسح
+  e({ type: 'response.created', response: { id: 'resp_r1' } });
+  e({ type: 'output_audio_buffer.started', response_id: 'resp_r1' });
+  e({ type: 'response.output_audio_transcript.done', response_id: 'resp_r1', item_id: 'i1', transcript: OPEN });
+  e({ type: 'response.done', response: { id: 'resp_r1', status: 'completed', output: [] } });
+  await flush();
+  assert.equal(c.call().transcript[0].text, OPEN, 'قبل القطع كما وصل');
+  e({ type: 'input_audio_buffer.speech_started' });
+  e({ type: 'output_audio_buffer.cleared', response_id: 'resp_r1' });
+  e({ type: 'input_audio_buffer.speech_stopped' });
+  await flush();
+  // r2: سُمع كاملًا (stopped) ثمّ مسح بلا معرّف ← لا علامة
+  e({ type: 'response.created', response: { id: 'resp_r2' } });
+  e({ type: 'output_audio_buffer.started', response_id: 'resp_r2' });
+  e({ type: 'response.output_audio_transcript.done', response_id: 'resp_r2', transcript: 'معك مساعد آلي، أتّصل نيابةً عن عمران.' });
+  e({ type: 'response.done', response: { id: 'resp_r2', status: 'completed', output: [] } });
+  e({ type: 'output_audio_buffer.stopped', response_id: 'resp_r2' });
+  e({ type: 'output_audio_buffer.cleared' });
+  // r3: المسح قبل وصول النصّ
+  e({ type: 'response.created', response: { id: 'resp_r3' } });
+  e({ type: 'output_audio_buffer.started', response_id: 'resp_r3' });
+  e({ type: 'output_audio_buffer.cleared', response_id: 'resp_r3' });
+  e({ type: 'response.output_audio_transcript.done', response_id: 'resp_r3', transcript: 'أبغى موعد تنظيف يوم الخميس' });
+  await flush();
+}
+
+test('٢٠. v-call-agent-cut: سطر قطعت المقاطعة صوته يُعلَّم « …» (النصّ قبل القطع أو بعده، أو إلغاء بلا مسح) والمسموع كاملًا لا يُعلَّم — في مكانه', async () => {
+  const c = sandbox();
+  const pc = await liveTrial(c);
+  await c.advance(3000);
+  assert.deepEqual(pc.dc.sent, [{ type: 'response.create' }], 'المبادرة بعد ٣ث كما هي');
+  await cutFlow(c, pc);
+  assert.equal(c.call().transcript[0].text, OPEN + ' …');
+  assert.equal(c.call().transcript[1].text, 'معك مساعد آلي، أتّصل نيابةً عن عمران.', 'سُمع كلّه');
+  assert.equal(c.call().transcript[2].text, 'أبغى موعد تنظيف يوم الخميس …', 'عُلِّم عند وصوله');
+  assert.match(c.card().q('omCallLines')[0].textContent, /تسمح لي أكمل؟ …/);
+  // ردّان سُمعا كاملين (الصندوق يفيض فيُختبر التمرير) ثمّ r4: أُلغي (turn_detected) بلا مسح — والسطر يُستبدل وحده في الصندوقين
+  for (const [rid, t] of [['resp_h1', 'تمام.'], ['resp_h2', 'الخميس يناسب؟']]) {
+    pc.dc.emit({ type: 'response.created', response: { id: rid } });
+    pc.dc.emit({ type: 'output_audio_buffer.started', response_id: rid });
+    pc.dc.emit({ type: 'response.output_audio_transcript.done', response_id: rid, transcript: t });
+    pc.dc.emit({ type: 'output_audio_buffer.stopped', response_id: rid });
+  }
+  pc.dc.emit({ type: 'response.created', response: { id: 'resp_r4' } });
+  pc.dc.emit({ type: 'response.output_audio_transcript.done', response_id: 'resp_r4', transcript: 'بعد العصر لو سمحت' });
+  await flush();
+  const ovBox = c.overlay().q('omCallOvLines')[0], cardBox = c.card().q('omCallLines')[0];
+  const ov0 = ovBox.childNodes[0], card0 = cardBox.childNodes[0], ov5 = ovBox.childNodes[5];
+  ovBox.scrollTop = 0; // القارئ رفع صندوق النافذة ليقرأ — التعليم لا يسرق تمريره
+  pc.dc.emit({ type: 'response.done', response: { id: 'resp_r4', status: 'cancelled', status_details: { type: 'cancelled', reason: 'turn_detected' }, output: [] } });
+  await flush();
+  assert.equal(c.call().transcript[5].text, 'بعد العصر لو سمحت …', 'الإلغاء وحده (بلا مسح) يعلّم');
+  assert.equal(ovBox.scrollTop, 0);
+  pc.dc.emit({ type: 'output_audio_buffer.cleared', response_id: 'resp_r4' });
+  pc.dc.emit({ type: 'output_audio_buffer.cleared', response_id: 'resp_r1' });
+  await flush();
+  assert.deepEqual(plain(c.call().transcript).map((l) => l.text), [OPEN + ' …', 'معك مساعد آلي، أتّصل نيابةً عن عمران.', 'أبغى موعد تنظيف يوم الخميس …', 'تمام.', 'الخميس يناسب؟', 'بعد العصر لو سمحت …'], 'علامة واحدة لكلّ ردّ مهما تكرّر القطع');
+  assert.equal(ovBox.childNodes[0], ov0, 'النافذة: الأسطر الأخرى لم يُعَد بناؤها');
+  assert.notEqual(ovBox.childNodes[5], ov5);
+  assert.match(ovBox.childNodes[5].textContent, /بعد العصر لو سمحت …$/);
+  assert.equal(c.card().q('omCallLines')[0].childNodes[0], card0, 'البطاقة: كذلك');
+  assert.deepEqual(pc.dc.sent, [{ type: 'response.create' }], 'التعليم لا يرسل شيئًا للجلسة');
+});
+
+test('٢١. v-call-agent-cut: كلّ تجربة بدأت ترسل عند نهايتها أثرًا واحدًا بلا نصّ (diag:call-trial)، وفشل التجهيز لا يرسل، والأثر محدود', async () => {
+  const c = sandbox();
+  const pc = await liveTrial(c);
+  await c.advance(3000);
+  await cutFlow(c, pc);
+  assert.equal(c.calls('client-errors').length, 0, 'لا شيء أثناء المكالمة');
+  c.overlay().q('omCallOvEnd')[0].click();
+  await flush();
+  const d = c.calls('client-errors');
+  assert.equal(d.length, 1);
+  assert.equal(d[0].body.source, 'diag:call-trial', 'diag: لا يُعدّ خطأً (app-errors isDiag)');
+  assert.equal(d[0].keepalive, true, 'يصل ولو أُغلقت الصفحة');
+  assert.match(d[0].body.message, /^call-trial cp1 end=canceled dur=\d+s lines=3 cut=2 clr=3$/);
+  const st = d[0].body.stack;
+  assert.ok(st.length <= 1500);
+  assert.doesNotMatch(st, /[؀-ۿ]/, 'لا كلمة من المكالمة');
+  const order = ['cr:open', 'rc:p_r1', 'os:p_r1', 'tx:p_r1/' + OPEN.length, 'ss', 'oc:p_r1', 'sp', 'ot:p_r2', 'oc:', 'oc:p_r3'];
+  let at = -1;
+  for (const k of order) { const i = st.split(' ').findIndex((x, j) => j > at && x.replace(/^\d+\.\d/, '') === k); assert.ok(i > at, 'بالترتيب: ' + k + ' في ' + st); at = i; }
+  assert.equal(st.split(' ')[0], '3.0cr:open', 'الزمن بالثواني من الجاهزيّة، وسبب كلّ طلب ردّ');
+
+  // فشل التجهيز (البطاقة انتهت) = لا أثر
+  const n = sandbox({ routes: { 'call-session': () => [404, { error: 'proposal_not_found' }] } });
+  n.btn('omCallTry').click();
+  await n.advance(1000);
+  assert.equal(n.call().state, 'failed');
+  assert.equal(n.calls('client-errors').length, 0);
+
+  // إغلاق الصفحة أثناء المكالمة: أثر واحد end=dropped، ومئتا حدث = أوّل ٣٠ رمزًا (الافتتاح) + «~» + آخر ٥٠
+  const p = sandbox();
+  const pc2 = await liveTrial(p);
+  await p.advance(3000);
+  pc2.dc.emit({ type: 'output_audio_buffer.cleared', response_id: 'resp_open' });
+  for (let i = 0; i < 200; i++) pc2.dc.emit({ type: 'input_audio_buffer.speech_started' });
+  pc2.dc.emit({ type: 'input_audio_buffer.speech_stopped' });
+  p.listeners.pagehide.forEach((f) => f());
+  await flush();
+  const d2 = p.calls('client-errors');
+  assert.equal(d2.length, 1);
+  assert.match(d2[0].body.message, /^call-trial cp1 end=dropped /);
+  const t2 = d2[0].body.stack.split(' ');
+  assert.equal(t2.length, 81);
+  assert.deepEqual([t2[0], t2[1], t2[30], t2[80]], ['3.0cr:open', '3.0oc:open', '~', '3.0sp'], 'الافتتاح محفوظ رغم الطول، والذيل آخر ما جرى');
 });
