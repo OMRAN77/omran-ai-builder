@@ -4319,6 +4319,7 @@ const I18N = {
     designAiSuggestBtn: '💡 اقترح لي أفكار',
     designAiSuggesting: '🤔 جاري التفكير بأفكار...',
     designAiSuggestError: '❌ تعذر توليد أفكار، حاول مرة أخرى.',
+    svcPaused: 'الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.', /* v-provider-fail: رفض المزوّد (رصيده أو زحامه) لأدوات القراءة والاقتراح — لا ذنب للمستخدم. بلا رمز: سطر المحادثة يسبقه ⚠️ */
     designAiSuggestTitle: '💡 أفكار مقترحة من الذكاء الاصطناعي',
     portraitModalTitle: '🎨 أنماط الصور الشخصية',
     portraitDesc: 'ارفع صورتك الشخصية واختر ستايل رسم، وسيحوّلها الذكاء الاصطناعي لهذا الأسلوب. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.',
@@ -5811,6 +5812,7 @@ const I18N = {
     designAiSuggestBtn: '💡 Suggest ideas for me',
     designAiSuggesting: '🤔 Thinking of ideas...',
     designAiSuggestError: '❌ Could not generate ideas, try again.',
+    svcPaused: 'This service is temporarily unavailable — please try again shortly.',
     designAiSuggestTitle: '💡 AI-suggested ideas',
     portraitModalTitle: '🎨 Portrait Styles',
     portraitDesc: 'Upload your photo and pick an art style, and AI will transform it. Experimental feature with a small daily limit per account.',
@@ -6355,7 +6357,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=760'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */
+    sc.src = 'i18n/' + lg + '.js?v=761'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -26097,7 +26099,7 @@ function __showImgLoading(el, ar, en){
           });
           const __ceSpec = await __ceRes.json().catch(() => ({}));
           if(!__ceRes.ok || !Array.isArray(__ceSpec.rows) || !__ceSpec.rows.length){
-            throw new Error(__ceSpec.message_ar || __ceSpec.error || ('HTTP ' + __ceRes.status));
+            throw new Error(__ceSpec.error === 'unavailable' ? t('svcPaused') : (__ceSpec.message_ar || (__ceSpec.error === 'failed' ? imgErrFriendly('image_generation_failed', lang === 'ar') : '') || __ceSpec.error || ('HTTP ' + __ceRes.status))); /* v-provider-fail: رمز المزوّد بنصّ الواجهة لا نصّه الخام (سطر واحد: سقف __sendPromptCore) */
           }
           chatPhase('🪪', lang === 'ar' ? 'جاري رسم النموذج بخط مرتب…' : 'Redrawing the card neatly…', thinkingDiv);
           const __cardB64 = await renderTidyCardCanvas(__ceSpec, 'data:' + __mime + ';base64,' + __b64);
@@ -32348,6 +32350,7 @@ async function __safeJson(res){
   fileInput.onchange = () => {
     const file = fileInput.files && fileInput.files[0];
     if(!file) return;
+    if(suggestStatusEl) suggestStatus(''); /* v-decor-suggest-msg: «ارفع صورة الغرفة أولًا» تحت الزرّ لا يبقى بعد رفعها */
     selectedFile = file;
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
@@ -32631,7 +32634,23 @@ async function __safeJson(res){
     }
   };
 
+  /* v-decor-suggest-msg (تدقيق ١٨ أكتوبر): رسائل «اقترح لي أفكار» كانت في #designAiStatus تحت «صمم الغرفة» — حاسوب top 1047 من 900،
+     جوّال أبعد من الشاشة بـ650px — فلا يرى المستخدم شيئًا جنب الزرّ. سطرها تحت زرّها يُنشأ مرّة (بلا لمس partials-core).
+     المعالج يظلّل setStatus باسمه فرسائله كلّها (والمثبّتة بنصّها في open-tools-cap) تذهب إليه. */
+  let suggestStatusEl = null;
+  function suggestStatus(text){
+    if(!suggestStatusEl){
+      suggestStatusEl = document.createElement('div');
+      suggestStatusEl.id = 'designAiSuggestStatus';
+      suggestStatusEl.setAttribute('role', 'status');
+      suggestStatusEl.style.cssText = 'display:none; margin-top:8px; text-align:center; font-size:var(--fs-3); color:var(--muted);';
+      btnSuggest.insertAdjacentElement('afterend', suggestStatusEl);
+    }
+    suggestStatusEl.style.display = text ? 'block' : 'none';
+    suggestStatusEl.textContent = text || '';
+  }
   if(btnSuggest) btnSuggest.onclick = async () => {
+    const setStatus = suggestStatus; /* v-decor-suggest-msg */
     if(!selectedBase64){
       setStatus(t('designAiNeedImage'));
       return;
@@ -32654,6 +32673,7 @@ async function __safeJson(res){
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; } /* v-open-tools-cap */
+        if(data.error === 'unavailable'){ setStatus(t('svcPaused')); return; } /* v-provider-fail: رصيد المزوّد أو زحامه — لا «حاول مرة أخرى» */
         throw new Error(data.error || 'unknown');
       }
       const ideas = Array.isArray(data.suggestions) ? data.suggestions : [];
@@ -38030,6 +38050,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; } /* v-open-tools-cap */
+        /* v-provider-fail (لقطة التدقيق ٠١٩: «خطأ: Your prepayment credits are depleted… AI Studio» بروابط فوترة المزوّد): الخادم يرسل رمزًا
+           لا نصّ المزوّد، وstudioErrText لا يعرفه فكان سيعرض «خطأ: unavailable» — نصّ الواجهة بلغة المستخدم */
+        if(data.error === 'unavailable'){ setStatus(t2('svcPaused')); return; }
+        if(data.error === 'failed'){ setStatus(t2('designAiSuggestError')); return; }
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];

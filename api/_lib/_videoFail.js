@@ -17,4 +17,19 @@ function startFail(status, tech) {
   return { code: st || 502, body: { error: BAD, retryable: false } };
 }
 
-module.exports = { startFail, TEMP, OURS, BAD };
+/* v-provider-fail (تدقيق ١٨–١٩ أكتوبر: «Your prepayment credits are depleted. Please go to AI Studio…» بروابط فوترة المزوّد ظهر
+   للمستخدم في «نفس المكتوب بس مرتب» و«اقترح لي ستايل»): أدوات القراءة والاقتراح كانت تمرّر error.message المزوّد وحالته كما هما.
+   رمزٌ لا نصّ، والعميل يعرض نصّ واجهته:
+   - زحام (٤٢٩/٥xx) أو عطب عندنا (٤٠١/٤٠٢/٤٠٣/٤٠٤ أو نصّ مفتاح/صلاحيّة/فوترة/رصيد/نموذج) = unavailable بـ503 — لا ذنب للمستخدم
+     ولا يصلحه اشتراكه، و402 لا يُمرَّر (رصيد مزوّدنا ليس رصيد المستخدم — PITFALLS v-plans-gate).
+   - ما بقي من 4xx = failed بـ502: رفضٌ للطلب نفسه (صورة لا تُقرأ…).
+   النصّ التقنيّ للسجلّ عند المتّصل؛ هنا للتصنيف وحده. */
+function toolFail(status, tech) {
+  const st = Number(status) || 0;
+  if (st === 429 || st >= 500 || st === 401 || st === 402 || st === 403 || st === 404 || OURS_RE.test(String(tech || ''))) {
+    return { code: 503, body: { error: 'unavailable' } };
+  }
+  return { code: 502, body: { error: 'failed' } };
+}
+
+module.exports = { startFail, toolFail, TEMP, OURS, BAD };

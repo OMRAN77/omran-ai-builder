@@ -2891,6 +2891,10 @@
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; } /* v-open-tools-cap */
+        /* v-provider-fail (لقطة التدقيق ٠١٩: «خطأ: Your prepayment credits are depleted… AI Studio» بروابط فوترة المزوّد): الخادم يرسل رمزًا
+           لا نصّ المزوّد، وstudioErrText لا يعرفه فكان سيعرض «خطأ: unavailable» — نصّ الواجهة بلغة المستخدم */
+        if(data.error === 'unavailable'){ setStatus(t2('svcPaused')); return; }
+        if(data.error === 'failed'){ setStatus(t2('designAiSuggestError')); return; }
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];

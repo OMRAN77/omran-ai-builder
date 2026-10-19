@@ -107,11 +107,11 @@ test('٤. المعالج: بلا حساب لا قراءة، وبحساب يرج�
   await brief({ method: 'POST', body: { text: '   ', token: ownerToken() } }, res);
   assert.equal(res.code, 400);
 
-  // عطب المزوّد = fields:null لا انهيار
+  // عطب المزوّد = fields:null لا انهيار، وسببه «تعذّرت القراءة» لا «غير واضح» (v-cx-brief-fail: كان unclear فيقول «ما وضح لي الوصف» لوصف واضح)
   global.fetch = async () => { throw new Error('down'); };
   res = fakeRes();
   await brief({ method: 'POST', body: { text: 'فيلا', token: ownerToken() } }, res);
-  assert.deepEqual([res.code, res.body.fields, res.body.reason], [200, null, 'unclear']);
+  assert.deepEqual([res.code, res.body.fields, res.body.reason], [200, null, 'unavailable']);
   global.fetch = realFetch;
 });
 
