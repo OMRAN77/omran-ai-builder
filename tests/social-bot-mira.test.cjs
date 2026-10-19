@@ -235,6 +235,12 @@ test('١٣) أعطال الخدمة والنقل والسرد والمسائل �
   assert.equal(fb2.code, 1); assert.equal(n(fb2.c, 'frame'), 1); assert.equal(n(fb2.c, 'predict'), 0); untagged(fb2, 'frame200bad');
   const nop = run({ live: true, mode: 'predictnoop' });
   assert.equal(nop.code, 1); assert.equal(n(nop.c, 'predict'), 1); assert.equal(n(nop.c, 'frame'), 1); untagged(nop, 'predictnoop');
+  // ٤٠٢/٤٠٣ = الحساب (الرصيد أو المفتاح) لا الحلقة: لا إعادة ولا توليد ثانٍ ولا وسم إيقاف، وتنبيه «يحتاج تدخّلك» (تشغيلة ١٧)
+  const f402 = run({ live: true, mode: 'frame402' });
+  assert.equal(f402.code, 1); assert.equal(n(f402.c, 'frame'), 1); assert.equal(n(f402.c, 'predict'), 0); untagged(f402, 'frame402'); assert.match(f402.c.issues[0], /يحتاج تدخّلك/);
+  const d402 = run({ live: false, dry: true, mode: 'frame402' }); assert.equal(n(d402.c, 'frame'), 1); assert.match(d402.c.issues[0], /^\[DRY_RUN\].*يحتاج تدخّلك/);
+  const p403 = run({ live: true, mode: 'predict403' });
+  assert.equal(p403.code, 1); assert.equal(n(p403.c, 'predict'), 1); assert.equal(n(p403.c, 'frame'), 1); untagged(p403, 'predict403'); assert.match(p403.c.issues[0], /يحتاج تدخّلك/);
   const f5 = run({ live: true, mode: 'frame503' });
   assert.equal(f5.code, 1); assert.equal(n(f5.c, 'frame'), 3); assert.equal(n(f5.c, 'predict'), 0); untagged(f5, 'frame503');
   // ٤٠٠ رفض صريح: محاولة + إعادة واحدة بالإطار المقبول نفسه، ثمّ إيقاف
@@ -260,7 +266,9 @@ test('١٣) أعطال الخدمة والنقل والسرد والمسائل �
   const t1 = run({ live: true, mode: 'tts503once' }); assert.equal(t1.code, 0, t1.err); assert.equal(n(t1.c, 'tts'), 3); assert.equal(n(t1.c, 'upload'), 1);
   const t4 = run({ live: true, mode: 'tts401' }); assert.equal(t4.code, 1); assert.equal(n(t4.c, 'tts'), 2); assert.equal(n(t4.c, 'upload') + n(t4.c, 'frame'), 0);
   const tl = run({ live: true, mode: 'tts1fail' }); assert.equal(tl.code, 1); assert.equal(n(tl.c, 'upload') + n(tl.c, 'predict'), 0); assert.equal(n(tl.c, 'issue'), 1);
-  const td = run({ live: false, dry: true, mode: 'tts1fail' }); assert.equal(td.code, 0, td.err); assert.equal(n(td.c, 'upload'), 0); assert.equal(n(td.c, 'issue'), 0);
+  // DRY_RUN بلا سرد لا يُصرف عليه (معاينة لا تمثّل الحلقة)، بلا مسألة، وسبب الرفض (جسم الردّ) ظاهر
+  const td = run({ live: false, dry: true, mode: 'tts1fail' }); assert.equal(td.code, 1); assert.equal(n(td.c, 'frame') + n(td.c, 'predict') + n(td.c, 'upload'), 0); assert.equal(n(td.c, 'issue'), 0);
+  const tz4 = run({ live: false, dry: true, mode: 'tts401' }); assert.equal(n(tz4.c, 'frame'), 0); assert.match(tz4.err, /tts 401 \{"error":"Azure TTS error/, 'سبب رفض الصوت يظهر');
   // مسائل التنبيه: عطلها في النشر الفعليّ = توقّف قبل أيّ نداء مدفوع، والبوّابة go=0؛ الطلب والمسألة المقفلة لا يوقفان
   const i5 = run({ live: true, mode: 'issues500' }); assert.equal(i5.code, 1); assert.equal(n(i5.c, 'frame'), 0);
   assert.equal(run({ gate: true, live: true, event: 'schedule', mode: 'issues500' }).out, 'go=0');

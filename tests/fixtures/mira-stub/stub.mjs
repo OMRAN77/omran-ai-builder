@@ -9,7 +9,7 @@ const C = {}; const inc = (k) => (C[k] = (C[k] || 0) + 1);
 const modes = String(process.env.STUB_MODE || 'ok').split(','); const is = (m) => modes.includes(m);
 // ok | clipfail | blip | fallback | dlfail | predict429 | predictnet | predictreset | predict400 | pending | veofail | veoblocked | frame503 | frametimeout
 // | framejudgenet | clipjudgenet | tts503once | tts401 | tts1fail | issues500 | issuepost500
-// | frame200bad | predictnoop | issuesbad | issuepost403  (عدّة أوضاع بفواصل)
+// | frame200bad | predictnoop | issuesbad | issuepost403 | frame402 | predict403  (عدّة أوضاع بفواصل)
 const netErr = (code) => Object.assign(new TypeError('fetch failed'), { cause: { code } });
 const json = (o, status = 200, headers = {}) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json', ...headers } });
 const uploads = [], issues = [], issueGets = [];
@@ -18,7 +18,7 @@ const fill = Number(process.env.STUB_FILL || 0);
 const history = [...Array.from({ length: fill }, (_, i) => ({ external_id: process.env.STUB_FILL_ID || 'x-fill-' + i, upload_timestamp: '2026-01-01T00:00:00Z' })), ...JSON.parse(process.env.STUB_HISTORY || '[]')];
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
-  if (u.includes('gemini-3-pro-image:generateContent')) { inc('frame'); if (is('frame503')) return json({ error: { message: 'down' } }, 503); if (first('frametimeout')) throw new DOMException('The operation was aborted due to timeout', 'TimeoutError'); if (first('frame200bad')) return new Response('<html>', { status: 200 }); return json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: Buffer.from('png').toString('base64') } }] } }] }); }
+  if (u.includes('gemini-3-pro-image:generateContent')) { inc('frame'); if (is('frame503')) return json({ error: { message: 'down' } }, 503); if (first('frametimeout')) throw new DOMException('The operation was aborted due to timeout', 'TimeoutError'); if (first('frame200bad')) return new Response('<html>', { status: 200 }); if (is('frame402')) return json({ error: { message: 'Your prepayment credits are depleted.' } }, 402); return json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: Buffer.from('png').toString('base64') } }] } }] }); }
   if (u.includes(':generateContent')) {
     inc('judge');
     const n = JSON.parse(init.body).contents[0].parts.filter((p) => p.inlineData).length;
@@ -33,6 +33,7 @@ globalThis.fetch = async (url, init = {}) => {
     if (first('predictreset')) throw netErr('ECONNRESET'); // انقطع بعد الإرسال: ربما حُوسب
     if (is('predict400')) return json({ error: { message: 'bad' } }, 400);
     if (is('predictnoop')) return json({});
+    if (is('predict403')) return json({ error: { message: 'PERMISSION_DENIED' } }, 403);
     return json({ name: 'models/veo/operations/op' + C.predict });
   }
   if (u.includes('/operations/')) {
@@ -66,7 +67,7 @@ globalThis.fetch = async (url, init = {}) => {
     inc('tts');
     const text = JSON.parse(init.body).text;
     if (first('tts503once') || (is('tts1fail') && text === 'يالله نشوف')) return new Response('down', { status: 503 });
-    if (is('tts401')) return new Response('no', { status: 401 });
+    if (is('tts401')) return new Response(JSON.stringify({ error: 'Azure TTS error: 401 Unauthorized' }), { status: 401 });
     return new Response(Buffer.from('mp3'), { status: 200, headers: is('fallback') ? { 'X-TTS-Tier': 'fallback' } : {} });
   }
   return json({}, 404);
