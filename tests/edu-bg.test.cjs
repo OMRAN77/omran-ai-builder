@@ -23,7 +23,8 @@ test('١. الثيمات الـ٢٤ كلّها: كتلة CSS ونسخة حاسو
   for (const k of [...SKINS, ...ACCENT]) {
     assert.ok(CSS.includes('#eduHubModal[data-edu-bg="' + k + '"]{--edu-art-d:'), 'كتلة ' + k);
     const need = ['desktop', 'mobile'].concat(ACCENT.includes(k) ? ['light'] : []);
-    for (const v of need) assert.ok(fs.existsSync(path.join(ROOT, 'assets/edu-bg/' + k + '-' + v + '.webp')), 'ملفّ ' + k + '-' + v);
+    const base = ACCENT.includes(k) ? k : 'skin-' + k; /* بادئة skin- تمنع اصطدام الأسماء على فرع الروبوت */
+    for (const v of need) assert.ok(fs.existsSync(path.join(ROOT, 'assets/edu-bg/' + base + '-' + v + '.webp')), 'ملفّ ' + base + '-' + v);
   }
 });
 
@@ -85,12 +86,15 @@ test('٦. CSS: يعلو قواعد eduWrap القديمة (!important) ويُح�
   assert.ok(CSS.includes('@media (max-width:700px){html:root:root #eduHubModal[data-edu-bg]{background-image:var(--edu-art-m) !important;}}'));
   assert.ok(CSS.includes('html.mobile-ui:root:root #eduHubModal[data-edu-bg]{background-image:var(--edu-art-m) !important;}'));
   assert.ok(CSS.includes('html[data-mode="light"]:root:root #eduHubModal[data-edu-bg="classic"]'));
-  assert.ok(/:is\(\.eduUploadBtn,\.eduPlusTile,\.eduLessonRow\)\{background:rgba\(var\(--edu-glass\),\.66\)/.test(CSS));
+  assert.ok(/:is\(\.eduUploadBtn,\.eduPlusTile,\.eduLessonRow\)\{background:rgba\(var\(--edu-card\),\.9\)/.test(CSS));
+  /* «ما أريد صور تحتها»: عمود الكتابة صلب بلون الثيم، لا صورة ولا شفافيّة تحت أيّ نصّ */
+  assert.ok(CSS.includes('.eduWrap{background:rgb(var(--edu-glass)) !important;'), 'العمود صلب');
+  assert.ok(CSS.includes('.eduBody{background:transparent;}') && !/backdrop-filter:blur/.test(CSS), 'لا شفافيّة ولا ضبابيّة فوق الصورة');
   assert.ok(!/display\s*:\s*none/.test(CSS) && !/pointer-events\s*:\s*none/.test(CSS), 'لا إخفاء ولا تعطيل — شكل فقط');
   assert.ok(CSS.includes('.eduHead h2{background:none !important;-webkit-text-fill-color:var(--edu-head) !important;'), 'العنوان بلون الثيم');
   assert.ok(CSS.includes(':is(.eduSecTitle,.eduPasteToggle,.eduLinkBtn){color:var(--edu-head) !important;}') && CSS.includes('.eduPlusSub,.eduNote,.eduEmpty){color:var(--edu-muted) !important;}'), 'الكتابة بألوان الثيم');
   for (const k of [...SKINS, ...ACCENT]) {
     const b = CSS.match(new RegExp('#eduHubModal\\[data-edu-bg="' + k + '"\\]\\{([^}]*)\\}'))[1];
-    for (const v of ['--edu-base', '--edu-glass', '--edu-gold', '--edu-r', '--edu-bw', '--edu-shadow', '--edu-ink', '--edu-head', '--edu-muted']) assert.ok(b.includes(v + ':'), k + ' ' + v);
+    for (const v of ['--edu-base', '--edu-glass', '--edu-gold', '--edu-r', '--edu-bw', '--edu-shadow', '--edu-ink', '--edu-head', '--edu-muted', '--edu-card']) assert.ok(b.includes(v + ':'), k + ' ' + v);
   }
 });

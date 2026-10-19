@@ -278,8 +278,9 @@ if (isMode('edu-bg')) {
       JOBS.push({ kind: 'edubg', name: k + '-mobile', shape: 'port', cap: 1080, prompt: PORT + d.dark + EDU_BG_COMMON });
       JOBS.push({ kind: 'edubg', name: k + '-light', shape: 'land16', cap: 1920, prompt: LAND + d.light + EDU_BG_COMMON });
     } else if (EDU_SKINS[k]) {
-      JOBS.push({ kind: 'edubg', name: k + '-desktop', shape: 'land16', cap: 1920, prompt: LAND + EDU_SKINS[k] + EDU_BG_COMMON });
-      JOBS.push({ kind: 'edubg', name: k + '-mobile', shape: 'port', cap: 1080, prompt: PORT + EDU_SKINS[k] + EDU_BG_COMMON });
+      // بادئة skin- تمنع اصطدام الأسماء بملفّات قديمة على فرع الروبوت (library-* كانت المكتبة الذهبيّة: فشل الدفع وضاع توليد ٤٨ صورة)
+      JOBS.push({ kind: 'edubg', name: 'skin-' + k + '-desktop', shape: 'land16', cap: 1920, prompt: LAND + EDU_SKINS[k] + EDU_BG_COMMON });
+      JOBS.push({ kind: 'edubg', name: 'skin-' + k + '-mobile', shape: 'port', cap: 1080, prompt: PORT + EDU_SKINS[k] + EDU_BG_COMMON });
     }
   });
 }
