@@ -70,7 +70,7 @@ module.exports = async (req, res) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      res.status(503).json({ error: 'unavailable' }); /* v-provider-fail-rest: لا اسم مفتاح ولا مزوّد في ردّ المستخدم */
       return;
     }
 
@@ -152,11 +152,20 @@ module.exports = async (req, res) => {
         } catch (e) { /* الإنقاذ فشل — يمضي لإعلان الخطأ الأصلي */ }
       }
     }
+    /* v-provider-fail-rest (تدقيق ١٨–١٩ أكتوبر): «شاهد المبنى من زوايا أخرى» و«شاهد الغرف من الداخل» كانا يمرّران حالة المزوّد ونصّه
+       (402 رصيده)، فتعرض الواجهة «❌ خطأ: <نصّ المزوّد>». رمزٌ لا نصّ: رفض المزوّد ← toolFail، وفشل النداء نفسه (مهلة/انقطاع) ← unavailable،
+       وردّ بلا صورة ← failed. الحجز الذرّيّ للحصّة يُردّ عند أيّ ردّ لم يُستهلك فيه (v-atomic-quota) فالحالة لا تمسّه. */
     if (!outB64) {
       if (upstream && !upstream.ok) {
-        res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream image error' });
+        const tech = String((data && data.error && data.error.message) || '');
+        console.error('[construction-view] upstream ' + upstream.status + ': ' + tech.slice(0, 200));
+        const fail = require('./_videoFail.js').toolFail(upstream.status, tech);
+        res.status(fail.code).json(fail.body);
+      } else if (!upstream) {
+        console.error('[construction-view] upstream call failed (timeout/network)');
+        res.status(503).json({ error: 'unavailable' });
       } else {
-        res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول مرة أخرى.' });
+        res.status(502).json({ error: 'failed' });
       }
       return;
     }
@@ -169,6 +178,7 @@ module.exports = async (req, res) => {
       dailyLimit: quota.limit || CONSTRUCTION_DAILY_LIMIT,
     });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[construction-view] ' + (e && e.message ? e.message : String(e)));
+    res.status(503).json({ error: 'unavailable' }); /* v-provider-fail-rest: كان «Proxy error: <نصّ تقنيّ>» */
   }
 };

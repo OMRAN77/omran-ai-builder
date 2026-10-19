@@ -2131,6 +2131,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; } /* v-open-tools-cap */
+        if(data.error === 'unavailable'){ setStatus(t('svcPaused')); return; } /* v-provider-fail-rest */
+        if(data.error === 'failed'){ setStatus(t('designAiSuggestError')); return; } /* الخادم يرسل رمزًا لا نصّ المزوّد — كان «❌ خطأ: <النصّ>» */
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];

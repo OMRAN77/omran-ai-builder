@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      res.status(503).json({ error: 'unavailable' }); /* v-provider-fail-rest: لا اسم مفتاح ولا مزوّد في ردّ المستخدم */
       return;
     }
 
@@ -146,7 +146,12 @@ module.exports = async (req, res) => {
       rawText = await openaiSuggest(promptText, imageBase64, mimeType);
       if (!rawText) {
         await refund();
-        res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
+        /* v-provider-fail-rest (تدقيق ١٨–١٩ أكتوبر): كان يمرّر حالة المزوّد ونصّه («Your prepayment credits are depleted… AI Studio»
+           بروابط فوترته) إلى «اقترح لي إطلالة». رمزٌ من toolFail، والنصّ للسجلّ */
+        const tech = String((data && data.error && data.error.message) || '');
+        console.error('[fashion-suggest] upstream ' + upstream.status + ': ' + tech.slice(0, 200));
+        const fail = require('./_videoFail.js').toolFail(upstream.status, tech);
+        res.status(fail.code).json(fail.body);
         return;
       }
       engine = 'openai';
@@ -175,6 +180,7 @@ module.exports = async (req, res) => {
     res.status(200).json({ suggestions, engine });
   } catch (e) {
     if (refund) await refund();
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[fashion-suggest] ' + (e && e.message ? e.message : String(e)));
+    res.status(503).json({ error: 'unavailable' }); /* v-provider-fail-rest: كان «Proxy error: <نصّ تقنيّ>» */
   }
 };
