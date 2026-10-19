@@ -2629,9 +2629,11 @@ function renderMessages(keepScroll){
               const __note = document.createElement('div');
               __note.style.cssText = 'font-size:12px; color:var(--muted,#98a0b3); margin-top:6px; line-height:1.7; max-width:100%;';
               const __lbl = __isEn ? __hint.en : __hint.ar;
-              __note.appendChild(document.createTextNode('💡 ' + (__isEn ? 'Note: you can do this with ' : 'ملاحظة: تقدر تسوي هذا عن طريق ')));
+              /* v-gov-hint: بلا إيموجي في المصدر — منظّف v-clean-ui يقصّ (trim) كلّ عقدة نصّ فيها إيموجي فتضيع المسافة قبل الرابط
+                 («عن طريقالمعاملات…»، PITFALLS). الواجهة بلا إيموجي أصلًا بأمر المالك، فلا يتغيّر الظاهر إلّا المسافة. */
+              __note.appendChild(document.createTextNode(__isEn ? 'Note: you can do this with ' : 'ملاحظة: تقدر تسوي هذا عن طريق '));
               const __a = document.createElement('a');
-              __a.textContent = __hint.icon + ' ' + __lbl;
+              __a.textContent = __lbl;
               __a.href = 'javascript:void(0)';
               __a.style.cssText = 'color:var(--accent2,#a78bfa); text-decoration:none; font-weight:500; cursor:pointer;';
               __a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openFeatureById(__hint.id); };

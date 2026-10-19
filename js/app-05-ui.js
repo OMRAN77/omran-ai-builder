@@ -638,8 +638,8 @@ var APP_CAPABILITIES = [
     kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },
   { id:'btnDocs',     icon:'📄', ar:'مساعد المستندات', en:'Document Assistant',
     kw:/(?:حلل|حلّل|اقرأ|افهم|لخص|لخّص|راجع|افحص).{0,18}(?:مستند|عقد|فاتورة|تقرير|ملف|اتفاقية|pdf)|(?:مستند|عقد|فاتورة|اتفاقية)(?![\u0600-\u06FF])|(?:contract|invoice)\b/i }, // v-arabic-wordb: كان \b بعد الأسماء العربيّة فلا تطابق وحدها
-  { id:'btnGov',      icon:'🧾', ar:'المعاملات الحكومية', en:'Government Services',
-    kw:/(إقامة|اقامة|رخصة تجارية|رخصه|تجديد.{0,10}(هوية|جواز|رخصة|إقامة)|تأشيرة|تاشيرة|فيزا|بلدية|معاملة حكوم|خدمة حكوم|residence visa|business license|govern)/i },
+  /* v-gov-hint: «المعاملات الحكومية» متقاعدة في الخادم (api/_lib/_retired.js ← 410 «retired») وزرّها مخفيّ لكلّ أحد (v473)،
+     فلا تُقترح هنا — أزالها v386 ثمّ أعادتها مزامنة v468 سهوًا مع المستندات والسيرة. المحادثة نفسها تجيب عن المعاملات. */
   { id:'btnReligion', icon:'☪️', ar:'التفسير الديني', en:'Religious Guidance',
     kw:/(ما\s?حكم|وش\s?حكم|شو\s?حكم|فتوى|حلال\s?أو?\s?حرام|تفسير\s?(آية|اية|سورة)|معنى\s?الحديث|fatwa|is it halal|is it haram)/i },
 ].filter(function(c){ return OMRAN_PAUSED_TOOLS.indexOf(c.id) < 0; });
