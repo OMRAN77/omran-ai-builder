@@ -1,0 +1,51 @@
+<!doctype html><html lang="ar"><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"><style>.main{gap:12px!important}
+.up{display:flex;align-items:center;justify-content:center;gap:16px;padding:15px;border-radius:20px;background:linear-gradient(135deg,#f0deaa,#c9a55a);color:#1a1408;box-shadow:0 0 40px rgba(233,211,154,.25)}
+.up .plus{width:40px;height:40px;border-radius:50%;background:#1a1408;color:#f0deaa;font-size:30px;display:grid;place-items:center;font-weight:700}
+.up b{font-size:22px}.up small{display:block;font-size:13px;opacity:.75;font-weight:600}
+.or{font-size:13px;margin:-4px 4px -8px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 20px;font-size:15.5px}.row .chev{margin-right:auto}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.tile{padding:14px;border-radius:18px;background:#0b0b0c;border:1px solid var(--c);position:relative;overflow:hidden;min-height:112px}
+.tile:before{content:"";position:absolute;inset:0;background:radial-gradient(220px 120px at 100% 0%,var(--g),transparent 70%)}
+.tile *{position:relative}
+.ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;background:var(--g);margin-bottom:8px}
+.tile b{display:block;font-size:16px;margin-bottom:4px}.tile span{font-size:12.5px;color:#a9a497}
+.badge{position:absolute;top:14px;left:14px;font-size:11px;padding:3px 8px;border-radius:20px;background:var(--g);color:#f2efe7}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sel{padding:12px 18px}.sel .t{font-size:16px;font-weight:700}
+.sel .box{margin-top:8px;border:1px solid rgba(240,222,170,.25);border-radius:12px;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.empty{padding:12px 18px;text-align:center;font-size:14px}.empty .t{font-weight:700;font-size:16px;text-align:right;margin-bottom:10px;color:#f2efe7}
+.books{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:7px;padding:20px 18px}
+.bk{height:44px;border-radius:6px 10px 10px 6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:#f0deaa;border:1px solid rgba(240,222,170,.25);box-shadow:inset -10px 0 0 rgba(0,0,0,.25)}
+.quote{padding:22px 20px}.quote b{font-size:22px;color:#f0deaa;display:block;line-height:1.5}.quote i{display:block;width:44px;height:3px;background:#e9d39a;border-radius:3px;margin:10px 0}
+.streak{padding:16px 18px;display:flex;align-items:center;gap:12px}.streak .n{font-size:30px;font-weight:800;color:#f0deaa}
+</style></head><body><div class="wrap">
+<div class="main">
+ <h1>🎓 التعليم</h1>
+ <div class="up"><div class="plus">+</div><div><b>ارفع محاضرة جديدة</b><small>PDF أو صور أو DOCX — وتاخذ ملخص وبطاقات واختبار</small></div></div>
+ <div class="or muted">أو اختر من المنهج</div>
+ <div class="card row">📚 <span>درس من المنهج — اختر البلد والصف والمادة</span><span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e9d39a" stroke-width="2.5" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span></div>
+ <div class="tiles">
+  <div class="tile" style="--c:rgba(167,139,250,.45);--g:rgba(139,92,246,.28)"><div class="ic">🎮</div><b>خوارزميات الألعاب</b><span>٨ دروس بألعاب حيّة · ٠/٨</span></div>
+  <div class="tile" style="--c:rgba(74,222,128,.4);--g:rgba(34,197,94,.24)"><div class="ic">🧩</div><b>حلّ الواجب — أيّ مادّة</b><span>صوّر الواجب أو اكتبه</span></div>
+  <div class="tile" style="--c:rgba(96,165,250,.45);--g:rgba(59,130,246,.26)"><div class="badge">٣ بطاقات</div><div class="ic">🔁</div><b>مراجعة اليوم</b><span>عندك ٣ بطاقات مستحقّة</span></div>
+  <div class="tile" style="--c:rgba(240,222,170,.45);--g:rgba(233,211,154,.22)"><div class="ic">📊</div><b>تقدّمي وخطّة الامتحان</b><span>نقاط ضعفك وخطّة المذاكرة</span></div>
+ </div>
+ <div class="two">
+  <div class="card sel"><div class="t">🌐 لغة امتحاني</div><div class="box"><span>العربية</span><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e9d39a" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></div><div class="muted" style="font-size:12px;margin-top:6px">الشرح بلغتك والمصطلحات بلغة الامتحان</div></div>
+  <div class="card empty"><div class="t">📖 موادي</div><div class="muted">لا توجد دروس بعد — ارفع أول محاضرة وابدأ المذاكرة!</div></div>
+ </div>
+ <div class="card row">🎬 <span>صانع الفيديو والشرائح التعليميّة</span><span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e9d39a" stroke-width="2.5" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span></div>
+</div>
+<div class="side">
+ <div class="card quote"><b>المعرفة<br>تبدأ من هنا</b><i></i><span class="muted" style="font-size:14px">كل إنجاز يبدأ بخطوة</span></div>
+ <div class="card streak"><div class="n">🔥 ٥</div><div><b>أيام متتالية</b><div class="muted" style="font-size:12.5px">ذاكر اليوم عشان ما تنقطع</div></div></div>
+ <div class="card books">
+  <div class="bk" style="background:#1d2a3a">الرياضيات</div>
+  <div class="bk" style="background:#1f3326;width:94%;margin-right:3%">العلوم</div>
+  <div class="bk" style="background:#3a2a17">اللغة العربية</div>
+  <div class="bk" style="background:#3a1c22;width:96%">اللغة الإنجليزية</div>
+  <div class="bk" style="background:#262033;width:92%;margin-right:5%">التاريخ</div>
+ </div>
+</div>
+</div></body></html>
