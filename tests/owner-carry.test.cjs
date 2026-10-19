@@ -55,7 +55,7 @@ test('v-owner-ui-shot: «احذف هذا المكان» مع لقطة = تعدي
   const chat = read('api/_lib/chat.js');
   // v-owner-ui-shot-client: قرار العميل (body.ownerUiShot) أوّلًا، والتعابير حين يغيب الحقل
   assert.ok(chat.includes("const __ownerUiShot = __ownerReq && lastUserHasImage && (typeof (body && body.ownerUiShot) === 'boolean' ? body.ownerUiShot : require('./owner-carry.js').uiEditTurn(lastUserText));"));
-  assert.ok(chat.includes("tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined")); // v-tokens-owner-tools: القائمة كاملة، وأدوات الصور تُرفض عند التنفيذ في دور اللقطة (__ownerNoMedia)
+  assert.ok(chat.includes("tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia, __callPaid) : undefined")); // v-tokens-owner-tools: القائمة كاملة، وأدوات الصور تُرفض عند التنفيذ في دور اللقطة (__ownerNoMedia)
   assert.ok(chat.includes("+ (__ownerUiShot ? require('./owner-carry.js').UI_SHOT_NOTE : '')"));
   assert.match(C.UI_SHOT_NOTE, /ليس تعديل الصورة/);
 });

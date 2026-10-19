@@ -39,9 +39,18 @@ boot.send === 'function' ? ok(`الحزمة تعمل (${boot.scripts} سكربت
 await p.screenshot({ path: 'e2e-1-فتح.png', fullPage: false });
 
 console.log('② تسجيل حساب جديد من الواجهة نفسها');
+// v-intro-splash: شاشة الافتتاح تغطّي الصفحة حتى يضغطها المستخدم — نضغطها كما يفعل
+if (await p.locator('#omranIntro').count()) {
+  await p.click('#omranIntro', { timeout: 10000 });
+  await p.waitForSelector('#omranIntro', { state: 'detached', timeout: 5000 });
+}
+// AppGallery 7.5: نافذة الخصوصيّة أوّل زيارة تحجب ما تحتها حتى «أوافق وأتابع»
+if (await p.locator('#privacyAgreeBtn').count()) await p.click('#privacyAgreeBtn', { timeout: 10000 });
 await p.evaluate(() => { const hb = document.querySelector('#headerLoginBtn'); if (hb) hb.click(); else { const o = document.querySelector('#authOverlay'); if (o) o.style.display = 'flex'; } });
 await p.waitForTimeout(700);
-await p.click('#authTabSignup', { timeout: 15000 });
+// v-simple-login: التبويبات مخفيّة دائمًا — «إنشاء حساب جديد» تحت جوجل هو زرّ التسجيل الظاهر
+await p.click('#authSwitchBtn', { timeout: 15000 });
+await p.waitForFunction(() => /new-password/.test((document.querySelector('#authPassword') || {}).autocomplete || ''), null, { timeout: 5000 });
 await p.fill('#authUsername', user);
 await p.fill('#authPassword', pw);
 await p.screenshot({ path: 'e2e-2-قبل-الإرسال.png' });

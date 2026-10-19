@@ -1,5 +1,5 @@
 /* ───────── v-call-agent: بطاقة «اتّصل بالنيابة عنّي» ومكالمتها (أمر المالك ١٧ أكتوبر: الوكيل يتّصل بالعيادة أو الصالون أو
- * المطعم ويحجز عنه — للمالك وحده الآن) ─────────
+ * المطعم ويحجز عنه — المالك مجّانًا، والمشترك بباقة سارية بالنقاط: v-call-agent-paid) ─────────
  * الخادم (أداة المالك) يبثّ حدث cards بنوع call فيُحفظ في رسالة المساعد (m.cards.call) ويُرسم هنا بدل شبكة البطاقات — سطر
  * واحد أوّل window.omranRenderCards في app-37. زرّان:
  *  «🎧 جرّب عليّ» — جلسة صوت حيّة مستقلّة في المتصفّح (call-session): المساعد «يتّصل» بالمالك وهو يمثّل الجهة.
@@ -17,11 +17,18 @@
  * v-call-agent-cut (المالك: «الصوت يقطع لكن المحادثة الي هي الكتابة موجوده»): نصّ الجملة يصل كاملًا قبل صوتها، فإن قاطعها كلام
  * الطرف الآخر (المقاطعة في الخادم تمسح ما لم يُسمع) بقيت كاملة على الشاشة والصوت مقطوع. الآن سطر الردّ المقطوع يُعلَّم « …»
  * (بمعرّف الردّ، في أيّ ترتيب وصل النصّ والقطع)، و«قل ألو» لا يظهر قبل أن يُفتح المايك، وكلّ تجربة بدأت ترسل عند نهايتها أثرًا
- * واحدًا بلا نصّ (diag:call-trial) يفرّق بين مقاطعة وصدى وشبكة. */
+ * واحدًا بلا نصّ (diag:call-trial) يفرّق بين مقاطعة وصدى وشبكة.
+ * v-call-agent-paid (المالك ١٨ أكتوبر: «الاتصال الالي مايشتغل لي المستخدمين» ← المشتركين بباقة، والتجربة بنفس السعر): لغير
+ * المالك سعر الدقيقة وسطر الحجز على البطاقة، وتأكيد بلغته فيه السعر قبل التجربة والاتّصال الفعليّ (الطلب يحمل confirmed فلا يظهر
+ * تأكيد الخادم العربيّ ٤٢٨)، والتجربة ترسل نهايتها call-trial-end (keepalive، ويُعاد إرسالها حتّى يقبلها الخادم) ليُرجع ما زاد عن
+ * الدقائق المبدوءة. plan_required وpoints_insufficient برسالتين بالـ١٤ لغة. المراجعة: معرّف التجربة يولّده العميل ويحفظه في الكرت قبل
+ * الطلب (c.trialEnds لكلّ تجربة على حدة)، والتحميل يمرّ على كلّ الكروت (sweep) لنهايات معلّقة ومكالمات لم تُحسم تسويتها، والاستطلاع
+ * يكمل بعد «انتهت» ما دامت التسوية لم تُحسم (billing: null). */
 (function(){
   'use strict';
-  var PTS_LAND = 50, PTS_MOB = 45;           // سعر المستخدم لاحقًا (المالك مجّانًا) — من العقد
+  var PTS_LAND = 50, PTS_MOB = 45;           // سعر الدقيقة لغير المالك (المالك مجّانًا) — من العقد؛ الكرت يحمل ptsPerMin من الخادم
   var POLL_MS = 2000, POLL_MAX_MS = 10 * 60 * 1000;
+  var SETTLE_WAIT_MS = 15 * 60 * 1000; // أوّل billing: null يمدّ المتابعة مرّة: مطالبة تسوية عالقة تُعاد بعد ٦ دقائق عند الخادم (CLAIM_STALE_MS) — المراجعة الرابعة
   var SILENT_OPEN_MS = 3000;                  // صمت ٣ث بعد الجاهزيّة ← المساعد يبادر
   var SETUP_MAX_MS = 20000;                   // تجهيز أطول من هذا = فشل صريح لا انتظار بلا نهاية
   var END_GRACE_MS = 1200, END_MAX_MS = 8000; // end_call: ننتظر انتهاء جملة الوداع، وبحدّ أقصى
@@ -38,7 +45,7 @@
     declined: 'callAgentOcDeclined', no_answer: 'callAgentStNoAnswer', failed: 'callAgentOcFailed' };
   var ERR = { owner_only: 'callAgentErrOwner', proposal_not_found: 'callAgentErrExpired', no_key: 'callAgentErrNoKey',
     relay_not_configured: 'callAgentErrRelay', no_phone: 'callAgentErrNoPhone', bad_phone: 'callAgentErrBadPhone',
-    busy: 'callAgentErrBusy', outside_hours: 'callAgentErrHours' };
+    busy: 'callAgentErrBusy', outside_hours: 'callAgentErrHours', plan_required: 'callAgentErrPlan', points_insufficient: 'callAgentErrPoints' };
 
   var trial = null;   // جلسة التجربة الحيّة الوحيدة في هذا التبويب
   var polls = {};     // callId ← متابعة الاتّصال الفعليّ
@@ -46,6 +53,9 @@
   var notes = {};     // id ← ملاحظة عابرة على البطاقة (خطأ أو رفض) — لا تُحفظ
   var starting = {};  // id ← بدء اتّصال فعليّ جارٍ (ضغطتان سريعتان = طلب واحد)
   var settling = {};  // id ← حسم تجربة معلّقة بعد إعادة التحميل مجدول (مرّة واحدة)
+  var ending = {};    // معرّف التجربة ← إرسال نهايتها جارٍ (لا طلبان معًا)
+  var tried = {};     // معرّف التجربة ← محاولات إرسال نهايتها في هذه الصفحة (ثانية بعد مهلة، والباقي في التحميل التالي)
+  var inflight = {};  // معرّف التجربة ← وعد إرسال نهايتها الجاري (تنتظره «جرّب» قبل طلب جلسة جديدة)
   var MARK = 'omranCallTrialLive'; // id التجربة الجارية في هذا المتصفّح: التحميل التالي يعرف أنّها انقطعت هنا لا أنّها حيّة في جهاز آخر
 
   /* ── أدوات صغيرة ── */
@@ -66,6 +76,11 @@
   function mmss(sec){ sec = Math.max(0, Math.round(Number(sec) || 0)); var m = Math.floor(sec / 60), s = sec % 60; return m + ':' + (s < 10 ? '0' : '') + s; }
   function isOwner(){ try{ return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); }catch(e){ return false; } }
   function token(){ try{ return (typeof authGet === 'function' && authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+  /* v-call-agent-paid: سعر الدقيقة وسقف المكالمة كما يحجزهما الخادم (quote: الدقائق × السعر) */
+  function perMin(c){ return Number(c.ptsPerMin) || (c.kind === 'mobile' ? PTS_MOB : PTS_LAND); }
+  function capMin(c){ return Math.max(1, Math.min(10, Math.round(Number(c.maxMin) || 4))); }
+  function priceLines(c){ return fill(tt('callAgentPrice'), { n: perMin(c) }) + '\n' + fill(tt('callAgentHold'), { n: perMin(c) * capMin(c) }); }
+  function paidBody(b){ return isOwner() ? b : Object.assign({ confirmed: true }, b); } // العميل سأل بلغته وفيه السعر — لا تأكيد ثانٍ من الخادم
   function mahaBusy(){
     try{ return (typeof mahaCallActive !== 'undefined' && !!mahaCallActive) || (typeof mahaCallStarting !== 'undefined' && !!mahaCallStarting); }
     catch(e){ return false; }
@@ -171,6 +186,7 @@
       + '.omCallMeta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:12.5px;}'
       + '.msg .omCallMeta span{color:var(--muted,#9aa3b2) !important;}'
       + '.msg .omCallMeta .omCallFree{color:#10b981 !important;font-weight:700;}'
+      + '.msg .omCallMeta .omCallCost{font-weight:700;}'
       + '.msg .omCallPrice{font-size:11.5px;line-height:1.5;color:var(--muted,#9aa3b2) !important;}'
       + '.omCallState{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;}'
       + '.msg .omCallState span{color:var(--text,#eee) !important;}'
@@ -317,17 +333,17 @@
       ['share', 'omCallShare', 'callAgentShare', clip(c.details, 500)]].forEach(function(f){
       part(v, f[0], f[3] ? tt(f[2]) + '\u0001' + f[3] : '', function(){ return labeled(f[1], tt(f[2]), f[3]); });
     });
-    var maxMin = Math.max(1, Math.min(10, Math.round(Number(c.maxMin) || 4)));
+    var maxMin = capMin(c);
     var owner = isOwner();
     var metaTxt = [fill(tt('callAgentMax'), { n: maxMin }),
-      owner ? tt('callAgentFreeOwner') : fill(tt('callAgentPrice'), { n: Number(c.ptsPerMin) || (c.kind === 'mobile' ? PTS_MOB : PTS_LAND) })];
+      owner ? tt('callAgentFreeOwner') : fill(tt('callAgentPrice'), { n: perMin(c) }), owner ? 'omCallFree' : 'omCallCost'];
     part(v, 'meta', JSON.stringify(metaTxt), function(){
       var meta = el('div', 'omCallMeta');
       meta.appendChild(el('span', '', metaTxt[0]));
-      meta.appendChild(el('span', 'omCallFree', metaTxt[1]));
+      meta.appendChild(el('span', metaTxt[2], metaTxt[1])); // v-call-agent-paid: سعر المشترك بلون الكرت لا أخضر «مجّانيّة»
       return meta;
     });
-    var priceTxt = owner ? fill(tt('callAgentUserPrice'), { land: PTS_LAND, mob: PTS_MOB }) : '';
+    var priceTxt = owner ? fill(tt('callAgentUserPrice'), { land: PTS_LAND, mob: PTS_MOB }) : fill(tt('callAgentHold'), { n: perMin(c) * maxMin });
     part(v, 'price', priceTxt, function(){ return el('div', 'omCallPrice', priceTxt); });
 
     var vs = viewState(c);
@@ -414,6 +430,7 @@
     fillCard(wrap, c);
     resume(c);
     settleTrial(c);
+    if(c.id && c.trialEnds && Object.keys(c.trialEnds).length) setTimeout(function(){ trialEnd(c.id, true); }, 0); // v-call-agent-paid: نهايات لم يؤكّدها الخادم بعد
     return wrap;
   };
 
@@ -430,7 +447,62 @@
     }catch(e){ __swallow(e, 'call-agent:net'); return { ok: false, status: 0, data: {} }; }
   }
   function errKey(r){ var e = r && r.data && r.data.error; return ERR[e] || 'callAgentErrGeneric'; }
+  function errText(r){ var k = errKey(r); return k === 'callAgentErrPoints' ? fill(tt(k), { n: Math.max(0, Math.round(Number(r.data.needed) || 0)) }) : tt(k); }
   function note(id, key){ notes[id] = key ? tt(key) : ''; refresh(id); }
+
+  /* v-call-agent-paid: نهاية تجربة مدفوعة ← الخادم يُرجع ما زاد عن الدقائق المبدوءة. كلّ تجربة بمعرّفها في c.trialEnds ({ معرّف: ثوانٍ،
+   * و-1 = لم تنتهِ بعد}) يولّده العميل ويحفظه قبل طلب الجلسة — ردّ ضائع أو تجربة ثانية على الكرت نفسه لا يُسقط نهاية أخرى (المراجعة).
+   * keepalive يعبر إغلاق الصفحة، ومحاولة ثانية بعد ١٠ ث، ثمّ التحميل التالي يمرّ على كلّ الكروت (sweep). يُحذف ما أقرّه الخادم وحده. */
+  var END_RETRY_MS = 10000;
+  function newTrialId(){
+    var hex = '';
+    try{ var b = new Uint8Array(9); crypto.getRandomValues(b); for(var i = 0; i < b.length; i++) hex += (b[i] < 16 ? '0' : '') + b[i].toString(16); }
+    catch(e){ __swallow(e, 'call-agent:trial-id'); hex = ''; for(var k = 0; k < 18; k++) hex += Math.floor(Math.random() * 16).toString(16); }
+    return 'ct' + hex;
+  }
+  function trialEnd(id, freshOnly){ // freshOnly: رسم الكرت والمرور بعد التحميل يرسلان ما لم يُجرَّب في هذه الصفحة وحده — الإعادة لمؤقّتها
+    var c = find(id);
+    var map = (c && c.trialEnds && typeof c.trialEnds === 'object') ? c.trialEnds : null;
+    if(!map || !token()) return Promise.resolve();
+    var ps = [];
+    Object.keys(map).forEach(function(tid){
+      if(ending[tid] && inflight[tid]){ ps.push(inflight[tid]); return; }
+      if(!/^ct[a-f0-9]{18}$/.test(tid) || ending[tid] || (tried[tid] || 0) >= (freshOnly ? 1 : 2)) return;
+      var sec = Number(map[tid]);
+      // «-1» = لم تنتهِ في الصفحة التي بدأتها — قد تكون حيّة في تبويب أو جهاز آخر (ساعته غير ساعتنا): لا تُرسل من هنا أبدًا (المراجعة
+      // الثالثة: إرسالها «صفرًا» كان يردّ حجز تجربة جارية، و«بالسقف» يسبق نهايتها الحقيقيّة الأقصر). الحجز يبقى كما هو حتّى تصل نهايتها
+      // من صفحتها، وقفل التجربة ينتهي بمدّته. بعد عمر سجلّ الخادم (٧ أيّام) تُمحى محلّيًّا.
+      if(sec < 0){
+        if(!(trial && trial.trialId === tid) && now() - (Number(c.startedAt) || 0) > 8 * 86400000){ var mm = Object.assign({}, find(id).trialEnds || {}); delete mm[tid]; patch(id, { trialEnds: mm }); }
+        return;
+      }
+      ending[tid] = true;
+      tried[tid] = (tried[tid] || 0) + 1;
+      var fin; inflight[tid] = new Promise(function(r){ fin = r; }); ps.push(inflight[tid]);
+      var done = function(ok, gone404){
+        delete ending[tid]; delete inflight[tid]; fin();
+        if(ok){ var x = find(id), m = Object.assign({}, (x && x.trialEnds) || {}); delete m[tid]; patch(id, { trialEnds: m }); persist(); }
+        else if(gone404) tried[tid] = 2; // تجربة حساب آخر (متصفّح مشترك): تبقى لصاحبها، ولا إعادة في هذه الصفحة
+        else if(tried[tid] < 2) setTimeout(function(){ trialEnd(id); }, END_RETRY_MS);
+      };
+      try{
+        fetch('/api/system?action=call-trial-end', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token(), trialId: tid, durationSec: Math.max(0, Math.round(sec) || 0) }) })
+          .then(function(r){ done(!!r.ok, r.status === 404); }, function(e){ __swallow(e, 'call-agent:trial-end'); done(false); });
+      }catch(e){ __swallow(e, 'call-agent:trial-end'); done(false); }
+    });
+    return Promise.all(ps);
+  }
+  /* كلّ كروت الاتّصال في كلّ المحادثات (لا المفتوحة وحدها) */
+  function eachCallCard(fn){
+    var ps = (typeof state !== 'undefined' && state && Array.isArray(state.projects)) ? state.projects : [];
+    ps.forEach(function(p){
+      (p && Array.isArray(p.messages) ? p.messages : []).forEach(function(m){
+        var c = m && m.cards && m.cards.kind === 'call' && m.cards.call;
+        if(c && c.id) fn(c);
+      });
+    });
+  }
 
   /* ── التجربة في المتصفّح ── */
   function gone(s){ return s.ended || trial !== s; }
@@ -664,6 +736,7 @@
     var dur = s.readyAt ? Math.round((now() - s.readyAt) / 1000) : 0;
     sendDiag(s, st, dur);
     patch(s.id, { state: s.outcome ? 'completed' : st, endedAt: now(), durationSec: dur, transcript: s.lines.slice(), outcome: s.outcome });
+    if(s.trialId){ var te = Object.assign({}, (find(s.id) || {}).trialEnds || {}); te[s.trialId] = dur; patch(s.id, { trialEnds: te }); trialEnd(s.id); } // v-call-agent-paid
     notes[s.id] = err ? (/^callAgent[A-Z]\w*$/.test(err) ? tt(err) : clip(err, 240)) : '';
     var pushed = s.readyAt ? pushResult(s.id) : false; // مكالمة بدأت فعلًا = رسالة نتيجة واحدة؛ فشل التجهيز ملاحظة على البطاقة فقط
     if(!s.unloading) unmark(s.id); // إغلاق الصفحة: العلامة تبقى ليُكمل التحميل التالي ما لم يصل حفظه
@@ -681,11 +754,12 @@
     var micErr = (typeof mahaMicPreflight === 'function') ? await mahaMicPreflight() : null;
     if(gone(s)) return;
     if(micErr){ finish(s, 'failed', micErr); return; }
+    if(s.pre){ await s.pre; if(gone(s)) return; } // نهايات سابقة تُقبل أوّلًا فيُفكّ قفل التجربة قبل طلب الجديدة
     setState(s, 'connecting');
     later(s, function(){ if(!s.readyAt) finish(s, 'failed', 'callAgentErrGeneric'); }, SETUP_MAX_MS);
-    var r = await post('call-session', { id: s.id });
-    if(gone(s)) return;
-    if(!r.ok || !r.data.clientSecret){ finish(s, 'failed', errKey(r)); return; }
+    var r = await post('call-session', s.trialId ? paidBody({ id: s.id, trialId: s.trialId }) : paidBody({ id: s.id })); // v-call-agent-paid: المعرّف محفوظ قبل الطلب
+    if(gone(s)) return; // أُلغيت أثناء التجهيز: finish سجّل نهايتها (٠ ث) وأرسلها
+    if(!r.ok || !r.data.clientSecret){ finish(s, 'failed', errText(r)); return; }
     var srvMax = Number(r.data.maxSec);
     if(srvMax > 0) s.maxSec = Math.min(s.maxSec, srvMax);
     if(r.data.brief && r.data.brief.business) s.business = clip(r.data.brief.business, 80);
@@ -743,17 +817,37 @@
     if(trial){ note(id, 'callAgentErrActive'); return; }
     if(mahaBusy()){ note(id, 'callAgentErrMaha'); return; }
     if(typeof RTCPeerConnection !== 'function' || typeof navigator === 'undefined' || !navigator.mediaDevices){ note(id, 'callAgentErrNoRtc'); return; }
-    // داخل الضغطة نفسها: فتح الصوت لسياسة التشغيل التلقائيّ في الجوّال، وإيقاف قراءة ردّ جارية
+    // داخل الضغطة نفسها: فتح الصوت لسياسة التشغيل التلقائيّ في الجوّال (قبل التأكيد — نافذته قد تستهلك مهلة الضغطة)، وإيقاف قراءة ردّ جارية
     try{ if(typeof mahaUnlockAudio === 'function') mahaUnlockAudio(); }catch(e){ __swallow(e, 'call-agent:unlock'); }
-    try{ if(typeof stopAllSpeaking === 'function') stopAllSpeaking(); }catch(e){ __swallow(e, 'call-agent:tts-stop'); }
     var audio = null;
     try{ audio = new Audio(); audio.autoplay = true; audio.setAttribute('playsinline', ''); }catch(e){ __swallow(e, 'call-agent:audio'); }
+    // v-call-agent-paid: غير المالك يرى سعر التجربة وحجزها ويوافق قبل أيّ طلب (التجربة بنفس سعر الاتّصال الفعليّ)
+    if(!isOwner()){
+      var okPaid = false;
+      try{ okPaid = (typeof confirm === 'function') ? !!confirm(tt('callAgentTrialConfirm') + '\n\n' + priceLines(c)) : false; }
+      catch(e){ okPaid = false; __swallow(e, 'call-agent:trial-confirm'); }
+      if(!okPaid) return;
+    }
+    try{ if(typeof stopAllSpeaking === 'function') stopAllSpeaking(); }catch(e){ __swallow(e, 'call-agent:tts-stop'); }
     notes[id] = '';
     var s = trial = { id: id, business: clip(c.business, 80), ended: false, pc: null, dc: null, stream: null, audio: audio, ov: null,
       timers: [], lines: [], outcome: null, heard: false, speaking: false, endPending: false, endTimer: null, wd: null,
       readyAt: 0, t0: now(), byResp: {}, cutResp: {}, played: {}, lastRid: '', clr: 0, cutN: 0, diagHead: [], diag: [], diagCut: false, rtp: null, fnSeen: {}, fnNames: {}, maxSec: Math.max(30, Math.min(600, Math.round(Number(c.maxMin) || 4) * 60)), halt: null, haltRes: null };
     s.halt = new Promise(function(res){ s.haltRes = res; });
     patch(id, { transport: 'trial', state: 'mic', callId: '', outcome: null, transcript: [], startedAt: now(), endedAt: 0, durationSec: 0, resultPushed: false });
+    if(!isOwner()){ // v-call-agent-paid: معرّف التجربة في الكرت قبل الطلب (-1 = لم تنتهِ) — persist تحت يحفظه قبل أيّ شبكة
+      // نهايات سابقة لم تُقبل بعد تُعاد الآن، من كلّ الكروت لا هذا وحده (قفل «تجربة حيّة واحدة» للمستخدم كلّه — المراجعتان الثانية
+      // والثالثة)، وطلب الجلسة ينتظرها حتّى ٣ ث فلا يسبقها إلى القفل
+      var pend = [];
+      eachCallCard(function(x){
+        var te = x.trialEnds || {}, any = false;
+        Object.keys(te).forEach(function(k){ if(Number(te[k]) >= 0){ any = true; if(tried[k] >= 2) tried[k] = 1; } });
+        if(any) pend.push(trialEnd(x.id));
+      });
+      if(pend.length) s.pre = Promise.race([Promise.all(pend), new Promise(function(r){ setTimeout(r, 3000); })]);
+      s.trialId = newTrialId();
+      var te0 = Object.assign({}, c.trialEnds || {}); te0[s.trialId] = -1; patch(id, { trialEnds: te0 });
+    }
     mark(id);
     overlayOpen(s);
     persist(); refresh(id);
@@ -771,6 +865,13 @@
     if(polls[callId] !== p) return;
     var r = await post('call-status', { callId: callId });
     if(polls[callId] !== p) return;
+    var cur = find(p.id);
+    if(!cur || cur.callId !== callId){ // المراجعة الثانية: الكرت انتقل لمكالمة أو تجربة أحدث — هذه تُسوّى بصمت ولا تكتب فوقه
+      var still = r.ok && r.data.ended && Object.prototype.hasOwnProperty.call(r.data, 'billing') && r.data.billing === null;
+      if((r.ok && r.data.ended && !still) || r.status === 403 || r.status === 404 || now() >= p.deadline){ stopPoll(callId); return; }
+      p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS * 5);
+      return;
+    }
     if(r.ok){
       var d = r.data, c0 = find(p.id) || {}, upd = { durationSec: Math.max(0, Math.round(Number(d.durationSec) || 0)) };
       if(PHONE_STATES[d.state]) upd.state = d.state;
@@ -783,13 +884,22 @@
       var shown = changed || upd.durationSec !== (Number(c0.durationSec) || 0);
       if(shown) patch(p.id, upd);
       if(d.ended){
-        stopPoll(callId);
-        var c = find(p.id);
-        if(c && ACTIVE[String(c.state)]) patch(p.id, { state: 'completed' }); // انتهت ولم يصل وصف حالتها
-        patch(p.id, { endedAt: now() });
+        // v-call-agent-paid (المراجعة): billing: null = انتهت ولم تُحسم تسويتها (عطل عابر) ← النتيجة تظهر، والاستطلاع يكمل أبطأ حتّى تُحسم
+        var unsettled = Object.prototype.hasOwnProperty.call(d, 'billing') && d.billing === null;
+        if(!unsettled) stopPoll(callId);
+        var c = find(p.id), dirty = shown;
+        if(c && ACTIVE[String(c.state)]){ patch(p.id, { state: 'completed' }); dirty = true; } // انتهت ولم يصل وصف حالتها
+        if(!c || !c.endedAt){ patch(p.id, { endedAt: now() }); dirty = true; }
+        if(d.billing){ patch(p.id, { billed: true }); dirty = true; }
         var pushed = pushResult(p.id);
-        persist(); refresh(p.id);
+        if(dirty || pushed) persist(); // ردّ «لم تُحسم» مطابق لا يحفظ المحادثات ويزامنها كلّ ١٠ ث (المراجعة الخامسة)
+        refresh(p.id);
         if(pushed) rerender();
+        if(unsettled){
+          if(!p.ext){ p.ext = true; p.deadline = Math.max(p.deadline, now() + SETTLE_WAIT_MS); }
+          if(now() < p.deadline){ p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS * 5); return; }
+          stopPoll(callId);
+        }
         return;
       }
       if(changed) persist();
@@ -797,17 +907,22 @@
     } else if(r.status === 403 || r.status === 404){
       stopPoll(callId);
       patch(p.id, { state: 'failed', endedAt: now() });
-      notes[p.id] = tt(errKey(r));
+      notes[p.id] = errText(r);
       persist(); refresh(p.id);
       return;
     }
     if(now() >= p.deadline){
+      var cx = find(p.id);
+      // المراجعة الخامسة: عطل عابر عند الحدّ (عودة بعد إغلاق أو تجميد التبويب، والمكالمة انتهت عند الخادم) لا يحكم «انتهت المهلة» من ردّ
+      // واحد فتضيع نتيجة مكالمة مدفوعة — مهلة سماح واحدة دقيقتين
+      if(!r.ok && !p.grace && !(cx && cx.endedAt)){ p.grace = true; p.deadline = now() + 2 * 60000; p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS * 5); return; }
       stopPoll(callId);
-      patch(p.id, { state: 'timeout' });
+      if(!(cx && cx.endedAt)) patch(p.id, { state: 'timeout' }); // انتهت وتسويتها معلّقة: لا تصير «انتهت المهلة»
       persist(); refresh(p.id);
       return;
     }
-    p.timer = setTimeout(function(){ pollOnce(p, callId); }, POLL_MS);
+    var ce = find(p.id);
+    p.timer = setTimeout(function(){ pollOnce(p, callId); }, (ce && ce.endedAt) || p.grace ? POLL_MS * 5 : POLL_MS); // انتهت وتنتظر تسويتها: عطل عابر لا يستطلع كلّ ثانيتين
   }
   /* العقد v2: التأكيد يعرض كلّ ما قد يقوله المساعد للجهة — اسم المحلّ من الخرائط، والاسم الذي يتّصل به، والهدف، والتفاصيل */
   function confirmText(c){
@@ -817,6 +932,7 @@
     if(c.goal) rows.push(tt('callAgentGoal') + ': ' + clip(c.goal, 300));
     if(c.details) rows.push(tt('callAgentShare') + ': ' + clip(c.details, 500));
     var head = fill(tt('callAgentConfirm'), { b: clip(c.business, 80) });
+    if(!isOwner()) rows.push(priceLines(c)); // v-call-agent-paid: السعر والحجز في التأكيد نفسه
     return rows.length ? head + '\n\n' + rows.join('\n') : head;
   }
   async function startPhone(id){
@@ -829,12 +945,17 @@
     if(!ok) return;
     starting[id] = true; notes[id] = ''; refresh(id);
     var r;
-    try{ r = await post('call-start', { id: id }); }
+    try{ r = await post('call-start', paidBody({ id: id })); }
     finally{ starting[id] = false; }
-    if(!r.ok || !r.data.callId){ notes[id] = tt(errKey(r)); refresh(id); return; }
+    if(!r.ok && r.data.callId && r.data.unsettled){ // رفض الخدمة ولم يُحسم ردّ الحجز: الكرت يحمل رقمها فيسوّيها سؤال الحالة والمرور بعد التحميل
+      patch(id, { transport: 'phone', callId: clip(r.data.callId, 80), state: 'failed', outcome: null, transcript: [], startedAt: now(), endedAt: now(), durationSec: 0, resultPushed: true, billed: false });
+      persist();
+      settlePhone(find(id)).catch(function(e){ __swallow(e, 'call-agent:refused-settle'); });
+    }
+    if(!r.ok || !r.data.callId){ notes[id] = errText(r); refresh(id); return; }
     var callId = clip(r.data.callId, 80), at = now();
     patch(id, { transport: 'phone', callId: callId, state: PHONE_STATES[r.data.state] ? r.data.state : 'queued', outcome: null,
-      transcript: [], startedAt: at, endedAt: 0, durationSec: 0, resultPushed: false });
+      transcript: [], startedAt: at, endedAt: 0, durationSec: 0, resultPushed: false, billed: false });
     persist(); refresh(id);
     schedulePoll(id, callId, at + POLL_MAX_MS);
   }
@@ -844,6 +965,27 @@
     notes[id] = r.ok ? '' : tt('callAgentErrCancel'); // الحالة النهائيّة تصل مع الاستطلاع التالي
     refresh(id);
   }
+
+  /* v-call-agent-paid (المراجعة): بعد التحميل يُمرّ على كلّ كروت الاتّصال في كلّ المحادثات — لا المفتوحة وحدها: نهايات تجارب لم يقبلها
+   * الخادم، ومكالمات حقيقيّة انتهت ولم تُحسم تسويتها (سؤال حالة واحد يسوّيها عند الخادم)، وجارية تُستأنف متابعتها. */
+  async function settlePhone(c){
+    var callId = c.callId, r = await post('call-status', { callId: callId });
+    var cur = find(c.id);
+    if(!cur || cur.callId !== callId) return; // الكرت انتقل لمكالمة أحدث أثناء السؤال — لا تُعلَّم هي مسوّاة
+    if((r.ok && r.data.billing) || r.status === 404){ patch(c.id, { billed: true }); persist(); }
+  }
+  function sweep(){
+    try{
+      if(!token()) return;
+      eachCallCard(function(c){
+        if(c.trialEnds && Object.keys(c.trialEnds).length) trialEnd(c.id, true);
+        if(c.transport !== 'phone' || !c.callId || polls[c.callId]) return;
+        if(ACTIVE[String(c.state)]) resume(c);
+        else if(!c.billed && !isOwner()) settlePhone(c).catch(function(e){ __swallow(e, 'call-agent:sweep-phone'); });
+      });
+    }catch(e){ __swallow(e, 'call-agent:sweep'); }
+  }
+  setTimeout(sweep, 4000); setTimeout(sweep, 30000);
 
   /* مها تسأل قبل أن تفتح المايك: تجربة جارية = لا مكالمة ثانية فوقها (الاتّصال الفعليّ لا يمسّ المايك) */
   window.callAgentBusy = function(){ return !!trial; };
