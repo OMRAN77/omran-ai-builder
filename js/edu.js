@@ -409,6 +409,19 @@ function md(src){
 }
 /* ---------- view engine ---------- */
 var modal=document.getElementById('eduHubModal');
+/* v-edu-bg: خلفيّة التعليم تتبع الثيم (css/تعليم-خلفية.css). الأولويّة: ثيم «خلفيّات الشاشة» إن كان له صورة، ثمّ لون الدوائر؛
+   من لا صورة له بعد لا data-edu-bg عنده فيبقى شكله كما كان. ملاحظة: المراقب يبدّلها فورًا عند تغيّر الثيم بلا إعادة تحميل. */
+var EDU_BG_SKINS='wood darkwood marble code cars kids cuisine sunset beach winter garage anime cyber school tactical angel neonanime station rally smoke library cafe workshop modern'.split(' '), EDU_BG_ACCENT={gold:'classic',purple:'space'};
+function eduBgKey(){
+  var h=document.documentElement, k='';
+  EDU_BG_SKINS.forEach(function(s){ if(h.classList.contains('skin-'+s)) k=s; });
+  if(k||h.classList.contains('skin')) return k;
+  var a='gold'; try{ a=localStorage.getItem('appTheme')||'gold'; }catch(e){ __swallow(e,'edu:bg-theme'); }
+  return EDU_BG_ACCENT[a]||'';
+}
+function syncEduBg(){ var k=eduBgKey(); if(k) modal.setAttribute('data-edu-bg',k); else modal.removeAttribute('data-edu-bg'); }
+syncEduBg();
+if(window.MutationObserver) new MutationObserver(syncEduBg).observe(document.documentElement,{attributes:true,attributeFilter:['class','style','data-mode']});
 var body=document.getElementById('eduBody');
 var backBtn=document.getElementById('eduBackBtn');
 var navStack=[];
