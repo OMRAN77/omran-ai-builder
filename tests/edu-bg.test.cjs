@@ -87,8 +87,10 @@ test('٦. CSS: يعلو قواعد eduWrap القديمة (!important) ويُح�
   assert.ok(CSS.includes('html[data-mode="light"]:root:root #eduHubModal[data-edu-bg="classic"]'));
   assert.ok(/:is\(\.eduUploadBtn,\.eduPlusTile,\.eduLessonRow\)\{background:rgba\(var\(--edu-glass\),\.66\)/.test(CSS));
   assert.ok(!/display\s*:\s*none/.test(CSS) && !/pointer-events\s*:\s*none/.test(CSS), 'لا إخفاء ولا تعطيل — شكل فقط');
+  assert.ok(CSS.includes('.eduHead h2{background:none !important;-webkit-text-fill-color:var(--edu-head) !important;'), 'العنوان بلون الثيم');
+  assert.ok(CSS.includes(':is(.eduSecTitle,.eduPasteToggle,.eduLinkBtn){color:var(--edu-head) !important;}') && CSS.includes('.eduPlusSub,.eduNote,.eduEmpty){color:var(--edu-muted) !important;}'), 'الكتابة بألوان الثيم');
   for (const k of [...SKINS, ...ACCENT]) {
     const b = CSS.match(new RegExp('#eduHubModal\\[data-edu-bg="' + k + '"\\]\\{([^}]*)\\}'))[1];
-    for (const v of ['--edu-base', '--edu-glass', '--edu-gold', '--edu-r', '--edu-bw', '--edu-shadow', '--edu-ink']) assert.ok(b.includes(v + ':'), k + ' ' + v);
+    for (const v of ['--edu-base', '--edu-glass', '--edu-gold', '--edu-r', '--edu-bw', '--edu-shadow', '--edu-ink', '--edu-head', '--edu-muted']) assert.ok(b.includes(v + ':'), k + ' ' + v);
   }
 });
