@@ -118,7 +118,7 @@ test('٩) النصّ يحمل رقم الحلقة والترند وموعد ال
   assert.match(c.ig, /🔥 الفكرة من ترند اليوم: أجواء شتوية/);
   assert.match(c.ig, /الحلقة 6 بعد يومين/);
   assert.ok((c.ig.match(/#/g) || []).length <= 30);
-  assert.match(src, /fd\.append\('external_id', EP_ID\(epN, kind\)\)/);
+  assert.match(src, /fd\.append\('external_id', extId \|\| EP_ID\(epN, kind\)\)/);
   assert.match(src, /process\.argv\.includes\('--gate'\)/);
 });
 
