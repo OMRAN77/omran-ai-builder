@@ -1,0 +1,1808 @@
+{
+ "_note": "مسلسل ميرا — الحلقات للمراجعة. live يبقى false حتّى يوافق المالك على حلقة DRY_RUN الأولى؛ بعدها يُقلب true فيبدأ النشر اليوميّ ٥ العصر (وظيفة mira في social-bot.yml).",
+ "live": false,
+ "character": "Mira: Emirati girl, about 8, Pixar-like 3D animation, slender, four heads tall, warm fair skin, big brown eyes. Matte black shayla wrapped snugly around head and neck, dark center-parted hair barely visible. Floor-length black A-line abaya: wide sleeves, black-embroidered cuffs with small gold button, one black-embroidered vertical stripe down center front. Pointed black flats with tiny gold accent.",
+ "reference": "assets/characters/c2.png",
+ "episodes": [
+  {
+   "story": "app",
+   "k": 1,
+   "title": "ميرا تلقى التطبيق السحري",
+   "topic": "«المحادثة»",
+   "lines": [
+    "شحالكم! أنا ميرا… نعناع ماما ذبلان، وأبا أساعدها الحين.",
+    "سألت التطبيق، وقال: شمس الصبح بس، وماي كل يوم… شوفوا النعناع رجع يضحك!"
+   ],
+   "clips": [
+    {
+     "scene": "Sunny apartment balcony at golden hour, potted mint with drooping leaves on a wooden shelf. Mira kneels by the wilted pot; Mama (Emirati, modest black abaya and shayla) stands behind holding a tablet (screen: only glowing abstract shapes, no text). Warm light, plants framing a vertical 9:16 shot, Mira lower center.",
+     "action": "Mira touches a droopy leaf sadly, then notices the tablet glowing with swirling colorful shapes; she gasps with curiosity and Mama hands it to her with a smile. Slow push-in from medium shot to a close-up of Mira's surprised face.",
+     "sound": "Soft balcony breeze, distant birdsong, gentle curious background music; no speech, no voices."
+    },
+    {
+     "scene": "Same balcony, Mira holds a tablet (screen: only glowing abstract shapes, no text) with both hands; the wilted mint pot sits in front of her and Mama (Emirati, modest black abaya and shayla) kneels beside her, smiling. Golden hour glow, vertical 9:16 framing.",
+     "action": "Sparkles drift from the tablet like fireflies, circle the pot, and the drooping mint leaves lift up and turn fresh bright green; Mira and Mama gasp, then smile at each other. Slow orbit around the pot ending on both faces.",
+     "sound": "Magical shimmer chimes, soft leaf rustle, warm uplifting music; no speech, no voices."
+    }
+   ],
+   "caption": "ميرا لقت تطبيق سحري في تابلت ماما… والنعناع الذبلان رجع يضحك! شو بعد يقدر يسوي هالتطبيق؟ تابعوا الحلقة الياية",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "النعناع",
+    "أطفال"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 2,
+   "title": "أخوي يسأل والتطبيق يجاوب",
+   "topic": "«محادثة صوتية» و«استماع 🔊»",
+   "lines": [
+    "أخوي الصغير يسأل: ليش القمر كل ليلة شكله يتغيّر؟",
+    "كلّم التطبيق بصوته، والتطبيق ردّ عليه بالصوت… الحين يعرف سرّ القمر!"
+   ],
+   "clips": [
+    {
+     "scene": "Cozy kids' bedroom at night, big window showing a crescent moon and stars. Mira sits on a rug beside her little brother (about 5, white kandura), who points up at the moon, puzzled. Soft blue moonlight with a warm lamp glow, vertical 9:16, window in the upper frame.",
+     "action": "The brother tilts his head and shrugs at the moon; Mira holds out a tablet whose screen pulses with a round glowing orb of light, no text, and he leans in toward it curiously. Slow tilt down from the moon in the window to the two children.",
+     "sound": "Quiet night crickets, soft dreamy background music; no speech, no voices."
+    },
+    {
+     "scene": "Same bedroom, the tablet on the rug glows with soft abstract light waves, no text. Above the children floats a translucent glowing moon made of light. The little brother (about 5, white kandura) sits wide-eyed, Mira beside him. Silver-blue magical glow, vertical 9:16 framing.",
+     "action": "The light-moon slowly cycles through its phases from thin crescent to full and back, trailing sparkles; the brother claps in delight and Mira laughs. Gentle crane up from the children to the glowing moon.",
+     "sound": "Soft shimmering chimes, gentle instrumental lullaby, no singing; no speech, no voices."
+    }
+   ],
+   "caption": "ليش القمر يتغيّر كل ليلة؟ أخو ميرا سأل بصوته، والتطبيق ردّ عليه بالصوت. الحلقة الياية: هديّة صغيرة لعيون يدّوه…",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "القمر",
+    "سؤال_وجواب"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 3,
+   "title": "عيون يدّوه ترتاح",
+   "topic": "«حجم الخط» و«🎨 تخصيص الألوان والمظهر»",
+   "lines": [
+    "يدّوه تحب تقرا، بس الشاشة تتعب عيونها وايد.",
+    "كبّرت الخط وخلّيت الألوان هادية… ويدّوه تقول: الحين أشوف زين!"
+   ],
+   "clips": [
+    {
+     "scene": "Traditional Emirati majlis with floor cushions, a patterned carpet and plain walls, afternoon light through wooden lattice windows. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) squints at a tablet held far from her face, its screen only a faint blurry glow, no text. Mira sits close beside her. Vertical 9:16, both centered.",
+     "action": "Yaddoh squints, moves the tablet back and forth and rubs her eyes; Mira gently takes it from her with a confident smile. Slow push-in on the tablet passing from Yaddoh's hands to Mira's.",
+     "sound": "Quiet majlis ambience, soft distant birdsong, gentle warm music; no speech, no voices."
+    },
+    {
+     "scene": "Same majlis, Mira holds the tablet between herself and Yaddoh (kind Emirati grandma, black abaya and shayla, glasses); its screen glows with big soft pastel blobs in calm teal and sand tones, no text. Warm afternoon light, lattice shadows on the carpet, vertical 9:16 framing.",
+     "action": "Mira taps the screen, the glowing shapes swell larger and soften, and a gentle wave of sparkles washes over Yaddoh's face; Yaddoh takes off her glasses, beams and hugs Mira. Slow dolly-in to a close two-shot.",
+     "sound": "Soft whoosh and shimmering chime, tender music; no speech, no voices."
+    }
+   ],
+   "caption": "خط كبير وألوان هادية… وعيون يدّوه ارتاحت. الحلقة الياية: يارتنا اليديدة ما تعرف عربي، شلون بنرحّب فيها؟",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "يدّوه",
+    "كبار_السن"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 4,
+   "title": "ضيفتنا الجديدة تفهمنا",
+   "topic": "«ترجمة نص» و«🌐 اللغة»",
+   "lines": [
+    "يارتنا اليديدة ما تعرف عربي، وأبا أرحّب فيها بكلمة حلوة.",
+    "التطبيق ترجم ترحيبي للغتها… ضحكت وقالت شكرًا، وصرنا ربع!"
+   ],
+   "clips": [
+    {
+     "scene": "Front doorway of an Emirati villa at sunset, pink bougainvillea around the door, plain wall with no plaque or house number. Mira holds a plate of dates and a tablet; facing her, a new neighbor girl her age in a modest long dress and light headscarf looks shy. Warm orange light, vertical 9:16, both girls in the doorway.",
+     "action": "Mira smiles and offers the dates; the neighbor girl hesitates and shrugs politely, not understanding. Mira glances at her tablet, its screen swirling with abstract glowing shapes, no text, and lights up with an idea. Slow push-in over the neighbor's shoulder onto Mira.",
+     "sound": "Evening birds, soft breeze, gentle friendly music; no speech, no voices."
+    },
+    {
+     "scene": "Same doorway at sunset, Mira holds out the tablet in one hand and the plate of dates in the other; above the tablet float glowing heart and star shapes of colored light. The neighbor girl (modest long dress, light headscarf) leans in, curious. Vertical 9:16 framing.",
+     "action": "The glowing shapes drift to the neighbor girl and burst into tiny hearts and sparkles; she smiles, takes a date, and both girls laugh and wave like new friends. Slow arc camera move around the two girls.",
+     "sound": "Bubbly shimmering pops, cheerful warm music; no speech, no voices."
+    }
+   ],
+   "caption": "ترحيبة وحدة مترجمة… وصارت يارة ميرا من ربعها! الحلقة الياية: طلعة العيلة لحديقة الحيوانات، بس هي فاتحة؟",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "ترجمة",
+    "ضيافة"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 5,
+   "title": "حديقة الحيوانات يوم الجمعة؟",
+   "topic": "«البحث على الويب»",
+   "lines": [
+    "بابا يقول: نروح حديقة حيوانات العين يوم الجمعة… بس هي فاتحة؟",
+    "التطبيق دوّر في النت وقال: هيه فاتحة! يالله نتجهّز!"
+   ],
+   "clips": [
+    {
+     "scene": "Bright family living room on a sunny morning. Baba (Emirati, white kandura and ghutra) sits on the sofa scratching his head; Mira and her little brother (about 5, white kandura) bounce hopefully beside him, Mira holding a tablet (screen: only glowing abstract shapes, no text). Cheerful daylight, vertical 9:16.",
+     "action": "The brother tugs Baba's sleeve and Baba shrugs, unsure; Mira raises the tablet and taps, and a whirlpool of colorful sparkles spins on its screen. Slow push-in toward the glowing tablet.",
+     "sound": "Light living-room ambience, playful anticipatory music; no speech, no voices."
+    },
+    {
+     "scene": "Same living room, Mira, Baba (Emirati, white kandura and ghutra) and her little brother (about 5, white kandura) on the sofa. Translucent holograms of animals made of soft light, a giraffe, an Arabian oryx and a lion cub, rise out of the tablet. Bright magical glow, vertical 9:16 framing.",
+     "action": "The light animals parade around the sofa and the giraffe bends its neck down to the brother; the children cheer and Baba laughs and gives a thumbs up. Slow 45-degree arc around the sofa, all three faces staying in frame.",
+     "sound": "Magical sparkle chimes, whimsical animal sounds, upbeat music; no speech, no voices."
+    }
+   ],
+   "caption": "سؤال بسيط: حديقة حيوانات العين فاتحة يوم الجمعة؟ التطبيق دوّر وجاوب في لحظة. الحلقة الياية: ليلة في البرّ ويّا العيلة!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "العين",
+    "طلعة_عائلية"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 6,
+   "title": "وين القبلة في البرّ؟",
+   "topic": "«📿 القبلة والمواقيت»",
+   "lines": [
+    "في مخيّم البرّ أذّن المغرب، وبابا يسأل: وين القبلة؟",
+    "فتحت بوصلة القبلة في التطبيق… وفرشنا السجّاد صوبها، الحمد لله!"
+   ],
+   "clips": [
+    {
+     "scene": "Family desert camp at sunset, golden dunes, a traditional tent and a small campfire. Baba (Emirati, white kandura and ghutra) holds a rolled plain green prayer mat and looks around, unsure; Mira beside him holds a tablet (screen: only glowing abstract shapes, no text). Orange sky, long shadows, vertical 9:16 with dunes on the horizon.",
+     "action": "Baba turns left and right, puzzled, as the wind lifts a little sand; Mira raises the tablet and a glowing golden circle of light spins on its screen. Slow push-in toward Mira and Baba.",
+     "sound": "Soft desert wind, crackling campfire, calm ambient tones, no music; no speech, no voices."
+    },
+    {
+     "scene": "Same camp at dusk, Mira holds the tablet flat; a gentle golden ribbon of light rises from it and stretches across the sand toward the horizon. Baba (Emirati, white kandura and ghutra) and her little brother (about 5, white kandura) hold plain solid-green prayer mats, no patterns, no writing. Purple-gold twilight, vertical 9:16.",
+     "action": "Baba and the brother lay the prayer mats neatly along the golden beam, the brother smoothing the corners; Mira smiles proudly as the beam fades into the first stars. Slow gentle pull-back to a medium shot, Mira's face still clear.",
+     "sound": "Gentle desert wind, one soft shimmer, peaceful ambient tones, no music; no speech, no voices."
+    }
+   ],
+   "caption": "في البرّ ما في علامات… بس بوصلة القبلة في التطبيق دلّتنا. الحلقة الياية: ميرا تقعد ويّا يدّوه في جلسة غالية وايد.",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "القبلة",
+    "البر"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 7,
+   "title": "معنى سورة ويّا يدّوه",
+   "topic": "«التفسير الديني» › «🕌 تفسير آية»",
+   "lines": [
+    "يدّوه تقرا سورة الإخلاص كل ليلة، وأنا أبا أفهم معناها.",
+    "قرينا تفسيرها في التطبيق، ويدّوه شرحت لي: الله واحد ما له شبيه."
+   ],
+   "clips": [
+    {
+     "scene": "Cozy majlis at night lit by a plain brass lantern, patterned cushions and carpet, plain walls with no wall hangings or books. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) sits holding prayer beads; Mira snuggles beside her holding a tablet whose screen is a soft warm glow, no text. Amber light, vertical 9:16.",
+     "action": "Yaddoh slowly moves her prayer beads with peaceful closed eyes; Mira looks up at her lovingly and taps the tablet, a gentle golden glow spreading across its screen. Slow push-in from the lantern down to their faces.",
+     "sound": "Quiet night ambience, soft lantern flicker, calm ambient tones, no music; no speech, no voices."
+    },
+    {
+     "scene": "Same majlis; a soft golden glow rises from the tablet into dozens of tiny floating stars and gentle light that fills the room. Mira and Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) look up in wonder. Warm gold and deep night-blue tones, vertical 9:16 framing.",
+     "action": "The tiny stars drift slowly around them like calm fireflies and settle into the lantern; Yaddoh smiles with teary eyes and wraps Mira in a warm hug. Slow gentle dolly-in to a close two-shot.",
+     "sound": "Soft shimmering tones, quiet night crickets, no music; no speech, no voices."
+    }
+   ],
+   "caption": "أحلى جلسة ويّا يدّوه: قرينا تفسير سورة الإخلاص سوا. الحلقة الياية: يدّوه بتكلّم التطبيق بنفسها… بصوتها!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "يدّوه",
+    "قيم"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 8,
+   "title": "يدّوه تسولف ويّا مها",
+   "topic": "«مها - مساعدة صوتية»",
+   "lines": [
+    "يدّوه ما تحب الكتابة… قلت لها: كلّمي مها بالصوت!",
+    "مها تسولف ويّاها بلهجتنا، ويدّوه تضحك من قلب… صارن ربع!"
+   ],
+   "clips": [
+    {
+     "scene": "Bright sitting corner by the kitchen in the morning, a tray with a teapot and plain glass cups of karak tea. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) pokes at a tablet with one finger, frowning; its screen is a plain soft glow, no keyboard, no text. Mira leans on the table beside her, smiling. Vertical 9:16.",
+     "action": "Yaddoh sighs and pushes the tablet away; Mira taps it once and a big round orb of soft glowing light appears on the screen, gently pulsing. Yaddoh raises an eyebrow, curious. Slow push-in toward the glowing orb.",
+     "sound": "Morning kitchen ambience, kettle simmering, warm light music; no speech, no voices."
+    },
+    {
+     "scene": "Same corner, the tablet stands on the table; a glowing orb of soft violet and gold light floats above it, rippling like sound waves. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) sits close, hands clasped, delighted; Mira sits beside her. Warm morning glow, vertical 9:16 framing.",
+     "action": "The light orb ripples in rhythm as if chatting; Yaddoh nods and laughs heartily, shoulders shaking, while Mira giggles and pours her tea. Slow orbit around the table from Yaddoh to Mira.",
+     "sound": "Gentle rhythmic shimmering hum, soft happy music; no speech, no voices."
+    }
+   ],
+   "caption": "يدّوه لقت ربيعة يديدة اسمها مها! سوالف بالصوت وبلهجتنا. الحلقة الياية: مها بتشوف بعين الكاميرا…",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "مها",
+    "يدّوه"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 9,
+   "title": "مها تشوف زرعة يدّوه",
+   "topic": "«الكاميرا — عين مها»",
+   "lines": [
+    "في حوي يدّوه زرعة يابتها عمّتي من السفر، محد يعرف اسمها!",
+    "شغّلنا الكاميرا، ومها شافتها وقالت: هذي لافندر، تحب الشمس وماي قليل."
+   ],
+   "clips": [
+    {
+     "scene": "Sunny courtyard with a palm tree and terracotta pots. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) and Mira crouch by a lavender plant with purple flower spikes in a clay pot, both puzzled. Mira points the back of a tablet (screen: only glowing abstract shapes, no text) at the plant. Bright midday light, vertical 9:16.",
+     "action": "Yaddoh tilts her head at the plant and shrugs; Mira lifts the tablet toward the pot and a soft beam of light glows from its back. Slow push-in from a low front angle past the plant toward Mira's and Yaddoh's curious faces.",
+     "sound": "Courtyard birdsong, rustling palm leaves, curious music; no speech, no voices."
+    },
+    {
+     "scene": "Same courtyard, a gentle beam of light from the tablet scans the plant and glowing outlines trace each leaf. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) and Mira watch wide-eyed, faces toward camera. Warm sunlight with a soft magical glow, vertical 9:16 framing.",
+     "action": "The glowing outlines shimmer and the purple flower spikes light up softly, sparkles drifting up; Yaddoh claps and smells the flowers, Mira grins. Slow arc camera move around the pot.",
+     "sound": "Soft scanning shimmer, gentle bloom chime, light happy music; no speech, no voices."
+    }
+   ],
+   "caption": "زرعة محد يعرف اسمها… لين شافتها مها بعين الكاميرا! الحلقة الياية: مها بتذكّر يدّوه بشي مهم وايد.",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "مها",
+    "زراعة"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 10,
+   "title": "مها ما تنسى دوا يدّوه",
+   "topic": "تذكيرات مها (داخل مكالمة «مها - مساعدة صوتية»)",
+   "lines": [
+    "يدّوه دايمًا تنسى دواها… قلت لمها: ذكّريها قبل صلاة العصر.",
+    "وعقب، في وقتها بالضبط، مها ذكّرت يدّوه… وشربت دواها!"
+   ],
+   "clips": [
+    {
+     "scene": "Yaddoh's cozy bedroom in late morning, a small tray with a glass of water and a small plain white medicine box with no labels on the side table. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) sits on her bed; Mira kneels beside her holding a tablet glowing with a soft orb of light, no text. Warm light, vertical 9:16.",
+     "action": "Mira points at the medicine box and turns to the glowing orb, which forms a little bell of light that floats up and hovers by the window; Yaddoh watches, impressed. Slow tilt up following the floating light bell.",
+     "sound": "Quiet room ambience, distant birds, gentle warm music; no speech, no voices."
+    },
+    {
+     "scene": "Same bedroom later in the afternoon, golden sunlight slanting in. The little bell of light still hovers by the window. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) sits on the bed; Mira sits beside her, smiling. Warm golden tones, vertical 9:16 framing.",
+     "action": "The light bell swings and chimes with a burst of sparkles; Yaddoh smiles, picks up the glass of water and drinks it with her medicine, and Mira gives her a happy thumbs up. Slow dolly-in to a close two-shot.",
+     "sound": "Soft chiming bell, warm tender music; no speech, no voices."
+    }
+   ],
+   "caption": "مها ما تنسى أبد: ذكّرت يدّوه بدواها قبل العصر. الحلقة الياية: هواش بيني وبين أخوي… منو بيغسل الصحون؟",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "مها",
+    "صحة"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 11,
+   "title": "قسمة عادلة بيني وبين أخوي",
+   "topic": "«التفكير العميق»",
+   "lines": [
+    "أنا وأخوي نتهاوش كل يوم: منو يرتّب ومنو يغسل؟",
+    "التطبيق فكّر زين وقسّم الشغل بالعدل… لا زعل ولا هواش!"
+   ],
+   "clips": [
+    {
+     "scene": "Messy family living room with scattered plush toys and balls, a broom, a watering can and a stack of plates. Mira and her little brother (about 5, white kandura) stand back to back, arms crossed, pouting. A tablet (screen: only glowing abstract shapes, no text) rests on the coffee table beside Mira. Bright afternoon light, vertical 9:16.",
+     "action": "The brother points at the plates, Mira points at the toys, both huff; then Mira grabs the tablet and taps, and soft glowing swirls of light slowly gather on its screen. Slow push-in between the two children.",
+     "sound": "Playful bouncy music with a comic sting; no speech, no voices."
+    },
+    {
+     "scene": "Same messy living room; glowing chore icons made of light, a broom, a watering can, a plate and a toy basket, float above the tablet in a ring. Mira and her little brother (about 5, white kandura) watch, curious. Colorful magical glow, vertical 9:16 framing.",
+     "action": "The light icons sort themselves into two equal groups that fly to each child; the brother catches the watering can, Mira the plate, and they high-five and start tidying happily. Slow pull-back to a medium shot of both children.",
+     "sound": "Whooshing sparkles, cheerful upbeat music; no speech, no voices."
+    }
+   ],
+   "caption": "خلاص ما في هواش! التطبيق فكّر بعمق وقسّم الشغل بالعدل. الحلقة الياية: القسمة الطويلة… وميرا ما تبا تنقل الحلّ!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "أخوة",
+    "تنظيم"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 12,
+   "title": "القسمة الطويلة خطوة خطوة",
+   "topic": "«حلّ مسألة خطوة بخطوة»",
+   "lines": [
+    "القسمة الطويلة صعبة وايد… بس أنا أبا أفهم، مب أنقل.",
+    "التطبيق عطاني تلميح، وخطوة ورا خطوة… لين وصلت للحلّ بروحي!"
+   ],
+   "clips": [
+    {
+     "scene": "Kid's study desk by a window in the evening, a desk lamp, pencils and a closed plain notebook. Mira slumps in her chair, cheek on her hand, frustrated; a tablet (screen: only glowing abstract shapes, no text) lies beside the notebook. Warm lamp light, vertical 9:16.",
+     "action": "Mira taps her pencil, sighs and scratches her head, then sits up with determination and taps the tablet, and one small glowing star appears on its screen. Slow push-in from the desk lamp to Mira's face.",
+     "sound": "Quiet evening room, soft pencil tapping, light thoughtful music; no speech, no voices."
+    },
+    {
+     "scene": "Same desk; glowing stepping stones of colored light float in a low gentle arc from the tablet to a big shining star at Mira's eye level. Mira stands beside the desk facing camera. Warm magical glow, vertical 9:16 framing.",
+     "action": "One by one the stones light up as Mira touches each with her pencil tip; the last makes the big star burst into confetti sparkles and Mira throws her arms up proudly. Slow push-in toward Mira and the star.",
+     "sound": "Rising sparkle notes, gentle triumphant music; no speech, no voices."
+    }
+   ],
+   "caption": "ميرا ما تبا الحلّ جاهز… تبا تفهمه! خطوة ورا خطوة لين وصلت بروحها. الحلقة الياية: كتاب العلوم يتحوّل بطاقات!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "مدرسة",
+    "رياضيات"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 13,
+   "title": "كتاب العلوم يصير بطاقات",
+   "topic": "«التعليم» › «ارفع محاضرة جديدة» («🎴 بطاقات» و«✍️ اختبار»)",
+   "lines": [
+    "باچر اختبار علوم، والفصل طويل… شلون أذاكره كله؟",
+    "رفعت الدرس، وطلعت لي بطاقات واختبار صغير… صارت المذاكرة لعب!"
+   ],
+   "clips": [
+    {
+     "scene": "Mira's bedroom in the evening, a thick book open on her bed, both pages filled edge to edge with big colorful paintings of a leaf and a planet, no words, no labels. Mira sits cross-legged, overwhelmed, holding a tablet (screen: only glowing abstract shapes, no text). Cozy lamp light, vertical 9:16.",
+     "action": "Mira sighs at the thick open book and puffs her cheeks, then points the tablet at it; a soft flash ripples and the book's paintings shimmer. Slow push-in on Mira, the book and the tablet.",
+     "sound": "Soft page rustle, gentle camera click, curious music; no speech, no voices."
+    },
+    {
+     "scene": "Same bedroom; glowing blank cards of light, each with only a simple picture icon (a leaf, a planet, a water drop, a sun), fly out of the tablet and orbit around Mira, no text. Mira kneels on the bed, delighted. Blue-gold magical glow, vertical 9:16 framing.",
+     "action": "The cards circle her like a carousel; Mira catches one and it bursts into a tiny glowing sun, and she laughs with delight. Slow 60-degree arc around Mira, her face always in view.",
+     "sound": "Swishing cards, sparkly chimes, upbeat study music; no speech, no voices."
+    }
+   ],
+   "caption": "فصل كامل صار بطاقات واختبار ممتع! ميرا جاهزة لاختبار باچر. الحلقة الياية: درس… في السيارة؟",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "مدرسة",
+    "مذاكرة"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 14,
+   "title": "أسمع درسي في السيارة",
+   "topic": "«استمع للدرس» (داخل «التعليم»)",
+   "lines": [
+    "الطريق للمول طويل، فقلت: ليش ما أسمع درسي الحين؟",
+    "التطبيق قرا لي الدرس، وأنا أتخيّل الكواكب تدور حولي… وصلنا وأنا فاهمة!"
+   ],
+   "clips": [
+    {
+     "scene": "Back seat of a family car on an open desert road, no road signs or billboards, dunes passing outside. Mira sits buckled in beside her little brother (about 5, white kandura) in a booster seat; Baba drives, seen from behind in a white ghutra, dashboard out of frame. Mira holds a tablet (screen: only glowing abstract shapes, no text). Vertical 9:16.",
+     "action": "The brother yawns, bored; Mira taps the tablet and a soft glowing ribbon of light rises from its screen and swirls gently around the cabin. Slow push-in from the window view to Mira's face.",
+     "sound": "Gentle road hum, soft car ambience, calm music; no speech, no voices."
+    },
+    {
+     "scene": "Same back seat; tiny glowing planets of light, a ringed planet, Earth and a bright little sun, float and orbit between Mira and her little brother (about 5, white kandura), both still in seatbelts. Soft magical glow mixed with daylight, no road signs outside, vertical 9:16 framing.",
+     "action": "The light planets slowly orbit the children; the brother lifts a finger and a tiny moon circles it, and Mira laughs and points at the sun. Slow push-in from between the front seats toward the children.",
+     "sound": "Soft cosmic shimmer, road hum, dreamy music; no speech, no voices."
+    }
+   ],
+   "caption": "مشوار المول صار رحلة للفضاء! ميرا سمعت درسها في الطريق. الحلقة الياية: ورقة طويلة من المدرسة تحيّر بابا…",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "مدرسة",
+    "فضاء"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 15,
+   "title": "ورقة المدرسة الطويلة",
+   "topic": "«مساعد المستندات»",
+   "lines": [
+    "بابا تعب من ورقة المدرسة الطويلة… صفحات ورا صفحات!",
+    "مساعد المستندات لخّصها في ثلاث نقاط بس… وبابا ارتاح!"
+   ],
+   "clips": [
+    {
+     "scene": "Family dining table in the evening. Baba (Emirati, white kandura and ghutra) holds a very long blank cream paper that unrolls off the table onto the floor, completely empty, no lines, no text. Mira peeks over his shoulder holding a tablet (screen: only glowing abstract shapes, no text). Warm pendant light, vertical 9:16.",
+     "action": "Baba keeps unrolling the endless paper and rubs his forehead with a comic sigh; Mira giggles and points the tablet at the paper, a soft flash rippling over it. Slow push-in toward Baba and Mira as the paper spills to the floor.",
+     "sound": "Rustling paper, a soft comic music sting; no speech, no voices."
+    },
+    {
+     "scene": "Same dining table; the long blank paper floats up and coils into a glowing golden spiral above the table. Baba (Emirati, white kandura and ghutra) and Mira watch, amazed. Warm light with a magical golden glow, vertical 9:16 framing.",
+     "action": "The coiling paper shrinks into three bright golden stars that float gently down into Baba's open palm; he smiles in relief and pats Mira's head. Slow push-in on the three stars in Baba's hand.",
+     "sound": "Whooshing paper swirl, three soft chime notes, relieved warm music; no speech, no voices."
+    }
+   ],
+   "caption": "ورقة طويلة صارت ثلاث نقاط وبس… وبابا ارتاح! الحلقة الياية: ماما تبا ترد على المدرسة برسالة حلوة.",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "بابا",
+    "مدرسة"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 16,
+   "title": "رسالة شكر من ماما",
+   "topic": "«مساعد البريد الذكي»",
+   "lines": [
+    "ماما تبا تشكر معلمتي، بس وقتها اليوم ضيّق وايد.",
+    "التطبيق كتب ردّ مؤدّب، وماما قرته ووافقت… وطارت رسالة الشكر!"
+   ],
+   "clips": [
+    {
+     "scene": "Busy family kitchen in the morning, plain counters with no jars, boxes or packages. Mama (Emirati, modest black abaya and shayla) stirs a pot while packing a plain lunchbox. Mira stands by the counter holding a tablet (screen: only glowing abstract shapes, no text). Bright morning light, vertical 9:16.",
+     "action": "Mama hurries between the stove and the lunchbox with a tired smile; Mira holds the tablet up helpfully and a small glowing envelope shape of light pops up on its screen. Slow push-in toward Mira and the tablet.",
+     "sound": "Kitchen bustle, bubbling pot, light busy music; no speech, no voices."
+    },
+    {
+     "scene": "Same kitchen; a glowing envelope made of light with a small heart seal floats above the tablet. Mama (Emirati, modest black abaya and shayla) leans in beside Mira, smiling. Warm morning glow, open kitchen window behind them, vertical 9:16 framing.",
+     "action": "Mama taps the tablet once to approve; the light envelope flutters, turns into a little glowing white bird and flies out through the open window, and Mama and Mira wave goodbye. Slow pan following the bird to the window.",
+     "sound": "Soft flutter of wings, gentle chime, happy music; no speech, no voices."
+    }
+   ],
+   "caption": "ماما قرت ووافقت، والتطبيق رسل ردّ الشكر. الحلقة الياية: ميرا بترسم لوحة لمجلس بابا… بدون فرشاة!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "ماما",
+    "مدرسة"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 17,
+   "title": "لوحة الصقر لمجلس بابا",
+   "topic": "«إنشاء صورة»",
+   "lines": [
+    "جدار مجلس بابا فاضي… أبا أسوي له لوحة صقر فوق الطعوس.",
+    "وصفتها للتطبيق، وطلعت اللوحة! بابا قال: ماشاء الله، تبارك الرحمن!"
+   ],
+   "clips": [
+    {
+     "scene": "Family majlis with floor cushions, a dallah coffee pot and a large blank wall. Mira stands in front of the empty wall facing camera, holding a tablet (screen: only glowing abstract shapes, no text); Baba (Emirati, white kandura and ghutra) sits on a cushion sipping coffee. Warm evening light, vertical 9:16, blank wall above her.",
+     "action": "Mira glances over her shoulder at the wall, frames it with her fingers like a painter, nods with an idea and taps the tablet, and golden sparkles begin to swirl on its screen. Slow push-in toward Mira with the wall above her.",
+     "sound": "Soft majlis ambience, coffee pouring, curious music; no speech, no voices."
+    },
+    {
+     "scene": "Same majlis; a swirl of golden light flows from the tablet to the wall, where a painting of a falcon soaring over golden dunes forms inside an ornate wooden frame, no text, no signature. Baba (Emirati, white kandura and ghutra) rises beside Mira, amazed. Warm golden glow, vertical 9:16.",
+     "action": "The light settles into the finished painting and the painted falcon's wings shimmer; Baba puts a hand on his heart and hugs Mira. Slow push-in from the painting down to Baba and Mira.",
+     "sound": "Magical whoosh, a distant falcon cry, uplifting warm music; no speech, no voices."
+    }
+   ],
+   "caption": "صقر فوق الطعوس صار لوحة في مجلس بابا! الحلقة الياية: نورس شقي خرّب صورة يدّوه على البحر… شو بتسوي ميرا؟",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "صقر",
+    "فن"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 18,
+   "title": "النورس اللي خرّب الصورة",
+   "topic": "«🧹 إزالة شخص أو عنصر»",
+   "lines": [
+    "أحلى صورة ليدّوه على البحر… والنورس طار قدّام ويهها!",
+    "كتبت للتطبيق: شيل النورس… وطار من الصورة، ويدّوه بانت أحلى!"
+   ],
+   "clips": [
+    {
+     "scene": "Quiet empty Emirati beach, no other people or boats, turquoise water. Mira stands in the foreground in three-quarter view, tablet at chest height (screen: only glowing abstract shapes, no text), aimed at Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) smiling by the sea; a cheeky seagull flaps near Yaddoh's face. Vertical 9:16.",
+     "action": "The seagull swoops in front of Yaddoh just as Mira taps and the tablet flashes; Mira lowers it with a comic groan while the seagull lands on the sand looking smug. Slow push-in on the smug seagull.",
+     "sound": "Ocean waves, seagull squawks, comic playful music; no speech, no voices."
+    },
+    {
+     "scene": "Same empty beach; a large floating picture frame of light hovers beside Mira and Yaddoh (kind Emirati grandma, black abaya and shayla, glasses), holding the photo of Yaddoh by the sea with a seagull blocking her face; the real seagull stands on the sand nearby. Bright sunlight, vertical 9:16.",
+     "action": "Mira taps the tablet once and the seagull in the floating photo dissolves into sparkles, revealing Yaddoh's smiling face; Yaddoh laughs and the real seagull squawks indignantly. Slow push-in toward the photo with Mira and Yaddoh beside it.",
+     "sound": "Sparkly swoosh, waves, one funny squawk, cheerful music; no speech, no voices."
+    }
+   ],
+   "caption": "النورس الشقي راح، والصورة صارت كاملة! الحلقة الياية: صورة رحلتنا للبرّ بتصير رسمة بالرمل…",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "البحر",
+    "صور"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 19,
+   "title": "رحلتنا رسمة بالرمل",
+   "topic": "«أنماط الصور» › «رسم بالرمل الخليجي»",
+   "lines": [
+    "صورة رحلتنا للبرّ حلوة، بس أبا أخليها تحفة لبيت يدّوه.",
+    "اخترت نمط الرسم بالرمل الخليجي… وشوفوا الرمل الذهبي يرسمنا!"
+   ],
+   "clips": [
+    {
+     "scene": "Family living room with a low wooden table holding an empty glass sand-art tray. Mira and Mama (Emirati, modest black abaya and shayla) sit on floor cushions; Mira holds a tablet (screen: only glowing abstract shapes, no text), Mama holds a printed family photo from their desert trip. Soft afternoon light, vertical 9:16.",
+     "action": "Mama shows the photo, Mira grins and snaps it with the tablet, then swipes through glowing color swatches on its screen and stops on a golden sandy one. Slow push-in onto the tablet swirling with gold.",
+     "sound": "Soft room ambience, gentle swishing, warm curious music; no speech, no voices."
+    },
+    {
+     "scene": "Same living room; streams of fine golden sand flow out of the tablet like a magic ribbon and pour into the glass tray, drawing dunes, a tent and a small happy family. Mira and Mama (Emirati, modest black abaya and shayla) watch in awe. Warm golden light, vertical 9:16 framing.",
+     "action": "The sand swirls and settles into a glittering Gulf sand-art painting of the family trip; Mama gasps and Mira lifts the tray proudly. Slow crane down from the flowing sand into the tray.",
+     "sound": "Soft trickling sand, shimmering chimes, warm ambient music; no speech, no voices."
+    }
+   ],
+   "caption": "صورة عادية صارت لوحة رمل خليجية تلمع! الحلقة الياية: أخوي الصغير بيصير ملصقات للقروب…",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "رسم_بالرمل",
+    "تراث"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 20,
+   "title": "ملصقات أخوي الصغير",
+   "topic": "«💬 ملصقات واتساب (٦ تعبيرات)» (داخل «أنماط الصور»)",
+   "lines": [
+    "أخوي الصغير وجهه كله تعابير… أبا العيلة كلها تشوفها!",
+    "من صورة وحدة له طلعت ست ملصقات… والقروب كله يضحك!"
+   ],
+   "clips": [
+    {
+     "scene": "Sunny living room. Mira's little brother (about 5, white kandura) sits on a cushion pulling a funny face. Mira kneels beside him in three-quarter view, tablet at chest height (screen: only glowing abstract shapes, no text); Mama (Emirati, modest black abaya and shayla) smiles from an armchair. Cheerful light, vertical 9:16.",
+     "action": "The brother puffs his cheeks and grins at the tablet; Mira taps and a soft flash makes him blink in surprise, and Mama laughs. Slow push-in toward Mira and her brother.",
+     "sound": "Soft room ambience, gentle camera click, playful music; no speech, no voices."
+    },
+    {
+     "scene": "Same living room; six round glowing bubbles float around Mira and her little brother (about 5, white kandura), each holding a cartoon sticker of the brother's face with a different expression: happy, laughing, sad, surprised, angry, winking. No text. Mama (Emirati, modest black abaya and shayla) smiles nearby. Vertical 9:16.",
+     "action": "The bubbles bounce and spin around the children and pop one by one into tiny hearts; the brother copies each sticker face playfully and Mira and Mama laugh. Slow 60-degree arc keeping both children's faces in view.",
+     "sound": "Bubbly pops, soft sparkle chimes, bouncy music; no speech, no voices."
+    }
+   ],
+   "caption": "أخوي الصغير صار ست ملصقات، والقروب ما وقف ضحك! الحلقة الياية: صورة قديمة ليدّوه… ممزّقة ومشقّقة.",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "ملصقات",
+    "تعابير"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 21,
+   "title": "صورة يدّوه وهي صغيرة",
+   "topic": "«🔧 ترميم صورة قديمة» (داخل «أنماط الصور»)",
+   "lines": [
+    "لقيت صورة يدّوه وهي صغيرة… مشقّقة وممزّقة، ويدّوه زعلانة عليها.",
+    "رمّمتها بالتطبيق مفاجأة… والشقوق اختفت، ويدّوه دمعت من الفرحة!"
+   ],
+   "clips": [
+    {
+     "scene": "Corner of a room by an open old wooden chest holding folded fabrics, no papers or books. Mira holds a torn sepia photo of a little girl beside a palm tree, cracked, a corner missing, no writing; Mama (Emirati, modest black abaya and shayla) kneels beside her, finger on her lips for a surprise. Warm window light, vertical 9:16.",
+     "action": "Mira gently brushes dust off the torn photo and lays it beside a tablet, its screen showing only soft abstract shapes, no text; she snaps it with a gentle flash and Mama nods. Slow push-in on the cracked photo.",
+     "sound": "Soft creak of the wooden chest, nostalgic gentle music; no speech, no voices."
+    },
+    {
+     "scene": "Yaddoh's room; the torn sepia photo floats in the air above the tablet, bathed in warm golden light. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) sits on her bed beside Mira, hands on her cheeks. Warm golden light, vertical 9:16 framing.",
+     "action": "Golden threads of light stitch the cracks and fill the missing corner until the photo is clean and whole; it floats down into Yaddoh's hands, and she tears up with joy and hugs Mira. Slow dolly-in to a close two-shot.",
+     "sound": "Delicate shimmering sounds, tender emotional music; no speech, no voices."
+    }
+   ],
+   "caption": "شقوق السنين اختفت، وصورة يدّوه رجعت كأنها يديدة. الحلقة الياية: صورة سفينة أبو يدّوه أيام الغوص بترجع لها الألوان!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "يدّوه",
+    "ذكريات"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 22,
+   "title": "ألوان أيام الغوص",
+   "topic": "«🎨 تلوين أبيض وأسود» (داخل «أنماط الصور»)",
+   "lines": [
+    "هذي صورة سفينة أبو يدّوه أيام الغوص على اللول… كلها أبيض وأسود.",
+    "لوّنتها بالتطبيق، والبحر صار أزرق والشراع أبيض… كأننا هناك!"
+   ],
+   "clips": [
+    {
+     "scene": "Majlis wall with an old black-and-white framed photo of a wooden dhow with a big sail on a calm sea, no people, no markings. Mira stands beside it in three-quarter view, face to camera, holding a tablet (screen: only glowing abstract shapes, no text); Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) points at it fondly. 9:16.",
+     "action": "Yaddoh points at the dhow and smiles nostalgically; Mira raises the tablet and snaps the photo, a soft flash rippling over the grey picture. Slow push-in toward the black-and-white photo.",
+     "sound": "Faint distant sea waves, nostalgic gentle music; no speech, no voices."
+    },
+    {
+     "scene": "Same majlis; the black-and-white dhow photo glows and expands into a large floating window of light beside Mira and Yaddoh (kind Emirati grandma, black abaya and shayla, glasses), both faces toward camera, no text. Warm magical glow, vertical 9:16 framing.",
+     "action": "Color spreads across the picture like watercolor: the sea turns turquoise, the sail bright white, the sky golden, and the dhow gently rocks on the waves; Mira and Yaddoh watch with shining eyes. Slow push-in into the colored sea.",
+     "sound": "Rising sea waves, gentle creak of wood, sweeping warm music; no speech, no voices."
+    }
+   ],
+   "caption": "صورة أيام الغوص رجعت ملوّنة، ويدّوه تقول: جذي كان البحر! الحلقة الياية: بركان ميرا للمدرسة… ما ثار!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "الغوص",
+    "تراث"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 23,
+   "title": "البركان اللي ما ثار",
+   "topic": "تحليل الفيديو في «المحادثة» (فيديو مرفق بـ«إرفاق»)",
+   "lines": [
+    "سوّيت بركان للمدرسة بس ما ثار! صوّرته وسألت التطبيق: ليش؟",
+    "شاف الفيديو وقال: زيدي الخل! ويالله… البركان ثار!"
+   ],
+   "clips": [
+    {
+     "scene": "Backyard table on a sunny afternoon: a handmade clay volcano on a tray, a bowl of baking soda and a plain unlabeled jug of vinegar. Mira in clear safety glasses stands beside her little brother (about 5, white kandura); Mama (Emirati, modest black abaya and shayla) watches nearby. The volcano only fizzles weakly. Bright light, vertical 9:16.",
+     "action": "A tiny weak fizz bubbles from the volcano top and stops; the children droop in disappointment, and Mira lifts a tablet, its screen showing only abstract glowing shapes, no text, to film it. Slow push-in on the sad fizzle.",
+     "sound": "Weak fizzing, a comic deflating tone, backyard birds; no speech, no voices."
+    },
+    {
+     "scene": "Same backyard table; Mira pours more vinegar from the jug into the volcano while her little brother (about 5, white kandura) covers his ears in excitement and Mama (Emirati, modest black abaya and shayla) watches nearby; the propped tablet glows with abstract shapes, no text. Bright sunlight, vertical 9:16.",
+     "action": "The volcano erupts in a big bubbly pink-orange foam fountain that spills down its sides; the children jump and cheer as foam sparkles in the sun. Slow pull-back revealing the whole eruption.",
+     "sound": "Big fizzy whoosh, bubbling foam, triumphant playful music; no speech, no voices."
+    }
+   ],
+   "caption": "التطبيق شاف الفيديو وعرف وين الغلط… والبركان ثار أخيرًا! الحلقة الياية: سلحفاة بحرية في مشروع ميرا.",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "علوم",
+    "تجربة"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 24,
+   "title": "سلحفاة لمشروع المدرسة",
+   "topic": "«🤖 فيديو AI فقط» (داخل «صانع الفيديو»)",
+   "lines": [
+    "مشروعي عن سلاحف البحر، وأبا فيديو يبيّن رحلتها للبحر.",
+    "وصفت المشهد للتطبيق ويّا بابا، وطلع الفيديو… السلحفاة تسبح قدّام عيوني!"
+   ],
+   "clips": [
+    {
+     "scene": "Mira's desk with a big sheet of drawing paper showing one crayon drawing of a turtle and waves, no title, no words, seashells around. Mira sits holding a tablet (screen: only glowing abstract shapes, no text), a toy turtle in her other hand; Baba (Emirati, white kandura and ghutra) leans over her shoulder. Soft afternoon light, vertical 9:16.",
+     "action": "Mira looks at the toy turtle with a dreamy smile, Baba nods, and she taps the tablet; ripples of glowing blue light spread across its screen like water. Slow push-in toward the rippling tablet.",
+     "sound": "Soft ocean ambience, dreamy curious music; no speech, no voices."
+    },
+    {
+     "scene": "Mira's room transformed: glowing blue waves of light flow from the tablet across the floor, and a luminous sea turtle made of light swims through the air around Mira while Baba (Emirati, white kandura and ghutra) watches. Magical underwater-blue glow, vertical 9:16 framing.",
+     "action": "The light turtle glides gracefully around Mira as tiny bubbles rise; she reaches out and it brushes her fingertips, then swims into the turtle drawing on her desk, which shimmers. Slow arc following the turtle.",
+     "sound": "Underwater bubbles, a soft deep hum, wondrous music; no speech, no voices."
+    }
+   ],
+   "caption": "سلحفاة تسبح في غرفة ميرا… ومشروع المدرسة صار فيلم! الحلقة الياية: فيديو قديم لأول خطوات أخوي، مشوّش وألوانه باهتة.",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "سلاحف",
+    "مشروع_مدرسي"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 25,
+   "title": "أول خطوات أخوي",
+   "topic": "«تحسين فيديو» (داخل «صانع الفيديو»)",
+   "lines": [
+    "فيديو أول خطوات أخوي غالي على ماما، بس مشوّش وألوانه باهتة.",
+    "حسّنته بالتطبيق، وصار أوضح وألوانه أحلى… وماما تضحك وتدمع!"
+   ],
+   "clips": [
+    {
+     "scene": "Cozy living room in the evening. Mama (Emirati, modest black abaya and shayla) sits on the sofa with Mira and the little brother (about 5, white kandura) leaning on her shoulder. Above Mira's tablet, whose screen shows only abstract shapes, floats a grainy, faded-color hologram of a toddler's wobbly first steps. Soft lamp light, vertical 9:16.",
+     "action": "Mama squints sadly at the grainy floating image; Mira taps the tablet with a determined smile and a wave of sparkles starts sweeping across the hologram. Slow push-in on the grainy image.",
+     "sound": "Soft lamp-lit room ambience, tender nostalgic music; no speech, no voices."
+    },
+    {
+     "scene": "Same sofa; the floating hologram above the tablet is now bright, sharp and colorful, showing a baby toddling with arms out across a sunny room. Mama (Emirati, modest black abaya and shayla), Mira and the little brother (about 5, white kandura) lean in close. Warm glow, vertical 9:16 framing.",
+     "action": "The clear hologram baby takes wobbly steps and plops down happily; the real brother points at himself proudly, and Mama laughs with tears and hugs both children. Slow dolly-in to a close family shot.",
+     "sound": "Sparkle sweep, gentle chime, heartwarming music; no speech, no voices."
+    }
+   ],
+   "caption": "أغلى فيديو عند ماما صار أوضح وألوانه أحلى! الحلقة الياية: قصة قبل النوم… أبطالها يتكلمون!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "ماما",
+    "ذكريات"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 26,
+   "title": "قصة قبل النوم لأخوي",
+   "topic": "«الشخصيات» (داخل «صانع الفيديو»)",
+   "lines": [
+    "أخوي ما يبا ينام، يبا قصة يديدة كل ليلة!",
+    "سوّيت ثلاث شخصيات: يمل وصقر وسلحفاة، كل واحد بصوته… ونام وهو يضحك!"
+   ],
+   "clips": [
+    {
+     "scene": "Kids' bedroom at night, star night light. The little brother (about 5, white kandura) sits wide awake in bed hugging a pillow; Mira sits on the bed edge holding a tablet (screen: only glowing abstract shapes, no text), and Mama (Emirati, modest black abaya and shayla) smiles from the doorway. Soft blue and amber light, vertical 9:16.",
+     "action": "The brother bounces on the bed refusing to sleep; Mira taps the tablet three times and three little glowing orbs of light pop out and hover above the blanket. Slow push-in on the hovering orbs.",
+     "sound": "Quiet night, soft bed rustle, whimsical music; no speech, no voices."
+    },
+    {
+     "scene": "Same bedroom; above the blanket three small cute glowing cartoon characters made of light, a camel, a falcon and a sea turtle, act out a tiny puppet-style show. The little brother (about 5, white kandura) lies down smiling, Mira beside him. Dreamy night glow, vertical 9:16 framing.",
+     "action": "The camel bows, the falcon flaps a loop and the turtle waves; the brother giggles, yawns and drifts off, and Mira tucks him in as the characters fade into stars. Slow pull-back to a wide cozy shot.",
+     "sound": "Soft twinkling, gentle instrumental lullaby, no singing; no speech, no voices."
+    }
+   ],
+   "caption": "يمل وصقر وسلحفاة… وقصة نوّمت أخوي وهو يضحك. الحلقة الياية: صورة يدّوه القديمة… بتتحرّك!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "قصص_أطفال",
+    "وقت_النوم"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 27,
+   "title": "صورة يدّوه تبتسم",
+   "topic": "«صانع الفيديو» › «الترندات» › «الصورة القديمة تتحرك»",
+   "lines": [
+    "تذكرون صورة يدّوه اللي رمّمناها؟ اليوم عندي لها مفاجأة أكبر!",
+    "الصورة تحرّكت، والبنية الصغيرة ابتسمت ولوّحت… ويدّوه تقول: هذي أنا!"
+   ],
+   "clips": [
+    {
+     "scene": "Yaddoh's room in soft afternoon light; on the side table the restored photo of a little girl beside a palm tree sits in a wooden frame. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) sips tea on her bed; Mira holds a tablet (screen: only glowing abstract shapes, no text), hiding a smile. Vertical 9:16.",
+     "action": "Mira gives Yaddoh a playful wink and taps the tablet, and a gentle ripple of light passes over the framed photo on the side table. Slow push-in on Mira and the frame.",
+     "sound": "Quiet afternoon ambience, playful suspenseful music; no speech, no voices."
+    },
+    {
+     "scene": "Same room; the framed photo glows and the little girl in it comes to life inside the frame, the palm tree swaying behind her. Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) holds the frame in both hands, Mira beside her. Warm golden glow, vertical 9:16 framing.",
+     "action": "The girl in the photo blinks, smiles and waves; Yaddoh gasps, laughs with teary eyes and waves back, then pulls Mira into a hug. Slow dolly-in from the frame to their faces.",
+     "sound": "Soft magical shimmer, gentle palm rustle, tender music; no speech, no voices."
+    }
+   ],
+   "caption": "يدّوه شافت نفسها وهي صغيرة تبتسم لها! والحين يدّوه عازمة العيلة كلها… الحلقة الياية: نجهّز مجلسها للعزيمة!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "يدّوه",
+    "ذكريات"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 28,
+   "title": "مجلس يدّوه بحلّة يديدة",
+   "topic": "«ديكور AI»",
+   "lines": [
+    "يدّوه عازمة العيلة كلها، ومجلسها يبا لمسة يديدة قبل العزيمة.",
+    "صوّرنا المجلس، والتطبيق ورّانا شكله اليديد… وماما ويدّوه اختارن الأحلى!"
+   ],
+   "clips": [
+    {
+     "scene": "Old majlis, faded cushions, plain walls, seen from inside facing the doorway. Mira and Mama (Emirati, modest black abaya and shayla) stand in the doorway facing camera, Mira holding a tablet (screen: only glowing abstract shapes, no text); Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) sits on a cushion nearby. Vertical 9:16.",
+     "action": "Mama looks around thoughtfully and Yaddoh shrugs, smiling; Mira snaps the room with the tablet and a soft wave of light ripples across the floor. Slow push-in toward Mira and Mama.",
+     "sound": "Quiet room ambience, warm anticipatory music; no speech, no voices."
+    },
+    {
+     "scene": "Same majlis, transforming: sparkling light sweeps across it, leaving rich patterned Gulf-style cushions, sand-colored curtains, warm lanterns and green plants, no wall art or calligraphy. Mira, Mama (Emirati, modest black abaya and shayla) and Yaddoh (kind Emirati grandma, black abaya and shayla, glasses) stand in the middle. Vertical 9:16.",
+     "action": "The magic wave rolls across the room and everything blossoms into the new look; Yaddoh claps, Mama nods and Mira opens her arms wide with joy. Slow 45-degree arc revealing the transformed majlis, faces in view.",
+     "sound": "Sweeping magical whoosh, shimmering chimes, joyful music; no speech, no voices."
+    }
+   ],
+   "caption": "مجلس يدّوه لبس حلّته اليديدة قبل العزيمة! الحلقة الياية: لعبة من اختراعي أنا وأخوي حق عيال العيلة…",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "ديكور",
+    "مجلس"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 29,
+   "title": "لعبة الذاكرة لعيال العيلة",
+   "topic": "بناء لعبة داخل «المحادثة» (منشئ المواقع والتطبيقات والألعاب)",
+   "lines": [
+    "أنا وأخوي نبا لعبة لعيال العيلة في عزيمة يدّوه… من جملة وحدة!",
+    "التطبيق بنى لعبة الذاكرة في ثواني… والعيال ما يبون يوقفون!"
+   ],
+   "clips": [
+    {
+     "scene": "Yaddoh's newly decorated majlis, lanterns glowing. Mira and her little brother (about 5, white kandura) sit on a floor cushion; Mira holds a tablet (screen: only glowing abstract shapes, no text) as the brother whispers in her ear, Baba (Emirati, white kandura and ghutra) watching proudly behind. Warm evening light, vertical 9:16.",
+     "action": "The brother whispers excitedly with big hand gestures; Mira nods, taps the tablet, and a burst of colorful glowing tiles starts assembling on its screen. Slow push-in toward the two children.",
+     "sound": "Soft evening ambience, playful excited music; no speech, no voices."
+    },
+    {
+     "scene": "Same majlis; a grid of large glowing cards of light floats low beside the children, some flipped to show simple pictures: a palm tree, a falcon, a crescent moon, a coffee pot, no text. Mira faces camera with her little brother (white kandura) and two cousins, a boy in a kandura and a girl in a modest dress and headscarf. Vertical 9:16.",
+     "action": "The children tap the floating cards; matching pairs flash and burst into sparkles, and everyone cheers and high-fives. Slow push-in toward Mira at the center of the group.",
+     "sound": "Card flip whooshes, match chimes, cheerful upbeat music; no speech, no voices."
+    }
+   ],
+   "caption": "لعبة من جملة وحدة… والعيال ما وقفوا لعب! الحلقة الياية والأخيرة: عزيمة يدّوه ومفاجأة ميرا الكبيرة!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "ألعاب",
+    "عيال"
+   ]
+  },
+  {
+   "story": "app",
+   "k": 30,
+   "title": "مفاجأة ميرا في عزيمة يدّوه",
+   "topic": "«صانع الفيديو» › «🤖 فيديو AI فقط» + المدّة «🎬 فيلم متكامل (سيناريو + مشاهد + سرد)»",
+   "lines": [
+    "العيلة كلها في بيت يدّوه… وأنا مجهّزة لهم أكبر مفاجأة!",
+    "كتبت قصّتنا، والتطبيق سوّاها فيلم قصير… شكرًا يدّوه، شكرًا عيلتي!"
+   ],
+   "clips": [
+    {
+     "scene": "Yaddoh's decorated majlis at night. Mira stands in the foreground center, medium shot, holding a tablet (screen: only glowing abstract shapes, no text), smiling; behind her on cushions sit Mama and Yaddoh in black abayas and shaylas, Baba in a white kandura and ghutra, and her little brother, with dates and coffee. Lantern light, vertical 9:16.",
+     "action": "Behind her the family pours coffee and smiles; Mira raises the tablet, everyone turns toward her, and the lanterns dim softly as a glow builds. Slow push-in to Mira's face.",
+     "sound": "Warm gathering ambience, cups clinking, rising anticipatory music; no speech, no voices."
+    },
+    {
+     "scene": "Same majlis; above the family a dome of golden light fills the ceiling with floating light shapes: mint leaves, a falcon, a sea turtle, a dhow, a cheeky seagull, the moon. Below, Mira, Yaddoh and Mama in black abayas and shaylas and Baba in a white kandura, faces lit gold. Vertical 9:16.",
+     "action": "The light shapes fly in a circle above the family like a cinematic show and end in a burst of soft light fireworks; Yaddoh stands and hugs Mira as everyone applauds. Slow crane up from the hug to the glowing dome.",
+     "sound": "Cinematic swelling music, soft sparkle bursts, gentle hand clapping; no speech, no voices, no cheering."
+    }
+   ],
+   "caption": "آخر حلقة: فيلم قصير عن عيلتنا في عزيمة يدّوه. شكرًا إنكم كنتوا ويّا ميرا والتطبيق السحري من أول حلقة!",
+   "tags": [
+    "مسلسل_ميرا",
+    "ميرا_والتطبيق_السحري",
+    "OMAi",
+    "يدّوه",
+    "عزيمة_العيلة"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 1,
+   "title": "ميرا في الجامع الأبيض",
+   "topic": "جامع الشيخ زايد الكبير — أبوظبي",
+   "lines": [
+    "شحالكم! أنا ميرا، وبديت رحلتي في الإمارات من جامع أبوظبي الكبير.",
+    "أعمدته من الرخام الأبيض ومزيّنة بورود ملوّنة… كأنها حديقة ما تذبل!"
+   ],
+   "clips": [
+    {
+     "scene": "Golden hour at Abu Dhabi's Grand Mosque: white marble domes and slender minarets mirrored in a long turquoise reflecting pool, soft pink sky. Mira stands at the pool's edge in the foreground, framed from the knees up in the lower half, three-quarters to camera, hands clasped, face clearly visible. Vertical 9:16, warm light, no text anywhere.",
+     "action": "Mira slowly turns toward the camera with an amazed smile and points up at the biggest dome while a light breeze ripples the reflection. Camera: slow pull-back with a gentle crane up revealing the full mosque behind her, Mira staying large in the lower half of the frame.",
+     "sound": "Gentle warm ambient music, soft water ripples, distant birds; no speech, no vocals."
+    },
+    {
+     "scene": "Inside the white marble arcade of the mosque courtyard: rows of white columns with golden palm-leaf tops and colorful inlaid flower vines, polished floor reflecting warm golden-hour light, arches receding. Mira stands beside one column, medium shot, 9:16, no writing on any surface.",
+     "action": "Mira gently traces the inlaid flower vines on the column with her fingertip, then walks slowly along the arcade, glancing back with a happy smile. Camera: smooth dolly tracking beside her along the arches.",
+     "sound": "Calm airy ambience, soft footsteps on marble, faint breeze, distant birds; no music, no speech, no vocals."
+    }
+   ],
+   "caption": "ميرا بدت رحلتها في الإمارات السبع من أبوظبي 🤍 الجامع الأبيض خذ قلبها… وين بتروح عقب؟ تابعوا الحلقة الياية!",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#أبوظبي",
+    "#الجامع_الكبير",
+    "#الإمارات",
+    "#OMAi"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 2,
+   "title": "ميرا وخيوط السدو",
+   "topic": "قصر الحصن وبيت الحرفيين (نسيج السدو) — أبوظبي",
+   "lines": [
+    "هذا قصر الحصن، أقدم مبنى حجري في مدينة أبوظبي، من حجر البحر والمرجان!",
+    "وفي بيت الحرفيين، علّمتني وحدة من الحرفيات السدو… خيوط حمرا وسودا وبيضا!"
+   ],
+   "clips": [
+    {
+     "scene": "Bright morning, low angle on Qasr Al Hosn: a whitewashed coral-stone fort with a round watchtower and crenellated walls against a clear deep blue sky, a few palm trees, no other buildings. Mira stands in the foreground framed from the waist up, looking up at the tower with a curious smile. 9:16, crisp sunlight, no signs or text.",
+     "action": "Mira walks a few steps to the fort wall and lays her palm flat on the rough white stone, smiling as she feels its texture. Camera: slow push-in from wide to medium as she reaches the wall.",
+     "sound": "Light breeze, distant city hum, soft heritage-style ambient music; no speech, no vocals."
+    },
+    {
+     "scene": "Shaded courtyard of a craft house: an elderly Emirati woman in black abaya and shayla sits on a mat beside a low ground loom of red, black and white wool woven in plain geometric triangles, no letters or symbols in the weave. Mira kneels beside her holding a ball of red yarn. Warm dappled light, 9:16 medium shot.",
+     "action": "Guided by the woman's hands, Mira slowly passes the red yarn between the loom threads, then looks up at the camera with a proud smile. Camera: gentle slow push-in from the loom to Mira's face.",
+     "sound": "Soft rustle of wool, warm gentle music, faint birds; no speech, no vocals."
+    }
+   ],
+   "caption": "أقدم مبنى حجري في مدينة أبوظبي 🏰 وخيوط السدو الحمرا في يد ميرا! تتوقعون وين بتشوف الصقر؟ الحلقة الياية 🦅",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#قصر_الحصن",
+    "#السدو",
+    "#أبوظبي",
+    "#تراث_إماراتي"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 3,
+   "title": "ميرا والصقر الهادئ",
+   "topic": "مستشفى أبوظبي للصقور (الصقارة) — أبوظبي",
+   "lines": [
+    "اليوم في مستشفى الصقور بأبوظبي… الصقر هو الطير الوطني للإمارات!",
+    "لبست المنقلة في يدي، ووقف الصقر عليها بكل هدوء. ما خفت!"
+   ],
+   "clips": [
+    {
+     "scene": "Clean bright room of a falcon hospital: a row of falcons sitting calmly on padded wooden perches, each wearing a small brown leather hood, soft daylight from high windows. Mira stands at the end of the row, eyes wide with wonder, hands together. 9:16 medium-wide, plain walls, no text.",
+     "action": "One falcon ruffles its feathers and turns its hooded head toward Mira; she gasps softly and smiles. Camera: slow lateral dolly along the row of falcons, ending on Mira.",
+     "sound": "Soft feather rustles, quiet room tone, gentle ambient music; no speech, no vocals."
+    },
+    {
+     "scene": "Same room, close medium shot: Baba (modest Emirati man, white kandura and ghutra) helps Mira hold out her arm in a thick tan leather falconer's glove; a hooded falcon stands calmly on the glove. Warm window light, 9:16.",
+     "action": "The falcon spreads its wings briefly, then settles again; Mira holds very still, then breaks into a proud, delighted smile toward the camera. Camera: slow half-circle orbit around Mira and the falcon.",
+     "sound": "Soft wing flap, gentle uplifting music; no speech, no vocals."
+    }
+   ],
+   "caption": "الصقر وقف على يد ميرا 🦅 وطلع أهدأ مما توقعت! الحلقة الياية: ميرا عند تلّ رمل عملاق… تخمّنون وين؟",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#الصقارة",
+    "#الصقر",
+    "#أبوظبي",
+    "#تراث_إماراتي"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 4,
+   "title": "ميرا فوق كثبان ليوا",
+   "topic": "تل مرعب في ليوا وركوب الإبل — منطقة الظفرة، أبوظبي",
+   "lines": [
+    "وصلنا ليوا! هذا تل مرعب، من أعلى كثبان الرمل في العالم.",
+    "ركبت الناقة وأبوي ماسك رسنها… الصحرا ذهبية ووايد حلوة!"
+   ],
+   "clips": [
+    {
+     "scene": "Vast golden Liwa desert, late afternoon: one enormous smooth sand dune with sharp curved ridges towering behind, long soft shadows, clear sky. Mira stands in the foreground framed from the knees up in the lower half, face clearly visible, looking up at the dune in awe. 9:16, warm amber light.",
+     "action": "Wind lifts a thin veil of sand off the dune crest as Mira takes one slow step forward, the hem of her abaya fluttering. Camera: slow pull-back with a gentle crane up revealing the full dune height, Mira staying in the lower half of the frame.",
+     "sound": "Soft desert wind, whispering sand, warm ambient music; no speech, no vocals."
+    },
+    {
+     "scene": "On the dunes at golden hour: a calm light-brown camel with a colorful woven saddle; Baba (modest Emirati man, white kandura and ghutra) holds its rope. Mira sits safely on the saddle holding the front grip, smiling. 9:16 medium-wide, warm side light.",
+     "action": "The camel walks slowly across the sand with Baba leading on foot; Mira sways gently and waves happily at the camera. Camera: smooth tracking shot alongside them, drifting slightly back.",
+     "sound": "Soft camel footsteps on sand, desert breeze, light cheerful music; no speech, no vocals."
+    }
+   ],
+   "caption": "ميرا ركبت الناقة فوق رمال ليوا الذهبية 🐪 والصحرا ترحّب! الحلقة الياية: واحة خضرا وسط الصحرا… لا تفوتكم",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#ليوا",
+    "#تل_مرعب",
+    "#الإبل",
+    "#الظفرة"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 5,
+   "title": "ميرا في واحة العين",
+   "topic": "واحة العين والأفلاج والتمر — العين، أبوظبي",
+   "lines": [
+    "واحة العين خضرا، والماي يمشي بين النخل في قنوات اسمها الأفلاج.",
+    "غمّست يدي في الفلج، وكليت رطب من النخل… حلو مثل العسل!"
+   ],
+   "clips": [
+    {
+     "scene": "Inside Al Ain Oasis: a shaded path between tall date palms heavy with golden date clusters, a narrow stone water channel with clear flowing water beside it, sunbeams through the fronds. Mira kneels at the channel's edge in the foreground, medium shot, face clearly visible. 9:16, lush green and gold light.",
+     "action": "A green palm leaf floats past on the current; Mira trails her fingertips in the cool water and follows the leaf with a delighted smile. Camera: slow low tracking shot along the water beside her, keeping Mira in frame.",
+     "sound": "Trickling water, birds chirping, rustling palm fronds, calm music; no speech, no vocals."
+    },
+    {
+     "scene": "Same oasis, close medium shot: Mira sits on the edge of the stone water channel; Mama (black abaya and shayla) sits beside her holding a small woven palm-leaf basket of fresh golden dates. Dappled sunlight, 9:16.",
+     "action": "Mira takes one golden date from Mama's basket, tastes it and closes her eyes happily. Camera: slow push-in to Mira's smile.",
+     "sound": "Trickling water, birds, warm gentle music; no speech, no vocals."
+    }
+   ],
+   "caption": "واحة العين من مواقع التراث العالمي 🌴 والأفلاج تسقي النخل من زمان وايد! ميرا الحين رايحة دبي… تابعونا",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#واحة_العين",
+    "#الأفلاج",
+    "#التمر",
+    "#العين"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 6,
+   "title": "ميرا وسرّ البرجيل",
+   "topic": "حي الفهيدي التاريخي والبراجيل — دبي",
+   "lines": [
+    "هذا حي الفهيدي في دبي، شوفوا البراجيل فوق البيوت القديمة!",
+    "البرجيل يصيد الهوا وينزّله داخل البيت… مكيّف الأوّلين!"
+   ],
+   "clips": [
+    {
+     "scene": "Narrow sandy-beige alley in Al Fahidi old quarter: old coral-and-gypsum houses with tall square wind towers rising above the roofs, carved wooden doors, a small palm tree, bright blue sky. Mira stands in the middle of the alley looking up at the towers. 9:16, soft morning light, no signs or writing.",
+     "action": "Mira walks slowly toward the camera, gazing up at the wind towers above her with an amazed smile. Camera: steady low-angle tracking shot moving backward in front of her, towers visible above her head.",
+     "sound": "Quiet footsteps, light breeze, distant birds, soft heritage ambient music; no speech, no vocals."
+    },
+    {
+     "scene": "Inside a cool traditional room directly beneath a wind tower: the tall open shaft above lets a column of soft light fall down onto carpets and floor cushions. Mira stands right under the shaft, arms slightly open. 9:16, calm shadows.",
+     "action": "A breeze flows down the shaft and makes the edge of Mira's shayla flutter gently; she closes her eyes, smiles and lifts her face to the cool air. Camera: slow vertical tilt from Mira's face up into the wind tower shaft.",
+     "sound": "Soft whoosh of wind, calm music; no speech, no vocals."
+    }
+   ],
+   "caption": "تعرفون شو كان المكيّف قبل الكهربا؟ 🌬️ ميرا اكتشفت سرّ البرجيل في دبي! الحلقة الياية: ميرا في عبرة على الخور ⛵",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#الفهيدي",
+    "#البرجيل",
+    "#دبي",
+    "#تراث_إماراتي"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 7,
+   "title": "ميرا في عبرة الخور",
+   "topic": "خور دبي والعبرة والأبوام الخشبية — دبي",
+   "lines": [
+    "خور دبي! ركبنا العبرة الخشبية من بر دبي لين ديرة.",
+    "الهوا حلو والماي يلمع، وشفت الأبوام الخشبية راسية على الخور!"
+   ],
+   "clips": [
+    {
+     "scene": "Dubai Creek wharf at sunset: a small wooden abra with a flat canopy and a plain unmarked hull waits at stone steps, water glowing orange, old houses and wooden dhows across the creek. Mira holds hands with Mama (black abaya and shayla); both wear plain orange life vests with no print, Mira's over her abaya. 9:16, golden light, no signs or text.",
+     "action": "Mira and Mama step carefully into the abra and sit on the central wooden bench; Mira grins at the camera as the boat rocks softly. Camera: gentle push-in from the wharf.",
+     "sound": "Lapping water, creaking wood, soft seagulls, warm ambient music; no speech, no vocals."
+    },
+    {
+     "scene": "On the abra mid-creek: Mira sits on the bench near the side with Mama (black abaya and shayla) beside her, both in plain bright orange life vests with no print, Mira's over her abaya; behind them large wooden dhows moored along the bank under a pink-orange sky, plain unmarked hulls, no cargo boxes. 9:16 medium shot, no text.",
+     "action": "The abra glides forward; Mira leans slightly to look at the passing dhows and points at them in excitement as sparkles dance on the water. Camera: smooth sideways tracking shot from water level.",
+     "sound": "Soft engine putter, water splashes, seagulls, gentle music; no speech, no vocals."
+    }
+   ],
+   "caption": "رحلة بالعبرة على خور دبي ⛵ والأبوام الخشبية تحكي قصص البحر! الحلقة الياية: ميرا تحت أطول برج في العالم… استعدوا 🌟",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#خور_دبي",
+    "#العبرة",
+    "#دبي",
+    "#تراث_بحري"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 8,
+   "title": "ميرا تحت أطول برج",
+   "topic": "برج خليفة ونافورة دبي — دبي",
+   "lines": [
+    "شوفوا! هذا أطول برج في العالم… راسي دار وأنا أطالعه!",
+    "والنافورة ترقص بالماي والنور… أحلى ليلة في دبي!"
+   ],
+   "clips": [
+    {
+     "scene": "Evening in Downtown Dubai: the world's tallest skyscraper rises into a deep blue twilight sky, lit only with soft white lights, no screens. Mira stands on a lakeside promenade in the foreground, framed from the waist up, face clearly visible as she looks up. 9:16 low angle, glowing city, no signs, logos or text.",
+     "action": "Mira leans back to see the top, wobbles playfully and steadies herself with a laugh, glancing at the camera. Camera: slow crane down and pull-back revealing the full tower above her, Mira staying in the lower part of the frame.",
+     "sound": "Gentle city night ambience, soft wonder-filled music; no speech, no vocals."
+    },
+    {
+     "scene": "Same promenade at night: a wide lake with tall fountain jets starting to rise, lit warm white and gold, the glowing tower behind. Mira stands at the railing with both hands on it, seen in three-quarter side view, her face clearly visible. 9:16 medium shot, no signs or text.",
+     "action": "The fountain jets sway and burst high in a graceful dance; Mira claps in delight and turns to the camera with sparkling eyes. Camera: slow arc from her side toward the front.",
+     "sound": "Rushing water bursts, soft orchestral-style music; no speech, no vocals."
+    }
+   ],
+   "caption": "ميرا طالعت أطول برج في العالم لين راسها دار 😅 والنافورة رقصت لها! الحلقة الياية: ماي فيروزي بين جبال حتا 💙",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#دبي",
+    "#أطول_برج",
+    "#نافورة_دبي",
+    "#الإمارات"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 9,
+   "title": "ميرا بين جبال حتا",
+   "topic": "سد حتا وجبال الحجر — حتا، دبي",
+   "lines": [
+    "وصلنا حتا في دبي! الماي فيروزي والجبال حاوطته من كل صوب.",
+    "جدّفت ويا أبوي، ولابسين سترة النجاة طبعًا… السلامة أوّل!"
+   ],
+   "clips": [
+    {
+     "scene": "Hatta Dam lake on a clear morning: still turquoise water surrounded by rugged brown mountains, a few plain unmarked colorful kayaks on the shore. Mira stands on a safe rocky viewpoint above the lake, arms open wide. 9:16 wide shot, bright crisp light, no text.",
+     "action": "Mira takes a deep happy breath and turns slowly with her arms open as the breeze ripples the water below. Camera: slow aerial-style pull-back revealing the whole lake and mountains.",
+     "sound": "Mountain breeze, distant birds, gentle uplifting music; no speech, no vocals."
+    },
+    {
+     "scene": "On the turquoise lake: a two-seat kayak with Mira in front and Baba (modest Emirati man, white kandura and ghutra) behind; both wear plain bright orange life vests with no print or logos, Mira's over her abaya. Mountains reflected in the water. 9:16 medium shot, no text.",
+     "action": "They paddle together in rhythm; Mira lifts her paddle and flicks a few sparkling drops, laughing. Camera: smooth tracking shot from the water beside the kayak.",
+     "sound": "Paddle splashes, soft water, light cheerful music; no speech, no vocals."
+    }
+   ],
+   "caption": "حتا جوهرة جبال دبي 💙 وميرا جدّفت ويا أبوها بسترة النجاة! الحلقة الياية: مجلس عنده برجيل مدوّر… شو سرّه؟",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#حتا",
+    "#سد_حتا",
+    "#دبي",
+    "#طبيعة_الإمارات"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 10,
+   "title": "ميرا وسنع المجلس",
+   "topic": "مجلس البرجيل المدوّر في المنطقة التراثية والقهوة العربية والتمر — الشارقة",
+   "lines": [
+    "في قلب الشارقة لقيت مجلس عنده برجيل مدوّر، الوحيد في الإمارات!",
+    "والقهوة يقدمونها ويا التمر… وإذا كفاك، هزّ الفنجان!"
+   ],
+   "clips": [
+    {
+     "scene": "Sharjah heritage area, bright afternoon: a sand-colored traditional coral-stone house with a rare round cylindrical wind tower rising above its roof, a carved wooden door, a palm beside it. Mira stands in front looking up at the round tower, delighted. 9:16, warm sun, no signs.",
+     "action": "Mira tilts her head, walks a half circle to see the round tower from another side and gives an amazed little hop. Camera: slow orbit around Mira keeping the round tower above her.",
+     "sound": "Light breeze, distant doves, soft heritage music; no speech, no vocals."
+    },
+    {
+     "scene": "Inside the majlis: floor cushions along the walls, a red patterned carpet, a brass dallah coffee pot and a plate of dates on a low tray. A modest elderly Emirati man in white kandura and ghutra pours coffee into a small cup for Mira, who sits politely on a cushion. Soft window light, 9:16.",
+     "action": "Mira takes the small cup with her right hand, sips, smiles, then gently shakes the cup side to side to say enough; the elder chuckles and nods. Camera: slow push-in from medium to close on the cup shake.",
+     "sound": "Soft pouring, gentle clink of the cup, calm warm music; no speech, no vocals."
+    }
+   ],
+   "caption": "تعرفون ليش نهزّ الفنجان؟ ☕ ميرا تعلّمت سنع المجلس في قلب الشارقة! الحلقة الياية: فراشات ملوّنة تحطّ عليها 🦋",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#الشارقة",
+    "#القهوة_العربية",
+    "#المجلس",
+    "#سنع"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 11,
+   "title": "ميرا وبيت الفراشات",
+   "topic": "جزيرة النور، بيت الفراشات — الشارقة",
+   "lines": [
+    "جزيرة النور في الشارقة، وهذا بيت الفراشات… شوفوا الألوان!",
+    "فراشة زرقا قعدت على كمّي، وأنا ما تحرّكت أبد عشان ما تطير!"
+   ],
+   "clips": [
+    {
+     "scene": "Inside a bright glass butterfly house: lush tropical plants, small flowers, sunlight streaming through a curved lattice roof, dozens of colorful butterflies fluttering. Mira enters along a leafy path, hands clasped at her chest in wonder. 9:16, soft green light.",
+     "action": "Butterflies swirl around Mira as she slowly turns, following them with her eyes and laughing quietly. Camera: slow circular dolly around her as butterflies pass close to the lens.",
+     "sound": "Soft fluttering, gentle water drips, dreamy light music; no speech, no vocals."
+    },
+    {
+     "scene": "Close medium shot in the butterfly house: Mira holds one arm out very still; a large bright-blue butterfly rests on her black sleeve cuff. Blurred flowers and green leaves behind. 9:16, warm sunlight.",
+     "action": "The butterfly slowly opens and closes its shimmering blue wings; Mira holds her breath with wide eyes, then smiles as it flutters away. Camera: slow push-in to the butterfly, then rack focus to Mira's face.",
+     "sound": "Delicate wing flutter, soft dreamy music; no speech, no vocals."
+    }
+   ],
+   "caption": "فراشة زرقا اختارت كمّ ميرا 🦋 في جزيرة النور بالشارقة! الحلقة الياية: ليل الصحرا والنجوم في مليحة ✨",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#جزيرة_النور",
+    "#الشارقة",
+    "#فراشات",
+    "#طبيعة_الإمارات"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 12,
+   "title": "ميرا تعدّ نجوم مليحة",
+   "topic": "مليحة: صخرة الأحافير ومراقبة النجوم — الشارقة",
+   "lines": [
+    "مليحة في الشارقة! صخورها فيها أحافير بحرية، يعني البحر كان هني من زمان.",
+    "وفي الليل شفت النجوم بالتلسكوب ويا أبوي… السما مليانة!"
+   ],
+   "clips": [
+    {
+     "scene": "Mleiha desert at sunset: red-orange sand and a large rugged rock mountain glowing in warm light, a few acacia trees. Mira crouches by a sandy limestone boulder in the foreground, looking at a small spiral seashell fossil set in the rock. 9:16, long golden shadows.",
+     "action": "Mira brushes sand off the fossil with her fingertips, reveals the spiral shape and looks up at the camera in amazement. Camera: slow push-in from medium to close on the fossil and her face.",
+     "sound": "Soft desert wind, faint crickets, mysterious warm music; no speech, no vocals."
+    },
+    {
+     "scene": "Mleiha desert at night: a sky full of bright stars and the faint Milky Way above dark dunes. Mira stands at a small plain white telescope on a tripod; Baba (modest Emirati man, white kandura and ghutra) kneels beside her. A lantern on the sand lights both their faces in warm golden light. 9:16.",
+     "action": "Mira looks through the telescope, pulls back and points up in wonder as a shooting star streaks across the sky. Camera: slow tilt up from Mira and Baba to the starry sky.",
+     "sound": "Night crickets, gentle wind, magical soft music; no speech, no vocals."
+    }
+   ],
+   "caption": "صخرة فيها أحافير بحر وسط الصحرا 🐚 ونجوم مليحة تلمع فوق ميرا! الحلقة الياية: قلعة قديمة صارت متحف في عجمان 🏰",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#مليحة",
+    "#الشارقة",
+    "#نجوم",
+    "#صحراء_الإمارات"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 13,
+   "title": "ميرا في قلعة عجمان",
+   "topic": "متحف عجمان في القلعة القديمة — عجمان",
+   "lines": [
+    "هذي قلعة عجمان، وصارت الحين متحف يحكي عن حياة الأوّلين.",
+    "شفت عريش من سعف النخل… كانوا يسكنونه في الصيف عشان يبرد!"
+   ],
+   "clips": [
+    {
+     "scene": "Sunny square in front of an old fort in Ajman: thick sand-colored walls, two square watchtowers with small triangle battlements, a heavy carved wooden gate standing open. Mira stands beside the gate in three-quarter view facing the camera, framed from the knees up. 9:16 low angle, blue sky, no signs or text.",
+     "action": "Mira gives the camera an excited smile and a little beckoning wave, then turns and steps through the open gate into the sunny courtyard. Camera: slow push-in following her to the gateway.",
+     "sound": "Footsteps on sand, creak of a wooden gate, soft heritage music; no speech, no vocals."
+    },
+    {
+     "scene": "Inside a traditional summer hut of woven palm fronds in the fort courtyard: stripes of sunlight filter through the frond walls. Mira sits cross-legged on a woven mat facing the camera, medium shot, face clearly visible. 9:16, warm light, no text.",
+     "action": "A gentle breeze moves the fronds; stripes of sunlight drift across Mira as she looks around the hut and smiles happily. Camera: slow push-in toward Mira.",
+     "sound": "Rustling dry palm fronds, light breeze, calm music; no speech, no vocals."
+    }
+   ],
+   "caption": "بيت من سعف النخل يبرد في الصيف؟ 🌴 ميرا دخلت العريش في قلعة عجمان! الحلقة الياية: بوم خشب ينبني باليد ⛵",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#عجمان",
+    "#متحف_عجمان",
+    "#العريش",
+    "#تراث_إماراتي"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 14,
+   "title": "ميرا وصنّاع الأبوام",
+   "topic": "صناعة الأبوام الخشبية (الدهو) في مصنع السفن — عجمان",
+   "lines": [
+    "عجمان مشهورة ببناء الأبوام الخشبية باليد، مثل ما سوّوا الأوّلين!",
+    "لمست الخشب الناعم، والنجار يقول: البوم ياخذ شهور لين يخلص!"
+   ],
+   "clips": [
+    {
+     "scene": "Dhow yard by the creek in Ajman, morning: the huge wooden skeleton of a dhow under construction on timber supports, curved ribs and golden planks, sawdust on the ground, water behind. Mira stands beside the hull in the foreground, framed from the knees up, looking up. 9:16 low angle, warm light, no signs or text.",
+     "action": "Mira walks slowly along the giant hull, tilting her head back to follow its curved wooden ribs. Camera: slow tracking shot along the hull, ending on her amazed face.",
+     "sound": "Distant gentle hammering, seagulls, water lapping, soft music; no speech, no vocals."
+    },
+    {
+     "scene": "Close medium shot at the hull: a modest carpenter in a plain loose white shirt and plain white cap smooths a plank with a hand plane; curls of wood shavings fall. Mira stands next to him, her hand resting on the far end of the plank, away from the plane. 9:16, sunbeams and floating sawdust, no logos or text.",
+     "action": "Curly wood shavings roll off the plane; Mira catches one in her palm, holds it up to the camera and smiles. Camera: slow push-in to her hand and the shaving.",
+     "sound": "Soft wood planing, gentle tapping, warm music; no speech, no vocals."
+    }
+   ],
+   "caption": "بوم خشب كامل ينبني باليد في عجمان ⛵ والبوم ياخذ شهور! الحلقة الياية: طيور وردية توقف على ريل وحدة 🦩",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#عجمان",
+    "#الأبوام",
+    "#صناعة_السفن",
+    "#تراث_بحري"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 15,
+   "title": "ميرا وطيور الفلامنغو",
+   "topic": "محمية الزوراء الطبيعية (القرم والفلامنغو) — عجمان",
+   "lines": [
+    "محمية الزوراء في عجمان… القرم أخضر والماي هادي وصافي.",
+    "الفلامنغو الوردي يوقف على ريل وحدة… وأنا بعد حاولت!"
+   ],
+   "clips": [
+    {
+     "scene": "Al Zorah nature reserve in soft morning light: a wooden boardwalk through bright green mangrove trees over calm shallow water, pink flamingos wading in the distance. Mira walks onto the boardwalk with small plain binoculars around her neck. 9:16 wide, pastel sky.",
+     "action": "Mira lifts the binoculars to her eyes, spots the flamingos and lowers them with an excited gasp, pointing. Camera: slow push-in over her shoulder toward the flock.",
+     "sound": "Soft water ripples, distant bird calls, calm nature music; no speech, no vocals."
+    },
+    {
+     "scene": "Closer view from the boardwalk: several pink flamingos stand in the shallow water a few meters away, some on one leg. Mira stands at the boardwalk rail facing them. 9:16 medium-wide, golden reflections on the water.",
+     "action": "Holding the rail with one hand, Mira lifts one foot slightly behind her, her abaya covering her legs, and balances like the flamingos, wobbling and laughing as a flamingo tilts its head at her. Camera: slow sideways dolly framing Mira and the flamingos together.",
+     "sound": "Gentle splashes, soft flamingo honks, playful light music; no speech, no vocals."
+    }
+   ],
+   "caption": "ميرا حاولت توقف على ريل وحدة مثل الفلامنغو 🦩😂 في عجمان! الحلقة الياية: ليلة العيد والحنّا… تابعونا",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#عجمان",
+    "#محمية_الزوراء",
+    "#فلامنغو",
+    "#القرم"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 16,
+   "title": "حنّا ليلة العيد",
+   "topic": "الحنّاء ليلة العيد — عجمان",
+   "lines": [
+    "ليلة العيد في بيت خالتي بعجمان، والحنّا جاهزة والكل فرحان!",
+    "خالتي رسمت لي وردة على كفّي… وباچر العيد، يالله!"
+   ],
+   "clips": [
+    {
+     "scene": "Cozy Emirati sitting room at night: floor cushions, warm lantern light, a low tray with henna cones, a small bowl of henna leaves and a plate of golden luqaimat. Mira sits cross-legged on a cushion beside her aunt, a modest woman in black abaya and shayla. 9:16 medium shot, golden glow.",
+     "action": "Mira rubs her palms together excitedly and holds out her right hand to her aunt, who picks up a henna cone with a smile. Camera: slow push-in toward the tray and Mira's outstretched hand.",
+     "sound": "Soft room ambience, gentle festive music; no speech, no vocals."
+    },
+    {
+     "scene": "Medium close-up from a high angle: Mira leans over her open palm resting on a cushion, her face visible at the top of the frame; the aunt's hand draws a delicate henna flower and leafy vine with a cone, glossy dark brown paste, only floral shapes, no letters or symbols. 9:16, warm light.",
+     "action": "The henna flower and leafy vine grow across Mira's palm stroke by stroke; Mira watches, then lifts her eyes to the camera, beaming. Camera: slow push-in toward her palm and face.",
+     "sound": "Quiet festive ambience, soft joyful music; no speech, no vocals."
+    }
+   ],
+   "caption": "ليلة العيد في عجمان 🌙 وحنّا ميرا وردة على كفّها! الحلقة الياية: صباح العيد عند يدّوه… والعيدية 🎁",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#الحناء",
+    "#ليلة_العيد",
+    "#عجمان",
+    "#عادات_إماراتية"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 17,
+   "title": "عيدية يدّوه",
+   "topic": "صباح العيد والعيدية في بيت يدّوه — أم القيوين",
+   "lines": [
+    "عيدكم مبارك! رحنا بيت يدّوه في أم القيوين من الصبح.",
+    "يدّوه عطتني العيدية، وقلت لها: عساچ من عوّاده يا يدّوه!"
+   ],
+   "clips": [
+    {
+     "scene": "Sunny Eid morning at a traditional Emirati house in Umm Al Quwain: a palm tree, a carved wooden door hung with small green and gold lanterns, no banners or writing. Mira stands at the door in three-quarter side view with Mama (black abaya and shayla) and her little brother (small white kandura). 9:16, bright festive light.",
+     "action": "The door opens and Yaddoh, a grandmother in black abaya and shayla, opens her arms wide; Mira runs into a warm hug. Camera: gentle push-in from the side toward the hug.",
+     "sound": "Morning birds, soft cheerful festive music; no speech, no vocals."
+    },
+    {
+     "scene": "Inside Yaddoh's majlis, close medium shot: Yaddoh, a grandmother in black abaya and shayla, sits on a floor cushion holding a small plain green cloth pouch; Mira kneels in front of her, hands together. A tray of dates and sweets nearby. 9:16, warm light, no text.",
+     "action": "Yaddoh places the little pouch in Mira's hands; Mira kisses Yaddoh's forehead and hugs the pouch to her chest with a big smile. Camera: slow orbit around them ending on Mira's face.",
+     "sound": "Soft festive music, gentle room ambience; no speech, no vocals."
+    }
+   ],
+   "caption": "عيدية يدّوه أحلى عيدية 💚 وميرا تعلّمت تردّ: عساچ من عوّاده! الحلقة الياية: قلعة أم القيوين عمرها أكثر من ميتين سنة 🏰",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#العيد",
+    "#العيدية",
+    "#أم_القيوين",
+    "#عادات_إماراتية"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 18,
+   "title": "ميرا حارسة القلعة",
+   "topic": "قلعة أم القيوين (المتحف الوطني) — أم القيوين",
+   "lines": [
+    "قلعة أم القيوين عمرها أكثر من ميتين سنة، وحجرها يحكي قصص!",
+    "طلعت سيده فوق البرج… من هني كانوا يحرسون الديرة!"
+   ],
+   "clips": [
+    {
+     "scene": "Bright afternoon at the old fort of Umm Al Quwain: sandy-white stone walls, a tall round watchtower with small triangular battlements, palm trees and a wooden gate. Mira stands in the foreground in three-quarter view, hands on hips, framed from the knees up, looking up proudly. 9:16 low angle, blue sky, no signs.",
+     "action": "Mira gives a playful salute toward the tower, then grins at the camera. Camera: slow crane up from Mira to the top of the round tower.",
+     "sound": "Light breeze, distant seagulls, soft heritage music; no speech, no vocals."
+    },
+    {
+     "scene": "Top of the fort tower: a chest-high stone parapet overlooking palm trees, low old houses and a calm blue lagoon. Mira stands safely behind the parapet with both hands on it, seen in three-quarter side view, face clearly visible, breeze gently moving her shayla. 9:16 medium shot, golden light, no text.",
+     "action": "Mira cups her hands around her eyes like binoculars and scans the horizon like a guard, then turns to the camera with a proud grin. Camera: slow arc from her side toward the front.",
+     "sound": "Wind on the tower, seagulls, gentle music; no speech, no vocals."
+    }
+   ],
+   "caption": "ميرا صارت حارسة قلعة أم القيوين ليوم واحد 🏰😄 الحلقة الياية: قفص غريب يصيد السمك… تعرفون شو اسمه؟",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#أم_القيوين",
+    "#قلعة_أم_القيوين",
+    "#قلاع_الإمارات",
+    "#تراث_إماراتي"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 19,
+   "title": "ميرا وسرّ القرقور",
+   "topic": "القرقور وصيد السمك التقليدي — أم القيوين",
+   "lines": [
+    "في أم القيوين شفت الصيادين يطلّعون القراقير من البحر.",
+    "القرقور قفص يدخله السمك وما يعرف يطلع… شطّار أهل البحر!"
+   ],
+   "clips": [
+    {
+     "scene": "Small fishing harbor in Umm Al Quwain at early morning: plain unmarked wooden fishing boats, no names or numbers, bobbing; stacks of dome-shaped wire fish traps on the jetty, calm silver water, pastel sky. Mira stands on the jetty beside the traps, curious, medium shot. 9:16, no signs or text.",
+     "action": "Mira crouches and peeks through the mesh of a dome-shaped trap, tracing its round shape with a finger, then looks up questioningly at the camera. Camera: slow low push-in toward Mira and the trap.",
+     "sound": "Lapping harbor water, soft seagulls, creaking ropes, calm music; no speech, no vocals."
+    },
+    {
+     "scene": "Beside a plain wooden boat at the jetty: a modest Emirati fisherman in white kandura and head wrap pulls a dripping dome-shaped wire trap from the water, small silver fish flapping inside. Mira watches beside him. 9:16 medium shot, morning sun glints.",
+     "action": "The fisherman hauls the dripping trap up onto the jetty by its rope; water streams off and the small fish shimmer; Mira claps and leans closer with a delighted smile. Camera: slow tilt up following the trap out of the water to Mira's face.",
+     "sound": "Water splashing and dripping, seagulls, gentle cheerful music; no speech, no vocals."
+    }
+   ],
+   "caption": "قفص من سيم يصيد السمك بلا شبكة 🐟 ميرا عرفت سرّ القرقور في أم القيوين! الحلقة الياية: جزيرة فيها آلاف الطيور 🐦",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#القرقور",
+    "#أم_القيوين",
+    "#صيد_السمك",
+    "#تراث_بحري"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 20,
+   "title": "ميرا في جزيرة الطيور",
+   "topic": "جزيرة السينية (القرم وطيور الغاق السقطري) — أم القيوين",
+   "lines": [
+    "ركبنا القارب لجزيرة السينية في أم القيوين، والقرم حاوطها.",
+    "آلاف الطيور السودا تطير فوقنا… اسمها الغاق السقطري!"
+   ],
+   "clips": [
+    {
+     "scene": "Calm lagoon of Umm Al Quwain: a small unmarked boat approaches a low sandy island fringed with green mangroves. Mira sits at the front in three-quarter side view, face clearly visible, in a plain orange life vest over her abaya; Baba (modest Emirati man, white kandura and ghutra) steers behind her. 9:16 medium-wide, morning light, no text.",
+     "action": "Mira turns from the island to the camera with an excited smile and points ahead as the boat glides closer and the mangroves grow larger. Camera: slow tracking shot alongside the boat at Mira's level.",
+     "sound": "Soft boat engine hum, water spray, distant bird calls, calm music; no speech, no vocals."
+    },
+    {
+     "scene": "Near the island shore: a huge flock of black cormorants flying low over the water in a long flowing ribbon, others resting on a sandbank. Mira sits in the boat in her plain orange life vest, Baba (white kandura and ghutra) at the tiller behind her, both looking up. 9:16, bright sky.",
+     "action": "The flock sweeps overhead in a wave; Mira follows it with her eyes, mouth open in wonder, then laughs and waves at the birds. Camera: slow tilt up from Mira to the swirling flock.",
+     "sound": "Wing beats and bird calls, water lapping, gentle music; no speech, no vocals."
+    }
+   ],
+   "caption": "آلاف الطيور فوق راس ميرا في جزيرة السينية 🐦 منظر ما ينتسى! الحلقة الياية: ميرا في قرية الغوّاصين برأس الخيمة 🐚",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#جزيرة_السينية",
+    "#أم_القيوين",
+    "#طيور",
+    "#القرم"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 21,
+   "title": "ميرا في قرية الغوّاصين",
+   "topic": "الجزيرة الحمراء، قرية الغوص واللؤلؤ القديمة — رأس الخيمة",
+   "lines": [
+    "هذي الجزيرة الحمرا في رأس الخيمة، قرية قديمة لأهل الغوص واللولو.",
+    "بيوتها من حجر المرجان… وتخيّلت الغوّاصين راجعين من البحر فرحانين."
+   ],
+   "clips": [
+    {
+     "scene": "Golden-hour alley in Al Jazirah Al Hamra heritage village: weathered coral-stone houses with crumbling walls, wooden beams and a small wind tower, sandy ground glowing orange. Mira steps into the alley, looking around with curiosity. 9:16, long warm shadows, no signs.",
+     "action": "Mira walks slowly between the old houses, running her fingertips along the rough coral wall. Camera: slow tracking shot beside her along the wall.",
+     "sound": "Soft wind through old walls, distant sea, gentle nostalgic music; no speech, no vocals."
+    },
+    {
+     "scene": "Mira stands in the doorway of an old coral-stone house at sunset, seen in three-quarter profile with her face clearly visible; beyond her the calm sea and, far out, a faint dreamy silhouette of a wooden pearling boat with a white sail. 9:16 medium shot, soft golden glow, no text.",
+     "action": "Mira shades her eyes and smiles as the dreamy boat glides toward shore and gently fades into the golden light, like a memory. Camera: slow push-in on Mira's smiling face with the sea beside her.",
+     "sound": "Gentle waves, soft wind, warm nostalgic music; no speech, no vocals."
+    }
+   ],
+   "caption": "قرية كاملة من حجر المرجان 🐚 وميرا تخيّلت رجعة الغوّاصين! الحلقة الياية: ميرا تفتح محارة… شو بتلقى داخلها؟",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#الجزيرة_الحمراء",
+    "#رأس_الخيمة",
+    "#الغوص",
+    "#تراث_بحري"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 22,
+   "title": "ميرا ولؤلؤة المحارة",
+   "topic": "مزرعة اللؤلؤ في الرمس وتراث الغوص — رأس الخيمة",
+   "lines": [
+    "زمان أهل الإمارات يغوصون عشان اللولو، واليوم زرنا مزرعة لولو!",
+    "فتحنا المحارة، وما شاء الله… لولوة بيضا تلمع! وايد حلوة!"
+   ],
+   "clips": [
+    {
+     "scene": "Calm turquoise lagoon: a small wooden floating hut on stilts, ropes with hanging oyster baskets dipping into the water, mountains faint behind. Mira stands at the deck rail in a plain orange life vest beside Baba (modest Emirati man, white kandura and ghutra). 9:16 medium-wide, clear bright light, no text.",
+     "action": "Baba lifts a rope of dripping oyster baskets from the water; Mira leans on the rail, eyes wide, watching the water sparkle. Camera: slow push-in toward Mira and the baskets.",
+     "sound": "Water dripping and lapping, wooden deck creaks, soft seagulls, gentle music; no speech, no vocals."
+    },
+    {
+     "scene": "Close-up at a wooden table on the deck: Baba (white kandura and ghutra) holds a half-opened oyster shell in front of Mira, still in her plain orange life vest, who leans in with clasped hands, face clearly visible. 9:16, soft sunlight, no text.",
+     "action": "Baba lifts the top half of the oyster shell, revealing a round white pearl glowing softly; Mira gasps, her face lit by its shimmer, then smiles at the camera. Camera: slow push-in toward the pearl and Mira's face.",
+     "sound": "Soft shell click, light sparkle chime, warm music; no speech, no vocals."
+    }
+   ],
+   "caption": "ميرا فتحت محارة… ولقت لولوة تلمع 🦪✨ مثل كنوز الغوّاصين زمان! الحلقة الياية: قلعة فوق راس تل في رأس الخيمة 🏰",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#اللؤلؤ",
+    "#رأس_الخيمة",
+    "#الغوص",
+    "#تراث_بحري"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 23,
+   "title": "ميرا فوق قلعة ضاية",
+   "topic": "قلعة ضاية — رأس الخيمة",
+   "lines": [
+    "قلعة ضاية في رأس الخيمة، مبنية فوق راس تل عالي!",
+    "طلعت الدرج كله، وعقب شفت النخل والبحر… يستاهل التعب!"
+   ],
+   "clips": [
+    {
+     "scene": "Morning at Dhayah Fort: a small mud-brick fort with a round tower on a steep rocky hill, a long stone staircase zigzagging up, palm groves at the foot. Mira stands at the foot of the stairs in the foreground, three-quarter view toward the camera, framed from the knees up. 9:16 low angle, clear blue sky.",
+     "action": "Mira takes a determined breath, rolls her shoulders, grins at the camera, then turns and climbs the first steps with energy. Camera: slow tilt up from Mira along the staircase to the fort on top.",
+     "sound": "Morning birds, soft breeze, upbeat gentle music; no speech, no vocals."
+    },
+    {
+     "scene": "At the top beside the fort mud wall, safely behind a sturdy chest-high stone wall: a wide view of green palm groves, a flat plain and the sea shining far away. Mira stands slightly out of breath, hands on her knees. 9:16, golden light.",
+     "action": "Mira straightens up, spreads her arms wide to the view and smiles proudly as the wind moves her abaya softly. Camera: slow half orbit from her face to the panorama.",
+     "sound": "Hilltop wind, distant birds, triumphant soft music; no speech, no vocals."
+    }
+   ],
+   "caption": "كم درجة طلعت ميرا لين قلعة ضاية؟ 😅 بس المنظر من فوق يستاهل! الحلقة الياية: أعلى جبل في الإمارات… والغيوم تحته ☁️",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#قلعة_ضاية",
+    "#رأس_الخيمة",
+    "#قلاع_الإمارات",
+    "#تراث_إماراتي"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 24,
+   "title": "ميرا فوق الغيوم",
+   "topic": "جبل جيس — رأس الخيمة",
+   "lines": [
+    "جبل جيس، أعلى جبل في الإمارات… والغيوم تحت ريولي!",
+    "الهوا هني بارد، شربت كرك حار ويا أمي… الله ما أحلاه!"
+   ],
+   "clips": [
+    {
+     "scene": "Early morning high on Jebel Jais: layered jagged mountain ridges in purple-blue tones, a soft sea of white clouds filling the valleys below, sun rising. Mira stands at a viewpoint behind a sturdy railing, wide-eyed. 9:16 wide, crisp cool light.",
+     "action": "Mira leans on the railing and gazes down at the clouds drifting slowly through the valleys. Camera: slow aerial-style push past Mira out over the sea of clouds.",
+     "sound": "Cool mountain wind, a distant bird, airy calm music; no speech, no vocals."
+    },
+    {
+     "scene": "Same viewpoint, close medium shot: Mira and Mama (black abaya and shayla) sit on a bench wrapped in soft shawls, each holding a small plain cup of steaming tea; mountains and clouds behind. 9:16, warm sunrise glow.",
+     "action": "Mira blows on her steaming cup, takes a sip and snuggles against Mama with a happy shiver. Camera: slow push-in to Mira's cosy smile with steam rising.",
+     "sound": "Soft wind, gentle cozy music; no speech, no vocals."
+    }
+   ],
+   "caption": "ميرا فوق أعلى جبل في الإمارات ☁️ والغيوم تحت ريولها! الحلقة الياية: شلال وسط جبال الفجيرة 💦",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#جبل_جيس",
+    "#رأس_الخيمة",
+    "#جبال_الإمارات",
+    "#طبيعة_الإمارات"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 25,
+   "title": "ميرا وشلال الوريعة",
+   "topic": "وادي الوريعة (المحمية الجبلية) — الفجيرة",
+   "lines": [
+    "وادي الوريعة في الفجيرة، أول محمية جبلية في الإمارات!",
+    "غمّست يدي في ماي الشلال… بارد وايد، مب طبيعي!"
+   ],
+   "clips": [
+    {
+     "scene": "Wadi Wurayah: a rocky canyon of grey-brown boulders and green plants, a small waterfall pouring into a clear emerald pool. Mira stands on a flat rock near the pool, Baba (modest Emirati man, white kandura and ghutra) right behind her. 9:16 wide, bright light with soft mist.",
+     "action": "Mira looks up at the waterfall, eyes sparkling, as fine mist drifts toward her and a small rainbow shimmers in the spray. Camera: slow tilt up from the pool to the top of the waterfall.",
+     "sound": "Rushing waterfall, echoing canyon, birds, gentle music; no speech, no vocals."
+    },
+    {
+     "scene": "Close medium shot at the edge of the emerald pool: Mira kneels on a smooth flat rock, one hand reaching toward the clear water; tiny fish visible under the surface. 9:16, sparkling reflections.",
+     "action": "Mira dips her fingers in, flinches at the cold with a laugh, then watches tiny fish swim around her hand. Camera: slow push-in to the water surface and her fingers.",
+     "sound": "Splashing and trickling water, birds, playful light music; no speech, no vocals."
+    }
+   ],
+   "caption": "شلال يركض بين صخور الفجيرة 💦 وميرا جرّبت برودة الماي! الحلقة الياية: قلعة الفجيرة وجبالها 🏰",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#وادي_الوريعة",
+    "#الفجيرة",
+    "#شلال",
+    "#طبيعة_الإمارات"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 26,
+   "title": "غمّيضة في قلعة الفجيرة",
+   "topic": "قلعة الفجيرة — الفجيرة",
+   "lines": [
+    "قلعة الفجيرة من أقدم القلاع في الإمارات، ووراها جبال الحجر.",
+    "بين أبراجها المدوّرة لعبنا الغمّيضة أنا وأخوي الصغير!"
+   ],
+   "clips": [
+    {
+     "scene": "Fujairah Fort in late afternoon: a mud-brick and stone fort with round and square towers on a low rocky mound, rugged mountains behind, date palms around. Mira stands on the path in the foreground, three-quarter view toward the camera, framed from the knees up. 9:16 low angle, warm amber light, no signs.",
+     "action": "Mira waves happily at the camera, then turns and walks up the path toward the fort. Camera: slow crane up beside her revealing the towers and mountains.",
+     "sound": "Soft breeze, distant birds, warm heritage music; no speech, no vocals."
+    },
+    {
+     "scene": "Sandy courtyard between two round mud towers of the fort: her little brother (small white kandura) hides behind one tower; Mira tiptoes toward it with a finger on her lips and a playful smile, face clearly visible. 9:16 medium-wide, golden light.",
+     "action": "Mira peeks around the tower and finds her brother; both burst into laughter and hug. Camera: smooth arc around the tower following Mira.",
+     "sound": "Light footsteps on sand, playful gentle music; no speech, no vocals."
+    }
+   ],
+   "caption": "غمّيضة بين أبراج قلعة الفجيرة 😄 وجبال الحجر تطالع! الحلقة الياية: أقدم مسجد للحين يصلّون فيه… تعرفون كم عمره؟ 🕌",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#قلعة_الفجيرة",
+    "#الفجيرة",
+    "#قلاع_الإمارات",
+    "#تراث_إماراتي"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 27,
+   "title": "ميرا في أقدم مسجد",
+   "topic": "مسجد البدية — الفجيرة",
+   "lines": [
+    "مسجد البدية بالفجيرة، أقدم مسجد في الإمارات للحين يصلّون فيه، وله أربع قباب.",
+    "وداخله عمود واحد شايل القباب كلها… مكان هادي يريّح القلب."
+   ],
+   "clips": [
+    {
+     "scene": "Morning at Al Bidyah Mosque: a small square mud-and-stone mosque with four low rounded domes at the foot of a rocky hill topped by two old watchtowers, the sea glimpsed nearby. Mira stands in front beside Mama (black abaya and shayla). 9:16 wide, soft clear light, no signs.",
+     "action": "Mira looks up at the four domes, then slips off her shoes neatly by the door and steps inside with Mama. Camera: slow push-in toward the small arched doorway.",
+     "sound": "Gentle sea breeze, morning birds; no music, no speech, no vocals."
+    },
+    {
+     "scene": "Inside the tiny mosque: plain whitewashed walls, small arched windows letting in soft beams of light, a plain red carpet, one thick round pillar in the center holding up four small domes. Mira sits quietly near the pillar, face clearly visible. 9:16, peaceful light, no books, inscriptions or writing.",
+     "action": "Mira looks up slowly at the domes curving from the single pillar, places her palm gently on it and closes her eyes peacefully. Camera: slow tilt up from Mira along the pillar to the domes.",
+     "sound": "Peaceful quiet room tone, faint distant birds, soft breeze; no music, no speech, no vocals."
+    }
+   ],
+   "caption": "أقدم مسجد في الإمارات للحين يصلّون فيه، عمره أكثر من ٥٠٠ سنة 🕌 أربع قباب وعمود واحد! الحلقة الياية: سلحفاة تسلّم على ميرا 🐢",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#مسجد_البدية",
+    "#الفجيرة",
+    "#تراث_إماراتي",
+    "#الإمارات"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 28,
+   "title": "ميرا والسلحفاة",
+   "topic": "شاطئ العقة والشعاب المرجانية — الفجيرة",
+   "lines": [
+    "بحر العقة في الفجيرة صافي وايد… تشوف المرجان والسمك من فوق!",
+    "وسلحفاة بحرية طلّعت راسها جنب القارب، كأنها تقول: هلا ميرا!"
+   ],
+   "clips": [
+    {
+     "scene": "Al Aqah coast, Fujairah: crystal-clear turquoise water over coral and rocks, a small rocky island offshore, rugged mountains along the shore. Mira sits in a small unmarked wooden boat in a plain orange life vest; Baba (modest Emirati man, white kandura and ghutra) sits at the stern. 9:16 medium-wide, bright sun, no text.",
+     "action": "Mira leans over the side and looks down through the clear water at colorful fish darting over the coral, her reflection rippling. Camera: slow tilt down from Mira over the side into the clear water.",
+     "sound": "Gentle waves on the hull, seagulls, light airy music; no speech, no vocals."
+    },
+    {
+     "scene": "Close shot at the boat's side: calm clear water with a green sea turtle swimming up near the surface; Mira leans over the side with both hands on the edge, plain orange life vest on. 9:16, sparkling sunlight, no text.",
+     "action": "The turtle lifts its head above the water for a moment; Mira gasps, waves softly at it and smiles as it glides away. Camera: slow push-in from the turtle to Mira's delighted face.",
+     "sound": "Soft splash, waves, warm gentle music; no speech, no vocals."
+    }
+   ],
+   "caption": "سلحفاة طلعت تسلّم على ميرا في بحر الفجيرة 🐢💙 الحلقة الياية: جبال خورفكان لاصقة في البحر… لا تفوتكم!",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#الفجيرة",
+    "#العقة",
+    "#سلاحف",
+    "#بحر_الإمارات"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 29,
+   "title": "ميرا في خورفكان",
+   "topic": "خورفكان: إطلالة الجبال والشاطئ — الشارقة",
+   "lines": [
+    "خورفكان في الشارقة! الجبال لاصقة في البحر، منظر خيال!",
+    "نزلنا البحر وجمعت صدف ويا أخوي الصغير… باچر نرجع أبوظبي!"
+   ],
+   "clips": [
+    {
+     "scene": "High mountain viewpoint above Khor Fakkan, late afternoon: rugged brown mountains curving around a deep blue bay, a long sandy beach below. Mira stands at a stone railing in three-quarter side view, face clearly visible, breeze moving her abaya gently, the bay beside her. 9:16 medium-wide, warm light, no signs or text.",
+     "action": "Mira leans on the railing, slowly takes in the view from mountains to sea, then turns to the camera with an amazed smile. Camera: slow arc from her side toward the front, keeping the bay behind her.",
+     "sound": "Mountain wind, distant waves, uplifting soft music; no speech, no vocals."
+    },
+    {
+     "scene": "Khor Fakkan beach at sunset: soft golden sand, small gentle waves, mountains silhouetted behind. Mira and her little brother (small white kandura) kneel on the sand beside a tiny pile of seashells. 9:16 medium shot, pink-orange sky.",
+     "action": "Mira picks up a pearly shell and holds it to her ear; both siblings giggle as a small wave washes near their knees. Camera: slow low dolly along the sand toward them.",
+     "sound": "Gentle waves, soft sea breeze, warm sunset music; no speech, no vocals."
+    }
+   ],
+   "caption": "جبال خورفكان تحضن البحر 🌊 وميرا جمعت الصدف ويا أخوها! الحلقة الياية والأخيرة: اليوم الوطني في أبوظبي 🇦🇪",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#خورفكان",
+    "#الشارقة",
+    "#بحر_الإمارات",
+    "#طبيعة_الإمارات"
+   ]
+  },
+  {
+   "story": "uae",
+   "k": 30,
+   "title": "ميرا واليوم الوطني",
+   "topic": "احتفال اليوم الوطني على كورنيش أبوظبي — أبوظبي",
+   "lines": [
+    "اليوم الوطني! كورنيش أبوظبي كله أحمر وأخضر وأبيض وأسود.",
+    "سبع إمارات زرتها كلها… وكلها بيت واحد. كل عام والإمارات بخير!"
+   ],
+   "clips": [
+    {
+     "scene": "Abu Dhabi Corniche, National Day dusk: palms wrapped in red, green, white and black lights, plain UAE flags (red vertical band, green-white-black stripes) waving, the sea behind, no banners, posters or portraits. Mira walks with Baba (white kandura, ghutra), Mama (black abaya, shayla) and her little brother, holding a small flag. 9:16, no text.",
+     "action": "Mira waves the small flag high and skips ahead along the promenade, her family following with smiles. Camera: smooth tracking shot moving backward ahead of her.",
+     "sound": "Festive gentle ambience, sea breeze, joyful soft patriotic-style music; no speech, no vocals."
+    },
+    {
+     "scene": "Night on the Corniche beach: Mira stands in front in three-quarter view holding her small flag, with Baba (white kandura and ghutra), Mama and grandmother Yaddoh (black abayas and shaylas) and her little brother (small white kandura) beside her, the dark sky over the sea behind them ready for fireworks. 9:16 medium-wide, no text.",
+     "action": "Fireworks bloom in red, green, white and gold over the sea; Mira looks up, raises her flag and turns to the camera beaming as the family hugs together. Camera: slow pull-back revealing the fireworks-filled sky above the family.",
+     "sound": "Soft firework booms, gentle waves, uplifting warm music; no speech, no vocals."
+    }
+   ],
+   "caption": "سبع إمارات… وقلب واحد 🇦🇪 ميرا خلّصت رحلتها في اليوم الوطني! شو تبون ميرا تكتشف في الموسم الياي؟ قولوا لنا 👇",
+   "tags": [
+    "#ميرا_تكتشف_الإمارات",
+    "#اليوم_الوطني",
+    "#أبوظبي",
+    "#الإمارات",
+    "#OMAi"
+   ]
+  }
+ ]
+}

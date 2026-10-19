@@ -39,10 +39,11 @@ const AUTO_PLATFORMS = ['instagram', 'facebook', 'tiktok', 'youtube', 'x', 'thre
 const MONITOR_KEY = process.env.MONITOR_KEY || '';
 const BOT_USER = (process.env.BOT_USER || 'omaisocial').trim().toLowerCase();
 const CHROME = process.env.CHROME_PATH || undefined;
-const SITE = 'omran-ai-builder.vercel.app';
-const QR_URL = 'https://' + SITE + '/app?ref=omran'; // نفس رابط باركود المالك
+export const SITE = 'omran-ai-builder.vercel.app';
+export const QR_URL = 'https://' + SITE + '/app?ref=omran'; // نفس رابط باركود المالك
 
-const W = 1080, H = 1920, VW = 432, VH = 768, DPR = 2.5, FPS = 30;
+export const W = 1080, H = 1920, FPS = 30;
+const VW = 432, VH = 768, DPR = 2.5;
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 const BUILD_TIMEOUT_MS = 300000;
 const SERIES = 'سوّها بـ OM Ai';
@@ -81,8 +82,8 @@ export function parseKind(raw) {
 }
 const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const log = (...a) => console.log('[social-bot]', ...a);
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export const log = (...a) => console.log('[social-bot]', ...a);
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const now = () => performance.now() / 1000;
 
 // ───────── الفكرة ─────────
@@ -197,7 +198,7 @@ export const dueNow = (lastAt, nowMs, everyH = EVERY_H) => !lastAt || nowMs - la
 
 async function seriesState() {
   const items = [];
-  for (let page = 1; page <= 3; page++) {
+  for (let page = 1; page <= 10; page++) { // ١٠٠٠ صفّ: صفوف «مسلسل ميرا» اليوميّة (٦ منصّات) كانت ستقصّر نافذة الـ٣٠٠ إلى شهر
     const r = await upFetch('/uploadposts/history?limit=100&status=success&page=' + page + '&profile_username=' + encodeURIComponent(UP_USER));
     if (!r.ok) throw new Error('upload history ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 160));
     const h = (r.j && r.j.history) || [];
@@ -464,7 +465,7 @@ export function connectedPlatforms(sa, list = AUTO_PLATFORMS) {
   const acc = (p) => (sa && (sa[p] || (p === 'x' ? sa.twitter : null))) || null;
   return list.filter((p) => { const a = acc(p); return !!a && typeof a === 'object' && !a.reauth_required; });
 }
-async function resolvePlatforms() {
+export async function resolvePlatforms() {
   if (PLATFORMS_RAW !== 'auto') return PLATFORMS_RAW.split(',').map((s) => s.trim()).filter(Boolean);
   const fallback = ['instagram', 'facebook'];
   if (!UP_KEY) return fallback;
@@ -485,7 +486,7 @@ async function postJSON(url, body) {
 }
 
 // تعليقات GitHub تظهر في ملخّص التشغيل (تُقرأ بلا صلاحية سجلّات).
-const gh = (level, msg) => { if (process.env.GITHUB_ACTIONS) console.log('::' + level + ' title=social-bot::' + String(msg).replace(/\r?\n/g, ' ')); };
+export const gh = (level, msg) => { if (process.env.GITHUB_ACTIONS) console.log('::' + level + ' title=social-bot::' + String(msg).replace(/\r?\n/g, ' ')); };
 
 async function tierOf(token) {
   const r = await postJSON(BASE + '/api/points', { action: 'balance', token }).catch(() => ({ j: {} }));
@@ -494,7 +495,7 @@ async function tierOf(token) {
 
 // حساب البوت ثابت: كلمة سرّه مشتقّة من سرّ موجود في المستودع (لا سرّ جديد).
 // صلاحية VIP: تلقائيًّا بـ MONITOR_KEY إن وُجد، وإلّا يضيفه المالك مرّة من لوحة التحكّم ← ⭐ صلاحيات VIP.
-async function botAccount() {
+export async function botAccount() {
   const seeds = [UP_KEY, MONITOR_KEY].filter(Boolean);
   const pwOf = (seed) => 'Sb!' + createHash('sha256').update('omai-social|' + BOT_USER + '|' + seed).digest('hex').slice(0, 24);
   const diag = ['monitorKey=' + (MONITOR_KEY ? 'yes' : 'no')];
@@ -1151,13 +1152,13 @@ function writeAudio(file, tl, m, tapT) {
 }
 
 // ───────── النشر عبر Upload-Post ─────────
-async function upFetch(p, opts = {}) {
+export async function upFetch(p, opts = {}) {
   const r = await fetch(UP_API + p, { ...opts, headers: { Authorization: 'Apikey ' + UP_KEY, ...(opts.headers || {}) } });
   const j = await r.json().catch(() => ({}));
   return { status: r.status, ok: r.ok, j };
 }
 
-async function publish(mp4, cover, cap, PLATFORMS, epN, kind) {
+export async function publish(mp4, cover, cap, PLATFORMS, epN, kind, extId) {
   const fd = new FormData();
   fd.append('user', UP_USER);
   for (const p of PLATFORMS) fd.append('platform[]', p);
@@ -1183,7 +1184,7 @@ async function publish(mp4, cover, cap, PLATFORMS, epN, kind) {
   if (PLATFORMS.includes('threads') && cap.threads) fd.append('threads_title', cap.threads);
   const reqId = 'omai-' + Date.now().toString(36) + randomBytes(3).toString('hex');
   fd.append('request_id', reqId); fd.append('async_upload', 'true');
-  if (epN) fd.append('external_id', EP_ID(epN, kind)); // رقم الحلقة ونوعها يُقرآن من سجلّ النشر في المرّة الجاية
+  if (extId || epN) fd.append('external_id', extId || EP_ID(epN, kind)); // رقم الحلقة ونوعها يُقرآن من سجلّ النشر في المرّة الجاية (ومسلسل ميرا بمعرّفه mira-…)
   const r = await upFetch('/upload', { method: 'POST', body: fd, headers: { 'Idempotency-Key': reqId } });
   log('upload → ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 300));
   if (!r.ok && r.status !== 202) throw new Error('upload failed ' + r.status);
@@ -1374,5 +1375,7 @@ async function makeMedia(browser, kind, arg, acct, epN, fr) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  (process.argv.includes('--gate') ? gate() : main()).then(() => process.exit(0)).catch((e) => { const msg = e && e.message ? e.message : String(e); console.error('[social-bot] FAILED:', msg); gh('error', msg); process.exit(1); });
+  const mira = process.argv.includes('--mira') || process.argv.includes('--gate-mira'); // مسلسل ميرا: نوع حلقة في البوت نفسه (scripts/social-bot-mira.mjs)
+  const run = mira ? import('./social-bot-mira.mjs').then((m) => (process.argv.includes('--gate-mira') ? m.gateMira() : m.mainMira())) : (process.argv.includes('--gate') ? gate() : main());
+  run.then(() => process.exit(0)).catch((e) => { const msg = e && e.message ? e.message : String(e); console.error('[social-bot] FAILED:', msg); gh('error', msg); process.exit(1); });
 }
