@@ -5,7 +5,7 @@
 // قواعد الصور (CLAUDE.md): لا نصّ مطبوع، الدقّة الأصليّة للمولّد كما هي (لا تصغير ولا تكبير)، WebP q90.
 //
 //   OPENAI_API_KEY=… GEMINI_API_KEY=… node scripts/thumbs-paid.mjs <mode>
-//   mode: poster | upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio
+//   mode: edu-bg | edu-bg:library,space | poster | upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio
 //
 // الأوصاف من مصادر الحقيقة نفسها في الخادم (design-create / fashion-create / STUDIO_OPTIONS) + الصياغات التي راجعها المالك بالعين
 // (v-decor-18c/d/e) لخيارات الديكور. المخرجات في thumbs/<نوع>/<اسم>.webp ثمّ ينسخها الورك فلو إلى assets/.
@@ -218,6 +218,36 @@ if (isMode('studio')) {
 if (isMode('upload-art')) {
   Object.entries(UPLOAD_ART).forEach(([k, p]) => JOBS.push({ kind: 'upart', name: k, shape: 'wide2', prompt: p + ' Absolutely no text, no letters, no numbers, no signage, no watermark, no logo anywhere in the image.' }));
 }
+// ---------- خلفيّات قسم «التعليم» (أمر المالك ١٩ أكتوبر): زخرفة على الأطراف بلا أيّ نصّ والوسط هادئ غامق (الأزرار HTML فوقه) ----------
+// ثلاث نسخ لكلّ ثيم: desktop (أفقيّة) وmobile (طوليّة) وlight (أفقيّة للوضع الفاتح). تُحفظ مباشرةً في assets/edu-bg/ (الورك فلو يضيف assets كلّها)
+// WebP أقلّ من ٢٠٠KB (جودة تنزل تدريجيًّا ثمّ العرض). الثيمان التجريبيّان: library (مكتبة كلاسيكيّة) وspace (فضاء).
+const EDU_BG_COMMON = ' Decorative background art for an education app screen. All ornaments sit only along the outer edges and corners of the frame;' +
+  ' the whole central area, about 60 percent of the image, is a calm, smooth, empty, softly lit region with no objects, no panels, no frames, no screens, no windows, no devices, no UI elements,' +
+  ' so that buttons and cards can be placed over it and stay readable. Soft depth of field on the ornaments, premium cinematic quality, tack-sharp edges. No people.' +
+  ' Absolutely no text, no letters, no numbers, no writing, no symbols that look like letters, no captions, no signage, no watermark, no logo anywhere; book spines and covers are blank with only abstract ornamental patterns.';
+const EDU_BG = {
+  library: {
+    dark: 'Classic old-world library theme in deep navy blue and warm antique gold: stacks of leather-bound books with gold ornamental tooling, a brass compass, an armillary sphere, a brass globe, laurel branches, a graduation cap, a magnifying glass, a quill and ink pot, soft golden bokeh of library shelves and tall windows far in the background.' +
+      ' The central calm region is a dark navy blue gradient (about #0d1b36 to #14284d) with only a faint warm vignette.',
+    light: 'The same classic old-world library theme but in a bright airy light-mode palette: warm cream and pale ivory paper tones with soft gold and tan leather, light wood, brass details.' +
+      ' The central calm region is a bright soft cream-white gradient (about #fbf6ea to #f1e7d2).',
+  },
+  space: {
+    dark: 'Deep space theme in rich violet and purple: planets with rings, a crescent moon, a small telescope, star clusters, a swirling purple and magenta nebula and a distant spiral galaxy, tiny glowing stars, a small rocket far away.' +
+      ' The central calm region is a dark deep-indigo gradient (about #0c0a24 to #1a1245) with only a faint starfield.',
+    light: 'The same deep-space theme but in a bright light-mode palette: soft lavender, lilac and pearl-white tones, pastel planets with rings, a pale crescent moon, a gentle pastel nebula and light stars.' +
+      ' The central calm region is a bright soft lavender-white gradient (about #f7f4ff to #e7e0fb).',
+  },
+};
+if (isMode('edu-bg')) {
+  const only = MODE.includes(':') ? MODE.split(':')[1].split(',').map((x) => x.trim()).filter(Boolean) : Object.keys(EDU_BG);
+  only.filter((k) => EDU_BG[k]).forEach((k) => {
+    const d = EDU_BG[k];
+    JOBS.push({ kind: 'edubg', name: k + '-desktop', shape: 'land16', cap: 1920, prompt: 'Wide landscape 16:9 composition. ' + d.dark + EDU_BG_COMMON });
+    JOBS.push({ kind: 'edubg', name: k + '-mobile', shape: 'port', cap: 1080, prompt: 'Tall portrait 2:3 composition for a phone screen; ornaments gather at the top corners and bottom edge and thinly along the sides, the tall middle stays empty. ' + d.dark + EDU_BG_COMMON });
+    JOBS.push({ kind: 'edubg', name: k + '-light', shape: 'land16', cap: 1920, prompt: 'Wide landscape 16:9 composition. ' + d.light + EDU_BG_COMMON });
+  });
+}
 // ---------- بوستر الديكور (أمر المالك ١٧ أكتوبر «أولّده»): الغرف الـ١٢ في شبكة ٤×٣ بلا أيّ نصّ — الأسماء HTML فوقه، والنقاط تُقاس من الصورة ----------
 const POSTER_ROOMS = [
   ['a fine-dining restaurant with set tables and chairs', 'a cozy coffee shop with an espresso bar and stools', 'a serene master bedroom with a made bed and wardrobe', 'a traditional Arabic majlis with low patterned floor seating and ornate carpets'],
@@ -233,7 +263,7 @@ if (isMode('poster')) {
     ' Warm interior lights inside each room, photoreal materials, crisp detail, cinematic studio lighting. Nothing between or above the rooms, no central object, no signs, no plaques, no labels on the plinths.' +
     ' Absolutely no text, no letters, no numbers, no captions, no watermark, no logo anywhere.' });
 }
-const OUT_DIR = { poster: 'assets/decor/chips', dopts: 'assets/design/decor-opts', dstyle: 'assets/design/styles', dplace: 'assets/design/opts', women: 'assets/fashion/looks/women', men: 'assets/fashion/looks/men', kids: 'assets/fashion/looks/kids', category: 'assets/fashion/looks/category', occasion: 'assets/fashion/looks/occasion', season: 'assets/fashion/looks/season', extras: 'assets/fashion/looks/extras', studioopt: 'assets/studio/options', upart: 'assets/upload-art' };
+const OUT_DIR = { edubg: 'assets/edu-bg', poster: 'assets/decor/chips', dopts: 'assets/design/decor-opts', dstyle: 'assets/design/styles', dplace: 'assets/design/opts', women: 'assets/fashion/looks/women', men: 'assets/fashion/looks/men', kids: 'assets/fashion/looks/kids', category: 'assets/fashion/looks/category', occasion: 'assets/fashion/looks/occasion', season: 'assets/fashion/looks/season', extras: 'assets/fashion/looks/extras', studioopt: 'assets/studio/options', upart: 'assets/upload-art' };
 const outName = (j) => (j.kind === 'dplace' ? 'place-' : '') + j.name + '.webp';
 const jobs = SKIP_EXISTING ? JOBS.filter((j) => !existsSync(OUT_DIR[j.kind] + '/' + outName(j))) : JOBS;
 if (!jobs.length) { console.log('لا مهامّ للوضع «' + MODE + '»'); process.exit(MODE ? 0 : 1); }
@@ -292,6 +322,24 @@ async function gemini(prompt, aspect, imageSize) {
 
 // ---------- الحفظ: الدقّة الأصليّة، قصّ النسبة فقط، WebP q90 ----------
 const sharp = (await import('sharp')).default;
+// خلفيّات التعليم: أقلّ من ٢٠٠KB — الجودة تنزل من ٩٠ إلى ٥٠ بخطوات، فإن لم تكفِ يصغَّر العرض (بلا تكبير أبدًا)
+const EDU_MAX = 195 * 1024;
+async function saveEdu(j, img, meta) {
+  const out = OUT_DIR.edubg + '/' + outName(j);
+  mkdirSync(OUT_DIR.edubg, { recursive: true });
+  const base = await img.toBuffer();
+  for (let w = Math.min(j.cap, meta.width || j.cap); w >= 640; w = Math.round(w * 0.88)) {
+    for (let q = 88; q >= 50; q -= 6) {
+      const buf = await sharp(base).resize({ width: w, withoutEnlargement: true, kernel: 'lanczos3' }).webp({ quality: q, effort: 6 }).toBuffer();
+      if (buf.length <= EDU_MAX) {
+        writeFileSync(out, buf);
+        const m = await sharp(buf).metadata();
+        return out + ' ' + m.width + '×' + m.height + ' q' + q + ' ' + Math.round(buf.length / 1024) + 'KB';
+      }
+    }
+  }
+  throw new Error('تعذّر الوصول لأقلّ من ٢٠٠KB');
+}
 async function save(j, buf) {
   const meta = await sharp(buf).metadata();
   let img = sharp(buf);
@@ -304,6 +352,7 @@ async function save(j, buf) {
   // المولّد يرجع أكبر من المطلوب (1792×2400 / 5376×2688): تصغير واحد بـLanczos من الخام إلى ضعفَي أكبر عرض عرضٍ في التطبيق
   // (بطاقة ≤ ٣٦٠ → 1024، بطاقة عريضة ≤ ٢٣١ وغطاء الجوّال → 1536، مربّع الرفع ≤ ١٣٧٥ → 3072) — لا تكبير أبدًا (withoutEnlargement).
   const CAP = { port: 1024, land16: 1536, wide2: 3072, poster: 1640 }[j.shape] || 1024; // البوستر يُعرض بعرض ≤ ٨٢٠
+  if (j.kind === 'edubg') return saveEdu(j, img, meta);
   img = img.resize({ width: CAP, withoutEnlargement: true, kernel: 'lanczos3' });
   mkdirSync('thumbs/' + j.kind, { recursive: true });
   const out = 'thumbs/' + j.kind + '/' + outName(j);
