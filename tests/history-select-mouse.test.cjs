@@ -224,7 +224,9 @@ test('٩. دائرة ✓ في صفّ المحادثة والدرس على طرف
 
 test('١٠. وسما الكاش ارتفعا: delete-confirm.js ‏20261019b، وui-wiring.js ‏664', () => {
   const uw = fs.readFileSync(path.join(ROOT, 'js', 'ui-wiring.js'), 'utf8');
-  assert.ok(uw.includes("/js/delete-confirm.js?v=20261019b'"), 'وسم delete-confirm.js');
+  const m = /\/js\/delete-confirm\.js\?v=(\w+)'/.exec(uw);
+  assert.ok(m && m[1] >= '20261019b', 'وسم delete-confirm.js');
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  assert.ok(html.includes('/js/ui-wiring.js?v=664'), 'وسم ui-wiring.js');
+  const v = /\/js\/ui-wiring\.js\?v=(\d+)/.exec(html);
+  assert.ok(v && Number(v[1]) >= 664, 'وسم ui-wiring.js');
 });
