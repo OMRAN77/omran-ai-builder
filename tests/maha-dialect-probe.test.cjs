@@ -46,9 +46,10 @@ test('٢. المسبار يبني الجلسة من معالج الإنتاج ن
   assert.ok(dry.instructionsChars > 1000);
 });
 
-test('٣. الورك فلو لا يصرف إلّا بطلب: يدويّ، أو دفعة رسالتها [maha-probe] — والصوت مخبّأ فالقبل والبعد يسمعان الشيء نفسه', () => {
+test('٣. الورك فلو لا يصرف إلّا بطلب: يدويّ وحده — والصوت مخبّأ فالقبل والبعد يسمعان الشيء نفسه', () => {
   const y = read('.github/workflows/maha-dialect-probe.yml');
-  assert.ok(y.includes("if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[maha-probe')"));
+  // وسم في رسالة الالتزام كان يشغّله ولو اقتُبس في شرح (6a8ff8f، أُلغي في الاستنساخ)، ودمج squash يحمله إلى main
+  assert.ok(/\non:\n  workflow_dispatch:\n/.test(y) && !/^  push:/m.test(y) && !y.includes('head_commit'), 'يدويّ وحده');
   assert.ok(y.includes("MAHA_TOKEN: ${{ github.ref == 'refs/heads/main' && inputs.patch == '' && inputs.code_ref == '' && (secrets.SAMPLE_TOKEN || secrets.EVAL_TOKEN || secrets.PROBE_TOKEN) || '' }}"), 'المنشور (main) يُقاس من main وبلا تجربة فقط');
   assert.ok(/async function mintSession\(\) \{\n  if \(MODE === 'prod'\) \{\n    await ownerCheck\(\);/.test(read('scripts/maha-dialect-probe.mjs')), 'صاحب الرمز قبل أيّ جلسة (لا دقائق تُخصم من غير المالك)');
   assert.ok(/actions\/cache@v4[\s\S]*?path: \.maha-tts-cache/.test(y));
@@ -74,13 +75,10 @@ test('٤. طلبات الحارس (--requests): لهجات أخرى وصوت ا�
   assert.ok(p.includes("arg('requests', 'scripts/maha-dialect-requests.json')") && p.includes('await speech(reqItem.text, reqItem.tts)'));
 });
 
-test('٥. مراجعة: لا تشغيلة مدفوعة بالخطأ — لا دفعة على main، والمجموعة على المهمّة، و--only الفاسد يوقف المسبار لا يشغّل الثلاثين', () => {
+test('٥. مراجعة: لا تشغيلة مدفوعة بالخطأ — طابور «قبل» ثمّ «بعد»، و--only الفاسد يوقف المسبار لا يشغّل الثلاثين، والتجربة لا تُسقط بصمت', () => {
   const y = read('.github/workflows/maha-dialect-probe.yml');
-  // دمج squash يحمل رسائل الالتزامات ([maha-probe:1,9]) إلى main
-  assert.ok(/ {2}push:\n(?: +#.*\n)* +branches-ignore: \[main\]\n +paths:/.test(y), 'لا دفعة من main');
-  // المجموعة على مستوى الورك فلو كانت تُدخل الدفعات المتخطّاة فتلغي «بعد» المعلّقة
-  assert.ok(!/^concurrency:/m.test(y) && /\n    if: [^\n]+\n(?: +#.*\n)*    concurrency:\n      group: maha-dialect-probe\n      cancel-in-progress: false\n/.test(y), 'المجموعة على المهمّة');
-  assert.ok(y.includes("grep -o '\\[maha-probe:[^]]*\\]'"), 'الوسم كما كُتب يصل المسبار ليحكم عليه');
+  assert.ok(/\n  probe:\n(?: +#.*\n)*    concurrency:\n      group: maha-dialect-probe\n      cancel-in-progress: false\n/.test(y), 'تشغيلة واحدة في وقتها');
+  assert.ok(y.includes('${ONLY_INPUT:+--only "$ONLY_INPUT"}'), 'only كما كُتب يصل المسبار ليحكم عليه');
   const run = (only, extra) => {
     try {
       const out = execFileSync(process.execPath, [path.join(ROOT, 'scripts/maha-dialect-probe.mjs'), '--dry', '--only', only].concat(extra || []), {

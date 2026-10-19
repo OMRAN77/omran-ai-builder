@@ -1,5 +1,6 @@
 # مسبار لهجة مها: ٣٠ طلبًا إماراتيًّا بصوت حقيقيّ على جلسة مها كما يبنيها الإنتاج — هل فهمت، هل ردّت بالخليجي، أيّ نافذة
-# فتحت، وكم م.ث من نهاية الكلام إلى أوّل صوت منها. يُشغَّل يدويًّا، أو بدفعة رسالة التزامها فيها [maha-probe].
+# فتحت، وكم م.ث من نهاية الكلام إلى أوّل صوت منها. يُشغَّل يدويًّا وحده (workflow_dispatch): وسم في رسالة التزام كان يشغّله ولو اقتُبس
+# في شرح (التزام 6a8ff8f — أُلغي في الاستنساخ قبل أيّ نداء)، ودمج squash يحمله إلى main.
 # كلفة: مكالمات صوتيّة قصيرة على حساب المالك — لا تُشغَّل إلّا بطلب. كلام مها في السجلّ مختوم (ذاكرة المالك تصلها).
 name: maha-dialect-probe
 
@@ -18,23 +19,13 @@ on:
       requests:
         description: 'ملفّ طلبات آخر (مثل scripts/maha-dialect-guard.json) — فارغ = الثلاثون'
         default: ''
-  push:
-    # مراجعة: دمج بـsquash يجمع رسائل الالتزامات ([maha-probe] منها) في main — فلا تشغيل مدفوع من main بدفعة أبدًا
-    branches-ignore: [main]
-    paths:
-      - 'scripts/maha-dialect-probe.mjs'
-      - 'scripts/maha-dialect-requests.json'
-      - 'api/_lib/realtime-session.js'
-      - 'api/_lib/maha-app.js'
-      - '.github/workflows/maha-dialect-probe.yml'
 
 permissions:
   contents: read
 
 jobs:
   probe:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[maha-probe')
-    # على المهمّة لا الورك فلو: دفعة تُتخطّى مهمّتها كانت تدخل المجموعة فتلغي «بعد» المنتظرة خلف «قبل» (طابور واحد معلّق لكلّ مجموعة)
+    # طابور واحد معلّق لكلّ مجموعة: «قبل» ثمّ «بعد» بالتتابع، وثالث يصل يلغي المعلّق
     concurrency:
       group: maha-dialect-probe
       cancel-in-progress: false
@@ -80,13 +71,9 @@ jobs:
           ONLY_INPUT: ${{ inputs.only }}
           REQS: ${{ inputs.requests }}
           MAHA_SESSION_PATCH: ${{ inputs.patch }}
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
-        # [maha-probe:1,9] في رسالة الالتزام = هذه الطلبات وحدها (تجربة المسبار قبل الثلاثين). ما بين «:» و«]» يصل المسبار كما هو،
-        # وهو يرفض ما ليس أرقام طلبات — لا «الثلاثون كلّها» لأنّ الوسم كُتب «1-3» أو بأرقام عربيّة لم يلتقطها grep.
+        # only كما كُتب يصل المسبار، وهو يرفض ما ليس أرقام طلبات (لا «الثلاثون كلّها» لأنّه كُتب «1-3»)
         run: |
-          ONLY="$ONLY_INPUT"
-          if [ -z "$ONLY" ]; then ONLY=$(printf '%s' "$COMMIT_MSG" | grep -o '\[maha-probe:[^]]*\]' | head -1 | sed 's/^\[maha-probe://; s/\]$//' || true); fi
-          node scripts/maha-dialect-probe.mjs --cache .maha-tts-cache --out maha-dialect-results.json ${ONLY:+--only "$ONLY"} ${REQS:+--requests "$REQS"}
+          node scripts/maha-dialect-probe.mjs --cache .maha-tts-cache --out maha-dialect-results.json ${ONLY_INPUT:+--only "$ONLY_INPUT"} ${REQS:+--requests "$REQS"}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
