@@ -1,58 +1,107 @@
-/* v-edu-bg — خلفيّات قسم «التعليم» تتبع الثيم (أمر المالك ١٩ أكتوبر: «قسم التعليم يتغيّر شكله مع الثيم، مو بس اللون» — ٢٤ ثيمًا).
-   الصور زخرفة على الأطراف بلا أيّ كتابة والوسط هادئ (assets/edu-bg/<معرّف>-desktop|mobile.webp، يولّدها scripts/thumbs-paid.mjs بوضع
-   edu-bg)، والأزرار والبطاقات والنصوص HTML حقيقي فوقها. js/edu.js يضع data-edu-bg على #eduHubModal: معرّف ثيم «خلفيّات الشاشة» (٢٤) إن كان
-   مختارًا، وإلّا لون الدوائر (classic للذهبيّ وspace للبنفسجيّ وكلاهما بنسخة light أيضًا للوضع الفاتح)، ويتابع تغيّر الثيم فيتبدّل فورًا.
-   كلّ ثيم يفرض وضعه (فاتح/داكن) فنسخته واحدة بلون الثيم؛ لكلّ ثيم لمسة شكل: استدارة وإطار ولون خطّ وظلّ. يُحمَّل آخرًا لأنّ قواعد
+/* v-edu-bg — خلفيّة قسم «التعليم» تتبع الثيم، وتصميم المالك design/edu-mock/p1.html (ثيمان الآن بأمره: المكتبة والفضاء؛ الباقي بعد موافقته).
+   الصور زخرفة على الأطراف بلا أيّ كتابة والوسط هادئ (assets/edu-bg/<ثيم>-desktop|mobile|light.webp، يولّدها scripts/thumbs-paid.mjs بوضع edu-bg)؛
+   الكتابة والبطاقات HTML حقيقي فوقها: بطاقات شبه شفّافة بتغبيش خفيف فتظهر الخلفيّة في الصفحة كلّها والنصّ واضح، ولا لوح معتم فوق الخلفيّة.
+   الترتيب والمقاسات من p1.html: العنوان ٢٦، شريط الرفع ٢٢/١٣ بقرص «+»، صفّ المنهج ١٥.٥، أربع بطاقات (١٦/١٢.٥)، بطاقة لغة الامتحان وبطاقة «موادي»،
+   صانع الفيديو، والعمود الجانبيّ ٣٠٠ (مقولة، أيّام متتالية، كتب). js/edu.js يضع data-edu-bg على #eduHubModal ويتبدّل فورًا. يُحمَّل آخرًا لأنّ قواعد
    خلفيّة eduWrap في أربعة ملفّات قبله بـ!important. من لا ثيم له صورة لا يتغيّر عنده شيء. */
-html:root:root #eduHubModal[data-edu-bg="wood"]{--edu-art-d:url("/assets/edu-bg/skin-wood-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-wood-mobile.webp?v=1");--edu-base:#e6d8bd;--edu-glass:255,250,238;--edu-gold:120,86,44;--edu-r:10px;--edu-bw:1px;--edu-shadow:0 6px 14px rgba(90,60,20,.16);--edu-ink:#2a2218;--edu-head:rgb(66,47,24);--edu-muted:rgba(42,34,24,.7);--edu-card:242,238,226;}
-html:root:root #eduHubModal[data-edu-bg="darkwood"]{--edu-art-d:url("/assets/edu-bg/skin-darkwood-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-darkwood-mobile.webp?v=1");--edu-base:#1e140c;--edu-glass:30,20,12;--edu-gold:214,170,96;--edu-r:8px;--edu-bw:1px;--edu-shadow:0 6px 16px rgba(0,0,0,.45);--edu-ink:#f2efe8;--edu-head:rgb(228,200,152);--edu-muted:rgba(242,239,232,.7);--edu-card:52,44,36;}
-html:root:root #eduHubModal[data-edu-bg="marble"]{--edu-art-d:url("/assets/edu-bg/skin-marble-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-marble-mobile.webp?v=1");--edu-base:#0d0d0f;--edu-glass:14,14,16;--edu-gold:226,196,120;--edu-r:3px;--edu-bw:1px;--edu-shadow:0 8px 20px rgba(0,0,0,.5);--edu-ink:#f2efe8;--edu-head:rgb(236,217,167);--edu-muted:rgba(242,239,232,.7);--edu-card:38,38,40;}
-html:root:root #eduHubModal[data-edu-bg="code"]{--edu-art-d:url("/assets/edu-bg/skin-code-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-code-mobile.webp?v=1");--edu-base:#0a1216;--edu-glass:8,18,22;--edu-gold:52,211,170;--edu-r:6px;--edu-bw:1px;--edu-shadow:0 0 14px rgba(52,211,170,.2);--edu-ink:#f2efe8;--edu-head:rgb(123,226,200);--edu-muted:rgba(242,239,232,.7);--edu-card:33,42,45;}
-html:root:root #eduHubModal[data-edu-bg="cars"]{--edu-art-d:url("/assets/edu-bg/skin-cars-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-cars-mobile.webp?v=1");--edu-base:#101114;--edu-glass:16,17,20;--edu-gold:96,165,250;--edu-r:14px;--edu-bw:1px;--edu-shadow:0 6px 18px rgba(0,0,0,.5);--edu-ink:#f2efe8;--edu-head:rgb(152,196,252);--edu-muted:rgba(242,239,232,.7);--edu-card:40,41,44;}
-html:root:root #eduHubModal[data-edu-bg="kids"]{--edu-art-d:url("/assets/edu-bg/skin-kids-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-kids-mobile.webp?v=1");--edu-base:#efe9fb;--edu-glass:255,255,255;--edu-gold:168,140,240;--edu-r:26px;--edu-bw:2px;--edu-shadow:0 8px 18px rgba(150,120,220,.22);--edu-ink:#2a2218;--edu-head:rgb(92,77,132);--edu-muted:rgba(42,34,24,.7);--edu-card:242,242,242;}
-html:root:root #eduHubModal[data-edu-bg="cuisine"]{--edu-art-d:url("/assets/edu-bg/skin-cuisine-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-cuisine-mobile.webp?v=1");--edu-base:#f3e9e4;--edu-glass:255,252,249;--edu-gold:226,150,150;--edu-r:22px;--edu-bw:1px;--edu-shadow:0 6px 16px rgba(200,140,130,.2);--edu-ink:#2a2218;--edu-head:rgb(124,82,82);--edu-muted:rgba(42,34,24,.7);--edu-card:242,239,237;}
-html:root:root #eduHubModal[data-edu-bg="sunset"]{--edu-art-d:url("/assets/edu-bg/skin-sunset-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-sunset-mobile.webp?v=1");--edu-base:#3a2430;--edu-glass:58,36,48;--edu-gold:255,170,120;--edu-r:16px;--edu-bw:1px;--edu-shadow:0 6px 20px rgba(255,120,80,.2);--edu-ink:#f2efe8;--edu-head:rgb(255,200,167);--edu-muted:rgba(242,239,232,.7);--edu-card:78,58,69;}
-html:root:root #eduHubModal[data-edu-bg="beach"]{--edu-art-d:url("/assets/edu-bg/skin-beach-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-beach-mobile.webp?v=1");--edu-base:#cfeef2;--edu-glass:255,255,255;--edu-gold:40,170,190;--edu-r:24px;--edu-bw:1px;--edu-shadow:0 6px 16px rgba(30,150,170,.22);--edu-ink:#2a2218;--edu-head:rgb(22,94,105);--edu-muted:rgba(42,34,24,.7);--edu-card:242,242,242;}
-html:root:root #eduHubModal[data-edu-bg="winter"]{--edu-art-d:url("/assets/edu-bg/skin-winter-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-winter-mobile.webp?v=1");--edu-base:#dde6ee;--edu-glass:250,253,255;--edu-gold:120,160,200;--edu-r:18px;--edu-bw:1px;--edu-shadow:0 6px 16px rgba(100,140,180,.22);--edu-ink:#2a2218;--edu-head:rgb(66,88,110);--edu-muted:rgba(42,34,24,.7);--edu-card:238,240,242;}
-html:root:root #eduHubModal[data-edu-bg="garage"]{--edu-art-d:url("/assets/edu-bg/skin-garage-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-garage-mobile.webp?v=1");--edu-base:#111113;--edu-glass:18,18,20;--edu-gold:239,68,68;--edu-r:5px;--edu-bw:1px;--edu-shadow:0 6px 16px rgba(0,0,0,.55);--edu-ink:#f2efe8;--edu-head:rgb(245,133,133);--edu-muted:rgba(242,239,232,.7);--edu-card:42,42,44;}
-html:root:root #eduHubModal[data-edu-bg="anime"]{--edu-art-d:url("/assets/edu-bg/skin-anime-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-anime-mobile.webp?v=1");--edu-base:#150f26;--edu-glass:24,15,44;--edu-gold:236,72,153;--edu-r:14px;--edu-bw:1px;--edu-shadow:0 0 16px rgba(236,72,153,.28);--edu-ink:#f2efe8;--edu-head:rgb(243,136,189);--edu-muted:rgba(242,239,232,.7);--edu-card:47,39,65;}
-html:root:root #eduHubModal[data-edu-bg="cyber"]{--edu-art-d:url("/assets/edu-bg/skin-cyber-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-cyber-mobile.webp?v=1");--edu-base:#040d17;--edu-glass:4,13,23;--edu-gold:34,211,238;--edu-r:4px;--edu-bw:1px;--edu-shadow:0 0 16px rgba(34,211,238,.25);--edu-ink:#f2efe8;--edu-head:rgb(111,226,244);--edu-muted:rgba(242,239,232,.7);--edu-card:29,37,46;}
-html:root:root #eduHubModal[data-edu-bg="school"]{--edu-art-d:url("/assets/edu-bg/skin-school-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-school-mobile.webp?v=1");--edu-base:#2c261c;--edu-glass:44,38,28;--edu-gold:245,190,90;--edu-r:8px;--edu-bw:1px;--edu-shadow:0 6px 16px rgba(0,0,0,.45);--edu-ink:#f2efe8;--edu-head:rgb(248,213,148);--edu-muted:rgba(242,239,232,.7);--edu-card:65,60,51;}
-html:root:root #eduHubModal[data-edu-bg="tactical"]{--edu-art-d:url("/assets/edu-bg/skin-tactical-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-tactical-mobile.webp?v=1");--edu-base:#4a0a1c;--edu-glass:60,8,24;--edu-gold:239,68,90;--edu-r:3px;--edu-bw:1px;--edu-shadow:0 6px 18px rgba(0,0,0,.5);--edu-ink:#f2efe8;--edu-head:rgb(245,133,148);--edu-muted:rgba(242,239,232,.7);--edu-card:80,33,47;}
-html:root:root #eduHubModal[data-edu-bg="angel"]{--edu-art-d:url("/assets/edu-bg/skin-angel-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-angel-mobile.webp?v=1");--edu-base:#dfe8f4;--edu-glass:255,255,255;--edu-gold:140,170,220;--edu-r:22px;--edu-bw:1px;--edu-shadow:0 0 18px rgba(150,180,230,.35);--edu-ink:#2a2218;--edu-head:rgb(77,94,121);--edu-muted:rgba(42,34,24,.7);--edu-card:242,242,242;}
-html:root:root #eduHubModal[data-edu-bg="neonanime"]{--edu-art-d:url("/assets/edu-bg/skin-neonanime-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-neonanime-mobile.webp?v=1");--edu-base:#060708;--edu-glass:6,6,8;--edu-gold:34,211,238;--edu-r:12px;--edu-bw:1px;--edu-shadow:0 0 18px rgba(34,211,238,.3), 0 0 26px rgba(236,72,153,.18);--edu-ink:#f2efe8;--edu-head:rgb(111,226,244);--edu-muted:rgba(242,239,232,.7);--edu-card:31,31,33;}
-html:root:root #eduHubModal[data-edu-bg="station"]{--edu-art-d:url("/assets/edu-bg/skin-station-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-station-mobile.webp?v=1");--edu-base:#2d3236;--edu-glass:40,44,48;--edu-gold:205,165,90;--edu-r:4px;--edu-bw:1px;--edu-shadow:0 6px 16px rgba(0,0,0,.5);--edu-ink:#f2efe8;--edu-head:rgb(222,196,148);--edu-muted:rgba(242,239,232,.7);--edu-card:62,65,69;}
-html:root:root #eduHubModal[data-edu-bg="rally"]{--edu-art-d:url("/assets/edu-bg/skin-rally-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-rally-mobile.webp?v=1");--edu-base:#46412f;--edu-glass:66,60,42;--edu-gold:230,190,110;--edu-r:10px;--edu-bw:1px;--edu-shadow:0 6px 16px rgba(0,0,0,.45);--edu-ink:#f2efe8;--edu-head:rgb(239,213,161);--edu-muted:rgba(242,239,232,.7);--edu-card:85,80,63;}
-html:root:root #eduHubModal[data-edu-bg="smoke"]{--edu-art-d:url("/assets/edu-bg/skin-smoke-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-smoke-mobile.webp?v=1");--edu-base:#050f1f;--edu-glass:5,15,31;--edu-gold:80,150,255;--edu-r:18px;--edu-bw:1px;--edu-shadow:0 0 16px rgba(60,130,255,.25);--edu-ink:#f2efe8;--edu-head:rgb(141,187,255);--edu-muted:rgba(242,239,232,.7);--edu-card:30,39,53;}
-html:root:root #eduHubModal[data-edu-bg="library"]{--edu-art-d:url("/assets/edu-bg/skin-library-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-library-mobile.webp?v=1");--edu-base:#eefafa;--edu-glass:255,255,255;--edu-gold:40,170,180;--edu-r:14px;--edu-bw:1px;--edu-shadow:0 6px 16px rgba(40,150,160,.2);--edu-ink:#2a2218;--edu-head:rgb(22,94,99);--edu-muted:rgba(42,34,24,.7);--edu-card:242,242,242;}
-html:root:root #eduHubModal[data-edu-bg="cafe"]{--edu-art-d:url("/assets/edu-bg/skin-cafe-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-cafe-mobile.webp?v=1");--edu-base:#f2e6d4;--edu-glass:255,250,242;--edu-gold:170,115,60;--edu-r:18px;--edu-bw:1px;--edu-shadow:0 6px 16px rgba(130,90,50,.2);--edu-ink:#2a2218;--edu-head:rgb(94,63,33);--edu-muted:rgba(42,34,24,.7);--edu-card:242,238,230;}
-html:root:root #eduHubModal[data-edu-bg="workshop"]{--edu-art-d:url("/assets/edu-bg/skin-workshop-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-workshop-mobile.webp?v=1");--edu-base:#14122a;--edu-glass:20,18,42;--edu-gold:139,92,246;--edu-r:8px;--edu-bw:1px;--edu-shadow:0 0 16px rgba(139,92,246,.28);--edu-ink:#f2efe8;--edu-head:rgb(180,149,249);--edu-muted:rgba(242,239,232,.7);--edu-card:44,42,63;}
-html:root:root #eduHubModal[data-edu-bg="modern"]{--edu-art-d:url("/assets/edu-bg/skin-modern-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/skin-modern-mobile.webp?v=1");--edu-base:#e6e0d6;--edu-glass:250,248,244;--edu-gold:90,84,74;--edu-r:2px;--edu-bw:1px;--edu-shadow:0 4px 12px rgba(60,55,45,.14);--edu-ink:#2a2218;--edu-head:rgb(50,46,41);--edu-muted:rgba(42,34,24,.7);--edu-card:238,236,232;}
-html:root:root #eduHubModal[data-edu-bg="classic"]{--edu-art-d:url("/assets/edu-bg/classic-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/classic-mobile.webp?v=1");--edu-art-l:url("/assets/edu-bg/classic-light.webp?v=1");--edu-base:#0d1b36;--edu-glass:10,22,48;--edu-gold:233,211,154;--edu-r:12px;--edu-bw:1px;--edu-shadow:0 6px 18px rgba(0,0,0,.35);--edu-ink:#f2efe8;--edu-head:rgb(241,226,189);--edu-muted:rgba(242,239,232,.7);--edu-card:34,45,69;}
-html:root:root #eduHubModal[data-edu-bg="space"]{--edu-art-d:url("/assets/edu-bg/space-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/space-mobile.webp?v=1");--edu-art-l:url("/assets/edu-bg/space-light.webp?v=1");--edu-base:#0c0a24;--edu-glass:20,12,58;--edu-gold:196,170,255;--edu-r:20px;--edu-bw:1px;--edu-shadow:0 0 18px rgba(150,110,255,.28);--edu-ink:#f2efe8;--edu-head:rgb(217,200,255);--edu-muted:rgba(242,239,232,.7);--edu-card:44,36,78;}
+html:root:root #eduHubModal[data-edu-bg="classic"]{--edu-art-d:url("/assets/edu-bg/classic-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/classic-mobile.webp?v=1");--edu-art-l:url("/assets/edu-bg/classic-light.webp?v=1");--edu-base:#0d1b36;--edu-glass:8,16,36;--edu-gold:233,211,154;--edu-ink:#f2efe7;--edu-head:#f0deaa;--edu-muted:#a9b0bf;--edu-t1:139,92,246;--edu-t2:34,197,94;--edu-t3:59,130,246;--edu-t4:233,211,154;--edu-up1:#f0deaa;--edu-up2:#c9a55a;--edu-upink:#1a1408;}
+html:root:root #eduHubModal[data-edu-bg="space"]{--edu-art-d:url("/assets/edu-bg/space-desktop.webp?v=1");--edu-art-m:url("/assets/edu-bg/space-mobile.webp?v=1");--edu-art-l:url("/assets/edu-bg/space-light.webp?v=1");--edu-base:#0c0a24;--edu-glass:14,10,44;--edu-gold:196,170,255;--edu-ink:#f2effb;--edu-head:#d9c9ff;--edu-muted:#aaa6c6;--edu-t1:168,85,247;--edu-t2:34,197,94;--edu-t3:59,130,246;--edu-t4:196,170,255;--edu-up1:#d9c9ff;--edu-up2:#9b7cf0;--edu-upink:#1a1030;}
+/* الوضع الفاتح للثيمين */
+html[data-mode="light"]:root:root #eduHubModal[data-edu-bg="classic"]{--edu-glass:255,251,240;--edu-gold:150,110,40;--edu-ink:#2a2218;--edu-head:#6e4e12;--edu-muted:#6b6354;--edu-t4:201,165,90;--edu-up1:#e9c766;--edu-up2:#b8902a;--edu-upink:#2b1d02;}
+html[data-mode="light"]:root:root #eduHubModal[data-edu-bg="space"]{--edu-glass:255,255,255;--edu-gold:120,90,200;--edu-ink:#241d3d;--edu-head:#483c8c;--edu-muted:#625c80;--edu-t4:150,120,230;--edu-up1:#c9b3ff;--edu-up2:#8b6ee6;--edu-upink:#1a1030;}
+html[data-mode="light"]:root:root #eduHubModal[data-edu-bg]{background-image:var(--edu-art-l) !important;}
+html[data-mode="light"]:root:root #eduHubModal[data-edu-bg="classic"]{background-color:#f7f1e3 !important;}
+html[data-mode="light"]:root:root #eduHubModal[data-edu-bg="space"]{background-color:#f3effd !important;}
 
+/* ===== الخلفيّة على الصفحة كلّها، بلا لوح معتم فوقها ===== */
 html:root:root #eduHubModal[data-edu-bg]{background:var(--edu-art-d) center/cover no-repeat, var(--edu-base) !important;color:var(--edu-ink);backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
-html:root:root #eduHubModal[data-edu-bg] .eduWrap{background:rgb(var(--edu-glass)) !important;border:var(--edu-bw) solid rgba(var(--edu-gold),.3) !important;border-radius:var(--edu-r);box-shadow:var(--edu-shadow);height:calc(100% - 24px);margin:12px auto;}
-html:root:root #eduHubModal[data-edu-bg] .eduHead{background:transparent !important;border-bottom-color:rgba(var(--edu-gold),.22) !important;border-radius:var(--edu-r) var(--edu-r) 0 0;}
-@media (max-width:700px){html:root:root #eduHubModal[data-edu-bg]{background-image:var(--edu-art-m) !important;}}
+html:root:root #eduHubModal[data-edu-bg] .eduWrap{background:transparent !important;border:none !important;box-shadow:none !important;max-width:min(1280px,100%) !important;}
+html:root:root #eduHubModal[data-edu-bg] .eduHead{background:transparent !important;border-bottom:none !important;padding-inline:34px;}
+html:root:root #eduHubModal[data-edu-bg] .eduBody{background:transparent;padding:6px 34px 28px;}
+@media (max-width:700px){html:root:root #eduHubModal[data-edu-bg]{background-image:var(--edu-art-m) !important;}html:root:root #eduHubModal[data-edu-bg] .eduBody,html:root:root #eduHubModal[data-edu-bg] .eduHead{padding-inline:14px;}}
 html.mobile-ui:root:root #eduHubModal[data-edu-bg]{background-image:var(--edu-art-m) !important;}
 
-/* لوح المحتوى عمود صلب بلون الثيم (أمر المالك: «ما أريد صور تحتها» — لا صورة تحت أيّ كتابة؛ الزخرفة تظهر حول العمود فقط) وبطاقاته HTML فوقه ولمسة شكل لكلّ ثيم */
-html:root:root #eduHubModal[data-edu-bg] .eduBody{background:transparent;}
-html:root:root #eduHubModal[data-edu-bg] :is(.eduUploadBtn,.eduPlusTile,.eduLessonRow){background:rgba(var(--edu-card),.9) !important;border:var(--edu-bw) solid rgba(var(--edu-gold),.4) !important;border-radius:var(--edu-r) !important;box-shadow:var(--edu-shadow);color:inherit;}
-html:root:root #eduHubModal[data-edu-bg] :is(.eduUploadBtn,.eduPlusTile,.eduLessonRow):hover{border-color:rgba(var(--edu-gold),.75) !important;}
-@media (max-width:700px){html:root:root #eduHubModal[data-edu-bg] .eduWrap{height:calc(100% - 16px);margin:8px;}}
+/* ===== البطاقات: شبه شفّافة بتغبيش خفيف ===== */
+html:root:root #eduHubModal[data-edu-bg] :is(.eduBx,.eduLessonRow,.eduPlusTile,.eduUpCard,.eduUpDrop){background:rgba(var(--edu-glass),.5) !important;-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);border:1px solid rgba(var(--edu-gold),.3) !important;border-radius:18px !important;box-shadow:none;color:var(--edu-ink);}
 
-/* الوضع الفاتح للثيمين التابعين للدوائر (classic وspace) */
-html[data-mode="light"]:root:root #eduHubModal[data-edu-bg="classic"],html[data-mode="light"]:root:root #eduHubModal[data-edu-bg="space"]{background-image:var(--edu-art-l) !important;--edu-ink:#2a2218;--edu-glass:255,252,244;--edu-shadow:0 6px 16px rgba(90,65,20,.16);--edu-head:rgb(82,60,18);--edu-card:246,240,226;--edu-muted:rgba(42,34,24,.7);}
-html[data-mode="light"]:root:root #eduHubModal[data-edu-bg="classic"]{background-color:#f7f1e3 !important;--edu-gold:150,110,40;--edu-head:rgb(110,78,18);}
-html[data-mode="light"]:root:root #eduHubModal[data-edu-bg="space"]{background-color:#f3effd !important;--edu-gold:120,90,200;--edu-glass:255,255,255;--edu-ink:#241d3d;--edu-head:rgb(72,50,140);--edu-card:246,243,255;--edu-muted:rgba(36,29,61,.7);}
-html[data-mode="light"]:root:root #eduHubModal[data-edu-bg] .eduHead{border-bottom-color:rgba(60,45,20,.18) !important;}
-
-/* الكتابة بألوان الثيم: العنوان وعناوين الأقسام والروابط بلون الثيم، والعناوين الفرعيّة والتلميحات بدرجة الحبر الخافتة (لون فقط — لا نصّ ولا وظيفة تتغيّر) */
-html:root:root #eduHubModal[data-edu-bg] .eduHead h2{background:none !important;-webkit-text-fill-color:var(--edu-head) !important;color:var(--edu-head) !important;}
+/* ===== الكتابة بألوان الثيم (مقاسات p1.html) ===== */
+html:root:root #eduHubModal[data-edu-bg] .eduHead h2{background:none !important;-webkit-text-fill-color:var(--edu-head) !important;color:var(--edu-head) !important;font-size:26px;font-weight:800;}
 html:root:root #eduHubModal[data-edu-bg] .eduHead h2 svg{stroke:var(--edu-head) !important;}
-html:root:root #eduHubModal[data-edu-bg] :is(.eduSecTitle,.eduPasteToggle,.eduLinkBtn){color:var(--edu-head) !important;}
-html:root:root #eduHubModal[data-edu-bg] :is(.eduUploadBtn,.eduPlusTitle,.eduLessonTitle){color:var(--edu-ink) !important;}
-html:root:root #eduHubModal[data-edu-bg] :is(.eduPlusSub,.eduNote,.eduEmpty){color:var(--edu-muted) !important;}
 html:root:root #eduHubModal[data-edu-bg] .eduStreak{color:var(--edu-head) !important;border-color:rgba(var(--edu-gold),.45) !important;background:rgba(var(--edu-gold),.14) !important;}
+html:root:root #eduHubModal[data-edu-bg] :is(.eduPasteToggle,.eduLinkBtn){color:var(--edu-muted) !important;font-size:13px;}
+html:root:root #eduHubModal[data-edu-bg] .eduNote{color:var(--edu-muted) !important;}
+
+/* ===== الرئيسيّة: عمود رئيسيّ + عمود جانبيّ ٣٠٠ على الحاسوب ===== */
+html:root:root #eduHubModal[data-edu-bg] .eduHomeGrid{display:flex;gap:26px;align-items:flex-start;}
+html:root:root #eduHubModal[data-edu-bg] .eduMain{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;}
+html:root:root #eduHubModal[data-edu-bg] .eduSide{width:300px;flex:0 0 300px;display:flex;flex-direction:column;gap:16px;align-self:stretch;}
+@media (max-width:900px){html:root:root #eduHubModal[data-edu-bg] .eduSide{display:none;}}
+#eduHubModal:not([data-edu-bg]) .eduSide{display:none;}
+#eduHubModal:not([data-edu-bg]) .eduHomeGrid,#eduHubModal:not([data-edu-bg]) .eduMain{display:block;}
+
+/* شريط الرفع: تدرّج الثيم الكامل وقرص «+» داكن */
+html:root:root #eduHubModal[data-edu-bg] .eduUploadBtn{display:flex;align-items:center;justify-content:center;gap:16px;padding:15px;border:none !important;border-radius:20px !important;background:linear-gradient(135deg,var(--edu-up1),var(--edu-up2)) !important;color:var(--edu-upink) !important;box-shadow:0 0 40px rgba(var(--edu-gold),.25) !important;backdrop-filter:none;-webkit-backdrop-filter:none;}
+html:root:root #eduHubModal[data-edu-bg] .eduUploadBtn svg{box-sizing:border-box;width:40px;height:40px;padding:9px;border-radius:50%;background:var(--edu-upink);color:var(--edu-up1);stroke-width:3;flex:0 0 auto;}
+html:root:root #eduHubModal[data-edu-bg] .eduUpTxt{display:flex;flex-direction:column;text-align:start;}
+html:root:root #eduHubModal[data-edu-bg] .eduUpTxt b{font-size:22px;font-weight:800;}
+html:root:root #eduHubModal[data-edu-bg] .eduUpTxt small{font-size:13px;opacity:.75;font-weight:600;}
+/* «أو الصق نصًّا» مكان سطر «أو اختر من المنهج» (13 مخفّت، هامش p1) */
+html:root:root #eduHubModal[data-edu-bg] .eduPasteToggle{align-self:flex-start;margin:-4px 4px -8px;}
+/* صفّ المنهج وصانع الفيديو */
+html:root:root #eduHubModal[data-edu-bg] :is(#eduCurricBtn,.eduLessonRow){display:flex;align-items:center;gap:12px;padding:12px 20px;font-size:15.5px;margin:0 !important;min-height:0;justify-content:flex-start;font-weight:500;}
+html:root:root #eduHubModal[data-edu-bg] #eduCurricBtn{text-align:start;background:rgba(var(--edu-glass),.5) !important;color:var(--edu-ink) !important;border:1px solid rgba(var(--edu-gold),.3) !important;border-radius:18px !important;box-shadow:none !important;-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);}
+html:root:root #eduHubModal[data-edu-bg] .eduLessonRow .eduLessonTitle{font-size:15.5px;color:var(--edu-ink) !important;flex:1;}
+html:root:root #eduHubModal[data-edu-bg] #eduOldEduRow svg{color:var(--edu-head);opacity:1 !important;}
+
+/* البطاقات الأربع */
+html:root:root #eduHubModal[data-edu-bg] .eduPlusGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusTile{position:relative;overflow:hidden;min-height:112px;padding:14px;display:block;text-align:start;border:1px solid rgba(var(--c),.45) !important;}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusTile::before{content:"";position:absolute;inset:0;background:radial-gradient(220px 120px at 100% 0%,rgba(var(--c),.3),transparent 70%);pointer-events:none;}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusTile>*{position:relative;}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusTile:nth-child(4n+1){--c:var(--edu-t1);}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusTile:nth-child(4n+2){--c:var(--edu-t2);}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusTile:nth-child(4n+3){--c:var(--edu-t3);}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusTile:nth-child(4n+4){--c:var(--edu-t4);}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusIcon{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;font-size:22px;background:rgba(var(--c),.3) !important;margin-bottom:8px;border:none !important;box-shadow:none !important;}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusTitle{display:block;font-size:16px;font-weight:700;margin-bottom:4px;color:var(--edu-ink) !important;}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusSub{display:block;font-size:12.5px;color:var(--edu-muted) !important;}
+html:root:root #eduHubModal[data-edu-bg] .eduPlusTile:hover{border-color:rgba(var(--c),.8) !important;}
+@media (max-width:700px){html:root:root #eduHubModal[data-edu-bg] .eduPlusGrid{grid-template-columns:1fr 1fr;}}
+
+/* بطاقتا «لغة امتحاني» و«موادي» جنبًا إلى جنب */
+html:root:root #eduHubModal[data-edu-bg] .eduTwo{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media (max-width:700px){html:root:root #eduHubModal[data-edu-bg] .eduTwo{grid-template-columns:1fr;}}
+html:root:root #eduHubModal[data-edu-bg] .eduLangCard{padding:12px 18px;}
+html:root:root #eduHubModal[data-edu-bg] .eduLangCard>div:first-child{display:flex !important;flex-direction:column !important;align-items:stretch !important;gap:0 !important;margin:0 !important;}
+html:root:root #eduHubModal[data-edu-bg] .eduLangCard>div:first-child>span{font-size:16px;font-weight:700;opacity:1 !important;color:var(--edu-ink);}
+html:root:root #eduHubModal[data-edu-bg] .eduLangCard>div:first-child>span::before{content:"\1F310  ";}
+html:root:root #eduHubModal[data-edu-bg] .eduLangCard select{margin-top:8px;padding:9px 14px !important;border:1px solid rgba(var(--edu-gold),.25) !important;border-radius:12px !important;font-size:14px !important;color:var(--edu-ink) !important;background:rgba(var(--edu-glass),.4) !important;}
+html:root:root #eduHubModal[data-edu-bg] .eduLangCard>div:last-child{font-size:12px !important;opacity:1 !important;color:var(--edu-muted);margin:6px 0 0 !important;}
+html:root:root #eduHubModal[data-edu-bg] .eduSubjCard{padding:12px 18px;text-align:center;}
+html:root:root #eduHubModal[data-edu-bg] .eduSubjCard .eduSecTitle{margin:0 0 10px;font-size:16px;font-weight:700;color:var(--edu-ink) !important;text-align:start;}
+html:root:root #eduHubModal[data-edu-bg] .eduEmpty{border:none;background:none;padding:0;font-size:14px;color:var(--edu-muted) !important;text-align:center;}
+html:root:root #eduHubModal[data-edu-bg] .eduEmpty::before{content:none;}
+html:root:root #eduHubModal[data-edu-bg] .eduSecTitle{color:var(--edu-head) !important;}
+
+/* ===== العمود الجانبيّ ===== */
+html:root:root #eduHubModal[data-edu-bg] .eduQuote{flex:0 0 auto;padding:22px 20px;}
+html:root:root #eduHubModal[data-edu-bg] .eduQuote b{display:block;font-size:22px;line-height:1.5;color:var(--edu-head);font-weight:800;}
+html:root:root #eduHubModal[data-edu-bg] .eduQuote i{display:block;width:44px;height:3px;background:rgb(var(--edu-gold));border-radius:3px;margin:10px 0;}
+html:root:root #eduHubModal[data-edu-bg] .eduQuote span{font-size:14px;color:var(--edu-muted);}
+html:root:root #eduHubModal[data-edu-bg] .eduStreakCard{padding:16px 18px;display:flex;align-items:center;gap:12px;}
+html:root:root #eduHubModal[data-edu-bg] .eduStreakN{font-size:30px;font-weight:800;color:var(--edu-head);}
+html:root:root #eduHubModal[data-edu-bg] .eduStreakCard b{display:block;font-size:15px;}
+html:root:root #eduHubModal[data-edu-bg] .eduStreakCard div div{font-size:12.5px;color:var(--edu-muted);}
+html:root:root #eduHubModal[data-edu-bg] .eduBooks{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:7px;padding:20px 18px;min-height:240px;}
+html:root:root #eduHubModal[data-edu-bg] .eduBk{height:44px;border-radius:6px 10px 10px 6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:var(--edu-head);border:1px solid rgba(var(--edu-gold),.25);box-shadow:inset -10px 0 0 rgba(0,0,0,.25);opacity:.92;}
+
+/* ===== نموذج «إضافة محاضرة» ===== */
+html:root:root #eduHubModal[data-edu-bg] .eduUpCard{background:rgba(var(--edu-glass),.72) !important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(var(--edu-gold),.5) !important;}
+html:root:root #eduHubModal[data-edu-bg] .eduUpFld{background:rgba(var(--edu-glass),.4) !important;border:1px solid rgba(var(--edu-gold),.3) !important;border-radius:12px !important;color:var(--edu-ink) !important;}
+html:root:root #eduHubModal[data-edu-bg] .eduUpLab{color:var(--edu-head);}
+html:root:root #eduHubModal[data-edu-bg] .eduUpPick{background:linear-gradient(135deg,var(--edu-up1),var(--edu-up2)) !important;color:var(--edu-upink) !important;border:none !important;font-weight:700;}
+html:root:root #eduHubModal[data-edu-bg] .eduPrimary{background:linear-gradient(135deg,var(--edu-up1),var(--edu-up2)) !important;color:var(--edu-upink) !important;border-radius:14px !important;font-weight:800;}
+
+/* بلا ثيم تعليم: الشكل القديم كما كان (العنوان الفرعيّ لزرّ الرفع والعمود الجانبيّ للثيمين فقط) */
+#eduHubModal:not([data-edu-bg]) .eduUpTxt small{display:none;}
+#eduHubModal:not([data-edu-bg]) .eduUpTxt b{font-weight:inherit;}

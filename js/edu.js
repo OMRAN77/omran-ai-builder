@@ -289,11 +289,15 @@ function mergeServerStreak(sv){
     renderStreak();
   }catch(e){ __swallow(e, "save:index#9"); }
 }
-function renderStreak(){
-  var el=document.getElementById('eduStreakBadge'); if(!el) return;
+function streakNow(){
   var st=localStreak(); var n=st.streak||0;
   var today=new Date().toISOString().slice(0,10), y=new Date(Date.now()-86400000).toISOString().slice(0,10);
   if(st.lastActive!==today&&st.lastActive!==y) n=0;
+  return n;
+}
+function renderStreak(){
+  var el=document.getElementById('eduStreakBadge'); if(!el) return;
+  var n=streakNow();
   el.style.display=n>0?'':'none'; el.textContent='🔥 '+n;
 }
 /* ---------- data layer (server for registered, localStorage for guests) ---------- */
@@ -409,13 +413,11 @@ function md(src){
 }
 /* ---------- view engine ---------- */
 var modal=document.getElementById('eduHubModal');
-/* v-edu-bg: خلفيّة التعليم تتبع الثيم (css/تعليم-خلفية.css). الأولويّة: ثيم «خلفيّات الشاشة» إن كان له صورة، ثمّ لون الدوائر؛
-   من لا صورة له بعد لا data-edu-bg عنده فيبقى شكله كما كان. ملاحظة: المراقب يبدّلها فورًا عند تغيّر الثيم بلا إعادة تحميل. */
-var EDU_BG_SKINS='wood darkwood marble code cars kids cuisine sunset beach winter garage anime cyber school tactical angel neonanime station rally smoke library cafe workshop modern'.split(' '), EDU_BG_ACCENT={gold:'classic',purple:'space'};
+/* v-edu-bg: خلفيّة التعليم تتبع الثيم (css/تعليم-خلفية.css). ثيمان الآن بأمر المالك: المكتبة (لون الدوائر الذهبيّ) والفضاء (البنفسجيّ)؛ ما سواهما يبقى
+   كما كان بلا data-edu-bg (ثيمات «خلفيّات الشاشة» أيضًا). المراقب يبدّلها فورًا عند تغيّر الثيم بلا إعادة تحميل. */
+var EDU_BG_ACCENT={gold:'classic',purple:'space'};
 function eduBgKey(){
-  var h=document.documentElement, k='';
-  EDU_BG_SKINS.forEach(function(s){ if(h.classList.contains('skin-'+s)) k=s; });
-  if(k||h.classList.contains('skin')) return k;
+  if(document.documentElement.classList.contains('skin')) return '';
   var a='gold'; try{ a=localStorage.getItem('appTheme')||'gold'; }catch(e){ __swallow(e,'edu:bg-theme'); }
   return EDU_BG_ACCENT[a]||'';
 }
@@ -440,13 +442,23 @@ document.getElementById('eduCloseBtn').onclick=closeModal;
 backBtn.onclick=function(){ var fn=navStack.pop(); if(fn) fn(); else showHome(); };
 modal.addEventListener('click',function(e){ if(e.target===modal) closeModal(); });
 /* ---------- HOME ---------- */
+/* v-edu-mock: العمود الجانبيّ للصفحة الرئيسيّة (تصميم المالك p1.html): مقولة، أيّام متتالية، وكتب المواد — زينة لا تغيّر وظيفة (يظهر مع الخلفيّات على الحاسوب) */
+function eduSideHtml(){
+  var books=[['الرياضيات','Mathematics','#1d2a3a',100,0],['العلوم','Science','#1f3326',94,3],['اللغة العربية','Arabic','#3a2a17',100,0],['اللغة الإنجليزية','English','#3a1c22',96,0],['التاريخ','History','#262033',92,5]];
+  var bk=books.map(function(b){ return '<div class="eduBk" style="background:'+b[2]+';width:'+b[3]+'%;margin-inline-start:'+b[4]+'%">'+esc(eduL(b[0],b[1]))+'</div>'; }).join('');
+  return '<aside class="eduSide" aria-hidden="true">'
+   +'<div class="eduBx eduQuote"><b>'+esc(eduL('المعرفة','Knowledge'))+'<br>'+esc(eduL('تبدأ من هنا','starts here'))+'</b><i></i><span>'+esc(eduL('كل إنجاز يبدأ بخطوة','Every achievement starts with a step'))+'</span></div>'
+   +'<div class="eduBx eduStreakCard"><div class="eduStreakN">🔥 '+streakNow()+'</div><div><b>'+esc(eduL('أيام متتالية','Days in a row'))+'</b><div>'+esc(eduL('ذاكر اليوم عشان ما تنقطع',"Study today so you don't break it"))+'</div></div></div>'
+   +'<div class="eduBx eduBooks">'+bk+'</div></aside>';
+}
+
 function subjectColor(subjects,name){ var i=subjects.indexOf(name); return PALETTE[(i>=0?i:subjects.length)%PALETTE.length]; }
 function showHome(){
   setBack(false); navStack=[]; if(eduUpCloseFn) eduUpCloseFn(); /* v-edu-upform: لا تبقى بطاقة رفع معلّقة فوق شاشة جديدة */
-  body.innerHTML=''
+  body.innerHTML='<div class="eduHomeGrid"><div class="eduMain">'
    +'<button class="eduUploadBtn" id="eduUploadBtn">'
    +'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>'
-   +'<span>'+esc(T('upload'))+'</span></button>'
+   +'<span class="eduUpTxt"><b>'+esc(T('upload'))+'</b><small>'+esc(T('uploadSub'))+'</small></span></button>'
    +'<input type="file" id="eduFileInput" accept=".pdf,.docx,.zip,image/*" multiple style="display:none;">'
    +'<button class="eduPasteToggle" id="eduPasteToggle">'+esc(T('orPaste'))+'</button>'
    +'<div class="eduPasteArea" id="eduPasteArea">'
@@ -455,14 +467,15 @@ function showHome(){
    +'<button class="eduUploadBtn" id="eduCurricBtn" style="margin-top:10px;"><span style="font-size:20px;">📚</span><span>'+esc(eduL('درس من المنهج — اختر البلد والصف والمادة','Lesson from curriculum — pick country, grade & subject'))+'</span></button>'
    +'<div id="eduPlusHome"></div>' /* v-edu-plus: المسار الجاهز · حلّ مسألة · مراجعة اليوم · تقدّمي */
    +(getToken()?'':'<div class="eduNote">'+esc(T('guestNote'))+'</div>')
-   +eduExamLangControl()
-   +'<div class="eduSecTitle">'+esc(T('mySubjects'))+'</div>'
-   +'<div id="eduSubjWrap"><div class="eduEmpty">…</div></div>'
+   +'<div class="eduTwo"><div class="eduBx eduLangCard">'+eduExamLangControl()+'</div>'
+   +'<div class="eduBx eduSubjCard"><div class="eduSecTitle">'+esc(T('mySubjects'))+'</div>'
+   +'<div id="eduSubjWrap"><div class="eduEmpty">…</div></div></div></div>'
    +'<div id="eduUpWrap"></div>' /* v-edu-upform: «محاضراتك المرفوعة» تحت «موادي» */
    /* v306: entry to the OLD education modal so nothing old is lost */
    +'<div class="eduLessonRow" id="eduOldEduRow" style="margin-top:18px;">'
    +'<div class="eduLessonTitle">'+esc(T('oldEdu'))+'</div>'
-   +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7;'+(isRTL()?'transform:scaleX(-1);':'')+'"><polyline points="9 18 15 12 9 6"></polyline></svg></div>';
+   +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7;'+(isRTL()?'transform:scaleX(-1);':'')+'"><polyline points="9 18 15 12 9 6"></polyline></svg></div>'
+   +'</div>'+eduSideHtml()+'</div>'; /* v-edu-mock: العمود الجانبيّ (المقولة + الأيّام المتتالية + الكتب) بتصميم المالك design/edu-mock/p1.html */
   bindEduExamLang();
   document.getElementById('eduUploadBtn').onclick=showUploadForm; /* v-edu-upform (تصميم المالك): النموذج أوّلًا، ثمّ المسار القائم نفسه */
   document.getElementById('eduFileInput').onchange=function(){
