@@ -219,6 +219,9 @@ test('١٣) أعطال الخدمة والنقل والسرد والمسائل �
   const n = (c, k) => c[k] || 0;
   const ago = (h) => new Date(Date.now() - h * 36e5).toISOString();
   const untagged = (r, m) => { assert.equal(n(r.c, 'issue') >= 1, true, m); assert.doesNotMatch(r.c.issues[0], /mira-failed/, m); };
+  // عطل عابر: «عطل مؤقّت» لا «يحتاج تدخّلك» ولا تعليق جدول؛ رفض الحساب: العكس، و[mira-account] في النشر الفعليّ
+  const temp = (r, m) => { untagged(r, m); assert.match(r.c.issues[0], /عطل مؤقّت/, m); assert.doesNotMatch(r.c.issues[0], /يحتاج تدخّلك|mira-account/, m); };
+  const acct = (r, m) => { untagged(r, m); assert.match(r.c.issues[0], /^\[mira-account\] .*يحتاج تدخّلك/, m); assert.doesNotMatch(r.c.issues[0], /عطل مؤقّت/, m); };
   // ٤٢٩ مرّة، أو اتّصال لم يُفتح: إعادة مجّانيّة للطلب نفسه — لا إطار مدفوع ثانٍ ولا تنبيه
   for (const mode of ['predict429', 'predictnet']) {
     const r = run({ live: true, mode });
@@ -226,32 +229,56 @@ test('١٣) أعطال الخدمة والنقل والسرد والمسائل �
   }
   // انقطاع بعد الإرسال أو مهلة على نداء مدفوع = ربما حُوسب: لا إعادة ولا توليد ثانٍ، وتنبيه لا يوقف القصّة (v-img-no-rebill)
   const rs = run({ live: true, mode: 'predictreset' });
-  assert.equal(rs.code, 1); assert.equal(n(rs.c, 'predict'), 1); assert.equal(n(rs.c, 'frame'), 1); untagged(rs, 'reset');
+  assert.equal(rs.code, 1); assert.equal(n(rs.c, 'predict'), 1); assert.equal(n(rs.c, 'frame'), 1); temp(rs, 'reset');
   const to = run({ live: true, mode: 'frametimeout' });
-  assert.equal(to.code, 1); assert.equal(n(to.c, 'frame'), 1); assert.equal(n(to.c, 'predict'), 0); untagged(to, 'timeout');
+  assert.equal(to.code, 1); assert.equal(n(to.c, 'frame'), 1); assert.equal(n(to.c, 'predict'), 0); temp(to, 'timeout');
   // ٥٠٣ دائم على الصور: ٣ محاولات مجّانيّة ثمّ عطل خدمة — لا إعادة ولا إيقاف
   // ردّ ٢٠٠ غير مقروء على نداء مدفوع = ربما حُوسب: لا إعادة؛ وبدء مقطع بلا رقم مهمّة = ربما بدأت: لا مقطع ثانٍ فوقها
   const fb2 = run({ live: true, mode: 'frame200bad' });
-  assert.equal(fb2.code, 1); assert.equal(n(fb2.c, 'frame'), 1); assert.equal(n(fb2.c, 'predict'), 0); untagged(fb2, 'frame200bad');
+  assert.equal(fb2.code, 1); assert.equal(n(fb2.c, 'frame'), 1); assert.equal(n(fb2.c, 'predict'), 0); temp(fb2, 'frame200bad');
   const nop = run({ live: true, mode: 'predictnoop' });
-  assert.equal(nop.code, 1); assert.equal(n(nop.c, 'predict'), 1); assert.equal(n(nop.c, 'frame'), 1); untagged(nop, 'predictnoop');
+  assert.equal(nop.code, 1); assert.equal(n(nop.c, 'predict'), 1); assert.equal(n(nop.c, 'frame'), 1); temp(nop, 'predictnoop');
+  // ٤٠٢/٤٠٣ = الحساب (الرصيد أو المفتاح) لا الحلقة: لا إعادة ولا توليد ثانٍ ولا وسم إيقاف، وتنبيه «يحتاج تدخّلك» (تشغيلة ١٧)
+  // ومثلها ٤٠١ و٤٠٤ و٤٠٠ «API key not valid» (Google يردّ المفتاح الخطأ بـ٤٠٠) — بلا إعادة أيًّا كانت الخطوة
+  for (const [mode, frame, predict] of [['frame402', 1, 0], ['frame401', 1, 0], ['frame400key', 1, 0], ['predict403', 1, 1], ['predict404', 1, 1]]) {
+    const r = run({ live: true, mode });
+    assert.equal(r.code, 1, mode); assert.equal(n(r.c, 'frame'), frame, mode); assert.equal(n(r.c, 'predict'), predict, mode); acct(r, mode);
+    assert.match(r.c.issueBodies[0], /الجدول معلّق/, mode);
+  }
+  // DRY_RUN: لا تعليق جدول، وتعليمة «أعد المعاينة» لا «تكمل تلقائيًّا» (لا شيء يُعاد وحده و live=false)
+  const d402 = run({ live: false, dry: true, mode: 'frame402' }); assert.equal(n(d402.c, 'frame'), 1); assert.match(d402.c.issues[0], /^\[DRY_RUN\].*يحتاج تدخّلك/);
+  assert.match(d402.c.issueBodies[0], /أعد المعاينة/); assert.doesNotMatch(d402.c.issueBodies[0], /تلقائيًّا/);
+  const dt = run({ live: false, dry: true, mode: 'frame503' }); assert.match(dt.c.issues[0], /^\[DRY_RUN\].*عطل مؤقّت/); assert.match(dt.c.issueBodies[0], /أعد المعاينة/);
+  // الفحص يُرفض بسبب الحساب بعد الإطار المدفوع: لا ٣ محاولات ولا «عطل مؤقّت»
+  const j402 = run({ live: true, mode: 'judge402' });
+  assert.equal(j402.code, 1); assert.equal(n(j402.c, 'frame'), 1); assert.equal(n(j402.c, 'judge'), 1); assert.equal(n(j402.c, 'predict'), 0); acct(j402, 'judge402');
+  const c402 = run({ live: true, mode: 'clipjudge402' });
+  assert.equal(c402.code, 1); assert.equal(n(c402.c, 'predict'), 1); assert.equal(n(c402.c, 'judge'), 2); acct(c402, 'clipjudge402');
+  // فحص مجّانيّ قبل أيّ إنفاق: نموذج الفيديو متقاعد = لا سرد ولا إطار ولا مقطع
+  const vm = run({ live: true, mode: 'veomissing' });
+  assert.equal(vm.code, 1); assert.equal(n(vm.c, 'frame') + n(vm.c, 'predict') + n(vm.c, 'tts'), 0); acct(vm, 'veomissing'); assert.match(vm.c.issueBodies[0], /preflight .*veo.* 404/);
+  // تعليق الجدول: [mira-account] مفتوحة = البوّابة go=0 والتشغيلة المجدولة لا تصرف؛ اليدويّة تمرّ (المالك يجرّب بعد الإصلاح)
+  const held = [{ title: '[mira-account] مسلسل ميرا: الحلقة 1 … (يحتاج تدخّلك: الرصيد أو المفتاح)' }];
+  assert.equal(run({ gate: true, live: true, event: 'schedule', issues: held }).out, 'go=0');
+  const hs = run({ live: true, event: 'schedule', issues: held }); assert.equal(hs.code, 0, hs.err); assert.equal(n(hs.c, 'frame') + n(hs.c, 'upload'), 0);
+  assert.deepEqual(run({ live: true, issues: held }).c.uploads, ['mira-app-1']);
   const f5 = run({ live: true, mode: 'frame503' });
-  assert.equal(f5.code, 1); assert.equal(n(f5.c, 'frame'), 3); assert.equal(n(f5.c, 'predict'), 0); untagged(f5, 'frame503');
+  assert.equal(f5.code, 1); assert.equal(n(f5.c, 'frame'), 3); assert.equal(n(f5.c, 'predict'), 0); temp(f5, 'frame503');
   // ٤٠٠ رفض صريح: محاولة + إعادة واحدة بالإطار المقبول نفسه، ثمّ إيقاف
   const r400 = run({ live: true, mode: 'predict400' });
   assert.equal(r400.code, 1); assert.equal(n(r400.c, 'predict'), 2); assert.equal(n(r400.c, 'frame'), 1); assert.equal(n(r400.c, 'upload'), 0); assert.match(r400.c.issues[0], /mira-failed/);
   // المهمّة فشلت عند المحرّك: عطل لا فحص؛ حجبها بفلتر الأمان: محتوى يُعاد مرّة بالإطار نفسه ثمّ يوقف
   const vf = run({ live: true, mode: 'veofail' });
-  assert.equal(vf.code, 1); assert.equal(n(vf.c, 'predict'), 1); untagged(vf, 'veofail');
+  assert.equal(vf.code, 1); assert.equal(n(vf.c, 'predict'), 1); temp(vf, 'veofail');
   const vb = run({ live: true, mode: 'veoblocked' });
   assert.equal(vb.code, 1); assert.equal(n(vb.c, 'predict'), 2); assert.equal(n(vb.c, 'frame'), 1); assert.match(vb.c.issues[0], /^\[mira-failed app:1\]/);
   // مهمّة ما زالت تعمل بعد ١٠ دقائق: لا مقطع ثانٍ فوقها
   const pend = run({ live: true, mode: 'pending' });
-  assert.equal(pend.code, 1); assert.equal(n(pend.c, 'predict'), 1); assert.equal(n(pend.c, 'frame'), 1); untagged(pend, 'pending');
+  assert.equal(pend.code, 1); assert.equal(n(pend.c, 'predict'), 1); assert.equal(n(pend.c, 'frame'), 1); temp(pend, 'pending');
   // الفحص نفسه معطّل: لا إعادة ولا وسم إيقاف
   for (const mode of ['framejudgenet', 'clipjudgenet']) {
     const r = run({ live: true, mode });
-    assert.equal(r.code, 1, mode); assert.equal(n(r.c, 'frame'), 1, mode); assert.equal(n(r.c, 'predict'), mode === 'framejudgenet' ? 0 : 1, mode); untagged(r, mode);
+    assert.equal(r.code, 1, mode); assert.equal(n(r.c, 'frame'), 1, mode); assert.equal(n(r.c, 'predict'), mode === 'framejudgenet' ? 0 : 1, mode); temp(r, mode);
   }
   // معاينة DRY_RUN فشلت فحصها: تنبيه بلا وسم إيقاف (لا يحجب الجدول ولا المعاينة التالية)
   const dr = run({ live: false, dry: true, mode: 'clipfail' });
@@ -259,8 +286,11 @@ test('١٣) أعطال الخدمة والنقل والسرد والمسائل �
   // السرد: عطل مؤقّت يُعاد وينشر؛ ٤٠١ لا يُعاد؛ سطر ناقص = لا نشر ولا إنفاق؛ وفي DRY_RUN معاينة بلا تنبيه
   const t1 = run({ live: true, mode: 'tts503once' }); assert.equal(t1.code, 0, t1.err); assert.equal(n(t1.c, 'tts'), 3); assert.equal(n(t1.c, 'upload'), 1);
   const t4 = run({ live: true, mode: 'tts401' }); assert.equal(t4.code, 1); assert.equal(n(t4.c, 'tts'), 2); assert.equal(n(t4.c, 'upload') + n(t4.c, 'frame'), 0);
+  assert.match(t4.c.issueBodies[0], /tts 401 \{"error":"Azure TTS error/, 'سبب رفض السرد في التنبيه');
   const tl = run({ live: true, mode: 'tts1fail' }); assert.equal(tl.code, 1); assert.equal(n(tl.c, 'upload') + n(tl.c, 'predict'), 0); assert.equal(n(tl.c, 'issue'), 1);
-  const td = run({ live: false, dry: true, mode: 'tts1fail' }); assert.equal(td.code, 0, td.err); assert.equal(n(td.c, 'upload'), 0); assert.equal(n(td.c, 'issue'), 0);
+  // DRY_RUN بلا سرد لا يُصرف عليه (معاينة لا تمثّل الحلقة)، بلا مسألة، وسبب الرفض (جسم الردّ) ظاهر
+  const td = run({ live: false, dry: true, mode: 'tts1fail' }); assert.equal(td.code, 1); assert.equal(n(td.c, 'frame') + n(td.c, 'predict') + n(td.c, 'upload'), 0); assert.equal(n(td.c, 'issue'), 0);
+  const tz4 = run({ live: false, dry: true, mode: 'tts401' }); assert.equal(n(tz4.c, 'frame'), 0); assert.match(tz4.err, /tts 401 \{"error":"Azure TTS error/, 'سبب رفض الصوت يظهر');
   // مسائل التنبيه: عطلها في النشر الفعليّ = توقّف قبل أيّ نداء مدفوع، والبوّابة go=0؛ الطلب والمسألة المقفلة لا يوقفان
   const i5 = run({ live: true, mode: 'issues500' }); assert.equal(i5.code, 1); assert.equal(n(i5.c, 'frame'), 0);
   assert.equal(run({ gate: true, live: true, event: 'schedule', mode: 'issues500' }).out, 'go=0');
