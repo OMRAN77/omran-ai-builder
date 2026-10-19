@@ -100,6 +100,7 @@ test('٨) ملفّ التشغيل: ميرا يوميًّا ٥ العصر في و
   assert.match(yml, /permissions:\n  contents: read/, 'البوت الحاليّ قراءة فقط كما كان');
   assert.match(yml, /contents: write {3}# DRY_RUN preview/); assert.match(yml, /issues: write/);
   assert.match(yml, /node scripts\/social-bot\.mjs --gate-mira/); assert.match(yml, /node scripts\/social-bot\.mjs --mira/);
+  assert.match(yml, /id: gate\n        env:\n          UPLOAD_POST_API_KEY: [^\n]*\n          GITHUB_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}\n        run: node scripts\/social-bot\.mjs --gate-mira/, 'البوّابة تقرأ الحلقات الموقوفة');
   assert.match(yml, /GEMINI_API_KEY: \$\{\{ secrets\.GEMINI_API_KEY \}\}/);
   assert.match(yml, /bot\/mira-preview/);
 });
@@ -176,9 +177,10 @@ test('١١) التدفّق كاملًا بمحرّكات مزيّفة: قفل ا
   const dl = run({ live: true, mode: 'dlfail' });
   assert.equal(dl.code, 1); assert.equal(n(dl.c, 'predict'), 1); assert.equal(n(dl.c, 'frame'), 1); assert.equal(n(dl.c, 'download'), 4);
   assert.equal(n(dl.c, 'upload'), 0); assert.equal(n(dl.c, 'issue'), 1); assert.doesNotMatch(dl.c.issues[0], /mira-failed/);
-  // صوت الاحتياط غير الإماراتيّ في النشر الفعليّ = لا نشر وتنبيه
+  // صوت الاحتياط غير الإماراتيّ في النشر الفعليّ = لا نشر وتنبيه، والسرد يُفحص قبل أيّ إنفاق
   const fb = run({ live: true, mode: 'fallback' });
   assert.equal(fb.code, 1); assert.equal(n(fb.c, 'upload'), 0); assert.equal(n(fb.c, 'issue'), 1); assert.doesNotMatch(fb.c.issues[0], /mira-failed/, 'عطل السرد لا يوقف القصّة');
+  assert.equal(n(fb.c, 'frame') + n(fb.c, 'predict'), 0, 'السرد أوّلًا — لا إطار ولا مقطع مدفوع');
   // البوّابة: نُشرت ميرا قبل ساعة = لا؛ قبل ٢٥ ساعة = نعم؛ الجاية موقوفة والأخرى خالصة = لا
   const ago = (h) => new Date(Date.now() - h * 36e5).toISOString();
   assert.equal(run({ gate: true, live: true, event: 'schedule', history: [{ external_id: 'mira-app-1', upload_timestamp: ago(1) }] }).out, 'go=0');
@@ -195,4 +197,86 @@ test('١٢) الموقوفة: وسم التنبيه يُقرأ من العنوا
   assert.equal(nextEpisode({ app: 3, uae: 2, lastStory: 'app' }, eps, '', bl).story + ':' + nextEpisode({ app: 3, uae: 2, lastStory: 'app' }, eps, '', bl).k, 'app:4');
   assert.equal(nextEpisode({ app: 11, uae: 2, lastStory: 'app' }, eps, '', bl), null, 'القصّتان موقوفتان');
   assert.equal(nextEpisode({}, eps, 'uae:3', bl).k, 3);
+});
+
+test('١٣) أعطال الخدمة والنقل والسرد والمسائل والصفحات بمحرّكات مزيّفة (المراجعة الثانية)', async () => {
+  const FX = path.join(ROOT, 'tests', 'fixtures', 'mira-stub');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-flow2-'));
+  const epsFile = (live) => { const f = path.join(dir, 'eps-' + live + '.json'); fs.writeFileSync(f, JSON.stringify({ live, character: 'SHEET', episodes: both() })); return f; };
+  const run = (o) => {
+    const counts = path.join(dir, 'c-' + Math.random().toString(36).slice(2) + '.json'), out = fs.mkdtempSync(path.join(dir, 'o-'));
+    let code = 0, err = '';
+    try {
+      execFileSync(process.execPath, ['--import', require('url').pathToFileURL(path.join(FX, 'stub.mjs')).href, path.join(ROOT, 'scripts', 'social-bot.mjs'), o.bot ? '--gate' : o.gate ? '--gate-mira' : '--mira'], {
+        env: { ...process.env, PATH: path.join(FX, 'bin') + path.delimiter + process.env.PATH, BASE: 'http://stub.base', OUT_DIR: out, MIRA_EPISODES_FILE: epsFile(o.live), GEMINI_API_KEY: 'g', UPLOAD_POST_API_KEY: 'u', GITHUB_TOKEN: 't', GITHUB_REPOSITORY: 'o/r', GITHUB_ACTIONS: '', GITHUB_EVENT_NAME: o.event || 'workflow_dispatch', GITHUB_OUTPUT: path.join(out, 'gh-out'), DRY_RUN: o.dry ? '1' : '', MIRA_EP: '', STUB_MODE: o.mode || 'ok', STUB_COUNTS: counts, STUB_HISTORY: JSON.stringify(o.history || []), STUB_FILL: String(o.fill || 0), STUB_FILL_ID: o.fillId || '', STUB_ISSUES: JSON.stringify(o.issues || []), STUB_ISSUE_FILL: String(o.issueFill || 0) },
+        stdio: 'pipe',
+      });
+    } catch (e) { code = e.status; err = String(e.stderr || ''); }
+    const c = fs.existsSync(counts) ? JSON.parse(fs.readFileSync(counts, 'utf8')) : {};
+    const rd = (f) => (fs.existsSync(path.join(out, f)) ? fs.readFileSync(path.join(out, f), 'utf8').trim() : '');
+    return { code, err, c, out: rd('gh-out'), caption: rd('caption.txt') };
+  };
+  const n = (c, k) => c[k] || 0;
+  const ago = (h) => new Date(Date.now() - h * 36e5).toISOString();
+  const untagged = (r, m) => { assert.equal(n(r.c, 'issue') >= 1, true, m); assert.doesNotMatch(r.c.issues[0], /mira-failed/, m); };
+  // ٤٢٩ مرّة، أو اتّصال لم يُفتح: إعادة مجّانيّة للطلب نفسه — لا إطار مدفوع ثانٍ ولا تنبيه
+  for (const mode of ['predict429', 'predictnet']) {
+    const r = run({ live: true, mode });
+    assert.equal(r.code, 0, mode + r.err); assert.equal(n(r.c, 'frame'), 2, mode); assert.equal(n(r.c, 'predict'), 3, mode); assert.equal(n(r.c, 'issue'), 0, mode);
+  }
+  // انقطاع بعد الإرسال أو مهلة على نداء مدفوع = ربما حُوسب: لا إعادة ولا توليد ثانٍ، وتنبيه لا يوقف القصّة (v-img-no-rebill)
+  const rs = run({ live: true, mode: 'predictreset' });
+  assert.equal(rs.code, 1); assert.equal(n(rs.c, 'predict'), 1); assert.equal(n(rs.c, 'frame'), 1); untagged(rs, 'reset');
+  const to = run({ live: true, mode: 'frametimeout' });
+  assert.equal(to.code, 1); assert.equal(n(to.c, 'frame'), 1); assert.equal(n(to.c, 'predict'), 0); untagged(to, 'timeout');
+  // ٥٠٣ دائم على الصور: ٣ محاولات مجّانيّة ثمّ عطل خدمة — لا إعادة ولا إيقاف
+  // ردّ ٢٠٠ غير مقروء على نداء مدفوع = ربما حُوسب: لا إعادة؛ وبدء مقطع بلا رقم مهمّة = ربما بدأت: لا مقطع ثانٍ فوقها
+  const fb2 = run({ live: true, mode: 'frame200bad' });
+  assert.equal(fb2.code, 1); assert.equal(n(fb2.c, 'frame'), 1); assert.equal(n(fb2.c, 'predict'), 0); untagged(fb2, 'frame200bad');
+  const nop = run({ live: true, mode: 'predictnoop' });
+  assert.equal(nop.code, 1); assert.equal(n(nop.c, 'predict'), 1); assert.equal(n(nop.c, 'frame'), 1); untagged(nop, 'predictnoop');
+  const f5 = run({ live: true, mode: 'frame503' });
+  assert.equal(f5.code, 1); assert.equal(n(f5.c, 'frame'), 3); assert.equal(n(f5.c, 'predict'), 0); untagged(f5, 'frame503');
+  // ٤٠٠ رفض صريح: محاولة + إعادة واحدة بالإطار المقبول نفسه، ثمّ إيقاف
+  const r400 = run({ live: true, mode: 'predict400' });
+  assert.equal(r400.code, 1); assert.equal(n(r400.c, 'predict'), 2); assert.equal(n(r400.c, 'frame'), 1); assert.equal(n(r400.c, 'upload'), 0); assert.match(r400.c.issues[0], /mira-failed/);
+  // المهمّة فشلت عند المحرّك: عطل لا فحص؛ حجبها بفلتر الأمان: محتوى يُعاد مرّة بالإطار نفسه ثمّ يوقف
+  const vf = run({ live: true, mode: 'veofail' });
+  assert.equal(vf.code, 1); assert.equal(n(vf.c, 'predict'), 1); untagged(vf, 'veofail');
+  const vb = run({ live: true, mode: 'veoblocked' });
+  assert.equal(vb.code, 1); assert.equal(n(vb.c, 'predict'), 2); assert.equal(n(vb.c, 'frame'), 1); assert.match(vb.c.issues[0], /^\[mira-failed app:1\]/);
+  // مهمّة ما زالت تعمل بعد ١٠ دقائق: لا مقطع ثانٍ فوقها
+  const pend = run({ live: true, mode: 'pending' });
+  assert.equal(pend.code, 1); assert.equal(n(pend.c, 'predict'), 1); assert.equal(n(pend.c, 'frame'), 1); untagged(pend, 'pending');
+  // الفحص نفسه معطّل: لا إعادة ولا وسم إيقاف
+  for (const mode of ['framejudgenet', 'clipjudgenet']) {
+    const r = run({ live: true, mode });
+    assert.equal(r.code, 1, mode); assert.equal(n(r.c, 'frame'), 1, mode); assert.equal(n(r.c, 'predict'), mode === 'framejudgenet' ? 0 : 1, mode); untagged(r, mode);
+  }
+  // معاينة DRY_RUN فشلت فحصها: تنبيه بلا وسم إيقاف (لا يحجب الجدول ولا المعاينة التالية)
+  const dr = run({ live: false, dry: true, mode: 'clipfail' });
+  assert.equal(dr.code, 1); assert.match(dr.c.issues[0], /^\[DRY_RUN\]/); assert.doesNotMatch(dr.c.issues[0], /mira-failed/);
+  // السرد: عطل مؤقّت يُعاد وينشر؛ ٤٠١ لا يُعاد؛ سطر ناقص = لا نشر ولا إنفاق؛ وفي DRY_RUN معاينة بلا تنبيه
+  const t1 = run({ live: true, mode: 'tts503once' }); assert.equal(t1.code, 0, t1.err); assert.equal(n(t1.c, 'tts'), 3); assert.equal(n(t1.c, 'upload'), 1);
+  const t4 = run({ live: true, mode: 'tts401' }); assert.equal(t4.code, 1); assert.equal(n(t4.c, 'tts'), 2); assert.equal(n(t4.c, 'upload') + n(t4.c, 'frame'), 0);
+  const tl = run({ live: true, mode: 'tts1fail' }); assert.equal(tl.code, 1); assert.equal(n(tl.c, 'upload') + n(tl.c, 'predict'), 0); assert.equal(n(tl.c, 'issue'), 1);
+  const td = run({ live: false, dry: true, mode: 'tts1fail' }); assert.equal(td.code, 0, td.err); assert.equal(n(td.c, 'upload'), 0); assert.equal(n(td.c, 'issue'), 0);
+  // مسائل التنبيه: عطلها في النشر الفعليّ = توقّف قبل أيّ نداء مدفوع، والبوّابة go=0؛ الطلب والمسألة المقفلة لا يوقفان
+  const i5 = run({ live: true, mode: 'issues500' }); assert.equal(i5.code, 1); assert.equal(n(i5.c, 'frame'), 0);
+  assert.equal(run({ gate: true, live: true, event: 'schedule', mode: 'issues500' }).out, 'go=0');
+  const ib = run({ live: true, mode: 'issuesbad' }); assert.equal(ib.code, 1); assert.equal(n(ib.c, 'frame'), 0, 'صفحة مسائل غير مقروءة = مغلق');
+  const pr = run({ live: true, issues: [{ title: '[mira-failed app:1] x', pull_request: {} }, { title: '[mira-failed app:1] y', state: 'closed' }] });
+  assert.deepEqual(pr.c.uploads, ['mira-app-1']); assert.match(pr.c.issueGets[0], /state=open/);
+  // تنبيه أقدم من ١٠٠ مفتوح يُرى (صفحات): القصّة الموقوفة تبقى موقوفة
+  const deep = run({ live: true, issueFill: 150, issues: [{ title: '[mira-failed app:1] قديم' }] });
+  assert.deepEqual(deep.c.uploads, ['mira-uae-1']); assert.ok(deep.c.issueGets.length >= 2);
+  // إنشاء التنبيه يتعثّر: يُعاد ٤ مرّات
+  const ip = run({ live: true, mode: 'clipfail,issuepost500' }); assert.equal(n(ip.c, 'issue'), 4);
+  const i403 = run({ live: true, mode: 'clipfail,issuepost403' }); assert.equal(n(i403.c, 'issue'), 1, 'رفض صريح (٤xx) لا يُعاد');
+  // الجاية بعد الموقوفة: «باچر» لا يَعِد بحلقة موقوفة
+  const tz = run({ live: true, issues: [{ title: '[mira-failed uae:1] x' }] });
+  assert.deepEqual(tz.c.uploads, ['mira-app-1']); assert.doesNotMatch(tz.caption, /باچر «ميرا تكتشف الإمارات»/);
+  // الصفحات: صفّ ميرا في الصفحة ١١ يُرى (٣٠ صفحة)، وحلقة البوت في الصفحة ٤ تُرى (١٠ صفحات)
+  assert.equal(run({ gate: true, live: true, event: 'schedule', fill: 1000, history: [{ external_id: 'mira-app-1', upload_timestamp: ago(1) }] }).out, 'go=0');
+  assert.equal(run({ bot: true, live: true, event: 'schedule', fill: 300, fillId: 'mira-uae-1', history: [{ external_id: 'omai-ep-4-video', upload_timestamp: ago(1) }] }).out, 'go=0');
 });

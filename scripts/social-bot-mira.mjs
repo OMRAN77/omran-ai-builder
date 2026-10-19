@@ -101,10 +101,16 @@ async function miraState() {
 async function openAlertTitles() {
   const tok = process.env.GITHUB_TOKEN, repo = process.env.GITHUB_REPOSITORY;
   if (!tok || !repo) return [];
-  const r = await fetch('https://api.github.com/repos/' + repo + '/issues?state=open&per_page=100', { headers: { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json' } });
-  if (!r.ok) throw new Error('issues ' + r.status);
-  const j = await r.json().catch(() => []);
-  return (Array.isArray(j) ? j : []).filter((x) => x && !x.pull_request).map((x) => String(x.title || ''));
+  const titles = [];
+  for (let page = 1; page <= 20; page++) { // المسائل والطلبات معًا، الأحدث أوّلًا: صفحة واحدة تُسقط تنبيهًا قديمًا فتعود قصّته — قراءة ناقصة = فشل (مغلق)
+    const r = await fetch('https://api.github.com/repos/' + repo + '/issues?state=open&per_page=100&page=' + page, { headers: { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json' } });
+    if (!r.ok) throw new Error('issues ' + r.status);
+    const j = await r.json().catch(() => null);
+    if (!Array.isArray(j)) throw new Error('issues: unreadable page ' + page);
+    titles.push(...j.filter((x) => x && !x.pull_request).map((x) => String(x.title || '')));
+    if (j.length < 100) return titles;
+  }
+  throw new Error('issues: over 2000 open — cannot tell which Mira episodes are paused');
 }
 
 // ───────── الأوامر ─────────
@@ -146,8 +152,10 @@ export function judgeVerdict(j) {
 }
 
 // ───────── المحرّكات (مباشرة من Actions بمفتاح المستودع) ─────────
-// عطل شبكة أو ٤٢٩/٥xx يُعاد (الطلب الفاشل لا يُحاسَب) — لا يحرق إعادة الحلقة الوحيدة؛ الرفض الصريح (٤xx) يُرمى فورًا.
-async function gpost(model, method, body, timeoutMs) {
+// الإعادة المجّانيّة وحدها (v-img-no-rebill): ٤٢٩/٥xx، وعطل شبكة لم يفتح الاتّصال أصلًا. في النداء المدفوع (paid) مهلة أو انقطاع بعد
+// الإرسال أو ردّ ٢٠٠ غير مقروء = «ربما حُوسب» فلا يُعاد ولا يُعاد توليده (noRegen). ٤٢٩/٥xx بعد كلّ المحاولات = عطل خدمة لا فشل فحص.
+const NEVER_SENT = /^(ECONNREFUSED|ENOTFOUND|EAI_AGAIN|UND_ERR_CONNECT_TIMEOUT)$/;
+async function gpost(model, method, body, timeoutMs, paid) {
   let last = null;
   for (let i = 0; i < 3; i++) {
     if (i) await sleep(8000 * i);
@@ -157,13 +165,19 @@ async function gpost(model, method, body, timeoutMs) {
         method: 'POST', headers: { 'x-goog-api-key': GKEY(), 'Content-Type': 'application/json' }, body: JSON.stringify(body),
         signal: AbortSignal.timeout(timeoutMs || 240000),
       });
-    } catch (e) { last = new Error(model + ' network ' + ((e && e.message) || e)); continue; }
-    const j = await r.json().catch(() => ({}));
-    if (r.ok) return j;
-    last = new Error(model + ' ' + r.status + ' ' + String((j.error && j.error.message) || JSON.stringify(j)).slice(0, 200));
-    if (r.status !== 429 && r.status < 500) throw last;
+    } catch (e) {
+      last = new Error(model + ' network ' + ((e && e.message) || e));
+      if (NEVER_SENT.test(String((e && e.cause && e.cause.code) || ''))) continue; // لم يصل Google: لا محاسبة
+      if (paid) throw Object.assign(last, { noRegen: true }); // مهلة أو انقطاع بعد الإرسال: ربما حُوسب
+      continue;
+    }
+    const j = await r.json().catch(() => null);
+    if (r.ok && j) return j;
+    if (r.ok) { last = new Error(model + ' unreadable 200'); if (paid) throw Object.assign(last, { noRegen: true }); continue; }
+    last = new Error(model + ' ' + r.status + ' ' + String(((j || {}).error && j.error.message) || JSON.stringify(j)).slice(0, 200));
+    if (r.status !== 429 && r.status < 500) throw last; // رفض صريح (٤xx): محاولة فاشلة تُحسب
   }
-  throw last;
+  throw Object.assign(last, { noRegen: true }); // ٤٢٩/٥xx/شبكة بعد كلّ المحاولات = عطل خدمة: لا إعادة مدفوعة ولا إيقاف قصّة
 }
 const b64 = (file) => fs.readFileSync(file).toString('base64');
 const mimeOf = (file) => (/\.png$/i.test(file) ? 'image/png' : 'image/jpeg');
@@ -172,7 +186,7 @@ async function drawFrame(character, ep, clip, outFile) {
   const j = await gpost(MODELS.frame, 'generateContent', {
     contents: [{ parts: [{ text: framePrompt(character, ep, clip) }, { inlineData: { mimeType: mimeOf(REF_IMAGE), data: b64(REF_IMAGE) } }] }],
     generationConfig: { imageConfig: { aspectRatio: '9:16', imageSize: '2K' } },
-  });
+  }, 0, true);
   const ps = ((((j.candidates || [])[0] || {}).content || {}).parts) || [];
   const ip = ps.find((x) => x.inlineData && x.inlineData.data);
   if (!ip) throw new Error('frame: no image (' + String(((j.candidates || [])[0] || {}).finishReason || 'none') + ')');
@@ -202,9 +216,9 @@ async function makeClip(character, ep, clip, frameFile, outFile) {
   const start = await gpost(MODELS.video, 'predictLongRunning', {
     instances: [{ prompt: clipPrompt(character, ep, clip), image: { bytesBase64Encoded: b64(frameFile), mimeType: 'image/jpeg' } }],
     parameters: { aspectRatio: '9:16', durationSeconds: CLIP_SEC },
-  });
+  }, 0, true);
   const op = start.name;
-  if (!op) throw new Error('video: no operation');
+  if (!op) throw Object.assign(new Error('video: no operation'), { noRegen: true }); // ٢٠٠ بلا مهمّة: ربما بدأت — لا ثانية فوقها
   for (let i = 0; i < 60; i++) {
     await sleep(10000);
     let r;
@@ -213,7 +227,7 @@ async function makeClip(character, ep, clip, frameFile, outFile) {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) continue;
     if (!d.done) continue;
-    if (d.error) throw new Error('video failed: ' + String(d.error.message || '').slice(0, 200));
+    if (d.error) throw Object.assign(new Error('video failed: ' + String(d.error.message || '').slice(0, 200)), { noRegen: true }); // عطل المحرّك لا فشل فحص (الحجب بالفلتر تحت يبقى محتوى)
     const g = (d.response && (d.response.generateVideoResponse || d.response)) || {};
     const s = (g.generatedSamples || g.generatedVideos || [])[0];
     const uri = s && ((s.video && (s.video.uri || s.video.videoUri)) || s.uri);
@@ -260,6 +274,7 @@ async function makeScene(character, ep, ci, dir, report) {
         rec.frame = fv;
         log('scene ' + (ci + 1) + ' attempt ' + attempt + ' frame: ' + fv.why);
         if (!fv.ok) { lastWhy = 'frame: ' + fv.why; if (!fv.ran) { content = false; break; } continue; }
+        keep = frame; // إطار مقبول: المحاولة الثانية تحرّكه هو، لا يُرسم ثانية
       }
       const mp4 = await makeClip(character, ep, clip, frame, path.join(dir, tag + '.mp4'));
       const cv = await judge(sampleFrames(mp4, dir, tag));
@@ -267,7 +282,6 @@ async function makeScene(character, ep, ci, dir, report) {
       log('scene ' + (ci + 1) + ' attempt ' + attempt + ' clip: ' + cv.why);
       if (cv.ok) return { mp4, frame };
       lastWhy = 'clip: ' + cv.why;
-      keep = frame;
       if (!cv.ran) { content = false; break; } // الفحص لم يجرِ ٣ مرّات = لا يُصرف على مقطع جديد؛ لا نشر وتنبيه
     } catch (e) {
       rec.error = String((e && e.message) || e).slice(0, 300);
@@ -400,11 +414,17 @@ async function alertOwner(title, body) { // title يحمل FAILED_TAG للحلق
   const tok = process.env.GITHUB_TOKEN, repo = process.env.GITHUB_REPOSITORY;
   if (!tok || !repo) return;
   const run = process.env.GITHUB_SERVER_URL && process.env.GITHUB_RUN_ID ? process.env.GITHUB_SERVER_URL + '/' + repo + '/actions/runs/' + process.env.GITHUB_RUN_ID : '';
-  const r = await fetch('https://api.github.com/repos/' + repo + '/issues', {
-    method: 'POST', headers: { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, body: '@OMRAN77\n\n' + body + (run ? '\n\nالتشغيلة: ' + run : '') + '\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_', labels: [] }),
-  }).catch((e) => ({ ok: false, status: String(e && e.message) }));
+  const payload = JSON.stringify({ title, body: '@OMRAN77\n\n' + body + (run ? '\n\nالتشغيلة: ' + run : '') + '\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_' });
+  let r = { ok: false, status: 0 };
+  for (let i = 0; i < 4 && !r.ok; i++) { // التنبيه هو علامة الإيقاف أيضًا — يُعاد عند العطل، وفشله يُكتب خطأً ظاهرًا
+    if (i) await sleep(2000 * i);
+    r = await fetch('https://api.github.com/repos/' + repo + '/issues', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: payload })
+      .catch((e) => ({ ok: false, status: String(e && e.message) }));
+    const st = Number(r.status);
+    if (!r.ok && st >= 400 && st < 500 && st !== 429) break;
+  }
   log('alert issue → ' + r.status);
+  if (!r.ok) gh('error', 'alert issue NOT created (' + r.status + ') — ' + title);
 }
 
 // ───────── التشغيل ─────────
@@ -442,24 +462,27 @@ export async function mainMira() {
   const after = nextEpisode({ ...st, [ep.story]: Number(ep.k), lastStory: ep.story }, eps.episodes, '', blocked);
   log('mira episode ' + ep.story + ':' + ep.k + ' «' + ep.title + '» · published so far app ' + st.app + ' · uae ' + st.uae + (live ? '' : ' · DRY_RUN'));
   const dir = path.join(OUT, 'mira'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  // السرد أوّلًا (نصّه ثابت في ملفّ الحلقات): صوت فاطمة الإماراتيّ. في النشر الفعليّ تعذّره = لا نشر وتنبيه **قبل أيّ نداء مدفوع**
+  // (اختيار المالك: سرد + ترجمة)؛ في DRY_RUN تحذير والمعاينة تُظهره.
+  const acct = await botAccount().catch(() => null);
+  const narr = await Promise.all(ep.lines.map((t, i) => (acct ? narrate(acct.token, t, path.join(dir, 'narr' + (i + 1) + '.mp3')) : Promise.reject(new Error('no bot account'))).catch((e) => { gh('warning', 'narration ' + (i + 1) + ': ' + e.message); return null; })));
+  if (live && narr.some((f) => !f)) {
+    await alertOwner('مسلسل ميرا: الحلقة ' + ep.k + ' من «' + STORIES[ep.story] + '» لم تُنشر (السرد)', 'تعذّر السرد الإماراتيّ (صوت فاطمة من /api/tts) فلم تُصنع الحلقة ولم يُصرف شيء على الإطارات والمقاطع.\n\nالحلقة تُعاد في دور قصّتها التالي.');
+    throw new Error('narration missing — not generating');
+  }
   const report = [];
   const scenes = [];
   try {
     for (const ci of [0, 1]) scenes.push(await makeScene(eps.character, ep, ci, dir, report)); // بالترتيب: فشل المشهد الأوّل مرّتين لا يُصرف على الثاني
   } catch (e) {
     fs.writeFileSync(path.join(dir, 'qa.json'), JSON.stringify({ episode: ep.story + ':' + ep.k, report }, null, 2));
-    if (e && e.content) await alertOwner(FAILED_TAG(ep.story, ep.k) + ' مسلسل ميرا: الحلقة ' + ep.k + ' من «' + STORIES[ep.story] + '» لم تُنشر', 'فشل الفحص مرّتين فلم تُنشر.\n\nالسبب: ' + e.message + '\n\nالتفاصيل في qa.json داخل ملفّ التحميل. قصّة «' + STORIES[ep.story] + '» متوقّفة عند هذي الحلقة والقصّة الثانية تكمل يوميًّا. **اقفل هذي المسألة** عشان تنعاد الحلقة في دورها (عدّل وصف مشهدها في scripts/mira-episodes.json قبل إن احتاج).');
-    else await alertOwner('مسلسل ميرا: الحلقة ' + ep.k + ' من «' + STORIES[ep.story] + '» لم تُنشر (عطل مؤقّت)', 'توقّفت الحلقة بعطل نقل أو فحص لم يجرِ — لا فشل محتوى، فلم يُعَد توليدها (لا إنفاق إضافيّ) ولا تتوقّف قصّتها.\n\nالسبب: ' + e.message + '\n\nتُعاد تلقائيًّا في دور قصّتها التالي.');
+    const why = '\n\nالسبب: ' + e.message + '\n\nالتفاصيل في qa.json داخل ملفّ التحميل.';
+    if (e && e.content && live) await alertOwner(FAILED_TAG(ep.story, ep.k) + ' مسلسل ميرا: الحلقة ' + ep.k + ' من «' + STORIES[ep.story] + '» لم تُنشر', 'فشل الفحص مرّتين فلم تُنشر.' + why + ' قصّة «' + STORIES[ep.story] + '» متوقّفة عند هذي الحلقة والقصّة الثانية تكمل يوميًّا. **اقفل هذي المسألة** عشان تنعاد الحلقة في دورها (عدّل وصف مشهدها في scripts/mira-episodes.json قبل إن احتاج).');
+    else if (e && e.content) await alertOwner('[DRY_RUN] مسلسل ميرا: معاينة الحلقة ' + ep.k + ' من «' + STORIES[ep.story] + '» فشلت فحصها', 'فشل فحص المعاينة مرّتين (DRY_RUN، لا نشر) — لا يوقف الجدول.' + why + ' عدّل المشهد وأعد المعاينة.');
+    else await alertOwner('مسلسل ميرا: الحلقة ' + ep.k + ' من «' + STORIES[ep.story] + '» لم تُنشر (عطل مؤقّت)', 'توقّفت الحلقة بعطل نقل أو خدمة أو فحص لم يجرِ — لا فشل محتوى، فلم يُعَد توليدها (لا إنفاق إضافيّ) ولا تتوقّف قصّتها.' + why + ' تُعاد تلقائيًّا في دور قصّتها التالي.');
     throw e;
   }
   fs.writeFileSync(path.join(dir, 'qa.json'), JSON.stringify({ episode: ep.story + ':' + ep.k, report }, null, 2));
-  // السرد بصوت التطبيق الإماراتيّ (فاطمة). في النشر الفعليّ تعذّره = لا نشر وتنبيه (اختيار المالك: سرد + ترجمة)؛ في DRY_RUN تحذير والمعاينة تُظهره.
-  const acct = await botAccount().catch(() => null);
-  const narr = await Promise.all(ep.lines.map((t, i) => (acct ? narrate(acct.token, t, path.join(dir, 'narr' + (i + 1) + '.mp3')) : Promise.reject(new Error('no bot account'))).catch((e) => { gh('warning', 'narration ' + (i + 1) + ': ' + e.message); return null; })));
-  if (live && narr.some((f) => !f)) {
-    await alertOwner('مسلسل ميرا: الحلقة ' + ep.k + ' من «' + STORIES[ep.story] + '» لم تُنشر (السرد)', 'تعذّر السرد الإماراتيّ (صوت فاطمة من /api/tts) فلم تُنشر الحلقة.\n\nالمقاطع وqa.json في ملفّ التحميل. الحلقة تُعاد في دور قصّتها التالي.');
-    throw new Error('narration missing — not publishing');
-  }
   const nextLine = after ? 'باچر: «' + STORIES[after.story] + '» 👀' : 'تابعونا… حلقات جديدة قريب 👀';
   const ov = await renderOverlays(dir, ep, nextLine);
   const mp4 = path.join(OUT, 'mira-episode.mp4');
