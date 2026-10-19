@@ -5,7 +5,7 @@
 // قواعد الصور (CLAUDE.md): لا نصّ مطبوع، الدقّة الأصليّة للمولّد كما هي (لا تصغير ولا تكبير)، WebP q90.
 //
 //   OPENAI_API_KEY=… GEMINI_API_KEY=… node scripts/thumbs-paid.mjs <mode>
-//   mode: edu-bg | edu-bg:library,space | poster | upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio
+//   mode: edu-bg | edu-bg:classic,space,wood,… | poster | upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio
 //
 // الأوصاف من مصادر الحقيقة نفسها في الخادم (design-create / fashion-create / STUDIO_OPTIONS) + الصياغات التي راجعها المالك بالعين
 // (v-decor-18c/d/e) لخيارات الديكور. المخرجات في thumbs/<نوع>/<اسم>.webp ثمّ ينسخها الورك فلو إلى assets/.
@@ -226,7 +226,8 @@ const EDU_BG_COMMON = ' Decorative background art for an education app screen. A
   ' so that buttons and cards can be placed over it and stay readable. Soft depth of field on the ornaments, premium cinematic quality, tack-sharp edges. No people.' +
   ' Absolutely no text, no letters, no numbers, no writing, no symbols that look like letters, no captions, no signage, no watermark, no logo anywhere; book spines and covers are blank with only abstract ornamental patterns.';
 const EDU_BG = {
-  library: {
+  // classic (الذهبيّ → مكتبة كلاسيكيّة) وspace (البنفسجيّ → فضاء): ثلاث نسخ لكلّ منهما لأنّهما يتبعان لون الدوائر لا ثيم خلفيّة الشاشة، فيحتاجان نسخة الوضع الفاتح
+  classic: {
     dark: 'Classic old-world library theme in deep navy blue and warm antique gold: stacks of leather-bound books with gold ornamental tooling, a brass compass, an armillary sphere, a brass globe, laurel branches, a graduation cap, a magnifying glass, a quill and ink pot, soft golden bokeh of library shelves and tall windows far in the background.' +
       ' The central calm region is a dark navy blue gradient (about #0d1b36 to #14284d) with only a faint warm vignette.',
     light: 'The same classic old-world library theme but in a bright airy light-mode palette: warm cream and pale ivory paper tones with soft gold and tan leather, light wood, brass details.' +
@@ -239,13 +240,47 @@ const EDU_BG = {
       ' The central calm region is a bright soft lavender-white gradient (about #f7f4ff to #e7e0fb).',
   },
 };
+// الثيمات الـ٢٤ (خلفيّات الشاشة: الخشبي + ٢٣ مشهدًا): نسختان لكلّ واحد (حاسوب وجوّال) بلون الثيم نفسه — فاتح أو داكن حسب علم الثيم (الثيم يفرض وضعه)
+const EDU_SKINS = {
+  wood: 'Warm natural wood study theme in cream parchment, honey oak and soft brown: a wooden desk edge, an old leather notebook, a quill pen, dried wheat sprigs, a small brass desk lamp, rolled paper scrolls, a sprig of olive leaves. The central calm region is a smooth light cream parchment gradient (about #f3ead8 to #e6d8bd).',
+  darkwood: 'Dark walnut wood and brass study theme: carved dark walnut frames, brass candlesticks, stacks of dark leather books with brass corners, an antique brass lamp, a pocket watch, a rolled map. The central calm region is a smooth very dark espresso brown gradient (about #1e140c to #2a1c12).',
+  marble: 'Black marble and gold theme: black marble slabs with thin glittering gold veins along the edges, a gold fountain pen, a few gold geometric frames, a gold laurel wreath fragment, small gold coins of pure ornament. The central calm region is smooth near-black charcoal with only a faint marble texture (about #0d0d0f).',
+  code: 'Dark developer theme in deep teal and soft green glow: abstract glowing circuit traces, floating mind-map node diagrams made only of circles and lines, a keyboard corner, a mechanical keyboard keycaps without any markings, glowing bracket shapes, small chips. The central calm region is a smooth very dark blue-teal gradient (about #0a1216 to #0f161b).',
+  cars: 'Sports car theme in steel grey and electric blue: the glowing headlights and front fender of a sleek supercar at the bottom corner, carbon-fibre texture, brake disc, a racing helmet, light streaks of speed along the edges. The central calm region is a smooth dark graphite gradient (about #101114 to #17181b).',
+  kids: 'Playful kids learning theme in soft pastel lilac, pink, mint and sky blue: colorful jigsaw puzzle pieces, crayons, a paper airplane, stars, a rainbow, a toy abacus with plain beads, building blocks without any letters, clouds. The central calm region is a smooth soft pastel lavender-white gradient (about #f7f3ff to #efe9fb).',
+  cuisine: 'Cozy pastel kitchen theme in blush pink, cream and sage green: wooden spoons, a whisk, a small pot, herbs in pots, lemons, a rolling pin, a tea towel with a plain pattern, flour sprinkle, a ceramic bowl. The central calm region is a smooth soft cream-pink gradient (about #fbf6f2 to #f3e9e4).',
+  sunset: 'Luxury sunset theme in warm orange, coral and dusty rose: an infinity pool edge at golden hour, a glowing sun low over the sea, palm leaf silhouettes, a lounge chair corner, soft clouds lit in pink. The central calm region is a smooth deep dusty-mauve gradient (about #3a2430 to #5a3445).',
+  beach: 'Tropical beach theme in turquoise, sand and palm green: palm trees and fronds, seashells, a starfish, turquoise waves foaming at the corner, a straw hat, sparkling water. The central calm region is a smooth soft pale-aqua and warm-sand gradient (about #e6f6f8 to #cfeef2).',
+  winter: 'Winter mountain theme in icy white and pale blue: snow-covered pine branches, snowflakes, frosted pine cones, distant snowy peaks, a cosy knitted scarf corner, soft falling snow. The central calm region is a smooth pale frosty blue-white gradient (about #f0f5fa to #dde6ee).',
+  garage: 'Dark car-garage theme in charcoal, steel and red: a toolbox corner, wrenches, a tyre, red tail-light glow, a hanging work lamp, metal shelving, oil can, checker plate floor at the bottom. The central calm region is a smooth very dark charcoal gradient (about #111113 to #1a1a1d).',
+  anime: 'Anime bedroom-studio night theme in deep purple, magenta and neon pink: a cozy desk corner with glowing monitors showing abstract glowing shapes, string lights, manga volumes with blank covers, posters of abstract shapes, a desk lamp, soft neon sunset through a window. No characters, no people. The central calm region is a smooth dark violet gradient (about #150f26 to #1d1430).',
+  cyber: 'Cyber-security hacker night theme in deep navy and cyan: glowing holographic world map of dots, abstract padlock and shield shapes made of light, rows of server racks, floating hexagon grids, faint data streams. No people, no hooded figure. The central calm region is a smooth very dark navy gradient (about #040d17 to #06121f).',
+  school: 'Warm study-desk theme in dark chalkboard green-brown and amber: a pile of hardcover books with blank covers, a school backpack, pencils in a cup, a globe, a desk lamp glowing amber, an open window with warm evening light. The central calm region is a smooth dark brown-olive gradient (about #2c261c to #3a3226).',
+  tactical: 'Crimson tactical theme in deep red and black: stylised tactical gear without any weapons: a helmet, a radio headset, night-vision goggles, a map case, carabiners, a compass, angular geometric crimson shapes and light streaks. The central calm region is a smooth dark crimson-maroon gradient (about #4a0a1c to #7a0f2e).',
+  angel: 'Heavenly angel theme in silver, ice blue and white: large soft feathered silver-white wings along the edges, floating feathers, ice crystal shards, glowing pale-blue light rays, silver armor ornaments, clouds. No face, no person. The central calm region is a smooth soft pale-blue and white gradient (about #e7eef7 to #c9d8ea).',
+  neonanime: 'Neon cyber-anime theme in black, cyan and magenta: flowing liquid-chrome and cyan ribbons swirling at the edges, neon light trails, glowing geometric shards, a faint hex grid, sparks. No characters, no people. The central calm region is a smooth near-black gradient (about #040506 to #0a0b0d).',
+  station: 'Old industrial railway-station theme in rusty steel, brass and soft haze: iron roof girders with glass skylights, steam, brass lanterns, a vintage suitcase, a station clock without numerals, railway tracks at the bottom. The central calm region is a smooth dark slate-grey gradient (about #2d3236 to #3a3f44).',
+  rally: 'Desert rally theme in sand, dusty khaki and rust: dust clouds, rally-car tyre tracks, a spare wheel, jerrycans, a compass, dune ridges, a roll-cage corner, warm sun haze. No text on the car. The central calm region is a smooth dark khaki-olive gradient (about #46412f to #5a5440).',
+  smoke: 'Deep blue smoke and liquid theme: flowing translucent navy and electric-blue smoke ribbons curling along the edges, glowing blue particles, faint light beams. The central calm region is a smooth deep navy gradient (about #050f1f to #071a33).',
+  library: 'Modern bright aqua-and-white library atrium theme: tall white shelves full of blank-spined books, glass railings, teal reading chairs, a spiral staircase corner, ferns in white pots, soft daylight. The central calm region is a smooth very light aqua-white gradient (about #eefafa to #d7f0f2).',
+  cafe: 'Warm coffee-shop theme in caramel, cream and latte brown: ceramic coffee cups with latte art, a croissant, an open blank notebook with a pen, string lights bokeh, a small plant, a wooden table edge, steam. The central calm region is a smooth light cream-latte gradient (about #f2e6d4 to #e8d8c2).',
+  workshop: 'Cyberpunk electronics workshop night theme in indigo, violet and electric blue: a soldering station, circuit boards, spools of cable, glowing LED strips, small robots parts, tool pegboard, a neon tube. No people. The central calm region is a smooth dark indigo gradient (about #14122a to #1a1830).',
+  modern: 'Minimal modern Scandinavian interior theme in warm greige, concrete and light oak: a lounge chair corner, a slim floor lamp, a ceramic vase with dried grass, a linen throw, a stack of plain books, soft window light. The central calm region is a smooth light warm-greige gradient (about #e6e0d6 to #d9d2c6).',
+};
 if (isMode('edu-bg')) {
-  const only = MODE.includes(':') ? MODE.split(':')[1].split(',').map((x) => x.trim()).filter(Boolean) : Object.keys(EDU_BG);
-  only.filter((k) => EDU_BG[k]).forEach((k) => {
-    const d = EDU_BG[k];
-    JOBS.push({ kind: 'edubg', name: k + '-desktop', shape: 'land16', cap: 1920, prompt: 'Wide landscape 16:9 composition. ' + d.dark + EDU_BG_COMMON });
-    JOBS.push({ kind: 'edubg', name: k + '-mobile', shape: 'port', cap: 1080, prompt: 'Tall portrait 2:3 composition for a phone screen; ornaments gather at the top corners and bottom edge and thinly along the sides, the tall middle stays empty. ' + d.dark + EDU_BG_COMMON });
-    JOBS.push({ kind: 'edubg', name: k + '-light', shape: 'land16', cap: 1920, prompt: 'Wide landscape 16:9 composition. ' + d.light + EDU_BG_COMMON });
+  const only = MODE.includes(':') ? MODE.split(':')[1].split(',').map((x) => x.trim()).filter(Boolean) : [...Object.keys(EDU_BG), ...Object.keys(EDU_SKINS)];
+  const PORT = 'Tall portrait 2:3 composition for a phone screen; ornaments gather at the top corners and bottom edge and thinly along the sides, the tall middle stays empty. ';
+  const LAND = 'Wide landscape 16:9 composition. ';
+  only.forEach((k) => {
+    if (EDU_BG[k]) {
+      const d = EDU_BG[k];
+      JOBS.push({ kind: 'edubg', name: k + '-desktop', shape: 'land16', cap: 1920, prompt: LAND + d.dark + EDU_BG_COMMON });
+      JOBS.push({ kind: 'edubg', name: k + '-mobile', shape: 'port', cap: 1080, prompt: PORT + d.dark + EDU_BG_COMMON });
+      JOBS.push({ kind: 'edubg', name: k + '-light', shape: 'land16', cap: 1920, prompt: LAND + d.light + EDU_BG_COMMON });
+    } else if (EDU_SKINS[k]) {
+      JOBS.push({ kind: 'edubg', name: k + '-desktop', shape: 'land16', cap: 1920, prompt: LAND + EDU_SKINS[k] + EDU_BG_COMMON });
+      JOBS.push({ kind: 'edubg', name: k + '-mobile', shape: 'port', cap: 1080, prompt: PORT + EDU_SKINS[k] + EDU_BG_COMMON });
+    }
   });
 }
 // ---------- بوستر الديكور (أمر المالك ١٧ أكتوبر «أولّده»): الغرف الـ١٢ في شبكة ٤×٣ بلا أيّ نصّ — الأسماء HTML فوقه، والنقاط تُقاس من الصورة ----------
