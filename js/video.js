@@ -311,8 +311,14 @@
         ex.innerHTML='<label></label><div class="vmk-g vmk-pills"></div>'; body.insertBefore(ex,body.firstChild);
       }
       ex.querySelector('label').textContent=L('videoMakerDurationLabel')||'';
-      var box=ex.querySelector('.vmk-g'); box.innerHTML='';
-      [].slice.call(g.children).forEach(function(c){ if(!BASIC_DUR[c.dataset.v]) box.appendChild(c); });
+      /* v-vmk-more-dur (فحص الإنتاج ١٨ أكتوبر: بقيّة المدد و«طويل (دقائق)» للمالك لا تظهر أبدًا): sync() تنادي simplify() بعد كلّ تغيير
+         (منذ v-vmk-quality)، وكان الصندوق يُفرَّغ في كلّ نداء بعد أن نُقلت إليه الحبّات فلا يبقى في المجموعة ما يُنقل — يُفرَّغ ويُملأ فقط
+         حين أعادت group() بناء المجموعة (فتح النافذة)، وإلّا تبقى حبّاته كما هي */
+      var box=ex.querySelector('.vmk-g');
+      if([].some.call(g.children,function(c){ return !BASIC_DUR[c.dataset.v]; })){
+        box.innerHTML='';
+        [].slice.call(g.children).forEach(function(c){ if(!BASIC_DUR[c.dataset.v]) box.appendChild(c); });
+      }
       ex.style.display=box.children.length?'':'none';
     }
   }
