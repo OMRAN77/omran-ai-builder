@@ -457,7 +457,7 @@ test('١٢. الواجهة: خيار «مع صوت / بدون صوت»، وال�
   assert.equal(drWrap(ctx, 'كلمةطويلةجداجداجدا', 50).join('|'), 'كلمةطويلةجداجداجدا', 'كلمة أطول من السطر تبقى كاملة');
   const css = read('css/modules.css');
   assert.ok(css.includes('.vmk-dir-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}') && css.includes('#videoMakerModal .vmk-dir-row{grid-template-columns:1fr 1fr}'), 'أربعة خيارات في صفّ، وعلى الجوّال صفّان');
-  assert.ok(read('index.html').includes('css/modules.css?v=687'));
+  assert.ok(read('index.html').includes('css/modules.css?v=688'));
   // النصوص الأربعة بالـ١٤ لغة، بلا اسم مزوّد
   const core = read('js/app-03-i18n-data.js');
   const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
