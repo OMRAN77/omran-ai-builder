@@ -198,7 +198,7 @@ export const dueNow = (lastAt, nowMs, everyH = EVERY_H) => !lastAt || nowMs - la
 
 async function seriesState() {
   const items = [];
-  for (let page = 1; page <= 3; page++) {
+  for (let page = 1; page <= 10; page++) { // ١٠٠٠ صفّ: صفوف «مسلسل ميرا» اليوميّة (٦ منصّات) كانت ستقصّر نافذة الـ٣٠٠ إلى شهر
     const r = await upFetch('/uploadposts/history?limit=100&status=success&page=' + page + '&profile_username=' + encodeURIComponent(UP_USER));
     if (!r.ok) throw new Error('upload history ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 160));
     const h = (r.j && r.j.history) || [];

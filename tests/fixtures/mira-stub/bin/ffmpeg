@@ -1,0 +1,5 @@
+#!/bin/sh
+# ffmpeg بديل: يكتب ملفّ المخرج (آخر وسيط)
+for last; do :; done
+[ -n "$last" ] && printf x > "$last"
+exit 0

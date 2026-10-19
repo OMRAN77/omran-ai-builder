@@ -98,6 +98,7 @@ jobs:
         id: gate
         env:
           UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/social-bot.mjs --gate-mira
       - name: Browser, ffmpeg, fonts
         if: steps.gate.outputs.go == '1'
