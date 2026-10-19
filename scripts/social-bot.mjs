@@ -8,7 +8,7 @@
 // البيئة:
 //   UPLOAD_POST_API_KEY  مفتاح Upload-Post (بدونه: يُصنع الفيديو ولا يُنشر)
 //   UPLOAD_POST_USER     ملفّ Upload-Post (الافتراضيّ omranaibuilder)
-//   PLATFORMS            auto (الافتراضيّ: كلّ الموصول من instagram,facebook,tiktok,youtube) أو قائمة بفواصل
+//   PLATFORMS            auto (الافتراضيّ: كلّ الموصول من instagram,facebook,tiktok,youtube,x,threads) أو قائمة بفواصل
 //   MONITOR_KEY          اختياريّ: يضيف حساب البوت لقائمة VIP تلقائيًّا (وإلّا يضيفه المالك من لوحة التحكّم)
 //                        كلمة سرّ حساب البوت مشتقّة من UPLOAD_POST_API_KEY — لا سرّ جديد
 //   BOT_USER             اسم حساب البوت (الافتراضيّ omaisocial)
@@ -17,7 +17,8 @@
 //   KIND                 مثل خانة idea للنوع (site|video|styles)؛ بدونهما النوع بالدور من رقم الحلقة
 //   EPISODE              رقم حلقة محدّد؛ وإلّا آخر حلقة منشورة + 1
 //   --gate               فحص خفيف قبل التثبيت: الجدول يومي، والحلقة تنزل إذا مرّ 36 ساعة على السابقة
-//   DRY_RUN=1            صناعة الفيديو دون نشر
+//   DRY_RUN=1            صناعة الفيديو دون نشر (ويُقرأ الموصول من Upload-Post قراءةً فقط ليظهر في السجلّ)
+//   idea=accounts        فحص بلا تكلفة: المنصّات الموصولة ونصوص X وThreads التجريبيّة، بلا فيديو ولا نشر
 //   BASE                 الموقع (الافتراضيّ الإنتاج) · OUT_DIR مجلّد المخرجات · CHROME_PATH متصفّح محلّيّ
 import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
@@ -34,14 +35,15 @@ const UP_KEY = process.env.UPLOAD_POST_API_KEY || '';
 const UP_USER = process.env.UPLOAD_POST_USER || 'omranaibuilder';
 const UP_API = 'https://api.upload-post.com/api';
 const PLATFORMS_RAW = (process.env.PLATFORMS || 'auto').trim().toLowerCase();
-const AUTO_PLATFORMS = ['instagram', 'facebook', 'tiktok', 'youtube'];
+const AUTO_PLATFORMS = ['instagram', 'facebook', 'tiktok', 'youtube', 'x', 'threads'];
 const MONITOR_KEY = process.env.MONITOR_KEY || '';
 const BOT_USER = (process.env.BOT_USER || 'omaisocial').trim().toLowerCase();
 const CHROME = process.env.CHROME_PATH || undefined;
-const SITE = 'omran-ai-builder.vercel.app';
-const QR_URL = 'https://' + SITE + '/app?ref=omran'; // نفس رابط باركود المالك
+export const SITE = 'omran-ai-builder.vercel.app';
+export const QR_URL = 'https://' + SITE + '/app?ref=omran'; // نفس رابط باركود المالك
 
-const W = 1080, H = 1920, VW = 432, VH = 768, DPR = 2.5, FPS = 30;
+export const W = 1080, H = 1920, FPS = 30;
+const VW = 432, VH = 768, DPR = 2.5;
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 const BUILD_TIMEOUT_MS = 300000;
 const SERIES = 'سوّها بـ OM Ai';
@@ -80,8 +82,8 @@ export function parseKind(raw) {
 }
 const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const log = (...a) => console.log('[social-bot]', ...a);
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export const log = (...a) => console.log('[social-bot]', ...a);
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const now = () => performance.now() / 1000;
 
 // ───────── الفكرة ─────────
@@ -118,6 +120,26 @@ export function durWord(n) {
 }
 const clock = (n) => { n = Math.max(0, Math.round(n)); return n < 60 ? String(n) : Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0'); };
 
+// X وThreads (v-social-xthreads): X حدّه ٢٨٠ «موزونة» (العربيّ ١ والإيموجي ٢) وUpload-Post يحذف الروابط منه — فالنصّ بلا رابط
+// ولا اسم نطاق؛ وThreads حدّه ٥٠٠ (الإيموجي بطول بايتاته) ووسم واحد فقط يصير موضوعًا. السطور تُقصّ من الآخر حتّى تدخل الحدّ.
+export const xLen = (s) => { let n = 0; for (const ch of String(s)) { const c = ch.codePointAt(0); n += (c <= 0x10FF || (c >= 0x2000 && c <= 0x200D) || (c >= 0x2010 && c <= 0x201F) || (c >= 0x2032 && c <= 0x2037)) ? 1 : 2; } return n; };
+export const threadsLen = (s) => { let n = 0; for (const ch of String(s)) n += ch.codePointAt(0) > 0xFFFF ? 4 : 1; return n; };
+// الأساس (رقم الحلقة والعنوان) والدعوة والوسوم تبقى؛ السطور الإضافيّة ثمّ «الحلقة الجاية» تُشال أوّلًا حتّى يدخل الحدّ.
+function fitLines(core, extras, cta, next, tail, max, len) {
+  const ex = [...extras], nx = [...next];
+  const join = () => [...core, ...ex, cta, ...nx, tail].filter(Boolean).join('\n');
+  while (len(join()) > max && (ex.length || nx.length)) { if (ex.length) ex.pop(); else nx.pop(); }
+  let t = join();
+  while (len(t) > max) t = Array.from(t).slice(0, -2).join('');
+  return t;
+}
+export function shortCaptions(top, cta, next, tags) {
+  const lines = top.filter(Boolean), core = lines.slice(0, 2), extras = lines.slice(2);
+  const x = fitLines(core, extras, cta + ' 👈 الرابط في البايو', next, tags.slice(0, 3).join(' '), 280, xLen);
+  const threads = fitLines(core, extras, cta + ' 👈 https://' + SITE + '/?ref=threads', next, tags[0] || '', 500, threadsLen);
+  return { x, threads };
+}
+
 export function buildCaption(idea, secs, epN) {
   const base = ['#ذكاء_اصطناعي', '#تصميم_مواقع', '#برمجة', '#مواقع', '#مشاريع', '#OMAi', '#AI', '#الامارات', '#السعودية', '#الكويت', '#قطر', '#عمان', '#البحرين'];
   const ep = epN ? epLabel(epN) : null;
@@ -127,7 +149,7 @@ export function buildCaption(idea, secs, epN) {
   const next = ep ? ['تابعنا… ' + epLabel(epN + 1).short + ' بعد يومين 👀'] : [];
   const ig = [...top, '', 'جرّب تسوّي موقعك ببلاش 👈 الرابط في البايو 🔗', ...next, '', tags].join('\n');
   const fb = [...top, '', 'جرّب تسوّي موقعك ببلاش 👈 https://' + SITE + '/?ref=fb', ...next, '', tags].join('\n');
-  return { ig, fb, head };
+  return { ig, fb, head, ...shortCaptions(top, 'جرّب تسوّي موقعك ببلاش', next, ['#OMAi', '#ذكاء_اصطناعي', '#تصميم_مواقع']) };
 }
 
 const GULF_TAGS = ['#OMAi', '#AI', '#ذكاء_اصطناعي', '#الامارات', '#السعودية', '#الكويت', '#قطر', '#عمان', '#البحرين'];
@@ -137,7 +159,8 @@ function captionOf(epN, kind, top, cta, tags) {
   const head = top[0];
   const lines = [ep ? '🎬 ' + ep.full : '', ...top].filter(Boolean);
   const next = ep ? ['تابعنا… ' + epLabel(epN + 1).short + ' بعد يومين 👀'] : [];
-  return { ig: [...lines, '', cta + ' 👈 الرابط في البايو 🔗', ...next, '', t].join('\n'), fb: [...lines, '', cta + ' 👈 https://' + SITE + '/?ref=fb', ...next, '', t].join('\n'), head };
+  return { ig: [...lines, '', cta + ' 👈 الرابط في البايو 🔗', ...next, '', t].join('\n'), fb: [...lines, '', cta + ' 👈 https://' + SITE + '/?ref=fb', ...next, '', t].join('\n'), head,
+    ...shortCaptions(lines, cta, next, ['#OMAi', ...[...new Set(tags)].filter((x) => x !== '#OMAi')]) };
 }
 
 export function buildVideoCaption(vi, secs, epN) {
@@ -175,7 +198,7 @@ export const dueNow = (lastAt, nowMs, everyH = EVERY_H) => !lastAt || nowMs - la
 
 async function seriesState() {
   const items = [];
-  for (let page = 1; page <= 3; page++) {
+  for (let page = 1; page <= 10; page++) { // ١٠٠٠ صفّ: صفوف «مسلسل ميرا» اليوميّة (٦ منصّات) كانت ستقصّر نافذة الـ٣٠٠ إلى شهر
     const r = await upFetch('/uploadposts/history?limit=100&status=success&page=' + page + '&profile_username=' + encodeURIComponent(UP_USER));
     if (!r.ok) throw new Error('upload history ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 160));
     const h = (r.j && r.j.history) || [];
@@ -437,7 +460,12 @@ export async function makeStyles(acct, plan, dir) {
 }
 
 // ───────── المنصّات الموصولة ─────────
-async function resolvePlatforms() {
+// مفتاح X في social_accounts غير موثَّق (x أو twitter) — نقبل الاثنين، والمحتاج إعادة ربط لا يُعدّ موصولًا.
+export function connectedPlatforms(sa, list = AUTO_PLATFORMS) {
+  const acc = (p) => (sa && (sa[p] || (p === 'x' ? sa.twitter : null))) || null;
+  return list.filter((p) => { const a = acc(p); return !!a && typeof a === 'object' && !a.reauth_required; });
+}
+export async function resolvePlatforms() {
   if (PLATFORMS_RAW !== 'auto') return PLATFORMS_RAW.split(',').map((s) => s.trim()).filter(Boolean);
   const fallback = ['instagram', 'facebook'];
   if (!UP_KEY) return fallback;
@@ -445,8 +473,8 @@ async function resolvePlatforms() {
   const profs = (r.j && (r.j.profiles || (r.j.profile ? [r.j.profile] : []))) || [];
   const prof = profs.find((p) => p && p.username === UP_USER) || null;
   const sa = (prof && prof.social_accounts) || {};
-  const on = AUTO_PLATFORMS.filter((p) => sa[p] && typeof sa[p] === 'object' && !sa[p].reauth_required);
-  log('connected: ' + (on.join(',') || 'none') + (r.ok ? '' : ' (users ' + r.status + ')'));
+  const on = connectedPlatforms(sa);
+  log('connected: ' + (on.join(',') || 'none') + ' · accounts keys: ' + (Object.keys(sa).join(',') || 'none') + (r.ok ? '' : ' (users ' + r.status + ')'));
   return on.length ? on : fallback;
 }
 
@@ -458,7 +486,7 @@ async function postJSON(url, body) {
 }
 
 // تعليقات GitHub تظهر في ملخّص التشغيل (تُقرأ بلا صلاحية سجلّات).
-const gh = (level, msg) => { if (process.env.GITHUB_ACTIONS) console.log('::' + level + ' title=social-bot::' + String(msg).replace(/\r?\n/g, ' ')); };
+export const gh = (level, msg) => { if (process.env.GITHUB_ACTIONS) console.log('::' + level + ' title=social-bot::' + String(msg).replace(/\r?\n/g, ' ')); };
 
 async function tierOf(token) {
   const r = await postJSON(BASE + '/api/points', { action: 'balance', token }).catch(() => ({ j: {} }));
@@ -467,7 +495,7 @@ async function tierOf(token) {
 
 // حساب البوت ثابت: كلمة سرّه مشتقّة من سرّ موجود في المستودع (لا سرّ جديد).
 // صلاحية VIP: تلقائيًّا بـ MONITOR_KEY إن وُجد، وإلّا يضيفه المالك مرّة من لوحة التحكّم ← ⭐ صلاحيات VIP.
-async function botAccount() {
+export async function botAccount() {
   const seeds = [UP_KEY, MONITOR_KEY].filter(Boolean);
   const pwOf = (seed) => 'Sb!' + createHash('sha256').update('omai-social|' + BOT_USER + '|' + seed).digest('hex').slice(0, 24);
   const diag = ['monitorKey=' + (MONITOR_KEY ? 'yes' : 'no')];
@@ -1124,13 +1152,13 @@ function writeAudio(file, tl, m, tapT) {
 }
 
 // ───────── النشر عبر Upload-Post ─────────
-async function upFetch(p, opts = {}) {
+export async function upFetch(p, opts = {}) {
   const r = await fetch(UP_API + p, { ...opts, headers: { Authorization: 'Apikey ' + UP_KEY, ...(opts.headers || {}) } });
   const j = await r.json().catch(() => ({}));
   return { status: r.status, ok: r.ok, j };
 }
 
-async function publish(mp4, cover, cap, PLATFORMS, epN, kind) {
+export async function publish(mp4, cover, cap, PLATFORMS, epN, kind, extId) {
   const fd = new FormData();
   fd.append('user', UP_USER);
   for (const p of PLATFORMS) fd.append('platform[]', p);
@@ -1152,9 +1180,11 @@ async function publish(mp4, cover, cap, PLATFORMS, epN, kind) {
     fd.append('privacy_level', 'PUBLIC_TO_EVERYONE'); fd.append('brand_organic_toggle', 'true'); // ترويج لمشروعنا نحن
   }
   if (PLATFORMS.includes('youtube')) { fd.append('youtube_title', (cap.head + ' #shorts').slice(0, 100)); fd.append('youtube_description', cap.fb); }
+  if (PLATFORMS.includes('x') && cap.x) fd.append('x_title', cap.x);
+  if (PLATFORMS.includes('threads') && cap.threads) fd.append('threads_title', cap.threads);
   const reqId = 'omai-' + Date.now().toString(36) + randomBytes(3).toString('hex');
   fd.append('request_id', reqId); fd.append('async_upload', 'true');
-  if (epN) fd.append('external_id', EP_ID(epN, kind)); // رقم الحلقة ونوعها يُقرآن من سجلّ النشر في المرّة الجاية
+  if (extId || epN) fd.append('external_id', extId || EP_ID(epN, kind)); // رقم الحلقة ونوعها يُقرآن من سجلّ النشر في المرّة الجاية (ومسلسل ميرا بمعرّفه mira-…)
   const r = await upFetch('/upload', { method: 'POST', body: fd, headers: { 'Idempotency-Key': reqId } });
   log('upload → ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 300));
   if (!r.ok && r.status !== 202) throw new Error('upload failed ' + r.status);
@@ -1198,7 +1228,18 @@ async function gate() {
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, 'go=' + (go ? 1 : 0) + '\n');
 }
 
+// idea=accounts: فحص بلا تكلفة — يقرأ الموصول من Upload-Post (GET فقط) ويطبع نصّي X وThreads لحلقة مثال بأطوالهما.
+async function accountsCheck() {
+  const platforms = await resolvePlatforms();
+  const c = buildCaption({ name: 'مطعم شاورما', tags: ['#مطاعم'] }, 42, 7);
+  log('platforms for the next episode: ' + platforms.join(','));
+  log('x (' + xLen(c.x) + '/280):\n' + c.x);
+  log('threads (' + threadsLen(c.threads) + '/500):\n' + c.threads);
+  gh('notice', 'accounts check · connected: ' + platforms.join(',') + ' · x ' + xLen(c.x) + '/280 · threads ' + threadsLen(c.threads) + '/500');
+}
+
 async function main() {
+  if (String(process.env.IDEA_INDEX || '').trim().toLowerCase() === 'accounts') return accountsCheck();
   const ideas = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/social-bot-ideas.json'), 'utf8'));
   const live = !DRY && !!UP_KEY;
   // رقم الحلقة: آخر حلقة منشورة + 1 (سجلّ Upload-Post). في النشر الفعليّ لا نخمّن رقمًا.
@@ -1244,8 +1285,13 @@ async function main() {
   if (!out) throw lastErr || new Error('no episode made');
   fs.rmSync(fr, { recursive: true, force: true });
   fs.writeFileSync(path.join(OUT, 'caption.txt'), out.caption.ig + '\n');
+  if (out.caption.x) fs.writeFileSync(path.join(OUT, 'caption-x.txt'), out.caption.x + '\n');
+  if (out.caption.threads) fs.writeFileSync(path.join(OUT, 'caption-threads.txt'), out.caption.threads + '\n');
   fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ ...out.meta, vip: acct.vip, seconds: +out.res.tl.total.toFixed(1) }, null, 2));
-  if (!live) { log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); gh('notice', 'video ready (not published) · ' + ep.short + ' · ' + out.note); return; }
+  if (!live) {
+    if (DRY && UP_KEY) await resolvePlatforms().catch((e) => log('platforms: ' + e.message)); // قراءة فقط: يظهر في السجلّ أين كانت ستنزل
+    log(DRY ? 'DRY_RUN — not publishing' : 'UPLOAD_POST_API_KEY missing — not publishing'); gh('notice', 'video ready (not published) · ' + ep.short + ' · ' + out.note); return;
+  }
   const platforms = await resolvePlatforms();
   const pub = await publish(out.res.mp4, out.res.cover, out.caption, platforms, epN, out.meta.kind);
   // نتيجة كلّ منصّة في ملفّ التحميل وملخّص التشغيل (رابط المنشور أو سبب الرفض) — لا «تمّ» بلا دليل.
@@ -1329,5 +1375,7 @@ async function makeMedia(browser, kind, arg, acct, epN, fr) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  (process.argv.includes('--gate') ? gate() : main()).then(() => process.exit(0)).catch((e) => { const msg = e && e.message ? e.message : String(e); console.error('[social-bot] FAILED:', msg); gh('error', msg); process.exit(1); });
+  const mira = process.argv.includes('--mira') || process.argv.includes('--gate-mira'); // مسلسل ميرا: نوع حلقة في البوت نفسه (scripts/social-bot-mira.mjs)
+  const run = mira ? import('./social-bot-mira.mjs').then((m) => (process.argv.includes('--gate-mira') ? m.gateMira() : m.mainMira())) : (process.argv.includes('--gate') ? gate() : main());
+  run.then(() => process.exit(0)).catch((e) => { const msg = e && e.message ? e.message : String(e); console.error('[social-bot] FAILED:', msg); gh('error', msg); process.exit(1); });
 }

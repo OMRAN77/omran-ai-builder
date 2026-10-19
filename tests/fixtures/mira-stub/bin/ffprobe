@@ -1,0 +1,3 @@
+#!/bin/sh
+# ffprobe بديل: مدّة ٨ ث، وفيه مسار صوت
+case "$*" in *stream=index*) echo 1;; *) echo 8.0;; esac
