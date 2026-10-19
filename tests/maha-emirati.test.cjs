@@ -50,11 +50,12 @@ test('١. لهجة إماراتيّة افتراضيّة بكلماتها، وا
   const say = f.split('\n').find((l) => l.startsWith('EMIRATI WORDS (your default Arabic):'));
   const never = f.split('\n').find((l) => l.startsWith('NEVER SAY (Fus-ha, in any dialect):'));
   assert.ok(say && never, 'السطران');
-  for (const w of ['الحين', 'شو', 'تبا/تبي', 'وايد', 'باچر', 'مب', 'هيه', 'شحالك/شحالج', 'خبّرني/خبّريني']) assert.ok(say.includes(w), 'تقول: ' + w);
+  for (const w of ['الحين', 'شو', 'وايد', 'باچر', 'مب', 'هيه', 'شحالك/شحالج', 'خبّرني/خبّريني']) assert.ok(say.includes(w), 'تقول: ' + w);
+  // التشغيلتان 39190791087/39190933801: «تبغى» رجعت ٨/٦٠ لمّا صار المنع شرطًا عامًّا — الآن أزواج «قولي لا تقولي» في الإماراتيّ
+  assert.ok(say.includes('In Emirati say تبا/تبي not تبغى/تبغين، باچر not بكرة، شو not إيش، and never تريد، رح، هلّق، بدّك'));
   for (const w of ['الآن', 'ماذا', 'كيف أنت', 'غدًا', 'سوف', 'تمّ إغلاق']) assert.ok(never.includes(w), 'فصحى ممنوعة: ' + w);
   // مراجعة النقض: كلمات اللهجات الأخرى ليست «ممنوعة» على أهلها — ممنوعة في الردّ الإماراتيّ وحده
   for (const w of ['إيش', 'تبغى', 'بكرة', 'مو', 'رح', 'بدّك', 'تريد']) assert.ok(!never.includes(w), 'ليست في الممنوع العامّ: ' + w);
-  assert.ok(say.includes('in Emirati never the other-dialect words إيش، تبغى/تبغين، تريد، بكرة، رح، هلّق، بدّك'));
   assert.ok(say.includes('clearly speaks another dialect') && say.includes("gets their own dialect's words instead"));
 });
 
@@ -67,13 +68,15 @@ test('٢. تفهم الكلمات المحلّيّة التي أخطأتها ف�
   assert.ok(/ريّال = a man/.test(und) && /باچر = tomorrow/.test(und) && /العين = the city Al Ain/.test(und));
 });
 
-test('٣. صيغ المؤنّث الموجّهة لها لا تعاد له ولا تدلّ عليه — والجنس من الذاكرة ثمّ كلامه عن نفسه ثمّ صوته، وإلّا صيغة محايدة', async () => {
+test('٣. صيغ المؤنّث الموجّهة لها لا تعاد له ولا تدلّ عليه — والجنس من الذاكرة ثمّ كلامه عن نفسه ثمّ صوته، وإلّا المذكّر الخليجيّ المعتاد', async () => {
   const f = await mint({});
   const who = f.split('\n').find((l) => l.startsWith('WHO IS TALKING:'));
   assert.ok(who && who.includes('addressed to YOU - never echo them back; they say nothing about the user'));
-  assert.ok(who.includes('USER MEMORY says, then by how they speak of themselves') && who.includes('then by their voice'));
-  assert.ok(who.includes("a woman's voice: تبين، قولي، اختاري") && who.includes('use neutral wording'));
-  assert.ok(!who.includes('Talk to the user as a man'), 'لا مذكّر افتراضيّ للنساء');
+  assert.ok(who.includes('USER MEMORY says, then by how they speak of themselves'));
+  assert.ok(who.includes("then by a clearly woman's or man's voice (a woman: تبين، قولي، اختاري)"), 'صوت المرأة يكفي للمؤنّث');
+  // التشغيلتان 39190791087/39190933801: «صيغة محايدة عند الشكّ» أعطت رجلًا بصوت رجل صيغ المؤنّث ١٠/٦٠ (تبين، تشوفين) — السابقة ٠/٦٠
+  assert.ok(who.includes('When none of these is clear, use the usual Gulf masculine') && who.includes('never switch to feminine because of what they asked for'));
+  assert.ok(!who.includes('Talk to the user as a man (تبي، قول لي، اختار، حاب) unless'), 'لا مذكّر يغلب صوت المرأة');
 });
 
 test('٤. لا عبارات محفوظة تُنسخ: «اطمّن، واضحة وبنحلها» و«كفو عليك» لم تعودا في تعليماتها، والطمأنة للمنزعج وحده', async () => {
