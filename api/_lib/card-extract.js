@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
     if (typeof b === 'string') b = JSON.parse(b);
     b = b || {};
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) { res.status(500).end(JSON.stringify({ error: 'no key' })); return; }
+    if (!apiKey) { res.status(503).end(JSON.stringify({ error: 'unavailable' })); return; } /* v-provider-fail: كان «no key» يظهر في المحادثة */
     const imageBase64 = typeof b.imageBase64 === 'string' ? b.imageBase64 : '';
     if (imageBase64.length < 100) {
       res.status(400).end(JSON.stringify({ error: 'no image', message_ar: 'أرفق صورة النموذج أولًا.' }));
@@ -58,7 +58,10 @@ module.exports = async (req, res) => {
     });
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
-      res.status(upstream.status >= 500 ? 502 : upstream.status).end(JSON.stringify({ error: (data && data.error && data.error.message) || 'upstream' }));
+      const tech = String((data && data.error && data.error.message) || '');
+      console.error('[card-extract] upstream ' + upstream.status + ': ' + tech.slice(0, 200));
+      const fail = require('./_videoFail.js').toolFail(upstream.status, tech); /* v-provider-fail: رمز لا نصّ المزوّد */
+      res.status(fail.code).end(JSON.stringify(fail.body));
       return;
     }
     const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
@@ -86,6 +89,7 @@ module.exports = async (req, res) => {
       theme: ['pink', 'blue', 'green', 'purple', 'gold', 'neutral'].indexOf(spec.theme) >= 0 ? spec.theme : 'neutral',
     }));
   } catch (e) {
-    res.status(500).end(JSON.stringify({ error: 'card-extract: ' + (e && e.message ? e.message : String(e)) }));
+    console.error('[card-extract] ' + (e && e.message ? e.message : String(e)));
+    res.status(503).end(JSON.stringify({ error: 'unavailable' })); /* v-provider-fail: كان «card-extract: <نصّ تقنيّ>» */
   }
 };

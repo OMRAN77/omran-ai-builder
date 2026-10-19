@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      res.status(503).json({ error: 'unavailable' }); /* v-provider-fail: لا اسم مفتاح ولا مزوّد في ردّ المستخدم */
       return;
     }
 
@@ -90,7 +90,10 @@ module.exports = async (req, res) => {
     const data = await upstream.json();
     if (!upstream.ok) {
       await refund();
-      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
+      const tech = String((data && data.error && data.error.message) || '');
+      console.error('[design-suggest] upstream ' + upstream.status + ': ' + tech.slice(0, 200));
+      const fail = require('./_videoFail.js').toolFail(upstream.status, tech); /* v-provider-fail: 402 كان يُمرَّر بنصّ المزوّد */
+      res.status(fail.code).json(fail.body);
       return;
     }
 
@@ -112,6 +115,7 @@ module.exports = async (req, res) => {
     res.status(200).json({ suggestions });
   } catch (e) {
     if (refund) await refund();
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[design-suggest] ' + (e && e.message ? e.message : String(e)));
+    res.status(503).json({ error: 'unavailable' }); /* v-provider-fail: كان «Proxy error: <نصّ تقنيّ>» */
   }
 };

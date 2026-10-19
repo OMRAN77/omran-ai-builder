@@ -5618,7 +5618,7 @@ function __showImgLoading(el, ar, en){
           });
           const __ceSpec = await __ceRes.json().catch(() => ({}));
           if(!__ceRes.ok || !Array.isArray(__ceSpec.rows) || !__ceSpec.rows.length){
-            throw new Error(__ceSpec.message_ar || __ceSpec.error || ('HTTP ' + __ceRes.status));
+            throw new Error(__ceSpec.error === 'unavailable' ? t('svcPaused') : (__ceSpec.message_ar || (__ceSpec.error === 'failed' ? imgErrFriendly('image_generation_failed', lang === 'ar') : '') || __ceSpec.error || ('HTTP ' + __ceRes.status))); /* v-provider-fail: رمز المزوّد بنصّ الواجهة لا نصّه الخام (سطر واحد: سقف __sendPromptCore) */
           }
           chatPhase('🪪', lang === 'ar' ? 'جاري رسم النموذج بخط مرتب…' : 'Redrawing the card neatly…', thinkingDiv);
           const __cardB64 = await renderTidyCardCanvas(__ceSpec, 'data:' + __mime + ';base64,' + __b64);

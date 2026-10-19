@@ -65,6 +65,13 @@
   html:not([data-mode="light"]):not(.mobile-ui):not(.bgimg) #workarea{ background:radial-gradient(120% 38% at 50% 100%, rgba(206,181,98,.10), transparent 70%), #101013 !important; }
   /* الخلفيّات والثيمات: اللوحة الوسطى شفّافة كما كانت المحادثة فوق الصورة */
   html.bgimg:not(.mobile-ui) #omFrameCenter{ background:transparent; }
+  /* v-bg3d-desktop (تدقيق ١٨ أكتوبر: على الكمبيوتر في الوضع الأسود اختيار أيّ خلفيّة ثلاثيّة لا يغيّر شيئًا والشاشة تبقى سوداء): #vantaBg (fixed، z-index:-1)
+     طفل للجسم، والجسم هنا شبكة static لا سياق تكديس (على الجوّال position:fixed فيُرسم الكانفس فوق خلفيّته) — فتغطّيه خلفيّة الجسم
+     (#000 !important في قواعد الإطار الذهبيّ أدناه تغلب body.vantaActive في tokens.css) ثمّ اللوحة الوسطى (#000 هنا وفي بلا-خطوط.css).
+     مع الخلفيّة الثلاثيّة في الأسود: الجسم واللوحة الوسطى شفّافان كاستثناء html.bgimg أعلاه، واللوحتان الجانبيّتان كما هما. :not(#bg3d) والمعرّف
+     المضاعف يرفعان الأولويّة فوق تلك القواعد (بلا-خطوط.css يُحمَّل بعد هذا الملفّ). العاجيّ لم يُلمس (قيد موثّق في v-bg-galaxy)، والجوّال بلا تغيير. */
+  html:not([data-mode="light"]):not(.mobile-ui) body.vantaActive:not(#bg3d){ background:transparent !important; }
+  html:not([data-mode="light"]):not(.mobile-ui) body.vantaActive #omFrameCenter#omFrameCenter{ background:transparent !important; }
 
   /* ── القائمة الجانبيّة كما في الصورة ── */
   /* سهم طيّ القائمة (أمر المالك بعد النشر: «رجّع السهم الخارجيّ والداخليّ — وين المحادثة الجديدة»): على سطر «محادثة جديدة»

@@ -101,6 +101,7 @@ async function __safeJson(res){
   fileInput.onchange = () => {
     const file = fileInput.files && fileInput.files[0];
     if(!file) return;
+    if(suggestStatusEl) suggestStatus(''); /* v-decor-suggest-msg: «ارفع صورة الغرفة أولًا» تحت الزرّ لا يبقى بعد رفعها */
     selectedFile = file;
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
@@ -384,7 +385,23 @@ async function __safeJson(res){
     }
   };
 
+  /* v-decor-suggest-msg (تدقيق ١٨ أكتوبر): رسائل «اقترح لي أفكار» كانت في #designAiStatus تحت «صمم الغرفة» — حاسوب top 1047 من 900،
+     جوّال أبعد من الشاشة بـ650px — فلا يرى المستخدم شيئًا جنب الزرّ. سطرها تحت زرّها يُنشأ مرّة (بلا لمس partials-core).
+     المعالج يظلّل setStatus باسمه فرسائله كلّها (والمثبّتة بنصّها في open-tools-cap) تذهب إليه. */
+  let suggestStatusEl = null;
+  function suggestStatus(text){
+    if(!suggestStatusEl){
+      suggestStatusEl = document.createElement('div');
+      suggestStatusEl.id = 'designAiSuggestStatus';
+      suggestStatusEl.setAttribute('role', 'status');
+      suggestStatusEl.style.cssText = 'display:none; margin-top:8px; text-align:center; font-size:var(--fs-3); color:var(--muted);';
+      btnSuggest.insertAdjacentElement('afterend', suggestStatusEl);
+    }
+    suggestStatusEl.style.display = text ? 'block' : 'none';
+    suggestStatusEl.textContent = text || '';
+  }
   if(btnSuggest) btnSuggest.onclick = async () => {
+    const setStatus = suggestStatus; /* v-decor-suggest-msg */
     if(!selectedBase64){
       setStatus(t('designAiNeedImage'));
       return;
@@ -407,6 +424,7 @@ async function __safeJson(res){
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; } /* v-open-tools-cap */
+        if(data.error === 'unavailable'){ setStatus(t('svcPaused')); return; } /* v-provider-fail: رصيد المزوّد أو زحامه — لا «حاول مرة أخرى» */
         throw new Error(data.error || 'unknown');
       }
       const ideas = Array.isArray(data.suggestions) ? data.suggestions : [];
@@ -2113,6 +2131,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; } /* v-open-tools-cap */
+        if(data.error === 'unavailable'){ setStatus(t('svcPaused')); return; } /* v-provider-fail-rest */
+        if(data.error === 'failed'){ setStatus(t('designAiSuggestError')); return; } /* الخادم يرسل رمزًا لا نصّ المزوّد — كان «❌ خطأ: <النصّ>» */
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];

@@ -181,6 +181,10 @@
   }
   function setTab(v){
     if(tabsFor().indexOf(v)<0&&!(v==='director'&&drOwner())) return; tab=v;
+    /* v-vmk-stale-status (تدقيق ١٨–١٩ أكتوبر): خطأ «سينمائي» («تعذّر توليد الفيديو الآن») كان يبقى تحت المعاينة بعد التبديل إلى قسم آخر.
+       يُمسح سطر الحالة ما لم يكن توليد جاريًا — الزرّ معطَّل طواله، وسطر التقدّم تقرؤه بطاقة الانتظار (app-34) */
+    var gb=id('videoMakerGenerateBtn'), st=id('videoMakerStatus');
+    if(st&&!(gb&&gb.disabled)){ st.textContent=''; st.style.display='none'; }
     var sel=(v==='director')?null:id('videoMakerMode'); /* v-app-director: المخرج لا يمسّ الوضع */
     if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
     buildTabs(); sync(); scrub();
@@ -311,8 +315,14 @@
         ex.innerHTML='<label></label><div class="vmk-g vmk-pills"></div>'; body.insertBefore(ex,body.firstChild);
       }
       ex.querySelector('label').textContent=L('videoMakerDurationLabel')||'';
-      var box=ex.querySelector('.vmk-g'); box.innerHTML='';
-      [].slice.call(g.children).forEach(function(c){ if(!BASIC_DUR[c.dataset.v]) box.appendChild(c); });
+      /* v-vmk-more-dur (فحص الإنتاج ١٨ أكتوبر: بقيّة المدد و«طويل (دقائق)» للمالك لا تظهر أبدًا): sync() تنادي simplify() بعد كلّ تغيير
+         (منذ v-vmk-quality)، وكان الصندوق يُفرَّغ في كلّ نداء بعد أن نُقلت إليه الحبّات فلا يبقى في المجموعة ما يُنقل — يُفرَّغ ويُملأ فقط
+         حين أعادت group() بناء المجموعة (فتح النافذة)، وإلّا تبقى حبّاته كما هي */
+      var box=ex.querySelector('.vmk-g');
+      if([].some.call(g.children,function(c){ return !BASIC_DUR[c.dataset.v]; })){
+        box.innerHTML='';
+        [].slice.call(g.children).forEach(function(c){ if(!BASIC_DUR[c.dataset.v]) box.appendChild(c); });
+      }
       ex.style.display=box.children.length?'':'none';
     }
   }

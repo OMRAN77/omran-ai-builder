@@ -482,6 +482,7 @@ const I18N = {
     designAiSuggestBtn: '💡 اقترح لي أفكار',
     designAiSuggesting: '🤔 جاري التفكير بأفكار...',
     designAiSuggestError: '❌ تعذر توليد أفكار، حاول مرة أخرى.',
+    svcPaused: 'الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.', /* v-provider-fail: رفض المزوّد (رصيده أو زحامه) لأدوات القراءة والاقتراح — لا ذنب للمستخدم. بلا رمز: سطر المحادثة يسبقه ⚠️ */
     designAiSuggestTitle: '💡 أفكار مقترحة من الذكاء الاصطناعي',
     portraitModalTitle: '🎨 أنماط الصور الشخصية',
     portraitDesc: 'ارفع صورتك الشخصية واختر ستايل رسم، وسيحوّلها الذكاء الاصطناعي لهذا الأسلوب. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.',
@@ -1974,6 +1975,7 @@ const I18N = {
     designAiSuggestBtn: '💡 Suggest ideas for me',
     designAiSuggesting: '🤔 Thinking of ideas...',
     designAiSuggestError: '❌ Could not generate ideas, try again.',
+    svcPaused: 'This service is temporarily unavailable — please try again shortly.',
     designAiSuggestTitle: '💡 AI-suggested ideas',
     portraitModalTitle: '🎨 Portrait Styles',
     portraitDesc: 'Upload your photo and pick an art style, and AI will transform it. Experimental feature with a small daily limit per account.',
