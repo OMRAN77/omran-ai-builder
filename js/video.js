@@ -181,6 +181,10 @@
   }
   function setTab(v){
     if(tabsFor().indexOf(v)<0&&!(v==='director'&&drOwner())) return; tab=v;
+    /* v-vmk-stale-status (تدقيق ١٨–١٩ أكتوبر): خطأ «سينمائي» («تعذّر توليد الفيديو الآن») كان يبقى تحت المعاينة بعد التبديل إلى قسم آخر.
+       يُمسح سطر الحالة ما لم يكن توليد جاريًا — الزرّ معطَّل طواله، وسطر التقدّم تقرؤه بطاقة الانتظار (app-34) */
+    var gb=id('videoMakerGenerateBtn'), st=id('videoMakerStatus');
+    if(st&&!(gb&&gb.disabled)){ st.textContent=''; st.style.display='none'; }
     var sel=(v==='director')?null:id('videoMakerMode'); /* v-app-director: المخرج لا يمسّ الوضع */
     if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
     buildTabs(); sync(); scrub();

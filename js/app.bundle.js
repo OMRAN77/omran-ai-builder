@@ -34380,6 +34380,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; } /* v-open-tools-cap */
+        if(data.error === 'unavailable'){ setStatus(t('svcPaused')); return; } /* v-provider-fail-rest */
+        if(data.error === 'failed'){ setStatus(t('designAiSuggestError')); return; } /* الخادم يرسل رمزًا لا نصّ المزوّد — كان «❌ خطأ: <النصّ>» */
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];
@@ -36025,6 +36027,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         if(!res.ok){
           if(data.error === 'auth_required') angleStatusEl.textContent = t('designAiNeedLogin');
           else if(data.error === 'daily_limit_reached') angleStatusEl.textContent = t('designAiLimitReached');
+          /* v-provider-fail-rest: الخادم يرسل رمزًا لا نصّ المزوّد (كان «❌ خطأ: Your prepayment credits are depleted…») */
+          else if(data.error === 'unavailable') angleStatusEl.textContent = t('svcPaused');
+          else if(data.error === 'failed') angleStatusEl.textContent = '❌ ' + t('voiceImageFailed');
           else angleStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
           return;
         }
@@ -36058,6 +36063,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(!res.ok){
         if(data.error === 'auth_required') roomStatusEl.textContent = t('designAiNeedLogin');
         else if(data.error === 'daily_limit_reached') roomStatusEl.textContent = t('designAiLimitReached');
+        else if(data.error === 'unavailable') roomStatusEl.textContent = t('svcPaused'); /* v-provider-fail-rest */
+        else if(data.error === 'failed') roomStatusEl.textContent = '❌ ' + t('voiceImageFailed');
         else roomStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
         return;
       }

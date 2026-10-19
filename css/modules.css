@@ -655,6 +655,10 @@ html[data-mode="light"] #videoMakerModal .vmk-tab{color:#4a4f5a}
 html[data-mode="light"] #videoMakerModal .vmk-main #videoMakerPrompt{background:#ffffff;border-color:rgba(0,0,0,.14)}
 #videoMakerModal #videoMakerHeroBtn{padding:0 !important;padding-inline-start:46px !important;padding-inline-end:18px !important;text-align:start}
 #videoMakerModal .vmk-main .mini-mic-field-row{align-items:flex-start}
+/* v-vmk-actor-row (تدقيق ١٨–١٩ أكتوبر، جوّال إنجليزيّ): عنوان «What does the actor say? (exactly)» ابنٌ للصفّ المرن نفسه فأخذ ٢٦١ من ٣٣٦
+   وبقيت الخانة ٣١px لا يُكتب فيها. صفّا الممثل والتوقيع يلتفّان والعنوان سطر كامل فوق الخانة والميكروفون، كعنوان «صوت الممثل» تحته */
+#videoMakerModal #videoMakerActorRow,#videoMakerModal #videoMakerSignatureRow{flex-wrap:wrap}
+#videoMakerModal #videoMakerActorRow>label,#videoMakerModal #videoMakerSignatureRow>label{flex:0 0 100%}
 #videoMakerModal #videoMakerGenerateBtn{display:flex!important;align-items:center;justify-content:center;text-align:center}
 
 /* زرّ البطل: حبّة نظيفة بعلامة + داخل النصّ نفسه (لا زخرفة مطلقة فوقه) */

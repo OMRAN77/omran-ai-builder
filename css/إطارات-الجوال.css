@@ -23,6 +23,11 @@ html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) #
 html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) #code{ background:#f9f2e4 !important; color:#3b332a !important; }
 html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) #omranBottomNav{ background:#000 !important; border-top-color:transparent !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
 html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) #omranBottomNav{ background:#f9f2e4 !important; border-top-color:transparent !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
+/* v-bg3d-mobile-band (تدقيق ١٨–١٩ أكتوبر، وأُعيد حيًّا على الإنتاج): مع خلفيّة WebGL (أمواج، ضباب، شبكة…) ظهر أعلى الشاشة شريط بلون الجسم بارتفاع
+   هذا الشريط السفليّ (٥١px). المعتم تمامًا بعرض الشاشة يحجب أسفل الكانفس، والمركِّب يقصّ المحجوب من صورة WebGL المقلوبة رأسيًّا فيقع القصّ أعلاها.
+   ألفا ٠٫٩٩ (اللون نفسه بالعين) تُبقيه غير حاجب فلا قصّ. ما دام body.vantaActive وحده — بلا خلفيّة ثلاثيّة يبقى كما هو. */
+html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) body.vantaActive #omranBottomNav{ background:rgba(0,0,0,.99) !important; }
+html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) body.vantaActive #omranBottomNav{ background:rgba(249,242,228,.99) !important; }
 
 /* المحادثة في إطار: خطّ ذهبيّ واحد من تحت شريط الحالة إلى فوق الشريط السفليّ (حجزه ‎48px‎ في redesign.css)؛ والكيبورد مفتوح إلى أسفل الشاشة */
 html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after{

@@ -2700,7 +2700,7 @@ test('١٦. النصوص والوسوم: ١٦ مفتاحًا بالـ١٤ لغة
   // ما تستعمله الواجهة = المفاتيح الستّة عشر بالضبط
   assert.deepEqual([...new Set(VJS.match(/'vclPro\w*'/g).map((s) => s.slice(1, -1)))].sort(), PRO_KEYS.slice().sort());
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=452"') && h.includes('css/modules.css?v=687')); // v-app-director: ٤٤١←٤٤٢
+  assert.ok(h.includes('src="/js/video.js?v=453"') && h.includes('css/modules.css?v=688')); // v-app-director: ٤٤١←٤٤٢
   // v-img-format رفع الوسم بعده إلى ٧٣٧ (سببه في الرأس)، وسبب ٧٣٦ باقٍ في التعليق نفسه
   const __tagLine = read('js/app-04-i18n-state.js').split('\n').find((l) => l.includes("sc.src = 'i18n/' + lg + '.js?v=")) || '';
   assert.ok(__tagLine.includes("sc.src = 'i18n/' + lg + '.js?v=761'; /* v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): ") && __tagLine.includes('v-app-director-voice (739): ') && __tagLine.includes('v-app-director (738): ') && __tagLine.includes('v-img-format (737)') && __tagLine.includes('v-video-enhance-pro (736): '), 'وسم ملفّات اللغات مرفوع، وسببه في رأس التعليق');
