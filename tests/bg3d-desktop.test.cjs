@@ -200,8 +200,42 @@ test('٥. الإصلاح في ملفّ الكمبيوتر وحده بوسم كا
   const rules = [...desk.matchAll(/([^{}]*body\.vantaActive[^{}]*)\{/g)].map((m) => m[1].trim());
   assert.equal(rules.length, 2, 'قاعدتا الجسم واللوحة الوسطى داخل كتلة الكمبيوتر');
   for (const sel of rules) assert.match(sel, /^html:not\(\[data-mode="light"\]\):not\(\.mobile-ui\) body\.vantaActive/, 'للأسود على الكمبيوتر وحده: ' + sel);
-  assert.ok(!/body\.vantaActive/.test(rd('css/إطارات-الجوال.css')), 'لا قاعدة جديدة للجوال');
+  const mob = [...rd('css/إطارات-الجوال.css').replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]*body\.vantaActive[^{}]*)\{/g)].map((m) => m[1].trim());
+  assert.ok(mob.every((sel) => /body\.vantaActive #omranBottomNav$/.test(sel)), 'على الجوال قاعدة الشريط السفليّ وحدها (v-bg3d-mobile-band): ' + mob.join(' | '));
   assert.match(css, /html\.bgimg:not\(\.mobile-ui\) #omFrameCenter\{ background:transparent; \}/);
   const v = HTML.match(/css\/إطارات\.css\?v=(\d+)/);
   assert.ok(v && Number(v[1]) >= 7, 'وسم إطارات.css مرفوع فوق 6');
+});
+
+/* ── v-bg3d-mobile-band (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٦٩ «أمواج» على الجوّال، وأُعيد إنتاجه حيًّا على الإنتاج بالحساب التجريبيّ ١٩ أكتوبر):
+   شريط بلون الجسم بارتفاع ٥١px أعلى الشاشة فوق خلفيّات WebGL وحدها (أمواج، ضباب، شبكة…؛ لا المجرّة/النجوم/المحيط ثنائيّة الأبعاد).
+   الزناد: #omranBottomNav معتم تمامًا (#000 / #f9f2e4) بعرض الشاشة وارتفاعه ٥١px يحجب أسفل كانفس WebGL، والمركِّب يقصّ الجزء المحجوب
+   من صورة WebGL المقلوبة رأسيًّا فيظهر القصّ أعلى الشاشة (الشريط يطول بطول الشريط السفليّ: +٣٠px ⇒ ٨١px؛ وإخفاؤه أو ألفا ٠٫٩٩ يمحوه —
+   قِيس على إطارات Screencast، لا لقطة Playwright المقصوصة التي تخفيه). الإصلاح: مع الخلفيّة الثلاثيّة الشريط السفليّ بألفا ٠٫٩٩ — اللون نفسه بالعين. ── */
+function navState({ mode = 'dark', body = [] } = {}) {
+  const html = { tag: 'html', id: '', cls: new Set(['mobile-ui', 'omAndroid', 'cv-ok', 'has-user-av']), attrs: mode === 'light' ? { 'data-mode': 'light' } : {} };
+  const b = { tag: 'body', id: '', cls: new Set(body), attrs: {} };
+  const nav = { tag: 'nav', id: 'omranBottomNav', cls: new Set(), attrs: {} };
+  return winner([html, b, nav], 390);
+}
+const alphaOf = (v) => { if (/^#[0-9a-f]{3,6}$/i.test(v)) return 1; const m = v.match(/^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)$/); if (m) return Number(m[1]); const r = v.match(/^rgb\(/); if (r) return 1; return NaN; };
+
+test('٦. الجوّال بخلفيّة ثلاثيّة: الشريط السفليّ غير معتم تمامًا (ألفا ٠٫٩٩) في الأسود والعاجيّ — الترحيب ووسط المحادثة', () => {
+  for (const [mode, rgb] of [['dark', '0,0,0'], ['light', '249,242,228']]) {
+    for (const body of [['omranWelcome', 'vantaActive'], ['vantaActive']]) {
+      const w = navState({ mode, body });
+      assert.ok(w, mode + ': قاعدة للشريط');
+      const a = alphaOf(w.value.replace(/\s+/g, ''));
+      assert.ok(a < 1 && a >= 0.98, mode + ' ' + body.join('.') + ': الشريط معتم تمامًا فيقصّ المركِّب أعلى كانفس WebGL — ' + w.where + ' ⇒ ' + w.value);
+      assert.equal(w.value.replace(/\s+/g, ''), 'rgba(' + rgb + ',.99)', mode + ': اللون نفسه بالعين');
+      assert.match(w.where, /إطارات-الجوال\.css/);
+    }
+  }
+});
+
+test('٧. الجوّال بلا خلفيّة ثلاثيّة: الشريط السفليّ كما كان (#000 في الأسود، #f9f2e4 في العاجيّ)', () => {
+  assert.equal(navState({ mode: 'dark', body: ['omranWelcome'] }).value, '#000');
+  assert.equal(navState({ mode: 'light', body: ['omranWelcome'] }).value, '#f9f2e4');
+  const v = HTML.match(/css\/إطارات-الجوال\.css\?v=(\d+)/);
+  assert.ok(v && Number(v[1]) >= 2, 'وسم إطارات-الجوال.css مرفوع فوق 1');
 });
