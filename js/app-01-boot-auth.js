@@ -265,6 +265,11 @@ try{
     userInput.placeholder = (m === 'login' || m === 'forgotEmail') ? (t.authIdPlaceholder || '') : (t.authUsernameLabel || '');
     passInput.placeholder = (m === 'resetToken') ? (t.authNewPasswordLabel || '') : (t.authPasswordLabel || '');
     passInput.autocomplete = m === 'login' ? 'current-password' : 'new-password';
+    /* v-reset-link: ملفّ اللغة الكسول (١٢ لغة) يصل بعد الإقلاع فيعيد applyLanguage كتابة [data-i18n] — المفاتيح تتبع الوضع،
+       وإلّا رجع نموذج الاسترجاع بزرّ «دخول» وعنوان بلغة الاحتياط. */
+    submitBtn.setAttribute('data-i18n', m === 'resetToken' ? 'authSubmitReset' : m === 'forgotEmail' ? 'authSubmitForgotEmail' : m === 'signup' ? 'authSubmitSignup' : 'authSubmitLogin');
+    passInput.setAttribute('data-i18n-placeholder', m === 'resetToken' ? 'authNewPasswordLabel' : 'authPasswordLabel');
+    if(heading){ if(headText) heading.setAttribute('data-i18n', m === 'signup' ? 'authCreateAccount' : 'authForgotLink'); else heading.removeAttribute('data-i18n'); }
     if(m === 'forgotEmail'){
       tabsRow.style.display = 'none';
       passwordRow.style.display = 'none';
@@ -308,6 +313,9 @@ try{
 
   function showOverlay(){ overlay.style.display = 'flex'; }
   function hideOverlay(){ overlay.style.display = 'none'; }
+  /* v-reset-link (تدقيق الإنتاج ١٩ أكتوبر: رابط «إعادة تعيين كلمة المرور» يفتح النموذج لحظة ثمّ يرجع للرئيسيّة): الحزمة defer،
+     فـcheckResetTokenUrl يفتح وضع الاسترجاع قبل معالج DOMContentLoaded — والمعالج (وonAuthed بعد تحقّق جلسة) لا يطمسانه. */
+  function resetLinkOpen(){ return mode === 'resetToken' && !!window.__pendingResetToken; }
   /* v-auth-optional: الدخول اختياري — الشاشة صارت تُغلق بـ✕ ويتابع كضيف.
      (كانت تُفرض عند الإقلاع وتظهر وميضًا مزعجًا مع كل ريلود — شكوى ٢٨ أغسطس) */
   const authCloseBtn = $('#authCloseBtn');
@@ -461,7 +469,7 @@ try{
     else if(avatar === null){ localStorage.removeItem('aiapp_avatar'); }
     // ☁️ v306: استرجاع/دمج المحادثات من السيرفر (عند الإقلاع وعند تسجيل الدخول).
     try{ if(window.chatsSyncOnAuth) window.chatsSyncOnAuth(); }catch(e){ __swallow(e, "save:app-01-boot-auth#9"); }
-    hideOverlay();
+    if(!resetLinkOpen()) hideOverlay(); // v-reset-link: تحقّق جلسة الإقلاع لا يُغلق نموذج الرابط؛ نجاح الاسترجاع يمسح الرمز قبل هذا النداء فتُغلق
     setAuthToggleUI(true);
     if(userLabel) userLabel.textContent = username;
     // v214: الاسم صار داخل قائمة ⋮ — الشارة العلوية تبقى مخفية
@@ -1683,7 +1691,7 @@ try{
   };
 
   window.addEventListener('DOMContentLoaded', async () => {
-    setMode('login');
+    setMode(resetLinkOpen() ? 'resetToken' : 'login'); // v-reset-link: لا «دخول» فوق نموذج رابط الاسترجاع
     // إن مُسح التخزين المحلي (يحدث في iOS) استعد الجلسة من نسخة الكوكي الاحتياطية.
     if(!authGet('aiapp_auth_token')){
       const ct = cookieGet('aiapp_auth_token');
@@ -1699,7 +1707,8 @@ try{
       // «لا-توكن» وصف عامّ — إن سبقه سبب أدقّ في هذا التحميل (عودة جوجل
       // الفاشلة تُسجّل «جوجل-…» قبل هذا السطر) فلا نطمسه به.
       if(!sessionNoted) noteSession('لا-توكن');
-      hideOverlay(); return;
+      if(!resetLinkOpen()) hideOverlay(); // v-reset-link: الدخول اختياريّ للزائر، إلّا من فتح رابط الاسترجاع
+      return;
     }
     try {
       const res = await fetch('/api/auth', {

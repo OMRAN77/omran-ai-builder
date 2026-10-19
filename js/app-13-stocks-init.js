@@ -866,6 +866,9 @@
         if(!res.ok){
           if(data.error === 'auth_required') angleStatusEl.textContent = t('designAiNeedLogin');
           else if(data.error === 'daily_limit_reached') angleStatusEl.textContent = t('designAiLimitReached');
+          /* v-provider-fail-rest: الخادم يرسل رمزًا لا نصّ المزوّد (كان «❌ خطأ: Your prepayment credits are depleted…») */
+          else if(data.error === 'unavailable') angleStatusEl.textContent = t('svcPaused');
+          else if(data.error === 'failed') angleStatusEl.textContent = '❌ ' + t('voiceImageFailed');
           else angleStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
           return;
         }
@@ -899,6 +902,8 @@
       if(!res.ok){
         if(data.error === 'auth_required') roomStatusEl.textContent = t('designAiNeedLogin');
         else if(data.error === 'daily_limit_reached') roomStatusEl.textContent = t('designAiLimitReached');
+        else if(data.error === 'unavailable') roomStatusEl.textContent = t('svcPaused'); /* v-provider-fail-rest */
+        else if(data.error === 'failed') roomStatusEl.textContent = '❌ ' + t('voiceImageFailed');
         else roomStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
         return;
       }
@@ -2891,6 +2896,10 @@
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; } /* v-open-tools-cap */
+        /* v-provider-fail (لقطة التدقيق ٠١٩: «خطأ: Your prepayment credits are depleted… AI Studio» بروابط فوترة المزوّد): الخادم يرسل رمزًا
+           لا نصّ المزوّد، وstudioErrText لا يعرفه فكان سيعرض «خطأ: unavailable» — نصّ الواجهة بلغة المستخدم */
+        if(data.error === 'unavailable'){ setStatus(t2('svcPaused')); return; }
+        if(data.error === 'failed'){ setStatus(t2('designAiSuggestError')); return; }
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];
