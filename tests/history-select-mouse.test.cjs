@@ -56,9 +56,10 @@ function makeEl(tag) {
   return el;
 }
 
-function boot({ lang = 'ar' } = {}) {
+function boot({ lang = 'ar', dir = (lang === 'ar' || lang === 'ur') ? 'rtl' : 'ltr' } = {}) {
   const html = makeEl('html');
   html.lang = lang;
+  html.dir = dir; /* كما يكتبه applyLanguage (app-04) لكلّ لغة */
   const head = html.appendChild(makeEl('head'));
   const body = html.appendChild(makeEl('body'));
   const history = body.appendChild(makeEl('div'));
@@ -187,4 +188,43 @@ test('٧. وسم الكاش ارتفع: delete-confirm.js في ui-wiring، وui-
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const v = /\/js\/ui-wiring\.js\?v=(\d+)/.exec(html);
   assert.ok(v && Number(v[1]) >= 663, 'وسم ui-wiring.js');
+});
+
+/* ── v-select-mark-dir (تدقيق ١٨–١٩ أكتوبر، لقطة ١١٤ جوّال إنجليزيّ): دائرة ✓ تركب فوق أيقونة الملفّ في كلّ صفّ أثناء التحديد،
+   وبالإنجليزيّ الشريط «selected item 1» بترتيب عربيّ (direction:rtl ثابت في CSS الشريط). ── */
+const ruleOf = (css, sel) => { const i = css.indexOf(sel + '{'); if (i < 0) return null; return css.slice(i + sel.length + 1, css.indexOf('}', i)); };
+
+test('٨. الشريط يتبع اتّجاه الصفحة: الإنجليزيّ ltr («1 selected item» و✕ في أوّله)، والعربيّ والأرديّ rtl — لا direction ثابت في CSS', () => {
+  for (const [lang, want, text] of [['en', 'ltr', '1 selected item'], ['fr', 'ltr', '1 selected item'], ['ar', 'rtl', '1 عنصر محدد'], ['ur', 'rtl', '1 عنصر محدد']]) {
+    const b = boot({ lang });
+    b.mouse(b.rows[0].title, { hold: true });
+    assert.equal(b.bar().dir, want, lang + ': اتّجاه الشريط');
+    assert.equal(b.count(), text, lang);
+    const rule = ruleOf(b.styleText(), '#omranSelectionBar');
+    assert.ok(rule, 'قاعدة الشريط');
+    assert.doesNotMatch(rule, /direction\s*:/, lang + ': direction ثابت يغلب سمة dir');
+  }
+});
+
+test('٩. دائرة ✓ في صفّ المحادثة والدرس على طرف الصفّ الآخر (مكان ⋮ / 🗑 المخفيّين في وضع التحديد) لا فوق الأيقونة في أوّله', () => {
+  const b = boot();
+  b.mouse(b.rows[0].title, { hold: true });
+  const css = b.styleText();
+  const mark = ruleOf(css, '.hist-item>.omran-select-mark,.eduLessonRow>.omran-select-mark');
+  assert.ok(mark, 'قاعدة موضع الدائرة في صفّي المحادثة والدرس');
+  assert.match(mark, /inset-inline-start:auto/);
+  assert.match(mark, /inset-inline-end:\d+px/);
+  assert.match(mark, /top:50%/);
+  assert.match(mark, /transform:translateY\(-50%\)/);
+  // ⋮ و🗑 يختفيان في وضع التحديد فتأخذ الدائرة مكانهما (القاعدة القائمة)
+  assert.ok(css.includes('.omran-selection-mode .hist-menu-btn,.omran-selection-mode .eduDelBtn{visibility:hidden!important}'));
+  // صفوف لوحة المالك (data-omran-admin) بلا تغيير: زرّ حذفها ظاهر في طرفها
+  assert.match(ruleOf(css, '.omran-select-mark'), /top:8px;inset-inline-start:8px/);
+});
+
+test('١٠. وسما الكاش ارتفعا: delete-confirm.js ‏20261019b، وui-wiring.js ‏664', () => {
+  const uw = fs.readFileSync(path.join(ROOT, 'js', 'ui-wiring.js'), 'utf8');
+  assert.ok(uw.includes("/js/delete-confirm.js?v=20261019b'"), 'وسم delete-confirm.js');
+  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  assert.ok(html.includes('/js/ui-wiring.js?v=664'), 'وسم ui-wiring.js');
 });

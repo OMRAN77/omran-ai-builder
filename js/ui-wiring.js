@@ -305,7 +305,7 @@ try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا
   if(document.getElementById('omranDeleteConfirmLoader')) return;
   var s=document.createElement('script');
   s.id='omranDeleteConfirmLoader';
-  s.src='/js/delete-confirm.js?v=20261019a';
+  s.src='/js/delete-confirm.js?v=20261019b';
   s.defer=true;
   (document.head||document.documentElement).appendChild(s);
 })();
