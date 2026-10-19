@@ -3,9 +3,13 @@ name: Social bot — OM Ai reels
 # Series «سوّها بـ OM Ai»: daily check at 8pm UAE, an episode goes out every 2 days
 # (the script's gate skips the day after an episode). The kind rotates by itself:
 # site → trend video → photo styles → … (if one fails, the next kind goes out instead).
+# «مسلسل ميرا» (job mira): daily at 5pm UAE, one story one day and the other the next; it never
+# touches the series above (own external_id prefix, own gate). Nothing is posted until
+# scripts/mira-episodes.json has "live": true (the owner approves a DRY_RUN episode first).
 on:
   schedule:
     - cron: '0 16 * * *'
+    - cron: '0 13 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -20,16 +24,25 @@ on:
         description: 'Platforms (auto = all connected)'
         required: false
         default: 'auto'
+      series:
+        description: 'bot = «سوّها بـ OM Ai» · mira = «مسلسل ميرا»'
+        type: choice
+        options: [bot, mira]
+        default: bot
+      mira_episode:
+        description: 'Mira only: empty = next due, or app:3 / uae:7'
+        required: false
+        default: ''
 
 permissions:
   contents: read
 
-concurrency:
-  group: social-bot
-  cancel-in-progress: false
-
 jobs:
   reel:
+    if: github.event.schedule == '0 16 * * *' || (github.event_name == 'workflow_dispatch' && inputs.series != 'mira')
+    concurrency:
+      group: social-bot
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -62,6 +75,66 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: omai-reel-${{ github.run_number }}
+          path: social-out/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  mira:
+    if: github.event.schedule == '0 13 * * *' || (github.event_name == 'workflow_dispatch' && inputs.series == 'mira')
+    concurrency:
+      group: social-bot-mira
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write   # DRY_RUN preview → branch bot/mira-preview
+      issues: write     # alert issue to the owner when an episode fails its check twice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Mira episode due?
+        id: gate
+        env:
+          UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
+        run: node scripts/social-bot.mjs --gate-mira
+      - name: Browser, ffmpeg, fonts
+        if: steps.gate.outputs.go == '1'
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+          sudo apt-get update -y && sudo apt-get install -y ffmpeg fonts-noto-color-emoji fonts-noto-core
+      - name: Make, check, publish
+        if: steps.gate.outputs.go == '1'
+        env:
+          UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MONITOR_KEY: ${{ secrets.MONITOR_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '' }}
+          MIRA_EP: ${{ inputs.mira_episode }}
+          PLATFORMS: ${{ inputs.platforms || 'auto' }}
+        run: node scripts/social-bot.mjs --mira
+      - name: Preview for the owner (DRY_RUN)
+        if: always() && steps.gate.outputs.go == '1' && github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: |
+          [ -f social-out/mira-episode.mp4 ] || [ -f social-out/mira/qa.json ] || exit 0
+          dest="mira-preview/run-${{ github.run_number }}"
+          mkdir -p "/tmp/$dest"
+          cp social-out/mira-episode.mp4 social-out/mira-cover.jpg social-out/caption*.txt social-out/meta.json "/tmp/$dest/" 2>/dev/null || true
+          cp social-out/mira/*-frame.jpg social-out/mira/*-q*.jpg social-out/mira/qa.json "/tmp/$dest/" 2>/dev/null || true
+          git config user.name "social-bot" && git config user.email "social-bot@users.noreply.github.com"
+          git fetch origin bot/mira-preview 2>/dev/null && git checkout -B bot/mira-preview FETCH_HEAD || git checkout --orphan bot/mira-preview
+          git rm -rf --quiet . 2>/dev/null || true
+          mkdir -p "$dest" && cp -r "/tmp/$dest/." "$dest/"
+          git add mira-preview && git commit -m "معاينة مسلسل ميرا — تشغيلة ${{ github.run_number }}" && git push origin HEAD:bot/mira-preview
+          echo "::notice title=mira preview::https://github.com/${{ github.repository }}/tree/bot/mira-preview/$dest"
+      - name: Video download
+        if: always() && steps.gate.outputs.go == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mira-${{ github.run_number }}
           path: social-out/
           retention-days: 30
           if-no-files-found: ignore
