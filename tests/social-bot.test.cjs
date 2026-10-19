@@ -268,3 +268,28 @@ test('١٩) الأسعار بالدرهم: طلب الموقع ينتهي بـ«
   assert.equal(withAED('سوّ لي متجر «تك» بأسعار AED'), 'سوّ لي متجر «تك» بأسعار AED');
   assert.match(src, /idea = \{ \.\.\.idea, prompt: withAED\(idea\.prompt\) \};/);
 });
+
+test('٢٠) X وThreads (v-social-xthreads): X ≤٢٨٠ موزونة بلا رابط ولا نطاق، Threads ≤٥٠٠ برابطها ووسم واحد، والموصول بمفتاح x أو twitter', async () => {
+  const m = await load();
+  const long = { name: 'متجر عطور وبخور فاخر لكلّ المناسبات في الإمارات والخليج', label: 'ترند طويل جدًّا عن موضوع اليوم في الخليج كلّه', tags: ['#عطور', '#بخور'] };
+  const caps = [
+    m.buildCaption(ideas[0], 45, 3), m.buildCaption(long, 120, 29),
+    m.buildVideoCaption({ key: 'pixarsketch', cardTitle: 'اسكتش', label: long.label, scene: 'موقف طويل جدًّا في البيت مع الأهل والجيران في ليلة العيد', tags: [] }, 75, 8),
+    m.buildStylesCaption({}, { items: [{ label: 'جيبلي' }, { label: 'بيكسار' }, { label: 'زيتي' }, { label: 'كرتون' }, { label: 'أبيض وأسود' }], avg: 9 }, 9),
+  ];
+  for (const c of caps) {
+    assert.ok(c.x && m.xLen(c.x) <= 280, 'X: ' + m.xLen(c.x));
+    assert.doesNotMatch(c.x, /https?:|vercel\.app/, 'Upload-Post يحذف روابط X — فلا رابط ولا نطاق');
+    assert.match(c.x, /الرابط في البايو/);
+    assert.ok((c.x.match(/#/g) || []).length <= 3);
+    assert.ok(c.threads && m.threadsLen(c.threads) <= 500, 'Threads: ' + m.threadsLen(c.threads));
+    assert.match(c.threads, /https:\/\/omran-ai-builder\.vercel\.app\/\?ref=threads/);
+    assert.equal((c.threads.match(/#/g) || []).length, 1, 'وسم واحد يصير موضوعًا في Threads');
+  }
+  assert.equal(m.xLen('مرحبا'), 5); assert.equal(m.xLen('🤯'), 2); assert.equal(m.threadsLen('🤯'), 4);
+  assert.deepEqual(m.connectedPlatforms({ instagram: {}, twitter: { username: 'om' }, threads: { reauth_required: true }, youtube: 'x' }), ['instagram', 'x']);
+  assert.deepEqual(m.connectedPlatforms({ x: {}, threads: {}, tiktok: {}, facebook: {} }), ['facebook', 'tiktok', 'x', 'threads']);
+  assert.match(src, /fd\.append\('x_title', cap\.x\)/);
+  assert.match(src, /fd\.append\('threads_title', cap\.threads\)/);
+  assert.match(src, /=== 'accounts'\) return accountsCheck\(\)/, 'فحص بلا تكلفة من خانة idea');
+});
