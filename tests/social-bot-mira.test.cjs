@@ -117,3 +117,23 @@ test('٩) بوّابة ميرا: الجدول لا ينشر قبل موافقة 
   assert.equal(run(true, 'schedule'), 'go=0', 'بلا مفتاح Upload-Post لا يُعرف آخر نشر — لا نشر');
   assert.equal(run(false, 'workflow_dispatch'), 'go=1');
 });
+
+test('١٠) ملفّ الحلقات: ٣٠ + ٣٠ بأرقامها، سطران ≤١٤ كلمة، مشهدان بلا كلام، نصّ ≤١٦٠ بلا رابط ولا اسم مزوّد، والنشر مقفل حتّى الموافقة', async () => {
+  const { loadEpisodes, EPISODES_FILE } = await load();
+  const raw = JSON.parse(fs.readFileSync(EPISODES_FILE, 'utf8'));
+  assert.equal(raw.live, false, 'لا نشر قبل موافقة المالك على حلقة DRY_RUN');
+  const { character, episodes } = loadEpisodes();
+  assert.ok(character.length > 80 && /shayla/i.test(character) && /abaya/i.test(character));
+  for (const story of ['app', 'uae']) assert.deepEqual(episodes.filter((e) => e.story === story).map((e) => e.k), Array.from({ length: 30 }, (_, i) => i + 1));
+  for (const e of episodes) {
+    const tag = e.story + ':' + e.k;
+    assert.ok(e.title && e.title.length <= 40, tag);
+    assert.equal(e.lines.length, 2, tag);
+    for (const l of e.lines) assert.ok(l.split(/\s+/).length <= 14, tag + ' ' + l);
+    assert.equal(e.clips.length, 2, tag);
+    for (const c of e.clips) { assert.ok(c.scene && c.action && c.sound, tag); assert.match(c.sound, /no speech|no dialogue|no voices|no vocals/i, tag); }
+    assert.ok(e.caption.length <= 160, tag);
+    assert.doesNotMatch(JSON.stringify(e), /https?:\/\//, tag);
+    assert.doesNotMatch(e.title + e.caption + e.lines.join(' '), /gemini|veo|openai|claude|gpt|جيمناي|كلاود/i, tag);
+  }
+});
