@@ -49,7 +49,7 @@ test('٢. المسبار يبني الجلسة من معالج الإنتاج ن
 test('٣. الورك فلو لا يصرف إلّا بطلب: يدويّ، أو دفعة رسالتها [maha-probe] — والصوت مخبّأ فالقبل والبعد يسمعان الشيء نفسه', () => {
   const y = read('.github/workflows/maha-dialect-probe.yml');
   assert.ok(y.includes("if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[maha-probe')"));
-  assert.ok(y.includes('MAHA_TOKEN: ${{ secrets.SAMPLE_TOKEN || secrets.EVAL_TOKEN || secrets.PROBE_TOKEN }}'));
+  assert.ok(y.includes("MAHA_TOKEN: ${{ github.ref == 'refs/heads/main' && inputs.patch == '' && inputs.code_ref == '' && (secrets.SAMPLE_TOKEN || secrets.EVAL_TOKEN || secrets.PROBE_TOKEN) || '' }}"), 'المنشور (main) يُقاس من main وبلا تجربة فقط');
   assert.ok(/async function mintSession\(\) \{\n  if \(MODE === 'prod'\) \{\n    await ownerCheck\(\);/.test(read('scripts/maha-dialect-probe.mjs')), 'صاحب الرمز قبل أيّ جلسة (لا دقائق تُخصم من غير المالك)');
   assert.ok(/actions\/cache@v4[\s\S]*?path: \.maha-tts-cache/.test(y));
   const p = read('scripts/maha-dialect-probe.mjs');
@@ -72,4 +72,38 @@ test('٤. طلبات الحارس (--requests): لهجات أخرى وصوت ا�
   assert.ok(G.some((r) => /woman/.test(r.tts.instructions)) && G.some((r) => /Saudi|Kuwaiti|Egyptian|Lebanese/.test(r.tts.instructions)));
   const p = read('scripts/maha-dialect-probe.mjs');
   assert.ok(p.includes("arg('requests', 'scripts/maha-dialect-requests.json')") && p.includes('await speech(reqItem.text, reqItem.tts)'));
+});
+
+test('٥. مراجعة: لا تشغيلة مدفوعة بالخطأ — لا دفعة على main، والمجموعة على المهمّة، و--only الفاسد يوقف المسبار لا يشغّل الثلاثين', () => {
+  const y = read('.github/workflows/maha-dialect-probe.yml');
+  // دمج squash يحمل رسائل الالتزامات ([maha-probe:1,9]) إلى main
+  assert.ok(/ {2}push:\n(?: +#.*\n)* +branches-ignore: \[main\]\n +paths:/.test(y), 'لا دفعة من main');
+  // المجموعة على مستوى الورك فلو كانت تُدخل الدفعات المتخطّاة فتلغي «بعد» المعلّقة
+  assert.ok(!/^concurrency:/m.test(y) && /\n    if: [^\n]+\n(?: +#.*\n)*    concurrency:\n      group: maha-dialect-probe\n      cancel-in-progress: false\n/.test(y), 'المجموعة على المهمّة');
+  assert.ok(y.includes("grep -o '\\[maha-probe:[^]]*\\]'"), 'الوسم كما كُتب يصل المسبار ليحكم عليه');
+  const run = (only, extra) => {
+    try {
+      const out = execFileSync(process.execPath, [path.join(ROOT, 'scripts/maha-dialect-probe.mjs'), '--dry', '--only', only].concat(extra || []), {
+        cwd: ROOT, env: Object.assign({}, process.env, { OPENAI_API_KEY: 'sk-test-dummy' }), timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'],
+      }).toString();
+      return { code: 0, out };
+    } catch (e) { return { code: e.status, out: String(e.stderr) }; }
+  };
+  for (const ok of ['1,9', '1, 9', '١,٩', '1،9']) assert.equal(run(ok).code, 0, 'مقبول: ' + ok);
+  for (const bad of ['1-3', '0', 'abc', '31']) {
+    const r = run(bad);
+    assert.equal(r.code, 2, 'يوقف: ' + bad);
+    assert.ok(r.out.includes('✗ --only'), bad);
+  }
+  assert.equal(run('105', ['--requests', 'scripts/maha-dialect-guard.json']).code, 0, 'أرقام الحارس في ملفّها');
+  // التجربة في الوضع المنشور كانت تُسقط بصمت فيُقاس main كأنّه التجربة
+  // (عنوان لا يُوصل إليه: لو تقدّم نداءٌ ما على الرفض لفشل هنا لا على الموقع المنشور)
+  let refused = null;
+  try {
+    execFileSync(process.execPath, [path.join(ROOT, 'scripts/maha-dialect-probe.mjs'), '--only', '1'], {
+      cwd: ROOT, timeout: 30000, stdio: ['ignore', 'pipe', 'pipe'],
+      env: Object.assign({}, process.env, { MAHA_TOKEN: 'dummy', MAHA_BASE: 'http://127.0.0.1:9', OPENAI_API_KEY: '', MAHA_SESSION_PATCH: '{"reasoning":{"effort":"minimal"}}' }),
+    });
+  } catch (e) { refused = { code: e.status, err: String(e.stderr) }; }
+  assert.ok(refused && refused.code === 2 && refused.err.includes('✗ MAHA_SESSION_PATCH للوضع المحلّيّ وحده'), JSON.stringify(refused));
 });

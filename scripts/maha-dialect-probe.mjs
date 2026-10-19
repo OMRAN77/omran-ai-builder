@@ -21,7 +21,11 @@ const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i === -1 ? d : process.argv[i + 1]; };
 const DRY = process.argv.includes('--dry');
-const ONLY = String(arg('only', '') || '').split(',').map(Number).filter(Boolean);
+// --only 1,9: أرقام طلبات وحدها (أرقام عربيّة وفاصلة «،» ومسافة تُقبل). غيرها يوقف المسبار — لا «الثلاثون كلّها» مدفوعة لأنّ
+// «1-3» صار قائمة فارغة (مراجعة: كلّ طلب مكالمة على حساب المالك).
+const ONLY_RAW = String(arg('only', '') || '').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).trim();
+const ONLY = ONLY_RAW ? ONLY_RAW.split(/[,،\s]+/).filter(Boolean).map(Number) : [];
+if (ONLY_RAW && (!ONLY.length || ONLY.some((n) => !Number.isInteger(n) || n <= 0))) { console.error('✗ --only: أرقام طلبات مفصولة بفواصل (مثل 1,9) — وصل: ' + ONLY_RAW); process.exit(2); }
 const CACHE = arg('cache', process.env.MAHA_TTS_CACHE || path.join(ROOT, '.maha-tts-cache'));
 const OUT = arg('out', process.env.MAHA_PROBE_OUT || 'maha-dialect-results.json');
 const BASE = String(process.env.MAHA_BASE || 'https://omran-ai-builder.vercel.app').replace(/\/+$/, '');
@@ -33,6 +37,7 @@ if (MODE === 'local' && !KEY) { console.error('✗ لا MAHA_TOKEN ولا OPENAI
 // --requests: ملفّ طلبات آخر (scripts/maha-dialect-guard.json: لهجات أخرى وصوت امرأة — حارس أنّ الإماراتيّ لم يُفرض على غير أهله)
 const REQUESTS = JSON.parse(fs.readFileSync(path.resolve(ROOT, arg('requests', 'scripts/maha-dialect-requests.json')), 'utf8'))
   .filter((r) => !ONLY.length || ONLY.includes(r.id));
+if (ONLY.length && REQUESTS.length !== new Set(ONLY).size) { console.error('✗ --only: أرقام ليست في ملفّ الطلبات — ' + ONLY.filter((n) => !REQUESTS.some((r) => r.id === n)).join(',')); process.exit(2); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── ١) الصوت: PCM ‎24kHz 16‑bit أحاديّ (صيغة الجلسة)، مخبّأ ببصمة النصّ والإعداد ──
@@ -286,6 +291,8 @@ if (DRY) {
 // قبل وصوله المزوّد (null يحذف الحقل). مثال: {"reasoning":{"effort":"minimal"}}. الرفض يظهر خطأ «session 400» في الصفّ.
 let CTX_ITEM = '';
 const PATCH = (() => { try { return JSON.parse(process.env.MAHA_SESSION_PATCH || 'null'); } catch (e) { console.error('✗ MAHA_SESSION_PATCH ليس JSON'); process.exit(2); } })();
+// الموقع المنشور يبني تعليماته بنفسه: تجربة على الطلبات هناك كانت تُسقط بصمت فيُقاس main كأنّه التجربة
+if (PATCH && MODE === 'prod') { console.error('✗ MAHA_SESSION_PATCH للوضع المحلّيّ وحده (بلا MAHA_TOKEN)'); process.exit(2); }
 if (PATCH && MODE === 'local') {
   const realFetch = globalThis.fetch;
   const merge = (a, b) => {

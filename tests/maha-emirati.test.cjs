@@ -23,7 +23,7 @@ function loadHandler() {
   return require(rp('api/_lib/realtime-session.js'));
 }
 
-async function mint(body) {
+async function mint(body, whole) {
   const handler = loadHandler();
   const save = global.fetch;
   const sessions = [];
@@ -38,7 +38,8 @@ async function mint(body) {
     global.fetch = save;
   }
   assert.equal(res.code, 200);
-  return sessions[sessions.length - 1].instructions;
+  const last = sessions[sessions.length - 1];
+  return whole ? last : last.instructions;
 }
 
 test('١. لهجة إماراتيّة افتراضيّة بكلماتها، والفصحى ممنوعة في كلّ لهجة — ومن يتكلّم لهجة أخرى يأخذ كلماتها، وبلا إنجليزيّ وسط العربيّ', async () => {
@@ -77,6 +78,10 @@ test('٣. صيغ المؤنّث الموجّهة لها لا تعاد له ول�
   // التشغيلتان 39190791087/39190933801: «صيغة محايدة عند الشكّ» أعطت رجلًا بصوت رجل صيغ المؤنّث ١٠/٦٠ (تبين، تشوفين) — السابقة ٠/٦٠
   assert.ok(who.includes('When none of these is clear, use the usual Gulf masculine') && who.includes('never switch to feminine because of what they asked for'));
   assert.ok(!who.includes('Talk to the user as a man (تبي، قول لي، اختار، حاب) unless'), 'لا مذكّر يغلب صوت المرأة');
+  // مراجعة: مثال سؤال الخطّ في أداتي الصورة والتعديل كان «تبينه…» بالمؤنّث — يصل كلّ جلسة، وهو مسار الشعار وكرت العرس بالذات
+  const fonts = (await mint({}, true)).tools.map((t) => t.parameters && t.parameters.properties && t.parameters.properties.font_style).filter(Boolean);
+  assert.equal(fonts.length, 2, 'generate_image وedit_image');
+  for (const d of fonts) assert.ok(d.description.includes('بأيّ خطّ: الديواني ولا الفارسي ولا الكوفي ولا الثلث؟') && !d.description.includes('تبينه'), 'سؤال الخطّ بلا مؤنّث');
 });
 
 test('٤. لا عبارات محفوظة تُنسخ: «اطمّن، واضحة وبنحلها» و«كفو عليك» لم تعودا في تعليماتها، والطمأنة للمنزعج وحده', async () => {
