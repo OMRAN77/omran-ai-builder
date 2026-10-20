@@ -407,6 +407,8 @@
       else { ST.creep=null; drStagePct(sp[0]+(sp[1]-sp[0])*Math.max(0,Math.min(1,frac))); }
     } else { if(ST.creep&&ST.creep.k===k) ST.creep=null; if(state==='ok') drStagePct(sp[1]); }
   }
+  /* v-director-render-robust: ما يراه المالك أثناء التصوير والدمج — الزمن المنقضي في الخطوة بعد ٢٠ ث، وآخر سطر من سجلّ الجسر (سبب إعادة أو احتياط) بدل صمت ربع ساعة */
+  function drNote(st,base){ var s=Number(st&&st.stepSeconds)||0, t=base||''; if(s>=20) t+=(t?' · ':'')+Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); if(st&&st.lastLog) t+=(t?' — ':'')+String(st.lastLog).slice(0,160); return t; }
   function drMsg(t,err,diag){
     var m=id('vdMsg'); if(!m) return; m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':'');
     if(diag){ var d=document.createElement('code'); d.className='vmk-dir-diag'; d.dir='ltr'; d.textContent=diag; m.appendChild(d); } /* سبب الخادم كما هو، للمالك وحده */
@@ -632,8 +634,8 @@
         if(!sr||!sr.ok||!sj||typeof sj!=='object'){ if(++lost>=20){ drStep('shots','err'); throw drFail('bridge offline'); } continue; }
         lost=0; st=sj;
         if(st.state==='queued'){ drStep('shots','on',L('vdQueued'),0.02); continue; }
-        if(st.step==='assets'||st.step==='capture'){ drStep('shots','on',st.total?drT('vdScene',{i:st.done||0,n:st.total}):'',st.step==='capture'&&st.total?(st.done||0)/st.total:0.03); }
-        if(st.step==='segments'||st.step==='join'){ drStep('shots','ok',''); drStep('join','on',st.step==='segments'&&st.total?drT('vdScene',{i:st.done||0,n:st.total}):'',st.step==='segments'&&st.total?0.8*(st.done||0)/st.total:0.9); }
+        if(st.step==='assets'||st.step==='capture'){ drStep('shots','on',drNote(st,st.total?drT('vdScene',{i:st.done||0,n:st.total}):''),st.step==='capture'&&st.total?(st.done||0)/st.total:0.03); }
+        if(st.step==='segments'||st.step==='join'){ drStep('shots','ok',''); drStep('join','on',drNote(st,st.step==='segments'&&st.total?drT('vdScene',{i:st.done||0,n:st.total}):''),st.step==='segments'&&st.total?0.8*(st.done||0)/st.total:0.9); }
         if(st.state==='error'){ drStep(st.step==='capture'||st.step==='assets'?'shots':'join','err'); throw drFail('render '+(st.step||'')+' '+(st.message||'')); }
         if(st.state==='done'){ drStep('shots','ok',''); drStep('join','ok',''); url=bridge+st.url; break; }
       }

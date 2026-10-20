@@ -12,9 +12,9 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { mkdir, writeFile, rm, readdir, stat } from 'node:fs/promises';
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { availableParallelism } from 'node:os';
+import { availableParallelism, totalmem } from 'node:os';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -29,8 +29,48 @@ export const XFADE = 0.5;                    // ثانية الانتقال
 export const TAIL = 0.5;                     // ما يُضاف بعد نهاية الصوت
 export const LIMITS = {
   scenes: 90, steps: 8, imageChars: 9e6, audioChars: 4e6, bodyBytes: 160e6, textChars: 180, subChars: 200,
-  minSec: 2.5, maxSec: 40, ttlMs: 24 * 3600 * 1000, jobTimeoutMs: 55 * 60 * 1000, segmentTimeoutMs: 6 * 60 * 1000, joinTimeoutMs: 25 * 60 * 1000,
+  minSec: 2.5, maxSec: 40, ttlMs: 24 * 3600 * 1000, jobTimeoutMs: 55 * 60 * 1000, segmentTimeoutMs: 6 * 60 * 1000, joinTimeoutMs: 25 * 60 * 1000, sceneTimeoutMs: 3 * 60 * 1000,
 };
+/* v-director-render-robust (لقطتا المالك ١٢ أكتوبر: «المشهد ١ من ٤» ربع ساعة ثمّ «segment 2 failed:» بلا سبب):
+   ffmpeg مقتول بإشارة على Railway (ضيق ذاكرة: مقطع واحد ٢٥٠–٣٩٠ م.ب مقيسًا، وحتّى أربعة بالتوازي مع كروميوم) كان يصل
+   المالك رسالةً فارغة، وpage.evaluate بلا مهلة في Playwright يعلّق المشهد بلا حدّ. هنا: السبب يُقال، التزامن من ذاكرة
+   الحاوية، ترميز أخفّ، إعادة وحيدة ثمّ صورة ثابتة بدل إسقاط الفيديو، ومهلة للمشهد كلّه، وسطر السجلّ الأخير في الحالة. */
+const MB = 1024 * 1024;
+/** حدّ ذاكرة الحاوية من cgroup (v2 ثمّ v1) وإلّا ذاكرة الجهاز؛ «max» أو رقم خرافيّ = بلا حدّ */
+export function parseMemLimit(text, total) { const v = Number(String(text || '').trim()); return (Number.isFinite(v) && v > 0 && v < 1e15) ? Math.min(v, total) : total; }
+export function memoryLimitBytes() {
+  const total = totalmem();
+  for (const p of ['/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes']) {
+    try { return parseMemLimit(readFileSync(p, 'utf8'), total); } catch (e) { /* ليس في حاوية، أو إصدار cgroup آخر */ }
+  }
+  return total;
+}
+/** مقاطع ffmpeg المتوازية: ٧٠٠ م.ب لكروميوم وNode ثمّ ٤٠٠ م.ب لكلّ مقطع، بين ١ وسقف الأنوية (≤ ٤) */
+export function autoConcurrency(limitBytes, coreCap) {
+  const byMem = Math.floor((Number(limitBytes) - 700 * MB) / (400 * MB));
+  return Math.max(1, Math.min(4, Number(coreCap) || 1, Number.isFinite(byMem) ? byMem : 1));
+}
+/** سبب فشل عمليّة: stderr إن وُجد، وإلّا الإشارة التي قتلتها (الذاكرة على الأرجح)، وإلّا رمز الخروج */
+export function explainRun(r) {
+  const e = String((r && r.err) || '').trim();
+  if (e) return e.slice(-300);
+  if (r && r.signal) return 'ffmpeg killed by ' + r.signal + ' — memory pressure likely';
+  return 'ffmpeg exit ' + (r ? r.code : '?') + ' without output';
+}
+/** الأمر نفسه بترميز أخفّ للذاكرة (خيط واحد، نظرة قصيرة) للإعادة وحده — الملفّ الشخصيّ نفسه (ultrafast يُطفئ CABAC فيصير Baseline ويختلف SPS بين المقاطع الملصوقة) */
+export function lightArgs(args) {
+  const a = args.slice();
+  const i = a.indexOf('-x264-params'); if (i >= 0) a[i + 1] = 'rc-lookahead=5:ref=1';
+  const t = a.indexOf('-threads'); if (t >= 0) a[t + 1] = '1';
+  return a;
+}
+/** true إن انقضت المهلة قبل الوعد (الوعد لا يُلغى — المنادي يستبدل ما علّق) */
+export function raceTimeout(p, ms) {
+  return new Promise((res) => {
+    const t = setTimeout(() => res(true), ms);
+    Promise.resolve(p).then(() => { clearTimeout(t); res(false); }, () => { clearTimeout(t); res(false); });
+  });
+}
 const RTL = new Set(['ar', 'ur']);
 const STEP_CLICK = /^#[A-Za-z0-9_-]{1,60}$/, STEP_TAB = /^[a-z]{2,20}$/, STEP_SETTINGS = /^[A-Za-z]{2,40}Section$/, STEP_FOCUS = /^[#.][A-Za-z0-9_ .#>-]{1,80}$/;
 
@@ -172,6 +212,22 @@ export function sceneArgs(scenes, index, files, dir) {
   /* الإعدادات واحدة في كلّ المقاطع (الملفّ الشخصيّ والمستوى وطول المجموعة) كي يصحّ لصقها بلا إعادة ترميز */
   args.push('-filter_complex', fc, '-map', '[v]', '-map', '[a]', '-t', (slotFrames(s) / FPS).toFixed(3),
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-profile:v', 'high', '-level:v', '4.1', '-pix_fmt', 'yuv420p', '-r', String(FPS), '-g', String(FPS * 2),
+    '-threads', '2', '-x264-params', 'rc-lookahead=10:ref=1', /* v-director-render-robust: أخفّ للذاكرة (−١٧٪) وأسرع (−٤٠٪) مقيسًا بلا فرق مرئيّ على صور ثابتة */
+    '-c:a', 'aac', '-b:a', '160k', '-ar', '44100', '-movflags', '+faststart', files.out);
+  return args;
+}
+/** الاحتياط الأخير لمقطع يفشل ترميزه: صورته ثابتة بلا حركة ولا ذوبان (بالملفّ الشخصيّ نفسه فيُلصق مع الباقي).
+ *  الصورة تُفكّ مرّة واحدة ويولّد zoompan الثابت إطاراتها (١٦٤ م.ب مقيسًا) — لا `-loop 1` الذي يفكّ PNG لكلّ إطار (٣١٤ م.ب وأبطأ أربع مرّات). */
+export function plainSceneArgs(scenes, index, files) {
+  const s = scenes[index];
+  const args = ['-y', '-hide_banner', '-loglevel', 'error', '-i', files.image];
+  if (files.audio) args.push('-i', files.audio); else args.push('-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo');
+  const fit = fitType(s) === 'style_sample' ? fitFilter('style_sample', 'a') + ',scale=' + OUT_W + ':' + OUT_H
+    : 'scale=' + OUT_W + ':' + OUT_H + ':force_original_aspect_ratio=decrease,pad=' + OUT_W + ':' + OUT_H + ':(ow-iw)/2:(oh-ih)/2:color=0x07080c,setsar=1';
+  const fc = '[0:v]' + fit + ",zoompan=z='1':x=0:y=0:d=" + slotFrames(s) + ':s=' + OUT_W + 'x' + OUT_H + ':fps=' + FPS + ',format=yuv420p[v];[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,apad[a]';
+  args.push('-filter_complex', fc, '-map', '[v]', '-map', '[a]', '-t', (slotFrames(s) / FPS).toFixed(3),
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-profile:v', 'high', '-level:v', '4.1', '-pix_fmt', 'yuv420p', '-r', String(FPS), '-g', String(FPS * 2),
+    '-threads', '1', '-x264-params', 'rc-lookahead=5:ref=1', /* veryfast لا ultrafast: الملفّ الشخصيّ High نفسه فيُلصق بلا تعثّر */
     '-c:a', 'aac', '-b:a', '160k', '-ar', '44100', '-movflags', '+faststart', files.out);
   return args;
 }
@@ -191,7 +247,7 @@ export function buildFfmpegArgs(manifest, dir) {
   const segs = sc.map((s, i) => {
     const out = join(d, 'seg_' + i + '.mp4');
     const files = { image: sceneImage(s, i, d), nextImage: i < sc.length - 1 ? sceneImage(sc[i + 1], i + 1, d) : '', audio: s.audio ? join(d, 'audio_' + i + '.' + (s.audioExt || 'mp3')) : '', out };
-    return { index: i, out, needs: [i].concat(i < sc.length - 1 ? [i + 1] : []), args: sceneArgs(sc, i, files, manifest.dir) };
+    return { index: i, out, needs: [i].concat(i < sc.length - 1 ? [i + 1] : []), args: sceneArgs(sc, i, files, manifest.dir), plain: plainSceneArgs(sc, i, files) };
   });
   const out = join(d, 'video.mp4'), list = join(d, 'concat.txt');
   return { segments: segs, list, listText: concatList(segs.map((x) => x.out)), join: { out, args: concatArgs(list, out, false) }, fallback: { out, args: concatArgs(list, out, true) }, total: totalSeconds(sc) };
@@ -251,7 +307,7 @@ export function run(bin, args, opts) {
     child.stdout.on('data', (d) => { out = (out + d).slice(-20000); });
     child.stderr.on('data', (d) => { err = (err + d).slice(-6000); });
     child.on('error', (e) => { done = true; clearTimeout(timer); resolve({ code: -1, out, err: err + String(e && e.message || e) }); });
-    child.on('close', (code) => { done = true; clearTimeout(timer); resolve({ code: code == null ? -1 : code, out, err }); });
+    child.on('close', (code, signal) => { done = true; clearTimeout(timer); resolve({ code: code == null ? -1 : code, signal: signal || '', out, err }); }); /* الإشارة تُقال لا تُبتلع */
   });
 }
 export async function probeSize(ffprobe, file) {
@@ -283,7 +339,8 @@ async function loadPlaywright(repoDir) {
 /* ───────── المهمّة ───────── */
 export function createRenderer(cfg) {
   const c = Object.assign({ appUrl: 'https://omran-ai-builder.vercel.app', ffmpeg: 'ffmpeg', ffprobe: 'ffprobe', workDir: './render-work', repoDir: '', log: (s) => console.log('[render] ' + s), ttlMs: LIMITS.ttlMs, maxQueued: 3 }, cfg || {});
-  if (!(c.concurrency > 0)) c.concurrency = Math.max(1, Math.min(4, availableParallelism() - 1)); /* مقاطع ffmpeg المتوازية: أنوية الجهاز ناقص واحد، بسقف ٤ */
+  if (!(c.concurrency > 0)) c.concurrency = autoConcurrency(c.memoryLimitBytes || memoryLimitBytes(), Math.max(1, Math.min(4, availableParallelism() - 1))); /* مقاطع ffmpeg المتوازية: أنوية الجهاز ناقص واحد بسقف ٤، ثمّ ما تسعه ذاكرة الحاوية (١ على الخطط الصغيرة) */
+  const exec = c.run || run; /* للاختبار: ffmpeg وهميّ */
   if (!c.secret) throw new Error('secret required');
   const jobs = new Map();
   const queue = [];
@@ -320,9 +377,11 @@ export function createRenderer(cfg) {
   }
 
   function publicState(j) {
-    return { jobId: j.id, state: j.state, step: j.step, done: j.done, total: j.total, message: j.message || '', seconds: j.seconds || 0, fallbacks: j.fallbacks || 0, url: j.state === 'done' ? '/render/' + j.id + '/video.mp4' : '', expiresAt: j.expiresAt || 0, queued: queue.indexOf(j) + 1 };
+    return { jobId: j.id, state: j.state, step: j.step, done: j.done, total: j.total, message: j.message || '', seconds: j.seconds || 0, fallbacks: j.fallbacks || 0, segFallbacks: j.segFallbacks || 0, stepSeconds: j.stepAt ? Math.round((Date.now() - j.stepAt) / 1000) : 0, lastLog: (j.logs || []).slice(-2).join(' · '), url: j.state === 'done' ? '/render/' + j.id + '/video.mp4' : '', expiresAt: j.expiresAt || 0, queued: queue.indexOf(j) + 1 };
   }
-  function set(j, patch) { Object.assign(j, patch); }
+  function set(j, patch) { if (patch.step && patch.step !== j.step) j.stepAt = Date.now(); Object.assign(j, patch); }
+  /** سطر سجلّ للمهمّة: يُطبع ويُحفظ آخر ثلاثة في الحالة العامّة (المالك يرى ما يحدث بدل صمت ربع ساعة) */
+  function jlog(j, line) { j.logs = (j.logs || []).concat(new Date().toISOString().slice(11, 19) + ' ' + line).slice(-3); c.log('job ' + j.id + ' ' + line); }
 
   async function writeAssets(j) {
     const d = jobDir(j.id);
@@ -412,27 +471,37 @@ export function createRenderer(cfg) {
         try { localStorage.setItem('aiapp_intro', '0'); localStorage.setItem('aiapp_privacy_ack', '1'); localStorage.setItem('aiapp_lang', lg); } catch (e) { /* لا شيء */ }
       }, m.lang);
       const cardCtx = await browser.newContext({ viewport: { width: OUT_W, height: OUT_H }, deviceScaleFactor: 2, colorScheme: 'dark', locale: m.lang });
-      const page = await appCtx.newPage();
+      let page = await appCtx.newPage();
       page.setDefaultTimeout(45000);
+      let shotGen = 0;
       const card = await cardCtx.newPage();
       const state = { key: '' };
       for (const { s, i } of todo) {
         const file = join(d, 'shot_' + i + '.png');
         const t0 = Date.now();
         let ok = false, lastErr = '';
-        for (let attempt = 1; attempt <= 2 && !ok; attempt++) {
-          try {
-            if (s.type === 'title') await shootCard(card, s, m, file); else await shootScreen(page, s, m, file, state);
-            ok = true;
-          } catch (e) { lastErr = String(e && e.message || e).split('\n')[0].slice(0, 160); state.key = ''; }
+        const gen = ++shotGen; /* v-director-render-robust: مهلة للمشهد كلّه — page.evaluate بلا مهلة في Playwright؛ ما يتجاوزها يصير بطاقة عنوان وتُستبدل الصفحة المعلّقة */
+        const timedOut = await raceTimeout((async () => {
+          for (let attempt = 1; attempt <= 2 && !ok; attempt++) {
+            if (gen !== shotGen) return;
+            try {
+              if (s.type === 'title') await shootCard(card, s, m, file); else await shootScreen(page, s, m, file, state);
+              if (gen === shotGen) ok = true;
+            } catch (e) { lastErr = String(e && e.message || e).split('\n')[0].slice(0, 160); state.key = ''; }
+          }
+        })(), LIMITS.sceneTimeoutMs);
+        if (timedOut) {
+          shotGen++; ok = false; lastErr = 'scene timeout ' + Math.round(LIMITS.sceneTimeoutMs / 1000) + 's'; state.key = '';
+          await raceTimeout(page.close().catch(() => null), 10000);
+          page = await appCtx.newPage(); page.setDefaultTimeout(45000);
         }
         if (!ok) {
-          c.log('scene ' + i + ' (' + s.type + ' ' + (s.target || '') + ') capture failed twice: ' + lastErr + ' — title card instead');
+          jlog(j, 'scene ' + i + ' (' + s.type + ' ' + (s.target || '') + ') capture failed twice: ' + lastErr + ' — title card instead');
           await shootCard(card, s, m, file); /* بطاقة بنصّ المشهد؛ إن فشلت هي أيضًا فالمتصفّح نفسه معطوب والمهمّة تفشل بسببها */
           j.fallbacks++;
         }
         const ms = Date.now() - t0;
-        if (ms > 15000 || !ok) c.log('scene ' + i + ' ' + s.type + ' ' + (s.target || '') + ' took ' + Math.round(ms / 1000) + 's');
+        if (ms > 15000 || !ok) jlog(j, 'scene ' + i + ' ' + s.type + ' ' + (s.target || '') + ' took ' + Math.round(ms / 1000) + 's');
         j.done++;
         if (onShot) onShot(i);
       }
@@ -447,19 +516,38 @@ export function createRenderer(cfg) {
     const ready = new Set(), started = new Set();
     let active = 0, done = 0, capturing = true, failed = null, wake = null;
     const limit = () => (capturing ? 1 : c.concurrency);
+    let waiting = 0; const quietWaiters = [];
+    /* ينتظر حتّى لا يبقى ترميز جارٍ غير المنتظِرين (منتظران معًا يُطلقان واحدًا بعد واحد) */
+    const quiet = () => new Promise((res) => {
+      waiting++;
+      const check = () => { if (active - waiting <= 0) { waiting--; res(); return true; } return false; };
+      if (!check()) quietWaiters.push(check);
+    });
+    const releaseQuiet = () => { for (const ck of quietWaiters.splice(0)) if (!ck()) quietWaiters.push(ck); };
     async function encode(seg) {
-      let r = await run(c.ffmpeg, seg.args, { timeoutMs: LIMITS.segmentTimeoutMs });
-      if (r.code !== 0) r = await run(c.ffmpeg, seg.args, { timeoutMs: LIMITS.segmentTimeoutMs });
-      if (r.code !== 0) throw new Error('segment ' + seg.index + ' failed: ' + r.err.slice(-300));
+      let r = await exec(c.ffmpeg, seg.args, { timeoutMs: LIMITS.segmentTimeoutMs });
+      if (r.code !== 0) r = await exec(c.ffmpeg, seg.args, { timeoutMs: LIMITS.segmentTimeoutMs });
+      if (r.code !== 0) {
+        /* v-director-render-robust: فشل مرّتين (غالبًا مقتول لضيق الذاكرة): انتظر خلوّ الترميز ثمّ أعد وحده أخفّ، وإلّا صورة ثابتة */
+        jlog(j, 'segment ' + seg.index + ' failed twice (' + explainRun(r) + ') — waiting for the others, then alone with lighter encoding');
+        await quiet();
+        r = await exec(c.ffmpeg, lightArgs(seg.args), { timeoutMs: LIMITS.segmentTimeoutMs });
+        if (r.code !== 0 && seg.plain) {
+          jlog(j, 'segment ' + seg.index + ' lighter encoding failed (' + explainRun(r) + ') — still picture instead of camera motion');
+          r = await exec(c.ffmpeg, seg.plain, { timeoutMs: LIMITS.segmentTimeoutMs });
+          if (r.code === 0) j.segFallbacks = (j.segFallbacks || 0) + 1;
+        }
+        if (r.code !== 0) throw new Error('segment ' + seg.index + ' failed: ' + explainRun(r));
+      }
     }
     function pump() {
-      if (failed) return;
+      if (failed || waiting) return; /* منتظِر الهدوء يمنع بدء مقاطع جديدة */
       for (const seg of plan.segments) {
         if (active >= limit()) break;
         if (started.has(seg.index) || !seg.needs.every((k) => ready.has(k))) continue;
         started.add(seg.index); active++;
         encode(seg).then(() => { done++; if (j.step === 'segments') j.done = done; }, (e) => { failed = failed || e; })
-          .then(() => { active--; pump(); if (wake) wake(); });
+          .then(() => { active--; releaseQuiet(); pump(); if (wake) wake(); });
       }
     }
     return {
@@ -507,7 +595,7 @@ export function createRenderer(cfg) {
       j.manifest = { lang: j.manifest.lang, dir: j.manifest.dir, scenes: [] };
     } catch (e) {
       const msg = String(e && e.message || e).replace(/\u001b\[[0-9;]*m/g, '').split('\n')[0].slice(0, 300); /* سطر واحد بلا ألوان الطرفيّة */
-      c.log('job ' + j.id + ' failed at ' + j.step + ': ' + msg);
+      jlog(j, 'failed at ' + j.step + ': ' + msg);
       set(j, { state: 'error', message: msg });
     } finally { clearTimeout(guard); }
   }
@@ -569,5 +657,5 @@ export function createRenderer(cfg) {
   const timer = setInterval(sweep, 3600 * 1000);
   if (timer.unref) timer.unref();
   sweep().catch(() => null);
-  return { handle, jobs, sweep, corsAllowed, _execute: execute, _capture: capture, _makeEncoder: makeEncoder, _joinSegments: joinSegments };
+  return { handle, jobs, sweep, corsAllowed, _execute: execute, _capture: capture, _makeEncoder: makeEncoder, _joinSegments: joinSegments, _publicState: publicState, _set: set };
 }
