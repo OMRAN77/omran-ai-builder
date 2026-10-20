@@ -29,6 +29,8 @@
 <div id="settingsPageHeader" style="display:none; align-items:center; gap:10px; margin-top:26px; margin-bottom:14px;">
   <button type="button" id="settingsPageBackBtn" title="رجوع" data-i18n-title="back" style="background:none; border:none; cursor:pointer; color:var(--text); display:flex; align-items:center; justify-content:center; padding:4px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" id="settingsBackSvg"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
   <h3 id="settingsPageTitle" style="margin:0; font-size: var(--fs-2);"></h3>
+  <!-- v-plans-close (الدفعة ٣): ✕ صفحة الباقات على الجوّال — app-05 يُظهره ويغلق به الإعدادات -->
+  <button type="button" id="settingsPageCloseBtn" title="إغلاق" data-i18n-title="closeTitle" aria-label="إغلاق" data-i18n="[aria-label]closeTitle" style="display:none; margin-inline-start:auto; background:none; border:none; cursor:pointer; color:var(--text); align-items:center; justify-content:center; width:40px; height:40px; padding:0; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
 </div>
 
 

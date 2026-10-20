@@ -1939,13 +1939,16 @@ function providerPickToast(){
     if(!el){
       el = document.createElement('div');
       el.id = 'provPickToast';
-      el.style.cssText = 'position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c2230; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; z-index:9999; box-shadow:0 4px 18px rgba(0,0,0,.4); transition:opacity .3s; max-width:90vw; text-align:center;';
+      el.style.cssText = 'position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c2230; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; z-index:9999; box-shadow:0 4px 18px rgba(0,0,0,.4); transition:opacity .3s; max-width:90vw; text-align:center; pointer-events:none;';
       document.body.appendChild(el);
     }
     el.textContent = msg;
+    el.style.bottom = __toastBottomPx(); /* v-toast-layer: فوق الصندوق، ولا يلتقط اللمس بعد التلاشي */
+    el.style.visibility = 'visible';
     el.style.opacity = '1';
     clearTimeout(el._t);
-    el._t = setTimeout(() => { el.style.opacity = '0'; }, 2500);
+    clearTimeout(el._v);
+    el._t = setTimeout(() => { el.style.opacity = '0'; el._v = setTimeout(() => { el.style.visibility = 'hidden'; }, 320); }, 2500);
   }catch(e){ __swallow(e, "ui:app-05-ui#21"); }
 }
 const PROVIDER_KEY_LABELS = {
@@ -3525,6 +3528,8 @@ function showSettingsPage(sid){
   const headerH3 = document.querySelector('#' + sid + ' .settingsSectionHeader h3');
   if(pageTitleEl) pageTitleEl.textContent = stripUiEmoji(headerH3 ? headerH3.textContent : '');
   if(pageHdr) pageHdr.style.display = 'flex';
+  const pageClose = document.getElementById('settingsPageCloseBtn'); // v-plans-close: صفحة الباقات على الجوّال
+  if(pageClose) pageClose.style.display = (sid === 'pricingSection' && window.innerWidth <= 860) ? 'flex' : 'none';
   // auto-expand the section's own accordion content (kept intact, just forced open)
   const content = document.getElementById(sid + 'Content');
   const arrow = document.getElementById(sid + 'Arrow');
@@ -3543,23 +3548,58 @@ function showSettingsPage(sid){
 window.showSettingsPage = showSettingsPage;
 (function(){
   const backBtn = document.getElementById('settingsPageBackBtn');
-  if(backBtn) backBtn.onclick = () => showSettingsHome();
+  /* v-plans-deeplink (تدقيق ١٨ أكتوبر: الباقات المفتوحة من البوّابة سهمها يفتح رئيسيّة الإعدادات): omranOpenPlans يعلّم الفتح
+     (settingsDialog.dataset.deepLink)، فالرجوع يغلق الإعدادات إلى ما كان فيه؛ زرّ الإعدادات والإغلاق يمسحان العلم (app-33). من حزمة a8 في ten-a. */
+  if(backBtn) backBtn.onclick = () => {
+    if(settingsDialog && settingsDialog.dataset && settingsDialog.dataset.deepLink === '1'){
+      delete settingsDialog.dataset.deepLink;
+      try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:settings-back-deeplink'); }
+      return;
+    }
+    showSettingsHome();
+  };
+  /* v-plans-close (تدقيق ١٨ أكتوبر «صفحة الباقات بالجوّال ما فيها إغلاق»، وأمر المالك ٢٠ أكتوبر، الدفعة ٣: «لازم يكون فيها زرّ إغلاق»):
+     ✕ في رأس صفحة الباقات على الجوّال وحده (≤ 860، عرض الدرج كاملًا) يغلق الإعدادات إلى المحادثة مباشرة. الحاسوب كما هو. */
+  const closeBtn = document.getElementById('settingsPageCloseBtn');
+  if(closeBtn) closeBtn.onclick = () => {
+    try{ if(settingsDialog && settingsDialog.dataset) delete settingsDialog.dataset.deepLink; if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:plans-close'); }
+  };
 })();
 
 // ---- Smart command box (local parser + AI fallback) ----
+/* v-toast-layer (تدقيق ١٨ أكتوبر: «لمس وسط الصندوق لا يعمل بعد النسخ»): التوستان (#settingsCmdToast و#provPickToast)
+   كانا يُخفيان بالشفافية وحدها فيبقيان طبقة خفيّة تأكل اللمس فوق الصندوق و«إلغاء» الطوابع و✕ الشريحة، والظاهر منهما
+   على bottom:90px ثابت يغطّي الصندوق في الجوّال. الآن: pointer-events:none، وvisibility:hidden بعد التلاشي، وbottom
+   فوق #composerBox إن كان ظاهرًا (المساعد المشترك window.__omranAboveComposer أوّلًا إن وُجد، وإلّا الحساب هنا). */
+function __toastBottomPx(){
+  try{
+    if(typeof window.__omranAboveComposer === 'function'){
+      const v = window.__omranAboveComposer();
+      if(typeof v === 'number' && isFinite(v) && v > 0) return Math.max(90, Math.round(v)) + 'px';
+      if(typeof v === 'string' && /^\d+(\.\d+)?px$/.test(v)) return v;
+    }
+    const cb = document.getElementById('composerBox');
+    const r = cb && cb.getBoundingClientRect();
+    if(r && r.height > 0 && r.top > 0 && r.top < window.innerHeight) return Math.max(90, Math.round(window.innerHeight - r.top + 10)) + 'px';
+  }catch(e){ __swallow(e, 'ui:toast-bottom'); }
+  return '90px';
+}
 function settingsToast(msg){
   try{
     let el = document.getElementById('settingsCmdToast');
     if(!el){
       el = document.createElement('div');
       el.id = 'settingsCmdToast';
-      el.style.cssText = 'position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c2230; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; z-index:100000; box-shadow:0 4px 18px rgba(0,0,0,.4); transition:opacity .3s; max-width:90vw; text-align:center;';
+      el.style.cssText = 'position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c2230; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; z-index:100000; box-shadow:0 4px 18px rgba(0,0,0,.4); transition:opacity .3s; max-width:90vw; text-align:center; pointer-events:none;';
       document.body.appendChild(el);
     }
     el.textContent = msg;
+    el.style.bottom = __toastBottomPx();
+    el.style.visibility = 'visible';
     el.style.opacity = '1';
     clearTimeout(el._t);
-    el._t = setTimeout(() => { el.style.opacity = '0'; }, 2200);
+    clearTimeout(el._v);
+    el._t = setTimeout(() => { el.style.opacity = '0'; el._v = setTimeout(() => { el.style.visibility = 'hidden'; }, 320); }, 2200);
   }catch(e){ __swallow(e, "ui:app-05-ui#32"); }
 }
 const SETTINGS_CMD_LANG_MAP = [

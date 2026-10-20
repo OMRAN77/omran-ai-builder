@@ -2167,10 +2167,13 @@
   function loadFavorites(){
     try{ return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }catch(e){ return []; }
   }
-  function saveFavorite(dataUrl, featureLabel, styleLabel){
-    const favs = loadFavorites();
-    favs.unshift({ img: dataUrl, feature: featureLabel || '', style: styleLabel || '', ts: Date.now() });
-    localStorage.setItem(FAV_KEY, JSON.stringify(favs.slice(0, 30)));
+  /* v-fav-quota (app-12): مصغّرة JPEG وحفظ بحارس يرجع نجح/فشل — لا حذف تلقائيّ لمفضّلة قائمة */
+  function saveFavorite(dataUrl, featureLabel, styleLabel, onDone){
+    __omranFavThumb(dataUrl, (img) => {
+      const favs = loadFavorites();
+      favs.unshift({ img: img, feature: featureLabel || '', style: styleLabel || '', ts: Date.now() });
+      onDone(__omranLsPut(FAV_KEY, favs.slice(0, 30)));
+    });
   }
   function renderFavorites(){
     const favs = loadFavorites();
@@ -2188,7 +2191,7 @@
       card.querySelector('button').onclick = () => {
         const arr = loadFavorites();
         arr.splice(idx, 1);
-        localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+        __omranLsPut(FAV_KEY, arr);
         renderFavorites();
       };
       favoritesPanel.appendChild(card);
@@ -2203,9 +2206,12 @@
   if(favSaveBtn) favSaveBtn.onclick = () => {
     if(!resultEl.src) return;
     const styleLabel = (styleEl.querySelector('option[value="' + styleEl.value + '"]') || {}).textContent || styleEl.value;
-    saveFavorite(resultEl.src, feature, styleLabel);
-    favSaveBtn.textContent = t2('studioFavoriteSaved');
-    setTimeout(() => { favSaveBtn.textContent = t2('studioFavoriteSaveBtn'); }, 1800);
+    saveFavorite(resultEl.src, feature, styleLabel, (ok) => {
+      /* v-fav-quota: النتيجة على الزرّ نفسه، وسبب الفشل في سطر الحالة */
+      favSaveBtn.textContent = t2(ok ? 'studioFavoriteSaved' : 'memorySaveError');
+      if(!ok) setStatus(t2('storageFullWarning'));
+      setTimeout(() => { favSaveBtn.textContent = t2('studioFavoriteSaveBtn'); }, ok ? 1800 : 2500);
+    });
   };
 
   /* ---- 🔄 before/after slider ----

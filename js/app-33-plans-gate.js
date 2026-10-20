@@ -71,6 +71,9 @@
       var sb = document.getElementById('btnSettings');
       if(sb) sb.click();
       if(typeof showSettingsPage === 'function') showSettingsPage('pricingSection');
+      // v-plans-deeplink: فُتحت الباقات من هنا لا من الإعدادات — سهم الرجوع و✕ (app-05) يغلقانها إلى ما كان فيه المستخدم
+      var dl = document.getElementById('settingsDialog');
+      if(dl && dl.dataset) dl.dataset.deepLink = '1';
       if(tab && typeof showPriceTab === 'function') showPriceTab(tab);
       showWhy(whyText(reason, vars));
       if(reason === 'points') syncPointsWhy(vars);
@@ -91,11 +94,13 @@
   }
 
   // السطر يخصّ هذا الفتح وحده: فتح الإعدادات باليد (الزرّ يُنقر قبل أن نكتب السطر) أو إغلاقها يمسحه، فلا يظهر قديمًا.
+  // وكذلك علم v-plans-deeplink: الفتح باليد سهمه إلى رئيسيّة الإعدادات كما كان.
   try{
-    var sbtn = document.getElementById('btnSettings');
-    if(sbtn) sbtn.addEventListener('click', function(){ showWhy(''); }, true);
     var dlg = document.getElementById('settingsDialog');
-    if(dlg) dlg.addEventListener('close', function(){ showWhy(''); });
+    var clearDeep = function(){ if(dlg && dlg.dataset) delete dlg.dataset.deepLink; };
+    var sbtn = document.getElementById('btnSettings');
+    if(sbtn) sbtn.addEventListener('click', function(){ showWhy(''); clearDeep(); }, true);
+    if(dlg) dlg.addEventListener('close', function(){ showWhy(''); clearDeep(); });
   }catch(e){ __swallow(e, 'plans-gate:wire'); }
 
   function tabFor(url, reason){

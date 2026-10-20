@@ -10007,7 +10007,10 @@ function renderMessages(keepScroll){
       if(!el || el.__omranSwipe) return;
       el.__omranSwipe = true;
       bind(el);
+      backWatch(el, ['class', 'style', 'hidden']);
     });
+    var sd = document.getElementById('settingsDialog');
+    if(sd && !sd.__omranBackWatch) backWatch(sd, ['open']);
   }
 
   /* شاشة التعليم داخل إطار: السحب فيها يصل رسالةً من الإطار */
@@ -10024,11 +10027,95 @@ function renderMessages(keepScroll){
   }catch(e){ /* guard-ok */ }
 
   /* Esc يغلق أعلى أداة مفتوحة (الكمبيوتر) */
+  /* v-back-layers (تدقيق ١٨–١٩ أكتوبر): Esc طبقة واحدة. نافذة dialog مشروطة (ورقة الباقات فوق صانع الفيديو) يغلقها
+     Esc الأصليّ — كنّا نغلق الأداة تحتها ثمّ نلغي إغلاقها بـpreventDefault. وما سبق إليه مستمع التقاط (عارض الصور،
+     مشغّل الأمثلة، عارض الاقتراحات) لا نمسّه. */
+  function modalOpen(){
+    try{ return !!document.querySelector('dialog:modal'); }
+    catch(err){ return !!document.querySelector('dialog[open]'); /* محرّك بلا :modal */ }
+  }
   document.addEventListener('keydown', function(e){
-    if(e.key !== 'Escape') return;
+    if(e.key !== 'Escape' || e.defaultPrevented || modalOpen()) return;
     var t = topTool();
     if(t && closeTool(t)) e.preventDefault();
   });
+
+  /* v-back-layers (تدقيق ١٨–١٩ أكتوبر: «زرّ الرجوع يطلّعك من التطبيق بدل ما يسكّر الأدوات»): فتح الأداة لم يكن يضيف
+     مدخلًا في التاريخ (الوحيد «عرض الكل» في app-10)، وغلاف أندرويد يرجع فقط إن canGoBack() — فرجوع المتصفّح وزرّ
+     أندرويد كانا يغادران التطبيق. الآن كلّ طبقة (أدوات MAP، والإعدادات/الباقات) تأخذ مدخلًا لحظة فتحها؛ الرجوع يغلق
+     أعلاها بمنطق إغلاقها نفسه، وإغلاقها بالسحب أو Esc أو الكود وهي المدخل الحاليّ يسحب مدخلها بـhistory.back() تحت
+     علم تجاهل — فلا إغلاق مزدوج ولا تتكدّس المدخلات. لا ✕ ولا زرّ رجوع جديد (v-swipe-back). المدخل يحمل معرّف
+     الجلسة: حالة بقيت من قبل إعادة التحميل ليست لنا فلا نسحبها (قد يكون تحتها مستند آخر). */
+  var BACK_SID = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  var backSeq = 0, backStack = [], backIgnore = 0, backIgnoreTimer = 0, backTimer = 0;
+  var backMo = (typeof MutationObserver === 'function') ? new MutationObserver(backSchedule) : null;
+  function backOurs(st){ return !!(st && st.omranSid === BACK_SID && st.omranSeq); }
+  function backState(){ try{ return history.state; }catch(e){ return null; /* بيئة بلا تاريخ */ } }
+  function backWatch(el, attrs){
+    el.__omranBackWatch = true;
+    if(backMo){ try{ backMo.observe(el, { attributes: true, attributeFilter: attrs }); }catch(e){ /* guard-ok */ } }
+    backSchedule();
+  }
+  function backSchedule(){ if(!backTimer) backTimer = setTimeout(function(){ backTimer = 0; backSync(); }, 0); }
+  function zOf(el){ return parseInt(getComputedStyle(el).zIndex || '0', 10) || 0; }
+  function openLayers(){
+    var els = [];
+    Object.keys(MAP).forEach(function(id){ var el = document.getElementById(id); if(visible(el)) els.push(el); });
+    els.sort(function(a, b){ return (zOf(a) - zOf(b)) || ((a.compareDocumentPosition(b) & 4) ? -1 : 1); });
+    var ids = els.map(function(el){ return el.id; });
+    var sd = document.getElementById('settingsDialog');
+    if(sd && sd.hasAttribute('open')) ids.push('settingsDialog');
+    return ids;
+  }
+  function backPop(){
+    backIgnore++;
+    clearTimeout(backIgnoreTimer);
+    backIgnoreTimer = setTimeout(function(){ backIgnore = 0; backSchedule(); }, 1500);
+    try{ history.back(); }catch(e){ backIgnore = 0; /* بلا تاريخ: لا popstate ننتظره */ }
+  }
+  function backSync(){
+    if(backIgnore) return; /* رجوع منّا لم يصل بعد: نكمل عند popstate (دفعٌ قبله يسابقه) */
+    var open = openLayers(), st = backState(), cur = backOurs(st) ? st.omranSeq : 0, popCur = false;
+    backStack = backStack.filter(function(x){
+      if(open.indexOf(x.id) >= 0) return true;
+      if(x.seq === cur) popCur = true;
+      return false;
+    });
+    if(popCur){ backPop(); return; }
+    open.forEach(function(id){
+      if(backStack.some(function(x){ return x.id === id; })) return;
+      var below = backState(), seq = ++backSeq;
+      try{ history.pushState({ omranTool: id, omranSeq: seq, omranSid: BACK_SID }, '', location.href); }catch(e){ return; /* سقف pushState في سفاري */ }
+      backStack.push({ id: id, seq: seq, all: (below && below.omranToolsAll) || 0 });
+    });
+  }
+  function closeLayer(id){
+    var el = document.getElementById(id);
+    if(id === 'settingsDialog'){
+      if(el && el.hasAttribute('open')){ try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(el); else el.close(); }catch(e){ /* guard-ok */ } }
+      return;
+    }
+    if(visible(el)) closeTool(el);
+  }
+  window.addEventListener('popstate', function(){
+    var st = backState(), drop = [];
+    if(backIgnore){ backIgnore--; if(!backIgnore) clearTimeout(backIgnoreTimer); }
+    else {
+      if(backOurs(st)) drop = backStack.filter(function(x){ return x.seq > st.omranSeq; });
+      else if(st && st.omranToolsAll){
+        /* «عرض الكل» (app-10) مستوى داخل شاشة الأدوات: نغلق ما فُتح فوقه فقط، والمستوى نفسه لـapp-10 */
+        for(var i = 0; i < backStack.length; i++){ if(backStack[i].all === st.omranToolsAll){ drop = backStack.slice(i); break; } }
+      }
+      else drop = backStack.slice();
+      backStack = backStack.filter(function(x){ return drop.indexOf(x) < 0; });
+      drop.reverse().forEach(function(x){ closeLayer(x.id); });
+    }
+    /* مدخل أداة أغلقها الكود وهو ليس الحاليّ (تحت أداة أخرى): نتخطّاه فلا تضيع ضغطة رجوع */
+    if(backOurs(st) && !backStack.some(function(x){ return x.seq === st.omranSeq; })){ backPop(); return; }
+    backSchedule();
+  });
+  /* الشاشات التي تُنشأ عند فتحها (التلفزيون، القبلة، الاقتراحات) تُلحق بـbody: نربطها ونراقبها لحظتها */
+  try{ if(backMo && document.body) new MutationObserver(function(){ ensureBound(); }).observe(document.body, { childList: true }); }catch(e){ /* guard-ok */ }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureBound); else ensureBound();
   setInterval(ensureBound, 900);
@@ -11979,13 +12066,16 @@ function providerPickToast(){
     if(!el){
       el = document.createElement('div');
       el.id = 'provPickToast';
-      el.style.cssText = 'position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c2230; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; z-index:9999; box-shadow:0 4px 18px rgba(0,0,0,.4); transition:opacity .3s; max-width:90vw; text-align:center;';
+      el.style.cssText = 'position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c2230; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; z-index:9999; box-shadow:0 4px 18px rgba(0,0,0,.4); transition:opacity .3s; max-width:90vw; text-align:center; pointer-events:none;';
       document.body.appendChild(el);
     }
     el.textContent = msg;
+    el.style.bottom = __toastBottomPx(); /* v-toast-layer: فوق الصندوق، ولا يلتقط اللمس بعد التلاشي */
+    el.style.visibility = 'visible';
     el.style.opacity = '1';
     clearTimeout(el._t);
-    el._t = setTimeout(() => { el.style.opacity = '0'; }, 2500);
+    clearTimeout(el._v);
+    el._t = setTimeout(() => { el.style.opacity = '0'; el._v = setTimeout(() => { el.style.visibility = 'hidden'; }, 320); }, 2500);
   }catch(e){ __swallow(e, "ui:app-05-ui#21"); }
 }
 const PROVIDER_KEY_LABELS = {
@@ -13565,6 +13655,8 @@ function showSettingsPage(sid){
   const headerH3 = document.querySelector('#' + sid + ' .settingsSectionHeader h3');
   if(pageTitleEl) pageTitleEl.textContent = stripUiEmoji(headerH3 ? headerH3.textContent : '');
   if(pageHdr) pageHdr.style.display = 'flex';
+  const pageClose = document.getElementById('settingsPageCloseBtn'); // v-plans-close: صفحة الباقات على الجوّال
+  if(pageClose) pageClose.style.display = (sid === 'pricingSection' && window.innerWidth <= 860) ? 'flex' : 'none';
   // auto-expand the section's own accordion content (kept intact, just forced open)
   const content = document.getElementById(sid + 'Content');
   const arrow = document.getElementById(sid + 'Arrow');
@@ -13583,23 +13675,58 @@ function showSettingsPage(sid){
 window.showSettingsPage = showSettingsPage;
 (function(){
   const backBtn = document.getElementById('settingsPageBackBtn');
-  if(backBtn) backBtn.onclick = () => showSettingsHome();
+  /* v-plans-deeplink (تدقيق ١٨ أكتوبر: الباقات المفتوحة من البوّابة سهمها يفتح رئيسيّة الإعدادات): omranOpenPlans يعلّم الفتح
+     (settingsDialog.dataset.deepLink)، فالرجوع يغلق الإعدادات إلى ما كان فيه؛ زرّ الإعدادات والإغلاق يمسحان العلم (app-33). من حزمة a8 في ten-a. */
+  if(backBtn) backBtn.onclick = () => {
+    if(settingsDialog && settingsDialog.dataset && settingsDialog.dataset.deepLink === '1'){
+      delete settingsDialog.dataset.deepLink;
+      try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:settings-back-deeplink'); }
+      return;
+    }
+    showSettingsHome();
+  };
+  /* v-plans-close (تدقيق ١٨ أكتوبر «صفحة الباقات بالجوّال ما فيها إغلاق»، وأمر المالك ٢٠ أكتوبر، الدفعة ٣: «لازم يكون فيها زرّ إغلاق»):
+     ✕ في رأس صفحة الباقات على الجوّال وحده (≤ 860، عرض الدرج كاملًا) يغلق الإعدادات إلى المحادثة مباشرة. الحاسوب كما هو. */
+  const closeBtn = document.getElementById('settingsPageCloseBtn');
+  if(closeBtn) closeBtn.onclick = () => {
+    try{ if(settingsDialog && settingsDialog.dataset) delete settingsDialog.dataset.deepLink; if(typeof closeDialogSafe === 'function') closeDialogSafe(settingsDialog); else settingsDialog.close(); }catch(e){ __swallow(e, 'ui:plans-close'); }
+  };
 })();
 
 // ---- Smart command box (local parser + AI fallback) ----
+/* v-toast-layer (تدقيق ١٨ أكتوبر: «لمس وسط الصندوق لا يعمل بعد النسخ»): التوستان (#settingsCmdToast و#provPickToast)
+   كانا يُخفيان بالشفافية وحدها فيبقيان طبقة خفيّة تأكل اللمس فوق الصندوق و«إلغاء» الطوابع و✕ الشريحة، والظاهر منهما
+   على bottom:90px ثابت يغطّي الصندوق في الجوّال. الآن: pointer-events:none، وvisibility:hidden بعد التلاشي، وbottom
+   فوق #composerBox إن كان ظاهرًا (المساعد المشترك window.__omranAboveComposer أوّلًا إن وُجد، وإلّا الحساب هنا). */
+function __toastBottomPx(){
+  try{
+    if(typeof window.__omranAboveComposer === 'function'){
+      const v = window.__omranAboveComposer();
+      if(typeof v === 'number' && isFinite(v) && v > 0) return Math.max(90, Math.round(v)) + 'px';
+      if(typeof v === 'string' && /^\d+(\.\d+)?px$/.test(v)) return v;
+    }
+    const cb = document.getElementById('composerBox');
+    const r = cb && cb.getBoundingClientRect();
+    if(r && r.height > 0 && r.top > 0 && r.top < window.innerHeight) return Math.max(90, Math.round(window.innerHeight - r.top + 10)) + 'px';
+  }catch(e){ __swallow(e, 'ui:toast-bottom'); }
+  return '90px';
+}
 function settingsToast(msg){
   try{
     let el = document.getElementById('settingsCmdToast');
     if(!el){
       el = document.createElement('div');
       el.id = 'settingsCmdToast';
-      el.style.cssText = 'position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c2230; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; z-index:100000; box-shadow:0 4px 18px rgba(0,0,0,.4); transition:opacity .3s; max-width:90vw; text-align:center;';
+      el.style.cssText = 'position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c2230; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; z-index:100000; box-shadow:0 4px 18px rgba(0,0,0,.4); transition:opacity .3s; max-width:90vw; text-align:center; pointer-events:none;';
       document.body.appendChild(el);
     }
     el.textContent = msg;
+    el.style.bottom = __toastBottomPx();
+    el.style.visibility = 'visible';
     el.style.opacity = '1';
     clearTimeout(el._t);
-    el._t = setTimeout(() => { el.style.opacity = '0'; }, 2200);
+    clearTimeout(el._v);
+    el._t = setTimeout(() => { el.style.opacity = '0'; el._v = setTimeout(() => { el.style.visibility = 'hidden'; }, 320); }, 2200);
   }catch(e){ __swallow(e, "ui:app-05-ui#32"); }
 }
 const SETTINGS_CMD_LANG_MAP = [
@@ -29092,7 +29219,9 @@ btnToggleHistory.onclick = () => {
         return true;
       };
     }
-    window.addEventListener('popstate', () => { if(allState) closeAll(true); });
+    /* v-back-layers: الأدوات صار لها مدخل في التاريخ (app-05-swipe-back) — رجوع من أداة فُتحت فوق «عرض الكل» يصل إلى مدخل
+       «عرض الكل» نفسه، فلا يُغلق المستوى إلّا إن لم يعد مدخله هو الحاليّ */
+    window.addEventListener('popstate', () => { if(allState && !(history.state && history.state.omranToolsAll === allState.token)) closeAll(true); });
     ptSectionsView.querySelectorAll('.ptSection').forEach(section => {
       const viewport = section.querySelector('.ptCarousel');
       if(viewport && typeof window.omranStripDesktopScroll === 'function') window.omranStripDesktopScroll(viewport); /* v-desk-strips: العجلة والسحب على الكمبيوتر — «التمرير بالماوس» الذي يذكره قرار إخفاء الأسهم */
@@ -32505,6 +32634,35 @@ function __compressImg(file, onDone, MAX){
   };
   reader.readAsDataURL(file);
 }
+/* v-fav-quota (تدقيق ١٨ أكتوبر: الحفظ الثالث في مفضّلة «ستايل AI» والثاني في الأزياء يفشلان بصمت؛ أمر المالك ٢٠ أكتوبر، الدفعة ٣:
+   «إما ينحفظ، أو تطلع رسالة واضحة»؛ من حزمة a11 في ten-a): المفضّلة كانت تخزّن النتيجة كاملة (~٢٫٤ م.ب dataURL) في localStorage بلا
+   حارس، فيرمي setItem عند الحدّ ولا يقول الزرّ شيئًا — واللوحة تعرض مصغّرة ٥٠×٥٠ فقط. __omranFavThumb تصغّرها JPEG بضلع ٧٦٨ (نحو ١٠٠ ك.ب)
+   قبل الحفظ فتتّسع لعشرات، و__omranLsPut تحفظ داخل try وترجع نجح/فشل. لا حذف تلقائيّ لمفضّلة قائمة عند الامتلاء (بيانات المستخدم) —
+   الفشل يظهر على الزرّ (memorySaveError) وstorageFullWarning في سطر الحالة. */
+function __omranFavThumb(src, onDone){
+  let done = false;
+  const fin = function(v){ if(done) return; done = true; onDone(v); };
+  try{
+    const img = new Image();
+    img.onload = function(){
+      try{
+        let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        if(!w || !h){ fin(src); return; }
+        if(Math.max(w, h) > 768){ const k = 768 / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        fin(c.toDataURL('image/jpeg', 0.85));
+      }catch(e){ __swallow(e, 'fav:thumb'); fin(src); }
+    };
+    img.onerror = function(){ fin(src); };
+    img.src = src;
+  }catch(e){ __swallow(e, 'fav:thumb'); fin(src); }
+}
+function __omranLsPut(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); return true; }
+  catch(e){ __swallow(e, 'fav:quota'); return false; }
+}
 // v530: آمن res.json() — يُرجع كائن خطأ بدل رمي استثناء JSON حين يردّ السيرفر نصًّا (مثل 413)
 async function __safeJson(res){
   const txt = await res.text().catch(()=>'');
@@ -34239,10 +34397,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function loadFavorites(){
     try{ return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }catch(e){ return []; }
   }
-  function saveFavorite(dataUrl, styleLabel){
-    const favs = loadFavorites();
-    favs.unshift({ img: dataUrl, style: styleLabel || '', ts: Date.now() });
-    localStorage.setItem(FAV_KEY, JSON.stringify(favs.slice(0, 30)));
+  /* v-fav-quota: مصغّرة JPEG وحفظ بحارس يرجع نجح/فشل — لا حذف تلقائيّ لمفضّلة قائمة */
+  function saveFavorite(dataUrl, styleLabel, onDone){
+    __omranFavThumb(dataUrl, (img) => {
+      const favs = loadFavorites();
+      favs.unshift({ img: img, style: styleLabel || '', ts: Date.now() });
+      onDone(__omranLsPut(FAV_KEY, favs.slice(0, 30)));
+    });
   }
   function renderFavorites(){
     const favs = loadFavorites();
@@ -34260,7 +34421,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       card.querySelector('button').onclick = () => {
         const arr = loadFavorites();
         arr.splice(idx, 1);
-        localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+        __omranLsPut(FAV_KEY, arr);
         renderFavorites();
       };
       favoritesPanel.appendChild(card);
@@ -34274,9 +34435,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   };
   if(favSaveBtn) favSaveBtn.onclick = () => {
     if(!resultEl.src) return;
-    saveFavorite(resultEl.src, styleEl.value);
-    favSaveBtn.textContent = t('fashionFavoriteSaved');
-    setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, 1800);
+    saveFavorite(resultEl.src, styleEl.value, (ok) => {
+      /* v-fav-quota: النتيجة على الزرّ نفسه، وسبب الفشل في سطر الحالة */
+      favSaveBtn.textContent = t(ok ? 'fashionFavoriteSaved' : 'memorySaveError');
+      if(!ok) setStatus(t('storageFullWarning'));
+      setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, ok ? 1800 : 2500);
+    });
   };
 
   /* ---- 🔄 before/after slider ----
@@ -37561,10 +37725,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function loadFavorites(){
     try{ return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }catch(e){ return []; }
   }
-  function saveFavorite(dataUrl, featureLabel, styleLabel){
-    const favs = loadFavorites();
-    favs.unshift({ img: dataUrl, feature: featureLabel || '', style: styleLabel || '', ts: Date.now() });
-    localStorage.setItem(FAV_KEY, JSON.stringify(favs.slice(0, 30)));
+  /* v-fav-quota (app-12): مصغّرة JPEG وحفظ بحارس يرجع نجح/فشل — لا حذف تلقائيّ لمفضّلة قائمة */
+  function saveFavorite(dataUrl, featureLabel, styleLabel, onDone){
+    __omranFavThumb(dataUrl, (img) => {
+      const favs = loadFavorites();
+      favs.unshift({ img: img, feature: featureLabel || '', style: styleLabel || '', ts: Date.now() });
+      onDone(__omranLsPut(FAV_KEY, favs.slice(0, 30)));
+    });
   }
   function renderFavorites(){
     const favs = loadFavorites();
@@ -37582,7 +37749,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       card.querySelector('button').onclick = () => {
         const arr = loadFavorites();
         arr.splice(idx, 1);
-        localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+        __omranLsPut(FAV_KEY, arr);
         renderFavorites();
       };
       favoritesPanel.appendChild(card);
@@ -37597,9 +37764,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   if(favSaveBtn) favSaveBtn.onclick = () => {
     if(!resultEl.src) return;
     const styleLabel = (styleEl.querySelector('option[value="' + styleEl.value + '"]') || {}).textContent || styleEl.value;
-    saveFavorite(resultEl.src, feature, styleLabel);
-    favSaveBtn.textContent = t2('studioFavoriteSaved');
-    setTimeout(() => { favSaveBtn.textContent = t2('studioFavoriteSaveBtn'); }, 1800);
+    saveFavorite(resultEl.src, feature, styleLabel, (ok) => {
+      /* v-fav-quota: النتيجة على الزرّ نفسه، وسبب الفشل في سطر الحالة */
+      favSaveBtn.textContent = t2(ok ? 'studioFavoriteSaved' : 'memorySaveError');
+      if(!ok) setStatus(t2('storageFullWarning'));
+      setTimeout(() => { favSaveBtn.textContent = t2('studioFavoriteSaveBtn'); }, ok ? 1800 : 2500);
+    });
   };
 
   /* ---- 🔄 before/after slider ----
@@ -39010,6 +39180,13 @@ window.updateVersionLabel();
         box.innerHTML = '<button type="button" id="omranLightboxX" aria-label="close" style="position:absolute;top:calc(12px + env(safe-area-inset-top,0px));inset-inline-start:12px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(20,20,26,.85);color:#fff;font-size:18px;">✕</button><img id="omranLightboxImg" alt="" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;">';
         document.body.appendChild(box);
         box.onclick = function(e){ if(e.target === box || e.target.id === 'omranLightboxX') box.style.display = 'none'; };
+        /* v-back-layers (تدقيق ١٨–١٩ أكتوبر: «Esc وقت عرض الصورة يسكّر الديكور كلّه والصورة تبقى»): العارض ليس في خريطة
+           السحب (تخفي ✕ الخاصّ به)، فمعالج Esc العامّ كان يغلق النافذة تحته. مستمع التقاط يغلقه وحده ويوقف الانتشار. */
+        document.addEventListener('keydown', function(e){
+          if(e.key !== 'Escape' || box.style.display === 'none') return;
+          e.preventDefault(); e.stopImmediatePropagation();
+          box.style.display = 'none';
+        }, true);
       }
       $('omranLightboxImg').src = url;
       box.style.display = 'flex';
@@ -41711,6 +41888,22 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
 
 var SESS_KEY = 'omran_sess_v1';
 
+/* v-float-above-composer (تدقيق ١٨–١٩ أكتوبر): التوست وتلميح التعليم وشريط سؤال التنبيه كانت على bottom ثابت فتقع فوق
+   صندوق الكتابة (والإرسال على الجوّال). مساعد واحد يقيس أعلى #composerBox (أو #inputbar): bottom يضع العنصر فوقه بفجوة،
+   ومنتصف الصندوق وعرضه. null إن لم يكن الصندوق ظاهرًا (مكالمة مها مثلًا) فيبقى للمستدعي احتياطه. معرَّض قبل حارس
+   الجلسة الجديدة لأنّ edu.js وmedia-notify.js يستعملانه في كلّ جلسة. */
+window.__omranAboveComposer = function(gap){
+  try{
+    var box = document.getElementById('composerBox') || document.getElementById('inputbar');
+    if(!box) return null;
+    var r = box.getBoundingClientRect();
+    var ih = window.innerHeight || 0;
+    if(!r || !r.width || !r.height || !ih || r.top <= 0 || r.top >= ih) return null;
+    var g = (typeof gap === 'number') ? gap : 10;
+    return { bottom: Math.round(ih - r.top + g), left: Math.round(r.left), width: Math.round(r.width), cx: Math.round(r.left + r.width / 2) };
+  }catch(e){ __swallow(e, 'float:above-composer'); return null; }
+};
+
 // ── اكتشاف الزيارة الجديدة ─────────────────────────────────────────────────
 var isNewSession = false;
 try{
@@ -41799,12 +41992,14 @@ function showSessionToast(){
     var el = document.createElement('div');
     el.id = 'sessToast';
     el.textContent = msg;
+    /* v-float-above-composer: فوق الصندوق المقيس وفي منتصفه وبعرضه (يلتفّ بدل أن يفيض)؛ الاحتياط القديم بلا صندوق ظاهر. */
+    var pos = window.__omranAboveComposer(10);
     el.style.cssText = [
-      'position:fixed','bottom:80px','left:50%','transform:translateX(-50%)',
+      'position:fixed','bottom:' + (pos ? pos.bottom + 'px' : '80px'),'left:' + (pos ? pos.cx + 'px' : '50%'),'transform:translateX(-50%)',
       'background:rgba(212,175,55,.95)','color:#000','font-weight:700','font-size:13px',
       'padding:10px 20px','border-radius:30px','box-shadow:0 4px 24px rgba(0,0,0,.4)',
       'z-index:99999','opacity:0','transition:opacity .35s','pointer-events:none',
-      'white-space:nowrap','max-width:90vw','text-align:center',
+      'width:max-content','box-sizing:border-box','max-width:' + (pos ? pos.width + 'px' : '90vw'),'text-align:center',
     ].join(';');
     document.body.appendChild(el);
     requestAnimationFrame(function(){ el.style.opacity = '1'; });
@@ -46412,6 +46607,9 @@ if(document.readyState === 'loading'){
       var sb = document.getElementById('btnSettings');
       if(sb) sb.click();
       if(typeof showSettingsPage === 'function') showSettingsPage('pricingSection');
+      // v-plans-deeplink: فُتحت الباقات من هنا لا من الإعدادات — سهم الرجوع و✕ (app-05) يغلقانها إلى ما كان فيه المستخدم
+      var dl = document.getElementById('settingsDialog');
+      if(dl && dl.dataset) dl.dataset.deepLink = '1';
       if(tab && typeof showPriceTab === 'function') showPriceTab(tab);
       showWhy(whyText(reason, vars));
       if(reason === 'points') syncPointsWhy(vars);
@@ -46432,11 +46630,13 @@ if(document.readyState === 'loading'){
   }
 
   // السطر يخصّ هذا الفتح وحده: فتح الإعدادات باليد (الزرّ يُنقر قبل أن نكتب السطر) أو إغلاقها يمسحه، فلا يظهر قديمًا.
+  // وكذلك علم v-plans-deeplink: الفتح باليد سهمه إلى رئيسيّة الإعدادات كما كان.
   try{
-    var sbtn = document.getElementById('btnSettings');
-    if(sbtn) sbtn.addEventListener('click', function(){ showWhy(''); }, true);
     var dlg = document.getElementById('settingsDialog');
-    if(dlg) dlg.addEventListener('close', function(){ showWhy(''); });
+    var clearDeep = function(){ if(dlg && dlg.dataset) delete dlg.dataset.deepLink; };
+    var sbtn = document.getElementById('btnSettings');
+    if(sbtn) sbtn.addEventListener('click', function(){ showWhy(''); clearDeep(); }, true);
+    if(dlg) dlg.addEventListener('close', function(){ showWhy(''); clearDeep(); });
   }catch(e){ __swallow(e, 'plans-gate:wire'); }
 
   function tabFor(url, reason){
@@ -48434,15 +48634,38 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var rc = any && rgba(col);
     return !!(rc && rc[3] > 0.04);
   }
+  /* v-black-surfaces (تدقيق ١٨–١٩ أكتوبر): خانة الكتابة التي اعتمدت على حدّها وحده — شفّافة أو بلون سطحها — صارت بعد v-no-lines-2
+     أسود على أسود (حقلا الدخول، كلمة المرور والإيميل في الإعدادات، خانات المحفظة والمقاولات والتعليم). om3-field يعطيها درجة المالك
+     المقابلة لسطحها (css/بلا-خطوط.css)، في الأدوات ودرج الإعدادات وشاشة الدخول ونافذة الدفع. الداكن المحايد يُعدّ حقلًا أيضًا: هو ما
+     نرسمه نحن (#101013 / #000)، فيُقرأ هكذا حين يعاد التصنيف في منتصف انتقال ولا يومض (كالحدّ الشبح). */
+  var FIELDS = '#settingsDialog,#authOverlay,#checkoutModalOverlay';
+  var NOFIELD = { checkbox:1, radio:1, range:1, file:1, color:1, hidden:1, button:1, submit:1, reset:1, image:1 };
+  function surfaceOf(el){
+    for(var p = el.parentElement; p && p.nodeType === 1; p = p.parentElement){
+      var ps = getComputedStyle(p), pc = rgba(ps.backgroundColor);
+      if(ps.backgroundImage !== 'none' || (pc && pc[3] > 0)) return ps;
+    }
+    return null;
+  }
+  function fieldOf(el, bg){
+    if(el.tagName === 'INPUT' && NOFIELD[String(el.type || '').toLowerCase()]) return false;
+    var c = rgba(bg);
+    if(!c || c[3] === 0) return true;
+    var mx = Math.max(c[0], c[1], c[2]);
+    if(mx <= 24 && mx - Math.min(c[0], c[1], c[2]) <= 8) return true;
+    var s = surfaceOf(el);
+    return !!s && s.backgroundImage === 'none' && s.backgroundColor === bg;
+  }
   function mark(el, inTool){
     if(!el || el.nodeType !== 1 || SKIP[el.tagName] || el.closest('.om3-skip')) return;
-    el.classList.remove('om3-line', 'om3-fill', 'om3-hot');
-    var cs = getComputedStyle(el);
+    el.classList.remove('om3-line', 'om3-fill', 'om3-hot', 'om3-field');
+    var cs = getComputedStyle(el), bg0 = cs.backgroundColor; /* قبل om3-fill: التصنيف يقرأ لون الخانة نفسها */
     if(lineOf(cs)){ el.classList.add('om3-line'); if(cs.cursor === 'pointer' || /^(BUTTON|A|INPUT|TEXTAREA|SELECT|LABEL)$/.test(el.tagName)) el.classList.add('om3-hot'); }
     if(inTool && !overImage(el, cs)){
       var bi = cs.backgroundImage;
       if((bi === 'none' && boxFill(rgba(cs.backgroundColor))) || (bi !== 'none' && gradBox(bi))) el.classList.add('om3-fill');
     }
+    if(/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && (inTool || el.closest(FIELDS)) && fieldOf(el, bg0)) el.classList.add('om3-field');
   }
   /* طابور عناصر مسطّح يُعالَج على دفعات في وقت فراغ المتصفّح (لا مهمّة طويلة على أندرويد الضعيف): كلّ عقدة جديدة تُفرد بشجرتها */
   var items = [], seen = (typeof WeakSet === 'function') ? new WeakSet() : null, busy = false;
