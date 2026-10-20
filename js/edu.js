@@ -409,6 +409,13 @@ function md(src){
 }
 /* ---------- view engine ---------- */
 var modal=document.getElementById('eduHubModal');
+/* v-edu-mock-bg (المالك ٢٠ أكتوبر): خلفيّة التعليم من نماذجه حسب لون التطبيق المختار (دائرة الإعدادات: gold/purple/blue/cyan/green/orange/red/pink) —
+   css/تعليم-خلفية.css. data-edu-bg=<اللون> على #eduHubModal، ومراقب على <html> (class/style/data-mode) يبدّله فورًا بلا إعادة تحميل. */
+var EDU_BG_COLORS={gold:1,purple:1,blue:1,cyan:1,green:1,orange:1,red:1,pink:1};
+function eduBgKey(){ var a='gold'; try{ a=localStorage.getItem('appTheme')||'gold'; }catch(e){ __swallow(e,'edu:bg-theme'); } return EDU_BG_COLORS[a]?a:'gold'; }
+function syncEduBg(){ modal.setAttribute('data-edu-bg',eduBgKey()); }
+syncEduBg();
+if(window.MutationObserver) new MutationObserver(syncEduBg).observe(document.documentElement,{attributes:true,attributeFilter:['class','style','data-mode']});
 var body=document.getElementById('eduBody');
 var backBtn=document.getElementById('eduBackBtn');
 var navStack=[];
@@ -430,10 +437,10 @@ modal.addEventListener('click',function(e){ if(e.target===modal) closeModal(); }
 function subjectColor(subjects,name){ var i=subjects.indexOf(name); return PALETTE[(i>=0?i:subjects.length)%PALETTE.length]; }
 function showHome(){
   setBack(false); navStack=[]; if(eduUpCloseFn) eduUpCloseFn(); /* v-edu-upform: لا تبقى بطاقة رفع معلّقة فوق شاشة جديدة */
-  body.innerHTML=''
+  body.innerHTML='<div class="eduMain">' /* v-edu-mock-bg: ترتيب نماذج المالك — شريط الرفع بعنوان فرعيّ ثمّ المنهج فالبطاقات فبطاقتا اللغة و«موادي» فصانع الفيديو */
    +'<button class="eduUploadBtn" id="eduUploadBtn">'
    +'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>'
-   +'<span>'+esc(T('upload'))+'</span></button>'
+   +'<span class="eduUpTxt"><b>'+esc(T('upload'))+'</b><small>'+esc(T('uploadSub'))+'</small></span></button>'
    +'<input type="file" id="eduFileInput" accept=".pdf,.docx,.zip,image/*" multiple style="display:none;">'
    +'<button class="eduPasteToggle" id="eduPasteToggle">'+esc(T('orPaste'))+'</button>'
    +'<div class="eduPasteArea" id="eduPasteArea">'
@@ -442,14 +449,15 @@ function showHome(){
    +'<button class="eduUploadBtn" id="eduCurricBtn" style="margin-top:10px;"><span style="font-size:20px;">📚</span><span>'+esc(eduL('درس من المنهج — اختر البلد والصف والمادة','Lesson from curriculum — pick country, grade & subject'))+'</span></button>'
    +'<div id="eduPlusHome"></div>' /* v-edu-plus: المسار الجاهز · حلّ مسألة · مراجعة اليوم · تقدّمي */
    +(getToken()?'':'<div class="eduNote">'+esc(T('guestNote'))+'</div>')
-   +eduExamLangControl()
-   +'<div class="eduSecTitle">'+esc(T('mySubjects'))+'</div>'
-   +'<div id="eduSubjWrap"><div class="eduEmpty">…</div></div>'
+   +'<div class="eduTwo"><div class="eduBx eduLangCard">'+eduExamLangControl()+'</div>'
+   +'<div class="eduBx eduSubjCard"><div class="eduSecTitle">'+esc(T('mySubjects'))+'</div>'
+   +'<div id="eduSubjWrap"><div class="eduEmpty">…</div></div></div></div>'
    +'<div id="eduUpWrap"></div>' /* v-edu-upform: «محاضراتك المرفوعة» تحت «موادي» */
    /* v306: entry to the OLD education modal so nothing old is lost */
    +'<div class="eduLessonRow" id="eduOldEduRow" style="margin-top:18px;">'
    +'<div class="eduLessonTitle">'+esc(T('oldEdu'))+'</div>'
-   +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7;'+(isRTL()?'transform:scaleX(-1);':'')+'"><polyline points="9 18 15 12 9 6"></polyline></svg></div>';
+   +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7;'+(isRTL()?'transform:scaleX(-1);':'')+'"><polyline points="9 18 15 12 9 6"></polyline></svg></div>'
+   +'</div>';
   bindEduExamLang();
   document.getElementById('eduUploadBtn').onclick=showUploadForm; /* v-edu-upform (تصميم المالك): النموذج أوّلًا، ثمّ المسار القائم نفسه */
   document.getElementById('eduFileInput').onchange=function(){
