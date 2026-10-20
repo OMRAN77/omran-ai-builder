@@ -4,6 +4,8 @@
 name: liked-probe
 run-name: "liked ${{ inputs.base }}"
 
+# التشغيل: يدويًّا بعنوان نشرة، أو تلقائيًّا عند دفع فرع (غير main) يغيّر المِجسّ نفسه — فيجرّب على معاينة Vercel لذلك الفرع
+# (omran-ai-builder-git-<الفرع>-omran4.vercel.app) بعد أن تعلن النشرة التزام الدفعة نفسها (/deploy-probe.txt).
 on:
   workflow_dispatch:
     inputs:
@@ -15,6 +17,9 @@ on:
         description: المزوّدون المسؤولون بعد «عجبني» (مفصولون بفواصل)
         required: false
         default: groq,gemini,deepseek
+  push:
+    branches-ignore: [main]
+    paths: ['scripts/liked-probe.mjs', '.github/workflows/liked-probe.yml']
 
 permissions:
   contents: read
@@ -38,10 +43,29 @@ jobs:
         run: |
           npm i --no-save playwright >/dev/null 2>&1
           npx playwright install --with-deps chromium
+      - name: عنوان النشرة وانتظارها تعلن هذا الالتزام
+        id: base
+        env:
+          IN_BASE: ${{ inputs.base }}
+          REF_NAME: ${{ github.ref_name }}
+          WANT: ${{ github.sha }}
+        run: |
+          BASE="${IN_BASE:-https://omran-ai-builder-git-${REF_NAME//\//-}-omran4.vercel.app}"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "النشرة: $BASE"
+          if [ -z "$IN_BASE" ]; then
+            for i in $(seq 1 36); do
+              GOT=$(curl -sS -m 20 "$BASE/deploy-probe.txt" 2>/dev/null | sed -n 's/^commit=//p')
+              echo "محاولة $i: commit=${GOT:-?} (المنتظَر ${WANT:0:7})"
+              case "$GOT" in "$WANT"*) echo "النشرة تحمل هذا الالتزام"; exit 0;; esac
+              sleep 10
+            done
+            echo "::warning::النشرة لم تعلن الالتزام خلال ٦ دقائق — تُجرَّب كما هي"
+          fi
       - name: «عجبني» على كلود ثمّ السؤال عند المزوّدين، ولقطات الواجهة
         env:
-          PROBE_BASE: ${{ inputs.base }}
-          PROBE_PROVS: ${{ inputs.provs }}
+          PROBE_BASE: ${{ steps.base.outputs.base }}
+          PROBE_PROVS: ${{ inputs.provs || 'groq,gemini,deepseek' }}
           OWNER_TOKEN: ${{ secrets.SAMPLE_TOKEN }}
         run: |
           mkdir -p liked-probe
