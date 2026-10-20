@@ -247,13 +247,19 @@ module.exports = async (req, res) => {
     const designClause = design
       ? ' SPECIFIC DESIGN (follow it exactly: one distinct design within this style, not its usual default look): ' + design.text + '.' + kidsNote
       : '';
-    const detailClause =
-      (WEAR[gender] ? ' The outfit must be ' + WEAR[gender] + '.' : '') +
+    /* v-fashion-text-wins (تدقيق ١٨ أكتوبر + أمر المالك ٢٠ أكتوبر، الدفعة ٤: «فستان سهرة أزرق طويل» طلع كاجوال بيج): في الوضع النصّيّ كان
+       النمط أوّل الأمر («wearing casual…») واللوحة العشوائيّة والمناسبة والموسم تُفرض بلا شرط بعد الوصف — الآن الوصف أوّلًا، وهذه كلّها
+       «لما يتركه الوصف مفتوحًا» وحده (textOpenClause داخل جملة اتّجاه التصميم)، والفئة والإضافات كما هي. وضع الصورة والمقارنة كما كانا حرفيًّا. */
+    const wearClause = WEAR[gender] ? ' The outfit must be ' + WEAR[gender] + '.' : '';
+    const paletteClause =
       (colorList ? ' Preferred colour palette: ' + colorList + '.' : '') +
-      (colourStory ? ' Colour story for this design: ' + colourStory + '.' : '') +
-      (extraList ? ' Add these accessories: ' + extraList + '.' : '') +
+      (colourStory ? ' Colour story for this design: ' + colourStory + '.' : '');
+    const extrasClause = extraList ? ' Add these accessories: ' + extraList + '.' : '';
+    const whenClause =
       (SEASON_HINTS[season] ? ' Dress for ' + SEASON_HINTS[season] + '.' : '') +
       (OCCASIONS[occasion] ? ' The look is intended for ' + OCCASIONS[occasion] + '.' : '');
+    const detailClause = wearClause + paletteClause + extrasClause + whenClause; // وضع الصورة والمقارنة: كما كان حرفيًّا
+    const textOpenClause = paletteClause + whenClause;
     const parts = [];
     const multiAngleClause = multiAngle
       ? ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME outfit and person from three angles: front view, side view, and back view.'
@@ -309,13 +315,15 @@ module.exports = async (req, res) => {
       parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
     } else {
       promptText =
-        'Generate a photorealistic fashion design image of ' + subject + ' wearing ' + styleDesc + '. ' +
+        'Generate a photorealistic fashion design image of ' + subject + ' wearing exactly the outfit described next. ' +
         'Specific description: ' + String(description).slice(0, 500) + '. ' +
         // v-fashion-variety: وصف المستخدم يغلب — التصميم يملأ ما تركه الوصف مفتوحًا فقط.
-        (design ? 'Design direction for anything the description leaves open (the description wins wherever they differ): ' + design.text + '.' + kidsNote + ' ' : '') +
+        // v-fashion-text-wins: وصف المستخدم أوّلًا ويغلب — النمط والتصميم واللوحة والمناسبة والموسم لما تركه مفتوحًا فقط.
+        'Design direction for anything the description leaves open (the description wins wherever they differ; use these only for details it does not specify): style: ' + styleDesc + '.' +
+        (design ? ' ' + design.text + '.' + kidsNote : '') + textOpenClause + ' ' +
         'Full-body studio fashion photography, elegant pose, clean background.' +
         (fairness ? require('./fashion-locks').FAIRNESS_LOCK + ' Use the same model appearance across this comparison set.' : '') +
-        detailClause + multiAngleClause;
+        wearClause + extrasClause + multiAngleClause;
       // 🎨 المحرك الاختياري في الوضع النصّي أيضًا: gpt-image-1 من الصفر.
       if (engine === 'openai') {
         const oa = await openaiGenerate(promptText);
