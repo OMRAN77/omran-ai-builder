@@ -785,7 +785,8 @@ module.exports = async (req, res) => {
           } catch (e) { /* جرّب التالي */ }
         }
         await meterRun();
-        if (isOwner(runUser)) { send({ error: (Number(upstream.status) === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(errText)) ? 'ما عندي رصيد — ' + (agentViaOR ? 'OpenRouter' : 'Anthropic') : 'ما قدرت أردّ الحين — خطأ ' + upstream.status }); res.end(); return; } // v-prov-self // v-credit-who
+        const credWho = agentViaOR ? 'OpenRouter' : 'Anthropic'; // v-credit-who: اسم الحساب الذي رفض — للمالك وحده (السطر التالي بشرط isOwner)
+        if (isOwner(runUser)) { send({ error: (Number(upstream.status) === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(errText)) ? 'ما عندي رصيد — ' + credWho : 'ما قدرت أردّ الحين — خطأ ' + upstream.status }); res.end(); return; } // v-prov-self // v-credit-who
         send({ error: 'خطأ المحرّك ' + upstream.status + ': ' + errText.slice(0, 300) });
         res.end();
         return;
