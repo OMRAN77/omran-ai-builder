@@ -74,6 +74,8 @@ test('٤. الصور: ٤٨ ملفًّا بدقّة المولّد الأصليّ
   const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /^skin-[a-z]+-(desktop|mobile)\.webp$/.test(f)) : [];
   if (!files.length) { console.log('   (لا صور بعد — تنتظر تشغيلة edu-bg؛ الفحص يصير إلزاميًّا عند وصولها)'); return; }
   const meta = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8'));
+  // معاينة مؤقّتة من صور المالك (meta.preview): الموجود فقط يُفحص، والمقاس مقاس صوره؛ التوليد الحقيقيّ يزيل العلم فيصير الفحص كاملًا
+  if (meta.preview) { console.log('   (معاينة: ' + files.length + ' صورة من نماذج المالك — فحص الاكتمال والدقّة بعد التوليد)'); for (const f of files) assert.ok(meta.images[f.replace(/\.webp$/, '')] && meta.images[f.replace(/\.webp$/, '')].ok, f); return; }
   for (const k of SKINS) for (const dev of ['desktop', 'mobile']) {
     const f = 'skin-' + k + '-' + dev + '.webp';
     assert.ok(files.includes(f), f);

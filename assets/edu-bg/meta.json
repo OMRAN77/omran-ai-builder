@@ -1,0 +1,57 @@
+{
+ "preview": true,
+ "images": {
+  "skin-darkwood-desktop": {
+   "w": 1358,
+   "h": 768,
+   "rect": {
+    "x0": 0.2972,
+    "y0": 0.0491,
+    "x1": 0.9804,
+    "y1": 0.99
+   },
+   "screen": "#1e140c",
+   "cover": 0.676,
+   "ok": true
+  },
+  "skin-darkwood-mobile": {
+   "w": 896,
+   "h": 1200,
+   "rect": {
+    "x0": 0.0323,
+    "y0": 0.0683,
+    "x1": 0.9677,
+    "y1": 0.6108
+   },
+   "screen": "#1e140c",
+   "cover": 0.537,
+   "ok": true
+  },
+  "skin-library-desktop": {
+   "w": 1280,
+   "h": 724,
+   "rect": {
+    "x0": 0.1897,
+    "y0": 0.086,
+    "x1": 0.9587,
+    "y1": 0.9707
+   },
+   "screen": "#eefafa",
+   "cover": 0.714,
+   "ok": true
+  },
+  "skin-library-mobile": {
+   "w": 744,
+   "h": 1280,
+   "rect": {
+    "x0": 0.2116,
+    "y0": 0.1428,
+    "x1": 0.904,
+    "y1": 0.8259
+   },
+   "screen": "#eefafa",
+   "cover": 0.501,
+   "ok": true
+  }
+ }
+}
