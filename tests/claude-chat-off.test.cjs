@@ -1,5 +1,5 @@
-/* v-claude-chat-off (المالك ١٧ أكتوبر «اريد ان الغيه… الي يرد ملاين الدولارات»): ردّ Claude في محادثة المالك يُحوَّل لكروك
-   حتّى OWNER_CLAUDE_CHAT=on، والقائمة لا تبقى فارغة بعد الدخول بلا تحديث.
+/* v-no-switch (٢٠ أكتوبر) أزال v-claude-chat-off (تحويل Claude المالك لكروك): الموديل المختار يصل كما هو،
+   والقائمة لا تبقى فارغة بعد الدخول بلا تحديث.
    v-claude-back («خلهم مكانهم… رجعهم نفس ماكانو»): صفوف Claude باقية في المنتقي — الإيقاف في الخادم وحده.
    v-agent-claude-off («والوكيل بعد»): الوكيل موقوف للمالك قبل أيّ حصّة أو نداء نموذج حتّى OWNER_AGENT_CLAUDE=on. */
 const assert = require('assert');
@@ -9,13 +9,10 @@ const root = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 
 const chat = read('api/_lib/chat.js');
-assert.ok(/__claudeOff = \(!__reqRaw \|\| __reqRaw === 'claude'\)/.test(chat), 'التحويل يخصّ طلب Claude أو الطلب بلا مزوّد');
-assert.ok(chat.includes("process.env.OWNER_CLAUDE_CHAT || '').trim().toLowerCase() === 'off'"), 'v-owner-claude-pick: Claude المالك باختياره؛ التحويل لكروك بمفتاح الطوارئ OWNER_CLAUDE_CHAT=off وحده');
-assert.ok(chat.includes('!!process.env.OPENROUTER_API_KEY'), 'بلا مفتاح الوسيط لا تحويل (لا يُترك المالك بلا ردّ)');
-assert.ok(chat.includes("isOwnerName(token ? require('./auth.js').verifyToken(token) : null)"), 'للمالك وحده');
-assert.ok(chat.includes("const reqProv = __claudeOff ? 'openrouter' : __reqRaw;"), 'reqProv نفسه يتحوّل فلا يصير __ownerNoRoute');
-assert.ok(chat.includes("if (__claudeOff && body && typeof body === 'object') body.model = '';"), 'موديل Claude المختار يُهمل');
-assert.ok(chat.indexOf('__claudeOff = ') < chat.indexOf("let prov = Object.prototype.hasOwnProperty.call(OR_MODELS, reqProv)"), 'التحويل قبل اختيار المزوّد');
+// v-no-switch (المالك ٢٠ أكتوبر «مااريد احول احد على احد»): لا تحويل Claude المالك لكروك ولا مفتاح طوارئ — الموديل المختار يصل كما هو
+assert.ok(!chat.includes('__claudeOff'), 'لا تحويل Claude ← كروك');
+assert.ok(!chat.includes('OWNER_CLAUDE_CHAT'), 'لا مفتاح طوارئ للتحويل');
+assert.ok(chat.includes("const reqProv = __reqRaw;"), 'المزوّد المطلوب نفسه');
 
 const modes = read('js/modes.js');
 assert.ok(!modes.includes('CLAUDE_OFF'), 'لا إخفاء لـClaude في المنتقي — باقٍ مكانه');
