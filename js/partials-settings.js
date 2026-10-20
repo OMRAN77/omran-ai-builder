@@ -124,6 +124,15 @@
       <div id="acctCleanupHintEl" style="font-size:12px; color:var(--muted); margin-bottom:8px;" data-i18n="acctCleanupHint">يحذف كل المحادثات والمشاريع نهائيًا من هذا الجهاز ومن السحابة. حسابك ولغتك يبقيان.</div>
       <button type="button" id="acctCleanupBtnEl" onclick="appFullCleanup()" style="width:100%; padding:10px; border-radius:var(--r-2); border:1px solid rgba(128,128,128,.3); background:rgba(128,128,128,.12); color:var(--text); font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctCleanupBtn">حذف الكل الآن</button>
     </div></div>
+    <!-- v-acct-delete (الدفعة ٢، أمر المالك): حذف الحساب من التطبيق — للمسجَّل غير المالك (setAuthToggleUI) -->
+    <div id="acctDeleteWrap" style="display:none;"><div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowDelete',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctDeleteLabel">حذف الحساب</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div id="acctRowDelete" style="display:none; padding:8px 8px 12px;">
+      <div style="font-size:12px; color:var(--muted); margin-bottom:10px; line-height:1.8;" data-i18n="acctDeleteHint">يحذف حسابك نهائيًّا: المحادثات والذاكرة والتذكيرات والصور المحفوظة في حسابك، ورصيد النقاط والاشتراكات بلا استرداد، ويوقف التجديد التلقائيّ. لا يمكن التراجع.</div>
+      <input type="text" id="acctDeleteName" autocomplete="off" spellcheck="false" dir="auto" style="width:100%; box-sizing:border-box; padding:10px 12px; margin-bottom:8px; border-radius:var(--r-2); border:1px solid rgba(128,128,128,.45) !important; background:rgba(128,128,128,.10) !important; color:var(--text); font-size: var(--fs-3);" data-i18n-placeholder="acctDeleteNamePh" placeholder="اكتب اسم المستخدم للتأكيد">
+      <input type="password" id="acctDeletePass" autocomplete="current-password" dir="auto" style="width:100%; box-sizing:border-box; padding:10px 12px; margin-bottom:8px; border-radius:var(--r-2); border:1px solid rgba(128,128,128,.45) !important; background:rgba(128,128,128,.10) !important; color:var(--text); font-size: var(--fs-3);" data-i18n-placeholder="acctDeletePassPh" placeholder="كلمة المرور (إن كان حسابك بكلمة مرور)">
+      <button type="button" id="acctDeleteBtn" onclick="acctDeleteAccount()" style="width:100%; padding:10px; border-radius:var(--r-2); border:1px solid rgba(128,128,128,.3); background:rgba(128,128,128,.12); color:var(--text); font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctDeleteBtn">احذف حسابي نهائيًّا</button>
+      <div id="acctDeleteMsg" role="status" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);"></div>
+    </div></div></div>
     </div>
   </div></div>
 
@@ -605,11 +614,11 @@
       <!-- v-about-lux: شبكة المزايا -->
       <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:14px;">
         <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">💬</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;" data-i18n="aboutFeatChat">بناء تطبيقات كاملة بالمحادثة</div></div>
-        <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">🧠</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;" data-i18n="aboutFeatProviders">٩ مزودي ذكاء + «اسأل الكل»</div></div>
+        <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">🧠</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;" data-i18n="aboutFeatProviders">٣ نماذج ذكاء: الكينج والسريع والعميق</div></div>
         <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">🎙️</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;" data-i18n="aboutFeatMaha">مها — مساعدتك الصوتية الحية</div></div>
         <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">🎨</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;" data-i18n="aboutFeatStudios">٧ استوديوهات إبداعية للصور</div></div>
         <div id="aboutStocksCard" style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">📈</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;" data-i18n="aboutFeatStocks">سوق الأسهم ومحفظة تعليمية</div></div>
-        <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">🔒</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;" data-i18n="aboutFeatPrivacy">خصوصيتك أولوية — مفاتيحك عندك</div></div>
+        <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">🔒</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;" data-i18n="aboutFeatPrivacy">خصوصيتك أولوية</div></div>
       </div>
 
       <!-- v-about-lux: نبذة قابلة للطي -->
@@ -617,9 +626,9 @@
         <summary style="cursor:pointer; font-size:13px; font-weight:700; user-select:none;" data-i18n="aboutMoreSummary">📖 المزيد عن المنصة</summary>
         <div style="font-size: var(--fs-3); line-height:1.9; color:var(--text); margin-top:10px;" data-i18n="aboutText">
     <b>عمران AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، طوّرها فريق عمران AI. يتيح لك التحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حيّة جنبًا إلى جنب.<br><br>
-    يدعم البرنامج 4 مزوّدين للذكاء الاصطناعي (Claude، Gemini، OpenAI، Groq)، ويمكنك اختيار أكثر من مزوّد في نفس الوقت لطرح سؤال واحد والحصول على إجابات من الجميع للمقارنة بينها.<br><br>
+    يجمع التطبيق 3 نماذج ذكاء قوية في مكان واحد: 👑 الكينج للبناء والتعديل والتشخيص، ⚡ السريع للردود الفورية والدردشة، 🧠 العميق للتحليل والبحث والمستندات — مع البحث المباشر وتوليد الصور والمساعدة الصوتية والأقسام المتخصصة.<br><br>
     يعمل البرنامج كتطبيق PWA قابل للتثبيت على أندرويد وآيفون مثل أي تطبيق عادي، ويدعم المحادثة الصوتية (تحويل الكلام إلى نص والاستماع للردود)، مع نظام حسابات كامل (تسجيل دخول/تسجيل حساب/استرجاع كلمة المرور)، ووضع ضيف يتيح تجربة 20 رسالة مجانية دون تسجيل.<br><br>
-    كل إعدادات المظهر والألوان قابلة للتخصيص بالكامل، ومفاتيح API الخاصة بك تُحفظ في متصفحك فقط ولا تُرسل لأي خادم خارجي — خصوصيتك أولوية.
+    كل إعدادات المظهر والألوان قابلة للتخصيص بالكامل، وخصوصيتك دائمًا أولوية.
         </div>
       </details>
 

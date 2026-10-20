@@ -262,7 +262,7 @@ I18N['fil'] = {
     "feedbackPlaceholder": "Isulat dito ang iyong feedback o mungkahi...",
     "feedbackSubmitBtn": "📤 Isumite",
     "feedbackIdeasTitle": "🗳️ Pinakasikat na mungkahi (i-vote ang gusto mo)",
-    "aboutText": "Ang <b>Omran AI Builder<\/b> ay isang platform sa pagbuo ng AI app na Arabic-first, binuo ng Omran AI Team (فريق عمران AI). Mag-chat sa AI gamit ang Arabic o English para makakuha agad ng kumpletong code ng app, kasama ang live na side-by-side code editor at preview.<br><br>Sinusuportahan ng app ang 9 na magkaibang AI provider (OpenAI, Gemini, Groq, Claude, OpenRouter, Perplexity, Mistral, DeepSeek, Cohere), at maaari kang pumili ng higit sa isang provider nang sabay para magtanong ng iisang tanong at ikumpara ang mga sagot mula sa lahat ng ito.<br><br>Gumagana ito bilang installable PWA sa Android at iPhone tulad ng native app, sinusuportahan ang voice chat (speech-to-text at pagbasa ng mga sagot nang malakas), may kumpletong account system (sign up / log in / password recovery), at guest mode na nag-aalok ng 20 libreng mensahe nang walang kailangang sign-up.<br><br>Lahat ng setting ng itsura at kulay ay ganap na maaaring i-customize, at ang iyong mga API key ay naka-imbak lamang sa sarili mong browser at hindi kailanman ipinapadala sa anumang panlabas na server — ang iyong privacy ang priyoridad.",
+    "aboutText": "Ang <b>Omran AI Builder<\/b> ay isang platform sa pagbuo ng AI app na Arabic-first, binuo ng Omran AI Team (فريق عمران AI). Mag-chat sa AI gamit ang Arabic o English para makakuha agad ng kumpletong code ng app, kasama ang live na side-by-side code editor at preview.<br><br>Pinagsasama ng app ang 3 malalakas na AI model sa iisang lugar: 👑 Ang King para sa pagbuo, pag-edit at pag-diagnose, ⚡ Ang Mabilis para sa agarang sagot at chat, at 🧠 Ang Malalim para sa pagsusuri, paghahanap at mga dokumento — kasama ang live na paghahanap, paggawa ng larawan, voice assistant at mga espesyal na seksyon.<br><br>Gumagana ito bilang installable PWA sa Android at iPhone tulad ng native app, sinusuportahan ang voice chat (speech-to-text at pagbasa ng mga sagot nang malakas), may kumpletong account system (sign up / log in / password recovery), at guest mode na nag-aalok ng 20 libreng mensahe nang walang kailangang sign-up.<br><br>Lahat ng setting ng itsura at kulay ay ganap na maaaring i-customize, at ang iyong privacy ang priyoridad.",
     "videoArShortTitle": "🎬 Arabic intro video (maikli)",
     "videoArLongTitle": "🎬 Arabic intro video (buo)",
     "videoEnShortTitle": "🎬 English intro video (maikli)",
@@ -1272,11 +1272,11 @@ Object.assign(I18N['fil'], { videoNeedDesc: "⚠️ Ilarawan muna ang video.", v
 /* v-about-i18n */
 Object.assign(I18N['fil'], {
   aboutFeatChat: "Gumawa ng buong app sa pag-chat",
-  aboutFeatProviders: "9 AI provider + «Tanungin lahat»",
+  aboutFeatProviders: "3 AI model: Ang King, Ang Mabilis at Ang Malalim",
   aboutFeatMaha: "Maha — live voice assistant",
   aboutFeatStudios: "7 creative image studios",
   aboutFeatStocks: "Stock market at learning portfolio",
-  aboutFeatPrivacy: "Privacy muna — sa iyo ang keys",
+  aboutFeatPrivacy: "Privacy muna",
   aboutChipUAE: "Gawa sa UAE 🇦🇪",
   aboutChipPWA: "PWA app",
   aboutChipLangs: "14 na wika",
@@ -1365,3 +1365,5 @@ Object.assign(I18N["fil"], {"pdfDocPage": "⏳ Inihahanda ang pahina {i} ng {n}�
 /* v-google-cards — «السعر في الموقع» على البطاقة بلا سعر منظّم */ Object.assign(I18N["fil"], {"cardsPriceSite": "Presyo sa site"});
 /* v-provider-fail — «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح حين يرفض المزوّد (رصيده أو زحامه) — ١٤ لغة */ Object.assign(I18N["fil"], {"svcPaused":"Pansamantalang hindi available ang serbisyong ito — subukan ulit mamaya."});
 /* v-plans-real-balance — سطر سبب فتح الباقات بالرصيد الحقيقيّ: «رصيدك {have} وتحتاج {need}» و«رصيدك {have} وما يكفي» — ١٤ لغة */ Object.assign(I18N["fil"], {"plansWhyPointsNeed":"May {have} points ka at kailangan nito ng {need} — mag-top up sa Plans at magpatuloy agad.","plansWhyPointsLow":"May {have} points ka at hindi ito sapat dito — mag-top up sa Plans at magpatuloy agad."});
+/* v-logout-wipe — تأكيد الخروج: يمسح المحادثات والصور من الجهاز، وتنبيه حين يتعذّر الرفع الأخير — ١٤ لغة */ Object.assign(I18N["fil"], {"logoutWipeConfirm":"Kapag nag-log out, mabubura sa device na ito ang mga chat at larawan mo (kasama ang mga paborito). Naka-save ang mga chat sa account mo at babalik pag nag-sign in ka; ang mga larawan ay maaaring hindi bumalik sa buong kalidad. Ituloy?","logoutWipeOffline":"Hindi ko ma-save ngayon sa account mo ang mga huling chat mo (koneksyon). Kung itutuloy, mabubura na sila sa device na ito nang tuluyan. Mag-log out pa rin?"});
+/* v-acct-delete — «حسابي» ← حذف الحساب: الصفّ والتحذير والخانتان والزرّ والتأكيد والرسائل — ١٤ لغة */ Object.assign(I18N["fil"], {"acctDeleteLabel":"Burahin ang account","acctDeleteHint":"Permanenteng buburahin ang account mo: mga chat, memory, paalala at mga larawang naka-save sa account, pati ang points at subscription nang walang refund, at ititigil ang auto-renew. Hindi na ito maibabalik.","acctDeleteNamePh":"I-type ang username mo para kumpirmahin","acctDeletePassPh":"Password (kung may password ang account mo)","acctDeleteBtn":"Burahin nang tuluyan ang account ko","acctDeleteConfirm":"Huling tanong: permanente ang pagbura ng account at hindi na maibabalik. Burahin na?","acctDeleteWorking":"Binubura ang account mo…","acctDeleteDone":"Nabura na ang account mo at ang data nito.","acctDeleteWrongName":"Hindi tugma sa username mo.","acctDeleteWrongPass":"Mali ang password.","acctDeleteTooMany":"Masyadong maraming subok — subukan ulit pagkalipas ng 15 minuto.","acctDeleteFailed":"Hindi mabura ang account ngayon — walang nabura. Subukan ulit mamaya."});

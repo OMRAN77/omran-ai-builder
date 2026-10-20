@@ -275,7 +275,7 @@ const I18N = {
     acctPointsLow: '⚠️ رصيدك قارب على الانتهاء — اشحن نقاطك قبل النفاد.',
     acctPointsOut: '🔴 رصيدك انتهى — اشحن نقاطك للمتابعة.',
     acctPointsBuyBtn: '💳 شحن النقاط',
-    aboutFeatChat: 'بناء تطبيقات كاملة بالمحادثة', aboutFeatProviders: '٩ مزودي ذكاء + «اسأل الكل»', aboutFeatMaha: 'مها — مساعدتك الصوتية الحية', aboutFeatStudios: '٧ استوديوهات إبداعية للصور', aboutFeatStocks: 'سوق الأسهم ومحفظة تعليمية', aboutFeatPrivacy: 'خصوصيتك أولوية — مفاتيحك عندك', aboutChipUAE: 'صُنع في الإمارات 🇦🇪', aboutChipPWA: 'تطبيق PWA', aboutChipLangs: '١٤ لغة', aboutMoreSummary: '📖 المزيد عن المنصة',
+    aboutFeatChat: 'بناء تطبيقات كاملة بالمحادثة', aboutFeatProviders: '٣ نماذج ذكاء: الكينج والسريع والعميق', aboutFeatMaha: 'مها — مساعدتك الصوتية الحية', aboutFeatStudios: '٧ استوديوهات إبداعية للصور', aboutFeatStocks: 'سوق الأسهم ومحفظة تعليمية', aboutFeatPrivacy: 'خصوصيتك أولوية', aboutChipUAE: 'صُنع في الإمارات 🇦🇪', aboutChipPWA: 'تطبيق PWA', aboutChipLangs: '١٤ لغة', aboutMoreSummary: '📖 المزيد عن المنصة',
     videoNeedDesc: '⚠️ اكتب وصف الفيديو أولًا.', videoVoiceFemale: '👩 فاطمة (أنثى)', videoVoiceMale: '👨 حمدان (ذكر)',
     /* v-video-seq-cooldown + v-film-mode-gate */
     videoSceneWait: '⏳ المشهد {i}/{n}: مهلة بين الفيديوهات — يبدأ تلقائيًا بعد {s} ثانية.',
@@ -1187,6 +1187,9 @@ const I18N = {
     plansWhyPoints: 'نقاطك خلصت — اشحن من الباقات وكمّل مباشرة.',
     plansWhyPointsNeed: 'رصيدك {have} نقطة، وهذه العمليّة تحتاج {need} — اشحن من الباقات وكمّل مباشرة.', /* v-plans-real-balance */
     plansWhyPointsLow: 'رصيدك {have} نقطة وما يكفي لهذه العمليّة — اشحن من الباقات وكمّل مباشرة.',
+    logoutWipeConfirm: 'تسجيل الخروج يمسح من هذا الجهاز محادثاتك وصورك، ومنها المفضّلة. المحادثات محفوظة في حسابك وترجع لما تدخل، أمّا الصور فممكن ما ترجع بدقّتها الكاملة. تكمل؟', /* v-logout-wipe */
+    logoutWipeOffline: 'ما قدرت أحفظ آخر محادثاتك في حسابك الحين (الاتصال). لو كمّلت تنمسح من الجهاز وما ترجع. تكمل الخروج؟',
+    /* v-acct-delete */ acctDeleteLabel: 'حذف الحساب', acctDeleteHint: 'يحذف حسابك نهائيًّا: المحادثات والذاكرة والتذكيرات والصور المحفوظة في حسابك، ورصيد النقاط والاشتراكات بلا استرداد، ويوقف التجديد التلقائيّ. لا يمكن التراجع.', acctDeleteNamePh: 'اكتب اسم المستخدم للتأكيد', acctDeletePassPh: 'كلمة المرور (إن كان حسابك بكلمة مرور)', acctDeleteBtn: 'احذف حسابي نهائيًّا', acctDeleteConfirm: 'آخر تأكيد: حذف الحساب نهائيّ ولا يمكن التراجع عنه. تحذفه الآن؟', acctDeleteWorking: 'جارٍ حذف الحساب…', acctDeleteDone: 'تم حذف حسابك وبياناته.', acctDeleteWrongName: 'الاسم ما يطابق اسم حسابك.', acctDeleteWrongPass: 'كلمة المرور غير صحيحة.', acctDeleteTooMany: 'محاولات كثيرة — جرّب بعد ربع ساعة.', acctDeleteFailed: 'تعذّر حذف الحساب الحين — ما انحذف شي. جرّب بعد قليل.',
     plansWhyLimit: 'وصلت حدّ باقتك لليوم — رقِّ باقتك أو انتظر إلى الغد.',
     plansWhyExpired: 'انتهى اشتراكك في {plan} — جدّده لترجع مزاياك.',
     plansWhyExpiring: 'اشتراكك في {plan} ينتهي في {date} — جدّده حتّى لا تتوقّف مزاياك.',
@@ -1208,7 +1211,7 @@ const I18N = {
     feedbackPlaceholder: 'اكتب رأيك أو مقترحك هنا...',
     feedbackSubmitBtn: '📤 إرسال',
     feedbackIdeasTitle: '🗳️ أفضل المقترحات (صوّت لصالح ما يعجبك)',
-    aboutText: '<b>Omran AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، من تطوير فريق عمران AI. تحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حية جنبًا إلى جنب.<br><br>يدعم البرنامج 4 مزودين للذكاء الاصطناعي (Claude، Gemini، OpenAI، Groq)، ويمكنك اختيار أكثر من مزود في نفس الوقت لطرح سؤال واحد ومقارنة إجابات الجميع.<br><br>يعمل كتطبيق PWA قابل للتثبيت على أندرويد وآيفون تمامًا كأي تطبيق أصلي، ويدعم المحادثة الصوتية (تحويل الصوت إلى نص وقراءة الردود بصوت عالٍ)، ويحتوي على نظام حسابات كامل (تسجيل / دخول / استرجاع كلمة المرور)، ووضع ضيف يتيح 20 رسالة مجانية دون الحاجة لتسجيل.<br><br>جميع إعدادات المظهر والألوان قابلة للتخصيص بالكامل، ومفاتيح API الخاصة بك تُحفظ فقط في متصفحك ولا تُرسل أبدًا لأي خادم خارجي — خصوصيتك أولًا.',
+    aboutText: '<b>Omran AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، من تطوير فريق عمران AI. تحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حية جنبًا إلى جنب.<br><br>يجمع التطبيق 3 نماذج ذكاء قوية في مكان واحد: 👑 الكينج للبناء والتعديل والتشخيص، ⚡ السريع للردود الفورية والدردشة، 🧠 العميق للتحليل والبحث والمستندات — مع البحث المباشر وتوليد الصور والمساعدة الصوتية والأقسام المتخصصة.<br><br>يعمل كتطبيق PWA قابل للتثبيت على أندرويد وآيفون تمامًا كأي تطبيق أصلي، ويدعم المحادثة الصوتية (تحويل الصوت إلى نص وقراءة الردود بصوت عالٍ)، ويحتوي على نظام حسابات كامل (تسجيل / دخول / استرجاع كلمة المرور)، ووضع ضيف يتيح 20 رسالة مجانية دون الحاجة لتسجيل.<br><br>جميع إعدادات المظهر والألوان قابلة للتخصيص بالكامل، وخصوصيتك دائمًا أولًا.',
     videoArShortTitle: '🎬 فيديو تعريفي عربي (قصير)',
     videoArLongTitle: '🎬 فيديو تعريفي عربي (كامل)',
     videoEnShortTitle: '🎬 فيديو تعريفي إنجليزي (قصير)',
@@ -1513,7 +1516,7 @@ const I18N = {
     feedbackPlaceholder: 'Write your feedback or suggestion here...',
     feedbackSubmitBtn: '📤 Submit',
     feedbackIdeasTitle: '🗳️ Top suggestions (vote for what you like)',
-    aboutText: '<b>Omran AI Builder</b> is a fully Arabic-first AI app-building platform, developed by the Omran AI Team (فريق عمران AI). Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your API keys are stored only in your own browser and never sent to any external server — your privacy comes first.',
+    aboutText: '<b>Omran AI Builder</b> is a fully Arabic-first AI app-building platform, developed by the Omran AI Team (فريق عمران AI). Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your privacy always comes first.',
     videoArShortTitle: '🎬 Arabic intro video (short)',
     videoArLongTitle: '🎬 Arabic intro video (full)',
     videoEnShortTitle: '🎬 English intro video (short)',
@@ -1559,6 +1562,9 @@ const I18N = {
     plansWhyPoints: 'You’re out of points — top up from Plans and continue right away.',
     plansWhyPointsNeed: 'You have {have} points and this needs {need} — top up from Plans and continue right away.', /* v-plans-real-balance */
     plansWhyPointsLow: 'You have {have} points — not enough for this. Top up from Plans and continue right away.',
+    logoutWipeConfirm: 'Logging out erases your chats and images (including favorites) from this device. Your chats are saved to your account and come back when you sign in; images may not return in full quality. Continue?', /* v-logout-wipe */
+    logoutWipeOffline: 'I couldn’t save your latest chats to your account right now (connection). If you continue, they’ll be erased from this device for good. Log out anyway?',
+    /* v-acct-delete */ acctDeleteLabel: 'Delete account', acctDeleteHint: 'Permanently deletes your account: chats, memory, reminders and images saved to your account, plus your points and subscriptions with no refund, and stops auto-renewal. This can’t be undone.', acctDeleteNamePh: 'Type your username to confirm', acctDeletePassPh: 'Password (if your account has one)', acctDeleteBtn: 'Delete my account permanently', acctDeleteConfirm: 'Last check: deleting your account is permanent and can’t be undone. Delete it now?', acctDeleteWorking: 'Deleting your account…', acctDeleteDone: 'Your account and its data have been deleted.', acctDeleteWrongName: 'That doesn’t match your username.', acctDeleteWrongPass: 'Incorrect password.', acctDeleteTooMany: 'Too many attempts — try again in 15 minutes.', acctDeleteFailed: 'Couldn’t delete the account right now — nothing was deleted. Try again shortly.',
     plansWhyLimit: 'You’ve reached your plan’s limit for today — upgrade your plan or wait until tomorrow.',
     plansWhyExpired: 'Your {plan} subscription has ended — renew it to get your benefits back.',
     plansWhyExpiring: 'Your {plan} subscription ends on {date} — renew it so your benefits don’t stop.',
@@ -1595,7 +1601,7 @@ const I18N = {
     acctPointsLow: '⚠️ Your balance is running low — top up before it runs out.',
     acctPointsOut: '🔴 Your balance is empty — top up your points to continue.',
     acctPointsBuyBtn: '💳 Top up points',
-    aboutFeatChat: 'Build complete apps by chatting', aboutFeatProviders: '9 AI providers + "Ask All"', aboutFeatMaha: 'Maha — your live voice assistant', aboutFeatStudios: '7 creative image studios', aboutFeatStocks: 'Stock market & learning portfolio', aboutFeatPrivacy: 'Privacy first — your keys stay yours', aboutChipUAE: 'Made in the UAE 🇦🇪', aboutChipPWA: 'PWA app', aboutChipLangs: '14 languages', aboutMoreSummary: '📖 More about the platform',
+    aboutFeatChat: 'Build complete apps by chatting', aboutFeatProviders: '3 AI models: King, Fast, Deep', aboutFeatMaha: 'Maha — your live voice assistant', aboutFeatStudios: '7 creative image studios', aboutFeatStocks: 'Stock market & learning portfolio', aboutFeatPrivacy: 'Privacy first', aboutChipUAE: 'Made in the UAE 🇦🇪', aboutChipPWA: 'PWA app', aboutChipLangs: '14 languages', aboutMoreSummary: '📖 More about the platform',
     videoNeedDesc: '⚠️ Please describe the video first.', videoVoiceFemale: '👩 Fatima (female)', videoVoiceMale: '👨 Hamdan (male)',
     /* v-video-seq-cooldown + v-film-mode-gate */
     videoSceneWait: '⏳ Scene {i}/{n}: cooldown between videos — starting automatically in {s}s.',

@@ -491,7 +491,14 @@ try{
   // Single header button next to ⚙️ Settings that doubles as the login/logout
   // entry point: shows "🔑 Login" for guests (opens the auth overlay) and
   // "🚪 Logout" once signed in (clears the session).
-  function doLogout(){
+  async function doLogout(opts){
+    // v-logout-wipe (الدفعة ٢): المحادثات والصور تُمسح من الجهاز بعد رفع أخير وتأكيد — قبل مسح الرمز لأنّ الرفع يحتاجه. «لا» = لا خروج.
+    // v-acct-delete: بعد حذف الحساب المسح صامت (لا حساب يُرفع إليه ولا سؤال ثانٍ).
+    if(typeof window.chatsLogoutWipe === 'function'){
+      let ok = true;
+      try{ ok = await window.chatsLogoutWipe({ silent: !!(opts && opts.deleted) }); }catch(e){ __swallow(e, 'auth:logout-wipe'); }
+      if(ok === false) return;
+    }
     emailConfirmAlert(null); // v-unverified-email: تنبيه الحساب لا يبقى بعد خروجه
     authRemove('aiapp_auth_token');
     authRemove('aiapp_username');
@@ -503,6 +510,38 @@ try{
     if(window.refreshProviderQuickBar) window.refreshProviderQuickBar();
   }
   window.doLogout = doLogout;
+  /* v-acct-delete (تدقيق ١٨ أكتوبر «ما في حذف حساب داخل التطبيق»، وأمر المالك ٢٠ أكتوبر، الدفعة ٢ — Apple وGoogle يطلبانه): «حسابي» ←
+     «حذف الحساب»: الاسم مكتوبًا تأكيدًا (يُفحص هنا قبل أيّ نداء)، وكلمة المرور إن كان الحساب بها، ثمّ سؤال أخير. الخادم يوقف التجديد
+     ويمحو البيانات (api/_lib/account-delete.js)، ثمّ خروج يمسح الجهاز بصمت. أيّ فشل = لم يُحذف شيء ورسالة بسببه. */
+  async function acctDeleteAccount(){
+    const nameEl = $('#acctDeleteName'), passEl = $('#acctDeletePass'), btn = $('#acctDeleteBtn'), msg = $('#acctDeleteMsg');
+    const say = (k) => { if(msg) msg.textContent = t(k); };
+    const me = String(authGet('aiapp_username') || '').trim().toLowerCase();
+    if(!me || !nameEl) return;
+    if(String(nameEl.value || '').trim().toLowerCase() !== me){ say('acctDeleteWrongName'); return; }
+    if(!confirm(t('acctDeleteConfirm'))) return;
+    if(btn) btn.disabled = true;
+    say('acctDeleteWorking');
+    let d = null;
+    try{
+      const r = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'deleteAccount', token: authGet('aiapp_auth_token'), confirmUsername: String(nameEl.value).trim(), password: passEl ? passEl.value : '', lang }) });
+      d = await r.json().catch(() => null);
+    }catch(e){ __swallow(e, 'auth:acct-delete'); }
+    if(!(d && d.ok)){
+      if(btn) btn.disabled = false;
+      const c = d && d.code;
+      say(c === 'name_mismatch' ? 'acctDeleteWrongName' : c === 'wrong_password' ? 'acctDeleteWrongPass' : c === 'too_many' ? 'acctDeleteTooMany' : 'acctDeleteFailed');
+      return;
+    }
+    if(passEl) passEl.value = '';
+    nameEl.value = '';
+    if(btn) btn.disabled = false;
+    say('');
+    try{ const sd = document.getElementById('settingsDialog'); if(sd && sd.close) sd.close(); }catch(e){ __swallow(e, 'auth:acct-delete#close'); }
+    await doLogout({ deleted: true });
+    alert(t('acctDeleteDone'));
+  }
+  window.acctDeleteAccount = acctDeleteAccount;
   window.loadAdminStats = async function loadAdminStats(){
     const box = document.getElementById('adminStatsBox');
     if(!box) return;
@@ -794,6 +833,8 @@ try{
       acctNameWrap.style.display = loggedIn ? 'flex' : 'none';
       if(acctNameEl) acctNameEl.textContent = loggedIn ? (authGet('aiapp_username') || '') : '';
     }
+    const acctDeleteWrap = $('#acctDeleteWrap'); // v-acct-delete: للمسجَّل غير المالك (حساب المالك لا يُحذف من هنا)
+    if(acctDeleteWrap) acctDeleteWrap.style.display = (loggedIn && String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') ? '' : 'none';
     const acctLogoutBtn = $('#acctLogoutBtn');
     if(acctLogoutBtn){
       acctLogoutBtn.style.display = loggedIn ? 'block' : 'none';

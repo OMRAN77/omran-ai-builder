@@ -260,7 +260,7 @@ I18N['tr'] = {
     "feedbackPlaceholder": "Geri bildiriminizi veya önerinizi buraya yazın...",
     "feedbackSubmitBtn": "📤 Gönder",
     "feedbackIdeasTitle": "🗳️ En popüler öneriler (beğendiklerinize oy verin)",
-    "aboutText": "<b>Omran AI Builder<\/b>, Omran AI Ekibi (فريق عمران AI) tarafından geliştirilen, tamamen Arapça öncelikli bir AI uygulama geliştirme platformudur. Arapça veya İngilizce olarak AI ile sohbet ederek anında eksiksiz bir uygulamanın kodunu elde edebilir, kod düzenleyicisi ve önizlemeyi yan yana canlı olarak görebilirsiniz.<br><br>Uygulama 9 farklı AI sağlayıcısını destekler (OpenAI, Gemini, Groq, Claude, OpenRouter, Perplexity, Mistral, DeepSeek, Cohere) ve tek bir soru sorup hepsinden gelen yanıtları karşılaştırmak için birden fazla sağlayıcıyı aynı anda seçebilirsiniz.<br><br>Android ve iPhone'da yerel bir uygulama gibi kurulabilen bir PWA olarak çalışır, sesli sohbeti destekler (konuşmadan yazıya çevirme ve yanıtları sesli okuma), tam bir hesap sistemine sahiptir (kayıt olma / giriş yapma / parola kurtarma) ve kayıt gerektirmeden 20 ücretsiz mesaj sunan bir misafir modu içerir.<br><br>Tüm görünüm ve renk ayarları tamamen özelleştirilebilir ve API anahtarlarınız yalnızca kendi tarayıcınızda saklanır, hiçbir zaman harici bir sunucuya gönderilmez — gizliliğiniz her şeyden önce gelir.",
+    "aboutText": "<b>Omran AI Builder<\/b>, Omran AI Ekibi (فريق عمران AI) tarafından geliştirilen, tamamen Arapça öncelikli bir AI uygulama geliştirme platformudur. Arapça veya İngilizce olarak AI ile sohbet ederek anında eksiksiz bir uygulamanın kodunu elde edebilir, kod düzenleyicisi ve önizlemeyi yan yana canlı olarak görebilirsiniz.<br><br>Uygulama 3 güçlü yapay zekâ modelini tek bir yerde bir araya getirir: 👑 King oluşturma, düzenleme ve teşhis için, ⚡ Hızlı anında yanıtlar ve sohbet için, 🧠 Derin ise analiz, arama ve belgeler için — ayrıca canlı arama, görsel oluşturma, sesli asistan ve özel bölümler.<br><br>Android ve iPhone'da yerel bir uygulama gibi kurulabilen bir PWA olarak çalışır, sesli sohbeti destekler (konuşmadan yazıya çevirme ve yanıtları sesli okuma), tam bir hesap sistemine sahiptir (kayıt olma / giriş yapma / parola kurtarma) ve kayıt gerektirmeden 20 ücretsiz mesaj sunan bir misafir modu içerir.<br><br>Tüm görünüm ve renk ayarları tamamen özelleştirilebilir ve gizliliğiniz her şeyden önce gelir.",
     "videoArShortTitle": "🎬 Arapça tanıtım videosu (kısa)",
     "videoArLongTitle": "🎬 Arapça tanıtım videosu (tam)",
     "videoEnShortTitle": "🎬 İngilizce tanıtım videosu (kısa)",
@@ -1268,11 +1268,11 @@ Object.assign(I18N['tr'], { videoNeedDesc: "⚠️ Önce videoyu tanımlayın.",
 /* v-about-i18n */
 Object.assign(I18N['tr'], {
   aboutFeatChat: "Sohbet ederek eksiksiz uygulamalar üretin",
-  aboutFeatProviders: "9 yapay zekâ sağlayıcısı + «Hepsine sor»",
+  aboutFeatProviders: "3 yapay zekâ modeli: King, Hızlı ve Derin",
   aboutFeatMaha: "Maha — canlı sesli asistanınız",
   aboutFeatStudios: "7 yaratıcı görsel stüdyosu",
   aboutFeatStocks: "Borsa ve eğitim portföyü",
-  aboutFeatPrivacy: "Önce gizlilik — anahtarlarınız sizde",
+  aboutFeatPrivacy: "Önce gizlilik",
   aboutChipUAE: "BAE yapımı 🇦🇪",
   aboutChipPWA: "PWA uygulaması",
   aboutChipLangs: "14 dil",
@@ -1361,3 +1361,5 @@ Object.assign(I18N["tr"], {"pdfDocPage": "⏳ Sayfa {i} / {n} hazırlanıyor…"
 /* v-google-cards — «السعر في الموقع» على البطاقة بلا سعر منظّم */ Object.assign(I18N["tr"], {"cardsPriceSite": "Fiyat sitede"});
 /* v-provider-fail — «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح حين يرفض المزوّد (رصيده أو زحامه) — ١٤ لغة */ Object.assign(I18N["tr"], {"svcPaused":"Bu hizmet geçici olarak kullanılamıyor — birazdan tekrar deneyin."});
 /* v-plans-real-balance — سطر سبب فتح الباقات بالرصيد الحقيقيّ: «رصيدك {have} وتحتاج {need}» و«رصيدك {have} وما يكفي» — ١٤ لغة */ Object.assign(I18N["tr"], {"plansWhyPointsNeed":"Puanınız {have}, bu işlem {need} puan istiyor — Planlar’dan yükleyip hemen devam edin.","plansWhyPointsLow":"Puanınız {have} — bu işlem için yetmiyor. Planlar’dan yükleyip hemen devam edin."});
+/* v-logout-wipe — تأكيد الخروج: يمسح المحادثات والصور من الجهاز، وتنبيه حين يتعذّر الرفع الأخير — ١٤ لغة */ Object.assign(I18N["tr"], {"logoutWipeConfirm":"Çıkış yapmak sohbetlerinizi ve görsellerinizi (favoriler dahil) bu cihazdan siler. Sohbetleriniz hesabınızda kayıtlıdır ve giriş yapınca geri gelir; görseller tam kalitede geri gelmeyebilir. Devam edilsin mi?","logoutWipeOffline":"Son sohbetlerinizi şu an hesabınıza kaydedemedim (bağlantı). Devam ederseniz bu cihazdan kalıcı olarak silinecekler. Yine de çıkış yapılsın mı?"});
+/* v-acct-delete — «حسابي» ← حذف الحساب: الصفّ والتحذير والخانتان والزرّ والتأكيد والرسائل — ١٤ لغة */ Object.assign(I18N["tr"], {"acctDeleteLabel":"Hesabı sil","acctDeleteHint":"Hesabınızı kalıcı olarak siler: sohbetler, hafıza, hatırlatıcılar ve hesabınıza kayıtlı görseller ile puanlarınız ve abonelikleriniz iadesiz silinir, otomatik yenileme durdurulur. Geri alınamaz.","acctDeleteNamePh":"Onaylamak için kullanıcı adınızı yazın","acctDeletePassPh":"Şifre (hesabınızda varsa)","acctDeleteBtn":"Hesabımı kalıcı olarak sil","acctDeleteConfirm":"Son kontrol: hesap silme kalıcıdır ve geri alınamaz. Şimdi silinsin mi?","acctDeleteWorking":"Hesabınız siliniyor…","acctDeleteDone":"Hesabınız ve verileri silindi.","acctDeleteWrongName":"Kullanıcı adınızla eşleşmiyor.","acctDeleteWrongPass":"Şifre yanlış.","acctDeleteTooMany":"Çok fazla deneme — 15 dakika sonra tekrar deneyin.","acctDeleteFailed":"Hesap şu an silinemedi — hiçbir şey silinmedi. Birazdan tekrar deneyin."});

@@ -33,6 +33,12 @@ const TEST_PATTERNS = [
 function isTestUsername(u) {
   return TEST_PATTERNS.some((re) => re.test(u));
 }
+// v-stats-checks (تدقيق ١٨ أكتوبر «حقيقيّة: 114، اختبار: 0» وفيها ٢٣ حساب فحص آليّ؛ أمر المالك ٢٠ أكتوبر، الدفعة ٢: «الإحصائيات ما تحسب
+// حسابات الفحص»): حسابات مسابر الإنتاج zzcheck… خارج كلّ رقم يُعرض (الحسابات، التسجيل باليوم، الأحدث، الرسائل والأكثر نشاطًا)،
+// وتبقى في manageableUsers وحدها لأنّ منها زرّ «🧹 حذفها كلها» (v-purge-checks) والحظر والحذف.
+function isCheckUsername(u) {
+  return /^zzcheck/i.test(String(u || ''));
+}
 
 module.exports = async (req, res) => {
   try {
@@ -69,8 +75,8 @@ module.exports = async (req, res) => {
     }));
     const users = userRecords.filter(Boolean);
 
-    const realUsers = users.filter((u) => !isTestUsername(u.username));
-    const testUsers = users.filter((u) => isTestUsername(u.username));
+    const realUsers = users.filter((u) => !isTestUsername(u.username) && !isCheckUsername(u.username));
+    const testUsers = users.filter((u) => isTestUsername(u.username) || isCheckUsername(u.username));
 
     // Signups/activity bucketed by day (based on the user record's own
     // createdAt field).
@@ -97,6 +103,7 @@ module.exports = async (req, res) => {
       const provider = parts.pop();
       const date = parts.pop();
       const uname = parts.join('_');
+      if (isTestUsername(uname) || isCheckUsername(uname)) return; // v-stats-checks: رسائل حسابات الاختبار والفحص لا تُحسب
       const rawVal = await kvGetJSON(k).catch(() => null);
       const count = typeof rawVal === 'number' ? rawVal : (parseInt(rawVal, 10) || 0);
       totalMessagesAllTime += count;
@@ -115,8 +122,8 @@ module.exports = async (req, res) => {
     // Full manageable-users list (real accounts only, capped) with live
     // banned/email status from the already-fetched record — needed to
     // render ban/unban/delete/message controls in the owner's panel.
-    const manageableUsers = realUsers
-      .filter((u) => !ownerList().includes(u.username))
+    const manageableUsers = users // v-stats-checks: كما كانت حرفيًّا — الحسابات الحقيقيّة وحسابات الفحص (لزرّ «حذفها كلها»)
+      .filter((u) => !isTestUsername(u.username) && !ownerList().includes(u.username))
       .sort((a, b) => new Date(b.lastWrite || 0) - new Date(a.lastWrite || 0))
       .slice(0, 60)
       .map((u) => ({

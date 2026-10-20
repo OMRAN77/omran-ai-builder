@@ -63,7 +63,7 @@ test('الربط: التوجيه، السلسلة، الواجهة، النصو�
   });
   const h = read('index.html');
   assert.ok(h.includes('src="/js/video.js?v=454"') && h.includes('modules.css?v=688'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=764'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=765'"));
 });
 
 test('v-write-fix: سقف ١٦٠٠، وجواب مقطوع يُرفض فتنتقل السلسلة للمزوّد التالي بدل «تعذّرت الكتابة»', async () => {

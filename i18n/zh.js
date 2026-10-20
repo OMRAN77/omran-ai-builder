@@ -255,7 +255,7 @@ I18N['zh'] = {
     "feedbackPlaceholder": "在此输入您的反馈或建议...",
     "feedbackSubmitBtn": "📤 提交",
     "feedbackIdeasTitle": "🗳️ 热门建议(为您喜欢的建议投票)",
-    "aboutText": "<b>Omran AI Builder<\/b> 是一款由 Omran AI 团队(فريق عمران AI)开发的、以阿拉伯语为核心的 AI 应用构建平台。您可以使用阿拉伯语或英语与 AI 对话，即刻获取完整的应用程序代码，并利用并排显示的实时代码编辑器与预览功能进行查看。<br><br>该应用支持 9 种不同的 AI 服务提供商(OpenAI、Gemini、Groq、Claude、OpenRouter、Perplexity、Mistral、DeepSeek、Cohere)；您可以同时选择多个提供商提问，并对比各家的回答。<br><br>它可在 Android 和 iPhone 上作为 PWA(渐进式 Web 应用)安装，体验如同原生应用；支持语音聊天(语音转文字及朗读回复)；拥有完整的账户系统(注册/登录/找回密码)；并提供无需注册即可使用的访客模式(包含 20 条免费消息)。<br><br>所有外观和配色设置均可完全自定义；您的 API 密钥仅存储在本地浏览器中，绝不会发送至任何外部服务器——您的隐私至关重要。",
+    "aboutText": "<b>Omran AI Builder<\/b> 是一款由 Omran AI 团队(فريق عمران AI)开发的、以阿拉伯语为核心的 AI 应用构建平台。您可以使用阿拉伯语或英语与 AI 对话，即刻获取完整的应用程序代码，并利用并排显示的实时代码编辑器与预览功能进行查看。<br><br>该应用将 3 款强大的 AI 模型汇集于一处：👑 王者负责构建、编辑与诊断，⚡ 疾速负责即时回复与聊天，🧠 深思负责分析、搜索与文档——此外还有实时搜索、图像生成、语音助手和专业板块。<br><br>它可在 Android 和 iPhone 上作为 PWA(渐进式 Web 应用)安装，体验如同原生应用；支持语音聊天(语音转文字及朗读回复)；拥有完整的账户系统(注册/登录/找回密码)；并提供无需注册即可使用的访客模式(包含 20 条免费消息)。<br><br>所有外观和配色设置均可完全自定义——您的隐私至关重要。",
     "videoArShortTitle": "🎬 阿拉伯语介绍视频(简短版)",
     "videoArLongTitle": "🎬 阿拉伯语介绍视频(完整版)",
     "videoEnShortTitle": "🎬 英语介绍视频(简短版)",
@@ -1260,11 +1260,11 @@ Object.assign(I18N['zh'], { videoNeedDesc: "⚠️ 请先描述视频。", video
 /* v-about-i18n */
 Object.assign(I18N['zh'], {
   aboutFeatChat: "聊天即可构建完整应用",
-  aboutFeatProviders: "9个AI提供商 + “问所有”",
+  aboutFeatProviders: "3个AI模型：王者、疾速、深思",
   aboutFeatMaha: "Maha — 实时语音助手",
   aboutFeatStudios: "7个创意图像工作室",
   aboutFeatStocks: "股市与学习投资组合",
-  aboutFeatPrivacy: "隐私优先 — 密钥归你",
+  aboutFeatPrivacy: "隐私优先",
   aboutChipUAE: "阿联酋制造 🇦🇪",
   aboutChipPWA: "PWA 应用",
   aboutChipLangs: "14种语言",
@@ -1353,3 +1353,5 @@ Object.assign(I18N["zh"], {"pdfDocPage": "⏳ 正在准备第 {i} / {n} 页…",
 /* v-google-cards — «السعر في الموقع» على البطاقة بلا سعر منظّم */ Object.assign(I18N["zh"], {"cardsPriceSite": "价格见网站"});
 /* v-provider-fail — «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح حين يرفض المزوّد (رصيده أو زحامه) — ١٤ لغة */ Object.assign(I18N["zh"], {"svcPaused":"该服务暂时不可用 — 请稍后再试。"});
 /* v-plans-real-balance — سطر سبب فتح الباقات بالرصيد الحقيقيّ: «رصيدك {have} وتحتاج {need}» و«رصيدك {have} وما يكفي» — ١٤ لغة */ Object.assign(I18N["zh"], {"plansWhyPointsNeed":"你有 {have} 积分，此操作需要 {need} — 在套餐中充值即可继续。","plansWhyPointsLow":"你有 {have} 积分，不足以完成此操作 — 在套餐中充值即可继续。"});
+/* v-logout-wipe — تأكيد الخروج: يمسح المحادثات والصور من الجهاز، وتنبيه حين يتعذّر الرفع الأخير — ١٤ لغة */ Object.assign(I18N["zh"], {"logoutWipeConfirm":"退出登录会从此设备删除你的聊天和图片（包括收藏）。聊天已保存在你的账户中，登录后会恢复；图片可能无法以原始画质恢复。继续吗？","logoutWipeOffline":"暂时无法把你最新的聊天保存到账户（网络连接）。如果继续，它们将从此设备永久删除。仍要退出吗？"});
+/* v-acct-delete — «حسابي» ← حذف الحساب: الصفّ والتحذير والخانتان والزرّ والتأكيد والرسائل — ١٤ لغة */ Object.assign(I18N["zh"], {"acctDeleteLabel":"删除账户","acctDeleteHint":"永久删除你的账户：聊天、记忆、提醒和保存在账户中的图片，以及积分和订阅（不退款），并停止自动续订。此操作无法撤销。","acctDeleteNamePh":"输入你的用户名以确认","acctDeletePassPh":"密码（如果你的账户设有密码）","acctDeleteBtn":"永久删除我的账户","acctDeleteConfirm":"最后确认：删除账户是永久的，无法撤销。现在删除吗？","acctDeleteWorking":"正在删除账户…","acctDeleteDone":"你的账户及其数据已删除。","acctDeleteWrongName":"与你的用户名不一致。","acctDeleteWrongPass":"密码错误。","acctDeleteTooMany":"尝试次数过多 — 请 15 分钟后再试。","acctDeleteFailed":"暂时无法删除账户 — 没有删除任何内容。请稍后再试。"});

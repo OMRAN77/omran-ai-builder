@@ -629,7 +629,14 @@ try{
   // Single header button next to ⚙️ Settings that doubles as the login/logout
   // entry point: shows "🔑 Login" for guests (opens the auth overlay) and
   // "🚪 Logout" once signed in (clears the session).
-  function doLogout(){
+  async function doLogout(opts){
+    // v-logout-wipe (الدفعة ٢): المحادثات والصور تُمسح من الجهاز بعد رفع أخير وتأكيد — قبل مسح الرمز لأنّ الرفع يحتاجه. «لا» = لا خروج.
+    // v-acct-delete: بعد حذف الحساب المسح صامت (لا حساب يُرفع إليه ولا سؤال ثانٍ).
+    if(typeof window.chatsLogoutWipe === 'function'){
+      let ok = true;
+      try{ ok = await window.chatsLogoutWipe({ silent: !!(opts && opts.deleted) }); }catch(e){ __swallow(e, 'auth:logout-wipe'); }
+      if(ok === false) return;
+    }
     emailConfirmAlert(null); // v-unverified-email: تنبيه الحساب لا يبقى بعد خروجه
     authRemove('aiapp_auth_token');
     authRemove('aiapp_username');
@@ -641,6 +648,38 @@ try{
     if(window.refreshProviderQuickBar) window.refreshProviderQuickBar();
   }
   window.doLogout = doLogout;
+  /* v-acct-delete (تدقيق ١٨ أكتوبر «ما في حذف حساب داخل التطبيق»، وأمر المالك ٢٠ أكتوبر، الدفعة ٢ — Apple وGoogle يطلبانه): «حسابي» ←
+     «حذف الحساب»: الاسم مكتوبًا تأكيدًا (يُفحص هنا قبل أيّ نداء)، وكلمة المرور إن كان الحساب بها، ثمّ سؤال أخير. الخادم يوقف التجديد
+     ويمحو البيانات (api/_lib/account-delete.js)، ثمّ خروج يمسح الجهاز بصمت. أيّ فشل = لم يُحذف شيء ورسالة بسببه. */
+  async function acctDeleteAccount(){
+    const nameEl = $('#acctDeleteName'), passEl = $('#acctDeletePass'), btn = $('#acctDeleteBtn'), msg = $('#acctDeleteMsg');
+    const say = (k) => { if(msg) msg.textContent = t(k); };
+    const me = String(authGet('aiapp_username') || '').trim().toLowerCase();
+    if(!me || !nameEl) return;
+    if(String(nameEl.value || '').trim().toLowerCase() !== me){ say('acctDeleteWrongName'); return; }
+    if(!confirm(t('acctDeleteConfirm'))) return;
+    if(btn) btn.disabled = true;
+    say('acctDeleteWorking');
+    let d = null;
+    try{
+      const r = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'deleteAccount', token: authGet('aiapp_auth_token'), confirmUsername: String(nameEl.value).trim(), password: passEl ? passEl.value : '', lang }) });
+      d = await r.json().catch(() => null);
+    }catch(e){ __swallow(e, 'auth:acct-delete'); }
+    if(!(d && d.ok)){
+      if(btn) btn.disabled = false;
+      const c = d && d.code;
+      say(c === 'name_mismatch' ? 'acctDeleteWrongName' : c === 'wrong_password' ? 'acctDeleteWrongPass' : c === 'too_many' ? 'acctDeleteTooMany' : 'acctDeleteFailed');
+      return;
+    }
+    if(passEl) passEl.value = '';
+    nameEl.value = '';
+    if(btn) btn.disabled = false;
+    say('');
+    try{ const sd = document.getElementById('settingsDialog'); if(sd && sd.close) sd.close(); }catch(e){ __swallow(e, 'auth:acct-delete#close'); }
+    await doLogout({ deleted: true });
+    alert(t('acctDeleteDone'));
+  }
+  window.acctDeleteAccount = acctDeleteAccount;
   window.loadAdminStats = async function loadAdminStats(){
     const box = document.getElementById('adminStatsBox');
     if(!box) return;
@@ -932,6 +971,8 @@ try{
       acctNameWrap.style.display = loggedIn ? 'flex' : 'none';
       if(acctNameEl) acctNameEl.textContent = loggedIn ? (authGet('aiapp_username') || '') : '';
     }
+    const acctDeleteWrap = $('#acctDeleteWrap'); // v-acct-delete: للمسجَّل غير المالك (حساب المالك لا يُحذف من هنا)
+    if(acctDeleteWrap) acctDeleteWrap.style.display = (loggedIn && String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') ? '' : 'none';
     const acctLogoutBtn = $('#acctLogoutBtn');
     if(acctLogoutBtn){
       acctLogoutBtn.style.display = loggedIn ? 'block' : 'none';
@@ -4126,7 +4167,7 @@ const I18N = {
     acctPointsLow: '⚠️ رصيدك قارب على الانتهاء — اشحن نقاطك قبل النفاد.',
     acctPointsOut: '🔴 رصيدك انتهى — اشحن نقاطك للمتابعة.',
     acctPointsBuyBtn: '💳 شحن النقاط',
-    aboutFeatChat: 'بناء تطبيقات كاملة بالمحادثة', aboutFeatProviders: '٩ مزودي ذكاء + «اسأل الكل»', aboutFeatMaha: 'مها — مساعدتك الصوتية الحية', aboutFeatStudios: '٧ استوديوهات إبداعية للصور', aboutFeatStocks: 'سوق الأسهم ومحفظة تعليمية', aboutFeatPrivacy: 'خصوصيتك أولوية — مفاتيحك عندك', aboutChipUAE: 'صُنع في الإمارات 🇦🇪', aboutChipPWA: 'تطبيق PWA', aboutChipLangs: '١٤ لغة', aboutMoreSummary: '📖 المزيد عن المنصة',
+    aboutFeatChat: 'بناء تطبيقات كاملة بالمحادثة', aboutFeatProviders: '٣ نماذج ذكاء: الكينج والسريع والعميق', aboutFeatMaha: 'مها — مساعدتك الصوتية الحية', aboutFeatStudios: '٧ استوديوهات إبداعية للصور', aboutFeatStocks: 'سوق الأسهم ومحفظة تعليمية', aboutFeatPrivacy: 'خصوصيتك أولوية', aboutChipUAE: 'صُنع في الإمارات 🇦🇪', aboutChipPWA: 'تطبيق PWA', aboutChipLangs: '١٤ لغة', aboutMoreSummary: '📖 المزيد عن المنصة',
     videoNeedDesc: '⚠️ اكتب وصف الفيديو أولًا.', videoVoiceFemale: '👩 فاطمة (أنثى)', videoVoiceMale: '👨 حمدان (ذكر)',
     /* v-video-seq-cooldown + v-film-mode-gate */
     videoSceneWait: '⏳ المشهد {i}/{n}: مهلة بين الفيديوهات — يبدأ تلقائيًا بعد {s} ثانية.',
@@ -5038,6 +5079,9 @@ const I18N = {
     plansWhyPoints: 'نقاطك خلصت — اشحن من الباقات وكمّل مباشرة.',
     plansWhyPointsNeed: 'رصيدك {have} نقطة، وهذه العمليّة تحتاج {need} — اشحن من الباقات وكمّل مباشرة.', /* v-plans-real-balance */
     plansWhyPointsLow: 'رصيدك {have} نقطة وما يكفي لهذه العمليّة — اشحن من الباقات وكمّل مباشرة.',
+    logoutWipeConfirm: 'تسجيل الخروج يمسح من هذا الجهاز محادثاتك وصورك، ومنها المفضّلة. المحادثات محفوظة في حسابك وترجع لما تدخل، أمّا الصور فممكن ما ترجع بدقّتها الكاملة. تكمل؟', /* v-logout-wipe */
+    logoutWipeOffline: 'ما قدرت أحفظ آخر محادثاتك في حسابك الحين (الاتصال). لو كمّلت تنمسح من الجهاز وما ترجع. تكمل الخروج؟',
+    /* v-acct-delete */ acctDeleteLabel: 'حذف الحساب', acctDeleteHint: 'يحذف حسابك نهائيًّا: المحادثات والذاكرة والتذكيرات والصور المحفوظة في حسابك، ورصيد النقاط والاشتراكات بلا استرداد، ويوقف التجديد التلقائيّ. لا يمكن التراجع.', acctDeleteNamePh: 'اكتب اسم المستخدم للتأكيد', acctDeletePassPh: 'كلمة المرور (إن كان حسابك بكلمة مرور)', acctDeleteBtn: 'احذف حسابي نهائيًّا', acctDeleteConfirm: 'آخر تأكيد: حذف الحساب نهائيّ ولا يمكن التراجع عنه. تحذفه الآن؟', acctDeleteWorking: 'جارٍ حذف الحساب…', acctDeleteDone: 'تم حذف حسابك وبياناته.', acctDeleteWrongName: 'الاسم ما يطابق اسم حسابك.', acctDeleteWrongPass: 'كلمة المرور غير صحيحة.', acctDeleteTooMany: 'محاولات كثيرة — جرّب بعد ربع ساعة.', acctDeleteFailed: 'تعذّر حذف الحساب الحين — ما انحذف شي. جرّب بعد قليل.',
     plansWhyLimit: 'وصلت حدّ باقتك لليوم — رقِّ باقتك أو انتظر إلى الغد.',
     plansWhyExpired: 'انتهى اشتراكك في {plan} — جدّده لترجع مزاياك.',
     plansWhyExpiring: 'اشتراكك في {plan} ينتهي في {date} — جدّده حتّى لا تتوقّف مزاياك.',
@@ -5059,7 +5103,7 @@ const I18N = {
     feedbackPlaceholder: 'اكتب رأيك أو مقترحك هنا...',
     feedbackSubmitBtn: '📤 إرسال',
     feedbackIdeasTitle: '🗳️ أفضل المقترحات (صوّت لصالح ما يعجبك)',
-    aboutText: '<b>Omran AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، من تطوير فريق عمران AI. تحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حية جنبًا إلى جنب.<br><br>يدعم البرنامج 4 مزودين للذكاء الاصطناعي (Claude، Gemini، OpenAI، Groq)، ويمكنك اختيار أكثر من مزود في نفس الوقت لطرح سؤال واحد ومقارنة إجابات الجميع.<br><br>يعمل كتطبيق PWA قابل للتثبيت على أندرويد وآيفون تمامًا كأي تطبيق أصلي، ويدعم المحادثة الصوتية (تحويل الصوت إلى نص وقراءة الردود بصوت عالٍ)، ويحتوي على نظام حسابات كامل (تسجيل / دخول / استرجاع كلمة المرور)، ووضع ضيف يتيح 20 رسالة مجانية دون الحاجة لتسجيل.<br><br>جميع إعدادات المظهر والألوان قابلة للتخصيص بالكامل، ومفاتيح API الخاصة بك تُحفظ فقط في متصفحك ولا تُرسل أبدًا لأي خادم خارجي — خصوصيتك أولًا.',
+    aboutText: '<b>Omran AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، من تطوير فريق عمران AI. تحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حية جنبًا إلى جنب.<br><br>يجمع التطبيق 3 نماذج ذكاء قوية في مكان واحد: 👑 الكينج للبناء والتعديل والتشخيص، ⚡ السريع للردود الفورية والدردشة، 🧠 العميق للتحليل والبحث والمستندات — مع البحث المباشر وتوليد الصور والمساعدة الصوتية والأقسام المتخصصة.<br><br>يعمل كتطبيق PWA قابل للتثبيت على أندرويد وآيفون تمامًا كأي تطبيق أصلي، ويدعم المحادثة الصوتية (تحويل الصوت إلى نص وقراءة الردود بصوت عالٍ)، ويحتوي على نظام حسابات كامل (تسجيل / دخول / استرجاع كلمة المرور)، ووضع ضيف يتيح 20 رسالة مجانية دون الحاجة لتسجيل.<br><br>جميع إعدادات المظهر والألوان قابلة للتخصيص بالكامل، وخصوصيتك دائمًا أولًا.',
     videoArShortTitle: '🎬 فيديو تعريفي عربي (قصير)',
     videoArLongTitle: '🎬 فيديو تعريفي عربي (كامل)',
     videoEnShortTitle: '🎬 فيديو تعريفي إنجليزي (قصير)',
@@ -5364,7 +5408,7 @@ const I18N = {
     feedbackPlaceholder: 'Write your feedback or suggestion here...',
     feedbackSubmitBtn: '📤 Submit',
     feedbackIdeasTitle: '🗳️ Top suggestions (vote for what you like)',
-    aboutText: '<b>Omran AI Builder</b> is a fully Arabic-first AI app-building platform, developed by the Omran AI Team (فريق عمران AI). Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your API keys are stored only in your own browser and never sent to any external server — your privacy comes first.',
+    aboutText: '<b>Omran AI Builder</b> is a fully Arabic-first AI app-building platform, developed by the Omran AI Team (فريق عمران AI). Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your privacy always comes first.',
     videoArShortTitle: '🎬 Arabic intro video (short)',
     videoArLongTitle: '🎬 Arabic intro video (full)',
     videoEnShortTitle: '🎬 English intro video (short)',
@@ -5410,6 +5454,9 @@ const I18N = {
     plansWhyPoints: 'You’re out of points — top up from Plans and continue right away.',
     plansWhyPointsNeed: 'You have {have} points and this needs {need} — top up from Plans and continue right away.', /* v-plans-real-balance */
     plansWhyPointsLow: 'You have {have} points — not enough for this. Top up from Plans and continue right away.',
+    logoutWipeConfirm: 'Logging out erases your chats and images (including favorites) from this device. Your chats are saved to your account and come back when you sign in; images may not return in full quality. Continue?', /* v-logout-wipe */
+    logoutWipeOffline: 'I couldn’t save your latest chats to your account right now (connection). If you continue, they’ll be erased from this device for good. Log out anyway?',
+    /* v-acct-delete */ acctDeleteLabel: 'Delete account', acctDeleteHint: 'Permanently deletes your account: chats, memory, reminders and images saved to your account, plus your points and subscriptions with no refund, and stops auto-renewal. This can’t be undone.', acctDeleteNamePh: 'Type your username to confirm', acctDeletePassPh: 'Password (if your account has one)', acctDeleteBtn: 'Delete my account permanently', acctDeleteConfirm: 'Last check: deleting your account is permanent and can’t be undone. Delete it now?', acctDeleteWorking: 'Deleting your account…', acctDeleteDone: 'Your account and its data have been deleted.', acctDeleteWrongName: 'That doesn’t match your username.', acctDeleteWrongPass: 'Incorrect password.', acctDeleteTooMany: 'Too many attempts — try again in 15 minutes.', acctDeleteFailed: 'Couldn’t delete the account right now — nothing was deleted. Try again shortly.',
     plansWhyLimit: 'You’ve reached your plan’s limit for today — upgrade your plan or wait until tomorrow.',
     plansWhyExpired: 'Your {plan} subscription has ended — renew it to get your benefits back.',
     plansWhyExpiring: 'Your {plan} subscription ends on {date} — renew it so your benefits don’t stop.',
@@ -5446,7 +5493,7 @@ const I18N = {
     acctPointsLow: '⚠️ Your balance is running low — top up before it runs out.',
     acctPointsOut: '🔴 Your balance is empty — top up your points to continue.',
     acctPointsBuyBtn: '💳 Top up points',
-    aboutFeatChat: 'Build complete apps by chatting', aboutFeatProviders: '9 AI providers + "Ask All"', aboutFeatMaha: 'Maha — your live voice assistant', aboutFeatStudios: '7 creative image studios', aboutFeatStocks: 'Stock market & learning portfolio', aboutFeatPrivacy: 'Privacy first — your keys stay yours', aboutChipUAE: 'Made in the UAE 🇦🇪', aboutChipPWA: 'PWA app', aboutChipLangs: '14 languages', aboutMoreSummary: '📖 More about the platform',
+    aboutFeatChat: 'Build complete apps by chatting', aboutFeatProviders: '3 AI models: King, Fast, Deep', aboutFeatMaha: 'Maha — your live voice assistant', aboutFeatStudios: '7 creative image studios', aboutFeatStocks: 'Stock market & learning portfolio', aboutFeatPrivacy: 'Privacy first', aboutChipUAE: 'Made in the UAE 🇦🇪', aboutChipPWA: 'PWA app', aboutChipLangs: '14 languages', aboutMoreSummary: '📖 More about the platform',
     videoNeedDesc: '⚠️ Please describe the video first.', videoVoiceFemale: '👩 Fatima (female)', videoVoiceMale: '👨 Hamdan (male)',
     /* v-video-seq-cooldown + v-film-mode-gate */
     videoSceneWait: '⏳ Scene {i}/{n}: cooldown between videos — starting automatically in {s}s.',
@@ -6377,7 +6424,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=764'; /* v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */
+    sc.src = 'i18n/' + lg + '.js?v=765'; /* v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7655,6 +7702,68 @@ window.chatsSyncOnAuth = function(){
 /* v376: مزامنة حيّة — سحب دوري من السيرفر + كل ما يرجع المستخدم للتطبيق. */
 var __chatsLivePollTimer = null;
 var __chatsLastPull = 0;
+/* v-logout-wipe (تدقيق ١٨ أكتوبر «بعد الخروج تبقى محادثات الحساب كلها ظاهرة على الجهاز، حتى بعد التحديث»، وأمر المالك ٢٠ أكتوبر،
+   الدفعة ٢: «تسجيل الخروج يمسح المحادثات والصور المحفوظة في الجهاز»): الخروج كان يمسح الرمز والاسم والصورة الرمزيّة وحدها.
+   الآن قبل مسح الرمز: (١) رفع أخير مضمون للحساب (سحب ودمج ثمّ رفع، بمهلة) فلا تضيع محادثة لم تُرفع؛ (٢) تأكيد بنصّ صريح لأنّ
+   الصور الكاملة والمفضّلة في الجهاز وحده (الحساب يحفظ المحادثات بنسخة مصغّرة للصور) — وإن فشل الرفع يُقال ذلك قبل المسح؛
+   (٣) مسح المحادثات (الذاكرة وlocalStorage وIndexedDB كلّها بمخزن صورها) ومفضّلة الاستوديو والأزياء وصورة بطل الفيلم.
+   الإعدادات والتعليمات والثيم تبقى (ليست محادثات ولا صورًا). يرجع false إن ألغى. */
+const LOGOUT_WIPE_KEYS = ['aiapp_projects', 'aiapp_projects_slim', 'aiapp_current_id', 'aiapp_provider_projects', 'aiapp_deleted_chats',
+  'aiapp_studio_favorites', 'aiapp_fashion_favorites', 'omran_hero_b64', 'omran_hero_mime'];
+function __chatsFlushNow(ms){
+  return new Promise(res => {
+    let done = false;
+    const fin = (v) => { if(!done){ done = true; res(v); } };
+    const token = chatsAuthToken();
+    if(!token || !window.__localChatsLoaded) return fin(false);
+    setTimeout(() => fin(false), ms || 8000);
+    try{
+      chatsServerPull(ok => {
+        if(ok === false) return fin(false);
+        __slimCache = null;
+        const slim = chatsSlimForServer();
+        let total = 0;
+        (slim || []).forEach(p => { total += (Array.isArray(p.messages) ? p.messages.length : 0); });
+        if(!total) return fin(true); // v311: لا رسائل = لا شيء يُرفع
+        fetch('/api/account?action=chats_save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, projects: slim }) })
+          .then(r => fin(!!(r && r.ok))).catch(() => fin(false));
+      });
+    }catch(e){ __swallow(e, 'logout:flush'); fin(false); }
+  });
+}
+function __hasLocalAccountData(){
+  if((state.projects || []).some(p => p && Array.isArray(p.messages) && p.messages.length)) return true;
+  try{ return LOGOUT_WIPE_KEYS.slice(5).some(k => { const v = localStorage.getItem(k); return !!v && v !== '[]'; }); }catch(e){ return false; }
+}
+window.chatsLogoutWipe = async function(opts){
+  const silent = !!(opts && opts.silent); // v-acct-delete: الحساب حُذف — لا حساب يُرفع إليه ولا سؤال ثانٍ
+  if(!silent){
+    if(!__hasLocalAccountData()) return true;
+    if(!confirm(t('logoutWipeConfirm'))) return false;
+    const synced = await __chatsFlushNow(8000);
+    if(!synced && !confirm(t('logoutWipeOffline'))) return false;
+  }
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, 'logout:sync-timer'); }
+  try{ if(__chatsLivePollTimer){ clearInterval(__chatsLivePollTimer); __chatsLivePollTimer = null; } }catch(e){ __swallow(e, 'logout:live-timer'); }
+  __chatsLoadedFor = null; window.__chatsMergeDone = false; window.__usingSlimProjects = false; __slimCache = null;
+  LOGOUT_WIPE_KEYS.forEach(k => { try{ localStorage.removeItem(k); }catch(e){ __swallow(e, 'logout:ls'); } });
+  try{ if(typeof mahaClearImageRef === 'function') mahaClearImageRef(); }catch(e){ __swallow(e, 'logout:maha'); }
+  // IndexedDB كلّها (المحادثات ومخزن الصور) — الفتح التالي (حفظ المحادثة الفارغة) يُنتظر خلف الحذف حسب المعيار فيُنشئها جديدة
+  await new Promise(res => {
+    try{
+      if(!window.indexedDB) return res();
+      const rq = indexedDB.deleteDatabase(IDB_NAME);
+      rq.onsuccess = rq.onerror = () => res();
+      setTimeout(res, 3000); // محجوب باتّصال مفتوح: لا نعلّق الخروج
+    }catch(e){ __swallow(e, 'logout:idb'); res(); }
+  });
+  const nid = 'p_' + Date.now();
+  state.projects = [{ id: nid, title: (typeof t === 'function' ? t('defaultProjectTitle') : '') || 'محادثة جديدة', messages: [], code: '' }];
+  state.currentId = nid;
+  try{ saveState(); }catch(e){ __swallow(e, 'logout:save'); }
+  try{ renderAll(); }catch(e){ __swallow(e, 'logout:render'); }
+  return true;
+};
 function __chatsPullMerge(){
   if(!chatsAuthToken() || !window.__chatsMergeDone) return;
   __chatsLastPull = Date.now();
