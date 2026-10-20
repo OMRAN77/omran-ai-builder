@@ -10,7 +10,7 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 
 const chat = read('api/_lib/chat.js');
 assert.ok(/__claudeOff = \(!__reqRaw \|\| __reqRaw === 'claude'\)/.test(chat), 'التحويل يخصّ طلب Claude أو الطلب بلا مزوّد');
-assert.ok(chat.includes("process.env.OWNER_CLAUDE_CHAT || '').trim().toLowerCase() !== 'on'"), 'مفتاح الإرجاع OWNER_CLAUDE_CHAT=on');
+assert.ok(chat.includes("process.env.OWNER_CLAUDE_CHAT || '').trim().toLowerCase() === 'off'"), 'v-owner-claude-pick: Claude المالك باختياره؛ التحويل لكروك بمفتاح الطوارئ OWNER_CLAUDE_CHAT=off وحده');
 assert.ok(chat.includes('!!process.env.OPENROUTER_API_KEY'), 'بلا مفتاح الوسيط لا تحويل (لا يُترك المالك بلا ردّ)');
 assert.ok(chat.includes("isOwnerName(token ? require('./auth.js').verifyToken(token) : null)"), 'للمالك وحده');
 assert.ok(chat.includes("const reqProv = __claudeOff ? 'openrouter' : __reqRaw;"), 'reqProv نفسه يتحوّل فلا يصير __ownerNoRoute');
