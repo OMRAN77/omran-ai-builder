@@ -69,8 +69,10 @@ jobs:
           T_SAMPLE: ${{ secrets.SAMPLE_TOKEN }}
           T_EVAL: ${{ secrets.EVAL_TOKEN }}
           T_PROBE: ${{ secrets.PROBE_TOKEN }}
+          HAS_ANY_SECRET: ${{ secrets.ANTHROPIC_API_KEY != '' || secrets.GEMINI_API_KEY != '' }}
         run: |
           mkdir -p liked-probe
+          echo "الأسرار تصل هذا التشغيل: $HAS_ANY_SECRET (مفتاح مزوّد موجود = نعم؛ فغياب رمز المالك يعني أنّ السرّ غير مضاف)"
           if [ -n "$T_SAMPLE" ]; then export OWNER_TOKEN="$T_SAMPLE" TOKEN_SRC=SAMPLE_TOKEN
           elif [ -n "$T_EVAL" ]; then export OWNER_TOKEN="$T_EVAL" TOKEN_SRC=EVAL_TOKEN
           elif [ -n "$T_PROBE" ]; then export OWNER_TOKEN="$T_PROBE" TOKEN_SRC=PROBE_TOKEN
