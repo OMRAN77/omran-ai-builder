@@ -76,6 +76,8 @@ test('١ — إعادة الإنتاج: «عجبني» وموديل لا يست�
   assert.equal(items[0].q, Q);
   assert.ok(items[0].text.includes('الطماطم الكرزيّة') && items[0].text.includes('سماد عضويّ'), 'الردّ نفسه لا وصفه');
   assert.equal(items[0].by, 'groq');
+  assert.equal(items[0].scope, 'all', 'سؤال وردّ عامّان بلا شيء شخصيّ = للمستخدمين أيضًا');
+  assert.ok(r.sys.includes('ونُشر لكلّ المستخدمين لأنّه عامّ'), 'أمر الدور يقول إنّه نُشر');
   assert.ok(!items[0].text.includes('0501234567') && !items[0].text.includes('omran@example.com') && items[0].text.includes('«محذوف»'), 'الهاتف والإيميل يُحذفان');
   for (const p of ['gemini', 'deepseek', 'claude', 'openrouter']) {
     const u = await turn('vipuser', p, 'ابي ازرع بذور في حوش بيتي', [() => textTurn('…')]);
@@ -111,7 +113,7 @@ test('٣ — الصلة: المستخدم يأخذ الردود المعتمدة
   db.clear(); PS.__resetCache();
   const topics = ['بذور الزراعة في الحوش', 'تصليح مكيّف السيارة', 'وصفة كبسة اللحم', 'تسجيل شركة في دبي', 'أفضل جوّال للتصوير', 'فتح مطعم جديد', 'دراسة الماجستير في بريطانيا', 'تذاكر الطيران الرخيصة', 'تربية القطط', 'تعلّم البرمجة'];
   const items = [];
-  for (let i = 0; i < 40; i++) { const t = topics[i % topics.length]; items.push({ id: 'K' + i, q: 'سؤال ' + i + ': ' + t, text: 'ردّ معتمد رقم ' + i + ' عن ' + t + ' ' + 'م'.repeat(1400), by: 'claude', at: i }); }
+  for (let i = 0; i < 40; i++) { const t = topics[i % topics.length]; items.push({ id: 'K' + i, q: 'سؤال ' + i + ': ' + t, text: 'ردّ معتمد رقم ' + i + ' عن ' + t + ' ' + 'م'.repeat(1400), by: 'claude', at: i, scope: 'all' }); }
   db.set('db/liked.json', { items });
   const u = await turn('vipuser', 'gemini', 'ابي اسوي كبسة لحم اليوم', [() => textTurn('…')]);
   const blk = blockOf(u.sys, PS.LIKED_HEAD);
@@ -153,7 +155,7 @@ test('٥ — الربط: المسارات الثلاثة تمرّر سؤال ا�
   assert.match(PS.TEACH_TOOL.description, /«عجبني» = تعميم بخطوة واحدة/);
   assert.match(PS.TEACH_TOOL.description, /«عمّم» ليست هذه الأداة/);
   db.clear(); PS.__resetCache();
-  const items = []; for (let i = 0; i < PS.LIKED_MAX; i++) items.push({ id: 'K' + i, q: 'س', text: 'ردّ قديم رقم ' + i + ' ' + 'ن'.repeat(30), by: '', at: i });
+  const items = []; for (let i = 0; i < PS.LIKED_MAX; i++) items.push({ id: 'K' + i, q: 'س', text: 'ردّ قديم رقم ' + i + ' ' + 'ن'.repeat(30), by: '', at: i, scope: 'all' });
   db.set('db/liked.json', { items });
   const huge = 'ك'.repeat(PS.LIKED_A_MAX + 500);
   await turn('omran', 'claude', '', [() => textTurn('…')], [{ role: 'user', content: 'سؤال جديد' }, { role: 'assistant', content: 'ردّ جديد يستحقّ الحفظ لكلّ الناس. ' + huge }, { role: 'user', content: 'عجبني' }]);
@@ -170,4 +172,40 @@ test('٥ — الربط: المسارات الثلاثة تمرّر سؤال ا�
   await ai({ method: 'POST', headers: { host: 'x' }, query: { action: 'gemini' }, body: { contents: [{ role: 'user', parts: [{ text: 'سؤال جديد' }] }], systemInstruction: 'أنت مساعد.' } }, res);
   const si = seen && (typeof seen.systemInstruction === 'string' ? seen.systemInstruction : JSON.stringify(seen.systemInstruction));
   assert.ok(si && si.includes('ردّ جديد يستحقّ الحفظ'), 'المسار القديم: ' + String(si).slice(-200));
+});
+
+// أمر المالك ٢٠ أكتوبر: «الرد اللي يعجبني… ينتقل لي أنا عند المزوّدين العشرة. لا تنشرها لباقي المستخدمين إلا إذا كان الرد عام وما فيه أي شي شخصي عني».
+test('٦ — المدى: ردّ فيه ما يخصّ المالك أو تطبيقه يصل المالك على العشرة ولا يصل المستخدمين؛ «عجبني للكل» تنشره؛ والعامّ يُنشر وحده', async () => {
+  db.clear(); PS.__resetCache();
+  const PQ = 'كيف أرتّب إعدادات تطبيقي عشان المستخدمين يشوفون الباقات؟';
+  const PA = 'افتح حسابك في Vercel وفعّل متغيّر PLANS_ON، ثمّ في المستودع عدّل ملفّ tier.js — الباقات تظهر لكلّ مستخدم بعد النشر.';
+  const r = await turn('omran', 'claude', '', [() => textTurn('…')], [{ role: 'user', content: PQ }, { role: 'assistant', content: PA }, { role: 'user', content: 'عجبني' }]);
+  let items = db.get('db/liked.json').items;
+  assert.equal(items.length, 1); assert.equal(items[0].scope, 'owner', 'فيه ما يخصّه = للمالك وحده');
+  assert.ok(r.sys.includes('ولم يُنشر للمستخدمين') && r.sys.includes('لك وحدك'), 'أمر الدور يقول إنّه له وحده');
+  for (const p of ['groq', 'gemini', 'deepseek', 'kimi']) {
+    const o = await turn('omran', p, 'وين أرتّب إعدادات الباقات في تطبيقي؟', [() => textTurn('…')]);
+    assert.ok(o.sys.includes('PLANS_ON'), 'المالك يأخذه على · ' + p);
+  }
+  for (const p of ['gemini', 'deepseek', 'claude']) {
+    const u = await turn('vipuser', p, 'كيف أرتّب إعدادات تطبيقي؟', [() => textTurn('…')]);
+    assert.ok(!u.sys.includes('PLANS_ON') && !u.sys.includes(PS.LIKED_HEAD), 'المستخدم لا يراه · ' + p);
+  }
+  await turn('omran', 'claude', '', [() => textTurn('…')], [{ role: 'user', content: PQ }, { role: 'assistant', content: PA }, { role: 'user', content: 'عجبني للكل' }]);
+  items = db.get('db/liked.json').items;
+  assert.equal(items.length, 1); assert.equal(items[0].scope, 'all', '«عجبني للكل» = قرار المالك الصريح ينشره');
+  const u2 = await turn('vipuser', 'gemini', 'كيف أرتّب إعدادات تطبيقي؟', [() => textTurn('…')]);
+  assert.ok(u2.sys.includes('PLANS_ON'), 'بعد «للكل» يصل المستخدم');
+  // وحدة: ما يُعدّ شخصيًّا أو شغلًا على التطبيق
+  assert.equal(PS.isGeneral('وش أفضل بذور للزراعة في الإمارات؟', 'الطماطم الكرزيّة والخيار البلديّ.'), true);
+  assert.equal(PS.isGeneral('وش أفضل مطعم في العين؟', 'مطعم الفنر، والأسعار معقولة.'), true);
+  assert.equal(PS.isGeneral('وش أفضل مطعم في العين؟', 'أنا أنصحك بمطعم الفنر — أنا جرّبته.'), false, '«أنا» = شخصيّ');
+  assert.equal(PS.isGeneral('كم رصيدي؟', 'رصيدك ٤٠ نقطة.'), false);
+  assert.equal(PS.isGeneral('عدّل لون الزرّ', 'غيّرته إلى الأزرق.'), false, 'أمر شغل على التطبيق');
+  assert.equal(PS.isGeneral('وش قصّة مقهى عمران؟', 'مقهى قديم في السوق.'), false, 'اسم المالك');
+  assert.equal(PS.isGeneral('كيف أربط GitHub بـVercel؟', 'من الإعدادات.'), false);
+  assert.equal(PS.isGeneral('كيف أسوّي كبسة؟', 'الرزّ أوّلًا ثمّ اللحم. My tip: استعمل البهارات.'), false, 'my = شخصيّ');
+  // ما بلا مدى (محفوظ قبل هذا القرار) للمالك وحده
+  assert.equal(PS.likedBlock([{ text: 'بلا مدى'.padEnd(40, '.') }], 'بلا', 2000, null, false), '', 'بلا scope لا يصل المستخدم');
+  assert.ok(PS.likedBlock([{ text: 'بلا مدى'.padEnd(40, '.') }], 'بلا', 2000, null, true).includes('بلا مدى'), 'ويصل المالك');
 });

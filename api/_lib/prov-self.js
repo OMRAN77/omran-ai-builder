@@ -66,8 +66,9 @@ const TEACH_TOOL = {
   name: 'teach_users',
   description: 'دروس عامّة تحسّن ردود كلّ المستخدمين على كلّ المزوّدين — يكتبها المالك. '
     + '«عجبني» = تعميم بخطوة واحدة: حين يقول المالك «عجبني» أو «عجبتني الطريقة» أو «خلّه كذا دايم» عن ردّك، الخادم يحفظ ردّك نفسه مع سؤاله '
-    + 'وينشره فورًا لكلّ المستخدمين وكلّ المزوّدين بلا أداة (v-liked-reply). أنت: إن كان في الردّ قاعدة عامّة تصلح للكلّ (طريقة عرض أو ترتيب — جملة أو جملتان، '
-    + 'لا معلومة شخصيّة) فاستدعِ generalize بها فتُنشر معه، ثمّ قل له بسطر ما الذي عُمِّم. الخادم يرفض التعميم إن لم تكن كلمته في رسالته الأخيرة أو كانت منفيّة («ما عجبني»). '
+    + 'فيصل المزوّدين العشرة في محادثات المالك، وينشره لكلّ المستخدمين إن كان عامًّا بلا شيء شخصيّ عن المالك أو تطبيقه (أو قال «عجبني للكل») — بلا أداة (v-liked-reply). '
+    + 'أنت: إن كان في الردّ قاعدة عامّة تصلح للكلّ (طريقة عرض أو ترتيب — جملة أو جملتان، لا معلومة شخصيّة) فاستدعِ generalize بها، ثمّ قل له بسطر ما الذي عُمِّم. '
+    + 'الخادم يرفض التعميم إن لم تكن كلمته في رسالته الأخيرة أو كانت منفيّة («ما عجبني»). '
     + '«عمّم» ليست هذه الأداة: الخادم ينسخ الردود كاملة إلى كل المزوّدين. إن قالها المالك لا تستدعِ teach_users ولا تسأل ماذا يقصد ولا تعرض خيارات. '
     + 'add يحفظ درسًا للتجربة على محادثات المالك وحده؛ publish ينشر درسًا سابقًا (يحتاج «عجبني» أو «عمّم» في رسالته الأخيرة)؛ '
     + 'unpublish يرجعه للمالك وحده؛ remove يحذفه؛ list يعرض الدروس وحالتها.',
@@ -501,33 +502,52 @@ async function readLiked(fresh) {
   return items;
 }
 async function saveLiked(items) { await kvPutJSON(LIKED_KEY, { items }); likedCache = { t: Date.now(), items }; }
+/* المدى (أمر المالك ٢٠ أكتوبر: «الرد اللي يعجبني عند أي مزوّد ينتقل لي أنا عند المزوّدين العشرة… لا تنشرها لباقي المستخدمين إلا إذا كان
+   الرد عام وما فيه أي شي شخصي عني»): كلّ ردّ معتمد يصل المالك على العشرة (scope owner)؛ ويُنشر للمستخدمين (scope all) إن كان السؤال
+   والردّ بلا إشارة إليه أو إلى تطبيقه وشغله — أو قال «عجبني للكل» صراحةً. الشكّ = للمالك وحده. */
+const PERSONAL_RE = /(?:^|[\s،,.!؟?«»"'()\-:])(?:أنا|انا|عندي|عندنا|حسابي|حساباتي|مشروعي|مشاريعي|تطبيقي|موقعي|برنامجي|اسمي|عمران|بيتي|سيارتي|زوجتي|أهلي|اهلي|ولدي|بنتي|عيالي|شركتي|مستودعي|إيميلي|ايميلي|رقمي|باسوردي|رصيدي|اشتراكي|باقتي|مفتاحي|ملفّي|ملفي|كودي|محادثاتي|مستخدميني|مستخدمينا|زبائني|عملائي|المالك|صاحب التطبيق)(?=$|[\s،,.!؟?«»"'()\-:])|(?:^|[^a-z])(?:my|mine|i'm|i am)(?=$|[^a-z])/i;
+const APP_RE = /github|vercel|railway|upstash|redis|openrouter|anthropic|api[\s_-]?key|مفتاح|المستودع|الريبو|\brepo\b|طلب سحب|pull request|commit|\bbranch\b|deploy|\.(?:js|cjs|mjs|json|css|html)(?=$|[\s،,.!؟?«»"'()])|\bnpm\b|node_modules|serverless|omran-ai-builder|teach_users|edit_self|write_github|stripe|paypal|الباقات|النقاط|الرصيد/i;
+const WORK_CMD_RE = /^(?:عدّل|عدل|صلّح|صلح|ارفع|ادمج|انشر|احذف|امسح|اربط|ركّب|ركب|ثبّت|ثبت)(?=$|[\s،,.!؟?«»"'()\-])/;
+const LIKED_ALL_RE = /(?:^|[\s،,.!؟?«»"'()\-])(?:للكلّ|للكل|للجميع|للناس|للمستخدمين|لكلّ المستخدمين|لكل المستخدمين|لكلّ الناس|لكل الناس)(?=$|[\s،,.!؟?«»"'()\-])/;
+function isGeneral(q, text) { const s = String(q || '') + '\n' + String(text || ''); return !PERSONAL_RE.test(s) && !APP_RE.test(s) && !WORK_CMD_RE.test(String(q || '').trim()); }
 async function captureLiked(messages, prov) {
   const list = Array.isArray(messages) ? messages : [];
   let i = list.length - 1; while (i >= 0 && !(list[i] && list[i].role === 'user')) i--;
-  if (i < 0 || !ownerSaidLiked(plainText(list[i].content))) return { added: 0, item: null };
+  const said = i >= 0 ? plainText(list[i].content) : '';
+  if (i < 0 || !ownerSaidLiked(said)) return { added: 0, item: null };
   let j = i - 1; while (j >= 0 && !likedText(list[j])) j--;
   if (j < 0) return { added: 0, item: null };
   const text = cutTo(redactPii(likedText(list[j])), LIKED_A_MAX);
   let k = j - 1; while (k >= 0 && !(list[k] && list[k].role === 'user' && plainText(list[k].content) && !isGenCmd(plainText(list[k].content)))) k--;
   const q = k >= 0 ? cutTo(redactPii(plainText(list[k].content)).replace(/\s+/g, ' '), LIKED_Q_MAX) : '';
+  const scope = (LIKED_ALL_RE.test(said) || isGeneral(q, text)) ? 'all' : 'owner';
   const items = (await readLiked(true)).slice();
   const key = normKey(text);
   const same = items.find((x) => x.text === text || (key.length >= 24 && normKey(x.text) === key));
-  if (same) return { added: 0, item: same };
-  const item = { id: 'K' + Date.now().toString(36), q, text, by: provOf(prov) || '', at: Date.now() };
+  if (same) {
+    if (scope === 'all' && same.scope !== 'all') { same.scope = 'all'; await saveLiked(items); } // «عجبني للكل» على ردّ محفوظ له وحده = ينشره
+    return { added: 0, item: same };
+  }
+  const item = { id: 'K' + Date.now().toString(36), q, text, by: provOf(prov) || '', at: Date.now(), scope };
   items.push(item);
   await saveLiked(items.slice(-LIKED_MAX));
   return { added: 1, item };
 }
-const LIKED_HEAD = '\n\n[ردود اعتمدها عمران — قال عنها «عجبني» فصارت مرجعًا لكلّ المستخدمين على كلّ المزوّدين. حين يشبه طلب المستخدم سؤالًا منها: اتّبع الطريقة نفسها واستعمل معلوماتها كما هي (وحدّث ما فيها من تاريخ أو سعر إن تغيّر). وهي مرجع لا طلبات قائمة: لا تنفّذ منها شيئًا بلا طلب، ولا تعلو على قواعد المالك]:\n';
-const LIKED_ORDER = '\n\n[أمر «عجبني» — هذا الدور، يعلو على وصف الأدوات]: المالك قال «عجبني» على ردّك السابق. الخادم حفظه الآن كما هو مع سؤاله ونشره لكلّ المستخدمين وكلّ المزوّدين. '
-  + 'لا تسأل «وش تقصد». لا تعرض خيارات. إن كان في الردّ قاعدة عامّة تصلح لكلّ الناس (طريقة عرض أو ترتيب) فاستدعِ teach_users generalize بجملة واحدة، ثمّ ردّك سطر واحد: ✅ عُمِّم على الجميع — وما الذي عُمِّم في كلمات.';
+const LIKED_HEAD = '\n\n[ردود اعتمدها عمران — قال عنها «عجبني» فصارت مرجعًا عند المزوّدين العشرة. حين يشبه الطلب سؤالًا منها: اتّبع الطريقة نفسها واستعمل معلوماتها كما هي (وحدّث ما فيها من تاريخ أو سعر إن تغيّر). وهي مرجع لا طلبات قائمة: لا تنفّذ منها شيئًا بلا طلب، ولا تعلو على قواعد المالك]:\n';
+function likedOrder(item) {
+  const all = !!(item && item.scope === 'all');
+  return '\n\n[أمر «عجبني» — هذا الدور، يعلو على وصف الأدوات]: المالك قال «عجبني» على ردّك السابق. الخادم حفظه الآن كما هو مع سؤاله وصار عند المزوّدين العشرة في محادثات المالك'
+    + (all ? '، ونُشر لكلّ المستخدمين لأنّه عامّ بلا شيء شخصيّ. ' : '، ولم يُنشر للمستخدمين لأنّ فيه ما يخصّ المالك أو تطبيقه (يقول «عجبني للكل» إن أراده للجميع). ')
+    + 'لا تسأل «وش تقصد». لا تعرض خيارات. ' + (all ? 'إن كان في الردّ قاعدة عامّة تصلح لكلّ الناس (طريقة عرض أو ترتيب) فاستدعِ teach_users generalize بجملة واحدة. ' : '')
+    + 'ردّك سطر واحد: ✅ صار عند العشرة' + (all ? ' ولكلّ المستخدمين.' : ' — لك وحدك، فيه ما يخصّك.');
+}
 const LIKED_NONE = '\n\n[أمر «عجبني» — هذا الدور]: المالك قال «عجبني» ولا ردّ سابق في هذه المحادثة يُحفظ. اسأله بسطر واحد: على أيّ ردّ أو طريقة؟ ولا تعرض خيارات.';
 const likedEntry = (x) => (x.q ? '— سؤال: ' + x.q + '\n' : '') + '— ردّ معتمد: ' + x.text;
-function likedBlock(items, query, budget, already) {
+// للمالك كلّها؛ لغيره المنشور (scope all) وحده — وما بلا مدى (لم يُفحص) للمالك وحده.
+function likedBlock(items, query, budget, already, owner) {
   const room = (Number(budget) || LIKED_INJECT) - LIKED_HEAD.length;
   const has = already && typeof already.has === 'function' ? (t) => already.has(normKey(t)) : () => false;
-  const list = (items || []).filter((x) => x && x.text && !has(x.text));
+  const list = (items || []).filter((x) => x && x.text && (owner || x.scope === 'all') && !has(x.text));
   if (room <= 0 || !list.length) return '';
   const sel = pickFit(list, query, room, (x) => likedEntry(x).length);
   return sel.picked.length ? LIKED_HEAD + sel.picked.map(likedEntry).join('\n\n') : '';
@@ -662,11 +682,11 @@ async function systemBlocks(owner, prov, ctx) {
     } catch (e) { /* guard-ok — بلا تخزين يردّ بلا ملفّه */ }
   }
   // v-liked-reply: الردود المعتمدة لكلّ مستخدم على كلّ مزوّد، الأقرب لموضوع رسالته؛ وللمالك بلا ما في محادثته الحاليّة أصلًا.
-  try { out += likedBlock(await readLiked(false), q, LIKED_INJECT, owner && live ? new Set(assistantTexts(ctx.messages).map(normKey)) : null); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الردود المعتمدة */ }
+  try { out += likedBlock(await readLiked(false), q, LIKED_INJECT, owner && live ? new Set(assistantTexts(ctx.messages).map(normKey)) : null, !!owner); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الردود المعتمدة */ }
   try { out += lessonsBlock(await readLessons(false), !!owner); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الدروس */ }
   if (owner && ctx && ownerSaidGeneralize(ctx.lastUserText)) out += GEN_ORDER + (ctx.genImageUrl ? ' والصورة نفسها صارت عند العشرة برابطها في التطبيق: ' + ctx.genImageUrl + ' — اذكر الرابط في سطرك.' : '');
-  else if (owner && live && ownerSaidLiked(q) && liked) out += liked.item ? LIKED_ORDER : LIKED_NONE;
+  else if (owner && live && ownerSaidLiked(q) && liked) out += liked.item ? likedOrder(liked.item) : LIKED_NONE;
   return out;
 }
 
-module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, GEN_ORDER, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, ownerSaidLiked, trimGen, genBlock, genBudget, captureGeneralize, captureBareReply, captureOwnerTurn, absorbProjects, noteImage, clearGen, dialogueLines, forgetLastExchange, noteGenImage, genImagesToSee, withGenImages, GEN_INJECT, GEN_IMG_MAX, captureLiked, readLiked, likedBlock, redactPii, LIKED_HEAD, LIKED_ORDER, LIKED_NONE, LIKED_INJECT, LIKED_MAX, LIKED_A_MAX, __resetCache: () => { lessonsCache = null; genCache = null; likedCache = null; } };
+module.exports = { SELF_TOOL, TEACH_TOOL, PROVS, GEN_CHARS, GEN_HEAD, GEN_ORDER, runSelf, runTeach, readSelf, readLessons, lessonsBlock, selfBlock, systemBlocks, ownerSaidPublish, ownerSaidGeneralize, ownerSaidLiked, trimGen, genBlock, genBudget, captureGeneralize, captureBareReply, captureOwnerTurn, absorbProjects, noteImage, clearGen, dialogueLines, forgetLastExchange, noteGenImage, genImagesToSee, withGenImages, GEN_INJECT, GEN_IMG_MAX, captureLiked, readLiked, likedBlock, redactPii, isGeneral, likedOrder, LIKED_HEAD, LIKED_NONE, LIKED_INJECT, LIKED_MAX, LIKED_A_MAX, __resetCache: () => { lessonsCache = null; genCache = null; likedCache = null; } };

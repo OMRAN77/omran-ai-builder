@@ -1,0 +1,56 @@
+# v-liked-reply — تجربة «عجبني» الحيّة على نشرة (معاينة فرع أو الإنتاج) بحساب المالك: ردّ من كلود ← «عجبني» ← سؤال groq وgemini
+# وdeepseek في محادثات جديدة عن الموضوع نفسه، ثمّ لقطات متصفّح حقيقيّة للتطبيق. يحتاج سرّ SAMPLE_TOKEN (رمز جلسة المالك كما في
+# video-samples). خمس رسائل مزوّد لا أكثر. يدويّ فقط. الحاوية السحابيّة لا تصل Vercel، فهذا هو «الجهاز» الذي يجرّب.
+name: liked-probe
+run-name: "liked ${{ inputs.base }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: عنوان النشرة (معاينة Vercel للفرع، أو الإنتاج)
+        required: true
+        default: https://omran-ai-builder.vercel.app
+      provs:
+        description: المزوّدون المسؤولون بعد «عجبني» (مفصولون بفواصل)
+        required: false
+        default: groq,gemini,deepseek
+
+permissions:
+  contents: read
+
+concurrency:
+  group: liked-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright Chromium
+        run: |
+          npm i --no-save playwright >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+      - name: «عجبني» على كلود ثمّ السؤال عند المزوّدين، ولقطات الواجهة
+        env:
+          PROBE_BASE: ${{ inputs.base }}
+          PROBE_PROVS: ${{ inputs.provs }}
+          OWNER_TOKEN: ${{ secrets.SAMPLE_TOKEN }}
+        run: |
+          mkdir -p liked-probe
+          node scripts/liked-probe.mjs 2>&1 | tee liked-probe/log.txt
+          exit ${PIPESTATUS[0]}
+      - name: Upload report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liked-probe
+          path: liked-probe/
+          retention-days: 7
