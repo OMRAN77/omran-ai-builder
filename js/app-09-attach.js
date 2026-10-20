@@ -4739,10 +4739,10 @@ function __friendlyErr(e){
       let __pdfSrc = null;
       for(let __i = cur.messages.length - 1; __i >= 0; __i--){
         const __m = cur.messages[__i];
-        if(__m.role !== 'user' && __m.content && !__m._loading && String(__m.content).length > 60){ __pdfSrc = String(__m.content); break; }
+        if(__m.role !== 'user' && __m.content && !__m._loading && !__m._diag && String(__m.content).length > 60){ __pdfSrc = String(__m.content); break; } // v-diag-turn: سطر التشخيص ليس مصدرًا
       }
       if(__pdfSrc){
-        exportTextAsPdf(__pdfSrc);
+        exportTextAsPdf(__pdfSrc); __run.localDone = true; /* v-diag-turn: مخرج مقصود بلا ردّ — لا «تشخيص الرد الغائب» */
         renderAll(); saveState();
         return;
       }
@@ -4938,7 +4938,7 @@ function __friendlyErr(e){
         };
         window.__stImgCount = __stImgs.length;
         var __stHint = await window.__stPickTheme();
-        if(!__stHint){ thinkingDiv.remove(); renderAll(); saveState(); return; }
+        if(!__stHint){ __run.localDone = true; thinkingDiv.remove(); renderAll(); saveState(); return; } // v-diag-turn: الإلغاء بلا تشخيص
         // فاجئني → أرسل hint فارغ عشان السيرفر يختار عشوائياً
         var __stFinalHint = __stHint === 'فاجئني' ? '' : __stHint;
         __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
@@ -5115,7 +5115,7 @@ function __friendlyErr(e){
     };
     if(__talkCharIntent && !(__charImg && __charImg.b64)){
       const __pick = await window.pickTalkCharacter(lang==='ar');
-      if(__pick === null){ thinkingDiv && thinkingDiv.remove(); return; }
+      if(__pick === null){ __run.localDone = true; thinkingDiv && thinkingDiv.remove(); return; } // v-diag-turn: الإلغاء بلا تشخيص
       if(__pick === 'upload'){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'📎 ارفع صورتك من زر المشبك ثم أعد نفس الطلب مع الجملة اللي تبي الشخصية تقولها.':'📎 Attach your photo, then resend the same request with the line you want the character to say.') });
         thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
@@ -5174,7 +5174,7 @@ function __friendlyErr(e){
         });
       };
       const __tcChoice = await window.askTalkCharOpts(lang==='ar');
-      if(__tcChoice === null){ thinkingDiv && thinkingDiv.remove(); return; }
+      if(__tcChoice === null){ __run.localDone = true; thinkingDiv && thinkingDiv.remove(); return; } // v-diag-turn: الإلغاء بلا تشخيص
       if(__tcChoice === 'more'){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'✨ الفيديوهات الأطول والخيارات الإضافية متاحة في الباقات المدفوعة — افتح ⚙️ ← الاشتراك لترقية باقتك وتطلّع فيديوهات أطول بجودة أعلى.':'✨ Longer videos and extra options are available on paid plans — open ⚙️ → Subscription to upgrade and create longer, higher-quality videos.') });
         thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
@@ -7457,24 +7457,11 @@ DESIGN RULES (non-negotiable):
     __omranRunEnd(__run); /* v-parallel-chats: يُفكّ قفل هذه المحادثة وحدها؛ زرّ الإرسال يرجع إن كانت هي المعروضة */
     saveState();
     renderAll(__keepReaderPosition);
-    /* v-diag-turn: لو انتهى الدور بلا رد ظاهر (لا نصّ ولا كود ولا مرفق) وليس
-       إيقافًا من المستخدم — نعرض سطر تشخيص فيه سبب الغياب الحقيقي. مؤقّت للتشخيص. */
+    /* v-diag-turn: دور انتهى بلا ردّ ظاهر — سطر التشخيص للمالك وحده ولا بعد مخرج محلّيّ مقصود (omranDiagTurnMsg). */
     try{
-      var __la = cur.messages[cur.messages.length - 1];
-      var __visible = !!(__la && __la.role === 'assistant' && (String(__la.content || '').trim() || __la.code || (__la.attachments && __la.attachments.length)));
-      if(!__visible && !__run.timedOut && !isPureGreeting(text) && !isCasualCheckIn(text)){
-        var __d = window.__diagTurn || {};
-        cur.messages.push({ role: 'assistant', _diag: true, content:
-          '🔧 تشخيص الرد الغائب:\n'
-          + '• المزوّد: ' + (__d.provider || '—') + '\n'
-          + '• المسار: ' + (__d.path || '—') + '\n'
-          + '• طول الرد المُستلَم: ' + (__d.replyLen >= 0 ? (__d.replyLen + ' حرف') : 'لم يصل') + '\n'
-          + '• الوقت: ' + Math.round((Date.now() - (__d.t0 || Date.now())) / 1000) + ' ثانية\n'
-          + '• خطأ مسار الأدوات: ' + ((__d.toolsErr || '').slice(0, 200) || 'لا يوجد') + '\n'
-          + '• الخطأ النهائي: ' + ((__d.err || '').slice(0, 200) || 'لا يوجد') + '\n'
-          + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة/idle = انقطاع الاتصال)' });
-        renderAll(__keepReaderPosition);
-      }
+      var __dgm = omranDiagTurnMsg(cur, text, __run);
+      if(__dgm){ cur.messages.push(__dgm); renderAll(__keepReaderPosition); }
+      else if(thinkingDiv && thinkingDiv.isConnected) thinkingDiv.remove(); // دور بلا رسالة (تصدير PDF): «يعمل…» لا يبقى
     }catch(e){ __swallow(e, 'ui:diag-finally'); }
     // 🧠 تحديث ذاكرة المستخدم بعد اكتمال الرد (بدون انتظار)
     try{
@@ -7643,6 +7630,26 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
 if('speechSynthesis' in window){
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+}
+
+/* v-diag-turn (تشخيص «النص الطويل ما يرد»): دور انتهى بلا ردّ ظاهر (لا نصّ ولا كود ولا مرفق)، وليس إيقافًا ولا مهلة — سطر فيه المزوّد
+   والمسار وطول الردّ والوقت والخطأ. تدقيق ١٨ أكتوبر + أمر المالك ٢٠ أكتوبر، الدفعة ٤ («رسالة 🔧 تشخيص الرد الغائب تنضاف بعد إلغاء أو حطّه
+   في PDF»؛ من حزمة a3 في ten-a): للمالك وحده (فيه اسم المزوّد ونصّ تقنيّ عربيّ)، ولا بعد مخرج محلّيّ مقصود بلا ردّ (run.localDone: تصدير PDF،
+   وإلغاء الطوابع أو الشخصيّة الناطقة). null = لا سطر. */
+function omranDiagTurnMsg(cur, text, run){
+  const la = cur.messages[cur.messages.length - 1];
+  const visible = !!(la && la.role === 'assistant' && (String(la.content || '').trim() || la.code || (la.attachments && la.attachments.length)));
+  if(visible || (run && (run.timedOut || run.localDone)) || !(typeof omranOwnerUi === 'function' && omranOwnerUi()) || isPureGreeting(text) || isCasualCheckIn(text)) return null;
+  const d = window.__diagTurn || {};
+  return { role: 'assistant', _diag: true, content:
+    '🔧 تشخيص الرد الغائب:\n'
+    + '• المزوّد: ' + (d.provider || '—') + '\n'
+    + '• المسار: ' + (d.path || '—') + '\n'
+    + '• طول الرد المُستلَم: ' + (d.replyLen >= 0 ? (d.replyLen + ' حرف') : 'لم يصل') + '\n'
+    + '• الوقت: ' + Math.round((Date.now() - (d.t0 || Date.now())) / 1000) + ' ثانية\n'
+    + '• خطأ مسار الأدوات: ' + ((d.toolsErr || '').slice(0, 200) || 'لا يوجد') + '\n'
+    + '• الخطأ النهائي: ' + ((d.err || '').slice(0, 200) || 'لا يوجد') + '\n'
+    + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة/idle = انقطاع الاتصال)' };
 }
 
 /* ───────── تأكيد قبل صرف النقاط ─────────

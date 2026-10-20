@@ -6914,11 +6914,29 @@ function __projBlobEach(projects, fn){
   });
 }
 function __blobDegraded(o, k){ return !!(o && o.vaultId && !o.vaultPending && (typeof o[k] !== 'string' || o[k].length <= VAULT_MIN)); }
+/* v-gen-thumb (تدقيق ١٨–١٩ أكتوبر: الصور المولَّدة مكسورة «image.png» حين تُفتح المحادثة من جهاز ثانٍ؛ أمر المالك ٢٠ أكتوبر، الدفعة ٤): مرفقات المستخدم وحدها تحصل
+   على مصغّرة الخادم عند الرفع (makeServerThumb في app-09)، فالصورة المولَّدة الكبيرة تصل نسخة المزامنة «[media]» أو فارغة. هنا تُصنع
+   لها مرّة واحدة بلا انتظار — في طابور نسخ العرض (__viewQ) كي لا تُفكّ أصول كثيرة معًا — ثمّ تُبطَل نسخة المزامنة وتُجدول. */
+const __genThumbTried = new WeakSet();
+function __genThumbKick(a){
+  if(!a || !a.isImage || a.serverThumb || __genThumbTried.has(a) || typeof window === 'undefined' || typeof window.makeServerThumb !== 'function') return;
+  __genThumbTried.add(a);
+  __viewQ = __viewQ.then(() => {
+    if(a.serverThumb || !__isBigDataImg(a.dataUrl)){ __genThumbTried.delete(a); return; } /* أُخلي الأصل قبل دوره: يُعاد حين يرجع */
+    return window.makeServerThumb(a.dataUrl).then(th => {
+      if(typeof th !== 'string' || th.slice(0, 11) !== 'data:image/') return;
+      a.serverThumb = th;
+      __slimCache = null;
+      try{ scheduleChatsServerSync(); }catch(e){ __swallow(e, 'thumb:sync'); }
+    });
+  }).catch(e => __swallow(e, 'thumb:make'));
+}
 /* يعيّن معرّفًا لكل صورة كبيرة بلا معرّف ويعيد ما يجب كتابته في المخزن */
 function __vaultAssign(projects, now){
   const puts = [];
   __vaultEach(projects, a => {
     if(typeof a.dataUrl !== 'string' || a.dataUrl.length <= VAULT_MIN) return;
+    if(a.isImage && !a.serverThumb) __genThumbKick(a); /* v-gen-thumb */
     if(!a.vaultId){ a.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); a.vaultPending = true; }
     if(a.vaultPending) puts.push({ id: a.vaultId, dataUrl: a.dataUrl, ref: a });
   });
@@ -8706,7 +8724,7 @@ function renderMessages(keepScroll){
           else if(a.viewUrl) img.src = a.viewUrl;
           else if(__isBigDataImg(a.dataUrl) || __vaultDegraded(a)){
             if(__isBigDataImg(a.dataUrl) && (!a.vaultId || a.vaultPending)) img.src = a.dataUrl;
-            __imgView(a).then(u => __showSrc(u || (__isBigDataImg(a.dataUrl) ? a.dataUrl : ''))).catch(e => __swallow(e, 'img:view')); /* v-view-blank: بلا نسخة = الأصل، لا صورة بلا src */
+            __imgView(a).then(u => __showSrc(u || (String(a.dataUrl || '').slice(0, 11) === 'data:image/' ? a.dataUrl : ''))).catch(e => __swallow(e, 'img:view')); /* v-view-blank: بلا نسخة = الأصل، لا صورة بلا src · v-gen-thumb: والجهاز الثاني بلا أصل ولا نسخة عرض يرسم مصغّرة المزامنة */
           } else img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
           /* v-image-vault/v-mem-guard2: أدوات المشاركة والحفظ تحتاج الأصل — يُقرأ من المخزن (قراءة مشتركة) وتُلحق حين يصل */
           if(__vaultDegraded(a) && !window.__usingSlimProjects){ __vaultRead(a).then(d => { if(__isBigDataImg(d)) setTimeout(() => { if(img.isConnected && __ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); }, 0); }).catch(e => __swallow(e, 'vault:render')); }
@@ -25564,10 +25582,10 @@ function __friendlyErr(e){
       let __pdfSrc = null;
       for(let __i = cur.messages.length - 1; __i >= 0; __i--){
         const __m = cur.messages[__i];
-        if(__m.role !== 'user' && __m.content && !__m._loading && String(__m.content).length > 60){ __pdfSrc = String(__m.content); break; }
+        if(__m.role !== 'user' && __m.content && !__m._loading && !__m._diag && String(__m.content).length > 60){ __pdfSrc = String(__m.content); break; } // v-diag-turn: سطر التشخيص ليس مصدرًا
       }
       if(__pdfSrc){
-        exportTextAsPdf(__pdfSrc);
+        exportTextAsPdf(__pdfSrc); __run.localDone = true; /* v-diag-turn: مخرج مقصود بلا ردّ — لا «تشخيص الرد الغائب» */
         renderAll(); saveState();
         return;
       }
@@ -25763,7 +25781,7 @@ function __friendlyErr(e){
         };
         window.__stImgCount = __stImgs.length;
         var __stHint = await window.__stPickTheme();
-        if(!__stHint){ thinkingDiv.remove(); renderAll(); saveState(); return; }
+        if(!__stHint){ __run.localDone = true; thinkingDiv.remove(); renderAll(); saveState(); return; } // v-diag-turn: الإلغاء بلا تشخيص
         // فاجئني → أرسل hint فارغ عشان السيرفر يختار عشوائياً
         var __stFinalHint = __stHint === 'فاجئني' ? '' : __stHint;
         __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
@@ -25940,7 +25958,7 @@ function __friendlyErr(e){
     };
     if(__talkCharIntent && !(__charImg && __charImg.b64)){
       const __pick = await window.pickTalkCharacter(lang==='ar');
-      if(__pick === null){ thinkingDiv && thinkingDiv.remove(); return; }
+      if(__pick === null){ __run.localDone = true; thinkingDiv && thinkingDiv.remove(); return; } // v-diag-turn: الإلغاء بلا تشخيص
       if(__pick === 'upload'){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'📎 ارفع صورتك من زر المشبك ثم أعد نفس الطلب مع الجملة اللي تبي الشخصية تقولها.':'📎 Attach your photo, then resend the same request with the line you want the character to say.') });
         thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
@@ -25999,7 +26017,7 @@ function __friendlyErr(e){
         });
       };
       const __tcChoice = await window.askTalkCharOpts(lang==='ar');
-      if(__tcChoice === null){ thinkingDiv && thinkingDiv.remove(); return; }
+      if(__tcChoice === null){ __run.localDone = true; thinkingDiv && thinkingDiv.remove(); return; } // v-diag-turn: الإلغاء بلا تشخيص
       if(__tcChoice === 'more'){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'✨ الفيديوهات الأطول والخيارات الإضافية متاحة في الباقات المدفوعة — افتح ⚙️ ← الاشتراك لترقية باقتك وتطلّع فيديوهات أطول بجودة أعلى.':'✨ Longer videos and extra options are available on paid plans — open ⚙️ → Subscription to upgrade and create longer, higher-quality videos.') });
         thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
@@ -28282,24 +28300,11 @@ DESIGN RULES (non-negotiable):
     __omranRunEnd(__run); /* v-parallel-chats: يُفكّ قفل هذه المحادثة وحدها؛ زرّ الإرسال يرجع إن كانت هي المعروضة */
     saveState();
     renderAll(__keepReaderPosition);
-    /* v-diag-turn: لو انتهى الدور بلا رد ظاهر (لا نصّ ولا كود ولا مرفق) وليس
-       إيقافًا من المستخدم — نعرض سطر تشخيص فيه سبب الغياب الحقيقي. مؤقّت للتشخيص. */
+    /* v-diag-turn: دور انتهى بلا ردّ ظاهر — سطر التشخيص للمالك وحده ولا بعد مخرج محلّيّ مقصود (omranDiagTurnMsg). */
     try{
-      var __la = cur.messages[cur.messages.length - 1];
-      var __visible = !!(__la && __la.role === 'assistant' && (String(__la.content || '').trim() || __la.code || (__la.attachments && __la.attachments.length)));
-      if(!__visible && !__run.timedOut && !isPureGreeting(text) && !isCasualCheckIn(text)){
-        var __d = window.__diagTurn || {};
-        cur.messages.push({ role: 'assistant', _diag: true, content:
-          '🔧 تشخيص الرد الغائب:\n'
-          + '• المزوّد: ' + (__d.provider || '—') + '\n'
-          + '• المسار: ' + (__d.path || '—') + '\n'
-          + '• طول الرد المُستلَم: ' + (__d.replyLen >= 0 ? (__d.replyLen + ' حرف') : 'لم يصل') + '\n'
-          + '• الوقت: ' + Math.round((Date.now() - (__d.t0 || Date.now())) / 1000) + ' ثانية\n'
-          + '• خطأ مسار الأدوات: ' + ((__d.toolsErr || '').slice(0, 200) || 'لا يوجد') + '\n'
-          + '• الخطأ النهائي: ' + ((__d.err || '').slice(0, 200) || 'لا يوجد') + '\n'
-          + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة/idle = انقطاع الاتصال)' });
-        renderAll(__keepReaderPosition);
-      }
+      var __dgm = omranDiagTurnMsg(cur, text, __run);
+      if(__dgm){ cur.messages.push(__dgm); renderAll(__keepReaderPosition); }
+      else if(thinkingDiv && thinkingDiv.isConnected) thinkingDiv.remove(); // دور بلا رسالة (تصدير PDF): «يعمل…» لا يبقى
     }catch(e){ __swallow(e, 'ui:diag-finally'); }
     // 🧠 تحديث ذاكرة المستخدم بعد اكتمال الرد (بدون انتظار)
     try{
@@ -28468,6 +28473,26 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
 if('speechSynthesis' in window){
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+}
+
+/* v-diag-turn (تشخيص «النص الطويل ما يرد»): دور انتهى بلا ردّ ظاهر (لا نصّ ولا كود ولا مرفق)، وليس إيقافًا ولا مهلة — سطر فيه المزوّد
+   والمسار وطول الردّ والوقت والخطأ. تدقيق ١٨ أكتوبر + أمر المالك ٢٠ أكتوبر، الدفعة ٤ («رسالة 🔧 تشخيص الرد الغائب تنضاف بعد إلغاء أو حطّه
+   في PDF»؛ من حزمة a3 في ten-a): للمالك وحده (فيه اسم المزوّد ونصّ تقنيّ عربيّ)، ولا بعد مخرج محلّيّ مقصود بلا ردّ (run.localDone: تصدير PDF،
+   وإلغاء الطوابع أو الشخصيّة الناطقة). null = لا سطر. */
+function omranDiagTurnMsg(cur, text, run){
+  const la = cur.messages[cur.messages.length - 1];
+  const visible = !!(la && la.role === 'assistant' && (String(la.content || '').trim() || la.code || (la.attachments && la.attachments.length)));
+  if(visible || (run && (run.timedOut || run.localDone)) || !(typeof omranOwnerUi === 'function' && omranOwnerUi()) || isPureGreeting(text) || isCasualCheckIn(text)) return null;
+  const d = window.__diagTurn || {};
+  return { role: 'assistant', _diag: true, content:
+    '🔧 تشخيص الرد الغائب:\n'
+    + '• المزوّد: ' + (d.provider || '—') + '\n'
+    + '• المسار: ' + (d.path || '—') + '\n'
+    + '• طول الرد المُستلَم: ' + (d.replyLen >= 0 ? (d.replyLen + ' حرف') : 'لم يصل') + '\n'
+    + '• الوقت: ' + Math.round((Date.now() - (d.t0 || Date.now())) / 1000) + ' ثانية\n'
+    + '• خطأ مسار الأدوات: ' + ((d.toolsErr || '').slice(0, 200) || 'لا يوجد') + '\n'
+    + '• الخطأ النهائي: ' + ((d.err || '').slice(0, 200) || 'لا يوجد') + '\n'
+    + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة/idle = انقطاع الاتصال)' };
 }
 
 /* ───────── تأكيد قبل صرف النقاط ─────────
@@ -32688,9 +32713,14 @@ async function __safeJson(res){
   function syncPlace(){
     const on = !!(placeEl && placeEl.value);
     const dz = modal.querySelector('.dzArea');
-    if(dz) dz.style.display = on ? 'none' : '';
-    if(on && sourcePreview) sourcePreview.style.display = 'none';
+    /* v-decor-place-sync (تدقيق ١٨ أكتوبر + أمر المالك ٢٠ أكتوبر، الدفعة ٤: «الديكور يحذف الصورة بدون تنبيه»): ‎.omUpArt{display:block !important}‎
+       (v-upload-art) كان يغلب الإخفاء المضمَّن العاديّ، فبقي مربّع الرفع واسم الملفّ ظاهرين مع المكان والصورة لا تُرسل. المضمَّن المهمّ يغلب مهمّ ورقة الأنماط. */
+    if(dz){ if(on) dz.style.setProperty('display', 'none', 'important'); else dz.style.removeProperty('display'); }
+    /* والرجوع إلى «من صورتي» يعيد معاينة الصورة المرفوعة (كانت تبقى مخفيّة والصورة تُرسل) */
+    if(sourcePreview) sourcePreview.style.display = (!on && selectedBase64) ? 'block' : 'none';
   }
+  /* بطاقة «نوع المكان» (selTrigger في design-sels) تتبع ما تكتبه نقاط البوستر ورقائقه بلا change — فلا يُخفى مربّع الرفع لمجرّد تصفّح الأفكار */
+  function placeCard(){ try{ if(placeEl && placeEl.__tr) placeEl.__tr.refresh(); }catch(e){ __swallow(e, 'decor:place-card'); } }
   if(placeEl) placeEl.addEventListener('change', syncPlace);
   if(btnOpen) btnOpen.addEventListener('click', () => setTimeout(syncPlace, 0));
   const styleEl = $('#designAiStyle');
@@ -32743,6 +32773,8 @@ async function __safeJson(res){
     if(!file) return;
     if(suggestStatusEl) suggestStatus(''); /* v-decor-suggest-msg: «ارفع صورة الغرفة أولًا» تحت الزرّ لا يبقى بعد رفعها */
     selectedFile = file;
+    /* v-decor-place-sync: صورة جديدة ترجع «نوع المكان» إلى «من صورتي» (بحدث change فتتبعه البطاقة والمربّع) — كان المكان يُسقطها بلا تنبيه */
+    if(placeEl && placeEl.value){ placeEl.value = ''; placeEl.dispatchEvent(new Event('change', { bubbles: true })); }
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
     __compressImg(file, function(dataUrl){
@@ -32791,7 +32823,7 @@ async function __safeJson(res){
         c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
         c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
         c.textContent = optName(o);
-        c.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+        c.onclick = function(){ placeEl.value = o.value; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
         ideaChips.appendChild(c);
       });
     }
@@ -32833,7 +32865,7 @@ async function __safeJson(res){
           ' font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
         b.appendChild(cap);
       }
-      b.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+      b.onclick = function(){ placeEl.value = o.value; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
       wrap.appendChild(b);
     });
 
@@ -32895,12 +32927,13 @@ async function __safeJson(res){
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
   }
   if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button[data-place]'), function(c){
-    c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
+    c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
   });
   if(ideaGo) ideaGo.onclick = function(){
     const v = ideaText ? ideaText.value.trim() : '';
     if(!v){ ideaStatus(bT('اكتب ما تريد أو اختر نوع المكان.', 'Describe what you want or pick a place.')); return; }
     if(placeEl) placeEl.value = '';
+    placeCard();
     loadIdeas({ q: v });
   };
   if(ideaAI) ideaAI.onclick = async function(){
@@ -33903,16 +33936,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
      (نفس عطب v-slider-touch القديم لكن بجذر مختلف — الحاوية لا عنصر input). النقر في أيّ نقطة من
      الصورة يقفز الفاصل إليها فورًا (نمط مقارنة الصور المعتاد)، لا يقتصر على سحب المقبض فقط. */
   let comparePct = 100;
+  /* v-pcompare-box (تدقيق ١٨ أكتوبر + أمر المالك ٢٠ أكتوبر، الدفعة ٤: «قبل» و«بعد» معكوسة وصورة «بعد» مزاحة عن الأصل): عرض الطبقة كان يتغيّر
+     وعرض النتيجة يُقاس بالبكسل من عرض الإطار — والإطار مخفيّ تحت مشهد الانتظار لحظة القياس فيرجع ٠، فتأخذ النتيجة عرضها الطبيعيّ يسارًا والأصل موسَّط.
+     الطبقة الآن بملء الإطار وتُقصّ بـclip-path، والصورتان contain في الصندوق نفسه (partials-core) — لا قياس ولا مستمع resize. */
   function setComparePct(pct){
     comparePct = Math.max(0, Math.min(100, pct));
-    if(compareAfterWrap) compareAfterWrap.style.width = comparePct + '%';
+    if(compareAfterWrap) compareAfterWrap.style.clipPath = 'inset(0 ' + (100 - comparePct) + '% 0 0)';
     const divider = $('#portraitCompareDivider');
     if(divider) divider.style.left = comparePct + '%';
-  }
-  function layoutCompareAfter(){
-    if(!compareWrap || !resultEl) return;
-    const w = compareWrap.offsetWidth;
-    if(w) resultEl.style.width = w + 'px';
   }
   let __compareDragging = false;
   function comparePctFromEvent(ev){
@@ -33932,7 +33963,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     compareWrap.addEventListener('pointermove', (ev) => { if(__compareDragging) setComparePct(comparePctFromEvent(ev)); });
     ['pointerup', 'pointercancel'].forEach((evt) => compareWrap.addEventListener(evt, () => { __compareDragging = false; }));
   }
-  window.addEventListener('resize', layoutCompareAfter);
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
@@ -34084,7 +34114,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           compareBefore.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
           compareWrap.style.display = 'block';
           setComparePct(100);
-          layoutCompareAfter();
         }
         downloadEl.href = dataUrl;
         downloadEl.setAttribute('download', 'omran-portrait-style.png');
@@ -35556,6 +35585,63 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     }catch(e){ /* ignore */ }
   })();
 })();
+/* ---------- v-md-lite: ماركداون خفيف آمن لردود التحليل والدرس و«التفاصيل والتكلفة» (الدفعة ٤؛ من حزمة a10 في ten-a) ----------
+   كانت تُوضع textContent فيظهر ### و** و--- خامًا، وعلامات ** المحايدة تقلب «RSI 14 = 61.2» في السطر العربيّ (تدقيق ١٨–١٩ أكتوبر).
+   النصّ يمرّ نصًّا دائمًا (لا innerHTML لنصّ الردّ): «### عنوان» سطر عريض، و**x** عريض، وسطر --- فاصل، و- أو * أوّل السطر نقطة •.
+   الحاويات white-space:pre-wrap فتبقى السطور بفواصلها. __omMdLiteHtml للتقرير المطبوع: يُهرَّب كلّ جزء ثمّ الوسوم نفسها. */
+(function(){
+  function inline(s){
+    var out = [], re = /\*\*([^*]+?)\*\*/g, last = 0, m;
+    function plain(x){ x = x.replace(/\*\*/g, ''); if(x) out.push({ t: x }); }
+    while((m = re.exec(s))){ plain(s.slice(last, m.index)); out.push({ t: m[1], b: true }); last = re.lastIndex; }
+    plain(s.slice(last));
+    return out;
+  }
+  function lines(text){
+    return String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n').map(function(line){
+      var m;
+      if(/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) return { hr: true };
+      if((m = line.match(/^\s*#{1,6}\s+(.*?)[\s#]*$/))) return { head: true, parts: inline(m[1]) };
+      if((m = line.match(/^(\s*)[-*+]\s+(.*)$/))) return { pre: m[1] + '• ', parts: inline(m[2]) };
+      return { parts: inline(line) };
+    });
+  }
+  window.__omMdLite = function(text){
+    var frag = document.createDocumentFragment(), afterBlock = true;
+    lines(text).forEach(function(L){
+      if(L.hr){
+        var hr = document.createElement('hr');
+        hr.style.cssText = 'border:0; border-top:1px solid rgba(128,128,128,.35); margin:8px 0;';
+        frag.appendChild(hr); afterBlock = true; return;
+      }
+      if(!afterBlock) frag.appendChild(document.createTextNode('\n'));
+      afterBlock = false;
+      var host = frag;
+      if(L.head){ host = document.createElement('b'); frag.appendChild(host); }
+      if(L.pre) host.appendChild(document.createTextNode(L.pre));
+      L.parts.forEach(function(p){
+        if(p.b){ var b = document.createElement('b'); b.textContent = p.t; host.appendChild(b); return; }
+        /* مسافتا الطرفين عقدتان منفصلتان: منظِّف الإيموجي (v-clean-ui) يقصّ أطراف كلّ عقدة فيها إيموجي فتلتصق الكلمة بالعريض جنبها */
+        var w = p.t.match(/^(\s*)([\s\S]*?)(\s*)$/);
+        [w[1], w[2], w[3]].forEach(function(x){ if(x) host.appendChild(document.createTextNode(x)); });
+      });
+    });
+    return frag;
+  };
+  function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  window.__omMdLiteHtml = function(text){
+    var out = '', afterBlock = true;
+    lines(text).forEach(function(L){
+      if(L.hr){ out += '<hr>'; afterBlock = true; return; }
+      if(!afterBlock) out += '\n';
+      afterBlock = false;
+      var s = (L.pre ? esc(L.pre) : '') + L.parts.map(function(p){ return p.b ? '<b>' + esc(p.t) + '</b>' : esc(p.t); }).join('');
+      out += L.head ? '<b>' + s + '</b>' : s;
+    });
+    return out;
+  };
+})();
+
 /* ---------- 📈 Stocks (Twelve Data, server-side owner key) ---------- */
 (function(){
   /* v-store-safe-revert (أمر عمران صريح ٢٢ سبتمبر — بعد تحذيره من مخاطرة رفض
@@ -35586,6 +35672,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(!r.ok) throw new Error(j.error || 'HTTP '+r.status);
     return j;
   }
+
+  /* v-md-lite: ردّ ماركداون يُرسم منسّقًا (بلا ### و** و--- خامّة) */
+  function setMd(el, text){ el.textContent = ''; el.appendChild(window.__omMdLite(text)); }
 
   function fmt(n, d){ return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('en-US', {maximumFractionDigits: d==null?2:d}) : '—'; }
 
@@ -35809,7 +35898,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     try{
       const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
       const j = await api({ mode:'analyze', symbol: currentSym, question: questionEl.value.trim(), lang: lang });
-      analysisEl.textContent = j.analysis || '⚠️';
+      if(j.analysis) setMd(analysisEl, j.analysis); else analysisEl.textContent = '⚠️'; // v-md-lite
     }catch(err){
       analysisEl.textContent = '⚠️ ' + (err && err.message || err);
     }
@@ -35835,7 +35924,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     try{
       const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
       const j = await api({ mode:'learn', topic: topic||'', question: question||'', symbol: currentSym || 'AAPL', lang: lang });
-      lessonEl.textContent = j.lesson || ('⚠️ ' + (j.claudeError || ''));
+      if(j.lesson) setMd(lessonEl, j.lesson); else lessonEl.textContent = '⚠️ ' + (j.claudeError || ''); // v-md-lite
     }catch(err){
       lessonEl.textContent = '⚠️ ' + (err && err.message || err);
     }
@@ -36038,7 +36127,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         var box = $('#pfLesson');
         box.style.display = 'block'; box.textContent = '🎓 معلمك يجهز درسًا على ' + sym + ' بالأرقام الحية…';
         api({ mode:'learn', symbol: sym, question: 'أنا مبتدئ وأملك هذا السهم في محفظتي التعليمية. علمني ماذا أراقب فيه الآن (الاتجاه، الدعم والمقاومة، متى أفكر بالبيع) بالأرقام الحية.', lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
-          .then(function(d){ box.textContent = d.lesson || 'تعذر الدرس الآن — حاول بعد قليل.'; })
+          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = 'تعذر الدرس الآن — حاول بعد قليل.'; }) // v-md-lite
           .catch(function(e){ box.textContent = '⚠️ ' + (e.message || 'تعذر الدرس'); });
       };
     });
@@ -36314,7 +36403,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         }
         lastData = data;
         if(data.planText){
-          planTextEl.textContent = data.planText;
+          planTextEl.textContent = ''; planTextEl.appendChild(window.__omMdLite(data.planText)); /* v-md-lite: كان ### و** خامًا */
           planTextEl.style.display = 'block';
         }
         renderBoq(boqRows());
@@ -36371,7 +36460,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + 'th,td{border:1px solid #bbb;padding:5px 7px;text-align:right}th{background:#e6f2f0}'
       + 'figure{margin:0 0 12px;page-break-inside:avoid}img{width:100%;border:1px solid #ccc;border-radius:6px}'
       + 'figcaption{font-size:11.5px;color:#555;margin-top:4px;text-align:center}'
-      + 'pre{white-space:pre-wrap;font-family:inherit;font-size:12.5px;line-height:1.85;margin:0}'
+      + '.plan{white-space:pre-wrap;font-size:12.5px;line-height:1.85;margin:0}.plan hr{border:0;border-top:1px solid #ccc;margin:8px 0}' /* v-md-lite */
       + 'footer{margin-top:22px;font-size:11px;color:#666;border-top:1px solid #ddd;padding-top:8px}'
       + '@media print{header,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
       + '</style></head><body><header><h1>🏗️ تقرير مشروع البناء</h1><p>' + esc(meta)
@@ -36379,7 +36468,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + fig(lastData.imageBase64, lastData.mimeType, 'المخطط المعماري')
       + fig(lastData.photoImageBase64, lastData.photoMimeType, 'الواجهة الخارجية')
       + fig(lastData.interiorImageBase64, lastData.interiorMimeType, 'التصميم الداخلي')
-      + '<h2>📋 التفاصيل والتكلفة</h2><pre>' + esc(lastData.planText || '') + '</pre>' + tbl
+      + '<h2>📋 التفاصيل والتكلفة</h2><div class="plan">' + window.__omMdLiteHtml(lastData.planText || '') + '</div>' + tbl
       + '<footer>تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.</footer>'
       + '</body></html>');
     /* v-cons-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة الطباعة

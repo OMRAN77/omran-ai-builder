@@ -77,9 +77,14 @@ async function __safeJson(res){
   function syncPlace(){
     const on = !!(placeEl && placeEl.value);
     const dz = modal.querySelector('.dzArea');
-    if(dz) dz.style.display = on ? 'none' : '';
-    if(on && sourcePreview) sourcePreview.style.display = 'none';
+    /* v-decor-place-sync (تدقيق ١٨ أكتوبر + أمر المالك ٢٠ أكتوبر، الدفعة ٤: «الديكور يحذف الصورة بدون تنبيه»): ‎.omUpArt{display:block !important}‎
+       (v-upload-art) كان يغلب الإخفاء المضمَّن العاديّ، فبقي مربّع الرفع واسم الملفّ ظاهرين مع المكان والصورة لا تُرسل. المضمَّن المهمّ يغلب مهمّ ورقة الأنماط. */
+    if(dz){ if(on) dz.style.setProperty('display', 'none', 'important'); else dz.style.removeProperty('display'); }
+    /* والرجوع إلى «من صورتي» يعيد معاينة الصورة المرفوعة (كانت تبقى مخفيّة والصورة تُرسل) */
+    if(sourcePreview) sourcePreview.style.display = (!on && selectedBase64) ? 'block' : 'none';
   }
+  /* بطاقة «نوع المكان» (selTrigger في design-sels) تتبع ما تكتبه نقاط البوستر ورقائقه بلا change — فلا يُخفى مربّع الرفع لمجرّد تصفّح الأفكار */
+  function placeCard(){ try{ if(placeEl && placeEl.__tr) placeEl.__tr.refresh(); }catch(e){ __swallow(e, 'decor:place-card'); } }
   if(placeEl) placeEl.addEventListener('change', syncPlace);
   if(btnOpen) btnOpen.addEventListener('click', () => setTimeout(syncPlace, 0));
   const styleEl = $('#designAiStyle');
@@ -132,6 +137,8 @@ async function __safeJson(res){
     if(!file) return;
     if(suggestStatusEl) suggestStatus(''); /* v-decor-suggest-msg: «ارفع صورة الغرفة أولًا» تحت الزرّ لا يبقى بعد رفعها */
     selectedFile = file;
+    /* v-decor-place-sync: صورة جديدة ترجع «نوع المكان» إلى «من صورتي» (بحدث change فتتبعه البطاقة والمربّع) — كان المكان يُسقطها بلا تنبيه */
+    if(placeEl && placeEl.value){ placeEl.value = ''; placeEl.dispatchEvent(new Event('change', { bubbles: true })); }
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
     __compressImg(file, function(dataUrl){
@@ -180,7 +187,7 @@ async function __safeJson(res){
         c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
         c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
         c.textContent = optName(o);
-        c.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+        c.onclick = function(){ placeEl.value = o.value; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
         ideaChips.appendChild(c);
       });
     }
@@ -222,7 +229,7 @@ async function __safeJson(res){
           ' font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
         b.appendChild(cap);
       }
-      b.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+      b.onclick = function(){ placeEl.value = o.value; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
       wrap.appendChild(b);
     });
 
@@ -284,12 +291,13 @@ async function __safeJson(res){
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
   }
   if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button[data-place]'), function(c){
-    c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
+    c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
   });
   if(ideaGo) ideaGo.onclick = function(){
     const v = ideaText ? ideaText.value.trim() : '';
     if(!v){ ideaStatus(bT('اكتب ما تريد أو اختر نوع المكان.', 'Describe what you want or pick a place.')); return; }
     if(placeEl) placeEl.value = '';
+    placeCard();
     loadIdeas({ q: v });
   };
   if(ideaAI) ideaAI.onclick = async function(){
@@ -1292,16 +1300,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
      (نفس عطب v-slider-touch القديم لكن بجذر مختلف — الحاوية لا عنصر input). النقر في أيّ نقطة من
      الصورة يقفز الفاصل إليها فورًا (نمط مقارنة الصور المعتاد)، لا يقتصر على سحب المقبض فقط. */
   let comparePct = 100;
+  /* v-pcompare-box (تدقيق ١٨ أكتوبر + أمر المالك ٢٠ أكتوبر، الدفعة ٤: «قبل» و«بعد» معكوسة وصورة «بعد» مزاحة عن الأصل): عرض الطبقة كان يتغيّر
+     وعرض النتيجة يُقاس بالبكسل من عرض الإطار — والإطار مخفيّ تحت مشهد الانتظار لحظة القياس فيرجع ٠، فتأخذ النتيجة عرضها الطبيعيّ يسارًا والأصل موسَّط.
+     الطبقة الآن بملء الإطار وتُقصّ بـclip-path، والصورتان contain في الصندوق نفسه (partials-core) — لا قياس ولا مستمع resize. */
   function setComparePct(pct){
     comparePct = Math.max(0, Math.min(100, pct));
-    if(compareAfterWrap) compareAfterWrap.style.width = comparePct + '%';
+    if(compareAfterWrap) compareAfterWrap.style.clipPath = 'inset(0 ' + (100 - comparePct) + '% 0 0)';
     const divider = $('#portraitCompareDivider');
     if(divider) divider.style.left = comparePct + '%';
-  }
-  function layoutCompareAfter(){
-    if(!compareWrap || !resultEl) return;
-    const w = compareWrap.offsetWidth;
-    if(w) resultEl.style.width = w + 'px';
   }
   let __compareDragging = false;
   function comparePctFromEvent(ev){
@@ -1321,7 +1327,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     compareWrap.addEventListener('pointermove', (ev) => { if(__compareDragging) setComparePct(comparePctFromEvent(ev)); });
     ['pointerup', 'pointercancel'].forEach((evt) => compareWrap.addEventListener(evt, () => { __compareDragging = false; }));
   }
-  window.addEventListener('resize', layoutCompareAfter);
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
@@ -1473,7 +1478,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           compareBefore.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
           compareWrap.style.display = 'block';
           setComparePct(100);
-          layoutCompareAfter();
         }
         downloadEl.href = dataUrl;
         downloadEl.setAttribute('download', 'omran-portrait-style.png');
