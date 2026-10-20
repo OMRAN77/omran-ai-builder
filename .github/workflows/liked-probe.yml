@@ -93,6 +93,8 @@ jobs:
         if: always()
         run: |
           BR="shots/liked-${{ github.run_id }}"
+          # فروع لقطات التشغيلات السابقة تُحذف — يبقى الأحدث وحده
+          for old in $(git ls-remote --heads origin 'shots/liked-*' | sed 's#.*refs/heads/##'); do [ "$old" = "$BR" ] || git push -q origin --delete "$old" || true; done
           git checkout -q --orphan "$BR"
           git reset -q
           git add -f liked-probe
