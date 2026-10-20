@@ -222,6 +222,7 @@ I18N['es'] = {
     "authPasswordLabel": "Contraseña",
     "authNewPasswordLabel": "Nueva contraseña",
     "authForgotLink": "¿Olvidaste tu contraseña?",
+    "authForgotIdLink": "¿Olvidaste tu usuario o contraseña?",
     "langSectionTitle": "🌐 Idioma",
     "apiKeysSectionTitle": "🔑 Claves API de proveedores de IA",
     "providerQuickBarTitle": "Elige tu proveedor de IA — el punto muestra la cuota restante de hoy",

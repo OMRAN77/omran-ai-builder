@@ -235,6 +235,7 @@ I18N['ne'] = {
     authPasswordLabel: "पासवर्ड",
     authNewPasswordLabel: "नयाँ पासवर्ड",
     authForgotLink: "पासवर्ड बिर्सनुभयो?",
+    authForgotIdLink: "प्रयोगकर्ता नाम वा पासवर्ड बिर्सनुभयो?",
     langSectionTitle: "🌐 भाषा",
     apiKeysSectionTitle: "🔑 AI प्रदायक API कुञ्जीहरू",
     providerQuickBarTitle: "आफ्नो AI प्रदायक छान्नुहोस् — डटले आजको बाँकी कोटा देखाउँछ",

@@ -235,6 +235,7 @@ const I18N = {
     authPasswordLabel: 'كلمة المرور',
     authNewPasswordLabel: 'كلمة مرور جديدة',
     authForgotLink: 'نسيت كلمة المرور؟',
+    authForgotIdLink: 'نسيت اسم المستخدم أو كلمة المرور؟', // v-signup-forgot
     authRememberMe: 'تذكرني',
     langSectionTitle: '🌐 اللغة',
     apiKeysSectionTitle: '🔑 مفاتيح API لمزوّدي الخدمة',
@@ -1459,6 +1460,7 @@ const I18N = {
     authPasswordLabel: 'Password',
     authNewPasswordLabel: 'New password',
     authForgotLink: 'Forgot password?',
+    authForgotIdLink: 'Forgot username or password?',
     langSectionTitle: '🌐 Language',
     apiKeysSectionTitle: '🔑 AI Provider API Keys',
     providerQuickBarTitle: 'Pick your AI provider — the dot shows today\'s remaining quota',

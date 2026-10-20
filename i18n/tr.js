@@ -221,6 +221,7 @@ I18N['tr'] = {
     "authPasswordLabel": "Parola",
     "authNewPasswordLabel": "Yeni parola",
     "authForgotLink": "Parolanızı mı unuttunuz?",
+    "authForgotIdLink": "Kullanıcı adınızı veya parolanızı mı unuttunuz?",
     "langSectionTitle": "🌐 Dil",
     "apiKeysSectionTitle": "🔑 AI Sağlayıcı API Anahtarları",
     "providerQuickBarTitle": "AI sağlayıcınızı seçin — nokta bugünkü kalan kotanızı gösterir",

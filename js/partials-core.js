@@ -17,7 +17,7 @@
     <div id="authPasswordRow" style="display:block; position:relative; margin-bottom:12px;">
       <span id="authPasswordLabelText" style="display:none;" data-i18n="authPasswordLabel">كلمة المرور</span>
       <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" style="height:50px; padding:0 44px 0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
-      <button type="button" id="authTogglePassBtn" title="👁" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;">🙈</button>
+      <button type="button" id="authTogglePassBtn" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
     </div>
     <label id="authRememberRow" style="display:none;"><input type="checkbox" id="authRememberMe" checked></label>
     <div id="authInfoMsg" style="display:none; font-size:12px; color:var(--accent,#6b7280); margin-bottom:6px; text-align:center;"></div>
@@ -43,6 +43,8 @@
       <span data-i18n="authGoogleBtn">المتابعة بجوجل</span>
     </button>
     <button type="button" id="authSwitchBtn" style="width:100%; height:48px; border-radius:999px; border:1px solid rgba(128,128,128,.5); background:transparent; color:var(--text); cursor:pointer; font-size:15px; font-weight: var(--w-bold);" data-i18n="authCreateAccount">إنشاء حساب جديد</button>
+    <!-- v-signup-forgot (المالك ٢٠ أكتوبر): في شاشة التسجيل، تحت «عندي حساب — تسجيل الدخول»، رابط «نسيت اسم المستخدم أو كلمة المرور؟» يفتح الاسترجاع نفسه -->
+    <a href="#" id="authSignupForgotLink" style="display:none; text-align:center; font-size:14px; font-weight:700; color:var(--text); text-decoration:none;" data-i18n="authForgotIdLink">نسيت اسم المستخدم أو كلمة المرور؟</a>
     </div>
 
     <div id="authEmailOtpSection" style="display:none; margin-top:14px;">

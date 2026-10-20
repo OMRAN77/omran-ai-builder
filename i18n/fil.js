@@ -223,6 +223,7 @@ I18N['fil'] = {
     "authPasswordLabel": "Password",
     "authNewPasswordLabel": "Bagong password",
     "authForgotLink": "Nakalimutan ang password?",
+    "authForgotIdLink": "Nakalimutan ang username o password?",
     "langSectionTitle": "🌐 Wika",
     "apiKeysSectionTitle": "🔑 API Keys ng AI Provider",
     "providerQuickBarTitle": "Piliin ang iyong AI provider — ipinapakita ng tuldok ang natitirang quota ngayong araw",

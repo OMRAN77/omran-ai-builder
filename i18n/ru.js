@@ -222,6 +222,7 @@ I18N['ru'] = {
     "authPasswordLabel": "Пароль",
     "authNewPasswordLabel": "Новый пароль",
     "authForgotLink": "Забыли пароль?",
+    "authForgotIdLink": "Забыли имя пользователя или пароль?",
     "langSectionTitle": "🌐 Язык",
     "apiKeysSectionTitle": "🔑 API-ключи провайдеров ИИ",
     "providerQuickBarTitle": "Выберите своего AI-провайдера — точка показывает оставшуюся квоту на сегодня",

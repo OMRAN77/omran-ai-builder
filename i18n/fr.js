@@ -252,6 +252,7 @@ I18N['fr'] = {
     authPasswordLabel: "Mot de passe",
     authNewPasswordLabel: "Nouveau mot de passe",
     authForgotLink: "Mot de passe oublié ?",
+    authForgotIdLink: "Identifiant ou mot de passe oublié ?",
     langSectionTitle: "🌐 Langue",
     apiKeysSectionTitle: "🔑 Clés API des fournisseurs IA",
     providerQuickBarTitle: "Choisissez votre fournisseur IA — le point indique le quota restant aujourd'hui",
