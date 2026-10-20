@@ -1974,7 +1974,7 @@ module.exports = async (req, res) => {
         if (!streamDone) { try { await reader.cancel(); } catch (e) { /* المجرى أغلق مع الخطأ */ } }
         try { reader.releaseLock(); } catch (e) { /* المجرى أغلق مع الخطأ */ }
       }
-      if (__midFail) { await logErrorAndFlush('chat/mid-stream', new Error(__acct() + ': ' + __midFail.text), { action: __midFail.kind, prov }); if (__midFail.kind === 'retry') { send({ status: __midFail.status }); steps--; continue; } if (__midFail.kind === 'fail' || __midFail.kind === 'lane') { if (__midFail.kind === 'lane' && steps === 1 && __meterSpent) { __meterHeld = __meterSpent; __meterSpent = ''; } __midUp = { ok: false, status: __midFail.status, text: async () => __midFail.text }; steps--; continue; } /* v-pro-lanes: lane = مسار الباقة التالي بالفشل الجاهز (سلسلة ما قبل البثّ نفسها) */ /* v-mid-credit: رصيد داخل البثّ = الخطوة نفسها من جديد بفشل جاهز تمرّ به سلسلة ما قبل البثّ (الوسيط ثمّ «ما عندي رصيد») */ send({ error: __midFail.msg, ownerStop: true }); res.end(); return; } // C9: النداء نفسه مرّة، ثمّ السبب للمالك (تحت النصّ إن وُجد)
+      if (__midFail) { await logErrorAndFlush('chat/mid-stream', new Error(__acct() + ': ' + __midFail.text), { action: __midFail.kind, prov }); if (__midFail.kind === 'retry') { send({ status: __midFail.status }); steps--; continue; } if (__midFail.kind === 'fail' || __midFail.kind === 'lane') { if (__midFail.kind === 'lane' && steps === 1 && __meterSpent) { __meterHeld = __meterSpent; __meterSpent = ''; } __midUp = { ok: false, status: __midFail.status, text: async () => __midFail.text }; steps--; continue; } /* v-pro-lanes: lane = مسار الباقة التالي بالفشل الجاهز (سلسلة ما قبل البثّ نفسها) */ /* v-mid-credit: رصيد داخل البثّ = الخطوة نفسها من جديد بفشل جاهز تمرّ به سلسلة ما قبل البثّ (الوسيط ثمّ «ما عندي رصيد») */ send({ error: __midFail.msg + (__midFail.msg === 'ما عندي رصيد' ? ' — ' + acctOf({ who: __acct() }) : ''), ownerStop: true }); res.end(); return; } // C9: النداء نفسه مرّة، ثمّ السبب للمالك (تحت النصّ إن وُجد)
       { const __rest = __tokStrip.flush(); if (__rest) { const __tb = blocks.filter((b) => b && b.type === 'text').pop(); if (__tb) __tb.text += __rest; fullText += __rest; anyText = true; send({ delta: __rest }); } } // v-special-tokens: ذيل محجوز لم يكتمل رمزًا
       if (__planSoft() && stopReason !== 'tool_use' && stopReason !== 'refusal' && !blocks.some((b) => b && b.type === 'tool_use')) { /* v-pro-lanes: ردّ فارغ بلا نداء (٢٠٠ ثمّ لا شيء) = المسار التالي — كان يصل المشترك فقاعة فارغة؛ الرفض لا يُعرض على مسار أليَن */ logError('chat/plan-empty', new Error(__acct() + ': stop=' + (stopReason || 'none')), { action: 'plan-empty', plan: __planRoute.plan }); if (steps === 1 && __meterSpent) { __meterHeld = __meterSpent; __meterSpent = ''; } __midUp = { ok: false, status: 502, text: async () => 'empty reply (stop=' + (stopReason || 'none') + ')' }; steps--; continue; } __usage.output += __usage.stepOut; __usage.stepOut = 0;
       // v-prompt-cache: المالك وحده يرى الحساب في شارة النموذج: كاش · جديد · خرج (مجموع الجولات).
@@ -2260,10 +2260,19 @@ module.exports = async (req, res) => {
 module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 — للاختبار
 /* v-owner-solo (أمر المالك ٨ أكتوبر: «أيّ واحد أختاره يكون نفسه… إذا ما فيه رصيد عند المزوّد يقولي ما عندي رصيد فقط»):
    مزوّد المالك المختار إن فشل قبل أوّل حرف لا يجيب أحد مكانه — وهذه رسالته وحدها، بلا نصّ تقنيّ (السبب الكامل في سجلّ الأخطاء). */
+const acctOf = (x) => String((x && x.who) || '').split(' · ')[0].trim(); // v-credit-who: «Anthropic · claude-…» ← «Anthropic»
+function creditNote(c, o, isCredit) {
+  const a = acctOf(c), b = acctOf(o);
+  if (!a) return 'ما عندي رصيد';
+  if (!b || b === a) return 'ما عندي رصيد — ' + a;
+  return 'ما عندي رصيد — ' + a + (isCredit && isCredit(o) ? ' و ' + b : ' · ' + b + ' خطأ ' + ((o && o.status) || '؟'));
+}
 function ownerStopNote(fail, then) {
   const capHold = (x) => { const f = x || {}; return Number(f.status) === 402 && /max_tokens|afford/i.test(String(f.text || '')); }; // v-cap-not-credit: حجز سقف ١٢٨ ألفًا ≠ محفظة فاضية
   const isCredit = (x) => { if (capHold(x)) return false; const f = x || {}; return /credit|balance|billing|insufficient|quota|payment/i.test(String(f.text || '')) || Number(f.status) === 402; };
-  if (isCredit(fail) || isCredit(then)) return 'ما عندي رصيد';
+  /* v-credit-who (المالك ٢٠ أكتوبر: «ما عندي رصيد» على Claude Haiku ورصيد Anthropic موجود): اسم الحساب الذي رفض بعد الرسالة —
+     Anthropic أم OpenRouter أم المفتاح المباشر — وإن فشل الآخر بغير رصيد فسببه برقمه، فلا يُشحن الحساب الخطأ. */
+  if (isCredit(fail) || isCredit(then)) return creditNote(isCredit(fail) ? fail : then, isCredit(fail) ? then : fail, isCredit);
   const __f = (then || fail) || {};
   // v-groq-tpm: 413 «tokens per minute» بعد إعادة القصّ في oa-direct = المحادثة نفسها أكبر من حدّ المفتاح في الدقيقة
   if (Number(__f.status) === 413 && /tokens per minute|\bTPM\b/i.test(String(__f.text || ''))) return 'ما قدرت أردّ الحين — المحادثة أكبر من حدّ المفتاح في الدقيقة؛ افتح محادثة جديدة';
@@ -2292,7 +2301,7 @@ function ownerIdentity(text, prov, model, tail) {
     // آخر ما يقرؤه الموديل (يغلب ما قيل في ردود سابقة من المحادثة). في المرسَل وحده: كتلة الكاش الثابتة تبقى بادئته.
     + (tail ? '\n\n[هويّتك]: أنت ' + label + '. إن سُئلت «من أنت» أو «انت من» أو «ما اسمك» أو عن الموديل أو الشركة فقل ذلك بصدق، ولو قيل غيره في ردود سابقة من هذه المحادثة — لست «عمران» ولا «مها».' : '');
 }
-module.exports.__imgWhy = { ownerFailNote, ownerSwapNote, ownerStopNote, ownerIdentity }; // v-owner-swap // v-img-why — للاختبار
+module.exports.__imgWhy = { ownerFailNote, ownerSwapNote, ownerStopNote, ownerIdentity, creditNote }; // v-owner-swap // v-img-why — للاختبار
 module.exports.__v610 = { cleanLink }; // v610 — للاختبار
 /* v-img-ask (المالك ١ أكتوبر: سأل «في الصوره نفسها قصدك» على ردّ يشرح، فبدأ «جارٍ إنشاء الصورة»): edit_image موصوفة
    «استخدمها كلما طلب تغييرًا على صورة مرفقة» فقرأ النموذج الاستيضاح طلبًا. سؤال «قصدك…» بلا فعل طلب = دور كلام:

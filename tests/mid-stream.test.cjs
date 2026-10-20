@@ -189,7 +189,7 @@ test('insufficient_quota inside the stream and the gateway has no credit either:
   const r = await runQuota([quotaNow]);
   assert.equal(r.oai, 1);
   assert.equal(r.or, 1);
-  assert.deepEqual({ error: r.stop.error, ownerStop: r.stop.ownerStop }, { error: 'ما عندي رصيد', ownerStop: true });
+  assert.deepEqual({ error: r.stop.error, ownerStop: r.stop.ownerStop }, { error: 'ما عندي رصيد — OpenAI مباشر و OpenRouter', ownerStop: true });
   assert.ok(!r.events.some((e) => /انقطع/.test(String(e.error || e.status || ''))), 'لا «انقطع» لا حالةً ولا خطأً');
   // الوحدة: الرصيد داخل البثّ = إعادة إلى السلسلة بحالة 402 مرّة في الدور، وبعدها الرسالة القصيرة
   const e = (m) => Object.assign(new Error('OA_STREAM_PROTOCOL_ERROR: ' + m), { code: 'OA_STREAM_PROTOCOL_ERROR' });

@@ -54,7 +54,7 @@ test('١. المالك على الكينج: «ما عندي رصيد» وحده 
   assert.equal(text, '', 'لا ردّ من مزوّد آخر');
   const stop = lastEvents.find((e) => e.ownerStop === true);
   assert.ok(stop, 'حدث التوقّف');
-  assert.equal(stop.error, 'ما عندي رصيد');
+  assert.equal(stop.error, 'ما عندي رصيد — Anthropic');
   assert.equal(alerts.length, 1, 'إشعار نفاد الرصيد يصل في دور الصورة أيضًا');
   assert.equal(alerts[0].status, 400);
   assert.match(alerts[0].text, /credit balance is too low/);

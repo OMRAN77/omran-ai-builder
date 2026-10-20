@@ -59,7 +59,7 @@ test('agent (real handler): Claude fails for the owner → no silent DeepSeek/Mi
   const a = await agentFails(402, { error: { type: 'billing_error', message: 'Your credit balance is too low' } });
   assert.ok(!a.calls.some((u) => /deepseek|mistral|groq/.test(u)), 'لا هبوط: ' + a.calls.join(' '));
   assert.equal(a.text, '', 'لا «أنا البديل»');
-  assert.deepEqual(a.errors, ['ما عندي رصيد']);
+  assert.deepEqual(a.errors, ['ما عندي رصيد — Anthropic']);
   const b = await agentFails(500, { error: { type: 'api_error', message: 'boom' } });
   assert.ok(!b.calls.some((u) => /deepseek|mistral|groq/.test(u)));
   assert.equal(b.errors.length, 1);
