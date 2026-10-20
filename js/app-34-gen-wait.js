@@ -94,10 +94,11 @@
       busy: ['🎨'],
       scope: '#studioAiModal', topSel: '#studioAiModal .stStep[data-i18n="studioStepPhoto"]', top: ['🎨'],
       hideSel: '.stStep[data-i18n="studioStepPhoto"], #studioAiSlots, #studioAiResultWrap, #studioMultiResults, #studioAiDownloadLink, #studioAiFavoriteSaveBtn' },
-    /* v-scene-kinds: الترندات — سطر حالتها يُبنى مع لوحة كلّ ترند، والمشهد تحته حيث تظهر النتيجة (#vtOut). حالة الترند
-       المتعدّد المشاهد تبدأ بـ«المشهد ١ من ٣…» ثمّ ⏳ — فتُعرف بوجود ⏳ لا ببدايته (busyHas). وسطر الحالة تحت زرّ «اصنع» في آخر
+    /* v-scene-kinds: الترندات — سطر حالتها يُبنى مع لوحة كلّ ترند، والمشهد تحته حيث تظهر النتيجة (#vtOut). وسطر الحالة تحت زرّ «اصنع» في آخر
        اللوحة، فالمشهد يُركَّب عند حافّة الشاشة السفلى — يُمرَّر إليه (scroll) */
-    { id: 'vtrend', sel: '#vtStatus', kind: 'vtrend', busy: ['⏳'], busyHas: ['⏳'], scroll: true },
+    /* v-trend-scene-live: نصوص الترندات تُكتب بلا إيموجي أصلًا (ui ← noEmoji) فلم تُعرف «مشغولة» قطّ بالمسار الحقيقيّ — «مشغول» سمة
+       صريحة تضبطها اللوحة نفسها (busyAttr)، تصمد لكلّ لغة ولتبدّل النصّ («المشهد ٢ من ٣…»، العدّ التنازليّ بين المشاهد). */
+    { id: 'vtrend', sel: '#vtStatus', kind: 'vtrend', busyAttr: 'data-genw-busy', scroll: true },
     /* v-scene-kinds: الديكور — المشهد مكان صندوق الأفكار والرفع (#designAiIdeas) ويُخفى ما دام هو والنتيجة السابقة */
     { id: 'decor', sel: '#designAiStatus', kind: 'decor',
       busy: ['🎨'],
@@ -738,6 +739,8 @@
     delete rawBusy[p.id]; delete cleanBusy[p.id];
     return false;
   }
+  /* v-trend-scene-live: لوحة تعلن انشغالها بسمة على سطر حالتها — لا نصّ يُفسَّر */
+  function attrBusy(p, pel){ try{ return !!pel && pel.getAttribute(p.busyAttr) === '1'; }catch(e){ return false; } }
   /* تُستدعى مع كلّ دفعة تغيّرات — ثلاث قراءات بالمعرّف فقط */
   function sample(){
     for(var i = 0; i < PANELS.length; i++){
@@ -784,7 +787,7 @@
       if(!pel || !pel.parentNode) continue;
       var ptxt = '';
       try{ ptxt = String(pel.textContent || '').trim(); }catch(e){ ptxt = ''; }
-      var busy = panelBusy(p, ptxt); /* v-gen-scene: يصمد لحذف الإيموجي من سطر الحالة */
+      var busy = p.busyAttr ? attrBusy(p, pel) : panelBusy(p, ptxt); /* v-gen-scene: يصمد لحذف الإيموجي من سطر الحالة */
       var card = null;
       var scopeEl = pel.parentNode; /* v-gen-scene: بطاقة تُركَّب أعلى الاستوديو ليست ابنة حاوية سطر الحالة بالضرورة */
       if(p.scope){ try{ scopeEl = document.querySelector(p.scope) || pel.parentNode; }catch(e){ scopeEl = pel.parentNode; } }
@@ -880,5 +883,6 @@
   window.omranGenWait._scenes = SCENES; window.omranGenWait._nextScene = nextScene; window.omranGenWait._sceneHtml = sceneHtml; /* v-gen-scene-exact: للاختبار */
   window.omranGenWait._secDigitEm = SEC_DIGIT_EM; window.omranGenWait._applyHide = applyHide; /* v-gen-steady: للاختبار */
   window.omranGenWait._styleScenes = STYLE_SCENES; window.omranGenWait._portraitScenes = PORTRAIT_SCENES; /* v-pstyle-scene: للاختبار */ /* v-style-scene: للاختبار */
+  window.omranGenWait._attrBusy = attrBusy; /* v-trend-scene-live: للاختبار */
   window.omranGenWait._videoScenes = VIDEO_SCENES; window.omranGenWait._trendScenes = TREND_SCENES; window.omranGenWait._decorScenes = DECOR_SCENES; /* v-scene-kinds: للاختبار */
 })();
