@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
 
   let pointsLib = null;
   let mahaImgCharged = null;
-  let mahaImgChargedAmount = 0; /* v-costs-2026-09: الصورة 20 نقطة و4K 30 — يُردّ المبلغ المخصوم نفسه */
+  let mahaImgChargedAmount = 0, mahaImgPay = null; /* v-costs-2026-09: الصورة 20 نقطة و4K 30 — يُردّ المبلغ المخصوم نفسه؛ v-maha-img-hold: ونتيجة الخصم (نوعه) لتذكرة الحجز */
   let guestImageCharge = null;
   /* v-img-engine-tag-owner (متابعة): مسار النصّ (__textRoute) يقرّر GPT هو الصحّ لكن قد يفشل نداؤه
      فيسقط بصمت إلى برو/نانو — بلا هذا السطر يرى المالك «nano» بلا أيّ فكرة عن سبب تجاوز GPT له. */
@@ -145,7 +145,7 @@ module.exports = async (req, res) => {
           res.status(402).json({ error: 'points_insufficient', needed: __imgCost, points: pay.points || 0 });
           return;
         }
-        mahaImgCharged = mahaImgUser;
+        mahaImgCharged = mahaImgUser; mahaImgPay = pay; // v-maha-img-hold
         mahaImgChargedAmount = __imgCost;
         // v-plan-routing: ٢٠ صورة في الساعة لكلّ حساب — المالك وVIP خارجها (pay.owner). فوقها: ردّ الخصم و429.
         if (!pay.owner) {
@@ -248,11 +248,13 @@ module.exports = async (req, res) => {
       if (__textRouteFailNote) engine = engine + '(gpt-text-failed:' + __textRouteFailNote + ')';
       if (__cardsNote) engine = engine + '(cards:' + __cardsNote + ')'; /* v-img-cards: لوحة بطاقات لم تكتمل — السبب للمالك */
       if (__isOwnerReq) { try { await require('./prov-self.js').noteImage(userText || cleanPrompt); } catch (e) { /* guard-ok — فشل حفظ بناء الصورة في المخزن المشترك لا يمنع إرسالها */ } } // v-prov-one
+      const __holdOut = await require('./image-hold.js').holdFromRequest(body.hold, mahaImgCharged, mahaImgChargedAmount, mahaImgPay); /* v-maha-img-hold: مكالمة مها ترسل hold — الخصم يُحجز حتّى يؤكّد العميل حفظ الصورة (image-ack) وإلّا يُردّ تلقائيًّا؛ المحادثة بلا hold لا تتغيّر */
       /* v-img-report (المالك ٢٣ سبتمبر «الكلام بعد الصورة بالدقّة… لين أوصل للصورة»): التقرير يصل جاهزًا من deliver (حكم الرؤية
          على الناتج قبل التكبير)، للتعديل والتوليد، ومعه الحكم نفسه (done/partial/not_done) ليصدق العميل وأداة الوكيل. */
       res.status(200).json({
         imageBase64: b64,
         mimeType: mime || 'image/png',
+        hold: __holdOut,
         caption: (!prayerPlan && report) || undefined,
         verdict: verdict || undefined,
         engine: engine,

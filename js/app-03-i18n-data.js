@@ -1185,6 +1185,8 @@ const I18N = {
     vwDefaultQ: 'حلّل هذا الفيديو',
     /* v-plans-gate */
     plansWhyPoints: 'نقاطك خلصت — اشحن من الباقات وكمّل مباشرة.',
+    plansWhyPointsNeed: 'رصيدك {have} نقطة، وهذه العمليّة تحتاج {need} — اشحن من الباقات وكمّل مباشرة.', /* v-plans-real-balance */
+    plansWhyPointsLow: 'رصيدك {have} نقطة وما يكفي لهذه العمليّة — اشحن من الباقات وكمّل مباشرة.',
     plansWhyLimit: 'وصلت حدّ باقتك لليوم — رقِّ باقتك أو انتظر إلى الغد.',
     plansWhyExpired: 'انتهى اشتراكك في {plan} — جدّده لترجع مزاياك.',
     plansWhyExpiring: 'اشتراكك في {plan} ينتهي في {date} — جدّده حتّى لا تتوقّف مزاياك.',
@@ -1555,6 +1557,8 @@ const I18N = {
     vwDefaultQ: 'Analyze this video',
     /* v-plans-gate */
     plansWhyPoints: 'You’re out of points — top up from Plans and continue right away.',
+    plansWhyPointsNeed: 'You have {have} points and this needs {need} — top up from Plans and continue right away.', /* v-plans-real-balance */
+    plansWhyPointsLow: 'You have {have} points — not enough for this. Top up from Plans and continue right away.',
     plansWhyLimit: 'You’ve reached your plan’s limit for today — upgrade your plan or wait until tomorrow.',
     plansWhyExpired: 'Your {plan} subscription has ended — renew it to get your benefits back.',
     plansWhyExpiring: 'Your {plan} subscription ends on {date} — renew it so your benefits don’t stop.',

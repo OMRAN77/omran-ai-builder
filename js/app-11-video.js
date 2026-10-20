@@ -14,6 +14,10 @@
   const statusEl = $('#videoMakerStatus');
   const resultEl = $('#videoMakerResult');
   const downloadEl = $('#videoMakerDownloadLink');
+  /* v-vmk-dl-ext (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «الفيديو ينزل باسم mp4 وهو webm: الامتداد لازم يطابق النوع»): الرابط يحمل
+     download="omran-ai-video.mp4" ثابتًا من partials-core، وفيديو القوالب (المسجِّل) والدمج والصوت السريع WebM — فينزل WebM باسم mp4 ولا
+     تفتحه بعض الأجهزة. الاسم من نوع الملفّ نفسه حيث الملفّ Blob في يدنا، ورابط المزوّد (MP4) يبقى بالاسم الافتراضيّ الذي يُعاد قبل كلّ توليد. */
+  function dlName(base, type){ return base + '.' + (/webm/i.test(String(type || '')) ? 'webm' : 'mp4'); }
   // v291: تنزيل تلقائي للفيديو أول ما يجهز
   // v525: proxyVideoUrl — يمرّر رابط الفيديو عبر سيرفر عمران بدل جلبه مباشرة من المتصفح
   // يحل مشكلة CORS على الجوال وهواوي التي تمنع fetch() من مصادر خارجية
@@ -799,6 +803,7 @@
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
+    downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
     downloadEl.style.display = 'block';
     autoSaveVideo(finalUrl);
   }
@@ -877,6 +882,7 @@
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
+    downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
     downloadEl.style.display = 'block';
     autoSaveVideo(finalUrl);
   }
@@ -1142,6 +1148,7 @@
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
+    downloadEl.download = 'omran-ai-video.mp4'; // v-vmk-dl-ext: الافتراضيّ قبل كلّ توليد
 
     function friendlyError(err){
       const code = err && err.code;
@@ -1335,16 +1342,16 @@
         resultEl.onended = null;
         // دائماً ندمج — حتى على هواوي (الدمج يعمل بالجهاز لا بالسيرفر)
         setStatus(bT('🔗 جاري دمج كل المشاهد بالفيلم النهائي...','🔗 Merging all scenes into your final film...'));
-        let finalUrl = null;
+        let finalUrl = null, finalType = ''; // v-vmk-dl-ext
         try{
           const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
             setStatus((bT('🔗 جاري دمج المشهد ','🔗 Merging scene ')) + (i + 1) + '/' + total + '...');
           });
-          finalUrl = URL.createObjectURL(finalBlob);
+          finalUrl = URL.createObjectURL(finalBlob); finalType = finalBlob.type;
         } catch(e){
           try{
             const blob = await concatScenes(builtScenes.map(s => s.videoUrl));
-            finalUrl = URL.createObjectURL(blob);
+            finalUrl = URL.createObjectURL(blob); finalType = blob.type;
             setStatus(bT('⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.','⚠️ Narration merge failed; film merged without narration.'));
           } catch(e2){
             finalUrl = null;
@@ -1355,7 +1362,7 @@
           resultEl.src = finalUrl;
           resultEl.style.display = 'block';
           downloadEl.href = finalUrl;
-          downloadEl.download = 'omran-film.mp4'; // يجبر المتصفح على التحميل لا الفتح
+          downloadEl.download = dlName('omran-film', finalType); // يجبر المتصفح على التحميل لا الفتح — v-vmk-dl-ext: والامتداد من نوع الملفّ
           downloadEl.style.display = 'block';
         } else {
           // آخر ملاذ: عرض المشاهد ورا بعض مع روابط تحميل منفصلة
@@ -1644,6 +1651,7 @@
         resultEl.src = finalUrl;
         resultEl.style.display = 'block';
         downloadEl.href = finalUrl;
+        downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
         downloadEl.style.display = 'block';
       } catch(e){
         setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
@@ -1748,6 +1756,7 @@
       resultEl.style.display = 'block';
       resultEl.play().catch(function(){ /* autoplay may be blocked */ });
       downloadEl.href = dlUrl;
+      downloadEl.download = finalIsBlob ? dlName('omran-ai-video', finalSrc && finalSrc.type) : 'omran-ai-video.mp4'; // v-vmk-dl-ext
       downloadEl.style.display = 'block';
       /* v-ai-video-speed: الترقية بعد ظهور الفيديو لا قبله (مشهد واحد؛ الطويل بلا ترقية أصلًا) */
       if(wantQuality && sceneUrls.length === 1) upgradeInBackground(sceneUrls[0], token, narrationBlob, runSeq);
