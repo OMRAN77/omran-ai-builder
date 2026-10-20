@@ -24,6 +24,8 @@ module.exports = async (req, res) => {
   try {
     const tally = await require('./auth.js').sweepUnverifiedEmails(Date.now(), 240000);
     console.log('[email-sweep] ' + JSON.stringify(tally));
+    // v-owner-inbox: الإيميل اليوميّ المجمّع لبلاغات المستخدمين — ما جدّ منذ آخر إرسال، وإلّا لا شيء
+    try { console.log('[email-sweep] inbox ' + JSON.stringify(await require('./owner-inbox.js').dailyDigest())); } catch (e) { logError('email-sweep:inbox', e); }
   } catch (e) {
     logError('email-sweep', e);
     res.status(500).json({ ok: false });

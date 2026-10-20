@@ -165,7 +165,7 @@ I18N['es'] = {
     pricingBuyBtn: 'Comprar',
     mahaNoPoints: 'Tus puntos se agotaron 💜 Recarga en la sección de planes para continuar con Maha',
     "appColorTitle": "Color de la aplicación", "customColorsLabel": "Colores personalizados",
-    fbMenuLabel: "Tu opinión nos importa", fbTitle: "Tu opinión nos importa", fbSubtitle: "Ayúdanos a mejorar tu experiencia — tu valoración nos llega directamente", fbChipEasy: "Fácil de usar", fbChipDesign: "Gran diseño", fbChipAI: "IA excelente", fbChipSlow: "A veces lento", fbChipBug: "Encontré un problema", fbNotePh: "¿Qué deberíamos mejorar? (opcional)", fbSend: "Enviar valoración", fbThanks: "¡Gracias!", fbThanksSub: "Tu opinión fue recibida y nos ayuda a mejorar", fbOwnerList: "Opiniones de usuarios", fbEmpty: "Aún no hay valoraciones",
+    fbMenuLabel: "Tu opinión nos importa", fbTitle: "Tu opinión nos importa", fbSubtitle: "Ayúdanos a mejorar tu experiencia — tu valoración nos llega directamente", fbChipEasy: "Fácil de usar", fbChipDesign: "Gran diseño", fbChipAI: "IA excelente", fbChipSlow: "A veces lento", fbChipBug: "Encontré un problema", fbNotePh: "¿Qué deberíamos mejorar? (opcional)", fbSend: "Enviar valoración", fbThanks: "¡Gracias!", fbThanksSub: "Tu opinión fue recibida y nos ayuda a mejorar", fbOwnerList: "Opiniones de usuarios", fbEmpty: "Aún no hay valoraciones", inboxOwnerBtn: "📥 Bandeja del propietario", inboxEmpty: "Aún no hay avisos", inboxKindInsult: "Insulto", inboxKindComplaint: "Molesto con la aplicación", inboxKindError: "Respuesta fallida", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Conectar Gmail",
     "eaVoiceBtn": "🔊 Resumen de voz",
     "eaRefreshBtn": "🔄 Actualizar",

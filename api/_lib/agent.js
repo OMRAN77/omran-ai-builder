@@ -487,7 +487,7 @@ module.exports = async (req, res) => {
   if (res.flushHeaders) res.flushHeaders();
   const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق مجرى SSE — لا وجهة للكتابة، والمحاولة التالية ستكتشف ذلك */ } };
 
-  const runUser = usage.username || '';
+  const runUser = usage.username || ''; if (runUser && !isOwner(runUser)) { try { await require('./owner-inbox.js').scanTurn({ user: runUser, prov: 'claude', via: 'agent', text: living.lastUserText(messages) }); } catch (e) { console.warn('[agent] owner-inbox', e && e.message); } } // v-owner-inbox: كلام غير المالك في الوكيل أيضًا
   const run = { runId: 'r' + Date.now().toString(36), startedAt: Date.now(), updatedAt: Date.now(), step: 0,
     status: 'running', ask: String((messages[messages.length - 1] || {}).content || '').slice(0, 200), text: '',
     // الدفتر كان لصاحبه لا لمشروعه: يعرف أن عملًا اكتمل، ولا يعرف أين يُوضع بعد
@@ -528,7 +528,7 @@ module.exports = async (req, res) => {
   /* v-gen-image-agent (أمر المالك ١٣ أكتوبر «اربط صورة عمّم بالوكيل»): كالمحادثة — «عمّم» ومعها صورة (genImage من الواجهة) تُحفظ برابط في التطبيق ويصل رابطها العشرة. */
   let __genImg = null;
   if (isOwner(runUser) && body.genImage && require('./prov-self.js').ownerSaidGeneralize(living.lastUserText(messages))) { try { __genImg = await require('./prov-self.js').noteGenImage(body.genImage, 'claude'); } catch (e) { console.warn('[agent] gen image failed', e && e.message); } }
-  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude', isOwner(runUser) ? { messages: messages, lastUserText: living.lastUserText(messages), genImageUrl: (__genImg && __genImg.url) || '' } : null); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all · v-owner-gen
+  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude', isOwner(runUser) ? { messages: messages, lastUserText: living.lastUserText(messages), genImageUrl: (__genImg && __genImg.url) || '' } : { lastUserText: living.lastUserText(messages) } /* v-liked-reply */); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all · v-owner-gen
   if (isOwner(runUser)) system += OWNER_ENGINEERING_NOTE + OWNER_COMMAND_NOTE; // v-owner-obey: آخر النظام فيعلو على ما قبله · v-agent-surgical
 
   const convoAll = messages

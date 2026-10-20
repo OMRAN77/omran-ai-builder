@@ -164,7 +164,7 @@ I18N['id'] = {
     pricingBuyBtn: 'Beli',
     mahaNoPoints: 'Poin Anda habis 💜 Isi ulang di bagian Paket untuk lanjut dengan Maha',
     "appColorTitle": "Warna aplikasi", "customColorsLabel": "Warna kustom",
-    fbMenuLabel: "Pendapat Anda penting", fbTitle: "Pendapat Anda penting", fbSubtitle: "Bantu kami meningkatkan pengalaman Anda — penilaian Anda langsung sampai ke kami", fbChipEasy: "Mudah digunakan", fbChipDesign: "Desain hebat", fbChipAI: "AI luar biasa", fbChipSlow: "Kadang lambat", fbChipBug: "Menemukan masalah", fbNotePh: "Apa yang harus kami tingkatkan? (opsional)", fbSend: "Kirim penilaian", fbThanks: "Terima kasih!", fbThanksSub: "Pendapat Anda diterima dan membantu kami berkembang", fbOwnerList: "Pendapat pengguna", fbEmpty: "Belum ada penilaian",
+    fbMenuLabel: "Pendapat Anda penting", fbTitle: "Pendapat Anda penting", fbSubtitle: "Bantu kami meningkatkan pengalaman Anda — penilaian Anda langsung sampai ke kami", fbChipEasy: "Mudah digunakan", fbChipDesign: "Desain hebat", fbChipAI: "AI luar biasa", fbChipSlow: "Kadang lambat", fbChipBug: "Menemukan masalah", fbNotePh: "Apa yang harus kami tingkatkan? (opsional)", fbSend: "Kirim penilaian", fbThanks: "Terima kasih!", fbThanksSub: "Pendapat Anda diterima dan membantu kami berkembang", fbOwnerList: "Pendapat pengguna", fbEmpty: "Belum ada penilaian", inboxOwnerBtn: "📥 Kotak pemilik", inboxEmpty: "Belum ada laporan", inboxKindInsult: "Hinaan", inboxKindComplaint: "Kesal dengan aplikasi", inboxKindError: "Balasan gagal", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Hubungkan Gmail",
     "eaVoiceBtn": "🔊 Ringkasan suara",
     "eaRefreshBtn": "🔄 Segarkan",

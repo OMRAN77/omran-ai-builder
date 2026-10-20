@@ -1271,7 +1271,7 @@ module.exports = async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   if (res.flushHeaders) res.flushHeaders();
-  const send = (obj) => { if (res.writableEnded) return; /* v-turn-close: بعد ختام الوقت لا كتابة (كتابة بعد end = خطأ يُسقط العمليّة) */ try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }; const __cut = watchClientGone(res); // v-tokens-close: العميل ضغط «إيقاف» أو أغلق التبويب = نلغي نداء المزوّد الجاري ولا نبدأ جولة أدوات بعده (انظر watchClientGone)
+  const send = (obj) => { if (res.writableEnded) return; /* v-turn-close: بعد ختام الوقت لا كتابة (كتابة بعد end = خطأ يُسقط العمليّة) */ try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } if (obj && obj.error && !__ownerReq) { try { require('./owner-inbox.js').noteFailure({ user: usage && usage.username, prov, text: lastUserText, error: obj.error }).catch((e2) => logError('chat/owner-inbox-err', e2)); } catch (e3) { /* guard-ok — قبل الحصّة لا اسم مستخدم (TDZ) فلا بلاغ */ } } /* v-owner-inbox: فشل ردّ أمام مستخدم = بلاغ للمالك */ }; const __cut = watchClientGone(res); // v-tokens-close: العميل ضغط «إيقاف» أو أغلق التبويب = نلغي نداء المزوّد الجاري ولا نبدأ جولة أدوات بعده (انظر watchClientGone)
   send({ status: '💭 يقرأ سؤالك…', k: 'stReading' });
   send({ modelId: __pick.picked ? __pick.id : '', modelLabel: __pick.picked ? __pick.label : '' }); // v-claude-models: من يجيب
 
@@ -1325,7 +1325,7 @@ module.exports = async (req, res) => {
   // v-providers-owner (أمر المالك ٤ أكتوبر «رجّع المزوّدين إلى المالك فقط»): VIP بلا منتقٍ الآن — اختياره القديم المحفوظ
   // لا يبقى ساريًا خفيًّا؛ يأخذ افتراضيّ التطبيق (GPT، v-default-provider-openai). مزوّد بلا مفتاح = لا تغيير (applyRoute).
   if (!__planRoute && __tier && __tier.tier === 'vip' && prov !== 'openai') applyRoute('openai', '', false);
-  const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : ((__planRoute && __planRoute.bucket) || prov), clientIp(req), { tier: __tier || undefined });
+  const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : ((__planRoute && __planRoute.bucket) || prov), clientIp(req), { tier: __tier || undefined }); /* v-owner-inbox (المالك ٢٠ أكتوبر «نعم ابدا»): كلام غير المالك — شتيمة أو تذمّر من التطبيق = بلاغ بمقطع ≤٢٠٠ حرف للمالك، لا المحادثة */ if (!__ownerReq && usage && usage.username) { try { await require('./owner-inbox.js').scanTurn({ user: usage.username, prov: reqProv || prov, text: lastUserText }); } catch (e) { logError('chat/owner-inbox', e); } }
   if (!usage.allowed) {
     if (usage.reason === 'auth') { send({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); }
     else if (usage.tier === 'free' || usage.tier === 'guest') {
@@ -1475,7 +1475,7 @@ module.exports = async (req, res) => {
     let __provSelfSys = '', __genImg = null;
     /* v-gen-image: «عمّم» من المالك ومعها صورة (الواجهة ترسلها مضغوطة في genImage) = تُحفظ برابط من التطبيق ويصل رابطها العشرة. بلا الكلمة أو لغيره لا شيء. */
     if (__ownerReq && body && body.genImage && require('./prov-self.js').ownerSaidGeneralize(lastUserText)) { try { __genImg = await require('./prov-self.js').noteGenImage(body.genImage, reqProv || prov); } catch (e) { logError('chat/gen-image', e); } }
-    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov, __ownerReq ? { messages: messages, lastUserText: lastUserText, genImageUrl: (__genImg && __genImg.url) || '' } : null); } catch (e) { logError('chat/prov-self', e); }
+    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov, __ownerReq ? { messages: messages, lastUserText: lastUserText, genImageUrl: (__genImg && __genImg.url) || '' } : { lastUserText: lastUserText } /* v-liked-reply: الردود المعتمدة بـ«عجبني» تُختار بصلتها بسؤال المستخدم */); } catch (e) { logError('chat/prov-self', e); }
     const system = (quietSocialTurn
       ? PERSONA_NOTE + '\n' + __sysBase + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور وبلغة رسالة المستخدم نفسها — جملتان أو ثلاث فيها روح (المثال العربي «الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟» مجرد مثال، ترجم روحه للغة المستخدم) واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn

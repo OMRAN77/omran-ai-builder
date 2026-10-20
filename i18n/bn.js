@@ -174,7 +174,7 @@ I18N['bn'] = {
     pricingBuyBtn: 'কিনুন',
     mahaNoPoints: 'আপনার পয়েন্ট শেষ 💜 মাহার সাথে চালিয়ে যেতে প্ল্যান বিভাগ থেকে রিচার্জ করুন',
     "appColorTitle": "অ্যাপের রং", "customColorsLabel": "কাস্টম রং",
-    fbMenuLabel: "আপনার মতামত গুরুত্বপূর্ণ", fbTitle: "আপনার মতামত গুরুত্বপূর্ণ", fbSubtitle: "আপনার অভিজ্ঞতা উন্নত করতে আমাদের সাহায্য করুন — আপনার রেটিং সরাসরি আমাদের কাছে পৌঁছায়", fbChipEasy: "ব্যবহারে সহজ", fbChipDesign: "দুর্দান্ত ডিজাইন", fbChipAI: "চমৎকার AI", fbChipSlow: "মাঝে মাঝে ধীর", fbChipBug: "সমস্যা পেয়েছি", fbNotePh: "আমরা কী উন্নত করব? (ঐচ্ছিক)", fbSend: "মতামত পাঠান", fbThanks: "ধন্যবাদ!", fbThanksSub: "আপনার মতামত পেয়েছি, এটি আমাদের উন্নত হতে সাহায্য করবে", fbOwnerList: "ব্যবহারকারীদের মতামত", fbEmpty: "এখনও কোনো মতামত নেই",
+    fbMenuLabel: "আপনার মতামত গুরুত্বপূর্ণ", fbTitle: "আপনার মতামত গুরুত্বপূর্ণ", fbSubtitle: "আপনার অভিজ্ঞতা উন্নত করতে আমাদের সাহায্য করুন — আপনার রেটিং সরাসরি আমাদের কাছে পৌঁছায়", fbChipEasy: "ব্যবহারে সহজ", fbChipDesign: "দুর্দান্ত ডিজাইন", fbChipAI: "চমৎকার AI", fbChipSlow: "মাঝে মাঝে ধীর", fbChipBug: "সমস্যা পেয়েছি", fbNotePh: "আমরা কী উন্নত করব? (ঐচ্ছিক)", fbSend: "মতামত পাঠান", fbThanks: "ধন্যবাদ!", fbThanksSub: "আপনার মতামত পেয়েছি, এটি আমাদের উন্নত হতে সাহায্য করবে", fbOwnerList: "ব্যবহারকারীদের মতামত", fbEmpty: "এখনও কোনো মতামত নেই", inboxOwnerBtn: "📥 মালিকের ইনবক্স", inboxEmpty: "এখনও কোনো রিপোর্ট নেই", inboxKindInsult: "অপমান", inboxKindComplaint: "অ্যাপে অসন্তুষ্ট", inboxKindError: "উত্তর ব্যর্থ", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Gmail সংযুক্ত করুন",
     "eaVoiceBtn": "🔊 ভয়েস সারসংক্ষেপ",
     "eaRefreshBtn": "🔄 রিফ্রেশ",

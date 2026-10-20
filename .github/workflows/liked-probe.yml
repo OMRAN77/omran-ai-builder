@@ -1,0 +1,103 @@
+# v-liked-reply — تجربة «عجبني» الحيّة على نشرة (معاينة فرع أو الإنتاج) بحساب المالك: ردّ من كلود ← «عجبني» ← سؤال groq وgemini
+# وdeepseek في محادثات جديدة عن الموضوع نفسه، ثمّ لقطات متصفّح حقيقيّة للتطبيق. يحتاج سرّ SAMPLE_TOKEN (رمز جلسة المالك كما في
+# video-samples). خمس رسائل مزوّد لا أكثر. يدويّ فقط. الحاوية السحابيّة لا تصل Vercel، فهذا هو «الجهاز» الذي يجرّب.
+name: liked-probe
+run-name: "liked ${{ inputs.base }}"
+
+# التشغيل: يدويًّا بعنوان نشرة، أو تلقائيًّا عند دفع فرع (غير main) يغيّر المِجسّ نفسه — فيجرّب على معاينة Vercel لذلك الفرع
+# (omran-ai-builder-git-<الفرع>-omran4.vercel.app) بعد أن تعلن النشرة التزام الدفعة نفسها (/deploy-probe.txt).
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: عنوان النشرة (معاينة Vercel للفرع، أو الإنتاج)
+        required: true
+        default: https://omran-ai-builder.vercel.app
+      provs:
+        description: المزوّدون المسؤولون بعد «عجبني» (مفصولون بفواصل)
+        required: false
+        default: groq,gemini,deepseek
+  push:
+    branches-ignore: [main]
+    paths: ['scripts/liked-probe.mjs', '.github/workflows/liked-probe.yml']
+
+permissions:
+  contents: write   # لدفع اللقطات على فرع مؤقّت shots/liked-<run> (الحاوية السحابيّة لا تصل مخزن ملفّات Actions)
+
+concurrency:
+  group: liked-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright Chromium
+        run: |
+          npm i --no-save playwright >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+      - name: عنوان النشرة وانتظارها تعلن هذا الالتزام
+        id: base
+        env:
+          IN_BASE: ${{ inputs.base }}
+          REF_NAME: ${{ github.ref_name }}
+          WANT: ${{ github.sha }}
+        run: |
+          BASE="${IN_BASE:-https://omran-ai-builder-git-${REF_NAME//\//-}-omran4.vercel.app}"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "النشرة: $BASE"
+          if [ -z "$IN_BASE" ]; then
+            for i in $(seq 1 36); do
+              GOT=$(curl -sS -m 20 "$BASE/deploy-probe.txt" 2>/dev/null | sed -n 's/^commit=//p')
+              echo "محاولة $i: commit=${GOT:-?} (المنتظَر ${WANT:0:7})"
+              case "$GOT" in "$WANT"*) echo "النشرة تحمل هذا الالتزام"; exit 0;; esac
+              sleep 10
+            done
+            echo "::warning::النشرة لم تعلن الالتزام خلال ٦ دقائق — تُجرَّب كما هي"
+          fi
+      # رمز جلسة المالك: SAMPLE_TOKEN (video-samples)، وإلّا EVAL_TOKEN أو PROBE_TOKEN إن كان أحدهما للمالك — المِجسّ يتحقّق من
+      # الهويّة من أحداث البثّ (modelId/served للمالك وحده) ويرفض رمزًا ليس له. يُطبع اسم السرّ المستعمل لا قيمته.
+      - name: «عجبني» على كلود ثمّ السؤال عند المزوّدين، ولقطات الواجهة
+        env:
+          PROBE_BASE: ${{ steps.base.outputs.base }}
+          PROBE_PROVS: ${{ inputs.provs || 'groq,gemini,deepseek' }}
+          T_SAMPLE: ${{ secrets.SAMPLE_TOKEN }}
+          T_EVAL: ${{ secrets.EVAL_TOKEN }}
+          T_PROBE: ${{ secrets.PROBE_TOKEN }}
+          HAS_ANY_SECRET: ${{ secrets.ANTHROPIC_API_KEY != '' || secrets.GEMINI_API_KEY != '' }}
+        run: |
+          mkdir -p liked-probe
+          echo "الأسرار تصل هذا التشغيل: $HAS_ANY_SECRET (مفتاح مزوّد موجود = نعم؛ فغياب رمز المالك يعني أنّ السرّ غير مضاف)"
+          if [ -n "$T_SAMPLE" ]; then export OWNER_TOKEN="$T_SAMPLE" TOKEN_SRC=SAMPLE_TOKEN
+          elif [ -n "$T_EVAL" ]; then export OWNER_TOKEN="$T_EVAL" TOKEN_SRC=EVAL_TOKEN
+          elif [ -n "$T_PROBE" ]; then export OWNER_TOKEN="$T_PROBE" TOKEN_SRC=PROBE_TOKEN
+          else export OWNER_TOKEN="" TOKEN_SRC=none; fi
+          echo "مصدر الرمز: $TOKEN_SRC" | tee liked-probe/log.txt
+          node scripts/liked-probe.mjs 2>&1 | tee -a liked-probe/log.txt
+          exit ${PIPESTATUS[0]}
+      - name: Upload report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liked-probe
+          path: liked-probe/
+          retention-days: 7
+      # الحاوية السحابيّة التي تقود هذا المِجسّ لا تصل مخزن ملفّات Actions (blob.core.windows.net مرفوض)، فاللقطات والتقرير يُدفعان
+      # على فرع يتيم مؤقّت shots/liked-<run> يُقرأ بـgit ثمّ يُحذف.
+      - name: دفع اللقطات على فرع مؤقّت
+        if: always()
+        run: |
+          BR="shots/liked-${{ github.run_id }}"
+          # فروع لقطات التشغيلات السابقة تُحذف — يبقى الأحدث وحده
+          for old in $(git ls-remote --heads origin 'shots/liked-*' | sed 's#.*refs/heads/##'); do [ "$old" = "$BR" ] || git push -q origin --delete "$old" || true; done
+          git checkout -q --orphan "$BR"
+          git reset -q
+          git add -f liked-probe
+          git -c user.name=liked-probe -c user.email=liked-probe@users.noreply.github.com commit -qm "لقطات مِجسّ «عجبني» — تشغيل ${{ github.run_id }}"
+          git push -f origin "$BR"
+          echo "الفرع: $BR" >> "$GITHUB_STEP_SUMMARY"

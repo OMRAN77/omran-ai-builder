@@ -1314,7 +1314,7 @@ $('#btnDeleteAll').onclick = () => {
 @keyframes fbDraw{to{stroke-dashoffset:0}}
 .fbConf{position:absolute;top:38%;left:50%;width:9px;height:9px;border-radius:2px;opacity:0;pointer-events:none;animation:fbConf 1.3s ease-out forwards;}
 @keyframes fbConf{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--cx),var(--cy)) rotate(540deg)}}
-#fbOwnerBtn{margin-top:14px;background:none;border:none;color:var(--muted,#99a);font-size:12px;cursor:pointer;text-decoration:underline;position:relative;z-index:2;}
+#fbOwnerBtn,#inboxOwnerBtn{margin-top:14px;background:none;border:none;color:var(--muted,#99a);font-size:12px;cursor:pointer;text-decoration:underline;position:relative;z-index:2;}
 #fbList{display:none;text-align:start;max-height:52vh;overflow-y:auto;position:relative;z-index:2;}
 .fbItem{padding:12px 4px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;color:#ddd;}
 .fbItem .fbStarsSm{color:#f5b942;font-size:13px;letter-spacing:2px;direction:ltr;display:inline-block;}
@@ -1338,6 +1338,7 @@ $('#btnDeleteAll').onclick = () => {
       <textarea id="fbNote"></textarea>
       <button id="fbSendBtn" type="button"></button>
       <button id="fbOwnerBtn" type="button" style="display:none;"></button>
+      <button id="inboxOwnerBtn" type="button" style="display:none;"></button>
     </div>
     <div id="fbThanksView">
       <svg id="fbCheck" viewBox="0 0 90 90"><circle cx="45" cy="45" r="39"/><path d="M28 46 l12 12 l22 -24"/></svg>
@@ -1376,6 +1377,8 @@ $('#btnDeleteAll').onclick = () => {
     });
     const ob = document.getElementById('fbOwnerBtn');
     if(fbIsOwner()){ ob.style.display='inline-block'; ob.textContent = t('fbOwnerList'); }
+    const ib = document.getElementById('inboxOwnerBtn'); /* v-owner-inbox */
+    if(ib && fbIsOwner()){ ib.style.display='inline-block'; ib.textContent = t('inboxOwnerBtn'); }
   }
 
   window.openFeedback = function(){
@@ -1452,6 +1455,33 @@ $('#btnDeleteAll').onclick = () => {
       if(!items.length && !reports.length){ list.innerHTML = '<div style="text-align:center;color:#889;padding:20px;">'+t('fbEmpty')+'</div>'; return; }
       list.innerHTML = fbOwnerListHtml(items, reports);
     }catch(e){ list.innerHTML = '<div style="text-align:center;color:#e66;padding:20px;">⚠️</div>'; }
+  };
+
+  /* v-owner-inbox (المالك ٢٠ أكتوبر «نعم ابدا»): صندوق المالك — بلاغات كلام المستخدمين من الخادم (شتيمة · تذمّر من التطبيق · فشل ردّ أمامه)،
+     الأحدث أوّلًا، كلّ حقل مهرَّب كآراء المستخدمين. */
+  const INBOX_KIND = { insult: ['inboxKindInsult', '#ff5c6c', '🤬'], complaint: ['inboxKindComplaint', '#f5a623', '😠'], error: ['inboxKindError', '#8ab4ff', '⚠️'] };
+  function inboxListHtml(items){
+    return items.map(it=>{
+      const k = INBOX_KIND[it.kind] || INBOX_KIND.error;
+      let when = ''; try{ when = it.at ? new Date(it.at).toLocaleString('en-GB', { timeZone: 'Asia/Dubai', hour12: false }) : ''; }catch(e){ __swallow(e, "ui:app-05-ui#inbox-time"); }
+      return '<div class="fbItem" style="border-color:'+k[1]+'55;"><span style="color:'+k[1]+';font-weight:700;">'+k[2]+' '+fbEsc(t(k[0]))+'</span>'
+        + '<div style="margin-top:4px;white-space:pre-wrap;word-break:break-word;">'+fbEsc(it.text||'')+'</div>'
+        + (it.detail ? '<div style="margin-top:2px;color:#aab;font-size:12px;word-break:break-word;">'+fbEsc(it.detail)+'</div>' : '')
+        + '<div class="fbMeta">'+fbEsc(it.user||'guest')+' · '+fbEsc(it.prov||'')+(it.via==='agent'?' · '+fbEsc(t('agentLabel')||'agent'):'')+' · '+fbEsc(when)+'</div></div>';
+    }).join('');
+  }
+  const inboxBtn = document.getElementById('inboxOwnerBtn');
+  if(inboxBtn) inboxBtn.onclick = async ()=>{
+    const list = document.getElementById('fbList');
+    document.getElementById('fbFormView').style.display='none';
+    list.style.display='block';
+    list.innerHTML = '<div style="text-align:center;color:#889;padding:20px;">…</div>';
+    try{
+      const r = await fetch('/api/system?action=owner-inbox&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''),{cache:'no-store'});
+      const d = await r.json();
+      const items = (d&&d.items)||[];
+      list.innerHTML = items.length ? inboxListHtml(items) : '<div style="text-align:center;color:#889;padding:20px;">'+fbEsc(t('inboxEmpty'))+'</div>';
+    }catch(e){ __swallow(e, "ui:app-05-ui#inbox"); list.innerHTML = '<div style="text-align:center;color:#e66;padding:20px;">⚠️</div>'; }
   };
 
   const fbBtn = document.getElementById('btnFeedback');
