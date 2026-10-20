@@ -8,7 +8,7 @@ const BASE = (process.env.PROBE_BASE || 'https://omran-ai-builder.vercel.app').r
 const TOKEN = process.env.OWNER_TOKEN || '';
 const OUT = 'liked-probe';
 fs.mkdirSync(OUT, { recursive: true });
-if (!TOKEN) { console.error('✗ OWNER_TOKEN مفقود — سرّ SAMPLE_TOKEN (aiapp_auth_token للمالك).'); process.exit(2); }
+if (!TOKEN) { console.error('✗ OWNER_TOKEN مفقود — أضف سرّ SAMPLE_TOKEN في المستودع = قيمة aiapp_auth_token من متصفّح المالك (DevTools ← Application ← Local Storage).'); process.exit(2); }
 
 const PROVS = (process.env.PROBE_PROVS || 'groq,gemini,deepseek').split(',').map((s) => s.trim()).filter(Boolean);
 const Q = 'اقترح لي خمسة أسماء مبتكرة لمقهى صغير في مدينة العين، كلّ اسم كلمتان عربيّتان غير مألوفتين، واكتب كلّ اسم في سطر مرقّم يبدأ بالاسم ثمّ شرطة ثمّ السبب.';
@@ -27,7 +27,7 @@ async function chat(provider, messages, label) {
   if (!res.ok || !res.body) throw new Error(label + ': HTTP ' + res.status + ' ' + (await res.text().catch(() => '')).slice(0, 200));
   const reader = res.body.getReader();
   const dec = new TextDecoder();
-  let buf = '', full = '', err = '', statuses = [];
+  let buf = '', full = '', err = '', statuses = [], owner = false, tier = '';
   for (;;) {
     const c = await reader.read();
     if (c.done) break;
@@ -39,12 +39,14 @@ async function chat(provider, messages, label) {
       if (typeof ev.delta === 'string') full += ev.delta;
       if (ev.status) statuses.push(String(ev.status).slice(0, 60));
       if (ev.error) err = String(ev.error).slice(0, 200);
+      if (ev.modelId || ev.served) owner = true; // chat.js يرسلهما للمالك وحده (v-owner-auto)
+      if (typeof ev.tier === 'string') tier = ev.tier;
     }
     if (Date.now() - t0 > 150000) { err = err || 'timeout 150s'; break; }
   }
   const ms = Date.now() - t0;
   say(`  [${label} · ${provider}] ${ms}ms · ${full.length} حرفًا` + (err ? ' · ERROR: ' + err : '') + (statuses.length ? ' · ' + statuses.slice(0, 4).join(' | ') : ''));
-  return { text: full, err, ms, statuses };
+  return { text: full, err, ms, statuses, owner, tier };
 }
 
 // أسماء المقهى من ردّ كلود: أسطر مرقّمة «١. الاسم — السبب» (أرقام عربيّة أو هنديّة، نجمتا التعريض تُزالان)
@@ -66,6 +68,8 @@ function known(names, text) {
 
 say('① كلود يقترح الأسماء (محادثة المالك)');
 const r1 = await chat('claude', [{ role: 'user', content: Q }], 'Q');
+if (!r1.owner) { say('✗ الرمز ليس للمالك (لا أحداث modelId/served في البثّ' + (r1.tier ? '، الطبقة ' + r1.tier : '') + ') — «عجبني» للمالك وحده. أضف سرّ SAMPLE_TOKEN = aiapp_auth_token من متصفّح المالك.'); fs.writeFileSync(OUT + '/report.json', JSON.stringify(Object.assign(report, { notOwner: true, tier: r1.tier }), null, 2)); process.exit(3); }
+say('  الهويّة: المالك ✓ (أحداث الموديل وصلت)');
 const names = namesOf(r1.text);
 report.claudeReply = r1.text; report.names = names;
 say('  الأسماء المستخرجة: ' + (names.length ? names.join(' · ') : '— (لم تُستخرج أسماء مرقّمة؛ المطابقة بالكلمات)'));

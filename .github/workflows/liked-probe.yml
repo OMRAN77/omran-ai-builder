@@ -62,14 +62,23 @@ jobs:
             done
             echo "::warning::النشرة لم تعلن الالتزام خلال ٦ دقائق — تُجرَّب كما هي"
           fi
+      # رمز جلسة المالك: SAMPLE_TOKEN (video-samples)، وإلّا EVAL_TOKEN أو PROBE_TOKEN إن كان أحدهما للمالك — المِجسّ يتحقّق من
+      # الهويّة من أحداث البثّ (modelId/served للمالك وحده) ويرفض رمزًا ليس له. يُطبع اسم السرّ المستعمل لا قيمته.
       - name: «عجبني» على كلود ثمّ السؤال عند المزوّدين، ولقطات الواجهة
         env:
           PROBE_BASE: ${{ steps.base.outputs.base }}
           PROBE_PROVS: ${{ inputs.provs || 'groq,gemini,deepseek' }}
-          OWNER_TOKEN: ${{ secrets.SAMPLE_TOKEN }}
+          T_SAMPLE: ${{ secrets.SAMPLE_TOKEN }}
+          T_EVAL: ${{ secrets.EVAL_TOKEN }}
+          T_PROBE: ${{ secrets.PROBE_TOKEN }}
         run: |
           mkdir -p liked-probe
-          node scripts/liked-probe.mjs 2>&1 | tee liked-probe/log.txt
+          if [ -n "$T_SAMPLE" ]; then export OWNER_TOKEN="$T_SAMPLE" TOKEN_SRC=SAMPLE_TOKEN
+          elif [ -n "$T_EVAL" ]; then export OWNER_TOKEN="$T_EVAL" TOKEN_SRC=EVAL_TOKEN
+          elif [ -n "$T_PROBE" ]; then export OWNER_TOKEN="$T_PROBE" TOKEN_SRC=PROBE_TOKEN
+          else export OWNER_TOKEN="" TOKEN_SRC=none; fi
+          echo "مصدر الرمز: $TOKEN_SRC" | tee liked-probe/log.txt
+          node scripts/liked-probe.mjs 2>&1 | tee -a liked-probe/log.txt
           exit ${PIPESTATUS[0]}
       - name: Upload report and screenshots
         if: always()
