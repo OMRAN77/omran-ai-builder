@@ -166,7 +166,7 @@ I18N['fil'] = {
     pricingBuyBtn: 'Bumili',
     mahaNoPoints: 'Ubos na ang puntos mo 💜 Mag-top up sa Plans section para magpatuloy kay Maha',
     "appColorTitle": "Kulay ng app", "customColorsLabel": "Pasadyang kulay",
-    fbMenuLabel: "Mahalaga ang opinyon mo", fbTitle: "Mahalaga ang opinyon mo", fbSubtitle: "Tulungan kaming pagbutihin ang karanasan mo — direktang umaabot sa amin ang rating mo", fbChipEasy: "Madaling gamitin", fbChipDesign: "Magandang disenyo", fbChipAI: "Mahusay na AI", fbChipSlow: "Minsan mabagal", fbChipBug: "May nakitang problema", fbNotePh: "Ano ang dapat naming pagbutihin? (opsyonal)", fbSend: "Ipadala ang rating", fbThanks: "Salamat!", fbThanksSub: "Natanggap ang opinyon mo at makakatulong ito sa amin", fbOwnerList: "Mga opinyon ng users", fbEmpty: "Wala pang rating",
+    fbMenuLabel: "Mahalaga ang opinyon mo", fbTitle: "Mahalaga ang opinyon mo", fbSubtitle: "Tulungan kaming pagbutihin ang karanasan mo — direktang umaabot sa amin ang rating mo", fbChipEasy: "Madaling gamitin", fbChipDesign: "Magandang disenyo", fbChipAI: "Mahusay na AI", fbChipSlow: "Minsan mabagal", fbChipBug: "May nakitang problema", fbNotePh: "Ano ang dapat naming pagbutihin? (opsyonal)", fbSend: "Ipadala ang rating", fbThanks: "Salamat!", fbThanksSub: "Natanggap ang opinyon mo at makakatulong ito sa amin", fbOwnerList: "Mga opinyon ng users", fbEmpty: "Wala pang rating", inboxOwnerBtn: "📥 Inbox ng may-ari", inboxEmpty: "Wala pang ulat", inboxKindInsult: "Insulto", inboxKindComplaint: "Hindi nasisiyahan sa app", inboxKindError: "Nabigong tugon", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Ikonekta ang Gmail",
     "eaVoiceBtn": "🔊 Voice summary",
     "eaRefreshBtn": "🔄 I-refresh",

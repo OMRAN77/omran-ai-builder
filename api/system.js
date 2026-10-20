@@ -31,6 +31,7 @@ function load(action) {
     case 'deploy-probe': return require('./_lib/deploy-probe.js'); // v-deploy-probe: /deploy-probe.txt ← التزام النشرة الحيّة
     case 'email-sweep': return require('./_lib/email-sweep.js'); // v-unverified-email: الجرد اليوميّ (Vercel Cron) — الإيميل غير المؤكَّد يُشال بعد ٣٠ يومًا
     case 'feedback': return require('./_lib/feedback.js');
+    case 'owner-inbox': return require('./_lib/owner-inbox.js'); // v-owner-inbox: بلاغات كلام المستخدمين (شتيمة · تذمّر · فشل ردّ) — للمالك
     case 'revgeo': return require('./_lib/revgeo.js');
     case 'maps-key': return require('./_lib/maps-key.js'); // v-real3d: مفتاح المباني الحقيقيّة
     case 'car3d': return require('./_lib/car3d.js'); // v-car3d: سيّارة ثلاثيّة الأبعاد من وصف أو صورة (المالك)

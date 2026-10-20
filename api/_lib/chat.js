@@ -1271,7 +1271,7 @@ module.exports = async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   if (res.flushHeaders) res.flushHeaders();
-  const send = (obj) => { if (res.writableEnded) return; /* v-turn-close: بعد ختام الوقت لا كتابة (كتابة بعد end = خطأ يُسقط العمليّة) */ try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }; const __cut = watchClientGone(res); // v-tokens-close: العميل ضغط «إيقاف» أو أغلق التبويب = نلغي نداء المزوّد الجاري ولا نبدأ جولة أدوات بعده (انظر watchClientGone)
+  const send = (obj) => { if (res.writableEnded) return; /* v-turn-close: بعد ختام الوقت لا كتابة (كتابة بعد end = خطأ يُسقط العمليّة) */ try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } if (obj && obj.error && !__ownerReq) { try { require('./owner-inbox.js').noteFailure({ user: usage && usage.username, prov, text: lastUserText, error: obj.error }).catch((e2) => logError('chat/owner-inbox-err', e2)); } catch (e3) { /* guard-ok — قبل الحصّة لا اسم مستخدم (TDZ) فلا بلاغ */ } } /* v-owner-inbox: فشل ردّ أمام مستخدم = بلاغ للمالك */ }; const __cut = watchClientGone(res); // v-tokens-close: العميل ضغط «إيقاف» أو أغلق التبويب = نلغي نداء المزوّد الجاري ولا نبدأ جولة أدوات بعده (انظر watchClientGone)
   send({ status: '💭 يقرأ سؤالك…', k: 'stReading' });
   send({ modelId: __pick.picked ? __pick.id : '', modelLabel: __pick.picked ? __pick.label : '' }); // v-claude-models: من يجيب
 
@@ -1325,7 +1325,7 @@ module.exports = async (req, res) => {
   // v-providers-owner (أمر المالك ٤ أكتوبر «رجّع المزوّدين إلى المالك فقط»): VIP بلا منتقٍ الآن — اختياره القديم المحفوظ
   // لا يبقى ساريًا خفيًّا؛ يأخذ افتراضيّ التطبيق (GPT، v-default-provider-openai). مزوّد بلا مفتاح = لا تغيير (applyRoute).
   if (!__planRoute && __tier && __tier.tier === 'vip' && prov !== 'openai') applyRoute('openai', '', false);
-  const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : ((__planRoute && __planRoute.bucket) || prov), clientIp(req), { tier: __tier || undefined });
+  const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : ((__planRoute && __planRoute.bucket) || prov), clientIp(req), { tier: __tier || undefined }); /* v-owner-inbox (المالك ٢٠ أكتوبر «نعم ابدا»): كلام غير المالك — شتيمة أو تذمّر من التطبيق = بلاغ بمقطع ≤٢٠٠ حرف للمالك، لا المحادثة */ if (!__ownerReq && usage && usage.username) { try { await require('./owner-inbox.js').scanTurn({ user: usage.username, prov: reqProv || prov, text: lastUserText }); } catch (e) { logError('chat/owner-inbox', e); } }
   if (!usage.allowed) {
     if (usage.reason === 'auth') { send({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); }
     else if (usage.tier === 'free' || usage.tier === 'guest') {

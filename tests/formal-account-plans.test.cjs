@@ -172,7 +172,7 @@ test('٥. ما تكتبه الواجهة في «حسابي» بنصّ ثابت: 
 
 test('٦. كسر الكاش: وسم الإعدادات ٦٩٣ ووسم ملفّات اللغات ٧٢٦', () => {
   assert.ok(read('index.html').includes('/js/partials-settings.js?v=699'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=762'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=763'"));
 });
 
 test('٧. وسم الصورة في المحادثة (خارج الصفحتين) لا يتغيّر: ⚡ و💎 فيه لا في نصّي الجودة المشتركين، بالـ١٤ لغة', () => {

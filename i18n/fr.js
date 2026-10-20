@@ -175,7 +175,7 @@ I18N['fr'] = {
     pricingBuyBtn: 'Acheter',
     mahaNoPoints: 'Votre solde de points est épuisé 💜 Rechargez dans la section Forfaits pour continuer avec Maha',
     "appColorTitle": "Couleur de l'application", "customColorsLabel": "Couleurs personnalisées",
-    fbMenuLabel: "Votre avis compte", fbTitle: "Votre avis compte", fbSubtitle: "Aidez-nous à améliorer votre expérience — votre avis nous parvient directement", fbChipEasy: "Facile à utiliser", fbChipDesign: "Super design", fbChipAI: "IA excellente", fbChipSlow: "Parfois lent", fbChipBug: "Problème rencontré", fbNotePh: "Que devrions-nous améliorer ? (facultatif)", fbSend: "Envoyer l'avis", fbThanks: "Merci !", fbThanksSub: "Votre avis a été reçu et nous aide à progresser", fbOwnerList: "Avis des utilisateurs", fbEmpty: "Aucun avis pour le moment",
+    fbMenuLabel: "Votre avis compte", fbTitle: "Votre avis compte", fbSubtitle: "Aidez-nous à améliorer votre expérience — votre avis nous parvient directement", fbChipEasy: "Facile à utiliser", fbChipDesign: "Super design", fbChipAI: "IA excellente", fbChipSlow: "Parfois lent", fbChipBug: "Problème rencontré", fbNotePh: "Que devrions-nous améliorer ? (facultatif)", fbSend: "Envoyer l'avis", fbThanks: "Merci !", fbThanksSub: "Votre avis a été reçu et nous aide à progresser", fbOwnerList: "Avis des utilisateurs", fbEmpty: "Aucun avis pour le moment", inboxOwnerBtn: "📥 Boîte du propriétaire", inboxEmpty: "Aucun signalement pour le moment", inboxKindInsult: "Insulte", inboxKindComplaint: "Mécontent de l'application", inboxKindError: "Réponse échouée", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Connecter Gmail",
     "eaVoiceBtn": "🔊 Résumé vocal",
     "eaRefreshBtn": "🔄 Actualiser",
