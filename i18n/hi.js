@@ -174,7 +174,7 @@ I18N['hi'] = {
     pricingBuyBtn: 'खरीदें',
     mahaNoPoints: 'आपके पॉइंट खत्म हो गए 💜 माहा के साथ जारी रखने के लिए प्लान सेक्शन से रिचार्ज करें',
     "appColorTitle": "ऐप का रंग", "customColorsLabel": "कस्टम रंग",
-    fbMenuLabel: "आपकी राय मायने रखती है", fbTitle: "आपकी राय मायने रखती है", fbSubtitle: "अपना अनुभव बेहतर बनाने में हमारी मदद करें — आपकी रेटिंग सीधे हम तक पहुँचती है", fbChipEasy: "उपयोग में आसान", fbChipDesign: "शानदार डिज़ाइन", fbChipAI: "उत्कृष्ट AI", fbChipSlow: "कभी-कभी धीमा", fbChipBug: "समस्या मिली", fbNotePh: "हम क्या सुधारें? (वैकल्पिक)", fbSend: "राय भेजें", fbThanks: "धन्यवाद!", fbThanksSub: "आपकी राय मिल गई और यह हमें बेहतर बनाने में मदद करती है", fbOwnerList: "उपयोगकर्ताओं की राय", fbEmpty: "अभी कोई राय नहीं",
+    fbMenuLabel: "आपकी राय मायने रखती है", fbTitle: "आपकी राय मायने रखती है", fbSubtitle: "अपना अनुभव बेहतर बनाने में हमारी मदद करें — आपकी रेटिंग सीधे हम तक पहुँचती है", fbChipEasy: "उपयोग में आसान", fbChipDesign: "शानदार डिज़ाइन", fbChipAI: "उत्कृष्ट AI", fbChipSlow: "कभी-कभी धीमा", fbChipBug: "समस्या मिली", fbNotePh: "हम क्या सुधारें? (वैकल्पिक)", fbSend: "राय भेजें", fbThanks: "धन्यवाद!", fbThanksSub: "आपकी राय मिल गई और यह हमें बेहतर बनाने में मदद करती है", fbOwnerList: "उपयोगकर्ताओं की राय", fbEmpty: "अभी कोई राय नहीं", inboxOwnerBtn: "📥 मालिक इनबॉक्स", inboxEmpty: "अभी कोई रिपोर्ट नहीं", inboxKindInsult: "अपशब्द", inboxKindComplaint: "ऐप से नाराज़", inboxKindError: "जवाब विफल", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Gmail जोड़ें",
     "eaVoiceBtn": "🔊 वॉयस सारांश",
     "eaRefreshBtn": "🔄 रीफ़्रेश",

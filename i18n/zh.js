@@ -159,7 +159,7 @@ I18N['zh'] = {
     pricingBuyBtn: '购买',
     mahaNoPoints: '您的积分已用完 💜 请在套餐页面充值以继续与Maha通话',
     "appColorTitle": "应用颜色", "customColorsLabel": "自定义颜色",
-    fbMenuLabel: "您的意见很重要", fbTitle: "您的意见很重要", fbSubtitle: "帮助我们改善您的体验 — 您的评价会直接送达我们", fbChipEasy: "易于使用", fbChipDesign: "设计出色", fbChipAI: "AI 出色", fbChipSlow: "有时较慢", fbChipBug: "遇到问题", fbNotePh: "我们该改进什么？（可选）", fbSend: "提交评价", fbThanks: "谢谢您！", fbThanksSub: "已收到您的意见，这将帮助我们不断改进", fbOwnerList: "用户反馈", fbEmpty: "暂无评价",
+    fbMenuLabel: "您的意见很重要", fbTitle: "您的意见很重要", fbSubtitle: "帮助我们改善您的体验 — 您的评价会直接送达我们", fbChipEasy: "易于使用", fbChipDesign: "设计出色", fbChipAI: "AI 出色", fbChipSlow: "有时较慢", fbChipBug: "遇到问题", fbNotePh: "我们该改进什么？（可选）", fbSend: "提交评价", fbThanks: "谢谢您！", fbThanksSub: "已收到您的意见，这将帮助我们不断改进", fbOwnerList: "用户反馈", fbEmpty: "暂无评价", inboxOwnerBtn: "📥 所有者收件箱", inboxEmpty: "暂无报告", inboxKindInsult: "辱骂", inboxKindComplaint: "对应用不满", inboxKindError: "回复失败", /* v-owner-inbox */
     "eaConnectBtn": "🔗 连接 Gmail",
     "eaVoiceBtn": "🔊 语音摘要",
     "eaRefreshBtn": "🔄 刷新",

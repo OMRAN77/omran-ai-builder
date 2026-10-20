@@ -174,7 +174,7 @@ I18N['ne'] = {
     pricingBuyBtn: 'किन्नुहोस्',
     mahaNoPoints: 'तपाईंका अंक सकियो 💜 महासँग जारी राख्न योजना खण्डबाट रिचार्ज गर्नुहोस्',
     "appColorTitle": "एपको रंग", "customColorsLabel": "अनुकूलन रङहरू",
-    fbMenuLabel: "तपाईंको राय महत्त्वपूर्ण छ", fbTitle: "तपाईंको राय महत्त्वपूर्ण छ", fbSubtitle: "तपाईंको अनुभव सुधार्न हामीलाई मद्दत गर्नुहोस् — तपाईंको मूल्याङ्कन सिधै हामीसम्म पुग्छ", fbChipEasy: "प्रयोग गर्न सजिलो", fbChipDesign: "उत्कृष्ट डिजाइन", fbChipAI: "उत्कृष्ट AI", fbChipSlow: "कहिलेकाहीं ढिलो", fbChipBug: "समस्या भेटियो", fbNotePh: "हामीले के सुधार्ने? (वैकल्पिक)", fbSend: "राय पठाउनुहोस्", fbThanks: "धन्यवाद!", fbThanksSub: "तपाईंको राय प्राप्त भयो, यसले हामीलाई सुधार गर्न मद्दत गर्छ", fbOwnerList: "प्रयोगकर्ताका राय", fbEmpty: "अहिलेसम्म कुनै राय छैन",
+    fbMenuLabel: "तपाईंको राय महत्त्वपूर्ण छ", fbTitle: "तपाईंको राय महत्त्वपूर्ण छ", fbSubtitle: "तपाईंको अनुभव सुधार्न हामीलाई मद्दत गर्नुहोस् — तपाईंको मूल्याङ्कन सिधै हामीसम्म पुग्छ", fbChipEasy: "प्रयोग गर्न सजिलो", fbChipDesign: "उत्कृष्ट डिजाइन", fbChipAI: "उत्कृष्ट AI", fbChipSlow: "कहिलेकाहीं ढिलो", fbChipBug: "समस्या भेटियो", fbNotePh: "हामीले के सुधार्ने? (वैकल्पिक)", fbSend: "राय पठाउनुहोस्", fbThanks: "धन्यवाद!", fbThanksSub: "तपाईंको राय प्राप्त भयो, यसले हामीलाई सुधार गर्न मद्दत गर्छ", fbOwnerList: "प्रयोगकर्ताका राय", fbEmpty: "अहिलेसम्म कुनै राय छैन", inboxOwnerBtn: "📥 मालिकको इनबक्स", inboxEmpty: "अहिलेसम्म कुनै रिपोर्ट छैन", inboxKindInsult: "अपमान", inboxKindComplaint: "एपसँग असन्तुष्ट", inboxKindError: "जवाफ असफल", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Gmail जोड्नुहोस्",
     "eaVoiceBtn": "🔊 आवाज सारांश",
     "eaRefreshBtn": "🔄 रिफ्रेस",

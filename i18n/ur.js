@@ -173,7 +173,7 @@ I18N['ur'] = {
     pricingBuyBtn: 'خریدیں',
     mahaNoPoints: 'آپ کے پوائنٹس ختم ہو گئے 💜 مہا کے ساتھ جاری رکھنے کے لیے پلانز سیکشن سے ریچارج کریں',
     "appColorTitle": "ایپ کا رنگ", "customColorsLabel": "حسب ضرورت رنگ",
-    fbMenuLabel: "آپ کی رائے اہم ہے", fbTitle: "آپ کی رائے اہم ہے", fbSubtitle: "اپنا تجربہ بہتر بنانے میں ہماری مدد کریں — آپ کی ریٹنگ براہ راست ہم تک پہنچتی ہے", fbChipEasy: "استعمال میں آسان", fbChipDesign: "زبردست ڈیزائن", fbChipAI: "بہترین AI", fbChipSlow: "کبھی کبھی سست", fbChipBug: "مسئلہ پیش آیا", fbNotePh: "ہم کیا بہتر کریں؟ (اختیاری)", fbSend: "رائے بھیجیں", fbThanks: "شکریہ!", fbThanksSub: "آپ کی رائے موصول ہو گئی اور یہ ہمیں بہتر بنانے میں مدد دیتی ہے", fbOwnerList: "صارفین کی آراء", fbEmpty: "ابھی کوئی رائے نہیں",
+    fbMenuLabel: "آپ کی رائے اہم ہے", fbTitle: "آپ کی رائے اہم ہے", fbSubtitle: "اپنا تجربہ بہتر بنانے میں ہماری مدد کریں — آپ کی ریٹنگ براہ راست ہم تک پہنچتی ہے", fbChipEasy: "استعمال میں آسان", fbChipDesign: "زبردست ڈیزائن", fbChipAI: "بہترین AI", fbChipSlow: "کبھی کبھی سست", fbChipBug: "مسئلہ پیش آیا", fbNotePh: "ہم کیا بہتر کریں؟ (اختیاری)", fbSend: "رائے بھیجیں", fbThanks: "شکریہ!", fbThanksSub: "آپ کی رائے موصول ہو گئی اور یہ ہمیں بہتر بنانے میں مدد دیتی ہے", fbOwnerList: "صارفین کی آراء", fbEmpty: "ابھی کوئی رائے نہیں", inboxOwnerBtn: "📥 مالک کا ان باکس", inboxEmpty: "ابھی کوئی رپورٹ نہیں", inboxKindInsult: "گالی", inboxKindComplaint: "ایپ سے ناراض", inboxKindError: "جواب ناکام", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Gmail منسلک کریں",
     "eaVoiceBtn": "🔊 صوتی خلاصہ",
     "eaRefreshBtn": "🔄 تازہ کریں",

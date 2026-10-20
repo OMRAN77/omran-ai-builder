@@ -140,7 +140,7 @@ const I18N = {
     pricingBuyBtn: 'شراء',
     mahaNoPoints: 'رصيدك من النقاط خلص 💜 اشحن من قسم الباقات وكمّل مع {voice}',
     "appColorTitle": "لون التطبيق", "customColorsLabel": "ألوان مخصصة",
-    fbMenuLabel: "رأيك يهمنا", fbTitle: "رأيك يهمنا", fbSubtitle: "ساعدنا نطوّر تجربتك — تقييمك يوصل لنا مباشرة", fbChipEasy: "سهل الاستخدام", fbChipDesign: "التصميم رائع", fbChipAI: "ذكاء ممتاز", fbChipSlow: "بطيء أحيانًا", fbChipBug: "واجهت مشكلة", fbNotePh: "شو تحب نطوّر؟ اكتب ملاحظتك (اختياري)", fbSend: "إرسال التقييم", fbThanks: "شكرًا لك!", fbThanksSub: "رأيك وصل وبيساعدنا نطوّر التطبيق", fbOwnerList: "آراء المستخدمين", fbEmpty: "لا توجد تقييمات بعد",
+    fbMenuLabel: "رأيك يهمنا", fbTitle: "رأيك يهمنا", fbSubtitle: "ساعدنا نطوّر تجربتك — تقييمك يوصل لنا مباشرة", fbChipEasy: "سهل الاستخدام", fbChipDesign: "التصميم رائع", fbChipAI: "ذكاء ممتاز", fbChipSlow: "بطيء أحيانًا", fbChipBug: "واجهت مشكلة", fbNotePh: "شو تحب نطوّر؟ اكتب ملاحظتك (اختياري)", fbSend: "إرسال التقييم", fbThanks: "شكرًا لك!", fbThanksSub: "رأيك وصل وبيساعدنا نطوّر التطبيق", fbOwnerList: "آراء المستخدمين", fbEmpty: "لا توجد تقييمات بعد", inboxOwnerBtn: "📥 صندوق المالك", inboxEmpty: "لا بلاغات بعد", inboxKindInsult: "شتيمة", inboxKindComplaint: "متضايق من التطبيق", inboxKindError: "فشل ردّ أمامه", /* v-owner-inbox */
     "eaConnectBtn": "🔗 ربط Gmail",
     "eaVoiceBtn": "🔊 ملخص صوتي",
     "eaRefreshBtn": "🔄 تحديث",
@@ -1373,7 +1373,7 @@ const I18N = {
     pricingBuyBtn: 'Buy',
     mahaNoPoints: 'Your points balance is empty 💜 Top up in the Plans section to continue with {voice}',
     "appColorTitle": "App color", "customColorsLabel": "Custom colors",
-    fbMenuLabel: "We value your feedback", fbTitle: "We value your feedback", fbSubtitle: "Help us improve your experience — your rating reaches us directly", fbChipEasy: "Easy to use", fbChipDesign: "Great design", fbChipAI: "Excellent AI", fbChipSlow: "Sometimes slow", fbChipBug: "Found a problem", fbNotePh: "What should we improve? (optional)", fbSend: "Send feedback", fbThanks: "Thank you!", fbThanksSub: "Your feedback was received and helps us improve", fbOwnerList: "User feedback", fbEmpty: "No feedback yet",
+    fbMenuLabel: "We value your feedback", fbTitle: "We value your feedback", fbSubtitle: "Help us improve your experience — your rating reaches us directly", fbChipEasy: "Easy to use", fbChipDesign: "Great design", fbChipAI: "Excellent AI", fbChipSlow: "Sometimes slow", fbChipBug: "Found a problem", fbNotePh: "What should we improve? (optional)", fbSend: "Send feedback", fbThanks: "Thank you!", fbThanksSub: "Your feedback was received and helps us improve", fbOwnerList: "User feedback", fbEmpty: "No feedback yet", inboxOwnerBtn: "📥 Owner inbox", inboxEmpty: "No reports yet", inboxKindInsult: "Insult", inboxKindComplaint: "Upset with the app", inboxKindError: "Reply failed", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Connect Gmail",
     "eaVoiceBtn": "🔊 Voice summary",
     "eaRefreshBtn": "🔄 Refresh",

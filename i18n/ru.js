@@ -165,7 +165,7 @@ I18N['ru'] = {
     pricingBuyBtn: 'Купить',
     mahaNoPoints: 'Ваши баллы закончились 💜 Пополните в разделе тарифов, чтобы продолжить с Махой',
     "appColorTitle": "Цвет приложения", "customColorsLabel": "Пользовательские цвета",
-    fbMenuLabel: "Ваше мнение важно", fbTitle: "Ваше мнение важно", fbSubtitle: "Помогите нам улучшить ваш опыт — ваша оценка доходит до нас напрямую", fbChipEasy: "Удобно пользоваться", fbChipDesign: "Отличный дизайн", fbChipAI: "Отличный ИИ", fbChipSlow: "Иногда медленно", fbChipBug: "Возникла проблема", fbNotePh: "Что нам улучшить? (необязательно)", fbSend: "Отправить отзыв", fbThanks: "Спасибо!", fbThanksSub: "Ваш отзыв получен и поможет нам стать лучше", fbOwnerList: "Отзывы пользователей", fbEmpty: "Отзывов пока нет",
+    fbMenuLabel: "Ваше мнение важно", fbTitle: "Ваше мнение важно", fbSubtitle: "Помогите нам улучшить ваш опыт — ваша оценка доходит до нас напрямую", fbChipEasy: "Удобно пользоваться", fbChipDesign: "Отличный дизайн", fbChipAI: "Отличный ИИ", fbChipSlow: "Иногда медленно", fbChipBug: "Возникла проблема", fbNotePh: "Что нам улучшить? (необязательно)", fbSend: "Отправить отзыв", fbThanks: "Спасибо!", fbThanksSub: "Ваш отзыв получен и поможет нам стать лучше", fbOwnerList: "Отзывы пользователей", fbEmpty: "Отзывов пока нет", inboxOwnerBtn: "📥 Ящик владельца", inboxEmpty: "Пока нет сообщений", inboxKindInsult: "Оскорбление", inboxKindComplaint: "Недоволен приложением", inboxKindError: "Ответ не удался", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Подключить Gmail",
     "eaVoiceBtn": "🔊 Голосовая сводка",
     "eaRefreshBtn": "🔄 Обновить",

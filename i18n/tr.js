@@ -164,7 +164,7 @@ I18N['tr'] = {
     pricingBuyBtn: 'Satın al',
     mahaNoPoints: 'Puanınız bitti 💜 Maha ile devam etmek için Planlar bölümünden yükleyin',
     "appColorTitle": "Uygulama rengi", "customColorsLabel": "Özel renkler",
-    fbMenuLabel: "Görüşünüz bizim için önemli", fbTitle: "Görüşünüz bizim için önemli", fbSubtitle: "Deneyiminizi geliştirmemize yardım edin — puanınız doğrudan bize ulaşır", fbChipEasy: "Kullanımı kolay", fbChipDesign: "Harika tasarım", fbChipAI: "Mükemmel yapay zeka", fbChipSlow: "Bazen yavaş", fbChipBug: "Sorun yaşadım", fbNotePh: "Neyi geliştirelim? (isteğe bağlı)", fbSend: "Değerlendirmeyi gönder", fbThanks: "Teşekkürler!", fbThanksSub: "Görüşünüz alındı ve gelişmemize yardımcı oluyor", fbOwnerList: "Kullanıcı görüşleri", fbEmpty: "Henüz değerlendirme yok",
+    fbMenuLabel: "Görüşünüz bizim için önemli", fbTitle: "Görüşünüz bizim için önemli", fbSubtitle: "Deneyiminizi geliştirmemize yardım edin — puanınız doğrudan bize ulaşır", fbChipEasy: "Kullanımı kolay", fbChipDesign: "Harika tasarım", fbChipAI: "Mükemmel yapay zeka", fbChipSlow: "Bazen yavaş", fbChipBug: "Sorun yaşadım", fbNotePh: "Neyi geliştirelim? (isteğe bağlı)", fbSend: "Değerlendirmeyi gönder", fbThanks: "Teşekkürler!", fbThanksSub: "Görüşünüz alındı ve gelişmemize yardımcı oluyor", fbOwnerList: "Kullanıcı görüşleri", fbEmpty: "Henüz değerlendirme yok", inboxOwnerBtn: "📥 Sahip kutusu", inboxEmpty: "Henüz bildirim yok", inboxKindInsult: "Hakaret", inboxKindComplaint: "Uygulamadan rahatsız", inboxKindError: "Yanıt başarısız", /* v-owner-inbox */
     "eaConnectBtn": "🔗 Gmail'i bağla",
     "eaVoiceBtn": "🔊 Sesli özet",
     "eaRefreshBtn": "🔄 Yenile",
