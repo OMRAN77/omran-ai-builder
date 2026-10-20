@@ -37,13 +37,14 @@ function token(u) {
   const payload = Buffer.from(JSON.stringify({ u, exp: Date.now() + 60_000 })).toString('base64url');
   return payload + '.' + crypto.createHmac('sha256', process.env.AUTH_SECRET).update(payload).digest('base64url');
 }
-async function agentFails(status, body) {
+async function agentFails(status, body, orResp) {
   const calls = [];
   const save = global.fetch;
   global.fetch = async (url) => {
     const u = String(url);
     calls.push(u);
     if (/api\.anthropic\.com\/v1\/messages/.test(u)) return new Response(JSON.stringify(body), { status });
+    if (orResp && /openrouter\.ai/.test(u)) return orResp();
     // لو هبط بصمت لوجد هؤلاء يجيبون
     return new Response('data: ' + JSON.stringify({ choices: [{ delta: { content: 'أنا البديل' } }] }) + '\n\ndata: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
   };
@@ -59,7 +60,7 @@ test('agent (real handler): Claude fails for the owner → no silent DeepSeek/Mi
   const a = await agentFails(402, { error: { type: 'billing_error', message: 'Your credit balance is too low' } });
   assert.ok(!a.calls.some((u) => /deepseek|mistral|groq/.test(u)), 'لا هبوط: ' + a.calls.join(' '));
   assert.equal(a.text, '', 'لا «أنا البديل»');
-  assert.deepEqual(a.errors, ['ما عندي رصيد']);
+  assert.deepEqual(a.errors, ['ما عندي رصيد — Anthropic']);
   const b = await agentFails(500, { error: { type: 'api_error', message: 'boom' } });
   assert.ok(!b.calls.some((u) => /deepseek|mistral|groq/.test(u)));
   assert.equal(b.errors.length, 1);
@@ -112,4 +113,16 @@ test('chip and work note: the agent label only with Claude; the provider draws i
   assert.ok(read('index.html').includes('/js/modes.js?v=m171026b'), 'وسم modes.js مرفوع');
   const GE = require(rp('api/_lib/github-edit.js'));
   assert.match(GE.WORK_NOTE, /- أنت من يرسم ويعدّل الصور حين تُطلب: بأداتَي generate_image وedit_image بنفسك، بلا «ما أقدر» ولا تحويل لغيرك؛ واذكر في سطر المحرّك/);
+});
+
+test('v-credit-who: Claude المباشر يسقط بغير رصيد ثمّ الوسيط بلا رصيد = «OpenRouter · Anthropic خطأ 529» — سبب المباشر لا يُمحى', async () => {
+  process.env.OPENROUTER_API_KEY = 'test-or-key';
+  try {
+    const orNoCredit = () => new Response(JSON.stringify({ error: { message: 'Insufficient credits. Add more using https://openrouter.ai/settings/credits', code: 402 } }), { status: 402 });
+    const a = await agentFails(529, { error: { type: 'overloaded_error', message: 'Overloaded' } }, orNoCredit);
+    assert.ok(a.calls.some((u) => /openrouter\.ai/.test(u)), 'جرّب الوسيط');
+    assert.deepEqual(a.errors, ['ما عندي رصيد — OpenRouter · Anthropic خطأ 529']);
+    const b = await agentFails(400, { error: { type: 'billing_error', message: 'Your credit balance is too low' } }, orNoCredit);
+    assert.deepEqual(b.errors, ['ما عندي رصيد — Anthropic و OpenRouter']);
+  } finally { delete process.env.OPENROUTER_API_KEY; }
 });

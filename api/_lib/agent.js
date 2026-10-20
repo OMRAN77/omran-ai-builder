@@ -785,7 +785,10 @@ module.exports = async (req, res) => {
           } catch (e) { /* جرّب التالي */ }
         }
         await meterRun();
-        if (isOwner(runUser)) { send({ error: (Number(upstream.status) === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(errText)) ? 'ما عندي رصيد' : 'ما قدرت أردّ الحين — خطأ ' + upstream.status }); res.end(); return; } // v-prov-self
+        const credRe = /credit|balance|billing|insufficient|quota|payment/i;
+        const credPrev = agentViaOR && agentFail && /^Anthropic مباشر/.test(agentFail.who) ? agentFail : null; // v-credit-who: سقط المباشر ثمّ رفض الوسيط — سبب المباشر لا يُمحى
+        const credWho = credPrev ? (Number(credPrev.status) === 402 || credRe.test(credPrev.text || '') ? 'Anthropic و OpenRouter' : 'OpenRouter · Anthropic خطأ ' + credPrev.status) : agentViaOR ? 'OpenRouter' : 'Anthropic'; // v-credit-who: اسم الحساب الذي رفض — للمالك وحده (السطر التالي بشرط isOwner)
+        if (isOwner(runUser)) { send({ error: (Number(upstream.status) === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(errText)) ? 'ما عندي رصيد — ' + credWho : 'ما قدرت أردّ الحين — خطأ ' + upstream.status }); res.end(); return; } // v-prov-self // v-credit-who
         send({ error: 'خطأ المحرّك ' + upstream.status + ': ' + errText.slice(0, 300) });
         res.end();
         return;
