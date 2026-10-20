@@ -510,7 +510,7 @@ module.exports = withErrorCapture('ai', async (req, res) => {
         if (b.__ownerFactory && b.raw === true) stripAppSystem(action, b);
         /* v-prov-self: المسارات القديمة لكلّ مزوّد — الدروس المنشورة بـ«عمّم» لكلّ مستخدم، وللمالك ملفّ المزوّد وتجارب الدروس. بعد ملاحظة الخادم. */
         let __provSelf = '';
-        if (!(b.__ownerFactory && b.raw === true)) { try { __provSelf = await require('./_lib/prov-self.js').systemBlocks(!!b.__ownerFactory, action); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الدروس */ } }
+        if (!(b.__ownerFactory && b.raw === true)) { try { __provSelf = await require('./_lib/prov-self.js').systemBlocks(!!b.__ownerFactory, action, { lastUserText: lastUserText(action, b) } /* v-liked-reply: صلة الردود المعتمدة بالسؤال */); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الدروس */ } }
         injectNote(action, b, geoCountry);
         if (__provSelf) applyNote(action, b, __provSelf);
         delete b.__ownerFactory;

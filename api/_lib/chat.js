@@ -1475,7 +1475,7 @@ module.exports = async (req, res) => {
     let __provSelfSys = '', __genImg = null;
     /* v-gen-image: «عمّم» من المالك ومعها صورة (الواجهة ترسلها مضغوطة في genImage) = تُحفظ برابط من التطبيق ويصل رابطها العشرة. بلا الكلمة أو لغيره لا شيء. */
     if (__ownerReq && body && body.genImage && require('./prov-self.js').ownerSaidGeneralize(lastUserText)) { try { __genImg = await require('./prov-self.js').noteGenImage(body.genImage, reqProv || prov); } catch (e) { logError('chat/gen-image', e); } }
-    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov, __ownerReq ? { messages: messages, lastUserText: lastUserText, genImageUrl: (__genImg && __genImg.url) || '' } : null); } catch (e) { logError('chat/prov-self', e); }
+    try { __provSelfSys = __rawOwner ? '' : await require('./prov-self.js').systemBlocks(__ownerReq, reqProv || prov, __ownerReq ? { messages: messages, lastUserText: lastUserText, genImageUrl: (__genImg && __genImg.url) || '' } : { lastUserText: lastUserText } /* v-liked-reply: الردود المعتمدة بـ«عجبني» تُختار بصلتها بسؤال المستخدم */); } catch (e) { logError('chat/prov-self', e); }
     const system = (quietSocialTurn
       ? PERSONA_NOTE + '\n' + __sysBase + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور وبلغة رسالة المستخدم نفسها — جملتان أو ثلاث فيها روح (المثال العربي «الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟» مجرد مثال، ترجم روحه للغة المستخدم) واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn
