@@ -317,6 +317,10 @@
   }
 
   function status(txt){ var s = $('vtStatus'); if(!s) return; s.textContent = txt || ''; s.style.display = txt ? 'block' : 'none'; }
+  /* v-trend-scene-live (المالك بصورة مشاهد الترندات: «هذيل ما يشتغلون»): نصوص هذه اللوحة تمرّ بـnoEmoji (ui) فيُكتب «يصنع الفيديو…»
+     بلا ⏳ — ومشهد التوليد (app-34-gen-wait) كان يعرف «مشغول» بذلك الرمز، فلم يظهر قطّ بالمسار الحقيقيّ. الانشغال يُعلَن بسمة صريحة
+     على سطر الحالة تُضبط قبل كتابة النصّ (كتابته هي التي توقظ الرصد) وتُرفع قبل نصّ النهاية أو الخطأ. */
+  function setBusyFlag(on){ var s = $('vtStatus'); if(!s) return; if(on) s.setAttribute('data-genw-busy', '1'); else s.removeAttribute('data-genw-busy'); }
   function post(url, payload){
     return window.postWithConfirm ? window.postWithConfirm(url, payload) : fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
   }
@@ -409,6 +413,7 @@
       localStorage.setItem(bk, String(params.bg));
     }catch(e){ params.bg = Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
     busy = true; $('vtGo').disabled = true; $('vtOut').innerHTML = '';
+    setBusyFlag(true);
     status(ui('working'));
     try{
       var urls = [];
@@ -438,12 +443,14 @@
       });
       var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };
       out.appendChild(again);
+      setBusyFlag(false);
       status(ui('done'));
       try{ window.__chatVideoResult = { url: finalUrl || urls[0] }; }catch(e){ /* guard-ok */ }
     }catch(e){
+      setBusyFlag(false);
       if(String(e && e.message) !== 'cancelled') status(errText(e));
       else status('');
-    }finally{ busy = false; if($('vtGo')) $('vtGo').disabled = false; }
+    }finally{ busy = false; setBusyFlag(false); if($('vtGo')) $('vtGo').disabled = false; }
   }
 
   function boot(){
