@@ -124,6 +124,7 @@ try {
     const hit = known(names, lastText);
     say(`  ${shown && hit.length ? '✓' : '✗'} لقطة ${p}: الواجهة تعرض ${hit.length}/${names.length} أسماء`);
     await page.screenshot({ path: `${OUT}/${p}.png` });
+    await page.screenshot({ path: `${OUT}/${p}.jpg`, type: 'jpeg', quality: 72 });
     report.providers[p] = Object.assign(report.providers[p] || {}, { uiText: lastText, uiHit: hit, shot: `${p}.png` });
   }
   if (pageErrs.length) say('  أخطاء الصفحة: ' + pageErrs.slice(0, 5).join(' | '));

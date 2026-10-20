@@ -22,7 +22,7 @@ on:
     paths: ['scripts/liked-probe.mjs', '.github/workflows/liked-probe.yml']
 
 permissions:
-  contents: read
+  contents: write   # لدفع اللقطات على فرع مؤقّت shots/liked-<run> (الحاوية السحابيّة لا تصل مخزن ملفّات Actions)
 
 concurrency:
   group: liked-probe
@@ -34,8 +34,6 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -87,3 +85,15 @@ jobs:
           name: liked-probe
           path: liked-probe/
           retention-days: 7
+      # الحاوية السحابيّة التي تقود هذا المِجسّ لا تصل مخزن ملفّات Actions (blob.core.windows.net مرفوض)، فاللقطات والتقرير يُدفعان
+      # على فرع يتيم مؤقّت shots/liked-<run> يُقرأ بـgit ثمّ يُحذف.
+      - name: دفع اللقطات على فرع مؤقّت
+        if: always()
+        run: |
+          BR="shots/liked-${{ github.run_id }}"
+          git checkout -q --orphan "$BR"
+          git reset -q
+          git add -f liked-probe
+          git -c user.name=liked-probe -c user.email=liked-probe@users.noreply.github.com commit -qm "لقطات مِجسّ «عجبني» — تشغيل ${{ github.run_id }}"
+          git push -f origin "$BR"
+          echo "الفرع: $BR" >> "$GITHUB_STEP_SUMMARY"
