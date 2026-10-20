@@ -727,7 +727,9 @@ btnToggleHistory.onclick = () => {
         return true;
       };
     }
-    window.addEventListener('popstate', () => { if(allState) closeAll(true); });
+    /* v-back-layers: الأدوات صار لها مدخل في التاريخ (app-05-swipe-back) — رجوع من أداة فُتحت فوق «عرض الكل» يصل إلى مدخل
+       «عرض الكل» نفسه، فلا يُغلق المستوى إلّا إن لم يعد مدخله هو الحاليّ */
+    window.addEventListener('popstate', () => { if(allState && !(history.state && history.state.omranToolsAll === allState.token)) closeAll(true); });
     ptSectionsView.querySelectorAll('.ptSection').forEach(section => {
       const viewport = section.querySelector('.ptCarousel');
       if(viewport && typeof window.omranStripDesktopScroll === 'function') window.omranStripDesktopScroll(viewport); /* v-desk-strips: العجلة والسحب على الكمبيوتر — «التمرير بالماوس» الذي يذكره قرار إخفاء الأسهم */

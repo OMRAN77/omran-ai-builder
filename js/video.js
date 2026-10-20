@@ -163,10 +163,12 @@
     var lb=document.createElement('div'); lb.className='vmk-lb';
     var vd=document.createElement('video'); vd.src=src; vd.controls=true; vd.autoplay=true; vd.playsInline=true;
     var x=document.createElement('button'); x.type='button'; x.className='vmk-lb-x'; x.textContent='×'; x.setAttribute('aria-label',L('vcRemove'));
-    function close(){ try{ vd.pause(); }catch(e){ /* guard-ok — العنصر يُزال */ } document.removeEventListener('keydown',esc); lb.remove(); }
-    function esc(e){ if(e.key==='Escape') close(); }
+    /* v-back-layers (تدقيق ١٨–١٩ أكتوبر: «Esc يسكّر فيديو المثال ويسكّر الصانع كلّه معاه»): مستمع الفقاعة هنا كان يأتي بعد
+       معالج Esc العامّ (app-05-swipe-back) فيُغلق الصانع أوّلًا. الالتقاط + إيقاف الانتشار: Esc يغلق المشغّل وحده. */
+    function close(){ try{ vd.pause(); }catch(e){ /* guard-ok — العنصر يُزال */ } document.removeEventListener('keydown',esc,true); lb.remove(); }
+    function esc(e){ if(e.key==='Escape'){ e.preventDefault(); e.stopImmediatePropagation(); close(); } }
     lb.addEventListener('click',function(e){ if(e.target!==vd) close(); }); x.addEventListener('click',close);
-    document.addEventListener('keydown',esc);
+    document.addEventListener('keydown',esc,true);
     lb.appendChild(vd); lb.appendChild(x); document.body.appendChild(lb);
   }
   var HUE={canvas:205,runway:28,minimax:165,omni:42,hybrid:262,veo:8,actor:335};

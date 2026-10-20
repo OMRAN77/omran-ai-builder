@@ -36,7 +36,8 @@ test('٢. «عرض الكل» يستبدل المحتوى، يحفظ الموض�
   assert.match(css, /grid-template-columns:repeat\(auto-fill,minmax\(220px,1fr\)\)/);
   assert.match(features, /top:ptPopup\.scrollTop, left:viewport\.scrollLeft/);
   assert.match(features, /history\.pushState\(\{ omranToolsAll:historyToken \}/);
-  assert.match(features, /addEventListener\('popstate', \(\) => \{ if\(allState\) closeAll\(true\); \}\)/);
+  /* v-back-layers: لا يُغلق «عرض الكل» ومدخله هو الحاليّ (رجوع من أداة فُتحت فوقه) */
+  assert.match(features, /addEventListener\('popstate', \(\) => \{ if\(allState && !\(history\.state && history\.state\.omranToolsAll === allState\.token\)\) closeAll\(true\); \}\)/);
   assert.match(features, /requestAnimationFrame\(\(\) => requestAnimationFrame/);
   assert.match(features, /target\.scrollIntoView\(\{ behavior:[\s\S]*?inline:'start'/);
 });

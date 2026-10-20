@@ -101,7 +101,16 @@
       barShown = true;
       var bar = document.createElement('div');
       bar.id = 'mediaNotifAskBar';
-      bar.style.cssText = 'position:fixed; bottom:76px; inset-inline:12px; z-index:9999; display:flex; flex-wrap:wrap; align-items:center; gap:8px;'
+      /* v-notif-bar-place (تدقيق ١٨–١٩ أكتوبر): bottom:76px وinset-inline:12px كانا يضعان الشريط فوق صندوق الكتابة والإرسال
+         (الجوّال) وبعرض الشاشة كلّها فوق القوائم (الحاسوب). الآن فوق الصندوق المقيس (window.__omranAboveComposer من الحزمة)،
+         متوسّطًا عليه وبعرضه حتّى 640px؛ وبلا صندوق ظاهر احتياط متوسّط على 76px. */
+      var pos = null;
+      try { pos = (typeof window.__omranAboveComposer === 'function') ? window.__omranAboveComposer(10) : null; } catch (e) { /* guard-ok — الاحتياط أدناه */ }
+      var vw = window.innerWidth || 0;
+      var bw = pos ? Math.min(640, pos.width) : (vw ? Math.min(640, vw - 24) : 0);
+      bar.style.cssText = 'position:fixed; bottom:' + (pos ? pos.bottom : 76) + 'px; left:' + (pos ? pos.cx + 'px' : '50%') + '; transform:translateX(-50%);'
+        + (bw ? ' width:' + bw + 'px;' : ' width:calc(100% - 24px); max-width:640px;') + ' box-sizing:border-box;'
+        + ' z-index:9999; display:flex; flex-wrap:wrap; align-items:center; gap:8px;'
         + ' background:var(--panel2, #1c2230); color:var(--text, #fff); border:1px solid var(--border, rgba(127,127,127,.25));'
         + ' border-radius:14px; padding:10px 14px; box-shadow:0 8px 28px rgba(0,0,0,.35); font-size:13.5px; line-height:1.7;';
       var txt = document.createElement('span');

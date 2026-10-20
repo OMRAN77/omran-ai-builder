@@ -21,6 +21,13 @@
         box.innerHTML = '<button type="button" id="omranLightboxX" aria-label="close" style="position:absolute;top:calc(12px + env(safe-area-inset-top,0px));inset-inline-start:12px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(20,20,26,.85);color:#fff;font-size:18px;">✕</button><img id="omranLightboxImg" alt="" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;">';
         document.body.appendChild(box);
         box.onclick = function(e){ if(e.target === box || e.target.id === 'omranLightboxX') box.style.display = 'none'; };
+        /* v-back-layers (تدقيق ١٨–١٩ أكتوبر: «Esc وقت عرض الصورة يسكّر الديكور كلّه والصورة تبقى»): العارض ليس في خريطة
+           السحب (تخفي ✕ الخاصّ به)، فمعالج Esc العامّ كان يغلق النافذة تحته. مستمع التقاط يغلقه وحده ويوقف الانتشار. */
+        document.addEventListener('keydown', function(e){
+          if(e.key !== 'Escape' || box.style.display === 'none') return;
+          e.preventDefault(); e.stopImmediatePropagation();
+          box.style.display = 'none';
+        }, true);
       }
       $('omranLightboxImg').src = url;
       box.style.display = 'flex';

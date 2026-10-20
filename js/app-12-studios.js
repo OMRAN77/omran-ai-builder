@@ -23,6 +23,35 @@ function __compressImg(file, onDone, MAX){
   };
   reader.readAsDataURL(file);
 }
+/* v-fav-quota (تدقيق ١٨ أكتوبر: الحفظ الثالث في مفضّلة «ستايل AI» والثاني في الأزياء يفشلان بصمت؛ أمر المالك ٢٠ أكتوبر، الدفعة ٣:
+   «إما ينحفظ، أو تطلع رسالة واضحة»؛ من حزمة a11 في ten-a): المفضّلة كانت تخزّن النتيجة كاملة (~٢٫٤ م.ب dataURL) في localStorage بلا
+   حارس، فيرمي setItem عند الحدّ ولا يقول الزرّ شيئًا — واللوحة تعرض مصغّرة ٥٠×٥٠ فقط. __omranFavThumb تصغّرها JPEG بضلع ٧٦٨ (نحو ١٠٠ ك.ب)
+   قبل الحفظ فتتّسع لعشرات، و__omranLsPut تحفظ داخل try وترجع نجح/فشل. لا حذف تلقائيّ لمفضّلة قائمة عند الامتلاء (بيانات المستخدم) —
+   الفشل يظهر على الزرّ (memorySaveError) وstorageFullWarning في سطر الحالة. */
+function __omranFavThumb(src, onDone){
+  let done = false;
+  const fin = function(v){ if(done) return; done = true; onDone(v); };
+  try{
+    const img = new Image();
+    img.onload = function(){
+      try{
+        let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        if(!w || !h){ fin(src); return; }
+        if(Math.max(w, h) > 768){ const k = 768 / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        fin(c.toDataURL('image/jpeg', 0.85));
+      }catch(e){ __swallow(e, 'fav:thumb'); fin(src); }
+    };
+    img.onerror = function(){ fin(src); };
+    img.src = src;
+  }catch(e){ __swallow(e, 'fav:thumb'); fin(src); }
+}
+function __omranLsPut(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); return true; }
+  catch(e){ __swallow(e, 'fav:quota'); return false; }
+}
 // v530: آمن res.json() — يُرجع كائن خطأ بدل رمي استثناء JSON حين يردّ السيرفر نصًّا (مثل 413)
 async function __safeJson(res){
   const txt = await res.text().catch(()=>'');
@@ -1757,10 +1786,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function loadFavorites(){
     try{ return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }catch(e){ return []; }
   }
-  function saveFavorite(dataUrl, styleLabel){
-    const favs = loadFavorites();
-    favs.unshift({ img: dataUrl, style: styleLabel || '', ts: Date.now() });
-    localStorage.setItem(FAV_KEY, JSON.stringify(favs.slice(0, 30)));
+  /* v-fav-quota: مصغّرة JPEG وحفظ بحارس يرجع نجح/فشل — لا حذف تلقائيّ لمفضّلة قائمة */
+  function saveFavorite(dataUrl, styleLabel, onDone){
+    __omranFavThumb(dataUrl, (img) => {
+      const favs = loadFavorites();
+      favs.unshift({ img: img, style: styleLabel || '', ts: Date.now() });
+      onDone(__omranLsPut(FAV_KEY, favs.slice(0, 30)));
+    });
   }
   function renderFavorites(){
     const favs = loadFavorites();
@@ -1778,7 +1810,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       card.querySelector('button').onclick = () => {
         const arr = loadFavorites();
         arr.splice(idx, 1);
-        localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+        __omranLsPut(FAV_KEY, arr);
         renderFavorites();
       };
       favoritesPanel.appendChild(card);
@@ -1792,9 +1824,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   };
   if(favSaveBtn) favSaveBtn.onclick = () => {
     if(!resultEl.src) return;
-    saveFavorite(resultEl.src, styleEl.value);
-    favSaveBtn.textContent = t('fashionFavoriteSaved');
-    setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, 1800);
+    saveFavorite(resultEl.src, styleEl.value, (ok) => {
+      /* v-fav-quota: النتيجة على الزرّ نفسه، وسبب الفشل في سطر الحالة */
+      favSaveBtn.textContent = t(ok ? 'fashionFavoriteSaved' : 'memorySaveError');
+      if(!ok) setStatus(t('storageFullWarning'));
+      setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, ok ? 1800 : 2500);
+    });
   };
 
   /* ---- 🔄 before/after slider ----
