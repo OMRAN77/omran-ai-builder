@@ -223,6 +223,7 @@ I18N['ml'] = {
     "authPasswordLabel": "പാസ്‌വേഡ്",
     "authNewPasswordLabel": "പുതിയ പാസ്‌വേഡ്",
     "authForgotLink": "പാസ്‌വേഡ് മറന്നോ?",
+    "authForgotIdLink": "ഉപയോക്തൃനാമമോ പാസ്‌വേഡോ മറന്നോ?",
     "langSectionTitle": "🌐 ഭാഷ",
     "apiKeysSectionTitle": "🔑 AI പ്രൊവൈഡർ API കീകൾ",
     "providerQuickBarTitle": "നിങ്ങളുടെ AI പ്രൊവൈഡർ തിരഞ്ഞെടുക്കുക — ഇന്നത്തെ ബാക്കിയുള്ള ക്വോട്ട ഡോട്ട് കാണിക്കുന്നു",

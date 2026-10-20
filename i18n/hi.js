@@ -234,6 +234,7 @@ I18N['hi'] = {
     authPasswordLabel: "पासवर्ड",
     authNewPasswordLabel: "नया पासवर्ड",
     authForgotLink: "पासवर्ड भूल गए?",
+    authForgotIdLink: "यूज़रनेम या पासवर्ड भूल गए?",
     authEmailLabel: "📧 ईमेल (वैकल्पिक - खाता रिकवरी के लिए)",
     authSubmitForgotEmail: "ईमेल द्वारा रीसेट लिंक भेजें",
     langSectionTitle: "🌐 भाषा",

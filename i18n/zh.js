@@ -216,6 +216,7 @@ I18N['zh'] = {
     "authPasswordLabel": "密码",
     "authNewPasswordLabel": "新密码",
     "authForgotLink": "忘记密码?",
+    "authForgotIdLink": "忘记用户名或密码?",
     "langSectionTitle": "🌐 语言",
     "apiKeysSectionTitle": "🔑 AI 服务商 API 密钥",
     "providerQuickBarTitle": "选择您的 AI 服务商 —— 圆点表示今日剩余配额",

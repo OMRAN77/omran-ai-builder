@@ -221,6 +221,7 @@ I18N['id'] = {
     "authPasswordLabel": "Kata sandi",
     "authNewPasswordLabel": "Kata sandi baru",
     "authForgotLink": "Lupa kata sandi?",
+    "authForgotIdLink": "Lupa nama pengguna atau kata sandi?",
     "langSectionTitle": "🌐 Bahasa",
     "apiKeysSectionTitle": "🔑 Kunci API Penyedia AI",
     "providerQuickBarTitle": "Pilih penyedia AI Anda — titik menunjukkan sisa kuota hari ini",

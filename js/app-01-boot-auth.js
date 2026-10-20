@@ -216,6 +216,7 @@ try{
   const passLabelText = $('#authPasswordLabelText');
   const forgotLink = $('#authForgotLink');
   const backToLoginLink = $('#authBackToLoginLink');
+  const signupForgotLink = $('#authSignupForgotLink'); // v-signup-forgot: يظهر في التسجيل وحده تحت «عندي حساب»
   const passwordRow = $('#authPasswordRow');
   const infoMsg = $('#authInfoMsg');
   /* v-perf-boot-defer: partials-core.js يحقن مودال الدخول ديناميكيًّا؛ فشل تحميله (شبكة جوّال متقطّعة) كان
@@ -262,6 +263,7 @@ try{
     if(heading){ heading.textContent = headText || ''; heading.style.display = headText ? 'block' : 'none'; }
     if(altBlock) altBlock.style.display = (m === 'login' || m === 'signup') ? 'flex' : 'none';
     if(switchBtn) switchBtn.textContent = m === 'signup' ? t.authHaveAccount : t.authCreateAccount;
+    if(signupForgotLink) signupForgotLink.style.display = m === 'signup' ? 'block' : 'none';
     userInput.placeholder = (m === 'login' || m === 'forgotEmail') ? (t.authIdPlaceholder || '') : (t.authUsernameLabel || '');
     passInput.placeholder = (m === 'resetToken') ? (t.authNewPasswordLabel || '') : (t.authPasswordLabel || '');
     passInput.autocomplete = m === 'login' ? 'current-password' : 'new-password';
@@ -299,15 +301,19 @@ try{
   tabSignup.onclick = () => setMode('signup');
   forgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
   backToLoginLink.onclick = (e) => { e.preventDefault(); setMode('login'); };
+  if(signupForgotLink) signupForgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
   const authSwitchBtn = $('#authSwitchBtn');
   if(authSwitchBtn) authSwitchBtn.onclick = () => setMode(mode === 'signup' ? 'login' : 'signup');
 
   const togglePassBtn = $('#authTogglePassBtn');
   if(togglePassBtn){
+    /* v-signup-forgot: عين SVG رسميّة (مفتوحة = اضغط لتُظهر، مشطوبة = اضغط لتُخفي) بدل إيموجي القرد والعين — «شي رسمي» */
+    const EYE_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+    const EYE_OFF_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
     togglePassBtn.onclick = () => {
       const showing = passInput.type === 'text';
       passInput.type = showing ? 'password' : 'text';
-      togglePassBtn.textContent = showing ? '🙈' : '👁';
+      togglePassBtn.innerHTML = showing ? EYE_SVG : EYE_OFF_SVG;
     };
   }
 

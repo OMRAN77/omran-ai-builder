@@ -235,6 +235,7 @@ I18N['bn'] = {
     authPasswordLabel: "পাসওয়ার্ড",
     authNewPasswordLabel: "নতুন পাসওয়ার্ড",
     authForgotLink: "পাসওয়ার্ড ভুলে গেছেন?",
+    authForgotIdLink: "ইউজারনেম বা পাসওয়ার্ড ভুলে গেছেন?",
     langSectionTitle: "🌐 ভাষা",
     apiKeysSectionTitle: "🔑 AI প্রদানকারী API কী",
     providerQuickBarTitle: "আপনার AI প্রদানকারী বেছে নিন — বিন্দুটি আজকের অবশিষ্ট কোটা দেখায়",

@@ -234,6 +234,7 @@ I18N['ur'] = {
     authPasswordLabel: "پاس ورڈ",
     authNewPasswordLabel: "نیا پاس ورڈ",
     authForgotLink: "پاس ورڈ بھول گئے؟",
+    authForgotIdLink: "صارف نام یا پاس ورڈ بھول گئے؟",
     langSectionTitle: "🌐 زبان",
     apiKeysSectionTitle: "🔑 اے آئی پرووائیڈر API کیز",
     providerQuickBarTitle: "اپنا اے آئی پرووائیڈر منتخب کریں — نقطہ آج کا باقی کوٹہ ظاہر کرتا ہے",
