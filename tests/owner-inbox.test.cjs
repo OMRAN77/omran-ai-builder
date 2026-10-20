@@ -148,7 +148,8 @@ test('٦ — الربط والواجهة: المحادثة والوكيل يمر
   const data = read('js/app-03-i18n-data.js');
   for (const k of keys) assert.ok((data.match(new RegExp(k + ': "')) || []).length && data.split(k + ': "').length - 1 === 2, 'ar+en · ' + k);
   for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) { const src = read('i18n/' + lg + '.js'); for (const k of keys) assert.ok(src.includes(k + ': "'), lg + ' · ' + k); }
-  const tag = read('js/app-04-i18n-state.js').match(/\.js\?v=(\d+)'; \/\* v-owner-inbox \((\d+)\): خمسة مفاتيح لصندوق المالك/); // الرقم يُقرأ من الملفّ لا يُثبَّت (سقّاطة vPinTests)
-  assert.ok(tag && tag[1] === tag[2], 'الوسم مرفوع وسببه في رأس التعليق');
+  /* v-app-director-watchdog رفع الوسم بعده (٧٦٤) فصار سببه أوّل التعليق: سبب ٧٦٣ يبقى في التعليق نفسه، والوسم لا يقلّ عنه */
+  const tag = read('js/app-04-i18n-state.js').match(/\.js\?v=(\d+)'; \/\*[^\n]*v-owner-inbox \((\d+)\): خمسة مفاتيح لصندوق المالك/); // الرقم يُقرأ من الملفّ لا يُثبَّت (سقّاطة vPinTests)
+  assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && tag[2] === '763', 'الوسم مرفوع وسببه في التعليق');
   assert.ok(read('js/app.bundle.js').includes('inboxOwnerBtn'), 'الحزمة مبنيّة');
 });
