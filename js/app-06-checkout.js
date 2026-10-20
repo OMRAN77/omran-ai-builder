@@ -113,6 +113,7 @@ async function refreshPointsWallet(){
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
+    if(d && d.costs) window.__omranCosts = d.costs; // v-vmk-price-src
     if(d && d.ok && d.authed){
       row.style.display = 'flex';
       val.textContent = d.unlimited ? '∞' : (d.points + ' ' + t('pricingPointsUnit'));
@@ -123,6 +124,22 @@ async function refreshPointsWallet(){
   }catch(e){ /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
+
+/* v-vmk-price-src (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «الرقم اللي على الزر لازم يطلع من نفس المصدر اللي يخصم، ويطابقه بالضبط»):
+   أسعار الخدمات تصل من COSTS في الخادم نفسه (/api/points balance، للزائر أيضًا) — الواجهة لا تكتب رقمًا. نداء واحد يُشارك. */
+let __costsLoading = null;
+function omranLoadCosts(){
+  if(window.__omranCosts) return Promise.resolve(window.__omranCosts);
+  if(__costsLoading) return __costsLoading;
+  const token = authGet('aiapp_auth_token') || '';
+  __costsLoading = fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) })
+    .then(r => r.json())
+    .then(d => { if(d && d.costs) window.__omranCosts = d.costs; return window.__omranCosts || null; })
+    .catch(e => { __swallow(e, 'costs:load'); return null; })
+    .then(v => { __costsLoading = null; return v; });
+  return __costsLoading;
+}
+window.omranLoadCosts = omranLoadCosts;
 
 /* v-points-acct (طلب المالك): رصيد النقاط في قائمة الحساب فقط، مع تحذير
    تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
@@ -153,6 +170,7 @@ async function refreshAcctPoints(){
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
+    if(d && d.costs) window.__omranCosts = d.costs; // v-vmk-price-src
     if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
     box.style.display = 'flex';
     renderAcctMedia(d.media);

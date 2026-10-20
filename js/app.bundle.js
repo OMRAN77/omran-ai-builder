@@ -2118,7 +2118,7 @@ try{
 
 // 🎁 v343: رسائل ودّية بدل أكواد الأخطاء عند توليد/تعديل الصور — مع فتح
 // نافذة إنشاء حساب تلقائيًا للضيف الذي استهلك صوره المجانية.
-function imgErrFriendly(err, isAr){
+function imgErrFriendly(err, isAr, info){
   if(err === 'guest_image_used'){
     setTimeout(() => { try{ window.requireLogin && window.requireLogin('guestImage'); }catch(e){ __swallow(e, "auth:app-02-tts#1"); } }, 1500);
     return isAr
@@ -2126,9 +2126,17 @@ function imgErrFriendly(err, isAr){
       : '🎁 You have used your 3 free guest images! Create a free account in seconds and get 70 gift points to keep generating and editing images.';
   }
   if(err === 'points_insufficient'){
+    /* v-plans-real-balance (تدقيق ١٨ أكتوبر: «تقول تحتاج 10 نقاط والرصيد 10 والصورة أصلًا بـ20»): الرقم كان مكتوبًا هنا من سعر قديم.
+       الآن رصيده وسعر الصورة من ردّ الخادم نفسه (402: points · needed)، وبلاهما بلا رقم. */
+    const have = info && Number(info.points), need = info && Number(info.needed);
+    if(info && isFinite(have) && isFinite(need) && need > 0){
+      return isAr
+        ? '⚡ رصيدك ' + have + ' نقطة، وهذه الصورة تحتاج ' + need + ' نقطة. افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
+        : '⚡ You have ' + have + ' points; this image needs ' + need + '. Open Settings → Plans to top up and continue.';
+    }
     return isAr
-      ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة (تحتاج 10 نقاط). افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
-      : '⚡ Not enough points for this image (needs 10). Open Settings → Plans to top up and continue.';
+      ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة. افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
+      : '⚡ Not enough points for this image. Open Settings → Plans to top up and continue.';
   }
   if(err === 'image_generation_timeout'){
     return isAr
@@ -5028,6 +5036,8 @@ const I18N = {
     vwDefaultQ: 'حلّل هذا الفيديو',
     /* v-plans-gate */
     plansWhyPoints: 'نقاطك خلصت — اشحن من الباقات وكمّل مباشرة.',
+    plansWhyPointsNeed: 'رصيدك {have} نقطة، وهذه العمليّة تحتاج {need} — اشحن من الباقات وكمّل مباشرة.', /* v-plans-real-balance */
+    plansWhyPointsLow: 'رصيدك {have} نقطة وما يكفي لهذه العمليّة — اشحن من الباقات وكمّل مباشرة.',
     plansWhyLimit: 'وصلت حدّ باقتك لليوم — رقِّ باقتك أو انتظر إلى الغد.',
     plansWhyExpired: 'انتهى اشتراكك في {plan} — جدّده لترجع مزاياك.',
     plansWhyExpiring: 'اشتراكك في {plan} ينتهي في {date} — جدّده حتّى لا تتوقّف مزاياك.',
@@ -5398,6 +5408,8 @@ const I18N = {
     vwDefaultQ: 'Analyze this video',
     /* v-plans-gate */
     plansWhyPoints: 'You’re out of points — top up from Plans and continue right away.',
+    plansWhyPointsNeed: 'You have {have} points and this needs {need} — top up from Plans and continue right away.', /* v-plans-real-balance */
+    plansWhyPointsLow: 'You have {have} points — not enough for this. Top up from Plans and continue right away.',
     plansWhyLimit: 'You’ve reached your plan’s limit for today — upgrade your plan or wait until tomorrow.',
     plansWhyExpired: 'Your {plan} subscription has ended — renew it to get your benefits back.',
     plansWhyExpiring: 'Your {plan} subscription ends on {date} — renew it so your benefits don’t stop.',
@@ -6365,7 +6377,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=763'; /* v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */
+    sc.src = 'i18n/' + lg + '.js?v=764'; /* v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -14115,6 +14127,7 @@ async function refreshPointsWallet(){
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
+    if(d && d.costs) window.__omranCosts = d.costs; // v-vmk-price-src
     if(d && d.ok && d.authed){
       row.style.display = 'flex';
       val.textContent = d.unlimited ? '∞' : (d.points + ' ' + t('pricingPointsUnit'));
@@ -14125,6 +14138,22 @@ async function refreshPointsWallet(){
   }catch(e){ /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
+
+/* v-vmk-price-src (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «الرقم اللي على الزر لازم يطلع من نفس المصدر اللي يخصم، ويطابقه بالضبط»):
+   أسعار الخدمات تصل من COSTS في الخادم نفسه (/api/points balance، للزائر أيضًا) — الواجهة لا تكتب رقمًا. نداء واحد يُشارك. */
+let __costsLoading = null;
+function omranLoadCosts(){
+  if(window.__omranCosts) return Promise.resolve(window.__omranCosts);
+  if(__costsLoading) return __costsLoading;
+  const token = authGet('aiapp_auth_token') || '';
+  __costsLoading = fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) })
+    .then(r => r.json())
+    .then(d => { if(d && d.costs) window.__omranCosts = d.costs; return window.__omranCosts || null; })
+    .catch(e => { __swallow(e, 'costs:load'); return null; })
+    .then(v => { __costsLoading = null; return v; });
+  return __costsLoading;
+}
+window.omranLoadCosts = omranLoadCosts;
 
 /* v-points-acct (طلب المالك): رصيد النقاط في قائمة الحساب فقط، مع تحذير
    تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
@@ -14155,6 +14184,7 @@ async function refreshAcctPoints(){
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
+    if(d && d.costs) window.__omranCosts = d.costs; // v-vmk-price-src
     if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
     box.style.display = 'flex';
     renderAcctMedia(d.media);
@@ -18876,8 +18906,46 @@ async function mahaFindRealPhoto(query){
 // Calls the server-side Gemini image endpoint. If `editMode` is true and an
 // image already exists in this call, sends it along for editing instead of
 // generating a brand new one.
+/* v-maha-img-hold (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١ «الفلوس»: «مها تخصم ٢٠ نقطة وتضيع الصورة إذا سكّرت — لا تثبّت الخصم إلا بعد ما
+   توصل الصورة وتنحفظ، وإذا ضاعت ترجع النقاط تلقائي»): كانت الصورة تُعرض في شاشة المكالمة وحدها، فإغلاق المكالمة قبل وصولها (أو بعده)
+   يضيّعها والخصم ثابت. الآن: الطلب يحمل معرّف حجز، والصورة حين تصل تُحفظ في المحادثة الحاليّة ولو أُغلقت المكالمة، ثمّ يُرسل تأكيد
+   image-ack فيثبت الخصم. صورة لم تصل أو لم تُحفظ = لا تأكيد = يردّها الخادم تلقائيًّا (api/_lib/image-hold.js). */
+function mahaNewHoldId(){
+  try{ if(window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID().replace(/-/g, ''); }catch(e){ __swallow(e, 'maha:hold-id'); }
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+}
+function mahaKeepImage(b64, mime){
+  if(mahaCallMode === 'builder') return true; // وضع البناء: الصورة في لوحة المعاينة نفسها (mahaShowImage)
+  try{
+    let cur = getCurrent();
+    if(!cur){
+      const id = 'p_' + Date.now();
+      cur = { id, title: (typeof t === 'function' ? t('defaultProjectTitle') : '') || 'محادثة جديدة', messages: [], code: '' };
+      state.projects.push(cur);
+      state.currentId = id;
+    }
+    const m = mime || 'image/png';
+    cur.messages.push({ role: 'assistant', content: '', attachments: [{ name: 'maha-image.png', isImage: true, mime: m, dataUrl: 'data:' + m + ';base64,' + b64 }] });
+    saveState();
+    renderAll();
+    return true;
+  }catch(e){ __swallow(e, 'maha:keep-image'); return false; }
+}
+async function mahaAckImage(hold){
+  const tk = authGet('aiapp_auth_token');
+  if(!hold || !tk) return false;
+  for(let i = 0; i < 3; i++){
+    try{
+      const r = await fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'image-ack', token: tk, hold }) });
+      if(r.ok) return true;
+    }catch(e){ __swallow(e, 'maha:image-ack'); }
+    await new Promise(res => setTimeout(res, 1500 * (i + 1)));
+  }
+  return false;
+}
 async function mahaCallImageApi(promptText, useEditImage, sourceOverride){
   const body = { prompt: promptText, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() };
+  if(body.token) body.hold = mahaNewHoldId(); // v-maha-img-hold
   const editSource = sourceOverride || (mahaEditSourceBase64 ? { b64: mahaEditSourceBase64, mime: mahaEditSourceMime } : null);
   if(useEditImage && (editSource || mahaLastImageBase64)){
     body.editImageBase64 = editSource ? editSource.b64 : mahaLastImageBase64;
@@ -18890,7 +18958,7 @@ async function mahaCallImageApi(promptText, useEditImage, sourceOverride){
   });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.imageBase64) return { ok: false, error: (data && data.error) || ('HTTP ' + res.status), status: res.status };
-  return { ok: true, imageBase64: data.imageBase64, mimeType: data.mimeType };
+  return { ok: true, imageBase64: data.imageBase64, mimeType: data.mimeType, hold: data.hold || '' };
 }
 
 let mahaLastCleanImg = null; // آخر صورة نظيفة (بدون نص) — لإعادة كتابة النص بخط/لون جديد بدون رسم جديد
@@ -18965,6 +19033,8 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
       mahaImageEditInstructions = pendingEditInstructions || [];
     }
     mahaShowImage(outB64, outMime);
+    // v-maha-img-hold: تُحفظ في المحادثة (تبقى بعد إغلاق المكالمة)، وبعد الحفظ وحده يثبت الخصم
+    if(mahaKeepImage(outB64, outMime) && r.hold) mahaAckImage(r.hold);
     return { ok: true };
   }catch(e){
     console.error('[maha] image gen failed:', e);
@@ -24035,7 +24105,7 @@ window.omranAnotherVersion = async function(){
       /* v-img-diag-owner: نفس منطق التوليد والتعديل العاديّين */
       var __whyA = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __data && __data.__diag)
         ? (' [' + (__data.__diag.gErr || __data.__diag.openai || __data.__diag.nano || __data.__diag.free || __data.__diag.tried || '?') + ']') : '';
-      __m.content = (imgErrFriendly(__data && __data.error, lang === 'ar') || (lang === 'ar' ? '⚠️ تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.' : '⚠️ Could not create another version — try again.')) + __whyA;
+      __m.content = (imgErrFriendly(__data && __data.error, lang === 'ar', __data) || (lang === 'ar' ? '⚠️ تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.' : '⚠️ Could not create another version — try again.')) + __whyA;
     }
     renderAll(); saveState();
   }catch(e){
@@ -26439,7 +26509,7 @@ function __showImgLoading(el, ar, en){
         /* v-img-diag-owner: نفس منطق التوليد العاديّ — السبب الحقيقيّ (__diag) يظهر للمالك وحده */
         var __whyE = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __data && __data.__diag)
           ? (' [' + (__data.__diag.gErr || __data.__diag.openai || __data.__diag.nano || __data.__diag.free || __data.__diag.tried || '?') + ']') : '';
-        cur.messages.push({ role: 'assistant', content: (imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?'))))) + __whyE });
+        cur.messages.push({ role: 'assistant', content: (imgErrFriendly(__data && __data.error, lang === 'ar', __data) || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?'))))) + __whyE });
         cur.lastMsgWasImageEdit = true;
       }
       renderAll(); saveState();
@@ -26654,7 +26724,7 @@ function __showImgLoading(el, ar, en){
         cur.lastEditedImage = { b64: __gData.imageBase64, mime: __gm };
         cur.lastMsgWasImageEdit = true;
       } else {
-        cur.messages.push({ role: 'assistant', content: imgErrFriendly(__gData && __gData.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر إنشاء الصورة: ' : '⚠️ Image generation failed: ') + ((__gData && __gData.error) || ('HTTP ' + (__gData.__status || '?')))) });
+        cur.messages.push({ role: 'assistant', content: imgErrFriendly(__gData && __gData.error, lang === 'ar', __gData) || ((lang === 'ar' ? '⚠️ تعذر إنشاء الصورة: ' : '⚠️ Image generation failed: ') + ((__gData && __gData.error) || ('HTTP ' + (__gData.__status || '?')))) });
         cur.lastMsgWasImageEdit = false;
       }
       renderAll(); saveState();
@@ -30291,6 +30361,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   const statusEl = $('#videoMakerStatus');
   const resultEl = $('#videoMakerResult');
   const downloadEl = $('#videoMakerDownloadLink');
+  /* v-vmk-dl-ext (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «الفيديو ينزل باسم mp4 وهو webm: الامتداد لازم يطابق النوع»): الرابط يحمل
+     download="omran-ai-video.mp4" ثابتًا من partials-core، وفيديو القوالب (المسجِّل) والدمج والصوت السريع WebM — فينزل WebM باسم mp4 ولا
+     تفتحه بعض الأجهزة. الاسم من نوع الملفّ نفسه حيث الملفّ Blob في يدنا، ورابط المزوّد (MP4) يبقى بالاسم الافتراضيّ الذي يُعاد قبل كلّ توليد. */
+  function dlName(base, type){ return base + '.' + (/webm/i.test(String(type || '')) ? 'webm' : 'mp4'); }
   // v291: تنزيل تلقائي للفيديو أول ما يجهز
   // v525: proxyVideoUrl — يمرّر رابط الفيديو عبر سيرفر عمران بدل جلبه مباشرة من المتصفح
   // يحل مشكلة CORS على الجوال وهواوي التي تمنع fetch() من مصادر خارجية
@@ -31076,6 +31150,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
+    downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
     downloadEl.style.display = 'block';
     autoSaveVideo(finalUrl);
   }
@@ -31154,6 +31229,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
+    downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
     downloadEl.style.display = 'block';
     autoSaveVideo(finalUrl);
   }
@@ -31419,6 +31495,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
+    downloadEl.download = 'omran-ai-video.mp4'; // v-vmk-dl-ext: الافتراضيّ قبل كلّ توليد
 
     function friendlyError(err){
       const code = err && err.code;
@@ -31612,16 +31689,16 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         resultEl.onended = null;
         // دائماً ندمج — حتى على هواوي (الدمج يعمل بالجهاز لا بالسيرفر)
         setStatus(bT('🔗 جاري دمج كل المشاهد بالفيلم النهائي...','🔗 Merging all scenes into your final film...'));
-        let finalUrl = null;
+        let finalUrl = null, finalType = ''; // v-vmk-dl-ext
         try{
           const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
             setStatus((bT('🔗 جاري دمج المشهد ','🔗 Merging scene ')) + (i + 1) + '/' + total + '...');
           });
-          finalUrl = URL.createObjectURL(finalBlob);
+          finalUrl = URL.createObjectURL(finalBlob); finalType = finalBlob.type;
         } catch(e){
           try{
             const blob = await concatScenes(builtScenes.map(s => s.videoUrl));
-            finalUrl = URL.createObjectURL(blob);
+            finalUrl = URL.createObjectURL(blob); finalType = blob.type;
             setStatus(bT('⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.','⚠️ Narration merge failed; film merged without narration.'));
           } catch(e2){
             finalUrl = null;
@@ -31632,7 +31709,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           resultEl.src = finalUrl;
           resultEl.style.display = 'block';
           downloadEl.href = finalUrl;
-          downloadEl.download = 'omran-film.mp4'; // يجبر المتصفح على التحميل لا الفتح
+          downloadEl.download = dlName('omran-film', finalType); // يجبر المتصفح على التحميل لا الفتح — v-vmk-dl-ext: والامتداد من نوع الملفّ
           downloadEl.style.display = 'block';
         } else {
           // آخر ملاذ: عرض المشاهد ورا بعض مع روابط تحميل منفصلة
@@ -31921,6 +31998,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         resultEl.src = finalUrl;
         resultEl.style.display = 'block';
         downloadEl.href = finalUrl;
+        downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
         downloadEl.style.display = 'block';
       } catch(e){
         setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
@@ -32025,6 +32103,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       resultEl.style.display = 'block';
       resultEl.play().catch(function(){ /* autoplay may be blocked */ });
       downloadEl.href = dlUrl;
+      downloadEl.download = finalIsBlob ? dlName('omran-ai-video', finalSrc && finalSrc.type) : 'omran-ai-video.mp4'; // v-vmk-dl-ext
       downloadEl.style.display = 'block';
       /* v-ai-video-speed: الترقية بعد ظهور الفيديو لا قبله (مشهد واحد؛ الطويل بلا ترقية أصلًا) */
       if(wantQuality && sceneUrls.length === 1) upgradeInBackground(sceneUrls[0], token, narrationBlob, runSeq);
@@ -46178,7 +46257,20 @@ if(document.readyState === 'loading'){
     Object.keys(vars || {}).forEach(function(k){ out = out.split('{' + k + '}').join(String(vars[k])); });
     return out;
   }
-  function whyText(reason, vars){ return fill(t(WHY[reason] || WHY.points), vars); }
+  function whyText(reason, vars){
+    if(reason === 'points') return pointsWhy(vars);
+    return fill(t(WHY[reason] || WHY.points), vars);
+  }
+  /* v-plans-real-balance (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «صفحة الباقات تقول نقاطك خلصت والرصيد ١٠ — خلها تقرا الرصيد الحقيقي»):
+     السطر كان «نقاطك خلصت» لكلّ جدار نقاط. الآن من الرصيد نفسه الذي يكتبه صفّ «رصيدك من النقاط» فوقه (refreshPointsWallet ←
+     window.__pointsBalance) ومن «تحتاج» في ردّ الخادم (402 needed): صفر = «خلصت»، وغيره «رصيدك X وتحتاج Y»، وبلا Y «رصيدك X وما يكفي». */
+  function pointsWhy(vars){
+    var v = vars || {}, have = Number(v.have), need = Number(v.need);
+    if(v.have == null || v.have === '' || !isFinite(have)) return t(WHY.points);
+    if(have <= 0) return t(WHY.points);
+    if(isFinite(need) && need > have) return fill(t('plansWhyPointsNeed'), { have: have, need: need });
+    return fill(t('plansWhyPointsLow'), { have: have });
+  }
 
   // سطر السبب فوق أقسام الباقات — يُنشأ عند أوّل حاجة، فلا يلمس الجزء المحمّل partials-settings.js.
   function showWhy(text){
@@ -46213,8 +46305,21 @@ if(document.readyState === 'loading'){
       if(typeof showSettingsPage === 'function') showSettingsPage('pricingSection');
       if(tab && typeof showPriceTab === 'function') showPriceTab(tab);
       showWhy(whyText(reason, vars));
+      if(reason === 'points') syncPointsWhy(vars);
     }catch(e){ __swallow(e, 'plans-gate:open'); }
     return true;
+  }
+  // v-plans-real-balance: بعد أن يقرأ صفّ الرصيد رقمه من الخادم يُعاد السطر بالرقم نفسه (فلا يختلفان أبدًا).
+  function syncPointsWhy(vars){
+    var need = vars && vars.need;
+    try{
+      Promise.resolve(typeof window.refreshPointsWallet === 'function' ? window.refreshPointsWallet() : null).then(function(){
+        var el = document.getElementById('plansWhy');
+        if(!el || el.style.display === 'none') return; // أُغلقت الإعدادات أو فُتحت باليد قبل الردّ
+        var b = window.__pointsBalance;
+        if(typeof b === 'number' && isFinite(b)) showWhy(pointsWhy({ have: b, need: need }));
+      }).catch(function(e){ __swallow(e, 'plans-gate:balance'); });
+    }catch(e){ __swallow(e, 'plans-gate:balance'); }
   }
 
   // السطر يخصّ هذا الفتح وحده: فتح الإعدادات باليد (الزرّ يُنقر قبل أن نكتب السطر) أو إغلاقها يمسحه، فلا يظهر قديمًا.
@@ -46235,7 +46340,10 @@ if(document.readyState === 'loading'){
   function classify(url, status, d){
     if(!(status === 402 || status === 403) || !d || typeof d !== 'object') return null;
     var reason = CODES[String(d.error || '')] || '';
-    return reason ? { reason: reason, tab: tabFor(url, reason) } : null;
+    if(!reason) return null;
+    var g = { reason: reason, tab: tabFor(url, reason) };
+    if(reason === 'points') g.vars = { have: d.points, need: d.needed }; // v-plans-real-balance: رصيده وسعر العمليّة من ردّ الخادم نفسه
+    return g;
   }
   function ourApi(url){
     try{ var u = new URL(url, location.href); return u.origin === location.origin && u.pathname.indexOf('/api/') === 0; }
@@ -46327,7 +46435,7 @@ if(document.readyState === 'loading'){
               if(res.status === 402 || res.status === 403){
                 res.clone().json().then(function(d){
                   var g = classify(url, res.status, d);
-                  if(g) openPlans(g.reason, g.tab);
+                  if(g) openPlans(g.reason, g.tab, g.vars);
                 }).catch(function(){ /* guard-ok — جسم غير JSON ليس جدارًا من خادمنا */ });
               } else if(res.ok && /\/api\/points(?:[?#]|$)/.test(url)){
                 res.clone().json().then(function(d){ if(d && Array.isArray(d.subs)) checkSubs(d.subs); })
@@ -46342,7 +46450,7 @@ if(document.readyState === 'loading'){
   }catch(e){ __swallow(e, 'plans-gate:fetch'); }
 
   window.omranOpenPlans = openPlans;
-  window.__omranPlansGate = { classify: classify, tabFor: tabFor, pickNotice: pickNotice, checkSubs: checkSubs, showWhy: showWhy };
+  window.__omranPlansGate = { classify: classify, tabFor: tabFor, pickNotice: pickNotice, checkSubs: checkSubs, showWhy: showWhy, pointsWhy: pointsWhy };
 })();
 /* v-gen-wait (أمر المالك: «الموجود فقط كلام يقول جاري توليد الصوره
    من غير اي شي — عطني فكره ذهبيه قويه ينتظر التوليد»، وبعد معاينة النموذج: «نفس الحركه على توليد

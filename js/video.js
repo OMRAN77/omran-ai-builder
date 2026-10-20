@@ -43,7 +43,36 @@
   try{ window.__vmkPro={estimate:proEstimate,check:proCheck,errKey:proErrKey}; }catch(e){ /* guard-ok — بيئة بلا window */ }
   var M=document.getElementById('videoMakerModal'); if(!M) return;
   var G=[['videoMakerMode','card'],['videoMakerStyle','pill'],['videoMakerDuration','pill'],['videoMakerRatio','pill']];
-  var PTS={canvas:0,runway:60,hybrid:60,veo:400,actor:400};
+  /* v-vmk-price-src (تدقيق ١٨ أكتوبر، الدفعة ١ «الفلوس»: «الرقم اللي على الزر لازم يطلع من نفس المصدر اللي يخصم، ويطابقه بالضبط»):
+     كان هنا جدول ثابت (فيديو AI ٦٠، السينمائيّ والممثّل ٤٠٠) والخادم يخصم من COSTS (٥٥ و١٧٥) — الزرّ ٦٠ والتأكيد ٥٥. الآن سعر المشهد
+     من COSTS نفسه (window.__omranCosts من /api/points) × عدد المشاهد التي يطلبها هذا الاختيار فعلًا (app-11-video.js): «20 (مشهدين)»
+     مشهدان، و«فيلم متكامل» ٣ (والمالك ٥)، وغيرها مشهد واحد — وكلّ مشهد يسأل تأكيد سعره هو. قبل وصول الأسعار لا رقم أبدًا (لا تخمين). */
+  var PTS_KEY={runway:'runway_video',hybrid:'runway_video',veo:'veo_video',actor:'veo_video',minimax:'minimax_video',omni:'omni_video'};
+  var costsAskedAt=0;
+  function ownerNow(){ try{ return String((typeof authGet==='function'&&authGet('aiapp_username'))||'').trim().toLowerCase()==='omran'; }catch(e){ return false; } }
+  function scenesFor(mode){
+    var d=(document.getElementById('videoMakerDuration')||{}).value;
+    if(d==='film') return (mode==='runway'||mode==='veo')?(ownerNow()?5:3):0;
+    if(d==='longMinutes') return 0; /* عدد مشاهده من السكربت — لا يُعرف قبله (والمالك وحده) */
+    return (d==='long20'&&mode==='runway')?2:1;
+  }
+  /* {total, per, n} أو null حين لا سعر معروفًا؛ القوالب مجّانيّة (total=0) */
+  function priceOf(mode){
+    if(mode==='canvas') return {total:0,per:0,n:1};
+    var c=window.__omranCosts, k=PTS_KEY[mode], n=scenesFor(mode);
+    if(!c||!k||typeof c[k]!=='number'||!n) return null;
+    return {total:c[k]*n,per:c[k],n:n};
+  }
+  function priceLabel(p){
+    if(!p) return '';
+    if(!p.total) return ar()?'مجاني':'Free';
+    return p.total+(ar()?' نقطة':' pts')+(p.n>1?(' · '+p.n+'×'+p.per):'');
+  }
+  function ensureCosts(){
+    if(window.__omranCosts||typeof window.omranLoadCosts!=='function'||Date.now()-costsAskedAt<30000) return;
+    costsAskedAt=Date.now();
+    window.omranLoadCosts().then(function(c){ if(c) sync(); });
+  }
   var ICO=/^([\u200d\ufe0f\u2190-\u21ff\u2300-\u27bf\ud800-\udfff]+)\s*/;
   function ar(){var h=document.documentElement;return (h.lang||'ar').indexOf('ar')===0||h.dir==='rtl';}
   function on(){return true;} /* v-vmk-mobile: نفس استوديو الكمبيوتر على الهاتف */
@@ -1127,11 +1156,10 @@
       var el=document.createElement('div'); el.className=(kind==='card'?'vmk-card':'vmk-pill');
       el.setAttribute('role','radio'); el.dataset.v=o.value;
       if(kind==='card'){
-        var p=PTS[o.value];
         el.innerHTML='<i></i><b></b><s></s>';
         el.querySelector('i').textContent=ic||'🎬';
         el.querySelector('b').textContent=tx;
-        el.querySelector('s').textContent=(p==null?'':p?p+(ar()?' نقطة':' pts'):(ar()?'مجاني':'Free'));
+        el.querySelector('s').textContent=priceLabel(priceOf(o.value)); /* v-vmk-price-src — ويُحدَّث في sync() */
       } else { el.textContent=tx; }
       el.addEventListener('click',function(){
         if(sel.value===o.value) return;
@@ -1153,12 +1181,15 @@
         var t=noEmoji(short(o.textContent||'')); c.textContent=t.length>24?t.slice(0,24)+'…':t; chips.appendChild(c);
       }
     });
-    var gbn=id('videoMakerGenerateBtn'), pc=PTS[(id('videoMakerMode')||{}).value];
-    if(gbn){ if(pc!=null) gbn.setAttribute('data-cost',pc?(pc+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free')); else gbn.removeAttribute('data-cost'); }
-    var p=PTS[(id('videoMakerMode')||{}).value];
-    if(chips&&p!=null){
+    /* v-vmk-price-src: الزرّ والشريحة وأسعار البطاقات من priceOf وحده (COSTS × مشاهد المدّة المختارة) */
+    ensureCosts();
+    var mg=id('videoMakerMode'), mg2=mg&&mg.nextElementSibling;
+    if(mg2&&mg2.classList.contains('vmk-g')) [].forEach.call(mg2.children,function(c){ var s=c.querySelector('s'); if(s){ var l=priceLabel(priceOf(c.dataset.v)); if(s.textContent!==l) s.textContent=l; } });
+    var gbn=id('videoMakerGenerateBtn'), pc=priceOf((mg||{}).value), pl=priceLabel(pc);
+    if(gbn){ if(pl) gbn.setAttribute('data-cost',pl); else gbn.removeAttribute('data-cost'); }
+    if(chips&&pl){
       var b=document.createElement('span'); b.className='vmk-chip gold pts';
-      b.textContent=p?(p+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free'); chips.appendChild(b);
+      b.textContent=pl; chips.appendChild(b);
     }
     syncWrite(); syncChars(); syncSamples(); simplify(); syncClean(); syncDirector();
     var tbx=id('vmkTabs'); if(tbx) [].forEach.call(tbx.children,function(bt){ bt.setAttribute('aria-selected',String(bt.dataset.tab===tab)); });

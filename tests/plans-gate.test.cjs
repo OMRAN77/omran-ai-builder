@@ -174,7 +174,8 @@ test('٥. التصنيف: رموز جدار الوسائط والاستوديو�
     ['/api/design-create', 402, L, 'limit', 'chat'],
     ['/api/tools?action=stocks', 402, L, 'limit', 'chat'],
   ];
-  for (const [url, st, body, reason, tab] of cases) assert.deepEqual(JSON.parse(JSON.stringify(classify(url, st, body))), { reason, tab }, url);
+  // v-plans-real-balance: جدار النقاط يحمل رصيده وسعر العمليّة من ردّ الخادم نفسه
+  for (const [url, st, body, reason, tab] of cases) assert.deepEqual(JSON.parse(JSON.stringify(classify(url, st, body))), reason === 'points' ? { reason, tab, vars: { have: 2, need: 10 } } : { reason, tab }, url);
   for (const [url, st, body] of [
     ['/api/claude', 402, { error: 'وصلت للحد', subscribeOnly: false }], // مسار المحادثة يجرّب غيره — يفتحها من نهايته
     ['/api/claude', 402, { error: 'x', reason: 'engine_limit' }],
@@ -314,7 +315,7 @@ test('١١. النصوص السبعة بالـ١٤ لغة بمواضعها {plan
     assert.ok(d.plansWhyExpired.includes('{plan}'), l);
     assert.ok(d.plansWhyExpiring.includes('{plan}') && d.plansWhyExpiring.includes('{date}'), l);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=763'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=764'"));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.omranOpenPlans = openPlans;') && bundle.includes("if(c === 'unavailable') return t('vwUnavailable');"), 'الحزمة مبنيّة');
 });

@@ -1071,8 +1071,46 @@ async function mahaFindRealPhoto(query){
 // Calls the server-side Gemini image endpoint. If `editMode` is true and an
 // image already exists in this call, sends it along for editing instead of
 // generating a brand new one.
+/* v-maha-img-hold (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١ «الفلوس»: «مها تخصم ٢٠ نقطة وتضيع الصورة إذا سكّرت — لا تثبّت الخصم إلا بعد ما
+   توصل الصورة وتنحفظ، وإذا ضاعت ترجع النقاط تلقائي»): كانت الصورة تُعرض في شاشة المكالمة وحدها، فإغلاق المكالمة قبل وصولها (أو بعده)
+   يضيّعها والخصم ثابت. الآن: الطلب يحمل معرّف حجز، والصورة حين تصل تُحفظ في المحادثة الحاليّة ولو أُغلقت المكالمة، ثمّ يُرسل تأكيد
+   image-ack فيثبت الخصم. صورة لم تصل أو لم تُحفظ = لا تأكيد = يردّها الخادم تلقائيًّا (api/_lib/image-hold.js). */
+function mahaNewHoldId(){
+  try{ if(window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID().replace(/-/g, ''); }catch(e){ __swallow(e, 'maha:hold-id'); }
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+}
+function mahaKeepImage(b64, mime){
+  if(mahaCallMode === 'builder') return true; // وضع البناء: الصورة في لوحة المعاينة نفسها (mahaShowImage)
+  try{
+    let cur = getCurrent();
+    if(!cur){
+      const id = 'p_' + Date.now();
+      cur = { id, title: (typeof t === 'function' ? t('defaultProjectTitle') : '') || 'محادثة جديدة', messages: [], code: '' };
+      state.projects.push(cur);
+      state.currentId = id;
+    }
+    const m = mime || 'image/png';
+    cur.messages.push({ role: 'assistant', content: '', attachments: [{ name: 'maha-image.png', isImage: true, mime: m, dataUrl: 'data:' + m + ';base64,' + b64 }] });
+    saveState();
+    renderAll();
+    return true;
+  }catch(e){ __swallow(e, 'maha:keep-image'); return false; }
+}
+async function mahaAckImage(hold){
+  const tk = authGet('aiapp_auth_token');
+  if(!hold || !tk) return false;
+  for(let i = 0; i < 3; i++){
+    try{
+      const r = await fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'image-ack', token: tk, hold }) });
+      if(r.ok) return true;
+    }catch(e){ __swallow(e, 'maha:image-ack'); }
+    await new Promise(res => setTimeout(res, 1500 * (i + 1)));
+  }
+  return false;
+}
 async function mahaCallImageApi(promptText, useEditImage, sourceOverride){
   const body = { prompt: promptText, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() };
+  if(body.token) body.hold = mahaNewHoldId(); // v-maha-img-hold
   const editSource = sourceOverride || (mahaEditSourceBase64 ? { b64: mahaEditSourceBase64, mime: mahaEditSourceMime } : null);
   if(useEditImage && (editSource || mahaLastImageBase64)){
     body.editImageBase64 = editSource ? editSource.b64 : mahaLastImageBase64;
@@ -1085,7 +1123,7 @@ async function mahaCallImageApi(promptText, useEditImage, sourceOverride){
   });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.imageBase64) return { ok: false, error: (data && data.error) || ('HTTP ' + res.status), status: res.status };
-  return { ok: true, imageBase64: data.imageBase64, mimeType: data.mimeType };
+  return { ok: true, imageBase64: data.imageBase64, mimeType: data.mimeType, hold: data.hold || '' };
 }
 
 let mahaLastCleanImg = null; // آخر صورة نظيفة (بدون نص) — لإعادة كتابة النص بخط/لون جديد بدون رسم جديد
@@ -1160,6 +1198,8 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
       mahaImageEditInstructions = pendingEditInstructions || [];
     }
     mahaShowImage(outB64, outMime);
+    // v-maha-img-hold: تُحفظ في المحادثة (تبقى بعد إغلاق المكالمة)، وبعد الحفظ وحده يثبت الخصم
+    if(mahaKeepImage(outB64, outMime) && r.hold) mahaAckImage(r.hold);
     return { ok: true };
   }catch(e){
     console.error('[maha] image gen failed:', e);
