@@ -428,8 +428,16 @@ backBtn.onclick=function(){ var fn=navStack.pop(); if(fn) fn(); else showHome();
 modal.addEventListener('click',function(e){ if(e.target===modal) closeModal(); });
 /* ---------- HOME ---------- */
 function subjectColor(subjects,name){ var i=subjects.indexOf(name); return PALETTE[(i>=0?i:subjects.length)%PALETTE.length]; }
+/* v-edu-scenes: المقولة أعلى يسار المشهد (نماذج المالك «المعرفة تبدأ من هنا») — عنصر أخو .eduWrap لأنّه يوضع على الصورة لا على الشاشة الفاضية؛
+   css/تعليم-خلفية.css يظهره مع ثيم له مشهد فقط، وبلا ثيم يبقى مخفيًّا فلا يتغيّر شيء. */
+function eduQuoteSync(){
+  var q=document.getElementById('eduQuote');
+  if(!q){ q=document.createElement('div'); q.id='eduQuote'; q.className='eduQuote'; q.setAttribute('aria-hidden','true'); modal.appendChild(q); }
+  q.innerHTML='<b>'+esc(eduL('المعرفة تبدأ من هنا','Knowledge starts here'))+'</b><span>'+esc(eduL('كل إنجاز يبدأ بخطوة','Every achievement starts with a step'))+'</span>';
+}
 function showHome(){
   setBack(false); navStack=[]; if(eduUpCloseFn) eduUpCloseFn(); /* v-edu-upform: لا تبقى بطاقة رفع معلّقة فوق شاشة جديدة */
+  eduQuoteSync();
   body.innerHTML=''
    +'<button class="eduUploadBtn" id="eduUploadBtn">'
    +'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>'
