@@ -314,16 +314,23 @@ module.exports = async (req, res) => {
       parts.push({ text: promptText });
       parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
     } else {
-      promptText =
-        'Generate a photorealistic fashion design image of ' + subject + ' wearing exactly the outfit described next. ' +
-        'Specific description: ' + String(description).slice(0, 500) + '. ' +
-        // v-fashion-variety: وصف المستخدم يغلب — التصميم يملأ ما تركه الوصف مفتوحًا فقط.
-        // v-fashion-text-wins: وصف المستخدم أوّلًا ويغلب — النمط والتصميم واللوحة والمناسبة والموسم لما تركه مفتوحًا فقط.
-        'Design direction for anything the description leaves open (the description wins wherever they differ; use these only for details it does not specify): style: ' + styleDesc + '.' +
-        (design ? ' ' + design.text + '.' + kidsNote : '') + textOpenClause + ' ' +
-        'Full-body studio fashion photography, elegant pose, clean background.' +
-        (fairness ? require('./fashion-locks').FAIRNESS_LOCK + ' Use the same model appearance across this comparison set.' : '') +
-        wearClause + extrasClause + multiAngleClause;
+      /* v-fashion-text-wins: التوليد الواحد — الوصف أوّلًا ويغلب، والنمط (قيمته الافتراضيّة كاجوال غالبًا لم يلمسها) والتصميم واللوحة
+         والمناسبة والموسم لما تركه مفتوحًا فقط. المقارنة (fairness) على أمرها القديم حرفيًّا: الأنماط فيها اختيار صريح وهي موضوع المقارنة،
+         ولو صارت مشروطة لخرجت البطاقات الثلاث الفستانَ نفسه. */
+      promptText = fairness
+        ? 'Generate a photorealistic fashion design image of ' + subject + ' wearing ' + styleDesc + '. ' +
+          'Specific description: ' + String(description).slice(0, 500) + '. ' +
+          // v-fashion-variety: وصف المستخدم يغلب — التصميم يملأ ما تركه الوصف مفتوحًا فقط.
+          (design ? 'Design direction for anything the description leaves open (the description wins wherever they differ): ' + design.text + '.' + kidsNote + ' ' : '') +
+          'Full-body studio fashion photography, elegant pose, clean background.' +
+          require('./fashion-locks').FAIRNESS_LOCK + ' Use the same model appearance across this comparison set.' +
+          detailClause + multiAngleClause
+        : 'Generate a photorealistic fashion design image of ' + subject + ' wearing exactly the outfit described next. ' +
+          'Specific description: ' + String(description).slice(0, 500) + '. ' +
+          'Design direction for anything the description leaves open (the description wins wherever they differ; use these only for details it does not specify): style: ' + styleDesc + '.' +
+          (design ? ' ' + design.text + '.' + kidsNote : '') + textOpenClause + ' ' +
+          'Full-body studio fashion photography, elegant pose, clean background.' +
+          wearClause + extrasClause + multiAngleClause;
       // 🎨 المحرك الاختياري في الوضع النصّي أيضًا: gpt-image-1 من الصفر.
       if (engine === 'openai') {
         const oa = await openaiGenerate(promptText);

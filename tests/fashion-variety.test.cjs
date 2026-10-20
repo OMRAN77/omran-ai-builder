@@ -324,3 +324,13 @@ test('١١. الوضع النصّيّ: الوصف أوّل الأمر والنم
   assert.match(col.prompt, /The outfit must be womenswear\./);
   assert.match(col.prompt, /Add these accessories: /);
 });
+
+test('١٢. المقارنة (fairness) على أمرها القديم: النمط المختار صراحةً أوّلًا ويُفرض — وإلّا خرجت البطاقات الثلاث الفستانَ نفسه', async () => {
+  const r = await run({ mode: 'text', imageBase64: undefined, fairness: true, description: 'Long blue evening dress', style: 'casual', occasion: 'casual', season: 'winter', variant: 7 });
+  assert.equal(r.status, 200);
+  const p = r.prompt;
+  assert.ok(p.indexOf('wearing a casual everyday outfit style') >= 0 && p.indexOf('wearing a casual everyday outfit style') < p.indexOf('Long blue evening dress'), 'النمط قبل الوصف');
+  assert.doesNotMatch(p, /wearing exactly the outfit|use these only for details it does not specify/);
+  assert.ok(p.indexOf('Dress for cold winter') > p.indexOf('Full-body studio'), 'الموسم بعد الجملة كما كان');
+  assert.match(p, /Use the same model appearance across this comparison set\./);
+});
