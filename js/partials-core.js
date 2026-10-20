@@ -785,21 +785,24 @@
     <button type="button" class="btn primary" id="portraitStyleGenerateBtn" style="display:none;" data-i18n="portraitGenerateBtn">✨ حوّلها</button>
 
     <div id="portraitStyleStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
-    <div id="portraitCompareWrap" style="display:none; position:relative; margin-top:14px; border-radius:var(--r-2); overflow:hidden; background:#000; width:100%; user-select:none;">
+    <div id="portraitCompareWrap" style="display:none; position:relative; margin:14px auto 0; border-radius:var(--r-2); overflow:hidden; background:#000; width:fit-content; max-width:100%; user-select:none;">
       <!-- v-compare-fit: قصّة «الصورة ما تطلع كاملة» — النتيجة كانت تُمدَّد قسرًا
            لمقاس صورة الأصل (عرض بكسل + height:100%) فتتشوّه وتنقص أطرافها حين
-           تختلف نسبة الأبعاد. object-fit:contain يعرضها كاملة على خلفية سوداء. -->
-      <img id="portraitCompareBefore" style="display:block; width:100%; max-height:70vh; object-fit:contain; background:#000;">
-      <div id="portraitCompareAfterWrap" style="position:absolute; top:0; left:0; height:100%; overflow:hidden; width:50%;">
-        <img id="portraitStyleResult" style="position:absolute; top:0; left:0; height:100%; object-fit:contain; background:#000;">
+           تختلف نسبة الأبعاد. object-fit:contain يعرضها كاملة على خلفية سوداء.
+           v-pcompare-box (تدقيق ١٨ أكتوبر: «بعد» مزاحة عن الأصل): الإطار بعرض صورة الأصل (fit-content) والطبقة بملئه تُقصّ بـclip-path،
+           والنتيجة contain في الصندوق نفسه — فتنطبق الصورتان والتسميتان والمقبض على الصورة لا على هامش أسود. -->
+      <img id="portraitCompareBefore" style="display:block; width:auto; max-width:100%; max-height:70vh; object-fit:contain; background:#000;">
+      <div id="portraitCompareAfterWrap" style="position:absolute; inset:0; overflow:hidden;">
+        <img id="portraitStyleResult" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; background:#000;">
       </div>
       <div id="portraitCompareDivider" style="position:absolute; top:0; bottom:0; left:50%; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.7); pointer-events:none;">
         <!-- v-compare-drag: مقبض دائريّ فوق الصورة نفسها — السحب على الحاوية (compareWrap في
              app-12-studios.js) لا هذا العنصر تحديدًا؛ هو مؤشّر بصريّ فقط بلا مستمع خاصّ به. -->
         <div id="portraitCompareHandle" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414;">↔</div>
       </div>
-      <span style="position:absolute; top:6px; left:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareBeforeLabel">قبل</span>
-      <span style="position:absolute; top:6px; right:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareAfterLabel">بعد</span>
+      <!-- v-pcompare-sides (تدقيق ١٨ أكتوبر: التسمية معكوسة): طبقة النتيجة من اليسار، فـ«بعد» يسارًا معها و«قبل» يمينًا -->
+      <span style="position:absolute; top:6px; right:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareBeforeLabel">قبل</span>
+      <span style="position:absolute; top:6px; left:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareAfterLabel">بعد</span>
     </div>
     <a id="portraitStyleDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-portrait-style.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
     <button type="button" id="portraitShareBtn" style="display:none; margin-top:8px; width:100%;" class="btn" data-i18n="portraitShareBtn">↗️ مشاركة (واتساب/ستوري)</button>

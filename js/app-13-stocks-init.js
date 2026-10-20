@@ -1,3 +1,60 @@
+/* ---------- v-md-lite: ماركداون خفيف آمن لردود التحليل والدرس و«التفاصيل والتكلفة» (الدفعة ٤؛ من حزمة a10 في ten-a) ----------
+   كانت تُوضع textContent فيظهر ### و** و--- خامًا، وعلامات ** المحايدة تقلب «RSI 14 = 61.2» في السطر العربيّ (تدقيق ١٨–١٩ أكتوبر).
+   النصّ يمرّ نصًّا دائمًا (لا innerHTML لنصّ الردّ): «### عنوان» سطر عريض، و**x** عريض، وسطر --- فاصل، و- أو * أوّل السطر نقطة •.
+   الحاويات white-space:pre-wrap فتبقى السطور بفواصلها. __omMdLiteHtml للتقرير المطبوع: يُهرَّب كلّ جزء ثمّ الوسوم نفسها. */
+(function(){
+  function inline(s){
+    var out = [], re = /\*\*([^*]+?)\*\*/g, last = 0, m;
+    function plain(x){ x = x.replace(/\*\*/g, ''); if(x) out.push({ t: x }); }
+    while((m = re.exec(s))){ plain(s.slice(last, m.index)); out.push({ t: m[1], b: true }); last = re.lastIndex; }
+    plain(s.slice(last));
+    return out;
+  }
+  function lines(text){
+    return String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n').map(function(line){
+      var m;
+      if(/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) return { hr: true };
+      if((m = line.match(/^\s*#{1,6}\s+(.*?)[\s#]*$/))) return { head: true, parts: inline(m[1]) };
+      if((m = line.match(/^(\s*)[-*+]\s+(.*)$/))) return { pre: m[1] + '• ', parts: inline(m[2]) };
+      return { parts: inline(line) };
+    });
+  }
+  window.__omMdLite = function(text){
+    var frag = document.createDocumentFragment(), afterBlock = true;
+    lines(text).forEach(function(L){
+      if(L.hr){
+        var hr = document.createElement('hr');
+        hr.style.cssText = 'border:0; border-top:1px solid rgba(128,128,128,.35); margin:8px 0;';
+        frag.appendChild(hr); afterBlock = true; return;
+      }
+      if(!afterBlock) frag.appendChild(document.createTextNode('\n'));
+      afterBlock = false;
+      var host = frag;
+      if(L.head){ host = document.createElement('b'); frag.appendChild(host); }
+      if(L.pre) host.appendChild(document.createTextNode(L.pre));
+      L.parts.forEach(function(p){
+        if(p.b){ var b = document.createElement('b'); b.textContent = p.t; host.appendChild(b); return; }
+        /* مسافتا الطرفين عقدتان منفصلتان: منظِّف الإيموجي (v-clean-ui) يقصّ أطراف كلّ عقدة فيها إيموجي فتلتصق الكلمة بالعريض جنبها */
+        var w = p.t.match(/^(\s*)([\s\S]*?)(\s*)$/);
+        [w[1], w[2], w[3]].forEach(function(x){ if(x) host.appendChild(document.createTextNode(x)); });
+      });
+    });
+    return frag;
+  };
+  function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  window.__omMdLiteHtml = function(text){
+    var out = '', afterBlock = true;
+    lines(text).forEach(function(L){
+      if(L.hr){ out += '<hr>'; afterBlock = true; return; }
+      if(!afterBlock) out += '\n';
+      afterBlock = false;
+      var s = (L.pre ? esc(L.pre) : '') + L.parts.map(function(p){ return p.b ? '<b>' + esc(p.t) + '</b>' : esc(p.t); }).join('');
+      out += L.head ? '<b>' + s + '</b>' : s;
+    });
+    return out;
+  };
+})();
+
 /* ---------- 📈 Stocks (Twelve Data, server-side owner key) ---------- */
 (function(){
   /* v-store-safe-revert (أمر عمران صريح ٢٢ سبتمبر — بعد تحذيره من مخاطرة رفض
@@ -28,6 +85,9 @@
     if(!r.ok) throw new Error(j.error || 'HTTP '+r.status);
     return j;
   }
+
+  /* v-md-lite: ردّ ماركداون يُرسم منسّقًا (بلا ### و** و--- خامّة) */
+  function setMd(el, text){ el.textContent = ''; el.appendChild(window.__omMdLite(text)); }
 
   function fmt(n, d){ return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('en-US', {maximumFractionDigits: d==null?2:d}) : '—'; }
 
@@ -251,7 +311,7 @@
     try{
       const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
       const j = await api({ mode:'analyze', symbol: currentSym, question: questionEl.value.trim(), lang: lang });
-      analysisEl.textContent = j.analysis || '⚠️';
+      if(j.analysis) setMd(analysisEl, j.analysis); else analysisEl.textContent = '⚠️'; // v-md-lite
     }catch(err){
       analysisEl.textContent = '⚠️ ' + (err && err.message || err);
     }
@@ -277,7 +337,7 @@
     try{
       const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
       const j = await api({ mode:'learn', topic: topic||'', question: question||'', symbol: currentSym || 'AAPL', lang: lang });
-      lessonEl.textContent = j.lesson || ('⚠️ ' + (j.claudeError || ''));
+      if(j.lesson) setMd(lessonEl, j.lesson); else lessonEl.textContent = '⚠️ ' + (j.claudeError || ''); // v-md-lite
     }catch(err){
       lessonEl.textContent = '⚠️ ' + (err && err.message || err);
     }
@@ -480,7 +540,7 @@
         var box = $('#pfLesson');
         box.style.display = 'block'; box.textContent = '🎓 معلمك يجهز درسًا على ' + sym + ' بالأرقام الحية…';
         api({ mode:'learn', symbol: sym, question: 'أنا مبتدئ وأملك هذا السهم في محفظتي التعليمية. علمني ماذا أراقب فيه الآن (الاتجاه، الدعم والمقاومة، متى أفكر بالبيع) بالأرقام الحية.', lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
-          .then(function(d){ box.textContent = d.lesson || 'تعذر الدرس الآن — حاول بعد قليل.'; })
+          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = 'تعذر الدرس الآن — حاول بعد قليل.'; }) // v-md-lite
           .catch(function(e){ box.textContent = '⚠️ ' + (e.message || 'تعذر الدرس'); });
       };
     });
@@ -756,7 +816,7 @@
         }
         lastData = data;
         if(data.planText){
-          planTextEl.textContent = data.planText;
+          planTextEl.textContent = ''; planTextEl.appendChild(window.__omMdLite(data.planText)); /* v-md-lite: كان ### و** خامًا */
           planTextEl.style.display = 'block';
         }
         renderBoq(boqRows());
@@ -813,7 +873,7 @@
       + 'th,td{border:1px solid #bbb;padding:5px 7px;text-align:right}th{background:#e6f2f0}'
       + 'figure{margin:0 0 12px;page-break-inside:avoid}img{width:100%;border:1px solid #ccc;border-radius:6px}'
       + 'figcaption{font-size:11.5px;color:#555;margin-top:4px;text-align:center}'
-      + 'pre{white-space:pre-wrap;font-family:inherit;font-size:12.5px;line-height:1.85;margin:0}'
+      + '.plan{white-space:pre-wrap;font-size:12.5px;line-height:1.85;margin:0}.plan hr{border:0;border-top:1px solid #ccc;margin:8px 0}' /* v-md-lite */
       + 'footer{margin-top:22px;font-size:11px;color:#666;border-top:1px solid #ddd;padding-top:8px}'
       + '@media print{header,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
       + '</style></head><body><header><h1>🏗️ تقرير مشروع البناء</h1><p>' + esc(meta)
@@ -821,7 +881,7 @@
       + fig(lastData.imageBase64, lastData.mimeType, 'المخطط المعماري')
       + fig(lastData.photoImageBase64, lastData.photoMimeType, 'الواجهة الخارجية')
       + fig(lastData.interiorImageBase64, lastData.interiorMimeType, 'التصميم الداخلي')
-      + '<h2>📋 التفاصيل والتكلفة</h2><pre>' + esc(lastData.planText || '') + '</pre>' + tbl
+      + '<h2>📋 التفاصيل والتكلفة</h2><div class="plan">' + window.__omMdLiteHtml(lastData.planText || '') + '</div>' + tbl
       + '<footer>تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.</footer>'
       + '</body></html>');
     /* v-cons-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة الطباعة

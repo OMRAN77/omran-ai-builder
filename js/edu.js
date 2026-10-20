@@ -395,6 +395,8 @@ function md(src){
     }
     k++;
     if(!t){ closeList(); continue; }
+    /* v-edu-hr (تدقيق ١٨–١٩ أكتوبر «ردّ المعلّم يعرض --- كنصّ»؛ الدفعة ٤، من حزمة b9 في ten-a): «---» فاصل بالفراغ لا بخطّ (v-no-lines) ولا نصًّا خامًا */
+    if(/^([-*_])\1{2,}$/.test(t)){ closeList(); out.push('<div class="eduGap" style="height:10px"></div>'); continue; }
     var h=t.match(/^(#{1,6})\s+(.*)$/);
     if(h){ closeList(); var lv=Math.min(h[1].length+2,5); out.push('<h'+lv+'>'+inline(h[2])+'</h'+lv+'>'); continue; }
     var bq=t.match(/^>\s?(.*)$/);

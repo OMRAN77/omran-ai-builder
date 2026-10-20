@@ -511,11 +511,29 @@ function __projBlobEach(projects, fn){
   });
 }
 function __blobDegraded(o, k){ return !!(o && o.vaultId && !o.vaultPending && (typeof o[k] !== 'string' || o[k].length <= VAULT_MIN)); }
+/* v-gen-thumb (تدقيق ١٨–١٩ أكتوبر: الصور المولَّدة مكسورة «image.png» حين تُفتح المحادثة من جهاز ثانٍ؛ أمر المالك ٢٠ أكتوبر، الدفعة ٤): مرفقات المستخدم وحدها تحصل
+   على مصغّرة الخادم عند الرفع (makeServerThumb في app-09)، فالصورة المولَّدة الكبيرة تصل نسخة المزامنة «[media]» أو فارغة. هنا تُصنع
+   لها مرّة واحدة بلا انتظار — في طابور نسخ العرض (__viewQ) كي لا تُفكّ أصول كثيرة معًا — ثمّ تُبطَل نسخة المزامنة وتُجدول. */
+const __genThumbTried = new WeakSet();
+function __genThumbKick(a){
+  if(!a || !a.isImage || a.serverThumb || __genThumbTried.has(a) || typeof window === 'undefined' || typeof window.makeServerThumb !== 'function') return;
+  __genThumbTried.add(a);
+  __viewQ = __viewQ.then(() => {
+    if(a.serverThumb || !__isBigDataImg(a.dataUrl)){ __genThumbTried.delete(a); return; } /* أُخلي الأصل قبل دوره: يُعاد حين يرجع */
+    return window.makeServerThumb(a.dataUrl).then(th => {
+      if(typeof th !== 'string' || th.slice(0, 11) !== 'data:image/') return;
+      a.serverThumb = th;
+      __slimCache = null;
+      try{ scheduleChatsServerSync(); }catch(e){ __swallow(e, 'thumb:sync'); }
+    });
+  }).catch(e => __swallow(e, 'thumb:make'));
+}
 /* يعيّن معرّفًا لكل صورة كبيرة بلا معرّف ويعيد ما يجب كتابته في المخزن */
 function __vaultAssign(projects, now){
   const puts = [];
   __vaultEach(projects, a => {
     if(typeof a.dataUrl !== 'string' || a.dataUrl.length <= VAULT_MIN) return;
+    if(a.isImage && !a.serverThumb) __genThumbKick(a); /* v-gen-thumb */
     if(!a.vaultId){ a.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); a.vaultPending = true; }
     if(a.vaultPending) puts.push({ id: a.vaultId, dataUrl: a.dataUrl, ref: a });
   });
@@ -2303,7 +2321,7 @@ function renderMessages(keepScroll){
           else if(a.viewUrl) img.src = a.viewUrl;
           else if(__isBigDataImg(a.dataUrl) || __vaultDegraded(a)){
             if(__isBigDataImg(a.dataUrl) && (!a.vaultId || a.vaultPending)) img.src = a.dataUrl;
-            __imgView(a).then(u => __showSrc(u || (__isBigDataImg(a.dataUrl) ? a.dataUrl : ''))).catch(e => __swallow(e, 'img:view')); /* v-view-blank: بلا نسخة = الأصل، لا صورة بلا src */
+            __imgView(a).then(u => __showSrc(u || (String(a.dataUrl || '').slice(0, 11) === 'data:image/' ? a.dataUrl : ''))).catch(e => __swallow(e, 'img:view')); /* v-view-blank: بلا نسخة = الأصل، لا صورة بلا src · v-gen-thumb: والجهاز الثاني بلا أصل ولا نسخة عرض يرسم مصغّرة المزامنة */
           } else img.src = a.dataUrl === '[media]' ? '' : (a.dataUrl || '');
           /* v-image-vault/v-mem-guard2: أدوات المشاركة والحفظ تحتاج الأصل — يُقرأ من المخزن (قراءة مشتركة) وتُلحق حين يصل */
           if(__vaultDegraded(a) && !window.__usingSlimProjects){ __vaultRead(a).then(d => { if(__isBigDataImg(d)) setTimeout(() => { if(img.isConnected && __ibox && window.__omranImgTools) window.__omranImgTools(__ibox, d, a); }, 0); }).catch(e => __swallow(e, 'vault:render')); }
