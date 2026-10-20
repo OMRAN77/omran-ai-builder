@@ -5,7 +5,7 @@
 // قواعد الصور (CLAUDE.md): لا نصّ مطبوع، الدقّة الأصليّة للمولّد كما هي (لا تصغير ولا تكبير)، WebP q90.
 //
 //   OPENAI_API_KEY=… GEMINI_API_KEY=… node scripts/thumbs-paid.mjs <mode>
-//   mode: poster | upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio
+//   mode: edu-bg | edu-bg:wood,darkwood,… | poster | upload-art | opts | opts:furniture,flooring,fabric,wall,curtains | styles | places | fashion | fashion:women,men,kids,category,occasion,season,extras | studio
 //
 // الأوصاف من مصادر الحقيقة نفسها في الخادم (design-create / fashion-create / STUDIO_OPTIONS) + الصياغات التي راجعها المالك بالعين
 // (v-decor-18c/d/e) لخيارات الديكور. المخرجات في thumbs/<نوع>/<اسم>.webp ثمّ ينسخها الورك فلو إلى assets/.
@@ -218,6 +218,59 @@ if (isMode('studio')) {
 if (isMode('upload-art')) {
   Object.entries(UPLOAD_ART).forEach(([k, p]) => JOBS.push({ kind: 'upart', name: k, shape: 'wide2', prompt: p + ' Absolutely no text, no letters, no numbers, no signage, no watermark, no logo anywhere in the image.' }));
 }
+// ---------- خلفيّات قسم «التعليم» (المالك ٢٠ أكتوبر: «نفس هذي الفكرة… ٢٤ ثيم يعني بيكونون ٤٨… ما أريد الصور مغبّشة») ----------
+// الفكرة من نماذجه: مشهد مكتب بأسلوب كلّ ثيم، وفي وسطه لوح/شاشة مستطيلة فاضية تمامًا بلون واحد — الواجهة الحقيقيّة (HTML بالـ١٤ لغة
+// وبألوان الثيم) تُرسم فوق الشاشة مباشرةً بلا لوح تحتها. لا نصّ ولا حرف في الصورة (ظهور الكتب فاضية). نسختان لكلّ ثيم: حاسوب 16:9 وجوّال طوليّ.
+// الدقّة: دقّة المولّد الأصليّة كما هي (cap كبير — لا تصغير)، WebP q90؛ سقف ١٩٥KB السابق (v-edu-bg) هو الذي غبّش الصور فأُلغي.
+// لون الشاشة لكلّ ثيم من لون صفحته (--th-page) ليلتحم بالواجهة؛ المولّد لا يضبط الهندسة بالضبط فتُقاس حدود الشاشة من كلّ صورة بعد التوليد
+// (scripts/edu-bg-measure.mjs → assets/edu-bg/meta.json) وتُبنى منها مواضع CSS.
+const EDU_SKINS = {
+  wood: { screen: '#f3ead8', style: 'Warm natural wood study theme in cream parchment, honey oak and soft brown: a wooden desk edge, an old leather notebook, a quill pen, dried wheat sprigs, a small brass desk lamp, rolled paper scrolls, a sprig of olive leaves.' },
+  darkwood: { screen: '#1e140c', style: 'Dark walnut wood and brass study theme: carved dark walnut frames, brass candlesticks, stacks of dark leather books with brass corners, an antique brass lamp, a pocket watch, a rolled map.' },
+  marble: { screen: '#0d0d0f', style: 'Black marble and gold theme: black marble slabs with thin glittering gold veins along the edges, a gold fountain pen, a few gold geometric frames, a gold laurel wreath fragment, small gold coins of pure ornament.' },
+  code: { screen: '#0a1216', style: 'Dark developer theme in deep teal and soft green glow: abstract glowing circuit traces, floating mind-map node diagrams made only of circles and lines, a keyboard corner, a mechanical keyboard keycaps without any markings, glowing bracket shapes, small chips.' },
+  cars: { screen: '#101114', style: 'Sports car theme in steel grey and electric blue: the glowing headlights and front fender of a sleek supercar at the bottom corner, carbon-fibre texture, brake disc, a racing helmet, light streaks of speed along the edges.' },
+  kids: { screen: '#f7f3ff', style: 'Playful kids learning theme in soft pastel lilac, pink, mint and sky blue: colorful jigsaw puzzle pieces, crayons, a paper airplane, stars, a rainbow, a toy abacus with plain beads, building blocks without any letters, clouds.' },
+  cuisine: { screen: '#fbf6f2', style: 'Cozy pastel kitchen theme in blush pink, cream and sage green: wooden spoons, a whisk, a small pot, herbs in pots, lemons, a rolling pin, a tea towel with a plain pattern, flour sprinkle, a ceramic bowl.' },
+  sunset: { screen: '#3a2430', style: 'Luxury sunset theme in warm orange, coral and dusty rose: an infinity pool edge at golden hour, a glowing sun low over the sea, palm leaf silhouettes, a lounge chair corner, soft clouds lit in pink.' },
+  beach: { screen: '#e6f6f8', style: 'Tropical beach theme in turquoise, sand and palm green: palm trees and fronds, seashells, a starfish, turquoise waves foaming at the corner, a straw hat, sparkling water.' },
+  winter: { screen: '#f0f5fa', style: 'Winter mountain theme in icy white and pale blue: snow-covered pine branches, snowflakes, frosted pine cones, distant snowy peaks, a cosy knitted scarf corner, soft falling snow.' },
+  garage: { screen: '#111113', style: 'Dark car-garage theme in charcoal, steel and red: a toolbox corner, wrenches, a tyre, red tail-light glow, a hanging work lamp, metal shelving, oil can, checker plate floor at the bottom.' },
+  anime: { screen: '#150f26', style: 'Anime bedroom-studio night theme in deep purple, magenta and neon pink: a cozy desk corner with glowing monitors showing abstract glowing shapes, string lights, manga volumes with blank covers, posters of abstract shapes, a desk lamp, soft neon sunset through a window. No characters, no people.' },
+  cyber: { screen: '#040d17', style: 'Cyber-security hacker night theme in deep navy and cyan: glowing holographic world map of dots, abstract padlock and shield shapes made of light, rows of server racks, floating hexagon grids, faint data streams. No people, no hooded figure.' },
+  school: { screen: '#2c261c', style: 'Warm study-desk theme in dark chalkboard green-brown and amber: a pile of hardcover books with blank covers, a school backpack, pencils in a cup, a globe, a desk lamp glowing amber, an open window with warm evening light.' },
+  tactical: { screen: '#4a0a1c', style: 'Crimson tactical theme in deep red and black: stylised tactical gear without any weapons: a helmet, a radio headset, night-vision goggles, a map case, carabiners, a compass, angular geometric crimson shapes and light streaks.' },
+  angel: { screen: '#e7eef7', style: 'Heavenly angel theme in silver, ice blue and white: large soft feathered silver-white wings along the edges, floating feathers, ice crystal shards, glowing pale-blue light rays, silver armor ornaments, clouds. No face, no person.' },
+  neonanime: { screen: '#040506', style: 'Neon cyber-anime theme in black, cyan and magenta: flowing liquid-chrome and cyan ribbons swirling at the edges, neon light trails, glowing geometric shards, a faint hex grid, sparks. No characters, no people.' },
+  station: { screen: '#2d3236', style: 'Old industrial railway-station theme in rusty steel, brass and soft haze: iron roof girders with glass skylights, steam, brass lanterns, a vintage suitcase, a station clock without numerals, railway tracks at the bottom.' },
+  rally: { screen: '#46412f', style: 'Desert rally theme in sand, dusty khaki and rust: dust clouds, rally-car tyre tracks, a spare wheel, jerrycans, a compass, dune ridges, a roll-cage corner, warm sun haze. No text on the car.' },
+  smoke: { screen: '#050f1f', style: 'Deep blue smoke and liquid theme: flowing translucent navy and electric-blue smoke ribbons curling along the edges, glowing blue particles, faint light beams.' },
+  library: { screen: '#eefafa', style: 'Modern bright aqua-and-white library atrium theme: tall white shelves full of blank-spined books, glass railings, teal reading chairs, a spiral staircase corner, ferns in white pots, soft daylight.' },
+  cafe: { screen: '#f2e6d4', style: 'Warm coffee-shop theme in caramel, cream and latte brown: ceramic coffee cups with latte art, a croissant, an open blank notebook with a pen, string lights bokeh, a small plant, a wooden table edge, steam.' },
+  workshop: { screen: '#14122a', style: 'Cyberpunk electronics workshop night theme in indigo, violet and electric blue: a soldering station, circuit boards, spools of cable, glowing LED strips, small robots parts, tool pegboard, a neon tube. No people.' },
+  modern: { screen: '#e6e0d6', style: 'Minimal modern Scandinavian interior theme in warm greige, concrete and light oak: a lounge chair corner, a slim floor lamp, a ceramic vase with dried grass, a linen throw, a stack of plain books, soft window light.' },
+};
+const EDU_NO_TEXT = ' No people. Absolutely no text, no letters, no numbers, no writing, no symbols that look like letters, no captions, no signage, no labels, no watermark, no logo anywhere; every book spine and cover is completely blank with at most a thin plain ornamental line.';
+const EDU_DESK = (s) => 'Photorealistic 3D rendered still life, wide 16:9 landscape, eye level, tack-sharp focus across the whole frame, premium cinematic lighting. ' + s.style +
+  ' COMPOSITION, strict: a large thin-framed rectangular display board stands upright on the desk facing the camera squarely and fills the right three quarters of the frame;' +
+  ' its screen spans from 27 percent to 97 percent of the image width and from 7 percent to 91 percent of the image height, perfectly rectangular, perfectly flat, front-facing with no perspective tilt.' +
+  ' The entire screen is one perfectly uniform, smooth, matte, solid color ' + s.screen + ' with absolutely nothing on it: no glare, no reflections, no gradient, no vignette, no icons, no shapes, no glow. Nothing overlaps or touches the screen area.' +
+  ' In the left quarter of the frame, in front of the board: a tall neat stack of hardcover books with completely blank spines, a glowing desk lamp, a small globe, an open notebook with blank pages.' +
+  ' Along the bottom edge in front of the board, small and low so they stay below the screen: a graduation cap, a compass, a small potted plant, a pen holder with pens.' + EDU_NO_TEXT;
+const EDU_PHONE = (s) => 'Photorealistic 3D rendered still life, tall portrait composition for a phone screen, eye level, tack-sharp focus across the whole frame, premium cinematic lighting. ' + s.style +
+  ' COMPOSITION, strict: a tall thin-framed rectangular board stands upright facing the camera squarely and fills almost the whole frame;' +
+  ' its screen spans from 6 percent to 94 percent of the image width and from 12 percent to 86 percent of the image height, perfectly rectangular, perfectly flat, front-facing with no perspective tilt.' +
+  ' The entire screen is one perfectly uniform, smooth, matte, solid color ' + s.screen + ' with absolutely nothing on it: no glare, no reflections, no gradient, no vignette, no icons, no shapes, no glow. Nothing overlaps or touches the screen area.' +
+  ' Ornaments only along the top edge above the board (a graduation cap, a small potted plant, a few hanging paper hearts) and along the bottom edge in front of the board (a short stack of hardcover books with blank spines, a small desk lamp, a small globe, an open notebook with blank pages); the side margins stay thin and plain.' + EDU_NO_TEXT;
+if (isMode('edu-bg')) {
+  const only = MODE.includes(':') ? MODE.split(':')[1].split(',').map((x) => x.trim()).filter(Boolean) : Object.keys(EDU_SKINS);
+  only.forEach((k) => {
+    const s = EDU_SKINS[k]; if (!s) { console.log('ثيم مجهول ' + k); return; }
+    // cap كبير = دقّة المولّد الأصليّة بلا تصغير (قرار المالك: لا صور مغبّشة). بادئة skin- تمنع اصطدام الأسماء على فرع الروبوت.
+    JOBS.push({ kind: 'edubg', name: 'skin-' + k + '-desktop', shape: 'land16', cap: 8192, prompt: EDU_DESK(s) });
+    JOBS.push({ kind: 'edubg', name: 'skin-' + k + '-mobile', shape: 'port', cap: 8192, prompt: EDU_PHONE(s) });
+  });
+}
 // ---------- بوستر الديكور (أمر المالك ١٧ أكتوبر «أولّده»): الغرف الـ١٢ في شبكة ٤×٣ بلا أيّ نصّ — الأسماء HTML فوقه، والنقاط تُقاس من الصورة ----------
 const POSTER_ROOMS = [
   ['a fine-dining restaurant with set tables and chairs', 'a cozy coffee shop with an espresso bar and stools', 'a serene master bedroom with a made bed and wardrobe', 'a traditional Arabic majlis with low patterned floor seating and ornate carpets'],
@@ -233,7 +286,7 @@ if (isMode('poster')) {
     ' Warm interior lights inside each room, photoreal materials, crisp detail, cinematic studio lighting. Nothing between or above the rooms, no central object, no signs, no plaques, no labels on the plinths.' +
     ' Absolutely no text, no letters, no numbers, no captions, no watermark, no logo anywhere.' });
 }
-const OUT_DIR = { poster: 'assets/decor/chips', dopts: 'assets/design/decor-opts', dstyle: 'assets/design/styles', dplace: 'assets/design/opts', women: 'assets/fashion/looks/women', men: 'assets/fashion/looks/men', kids: 'assets/fashion/looks/kids', category: 'assets/fashion/looks/category', occasion: 'assets/fashion/looks/occasion', season: 'assets/fashion/looks/season', extras: 'assets/fashion/looks/extras', studioopt: 'assets/studio/options', upart: 'assets/upload-art' };
+const OUT_DIR = { edubg: 'assets/edu-bg', poster: 'assets/decor/chips', dopts: 'assets/design/decor-opts', dstyle: 'assets/design/styles', dplace: 'assets/design/opts', women: 'assets/fashion/looks/women', men: 'assets/fashion/looks/men', kids: 'assets/fashion/looks/kids', category: 'assets/fashion/looks/category', occasion: 'assets/fashion/looks/occasion', season: 'assets/fashion/looks/season', extras: 'assets/fashion/looks/extras', studioopt: 'assets/studio/options', upart: 'assets/upload-art' };
 const outName = (j) => (j.kind === 'dplace' ? 'place-' : '') + j.name + '.webp';
 const jobs = SKIP_EXISTING ? JOBS.filter((j) => !existsSync(OUT_DIR[j.kind] + '/' + outName(j))) : JOBS;
 if (!jobs.length) { console.log('لا مهامّ للوضع «' + MODE + '»'); process.exit(MODE ? 0 : 1); }
@@ -303,10 +356,12 @@ async function save(j, buf) {
   }
   // المولّد يرجع أكبر من المطلوب (1792×2400 / 5376×2688): تصغير واحد بـLanczos من الخام إلى ضعفَي أكبر عرض عرضٍ في التطبيق
   // (بطاقة ≤ ٣٦٠ → 1024، بطاقة عريضة ≤ ٢٣١ وغطاء الجوّال → 1536، مربّع الرفع ≤ ١٣٧٥ → 3072) — لا تكبير أبدًا (withoutEnlargement).
-  const CAP = { port: 1024, land16: 1536, wide2: 3072, poster: 1640 }[j.shape] || 1024; // البوستر يُعرض بعرض ≤ ٨٢٠
+  const CAP = j.cap || ({ port: 1024, land16: 1536, wide2: 3072, poster: 1640 }[j.shape] || 1024); // البوستر يُعرض بعرض ≤ ٨٢٠؛ j.cap يفرض سقفًا خاصًّا (edu-bg: الدقّة الأصليّة)
   img = img.resize({ width: CAP, withoutEnlargement: true, kernel: 'lanczos3' });
-  mkdirSync('thumbs/' + j.kind, { recursive: true });
-  const out = 'thumbs/' + j.kind + '/' + outName(j);
+  // edu-bg يُكتب مباشرةً في assets/edu-bg (الورك فلو يضيف assets كلّها) — تعديل الورك فلو يحتاج صلاحيّة workflow غير متاحة للجسر.
+  const dir = j.kind === 'edubg' ? OUT_DIR.edubg : 'thumbs/' + j.kind;
+  mkdirSync(dir, { recursive: true });
+  const out = dir + '/' + outName(j);
   const info = await img.webp({ quality: 90 }).toFile(out);
   return out + ' ' + info.width + '×' + info.height + ' ' + Math.round(info.size / 1024) + 'KB';
 }
