@@ -542,56 +542,71 @@ try{
     alert(t('acctDeleteDone'));
   }
   window.acctDeleteAccount = acctDeleteAccount;
+  /* v-owner-i18n (تدقيق ١٨ أكتوبر، g14-owner): لوحة المالك كانت عربيّة ثابتة في كلّ لغة. النصوص الآن من قاموس لغة الواجهة
+     (curT كبقيّة هذا الملفّ)، والأسماء والأرقام والرموز التقنيّة معزولة (\u2068…\u2069 / \u2066…\u2069 / <bdi>) فلا يقلبها اتّجاه السطر.
+     خطأ الشبكة («Failed to fetch» وأخواته) = acctNetError بلغة الواجهة؛ غيره يبقى كما هو (التشخيص يحتاجه). */
+  function ownT(k, p){
+    let v = '';
+    try{ v = curT()[k]; }catch(e){ __swallow(e, 'owner:i18n'); }
+    v = (v == null || v === '') ? k : String(v);
+    if(p) Object.keys(p).forEach(n => { v = v.split('{' + n + '}').join(String(p[n])); });
+    return v;
+  }
+  const ownIso = (s) => '\u2068' + String(s == null ? '' : s) + '\u2069';
+  const ownLtr = (s) => '\u2066' + String(s == null ? '' : s) + '\u2069';
+  function ownErr(e){
+    const m = String((e && e.message) || e || '');
+    return /Failed to fetch|NetworkError|Load failed|ERR_NETWORK|Network request failed/i.test(m) ? ownT('acctNetError') : m;
+  }
+  /* أسماء الخدمات: مفتاح العدّاد آخره سلّة الحصّة (MOVE_BUCKETS في _usage.js) لا مزوّد — اسم وظيفيّ بلغة الواجهة،
+     والسلّة الخامّة معزولة بجانب المجمَّع منها، وغير المعروف يبقى خامًا معزولًا. */
+  const OWN_SVC = { chat: 'ownerSvcChat', plan: 'ownerSvcPlan', agent: 'ownerSvcAgent', 'maha-realtime': 'ownerSvcVoice', tts: 'ownerSvcTts', stt: 'ownerSvcStt', 'media-intent': 'ownerSvcMedia', search: 'ownerSvcSearch', translate: 'ownerSvcTranslate' };
+  const OWN_SVC_PREFIX = [[/^plan-/, 'ownerSvcPlan'], [/^search-|-search$/, 'ownerSvcSearch'], [/^ad(chat|image)$/, 'ownerSvcAds'], [/^video-/, 'ownerSvcVideo'], [/-suggest$|^design-ideas$/, 'ownerSvcSuggest'], [/^share|^media-save-/, 'ownerSvcShare'], [/^stocks-/, 'ownerSvcStocks']];
+  function ownSvc(b){
+    if(OWN_SVC[b]) return ownT(OWN_SVC[b]);
+    const hit = OWN_SVC_PREFIX.find(([re]) => re.test(b));
+    return hit ? ownT(hit[1]) + ' ' + ownLtr('(' + b + ')') : ownLtr(b);
+  }
   window.loadAdminStats = async function loadAdminStats(){
     const box = document.getElementById('adminStatsBox');
     if(!box) return;
-    box.textContent = '⏳ جارِ التحميل...';
+    box.textContent = ownT('ownerLoading');
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-stats?token=' + encodeURIComponent(token || ''));
       const data = await res.json();
-      if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
+      if(!res.ok){ box.textContent = '❌ ' + (data.error || ownT('ownerUnauthorized')); return; }
       const lines = [];
-      lines.push('👥 إجمالي الحسابات: ' + data.totalAccounts + '  (حقيقية: ' + data.realAccounts + '، اختبار: ' + data.testAccounts + ')');
+      lines.push(ownT('ownerStatsAccounts', { total: data.totalAccounts, real: data.realAccounts, test: data.testAccounts }));
       lines.push('');
-      lines.push('💬 رسائل اليوم: ' + data.messagesToday + '   |   إجمالي كل الوقت: ' + data.totalMessagesAllTime);
+      lines.push(ownT('ownerStatsMessages', { today: data.messagesToday, all: data.totalMessagesAllTime }));
       if(data.perProviderToday && Object.keys(data.perProviderToday).length){
         lines.push('');
-        lines.push('📊 حسب المزوّد اليوم:');
-        Object.entries(data.perProviderToday).sort((a,b)=>b[1]-a[1]).forEach(([p,c])=>lines.push('  • ' + p + ': ' + c));
+        lines.push(ownT('ownerStatsByService'));
+        Object.entries(data.perProviderToday).sort((a,b)=>b[1]-a[1]).forEach(([p,c])=>lines.push('  • ' + ownSvc(p) + ': ' + c));
       }
       if(data.topUsersToday && data.topUsersToday.length){
         lines.push('');
-        lines.push('🏆 الأكثر نشاطًا اليوم:');
-        data.topUsersToday.forEach(u=>lines.push('  • ' + u.username + ': ' + u.messages + ' رسالة'));
+        lines.push(ownT('ownerStatsTop'));
+        data.topUsersToday.forEach(u=>lines.push('  • ' + ownIso(u.username) + ': ' + ownT('ownerStatsMsgCount', { n: u.messages })));
       }
       if(data.recentUsers && data.recentUsers.length){
         lines.push('');
-        lines.push('🆕 آخر الحسابات نشاطًا:');
-        data.recentUsers.slice(0,15).forEach(u=>lines.push('  • ' + u.username + '  (' + String(u.lastWrite||'').slice(0,10) + ')'));
+        lines.push(ownT('ownerStatsRecent'));
+        data.recentUsers.slice(0,15).forEach(u=>lines.push('  • ' + ownIso(u.username) + '  ' + ownLtr('(' + String(u.lastWrite||'').slice(0,10) + ')')));
       }
       lines.push('');
-      lines.push('🕐 آخر تحديث: ' + new Date(data.generatedAt).toLocaleString('en-GB'));
+      lines.push(ownT('ownerStatsUpdated', { t: ownLtr(new Date(data.generatedAt).toLocaleString('en-GB')) }));
       box.textContent = lines.join('\n');
       window.__adminUsersCache = data.manageableUsers || [];
       renderAdminUserTable();
     }catch(e){
-      box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
+      box.textContent = '❌ ' + ownT('ownerLoadFailed', { e: ownErr(e) });
     }
   };
   function renderAdminUserTable(){
     const wrap = document.getElementById('adminUsersTable');
     if(!wrap) return;
-    const users = window.__adminUsersCache || [];
-    if(!users.length){ wrap.innerHTML = '<div style="opacity:.6;padding:8px">لا يوجد مستخدمون لإدارتهم.</div>'; return; }
-    // v-purge-checks: زر واحد يمسح كل حسابات الفحص الآلية بدل حذفها واحدًا واحدًا.
-    const checksCount = users.filter(u => /^zzcheck/i.test(String(u.username || ''))).length;
-    const purgeBar = checksCount
-      ? '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(212,175,55,.3)">'
-        + '<span style="flex:1;font-size:12px;opacity:.75">حسابات فحص آلية (zzcheck…): ' + checksCount + '</span>'
-        + '<button type="button" onclick="adminPurgeChecks()" style="background:none;border:1px solid #d4af37;color:#d4af37;border-radius:6px;padding:4px 10px;cursor:pointer">🧹 حذفها كلها</button>'
-        + '</div>'
-      : '';
     /* v-sec-admin-xss: تدقيق ١٠ أكتوبر — التسجيل يقبل أيّ حروف في الاسم، وهذا الجدول كان يلصق الاسم والإيميل في
        HTML وفي onclick بتهريب «'» وحده: اسم مثل ‹<img src=x onerror=…>› جرى سكربتًا حين فتح المالك لوحة الإدارة،
        و«"» في الاسم كسر السمة وحقن onmouseover، و«\'» أغلق نصّ JS (المسبار: pwned=1, attrInjected=true).
@@ -600,19 +615,29 @@ try{
        ‹adminDeleteUser('…')› منها ليحدّد الصفوف بالضغط المطوّل ويحذفها دفعة واحدة. الشكل والأفعال كما كانت. */
     const escAdm = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const jsAdm = (s) => String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+    const users = window.__adminUsersCache || [];
+    if(!users.length){ wrap.innerHTML = '<div style="opacity:.6;padding:8px">' + escAdm(ownT('ownerUsersNone')) + '</div>'; return; }
+    // v-purge-checks: زر واحد يمسح كل حسابات الفحص الآلية بدل حذفها واحدًا واحدًا.
+    const checksCount = users.filter(u => /^zzcheck/i.test(String(u.username || ''))).length;
+    const purgeBar = checksCount
+      ? '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(212,175,55,.3)">'
+        + '<span style="flex:1;font-size:12px;opacity:.75">' + escAdm(ownT('ownerChecksCount', { n: checksCount })) + '</span>'
+        + '<button type="button" onclick="adminPurgeChecks()" style="background:none;border:1px solid #d4af37;color:#d4af37;border-radius:6px;padding:4px 10px;cursor:pointer">' + escAdm(ownT('ownerChecksPurge')) + '</button>'
+        + '</div>'
+      : '';
     wrap.innerHTML = purgeBar + users.map(u => {
       const safeName = escAdm(jsAdm(u.username));
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
-        + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + escAdm(u.username) + '</span>'
-        + '<span style="font-size:11px;opacity:.6">' + escAdm(u.email || 'بدون إيميل') + '</span>'
-        + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="إرسال رسالة" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
-        + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + (u.banned ? 'فك الحظر' : 'حظر') + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
-        + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="حذف نهائي" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+        + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + '<bdi>' + escAdm(u.username) + '</bdi></span>'
+        + '<span style="font-size:11px;opacity:.6">' + (u.email ? '<bdi dir="ltr">' + escAdm(u.email) + '</bdi>' : escAdm(ownT('ownerNoEmail'))) + '</span>'
+        + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerMsgTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
+        + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + escAdm(ownT(u.banned ? 'ownerUnbanTitle' : 'ownerBanTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
+        + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerDeleteTitle')) + '" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
         + '</div>';
     }).join('');
   }
   window.adminToggleBan = async function(username, ban){
-    if(!confirm((ban ? 'حظر' : 'فك حظر') + ' المستخدم "' + username + '"؟')) return;
+    if(!confirm(ownT(ban ? 'ownerBanConfirm' : 'ownerUnbanConfirm', { u: ownIso(username) }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -620,14 +645,14 @@ try{
         body: JSON.stringify({ token, action: ban ? 'ban' : 'unban', targetUsername: username }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       const u = (window.__adminUsersCache||[]).find(x=>x.username===username);
       if(u) u.banned = ban;
       renderAdminUserTable();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   window.adminDeleteUser = async function(username){
-    if(!confirm('⚠️ حذف نهائي لحساب "' + username + '"؟ لا يمكن التراجع.')) return;
+    if(!confirm(ownT('ownerDeleteConfirm', { u: ownIso(username) }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -635,13 +660,13 @@ try{
         body: JSON.stringify({ token, action: 'delete', targetUsername: username }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x=>x.username!==username);
       renderAdminUserTable();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   window.adminPurgeChecks = async function(){
-    if(!confirm('🧹 حذف كل حسابات الفحص الآلية (zzcheck…) ونقاطها نهائيًّا؟ لا تطال أي حساب حقيقي.')) return;
+    if(!confirm(ownT('ownerPurgeConfirm'))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -649,17 +674,17 @@ try{
         body: JSON.stringify({ token, action: 'purge-checks' }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
-      alert('✅ حُذف ' + data.removed + ' حساب فحص.');
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
+      alert(ownT('ownerPurgeDone', { n: data.removed }));
       window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x => !/^zzcheck/i.test(String(x.username||'')));
       renderAdminUserTable();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   /* v-claude-diag: يجرب مفتاح كلود الفعلي في الخادم ويعرض رد أنثروبيك
      الكامل + ذيل المفتاح — يحسم فورًا أي حساب يخص المفتاح وهل رصيده يكفي. */
   window.adminClaudeDiag = async function(){
     const box = document.getElementById('adminClaudeDiagBox');
-    if(box){ box.style.display = 'block'; box.textContent = '⏳ يفحص مفتاح كلود على أنثروبيك…'; }
+    if(box){ box.style.display = 'block'; box.textContent = ownT('ownerDiagRunning'); }
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -667,14 +692,14 @@ try{
         body: JSON.stringify({ token, action: 'claude-diag' }),
       });
       const data = await res.json();
-      if(!res.ok){ if(box) box.textContent = '❌ ' + (data.error || 'فشل'); return; }
-      if(box) box.textContent = (data.ok ? '✅' : '❌') + ' المفتاح: ' + (data.keyTail || '؟')
-        + '\nالحالة: HTTP ' + (data.status || '؟')
+      if(!res.ok){ if(box) box.textContent = '❌ ' + (data.error || ownT('ownerFailed')); return; }
+      if(box) box.textContent = (data.ok ? '✅' : '❌') + ' ' + ownT('ownerDiagKey', { k: ownLtr(data.keyTail || '?') })
+        + '\n' + ownT('ownerDiagStatus', { s: ownLtr('HTTP ' + (data.status || '?')) })
         + '\n' + (data.detail || '');
-    }catch(e){ if(box) box.textContent = '❌ خطأ: ' + (e && e.message || e); }
+    }catch(e){ if(box) box.textContent = '❌ ' + ownT('ownerErrorLine', { e: ownErr(e) }); }
   };
   window.adminMessageUser = async function(username){
-    const text = prompt('اكتب الرسالة التي ستصل لـ "' + username + '" (تظهر له عند فتح البرنامج):');
+    const text = prompt(ownT('ownerMsgPrompt', { u: ownIso(username) }));
     if(!text || !text.trim()) return;
     try{
       const token = authGet('aiapp_auth_token');
@@ -683,9 +708,9 @@ try{
         body: JSON.stringify({ token, action: 'message', targetUsername: username, text }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
-      alert('✅ تم إرسال الرسالة.');
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
+      alert(ownT('ownerMsgSent'));
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
 
   // ⭐ صلاحيات VIP — قائمة يملؤها المالك، مَن فيها بلا حدود (api/_lib/_vip.js).
@@ -697,29 +722,29 @@ try{
     const box = document.getElementById('vipListBox');
     if(!box) return;
     const items = list || [];
-    if(!items.length){ box.innerHTML = '<div style="opacity:.6;padding:8px">لا أحد في قائمة VIP.</div>'; return; }
+    if(!items.length){ box.innerHTML = '<div style="opacity:.6;padding:8px">' + vipEscape(ownT('ownerVipNone')) + '</div>'; return; }
     // v-vip-verified (مراجعة النقض): المعرّف في data-id لا داخل JS السطر — كان « ' » وحده يُهرَّب، فاسم مستخدم بـ« \\ » يكسر
     // السلسلة وينفّذ كودًا في جلسة المالك عند 🗑️؛ والأسماء تدخل القائمة الآن تلقائيًّا حين يؤكّد صاحب إيميل بريده.
     box.innerHTML = items.map(id => {
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
-        + '<span style="flex:1;min-width:110px;font-weight:500">⭐ ' + vipEscape(id) + '</span>'
-        + '<button type="button" data-id="' + vipEscape(id) + '" onclick="removeVipUser(this.dataset.id)" title="إزالة من VIP" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+        + '<span style="flex:1;min-width:110px;font-weight:500">⭐ <bdi>' + vipEscape(id) + '</bdi></span>'
+        + '<button type="button" data-id="' + vipEscape(id) + '" onclick="removeVipUser(this.dataset.id)" title="' + vipEscape(ownT('ownerVipRemoveTitle')) + '" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
         + '</div>';
     }).join('');
   }
   window.loadVipList = async function loadVipList(){
     const box = document.getElementById('vipListBox');
     if(!box) return;
-    box.textContent = '⏳ جارِ التحميل...';
+    box.textContent = ownT('ownerLoading');
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/vip?token=' + encodeURIComponent(token || ''));
       const data = await res.json();
-      if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
+      if(!res.ok){ box.textContent = '❌ ' + (data.error || ownT('ownerUnauthorized')); return; }
       renderVipList(data.list || []);
       vipAuditButton();
     }catch(e){
-      box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
+      box.textContent = '❌ ' + ownT('ownerLoadFailed', { e: ownErr(e) });
     }
   };
   /* v-vip-verified (أمر المالك: «أرسل لي قائمة الحسابات اللي عندها الحين إيميل من قائمة VIP وهي غير متحقّق منها»): الجرد من
@@ -731,16 +756,13 @@ try{
     const b = document.createElement('button');
     b.type = 'button';
     b.id = 'vipAuditBtn';
-    b.textContent = '🔎 إيميلات VIP غير المؤكَّدة';
+    b.textContent = ownT('ownerVipAuditBtn');
+    b.setAttribute('data-i18n', 'ownerVipAuditBtn'); // يُنشأ مرّة عند الإقلاع — تبديل اللغة يعيد تسميته (applyLanguage)
     b.style.cssText = 'margin-top:8px;background:none;border:1px solid var(--border,#333);color:inherit;border-radius:6px;padding:6px 10px;cursor:pointer';
     b.onclick = () => loadVipAudit();
     list.parentNode.insertBefore(b, list.nextSibling);
   }
-  const VIP_AUDIT_KIND = {
-    'email': 'يحمل إيميلًا من قائمة VIP غير مؤكَّد — لا يأخذ VIP حتّى يؤكّده من «حسابي»',
-    'legacy-name': 'اسمه القديم إيميل في القائمة — VIP بالاسم كما كان، وإيميله غير مؤكَّد',
-    'vip-name': 'في القائمة باسمه وإيميله غير مؤكَّد — لو أضفته بإيميله قبل اليوم فراجعه',
-  };
+  const VIP_AUDIT_KIND = { 'email': 'ownerVipKindEmail', 'legacy-name': 'ownerVipKindLegacy', 'vip-name': 'ownerVipKindName' };
   async function loadVipAudit(){
     const list = document.getElementById('vipListBox');
     if(!list || !list.parentNode) return;
@@ -752,24 +774,24 @@ try{
       const btn = document.getElementById('vipAuditBtn');
       list.parentNode.insertBefore(box, (btn || list).nextSibling);
     }
-    box.textContent = '⏳ جرد الإيميلات غير المؤكَّدة...';
+    box.textContent = ownT('ownerVipAuditRunning');
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/vip?audit=1&token=' + encodeURIComponent(token || ''));
       const data = await res.json();
-      if(!res.ok || !data.audit){ box.textContent = '❌ ' + (data.error || 'تعذّر الجرد'); return; }
+      if(!res.ok || !data.audit){ box.textContent = '❌ ' + (data.error || ownT('ownerVipAuditFail')); return; }
       const rows = data.audit.rows || [];
-      box.innerHTML = '<div style="font-weight:600;margin:6px 0">إيميلات VIP غير مؤكَّدة: ' + rows.length + ' (فُحص ' + Number(data.audit.scanned || 0) + ' حسابًا)</div>'
-        + (rows.length ? rows.map(r => '<div style="padding:6px;border-bottom:1px solid var(--border,#333)"><b>' + vipEscape(r.username) + '</b> · <span dir="ltr">' + vipEscape(r.email || '—') + '</span>'
-          + '<div style="opacity:.75">' + vipEscape(VIP_AUDIT_KIND[r.kind] || r.kind) + '</div></div>').join('') : '<div style="opacity:.6;padding:6px">لا أحد.</div>');
+      box.innerHTML = '<div style="font-weight:600;margin:6px 0">' + vipEscape(ownT('ownerVipAuditHead', { n: rows.length, s: Number(data.audit.scanned || 0) })) + '</div>'
+        + (rows.length ? rows.map(r => '<div style="padding:6px;border-bottom:1px solid var(--border,#333)"><b><bdi>' + vipEscape(r.username) + '</bdi></b> · <bdi dir="ltr">' + vipEscape(r.email || '—') + '</bdi>'
+          + '<div style="opacity:.75">' + vipEscape(VIP_AUDIT_KIND[r.kind] ? ownT(VIP_AUDIT_KIND[r.kind]) : r.kind) + '</div></div>').join('') : '<div style="opacity:.6;padding:6px">' + vipEscape(ownT('ownerNobody')) + '</div>');
     }catch(e){
-      box.textContent = '❌ تعذّر الجرد: ' + (e && e.message || e);
+      box.textContent = '❌ ' + ownT('ownerVipAuditFail') + ': ' + ownErr(e);
     }
   }
   window.addVipUser = async function addVipUser(){
     const input = document.getElementById('vipInput');
     const id = input ? String(input.value || '').trim() : '';
-    if(!id){ alert('اكتب إيميلًا أو اسم مستخدم أولًا.'); return; }
+    if(!id){ alert(ownT('ownerVipNeedId')); return; }
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/vip', {
@@ -777,16 +799,16 @@ try{
         body: JSON.stringify({ token, id }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       if(input) input.value = '';
       renderVipList(data.list || []);
       // v-vip-verified: إيميل بلا حساب أثبته يبقى خامًا ولا يعطي أحدًا شيئًا حتّى يؤكّده صاحبه.
-      if(data.pending) alert('أُضيف كإيميل: يصير VIP لصاحبه لما يؤكّد إيميله (دخول Google أو رمز من «حسابي»).');
+      if(data.pending) alert(ownT('ownerVipPending'));
       if(document.getElementById('vipAuditBox')) loadVipAudit();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   window.removeVipUser = async function removeVipUser(id){
-    if(!confirm('إزالة "' + id + '" من قائمة VIP؟')) return;
+    if(!confirm(ownT('ownerVipRemoveConfirm', { id: ownIso(id) }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       // المعرّف في المسار والجسم معًا: بعض الوسطاء يُسقط جسم DELETE بصمت.
@@ -795,10 +817,10 @@ try{
         body: JSON.stringify({ token, id }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       renderVipList(data.list || []);
       if(document.getElementById('vipAuditBox')) loadVipAudit();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
 
   function setAuthToggleUI(loggedIn){

@@ -3127,14 +3127,25 @@ window.updateVersionLabel = function(){
     // (تأكيد وصول التحديث بدل التخمين).
     var __bv = '';
     try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ /* guard-ok */ }
-    el.textContent = 'Omran AI Builder — ' + APP_VERSION
-      + ' · بندل: ' + (__bv || '؟')
-      + ' · سحب: ' + fmt(pull) + pullErr
-      + ' · رفع: ' + fmt(push) + pushErr
-      + ' · سيرفر: ' + srvN
-      + ' · محلي: ' + n
-      + ' · دمج: ' + mrgR
-      + (mrgE ? (' ⚠️' + mrgE) : '');
+    /* v-ver-label (تدقيق ١٨ أكتوبر، لقطتا ٠٢٣ و٠٤٦): العناوين كانت عربيّة في كلّ لغة، والسطر نصّ واحد يقلبه اتّجاه الفقرة
+       و«رفع:» تنفصل عن قيمتها عند الالتفاف. الآن العنوان من القاموس، وكلّ «عنوان: قيمة» span لا يلتفّ ومعزول، والقيمة
+       <bdi dir=ltr> (نصّ لا HTML)؛ الالتفاف بين الأزواج وحدها، وداخل القيمة الطويلة (خطأ) وحدها. */
+    var __L = function(k){ var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? String(v) : k; };
+    var __pairs = [[null, 'Omran AI Builder — ' + APP_VERSION], ['verBundle', __bv || '?'], ['verPull', fmt(pull) + pullErr], ['verPush', fmt(push) + pushErr],
+      ['verServer', String(srvN)], ['verLocal', String(n)], ['verMerge', mrgR + (mrgE ? (' ⚠️' + mrgE) : '')]];
+    el.textContent = '';
+    __pairs.forEach(function(p, i){
+      if (i) el.appendChild(document.createTextNode(' · '));
+      var s = document.createElement('span');
+      s.style.cssText = 'white-space:nowrap;unicode-bidi:isolate';
+      if (p[0]) s.appendChild(document.createTextNode(__L(p[0]) + ': '));
+      var b = document.createElement('bdi');
+      b.setAttribute('dir', 'ltr');
+      b.style.whiteSpace = 'normal';
+      b.textContent = p[1];
+      s.appendChild(b);
+      el.appendChild(s);
+    });
     el.style.display = '';
     if (!window.__verLabelTimer) { window.__verLabelTimer = setInterval(function(){ try{ window.updateVersionLabel(); }catch(e){ __swallow(e, "ui:app-13-stocks-init#8"); } }, 5000); }
   } else {

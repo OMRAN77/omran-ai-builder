@@ -465,7 +465,8 @@ test('٧هـ. ثمانية نصوص في الـ١٤ لغة، ولا اسم مز�
   for (const lg of ['fr', 'es', 'ru', 'tr', 'id', 'fil', 'hi', 'ne', 'bn', 'ur', 'ml', 'zh']) {
     const src = read('i18n/' + lg + '.js');
     for (const k of KEYS) assert.ok(src.includes('"' + k + '":'), lg + ': ' + k);
-    texts.push(src.slice(src.indexOf('Object.assign(I18N["' + lg + '"], {"livingMemTitle"')));
+    const at = src.indexOf('Object.assign(I18N["' + lg + '"], {"livingMemTitle"');
+    texts.push(src.slice(at, src.indexOf('\n', at) > at ? src.indexOf('\n', at) : undefined)); // سطر الذاكرة الحيّة وحده (لا ما أُلحق بعده من صفحة المالك)
   }
   assert.ok(texts.every((t) => !/claude|gemini|gpt|openai|groq|كلاود|جيميناي/i.test(t)), 'أسماء وظيفيّة فقط (المساعد)');
   assert.match(data, /livingMemTitle: "ذاكرتي الحيّة"/);

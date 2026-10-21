@@ -117,7 +117,7 @@ test('٢. feedback.js: رمز جلسة صالح (الجسم، ?token، Bearer، 
 });
 
 /* ---------- ٢) لوحة «آراء المستخدمين» في العميل ---------- */
-const T_MAP = { fbChipAI: 'ذكاء ممتاز', fbChipEasy: 'سهل الاستخدام' };
+const T_MAP = { fbChipAI: 'ذكاء ممتاز', fbChipEasy: 'سهل الاستخدام', fbReportsTitle: '🚩 بلاغات المحتوى' }; // v-fb-owner-i18n: العنوان من القاموس
 const fbList = () => clientFn('js/app-05-ui.js', '  function fbEsc(', "  document.getElementById('fbOwnerBtn').onclick", 'fbOwnerListHtml',
   { t: (k) => (T_MAP[k] != null ? T_MAP[k] : k) });
 
@@ -129,8 +129,8 @@ test('٣. لوحة الآراء: كلّ حقل مخزَّن (الاسم، الش
   const tags = scanTags(html);
   assert.ok(tags.length > 0);
   for (const t of tags) {
-    assert.ok(['div', 'span'].includes(t.tag), 'وسم غير متوقَّع: ' + t.tag);
-    for (const a of Object.keys(t.attrs)) assert.ok(['class', 'style'].includes(a), 'سمة غير متوقّعة: ' + a + ' في ' + t.tag);
+    assert.ok(['div', 'span', 'bdi'].includes(t.tag), 'وسم غير متوقَّع: ' + t.tag); // v-fb-owner-i18n: الاسم والوقت معزولان في <bdi>
+    for (const a of Object.keys(t.attrs)) assert.ok((t.tag === 'bdi' ? ['dir'] : ['class', 'style']).includes(a), 'سمة غير متوقّعة: ' + a + ' في ' + t.tag);
   }
   assert.ok(!/<script|<img|<svg|onerror=|onload=/i.test(html.replace(/&lt;[^]*?&gt;/g, '')), 'لا وسم منفَّذ');
   // النصّ المرئيّ يُستعاد كما خُزِّن (لا يُحذف شيء): فكّ الكيانات يعيد الحمولة حرفيًّا
@@ -146,7 +146,8 @@ test('٤. لوحة الآراء: البيانات السليمة ترسم HTML �
   ];
   const reports = [{ content: 'نصّ البلاغ', user: 'ali', provider: 'gpt', ts: '2026-10-10T09:00:00.000Z' }, { content: 'x', ts: '2026-10-10T09:01:00.000Z' }];
   // الناتج الحرفيّ للكود القديم (قبل v-sec-feedback) على المدخل نفسه
-  const OLD = '<div class="fbItem"><span class="fbStarsSm">★★★★☆</span> — ذكاء ممتاز · سهل الاستخدام<div style="margin-top:4px;">التطبيق ممتاز</div><div class="fbMeta">sara · 2026-10-10 08:15</div></div><div class="fbItem"><span class="fbStarsSm">★★★★★</span><div class="fbMeta">guest · 2026-10-09 07:00</div></div><div style="margin:14px 0 6px;font-weight:700;color:#ff5c6c;">🚩 بلاغات المحتوى (2)</div><div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">نصّ البلاغ</div><div class="fbMeta">ali · gpt · 2026-10-10 09:00</div></div><div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">x</div><div class="fbMeta">guest · 2026-10-10 09:01</div></div>';
+  // الناتج الحرفيّ للكود القديم (قبل v-sec-feedback) على المدخل نفسه، والفرق الوحيد بعده عزل الاسم والمزوّد والوقت في <bdi> (v-fb-owner-i18n)
+  const OLD = '<div class="fbItem"><span class="fbStarsSm">★★★★☆</span> — ذكاء ممتاز · سهل الاستخدام<div style="margin-top:4px;">التطبيق ممتاز</div><div class="fbMeta"><bdi>sara</bdi> · <bdi dir="ltr">2026-10-10 08:15</bdi></div></div><div class="fbItem"><span class="fbStarsSm">★★★★★</span><div class="fbMeta"><bdi>guest</bdi> · <bdi dir="ltr">2026-10-09 07:00</bdi></div></div><div style="margin:14px 0 6px;font-weight:700;color:#ff5c6c;">🚩 بلاغات المحتوى (2)</div><div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">نصّ البلاغ</div><div class="fbMeta"><bdi>ali</bdi> · <bdi>gpt</bdi> · <bdi dir="ltr">2026-10-10 09:00</bdi></div></div><div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">x</div><div class="fbMeta"><bdi>guest</bdi> · <bdi dir="ltr">2026-10-10 09:01</bdi></div></div>';
   assert.equal(render(items, reports), OLD);
   assert.equal(render([], []), '');
 });
@@ -165,9 +166,11 @@ test('٥. العميل يرسل رمز الجلسة مع التقييم كي ل�
 function adminHtml(users) {
   let captured = '';
   const wrap = { set innerHTML(v) { captured = v; }, get innerHTML() { return captured; } };
+  const AR = require('./_owner-vm.cjs').dictFor('ar'); // v-owner-i18n: النصوص من القاموس الحقيقيّ (ownT خارج المقطع)
   const fn = clientFn('js/app-01-boot-auth.js', '  function renderAdminUserTable(){', '  window.adminToggleBan = ', 'renderAdminUserTable', {
     window: { __adminUsersCache: users },
     document: { getElementById: (id) => (id === 'adminUsersTable' ? wrap : null) },
+    ownT: (k, p) => Object.keys(p || {}).reduce((v, n) => v.split('{' + n + '}').join(String(p[n])), String(AR[k])),
   });
   fn();
   return captured;
@@ -177,7 +180,7 @@ test('٦. جدول الإدارة: اسم وإيميل خبيثان يُرسما
   const users = PAYLOADS.map((p, i) => ({ username: p, email: p, banned: !!(i % 2) }));
   const html = adminHtml(users);
   const tags = scanTags(html);
-  const allowed = { div: ['style'], span: ['style'], button: ['type', 'onclick', 'title', 'style'] };
+  const allowed = { div: ['style'], span: ['style'], button: ['type', 'onclick', 'title', 'style'], bdi: ['dir'] }; // v-owner-row: الاسم والإيميل معزولان
   for (const t of tags) {
     assert.ok(allowed[t.tag], 'وسم غير متوقَّع: ' + t.tag);
     for (const a of Object.keys(t.attrs)) assert.ok(allowed[t.tag].includes(a), 'سمة محقونة: ' + a + ' في ' + t.tag);
@@ -205,7 +208,8 @@ test('٦. جدول الإدارة: اسم وإيميل خبيثان يُرسما
 
 test('٧. جدول الإدارة: المستخدمون العاديّون يُرسمون HTML نفسه حرفيًّا، والتحديد الجماعيّ (delete-confirm.js) يقرأ الاسم من onclick كما كان', () => {
   const html = adminHtml([{ username: 'sara', email: 's@x.com', banned: false }, { username: 'ali', email: null, banned: true }]);
-  const OLD = '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap"><span style="flex:1;min-width:110px;font-weight:500">sara</span><span style="font-size:11px;opacity:.6">s@x.com</span><button type="button" onclick="adminMessageUser(\'sara\')" title="إرسال رسالة" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button><button type="button" onclick="adminToggleBan(\'sara\', true)" title="حظر" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">🚫</button><button type="button" onclick="adminDeleteUser(\'sara\')" title="حذف نهائي" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button></div><div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap"><span style="flex:1;min-width:110px;font-weight:500">🚫 ali</span><span style="font-size:11px;opacity:.6">بدون إيميل</span><button type="button" onclick="adminMessageUser(\'ali\')" title="إرسال رسالة" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button><button type="button" onclick="adminToggleBan(\'ali\', false)" title="فك الحظر" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">✅</button><button type="button" onclick="adminDeleteUser(\'ali\')" title="حذف نهائي" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button></div>';
+  // v-owner-i18n (الدفعة ٥): الاسم والإيميل معزولان بـbdi وحده — التخطيط والأفعال والعناوين العربيّة كما كانت
+  const OLD = '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap"><span style="flex:1;min-width:110px;font-weight:500"><bdi>sara</bdi></span><span style="font-size:11px;opacity:.6"><bdi dir="ltr">s@x.com</bdi></span><button type="button" onclick="adminMessageUser(\'sara\')" title="إرسال رسالة" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button><button type="button" onclick="adminToggleBan(\'sara\', true)" title="حظر" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">🚫</button><button type="button" onclick="adminDeleteUser(\'sara\')" title="حذف نهائي" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button></div><div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap"><span style="flex:1;min-width:110px;font-weight:500">🚫 <bdi>ali</bdi></span><span style="font-size:11px;opacity:.6">بدون إيميل</span><button type="button" onclick="adminMessageUser(\'ali\')" title="إرسال رسالة" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button><button type="button" onclick="adminToggleBan(\'ali\', false)" title="فك الحظر" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">✅</button><button type="button" onclick="adminDeleteUser(\'ali\')" title="حذف نهائي" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button></div>';
   assert.equal(html, OLD);
   const dc = read('js/delete-confirm.js');
   assert.ok(dc.includes('[onclick*="adminDeleteUser"]'), 'delete-confirm ما زال يبحث عن onclick');

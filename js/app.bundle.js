@@ -680,56 +680,71 @@ try{
     alert(t('acctDeleteDone'));
   }
   window.acctDeleteAccount = acctDeleteAccount;
+  /* v-owner-i18n (تدقيق ١٨ أكتوبر، g14-owner): لوحة المالك كانت عربيّة ثابتة في كلّ لغة. النصوص الآن من قاموس لغة الواجهة
+     (curT كبقيّة هذا الملفّ)، والأسماء والأرقام والرموز التقنيّة معزولة (\u2068…\u2069 / \u2066…\u2069 / <bdi>) فلا يقلبها اتّجاه السطر.
+     خطأ الشبكة («Failed to fetch» وأخواته) = acctNetError بلغة الواجهة؛ غيره يبقى كما هو (التشخيص يحتاجه). */
+  function ownT(k, p){
+    let v = '';
+    try{ v = curT()[k]; }catch(e){ __swallow(e, 'owner:i18n'); }
+    v = (v == null || v === '') ? k : String(v);
+    if(p) Object.keys(p).forEach(n => { v = v.split('{' + n + '}').join(String(p[n])); });
+    return v;
+  }
+  const ownIso = (s) => '\u2068' + String(s == null ? '' : s) + '\u2069';
+  const ownLtr = (s) => '\u2066' + String(s == null ? '' : s) + '\u2069';
+  function ownErr(e){
+    const m = String((e && e.message) || e || '');
+    return /Failed to fetch|NetworkError|Load failed|ERR_NETWORK|Network request failed/i.test(m) ? ownT('acctNetError') : m;
+  }
+  /* أسماء الخدمات: مفتاح العدّاد آخره سلّة الحصّة (MOVE_BUCKETS في _usage.js) لا مزوّد — اسم وظيفيّ بلغة الواجهة،
+     والسلّة الخامّة معزولة بجانب المجمَّع منها، وغير المعروف يبقى خامًا معزولًا. */
+  const OWN_SVC = { chat: 'ownerSvcChat', plan: 'ownerSvcPlan', agent: 'ownerSvcAgent', 'maha-realtime': 'ownerSvcVoice', tts: 'ownerSvcTts', stt: 'ownerSvcStt', 'media-intent': 'ownerSvcMedia', search: 'ownerSvcSearch', translate: 'ownerSvcTranslate' };
+  const OWN_SVC_PREFIX = [[/^plan-/, 'ownerSvcPlan'], [/^search-|-search$/, 'ownerSvcSearch'], [/^ad(chat|image)$/, 'ownerSvcAds'], [/^video-/, 'ownerSvcVideo'], [/-suggest$|^design-ideas$/, 'ownerSvcSuggest'], [/^share|^media-save-/, 'ownerSvcShare'], [/^stocks-/, 'ownerSvcStocks']];
+  function ownSvc(b){
+    if(OWN_SVC[b]) return ownT(OWN_SVC[b]);
+    const hit = OWN_SVC_PREFIX.find(([re]) => re.test(b));
+    return hit ? ownT(hit[1]) + ' ' + ownLtr('(' + b + ')') : ownLtr(b);
+  }
   window.loadAdminStats = async function loadAdminStats(){
     const box = document.getElementById('adminStatsBox');
     if(!box) return;
-    box.textContent = '⏳ جارِ التحميل...';
+    box.textContent = ownT('ownerLoading');
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-stats?token=' + encodeURIComponent(token || ''));
       const data = await res.json();
-      if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
+      if(!res.ok){ box.textContent = '❌ ' + (data.error || ownT('ownerUnauthorized')); return; }
       const lines = [];
-      lines.push('👥 إجمالي الحسابات: ' + data.totalAccounts + '  (حقيقية: ' + data.realAccounts + '، اختبار: ' + data.testAccounts + ')');
+      lines.push(ownT('ownerStatsAccounts', { total: data.totalAccounts, real: data.realAccounts, test: data.testAccounts }));
       lines.push('');
-      lines.push('💬 رسائل اليوم: ' + data.messagesToday + '   |   إجمالي كل الوقت: ' + data.totalMessagesAllTime);
+      lines.push(ownT('ownerStatsMessages', { today: data.messagesToday, all: data.totalMessagesAllTime }));
       if(data.perProviderToday && Object.keys(data.perProviderToday).length){
         lines.push('');
-        lines.push('📊 حسب المزوّد اليوم:');
-        Object.entries(data.perProviderToday).sort((a,b)=>b[1]-a[1]).forEach(([p,c])=>lines.push('  • ' + p + ': ' + c));
+        lines.push(ownT('ownerStatsByService'));
+        Object.entries(data.perProviderToday).sort((a,b)=>b[1]-a[1]).forEach(([p,c])=>lines.push('  • ' + ownSvc(p) + ': ' + c));
       }
       if(data.topUsersToday && data.topUsersToday.length){
         lines.push('');
-        lines.push('🏆 الأكثر نشاطًا اليوم:');
-        data.topUsersToday.forEach(u=>lines.push('  • ' + u.username + ': ' + u.messages + ' رسالة'));
+        lines.push(ownT('ownerStatsTop'));
+        data.topUsersToday.forEach(u=>lines.push('  • ' + ownIso(u.username) + ': ' + ownT('ownerStatsMsgCount', { n: u.messages })));
       }
       if(data.recentUsers && data.recentUsers.length){
         lines.push('');
-        lines.push('🆕 آخر الحسابات نشاطًا:');
-        data.recentUsers.slice(0,15).forEach(u=>lines.push('  • ' + u.username + '  (' + String(u.lastWrite||'').slice(0,10) + ')'));
+        lines.push(ownT('ownerStatsRecent'));
+        data.recentUsers.slice(0,15).forEach(u=>lines.push('  • ' + ownIso(u.username) + '  ' + ownLtr('(' + String(u.lastWrite||'').slice(0,10) + ')')));
       }
       lines.push('');
-      lines.push('🕐 آخر تحديث: ' + new Date(data.generatedAt).toLocaleString('en-GB'));
+      lines.push(ownT('ownerStatsUpdated', { t: ownLtr(new Date(data.generatedAt).toLocaleString('en-GB')) }));
       box.textContent = lines.join('\n');
       window.__adminUsersCache = data.manageableUsers || [];
       renderAdminUserTable();
     }catch(e){
-      box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
+      box.textContent = '❌ ' + ownT('ownerLoadFailed', { e: ownErr(e) });
     }
   };
   function renderAdminUserTable(){
     const wrap = document.getElementById('adminUsersTable');
     if(!wrap) return;
-    const users = window.__adminUsersCache || [];
-    if(!users.length){ wrap.innerHTML = '<div style="opacity:.6;padding:8px">لا يوجد مستخدمون لإدارتهم.</div>'; return; }
-    // v-purge-checks: زر واحد يمسح كل حسابات الفحص الآلية بدل حذفها واحدًا واحدًا.
-    const checksCount = users.filter(u => /^zzcheck/i.test(String(u.username || ''))).length;
-    const purgeBar = checksCount
-      ? '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(212,175,55,.3)">'
-        + '<span style="flex:1;font-size:12px;opacity:.75">حسابات فحص آلية (zzcheck…): ' + checksCount + '</span>'
-        + '<button type="button" onclick="adminPurgeChecks()" style="background:none;border:1px solid #d4af37;color:#d4af37;border-radius:6px;padding:4px 10px;cursor:pointer">🧹 حذفها كلها</button>'
-        + '</div>'
-      : '';
     /* v-sec-admin-xss: تدقيق ١٠ أكتوبر — التسجيل يقبل أيّ حروف في الاسم، وهذا الجدول كان يلصق الاسم والإيميل في
        HTML وفي onclick بتهريب «'» وحده: اسم مثل ‹<img src=x onerror=…>› جرى سكربتًا حين فتح المالك لوحة الإدارة،
        و«"» في الاسم كسر السمة وحقن onmouseover، و«\'» أغلق نصّ JS (المسبار: pwned=1, attrInjected=true).
@@ -738,19 +753,29 @@ try{
        ‹adminDeleteUser('…')› منها ليحدّد الصفوف بالضغط المطوّل ويحذفها دفعة واحدة. الشكل والأفعال كما كانت. */
     const escAdm = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const jsAdm = (s) => String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+    const users = window.__adminUsersCache || [];
+    if(!users.length){ wrap.innerHTML = '<div style="opacity:.6;padding:8px">' + escAdm(ownT('ownerUsersNone')) + '</div>'; return; }
+    // v-purge-checks: زر واحد يمسح كل حسابات الفحص الآلية بدل حذفها واحدًا واحدًا.
+    const checksCount = users.filter(u => /^zzcheck/i.test(String(u.username || ''))).length;
+    const purgeBar = checksCount
+      ? '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(212,175,55,.3)">'
+        + '<span style="flex:1;font-size:12px;opacity:.75">' + escAdm(ownT('ownerChecksCount', { n: checksCount })) + '</span>'
+        + '<button type="button" onclick="adminPurgeChecks()" style="background:none;border:1px solid #d4af37;color:#d4af37;border-radius:6px;padding:4px 10px;cursor:pointer">' + escAdm(ownT('ownerChecksPurge')) + '</button>'
+        + '</div>'
+      : '';
     wrap.innerHTML = purgeBar + users.map(u => {
       const safeName = escAdm(jsAdm(u.username));
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
-        + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + escAdm(u.username) + '</span>'
-        + '<span style="font-size:11px;opacity:.6">' + escAdm(u.email || 'بدون إيميل') + '</span>'
-        + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="إرسال رسالة" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
-        + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + (u.banned ? 'فك الحظر' : 'حظر') + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
-        + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="حذف نهائي" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+        + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + '<bdi>' + escAdm(u.username) + '</bdi></span>'
+        + '<span style="font-size:11px;opacity:.6">' + (u.email ? '<bdi dir="ltr">' + escAdm(u.email) + '</bdi>' : escAdm(ownT('ownerNoEmail'))) + '</span>'
+        + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerMsgTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
+        + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + escAdm(ownT(u.banned ? 'ownerUnbanTitle' : 'ownerBanTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
+        + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerDeleteTitle')) + '" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
         + '</div>';
     }).join('');
   }
   window.adminToggleBan = async function(username, ban){
-    if(!confirm((ban ? 'حظر' : 'فك حظر') + ' المستخدم "' + username + '"؟')) return;
+    if(!confirm(ownT(ban ? 'ownerBanConfirm' : 'ownerUnbanConfirm', { u: ownIso(username) }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -758,14 +783,14 @@ try{
         body: JSON.stringify({ token, action: ban ? 'ban' : 'unban', targetUsername: username }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       const u = (window.__adminUsersCache||[]).find(x=>x.username===username);
       if(u) u.banned = ban;
       renderAdminUserTable();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   window.adminDeleteUser = async function(username){
-    if(!confirm('⚠️ حذف نهائي لحساب "' + username + '"؟ لا يمكن التراجع.')) return;
+    if(!confirm(ownT('ownerDeleteConfirm', { u: ownIso(username) }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -773,13 +798,13 @@ try{
         body: JSON.stringify({ token, action: 'delete', targetUsername: username }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x=>x.username!==username);
       renderAdminUserTable();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   window.adminPurgeChecks = async function(){
-    if(!confirm('🧹 حذف كل حسابات الفحص الآلية (zzcheck…) ونقاطها نهائيًّا؟ لا تطال أي حساب حقيقي.')) return;
+    if(!confirm(ownT('ownerPurgeConfirm'))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -787,17 +812,17 @@ try{
         body: JSON.stringify({ token, action: 'purge-checks' }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
-      alert('✅ حُذف ' + data.removed + ' حساب فحص.');
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
+      alert(ownT('ownerPurgeDone', { n: data.removed }));
       window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x => !/^zzcheck/i.test(String(x.username||'')));
       renderAdminUserTable();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   /* v-claude-diag: يجرب مفتاح كلود الفعلي في الخادم ويعرض رد أنثروبيك
      الكامل + ذيل المفتاح — يحسم فورًا أي حساب يخص المفتاح وهل رصيده يكفي. */
   window.adminClaudeDiag = async function(){
     const box = document.getElementById('adminClaudeDiagBox');
-    if(box){ box.style.display = 'block'; box.textContent = '⏳ يفحص مفتاح كلود على أنثروبيك…'; }
+    if(box){ box.style.display = 'block'; box.textContent = ownT('ownerDiagRunning'); }
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -805,14 +830,14 @@ try{
         body: JSON.stringify({ token, action: 'claude-diag' }),
       });
       const data = await res.json();
-      if(!res.ok){ if(box) box.textContent = '❌ ' + (data.error || 'فشل'); return; }
-      if(box) box.textContent = (data.ok ? '✅' : '❌') + ' المفتاح: ' + (data.keyTail || '؟')
-        + '\nالحالة: HTTP ' + (data.status || '؟')
+      if(!res.ok){ if(box) box.textContent = '❌ ' + (data.error || ownT('ownerFailed')); return; }
+      if(box) box.textContent = (data.ok ? '✅' : '❌') + ' ' + ownT('ownerDiagKey', { k: ownLtr(data.keyTail || '?') })
+        + '\n' + ownT('ownerDiagStatus', { s: ownLtr('HTTP ' + (data.status || '?')) })
         + '\n' + (data.detail || '');
-    }catch(e){ if(box) box.textContent = '❌ خطأ: ' + (e && e.message || e); }
+    }catch(e){ if(box) box.textContent = '❌ ' + ownT('ownerErrorLine', { e: ownErr(e) }); }
   };
   window.adminMessageUser = async function(username){
-    const text = prompt('اكتب الرسالة التي ستصل لـ "' + username + '" (تظهر له عند فتح البرنامج):');
+    const text = prompt(ownT('ownerMsgPrompt', { u: ownIso(username) }));
     if(!text || !text.trim()) return;
     try{
       const token = authGet('aiapp_auth_token');
@@ -821,9 +846,9 @@ try{
         body: JSON.stringify({ token, action: 'message', targetUsername: username, text }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
-      alert('✅ تم إرسال الرسالة.');
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
+      alert(ownT('ownerMsgSent'));
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
 
   // ⭐ صلاحيات VIP — قائمة يملؤها المالك، مَن فيها بلا حدود (api/_lib/_vip.js).
@@ -835,29 +860,29 @@ try{
     const box = document.getElementById('vipListBox');
     if(!box) return;
     const items = list || [];
-    if(!items.length){ box.innerHTML = '<div style="opacity:.6;padding:8px">لا أحد في قائمة VIP.</div>'; return; }
+    if(!items.length){ box.innerHTML = '<div style="opacity:.6;padding:8px">' + vipEscape(ownT('ownerVipNone')) + '</div>'; return; }
     // v-vip-verified (مراجعة النقض): المعرّف في data-id لا داخل JS السطر — كان « ' » وحده يُهرَّب، فاسم مستخدم بـ« \\ » يكسر
     // السلسلة وينفّذ كودًا في جلسة المالك عند 🗑️؛ والأسماء تدخل القائمة الآن تلقائيًّا حين يؤكّد صاحب إيميل بريده.
     box.innerHTML = items.map(id => {
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
-        + '<span style="flex:1;min-width:110px;font-weight:500">⭐ ' + vipEscape(id) + '</span>'
-        + '<button type="button" data-id="' + vipEscape(id) + '" onclick="removeVipUser(this.dataset.id)" title="إزالة من VIP" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+        + '<span style="flex:1;min-width:110px;font-weight:500">⭐ <bdi>' + vipEscape(id) + '</bdi></span>'
+        + '<button type="button" data-id="' + vipEscape(id) + '" onclick="removeVipUser(this.dataset.id)" title="' + vipEscape(ownT('ownerVipRemoveTitle')) + '" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
         + '</div>';
     }).join('');
   }
   window.loadVipList = async function loadVipList(){
     const box = document.getElementById('vipListBox');
     if(!box) return;
-    box.textContent = '⏳ جارِ التحميل...';
+    box.textContent = ownT('ownerLoading');
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/vip?token=' + encodeURIComponent(token || ''));
       const data = await res.json();
-      if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
+      if(!res.ok){ box.textContent = '❌ ' + (data.error || ownT('ownerUnauthorized')); return; }
       renderVipList(data.list || []);
       vipAuditButton();
     }catch(e){
-      box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
+      box.textContent = '❌ ' + ownT('ownerLoadFailed', { e: ownErr(e) });
     }
   };
   /* v-vip-verified (أمر المالك: «أرسل لي قائمة الحسابات اللي عندها الحين إيميل من قائمة VIP وهي غير متحقّق منها»): الجرد من
@@ -869,16 +894,13 @@ try{
     const b = document.createElement('button');
     b.type = 'button';
     b.id = 'vipAuditBtn';
-    b.textContent = '🔎 إيميلات VIP غير المؤكَّدة';
+    b.textContent = ownT('ownerVipAuditBtn');
+    b.setAttribute('data-i18n', 'ownerVipAuditBtn'); // يُنشأ مرّة عند الإقلاع — تبديل اللغة يعيد تسميته (applyLanguage)
     b.style.cssText = 'margin-top:8px;background:none;border:1px solid var(--border,#333);color:inherit;border-radius:6px;padding:6px 10px;cursor:pointer';
     b.onclick = () => loadVipAudit();
     list.parentNode.insertBefore(b, list.nextSibling);
   }
-  const VIP_AUDIT_KIND = {
-    'email': 'يحمل إيميلًا من قائمة VIP غير مؤكَّد — لا يأخذ VIP حتّى يؤكّده من «حسابي»',
-    'legacy-name': 'اسمه القديم إيميل في القائمة — VIP بالاسم كما كان، وإيميله غير مؤكَّد',
-    'vip-name': 'في القائمة باسمه وإيميله غير مؤكَّد — لو أضفته بإيميله قبل اليوم فراجعه',
-  };
+  const VIP_AUDIT_KIND = { 'email': 'ownerVipKindEmail', 'legacy-name': 'ownerVipKindLegacy', 'vip-name': 'ownerVipKindName' };
   async function loadVipAudit(){
     const list = document.getElementById('vipListBox');
     if(!list || !list.parentNode) return;
@@ -890,24 +912,24 @@ try{
       const btn = document.getElementById('vipAuditBtn');
       list.parentNode.insertBefore(box, (btn || list).nextSibling);
     }
-    box.textContent = '⏳ جرد الإيميلات غير المؤكَّدة...';
+    box.textContent = ownT('ownerVipAuditRunning');
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/vip?audit=1&token=' + encodeURIComponent(token || ''));
       const data = await res.json();
-      if(!res.ok || !data.audit){ box.textContent = '❌ ' + (data.error || 'تعذّر الجرد'); return; }
+      if(!res.ok || !data.audit){ box.textContent = '❌ ' + (data.error || ownT('ownerVipAuditFail')); return; }
       const rows = data.audit.rows || [];
-      box.innerHTML = '<div style="font-weight:600;margin:6px 0">إيميلات VIP غير مؤكَّدة: ' + rows.length + ' (فُحص ' + Number(data.audit.scanned || 0) + ' حسابًا)</div>'
-        + (rows.length ? rows.map(r => '<div style="padding:6px;border-bottom:1px solid var(--border,#333)"><b>' + vipEscape(r.username) + '</b> · <span dir="ltr">' + vipEscape(r.email || '—') + '</span>'
-          + '<div style="opacity:.75">' + vipEscape(VIP_AUDIT_KIND[r.kind] || r.kind) + '</div></div>').join('') : '<div style="opacity:.6;padding:6px">لا أحد.</div>');
+      box.innerHTML = '<div style="font-weight:600;margin:6px 0">' + vipEscape(ownT('ownerVipAuditHead', { n: rows.length, s: Number(data.audit.scanned || 0) })) + '</div>'
+        + (rows.length ? rows.map(r => '<div style="padding:6px;border-bottom:1px solid var(--border,#333)"><b><bdi>' + vipEscape(r.username) + '</bdi></b> · <bdi dir="ltr">' + vipEscape(r.email || '—') + '</bdi>'
+          + '<div style="opacity:.75">' + vipEscape(VIP_AUDIT_KIND[r.kind] ? ownT(VIP_AUDIT_KIND[r.kind]) : r.kind) + '</div></div>').join('') : '<div style="opacity:.6;padding:6px">' + vipEscape(ownT('ownerNobody')) + '</div>');
     }catch(e){
-      box.textContent = '❌ تعذّر الجرد: ' + (e && e.message || e);
+      box.textContent = '❌ ' + ownT('ownerVipAuditFail') + ': ' + ownErr(e);
     }
   }
   window.addVipUser = async function addVipUser(){
     const input = document.getElementById('vipInput');
     const id = input ? String(input.value || '').trim() : '';
-    if(!id){ alert('اكتب إيميلًا أو اسم مستخدم أولًا.'); return; }
+    if(!id){ alert(ownT('ownerVipNeedId')); return; }
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/vip', {
@@ -915,16 +937,16 @@ try{
         body: JSON.stringify({ token, id }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       if(input) input.value = '';
       renderVipList(data.list || []);
       // v-vip-verified: إيميل بلا حساب أثبته يبقى خامًا ولا يعطي أحدًا شيئًا حتّى يؤكّده صاحبه.
-      if(data.pending) alert('أُضيف كإيميل: يصير VIP لصاحبه لما يؤكّد إيميله (دخول Google أو رمز من «حسابي»).');
+      if(data.pending) alert(ownT('ownerVipPending'));
       if(document.getElementById('vipAuditBox')) loadVipAudit();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   window.removeVipUser = async function removeVipUser(id){
-    if(!confirm('إزالة "' + id + '" من قائمة VIP؟')) return;
+    if(!confirm(ownT('ownerVipRemoveConfirm', { id: ownIso(id) }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       // المعرّف في المسار والجسم معًا: بعض الوسطاء يُسقط جسم DELETE بصمت.
@@ -933,10 +955,10 @@ try{
         body: JSON.stringify({ token, id }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       renderVipList(data.list || []);
       if(document.getElementById('vipAuditBox')) loadVipAudit();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
 
   function setAuthToggleUI(loggedIn){
@@ -5093,6 +5115,268 @@ const I18N = {
     tierFreeReply: 'ردّ مجاني', tierFreeLimitTitle: 'انتهت الرسائل المجانية لليوم', tierGuestLimitTitle: 'انتهت رسائل التجربة',
     tierUpgradeBtn: 'اشترك للنسخة الاحترافية', tierSignupBtn: 'سجّل مجانًا',
     spendConfirm: 'هذه العملية تخصم {n} نقطة. أكمل؟',
+    /* v-img-edit-label: عنوان مربّع النقاط وقت تعديل الصورة · v-stamps-i18n: نصوص لوحة الطوابع وأسماء ثيماتها المعروضة (data-k يبقى عربيًّا للخادم) وطلب صورة الطفل */
+    stEditImage: "جاري تعديل الصورة…",
+    stampTitle: "🏷️ اختر ثيم الطوابع",
+    stampHint: "اضغط وأبدأ التصميم مباشرة",
+    stampImgOne: "صورة وحدة — تقدر ترفق لين ٣ صور للإخوان",
+    stampImgMany: "{n} صور — طوابع لكلّ واحد + طابع يجمعهم",
+    stampSecCount: "عدد الطوابع",
+    stampSecShape: "الشكل",
+    stampSecFace: "الوجه",
+    stampCountBig: "6 كبيرة",
+    stampCountSmall: "24 صغيرة",
+    stampShapeMixed: "منوّع",
+    stampShapeCircle: "⚪ دائري",
+    stampShapeSquare: "⬜ مربّع",
+    stampShapeHeart: "❤️ قلب",
+    stampFaceReal: "📷 حقيقي",
+    stampFaceCartoon: "🎨 كرتوني",
+    stampSurprise: "✨ فاجئني — اختر لي",
+    stampGrpKids: "👶 للصغار",
+    stampGrpCartoon: "⭐ شخصيات كرتون",
+    stampGrpTeens: "🧑 شباب +12",
+    stampGrpGirls: "🌸 بنات",
+    stampNeedPhoto: "أرفق صورة الطفل أولاً (زر +) ثم اكتب: طوابع باسم فلان 🏷️",
+    stampThSpace: "فضاء",
+    stampThDino: "ديناصور",
+    stampThPrincess: "أميرة",
+    stampThSports: "رياضة",
+    stampThSea: "بحر",
+    stampThRaceCar: "سيارة سباق",
+    stampThUnicorn: "يونيكورن",
+    stampThAnimals: "حيوانات",
+    stampThFlowers: "ورود",
+    stampThFalcon: "تراث صقر",
+    stampThRobots: "روبوتات",
+    stampThSweets: "حلويات",
+    stampThButterflies: "فراشات",
+    stampThSchool: "مدرسي كلاسيكي",
+    stampThKuromi: "كرومي",
+    stampThMelody: "ماي ملدي",
+    stampThKitty: "هالو كاتي",
+    stampThBears: "الدببة الثلاثة",
+    stampThSponge: "سبونج بوب",
+    stampThTomJerry: "توم وجيري",
+    stampThMickey: "ميكي ماوس",
+    stampThFrozen: "فروزن",
+    stampThSpider: "سبايدرمان",
+    stampThPaw: "باو باترول",
+    stampThPeppa: "بيبا",
+    stampThPokemon: "بوكيمون",
+    stampThMario: "ماريو",
+    stampThMinions: "مينيونز",
+    stampThBarbie: "باربي",
+    stampThCars: "كارز",
+    stampThGaming: "قيمنق",
+    stampThAnime: "أنمي",
+    stampThStreet: "ستريت",
+    stampThDesert: "مغامرات وطعوس",
+    stampThLegends: "أساطير",
+    stampThGirly: "بناتي راقي",
+    stampThFashion: "فاشن",
+    /* v-work-tabs-labels: وسما زرّي طيّ لوحة الكود وفتحها (aria-label) — كانا عربيّين ثابتين في كلّ اللغات */
+    waCollapseLbl: "طي اللوحة",
+    waReopenLbl: "فتح اللوحة",
+    /* v-code-review-i18n: نافذة «مراجعة الكود» (app-24) وزرّها في ⋮ ووسم «تعديل» المنقول إليها — كانت عربيّة ثابتة في كلّ اللغات */
+    codeReviewMenu: "مراجعة",
+    codeReviewTip: "مراجعة الكود بالذكاء الاصطناعي",
+    codeBarEdit: "تعديل",
+    cfxTitle: "مراجعة الكود",
+    cfxPickFile: "اختر ملفًّا",
+    cfxCurCode: "كود المشروع الحالي",
+    cfxAskLabel: "ما الذي تريد تغييره؟",
+    cfxAskPh: "مثال: احذف التعريف المكرّر للدالّة، وانقل أزرار الشريط إلى tabs، واجعل التلميحات تتبع اللغة.",
+    cfxGo: "حلّل واقترح التعديلات",
+    cfxDisclaimer: "الملفّ يُرسَل كاملًا في كلّ طلب، فطوله يُحسب من رصيدك. النموذج يعيد تعديلات مفصولة لا الملفّ كاملًا، وكلّ تعديل يُرفض تلقائيًّا إن لم يطابق نصّه موضعًا واحدًا في ملفّك.",
+    cfxTooBig: "الملفّ أكبر من {n} ك.ب — قسّمه أوّلًا",
+    cfxLines: "{n} سطر",
+    cfxNoCode: "لا يوجد كود في المشروع الحالي",
+    cfxNeedFile: "اختر ملفًّا أوّلًا",
+    cfxNeedAsk: "اكتب ما تريد تغييره",
+    cfxReading: "يقرأ الملفّ…",
+    cfxWriting: "يكتب التعديلات… {n} حرفًا",
+    cfxNoPatch: "لم يقترح النموذج أيّ تعديل.",
+    cfxError: "تعذّر التحليل: {msg}",
+    cfxMatchOne: "مطابقة واحدة",
+    cfxMatchNone: "لم يُعثر على النصّ القديم — مرفوضة",
+    cfxMatchMany: "{n} مواضع — غامضة، مرفوضة",
+    cfxPatch: "تعديل",
+    cfxValidN: "{n} تعديلًا صالحًا",
+    cfxRejectedN: "{n} مرفوضة",
+    cfxApply: "طبّق المحدّد",
+    cfxNotSaved: "لم أحفظ شيئًا — الملفّ الناتج لا يُصرَّف.",
+    cfxBackToEdits: "رجوع للتعديلات",
+    cfxAppliedN: "طُبّق {n} تعديلًا",
+    cfxSkippedN: "تُخطّي {n} لتغيّر موضعها",
+    cfxDownload: "تنزيل الملفّ",
+    cfxToProject: "ضعه في كود المشروع",
+    cfxUndo: "تراجع",
+    cfxNoProject: "لا يوجد مشروع مفتوح",
+    cfxMoved: "نُقل إلى كود المشروع",
+    cfxMoveFail: "تعذّر النقل",
+    cfxSyntaxOk: "الصياغة سليمة",
+    cfxJsonOk: "JSON سليم",
+    cfxTagsBad: "وسوم script غير متوازنة: {o} مفتوحة و{c} مغلقة",
+    cfxTagsOk: "الوسوم متوازنة",
+    cfxNoCheck: "لا فحص لهذه الصيغة",
+    /* v-auth-a11y + v-acct-referral-i18n: وصف زرّ إظهار كلمة المرور، وأزرار الإحالة ونصّ المشاركة (كانت عربيّة ثابتة في كلّ اللغات) */
+    authShowPass: "إظهار كلمة المرور",
+    authHidePass: "إخفاء كلمة المرور",
+    acctShareBtn: "إرسال ومشاركة",
+    acctQrOpen: "فتح الباركود",
+    acctQrClose: "إخفاء الباركود",
+    acctQrDownload: "تحميل الباركود",
+    acctShareText: "جرّب تطبيق عمران AI لكافة المتاجر:",
+    acctCopyPrompt: "انسخ الرابط:",
+    /* v-stocks-i18n: شريحتا الذهب والنفط ووحدة الغرام وتبويبات النظرة العامّة وتفاصيل السهم ورمز غير موجود وتلميح 💼 (كانت إنجليزيّة أو عربيّة ثابتة) */
+    stkGold: "الذهب",
+    stkSilver: "الفضة",
+    stkOil: "النفط",
+    stkIndices: "المؤشرات",
+    stkCommodities: "السلع",
+    stkForex: "العملات",
+    stkAedPerGram: "درهم/غ",
+    stkOpen: "افتتاح",
+    stkHigh: "أعلى",
+    stkLow: "أدنى",
+    stkVol: "الحجم",
+    stocksSymbolNotFound: "الرمز غير موجود — تأكّد منه (مثال: AAPL أو TSLA).",
+    stocksPfTitle: "محفظتي التعليمية",
+    /* v-owner-i18n (a9): صفحة المالك ولوحاتها (الخزنة، الإحصاءات، المستخدمون، VIP، فحص النظام)، كبسولة التنبيه، سطر النسخة، عنوان البلاغات — كانت عربيّة ثابتة */
+    ownerVaultTitle: "🔐 خزنة الأسرار",
+    ownerVaultDesc: "الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع.",
+    ownerVaultPerms: "الرفع يحتاج توكن بهاتين الصلاحيّتين على المستودع:",
+    ownerVaultTokenPh: "ghp_… أو github_pat_…",
+    ownerVaultTest: "فحص المفتاح",
+    ownerStatsRefresh: "🔄 تحديث الإحصائيات",
+    ownerClaudeDiag: "👑 فحص مفتاح كلود",
+    ownerStatsHint: "اضغط \"تحديث\" لعرض الإحصائيات...",
+    ownerUsersTitle: "👤 إدارة المستخدمين (حظر / حذف / رسالة)",
+    ownerVipTitle: "⭐ صلاحيات VIP (بلا حدود)",
+    ownerVipPh: "إيميل أو اسم مستخدم",
+    ownerVipAdd: "➕ إضافة",
+    ownerHealthTitle: "🩺 فحص النظام",
+    ownerHealthRun: "🩺 افحص الآن",
+    ownerRedisUsage: "💾 ما يملأ القاعدة",
+    ownerClearErrors: "🧹 مسح سجل الأخطاء",
+    ownerCosts: "💵 تكلفة المشتركين هذا الشهر",
+    ownerHealthHint: "اضغط \"افحص الآن\" لتشغيل الفحص...",
+    ownerVaultNoToken: "لا مفتاح GitHub محفوظ في الخزنة.",
+    ownerVaultBadRepo: "صيغة المستودع: owner/repo",
+    ownerVaultRejected: "المفتاح مرفوض من GitHub (401) — غير صالح أو منتهٍ.",
+    ownerVaultRate: "حدّ الطلبات: {n}/ساعة",
+    ownerLoading: "⏳ جارِ التحميل...",
+    ownerFailed: "فشل",
+    ownerUnauthorized: "غير مصرح",
+    ownerLoadFailed: "تعذر التحميل: {e}",
+    ownerErrorLine: "خطأ: {e}",
+    ownerStatsAccounts: "👥 إجمالي الحسابات: {total}  (حقيقية: {real}، اختبار: {test})",
+    ownerStatsMessages: "💬 رسائل اليوم: {today}   |   إجمالي كل الوقت: {all}",
+    ownerStatsByService: "📊 حسب الخدمة اليوم:",
+    ownerStatsTop: "🏆 الأكثر نشاطًا اليوم:",
+    ownerStatsMsgCount: "{n} رسالة",
+    ownerStatsRecent: "🆕 آخر الحسابات نشاطًا:",
+    ownerStatsUpdated: "🕐 آخر تحديث: {t}",
+    ownerSvcChat: "المحادثة",
+    ownerSvcPlan: "محادثة الباقة",
+    ownerSvcAgent: "الوكيل",
+    ownerSvcVoice: "المحادثة الصوتيّة",
+    ownerSvcTts: "القراءة الصوتيّة",
+    ownerSvcStt: "تحويل الصوت إلى نصّ",
+    ownerSvcMedia: "تصنيف الوسائط",
+    ownerSvcSearch: "البحث",
+    ownerSvcTranslate: "الترجمة",
+    ownerSvcVideo: "الفيديو",
+    ownerSvcSuggest: "الاقتراحات",
+    ownerSvcShare: "المشاركة والحفظ",
+    ownerSvcStocks: "البورصة",
+    ownerSvcAds: "الإعلانات",
+    ownerUsersNone: "لا يوجد مستخدمون لإدارتهم.",
+    ownerChecksCount: "حسابات فحص آلية (zzcheck…): {n}",
+    ownerChecksPurge: "🧹 حذفها كلها",
+    ownerNoEmail: "بدون إيميل",
+    ownerMsgTitle: "إرسال رسالة",
+    ownerBanTitle: "حظر",
+    ownerUnbanTitle: "فك الحظر",
+    ownerDeleteTitle: "حذف نهائي",
+    ownerBanConfirm: "حظر المستخدم \"{u}\"؟",
+    ownerUnbanConfirm: "فك حظر المستخدم \"{u}\"؟",
+    ownerDeleteConfirm: "⚠️ حذف نهائي لحساب \"{u}\"؟ لا يمكن التراجع.",
+    ownerPurgeConfirm: "🧹 حذف كل حسابات الفحص الآلية (zzcheck…) ونقاطها نهائيًّا؟ لا تطال أي حساب حقيقي.",
+    ownerPurgeDone: "✅ حُذف {n} حساب فحص.",
+    ownerMsgPrompt: "اكتب الرسالة التي ستصل لـ \"{u}\" (تظهر له عند فتح البرنامج):",
+    ownerMsgSent: "✅ تم إرسال الرسالة.",
+    ownerDiagRunning: "⏳ يفحص مفتاح كلود على أنثروبيك…",
+    ownerDiagKey: "المفتاح: {k}",
+    ownerDiagStatus: "الحالة: {s}",
+    ownerVipNone: "لا أحد في قائمة VIP.",
+    ownerVipRemoveTitle: "إزالة من VIP",
+    ownerVipAuditBtn: "🔎 إيميلات VIP غير المؤكَّدة",
+    ownerVipAuditRunning: "⏳ جرد الإيميلات غير المؤكَّدة...",
+    ownerVipAuditFail: "تعذّر الجرد",
+    ownerVipAuditHead: "إيميلات VIP غير مؤكَّدة: {n} (فُحص {s} حسابًا)",
+    ownerVipKindEmail: "يحمل إيميلًا من قائمة VIP غير مؤكَّد — لا يأخذ VIP حتّى يؤكّده من «حسابي»",
+    ownerVipKindLegacy: "اسمه القديم إيميل في القائمة — VIP بالاسم كما كان، وإيميله غير مؤكَّد",
+    ownerVipKindName: "في القائمة باسمه وإيميله غير مؤكَّد — لو أضفته بإيميله قبل اليوم فراجعه",
+    ownerNobody: "لا أحد.",
+    ownerVipNeedId: "اكتب إيميلًا أو اسم مستخدم أولًا.",
+    ownerVipPending: "أُضيف كإيميل: يصير VIP لصاحبه لما يؤكّد إيميله (دخول Google أو رمز من «حسابي»).",
+    ownerVipRemoveConfirm: "إزالة \"{id}\" من قائمة VIP؟",
+    ownerHealthPill: "🩺 ملاحظات النظام ({n})",
+    ownerHealthOpen: "افتح فحص النظام",
+    ownerDbDown: "قاعدة البيانات (Redis) لا تستجيب",
+    ownerDbLabel: "قاعدة البيانات (Redis)",
+    ownerWhy: "السبب: {w}",
+    ownerKeysMissing: "مفاتيح ناقصة: {k}",
+    ownerKeysAll: "كل مفاتيح API موجودة",
+    ownerUserErrors: "أخطاء مسجلة من المستخدمين: {n}",
+    ownerUserErrorsNone: "لا توجد أخطاء مسجلة من المستخدمين",
+    ownerDeviceDiag: "قياسات جهازك (ليست أخطاء): {n}",
+    ownerSrvErrorsNow: "أخطاء الخادم في النشر الحاليّ: {n}",
+    ownerSrvErrors: "أخطاء الخادم: {n}",
+    ownerSrvNoneSince: "لا توجد أخطاء في الخادم منذ آخر تحديث",
+    ownerSrvNone: "لا توجد أخطاء في الخادم",
+    ownerSrvOld: "من نشر سابق (أُصلحت أو لم تتكرّر بعد التحديث): {n}",
+    ownerSrvCheckFail: "فحص الخادم فشل: {e}",
+    ownerSysOk: "النظام سليم",
+    ownerSysNotes: "توجد ملاحظات",
+    ownerChecking: "⏳ جاري الفحص...",
+    ownerHomePage: "الصفحة الرئيسية",
+    ownerConnFail: "فشل الاتصال",
+    ownerClearErrorsConfirm: "مسح سجلّ أخطاء المستخدمين والخادم نهائيًّا؟ لا يمكن التراجع.",
+    ownerClearDone: "🧹 تم مسح سجل الأخطاء ✅",
+    ownerClearFail: "فشل المسح",
+    ownerMb: "م.ب",
+    ownerUsageRunning: "⏳ أقيس ما في القاعدة… (قراءة فقط، لا يُحذف شيء)",
+    ownerUsageFail: "فشل القياس",
+    ownerUsageTotal: "💾 القيم ≈ {size} في {keys} مفتاحًا (الحدّ ٢٥٦ م.ب)",
+    ownerUsageTrunc: "فُحص أوّل {n} فقط",
+    ownerUsageGroups: "العائلات الأكبر:",
+    ownerUsageKeysN: "{n} مفتاحًا",
+    ownerUsageBiggest: "أكبر المفاتيح:",
+    ownerPlanFree: "مجّاني",
+    ownerPlanOwner: "المالك",
+    ownerCostsRunning: "⏳ أجمع تكلفة الشهر لكلّ باقة… (قراءة فقط)",
+    ownerCostsFail: "فشل التقرير",
+    ownerCostsHead: "💵 تكلفة الحسابات علينا — {m} (من أوّل الشهر حتّى الآن)",
+    ownerCostsTotal: "المجموع {total} على {n} حسابًا",
+    ownerCostsPlan: "{plan}: {users} · متوسّط {avg} · الأعلى {max}",
+    ownerCostsPays: "يدفع {net}",
+    ownerCostsTop: "أعلى الحسابات تكلفةً:",
+    ownerCostsUser: "{user} ({plan}) — {total}  [رسائل {chat} · وسائط {media} · صوت {voice}]",
+    ownerLanePaid: "المشتركون",
+    ownerLaneFree: "المجّانيّ (تقديريّ)",
+    ownerLanePro: "الردّ الاحترافيّ",
+    ownerTokensHead: "🔢 التوكنات آخر {d} أيّام — قراءة الكاش من كلّ الدخل:",
+    ownerTokensLine: "{lane}: {turns} دورًا · قراءة {read}% · جديد {input} · كتابة {write} · خرج {output}",
+    verBundle: "بندل",
+    verPull: "سحب",
+    verPush: "رفع",
+    verServer: "سيرفر",
+    verLocal: "محلي",
+    verMerge: "دمج",
+    fbReportsTitle: "🚩 بلاغات المحتوى",
     vwUnavailable: 'خدمة تحليل الفيديو متوقّفة مؤقّتًا — لم تُخصم أيّ نقاط. جرّب بعد قليل.',
     vwWriteNo: 'الكتابة على الفيديو نفسه غير متاحة بعد في التطبيق — لم تُخصم أيّ نقاط. أرسل لقطة من الفيديو (أو أيّ صورة) مع الطلب نفسه وأكتبه لك عليها.',
     vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.',
@@ -5474,6 +5758,268 @@ const I18N = {
     tierFreeReply: 'Free reply', tierFreeLimitTitle: 'Free messages used up for today', tierGuestLimitTitle: 'Trial messages used up',
     tierUpgradeBtn: 'Upgrade to Pro', tierSignupBtn: 'Sign up free',
     spendConfirm: 'This will use {n} points. Continue?',
+    /* v-img-edit-label · v-stamps-i18n */
+    stEditImage: "Editing the image…",
+    stampTitle: "🏷️ Choose a stamp theme",
+    stampHint: "Tap one and the design starts right away",
+    stampImgOne: "One photo — you can attach up to 3 photos for siblings",
+    stampImgMany: "{n} photos — stamps for each one + one stamp with everyone",
+    stampSecCount: "Number of stamps",
+    stampSecShape: "Shape",
+    stampSecFace: "Face",
+    stampCountBig: "6 large",
+    stampCountSmall: "24 small",
+    stampShapeMixed: "Mixed",
+    stampShapeCircle: "⚪ Circle",
+    stampShapeSquare: "⬜ Square",
+    stampShapeHeart: "❤️ Heart",
+    stampFaceReal: "📷 Real",
+    stampFaceCartoon: "🎨 Cartoon",
+    stampSurprise: "✨ Surprise me — pick for me",
+    stampGrpKids: "👶 For little ones",
+    stampGrpCartoon: "⭐ Cartoon characters",
+    stampGrpTeens: "🧑 Teens 12+",
+    stampGrpGirls: "🌸 Girls",
+    stampNeedPhoto: "Attach the child's photo first (+ button), then write: «stamps for Ahmed» 🏷️",
+    stampThSpace: "Space",
+    stampThDino: "Dinosaur",
+    stampThPrincess: "Princess",
+    stampThSports: "Sports",
+    stampThSea: "Sea",
+    stampThRaceCar: "Race car",
+    stampThUnicorn: "Unicorn",
+    stampThAnimals: "Animals",
+    stampThFlowers: "Flowers",
+    stampThFalcon: "Falcon heritage",
+    stampThRobots: "Robots",
+    stampThSweets: "Sweets",
+    stampThButterflies: "Butterflies",
+    stampThSchool: "Classic school",
+    stampThKuromi: "Kuromi",
+    stampThMelody: "My Melody",
+    stampThKitty: "Hello Kitty",
+    stampThBears: "Three bears",
+    stampThSponge: "SpongeBob",
+    stampThTomJerry: "Tom & Jerry",
+    stampThMickey: "Mickey Mouse",
+    stampThFrozen: "Frozen",
+    stampThSpider: "Spider-Man",
+    stampThPaw: "Paw Patrol",
+    stampThPeppa: "Peppa Pig",
+    stampThPokemon: "Pokémon",
+    stampThMario: "Mario",
+    stampThMinions: "Minions",
+    stampThBarbie: "Barbie",
+    stampThCars: "Cars",
+    stampThGaming: "Gaming",
+    stampThAnime: "Anime",
+    stampThStreet: "Street",
+    stampThDesert: "Desert adventures",
+    stampThLegends: "Legends",
+    stampThGirly: "Elegant girly",
+    stampThFashion: "Fashion",
+    /* v-work-tabs-labels */
+    waCollapseLbl: "Collapse panel",
+    waReopenLbl: "Open panel",
+    /* v-code-review-i18n */
+    codeReviewMenu: "Review",
+    codeReviewTip: "AI code review",
+    codeBarEdit: "Edit",
+    cfxTitle: "Code review",
+    cfxPickFile: "Choose a file",
+    cfxCurCode: "Current project code",
+    cfxAskLabel: "What do you want to change?",
+    cfxAskPh: "Example: remove the duplicate function definition, move the toolbar buttons into tabs, and make the tooltips follow the language.",
+    cfxGo: "Analyze and suggest edits",
+    cfxDisclaimer: "The whole file is sent with every request, so its length counts against your balance. The AI returns separate edits, not the whole file, and any edit whose text does not match exactly one place in your file is rejected automatically.",
+    cfxTooBig: "The file is larger than {n} KB — split it first",
+    cfxLines: "{n} lines",
+    cfxNoCode: "The current project has no code",
+    cfxNeedFile: "Choose a file first",
+    cfxNeedAsk: "Write what you want to change",
+    cfxReading: "Reading the file…",
+    cfxWriting: "Writing the edits… {n} characters",
+    cfxNoPatch: "No edits were suggested.",
+    cfxError: "Analysis failed: {msg}",
+    cfxMatchOne: "One match",
+    cfxMatchNone: "Old text not found — rejected",
+    cfxMatchMany: "{n} places — ambiguous, rejected",
+    cfxPatch: "Edit",
+    cfxValidN: "{n} valid edits",
+    cfxRejectedN: "{n} rejected",
+    cfxApply: "Apply selected",
+    cfxNotSaved: "Nothing was saved — the resulting file does not compile.",
+    cfxBackToEdits: "Back to the edits",
+    cfxAppliedN: "{n} edits applied",
+    cfxSkippedN: "{n} skipped because their place changed",
+    cfxDownload: "Download file",
+    cfxToProject: "Put it in the project code",
+    cfxUndo: "Undo",
+    cfxNoProject: "No project is open",
+    cfxMoved: "Moved to the project code",
+    cfxMoveFail: "Could not move it",
+    cfxSyntaxOk: "Syntax is valid",
+    cfxJsonOk: "JSON is valid",
+    cfxTagsBad: "Unbalanced script tags: {o} opened and {c} closed",
+    cfxTagsOk: "Tags are balanced",
+    cfxNoCheck: "No check for this format",
+    /* v-auth-a11y + v-acct-referral-i18n: وصف زرّ إظهار كلمة المرور، وأزرار الإحالة ونصّ المشاركة (كانت عربيّة ثابتة في كلّ اللغات) */
+    authShowPass: "Show password",
+    authHidePass: "Hide password",
+    acctShareBtn: "Send & share",
+    acctQrOpen: "Open QR code",
+    acctQrClose: "Hide QR code",
+    acctQrDownload: "Download QR code",
+    acctShareText: "Try the Omran AI app, available on every app store:",
+    acctCopyPrompt: "Copy the link:",
+    /* v-stocks-i18n: شريحتا الذهب والنفط ووحدة الغرام وتبويبات النظرة العامّة وتفاصيل السهم ورمز غير موجود وتلميح 💼 (كانت إنجليزيّة أو عربيّة ثابتة) */
+    stkGold: "Gold",
+    stkSilver: "Silver",
+    stkOil: "Oil",
+    stkIndices: "Indices",
+    stkCommodities: "Commodities",
+    stkForex: "Forex",
+    stkAedPerGram: "AED/g",
+    stkOpen: "Open",
+    stkHigh: "High",
+    stkLow: "Low",
+    stkVol: "Volume",
+    stocksSymbolNotFound: "Symbol not found — check it (e.g. AAPL or TSLA).",
+    stocksPfTitle: "My practice portfolio",
+    /* v-owner-i18n (a9): صفحة المالك ولوحاتها (الخزنة، الإحصاءات، المستخدمون، VIP، فحص النظام)، كبسولة التنبيه، سطر النسخة، عنوان البلاغات — كانت عربيّة ثابتة */
+    ownerVaultTitle: "🔐 Secrets vault",
+    ownerVaultDesc: "Secrets never go in the chat. Save the GitHub token here: it is encrypted on the server (AES-256-GCM), never shown again, and used by the agent and the code analyzer to read and push.",
+    ownerVaultPerms: "Pushing needs a token with these two permissions on the repository:",
+    ownerVaultTokenPh: "ghp_… or github_pat_…",
+    ownerVaultTest: "Check key",
+    ownerStatsRefresh: "🔄 Refresh stats",
+    ownerClaudeDiag: "👑 Check Claude key",
+    ownerStatsHint: "Press “Refresh” to show the stats…",
+    ownerUsersTitle: "👤 User management (ban / delete / message)",
+    ownerVipTitle: "⭐ VIP access (no limits)",
+    ownerVipPh: "Email or username",
+    ownerVipAdd: "➕ Add",
+    ownerHealthTitle: "🩺 System check",
+    ownerHealthRun: "🩺 Check now",
+    ownerRedisUsage: "💾 What fills the database",
+    ownerClearErrors: "🧹 Clear error log",
+    ownerCosts: "💵 Subscriber costs this month",
+    ownerHealthHint: "Press “Check now” to run the check…",
+    ownerVaultNoToken: "No GitHub token is saved in the vault.",
+    ownerVaultBadRepo: "Repository format: owner/repo",
+    ownerVaultRejected: "GitHub rejected the key (401) — invalid or expired.",
+    ownerVaultRate: "Rate limit: {n}/hour",
+    ownerLoading: "⏳ Loading…",
+    ownerFailed: "Failed",
+    ownerUnauthorized: "Not authorized",
+    ownerLoadFailed: "Could not load: {e}",
+    ownerErrorLine: "Error: {e}",
+    ownerStatsAccounts: "👥 Total accounts: {total}  (real: {real}, test: {test})",
+    ownerStatsMessages: "💬 Messages today: {today}   |   All time: {all}",
+    ownerStatsByService: "📊 By service today:",
+    ownerStatsTop: "🏆 Most active today:",
+    ownerStatsMsgCount: "{n} messages",
+    ownerStatsRecent: "🆕 Recently active accounts:",
+    ownerStatsUpdated: "🕐 Last update: {t}",
+    ownerSvcChat: "Chat",
+    ownerSvcPlan: "Plan chat",
+    ownerSvcAgent: "Agent",
+    ownerSvcVoice: "Voice chat",
+    ownerSvcTts: "Read aloud",
+    ownerSvcStt: "Speech to text",
+    ownerSvcMedia: "Media classification",
+    ownerSvcSearch: "Search",
+    ownerSvcTranslate: "Translation",
+    ownerSvcVideo: "Video",
+    ownerSvcSuggest: "Suggestions",
+    ownerSvcShare: "Sharing & saving",
+    ownerSvcStocks: "Stocks",
+    ownerSvcAds: "Ads",
+    ownerUsersNone: "No users to manage.",
+    ownerChecksCount: "Automated check accounts (zzcheck…): {n}",
+    ownerChecksPurge: "🧹 Delete them all",
+    ownerNoEmail: "No email",
+    ownerMsgTitle: "Send a message",
+    ownerBanTitle: "Ban",
+    ownerUnbanTitle: "Unban",
+    ownerDeleteTitle: "Delete permanently",
+    ownerBanConfirm: "Ban user “{u}”?",
+    ownerUnbanConfirm: "Unban user “{u}”?",
+    ownerDeleteConfirm: "⚠️ Permanently delete the account “{u}”? This cannot be undone.",
+    ownerPurgeConfirm: "🧹 Permanently delete all automated check accounts (zzcheck…) and their points? No real account is touched.",
+    ownerPurgeDone: "✅ Deleted {n} check accounts.",
+    ownerMsgPrompt: "Write the message for “{u}” (shown when they open the app):",
+    ownerMsgSent: "✅ Message sent.",
+    ownerDiagRunning: "⏳ Checking the Claude key with Anthropic…",
+    ownerDiagKey: "Key: {k}",
+    ownerDiagStatus: "Status: {s}",
+    ownerVipNone: "Nobody is on the VIP list.",
+    ownerVipRemoveTitle: "Remove from VIP",
+    ownerVipAuditBtn: "🔎 Unverified VIP emails",
+    ownerVipAuditRunning: "⏳ Checking unverified emails…",
+    ownerVipAuditFail: "The check failed",
+    ownerVipAuditHead: "Unverified VIP emails: {n} ({s} accounts checked)",
+    ownerVipKindEmail: "Has an unverified email from the VIP list — no VIP until they verify it in “My account”",
+    ownerVipKindLegacy: "Their old username is an email on the list — VIP by name as before; the email is unverified",
+    ownerVipKindName: "On the list by username with an unverified email — if you added them by email before today, review it",
+    ownerNobody: "Nobody.",
+    ownerVipNeedId: "Enter an email or a username first.",
+    ownerVipPending: "Added as an email: its owner becomes VIP once they verify it (Google sign-in or a code from “My account”).",
+    ownerVipRemoveConfirm: "Remove “{id}” from the VIP list?",
+    ownerHealthPill: "🩺 System notes ({n})",
+    ownerHealthOpen: "Open system check",
+    ownerDbDown: "The database (Redis) is not responding",
+    ownerDbLabel: "Database (Redis)",
+    ownerWhy: "Reason: {w}",
+    ownerKeysMissing: "Missing keys: {k}",
+    ownerKeysAll: "All API keys are present",
+    ownerUserErrors: "Errors logged from users: {n}",
+    ownerUserErrorsNone: "No errors logged from users",
+    ownerDeviceDiag: "Your device measurements (not errors): {n}",
+    ownerSrvErrorsNow: "Server errors in the current deploy: {n}",
+    ownerSrvErrors: "Server errors: {n}",
+    ownerSrvNoneSince: "No server errors since the last update",
+    ownerSrvNone: "No server errors",
+    ownerSrvOld: "From a previous deploy (fixed, or not repeated since the update): {n}",
+    ownerSrvCheckFail: "Server check failed: {e}",
+    ownerSysOk: "System is healthy",
+    ownerSysNotes: "There are notes",
+    ownerChecking: "⏳ Checking…",
+    ownerHomePage: "Home page",
+    ownerConnFail: "connection failed",
+    ownerClearErrorsConfirm: "Permanently clear the user and server error logs? This cannot be undone.",
+    ownerClearDone: "🧹 Error log cleared ✅",
+    ownerClearFail: "Clearing failed",
+    ownerMb: "MB",
+    ownerUsageRunning: "⏳ Measuring the database… (read-only, nothing is deleted)",
+    ownerUsageFail: "Measurement failed",
+    ownerUsageTotal: "💾 Values ≈ {size} in {keys} keys (limit 256 MB)",
+    ownerUsageTrunc: "only the first {n} scanned",
+    ownerUsageGroups: "Largest families:",
+    ownerUsageKeysN: "{n} keys",
+    ownerUsageBiggest: "Largest keys:",
+    ownerPlanFree: "Free",
+    ownerPlanOwner: "Owner",
+    ownerCostsRunning: "⏳ Adding up this month’s cost per plan… (read-only)",
+    ownerCostsFail: "Report failed",
+    ownerCostsHead: "💵 What accounts cost us — {m} (month to date)",
+    ownerCostsTotal: "Total {total} across {n} accounts",
+    ownerCostsPlan: "{plan}: {users} · average {avg} · highest {max}",
+    ownerCostsPays: "pays {net}",
+    ownerCostsTop: "Costliest accounts:",
+    ownerCostsUser: "{user} ({plan}) — {total}  [messages {chat} · media {media} · voice {voice}]",
+    ownerLanePaid: "Subscribers",
+    ownerLaneFree: "Free (estimated)",
+    ownerLanePro: "Pro reply",
+    ownerTokensHead: "🔢 Tokens over the last {d} days — cache reads out of all input:",
+    ownerTokensLine: "{lane}: {turns} turns · read {read}% · new {input} · write {write} · output {output}",
+    verBundle: "Bundle",
+    verPull: "Pull",
+    verPush: "Push",
+    verServer: "Server",
+    verLocal: "Local",
+    verMerge: "Merge",
+    fbReportsTitle: "🚩 Content reports",
     vwUnavailable: 'Video analysis is temporarily unavailable — no points were used. Please try again shortly.',
     vwWriteNo: 'Writing on the video itself isn’t available in the app yet — no points were used. Send a screenshot from the video (or any photo) with the same request and I’ll write it on that.',
     vidCancelled: 'Video cancelled — no points were used.',
@@ -11591,16 +12137,18 @@ $('#btnDeleteAll').onclick = () => {
      في متصفّح المالك (fb=1 ch=1 في المسبار). كلّ حقل يُهرَّب الآن (& < > " ')، والتقييم يُحصر في ٠–٥ (قيمة
      مخزّنة غريبة كانت ترمي في repeat فتطفئ اللوحة كلّها). الشكل والترتيب كما كانا. */
   function fbEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  /* v-fb-owner-i18n (تدقيق ١٨ أكتوبر، لقطتا ٠٢٨ و٠٤٧): عنوان البلاغات من القاموس (كان عربيًّا في كلّ لغة)، والاسم والمزوّد
+     في <bdi> والوقت في <bdi dir="ltr"> — «8989][po · 2026-10-18 08:15» كان يظهر «po · 2026-10-18 08:15][8989». */
   function fbOwnerListHtml(items, reports){
     let html = items.map(it=>{
       const n = Math.max(0, Math.min(5, parseInt(it.rating,10)||0));
       const stars='★'.repeat(n)+'☆'.repeat(5-n);
       const chips=(Array.isArray(it.chips)?it.chips:[]).map(k=>fbEsc(t(k))).join(' · ');
-      return '<div class="fbItem"><span class="fbStarsSm">'+stars+'</span>'+(chips?' — '+chips:'')+(it.note?'<div style="margin-top:4px;">'+fbEsc(it.note)+'</div>':'')+'<div class="fbMeta">'+fbEsc(it.user||'guest')+' · '+fbEsc(String(it.ts||'').slice(0,16).replace('T',' '))+'</div></div>';
+      return '<div class="fbItem"><span class="fbStarsSm">'+stars+'</span>'+(chips?' — '+chips:'')+(it.note?'<div style="margin-top:4px;">'+fbEsc(it.note)+'</div>':'')+'<div class="fbMeta"><bdi>'+fbEsc(it.user||'guest')+'</bdi> · <bdi dir="ltr">'+fbEsc(String(it.ts||'').slice(0,16).replace('T',' '))+'</bdi></div></div>';
     }).join('');
     if(reports.length){
-      html += '<div style="margin:14px 0 6px;font-weight:700;color:#ff5c6c;">🚩 بلاغات المحتوى ('+reports.length+')</div>';
-      html += reports.map(rp=>'<div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">'+fbEsc(String(rp.content||'').slice(0,300))+'</div><div class="fbMeta">'+fbEsc(rp.user||'guest')+(rp.provider?' · '+fbEsc(rp.provider):'')+' · '+fbEsc(String(rp.ts||'').slice(0,16).replace('T',' '))+'</div></div>').join('');
+      html += '<div style="margin:14px 0 6px;font-weight:700;color:#ff5c6c;">'+fbEsc(t('fbReportsTitle'))+' ('+reports.length+')</div>';
+      html += reports.map(rp=>'<div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">'+fbEsc(String(rp.content||'').slice(0,300))+'</div><div class="fbMeta"><bdi>'+fbEsc(rp.user||'guest')+'</bdi>'+(rp.provider?' · <bdi>'+fbEsc(rp.provider)+'</bdi>':'')+' · <bdi dir="ltr">'+fbEsc(String(rp.ts||'').slice(0,16).replace('T',' '))+'</bdi></div></div>').join('');
     }
     return html;
   }
@@ -30742,9 +31290,9 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
-      if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب' + (d.redisWhy ? ' — السبب: ' + String(d.redisWhy).slice(0, 200) : '')); /* v-redis-why: للمالك وحده */
+      if(!d.redisOk) problems.push(oT('ownerDbDown') + (d.redisWhy ? ' — ' + oT('ownerWhy', { w: oLtr(String(d.redisWhy).slice(0, 200)) }) : '')); /* v-redis-why: للمالك وحده */
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
-      if(missing.length) problems.push('مفاتيح ناقصة: ' + missing.join(', '));
+      if(missing.length) problems.push(oT('ownerKeysMissing', { k: oLtr(missing.join(', ')) }));
       /* v-err-build: أخطاء النسخة الحاليّة فقط — ما أُصلح في نسخة سابقة لا يُنذر بعد
          نشر الإصلاح. ومع كلّ خطأ ملفّه وسطره، فاللقطة وحدها تكفي للتشخيص. */
       const __build = (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '';
@@ -30754,57 +31302,65 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           const src = String(e.source || '').split('/').pop().split('?')[0].slice(0, 40);
           return '• ' + '\u2066' + String(e.message || '').slice(0,90) + (src ? ' — ' + src + (e.line ? ':' + e.line : '') : '') + (e.count > 1 ? ' (x' + e.count + ')' : '') + '\u2069'; /* v-err-ltr */
         }).join('\n');
-        problems.push('أخطاء مسجلة من المستخدمين: ' + __live.length + '\n' + top);
+        problems.push(oT('ownerUserErrors', { n: __live.length }) + '\n' + top);
       }
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');
       bar.id = 'ownerHealthBar'; // v-maha-dock-bar: ينزل تحت شريط «م» العلويّ أثناء نافذة مها (css/modules.css)
-      /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): كانت
-         position:fixed;top:0 بـz-index أعلى من الهيدر الثابت (٩٩٩٩٩ مقابل ٩٠٠)
-         فتغطّي الهيدر بالكامل (شريط الأسهم وكل أزراره) خلفها بصمت — والمالك
-         لا يعرف بوجودها ليضغط ✕. جسم الصفحة شبكة CSS (body{display:grid})
-         بصفوف/أعمدة محدَّدة صراحةً للهيدر وشريط الأسهم وعمود المحادثة
-         (v-frame-c)، فإدراج الشريط كابن عاديّ بلا موضع شبكة صريح يُقحمه في
-         صفّ ضمنيّ أسفل الشاشة كلّها لا فوق الهيدر مباشرة — لذا الحلّ يبقى
-         fixed (يهرب من الشبكة تمامًا) لكن `top` يُحسَب من الارتفاع الفعليّ
-         لأسفل الهيدر بدل ٠ ثابت، فيظهر الشريط تحته دائمًا لا فوقه. */
+      /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): fixed تحت أسفل الهيدر الفعليّ لا فوقه (body شبكة CSS — v-frame-c).
+         v-owner-i18n (الدفعة ٥): العنوان من القاموس واتّجاه الصفحة بدل direction:rtl المفروض؛ الشكل والموضع كما كانا. */
       const headerBottom = (function(){
         try{ const h = document.querySelector('header'); return h ? Math.max(0, h.getBoundingClientRect().bottom) : 0; }
         catch(e){ return 0; }
       })();
-      bar.style.cssText = 'position:fixed;top:' + headerBottom + 'px;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
-      bar.textContent = '🩺 تنبيه للمالك — توجد ملاحظات في النظام:\n' + problems.join('\n');
+      bar.style.cssText = 'position:fixed;top:' + headerBottom + 'px;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;padding-inline:14px 44px;font-size:13px;line-height:1.6;white-space:pre-wrap;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+      bar.textContent = oT('ownerHealthPill', { n: problems.length }) + ':\n' + problems.join('\n');
       const x = document.createElement('button');
+      x.type = 'button';
       x.textContent = '✕';
-      x.style.cssText = 'position:absolute;top:8px;left:10px;background:none;border:none;color:#ffd7d7;font-size:16px;cursor:pointer';
+      x.style.cssText = 'position:absolute;top:8px;inset-inline-end:10px;background:none;border:none;color:#ffd7d7;font-size:16px;cursor:pointer';
       x.onclick = () => bar.remove();
       bar.appendChild(x);
       document.body.appendChild(bar);
     }catch(e){ /* فحص صامت — لا نزعج المستخدم إذا فشل */ }
   }, 6000);
 
+  /* v-owner-i18n (تدقيق ١٨ أكتوبر، g14-owner): نصوص فحص النظام وكبسولة التنبيه من قاموس لغة الواجهة (كانت عربيّة ثابتة)،
+     والحمولة التقنيّة (مسارات، مفاتيح، رسائل الأخطاء) معزولة \u2066…\u2069 كما في v-err-ltr. خطأ الشبكة = acctNetError. */
+  function oT(k, p){
+    let v = (typeof window.t === 'function') ? window.t(k) : k;
+    v = (v == null || v === '') ? k : String(v);
+    if(p) Object.keys(p).forEach(function(n){ v = v.split('{' + n + '}').join(String(p[n])); });
+    return v;
+  }
+  function oLtr(s){ return '\u2066' + String(s == null ? '' : s) + '\u2069'; }
+  function oIso(s){ return '\u2068' + String(s == null ? '' : s) + '\u2069'; }
+  function oErr(e){
+    const m = String((e && e.message) || e || '');
+    return /Failed to fetch|NetworkError|Load failed|ERR_NETWORK|Network request failed/i.test(m) ? oT('acctNetError') : m;
+  }
   // 🩺 فحص النظام (لوحة المالك)
   window.runHealthCheck = async function(){
     const box = document.getElementById('adminHealthBox');
     if(!box) return;
-    box.textContent = '⏳ جاري الفحص...';
+    box.textContent = oT('ownerChecking');
     const lines = [];
     const mark = ok => ok ? '✅' : '❌';
     // 1) الصفحات الأساسية
-    for(const [name, url] of [['الصفحة الرئيسية','/'], ['manifest.json','/manifest.json'], ['sw.js','/sw.js']]){
+    for(const [name, url] of [[oT('ownerHomePage'),'/'], ['manifest.json','/manifest.json'], ['sw.js','/sw.js']]){
       try{ const r = await fetch(url, {cache:'no-store'}); lines.push(mark(r.ok) + ' ' + name + ' (' + r.status + ')'); }
-      catch(e){ lines.push('❌ ' + name + ' (فشل الاتصال)'); }
+      catch(e){ lines.push('❌ ' + name + ' (' + oT('ownerConnFail') + ')'); }
     }
     // 2) فحص الخادم (مفاتيح + Blob + أخطاء المستخدمين)
     try{
       const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
-      lines.push(mark(d.redisOk) + ' قاعدة البيانات (Redis)' + (!d.redisOk && d.redisWhy ? ' — ' + String(d.redisWhy).slice(0, 200) : '')); /* v-redis-why */
+      lines.push(mark(d.redisOk) + ' ' + oT('ownerDbLabel') + (!d.redisOk && d.redisWhy ? ' — ' + oLtr(String(d.redisWhy).slice(0, 200)) : '')); /* v-redis-why */
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
-      lines.push(missing.length ? ('❌ مفاتيح ناقصة: ' + missing.join(', ')) : '✅ كل مفاتيح API موجودة');
+      lines.push(missing.length ? ('❌ ' + oT('ownerKeysMissing', { k: oLtr(missing.join(', ')) })) : '✅ ' + oT('ownerKeysAll'));
       if(d.clientErrorsCount > 0){
-        lines.push('⚠️ أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount);
+        lines.push('⚠️ ' + oT('ownerUserErrors', { n: d.clientErrorsCount }));
         /* v-err-date: بلا تاريخ لا نفرق خطأ اليوم عن خطأ الأسبوع الماضي */
         const __fmtD = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
         d.clientErrors.slice(0,10).forEach(e => {
@@ -30823,12 +31379,12 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           }
         });
       } else {
-        lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');
+        lines.push('✅ ' + oT('ownerUserErrorsNone'));
       }
       /* v-health-split: قياسات مسبار الذاكرة (v-mem-probe) أرقام من جهاز المالك لا أخطاء — بعنوانها، ولا تُحسب ملاحظة. */
       const __fmtT = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
       if((d.clientDiag || []).length){
-        lines.push('📏 قياسات جهازك (ليست أخطاء): ' + d.clientDiag.length);
+        lines.push('📏 ' + oT('ownerDeviceDiag', { n: d.clientDiag.length }));
         d.clientDiag.forEach(e => { lines.push('   · ' + String(e.message || '').replace(/^v-mem-probe\s*/, '').slice(0,200) + (__fmtT(e.lastSeen) ? ' — ' + __fmtT(e.lastSeen) : '')); });
       }
       /* v-health-srv: أخطاء الخادم نفسها (نداءات النماذج، المسارات) — كانت
@@ -30841,20 +31397,20 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       /* v-err-ltr: السطر التقنيّ (مسار + JSON إنجليزيّ) داخل صندوق يمين-يسار كان يتبعثر («'>>' Uncaught…») — يُعزل يسار-يمين كتلةً واحدة */
       const __srvLine = (e) => '\u2066' + '[' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtT(e.lastAt || e.at) ? ' — ' + __fmtT(e.lastAt || e.at) : '') + '\u2069';
       if(__now.length){
-        lines.push('⚠️ أخطاء الخادم' + (__cur ? ' في النشر الحاليّ' : '') + ': ' + __now.length);
+        lines.push('⚠️ ' + oT(__cur ? 'ownerSrvErrorsNow' : 'ownerSrvErrors', { n: __now.length }));
         __now.forEach(e => { lines.push('   • ' + __srvLine(e)); });
       } else {
-        lines.push('✅ لا توجد أخطاء في الخادم' + (__cur ? ' منذ آخر تحديث' : ''));
+        lines.push('✅ ' + oT(__cur ? 'ownerSrvNoneSince' : 'ownerSrvNone'));
       }
       if(__old.length){
-        lines.push('🗂️ من نشر سابق (أُصلحت أو لم تتكرّر بعد التحديث): ' + __old.length);
+        lines.push('🗂️ ' + oT('ownerSrvOld', { n: __old.length }));
         __old.forEach(e => { lines.push('   · ' + __srvLine(e)); });
       }
     }catch(e){
-      lines.push('❌ فحص الخادم فشل: ' + e.message);
+      lines.push('❌ ' + oT('ownerSrvCheckFail', { e: oLtr(oErr(e)) }));
     }
     const allOk = !lines.some(l => l.startsWith('❌') || l.startsWith('⚠️'));
-    lines.unshift((allOk ? '🟢 النظام سليم' : '🔴 توجد ملاحظات') + ' — ' + new Date().toLocaleTimeString('en-GB'));
+    lines.unshift((allOk ? '🟢 ' + oT('ownerSysOk') : '🔴 ' + oT('ownerSysNotes')) + ' — ' + new Date().toLocaleTimeString('en-GB'));
     box.textContent = lines.join('\n');
   };
   window.clearClientErrors = async function(){
@@ -30863,51 +31419,51 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       /* v-err-deploy: «مسح سجل الأخطاء» كان يمسح أخطاء المستخدمين وحدها — أخطاء الخادم لا تُمسح من التطبيق أبدًا
          (402 من ٢١ سبتمبر باقٍ). clear=errors في فحص الصحّة يمسح السجلّين معًا (للمالك وحده). */
       const r = await fetch('/api/system?action=health&clear=errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
-      if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
-    }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
+      if(box) box.textContent = r.ok ? oT('ownerClearDone') : '❌ ' + oT('ownerClearFail') + ' (' + r.status + ')';
+    }catch(e){ if(box) box.textContent = '❌ ' + oT('ownerClearFail') + ': ' + oErr(e); }
   };
   /* v-redis-capacity: «ما يملأ القاعدة» — قياس بالقراءة فقط (SCAN + STRLEN) يعرض العائلات الأكبر وأكبر المفاتيح في صندوق الفحص. */
   window.redisUsageCheck = async function(){
     const box = document.getElementById('adminHealthBox');
-    const mb = (n) => (n / 1048576).toFixed(1) + ' م.ب';
-    if(box) box.textContent = '⏳ أقيس ما في القاعدة… (قراءة فقط، لا يُحذف شيء)';
+    const mb = (n) => (n / 1048576).toFixed(1) + ' ' + oT('ownerMb');
+    if(box) box.textContent = oT('ownerUsageRunning');
     try{
       const r = await fetch('/api/system?action=health&usage=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
       const d = await r.json().catch(() => ({}));
-      if(!r.ok || !d.usage){ if(box) box.textContent = '❌ فشل القياس (' + r.status + ')' + (d && d.message ? ': ' + d.message : ''); return; }
+      if(!r.ok || !d.usage){ if(box) box.textContent = '❌ ' + oT('ownerUsageFail') + ' (' + r.status + ')' + (d && d.message ? ': ' + oLtr(d.message) : ''); return; }
       const u = d.usage;
-      const lines = ['💾 القيم ≈ ' + mb(u.totalBytes) + ' في ' + u.totalKeys + ' مفتاحًا (الحدّ ٢٥٦ م.ب)' + (u.truncated ? ' — فُحص أوّل ' + u.scanned + ' فقط' : ''), '', 'العائلات الأكبر:'];
-      (u.groups || []).forEach(function(g){ lines.push('• ' + g.prefix + ' — ' + mb(g.bytes) + ' · ' + g.keys + ' مفتاحًا'); });
-      lines.push('', 'أكبر المفاتيح:');
-      (u.biggest || []).forEach(function(b){ lines.push('• ' + b.key + ' — ' + mb(b.bytes)); });
+      const lines = [oT('ownerUsageTotal', { size: mb(u.totalBytes), keys: u.totalKeys }) + (u.truncated ? ' — ' + oT('ownerUsageTrunc', { n: u.scanned }) : ''), '', oT('ownerUsageGroups')];
+      (u.groups || []).forEach(function(g){ lines.push('• ' + oLtr(g.prefix) + ' — ' + mb(g.bytes) + ' · ' + oT('ownerUsageKeysN', { n: g.keys })); });
+      lines.push('', oT('ownerUsageBiggest'));
+      (u.biggest || []).forEach(function(b){ lines.push('• ' + oLtr(b.key) + ' — ' + mb(b.bytes)); });
       if(box) box.textContent = lines.join('\n');
-    }catch(e){ if(box) box.textContent = '❌ فشل القياس: ' + e.message; }
+    }catch(e){ if(box) box.textContent = '❌ ' + oT('ownerUsageFail') + ': ' + oErr(e); }
   };
   /* v-cost-meter: «تكلفة المشتركين» — تكلفة كلّ حساب علينا هذا الشهر مجمّعة لكلّ باقة، مقابل ما يدفعه (قراءة فقط). */
   window.subscriberCostsCheck = async function(){
     const box = document.getElementById('adminHealthBox');
     const usd = (n) => (Number(n) || 0).toFixed(2) + '$';
-    const NAME = { basic: 'Plus', pro: 'Pro', max: 'Max', free: 'مجّاني', vip: 'VIP', owner: 'المالك' };
+    const NAME = { basic: 'Plus', pro: 'Pro', max: 'Max', free: oT('ownerPlanFree'), vip: 'VIP', owner: oT('ownerPlanOwner') };
     const NET = { basic: 9.41, pro: 19.12, max: 96.80 }; // ما يصلك من الاشتراك الشهريّ بعد رسوم الدفع
-    if(box) box.textContent = '⏳ أجمع تكلفة الشهر لكلّ باقة… (قراءة فقط)';
+    if(box) box.textContent = oT('ownerCostsRunning');
     try{
       const r = await fetch('/api/system?action=health&costs=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
       const d = await r.json().catch(() => ({}));
-      if(!r.ok || !d.costs){ if(box) box.textContent = '❌ فشل التقرير (' + r.status + ')' + (d && d.message ? ': ' + d.message : ''); return; }
+      if(!r.ok || !d.costs){ if(box) box.textContent = '❌ ' + oT('ownerCostsFail') + ' (' + r.status + ')' + (d && d.message ? ': ' + oLtr(d.message) : ''); return; }
       const c = d.costs;
-      const lines = ['💵 تكلفة الحسابات علينا — ' + c.month + ' (من أوّل الشهر حتّى الآن)', 'المجموع ' + usd(c.total) + ' على ' + c.users + ' حسابًا', ''];
-      (c.byPlan || []).forEach(function(g){ lines.push('• ' + (NAME[g.plan] || g.plan) + ': ' + g.users + ' · متوسّط ' + usd(g.avg) + ' · الأعلى ' + usd(g.max) + (NET[g.plan] ? ' · يدفع ' + usd(NET[g.plan]) : '')); });
-      lines.push('', 'أعلى الحسابات تكلفةً:');
-      (c.top || []).forEach(function(u){ lines.push('• ' + u.user + ' (' + (NAME[u.plan] || u.plan) + ') — ' + usd(u.total) + '  [رسائل ' + usd(u.chat) + ' · وسائط ' + usd(u.media) + ' · صوت ' + usd(u.voice) + ']'); });
+      const lines = [oT('ownerCostsHead', { m: oLtr(c.month) }), oT('ownerCostsTotal', { total: usd(c.total), n: c.users }), ''];
+      (c.byPlan || []).forEach(function(g){ lines.push('• ' + oT('ownerCostsPlan', { plan: NAME[g.plan] || oLtr(g.plan), users: g.users, avg: usd(g.avg), max: usd(g.max) }) + (NET[g.plan] ? ' · ' + oT('ownerCostsPays', { net: usd(NET[g.plan]) }) : '')); });
+      lines.push('', oT('ownerCostsTop'));
+      (c.top || []).forEach(function(u){ lines.push('• ' + oT('ownerCostsUser', { user: oIso(u.user), plan: NAME[u.plan] || oLtr(u.plan), total: usd(u.total), chat: usd(u.chat), media: usd(u.media), voice: usd(u.voice) })); });
       /* v-tokens-meter: نسبة قراءة الكاش في الإنتاج لكلّ مسار (آخر ٧ أيّام) — للمالك وحده بجانب التكلفة */
       const tk = d.tokens, kt = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1000 ? Math.round(n / 1000) + 'k' : String(n || 0));
-      const LANE = { paid: 'المشتركون', free: 'المجّانيّ (تقديريّ)', owner: 'المالك', pro: 'الردّ الاحترافيّ' };
+      const LANE = { paid: 'ownerLanePaid', free: 'ownerLaneFree', owner: 'ownerPlanOwner', pro: 'ownerLanePro' };
       if(tk && tk.byLane && tk.byLane.length){
-        lines.push('', '🔢 التوكنات آخر ' + tk.days + ' أيّام — قراءة الكاش من كلّ الدخل:');
-        tk.byLane.forEach(function(l){ lines.push('• ' + (LANE[l.lane] || l.lane) + ': ' + l.turns + ' دورًا · قراءة ' + l.readPct + '% · جديد ' + kt(l.input) + ' · كتابة ' + kt(l.cacheWrite) + ' · خرج ' + kt(l.output)); });
+        lines.push('', oT('ownerTokensHead', { d: tk.days }));
+        tk.byLane.forEach(function(l){ lines.push('• ' + oT('ownerTokensLine', { lane: LANE[l.lane] ? oT(LANE[l.lane]) : oLtr(l.lane), turns: l.turns, read: l.readPct, input: kt(l.input), write: kt(l.cacheWrite), output: kt(l.output) })); });
       }
       if(box) box.textContent = lines.join('\n');
-    }catch(e){ if(box) box.textContent = '❌ فشل التقرير: ' + e.message; }
+    }catch(e){ if(box) box.textContent = '❌ ' + oT('ownerCostsFail') + ': ' + oErr(e); }
   };
   /* v-media-purge: «تنظيف التطبيق» عند المالك — يحذف روابط المشاركة الأقدم من ٧ أيّام (الخادم يتحقّق من المالك). */
   window.purgeOldMedia = async function(){
@@ -38744,14 +39300,25 @@ window.updateVersionLabel = function(){
     // (تأكيد وصول التحديث بدل التخمين).
     var __bv = '';
     try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ /* guard-ok */ }
-    el.textContent = 'Omran AI Builder — ' + APP_VERSION
-      + ' · بندل: ' + (__bv || '؟')
-      + ' · سحب: ' + fmt(pull) + pullErr
-      + ' · رفع: ' + fmt(push) + pushErr
-      + ' · سيرفر: ' + srvN
-      + ' · محلي: ' + n
-      + ' · دمج: ' + mrgR
-      + (mrgE ? (' ⚠️' + mrgE) : '');
+    /* v-ver-label (تدقيق ١٨ أكتوبر، لقطتا ٠٢٣ و٠٤٦): العناوين كانت عربيّة في كلّ لغة، والسطر نصّ واحد يقلبه اتّجاه الفقرة
+       و«رفع:» تنفصل عن قيمتها عند الالتفاف. الآن العنوان من القاموس، وكلّ «عنوان: قيمة» span لا يلتفّ ومعزول، والقيمة
+       <bdi dir=ltr> (نصّ لا HTML)؛ الالتفاف بين الأزواج وحدها، وداخل القيمة الطويلة (خطأ) وحدها. */
+    var __L = function(k){ var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? String(v) : k; };
+    var __pairs = [[null, 'Omran AI Builder — ' + APP_VERSION], ['verBundle', __bv || '?'], ['verPull', fmt(pull) + pullErr], ['verPush', fmt(push) + pushErr],
+      ['verServer', String(srvN)], ['verLocal', String(n)], ['verMerge', mrgR + (mrgE ? (' ⚠️' + mrgE) : '')]];
+    el.textContent = '';
+    __pairs.forEach(function(p, i){
+      if (i) el.appendChild(document.createTextNode(' · '));
+      var s = document.createElement('span');
+      s.style.cssText = 'white-space:nowrap;unicode-bidi:isolate';
+      if (p[0]) s.appendChild(document.createTextNode(__L(p[0]) + ': '));
+      var b = document.createElement('bdi');
+      b.setAttribute('dir', 'ltr');
+      b.style.whiteSpace = 'normal';
+      b.textContent = p[1];
+      s.appendChild(b);
+      el.appendChild(s);
+    });
     el.style.display = '';
     if (!window.__verLabelTimer) { window.__verLabelTimer = setInterval(function(){ try{ window.updateVersionLabel(); }catch(e){ __swallow(e, "ui:app-13-stocks-init#8"); } }, 5000); }
   } else {
@@ -45573,8 +46140,14 @@ if(document.readyState === 'loading'){
   'use strict';
 
   var API = '/api/system?action=secrets';
-  function isAr() { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; }
+  // v-owner-i18n: العربيّة للعربيّة وحدها، وباقي اللغات الإنجليزيّة (أساس الاحتياط في التطبيق، v424) — كانت الفرنسيّة وغيرها تُعرض عربيّة.
+  function isAr() { return (localStorage.getItem('aiapp_lang') || 'ar') === 'ar'; }
   function t(ar, en) { return isAr() ? ar : en; }
+  /* v-owner-i18n (تدقيق ١٨ أكتوبر): نتيجة «فحص المفتاح» كانت تُطبع من الخادم عربيّة خامًا في كلّ لغة. الخادم يرجع الآن
+     رمزًا (error) والعربيّ في message، والرمز يُترجَم هنا من قاموس لغة الواجهة؛ وخطأ الشبكة = acctNetError. */
+  function gk(k) { try { if (typeof window.t === 'function') { var v = window.t(k); if (v && v !== k) return String(v); } } catch (e) { /* guard-ok — المترجم لم يجهز فيُعرض الاحتياط */ } return ''; }
+  var ERR_KEYS = { no_github_token: 'ownerVaultNoToken', bad_repo: 'ownerVaultBadRepo', token_rejected: 'ownerVaultRejected' };
+  function netMsg(e) { var m = String((e && e.message) || e || ''); return (/Failed to fetch|NetworkError|Load failed|ERR_NETWORK|Network request failed/i.test(m) && gk('acctNetError')) || m; }
   function tok() { try { return (window.authGet && window.authGet('aiapp_auth_token')) || ''; } catch (e) { return ''; } }
   function el(id) { return document.getElementById(id); }
   function toast(msg) { try { if (typeof window.settingsToast === 'function') window.settingsToast(msg); else alert(msg); } catch (e) { /* guard-ok — التنبيه ترف */ } }
@@ -45586,7 +46159,7 @@ if(document.readyState === 'loading'){
       try { j = await r.json(); } catch (e) { j = null; }
       if (!r.ok) return { ok: false, error: (j && (j.error || j.message)) || ('HTTP ' + r.status) };
       return j || { ok: true };
-    } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+    } catch (e) { return { ok: false, error: netMsg(e) }; }
   }
 
   function fmtDate(ms) {
@@ -45630,11 +46203,11 @@ if(document.readyState === 'loading'){
     box.textContent = t('⏳ يفحص المفتاح مع GitHub…', '⏳ Checking the key with GitHub…');
     var repo = ((el('vaultRepoInput') && el('vaultRepoInput').value) || '').trim();
     var r = await call('test', { repo: repo });
-    if (!r.ok) { box.textContent = '❌ ' + (r.error || ''); return; }
+    if (!r.ok) { box.textContent = '❌ ' + ((ERR_KEYS[r.error] && gk(ERR_KEYS[r.error])) || r.message || r.error || ''); return; }
     box.textContent = (r.login ? ('👤 ' + r.login + '\n') : '')
       + '📦 ' + r.repo + ': ' + (r.readable ? t('قراءة ✅', 'read ✅') : t('قراءة ❌ (المفتاح لا يرى المستودع)', 'read ❌ (key cannot see the repo)'))
       + ' · ' + (r.writable ? t('رفع ✅', 'push ✅') : t('رفع ❌ — الرفع يحتاج Contents: write + Pull requests: write', 'push ❌ — pushing needs Contents: write + Pull requests: write'))
-      + (r.rateLimit ? '\n⏱️ ' + t('حدّ الطلبات: ', 'Rate limit: ') + r.rateLimit : '');
+      + (r.rateLimit ? '\n⏱️ ' + (gk('ownerVaultRate') || t('حدّ الطلبات: {n}/ساعة', 'Rate limit: {n}/hour')).split('{n}').join('\u2066' + r.rateLimit + '\u2069') : '');
   };
 })();
 /* v-cc-chat (أمر عمران ١٤ سبتمبر «الي أريده في المحادثة… مش تخليه قسم بروحه»):

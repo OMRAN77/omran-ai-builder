@@ -679,18 +679,19 @@
 
   <!-- v-secret-vault: خزنة الأسرار — للمالك وحده -->
   <div id="vaultSectionWrap" class="ownerCard" style="display:none;">
-    <div class="ownerCardTitle">🔐 خزنة الأسرار</div>
+    <div class="ownerCardTitle" data-i18n="ownerVaultTitle">🔐 خزنة الأسرار</div>
     <div id="vaultSectionContent">
-      <div style="font-size:12.5px; line-height:1.8; opacity:.85;">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع. الرفع يحتاج توكن بصلاحيّة Contents: write وPull requests: write على المستودع.</div>
+      <!-- v-owner-i18n (تدقيق ١٨ أكتوبر): نصوص صفحة المالك بالـ١٤ لغة عبر data-i18n، ورمزا الصلاحيّتين خارج الترجمة معزولين لا يلتفّان (كانا يتلخبطان مع «و») -->
+      <div style="font-size:12.5px; line-height:1.8; opacity:.85;"><span data-i18n="ownerVaultDesc">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع.</span> <span data-i18n="ownerVaultPerms">الرفع يحتاج توكن بهاتين الصلاحيّتين على المستودع:</span> <bdi dir="ltr" style="white-space:nowrap">Contents: write</bdi> · <bdi dir="ltr" style="white-space:nowrap">Pull requests: write</bdi></div>
       <div id="vaultGhStatus" style="margin-top:10px; font-size:12.5px; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px;">…</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
-        <input type="password" id="vaultGhInput" autocomplete="off" spellcheck="false" placeholder="ghp_… أو github_pat_…" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
-        <button type="button" onclick="vaultSave('github_token')" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">حفظ</button>
-        <button type="button" onclick="vaultClear('github_token')" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">حذف</button>
+        <input type="password" id="vaultGhInput" autocomplete="off" spellcheck="false" placeholder="ghp_… أو github_pat_…" data-i18n-placeholder="ownerVaultTokenPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
+        <button type="button" onclick="vaultSave('github_token')" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="save">حفظ</button>
+        <button type="button" onclick="vaultClear('github_token')" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="bgImgDelete">حذف</button>
       </div>
       <div style="display:flex; gap:8px; margin-top:10px;">
         <input type="text" id="vaultRepoInput" value="OMRAN77/omran-ai-builder" spellcheck="false" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
-        <button type="button" onclick="vaultTest()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">فحص المفتاح</button>
+        <button type="button" onclick="vaultTest()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerVaultTest">فحص المفتاح</button>
       </div>
       <div id="vaultTestBox" style="display:none; margin-top:8px; font-size:12.5px; line-height:1.8; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px; white-space:pre-wrap;"></div>
     </div>
@@ -699,32 +700,32 @@
   <div id="adminSectionWrap" class="ownerCard" style="display:none;">
     <div class="ownerCardTitle" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</div>
     <div id="adminSectionContent">
-      <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;">🔄 تحديث الإحصائيات</button>
+      <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;" data-i18n="ownerStatsRefresh">🔄 تحديث الإحصائيات</button>
       <!-- v-claude-diag: فحص مفتاح كلود الفعلي في الخادم — يحسم «فيه رصيد» من عدمه -->
-      <button type="button" id="adminClaudeDiagBtn" onclick="adminClaudeDiag()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px; margin-inline-start:8px;">👑 فحص مفتاح كلود</button>
+      <button type="button" id="adminClaudeDiagBtn" onclick="adminClaudeDiag()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px; margin-inline-start:8px;" data-i18n="ownerClaudeDiag">👑 فحص مفتاح كلود</button>
       <div id="adminClaudeDiagBox" style="display:none; font-size:12.5px; line-height:1.8; background:var(--panel2); border-radius:var(--r-2); padding:10px 12px; white-space:pre-wrap; word-break:break-all; margin-bottom:10px;"></div>
-      <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "تحديث" لعرض الإحصائيات...</div>
-      <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
+      <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;"><span data-i18n="ownerStatsHint">اضغط "تحديث" لعرض الإحصائيات...</span></div>
+      <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerUsersTitle">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
       <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:320px; overflow-y:auto;"></div>
 
-      <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;">⭐ صلاحيات VIP (بلا حدود)</div>
+      <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerVipTitle">⭐ صلاحيات VIP (بلا حدود)</div>
       <div style="display:flex; gap:8px; margin-top:8px;">
-        <input type="text" id="vipInput" placeholder="إيميل أو اسم مستخدم" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
-        <button type="button" id="vipAddBtn" onclick="addVipUser()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">➕ إضافة</button>
+        <input type="text" id="vipInput" placeholder="إيميل أو اسم مستخدم" data-i18n-placeholder="ownerVipPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
+        <button type="button" id="vipAddBtn" onclick="addVipUser()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerVipAdd">➕ إضافة</button>
       </div>
       <div id="vipListBox" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:240px; overflow-y:auto;"></div>
 
 
-      <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;">🩺 فحص النظام</div>
+      <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerHealthTitle">🩺 فحص النظام</div>
       <div style="display:flex; gap:8px; margin-top:8px;">
-        <button type="button" id="adminHealthBtn" onclick="runHealthCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🩺 افحص الآن</button>
-        <button type="button" id="adminRedisUsageBtn" onclick="redisUsageCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">💾 ما يملأ القاعدة</button>
-        <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🧹 مسح سجل الأخطاء</button>
+        <button type="button" id="adminHealthBtn" onclick="runHealthCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerHealthRun">🩺 افحص الآن</button>
+        <button type="button" id="adminRedisUsageBtn" onclick="redisUsageCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerRedisUsage">💾 ما يملأ القاعدة</button>
+        <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerClearErrors">🧹 مسح سجل الأخطاء</button>
       </div>
       <div style="display:flex; gap:8px; margin-top:8px;">
-        <button type="button" id="adminCostsBtn" onclick="subscriberCostsCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">💵 تكلفة المشتركين هذا الشهر</button>
+        <button type="button" id="adminCostsBtn" onclick="subscriberCostsCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerCosts">💵 تكلفة المشتركين هذا الشهر</button>
       </div>
-      <div id="adminHealthBox" style="margin-top:10px; font-size:12.5px; line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "افحص الآن" لتشغيل الفحص...</div>
+      <div id="adminHealthBox" style="margin-top:10px; font-size:12.5px; line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;"><span data-i18n="ownerHealthHint">اضغط "افحص الآن" لتشغيل الفحص...</span></div>
     </div>
   </div>
 
