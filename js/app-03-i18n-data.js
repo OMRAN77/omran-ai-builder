@@ -1526,6 +1526,9 @@ const I18N = {
     stampThLegends: "أساطير",
     stampThGirly: "بناتي راقي",
     stampThFashion: "فاشن",
+    /* v-work-tabs-labels: وسما زرّي طيّ لوحة الكود وفتحها (aria-label) — كانا عربيّين ثابتين في كلّ اللغات */
+    waCollapseLbl: "طي اللوحة",
+    waReopenLbl: "فتح اللوحة",
     vwUnavailable: 'خدمة تحليل الفيديو متوقّفة مؤقّتًا — لم تُخصم أيّ نقاط. جرّب بعد قليل.',
     vwWriteNo: 'الكتابة على الفيديو نفسه غير متاحة بعد في التطبيق — لم تُخصم أيّ نقاط. أرسل لقطة من الفيديو (أو أيّ صورة) مع الطلب نفسه وأكتبه لك عليها.',
     vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.',
@@ -2232,6 +2235,9 @@ const I18N = {
     stampThLegends: "Legends",
     stampThGirly: "Elegant girly",
     stampThFashion: "Fashion",
+    /* v-work-tabs-labels */
+    waCollapseLbl: "Collapse panel",
+    waReopenLbl: "Open panel",
     vwUnavailable: 'Video analysis is temporarily unavailable — no points were used. Please try again shortly.',
     vwWriteNo: 'Writing on the video itself isn’t available in the app yet — no points were used. Send a screenshot from the video (or any photo) with the same request and I’ll write it on that.',
     vidCancelled: 'Video cancelled — no points were used.',

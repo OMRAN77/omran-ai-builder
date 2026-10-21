@@ -1143,9 +1143,16 @@ function __chatsMergeServer(server, deletedIds){
       var p = list[i];
       if(!p || !p.id) continue;
       var ml = Array.isArray(p.messages) ? p.messages.length : 0;
-      fp += p.id + ':' + ml + ':' + (p.title||'') + ':' + (p.provider||'') + ':' + (Number(p.updatedAt) || 0) + ';';
+      fp += p.id + ':' + ml + ':' + (p.title||'') + ':' + (p.provider||'') + ':' + (Number(p.updatedAt) || 0) + ':' + (p.codeType||'') + ';';
     }
     return fp;
+  };
+  /* v-py-sync (تدقيق ١٨ أكتوبر: مشروع بايثون مرفوع يُفتح من جهاز آخر صفحةَ HTML بلا «تشغيل الكود»): الخادم لا يحفظ codeType،
+     فمشروع بلا نوع يُستنتج نوعه بقاعدة زرّ «تشغيل» (btnRunCode): لا يبدأ بـ«<» وفيه import/def/print = بايثون. ما سواه بلا
+     نوع كما كان (= HTML)، والنوع المحفوظ محلّيًّا لا يُمسّ. والنوع في البصمة أعلاه كي يُحفظ التصحيح ويُعاد الرسم مرّة. */
+  var __pyGuess = function(p){
+    if(p && !p.codeType && typeof p.code === 'string' && p.code
+      && !/^\s*</.test(p.code) && /(^|\n)\s*(import |def |print\()/.test(p.code)) p.codeType = 'python';
   };
   var fpBefore = __fingerprint(state.projects);
   // v381c: بسّط — السيرفر هو المصدر الوحيد.
@@ -1182,9 +1189,11 @@ function __chatsMergeServer(server, deletedIds){
       if(sp.title && !local.title) local.title = sp.title;
       if((Number(sp.updatedAt) || 0) > (Number(local.updatedAt) || 0)) local.updatedAt = Number(sp.updatedAt); // v-chat-order: كتابة من جهاز آخر
       if(sp.code && !local.code) local.code = sp.code;
+      __pyGuess(local); // v-py-sync
       if(sp.provider && !local.provider) local.provider = sp.provider;
       result.push(local);
     } else {
+      __pyGuess(sp); // v-py-sync
       result.push(sp);
     }
   });

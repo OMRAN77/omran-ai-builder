@@ -971,16 +971,33 @@ function omranBuildCodeViewerBar(){
     b.style.borderColor = on ? 'var(--accent,#c9a26a)' : IDLE_BD;
     b.style.color = on ? 'var(--accent,#c9a26a)' : IDLE_FG;
   };
-  bar._resetEdit = function(){ setOn(edt, false); };
+  /* v-code-save (تدقيق ١٨ أكتوبر: «تعديل» بلا علامة): أزرار التحرير والحفظ انتقلت إلى قائمة ⋮ المغلقة بعد النقر، فتمييز setOn
+     عليها لا يُرى. العلامة الظاهرة إطار مضمّن على خانة الكود نفسها ما دام التحرير جاريًا — يزول بالحفظ أو الإغلاق. */
+  var editRing = function(on){
+    try{
+      if(typeof codeEl === 'undefined' || !codeEl) return;
+      codeEl.style.outline = on ? '2px solid var(--accent,#c9a26a)' : '';
+      codeEl.style.outlineOffset = on ? '-2px' : '';
+    }catch(e){ /* guard-ok — علامة بصريّة فقط */ }
+  };
+  bar._resetEdit = function(){ setOn(edt, false); editRing(false); };
 
   /* v-panel-x (المالك ١٠ أكتوبر: «الإكس مسؤول في الصندوق فقط، إلّا إذا أريد أرجعه من عند المحادثة — الطرفين مشبوكين»):
      على الكمبيوتر يقفل ما يعرضه الصندوق لهذه المحادثة بالترتيب — عارض الكود، ثمّ الصورة، ثمّ معاينة تطبيقها —
      ولا يطوي اللوحة (لذلك زرّ الطيّ). يرجع المعروض من المحادثة (نقر الصورة، «استخدم هذا الإصدار»، كود جديد)
-     أو من تبويب المعاينة. الجوّال كما كان. */
+     أو من تبويب المعاينة.
+     v-code-x-mobile (تدقيق ١٨ أكتوبر: ✕ لوحة الكود لا يغلقها في الجوّال): في تخطيط الدرج (mobile-ui أو ≤860) كانت النقرة الأولى
+     تزيل العارض وحده فيبقى الدرج مفتوحًا، والتالية تنقر #waCollapseBtn المخفيّ (طيّه للحاسوب وحده، tokens.css). الآن يغلق
+     العارض إن وُجد ثمّ الدرج نفسه. الحاسوب كما هو. */
   cls.onclick = function(){
-    if(document.getElementById('omranCodeViewer')){ omranCloseCodeViewer(); return; }
-    if(document.documentElement.classList.contains('mobile-ui')){
-      try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+    var drawer = document.documentElement.classList.contains('mobile-ui') || window.innerWidth <= 860;
+    if(document.getElementById('omranCodeViewer')){
+      omranCloseCodeViewer(); /* يزيل علامة التحرير أيضًا (_resetEdit) */
+      if(!drawer) return;
+    }
+    bar._resetEdit();
+    if(drawer){
+      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ __swallow(e, 'ui:code-x-drawer'); }
       return;
     }
     omranPanelCloseShown();
@@ -993,6 +1010,7 @@ function omranBuildCodeViewerBar(){
       try{ if(typeof switchWorkTab === 'function') switchWorkTab('code'); }catch(e){ /* guard-ok */ }
       try{ codeEl.readOnly = false; codeEl.focus(); }catch(e){ /* guard-ok */ }
       setOn(edt, true);
+      editRing(true); // v-code-save
       return;
     }
     /* التلوين يضيف عناصر <i>؛ عند التحرير نرجع للنصّ الخام حتى لا تختلط
@@ -1001,6 +1019,7 @@ function omranBuildCodeViewerBar(){
     p.contentEditable = 'true';
     p.spellcheck = false;
     p.style.background = 'rgba(255,255,255,.03)';
+    p.style.outline = '2px solid var(--accent,#c9a26a)'; p.style.outlineOffset = '-2px'; /* v-code-save: يزول مع العارض */
     p.focus();
     setOn(edt, true);
     var gutTimer = null;
@@ -1018,6 +1037,8 @@ function omranBuildCodeViewerBar(){
     };
   };
 
+  /* v-code-save (تدقيق ١٨ أكتوبر: «حفظ» بلا تأكيد): كان ينادي save() غير موجودة (الموجود محلّيّ داخل شرائح أخرى)،
+     فنصّ العارض لا يُحفظ أبدًا. الآن saveState() — باب كلّ حفظ ومزامنة — ثمّ توست «تم الحفظ» بلغة المستخدم. */
   sav.onclick = function(){
     try{
       var p = document.getElementById('omranCodePre');
@@ -1025,11 +1046,13 @@ function omranBuildCodeViewerBar(){
       codeEl.value = txt;
       var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
       if(cur){ cur.code = txt; }
-      if(typeof save === 'function') save();
+      if(typeof saveState === 'function') saveState();
+      try{ if(typeof settingsToast === 'function') settingsToast(t('acctSaved')); }catch(e){ /* guard-ok — التأكيد ترف */ }
       setOn(sav, true);
       setTimeout(function(){ setOn(sav, false); }, 900);
       if(p){ omranCloseCodeViewer(); return; }
       setOn(edt, false);
+      editRing(false);
       if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview();
     }catch(e){ __swallow(e, 'ui:code-viewer-save'); }
   };
@@ -1065,7 +1088,9 @@ window.omranOpenTextInCodePanel = function(text, title){
     }
     /* خارج الحارس عمدًا: الطبقة قد تكون قائمة والشريط غائبًا. */
     omranBuildCodeViewerBar();
-    var body = String(text || '');
+    /* v-code-crlf (تدقيق ١٨ أكتوبر: أرقام الأسطر لا تطابق ملفّات CRLF): محدّد التعليق //[^\n]* يبتلع \r داخل <i>، ومحلّل HTML
+       يحوّل الـ\r الوحيد سطرًا زائدًا بينما الهامش يعدّ بـ\n. نهايات الأسطر توحَّد قبل العدّ والتلوين. */
+    var body = String(text || '').replace(/\r\n?/g, '\n');
     var lines = body.split('\n').length;
     var nums = [];
     for(var i = 1; i <= lines; i++) nums.push(i);
@@ -1205,9 +1230,23 @@ async function getPyodideInstance(){
           document.head.appendChild(s);
         });
       }
-      const inst = await window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
-      pyodideInstance = inst;
-      return inst;
+      /* v-py-locale (تدقيق ١٨ أكتوبر: بايثون يقول «حدث خطأ» و«exit(1)» حين تكون لغة المتصفّح عربيّة): مُشغِّل بايثون
+         (Emscripten _tzset_js) يأخذ اسم المنطقة الزمنيّة من toLocaleTimeString(undefined, {hour12:false, timeZoneName:'short'})
+         بلغة المتصفّح — بالعربيّة «غرينتش+4» يُقصّ في ٧ بايتات وسط حرف فيفشل بايثون في فكّه وقت الإقلاع (init_fs_encoding).
+         مُثبت بمسبار (ar وar-AE تفشل، en وfr تعمل)، وenv:{LANG:'C.UTF-8'} لا يصلحه. أثناء التحميل وحده يُجاب هذا النداء
+         بعينه بالإنجليزيّة، ثمّ تعود الدالّة كما كانت (بقيّة التطبيق لا تتأثّر). */
+      const __tlt = Date.prototype.toLocaleTimeString;
+      Date.prototype.toLocaleTimeString = function(loc, opt){
+        if(loc === undefined && opt && opt.timeZoneName === 'short') return __tlt.call(this, 'en-US', opt);
+        return __tlt.call(this, loc, opt);
+      };
+      try{
+        const inst = await window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
+        pyodideInstance = inst;
+        return inst;
+      }finally{
+        Date.prototype.toLocaleTimeString = __tlt;
+      }
     })();
   }
   return pyodideLoadingPromise;
@@ -1219,15 +1258,20 @@ async function runPythonCode(code){
   const runBtn = $('#btnRunPython');
   runBtn.disabled = true;
   outputEl.textContent = '';
+  let __pyStage = 'load';
   try{
     const py = await getPyodideInstance();
+    __pyStage = 'run';
     statusEl.textContent = t('pythonRunning');
     py.setStdout({ batched: (s) => { outputEl.textContent += s + '\n'; outputEl.scrollTop = outputEl.scrollHeight; } });
     py.setStderr({ batched: (s) => { outputEl.textContent += s + '\n'; outputEl.scrollTop = outputEl.scrollHeight; } });
     await py.runPythonAsync(code);
     statusEl.textContent = t('pythonDone');
   }catch(err){
-    outputEl.textContent += '\n⚠️ ' + (err.message || err);
+    /* v-py-locale: فشل تحميل البيئة نفسها نصّه إنجليزيّ تقنيّ («Program terminated with exit(1)») لا يخصّ كود المستخدم —
+       يذهب للكونسول وحده ويرى المستخدم سطر الحالة بلغته. خطأ كود المستخدم (Traceback) يبقى ظاهرًا: هو ناتج البرنامج. */
+    if(__pyStage === 'load') console.warn('[python] runtime load failed:', (err && err.message) || err);
+    else outputEl.textContent += '\n⚠️ ' + (err.message || err);
     statusEl.textContent = t('pythonError');
   }finally{
     runBtn.disabled = false;
