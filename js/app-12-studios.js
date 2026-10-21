@@ -384,6 +384,7 @@ async function __safeJson(res){
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; }
+        if(data.error === 'unavailable'){ setStatus(t('svcPaused')); return; } // v-credit-out: رصيد مزوّد الصور نفد
         /* v-decor-fallback: سبب المزوّد (detail) للمالك وحده — مثل v-img-diag-owner؛ غيره يرى الرسالة الودّيّة فقط */
         const __why = (data.detail && typeof omranOwnerUi === 'function' && omranOwnerUi()) ? ' (' + String(data.detail).slice(0, 300) + ')' : '';
         throw new Error((data.error || 'unknown') + __why);
@@ -680,6 +681,7 @@ async function __safeJson(res){
         if(!res.ok || data.error){
           if(data.error === 'daily_limit_reached'){ cmpStatus(t('designAiLimitReached')); break; }
           if(data.error === 'auth_required'){ cmpStatus(t('designAiNeedLogin')); break; }
+          if(data.error === 'unavailable'){ cmpStatus(t('svcPaused')); break; } // v-credit-out: لا يُكمل بقيّة الأساليب على مزوّد متوقّف
           cmpStatus((bT('❌ تعثّر عند ','❌ Failed at ')) + styleTitle(v));
           continue;
         }

@@ -1174,6 +1174,8 @@ function mahaCombinedEditPrompt(value){
   if(clean && edits[edits.length - 1] !== clean) edits.push(clean);
   return { edits, prompt: edits.length <= 1 ? clean : ('طبّق جميع التعديلات التالية مجتمعة على الصورة الأصلية:\n' + edits.map((item, i) => (i + 1) + '. ' + item).join('\n') + '\nلا تغيّر أي شيء آخر.') };
 }
+/* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الصور نفد — مها تقول «الخدمة متوقّفة مؤقّتًا» ولا تعيد؛ الخادم ردّ النقاط */
+const MAHA_IMG_PAUSED = 'The image service is temporarily paused. Tell the user, in their language, that this service is temporarily unavailable and to try again shortly; no points were deducted. Do not retry now.';
 async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontStyle, textColor, rewriteTextOnly, textPosition, removeTextOnly){
   try{
     // «احذف الكتابة/هذا النص» فقط: نرجع للأساس النظيف، بلا محرّك صور.
@@ -1772,13 +1774,13 @@ async function mahaHandleRtFunctionCall(ev){
       output = appGate;
     }else if(ev.name === 'generate_image'){
       const r = await mahaGenerateOrEditImage(args.prompt || '', false, args.text_to_write || '', args.font_style || '', args.text_color || '', false, args.text_position || 'auto', false);
-      output = r.ok ? { ok: true, message: 'Image generated and shown to the user on screen.' } : { ok: false, message: 'Image generation failed: ' + (r.error || 'unknown error') };
+      output = r.ok ? { ok: true, message: 'Image generated and shown to the user on screen.' } : { ok: false, message: r.error === 'unavailable' ? MAHA_IMG_PAUSED : 'Image generation failed: ' + (r.error || 'unknown error') };
     }else if(ev.name === 'edit_image'){
       if(!mahaLastImageBase64){
         output = { ok: false, message: 'No image exists yet in this call to edit - tell the user to first ask you to create one.' };
       }else{
         const r = await mahaGenerateOrEditImage(args.instruction || '', true, args.text_to_write || '', args.font_style || '', args.text_color || '', !!args.rewrite_text_only, args.text_position || 'auto', !!args.remove_text_only);
-        output = r.ok ? { ok: true, message: 'Image edited and shown to the user on screen.' } : { ok: false, message: 'Image edit failed: ' + (r.error || 'unknown error') };
+        output = r.ok ? { ok: true, message: 'Image edited and shown to the user on screen.' } : { ok: false, message: r.error === 'unavailable' ? MAHA_IMG_PAUSED : 'Image edit failed: ' + (r.error || 'unknown error') };
       }
     }else if(ev.name === 'search_web'){
       const searchMsg = await mahaMaybeSearchForced(args.query || '');
@@ -2110,7 +2112,7 @@ async function mahaCallLoop(){
         if(imgResult.ok){
           imgReply = editMode ? t('mahaImageEditedReply') : t('mahaImageReadyReply');
         }else{
-          imgReply = t('mahaImageFailedReply');
+          imgReply = imgResult.error === 'unavailable' ? t('svcPaused') : t('mahaImageFailedReply'); // v-credit-out
         }
         mahaHistory.push({ role: 'assistant', content: imgReply });
         if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);

@@ -484,6 +484,7 @@ function makePoster(s, out, btn){
       var e = d && d.error;
       var msg = e === 'points_insufficient' ? L('رصيدك لا يكفي لتصميم البوستر.', 'Your balance is not enough to design the poster.')
         : e === 'guest_image_used' ? L('سجّل الدخول لتصميم البوستر.', 'Sign in to design the poster.')
+        : (e === 'unavailable' && typeof window.t === 'function') ? window.t('svcPaused') // v-credit-out: رصيد مزوّد الصور نفد
         : (d && d.message_ar) || L('تعذّر تصميم البوستر — حاول مرة أخرى.', 'Could not design the poster — try again.');
       out.innerHTML = '<div class="eduExplain">⚠️ ' + esc(msg) + '</div>';
     });

@@ -20,6 +20,9 @@ function imgErrFriendly(err, isAr, info){
       ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة. افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
       : '⚡ Not enough points for this image. Open Settings → Plans to top up and continue.';
   }
+  /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الصور نفد أو عطب عندنا — «الخدمة متوقّفة مؤقّتًا» بلغة الواجهة، والخادم ردّ النقاط
+     (كان «مشغولة الآن، أعد المحاولة» فيعيد المستخدم ويُخصم ويُردّ مرّة بعد مرّة) */
+  if(err === 'unavailable') return t('svcPaused');
   if(err === 'image_generation_timeout'){
     return isAr
       ? 'تأخر إنشاء الصورة هذه المرة. أعد المحاولة بعد لحظة.'
