@@ -125,14 +125,23 @@ async function probe(opts) {
   const key = vertexKey(opts.env);
   const out = { ok: false, active: !!key, sdk: '', text: null, image: null, models: {}, project: '', errors: [] };
   if (!key) { out.errors.push('GOOGLE_VERTEX_API_KEY غير موجود في هذه البيئة'); return out; }
-  try { out.sdk = require('@google/genai/package.json').version; } catch (e) { /* guard-ok — الإصدار للعرض فقط */ }
+  try { const p = require('path'); out.sdk = JSON.parse(require('fs').readFileSync(p.join(p.dirname(require.resolve('@google/genai')), '..', '..', 'package.json'), 'utf8')).version; } catch (e) { /* guard-ok — الإصدار للعرض فقط */ }
   const ai = opts.client || client(key);
   const projectOf = (x) => { const m = /projects\/(\d{6,})/.exec(String(x || '')); return m ? m[1] : ''; };
   const errText = (e) => { const s = String((e && e.message) || e); if (!out.project) out.project = projectOf(s); return (e && e.status ? e.status + ' ' : '') + s.slice(0, 1500); };
+  /* الاسم يُثبت بنداء حقيقيّ أصغر ما يكون (رمز واحد، نصًّا) — models.get على Vertex Express يردّ 401 «API keys are not supported» (ثبت ٢١ أكتوبر).
+     404 = الاسم غير موجود؛ 200 = موجود؛ 400 عن الوسائط (نموذج صور يرفض النصّ وحده) = موجود */
   for (const name of opts.models || USED_MODELS) {
     const v = toVertexModel(name, opts.env);
-    try { const m = await ai.models.get({ model: v }); out.models[name] = (v === name ? '' : v + ' ← ') + 'ok' + (m && m.displayName ? ' · ' + m.displayName : ''); }
-    catch (e) { out.models[name] = (v === name ? '' : v + ' ← ') + 'لا: ' + errText(e).slice(0, 160); }
+    const tag = v === name ? '' : v + ' ← ';
+    try {
+      const r = await ai.models.generateContent({ model: v, contents: 'hi', config: { maxOutputTokens: 1, temperature: 0, responseModalities: ['TEXT'] } });
+      const j = sdkToRest(r);
+      out.models[name] = tag + 'ok' + (j.modelVersion ? ' · ' + j.modelVersion : '');
+    } catch (e) {
+      const t = errText(e);
+      out.models[name] = tag + (e && e.status === 404 ? 'لا يوجد: ' : (e && e.status === 400 && /modalit|image/i.test(t) ? 'موجود (يقبل الصور فقط): ' : 'لا: ')) + t.slice(0, 220);
+    }
   }
   const t0 = Date.now();
   try {

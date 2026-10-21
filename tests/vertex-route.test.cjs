@@ -148,19 +148,29 @@ test('٦. GOOGLE_VERTEX=off يطفئ المسار مع بقاء المفتاح،
 
 test('٧. المسبار: نصّ وصورة وأسماء النماذج ورقم المشروع من رسائل الخطأ — والمفتاح لا يظهر في ردّه أبدًا', async () => {
   await withEnv({ GOOGLE_VERTEX_API_KEY: 'vk-very-secret' }, async () => {
-    let n = 0;
     const client = { models: {
-      get: async (p) => { if (p.model === 'gemini-3-pro-image') { const e = new Error('{"error":{"code":404,"message":"Publisher Model `projects/123456789/locations/global/publishers/google/models/gemini-3-pro-image` not found. key=vk-very-secret"}}'); e.status = 404; throw e; } return { displayName: p.model }; },
-      generateContent: async (p) => (++n === 1 ? { candidates: [{ content: { parts: [{ text: 'OK' }] } }], usageMetadata: { totalTokenCount: 5 }, modelVersion: p.model }
-        : { candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'A'.repeat(400) } }] } }], usageMetadata: { totalTokenCount: 9 } }),
+      get: async () => { const e = new Error('API keys are not supported by this API'); e.status = 401; throw e; }, /* كما يردّ Vertex Express فعلًا */
+      generateContent: async (p) => {
+        /* فحص الاسم: رمز واحد نصًّا — gemini-3-pro-image غير موجود (404)، وnano-banana موجود لكنّه صور فقط (400) */
+        if (p.config && p.config.maxOutputTokens === 1) {
+          if (p.model === 'gemini-3-pro-image') { const e = new Error('{"error":{"code":404,"message":"Publisher Model `projects/123456789/locations/global/publishers/google/models/gemini-3-pro-image` not found. key=vk-very-secret"}}'); e.status = 404; throw e; }
+          if (p.model === 'gemini-2.5-flash-image') { const e = new Error('{"error":{"code":400,"message":"Model does not support the requested response modalities: text"}}'); e.status = 400; throw e; }
+          return { candidates: [{ content: { parts: [{ text: 'h' }] } }], modelVersion: p.model + '-001' };
+        }
+        return p.config && p.config.responseModalities && p.config.responseModalities[0] === 'IMAGE'
+          ? { candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'A'.repeat(400) } }] } }], usageMetadata: { totalTokenCount: 9 } }
+          : { candidates: [{ content: { parts: [{ text: 'OK' }] } }], usageMetadata: { totalTokenCount: 5 }, modelVersion: p.model };
+      },
     } };
-    const out = await G.probe({ client, models: ['gemini-flash-latest', 'gemini-3-pro-image'] });
+    const out = await G.probe({ client, models: ['gemini-flash-latest', 'gemini-3-pro-image', 'gemini-nano-banana'] });
     assert.equal(out.ok, true);
     assert.equal(out.text.ok, true); assert.equal(out.text.reply, 'OK');
     assert.equal(out.image.ok, true); assert.equal(out.image.mime, 'image/png'); assert.equal(out.image.bytes, 300);
-    assert.equal(out.models['gemini-flash-latest'], 'gemini-3.8-flash ← ok · gemini-3.8-flash');
-    assert.match(out.models['gemini-3-pro-image'], /^لا: 404/);
+    assert.equal(out.models['gemini-flash-latest'], 'gemini-3.8-flash ← ok · gemini-3.8-flash-001', 'الاسم يُثبت بنداء رمز واحد لا بـmodels.get');
+    assert.match(out.models['gemini-3-pro-image'], /^لا يوجد: 404/);
+    assert.match(out.models['gemini-nano-banana'], /^gemini-2\.5-flash-image ← موجود \(يقبل الصور فقط\): 400/);
     assert.equal(out.project, '123456789', 'رقم المشروع من رسالة الخطأ');
+    assert.match(out.sdk, /^\d+\.\d+\.\d+$/, 'إصدار المكتبة يُقرأ رغم exports');
     assert.equal(JSON.stringify(out).includes('vk-very-secret'), false, 'المفتاح لا يُطبع');
   });
   await withEnv({}, async () => { const out = await G.probe({}); assert.equal(out.active, false); assert.equal(out.ok, false); });
