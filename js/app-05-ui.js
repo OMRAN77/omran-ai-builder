@@ -1789,7 +1789,10 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
   const tabs = document.getElementById('tabs');
   if(!wa || !tabs) return;
   const btn = document.createElement('button');
-  btn.id = 'waCollapseBtn'; btn.type = 'button'; btn.setAttribute('aria-label','طي اللوحة');
+  btn.id = 'waCollapseBtn'; btn.type = 'button';
+  /* v-work-tabs-labels (تدقيق ١٨ أكتوبر): الوسم كان «طي اللوحة» عربيًّا ثابتًا في كلّ اللغات — صار مفتاحًا بالـ١٤ لغة،
+     وdata-i18n يجعل applyLanguage يحدّثه عند تبديل اللغة (نمط تبويب المعاينة). */
+  btn.setAttribute('aria-label', t('waCollapseLbl')); btn.setAttribute('data-i18n', '[aria-label]waCollapseLbl');
   btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="15" y1="4" x2="15" y2="20"></line></svg>';
   tabs.insertBefore(btn, tabs.firstElementChild);
   /* v-panel-head: عنوان يبيّن المعروض حاليًا + زرّ نسخ لمحتوى اللوحة.
@@ -1803,8 +1806,10 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
     tabs.appendChild(__ptl);
     var __pcp = document.createElement('button');
     __pcp.id = 'waCopyBtn'; __pcp.type = 'button';
-    __pcp.title = (typeof t === 'function' && t('copyMsgTitle') !== 'copyMsgTitle') ? t('copyMsgTitle') : 'نسخ';
+    /* v-work-tabs-labels: الزرّ ينسخ الكود (أو نصّ اللوحة) لا الردّ — copyMsgTitle «نسخ الردّ» كان المفتاح الخطأ، ويبقى بلغة الإقلاع. */
+    __pcp.title = t('copyCodeTitle');
     __pcp.setAttribute('aria-label', __pcp.title);
+    __pcp.setAttribute('data-i18n-title', 'copyCodeTitle'); __pcp.setAttribute('data-i18n', '[aria-label]copyCodeTitle');
     var __cpIco = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
     var __okIco = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
     __pcp.innerHTML = __cpIco;
@@ -1842,7 +1847,8 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
     }catch(e){ __swallow(e, 'ui:panel-title'); }
   };
   const ro = document.createElement('button');
-  ro.id = 'waReopen'; ro.type = 'button'; ro.setAttribute('aria-label','فتح اللوحة');
+  ro.id = 'waReopen'; ro.type = 'button';
+  ro.setAttribute('aria-label', t('waReopenLbl')); ro.setAttribute('data-i18n', '[aria-label]waReopenLbl'); // v-work-tabs-labels
   /* v-collapse-top: أيقونة اللوحة المقسومة (طلب المالك) بدل السهم */
   ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
   document.body.appendChild(ro);
@@ -1873,18 +1879,20 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
         if(!dd || !bar || bar.children.length < 3) return;
         var edt = bar.children[0], sav = bar.children[1]; /* [2]=إغلاق يبقى */
         window.__codeActionsMoved = true;
-        var moveOne = function(el, label){
+        /* v-code-review-i18n (تدقيق ١٨ أكتوبر: «تعديل · حفظ · نسخ» عربيّة في الإنجليزيّ): الوسم مفتاح بالـ١٤ لغة
+           (codeBarEdit · save · copyCode)، وdata-i18n يحدّثه applyLanguage عند تبديل اللغة أو وصول ملفّ اللغة الكسول. */
+        var moveOne = function(el, key){
           if(!el) return;
           el.classList.add('btn');
           el.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-start;width:100%;background:none;border:none;box-shadow:none;';
-          if(label && !el.querySelector('.btnLabel')){
-            var sp = document.createElement('span'); sp.className = 'btnLabel'; sp.textContent = label; el.appendChild(sp);
+          if(key && !el.querySelector('.btnLabel')){
+            var sp = document.createElement('span'); sp.className = 'btnLabel'; sp.textContent = t(key); sp.setAttribute('data-i18n', key); el.appendChild(sp);
           }
           dd.appendChild(el);
         };
-        moveOne(edt, 'تعديل');
-        moveOne(sav, 'حفظ');
-        moveOne(copyBtn, 'نسخ');
+        moveOne(edt, 'codeBarEdit');
+        moveOne(sav, 'save');
+        moveOne(copyBtn, 'copyCode');
       }catch(e){ /* guard-ok */ }
     };
     setTimeout(window.omranMoveCodeActionsToMenu, 0);

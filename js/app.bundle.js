@@ -12510,7 +12510,10 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
   const tabs = document.getElementById('tabs');
   if(!wa || !tabs) return;
   const btn = document.createElement('button');
-  btn.id = 'waCollapseBtn'; btn.type = 'button'; btn.setAttribute('aria-label','طي اللوحة');
+  btn.id = 'waCollapseBtn'; btn.type = 'button';
+  /* v-work-tabs-labels (تدقيق ١٨ أكتوبر): الوسم كان «طي اللوحة» عربيًّا ثابتًا في كلّ اللغات — صار مفتاحًا بالـ١٤ لغة،
+     وdata-i18n يجعل applyLanguage يحدّثه عند تبديل اللغة (نمط تبويب المعاينة). */
+  btn.setAttribute('aria-label', t('waCollapseLbl')); btn.setAttribute('data-i18n', '[aria-label]waCollapseLbl');
   btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="15" y1="4" x2="15" y2="20"></line></svg>';
   tabs.insertBefore(btn, tabs.firstElementChild);
   /* v-panel-head: عنوان يبيّن المعروض حاليًا + زرّ نسخ لمحتوى اللوحة.
@@ -12524,8 +12527,10 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
     tabs.appendChild(__ptl);
     var __pcp = document.createElement('button');
     __pcp.id = 'waCopyBtn'; __pcp.type = 'button';
-    __pcp.title = (typeof t === 'function' && t('copyMsgTitle') !== 'copyMsgTitle') ? t('copyMsgTitle') : 'نسخ';
+    /* v-work-tabs-labels: الزرّ ينسخ الكود (أو نصّ اللوحة) لا الردّ — copyMsgTitle «نسخ الردّ» كان المفتاح الخطأ، ويبقى بلغة الإقلاع. */
+    __pcp.title = t('copyCodeTitle');
     __pcp.setAttribute('aria-label', __pcp.title);
+    __pcp.setAttribute('data-i18n-title', 'copyCodeTitle'); __pcp.setAttribute('data-i18n', '[aria-label]copyCodeTitle');
     var __cpIco = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
     var __okIco = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
     __pcp.innerHTML = __cpIco;
@@ -12563,7 +12568,8 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
     }catch(e){ __swallow(e, 'ui:panel-title'); }
   };
   const ro = document.createElement('button');
-  ro.id = 'waReopen'; ro.type = 'button'; ro.setAttribute('aria-label','فتح اللوحة');
+  ro.id = 'waReopen'; ro.type = 'button';
+  ro.setAttribute('aria-label', t('waReopenLbl')); ro.setAttribute('data-i18n', '[aria-label]waReopenLbl'); // v-work-tabs-labels
   /* v-collapse-top: أيقونة اللوحة المقسومة (طلب المالك) بدل السهم */
   ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
   document.body.appendChild(ro);
@@ -12594,18 +12600,20 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
         if(!dd || !bar || bar.children.length < 3) return;
         var edt = bar.children[0], sav = bar.children[1]; /* [2]=إغلاق يبقى */
         window.__codeActionsMoved = true;
-        var moveOne = function(el, label){
+        /* v-code-review-i18n (تدقيق ١٨ أكتوبر: «تعديل · حفظ · نسخ» عربيّة في الإنجليزيّ): الوسم مفتاح بالـ١٤ لغة
+           (codeBarEdit · save · copyCode)، وdata-i18n يحدّثه applyLanguage عند تبديل اللغة أو وصول ملفّ اللغة الكسول. */
+        var moveOne = function(el, key){
           if(!el) return;
           el.classList.add('btn');
           el.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-start;width:100%;background:none;border:none;box-shadow:none;';
-          if(label && !el.querySelector('.btnLabel')){
-            var sp = document.createElement('span'); sp.className = 'btnLabel'; sp.textContent = label; el.appendChild(sp);
+          if(key && !el.querySelector('.btnLabel')){
+            var sp = document.createElement('span'); sp.className = 'btnLabel'; sp.textContent = t(key); sp.setAttribute('data-i18n', key); el.appendChild(sp);
           }
           dd.appendChild(el);
         };
-        moveOne(edt, 'تعديل');
-        moveOne(sav, 'حفظ');
-        moveOne(copyBtn, 'نسخ');
+        moveOne(edt, 'codeBarEdit');
+        moveOne(sav, 'save');
+        moveOne(copyBtn, 'copyCode');
       }catch(e){ /* guard-ok */ }
     };
     setTimeout(window.omranMoveCodeActionsToMenu, 0);
@@ -42756,6 +42764,7 @@ if(document.readyState === 'loading'){
     original: null,   /* نسخة التراجع الوحيدة */
     patches: [],
     busy: false,
+    ask: '',          /* v-code-review-limit: الطلب يبقى بعد النتيجة وإعادة الفتح */
   };
 
   function $id(x) { return document.getElementById(x); }
@@ -42763,6 +42772,13 @@ if(document.readyState === 'loading'){
     return String(s == null ? '' : s).replace(/[&<>]/g, function (c) {
       return c === '&' ? '&amp;' : (c === '<' ? '&lt;' : '&gt;');
     });
+  }
+  /* v-code-review-i18n (تدقيق ١٨ أكتوبر: النافذة كلّها عربيّة في الإنجليزيّ): نصوص الواجهة من t() بالـ١٤ لغة (مفاتيح cfx*)،
+     و{n}/{msg}… تُملأ هنا. تعليمة النموذج (buildInstruction) ورأس كتلة الملفّ يبقيان عربيّين — ليسا واجهة. */
+  function tx(k, vars) {
+    var s = (typeof t === 'function') ? String(t(k)) : k;
+    if (vars) Object.keys(vars).forEach(function (n) { s = s.split('{' + n + '}').join(String(vars[n])); });
+    return s;
   }
   function ar() {
     var l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
@@ -42857,10 +42873,18 @@ if(document.readyState === 'loading'){
             if (ln.indexOf('data: ') !== 0) continue;   /* ': ka' نبضة إبقاء */
             var ev;
             try { ev = JSON.parse(ln.slice(6)); } catch (e) { continue; }
+            /* v-code-review-limit: نفاد المجّانيّ/التجربة يصل {tier:'free-limit'|'guest-limit'} ثمّ نصّ الحدّ delta، وحدّ الباقة
+               {error, limit:true} (api/_lib/chat.js). كان النصّ يُعامَل ناتجًا فتقول النافذة «لم يقترح…» — الآن خطأ يحمل الطبقة. */
+            if ((typeof ev.tier === 'string' && /-limit$/.test(ev.tier)) || (ev.error && ev.limit === true)) {
+              var le = new Error(String(ev.error || ev.tier));
+              le.planLimit = true;
+              le.tier = (typeof ev.tier === 'string' && /-limit$/.test(ev.tier)) ? ev.tier : 'plan';
+              throw le;
+            }
             if (ev.error) throw new Error(ev.error);
             if (typeof ev.delta === 'string') { out += ev.delta; onGrow(out.length); }
             else if (typeof ev.patch === 'string') out = ev.patch; /* الخادم يستبدل النصّ */
-            else if (ev.status) onStatus(ev.status);
+            else if (ev.status) onStatus((typeof tStatus === 'function') ? tStatus(ev) : ev.status); /* v656: مفتاح k بلغة الواجهة */
           }
           return pump();
         });
@@ -42922,19 +42946,19 @@ if(document.readyState === 'loading'){
       if (/\.(mjs|cjs|jsx?|ts x?)$/.test(n) || /\.js$/.test(n)) {
         /* eslint-disable no-new-func */
         new Function(code);
-        return { ok: true, msg: 'الصياغة سليمة' };
+        return { ok: true, msg: tx('cfxSyntaxOk') };
       }
-      if (/\.json$/.test(n)) { JSON.parse(code); return { ok: true, msg: 'JSON سليم' }; }
+      if (/\.json$/.test(n)) { JSON.parse(code); return { ok: true, msg: tx('cfxJsonOk') }; }
       if (/\.html?$/.test(n)) {
         var o = (code.match(/<script\b/gi) || []).length;
         var c = (code.match(/<\/script>/gi) || []).length;
-        if (o !== c) return { ok: false, msg: 'وسوم script غير متوازنة: ' + o + ' مفتوحة و' + c + ' مغلقة' };
-        return { ok: true, msg: 'الوسوم متوازنة' };
+        if (o !== c) return { ok: false, msg: tx('cfxTagsBad', { o: o, c: c }) };
+        return { ok: true, msg: tx('cfxTagsOk') };
       }
     } catch (e) {
       return { ok: false, msg: String((e && e.message) || e).slice(0, 200) };
     }
-    return { ok: true, msg: 'لا فحص لهذه الصيغة' };
+    return { ok: true, msg: tx('cfxNoCheck') };
   }
 
   /* ---------- الواجهة ---------- */
@@ -42963,9 +42987,9 @@ if(document.readyState === 'loading'){
       + 'box-shadow:0 20px 60px rgba(0,0,0,.55);overflow:hidden;color:var(--text,#e8eaf1);';
     box.innerHTML =
       '<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);">'
-      + '<span style="font-weight:700;font-size:14px;">مراجعة الكود</span>'
+      + '<span style="font-weight:700;font-size:14px;">' + esc(tx('cfxTitle')) + '</span>'
       + '<span id="cfxStatus" style="flex:1;font-size:12px;color:var(--muted,#98a0b3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>'
-      + '<button type="button" id="cfxX" aria-label="إغلاق" style="background:none;border:0;color:var(--muted,#98a0b3);cursor:pointer;font-size:16px;padding:4px 8px;">✕</button>'
+      + '<button type="button" id="cfxX" aria-label="' + esc(tx('closeTitle')) + '" style="background:none;border:0;color:var(--muted,#98a0b3);cursor:pointer;font-size:16px;padding:4px 8px;">✕</button>'
       + '</div>'
       + '<div id="cfxBody" style="padding:14px 16px;overflow:auto;flex:1;"></div>';
     ov.appendChild(box);
@@ -42979,19 +43003,20 @@ if(document.readyState === 'loading'){
     render(
       '<div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
-      + '<button type="button" id="cfxFileBtn" class="btn" style="padding:8px 14px;">اختر ملفًّا</button>'
-      + '<button type="button" id="cfxCurBtn" class="btn" style="padding:8px 14px;">كود المشروع الحالي</button>'
+      + '<button type="button" id="cfxFileBtn" class="btn" style="padding:8px 14px;">' + esc(tx('cfxPickFile')) + '</button>'
+      + '<button type="button" id="cfxCurBtn" class="btn" style="padding:8px 14px;">' + esc(tx('cfxCurCode')) + '</button>'
       + '<span id="cfxFileName" style="color:var(--muted,#98a0b3);"></span>'
       + '</div>'
       + '<input type="file" id="cfxFile" style="display:none;">'
-      + '<label style="color:var(--muted,#98a0b3);">ما الذي تريد تغييره؟</label>'
-      + '<textarea id="cfxAsk" rows="5" spellcheck="false" placeholder="مثال: احذف التعريف المكرّر للدالّة، وانقل أزرار الشريط إلى tabs، واجعل التلميحات تتبع اللغة."'
+      + '<label style="color:var(--muted,#98a0b3);">' + esc(tx('cfxAskLabel')) + '</label>'
+      + '<textarea id="cfxAsk" rows="5" spellcheck="false" placeholder="' + esc(tx('cfxAskPh')) + '"'
       + ' style="width:100%;box-sizing:border-box;background:var(--panel2,#0d0f14);color:inherit;'
-      + 'border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:10px;font:13px/1.7 inherit;resize:vertical;"></textarea>'
-      + '<button type="button" id="cfxGo" class="btn" style="padding:10px 16px;font-weight:700;">حلّل واقترح التعديلات</button>'
+      /* v-code-review-limit: الاختزال القديم (الحجم/السطر ثمّ inherit عائلةً) غير صالح فيُسقَط كلّه، وتأخذ الخانة خطّ المتصفّح
+         أحاديّ المسافة فتتفرّق الحروف العربيّة. */
+      + 'border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:10px;font:inherit;font-size:13px;line-height:1.7;resize:vertical;"></textarea>'
+      + '<button type="button" id="cfxGo" class="btn" style="padding:10px 16px;font-weight:700;">' + esc(tx('cfxGo')) + '</button>'
       + '<div style="color:var(--muted,#98a0b3);font-size:11.5px;line-height:1.8;">'
-      + 'الملفّ يُرسَل كاملًا في كلّ طلب، فطوله يُحسب من رصيدك. النموذج يعيد تعديلات مفصولة لا الملفّ كاملًا،'
-      + ' وكلّ تعديل يُرفض تلقائيًّا إن لم يطابق نصّه موضعًا واحدًا في ملفّك.'
+      + esc(tx('cfxDisclaimer'))
       + '</div>'
       + '</div>');
 
@@ -42999,35 +43024,66 @@ if(document.readyState === 'loading'){
     $id('cfxFile').onchange = function (e) {
       var f = e.target.files && e.target.files[0];
       if (!f) return;
-      if (f.size > MAX_BYTES) { setStatus('الملفّ أكبر من ' + Math.round(MAX_BYTES / 1024) + ' ك.ب — قسّمه أوّلًا'); return; }
+      if (f.size > MAX_BYTES) { setStatus(tx('cfxTooBig', { n: Math.round(MAX_BYTES / 1024) })); return; }
       var fr = new FileReader();
       fr.onload = function () {
         S.name = f.name; S.text = String(fr.result || ''); S.original = null;
-        $id('cfxFileName').textContent = f.name + ' · ' + S.text.split('\n').length + ' سطر';
+        $id('cfxFileName').textContent = f.name + ' · ' + tx('cfxLines', { n: S.text.split('\n').length });
         setStatus('');
       };
       fr.readAsText(f);
     };
     $id('cfxCurBtn').onclick = function () {
       var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
-      if (!cur || !cur.code) { setStatus('لا يوجد كود في المشروع الحالي'); return; }
+      if (!cur || !cur.code) { setStatus(tx('cfxNoCode')); return; }
       S.name = (cur.codeType === 'python') ? 'project.py' : 'project.html';
       S.text = String(cur.code); S.original = null;
-      $id('cfxFileName').textContent = S.name + ' · ' + S.text.split('\n').length + ' سطر';
+      $id('cfxFileName').textContent = S.name + ' · ' + tx('cfxLines', { n: S.text.split('\n').length });
       setStatus('');
     };
     $id('cfxGo').onclick = run;
+    /* v-code-review-limit: الطلب السابق يعود (بعد «رجوع» أو إعادة فتح النافذة)، وما يُكتب يُحفظ أوّلًا بأوّل. */
+    var askEl = $id('cfxAsk');
+    askEl.value = S.ask || '';
+    askEl.oninput = function () { S.ask = askEl.value; };
     /* v-code-score: ملفّ سُلِّم من وحدة التحليل (omranCodeFixOpenWith) يظهر اسمه فورًا */
-    if (S.name && S.text) $id('cfxFileName').textContent = S.name + ' · ' + S.text.split('\n').length + ' سطر';
+    if (S.name && S.text) $id('cfxFileName').textContent = S.name + ' · ' + tx('cfxLines', { n: S.text.split('\n').length });
+  }
+
+  /* v-code-review-limit: «رجوع» إلى شاشة الاختيار بطلبها — بعد «لا تعديل» والخطأ والحدّ (كانت ✕ وحدها). */
+  function backBtn() {
+    return '<button type="button" id="cfxBack" class="btn" style="padding:9px 16px;">' + esc(tx('back')) + '</button>';
+  }
+  function wireBack() { var b = $id('cfxBack'); if (b) b.onclick = viewPick; }
+
+  /* v-code-review-limit: الحدّ سطر مترجَم وزرّ — الباقات للمسجَّل، والتسجيل للضيف (omranOpenPlans تفرّق بينهما) — كالمحادثة. */
+  function viewLimit(tier) {
+    var guest = tier === 'guest-limit', free = tier === 'free-limit';
+    render('<div style="font-size:13px;line-height:1.9;">'
+      + '<div>' + esc(tx(guest ? 'chatGuestLimitMsg' : (free ? 'chatFreeLimitMsg' : 'plansWhyLimit'))) + '</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">'
+      + '<button type="button" id="cfxPlans" class="btn" style="padding:9px 16px;font-weight:700;">'
+      + esc(tx(guest ? 'tierSignupBtn' : (free ? 'tierUpgradeBtn' : 'pricingSectionTitle'))) + '</button>'
+      + backBtn()
+      + '</div></div>');
+    $id('cfxPlans').onclick = function () {
+      close();
+      try {
+        if (typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat');
+        else if (guest) { var tog = $id('btnAuthToggle'); if (tog) tog.click(); }
+      } catch (e) { if (window.__swallow) window.__swallow(e, 'codefix:plans'); }
+    };
+    wireBack();
   }
 
   function run() {
     var ask = ($id('cfxAsk').value || '').trim();
-    if (!S.text) { setStatus('اختر ملفًّا أوّلًا'); return; }
-    if (!ask) { setStatus('اكتب ما تريد تغييره'); return; }
+    if (!S.text) { setStatus(tx('cfxNeedFile')); return; }
+    if (!ask) { setStatus(tx('cfxNeedAsk')); return; }
+    S.ask = ask;
     S.busy = true;
     render('<div style="font-size:13px;color:var(--muted,#98a0b3);line-height:2;">'
-      + '<div id="cfxProg">يقرأ الملفّ…</div></div>');
+      + '<div id="cfxProg">' + esc(tx('cfxReading')) + '</div></div>');
     setStatus('');
 
     var fileBlock = '[الملفّ تحت المراجعة — ' + S.name + ']\n'
@@ -43036,21 +43092,27 @@ if(document.readyState === 'loading'){
 
     askModel(instruction, fileBlock,
       function (st) { var p = $id('cfxProg'); if (p) p.textContent = st; },
-      function (n) { var p = $id('cfxProg'); if (p) p.textContent = 'يكتب التعديلات… ' + n + ' حرفًا'; }
+      function (n) { var p = $id('cfxProg'); if (p) p.textContent = tx('cfxWriting', { n: n }); }
     ).then(function (raw) {
       S.busy = false;
       var r = parsePatches(raw);
       if (r.none || !r.list.length) {
-        render('<div style="font-size:13px;line-height:1.9;">لم يقترح النموذج أيّ تعديل.'
+        render('<div style="font-size:13px;line-height:1.9;">' + esc(tx('cfxNoPatch'))
           + '<pre style="white-space:pre-wrap;color:var(--muted,#98a0b3);font-size:12px;margin-top:10px;">'
-          + esc(String(raw).split(CS).join('://').slice(0, 1200)) + '</pre></div>');
+          + esc(String(raw).split(CS).join('://').slice(0, 1200)) + '</pre>'
+          + '<div style="margin-top:12px;">' + backBtn() + '</div></div>');
+        wireBack();
         return;
       }
       S.patches = scorePatches(S.text, r.list);
       viewPatches();
     }).catch(function (e) {
       S.busy = false;
-      render('<div style="font-size:13px;color:#e88;">تعذّر التحليل: ' + esc(String((e && e.message) || e)) + '</div>');
+      if (e && e.planLimit) { viewLimit(e.tier); return; }
+      render('<div style="font-size:13px;line-height:1.9;">'
+        + '<div style="color:#e88;">' + esc(tx('cfxError', { msg: String((e && e.message) || e) })) + '</div>'
+        + '<div style="margin-top:12px;">' + backBtn() + '</div></div>');
+      wireBack();
     });
   }
 
@@ -43060,14 +43122,14 @@ if(document.readyState === 'loading'){
       var p = S.patches[i];
       var good = p.hits === 1;
       if (good) okN++; else badN++;
-      var tag = good ? '<span style="color:#7ac07a;">مطابقة واحدة</span>'
+      var tag = good ? '<span style="color:#7ac07a;">' + esc(tx('cfxMatchOne')) + '</span>'
         : (p.hits === 0
-          ? '<span style="color:#e88;">لم يُعثر على النصّ القديم — مرفوضة</span>'
-          : '<span style="color:#e8b45a;">' + p.hits + ' مواضع — غامضة، مرفوضة</span>');
+          ? '<span style="color:#e88;">' + esc(tx('cfxMatchNone')) + '</span>'
+          : '<span style="color:#e8b45a;">' + esc(tx('cfxMatchMany', { n: p.hits })) + '</span>');
       h += '<div style="border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;margin-bottom:8px;">'
         + '<label style="display:flex;gap:8px;align-items:flex-start;cursor:' + (good ? 'pointer' : 'default') + ';">'
         + '<input type="checkbox" data-i="' + i + '" class="cfxChk"' + (good ? ' checked' : ' disabled') + '>'
-        + '<span style="flex:1;"><b style="font-size:12.5px;">' + esc(p.why || 'تعديل') + '</b><br>'
+        + '<span style="flex:1;"><b style="font-size:12.5px;">' + esc(p.why || tx('cfxPatch')) + '</b><br>'
         + '<span style="font-size:11.5px;">' + tag + '</span></span></label>'
         + '<pre style="margin:8px 0 0;max-height:150px;overflow:auto;background:var(--panel2,#0d0f14);'
         + 'border-radius:8px;padding:8px;font:11.5px/1.6 ui-monospace,Menlo,Consolas,monospace;'
@@ -43078,11 +43140,11 @@ if(document.readyState === 'loading'){
     }
     render('<div style="font-size:13px;">'
       + '<div style="margin-bottom:10px;color:var(--muted,#98a0b3);">'
-      + okN + ' تعديلًا صالحًا' + (badN ? ' · ' + badN + ' مرفوضة' : '') + '</div>'
+      + esc(tx('cfxValidN', { n: okN })) + (badN ? ' · ' + esc(tx('cfxRejectedN', { n: badN })) : '') + '</div>'
       + h
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">'
-      + '<button type="button" id="cfxApply" class="btn" style="padding:9px 16px;font-weight:700;">طبّق المحدّد</button>'
-      + '<button type="button" id="cfxBack" class="btn" style="padding:9px 16px;">رجوع</button>'
+      + '<button type="button" id="cfxApply" class="btn" style="padding:9px 16px;font-weight:700;">' + esc(tx('cfxApply')) + '</button>'
+      + backBtn()
       + '</div></div>');
     $id('cfxBack').onclick = viewPick;
     $id('cfxApply').onclick = apply;
@@ -43106,9 +43168,9 @@ if(document.readyState === 'loading'){
     var chk = syntaxCheck(S.name, text);
     if (!chk.ok) {
       render('<div style="font-size:13px;line-height:1.9;">'
-        + '<div style="color:#e88;font-weight:700;">لم أحفظ شيئًا — الملفّ الناتج لا يُصرَّف.</div>'
+        + '<div style="color:#e88;font-weight:700;">' + esc(tx('cfxNotSaved')) + '</div>'
         + '<div style="color:var(--muted,#98a0b3);margin-top:6px;">' + esc(chk.msg) + '</div>'
-        + '<button type="button" id="cfxBack2" class="btn" style="margin-top:12px;padding:9px 16px;">رجوع للتعديلات</button>'
+        + '<button type="button" id="cfxBack2" class="btn" style="margin-top:12px;padding:9px 16px;">' + esc(tx('cfxBackToEdits')) + '</button>'
         + '</div>');
       $id('cfxBack2').onclick = viewPatches;
       return;
@@ -43117,13 +43179,13 @@ if(document.readyState === 'loading'){
     S.text = text;
     var lines = text.split('\n').length;
     render('<div style="font-size:13px;line-height:1.9;">'
-      + '<div style="color:#7ac07a;font-weight:700;">طُبّق ' + done + ' تعديلًا'
-      + (skipped ? ' · تُخطّي ' + skipped + ' لتغيّر موضعها' : '') + '</div>'
-      + '<div style="color:var(--muted,#98a0b3);">' + esc(chk.msg) + ' · ' + lines + ' سطرًا</div>'
+      + '<div style="color:#7ac07a;font-weight:700;">' + esc(tx('cfxAppliedN', { n: done }))
+      + (skipped ? ' · ' + esc(tx('cfxSkippedN', { n: skipped })) : '') + '</div>'
+      + '<div style="color:var(--muted,#98a0b3);">' + esc(chk.msg) + ' · ' + esc(tx('cfxLines', { n: lines })) + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">'
-      + '<button type="button" id="cfxDl" class="btn" style="padding:9px 16px;font-weight:700;">تنزيل الملفّ</button>'
-      + '<button type="button" id="cfxToProj" class="btn" style="padding:9px 16px;">ضعه في كود المشروع</button>'
-      + '<button type="button" id="cfxUndo" class="btn" style="padding:9px 16px;">تراجع</button>'
+      + '<button type="button" id="cfxDl" class="btn" style="padding:9px 16px;font-weight:700;">' + esc(tx('cfxDownload')) + '</button>'
+      + '<button type="button" id="cfxToProj" class="btn" style="padding:9px 16px;">' + esc(tx('cfxToProject')) + '</button>'
+      + '<button type="button" id="cfxUndo" class="btn" style="padding:9px 16px;">' + esc(tx('cfxUndo')) + '</button>'
       + '</div></div>');
 
     $id('cfxDl').onclick = function () {
@@ -43137,13 +43199,13 @@ if(document.readyState === 'loading'){
     $id('cfxToProj').onclick = function () {
       try {
         var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
-        if (!cur) { setStatus('لا يوجد مشروع مفتوح'); return; }
+        if (!cur) { setStatus(tx('cfxNoProject')); return; }
         cur.code = S.text;
         if (typeof codeEl !== 'undefined' && codeEl) codeEl.value = S.text;
         if (typeof saveState === 'function') saveState();
         if (typeof renderCodeAndPreview === 'function') renderCodeAndPreview();
-        setStatus('نُقل إلى كود المشروع');
-      } catch (e) { setStatus('تعذّر النقل'); }
+        setStatus(tx('cfxMoved'));
+      } catch (e) { setStatus(tx('cfxMoveFail')); }
     };
     $id('cfxUndo').onclick = function () {
       if (S.original == null) return;
@@ -43161,12 +43223,15 @@ if(document.readyState === 'loading'){
     b.className = 'btn';
     b.id = 'btnCodeFix';
     b.type = 'button';
-    b.title = 'مراجعة الكود بالذكاء الاصطناعي';
+    /* v-code-review-i18n: الوسم وتلميحه بلغة الواجهة، وdata-i18n يحدّثهما applyLanguage عند تبديل اللغة. */
+    b.title = tx('codeReviewTip');
+    b.setAttribute('data-i18n-title', 'codeReviewTip');
     b.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"'
       + ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'
       + ' stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline>'
-      + '<polyline points="8 6 2 12 8 18"></polyline></svg> <span class="btnLabel">مراجعة</span>';
-    b.onclick = function (e) { e.stopPropagation(); open(); };
+      + '<polyline points="8 6 2 12 8 18"></polyline></svg> <span class="btnLabel" data-i18n="codeReviewMenu">'
+      + esc(tx('codeReviewMenu')) + '</span>';
+    b.onclick = function (e) { e.stopPropagation(); closeTabsMenu(); open(); };
     dd.appendChild(b);
     return true;
   }
@@ -43176,14 +43241,16 @@ if(document.readyState === 'loading'){
      المبنيّ من أعلى المشاكل، فيبدأ المستخدم من شاشة الرقع مباشرةً. */
   window.omranCodeFixOpenWith = function (name, text, ask) {
     S.name = String(name || 'file.txt'); S.text = String(text || ''); S.original = null; S.patches = [];
+    S.ask = String(ask || '');
     open();
     var a = $id('cfxAsk');
     if (a && ask) a.value = String(ask);
   };
 
+  /* المؤقّت tm لا t: «var t» في هذه الدالّة كان يحجب t() العامّة (رفع var) فتنكسر كلّ ترجمة هنا. */
   if (!mount()) {
     var n = 0;
-    var t = setInterval(function () { if (mount() || ++n > 40) clearInterval(t); }, 300);
+    var tm = setInterval(function () { if (mount() || ++n > 40) clearInterval(tm); }, 300);
   }
 })();
 // 📺 تلفزيون عمران — دليل قنوات عالمي بمصادر بث مباشر رسمية فقط (HLS/DASH).
