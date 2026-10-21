@@ -140,7 +140,10 @@ html[data-mode="light"]:not(.mobile-ui):not(.bgimg) #sectionsToolsPopup .ptGrid 
   background:linear-gradient(to top, rgba(0,0,0,.8) 0%, rgba(0,0,0,.45) 55%, rgba(0,0,0,0) 100%)!important; pointer-events:none;
 }
 html #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto .tcSub{display:none!important;} /* السهم الدائريّ غير موجود في هذه البطاقات أصلًا (v-tools-shelves) */
+/* v-nav-cards-menus (تدقيق ١٨–١٩ أكتوبر): سطران لا سطر — الاسم الإنجليزيّ الطويل كان يُقصّ «Construction &…»، والقرار طلب الاسم
+   فوق الصورة لا سطرًا واحدًا. والشارة الحيّة (الفجر/الأسهم، v-live-cards) كانت في الزاوية السفلى نفسها تحت الاسم — صارت أعلى الصورة. */
 html #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto .btnLabel,
 html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto .btnLabel{
-  -webkit-line-clamp:1; color:#f3d77a!important; text-shadow:0 1px 3px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.6);
+  -webkit-line-clamp:2; color:#f3d77a!important; text-shadow:0 1px 3px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.6);
 }
+html #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto.tcTxt .tcLive{inset-block-start:8px; inset-block-end:auto; z-index:1;}

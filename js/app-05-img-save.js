@@ -133,10 +133,10 @@
       op.textContent = gtx('imgOpenBtn', '🔗 فتح', '🔗 Open');
       row.appendChild(op);
     }
-    const sub = document.createElement('div');
-    sub.style.cssText = 'margin-top:10px;font-size:11px;color:#9a9a9e;text-align:center;direction:ltr;';
-    sub.textContent = 'link unavailable' + (why ? ' · ' + why.slice(0, 60) : '');
-    sheet.appendChild(head); sheet.appendChild(row); sheet.appendChild(sub);
+    /* v-nav-cards-menus: سطر «link unavailable · Failed to fetch» كان إنجليزيًّا خامًّا بكلّ اللغات ويكشف نصّ الخطأ التقنيّ —
+       الورقة بزرّيها تكفي، والسبب للسجلّ */
+    if(why) console.warn('[img-save] link unavailable', String(why).slice(0, 200));
+    sheet.appendChild(head); sheet.appendChild(row);
     document.body.appendChild(sheet);
     setTimeout(function(){ try{ sheet.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } }, 120000);
     return true;

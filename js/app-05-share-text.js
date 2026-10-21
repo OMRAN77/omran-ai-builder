@@ -55,8 +55,9 @@
       b.onclick = function(){ if(a.copy){ if(copyText(text)) toast(tt('msgShareCopied', 'نُسخ الردّ — الصقه في التطبيق الذي تريده', 'Reply copied — paste it in the app you want')); close(); return; } openExternal(a.u); close(); };
       gr.appendChild(b);
     });
-    /* طابع الإصدار (رمادي صغير) — للتشخيص من لقطة الشاشة */
-    try{
+    /* طابع الإصدار (رمادي صغير) — للتشخيص من لقطة الشاشة. v-nav-cards-menus: للمالك وحده كأدوات التشخيص الأخرى (v-owner-solo) —
+       كان يظهر لكلّ مستخدم نصًّا لاتينيًّا تقنيًّا «v e77f4e30 · share:no» */
+    if(typeof omranOwnerUi === 'function' && omranOwnerUi()) try{
       var sc = document.querySelector('script[src*="app.bundle.js"]');
       var vv = sc ? (String(sc.getAttribute('src') || '').split('v=')[1] || '') : '';
       var vd = document.createElement('div'); vd.style.cssText = 'margin-top:8px;font-size:10px;opacity:.45;text-align:center;direction:ltr;';

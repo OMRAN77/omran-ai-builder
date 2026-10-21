@@ -134,7 +134,11 @@
   }
   .hist-item:hover{color:var(--text);}
   .hist-item.active{color:var(--text); font-weight:700;}
-  .hist-item .hist-title{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .hist-item .hist-title{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; unicode-bidi:plaintext;}
+  /* v-hist-title-bidi (تدقيق ١٨ أكتوبر): العنوان محتوى المستخدم بأيّ لغة — كان يأخذ اتّجاه الصفحة فينقصّ أوّل العنوان العربيّ في الواجهة
+     الإنجليزيّة (وأوّل الإنجليزيّ في العربيّة). plaintext يعطيه اتّجاه محتواه فيبدأ من أوّله وتقع النقاط في آخره، والمحاذاة تبقى بجهة الصفحة. */
+  html[dir="rtl"] .hist-item .hist-title{text-align:right;}
+  html[dir="ltr"] .hist-item .hist-title{text-align:left;}
   .hist-item .hist-del{
     flex:none; opacity:.5; background:none; border:none; color:inherit; cursor:pointer;
     font-size: var(--fs-3); padding:2px 4px; border-radius:var(--r-1); transition:all .15s ease; line-height:1;
@@ -367,9 +371,13 @@
     background:#000000; border:1px solid rgba(255,255,255,.09); border-radius:var(--r-3);
     box-shadow:0 10px 34px rgba(0,0,0,.65); padding:6px; z-index:2000;
     flex-direction:column; gap:1px; min-width:170px;
+    /* v-plus-fit (تدقيق ١٨ أكتوبر): القائمة مطلقة داخل #plusToolsWrap الضيّق فكان عرضها يتقلّص إلى min-width فيلتفّ البند الطويل
+       («Text & sound on video») سطرين في الوسط — الآن بعرض أطول بند وسقفها الشاشة */
+    width:max-content; max-width:calc(100vw - 24px);
   }
   #plusToolsPopup.show{display:flex;}
-  #plusToolsPopup .btn{width:100%; justify-content:flex-start; background:none; border:none; box-shadow:none; font-size: var(--fs-3); gap:7px; padding:6px 8px; min-height:0; line-height:1.3;}
+  /* v-plus-fit: خطّ الصفحة ومن بداية السطر لكلّ البنود — كانت أزرار .btn بخطّ المتصفّح (Arial) وتتوسّط، و«إنشاء صورة» (omModeItem) وحدها بخطّ الصفحة */
+  #plusToolsPopup .btn{width:100%; justify-content:flex-start; background:none; border:none; box-shadow:none; font-size: var(--fs-3); gap:7px; padding:6px 8px; min-height:0; line-height:1.3; font-family:inherit; text-align:start;}
   #plusToolsPopup .btn:hover{background:rgba(var(--accent-tint-rgb),.12);}
   #plusToolsPopup .btn .btnLabel{display:inline-flex !important;}
   #plusToolsPopup .btn svg, #btnPlusTools svg, #btnMic svg{flex:0 0 auto; display:block;}
@@ -1333,6 +1341,11 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
    قاعدة `#sidebar > *` تفرض position:relative على أبناء الدرج، فنُعيد absolute هنا. */
 html.mobile-ui #sidebarCloseBtn{ display:inline-flex; position:absolute !important; inset-inline:auto !important; right:auto !important; left:8px !important; }
 html:not(.mobile-ui) #sidebarCloseBtn{ display:inline-flex; top:12px; }
+/* v-arrow-ltr (تدقيق ١٨ أكتوبر): «اليسار» في الدرج العربيّ (يمين الشاشة) هو طرفه الداخليّ بعيدًا عن الشعار؛ في الإنجليزيّ الدرج يسارًا
+   والشعار يبدأ من اليسار فوقع السهم داخل حرف O. المرآة: الطرف الداخليّ يمين. والسهم (›) يشير إلى جهة خروج الدرج/طيّ العمود — يسارًا
+   في الإنجليزيّ، على الجوّال والحاسوب. العربيّ كما قرّره المالك بلا تغيير. */
+html.mobile-ui[dir="ltr"] #sidebarCloseBtn{ left:auto !important; right:8px !important; }
+html[dir="ltr"] #sidebarCloseBtn svg{ transform:scaleX(-1); }
 #sidebarCloseBtn:active{ opacity:.65; }
 
 /* v-sb-collapse (طلب المالك: السهم على الكمبيوتر كمان): طيّ عمود القائمة على سطح

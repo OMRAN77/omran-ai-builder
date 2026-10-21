@@ -9936,10 +9936,10 @@ function renderMessages(keepScroll){
       op.textContent = gtx('imgOpenBtn', '🔗 فتح', '🔗 Open');
       row.appendChild(op);
     }
-    const sub = document.createElement('div');
-    sub.style.cssText = 'margin-top:10px;font-size:11px;color:#9a9a9e;text-align:center;direction:ltr;';
-    sub.textContent = 'link unavailable' + (why ? ' · ' + why.slice(0, 60) : '');
-    sheet.appendChild(head); sheet.appendChild(row); sheet.appendChild(sub);
+    /* v-nav-cards-menus: سطر «link unavailable · Failed to fetch» كان إنجليزيًّا خامًّا بكلّ اللغات ويكشف نصّ الخطأ التقنيّ —
+       الورقة بزرّيها تكفي، والسبب للسجلّ */
+    if(why) console.warn('[img-save] link unavailable', String(why).slice(0, 200));
+    sheet.appendChild(head); sheet.appendChild(row);
     document.body.appendChild(sheet);
     setTimeout(function(){ try{ sheet.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } }, 120000);
     return true;
@@ -10296,8 +10296,9 @@ function renderMessages(keepScroll){
       b.onclick = function(){ if(a.copy){ if(copyText(text)) toast(tt('msgShareCopied', 'نُسخ الردّ — الصقه في التطبيق الذي تريده', 'Reply copied — paste it in the app you want')); close(); return; } openExternal(a.u); close(); };
       gr.appendChild(b);
     });
-    /* طابع الإصدار (رمادي صغير) — للتشخيص من لقطة الشاشة */
-    try{
+    /* طابع الإصدار (رمادي صغير) — للتشخيص من لقطة الشاشة. v-nav-cards-menus: للمالك وحده كأدوات التشخيص الأخرى (v-owner-solo) —
+       كان يظهر لكلّ مستخدم نصًّا لاتينيًّا تقنيًّا «v e77f4e30 · share:no» */
+    if(typeof omranOwnerUi === 'function' && omranOwnerUi()) try{
       var sc = document.querySelector('script[src*="app.bundle.js"]');
       var vv = sc ? (String(sc.getAttribute('src') || '').split('v=')[1] || '') : '';
       var vd = document.createElement('div'); vd.style.cssText = 'margin-top:8px;font-size:10px;opacity:.45;text-align:center;direction:ltr;';
@@ -21597,6 +21598,10 @@ const OMRAN_BADGE_T = {
   lines: { ar:'سطر', en:'lines', fr:'lignes', hi:'पंक्तियाँ', ur:'سطریں', bn:'লাইন',
            ne:'लाइन', id:'baris', fil:'linya', tr:'satır', zh:'行', ru:'строк',
            es:'líneas', ml:'വരികൾ' },
+  /* v-gold-badge-polish (تدقيق ١٨–١٩ أكتوبر: «1 lines»): المفرد حين تقول قاعدة الجمع للّغة «one» — والّتي لا تُصرّف تكرّر الكلمة */
+  line:  { ar:'سطر', en:'line', fr:'ligne', hi:'पंक्ति', ur:'سطر', bn:'লাইন',
+           ne:'लाइन', id:'baris', fil:'linya', tr:'satır', zh:'行', ru:'строка',
+           es:'línea', ml:'വരി' },
   scan:  { ar:'جارٍ التحليل…', en:'Analyzing…', fr:'Analyse…', hi:'विश्लेषण जारी…',
            ur:'تجزیہ جاری…', bn:'বিশ্লেষণ চলছে…', ne:'विश्लेषण हुँदै…', id:'Menganalisis…',
            fil:'Sinusuri…', tr:'Çözümleniyor…', zh:'正在分析…', ru:'Анализ…',
@@ -21608,6 +21613,11 @@ function omranBadgeT(key){
   catch(e){ /* guard-ok: تخزين غير متاح → العربيّة */ }
   const m = OMRAN_BADGE_T[key] || {};
   return m[lg] || m.en || '';
+}
+/* v-gold-badge-polish: هل العدد مفرد في لغة الواجهة؟ (Intl.PluralRules؛ بدونه ١ وحده) */
+function omranBadgeOne(n){
+  try{ return new Intl.PluralRules((typeof lang !== 'undefined' && lang) || 'ar').select(n) === 'one'; }
+  catch(e){ return n === 1; } /* guard-ok — متصفّح بلا PluralRules */
 }
 function omranGoldBadgeCss(){
   if(document.getElementById('omranGoldBadgeCss')) return;
@@ -21621,7 +21631,10 @@ function omranGoldBadgeCss(){
     + 'border-image-source:url("' + SRC + '");'
     + 'border-image-slice:30 124 30 84 fill;'
     + 'border-image-repeat:stretch;'
-    + 'background-color:#0a0c10;background-image:none;';
+    + 'background-color:#0a0c10;background-image:none;'
+    /* v-gold-badge-polish: الخلفيّة الداكنة كانت مستطيلًا حتّى حافّة الإطار فتظهر زواياه خلف الإطار المستدير (ويلامسها ✕ الصورة).
+       الاستدارة تقصّ الخلفيّة وحدها — border-image لا يُقصّ — فالإطار كما هو. */
+    + 'border-radius:' + (H / 2) + 'px;';
   const XBTN =
       '.goldBadgeWrap{position:relative;display:inline-block;line-height:0;}'
     + '.goldBadgeWrap .rm{display:flex !important;position:absolute;top:-7px;inset-inline-end:-7px;'
@@ -21639,13 +21652,14 @@ function omranGoldBadgeCss(){
     + '.goldBadge .gbTxt{flex:1;min-width:0;text-align:start;unicode-bidi:plaintext;}'
     + '.goldBadge .gbName{display:block;unicode-bidi:plaintext;font-size:14px;font-weight:500;color:#f0e9d8;'
     + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;}'
-    + '.goldBadge .gbSub{display:block;font-size:11.5px;color:#9a9384;margin-top:3px;'
+    + '.goldBadge .gbSub{display:block;font-size:11.5px;color:#9a9384;margin-top:3px;line-height:1.3;' /* v-gold-badge-polish: كان يرث line-height:0 من .goldBadgeWrap فارتفاعه صفر في الصندوق */
     + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
     + '.goldBadge > .rm{display:none !important;}'
     + XBTN
     + '.file-chip.goldBadge{box-sizing:border-box;display:inline-flex;align-items:center;box-shadow:none;'
     + 'height:' + H + 'px;min-width:250px;max-width:390px;padding:0 8px;'
     + FRAME + '}'
+    + '.attach-chip.img{margin-inline-end:4px;}' /* v-gold-badge-polish: ✕ الصورة يبرز ٦px في فجوة ٨px فيلامس البطاقة المجاورة */
     + '.msg-attachments::before{content:none !important;}'
     + '.msg-text:has(+ .msg-attachments .goldBadge){display:none !important;}';
   document.head.appendChild(st);
@@ -21672,7 +21686,7 @@ function omranGoldBadgeFill(chip, a){
   sb.textContent = a.pending
     ? (omranBadgeT('scan') + ' ⏳')
     : ('\u2066' + kb + ' KB\u2069 · \u2066' + ln.toLocaleString('en-US') + '\u2069'
-       + ' ' + omranBadgeT('lines') + (a.error ? ' ⚠️' : ''));
+       + ' ' + omranBadgeT(omranBadgeOne(ln) ? 'line' : 'lines') + (a.error ? ' ⚠️' : ''));
   txt.appendChild(nm); txt.appendChild(sb);
   chip.appendChild(txt);
 }
@@ -25249,6 +25263,12 @@ function omranVideoCodeText(code, retryAfter){
   const m = Math.max(1, Math.ceil((Number(retryAfter) || 180) / 60));
   return s ? s.replace('⏳', '').trim().replace('{m}', String(m)) : '';
 }
+/* v-stamps-i18n (تدقيق ١٨–١٩ أكتوبر): فشل الطوابع كان message_ar العربيّ من الخادم لكلّ لغة، و«Stamps design failed.» للباقي.
+   العربيّة كما كانت؛ غيرها نصّ مترجم (النقاط سطر الباقات). */
+function omranStampFailText(d){
+  if(typeof lang === 'undefined' || lang === 'ar') return (d && d.message_ar) || 'تعذّر تصميم الطوابع، حاول مجدداً.';
+  return t(d && d.error === 'points_insufficient' ? 'plansWhyPoints' : 'voiceImageFailed');
+}
 /* v-talkchar-confirm (مراجعة باب المال): الشخصيّة الناطقة تُسعَّر قبل أيّ خطوة مدفوعة — الكرتنة (صورة مدفوعة) كانت تُخصم ثمّ يأتي سؤال
    الفيديو، فالإلغاء يقول «لم تُخصم أيّ نقاط» وقد خُصمت، ومن لا يكفيه رصيده يدفع الكرتون ثمّ يرجع points_insufficient. الإجراء
    veo-price لا يخصم ولا يقفل ولا ينادي المزوّد. يرجع بعد الموافقة (أو بلا سؤال للمالك) فيحمل المتّصل confirmed:true إلى الإنشاء
@@ -25413,8 +25433,8 @@ async function __sendPromptCore(){
   /* v-want-verbs (مسبار التوجيه ١١ أكتوبر، c8: «ودي فيديو لسيارة…»، «نبي فيديو قصير…»، «ابي كليب…» تذهب للمحادثة، و«ممكن تعمل لي فيديو»
      كذلك): أفعال الرغبة الخليجيّة (ابي/ودي/نبي/بدي/ابغا) مع أخواتها القائمة، والمخاطَب المهذّب («تسوي/تعمل») بعد أداة طلب فقط
      (ممكن/تقدر/تكفى/لو سمحت/يا ليت) — «شرح لي طريقة تسوي فيديو» ليست طلبًا. وفرع «فيديو قصير/سينمائي/عن…» كان ميّتًا (\b قبل حرف عربيّ
-     لا يطابق أبدًا): صار بعد أداة طلب («ممكن فيديو قصير لشخص…»)، لا وسط أيّ جملة («رأيك في فيلم عن الحرب» ليست طلب فيديو). */
-  const __VID_MAKE_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|طلعلي|طلع\s+لي|صنعلي|(?:ممكن|تقدر|تقدرين|تكفى|تكفين|لو\s*سمحت|من\s*فضلك|يا\s*ليت|ياليت|يا\s*ريت|ياريت)\s+(?:تسوي|تسوّي|تسويلي|تسوّيلي|تعمل|تعملي|تصنع|تولد|تولّد)|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|(?:أبغى|ابغى|أبغي|ابغي|ابغا|أبغا|بغيت|أريد|اريد|ابي|أبي|ابا|أبا|ودي|ودّي|نبي|نبغى|نبغي|بدي|حاب|أحتاج|احتاج)\s*(?:لي\s*)?(?:فيديو|فيديوهات|كليب|أنيميشن|انيميشن|animation|video|clip|reel|short|(?:فيلم|مقطع|مقاطع|film)(?![^،,.!؟?]*(?:من\s+(?:ال)?(?:قصيد|رواي|سور[ةه]|كتاب|اغني|أغني)|اشوف|أشوف|نشوف|انصحني|أنصحني|صوتي))))|(?:^|[\s،,.!؟?])(?:ممكن|تكفى|تكفين|لو\s*سمحت|من\s*فضلك|يا\s*ليت|ياليت|يا\s*ريت|ياريت)\s+(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}|(?:^|[\s،,.!؟?()\"'«»:؛-])(?:سوّ|سو)\s*(?:لي\s*)?(?:مقطع\s+|مقاطع\s+)?(?:فيديو|فيديوهات|فيلم|كليب|أنيميشن|انيميشن)/i;
+     لا يطابق أبدًا): صار بعد أداة طلب («ممكن فيديو قصير لشخص…»)، لا وسط أيّ جملة («رأيك في فيلم عن الحرب» ليست طلب فيديو). v-vid-make-en (تدقيق ١٨–١٩ أكتوبر): «Make me a video of…» بدأ فيديو مدفوعًا بدل الصانع — الفرع الإنجليزيّ الأوّل يشترط الاسم بعد الفعل مباشرة، فالأخير يقبل me/us وأداة التعريف وصفة قصيرة. */
+  const __VID_MAKE_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|طلعلي|طلع\s+لي|صنعلي|(?:ممكن|تقدر|تقدرين|تكفى|تكفين|لو\s*سمحت|من\s*فضلك|يا\s*ليت|ياليت|يا\s*ريت|ياريت)\s+(?:تسوي|تسوّي|تسويلي|تسوّيلي|تعمل|تعملي|تصنع|تولد|تولّد)|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|(?:أبغى|ابغى|أبغي|ابغي|ابغا|أبغا|بغيت|أريد|اريد|ابي|أبي|ابا|أبا|ودي|ودّي|نبي|نبغى|نبغي|بدي|حاب|أحتاج|احتاج)\s*(?:لي\s*)?(?:فيديو|فيديوهات|كليب|أنيميشن|انيميشن|animation|video|clip|reel|short|(?:فيلم|مقطع|مقاطع|film)(?![^،,.!؟?]*(?:من\s+(?:ال)?(?:قصيد|رواي|سور[ةه]|كتاب|اغني|أغني)|اشوف|أشوف|نشوف|انصحني|أنصحني|صوتي))))|(?:^|[\s،,.!؟?])(?:ممكن|تكفى|تكفين|لو\s*سمحت|من\s*فضلك|يا\s*ليت|ياليت|يا\s*ريت|ياريت)\s+(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}|(?:^|[\s،,.!؟?()\"'«»:؛-])(?:سوّ|سو)\s*(?:لي\s*)?(?:مقطع\s+|مقاطع\s+)?(?:فيديو|فيديوهات|فيلم|كليب|أنيميشن|انيميشن)|(?:^|[\s,.!?()\"'«»:;-])(?:create|make|generate|produce)\s+(?:(?:me|us)\s+)?(?:(?:an?|the)\s+)?(?:(?:short|quick|cinematic)\s+)?(?:video|clip|film|reel|animation)\b/i;
   const __VID_Q_RE    = /^(?:كيف|ما|وش|ايش|أيش|هل|لماذا|why|how|what|can\s+i|where)\s|[؟?]\s*$/;
   if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && typeof window.omranOpenVideoMaker === 'function'){
     promptEl.value = '';
@@ -26243,7 +26263,7 @@ function __friendlyErr(e){
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
           thinkingDiv.remove();
-          cur.messages.push({role:'assistant',content:(__stData&&__stData.message_ar)||(lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.')});
+          cur.messages.push({role:'assistant',content:omranStampFailText(__stData)});
         } else {
           thinkingDiv.remove();
           const __stMime = __stData.mimeType||'image/webp';
@@ -26254,17 +26274,17 @@ function __friendlyErr(e){
       }catch(__e){
         if(__e&&__e.name==='AbortError') return;
         thinkingDiv.remove();
-        cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.'});
+        cur.messages.push({role:'assistant',content:omranStampFailText(null)});
       }
       renderAll(); saveState();
       return;
-    } else if(text && !__ownerProvTurn /* v-owner-solo-all: مزوّد المالك يرسمها بأداته (وبوّابة الرسم المدفوع) لا محرّك الطوابع الثابت */ && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !__IMG_EDIT_VERB_RE.test(text) && !__IMGF_NOT_RE.test(text) && !__adIntentRe.test(text)){
+    } else if(text && !__ownerProvTurn /* v-owner-solo-all: مزوّد المالك يرسمها بأداته (وبوّابة الرسم المدفوع) لا محرّك الطوابع الثابت */ && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)|\b(?:(?:name|school)\s+)?(?:stamps|stickers)\b|\b(?:name|school)\s+labels\b/i.test(text) /* v-stamps-i18n: والإنجليزيّ */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !__IMG_EDIT_VERB_RE.test(text) && !__IMGF_NOT_RE.test(text) && !__adIntentRe.test(text)){
       // 🏷️ v725: طوابع المدرسة — صورة الطفل + اسمه → ورقة طوابع جاهزة للطباعة والقص
       // الصورة: إما مرفقة حالاً (__srcImg) أو آخر صورة معدّلة (cur.lastEditedImage)
       const __stSrcB64   = (__srcImg && __srcImg.dataUrl) ? __srcImg.dataUrl.split(',')[1] : (cur.lastEditedImage && cur.lastEditedImage.b64 ? cur.lastEditedImage.b64 : '');
       const __stSrcMime  = (__srcImg && __srcImg.mime) ? __srcImg.mime : (cur.lastEditedImage && cur.lastEditedImage.mime ? cur.lastEditedImage.mime : 'image/jpeg');
       if(!__stSrcB64){
-        cur.messages.push({role:'assistant',content: lang==='ar' ? 'أرفق صورة الطفل أولاً (زر +) ثم اكتب: طوابع باسم فلان 🏷️' : 'Attach the child\'s photo first (+ button), then write: stamps with the name ...'});
+        cur.messages.push({role:'assistant',content: t('stampNeedPhoto')}); /* v-stamps-i18n */
         renderAll(); saveState();
         return;
       }
@@ -26280,7 +26300,7 @@ function __friendlyErr(e){
         if(/كرتون|كرتوني|كرتونيه|كرتونية/.test(text)) o.style = 'cartoon'; else if(/حقيقي|حقيقيه|حقيقية/.test(text)) o.style = 'real';
         return o;
       })();
-      const __stNameM = text.match(/(?:باسم|بأسم|اسمه|اسمها|اسم|إسم|بي\s*اسم)\s*([^\n.،,؟!]{2,25})/);
+      const __stNameM = text.match(/(?:باسم|بأسم|اسمه|اسمها|اسم|إسم|بي\s*اسم|\bfor\s)\s*([^\n.،,؟!?]{2,25})/i);
       let __stName = __stNameM ? __stNameM[1].trim() : '';
       // 🏫 v729: المدرسة والمادة اختياريتان — «مدرسة كذا» و«مادة كذا»
       const __stSchM = text.match(/(?:مدرسته|مدرستها|مدرسة|مدرسه|المدرسة|المدرسه)\s*[:：]?\s*([^\n.،,؟!]{2,35})/);
@@ -26298,67 +26318,67 @@ function __friendlyErr(e){
         // 🎨 v734: ورقة ثيمات كاملة — overlay picker بدل نص مرقّم
         window.__stPickTheme = window.__stPickTheme || function(){
           return new Promise(function(rs){
-            /* v735 (طلب عمران): أقسام بالعمر والجنس — صغار / شباب +12 / بنات */
+            /* v735 (طلب عمران): أقسام بالعمر والجنس — صغار / شباب +12 / بنات. v-stamps-i18n: k يبقى عربيًّا (ما يُرسل للخادم hint)، والمعروض n بالـ١٤ لغة */
             var __groups=[
-              { t:'👶 للصغار', th:[
-                {k:'فضاء',e:'🚀'},{k:'ديناصور',e:'🦖'},{k:'أميرة',e:'👑'},
-                {k:'رياضة',e:'⚽'},{k:'بحر',e:'🌊'},{k:'سيارة سباق',e:'🏎️'},
-                {k:'يونيكورن',e:'🦄'},{k:'حيوانات',e:'🐼'},{k:'ورود',e:'🌸'},
-                {k:'تراث صقر',e:'🦅'},{k:'روبوتات',e:'🤖'},{k:'حلويات',e:'🍩'},
-                {k:'فراشات',e:'🦋'},{k:'مدرسي كلاسيكي',e:'📚'},
-                {k:'كرومي',e:'🎨'},{k:'ماي ملدي',e:'🐰'},{k:'هالو كاتي',e:'🎀'},{k:'الدببة الثلاثة',e:'🐻'}
+              { t:t('stampGrpKids'), th:[
+                {k:'فضاء',e:'🚀',n:t('stampThSpace')},{k:'ديناصور',e:'🦖',n:t('stampThDino')},{k:'أميرة',e:'👑',n:t('stampThPrincess')},
+                {k:'رياضة',e:'⚽',n:t('stampThSports')},{k:'بحر',e:'🌊',n:t('stampThSea')},{k:'سيارة سباق',e:'🏎️',n:t('stampThRaceCar')},
+                {k:'يونيكورن',e:'🦄',n:t('stampThUnicorn')},{k:'حيوانات',e:'🐼',n:t('stampThAnimals')},{k:'ورود',e:'🌸',n:t('stampThFlowers')},
+                {k:'تراث صقر',e:'🦅',n:t('stampThFalcon')},{k:'روبوتات',e:'🤖',n:t('stampThRobots')},{k:'حلويات',e:'🍩',n:t('stampThSweets')},
+                {k:'فراشات',e:'🦋',n:t('stampThButterflies')},{k:'مدرسي كلاسيكي',e:'📚',n:t('stampThSchool')},
+                {k:'كرومي',e:'🎨',n:t('stampThKuromi')},{k:'ماي ملدي',e:'🐰',n:t('stampThMelody')},{k:'هالو كاتي',e:'🎀',n:t('stampThKitty')},{k:'الدببة الثلاثة',e:'🐻',n:t('stampThBears')}
               ]},
               /* v-stamps-plus: شخصيات الكرتون المشهورة — t.img (صورة البطاقة من assets/stamps/) تظهر متى أُضيفت، وإلّا الإيموجي */
-              { t:'⭐ شخصيات كرتون', th:[
-                {k:'سبونج بوب',e:'🧽'},{k:'توم وجيري',e:'🧀'},{k:'ميكي ماوس',e:'🐭'},
-                {k:'فروزن',e:'❄️'},{k:'سبايدرمان',e:'🕷️'},{k:'باو باترول',e:'🐶'},
-                {k:'بيبا',e:'🐷'},{k:'بوكيمون',e:'⚡'},{k:'ماريو',e:'🍄'},
-                {k:'مينيونز',e:'💛'},{k:'باربي',e:'💖'},{k:'كارز',e:'🏎️'}
+              { t:t('stampGrpCartoon'), th:[
+                {k:'سبونج بوب',e:'🧽',n:t('stampThSponge')},{k:'توم وجيري',e:'🧀',n:t('stampThTomJerry')},{k:'ميكي ماوس',e:'🐭',n:t('stampThMickey')},
+                {k:'فروزن',e:'❄️',n:t('stampThFrozen')},{k:'سبايدرمان',e:'🕷️',n:t('stampThSpider')},{k:'باو باترول',e:'🐶',n:t('stampThPaw')},
+                {k:'بيبا',e:'🐷',n:t('stampThPeppa')},{k:'بوكيمون',e:'⚡',n:t('stampThPokemon')},{k:'ماريو',e:'🍄',n:t('stampThMario')},
+                {k:'مينيونز',e:'💛',n:t('stampThMinions')},{k:'باربي',e:'💖',n:t('stampThBarbie')},{k:'كارز',e:'🏎️',n:t('stampThCars')}
               ]},
-              { t:'🧑 شباب +12', th:[
-                {k:'قيمنق',e:'🎮'},{k:'أنمي',e:'⚔️'},{k:'ستريت',e:'🛹'},
-                {k:'مغامرات وطعوس',e:'🏜️'},{k:'أساطير',e:'🐺'}
+              { t:t('stampGrpTeens'), th:[
+                {k:'قيمنق',e:'🎮',n:t('stampThGaming')},{k:'أنمي',e:'⚔️',n:t('stampThAnime')},{k:'ستريت',e:'🛹',n:t('stampThStreet')},
+                {k:'مغامرات وطعوس',e:'🏜️',n:t('stampThDesert')},{k:'أساطير',e:'🐺',n:t('stampThLegends')}
               ]},
-              { t:'🌸 بنات', th:[
-                {k:'بناتي راقي',e:'🎀'},{k:'فاشن',e:'👜'}
+              { t:t('stampGrpGirls'), th:[
+                {k:'بناتي راقي',e:'🎀',n:t('stampThGirly')},{k:'فاشن',e:'👜',n:t('stampThFashion')}
               ]}
             ];
             var ov=document.createElement('div');
             ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.76);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:12px;';
             var cards='';
             __groups.forEach(function(g){
-              cards+='<div style="font-size:12.5px;font-weight:700;color:#c9b3ff;margin:4px 2px 8px;text-align:right;">'+g.t+'</div>'
+              cards+='<div style="font-size:12.5px;font-weight:700;color:#c9b3ff;margin:4px 2px 8px;text-align:start;">'+g.t+'</div>'
                 +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px;">';
-              g.th.forEach(function(t){
-                cards+='<button class="__stCard" data-k="'+t.k+'" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);border-radius:16px;padding:13px 6px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">'
-                  +(t.img ? '<img src="'+t.img+'" alt="" loading="lazy" style="width:56px;height:56px;object-fit:cover;border-radius:12px" onerror="this.outerHTML=\'<span style=&quot;font-size:34px;line-height:1.1&quot;>'+t.e+'</span>\'">' : '<span style="font-size:34px;line-height:1.1">'+t.e+'</span>')
-                  +'<span style="font-size:11px;color:#ddd;font-weight:600;text-align:center;line-height:1.3">'+t.k+'</span>'
+              g.th.forEach(function(th){
+                cards+='<button class="__stCard" data-k="'+th.k+'" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);border-radius:16px;padding:13px 6px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">'
+                  +(th.img ? '<img src="'+th.img+'" alt="" loading="lazy" style="width:56px;height:56px;object-fit:cover;border-radius:12px" onerror="this.outerHTML=\'<span style=&quot;font-size:34px;line-height:1.1&quot;>'+th.e+'</span>\'">' : '<span style="font-size:34px;line-height:1.1">'+th.e+'</span>')
+                  +'<span style="font-size:11px;color:#ddd;font-weight:600;text-align:center;line-height:1.3">'+th.n+'</span>'
                   +'</button>';
               });
               cards+='</div>';
             });
-            ov.innerHTML='<div dir="rtl" style="width:100%;max-width:430px;max-height:87vh;overflow-y:auto;background:#18181f;border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:18px;color:#fff;font-family:inherit;box-shadow:0 24px 70px rgba(0,0,0,.7);">'
-              +'<div style="font-size:17px;font-weight:700;margin-bottom:3px;text-align:center;">🏷️ اختر ثيم الطوابع</div>'
-              +'<div style="font-size:12px;opacity:.55;margin-bottom:14px;text-align:center;">اضغط وأبدأ التصميم مباشرة</div>'
+            ov.innerHTML='<div dir="'+(document.documentElement.dir||'rtl')+'" style="width:100%;max-width:430px;max-height:87vh;overflow-y:auto;background:#18181f;border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:18px;color:#fff;font-family:inherit;box-shadow:0 24px 70px rgba(0,0,0,.7);">'
+              +'<div style="font-size:17px;font-weight:700;margin-bottom:3px;text-align:center;">'+t('stampTitle')+'</div>'
+              +'<div style="font-size:12px;opacity:.55;margin-bottom:14px;text-align:center;">'+t('stampHint')+'</div>'
               +(function(){ /* v-stamps-plus: خيارات الورقة */
                 var O = window.__stOpts || { count:12, shape:'mixed', style:'real' };
                 var row = function(label, key, items){
-                  return '<div style="margin-bottom:10px;"><div style="font-size:12px;color:#aaa;margin:0 2px 6px;text-align:right;">'+label+'</div><div style="display:flex;gap:6px;">'
+                  return '<div style="margin-bottom:10px;"><div style="font-size:12px;color:#aaa;margin:0 2px 6px;text-align:start;">'+label+'</div><div style="display:flex;gap:6px;">'
                     + items.map(function(it){ var on = String(O[key]) === String(it[0]);
                       return '<button class="__stOpt" data-key="'+key+'" data-v="'+it[0]+'" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation;border:1px solid '+(on?'rgba(168,130,255,.8)':'rgba(255,255,255,.12)')+';background:'+(on?'rgba(168,130,255,.22)':'rgba(255,255,255,.04)')+';color:'+(on?'#e6dcff':'#ccc')+';">'+it[1]+'</button>'; }).join('')
                     + '</div></div>';
                 };
                 var nImg = window.__stImgCount || 1;
                 return '<div style="border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px 10px 4px;margin-bottom:14px;background:rgba(255,255,255,.02);">'
-                  + '<div style="font-size:12px;color:#c9b3ff;margin:0 2px 10px;text-align:right;">📸 '+(nImg > 1 ? (nImg+' صور — طوابع لكلّ واحد + طابع يجمعهم') : 'صورة وحدة — تقدر ترفق لين ٣ صور للإخوان')+'</div>'
-                  + row('عدد الطوابع', 'count', [[6,'6 كبيرة'],[12,'12'],[24,'24 صغيرة']])
-                  + row('الشكل', 'shape', [['mixed','منوّع'],['circle','⚪ دائري'],['square','⬜ مربّع'],['heart','❤️ قلب']])
-                  + row('الوجه', 'style', [['real','📷 حقيقي'],['cartoon','🎨 كرتوني']])
+                  + '<div style="font-size:12px;color:#c9b3ff;margin:0 2px 10px;text-align:start;">📸 '+(nImg > 1 ? t('stampImgMany').replace('{n}', nImg) : t('stampImgOne'))+'</div>'
+                  + row(t('stampSecCount'), 'count', [[6,t('stampCountBig')],[12,'12'],[24,t('stampCountSmall')]])
+                  + row(t('stampSecShape'), 'shape', [['mixed',t('stampShapeMixed')],['circle',t('stampShapeCircle')],['square',t('stampShapeSquare')],['heart',t('stampShapeHeart')]])
+                  + row(t('stampSecFace'), 'style', [['real',t('stampFaceReal')],['cartoon',t('stampFaceCartoon')]])
                   + '</div>';
               })()
               +cards
-              +'<button id="__stSurp" style="width:100%;padding:13px;border-radius:14px;border:1px solid rgba(168,130,255,.4);background:rgba(168,130,255,.1);color:#c9b3ff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:9px;touch-action:manipulation;">✨ فاجئني — اختر لي</button>'
-              +'<button id="__stCnc" style="width:100%;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#777;font-size:13px;cursor:pointer;touch-action:manipulation;">إلغاء</button>'
+              +'<button id="__stSurp" style="width:100%;padding:13px;border-radius:14px;border:1px solid rgba(168,130,255,.4);background:rgba(168,130,255,.1);color:#c9b3ff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:9px;touch-action:manipulation;">'+t('stampSurprise')+'</button>'
+              +'<button id="__stCnc" style="width:100%;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#777;font-size:13px;cursor:pointer;touch-action:manipulation;">'+t('cancel')+'</button>'
               +'</div>';
             document.body.appendChild(ov);
             function done(v){try{document.body.removeChild(ov);}catch(_){ /* guard-ok — cleanup, intentional */ }rs(v);}
@@ -26388,7 +26408,7 @@ function __friendlyErr(e){
           var __stDataOv = await __stResOv.json().catch(()=>({}));
           if(!__stResOv.ok || !__stDataOv.imageBase64){
             thinkingDiv.remove();
-            cur.messages.push({role:'assistant',content:(__stDataOv&&__stDataOv.message_ar)||(lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.')});
+            cur.messages.push({role:'assistant',content:omranStampFailText(__stDataOv)});
           } else {
             thinkingDiv.remove();
             var __stMimeOv = __stDataOv.mimeType||'image/webp';
@@ -26399,7 +26419,7 @@ function __friendlyErr(e){
         }catch(__eOv){
           if(__eOv&&__eOv.name==='AbortError') return;
           thinkingDiv.remove();
-          cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.'});
+          cur.messages.push({role:'assistant',content:omranStampFailText(null)});
         }
         renderAll(); saveState();
         return;
@@ -26411,7 +26431,7 @@ function __friendlyErr(e){
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
           thinkingDiv.remove();
-          cur.messages.push({role:'assistant',content:(__stData&&__stData.message_ar)||(lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.')});
+          cur.messages.push({role:'assistant',content:omranStampFailText(__stData)});
         } else {
           thinkingDiv.remove();
           const __stMime = __stData.mimeType||'image/webp';
@@ -26422,7 +26442,7 @@ function __friendlyErr(e){
       }catch(__e){
         if(__e&&__e.name==='AbortError') return;
         thinkingDiv.remove();
-        cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.'});
+        cur.messages.push({role:'assistant',content:omranStampFailText(null)});
       }
       renderAll(); saveState();
       return;
@@ -30352,7 +30372,10 @@ try{
   let __sbReopen = document.getElementById('sbReopen');
   if(!__sbReopen){
     __sbReopen = document.createElement('button');
-    __sbReopen.id = 'sbReopen'; __sbReopen.type = 'button'; __sbReopen.setAttribute('aria-label', 'فتح القائمة');
+    __sbReopen.id = 'sbReopen'; __sbReopen.type = 'button';
+    /* v-nav-cards-menus: الوصف بمفتاح الترجمة (١٤ لغة) لا بنصّ عربيّ ثابت — data-i18n يعيد كتابته مع كلّ تبديل لغة */
+    try{ const __sbT = t('sidePanelTitle'); __sbReopen.setAttribute('aria-label', __sbT); __sbReopen.title = __sbT; }catch(e){ __swallow(e, "ui:app-10-features#sb-reopen-i18n"); }
+    __sbReopen.setAttribute('data-i18n', '[aria-label]sidePanelTitle'); __sbReopen.setAttribute('data-i18n-title', 'sidePanelTitle');
     __sbReopen.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
     document.body.appendChild(__sbReopen);
   }

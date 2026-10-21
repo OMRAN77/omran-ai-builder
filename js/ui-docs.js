@@ -711,7 +711,8 @@
   (function(){
     var modal=document.getElementById('docModal'), body=document.getElementById('docBody');
     var curFile=null, curImgs=[], docText='', history=[];
-    function open(){ modal.classList.add('open'); document.getElementById('docTitleH').textContent=T('📄 مساعد المستندات','📄 Document Assistant'); intro(); }
+    /* v-nav-cards-menus: dir="rtl" ثابت في index.html كان يقلب الواجهة الإنجليزيّة — الاتّجاه من لغة الواجهة عند كلّ فتح */
+    function open(){ modal.dir=/^(ar|ur)/i.test(AL())?'rtl':'ltr'; modal.classList.add('open'); document.getElementById('docTitleH').textContent=T('📄 مساعد المستندات','📄 Document Assistant'); intro(); }
     function close(){ modal.classList.remove('open'); }
     function intro(){
       curFile=null; curImgs=[]; docText=''; history=[];
