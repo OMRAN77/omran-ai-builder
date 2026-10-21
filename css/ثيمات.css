@@ -129,8 +129,8 @@ html.skin-scene #inputbar #omBottomBar #omModelChip svg, html.skin-scene #inputb
 /* بطاقات الأدوات: الاسم فوق أسفل الصورة الداكن بلون الثيم لا الذهبيّ (tool-card-images.css يُحمَّل آخرًا فالمحدِّد أعلى) */
 html.skin.skin #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto .btnLabel{color:var(--th-tool-label) !important;}
 html.skin.skin #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto{border-color:var(--th-line2) !important;}
-/* صانع الفيديو: ذهبيّه متغيّر (--lux-gold) — لون الثيم حين يُرسم بتصميم يوافق نوع الثيم */
-html.skin.bgimg-dark:not([data-mode="light"]) #videoMakerModal, html.skin.bgimg-light[data-mode="light"] #videoMakerModal{--lux-gold:var(--th-accent-ink); --lux-gold2:var(--th-gold); --lux-line:var(--th-line2);}
+/* صانع الفيديو: ذهبيّه متغيّر (--lux-gold) — لون الثيم في الثيمات الداكنة بالوضع الداكن (أسماء التبويبات فوق صورها الداكنة؛ في الفاتحة يبقى ذهبيّه) */
+html.skin.bgimg-dark:not([data-mode="light"]) #videoMakerModal{--lux-gold:var(--th-accent-ink); --lux-gold2:var(--th-gold); --lux-line:var(--th-line2);}
 /* الأدوات التي لا يكسوها الثيم (صانع الفيديو، الاستوديوهات، التعليم…) تُرسم بتصميم الوضع (أسود أو فاتح). حين يخالف الوضعُ نوعَ الثيم
    كانت تأخذ حبرَ الثيم: أبيض «غروب» على أبيض الوضع الفاتح، وكحليّ «شتاء» على أسود الوضع الداكن (١٫٢:١) — تأخذ الآن كتابة وضعها وأسطحه
    (كأسطح خلفيّات الشاشة، v-bgimg-surface-text). */

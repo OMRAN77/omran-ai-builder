@@ -26,7 +26,7 @@ const htmlOf = (th) => (!th ? [] : th[1] === 'wood' ? ['bgimg', 'bgimg-light', '
   : ['bgimg', th[2] ? 'bgimg-light' : 'bgimg-dark', 'skin', 'skin-' + th[1]].concat(th[3] ? ['skin-scene'] : []));
 
 /* الأنماط المضمَّنة: من وسوم index.html والأجزاء (بالمعرّف)، ومن الكود الذي يكتبها (وسم «محتوى مولّد» في js/app-04-i18n-state.js) */
-const MARKUP = C.rd('index.html') + C.rd('js/partials-core.js') + C.rd('js/partials-settings.js');
+const MARKUP = C.rd('index.html') + C.rd('js/partials-core.js') + C.rd('js/partials-settings.js') + C.rd('js/app-11-video-trends.js');
 const INLINE = new Map();
 for (const m of MARKUP.matchAll(/<[a-z][\w-]*\b([^>]*?)\bid="([\w-]+)"([^>]*)>/g)) {
   const st = (m[1] + ' ' + m[3]).match(/\bstyle="([^"]*)"/); if (st && !INLINE.has(m[2])) INLINE.set(m[2], st[1]);
