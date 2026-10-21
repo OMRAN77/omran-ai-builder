@@ -357,6 +357,14 @@
     statusEl.style.display = text ? 'block' : 'none';
     statusEl.textContent = text || '';
   }
+  /* v-actor-notice (تدقيق ١٨ أكتوبر video-mode-actor «تنبيه «اكتب أول شي…» يطلع فوق خارج الشاشة وما ينشاف»؛ قرار المالك ٢١ أكتوبر «صندوق
+     الممثل في الجوال: إذا كان مخرّب أو مغطّى صلّحه، بدون ما تضيف شي جديد»): في الجوال (≤٨٦٠) عمود المعاينة — وفيه سطر الحالة — فوق الحقول،
+     فالتنبيه يُكتب فوق الشاشة بمئات البكسلات والمستخدم عند زرّ الإنشاء. التنبيه نفسه يُمرَّر إلى العين؛ nearest لا يحرّك شيئًا حين يُرى (الحاسوب).
+     لا في setStatus: تقدّم التوليد يكتب فيه كلّ ثوانٍ فيشدّ المستخدم للأعلى. */
+  function showNotice(text){
+    setStatus(text);
+    try{ if(typeof statusEl.scrollIntoView === 'function') statusEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }catch(e){ __swallow(e, 'video:notice-scroll'); }
+  }
   function ensureLongMinutesOption(show){
     longMinutesOpt = document.getElementById('videoMakerDurationLongMinutesOpt');
     if(show){
@@ -1536,7 +1544,7 @@
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
-          setStatus(bT('🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic engine is limited to the owner account for now.'));
+          showNotice(bT('🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic engine is limited to the owner account for now.')); // v-actor-notice
           return;
         }
         let veoPrompt = text;
@@ -1544,7 +1552,7 @@
           const speechEl = document.getElementById('videoMakerActorSpeech');
           const speech = speechEl ? speechEl.value.trim() : '';
           if(!speech){
-            setStatus(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.'));
+            showNotice(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.')); // v-actor-notice
             return;
           }
           /* v-actor-lipsync (المالك ٢ أكتوبر: «الصوت المتحدث ليس دقيق في اللهجة الإماراتية والكلام عربي ضعيف جدًّا»): Veo يخترع
