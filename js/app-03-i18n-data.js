@@ -484,7 +484,8 @@ const I18N = {
     designAiSuggestBtn: '💡 اقترح لي أفكار',
     designAiSuggesting: '🤔 جاري التفكير بأفكار...',
     designAiSuggestError: '❌ تعذر توليد أفكار، حاول مرة أخرى.',
-    svcPaused: 'الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.', /* v-provider-fail: رفض المزوّد (رصيده أو زحامه) لأدوات القراءة والاقتراح — لا ذنب للمستخدم. بلا رمز: سطر المحادثة يسبقه ⚠️ */
+    svcPaused: 'الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.',
+    imgHourlyLimit: '⏳ وصلت حدّ الصور لهذي الساعة ({max} صورة) — جرّب بعد {m} دقيقة تقريبًا.', vidBusy: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', vidRejected: 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.', /* v-rest-fixes: سقف الصور في الساعة، وبدء الفيديو (زحام · رفض للطلب) — ١٤ لغة */ /* v-provider-fail: رفض المزوّد (رصيده أو زحامه) لأدوات القراءة والاقتراح — لا ذنب للمستخدم. بلا رمز: سطر المحادثة يسبقه ⚠️ */
     designAiSuggestTitle: '💡 أفكار مقترحة من الذكاء الاصطناعي',
     portraitModalTitle: '🎨 أنماط الصور الشخصية',
     portraitDesc: 'ارفع صورتك الشخصية واختر ستايل رسم، وسيحوّلها الذكاء الاصطناعي لهذا الأسلوب. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.',
@@ -2536,6 +2537,7 @@ const I18N = {
     designAiSuggesting: '🤔 Thinking of ideas...',
     designAiSuggestError: '❌ Could not generate ideas, try again.',
     svcPaused: 'This service is temporarily unavailable — please try again shortly.',
+    imgHourlyLimit: '⏳ You\'ve reached this hour\'s image limit ({max} images) — try again in about {m} min.', vidBusy: 'Couldn\'t start the video right now — try again in a moment.', vidRejected: 'This request couldn\'t start a video — change the description or photo and try again.',
     designAiSuggestTitle: '💡 AI-suggested ideas',
     portraitModalTitle: '🎨 Portrait Styles',
     portraitDesc: 'Upload your photo and pick an art style, and AI will transform it. Experimental feature with a small daily limit per account.',

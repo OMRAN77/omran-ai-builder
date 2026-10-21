@@ -3857,6 +3857,8 @@ async function omranMediaIntent(text){
 function omranVideoCodeText(code, retryAfter){
   if(code === 'points_insufficient') return (typeof t === 'function' && t('plansWhyPoints') !== 'plansWhyPoints') ? t('plansWhyPoints') : '';
   if(code === 'unavailable') return t('svcPaused'); // v-credit-out: رصيد مزوّد الفيديو نفد — النقاط رُدّت في الخادم
+  if(code === 'video_busy') return t('vidBusy'); // v-vid-codes: كان النصّ العربيّ في كلّ اللغات
+  if(code === 'video_rejected') return t('vidRejected');
   if(code !== 'video_cooldown') return '';
   const o = (window.__VIDEO_TRENDS && window.__VIDEO_TRENDS.ui && window.__VIDEO_TRENDS.ui.cooldown) || null;
   const s = o ? (o[(typeof lang !== 'undefined' && lang) || 'ar'] || o.en || o.ar || '') : '';
@@ -5091,7 +5093,7 @@ function __friendlyErr(e){
         const __adData = await __adRes.json().catch(()=>({}));
         clearInterval(window.__adProgressTimer);
         if(!__adRes.ok || !__adData.imageBase64){
-          const __errMsg = __adData.error === 'unavailable' ? t('svcPaused') : (__adData.message_ar || __adData.error || 'خطأ غير معروف'); // v-credit-out
+          const __errMsg = __adData.error === 'unavailable' ? t('svcPaused') : (lang === 'ar' ? (__adData.message_ar || 'خطأ غير معروف') : t('voiceImageFailed')); // v-credit-out · v-rest-fixes: message_ar العربيّ في الواجهة الإنجليزيّة
           thinkingDiv.remove(); cur.adMode=null;
           cur.messages.push({role:'assistant',content:lang==='ar'?('تعذّر تصميم الإعلان: '+__errMsg):'Ad design failed: '+__errMsg});
         } else {
@@ -5247,7 +5249,7 @@ function __friendlyErr(e){
       }
       const __tcMotion = __tcChoice.motion, __tcDur = __tcChoice.duration;
       try{
-        let __cartoonB64 = '', __cartoonMime = 'image/png'; await omranTalkPriceCheck(!__alreadyCartoon, __runCtl.signal); /* v-talkchar-confirm: السعر قبل الكرتنة المدفوعة */
+        let __cartoonB64 = '', __cartoonMime = 'image/png', __cartoonErr = null; await omranTalkPriceCheck(!__alreadyCartoon, __runCtl.signal); /* v-talkchar-confirm: السعر قبل الكرتنة المدفوعة */
         if(__alreadyCartoon){
           // الشخصية الجاهزة كرتونية أصلًا — نستخدمها مباشرة بدون تحويل
           __cartoonB64 = __charImg.b64; __cartoonMime = __charImg.mime || 'image/png';
@@ -5262,10 +5264,10 @@ function __friendlyErr(e){
               body: JSON.stringify({ prompt: __cartoonPrompt, editImageBase64: __charImg.b64, editMimeType: __charImg.mime, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
             });
             const __cd = await __cr.json().catch(()=>({}));
-            if(__cr.ok && __cd.imageBase64){ __cartoonB64 = __cd.imageBase64; __cartoonMime = __cd.mimeType || 'image/png'; } else if(__cd.error === 'unavailable') throw new Error(t('svcPaused')); // v-credit-out: رصيد المزوّد نفد — لا «جرّب صورة أوضح» ولا إعادة
+            if(__cr.ok && __cd.imageBase64){ __cartoonB64 = __cd.imageBase64; __cartoonMime = __cd.mimeType || 'image/png'; } else if((__cartoonErr = __cd) && __cd.error === 'unavailable') throw new Error(t('svcPaused')); // v-credit-out: رصيد المزوّد نفد — لا «جرّب صورة أوضح» ولا إعادة
             else if(__cr.status === 402 || (__cr.status === 422 && __cd.retryable === false) || __cd.billed === true) break; // v-unchanged-cap: ردّ نهائيّ (الخصم باقٍ أو الرصيد نفد) — الإعادة التلقائيّة تخصم مرّة ثانية بلا صورة؛ عطل الشبكة المردود يُعاد كما كان
           }
-          if(!__cartoonB64) throw new Error(lang==='ar'?'تعذر تحويل الصورة لكرتون، جرّب صورة أوضح.':'Could not cartoonize the image, try a clearer photo.');
+          if(!__cartoonB64) throw new Error(imgErrFriendly(__cartoonErr && __cartoonErr.error, lang==='ar', __cartoonErr) || (lang==='ar'?'تعذر تحويل الصورة لكرتون، جرّب صورة أوضح.':'Could not cartoonize the image, try a clearer photo.')); /* v-rest-fixes: «جرّب صورة أوضح» كان لكلّ فشل — زحام ونقاط وسقف الساعة */
           cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎨 صارت شخصية كرتونية ✅ الحين أحرّكها تتكلم…':'🎨 Cartoon character ready ✅ now animating it to talk…'), attachments:[{ name:'cartoon.png', isImage:true, mime:__cartoonMime, dataUrl:'data:'+__cartoonMime+';base64,'+__cartoonB64 }] });
           cur.lastEditedImage = { b64: __cartoonB64, mime: __cartoonMime };
         }
