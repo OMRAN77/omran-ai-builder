@@ -20,6 +20,12 @@ html.skin{
   --th-user:rgba(255,255,255,.08); --th-user-line:var(--th-line); --th-user-ink:var(--th-ink);
   --th-ai:rgba(20,20,22,.84); --th-ai-line:var(--th-line2); --th-ai-ink:var(--th-ink); --th-bubble-shadow:0 4px 14px rgba(0,0,0,.22);
   --th-work:#101013; --th-work-ink:var(--th-ink); --th-work-muted:var(--th-muted); --th-foot:transparent;
+  /* v-theme-contrast (المالك ٢١ أكتوبر: «كل ثيم له لون خط ولون حدود من لونه نفسه… التباين ما يقل عن 4.5:1»): ما كان يأخذ لونًا
+     ثابتًا من التطبيق (ذهبيّ الروابط والشرارة وصفّ المالك، والأبيض على لون الثيم، ورماديّ الصفحة داخل الفقاعة) صار من لوحة الثيم.
+     الروابط ورماديّ الفقاعتين، والذهبيّ كتابةً على النوافذ، والكتابة على لون الثيم، والشرارة، وكبسولة الأدوات فوق المشهد */
+  --th-link:var(--th-gold); --th-ai-muted:var(--th-muted); --th-user-muted:var(--th-muted);
+  --th-accent-ink:var(--th-gold); --th-on-accent:var(--th-btn-ink); --th-spark:var(--th-gold);
+  --th-chip:var(--th-field); --th-chip-ink:var(--th-field-ink); --th-chip-muted:var(--th-field-muted); --th-tool-label:var(--th-gold);
   /* متغيّرات التطبيق نفسها: الكتابة والأسطح (الإعدادات والقوائم) من الثيم */
   --text:var(--th-ink) !important; --muted:var(--th-muted) !important; --accent-ink:var(--th-ink) !important;
   --accent:var(--th-gold) !important; --border:var(--th-line2) !important; --omLine:var(--th-line2) !important; --omGold:var(--th-gold) !important;
@@ -76,8 +82,10 @@ html.skin #messages{position:relative; z-index:1;}
 html.skin #messages::before, html.skin #messages::after{display:none !important;}
 html.skin body > header, html.skin #omranBelowComposer, html.skin #messages .msgActions{text-shadow:var(--th-over-shadow);}
 html.skin body > header svg, html.skin #omranBelowComposer svg, html.skin #inputbar #btnPlusTools svg, html.skin #btnMic svg{filter:var(--th-over-drop);}
-html.skin #messages .msg.user{background:var(--th-user) !important; border:1px solid var(--th-user-line) !important; border-radius:18px !important; color:var(--th-user-ink) !important; padding:9px 14px !important; box-shadow:var(--th-bubble-shadow) !important; --text:var(--th-user-ink) !important; text-shadow:none;}
-html.skin #messages .msg.assistant{background:var(--th-ai) !important; border:1px solid var(--th-ai-line) !important; border-radius:16px !important; color:var(--th-ai-ink) !important; padding:12px 16px !important; box-shadow:var(--th-bubble-shadow) !important; --text:var(--th-ai-ink) !important; text-shadow:none;}
+html.skin #messages .msg.user{background:var(--th-user) !important; border:1px solid var(--th-user-line) !important; border-radius:18px !important; color:var(--th-user-ink) !important; padding:9px 14px !important; box-shadow:var(--th-bubble-shadow) !important; --text:var(--th-user-ink) !important; --muted:var(--th-user-muted) !important; text-shadow:none;}
+html.skin #messages .msg.assistant{background:var(--th-ai) !important; border:1px solid var(--th-ai-line) !important; border-radius:16px !important; color:var(--th-ai-ink) !important; padding:12px 16px !important; box-shadow:var(--th-bubble-shadow) !important; --text:var(--th-ai-ink) !important; --muted:var(--th-ai-muted) !important; text-shadow:none;}
+/* v-theme-contrast: الرابط بلون الثيم — index.html (v474) يثبّته ذهبيًّا بـ!important (0,2,2) فكان ذهبيًّا على فقاعة كريميّة ١٫٧:١ */
+html.skin #messages .msg a, html.skin #messages .msg-text a{color:var(--th-link) !important;}
 html.skin #askAllHintTip{background:var(--th-field) !important; color:var(--th-field-ink) !important; border:1px solid var(--th-field-line); text-shadow:none;}
 /* خانة الكتابة والإرسال (محدِّدا الإرسال بمعرّفين كقاعدة التطبيق — فخّ مثبت في PITFALLS) */
 html.skin #composerBox{background:var(--th-field) !important; border:1px solid var(--th-field-line) !important; border-radius:28px !important; box-shadow:0 6px 16px rgba(0,0,0,.18) !important;}
@@ -100,6 +108,36 @@ html.skin #tabs .tab.active{border-color:var(--th-gold) !important;}
 html.skin :is(dialog, #plusToolsPopup, #headerMenuDropdown, #headerUserDropdown, #tabsMenuDropdown, #histItemMenu, .msgMoreMenu, .dlg-actions, #provDropdownPanel, #omModelPopup){background:var(--th-dlg) !important; color:var(--th-ink) !important; --text:var(--th-ink) !important; --muted:var(--th-muted) !important; text-shadow:none;}
 html.skin dialog::backdrop{background:rgba(0,0,0,.5);}
 html.skin select option{background:var(--th-dlg); color:var(--th-ink);}
+
+/* ── v-theme-contrast (المالك ٢١ أكتوبر): كلّ نصّ وأيقونة على سطحه بلون من الثيم، والتباين ≥ ٤٫٥ للنصّ و٣ للأيقونة — يقيسه
+   scripts/theme-contrast-probe.mjs بالبكسلات وtests/theme-contrast.test.cjs بالتتالي ── */
+/* الذهبيّ كتابةً على النوافذ: لون الثيم بدرجة تُقرأ على نافذته (الفاتحة أغمق)، والكتابة على لون الثيم (الاختيار المفعَّل) بحبر أزراره */
+html.skin :is(dialog, #plusToolsPopup, #headerMenuDropdown, #headerUserDropdown, #tabsMenuDropdown, #histItemMenu, .msgMoreMenu, #provDropdownPanel, #omModelPopup){--accent:var(--th-accent-ink) !important;}
+html.skin .bgImgRotOpt.active, html.skin .bgImgOpt.active::after{color:var(--th-on-accent);}
+html.skin .settingsNavRow.settingsNavOwner .settingsNavIcon, html.skin .settingsNavRow.settingsNavOwner .settingsNavLabel{color:var(--th-accent-ink) !important;}
+/* شرارة الأسهم المطويّة (tokens.css: ذهبيّ ثابت #d4af37) بلون الثيم، وسهم إغلاق القائمة على الجوّال بحبر القائمة */
+html.skin #stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{color:var(--th-spark);}
+html.skin.mobile-ui #sidebar #sidebarCloseBtn{color:var(--th-side-ink) !important;}
+/* فوق صورة المشهد مباشرةً (أيقونات الرسالة، وشريحة النموذج والمايك و+ تحت خانة الكتابة): الصورة تتبدّل تحتها فلا لونَ يُقرأ عليها
+   كلّها — كبسولة بلون خانة الكتابة نفسها، وحبرها حبرُ الخانة */
+html.skin-scene #messages .msgActionBar{width:fit-content; padding:3px 10px !important; border-radius:999px !important; background:var(--th-chip) !important; border:1px solid var(--th-field-line) !important; box-shadow:var(--th-bubble-shadow) !important; --muted:var(--th-chip-muted); --accent-ink:var(--th-chip-ink); text-shadow:none;}
+html.skin-scene #inputbar #omBottomBar, html.skin-scene #inputbar .inputbar-tools-below{padding:2px 8px !important; border-radius:999px !important; background:var(--th-chip) !important; border:1px solid var(--th-field-line) !important;}
+/* أزرار الكبسولة وحدها (لا ما في قائمة + المفتوحة داخلها): محدِّدات أعلى من قاعدة --th-over أعلاه (#inputbar .inputbar-tools button و#btnPlusTools) */
+html.skin-scene #inputbar #omBottomBar #omModelChip, html.skin-scene #inputbar .inputbar-tools-below #btnPlusTools, html.skin-scene #inputbar .inputbar-tools-below #btnMic,
+html.skin-scene #inputbar .inputbar-tools-below .inputbar-tools-left > button, html.skin-scene #inputbar .inputbar-tools-below .inputbar-tools-left > .btn{color:var(--th-chip-ink) !important; text-shadow:none !important;}
+html.skin-scene #inputbar #omBottomBar #omModelChip svg, html.skin-scene #inputbar .inputbar-tools-below #btnPlusTools svg, html.skin-scene #inputbar .inputbar-tools-below #btnMic svg{filter:none !important;}
+/* بطاقات الأدوات: الاسم فوق أسفل الصورة الداكن بلون الثيم لا الذهبيّ (tool-card-images.css يُحمَّل آخرًا فالمحدِّد أعلى) */
+html.skin.skin #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto .btnLabel{color:var(--th-tool-label) !important;}
+html.skin.skin #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto{border-color:var(--th-line2) !important;}
+/* صانع الفيديو: ذهبيّه متغيّر (--lux-gold) — لون الثيم حين يُرسم بتصميم يوافق نوع الثيم */
+html.skin.bgimg-dark:not([data-mode="light"]) #videoMakerModal, html.skin.bgimg-light[data-mode="light"] #videoMakerModal{--lux-gold:var(--th-accent-ink); --lux-gold2:var(--th-gold); --lux-line:var(--th-line2);}
+/* الأدوات التي لا يكسوها الثيم (صانع الفيديو، الاستوديوهات، التعليم…) تُرسم بتصميم الوضع (أسود أو فاتح). حين يخالف الوضعُ نوعَ الثيم
+   كانت تأخذ حبرَ الثيم: أبيض «غروب» على أبيض الوضع الفاتح، وكحليّ «شتاء» على أسود الوضع الداكن (١٫٢:١) — تأخذ الآن كتابة وضعها وأسطحه
+   (كأسطح خلفيّات الشاشة، v-bgimg-surface-text). */
+html.skin.bgimg-dark[data-mode="light"] :is(#videoMakerModal, #eduHubModal, #expModal, .xm, #stocksModal, #religionModal, #constructionModal, #portraitStyleSheet, #studioAiModal, #fashionAiModal, #designAiModal, #emailAssistModal){
+  color:var(--text); --text:#1d1a16; --muted:#5f574c; --accent-ink:#1d1a16; --bg:#fbf5e9; --bg2:#fbf5e9; --panel:#fbf5e9; --panel2:#f3ead6; --accent-surface:#efe5cf; --accent-on-surface:#1d1a16; --border:rgba(120,96,50,.18);}
+html.skin.bgimg-light:not([data-mode="light"]) :is(#videoMakerModal, #eduHubModal, #expModal, .xm, #stocksModal, #religionModal, #constructionModal, #portraitStyleSheet, #studioAiModal, #fashionAiModal, #designAiModal, #emailAssistModal){
+  color:var(--text); --text:#eef0f6; --muted:#a3a3a8; --accent-ink:#eef0f6; --bg:#000; --bg2:#000; --panel:#000; --panel2:#0c0c0e; --accent-surface:#2b2e35; --accent-on-surface:#eef0f6; --border:rgba(255,255,255,.1);}
 
 /* ── زينة المحادثة: زهور ذهبيّة (الخشب الداكن والرخام)، شبكة العُقَد (برمجة)، الأحجية (أطفال)، أدوات المطبخ (طهي)؛ وسيارة «سيارات» مع كتلته ── */
 html.skin-darkwood #chatcol::after, html.skin-marble #chatcol::after{content:""; position:absolute; z-index:0; pointer-events:none; inset-inline-end:16px; bottom:150px; width:150px; height:188px; background:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B2%D9%87%D9%88%D8%B1-%D8%B0%D9%87%D8%A8%D9%8A%D8%A9.svg") center/contain no-repeat; opacity:.85;}
@@ -151,7 +189,7 @@ html.skin-cars{
   --th-page:#0e0f11; --th-layer:radial-gradient(120% 60% at 50% 0%, rgba(88,214,255,.1), transparent 60%), repeating-linear-gradient(45deg,#17181b 0 4px,#1e2024 4px 8px), #16171a;
   --th-ink:#e9edf2; --th-muted:#9aa3ad; --th-gold:#58d6ff; --th-line:rgba(205,212,220,.6); --th-line2:rgba(205,212,220,.22); --th-glow:rgba(88,214,255,.3);
   --th-dlg:#17191c; --th-dlg2:#202328;
-  --th-side:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA/%D9%85%D8%B9%D8%AF%D9%86.jpg") center / cover, #b9bec5; --th-side-ink:#1d2126; --th-side-muted:#4b525a;
+  --th-side:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA/%D9%85%D8%B9%D8%AF%D9%86.jpg") center / cover, #b9bec5; --th-side-ink:#1d2126; --th-side-muted:#353a3f;
   --th-tile:linear-gradient(180deg,#4d535b,#2c3036); --th-tile-ink:#f1f4f7; --th-tile-line:rgba(0,0,0,.45); --th-tile-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 2px 5px rgba(0,0,0,.35);
   --th-btn:linear-gradient(180deg,#f4f6f8,#aab1b9); --th-btn-ink:#1d2126; --th-btn-shadow:inset 0 1px 0 #fff, 0 3px 8px rgba(0,0,0,.35);
   --th-field:linear-gradient(180deg,#26292e,#1b1d21); --th-field-line:rgba(205,212,220,.3);
@@ -171,14 +209,15 @@ html.skin-cars #sidebar #sbSearch::placeholder, html.skin-cars #sidebar #sbSearc
 /* أطفال: ألوان باستيل، خانات ملوّنة بالتناوب، وأحجية في البداية (صورة المالك) */
 html.skin-kids{
   --th-scheme:light; --th-page:#efe9fb; --th-layer:linear-gradient(135deg,#ece6fc 0%,#fde6ef 50%,#e1f2fc 100%);
-  --th-ink:#3b3355; --th-muted:#7a7194; --th-gold:#ff7a6b; --th-line:rgba(155,123,224,.45); --th-line2:rgba(155,123,224,.2); --th-glow:rgba(255,122,107,.3);
+  --th-ink:#3b3355; --th-muted:#6c6485; --th-gold:#ff7a6b; --th-line:rgba(155,123,224,.45); --th-line2:rgba(155,123,224,.2); --th-glow:rgba(255,122,107,.3);
   --th-dlg:#fffaf3; --th-dlg2:#f6efff;
   --th-side:radial-gradient(circle, rgba(255,170,120,.18) 1.6px, transparent 2px) 0 0 / 18px 18px, #fff7ea;
   --th-tile:#fff; --th-tile-line:rgba(155,123,224,.25); --th-tile-r:14px; --th-tile-shadow:0 3px 0 rgba(155,123,224,.18); --th-thumb:rgba(255,255,255,.7);
-  --th-btn:linear-gradient(160deg,#ff9a8b,#ff6f61); --th-btn-ink:#fff; --th-btn-shadow:0 3px 0 #e2574a;
+  --th-btn:linear-gradient(160deg,#ff9a8b,#ff6f61); --th-btn-ink:#2a2142; --th-btn-shadow:0 3px 0 #e2574a;
   --th-field:#fff; --th-field-line:rgba(155,123,224,.35);
   --th-user:#ffe9c7; --th-user-line:rgba(255,170,90,.5); --th-ai:rgba(255,255,255,.92); --th-ai-line:rgba(155,123,224,.2); --th-bubble-shadow:0 3px 10px rgba(120,100,180,.12);
   --th-work:linear-gradient(180deg,#f6f9ff,#eef4ff);
+  /* v-theme-contrast */ --th-on-accent:#fff; --th-side-muted:#6c6485; --th-ai-muted:#6c6485; --th-link:#c63a2c; --th-accent-ink:#b83a2e; --th-spark:#d03a2c; --th-tool-label:#ffb3a8;
 }
 html.skin-kids .hist-item:nth-child(4n+1){--th-tile:#ffe4e0;}
 html.skin-kids .hist-item:nth-child(4n+2){--th-tile:#dff5f2;}
@@ -188,13 +227,14 @@ html.skin-kids .hist-item:nth-child(4n+4){--th-tile:#fff1cf;}
 html.skin-cuisine{
   --th-scheme:light; --th-page:#f5eef0;
   --th-layer:radial-gradient(60% 50% at 15% 10%, #f9d9d1, transparent 70%), radial-gradient(55% 45% at 85% 20%, #dff0e6, transparent 70%), radial-gradient(60% 55% at 70% 90%, #e9def7, transparent 70%), radial-gradient(50% 50% at 20% 85%, #fde9d6, transparent 70%), #f7f1ee;
-  --th-ink:#4a3a3d; --th-muted:#8a7579; --th-gold:#c48b7c; --th-line:rgba(196,139,124,.5); --th-line2:rgba(196,139,124,.22); --th-glow:rgba(196,139,124,.3);
+  --th-ink:#4a3a3d; --th-muted:#735f63; --th-gold:#c48b7c; --th-line:rgba(196,139,124,.5); --th-line2:rgba(196,139,124,.22); --th-glow:rgba(196,139,124,.3);
   --th-dlg:#fff8f6; --th-dlg2:#f7eeee; --th-side:linear-gradient(180deg,#fff6f2,#f7eefa);
   --th-tile:linear-gradient(120deg,#fde9e4,#f3eefc 55%,#e6f6ef); --th-tile-line:rgba(196,139,124,.3); --th-tile-r:14px; --th-tile-shadow:0 2px 6px rgba(150,100,90,.12); --th-thumb:rgba(255,255,255,.7);
-  --th-btn:radial-gradient(circle at 35% 30%,#fbe3dc,#d9a293 50%,#b07466); --th-btn-ink:#fff; --th-btn-shadow:0 3px 8px rgba(150,100,90,.3);
+  --th-btn:radial-gradient(circle at 35% 30%,#fbe3dc,#d9a293 50%,#b07466); --th-btn-ink:#3d242b; --th-btn-shadow:0 3px 8px rgba(150,100,90,.3);
   --th-field:rgba(255,255,255,.88); --th-field-line:rgba(196,139,124,.35);
   --th-user:linear-gradient(120deg,#fde3dc,#f6e9fb); --th-user-line:rgba(196,139,124,.35); --th-ai:rgba(255,255,255,.9); --th-bubble-shadow:0 3px 10px rgba(150,100,90,.1);
   --th-work:linear-gradient(160deg,#fbf3f1,#f1f5f3);
+  /* v-theme-contrast */ --th-on-accent:#fff; --th-side-muted:#735f63; --th-field-muted:#735f63; --th-ai-muted:#735f63; --th-over:#3f3033; --th-over-muted:#665559; --th-link:#9c5544; --th-accent-ink:#995645; --th-spark:#884d3d; --th-tool-label:#f0c2b6;
 }
 /* غروب: صورة المالك، قائمة زجاج دافئ وخانات كريميّة عليها السعف */
 html.skin-sunset{
@@ -203,26 +243,28 @@ html.skin-sunset{
   --th-ink:#fff6ee; --th-muted:#f0d4c1; --th-over:#fff8f1; --th-over-muted:#ffe8d8; --th-over-shadow:0 1px 3px rgba(60,20,20,.6); --th-over-drop:drop-shadow(0 1px 2px rgba(60,20,20,.6));
   --th-gold:#f6c27a; --th-line:rgba(255,226,190,.7); --th-line2:rgba(255,226,190,.3); --th-glow:rgba(246,194,122,.4);
   --th-dlg:#2c1b22; --th-dlg2:#3a2430;
-  --th-side:linear-gradient(180deg, rgba(222,140,96,.62), rgba(170,80,58,.74)); --th-side-ink:#fff7ef; --th-side-muted:#ffe2cf;
+  --th-side:linear-gradient(180deg, rgba(160,76,52,.88), rgba(140,58,42,.88)); --th-side-ink:#fff7ef; --th-side-muted:#fff0e4;
   --th-tile:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%BA%D8%B1%D9%88%D8%A8/%D8%B3%D8%B9%D9%81.jpg") center / cover, #f6e6cc; --th-tile-line:rgba(150,96,50,.35); --th-tile-ink:#4a2c1c; --th-thumb:rgba(255,255,255,.5); --th-tile-shadow:0 3px 8px rgba(90,30,20,.25);
   --th-btn:linear-gradient(160deg,#ffd9a0,#f08c5a); --th-btn-ink:#4a1f10;
-  --th-field:rgba(255,248,238,.93); --th-field-line:rgba(255,226,190,.85); --th-field-ink:#4a2c1c; --th-field-muted:#9a7560;
+  --th-field:rgba(255,248,238,.93); --th-field-line:rgba(255,226,190,.85); --th-field-ink:#4a2c1c; --th-field-muted:#7f604e;
   --th-user:rgba(255,246,234,.94); --th-user-line:rgba(255,226,190,.9); --th-user-ink:#4a2c1c;
   --th-ai:rgba(255,250,244,.93); --th-ai-line:rgba(255,226,190,.6); --th-ai-ink:#3b241a;
   --th-work:linear-gradient(180deg, rgba(120,60,80,.42), rgba(80,40,60,.55));
+  /* v-theme-contrast */ --th-ai-muted:#7a5644; --th-link:#9c5f0b; --th-spark:#fae0bb;
 }
 /* شاطئ: صورة المالك، زجاج فيروزيّ فاتح وخانات رمل بإطار فيروزيّ */
 html.skin-beach{
   --th-scheme:light; --th-page:#bfe3e6; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B4%D8%A7%D8%B7%D8%A6/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=2"); --th-pos:45% 50%; --th-pos-m:52% 50%;
-  --th-ink:#0f3a46; --th-muted:#3f6b77; --th-over:#0b3340; --th-over-muted:#1f4f5c; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
+  --th-ink:#0f3a46; --th-muted:#355b65; --th-over:#0b3340; --th-over-muted:#1f4f5c; --th-over-shadow:0 1px 2px rgba(255,255,255,.75); --th-over-drop:drop-shadow(0 1px 1px rgba(255,255,255,.8));
   --th-gold:#1a9da2; --th-line:rgba(255,255,255,.8); --th-line2:rgba(255,255,255,.38); --th-glow:rgba(26,157,162,.3);
   --th-dlg:#f2fbfa; --th-dlg2:#dff2f0;
   --th-side:linear-gradient(180deg, rgba(214,240,238,.72), rgba(178,224,221,.8));
   --th-tile:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B4%D8%A7%D8%B7%D8%A6/%D8%B1%D9%85%D9%84.jpg") center / cover, #f1e4c8; --th-tile-line:#3fa9a8; --th-tile-ink:#3b3020; --th-thumb:rgba(255,255,255,.55); --th-tile-shadow:0 2px 5px rgba(20,90,100,.2);
-  --th-btn:linear-gradient(160deg,#5ad1cf,#1a9da2); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#5ad1cf,#1a9da2); --th-btn-ink:#0b2a2c;
   --th-field:rgba(255,255,255,.93); --th-field-line:#3fa9a8;
   --th-user:rgba(255,255,255,.93); --th-user-line:rgba(63,169,168,.6); --th-ai:rgba(255,255,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(20,80,100,.15);
   --th-work:rgba(225,245,244,.55);
+  /* v-theme-contrast */ --th-on-accent:#fff; --th-side-muted:#355b65; --th-link:#127075; --th-accent-ink:#127075; --th-spark:#0e5a5d; --th-tool-label:#8fe0de;
 }
 /* شتاء: صورة المالك، زجاج رماديّ باهت وخانات صقيع */
 html.skin-winter{
@@ -232,10 +274,11 @@ html.skin-winter{
   --th-dlg:#f1f4f8; --th-dlg2:#e1e7ee;
   --th-side:linear-gradient(180deg, rgba(196,206,216,.64), rgba(160,172,184,.74)); --th-side-ink:#16222d; --th-side-muted:#3b4a59;
   --th-tile:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D8%B4%D8%AA%D8%A7%D8%A1/%D8%B5%D9%82%D9%8A%D8%B9.jpg") center / cover, #e6edf3; --th-tile-line:rgba(255,255,255,.9); --th-thumb:rgba(255,255,255,.6); --th-tile-shadow:0 2px 6px rgba(40,60,80,.2);
-  --th-btn:linear-gradient(160deg,#8fb1d1,#4f7396); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#8fb1d1,#4f7396); --th-btn-ink:#080d13;
   --th-field:rgba(255,255,255,.9); --th-field-line:rgba(255,255,255,.95);
   --th-user:rgba(255,255,255,.92); --th-user-line:rgba(79,115,150,.4); --th-ai:rgba(250,252,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(40,60,80,.14);
   --th-work:rgba(230,236,242,.55);
+  /* v-theme-contrast */ --th-on-accent:#fff; --th-link:#466686; --th-accent-ink:#466686; --th-spark:#3f5f7e; --th-tool-label:#a9c4de;
 }
 /* كراج: شاشة الترحيب الأولى بلا كتابتها، كربون وأحمر */
 html.skin-garage{
@@ -245,10 +288,11 @@ html.skin-garage{
   --th-dlg:#141416; --th-dlg2:#1e1e22;
   --th-side:repeating-linear-gradient(45deg, rgba(22,22,25,.9) 0 4px, rgba(31,31,35,.9) 4px 8px);
   --th-tile:linear-gradient(180deg,#26262b,#18181b); --th-tile-line:rgba(255,59,59,.35); --th-tile-shadow:0 0 10px rgba(255,40,40,.08), 0 2px 6px rgba(0,0,0,.5);
-  --th-btn:linear-gradient(160deg,#ff5a5a,#c51d23); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#d33339,#a3141a); --th-btn-ink:#fff;
   --th-field:rgba(18,18,20,.9); --th-field-line:rgba(255,59,59,.45);
   --th-user:rgba(30,30,34,.92); --th-user-line:rgba(255,59,59,.5); --th-ai:rgba(12,12,14,.88);
   --th-work:rgba(12,12,14,.62);
+  /* v-theme-contrast */ --th-on-accent:#1e1e24;
 }
 /* أنمي: شاشة الترحيب الثانية، بنفسجيّ داكن ووهج ورديّ */
 html.skin-anime{
@@ -258,10 +302,11 @@ html.skin-anime{
   --th-dlg:#1a1128; --th-dlg2:#24183a;
   --th-side:linear-gradient(180deg, rgba(36,20,62,.82), rgba(22,12,40,.88));
   --th-tile:linear-gradient(90deg,#2b1948,#1d1233); --th-tile-line:rgba(155,107,255,.45); --th-tile-shadow:0 0 12px rgba(255,95,162,.12), 0 2px 6px rgba(0,0,0,.4);
-  --th-btn:linear-gradient(160deg,#ff7ab6,#9b6bff); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#ff7ab6,#9b6bff); --th-btn-ink:#24163e;
   --th-field:rgba(24,14,42,.9); --th-field-line:rgba(255,95,162,.45);
   --th-user:rgba(48,26,80,.92); --th-user-line:rgba(255,95,162,.5); --th-ai:rgba(18,10,32,.88);
   --th-work:rgba(20,10,36,.6);
+  /* v-theme-contrast */ --th-on-accent:#24163e;
 }
 /* أمن سيبرانيّ: شاشة الترحيب الثالثة، كحليّ وسماويّ */
 html.skin-cyber{
@@ -286,7 +331,7 @@ html.skin-school{
   --th-tile:repeating-linear-gradient(180deg, transparent 0 11px, rgba(70,110,190,.3) 11px 12px), linear-gradient(270deg, transparent 18px, rgba(214,70,70,.5) 18px 19px, transparent 19px), #fbf7ea;
   --th-tile-ink:#2b2a26; --th-tile-line:rgba(0,0,0,.15); --th-tile-r:6px; --th-thumb:rgba(255,255,255,.7); --th-tile-shadow:0 2px 4px rgba(0,0,0,.35);
   --th-btn:linear-gradient(160deg,#f0c75e,#c9922a); --th-btn-ink:#2b1d02;
-  --th-field:rgba(251,247,234,.94); --th-field-line:rgba(227,179,65,.6); --th-field-ink:#2b2a26; --th-field-muted:#7d7563;
+  --th-field:rgba(251,247,234,.94); --th-field-line:rgba(227,179,65,.6); --th-field-ink:#2b2a26; --th-field-muted:#6a6354;
   --th-user:rgba(251,247,234,.94); --th-user-line:rgba(227,179,65,.6); --th-user-ink:#2b2a26;
   --th-ai:rgba(24,36,30,.9); --th-ai-line:rgba(255,255,255,.15);
   --th-work:rgba(29,48,39,.66);
@@ -302,10 +347,11 @@ html.skin-tactical{
   --th-dlg:#2a0a16; --th-dlg2:#3a1020;
   --th-side:linear-gradient(180deg, rgba(70,6,30,.84), rgba(40,2,16,.9));
   --th-tile:linear-gradient(90deg,#4a0d24,#2e0816); --th-tile-line:rgba(255,61,122,.45); --th-tile-shadow:0 0 12px rgba(255,61,122,.12), 0 2px 6px rgba(0,0,0,.4);
-  --th-btn:linear-gradient(160deg,#ff6b9a,#c4123f); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#cc366a,#a50d35); --th-btn-ink:#fff;
   --th-field:rgba(40,4,18,.9); --th-field-line:rgba(255,61,122,.45);
   --th-user:rgba(80,10,36,.92); --th-user-line:rgba(255,61,122,.5); --th-ai:rgba(26,4,14,.88);
   --th-work:rgba(40,6,22,.6);
+  /* v-theme-contrast */ --th-on-accent:#3a0716; --th-spark:#ffc0d4;
 }
 /* ملاك الجليد: أبيض وأزرق ثلجيّ */
 html.skin-angel{
@@ -315,10 +361,11 @@ html.skin-angel{
   --th-dlg:#f3f7fc; --th-dlg2:#e2ebf7;
   --th-side:linear-gradient(180deg, rgba(226,236,248,.74), rgba(196,214,236,.82));
   --th-tile:linear-gradient(90deg,#f4f8ff,#dfe9f7); --th-tile-line:rgba(47,111,207,.45); --th-tile-ink:#14243a; --th-thumb:rgba(255,255,255,.55); --th-tile-shadow:0 2px 5px rgba(0,0,0,.15);
-  --th-btn:linear-gradient(160deg,#6aa6ff,#2f6fcf); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#6aa6ff,#2f6fcf); --th-btn-ink:#070d18;
   --th-field:rgba(255,255,255,.93); --th-field-line:rgba(47,111,207,.5);
   --th-user:rgba(255,255,255,.93); --th-user-line:rgba(47,111,207,.6); --th-ai:rgba(255,255,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(0,0,0,.12);
   --th-work:rgba(226,236,248,.55);
+  /* v-theme-contrast */ --th-on-accent:#fff; --th-link:#2a63b8; --th-accent-ink:#2a63b8; --th-spark:#14243a; --th-tool-label:#9cc0f5;
 }
 /* أنمي نيون: أسود وفيروزيّ وأحمر */
 html.skin-neonanime{
@@ -328,10 +375,11 @@ html.skin-neonanime{
   --th-dlg:#0e1416; --th-dlg2:#152022;
   --th-side:linear-gradient(180deg, rgba(10,14,16,.86), rgba(4,6,8,.92));
   --th-tile:linear-gradient(90deg,#0f2a2a,#0a1416); --th-tile-line:rgba(47,230,214,.45); --th-tile-shadow:0 0 12px rgba(47,230,214,.12), 0 2px 6px rgba(0,0,0,.4);
-  --th-btn:linear-gradient(160deg,#45f0e0,#ff2d55); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#45f0e0,#ff2d55); --th-btn-ink:#061412;
   --th-field:rgba(8,14,16,.9); --th-field-line:rgba(47,230,214,.45);
   --th-user:rgba(14,40,40,.9); --th-user-line:rgba(47,230,214,.5); --th-ai:rgba(6,8,10,.88);
   --th-work:rgba(8,12,14,.6);
+  /* v-theme-contrast */ --th-on-accent:#061412;
 }
 /* محطّة المستقبل: فولاذ رماديّ وأصفر صناعيّ */
 html.skin-station{
@@ -341,10 +389,11 @@ html.skin-station{
   --th-dlg:#1f2428; --th-dlg2:#2a3036;
   --th-side:linear-gradient(180deg, rgba(44,50,56,.84), rgba(26,30,34,.9));
   --th-tile:linear-gradient(90deg,#3b4249,#272c31); --th-tile-line:rgba(242,180,60,.45); --th-tile-shadow:0 0 12px rgba(242,180,60,.12), 0 2px 6px rgba(0,0,0,.4);
-  --th-btn:linear-gradient(160deg,#ffcc5a,#d9901c); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#ffcc5a,#d9901c); --th-btn-ink:#2a2e33;
   --th-field:rgba(28,32,36,.9); --th-field-line:rgba(242,180,60,.45);
   --th-user:rgba(50,56,62,.9); --th-user-line:rgba(242,180,60,.5); --th-ai:rgba(22,26,30,.88);
   --th-work:rgba(30,34,38,.6);
+  /* v-theme-contrast */ --th-on-accent:#2a2e33; --th-spark:#2a2e33;
 }
 /* سباق مطر: زيتونيّ وبرتقاليّ (الفيراري) */
 html.skin-rally{
@@ -354,10 +403,11 @@ html.skin-rally{
   --th-dlg:#2c2920; --th-dlg2:#3a362a;
   --th-side:linear-gradient(180deg, rgba(70,64,48,.84), rgba(44,40,30,.9));
   --th-tile:linear-gradient(90deg,#4a4536,#302d22); --th-tile-line:rgba(255,106,46,.45); --th-tile-shadow:0 0 12px rgba(255,106,46,.12), 0 2px 6px rgba(0,0,0,.4);
-  --th-btn:linear-gradient(160deg,#ff8a55,#d94a14); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#ff8a55,#d94a14); --th-btn-ink:#1b1913;
   --th-field:rgba(40,36,26,.9); --th-field-line:rgba(255,106,46,.45);
   --th-user:rgba(74,60,40,.9); --th-user-line:rgba(255,106,46,.5); --th-ai:rgba(30,28,20,.88);
   --th-work:rgba(40,36,26,.6);
+  /* v-theme-contrast */ --th-on-accent:#1b1913; --th-accent-ink:#ff7a45; --th-spark:#7a2400;
 }
 /* دخان أزرق: ليل كحليّ وأزرق متوهّج (البوغاتي) */
 html.skin-smoke{
@@ -367,10 +417,11 @@ html.skin-smoke{
   --th-dlg:#0b1a30; --th-dlg2:#12264a;
   --th-side:linear-gradient(180deg, rgba(10,30,60,.84), rgba(4,16,36,.9));
   --th-tile:linear-gradient(90deg,#143a66,#0c2140); --th-tile-line:rgba(79,184,255,.45); --th-tile-shadow:0 0 12px rgba(79,184,255,.12), 0 2px 6px rgba(0,0,0,.4);
-  --th-btn:linear-gradient(160deg,#7ccfff,#1f7fd6); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#7ccfff,#1f7fd6); --th-btn-ink:#092243;
   --th-field:rgba(8,20,40,.9); --th-field-line:rgba(79,184,255,.45);
   --th-user:rgba(16,44,80,.9); --th-user-line:rgba(79,184,255,.5); --th-ai:rgba(6,14,28,.88);
   --th-work:rgba(8,20,40,.6);
+  /* v-theme-contrast */ --th-on-accent:#092243; --th-spark:#00406c;
 }
 /* مكتبة: أبيض وفيروزيّ فاتح (مكتبة شتوتغارت) */
 html.skin-library{
@@ -380,11 +431,14 @@ html.skin-library{
   --th-dlg:#f2fbfb; --th-dlg2:#dff3f4;
   --th-side:linear-gradient(180deg, rgba(228,246,247,.74), rgba(196,232,235,.82));
   --th-tile:linear-gradient(90deg,#f6fdfd,#dff3f4); --th-tile-line:rgba(23,162,176,.45); --th-tile-ink:#0f3a46; --th-thumb:rgba(255,255,255,.55); --th-tile-shadow:0 2px 5px rgba(0,0,0,.15);
-  --th-btn:linear-gradient(160deg,#4fd0da,#17a2b0); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#4fd0da,#17a2b0); --th-btn-ink:#103133;
   --th-field:rgba(255,255,255,.93); --th-field-line:rgba(23,162,176,.5);
   --th-user:rgba(255,255,255,.93); --th-user-line:rgba(23,162,176,.6); --th-ai:rgba(255,255,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(0,0,0,.12);
   --th-work:rgba(228,246,247,.55);
+  /* v-theme-contrast */ --th-on-accent:#fff; --th-side-muted:#355a64; --th-link:#0f6d76; --th-accent-ink:#0f6d76; --th-spark:#f2fbfb; --th-tool-label:#8fe3ea;
 }
+html.skin-library.mobile-ui{--th-spark:#0f3a46;} /* v-theme-contrast: الشرارة فوق موضع آخر من المشهد على الجوّال */
+
 /* مقهى: بيج دافئ وذهبيّ (قهوة ودفتر) */
 html.skin-cafe{
   --th-scheme:light; --th-page:#e8d8c2; --th-scene:url("../assets/%D8%AB%D9%8A%D9%85%D8%A7%D8%AA/%D9%85%D9%82%D9%87%D9%89/%D9%85%D8%B4%D9%87%D8%AF.jpg?v=3"); --th-pos:50% 50%; --th-pos-m:45% 50%;
@@ -393,10 +447,11 @@ html.skin-cafe{
   --th-dlg:#fbf5ec; --th-dlg2:#f1e6d6;
   --th-side:linear-gradient(180deg, rgba(248,238,224,.76), rgba(232,214,190,.84));
   --th-tile:linear-gradient(90deg,#fff8ee,#efe2cf); --th-tile-line:rgba(184,134,60,.45); --th-tile-ink:#4a3620; --th-thumb:rgba(255,255,255,.55); --th-tile-shadow:0 2px 5px rgba(0,0,0,.15);
-  --th-btn:linear-gradient(160deg,#e0b25c,#b8863c); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#e0b25c,#b8863c); --th-btn-ink:#33260f;
   --th-field:rgba(255,255,255,.93); --th-field-line:rgba(184,134,60,.5);
   --th-user:rgba(255,255,255,.93); --th-user-line:rgba(184,134,60,.6); --th-ai:rgba(255,255,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(0,0,0,.12);
   --th-work:rgba(248,238,224,.55);
+  /* v-theme-contrast */ --th-on-accent:#fff; --th-side-muted:#554631; --th-link:#7f5c29; --th-accent-ink:#7f5c29; --th-spark:#3a2a16; --th-tool-label:#ecc488;
 }
 /* ورشة ليليّة: كحليّ وبنفسجيّ وشاشات (الغرفة التقنيّة) */
 html.skin-workshop{
@@ -406,10 +461,11 @@ html.skin-workshop{
   --th-dlg:#1c1a34; --th-dlg2:#262246;
   --th-side:linear-gradient(180deg, rgba(34,30,66,.84), rgba(20,18,40,.9));
   --th-tile:linear-gradient(90deg,#2e2a58,#1e1a3a); --th-tile-line:rgba(155,140,255,.45); --th-tile-shadow:0 0 12px rgba(155,140,255,.12), 0 2px 6px rgba(0,0,0,.4);
-  --th-btn:linear-gradient(160deg,#b3a6ff,#6a55e0); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#b3a6ff,#6a55e0); --th-btn-ink:#0a0816;
   --th-field:rgba(24,20,44,.9); --th-field-line:rgba(155,140,255,.45);
   --th-user:rgba(44,38,80,.9); --th-user-line:rgba(155,140,255,.5); --th-ai:rgba(16,14,30,.88);
   --th-work:rgba(22,20,40,.6);
+  /* v-theme-contrast */ --th-on-accent:#0a0816;
 }
 /* بيت عصريّ: رماديّ دافئ وخشب وبرتقاليّ (الكرسيّ والزجاج) */
 html.skin-modern{
@@ -419,8 +475,11 @@ html.skin-modern{
   --th-dlg:#faf7f2; --th-dlg2:#efe9e0;
   --th-side:linear-gradient(180deg, rgba(244,240,234,.74), rgba(224,216,204,.82));
   --th-tile:linear-gradient(90deg,#fbf8f3,#ece5da); --th-tile-line:rgba(217,84,46,.4); --th-tile-ink:#2f2a24; --th-thumb:rgba(255,255,255,.55); --th-tile-shadow:0 2px 5px rgba(0,0,0,.15);
-  --th-btn:linear-gradient(160deg,#f0784f,#d9542e); --th-btn-ink:#fff;
+  --th-btn:linear-gradient(160deg,#f0784f,#d9542e); --th-btn-ink:#1d1913;
   --th-field:rgba(255,255,255,.93); --th-field-line:rgba(217,84,46,.5);
   --th-user:rgba(255,255,255,.93); --th-user-line:rgba(217,84,46,.6); --th-ai:rgba(255,255,255,.9); --th-ai-line:rgba(255,255,255,.95); --th-bubble-shadow:0 4px 14px rgba(0,0,0,.12);
   --th-work:rgba(244,240,234,.55);
+  /* v-theme-contrast */ --th-on-accent:#fff; --th-side-muted:#4d463e; --th-link:#b04020; --th-accent-ink:#b04020; --th-spark:#0b0907; --th-tool-label:#f2a184;
 }
+html.skin-modern.mobile-ui{--th-spark:#faf7f2;} /* v-theme-contrast: الشرارة فوق موضع آخر من المشهد على الجوّال */
+

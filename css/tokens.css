@@ -150,7 +150,7 @@
     padding:3px 4px; border-radius:var(--r-1); transition:all .15s ease; line-height:1;
     display:inline-flex; align-items:center; justify-content:center;
   }
-  .hist-item:hover .hist-menu-btn, .hist-item.active .hist-menu-btn{opacity:.7;}
+  .hist-item:hover .hist-menu-btn, .hist-item.active .hist-menu-btn{opacity:.85;} /* v-theme-contrast: كان .7 (أيقونة ⋮ ٢٫٩:١ على العاجيّ) */
   .hist-item .hist-menu-btn:hover{opacity:1; background:rgba(var(--accent-tint-rgb),.15);}
   @media (hover:none), (max-width:860px){ .hist-item .hist-menu-btn{opacity:.7;} }
   #histItemMenu{
@@ -178,7 +178,7 @@
     width:400%; height:400%; border:none; transform:scale(.25); transform-origin:top left;
     pointer-events:none; position:absolute; top:0; left:0; background:#fff;
   }
-  .hist-thumb .hist-thumb-emoji{font-size:16px; opacity:.6;}
+  .hist-thumb .hist-thumb-emoji{font-size:16px; opacity:.8;} /* v-theme-contrast: كان .6 (٢٫٤:١) */
   #sidebar .newbtn{margin:10px; justify-content:center; width:calc(100% - 20px); background:none; border:none;}
   #sidebar .newbtn:hover{background:rgba(var(--accent-tint-rgb),.08); transform:none;}
   /* ===== المزودين التسعة — شبكة الدرج (كمبيوتر) + شريط التلفون ===== */
@@ -797,7 +797,7 @@
   .settingsNavRow:hover, .settingsNavRow:active{ background:var(--panel2); }
   .settingsNavRow .settingsNavIcon{ flex:0 0 auto; width:20px; height:20px; display:flex; align-items:center; justify-content:center; color:var(--muted); }
   .settingsNavRow .settingsNavLabel{ flex:1 1 auto; font-size: var(--fs-3); min-width:0; }
-  .settingsNavRow .settingsNavChevron{ flex:0 0 auto; width:16px; height:16px; color:var(--muted); opacity:.7; }
+  .settingsNavRow .settingsNavChevron{ flex:0 0 auto; width:16px; height:16px; color:var(--muted); opacity:1; } /* v-theme-contrast: كان .7 فوق الرماديّ (٢٫٨:١) — الرماديّ وحده يكفي للخفوت */
   [dir="rtl"] .settingsNavRow .settingsNavChevron{ transform:scaleX(-1); }
   [dir="rtl"] #settingsBackSvg{ transform:scaleX(-1); }
   /* v-settings-header-sticky (تدقيق ١٨ أكتوبر): رأس الصفحة (← والعنوان) كان يمرّ مع المحتوى في الدرج (حاوية التمرير) فيختفي سهم
@@ -1446,3 +1446,14 @@ html:not(.mobile-ui) body.sbCollapsedMode #sbReopen:hover{ color:var(--text); ba
 .hist-item > .hist-menu-btn{order:2;}
 @keyframes omRunPulse{0%,100%{opacity:.35}50%{opacity:1}}
 @media (prefers-reduced-motion: reduce){ .hist-item.omRunning::after{animation:none;} }
+
+/* v-theme-contrast (المالك ٢١ أكتوبر: «تباين الكلام مع الخلفية ما يقل عن 4.5:1… الفاتح والداكن»): الوضعان بلا ثيم.
+   الذهبيّ الثابت (#d4af37) والأحمر (#e66) صُمّما على الأسود — على العاجيّ في الفاتح ١٫٤–٢٫٩:١، فالفاتح يأخذ درجتهما الأغمق؛
+   و«تغيير الصورة» برماديّ --accent (#6b7280) ٤٫٣:١ على الأسود — درجة أفتح في الداكن وأغمق في الفاتح. الثيمات بألوانها (css/ثيمات.css). */
+html[data-mode="light"]:not(.skin):not(.skin-wood) #stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{ color:#8f7420; }
+html[data-mode="light"]:not(.skin):not(.skin-wood) .settingsNavRow.settingsNavOwner .settingsNavIcon,
+html[data-mode="light"]:not(.skin):not(.skin-wood) .settingsNavRow.settingsNavOwner .settingsNavLabel{ color:#6e5726; }
+html.mobile-ui[data-mode="light"]:not(.skin):not(.skin-wood) #sidebarCloseBtn{ color:#7a612a !important; }
+html[data-mode="light"]:not(.skin):not(.skin-wood) #btnDeleteChat{ color:#b3261e !important; }
+html:not(.skin):not(.skin-wood) #acctAvatarBtn{ color:#9ca3af !important; }
+html[data-mode="light"]:not(.skin):not(.skin-wood) #acctAvatarBtn{ color:#4b5260 !important; }

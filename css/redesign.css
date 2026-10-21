@@ -663,9 +663,9 @@ html[data-mode="light"] #composerBox > .inputbar-tools{background:#f3f1ea; borde
 html[data-mode="light"] #inputbar .inputbar-tools-left > .btn, html[data-mode="light"] #inputbar .inputbar-tools-left > button, html[data-mode="light"] #inputbar #btnPlusTools{color:#2a2620 !important;}
 html[data-mode="light"] #inputbar .inputbar-tools-left > #btnMic::before{background:rgba(0,0,0,.12);}
 html[data-mode="light"] #composerBox > #prompt{color:#14161a;}
-html[data-mode="light"] #composerBox > #prompt::placeholder{color:#8a8578;}
+html[data-mode="light"] #composerBox > #prompt::placeholder{color:#625d52;} /* v-theme-contrast: كان #8a8578 (٢٫٨:١) */
 html[data-mode="light"] #composerBox > #btnSend{background:#fffdf5 !important; color:#b8902a !important; box-shadow:0 0 0 3px rgba(212,175,55,.14), 0 0 14px rgba(212,175,55,.30) !important;}
-html[data-mode="light"] #composerBox > #btnSend svg{stroke:#b8902a;}
+html[data-mode="light"] #composerBox > #btnSend svg{stroke:#9a7820;} /* v-theme-contrast: كان #b8902a (٢٫٩:١ أيقونةً) */
 /* v-composer-tall (طلب المالك ٥ سبتمبر «زر الإرسال يكون مع المستطيل»): مع مرفق أو أسطر
    متعددة يصير الصندوق مستطيلًا مستدير الزوايا بدل الكبسولة، فيبقى زر الإرسال داخل الإطار
    على صفّ النص لا فوق الحافة المنحنية. */
