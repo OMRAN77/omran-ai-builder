@@ -273,8 +273,11 @@ function mahaUpdatePersonaUI(){
     orb.style.border = '1px solid rgba(212,175,55,.35)';
   }
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
-  if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
-  if(btnMahaEl) btnMahaEl.title = name;
+  /* v-maha-tip-lang (تدقيق ١٨ أكتوبر، maha-call: «تلميح زرّ «م» يطلع «مها» بالعربي في الواجهة الإنجليزيّة»؛ الدفعة ٥): التلميح ووصف الصورة
+     باسم الشخصيّة بلغة الواجهة (mahaPersonaName في app-04: مها/عبدالله أو Maha/Abdullah) — الاسم نفسه لا يتغيّر. */
+  const tip = (typeof mahaPersonaName === 'function') ? mahaPersonaName() : name;
+  if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = tip; }
+  if(btnMahaEl) btnMahaEl.title = tip;
   /* v-voice-letter → v-abdullah-glyph → v-persona-medallions (المالك ٢ أكتوبر، لقطتان: «بدّل الحرفين (م) و(ع) اللي تحت
      المحادثة بهاذيل»): ميداليّتان ذهبيّتان مقصوصتان من لقطتيه (icons/maha-medallion.png وabdullah-medallion.png) بدل الحرف النصّيّ،
      كلٌّ بشخصيّته. نصّ «م» يبقى في الصفحة مخفيًّا احتياطًا إن لم تُحمَّل الصورة. */
@@ -293,9 +296,22 @@ function mahaUpdatePersonaUI(){
     if(gi.getAttribute('src') !== want) gi.setAttribute('src', want);
     gi.style.display = 'block';
     if(glyph) glyph.style.display = 'none';
-    dock.title = name;
+    dock.title = tip;
   }
+  mahaPersonaTitles(male);
 }
+/* v-maha-title-lang (تدقيق ١٨–١٩ أكتوبر: تلميح «م» يظهر «مها» عربيّة في الواجهة الإنجليزيّة): التلميحات وبديل صورة العائم
+   كانت اسمًا عربيًّا ثابتًا يكتب فوق data-i18n-title="mahaTitle" — الآن نصّ mahaTitle (أو voiceGenderMale لعبدالله) بلغة
+   التطبيق، ويُعاد عند تبديلها (applyLanguage يكتب سمة lang). «مها» نفسها باقية، واسم المكالمة الظاهر ووسم HD لا يُلمسان هنا. */
+function mahaPersonaTitles(male){
+  const tName = t(male ? 'voiceGenderMale' : 'mahaTitle');
+  const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
+  if(fabImg) fabImg.alt = tName;
+  if(btnMahaEl) btnMahaEl.title = tName;
+  const dock = document.getElementById('btnMahaDock');
+  if(dock) dock.title = tName;
+}
+try{ new MutationObserver(() => { try{ mahaPersonaTitles(mahaReadVoiceGender() === 'male'); }catch(e){ __swallow(e, 'maha:lang-titles'); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); }catch(e){ __swallow(e, 'maha:lang-observe'); }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
 function mahaEnsureVoiceChosen(){
@@ -970,9 +986,31 @@ function mahaClearImageRef(){
   if(mahaImgElClr){ mahaImgElClr.style.display = 'none'; mahaImgElClr.src = ''; }
 }
 
+/* v-maha-img-wait (تدقيق ١٨–١٩ أكتوبر: «صورة مها ٢١ ثانية بلا مؤشّر رسم»): «أفكّر» تعود «أستمع» بعد ثوانٍ والصورة ما زالت
+   تُرسم. خانة ذهبيّة بنصّ stGenImage في خانة الصورة نفسها، مستقلّة عن mahaSetState، تزول بوصول الصورة أو فشلها أو بإنهاء
+   المكالمة؛ وعدّاد الطلبات الجارية (mahaImgPending، عند مهلة السكوت) نشاطٌ فلا تُغلق المكالمة وهي ترسم. */
+function mahaImgPendingShow(){
+  if(!mahaCallActive) return;
+  const img = document.getElementById('mahaGenImage');
+  if(!img || !img.parentNode) return;
+  let ph = document.getElementById('mahaImgPending');
+  if(!ph){
+    ph = document.createElement('div');
+    ph.id = 'mahaImgPending';
+    ph.className = 'maha-img-pending';
+    ph.setAttribute('role', 'status');
+    img.parentNode.insertBefore(ph, img.nextSibling);
+  }
+  ph.textContent = t('stGenImage');
+}
+function mahaImgPendingHide(){
+  const ph = document.getElementById('mahaImgPending');
+  if(ph && ph.parentNode) ph.parentNode.removeChild(ph);
+}
 function mahaShowImage(base64, mimeType){
   mahaLastImageBase64 = base64;
   mahaLastImageMime = mimeType || 'image/png';
+  mahaImgPendingHide(); // v-maha-img-wait
   if(mahaCallMode === 'builder'){
     // Builder voice mode: never show the image inside the call bubble -
     // drop it straight into the code/preview panels instead, like every
@@ -998,6 +1036,8 @@ function mahaShowImage(base64, mimeType){
     cur.code = fullCode;
     return;
   }
+  /* v-maha-img-wait + v-maha-img-hold (الدفعة ١): بعد إنهاء المكالمة لا عرض — الصورة حُفظت في المحادثة (mahaKeepImage) قبل التأكيد، فلا نسخة ثانية هنا */
+  if(!mahaCallActive) return;
   const el = document.getElementById('mahaGenImage');
   const orb = document.getElementById('mahaOrb');
   if(el){
@@ -1071,8 +1111,46 @@ async function mahaFindRealPhoto(query){
 // Calls the server-side Gemini image endpoint. If `editMode` is true and an
 // image already exists in this call, sends it along for editing instead of
 // generating a brand new one.
+/* v-maha-img-hold (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١ «الفلوس»: «مها تخصم ٢٠ نقطة وتضيع الصورة إذا سكّرت — لا تثبّت الخصم إلا بعد ما
+   توصل الصورة وتنحفظ، وإذا ضاعت ترجع النقاط تلقائي»): كانت الصورة تُعرض في شاشة المكالمة وحدها، فإغلاق المكالمة قبل وصولها (أو بعده)
+   يضيّعها والخصم ثابت. الآن: الطلب يحمل معرّف حجز، والصورة حين تصل تُحفظ في المحادثة الحاليّة ولو أُغلقت المكالمة، ثمّ يُرسل تأكيد
+   image-ack فيثبت الخصم. صورة لم تصل أو لم تُحفظ = لا تأكيد = يردّها الخادم تلقائيًّا (api/_lib/image-hold.js). */
+function mahaNewHoldId(){
+  try{ if(window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID().replace(/-/g, ''); }catch(e){ __swallow(e, 'maha:hold-id'); }
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+}
+function mahaKeepImage(b64, mime){
+  if(mahaCallMode === 'builder') return true; // وضع البناء: الصورة في لوحة المعاينة نفسها (mahaShowImage)
+  try{
+    let cur = getCurrent();
+    if(!cur){
+      const id = 'p_' + Date.now();
+      cur = { id, title: (typeof t === 'function' ? t('defaultProjectTitle') : '') || 'محادثة جديدة', messages: [], code: '' };
+      state.projects.push(cur);
+      state.currentId = id;
+    }
+    const m = mime || 'image/png';
+    cur.messages.push({ role: 'assistant', content: '', attachments: [{ name: 'maha-image.png', isImage: true, mime: m, dataUrl: 'data:' + m + ';base64,' + b64 }] });
+    saveState();
+    renderAll();
+    return true;
+  }catch(e){ __swallow(e, 'maha:keep-image'); return false; }
+}
+async function mahaAckImage(hold){
+  const tk = authGet('aiapp_auth_token');
+  if(!hold || !tk) return false;
+  for(let i = 0; i < 3; i++){
+    try{
+      const r = await fetch('/api/points', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'image-ack', token: tk, hold }) });
+      if(r.ok) return true;
+    }catch(e){ __swallow(e, 'maha:image-ack'); }
+    await new Promise(res => setTimeout(res, 1500 * (i + 1)));
+  }
+  return false;
+}
 async function mahaCallImageApi(promptText, useEditImage, sourceOverride){
   const body = { prompt: promptText, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() };
+  if(body.token) body.hold = mahaNewHoldId(); // v-maha-img-hold
   const editSource = sourceOverride || (mahaEditSourceBase64 ? { b64: mahaEditSourceBase64, mime: mahaEditSourceMime } : null);
   if(useEditImage && (editSource || mahaLastImageBase64)){
     body.editImageBase64 = editSource ? editSource.b64 : mahaLastImageBase64;
@@ -1085,7 +1163,7 @@ async function mahaCallImageApi(promptText, useEditImage, sourceOverride){
   });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.imageBase64) return { ok: false, error: (data && data.error) || ('HTTP ' + res.status), status: res.status };
-  return { ok: true, imageBase64: data.imageBase64, mimeType: data.mimeType };
+  return { ok: true, imageBase64: data.imageBase64, mimeType: data.mimeType, hold: data.hold || '' };
 }
 
 let mahaLastCleanImg = null; // آخر صورة نظيفة (بدون نص) — لإعادة كتابة النص بخط/لون جديد بدون رسم جديد
@@ -1096,6 +1174,8 @@ function mahaCombinedEditPrompt(value){
   if(clean && edits[edits.length - 1] !== clean) edits.push(clean);
   return { edits, prompt: edits.length <= 1 ? clean : ('طبّق جميع التعديلات التالية مجتمعة على الصورة الأصلية:\n' + edits.map((item, i) => (i + 1) + '. ' + item).join('\n') + '\nلا تغيّر أي شيء آخر.') };
 }
+/* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الصور نفد — مها تقول «الخدمة متوقّفة مؤقّتًا» ولا تعيد؛ الخادم ردّ النقاط */
+const MAHA_IMG_PAUSED = 'The image service is temporarily paused. Tell the user, in their language, that this service is temporarily unavailable and to try again shortly; no points were deducted. Do not retry now.';
 async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontStyle, textColor, rewriteTextOnly, textPosition, removeTextOnly){
   try{
     // «احذف الكتابة/هذا النص» فقط: نرجع للأساس النظيف، بلا محرّك صور.
@@ -1135,7 +1215,16 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
     }
     // تعديل الصورة يفشل بأمان: لا نعيد الطلب عشوائيًا ولا نسقط الصورة الأصلية
     // ونولّد من الوصف وحده، لأن ذلك كان يحوّل الشخص والصورة إلى شكل جديد.
-    const r = await mahaCallImageApi(promptText, editMode, sourceOverride);
+    // v-maha-img-wait: خانة الانتظار طوال الطلب، والعدّاد نشاطٌ لمهلة السكوت؛ ومهلتها تبدأ من وصول الصورة أو فشلها
+    mahaImgPending++;
+    mahaImgPendingShow();
+    let r;
+    try{ r = await mahaCallImageApi(promptText, editMode, sourceOverride); }
+    finally{
+      mahaImgPending = Math.max(0, mahaImgPending - 1);
+      mahaLastActivity = Date.now();
+      if(!mahaImgPending) mahaImgPendingHide();
+    }
     if(!r.ok) return { ok: false, error: r.error };
     let outB64 = r.imageBase64, outMime = r.mimeType;
     if(textToWrite && textToWrite.trim()){
@@ -1160,6 +1249,8 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
       mahaImageEditInstructions = pendingEditInstructions || [];
     }
     mahaShowImage(outB64, outMime);
+    // v-maha-img-hold: تُحفظ في المحادثة (تبقى بعد إغلاق المكالمة)، وبعد الحفظ وحده يثبت الخصم
+    if(mahaKeepImage(outB64, outMime) && r.hold) mahaAckImage(r.hold);
     return { ok: true };
   }catch(e){
     console.error('[maha] image gen failed:', e);
@@ -1683,13 +1774,13 @@ async function mahaHandleRtFunctionCall(ev){
       output = appGate;
     }else if(ev.name === 'generate_image'){
       const r = await mahaGenerateOrEditImage(args.prompt || '', false, args.text_to_write || '', args.font_style || '', args.text_color || '', false, args.text_position || 'auto', false);
-      output = r.ok ? { ok: true, message: 'Image generated and shown to the user on screen.' } : { ok: false, message: 'Image generation failed: ' + (r.error || 'unknown error') };
+      output = r.ok ? { ok: true, message: 'Image generated and shown to the user on screen.' } : { ok: false, message: r.error === 'unavailable' ? MAHA_IMG_PAUSED : 'Image generation failed: ' + (r.error || 'unknown error') };
     }else if(ev.name === 'edit_image'){
       if(!mahaLastImageBase64){
         output = { ok: false, message: 'No image exists yet in this call to edit - tell the user to first ask you to create one.' };
       }else{
         const r = await mahaGenerateOrEditImage(args.instruction || '', true, args.text_to_write || '', args.font_style || '', args.text_color || '', !!args.rewrite_text_only, args.text_position || 'auto', !!args.remove_text_only);
-        output = r.ok ? { ok: true, message: 'Image edited and shown to the user on screen.' } : { ok: false, message: 'Image edit failed: ' + (r.error || 'unknown error') };
+        output = r.ok ? { ok: true, message: 'Image edited and shown to the user on screen.' } : { ok: false, message: r.error === 'unavailable' ? MAHA_IMG_PAUSED : 'Image edit failed: ' + (r.error || 'unknown error') };
       }
     }else if(ev.name === 'search_web'){
       const searchMsg = await mahaMaybeSearchForced(args.query || '');
@@ -1727,6 +1818,8 @@ async function mahaHandleRtFunctionCall(ev){
     output = { ok: false, message: 'Tool execution error.' };
   }
 
+  // v-maha-img-wait: الأداة قد تأخذ ٢٠ث وأكثر، والمكالمة قد أُغلقت أثناءها (mahaRtDc = null) — لا نتيجة لقناة مغلقة، بصمت
+  if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
   try{
     mahaRtDc.send(JSON.stringify({
       type: 'conversation.item.create',
@@ -2019,7 +2112,7 @@ async function mahaCallLoop(){
         if(imgResult.ok){
           imgReply = editMode ? t('mahaImageEditedReply') : t('mahaImageReadyReply');
         }else{
-          imgReply = t('mahaImageFailedReply');
+          imgReply = imgResult.error === 'unavailable' ? t('svcPaused') : t('mahaImageFailedReply'); // v-credit-out
         }
         mahaHistory.push({ role: 'assistant', content: imgReply });
         if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
@@ -2187,6 +2280,7 @@ let mahaCloseWatch = null;
 /* v-maha-app: >0 أثناء نقرة يجريها منفّذ تحكّم مها نفسه (js/app-43-maha-app.js) — نقرته ليست يد المستخدم فلا تُنهي المكالمة.
    نقرات المستخدم الحقيقيّة (ومنها نقرات آيفون التي يعيد التطبيق إطلاقها برمجيًّا) تُنهيها كما كانت (v-maha-band). */
 let mahaActing = 0;
+let mahaImgPending = 0; // v-maha-img-wait: طلبات صورة جارية — نشاطٌ لا سكوت
 function mahaStartCloseWatch(){
   mahaStopCloseWatch();
   mahaLastActivity = Date.now();
@@ -2203,7 +2297,7 @@ function mahaStartCloseWatch(){
   const armT = setTimeout(() => { document.addEventListener('click', onTap, true); }, 0);
   const iv = setInterval(() => {
     if(!mahaCallActive || mahaCallMode === 'builder') return;
-    if(mahaState === 'listening' && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
+    if(mahaState === 'listening' && !mahaImgPending && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
   }, 1000);
   mahaCloseWatch = { onTap, armT, iv };
 }
@@ -2233,6 +2327,7 @@ function mahaEndCall(){
   if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#28"); } mahaCurrentAudio = null; }
   stopAllSpeaking();
   if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
+  mahaImgPendingHide(); // v-maha-img-wait: الخانة تذهب مع المكالمة، والصورة إن وصلت بعدها تذهب إلى المحادثة
   try{ if(window.mahaGoldWave) window.mahaGoldWave.end(); }catch(e){ __swallow(e, 'maha:goldwave-end'); } // v-maha-goldwave
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');

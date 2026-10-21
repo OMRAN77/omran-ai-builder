@@ -105,7 +105,7 @@ function makeDom() {
   function mark(e, on) { e.attached = on; e.children.forEach((c) => mark(c, on)); }
   function el(tag) {
     const e = {
-      tagName: String(tag).toUpperCase(), id: '', style: { cssText: '', display: '' }, textContent: '', children: [], parentNode: null, attached: false, attrs: {}, listeners: {},
+      tagName: String(tag).toUpperCase(), id: '', style: { cssText: '', display: '' }, textContent: '', children: [], parentNode: null, attached: false, attrs: {}, listeners: {}, dataset: {},
       setAttribute(k, v) { this.attrs[k] = String(v); },
       appendChild(c) { c.parentNode = this; this.children.push(c); mark(c, this.attached); return c; },
       insertBefore(c, ref) { c.parentNode = this; const i = this.children.indexOf(ref); this.children.splice(i < 0 ? this.children.length : i, 0, c); mark(c, this.attached); return c; },
@@ -174,7 +174,8 @@ test('٥. التصنيف: رموز جدار الوسائط والاستوديو�
     ['/api/design-create', 402, L, 'limit', 'chat'],
     ['/api/tools?action=stocks', 402, L, 'limit', 'chat'],
   ];
-  for (const [url, st, body, reason, tab] of cases) assert.deepEqual(JSON.parse(JSON.stringify(classify(url, st, body))), { reason, tab }, url);
+  // v-plans-real-balance: جدار النقاط يحمل رصيده وسعر العمليّة من ردّ الخادم نفسه
+  for (const [url, st, body, reason, tab] of cases) assert.deepEqual(JSON.parse(JSON.stringify(classify(url, st, body))), reason === 'points' ? { reason, tab, vars: { have: 2, need: 10 } } : { reason, tab }, url);
   for (const [url, st, body] of [
     ['/api/claude', 402, { error: 'وصلت للحد', subscribeOnly: false }], // مسار المحادثة يجرّب غيره — يفتحها من نهايته
     ['/api/claude', 402, { error: 'x', reason: 'engine_limit' }],
@@ -272,7 +273,9 @@ test('١٠. حدّ المحادثة يُفتح من نهاية مسارها: ا�
   assert.match(a18, /if \(__planLimit\) __er\.planLimit = true; __er\.log = __logNow\(\); throw __er;/);
   const a9 = read('js/app-09-attach.js');
   assert.equal((a9.match(/e\.name === 'AbortError' \|\| e\.planLimit\)\) throw e;/g) || []).length, 2, 'المسار الأوّل وفريق الأدوات');
-  assert.match(a9, /\} else if\(err && err\.planLimit\)\{\s*\/\/[^\n]*\n\s*cur\.messages\.push\(\{role: 'assistant', content: '⚠️ ' \+ t\('plansWhyLimit'\)\}\);\s*try\{ if\(typeof window\.omranOpenPlans === 'function'\) window\.omranOpenPlans\('limit', 'chat'\);/);
+  // v-limit-msg-i18n: المجّانيّ والضيف بنصّ ردّ المحادثة وطبقته (limit-msg-i18n ٤)، والمشترك بالسطر نفسه كما كان
+  assert.match(a9, /function omranPlanLimitMsg\(err\)\{[\s\S]{0,900}?return \{role: 'assistant', content: '⚠️ ' \+ t\('plansWhyLimit'\), _sys: 'limit'\};\n\}/); // v-chat-sys-msg: السطر نفسه، معلَّم رسالة تطبيق
+  assert.match(a9, /\} else if\(err && err\.planLimit\)\{\s*\/\/[^\n]*\n\s*cur\.messages\.push\(omranPlanLimitMsg\(err\)\);[^\n]*\n\s*try\{ if\(typeof window\.omranOpenPlans === 'function'\) window\.omranOpenPlans\('limit', 'chat'\);/);
   assert.match(a9, /if\(__ctTier === 'free-limit' \|\| __ctTier === 'guest-limit'\)\{\s*try\{ if\(typeof window\.omranOpenPlans === 'function'\) window\.omranOpenPlans\('limit', 'chat'\);/);
   assert.match(a9, /window\.omranOpenPlans\('points', 'pts'\); \/\* v-plans-gate \*\/ else if\(typeof openPremiumBuyPoints/);
   assert.match(read('js/app-08-maha.js'), /if\(!guest && typeof window\.omranOpenPlans === 'function'\)\{ window\.omranOpenPlans\('points', 'maha'\); return; \}/);
@@ -314,7 +317,40 @@ test('١١. النصوص السبعة بالـ١٤ لغة بمواضعها {plan
     assert.ok(d.plansWhyExpired.includes('{plan}'), l);
     assert.ok(d.plansWhyExpiring.includes('{plan}') && d.plansWhyExpiring.includes('{date}'), l);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=764'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=768'"));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.omranOpenPlans = openPlans;') && bundle.includes("if(c === 'unavailable') return t('vwUnavailable');"), 'الحزمة مبنيّة');
+});
+
+test('١٢. سهم الرجوع في الباقات المفتوحة من البوّابة يغلق الإعدادات إلى المحادثة، والمفتوحة باليد ترجع للرئيسيّة (v-plans-deeplink)', () => {
+  const g = gate();
+  const dlg = g.doc.getElementById('settingsDialog');
+  const back = g.doc.createElement('button'); back.id = 'settingsPageBackBtn'; dlg.appendChild(back);
+  // سهم الرجوع كما في app-05 (المقطع نفسه) فوق الجزء app-33 في السياق نفسه
+  const a05 = read('js/app-05-ui.js');
+  const s = a05.indexOf("(function(){\n  const backBtn = document.getElementById('settingsPageBackBtn');");
+  const e = a05.indexOf('})();', s);
+  assert.ok(s > 0 && e > s, 'معالج سهم الرجوع بحدوده');
+  Object.assign(g.ctx, {
+    settingsDialog: dlg,
+    showSettingsHome: () => g.log.push('home'),
+    closeDialogSafe: (d) => { g.log.push('closed'); d.dispatch('close'); },
+  });
+  vm.runInContext(a05.slice(s, e + 5), g.ctx);
+  assert.equal(typeof back.onclick, 'function');
+
+  g.ctx.window.omranOpenPlans('limit', 'chat');
+  assert.deepEqual(g.log, ['settings', 'page:pricingSection', 'tab:chat']);
+  assert.equal(dlg.dataset.deepLink, '1', 'البوّابة تعلّم الفتح');
+  back.click();
+  assert.deepEqual(g.log.slice(3), ['closed'], 'الرجوع يغلق الإعدادات لا يفتح رئيسيّتها');
+  assert.equal(dlg.dataset.deepLink, undefined, 'الإغلاق يمسح العلم');
+
+  // الفتح باليد ثمّ صفحة ثمّ الرجوع: الرئيسيّة كما كانت
+  g.log.length = 0;
+  dlg.dataset.deepLink = '1'; // علم باقٍ من فتح سابق لم يُغلق
+  g.doc.getElementById('btnSettings').click();
+  assert.equal(dlg.dataset.deepLink, undefined, 'زرّ الإعدادات يمسح العلم');
+  back.click();
+  assert.deepEqual(g.log, ['settings', 'home']);
 });

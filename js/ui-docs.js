@@ -711,8 +711,10 @@
   (function(){
     var modal=document.getElementById('docModal'), body=document.getElementById('docBody');
     var curFile=null, curImgs=[], docText='', history=[];
-    function open(){ modal.classList.add('open'); document.getElementById('docTitleH').textContent=T('📄 مساعد المستندات','📄 Document Assistant'); intro(); }
+    /* v-nav-cards-menus: dir="rtl" ثابت في index.html كان يقلب الواجهة الإنجليزيّة — الاتّجاه من لغة الواجهة عند كلّ فتح */
+    function open(){ modal.dir=/^(ar|ur)/i.test(AL())?'rtl':'ltr'; modal.classList.add('open'); document.getElementById('docTitleH').textContent=T('📄 مساعد المستندات','📄 Document Assistant'); intro(); }
     function close(){ modal.classList.remove('open'); }
+    function clearErr(){ var er=document.getElementById('docErr'); if(er) er.innerHTML=''; }
     function intro(){
       curFile=null; curImgs=[]; docText=''; history=[];
       body.innerHTML=''+
@@ -725,8 +727,10 @@
         '<div id="docErr"></div>';
       var drop=document.getElementById('docDrop'), fi=document.getElementById('docFile');
       drop.onclick=function(){ fi.click(); };
-      fi.onchange=function(){ if(fi.files&&fi.files[0]){ curFile=fi.files[0]; curImgs=[]; document.getElementById('docPick').textContent='✅ '+curFile.name; } };
+      fi.onchange=function(){ if(fi.files&&fi.files[0]){ curFile=fi.files[0]; curImgs=[]; document.getElementById('docPick').textContent='✅ '+curFile.name; clearErr(); } };
       document.getElementById('docPasteT').onclick=function(){ var w=document.getElementById('docPasteW'); w.style.display=w.style.display==='block'?'none':'block'; };
+      /* v-nav-cards-menus: «ارفع ملفًّا أو الصق نصًّا أوّلًا» كان يبقى بعد اللصق */
+      var dp=document.getElementById('docPaste'); dp.addEventListener('input',function(){ if(dp.value.trim()) clearErr(); });
       document.getElementById('docGo').onclick=run;
     }
     async function run(){

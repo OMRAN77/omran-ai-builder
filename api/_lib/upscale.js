@@ -119,7 +119,7 @@ const handler = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   const pointsLib = require('./points.js');
-  let charged = null;
+  let charged = null, chargedPay = null;
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
@@ -130,17 +130,17 @@ const handler = async (req, res) => {
     if (!pointsLib.isOwnerUsername(username)) {
       const pay = await pointsLib.spendPoints(username, pointsLib.COSTS.image_upscale, 'image_upscale');
       if (!pay.ok) { res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.image_upscale, points: pay.points || 0 }); return; }
-      if (!pay.owner) charged = username;
+      if (!pay.owner) { charged = username; chargedPay = pay; } // v-credit-out: الردّ إلى نوع الخصم (v-refund-kind)
     }
     const r = await module.exports.upscaleImage(imageBase64, mime || 'image/png', { scale: 2 });
     if (!r.ok) {
-      if (charged) { await pointsLib.refundPoints(charged, pointsLib.COSTS.image_upscale); charged = null; }
+      if (charged) { await pointsLib.refundPoints(charged, pointsLib.COSTS.image_upscale, chargedPay); charged = null; }
       res.status(r.reason === 'no_token' || r.reason === 'disabled' ? 503 : 502).json({ error: 'upscale_unavailable', reason: r.reason });
       return;
     }
     res.status(200).json({ imageBase64: r.b64, mimeType: r.mime, width: r.w, height: r.h, scale: r.scale });
   } catch (e) {
-    if (charged) { try { await pointsLib.refundPoints(charged, pointsLib.COSTS.image_upscale); } catch (e2) { /* أفضل جهد */ } }
+    if (charged) { try { await pointsLib.refundPoints(charged, pointsLib.COSTS.image_upscale, chargedPay); } catch (e2) { /* أفضل جهد */ } }
     res.status(500).json({ error: 'upscale_failed' });
   }
 };

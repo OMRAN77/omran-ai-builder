@@ -159,7 +159,9 @@ test('٨. الواجهة: رمز video_cooldown الخام لا يظهر — ر�
   assert.equal(sandbox.errText({ code: 'video_cooldown', retryAfter: 180 }), ui.cooldown.ar.replace('{m}', '3'));
   assert.equal(sandbox.errText({ code: 'video_cooldown', retryAfter: 40 }), ui.cooldown.ar.replace('{m}', '1'));
   assert.equal(sandbox.errText({ code: 'video_cooldown' }), ui.cooldown.ar.replace('{m}', '3'), 'بلا retryAfter = المهلة الكاملة');
-  assert.equal(sandbox.errText(new Error('boom')), ui.fail.ar + ': boom');
+  /* v-trend-points: رسالة مقروءة تبقى كما كانت، والرمز الخامّ وحده («boom»، «timeout») يصير «تعذّر» بلا الرمز — tests/trend-err-text */
+  assert.equal(sandbox.errText(new Error('Boom happened.')), ui.fail.ar + ': Boom happened.');
+  assert.equal(sandbox.errText(new Error('boom')), ui.fail.ar);
   assert.match(src, /code: \(j && j\.error\) \|\| '', retryAfter: \(j && j\.retryAfter\) \|\| 0/, 'الرمز والمهلة يصلان من الخادم');
 
   // صانع الفيديو الرئيسيّ: رسالة مفهومة، وبلا إعادة محاولة عمياء على مهلة الثلاث دقائق.

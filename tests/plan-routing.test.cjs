@@ -389,7 +389,7 @@ test('٧. الأسعار: صورة ٢٠ · إبداعيّة ٣٥ · Runway ٥٥ 
   assert.ok(creative > mi.indexOf('const isCreativeEdit = '), 'بعد معرفة النيّة');
   assert.match(mi, /const __extra = Math\.max\(0, pointsLib\.COSTS\.image_creative - mahaImgChargedAmount\);/);
   assert.match(mi, /if \(!__xp\.ok\) \{\n\s+await refundImageCharge\(\);\n\s+res\.status\(402\)\.json\(\{ error: 'points_insufficient', needed: pointsLib\.COSTS\.image_creative/);
-  assert.match(mi, /if \(!__xp\.owner\) mahaImgChargedAmount \+= __extra;/, 'الردّ يعيد الأساس والفرق معًا');
+  assert.match(mi, /if \(!__xp\.owner\) \{ mahaImgChargedAmount \+= __extra; mahaImgExtra = __extra; mahaImgExtraPay = __xp; \}/, 'الردّ يعيد الأساس والفرق معًا (v-credit-out: الفرق بنوع خصمه)');
   const pts = read('api/_lib/points.js');
   assert.match(pts, /tier: \(__t && __t\.tier\) \|\| 'free',\n\s+plan: \(__t && __t\.plan\) \|\| null,/, 'الرصيد يحمل الباقة');
 });
@@ -488,7 +488,7 @@ test('١٠. منتقي المزوّد: يظهر للمالك وحده (v-provide
   ctx.applyPlanGate({ remaining: {} }); assert.equal(cls.has('plan-locked'), false, 'بلا طبقة لا تغيير');
   const html = read('index.html');
   assert.ok(html.includes('html.plan-locked #provDropdownBtn, html.plan-locked #provDropdownPanel, html.plan-locked #providerStripMobile{ display:none !important; }'));
-  assert.ok(html.includes('/js/partials-settings.js?v=699'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
+  assert.ok(html.includes('/js/partials-settings.js?v=704'), 'وسم الملفّ المنفصل ارتفع'); // v-maha-voice-speed: 660
   assert.ok(Number((read('js/app-04-i18n-state.js').match(/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/) || [])[1]) >= 674, 'وسم ملفّات اللغات ارتفع (نصوص الباقات) — ٦٧٤ فأعلى، كلّ مفتاح جديد يرفعه');
 });
 

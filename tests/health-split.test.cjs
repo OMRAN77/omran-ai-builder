@@ -71,13 +71,15 @@ test('٢. reportError يختم النشر، والخطأ المتكرّر بعد
 /* لوحة «فحص النظام» الحقيقيّة: window.runHealthCheck من app-11-video.js في بيئة مصغّرة */
 function panel(healthJson) {
   const src = fs.readFileSync(path.join(root, 'js/app-11-video.js'), 'utf8');
-  const a = src.indexOf('  window.runHealthCheck = async function(){');
+  // v-owner-i18n: النصوص من قاموس لغة الواجهة عبر oT (معرَّفة قبل runHealthCheck) — المقطع يبدأ بها، وt القاموس العربيّ الحقيقيّ
+  const a = src.indexOf('  /* v-owner-i18n');
   const b = src.indexOf('  function setStatus(text){', a);
-  assert.ok(a > 0 && b > a);
+  assert.ok(a > 0 && b > a && src.indexOf('  window.runHealthCheck = async function(){', a) > a);
   const box = { textContent: '' };
   const fetched = [];
   const ctx = {
-    window: {}, document: { getElementById: (id) => id === 'adminHealthBox' ? box : null },
+    window: { t: require('./_owner-vm.cjs').tFor('ar') }, document: { getElementById: (id) => id === 'adminHealthBox' ? box : null },
+    confirm: () => true, // v-owner-clear-confirm: المسح يسأل أوّلًا
     ownerToken: () => 'tok', Date, Promise, Object, String, JSON, Array,
     fetch: async (url) => {
       fetched.push(String(url));

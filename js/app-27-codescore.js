@@ -522,6 +522,16 @@
     return o.join('\n') + '\n';
   }
 
+  /* v-review-menu-close (تدقيق ١٨ أكتوبر): الزرّ يوقف انتشار النقرة فلا يصل مستمع إغلاق ⋮ (app-10)، فتبقى القائمة فوق النافذة
+     في الجوّال وخلفها في الحاسوب. نغلقها قبل الفتح بإغلاق app-10 نفسه، واحتياطًا بإزالة show. */
+  function closeTabsMenu() {
+    try {
+      if (typeof window.omranCloseTabsMenu === 'function') { window.omranCloseTabsMenu(); return; }
+      var d = $id('tabsMenuDropdown');
+      if (d) d.classList.remove('show');
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'codescore:menu-close'); }
+  }
+
   /* ---------- الزرّ: قائمة ⋮ في شريط التبويبات ---------- */
   function mount() {
     var dd = document.getElementById('tabsMenuDropdown');
@@ -533,7 +543,7 @@
     b.title = t('menuTitle');
     b.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
       + '<path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg> <span class="btnLabel">' + esc(t('menu')) + '</span>';
-    b.onclick = function (e) { e.stopPropagation(); open(); };
+    b.onclick = function (e) { e.stopPropagation(); closeTabsMenu(); open(); };
     dd.appendChild(b);
     return true;
   }

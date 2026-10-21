@@ -341,6 +341,10 @@
         sub:palSub(s.id,o.value)||s.options.length+' '+(typeof window.t==='function'&&window.t('pickerOptsWord')!=='pickerOptsWord'?window.t('pickerOptsWord'):(ien?'options':'خيارًا')) };
     }, function(){ return openCfg(s,function(){ tr.refresh(); }); });
     tr.el.classList.add('optGrid');
+    /* v-decor-place-sync (تدقيق ١٨ أكتوبر؛ الدفعة ٤): البطاقة كانت تتحدّث من المعرض وحده — نقاط البوستر تكتب «نوع المكان» فتبقى «من صورتي».
+       تُحفظ على القائمة (app-12 يحدّثها بلا change)، ومستمع change واحد يتبع البطاقة الأحدث بعد إعادة البناء عند تبديل اللغة. */
+    s.__tr=tr;
+    if(!s.getAttribute('data-trhook')){ s.setAttribute('data-trhook','1'); s.addEventListener('change',function(){ if(s.__tr) s.__tr.refresh(); }); }
     return tr.el;
   }
   /* v-decor-18 (المالك ١٦ أكتوبر: «رتّبهم على شكل الفيديوهات مش بالطول»): الأقسام الستّة شبكة بطاقات صور كترندات الفيديو —

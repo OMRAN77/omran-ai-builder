@@ -148,8 +148,11 @@ test('٦ — الربط والواجهة: المحادثة والوكيل يمر
   const data = read('js/app-03-i18n-data.js');
   for (const k of keys) assert.ok((data.match(new RegExp(k + ': "')) || []).length && data.split(k + ': "').length - 1 === 2, 'ar+en · ' + k);
   for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) { const src = read('i18n/' + lg + '.js'); for (const k of keys) assert.ok(src.includes(k + ': "'), lg + ' · ' + k); }
-  /* v-app-director-watchdog رفع الوسم بعده (٧٦٤) فصار سببه أوّل التعليق: سبب ٧٦٣ يبقى في التعليق نفسه، والوسم لا يقلّ عنه */
-  const tag = read('js/app-04-i18n-state.js').match(/\.js\?v=(\d+)'; \/\*[^\n]*v-owner-inbox \((\d+)\): خمسة مفاتيح لصندوق المالك/); // الرقم يُقرأ من الملفّ لا يُثبَّت (سقّاطة vPinTests)
-  assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && tag[2] === '763', 'الوسم مرفوع وسببه في التعليق');
+  // الرقم يُقرأ من الملفّ لا يُثبَّت (سقّاطة vPinTests). v-plans-real-balance (764): رفعٌ لاحق يضع سببه في الرأس، فالشرط وجود السبب
+  // والوسم الحاليّ ≥ رقمه (كان: سببه هو الرأس — فيفشل مع كلّ رفع بعده)
+  const st4 = read('js/app-04-i18n-state.js');
+  const cur = Number((/'\.js\?v=(\d+)'/.exec(st4) || [])[1]);
+  const tag = st4.match(/v-owner-inbox \((\d+)\): خمسة مفاتيح لصندوق المالك/);
+  assert.ok(tag && cur >= Number(tag[1]), 'الوسم مرفوع وسببه في التعليق');
   assert.ok(read('js/app.bundle.js').includes('inboxOwnerBtn'), 'الحزمة مبنيّة');
 });

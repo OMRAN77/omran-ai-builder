@@ -29,7 +29,7 @@ test('٢. الاسم الذهبيّ والنقاط والخروج الأحمر �
 
 test('٣. ألوان عاديّة: لا أحمر في الصفحة، والصفوف رماديّة عند التمرير', () => {
   assert.doesNotMatch(acct, /#ef4444|239,\s*68,\s*68/);
-  assert.equal((acct.match(/class="acctRowBtn"/g) || []).length, 6); // + رقم الهاتف (v-phone-link)
+  assert.equal((acct.match(/class="acctRowBtn"/g) || []).length, 7); // + رقم الهاتف (v-phone-link) + حذف الحساب (v-acct-delete)
   const css = read('css/tokens.css');
   assert.match(css, /\.acctRowBtn:hover, \.acctRowBtn:active\{ background:rgba\(128,128,128,\.12\) !important; \}/);
   assert.match(css, /\.settingsNavLogout \.settingsNavChevron\{ display:none; \}/);
@@ -42,5 +42,5 @@ test('٤. الخروج آخر صفّ في الإعدادات للمسجَّل، 
   assert.match(body, /if\(logged\)\{[\s\S]*closeDialogSafe\(settingsDialog\)[\s\S]*doLogout\(\)/);
   assert.doesNotMatch(app05, /settingsEmailRow|settingsFetchEmail/);
   const idx = read('index.html');
-  assert.ok(idx.includes('css/tokens.css?v=734') && idx.includes('/js/partials-settings.js?v=699'));
+  assert.ok(idx.includes('css/tokens.css?v=736') && idx.includes('/js/partials-settings.js?v=704'));
 });

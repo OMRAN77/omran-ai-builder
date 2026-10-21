@@ -25,6 +25,13 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
       console.error('[veo-status] upstream ' + upstream.status + ': ' + String(msg).slice(0, 300));
+      /* v-credit-out (أمر المالك ٢١ أكتوبر «ما تنخصم منه ولا نقطة»): المزوّد يرفض الاستطلاع نفسه لعطب عندنا (رصيده نفد، المفتاح، الصلاحيّة) — المهمّة لن
+         تُتابَع أبدًا، وكانت تذكرتها تنتهي بعد ساعتين بلا ردّ. تُسوّى فشلًا الآن (مرّة واحدة) وunavailable يعرضه العميل «الخدمة متوقّفة مؤقّتًا». */
+      if (require('./_videoFail.js').isOutage(upstream.status, msg)) {
+        await require('./video-job.js').settleVideoJob(op, false);
+        res.status(503).json({ error: 'unavailable', retryable: false });
+        return;
+      }
       res.status(upstream.status).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
       return;
     }

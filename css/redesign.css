@@ -87,6 +87,17 @@ html.store-safe.hwCardsDone body.omranWelcome #huaweiHeroWrap{display:none !impo
 @media (max-width:340px){
   .huawei-tools-grid{grid-template-columns:1fr; gap:8px;}
 }
+/* v-hw-odd-card (تدقيق ١٨ أكتوبر): إخفاء «اقتراحات» (v-tools-pause، قرار المالك ويبقى) ترك ثلاث بطاقات ظاهرة في عمودين، فبقيت «القبلة
+   والمواقيت» وحدها بجانب فراغ. البطاقة الأخيرة الفرديّة الظاهرة تمتدّ على العمودين وتتوسّط بعرض عمود واحد. البطاقة المخفيّة تبقى ابنًا
+   للشبكة (app-05-ui يعلّمها hidden) فقاعدة :has منفصلة: المتصفّح الذي لا يعرفه يُسقطها وحدها وتبقى الأولى. ≤340 عمود واحد كما هو. */
+@media (min-width:341px){
+  .huawei-tools-grid > .hwToolCard:last-child:nth-child(odd){grid-column:1 / -1; justify-self:center; width:calc(50% - 6px);}
+  .huawei-tools-grid > .hwToolCard:nth-last-child(2):nth-child(odd):has(+ .hwToolCard[hidden]){grid-column:1 / -1; justify-self:center; width:calc(50% - 6px);}
+}
+@media (min-width:341px) and (max-width:480px){
+  .huawei-tools-grid > .hwToolCard:last-child:nth-child(odd){width:calc(50% - 4px);}
+  .huawei-tools-grid > .hwToolCard:nth-last-child(2):nth-child(odd):has(+ .hwToolCard[hidden]){width:calc(50% - 4px);}
+}
 .hwToolCard{
   direction:rtl;
   display:flex;
@@ -295,8 +306,9 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   html:not(.mobile-ui) #videoMakerModal .mini-mic-btn:hover{background:rgba(var(--accent-tint-rgb),.14); border-color:var(--accent); transform:scale(1.07);}
   html:not(.mobile-ui) #videoMakerModal input[type=checkbox]{-webkit-appearance:none; appearance:none; position:relative; width:18px; height:18px; border:1px solid rgba(255,255,255,.22); border-radius:var(--r-1); background:rgba(255,255,255,.045); cursor:pointer; flex-shrink:0; transition:background .16s ease, border-color .16s ease;}
   html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:hover{border-color:rgba(var(--accent-tint-rgb),.55);}
-  html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:checked{background:var(--grad); border-color:transparent;}
-  html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:checked::after{content:"\2713"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#14140f;}
+  /* v-vmk-polish (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٠٧): المفعَّل كان بتدرّج الثيم المحايد (#2b2e35 في الأسود) و✓ ‎#14140f فلا تُرى — ذهبيّ زرّ الإنشاء و✓ داكنة */
+  html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:checked{background:linear-gradient(135deg,#f0cf8f,#c9964a); border-color:transparent;}
+  html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:checked::after{content:"\2713"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#1a1408;}
   html:not(.mobile-ui) #videoMakerModal #videoMakerHeroBtn{background:rgba(255,255,255,.045); color:var(--text); border:1px solid rgba(255,255,255,.10); font-family:inherit; font-size:12.5px; transition:border-color .16s ease, background .16s ease;}
   html:not(.mobile-ui) #videoMakerModal #videoMakerHeroBtn:hover{border-color:var(--accent); background:rgba(var(--accent-tint-rgb),.12);}
   html:not(.mobile-ui) #videoMakerModal #videoMakerHeroPreview{border:1px solid rgba(var(--accent-tint-rgb),.30);}
@@ -723,6 +735,16 @@ html.mobile-ui #inputbar > #omBottomBar{
   justify-content:flex-end !important;
   margin:0 0 0 !important; margin-inline-start:auto !important;
 }
+/* v-tools-touch (تدقيق ١٨ أكتوبر، g04/composer-mic): على الجوّال «+» والمايك و«م» ٢٤px بفراغ ١px — اللمس يصيب «م» بالخطأ. المقاس كما
+   قرّره المالك (v-tools-small، v-maha-in-tools)؛ الفراغ ١٠px ومنطقة لمس ٥px حول كلّ زرّ (::after، ٣٤px) فتتجاور المناطق ولا تتداخل.
+   الأبناء المباشرون وحدهم (درس v-tools-scope: لا يطال أزرار نافذة «+»). الحاسوب كما هو. */
+html.mobile-ui #inputbar > .inputbar-tools-below .inputbar-tools-left{gap:10px;}
+html.mobile-ui #inputbar > .inputbar-tools-below #btnPlusTools,
+html.mobile-ui #inputbar > .inputbar-tools-below > .inputbar-tools-left > .btn,
+html.mobile-ui #inputbar > .inputbar-tools-below > .inputbar-tools-left > button{position:relative;}
+html.mobile-ui #inputbar > .inputbar-tools-below #btnPlusTools::after,
+html.mobile-ui #inputbar > .inputbar-tools-below > .inputbar-tools-left > .btn::after,
+html.mobile-ui #inputbar > .inputbar-tools-below > .inputbar-tools-left > button::after{content:""; position:absolute; inset:-5px;}
 /* v-foldable-composer (طلب المالك، مقيس على أعراض الهواوي/سامسونج): على التابلت/القابل للطيّ
    (mobile-ui وشاشة عريضة ≥ 700px) كان صندوق الكتابة يتوسّط (v-chat-center-narrow من 700px)
    بينما «+/المايك» والمزوّد يبقيان بعرض كامل فيطيران لزوايا الشاشة — والعتبة القديمة (861px)
@@ -760,8 +782,11 @@ html:not(.mobile-ui) header h1 #brandTitle{display:none;}
 /* v-mobile-brand-once (طلب المالك): على الجوّال يبقى شعار الدرج فقط — يُخفى شعار الهيدر
    كي لا يظهر الاسم مرّتين («من الجهتين») عند فتح الدرج. */
 html.mobile-ui header h1 #brandTitle{display:none !important;}
-/* مع سهم طيّ شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ */
-html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #sidebarBrand{margin-top:28px;}
+/* مع سهم طيّ شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ.
+   v-ticker-brand-fixed (تدقيق ١٨ أكتوبر، g10/stock-ticker): الحجز كان مشروطًا بالشريط مطويًّا، فإذا فُتح (أو أُخفي) سقط هامش الشعار ٢٨←١٠
+   فارتفع الشعار و«محادثة جديدة» تحته ١٨px وبقي سهم الطيّ مكانه. الشريط وسهمه صارا في رأس العمود الأوسط (v-topbar-merge)، فالموضع ثابت
+   بقيمة الحالة الافتراضيّة (المطويّ) في كلّ حالات الشريط. (هامش الزرّ نفسه ثابت ١٤px !important في index.html.) */
+html:not(.mobile-ui) #sidebarBrand{margin-top:28px;}
 html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:2px;}
 
 /* v-iphone-fit (لقطات المالك ٢٣ سبتمبر — آيفون):

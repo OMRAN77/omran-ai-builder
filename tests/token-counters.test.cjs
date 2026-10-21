@@ -114,7 +114,9 @@ test('٤. التقرير للمالك وحده بجانب تقرير التكل�
   assert.ok(h.indexOf('tokens = await __cm.tokenReport(7)') > h.indexOf('if (!isOwner(req))'), 'بعد بوّابة المالك');
   assert.match(h, /res\.status\(200\)\.json\(\{ ok: true, costs: await __cm\.monthReport\(req\.query\.month\), tokens \}\);/);
   const b = read('js/app.bundle.js');
-  assert.ok(b.includes("const tk = d.tokens, kt = (n) =>") && b.includes("'🔢 التوكنات آخر '"), 'لوحة المالك تعرض المسارات');
+  // v-owner-i18n: العنوان من قاموس لغة الواجهة (ownerTokensHead) — بالعربيّة نصّه كما كان
+  assert.ok(b.includes("const tk = d.tokens, kt = (n) =>") && b.includes("oT('ownerTokensHead', { d: tk.days })"), 'لوحة المالك تعرض المسارات');
+  assert.ok(read('js/app-03-i18n-data.js').includes('ownerTokensHead: "🔢 التوكنات آخر {d} أيّام'));
   const cl = read('api/_lib/claude.js');
   assert.equal((cl.match(/cm\.meterTurn\(meterUser \|\| '', meterUser \? cm\.tokenCostUsd\(useModel, tu\) : 0, 'chat', Object\.assign\(\{ lane: 'pro', model: useModel \}, tu\)\)/g) || []).length, 2, 'الردّ الاحترافيّ (متدفّق وغير متدفّق) — التكلفة لغير المالك وVIP، والتوكنات للكلّ');
 });

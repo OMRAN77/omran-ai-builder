@@ -110,7 +110,7 @@ test('client tools: an image the provider draws/edits runs on its own company en
 
 test('chip and work note: the agent label only with Claude; the provider draws itself and names the engine', () => {
   assert.match(read('js/modes.js'), /\(window\.__agentModeOn === true && curProv\(\) === 'claude'\)[^?]*\? agentLabel\(\) : curProvName\(\);/);
-  assert.ok(read('index.html').includes('/js/modes.js?v=m171026b'), 'وسم modes.js مرفوع');
+  assert.ok(read('index.html').includes('/js/modes.js?v=m211026'), 'وسم modes.js مرفوع');
   const GE = require(rp('api/_lib/github-edit.js'));
   assert.match(GE.WORK_NOTE, /- أنت من يرسم ويعدّل الصور حين تُطلب: بأداتَي generate_image وedit_image بنفسك، بلا «ما أقدر» ولا تحويل لغيرك؛ واذكر في سطر المحرّك/);
 });

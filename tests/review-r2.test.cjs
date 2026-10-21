@@ -502,9 +502,9 @@ test('ز-ب. لا يُعرض أبدًا اسم يبدأ بـg_ أو فيه @ —
   assert.equal(JSON.parse(store.get('db/shares/' + r.body.id + '.json')).username, 'زائر');
   const made = await share.createShare({ code: 'y', username: 'g_agent@gmail.com' });
   assert.equal(JSON.parse(store.get('db/shares/' + made.id + '.json')).username, 'زائر', 'مسار الوكيل (createShare) أيضًا');
-  // سجلّ قديم مخزَّن بالبريد قبل الإصلاح لا يُعرض به
+  // سجلّ قديم مخزَّن بالبريد قبل الإصلاح لا يُعرض به — والاسم الافتراضيّ يُقرأ "" فتترجمه الصفحتان (v-share-pages-i18n)
   store.set('db/shares/legacy1.json', JSON.stringify({ id: 'legacy1', code: 'z', username: 'g_old@gmail.com', createdAt: 1 }));
-  assert.equal((await run(share, { method: 'GET', query: { id: 'legacy1' } })).body.username, 'زائر');
+  assert.equal((await run(share, { method: 'GET', query: { id: 'legacy1' } })).body.username, '');
 });
 
 test('ز-ج. v-agent-publish-owner: مشاركة نشرها الوكيل لحساب Google يحذفها صاحبها بمفتاحه (200) لا غيره (403)، وباسمه المعروض', async () => {

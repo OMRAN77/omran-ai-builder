@@ -971,6 +971,16 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // v-acct-delete (الدفعة ٢، أمر المالك): صاحب الحساب يحذفه من «حسابي» — التفاصيل في account-delete.js
+    if (action === 'deleteAccount') {
+      const u = verifyToken(token);
+      if (!u) { res.status(401).json({ ok: false, code: 'auth', error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') }); return; }
+      const r = await require('./account-delete.js').deleteAccount({ username: u, token, confirmUsername: String(body.confirmUsername || '').slice(0, 64), password });
+      if (r.status === 200) _banMemo.delete(u); // الشاهد جلسة ميّتة الآن (isBanned) كما في تغيير الاسم
+      res.status(r.status).json(r.body);
+      return;
+    }
+
     if (action === 'changePassword') {
       const u = verifyToken(token);
       if (!u) {

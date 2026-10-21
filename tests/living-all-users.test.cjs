@@ -444,8 +444,8 @@ test('٧د. الربط: البطاقة داخل «ذاكرتي» لا صفحة �
   const a09 = read('js/app-09-attach.js');
   assert.match(a09, /memoryUpdate\(text, String\(__lastA\.content\)\);\n\s*try\{ if\(window\.livingLearn\) window\.livingLearn\(cur\.messages\); \}catch\(e\)\{ __swallow\(e, 'misc:living-learn-chat'\); \}/);
   assert.match(a09, /if\(window\.livingLearn && settingsOwnerUi\(\)\) window\.livingLearn\(cur\.messages\);/, 'الوكيل: للمالك وحده كما كان');
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=699'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=764'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=704'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=768'"));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('livingMemClearAll') && bundle.includes('window.livingLearn'));
   // الحقن في chat.js: بلا تحيّة، ومن ملفّ صاحب الرمز، وقبل التعليمات المخصّصة
@@ -465,7 +465,8 @@ test('٧هـ. ثمانية نصوص في الـ١٤ لغة، ولا اسم مز�
   for (const lg of ['fr', 'es', 'ru', 'tr', 'id', 'fil', 'hi', 'ne', 'bn', 'ur', 'ml', 'zh']) {
     const src = read('i18n/' + lg + '.js');
     for (const k of KEYS) assert.ok(src.includes('"' + k + '":'), lg + ': ' + k);
-    texts.push(src.slice(src.indexOf('Object.assign(I18N["' + lg + '"], {"livingMemTitle"')));
+    const at = src.indexOf('Object.assign(I18N["' + lg + '"], {"livingMemTitle"');
+    texts.push(src.slice(at, src.indexOf('\n', at) > at ? src.indexOf('\n', at) : undefined)); // سطر الذاكرة الحيّة وحده (لا ما أُلحق بعده من صفحة المالك)
   }
   assert.ok(texts.every((t) => !/claude|gemini|gpt|openai|groq|كلاود|جيميناي/i.test(t)), 'أسماء وظيفيّة فقط (المساعد)');
   assert.match(data, /livingMemTitle: "ذاكرتي الحيّة"/);

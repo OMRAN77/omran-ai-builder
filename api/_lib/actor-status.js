@@ -22,7 +22,17 @@ module.exports = async (req, res) => {
 
     const st = await fetch(statusUrl, auth);
     const sd = await st.json().catch(() => ({}));
-    if (!st.ok) { res.status(st.status >= 500 ? 502 : st.status).json({ error: 'lipsync status ' + st.status }); return; }
+    if (!st.ok) {
+      /* v-credit-out (أمر المالك ٢١ أكتوبر «ما تنخصم منه ولا نقطة»): المزوّد يرفض الاستطلاع نفسه لعطب عندنا (رصيده نفد، المفتاح، الصلاحيّة) — المهمّة لن
+         تُتابَع أبدًا، وكانت تذكرتها تنتهي بعد ساعتين بلا ردّ. تُسوّى فشلًا الآن (مرّة واحدة) وunavailable يعرضه العميل «الخدمة متوقّفة مؤقّتًا». */
+      if (require('./_videoFail.js').isOutage(st.status, JSON.stringify(sd))) {
+        console.error('[actor-status] status HTTP ' + st.status + ' ' + JSON.stringify(sd).slice(0, 300));
+        await settle(false);
+        res.status(503).json({ error: 'unavailable', retryable: false });
+        return;
+      }
+      res.status(st.status >= 500 ? 502 : st.status).json({ error: 'lipsync status ' + st.status }); return;
+    }
     if (sd.status !== 'COMPLETED') { res.status(200).json({ status: 'RUNNING', queue: sd.queue_position }); return; }
 
     const rr = await fetch(responseUrl, auth);
@@ -31,6 +41,7 @@ module.exports = async (req, res) => {
     if (!rr.ok || !url) {
       await settle(false);
       const why = String((rd && (rd.detail && (rd.detail[0] && rd.detail[0].msg || rd.detail))) || (rd && rd.error) || ('HTTP ' + rr.status));
+      if (require('./_videoFail.js').isOutage(rr.status, why)) { console.error('[actor-status] result ' + why.slice(0, 300)); res.status(503).json({ error: 'unavailable', retryable: false }); return; } // v-credit-out: «User is locked. Exhausted balance» كان يصل المستخدم سببًا
       res.status(200).json({ status: 'FAILED', failure: why.slice(0, 300) });
       return;
     }

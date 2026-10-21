@@ -165,6 +165,8 @@ module.exports = async (req, res) => {
     const data = await upstream.json().catch(() => null);
     if (!upstream.ok) {
       const m = (data && data.error && data.error.message) || ('HTTP ' + upstream.status);
+      /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد المزوّد نفد أو مفتاحه — رمز unavailable («الخدمة متوقّفة مؤقّتًا» بلغة الواجهة)، لا نصّ فوترة المزوّد بالإنجليزيّة داخل message_ar */
+      if (require('./_videoFail.js').isOutage(upstream.status, m)) { console.error('[stamps] upstream ' + upstream.status + ': ' + String(m).slice(0, 200)); res.status(503).end(JSON.stringify({ error: 'unavailable' })); return; }
       res.status(upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الطوابع: ' + m }));
       return;
     }

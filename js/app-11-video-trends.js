@@ -349,6 +349,7 @@
       var sj = null; try{ sj = await sr.json(); }catch(e){ sj = null; }
       if(sj && sj.status === 'SUCCEEDED') return Array.isArray(sj.output) ? sj.output[0] : sj.output;
       if(sj && sj.status === 'FAILED') throw new Error(sj.failure || sj.error || 'failed');
+      if(sj && sj.error === 'unavailable') throw Object.assign(new Error('unavailable'), { code: 'unavailable' }); // v-credit-out: سُوّيت التذكرة ورُدّت النقاط — لا ٤٥ استطلاعًا
     }
     throw new Error('timeout');
   }
@@ -359,9 +360,16 @@
       var m = Math.max(1, Math.ceil((Number(e.retryAfter) || 180) / 60));
       return ui('cooldown').replace('{m}', String(m));
     }
+    /* v-trend-points (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٢٠: «تعذّر: points_insufficient»): رمزا النقاط والحدّ بنصّي الباقات القائمين (١٤ لغة)
+       — الصياغة وحدها، لا تغيير في الخصم ولا ترتيبه */
+    if(e && e.code === 'points_insufficient' && W('plansWhyPoints')) return W('plansWhyPoints');
+    if(e && e.code === 'daily_limit_reached' && W('plansWhyLimit')) return W('plansWhyLimit');
+    if(e && e.code === 'unavailable' && W('svcPaused')) return W('svcPaused'); // v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الفيديو نفد — «الخدمة متوقّفة مؤقّتًا»
     /* v-trend-413: «HTTP 413» رمز حافّة لا رسالة — الصور أثقل من أن تُرسَل */
     if(/\b413\b/.test(String((e && e.message) || ''))) return ui('tooBig');
-    return ui('fail') + ': ' + String((e && e.message) || e).slice(0, 160);
+    var msg = String((e && e.message) || e);
+    if(/^[a-z][a-z0-9_]*$/.test(msg)) return ui('fail'); /* رمز خادم خامّ آخر («timeout»، «failed»…) لا يُعرض للمستخدم */
+    return ui('fail') + ': ' + msg.slice(0, 160);
   }
 
   /* v-video-seq-cooldown: ترند بأكثر من مشهد (قصّة بيكسار: ٣) كان يموت عند المشهد الثاني بـvideo_cooldown
