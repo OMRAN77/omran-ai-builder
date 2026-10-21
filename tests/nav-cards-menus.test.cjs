@@ -181,7 +181,24 @@ function tabsMenu({ right, innerWidth, width }) {
   const left = dd.style.left && dd.style.left !== 'auto' ? parseFloat(dd.style.left) : innerWidth - parseFloat(dd.style.right) - width;
   return { left, right: left + width, dd };
 }
+test('ج. ⋮ قرب يسار الشاشة (الجوّال العربيّ): القائمة داخل الشاشة بهامش ٦px، وعلى اليمين كما كانت', () => {
+  const a = tabsMenu({ right: 139, innerWidth: 390, width: 150 });
+  assert.ok(a.left >= 6, 'كانت تبدأ عند ' + a.left + 'px');
+  assert.ok(a.right <= 390 - 6);
+  const b = tabsMenu({ right: 380, innerWidth: 390, width: 150 });
+  assert.equal(b.dd.style.right, '10px', 'المحاذاة اليمنى كما كانت حين تتّسع الشاشة');
+  assert.equal(b.dd.style.left, 'auto');
+});
+
 /* ───────── (د) حروف الإطار الذهبيّة ───────── */
+test('د. لمسة الإطار تتخطّى تبويبات المعاينة/الكود وشريطها', () => {
+  const src = read('js/frame-touch.js');
+  const m = src.match(/t\.closest\('([^']*button,a,input[^']*)'\)/);
+  assert.ok(m, 'محدِّد التخطّي');
+  const sel = m[1].split(',');
+  assert.ok(sel.indexOf('.tab') >= 0 && sel.indexOf('#tabs') >= 0, sel.join(','));
+});
+
 /* ───────── (هـ) مساعد المستندات ───────── */
 function docs(lang) {
   const els = {};
@@ -209,12 +226,34 @@ test('هـ-١. مساعد المستندات باتّجاه لغة الواجه�
     assert.equal(d.el('docModal').dir, dir, lng);
   }
 });
+test('هـ-٢. خطأ «ارفع ملفًّا أو الصق نصًّا أوّلًا» يزول بالكتابة في خانة اللصق أو باختيار ملفّ', async () => {
+  const d = docs('ar');
+  d.el('btnDocs').click();
+  await d.el('docGo').onclick();
+  assert.match(d.el('docErr').innerHTML, /xmErr/, 'الخطأ يظهر مع خانة فارغة');
+  d.el('docPaste').value = 'نصّ العقد';
+  d.el('docPaste').dispatch('input');
+  assert.equal(d.el('docErr').innerHTML, '', 'بقي الخطأ بعد اللصق');
+  await d.el('docGo').onclick.call(null);
+  d.el('docErr').innerHTML = '<div class="xmErr">x</div>';
+  d.el('docFile').files = [{ name: 'a.pdf', type: 'application/pdf' }];
+  d.el('docFile').onchange();
+  assert.equal(d.el('docErr').innerHTML, '', 'بقي الخطأ بعد اختيار ملفّ');
+});
+
 /* ───────── (و) سهم الإرسال و⚠️ ───────── */
 const MOD = read('css/modules.css');
 function xmChain(htmlDir, modalDir, leaf) {
   return [{ tag: 'html', attrs: { dir: htmlDir }, cls: [] }, { tag: 'body', cls: [] },
     { tag: 'div', id: 'docModal', cls: ['xm', 'open'], attrs: { dir: modalDir } }, { tag: 'div', cls: ['xmWrap'] }, { tag: 'div', cls: ['xmBody'] }].concat(leaf);
 }
+test('و-١. سهم ➤ ينعكس في العربيّ وحده (المساعد والمعاملات)، ولا يمسّ الإنجليزيّ', () => {
+  const btn = [{ tag: 'div', cls: ['xmQwrap'] }, { tag: 'button', id: 'docSend', cls: [] }];
+  assert.equal(winner(cascade(MOD, xmChain('rtl', 'rtl', btn), 1280), 'transform'), 'scaleX(-1)');
+  assert.notEqual(winner(cascade(MOD, xmChain('ltr', 'ltr', btn), 1280), 'transform'), 'scaleX(-1)');
+  /* نافذة المعاملات ما زال dir="rtl" ثابتًا فيها: في الإنجليزيّ يبقى السهم كما كان */
+  assert.notEqual(winner(cascade(MOD, xmChain('ltr', 'rtl', btn), 1280), 'transform'), 'scaleX(-1)');
+});
 function inlineStartPadding(decls, dir) {
   const side = { top: 0, right: 0, bottom: 0, left: 0 };
   const px = (v) => parseFloat(v) || 0;
@@ -228,6 +267,14 @@ function inlineStartPadding(decls, dir) {
   }
   return side[dir === 'rtl' ? 'right' : 'left'];
 }
+test('و-٢. نقاط مهمة: مسافة ⚠️ في بداية السطر بالاتّجاهين (الأيقونة inset-inline-start)', () => {
+  for (const dir of ['rtl', 'ltr']) {
+    const d = cascade(MOD, xmChain(dir, dir, [{ tag: 'ul', cls: ['xmKp'] }, { tag: 'li', cls: [] }]), 1280);
+    assert.ok(inlineStartPadding(d, dir) >= 30, dir + ': ' + inlineStartPadding(d, dir));
+  }
+  assert.match(MOD, /\.xm \.xmKp li::before\{content:"⚠️";position:absolute;inset-inline-start:10px;/);
+});
+
 /* ───────── (ز) ختم الإصدار في ورقة مشاركة الردّ ───────── */
 function shareSheet(owner) {
   const made = [];

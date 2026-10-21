@@ -209,7 +209,7 @@
 .xm .xmFCard .k{font-size: var(--fs-5);opacity:.65;margin-bottom:3px;}
 .xm .xmFCard .v{font-size: var(--fs-3);font-weight: var(--w-bold);color:#f7ecc9;word-break:break-word;}
 .xm .xmKp{list-style:none;padding:0;margin:0;}
-.xm .xmKp li{position:relative;padding:9px 12px 9px 34px;margin-bottom:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--r-3);font-size: var(--fs-3);line-height:1.6;}
+.xm .xmKp li{position:relative;padding-block:9px;padding-inline:34px 12px;margin-bottom:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--r-3);font-size: var(--fs-3);line-height:1.6;}
 .xm .xmKp li::before{content:"⚠️";position:absolute;inset-inline-start:10px;top:9px;}
 .xm .xmSrc{display:block;padding:9px 12px;margin-bottom:7px;background:rgba(var(--accent-tint-rgb),.08);border:1px solid rgba(var(--accent-tint-rgb),.22);border-radius:var(--r-3);color:var(--accent-ink);text-decoration:none;font-size:12.5px;word-break:break-word;}
 .xm .xmSrc:hover{background:rgba(var(--accent-tint-rgb),.16);}
@@ -219,6 +219,9 @@
 .xm .xmQwrap{display:flex;gap:8px;margin-top:14px;position:sticky;bottom:0;padding-top:8px;background:linear-gradient(to top,rgba(0,0,0,.98),rgba(0,0,0,.7));}
 .xm .xmQwrap input{flex:1;}
 .xm .xmQwrap button{flex:0 0 auto;padding:0 16px;border-radius:var(--r-3);border:none;background:linear-gradient(90deg,var(--accent-surface),#b8902a);color:var(--accent-on-surface);font-weight:700;cursor:pointer;}
+/* v-nav-cards-menus: ➤ لا يعكسه اتّجاه النصّ — في العربيّ يشير لجهة القراءة. الشرطان معًا: نافذة المعاملات ما زال dir="rtl" ثابتًا فيها
+   فلا ينقلب سهمها في الإنجليزيّ. الحشوة فوق منطقيّة (inline) لأنّ ⚠️ على inset-inline-start — كانت تركب أوّل حرف في العربيّ. */
+html[dir="rtl"] .xm[dir="rtl"] .xmQwrap button{transform:scaleX(-1);}
 .xm .xmQA{margin-top:12px;}
 .xm .xmQ{background:rgba(255,255,255,.06);border-radius:var(--r-3) var(--r-3) var(--r-1) var(--r-3);padding:9px 13px;font-size: var(--fs-3);margin:10px 0 6px auto;max-width:88%;width:fit-content;}
 .xm .xmA{font-size: var(--fs-3);line-height:1.75;padding:2px 4px;}

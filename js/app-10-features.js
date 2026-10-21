@@ -500,6 +500,9 @@ btnToggleHistory.onclick = () => {
       dd.style.left = 'auto';
       dd.style.insetInlineEnd = 'auto';
       dd.style.zIndex = '99999';
+      /* v-nav-cards-menus: في العربيّ ⋮ قرب يسار الشاشة، والقائمة المحاذاة لحافّته اليمنى كانت تبدأ خارجها (-11px) — تُحصر بهامش ٦px */
+      const edge = window.innerWidth - parseFloat(dd.style.right);
+      if(edge - (dd.offsetWidth || 0) < 6){ dd.style.left = '6px'; dd.style.right = 'auto'; }
     }catch(e){ /* guard-ok */ }
   }
   function restore(){
