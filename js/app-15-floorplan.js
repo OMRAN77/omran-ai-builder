@@ -616,7 +616,7 @@
           reply({ ok: true, dataUrl: 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64 });
         } else {
           /* v-view-err: مرّر سبب الخادم الحقيقي — والفارغ يعرضه المحرر بلغة التطبيق */
-          reply({ ok: false, error: (data && (data.message_ar || data.error)) || '' });
+          reply({ ok: false, error: (data && data.error === 'unavailable') ? t('svcPaused') : ((data && (data.message_ar || data.error)) || '') }); // v-credit-out: كان «⚠️ unavailable» خامًا
         }
       });
     }).catch(function () {

@@ -151,7 +151,7 @@ async function handleVoiceImageIntent(promptText){
     });
     const data = await res.json();
     if(!res.ok){
-      await voiceTabSpeak(t('voiceImageFailed'));
+      await voiceTabSpeak(t(data && data.error === 'unavailable' ? 'svcPaused' : 'voiceImageFailed')); // v-credit-out
       return;
     }
     const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
