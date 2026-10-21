@@ -311,3 +311,59 @@ test('١١. v-share-pages-i18n: الاسم الافتراضيّ «زائر» ي�
   assert.ok(ex.body.items.some((x) => x.username === 'lina'));
   assert.ok(!ex.body.items.some((x) => x.username === 'زائر'));
 });
+
+test('١٢. v-share-once: نافذة المشاركة تتذكّر رابط المشروع في الجلسة — نقرتان = POST واحد والرابط نفسه، وتغيّر المشروع أو الظهور = رابط جديد', async () => {
+  const vm = require('node:vm');
+  const feat = fs.readFileSync(path.join(root, 'js/app-10-features.js'), 'utf8');
+  const from = feat.indexOf('/* ---------- 🔗 Share project');
+  const to = feat.indexOf('/* v-modal-img-release');
+  assert.ok(from > 0 && to > from);
+  const src = feat.slice(from, to);
+  const el = (extra) => Object.assign({ style: {}, value: '', checked: false, disabled: false, textContent: '', listeners: {}, addEventListener(t, f) { this.listeners[t] = f; }, select() {} }, extra);
+  const els = { '#shareModal': el(), '#shareModalCloseBtn': el(), '#shareCreateBtn': el(), '#shareCopyBtn': el(), '#shareStatusMsg': el(), '#shareResultBox': el(), '#shareResultUrl': el(), '#sharePublicYes': el() };
+  const posts = [];
+  let n = 0;
+  const ctx = {
+    $: (s) => els[s] || null,
+    t: (k) => k,
+    authGet: () => 'tok',
+    __swallow() {},
+    location: { origin: 'https://app.test' },
+    navigator: {}, document: { execCommand() {} }, window: {},
+    JSON, String, Error,
+    fetch: async (url, opts) => { posts.push({ url, body: JSON.parse(opts.body) }); n++; return { status: 200, ok: true, json: async () => ({ id: 'id' + n }) }; },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(src, ctx);
+  const click = () => els['#shareCreateBtn'].listeners.click();
+  const project = { id: 'p1', title: 'متجر', code: '<p>a</p>', messages: [] };
+  ctx.openShareModal(project);
+  await click();
+  assert.equal(posts.length, 1);
+  assert.equal(els['#shareResultUrl'].value, 'https://app.test/p.html?id=id1');
+  // إغلاق النافذة ثمّ فتحها للمشروع نفسه ثمّ «إنشاء» مرّة أخرى: الرابط نفسه بلا نداء
+  els['#shareModal'].listeners.click({ target: els['#shareModal'] });
+  els['#shareResultUrl'].value = '';
+  ctx.openShareModal(project);
+  await click();
+  assert.equal(posts.length, 1, 'لا مشاركة جديدة ولا سجلّ مكرّر في «استكشف»');
+  assert.equal(els['#shareResultUrl'].value, 'https://app.test/p.html?id=id1');
+  assert.equal(els['#shareResultBox'].style.display, 'block');
+  // الظهور الخاصّ مفتاح آخر
+  els['#sharePublicYes'].checked = false;
+  await click();
+  assert.equal(posts.length, 2);
+  assert.equal(posts[1].body.isPublic, false);
+  // المشروع تغيّر: رابط جديد، ثمّ يُتذكَّر الجديد
+  els['#sharePublicYes'].checked = true;
+  project.code = '<p>changed</p>';
+  await click();
+  assert.equal(posts.length, 3);
+  assert.equal(els['#shareResultUrl'].value, 'https://app.test/p.html?id=id3');
+  await click();
+  assert.equal(posts.length, 3);
+  // مشروع آخر بالعنوان نفسه لا يأخذ رابط الأوّل
+  ctx.openShareModal({ id: 'p2', title: 'متجر', code: '<p>changed</p>', messages: [] });
+  await click();
+  assert.equal(posts.length, 4);
+});

@@ -1471,6 +1471,10 @@ function openShareModal(project){
   function closeModal(){ modal.style.display = 'none'; shareModalProject = null; }
   if(closeBtn) closeBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+  /* v-share-once (تدقيق ١٨ أكتوبر): كلّ «إنشاء الرابط» كان مشاركة جديدة وسجلًّا جديدًا في «استكشف» — فتكرّرت المشاريع هناك.
+     ذاكرة جلسة {مشروع|ظهور → رابط}: المشروع نفسه بلا تغيير يأخذ رابطه الموجود بلا نداء، وتغيّر توقيعه (العنوان وطول الكود
+     وعدد الرسائل) يصنع رابطًا جديدًا يحلّ محلّه. لا حذف لأيّ مشاركة قائمة. */
+  const __shareMade = {};
 
   if(createBtn) createBtn.addEventListener('click', async () => {
     if(!shareModalProject) return;
@@ -1486,6 +1490,15 @@ function openShareModal(project){
       return;
     }
     const isPublic = $('#sharePublicYes').checked;
+    const __shareKey = shareModalProject.id ? (String(shareModalProject.id) + '|' + (isPublic ? 1 : 0)) : '';
+    const __shareSig = String(shareModalProject.title || '') + '|' + String(shareModalProject.code || '').length + '|' + __shareMsgs.length;
+    const __shareOld = __shareKey ? __shareMade[__shareKey] : null;
+    if(__shareOld && __shareOld.sig === __shareSig){
+      resultUrl.value = __shareOld.url;
+      resultBox.style.display = 'block';
+      statusMsg.style.display = 'none';
+      return;
+    }
     statusMsg.style.display = 'block';
     statusMsg.textContent = t('shareCreating');
     resultBox.style.display = 'none';
@@ -1507,6 +1520,7 @@ function openShareModal(project){
       const data = await resp.json();
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;
+      if(__shareKey) __shareMade[__shareKey] = { sig: __shareSig, url: fullUrl };
       resultUrl.value = fullUrl;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
