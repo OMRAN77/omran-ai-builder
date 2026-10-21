@@ -116,6 +116,33 @@
     .english ul { padding-left: 22px; padding-right: 0; }
     .english h2 { letter-spacing: -0.02em; }
 
+    /* v-legal-lang: شريط علويّ — رابط العودة للتطبيق، وزرّ «العربية» في وضع الإنجليزيّة وحدها (لغة التطبيق غير العربيّة) */
+    .topnav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .back-link { font-size: 0.9rem; font-weight: 600; }
+    .back-link .t-en, .ar-btn { display: none; }
+    .ar-btn {
+      background: transparent;
+      color: var(--gold);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    html.en-only .back-link .t-ar { display: none; }
+    html.en-only .back-link .t-en { display: inline; }
+    html.en-only .ar-btn { display: inline-block; }
+    html.en-only .page > header,
+    html.en-only .page > .policy-card { display: none; }
+    html.en-only .english { border-top: 0; margin-top: 0; padding-top: 0; }
+
     footer {
       border-top: 1px solid rgba(255, 255, 255, 0.1);
       color: var(--muted);
@@ -138,6 +165,10 @@
 </head>
 <body>
   <main class="page">
+    <nav class="topnav">
+      <a class="back-link" href="/" onclick="return omBackToApp()"><span class="t-ar">→ العودة للتطبيق</span><span class="t-en" lang="en">← Back to app</span></a>
+      <button type="button" class="ar-btn" onclick="omShowArabic()">العربية</button>
+    </nav>
     <header>
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span>OMRAN AI BUILDER</div>
       <h1>سياسة الخصوصية</h1>
@@ -260,5 +291,30 @@
 
     <footer>© 2026 Omran AI Builder by فريق عمران AI</footer>
   </main>
+  <script>
+  /* v-legal-lang (تدقيق ١٨ أكتوبر): الصفحة كانت تفتح بالعربيّ والإنجليزيّ تحته لمستخدم الواجهة الإنجليزيّة. لغة التطبيق من ?lang=
+     أو aiapp_lang (الأصل نفسه)؛ للسياسة نسختان فقط، فكلّ لغة غير العربيّة ترى الإنجليزيّة وحدها، وزرّ «العربية» يعيد الصفحة كاملة. */
+  var omArTitle = document.title;
+  function omPageLang() {
+    try { return new URLSearchParams(location.search).get('lang') || localStorage.getItem('aiapp_lang') || ''; }
+    catch (e) { return ''; /* تخزين محجوب (نافذة خاصّة/إطار) — تبقى الصفحة بالعربيّة */ }
+  }
+  function omShowArabic() {
+    var h = document.documentElement;
+    h.classList.remove('en-only'); h.lang = 'ar'; h.dir = 'rtl'; document.title = omArTitle;
+  }
+  /* رابط «العودة للتطبيق»: إن فُتحت الصفحة من التطبيق (نافذة أمّ حيّة) تُغلق فيرجع المستخدم إليه، وإلّا ينتقل الرابط إلى / */
+  function omBackToApp() {
+    try { if (window.opener && !window.opener.closed) { window.close(); if (window.closed) return false; } }
+    catch (e) { /* نافذة أمّ من أصل آخر — الرابط ينتقل إلى / */ }
+    return true;
+  }
+  (function () {
+    var L = String(omPageLang()).toLowerCase();
+    if (!L || L.slice(0, 2) === 'ar') return;
+    var h = document.documentElement;
+    h.classList.add('en-only'); h.lang = 'en'; h.dir = 'ltr'; document.title = 'Privacy Policy | Omran AI Builder';
+  })();
+  </script>
 </body>
 </html>

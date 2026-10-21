@@ -1226,7 +1226,10 @@ try{
   let __sbReopen = document.getElementById('sbReopen');
   if(!__sbReopen){
     __sbReopen = document.createElement('button');
-    __sbReopen.id = 'sbReopen'; __sbReopen.type = 'button'; __sbReopen.setAttribute('aria-label', 'فتح القائمة');
+    __sbReopen.id = 'sbReopen'; __sbReopen.type = 'button';
+    /* v-nav-cards-menus: الوصف بمفتاح الترجمة (١٤ لغة) لا بنصّ عربيّ ثابت — data-i18n يعيد كتابته مع كلّ تبديل لغة */
+    try{ const __sbT = t('sidePanelTitle'); __sbReopen.setAttribute('aria-label', __sbT); __sbReopen.title = __sbT; }catch(e){ __swallow(e, "ui:app-10-features#sb-reopen-i18n"); }
+    __sbReopen.setAttribute('data-i18n', '[aria-label]sidePanelTitle'); __sbReopen.setAttribute('data-i18n-title', 'sidePanelTitle');
     __sbReopen.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
     document.body.appendChild(__sbReopen);
   }
@@ -1406,7 +1409,7 @@ $('#history').addEventListener('click', () => {
       /* v-edu-selfhost: مستودع omran-edu غير موصول بالنشر التلقائي — الصفحة
          المحدثة تُستضاف هنا (edu-old/) فتنشر مع التطبيق، والخلفية تبقى على
          النشر القديم الشغال (CORS مفتوح). */
-      frame.src = '/edu-old/index.html?v=15i'; /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
+      frame.src = '/edu-old/index.html?v=15j'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
     }
     modal.style.display = 'flex';
     if(window.innerWidth <= 860 && typeof closeDrawers === 'function') closeDrawers();

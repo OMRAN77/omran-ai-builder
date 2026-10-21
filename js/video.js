@@ -75,6 +75,7 @@
   }
   var ICO=/^([\u200d\ufe0f\u2190-\u21ff\u2300-\u27bf\ud800-\udfff]+)\s*/;
   function ar(){var h=document.documentElement;return (h.lang||'ar').indexOf('ar')===0||h.dir==='rtl';}
+  function uiLang(){ return String(document.documentElement.lang||'ar').split('-')[0].toLowerCase(); } /* لغة الواجهة بالضبط: ar() صادقة للأردو أيضًا (rtl) — v-vmk-sample-lang */
   function on(){return true;} /* v-vmk-mobile: نفس استوديو الكمبيوتر على الهاتف */
   function id(x){return document.getElementById(x);}
   /* v-vmk-clean (المالك: «شيل الأيقونات… اسم رسميّ بلا إيموجي»): تنظيف نصوص النافذة من الإيموجي عند العرض بدل تعديل ١٤ قاموسًا */
@@ -223,6 +224,7 @@
   function syncSamples(){
     var box=id('vmkSamples'); if(!box) return;
     var md=(id('videoMakerMode')||{}).value||''; box.innerHTML='';
+    box.dataset.mode=md; /* v-vmk-sample-play: ملصقات «القوالب» نصّها في وسط الإطار — الدائرة تنزل تحته (modules.css) */
     if(tab==='trend'||!md) return;
     var c=Cap(md), keys=['videoIdea'+c] /* v-vmk-light: بطاقتان — «كيف تسوي فيديو» ثمّ فيديو الجودة */;
     var tt0=L('vcTutorial');
@@ -237,19 +239,25 @@
       box.appendChild(te);
     }
     box.style.setProperty('--h',String(HUE[md]==null?35:HUE[md]));
+    /* v-vmk-sample-lang (تدقيق ١٨–١٩ أكتوبر، لقطة ٠١٨): مثال «القوالب» بالإنجليزيّ أظهر عنوانًا وملصقًا عربيّين — عنوان index.json يغلب
+       L(k) والنصّ محروق في الفيديو. العنوان المرفوع عربيّ فيُعرض بالعربيّة وحدها، وفيديو بلغة غير لغة الواجهة ("lang" في index.json)
+       تحلّ محلّه بطاقة المثال النصّيّة بلغة الواجهة. فيديو بلا نصّ (الصقر) يبقى لكلّ اللغات. */
+    var ul=uiLang();
     keys.forEach(function(k,i){
-      var vm=VIDEOS[md+'-'+(i+1)], tx=(vm&&vm.title)||L(k); if(!tx) return; /* عنوان الفيديو المرفوع (من <الاسم>.txt) يغلب المثال */
+      var vm=VIDEOS[md+'-'+(i+1)]; if(vm&&vm.lang&&vm.lang!==ul) vm=null;
+      var tx=(vm&&vm.title&&ul==='ar')?vm.title:L(k); if(!tx) return; /* عنوان الفيديو المرفوع (من <الاسم>.txt) يغلب المثال بالعربيّة */
       var el=document.createElement('div'); el.className='vmk-sm'; el.setAttribute('role','button'); el.tabIndex=0;
       var pv=document.createElement('div'); pv.className='vmk-sm-p'; pv.style.setProperty('--i',String(i));
       var vsrc='';
-      if(VIDEOS[md+'-'+(i+1)]){
+      if(vm){
         vsrc='/media/samples/'+md+'-'+(i+1)+'.mp4';
         var vd=document.createElement('video'); vd.muted=true; vd.loop=true; vd.playsInline=true; vd.preload='none'; vd.poster='/media/samples/'+md+'-'+(i+1)+'.jpg'; vd.src=vsrc;
-        el.addEventListener('mouseenter',function(){ try{ vd.play(); }catch(e){ /* guard-ok — المتصفّح قد يمنع التشغيل التلقائي */ } });
+        /* v-vmk-play-catch (تدقيق ١٨–١٩ أكتوبر): مغادرة البطاقة أثناء التحميل ترفض وعد play() — كان بلا معالج فصار خطأ صفحة */
+        el.addEventListener('mouseenter',function(){ try{ var pp=vd.play(); if(pp&&typeof pp.catch==='function') pp.catch(function(){ /* guard-ok — الإيقاف قبل بدء التشغيل ليس خطأ */ }); }catch(e){ /* guard-ok — المتصفّح قد يمنع التشغيل التلقائي */ } });
         el.addEventListener('mouseleave',function(){ try{ vd.pause(); }catch(e){ /* guard-ok — لا أثر */ } });
         pv.appendChild(vd);
       }
-      if(VIDEOS[md+'-'+(i+1)]){ var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl); }
+      if(vm){ var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl); }
       var tt=document.createElement('b'); tt.textContent=tx;
       if(vsrc){ el.classList.add('has-vid'); el.appendChild(pv); el.appendChild(tt); el.setAttribute('aria-label',tx); el.title=tx; } else { pv.appendChild(tt); el.appendChild(pv); }
       var pick=function(){ var pe=id('videoMakerPrompt'); setVal(pe,tx); if(pe) pe.focus(); if(vsrc) openPlayer(vsrc); };

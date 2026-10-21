@@ -273,7 +273,9 @@ test('١٠. حدّ المحادثة يُفتح من نهاية مسارها: ا�
   assert.match(a18, /if \(__planLimit\) __er\.planLimit = true; __er\.log = __logNow\(\); throw __er;/);
   const a9 = read('js/app-09-attach.js');
   assert.equal((a9.match(/e\.name === 'AbortError' \|\| e\.planLimit\)\) throw e;/g) || []).length, 2, 'المسار الأوّل وفريق الأدوات');
-  assert.match(a9, /\} else if\(err && err\.planLimit\)\{\s*\/\/[^\n]*\n\s*cur\.messages\.push\(\{role: 'assistant', content: '⚠️ ' \+ t\('plansWhyLimit'\)\}\);\s*try\{ if\(typeof window\.omranOpenPlans === 'function'\) window\.omranOpenPlans\('limit', 'chat'\);/);
+  // v-limit-msg-i18n: المجّانيّ والضيف بنصّ ردّ المحادثة وطبقته (limit-msg-i18n ٤)، والمشترك بالسطر نفسه كما كان
+  assert.match(a9, /function omranPlanLimitMsg\(err\)\{[\s\S]{0,900}?return \{role: 'assistant', content: '⚠️ ' \+ t\('plansWhyLimit'\)\};\n\}/);
+  assert.match(a9, /\} else if\(err && err\.planLimit\)\{\s*\/\/[^\n]*\n\s*cur\.messages\.push\(omranPlanLimitMsg\(err\)\);[^\n]*\n\s*try\{ if\(typeof window\.omranOpenPlans === 'function'\) window\.omranOpenPlans\('limit', 'chat'\);/);
   assert.match(a9, /if\(__ctTier === 'free-limit' \|\| __ctTier === 'guest-limit'\)\{\s*try\{ if\(typeof window\.omranOpenPlans === 'function'\) window\.omranOpenPlans\('limit', 'chat'\);/);
   assert.match(a9, /window\.omranOpenPlans\('points', 'pts'\); \/\* v-plans-gate \*\/ else if\(typeof openPremiumBuyPoints/);
   assert.match(read('js/app-08-maha.js'), /if\(!guest && typeof window\.omranOpenPlans === 'function'\)\{ window\.omranOpenPlans\('points', 'maha'\); return; \}/);
@@ -315,7 +317,7 @@ test('١١. النصوص السبعة بالـ١٤ لغة بمواضعها {plan
     assert.ok(d.plansWhyExpired.includes('{plan}'), l);
     assert.ok(d.plansWhyExpiring.includes('{plan}') && d.plansWhyExpiring.includes('{date}'), l);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=765'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=766'"));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.omranOpenPlans = openPlans;') && bundle.includes("if(c === 'unavailable') return t('vwUnavailable');"), 'الحزمة مبنيّة');
 });

@@ -225,7 +225,8 @@ async function __safeJson(res){
       {
         const cap = document.createElement('span');
         cap.textContent = name;
-        cap.style.cssText = 'position:absolute; left:50%; bottom:3%; transform:translateX(-50%); white-space:nowrap; max-width:96%; overflow:hidden; text-overflow:ellipsis;' +
+        /* تدقيق ١٨ أكتوبر (الدفعة ٥، من b8 في ten-a): سطر واحد بقصّ كان يقطع «Living ro…» في خانة ~٦١px على جوّال ٣٩٠ — يلتفّ سطرين (الحاسوب سطر واحد كما كان) */
+        cap.style.cssText = 'position:absolute; left:50%; bottom:3%; transform:translateX(-50%); width:96%; white-space:normal; overflow-wrap:anywhere; line-height:1.1; text-align:center;' +
           ' font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
         b.appendChild(cap);
       }
@@ -2252,21 +2253,24 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       }));
       // v-fashion-cards: بطاقات المقارنة بشكل التصميم المعتمد — تسمية أ/ب/ج،
       // اختيار بإطار ذهبي، والمختارة تصير النتيجة الرئيسية القابلة للتحميل.
-      const AR_LABELS = ['أ', 'ب', 'ج'];
+      /* تدقيق ١٨ أكتوبر: التسميات والتلميح و«✓ اختيارك» كانت عربيّة في كلّ اللغات — أ/ب/ج للعربيّة والأردو وA/B/C لغيرهما،
+         والتلميح من __BI (موجود بالـ١٢ لغة)، والمختار علامة ✓ مع الإطار الذهبيّ */
+      const LABELS = /^(ar|ur)/.test(lang7()) ? ['أ', 'ب', 'ج'] : ['A', 'B', 'C'];
+      const PICK_HINT = bT('اضغطي للاختيار ✓', '👍 Pick this');
       results.forEach((r, ri) => {
         const cell = document.createElement('div');
         cell.style.cssText = 'position:relative; border:1.5px solid var(--border,#333); border-radius:14px; padding:6px; text-align:center; cursor:pointer; transition:border-color .15s, box-shadow .15s;';
         if(r.dataUrl){
           const label = (styleEl.querySelector('option[value="' + r.styleVal + '"]') || {}).textContent || r.styleVal;
-          cell.innerHTML = '<span style="position:absolute; top:12px; inset-inline-end:12px; z-index:2; background:rgba(0,0,0,.65); color:#eef0f6; font-weight:700; font-size:12.5px; border-radius:6px; padding:2px 8px;">' + AR_LABELS[ri] + '</span>'
+          cell.innerHTML = '<span style="position:absolute; top:12px; inset-inline-end:12px; z-index:2; background:rgba(0,0,0,.65); color:#eef0f6; font-weight:700; font-size:12.5px; border-radius:6px; padding:2px 8px;">' + LABELS[ri] + '</span>'
             + '<img src="' + r.dataUrl + '" style="width:100%; border-radius:10px; background:#000;">'
             + '<p style="font-size:11.5px; color:var(--muted,#999); margin:6px 0 2px;">' + label + '</p>'
-            + '<p class="fashionPickHint" style="font-size:11.5px; color:#d4af37; margin:0 0 4px;">اضغطي للاختيار ✓</p>';
+            + '<p class="fashionPickHint" style="font-size:11.5px; color:#d4af37; margin:0 0 4px;">' + PICK_HINT + '</p>';
           cell.onclick = () => {
-            compareResultsEl.querySelectorAll(':scope > div').forEach(c => { c.style.borderColor = 'var(--border,#333)'; c.style.boxShadow = 'none'; const h = c.querySelector('.fashionPickHint'); if(h) h.textContent = 'اضغطي للاختيار ✓'; });
+            compareResultsEl.querySelectorAll(':scope > div').forEach(c => { c.style.borderColor = 'var(--border,#333)'; c.style.boxShadow = 'none'; const h = c.querySelector('.fashionPickHint'); if(h) h.textContent = PICK_HINT; });
             cell.style.borderColor = '#d4af37';
             cell.style.boxShadow = '0 8px 22px -12px rgba(212,175,55,.55)';
-            const h = cell.querySelector('.fashionPickHint'); if(h) h.textContent = '✓ اختيارك';
+            const h = cell.querySelector('.fashionPickHint'); if(h) h.textContent = '✓';
             resultEl.src = r.dataUrl; if(resultWrap) resultWrap.style.display = 'block'; resultEl.style.display = 'block'; /* v-fashion-show */
             downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
             favSaveBtn.style.display = 'block';

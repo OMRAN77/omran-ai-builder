@@ -396,16 +396,18 @@ function md(src){
     k++;
     if(!t){ closeList(); continue; }
     /* v-edu-hr (تدقيق ١٨–١٩ أكتوبر «ردّ المعلّم يعرض --- كنصّ»؛ الدفعة ٤، من حزمة b9 في ten-a): «---» فاصل بالفراغ لا بخطّ (v-no-lines) ولا نصًّا خامًا */
+    /* v-edu-dir (الدفعة ٥، من v-edu-hub-polish في ten-a): كلّ كتلة dir="auto" باتّجاه نصّها — ملخّص الدرس العربيّ في الواجهة الإنجليزيّة
+       كان LTR فتذهب النقطة والنقطتان للجهة الخاطئة. القائمة على ul/ol وحدها (auto يتخطّى الأبناء ذوي dir فتصير LTR والنقاط خارجها). */
     if(/^([-*_])\1{2,}$/.test(t)){ closeList(); out.push('<div class="eduGap" style="height:10px"></div>'); continue; }
     var h=t.match(/^(#{1,6})\s+(.*)$/);
-    if(h){ closeList(); var lv=Math.min(h[1].length+2,5); out.push('<h'+lv+'>'+inline(h[2])+'</h'+lv+'>'); continue; }
+    if(h){ closeList(); var lv=Math.min(h[1].length+2,5); out.push('<h'+lv+' dir="auto">'+inline(h[2])+'</h'+lv+'>'); continue; }
     var bq=t.match(/^>\s?(.*)$/);
-    if(bq){ closeList(); out.push('<blockquote>'+inline(bq[1])+'</blockquote>'); continue; }
+    if(bq){ closeList(); out.push('<blockquote dir="auto">'+inline(bq[1])+'</blockquote>'); continue; }
     var ul=t.match(/^[-*•]\s+(.*)$/);
-    if(ul){ if(list!=='ul'){ closeList(); out.push('<ul>'); list='ul'; } out.push('<li>'+inline(ul[1])+'</li>'); continue; }
+    if(ul){ if(list!=='ul'){ closeList(); out.push('<ul dir="auto">'); list='ul'; } out.push('<li>'+inline(ul[1])+'</li>'); continue; }
     var ol=t.match(/^\d+[.)]\s+(.*)$/);
-    if(ol){ if(list!=='ol'){ closeList(); out.push('<ol>'); list='ol'; } out.push('<li>'+inline(ol[1])+'</li>'); continue; }
-    closeList(); out.push('<p>'+inline(t)+'</p>');
+    if(ol){ if(list!=='ol'){ closeList(); out.push('<ol dir="auto">'); list='ol'; } out.push('<li>'+inline(ol[1])+'</li>'); continue; }
+    closeList(); out.push('<p dir="auto">'+inline(t)+'</p>');
   }
   closeList(); return out.join('');
 }
@@ -473,7 +475,8 @@ function showHome(){
   };
   var __cb=document.getElementById('eduCurricBtn'); if(__cb) __cb.onclick=showCurriculum;
   var oldRow=document.getElementById('eduOldEduRow');
-  if(oldRow) oldRow.onclick=function(){ closeModal(); if(typeof window.openOmranEduModal==='function') window.openOmranEduModal(); };
+  /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): كان يغلق المركز قبل الفتح فيرجعك Esc إلى الأدوات — الصانع القديم فوق المركز (10050) فيُغلَق وحده */
+  if(oldRow) oldRow.onclick=function(){ var om=document.getElementById('omranEduModal'); if(om) om.style.zIndex='10060'; if(typeof window.openOmranEduModal==='function') window.openOmranEduModal(); };
   listLessons().then(function(r){ renderSubjects(r.lessons||[]); renderUploads(r.lessons||[]); }).catch(function(){ renderSubjects([]); });
   if(window.__eduPlus&&window.__eduPlus.home){ try{ window.__eduPlus.home(document.getElementById('eduPlusHome')); }catch(e){ __swallow(e,'edu:plus-home'); } }
 }
@@ -681,7 +684,7 @@ function renderQuiz(pane,lesson){
       html+='<p style="font-size: var(--fs-3);line-height:1.8;max-width:340px;margin:6px auto 0;">'
         +esc(T2('ركّز مراجعتك على مستوى ','Focus your review on the '))
         +'<b>'+esc(LABEL[weak])+'</b>'
-        +esc(T2('.','level.'))+'</p>';
+        +esc(T2('.',' level.'))+'</p>'; /* v-edu-hub-polish: «Basiclevel.» كانت ملتصقة */
     }
     html+='<div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">'
       +'<button class="eduPrimary" id="eduRetry">'+esc(T('retry'))+'</button>';
@@ -733,9 +736,11 @@ function renderQuiz(pane,lesson){
         if(ok){ roundRight++; stats[level].right++; }
         stats[level].total++;
         var ex='';
-        if(q.explain) ex+='💡 '+esc(q.explain);
+        /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): شرح الدرس العربيّ في الواجهة الإنجليزيّة كان ترقيمه بالجهة الخاطئة —
+           كلّ سطر باتّجاه نصّه، واسم القسم معزول عن «Review: » */
+        if(q.explain) ex+='<div dir="auto">💡 '+esc(q.explain)+'</div>';
         /* Wrong answer points back into the summary, not just "incorrect". */
-        if(!ok&&q.section) ex+=(ex?'<br>':'')+'📌 '+esc(T2('راجع: ','Review: '))+'<b>'+esc(q.section)+'</b>';
+        if(!ok&&q.section) ex+='<div dir="auto">📌 '+esc(T2('راجع: ','Review: '))+'<b><bdi>'+esc(q.section)+'</bdi></b></div>';
         if(ex) document.getElementById('eduExpl').innerHTML='<div class="eduExplain">'+ex+'</div>';
         document.getElementById('eduNextQ').style.display='';
       };

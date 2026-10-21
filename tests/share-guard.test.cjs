@@ -290,3 +290,24 @@ test('٩. v-chunk-fix: ملفّ أكبر من جزء واحد (فيديو ~١٫�
   assert.match(got.headers['content-disposition'], /filename="v\.mp4"/);
   assert.ok(Buffer.compare(got.body, raw) === 0, 'المحتوى مطابق');
 });
+
+test('١١. v-share-pages-i18n: الاسم الافتراضيّ «زائر» يُقرأ "" (التخزين كما هو) فتترجمه الصفحتان، والاسم الحقيقيّ كما هو', async () => {
+  store.set('db/shares/guest00000001.json', JSON.stringify({ id: 'guest00000001', title: 'g', code: 'x', username: 'زائر', createdAt: 1, public: true, owner: 'g_x@y.z' }));
+  store.set('db/shares/named0000001.json', JSON.stringify({ id: 'named0000001', title: 'n', code: 'x', username: 'sara', createdAt: 2, public: true }));
+  const g = await call(share, { method: 'GET', query: { id: 'guest00000001' } });
+  assert.equal(g.status, 200);
+  assert.equal(g.body.username, '');
+  assert.equal(g.body.owner, undefined, 'مفتاح الحساب لا يخرج');
+  assert.equal(JSON.parse(store.get('db/shares/guest00000001.json')).username, 'زائر', 'السجلّ المخزَّن لم يُمسّ');
+  assert.equal((await call(share, { method: 'GET', query: { id: 'named0000001' } })).body.username, 'sara');
+  // «استكشف»: نشرٌ عامّ يبطل الذاكرة، والضيف ""، والاسم المخفيّ (g_/بريد) "" كذلك
+  store.set('db/explore/9999999999990_guest00000001.json', JSON.stringify({ id: 'guest00000001', title: 'g', username: 'زائر', createdAt: 9999999999990 }));
+  store.set('db/explore/9999999999991_mail0000001.json', JSON.stringify({ id: 'mail0000001', title: 'm', username: 'a@b.c', createdAt: 9999999999991 }));
+  await call(share, { method: 'POST', body: { token: makeToken('lina'), title: 'fresh', code: 'z', isPublic: true } });
+  const ex = await call(share, { method: 'GET', query: { explore: '1' } });
+  const byId = Object.fromEntries(ex.body.items.map((x) => [x.id, x]));
+  assert.equal(byId.guest00000001.username, '');
+  assert.equal(byId.mail0000001.username, '');
+  assert.ok(ex.body.items.some((x) => x.username === 'lina'));
+  assert.ok(!ex.body.items.some((x) => x.username === 'زائر'));
+});

@@ -93,7 +93,7 @@ test('نماذج الجودة (طلب المالك «سوّ الفيديوهات
 test('نماذج الكانفا (مجّانيّة، مولَّدة من الصانع نفسه): ملفّان مسجَّلان في القائمة وبحجم معقول', () => {
   const idx = JSON.parse(read('media/samples/index.json'));
   ['canvas-1', 'canvas-2'].forEach((k) => {
-    assert.ok(idx[k] === true || (idx[k] && typeof idx[k].title === 'string' && idx[k].title.length > 0), k + ' في القائمة'); // v-sample-url: الرفع بعنوان يسجّل { title } (samples-ingest: index[key] = title ? { title } : true)
+    assert.ok(idx[k] === true || (idx[k] && typeof idx[k].title === 'string' && idx[k].title.length > 0) || (idx[k] && idx[k].lang === 'ar'), k + ' في القائمة'); // v-sample-url: الرفع بعنوان يسجّل { title } (samples-ingest: index[key] = title ? { title } : true)؛ v-vmk-sample-lang: نصّ محروق عربيّ = "lang":"ar"
     ['mp4', 'jpg'].forEach((x) => assert.ok(fs.existsSync(path.join(root, 'media/samples/' + k + '.' + x)), k + '.' + x));
     assert.ok(fs.statSync(path.join(root, 'media/samples/' + k + '.mp4')).size < 4 * 1024 * 1024, 'حجم معقول');
   });
@@ -107,7 +107,7 @@ test('رفع فيديوهات المالك (طلبه: «كيف أرفع الفي
   const wf = read('.github/workflows/samples-ingest.yml');
   assert.ok(wf.includes("paths: ['media/samples/raw/**']") && wf.includes('git push origin HEAD:main'));
   assert.ok(fs.existsSync(path.join(root, 'media/samples/raw/README.md')));
-  assert.ok(js.includes('tx=(vm&&vm.title)||L(k)'), 'عنوان الفيديو المرفوع يغلب المثال');
+  assert.ok(js.includes("tx=(vm&&vm.title&&ul==='ar')?vm.title:L(k)"), 'عنوان الفيديو المرفوع يغلب المثال (بالعربيّة وحدها — v-vmk-sample-lang، tests/vmk-polish ج)');
   // v-tab-tut + v-sample-url (المالك ١٧ أكتوبر «حط الفيديوين»): تعليميّ لكلّ قسم، وفيديو يُجلب برابط من نطاق التطبيق ببصمة مطابقة
   assert.ok(ing.includes("-([12]|tut)\\\\.(mp4|mov|webm|m4v)$") && ing.includes("-([12]|tut)\\\\.url$") && ing.includes("const URL_HOSTS = ['omran-ai-builder.vercel.app']"));
   assert.ok(ing.includes("createHash('sha256')") && ing.includes('if (got !== want) throw') && ing.includes('!urls.every(hostOk)'), 'بصمة لا تطابق أو نطاق آخر = فشل');

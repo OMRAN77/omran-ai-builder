@@ -113,3 +113,64 @@ test('٥. زر الباركود acctToggleQr يبدّل حالة ظهور صند
   global.window.acctToggleQr();
   assert.equal(qrBox.style.display, 'none', 'صندوق الباركود اختفى');
 });
+
+/* v-acct-referral-i18n (تدقيق ١٨ أكتوبر، g12/acct-referral): زرّ «فتح الباركود» لا يتغيّر نصّه بعد الفتح، و«إرسال ومشاركة»
+   يُظهر alert عربيًّا (ونصّ المشاركة وprompt عربيّان) حتّى في الإنجليزيّ. النسختان (الاحتياط في partials-settings والفعّالة
+   في app-05) تتبعان المفاتيح. */
+const AR_RE = /[؀-ۿ]/;
+const T = { acctQrOpen: 'OPEN', acctQrClose: 'CLOSE', acctShareBtn: 'SHARE', acctReferralCopied: 'COPIED', acctShareText: 'TRY', acctCopyPrompt: 'COPY_IT', pageTitle: 'Omran AI — Platform' };
+const tStub = (k) => (k in T ? T[k] : k);
+function attrEl(id, attrs) {
+  return { id, style: { display: 'none' }, textContent: '', value: '', attrs: Object.assign({}, attrs),
+    setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; } };
+}
+const COPIES = {
+  partials: { qr: () => partials.match(/window\.acctToggleQr\s*=\s*function\([\s\S]*?\n  \};/), share: () => partials.match(/window\.acctShareApp\s*=\s*async function\(\)\s*\{[\s\S]*?\n  \};/) },
+  app05: { qr: () => app05.match(/window\.acctToggleQr = function\(\) \{[\s\S]*?\n\};/), share: () => app05.match(/window\.acctShareApp = async function\(\) \{[\s\S]*?\n\};/) },
+};
+
+test('٦. زرّ الباركود يتبع حالته في النسختين: «إخفاء» بعد الفتح و«فتح» بعد الإغلاق، ومفتاحه معه لتبديل اللغة', () => {
+  for (const [name, c] of Object.entries(COPIES)) {
+    const m = c.qr();
+    assert.ok(m, name + ': acctToggleQr');
+    const els = { acctQrBox: attrEl('acctQrBox'), acctQrBtn: attrEl('acctQrBtn', { 'data-i18n': 'acctQrOpen' }) };
+    const win = { t: tStub };
+    new Function('window', 'document', 't', m[0])(win, { getElementById: (id) => els[id] || null }, tStub);
+    win.acctToggleQr();
+    assert.equal(els.acctQrBox.style.display, 'block', name);
+    assert.deepEqual([els.acctQrBtn.textContent, els.acctQrBtn.getAttribute('data-i18n')], ['CLOSE', 'acctQrClose'], name + ' بعد الفتح');
+    win.acctToggleQr();
+    assert.deepEqual([els.acctQrBtn.textContent, els.acctQrBtn.getAttribute('data-i18n')], ['OPEN', 'acctQrOpen'], name + ' بعد الإغلاق');
+  }
+});
+
+test('٧. «إرسال ومشاركة» بلا alert في النسختين: النسخ يومض على الزرّ نفسه، والمشاركة وprompt بمفاتيح، ولا نصّ عربيّ ثابت', async () => {
+  for (const [name, c] of Object.entries(COPIES)) {
+    const m = c.share();
+    assert.ok(m, name + ': acctShareApp');
+    const code = m[0].replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, ''); // التعليقات خارج الفحص
+    assert.doesNotMatch(code, AR_RE, name + ': لا نصّ عربيّ ثابت');
+    assert.doesNotMatch(m[0], /\balert\(/, name + ': لا alert');
+    const run = async (nav) => {
+      const els = { acctReferralLink: attrEl('acctReferralLink'), acctShareBtn: attrEl('acctShareBtn', { 'data-i18n': 'acctShareBtn' }) };
+      els.acctReferralLink.value = 'https://omran.test/?ref=sara';
+      els.acctShareBtn.textContent = 'SHARE';
+      const calls = { alert: 0, prompt: [], share: [], timers: [] };
+      const win = { t: tStub, acctQrLink: () => 'https://omran.test/app?ref=sara' };
+      new Function('window', 'document', 't', 'navigator', 'alert', 'prompt', 'setTimeout', m[0])(
+        win, { getElementById: (id) => els[id] || null }, tStub, nav(calls),
+        () => { calls.alert++; }, (msg, v) => { calls.prompt.push([msg, v]); }, (f) => { calls.timers.push(f); });
+      await win.acctShareApp();
+      return { els, calls };
+    };
+    let r = await run(() => ({ clipboard: { writeText: async () => {} } }));
+    assert.equal(r.calls.alert, 0, name);
+    assert.equal(r.els.acctShareBtn.textContent, 'COPIED', name + ': الزرّ يقول «تم نسخ الرابط»');
+    r.calls.timers.forEach((f) => f());
+    assert.equal(r.els.acctShareBtn.textContent, 'SHARE', name + ': ويرجع');
+    r = await run(() => ({ clipboard: { writeText: async () => { throw new Error('denied'); } } }));
+    assert.deepEqual(r.calls.prompt, [['COPY_IT', 'https://omran.test/app?ref=sara']], name + ': prompt بمفتاح');
+    r = await run((calls) => ({ share: async (d) => { calls.share.push(d); } }));
+    assert.deepEqual(JSON.parse(JSON.stringify(r.calls.share)), [{ title: 'Omran AI', text: 'TRY', url: 'https://omran.test/app?ref=sara' }], name + ': المشاركة بمفتاح');
+  }
+});

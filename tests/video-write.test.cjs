@@ -62,8 +62,8 @@ test('الربط: التوجيه، السلسلة، الواجهة، النصو�
     assert.ok(/\{n\}/.test(s.match(/vwFit: "([^"]+)"/)[1]) && /\{w\}/.test(s.match(/vwFit: "([^"]+)"/)[1]), lg + ' vwFit');
   });
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=455"') && h.includes('modules.css?v=688'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=765'"));
+  assert.ok(h.includes('src="/js/video.js?v=456"') && h.includes('modules.css?v=689'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=766'"));
 });
 
 test('v-write-fix: سقف ١٦٠٠، وجواب مقطوع يُرفض فتنتقل السلسلة للمزوّد التالي بدل «تعذّرت الكتابة»', async () => {

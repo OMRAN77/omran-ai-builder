@@ -20,6 +20,9 @@
   .lang-btn{position:fixed;top:16px;inset-inline-end:16px;background:transparent;color:#f0deaa;border:1px solid rgba(240,222,170,.45);border-radius:20px;padding:8px 18px;font-size:14px;cursor:pointer;font-family:inherit;transition:box-shadow .2s}
   .lang-btn:hover,.lang-btn:focus-visible{box-shadow:0 0 12px rgba(240,222,170,.35);outline:none}
   .en{display:none}
+  /* v-legal-lang: رابط الرجوع للتطبيق داخل كتلة كلّ لغة، في أعلاها على طرف البداية (زرّ اللغة على الطرف الآخر) */
+  .back-link{display:inline-block;color:#f0deaa;font-size:14px;text-decoration:none;margin-bottom:14px;padding:4px 0}
+  .back-link:hover,.back-link:focus-visible{text-decoration:underline;outline:none}
   a{color:var(--accent)}
   .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:32px}
 </style>
@@ -30,6 +33,7 @@
 
 <!-- ===== ARABIC ===== -->
 <div class="ar">
+<a class="back-link" href="/" onclick="return omBackToApp()">→ العودة للتطبيق</a>
 <h1>شروط الاستخدام</h1>
 <div class="sub">Omran AI Builder — آخر تحديث: 29 يوليو 2026</div>
 <div class="card">
@@ -88,6 +92,7 @@
 
 <!-- ===== ENGLISH ===== -->
 <div class="en">
+<a class="back-link" href="/" onclick="return omBackToApp()">← Back to app</a>
 <h1>Terms of Use</h1>
 <div class="sub">Omran AI Builder — Last updated: July 29, 2026</div>
 <div class="card">
@@ -155,6 +160,19 @@ function toggleLang(){
   h.dir=showEn?'ltr':'rtl'; h.lang=showEn?'en':'ar';
   b.textContent=showEn?'العربية':'English';
 }
+/* v-legal-lang (تدقيق ١٨ أكتوبر): الصفحة كانت تفتح بالعربيّ لمستخدم الواجهة الإنجليزيّة. لغة التطبيق من ?lang= أو aiapp_lang
+   (الأصل نفسه)؛ للشروط نسختان فقط، فكلّ لغة غير العربيّة تفتح الإنجليزيّة، وزرّ اللغة يعيد العربيّة كما كان. */
+function omPageLang(){
+  try { return new URLSearchParams(location.search).get('lang') || localStorage.getItem('aiapp_lang') || ''; }
+  catch(e){ return ''; /* تخزين محجوب (نافذة خاصّة/إطار) — تبقى الصفحة بالعربيّة */ }
+}
+/* رابط «العودة للتطبيق»: إن فُتحت الصفحة من التطبيق (نافذة أمّ حيّة) تُغلق فيرجع المستخدم إليه، وإلّا ينتقل الرابط إلى / */
+function omBackToApp(){
+  try { if(window.opener && !window.opener.closed){ window.close(); if(window.closed) return false; } }
+  catch(e){ /* نافذة أمّ من أصل آخر — الرابط ينتقل إلى / */ }
+  return true;
+}
+(function(){ var L=String(omPageLang()).toLowerCase(); if(L && L.slice(0,2)!=='ar') toggleLang(); })();
 </script>
 </body>
 </html>

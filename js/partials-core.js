@@ -5,7 +5,7 @@
   var S = document.currentScript;
   var H = String.raw`<div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:380px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); position:relative;">
-    <button type="button" id="authCloseBtn" aria-label="إغلاق" style="position:absolute; top:calc(10px + env(safe-area-inset-top,0px)); inset-inline-start:12px; width:34px; height:34px; border-radius:50%; background:rgba(128,128,128,.14); border:none; color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+    <button type="button" id="authCloseBtn" aria-label="إغلاق" data-i18n="[aria-label]closeTitle" style="position:absolute; top:calc(10px + env(safe-area-inset-top,0px)); inset-inline-start:12px; width:34px; height:34px; border-radius:50%; background:rgba(128,128,128,.14); border:none; color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
     <!-- v-simple-login: خانتان وزرّ ورابط، ثمّ جوجل و«إنشاء حساب جديد» — بلا عنوان ولا تبويبات ولا إيميل اختياريّ -->
     <h2 id="authHeading" style="display:none; margin:4px 0 18px; text-align:center; font-size:18px;"></h2>
     <div style="display:none;">
@@ -13,11 +13,11 @@
       <button type="button" class="btn" id="authTabSignup" data-i18n="authTabSignup">حساب جديد</button>
     </div>
     <form id="authForm" autocomplete="on" onsubmit="return false;" style="margin-top:34px;">
-    <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
+    <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" data-i18n="[aria-label]authIdPlaceholder" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
     <div id="authPasswordRow" style="display:block; position:relative; margin-bottom:12px;">
       <span id="authPasswordLabelText" style="display:none;" data-i18n="authPasswordLabel">كلمة المرور</span>
-      <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" style="height:50px; padding:0 44px 0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
-      <button type="button" id="authTogglePassBtn" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+      <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" data-i18n="[aria-label]authPasswordLabel" style="height:50px; padding:0 44px 0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
+      <button type="button" id="authTogglePassBtn" aria-label="إظهار كلمة المرور" data-i18n="[aria-label]authShowPass" aria-pressed="false" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
     </div>
     <label id="authRememberRow" style="display:none;"><input type="checkbox" id="authRememberMe" checked></label>
     <div id="authInfoMsg" style="display:none; font-size:12px; color:var(--accent,#6b7280); margin-bottom:6px; text-align:center;"></div>
@@ -38,7 +38,7 @@
     </div>
     </form>
     <div id="authAltBlock" style="margin-top:34px; display:flex; flex-direction:column; gap:12px;">
-    <button type="button" id="authGoogleBtn" title="Continue with Google" style="width:100%; height:48px; border-radius:999px; border:none; background:rgba(128,128,128,.16); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size:15px; font-weight: var(--w-bold); color:var(--text);">
+    <button type="button" id="authGoogleBtn" title="المتابعة عبر Google" data-i18n-title="authGoogleBtn" style="width:100%; height:48px; border-radius:999px; border:none; background:rgba(128,128,128,.16); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size:15px; font-weight: var(--w-bold); color:var(--text);">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
       <span data-i18n="authGoogleBtn">المتابعة بجوجل</span>
     </button>
@@ -1265,7 +1265,7 @@
         <button type="button" class="btn iconBtn" id="stocksGlobalBtn" title="الأسواق العالمية" data-i18n-title="worldMarketsTitle" style="padding:4px 8px;">🌍</button>
         <button type="button" class="btn iconBtn" id="stocksSearchBtn" title="اختيار سهم" data-i18n-title="pickStockTitle" style="padding:4px 8px;">🔍</button>
         <button type="button" class="btn iconBtn" id="stocksLearnBtn" data-i18n-title="stocksLearnTitle" title="تعلم التداول" style="padding:4px 8px;">🎓</button>
-        <button type="button" class="btn iconBtn" id="stocksPfBtn" title="محفظتي التعليمية" style="padding:4px 8px;">💼</button>
+        <button type="button" class="btn iconBtn" id="stocksPfBtn" title="محفظتي التعليمية" data-i18n-title="stocksPfTitle" style="padding:4px 8px;">💼</button>
         <button type="button" class="btn iconBtn" id="stocksFullBtn" data-i18n-title="stocksFullTitle" title="وضع شاشة البورصة" style="padding:4px 8px;">🖥️</button>
         <button type="button" class="btn iconBtn" id="stocksCloseBtn" style="padding:4px 8px;">✕</button>
       </div>
@@ -1277,17 +1277,17 @@
       <div id="goldCard" style="display:none; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px;">
           <div style="font-size:13.5px; font-weight:500;" data-i18n="goldNowTitle">🥇 الذهب الآن</div>
-          <div><span id="goldOz" style="font-size: var(--fs-2); font-weight: var(--w-bold);"></span> <span id="goldChg" style="font-size:12px;"></span></div>
+          <div dir="ltr"><span id="goldOz" style="font-size: var(--fs-2); font-weight: var(--w-bold);"></span> <span id="goldChg" style="font-size:12px;"></span></div>
         </div>
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; font-size: var(--fs-3); text-align:center;">
-          <span>24K: <b id="goldG24"></b> AED/g</span>
-          <span>22K: <b id="goldG22"></b> AED/g</span>
-          <span>21K: <b id="goldG21"></b> AED/g</span>
+          <span>24K: <b id="goldG24"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
+          <span>22K: <b id="goldG22"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
+          <span>21K: <b id="goldG21"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
         </div>
       </div>
       <div id="globalChips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
-        <button type="button" class="btn" data-tv="OANDA:XAUUSD" style="padding:4px 10px; font-size:12px;">🥇 Gold</button>
-        <button type="button" class="btn" data-tv="TVC:USOIL" style="padding:4px 10px; font-size:12px;">🛢️ Oil</button>
+        <button type="button" class="btn" data-tv="OANDA:XAUUSD" style="padding:4px 10px; font-size:12px;">🥇 <span data-i18n="stkGold">الذهب</span></button>
+        <button type="button" class="btn" data-tv="TVC:USOIL" style="padding:4px 10px; font-size:12px;">🛢️ <span data-i18n="stkOil">النفط</span></button>
         <button type="button" class="btn" data-tv="AMEX:DIA" style="padding:4px 10px; font-size:12px;">Dow Jones</button>
         <button type="button" class="btn" data-tv="NASDAQ:QQQ" style="padding:4px 10px; font-size:12px;">NASDAQ</button>
         <button type="button" class="btn" data-tv="AMEX:SPY" style="padding:4px 10px; font-size:12px;">S&amp;P 500</button>
@@ -1330,8 +1330,8 @@
           <div id="stockExchange" style="font-size: var(--fs-5); color:var(--muted);"></div>
         </div>
         <div style="text-align:end;">
-          <div id="stockPrice" style="font-size: var(--fs-1); font-weight: var(--w-bold);"></div>
-          <div id="stockChange" style="font-size: var(--fs-3);"></div>
+          <div style="font-size: var(--fs-1); font-weight: var(--w-bold);"><span id="stockPrice" dir="ltr"></span></div>
+          <div style="font-size: var(--fs-3);"><span id="stockChange" dir="ltr"></span></div>
         </div>
       </div>
       <div id="stockDetails" style="display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--muted);"></div>
