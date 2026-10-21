@@ -78,6 +78,12 @@
   try{ document.documentElement.style.setProperty('--omran-sat', 'env(safe-area-inset-top, 0px)'); }
   catch(e){ /* guard-ok: CSS يملك نفس القيمة احتياطيًا في var() */ }
 })();
+/* v-diag-ua (تدقيق ١٨–١٩ أكتوبر، لوحة ?diag=2): فحص /Safari/ كان يعدّ كروم سفاري — كروم أندرويد وويندوز يحملان «Safari/537.36».
+   مصنّف واحد للموضعين: سفاري الحقيقيّ وحده يحمل Version/… Safari/ بلا اسم متصفّح آخر؛ غلاف WebView بلا Safari أصلًا. */
+window.__omranIsSafariUA = function(ua){
+  ua = String(ua || '');
+  return /Version\/[\d.]+.*Safari\//.test(ua) && !/(Chrome|Chromium|CriOS|FxiOS|EdgiOS|Edg\/|OPiOS|OPR\/|Android)/.test(ua);
+};
 /* v-diag-pill (مؤقت — يطفئ نفسه بعد 2026-09-05): حبة تشخيص صغيرة على آيفون
    فقط تعرض أرقام المنفذ حيّة سبع دقائق من الإقلاع (v643: تكفي لدخول المحادثة) (تُقفل باللمس).
    لقطة شاشة واحدة معها تحسم مصدر الفراغ فوق الهيدر: تمرير؟ حاشية env؟
@@ -126,7 +132,7 @@
               + 'b:' + build + ' css:' + cssv('tokens') + '/' + cssv('redesign')
               + ' sw:' + ((navigator.serviceWorker && navigator.serviceWorker.controller) ? 1 : 0)
               + ' ' + (pwa ? 'pwa' : 'br')
-              + ' ua:' + (/Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent) ? 'saf' : 'wrap') + '\n'
+              + ' ua:' + (window.__omranIsSafariUA(navigator.userAgent) ? 'saf' : 'wrap') + '\n'
               + 'env:' + envNow + '/' + mxEnv + ' sat:' + (sat || '—')
               + ' vt:' + (document.documentElement.style.getPropertyValue('--vv-top') || '—')
               + ' ih:' + window.innerHeight + ' sc:' + screen.height
@@ -316,7 +322,7 @@ window.__omranErrLive = function(e, build, now){
         + (window.visualViewport ? ' · مرئي: ' + Math.round(window.visualViewport.height) + '+' + Math.round(window.visualViewport.offsetTop) : ''));
       var ua = navigator.userAgent || '';
       var m = ua.match(/iPhone OS [\d_]+|Android [\d.]+/);
-      lines.push('نظام: ' + (m ? m[0] : ua.slice(0, 50)) + (/(Safari)/.test(ua) && !/(CriOS|FxiOS|EdgiOS)/.test(ua) ? ' سفاري' : ' متصفح آخر/غلاف'));
+      lines.push('نظام: ' + (m ? m[0] : ua.slice(0, 50)) + (window.__omranIsSafariUA(ua) ? ' سفاري' : ' متصفح آخر/غلاف'));
       var nav = document.getElementById('omranBottomNav');
       if(!nav){ lines.push('⚠️ شريط التبويبات غير موجود في الصفحة!'); }
       else{

@@ -1225,6 +1225,46 @@ try{
   var HINT_RE=/(لخص|لخّص|اختبرني|بطاقات مراجعة|محاضرة|مذاكرة|ذاكر|امتحان|study|summarize lecture|quiz me)/i;
   /* v-edu-homework: «واجب» في المحادثة → تلميح يفتح «حلّ الواجب» مباشرة (المالك: في المحادثة وفي التعليم، الاثنين) */
   var HW_RE=/(واجب|ورقة عمل|حل السؤال|حلّ السؤال|homework|worksheet)/i;
+  /* v-edu-hint-place (تدقيق ١٨–١٩ أكتوبر): البطاقة fixed بـinset-inline وmargin:auto كانت تتوسّط النافذة كلّها (الحاسوب:
+     تقطع الفاصل بين لوحة المعاينة والمحادثة)، وbottom:110px الثابت يضعها فوق صندوق الكتابة والإرسال (الجوّال).
+     الحاسوب: left/right من مستطيل #chatcol فتتوسّط العمود، وbottom يبقى من CSS (v399). الجوّال: bottom من المساعد
+     المشترك window.__omranAboveComposer (app-22) فوق الصندوق المقيس. */
+  function placeHint(h){
+    try{
+      if(!document.documentElement.classList.contains('mobile-ui')){
+        var col=document.getElementById('chatcol'), r=col&&col.getBoundingClientRect();
+        if(r&&r.width){ h.style.left=Math.round(r.left+14)+'px'; h.style.right=Math.round(window.innerWidth-r.right+14)+'px'; }
+        h.style.bottom='';
+      } else {
+        var p=(typeof window.__omranAboveComposer==='function')?window.__omranAboveComposer(10):null;
+        h.style.bottom=p?(p.bottom+'px'):'';
+        h.style.left=''; h.style.right='';
+      }
+    }catch(err){ __swallow(err, "ui:edu-hint-place"); }
+  }
+  function rePlace(){
+    var h=document.getElementById('eduChatHint');
+    if(h&&h.classList.contains('show')) placeHint(h);
+  }
+  window.addEventListener('resize',rePlace);
+  /* الإرسال نفسه يغيّر التخطيط بعد ظهور التلميح (تنتهي شاشة الترحيب فتتّسع لوحة المعاينة ويضيق العمود) — نتابع العمود */
+  var hintRO=null;
+  function watchCol(){
+    try{
+      if(hintRO||typeof ResizeObserver!=='function') return;
+      var col=document.getElementById('chatcol'); if(!col) return;
+      hintRO=new ResizeObserver(rePlace);
+      hintRO.observe(col);
+    }catch(err){ __swallow(err, "ui:edu-hint-watch"); }
+  }
+  /* الكتابة في الصندوق تُخفي التلميح (تفريغه بعد الإرسال لا يُحتسب كتابة) */
+  document.addEventListener('input',function(e){
+    try{
+      if(!e.target||e.target.id!=='prompt'||!String(e.target.value||'').trim()) return;
+      var h=document.getElementById('eduChatHint');
+      if(h&&h.classList.contains('show')) h.classList.remove('show');
+    }catch(err){ __swallow(err, "ui:edu-hint-type"); }
+  },true);
   function maybeHint(txt){
     var hw=!!txt&&HW_RE.test(txt);
     if(hintShown||!txt||!(hw||HINT_RE.test(txt))) return;
@@ -1233,6 +1273,8 @@ try{
     document.getElementById('eduChatHintTxt').textContent=hw?eduL('📷 عندك واجب؟ صوّره في «حلّ الواجب» وخذ التحليل والحلّ كاملًا.','📷 Got homework? Snap it in the homework solver for the full analysis and solution.'):T('hint');
     document.getElementById('eduChatHintBtn').textContent=T('title');
     h.setAttribute('dir',isRTL()?'rtl':'ltr');
+    placeHint(h);
+    watchCol();
     h.classList.add('show');
     document.getElementById('eduChatHintBtn').onclick=function(){ h.classList.remove('show'); openModal(); if(hw&&window.__eduPlus&&window.__eduPlus.showSolver) window.__eduPlus.showSolver(); };
     setTimeout(function(){ h.classList.remove('show'); },12000);
