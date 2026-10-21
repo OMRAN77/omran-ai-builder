@@ -1464,6 +1464,8 @@ const I18N = {
     verLocal: "محلي",
     verMerge: "دمج",
     fbReportsTitle: "🚩 بلاغات المحتوى",
+    /* v-cap-hint-i18n: الجملة القائدة لملاحظة «تقدر تسوي هذا عن طريق <الأداة>» تحت الردّ (كانت ثنائيّة ar/en في الكود) */
+    capHintLead: 'ملاحظة: تقدر تسوي هذا عن طريق',
     vwUnavailable: 'خدمة تحليل الفيديو متوقّفة مؤقّتًا — لم تُخصم أيّ نقاط. جرّب بعد قليل.',
     vwWriteNo: 'الكتابة على الفيديو نفسه غير متاحة بعد في التطبيق — لم تُخصم أيّ نقاط. أرسل لقطة من الفيديو (أو أيّ صورة) مع الطلب نفسه وأكتبه لك عليها.',
     vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.',
@@ -2108,6 +2110,8 @@ const I18N = {
     verLocal: "Local",
     verMerge: "Merge",
     fbReportsTitle: "🚩 Content reports",
+    /* v-cap-hint-i18n */
+    capHintLead: 'Note: you can do this with',
     vwUnavailable: 'Video analysis is temporarily unavailable — no points were used. Please try again shortly.',
     vwWriteNo: 'Writing on the video itself isn’t available in the app yet — no points were used. Send a screenshot from the video (or any photo) with the same request and I’ll write it on that.',
     vidCancelled: 'Video cancelled — no points were used.',

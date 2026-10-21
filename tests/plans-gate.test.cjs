@@ -274,7 +274,7 @@ test('١٠. حدّ المحادثة يُفتح من نهاية مسارها: ا�
   const a9 = read('js/app-09-attach.js');
   assert.equal((a9.match(/e\.name === 'AbortError' \|\| e\.planLimit\)\) throw e;/g) || []).length, 2, 'المسار الأوّل وفريق الأدوات');
   // v-limit-msg-i18n: المجّانيّ والضيف بنصّ ردّ المحادثة وطبقته (limit-msg-i18n ٤)، والمشترك بالسطر نفسه كما كان
-  assert.match(a9, /function omranPlanLimitMsg\(err\)\{[\s\S]{0,900}?return \{role: 'assistant', content: '⚠️ ' \+ t\('plansWhyLimit'\)\};\n\}/);
+  assert.match(a9, /function omranPlanLimitMsg\(err\)\{[\s\S]{0,900}?return \{role: 'assistant', content: '⚠️ ' \+ t\('plansWhyLimit'\), _sys: 'limit'\};\n\}/); // v-chat-sys-msg: السطر نفسه، معلَّم رسالة تطبيق
   assert.match(a9, /\} else if\(err && err\.planLimit\)\{\s*\/\/[^\n]*\n\s*cur\.messages\.push\(omranPlanLimitMsg\(err\)\);[^\n]*\n\s*try\{ if\(typeof window\.omranOpenPlans === 'function'\) window\.omranOpenPlans\('limit', 'chat'\);/);
   assert.match(a9, /if\(__ctTier === 'free-limit' \|\| __ctTier === 'guest-limit'\)\{\s*try\{ if\(typeof window\.omranOpenPlans === 'function'\) window\.omranOpenPlans\('limit', 'chat'\);/);
   assert.match(a9, /window\.omranOpenPlans\('points', 'pts'\); \/\* v-plans-gate \*\/ else if\(typeof openPremiumBuyPoints/);

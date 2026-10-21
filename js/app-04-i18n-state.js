@@ -2188,7 +2188,8 @@ function renderMessages(keepScroll){
       try{ window.omranReadPanel.linkify(textDiv, m._agParts); }catch(e){ __swallow(e, 'read:cite'); }
     }
     // AppGallery: وسم صريح للمحتوى المولّد بالذكاء الاصطناعي على كل ردّ مساعد.
-    if(m.role !== 'user' && __mc){
+    /* v-chat-sys-msg (تدقيق ١٨–١٩ أكتوبر): لا على رسائل يكتبها التطبيق نفسه (_sys: الإيقاف والانقطاع وحدّ الباقة، و_diag، وردّ بوّابة الحدّ) */
+    if(m.role !== 'user' && __mc && !m._sys && !m._diag && m.tier !== 'free-limit' && m.tier !== 'guest-limit'){
       const aiTag = document.createElement('div');
       aiTag.className = 'aiGenTag';
       aiTag.textContent = t('aiGenTag');  /* v656 — كان ar/en فقط */
@@ -2197,7 +2198,7 @@ function renderMessages(keepScroll){
       aiTag.style.cssText = 'font-size:8px;opacity:.28;margin-top:3px;user-select:none;';
       div.appendChild(aiTag);
     }
-    if(m.role !== 'user' && m._stopped && !document.documentElement.classList.contains('mobile-ui')){
+    if(m.role !== 'user' && m._stopped && !m._stopEmpty /* v-chat-sys-msg: رسالة الإيقاف نفسها لا تُكرَّر تحتها */ && !document.documentElement.classList.contains('mobile-ui')){
       const stoppedNote = document.createElement('div');
       stoppedNote.className = 'msgStoppedNote';
       stoppedNote.textContent = t('msgStopped');  /* v656 — كان ar/en فقط */
@@ -2351,7 +2352,9 @@ function renderMessages(keepScroll){
           img.title = a.name;
           img.style.cursor = 'pointer';
           // v531: صور المساعد مولَّدة ⇒ تُعرض كبيرة. مرفقات المستخدم تبقى رقاقات صغيرة.
-          if(m.role !== 'user' && !a._fromMemory) img.classList.add('genImg');
+          /* v-chat-wait (تدقيق ١٨–١٩ أكتوبر): الصورة الجديدة ارتفاعها صفر حتّى يُفكّ ترميزها، فتكبر بعد التمرير وتنقصّ تحت صندوق
+             الكتابة — عند تحميلها تلحق الأسفل إن كان القارئ ملاحِقًا (omranChatFollow)، ولا تشدّ من صعد بنفسه. */
+          if(m.role !== 'user' && !a._fromMemory){ img.classList.add('genImg'); img.addEventListener('load', () => { try{ if(img.isConnected && window.omranChatFollow && window.omranChatFollow.follow()) smartScrollBottom(true); }catch(e){ __swallow(e, 'img:follow'); } }); }
           img.onclick = () => {
             previewFrame.style.display = 'block';
             $('#pyConsole').style.display = 'none';
@@ -2440,9 +2443,14 @@ function renderMessages(keepScroll){
       const checkIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
       let moreBtnEl = null;
       const moreActions = [];
+      /* v-chat-sys-msg (تدقيق ١٨–١٩ أكتوبر): رسائل التطبيق بلا استماع؛ وإعادة الحدّ (بوّابة الخادم أو حدّ الباقة) تعيد الحدّ نفسه فتُخفى،
+         وتبقى تحت الانقطاع والإيقاف. ونسخ رسالة المستخدم «نسخ» لا «نسخ الردّ». */
+      const __limitMsg = m.tier === 'free-limit' || m.tier === 'guest-limit' || m._sys === 'limit';
+      const __appMsg = !!(m._sys || m._diag || __limitMsg);
+      const __copyKey = m.role === 'user' ? 'copyCode' : 'copyMsgTitle';
       if(m.role !== 'user'){
         // إعادة توليد آخر الدور من سؤال المستخدم نفسه — بلا فقاعة مكررة.
-        if(!document.documentElement.classList.contains('mobile-ui') && !m._loading && !m.askAllReply && !m.isAskAllPrep){
+        if(!document.documentElement.classList.contains('mobile-ui') && !m._loading && !m.askAllReply && !m.isAskAllPrep && !__limitMsg){
           const retryBtn = document.createElement('button');
           retryBtn.type = 'button';
           retryBtn.title = t('msgRegenerate');
@@ -2486,7 +2494,7 @@ function renderMessages(keepScroll){
           speakBtn.setAttribute('aria-label', speakBtn.title);
           speakSmart(m.content, null, resetSpeakBtn, true, msgWordEls);
         };
-        actionBar.insertBefore(speakBtn, actionBar.firstChild);
+        if(!__appMsg) actionBar.insertBefore(speakBtn, actionBar.firstChild); // v-chat-sys-msg: لا استماع لرسالة تطبيق
 
         // التقييم متبادل الحصر ويُقرأ من الرسالة عند كل فتح للقائمة.
         const thumbDownIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>';
@@ -2556,7 +2564,7 @@ function renderMessages(keepScroll){
       copyBtnEl.onmouseenter = () => { copyBtnEl.style.color = 'var(--accent2,#00e0b8)'; };
       copyBtnEl.onmouseleave = () => { copyBtnEl.style.color = 'var(--muted,#98a0b3)'; };
       copyBtnEl.innerHTML = copyIconSVG;
-      copyBtnEl.title = t('copyMsgTitle') || 'نسخ';
+      copyBtnEl.title = t(__copyKey) || 'نسخ';
       copyBtnEl.setAttribute('aria-label', copyBtnEl.title);
       copyBtnEl.onclick = async (e) => {
         e.stopPropagation();
@@ -2582,7 +2590,7 @@ function renderMessages(keepScroll){
           clearTimeout(copyBtnEl._copyTimer);
           copyBtnEl._copyTimer = setTimeout(() => {
             copyBtnEl.innerHTML = copyIconSVG;
-            copyBtnEl.title = t('copyMsgTitle');
+            copyBtnEl.title = t(__copyKey);
             copyBtnEl.setAttribute('aria-label', copyBtnEl.title);
           }, 1500);
         }catch(e2){
@@ -2728,13 +2736,14 @@ function renderMessages(keepScroll){
             }
             const __hint = capabilityHintFor(__prevU);
             if(__hint){
-              const __isEn = (typeof lang!=='undefined' && lang==='en');
               const __note = document.createElement('div');
               __note.style.cssText = 'font-size:12px; color:var(--muted,#98a0b3); margin-top:6px; line-height:1.7; max-width:100%;';
-              const __lbl = __isEn ? __hint.en : __hint.ar;
+              /* v-cap-hint-i18n (تدقيق ١٨–١٩ أكتوبر): اسم الأداة من مفتاحها (كان «Religious Guidance» والأداة «Religious Insights»)،
+                 والجملة القائدة بمفتاح الـ١٤ لغة (كانت ثنائيّة: الفرنسيّة والعشر تأخذ ملاحظة عربيّة). */
+              const __lbl = t(__hint.key);
               /* v-gov-hint: بلا إيموجي في المصدر — منظّف v-clean-ui يقصّ (trim) كلّ عقدة نصّ فيها إيموجي فتضيع المسافة قبل الرابط
                  («عن طريقالمعاملات…»، PITFALLS). الواجهة بلا إيموجي أصلًا بأمر المالك، فلا يتغيّر الظاهر إلّا المسافة. */
-              __note.appendChild(document.createTextNode(__isEn ? 'Note: you can do this with ' : 'ملاحظة: تقدر تسوي هذا عن طريق '));
+              __note.appendChild(document.createTextNode(t('capHintLead') + ' '));
               const __a = document.createElement('a');
               __a.textContent = __lbl;
               __a.href = 'javascript:void(0)';
