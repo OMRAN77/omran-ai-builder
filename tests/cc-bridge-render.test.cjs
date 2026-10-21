@@ -474,8 +474,8 @@ test('١٠. v-app-director-watchdog (الواجهة): المنقضي وآخر س
   assert.equal(seen.size, 28, 'ترجمات لا نسخ');
   // الوسوم: اللغات بسبب الرفع في رأس التعليق، وvideo.js وmodules.css في index.html أعلى من ٧٦٣/٤٥٣/٦٨٨ (تُقرأ بتعبير لا تثبيتًا)
   const tagLine = read('js/app-04-i18n-state.js').split('\n').find((l) => l.includes("sc.src = 'i18n/' + lg + '.js?v=")) || '';
-  const tm = /\.js\?v=(\d+)'; \/\* v-app-director-watchdog \((\d+)\): /.exec(tagLine);
-  assert.ok(tm && tm[1] === tm[2] && Number(tm[1]) >= 764, 'وسم اللغات مرفوع وسببه أوّل التعليق: ' + tagLine.slice(0, 120));
+  const tm = /\.js\?v=(\d+)'; \/\*[^\n]*v-app-director-watchdog \((\d+)\): /.exec(tagLine); // v-rest-fixes: رفعٌ لاحق يضع سببه في الرأس
+  assert.ok(tm && Number(tm[1]) >= Number(tm[2]) && Number(tm[2]) >= 764, 'وسم اللغات مرفوع وسبب المخرج في التعليق: ' + tagLine.slice(0, 120));
   const h = read('index.html');
   assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 454 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 689);
 });

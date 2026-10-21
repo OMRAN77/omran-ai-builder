@@ -364,7 +364,8 @@
        — الصياغة وحدها، لا تغيير في الخصم ولا ترتيبه */
     if(e && e.code === 'points_insufficient' && W('plansWhyPoints')) return W('plansWhyPoints');
     if(e && e.code === 'daily_limit_reached' && W('plansWhyLimit')) return W('plansWhyLimit');
-    if(e && e.code === 'unavailable' && W('svcPaused')) return W('svcPaused'); // v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الفيديو نفد — «الخدمة متوقّفة مؤقّتًا»
+    if(e && e.code === 'unavailable' && W('svcPaused')) return W('svcPaused');
+    if(e && (e.code === 'video_busy' || e.code === 'video_rejected') && W(e.code === 'video_busy' ? 'vidBusy' : 'vidRejected')) return W(e.code === 'video_busy' ? 'vidBusy' : 'vidRejected'); // v-vid-codes // v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الفيديو نفد — «الخدمة متوقّفة مؤقّتًا»
     /* v-trend-413: «HTTP 413» رمز حافّة لا رسالة — الصور أثقل من أن تُرسَل */
     if(/\b413\b/.test(String((e && e.message) || ''))) return ui('tooBig');
     var msg = String((e && e.message) || e);

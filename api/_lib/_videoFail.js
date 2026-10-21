@@ -26,8 +26,10 @@ function startFail(status, tech) {
   const st = Number(status) || 0;
   const busy = st === 429 || st >= 500;
   if (isOutage(st, tech) || st === 404 || (!busy && OURS_RE.test(String(tech || '')))) return { code: 503, body: { error: 'unavailable', retryable: false } };
-  if (busy) return { code: st, body: { error: TEMP, retryable: true } };
-  return { code: st || 502, body: { error: BAD, retryable: false } };
+  /* v-vid-codes (تدقيق ١٨ أكتوبر: الواجهة الإنجليزيّة تعرض «❌ Error: تعذّر بدء الفيديو…» عربيًّا): رمز في error يترجمه العميل (vidBusy · vidRejected،
+     ١٤ لغة) والنصّ العربيّ نفسه في message_ar لمن يقرؤه. */
+  if (busy) return { code: st, body: { error: 'video_busy', message_ar: TEMP, retryable: true } };
+  return { code: st || 502, body: { error: 'video_rejected', message_ar: BAD, retryable: false } };
 }
 
 /* v-provider-fail (تدقيق ١٨–١٩ أكتوبر: «Your prepayment credits are depleted. Please go to AI Studio…» بروابط فوترة المزوّد ظهر

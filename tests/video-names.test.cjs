@@ -206,7 +206,8 @@ test('٧. مراجعة ٢: رفض المزوّد عند البدء ثلاثة �
   for (const [st, tech, code, text, retry] of cases) {
     const f = startFail(st, tech);
     assert.equal(f.code, code, st + ' ' + tech);
-    assert.equal(f.body.error, text, st + ' ' + tech);
+    assert.equal(f.body.message_ar || f.body.error, text, st + ' ' + tech); // v-vid-codes: الزحام والرفض رمزٌ في error والنصّ نفسه في message_ar
+    if (text !== OURS) assert.equal(f.body.error, text === TEMP ? 'video_busy' : 'video_rejected');
     assert.equal(f.body.retryable, retry, st + ' ' + tech);
     assert.doesNotMatch(f.body.error, BANNED);
   }

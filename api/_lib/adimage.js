@@ -238,13 +238,15 @@ module.exports = async (req, res) => {
       /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد المزوّد نفد أو مفتاحه — رمز unavailable («الخدمة متوقّفة مؤقّتًا» بلغة الواجهة)، لا نصّ فوترة المزوّد بالإنجليزيّة داخل message_ar */
       await giveQuota();
       if (require('./_videoFail.js').isOutage(upstream.ok ? 0 : upstream.status, m)) { console.error('[adimage] upstream ' + upstream.status + ': ' + m.slice(0, 200)); res.status(503).end(JSON.stringify({ error: 'unavailable' })); return; }
-      res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان: ' + m }));
+      console.error('[adimage] upstream ' + upstream.status + ': ' + m.slice(0, 300)); // v-rest-fixes: نصّ المزوّد للسجلّ لا للمستخدم
+      res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان الآن — حاول مرّة أخرى.' }));
       return;
     }
     res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: gate.limit || DAILY }));
   } catch (e) {
     await giveQuota();
-    const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : (e && e.message ? e.message : String(e));
+    console.error('[adimage] ' + (e && e.message ? e.message : String(e)));
+    const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : 'تعذّر توليد الإعلان الآن — حاول مرّة أخرى.'; // v-rest-fixes: لا نصّ تقنيّ للمستخدم
     res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));
   }
 };

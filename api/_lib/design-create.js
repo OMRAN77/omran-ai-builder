@@ -490,7 +490,8 @@ module.exports = async (req, res) => {
       const gmsg = String((data && data.error && data.error.message) || 'Upstream error');
       /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد المزوّد نفد — «الخدمة متوقّفة مؤقّتًا» (الواجهة تعرف unavailable)، لا نصّ فوترة المزوّد */
       if (require('./_videoFail.js').isOutage(upstream.status, gmsg)) { console.error('[design-create] upstream ' + upstream.status + ': ' + gmsg.slice(0, 200)); res.status(503).json({ error: 'unavailable' }); return; }
-      res.status(upstream.status).json({ error: gmsg.replace(/key=[^&\s"']+/g, 'key=***') });
+      /* v-rest-fixes: كان نصّ المزوّد نفسه (بالإنجليزيّة) يصل المستخدم؛ الآن رسالة عامّة، والسبب في detail يراه المالك وحده (v-decor-fallback) */
+      res.status(upstream.status).json({ error: 'تعذّر تصميم الصورة الآن — حاول مرّة أخرى.', detail: gmsg.replace(/key=[^&\s"']+/g, 'key=***').slice(0, 300) });
       return;
     }
 

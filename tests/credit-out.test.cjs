@@ -83,7 +83,7 @@ test('١. التصنيف: نصّ نفاد الرصيد يسبق «زحام ٤٢�
   for (const [st, tech, want] of cases) {
     const f = startFail(st, tech);
     assert.equal(f.code, want.code, st + ' ' + tech);
-    assert.equal(f.body.error, want.error, st + ' ' + tech);
+    assert.equal(f.body.message_ar || f.body.error, want.error, st + ' ' + tech); // v-vid-codes: نصّ الزحام/الرفض في message_ar
     assert.equal(f.body.retryable, want.retry, st + ' ' + tech);
   }
   assert.equal(isOutage(429, DEPLETED), true);
