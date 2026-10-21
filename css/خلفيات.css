@@ -46,3 +46,20 @@ html.mobile-ui .bgImgDel{width:30px; height:30px; line-height:30px; font-size:19
 .bgImgRotateOpts{display:flex; gap:6px; flex-wrap:wrap;}
 .bgImgRotOpt{font:inherit; font-size:12px; padding:5px 12px; border-radius:999px; border:1px solid var(--border,rgba(255,255,255,.12)); background:var(--panel2,#111); color:var(--text); cursor:pointer;}
 .bgImgRotOpt.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+
+/* v-theme-contrast (المالك ٢١ أكتوبر: «تباين الكلام مع الخلفية ما يقل عن 4.5:1… وخلفيات الشاشة»): كانت الرسائل وأيقوناتها نصًّا عاريًا
+   فوق الصورة والوشاح الخفيف (٠٫٣٨/٠٫٤٢)، فتنزل في الصور المزدحمة إلى ٢٫٣:١ (١١٨ حالة من ٤٦٠). الصورة نفسها والوشاح كما هما؛ الرسالة
+   وشريط أيقوناتها في فقاعة بلون الصورة نفسه — داكنة للصور الداكنة (كتابة فاتحة) وفاتحة للفاتحة (كتابة داكنة) — كفقاعات الثيمات.
+   الثيمات (skin وskin-wood) لها فقاعاتها في css/ثيمات.css وcss/ثيم-خشبي.css. */
+html.bgimg-dark:not(.skin):not(.skin-wood) #messages .msg.assistant,
+html.bgimg-dark:not(.skin):not(.skin-wood) #messages .msg.user{background:rgba(10,10,12,.58) !important; border:1px solid rgba(255,255,255,.12) !important; border-radius:16px !important; padding:10px 14px !important;}
+html.bgimg-light:not(.skin):not(.skin-wood) #messages .msg.assistant,
+html.bgimg-light:not(.skin):not(.skin-wood) #messages .msg.user{background:rgba(255,255,255,.68) !important; border:1px solid rgba(0,0,0,.1) !important; border-radius:16px !important; padding:10px 14px !important;}
+html.bgimg-dark:not(.skin):not(.skin-wood) #messages .msgActionBar{width:fit-content; padding:3px 10px !important; border-radius:999px !important; background:rgba(10,10,12,.58) !important;}
+html.bgimg-light:not(.skin):not(.skin-wood) #messages .msgActionBar{width:fit-content; padding:3px 10px !important; border-radius:999px !important; background:rgba(255,255,255,.68) !important;}
+/* والخلفيّات الثلاثيّة (body.vantaActive): ما ترسمه يتبدّل كلّ إطار ولا يتبع الوضع دائمًا («أمواج سائلة» فاتحة في الوضع الأسود فصار
+   النصّ الأبيض عليها لا يُقرأ — تدقيق ١٨ أكتوبر). الخلفيّة نفسها كما هي؛ الرسائل وأيقوناتها في فقاعة بلون الوضع تكفي فوق الأبيض والأسود معًا. */
+html:not([data-mode="light"]):not(.bgimg) body.vantaActive #messages :is(.msg.assistant, .msg.user){background:rgba(10,10,12,.78) !important; border:1px solid rgba(255,255,255,.12) !important; border-radius:16px !important; padding:10px 14px !important;}
+html[data-mode="light"]:not(.bgimg) body.vantaActive #messages :is(.msg.assistant, .msg.user){background:rgba(255,255,255,.78) !important; border:1px solid rgba(0,0,0,.1) !important; border-radius:16px !important; padding:10px 14px !important;}
+html:not([data-mode="light"]):not(.bgimg) body.vantaActive #messages .msgActionBar{width:fit-content; padding:3px 10px !important; border-radius:999px !important; background:rgba(10,10,12,.78) !important;}
+html[data-mode="light"]:not(.bgimg) body.vantaActive #messages .msgActionBar{width:fit-content; padding:3px 10px !important; border-radius:999px !important; background:rgba(255,255,255,.78) !important;}

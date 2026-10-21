@@ -9241,8 +9241,10 @@ function renderMessages(keepScroll){
       aiTag.className = 'aiGenTag';
       aiTag.textContent = t('aiGenTag');  /* v656 — كان ar/en فقط */
       /* v-tidy-bubble (أمر عمران «خلّه لكن أخفى وأصغر»): يبقى للالتزام بمتجر AppGallery
-         لكن أدقّ وأخفت فلا يلفت النظر. */
-      aiTag.style.cssText = 'font-size:8px;opacity:.28;margin-top:3px;user-select:none;';
+         لكن أدقّ وأخفت فلا يلفت النظر.
+         v-theme-contrast (أمره ٢١ أكتوبر: «تباين الكلام مع الخلفية ما يقل عن 4.5:1»): الخفوت برماديّ الفقاعة (--muted، ≥ ٤٫٥ في
+         كلّ ثيم ووضع) لا بشفافيّة ٠٫٢٨ (كانت ١٫٧:١ — لا يُقرأ). الحجم الصغير كما هو. */
+      aiTag.style.cssText = 'font-size:8px;color:var(--muted);margin-top:3px;user-select:none;';
       div.appendChild(aiTag);
     }
     if(m.role !== 'user' && m._stopped && !m._stopEmpty /* v-chat-sys-msg: رسالة الإيقاف نفسها لا تُكرَّر تحتها */ && !document.documentElement.classList.contains('mobile-ui')){
