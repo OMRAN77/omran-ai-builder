@@ -2054,6 +2054,14 @@ try{
           return t.map((e, i) => (i + 1) + '. ' + e.reason + '  ·  ' + ltr(String(e.at).slice(11, 19))).join('\n');
         } catch(e){ return '—'; }
       })()],
+      // v-maha-first-audio: توقيت آخر مكالمة مها على هذا الجهاز (عنصر الصوت وأحداث الجلسة) — أنواع أحداث وأوقات فقط، لا كلام
+      ['آخر مكالمة مها (م.ث من الضغطة)', (() => {
+        try {
+          const m = JSON.parse(get('aiapp_maha_rt_trace') || 'null');
+          if(!m || !m.log || !m.log.length) return '—';
+          return ltr(String(m.at).slice(11, 19) + ' · ' + m.log.join(' · '));
+        } catch(e){ return '—'; }
+      })()],
       ['الحزمة التي يشغّلها متصفّحك', (bundle.split('/').pop() || '—')],
       ['عامل الخدمة', sw ? '✅ يتحكّم' : '❌ لا يتحكّم'],
       ['المتصفّح', ltr(navigator.userAgent.slice(0, 80))],
@@ -20173,6 +20181,101 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
  * server missing the key, etc.) so the feature never just stops working. */
 let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null, mahaRtActive = false, mahaRtReconnecting = false, mahaRtReady = false;
 let mahaRtPlaying = false; // v-maha-long-reply: صوت مها يُشغَّل الآن (بين started وstopped/cleared)
+/* v-maha-first-audio (بلاغ المالك ٢١ أكتوبر «مها أوّل ما تنفتح المكالمة ما تتكلّم، وتبدأ تتكلّم من ثاني ردّ»): عنصر صوت المكالمة
+   كان يُنشأ بعد ثلاث انتظارات (الجلسة، المايك، العرض) خارج ضغطة الزرّ، بلا playsinline ولا play() صريح (autoplay وحده)، ويُرمى في
+   كلّ إعادة اتّصال. الآن يُنشأ ويُشغَّل داخل الضغطة نفسها (mahaRtBeginCall من mahaStartCall قبل أيّ await) ويبقى للمكالمات التالية،
+   وplay() صريح بعد srcObject مع إعادة محاولة، والتحيّة لا تُرسل قبل أن يشتغل العنصر فعلًا.
+   الأثر (mahaRtTrace): توقيت كلّ خطوة لآخر مكالمة على هذا الجهاز بالملّي ثانية من الضغطة — تعرضه لوحة ?diag=1، ولا يُرسل لأيّ خادم. */
+const MAHA_RT_SILENT_WAV = 'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA=='; // ١٠م.ث صمت
+let mahaRtAudioOk = false, mahaRtOnAudioOk = null, mahaRtPlayTimer = 0, mahaRtPlayTries = 0, mahaRtResponded = false;
+let mahaRtT0 = 0, mahaRtLog = [];
+function mahaRtTrace(s){
+  try{
+    if(mahaRtLog.length >= 80) return;
+    mahaRtLog.push(Math.round(performance.now() - mahaRtT0) + ' ' + s);
+    localStorage.setItem('aiapp_maha_rt_trace', JSON.stringify({ at: new Date().toISOString(), log: mahaRtLog }));
+  }catch(e){ __swallow(e, 'maha:rt-trace'); }
+}
+function mahaRtEnsureAudioEl(){
+  if(mahaRtAudioEl) return mahaRtAudioEl;
+  const el = document.createElement('audio');
+  el.setAttribute('playsinline', '');
+  el.setAttribute('webkit-playsinline', '');
+  el.autoplay = true;
+  el.addEventListener('playing', () => { if(el.srcObject){ mahaRtTrace('playing'); mahaRtSetAudioOk(); } });
+  // توقّف وسط المكالمة (مقاطعة من النظام) يُعاد تشغيله؛ الإنهاء يصفّر srcObject قبل وصول الحدث فلا يُعاد
+  el.addEventListener('pause', () => {
+    if(!el.srcObject || !mahaCallActive) return;
+    mahaRtAudioOk = false;
+    mahaRtTrace('pause');
+    mahaRtPlay(el, el.srcObject);
+  });
+  mahaRtAudioEl = el;
+  return el;
+}
+// داخل ضغطة الزرّ: play() على صمت قصير يفعّل العنصر نفسه، فـplay() بعد وصول المجرى لا يحتاج ضغطة ثانية
+function mahaRtPrimeAudio(){
+  try{
+    const el = mahaRtEnsureAudioEl();
+    if(el.srcObject) return;
+    el.src = MAHA_RT_SILENT_WAV;
+    const p = el.play();
+    mahaRtTrace('prime play()');
+    if(p && p.then) p.then(() => mahaRtTrace('prime ok'), (e) => mahaRtTrace('prime fail ' + (e && e.name)));
+  }catch(e){ __swallow(e, 'maha:rt-prime'); }
+}
+// بداية مكالمة: أثر جديد (الصفر = لحظة الضغطة) ثمّ تفعيل العنصر
+function mahaRtBeginCall(){
+  mahaRtT0 = performance.now();
+  mahaRtLog = [];
+  mahaRtPrimeAudio();
+}
+function mahaRtSetAudioOk(){
+  if(mahaRtAudioOk) return;
+  mahaRtAudioOk = true;
+  clearTimeout(mahaRtPlayTimer);
+  const fn = mahaRtOnAudioOk;
+  mahaRtOnAudioOk = null;
+  if(fn) fn();
+}
+// play() صريح بعد وصول المجرى، وإن رُفض أو بقي متوقّفًا فإعادة متباعدة (٠٫٢٥ ← ٤ث، ستّ محاولات)
+function mahaRtPlay(el, stream){
+  if(!stream || el !== mahaRtAudioEl || el.srcObject !== stream) return;
+  const n = ++mahaRtPlayTries;
+  let p;
+  try{ p = el.play(); }catch(e){ p = Promise.reject(e); }
+  Promise.resolve(p).then(() => {
+    if(el.srcObject !== stream) return;
+    if(el.paused) throw new Error('still paused');
+    mahaRtTrace('play ok #' + n);
+    mahaRtPlayTries = 0; // توقّف لاحق في المكالمة نفسها يأخذ محاولاته كاملة
+    mahaRtSetAudioOk();
+  }).catch((e) => {
+    if(el.srcObject !== stream) return;
+    mahaRtTrace('play fail #' + n + ' ' + ((e && (e.name === 'Error' ? e.message : e.name)) || e));
+    if(!mahaCallActive || n >= 6) return;
+    clearTimeout(mahaRtPlayTimer);
+    mahaRtPlayTimer = setTimeout(() => mahaRtPlay(el, stream), 250 * Math.pow(2, n - 1));
+  });
+}
+// التحيّة تنتظر صوتًا يشتغل فعلًا — لا تُرسل إلى عنصر متوقّف فتضيع
+function mahaRtWhenAudio(fn){
+  if(mahaRtAudioOk){ fn(); return; }
+  mahaRtTrace('greet waits audio');
+  mahaRtOnAudioOk = fn;
+}
+function mahaRtNoteEvent(e){
+  try{
+    const ev = JSON.parse(e.data);
+    const t = ev && ev.type;
+    if(t === 'response.created') mahaRtResponded = true;
+    if(/^(session\.created|input_audio_buffer\.speech_(started|stopped)|response\.created|output_audio_buffer\.(started|stopped|cleared)|error)$/.test(t)) mahaRtTrace(t);
+    else if(t === 'response.done'){
+      const r = ev.response || {};
+      mahaRtTrace('response.done ' + (r.status || '') + (r.status_details && r.status_details.reason ? ':' + r.status_details.reason : ''));
+    }
+  }catch(err){ __swallow(err, 'maha:rt-note'); }
+}
     let mahaRtResponseWatchdog = null;
     // v-maha-natural: الخادم يردّ بنفسه لحظة انتهاء الجملة (semantic_vad) — حارس العميل احتياط متأخّر فقط.
     let mahaRtNatural = false;
@@ -20370,6 +20473,7 @@ async function mahaStartRealtimeCall(){
     mahaRtReady = false;
     mahaClearRtResponseWatchdog();
       mahaRtCancelled = false;
+  mahaRtResponded = false; // v-maha-first-audio
   const tokenRes = await fetch('/api/realtime-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -20397,11 +20501,13 @@ async function mahaStartRealtimeCall(){
   mahaAppControl = tokenData.appControl === true; // v-maha-app: الخادم وحده يقرّر
   mahaRtNatural = tokenData.turn === 'natural';
   const EPHEMERAL_KEY = tokenData.clientSecret;
+  mahaRtTrace('session ' + (tokenData.turn || 'classic'));
   if(mahaRtCancelled) throw new Error('cancelled');
 
   mahaRtStream = await mahaGetUserMediaRetry({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
   });
+  mahaRtTrace('mic');
   if(mahaRtCancelled){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; throw new Error('cancelled'); }
   mahaStartMicMeter(mahaRtStream);
     // The call window opens while connecting; do not transmit its first words
@@ -20416,11 +20522,15 @@ async function mahaStartRealtimeCall(){
 
     const pc = new RTCPeerConnection();
   mahaRtPc = pc;
-  mahaRtAudioEl = new Audio();
-  mahaRtAudioEl.autoplay = true;
+  mahaRtEnsureAudioEl(); // v-maha-first-audio: العنصر الذي فُعِّل داخل الضغطة (جديد فقط إن لم تسبقه ضغطة)
   pc.ontrack = (e) => {
+    if(pc !== mahaRtPc) return; // جلسة أُلغيت (سباق المهلة) لا تأخذ عنصر المكالمة — لا صوتان معًا
+    mahaRtTrace('ontrack');
+    mahaRtAudioOk = false;
+    mahaRtPlayTries = 0;
     mahaRtAudioEl.srcObject = e.streams[0];
     try{ if(window.mahaGoldWave) window.mahaGoldWave.attachStream(e.streams[0]); }catch(err){ __swallow(err, 'maha:goldwave-rt'); } // v-maha-goldwave
+    mahaRtPlay(mahaRtAudioEl, e.streams[0]); // v-maha-first-audio: play() صريح لا autoplay وحده
     // Give the incoming audio a slightly larger jitter buffer so small
     // network hiccups get smoothed out instead of causing an audible
     // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
@@ -20435,6 +20545,7 @@ async function mahaStartRealtimeCall(){
 
   const dc = pc.createDataChannel('oai-events');
     mahaRtDc = dc;
+    dc.addEventListener('message', mahaRtNoteEvent); // v-maha-first-audio: أثر التوقيت وأوّل ردّ
     // Opening the data channel alone is not enough: the server can still be
     // applying its session settings. Wait for its session event before inviting
     // the user to speak, otherwise the first utterance can vanish.
@@ -20541,6 +20652,7 @@ async function mahaStartRealtimeCall(){
       // Let the browser resume the WebRTC audio encoder before saying "listening".
       await new Promise(resolve => setTimeout(resolve, 250));
       mahaRtReady = true;
+      mahaRtTrace('ready' + (preBufSent ? ' prebuf-sent' : '') + (mahaRtAudioOk ? ' audio-ok' : ' audio-pending'));
       /* v-maha-firstreply: الجملة الأولى المخزَّنة تأخذ ردًّا بعد مهلة قصيرة — إن كان المستخدم ما زال يتكلّم
          (يكمل جملته في المايك الحيّ) فـspeech_started يلغي هذا الحارس، وspeech_stopped يطلب ردًّا واحدًا على الكلّ. */
       if(preBufSent) mahaArmRtResponseWatchdog(900);
@@ -20549,9 +20661,15 @@ async function mahaStartRealtimeCall(){
       /* v-maha-greet (المالك ١ أكتوبر «من أوّل ما تفتح تردّ عليك»): مها تبادر بتحيّة قصيرة لحظة الجاهزية كالمكالمة الحقيقيّة.
          لا تحيّة إن قال المستخدم شيئًا أثناء التجهيز (جملته تأخذ ردّها)، ولا في إعادة الاتّصال، ولا في البنّاء. كلامه يقاطعها. */
       if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){
-        try{
-          dc.send(JSON.stringify({ type: 'response.create', response: { instructions: 'Open the call now like a close friend picking up: greet the user warmly in ONE short natural sentence and invite them to talk. Follow CALL HISTORY: on a first call say your name; otherwise do not introduce yourself - greet them as someone you know (by their name if your memory has it; a greeting that fits their local time of day is natural). Speak the language of the app interface (code "' + String(typeof lang === 'string' ? lang : 'ar') + '"); for Arabic use your usual warm Emirati dialect. Nothing else.' } }));
-        }catch(e){ __swallow(e, 'maha:greet'); }
+        /* v-maha-first-audio: التحيّة بعد أن يشتغل عنصر الصوت فعلًا (فورًا إن كان يشتغل)، ومرّة واحدة لهذه الجلسة —
+           ولا تحيّة إن بدأ ردّ قبلها (تكلّم المستخدم والخادم ردّ) أو تغيّرت الجلسة. */
+        mahaRtWhenAudio(() => {
+          if(dc !== mahaRtDc || dc.readyState !== 'open' || mahaRtResponded){ mahaRtTrace('greet skipped'); return; }
+          try{
+            dc.send(JSON.stringify({ type: 'response.create', response: { instructions: 'Open the call now like a close friend picking up: greet the user warmly in ONE short natural sentence and invite them to talk. Follow CALL HISTORY: on a first call say your name; otherwise do not introduce yourself - greet them as someone you know (by their name if your memory has it; a greeting that fits their local time of day is natural). Speak the language of the app interface (code "' + String(typeof lang === 'string' ? lang : 'ar') + '"); for Arabic use your usual warm Emirati dialect. Nothing else.' } }));
+            mahaRtTrace('greet sent');
+          }catch(e){ __swallow(e, 'maha:greet'); }
+        });
       }
       // إشارة «تكلم الآن» صريحة: قبلها أي كلام يروح بالهوا لأن المايك مقفول
       // عمدًا حتى تجهز الجلسة — المستخدم كان يتكلم بدري ويظن مها ما ترد.
@@ -20898,7 +21016,11 @@ function mahaEndRealtimeCall(){
   mahaStopPreBuffer(); // no-op لو سبق وأُفرغ عاديًا؛ يضمن التوقف لو انتهت المكالمة قبل الجهوزية
   mahaStopMicMeter();
   if(mahaRtStream){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; }
-  if(mahaRtAudioEl){ try{ mahaRtAudioEl.pause(); mahaRtAudioEl.srcObject = null; }catch(e){ __swallow(e, "misc:app-08-maha#19"); } mahaRtAudioEl = null; }
+  // v-maha-first-audio: العنصر يبقى (فُعِّل داخل ضغطة) لإعادة الاتّصال والمكالمة التالية — يُفرغ فقط
+  if(mahaRtAudioEl){ try{ mahaRtAudioEl.srcObject = null; mahaRtAudioEl.pause(); mahaRtAudioEl.removeAttribute('src'); }catch(e){ __swallow(e, "misc:app-08-maha#19"); } }
+  mahaRtAudioOk = false;
+  mahaRtOnAudioOk = null;
+  clearTimeout(mahaRtPlayTimer);
   try{ if(window.mahaGoldWave) window.mahaGoldWave.detachStream(); }catch(e){ __swallow(e, 'maha:goldwave-rt-end'); } // v-maha-goldwave
 }
 
@@ -21382,6 +21504,7 @@ async function mahaStartCallInner(mode){
       return;
     }
     console.error('[maha] realtime mode failed, falling back to classic pipeline:', e);
+    mahaRtTrace('fallback ' + String((e && e.message) || e).slice(0, 60)); // v-maha-first-audio
     mahaEndRealtimeCall();
     // v-maha-mute: السقوط للوضع الأساسي كان صامتًا (وسم صغير فقط) — نبّه
     // المتصل لحظةً حتى لا يظن المكالمة معلّقة.
@@ -21427,6 +21550,7 @@ function mahaOpenPlans(guest){
 async function mahaStartCall(mode){
   if(mahaCallActive || mahaCallStarting) return;
   if(typeof window.callAgentBusy === 'function' && window.callAgentBusy()){ try{ if(typeof settingsToast === 'function') settingsToast(t('callAgentErrTrialBusy')); }catch(e){ __swallow(e, 'maha:call-agent-busy'); } return; } // v-call-agent: مكالمة تجريبيّة للوكيل جارية (app-42) — لا مايك ثانٍ فوقها، ورفض ظاهر لا صامت (v-call-agent-r2)
+  mahaRtBeginCall(); // v-maha-first-audio: قبل أيّ await — ما زلنا داخل ضغطة الزرّ (كلّ المداخل تمرّ من هنا)
   mahaCallStarting = true;
   try{ return await mahaStartCallInner(mode); }
   finally{ mahaCallStarting = false; }

@@ -9,11 +9,14 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const src = fs.readFileSync(path.join(root, 'js/app-08-maha.js'), 'utf8');
 const a = src.indexOf('if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== \'builder\'){');
-const block = src.slice(a, src.indexOf("__swallow(e, 'maha:greet'); }\n      }", a) + "__swallow(e, 'maha:greet'); }\n      }".length);
+// v-maha-first-audio: التحيّة صارت داخل mahaRtWhenAudio (تنتظر صوتًا يشتغل) — هنا الصوت يشتغل فتُرسل فورًا كما كانت
+const END = "__swallow(e, 'maha:greet'); }\n        });\n      }";
+const block = src.slice(a, src.indexOf(END, a) + END.length);
 
 function run(ctx) {
   const sent = [];
-  const c = Object.assign({ preBufSent: false, mahaRtReconnecting: false, mahaCallMode: 'assistant', lang: 'ar', __swallow() {}, dc: { send: (m) => sent.push(JSON.parse(m)) } }, ctx);
+  const dc = { readyState: 'open', send: (m) => sent.push(JSON.parse(m)) };
+  const c = Object.assign({ preBufSent: false, mahaRtReconnecting: false, mahaCallMode: 'assistant', lang: 'ar', __swallow() {}, dc, mahaRtDc: dc, mahaRtResponded: false, mahaRtTrace() {}, mahaRtWhenAudio: (fn) => fn() }, ctx);
   vm.createContext(c);
   vm.runInContext(block, c);
   return sent;

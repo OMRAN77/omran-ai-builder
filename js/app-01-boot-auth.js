@@ -1905,6 +1905,14 @@ try{
           return t.map((e, i) => (i + 1) + '. ' + e.reason + '  ·  ' + ltr(String(e.at).slice(11, 19))).join('\n');
         } catch(e){ return '—'; }
       })()],
+      // v-maha-first-audio: توقيت آخر مكالمة مها على هذا الجهاز (عنصر الصوت وأحداث الجلسة) — أنواع أحداث وأوقات فقط، لا كلام
+      ['آخر مكالمة مها (م.ث من الضغطة)', (() => {
+        try {
+          const m = JSON.parse(get('aiapp_maha_rt_trace') || 'null');
+          if(!m || !m.log || !m.log.length) return '—';
+          return ltr(String(m.at).slice(11, 19) + ' · ' + m.log.join(' · '));
+        } catch(e){ return '—'; }
+      })()],
       ['الحزمة التي يشغّلها متصفّحك', (bundle.split('/').pop() || '—')],
       ['عامل الخدمة', sw ? '✅ يتحكّم' : '❌ لا يتحكّم'],
       ['المتصفّح', ltr(navigator.userAgent.slice(0, 80))],
