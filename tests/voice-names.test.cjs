@@ -67,6 +67,8 @@ test('٣. اختيار عبدالله يبقى: الإقلاع وبداية ال
     localStorage: { getItem: (k) => store[k] || null, setItem: (k, v) => { store[k] = v; } },
     document: { getElementById: (id) => els[id] || null, createElement: () => ({ style: {}, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; } }), querySelector: (q) => (q === '#btnMahaDock .mahaGlyph' ? glyph : null) },
     btnMahaEl: { get title() { return fab.title; }, set title(v) { fab.title = v; }, querySelector: () => fab.img },
+    // v-maha-title-lang: التلميحات من القاموس (mahaTitle / voiceGenderMale) لا اسمًا عربيًّا ثابتًا — هنا العربيّة
+    t: (k) => ({ mahaTitle: 'مها - مساعدة صوتية', voiceGenderMale: 'عبدالله' })[k] || k,
     __swallow() {}, Promise,
   };
   vm.createContext(ctx);

@@ -747,7 +747,8 @@
         const res = await fetch('/api/construction-library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value }),
+          /* v-cx-lib: المكتبة مشتركة وتسميات كلّ مخطّط بلغة صاحبه — نطلب مخطّطات لغتنا وحدها */
+          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
         });
         const data = await res.json();
         const items = (data && data.items) || [];
@@ -759,12 +760,9 @@
             img.src = 'data:' + (item.planMimeType || 'image/png') + ';base64,' + item.planImageBase64;
             img.style.cssText = 'width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; cursor:pointer; background:#000;';
             img.title = (item.floors || '') + ' | ' + (item.area || '') + ' m²';
-            img.onclick = () => {
-              resultImageEl.src = img.src;
-              downloadLink.href = img.src;
-              resultImageWrap.style.display = 'block';
-              resultImageWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            };
+            /* v-cx-lib (تدقيق ١٨–١٩ أكتوبر): كانت تكتب فوق «المخطط 2D» الذي ولّده المستخدم وتترك جدوله وتقريره لمشروعه —
+               الآن تُفتح كبيرة في المعرض المشترك (app-15-cx-ideas) ونتيجة المستخدم كما هي */
+            img.onclick = () => { if(window.omranLightbox) window.omranLightbox(img.src); };
             libraryWrap.appendChild(img);
           });
           libraryWrap.style.display = 'grid';

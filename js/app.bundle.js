@@ -19721,7 +19721,20 @@ function mahaUpdatePersonaUI(){
     if(glyph) glyph.style.display = 'none';
     dock.title = tip;
   }
+  mahaPersonaTitles(male);
 }
+/* v-maha-title-lang (تدقيق ١٨–١٩ أكتوبر: تلميح «م» يظهر «مها» عربيّة في الواجهة الإنجليزيّة): التلميحات وبديل صورة العائم
+   كانت اسمًا عربيًّا ثابتًا يكتب فوق data-i18n-title="mahaTitle" — الآن نصّ mahaTitle (أو voiceGenderMale لعبدالله) بلغة
+   التطبيق، ويُعاد عند تبديلها (applyLanguage يكتب سمة lang). «مها» نفسها باقية، واسم المكالمة الظاهر ووسم HD لا يُلمسان هنا. */
+function mahaPersonaTitles(male){
+  const tName = t(male ? 'voiceGenderMale' : 'mahaTitle');
+  const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
+  if(fabImg) fabImg.alt = tName;
+  if(btnMahaEl) btnMahaEl.title = tName;
+  const dock = document.getElementById('btnMahaDock');
+  if(dock) dock.title = tName;
+}
+try{ new MutationObserver(() => { try{ mahaPersonaTitles(mahaReadVoiceGender() === 'male'); }catch(e){ __swallow(e, 'maha:lang-titles'); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); }catch(e){ __swallow(e, 'maha:lang-observe'); }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
 function mahaEnsureVoiceChosen(){
@@ -20396,9 +20409,31 @@ function mahaClearImageRef(){
   if(mahaImgElClr){ mahaImgElClr.style.display = 'none'; mahaImgElClr.src = ''; }
 }
 
+/* v-maha-img-wait (تدقيق ١٨–١٩ أكتوبر: «صورة مها ٢١ ثانية بلا مؤشّر رسم»): «أفكّر» تعود «أستمع» بعد ثوانٍ والصورة ما زالت
+   تُرسم. خانة ذهبيّة بنصّ stGenImage في خانة الصورة نفسها، مستقلّة عن mahaSetState، تزول بوصول الصورة أو فشلها أو بإنهاء
+   المكالمة؛ وعدّاد الطلبات الجارية (mahaImgPending، عند مهلة السكوت) نشاطٌ فلا تُغلق المكالمة وهي ترسم. */
+function mahaImgPendingShow(){
+  if(!mahaCallActive) return;
+  const img = document.getElementById('mahaGenImage');
+  if(!img || !img.parentNode) return;
+  let ph = document.getElementById('mahaImgPending');
+  if(!ph){
+    ph = document.createElement('div');
+    ph.id = 'mahaImgPending';
+    ph.className = 'maha-img-pending';
+    ph.setAttribute('role', 'status');
+    img.parentNode.insertBefore(ph, img.nextSibling);
+  }
+  ph.textContent = t('stGenImage');
+}
+function mahaImgPendingHide(){
+  const ph = document.getElementById('mahaImgPending');
+  if(ph && ph.parentNode) ph.parentNode.removeChild(ph);
+}
 function mahaShowImage(base64, mimeType){
   mahaLastImageBase64 = base64;
   mahaLastImageMime = mimeType || 'image/png';
+  mahaImgPendingHide(); // v-maha-img-wait
   if(mahaCallMode === 'builder'){
     // Builder voice mode: never show the image inside the call bubble -
     // drop it straight into the code/preview panels instead, like every
@@ -20424,6 +20459,8 @@ function mahaShowImage(base64, mimeType){
     cur.code = fullCode;
     return;
   }
+  /* v-maha-img-wait + v-maha-img-hold (الدفعة ١): بعد إنهاء المكالمة لا عرض — الصورة حُفظت في المحادثة (mahaKeepImage) قبل التأكيد، فلا نسخة ثانية هنا */
+  if(!mahaCallActive) return;
   const el = document.getElementById('mahaGenImage');
   const orb = document.getElementById('mahaOrb');
   if(el){
@@ -20599,7 +20636,16 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
     }
     // تعديل الصورة يفشل بأمان: لا نعيد الطلب عشوائيًا ولا نسقط الصورة الأصلية
     // ونولّد من الوصف وحده، لأن ذلك كان يحوّل الشخص والصورة إلى شكل جديد.
-    const r = await mahaCallImageApi(promptText, editMode, sourceOverride);
+    // v-maha-img-wait: خانة الانتظار طوال الطلب، والعدّاد نشاطٌ لمهلة السكوت؛ ومهلتها تبدأ من وصول الصورة أو فشلها
+    mahaImgPending++;
+    mahaImgPendingShow();
+    let r;
+    try{ r = await mahaCallImageApi(promptText, editMode, sourceOverride); }
+    finally{
+      mahaImgPending = Math.max(0, mahaImgPending - 1);
+      mahaLastActivity = Date.now();
+      if(!mahaImgPending) mahaImgPendingHide();
+    }
     if(!r.ok) return { ok: false, error: r.error };
     let outB64 = r.imageBase64, outMime = r.mimeType;
     if(textToWrite && textToWrite.trim()){
@@ -21193,6 +21239,8 @@ async function mahaHandleRtFunctionCall(ev){
     output = { ok: false, message: 'Tool execution error.' };
   }
 
+  // v-maha-img-wait: الأداة قد تأخذ ٢٠ث وأكثر، والمكالمة قد أُغلقت أثناءها (mahaRtDc = null) — لا نتيجة لقناة مغلقة، بصمت
+  if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
   try{
     mahaRtDc.send(JSON.stringify({
       type: 'conversation.item.create',
@@ -21653,6 +21701,7 @@ let mahaCloseWatch = null;
 /* v-maha-app: >0 أثناء نقرة يجريها منفّذ تحكّم مها نفسه (js/app-43-maha-app.js) — نقرته ليست يد المستخدم فلا تُنهي المكالمة.
    نقرات المستخدم الحقيقيّة (ومنها نقرات آيفون التي يعيد التطبيق إطلاقها برمجيًّا) تُنهيها كما كانت (v-maha-band). */
 let mahaActing = 0;
+let mahaImgPending = 0; // v-maha-img-wait: طلبات صورة جارية — نشاطٌ لا سكوت
 function mahaStartCloseWatch(){
   mahaStopCloseWatch();
   mahaLastActivity = Date.now();
@@ -21669,7 +21718,7 @@ function mahaStartCloseWatch(){
   const armT = setTimeout(() => { document.addEventListener('click', onTap, true); }, 0);
   const iv = setInterval(() => {
     if(!mahaCallActive || mahaCallMode === 'builder') return;
-    if(mahaState === 'listening' && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
+    if(mahaState === 'listening' && !mahaImgPending && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
   }, 1000);
   mahaCloseWatch = { onTap, armT, iv };
 }
@@ -21699,6 +21748,7 @@ function mahaEndCall(){
   if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#28"); } mahaCurrentAudio = null; }
   stopAllSpeaking();
   if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
+  mahaImgPendingHide(); // v-maha-img-wait: الخانة تذهب مع المكالمة، والصورة إن وصلت بعدها تذهب إلى المحادثة
   try{ if(window.mahaGoldWave) window.mahaGoldWave.end(); }catch(e){ __swallow(e, 'maha:goldwave-end'); } // v-maha-goldwave
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');
@@ -31362,6 +31412,13 @@ $('#history').addEventListener('click', () => {
          النشر القديم الشغال (CORS مفتوح). */
       frame.src = '/edu-old/index.html?v=15j'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
     }
+    /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العنوان «التعليم» كان يتكرّر فوق رأس الإطار — نأخذ اسم صفّه المترجم في المركز،
+       ونرفع data-i18n كي لا تعيده الترجمة. الفتح المباشر بلا مركز يبقى كما هو. */
+    const oldTitle = modal.querySelector('h3'), oldLabel = document.querySelector('#eduOldEduRow .eduLessonTitle');
+    if(oldTitle && oldLabel && String(oldLabel.textContent || '').trim()){
+      oldTitle.textContent = String(oldLabel.textContent).trim();
+      oldTitle.removeAttribute('data-i18n');
+    }
     modal.style.display = 'flex';
     if(window.innerWidth <= 860 && typeof closeDrawers === 'function') closeDrawers();
     const dd = $('#headerMenuDropdown');
@@ -31406,6 +31463,10 @@ function openShareModal(project){
   function closeModal(){ modal.style.display = 'none'; shareModalProject = null; }
   if(closeBtn) closeBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+  /* v-share-once (تدقيق ١٨ أكتوبر): كلّ «إنشاء الرابط» كان مشاركة جديدة وسجلًّا جديدًا في «استكشف» — فتكرّرت المشاريع هناك.
+     ذاكرة جلسة {مشروع|ظهور → رابط}: المشروع نفسه بلا تغيير يأخذ رابطه الموجود بلا نداء، وتغيّر توقيعه (العنوان وطول الكود
+     وعدد الرسائل) يصنع رابطًا جديدًا يحلّ محلّه. لا حذف لأيّ مشاركة قائمة. */
+  const __shareMade = {};
 
   if(createBtn) createBtn.addEventListener('click', async () => {
     if(!shareModalProject) return;
@@ -31421,6 +31482,15 @@ function openShareModal(project){
       return;
     }
     const isPublic = $('#sharePublicYes').checked;
+    const __shareKey = shareModalProject.id ? (String(shareModalProject.id) + '|' + (isPublic ? 1 : 0)) : '';
+    const __shareSig = String(shareModalProject.title || '') + '|' + String(shareModalProject.code || '').length + '|' + __shareMsgs.length;
+    const __shareOld = __shareKey ? __shareMade[__shareKey] : null;
+    if(__shareOld && __shareOld.sig === __shareSig){
+      resultUrl.value = __shareOld.url;
+      resultBox.style.display = 'block';
+      statusMsg.style.display = 'none';
+      return;
+    }
     statusMsg.style.display = 'block';
     statusMsg.textContent = t('shareCreating');
     resultBox.style.display = 'none';
@@ -31442,6 +31512,7 @@ function openShareModal(project){
       const data = await resp.json();
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;
+      if(__shareKey) __shareMade[__shareKey] = { sig: __shareSig, url: fullUrl };
       resultUrl.value = fullUrl;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
@@ -37925,7 +37996,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const res = await fetch('/api/construction-library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value }),
+          /* v-cx-lib: المكتبة مشتركة وتسميات كلّ مخطّط بلغة صاحبه — نطلب مخطّطات لغتنا وحدها */
+          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
         });
         const data = await res.json();
         const items = (data && data.items) || [];
@@ -37937,12 +38009,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
             img.src = 'data:' + (item.planMimeType || 'image/png') + ';base64,' + item.planImageBase64;
             img.style.cssText = 'width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; cursor:pointer; background:#000;';
             img.title = (item.floors || '') + ' | ' + (item.area || '') + ' m²';
-            img.onclick = () => {
-              resultImageEl.src = img.src;
-              downloadLink.href = img.src;
-              resultImageWrap.style.display = 'block';
-              resultImageWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            };
+            /* v-cx-lib (تدقيق ١٨–١٩ أكتوبر): كانت تكتب فوق «المخطط 2D» الذي ولّده المستخدم وتترك جدوله وتقريره لمشروعه —
+               الآن تُفتح كبيرة في المعرض المشترك (app-15-cx-ideas) ونتيجة المستخدم كما هي */
+            img.onclick = () => { if(window.omranLightbox) window.omranLightbox(img.src); };
             libraryWrap.appendChild(img);
           });
           libraryWrap.style.display = 'grid';
@@ -40828,7 +40897,8 @@ window.updateVersionLabel();
   var TX = {
     title: { ar:'⚡ صف مشروعك بسطر واحد — ونعبّي الباقي عنك', en:'⚡ Describe your project in one line — we fill the rest', fr:'⚡ Décrivez votre projet en une ligne — on remplit le reste', es:'⚡ Describe tu proyecto en una línea — llenamos el resto', tr:'⚡ Projenizi tek satırda anlatın — gerisini biz dolduralım', ru:'⚡ Опишите проект одной строкой — остальное заполним мы', hi:'⚡ अपना प्रोजेक्ट एक लाइन में बताएं — बाकी हम भर देंगे', ur:'⚡ اپنا منصوبہ ایک سطر میں بتائیں — باقی ہم بھر دیں گے', bn:'⚡ এক লাইনে আপনার প্রকল্প বলুন — বাকিটা আমরা পূরণ করব', ne:'⚡ आफ्नो परियोजना एक हरफमा भन्नुहोस् — बाँकी हामी भर्छौं', fil:'⚡ Ilarawan ang proyekto sa isang linya — kami na ang bahala sa iba', id:'⚡ Jelaskan proyek Anda dalam satu baris — sisanya kami isi', zh:'⚡ 一句话描述你的项目 — 其余我们来填', ml:'⚡ നിങ്ങളുടെ പദ്ധതി ഒരു വരിയിൽ പറയൂ — ബാക്കി ഞങ്ങൾ പൂരിപ്പിക്കാം' },
     ph: { ar:'مثال: فيلا دورين ٤٠٠ متر مودرن بمسبح ومجلس في دبي', en:'e.g. two-storey 400 m² modern villa with pool and majlis in Dubai', fr:'ex. villa moderne 400 m² à deux étages avec piscine à Dubaï', es:'ej. villa moderna de 400 m², dos plantas, con piscina en Dubái', tr:'örn. Dubai\'de havuzlu 400 m² iki katlı modern villa', ru:'напр. двухэтажная вилла 400 м² с бассейном в Дубае', hi:'जैसे दुबई में पूल के साथ 400 म² दो मंज़िला मॉडर्न विला', ur:'مثلاً دبئی میں پول کے ساتھ 400 م² دو منزلہ ماڈرن ولا', bn:'যেমন দুবাইয়ে পুলসহ ৪০০ বর্গমিটার দোতলা মডার্ন ভিলা', ne:'जस्तै दुबईमा पोखरीसहित ४०० म² दुई तले मोडर्न भिल्ला', fil:'hal. dalawang palapag na 400 m² modernong villa na may pool sa Dubai', id:'mis. vila modern dua lantai 400 m² dengan kolam di Dubai', zh:'例：迪拜 400 平米两层现代别墅，带泳池和majlis', ml:'ഉദാ: ദുബായിൽ പൂളുള്ള 400 m² ഇരുനില മോഡേൺ വില്ല' },
-    go: { ar:'✨ ولّد التصميم', en:'✨ Generate the design', fr:'✨ Générer le design', es:'✨ Generar el diseño', tr:'✨ Tasarımı oluştur', ru:'✨ Создать проект', hi:'✨ डिज़ाइन बनाएं', ur:'✨ ڈیزائن بنائیں', bn:'✨ ডিজাইন তৈরি করুন', ne:'✨ डिजाइन बनाउनुहोस्', fil:'✨ Gumawa ng disenyo', id:'✨ Buat desain', zh:'✨ 生成设计', ml:'✨ ഡിസൈൻ ഉണ്ടാക്കൂ' },
+    /* v-cx-brief-name (تدقيق ١٨–١٩ أكتوبر: «زرّان باسم ولّد التصميم»): هذا الزرّ يقرأ الوصف أوّلًا، فاسمه يقول ذلك */
+    go: { ar:'✨ ولّد من وصفي', en:'✨ Generate from my description', fr:'✨ Générer depuis ma description', es:'✨ Generar desde mi descripción', tr:'✨ Açıklamamdan oluştur', ru:'✨ Создать по описанию', hi:'✨ मेरे विवरण से बनाएं', ur:'✨ میری تفصیل سے بنائیں', bn:'✨ আমার বর্ণনা থেকে তৈরি করুন', ne:'✨ मेरो विवरणबाट बनाउनुहोस्', fil:'✨ Gumawa mula sa aking paglalarawan', id:'✨ Buat dari deskripsi saya', zh:'✨ 根据我的描述生成', ml:'✨ എന്റെ വിവരണത്തിൽ നിന്ന് ഉണ്ടാക്കൂ' },
     reading: { ar:'⏳ أقرأ وصفك…', en:'⏳ Reading your description…', fr:'⏳ Lecture de votre description…', es:'⏳ Leyendo tu descripción…', tr:'⏳ Açıklamanız okunuyor…', ru:'⏳ Читаю описание…', hi:'⏳ आपका विवरण पढ़ रहे हैं…', ur:'⏳ آپ کی تفصیل پڑھ رہے ہیں…', bn:'⏳ আপনার বর্ণনা পড়ছি…', ne:'⏳ तपाईंको विवरण पढ्दै…', fil:'⏳ Binabasa ang paglalarawan…', id:'⏳ Membaca deskripsi Anda…', zh:'⏳ 正在阅读你的描述…', ml:'⏳ നിങ്ങളുടെ വിവരണം വായിക്കുന്നു…' },
     got: { ar:'✅ فهمت: {s} — عدّلها من النموذج تحت إن أردت', en:'✅ Understood: {s} — adjust below if you like', fr:'✅ Compris : {s} — ajustez ci-dessous si besoin', es:'✅ Entendido: {s} — ajústalo abajo si quieres', tr:'✅ Anladım: {s} — istersen aşağıdan düzenle', ru:'✅ Понял: {s} — можно поправить ниже', hi:'✅ समझ गए: {s} — नीचे से बदल सकते हैं', ur:'✅ سمجھ گیا: {s} — نیچے سے تبدیل کریں', bn:'✅ বুঝেছি: {s} — নিচে থেকে বদলাতে পারেন', ne:'✅ बुझें: {s} — तल परिवर्तन गर्न सक्नुहुन्छ', fil:'✅ Naintindihan: {s} — baguhin sa ibaba kung gusto', id:'✅ Dimengerti: {s} — ubah di bawah bila perlu', zh:'✅ 已理解：{s} — 可在下方调整', ml:'✅ മനസ്സിലായി: {s} — താഴെ മാറ്റാം' },
     unclear: { ar:'🤔 ما وضح لي الوصف — اكتب تفاصيل أكثر، أو عبّي النموذج تحت.', en:'🤔 I could not read that — add more detail, or use the form below.', fr:'🤔 Description peu claire — précisez, ou utilisez le formulaire.', es:'🤔 No lo entendí — añade detalles o usa el formulario.', tr:'🤔 Anlayamadım — daha fazla ayrıntı yazın veya aşağıdaki formu kullanın.', ru:'🤔 Не понял — добавьте деталей или заполните форму ниже.', hi:'🤔 समझ नहीं आया — और विवरण दें, या नीचे का फ़ॉर्म भरें।', ur:'🤔 سمجھ نہیں آیا — مزید تفصیل لکھیں یا نیچے فارم بھریں۔', bn:'🤔 বুঝতে পারিনি — আরও বিস্তারিত লিখুন, বা নিচের ফর্ম ব্যবহার করুন।', ne:'🤔 बुझिनँ — थप विवरण लेख्नुहोस्, वा तलको फारम भर्नुहोस्।', fil:'🤔 Hindi ko naintindihan — magdagdag ng detalye, o gamitin ang form sa ibaba.', id:'🤔 Tidak terbaca — tambah detail, atau isi formulir di bawah.', zh:'🤔 没读懂 — 请补充细节，或使用下方表单。', ml:'🤔 മനസ്സിലായില്ല — കൂടുതൽ വിശദാംശം ചേർക്കൂ, അല്ലെങ്കിൽ താഴെയുള്ള ഫോം ഉപയോഗിക്കൂ.' },
@@ -41393,12 +41463,13 @@ window.updateVersionLabel();
     '.stageWrap{overflow:auto;display:flex;justify-content:center;padding:10px 0}',
     '#stage{position:relative;background:#0b0b0d;border:3px solid #d4af37;touch-action:none}',
     '.rx{position:absolute;top:1px;inset-inline-end:3px;width:18px;height:18px;line-height:18px;text-align:center;border-radius:50%;background:rgba(255,255,255,.85);color:#b42318;font-size:12px;font-weight:800;cursor:pointer;z-index:3}' +
-    '.room{touch-action:none;position:absolute;border:2px solid rgba(212,175,55,.75);background:rgba(212,175,55,.08);color:#f3efe4;box-sizing:border-box;display:flex;flex-direction:column;',
-    ' align-items:center;justify-content:center;overflow:hidden;cursor:grab;touch-action:none}',
+    /* v-plan-contrast (تدقيق ١٨–١٩ أكتوبر): ألوان الغرف (PALETTE) فاتحة كلّها، فالنصّ الفاتح عليها ~١:١ — داكن بتباين ≥ 4.5، والاسم تحت ✕ */
+    '.room{touch-action:none;position:absolute;border:2px solid rgba(212,175,55,.75);background:rgba(212,175,55,.08);color:#f3efe4;box-sizing:border-box;display:flex;flex-direction:column;padding-top:16px;',
+    ' align-items:center;justify-content:center;justify-content:safe center;overflow:hidden;cursor:grab;touch-action:none}',
     '.room.sel{border-color:#f1d98a;border-width:3px;box-shadow:inset 0 0 0 2px rgba(241,217,138,.3),0 0 12px rgba(212,175,55,.45)}',
     '.room.clash{border-color:#c0453f;border-style:dashed}',
-    '.rn{font-size:12px;font-weight:700;text-align:center;padding:0 3px;line-height:1.25}',
-    '.ra{font-size:11px;color:#f1d98a}.rd{font-size:10px;color:#a9a290}',
+    '.rn{font-size:12px;font-weight:700;text-align:center;padding:0 3px;line-height:1.25;color:#1b1b1b}',
+    '.ra{font-size:11px;color:#7a5b12}.rd{font-size:10px;color:#5a5345}',
     '.grip{position:absolute;inset-inline-start:0;bottom:0;width:16px;height:16px;background:#d4af37;',
     ' border-radius:0 4px 0 0;cursor:nwse-resize;opacity:.75}',
     '.bar{display:flex;gap:8px;justify-content:center;margin:8px 0}',
@@ -41892,6 +41963,10 @@ window.updateVersionLabel();
       }),
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
+        /* v-plan-limit (تدقيق ١٨–١٩ أكتوبر): حدّ اليوم والجلسة المنتهية كانا «حاول بعد قليل» — نصّ 402 في الخادم
+           عربيّ وحده ويذكر المزوّد، فيُعرض نصّ الواجهة القائم بالـ14 لغة بدله */
+        if (res.status === 402) throw new Error('limit');
+        if (res.status === 401) throw new Error('auth');
         if (!res.ok) throw new Error('plan_provider_failed');
         var candidates = data && data.candidates;
         var parts = candidates && candidates[0] && candidates[0].content && candidates[0].content.parts;
@@ -41931,8 +42006,13 @@ window.updateVersionLabel();
         statusMsg('');
         var modal = document.getElementById('constructionModal');
         if (modal) modal.style.display = 'none';
-    }).catch(function () {
-      statusMsg(ttt('planFail', '⚠️ تعذر تجهيز المخطط الآن. حاول مرة أخرى بعد قليل.'));
+    }).catch(function (err) {
+      var fail = ttt('planFail', '⚠️ تعذر تجهيز المخطط الآن. حاول مرة أخرى بعد قليل.');
+      var why = err && err.message;
+      function gt(k) { try { var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? v : ''; } catch (e4) { __swallow(e4, 'floorplan:t'); return ''; } }
+      var lim = why === 'limit' ? gt('portraitLimitReached') : '';
+      var auth = why === 'auth' ? gt('designAiNeedLogin') : '';
+      statusMsg(lim ? '⚠️ ' + lim : (auth || fail)); /* v-plan-limit */
     }).finally(function () {
       btn.disabled = false;
       btn.textContent = label;

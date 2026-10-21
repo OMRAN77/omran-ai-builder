@@ -22,8 +22,8 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { buildingType, floors, area } = body;
-    const items = await listDesigns({ buildingType, floors, area, limit: 12 });
+    const { buildingType, floors, area, lang } = body;
+    const items = await listDesigns({ buildingType, floors, area, lang, limit: 12 }); // v-cx-lib: مخطّطات لغة الطالب وحدها
     res.status(200).json({ items });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
