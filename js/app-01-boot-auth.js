@@ -637,14 +637,22 @@ try{
         + '<button type="button" onclick="adminPurgeChecks()" style="background:none;border:1px solid #d4af37;color:#d4af37;border-radius:6px;padding:4px 10px;cursor:pointer">' + escAdm(ownT('ownerChecksPurge')) + '</button>'
         + '</div>'
       : '';
+    /* v-owner-row (تدقيق ١٨ أكتوبر، لقطة ٠١٩): خانة الاسم كانت flex:1 بـmin-width:110px فاسم طويل بلا مسافات
+       (g_…@gmail.com) يفيض فوق الإيميل، والصفّ يلتفّ فتنزل الأزرار سطرًا. الآن الاسم والإيميل في خانة واحدة مرنة
+       min-width:0 تلتفّ داخلها (overflow-wrap:anywhere)، والأزرار الثلاثة مجموعة flex:none في آخر الصفّ نفسه.
+       الغلافان span لا div: delete-confirm.js يأخذ صفّ زرّ الحذف بـclosest('div'). */
     wrap.innerHTML = purgeBar + users.map(u => {
       const safeName = escAdm(jsAdm(u.username));
-      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
-        + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + '<bdi>' + escAdm(u.username) + '</bdi></span>'
-        + '<span style="font-size:11px;opacity:.6">' + (u.email ? '<bdi dir="ltr">' + escAdm(u.email) + '</bdi>' : escAdm(ownT('ownerNoEmail'))) + '</span>'
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333)">'
+        + '<span style="flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px">'
+        + '<span style="min-width:0;overflow-wrap:anywhere;font-weight:500">' + (u.banned ? '🚫 ' : '') + '<bdi>' + escAdm(u.username) + '</bdi></span>'
+        + '<span style="min-width:0;overflow-wrap:anywhere;font-size:11px;opacity:.6">' + (u.email ? '<bdi dir="ltr">' + escAdm(u.email) + '</bdi>' : escAdm(ownT('ownerNoEmail'))) + '</span>'
+        + '</span>'
+        + '<span style="display:flex;gap:6px;flex:none">'
         + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerMsgTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
         + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + escAdm(ownT(u.banned ? 'ownerUnbanTitle' : 'ownerBanTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
         + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerDeleteTitle')) + '" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+        + '</span>'
         + '</div>';
     }).join('');
   }
@@ -737,10 +745,11 @@ try{
     if(!items.length){ box.innerHTML = '<div style="opacity:.6;padding:8px">' + vipEscape(ownT('ownerVipNone')) + '</div>'; return; }
     // v-vip-verified (مراجعة النقض): المعرّف في data-id لا داخل JS السطر — كان « ' » وحده يُهرَّب، فاسم مستخدم بـ« \\ » يكسر
     // السلسلة وينفّذ كودًا في جلسة المالك عند 🗑️؛ والأسماء تدخل القائمة الآن تلقائيًّا حين يؤكّد صاحب إيميل بريده.
+    // v-owner-row: المعرّف الطويل يلتفّ داخل خانته (min-width:0) والزرّ flex:none في السطر نفسه — كان يفيض ويلتفّ الصفّ.
     box.innerHTML = items.map(id => {
-      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
-        + '<span style="flex:1;min-width:110px;font-weight:500">⭐ <bdi>' + vipEscape(id) + '</bdi></span>'
-        + '<button type="button" data-id="' + vipEscape(id) + '" onclick="removeVipUser(this.dataset.id)" title="' + vipEscape(ownT('ownerVipRemoveTitle')) + '" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333)">'
+        + '<span style="flex:1;min-width:0;overflow-wrap:anywhere;font-weight:500">⭐ <bdi>' + vipEscape(id) + '</bdi></span>'
+        + '<button type="button" data-id="' + vipEscape(id) + '" onclick="removeVipUser(this.dataset.id)" title="' + vipEscape(ownT('ownerVipRemoveTitle')) + '" style="flex:none;background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
         + '</div>';
     }).join('');
   }

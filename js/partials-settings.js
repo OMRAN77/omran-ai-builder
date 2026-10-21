@@ -722,7 +722,7 @@
       <div style="display:flex; gap:8px; margin-top:8px;">
         <button type="button" id="adminHealthBtn" onclick="runHealthCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerHealthRun">🩺 افحص الآن</button>
         <button type="button" id="adminRedisUsageBtn" onclick="redisUsageCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerRedisUsage">💾 ما يملأ القاعدة</button>
-        <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerClearErrors">🧹 مسح سجل الأخطاء</button>
+        <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid #a33; background:var(--panel2); color:#e66; font-size:12px; cursor:pointer;" data-i18n="ownerClearErrors">🧹 مسح سجل الأخطاء</button>
       </div>
       <div style="display:flex; gap:8px; margin-top:8px;">
         <button type="button" id="adminCostsBtn" onclick="subscriberCostsCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerCosts">💵 تكلفة المشتركين هذا الشهر</button>

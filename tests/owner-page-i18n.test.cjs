@@ -67,7 +67,7 @@ test('٣. كلّ مفتاح تستعمله صفحة المالك ولوحاته�
   for (const id of ['ownerHealthBar', 'ownerSection']) keys.delete(id); // معرّفات عناصر لا مفاتيح
   scan('js/app-13-stocks-init.js', /'(ver[A-Z][a-z]+)'/g);
   keys.add('fbReportsTitle');
-  for (const k of ['ownerVaultTitle', 'ownerStatsByService', 'ownerHealthPill', 'verPush']) assert.ok(keys.has(k), 'المفتاح مستعمل: ' + k);
+  for (const k of ['ownerVaultTitle', 'ownerStatsByService', 'ownerHealthPill', 'ownerClearErrorsConfirm', 'verPush']) assert.ok(keys.has(k), 'المفتاح مستعمل: ' + k);
   assert.ok(keys.size >= 100, 'عدد المفاتيح ' + keys.size);
   const miss = [];
   for (const k of keys) {
@@ -79,6 +79,14 @@ test('٣. كلّ مفتاح تستعمله صفحة المالك ولوحاته�
     }
   }
   assert.deepEqual(miss, []);
+});
+
+test('٤. «مسح سجل الأخطاء» بشكل الخطر لا بشكل الأزرار الآمنة', () => {
+  const btn = /<button[^>]*id="adminHealthClearBtn"[^>]*>/.exec(owner)[0];
+  assert.match(btn, /border:1px solid #a33/);
+  assert.match(btn, /color:#e66/);
+  const safe = /<button[^>]*id="adminHealthBtn"[^>]*>/.exec(owner)[0];
+  assert.doesNotMatch(safe, /#a33|#e66/);
 });
 
 /* ---------- لوحة الإدارة وVIP من app-01 في vm ---------- */
@@ -139,7 +147,7 @@ test('٥. الإحصاءات بالإنجليزيّة: لا عربيّ خارج 
   assert.match(ar.$('adminStatsBox').textContent, /📊 حسب الخدمة اليوم:\n {2}• المحادثة: 21/);
 });
 
-test('٦. جدول المستخدمين: بالإنجليزيّة بلا عربيّ خارج <bdi>، والاسم والإيميل معزولان (التخطيط كما كان)', async () => {
+test('٦. جدول المستخدمين: بالإنجليزيّة بلا عربيّ خارج <bdi>، والاسم الطويل لا يتراكب والأزرار في مجموعة لا تنزل سطرًا', async () => {
   const env = adminEnv('en', route);
   await env.ctx.loadAdminStats();
   const html = env.$('adminUsersTable').innerHTML;
@@ -148,18 +156,25 @@ test('٦. جدول المستخدمين: بالإنجليزيّة بلا عرب�
   assert.match(html, /🧹 Delete them all/);
   assert.match(html, /No email/);
   for (const t of ['Send a message', 'Ban', 'Unban', 'Delete permanently']) assert.ok(html.includes('title="' + t + '"'), t);
-  const rows = html.split('<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">').slice(1);
-  assert.equal(rows.length, 3, 'صفّ main كما هو (لا تخطيط جديد في دفعة الترجمة)');
+  const rows = html.split('<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333)">').slice(1);
+  assert.equal(rows.length, 3);
+  for (const r of rows) {
+    assert.doesNotMatch(r, /<div/, 'لا div بين الصفّ والأزرار (delete-confirm يأخذ closest(div))');
+    assert.match(r, /min-width:0[^"]*overflow-wrap:anywhere/, 'الاسم يلتفّ داخل خانته');
+    assert.match(r, /<span style="display:flex;gap:6px;flex:none">(<button[^]*?<\/button>){3}<\/span>/, 'الأزرار الثلاثة في مجموعة flex:none');
+  }
   assert.ok(html.includes('<bdi dir="ltr">averyveryverylongusername.withdots@gmail.com</bdi>'), 'الإيميل معزول يسار-يمين');
   assert.ok(html.includes('<bdi>g_averyveryverylongusername.withdots@gmail.com</bdi>'));
+  assert.doesNotMatch(html, /min-width:110px|flex-wrap:wrap"/);
 });
 
-test('٧. VIP بالإنجليزيّة: القائمة والتلميح وزرّ الجرد ونتيجته بلا عربيّ خارج الحمولات', async () => {
+test('٧. VIP بالإنجليزيّة: القائمة والتلميح وزرّ الجرد ونتيجته بلا عربيّ خارج الحمولات، والصفّ لا يتراكب', async () => {
   const env = adminEnv('en', route);
   await env.ctx.loadVipList();
   const list = env.$('vipListBox').innerHTML;
   assert.ok(!AR_RE.test(noData(list)), noData(list));
   assert.ok(list.includes('title="Remove from VIP"'));
+  assert.match(list, /min-width:0[^"]*overflow-wrap:anywhere/);
   assert.ok(list.includes('<bdi>سارة</bdi>'));
   const btn = env.$('vipAuditBtn');
   assert.equal(btn.textContent, '🔎 Unverified VIP emails');

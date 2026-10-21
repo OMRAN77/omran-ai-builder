@@ -1,7 +1,7 @@
 'use strict';
-/* tests/owner-healthbar.test.cjs — v-owner-i18n لشريط تنبيه المالك (تدقيق ١٨ أكتوبر، g14 owner-health-bar «التنبيه يبقى عربي في الواجهة الإنجليزية»؛
-   الدفعة ٥). الشريط كما في main (fixed تحت الرأس بعرض الشاشة، v-ownerbar-cover) — العنوان والأسطر من القاموس، والاتّجاه اتّجاه الصفحة
-   بدل direction:rtl المفروض، والحمولات التقنيّة معزولة. الكبسولة المضغوطة من حزمة ten-a لم تُنقل (ليست ترجمة).
+/* tests/owner-healthbar.test.cjs — v-ownerbar-pill (تدقيق ١٨ أكتوبر، لقطات ٠٠١ و٠٠٨ و٠٤٢ و٠٥٢).
+   العرض: تنبيه المالك التلقائيّ شريط بعرض الشاشة تحت الرأس (z ٩٩٩٩٩، نصّ pre-wrap بثلاثة أخطاء خامّة) يغطّي صفّ «إبداع»
+   في الأدوات و«محادثة جديدة» والبحث وزرّ إغلاق الشريط، ويأخذ ربع شاشة الجوّال، وهو عربيّ بـdirection:rtl مفروض في الإنجليزيّ.
    هنا: autoOwnerHealthCheck الحقيقيّة من app-11 في vm (مؤقّت وهميّ، دوم مصغّر، قاموس اللغة الحقيقيّ). */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,32 +46,56 @@ async function runBar(lang, opts) {
 const css = (el) => String((el.style && el.style.cssText) || '');
 const allText = (el) => [el.textContent || '', ...el.children.map(allText)].join('\n');
 
-test('١. الشريط كما كان: fixed تحت الرأس بعرض الشاشة، والمعرّف كما هو، وبلا اتّجاه مفروض', async () => {
+test('١. كبسولة مضغوطة أسفل الطرف لا شريط بعرض الشاشة تحت الرأس، وبلا اتّجاه مفروض، والمعرّف كما هو', async () => {
   const { bar } = await runBar('en');
   const c = css(bar);
-  assert.match(c, /position:fixed;top:0px;left:0;right:0;z-index:99999/);
-  assert.match(c, /white-space:pre-wrap/);
-  assert.doesNotMatch(c, /direction:rtl/, 'الاتّجاه من الصفحة');
-  assert.match(c, /padding-inline:14px 44px/);
-  const x = bar.children.find((ch) => ch.tagName === 'BUTTON');
-  assert.match(css(x), /inset-inline-end:10px/, '✕ في طرف النهاية بالعربيّ والإنجليزيّ');
+  assert.match(c, /position:fixed/);
+  assert.match(c, /bottom:12px/);
+  assert.match(c, /inset-inline-end:12px/);
+  assert.doesNotMatch(c, /(^|;)top:/, 'لا top: تحت الرأس');
+  assert.doesNotMatch(c, /left:0;right:0/);
+  assert.doesNotMatch(c, /direction:rtl/);
+  assert.doesNotMatch(c, /white-space:pre-wrap/, 'الكبسولة نفسها لا تحمل النصّ الطويل');
+  const head = bar.children[0];
+  const mh = /min-height:(\d+)px/.exec(css(head));
+  assert.ok(mh && Number(mh[1]) <= 40, 'ارتفاع المطويّ ≤ 40px: ' + css(head));
+  assert.match(css(head), /white-space:nowrap/);
 });
 
-test('٢. بالإنجليزيّة: لا عربيّ خارج الحمولات المعزولة، والعنوان «System notes (3)» والأسطر مترجَمة، وبالعربيّة كما يقول القاموس', async () => {
+test('٢. التفاصيل الخامّة (v-err-build) مخفيّة حتّى النقر، وفي لوحة بسقف 40vh تُمرَّر، والنقر الثاني يطويها، و✕ يزيلها', async () => {
+  const { bar, document } = await runBar('en');
+  const [head, det] = bar.children;
+  assert.equal(det.hidden, true, 'مطويّة أوّلًا');
+  assert.match(css(det), /max-height:40vh/);
+  assert.match(css(det), /overflow:auto/);
+  const t = allText(det);
+  assert.match(t, /TypeError: Cannot read properties of undefined \(reading x\) — app\.bundle\.js:1201 \(x2\)/);
+  assert.match(t, /Script error\./);
+  head.click();
+  assert.equal(det.hidden, false, 'النقر يفتحها');
+  head.click();
+  assert.equal(det.hidden, true, 'والثاني يطويها');
+  const x = head.children.find((c) => c.tagName === 'BUTTON');
+  x.click();
+  assert.equal(document.getElementById('ownerHealthBar'), null, '✕ يزيل الكبسولة');
+});
+
+test('٣. بالإنجليزيّة: لا عربيّ خارج الحمولات المعزولة، والعنوان «System notes (3)» ورابط فحص النظام', async () => {
   const { bar } = await runBar('en');
-  const t = bar.textContent;
-  assert.match(t, /^🩺 System notes \(3\):\n/);
+  const head = bar.children[0];
+  assert.equal(head.children[0].textContent, '🩺 System notes (3)');
+  const t = allText(bar);
   assert.ok(!AR_RE.test(visibleOutsideIso(t)), visibleOutsideIso(t));
   assert.match(t, /The database \(Redis\) is not responding — Reason: \u2066ECONNRESET\u2069/);
   assert.match(t, /Missing keys: \u2066GEMINI_API_KEY\u2069/);
   assert.match(t, /Errors logged from users: 3/);
-  assert.match(t, /TypeError: Cannot read properties of undefined \(reading x\) — app\.bundle\.js:1201 \(x2\)/, 'v-err-build كما هو');
+  assert.match(t, /Open system check/);
   const ar = await runBar('ar');
-  assert.match(ar.bar.textContent, /^🩺 ملاحظات النظام \(3\):\n/);
+  assert.equal(ar.bar.children[0].children[0].textContent, '🩺 ملاحظات النظام (3)');
 });
 
-test('٣. ✕ يزيل الشريط', async () => {
-  const { bar, document } = await runBar('en');
-  bar.children.find((ch) => ch.tagName === 'BUTTON').click();
-  assert.equal(document.getElementById('ownerHealthBar'), null);
+test('٤. الجوّال: الكبسولة فوق صندوق الكتابة لا فوق شريط التنقّل والصندوق', async () => {
+  const { bar } = await runBar('ar', { mobile: true, composerTop: 700, innerHeight: 860 });
+  assert.match(css(bar), /bottom:170px/);
+  assert.match(css(bar), /max-width:min\(360px,calc\(100vw - 24px\)\)/);
 });
