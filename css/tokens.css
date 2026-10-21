@@ -358,6 +358,10 @@
   #btnMic.transcribing{background:var(--accent-surface); color:var(--accent-on-surface); opacity:0.75;}
   .mini-mic-btn{ display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:var(--r-2); border:1px solid var(--border,#333); background:var(--panel2,#111); cursor:pointer; font-size:15px; margin-top:6px; flex-shrink:0; }
   .mini-mic-btn.recording{ background:#0c0c0f; color:#d4af37; border-color:#d4af37; animation: micPulse 1.1s infinite; }
+  /* v-black-surfaces (تدقيق ١٨–١٩ أكتوبر): في الأسود كان الحدّ الذهبيّ للتسجيل يغلبه الحدّ الشبح (css/بلا-خطوط.css بأولويّة معرّفين)، والتعبئة
+     #0c0c0f لا تُرى فوق #101013، والإيموجي لا يتلوّن — فلا يبين أنّه يسجّل. وقت التسجيل وحده: الحدّ الذهبيّ ومسحة ذهبيّة؛ الأصناف المكرّرة
+     و:not(#om3-a#om3-b) تغلب الشبح والمرور وتعبئة الأدوات، ونبض micPulse كما هو. */
+  html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .mini-mic-btn.mini-mic-btn.recording.recording:not(#om3-a#om3-b){ border-color:#d4af37 !important; background:rgba(212,175,55,.22) !important; }
   .mini-mic-btn.transcribing{ background:var(--accent-surface); color:var(--accent-on-surface); opacity:0.75; }
   .mini-mic-field-row{ display:flex; align-items:flex-start; gap:6px; }
   .mini-mic-field-row > textarea, .mini-mic-field-row > input{ flex:1; }
@@ -788,6 +792,14 @@
   .ownerCard{ background:var(--panel2); border:1px solid rgba(212,175,55,.28); border-radius:var(--r-3); padding:14px; margin-bottom:14px; }
   .ownerCard .ownerCardTitle{ font-size:14px; font-weight:700; margin-bottom:10px; color:#d4af37; }
   .ownerCard input, .ownerCard #vaultGhStatus, .ownerCard #vaultTestBox, .ownerCard #adminStatsBox, .ownerCard #adminClaudeDiagBox, .ownerCard #adminUsersTable, .ownerCard #vipListBox, .ownerCard #adminHealthBox{ background:var(--panel) !important; }
+  /* v-black-surfaces: أزرار صفحة المالك كانت نصًّا صغيرًا عائمًا في الأسود (حدّها شبح v-no-lines-2، وتعبئتها #000 فوق بطاقة #000) —
+     الدرجة الثانية #101013 وارتفاع 34px، والحذف والمسح نصّهما أحمر. الخطّ كما قرّره المالك (v202: «خط أصغر» للوحة التحكّم).
+     الأزرار الثابتة وحدها (أزرار جدولي المستخدمين وVIP لها شكلها)، والأسود وحده: الفاتح والثيمات بحدودها كما هي. */
+  html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #vaultSectionContent > div > button,
+  html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #adminSectionContent > button,
+  html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #adminSectionContent > div:not([id]) > button{ background:#101013 !important; min-height:34px; }
+  html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #vaultSectionContent > div > button[onclick^="vaultClear"],
+  html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #adminSectionContent > div > button#adminHealthClearBtn{ color:#ff6b6b !important; }
   .settingsNavRow.settingsNavOwner .settingsNavIcon, .settingsNavRow.settingsNavOwner .settingsNavLabel{ color:#d4af37; font-weight:700; }
   /* v-settings-groups: رأس الحساب، بطاقة الترقية، ومجموعات بعناوين مثل ChatGPT */
   .setProfile{ position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; padding:18px 0 14px; }
@@ -875,6 +887,10 @@
   .msgReplyMoreMenu button{ align-items:center; gap:10px; }
   .msgReplyMoreMenu button svg{ width:17px; height:17px; flex:none; }
   .msgReplyMoreMenu button.msgMoreActive{ color:var(--accent-ink); background:var(--panel2); }
+  /* v-black-surfaces: «مفيد» المختار كان لا يُرى في الأسود (--panel2 و--accent-ink يساويان القائمة والنصّ) — علامة ✓ مستقلّة عن الألوان
+     في كلّ الأوضاع (aria-checked يكتبه openMsgMoreMenu)، والدرجة الثانية #101013 في الأسود. */
+  .msgReplyMoreMenu button[aria-checked="true"]::after{ content:'✓'; margin-inline-start:auto; font-weight:700; }
+  html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .msgReplyMoreMenu button[aria-checked="true"]{ background:#101013; }
   .msgReplyMoreMenu button:disabled{ opacity:.55; cursor:default; }
   .msgMoreDivider{ border-top:1px solid var(--border,rgba(255,255,255,.12)); margin:5px 4px; }
   .chat-status-fold{font-size:13px; line-height:1.7; opacity:.9; max-width:100%; min-width:0;} /* v-status-tidy: نفس العرض المطويّ على الجوال */

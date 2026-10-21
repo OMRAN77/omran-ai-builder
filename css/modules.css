@@ -433,6 +433,9 @@ html[data-mode="light"] #portraitStyleSheet .pstyleFoot{background:#EBEBEB !impo
 #fashionAiModal .optChip.sel .ck{background:#d4af37;border-color:#d4af37;color:#141414}
 #fashionAiModal .optCard.sel{border-color:#d4af37;color:#d4af37;box-shadow:0 0 10px rgba(212,175,55,.25)}
 #fashionAiModal .optCard.sel .oi{filter:none}
+/* v-black-surfaces (تدقيق ١٨–١٩ أكتوبر): منتقي محرّك الأزياء (للمالك وحده) عنصر أصليّ رفيع 19px — #fashionAiModal div لا <dialog>، فلا تصله
+   قاعدة «dialog select» في tokens.css. الشكل نفسه هنا (ارتفاع وحشوة وزوايا وتعبئة اللوحة)؛ وفي الأسود تعبئة الحقول من app-41 (om3-field). */
+#fashionAiModal select{min-height:40px; padding:8px 12px; border-radius:var(--r-2); border:1px solid var(--border); background-color:var(--panel2); color:var(--text); font:inherit; font-size:13px;}
 #studioAiTabs .studioAiTabBtn.active{border:2px solid #d4af37;box-shadow:0 0 10px rgba(212,175,55,.3);color:#d4af37}
 
 /* v-vmk-mobile: استوديو الفيديو نفسه على الهاتف — عمود واحد يمرَّر رأسيًا. */
