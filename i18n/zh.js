@@ -923,8 +923,8 @@ I18N['zh'] = {
     "studioAiDownloadBtn": "⬇️ 下载图片",
     "studioAiNeedImage": "⚠️ 请先上传照片。",
     "studioAiNeedTwoImages": "⚠️ 请上传两张照片以进行合并。",
-    "studioAiNeedLogin": "🔑 必须先登录才能使用 Studio AI。",
-    "studioAiLimitReached": "⏳ 您已达到今日 Studio AI 免费使用限额。请明天再试。",
+    "studioAiNeedLogin": "🔑 必须先登录才能使用 Style AI（风格AI）。",
+    "studioAiLimitReached": "⏳ 您已达到今日 Style AI（风格AI）免费使用限额。请明天再试。",
     "studioAiGenerating": "🎨 正在生成...",
     "studioAiDone": "✅ 完成!",
     "studioAiTabHeritage": "🏛️ 传统/经典风格",
@@ -1336,7 +1336,7 @@ Object.assign(I18N["zh"], {"pdfDocPage": "⏳ 正在准备第 {i} / {n} 页…",
 /* v-paypal-honest */ Object.assign(I18N['zh'], {"checkoutPaidPending":"✅ 已收到您的付款，但入账有所延迟——下次打开应用时会自动完成。如一小时内仍未到账，请联系我们。"});
 
 /* v-video-watch */ Object.assign(I18N['zh'], {"vwUploading": "🎬 正在上传视频…", "vwWatching": "🎬 正在观看视频并聆听声音…", "vwCharged": "🎬 已扣除 {n} 积分 · {d} 视频", "vwNoPoints": "你有 {p} 积分；分析此视频需要 {n} 积分。", "vwTooBig": "视频超过 100 MB——请剪短或降低分辨率后再发送。", "vwTooLong": "视频超过 10 分钟——请发送更短的片段。", "vwFormat": "不支持该视频格式——请以 MP4、MOV 或 WEBM 格式发送。", "vwFailed": "视频分析失败——未扣除任何积分。请重试。", "vwLogin": "请先登录以分析视频。", "vwDefaultQ": "分析这个视频"});
-/* v-plans-gate */ Object.assign(I18N['zh'], {"plansWhyPoints": "你的积分已用完 — 在套餐中充值即可继续。", "plansWhyLimit": "你已达到套餐今日上限 — 升级套餐或等到明天。", "plansWhyExpired": "你的 {plan} 订阅已到期 — 续订即可恢复权益。", "plansWhyExpiring": "你的 {plan} 订阅将于 {date} 到期 — 续订以免权益中断。", "plansRenew": "续订", "plansLater": "稍后", "vwUnavailable": "视频分析暂时不可用 — 未扣除任何积分。请稍后再试。"});
+/* v-plans-gate */ Object.assign(I18N['zh'], {"plansWhyPoints": "你的积分不足以完成此操作 — 在套餐中充值即可继续。", "plansWhyLimit": "你已达到套餐今日上限 — 升级套餐或等到明天。", "plansWhyExpired": "你的 {plan} 订阅已到期 — 续订即可恢复权益。", "plansWhyExpiring": "你的 {plan} 订阅将于 {date} 到期 — 续订以免权益中断。", "plansRenew": "续订", "plansLater": "稍后", "vwUnavailable": "视频分析暂时不可用 — 未扣除任何积分。请稍后再试。"});
 /* v-google-login-help */ Object.assign(I18N['zh'], {"authGoogleHint": "用 Google 注册的？请点击「{btn}」——Gmail 密码在这里无法使用。"});
 /* v-media-merge */ Object.assign(I18N['zh'], {"priceTabMedia":"图片和视频","mixPlanName":"图片和视频","mixPlansDesc":"适合想要图片和视频的用户——不含聊天。一个余额同时用于两者；用完后将使用你的积分继续。","mixOneBalance":"图片和视频共用一个余额","mixApprox1":"大约可生成50张图片或12个视频，或两者混合","mixApprox2":"大约可生成100张图片或24个视频，或两者混合","mixApprox3":"大约可生成500张图片或121个视频，或两者混合","mixNoChat":"不含聊天","mixLeft":"图片和视频余额剩余"});
 /* v-inspire */ Object.assign(I18N['zh'], {"inspTabInspire":"灵感","inspTabQuick":"快捷建议","inspCityTitle":"你的真实城市","inspCitySub":"基于开放地图、在你真实街区上构建的 3D 体验。选一个即可在预览中立即打开，然后在里面输入任意街区或城市。","inspLoading":"正在打开…","inspFail":"暂时无法打开，请重试"});

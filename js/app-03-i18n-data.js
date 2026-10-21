@@ -690,7 +690,7 @@ const I18N = {
     designAiGenerateBtn: '✨ صمم الغرفة',
     designAiDownloadBtn: '⬇️ تحميل الصورة',
     designCompareTitle: '🆚 غرفتي بكل الأنماط',
-    designCompareHint: 'ارفعي صورة غرفتك واختاري ٢-٣ أنماط — نولّدها جنبًا إلى جنب وتختارين الأجمل',
+    designCompareHint: 'ارفع صورة غرفتك واختر ٢-٣ أنماط — نولّدها جنبًا إلى جنب وتختار الأجمل',
     designCompareBtn: '🆚 صمّمها بالأنماط المختارة',
     designBABefore: 'قبل',
     designBAAfter: 'بعد',
@@ -809,8 +809,8 @@ const I18N = {
     studioAiDownloadBtn: '⬇️ تحميل الصورة',
     studioAiNeedImage: '⚠️ الرجاء رفع صورة أولًا.',
     studioAiNeedTwoImages: '⚠️ الرجاء رفع الصورتين للدمج.',
-    studioAiNeedLogin: '🔑 يجب تسجيل الدخول أولًا لاستخدام ستوديو AI.',
-    studioAiLimitReached: '⏳ لقد استهلكت حد ستوديو AI المجاني لليوم. حاول مرة أخرى غدًا.',
+    studioAiNeedLogin: '🔑 يجب تسجيل الدخول أولًا لاستخدام ستايل AI.',
+    studioAiLimitReached: '⏳ لقد استهلكت حد ستايل AI المجاني لليوم. حاول مرة أخرى غدًا.',
     studioAiGenerating: '🎨 جاري التوليد...',
     studioAiDone: '✅ تم!',
     studioAiTabHeritage: '🏛️ تراثي/تقليدي',
@@ -1184,7 +1184,7 @@ const I18N = {
     vwLogin: 'سجّل دخولك أوّلًا لتحليل الفيديو.',
     vwDefaultQ: 'حلّل هذا الفيديو',
     /* v-plans-gate */
-    plansWhyPoints: 'نقاطك خلصت — اشحن من الباقات وكمّل مباشرة.',
+    plansWhyPoints: 'نقاطك ما تكفي لهذه العمليّة — اشحن من الباقات وكمّل مباشرة.',
     plansWhyPointsNeed: 'رصيدك {have} نقطة، وهذه العمليّة تحتاج {need} — اشحن من الباقات وكمّل مباشرة.', /* v-plans-real-balance */
     plansWhyPointsLow: 'رصيدك {have} نقطة وما يكفي لهذه العمليّة — اشحن من الباقات وكمّل مباشرة.',
     logoutWipeConfirm: 'تسجيل الخروج يمسح من هذا الجهاز محادثاتك وصورك، ومنها المفضّلة. المحادثات محفوظة في حسابك وترجع لما تدخل، أمّا الصور فممكن ما ترجع بدقّتها الكاملة. تكمل؟', /* v-logout-wipe */
@@ -1827,7 +1827,7 @@ const I18N = {
     vwLogin: 'Sign in first to analyze videos.',
     vwDefaultQ: 'Analyze this video',
     /* v-plans-gate */
-    plansWhyPoints: 'You’re out of points — top up from Plans and continue right away.',
+    plansWhyPoints: 'You don’t have enough points for this — top up from Plans and continue right away.',
     plansWhyPointsNeed: 'You have {have} points and this needs {need} — top up from Plans and continue right away.', /* v-plans-real-balance */
     plansWhyPointsLow: 'You have {have} points — not enough for this. Top up from Plans and continue right away.',
     logoutWipeConfirm: 'Logging out erases your chats and images (including favorites) from this device. Your chats are saved to your account and come back when you sign in; images may not return in full quality. Continue?', /* v-logout-wipe */
@@ -2818,7 +2818,7 @@ const I18N = {
     religionDone: '✅ Interpretation ready',
     religionError: '❌ Something went wrong, try again',
     studioAiTitle: 'Style AI',
-    studioAiModalTitle: '💄 AI Style Studio',
+    studioAiModalTitle: '💄 Style AI',
     studioAiVideoTitle: '🎬 Tutorial video: How to use Style AI',
     studioAiDesc: 'Pick a feature, upload your photo (or two photos to merge), and choose an option. Experimental feature with a small daily limit per account.',
     studioAiTabHair: '💇 Hair',
@@ -2848,8 +2848,8 @@ const I18N = {
     studioAiDownloadBtn: '⬇️ Download image',
     studioAiNeedImage: '⚠️ Please upload a photo first.',
     studioAiNeedTwoImages: '⚠️ Please upload both photos to merge.',
-    studioAiNeedLogin: '🔑 You must log in first to use Studio AI.',
-    studioAiLimitReached: "⏳ You have reached today's free Studio AI limit. Try again tomorrow.",
+    studioAiNeedLogin: '🔑 You must log in first to use Style AI.',
+    studioAiLimitReached: "⏳ You have reached today's free Style AI limit. Try again tomorrow.",
     studioAiGenerating: '🎨 Generating...',
     studioAiDone: '✅ Done!',
     studioAiTabHeritage: '🏛️ Heritage/Traditional',
