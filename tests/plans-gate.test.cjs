@@ -317,7 +317,7 @@ test('١١. النصوص السبعة بالـ١٤ لغة بمواضعها {plan
     assert.ok(d.plansWhyExpired.includes('{plan}'), l);
     assert.ok(d.plansWhyExpiring.includes('{plan}') && d.plansWhyExpiring.includes('{date}'), l);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=767'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=768'"));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.omranOpenPlans = openPlans;') && bundle.includes("if(c === 'unavailable') return t('vwUnavailable');"), 'الحزمة مبنيّة');
 });

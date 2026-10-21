@@ -1366,3 +1366,4 @@ Object.assign(I18N["zh"], {"pdfDocPage": "⏳ 正在准备第 {i} / {n} 页…",
 /* v-hist-search-empty — سطر «لا توجد محادثات تطابق بحثك» تحت بحث القائمة بلا نتائج — ١٤ لغة */ Object.assign(I18N["zh"], {"projSearchEmpty":"没有与搜索匹配的对话"});
 /* v-cap-hint-i18n — الجملة القائدة لملاحظة «تقدر تسوي هذا عن طريق <الأداة>» تحت الردّ — ١٤ لغة */ Object.assign(I18N["zh"], {"capHintLead":"提示：可以使用以下功能完成："});
 /* v-studio-basket-honest — رفض اختيار يجاوز حدّ الصور في «ستايل AI» (كانت الزيادة تُقصّ بصمت) — ١٤ لغة */ Object.assign(I18N["zh"], {"studioBasketImgMax":"每次生成最多 {n} 张图片——请先移除一个选项再添加。"});
+/* v-app-director-watchdog — ما صار بطاقة عنوان أو مقطعًا ثابتًا في «مخرج التطبيق» يُعلَن (١٤ لغة) */ Object.assign(I18N["zh"], {"vdWarnShots":"{n} 个界面无法截图，已改为标题卡","vdWarnStills":"{n} 个片段已重新编码为无镜头运动的静态画面"});

@@ -1374,3 +1374,4 @@ Object.assign(I18N["tr"], {"pdfDocPage": "⏳ Sayfa {i} / {n} hazırlanıyor…"
 /* v-hist-search-empty — سطر «لا توجد محادثات تطابق بحثك» تحت بحث القائمة بلا نتائج — ١٤ لغة */ Object.assign(I18N["tr"], {"projSearchEmpty":"Aramanızla eşleşen sohbet yok"});
 /* v-cap-hint-i18n — الجملة القائدة لملاحظة «تقدر تسوي هذا عن طريق <الأداة>» تحت الردّ — ١٤ لغة */ Object.assign(I18N["tr"], {"capHintLead":"Not: bunun için şunu kullanabilirsiniz:"});
 /* v-studio-basket-honest — رفض اختيار يجاوز حدّ الصور في «ستايل AI» (كانت الزيادة تُقصّ بصمت) — ١٤ لغة */ Object.assign(I18N["tr"], {"studioBasketImgMax":"Bir üretimde en fazla {n} görsel — başka bir seçim eklemek için birini kaldırın."});
+/* v-app-director-watchdog — ما صار بطاقة عنوان أو مقطعًا ثابتًا في «مخرج التطبيق» يُعلَن (١٤ لغة) */ Object.assign(I18N["tr"], {"vdWarnShots":"{n} ekran yakalanamadı ve başlık kartına dönüştü","vdWarnStills":"{n} bölüm kamera hareketi olmadan sabit kare olarak yeniden kodlandı"});

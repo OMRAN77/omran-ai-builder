@@ -402,7 +402,7 @@
       +'<button type="button" id="vdGo"></button>'
       +'<div class="vmk-dir-stage" id="vdStage" hidden><div class="vmk-dir-stage-bg"></div><img id="vdStageImg" alt=""><div class="vmk-dir-stage-reel"></div>'
         +'<div class="vmk-dir-stage-cap" id="vdStageCap"></div><div class="vmk-dir-stage-hud"><span id="vdStageStep"></span><b id="vdStageTime">0:00</b></div><div class="vmk-dir-stage-bar"><i id="vdStageBar"></i></div></div>'
-      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small></li>'; }).join('')+'</ol>'
+      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small><i class="vmk-dir-log" dir="ltr"></i></li>'; }).join('')+'</ol>'
       +'<p class="vmk-dir-msg" id="vdMsg"></p>'
       +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a></div>';
     var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
@@ -452,9 +452,13 @@
     clearInterval(ST.iv); ST.iv=setInterval(drStageTick,1000); drStageTick();
   }
   function drStageStop(hide){ clearInterval(ST.iv); ST.iv=0; ST.creep=null; if(hide) drStageShow(false); }
-  function drStep(k,state,note,frac){
+  /* v-app-director-watchdog (لقطة المالك ١٢ أكتوبر: «المشهد ١ من ٤» ربع ساعة بلا أيّ جديد): الخطوة الجارية على الجسر تعرض منقضيها
+     (mm:ss بساعة الخادم) وآخر سطر من سجلّ مهمّتها تحت اسمها — فيرى المالك أهو يصوّر أم يعلّق أم أعاد مقطعًا، لا عدّادًا جامدًا */
+  function drMmss(ms){ var s=Math.max(0,Math.floor((Number(ms)||0)/1000)); return ('0'+Math.floor(s/60)).slice(-2)+':'+('0'+(s%60)).slice(-2); }
+  function drStep(k,state,note,frac,log){
     var li=M.querySelector('#vdSteps li[data-step="'+k+'"]'); if(!li) return;
     li.classList.remove('on','ok','err'); if(state) li.classList.add(state); li.querySelector('small').textContent=note||'';
+    var lg=li.querySelector('.vmk-dir-log'); if(lg){ lg.textContent=(state==='on'&&log)?String(log):''; lg.title=lg.textContent; } /* السطر كاملًا تلميحًا إن قُصّ */
     var sp=DR_SPAN[k]; if(!sp) return;
     if(state==='on'){
       var lb=id('vdStageStep'); if(lb) lb.textContent=li.querySelector('b').textContent+(note?' · '+note:'');
@@ -687,10 +691,13 @@
         if(!sr||!sr.ok||!sj||typeof sj!=='object'){ if(++lost>=20){ drStep('shots','err'); throw drFail('bridge offline'); } continue; }
         lost=0; st=sj;
         if(st.state==='queued'){ drStep('shots','on',L('vdQueued'),0.02); continue; }
-        if(st.step==='assets'||st.step==='capture'){ drStep('shots','on',st.total?drT('vdScene',{i:st.done||0,n:st.total}):'',st.step==='capture'&&st.total?(st.done||0)/st.total:0.03); }
-        if(st.step==='segments'||st.step==='join'){ drStep('shots','ok',''); drStep('join','on',st.step==='segments'&&st.total?drT('vdScene',{i:st.done||0,n:st.total}):'',st.step==='segments'&&st.total?0.8*(st.done||0)/st.total:0.9); }
-        if(st.state==='error'){ drStep(st.step==='capture'||st.step==='assets'?'shots':'join','err'); throw drFail('render '+(st.step||'')+' '+(st.message||'')); }
-        if(st.state==='done'){ drStep('shots','ok',''); drStep('join','ok',''); url=bridge+st.url; break; }
+        /* v-app-director-watchdog: المنقضي من الخطوة وآخر سطر من سجلّ الجسر؛ وما صار بطاقة عنوان أو مقطعًا ثابتًا يُعلَن لا يُخفى */
+        var stLog=(st.lastLog&&st.lastLog.length)?String(st.lastLog[st.lastLog.length-1]||''):'', stT=drMmss(st.stepMs);
+        var shotsNote=st.fallbacks?drT('vdWarnShots',{n:st.fallbacks}):'', joinNote=st.stills?drT('vdWarnStills',{n:st.stills}):'';
+        if(st.step==='assets'||st.step==='capture'){ drStep('shots','on',(st.total?drT('vdScene',{i:st.done||0,n:st.total})+' · ':'')+stT,st.step==='capture'&&st.total?(st.done||0)/st.total:0.03,stLog); }
+        if(st.step==='segments'||st.step==='join'){ drStep('shots','ok',shotsNote); drStep('join','on',(st.step==='segments'&&st.total?drT('vdScene',{i:st.done||0,n:st.total})+' · ':'')+stT,st.step==='segments'&&st.total?0.8*(st.done||0)/st.total:0.9,stLog); }
+        if(st.state==='error'){ drStep(st.step==='capture'||st.step==='assets'?'shots':'join','err'); throw drFail('render '+(st.step||'')+' '+(st.message||'')+(stLog?' · '+stLog:'')); }
+        if(st.state==='done'){ drStep('shots','ok',shotsNote); drStep('join','ok',joinNote); url=bridge+st.url; break; }
       }
       if(my!==DR.run||!url) return;
       /* ٦) الفيديو: معاينة وتحميل وحفظ */

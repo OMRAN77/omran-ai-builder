@@ -810,6 +810,12 @@ html[data-mode="light"] #videoMakerModal .vmk-cl-drop:focus-within{outline-color
 #videoMakerModal .vmk-dir-steps li:before{content:"";position:absolute;inset-inline-start:11px;top:14px;width:11px;height:11px;border-radius:50%;border:2px solid rgba(255,255,255,.25)}
 #videoMakerModal .vmk-dir-steps li b{font-weight:700}
 #videoMakerModal .vmk-dir-steps li small{display:block;font-size:11px;color:var(--muted,#9a9a9e)}
+/* v-app-director-watchdog: آخر سطر من سجلّ الجسر تحت الخطوة الجارية — لاتينيّ أحاديّ المسافة، سطران على الأكثر. يلتفّ (لا nowrap):
+   سطر لا يلتفّ كان يوسّع عمود الجوّال (1fr حدّه الأدنى عرض محتواه) فخرجت البطاقات عن الشاشة — ثبت باللقطة */
+#videoMakerModal .vmk-dir-steps li{min-width:0}
+#videoMakerModal .vmk-dir-steps li .vmk-dir-log{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;direction:ltr;text-align:left;font:10.5px/1.5 ui-monospace,Consolas,monospace;font-style:normal;color:var(--muted,#9a9a9e);opacity:.85;margin-top:2px}
+html[dir="rtl"] #videoMakerModal .vmk-dir-steps li .vmk-dir-log{text-align:right}
+#videoMakerModal .vmk-dir-steps li .vmk-dir-log:empty{display:none}
 #videoMakerModal .vmk-dir-steps li.on{color:var(--text,#eceef4);border-color:rgba(232,194,122,.6)}
 #videoMakerModal .vmk-dir-steps li.on:before{border-color:#e8c27a;animation:vdPulse .9s infinite alternate}
 #videoMakerModal .vmk-dir-steps li.ok{color:var(--text,#eceef4)}

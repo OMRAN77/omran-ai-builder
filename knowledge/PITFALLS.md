@@ -3,6 +3,11 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **ffmpeg: صورة واحدة بلا zoompan = إطار واحد مهما كان `-t`:** مدخل PNG واحد يعطي إطارًا واحدًا، وzoompan هو الذي كان يولّد إطارات الخانة. مقطع «صورة ثابتة» يحتاج `fps=30,tpad=stop_mode=clone:stop_duration=<الخانة>` (أو `-loop 1`). تحقّق بـ`ffprobe -show_entries stream=nb_frames` لا بأنّ الأمر خرج بصفر. (v-app-director-watchdog)
+- **ffmpeg قُتل بإشارة يخرج بلا رمز ولا stderr:** `child.on('close', (code) => …)` وحده يُخرج «failed:» فارغة. اقرأ `signal` أيضًا؛ SIGKILL بلا stderr على حاوية صغيرة = قاتل الذاكرة على الأرجح. (v-app-director-watchdog)
+- **`page.evaluate` في Playwright بلا مهلة:** `setDefaultTimeout` لا يشمله، فصفحة يعلّق خيطها بعد `load` تُوقف المتسلسل كلّه. ضع مهلة خارجيّة (`Promise.race`) وأغلق الصفحة العالقة وافتح غيرها. (v-app-director-watchdog)
+- **`import()` لـplaywright-core من CommonJS يضع `chromium` تحت `default`:** `mod.chromium` غير معرَّف فيتخطّى اختبار «Chromium غير متاح» بصمت وهو متاح — اقرأ `mod.chromium || mod.default.chromium`. (v-app-director-watchdog)
+- **`white-space:nowrap` داخل عنصر شبكة بعمود `1fr`:** الحدّ الأدنى لـ`1fr` عرض المحتوى، فسطر لا يلتفّ يوسّع العمود ويُخرج البطاقات عن شاشة الجوّال (الحاسوب بـ`minmax(0,1fr)` لا يظهر فيه). التفاف + `min-width:0`. (v-app-director-watchdog)
 - **رصد يقرأ نصّ لوحة تنظّف نصوصها لا يرى شيئًا، وكتابة النصّ باليد في الاختبار تخفي ذلك:** مشهد الترندات رصد ⏳ في
   «⏳ يصنع الفيديو…»، لكنّ `ui()` في لوحة الترندات يمرّر كلّ نصّ بـ`noEmoji` فلا يصل الرمز أبدًا؛ والتحقّق كتب سطر الحالة باليد
   بالرمز فمرّ، والمالك لم يرَ المشهد قطّ. تحقّق من أيّ مؤشّر انتظار بضغط زرّ التوليد الحقيقيّ مع خادم وهميّ، واجعل اللوحة تعلن
