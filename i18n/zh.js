@@ -719,7 +719,7 @@ I18N['zh'] = {
     "carToolDone": "✅ 完成",
     "portraitGenerating": "⏳ 转换中...",
     "portraitDone": "✅ 完成!",
-    "portraitBtnTitle": "肖像风格",
+    "portraitBtnTitle": "照片风格",
     "quickTemplatesTitle": "建议",
     "imgToPdfTitle": "图片 → PDF",
     "previewToggleLabel": "浏览器",

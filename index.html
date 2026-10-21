@@ -859,7 +859,8 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
       </div>
     </div>
     <div id="messages"></div>
-    <button type="button" id="chatJumpBottom" title="أحدث رسالة" data-i18n-title="jumpLatestTitle" aria-label="الانتقال إلى أحدث رسالة">↓</button>
+    <!-- v-jump-aria (تدقيق ١٨ أكتوبر، chat-jump-bottom؛ الدفعة ٥): وصف قارئ الشاشة كان عربيًّا ثابتًا — بمفتاح التلميح نفسه بلغة الواجهة -->
+    <button type="button" id="chatJumpBottom" title="أحدث رسالة" data-i18n-title="jumpLatestTitle" aria-label="الانتقال إلى أحدث رسالة" data-i18n="[aria-label]jumpLatestTitle">↓</button>
     
     <div id="chatQuickChipsWrap" style="display:none; position:absolute; bottom:64px; inset-inline-end:14px; z-index:2100; background:var(--panel); backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 34px rgba(0,0,0,.55); color:var(--text); padding:8px; max-height:60vh; overflow-y:auto;">
       <div id="quickChips" style="display:flex; flex-direction:column; gap:2px; align-items:stretch;"></div>
@@ -1013,7 +1014,7 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 <script src="/js/selfdiag.js?v=hw-twa-9"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=fbf75dee"></script>
+    <script defer src="/js/app.bundle.js?v=bc1125fa"></script>
     <script defer src="/js/frame-touch.js?v=3"></script><!-- v-frame-gold: لمسة الضغط للكمبيوتر والجوال (v-touch-mobile: وفراغ المحادثة في الجوال) -->
     <script defer src="/js/modes.js?v=m171026b"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->

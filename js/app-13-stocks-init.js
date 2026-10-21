@@ -2589,7 +2589,9 @@
     Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
       if(b.querySelector('img')) return;
       const f = b.dataset.feature;
-      b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700;';
+      /* v-studio-tab-wrap (تدقيق ١٨ أكتوبر: «Heritage/Traditional» مقصوص «eritage/Tradition»؛ الدفعة ٥، من a11 في ten-a): nowrap الموروث من الوسم
+         مع عرض ٨٦px وoverflow:hidden يقصّ الاسم الطويل من الطرفين — يلتفّ سطرين فوق الظلّ (البطاقة ١٠٤px). */
+      b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700; white-space:normal;';
       const img = document.createElement('img');
       img.src = 'assets/studio/features/' + f + '.webp';
       img.alt = ''; img.loading = 'lazy';
@@ -2600,7 +2602,7 @@
       b.insertBefore(shade, b.firstChild);
       b.insertBefore(img, b.firstChild);
       const txt = Array.from(b.childNodes).find((n) => n.nodeType === 3);
-      if(txt){ const sp = document.createElement('span'); sp.textContent = txt.textContent; sp.style.cssText = 'position:relative; z-index:2;'; b.replaceChild(sp, txt); }
+      if(txt){ const sp = document.createElement('span'); sp.textContent = txt.textContent; sp.style.cssText = 'position:relative; z-index:2; max-width:100%; text-align:center; line-height:1.15; overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;'; b.replaceChild(sp, txt); }
     });
   }
   photoizeStudioTabs();

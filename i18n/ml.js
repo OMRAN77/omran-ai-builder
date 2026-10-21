@@ -726,7 +726,7 @@ I18N['ml'] = {
     "carToolDone": "✅ പൂർത്തിയായി",
     "portraitGenerating": "⏳ മാറ്റുന്നു...",
     "portraitDone": "✅ പൂർത്തിയായി!",
-    "portraitBtnTitle": "പോർട്രെയ്റ്റ് സ്റ്റൈലുകൾ",
+    "portraitBtnTitle": "ഫോട്ടോ ശൈലികൾ",
     "quickTemplatesTitle": "നിർദ്ദേശങ്ങൾ",
     "imgToPdfTitle": "ചിത്രങ്ങൾ → PDF",
     "previewToggleLabel": "ബ്രൗസർ",

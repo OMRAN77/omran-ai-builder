@@ -608,7 +608,7 @@ I18N['ur'] = {
     carToolWorking: '⏳ تجزیہ ہو رہا ہے...', carToolDone: '✅ مکمل',
     portraitGenerating: '⏳ تبدیل ہو رہا ہے...',
     portraitDone: '✅ مکمل!',
-    portraitBtnTitle: 'پورٹریٹ اسٹائلز',
+    portraitBtnTitle: 'تصویری انداز',
     quickTemplatesTitle: 'تجاویز',
     imgToPdfTitle: 'تصاویر → PDF',
     previewToggleLabel: 'براؤزر',

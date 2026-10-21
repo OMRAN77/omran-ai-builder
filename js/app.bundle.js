@@ -6553,7 +6553,7 @@ const I18N = {
     carToolWorking: '⏳ Analyzing...', carToolDone: '✅ Done',
     portraitGenerating: '⏳ Transforming...',
     portraitDone: '✅ Done!',
-    portraitBtnTitle: 'Portrait styles',
+    portraitBtnTitle: 'Photo styles',
     quickTemplatesTitle: 'Suggestions',
     imgToPdfTitle: 'PDF',
     pdfDocPage: "⏳ Preparing page {i} of {n}…",
@@ -13941,7 +13941,9 @@ function renderStats(){
     (p.messages || []).forEach(m => {
       if(m.role === 'user') messagesCount++;
       if(m.providerLabel){
-        const key = m.providerLabel.replace(/^🔄\s*/, '');
+        /* v-stats-fav-lang (تدقيق ١٨ أكتوبر، stats-section: «Favorite provider» قيمته «العميق» في الإنجليزيّ؛ الدفعة ٥، من a4 في ten-a): التسمية
+           المحفوظة بلغة وقت الإرسال — تُحلّ من providerKey بلغة الواجهة كما في عرض الرسالة، والقديمة بلا مفتاح تبقى بتسميتها. */
+        const key = (m.providerKey && typeof functionalLabel === 'function') ? functionalLabel(m.providerKey) : m.providerLabel.replace(/^🔄\s*/, '');
         providerCounts[key] = (providerCounts[key] || 0) + 1;
       }
     });
@@ -18960,8 +18962,11 @@ function mahaUpdatePersonaUI(){
     orb.style.border = '1px solid rgba(212,175,55,.35)';
   }
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
-  if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = name; }
-  if(btnMahaEl) btnMahaEl.title = name;
+  /* v-maha-tip-lang (تدقيق ١٨ أكتوبر، maha-call: «تلميح زرّ «م» يطلع «مها» بالعربي في الواجهة الإنجليزيّة»؛ الدفعة ٥): التلميح ووصف الصورة
+     باسم الشخصيّة بلغة الواجهة (mahaPersonaName في app-04: مها/عبدالله أو Maha/Abdullah) — الاسم نفسه لا يتغيّر. */
+  const tip = (typeof mahaPersonaName === 'function') ? mahaPersonaName() : name;
+  if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = tip; }
+  if(btnMahaEl) btnMahaEl.title = tip;
   /* v-voice-letter → v-abdullah-glyph → v-persona-medallions (المالك ٢ أكتوبر، لقطتان: «بدّل الحرفين (م) و(ع) اللي تحت
      المحادثة بهاذيل»): ميداليّتان ذهبيّتان مقصوصتان من لقطتيه (icons/maha-medallion.png وabdullah-medallion.png) بدل الحرف النصّيّ،
      كلٌّ بشخصيّته. نصّ «م» يبقى في الصفحة مخفيًّا احتياطًا إن لم تُحمَّل الصورة. */
@@ -18980,7 +18985,7 @@ function mahaUpdatePersonaUI(){
     if(gi.getAttribute('src') !== want) gi.setAttribute('src', want);
     gi.style.display = 'block';
     if(glyph) glyph.style.display = 'none';
-    dock.title = name;
+    dock.title = tip;
   }
 }
 // First-run voice picker: shown once, before the very first call, then stored.
@@ -33501,7 +33506,8 @@ async function __safeJson(res){
       {
         const cap = document.createElement('span');
         cap.textContent = name;
-        cap.style.cssText = 'position:absolute; left:50%; bottom:3%; transform:translateX(-50%); white-space:nowrap; max-width:96%; overflow:hidden; text-overflow:ellipsis;' +
+        /* تدقيق ١٨ أكتوبر (الدفعة ٥، من b8 في ten-a): سطر واحد بقصّ كان يقطع «Living ro…» في خانة ~٦١px على جوّال ٣٩٠ — يلتفّ سطرين (الحاسوب سطر واحد كما كان) */
+        cap.style.cssText = 'position:absolute; left:50%; bottom:3%; transform:translateX(-50%); width:96%; white-space:normal; overflow-wrap:anywhere; line-height:1.1; text-align:center;' +
           ' font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
         b.appendChild(cap);
       }
@@ -35528,21 +35534,24 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       }));
       // v-fashion-cards: بطاقات المقارنة بشكل التصميم المعتمد — تسمية أ/ب/ج،
       // اختيار بإطار ذهبي، والمختارة تصير النتيجة الرئيسية القابلة للتحميل.
-      const AR_LABELS = ['أ', 'ب', 'ج'];
+      /* تدقيق ١٨ أكتوبر: التسميات والتلميح و«✓ اختيارك» كانت عربيّة في كلّ اللغات — أ/ب/ج للعربيّة والأردو وA/B/C لغيرهما،
+         والتلميح من __BI (موجود بالـ١٢ لغة)، والمختار علامة ✓ مع الإطار الذهبيّ */
+      const LABELS = /^(ar|ur)/.test(lang7()) ? ['أ', 'ب', 'ج'] : ['A', 'B', 'C'];
+      const PICK_HINT = bT('اضغطي للاختيار ✓', '👍 Pick this');
       results.forEach((r, ri) => {
         const cell = document.createElement('div');
         cell.style.cssText = 'position:relative; border:1.5px solid var(--border,#333); border-radius:14px; padding:6px; text-align:center; cursor:pointer; transition:border-color .15s, box-shadow .15s;';
         if(r.dataUrl){
           const label = (styleEl.querySelector('option[value="' + r.styleVal + '"]') || {}).textContent || r.styleVal;
-          cell.innerHTML = '<span style="position:absolute; top:12px; inset-inline-end:12px; z-index:2; background:rgba(0,0,0,.65); color:#eef0f6; font-weight:700; font-size:12.5px; border-radius:6px; padding:2px 8px;">' + AR_LABELS[ri] + '</span>'
+          cell.innerHTML = '<span style="position:absolute; top:12px; inset-inline-end:12px; z-index:2; background:rgba(0,0,0,.65); color:#eef0f6; font-weight:700; font-size:12.5px; border-radius:6px; padding:2px 8px;">' + LABELS[ri] + '</span>'
             + '<img src="' + r.dataUrl + '" style="width:100%; border-radius:10px; background:#000;">'
             + '<p style="font-size:11.5px; color:var(--muted,#999); margin:6px 0 2px;">' + label + '</p>'
-            + '<p class="fashionPickHint" style="font-size:11.5px; color:#d4af37; margin:0 0 4px;">اضغطي للاختيار ✓</p>';
+            + '<p class="fashionPickHint" style="font-size:11.5px; color:#d4af37; margin:0 0 4px;">' + PICK_HINT + '</p>';
           cell.onclick = () => {
-            compareResultsEl.querySelectorAll(':scope > div').forEach(c => { c.style.borderColor = 'var(--border,#333)'; c.style.boxShadow = 'none'; const h = c.querySelector('.fashionPickHint'); if(h) h.textContent = 'اضغطي للاختيار ✓'; });
+            compareResultsEl.querySelectorAll(':scope > div').forEach(c => { c.style.borderColor = 'var(--border,#333)'; c.style.boxShadow = 'none'; const h = c.querySelector('.fashionPickHint'); if(h) h.textContent = PICK_HINT; });
             cell.style.borderColor = '#d4af37';
             cell.style.boxShadow = '0 8px 22px -12px rgba(212,175,55,.55)';
-            const h = cell.querySelector('.fashionPickHint'); if(h) h.textContent = '✓ اختيارك';
+            const h = cell.querySelector('.fashionPickHint'); if(h) h.textContent = '✓';
             resultEl.src = r.dataUrl; if(resultWrap) resultWrap.style.display = 'block'; resultEl.style.display = 'block'; /* v-fashion-show */
             downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
             favSaveBtn.style.display = 'block';
@@ -38816,7 +38825,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
       if(b.querySelector('img')) return;
       const f = b.dataset.feature;
-      b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700;';
+      /* v-studio-tab-wrap (تدقيق ١٨ أكتوبر: «Heritage/Traditional» مقصوص «eritage/Tradition»؛ الدفعة ٥، من a11 في ten-a): nowrap الموروث من الوسم
+         مع عرض ٨٦px وoverflow:hidden يقصّ الاسم الطويل من الطرفين — يلتفّ سطرين فوق الظلّ (البطاقة ١٠٤px). */
+      b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700; white-space:normal;';
       const img = document.createElement('img');
       img.src = 'assets/studio/features/' + f + '.webp';
       img.alt = ''; img.loading = 'lazy';
@@ -38827,7 +38838,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       b.insertBefore(shade, b.firstChild);
       b.insertBefore(img, b.firstChild);
       const txt = Array.from(b.childNodes).find((n) => n.nodeType === 3);
-      if(txt){ const sp = document.createElement('span'); sp.textContent = txt.textContent; sp.style.cssText = 'position:relative; z-index:2;'; b.replaceChild(sp, txt); }
+      if(txt){ const sp = document.createElement('span'); sp.textContent = txt.textContent; sp.style.cssText = 'position:relative; z-index:2; max-width:100%; text-align:center; line-height:1.15; overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;'; b.replaceChild(sp, txt); }
     });
   }
   photoizeStudioTabs();
@@ -39837,17 +39848,20 @@ window.updateVersionLabel();
     return on.length;
   }
   /* ملخّص ما فُهم بلغة المستخدم: نقرأ نصّ الخيار المختار من النموذج نفسه فيأتي مترجمًا مجّانًا */
+  /* v-cx-bidi (تدقيق ١٨–١٩ أكتوبر: «m² إنجليزيّة وترتيب مقلوب»): المساحة بوحدة تسمية حقلها («المساحة (م²)» ← «م²»)،
+     وكلّ جزء معزول ⁨…⁩ فلا تقلب الخوارزميّة ثنائيّة الاتّجاه أرقامه ورموزه في السطر العربيّ */
+  function fieldLabel(id){ var e = $(id); return (e && e.previousElementSibling) ? e.previousElementSibling.textContent.trim() : ''; }
   function summarize(f){
     var out = [];
     var opt = function(id){ var e = $(id); return (e && e.selectedIndex >= 0) ? (e.options[e.selectedIndex].text || '').trim() : ''; };
     if(f.buildingType) out.push(opt('constructionType'));
-    if(f.floors) { var fl = $('constructionFloors'); if(fl) out.push((fl.previousElementSibling ? fl.previousElementSibling.textContent.trim() : '') + ' ' + f.floors); }
-    if(f.area) out.push(f.area + ' m²');
+    if(f.floors) { var fl = $('constructionFloors'); if(fl) out.push((fieldLabel('constructionFloors') + ' ' + f.floors).trim()); }
+    if(f.area) { var al = fieldLabel('constructionArea'), au = (al.match(/\(([^)]+)\)/) || [])[1]; out.push(au ? f.area + ' ' + au : (al + ' ' + f.area).trim()); }
     if(f.style) out.push(opt('constructionStyle'));
     if(f.budget) out.push(opt('constructionBudget'));
     if(f.emirate) out.push(opt('constructionEmirate'));
     if(f.annexes && f.annexes.length) out.push('+' + f.annexes.length);
-    return out.filter(Boolean).join(' · ');
+    return out.filter(Boolean).map(function(s){ return '⁨' + s + '⁩'; }).join(' · ');
   }
 
   function status(el, txt){ el.textContent = txt || ''; el.style.display = txt ? 'block' : 'none'; }
@@ -40086,9 +40100,13 @@ window.updateVersionLabel();
     setVal('constructionFloors', p.floors);
     setVal('constructionArea', p.area);
     applyAnnexes(p.annexes);
-    var bits = [optText('constructionType', p.type), optText('constructionStyle', p.style), p.floors + '×', p.area + ' m²'];
+    /* v-cx-bidi (تدقيق ١٨–١٩ أكتوبر: «2× وm² إنجليزيّة وترتيب مقلوب»): الأدوار بتسمية حقلها والمساحة بوحدة تسمية حقلها
+       («المساحة (م²)» ← «م²»، مترجمتين بالـ14 لغة)، وكلّ جزء معزول ⁨…⁩ فلا ينقلب ترتيبه في السطر العربيّ */
+    var lab = function(id){ var e = $(id); return (e && e.previousElementSibling) ? e.previousElementSibling.textContent.trim() : ''; };
+    var areaLab = lab('constructionArea'), unit = (areaLab.match(/\(([^)]+)\)/) || [])[1];
+    var bits = [optText('constructionType', p.type), optText('constructionStyle', p.style), (lab('constructionFloors') + ' ' + p.floors).trim(), unit ? p.area + ' ' + unit : (areaLab + ' ' + p.area).trim()];
     if(p.annexes.length) bits.push('+' + p.annexes.length);
-    st.textContent = T(TX.ready).replace('{s}', bits.filter(Boolean).join(' · '));
+    st.textContent = T(TX.ready).replace('{s}', bits.filter(Boolean).map(function(s){ return '⁨' + s + '⁩'; }).join(' · '));
     st.style.display = 'block';
   }
 

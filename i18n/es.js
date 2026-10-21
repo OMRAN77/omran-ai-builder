@@ -725,7 +725,7 @@ I18N['es'] = {
     "carToolDone": "✅ Listo",
     "portraitGenerating": "⏳ Transformando...",
     "portraitDone": "✅ ¡Listo!",
-    "portraitBtnTitle": "Estilos de retrato",
+    "portraitBtnTitle": "Estilos de fotos",
     "quickTemplatesTitle": "Sugerencias",
     "imgToPdfTitle": "Imágenes → PDF",
     "previewToggleLabel": "Navegador",

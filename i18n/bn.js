@@ -609,7 +609,7 @@ I18N['bn'] = {
     carToolWorking: '⏳ বিশ্লেষণ চলছে...', carToolDone: '✅ সম্পন্ন',
     portraitGenerating: '⏳ রূপান্তর হচ্ছে...',
     portraitDone: '✅ সম্পন্ন!',
-    portraitBtnTitle: 'পোর্ট্রেট স্টাইল',
+    portraitBtnTitle: 'ছবির স্টাইল',
     quickTemplatesTitle: 'পরামর্শ',
     imgToPdfTitle: 'ছবি → PDF',
     previewToggleLabel: 'ব্রাউজার',

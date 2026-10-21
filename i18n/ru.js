@@ -725,7 +725,7 @@ I18N['ru'] = {
     "carToolDone": "✅ Готово",
     "portraitGenerating": "⏳ Преобразование...",
     "portraitDone": "✅ Готово!",
-    "portraitBtnTitle": "Стили портрета",
+    "portraitBtnTitle": "Стили фото",
     "quickTemplatesTitle": "Подсказки",
     "imgToPdfTitle": "Фото → PDF",
     "previewToggleLabel": "Браузер",

@@ -2627,7 +2627,7 @@ const I18N = {
     carToolWorking: '⏳ Analyzing...', carToolDone: '✅ Done',
     portraitGenerating: '⏳ Transforming...',
     portraitDone: '✅ Done!',
-    portraitBtnTitle: 'Portrait styles',
+    portraitBtnTitle: 'Photo styles',
     quickTemplatesTitle: 'Suggestions',
     imgToPdfTitle: 'PDF',
     pdfDocPage: "⏳ Preparing page {i} of {n}…",

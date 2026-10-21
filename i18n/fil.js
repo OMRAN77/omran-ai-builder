@@ -726,7 +726,7 @@ I18N['fil'] = {
     "carToolDone": "✅ Tapos na",
     "portraitGenerating": "⏳ Ginagawang transform...",
     "portraitDone": "✅ Tapos na!",
-    "portraitBtnTitle": "Mga style ng portrait",
+    "portraitBtnTitle": "Mga istilo ng litrato",
     "quickTemplatesTitle": "Mga mungkahi",
     "imgToPdfTitle": "Mga larawan → PDF",
     "previewToggleLabel": "Browser",

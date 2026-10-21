@@ -3219,7 +3219,9 @@ function renderStats(){
     (p.messages || []).forEach(m => {
       if(m.role === 'user') messagesCount++;
       if(m.providerLabel){
-        const key = m.providerLabel.replace(/^🔄\s*/, '');
+        /* v-stats-fav-lang (تدقيق ١٨ أكتوبر، stats-section: «Favorite provider» قيمته «العميق» في الإنجليزيّ؛ الدفعة ٥، من a4 في ten-a): التسمية
+           المحفوظة بلغة وقت الإرسال — تُحلّ من providerKey بلغة الواجهة كما في عرض الرسالة، والقديمة بلا مفتاح تبقى بتسميتها. */
+        const key = (m.providerKey && typeof functionalLabel === 'function') ? functionalLabel(m.providerKey) : m.providerLabel.replace(/^🔄\s*/, '');
         providerCounts[key] = (providerCounts[key] || 0) + 1;
       }
     });

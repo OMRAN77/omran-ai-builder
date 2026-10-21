@@ -626,7 +626,7 @@ I18N['fr'] = {
     carToolWorking: '⏳ Analyse en cours...', carToolDone: '✅ Terminé',
     portraitGenerating: '⏳ Transformation en cours...',
     portraitDone: '✅ Terminé !',
-    portraitBtnTitle: 'Styles de portrait',
+    portraitBtnTitle: 'Styles de photos',
     quickTemplatesTitle: 'Suggestions',
     imgToPdfTitle: 'Images → PDF',
     previewToggleLabel: 'Navigateur',

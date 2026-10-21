@@ -615,7 +615,7 @@ I18N['ne'] = {
     carToolWorking: '⏳ विश्लेषण गर्दै...', carToolDone: '✅ पूरा भयो',
     portraitGenerating: '⏳ रूपान्तरण भइरहेको छ...',
     portraitDone: '✅ सम्पन्न!',
-    portraitBtnTitle: 'पोर्ट्रेट स्टाइल',
+    portraitBtnTitle: 'फोटो शैलीहरू',
     quickTemplatesTitle: 'सुझावहरू',
     imgToPdfTitle: 'तस्बिरहरू → PDF',
     previewToggleLabel: 'ब्राउजर',

@@ -47,17 +47,20 @@
     return on.length;
   }
   /* ملخّص ما فُهم بلغة المستخدم: نقرأ نصّ الخيار المختار من النموذج نفسه فيأتي مترجمًا مجّانًا */
+  /* v-cx-bidi (تدقيق ١٨–١٩ أكتوبر: «m² إنجليزيّة وترتيب مقلوب»): المساحة بوحدة تسمية حقلها («المساحة (م²)» ← «م²»)،
+     وكلّ جزء معزول ⁨…⁩ فلا تقلب الخوارزميّة ثنائيّة الاتّجاه أرقامه ورموزه في السطر العربيّ */
+  function fieldLabel(id){ var e = $(id); return (e && e.previousElementSibling) ? e.previousElementSibling.textContent.trim() : ''; }
   function summarize(f){
     var out = [];
     var opt = function(id){ var e = $(id); return (e && e.selectedIndex >= 0) ? (e.options[e.selectedIndex].text || '').trim() : ''; };
     if(f.buildingType) out.push(opt('constructionType'));
-    if(f.floors) { var fl = $('constructionFloors'); if(fl) out.push((fl.previousElementSibling ? fl.previousElementSibling.textContent.trim() : '') + ' ' + f.floors); }
-    if(f.area) out.push(f.area + ' m²');
+    if(f.floors) { var fl = $('constructionFloors'); if(fl) out.push((fieldLabel('constructionFloors') + ' ' + f.floors).trim()); }
+    if(f.area) { var al = fieldLabel('constructionArea'), au = (al.match(/\(([^)]+)\)/) || [])[1]; out.push(au ? f.area + ' ' + au : (al + ' ' + f.area).trim()); }
     if(f.style) out.push(opt('constructionStyle'));
     if(f.budget) out.push(opt('constructionBudget'));
     if(f.emirate) out.push(opt('constructionEmirate'));
     if(f.annexes && f.annexes.length) out.push('+' + f.annexes.length);
-    return out.filter(Boolean).join(' · ');
+    return out.filter(Boolean).map(function(s){ return '⁨' + s + '⁩'; }).join(' · ');
   }
 
   function status(el, txt){ el.textContent = txt || ''; el.style.display = txt ? 'block' : 'none'; }

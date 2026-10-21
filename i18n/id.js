@@ -724,7 +724,7 @@ I18N['id'] = {
     "carToolDone": "✅ Selesai",
     "portraitGenerating": "⏳ Mengubah...",
     "portraitDone": "✅ Selesai!",
-    "portraitBtnTitle": "Gaya potret",
+    "portraitBtnTitle": "Gaya foto",
     "quickTemplatesTitle": "Saran",
     "imgToPdfTitle": "Gambar → PDF",
     "previewToggleLabel": "Browser",

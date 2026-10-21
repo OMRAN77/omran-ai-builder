@@ -724,7 +724,7 @@ I18N['tr'] = {
     "carToolDone": "✅ Tamamlandı",
     "portraitGenerating": "⏳ Dönüştürülüyor...",
     "portraitDone": "✅ Tamamlandı!",
-    "portraitBtnTitle": "Portre stilleri",
+    "portraitBtnTitle": "Fotoğraf tarzları",
     "quickTemplatesTitle": "Öneriler",
     "imgToPdfTitle": "Görseller → PDF",
     "previewToggleLabel": "Tarayıcı",

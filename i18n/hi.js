@@ -609,7 +609,7 @@ I18N['hi'] = {
     carToolWorking: '⏳ विश्लेषण हो रहा है...', carToolDone: '✅ पूर्ण',
     portraitGenerating: '⏳ बदला जा रहा है...',
     portraitDone: '✅ पूर्ण!',
-    portraitBtnTitle: 'पोर्ट्रेट स्टाइल',
+    portraitBtnTitle: 'फोटो स्टाइल',
     quickTemplatesTitle: 'सुझाव',
     imgToPdfTitle: 'छवियाँ → PDF',
     previewToggleLabel: 'ब्राउज़र',
