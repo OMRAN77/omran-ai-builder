@@ -1215,10 +1215,9 @@
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
-    /* v-vmk-res-mode: النتيجة تُوسَم بالوضع الذي ينتجها — video.js يخفيها ويوقفها في غيره (كان فيديو القوالب المجّانيّ يظهر في «فيديو AI»).
-       v-vmk-dl-ext: والاسم الافتراضيّ يُعاد، فلا يلتصق «omran-film.mp4» أو ‎.webm بتوليد تالٍ */
+    downloadEl.download = 'omran-ai-video.mp4'; // v-vmk-dl-ext: الافتراضيّ قبل كلّ توليد
+    /* v-vmk-res-mode: النتيجة تُوسَم بالوضع الذي ينتجها — video.js يخفيها ويوقفها في غيره (كان فيديو القوالب المجّانيّ يظهر في «فيديو AI»). */
     resultEl.dataset.mode = modeEl.value;
-    downloadEl.download = 'omran-ai-video.mp4';
 
     function friendlyError(err){
       const code = err && err.code;
