@@ -173,6 +173,9 @@ function lsGet(k, def){ try{ var v = JSON.parse(localStorage.getItem(k) || 'null
 function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ __swallow(e, 'save:edu-plus'); } }
 function $id(id){ return document.getElementById(id); }
 function startOfDay(ms){ var d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); }
+/* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): تاريخ الجهاز المحلّيّ — toISOString يعطي تاريخ UTC فكانت الخطّة و«اليوم» وحدّ التاريخ
+   ناقصة يومًا في المناطق شرق غرينتش (الإمارات +4) */
+function ymd(ms){ var d = new Date(ms); return d.getFullYear() + '-' + (d.getMonth() < 9 ? '0' : '') + (d.getMonth() + 1) + '-' + (d.getDate() < 10 ? '0' : '') + d.getDate(); }
 function go(render, back){
   var c = C(); if(!c) return;
   c.setBack(true); c.setNav([back || c.showHome]);
@@ -286,9 +289,11 @@ function tutor(pane, ctx){
     + '<div class="eduTutorChips">' + chips.map(function(t, i){ return '<button class="eduChip" data-chip="' + i + '">' + esc(t) + '</button>'; }).join('') + '</div>'
     + '<div class="eduTutorBar"><textarea id="eduTutorIn" rows="2" placeholder="' + esc(L('اسأل عن أيّ نقطة في الدرس…', 'Ask about anything in this lesson…')) + '"></textarea>'
     + '<button class="eduPrimary" id="eduTutorSend">' + esc(L('إرسال', 'Send')) + '</button></div>'
-    + (msgs.length ? '<button class="eduLinkBtn" id="eduTutorClear">' + esc(L('محادثة جديدة', 'New conversation')) + '</button>' : '') + '</div>';
-  var log = $id('eduTutorLog'), input = $id('eduTutorIn'), send = $id('eduTutorSend');
+    /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): الزرّ كان يُنشأ فقط إن وُجدت محادثة عند البناء، فلا يظهر بعد أوّل سؤال — يُنشأ دائمًا وrender يبدّل ظهوره */
+    + '<button class="eduLinkBtn" id="eduTutorClear"' + (msgs.length ? '' : ' style="display:none"') + '>' + esc(L('محادثة جديدة', 'New conversation')) + '</button></div>';
+  var log = $id('eduTutorLog'), input = $id('eduTutorIn'), send = $id('eduTutorSend'), clr = $id('eduTutorClear');
   function render(){
+    if(clr) clr.style.display = msgs.length ? '' : 'none';
     if(!msgs.length){ log.innerHTML = '<div class="eduTutorEmpty">👩‍🏫 ' + esc(L('أنا معلّمك لهذا الدرس. اسألني عن أيّ شيء لم تفهمه.', "I'm your tutor for this lesson. Ask me anything you didn't understand.")) + '</div>'; return; }
     log.innerHTML = msgs.map(function(m){
       return '<div class="eduMsg ' + (m.role === 'assistant' ? 'eduMsgT' : 'eduMsgS') + '">' + (m.role === 'assistant' ? '<div class="eduSummary">' + c.md(m.text) + '</div>' : esc(m.text)) + '</div>';
@@ -310,7 +315,7 @@ function tutor(pane, ctx){
   send.onclick = function(){ ask(input.value); };
   input.addEventListener('keydown', function(e){ if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); ask(input.value); } });
   pane.querySelectorAll('[data-chip]').forEach(function(b){ b.onclick = function(){ ask(chips[+b.getAttribute('data-chip')]); }; });
-  var clr = $id('eduTutorClear'); if(clr) clr.onclick = function(){ msgs = []; lsSet(key, msgs); tutor(pane, ctx); };
+  if(clr) clr.onclick = function(){ msgs = []; lsSet(key, msgs); tutor(pane, ctx); };
   render();
 }
 function showTutorView(ctx, back){
@@ -499,7 +504,7 @@ function buildExamPlan(lessons, examMs, nowMs){
     return sa - sb;
   });
   var plan = [], ids = sorted.map(function(l){ return l.id; });
-  function dayAt(i){ return new Date(today + i * DAY).toISOString().slice(0, 10); }
+  function dayAt(i){ var d = new Date(today); d.setDate(d.getDate() + i); return ymd(d.getTime()); }
   if(days === 1 || !sorted.length){ plan.push({ date: dayAt(0), kind: 'review', ids: ids }); return plan; }
   var study = days - 1, per = Math.ceil(sorted.length / study);
   for(var d = 0; d < study; d++){
@@ -555,7 +560,7 @@ function drawProgress(body, lessons){
   var plan = lsGet(PLAN_KEY, null);
   h += '<div class="eduSecTitle">📅 ' + esc(L('خطّة الامتحان', 'Exam plan')) + '</div>';
   if(plan && plan.days && plan.days.length){
-    var todayIso = new Date(startOfDay(now)).toISOString().slice(0, 10);
+    var todayIso = ymd(now);
     var byId = {}; lessons.forEach(function(l){ byId[l.id] = l; });
     h += '<div class="eduLessonMeta" style="margin-bottom:8px;">' + esc(plan.subject) + ' · ' + esc(L('الامتحان:', 'Exam:')) + ' ' + esc(plan.exam) + '</div>'
       + plan.days.map(function(d){
@@ -566,7 +571,7 @@ function drawProgress(body, lessons){
       + '<button class="eduLinkBtn" id="eduPlanDel">' + esc(L('احذف الخطّة', 'Delete plan')) + '</button>';
   } else if(subs.length){
     h += '<div class="eduPlanForm"><label>' + esc(L('المادة', 'Subject')) + '</label><select id="eduPlanSub" class="eduField">' + subs.map(function(s){ return '<option>' + esc(s) + '</option>'; }).join('') + '</select>'
-      + '<label>' + esc(L('موعد الامتحان', 'Exam date')) + '</label><input type="date" id="eduPlanDate" class="eduField" min="' + new Date(now + DAY).toISOString().slice(0, 10) + '">'
+      + '<label>' + esc(L('موعد الامتحان', 'Exam date')) + '</label><input type="date" id="eduPlanDate" class="eduField" min="' + ymd(now + DAY) + '">'
       + '<button class="eduPrimary" id="eduPlanGo" style="width:100%;">' + esc(L('ابنِ خطّتي', 'Build my plan')) + '</button></div>';
   } else {
     h += '<div class="eduEmpty">' + esc(L('أضف دروسًا أوّلًا (ارفع محاضرة أو درسًا من المنهج) لتُبنى لك خطّة.', 'Add lessons first (upload a lecture or a curriculum lesson) to build a plan.')) + '</div>';
@@ -605,7 +610,7 @@ function openAlgo(){
 function home(el){
   if(!el) return;
   var now = Date.now(), dueN = srsDue(lsGet(SRS_KEY, {}), now).length, algoDone = Object.keys(lsGet('eduAlgoDone', {})).length;
-  var plan = lsGet(PLAN_KEY, null), todayIso = new Date(startOfDay(now)).toISOString().slice(0, 10), todayPlan = null;
+  var plan = lsGet(PLAN_KEY, null), todayIso = ymd(now), todayPlan = null;
   if(plan && plan.days) plan.days.forEach(function(d){ if(d.date === todayIso) todayPlan = d; });
   function t(id, icon, title, sub, hot){ return '<button class="eduPlusTile' + (hot ? ' hot' : '') + '" id="' + id + '"><span class="eduPlusIcon">' + icon + '</span><span class="eduPlusTitle">' + esc(title) + '</span><span class="eduPlusSub">' + esc(sub) + '</span></button>'; }
   el.innerHTML = '<div class="eduPlusGrid">'

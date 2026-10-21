@@ -294,7 +294,10 @@ function renderStreak(){
   var st=localStreak(); var n=st.streak||0;
   var today=new Date().toISOString().slice(0,10), y=new Date(Date.now()-86400000).toISOString().slice(0,10);
   if(st.lastActive!==today&&st.lastActive!==y) n=0;
-  el.style.display=n>0?'':'none'; el.textContent='🔥 '+n;
+  /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): المعنى كان في 🔥 وحده فينزعه v-clean-ui ويبقى رقم يتيم — الرقم مع كلمته
+     (العربيّ «أيام» من ٣ إلى ١٠ كقاعدة العدد)، وعنوان ووصف للقارئ من النصوص القائمة */
+  var word=(appLang()==='ar'&&n>=3&&n<=10)?'أيام':T('streakWord'), lbl=eduL('يوم متتالٍ','day streak');
+  el.style.display=n>0?'':'none'; el.textContent=n+' '+word; el.title=lbl; el.setAttribute('aria-label',lbl);
 }
 /* ---------- data layer (server for registered, localStorage for guests) ---------- */
 function listLessons(){
@@ -587,13 +590,15 @@ function eduRegenQuestions(pane,lesson,tab){
 }
 /* ---------- flashcards ---------- */
 function renderCards(pane,lesson){
-  var cards=lesson.flashcards||[]; var i=0,known=0,flipped=false;
+  /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): «أراجعه» كانت تُلحق البطاقة بالدرس نفسه فتصير النتيجة 8/9 والدرس ٨ —
+     الطابور نسخة، والإجماليّ عدد بطاقات الدرس */
+  var base=lesson.flashcards||[], total=base.length, cards=base.slice(); var i=0,known=0,flipped=false;
   if(!cards.length){ eduRegenQuestions(pane,lesson,'cards'); return; }
   function draw(){
     if(i>=cards.length){
-      pane.innerHTML='<div class="eduCenter"><div class="eduScoreBig">'+known+'/'+cards.length+'</div><p>'+esc(T('cardsDone'))+'</p>'
+      pane.innerHTML='<div class="eduCenter"><div class="eduScoreBig">'+known+'/'+total+'</div><p>'+esc(T('cardsDone'))+'</p>'
         +'<button class="eduPrimary" id="eduCardsAgain">'+esc(T('review'))+'</button></div>';
-      document.getElementById('eduCardsAgain').onclick=function(){ i=0;known=0;flipped=false;draw(); };
+      document.getElementById('eduCardsAgain').onclick=function(){ cards=base.slice();i=0;known=0;flipped=false;draw(); };
       saveProgress(lesson.id,{cardsKnown:known});
       return;
     }
@@ -783,6 +788,18 @@ function renderLab(pane,lesson){
       });
   }
   if(lesson.__labHtml){ showFrame(lesson.__labHtml); return; }
+  /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): التجربة المبنيّة محفوظة للمسجَّل على الخادم، لكنّنا لم نسأل عنها إلّا بعد «ابنِ» —
+     فعند إعادة فتح الدرس نسأل بـcachedOnly (بلا حصّة ولا نموذج) قبل عرض زرّ البناء */
+  if(getToken()){
+    pane.innerHTML='<div class="eduBusyBox" id="eduLabWait"><div class="eduSpin"></div></div>';
+    var still=function(){ return !!document.getElementById('eduLabWait'); }; /* انتقل لتبويب آخر: لا نكتب فوقه */
+    api({action:'lab',id:lesson.id,cachedOnly:true})
+      .then(function(j){ if(j&&j.html) lesson.__labHtml=j.html; if(!still()) return; if(j&&j.html) showFrame(j.html); else intro(); })
+      .catch(function(e){ __swallow(e,'edu:lab-cached'); if(still()) intro(); });
+    return;
+  }
+  intro();
+  function intro(){
   pane.innerHTML='<div class="eduCenter" style="padding:18px 6px;">'
     +'<div style="font-size:40px;margin-bottom:10px;">🧪</div>'
     +'<p style="font-size: var(--fs-2);font-weight: var(--w-bold);margin:0 0 8px;">'+esc(T('labTab'))+'</p>'
@@ -791,6 +808,7 @@ function renderLab(pane,lesson){
             'We turn this lesson into an interactive lab: sliders and buttons with instant results, then a challenge mode with points. A lesson you play, you never forget.'))+'</p>'
     +'<button class="eduPrimary" id="eduLabBuild">'+esc(TL('✨ ابنِ تجربتي الحية','✨ Build my live lab'))+'</button></div>';
   var bb=document.getElementById('eduLabBuild'); if(bb) bb.onclick=function(){ build(false); };
+  }
 }
 
 /* ---------- written questions graded by the model against a rubric ---------- */
@@ -805,7 +823,8 @@ function renderWritten(pane,lesson,written){
       return;
     }
     var w=written[i];
-    pane.innerHTML='<div style="font-size:12px;opacity:.7;margin-bottom:8px;">'+(i+1)+' / '+written.length+' · ✍️</div>'
+    /* v-edu-hub-polish: «· ✍️» كانت تبقى نقطة يتيمة «·3/1» بعد نزع الإيموجي (v-clean-ui) */
+    pane.innerHTML='<div style="font-size:12px;opacity:.7;margin-bottom:8px;">'+(i+1)+' / '+written.length+'</div>'
       +'<div style="font-size: var(--fs-2);font-weight: var(--w-bold);margin-bottom:12px;line-height:1.7;">'+esc(w.q)+'</div>'
       +'<textarea id="eduAns" rows="6" placeholder="'+esc(TW('اكتب إجابتك هنا…','Write your answer here…'))+'" '
       +'style="width:100%;box-sizing:border-box;padding:12px;border-radius:var(--r-2);border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:inherit;line-height:1.8;resize:vertical;"></textarea>'
@@ -962,7 +981,10 @@ function eduUpCss(){
    +'html[data-mode="light"] #eduHubModal .eduUpPick{border-color:rgba(0,0,0,.2);background:#ffffff;}'
    +'html[data-mode="light"] #eduHubModal .eduUpList{border-color:rgba(0,0,0,.1);background:#ffffff;}'
    +'html[data-mode="light"] #eduHubModal .eduUpList .eduUpRow{border-color:rgba(0,0,0,.08);}'
-   +'#eduHubModal .eduUpFld.bad,#eduHubModal .eduUpDrop.bad,html[data-mode="light"] #eduHubModal .eduUpFld.bad,html[data-mode="light"] #eduHubModal .eduUpDrop.bad{border-color:#f87171;}';
+   +'#eduHubModal .eduUpFld.bad,#eduHubModal .eduUpDrop.bad,html[data-mode="light"] #eduHubModal .eduUpFld.bad,html[data-mode="light"] #eduHubModal .eduUpDrop.bad{border-color:#f87171;}'
+   /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): الحدّ الشبح لـom3-line (بلا-خطوط.css، معرّفان و!important) غلب الأحمر فلا يتلوّن الناقص —
+      ثلاثة معرّفات تغلبه، مع توهّج أحمر خفيف بلغة التوهّج */
+   +'#eduHubModal .eduUpFld.bad:not(#om3-a#om3-b),#eduHubModal .eduUpDrop.bad:not(#om3-a#om3-b){border-color:#f87171 !important;box-shadow:0 0 0 1px rgba(248,113,113,.55),0 0 12px rgba(248,113,113,.3) !important;}';
   document.head.appendChild(st);
 }
 function eduUpTypeOk(files){

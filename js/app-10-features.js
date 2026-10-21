@@ -1420,6 +1420,13 @@ $('#history').addEventListener('click', () => {
          النشر القديم الشغال (CORS مفتوح). */
       frame.src = '/edu-old/index.html?v=15j'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
     }
+    /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العنوان «التعليم» كان يتكرّر فوق رأس الإطار — نأخذ اسم صفّه المترجم في المركز،
+       ونرفع data-i18n كي لا تعيده الترجمة. الفتح المباشر بلا مركز يبقى كما هو. */
+    const oldTitle = modal.querySelector('h3'), oldLabel = document.querySelector('#eduOldEduRow .eduLessonTitle');
+    if(oldTitle && oldLabel && String(oldLabel.textContent || '').trim()){
+      oldTitle.textContent = String(oldLabel.textContent).trim();
+      oldTitle.removeAttribute('data-i18n');
+    }
     modal.style.display = 'flex';
     if(window.innerWidth <= 860 && typeof closeDrawers === 'function') closeDrawers();
     const dd = $('#headerMenuDropdown');

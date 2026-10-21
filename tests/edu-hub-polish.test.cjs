@@ -85,6 +85,30 @@ test('٢. Esc داخل إطار الصانع القديم يبلّغ التطب�
   assert.deepEqual(JSON.parse(JSON.stringify(posted)), [[{ omranSwipeBack: 1 }, '*']]);
 });
 
+test('٣. عنوان نافذة الصانع القديم = اسم صفّه المترجم في المركز (لا «التعليم» مكرّرًا)، ولا تكتبه الترجمة فوقه', () => {
+  const i = app10.indexOf('/* ---------- 🎓 Omran Edu (educational video builder');
+  assert.ok(i >= 0);
+  const iife = blockAt(app10, app10.indexOf('(function(){', i)) + ')();';
+  function run(withRow) {
+    const h3 = { textContent: '🎓 التعليم', attrs: { 'data-i18n': 'omranEduModalTitle' }, removeAttribute(k) { delete this.attrs[k]; }, getAttribute(k) { return this.attrs[k]; } };
+    const modal = { style: {}, addEventListener() {}, querySelector: (s) => (s === 'h3' ? h3 : null) };
+    const frame = { src: 'about:blank' };
+    const map = { '#btnOmranEdu': { addEventListener() {} }, '#omranEduModal': modal, '#omranEduFrame': frame, '#omranEduCloseBtn': { addEventListener() {} }, '#headerMenuDropdown': null };
+    const row = { textContent: '🎬 صانع الفيديو والشرائح التعليميّة' };
+    const window = { innerWidth: 1280 };
+    vm.runInNewContext(iife, { $: (s) => map[s], window, document: { querySelector: (s) => (withRow && s === '#eduOldEduRow .eduLessonTitle' ? row : null) } });
+    window.openOmranEduModal();
+    return { h3, modal, frame };
+  }
+  const a = run(true);
+  assert.equal(a.h3.textContent, '🎬 صانع الفيديو والشرائح التعليميّة');
+  assert.equal(a.h3.attrs['data-i18n'], undefined, 'applyLanguage لا يعيده «التعليم»');
+  assert.equal(a.modal.style.display, 'flex');
+  assert.match(a.frame.src, /^\/edu-old\/index\.html\?v=/);
+  const b = run(false);
+  assert.equal(b.h3.textContent, '🎓 التعليم', 'بلا صفّ (فتح مباشر) يبقى كما هو');
+});
+
 test('٤. صفّ الصانع القديم يفتحه فوق المركز (لا يغلق المركز)، فـEsc والسحب والرجوع تغلقه وحده', () => {
   const m = edu.match(/if\(oldRow\) oldRow\.onclick=function\(\)\{[^\n]*\};/);
   assert.ok(m, 'معالج الصفّ');
@@ -111,6 +135,25 @@ function streakCtx(langCode, st) {
   ctx.renderStreak();
   return badge;
 }
+test('٥. شارة السلسلة: الرقم مع كلمته بعد نزع الإيموجي، وعنوان ووصف للقارئ', () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const ar3 = streakCtx('ar', { streak: 3, lastActive: today });
+  assert.equal(clean(ar3.textContent), '3 أيام', 'كان «3» وحده بعد نزع 🔥');
+  assert.ok(ar3.attrs['aria-label'] && /\p{L}/u.test(ar3.attrs['aria-label']));
+  assert.equal(ar3.title, ar3.attrs['aria-label']);
+  assert.equal(clean(streakCtx('ar', { streak: 1, lastActive: today }).textContent), '1 يوم');
+  assert.equal(clean(streakCtx('ar', { streak: 12, lastActive: today }).textContent), '12 يوم');
+  const en = streakCtx('en', { streak: 3, lastActive: today });
+  assert.equal(clean(en.textContent), '3 day(s)');
+  assert.equal(en.attrs['aria-label'], 'day streak');
+  assert.equal(streakCtx('ar', { streak: 0, lastActive: today }).style.display, 'none');
+});
+
+test('٦. سهم الرجوع في رأس التعليم ينعكس في العربيّ (كسهم الصفّ في الملفّ نفسه)', () => {
+  assert.match(modulesCss, /#eduHubModal\[dir="rtl"\]\s+#eduBackBtn\s+svg\s*\{\s*transform:\s*scaleX\(-1\);?\s*\}/);
+  assert.ok(edu.includes("modal.setAttribute('dir',isRTL()?'rtl':'ltr')"), 'المركز يأخذ اتّجاه اللغة');
+});
+
 /* أولويّة المحدِّد (معرّفات، أصناف/سمات/أشباه، عناصر) — :not/:is بأعلى معاملاتها */
 function splitTop(s) { const out = []; let d = 0, cur = ''; for (const ch of s) { if (ch === '(' || ch === '[') d++; if (ch === ')' || ch === ']') d--; if (ch === ',' && !d) { out.push(cur.trim()); cur = ''; } else cur += ch; } if (cur.trim()) out.push(cur.trim()); return out; }
 const cmp = (x, y) => (x[0] - y[0]) || (x[1] - y[1]) || (x[2] - y[2]);
@@ -132,6 +175,21 @@ function rules(css) {
   const out = []; css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/([^{}]+)\{([^{}]*)\}/g, (m0, sel, body) => { out.push({ sels: splitTop(sel.trim()), body }); return ''; });
   return out;
 }
+test('٧. الحقل الناقص في نموذج الرفع يتلوّن بالأحمر رغم الحدّ الشبح (v-no-lines-2)', () => {
+  let st = null;
+  vm.runInNewContext(extract(edu, 'function eduUpCss()') + ';eduUpCss();', { document: { getElementById: () => null, createElement: () => ({}), head: { appendChild(x) { st = x; } } } });
+  assert.ok(st && st.textContent);
+  const ghost = rules(noLines).filter((r) => /border-color:rgba\(0,0,0,\.06\) !important/.test(r.body)).flatMap((r) => r.sels).filter((s) => /\.om3-line/.test(s));
+  assert.ok(ghost.length >= 2, 'قواعد الحدّ الشبح');
+  const ghostMax = ghost.map(spec).sort(cmp).pop();
+  ['eduUpFld', 'eduUpDrop'].forEach((cls) => {
+    const red = rules(st.textContent).filter((r) => /border-color:#f87171\s*!important/.test(r.body)).flatMap((r) => r.sels).filter((s) => s.includes('.' + cls + '.bad'));
+    assert.ok(red.length, cls + ': قاعدة حمراء بـ!important');
+    const best = red.map(spec).sort(cmp).pop();
+    assert.ok(cmp(best, ghostMax) > 0, cls + ': ' + best + ' تغلب ' + ghostMax);
+  });
+});
+
 /* ═════════════ الدرس ═════════════ */
 const mdCtx = {};
 vm.runInNewContext(extract(edu, 'function esc(s)') + '\n' + edu.slice(edu.indexOf('var MATH_SYM='), edu.indexOf('function mathHtml(')) + extract(edu, 'function mathHtml(src)') + '\n' + extract(edu, 'function md(src)') + ';this.md=md;', mdCtx);
@@ -154,6 +212,23 @@ test('٩. «---» في الملخّص وردّ المعلّم فراغ لا نص
     assert.ok(out.includes('<p dir="auto">أ</p>') && out.includes('<p dir="auto">ب</p>') && out.includes('eduGap'), out);
   });
   assert.ok(md('- عنصر').includes('<li>عنصر</li>'), 'القائمة بشرطة واحدة باقية');
+});
+
+test('١٠. بطاقات المراجعة: «أراجعه» لا تغيّر الدرس ولا الإجماليّ (كان 8/9 والدرس ٨)', () => {
+  const D = fakeDom(), pane = D.holder();
+  const saved = [];
+  const ctx = { document: D.document, T: (k) => k, esc: (s) => String(s), saveProgress: (id, f) => saved.push(f), eduRegenQuestions() { throw new Error('لا'); }, window: {}, __swallow() {} };
+  vm.runInNewContext(extract(edu, 'function renderCards(pane,lesson)') + ';this.renderCards=renderCards;', ctx);
+  const cards = []; for (let i = 1; i <= 8; i++) cards.push({ q: 'q' + i, a: 'a' + i });
+  const lesson = { id: 'L', flashcards: cards };
+  ctx.renderCards(pane, lesson);
+  D.el('eduRev').onclick();
+  for (let k = 0; k < 20 && !pane.innerHTML.includes('eduScoreBig'); k++) D.el('eduKnow').onclick();
+  assert.equal(lesson.flashcards.length, 8, 'الدرس نفسه لم يتغيّر');
+  assert.ok(pane.innerHTML.includes('>8/8<'), pane.innerHTML);
+  assert.deepEqual(JSON.parse(JSON.stringify(saved.pop())), { cardsKnown: 8 });
+  D.el('eduCardsAgain').onclick();
+  assert.ok(pane.innerHTML.includes('>1 / 8<'), 'الإعادة من البطاقات الثماني: ' + pane.innerHTML.slice(0, 120));
 });
 
 function quizCtx(langEn) {
@@ -179,6 +254,14 @@ test('١٢. نتيجة الاختبار «Basic level.» بمسافة، والع
   const ar = quizCtx(false); ar.pane.opts[0].onclick(); ar.D.el('eduNextQ').onclick();
   assert.match(ar.pane.innerHTML, /<b>أساسي<\/b>\./);
 });
+test('١٣. عدّاد الأسئلة المقاليّة رقمان فقط (كان «· ✍️» فتبقى نقطة يتيمة بعد نزع الإيموجي)', () => {
+  const { D, pane } = quizCtx(false); pane.opts[0].onclick(); D.el('eduNextQ').onclick(); D.el('eduWritten').onclick();
+  const m = pane.innerHTML.match(/^<div style="[^"]*">([^<]*)<\/div>/);
+  assert.ok(m, pane.innerHTML.slice(0, 160));
+  assert.equal(clean(m[1]), '1 / 3');
+  assert.equal(m[1], '1 / 3');
+});
+
 /* ═════════════ الإضافات ═════════════ */
 function plusWindow(extra) {
   const window = {};
@@ -188,6 +271,24 @@ function plusWindow(extra) {
   vm.runInNewContext(plus, ctx);
   return window;
 }
+test('١٤. المعلّم: زرّ «محادثة جديدة» يظهر بعد أوّل سؤال بلا رجوع للتبويب، ويختفي بعد المسح', async () => {
+  const D = fakeDom(), pane = D.holder();
+  const w = plusWindow({ D });
+  let resolveApi;
+  w.__eduCore = { eduL: (a) => a, md: (s) => s, appLang: () => 'ar', nativeLang: () => 'ar', api: () => new Promise((r) => { resolveApi = r; }) };
+  w.__eduPlus.tutor(pane, { id: 'T1', title: 't', summary: 's' });
+  assert.ok(pane.innerHTML.includes('id="eduTutorClear"'), 'الزرّ موجود دائمًا');
+  const clr = D.el('eduTutorClear');
+  assert.equal(clr.style.display, 'none', 'مخفيّ والمحادثة فارغة');
+  D.el('eduTutorIn').value = 'سؤال';
+  D.el('eduTutorSend').onclick();
+  resolveApi({ reply: 'جواب' });
+  await new Promise((r) => setImmediate(r));
+  assert.notEqual(clr.style.display, 'none', 'ظهر بعد الردّ');
+  clr.onclick();
+  assert.equal(D.el('eduTutorClear').style.display, 'none');
+});
+
 const LANGS11 = ['fr', 'hi', 'bn', 'ne', 'id', 'fil', 'tr', 'zh', 'ru', 'es', 'ml'];
 test('١٥. لوحة ألعاب الخوارزميّات: لا نصّ إنجليزيّ خارج L()، وكلّ مفتاح مترجم للّغات الـ١١ الأخرى', () => {
   const Lcall = /\bL\('((?:[^'\\]|\\.)*)',\s*(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\)/g;
@@ -206,3 +307,16 @@ test('١٥. لوحة ألعاب الخوارزميّات: لا نصّ إنجلي
   assert.match(algo, /function fsi\(s\)\{ return '\\u2068' \+ s \+ '\\u2069'; \}/);
 });
 
+test('١٦. خطّة الامتحان بتاريخ الجهاز المحلّيّ (الإمارات +4: كانت تبدأ أمس)', () => {
+  const code = `
+    const fs=require('fs'),vm=require('vm');const w={};
+    vm.runInNewContext(fs.readFileSync(${JSON.stringify(R('js/edu-plus.js'))},'utf8'),{window:w,localStorage:{getItem:()=>null,setItem(){}},document:{getElementById:()=>null,head:{appendChild(){}},createElement:()=>({})},Math,Date,JSON,Object,Array,String,Number,isNaN,Infinity,__swallow(){}});
+    const p=w.__eduPlus.lib.buildExamPlan([{id:'a'},{id:'b'}],new Date('2026-10-22T00:00:00').getTime(),new Date('2026-10-19T02:11:00').getTime());
+    process.stdout.write(JSON.stringify(p.map(d=>d.date)));`;
+  ['Asia/Dubai', 'UTC', 'America/New_York'].forEach((tz) => {
+    const out = execFileSync(process.execPath, ['-e', code], { env: Object.assign({}, process.env, { TZ: tz }) }).toString();
+    assert.deepEqual(JSON.parse(out), ['2026-10-19', '2026-10-20', '2026-10-21'], tz);
+  });
+  /* «اليوم» وحدّ التاريخ الأدنى بالمحلّيّ أيضًا */
+  assert.ok(!/toISOString\(\)\.slice\(0, 10\)/.test(plus), 'لا تاريخ UTC في edu-plus');
+});
