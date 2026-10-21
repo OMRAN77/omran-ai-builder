@@ -63,7 +63,7 @@ test('٢. لا لقطة شاشة إنستغرام بقيت: لا صورة بمق
 
 test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D، والملفّات القديمة زالت', () => {
   const html = rd('index.html');
-  assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=4">/, 'CSS الخلفيّات (٢←٣ مع v-bg-custom-rotate)');
+  assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=5">/, 'CSS الخلفيّات (٢←٣ مع v-bg-custom-rotate)');
   assert.doesNotMatch(html, /partials-خلفيات-قسم/, 'الواجهة القديمة ما زالت مربوطة');
   assert.match(html, /partials-settings\.js\?v=704/, 'وسم الإعدادات ارتفع');
   assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=769'/, 'وسم اللغات ارتفع');
