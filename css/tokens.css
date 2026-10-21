@@ -1459,3 +1459,5 @@ html:not(.skin):not(.skin-wood) #acctAvatarBtn{ color:#9ca3af !important; }
 html[data-mode="light"]:not(.skin):not(.skin-wood) #acctAvatarBtn{ color:#4b5260 !important; }
 /* سطر «اختر بطاقة…» في ترندات صانع الفيديو رماديّ ثابت مضمَّن (#9a9a9e، js/app-11-video-trends.js) — ٢٫٤:١ على كلّ فاتح؛ رماديّ الوضع */
 html[data-mode="light"] #vtSub{ color:var(--muted) !important; }
+/* v-theme-menus: «حذف» في قائمة ⋮ المحادثة (#ff6b6b للأسود) على العاجيّ ٢:١ */
+html[data-mode="light"]:not(.skin):not(.skin-wood) #histItemMenu button.danger{ color:#b3261e; }

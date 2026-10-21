@@ -116,3 +116,8 @@ html.skin-wood:not([data-mode="light"]) #fashionAiModal,
 html.skin-wood:not([data-mode="light"]) #designAiModal,
 html.skin-wood:not([data-mode="light"]) #emailAssistModal{
   color:var(--text); --text:#eef0f6; --muted:#a3a3a8; --accent-ink:#eef0f6; --bg:#000; --bg2:#000; --panel:#000; --panel2:#0c0c0e; --accent-surface:#2b2e35; --accent-on-surface:#eef0f6; --border:rgba(255,255,255,.1);}
+/* v-theme-menus: قائمة ⋮ في المعاينة بحبر الرقّ (كانت بحبر الكتّان البنّيّ الفاتح #f1e4cf على الرقّ ١:١)، و«حذف» أحمر غامق،
+   وشريط الجوّال السفليّ نحاس أفتح قليلًا — أسماؤه في أسفله حيث النحاس أغمق (٤٫٣:١ بأغمق حبر) */
+html.skin-wood #workarea #tabsMenuDropdown button{color:var(--wood-ink) !important;}
+html.skin-wood #histItemMenu button.danger{color:#9e2218;}
+html.skin-wood #omranBottomNav{background:linear-gradient(180deg,#f0d2b4 0%,#dcaa82 48%,#c9926a 100%) !important;}

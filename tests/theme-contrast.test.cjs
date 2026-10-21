@@ -78,8 +78,10 @@ function measure(ctx, vp, kind, chain) {
   let region = null;
   for (let i = plain.length - 1; i >= 0 && !region; i--) region = box(plain[i], plain.slice(0, i));
   region = region || [0, 0, VIEW[vp].W, VIEW[vp].H];
+  /* أسماء الشريط السفليّ على الجوّال تحت أيقوناتها: النصف الأسفل من الشريط (حيث يغمق نحاس الخشبيّ) */
+  if (/#omranBottomNav\b/.test(chain) && /> span(\.[\w-]+)?$/.test(chain)) { const h = region[3] - region[1]; region = [region[0], region[1] + h * 0.5, region[2], region[3] - h * 0.04]; }
   /* زرّ أو كبسولة أو صفّ: السطر في وسطه (كمستطيلات السطور في مسبار البكسلات) لا على حافّتيه */
-  if (region[3] - region[1] < 80) { const h = region[3] - region[1]; region = [region[0], region[1] + h * 0.22, region[2], region[3] - h * 0.22]; }
+  else if (region[3] - region[1] < 80) { const h = region[3] - region[1]; region = [region[0], region[1] + h * 0.22, region[2], region[3] - h * 0.22]; }
   const r = C.contrastOn(ink.c, C.samples(surf.stack, region, 12), surf.opacity);
   return { r, ink: C.hex(ink.c), where: ink.where };
 }
