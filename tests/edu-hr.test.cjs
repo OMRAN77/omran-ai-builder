@@ -19,12 +19,12 @@ test('١. «---» و«***» و«___» فراغ لا نصّ، وما حولها �
     const html = ctx.md('أوّلًا\n' + sep + '\nثانيًا');
     assert.doesNotMatch(html, /---|\*\*\*|___/, sep);
     assert.match(html, /<div class="eduGap" style="height:10px"><\/div>/, sep);
-    assert.match(html, /<p>أوّلًا<\/p><div class="eduGap"[^>]*><\/div><p>ثانيًا<\/p>/, sep);
+    assert.match(html, /<p dir="auto">أوّلًا<\/p><div class="eduGap"[^>]*><\/div><p dir="auto">ثانيًا<\/p>/, sep);
   }
 });
 
 test('٢. القائمة بشرطة ونقطتين لا تُعدّ فاصلًا، والعنوان والعريض كما كانا', () => {
-  assert.match(ctx.md('- بند'), /<ul><li>بند<\/li><\/ul>/);
-  assert.match(ctx.md('-- نصّ'), /<p>-- نصّ<\/p>/);
-  assert.match(ctx.md('## عنوان\n**مهمّ**'), /<h4>عنوان<\/h4><p><b>مهمّ<\/b><\/p>/);
+  assert.match(ctx.md('- بند'), /<ul dir="auto"><li>بند<\/li><\/ul>/);
+  assert.match(ctx.md('-- نصّ'), /<p dir="auto">-- نصّ<\/p>/);
+  assert.match(ctx.md('## عنوان\n**مهمّ**'), /<h4 dir="auto">عنوان<\/h4><p dir="auto"><b>مهمّ<\/b><\/p>/);
 });

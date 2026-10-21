@@ -45121,7 +45121,10 @@ if(document.readyState === 'loading'){
   TX.pushDenied = { ar:'⚠️ الإشعارات مرفوضة على هذا الجهاز. اسمح بها من إعدادات التطبيق؛ وحتى ذلك يصلك التنبيه فقط والتطبيق مفتوح.', en:'⚠️ Notifications are blocked on this device. Allow them in the app settings; until then the alert only fires while the app is open.' };
   TX.pushUnavail = { ar:'⚠️ هذا الجهاز لا يدعم إشعارات الدفع (مثل أجهزة هواوي بلا خدمات جوجل). سيصلك التنبيه والتطبيق مفتوح أو في الخلفية فقط.', en:'⚠️ Push notifications are not available on this device (e.g. Huawei without Google services). The alert fires only while the app is open or in the background.' };
   TX.localTitle = { ar:'عمران — مواقيت الصلاة', en:'Omran — Prayer times' };
+  /* v-qibla-dir-hijri (تدقيق ١٨–١٩ أكتوبر): «5 دقيقة قبل» — العربيّ من ٣ إلى ١٠ بالجمع، وبقيّة اللغات كما هي */
+  TX.minUnitFew = { ar:'دقائق قبل' };
   function tx(key){ var m = TX[key]; return (m && (m[qLang()] || m.en)) || (m && m.ar) || key; }
+  function minLabel(v){ return v + ' ' + ((qLang() === 'ar' && v >= 3 && v <= 10) ? TX.minUnitFew.ar : tx('minUnit')); }
   function qt(ar, en){ return qIsRtl() ? ar : en; } // للنصوص المركّبة القليلة المتبقية
 
   // طرق الحساب بالـ14 لغة (أسماء الهيئات — تُترجم وصفيًا)
@@ -45219,7 +45222,9 @@ if(document.readyState === 'loading'){
     return loc().then(function(l){
       if(!l) return Promise.reject(new Error('no-location'));
       var d = new Date();
-      var ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      /* v-qibla-dir-hijri (تدقيق ١٨–١٩ أكتوبر): aladhan يقرأ DD-MM-YYYY — YYYY-MM-DD كان يجيب عن ٢٠١٩ (الهجريّ «صفر 1441»
+         واليوم في 1448؛ جُرّب حيًّا). المواقيت تكاد تتطابق في اليوم نفسه من كلّ سنة فلم يظهر إلّا السطر الهجريّ */
+      var ds = String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + d.getFullYear();
       return fetch('https://api.aladhan.com/v1/timings/' + ds
         + '?latitude=' + l.lat + '&longitude=' + l.lng + '&method=' + getMethod())
         .then(function(r){ return r.json(); })
@@ -45270,7 +45275,10 @@ if(document.readyState === 'loading'){
     if(el) return el;
     el = document.createElement('div');
     el.id = 'omranQiblaShell';
-    el.dir = 'rtl';
+    /* v-qibla-dir-hijri (تدقيق ١٨–١٩ أكتوبر): كان RTL ثابتًا فالإنجليزيّ مقلوب («?How many minutes»، «min before 30»).
+       اللغة تُحفظ مع الغلاف، وopenQibla يعيد بناءه إن تغيّرت (العنوان والتبويبات تُكتب مرّة عند البناء) */
+    el.dir = qIsRtl() ? 'rtl' : 'ltr';
+    el.__lang = qLang();
     el.style.cssText = 'position:fixed;inset:0;z-index:9500;background:var(--bg,#0a0b10);display:none;flex-direction:column;overflow:hidden;';
     el.innerHTML =
       '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border,rgba(255,255,255,.08));">' +
@@ -45501,7 +45509,7 @@ if(document.readyState === 'loading'){
       var b = document.createElement('button');
       b.type = 'button';
       b.style.cssText = 'padding:8px 12px;border-radius:999px;border:1px solid var(--omGoldSoft,rgba(212,175,55,.5));background:' + (v === 10 ? 'rgba(212,175,55,.25)' : 'rgba(255,255,255,.04)') + ';color:inherit;font:inherit;font-size:13px;cursor:pointer;';
-      b.textContent = v === 0 ? tx('atAdhan') : (v + ' ' + tx('minUnit'));
+      b.textContent = v === 0 ? tx('atAdhan') : minLabel(v);
       b.onclick = function(){ box.remove(); cb(v); };
       row.appendChild(b);
     });
@@ -45646,6 +45654,8 @@ if(document.readyState === 'loading'){
     });
   }
   function openQibla(){
+    var prev = document.getElementById('omranQiblaShell');
+    if(prev && prev.__lang !== qLang()) prev.remove(); /* v-qibla-dir-hijri: لغة جديدة ← غلاف جديد باتّجاهها ونصوصها */
     var el = shell();
     el.style.display = 'flex';
     S.loc = null;
@@ -45688,7 +45698,7 @@ if(document.readyState === 'loading'){
       return { key: n && n.key, name: nm, time: n ? (String(n.at.getHours()).padStart(2, '0') + ':' + String(n.at.getMinutes()).padStart(2, '0')) : '', bearing: l ? Math.round(qiblaBearing(l)) : null };
     });
   }
-  window.omranQibla = { open: openQibla, close: closeQibla, checkLocal: checkLocal, live: live, _S: S };
+  window.omranQibla = { open: openQibla, close: closeQibla, checkLocal: checkLocal, live: live, _S: S, _minLabel: minLabel };
   /* v-prayer-local: إن كان للمستخدم تنبيهات محفوظة نراقبها محليًا منذ فتح التطبيق */
   try{ if(Object.keys(alertsMap()).length) bootLocalAlerts(); }catch(e){ __swallow(e, 'qibla:boot-local'); }
 })();
@@ -48818,6 +48828,10 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     EMO.lastIndex = 0; if(!EMO.test(v)) return; EMO.lastIndex = 0;
     var p = n.parentElement; if(!p || p.closest(SKIP)) return;
     var c = clean(v);
+    /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): القصّ كان يلصق النصّ بالعنصر المجاور («Review:التمثيل»، «المستوىأساسي») —
+       مسافة الحدّ تبقى إن كان للعقدة شقيق من جهتها */
+    if(c && n.nextSibling && /\s$/.test(v)) c += ' ';
+    if(c && n.previousSibling && /^\s/.test(v.replace(EMO, ''))) c = ' ' + c;
     if(HAS_WORD.test(c) && c !== v) n.nodeValue = c;
   }
   function fixAttrs(el){
