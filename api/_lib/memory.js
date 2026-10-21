@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // نظام الذاكرة طويلة المدى: يحفظ ملخصًا صغيرًا عن كل مستخدم مسجّل
 // (اسمه، مشاريعه، تفضيلاته) في Redis تحت db/memory/<username>.json،
 // ويُحقن هذا الملخص في بداية كل محادثة ليتذكر التطبيق المستخدم.
@@ -101,7 +102,7 @@ async function callMergeModel(sys, user) {
   const gKey = process.env.GEMINI_API_KEY;
   if (gKey) {
     try {
-      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + gKey, {
+      const res = await geminiFetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + gKey, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 900 } }),

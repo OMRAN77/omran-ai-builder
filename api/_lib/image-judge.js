@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* v-image-duo (طلب المالك ٥ سبتمبر: «عندي نانو بنانا وOpenAI، ادمجهم وتطلع النتيجة قوية»):
    المحرّكان يعملان معًا على الطلب نفسه، وموديل رؤية (Gemini flash) يقارن النتيجتين بالطلب
    وبالصورة الأصلية إن وُجدت ويختار الأدقّ. أي فشل في الحكم = نُبقي المرشّح الأول. */
@@ -37,7 +38,7 @@ async function judgeBest(opts) {
     if (opts.source && opts.source.b64) { parts.push({ text: 'SOURCE:' }); parts.push({ inlineData: { mimeType: opts.source.mime || 'image/jpeg', data: opts.source.b64 } }); }
     parts.push({ text: 'CANDIDATE A:' }); parts.push({ inlineData: { mimeType: opts.a.mime || 'image/png', data: opts.a.b64 } });
     parts.push({ text: 'CANDIDATE B:' }); parts.push({ inlineData: { mimeType: opts.b.mime || 'image/png', data: opts.b.b64 } });
-    const r = await fetch(JUDGE + opts.apiKey, {
+    const r = await geminiFetch(JUDGE + opts.apiKey, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(opts.timeoutMs || 25000),

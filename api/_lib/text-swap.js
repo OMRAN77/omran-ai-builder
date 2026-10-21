@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // «تبديل نص على الصورة» (فكرة عمران: الذكاء يقرأ الصورة ويفهم طلب المستخدم) —
 // «بدل التاريخ بدل 28 حط 12»: بدل إرسال الصورة لمولّد يعيد رسمها كلها (ويشوّه
 // الخط العربي)، تقرأ الرؤية الصورة وتحدد سطر النص المطلوب تغييره وموضعه ولونه،
@@ -43,7 +44,7 @@ module.exports = async (req, res) => {
       return;
     }
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
-    const upstream = await fetch(endpoint, {
+    const upstream = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

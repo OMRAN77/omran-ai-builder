@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // «نموذج مرتب» — يقرأ بطاقة/نموذجًا مصوّرًا (بطاقة طالب، استمارة، شهادة…) ويعيد
 // محتواه JSON منظّمًا (عنوان + صفوف تسمية/قيمة + مواضع الصورة الشخصية والرسومات)
 // ليعيد العميل رسمه محليًّا بخط مرتب على كانفس — النص لا يمرّ على مولّد صور إطلاقًا،
@@ -45,7 +46,7 @@ module.exports = async (req, res) => {
     }
     const hint = String(b.hint || '').slice(0, 300);
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
-    const upstream = await fetch(endpoint, {
+    const upstream = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

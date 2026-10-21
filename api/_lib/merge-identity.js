@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* v-merge-faces (المالك ٢٧ سبتمبر ٢٠٢٦: «في تحسن عند دمج الصور فيه تغير الملامح»).
    تاريخ الدمج قبل هذا الملفّ (maha-image): v-merge-faithful أبقى الحرارة المنخفضة، وv-merge-identity-lock v1→v3 نقل الهويّة
    إلى أوّل جملة وأقفل الشعر/الحجاب والتبرّج والإكسسوار والملابس (v2 أنهى تبدّل الشخص كلّه، v3 أنهى الحجاب المضاف). بقي
@@ -88,7 +89,7 @@ function crop(img, x0, y0, x1, y1) {
 async function detectFaces(apiKey, img, opts) {
   const o = opts || {};
   const small = shrinkTo(img, DETECT_MAX);
-  const r = await (o.fetchImpl || fetch)(DETECT_URL + apiKey, {
+  const r = await (o.fetchImpl || geminiFetch)(DETECT_URL + apiKey, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(o.timeoutMs || 15000),
     body: JSON.stringify({
       contents: [{ parts: [

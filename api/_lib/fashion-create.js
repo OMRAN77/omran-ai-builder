@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // Vercel Serverless Function: "👗 AI Fashion Design". Two modes:
 //   1) Photo mode: a photo of a woman/model plus a chosen style+occasion is
 //      redressed by Gemini's image-generation model into a new outfit.
@@ -344,7 +345,7 @@ module.exports = async (req, res) => {
       res.status(200).json({ imageBase64: alt.imageBase64, mimeType: alt.mimeType || 'image/png', engine: 'openai', remaining: remD, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
     };
 
-    const upstream = await fetch(endpoint, {
+    const upstream = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),

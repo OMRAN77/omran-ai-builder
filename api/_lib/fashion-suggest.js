@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // Vercel Serverless Function: "👗 AI Fashion Design — Suggest a Look".
 // Text-only (with optional vision) call to Gemini that analyzes an uploaded
 // photo (or a text description) plus the chosen occasion/season and an
@@ -129,7 +130,7 @@ module.exports = async (req, res) => {
     }
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
-    const upstream = await fetch(endpoint, {
+    const upstream = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts }] }),

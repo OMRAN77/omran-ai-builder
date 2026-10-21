@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // Vercel Serverless Function: "🏗️ تصاميم المقاولات والبناء".
 // Takes a text description of a construction/building project and asks
 // Gemini for (1) a concept architectural render image and (2) a short
@@ -427,7 +428,7 @@ module.exports = async (req, res) => {
     };
     const fetchTasks = [
       generatePlan ? queueImage(planReqBody) : Promise.resolve(null),
-      generateText ? fetch(textEndpoint, {
+      generateText ? geminiFetch(textEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(textReqBody),

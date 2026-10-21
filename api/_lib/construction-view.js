@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // Vercel Serverless Function: on-demand single-image generator for the
 // "🏗️ تصاميم المقاولات والبناء" section. Generates ONE image per request
 // (either an exterior angle view, or an interior room view with a chosen
@@ -126,7 +127,7 @@ module.exports = async (req, res) => {
 
     let upstream = null, data = null;
     try {
-      upstream = await fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imgReqBody), signal: AbortSignal.timeout(240000) /* v-image-timeout */ });
+      upstream = await geminiFetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imgReqBody), signal: AbortSignal.timeout(240000) /* v-image-timeout */ });
       data = await upstream.json();
     } catch (e) { upstream = null; data = null; }
 

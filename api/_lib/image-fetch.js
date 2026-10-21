@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 
 // Image generation regularly needs more than the global 30-second fetch guard.
 // Supplying our own signal keeps that guard from cutting off healthy requests.
@@ -20,7 +21,7 @@ function isTransientImageError(error) {
 
 async function fetchImageWithRetry(options) {
   const opts = options || {};
-  const fetchFn = opts.fetchFn || global.fetch;
+  const fetchFn = opts.fetchFn || geminiFetch; /* v-vertex-route: الرابط غير Gemini يمرّ إلى fetch كما كان */
   const sleepFn = opts.sleepFn || (ms => new Promise(resolve => setTimeout(resolve, ms)));
   const timeoutMs = opts.timeoutMs || IMAGE_TIMEOUT_MS;
   const maxAttempts = opts.maxAttempts || MAX_IMAGE_ATTEMPTS;

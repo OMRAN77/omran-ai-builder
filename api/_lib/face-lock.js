@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* v-face-lock (شكوى المالك المتكررة «الستايل يغيّر شكل الشخص»): القفل بالنص وحده لا يكفي.
    هنا قفل بالبكسل: نكشف صندوق الوجه/الرأس (Gemini)، نبني قناع PNG يحمي هذه المنطقة
    (معتم = محفوظ، شفاف = قابل للتعديل)، ونطلب التعديل من gpt-image-1 بالقناع —
@@ -137,7 +138,7 @@ async function detectBoxes(apiKey, b64, mime) {
   if (!apiKey) return null;
   try {
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
-    const r = await fetch(endpoint, {
+    const r = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(30000),

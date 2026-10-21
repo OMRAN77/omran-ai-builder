@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // Vercel Serverless Function: "🚗 قسم السيارات" (Car Tools).
 // One endpoint routes 10 different car-related AI tools (text advice, vision
 // diagnosis, and one image-edit tool) by a `tool` id, all on the server-side
@@ -66,7 +67,7 @@ module.exports = async (req, res) => {
         'same car model shape — only change what was requested (e.g. paint color, rims/wheels, body kit, window tint, ride height). ' +
         'Make the edit look photorealistic and natural. Output a single image only.';
       const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-      const upstream = await fetch(endpoint, {
+      const upstream = await geminiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(240000), /* v-image-timeout */
@@ -127,7 +128,7 @@ module.exports = async (req, res) => {
         return;
       }
       const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
-      const upstream = await fetch(endpoint, {
+      const upstream = await geminiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: TOOL_PROMPTS[tool] }] }] }),
@@ -160,7 +161,7 @@ module.exports = async (req, res) => {
           'Diagnose what problem is visible, the likely cause, severity, and recommended next steps (DIY-safe or needs a professional garage). ' +
           'Respond in ' + target + ', using clear short sections with emojis as section markers.';
       const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
-      const upstream = await fetch(endpoint, {
+      const upstream = await geminiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

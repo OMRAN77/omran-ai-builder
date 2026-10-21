@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // Vercel Serverless Function: proxies chat requests to Google Gemini using the site
 // owner's own server-side API key (GEMINI_API_KEY env var), so visitors can try the
 // app without entering their own key. This key is NEVER exposed to the client.
@@ -56,7 +57,7 @@ module.exports = async (req, res) => {
     const reqBody = { contents };
     if (systemInstruction) reqBody.systemInstruction = systemInstruction;
 
-    const upstream = await fetch(endpoint, {
+    const upstream = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),

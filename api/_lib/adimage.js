@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // «استوديو الإعلانات» — توليد الإعلان صورةً كاملة عبر OpenAI.
 // يأخذ صورة المستخدم + بيانات إعلانه ويعيد ملصقًا عموديًّا ٩:١٦ مُولَّدًا بالكامل
 // (مشهد + إضاءة + قصّ الشخص + كتابة عربيّة داخل الصورة) — لا HTML فوق صورة.
@@ -19,7 +20,7 @@ async function geminiAdImage(promptText, images) {
   try {
     const parts = [{ text: String(promptText).slice(0, 7000) }];
     for (const [b64, mime] of images || []) parts.push({ inlineData: { mimeType: mime, data: b64 } });
-    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + gkey, {
+    const r = await geminiFetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + gkey, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } }),

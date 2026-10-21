@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* v-img-cards (المالك ٢٤ سبتمبر، خمس لقطات من «أنماط الصور»: «مافي دمج بين الاثنين ولا شي جديد — الناتج صفر»):
    طلب «غيّر وجوه كلّ الأشخاص بدون تكرار» على لوحة بطاقات (٨ صور في صورة واحدة) فوق طاقة نموذج الصور في ضربة واحدة:
    يغيّر بعضها ويُبقي الباقي (partial في المحرّكين)، ويكرّر الوجه نفسه في بطاقتين، و«صور ثانية» أفقدت بطاقة «الحجّ والعمرة»
@@ -64,7 +65,7 @@ function validCards(cards, w, h) {
 async function detectCards(o) {
   const img = o.img;
   try {
-    const r = await (o.fetchFn || fetch)('https://generativelanguage.googleapis.com/v1beta/models/' + DETECT_MODEL + ':generateContent?key=' + o.apiKey, {
+    const r = await (o.fetchFn || geminiFetch)('https://generativelanguage.googleapis.com/v1beta/models/' + DETECT_MODEL + ':generateContent?key=' + o.apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(o.timeoutMs || 25000),
       body: JSON.stringify({ contents: [{ parts: [{ text: detectPrompt() }, { inlineData: { mimeType: o.vis.mime, data: o.vis.b64 } }] }],
         generationConfig: { temperature: 0.1, maxOutputTokens: 4000, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 512 } } }),
@@ -385,7 +386,7 @@ function parseJudge(txt, n) {
 }
 async function judgeCard(o) {
   try {
-    const r = await (o.fetchFn || fetch)('https://generativelanguage.googleapis.com/v1beta/models/' + DETECT_MODEL + ':generateContent?key=' + o.apiKey, {
+    const r = await (o.fetchFn || geminiFetch)('https://generativelanguage.googleapis.com/v1beta/models/' + DETECT_MODEL + ':generateContent?key=' + o.apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(o.timeoutMs || 20000),
       body: JSON.stringify({ contents: [{ parts: judgeParts(o.kind, o.card, o.orig, o.cands, o.request) }], generationConfig: { temperature: 0.1, maxOutputTokens: 1500, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 256 } } }),
     });

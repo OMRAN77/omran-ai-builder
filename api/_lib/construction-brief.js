@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* api/_lib/construction-brief.js — v-cx-brief (طلب المالك: «في المقاولات كثر الاختيارات… الي يدخل
    يضيع فيه»): نموذج المقاولات فيه ٧٧ خيارًا في أربعة أقسام قبل أن يضغط المستخدم زرًّا واحدًا.
    هذه الطبقة الأولى: سطر واحد بلغة الناس («فيلا دورين ٤٠٠ متر مودرن بمسبح ومجلس في دبي») يُقرأ هنا
@@ -86,7 +87,7 @@ const READ_FAILED = Object.freeze({ failed: true });
 async function readBriefLLM(opts) {
   const o = opts || {};
   if (!o.apiKey || !String(o.text || '').trim()) return null;
-  const fetchImpl = o.fetchImpl || fetch;
+  const fetchImpl = o.fetchImpl || geminiFetch;
   try {
     const r = await fetchImpl(ENDPOINT + o.apiKey, {
       method: 'POST',

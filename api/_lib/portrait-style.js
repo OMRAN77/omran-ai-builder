@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // Vercel Serverless Function: "🎨 Portrait Styles". Takes a personal photo
 // plus a chosen art style, and asks Gemini's image-generation model
 // (server-side owner API key, GEMINI_API_KEY) to redraw the person in that
@@ -212,7 +213,7 @@ module.exports = async (req, res) => {
           ],
           generationConfig: { imageConfig: { imageSize: '2K' } },
         };
-        const frameUpstream = await fetch(endpointGif, {
+        const frameUpstream = await geminiFetch(endpointGif, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(frameReqBody),
@@ -486,7 +487,7 @@ module.exports = async (req, res) => {
       generationConfig: { temperature: (isLocalizedEdit || isMultiSourceComposition) ? 0.15 : 0.65, imageConfig: mergeAspect ? { imageSize: '2K', aspectRatio: mergeAspect } : { imageSize: '2K' } },
     };
 
-    const upstream = await fetch(endpoint, {
+    const upstream = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),

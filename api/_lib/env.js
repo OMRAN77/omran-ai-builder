@@ -18,6 +18,10 @@ const SPEC = {
   UPSTASH_REDIS_REST_URL: ['core',    'قاعدة البيانات'],
   UPSTASH_REDIS_REST_TOKEN:['core',   'قاعدة البيانات'],
   GEMINI_API_KEY:         ['feature', 'المحرّك الأساسي'],
+  /* v-vertex-route (المالك ٢١ أكتوبر): بوجوده تمرّ نداءات Gemini للنصّ والصور بـVertex AI Express عبر @google/genai (الرصيد ٣٠٠$)؛ بغيابه مسار AI Studio كما هو */
+  GOOGLE_VERTEX_API_KEY:  ['feature', 'مسار Vertex AI لنداءات Gemini (النصّ والصور) — بدونه مسار AI Studio بمفتاح GEMINI_API_KEY كما كان (v-vertex-route)'],
+  GOOGLE_VERTEX:          ['tunable', 'off يطفئ مسار Vertex مؤقّتًا مع بقاء مفتاحه (v-vertex-route)'],
+  GOOGLE_VERTEX_MODELS:   ['tunable', 'تصحيح أسماء نماذج على Vertex بلا نشر: «قديم=جديد,قديم2=جديد2» (v-vertex-route)'],
   OPENAI_API_KEY:         ['feature', 'محرّك بديل'],
   ANTHROPIC_API_KEY:      ['feature', 'محرّك بديل'],
   GROQ_API_KEY:           ['feature', 'محرّك بديل · السلسلة المجانية'],

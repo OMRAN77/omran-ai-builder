@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* api/_lib/app-director.js — v-app-director: عقل «مخرج التطبيق» (المرحلة ١) — للمالك وحده.
    المالك: «مثال أقوله سوّ لي أو عطني فكرة فيديو عن أنماط الصور ويعطيني فيديو عنه كامل… سوّ لي فيديو عن التطبيق
    ١٠ دقائق، يسوّيه مع الأفكار مع المتحدّثة مها أو عبدالله، وبأيّ لغة أريدها» — «ما أريد واحد غبي» — «ليس كلاود».
@@ -223,7 +224,7 @@ function diagOf(attempts) {
  */
 async function requestPlan(opts) {
   const o = opts || {};
-  const fetchImpl = o.fetchImpl || fetch;
+  const fetchImpl = o.fetchImpl || geminiFetch;
   const sleep = o.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   const catalog = o.catalog;
   const parts = o.parts || 1, part = o.part || 1;
@@ -327,7 +328,7 @@ function toWav(b64) {
  */
 async function requestVoice(opts) {
   const o = opts || {};
-  const fetchImpl = o.fetchImpl || fetch;
+  const fetchImpl = o.fetchImpl || geminiFetch;
   const attempts = [];
   let last = { status: 0, why: 'unavailable' };
   const list = voiceModels(o.env);
@@ -387,7 +388,7 @@ function verifyJobToken(token, secret, now) {
    (حقل أضافه المصوِّر نفسه) = bridge_outdated — والواجهة تنادي هذا أوّل شيء فلا يُصرف على خطّة ولا صوت ولا صور لجسر لا يصوّر. */
 async function probeBridge(bridge, opts) {
   const o = opts || {};
-  const fetchImpl = o.fetchImpl || fetch;
+  const fetchImpl = o.fetchImpl || geminiFetch;
   let last = { error: 'bridge_offline', why: 'network' };
   for (let a = 1; a <= 2; a++) {
     try {

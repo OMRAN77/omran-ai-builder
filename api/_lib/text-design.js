@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* v-text-design (المالك ٢٧ سبتمبر: «اريد شي جميل نفس الصوره الي فيها البنات ٤» — عنوان ذهبيّ وأبيات مشكولة عن الصورة نفسها،
    في مكان فارغ بعيدًا عن الوجوه). نداءان خفيفان على Gemini Flash يرى صورة المستخدم (والاحتياط GPT الخفيف):
    - authorTextDesign: «كلام حب / كلام جميل / شعر…» ← عنوان قصير + ٣–٥ أسطر مشكولة مستوحاة ممّا في الصورة فعلًا.
@@ -72,7 +73,7 @@ const BOX_SCHEMA = { type: 'ARRAY', items: { type: 'OBJECT', required: ['label',
 const AVOID_RULE = 'Also list in "avoid" every human face (label "face") and every person\'s head-and-shoulders area (label "person") as box_2d [ymin, xmin, ymax, xmax] normalized to 0–1000, so text can be placed away from them.';
 
 async function geminiJson(apiKey, parts, schema, fetchImpl, o) {
-  const upstream = await (fetchImpl || fetch)(GEMINI_URL + apiKey, {
+  const upstream = await (fetchImpl || geminiFetch)(GEMINI_URL + apiKey, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: o && o.signal,
     body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: Object.assign({ temperature: 0.9, responseMimeType: 'application/json', responseSchema: schema }, o && o.noThink ? { thinkingConfig: { thinkingBudget: 0 } } : {}) }),
   });

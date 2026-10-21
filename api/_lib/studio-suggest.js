@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // Vercel Serverless Function: "💄 AI Style Studio — Suggest a Style".
 // Text-only (with optional vision) call to Gemini that analyzes an uploaded
 // photo plus the active feature tab (hair/makeup/beard/nails/skin/glasses/
@@ -102,7 +103,7 @@ module.exports = async (req, res) => {
     ];
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
-    const upstream = await fetch(endpoint, {
+    const upstream = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts }] }),

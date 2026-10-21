@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // Vercel Serverless Function: "🏠 AI Interior Design — Suggest Ideas".
 // Takes a photo of a real room and asks Gemini (text+vision, server-side
 // owner API key, GEMINI_API_KEY) to look at it and propose 2-3 short,
@@ -81,7 +82,7 @@ module.exports = async (req, res) => {
       ],
     };
 
-    const upstream = await fetch(endpoint, {
+    const upstream = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),

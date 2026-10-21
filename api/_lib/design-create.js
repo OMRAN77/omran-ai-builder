@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 const { judgeBest, duoEnabled } = require('./image-judge');
 // Vercel Serverless Function: "🏠 AI Interior Design". Takes a photo of a
 // real room plus a chosen style, and asks Gemini's image-generation model
@@ -295,7 +296,7 @@ async function placeShotGemini(apiKey, prompt, deadline, noteErr) {
     try {
       /* برو يقبل imageSize/aspectRatio؛ نانو ٢ بالصيغة النظيفة responseModalities وحدها (درس v-nano-banana) */
       const gc = /pro-image/.test(m) ? { imageConfig: { imageSize: '2K', aspectRatio: '16:9' } } : { responseModalities: ['IMAGE'] };
-      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent?key=' + apiKey, {
+      const r = await geminiFetch('https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent?key=' + apiKey, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: gc }),
@@ -470,7 +471,7 @@ module.exports = async (req, res) => {
     /* v-image-duo: gpt-image بالتوازي مع Gemini، والحكم يختار الأدقّ في النهاية */
     const duoP = duoEnabled() ? openaiDesignEdit(promptText, imageBase64, mimeType).catch(function () { return null; }) : null;
 
-    const upstream = await fetch(endpoint, {
+    const upstream = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),

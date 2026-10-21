@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /**
  * image-merge.js — دمج نانو (Gemini) + GPT (OpenAI) لتوليد وتعديل الصور،
  * مع أخذ «الفكرة كاملة» من سياق المحادثة قبل الرسم.
@@ -60,7 +61,7 @@ async function gptEdit({ prompt, imageB64, mime = 'image/png' }) {
 
 async function nanoCall(model, parts, aspect) {
   const generationConfig = aspect ? { imageConfig: { aspectRatio: aspect } } : undefined;
-  const res = await fetch(
+  const res = await geminiFetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
     {
       method: 'POST',

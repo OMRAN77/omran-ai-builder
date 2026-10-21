@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // api/_lib/trend-people.js — v-trend-people (طلب المالك: «مش شخصيه وحده في الفيديو ٢ او ٣»).
 //
 // الجذر التقنيّ: محرّك الفيديو يقبل **صورة أولى واحدة** (`instance.image` تصير أوّل إطار)،
@@ -37,7 +38,7 @@ function frameTask(n, scene) {
    المجموعة حرفيًّا كما كانت (٠٫١٥، 2K، ٢٤٠ث). */
 async function callImage(apiKey, parts, aspect, fetchImpl, cfg) {
   const c = cfg || {};
-  const f = fetchImpl || fetch;
+  const f = fetchImpl || geminiFetch;
   const upstream = await f(IMAGE_URL + apiKey, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

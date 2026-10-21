@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 
 const crypto = require('crypto');
 const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
@@ -88,7 +89,7 @@ async function authorPrayerPlan(apiKey, request, options = {}) {
       directionIndex: options.directionIndex == null ? undefined : options.directionIndex + attempt,
       retryReason: attempt ? String(lastError && lastError.message || 'invalid output') : '',
     });
-    const upstream = await (options.fetchImpl || fetch)(endpoint, {
+    const upstream = await (options.fetchImpl || geminiFetch)(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

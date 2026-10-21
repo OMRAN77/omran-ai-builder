@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 // Vercel Serverless Function: "💄 AI Style Studio". One endpoint, nine
 // features, all powered by Gemini's image-generation model (server-side
 // owner API key, GEMINI_API_KEY):
@@ -177,7 +178,7 @@ async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
   const temperature = Number.isFinite(tempOverride) ? tempOverride
     : (feature === 'anime' ? 0.65 : (DESIGN_FEATURES.indexOf(feature) !== -1 ? 0.45 : 0.15));
   const reqBody = { contents: [{ parts }], generationConfig: { temperature, imageConfig: aspectRatio ? { imageSize: '2K', aspectRatio } : { imageSize: '2K' } } };
-  const upstream = await fetch(endpoint, {
+  const upstream = await geminiFetch(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody),
     signal: AbortSignal.timeout(240000), /* v-image-timeout */
   });

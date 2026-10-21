@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* v-request-check (المالك ٦ سبتمبر: «ما يعطيني الطلب الي أريده بالضبط… الصور من 0 وصلت 60%»): فحص عام بعد كل تعديل — يسأل
    flash (رؤية) «هل تطبّق النتيجةُ طلبَ المستخدم كما كتبه؟» بلا حكم على الذوق. إن لم يُنفَّذ، يعيد maha-image المحاولة مرة
    واحدة مع ذكر ما نقص حرفيًا، ويقبل الثانية فقط إن اجتازت الفحص. IMAGE_REQUEST_CHECK=off يعطّله. */
@@ -30,7 +31,7 @@ async function verifyRequestApplied({ apiKey, request, source, result, timeoutMs
   if (!apiKey || !request || !source || !source.b64 || !result || !result.b64) return null;
   try {
     const parts = [{ text: buildRequestCheckPrompt(request) }, { text: 'IMAGE 1:' }, { inlineData: { mimeType: source.mime || 'image/jpeg', data: source.b64 } }, { text: 'IMAGE 2:' }, { inlineData: { mimeType: result.mime || 'image/png', data: result.b64 } }];
-    const r = await fetch(ENDPOINT + apiKey, {
+    const r = await geminiFetch(ENDPOINT + apiKey, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(timeoutMs || 20000),

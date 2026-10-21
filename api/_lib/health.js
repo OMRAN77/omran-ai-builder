@@ -112,6 +112,14 @@ module.exports = async (req, res) => {
     return;
   }
 
+  /* v-vertex-route: ...&vertex=probe — نداء نصّ صغير ونداء صورة صغير بمفتاح Vertex الحقيقيّ (يُحاسَب على رصيد Google Cloud)، وأسماء
+     النماذج المستعملة على Vertex، ورقم المشروع إن ظهر، ورسائل الخطأ كاملةً. لا يُنفَّذ إلّا بطلب صريح، وللمالك وحده (الحارس أعلاه). */
+  if (req.query && req.query.vertex === 'probe') {
+    try { res.status(200).json(await require('./gemini-fetch.js').probe()); }
+    catch (e) { res.status(500).json({ ok: false, error: 'vertex_probe_failed', message: String((e && e.message) || e).slice(0, 500) }); }
+    return;
+  }
+
   const envKeys = {
     OpenAI: !!process.env.OPENAI_API_KEY,
     Gemini: !!process.env.GEMINI_API_KEY,

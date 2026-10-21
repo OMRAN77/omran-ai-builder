@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* v-media-gate (بلاغ المالك ١٩ سبتمبر «أيّ كلمة فيها فيديو يبني فيديو، وأيّ كلمة فيها صورة يرسم»):
    العميل كان يقرّر إنشاء صورة/فيديو بتعابير كلماتيّة قبل أن يرى النموذج الرسالة، فأيّ ذكر للكلمة يفتح
    مسار توليد (وبعضه يصرف رصيد Runway). هذه بوّابة نيّة واحدة رخيصة: Gemini Flash بحرارة صفر وجواب JSON
@@ -39,7 +40,7 @@ function parseMediaIntentReply(raw) {
 async function classifyMediaIntentLLM(opts) {
   const o = opts || {};
   if (!o.apiKey || !String(o.text || '').trim()) return null;
-  const fetchImpl = o.fetchImpl || fetch;
+  const fetchImpl = o.fetchImpl || geminiFetch;
   try {
     const r = await fetchImpl(ENDPOINT + o.apiKey, {
       method: 'POST',

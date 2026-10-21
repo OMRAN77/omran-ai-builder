@@ -1,3 +1,4 @@
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /**
  * image-pipeline.js — خط إنتاج الصور لعمران
  *
@@ -109,7 +110,7 @@ function geminiProvider(apiKey, model) {
         ? `${prompt}\n\nDo not include: ${negative}`
         : prompt;
 
-      const res = await fetch(
+      const res = await geminiFetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: "POST",

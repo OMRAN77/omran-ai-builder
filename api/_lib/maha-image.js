@@ -21,7 +21,7 @@ const { runCards, cardsKind } = require('./image-cards');
 const { authorPrayerPlan } = require('./prayer-plan');
 const textDesign = require('./text-design');
 const mergeIdentity = require('./merge-identity');
-const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
+const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch'); const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: على السطر نفسه — image-lanes يسقّف أسطر الملفّ
 const pipeline = require('./image-pipeline');
 
 module.exports = async (req, res) => {
@@ -580,7 +580,7 @@ module.exports = async (req, res) => {
       const models = ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image'].filter(function (m) { return m !== primaryModel; }); // v-models-latest: «نانو خام» فشل عليه = لا يُعاد
       for (let i = 0; i < models.length; i++) {
         try {
-          const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + apiKey, {
+          const r = await geminiFetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + apiKey, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             /* v-nano-failfast: هذا المسار لا يعمل إلا بعد فشل المحرّك الأساسي؛

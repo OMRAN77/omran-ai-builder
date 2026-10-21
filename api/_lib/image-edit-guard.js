@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 
 function extractJsonObject(value) {
   const text = String(value || '').replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
@@ -58,7 +59,7 @@ async function verifyLocalizedImageEdit(options) {
       'requestedChangeApplied: the RESULT visibly applies the change asked for in USER REQUEST — false only when RESULT is essentially the SOURCE image with the requested change missing.',
       'Reject only clear violations. When uncertain about any boolean, use true — a borderline edit should pass rather than be discarded.'
     ].join('\n');
-    const response = await fetch(endpoint, {
+    const response = await geminiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,

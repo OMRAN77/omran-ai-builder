@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* v-intent-llm (خطة المالك ٦ سبتمبر، البند ١: «مصنّف بنموذج بدل التعابير النمطية»): كل صياغة جديدة («عطني فكرة»،
    «شغل فوتوشوب») كانت تحتاج ترقيعًا يدويًا في image-intent.js. الآن التعابير النمطية مرساة (ما أثبته المالك يبقى كما
    هو)، ونموذج flash يوسّعها: حين لا تلتقط النية أي مسار إبداعي لطلب قصير على صورة مصدر، يُسأل «أي مسار؟» بجواب JSON
@@ -41,7 +42,7 @@ function parseIntentReply(raw) {
 async function classifyEditIntentLLM({ apiKey, text, timeoutMs }) {
   if (!apiKey || !String(text || '').trim()) return null;
   try {
-    const r = await fetch(ENDPOINT + apiKey, {
+    const r = await geminiFetch(ENDPOINT + apiKey, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(timeoutMs || 6000),

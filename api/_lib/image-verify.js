@@ -1,4 +1,5 @@
 'use strict';
+const { geminiFetch } = require('./gemini-fetch.js'); // v-vertex-route: نداءات Gemini تمرّ بمسار Vertex حين يوجد مفتاحه
 /* v-img-honest + v-img-mix (المالك ٢٣ سبتمبر ٢٠٢٦، لقطتان: «أنماط الصور» رجعت كما هي وتحتها «تمّ تغيير جميع
    الوجوه» — «أوّل شي يقولي شي والتنفيذ صفر… وإذا تقدر خاصيّة دمج بين نانو وGPT، النتيجة وحدة»).
    نداء رؤية واحد لكلّ صورة (كان التفسير نداءً واحدًا أصلًا — لا زمن إضافيّ): يحكم هل نُفّذ الطلب في كلّ مرشّح
@@ -98,7 +99,7 @@ async function verifyAndReport(opts) {
   if (!o.apiKey || !cands.length) return { ok: false, reason: 'no_input' };
   if (String(process.env.IMAGE_CAPTION || 'on').toLowerCase() === 'off') return { ok: false, reason: 'disabled' };
   try {
-    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + VERIFY_MODEL + ':generateContent?key=' + o.apiKey, {
+    const r = await geminiFetch('https://generativelanguage.googleapis.com/v1beta/models/' + VERIFY_MODEL + ':generateContent?key=' + o.apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(o.timeoutMs || 22000),
       /* تفكير قصير مقصود: بلا تفكير (v-flash-nothink) صدّق النموذج الطلب وادّعى تغيير وجوه لم تتغيّر. السقف 3000
          يترك للنصّ مكانه بعد ميزانيّة التفكير (درس v-flash-nothink: التفكير كان يلتهم السقف فيعود فارغًا). */
