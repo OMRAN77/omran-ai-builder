@@ -50279,10 +50279,20 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var s = surfaceOf(el);
     return !!s && s.backgroundImage === 'none' && s.backgroundColor === bg;
   }
+  /* v-om3-still (المالك ٢١ أكتوبر: «صفحة الفيديوات فيها وميض»): التصنيف يزيل الأصناف ثمّ يقرأ الأسلوب ثمّ يعيدها، والقراءة تُثبّت
+     الحالة بلا أصناف — فعنصر له انتقال (تبويبات صانع الفيديو: حدّ .15s) يبدأ انتقالًا إلى حدّه الأصليّ ثمّ يعود، وtransitionend يعيد
+     تصنيفه فيبدأ انتقالًا جديدًا: حلقة لا تنتهي (قيس في الإنتاج: ٢٤٤ transitionend و٢٤٤ تبديل صنف في ٥ ث، والحدّ يومض بين الشفّاف
+     والظاهر). om3-still (transition:none) طوال القياس، ثمّ تثبيت الأسلوب النهائيّ قبل إزالته — فلا انتقال يبدأ ولا حلقة. */
   function mark(el, inTool){
     if(!el || el.nodeType !== 1 || SKIP[el.tagName] || el.closest('.om3-skip')) return;
+    var cs = getComputedStyle(el), still = /[1-9]/.test(cs.transitionDuration || '');
+    if(still) el.classList.add('om3-still');
     el.classList.remove('om3-line', 'om3-fill', 'om3-hot', 'om3-field');
-    var cs = getComputedStyle(el), bg0 = cs.backgroundColor; /* قبل om3-fill: التصنيف يقرأ لون الخانة نفسها */
+    var bg0 = cs.backgroundColor; /* قبل om3-fill: التصنيف يقرأ لون الخانة نفسها (cs حيّ: يُقرأ بعد الإزالة) */
+    try{ classify(el, inTool, cs, bg0); }
+    finally{ if(still){ void cs.borderTopColor; el.classList.remove('om3-still'); } } /* الأسلوب النهائيّ يُثبَّت والانتقال معطَّل */
+  }
+  function classify(el, inTool, cs, bg0){
     if(lineOf(cs)){ el.classList.add('om3-line'); if(cs.cursor === 'pointer' || /^(BUTTON|A|INPUT|TEXTAREA|SELECT|LABEL)$/.test(el.tagName)) el.classList.add('om3-hot'); }
     if(inTool && !overImage(el, cs)){
       var bi = cs.backgroundImage;
@@ -50311,6 +50321,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     schedule();
   }
   function start(){
+    /* v-om3-still: قاعدة القياس هنا لا في أدوات-أسود.css (ذاك للوضع الأسود وألوانه وحدها) — في head فلا يراها المراقب */
+    try{ var st = document.createElement('style'); st.id = 'om3StillCss'; st.textContent = '.om3-still{transition:none !important}'; document.head.appendChild(st); }catch(e){ __swallow(e, "three-colors:still-css"); }
     add(document.body);
     try{
       new MutationObserver(function(list){
