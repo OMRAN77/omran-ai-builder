@@ -3,6 +3,10 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **autoplay بلا ضغطة:** مسبار Playwright هنا لا يفرض سياسة التشغيل التلقائيّ، و«اشتغل الصوت في المسبار» ليس دليلًا على الجوّال — `play()` بلا أيّ ضغطة
+  نجح في headless shell وفي كروم المثبَّت (headless وبنافذة) حتّى مع `--autoplay-policy=user-gesture-required`. ابدأ أيّ فحص صوت بشاهد بلا
+  ضغطة؛ إن نجح فالمسبار يقيس الترتيب والتوقيت فقط، وقاعدة الإيماءة تُثبت على الجهاز (أثر `?diag=1`) أو في vm بنموذج صريح. وصمت التفعيل
+  mp3 في `mahaUnlockAudio` لا يُفكّ (`NotSupportedError`) — استعمل WAV صالحًا (`MAHA_RT_SILENT_WAV`). (v-maha-first-audio)
 - **ffmpeg: صورة واحدة بلا zoompan = إطار واحد مهما كان `-t`:** مدخل PNG واحد يعطي إطارًا واحدًا، وzoompan هو الذي كان يولّد إطارات الخانة. مقطع «صورة ثابتة» يحتاج `fps=30,tpad=stop_mode=clone:stop_duration=<الخانة>` (أو `-loop 1`). تحقّق بـ`ffprobe -show_entries stream=nb_frames` لا بأنّ الأمر خرج بصفر. (v-app-director-watchdog)
 - **ffmpeg قُتل بإشارة يخرج بلا رمز ولا stderr:** `child.on('close', (code) => …)` وحده يُخرج «failed:» فارغة. اقرأ `signal` أيضًا؛ SIGKILL بلا stderr على حاوية صغيرة = قاتل الذاكرة على الأرجح. (v-app-director-watchdog)
 - **`page.evaluate` في Playwright بلا مهلة:** `setDefaultTimeout` لا يشمله، فصفحة يعلّق خيطها بعد `load` تُوقف المتسلسل كلّه. ضع مهلة خارجيّة (`Promise.race`) وأغلق الصفحة العالقة وافتح غيرها. (v-app-director-watchdog)
