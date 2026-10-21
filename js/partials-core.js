@@ -1265,7 +1265,7 @@
         <button type="button" class="btn iconBtn" id="stocksGlobalBtn" title="الأسواق العالمية" data-i18n-title="worldMarketsTitle" style="padding:4px 8px;">🌍</button>
         <button type="button" class="btn iconBtn" id="stocksSearchBtn" title="اختيار سهم" data-i18n-title="pickStockTitle" style="padding:4px 8px;">🔍</button>
         <button type="button" class="btn iconBtn" id="stocksLearnBtn" data-i18n-title="stocksLearnTitle" title="تعلم التداول" style="padding:4px 8px;">🎓</button>
-        <button type="button" class="btn iconBtn" id="stocksPfBtn" title="محفظتي التعليمية" style="padding:4px 8px;">💼</button>
+        <button type="button" class="btn iconBtn" id="stocksPfBtn" title="محفظتي التعليمية" data-i18n-title="stocksPfTitle" style="padding:4px 8px;">💼</button>
         <button type="button" class="btn iconBtn" id="stocksFullBtn" data-i18n-title="stocksFullTitle" title="وضع شاشة البورصة" style="padding:4px 8px;">🖥️</button>
         <button type="button" class="btn iconBtn" id="stocksCloseBtn" style="padding:4px 8px;">✕</button>
       </div>
@@ -1277,17 +1277,17 @@
       <div id="goldCard" style="display:none; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px;">
           <div style="font-size:13.5px; font-weight:500;" data-i18n="goldNowTitle">🥇 الذهب الآن</div>
-          <div><span id="goldOz" style="font-size: var(--fs-2); font-weight: var(--w-bold);"></span> <span id="goldChg" style="font-size:12px;"></span></div>
+          <div dir="ltr"><span id="goldOz" style="font-size: var(--fs-2); font-weight: var(--w-bold);"></span> <span id="goldChg" style="font-size:12px;"></span></div>
         </div>
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; font-size: var(--fs-3); text-align:center;">
-          <span>24K: <b id="goldG24"></b> AED/g</span>
-          <span>22K: <b id="goldG22"></b> AED/g</span>
-          <span>21K: <b id="goldG21"></b> AED/g</span>
+          <span>24K: <b id="goldG24"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
+          <span>22K: <b id="goldG22"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
+          <span>21K: <b id="goldG21"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
         </div>
       </div>
       <div id="globalChips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
-        <button type="button" class="btn" data-tv="OANDA:XAUUSD" style="padding:4px 10px; font-size:12px;">🥇 Gold</button>
-        <button type="button" class="btn" data-tv="TVC:USOIL" style="padding:4px 10px; font-size:12px;">🛢️ Oil</button>
+        <button type="button" class="btn" data-tv="OANDA:XAUUSD" style="padding:4px 10px; font-size:12px;">🥇 <span data-i18n="stkGold">الذهب</span></button>
+        <button type="button" class="btn" data-tv="TVC:USOIL" style="padding:4px 10px; font-size:12px;">🛢️ <span data-i18n="stkOil">النفط</span></button>
         <button type="button" class="btn" data-tv="AMEX:DIA" style="padding:4px 10px; font-size:12px;">Dow Jones</button>
         <button type="button" class="btn" data-tv="NASDAQ:QQQ" style="padding:4px 10px; font-size:12px;">NASDAQ</button>
         <button type="button" class="btn" data-tv="AMEX:SPY" style="padding:4px 10px; font-size:12px;">S&amp;P 500</button>
@@ -1330,8 +1330,8 @@
           <div id="stockExchange" style="font-size: var(--fs-5); color:var(--muted);"></div>
         </div>
         <div style="text-align:end;">
-          <div id="stockPrice" style="font-size: var(--fs-1); font-weight: var(--w-bold);"></div>
-          <div id="stockChange" style="font-size: var(--fs-3);"></div>
+          <div style="font-size: var(--fs-1); font-weight: var(--w-bold);"><span id="stockPrice" dir="ltr"></span></div>
+          <div style="font-size: var(--fs-3);"><span id="stockChange" dir="ltr"></span></div>
         </div>
       </div>
       <div id="stockDetails" style="display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--muted);"></div>

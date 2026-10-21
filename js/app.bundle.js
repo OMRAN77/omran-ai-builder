@@ -36286,7 +36286,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
     });
     const j = await r.json();
-    if(!r.ok) throw new Error(j.error || 'HTTP '+r.status);
+    if(!r.ok){
+      /* v-stocks-fail (تدقيق ١٨ أكتوبر + الدفعة ٥): الخادم يرسل رمزًا لا رسالة مزوّد الأسعار (كانت «**symbol** or **figi** … https://…» باسمه ورابطه وبالإنجليزيّ) */
+      if(j.error === 'symbol_not_found') throw new Error(t('stocksSymbolNotFound'));
+      if(j.error === 'unavailable') throw new Error(t('svcPaused'));
+      throw new Error(j.error || 'HTTP '+r.status);
+    }
     return j;
   }
 
@@ -36356,9 +36361,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       chEl.textContent = (up?'▲ +':'▼ ') + fmt(q.change) + ' (' + fmt(q.changePct) + '%)';
       chEl.style.color = up ? '#22c55e' : '#ef4444';
       $('#stockDetails').innerHTML = '';
-      [['O', q.open], ['H', q.high], ['L', q.low], ['Vol', q.volume]].forEach(function(pair){
+      /* v-stocks-i18n: كانت «O: H: L: Vol:» إنجليزيّة ثابتة في كلّ اللغات */
+      [['stkOpen', q.open], ['stkHigh', q.high], ['stkLow', q.low], ['stkVol', q.volume]].forEach(function(pair){
         const sp = document.createElement('span');
-        sp.textContent = pair[0] + ': ' + fmt(pair[1], pair[0]==='Vol'?0:2);
+        sp.textContent = t(pair[0]) + ': ' + fmt(pair[1], pair[0]==='stkVol'?0:2);
         $('#stockDetails').appendChild(sp);
       });
       card.style.display = 'block';
@@ -36541,7 +36547,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     try{
       const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
       const j = await api({ mode:'learn', topic: topic||'', question: question||'', symbol: currentSym || 'AAPL', lang: lang });
-      if(j.lesson) setMd(lessonEl, j.lesson); else lessonEl.textContent = '⚠️ ' + (j.claudeError || ''); // v-md-lite
+      /* v-md-lite · v-stocks-fail: الفشل سطر وظيفيّ بلغة الواجهة، لا claudeError (نصّ المزوّد الخامّ) */
+      if(j.lesson) setMd(lessonEl, j.lesson); else lessonEl.textContent = '⚠️ ' + t('svcPaused');
     }catch(err){
       lessonEl.textContent = '⚠️ ' + (err && err.message || err);
     }
@@ -36620,6 +36627,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     await origLoad(sym);
     currentSym = String(input.value || '').trim().toUpperCase();
     if(currentSym && card.style.display !== 'none') analyzeWrap.style.display = 'block';
+    /* v-stocks-fail: الفشل كان يُبقي «حلل السهم» ظاهرًا من سهم سابق فيحلّل رمزًا غير موجود */
+    else if(card.style.display === 'none'){ analyzeWrap.style.display = 'none'; currentSym = ''; }
   };
 
   const searchWrap = $('#stockSearchWrap');
@@ -36650,17 +36659,21 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-pf-i18n (شكوى المالك ٢٩ أغسطس: نافذة الأسهم عربية وسط واجهة المليالم):
      عربي/أردو ← عربي، وغير ذلك ← إنجليزي — نفس قاعدة v-tools-i18n. */
   function stT(arTxt, enTxt){ return (window.__bT) ? window.__bT(arTxt, enTxt) : (isEn()?enTxt:arTxt); }
+  /* v-pf-bidi: كلّ مقطع رقميّ بإشاراته ($ و+ و% والأقواس) معزول LTR — كانت «%100» و«(0%) 0+» و«AAPL @ $343.46 × 1» تنقلب في العربيّ.
+     العزل بمحرفَي LRI/PDI داخل العقدة النصّيّة نفسها لا بوسم <bdi>: منظِّف الإيموجي (v-clean-ui) يقصّ أطراف كلّ عقدة نصّيّة فيها إيموجي،
+     فالمسافة بين «🟢 شراء » ووسم بعده تضيع («شراء1 × AAPL»)، والمحرفان ليسا مسافة فلا يُقصّان. */
+  function pfIso(s){ return '\u2066' + s + '\u2069'; }
   function pfRender(d){
     if(!pfWrap) return;
     var p = d.portfolio, bd = d.board || { top: [], rank: null, total: 0 };
     var h = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
-      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">' + stT('🎓 وضع تعليمي — أموال افتراضية 100٪','🎓 Learning mode — 100% virtual money') + '</span></div>'
+      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">' + stT('🎓 وضع تعليمي — أموال افتراضية 100٪','🎓 Learning mode — 100% virtual money').replace(/\d[\d,.]*\s?[%٪]/, pfIso) + '</span></div>'
       // البطاقة العلوية: القيمة الكلية والربح/الخسارة
       + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:14px;background:rgba(255,255,255,.02);margin-bottom:12px;">'
       + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
-      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('قيمة المحفظة','Portfolio value') + '</div><div style="font-size:22px;font-weight:700;">$' + pfMoney(p.equity) + '</div></div>'
-      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الكاش المتاح','Available cash') + '</div><div style="font-size:16px;font-weight:600;">$' + pfMoney(p.cash) + '</div></div>'
-      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الربح/الخسارة','Profit/Loss') + '</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + (p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('قيمة المحفظة','Portfolio value') + '</div><div style="font-size:22px;font-weight:700;">' + pfIso('$' + pfMoney(p.equity)) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الكاش المتاح','Available cash') + '</div><div style="font-size:16px;font-weight:600;">' + pfIso('$' + pfMoney(p.cash)) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الربح/الخسارة','Profit/Loss') + '</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + pfIso((p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)') + '</div></div>'
       + '</div></div>'
       // نموذج الصفقة
       + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:12px;margin-bottom:12px;">'
@@ -36679,8 +36692,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       p.positions.forEach(function(pos){
         h += '<div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(128,128,128,.15);padding:8px 2px;font-size:12.5px;flex-wrap:wrap;">'
           + '<b style="min-width:56px;">' + pfEsc(pos.symbol) + '</b>'
-          + '<span style="color:var(--muted);">' + pos.qty + ' ' + stT('سهم','shares') + ' × $' + pos.price + '</span>'
-          + '<span style="margin-inline-start:auto;font-weight:700;color:' + pfCol(pos.pl) + ';">' + (pos.pl >= 0 ? '+' : '') + pfMoney(pos.pl) + ' (' + pos.plPct + '%)</span>'
+          + '<span style="color:var(--muted);">' + pos.qty + ' ' + stT('سهم', pos.qty === 1 ? 'share' : 'shares') + ' × ' + pfIso('$' + pos.price) + '</span>'
+          + '<span style="margin-inline-start:auto;font-weight:700;color:' + pfCol(pos.pl) + ';">' + pfIso((pos.pl >= 0 ? '+' : '') + pfMoney(pos.pl) + ' (' + pos.plPct + '%)') + '</span>'
           + '<button class="btn" data-pfsell="' + pfEsc(pos.symbol) + '" data-pfqty="' + pos.qty + '" style="padding:4px 10px;font-size:11px;">' + stT('بيع الكل','Sell all') + '</button>'
           + '<button class="btn" data-pfwhy="' + pfEsc(pos.symbol) + '" style="padding:4px 10px;font-size:11px;">' + stT('🎓 علّمني','🎓 Teach me') + '</button>'
           + '</div>';
@@ -36693,13 +36706,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
         + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
         + '<span style="flex:1;">' + pfEsc(r.user) + '</span>'
-        + '<b style="color:' + pfCol(r.plPct) + ';">' + (r.plPct >= 0 ? '+' : '') + r.plPct + '%</b></div>';
+        + '<b style="color:' + pfCol(r.plPct) + ';">' + pfIso((r.plPct >= 0 ? '+' : '') + r.plPct + '%') + '</b></div>';
     });
     // آخر الصفقات + إعادة الضبط
     if((p.trades || []).length){
       h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">' + stT('آخر صفقاتك','Your recent trades') + '</div>';
       p.trades.forEach(function(t){
-        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? stT('🟢 شراء','🟢 Buy') : stT('🔴 بيع','🔴 Sell')) + ' ' + t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price + '</div>';
+        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? stT('🟢 شراء','🟢 Buy') : stT('🔴 بيع','🔴 Sell')) + ' ' + pfIso(t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price) + '</div>';
       });
     }
     h += '<div id="pfLesson" style="display:none;margin-top:12px;border:1px solid rgba(212,175,55,.35);border-radius:12px;padding:12px;font-size:12.5px;line-height:1.9;white-space:pre-wrap;"></div>'
@@ -36722,7 +36735,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       .then(function(d){
         pfBusy = false; pfRender(d);
         var last = d.portfolio.trades && d.portfolio.trades[0];
-        pfMsgShow(last ? ('✅ تمت: ' + (last.side === 'buy' ? 'شراء' : 'بيع') + ' ' + last.qty + ' × ' + last.sym + ' بسعر $' + last.price + (last.side === 'buy' ? ' — 🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.' : ' — 🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.')) : '✅ تمت الصفقة', true);
+        /* v-pf-trade-msg: كانت عربيّة ثابتة في كلّ اللغات (ومخربطة في الإنجليزيّ) — الأجزاء بـstT والأرقام معزولة */
+        if(!last){ pfMsgShow(stT('✅ تمت الصفقة', '✅ Trade done'), true); return; }
+        var buy = last.side === 'buy';
+        pfMsgShow((buy ? stT('✅ تمت: شراء', '✅ Bought') : stT('✅ تمت: بيع', '✅ Sold')) + ' ' + pfIso(last.qty + ' × ' + last.sym)
+          + stT(' بسعر ', ' @ ') + pfIso('$' + last.price) + ' — '
+          + (buy ? stT('🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.', '🎓 Lesson: don’t put all your cash in one stock — diversifying protects you.')
+                 : stT('🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.', '🎓 Lesson: selling locks in a profit or stops a loss — good decisions follow a plan, not emotion.')), true);
       })
       .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || stT('تعذرت الصفقة','Trade failed')), false); });
   }

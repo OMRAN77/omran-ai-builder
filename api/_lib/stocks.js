@@ -124,6 +124,12 @@ async function anySeries(symbol, outputsize, apiKey) {
   return s;
 }
 
+// v-stocks-fail: رسالة مزوّد الأسعار الخامّة (اسمه ورابط توثيقه، «**symbol** or **figi** … missing or invalid») لا تصل الواجهة:
+// رمز تعرضه بلغتها — symbol_not_found للرمز الخاطئ، وunavailable لما سواه (حصّة، زحام، مفتاح غائب) — والنصّ الخامّ للسجلّ.
+function stocksFailCode(err) {
+  return /missing or invalid|not found|invalid symbol/i.test(String((err && err.message) || err || '')) ? 'symbol_not_found' : 'unavailable';
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -132,7 +138,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   const apiKey = process.env.TWELVEDATA_API_KEY;
-  if (!apiKey) { res.status(500).json({ error: 'Server is missing TWELVEDATA_API_KEY' }); return; }
+  if (!apiKey) { logError('stocks/config', new Error('missing price-data key')); res.status(503).json({ error: 'unavailable' }); return; }
 
   try {
     const body = req.body || {};
@@ -283,7 +289,7 @@ module.exports = async (req, res) => {
       }
 
       const aKey = process.env.ANTHROPIC_API_KEY;
-      if (!aKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!aKey) { logError('stocks/config', new Error('missing lesson key')); res.status(503).json({ error: 'unavailable' }); return; }
       const langNames = { ar: 'Arabic', en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali' };
       const prompt = `You are a friendly, expert trading TEACHER for complete beginners.\n\n${topic ? `LESSON TOPIC: ${topic}\n` : ''}${userQ ? `STUDENT QUESTION: ${userQ}\n` : ''}\nLIVE MARKET DATA RIGHT NOW for ${exSym} (use it as the real example throughout the lesson):\n${JSON.stringify(live)}\n\nRules:\n- Reply in ${langNames[lang] || 'Arabic'} with simple, clear language for beginners.\n- ALWAYS teach using the live numbers above (real price, real RSI, real MACD, real SMA) — say "الآن سعر ... فعليًا" style so the student learns on the real market.\n- Structure: short intro → explanation with the live example → 💡 practical tip → ❓ one quick self-check question for the student.\n- Keep it focused (~250-400 words). No investment advice, education only.\n- End with exactly: "⚠️ بيانات تقريبية وقد تتأخر — ليست نصيحة استثمارية." (translated to the reply language).`;
       const callClaude = (m) => fetch('https://api.anthropic.com/v1/messages', {
@@ -330,7 +336,7 @@ module.exports = async (req, res) => {
         if (fq && fq.price) return fq.price;
         const j = await td('quote', { symbol: sym }, apiKey);
         const p = +j.close;
-        if (!p || !isFinite(p)) throw new Error('لا يوجد سعر حي لهذا الرمز');
+        if (!p || !isFinite(p)) throw new Error('symbol not found: ' + sym); // v-stocks-fail: يصنَّف symbol_not_found
         return p;
       };
 
@@ -537,6 +543,8 @@ module.exports = async (req, res) => {
       volume: +j.volume, isOpen: !!j.is_market_open, datetime: j.datetime,
     });
   } catch (err) {
-    res.status(502).json({ error: String((err && err.message) || err) });
+    const code = stocksFailCode(err);
+    if (code === 'unavailable') logError('stocks/unavailable', err);
+    res.status(code === 'symbol_not_found' ? 404 : 503).json({ error: code });
   }
 };
