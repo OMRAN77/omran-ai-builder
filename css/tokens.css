@@ -548,8 +548,11 @@
   /* v-settings-push (طلب المالك: «صلبة تدفع الدردشة، ما تغطّيها»): عند فتح درج
      الإعدادات (يمين، ٤٦٠px) نُزيح كامل التطبيق يسارًا بنفس العرض على الكمبيوتر،
      فيبقى الدرج صلبًا والمحادثة ظاهرة كاملةً جنبه بلا تراكب ولا تعتيم — كلاهما
-     يملأ الشاشة معًا فلا تظهر الخلفية الشفافة إطلاقًا. الجوال بلا إزاحة. */
-  html.settings-push:not(.mobile-ui) main{ margin-right:430px; transition:margin-right .18s ease; }
+     يملأ الشاشة معًا فلا تظهر الخلفية الشفافة إطلاقًا. الجوال بلا إزاحة.
+     v-settings-push-body (تدقيق ١٨ أكتوبر): الإزاحة على الجسم لا <main> — شبكة الكمبيوتر (v-frame-c) أذابت <main>
+     بـdisplay:contents فلا صندوق له ولا هامش، فصار الدرج يغطّي الشريط الجانبيّ وطرف صندوق الكتابة. الجسم هو الشبكة
+     فتنكمش أعمدتها الخمسة يسار الدرج؛ والدرج على اليمين في الاتّجاهين (right:0) فالإزاحة يمينًا فيزيائيّة. */
+  html.settings-push:not(.mobile-ui) body{ margin-right:430px; transition:margin-right .18s ease; }
   dialog > *{padding-left:24px; padding-right:24px;}
   dialog > h3{padding-top:24px;}
   dialog h3{font-weight:700;}
@@ -770,7 +773,9 @@
   /* v-drawer-drag: الدرج ينسحب مع الإصبع — pan-y يترك التمرير الرأسي للمتصفح
      ويعطينا الحركة الأفقية بلا تعارض. العصية العمودية حُذفت بطلب عمران. */
   html.mobile-ui #settingsDialog{ touch-action: pan-y; }
-  #settingsDialog::backdrop{ background:rgba(0,0,0,.55); }
+  /* v-settings-push-body: التعتيم للجوّال وحده كما قصد تعليقه — كان بلا نطاق فغلب الشفّاف (v-settings-clear-desktop) بالترتيب
+     فعادت المحادثة معتّمة خلف درج الكمبيوتر */
+  html.mobile-ui #settingsDialog::backdrop{ background:rgba(0,0,0,.55); }
   html.mobile-ui dialog > div:first-child{ padding-top:4px; } /* v-fix: safe-area already on dialog */
   body.vantaActive{background:transparent !important; animation:none !important;}
   #vantaBg{position:fixed; inset:0; z-index:-1; pointer-events:none;}
@@ -795,6 +800,14 @@
   .settingsNavRow .settingsNavChevron{ flex:0 0 auto; width:16px; height:16px; color:var(--muted); opacity:.7; }
   [dir="rtl"] .settingsNavRow .settingsNavChevron{ transform:scaleX(-1); }
   [dir="rtl"] #settingsBackSvg{ transform:scaleX(-1); }
+  /* v-settings-header-sticky (تدقيق ١٨ أكتوبر): رأس الصفحة (← والعنوان) كان يمرّ مع المحتوى في الدرج (حاوية التمرير) فيختفي سهم
+     الرجوع في الصفحات الطويلة (المالك، المفاتيح، الخلفيّات). لاصق أعلى الدرج بخلفيّة الدرج نفسها (inherit — الأسود والفاتح والثيمات
+     كما هي). الحشوة ١٠px تُخصم من الهامش المضمّن (٢٦/١٤) فيبقى العنوان في موضعه قبل التمرير؛ وعلى الجوّال تحت منطقة الأمان. */
+  #settingsPageHeader{ position:sticky; top:0; z-index:5; background:inherit; padding-block:10px; margin-top:16px !important; margin-bottom:4px !important; }
+  html.mobile-ui #settingsPageHeader{ top:env(safe-area-inset-top, 0px); }
+  /* v-api-keys-ltr (تدقيق ١٨ أكتوبر): حقول المفاتيح والنماذج ورثت اتّجاه العربيّ فانقلبت أمثلتها «...-sk» و«..._gsk» — المفتاح نصّ
+     لاتينيّ من اليسار كحقول الخزنة. خانات الاختيار في القسم لا تُمسّ. */
+  #apiKeysSectionContent input:is([type=password],[type=text]){ direction:ltr; text-align:start; }
   /* v-owner-page: صفحة المالك — بطاقتان (الخزنة · لوحة التحكّم) وصفّ ذهبيّ في رأس القائمة */
   .ownerCard{ background:var(--panel2); border:1px solid rgba(212,175,55,.28); border-radius:var(--r-3); padding:14px; margin-bottom:14px; }
   .ownerCard .ownerCardTitle{ font-size:14px; font-weight:700; margin-bottom:10px; color:#d4af37; }
@@ -812,6 +825,9 @@
   .setProfile{ position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; padding:18px 0 14px; }
   .setHomeClose{ display:none; position:absolute; top:8px; inset-inline-end:0; width:40px; height:40px; border-radius:50%; border:none; background:rgba(128,128,128,.16); color:var(--text); font-size:18px; cursor:pointer; align-items:center; justify-content:center; padding:0; }
   html.mobile-ui .setHomeClose{ display:flex; }
+  /* v-settings-x-desktop (تدقيق ١٨ أكتوبر): إخفاؤه على الهاتف (v-settings-no-x-mobile) قال «يبقى على الحاسوب وحده» ولم يُظهره شيء على
+     الحاسوب، فلم يكن للدرج زرّ إغلاق ظاهر. الإخفاءان بـ!important (الجوّال والنافذة الضيّقة) أعلاه يغلبانه. */
+  @media (min-width:861px){ html:not(.mobile-ui) .setHomeClose{ display:flex; } }
   html.mobile-ui .setHomeClose:focus{ outline:none; }
   .setProfileAvatar{ position:relative; width:76px; height:76px; border-radius:50%; border:none; padding:0; cursor:pointer; background:linear-gradient(135deg,#b8862b,#d4af37); color:#111; font-size:26px; font-weight:700; display:flex; align-items:center; justify-content:center; }
   .setProfileAvatar img{ width:100%; height:100%; border-radius:50%; object-fit:cover; }
@@ -1120,6 +1136,10 @@
   /* v-textarea-font (تدقيق ١٨ أكتوبر): خانة نصّ بلا خطّ تأخذ monospace المتصفّح فيظهر الوصف حروفًا متباعدة (وصف الأزياء، صانع الفيديو على
      الجوّال، الستايل…). بمحدِّد عنصر وحده: أيّ قاعدة بصنف أو معرّف أو نمط مضمّن (محرّر الكود #code، لصق «تقييم الكود») تغلبه. */
   textarea{font-family:inherit;}
+  /* v-settings-font (تدقيق ١٨ أكتوبر): أزرار الإعدادات (صفوف «حسابي»، صورة الحساب، اللغات، تصدير المشاريع واستيرادها، أزرار صفحة المالك)
+     تأخذ خطّ المتصفّح للأزرار (Arial) لا خطّ التطبيق، بخلاف صفوف القائمة (div) — v438 أورث الوزن وحده. بأولويّة عنصر وحده (:where)
+     فيغلبه أيّ صنف أو معرّف أو نمط مضمّن يحدّد خطًّا؛ والحجم كما هو. */
+  :where(#settingsDialog) button{font-family:inherit;}
 
   /* v452 — شعار عمران في زرّ الوكيل: حجم موحّد كمبيوتر + جوّال (أمر عمران ٧ أغسطس ٢٠٢٦) */
   #btnPremiumToggle .premCrown{display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; opacity:1;}

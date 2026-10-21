@@ -80,6 +80,9 @@ test('٥. الجوّال صفحة كاملة بزرّ ✕، والحاسوب ب�
   assert.doesNotMatch(mob, /80vw/);
   assert.match(css, /\.setHomeClose\{ display:none;/);
   assert.match(css, /html\.mobile-ui \.setHomeClose\{ display:flex; \}/);
+  /* v-settings-x-desktop (تدقيق ١٨ أكتوبر): الإخفاء على الهاتف (v-tools-shelves) افترض أنّ الحاسوب يُظهره («يبقى على الحاسوب وحده»)
+     ولم يُظهره شيء — والإخفاءان بـ!important على الجوّال والنافذة الضيّقة يغلبانه (tools-shelves) */
+  assert.match(css, /@media \(min-width:861px\)\{ html:not\(\.mobile-ui\) \.setHomeClose\{ display:flex; \} \}/, '✕ على الحاسوب');
   assert.match(partial, /id="setHomeClose"[^>]*data-i18n-title="closeTitle"/);
   assert.match(app05, /getElementById\('setHomeClose'\)[\s\S]{0,200}closeDialogSafe\(settingsDialog\)/);
 });
