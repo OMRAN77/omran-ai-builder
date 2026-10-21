@@ -70,7 +70,8 @@ test('٥. المقارنة (لقطة المالك «كيف الشخص يعرف �
   const b = js.slice(js.indexOf('function buildCompareChecks(){'), js.indexOf('const studioCardsEl'));
   assert.match(b, /const srcs = optionImgs\(feature, opt\.value\);/, 'صورة الخيار نفسها');
   assert.match(b, /window\.__omranWhenSeen\(img,/, 'تُحمَّل عند ظهورها');
-  assert.match(b, /querySelectorAll\('\.studioCompareCheck:checked'\)\.length > 3\)\{ cb\.checked = false; return; \}/);
+  // v-studio-compare-max: الرابعة تُلغى كما كانت، ومعها تلميح الحدّ على زرّ المقارنة (tests/studio-basket-compare.test.cjs)
+  assert.match(b, /querySelectorAll\('\.studioCompareCheck:checked'\)\.length > 3\)\{ cb\.checked = false; studioCompareMaxHint\(\); return; \}/);
   assert.doesNotMatch(b, /innerHTML = '<input type="checkbox"/, 'لا مربّعات نصّيّة');
   assert.match(js, /compareChecksEl\.querySelectorAll\('\.studioCompareCheck:checked'\)/, 'قارئ المقارنة كما هو');
   assert.ok(read('index.html').includes('/js/partials-core.js?v=672'));

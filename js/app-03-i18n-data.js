@@ -1594,6 +1594,8 @@ const I18N = {
     stkVol: "الحجم",
     stocksSymbolNotFound: "الرمز غير موجود — تأكّد منه (مثال: AAPL أو TSLA).",
     stocksPfTitle: "محفظتي التعليمية",
+    /* v-studio-basket-honest: رفض اختيار يجاوز حدّ الصور في «ستايل AI» (كانت الزيادة تُقصّ بصمت) — {n} = STUDIO_IMAGES_MAX */
+    studioBasketImgMax: "حتّى {n} صور في التوليد الواحد — احذف اختيارًا لتضيف غيره.",
     vwUnavailable: 'خدمة تحليل الفيديو متوقّفة مؤقّتًا — لم تُخصم أيّ نقاط. جرّب بعد قليل.',
     vwWriteNo: 'الكتابة على الفيديو نفسه غير متاحة بعد في التطبيق — لم تُخصم أيّ نقاط. أرسل لقطة من الفيديو (أو أيّ صورة) مع الطلب نفسه وأكتبه لك عليها.',
     vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.',
@@ -2368,6 +2370,8 @@ const I18N = {
     stkVol: "Volume",
     stocksSymbolNotFound: "Symbol not found — check it (e.g. AAPL or TSLA).",
     stocksPfTitle: "My practice portfolio",
+    /* v-studio-basket-honest: رفض اختيار يجاوز حدّ الصور في «ستايل AI» (كانت الزيادة تُقصّ بصمت) — {n} = STUDIO_IMAGES_MAX */
+    studioBasketImgMax: "Up to {n} images per generation — remove a pick to add another.",
     vwUnavailable: 'Video analysis is temporarily unavailable — no points were used. Please try again shortly.',
     vwWriteNo: 'Writing on the video itself isn’t available in the app yet — no points were used. Send a screenshot from the video (or any photo) with the same request and I’ll write it on that.',
     vidCancelled: 'Video cancelled — no points were used.',
