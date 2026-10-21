@@ -240,6 +240,8 @@ function openCheckout(plan){
     // If the settings dialog is open via showModal(), it sits in the browser
     // top layer and makes the rest of the page inert — close it first.
     const sd = document.getElementById('settingsDialog');
+    // v-checkout-back: من أين فُتح الدفع — ✕ وحده يعيد الإعدادات على الباقات (ومن البوّابة يبقى سهم رجوعها إلى المحادثة)
+    window.__ckFromSettings = (sd && sd.open) ? ((sd.dataset && sd.dataset.deepLink === '1') ? 'deep' : 'page') : '';
     if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
     overlay.style.display = 'flex';
     // v-ios-nogpay (طلب عمران): زر Google Pay منتج أندرويد ولا معنى له على
@@ -256,9 +258,23 @@ function openCheckout(plan){
 }
 window.openCheckout = openCheckout;
 
-function closeCheckout(){
+/* v-checkout-back (تدقيق ١٨ أكتوبر: «إغلاق الدفع يرجعك للرئيسيّة لا إلى الباقات»): openCheckout يُغلق الإعدادات قبل النافذة
+   (طبقة showModal تجعل الصفحة خامدة)، فـ✕ كان يترك المستخدم في الرئيسيّة. closeCheckout(true) — من ✕ وحده — يعيد فتحها على
+   «الباقات والنقاط» كما يفعل omranOpenPlans. النجاح وiOS والمهلات تنادي بلا وسيط (setTimeout قد يمرّر رقمًا: === true فقط).
+   تنقّل وحده: لا سعر ولا خطّة ولا نداء دفع يتغيّر. */
+function closeCheckout(back){
   const overlay = document.getElementById('checkoutModalOverlay');
   if (overlay) overlay.style.display = 'none';
+  const from = window.__ckFromSettings;
+  window.__ckFromSettings = '';
+  if (back !== true || !from) return;
+  try {
+    const sb = document.getElementById('btnSettings');
+    if (sb) sb.click();
+    if (typeof showSettingsPage === 'function') showSettingsPage('pricingSection');
+    const sd = document.getElementById('settingsDialog');
+    if (from === 'deep' && sd && sd.dataset) sd.dataset.deepLink = '1';
+  } catch (e) { __swallow(e, 'checkout:back'); }
 }
 window.closeCheckout = closeCheckout;
 

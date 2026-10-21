@@ -1599,6 +1599,17 @@ try{
   if(settingsBtnForAcct) settingsBtnForAcct.addEventListener('click', prefillAccountFields);
 
   if(acctAvatarBtn && acctAvatarInput){
+    /* v-acct-avatar-msg (تدقيق ١٨ أكتوبر): أخطاء الرفع كانت تُكتب في #acctUsernameMsg داخل صفّ «اسم المستخدم» المطويّ فلا تُرى.
+       الآن تحت زرّ «تغيير الصورة» في «حسابي» وتحت الاسم في رأس الإعدادات (الرفع يبدأ من الاثنين)، والخانة مخفيّة وهي فارغة. */
+    const avatarMsg = (text, color) => {
+      ['#acctAvatarMsg', '#setProfileMsg'].forEach((q) => {
+        const el = $(q);
+        if(!el) return;
+        el.textContent = text || '';
+        el.style.color = color || '';
+        el.style.display = text ? '' : 'none';
+      });
+    };
     acctAvatarBtn.onclick = () => acctAvatarInput.click();
     acctAvatarInput.onchange = () => {
       const file = acctAvatarInput.files && acctAvatarInput.files[0];
@@ -1607,7 +1618,9 @@ try{
       const t2 = curT();
       const img = new Image();
       const reader = new FileReader();
+      avatarMsg('');
       reader.onload = () => {
+        img.onerror = () => avatarMsg(t2.acctGenericError, '#ef4444');
         img.onload = async () => {
           const size = 160;
           const canvas = document.createElement('canvas');
@@ -1618,10 +1631,10 @@ try{
           ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
           const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
           if(dataUrl.length > 280000){
-            acctUsernameMsg.textContent = t2.acctAvatarTooBig;
-            acctUsernameMsg.style.color = '#ef4444';
+            avatarMsg(t2.acctAvatarTooBig, '#ef4444');
             return;
           }
+          avatarMsg(t2.acctSaving, 'var(--muted,#999)');
           try {
             const token = authGet('aiapp_auth_token');
             const res = await fetch('/api/auth', {
@@ -1631,15 +1644,14 @@ try{
             });
             const data = await res.json();
             if(!res.ok || data.error){
-              acctUsernameMsg.textContent = data.error || t2.acctGenericError;
-              acctUsernameMsg.style.color = '#ef4444';
+              avatarMsg(data.error || t2.acctGenericError, '#ef4444');
               return;
             }
             localStorage.setItem('aiapp_avatar', data.avatar);
+            avatarMsg('');
             updateAvatarUI();
           } catch(e){
-            acctUsernameMsg.textContent = t2.acctNetError;
-            acctUsernameMsg.style.color = '#ef4444';
+            avatarMsg(t2.acctNetError, '#ef4444');
           }
         };
         img.src = reader.result;
@@ -1854,6 +1866,9 @@ try{
   } catch(e){ return; }
 
   const has = (v) => v ? '✅ موجود' : '❌ غائب';
+  /* v-auth-a11y (تدقيق ١٨ أكتوبر: «18T14:17:38.106Z-10-2026»): التاريخ والأوقات ووكيل المتصفّح نصوص LTR داخل خليّة RTL بلا عزل
+     فتعيد خوارزميّة الاتّجاه ترتيب أجزائها — LRI…PDI يعزلها فتُقرأ كما هي. */
+  const ltr = (v) => '\u2066' + v + '\u2069';
   const get = (k) => { try { return localStorage.getItem(k); } catch(e){ return null; } };
   const sget = (k) => { try { return sessionStorage.getItem(k); } catch(e){ return null; } };
 
@@ -1873,17 +1888,17 @@ try{
       ['التوكن في الكوكي', has(tokC)],
       ['اسم المستخدم المحفوظ', get('aiapp_username') || sget('aiapp_username') || '—'],
       ['«تذكّرني» وقت الحفظ', tokL ? 'مفعّل (حُفظ في localStorage)' : (tokS ? 'مطفأ (حُفظ في الجلسة فقط)' : '—')],
-      ['سبب آخر خروج', note ? (note.reason + '  ·  ' + note.at) : '— لم يُسجَّل بعد'],
+      ['سبب آخر خروج', note ? (note.reason + '  ·  ' + ltr(note.at)) : '— لم يُسجَّل بعد'],
       ['سلسلة آخر الأحداث', (() => {
         try {
           const t = JSON.parse(get('aiapp_session_notes') || '[]');
           if(!t.length) return '—';
-          return t.map((e, i) => (i + 1) + '. ' + e.reason + '  ·  ' + String(e.at).slice(11, 19)).join('\n');
+          return t.map((e, i) => (i + 1) + '. ' + e.reason + '  ·  ' + ltr(String(e.at).slice(11, 19))).join('\n');
         } catch(e){ return '—'; }
       })()],
       ['الحزمة التي يشغّلها متصفّحك', (bundle.split('/').pop() || '—')],
       ['عامل الخدمة', sw ? '✅ يتحكّم' : '❌ لا يتحكّم'],
-      ['المتصفّح', navigator.userAgent.slice(0, 80)],
+      ['المتصفّح', ltr(navigator.userAgent.slice(0, 80))],
     ];
 
     const box = document.createElement('div');

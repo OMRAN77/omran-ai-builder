@@ -23,7 +23,7 @@ function profile({ user, plan, avatar }){
 test('١. الرأس: الاسم والأحرف الأولى أو الصورة، وزرّ الدخول للضيف', () => {
   const m = profile({ user: 'ma', plan: 'free' });
   assert.equal(m.setProfileName.textContent, 'ma');
-  assert.equal(m.setProfileInitials.textContent, 'MA');
+  assert.equal(m.setProfileInitials.textContent, 'M', 'v-initials-one: حرف واحد كدائرة «حسابي»');
   assert.equal(m.setProfileImg.style.display, 'none');
   assert.equal(m.setProfileLogin.style.display, 'none');
   const withPic = profile({ user: 'ma', plan: 'free', avatar: 'data:image/png;base64,xx' });
@@ -82,4 +82,22 @@ test('٥. الجوّال صفحة كاملة بزرّ ✕، والحاسوب ب�
   assert.match(css, /html\.mobile-ui \.setHomeClose\{ display:flex; \}/);
   assert.match(partial, /id="setHomeClose"[^>]*data-i18n-title="closeTitle"/);
   assert.match(app05, /getElementById\('setHomeClose'\)[\s\S]{0,200}closeDialogSafe\(settingsDialog\)/);
+});
+
+test('٦. الأحرف الأولى برأس الإعدادات ودائرة «حسابي» قاعدة واحدة (v-initials-one، تدقيق ١٨ أكتوبر: «TA» مقابل «T»)', () => {
+  const a1 = read('js/app-01-boot-auth.js');
+  const src = a1.slice(a1.indexOf('  function updateAvatarUI(){'), a1.indexOf("  const authFormEl = $('#authForm');"));
+  assert.ok(src.length > 100, 'updateAvatarUI');
+  const acct = (user) => {
+    const ph = { style: {}, textContent: '' };
+    const els = { '#acctAvatarPreview': { style: {}, src: '' }, '#acctAvatarPlaceholder': ph };
+    new Function('$', 'localStorage', 'authGet', 'window', src + '; return updateAvatarUI;')(
+      (q) => els[q] || null, { getItem: () => null }, (k) => (k === 'aiapp_username' ? user : k === 'aiapp_auth_token' ? 'tok' : null), {})();
+    return ph.textContent;
+  };
+  for (const [user, ini] of [['Taryam777777', 'T'], ['عمران', 'ع'], ['𝒜lpha', '𝒜'], ['  sara ', 'S'], ['ma', 'M']]) {
+    assert.equal(profile({ user, plan: 'free' }).setProfileInitials.textContent, ini, 'الرأس: ' + user);
+    assert.equal(acct(user), ini, '«حسابي»: ' + user);
+  }
+  assert.equal(profile({ user: '', plan: 'guest' }).setProfileInitials.textContent, '?', 'الضيف كما كان');
 });

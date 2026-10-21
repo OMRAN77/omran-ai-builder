@@ -168,6 +168,22 @@ test('٥. ما تكتبه الواجهة في «حسابي» بنصّ ثابت: 
     const m = acct.match(new RegExp('id="' + id + '"[^>]*>([^<]*)<'));
     assert.ok(m && m[1].trim() && !EMOJI.test(m[1]), id + ': ' + (m && m[1]));
   }
+  // v-acct-referral-i18n (تدقيق ١٨ أكتوبر): الأزرار الثلاثة كانت عربيّة ثابتة في كلّ اللغات — صارت بمفاتيح بالـ١٤ لغة
+  const D = dicts();
+  for (const [id, key] of [['acctShareBtn', 'acctShareBtn'], ['acctQrBtn', 'acctQrOpen'], ['acctQrDl', 'acctQrDownload']]) {
+    const m = acct.match(new RegExp('<(?:button|a)[^>]*id="' + id + '"[^>]*>([^<]*)<'));
+    assert.ok(m, id);
+    assert.ok(m[0].includes('data-i18n="' + key + '"'), id + ' بمفتاح ' + key);
+    assert.equal(m[1], D.ar[key], id + ': النصّ العربيّ الافتراضيّ هو قيمة المفتاح');
+  }
+  for (const key of ['acctShareBtn', 'acctQrOpen', 'acctQrClose', 'acctQrDownload', 'acctShareText', 'acctCopyPrompt']) {
+    for (const [l, d] of Object.entries(D)) {
+      assert.ok(d[key] && String(d[key]).trim(), l + ': ' + key);
+      assert.ok(!EMOJI.test(d[key]), l + ': ' + key + ' بلا رمز');
+    }
+    assert.doesNotMatch(D.en[key], /[؀-ۿ]/, 'en: ' + key);
+    for (const l of LANGS) assert.ok(read('i18n/' + l + '.js').includes('"' + key + '"'), l + ': ' + key + ' مترجَم لا احتياط إنجليزيّ');
+  }
 });
 
 test('٦. كسر الكاش: وسم الإعدادات ٦٩٣ ووسم ملفّات اللغات ٧٢٦', () => {

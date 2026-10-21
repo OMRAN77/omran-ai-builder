@@ -105,7 +105,7 @@ function makeDom() {
   function mark(e, on) { e.attached = on; e.children.forEach((c) => mark(c, on)); }
   function el(tag) {
     const e = {
-      tagName: String(tag).toUpperCase(), id: '', style: { cssText: '', display: '' }, textContent: '', children: [], parentNode: null, attached: false, attrs: {}, listeners: {},
+      tagName: String(tag).toUpperCase(), id: '', style: { cssText: '', display: '' }, textContent: '', children: [], parentNode: null, attached: false, attrs: {}, listeners: {}, dataset: {},
       setAttribute(k, v) { this.attrs[k] = String(v); },
       appendChild(c) { c.parentNode = this; this.children.push(c); mark(c, this.attached); return c; },
       insertBefore(c, ref) { c.parentNode = this; const i = this.children.indexOf(ref); this.children.splice(i < 0 ? this.children.length : i, 0, c); mark(c, this.attached); return c; },
@@ -320,4 +320,37 @@ test('١١. النصوص السبعة بالـ١٤ لغة بمواضعها {plan
   assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=766'"));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.omranOpenPlans = openPlans;') && bundle.includes("if(c === 'unavailable') return t('vwUnavailable');"), 'الحزمة مبنيّة');
+});
+
+test('١٢. سهم الرجوع في الباقات المفتوحة من البوّابة يغلق الإعدادات إلى المحادثة، والمفتوحة باليد ترجع للرئيسيّة (v-plans-deeplink)', () => {
+  const g = gate();
+  const dlg = g.doc.getElementById('settingsDialog');
+  const back = g.doc.createElement('button'); back.id = 'settingsPageBackBtn'; dlg.appendChild(back);
+  // سهم الرجوع كما في app-05 (المقطع نفسه) فوق الجزء app-33 في السياق نفسه
+  const a05 = read('js/app-05-ui.js');
+  const s = a05.indexOf("(function(){\n  const backBtn = document.getElementById('settingsPageBackBtn');");
+  const e = a05.indexOf('})();', s);
+  assert.ok(s > 0 && e > s, 'معالج سهم الرجوع بحدوده');
+  Object.assign(g.ctx, {
+    settingsDialog: dlg,
+    showSettingsHome: () => g.log.push('home'),
+    closeDialogSafe: (d) => { g.log.push('closed'); d.dispatch('close'); },
+  });
+  vm.runInContext(a05.slice(s, e + 5), g.ctx);
+  assert.equal(typeof back.onclick, 'function');
+
+  g.ctx.window.omranOpenPlans('limit', 'chat');
+  assert.deepEqual(g.log, ['settings', 'page:pricingSection', 'tab:chat']);
+  assert.equal(dlg.dataset.deepLink, '1', 'البوّابة تعلّم الفتح');
+  back.click();
+  assert.deepEqual(g.log.slice(3), ['closed'], 'الرجوع يغلق الإعدادات لا يفتح رئيسيّتها');
+  assert.equal(dlg.dataset.deepLink, undefined, 'الإغلاق يمسح العلم');
+
+  // الفتح باليد ثمّ صفحة ثمّ الرجوع: الرئيسيّة كما كانت
+  g.log.length = 0;
+  dlg.dataset.deepLink = '1'; // علم باقٍ من فتح سابق لم يُغلق
+  g.doc.getElementById('btnSettings').click();
+  assert.equal(dlg.dataset.deepLink, undefined, 'زرّ الإعدادات يمسح العلم');
+  back.click();
+  assert.deepEqual(g.log, ['settings', 'home']);
 });

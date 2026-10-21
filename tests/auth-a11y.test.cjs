@@ -131,3 +131,45 @@ test('٤. تلميح زرّ Google بلغة الواجهة: data-i18n-title با
   in14('authGoogleBtn');
 });
 
+test('٥. العربيّ: النصّ الدليليّ لخانة الاسم يمينًا (dir=auto للمكتوب)، وحشوة كلمة المرور في جهة الزرّ', () => {
+  const user = tagOf('authUsername');
+  assert.ok(user.includes('dir="auto"'), 'المكتوب يأخذ اتّجاهه');
+  assert.ok(/<style[^>]*>[^<]*html\[dir="rtl"\] #authUsername:placeholder-shown\{direction:rtl\}[^<]*<\/style>/.test(H), 'قاعدة placeholder-shown للعربيّ');
+  const pass = tagOf('authPassword');
+  assert.ok(pass.includes('padding-block:0; padding-inline:14px 44px;'), 'حشوة منطقيّة');
+  assert.doesNotMatch(pass, /padding:\s*0 44px 0 14px/, 'لا حشوة فيزيائيّة');
+  assert.ok(tagOf('authTogglePassBtn').includes('inset-inline-end:4px'), 'الزرّ في نهاية السطر المنطقيّة');
+});
+
+test('٦. لوحة ?diag=1: تاريخ آخر خروج وأوقات السلسلة ووكيل المتصفّح معزولة LRI…PDI فلا تُقلب داخل الخليّة العربيّة', () => {
+  const s = A01.indexOf('(function sessionDiagnostics(){');
+  const e = A01.indexOf('\n})();', s);
+  assert.ok(s > 0 && e > s, 'sessionDiagnostics بحدوده');
+  const AT = '2026-10-18T14:17:38.106Z';
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+  const store = { aiapp_session_note: JSON.stringify({ reason: 'لا-توكن', at: AT }), aiapp_session_notes: JSON.stringify([{ reason: 'logout-click', at: AT }]) };
+  const timers = [];
+  let box = null;
+  const ctx = {
+    location: { search: '?diag=1', origin: 'https://omran.test' },
+    localStorage: { getItem: (k) => (k in store ? store[k] : null) },
+    sessionStorage: { getItem: () => null },
+    navigator: { userAgent: UA, serviceWorker: null },
+    document: {
+      readyState: 'complete', cookie: '', querySelector: () => null, getElementById: () => null,
+      createElement: () => ({ style: {}, setAttribute() {}, innerHTML: '' }),
+      body: { appendChild: (b) => { box = b; } },
+    },
+    window: { addEventListener() {} },
+    setTimeout: (f) => { timers.push(f); },
+    JSON, String,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(A01.slice(s, e + '\n})();'.length), ctx);
+  timers.forEach((f) => f());
+  assert.ok(box, 'اللوحة رُسمت');
+  const iso = (s) => '⁦' + s + '⁩'; // LRI … PDI
+  assert.ok(box.innerHTML.includes(iso(AT)), 'تاريخ آخر خروج معزول');
+  assert.ok(box.innerHTML.includes(iso('14:17:38')), 'وقت السلسلة معزول');
+  assert.ok(box.innerHTML.includes(iso(UA.slice(0, 80))), 'وكيل المتصفّح معزول');
+});
