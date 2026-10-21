@@ -37,14 +37,15 @@ function fakeDeps() {
 test('١. التذكرة تُسجَّل لمن خُصم منه وحده، والمالك (بلا خصم) بلا تذكرة', async () => {
   const kv = fakeKv();
   assert.equal(await job.rememberVideoJob('op/123', { username: 'sara', cost: 275, locked: true }, { kv }), true);
-  assert.equal(kv.m.size, 1);
-  const stored = JSON.parse([...kv.m.values()][0]);
+  const tickets = () => [...kv.m.keys()].filter((k) => !k.startsWith('vidjob:open:')); // v-video-sweep: وفهرس التذاكر المفتوحة بجانبها
+  assert.equal(tickets().length, 1);
+  const stored = JSON.parse(kv.m.get(tickets()[0]));
   assert.deepEqual(stored, { u: 'sara', c: 275, l: true, q: false });
   // المالك: chargedUser = null ⇒ لا تذكرة. وكذلك تكلفة صفر أو معرّف فارغ.
   assert.equal(await job.rememberVideoJob('op/9', { username: null, cost: 275 }, { kv }), false);
   assert.equal(await job.rememberVideoJob('op/9', { username: 'sara', cost: 0 }, { kv }), false);
   assert.equal(await job.rememberVideoJob('', { username: 'sara', cost: 275 }, { kv }), false);
-  assert.equal(kv.m.size, 1, 'لا مفتاح زائد');
+  assert.equal(tickets().length, 1, 'لا تذكرة زائدة');
 });
 
 test('٢. الفشل يردّ الخصم ويفكّ القفل ويعيد حصّة اليوم — والنجاح لا يردّ شيئًا', async () => {
