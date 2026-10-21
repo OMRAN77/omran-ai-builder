@@ -271,6 +271,12 @@ try{
        وإلّا رجع نموذج الاسترجاع بزرّ «دخول» وعنوان بلغة الاحتياط. */
     submitBtn.setAttribute('data-i18n', m === 'resetToken' ? 'authSubmitReset' : m === 'forgotEmail' ? 'authSubmitForgotEmail' : m === 'signup' ? 'authSubmitSignup' : 'authSubmitLogin');
     passInput.setAttribute('data-i18n-placeholder', m === 'resetToken' ? 'authNewPasswordLabel' : 'authPasswordLabel');
+    /* v-auth-a11y (تدقيق ١٨ أكتوبر): وصف قارئ الشاشة كان عربيًّا ثابتًا في كلّ اللغات — يتبع الوضع ولغة الواجهة كالنصّ الدليليّ،
+       ومفتاحه [aria-label] يتبع الوضع أيضًا فيكتبه applyLanguage صحيحًا عند وصول ملفّ اللغة الكسول. */
+    [[userInput, (m === 'login' || m === 'forgotEmail') ? 'authIdPlaceholder' : 'authUsernameLabel'], [passInput, m === 'resetToken' ? 'authNewPasswordLabel' : 'authPasswordLabel']].forEach(function(p){
+      p[0].setAttribute('data-i18n', '[aria-label]' + p[1]);
+      if(t[p[1]]) p[0].setAttribute('aria-label', t[p[1]]);
+    });
     if(heading){ if(headText) heading.setAttribute('data-i18n', m === 'signup' ? 'authCreateAccount' : 'authForgotLink'); else heading.removeAttribute('data-i18n'); }
     if(m === 'forgotEmail'){
       tabsRow.style.display = 'none';
@@ -314,6 +320,12 @@ try{
       const showing = passInput.type === 'text';
       passInput.type = showing ? 'password' : 'text';
       togglePassBtn.innerHTML = showing ? EYE_SVG : EYE_OFF_SVG;
+      /* v-auth-a11y: كان بلا وصف ولا حالة — الوصف بلغة الواجهة ومفتاحه وaria-pressed يتبعون الحالة */
+      const k = showing ? 'authShowPass' : 'authHidePass';
+      togglePassBtn.setAttribute('data-i18n', '[aria-label]' + k);
+      const lbl = curT()[k];
+      if(lbl) togglePassBtn.setAttribute('aria-label', lbl);
+      togglePassBtn.setAttribute('aria-pressed', showing ? 'false' : 'true');
     };
   }
 

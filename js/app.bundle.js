@@ -409,6 +409,12 @@ try{
        وإلّا رجع نموذج الاسترجاع بزرّ «دخول» وعنوان بلغة الاحتياط. */
     submitBtn.setAttribute('data-i18n', m === 'resetToken' ? 'authSubmitReset' : m === 'forgotEmail' ? 'authSubmitForgotEmail' : m === 'signup' ? 'authSubmitSignup' : 'authSubmitLogin');
     passInput.setAttribute('data-i18n-placeholder', m === 'resetToken' ? 'authNewPasswordLabel' : 'authPasswordLabel');
+    /* v-auth-a11y (تدقيق ١٨ أكتوبر): وصف قارئ الشاشة كان عربيًّا ثابتًا في كلّ اللغات — يتبع الوضع ولغة الواجهة كالنصّ الدليليّ،
+       ومفتاحه [aria-label] يتبع الوضع أيضًا فيكتبه applyLanguage صحيحًا عند وصول ملفّ اللغة الكسول. */
+    [[userInput, (m === 'login' || m === 'forgotEmail') ? 'authIdPlaceholder' : 'authUsernameLabel'], [passInput, m === 'resetToken' ? 'authNewPasswordLabel' : 'authPasswordLabel']].forEach(function(p){
+      p[0].setAttribute('data-i18n', '[aria-label]' + p[1]);
+      if(t[p[1]]) p[0].setAttribute('aria-label', t[p[1]]);
+    });
     if(heading){ if(headText) heading.setAttribute('data-i18n', m === 'signup' ? 'authCreateAccount' : 'authForgotLink'); else heading.removeAttribute('data-i18n'); }
     if(m === 'forgotEmail'){
       tabsRow.style.display = 'none';
@@ -452,6 +458,12 @@ try{
       const showing = passInput.type === 'text';
       passInput.type = showing ? 'password' : 'text';
       togglePassBtn.innerHTML = showing ? EYE_SVG : EYE_OFF_SVG;
+      /* v-auth-a11y: كان بلا وصف ولا حالة — الوصف بلغة الواجهة ومفتاحه وaria-pressed يتبعون الحالة */
+      const k = showing ? 'authShowPass' : 'authHidePass';
+      togglePassBtn.setAttribute('data-i18n', '[aria-label]' + k);
+      const lbl = curT()[k];
+      if(lbl) togglePassBtn.setAttribute('aria-label', lbl);
+      togglePassBtn.setAttribute('aria-pressed', showing ? 'false' : 'true');
     };
   }
 
@@ -14063,19 +14075,30 @@ window.acctToggleQr = function() {
   var q = document.getElementById('acctQrBox');
   if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
   if (q && q.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
+  /* v-acct-referral-i18n (تدقيق ١٨ أكتوبر): الزرّ كان يبقى «فتح الباركود» بعد الفتح — نصّه ومفتاحه يتبعان الحالة،
+     والمفتاح معه فيكتبه applyLanguage بالحالة نفسها عند تبديل اللغة (درس v-reset-link). */
+  var b = document.getElementById('acctQrBtn');
+  if (q && b) {
+    var k = q.style.display === 'block' ? 'acctQrClose' : 'acctQrOpen';
+    b.setAttribute('data-i18n', k);
+    b.textContent = t(k);
+  }
 };
+/* v-acct-referral-i18n (تدقيق ١٨ أكتوبر): «إرسال ومشاركة» كان يُظهر alert عربيًّا (ونصّ المشاركة وprompt عربيّان) في كلّ اللغات.
+   النصوص بمفاتيح، واسم التطبيق من pageTitle (عمران AI / Omran AI)، والنسخ يومض على الزرّ نفسه كزرّ «نسخ» — التوست يقع
+   تحت طبقة نافذة الإعدادات فلا يُرى. */
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
   var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
-  var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
   if (navigator.share) {
-    try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+    try { await navigator.share({ title: String(t('pageTitle') || '').split(' — ')[0] || 'Omran AI', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
   } else {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      alert('تم نسخ رابط التطبيق والمشاركة بنجاح ✅');
+      var b = document.getElementById('acctShareBtn');
+      if (b) { b.textContent = t('acctReferralCopied'); setTimeout(function() { b.textContent = t('acctShareBtn'); }, 1500); }
     } catch (e2) {
-      prompt('انسخ الرابط:', shareUrl);
+      prompt(t('acctCopyPrompt'), shareUrl);
     }
   }
 };

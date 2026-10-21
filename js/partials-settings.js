@@ -109,13 +109,13 @@
         <button type="button" class="btn" id="acctReferralCopyBtn" style="width:auto; white-space:nowrap;" data-i18n="acctCopyBtn">نسخ</button>
       </div>
       <div style="display:flex; gap:8px; margin-top:8px;">
-        <button type="button" class="btn" id="acctShareBtn" onclick="acctShareApp()" style="flex:1; background:rgba(212,175,55,.12); border:1px solid rgba(212,175,55,.45); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;">إرسال ومشاركة</button>
-        <button type="button" class="btn" id="acctQrBtn" onclick="acctToggleQr()" style="flex:1; background:none; border:1px solid rgba(255,255,255,.2); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;">فتح الباركود</button>
+        <button type="button" class="btn" id="acctShareBtn" onclick="acctShareApp()" style="flex:1; background:rgba(212,175,55,.12); border:1px solid rgba(212,175,55,.45); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;" data-i18n="acctShareBtn">إرسال ومشاركة</button>
+        <button type="button" class="btn" id="acctQrBtn" onclick="acctToggleQr()" style="flex:1; background:none; border:1px solid rgba(255,255,255,.2); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;" data-i18n="acctQrOpen">فتح الباركود</button>
       </div>
       <div id="acctQrBox" style="display:none; margin-top:12px; padding:12px; background:rgba(0,0,0,.35); border-radius:var(--r-2); text-align:center; border:1px solid rgba(212,175,55,.25);">
         <canvas id="acctQrCanvas" aria-label="QR" style="width:180px; height:180px; border-radius:12px; background:#fff; padding:6px; box-shadow:0 4px 16px rgba(0,0,0,.4); display:inline-block;"></canvas>
         <div style="display:flex; gap:8px; margin-top:10px; justify-content:center;">
-          <a id="acctQrDl" download="omran-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;">تحميل الباركود</a>
+          <a id="acctQrDl" download="omran-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;" data-i18n="acctQrDownload">تحميل الباركود</a>
         </div>
       </div>
       <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية</div>
@@ -865,6 +865,14 @@
     var q = document.getElementById('acctQrBox');
     if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
     if (q && q.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
+    // v-acct-referral-i18n: نصّ الزرّ ومفتاحه يتبعان الحالة (كان «فتح الباركود» بعد الفتح أيضًا)
+    var b = document.getElementById('acctQrBtn');
+    if (q && b) {
+      var k = q.style.display === 'block' ? 'acctQrClose' : 'acctQrOpen';
+      b.setAttribute('data-i18n', k);
+      var v = (typeof window.t === 'function') ? window.t(k) : '';
+      if (v && v !== k) b.textContent = v;
+    }
   };
   // v-qr-one: باركود واحد لكلّ الأجهزة برابط دعوة صاحب الحساب — /app يرسل كلّ جهاز إلى تطبيقه (download.html).
   // يُرسم هنا بـjs/qr.js (بلا شبكة) ويُعاد فقط إن تغيّر الرابط؛ «تحميل الباركود» ينزّل الصورة المرسومة نفسها.
@@ -895,18 +903,21 @@
     sc.onerror = function() { if (sc.parentNode) sc.parentNode.removeChild(sc); }; // الفتح التالي يعيد المحاولة بوسم واحد
     document.head.appendChild(sc);
   };
+  // v-acct-referral-i18n: نصّ المشاركة وprompt بمفاتيح، والنسخ يومض على الزرّ نفسه بدل alert عربيّ في كلّ اللغات
   window.acctShareApp = async function() {
+    var tt = function(k) { var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? String(v) : ''; };
     var u = document.getElementById('acctReferralLink');
     var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
-    var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
     if (navigator.share) {
-      try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+      try { await navigator.share({ title: tt('pageTitle').split(' — ')[0] || 'Omran AI', text: tt('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
-        alert('تم نسخ رابط التطبيق والمشاركة بنجاح ✅');
+        var b = document.getElementById('acctShareBtn');
+        var done = tt('acctReferralCopied');
+        if (b && done) { b.textContent = done; setTimeout(function() { b.textContent = tt('acctShareBtn') || b.textContent; }, 1500); }
       } catch (e2) {
-        prompt('انسخ الرابط:', shareUrl);
+        prompt(tt('acctCopyPrompt'), shareUrl);
       }
     }
   };

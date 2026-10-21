@@ -3354,19 +3354,30 @@ window.acctToggleQr = function() {
   var q = document.getElementById('acctQrBox');
   if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
   if (q && q.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
+  /* v-acct-referral-i18n (تدقيق ١٨ أكتوبر): الزرّ كان يبقى «فتح الباركود» بعد الفتح — نصّه ومفتاحه يتبعان الحالة،
+     والمفتاح معه فيكتبه applyLanguage بالحالة نفسها عند تبديل اللغة (درس v-reset-link). */
+  var b = document.getElementById('acctQrBtn');
+  if (q && b) {
+    var k = q.style.display === 'block' ? 'acctQrClose' : 'acctQrOpen';
+    b.setAttribute('data-i18n', k);
+    b.textContent = t(k);
+  }
 };
+/* v-acct-referral-i18n (تدقيق ١٨ أكتوبر): «إرسال ومشاركة» كان يُظهر alert عربيًّا (ونصّ المشاركة وprompt عربيّان) في كلّ اللغات.
+   النصوص بمفاتيح، واسم التطبيق من pageTitle (عمران AI / Omran AI)، والنسخ يومض على الزرّ نفسه كزرّ «نسخ» — التوست يقع
+   تحت طبقة نافذة الإعدادات فلا يُرى. */
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
   var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
-  var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
   if (navigator.share) {
-    try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+    try { await navigator.share({ title: String(t('pageTitle') || '').split(' — ')[0] || 'Omran AI', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
   } else {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      alert('تم نسخ رابط التطبيق والمشاركة بنجاح ✅');
+      var b = document.getElementById('acctShareBtn');
+      if (b) { b.textContent = t('acctReferralCopied'); setTimeout(function() { b.textContent = t('acctShareBtn'); }, 1500); }
     } catch (e2) {
-      prompt('انسخ الرابط:', shareUrl);
+      prompt(t('acctCopyPrompt'), shareUrl);
     }
   }
 };

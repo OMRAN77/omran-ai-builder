@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مشروع مشترك — Omran AI Builder</title>
+<title>مشروع مشترك — OM Ai</title>
 <!-- v-made-with-badge: معاينة الرابط في واتساب وغيره تعرّف بالمنصّة -->
 <meta name="description" content="مشروع صُنع بـ OM Ai — سوّ موقعك أو تطبيقك بالذكاء الاصطناعي ببلاش.">
 <meta property="og:type" content="website">
@@ -46,36 +46,82 @@
       <h1 id="pTitle">جارِ التحميل...</h1>
       <span class="sub" id="pMeta"></span>
     </div>
-    <a class="brand" href="/">⚡ Omran AI Builder</a>
+    <a class="brand" href="/">OM Ai</a>
   </div>
   <div id="frameWrap">
     <div id="state">جارِ تحميل المشروع...</div>
     <iframe id="frame" sandbox="allow-scripts" style="display:none;"></iframe>
     <div id="chatWrap"><div id="chatInner"></div></div>
   </div>
-  <div id="omMadeWith" dir="rtl"><a href="/?ref=badge" target="_top" rel="noopener"><span>صُنع بـ</span><b dir="ltr">OM Ai</b><span class="cta">سوّ موقعك ببلاش ←</span></a><button type="button" aria-label="إخفاء" title="إخفاء" onclick="this.parentNode.remove()">×</button></div>
+  <div id="omMadeWith" dir="rtl"><a href="/?ref=badge" target="_top" rel="noopener"><span class="mw">صُنع بـ</span><b dir="ltr">OM Ai</b><span class="cta">سوّ موقعك ببلاش ←</span></a><button type="button" aria-label="إخفاء" title="إخفاء" onclick="this.parentNode.remove()">×</button></div>
 
 <script>
 (function(){
+  /* v-share-pages-i18n (تدقيق ١٨ أكتوبر): الصفحة كانت عربيّة لكلّ لغة («بواسطة زائر»، تاريخ ar-EG، الحالات والشارة) وبلا lang/dir.
+     الآن نصوصها باللغات الـ١٤، واللغة من aiapp_lang (الأصل نفسه) ثمّ لغة المتصفّح ثمّ العربيّة. الشارة العربيّة في HTML تبقى
+     افتراضًا (الصفحة قبل السكربت) ويُبدَّل نصّها هنا. */
+  const P_STR = {
+    ar: { loading:'جارِ التحميل...', loadingProject:'جارِ تحميل المشروع...', noId:'لا يوجد معرّف مشروع بالرابط.', notFound:'لم يتم العثور على هذا المشروع، أو تم حذفه.', empty:'هذا المشروع فارغ.', untitled:'مشروع بدون اسم', sharedProject:'مشروع مشترك', by:'بواسطة', guest:'زائر', dateLocale:'ar-EG', madeWith:'صُنع بـ', cta:'سوّ موقعك ببلاش ←', hide:'إخفاء' },
+    en: { loading:'Loading...', loadingProject:'Loading the project...', noId:'No project ID in the link.', notFound:'This project was not found, or it was deleted.', empty:'This project is empty.', untitled:'Untitled project', sharedProject:'Shared project', by:'By', guest:'Guest', dateLocale:'en-US', madeWith:'Made with', cta:'Build your site free →', hide:'Hide' },
+    fr: { loading:'Chargement...', loadingProject:'Chargement du projet...', noId:'Aucun identifiant de projet dans le lien.', notFound:'Ce projet est introuvable ou a été supprimé.', empty:'Ce projet est vide.', untitled:'Projet sans titre', sharedProject:'Projet partagé', by:'Par', guest:'Invité', dateLocale:'fr-FR', madeWith:'Créé avec', cta:'Créez votre site gratuitement →', hide:'Masquer' },
+    es: { loading:'Cargando...', loadingProject:'Cargando el proyecto...', noId:'No hay ID de proyecto en el enlace.', notFound:'No se encontró este proyecto o fue eliminado.', empty:'Este proyecto está vacío.', untitled:'Proyecto sin título', sharedProject:'Proyecto compartido', by:'Por', guest:'Invitado', dateLocale:'es-ES', madeWith:'Hecho con', cta:'Crea tu sitio gratis →', hide:'Ocultar' },
+    hi: { loading:'लोड हो रहा है...', loadingProject:'परियोजना लोड हो रही है...', noId:'लिंक में कोई परियोजना आईडी नहीं है।', notFound:'यह परियोजना नहीं मिली, या हटा दी गई है।', empty:'यह परियोजना खाली है।', untitled:'बिना शीर्षक की परियोजना', sharedProject:'साझा परियोजना', by:'द्वारा', guest:'अतिथि', dateLocale:'hi-IN', madeWith:'निर्मित:', cta:'मुफ़्त में अपनी साइट बनाएँ →', hide:'छिपाएँ' },
+    ur: { loading:'لوڈ ہو رہا ہے...', loadingProject:'پروجیکٹ لوڈ ہو رہا ہے...', noId:'لنک میں پروجیکٹ کی شناخت موجود نہیں۔', notFound:'یہ پروجیکٹ نہیں ملا، یا حذف کر دیا گیا ہے۔', empty:'یہ پروجیکٹ خالی ہے۔', untitled:'بلا عنوان پروجیکٹ', sharedProject:'مشترکہ پروجیکٹ', by:'بذریعہ', guest:'مہمان', dateLocale:'ur-PK', madeWith:'تیار کردہ:', cta:'اپنی سائٹ مفت بنائیں ←', hide:'چھپائیں' },
+    bn: { loading:'লোড হচ্ছে...', loadingProject:'প্রকল্প লোড হচ্ছে...', noId:'লিঙ্কে কোনো প্রকল্প আইডি নেই।', notFound:'এই প্রকল্পটি পাওয়া যায়নি, অথবা মুছে ফেলা হয়েছে।', empty:'এই প্রকল্পটি খালি।', untitled:'শিরোনামহীন প্রকল্প', sharedProject:'শেয়ার করা প্রকল্প', by:'দ্বারা', guest:'অতিথি', dateLocale:'bn-BD', madeWith:'তৈরি:', cta:'বিনামূল্যে আপনার সাইট বানান →', hide:'লুকান' },
+    ne: { loading:'लोड हुँदैछ...', loadingProject:'परियोजना लोड हुँदैछ...', noId:'लिङ्कमा परियोजना आईडी छैन।', notFound:'यो परियोजना भेटिएन, वा मेटाइएको छ।', empty:'यो परियोजना खाली छ।', untitled:'शीर्षक बिनाको परियोजना', sharedProject:'साझा परियोजना', by:'द्वारा', guest:'पाहुना', dateLocale:'ne-NP', madeWith:'निर्मित:', cta:'निःशुल्क आफ्नो साइट बनाउनुहोस् →', hide:'लुकाउनुहोस्' },
+    fil: { loading:'Naglo-load...', loadingProject:'Nilo-load ang proyekto...', noId:'Walang project ID sa link.', notFound:'Hindi nahanap ang proyektong ito, o nabura na.', empty:'Walang laman ang proyektong ito.', untitled:'Proyektong walang pamagat', sharedProject:'Ibinahaging proyekto', by:'Ni', guest:'Bisita', dateLocale:'fil-PH', madeWith:'Gawa gamit ang', cta:'Gumawa ng site mo nang libre →', hide:'Itago' },
+    id: { loading:'Memuat...', loadingProject:'Memuat proyek...', noId:'Tidak ada ID proyek di tautan.', notFound:'Proyek ini tidak ditemukan, atau telah dihapus.', empty:'Proyek ini kosong.', untitled:'Proyek tanpa judul', sharedProject:'Proyek bersama', by:'Oleh', guest:'Tamu', dateLocale:'id-ID', madeWith:'Dibuat dengan', cta:'Buat situsmu gratis →', hide:'Sembunyikan' },
+    ml: { loading:'ലോഡ് ചെയ്യുന്നു...', loadingProject:'പ്രോജക്റ്റ് ലോഡ് ചെയ്യുന്നു...', noId:'ലിങ്കിൽ പ്രോജക്റ്റ് ഐഡി ഇല്ല.', notFound:'ഈ പ്രോജക്റ്റ് കണ്ടെത്തിയില്ല, അല്ലെങ്കിൽ ഇല്ലാതാക്കി.', empty:'ഈ പ്രോജക്റ്റ് ശൂന്യമാണ്.', untitled:'പേരില്ലാത്ത പ്രോജക്റ്റ്', sharedProject:'പങ്കിട്ട പ്രോജക്റ്റ്', by:'സൃഷ്ടിച്ചത്:', guest:'അതിഥി', dateLocale:'ml-IN', madeWith:'നിർമ്മിച്ചത്:', cta:'നിങ്ങളുടെ സൈറ്റ് സൗജന്യമായി നിർമ്മിക്കൂ →', hide:'മറയ്ക്കുക' },
+    ru: { loading:'Загрузка...', loadingProject:'Загрузка проекта...', noId:'В ссылке нет идентификатора проекта.', notFound:'Проект не найден или был удалён.', empty:'Этот проект пуст.', untitled:'Проект без названия', sharedProject:'Общий проект', by:'Автор:', guest:'Гость', dateLocale:'ru-RU', madeWith:'Сделано в', cta:'Создай свой сайт бесплатно →', hide:'Скрыть' },
+    tr: { loading:'Yükleniyor...', loadingProject:'Proje yükleniyor...', noId:'Bağlantıda proje kimliği yok.', notFound:'Bu proje bulunamadı veya silindi.', empty:'Bu proje boş.', untitled:'Adsız proje', sharedProject:'Paylaşılan proje', by:'Yapan:', guest:'Misafir', dateLocale:'tr-TR', madeWith:'Yapım:', cta:'Siteni ücretsiz yap →', hide:'Gizle' },
+    zh: { loading:'加载中...', loadingProject:'正在加载项目...', noId:'链接中没有项目 ID。', notFound:'未找到此项目，或已被删除。', empty:'此项目为空。', untitled:'未命名项目', sharedProject:'共享项目', by:'作者：', guest:'访客', dateLocale:'zh-CN', madeWith:'使用', cta:'免费创建你的网站 →', hide:'隐藏' },
+  };
+  const pickLang = (c) => { const b = String(c || '').toLowerCase().split(/[-_]/)[0]; const k = (b === 'tl') ? 'fil' : b; return P_STR[k] ? k : ''; };
+  let lang = '';
+  try { lang = pickLang(localStorage.getItem('aiapp_lang')); } catch(e){ lang = ''; /* تخزين محجوب — لغة المتصفّح */ }
+  if(!lang) lang = pickLang(navigator.language) || 'ar';
+  const S = P_STR[lang];
+  const dir = (lang === 'ar' || lang === 'ur') ? 'rtl' : 'ltr';
+  document.documentElement.lang = lang;
+  document.documentElement.dir = dir;
+
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
   const stateEl = document.getElementById('state');
   const frame = document.getElementById('frame');
   const titleEl = document.getElementById('pTitle');
   const metaEl = document.getElementById('pMeta');
+  titleEl.dir = 'auto'; /* العنوان يكتبه الناشر بأيّ لغة — اتّجاهه من نصّه */
+  titleEl.textContent = S.loading;
+  stateEl.textContent = S.loadingProject;
+  const badge = document.getElementById('omMadeWith');
+  if(badge){
+    badge.dir = dir;
+    const mw = badge.querySelector('.mw'), cta = badge.querySelector('.cta'), hideBtn = badge.querySelector('button');
+    if(mw) mw.textContent = S.madeWith;
+    if(cta) cta.textContent = S.cta;
+    if(hideBtn){ hideBtn.setAttribute('aria-label', S.hide); hideBtn.setAttribute('title', S.hide); }
+  }
 
   if(!id){
-    stateEl.textContent = 'لا يوجد معرّف مشروع بالرابط.';
+    stateEl.textContent = S.noId;
     return;
   }
+
+  /* العنوان المترجَم من ذاكرة «استكشف» المحلّيّة (explore_title_cache) إن تُرجم هناك — بلا أيّ نداء ترجمة جديد من هنا */
+  let cachedTitle = '';
+  try { cachedTitle = (JSON.parse(localStorage.getItem('explore_title_cache') || '{}') || {})[id + '_' + lang] || ''; }
+  catch(e){ cachedTitle = ''; /* ذاكرة تالفة أو تخزين محجوب — العنوان الأصليّ */ }
 
   fetch('/api/share?id=' + encodeURIComponent(id))
     .then(r => r.ok ? r.json() : Promise.reject(r.status))
     .then(data => {
-      titleEl.textContent = data.title || 'مشروع بدون اسم';
+      const shownTitle = (data.title && cachedTitle) || data.title || '';
+      titleEl.textContent = shownTitle || S.untitled;
       const d = new Date(data.createdAt || Date.now());
-      metaEl.textContent = 'بواسطة ' + (data.username || 'زائر') + ' — ' + d.toLocaleDateString('ar-EG');
-      document.title = (data.title || 'مشروع مشترك') + ' — Omran AI Builder';
+      const author = (data.username && data.username !== 'زائر') ? data.username : S.guest; /* سجلّ قديم بالاسم الافتراضيّ */
+      metaEl.textContent = S.by + ' ' + author + ' — ' + d.toLocaleDateString(S.dateLocale);
+      document.title = (shownTitle || S.sharedProject) + ' — OM Ai';
       /* v-share-chat: كود → معاينة التطبيق كما كان؛ بلا كود → عرض المحادثة فقاعات. */
       if(data.code && String(data.code).trim()){
         frame.srcdoc = data.code;
@@ -96,13 +142,13 @@
         });
         document.getElementById('chatWrap').style.display = 'block';
       } else {
-        stateEl.textContent = 'هذا المشروع فارغ.';
+        stateEl.textContent = S.empty;
         return;
       }
       stateEl.style.display = 'none';
     })
     .catch(() => {
-      stateEl.textContent = 'لم يتم العثور على هذا المشروع، أو تم حذفه.';
+      stateEl.textContent = S.notFound;
     });
 })();
 </script>
