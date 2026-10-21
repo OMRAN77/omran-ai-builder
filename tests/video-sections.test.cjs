@@ -16,7 +16,8 @@ const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur'
 
 test('الأقسام: الترندات أوّلًا ثمّ كلّ وضع، والتبويب يبدّل الوضع ويخفي الاستوديو في الترندات', () => {
   assert.ok(js.includes("var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor','clean']"));
-  assert.ok(js.includes("var tab='trend'") && js.includes("if(open&&!wasOpen){ tab='trend'; }"));
+  /* v-vmk-chat-tab: الفتح على الترندات كلّ مرّة، إلّا فتحًا من المحادثة بنصّ أو صورة (علامة data-vmk-tab تُقرأ مرّة) — tests/vmk-stale-status ٨ */
+  assert.ok(js.includes("var tab='trend'") && js.includes("if(open&&!wasOpen){ tab=(want&&tabsFor().indexOf(want)>=0)?want:'trend'; }"));
   assert.ok(js.includes("sel.value=v; sel.dispatchEvent(new Event('change'))"));
   const css = read('css/modules.css');
   assert.ok(css.includes('.vmk-studio.vmk-tab-trend>.vmk-side'));

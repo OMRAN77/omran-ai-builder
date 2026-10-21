@@ -49,7 +49,8 @@ html:not([data-mode="light"]):not(.skin) .om3-hot.om3-line:hover,
 html:not([data-mode="light"]):not(.skin) .om3-line:focus-visible,
 html:not([data-mode="light"]):not(.skin) .om3-line:is(input,textarea,select):focus,
 html:not([data-mode="light"]):not(.skin) .om3-line:is(.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:rgba(212,175,55,.85) !important;}
-/* الصناديق داخل الأدوات بالتناوب: فوق نافذة #000 تعبئة #101013، وداخلها #000، وداخل ذلك #101013 — فتبين بلا خطوط */
-html:not([data-mode="light"]):not(.skin) .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]){background:#101013 !important;}
-html:not([data-mode="light"]):not(.skin) .om3-fill .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]){background:#000 !important;}
-html:not([data-mode="light"]):not(.skin) .om3-fill .om3-fill .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]){background:#101013 !important;}
+/* الصناديق داخل الأدوات بالتناوب: فوق نافذة #000 تعبئة #101013، وداخلها #000، وداخل ذلك #101013 — فتبين بلا خطوط.
+   v-vmk-polish (تدقيق ١٨–١٩ أكتوبر): المربّع المفعَّل (:checked) لا يُطلى — كان «إضافة تعليق صوتي» المفعَّل #101013 بلا ✓ ظاهرة */
+html:not([data-mode="light"]):not(.skin) .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]):not(:checked){background:#101013 !important;}
+html:not([data-mode="light"]):not(.skin) .om3-fill .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]):not(:checked){background:#000 !important;}
+html:not([data-mode="light"]):not(.skin) .om3-fill .om3-fill .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]):not(:checked){background:#101013 !important;}

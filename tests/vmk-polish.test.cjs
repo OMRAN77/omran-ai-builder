@@ -69,6 +69,15 @@ function bootSamples({ lang = 'ar', mode = 'canvas', play } = {}) {
   return { box, prompt, played, ctx };
 }
 
+test('أ. «اصنع الفيديو» في الترندات ذهبيّ كزرّ الإنشاء، والتدرّج الذهبيّ لا يُصنَّف تعبئة صندوق', () => {
+  assert.ok(CSS.includes('#videoMakerModal #vtGo{background:linear-gradient(135deg,#f0cf8f,#c9964a)!important;color:#1a1408!important;'), 'قاعدة #vtGo الذهبيّة');
+  const tc = rd('js/app-41-three-colors.js');
+  const ctx = {}; vm.createContext(ctx);
+  vm.runInContext(fn(tc, 'rgba') + fn(tc, 'boxFill') + fn(tc, 'gradBox'), ctx);
+  assert.equal(ctx.gradBox('linear-gradient(135deg, rgb(240, 207, 143), rgb(201, 150, 74))'), false, 'الذهبيّ المشبع ليس صندوقًا');
+  assert.equal(ctx.gradBox('linear-gradient(135deg, rgb(43, 46, 53) 0%, rgb(43, 46, 53) 100%)'), true, 'التدرّج المحايد القديم كان يُطلى #101013');
+});
+
 test('ب. أمثلة «القوالب»: الصندوق يحمل وضعه، والدائرة أسفل الملصق تحت النصّ لا فوقه', () => {
   const { box } = bootSamples({ mode: 'canvas' });
   assert.equal(box.dataset.mode, 'canvas');
@@ -104,6 +113,20 @@ test('ج. بالإنجليزيّ: مثال «القوالب» نصّ L(k) بلا
   assert.ok(!idx['runway-1'].lang, 'فيديو الصقر بلا نصّ: لكلّ اللغات');
 });
 
+test('د. المربّع المفعَّل: تعبئة om3-fill لا تمسّ :checked، و:checked ذهبيّ بعلامة داكنة', () => {
+  const black = rd('css/أدوات-أسود.css');
+  const fills = black.match(/^html[^{\n]*\.om3-fill[^{\n]*\{background:#[0-9a-f]+ !important;\}$/gmi) || [];
+  assert.equal(fills.length, 3, 'قواعد التناوب الثلاث');
+  fills.forEach((r) => assert.ok(r.includes(':not(:checked)'), r.slice(0, 120)));
+  const rd2 = rd('css/redesign.css');
+  assert.ok(rd2.includes('html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:checked{background:linear-gradient(135deg,#f0cf8f,#c9964a); border-color:transparent;}'));
+  assert.ok(/#videoMakerModal input\[type=checkbox\]:checked::after\{[^}]*color:#1a1408;\}/.test(rd2), '✓ داكنة على الذهبيّ');
+});
+
+test('هـ. خانات الشخصيّات #000 داخل صندوقها #101013 على الحاسوب، وبأولويّة تغلب om3-field', () => {
+  assert.ok(CSS.includes('html:not([data-mode="light"]):not(.skin):not(.mobile-ui) #videoMakerModal .vmk-ch :is(input,textarea):not(#om3-a#om3-b){background:#000 !important}'));
+});
+
 test('و. المرور السريع على بطاقة مثال: وعد play() المرفوض لا يصير خطأ صفحة', async () => {
   assert.ok(!/[{;]\s*vd\.play\(\);/.test(JS), 'play() بلا catch');
   assert.ok(/var pp=vd\.play\(\); if\(pp&&typeof pp\.catch==='function'\) pp\.catch\(/.test(JS), 'وعد play() بمعالج');
@@ -129,3 +152,38 @@ test('ز. الدائرة في منتصف البطاقة بالاتّجاهين،
   assert.ok(CSS.includes('#videoMakerModal .vmk-sm-play:after{content:"";position:absolute;top:50%;left:50%;transform:translate(-35%,-50%);border-left:10px solid #fff;'));
 });
 
+test('ح. تقدّم «تحسين فيديو»: بمدّة معروفة نسبة، وبلا مدّة الزمن المعالَج والشريط بلمعة غير محدّدة', () => {
+  const ctx = {}; vm.createContext(ctx);
+  vm.runInContext(fn(JS, 'clProg'), ctx);
+  assert.deepEqual({ ...ctx.clProg({ sec: 0 }, { progress: 0, time: 2500000 }) }, { clock: '0:02' });
+  assert.deepEqual({ ...ctx.clProg(null, { progress: 0, time: 75000000 }) }, { clock: '1:15' });
+  assert.deepEqual({ ...ctx.clProg({ sec: 10 }, { progress: 0.4, time: 4000000 }) }, { pct: 40 });
+  assert.deepEqual({ ...ctx.clProg({ sec: 10 }, { progress: 1.7 }) }, { pct: 100 });
+  /* المتصفّح يعرف المدّة والأداة لا تعرفها (نسبتها صفر دائمًا — مسبار المحرّك الحقيقيّ): الزمن واللمعة لا «0%» واقفة */
+  assert.deepEqual({ ...ctx.clProg({ sec: 9 }, { progress: 0, time: 1000000 }) }, { clock: '0:01' });
+  assert.ok(/window\.__vmkClProg=clProg/.test(JS));
+  const run = JS.slice(JS.indexOf('  async function clRun(){'), JS.indexOf('  function clCancel(){'));
+  assert.ok(/var r=clProg\(CL\.meta,e\)/.test(run) && /classList\.toggle\('vmk-cl-ind',r\.pct==null\)/.test(run), 'onProg يستعملها');
+  assert.ok(CSS.includes('#videoMakerModal .vmk-cl-track.vmk-cl-ind i{'), 'لمعة الشريط');
+});
+
+test('ط. فيديو القوالب WebM ينزل بامتداده، والاسم الافتراضيّ يُعاد قبل كلّ توليد', async () => {
+  const app = rd('js/app-11-video.js');
+  const src = fn(app, 'runCanvasOnly', '  async function ');
+  const dlNameSrc = app.split('\n').find((l) => l.trim().startsWith('function dlName('));
+  const mk = (type, muxType) => {
+    const ctx = { setStatus() {}, bT: (a) => a, recordCanvasClip: async () => ({ type, size: 9 }),
+      fetch: async () => ({ ok: true, blob: async () => ({ type: 'audio/mpeg' }) }), muxNarrationAny: async () => ({ type: muxType || type }),
+      cleanNarrationText: (x) => x, getNarrationGender: () => 'female', getNarrationSpeed: () => 'fast', URL: { createObjectURL: () => 'blob:x' },
+      resultEl: { style: {} }, downloadEl: { style: {}, download: 'omran-film.mp4' }, autoSaveVideo() {}, JSON };
+    vm.createContext(ctx); vm.runInContext(dlNameSrc + '\n' + src, ctx); return ctx; // dlName (الدفعة ١، v-vmk-dl-ext) يسمّي الامتداد من النوع
+  };
+  let c = mk('video/webm;codecs=vp9'); await c.runCanvasOnly('x', '16:9', 5, '', false, '');
+  assert.equal(c.downloadEl.download, 'omran-ai-video.webm');
+  c = mk('video/webm', 'video/webm'); await c.runCanvasOnly('x', '16:9', 5, '', true, 'y');
+  assert.equal(c.downloadEl.download, 'omran-ai-video.webm', 'مع التعليق الصوتيّ (دمج WebM السريع)');
+  c = mk('video/webm', 'video/mp4'); await c.runCanvasOnly('x', '16:9', 5, '', true, 'y');
+  assert.equal(c.downloadEl.download, 'omran-ai-video.mp4', 'احتياط الترميز MP4');
+  const gen = app.slice(app.indexOf('btnGenerate.onclick = async () => {'), app.indexOf('function friendlyError(err){'));
+  assert.ok(gen.includes("downloadEl.download = 'omran-ai-video.mp4';"), 'اسم «omran-film.mp4» أو ‎.webm لا يلتصق بالتوليد التالي');
+});

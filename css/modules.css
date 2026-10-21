@@ -735,6 +735,9 @@ html[data-mode="light"] #videoMakerModal #videoMakerQualityRow{background:#fffff
 #videoMakerModal .vmk-cl-go{width:100%;height:52px;border:0;border-radius:14px;background:linear-gradient(135deg,#f0cf8f,#c9964a);color:#1a1408;font:inherit;font-size:15.5px;font-weight:800;cursor:pointer;box-shadow:0 14px 30px -12px rgba(232,194,122,.65)}
 #videoMakerModal .vmk-cl-track{height:8px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden}
 #videoMakerModal .vmk-cl-track i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c9964a,#f0cf8f);transition:width .3s}
+/* v-vmk-clean-prog: ملفّ بلا مدّة مقروءة — لمعة تتحرّك بدل شريط واقف على 0% (والزمن المعالَج مكان النسبة) */
+#videoMakerModal .vmk-cl-track.vmk-cl-ind i{width:100%!important;background:linear-gradient(90deg,transparent,#f0cf8f,transparent) 0 0/40% 100% no-repeat;animation:vmkClInd 1.4s linear infinite}
+@keyframes vmkClInd{from{background-position:-40% 0}to{background-position:140% 0}}
 #videoMakerModal .vmk-cl-prow{display:flex;align-items:center;gap:12px;margin-top:10px;font-size:13px;color:#d9dde6}
 #videoMakerModal .vmk-cl-prow span:first-child{font-weight:800;color:#f0dcb0;min-width:44px}
 #videoMakerModal .vmk-cl-wk{flex:1;color:#aab0bd}
@@ -760,6 +763,13 @@ html[data-mode="light"] #videoMakerModal .vmk-cl-pick,html[data-mode="light"] #v
 /* v-vmk-clean-video (مراجعة): عارض القسم مستقلّ — نتيجة المولّد وحالته وروابطه لا تظهر فيه، وعارضه لا يظهر خارجه */
 #videoMakerModal .vmk-studio:not(.vmk-tab-clean) #vmkClView{display:none!important}
 #videoMakerModal .vmk-studio.vmk-tab-clean #videoMakerResult,#videoMakerModal .vmk-studio.vmk-tab-clean #videoMakerStatus,#videoMakerModal .vmk-studio.vmk-tab-clean #videoMakerDownloadLink,#videoMakerModal .vmk-studio.vmk-tab-clean #filmSceneLinks{display:none!important}
+/* v-vmk-res-mode (تدقيق ١٨–١٩ أكتوبر): نتيجة وضعٍ لا تظهر في قسم آخر — syncResult (js/video.js) يضع الصنف ويوقف الفيديو */
+#videoMakerModal .vmk-studio.vmk-res-other #videoMakerResult,#videoMakerModal .vmk-studio.vmk-res-other #videoMakerDownloadLink,#videoMakerModal .vmk-studio.vmk-res-other #filmSceneLinks{display:none!important}
+/* v-vmk-polish (تدقيق ١٨–١٩ أكتوبر): «اصنع الفيديو» في الترندات ذهبيّ كزرّ الإنشاء — كان btn primary بتدرّج الثيم المحايد فيصنّفه app-41
+   تعبئة صندوق ويُطلى #101013؛ أولويّة المعرّفين تغلب om3-fill، والذهبيّ المشبع لا يُصنَّف صندوقًا أصلًا */
+#videoMakerModal #vtGo{background:linear-gradient(135deg,#f0cf8f,#c9964a)!important;color:#1a1408!important;border:0;border-radius:14px;font-weight:800;text-align:center;justify-content:center}
+/* خانات الشخصيّات بلون صندوقها #101013 (تناوب om3 بثلاث درجات وفوقها أربعة صناديق) — الأسود الآخر من درجتي المالك؛ :not(#om3-a#om3-b) يغلب om3-field. الحاسوب وحده */
+html:not([data-mode="light"]):not(.skin):not(.mobile-ui) #videoMakerModal .vmk-ch :is(input,textarea):not(#om3-a#om3-b){background:#000 !important}
 #videoMakerModal .vmk-cl-drop:focus-within{outline:2px solid #e8c27a;outline-offset:3px}
 @media (max-width:860px){
   #videoMakerModal .vmk-studio.vmk-tab-clean>.vmk-side{align-self:stretch;width:100%}

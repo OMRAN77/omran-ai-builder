@@ -103,7 +103,13 @@
     card.classList.add('vmk-studio'); card.appendChild(side); card.appendChild(main);
     kids.slice(1).forEach(function(k){ if(k!==vt) main.appendChild(k); });
     var stage=side.querySelector('.vmk-stage');
-    if(id('videoMakerResult')) stage.appendChild(id('videoMakerResult'));
+    var rs=id('videoMakerResult');
+    if(rs){
+      stage.appendChild(rs);
+      /* v-vmk-res-mode: وسم الوضع يُكتب عند «إنشاء» (app-11) فيُعاد الحساب فورًا — لا صنف قديم يخفي النتيجة الجديدة في وضعها؛ وautoplay في قسم آخر يتوقّف */
+      try{ new MutationObserver(syncResult).observe(rs,{attributes:true,attributeFilter:['data-mode']}); }catch(e){ /* guard-ok — بلا مراقب يُحسب عند كلّ تبديل */ }
+      rs.addEventListener('play',syncResult);
+    }
     /* عارض قسم «تحسين فيديو» عنصر مستقلّ: لا يكتب فوق نتيجة المولّد ولا يظهر خارج قسمه */
     var clv=document.createElement('video'); clv.id='vmkClView'; clv.controls=true; clv.playsInline=true; clv.style.display='none'; stage.appendChild(clv);
     [id('videoMakerStatus'),id('videoMakerDownloadLink'),desc].forEach(function(e){ if(e) side.appendChild(e); });
@@ -146,6 +152,16 @@
     [].slice.call(sel.options).forEach(function(o){ o.hidden=o.disabled=!own&&!!OWNER_MODES[o.value]; });
     if(!own&&OWNER_MODES[sel.value]){ sel.value='runway'; sel.dispatchEvent(new Event('change')); }
   }
+  /* v-vmk-tab-warm (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٠١): صور التبويبات كانت فارغة ٢–٣ ثوانٍ عند الفتح — كسولة وتُنشأ لحظة الفتح بينما تبدأ
+     شبكة الترندات ٤٥ صورة معها. رابط واحد يرسم به التبويب ويسخّن به الذاكرة عند مرور المؤشّر أو اللمس أو التركيز على زرّ الصانع
+     (مرّة؛ لا تحميل لمن لا يقترب من الصانع) */
+  function tabArt(v){ return TAB_ART[v]||'/assets/videos/tabs/'+v+'.jpg?v=2'; }
+  var tabsWarm=false;
+  function warmTabs(){
+    if(tabsWarm) return; tabsWarm=true;
+    tabsFor().forEach(function(v){ try{ var im=new Image(); im.src=tabArt(v); }catch(e){ /* guard-ok — التسخين تحسين، والتبويب يطلب صورته بنفسه */ } });
+  }
+  var bvm=id('btnVideoMaker'); if(bvm) ['pointerenter','pointerdown','focus'].forEach(function(ev){ bvm.addEventListener(ev,warmTabs); });
   /* ملفّات النماذج الجاهزة: '<الوضع>-<١..٣>': true حين يُرفع /media/samples/<الوضع>-<رقم>.mp4 — بلا ملفّ تظهر البطاقة بنصّ المثال فقط */
   var VIDEOS={};
   /* فيديو تعليميّ حقيقيّ مسجَّل من شاشة الصانع نفسه (scripts/video-tutorial.mjs) — عربيّ، والباقي بالإنجليزيّة */
@@ -203,7 +219,7 @@
       /* v-vmk-tab-art (المالك ١١ أكتوبر بلوحة التبويبات: «شوف الصور مقاس واحد كلهم»): صورة مربّعة واحدة المقاس فوق اسم كلّ قسم */
       /* v-app-director: قسم المخرج بلا صورة (طلب المالك «بدون أيقونات») — لا <img> فلا أيقونة مكسورة بجانب صور الأقسام */
       if(v==='director'){ var dlb=document.createElement('span'); dlb.className='vmk-tab-lbl'; dlb.textContent=tabLabel(v); b.classList.add('vmk-tab-noimg'); b.appendChild(dlb); tb.appendChild(b); return; }
-      var im=document.createElement('img'); im.className='vmk-tab-img'; im.alt=''; im.loading='lazy'; im.src=TAB_ART[v]||'/assets/videos/tabs/'+v+'.jpg?v=2'; if(TAB_ART[v]) im.style.objectPosition='50% 0';;
+      var im=document.createElement('img'); im.className='vmk-tab-img'; im.alt=''; im.loading='eager'; im.fetchPriority='high'; im.src=tabArt(v); if(TAB_ART[v]) im.style.objectPosition='50% 0';; /* v-vmk-tab-warm: ظاهرة دائمًا عند الفتح — لا كسل */
       var lb=document.createElement('span'); lb.className='vmk-tab-lbl'; lb.textContent=tabLabel(v);
       b.appendChild(im); b.appendChild(lb); tb.appendChild(b);
     });
@@ -747,6 +763,17 @@
   }
   function clMsg(text,err){ CL.msg=text?{text:text,err:!!err}:null; var m=id('vmkClMsg'); if(m){ m.textContent=text||''; m.className='vmk-cl-msg'+(err?' err':''); } }
   function clProgress(p){ var b=id('vmkClBar'), n=id('vmkClPct'); var v=Math.max(0,Math.min(100,Math.round(p*100))); if(b) b.style.width=v+'%'; if(n) n.textContent=v+'%'; }
+  /* v-vmk-clean-prog (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٢٣): WebM بلا مدّة مقروءة وقف على 0% نحو ثلاث دقائق ثمّ قفز إلى 100% — الأداة لا تحسب
+     نسبة بلا مدّة، لكنّ الحدث نفسه يحمل الزمن المعالَج (time بالميكروثانية). بمدّة معروفة ونسبة موجبة: النسبة كما كانت؛ وغير ذلك
+     (مدّة غير مقروءة، أو ملفّ يعرف المتصفّح مدّته ولا تعرفها الأداة فتبقى نسبتها صفرًا): الزمن المعالَج مكان النسبة والشريط بلمعة
+     غير محدّدة (vmk-cl-ind) حتّى تصل نسبة حقيقيّة. بلا نصّ جديد. */
+  function clProg(meta,ev){
+    var p=+(ev&&ev.progress);
+    if(meta&&meta.sec>0&&isFinite(p)&&p>0) return {pct:Math.max(0,Math.min(100,Math.round(p*100)))};
+    var s=Math.floor((+(ev&&ev.time)||0)/1e6); if(!(s>0)) s=0;
+    return {clock:Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60)};
+  }
+  try{ window.__vmkClProg=clProg; }catch(e){ /* guard-ok — بيئة بلا window */ }
   function clRender(){
     var box=id('vmkClean'); if(!box) return;
     var has=!!CL.file, done=!!CL.out;
@@ -839,7 +866,12 @@
     try{
       ff=await clFF(); if(my!==CL.run) return;
       clMsg('');
-      onProg=function(e){ if(my===CL.run&&e&&typeof e.progress==='number') clProgress(e.progress); };
+      onProg=function(e){
+        if(my!==CL.run||!e) return;
+        var r=clProg(CL.meta,e), tr=M.querySelector('#vmkClean .vmk-cl-track'), n=id('vmkClPct');
+        if(tr) tr.classList.toggle('vmk-cl-ind',r.pct==null);
+        if(r.pct!=null) clProgress(r.pct/100); else if(n) n.textContent=r.clock;
+      };
       ff.on('progress',onProg);
       try{ await ff.createDir('/clin'); }catch(e){ /* guard-ok — المجلّد موجود من مرّة سابقة */ }
       /* اسم ثابت داخل نظام ملفّات العامل: أسماء الملفّات العربيّة أو بمسافات قد تكسر المسار — ffmpeg يقرأ الصيغة من المحتوى */
@@ -1178,6 +1210,16 @@
       g.appendChild(el);
     });
   }
+  /* v-vmk-res-mode (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٠٥): فيديو القوالب المجّانيّ و«تحميل الفيديو» بقيا ظاهرين ويشتغلان في تبويب «فيديو AI» المدفوع —
+     runCanvasOnly يُظهر النتيجة ولا يخفيها إلّا «تحسين فيديو». النتيجة موسومة بالوضع الذي أنتجها: في غيره وفي الترندات والتحسين والمخرج
+     تُخفى (modules.css) وتتوقّف، وترجع كما هي عند العودة إلى وضعها. بلا وسم (لم يُولَّد شيء) لا تُخفى في الأوضاع. */
+  function syncResult(){
+    var card=M.firstElementChild, rs=id('videoMakerResult'); if(!card||!rs) return;
+    var md=(id('videoMakerMode')||{}).value||'', rm=(rs.dataset&&rs.dataset.mode)||'';
+    var other=tab==='trend'||tab==='clean'||tab==='director'||!!(rm&&rm!==md);
+    card.classList.toggle('vmk-res-other',other);
+    if(other&&!rs.paused){ try{ rs.pause(); }catch(e){ /* guard-ok — مشغّل بلا مصدر */ } }
+  }
   function sync(){
     var chips=M.querySelector('.vmk-chips'); if(chips) chips.innerHTML='';
     G.forEach(function(d){
@@ -1201,7 +1243,7 @@
       var b=document.createElement('span'); b.className='vmk-chip gold pts';
       b.textContent=pl; chips.appendChild(b);
     }
-    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean(); syncDirector();
+    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean(); syncDirector(); syncResult();
     var tbx=id('vmkTabs'); if(tbx) [].forEach.call(tbx.children,function(bt){ bt.setAttribute('aria-selected',String(bt.dataset.tab===tab)); });
     stageDims();
   }
@@ -1223,7 +1265,10 @@
   var wasOpen=false;
   new MutationObserver(function(){
     var open=!!(M.style.display&&M.style.display!=='none');
-    if(open&&!wasOpen){ tab='trend'; }
+    /* v-vmk-chat-tab (تدقيق ١٨–١٩ أكتوبر، g05 لقطة ٠٣٢): طلب فيديو من المحادثة يملأ الوصف، والفتح على «الترندات» كان يخفيه في قسم آخر.
+       omranOpenVideoMaker (app-11) يضع data-vmk-tab بالوضع حين يأتيه نصّ أو صورة: يُفتح عليه مرّة وتُمحى العلامة. الفتح العاديّ على الترندات كلّ مرّة (v-vmk-sections) */
+    var want=M.getAttribute('data-vmk-tab'); if(want!=null) M.removeAttribute('data-vmk-tab');
+    if(open&&!wasOpen){ tab=(want&&tabsFor().indexOf(want)>=0)?want:'trend'; }
     wasOpen=open;
     if(open) enhance();
   }).observe(M,{attributes:true,attributeFilter:['style']});
