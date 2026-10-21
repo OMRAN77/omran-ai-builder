@@ -89,7 +89,7 @@ test('٤. زرّ «ما يملأ القاعدة» في لوحة المالك ي�
   const a3 = read('js/app-03-i18n-data.js');
   assert.ok(a3.includes('ownerUsageGroups: "العائلات الأكبر:"') && a3.includes('ownerUsageBiggest: "أكبر المفاتيح:"'));
   assert.ok(read('js/app.bundle.js').includes('window.redisUsageCheck'));
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=703'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=704'));
   const h = read('api/_lib/health.js');
   assert.ok(h.indexOf('if (!isOwner(req))') < h.indexOf("req.query.usage === '1'"), 'التحقّق من المالك قبل القياس');
 });
