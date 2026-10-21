@@ -168,6 +168,7 @@ const I18N = {
     "freezeReloadBtn": "🔄 إعادة التحميل",
     "freezeDismissBtn": "إغلاق",
     'projSearchLabel': 'بحث عن مشروع', 'grpCreate': '🎨 إبداع', 'grpSections': '💼 أقسام', 'grpTools': '🛠️ أدوات',
+    projSearchEmpty: 'لا توجد محادثات تطابق بحثك', /* v-hist-search-empty */
     dir: 'rtl',
     settingsCmdPh: "اكتب ما تريد تغييره… مثال: خط أكبر وخلفية بحرية",
     settingsCmdSend: "تنفيذ",
@@ -1666,6 +1667,7 @@ const I18N = {
     "runCodeTitle": "Run the code in preview",
     "timeMachineTitle": "Time machine — restore previous versions",
     'projSearchLabel': 'Search projects', 'grpCreate': '🎨 Creativity', 'grpSections': '💼 Sections', 'grpTools': '🛠️ Tools',
+    projSearchEmpty: 'No chats match your search', /* v-hist-search-empty */
     dir: 'ltr',
     settingsCmdPh: "Type what you want to change… e.g. bigger font and ocean background",
     settingsCmdSend: "Run",

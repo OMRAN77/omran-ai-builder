@@ -963,6 +963,13 @@ function __saveFlush(force){
 window.addEventListener('pagehide', __saveFlush);
 window.addEventListener('pagehide', __writeChatsMirror); /* v-idb-mirror: مرآة طازجة عند كل مغادرة */
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveFlush(); });
+/* v-hist-select-persist: شبكة أمان — نحو عشرين مسارًا (الصوت، مها، مشاهدة الفيديو…) تغيّر state.currentId بلا saveState،
+   فيفتح الإقلاع التالي غير المحادثة الظاهرة. عند المغادرة أو الإخفاء يُحفظ المعرّف الحاليّ؛ والفارغ لا يمسح المحفوظ. */
+function __saveCurIdFlush(){
+  try{ if(state.currentId) localStorage.setItem('aiapp_current_id', state.currentId); }catch(e){ __swallow(e, 'save:cur-id-flush'); }
+}
+window.addEventListener('pagehide', __saveCurIdFlush);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveCurIdFlush(); });
 function saveState(){
   __slimCache = null;
   pushCodeSnapshot();
@@ -1451,6 +1458,9 @@ function __histThumbLazy(thumb, p){
   thumb.__histMake = make;
   __histThumbIO.observe(thumb);
 }
+/* v-stats-visible (تدقيق ١٨ أكتوبر): شرط ظهور المشروع في القائمة (v-hide-empty-proj أدناه) — يستعمله «عدد المشاريع» في
+   الإحصاء فلا يعدّ الفارغة المخفيّة. tests/stats-visible-projects يثبت تطابقه مع شرط القائمة. */
+function __projVisible(p){ return !!(p && ((p.messages && p.messages.length) || p.code)); }
 function renderHistory(){
   // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
   const provKey = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
@@ -1523,6 +1533,9 @@ function renderHistory(){
         }
       }catch(e){ __swallow(e, "save:app-04-i18n-state#38"); }
       state.currentId = p.id;
+      /* v-hist-select-persist (تدقيق ١٨ أكتوبر: «فتحت محادثة قديمة ثمّ F5 فطلع مشروع جديد فارغ»): المعرّف كان يُكتب في
+         saveState وحده، والإقلاع يقرؤه. يُحفظ هنا مباشرة بلا saveState (لا لقطة كود ولا مزامنة لكلّ نقرة). */
+      try{ localStorage.setItem('aiapp_current_id', p.id); }catch(e){ __swallow(e, 'save:hist-select'); }
       const hasMsgs = !!(p.messages && p.messages.length > 0);
       document.body.classList.toggle('omranWelcome', !hasMsgs);
       const hwHero = document.getElementById('huaweiHeroWrap');
@@ -1567,6 +1580,8 @@ function renderHistory(){
       io.observe(sentinel);
     } else { setTimeout(sentinel.__reveal, 0); }
   }
+  /* v-hist-search-empty: الصفوف الجديدة تُبنى ظاهرة — البحث المكتوب يُعاد عليها (filterProjects في app-05) */
+  try{ if(typeof window.__histReFilter === 'function') window.__histReFilter(); }catch(e){ __swallow(e, 'hist:refilter'); }
 }
 
 // v202: قائمة ⋮ الصغيرة لكل مشروع — إعادة تسمية / حذف (بتأكيد) / مشاركة
@@ -1648,7 +1663,9 @@ function openHistItemMenu(anchorBtn, p, provKey){
   m.classList.add('show');
   const r = anchorBtn.getBoundingClientRect();
   const mw = m.offsetWidth || 140, mh = m.offsetHeight || 100;
-  let left = document.documentElement.dir === 'rtl' ? r.left - mw + r.width : r.right - mw;
+  /* v-hist-menu-rtl (تدقيق ١٨ أكتوبر): فرع RTL كان يساوي «r.right − mw» فتمتدّ القائمة يسارًا من ⋮ (طرف الصفّ الأيسر)
+     خارج الشريط؛ صارت تبدأ من حافّة ⋮ اليسرى وتمتدّ فوق الصفّ داخله. */
+  let left = document.documentElement.dir === 'rtl' ? r.left : r.right - mw;
   left = Math.max(6, Math.min(left, window.innerWidth - mw - 6));
   let top = r.bottom + 4;
   if(top + mh > window.innerHeight - 6) top = Math.max(6, r.top - mh - 4);
