@@ -61,6 +61,22 @@ test('٢. سطر الحجم والأسطر له ارتفاع داخل غلاف �
   assert.ok(lh && Number(lh[1]) > 0, sub);
 });
 
+test('٣. طبقة السحب تخفي نصّ الصندوق التوضيحيّ ونصّه تحت «Drop the image here»', () => {
+  const stmt = AST.body.find((n) => n.type === 'ExpressionStatement' && SRC.slice(n.start, n.end).includes('omranDragOver'));
+  assert.ok(stmt, 'كتلة السحب والإفلات');
+  const styles = [];
+  const box = { setAttribute() {}, classList: { add() {}, remove() {} } };
+  const sb = {
+    Array, console, __swallow() {}, t: (k) => k, $: () => ({ focus() {} }),
+    document: { getElementById: (id) => (id === 'composerBox' ? box : null), createElement: () => ({}), head: { appendChild: (s) => styles.push(s) }, addEventListener() {} },
+  };
+  vm.createContext(sb);
+  vm.runInContext(SRC.slice(stmt.start, stmt.end), sb);
+  const css = styles.map((s) => s.textContent).join('');
+  assert.ok(/#composerBox\.omranDragOver #prompt::placeholder\{[^}]*color:transparent/.test(css), 'placeholder مخفيّ: ' + css.slice(0, 120));
+  assert.ok(/#composerBox\.omranDragOver #prompt[,{][^}]*color:transparent/.test(css), 'النصّ المكتوب مخفيّ');
+});
+
 test('٤. «1 line» لا «1 lines»: المفرد من Intl.PluralRules، والجمع لغيره، وكلمة المفرد بالـ١٤ لغة', () => {
   const sub = (lg, text) => {
     const { sb, mk } = env(lg);
