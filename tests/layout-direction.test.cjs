@@ -210,6 +210,23 @@ const px = (w) => { const m = /^(-?[\d.]+)px$/.exec(val(w)); return m ? Number(m
 const bare = (p) => rd(p).replace(/\/\*[\s\S]*?\*\//g, '');
 
 /* ── ١) ظلّ الدرج المغلق ── */
+test('١. الدرج المغلق بلا ظلّ على الجوّال (الفاتح والأسود، ودرج القائمة والملفّات)، والمفتوح بظلّه كما كان', () => {
+  for (const mode of ['light', 'dark']) {
+    for (const id of ['sidebar', 'workarea']) {
+      for (const dir of ['rtl', 'ltr']) {
+        const closed = W(['main', 'div#' + id], 'box-shadow', { mode, mobile: true, dir });
+        assert.equal(val(closed), 'none', mode + ' ' + dir + ' #' + id + ' مغلق — ظلّه يبين على طرف الشاشة: ' + (closed && closed.where) + ' ⇒ ' + val(closed));
+        assert.equal(val(W(['main', 'div#' + id + '.open'], 'box-shadow', { mode, mobile: true, dir })), 'var(--sh-4)', 'المفتوح بظلّه');
+      }
+    }
+  }
+  /* المتصفّح الضيّق بلا صنف الجوّال (@media max-width:860px) — المسار نفسه */
+  assert.equal(val(W(['main', 'div#sidebar'], 'box-shadow', { mode: 'light', vw: 800 })), 'none');
+  assert.equal(val(W(['main', 'div#sidebar.open'], 'box-shadow', { mode: 'light', vw: 800 })), '0 10px 50px rgba(0,0,0,.55)');
+  /* الثيمات كما كانت */
+  assert.equal(val(W(['main', 'div#sidebar'], 'box-shadow', { mode: 'skin', mobile: true })), 'none');
+});
+
 /* ── ٢) سهم الدرج على الجوّال وسهم الطيّ على الحاسوب ── */
 test('٢. سهم الدرج بالإنجليزيّ في الطرف الداخليّ (يمين) ومنعكس، والعربيّ كما قرّره المالك (يسار بلا انعكاس)', () => {
   const btn = ['main', 'div#sidebar.open', 'button#sidebarCloseBtn'];
@@ -241,6 +258,22 @@ test('٤. عنوان المحادثة باتّجاه محتواه (unicode-bidi:
   }
 });
 
+test('٥. نقطة «شغّال» عنصر مستقلّ في صفّ المحادثة (لا داخل العنوان المقصوص) وقبل زرّ ⋮', () => {
+  const css = bare('css/tokens.css');
+  assert.doesNotMatch(css, /omRunning\s*\.hist-title::after/, 'لا نقطة داخل العنوان (overflow:hidden يقصّها)');
+  const row = ['main', 'div#sidebar', 'div#history', 'div.hist-item.omRunning'];
+  for (const dir of ['rtl', 'ltr']) {
+    assert.equal(val(W(row, 'content', { dir, pe: 'after' })), '""', dir);
+    assert.equal(val(W(row, 'flex', { dir, pe: 'after' })), 'none', 'لا تنضغط');
+    const dot = Number(val(W(row, 'order', { dir, pe: 'after' })));
+    const menu = Number(val(W(row.concat(['button.hist-menu-btn']), 'order', { dir })));
+    assert.ok(dot > 0 && menu > dot, 'بعد العنوان وقبل ⋮: dot=' + dot + ' menu=' + menu);
+    assert.equal(val(W(row, 'width', { dir, pe: 'after' })), '7px');
+    assert.equal(W(['main', 'div#sidebar', 'div#history', 'div.hist-item'], 'content', { dir, pe: 'after' }), null, 'بلا نقطة حين لا يعمل طلب');
+  }
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)\{ \.hist-item\.omRunning::after\{animation:none;\} \}/);
+});
+
 /* ── ٤) قائمة + ── */
 test('٦. قائمة +: عرضها بعرض أطول بند (بلا التفاف) وسقفها الشاشة، وكلّ البنود بخطّ الصفحة ومن بداية السطر', () => {
   const pop = ['main', 'div#chatcol', 'div#inputbar', 'div.inputbar-tools.inputbar-tools-below', 'div.inputbar-tools-left', 'div#plusToolsWrap', 'div#plusToolsPopup.show'];
@@ -256,8 +289,122 @@ test('٦. قائمة +: عرضها بعرض أطول بند (بلا التفاف
 });
 
 /* ── ٥) بطاقات هواوي ── */
+test('٧. بطاقات الرئيسيّة: البطاقة الأخيرة الفرديّة الظاهرة تمتدّ وتتوسّط (بعد إخفاء «اقتراحات»)، والعمود الواحد ≤340 كما هو', () => {
+  const css = bare('css/redesign.css');
+  const blocks = [...css.matchAll(/@media \(min-width:341px\)\{([\s\S]*?)\n\}/g)].map((m) => m[1]);
+  const all = blocks.join('\n');
+  assert.match(all, /\.huawei-tools-grid > \.hwToolCard:last-child:nth-child\(odd\)\{[^}]*grid-column:1 \/ -1;[^}]*justify-self:center;/, 'الأخيرة الفرديّة');
+  /* :has في قاعدة منفصلة: المتصفّح الذي لا يعرفه يُسقط قاعدته وحدها وتبقى الأولى */
+  const hasRule = all.match(/([^{}]*:has\([^{}]*)\{([^}]*)\}/);
+  assert.ok(hasRule, 'قاعدة البطاقة الظاهرة الأخيرة قبل بطاقة مخفيّة');
+  assert.match(hasRule[1].trim(), /^\.huawei-tools-grid > \.hwToolCard:nth-last-child\(2\):nth-child\(odd\):has\(\+ \.hwToolCard\[hidden\]\)$/);
+  assert.doesNotMatch(hasRule[1], /,/, 'منفصلة لا ضمن قائمة محدِّدات');
+  assert.match(hasRule[2], /grid-column:1 \/ -1;[^}]*justify-self:center;/);
+  /* عرض البطاقة = عرض عمود واحد بحسب الفراغ (12px فوق 480، و8px حتّى 480) */
+  assert.match(all, /width:calc\(50% - 6px\)/);
+  assert.match(css, /@media \(min-width:341px\) and \(max-width:480px\)\{[^}]*\{[^}]*width:calc\(50% - 4px\)/);
+  assert.match(css, /@media \(max-width:340px\)\{\n  \.huawei-tools-grid\{grid-template-columns:1fr; gap:8px;\}\n\}/, 'العمود الواحد كما هو');
+  /* البطاقة المخفيّة تُعلَّم hidden فعلًا (app-05-ui) — شرط قاعدة :has */
+  assert.match(rd('js/app-05-ui.js'), /__hwSug\.hidden = true;/);
+});
+
 /* ── ٦) انزياح المحادثة ── */
+test('٨. #chatcol على الجوّال overflow:clip (ليس حاوية تمرير فلا يُزاح ٤٠px)، مع hidden احتياطًا، وحيلة إخفاء الشريط على #messages كما هي', () => {
+  const col = ['main', 'div#chatcol'];
+  const msgs = col.concat(['div#messages']);
+  for (const dir of ['rtl', 'ltr']) {
+    const w = W(col, 'overflow', { mobile: true, dir });
+    assert.equal(val(w), 'clip', dir + ' — hidden يبقى قابلًا للتمرير برمجيًّا: ' + (w && w.where));
+    assert.equal(val(W(msgs, dir === 'rtl' ? 'margin-left' : 'margin-right', { mobile: true, dir })), '-40px', 'الحيلة كما هي');
+    assert.equal(val(W(msgs, 'width', { mobile: true, dir })), 'calc(100% + 40px)');
+  }
+  const css = bare('css/tokens.css');
+  const iHidden = css.indexOf('html.mobile-ui #chatcol{overflow:hidden !important;}');
+  const iClip = css.indexOf('html.mobile-ui #chatcol{overflow:clip !important;}');
+  assert.ok(iClip > 0, 'قاعدة clip');
+  assert.ok(css.includes('html.mobile-ui #videoMakerModal, html.mobile-ui #chatcol{overflow:hidden !important;}') || iHidden > 0, 'hidden باقٍ احتياطًا للأغلفة القديمة');
+  assert.ok(iClip > css.indexOf('html.mobile-ui #chatcol{overflow:hidden !important;}'), 'clip بعد hidden');
+  assert.equal(val(W(col, 'overflow', {})), '(none)', 'الحاسوب لم يُلمس');
+});
+
 /* ── ٧) أدوات الصندوق على الجوّال ── */
+test('٩. أدوات الصندوق على الجوّال: فراغ ≥ 8px ومنطقة لمس أوسع (::after) بلا تداخل، والأيقونة ٢٤px والحاسوب كما هما', () => {
+  const row = ['main', 'div#chatcol', 'div#inputbar', 'div.inputbar-tools.inputbar-tools-below', 'div.inputbar-tools-left'];
+  const btns = [row.concat(['div#plusToolsWrap', 'button.btn#btnPlusTools']), row.concat(['button.btn#btnMic']), row.concat(['button.btn.maha-in-tools#btnMahaDock'])];
+  const gap = px(W(row, 'gap', { mobile: true }));
+  assert.ok(gap >= 8, 'الفراغ بين + والمايك و«م»: ' + gap);
+  for (const b of btns) {
+    const name = b[b.length - 1];
+    assert.equal(val(W(b, 'width', { mobile: true })), '24px', name + ' — المقاس كما قرّره المالك');
+    assert.equal(val(W(b, 'position', { mobile: true })), 'relative', name);
+    assert.equal(val(W(b, 'content', { mobile: true, pe: 'after' })), '""', name + ' — منطقة اللمس');
+    assert.equal(val(W(b, 'position', { mobile: true, pe: 'after' })), 'absolute', name);
+    const inset = px(W(b, 'inset', { mobile: true, pe: 'after' }));
+    assert.ok(inset <= -4, name + ' — inset ' + inset);
+    assert.ok(-inset * 2 <= gap, name + ' — منطقتا لمس متجاورتان لا تتداخلان: inset ' + inset + ' gap ' + gap);
+    assert.equal(W(b, 'content', { pe: 'after' }), null, name + ' — الحاسوب بلا منطقة إضافيّة');
+  }
+  assert.equal(val(W(row, 'gap', {})), '1px', 'الحاسوب كما هو');
+});
+
 /* ── ٨) الخطوط: محرّر الكود وخانات الوصف ── */
+test('١٠. محرّر الكود: خطّ عربيّ متّصل (Tajawal) قبل Courier New، وخطّ لاتينيّ ثابت العرض قبله على كلّ منصّة', () => {
+  const ff = val(W(['main', 'div#workarea', 'div#panels', 'div#panel-code.panel.active', 'textarea#code[spellcheck="false"]'], 'font-family', {}));
+  const fams = ff.split(/\s*,\s*/).map((s) => s.replace(/^['"]|['"]$/g, ''));
+  const iT = fams.indexOf('Tajawal'), iC = fams.indexOf('Courier New');
+  assert.ok(iT > 0 && iC > iT, 'Tajawal قبل Courier New (عربيّ Courier New حروف متفرّقة): ' + ff);
+  /* اللاتينيّ يبقى ثابت العرض: Consolas (ويندوز) وMenlo (ماك/آيفون) وMonaco (أندرويد: اسم مستعار لخطّ النظام الثابت) قبل Tajawal */
+  for (const f of ['Consolas', 'Menlo', 'Monaco']) assert.ok(fams.indexOf(f) >= 0 && fams.indexOf(f) < iT, f + ' قبل Tajawal: ' + ff);
+  assert.equal(fams[fams.length - 1], 'monospace');
+});
+
+test('١١. خانات الوصف (صانع الفيديو على الجوّال، الأزياء على الحاسوب، وغيرها) ترث خطّ الصفحة لا monospace المتصفّح', () => {
+  const vmk = ['div#videoMakerModal', 'div', 'div.vmk-main', ['textarea#videoMakerPrompt[rows="4"]', 'width:100%; resize:vertical;']];
+  const fash = ['div#fashionAiModal', 'div', 'div#fashionAiTextPane', ['textarea#fashionAiDescription[rows="3"]', 'width:100%; resize:vertical;']];
+  const studio = ['div#studioAiModal', 'div', ['textarea#studioAiDescription[rows="2"]', 'width:100%; resize:vertical;']];
+  for (const [chain, o] of [[vmk, { mobile: true }], [vmk, {}], [fash, {}], [fash, { mobile: true }], [studio, { mobile: true }]]) {
+    const w = W(chain, 'font-family', o);
+    assert.equal(val(w), 'inherit', JSON.stringify(o) + ' ' + (Array.isArray(chain[chain.length - 1]) ? chain[chain.length - 1][0] : '') + ' ⇒ ' + val(w));
+  }
+  /* القاعدة بمحدِّد عنصر وحده: أيّ قاعدة بصنف أو معرّف (محرّر الكود، لصق الكود في «تقييم الكود» بنمطه المضمّن) تغلبها */
+  assert.match(bare('css/tokens.css'), /\n\s*textarea\{font-family:inherit;\}/);
+  assert.match(val(W(['div', ['textarea#csPaste[rows="8"]', 'width:100%;font:12px/1.6 ui-monospace,Menlo,Consolas,monospace;direction:ltr;']], 'font-family', {})), /^ui-monospace/);
+});
+
 /* ── ٩) لوحة «اختيار الملف» في ستايل AI ── */
+test('١٢. لوحة الستايل في المربّع الضيّق (≤560px): أعرض بعرض اللوحة الذهبيّة، وتلتفّ بدل «اختيار الـ…»، والعريض كما هو', () => {
+  const slot = (q) => ['div#studioAiModal', 'div', 'div#studioAiSlots.stSlots', 'div#studioAiImageAWrap.stSlotWrap', 'div#studioAiSlotA.stSlot.omUpArt.omUpStyle.om3-skip[role="button"]', 'div.stSlotEmpty', q];
+  for (const cw of [348, 302, 169]) {
+    for (const q of ['span.omUpB', 'span.omUpL']) {
+      const o = { mobile: true, cw };
+      assert.equal(val(W(slot(q), 'white-space', o)), 'normal', cw + ' ' + q + ' — nowrap مع ellipsis يقصّ الكلمة');
+      assert.equal(val(W(slot(q), 'overflow', o)), 'visible', cw + ' ' + q);
+      const left = parseFloat(val(W(slot(q), 'left', o)));
+      assert.ok(left <= 40, cw + ' ' + q + ' — العرض بعرض اللوحة الذهبيّة (٣٨–٦٢٪): left ' + left);
+    }
+  }
+  /* الخطّ: ١٢px في المربّع المفرد (٣٠٢–٣٤٨) كما كان، وينزل حتّى ٩px في مربّعَي الدمج الضيّقين */
+  assert.equal(val(W(slot('span.omUpB'), 'font-size', { mobile: true, cw: 348 })), 'max(9px,min(12px,4.2cqw))');
+  /* المربّع العريض (الحاسوب، والجوّال المفتوح) كما كان */
+  for (const q of ['span.omUpB', 'span.omUpL']) {
+    assert.equal(val(W(slot(q), 'white-space', { cw: 900 })), 'nowrap');
+    assert.equal(val(W(slot(q), 'left', { cw: 900 })), '42%');
+  }
+  /* الديكور والأزياء لم يُلمسا */
+  assert.equal(val(W(['div', 'div.omUpArt.omUpFashion', 'div', 'span.omUpB'], 'white-space', { mobile: true, cw: 348 })), 'nowrap');
+});
+
 /* ── ١٠) الشعار و«محادثة جديدة» مع شريط الأسهم ── */
+test('١٣. الحاسوب: الشعار ٢٨px ثابت مهما كانت حالة شريط الأسهم (لا قفزة ١٨px للشعار و«محادثة جديدة» تحته عند فتحه)', () => {
+  const brand = ['main', 'div#sidebar', 'div#sidebarBrand.sidebarBrand'];
+  const btn = ['main', 'div#sidebar', 'button#omranNewChatBtn[type="button"]'];
+  /* محرّك التتالي لا يطابق :has — أي حالة الشريط مفتوحًا أو مخفيًّا؛ فيها كان الشعار ١٠px (والمطويّ ٢٨px) */
+  for (const body of [['omranWelcome'], []]) {
+    assert.equal(val(W(brand, 'margin-top', { body })), '28px', 'الشعار — بأيّ حالة للشريط');
+    assert.equal(val(W(btn, 'margin-top', { body })), '14px', '«محادثة جديدة» ثابت أصلًا (index.html !important)');
+  }
+  const css = bare('css/redesign.css');
+  assert.doesNotMatch(css, /body:has\(#stockTicker[^)]*\) #sidebarBrand\{/, 'لا حجز مشروط بحالة الشريط للشعار');
+  /* الجوّال كما هو */
+  assert.match(css, /html\.mobile-ui #sidebarBrand\{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:12px 14px 2px;/);
+});

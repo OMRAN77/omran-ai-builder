@@ -196,13 +196,15 @@ window.__omranWhenSeen = (function () {
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Omran AI Builder">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- v-perf-fonts-async: خطّ جوجل كان <link rel=stylesheet> عاديًّا يحجب الرسم الأوّل كاملًا حتى يستقرّ الاتصال
      بجوجل (لا مهلة)؛ الآن غير حاجب (نمط loadCSS: media=print يحمّله بأولويّة منخفضة، onload يفعّله) مع
-     noscript احتياطيّ لمن عطّل JS. Tajawal تبقى fallback لأيّ فشل (v-fonts في tokens.css). -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap"></noscript>
+     noscript احتياطيّ لمن عطّل JS. Tajawal تبقى fallback لأيّ فشل (v-fonts في tokens.css).
+     v-gfonts-cors (تدقيق ١٨ أكتوبر): crossorigin="anonymous" — بلا CORS ترمي قراءة cssRules SecurityError فيكتب html-to-image خطأين
+     في الكونسول عند كلّ تحويل إلى PDF؛ جوجل يردّ Access-Control-Allow-Origin:* فالناتج نفسه. والاتّصال المسبق بالوضع نفسه. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" crossorigin="anonymous" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" crossorigin="anonymous"></noscript>
 <link rel="stylesheet" href="css/tokens.css?v=735">
 <link rel="stylesheet" href="css/redesign.css?v=693">
 <link rel="stylesheet" href="css/modules.css?v=689">
