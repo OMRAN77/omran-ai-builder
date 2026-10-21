@@ -191,7 +191,7 @@ test('٤. المفتاح: تفعيله يطلب الإذن، وإطفاؤه يح
 // ── ٥. الربط والبنية: محمّل في design-gen (يُحمَّل قبل الحزمة)، وindex.html والحزمة لم تُمسّ ──
 test('٥. الربط: محمّل في js/design-gen.js قبل الحزمة، ولا تعديل على index.html ولا أجزائها', () => {
   const host = read('js/design-gen.js');
-  assert.ok(host.includes("/js/media-notify.js?v=2"), 'المحمّل يجلب الوحدة المستقلّة');
+  assert.ok(host.includes("/js/media-notify.js?v=3"), 'المحمّل يجلب الوحدة المستقلّة');
   assert.ok(host.includes('data-media-notify'), 'حراسة من التحميل المكرّر');
   const html = read('index.html');
   assert.ok(!html.includes('media-notify'), 'index.html لم يُمسّ — التحقّق من الحزمة يمنع تعديله عن بُعد');
