@@ -39,3 +39,11 @@
 .stSlot.omUpArt.has{background-image:none !important;}
 .stSlot.omUpArt.has :is(.omUpB,.omUpL){display:none !important;}
 .stSlot.omUpArt .stSlotX{z-index:2;}
+/* v-style-plate-fit (تدقيق ١٨ أكتوبر، g08/style-open): في المربّع الضيّق (الجوّال ٣٠٢–٣٤٨px، ومربّعا الدمج ~١٦٩px) كان نصّ اللوحة ١٦٪ من
+   العرض (~٥٥px، و٢٧px في الدمج) بسطر واحد مقصوص — «اختيار الـ…». واجهة اللوحة الذهبيّة في style.webp ٣٨–٦٢٪ عرضًا و٦٧–٨٣٪ ارتفاعًا،
+   فالنصّ يأخذ عرضها ويلتفّ سطرين عند الحاجة، والخطّ ١٢px (١١px لكلمة «ستايل») كما كان حتّى يضيق المربّع فينزل إلى ٩px. العريض كما هو. */
+@container (max-width:560px){
+  .omUpStyle .omUpB{left:38.5% !important; right:38.5% !important; font-size:max(9px,min(12px,4.2cqw)) !important;}
+  .omUpStyle .omUpL{left:40% !important; right:40% !important; font-size:max(9px,min(11px,3.8cqw)) !important;}
+  .omUpStyle :is(.omUpB,.omUpL){white-space:normal; overflow:visible; text-overflow:clip; line-height:1.05 !important;}
+}

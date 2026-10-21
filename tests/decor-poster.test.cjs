@@ -55,3 +55,15 @@ test('٤. المولّد المدفوع: وضع poster بنسبة 4:3 وسقف 1
   assert.ok(/three rows and four columns/.test(s) && /no labels on the plinths/.test(s) && /Absolutely no text/.test(s));
   assert.ok(/copy poster assets\/decor\/chips/.test(read('.github/workflows/design-thumbs.yml')));
 });
+
+test('٥. اسم المكان فوق البوستر يلتفّ سطرين بدل القصّ («Living ro…» على جوّال ٣٩٠، والفرنسيّة والروسيّة أطول)', () => {
+  const src = read('js/app-12-studios.js');
+  const chips = src.slice(src.indexOf('function buildIdeaChips'), src.indexOf('buildIdeaChips();'));
+  const m = chips.match(/cap\.style\.cssText = ('[^\n]*'\s*\+\s*'[^\n]*');/);
+  assert.ok(m, 'نمط الاسم');
+  const css = new Function('return ' + m[1])();
+  assert.ok(!/white-space:\s*nowrap/.test(css) && !/text-overflow:\s*ellipsis/.test(css), 'لا nowrap ولا ellipsis: ' + css);
+  assert.ok(/white-space:\s*normal/.test(css) && /overflow-wrap:\s*anywhere/.test(css), 'يلتفّ');
+  assert.ok(/[;\s]width:\s*96%/.test(css) && /text-align:\s*center/.test(css) && /line-height:\s*1\.1/.test(css), 'بعرض الخانة وموسَّط بسطرين متقاربين');
+  assert.ok(/font-size:clamp\(10px, 1\.5cqw, 14px\)/.test(css), 'المقاس كما هو (الحاسوب بلا تغيير)');
+});

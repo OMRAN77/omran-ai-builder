@@ -50,6 +50,28 @@ function tools(lang, opts) {
   return { w: ctx.window, box, fetched, asked };
 }
 
+test('١. الدوالّ الأربع تمرّر صندوق النتيجة إلى الشاشة (scrollIntoView nearest)', async () => {
+  for (const fn of ['runHealthCheck', 'redisUsageCheck', 'subscriberCostsCheck', 'clearClientErrors']) {
+    const p = tools('ar');
+    await p.w[fn]();
+    assert.deepEqual(JSON.parse(JSON.stringify(p.box.scrolls)), [{ block: 'nearest' }], fn); // كائن من سياق vm آخر
+  }
+});
+
+test('٢. «مسح سجل الأخطاء» يسأل أوّلًا: الرفض لا يطلب الخادم، والقبول يطلب clear=errors', async () => {
+  const no = tools('en', { confirm: false });
+  await no.w.clearClientErrors();
+  assert.deepEqual(no.fetched, [], 'لا طلب بلا تأكيد');
+  assert.deepEqual(no.asked, [dictFor('en').ownerClearErrorsConfirm]);
+  const yes = tools('en');
+  await yes.w.clearClientErrors();
+  assert.ok(yes.fetched.some((u) => /action=health&clear=errors&token=tok/.test(u)));
+  assert.equal(yes.box.textContent, '🧹 Error log cleared ✅');
+  const ar = tools('ar', { confirm: false });
+  await ar.w.clearClientErrors();
+  assert.match(ar.asked[0], /نهائيًّا/);
+});
+
 test('٣. فحص النظام بالإنجليزيّة: لا عربيّ خارج الحمولات المعزولة، والملخّص والعناوين بلغة الواجهة', async () => {
   const p = tools('en');
   await p.w.runHealthCheck();

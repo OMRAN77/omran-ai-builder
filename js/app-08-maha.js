@@ -298,7 +298,20 @@ function mahaUpdatePersonaUI(){
     if(glyph) glyph.style.display = 'none';
     dock.title = tip;
   }
+  mahaPersonaTitles(male);
 }
+/* v-maha-title-lang (تدقيق ١٨–١٩ أكتوبر: تلميح «م» يظهر «مها» عربيّة في الواجهة الإنجليزيّة): التلميحات وبديل صورة العائم
+   كانت اسمًا عربيًّا ثابتًا يكتب فوق data-i18n-title="mahaTitle" — الآن نصّ mahaTitle (أو voiceGenderMale لعبدالله) بلغة
+   التطبيق، ويُعاد عند تبديلها (applyLanguage يكتب سمة lang). «مها» نفسها باقية، واسم المكالمة الظاهر ووسم HD لا يُلمسان هنا. */
+function mahaPersonaTitles(male){
+  const tName = t(male ? 'voiceGenderMale' : 'mahaTitle');
+  const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
+  if(fabImg) fabImg.alt = tName;
+  if(btnMahaEl) btnMahaEl.title = tName;
+  const dock = document.getElementById('btnMahaDock');
+  if(dock) dock.title = tName;
+}
+try{ new MutationObserver(() => { try{ mahaPersonaTitles(mahaReadVoiceGender() === 'male'); }catch(e){ __swallow(e, 'maha:lang-titles'); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); }catch(e){ __swallow(e, 'maha:lang-observe'); }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
 function mahaEnsureVoiceChosen(){
@@ -973,9 +986,31 @@ function mahaClearImageRef(){
   if(mahaImgElClr){ mahaImgElClr.style.display = 'none'; mahaImgElClr.src = ''; }
 }
 
+/* v-maha-img-wait (تدقيق ١٨–١٩ أكتوبر: «صورة مها ٢١ ثانية بلا مؤشّر رسم»): «أفكّر» تعود «أستمع» بعد ثوانٍ والصورة ما زالت
+   تُرسم. خانة ذهبيّة بنصّ stGenImage في خانة الصورة نفسها، مستقلّة عن mahaSetState، تزول بوصول الصورة أو فشلها أو بإنهاء
+   المكالمة؛ وعدّاد الطلبات الجارية (mahaImgPending، عند مهلة السكوت) نشاطٌ فلا تُغلق المكالمة وهي ترسم. */
+function mahaImgPendingShow(){
+  if(!mahaCallActive) return;
+  const img = document.getElementById('mahaGenImage');
+  if(!img || !img.parentNode) return;
+  let ph = document.getElementById('mahaImgPending');
+  if(!ph){
+    ph = document.createElement('div');
+    ph.id = 'mahaImgPending';
+    ph.className = 'maha-img-pending';
+    ph.setAttribute('role', 'status');
+    img.parentNode.insertBefore(ph, img.nextSibling);
+  }
+  ph.textContent = t('stGenImage');
+}
+function mahaImgPendingHide(){
+  const ph = document.getElementById('mahaImgPending');
+  if(ph && ph.parentNode) ph.parentNode.removeChild(ph);
+}
 function mahaShowImage(base64, mimeType){
   mahaLastImageBase64 = base64;
   mahaLastImageMime = mimeType || 'image/png';
+  mahaImgPendingHide(); // v-maha-img-wait
   if(mahaCallMode === 'builder'){
     // Builder voice mode: never show the image inside the call bubble -
     // drop it straight into the code/preview panels instead, like every
@@ -1001,6 +1036,8 @@ function mahaShowImage(base64, mimeType){
     cur.code = fullCode;
     return;
   }
+  /* v-maha-img-wait + v-maha-img-hold (الدفعة ١): بعد إنهاء المكالمة لا عرض — الصورة حُفظت في المحادثة (mahaKeepImage) قبل التأكيد، فلا نسخة ثانية هنا */
+  if(!mahaCallActive) return;
   const el = document.getElementById('mahaGenImage');
   const orb = document.getElementById('mahaOrb');
   if(el){
@@ -1176,7 +1213,16 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
     }
     // تعديل الصورة يفشل بأمان: لا نعيد الطلب عشوائيًا ولا نسقط الصورة الأصلية
     // ونولّد من الوصف وحده، لأن ذلك كان يحوّل الشخص والصورة إلى شكل جديد.
-    const r = await mahaCallImageApi(promptText, editMode, sourceOverride);
+    // v-maha-img-wait: خانة الانتظار طوال الطلب، والعدّاد نشاطٌ لمهلة السكوت؛ ومهلتها تبدأ من وصول الصورة أو فشلها
+    mahaImgPending++;
+    mahaImgPendingShow();
+    let r;
+    try{ r = await mahaCallImageApi(promptText, editMode, sourceOverride); }
+    finally{
+      mahaImgPending = Math.max(0, mahaImgPending - 1);
+      mahaLastActivity = Date.now();
+      if(!mahaImgPending) mahaImgPendingHide();
+    }
     if(!r.ok) return { ok: false, error: r.error };
     let outB64 = r.imageBase64, outMime = r.mimeType;
     if(textToWrite && textToWrite.trim()){
@@ -1770,6 +1816,8 @@ async function mahaHandleRtFunctionCall(ev){
     output = { ok: false, message: 'Tool execution error.' };
   }
 
+  // v-maha-img-wait: الأداة قد تأخذ ٢٠ث وأكثر، والمكالمة قد أُغلقت أثناءها (mahaRtDc = null) — لا نتيجة لقناة مغلقة، بصمت
+  if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
   try{
     mahaRtDc.send(JSON.stringify({
       type: 'conversation.item.create',
@@ -2230,6 +2278,7 @@ let mahaCloseWatch = null;
 /* v-maha-app: >0 أثناء نقرة يجريها منفّذ تحكّم مها نفسه (js/app-43-maha-app.js) — نقرته ليست يد المستخدم فلا تُنهي المكالمة.
    نقرات المستخدم الحقيقيّة (ومنها نقرات آيفون التي يعيد التطبيق إطلاقها برمجيًّا) تُنهيها كما كانت (v-maha-band). */
 let mahaActing = 0;
+let mahaImgPending = 0; // v-maha-img-wait: طلبات صورة جارية — نشاطٌ لا سكوت
 function mahaStartCloseWatch(){
   mahaStopCloseWatch();
   mahaLastActivity = Date.now();
@@ -2246,7 +2295,7 @@ function mahaStartCloseWatch(){
   const armT = setTimeout(() => { document.addEventListener('click', onTap, true); }, 0);
   const iv = setInterval(() => {
     if(!mahaCallActive || mahaCallMode === 'builder') return;
-    if(mahaState === 'listening' && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
+    if(mahaState === 'listening' && !mahaImgPending && Date.now() - mahaLastActivity > MAHA_SILENCE_END_MS) mahaEndCall();
   }, 1000);
   mahaCloseWatch = { onTap, armT, iv };
 }
@@ -2276,6 +2325,7 @@ function mahaEndCall(){
   if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#28"); } mahaCurrentAudio = null; }
   stopAllSpeaking();
   if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
+  mahaImgPendingHide(); // v-maha-img-wait: الخانة تذهب مع المكالمة، والصورة إن وصلت بعدها تذهب إلى المحادثة
   try{ if(window.mahaGoldWave) window.mahaGoldWave.end(); }catch(e){ __swallow(e, 'maha:goldwave-end'); } // v-maha-goldwave
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');

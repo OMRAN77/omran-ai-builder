@@ -30,7 +30,7 @@ test('١. مربّع الإنشاء: نجوم ذهبيّة (والفاتح أغ�
     /* v-parallel-chats: يعود للصفحة إن كانت محادثة الطلب هي المعروضة — لا يُلصق مربّع طلبٍ في الخلفيّة داخل محادثة أخرى */
     /* v-img-dots-plus: الرسم خرج إلى __omranImgDots(el, mine) المشتركة؛ __showImgLoading يمرّر __mine() نفسه */
     assert.ok(s.includes("if(!el.isConnected && mine && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el);"), 'بعد هبوط بحث الصور');
-    assert.ok(s.includes('__omranImgDots(el, __mine());'), 'المسار العاديّ يمرّر محادثة طلبه');
+    assert.ok(s.includes('__omranImgDots(el, __mine(), '), 'المسار العاديّ يمرّر محادثة طلبه');
   }
 });
 

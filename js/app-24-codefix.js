@@ -478,6 +478,17 @@
     };
   }
 
+  /* v-review-menu-close (تدقيق ١٨ أكتوبر: ⋮ تبقى مفتوحة فوق النافذة وتغطّي «اختر ملفًّا» في الجوّال): الزرّ يوقف انتشار النقرة
+     فلا يصل مستمع الإغلاق على القائمة (app-10). نغلقها هنا قبل فتح النافذة — بإغلاق app-10 نفسه (يعيدها لمكانها ويطفئ ⋮)،
+     واحتياطًا بإزالة show. */
+  function closeTabsMenu() {
+    try {
+      if (typeof window.omranCloseTabsMenu === 'function') { window.omranCloseTabsMenu(); return; }
+      var d = $id('tabsMenuDropdown');
+      if (d) d.classList.remove('show');
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'codefix:menu-close'); }
+  }
+
   /* ---------- الزرّ: يُضاف إلى قائمة ⋮ في شريط التبويبات ---------- */
   function mount() {
     var dd = document.getElementById('tabsMenuDropdown');

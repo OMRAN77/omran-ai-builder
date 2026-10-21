@@ -38,8 +38,8 @@ test('٣. ترتيب المستند: الأربعة المؤجَّلة الجد�
 });
 
 test('٤. خط جوجل غير حاجب (نمط loadCSS) مع احتياط noscript، وpreconnect ثانٍ لـfonts.gstatic.com', () => {
-  assert.match(HTML, /<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css2\?family=[^"]+" media="print" onload="this\.media='all'">/, 'رابط الخط media=print + onload');
-  assert.match(HTML, /<noscript><link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css2\?family=[^"]+"><\/noscript>/, 'احتياط noscript لخط جوجل');
+  assert.match(HTML, /<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css2\?family=[^"]+" crossorigin="anonymous" media="print" onload="this\.media='all'">/, 'رابط الخط media=print + onload (وcrossorigin — v-gfonts-cors)');
+  assert.match(HTML, /<noscript><link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css2\?family=[^"]+" crossorigin="anonymous"><\/noscript>/, 'احتياط noscript لخط جوجل');
   assert.match(HTML, /<link rel="preconnect" href="https:\/\/fonts\.gstatic\.com" crossorigin>/, 'preconnect لـfonts.gstatic.com');
 });
 

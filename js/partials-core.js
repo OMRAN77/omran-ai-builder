@@ -13,10 +13,12 @@
       <button type="button" class="btn" id="authTabSignup" data-i18n="authTabSignup">حساب جديد</button>
     </div>
     <form id="authForm" autocomplete="on" onsubmit="return false;" style="margin-top:34px;">
+    <!-- v-auth-a11y: خانة الاسم الفارغة بـdir=auto تصير ltr (النصّ الدليليّ لا يُحسب) فيذهب «اسم المستخدم» يسارًا في العربيّ؛ المكتوب يبقى على dir=auto -->
+    <style id="authRtlCss">html[dir="rtl"] #authUsername:placeholder-shown{direction:rtl}</style>
     <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" data-i18n="[aria-label]authIdPlaceholder" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
     <div id="authPasswordRow" style="display:block; position:relative; margin-bottom:12px;">
       <span id="authPasswordLabelText" style="display:none;" data-i18n="authPasswordLabel">كلمة المرور</span>
-      <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" data-i18n="[aria-label]authPasswordLabel" style="height:50px; padding:0 44px 0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
+      <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" data-i18n="[aria-label]authPasswordLabel" style="height:50px; padding-block:0; padding-inline:14px 44px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
       <button type="button" id="authTogglePassBtn" aria-label="إظهار كلمة المرور" data-i18n="[aria-label]authShowPass" aria-pressed="false" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
     </div>
     <label id="authRememberRow" style="display:none;"><input type="checkbox" id="authRememberMe" checked></label>
@@ -1056,6 +1058,8 @@
       .stCmp.on{border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);}
       .stCmp.on span{color:#d4af37;}
       .stCmp.on::after{content:"✓"; position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center;}
+      /* v-studio-compare-sticky (تدقيق ١٨ أكتوبر: الزرّ بعد ١٠٤ بطاقة، ~٥٠٠٠px على الجوّال): لاصق أسفل النافذة ما دامت القائمة مفتوحة */
+      #studioAiCompareMore[open] #studioAiCompareBtn{position:sticky; bottom:8px; z-index:2; box-shadow:0 -6px 18px rgba(0,0,0,.45);}
       #studioAiMore{margin-top:14px; border:1px solid var(--border,#333); border-radius:var(--r-2); padding:8px 10px;}
       #studioAiMore > summary{cursor:pointer; font-size:13px; color:var(--muted);}
     </style>
@@ -1170,9 +1174,10 @@
       <img id="studioAiResult" style="display:block; width:100%; border-radius:var(--r-2); background:#000;">
       <div id="studioAiBeforeWrap" style="display:none; position:absolute; top:0; left:0; height:100%; overflow:hidden; border-right:2px solid #fff;">
         <img id="studioAiBeforeImg" style="display:block; height:100%; max-width:none;">
-        <!-- v-compare-drag-all: مقبض عند حافّة القصّ نفسها — يتبعها تلقائيًّا مع تغيّر عرض الحاوية -->
-        <div id="studioAiCompareHandle" style="position:absolute; top:50%; right:-20px; transform:translateY(-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414; pointer-events:none;">↔</div>
       </div>
+      <!-- v-compare-drag-all: مقبض عند حافّة القصّ. v-studio-handle (تدقيق ١٨ أكتوبر: نصّه مقصوص على الخطّ): كان ابن طبقة «قبل»
+           المقصوصة (overflow:hidden) بـright:-20px فيُقصّ نصفه دائمًا — صار ابن حاوية النتيجة، وupdateSliderClip يضع left عند الخطّ. -->
+      <div id="studioAiCompareHandle" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); align-items:center; justify-content:center; font-size:15px; color:#141414; pointer-events:none;">↔</div>
     </div>
 
     <a id="studioAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-studio-ai.png" data-i18n="studioAiDownloadBtn">⬇️ تحميل الصورة</a>

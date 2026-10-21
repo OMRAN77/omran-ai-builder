@@ -77,6 +77,7 @@
       }
       var el = document.createElement('link');
       el.rel = 'stylesheet';
+      el.crossOrigin = 'anonymous'; /* v-gfonts-cors: بلا CORS ترمي قراءة cssRules فيكتب html-to-image (تحويل PDF) خطأين في الكونسول */
       el.href = 'https://fonts.googleapis.com/css2?family=' + f.g + '&display=swap';
       el.setAttribute('data-sig-font', f.id);
       el.onerror = function(){ linked[f.id] = false; };

@@ -166,6 +166,26 @@ function briefTX() {
   return ctx.TX;
 }
 
+test('٧. زرّ السطر اسمه «ولّد من وصفي» — لا يتكرّر اسم زرّ النموذج «ولّد التصميم» في أيّ لغة من الـ١٤', () => {
+  const TX = briefTX();
+  const core = read('js/app-03-i18n-data.js');
+  const runs = [...core.matchAll(/\bconstructionRunBtn:\s*'([^']+)'/g)].map((m) => m[1]);
+  assert.equal(runs.length, 2, 'العربيّة والإنجليزيّة في القاموس العامّ');
+  const RUN = { ar: runs[0], en: runs[1] };
+  for (const l of LANGS14.filter((x) => x !== 'ar' && x !== 'en')) {
+    const m = read('i18n/' + l + '.js').match(/["']?constructionRunBtn["']?\s*:\s*"([^"]+)"/);
+    assert.ok(m, 'constructionRunBtn في ' + l);
+    RUN[l] = m[1];
+  }
+  const norm = (s) => String(s).replace(/[✨\s]/g, '').toLowerCase();
+  for (const l of LANGS14) {
+    assert.ok(TX.go[l], 'TX.go/' + l);
+    assert.notEqual(norm(TX.go[l]), norm(RUN[l]), 'اسم زرّين متطابق في ' + l + ': ' + TX.go[l]);
+  }
+  assert.equal(TX.go.ar, '✨ ولّد من وصفي');
+  assert.equal(TX.go.en, '✨ Generate from my description');
+});
+
 test('٨. ملخّص «فهمت»: كلّ جزء معزول ⁨…⁩، والمساحة بوحدة النموذج المترجمة لا «m²» الإنجليزيّة', () => {
   const src = read('js/app-15-cx-brief.js');
   const a = src.indexOf('  var $ = function(id){');

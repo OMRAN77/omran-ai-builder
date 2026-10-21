@@ -119,20 +119,63 @@
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');
       bar.id = 'ownerHealthBar'; // v-maha-dock-bar: ينزل تحت شريط «م» العلويّ أثناء نافذة مها (css/modules.css)
-      /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): fixed تحت أسفل الهيدر الفعليّ لا فوقه (body شبكة CSS — v-frame-c).
-         v-owner-i18n (الدفعة ٥): العنوان من القاموس واتّجاه الصفحة بدل direction:rtl المفروض؛ الشكل والموضع كما كانا. */
-      const headerBottom = (function(){
-        try{ const h = document.querySelector('header'); return h ? Math.max(0, h.getBoundingClientRect().bottom) : 0; }
-        catch(e){ return 0; }
-      })();
-      bar.style.cssText = 'position:fixed;top:' + headerBottom + 'px;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;padding-inline:14px 44px;font-size:13px;line-height:1.6;white-space:pre-wrap;box-shadow:0 2px 12px rgba(0,0,0,.5)';
-      bar.textContent = oT('ownerHealthPill', { n: problems.length }) + ':\n' + problems.join('\n');
+      /* v-ownerbar-pill (تدقيق ١٨ أكتوبر، لقطات ٠٠١ و٠٠٨ و٠٤٢ و٠٥٢): v-ownerbar-cover أنزل الشريط تحت الرأس، لكنّه بقي
+         بعرض الشاشة (z ٩٩٩٩٩، نصّ pre-wrap بثلاثة أخطاء خامّة ≈١٢٤px) فغطّى صفّ «إبداع» في الأدوات و«محادثة جديدة»
+         والبحث وزرّ إغلاق الشريط، وربع شاشة الجوّال، وكان عربيًّا بـdirection:rtl مفروض. صار كبسولة سطر واحد
+         «ملاحظات النظام (N)» مع ✕ أسفل الطرف المقابل للشريط الجانبيّ (bottom-start يغطّي أزرار ذيله على الحاسوب)،
+         وفوق صندوق الكتابة في الجوّال. التفاصيل الخامّة (v-err-build: الملفّ والسطر للتشخيص من لقطة) تُفتح بالنقر في
+         لوحة بسقف 40vh تُمرَّر، ومعها زرّ يفتح «فحص النظام». الاتّجاه اتّجاه الصفحة، والمعرّف كما هو (قاعدة v-maha-dock-bar). */
+      const mob = document.documentElement.classList.contains('mobile-ui') || (window.innerWidth || 1280) < 768;
+      let bottom = 12;
+      if(mob){
+        try{
+          let top = Infinity; // فوق الصندوق وفوق تلميحه الأوّل (askAllHintTip) إن ظهر
+          ['askAllHintTip', 'composerBox'].forEach(function(id){
+            const el = document.getElementById(id);
+            const r = el && el.getBoundingClientRect();
+            if(r && r.height > 0 && r.top > 0 && r.top < window.innerHeight) top = Math.min(top, r.top);
+          });
+          if(top < Infinity) bottom = Math.round(window.innerHeight - top + 10);
+        }catch(e){ __swallow(e, 'owner:healthbar-pos'); }
+      }
+      bar.style.cssText = 'position:fixed;bottom:' + bottom + 'px;inset-inline-end:12px;z-index:99999;max-width:min(360px,calc(100vw - 24px));background:#3a1010;color:#ffd7d7;border-radius:12px;font-size:13px;line-height:1.5;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+      const head = document.createElement('div');
+      head.setAttribute('role', 'button');
+      head.style.cssText = 'display:flex;align-items:center;gap:6px;min-height:36px;padding:0 4px 0 12px;cursor:pointer;white-space:nowrap';
+      const label = document.createElement('span');
+      label.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis';
+      label.textContent = oT('ownerHealthPill', { n: problems.length });
       const x = document.createElement('button');
       x.type = 'button';
       x.textContent = '✕';
-      x.style.cssText = 'position:absolute;top:8px;inset-inline-end:10px;background:none;border:none;color:#ffd7d7;font-size:16px;cursor:pointer';
-      x.onclick = () => bar.remove();
-      bar.appendChild(x);
+      x.style.cssText = 'flex:none;background:none;border:none;color:#ffd7d7;font-size:15px;line-height:1;padding:8px;cursor:pointer';
+      x.onclick = (ev) => { if(ev && ev.stopPropagation) ev.stopPropagation(); bar.remove(); };
+      head.appendChild(label);
+      head.appendChild(x);
+      const det = document.createElement('div');
+      det.hidden = true;
+      det.style.cssText = 'max-height:40vh;overflow:auto;padding:6px 12px 10px;border-top:1px solid rgba(255,215,215,.2)';
+      const txt = document.createElement('div');
+      txt.style.cssText = 'white-space:pre-wrap;word-break:break-word';
+      txt.textContent = problems.join('\n');
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.textContent = oT('ownerHealthOpen');
+      go.style.cssText = 'margin-top:8px;background:none;border:1px solid rgba(255,215,215,.45);color:#ffd7d7;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer';
+      go.onclick = () => {
+        try{
+          const sd = document.getElementById('settingsDialog');
+          if(sd && typeof openDialogSafe === 'function') openDialogSafe(sd);
+          if(typeof renderSettingsNavList === 'function') renderSettingsNavList();
+          if(typeof showSettingsPage === 'function') showSettingsPage('ownerSection');
+          if(typeof window.runHealthCheck === 'function') window.runHealthCheck();
+        }catch(e){ __swallow(e, 'owner:healthbar-open'); }
+      };
+      det.appendChild(txt);
+      det.appendChild(go);
+      head.onclick = () => { det.hidden = !det.hidden; };
+      bar.appendChild(head);
+      bar.appendChild(det);
       document.body.appendChild(bar);
     }catch(e){ /* فحص صامت — لا نزعج المستخدم إذا فشل */ }
   }, 6000);
@@ -151,11 +194,18 @@
     const m = String((e && e.message) || e || '');
     return /Failed to fetch|NetworkError|Load failed|ERR_NETWORK|Network request failed/i.test(m) ? oT('acctNetError') : m;
   }
+  /* v-owner-health-scroll: النتيجة تُكتب في صندوق تحت صفوف الأزرار — بلا تمرير لا يتغيّر شيء ظاهر بعد الضغط (لقطة ٠٢٠). */
+  function oShow(box){
+    try{ if(box && typeof box.scrollIntoView === 'function') box.scrollIntoView({ block: 'nearest' }); }
+    catch(e){ if(typeof __swallow === 'function') __swallow(e, 'owner:health-scroll'); }
+  }
+
   // 🩺 فحص النظام (لوحة المالك)
   window.runHealthCheck = async function(){
     const box = document.getElementById('adminHealthBox');
     if(!box) return;
     box.textContent = oT('ownerChecking');
+    oShow(box);
     const lines = [];
     const mark = ok => ok ? '✅' : '❌';
     // 1) الصفحات الأساسية
@@ -227,6 +277,10 @@
   };
   window.clearClientErrors = async function(){
     const box = document.getElementById('adminHealthBox');
+    /* v-owner-clear-confirm (تدقيق ١٨ أكتوبر): المسح نهائيّ للسجلّين — يسأل أوّلًا كبقيّة أفعال المالك الهدّامة
+       (حذف حساب، حذف حسابات الفحص، حذف مفتاح الخزنة). منطق المسح نفسه كما هو. */
+    if(!confirm(oT('ownerClearErrorsConfirm'))) return;
+    oShow(box);
     try{
       /* v-err-deploy: «مسح سجل الأخطاء» كان يمسح أخطاء المستخدمين وحدها — أخطاء الخادم لا تُمسح من التطبيق أبدًا
          (402 من ٢١ سبتمبر باقٍ). clear=errors في فحص الصحّة يمسح السجلّين معًا (للمالك وحده). */
@@ -239,6 +293,7 @@
     const box = document.getElementById('adminHealthBox');
     const mb = (n) => (n / 1048576).toFixed(1) + ' ' + oT('ownerMb');
     if(box) box.textContent = oT('ownerUsageRunning');
+    oShow(box);
     try{
       const r = await fetch('/api/system?action=health&usage=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
       const d = await r.json().catch(() => ({}));
@@ -258,6 +313,7 @@
     const NAME = { basic: 'Plus', pro: 'Pro', max: 'Max', free: oT('ownerPlanFree'), vip: 'VIP', owner: oT('ownerPlanOwner') };
     const NET = { basic: 9.41, pro: 19.12, max: 96.80 }; // ما يصلك من الاشتراك الشهريّ بعد رسوم الدفع
     if(box) box.textContent = oT('ownerCostsRunning');
+    oShow(box);
     try{
       const r = await fetch('/api/system?action=health&costs=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
       const d = await r.json().catch(() => ({}));
@@ -353,6 +409,9 @@
           if(styleEl && styleEl.value !== 'realistic') styleEl.value = 'realistic';
         }catch(he){ try{ __swallow(he,'video:open-hero'); }catch(_){ /* guard-ok */ } }
       }
+      /* v-vmk-chat-tab (تدقيق ١٨–١٩ أكتوبر): نصّ أو صورة من المحادثة مكانهما قسم الوضع (الوصف وصورة البطل) — كان يُفتح على «الترندات» وهما
+         مخفيّان. video.js يقرأ العلامة عند الفتح مرّة ويمحوها؛ بلا نصّ ولا صورة (ترندات المحادثة، مها) يبقى على الترندات */
+      if((prompt && String(prompt).trim()) || heroDataUrl){ if(modal.style.display !== 'flex') modal.dataset.vmkTab = (modeEl && modeEl.value) || 'runway'; }
       modal.style.display = 'flex';
       try{ closeHeaderMenu(); }catch(e){ /* guard-ok — closeHeaderMenu اختيارية */ }
       const owner = isOwnerAccount();
@@ -1157,6 +1216,8 @@
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
     downloadEl.download = 'omran-ai-video.mp4'; // v-vmk-dl-ext: الافتراضيّ قبل كلّ توليد
+    /* v-vmk-res-mode: النتيجة تُوسَم بالوضع الذي ينتجها — video.js يخفيها ويوقفها في غيره (كان فيديو القوالب المجّانيّ يظهر في «فيديو AI»). */
+    resultEl.dataset.mode = modeEl.value;
 
     function friendlyError(err){
       const code = err && err.code;

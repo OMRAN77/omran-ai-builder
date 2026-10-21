@@ -72,13 +72,24 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTa
 .omran-selected .omran-select-mark.omran-select-mark{background:#101013; border-color:#101013; color:#fff;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omran-selected.omran-selected{background:#101013 !important; color:#fff !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omran-selected .omran-select-mark.omran-select-mark{background:#fff; border-color:#fff; color:#101013;}
-/* v-black-fields (تدقيق ١٨–١٩ أكتوبر، الدفعة ٣ «حلّها ضمن شغل تباين الثيمات»؛ من حزمة b3 في ten-a، الخانات وحدها): ما اعتمد على حدّه وحده
-   صار بعد الحدّ الشبح أسود على أسود — خانتا كلمة المرور والإيميل في «حسابي»، وحقل الدخول، وخانات الأدوات. الخانة التي يعلّمها
-   js/app-41-three-colors.js بـom3-field (شفّافة أو بلون سطحها) تأخذ درجة المالك المقابلة لسطحها: #101013، وتحت تعبئة om3-fill #000، وتحت اثنتين
-   #101013 — مرآة تناوب أدوات-أسود.css. background-color وحده فيبقى سهم القائمة المنسدلة، والحدّ شبح كما هو. :not(#om3-a#om3-b) يغلب قواعد المعرّف. */
+/* v-black-surfaces (تدقيق ١٨–١٩ أكتوبر): ما اعتمد على حدّه وحده صار بعد الحدّ الشبح أسود على أسود — خانات بلا حدّ ولا خلفيّة، وأزرار تبدو
+   كلمات، وقوائم ونوافذ بلا سطح. يظهر بدرجتي المالك لا بخطّ («الخلفيه فقط لونين نفس درجة الاسود»):
+   • الخانة التي يعلّمها js/app-41-three-colors.js بـom3-field (شفّافة أو بلون سطحها): #101013، وتحت تعبئة om3-fill #000، وتحت اثنتين #101013 —
+     مرآة تناوب أدوات-أسود.css. background-color وحده فيبقى سهم القائمة المنسدلة؛ الحدّ يبقى شبحًا والتوهّج عند التركيز كما هو.
+     :not(#om3-a#om3-b) يغلب قواعد المعرّف (#constructionModal input[type=number] …!important).
+   • زرّا الاسترداد (واتساب/تيليجرام) كبسولة كزرّ جوجل بجانبهما، قائمة ⋮ في السجلّ، بطاقة المشاركة، زرّ ↓ بتوهّج «فسّر» (الكمبيوتر وحده يُظهره)،
+     بطاقات الخطط و«اشترك الآن» (#000 فوق البطاقة) وباقات النقاط، وخيار «بطاقة» في الدفع — لون فقط: لا سعر ولا منطق دفع ولا حدّ. */
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-field:not(#om3-a#om3-b){background-color:#101013 !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-fill .om3-field:not(#om3-a#om3-b){background-color:#000 !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-fill .om3-fill .om3-field:not(#om3-a#om3-b){background-color:#101013 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #authOverlay [data-recover]{background:#101013 !important; border-radius:999px !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #histItemMenu,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #shareModal > div,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #pricingSection .pcard.pcard,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #pricingSection .pointsPackBtn.pointsPackBtn,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #checkoutModalOverlay button[onclick="startStripeCheckout()"]{background:#101013 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #pricingSection .pcard .pbtn:not(.primary):not(.ghost){background:#000 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #chatJumpBottom.visible{background:#101013 !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
 /* ══ v-no-lines-3 (المالك ١٨ أكتوبر بصورتين): تصميم الكمبيوتر في الوضع الأسود وحده — لا الفاتح ولا الثيمات ولا الجوّال ولا «المجرّة».
    ① لا إطارات ذهبيّة حول اللوحات الثلاث (ولا عند المرور)؛ خطّان عموديّان من أعلى الشاشة إلى أسفلها في منتصف الفراغين (المقابض .resizer، ١٤px)
       بالـCSS (::before) بلون 240,222,170 يذوب في الطرفين وتوهّج خفيف.

@@ -634,13 +634,13 @@ if(OMRAN_PAUSED_TOOLS.indexOf('btnQuickTemplates') >= 0){
   catch(e){ __swallow(e, 'ui:paused-hw-card'); }
 }
 var APP_CAPABILITIES = [
-  { id:'btnCV',       icon:'💼', ar:'مولّد السيرة الذاتية', en:'CV Builder',
+  { id:'btnCV',       icon:'💼', key:'cvTitle', ar:'مولّد السيرة الذاتية', en:'CV Builder',
     kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },
-  { id:'btnDocs',     icon:'📄', ar:'مساعد المستندات', en:'Document Assistant',
+  { id:'btnDocs',     icon:'📄', key:'docsTitle', ar:'مساعد المستندات', en:'Document Assistant',
     kw:/(?:حلل|حلّل|اقرأ|افهم|لخص|لخّص|راجع|افحص).{0,18}(?:مستند|عقد|فاتورة|تقرير|ملف|اتفاقية|pdf)|(?:مستند|عقد|فاتورة|اتفاقية)(?![\u0600-\u06FF])|(?:contract|invoice)\b/i }, // v-arabic-wordb: كان \b بعد الأسماء العربيّة فلا تطابق وحدها
   /* v-gov-hint: «المعاملات الحكومية» متقاعدة في الخادم (api/_lib/_retired.js ← 410 «retired») وزرّها مخفيّ لكلّ أحد (v473)،
      فلا تُقترح هنا — أزالها v386 ثمّ أعادتها مزامنة v468 سهوًا مع المستندات والسيرة. المحادثة نفسها تجيب عن المعاملات. */
-  { id:'btnReligion', icon:'☪️', ar:'التفسير الديني', en:'Religious Guidance',
+  { id:'btnReligion', icon:'☪️', key:'religionMenuLabel', ar:'التفسير الديني', en:'Religious Insights', // v-cap-hint-i18n: key = اسم الأداة في الواجهة بالـ١٤ لغة (الملاحظة تحت الردّ)
     kw:/(ما\s?حكم|وش\s?حكم|شو\s?حكم|فتوى|حلال\s?أو?\s?حرام|تفسير\s?(آية|اية|سورة)|معنى\s?الحديث|fatwa|is it halal|is it haram)/i },
 ].filter(function(c){ return OMRAN_PAUSED_TOOLS.indexOf(c.id) < 0; });
 // ميزة الشخصية الكرتونية الناطقة = من الدردشة (صورة + «سوِّ منها شخصية تتكلم»)
@@ -971,16 +971,33 @@ function omranBuildCodeViewerBar(){
     b.style.borderColor = on ? 'var(--accent,#c9a26a)' : IDLE_BD;
     b.style.color = on ? 'var(--accent,#c9a26a)' : IDLE_FG;
   };
-  bar._resetEdit = function(){ setOn(edt, false); };
+  /* v-code-save (تدقيق ١٨ أكتوبر: «تعديل» بلا علامة): أزرار التحرير والحفظ انتقلت إلى قائمة ⋮ المغلقة بعد النقر، فتمييز setOn
+     عليها لا يُرى. العلامة الظاهرة إطار مضمّن على خانة الكود نفسها ما دام التحرير جاريًا — يزول بالحفظ أو الإغلاق. */
+  var editRing = function(on){
+    try{
+      if(typeof codeEl === 'undefined' || !codeEl) return;
+      codeEl.style.outline = on ? '2px solid var(--accent,#c9a26a)' : '';
+      codeEl.style.outlineOffset = on ? '-2px' : '';
+    }catch(e){ /* guard-ok — علامة بصريّة فقط */ }
+  };
+  bar._resetEdit = function(){ setOn(edt, false); editRing(false); };
 
   /* v-panel-x (المالك ١٠ أكتوبر: «الإكس مسؤول في الصندوق فقط، إلّا إذا أريد أرجعه من عند المحادثة — الطرفين مشبوكين»):
      على الكمبيوتر يقفل ما يعرضه الصندوق لهذه المحادثة بالترتيب — عارض الكود، ثمّ الصورة، ثمّ معاينة تطبيقها —
      ولا يطوي اللوحة (لذلك زرّ الطيّ). يرجع المعروض من المحادثة (نقر الصورة، «استخدم هذا الإصدار»، كود جديد)
-     أو من تبويب المعاينة. الجوّال كما كان. */
+     أو من تبويب المعاينة.
+     v-code-x-mobile (تدقيق ١٨ أكتوبر: ✕ لوحة الكود لا يغلقها في الجوّال): في تخطيط الدرج (mobile-ui أو ≤860) كانت النقرة الأولى
+     تزيل العارض وحده فيبقى الدرج مفتوحًا، والتالية تنقر #waCollapseBtn المخفيّ (طيّه للحاسوب وحده، tokens.css). الآن يغلق
+     العارض إن وُجد ثمّ الدرج نفسه. الحاسوب كما هو. */
   cls.onclick = function(){
-    if(document.getElementById('omranCodeViewer')){ omranCloseCodeViewer(); return; }
-    if(document.documentElement.classList.contains('mobile-ui')){
-      try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+    var drawer = document.documentElement.classList.contains('mobile-ui') || window.innerWidth <= 860;
+    if(document.getElementById('omranCodeViewer')){
+      omranCloseCodeViewer(); /* يزيل علامة التحرير أيضًا (_resetEdit) */
+      if(!drawer) return;
+    }
+    bar._resetEdit();
+    if(drawer){
+      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ __swallow(e, 'ui:code-x-drawer'); }
       return;
     }
     omranPanelCloseShown();
@@ -993,6 +1010,7 @@ function omranBuildCodeViewerBar(){
       try{ if(typeof switchWorkTab === 'function') switchWorkTab('code'); }catch(e){ /* guard-ok */ }
       try{ codeEl.readOnly = false; codeEl.focus(); }catch(e){ /* guard-ok */ }
       setOn(edt, true);
+      editRing(true); // v-code-save
       return;
     }
     /* التلوين يضيف عناصر <i>؛ عند التحرير نرجع للنصّ الخام حتى لا تختلط
@@ -1001,6 +1019,7 @@ function omranBuildCodeViewerBar(){
     p.contentEditable = 'true';
     p.spellcheck = false;
     p.style.background = 'rgba(255,255,255,.03)';
+    p.style.outline = '2px solid var(--accent,#c9a26a)'; p.style.outlineOffset = '-2px'; /* v-code-save: يزول مع العارض */
     p.focus();
     setOn(edt, true);
     var gutTimer = null;
@@ -1018,6 +1037,8 @@ function omranBuildCodeViewerBar(){
     };
   };
 
+  /* v-code-save (تدقيق ١٨ أكتوبر: «حفظ» بلا تأكيد): كان ينادي save() غير موجودة (الموجود محلّيّ داخل شرائح أخرى)،
+     فنصّ العارض لا يُحفظ أبدًا. الآن saveState() — باب كلّ حفظ ومزامنة — ثمّ توست «تم الحفظ» بلغة المستخدم. */
   sav.onclick = function(){
     try{
       var p = document.getElementById('omranCodePre');
@@ -1025,11 +1046,13 @@ function omranBuildCodeViewerBar(){
       codeEl.value = txt;
       var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
       if(cur){ cur.code = txt; }
-      if(typeof save === 'function') save();
+      if(typeof saveState === 'function') saveState();
+      try{ if(typeof settingsToast === 'function') settingsToast(t('acctSaved')); }catch(e){ /* guard-ok — التأكيد ترف */ }
       setOn(sav, true);
       setTimeout(function(){ setOn(sav, false); }, 900);
       if(p){ omranCloseCodeViewer(); return; }
       setOn(edt, false);
+      editRing(false);
       if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview();
     }catch(e){ __swallow(e, 'ui:code-viewer-save'); }
   };
@@ -1065,7 +1088,9 @@ window.omranOpenTextInCodePanel = function(text, title){
     }
     /* خارج الحارس عمدًا: الطبقة قد تكون قائمة والشريط غائبًا. */
     omranBuildCodeViewerBar();
-    var body = String(text || '');
+    /* v-code-crlf (تدقيق ١٨ أكتوبر: أرقام الأسطر لا تطابق ملفّات CRLF): محدّد التعليق //[^\n]* يبتلع \r داخل <i>، ومحلّل HTML
+       يحوّل الـ\r الوحيد سطرًا زائدًا بينما الهامش يعدّ بـ\n. نهايات الأسطر توحَّد قبل العدّ والتلوين. */
+    var body = String(text || '').replace(/\r\n?/g, '\n');
     var lines = body.split('\n').length;
     var nums = [];
     for(var i = 1; i <= lines; i++) nums.push(i);
@@ -1205,9 +1230,23 @@ async function getPyodideInstance(){
           document.head.appendChild(s);
         });
       }
-      const inst = await window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
-      pyodideInstance = inst;
-      return inst;
+      /* v-py-locale (تدقيق ١٨ أكتوبر: بايثون يقول «حدث خطأ» و«exit(1)» حين تكون لغة المتصفّح عربيّة): مُشغِّل بايثون
+         (Emscripten _tzset_js) يأخذ اسم المنطقة الزمنيّة من toLocaleTimeString(undefined, {hour12:false, timeZoneName:'short'})
+         بلغة المتصفّح — بالعربيّة «غرينتش+4» يُقصّ في ٧ بايتات وسط حرف فيفشل بايثون في فكّه وقت الإقلاع (init_fs_encoding).
+         مُثبت بمسبار (ar وar-AE تفشل، en وfr تعمل)، وenv:{LANG:'C.UTF-8'} لا يصلحه. أثناء التحميل وحده يُجاب هذا النداء
+         بعينه بالإنجليزيّة، ثمّ تعود الدالّة كما كانت (بقيّة التطبيق لا تتأثّر). */
+      const __tlt = Date.prototype.toLocaleTimeString;
+      Date.prototype.toLocaleTimeString = function(loc, opt){
+        if(loc === undefined && opt && opt.timeZoneName === 'short') return __tlt.call(this, 'en-US', opt);
+        return __tlt.call(this, loc, opt);
+      };
+      try{
+        const inst = await window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
+        pyodideInstance = inst;
+        return inst;
+      }finally{
+        Date.prototype.toLocaleTimeString = __tlt;
+      }
     })();
   }
   return pyodideLoadingPromise;
@@ -1219,15 +1258,20 @@ async function runPythonCode(code){
   const runBtn = $('#btnRunPython');
   runBtn.disabled = true;
   outputEl.textContent = '';
+  let __pyStage = 'load';
   try{
     const py = await getPyodideInstance();
+    __pyStage = 'run';
     statusEl.textContent = t('pythonRunning');
     py.setStdout({ batched: (s) => { outputEl.textContent += s + '\n'; outputEl.scrollTop = outputEl.scrollHeight; } });
     py.setStderr({ batched: (s) => { outputEl.textContent += s + '\n'; outputEl.scrollTop = outputEl.scrollHeight; } });
     await py.runPythonAsync(code);
     statusEl.textContent = t('pythonDone');
   }catch(err){
-    outputEl.textContent += '\n⚠️ ' + (err.message || err);
+    /* v-py-locale: فشل تحميل البيئة نفسها نصّه إنجليزيّ تقنيّ («Program terminated with exit(1)») لا يخصّ كود المستخدم —
+       يذهب للكونسول وحده ويرى المستخدم سطر الحالة بلغته. خطأ كود المستخدم (Traceback) يبقى ظاهرًا: هو ناتج البرنامج. */
+    if(__pyStage === 'load') console.warn('[python] runtime load failed:', (err && err.message) || err);
+    else outputEl.textContent += '\n⚠️ ' + (err.message || err);
     statusEl.textContent = t('pythonError');
   }finally{
     runBtn.disabled = false;
@@ -1248,6 +1292,9 @@ $('#btnNew').onclick = () => {
   renderAll();
   // مشروع جديد فعليًا => امسح مرجع صورة مها الأخيرة
   if(typeof mahaClearImageRef === 'function') mahaClearImageRef();
+  /* v-new-chat-drawer (تدقيق ١٨ أكتوبر): في الجوّال كان الدرج يبقى مفتوحًا فوق المحادثة الجديدة (والفارغة لا تضيف صفًّا
+     فلا يتغيّر شيء). الشرط نفسه الذي يغلق به اختيار صفّ من القائمة (app-10) وإجراء مها new_chat. */
+  if(window.innerWidth <= 860 && typeof closeDrawers === 'function') closeDrawers();
 };
 
 $('#btnDeleteAll').onclick = () => {
@@ -1495,7 +1542,18 @@ $('#btnDeleteAll').onclick = () => {
       if(localStorage.getItem('fbDone') || localStorage.getItem('fbAsked')) return;
       const n = (parseInt(localStorage.getItem('fbMsgCount')||'0',10)||0)+1;
       localStorage.setItem('fbMsgCount', String(n));
-      if(n>=10){ localStorage.setItem('fbAsked','1'); setTimeout(()=>window.openFeedback(),1500); }
+      /* v-fb-no-stack (تدقيق ١٨ أكتوبر): كان يفتح فوق لوحة الباقات أو أيّ نافذة مفتوحة، وfbAsked يُكتب قبل العرض فلا فرصة
+         ثانية. إن كانت نافذة ظاهرة وقت الفتح لا يفتح ولا يكتب fbAsked — يُعاد مع الرسالة التالية؛ ويُكتب عند الفتح فقط. */
+      if(n>=10){
+        setTimeout(()=>{
+          try{
+            if(localStorage.getItem('fbDone') || localStorage.getItem('fbAsked')) return;
+            if(document.querySelector('dialog[open], .oShOv')) return;
+            localStorage.setItem('fbAsked','1');
+            window.openFeedback();
+          }catch(_){ __swallow(_, 'ui:fb-ask'); }
+        },1500);
+      }
     }catch(_){ __swallow(_, "save:app-05-ui#10"); }
   };
 })();
@@ -1597,7 +1655,28 @@ $('#btnDeleteAll').onclick = () => {
       const title = (item.querySelector('.hist-title') || {}).textContent || '';
       item.style.display = title.toLowerCase().includes(norm) ? '' : 'none';
     });
+    /* v-hist-search-empty (تدقيق ١٨ أكتوبر): بحث بلا نتائج كان يعرض قائمة فارغة بلا كلمة — سطر واحد قبل القائمة.
+       ما دامت علامة «الأقدم» موجودة فالمحادثات الأقدم لم تُرسم بعد: تُكشف وحدها ثمّ يُعاد الفلتر (__histReFilter). */
+    try{
+      const histEl = document.getElementById('history');
+      let empty = document.getElementById('histSearchEmpty');
+      const anyShown = [...document.querySelectorAll('#history .hist-item')].some(it => it.style.display !== 'none');
+      const pending = !!document.querySelector('#history .hist-more-sentinel');
+      const showEmpty = !!norm && !anyShown && !pending;
+      if(showEmpty && !empty && histEl && histEl.parentNode){
+        empty = document.createElement('div');
+        empty.id = 'histSearchEmpty';
+        empty.style.cssText = 'order:4; padding:14px 16px; font-size:13px; color:var(--muted, #9aa); text-align:center;';
+        histEl.parentNode.insertBefore(empty, histEl);
+      }
+      if(empty){
+        empty.textContent = t('projSearchEmpty');
+        empty.style.display = showEmpty ? 'block' : 'none';
+      }
+    }catch(e){ __swallow(e, 'search:empty-state'); }
   }
+  /* v-hist-search-empty: renderHistory يعيد بناء الصفوف ظاهرة (نبضة المزامنة، كشف الأقدم) — ينادي هذا في آخره فيبقى الفلتر */
+  window.__histReFilter = function(){ filterProjects(searchInput ? searchInput.value : ''); };
   if(searchBtn && searchInput){
     searchBtn.onclick = (e) => {
       e.stopPropagation();
@@ -1617,6 +1696,8 @@ $('#btnDeleteAll').onclick = () => {
       if(bDel) bDel.textContent = clean(t('deleteAllProjects')) || 'حذف الكل';
       if(searchBtn) searchBtn.textContent = t('projSearchLabel') || 'بحث عن مشروع';
       if(searchInput) searchInput.placeholder = t('projSearchLabel') || 'بحث عن مشروع';
+      const em = document.getElementById('histSearchEmpty'); /* v-hist-search-empty: بلغة الواجهة الجديدة */
+      if(em) em.textContent = t('projSearchEmpty');
     }catch(_){ __swallow(_, "misc:app-05-ui#14"); }
   };
   window.__refreshProjMenuLabels();
@@ -3231,7 +3312,8 @@ function renderStats(){
   Object.keys(providerCounts).forEach(k => {
     if(providerCounts[k] > favCount){ favCount = providerCounts[k]; favProvider = k; }
   });
-  const elP = $('#statProjectsCount'); if(elP) elP.textContent = String(projects.length);
+  /* v-stats-visible (تدقيق ١٨ أكتوبر): «عدد المشاريع» بشرط القائمة نفسه — الفارغة المخفيّة (v-hide-empty-proj) لا تُعدّ */
+  const elP = $('#statProjectsCount'); if(elP) elP.textContent = String(projects.filter(__projVisible).length);
   const elM = $('#statMessagesCount'); if(elM) elM.textContent = String(messagesCount);
   const elF = $('#statFavProvider'); if(elF) elF.textContent = favProvider;
 }
@@ -3457,7 +3539,9 @@ function renderSettingsProfile(){
   const ini = document.getElementById('setProfileInitials');
   let av = ''; try{ av = logged ? (localStorage.getItem('aiapp_avatar') || '') : ''; }catch(e){ av = ''; }
   if(img){ if(av){ img.src = av; img.style.display = 'block'; } else { img.removeAttribute('src'); img.style.display = 'none'; } }
-  if(ini){ ini.textContent = av ? '' : (uname ? uname.trim().slice(0, 2).toUpperCase() : '?'); }
+  /* v-initials-one (تدقيق ١٨ أكتوبر: «TA» هنا و«T» في «حسابي»): قاعدة updateAvatarUI نفسها — حرف واحد بنقطة رمزيّة كاملة
+     (Array.from لا يقسم حرفًا خارج BMP نصفين كما كان slice يفعل). */
+  if(ini){ ini.textContent = av ? '' : ((Array.from(uname.trim())[0] || '?').toUpperCase()); }
   const edit = document.querySelector('#setProfileAvatar .setProfileEdit');
   if(edit) edit.style.display = logged ? '' : 'none';
   const loginBtn = document.getElementById('setProfileLogin');
@@ -3889,9 +3973,19 @@ async function postWithConfirm(url, payload){
    وبلا صورة شارة أنيقة. الاستدعاء: window.omranPicker.open({title,count,items,onPick}). */
 (function(){
   function el(id){ return document.getElementById(id); }
+  /* v-picker-shimmer: قاعدة اللمعة تُحقن مرّة (فوق خلفيّة البطاقة المكتوبة في سطرها، فبـ!important)، وتقف مع تقليل الحركة */
+  function pkCss(){
+    if(!document.head || el('pkLoadingCss')) return;
+    var st = document.createElement('style'); st.id = 'pkLoadingCss';
+    st.textContent = '.pkLoading{background:linear-gradient(110deg,#17171b 30%,#2c2c35 50%,#17171b 70%) !important; background-size:220% 100% !important; animation:pkShimmer 1.2s linear infinite;}'
+      + '@keyframes pkShimmer{from{background-position:120% 0}to{background-position:-120% 0}}'
+      + '@media (prefers-reduced-motion: reduce){.pkLoading{animation:none;}}';
+    document.head.appendChild(st);
+  }
   window.omranPicker = { open: function(cfg){
     var sheet = el('pickerSheet'), grid = el('pickerSheetGrid');
     if(!sheet || !grid) return;
+    pkCss();
     /* v-lighting-3d: العرض الأفقي للإضاءة وحدها، ويُصفّر عند فتح معرض آخر.
        v-picker-cols (المالك ١٦ أكتوبر: «صور مغبّشة أكثرها»): '' كانت تمحو الأعمدة المكتوبة في وسم الشبكة نفسه (partials-core)،
        فكلّ معرض غير الإضاءة صار بطاقة واحدة بعرض الشاشة وصورة ٣٦٠ بكسل ممطوطة ٤ أضعاف. الافتراضيّ يُكتب صريحًا. */
@@ -3916,12 +4010,16 @@ async function postWithConfirm(url, payload){
       }
       if(it.img){
         var im = document.createElement('img');
+        /* v-picker-shimmer (تدقيق ١٨ أكتوبر: صور الخيارات مربّعات فارغة نحو ٨ ث بلا مؤشّر): لمعة تحميل على البطاقة حتّى تصل الصورة
+           أو يفشل احتياطها — المعاينة المولّدة تأخذ ثوانيَ في أوّل طلب. */
+        wrap.classList.add('pkLoading');
+        im.onload = function(){ wrap.classList.remove('pkLoading'); };
         /* v-picker-load: أول ١٢ صورة تُحمَّل فورًا (كانت كلها كسولة فبدت «لا تتحمّل») */
         im.src = it.img; im.alt = it.title || ''; im.loading = idx < 12 ? 'eager' : 'lazy'; im.decoding = 'async';
         im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
         im.onerror = function(){
           if(it.img2 && !im.__flat){ im.__flat = 1; im.src = it.img2; }
-          else im.remove();
+          else { wrap.classList.remove('pkLoading'); im.remove(); }
         };
         wrap.appendChild(im);
       }

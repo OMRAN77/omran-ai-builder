@@ -317,7 +317,7 @@ test('١٦. القائمة تسمّي ما يجيب فعلًا: Groq = GPT-OSS 1
     vm.runInNewContext('var model = this.model;\n' + line + '\nthis.out = model;', ctx);
     assert.equal(ctx.out, want, id);
   }
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m171026b/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m211026/);
 });
 
 // ── مراجعة مستقلّة (١٦ وكيلًا) على التعديل نفسه: أخطاء أكّدها مشكّك ثانٍ ──

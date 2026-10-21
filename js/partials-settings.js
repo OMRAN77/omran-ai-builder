@@ -18,6 +18,7 @@
     <button type="button" id="setHomeClose" class="setHomeClose" aria-label="إغلاق" data-i18n-title="closeTitle" title="إغلاق">✕</button>
     <button type="button" id="setProfileAvatar" class="setProfileAvatar" title="" data-i18n-title="setChangePhoto"><img id="setProfileImg" alt="" style="display:none;"><span id="setProfileInitials">?</span><span class="setProfileEdit"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span></button>
     <div id="setProfileName" class="setProfileName"></div>
+    <div id="setProfileMsg" role="status" style="display:none; font-size:12px; text-align:center;"></div>
     <button type="button" id="setProfileLogin" class="setUpgradeBtn" style="display:none;" data-i18n="loginAction">دخول</button>
   </div>
   <div id="settingsUpgradeCard" class="setUpgrade" style="display:none;">
@@ -65,6 +66,7 @@
         <input type="file" id="acctAvatarInput" accept="image/*" style="display:none;">
       </div>
       <button type="button" id="acctAvatarBtn" style="background:none; border:none; cursor:pointer; color:var(--accent); font-size:13px; font-weight:500; padding:2px 8px;" data-i18n="acctAvatarBtn">تغيير الصورة</button>
+      <div id="acctAvatarMsg" role="status" style="display:none; font-size:12px; text-align:center;"></div>
     </div>
     <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowUser',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctUsernameLabel">اسم المستخدم</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowUser" style="display:none; padding:8px 8px 12px;">
@@ -720,7 +722,7 @@
       <div style="display:flex; gap:8px; margin-top:8px;">
         <button type="button" id="adminHealthBtn" onclick="runHealthCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerHealthRun">🩺 افحص الآن</button>
         <button type="button" id="adminRedisUsageBtn" onclick="redisUsageCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerRedisUsage">💾 ما يملأ القاعدة</button>
-        <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerClearErrors">🧹 مسح سجل الأخطاء</button>
+        <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid #a33; background:var(--panel2); color:#e66; font-size:12px; cursor:pointer;" data-i18n="ownerClearErrors">🧹 مسح سجل الأخطاء</button>
       </div>
       <div style="display:flex; gap:8px; margin-top:8px;">
         <button type="button" id="adminCostsBtn" onclick="subscriberCostsCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerCosts">💵 تكلفة المشتركين هذا الشهر</button>
@@ -737,7 +739,7 @@
 
   <div id="checkoutModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9999; align-items:center; justify-content:center;">
     <div style="background:var(--panel); border-radius:var(--r-3); padding:20px; width:min(420px, 92vw); max-height:88vh; overflow-y:auto; position:relative;">
-      <button type="button" onclick="closeCheckout()" style="position:absolute; inset-inline-end:12px; top:12px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text);">✕</button>
+      <button type="button" onclick="closeCheckout(true)" style="position:absolute; inset-inline-end:12px; top:12px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text);">✕</button>
       <h3 style="margin:0 0 4px;" data-i18n="checkoutTitle">إتمام الاشتراك</h3>
       <div id="checkoutPlanLabel" style="font-size: var(--fs-3); color:var(--muted); margin-bottom:14px;"></div>
 

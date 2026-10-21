@@ -253,6 +253,7 @@ async function __safeJson(res){
   const ideaGallery = document.getElementById('designAiIdeaGallery');
   const ideaAI = document.getElementById('designAiIdeaAI');
   function ideaStatus(txt){ if(!ideaStatusEl) return; ideaStatusEl.textContent = txt || ''; ideaStatusEl.style.display = txt ? 'block' : 'none'; }
+  function noPhotos(){ return '😕 ' + bT('ما حصلت صورًا لهذا الطلب — جرّب وصفًا آخر، أو ولّد تصاميم بالذكاء.', 'No photos found for this — try another description, or generate AI designs.'); }
   let ideaReq = 0;
   async function loadIdeas(opts){
     const my = ++ideaReq;
@@ -273,20 +274,31 @@ async function __safeJson(res){
           var __dt = ''; try{ __dt = d.detail ? (' (' + Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
           ideaStatus('⚠️ ' + bT('مصدر الصور متوقف مؤقتًا — جرّب بعد قليل، أو ولّد تصاميم بالذكاء.', 'The photo source is temporarily unavailable — try again shortly, or generate AI designs.') + __dt);
         }
-        else ideaStatus('😕 ' + bT('ما حصلت صورًا لهذا الطلب — جرّب وصفًا آخر، أو ولّد تصاميم بالذكاء.', 'No photos found for this — try another description, or generate AI designs.'));
+        else ideaStatus(noPhotos());
         if(ideaAI) ideaAI.style.display = ''; return;
       }
+      /* v-ideas-hosts (تدقيق ١٨ أكتوبر: «٢٩ صورة» والمعروض ١٨): العدد كان يُكتب قبل سقوط المكسورة — يتبع الظاهر، وصفر = «ما حصلت صورًا» */
+      let shown = imgs.length;
+      const galleryLine = () => '🖼️ ' + shown + ' ' + bT('صورة وتصميم من الويب — اضغط أي صورة لعرضها كبيرة', 'photos and designs from the web — tap any to open it');
       imgs.forEach(function(u){
         const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener';
         a.onclick = function(e){ if(window.omranLightbox){ e.preventDefault(); window.omranLightbox(u); } }; /* v-cx-ideas: معرض داخل التطبيق */
         a.style.cssText = 'display:block; break-inside:avoid; margin-bottom:6px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,.04);';
-        const im = document.createElement('img'); im.src = u; im.loading = 'lazy'; im.alt = '';
+        const im = document.createElement('img'); im.referrerPolicy = 'no-referrer'; im.src = u; im.loading = 'lazy'; im.alt = ''; /* مواقع تمنع الربط بالمُحيل */
         im.style.cssText = 'display:block; width:100%; height:auto;';
-        im.onerror = function(){ a.remove(); };
+        im.onerror = function(){
+          a.remove();
+          shown--;
+          if(my !== ideaReq) return;
+          if(shown > 0){ ideaStatus(galleryLine()); return; }
+          ideaGallery.style.display = 'none';
+          ideaStatus(noPhotos());
+          if(ideaAI) ideaAI.style.display = '';
+        };
         a.appendChild(im); ideaGallery.appendChild(a);
       });
       ideaGallery.style.display = 'block';
-      ideaStatus('🖼️ ' + imgs.length + ' ' + bT('صورة وتصميم من الويب — اضغط أي صورة لعرضها كبيرة', 'photos and designs from the web — tap any to open it'));
+      ideaStatus(galleryLine());
       if(ideaAI) ideaAI.style.display = '';
       try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
@@ -583,6 +595,13 @@ async function __safeJson(res){
     if(!cmpStatusEl) return;
     cmpStatusEl.style.display = txt ? 'block' : 'none';
     cmpStatusEl.textContent = txt || '';
+    /* السطر تحت زرّ «صمّمها» آخر النافذة: «الحد ٣ أنماط» و«ارفع صورة غرفتك أولًا» ظهرتا على حافّة الشاشة أو تحتها — يُمرَّر إلى
+       المرئيّ (nearest: لا حركة إن كان ظاهرًا) وتحته مسافة (scroll-margin لتمرير الزرّ، وmargin لأقصى تمرير يدويّ). */
+    if(txt){
+      cmpStatusEl.style.marginBottom = '12px';
+      cmpStatusEl.style.scrollMarginBottom = '12px';
+      try{ if(typeof cmpStatusEl.scrollIntoView === 'function') cmpStatusEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }catch(e){ __swallow(e, 'decor:cmp-status-scroll'); }
+    }
   }
   function styleTitle(v){
     const o = styleEl && Array.prototype.find.call(styleEl.options, function(x){ return x.value === v; });
@@ -640,8 +659,8 @@ async function __safeJson(res){
   }
   buildCompareStyleRow();
   if(cmpBtn) cmpBtn.onclick = async () => {
-    if(!selectedBase64){ cmpStatus(bT('ارفعي صورة غرفتك أولًا','Upload your room photo first')); return; }
-    if(cmpPicks.length < 2){ cmpStatus(bT('اختاري نمطين أو ثلاثة','Pick 2-3 styles')); return; }
+    if(!selectedBase64){ cmpStatus(bT('ارفع صورة غرفتك أولًا','Upload your room photo first')); return; }
+    if(cmpPicks.length < 2){ cmpStatus(bT('اختر نمطين أو ثلاثة','Pick 2-3 styles')); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){ cmpStatus(t('designAiNeedLogin')); return; }
     cmpBtn.disabled = true;
@@ -675,7 +694,7 @@ async function __safeJson(res){
         cap.style.cssText = 'font-size:12px; font-weight:700; text-align:center; margin-top:4px;';
         const pick = document.createElement('button');
         pick.type = 'button'; pick.className = 'btn';
-        pick.textContent = bT('👍 اعتمدي هذا','👍 Pick this');
+        pick.textContent = bT('👍 اعتمد هذا','👍 Pick this');
         pick.style.cssText = 'width:100%; margin-top:4px; font-size:11.5px; padding:5px 4px;';
         pick.onclick = function(){
           styleEl.value = v;
@@ -687,7 +706,7 @@ async function __safeJson(res){
         cell.appendChild(im); cell.appendChild(cap); cell.appendChild(pick);
         cmpResultsEl.appendChild(cell);
         cmpResultsEl.style.display = 'flex';
-        if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحبي وقارني واختاري','✓ Done — swipe and pick'));
+        if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحب وقارن واختر','✓ Done — swipe and pick'));
       }
     } catch(e){
       cmpStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
@@ -910,6 +929,21 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     }
     return o.textContent;
   }
+  /* v-no-flag (تدقيق ١٨ أكتوبر): ويندوز بلا رموز أعلام ملوّنة فيرسم 🇦🇪 حرفين «AE» — «AE إطار وطني» في البطاقة والشريط السفليّ.
+     الأسماء المعروضة بلا أزواج علامات المناطق (النصّ في القاموس كما هو، وبقيّة الإيموجي تبقى). */
+  function noFlag(s){ return String(s || '').replace(/[\u{1F1E6}-\u{1F1FF}]{2}\s*/gu, '').trim(); }
+  /* v-ring-i18n (تدقيق ١٨ أكتوبر): أسماء الحلقة كانت قاموسًا إنجليزيًّا ثابتًا بلا t() وتبقى بعد تبديل اللغة لأنّ الحلقة تُبنى مرّة —
+     الاسم الآن من خيار القائمة المترجَم بلا إيموجي، ويُحدَّث في كلّ فتحة للمعرض. */
+  function ringLabel(v){
+    const o = styleEl.querySelector('option[value="' + v + '"]');
+    /* «Comic/Manga» كلمة واحدة بلا فاصل فتفيض عن الدائرة — فاصل صفريّ بعد الشرطة المائلة يسمح بالسطر الثاني */
+    return o ? noFlag(optLabel(o)).replace(/^[^\p{L}\p{N}]+/u, '').trim().replace(/\//g, '/​') : '';
+  }
+  function refreshRingLabels(hero){
+    Array.from(hero.querySelectorAll('[data-pstyle-ring] > i')).forEach((lb) => {
+      lb.textContent = ringLabel(lb.parentNode.getAttribute('data-pstyle-ring'));
+    });
+  }
   function pstyleOpts(){
     const favs = getFavs();
     const opts = Array.from(styleEl.querySelectorAll('option'))
@@ -922,7 +956,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const opt = styleEl.querySelector('option[value="' + styleEl.value + '"]');
     const img = $('#portraitStyleTriggerImg');
     if(img){ img.src = pstyleImg(styleEl.value); img.onerror = function(){ img.style.visibility = 'hidden'; }; img.style.visibility = 'visible'; }
-    const nameEl = $('#portraitStyleTriggerName'); if(nameEl) nameEl.textContent = opt ? opt.textContent : '';
+    const nameEl = $('#portraitStyleTriggerName'); if(nameEl) nameEl.textContent = opt ? noFlag(opt.textContent) : '';
     const subEl = $('#portraitStyleTriggerSub'); if(subEl) subEl.textContent = pstyleSub(styleEl.value);
   }
   /* v-psheet-oneface (فكرة المالك ٥ سبتمبر: نفس الوجه عبر كل الأنماط، فلتر فئات، بطاقة «قبل»،
@@ -933,16 +967,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const g = opt.parentElement;
     if(!g || g.tagName !== 'OPTGROUP' || g.id === 'portraitFavGroup') return 'art';
     return (g.getAttribute('data-i18n') || g.getAttribute('label') || 'art').replace(/^\[label\]/, '');
-  }
-  /* الاسم الإنجليزي للنمط (يضيف مصداقية الأداة تحت كل بطاقة) — من قاموس en أو data-en */
-  function pstyleEn(v){
-    try{
-      const o = styleEl.querySelector('option[value="' + v + '"]'); if(!o) return '';
-      const k = o.getAttribute('data-i18n'); let en = '';
-      if(k && window.I18N && window.I18N.en && window.I18N.en[k]) en = window.I18N.en[k];
-      if(!en) en = o.getAttribute('data-en') || '';
-      return String(en).replace(/^[^\p{L}\p{N}]+/u, '').trim();
-    }catch(e){ return ''; }
   }
   function pstyleGroups(){
     const out = [{ k: 'all', label: gt('psheetAll', 'الكل', 'All') }, { k: 'art', label: gt('psheetGrpArt', '🎨 فنية', '🎨 Artistic') }];
@@ -991,7 +1015,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + '.pstyleHero .pstyleHeroT{position:absolute; width:19%; aspect-ratio:1; border-radius:50%; overflow:hidden; border:2px solid rgba(212,175,55,.75); background:#17171b; box-shadow:0 6px 18px rgba(0,0,0,.45); cursor:pointer; transform:translate(-50%,-50%); transition:transform .18s, box-shadow .18s;}'
       + '.pstyleHero .pstyleHeroT:hover{transform:translate(-50%,-50%) scale(1.12); box-shadow:0 0 22px rgba(212,175,55,.6);}'
       + '.pstyleHero .pstyleHeroT img{width:100%; height:100%; object-fit:cover; object-position:50% 12%;}'
-      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}'
+      /* v-ring-i18n: الاسم كان في أسفل الدائرة (bottom:0، nowrap) حيث الوتر أضيق من الكلمة فتُقصّ «yberpun» و«Watercolo» —
+         رُفع إلى الشريط العريض (bottom:25%: وتر أسفل السطر هناك ≈ ٠٫٨٧ من القطر، والسطر الثاني أعرض) بسطرين، والتدرّج على نصف الدائرة السفليّ خلفه. */
+      + '.pstyleHero .pstyleHeroT::after{content:""; position:absolute; left:0; right:0; bottom:0; height:62%; background:linear-gradient(transparent, rgba(0,0,0,.82)); pointer-events:none;}'
+      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:25%; z-index:1; font-style:normal; font-size:8px; font-weight:700; line-height:1.05; padding:0 3px; text-align:center; white-space:normal; overflow-wrap:anywhere; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.9); unicode-bidi:plaintext;}'
       /* v-psheet-header-collapse (طلب المالك: الرأس يرفع كتابته ويصغر عند تمرير المعرض لأسفل، بدل مساحة ثابتة كبيرة) */
       + '#portraitStyleSheetHeader{transition:padding .22s ease;}'
       + '#portraitStyleSheetTitle{transition:font-size .22s ease;}'
@@ -1043,19 +1070,19 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const cl = document.createElement('span'); cl.textContent = gt('psheetBefore', 'قبل', 'Before');
       c.appendChild(ci); c.appendChild(cl); hero.appendChild(c);
       const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli'];
-      const RING_EN = { anime: 'Anime', pixel: 'Pixel Art', sketch: 'Sketch', mosaic: 'Mosaic', oil: 'Oil Paint', comic: 'Comic', watercolor: 'Watercolor', cyberpunk: 'Cyberpunk', lego: 'LEGO', statue: 'Statue', pop: 'Pop Art', ghibli: 'Ghibli' };
       RING.forEach((v, i) => {
         const a = (-90 + i * (360 / RING.length)) * Math.PI / 180, r = 40.5;
         const tdiv = document.createElement('div'); tdiv.className = 'pstyleHeroT'; tdiv.setAttribute('data-pstyle-ring', v);
         tdiv.style.left = (50 + r * Math.cos(a)) + '%'; tdiv.style.top = (50 + r * Math.sin(a)) + '%';
         const im = document.createElement('img'); im.src = pstyleImg(v); im.alt = ''; im.loading = 'eager'; im.onerror = function(){ tdiv.remove(); };
-        const lb = document.createElement('i'); lb.textContent = RING_EN[v] || pstyleEn(v);
+        const lb = document.createElement('i');
         tdiv.appendChild(im); tdiv.appendChild(lb);
         tdiv.onclick = function(){ selectPortraitStyle(v); };
         hero.appendChild(tdiv);
       });
       scroller.insertBefore(hero, styleCardsGrid);
     }
+    refreshRingLabels(hero); /* v-ring-i18n: بلغة الواجهة الحاليّة في كلّ فتحة */
     let chips = document.getElementById('portraitStyleChips');
     if(!chips){ chips = document.createElement('div'); chips.id = 'portraitStyleChips'; chips.className = 'pstyleChips'; scroller.insertBefore(chips, styleCardsGrid); }
     chips.innerHTML = '';
@@ -1099,7 +1126,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function refreshPortraitFoot(){
     const o = styleEl && styleEl.querySelector('option[value="' + styleEl.value + '"]');
     const pi = document.getElementById('portraitFootImg'); if(pi){ pi.src = pstyleImg(styleEl.value); pi.style.visibility = 'visible'; }
-    const pt = document.getElementById('portraitFootName'); if(pt) pt.textContent = o ? optLabel(o).trim() : '';
+    const pt = document.getElementById('portraitFootName'); if(pt) pt.textContent = o ? noFlag(optLabel(o)) : '';
     const cta = document.getElementById('portraitStyleCta');
     if(cta) cta.textContent = window.__portraitHasPhoto ? gt('portraitGenerateBtn', '✨ حوّلها', '✨ Convert') : gt('psheetTry', '✨ جرّب على صورتك', '✨ Try it on your photo');
   }
@@ -1199,7 +1226,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const info = document.createElement('div');
       info.style.cssText = 'position:absolute; inset:auto 0 0 0; padding:22px 8px 8px; text-align:center; pointer-events:none; background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       const nameEl = document.createElement('div');
-      nameEl.textContent = title; nameEl.setAttribute('data-pstyle-name', '1');
+      nameEl.textContent = noFlag(title); nameEl.setAttribute('data-pstyle-name', '1'); /* v-no-flag */
       nameEl.style.cssText = 'font-size:12.5px; font-weight:700; line-height:1.3; text-shadow:0 1px 3px rgba(0,0,0,.9); color:' + (active ? '#d4af37' : '#eef0f6') + ';';
       info.appendChild(nameEl); imgWrap.appendChild(info);
       card.appendChild(imgWrap);
@@ -1782,8 +1809,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       skin: profileSkinEl.value.trim(),
       hair: profileHairEl.value.trim(),
     };
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
-    setStatus(t('fashionProfileSaved'));
+    /* v-fav-near (تدقيق ١٨ أكتوبر): «تم حفظ ملفك» كانت تُكتب في سطر الحالة عند زرّ «صمم» تحت الشاشة فلا يراها من ضغط —
+       النتيجة على الزرّ نفسه ١٫٨ ث ثمّ يعود نصّه، والحفظ بحارس (v-fav-quota). */
+    const ok = __omranLsPut(PROFILE_KEY, p);
+    profileSaveBtn.textContent = t(ok ? 'fashionProfileSaved' : 'memorySaveError');
+    setTimeout(() => { profileSaveBtn.textContent = t('fashionProfileSave'); }, 1800);
   };
 
   /* ---- ❤️ favorites ---- */
@@ -1799,6 +1829,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       onDone(__omranLsPut(FAV_KEY, favs.slice(0, 30)));
     });
   }
+  /* v-fav-near: اللوحة كانت آخر النافذة بعد شبكة المقارنة ونتائجها وزرّها في رأس القسم — تُنقل تحت صفّ الرأس مباشرة */
+  if(favoritesBtn && favoritesPanel && favoritesBtn.parentElement){
+    try{ favoritesBtn.parentElement.insertAdjacentElement('afterend', favoritesPanel); }catch(e){ __swallow(e, 'fashion:fav-near'); }
+  }
   function renderFavorites(){
     const favs = loadFavorites();
     favoritesPanel.innerHTML = '';
@@ -1810,8 +1844,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const card = document.createElement('div');
       card.style.cssText = 'display:flex; align-items:center; gap:8px; border:1px solid var(--border,#333); border-radius:8px; padding:6px;';
       card.innerHTML = '<img src="' + f.img + '" style="width:50px; height:50px; object-fit:cover; border-radius:6px;">' +
-        '<span style="flex:1; font-size:11.5px; color:var(--muted,#999);">' + (f.style || '') + '</span>' +
+        '<span style="flex:1; font-size:11.5px; color:var(--muted,#999);"></span>' +
         '<button type="button" class="btn iconBtn" data-idx=' + idx + '" style="padding:2px 8px; font-size:12px;">✕</button>';
+      /* v-fav-near: المحفوظ قيمة النمط الخامّ («casual») — يُعرض باسم خياره بلغة الواجهة، وغير المعروف كما هو */
+      const o = f.style ? fashionOptFor(f.style) : null;
+      card.querySelector('span').textContent = o ? optLabel(o).trim() : (f.style || '');
       card.querySelector('button').onclick = () => {
         const arr = loadFavorites();
         arr.splice(idx, 1);
@@ -1826,6 +1863,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(showing){ favoritesPanel.style.display = 'none'; return; }
     renderFavorites();
     favoritesPanel.style.display = 'flex';
+    try{ favoritesPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(e){ __swallow(e, 'fashion:fav-scroll'); }
   };
   if(favSaveBtn) favSaveBtn.onclick = () => {
     if(!resultEl.src) return;
@@ -1907,8 +1945,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         wrap.style.boxShadow = cb.checked ? '0 0 12px rgba(212,175,55,.35)' : 'none';
       }
       wrap.onclick = function(){
-        if(!cb.checked && compareChecksEl.querySelectorAll('.fashionCompareCheck:checked').length >= 3) return; // الحد ٣
+        /* تدقيق ١٨ أكتوبر: الرابعة كانت ترجع بصمت و«اختر إطلالتين» باقية وأنت مختار ٣ — رسالة الحدّ كمقارنة الديكور، والتبديل يمسح القديمة */
+        if(!cb.checked && compareChecksEl.querySelectorAll('.fashionCompareCheck:checked').length >= 3){
+          if(compareStatusEl){ compareStatusEl.style.display = 'block'; compareStatusEl.textContent = bT('الحد ٣ أنماط', 'Max 3 styles'); }
+          return;
+        }
         cb.checked = !cb.checked; paint();
+        if(compareStatusEl && !(compareBtn && compareBtn.disabled)) compareStatusEl.style.display = 'none';
       };
       wrap.appendChild(lookImg(g, v, opt.textContent));
       wrap.appendChild(tick); wrap.appendChild(label); wrap.appendChild(cb);
@@ -2052,27 +2095,40 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* المترجم لم يجهز */ }
     return isEn() ? enFb : arFb;
   };
-  let refineRow = null, refineInput = null, refineBtn = null;
+  let refineRow = null, refineInput = null, refineBtn = null, refineStatusEl = null;
   function __buildRefineRow(){
     if(refineRow || !resultWrap) return;
     refineRow = document.createElement('div');
     refineRow.id = 'fashionRefineRow';
-    refineRow.style.cssText = 'display:none; gap:8px; margin-top:10px; align-items:stretch;';
+    /* تدقيق ١٨ أكتوبر: صفّ بلا التفاف والزرّ بعرضه كاملًا كان يقصّ المثال («…the dress colour t») — يلتفّ الزرّ تحت الخانة حين لا يتّسع */
+    refineRow.style.cssText = 'display:none; flex-wrap:wrap; gap:8px; margin-top:10px; align-items:stretch;';
     refineInput = document.createElement('input');
     refineInput.id = 'fashionRefineInput';
     refineInput.type = 'text';
     refineInput.maxLength = 300;
-    refineInput.style.cssText = 'flex:1 1 auto; min-width:0; padding:10px 12px; border-radius:12px; border:1px solid var(--border,#333); background:var(--panel2,#1b1b22); color:var(--text,#eee); font-family:inherit; font-size:13px;';
+    refineInput.style.cssText = 'flex:1 1 280px; min-width:0; padding:10px 12px; border-radius:12px; border:1px solid var(--border,#333); background:var(--panel2,#1b1b22); color:var(--text,#eee); font-family:inherit; font-size:13px;';
     refineBtn = document.createElement('button');
     refineBtn.id = 'fashionRefineBtn';
     refineBtn.type = 'button';
     refineBtn.className = 'btn';
     refineBtn.style.cssText = 'flex:0 0 auto; white-space:nowrap;';
+    /* ورسالتا التحقّق كانتا في #fashionAiStatus عند «صمم» أسفل النافذة (خارج الشاشة) — سطرهما داخل الصفّ تحت الخانة والزرّ */
+    refineStatusEl = document.createElement('div');
+    refineStatusEl.id = 'fashionRefineStatus';
+    refineStatusEl.setAttribute('role', 'status');
+    refineStatusEl.style.cssText = 'display:none; flex:1 1 100%; text-align:center; font-size:var(--fs-3); color:var(--muted);';
     refineRow.appendChild(refineInput);
     refineRow.appendChild(refineBtn);
+    refineRow.appendChild(refineStatusEl);
     resultWrap.appendChild(refineRow);
     refineBtn.onclick = __doRefine;
     refineInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); __doRefine(); } });
+    refineInput.addEventListener('input', () => __refineStatus(''));
+  }
+  function __refineStatus(text){
+    if(!refineStatusEl) return;
+    refineStatusEl.style.display = text ? 'block' : 'none';
+    refineStatusEl.textContent = text || '';
   }
   /* v-fx-gender-pics: سطر التعديل تحت نتيجة رجل أو طفل كان «غيّري لون الفستان» و«عدّلي» — لغير النساء نصّ الفئة
      (لغة بلا مدخل = المفتاح الأصليّ، وهو محايد فيها؛ العربيّة وحدها تؤنّث الفعل، و«الفستان» في كلّ اللغات) */
@@ -2095,14 +2151,18 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     __lastFxB64 = b64; __lastFxMime = mime;
     __buildRefineRow();
     __refineTexts();
-    if(refineRow){ refineRow.style.display = 'flex'; refineInput.value = ''; }
+    if(refineRow){ refineRow.style.display = 'flex'; refineInput.value = ''; __refineStatus(''); }
   }
   async function __doRefine(){
     if(!__lastFxB64) return;
     const reqTxt = (refineInput.value || '').trim();
-    if(!reqTxt){ setStatus(__refineG('need', 'fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
-    if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
+    if(!reqTxt || !token){
+      const setStatus = __refineStatus; /* رسالتا التحقّق تحت الصفّ (كمقترحات الديكور v-decor-suggest-msg)؛ الانتظار والنتيجة في #fashionAiStatus كما كانا */
+      if(!reqTxt){ setStatus(__refineG('need', 'fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
+      setStatus(t('fashionAiNeedLogin')); return;
+    }
+    __refineStatus('');
     refineBtn.disabled = true; btnGenerate.disabled = true;
     setStatus(__gt2('fashionRefining', 'جاري تطبيق التعديل…', 'Applying your edit…'));
     try{
@@ -2189,9 +2249,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">' + (currentGender() === 'men' ? '💼 ' : '👜 ') + (s.accessories || '') + '</p>' + /* v-fx-gender-pics: كبطاقة الحقيبة */
           '<button type="button" class="btn primary useLookBtn" style="width:100%; font-size:12px; padding:5px;">' + t('fashionUseThisLook') + '</button>';
         card.querySelector('.useLookBtn').onclick = () => {
+          /* تدقيق ١٨ أكتوبر: الوصف كان «… . Colors: … Accessories: …» بتسميات إنجليزيّة و«..» — الأجزاء الثلاثة بلا نقطتها الختاميّة مربوطة بـ«. » */
+          const look = [s.clothing, s.colors, s.accessories].map((x) => String(x || '').trim().replace(/[.。।]+$/, '').trim()).filter(Boolean).join('. ');
+          /* مع صورة مرفوعة يبقى الزرّ كما كان: لبس الإطلالة على صورتك (v-fashion-use-look) يحتاج أمر الخادم — مع طلب الأزياء المنفصل */
           if(mode === 'text' || !selectedBase64){
             setMode('text');
-            descriptionEl.value = (s.clothing || '') + '. ' + (s.colors ? ('Colors: ' + s.colors + '. ') : '') + (s.accessories ? ('Accessories: ' + s.accessories) : '');
+            descriptionEl.value = look;
           }
         };
         suggestionsEl.appendChild(card);
@@ -2278,7 +2341,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
             fxRevealResult();
           };
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* رمز الخادم الخامّ (tmp_unavailable…) كان يظهر للمستخدم — نصّ مفهوم بالـ١٤ لغة (والحدّ اليوميّ باسمه) */
+          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">' + (r.error === 'daily_limit_reached' ? t('fashionAiLimitReached') : t('designAiSuggestError')) + '</p>';
         }
         compareResultsEl.appendChild(cell);
       });
@@ -2355,6 +2419,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     resultEl.style.display = 'none';
     resultEl.textContent = '';
     setStatus('');
+    fitInput(); /* تدقيق ١٨ أكتوبر: مثال التبويب الجديد (الأحلام سطران على الجوّال) كان يُقصّ — المقاس يتبع المثال */
   }
 
   tabsWrap.addEventListener('click', (e) => {
@@ -2418,7 +2483,16 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       setStatus(t('religionDone'));
     }catch(e){
       if(my !== run) return;
-      setStatus(t('religionError') + (e && e.message ? (': ' + e.message) : ''));
+      /* تدقيق ١٨ أكتوبر: كان «حدث خطأ، حاول مرة أخرى: … (الاحتياط فشل أيضًا — …)» تحته صندوق فارغ. حدّ الباقة نصّه ويفتح الباقات
+         (v-plans-gate)، وغيره «حدث خطأ» وحده والتفاصيل للكونسول، والصندوق يُخفى إن لم يُكتب فيه شيء. */
+      if(e && e.planLimit){
+        setStatus(t('plansWhyLimit'));
+        try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(err){ __swallow(err, 'religion:plans'); }
+      } else {
+        setStatus(t('religionError'));
+        console.warn('[religion]', e && e.message ? e.message : e);
+      }
+      if(!String(resultEl.textContent || '').trim()) resultEl.style.display = 'none';
     }finally{
       if(my === run){ done = true; btnGenerate.disabled = false; ctl = null; }
     }
@@ -2447,7 +2521,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     connectText: t('emailAsst_connectText'),
     connectBtn: t('emailAsst_connectBtn'),
     disclaimer: t('emailAsst_disclaimer'),
-    title: t('emailAsst_title'),
+    title: t('emailAssistTitle'), /* تدقيق ١٨ أكتوبر: البطاقة «Smart Email Assistant» والنافذة «AI Email Assistant» في ١٣ لغة — مفتاح البطاقة نفسه */
     refresh: t('emailAsst_refresh'),
     loading: t('emailAsst_loading'),
     empty: t('emailAsst_empty'),
@@ -2707,7 +2781,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const r = await fetch('/api/email-list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: emBody({ draftFor: mail.id, threadId: mail.threadId || '', regen: job.regen }) });
       const d = await r.json();
       if(job.run !== emRun) return;
-      if(!r.ok) throw new Error((d && d.error) || 'draft failed');
+      if(!r.ok || (d && d.notConnected)) throw new Error((d && d.error) || 'draft failed'); /* «غير مربوط» صار ٢٠٠ — يبقى فشل مسوّدة */
       if(d.draft){ // فشل «إعادة توليد» لا يمسح المسوّدة القائمة
         mail.draft = d.draft;
         mail.priority = d.priority || 'normal';
@@ -2767,16 +2841,15 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       });
       const d = await r.json();
       if(run !== emRun) return;
-      if(!r.ok){
-        if(d.notConnected || /invalid_grant/i.test(String(d.error || ''))){
-          connectBox.style.display = 'block';
-          connectedBox.style.display = 'none';
-          setStatus(d.notConnected ? '' : T().notConnected);
-          emPrefetchTicket(); // v-oauth-bind
-          return;
-        }
-        throw new Error(d.error || 'load failed');
+      /* «غير مربوط» يصل ٢٠٠ (حالة طبيعيّة لا خطأ — كان ٤٠٠ يطبع طلبًا فاشلًا عند كلّ فتح) فيُفحص قبل r.ok */
+      if(d.notConnected || (!r.ok && /invalid_grant/i.test(String(d.error || '')))){
+        connectBox.style.display = 'block';
+        connectedBox.style.display = 'none';
+        setStatus(d.notConnected ? '' : T().notConnected);
+        emPrefetchTicket(); // v-oauth-bind
+        return;
       }
+      if(!r.ok) throw new Error(d.error || 'load failed');
       gmailLabel.textContent = d.gmailAddress || '';
       if(!more){
         // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
