@@ -68,7 +68,7 @@ for (const mode of MODES) {
     for (const e of idx) if (!ONLY || ONLY.includes(e.ملف)) configs.push({ id: 'img-' + e.ملف.replace(/\.jpg$/, '') + '-' + mode, mode, bgimg: e });
   }
 }
-const SCREEN_LIST = (SET === 'bgimg' ? ['welcome', 'chat', 'sidebar'] : SET === 'bg3d' ? ['welcome', 'chat', 'sidebar', 'tools'] : ['welcome', 'chat', 'sidebar', 'tools', 'plus', 'menu', 'settings', 'settings-bg', 'settings-acct', 'video'])
+const SCREEN_LIST = (SET === 'bgimg' ? ['welcome', 'chat', 'sidebar'] : SET === 'bg3d' ? ['welcome', 'chat', 'sidebar', 'tools'] : ['welcome', 'chat', 'sidebar', 'tools', 'plus', 'menu', 'settings', 'settings-bg', 'settings-acct', 'video', 'tabsmenu', 'histmenu', 'msgmenu', 'modelmenu'])
   .filter((s) => !SCREENS_ONLY || SCREENS_ONLY.includes(s));
 
 // ── القياس داخل الصفحة ──
@@ -205,7 +205,9 @@ async function openScreen(page, s, mobile) {
     try { const o = document.getElementById('sectionsToolsOverlay'); if (o) o.classList.remove('show'); } catch (e) { /* */ }
     try { if (typeof closeDrawers === 'function') closeDrawers(); } catch (e) { /* */ }
     try { const v = document.getElementById('videoMakerModal'); if (v && getComputedStyle(v).display !== 'none') { const b = document.getElementById('videoMakerCloseBtn'); if (b) b.click(); } } catch (e) { /* */ }
-    ['plusToolsPopup', 'headerMenuDropdown', 'headerUserDropdown'].forEach((id) => { const el = document.getElementById(id); if (el) { el.classList.remove('show', 'open'); if (id === 'headerUserDropdown') el.style.display = 'none'; } });
+    ['plusToolsPopup', 'headerMenuDropdown', 'headerUserDropdown', 'tabsMenuDropdown', 'histItemMenu', 'omModelPopup'].forEach((id) => { const el = document.getElementById(id); if (el) { el.classList.remove('show', 'open'); if (id === 'headerUserDropdown') el.style.display = 'none'; } });
+    try { for (const t of ['pointerdown', 'mousedown', 'click']) document.body.dispatchEvent(new MouseEvent(t, { bubbles: true })); } catch (e) { /* */ }
+    document.querySelectorAll('.msgMoreMenu').forEach((m) => { m.classList.remove('show', 'open'); });
     await wait(150);
     const seed = (withMsgs) => {
       const n = Date.now();
@@ -232,6 +234,26 @@ async function openScreen(page, s, mobile) {
       if (s === 'settings') { if (typeof showSettingsHome === 'function') showSettingsHome(); }
       else if (typeof showSettingsPage === 'function') showSettingsPage(s === 'settings-bg' ? 'bgImgSection' : 'accountSection');
       await wait(700);
+    }
+    /* القوائم المنبثقة الأخرى (v-theme-menus): ⋮ لوحة المعاينة، و⋮ المحادثة في القائمة، و⋮ الرسالة، وقائمة النموذج */
+    else if (s === 'tabsmenu' || s === 'histmenu' || s === 'msgmenu' || s === 'modelmenu') {
+      seed(true); await wait(500);
+      const shown = (el) => !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 10;
+      if (s === 'tabsmenu') {
+        if (mobile && typeof openDrawer === 'function') { openDrawer(document.getElementById('workarea')); await wait(600); }
+        const b = document.getElementById('btnTabsMenu'); if (!b) return 'none'; b.click(); await wait(500);
+        const d = document.getElementById('tabsMenuDropdown'); if (!shown(d)) { if (d) d.classList.add('show'); await wait(300); } if (!shown(d)) return 'hidden';
+      } else if (s === 'histmenu') {
+        if (mobile && typeof openDrawer === 'function') { openDrawer(document.getElementById('sidebar')); await wait(600); }
+        const b = document.querySelector('#history .hist-item .hist-menu-btn'); if (!b) return 'none'; b.click(); await wait(500);
+        if (!shown(document.getElementById('histItemMenu'))) return 'hidden';
+      } else if (s === 'msgmenu') {
+        const b = document.querySelector('#messages .msgMoreTrigger'); if (!b) return 'none'; b.click(); await wait(500);
+        if (!shown(document.querySelector('.msgMoreMenu'))) return 'hidden';
+      } else {
+        const b = document.getElementById('omModelChip'); if (!b) return 'none'; b.click(); await wait(600);
+        if (!shown(document.getElementById('omModelPopup'))) return 'hidden';
+      }
     }
     else if (s === 'video') { seed(true); if (typeof window.omranOpenVideoMaker !== 'function') return 'none'; window.omranOpenVideoMaker(); await wait(1200); }
     return 'ok';

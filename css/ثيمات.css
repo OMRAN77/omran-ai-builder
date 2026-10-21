@@ -103,6 +103,9 @@ html.skin #code{background:transparent !important; color:var(--th-work-ink) !imp
 html.skin #tabs{background:transparent !important; border-color:var(--th-line2) !important;}
 html.skin #tabs .tab, html.skin #workarea .omIconBtn, html.skin #workarea button{color:var(--th-work-ink) !important;}
 html.skin #tabs .tab.active{border-color:var(--th-gold) !important;}
+/* v-theme-menus (المالك ٢١ أكتوبر بلقطة «مركبات»: قائمة ⋮ في المعاينة كلامها غامق على غامق): القاعدة أعلاه تلوّن كلّ زرّ داخل #workarea
+   بحبر اللوحة (غامق على لوحة «مركبات» الفضّيّة) — فنالت أزرار القائمة المفتوحة فوق نافذة الثيم الداكنة ١٫١:١. القائمة بحبر نوافذ الثيم. */
+html.skin #workarea #tabsMenuDropdown button{color:var(--th-ink) !important;}
 
 /* ── النوافذ والقوائم المنبثقة ── */
 html.skin :is(dialog, #plusToolsPopup, #headerMenuDropdown, #headerUserDropdown, #tabsMenuDropdown, #histItemMenu, .msgMoreMenu, .dlg-actions, #provDropdownPanel, #omModelPopup){background:var(--th-dlg) !important; color:var(--th-ink) !important; --text:var(--th-ink) !important; --muted:var(--th-muted) !important; text-shadow:none;}
@@ -114,6 +117,8 @@ html.skin select option{background:var(--th-dlg); color:var(--th-ink);}
 /* الذهبيّ كتابةً على النوافذ: لون الثيم بدرجة تُقرأ على نافذته (الفاتحة أغمق)، والكتابة على لون الثيم (الاختيار المفعَّل) بحبر أزراره */
 html.skin :is(dialog, #plusToolsPopup, #headerMenuDropdown, #headerUserDropdown, #tabsMenuDropdown, #histItemMenu, .msgMoreMenu, #provDropdownPanel, #omModelPopup){--accent:var(--th-accent-ink) !important;}
 html.skin .bgImgRotOpt.active, html.skin .bgImgOpt.active::after{color:var(--th-on-accent);}
+/* «حذف» في قائمة ⋮ المحادثة أحمر فاتح (#ff6b6b، tokens.css) صُمّم للأسود — على نوافذ الثيمات الفاتحة ٢:١؛ أحمر غامق عليها */
+html.skin.bgimg-light #histItemMenu button.danger{color:#b3261e;}
 html.skin .settingsNavRow.settingsNavOwner .settingsNavIcon, html.skin .settingsNavRow.settingsNavOwner .settingsNavLabel{color:var(--th-accent-ink) !important;}
 /* شرارة الأسهم المطويّة (tokens.css: ذهبيّ ثابت #d4af37) بلون الثيم، وسهم إغلاق القائمة على الجوّال بحبر القائمة */
 html.skin #stockTickerToggle.tickerAiCollapsed #stockTickerAiIcon{color:var(--th-spark);}
@@ -209,7 +214,7 @@ html.skin-cars #sidebar #sbSearch::placeholder, html.skin-cars #sidebar #sbSearc
 /* أطفال: ألوان باستيل، خانات ملوّنة بالتناوب، وأحجية في البداية (صورة المالك) */
 html.skin-kids{
   --th-scheme:light; --th-page:#efe9fb; --th-layer:linear-gradient(135deg,#ece6fc 0%,#fde6ef 50%,#e1f2fc 100%);
-  --th-ink:#3b3355; --th-muted:#6c6485; --th-gold:#ff7a6b; --th-line:rgba(155,123,224,.45); --th-line2:rgba(155,123,224,.2); --th-glow:rgba(255,122,107,.3);
+  --th-ink:#3b3355; --th-muted:#5f5878; --th-gold:#ff7a6b; --th-line:rgba(155,123,224,.45); --th-line2:rgba(155,123,224,.2); --th-glow:rgba(255,122,107,.3);
   --th-dlg:#fffaf3; --th-dlg2:#f6efff;
   --th-side:radial-gradient(circle, rgba(255,170,120,.18) 1.6px, transparent 2px) 0 0 / 18px 18px, #fff7ea;
   --th-tile:#fff; --th-tile-line:rgba(155,123,224,.25); --th-tile-r:14px; --th-tile-shadow:0 3px 0 rgba(155,123,224,.18); --th-thumb:rgba(255,255,255,.7);
