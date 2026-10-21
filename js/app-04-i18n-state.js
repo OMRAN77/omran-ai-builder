@@ -1885,6 +1885,14 @@ function omranRenderOptions(host, blocks){
     host.appendChild(wrap);
   });
 }
+/* v-limit-msg-i18n (تدقيق ١٨–١٩ أكتوبر): ردّ نفاد الرسائل المجّانيّة/التجربة نصّ عربيّ ثابت من الخادم (tier.js FREE_TEXT) يُحفظ
+   محتوى الرسالة كما هو، فظهر عربيًّا في الإنجليزيّ وبقيّة اللغات. الترجمة عند العرض وحده: العربيّة بنصّ الخادم بأرقامه، وغيرها
+   بمفتاح بلا أرقام (السقوف من الخادم وحده). أيّ ردّ آخر يُعرض كما هو. */
+function omranTierLimitText(m){
+  const tier = m && m.tier;
+  if((tier !== 'free-limit' && tier !== 'guest-limit') || typeof lang === 'undefined' || lang === 'ar') return m ? m.content : '';
+  return t(tier === 'guest-limit' ? 'chatGuestLimitMsg' : 'chatFreeLimitMsg');
+}
 /* v-long-reply-off (طلب المالك ١٨ سبتمبر): الردّ الطويل يُعرض كاملًا في المحادثة بلا قصّ ولا
    أزرار — أُزيل القناع وزرّا القراءة والطيّ ولوحة القراءة التي كانت هنا (v-long-reply). */
 function renderMessages(keepScroll){
@@ -2022,21 +2030,19 @@ function renderMessages(keepScroll){
        عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
     if(m.role !== 'user' && (m.tier === 'free' || m.tier === 'free-limit' || m.tier === 'guest' || m.tier === 'guest-limit')){
       try{
-        const __isArT = (lang === 'ar' || lang === 'ur');
+        /* v-limit-msg-i18n: العنوان والزرّ بمفاتيح الـ١٤ لغة (كانا ثنائيّة ar/en: الأردو تأخذ العربيّ والعشر الإنجليزيّ) */
         const __isGuestT = (m.tier === 'guest' || m.tier === 'guest-limit');
         const tb = document.createElement('div');
         tb.className = 'tier-badge';
         tb.style.cssText = 'display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:11px; color:var(--muted); margin-bottom:4px;';
         const tl = document.createElement('span');
-        tl.textContent = (m.tier === 'guest-limit') ? (__isArT ? 'انتهت رسائل التجربة' : 'Trial messages used up')
-          : (m.tier === 'free-limit') ? (__isArT ? 'انتهت الرسائل المجانية لليوم' : 'Free messages used up for today')
-          : (__isArT ? 'ردّ مجاني' : 'Free reply');
+        tl.textContent = t((m.tier === 'guest-limit') ? 'tierGuestLimitTitle' : (m.tier === 'free-limit') ? 'tierFreeLimitTitle' : 'tierFreeReply');
         tb.appendChild(tl);
         const ta = document.createElement('button');
         ta.type = 'button';
         ta.style.cssText = 'padding:2px 10px; border-radius:12px; border:1px solid var(--border,rgba(255,255,255,.16)); background:transparent; color:var(--accent2,#d4af37); font:inherit; font-size:11px; cursor:pointer;';
         if(__isGuestT){
-          ta.textContent = __isArT ? 'سجّل مجانًا' : 'Sign up free';
+          ta.textContent = t('tierSignupBtn');
           ta.onclick = function(e){
             e.stopPropagation();
             try{
@@ -2046,7 +2052,7 @@ function renderMessages(keepScroll){
             }catch(_e){ __swallow(_e, 'ui:tier-auth'); }
           };
         } else {
-          ta.textContent = __isArT ? 'اشترك للنسخة الاحترافية' : 'Upgrade to Pro';
+          ta.textContent = t('tierUpgradeBtn');
           ta.onclick = function(e){ e.stopPropagation(); try{ if(typeof openCheckout === 'function') openCheckout('pro'); }catch(_e){ __swallow(_e, 'ui:tier-checkout'); } };
         }
         tb.appendChild(ta);
@@ -2065,7 +2071,7 @@ function renderMessages(keepScroll){
     }
     // 🎨 رمز الصورة (__IMG_n__) عقدٌ بين النموذج والعميل لبناء المواقع — لا نصّ
     // يُقرأ. كان يُطبع خامًّا في الدردشة؛ الآن يصير صورةً ويُنزع من الكلام.
-    let __mc = m.content, __genShown = null;
+    let __mc = (m.role !== 'user') ? omranTierLimitText(m) : m.content, __genShown = null; /* v-limit-msg-i18n: ردّ الحدّ بلغة الواجهة */
     // 🎬 v522: __ACTION_VIDEO: — رمز يُطلقه الذكاء الاصطناعي ليفتح صانع الفيديو تلقائياً
     if(m.role !== 'user' && typeof __mc === 'string' && __mc.indexOf('__ACTION_VIDEO:') !== -1){
       const __vidMatch = __mc.match(/__ACTION_VIDEO:\s*([^\n]+)/);

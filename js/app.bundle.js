@@ -5087,6 +5087,12 @@ const I18N = {
     plansWhyExpiring: 'اشتراكك في {plan} ينتهي في {date} — جدّده حتّى لا تتوقّف مزاياك.',
     plansRenew: 'جدّد',
     plansLater: 'لاحقًا',
+    /* v-limit-msg-i18n: جسم ردّ الحدّ لغير العربيّة (العربيّة بنصّ الخادم بأرقامه)، والشارة كما كانت حرفًا، وتأكيد الصرف */
+    chatFreeLimitMsg: 'انتهت رسائلك المجانية لليوم. اشترك لترفع حدّك اليوميّ.',
+    chatGuestLimitMsg: 'سجّل حسابًا مجانيًّا لتبدأ الدردشة.',
+    tierFreeReply: 'ردّ مجاني', tierFreeLimitTitle: 'انتهت الرسائل المجانية لليوم', tierGuestLimitTitle: 'انتهت رسائل التجربة',
+    tierUpgradeBtn: 'اشترك للنسخة الاحترافية', tierSignupBtn: 'سجّل مجانًا',
+    spendConfirm: 'هذه العملية تخصم {n} نقطة. أكمل؟',
     vwUnavailable: 'خدمة تحليل الفيديو متوقّفة مؤقّتًا — لم تُخصم أيّ نقاط. جرّب بعد قليل.',
     vwWriteNo: 'الكتابة على الفيديو نفسه غير متاحة بعد في التطبيق — لم تُخصم أيّ نقاط. أرسل لقطة من الفيديو (أو أيّ صورة) مع الطلب نفسه وأكتبه لك عليها.',
     vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.',
@@ -5462,6 +5468,12 @@ const I18N = {
     plansWhyExpiring: 'Your {plan} subscription ends on {date} — renew it so your benefits don’t stop.',
     plansRenew: 'Renew',
     plansLater: 'Later',
+    /* v-limit-msg-i18n */
+    chatFreeLimitMsg: 'You’ve used up your free messages for today. Subscribe to raise your daily limit.',
+    chatGuestLimitMsg: 'Create a free account to start chatting.',
+    tierFreeReply: 'Free reply', tierFreeLimitTitle: 'Free messages used up for today', tierGuestLimitTitle: 'Trial messages used up',
+    tierUpgradeBtn: 'Upgrade to Pro', tierSignupBtn: 'Sign up free',
+    spendConfirm: 'This will use {n} points. Continue?',
     vwUnavailable: 'Video analysis is temporarily unavailable — no points were used. Please try again shortly.',
     vwWriteNo: 'Writing on the video itself isn’t available in the app yet — no points were used. Send a screenshot from the video (or any photo) with the same request and I’ll write it on that.',
     vidCancelled: 'Video cancelled — no points were used.',
@@ -8288,6 +8300,14 @@ function omranRenderOptions(host, blocks){
     host.appendChild(wrap);
   });
 }
+/* v-limit-msg-i18n (تدقيق ١٨–١٩ أكتوبر): ردّ نفاد الرسائل المجّانيّة/التجربة نصّ عربيّ ثابت من الخادم (tier.js FREE_TEXT) يُحفظ
+   محتوى الرسالة كما هو، فظهر عربيًّا في الإنجليزيّ وبقيّة اللغات. الترجمة عند العرض وحده: العربيّة بنصّ الخادم بأرقامه، وغيرها
+   بمفتاح بلا أرقام (السقوف من الخادم وحده). أيّ ردّ آخر يُعرض كما هو. */
+function omranTierLimitText(m){
+  const tier = m && m.tier;
+  if((tier !== 'free-limit' && tier !== 'guest-limit') || typeof lang === 'undefined' || lang === 'ar') return m ? m.content : '';
+  return t(tier === 'guest-limit' ? 'chatGuestLimitMsg' : 'chatFreeLimitMsg');
+}
 /* v-long-reply-off (طلب المالك ١٨ سبتمبر): الردّ الطويل يُعرض كاملًا في المحادثة بلا قصّ ولا
    أزرار — أُزيل القناع وزرّا القراءة والطيّ ولوحة القراءة التي كانت هنا (v-long-reply). */
 function renderMessages(keepScroll){
@@ -8425,21 +8445,19 @@ function renderMessages(keepScroll){
        عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
     if(m.role !== 'user' && (m.tier === 'free' || m.tier === 'free-limit' || m.tier === 'guest' || m.tier === 'guest-limit')){
       try{
-        const __isArT = (lang === 'ar' || lang === 'ur');
+        /* v-limit-msg-i18n: العنوان والزرّ بمفاتيح الـ١٤ لغة (كانا ثنائيّة ar/en: الأردو تأخذ العربيّ والعشر الإنجليزيّ) */
         const __isGuestT = (m.tier === 'guest' || m.tier === 'guest-limit');
         const tb = document.createElement('div');
         tb.className = 'tier-badge';
         tb.style.cssText = 'display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:11px; color:var(--muted); margin-bottom:4px;';
         const tl = document.createElement('span');
-        tl.textContent = (m.tier === 'guest-limit') ? (__isArT ? 'انتهت رسائل التجربة' : 'Trial messages used up')
-          : (m.tier === 'free-limit') ? (__isArT ? 'انتهت الرسائل المجانية لليوم' : 'Free messages used up for today')
-          : (__isArT ? 'ردّ مجاني' : 'Free reply');
+        tl.textContent = t((m.tier === 'guest-limit') ? 'tierGuestLimitTitle' : (m.tier === 'free-limit') ? 'tierFreeLimitTitle' : 'tierFreeReply');
         tb.appendChild(tl);
         const ta = document.createElement('button');
         ta.type = 'button';
         ta.style.cssText = 'padding:2px 10px; border-radius:12px; border:1px solid var(--border,rgba(255,255,255,.16)); background:transparent; color:var(--accent2,#d4af37); font:inherit; font-size:11px; cursor:pointer;';
         if(__isGuestT){
-          ta.textContent = __isArT ? 'سجّل مجانًا' : 'Sign up free';
+          ta.textContent = t('tierSignupBtn');
           ta.onclick = function(e){
             e.stopPropagation();
             try{
@@ -8449,7 +8467,7 @@ function renderMessages(keepScroll){
             }catch(_e){ __swallow(_e, 'ui:tier-auth'); }
           };
         } else {
-          ta.textContent = __isArT ? 'اشترك للنسخة الاحترافية' : 'Upgrade to Pro';
+          ta.textContent = t('tierUpgradeBtn');
           ta.onclick = function(e){ e.stopPropagation(); try{ if(typeof openCheckout === 'function') openCheckout('pro'); }catch(_e){ __swallow(_e, 'ui:tier-checkout'); } };
         }
         tb.appendChild(ta);
@@ -8468,7 +8486,7 @@ function renderMessages(keepScroll){
     }
     // 🎨 رمز الصورة (__IMG_n__) عقدٌ بين النموذج والعميل لبناء المواقع — لا نصّ
     // يُقرأ. كان يُطبع خامًّا في الدردشة؛ الآن يصير صورةً ويُنزع من الكلام.
-    let __mc = m.content, __genShown = null;
+    let __mc = (m.role !== 'user') ? omranTierLimitText(m) : m.content, __genShown = null; /* v-limit-msg-i18n: ردّ الحدّ بلغة الواجهة */
     // 🎬 v522: __ACTION_VIDEO: — رمز يُطلقه الذكاء الاصطناعي ليفتح صانع الفيديو تلقائياً
     if(m.role !== 'user' && typeof __mc === 'string' && __mc.indexOf('__ACTION_VIDEO:') !== -1){
       const __vidMatch = __mc.match(/__ACTION_VIDEO:\s*([^\n]+)/);
@@ -28283,7 +28301,7 @@ DESIGN RULES (non-negotiable):
       try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('points', 'pts'); /* v-plans-gate */ else if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
     } else if(err && err.planLimit){
       // v-plans-gate: حدّ الباقة اليوميّ — سطر واضح بدل «جرّب مزوّدًا آخر أو أدخل مفتاحك»، والباقات تنفتح للترقية.
-      cur.messages.push({role: 'assistant', content: '⚠️ ' + t('plansWhyLimit')});
+      cur.messages.push(omranPlanLimitMsg(err)); /* v-limit-msg-i18n: المجّانيّ والضيف بنصّ ردّ المحادثة وطبقته */
       try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(e){ __swallow(e, 'chat:plans-limit'); }
     } else {
       /* v-img-err: حين يفشل مسار الأدوات (كلود المباشر) ثمّ يفشل الاحتياط أيضًا،
@@ -28495,6 +28513,15 @@ function omranDiagTurnMsg(cur, text, run){
     + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة/idle = انقطاع الاتصال)' };
 }
 
+/* v-limit-msg-i18n (تدقيق ١٨–١٩ أكتوبر): رسالة حدّ مسار المزوّدين القديم (البناء والتعديل). حدّ المجّانيّ أو الضيف (طبقة جسم 402،
+   وإلّا باقة الواجهة) بنصّ ردّ المحادثة نفسه وطبقته فيأخذ شارته وزرّه — كان «وصلت حدّ باقتك» لمن لا باقة له. المشترك كما كان،
+   ورفض المدفوع (subscribeOnly) بعد فشل المجّانيّين ليس نفادًا فيبقى سطره القديم. */
+function omranPlanLimitMsg(err){
+  const lt = (err && err.subscribeOnly) ? '' : ((err && err.limitTier) || ((window.__omranPlan === 'free' || window.__omranPlan === 'guest') ? window.__omranPlan : ''));
+  if(lt === 'free' || lt === 'guest') return {role: 'assistant', content: t(lt === 'guest' ? 'chatGuestLimitMsg' : 'chatFreeLimitMsg'), tier: lt + '-limit'};
+  return {role: 'assistant', content: '⚠️ ' + t('plansWhyLimit')};
+}
+
 /* ───────── تأكيد قبل صرف النقاط ─────────
    الخادم يرجع 428 مع السعر بدل التنفيذ الصامت. هنا نعرضه ونعيد الطلب
    بـ confirmed:true فقط بعد موافقة صريحة. */
@@ -28508,10 +28535,13 @@ async function postWithConfirm(url, payload, sig){
 
   let q = {};
   try { q = await res.json(); } catch(e){ console.warn('[confirm] bad quote', e); }
-  const isEn = (typeof AL === 'function' && AL() === 'en');
-  const msg = q.message_ar || ((isEn ? 'This will cost ' : 'هذه العملية تخصم ')
-    + (q.cost || '?') + (isEn ? ' points' : ' نقطة') + (q.label ? ' (' + q.label + ')' : '') + '.');
-  const okToSpend = confirm(msg + '\n' + (isEn ? 'Continue?' : 'أكمل؟'));
+  /* v-spend-confirm-i18n (تدقيق ١٨–١٩ أكتوبر): كان يفحص دالّة لغة غير معرّفة في الحزمة فيعرض message_ar العربيّ لكلّ اللغات. العربيّة كما
+     كانت حرفًا، وغيرها spendConfirm بعدد النقاط من الخادم. هذه النسخة وحدها تعمل (آخر تصريح في الحزمة)، والتدفّق لم يتغيّر. */
+  const __arUi = (typeof lang === 'undefined' || lang === 'ar');
+  const msg = __arUi
+    ? (q.message_ar || ('هذه العملية تخصم ' + (q.cost || '?') + ' نقطة' + (q.label ? ' (' + q.label + ')' : '') + '.')) + '\n' + 'أكمل؟'
+    : t('spendConfirm').replace('{n}', q.cost || '?');
+  const okToSpend = confirm(msg);
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
@@ -46652,6 +46682,8 @@ if(document.readyState === 'loading'){
   }
   function whyText(reason, vars){
     if(reason === 'points') return pointsWhy(vars);
+    /* v-limit-msg-i18n (الدفعة ٥): المجّانيّ لا باقة له — سطر الحدّ هو نصّ ردّ المحادثة نفسه لا «وصلت حدّ باقتك» */
+    if(reason === 'limit' && String(window.__omranPlan || '') === 'free') return fill(t('chatFreeLimitMsg'), vars);
     return fill(t(WHY[reason] || WHY.points), vars);
   }
   /* v-plans-real-balance (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «صفحة الباقات تقول نقاطك خلصت والرصيد ١٠ — خلها تقرا الرصيد الحقيقي»):

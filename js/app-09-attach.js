@@ -7440,7 +7440,7 @@ DESIGN RULES (non-negotiable):
       try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('points', 'pts'); /* v-plans-gate */ else if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
     } else if(err && err.planLimit){
       // v-plans-gate: حدّ الباقة اليوميّ — سطر واضح بدل «جرّب مزوّدًا آخر أو أدخل مفتاحك»، والباقات تنفتح للترقية.
-      cur.messages.push({role: 'assistant', content: '⚠️ ' + t('plansWhyLimit')});
+      cur.messages.push(omranPlanLimitMsg(err)); /* v-limit-msg-i18n: المجّانيّ والضيف بنصّ ردّ المحادثة وطبقته */
       try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(e){ __swallow(e, 'chat:plans-limit'); }
     } else {
       /* v-img-err: حين يفشل مسار الأدوات (كلود المباشر) ثمّ يفشل الاحتياط أيضًا،
@@ -7652,6 +7652,15 @@ function omranDiagTurnMsg(cur, text, run){
     + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة/idle = انقطاع الاتصال)' };
 }
 
+/* v-limit-msg-i18n (تدقيق ١٨–١٩ أكتوبر): رسالة حدّ مسار المزوّدين القديم (البناء والتعديل). حدّ المجّانيّ أو الضيف (طبقة جسم 402،
+   وإلّا باقة الواجهة) بنصّ ردّ المحادثة نفسه وطبقته فيأخذ شارته وزرّه — كان «وصلت حدّ باقتك» لمن لا باقة له. المشترك كما كان،
+   ورفض المدفوع (subscribeOnly) بعد فشل المجّانيّين ليس نفادًا فيبقى سطره القديم. */
+function omranPlanLimitMsg(err){
+  const lt = (err && err.subscribeOnly) ? '' : ((err && err.limitTier) || ((window.__omranPlan === 'free' || window.__omranPlan === 'guest') ? window.__omranPlan : ''));
+  if(lt === 'free' || lt === 'guest') return {role: 'assistant', content: t(lt === 'guest' ? 'chatGuestLimitMsg' : 'chatFreeLimitMsg'), tier: lt + '-limit'};
+  return {role: 'assistant', content: '⚠️ ' + t('plansWhyLimit')};
+}
+
 /* ───────── تأكيد قبل صرف النقاط ─────────
    الخادم يرجع 428 مع السعر بدل التنفيذ الصامت. هنا نعرضه ونعيد الطلب
    بـ confirmed:true فقط بعد موافقة صريحة. */
@@ -7665,10 +7674,13 @@ async function postWithConfirm(url, payload, sig){
 
   let q = {};
   try { q = await res.json(); } catch(e){ console.warn('[confirm] bad quote', e); }
-  const isEn = (typeof AL === 'function' && AL() === 'en');
-  const msg = q.message_ar || ((isEn ? 'This will cost ' : 'هذه العملية تخصم ')
-    + (q.cost || '?') + (isEn ? ' points' : ' نقطة') + (q.label ? ' (' + q.label + ')' : '') + '.');
-  const okToSpend = confirm(msg + '\n' + (isEn ? 'Continue?' : 'أكمل؟'));
+  /* v-spend-confirm-i18n (تدقيق ١٨–١٩ أكتوبر): كان يفحص دالّة لغة غير معرّفة في الحزمة فيعرض message_ar العربيّ لكلّ اللغات. العربيّة كما
+     كانت حرفًا، وغيرها spendConfirm بعدد النقاط من الخادم. هذه النسخة وحدها تعمل (آخر تصريح في الحزمة)، والتدفّق لم يتغيّر. */
+  const __arUi = (typeof lang === 'undefined' || lang === 'ar');
+  const msg = __arUi
+    ? (q.message_ar || ('هذه العملية تخصم ' + (q.cost || '?') + ' نقطة' + (q.label ? ' (' + q.label + ')' : '') + '.')) + '\n' + 'أكمل؟'
+    : t('spendConfirm').replace('{n}', q.cost || '?');
+  const okToSpend = confirm(msg);
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
