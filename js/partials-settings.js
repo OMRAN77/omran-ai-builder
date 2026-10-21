@@ -454,6 +454,13 @@
   .pcard .pprice{display:flex; align-items:baseline; gap:5px; margin:12px 0 2px;}
   .pcard .pnum{font-size:32px; font-weight:300; line-height:1;}
   .pcard .pcur{font-size:15px; color:var(--muted);}
+  /* v-cur-display (موافقة المالك ٢١ أكتوبر): بالإنجليزيّة الرمز قبل الرقم «$10» و«AED 10» (كان «10 $»)؛ العربيّة واللغات الأخرى كما هي */
+  html[lang="en"] .pcard .pprice{gap:1px;}
+  html[lang="en"] .pcard .pcur{order:-1;}
+  html[lang="en"] .pcard .pcur.curCode{margin-inline-end:5px;}
+  html[lang="en"] .pointsPackBtn span:has(> .cursym){display:inline-flex; align-items:baseline; gap:1px;}
+  html[lang="en"] .pointsPackBtn .cursym{order:-1;}
+  html[lang="en"] .pointsPackBtn .cursym.curCode{margin-inline-end:3px;}
   .pcard .pper{font-size:11.5px; color:var(--muted); min-height:15px;}
   .pcard .ppts{margin:14px 0 12px; padding:9px 11px; background:var(--panel,rgba(128,128,128,.10)); border-radius:10px; display:flex; align-items:baseline; justify-content:space-between; gap:6px;}
   .pcard .ppts b{font-size:18px;}
@@ -835,7 +842,7 @@
       var sc = document.querySelector('script[data-omran-cur]');
       if (!sc) {
         sc = document.createElement('script');
-        sc.src = '/js/currency.js?v=2';
+        sc.src = '/js/currency.js?v=4'; /* v-cur-display */
         sc.charset = 'utf-8';
         sc.setAttribute('data-omran-cur', '1');
         sc.addEventListener('load', go);
