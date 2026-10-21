@@ -92,7 +92,8 @@ test('٣. رفض الواجهة لكشف المعنى لا يُسقط المكا
   assert.equal(vague.sessions.length, 3, 'السرعة أوّلًا (المسار القائم)، ثمّ الإعداد السابق');
 
   const key = await mint({}, () => ({ status: 401, body: { error: { message: 'Incorrect API key' } } }));
-  assert.equal(key.code, 401, 'خطأ المفتاح يظهر كما هو');
+  assert.equal(key.code, 503, 'خطأ المفتاح = الخدمة متوقّفة (v-maha-paused: لا حالة المزوّد ولا نصّه)');
+  assert.deepEqual(key.j, { error: 'unavailable' });
   assert.ok(key.sessions.every((s) => s.audio.input.turn_detection.type === 'semantic_vad'), 'لا تبديل للإعداد على خطأ مفتاح');
 });
 

@@ -116,4 +116,28 @@ async function settleStale(username, o) {
   return out;
 }
 
-module.exports = { HOLD_STALE_MS, REFUND_DAY_MAX, cleanId, holdImage, holdFromRequest, ackImage, settleStale };
+/* v-img-deadline-refund (أمر المالك ٢١ أكتوبر: «صورة مها اللي تطوّل أكثر من 300 ثانية: إذا ما وصلت، النقاط ترجع»): الدالّة تُقتل عند ٣٠٠ث
+   (سلسلة المحرّكات قد تطول) فلا يصل catch ولا ردّ النقاط. تذكرة خادم تُفتح عند الخصم وتُغلق عند التسليم أو الردّ المباشر؛ ما بقي مفتوحًا
+   = قُتلت الدالّة ولم تصل الصورة → يردّها settleStale عند أوّل قراءة رصيد. ساعتها تبدأ بعد عمر الدالّة كلّه (TICKET_GRACE_MS) فلا تُردّ صورة
+   ما زالت تُرسم. «مرّة واحدة» بمفتاح التسوية نفسه: الإغلاق يأخذه قبل الردّ المباشر، فلا يردّ الكنس والدالّة معًا. */
+const TICKET_GRACE_MS = 60 * 1000;
+/** يفتح (أو يحدّث بمعرّفه) تذكرة خصم صورة على الخادم. يرجع معرّفها، أو undefined (لا خصم، مالك/VIP، أو عطب — فيبقى الردّ المباشر وحده). */
+async function openTicket(username, cost, pay, id, o) {
+  const tid = cleanId(id) || ('srv' + crypto.randomBytes(9).toString('hex'));
+  const at = (Number(o && o.now) || Date.now()) + TICKET_GRACE_MS;
+  try { return (await holdImage(username, tid, cost, pay, Object.assign({}, o, { now: at }))) ? tid : undefined; } catch (e) { return undefined; }
+}
+/** يغلق تذكرة الخادم: true = القرار للدالّة (أخذت مفتاح التسوية، أو لا تذكرة) فتردّ هي إن فشلت؛ false = سوّاها الكنس قبلها أو تعذّر الحسم
+    فلا تردّ هي (تبقى التذكرة للكنس) — فلا تُردّ النقاط مرّتين. */
+async function closeTicket(username, id, o) {
+  const opt = o || {};
+  const kv = opt.kv || require('./kv.js');
+  const hid = cleanId(id);
+  if (!username || !hid) return true;
+  let mine = false;
+  try { mine = await kv.kvSetIfAbsent(doneKey(username, hid), '1', TTL_SEC); } catch (e) { return false; }
+  if (mine) { try { await writeList(kv, username, (await readList(kv, username)).filter((x) => x.id !== hid)); } catch (e) { /* guard-ok — محسومة بمفتاح التسوية */ } }
+  return !!mine;
+}
+
+module.exports = { HOLD_STALE_MS, REFUND_DAY_MAX, TICKET_GRACE_MS, cleanId, holdImage, holdFromRequest, ackImage, settleStale, openTicket, closeTicket };

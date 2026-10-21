@@ -278,7 +278,7 @@ async function stopMicRecordingAndTranscribe(autoRoute){
     const data = await res.json();
     btn.classList.remove('transcribing');
     if(!res.ok){
-      alert(data && data.error ? data.error : t('micNotSupported'));
+      alert(data && data.error === 'unavailable' ? t('svcPaused') : (data && typeof data.error === 'string' && data.error !== 'failed') ? data.error : t('micNotSupported')); // v-maha-paused: لا [object Object]
       return;
     }
     const transcript = (data && data.text ? data.text : '').trim();
@@ -387,7 +387,7 @@ async function miniMicStop(btn, targetId){
     const data = await res.json();
     btn.classList.remove('transcribing');
     if(!res.ok){
-      alert(data && data.error ? data.error : t('micNotSupported'));
+      alert(data && data.error === 'unavailable' ? t('svcPaused') : (data && typeof data.error === 'string' && data.error !== 'failed') ? data.error : t('micNotSupported')); // v-maha-paused: لا [object Object]
       return;
     }
     const transcript = (data && data.text ? data.text : '').trim();
