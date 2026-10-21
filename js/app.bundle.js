@@ -18109,7 +18109,7 @@ async function stopMicRecordingAndTranscribe(autoRoute){
     const data = await res.json();
     btn.classList.remove('transcribing');
     if(!res.ok){
-      alert(data && data.error ? data.error : t('micNotSupported'));
+      alert(data && data.error === 'unavailable' ? t('svcPaused') : (data && typeof data.error === 'string' && data.error !== 'failed') ? data.error : t('micNotSupported')); // v-maha-paused: لا [object Object]
       return;
     }
     const transcript = (data && data.text ? data.text : '').trim();
@@ -18218,7 +18218,7 @@ async function miniMicStop(btn, targetId){
     const data = await res.json();
     btn.classList.remove('transcribing');
     if(!res.ok){
-      alert(data && data.error ? data.error : t('micNotSupported'));
+      alert(data && data.error === 'unavailable' ? t('svcPaused') : (data && typeof data.error === 'string' && data.error !== 'failed') ? data.error : t('micNotSupported')); // v-maha-paused: لا [object Object]
       return;
     }
     const transcript = (data && data.text ? data.text : '').trim();
@@ -20391,7 +20391,7 @@ async function mahaStartRealtimeCall(){
     throw new Error(tokenData && tokenData.error === 'guest_trial_used' ? '__guest__' : '__points__');
   }
   if(!tokenRes.ok || !tokenData.clientSecret){
-    throw new Error((tokenData && tokenData.error) ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status));
+    throw new Error((tokenData && typeof tokenData.error === 'string') ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status)); // v-maha-paused: كائن خطأ المزوّد كان يصير [object Object]
   }
   mahaStartPointsMeter(tokenData.mahaBudget);
   mahaAppControl = tokenData.appControl === true; // v-maha-app: الخادم وحده يقرّر
@@ -20947,8 +20947,8 @@ async function mahaCallLoop(){
       if(!mahaCallActive) break;
       if(!res.ok){
         console.error('[maha] stt failed:', res.status, data);
-        const detail = (data && data.error) ? String(data.error) : ('HTTP ' + res.status);
-        mahaSetState('error', t('mahaSttError') + ' (' + detail.slice(0, 80) + ')');
+        const detail = (data && typeof data.error === 'string') ? data.error : ('HTTP ' + res.status); // v-maha-paused: لا [object Object]
+        mahaSetState('error', detail === 'unavailable' ? t('svcPaused') : (t('mahaSttError') + ' (' + detail.slice(0, 80) + ')')); // v-maha-paused: رصيد المزوّد نفد
         await new Promise(r => setTimeout(r, 3000));
         continue;
       }
@@ -27504,7 +27504,7 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
               const __vRes = await fetch('/api/maha-image', {
                 method:'POST', headers:{ 'Content-Type':'application/json' },
                 signal: __runCtl.signal,
-                body: JSON.stringify({ prompt:__visEdit, editImageBase64:__wb64, editMimeType:__wmime, reserveTextArea:true, textPosition:__textSpec.position })
+                body: JSON.stringify({ prompt:__visEdit, editImageBase64:__wb64, editMimeType:__wmime, reserveTextArea:true, textPosition:__textSpec.position, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }) /* v-vis-edit-auth: كان بلا جلسة فيُرفض 401 دائمًا */
               });
               const __vData = await __vRes.json().catch(() => ({}));
               if(__vRes.ok && __vData.imageBase64){ __wb64 = __vData.imageBase64; __wmime = __vData.mimeType || 'image/png'; } else __visFailed = true;

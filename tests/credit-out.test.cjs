@@ -118,7 +118,7 @@ test('٣. فرق الصورة الإبداعيّة خصمٌ ثانٍ يعود ب
   const src = read('api/_lib/maha-image.js');
   assert.match(src, /await pointsLib\.refundPoints\(user, amount - extra, mahaImgPay \|\| undefined\);/);
   assert.match(src, /if \(extra\) await pointsLib\.refundPoints\(user, extra, mahaImgExtraPay \|\| undefined\);/);
-  assert.match(src, /if \(!__xp\.owner\) \{ mahaImgChargedAmount \+= __extra; mahaImgExtra = __extra; mahaImgExtraPay = __xp; \}/);
+  assert.match(src, /if \(!__xp\.owner\) \{ mahaImgChargedAmount \+= __extra; mahaImgExtra = __extra; mahaImgExtraPay = __xp;/); // v-img-deadline-refund: ثمّ تحديث تذكرة الخادم
   assert.doesNotMatch(src, /refundPoints\(user, amount\);/, 'لا ردّ بلا نوع');
   for (const [f, rx] of [['api/_lib/upscale.js', /refundPoints\(charged, pointsLib\.COSTS\.image_upscale, chargedPay\)/g], ['api/_lib/video-watch.js', /refundPoints\(user, charged, payHere \? pay : undefined\)/g]]) {
     const s = read(f);

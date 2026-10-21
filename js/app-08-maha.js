@@ -1487,7 +1487,7 @@ async function mahaStartRealtimeCall(){
     throw new Error(tokenData && tokenData.error === 'guest_trial_used' ? '__guest__' : '__points__');
   }
   if(!tokenRes.ok || !tokenData.clientSecret){
-    throw new Error((tokenData && tokenData.error) ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status));
+    throw new Error((tokenData && typeof tokenData.error === 'string') ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status)); // v-maha-paused: كائن خطأ المزوّد كان يصير [object Object]
   }
   mahaStartPointsMeter(tokenData.mahaBudget);
   mahaAppControl = tokenData.appControl === true; // v-maha-app: الخادم وحده يقرّر
@@ -2043,8 +2043,8 @@ async function mahaCallLoop(){
       if(!mahaCallActive) break;
       if(!res.ok){
         console.error('[maha] stt failed:', res.status, data);
-        const detail = (data && data.error) ? String(data.error) : ('HTTP ' + res.status);
-        mahaSetState('error', t('mahaSttError') + ' (' + detail.slice(0, 80) + ')');
+        const detail = (data && typeof data.error === 'string') ? data.error : ('HTTP ' + res.status); // v-maha-paused: لا [object Object]
+        mahaSetState('error', detail === 'unavailable' ? t('svcPaused') : (t('mahaSttError') + ' (' + detail.slice(0, 80) + ')')); // v-maha-paused: رصيد المزوّد نفد
         await new Promise(r => setTimeout(r, 3000));
         continue;
       }
