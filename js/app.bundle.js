@@ -33989,8 +33989,9 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     var sep = /^(ar|ur)/.test(lg()) ? '، ' : ', ';
     var cols = Array.prototype.map.call(document.querySelectorAll('#fashionAiModal .colorRow .cw.sel .cn'), function(n){ return (n.textContent || '').trim(); }).filter(Boolean);
     parts.push('🎨 ' + (cols.length ? (cols.slice(0, 2).join(sep) + (cols.length > 2 ? ' +' + (cols.length - 2) : '')) : (gt('fxColorsLbl') || '…')));
-    var ex = Array.prototype.map.call(document.querySelectorAll('#fashionAiModal .fxAccCard.sel .oi'), function(n){ return (n.textContent || '').trim(); }).filter(Boolean);
-    parts.push('💎 ' + (ex.length ? ex.join('') : (gt('fxAccLbl') || '…')));
+    /* تدقيق ١٨ أكتوبر: الجزء كان إيموجي .oi وحده فيمسحه v-clean-ui («شتوي · كحلي · · كاجوال») — الأسماء المترجمة من .ct كالألوان */
+    var ex = Array.prototype.map.call(document.querySelectorAll('#fashionAiModal .fxAccCard.sel .ct'), function(n){ return (n.textContent || '').trim(); }).filter(Boolean);
+    parts.push('💎 ' + (ex.length ? (ex.slice(0, 2).join(sep) + (ex.length > 2 ? ' +' + (ex.length - 2) : '')) : (gt('fxAccLbl') || '…')));
     var st = optText($('fashionAiStyle')); if(st) parts.push(st);
     return parts.join(' · ');
   }
@@ -34402,6 +34403,7 @@ async function __safeJson(res){
   const ideaGallery = document.getElementById('designAiIdeaGallery');
   const ideaAI = document.getElementById('designAiIdeaAI');
   function ideaStatus(txt){ if(!ideaStatusEl) return; ideaStatusEl.textContent = txt || ''; ideaStatusEl.style.display = txt ? 'block' : 'none'; }
+  function noPhotos(){ return '😕 ' + bT('ما حصلت صورًا لهذا الطلب — جرّب وصفًا آخر، أو ولّد تصاميم بالذكاء.', 'No photos found for this — try another description, or generate AI designs.'); }
   let ideaReq = 0;
   async function loadIdeas(opts){
     const my = ++ideaReq;
@@ -34422,20 +34424,31 @@ async function __safeJson(res){
           var __dt = ''; try{ __dt = d.detail ? (' (' + Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
           ideaStatus('⚠️ ' + bT('مصدر الصور متوقف مؤقتًا — جرّب بعد قليل، أو ولّد تصاميم بالذكاء.', 'The photo source is temporarily unavailable — try again shortly, or generate AI designs.') + __dt);
         }
-        else ideaStatus('😕 ' + bT('ما حصلت صورًا لهذا الطلب — جرّب وصفًا آخر، أو ولّد تصاميم بالذكاء.', 'No photos found for this — try another description, or generate AI designs.'));
+        else ideaStatus(noPhotos());
         if(ideaAI) ideaAI.style.display = ''; return;
       }
+      /* v-ideas-hosts (تدقيق ١٨ أكتوبر: «٢٩ صورة» والمعروض ١٨): العدد كان يُكتب قبل سقوط المكسورة — يتبع الظاهر، وصفر = «ما حصلت صورًا» */
+      let shown = imgs.length;
+      const galleryLine = () => '🖼️ ' + shown + ' ' + bT('صورة وتصميم من الويب — اضغط أي صورة لعرضها كبيرة', 'photos and designs from the web — tap any to open it');
       imgs.forEach(function(u){
         const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener';
         a.onclick = function(e){ if(window.omranLightbox){ e.preventDefault(); window.omranLightbox(u); } }; /* v-cx-ideas: معرض داخل التطبيق */
         a.style.cssText = 'display:block; break-inside:avoid; margin-bottom:6px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,.04);';
-        const im = document.createElement('img'); im.src = u; im.loading = 'lazy'; im.alt = '';
+        const im = document.createElement('img'); im.referrerPolicy = 'no-referrer'; im.src = u; im.loading = 'lazy'; im.alt = ''; /* مواقع تمنع الربط بالمُحيل */
         im.style.cssText = 'display:block; width:100%; height:auto;';
-        im.onerror = function(){ a.remove(); };
+        im.onerror = function(){
+          a.remove();
+          shown--;
+          if(my !== ideaReq) return;
+          if(shown > 0){ ideaStatus(galleryLine()); return; }
+          ideaGallery.style.display = 'none';
+          ideaStatus(noPhotos());
+          if(ideaAI) ideaAI.style.display = '';
+        };
         a.appendChild(im); ideaGallery.appendChild(a);
       });
       ideaGallery.style.display = 'block';
-      ideaStatus('🖼️ ' + imgs.length + ' ' + bT('صورة وتصميم من الويب — اضغط أي صورة لعرضها كبيرة', 'photos and designs from the web — tap any to open it'));
+      ideaStatus(galleryLine());
       if(ideaAI) ideaAI.style.display = '';
       try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
@@ -36082,8 +36095,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         wrap.style.boxShadow = cb.checked ? '0 0 12px rgba(212,175,55,.35)' : 'none';
       }
       wrap.onclick = function(){
-        if(!cb.checked && compareChecksEl.querySelectorAll('.fashionCompareCheck:checked').length >= 3) return; // الحد ٣
+        /* تدقيق ١٨ أكتوبر: الرابعة كانت ترجع بصمت و«اختر إطلالتين» باقية وأنت مختار ٣ — رسالة الحدّ كمقارنة الديكور، والتبديل يمسح القديمة */
+        if(!cb.checked && compareChecksEl.querySelectorAll('.fashionCompareCheck:checked').length >= 3){
+          if(compareStatusEl){ compareStatusEl.style.display = 'block'; compareStatusEl.textContent = bT('الحد ٣ أنماط', 'Max 3 styles'); }
+          return;
+        }
         cb.checked = !cb.checked; paint();
+        if(compareStatusEl && !(compareBtn && compareBtn.disabled)) compareStatusEl.style.display = 'none';
       };
       wrap.appendChild(lookImg(g, v, opt.textContent));
       wrap.appendChild(tick); wrap.appendChild(label); wrap.appendChild(cb);
@@ -36227,27 +36245,40 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* المترجم لم يجهز */ }
     return isEn() ? enFb : arFb;
   };
-  let refineRow = null, refineInput = null, refineBtn = null;
+  let refineRow = null, refineInput = null, refineBtn = null, refineStatusEl = null;
   function __buildRefineRow(){
     if(refineRow || !resultWrap) return;
     refineRow = document.createElement('div');
     refineRow.id = 'fashionRefineRow';
-    refineRow.style.cssText = 'display:none; gap:8px; margin-top:10px; align-items:stretch;';
+    /* تدقيق ١٨ أكتوبر: صفّ بلا التفاف والزرّ بعرضه كاملًا كان يقصّ المثال («…the dress colour t») — يلتفّ الزرّ تحت الخانة حين لا يتّسع */
+    refineRow.style.cssText = 'display:none; flex-wrap:wrap; gap:8px; margin-top:10px; align-items:stretch;';
     refineInput = document.createElement('input');
     refineInput.id = 'fashionRefineInput';
     refineInput.type = 'text';
     refineInput.maxLength = 300;
-    refineInput.style.cssText = 'flex:1 1 auto; min-width:0; padding:10px 12px; border-radius:12px; border:1px solid var(--border,#333); background:var(--panel2,#1b1b22); color:var(--text,#eee); font-family:inherit; font-size:13px;';
+    refineInput.style.cssText = 'flex:1 1 280px; min-width:0; padding:10px 12px; border-radius:12px; border:1px solid var(--border,#333); background:var(--panel2,#1b1b22); color:var(--text,#eee); font-family:inherit; font-size:13px;';
     refineBtn = document.createElement('button');
     refineBtn.id = 'fashionRefineBtn';
     refineBtn.type = 'button';
     refineBtn.className = 'btn';
     refineBtn.style.cssText = 'flex:0 0 auto; white-space:nowrap;';
+    /* ورسالتا التحقّق كانتا في #fashionAiStatus عند «صمم» أسفل النافذة (خارج الشاشة) — سطرهما داخل الصفّ تحت الخانة والزرّ */
+    refineStatusEl = document.createElement('div');
+    refineStatusEl.id = 'fashionRefineStatus';
+    refineStatusEl.setAttribute('role', 'status');
+    refineStatusEl.style.cssText = 'display:none; flex:1 1 100%; text-align:center; font-size:var(--fs-3); color:var(--muted);';
     refineRow.appendChild(refineInput);
     refineRow.appendChild(refineBtn);
+    refineRow.appendChild(refineStatusEl);
     resultWrap.appendChild(refineRow);
     refineBtn.onclick = __doRefine;
     refineInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); __doRefine(); } });
+    refineInput.addEventListener('input', () => __refineStatus(''));
+  }
+  function __refineStatus(text){
+    if(!refineStatusEl) return;
+    refineStatusEl.style.display = text ? 'block' : 'none';
+    refineStatusEl.textContent = text || '';
   }
   /* v-fx-gender-pics: سطر التعديل تحت نتيجة رجل أو طفل كان «غيّري لون الفستان» و«عدّلي» — لغير النساء نصّ الفئة
      (لغة بلا مدخل = المفتاح الأصليّ، وهو محايد فيها؛ العربيّة وحدها تؤنّث الفعل، و«الفستان» في كلّ اللغات) */
@@ -36270,14 +36301,18 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     __lastFxB64 = b64; __lastFxMime = mime;
     __buildRefineRow();
     __refineTexts();
-    if(refineRow){ refineRow.style.display = 'flex'; refineInput.value = ''; }
+    if(refineRow){ refineRow.style.display = 'flex'; refineInput.value = ''; __refineStatus(''); }
   }
   async function __doRefine(){
     if(!__lastFxB64) return;
     const reqTxt = (refineInput.value || '').trim();
-    if(!reqTxt){ setStatus(__refineG('need', 'fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
-    if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
+    if(!reqTxt || !token){
+      const setStatus = __refineStatus; /* رسالتا التحقّق تحت الصفّ (كمقترحات الديكور v-decor-suggest-msg)؛ الانتظار والنتيجة في #fashionAiStatus كما كانا */
+      if(!reqTxt){ setStatus(__refineG('need', 'fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
+      setStatus(t('fashionAiNeedLogin')); return;
+    }
+    __refineStatus('');
     refineBtn.disabled = true; btnGenerate.disabled = true;
     setStatus(__gt2('fashionRefining', 'جاري تطبيق التعديل…', 'Applying your edit…'));
     try{
@@ -36364,9 +36399,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">' + (currentGender() === 'men' ? '💼 ' : '👜 ') + (s.accessories || '') + '</p>' + /* v-fx-gender-pics: كبطاقة الحقيبة */
           '<button type="button" class="btn primary useLookBtn" style="width:100%; font-size:12px; padding:5px;">' + t('fashionUseThisLook') + '</button>';
         card.querySelector('.useLookBtn').onclick = () => {
+          /* تدقيق ١٨ أكتوبر: الوصف كان «… . Colors: … Accessories: …» بتسميات إنجليزيّة و«..» — الأجزاء الثلاثة بلا نقطتها الختاميّة مربوطة بـ«. » */
+          const look = [s.clothing, s.colors, s.accessories].map((x) => String(x || '').trim().replace(/[.。।]+$/, '').trim()).filter(Boolean).join('. ');
+          /* مع صورة مرفوعة يبقى الزرّ كما كان: لبس الإطلالة على صورتك (v-fashion-use-look) يحتاج أمر الخادم — مع طلب الأزياء المنفصل */
           if(mode === 'text' || !selectedBase64){
             setMode('text');
-            descriptionEl.value = (s.clothing || '') + '. ' + (s.colors ? ('Colors: ' + s.colors + '. ') : '') + (s.accessories ? ('Accessories: ' + s.accessories) : '');
+            descriptionEl.value = look;
           }
         };
         suggestionsEl.appendChild(card);
@@ -36453,7 +36491,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
             fxRevealResult();
           };
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* رمز الخادم الخامّ (tmp_unavailable…) كان يظهر للمستخدم — نصّ مفهوم بالـ١٤ لغة (والحدّ اليوميّ باسمه) */
+          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">' + (r.error === 'daily_limit_reached' ? t('fashionAiLimitReached') : t('designAiSuggestError')) + '</p>';
         }
         compareResultsEl.appendChild(cell);
       });
@@ -36530,6 +36569,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     resultEl.style.display = 'none';
     resultEl.textContent = '';
     setStatus('');
+    fitInput(); /* تدقيق ١٨ أكتوبر: مثال التبويب الجديد (الأحلام سطران على الجوّال) كان يُقصّ — المقاس يتبع المثال */
   }
 
   tabsWrap.addEventListener('click', (e) => {
@@ -36593,7 +36633,16 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       setStatus(t('religionDone'));
     }catch(e){
       if(my !== run) return;
-      setStatus(t('religionError') + (e && e.message ? (': ' + e.message) : ''));
+      /* تدقيق ١٨ أكتوبر: كان «حدث خطأ، حاول مرة أخرى: … (الاحتياط فشل أيضًا — …)» تحته صندوق فارغ. حدّ الباقة نصّه ويفتح الباقات
+         (v-plans-gate)، وغيره «حدث خطأ» وحده والتفاصيل للكونسول، والصندوق يُخفى إن لم يُكتب فيه شيء. */
+      if(e && e.planLimit){
+        setStatus(t('plansWhyLimit'));
+        try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(err){ __swallow(err, 'religion:plans'); }
+      } else {
+        setStatus(t('religionError'));
+        console.warn('[religion]', e && e.message ? e.message : e);
+      }
+      if(!String(resultEl.textContent || '').trim()) resultEl.style.display = 'none';
     }finally{
       if(my === run){ done = true; btnGenerate.disabled = false; ctl = null; }
     }
@@ -36622,7 +36671,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     connectText: t('emailAsst_connectText'),
     connectBtn: t('emailAsst_connectBtn'),
     disclaimer: t('emailAsst_disclaimer'),
-    title: t('emailAsst_title'),
+    title: t('emailAssistTitle'), /* تدقيق ١٨ أكتوبر: البطاقة «Smart Email Assistant» والنافذة «AI Email Assistant» في ١٣ لغة — مفتاح البطاقة نفسه */
     refresh: t('emailAsst_refresh'),
     loading: t('emailAsst_loading'),
     empty: t('emailAsst_empty'),
@@ -36882,7 +36931,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const r = await fetch('/api/email-list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: emBody({ draftFor: mail.id, threadId: mail.threadId || '', regen: job.regen }) });
       const d = await r.json();
       if(job.run !== emRun) return;
-      if(!r.ok) throw new Error((d && d.error) || 'draft failed');
+      if(!r.ok || (d && d.notConnected)) throw new Error((d && d.error) || 'draft failed'); /* «غير مربوط» صار ٢٠٠ — يبقى فشل مسوّدة */
       if(d.draft){ // فشل «إعادة توليد» لا يمسح المسوّدة القائمة
         mail.draft = d.draft;
         mail.priority = d.priority || 'normal';
@@ -36942,16 +36991,15 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       });
       const d = await r.json();
       if(run !== emRun) return;
-      if(!r.ok){
-        if(d.notConnected || /invalid_grant/i.test(String(d.error || ''))){
-          connectBox.style.display = 'block';
-          connectedBox.style.display = 'none';
-          setStatus(d.notConnected ? '' : T().notConnected);
-          emPrefetchTicket(); // v-oauth-bind
-          return;
-        }
-        throw new Error(d.error || 'load failed');
+      /* «غير مربوط» يصل ٢٠٠ (حالة طبيعيّة لا خطأ — كان ٤٠٠ يطبع طلبًا فاشلًا عند كلّ فتح) فيُفحص قبل r.ok */
+      if(d.notConnected || (!r.ok && /invalid_grant/i.test(String(d.error || '')))){
+        connectBox.style.display = 'block';
+        connectedBox.style.display = 'none';
+        setStatus(d.notConnected ? '' : T().notConnected);
+        emPrefetchTicket(); // v-oauth-bind
+        return;
       }
+      if(!r.ok) throw new Error(d.error || 'load failed');
       gmailLabel.textContent = d.gmailAddress || '';
       if(!more){
         // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.

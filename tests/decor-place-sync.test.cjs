@@ -6,6 +6,7 @@
    ٢) رفع صورة بعد اختيار مكان يرجع «نوع المكان» إلى «من صورتي» (كان المكان يُسقط الصورة بلا تنبيه)، ويبقى ضمان v-tool-drop.
    ٣) ‎.omUpArt{display:block !important}‎ (v-upload-art) كان يغلب إخفاء مربّع الرفع المضمَّن — الإخفاء الآن مضمَّن مهمّ.
    ٤) الرجوع إلى «من صورتي» يعيد معاينة الصورة المرفوعة (كانت تبقى مخفيّة والصورة تُرسل).
+   ٥) المعرض: عدد «… صورة» يتبع الصور الظاهرة بعد سقوط المكسورة، وصفر = «ما حصلت صورًا»، والصور بلا مُحيل.
    الكود الحقيقيّ (IIFE الديكور من app-12 وselTrigger من design-sels) في vm بـDOM مزيّف. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -182,4 +183,22 @@ test('٥ رفع ← صالة ← «من صورتي»: المكان يرسل ال
   req = await E.generate();
   assert.equal(req.body.place, '');
   assert.equal(req.body.imageBase64, 'QUJD', 'photoOn صحيح');
+});
+
+test('٦ المعرض: العدد يتبع الصور الظاهرة، وصفر = «ما حصلت صورًا» مع زرّ التوليد، والصور بلا مُحيل', async () => {
+  const urls = Array.from({ length: 8 }, (_, i) => 'https://i.pinimg.com/736x/' + i + '.jpg');
+  const E = decorEnv((u) => (u === '/api/design-ideas' ? new Response(JSON.stringify({ images: urls, count: 8 }), { status: 200 }) : null));
+  E.hot('majlis').onclick();
+  await tick(30);
+  const imgs = E.created.filter((e) => e.tagName === 'IMG' && urls.includes(e.src));
+  assert.equal(imgs.length, 8);
+  for (const im of imgs) assert.equal(im.referrerPolicy, 'no-referrer', 'بلا مُحيل — مواقع تمنع الربط بالمُحيل');
+  const st = E.byId('designAiIdeaStatus');
+  assert.match(st.textContent, /^🖼️ 8 /);
+  imgs.slice(0, 3).forEach((im) => im.onerror());
+  assert.match(st.textContent, /^🖼️ 5 /, 'ثلاث مكسورة سقطت: ٥ لا ٨');
+  imgs.slice(3).forEach((im) => im.onerror());
+  assert.match(st.textContent, /ما حصلت صورًا/, 'كلّها سقطت');
+  assert.equal(E.byId('designAiIdeaGallery').style.display, 'none');
+  assert.equal(E.byId('designAiIdeaAI').style.display, '', 'زرّ التوليد ظاهر');
 });
