@@ -505,6 +505,8 @@ btnToggleHistory.onclick = () => {
     }catch(e){ /* guard-ok */ }
   }
   function close(){ dd.classList.remove('show'); btn.classList.remove('active'); restore(); }
+  // v-review-menu-close: «مراجعة» و«تحليل» (app-24/app-27) يوقفان انتشار نقرتهما فلا يصل مستمع الإغلاق أدناه — يناديان هذا قبل فتح نافذتيهما
+  window.omranCloseTabsMenu = close;
   btn.onclick = (e) => {
     e.stopPropagation();
     if(dd.classList.contains('show')){ close(); return; }
