@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// v-favicon-gold: يولّد favicon.ico في الجذر من الأيقونة الذهبيّة (icons/icon-512-v2.png، وسمها gold-20260819)
-// بثلاثة مقاسات ١٦ و٣٢ و٤٨ — بلا أيّ اعتماديّة: فكّ PNG بـzlib، تصغير بمتوسّط المساحة في الضوء الخطّيّ،
-// وكتابة كلّ مقاس صورةً BMP بعمق ٣٢ بت (الصيغة التي يقرؤها كلّ متصفّح وزاحف، لا PNG داخل ICO).
+// v-favicon-gold: يولّد favicon.ico في الجذر بثلاثة مقاسات ١٦ و٣٢ و٤٨ — بلا أيّ اعتماديّة: فكّ PNG بـzlib،
+// تصغير بمتوسّط المساحة في الضوء الخطّيّ، وكتابة كلّ مقاس صورةً BMP بعمق ٣٢ بت (الصيغة التي يقرؤها كلّ متصفّح وزاحف).
+// المصدر icons/favicon-src.png (١٢٥٤×١٢٥٤): الأيقونة الذهبيّة gold-20260819 نفسها بعد تعديلها بمحرّر الصور في التطبيق
+// بأمر المالك — نفس الشكل وكتابة Ai، أحدّ، والخلفيّة أسود #000000 مثل خلفيّة الدردشة بدل الكحلي. لا يُنشر (.vercelignore).
 //   node scripts/make-favicon.mjs            → يكتب favicon.ico
 //   node scripts/make-favicon.mjs --sheet x  → ويكتب أيضًا لوحة مكبّرة لكلّ مقاس (PNG) للمراجعة بالعين
 import fs from 'node:fs';
@@ -10,12 +11,12 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = path.join(ROOT, 'icons/icon-512-v2.png');
+const SRC = path.join(ROOT, 'icons/favicon-src.png');
 const OUT = path.join(ROOT, 'favicon.ico');
 const SIZES = [16, 32, 48];
-// المالك (٢٢ أكتوبر، بعد اللوحة المكبّرة): مقاس ١٦ من الحلقة الذهبيّة وحدها — بلا الإطار الداكن ولا كتابة Ai — ليقرأ في التبويب؛
-// ٣٢ و٤٨ الأيقونة كاملة كما هي. القطع الناقص يحيط بالحافّة الخارجيّة للحلقة في المصدر ٥١٢ (Ai تبدأ تحته عند y≈380)، وما خارجه شفّاف.
-const RING = { cx: 255, cy: 228, rx: 180, ry: 165 };
+// المالك (٢٢ أكتوبر، بعد اللوحة المكبّرة): مقاس ١٦ من الحلقة الذهبيّة وحدها — بلا الخلفيّة ولا كتابة Ai — ليقرأ في التبويب؛
+// ٣٢ و٤٨ الأيقونة كاملة. القطع الناقص يحيط بالحافّة الخارجيّة للحلقة في المصدر ١٢٥٤ (Ai تبدأ تحته عند y≈880)، وما خارجه شفّاف.
+const RING = { cx: 624, cy: 558, rx: 441, ry: 404 };
 
 function decodePng(buf) {
   const sig = '89504e470d0a1a0a';

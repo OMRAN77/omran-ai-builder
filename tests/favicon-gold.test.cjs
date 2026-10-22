@@ -62,15 +62,27 @@ test('٢. الأيقونة ذهبيّة لا بنفسجيّة: صبغة الأج
   }
 });
 
-test('٢ب. مقاس ١٦ الحلقة الذهبيّة وحدها (زواياه شفّافة ووسطه معتم)، و٣٢ و٤٨ الأيقونة كاملة بإطارها المعتم', () => {
+test('٢ب. مقاس ١٦ الحلقة الذهبيّة وحدها (زواياه شفّافة ووسطه معتم)، و٣٢ و٤٨ الأيقونة كاملة على أسود خلفيّة الدردشة', () => {
   for (const e of parseIco(fs.readFileSync(path.join(root, 'favicon.ico')))) {
-    const alpha = (x, y) => e.body[40 + ((e.w - 1 - y) * e.w + x) * 4 + 3];
-    const corners = [alpha(0, 0), alpha(e.w - 1, 0), alpha(0, e.w - 1), alpha(e.w - 1, e.w - 1)];
+    const px = (x, y) => { const p = 40 + ((e.w - 1 - y) * e.w + x) * 4; return { r: e.body[p + 2], g: e.body[p + 1], b: e.body[p], a: e.body[p + 3] }; };
+    const corners = [px(0, 0), px(e.w - 1, 0), px(0, e.w - 1), px(e.w - 1, e.w - 1)];
     const mid = e.w >> 1;
-    assert.equal(alpha(mid, mid), 255, `وسط ${e.w}px معتم`);
-    if (e.w === 16) assert.deepEqual(corners, [0, 0, 0, 0], 'زوايا ١٦ شفّافة: لا إطار داكن ولا كتابة Ai');
-    else assert.deepEqual(corners, [255, 255, 255, 255], `${e.w}px الأيقونة كاملة كما وافق عليها المالك`);
+    assert.equal(px(mid, mid).a, 255, `وسط ${e.w}px معتم`);
+    if (e.w === 16) assert.deepEqual(corners.map((c) => c.a), [0, 0, 0, 0], 'زوايا ١٦ شفّافة: لا خلفيّة ولا كتابة Ai');
+    else for (const c of corners) {
+      // المالك: «مش كحلي — أسود غامق نفس درجة لون الخلفيّة في الدردشة» (#000000، لا زرقة).
+      assert.equal(c.a, 255, `${e.w}px الأيقونة كاملة`);
+      assert.ok(c.r <= 3 && c.g <= 3 && c.b <= 3, `${e.w}px زاوية ${c.r},${c.g},${c.b} ليست أسود الدردشة`);
+    }
   }
+});
+
+test('٢ج. مصدر الأيقونة في المستودع ولا يُنشر على الـCDN', () => {
+  const src = fs.readFileSync(path.join(root, 'icons/favicon-src.png'));
+  assert.equal(src.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.ok(src.readUInt32BE(16) >= 512 && src.readUInt32BE(16) === src.readUInt32BE(20), 'مربّع ≥ ٥١٢');
+  const ignore = read('.vercelignore').split(/\r?\n/).map((l) => l.trim());
+  assert.ok(ignore.includes('icons/favicon-src.png'), '١٫٣ م.ب لا يطلبها أيّ زائر');
 });
 
 test('٣. رابطا الأيقونة في <head> في index.html بالنصّ الذي طلبه المالك', () => {
