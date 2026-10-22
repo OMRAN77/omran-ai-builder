@@ -130,6 +130,29 @@ test('٥. قاعدة العميل (app-09 والحزمة): لا «اذكره ك�
   }
 });
 
+test('٥ب. عرض الجدول (المالك: «داخل خلايا الجدول الكلمة ما تنكسر… ويبين إنّ فيه أعمدة ثانية»): الخلايا وحدها بلا كسر داخل الكلمة، والرسالة والروابط كما هي، والطرف الذي خلفه أعمدة يبهت', () => {
+  const css = read('css/tokens.css');
+  assert.ok(css.includes('.msg .md-table td, .msg .md-table th{overflow-wrap:normal; word-break:normal;}'), 'الخلايا: كسر بين الكلمات فقط');
+  assert.ok(/\.msg\{max-width:92%; min-width:0; overflow-wrap:anywhere; word-break:break-word;/.test(css) && css.includes('.msg a, .msg-text a{overflow-wrap:break-word;'), 'باقي الرسالة والروابط الطويلة كما كانت');
+  for (const v of ['l', 'r', 'l r']) assert.ok(new RegExp('\\.md-table-wrap\\[data-fade="' + v + '"\\]\\{-webkit-mask-image:linear-gradient[^}]*mask-image:linear-gradient').test(css), 'تلاشي ' + v);
+  const tag = Number((read('index.html').match(/css\/tokens\.css\?v=(\d+)/) || [])[1]);
+  assert.ok(tag >= 739, 'وسم الورقة مرفوع فوق 738 (يُقرأ من index.html لا يُثبَّت — سقّاطة vPinTests): ' + tag);
+  const src = read('js/app-02-tts.js');
+  const fn = src.slice(src.indexOf('function omranMdTableEdges(w){'), src.indexOf('function omranMdTableEl(tb){'));
+  const edges = new Function(fn + '; return omranMdTableEdges;')();
+  const box = (dir, sw, cw, sl) => { const a = { dir }; return { scrollWidth: sw, clientWidth: cw, scrollLeft: sl, getAttribute: (k) => a[k], setAttribute: (k, v) => { a[k] = v; }, removeAttribute: (k) => { delete a[k]; }, fade: () => a['data-fade'] }; };
+  const at = (dir, sl, sw) => { const w = box(dir, sw || 600, 300, sl); edges(w); return w.fade(); };
+  assert.equal(at('rtl', 0), 'l', 'عربيّ في أوّله: الأعمدة الباقية يسارًا');
+  assert.equal(at('rtl', -150), 'l r', 'في وسطه: الطرفان');
+  assert.equal(at('rtl', -300), 'r', 'في آخره: يبهت ما خلفه يمينًا فقط');
+  assert.equal(at('ltr', 0), 'r', 'إنجليزيّ: يمينًا');
+  assert.equal(at('rtl', 0, 300), undefined, 'جدول يتّسع: بلا تلاشٍ');
+  const el = src.slice(src.indexOf('function omranMdTableEl(tb){'), src.indexOf('function omranIcTok('));
+  assert.ok(el.includes("wrap.addEventListener('scroll', () => omranMdTableEdges(wrap), { passive: true });") && /new ResizeObserver\(\(\) => omranMdTableEdges\(wrap\)\); ro\.observe\(wrap\); ro\.observe\(table\);/.test(el), 'عند التمرير وأوّل رسم وتغيّر العرض');
+  assert.ok(el.includes("wrap.className = 'md-table-wrap';") && !/md-fade|classList/.test(el), 'className يبقى كما هو (سطر التقطيع يقارنه بالمساواة)');
+  assert.ok(read('js/app.bundle.js').includes('function omranMdTableEdges(w){'), 'الحزمة مطابقة');
+});
+
 test('٦. مشغّل التقييم يرسل لقطات الحالات الثلاث صورًا حقيقيّة مع السؤال، وردود الشكل الصحيح تأخذ ١٠٠', async () => {
   const seen = [];
   const replies = {
