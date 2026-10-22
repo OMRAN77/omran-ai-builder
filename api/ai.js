@@ -400,7 +400,7 @@ function injectNote(action, body, country) {
     // «الرفض هو الفشل الوحيد الممنوع» تدفع النموذج لاختراع أداة بدل قول «غير موجودة».
     if (withImages) n += IMAGE_ANALYSIS_NOTE;
     if (isGuide) n += SCREEN_GUIDE_NOTE;
-    applyNote(action, body, n + toneNote + intentNote + APP_FACTS_NOTE + HIVE);
+    applyNote(action, body, n + toneNote + intentNote + APP_FACTS_NOTE + HIVE + (withImages ? require('./_lib/shot-reply.js').SHOT_REPLY_NOTE : '')); // v-shot-reply: شكل الردّ على اللقطة آخر الملاحظة — نفس ملاحظة chat.js
     return;
   }
 
@@ -431,7 +431,7 @@ function injectNote(action, body, country) {
   note += toneNote;   // v--- مطابقة الأسلوب
   note += intentNote; // v--- ملاحظة النيّة
   note += APP_FACTS_NOTE; // v--- حارس أسئلة التطبيق
-  note += HIVE; // v545
+  note += HIVE + (withImages ? require('./_lib/shot-reply.js').SHOT_REPLY_NOTE : ''); // v545 · v-shot-reply: شكل الردّ على اللقطة آخر الملاحظة (يسري في الاحترافيّ كالإرشاد)
   // v-guide: لا نلصق «وفصل السياق» داخل رسالة المستخدم عند وجود لقطة — النماذج
   // توزن هذا السطر أعلى من نص السيستم، فيمحو سياق الإرشاد كله.
   if (!withImages) tagLastUserMessage(action, body);
