@@ -24,7 +24,7 @@ test('٢. شاشة «عن البرنامج»: لا شارة «صُنع في ال
   const about = s.slice(s.indexOf('id="aboutSection"'), s.indexOf('id="ownerSection"'));
   assert.ok(about.length > 500, 'القسم موجود');
   for (const bad of ['<video', '/assets/videos/', 'aboutChipUAE', 'videosGroupTitle', 'lang-videos', '🇦🇪', 'الفيديوهات التعريفية']) assert.ok(!about.includes(bad), bad);
-  assert.ok(about.includes('data-i18n="aboutCopyright">© فريق عمران AI</div>'));
+  assert.ok(about.includes('data-i18n="aboutCopyright">© فريق om ai</div>'));
   assert.ok(about.includes('data-i18n="aboutSectionTitle">ℹ️ عن البرنامج</h3>'));
   /* ما بقي: بطاقة الهوية، الشبكة، الدعم، التواصل */
   for (const keep of ['aboutChipPWA', 'aboutChipLangs', 'aboutFeatChat', 'supportContactBox', 'socialTitle']) assert.ok(about.includes(keep), keep);
@@ -46,12 +46,12 @@ test('٤. ملفّات الفيديو التعريفيّة تبقى على ال�
   for (const n of ['intro-ar-short', 'intro-ar-long', 'intro-en-short', 'intro-en-long']) assert.ok(fs.existsSync(path.join(ROOT, 'assets', 'videos', n + '.mp4')), n);
 });
 
-test('٥. البريد الجديد ommntr2712@gmail.com في الشاشة وprivacy وterms (الخادم VAPID خارج الطلب)', () => {
+test('٥. البريد ommntr77@gmail.com (v-om-ai-name، أمر المالك) في الشاشة وprivacy وterms (الخادم VAPID خارج الطلب)', () => {
   for (const f of ['js/partials-settings.js', 'privacy.html', 'terms.html']) {
     const src = read(f);
-    assert.ok(src.includes('mailto:ommntr2712@gmail.com'), f + ' رابط البريد الجديد');
-    assert.ok(src.includes('ommntr2712@gmail.com</a>'), f + ' نصّ البريد الظاهر');
-    assert.ok(!src.includes('ommntr77@gmail.com'), f + ' بلا البريد القديم');
+    assert.ok(src.includes('mailto:ommntr77@gmail.com'), f + ' رابط البريد الجديد');
+    assert.ok(src.includes('ommntr77@gmail.com</a>'), f + ' نصّ البريد الظاهر');
+    assert.ok(!src.includes('ommntr2712@gmail.com'), f + ' بلا البريد السابق (ommntr2712)');
   }
 });
 

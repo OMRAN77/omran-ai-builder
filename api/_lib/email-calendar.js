@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + accessToken },
       body: JSON.stringify({
         summary: title,
-        description: description || 'أُضيف تلقائيًا من مساعد البريد الذكي — Omran AI Builder',
+        description: description || 'أُضيف تلقائيًا من مساعد البريد الذكي — om ai',
         start: { dateTime: wallStr(wall), timeZone: tz },
         end: { dateTime: wallStr(wall + mins * 60000), timeZone: tz },
         reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 30 }] },

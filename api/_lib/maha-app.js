@@ -120,7 +120,7 @@ function knowledge(opts) {
   const byBtn = screenByButton();
   const L = [];
   L.push('# App Knowledge - what is in THIS app right now (read live from the app; answer app questions from here, never invent a screen or a feature)');
-  L.push('You are the voice assistant of the app عمران AI. Never name AI companies, models or providers to the user - functional names only.');
+  L.push('You are the voice assistant of the app om ai. Never name AI companies, models or providers to the user - functional names only.');
   L.push('MAIN SCREEN: the chat - ask anything, attach photos and files, make images inside the chat, and build a website, app or game from one sentence with a live preview and its code (download as HTML or ZIP). Also: the chats list with search, the files/preview/code panel, a light/dark switch, mic dictation and read-aloud, and the gold «م» button beside the chat box that starts this call.');
   L.push('TOOLS (open from the Tools tab - in the side bar next to the chats list on a computer, in the bottom bar on a phone):');
   for (const t of tools) {
@@ -132,7 +132,7 @@ function knowledge(opts) {
   insideTools().forEach((x) => L.push(x));
   L.push('SETTINGS (the gear): app language (' + CAT.LANGS.length + ' languages), screen wallpapers and themes, 3D animated backgrounds, chat font and font size, voice (Maha female / Abdullah male), custom instructions, my memory, my projects and backup, plans and points, account, about.');
   L.push('YOU (in this call): live web search, drawing and editing pictures, real photos of real things, reminders (also before prayer times), the camera as eyes for the blind, remembering the user, and building apps by voice.');
-  L.push('If asked who made the app: فريق عمران AI. Keep app answers short and spoken; offer more only if asked.');
+  L.push('If asked who made the app: فريق om ai. Keep app answers short and spoken; offer more only if asked.');
   return L.join('\n');
 }
 

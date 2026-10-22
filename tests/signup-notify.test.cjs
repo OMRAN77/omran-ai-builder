@@ -116,7 +116,7 @@ test('١. حساب جديد باسم وكلمة مرور = إيميل واحد �
   assert.equal(mails.length, 1, 'إيميل واحد');
   const m = mails[0];
   assert.deepEqual(m.to, [OWNER]);
-  assert.match(m.subject, /حساب جديد في عمران AI: Noura_77/);
+  assert.match(m.subject, /حساب جديد في om ai: Noura_77/); // v-om-ai-name
   const h = html(m);
   for (const s of ['Noura_77', 'اسم مستخدم وكلمة مرور', 'لا يوجد', 'الإمارات العربية المتحدة (AE)', 'وقت التسجيل (الإمارات)', 'إجمالي الحسابات بعد التسجيل']) assert.ok(h.includes(s), 'فيه: ' + s);
   assert.ok(h.includes('<b>' + String(users()) + '</b>'), 'العدد بعد التسجيل = عدد السجلّات (' + users() + ')');

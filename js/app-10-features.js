@@ -97,7 +97,7 @@ window.postWithConfirm = postWithConfirm;
   card.style.cssText = 'width:min(100%,560px);background:var(--panel,#161616);border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(0,0,0,.5);text-align:start;';
   var pt = function(k, fb){ try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ __swallow(e, 'ui:privacy-t'); } return fb; };
   card.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;" data-i18n="privacyConsentTitle">' + pt('privacyConsentTitle', '🔒 خصوصيتك أولًا') + '</h3>'
-    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);" data-i18n="privacyConsentText">' + pt('privacyConsentText', 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.') + '</p>'
+    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);" data-i18n="privacyConsentText">' + pt('privacyConsentText', 'قبل استخدام om ai، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.') + '</p>'
     + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;justify-content:center;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);" data-i18n="privacyConsentRead">' + pt('privacyConsentRead', 'قراءة السياسة') + '</a>'
     + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;justify-content:center;height:42px;border-radius:10px;font-weight:bold;" data-i18n="privacyConsentAgree">' + pt('privacyConsentAgree', 'أوافق وأتابع') + '</button></div>';
   wrap.appendChild(card);
@@ -302,15 +302,15 @@ if(btnShareApp){
   btnShareApp.onclick = async () => {
     const shareUrl = 'https://omran-ai-builder.vercel.app';
     const currentLang = (typeof lang !== 'undefined') ? lang : 'ar';
-    const titles = { ar:'عمران AI', en:'Omran AI', fr:'Omran AI', hi:'Omran AI', ur:'Omran AI', bn:'Omran AI', ne:'Omran AI' };
+    const titles = { ar:'om ai', en:'om ai', fr:'om ai', hi:'om ai', ur:'om ai', bn:'om ai', ne:'om ai' };
     const texts = {
-      ar: 'جرّب تطبيق عمران AI لإنشاء تطبيقات بالذكاء الاصطناعي مجانًا:',
-      en: 'Try Omran AI to build apps with AI for free:',
-      fr: "Essayez Omran AI pour créer des applications avec l'IA gratuitement :",
-      hi: 'AI से मुफ्त में ऐप बनाने के लिए Omran AI आज़माएं:',
-      ur: 'مفت میں AI سے ایپس بنانے کے لیے Omran AI آزمائیں:',
-      bn: 'বিনামূল্যে AI দিয়ে অ্যাপ তৈরি করতে Omran AI ব্যবহার করুন:',
-      ne: 'निःशुल्क AI ले एप बनाउन Omran AI प्रयोग गर्नुहोस्:'
+      ar: 'جرّب تطبيق om ai لإنشاء تطبيقات بالذكاء الاصطناعي مجانًا:',
+      en: 'Try om ai to build apps with AI for free:',
+      fr: "Essayez om ai pour créer des applications avec l'IA gratuitement :",
+      hi: 'AI से मुफ्त में ऐप बनाने के लिए om ai आज़माएं:',
+      ur: 'مفت میں AI سے ایپس بنانے کے لیے om ai آزمائیں:',
+      bn: 'বিনামূল্যে AI দিয়ে অ্যাপ তৈরি করতে om ai ব্যবহার করুন:',
+      ne: 'निःशुल्क AI ले एप बनाउन om ai प्रयोग गर्नुहोस्:'
     };
     const shareText = texts[currentLang] || texts.ar;
     if(navigator.share){

@@ -42,7 +42,7 @@ test('١. كلّ زوج «عنوان: قيمة» span لا يلتفّ ومعزو
     assert.ok(b && b.getAttribute('dir') === 'ltr', 'القيمة في bdi dir=ltr');
   }
   const t = text(el);
-  assert.match(t, /^Omran AI Builder — v461 · بندل: 2a7218c6 · سحب: \d\d:\d\d:\d\d · رفع: \d\d:\d\d:\d\d · سيرفر: 12 · محلي: 3 · دمج: no-change$/);
+  assert.match(t, /^om ai — v461 · بندل: 2a7218c6 · سحب: \d\d:\d\d:\d\d · رفع: \d\d:\d\d:\d\d · سيرفر: 12 · محلي: 3 · دمج: no-change$/);
 });
 
 test('٢. بالإنجليزيّة والروسيّة: العناوين بلغة الواجهة بلا حرف عربيّ', () => {

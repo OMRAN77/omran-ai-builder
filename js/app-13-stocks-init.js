@@ -3226,7 +3226,7 @@ window.updateVersionLabel = function(){
        و«رفع:» تنفصل عن قيمتها عند الالتفاف. الآن العنوان من القاموس، وكلّ «عنوان: قيمة» span لا يلتفّ ومعزول، والقيمة
        <bdi dir=ltr> (نصّ لا HTML)؛ الالتفاف بين الأزواج وحدها، وداخل القيمة الطويلة (خطأ) وحدها. */
     var __L = function(k){ var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? String(v) : k; };
-    var __pairs = [[null, 'Omran AI Builder — ' + APP_VERSION], ['verBundle', __bv || '?'], ['verPull', fmt(pull) + pullErr], ['verPush', fmt(push) + pushErr],
+    var __pairs = [[null, 'om ai — ' + APP_VERSION], ['verBundle', __bv || '?'], ['verPull', fmt(pull) + pullErr], ['verPush', fmt(push) + pushErr],
       ['verServer', String(srvN)], ['verLocal', String(n)], ['verMerge', mrgR + (mrgE ? (' ⚠️' + mrgE) : '')]];
     el.textContent = '';
     __pairs.forEach(function(p, i){

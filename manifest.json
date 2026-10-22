@@ -1,7 +1,7 @@
 {
   "id": "/index.html",
-  "name": "Omran AI Builder",
-  "short_name": "Omran AI Builder",
+  "name": "om ai",
+  "short_name": "om ai",
   "description": "مُنشئ تطبيقات وألعاب ومواقع بالذكاء الاصطناعي",
   "start_url": "./index.html",
   "scope": "./",
@@ -20,7 +20,7 @@
     { "src": "icons/icon-512-v2.png?icon=gold-20260819", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "screenshots": [
-    { "src": "assets/screenshots/wide-home.webp", "sizes": "1280x800", "type": "image/webp", "form_factor": "wide", "label": "Omran AI Builder" },
+    { "src": "assets/screenshots/wide-home.webp", "sizes": "1280x800", "type": "image/webp", "form_factor": "wide", "label": "om ai" },
     { "src": "assets/screenshots/narrow-tools-1.webp", "sizes": "540x960", "type": "image/webp", "form_factor": "narrow", "label": "Creative tools" },
     { "src": "assets/screenshots/narrow-tools-2.webp", "sizes": "540x960", "type": "image/webp", "form_factor": "narrow", "label": "Business and daily tools" }
   ]

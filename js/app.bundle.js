@@ -4232,7 +4232,7 @@ const I18N = {
     acctSectionTitle: 'حسابي',
     aboutSupportTitle: '📞 خدمة العملاء والدعم',
     aboutSupportDesc: 'نرد على استفساراتك خلال ٢٤-٤٨ ساعة.',
-    aboutCopyright: '© فريق عمران AI',
+    aboutCopyright: '© فريق om ai',
     adminPanelTitle: '🛠️ لوحة التحكم (خاص بالمالك)',
     ownerSectionTitle: '👑 صفحة المالك',
     videoBadgeShort: 'قصير',
@@ -4246,7 +4246,7 @@ const I18N = {
     provSwitchNote: 'اخترتَ {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
     provSwitchNoteHidden: 'محادثتك على {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
     privacyConsentTitle: '🔒 خصوصيتك أولًا',
-    privacyConsentText: 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.',
+    privacyConsentText: 'قبل استخدام om ai، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.',
     privacyConsentRead: 'قراءة السياسة',
     privacyConsentAgree: 'أوافق وأتابع',
     acctPointsLabel: 'رصيد النقاط',
@@ -4388,7 +4388,7 @@ const I18N = {
     videoModeVeo: '🚀 سينمائي (أعلى جودة + صوت)',
     videoModeActor: "🗣️ ممثل يتكلم — لهجة إماراتية",
     videoActorSpeechLabel: "🗣️ شو يقول الممثل؟ (بالحرف)",
-    videoActorSpeechPlaceholder: "مثال: هلا والله! حياكم في تطبيق عمران AI",
+    videoActorSpeechPlaceholder: "مثال: هلا والله! حياكم في تطبيق om ai",
     videoActorVoiceLabel: "🎙️ صوت الممثل",
     videoActorVoiceMale: "🧔 رجل — صوت إماراتي",
     videoActorVoiceFemale: "🧕 امرأة — صوت إماراتي",
@@ -5094,7 +5094,7 @@ const I18N = {
     shareAppBtn: 'مشاركة التطبيق',
     refreshBtnTitle: 'تحديث الصفحة',
     langBtn: 'EN',
-    systemPrompt: `أنت ذكاء اصطناعي واسع المعرفة داخل تطبيق «Omran AI Builder» من فريق عمران AI.
+    systemPrompt: `أنت ذكاء اصطناعي واسع المعرفة داخل تطبيق «om ai» من فريق om ai.
 أسلوبك (بصمة المالك — التزم بها في كل رد): زميل خبير محبّ للخير، دافئ وحماسي بصدق — لا روبوت جامد ولا موظف استقبال. احتفل بإنجاز المستخدم مهما صغُر (كفو عليك! / يا سلام! / ولا يهمك)، وعند أي مشكلة امتصّ إحباطه بطمأنة صادقة («اطمّن، واضحة ونحلها») قبل الحل مباشرة. الزبدة أولًا: الجواب في أول سطر أو سطرين ثم التفصيل لمن أراد.
 - جارِ المستخدم في مجلسه: لهجته نفسها (خليجي/فصحى/إنجليزي) وطول جمله ومستوى حماسه — مزيج مريح من الفصحى المبسطة وروح الكلام اليومي القريب للقلب، مع بقاء شخصيتك الدافئة ورأيك الواضح.
 - لا تبدأ بتحية من نفسك. إذا حيّاك المستخدم فرحّب به ترحيبًا حارًّا راقيًا بروح المجلس — جملة أو جملتان فيهما حضور وشخصية (لا «هلا» جافة وحدها) — واسأله سؤالًا واحدًا طبيعيًّا عن حاله أو يومه. سؤال «كيف الحال؟» أجب عنه بدفء كحديث مستمر واسأله عن حاله. الممنوع الوحيد: عرض الخدمات الرسمي («كيف أقدر أساعدك؟») وسرد المواضيع القديمة.
@@ -5292,7 +5292,7 @@ const I18N = {
     acctQrOpen: "فتح الباركود",
     acctQrClose: "إخفاء الباركود",
     acctQrDownload: "تحميل الباركود",
-    acctShareText: "جرّب تطبيق عمران AI لكافة المتاجر:",
+    acctShareText: "جرّب تطبيق om ai لكافة المتاجر:",
     acctCopyPrompt: "انسخ الرابط:",
     /* v-stocks-i18n: شريحتا الذهب والنفط ووحدة الغرام وتبويبات النظرة العامّة وتفاصيل السهم ورمز غير موجود وتلميح 💼 (كانت إنجليزيّة أو عربيّة ثابتة) */
     stkGold: "الذهب",
@@ -5462,7 +5462,7 @@ const I18N = {
     feedbackPlaceholder: 'اكتب رأيك أو مقترحك هنا...',
     feedbackSubmitBtn: '📤 إرسال',
     feedbackIdeasTitle: '🗳️ أفضل المقترحات (صوّت لصالح ما يعجبك)',
-    aboutText: '<b>Omran AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، من تطوير فريق عمران AI. تحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حية جنبًا إلى جنب.<br><br>يجمع التطبيق 3 نماذج ذكاء قوية في مكان واحد: 👑 الكينج للبناء والتعديل والتشخيص، ⚡ السريع للردود الفورية والدردشة، 🧠 العميق للتحليل والبحث والمستندات — مع البحث المباشر وتوليد الصور والمساعدة الصوتية والأقسام المتخصصة.<br><br>يعمل كتطبيق PWA قابل للتثبيت على أندرويد وآيفون تمامًا كأي تطبيق أصلي، ويدعم المحادثة الصوتية (تحويل الصوت إلى نص وقراءة الردود بصوت عالٍ)، ويحتوي على نظام حسابات كامل (تسجيل / دخول / استرجاع كلمة المرور)، ووضع ضيف يتيح 20 رسالة مجانية دون الحاجة لتسجيل.<br><br>جميع إعدادات المظهر والألوان قابلة للتخصيص بالكامل، وخصوصيتك دائمًا أولًا.',
+    aboutText: '<b>om ai</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، من تطوير فريق om ai. تحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حية جنبًا إلى جنب.<br><br>يجمع التطبيق 3 نماذج ذكاء قوية في مكان واحد: 👑 الكينج للبناء والتعديل والتشخيص، ⚡ السريع للردود الفورية والدردشة، 🧠 العميق للتحليل والبحث والمستندات — مع البحث المباشر وتوليد الصور والمساعدة الصوتية والأقسام المتخصصة.<br><br>يعمل كتطبيق PWA قابل للتثبيت على أندرويد وآيفون تمامًا كأي تطبيق أصلي، ويدعم المحادثة الصوتية (تحويل الصوت إلى نص وقراءة الردود بصوت عالٍ)، ويحتوي على نظام حسابات كامل (تسجيل / دخول / استرجاع كلمة المرور)، ووضع ضيف يتيح 20 رسالة مجانية دون الحاجة لتسجيل.<br><br>جميع إعدادات المظهر والألوان قابلة للتخصيص بالكامل، وخصوصيتك دائمًا أولًا.',
     videoArShortTitle: '🎬 فيديو تعريفي عربي (قصير)',
     videoArLongTitle: '🎬 فيديو تعريفي عربي (كامل)',
     videoEnShortTitle: '🎬 فيديو تعريفي إنجليزي (قصير)',
@@ -5768,7 +5768,7 @@ const I18N = {
     feedbackPlaceholder: 'Write your feedback or suggestion here...',
     feedbackSubmitBtn: '📤 Submit',
     feedbackIdeasTitle: '🗳️ Top suggestions (vote for what you like)',
-    aboutText: '<b>Omran AI Builder</b> is a fully Arabic-first AI app-building platform, developed by the Omran AI Team (فريق عمران AI). Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your privacy always comes first.',
+    aboutText: '<b>om ai</b> is a fully Arabic-first AI app-building platform, developed by the om ai team (فريق om ai). Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your privacy always comes first.',
     videoArShortTitle: '🎬 Arabic intro video (short)',
     videoArLongTitle: '🎬 Arabic intro video (full)',
     videoEnShortTitle: '🎬 English intro video (short)',
@@ -5940,7 +5940,7 @@ const I18N = {
     acctQrOpen: "Open QR code",
     acctQrClose: "Hide QR code",
     acctQrDownload: "Download QR code",
-    acctShareText: "Try the Omran AI app, available on every app store:",
+    acctShareText: "Try the om ai app, available on every app store:",
     acctCopyPrompt: "Copy the link:",
     /* v-stocks-i18n: شريحتا الذهب والنفط ووحدة الغرام وتبويبات النظرة العامّة وتفاصيل السهم ورمز غير موجود وتلميح 💼 (كانت إنجليزيّة أو عربيّة ثابتة) */
     stkGold: "Gold",
@@ -6106,7 +6106,7 @@ const I18N = {
     acctSectionTitle: 'My account',
     aboutSupportTitle: '📞 Customer service & support',
     aboutSupportDesc: 'We answer your inquiries within 24–48 hours.',
-    aboutCopyright: '© Omran AI team',
+    aboutCopyright: '© om ai team',
     adminPanelTitle: '🛠️ Admin panel (owner only)',
     ownerSectionTitle: '👑 Owner page',
     videoBadgeShort: 'Short',
@@ -6120,7 +6120,7 @@ const I18N = {
     provSwitchNote: 'You chose {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
     provSwitchNoteHidden: 'Your chat runs on {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
     privacyConsentTitle: '🔒 Your privacy first',
-    privacyConsentText: 'Before using Omran AI Builder, please read the <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Terms of Use</a>. They explain what we collect, how we protect it, and your right to delete your data.',
+    privacyConsentText: 'Before using om ai, please read the <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Terms of Use</a>. They explain what we collect, how we protect it, and your right to delete your data.',
     privacyConsentRead: 'Read the policy',
     privacyConsentAgree: 'Agree & continue',
     acctPointsLabel: 'Points balance',
@@ -6439,7 +6439,7 @@ const I18N = {
     videoModeVeo: '🚀 Cinematic (top quality + sound)',
     videoModeActor: "🗣️ Talking actor — Emirati dialect",
     videoActorSpeechLabel: "🗣️ What does the actor say? (exactly)",
-    videoActorSpeechPlaceholder: "Example: Welcome to Omran AI, the best AI platform!",
+    videoActorSpeechPlaceholder: "Example: Welcome to om ai, the best AI platform!",
     videoActorVoiceLabel: "🎙️ Actor's voice",
     videoActorVoiceMale: "🧔 Man — Emirati voice",
     videoActorVoiceFemale: "🧕 Woman — Emirati voice",
@@ -6985,7 +6985,7 @@ const I18N = {
     shareAppBtn: 'Share App',
     refreshBtnTitle: 'Refresh Page',
     langBtn: 'ع',
-    systemPrompt: `You are a deeply knowledgeable AI inside 'Omran AI Builder', developed by the Omran AI Team (فريق عمران AI).
+    systemPrompt: `You are a deeply knowledgeable AI inside 'om ai', developed by the om ai team (فريق om ai).
 Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic expert friend — never a stiff robot or a front-desk clerk. Celebrate the user's wins however small ("Nice one!" / "There you go!"), and when something breaks, absorb their frustration with honest reassurance ("Don't worry — it's clear, we'll fix it") before diving straight into the fix. Bottom line first: the direct answer in the first line or two, details after for those who want them. Mirror the user's own register — their dialect, sentence length and energy — while keeping your warm personality and clear opinions. Break complex problems into short numbered steps with no dry jargon. Even greetings get warmth: a refined welcoming line with presence plus one natural question back — never a bare clipped "hi"; the only things banned are corporate service offers ("How can I help you?") and dredging up old topics.
 - General questions or chat = rich, informative conversational reply. NO code.
 - Build/modify an app, site, or game = brief explanation (2 lines) then one complete working HTML+CSS+JS file in a \`\`\`html block. CDN allowed. 3D games = Three.js via CDN.
@@ -7059,7 +7059,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=769'; /* v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */
+    sc.src = 'i18n/' + lg + '.js?v=770'; /* v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -10029,7 +10029,7 @@ function renderMessages(keepScroll){
       const sh = document.createElement('button'); sh.type = 'button';
       sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
       sh.textContent = gtx('imgShareBtn', '📤 مشاركة', '📤 Share');
-      sh.onclick = function(){ navigator.share({ files: [file], title: 'Omran AI' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
+      sh.onclick = function(){ navigator.share({ files: [file], title: 'om ai' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
       row.appendChild(sh);
     } else {
       const op = document.createElement('a');
@@ -10082,7 +10082,7 @@ function renderMessages(keepScroll){
       const sh = document.createElement('button'); sh.type = 'button';
       sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
       sh.textContent = gtx('imgShareBtn', '📤 مشاركة', '📤 Share');
-      sh.onclick = function(){ navigator.share({ files: [file], title: 'Omran AI' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
+      sh.onclick = function(){ navigator.share({ files: [file], title: 'om ai' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
       row.appendChild(sh);
     }
     const op = document.createElement('a');
@@ -10121,7 +10121,7 @@ function renderMessages(keepScroll){
     try{ canNative = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canNative = false; }
     if(mobile && canNative){
       const t0 = Date.now();
-      try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }
+      try{ await navigator.share({ files: [file], title: 'om ai' }); return true; }
       catch(e){ if(e && e.name === 'AbortError' && (Date.now() - t0) > 1500) return true; }
     }
     /* v-share-desktop-both: على الكمبيوتر نطلب لوحة النظام (إن وُجدت) ونعرض ورقتنا خلفها في اللحظة
@@ -10129,7 +10129,7 @@ function renderMessages(keepScroll){
     if(!mobile && mode === 'share' && canNative){
       const t1 = Date.now();
       try{
-        navigator.share({ files: [file], title: 'Omran AI' }).then(() => { const o = document.getElementById('omranImgSheet'); if(o) o.remove(); }, (e) => { if(e && e.name === 'AbortError' && (Date.now() - t1) > 1500){ const o = document.getElementById('omranImgSheet'); if(o) o.remove(); } });
+        navigator.share({ files: [file], title: 'om ai' }).then(() => { const o = document.getElementById('omranImgSheet'); if(o) o.remove(); }, (e) => { if(e && e.name === 'AbortError' && (Date.now() - t1) > 1500){ const o = document.getElementById('omranImgSheet'); if(o) o.remove(); } });
       }catch(e){ /* guard-ok */ }
     }
     if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }
@@ -10287,7 +10287,7 @@ function renderMessages(keepScroll){
             var vb = /^data:/i.test(url) ? dataUrlToBlob(url) : await (await fetch(url)).blob();
             var vf = new File([vb], nm, { type: vb.type || 'video/mp4' });
             if(navigator.canShare && navigator.canShare({ files: [vf] })){
-              try{ await navigator.share({ files: [vf], title: 'Omran AI' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
+              try{ await navigator.share({ files: [vf], title: 'om ai' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
             }
             if(showSheet(URL.createObjectURL(vb), vf, nm, 'video')) return true;
           } else {
@@ -10301,7 +10301,7 @@ function renderMessages(keepScroll){
           if(link && showSheet(link.dl, ifile, link.name, 'image', link.open)) return true;
           /* تعذّر الرفع: المشاركة بالملف ثم الفتح */
           if(ifile && navigator.canShare && navigator.canShare({ files: [ifile] })){
-            try{ await navigator.share({ files: [ifile], title: 'Omran AI' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
+            try{ await navigator.share({ files: [ifile], title: 'om ai' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
           }
           if(showSheet(URL.createObjectURL(ib), ifile, nm, 'image')) return true;
         }
@@ -10315,7 +10315,7 @@ function renderMessages(keepScroll){
       try{
         var file = new File([blob], nm, { type: blob.type || 'application/octet-stream' });
         if(isMobile() && navigator.canShare && navigator.canShare({ files: [file] })){
-          try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }
+          try{ await navigator.share({ files: [file], title: 'om ai' }); return true; }
           catch(err){ if(err && err.name === 'AbortError') return true; }
         }
       }catch(e){ /* guard-ok — نكمل بالرابط */ }
@@ -10440,7 +10440,7 @@ function renderMessages(keepScroll){
     x.textBaseline = 'alphabetic';
     x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left';
     var ax = rtl ? W - pad : pad;
-    x.fillText('عمران AI', ax, 92);
+    x.fillText('om ai', ax, 92);
     x.fillStyle = 'rgba(212,175,55,.45)'; x.fillRect(pad, 118, W - pad * 2, 2);
     x.fillStyle = '#f3efe4'; x.font = font;
     lines.forEach(function(l, i){ x.fillText(l, ax, head + (i + 1) * lh - Math.round(lh * 0.3)); });
@@ -11348,7 +11348,7 @@ function msgPrintAfterFont(view, family, ctx){
 function exportReplyAsPdf(text){
   const font = msgPdfFontSpec();
   const pdfFont = msgPdfFontHead(font);
-  const html = '<html><head><meta charset="utf-8"><title>عمران AI</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
+  const html = '<html><head><meta charset="utf-8"><title>om ai</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
   /* v-app-share: window.open داخل تطبيق المتجر يرجع null — نرسل للجسر مباشرة */
   const pdfBridge = omranNativeBridge('omranPdf');
   if(pdfBridge){
@@ -11365,7 +11365,7 @@ function exportReplyAsPdf(text){
   });
 }
 function exportReplyAsWord(text){
-  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>om ai</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
   msgSaveExport(blob, 'omran-ai-reply.doc');
 }
@@ -14280,13 +14280,13 @@ window.acctToggleQr = function() {
   }
 };
 /* v-acct-referral-i18n (تدقيق ١٨ أكتوبر): «إرسال ومشاركة» كان يُظهر alert عربيًّا (ونصّ المشاركة وprompt عربيّان) في كلّ اللغات.
-   النصوص بمفاتيح، واسم التطبيق من pageTitle (عمران AI / Omran AI)، والنسخ يومض على الزرّ نفسه كزرّ «نسخ» — التوست يقع
+   النصوص بمفاتيح، واسم التطبيق من pageTitle (om ai / om ai)، والنسخ يومض على الزرّ نفسه كزرّ «نسخ» — التوست يقع
    تحت طبقة نافذة الإعدادات فلا يُرى. */
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
   var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
   if (navigator.share) {
-    try { await navigator.share({ title: String(t('pageTitle') || '').split(' — ')[0] || 'Omran AI', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+    try { await navigator.share({ title: 'om ai', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
   } else {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -15419,7 +15419,7 @@ async function setupWalletPaymentRequest(plan){
     const pr = stripe.paymentRequest({
       country: 'AE',
       currency: cur,
-      total: { label: 'Omran AI Builder', amount },
+      total: { label: 'om ai', amount },
       requestPayerName: true,
       requestPayerEmail: true,
     });
@@ -16226,7 +16226,7 @@ $('#btnExportZip').onclick = async () => {
     const zip = new JSZip();
     const isPy = cur.codeType === 'python';
     zip.file(isPy ? 'main.py' : 'index.html', cur.code);
-    zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with Omran AI Builder — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
+    zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with om ai — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
     const blob = await zip.generateAsync({ type: 'blob' });
     await omranSaveOrShareFile(blob, (cur.title || 'app') + '.zip');
   }catch(e){
@@ -16267,7 +16267,7 @@ function formatTaskPlan(steps, done){
   return taskTxt('title') + ':\n' + steps.map((s, i) => ((done && done[i]) ? '✅ ' : '⬜ ') + s).join('\n');
 }
 // هوية التطبيق — نسخة مختصرة: الأساسيات فقط لتوفير التوكنز.
-const APP_IDENTITY_NOTE = '\n(APP IDENTITY: You are inside "Omran AI Builder" by فريق عمران AI. "عمران/Omran" = THIS app only. Features: AI app builder, 3 public providers (Claude/GPT/Gemini), مها voice assistant, image+video generation, live web search, memory, education, stocks. Creator: فريق عمران AI.)'
+const APP_IDENTITY_NOTE = '\n(APP IDENTITY: You are inside "om ai" by فريق om ai. "عمران/Omran" = THIS app only. Features: AI app builder, 3 public providers (Claude/GPT/Gemini), مها voice assistant, image+video generation, live web search, memory, education, stocks. Creator: فريق om ai.)'
 // ست قواعد عامة فقط؛ الدليل والتصحيح والخطوة التالية تعمل عند الحاجة لا آليًّا.
 const CONVERSATION_QUALITY_RULE = '\n[أسلوب المحادثة — ست قواعد عامة ملزمة]:\n' +
 '(١) ابدأ بالجواب أو المعلومة الأهم مباشرة، وقدّم الخطر أو الخطأ أولًا إن وُجد.\n' +
@@ -19549,8 +19549,8 @@ function exportTextAsPdf(raw){
     const isAr = /[\u0600-\u06FF]/.test(txt);
     const font = msgPdfFontSpec();
     const pdfFont = msgPdfFontHead(font);
-    const inner = '<style>#omranPdfDoc h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}#omranPdfDoc ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}#omranPdfDoc p{margin:6px 0}#omranPdfDoc footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style><div id="omranPdfDoc">' + html + '<footer>Omran AI Builder</footer></div>';
-    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';color:#111;background:#fff;padding:28px 32px;line-height:' + font.line + ';font-size:14.5px}</style></head><body>' + inner + '</body></html>';
+    const inner = '<style>#omranPdfDoc h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}#omranPdfDoc ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}#omranPdfDoc p{margin:6px 0}#omranPdfDoc footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style><div id="omranPdfDoc">' + html + '<footer>om ai</footer></div>';
+    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>om ai</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';color:#111;background:#fff;padding:28px 32px;line-height:' + font.line + ';font-size:14.5px}</style></head><body>' + inner + '</body></html>';
     /* v-app-share: \u062F\u0627\u062E\u0644 \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0622\u064A\u0641\u0648\u0646 \u2014 \u062C\u0633\u0631 PDF \u0627\u0644\u0623\u0635\u0644\u064A */
     const pdfBridge = (typeof omranNativeBridge === 'function') ? omranNativeBridge('omranPdf') : null;
     if(pdfBridge){
@@ -22630,7 +22630,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
         //    الانتظار بعد النقرة كان يُفقد إذن الإيماءة فترتدّ ورقتنا كأن شيئًا لم يتغيّر.
         if(shUrl){
           try{
-            const pr0 = navigator.share({ title: 'عمران AI', url: shUrl });
+            const pr0 = navigator.share({ title: 'om ai', url: shUrl });
             if(pr0 && pr0.catch) pr0.catch((err) => {
               if(err && err.name === 'AbortError') return;
               __why = 'url:' + ((err && (err.name || err.message)) || '?');
@@ -22643,7 +22643,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
         upload().then((u) => {
           if(!u){ __why = 'upload-failed'; openSheet(); return; }
           try{
-            const pr = navigator.share({ title: 'عمران AI', url: u });
+            const pr = navigator.share({ title: 'om ai', url: u });
             if(pr && pr.catch) pr.catch((err) => {
               if(err && err.name === 'AbortError') return;
               __why = 'url:' + ((err && (err.name || err.message)) || '?');
@@ -28080,7 +28080,7 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
       __sys = t('systemPrompt') + APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE + TOPIC_FOLLOW_RULE + BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE;
       if(__dsnRe.test(text) && __designAskRe.test(text)) __sys += DESIGN_POSTER_RULE;
     } else {
-      __sys = 'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE +
+      __sys = 'أنت مساعد ذكي في تطبيق om ai من فريق om ai.' + CONVERSATION_QUALITY_RULE +
         '\n[قواعد سياق المحادثة]:\n' +
         '- التأكيد القصير بعد سؤال منك (نعم/تمام/يلا/أوكي) موافقة؛ أكمل فورًا.\n' +
         '- لا تنادِ المستخدم باسم إلا إذا كان محفوظًا في ذاكرته أو ذكره في هذه المحادثة.\n' +
@@ -28172,7 +28172,7 @@ REQUIRED OUTPUT FORMAT:
   <!-- Product title prominent at top -->
   <!-- Details in frosted glass cards in the middle/lower section -->
   <!-- WhatsApp CTA button at bottom if phone number in text -->
-  <!-- Subtle "عمران AI" brand mark -->
+  <!-- Subtle "om ai" brand mark -->
 </body>
 </html>
 \`\`\`
@@ -28378,8 +28378,8 @@ DESIGN RULES (non-negotiable):
     if(imageAttachments.length && !cur.adMode && !__ownerUiShot && imageAttachments.some(a => a && a._screenshot)){
       // v-visual-assist: دور المساعد البصري للقطات الواجهات (لا لقطة المالك التي يطلب تعديلها — تلك تعديل كود لا إرشاد)
       apiMessages.push({role: 'system', content: lang === 'ar'
-        ? 'أنت المساعد البصري داخل تطبيق عمران AI. المرفق لقطة شاشة لواجهة. القواعد:\n• اعتمد على ما يظهر في اللقطة فقط، لا على ذاكرتك عن شكل البرنامج في أجهزة أخرى.\n• احفظ سياق المحادثة كاملًا: نوع الجهاز (جوال أو كمبيوتر)، لغة الواجهة، اسم البرنامج، هدف المستخدم، وكل خطوة سبق أن أعطيتها — حتى لو لم يذكرها في رسالته الأخيرة. الرسالة القصيرة مثل «ما فهمت» تعني إعادة الشرح لنفس الموقف لا بدء موضوع جديد.\n• إذا كان الجهاز جوالًا فممنوع ذكر اختصارات الكيبورد (Ctrl / Alt / Shift / Delete) — أعطِ البديل باللمس من القوائم.\n• إذا كانت الواجهة بالعربية فاذكر أسماء الأزرار بالعربية كما تظهر فيها.\n• اذكر اسم الزر بنصه الحرفي كما يظهر في اللقطة، ثم موضعه على الشاشة (أعلى اليمين، أسفل اليسار...).\n• إذا كانت الميزة التي يسأل عنها غير موجودة في هذا البرنامج فقل ذلك صراحةً في أول سطر، ثم اذكر البرنامج الذي فيه الميزة فعلًا. «غير موجودة» جواب صحيح ومقبول.\n• ممنوع اقتراح أداة وظيفتها مختلفة لمجرد تشابه الاسم أو الأيقونة أو قربها في القائمة.\n• ممنوع منعًا باتًا توجيه المستخدم إلى أداة تحذف أو تغيّر المحتوى نهائيًا (Redact / Flatten / Apply / Delete) كبديل عن ميزة سأل عنها — تُذكر فقط إذا طلبها بنفسه صراحةً.\n• خطوة واحدة في كل رد، ثم اطلب لقطة جديدة للتحقق. إذا بدت الشاشة الجديدة كالسابقة فالخطوة فشلت — أعطِ طريقة بديلة لا نفس الكلام.\n• إذا لم تجد العنصر في اللقطة فقل ذلك واطلب لقطة أوضح — ممنوع «دوّر على» أو «جرّب تضغط» أو «أحيانًا». الفشل الممنوع هنا هو إرسال المستخدم إلى زر خاطئ، لا الاعتراف بعدم وجود الميزة.'
-        : 'You are the visual assistant inside the Omran AI app. Rely ONLY on what is visible in the screenshot, never on your memory of how the program looks elsewhere. Keep the FULL conversation context: device type, UI language, app name, the user goal, and every step you already gave — a short message like "I do not understand" means re-explain the same situation, not start a new topic. On a phone, NEVER give keyboard shortcuts (Ctrl / Alt / Shift / Delete) — give the touch alternative from the menus. Quote button labels verbatim as they appear, in the UI language, then give their position on screen. If the feature the user asks about does not exist in this program, say so plainly in the first line and name the program that does have it — "it does not exist here" is a correct answer. Never suggest a different-purpose tool because its name, icon or menu position looks similar, and never point the user to a destructive tool (Redact / Flatten / Apply / Delete) as a substitute for a feature they asked about. One step per reply, then ask for a fresh screenshot; if the new screen looks unchanged the step failed — give a different route, not the same words. If you cannot find the element in the screenshot, say so and ask for a clearer one — never "look around" or "try tapping". The forbidden failure here is sending the user to the wrong button, not admitting a feature is missing.'});
+        ? 'أنت المساعد البصري داخل تطبيق om ai. المرفق لقطة شاشة لواجهة. القواعد:\n• اعتمد على ما يظهر في اللقطة فقط، لا على ذاكرتك عن شكل البرنامج في أجهزة أخرى.\n• احفظ سياق المحادثة كاملًا: نوع الجهاز (جوال أو كمبيوتر)، لغة الواجهة، اسم البرنامج، هدف المستخدم، وكل خطوة سبق أن أعطيتها — حتى لو لم يذكرها في رسالته الأخيرة. الرسالة القصيرة مثل «ما فهمت» تعني إعادة الشرح لنفس الموقف لا بدء موضوع جديد.\n• إذا كان الجهاز جوالًا فممنوع ذكر اختصارات الكيبورد (Ctrl / Alt / Shift / Delete) — أعطِ البديل باللمس من القوائم.\n• إذا كانت الواجهة بالعربية فاذكر أسماء الأزرار بالعربية كما تظهر فيها.\n• اذكر اسم الزر بنصه الحرفي كما يظهر في اللقطة، ثم موضعه على الشاشة (أعلى اليمين، أسفل اليسار...).\n• إذا كانت الميزة التي يسأل عنها غير موجودة في هذا البرنامج فقل ذلك صراحةً في أول سطر، ثم اذكر البرنامج الذي فيه الميزة فعلًا. «غير موجودة» جواب صحيح ومقبول.\n• ممنوع اقتراح أداة وظيفتها مختلفة لمجرد تشابه الاسم أو الأيقونة أو قربها في القائمة.\n• ممنوع منعًا باتًا توجيه المستخدم إلى أداة تحذف أو تغيّر المحتوى نهائيًا (Redact / Flatten / Apply / Delete) كبديل عن ميزة سأل عنها — تُذكر فقط إذا طلبها بنفسه صراحةً.\n• خطوة واحدة في كل رد، ثم اطلب لقطة جديدة للتحقق. إذا بدت الشاشة الجديدة كالسابقة فالخطوة فشلت — أعطِ طريقة بديلة لا نفس الكلام.\n• إذا لم تجد العنصر في اللقطة فقل ذلك واطلب لقطة أوضح — ممنوع «دوّر على» أو «جرّب تضغط» أو «أحيانًا». الفشل الممنوع هنا هو إرسال المستخدم إلى زر خاطئ، لا الاعتراف بعدم وجود الميزة.'
+        : 'You are the visual assistant inside the om ai app. Rely ONLY on what is visible in the screenshot, never on your memory of how the program looks elsewhere. Keep the FULL conversation context: device type, UI language, app name, the user goal, and every step you already gave — a short message like "I do not understand" means re-explain the same situation, not start a new topic. On a phone, NEVER give keyboard shortcuts (Ctrl / Alt / Shift / Delete) — give the touch alternative from the menus. Quote button labels verbatim as they appear, in the UI language, then give their position on screen. If the feature the user asks about does not exist in this program, say so plainly in the first line and name the program that does have it — "it does not exist here" is a correct answer. Never suggest a different-purpose tool because its name, icon or menu position looks similar, and never point the user to a destructive tool (Redact / Flatten / Apply / Delete) as a substitute for a feature they asked about. One step per reply, then ask for a fresh screenshot; if the new screen looks unchanged the step failed — give a different route, not the same words. If you cannot find the element in the screenshot, say so and ask for a clearer one — never "look around" or "try tapping". The forbidden failure here is sending the user to the wrong button, not admitting a feature is missing.'});
     }
     if(imageAttachments.length && !cur.adMode){
       apiMessages.push({role: 'system', content: 'صورة مرفقة — القاعدة الأولى والأهم:\n0) إذا كتب المستخدم مع الصورة سؤالًا أو طلبًا محددًا فأجب عن طلبه هو فقط، مباشرة وباختصار مفيد — ممنوع منعًا باتًا نسخ نصوص الصورة كاملة أو سرد تحليل شامل (عناصر/ألوان/تقييم/خطوات) لم يطلبه. التحليل الشامل أدناه يُطبَّق فقط إذا أرسل الصورة بلا طلب محدد أو طلب صراحةً «حلّل الصورة».\n1) عند التحليل الشامل فقط: اقرأ كل نص ظاهر في الصورة حرفيًا كما هو (عربي أو إنجليزي أو أي لغة) واذكره كاملًا بدون تلخيص.\n2) عند التحليل الشامل فقط: حلّل الصورة بعمق: العناصر، الأشخاص، الألوان، المكان، السياق، الأرقام، الجداول، أي أخطاء أو ملاحظات مهمة، واستنتاجاتك.\n3) في كل الحالات، الإجابة تكون مربوطة بالصورة نفسها: حدّد أولًا أي شاشة/صفحة بالضبط تظهر في الصورة (اسم التطبيق والقسم)، ثم أعط الخطوة الدقيقة انطلاقًا من هذه الشاشة بالذات — سمِّ الزر أو الخيار الظاهر في الصورة حرفيًا الذي يضغطه المستخدم، وإذا كان المطلوب غير موجود في هذه الشاشة قل له بوضوح: «هذا غير موجود هنا، ارجع/ادخل على …» بخطوة واحدة محددة. ممنوع سرد كل الطرق والأماكن الممكنة — طريق واحد دقيق فقط.\n3ب) إذا أعاد المستخدم إرسال نفس الصورة بعد إجابة سابقة فمعناها أن إجابتك ما كانت دقيقة كفاية — ممنوع تكرار نفس الإجابة؛ دقّق في الصورة أكثر وأعطه خطوة أدق وأكثر تحديدًا، أو اسأله سؤالًا واحدًا قصيرًا يحدد وين توقف.\n4) لا تقل أبدًا "لا أستطيع رؤية الصورة" — الصورة أمامك، حلّلها مباشرة.' +
@@ -29709,7 +29709,7 @@ window.postWithConfirm = postWithConfirm;
   card.style.cssText = 'width:min(100%,560px);background:var(--panel,#161616);border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(0,0,0,.5);text-align:start;';
   var pt = function(k, fb){ try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ __swallow(e, 'ui:privacy-t'); } return fb; };
   card.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;" data-i18n="privacyConsentTitle">' + pt('privacyConsentTitle', '🔒 خصوصيتك أولًا') + '</h3>'
-    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);" data-i18n="privacyConsentText">' + pt('privacyConsentText', 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.') + '</p>'
+    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);" data-i18n="privacyConsentText">' + pt('privacyConsentText', 'قبل استخدام om ai، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.') + '</p>'
     + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;justify-content:center;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);" data-i18n="privacyConsentRead">' + pt('privacyConsentRead', 'قراءة السياسة') + '</a>'
     + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;justify-content:center;height:42px;border-radius:10px;font-weight:bold;" data-i18n="privacyConsentAgree">' + pt('privacyConsentAgree', 'أوافق وأتابع') + '</button></div>';
   wrap.appendChild(card);
@@ -29914,15 +29914,15 @@ if(btnShareApp){
   btnShareApp.onclick = async () => {
     const shareUrl = 'https://omran-ai-builder.vercel.app';
     const currentLang = (typeof lang !== 'undefined') ? lang : 'ar';
-    const titles = { ar:'عمران AI', en:'Omran AI', fr:'Omran AI', hi:'Omran AI', ur:'Omran AI', bn:'Omran AI', ne:'Omran AI' };
+    const titles = { ar:'om ai', en:'om ai', fr:'om ai', hi:'om ai', ur:'om ai', bn:'om ai', ne:'om ai' };
     const texts = {
-      ar: 'جرّب تطبيق عمران AI لإنشاء تطبيقات بالذكاء الاصطناعي مجانًا:',
-      en: 'Try Omran AI to build apps with AI for free:',
-      fr: "Essayez Omran AI pour créer des applications avec l'IA gratuitement :",
-      hi: 'AI से मुफ्त में ऐप बनाने के लिए Omran AI आज़माएं:',
-      ur: 'مفت میں AI سے ایپس بنانے کے لیے Omran AI آزمائیں:',
-      bn: 'বিনামূল্যে AI দিয়ে অ্যাপ তৈরি করতে Omran AI ব্যবহার করুন:',
-      ne: 'निःशुल्क AI ले एप बनाउन Omran AI प्रयोग गर्नुहोस्:'
+      ar: 'جرّب تطبيق om ai لإنشاء تطبيقات بالذكاء الاصطناعي مجانًا:',
+      en: 'Try om ai to build apps with AI for free:',
+      fr: "Essayez om ai pour créer des applications avec l'IA gratuitement :",
+      hi: 'AI से मुफ्त में ऐप बनाने के लिए om ai आज़माएं:',
+      ur: 'مفت میں AI سے ایپس بنانے کے لیے om ai آزمائیں:',
+      bn: 'বিনামূল্যে AI দিয়ে অ্যাপ তৈরি করতে om ai ব্যবহার করুন:',
+      ne: 'निःशुल्क AI ले एप बनाउन om ai प्रयोग गर्नुहोस्:'
     };
     const shareText = texts[currentLang] || texts.ar;
     if(navigator.share){
@@ -32639,7 +32639,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     setStatus(bT('🎨 جاري إنشاء الخاتمة...','🎨 Building outro...'));
     const outroBlob = await recordCanvasClip({
       title: '',
-      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة صانع فيديو عمران','Made with Omran AI Video')),
+      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة om ai','Made with om ai Video')),
       seconds: 2, ratio,
     });
 
@@ -40112,7 +40112,7 @@ window.updateVersionLabel = function(){
        و«رفع:» تنفصل عن قيمتها عند الالتفاف. الآن العنوان من القاموس، وكلّ «عنوان: قيمة» span لا يلتفّ ومعزول، والقيمة
        <bdi dir=ltr> (نصّ لا HTML)؛ الالتفاف بين الأزواج وحدها، وداخل القيمة الطويلة (خطأ) وحدها. */
     var __L = function(k){ var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? String(v) : k; };
-    var __pairs = [[null, 'Omran AI Builder — ' + APP_VERSION], ['verBundle', __bv || '?'], ['verPull', fmt(pull) + pullErr], ['verPush', fmt(push) + pushErr],
+    var __pairs = [[null, 'om ai — ' + APP_VERSION], ['verBundle', __bv || '?'], ['verPull', fmt(pull) + pullErr], ['verPush', fmt(push) + pushErr],
       ['verServer', String(srvN)], ['verLocal', String(n)], ['verMerge', mrgR + (mrgE ? (' ⚠️' + mrgE) : '')]];
     el.textContent = '';
     __pairs.forEach(function(p, i){
@@ -43158,7 +43158,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       try{ file = new File([blob], 'omran-signature.png', { type:'image/png' }); }
       catch(e){ tell(e, 'sig:file'); }
       if(file && navigator.canShare && navigator.canShare({ files:[file] })){
-        return navigator.share({ files:[file], title:'Omran AI', text:T('توقيعي ✍️', 'My signature ✍️') })
+        return navigator.share({ files:[file], title:'om ai', text:T('توقيعي ✍️', 'My signature ✍️') })
           .catch(function(err){
             if(err && err.name === 'AbortError') return;
             tell(err, 'sig:share');

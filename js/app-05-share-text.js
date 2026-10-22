@@ -97,7 +97,7 @@
     x.textBaseline = 'alphabetic';
     x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left';
     var ax = rtl ? W - pad : pad;
-    x.fillText('عمران AI', ax, 92);
+    x.fillText('om ai', ax, 92);
     x.fillStyle = 'rgba(212,175,55,.45)'; x.fillRect(pad, 118, W - pad * 2, 2);
     x.fillStyle = '#f3efe4'; x.font = font;
     lines.forEach(function(l, i){ x.fillText(l, ax, head + (i + 1) * lh - Math.round(lh * 0.3)); });

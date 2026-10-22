@@ -217,7 +217,7 @@ export function titleCardHtml(o) {
     '.s{font-weight:500;font-size:44px;line-height:1.55;color:#c9cfdb;max-width:1400px}.line{width:420px;height:4px;border-radius:4px;background:linear-gradient(90deg,transparent,#e8c27a,transparent)}' +
     '.brand{position:absolute;bottom:64px;inset-inline-end:84px;font-weight:700;font-size:30px;color:#e8c27a;letter-spacing:.3px;opacity:.9}</style></head><body>' +
     '<div class="c"><div class="t">' + esc(o.text) + '</div><div class="line"></div>' + (o.sub ? '<div class="s">' + esc(o.sub) + '</div>' : '') + '</div>' +
-    '<div class="brand">' + esc(o.brand || 'عمران AI') + '</div></body></html>';
+    '<div class="brand">' + esc(o.brand || 'om ai') + '</div></body></html>';
 }
 /** شريط تعليق يُحقن في صفحة التطبيق قبل اللقطة (نصّ المشهد القصير) ثمّ يُزال — يعمل داخل المتصفّح */
 export function addCaption(arg) {

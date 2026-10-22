@@ -38,7 +38,7 @@ footer{text-align:center;padding:30px;color:#6b7280;font-size:13px}
   <div class="card"><div class="emoji">🔒</div><h3>آمن تمامًا</h3><p>بياناتك محمية بأعلى معايير الأمان والتشفير.</p></div>
   <div class="card"><div class="emoji">💡</div><h3>سهل الاستخدام</h3><p>واجهة بسيطة يفهمها الجميع من أول استخدام.</p></div>
 </div>
-<footer>© 2026 — صُنع بواسطة عمران AI Builder</footer>
+<footer>© 2026 — صُنع بواسطة om ai</footer>
 </body></html>`
   },
   {

@@ -92,7 +92,7 @@ test('٥. العميل: الزرّ آخر «خطط الأسعار»، يتبعه
     for (const k of keys) assert.ok(new RegExp('"?' + k + '"?: "').test(s), lg + ':' + k);
     assert.match(s, /"?autoRenewStopped"?: "[^"]*\{date\}/, lg);
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=704'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=705'));
 });
 
 test('٦. v-autorenew-one: خيار تجديد واحد فقط في التطبيق — زرّ تبويب المحادثة، ولا مربّع في نافذة الدفع، ويحكم كلّ الباقات', () => {
