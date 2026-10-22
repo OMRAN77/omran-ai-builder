@@ -253,7 +253,7 @@ test('١٠. الواجهة: التوقيع لا يقصّ الفيديو، وال
   assert.match(V, /const veoPayload = \{ promptText: veoPrompt, ratio, token, quality: wantQuality \? 'high' : 'fast', style \};/);
   assert.match(V, /async function createVeoScene\([^)]*\)\{\n\s+const payload = \{[^}]*style: styleEl\.value \};/);
   const A = read('js/app-09-attach.js');
-  assert.match(A, /imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true \};/);
+  assert.match(A, /imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true, confirmed: true \};/); // v-talkchar-confirm: الموافقة سبقت (priceCheck)
   const m = /const __ANIM_ONLY_RE = (\/[^\n]+\/i);/.exec(A);
   assert.ok(m, 'مِرشِّح «حرّكها وحدها»');
   const re = vm.runInNewContext(m[1]);
@@ -276,7 +276,7 @@ test('١١. الترندات فوق والصانع تحتها: الوصف بوس
   assert.match(C, /#videoMakerModal \.vmk-studio\.vmk-trends-top\{overflow-y:auto;/);
   assert.match(C, /#videoMakerModal \.vmk-studio\.vmk-trends-top \.vmk-main\{max-height:none;overflow:visible\}/);
   const H = read('index.html');
-  assert.ok(H.includes('src="/js/video.js?v=447"'), 'وسم video.js رُفع');
+  assert.ok(H.includes('src="/js/video.js?v=458"'), 'وسم video.js رُفع');
   assert.ok(Number((H.match(/css\/modules\.css\?v=(\d+)/) || [])[1]) >= 663, 'وسم modules رُفع');
   // تشغيل build الحقيقيّ على بطاقة مصغّرة: الترندات بُنيت قبل الاستوديو (الترتيب الذي أنزلها للأسفل)
   const el = (id, cls) => ({ id: id || '', className: cls || '', classList: { _s: new Set((cls || '').split(' ').filter(Boolean)), add(c) { this._s.add(c); }, contains(c) { return this._s.has(c); }, toggle(c, on) { if (on === false || (on === undefined && this._s.has(c))) this._s.delete(c); else this._s.add(c); } }, children: [], parentElement: null, dataset: {}, style: { setProperty() {} }, attrs: {}, getAttribute(k) { return this.attrs[k]; }, setAttribute(k, v) { this.attrs[k] = v; }, addEventListener() {} });

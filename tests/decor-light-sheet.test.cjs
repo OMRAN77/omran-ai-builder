@@ -1,59 +1,50 @@
 'use strict';
-// v-decor-light-sheet (طلب المالك ١٤ أكتوبر ٢٠٢٦: «اريد صور هذي الصور ضيفها»):
-// الإضاءة في الديكور عشرة خيارات، وكلّ بطاقة تعرض قصّتها من لوحة المالك نفسها lighting-sheet.webp.
-const fs = require('fs');
-const path = require('path');
-const assert = require('assert');
-
+// v-lighting-3d: اللوحة المقصوصة استُبدلت بصور غرفة منفصلة واضحة + الخيارات السبعة.
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
 const root = path.join(__dirname, '..');
-const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
-const ORDER = ['warm', 'cool', 'bright', 'dim', 'natural', 'neutral', 'golden', 'purple', 'sunset', 'moon'];
-
-// ١) القائمة في الواجهة: العشر بنفس ترتيب اللوحة (بعد «بدون تغيير»)
+const read = p => fs.readFileSync(path.join(root,p),'utf8');
+const ORDER = ['warm','cool','bright','dim','natural','neutral','golden','purple','sunset','moon','emerald','turquoise','rose','burgundy','neon','cinematic','aurora'];
 const html = read('js/partials-core.js');
 const sel = html.match(/<select id="designAiLighting"[\s\S]*?<\/select>/);
-assert.ok(sel, 'designAiLighting select مفقود');
-const vals = [...sel[0].matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]).filter(Boolean);
-assert.deepStrictEqual(vals, ORDER, 'خيارات الإضاءة لا تطابق ترتيب اللوحة');
-ORDER.slice(4).forEach((v) => {
-  assert.ok(new RegExp('<option value="' + v + '" data-en="[^"]+"').test(sel[0]), 'الخيار ' + v + ' بلا data-en');
-});
-
-// ٢) مواضع القصّ: كلّ قيمة لها موضع بين 0 و100، عمودان (يسار/يمين) وصفوف تنزل
+assert.ok(sel);
+const options = [...sel[0].matchAll(/<option value="([^"]*)"([^>]*)>/g)];
+assert.deepEqual(options.map(m=>m[1]),['',...ORDER]);
 const sels = read('js/design-sels.js');
-const posM = sels.match(/var LIGHT_POS=\{([\s\S]*?)\};/);
-assert.ok(posM, 'LIGHT_POS مفقود');
-const pos = {};
-for (const m of posM[1].matchAll(/(\w+):\[(-?[\d.]+),(-?[\d.]+)\]/g)) pos[m[1]] = [Number(m[2]), Number(m[3])];
-assert.deepStrictEqual(Object.keys(pos), ORDER, 'مفاتيح LIGHT_POS لا تطابق القائمة');
-ORDER.forEach((v, i) => {
-  const [x, y] = pos[v];
-  // v-decor-light-clear: الصورة كاملة بعرض البطاقة، فالموضع العمودي يتجاوز 0..100 في الصفّين الطرفيّين
-  assert.ok(x >= 0 && x <= 100 && y >= -50 && y <= 150, 'موضع ' + v + ' خارج المدى');
-  assert.ok(i % 2 === 0 ? x < 50 : x > 50, 'عمود ' + v + ' غلط');
-  if (i >= 2) assert.ok(y > pos[ORDER[i - 2]][1], 'صفّ ' + v + ' لا ينزل عن الذي فوقه');
-});
-
-// ٣) الصورة من اللوحة: roomBg يرسمها، وselImg لا يطلب ملفًّا منفصلًا
-assert.ok(sels.includes("var LIGHT_SHEET='assets/design/opts/lighting-sheet.webp'"), 'LIGHT_SHEET لا يشير للوحة');
-assert.ok(sels.includes("if(id==='designAiLighting'&&LIGHT_POS[v]) return lightBg(v);"), 'roomBg لا يستعمل اللوحة');
-assert.ok(sels.includes("if(id==='designAiLighting'&&LIGHT_POS[v]) return '';"), 'selImg يطلب ملفًّا منفصلًا للإضاءة');
-assert.ok(fs.existsSync(path.join(root, 'assets/design/opts/lighting-sheet.webp')), 'ملفّ اللوحة lighting-sheet.webp مفقود');
-
-// ٤) وصف عربي تحت كلّ خيار
-// يُقرأ من SUBS: قائمة الأيقونات فوقها فيها \u{…} وقوسها يقطع المطابقة
-const subsM = sels.slice(sels.indexOf('var SUBS=')).match(/designAiLighting:\{([\s\S]*?)\}/);
-assert.ok(subsM, 'أوصاف الإضاءة مفقودة');
-ORDER.forEach((v) => assert.ok(new RegExp('\\b' + v + ":'").test(subsM[1]), 'لا وصف لـ' + v));
-
-// ٥) أوامر الخادم: كلّ خيار يتطبّق فعلًا على التصميم
-const srv = read('api/_lib/design-create.js');
-const lp = srv.match(/const LIGHTING_PROMPTS = \{([\s\S]*?)\n\};/);
-assert.ok(lp, 'LIGHTING_PROMPTS مفقود');
-ORDER.forEach((v) => assert.ok(new RegExp('\\n\\s*' + v + ": '").test(lp[1]), 'لا أمر توليد لـ' + v));
-
-// ٦) الوضوح: عمود اللوحة بعرض البطاقة لا قصّة مكبّرة، وقناع يخفي الصفوف المجاورة
-assert.ok(sels.includes("/ 200% auto no-repeat"), 'الإضاءة رجعت للقصّة المكبّرة المغبّشة');
-assert.ok(sels.includes('var LIGHT_MASK='), 'قناع الصفوف المجاورة مفقود');
-
-console.log('decor-light-sheet: ok (' + ORDER.length + ' lighting options)');
+assert.ok(sels.includes("if(id==='designAiLighting') return 'assets/design/opts/lighting-'+v+'.webp';"));
+assert.ok(!sels.includes('var LIGHT_MASK='),'لا أشرطة تغطي الغرفة');
+assert.ok(!sels.includes('var LIGHT_POS='),'لا قصّ مكبّر من لوحة');
+const hashes = new Set();
+for(const v of ORDER){
+  const b=fs.readFileSync(path.join(root,'assets/design/opts/lighting-'+v+'.webp'));
+  assert.equal(b.toString('ascii',0,4),'RIFF'); assert.equal(b.toString('ascii',8,12),'WEBP');
+  assert.ok(b.length>5000 && b.length<120000,'صورة خفيفة وليست placeholder: '+v);
+  hashes.add(require('node:crypto').createHash('sha256').update(b).digest('hex'));
+}
+assert.equal(hashes.size,17,'كل إضاءة بصورتها لا تكرار صورة واحدة');
+const subs=sels.slice(sels.indexOf('var SUBS=')).match(/designAiLighting:\{([\s\S]*?)\}/)[1];
+const prompts=read('api/_lib/design-create.js').match(/const LIGHTING_PROMPTS = \{([\s\S]*?)\n\};/)[1];
+for(const v of ORDER){ assert.match(subs,new RegExp('\\b'+v+":'")); assert.match(prompts,new RegExp('\\n\\s*'+v+": '")); }
+const dictionaries={};
+for(const l of ['ar','en']){
+  const s=read('js/app-03-i18n-data.js');
+  const section=s.slice(s.indexOf('  '+l+': {'));
+  dictionaries[l]={};
+  for(const m of section.matchAll(/"(designAiLighting\w+)": "([^"]+)"/g)) if(!dictionaries[l][m[1]]) dictionaries[l][m[1]]=m[2];
+}
+const ctx={I18N:dictionaries,window:{}};vm.createContext(ctx);
+for(const l of ['fr','hi','ur','bn','ne','id','fil','tr','zh','ru','es','ml']) vm.runInContext(read('i18n/'+l+'.js'),ctx);
+for(const [l,d] of Object.entries(ctx.I18N)) for(const o of options.slice(5)){
+  const k=o[2].match(/data-i18n="([^"]+)"/)[1];assert.ok(d[k],l+' بلا ترجمة '+k);
+}
+const ui=read('js/app-05-ui.js');
+// v-decor-18: الأفقيّ صار للأقسام الستّة كلّها (الإضاءة أوّلها) بالاسم فوق الصورة كبطاقات الترندات، وبقيّة المعارض كما هي.
+assert.ok(sels.includes("var OPT6=['designAiLighting',") && sels.includes('landscape: six, overlay: six,'));
+assert.ok(ui.includes("(cfg.landscape ? '16/9' : '3/4')"),'فقط الإضاءة أفقية');
+assert.ok(ui.includes("grid.style.gridTemplateColumns = cfg.landscape ?"),'تصفير شبكة المعرض عند تغيير القسم');
+const pick=sels.match(/onPick: function\(v\)\{[^}]+\}/)[0];
+assert.ok(!/fetch|Generate|onclick/.test(pick),'اختيار بطاقة لا يبدأ التوليد');
+assert.ok(read('js/app-12-studios.js').includes("lighting: lightingEl ? lightingEl.value : ''"),'القيمة المختارة تصل للطلب');
+console.log('decor-light-sheet: ok (17 separate 3D previews, 14 languages, selection only)');

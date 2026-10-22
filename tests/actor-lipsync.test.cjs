@@ -90,7 +90,7 @@ test('١. المالك بلا صورة: صوت حمدان الإماراتيّ �
   assert.equal(f.body.prompt, 'رجل إماراتي في مجلس');
   assert.deepEqual(db.get('actor/req/req-12345678').s, 'https://queue.fal.run/fal-ai/bytedance/requests/req-12345678/status');
   assert.equal(pts.spent.length, 0, 'المالك بلا خصم');
-  assert.deepEqual(jobs.remembered, [['actor:req-12345678', { username: null, cost: 400, locked: false }]]);
+  assert.deepEqual(jobs.remembered, [['actor:req-12345678', { username: null, cost: 400, locked: false, pay: null }]]);
 });
 
 test('٢. امرأة + صورة المستخدم: صوت فاطمة، والصورة كما هي بلا إعادة رسم', async () => {
@@ -140,7 +140,7 @@ test('٥. غير المالك: خصم Veo نفسه وقفله؛ وعطب الم�
   reset(); gateFor.v = { allowed: false, reason: 'forbidden' };
   r = await run({ confirmed: true });
   assert.equal(r.res.code, 200);
-  assert.deepEqual(jobs.remembered, [['actor:req-12345678', { username: 'sub-user', cost: 400, locked: true }]]);
+  assert.deepEqual(jobs.remembered, [['actor:req-12345678', { username: 'sub-user', cost: 400, locked: true, pay: { ok: true } }]] /* v-refund-kind: نتيجة الخصم تُحمل ليعود الردّ إلى نوعه */);
   assert.equal(pts.refunded.length, 0, 'النجاح لا يردّ — التذكرة تتولّى');
 });
 
@@ -185,7 +185,7 @@ test('٧. العميل: المسار الجديد أوّلًا وVeo احتيا�
   assert.match(p, /<select id="videoMakerActorVoice"[^>]*>\s*<option value="male" selected data-i18n="videoActorVoiceMale">/);
   assert.match(p, /<option value="female" data-i18n="videoActorVoiceFemale">/);
   assert.ok(!/videoModeActor">[^<]*Veo/.test(p), 'لا اسم محرّك في اسم الوضع');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=657'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=674'));
   const b = read('js/app.bundle.js');
   assert.ok(b.includes("fetch('/api/video?action=actor-create'"), 'الحزمة مبنيّة');
   const r = read('api/video.js');
@@ -203,5 +203,5 @@ test('٨. النصوص الجديدة بالـ١٤ لغة، واسم الوضع 
     assert.ok(!/videoModeActor"?\s*:\s*"[^"]*Veo/.test(s), lg);
   }
   assert.ok(!/videoModeActor:\s*"[^"]*Veo/.test(data));
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=744'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=770'/);
 });

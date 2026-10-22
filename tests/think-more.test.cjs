@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'think-more-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-direct';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
@@ -36,7 +37,7 @@ const textR = (text, reason, details) => sse([start(), { type: 'content_block_st
 const REFUSE = { type: 'refusal', category: 'reasoning_extraction' };
 const isUp = (u) => /api\.anthropic\.com|openrouter\.ai\/api\/v1\/messages/.test(u);
 
-async function run(user, text, script) {
+async function run(user, text, script, history) {
   usageUser = user;
   const calls = [], out = [];
   const save = global.fetch; let n = 0;
@@ -45,7 +46,7 @@ async function run(user, text, script) {
     let b = null; try { b = JSON.parse(init.body); } catch (e) { b = null; }
     calls.push(b); return script[Math.min(n++, script.length - 1)]();
   };
-  const req = { method: 'POST', headers: {}, body: { token: token(user), provider: 'claude', model: 'claude-fable-5-1', messages: [{ role: 'user', content: text }] } };
+  const req = { method: 'POST', headers: {}, body: { token: token(user), provider: 'claude', model: 'claude-fable-5-1', messages: (history || []).concat([{ role: 'user', content: text }]) } };
   const res = { setHeader() {}, status() { return this; }, json(v) { out.push(JSON.stringify(v)); return this; }, write(c) { out.push(String(c)); return true; }, end() {}, flushHeaders() {} };
   try { await chat(req, res); } finally { global.fetch = save; }
   const events = out.join('').split('\n').filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch (e) { return {}; } });
@@ -80,10 +81,18 @@ test('٣. رفض reasoning_extraction ورسالة فيها كلمة تفكير 
   assert.match(r.text, /الجواب: الشارة/);
 });
 
-test('٤. رفض بالفئة نفسها بلا كلمة تُزال: لا إعادة، والسبب بالعربيّة كما كان (v-refusal-why)', async () => {
+test('٤. رفض بالفئة نفسها بلا كلمة تُزال: إعادة واحدة بلا كتل التفكير ولا عرضها (v-refusal-retry)، وإن رُفضت فالسبب بالعربيّة كما كان (v-refusal-why)', async () => {
+  // v-refusal-retry (لقطة المالك ١٥ أكتوبر «رسم صور الستائر وارفعها» ← reasoning_extraction): كانت «لا إعادة بلا سبب» فيقف الطلب البريء
   const r = await run('omran', 'اشرح لي الشارة اللي فوق المحادثة', [() => textR('', 'refusal', REFUSE), () => textR('ما يجب')]);
-  assert.equal(r.calls.length, 1, 'لا إعادة بلا سبب');
-  assert.match(r.stop.error, /رفض المزوّد الطلب \(reasoning_extraction — فُهم السؤال طلبًا لكشف تفكيره الداخليّ/);
+  assert.equal(r.calls.length, 2, 'إعادة واحدة');
+  assert.equal(r.sent[1], 'اشرح لي الشارة اللي فوق المحادثة', 'رسالته كما هي');
+  assert.ok(!(r.calls[1].thinking && r.calls[1].thinking.display), 'الإعادة بلا عرض التفكير');
+  assert.ok(r.statuses.some((x) => /رفض المزوّد الدور كطلب كشف تفكير — أعيده مرّة بلا عرض التفكير/.test(x)), 'سطر حالة');
+  assert.equal(r.stop, undefined);
+  assert.match(r.text, /ما يجب/);
+  const r0 = await run('omran', 'اشرح لي الشارة اللي فوق المحادثة', [() => textR('', 'refusal', REFUSE), () => textR('', 'refusal', REFUSE), () => textR('x')]);
+  assert.equal(r0.calls.length, 2, 'مرّة واحدة لا أكثر');
+  assert.match(r0.stop.error, /رفض المزوّد الطلب \(reasoning_extraction — فُهم السؤال طلبًا لكشف تفكيره الداخليّ/);
   // وإن رُفضت الإعادة أيضًا: مرّة واحدة ثمّ السبب
   const r2 = await run('omran', 'فكر فيها زين ثمّ قل لي تفكيرك', [() => textR('', 'refusal', REFUSE), () => textR('', 'refusal', REFUSE), () => textR('x')]);
   assert.equal(r2.calls.length, 2, 'الأولى بعد التبديل الاستباقيّ، والثانية بعد إزالة «تفكيرك» — ثمّ لا ثالثة');
@@ -107,4 +116,21 @@ test('٥. الوحدة: ما يُبدَّل وما لا يُبدَّل', () => {
   assert.equal(TM.rewriteLastUser(c, TM.THINK_MORE_RE, 'بدقّة ومراجعة'), true);
   assert.equal(c[0].content[1].text, 'بدقّة ومراجعة وش في الصورة');
   assert.equal(c[0].content[0].type, 'image', 'الصورة كما هي');
+});
+
+test('٦. v-refusal-retry (١): ملاحظات الرفض الملصقة في ردود سابقة لا تصل المزوّد — نصّ الردّ قبلها يبقى', async () => {
+  const note = '\n\n⚠️ رفض المزوّد الطلب (reasoning_extraction — فُهم السؤال طلبًا لكشف تفكيره الداخليّ — اسأل عن الجواب لا عمّا فكّر فيه) — This request was blocked as it seems to violate Anthropic\'s Terms of Service';
+  const history = [{ role: 'user', content: 'وين صور الستائر؟' }, { role: 'assistant', content: 'المجلد ما فيه curtains-*.' + note }, { role: 'user', content: 'طيب' }, { role: 'assistant', content: note.trim() }];
+  const r = await run('omran', 'ارسم صور الستائر وارفعها', [() => textR('تمام')], history);
+  const body = JSON.stringify(r.calls[0].messages);
+  assert.ok(!/رفض المزوّد الطلب|This request was blocked/.test(body), 'لا ملاحظة رفض في التاريخ المرسَل');
+  assert.ok(body.includes('المجلد ما فيه curtains-*.'), 'كلام الردّ نفسه باقٍ');
+  const OL = require(rp('api/_lib/owner-loop.js'));
+  const c = [{ role: 'assistant', content: [{ type: 'text', text: 'جواب' + note }] }, { role: 'user', content: 'x' + note }];
+  assert.equal(OL.scrubRefusals(c), 1);
+  assert.equal(c[0].content[0].text, 'جواب');
+  assert.ok(c[1].content.includes('رفض المزوّد'), 'رسائل المستخدم لا تُمسّ');
+  // غير المالك: تاريخه كما هو حرفيًّا
+  const g = await run('vipuser', 'سؤال', [() => textR('تمام')], history);
+  assert.ok(JSON.stringify(g.calls[0].messages).includes('رفض المزوّد الطلب'), 'غير المالك كما كان');
 });

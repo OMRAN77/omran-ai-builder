@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>استوديو الإعلانات — عمران AI</title>
-<script src="/i18n/ad-studio.js?v=605"></script>
+<title>استوديو الإعلانات — om ai</title>
+<script src="/i18n/ad-studio.js?v=606"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -107,6 +107,8 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 .col h3{font-size:13px;font-weight:700;color:#c9d1d9;margin-bottom:9px;display:flex;align-items:center;gap:7px}
 .col h3 i{width:7px;height:7px;border-radius:50%;background:var(--ac);display:inline-block}
 .cap{color:#7e868f;font-size:11.5px;line-height:1.7;margin-top:8px}
+/* v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي»): لا سطر وصف تحت التصميم؛ زرّا الاختيار والتنزيل باقيان لأنّهما عمل لا وصف */
+#grid .col>.cap,#cgrid .col>.cap{display:none}
 .pick{display:block;width:100%;margin-top:8px;background:#161a20;border:1px solid #2b3038;color:#cbd2da;font:700 12px 'Tajawal';padding:8px;border-radius:9px;cursor:pointer}
 .pick:hover{background:#1f242c;border-color:var(--ac);color:#fff}
 .col.chosen .pick{background:var(--ac);color:#12141a;border-color:var(--ac)}
@@ -465,6 +467,21 @@ html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-con
 .hintx{color:#7e868f;font:600 11px 'Tajawal';margin-top:8px;line-height:1.7}
 @media (max-width:760px){.cgrid{grid-template-columns:1fr}}
 
+/* ===== v-three-colors (المالك ١٦ أكتوبر: «صفحة استوديو الإعلانات أسود بدل المجرّة… فقط ٣ ألوان» — «الحدود كلّها ذهبي»،
+   «عند التضليل عليها الحدّ يصير رماديّ أفتح»): أسود للخلفيّات، ذهبيّ للحدود، رماديّ فاتح عند المرور. ألوان قوالب الإعلانات
+   (--ac داخل .canvas) محتوى الإعلان نفسه فلا تُمسّ. ===== */
+body{background:#000 !important}
+.hero{background:none !important}
+.hero .core{box-shadow:none !important;background:#000 !important}
+.hero .tile i{background:#000 !important;border-color:rgba(212,175,55,.6) !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+.hero .tile:hover i,.hero .tile:focus-visible i{border-color:#c9c9c9 !important;box-shadow:none !important}
+.chat{background:#000 !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;border-color:rgba(212,175,55,.6) !important}
+.chead,.comp{border-color:rgba(212,175,55,.6) !important}
+.m.u span{background:#000 !important;border:1px solid rgba(212,175,55,.6)}
+.chip,.comp input,.rst,.rstAll,.rtb button,#genOut a,.pick,a.back{background:#000 !important;border-color:rgba(212,175,55,.6) !important}
+.chip:hover,.comp input:focus,.rst:hover,.rstAll:hover,.rtb button:hover,.rtb button.on,#genOut a:hover,.pick:hover,a.back:hover{background:#000 !important;border-color:#c9c9c9 !important}
+.gwait{border-color:rgba(212,175,55,.6) !important}
+.note{background:#000 !important;border-color:rgba(212,175,55,.6) !important;color:#c9c9c9 !important}
 </style>
 </head>
 <body>

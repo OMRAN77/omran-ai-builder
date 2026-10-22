@@ -64,11 +64,17 @@ test('free Groq: the reduced body keeps the image tools for a drawing/image turn
   const tools = [fn('web_search', 900), fn('read_github', 1700), fn('generate_image', 600), fn('edit_image', 1300), fn('edit_github', 1500)];
   const body = (text) => ({ model: 'qwen/qwen3.8-27b', stream: true, max_completion_tokens: 16000, tools, messages: [{ role: 'system', content: sys }, { role: 'user', content: text }] });
   const T = (b) => Math.ceil((JSON.stringify(b.messages).length + (b.tools ? JSON.stringify(b.tools).length : 0)) / 3);
-  const fit = (text, limit) => { const b = body(text); return OD.fitGroqTpm(b, 'on tokens per minute (TPM): Limit ' + limit + ', Requested ' + (T(b) + 16000) + ', please reduce'); };
+  const fit = (text, limit, owner) => { const b = body(text); return OD.fitGroqTpm(b, 'on tokens per minute (TPM): Limit ' + limit + ', Requested ' + (T(b) + 16000) + ', please reduce', owner); };
   const names = (b) => (b.tools || []).map((x) => x.function.name).sort();
-  const draw = fit('ارسم قطة على البحر', 8000);
+  const draw = fit('ارسم قطة على البحر', 8000, true);
   assert.deepEqual(names(draw), ['edit_image', 'generate_image'], 'أداتا الصور فقط');
-  assert.match(draw.messages[0].content, /بأدوات محدودة لضيق حدّ مفتاح Groq في الدقيقة: generate_image، edit_image فقط/);
+  assert.match(draw.messages[0].content, /بأدوات محدودة لضيق حدّ مفتاح Groq في الدقيقة: generate_image، edit_image فقط/, 'المالك: السبب باسمه');
+  // v-plan-models: لغير المالك الأدوات نفسها، والملاحظة محايدة بلا اسم مزوّد (قاعدة المالك)
+  const drawUser = fit('ارسم قطة على البحر', 8000);
+  assert.deepEqual(names(drawUser), ['edit_image', 'generate_image'], 'غير المالك: الأداتان نفسهما');
+  const noteUser = drawUser.messages[0].content.slice(drawUser.messages[0].content.lastIndexOf('[هذا الدور'));
+  assert.match(noteUser, /^\[هذا الدور بأدوات محدودة لضيق السياق المتاح الآن: generate_image، edit_image فقط/);
+  assert.ok(!/Groq|عمران/.test(noteUser), 'لا اسم مزوّد ولا «عمران» في ملاحظة غير المالك');
   assert.deepEqual(names(fit('كم سعر الذهب اليوم؟', 8000)), ['web_search']);
   const hi = fit('مرحبا', 8000);
   assert.equal(hi.tools, undefined, 'التحيّة بلا أدوات');

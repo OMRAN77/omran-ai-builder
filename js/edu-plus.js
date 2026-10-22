@@ -153,7 +153,17 @@ window.__EDU_XL2 = {
 "التالي ←":{"fr": "Suivant →", "hi": "अगला →", "bn": "পরের →", "ne": "अर्को →", "id": "Berikutnya →", "fil": "Susunod →", "tr": "Sonraki →", "zh": "下一课 →", "ru": "Далее →", "es": "Siguiente →", "ml": "അടുത്തത് →"},
 "جرّب بيدك الآن":{"fr": "Essaie maintenant", "hi": "अभी आज़माएँ", "bn": "এখনই চেষ্টা করুন", "ne": "अहिले नै प्रयास गर्नुहोस्", "id": "Coba sekarang", "fil": "Subukan ngayon", "tr": "Şimdi dene", "zh": "现在试试", "ru": "Попробуй сейчас", "es": "Pruébalo ahora", "ml": "ഇപ്പോൾ പരീക്ഷിക്കൂ"},
 "ممتاز! فهمت الخوارزميّة 🌟":{"fr": "Excellent ! Tu as compris l’algorithme 🌟", "hi": "शानदार! आपने एल्गोरिदम समझ लिया 🌟", "bn": "চমৎকার! আপনি অ্যালগরিদম বুঝেছেন 🌟", "ne": "उत्कृष्ट! तपाईंले एल्गोरिदम बुझ्नुभयो 🌟", "id": "Hebat! Kamu paham algoritmanya 🌟", "fil": "Magaling! Naintindihan mo ang algorithm 🌟", "tr": "Harika! Algoritmayı anladın 🌟", "zh": "太棒了！你理解了这个算法 🌟", "ru": "Отлично! Ты понял алгоритм 🌟", "es": "¡Excelente! Entendiste el algoritmo 🌟", "ml": "മികച്ചത്! നിങ്ങൾ അൽഗോരിതം മനസ്സിലാക്കി 🌟"},
-"راجع الشرح وجرّب اللعبة ثمّ أعد الاختبار 💪":{"fr": "Relis l’explication, joue au jeu, puis réessaie 💪", "hi": "व्याख्या दोबारा पढ़ें, गेम खेलें, फिर क्विज़ दोहराएँ 💪", "bn": "ব্যাখ্যা আবার পড়ুন, গেম খেলুন, তারপর আবার কুইজ দিন 💪", "ne": "व्याख्या फेरि पढ्नुहोस्, खेल खेल्नुहोस्, अनि फेरि क्विज दिनुहोस् 💪", "id": "Baca lagi penjelasannya, mainkan game-nya, lalu ulangi kuis 💪", "fil": "Balikan ang paliwanag, laruin ang laro, saka ulitin ang pagsusulit 💪", "tr": "Açıklamayı tekrar oku, oyunu oyna, sonra testi tekrarla 💪", "zh": "复习讲解、玩玩游戏，再重做测验 💪", "ru": "Перечитай объяснение, поиграй и пройди тест снова 💪", "es": "Repasa la explicación, juega y vuelve a intentar la prueba 💪", "ml": "വിശദീകരണം വീണ്ടും വായിക്കൂ, ഗെയിം കളിക്കൂ, പിന്നെ ക്വിസ് വീണ്ടും ചെയ്യൂ 💪"}
+"راجع الشرح وجرّب اللعبة ثمّ أعد الاختبار 💪":{"fr": "Relis l’explication, joue au jeu, puis réessaie 💪", "hi": "व्याख्या दोबारा पढ़ें, गेम खेलें, फिर क्विज़ दोहराएँ 💪", "bn": "ব্যাখ্যা আবার পড়ুন, গেম খেলুন, তারপর আবার কুইজ দিন 💪", "ne": "व्याख्या फेरि पढ्नुहोस्, खेल खेल्नुहोस्, अनि फेरि क्विज दिनुहोस् 💪", "id": "Baca lagi penjelasannya, mainkan game-nya, lalu ulangi kuis 💪", "fil": "Balikan ang paliwanag, laruin ang laro, saka ulitin ang pagsusulit 💪", "tr": "Açıklamayı tekrar oku, oyunu oyna, sonra testi tekrarla 💪", "zh": "复习讲解、玩玩游戏，再重做测验 💪", "ru": "Перечитай объяснение, поиграй и пройди тест снова 💪", "es": "Repasa la explicación, juega y vuelve a intentar la prueba 💪", "ml": "വിശദീകരണം വീണ്ടും വായിക്കൂ, ഗെയിം കളിക്കൂ, പിന്നെ ക്വിസ് വീണ്ടും ചെയ്യൂ 💪"},
+/* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): نصوص لوحة المعلومات في ألعاب الخوارزميّات (edu-algo.js) */
+"الإطار":{"fr": "image", "hi": "फ़्रेम", "bn": "ফ্রেম", "ne": "फ्रेम", "id": "bingkai", "fil": "frame", "tr": "kare", "zh": "帧", "ru": "кадр", "es": "fotograma", "ml": "ഫ്രെയിം"},
+"بكسل فوق الأرض":{"fr": "px au-dessus du sol", "hi": "px ज़मीन से ऊपर", "bn": "px মাটির উপরে", "ne": "px जमिनमाथि", "id": "px di atas tanah", "fil": "px sa itaas ng lupa", "tr": "px yerden yukarıda", "zh": "像素（离地）", "ru": "пикс. над землёй", "es": "px sobre el suelo", "ml": "px നിലത്തിന് മുകളിൽ"},
+"طول المسار":{"fr": "longueur du chemin", "hi": "पथ की लंबाई", "bn": "পথের দৈর্ঘ্য", "ne": "मार्गको लम्बाइ", "id": "panjang jalur", "fil": "haba ng daan", "tr": "yol uzunluğu", "zh": "路径长度", "ru": "длина пути", "es": "longitud del camino", "ml": "പാതയുടെ നീളം"},
+"لا يوجد مسار!":{"fr": "aucun chemin !", "hi": "कोई पथ नहीं!", "bn": "কোনো পথ নেই!", "ne": "कुनै मार्ग छैन!", "id": "tidak ada jalur!", "fil": "walang daan!", "tr": "yol yok!", "zh": "没有路径！", "ru": "пути нет!", "es": "¡no hay camino!", "ml": "പാതയില്ല!"},
+"المسافة":{"fr": "distance", "hi": "दूरी", "bn": "দূরত্ব", "ne": "दूरी", "id": "jarak", "fil": "layo", "tr": "mesafe", "zh": "距离", "ru": "расстояние", "es": "distancia", "ml": "ദൂരം"},
+"وضعيّات قُيّمت للحركة الأخيرة":{"fr": "positions évaluées pour le dernier coup", "hi": "पिछली चाल के लिए जाँची गई स्थितियाँ", "bn": "শেষ চালের জন্য যাচাই করা অবস্থান", "ne": "अन्तिम चालका लागि जाँचिएका स्थितिहरू", "id": "posisi yang dievaluasi untuk langkah terakhir", "fil": "mga posisyong sinuri para sa huling tira", "tr": "son hamle için değerlendirilen konumlar", "zh": "上一步评估的局面数", "ru": "позиций оценено для последнего хода", "es": "posiciones evaluadas para la última jugada", "ml": "അവസാന നീക്കത്തിനായി വിലയിരുത്തിയ സ്ഥാനങ്ങൾ"},
+"بانتظار حركتك":{"fr": "en attente de votre coup", "hi": "आपकी चाल का इंतज़ार", "bn": "আপনার চালের অপেক্ষা", "ne": "तपाईंको चालको प्रतीक्षा", "id": "menunggu langkahmu", "fil": "hinihintay ang tira mo", "tr": "hamleni bekliyor", "zh": "等待你落子", "ru": "ждём вашего хода", "es": "esperando tu jugada", "ml": "നിങ്ങളുടെ നീക്കത്തിനായി കാത്തിരിക്കുന്നു"},
+"نفس البذرة ← نفس الأرقام ← نفس الخريطة":{"fr": "même graine → mêmes nombres → même carte", "hi": "वही बीज → वही संख्याएँ → वही नक्शा", "bn": "একই সিড → একই সংখ্যা → একই মানচিত্র", "ne": "उही बीउ → उही सङ्ख्या → उही नक्सा", "id": "seed sama → angka sama → peta sama", "fil": "parehong seed → parehong numero → parehong mapa", "tr": "aynı tohum → aynı sayılar → aynı harita", "zh": "相同种子 → 相同数字 → 相同地图", "ru": "то же зерно → те же числа → та же карта", "es": "misma semilla → mismos números → mismo mapa", "ml": "ഒരേ സീഡ് → ഒരേ സംഖ്യകൾ → ഒരേ ഭൂപടം"},
+"تبديل":{"fr": "échange", "hi": "अदला-बदली", "bn": "অদলবদল", "ne": "साटासाट", "id": "tukar", "fil": "palit", "tr": "değişim", "zh": "交换", "ru": "перестановка", "es": "intercambio", "ml": "മാറ്റം"},
 };
 var DAY = 86400000;
 function C(){ return window.__eduCore; }
@@ -163,6 +173,9 @@ function lsGet(k, def){ try{ var v = JSON.parse(localStorage.getItem(k) || 'null
 function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ __swallow(e, 'save:edu-plus'); } }
 function $id(id){ return document.getElementById(id); }
 function startOfDay(ms){ var d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); }
+/* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): تاريخ الجهاز المحلّيّ — toISOString يعطي تاريخ UTC فكانت الخطّة و«اليوم» وحدّ التاريخ
+   ناقصة يومًا في المناطق شرق غرينتش (الإمارات +4) */
+function ymd(ms){ var d = new Date(ms); return d.getFullYear() + '-' + (d.getMonth() < 9 ? '0' : '') + (d.getMonth() + 1) + '-' + (d.getDate() < 10 ? '0' : '') + d.getDate(); }
 function go(render, back){
   var c = C(); if(!c) return;
   c.setBack(true); c.setNav([back || c.showHome]);
@@ -276,9 +289,11 @@ function tutor(pane, ctx){
     + '<div class="eduTutorChips">' + chips.map(function(t, i){ return '<button class="eduChip" data-chip="' + i + '">' + esc(t) + '</button>'; }).join('') + '</div>'
     + '<div class="eduTutorBar"><textarea id="eduTutorIn" rows="2" placeholder="' + esc(L('اسأل عن أيّ نقطة في الدرس…', 'Ask about anything in this lesson…')) + '"></textarea>'
     + '<button class="eduPrimary" id="eduTutorSend">' + esc(L('إرسال', 'Send')) + '</button></div>'
-    + (msgs.length ? '<button class="eduLinkBtn" id="eduTutorClear">' + esc(L('محادثة جديدة', 'New conversation')) + '</button>' : '') + '</div>';
-  var log = $id('eduTutorLog'), input = $id('eduTutorIn'), send = $id('eduTutorSend');
+    /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): الزرّ كان يُنشأ فقط إن وُجدت محادثة عند البناء، فلا يظهر بعد أوّل سؤال — يُنشأ دائمًا وrender يبدّل ظهوره */
+    + '<button class="eduLinkBtn" id="eduTutorClear"' + (msgs.length ? '' : ' style="display:none"') + '>' + esc(L('محادثة جديدة', 'New conversation')) + '</button></div>';
+  var log = $id('eduTutorLog'), input = $id('eduTutorIn'), send = $id('eduTutorSend'), clr = $id('eduTutorClear');
   function render(){
+    if(clr) clr.style.display = msgs.length ? '' : 'none';
     if(!msgs.length){ log.innerHTML = '<div class="eduTutorEmpty">👩‍🏫 ' + esc(L('أنا معلّمك لهذا الدرس. اسألني عن أيّ شيء لم تفهمه.', "I'm your tutor for this lesson. Ask me anything you didn't understand.")) + '</div>'; return; }
     log.innerHTML = msgs.map(function(m){
       return '<div class="eduMsg ' + (m.role === 'assistant' ? 'eduMsgT' : 'eduMsgS') + '">' + (m.role === 'assistant' ? '<div class="eduSummary">' + c.md(m.text) + '</div>' : esc(m.text)) + '</div>';
@@ -300,7 +315,7 @@ function tutor(pane, ctx){
   send.onclick = function(){ ask(input.value); };
   input.addEventListener('keydown', function(e){ if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); ask(input.value); } });
   pane.querySelectorAll('[data-chip]').forEach(function(b){ b.onclick = function(){ ask(chips[+b.getAttribute('data-chip')]); }; });
-  var clr = $id('eduTutorClear'); if(clr) clr.onclick = function(){ msgs = []; lsSet(key, msgs); tutor(pane, ctx); };
+  if(clr) clr.onclick = function(){ msgs = []; lsSet(key, msgs); tutor(pane, ctx); };
   render();
 }
 function showTutorView(ctx, back){
@@ -469,6 +484,7 @@ function makePoster(s, out, btn){
       var e = d && d.error;
       var msg = e === 'points_insufficient' ? L('رصيدك لا يكفي لتصميم البوستر.', 'Your balance is not enough to design the poster.')
         : e === 'guest_image_used' ? L('سجّل الدخول لتصميم البوستر.', 'Sign in to design the poster.')
+        : (e === 'unavailable' && typeof window.t === 'function') ? window.t('svcPaused') // v-credit-out: رصيد مزوّد الصور نفد
         : (d && d.message_ar) || L('تعذّر تصميم البوستر — حاول مرة أخرى.', 'Could not design the poster — try again.');
       out.innerHTML = '<div class="eduExplain">⚠️ ' + esc(msg) + '</div>';
     });
@@ -489,7 +505,7 @@ function buildExamPlan(lessons, examMs, nowMs){
     return sa - sb;
   });
   var plan = [], ids = sorted.map(function(l){ return l.id; });
-  function dayAt(i){ return new Date(today + i * DAY).toISOString().slice(0, 10); }
+  function dayAt(i){ var d = new Date(today); d.setDate(d.getDate() + i); return ymd(d.getTime()); }
   if(days === 1 || !sorted.length){ plan.push({ date: dayAt(0), kind: 'review', ids: ids }); return plan; }
   var study = days - 1, per = Math.ceil(sorted.length / study);
   for(var d = 0; d < study; d++){
@@ -545,7 +561,7 @@ function drawProgress(body, lessons){
   var plan = lsGet(PLAN_KEY, null);
   h += '<div class="eduSecTitle">📅 ' + esc(L('خطّة الامتحان', 'Exam plan')) + '</div>';
   if(plan && plan.days && plan.days.length){
-    var todayIso = new Date(startOfDay(now)).toISOString().slice(0, 10);
+    var todayIso = ymd(now);
     var byId = {}; lessons.forEach(function(l){ byId[l.id] = l; });
     h += '<div class="eduLessonMeta" style="margin-bottom:8px;">' + esc(plan.subject) + ' · ' + esc(L('الامتحان:', 'Exam:')) + ' ' + esc(plan.exam) + '</div>'
       + plan.days.map(function(d){
@@ -556,7 +572,7 @@ function drawProgress(body, lessons){
       + '<button class="eduLinkBtn" id="eduPlanDel">' + esc(L('احذف الخطّة', 'Delete plan')) + '</button>';
   } else if(subs.length){
     h += '<div class="eduPlanForm"><label>' + esc(L('المادة', 'Subject')) + '</label><select id="eduPlanSub" class="eduField">' + subs.map(function(s){ return '<option>' + esc(s) + '</option>'; }).join('') + '</select>'
-      + '<label>' + esc(L('موعد الامتحان', 'Exam date')) + '</label><input type="date" id="eduPlanDate" class="eduField" min="' + new Date(now + DAY).toISOString().slice(0, 10) + '">'
+      + '<label>' + esc(L('موعد الامتحان', 'Exam date')) + '</label><input type="date" id="eduPlanDate" class="eduField" min="' + ymd(now + DAY) + '">'
       + '<button class="eduPrimary" id="eduPlanGo" style="width:100%;">' + esc(L('ابنِ خطّتي', 'Build my plan')) + '</button></div>';
   } else {
     h += '<div class="eduEmpty">' + esc(L('أضف دروسًا أوّلًا (ارفع محاضرة أو درسًا من المنهج) لتُبنى لك خطّة.', 'Add lessons first (upload a lecture or a curriculum lesson) to build a plan.')) + '</div>';
@@ -584,7 +600,7 @@ function openAlgo(){
   busy(c.body());
   if(!algoLoading) algoLoading = new Promise(function(res, rej){
     var s = document.createElement('script');
-    s.src = '/js/edu-algo.js?v=1';
+    s.src = '/js/edu-algo.js?v=2';
     s.onload = res; s.onerror = function(){ algoLoading = null; rej(new Error(L('تعذّر تحميل المسار — تحقّق من الاتصال.', 'Could not load the track — check your connection.'))); };
     document.head.appendChild(s);
   });
@@ -595,7 +611,7 @@ function openAlgo(){
 function home(el){
   if(!el) return;
   var now = Date.now(), dueN = srsDue(lsGet(SRS_KEY, {}), now).length, algoDone = Object.keys(lsGet('eduAlgoDone', {})).length;
-  var plan = lsGet(PLAN_KEY, null), todayIso = new Date(startOfDay(now)).toISOString().slice(0, 10), todayPlan = null;
+  var plan = lsGet(PLAN_KEY, null), todayIso = ymd(now), todayPlan = null;
   if(plan && plan.days) plan.days.forEach(function(d){ if(d.date === todayIso) todayPlan = d; });
   function t(id, icon, title, sub, hot){ return '<button class="eduPlusTile' + (hot ? ' hot' : '') + '" id="' + id + '"><span class="eduPlusIcon">' + icon + '</span><span class="eduPlusTitle">' + esc(title) + '</span><span class="eduPlusSub">' + esc(sub) + '</span></button>'; }
   el.innerHTML = '<div class="eduPlusGrid">'

@@ -30,23 +30,23 @@ const SUB_WINDOW_MS = SUB_WINDOW_DAYS * 86400000;
 // المجانية والأدوات الصغيرة) يبقى على سقف الطبقة اليومي.
 const PAID_PROVIDERS = ['claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'agent'];
 
-/* v-plan-jobs (قرار المالك ٢٥ سبتمبر: «كلّ واحد ووظيفته، والوكيل يوظّفهم»): كلّ رسالة مشترك تُصنَّف وظيفةً
-   (turnJob) وتذهب لمزوّدها المختصّ — الدردشة Groq (الأرخص)، البرمجة كلود، الرياضيّات والملفّ الطويل DeepSeek،
-   الصور Gemini (يرى ورخيص). كلود بحدّ يوميّ لكلّ باقة (عدّاد مستقلّ لكلّ موديل)، وبعده المزوّد التالي في قائمة
-   الوظيفة. الالتقاط Gemini ثمّ DeepSeek ثمّ Groq بلا كلود. السقف الكلّيّ للباقة في سلّة واحدة «plan».
-   كلّ الحدود متغيّرات بيئة. direct = مفتاح المزوّد نفسه (oa-direct.js) لا الوسيط؛ model = موديل من CLAUDE_MODELS. */
+/* v-plan-models (قرار المالك ١٦ أكتوبر بعد خريطة «من المجّانيّ إلى ٣٧٥»: «Groq gpt-oss-20b بالمجان، Luna وHaiku 5.5 لـ37»): كلّ رسالة مشترك تُصنَّف
+   وظيفةً (turnJob) وتذهب لموديلات باقته — Plus: ‏GPT-6 Luna وHaiku 5.5 (~٠٫٠٠١$ للرسالة)؛ Pro: ‏Gemini 3.8 Flash بحدّ يوميّ ثمّ موديلات Plus، والكود والملفّ
+   الطويل Mistral Large 3؛ Max: ‏GPT-6 Sol وSonnet 5.5 بحدّ يوميّ مشترك ثمّ Gemini Flash. الصور Gemini كما كانت. كان Groq بمفتاحه المجّانيّ يحمل دردشة Plus/Pro
+   فيُرفض 413 في كلّ دور بأدواته ويفيض بصمت على Gemini. بعد موديلات الوظيفة: Groq (مجّانيّ) ثمّ Gemini، قبل أوّل حرف. كلّ الحدود متغيّرات بيئة.
+   direct = مفتاح المزوّد نفسه (oa-direct.js)؛ model = معرّف المزوّد، أو من CLAUDE_MODELS، أو slug الوسيط (Mistral). */
 const LANES = {
-  groq: { prov: 'groq', direct: true },
-  gemini: { prov: 'gemini', direct: true },
-  deepseek: { prov: 'deepseek' },
-  haiku: { prov: 'claude', model: 'claude-haiku-4-5', meter: 'haiku' },
-  sonnet: { prov: 'claude', model: 'claude-sonnet-5', meter: 'sonnet' },
+  groq: { prov: 'groq', direct: true }, gemini: { prov: 'gemini', direct: true }, deepseek: { prov: 'deepseek' },
+  haiku: { prov: 'claude', model: 'claude-haiku-4-5', meter: 'haiku' }, sonnet: { prov: 'claude', model: 'claude-sonnet-5', meter: 'sonnet' },
+  luna: { prov: 'openai', model: 'gpt-6-luna', direct: true }, haiku55: { prov: 'claude', model: 'claude-haiku-5-5' }, // Plus
+  flash40: { prov: 'gemini', model: 'gemini-3.8-flash', direct: true, meter: 'gemini' }, flash: { prov: 'gemini', model: 'gemini-3.8-flash', direct: true }, large3: { prov: 'mistral', model: 'mistralai/mistral-large-2512' }, // Pro
+  sol: { prov: 'openai', model: 'gpt-6-sol', direct: true, meter: 'premium' }, sonnet55: { prov: 'claude', model: 'claude-sonnet-5-5', meter: 'premium' }, // Max
 };
-const PLAN_FALLBACK = ['gemini', 'deepseek', 'groq'];
+const PLAN_FALLBACK = ['groq', 'gemini']; // v-plan-models: بعد موديلات الوظيفة — Groq المجّانيّ ثمّ Gemini
 const PLAN_ROUTING = {
-  basic: { chat: ['groq'], code: ['haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_BASIC', 5] }, allowed: [] },
-  pro: { chat: ['groq'], code: ['haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_PRO', 10] }, allowed: [] },
-  max: { chat: ['haiku', 'groq'], code: ['sonnet', 'haiku', 'deepseek'], math: ['deepseek'], image: ['gemini'], meters: { haiku: ['SUB_HAIKU_MAX', 150], sonnet: ['SUB_SONNET_MAX', 30] }, allowed: [] /* v-providers-owner (أمر المالك ٤ أكتوبر): المنتقي للمالك وحده — Max يُوجَّه بجدوله، لا باختيار قديم محفوظ */ },
+  basic: { chat: ['luna', 'haiku55'], code: ['haiku55', 'luna'], math: ['luna', 'haiku55'], image: ['gemini'], meters: {}, allowed: [] },
+  pro: { chat: ['flash40', 'luna', 'haiku55'], code: ['large3', 'haiku55', 'luna'], math: ['large3', 'luna'], image: ['gemini'], meters: { gemini: ['SUB_GEMINI_PRO', 40] }, allowed: [] },
+  max: { chat: ['sol', 'flash', 'luna'], code: ['sonnet55', 'flash', 'haiku55'], math: ['sol', 'flash'], image: ['gemini'], meters: { premium: ['SUB_PREMIUM_MAX', 100] }, allowed: [] /* v-providers-owner (أمر المالك ٤ أكتوبر): المنتقي للمالك وحده — Max يُوجَّه بجدوله، لا باختيار قديم محفوظ */ },
 };
 // الدور القويّ: نصّ طويل (وثيقة/ملفّ) أو كتلة كود أو كلمات برمجة/بناء/رياضيات.
 const STRONG_TURN_RE = /```|(?:^|[\s،,.:؛()"'«»-])(?:ال|بال|وال|لل|فال|كال)?(?:كود|كودي|برمج|برمجة|سكربت|سكريبت|دالة|دوال|خوارزميّ?ة|bug|error|exception|debug|api|json|sql|regex|html|css|javascript|typescript|python|react|node|docker|ابنِ|ابني|اعمل(?:\s+لي)?\s+(?:موقع|تطبيق|صفحة|برنامج|بوت|لعبة)|صمّ?م(?:\s+لي)?\s+(?:موقع|تطبيق|صفحة)|احسب|معادلة|معادلات|مشتقّ?ة|تكامل|مصفوفة|احتمال|إحصاء|جبر|ضريبة|فائدة\s+مركّ?بة|نسبة\s+مئويّ?ة|calculate|solve|equation|integral|derivative|matrix|probability|statistics|function|class|compile)(?=$|[\s،,.:؛()"'«»?؟!-])/i;
@@ -84,7 +84,7 @@ function planRoute(tier, requestedProv, lastUserText, used, env, hasImage) {
   }
   if (!names.length) names = ['groq'];
   const lane = LANES[names[0]] || { prov: names[0] };
-  const fallback = PLAN_FALLBACK.filter((n) => LANES[n].prov !== lane.prov).map((n) => Object.assign({}, LANES[n]));
+  const lk = (l) => l.prov + '|' + (l.model || ''), seen = new Set([lk(lane)]); /* v-plan-models: باقي موديلات الوظيفة (بلا مقياس — لا حجز لها) ثمّ Groq ثمّ Gemini */ const fallback = names.slice(1).concat(PLAN_FALLBACK).map((n) => LANES[n]).filter((l) => l && !l.meter && !seen.has(lk(l)) && !!seen.add(lk(l))).map((l) => Object.assign({}, l));
   return { plan, job, strong: job === 'code' || job === 'math', prov: lane.prov, model: lane.model || '', direct: !!lane.direct, meter: lane.meter || '', meterCap: lane.meter && r.meters[lane.meter] ? envInt(e, r.meters[lane.meter][0], r.meters[lane.meter][1]) : 0 /* v-meter-atomic: سقف المقياس — يحجزه المنادي ذرّيًّا (takeMeter) */, fallback, allowed: r.allowed.slice(), bucket: 'plan' };
 }
 
@@ -101,7 +101,7 @@ const FREE_PROVIDER_SPECS = {
     modelsUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/models',
     keyVar: 'GEMINI_API_KEY',
     modelVar: 'FREE_GEMINI_MODEL',
-    models: ['gemini-flash-latest', 'gemini-3-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'],
+    models: ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'], // v-dead-models: «gemini-3-flash» لا وجود له (المعتمد 3.5/3.6/3.8)
     pick: /^(?:models\/)?gemini-[\d.]+-flash(?:-lite)?(?:-preview[\w-]*)?$/i,
     vision: true,
   },
@@ -111,8 +111,8 @@ const FREE_PROVIDER_SPECS = {
     modelsUrl: 'https://api.groq.com/openai/v1/models',
     keyVar: 'GROQ_API_KEY',
     modelVar: 'FREE_GROQ_MODEL',
-    models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.1-8b-instant'], // v-models-latest: Groq أوقف Llama 4/3.x وqwen3-32b (مارس–أغسطس ٢٠٢٦) للمجانيّ والمطوّرين — الحيّ أوّلًا، والميّتان ذيلٌ لحسابات المؤسّسات
-    pick: /gpt-oss-120b|llama-4-maverick|llama-4-scout|llama-3\.3-70b|qwen3-32b|kimi-k2|gpt-oss-20b|llama-3\.1-8b/i,
+    models: ['openai/gpt-oss-20b', 'openai/gpt-oss-120b', 'qwen/qwen3.8-27b'], // v-plan-models: المجّانيّ على 20b (قرار المالك)، وحدود Groq لكلّ موديل فـ120b بعده؛ v-dead-models: Maverick أُوقف ٩ مارس وllama-3.1-8b-instant ١٦ أغسطس (للمجانيّ) — كانا طلبين ضائعين؛ // v-models-latest: Groq أوقف Llama 4/3.x وqwen3-32b (مارس–أغسطس ٢٠٢٦) للمجانيّ والمطوّرين — الحيّ أوّلًا، والميّتان ذيلٌ لحسابات المؤسّسات
+    pick: /gpt-oss-120b|qwen3\.8-27b|llama-4-maverick|llama-4-scout|llama-3\.3-70b|qwen3-32b|kimi-k2|gpt-oss-20b|llama-3\.1-8b/i,
     vision: false,
   },
   mistral: {
@@ -121,8 +121,8 @@ const FREE_PROVIDER_SPECS = {
     modelsUrl: 'https://api.mistral.ai/v1/models',
     keyVar: 'MISTRAL_API_KEY',
     modelVar: 'FREE_MISTRAL_MODEL',
-    models: ['mistral-small-latest', 'mistral-medium-latest', 'open-mistral-nemo', 'ministral-8b-latest'],
-    pick: /^mistral-small-latest$|^mistral-medium-latest$|^open-mistral-nemo$|^ministral-8b-latest$|^mistral-small/i,
+    models: ['mistral-small-latest', 'mistral-medium-latest', 'ministral-8b-latest', 'ministral-14b-latest'], // v-dead-models: open-mistral-nemo أُوقف ٣١ يوليو ٢٠٢٦، بديله الرسميّ ministral-8b-latest
+    pick: /^mistral-small-latest$|^mistral-medium-latest$|^ministral-(?:8|14)b-latest$|^mistral-small/i,
     vision: false,
   },
   openrouter: {
@@ -131,13 +131,13 @@ const FREE_PROVIDER_SPECS = {
     modelsUrl: 'https://openrouter.ai/api/v1/models',
     keyVar: 'OPENROUTER_API_KEY',
     modelVar: 'FREE_OPENROUTER_MODEL',
-    models: ['meta-llama/llama-4-maverick:free', 'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen3-235b-a22b:free', 'google/gemma-3-27b-it:free', 'deepseek/deepseek-chat-v3-0324:free', 'mistralai/mistral-small-3.2-24b-instruct:free'],
-    pick: /^(?:meta-llama\/llama-4|meta-llama\/llama-3\.3|qwen\/qwen3|google\/gemma-3|deepseek\/deepseek-chat|mistralai\/mistral-small)[\w.-]*:free$/i,
+    models: ['google/gemma-4-31b-it:free', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3-super-120b-a12b:free', 'nvidia/nemotron-3.5-lightning:free'], // v-plan-models: Llama 4 وLlama 3.3 وQwen3-235B (أُوقف ٩ أكتوبر) وGemma 3 خرجت من قائمة الوسيط المجّانيّة، وGLM 5.2 وMistral Small 3.2 المجّانيّان ميّتان في فحص ١٦ أكتوبر الحيّ (v-models-live)
+    pick: /^(?:google\/gemma-[34]|nvidia\/nemotron|z-ai\/glm|meta-llama\/llama-4|meta-llama\/llama-3\.3|qwen\/qwen3|deepseek\/deepseek-chat|mistralai\/mistral-small)[\w.-]*:free$/i,
     vision: false,
     /* v-img-why (لقطة المالك ٣ أكتوبر: «ما قدرت أقرأ الصورة الحين» مرّتين): Gemini كان وحده من يرى في الاحتياط المجّانيّ،
        فتعثّره مع تعثّر المحرّك الأساسيّ = لا قراءة. هذه نماذج مجّانيّة ترى الصور (نصّ + صورة) — تُجرَّب في دور الصورة وحده
        وبعد Gemini، ولا يُرسَل إليها غيرها في هذا الدور (لا نموذج أعمى يستلم صورة). */
-    visionModels: ['google/gemma-3-27b-it:free', 'meta-llama/llama-4-maverick:free', 'mistralai/mistral-small-3.2-24b-instruct:free', 'qwen/qwen2.5-vl-72b-instruct:free'],
+    visionModels: ['google/gemma-4-31b-it:free'], // v-plan-models: Gemma 4 وحده — Gemma 3 وMistral Small 3.2 وQwen2.5-VL المجّانيّة ميّتة في فحص ١٦ أكتوبر الحيّ
   },
 };
 // v-plan-routing (قرار المالك ٢٠ سبتمبر: «المجّاني ٥ رسائل على Groq من غير أيّ شي»): Groq أوّلًا،
@@ -266,8 +266,16 @@ const FREE_TEXT = {
   engineLimit: 'وصلت حدّ اليوم لهذا المحرّك في باقتك. يتجدّد غدًا.',
 };
 
+// v-plan-models: عدّادات اليوم لمقاييس الباقة أيًّا كانت (haiku/sonnet قديمًا، gemini لـPro وpremium لـMax) — قراءة تقريبيّة قبل الحجز الذرّيّ (takeMeter).
+async function planUsedCounts(user, plan, todayCount) {
+  const r = PLAN_ROUTING[String(plan || '').toLowerCase()];
+  const out = {};
+  for (const m of Object.keys((r && r.meters) || {})) out[m] = await todayCount(user, 'plan-' + m);
+  return out;
+}
+
 module.exports = {
   PLAN_KEYS, SUB_WINDOW_DAYS, PAID_PROVIDERS, FREE_PROVIDER_SPECS, DEFAULT_CHAIN, FREE_TEXT,
   caps, planActive, resolveTier, invalidateTier, isPaidProvider, freeChain, isOwnerUsername,
-  PLAN_ROUTING, LANES, isStrongTurn, turnJob, planRoute, // v-plan-routing · v-plan-jobs
+  PLAN_ROUTING, LANES, isStrongTurn, turnJob, planRoute, planUsedCounts, // v-plan-routing · v-plan-jobs · v-plan-models
 };

@@ -11,6 +11,7 @@ const crypto = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs');
 
+process.env.OWNER_AGENT_CLAUDE = 'on'; // v-agent-claude-off: الاختبار يفحص الوكيل وهو شغّال
 process.env.AUTH_SECRET = 'agent-deep-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 const root = path.resolve(__dirname, '..');
@@ -165,5 +166,5 @@ test('٧. تعليمات الوكيل: منهج التعمّق، والبحث ق
   assert.match(src, /الجذر لا العَرَض: تتبّع السبب حتّى أصله وسمِّه بالملفّ والسطر/);
   assert.match(src, /ولطلب سحب أو التزام اقرأ الفرق \(diff\) نفسه لا أسماء الملفّات وحدها/);
   assert.match(src, /1ب\.[^\n]*الاستثناء: تحليل كود أو مستودع، أو تشخيص عطل، أو حلّ مسألة/);
-  assert.match(src, /what: \{ type: 'string', enum: \['auto', 'commits', 'commit'\]/);
+  assert.match(src, /what: \{ type: 'string', enum: \['auto', 'commits', 'commit', 'map'\]/);
 });

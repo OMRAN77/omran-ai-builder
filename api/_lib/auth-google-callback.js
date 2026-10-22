@@ -1,6 +1,7 @@
 const crypto = require('crypto');
-const { getUser, putUser, makeToken, markKnownNet } = require('./auth.js'); // داخل _lib
+const { getUser, putUser, makeToken, markKnownNet, emailProven } = require('./auth.js'); // داخل _lib
 const { takeWelcomeGift, giftNet, clientIp } = require('./welcome-gift.js'); // v-welcome-cap · v-oauth-bind
+const { notifyNewAccount } = require('./signup-notify.js'); // v-signup-notify
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -105,7 +106,9 @@ module.exports = async (req, res) => {
         const idx = await kvGetJSON('db/email-index/' + email);
         if (idx && idx.username) {
           const candidate = await getUser(String(idx.username));
-          if (candidate && !candidate.deleted && String(candidate.email || '').toLowerCase() === email) {
+          // v-unverified-email: الربط إلى حساب بريده مؤكَّد عليه وحده — وإلّا حساب g_<البريد> الخاصّ (كما دون الربط).
+          if (candidate && !candidate.deleted && String(candidate.email || '').toLowerCase() === email
+              && await emailProven(String(idx.username).trim().toLowerCase(), candidate)) {
             key = String(idx.username);
           } else {
             console.warn('[auth] stale email-index entry ignored for ' + email);
@@ -116,10 +119,11 @@ module.exports = async (req, res) => {
       console.warn('[auth] account unification lookup failed:', e && e.message);
     }
 
-    let user = null;
+    let user = null, reclaimed = false;
     try { user = await getUser(key); }
     catch (e) {
       if (e && e.code === 'USER_RECORD_UNDECRYPTABLE') {
+        reclaimed = true; // v-signup-notify: الشخص نفسه يستعيد حسابه — ليس حسابًا جديدًا
         // السجلّ القديم مقفل بسرّ ضاع — وجوجل أثبتت للتوّ ملكيّة البريد نفسه.
         // فالاسترداد هنا مشروع: يُنشأ السجلّ من جديد فوق المقفل، ويعود صاحب
         // البريد إلى حسابه بدل server_error أبديّة. (بخلاف signup بالاسم وحده،
@@ -138,6 +142,7 @@ module.exports = async (req, res) => {
     }
 
     if (!user || user.deleted) {
+      const wasDeleted = !!(user && user.deleted);
       // v-welcome-cap: كان السجلّ بلا points فيمنحه readPoints ٧٠ بلا أيّ حدّ — الآن من حصّة العنوان واليوم، و0 رقمًا فوقها.
       // دخول حساب قائم لا يمرّ هنا فلا يمسّ العدّادات.
       const giftOut = {}; // v-farm-gate: capped = سقف الشبكة رفض الهديّة (free-tier.js)
@@ -147,6 +152,7 @@ module.exports = async (req, res) => {
         username: profile.name || email.split('@')[0],
         salt, hash,
         email,
+        verifiedEmail: email, // v-vip-verified: Google أثبتته (email_verified أعلاه)
         avatar: profile.picture || null,
         googleAuth: true,
         createdAt: Date.now(),
@@ -155,6 +161,20 @@ module.exports = async (req, res) => {
         giftCapped: giftOut.capped === true,
       };
       await putUser(key, user);
+      if (!reclaimed) await notifyNewAccount({ key, user, method: 'google', req, note: wasDeleted ? 'over-deleted' : undefined }); // v-signup-notify
+    }
+
+    // v-vip-verified: Google أثبتت البريد للتوّ — حساب مفتاحه g_<البريد> نفسه يُختم به (لا الاسم المستعار ولا الربط التلقائيّ:
+    // صاحب ذلك الحساب قد لا يكون صاحب البريد)، ومدخل VIP بهذا البريد خامًا يصير اسم الحساب. عطبٌ هنا لا يُفشل الدخول.
+    if (key === 'g_' + email && user.googleAuth === true) {
+      if (user.email === email && user.verifiedEmail !== email) {
+        user.verifiedEmail = email;
+        try { await putUser(key, user); } catch (e) { console.warn('[auth] verified-email mark failed:', e && e.message); }
+      }
+      try {
+        const vip = require('./_vip.js');
+        if (typeof vip.promoteVerifiedEmail === 'function') await vip.promoteVerifiedEmail(email, key);
+      } catch (e) { console.warn('[auth] vip promote failed:', e && e.message); }
     }
 
     const token = makeToken(key);

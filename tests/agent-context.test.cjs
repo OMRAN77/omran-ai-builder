@@ -142,10 +142,10 @@ test('٥. delegate_code_task: النموذج اختياريّ من القائم�
   await D.startTask({ task: TASK, repo: 'o/r' }, opts);
   assert.ok(!('model' in bodies[2].inputs));
   // كلّ أخ بموديلاته: موديل Kimi يمرّ لـengine=kimi ويسقط عند كلود، وموديل كلود يسقط عند Kimi
-  await D.startTask({ task: TASK, repo: 'o/r', engine: 'kimi', model: 'kimi-k2.5' }, opts);
-  assert.equal(bodies[3].inputs.model, 'kimi-k2.5');
+  await D.startTask({ task: TASK, repo: 'o/r', engine: 'kimi', model: 'kimi-k3' }, opts);
+  assert.equal(bodies[3].inputs.model, 'kimi-k3');
   await D.startTask({ task: TASK, repo: 'o/r', engine: 'kimi', model: 'claude-opus-5' }, opts);
   assert.ok(!('model' in bodies[4].inputs), 'موديل كلود لا يُمرَّر إلى Kimi');
-  await D.startTask({ task: TASK, repo: 'o/r', model: 'kimi-k2.5' }, opts);
+  await D.startTask({ task: TASK, repo: 'o/r', model: 'kimi-k3' }, opts);
   assert.ok(!('model' in bodies[5].inputs), 'موديل Kimi لا يُمرَّر إلى Claude');
 });

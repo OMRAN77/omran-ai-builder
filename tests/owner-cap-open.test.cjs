@@ -1,13 +1,15 @@
 'use strict';
 /* v-owner-cap-open (أمر المالك ١٢ أكتوبر: «اريدك تعطي المزودين تفتح لهم التوكن أكثر ماهم عليه الآن — عندي الحين فقط ٤٠٠ سطر —
    اريد مفتوح بدون مايوقف كل المزودين»): سقف خرج المالك ١٢٨ ألف توكن (أقصى الجيل ٥ من كلود وGPT) على كلّ المسارات (كلود المباشر، الوسيط، Groq/OpenAI المباشر)
-   بدل ١٦ ألفًا (≈ ٤٠٠ سطر)، ويغلب سقوف الجهد (٣٢ ألفًا لـGPT high). رفض السقف الكبير (402 حجز رصيد الوسيط أو 400 حدّ الموديل) =
-   إعادة بسقف أدنى تُذكَر لبقيّة الدور: 402 ← العاديّ، و400 ← حدّ الموديل من نصّ الرسالة (وبلا رقم ٦٤ ألفًا ثمّ العاديّ). غير المالك ١٦ ألفًا والتحيّة ٣٥٠ كما كانا. المعالج الحقيقيّ أمام مزوّد مزيّف. */
+   بدل ١٦ ألفًا (≈ ٤٠٠ سطر)، ويغلب سقوف الجهد (٣٢ ألفًا لـGPT high).    رفض السقف الكبير (402 حجز رصيد أو 400 حدّ الموديل) =
+   إعادة بسقف أدنى تُذكَر لبقيّة الدور: 402 ← حدّ الرصيد من الرسالة (سقف ١٦ ألفًا) على الوسيط والمباشر وبعد هبوط GPT،
+   و400 ← حدّ الموديل من نصّ الرسالة (وبلا رقم ٦٤ ألفًا ثمّ العاديّ). غير المالك ١٦ ألفًا والتحيّة ٣٥٠ كما كانا. المعالج الحقيقيّ أمام مزوّد مزيّف. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'owner-cap-open-secret';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
@@ -121,10 +123,10 @@ test('٣. المسار المباشر: Groq يصله max_completion_tokens ١٢�
   assert.equal(r.calls.filter((c) => /api\.openai\.com/.test(c.url))[0].body.max_output_tokens, 128000, 'وبلا جهد');
 });
 
-test('٤. الوسيط 402 «can only afford» بلا جهد = إعادة واحدة بـ١٦ ألفًا وسطر السبب، ويُذكَر: إكمال المقطوع يبقى ١٦ ألفًا بلا 402 جديد', async () => {
+test('٤. الوسيط 402 «can only afford 9000» بلا جهد = إعادة بحدّ الرصيد لا ١٦ ألفًا (١٦ كانت تفشل ثانيةً)، ويُذكَر: إكمال المقطوع يبقى على الحدّ', async () => {
   reset();
   const r = await withoutAnth(() => run('omran', { messages: ask(HARD) }, [or402, () => anth('الجزء الأوّل ', 'max_tokens'), () => anth('والثاني.')]));
-  assert.deepEqual(up(r).map((c) => c.body.max_tokens), [128000, 16000, 16000]);
+  assert.deepEqual(up(r).map((c) => c.body.max_tokens), [128000, 9000, 9000]);
   assert.equal(r.statuses.filter((s) => /رصيد الوسيط لا يكفي/.test(s)).length, 1, 'سطر واحد في الدور كلّه');
   assert.equal(r.text, 'الجزء الأوّل والثاني.');
 });
@@ -157,4 +159,36 @@ test('٧. 400 على السقف بلا رقم (الوسيط): ١٢٨ ← ٦٤ �
   const big = () => new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'max_tokens: 128000 > 200000 context window 1000000' } }), { status: 400 });
   r = await run('omran', { messages: ask(HARD) }, [big, () => anth('تم')]);
   assert.deepEqual(up(r).slice(0, 2).map((c) => c.body.max_tokens), [128000, 64000], 'الأرقام الأكبر من السقف لا تُؤخذ حدًّا');
+});
+
+test('٨. GPT المباشر 402 «can only afford» = إعادة بحدّ الرصيد على OpenAI لا «ما عندي رصيد»', async () => {
+  reset();
+  const r = await withEnv('OPENAI_API_KEY', 'sk-openai-test')(() => run('omran', { provider: 'openai', model: 'openai/gpt-6-astra', messages: ask(HARD) }, [or402, () => oaResp('تم')]));
+  const o = r.calls.filter((c) => /api\.openai\.com/.test(c.url));
+  assert.deepEqual(o.map((c) => c.body.max_output_tokens), [128000, 9000]);
+  assert.ok(r.statuses.some((s) => /حجز سقف ١٢٨ ألف توكن أكبر من المتاح/.test(s)), r.statuses.join(' | '));
+  assert.ok(!r.events.some((e) => e.ownerStop && /ما عندي رصيد/.test(e.error || '')));
+  assert.equal(r.text, 'تم');
+});
+
+test('٩. GPT المباشر يفشل ثمّ الوسيط 402 حجز السقف = إعادة بحدّ الرصيد لا «ما عندي رصيد»', async () => {
+  reset();
+  const oaFail = () => new Response(JSON.stringify({ error: { message: 'invalid_api_key' } }), { status: 401 });
+  const r = await withEnv('OPENAI_API_KEY', 'sk-openai-test')(() => run('omran', { provider: 'openai', model: 'openai/gpt-6-astra', messages: ask(HARD) }, [oaFail, or402, () => anth('تم')]));
+  const oa = r.calls.filter((c) => /api\.openai\.com/.test(c.url));
+  const gw = r.calls.filter((c) => /openrouter\.ai/.test(c.url));
+  assert.equal(oa.length, 1);
+  assert.equal(oa[0].body.max_output_tokens, 128000);
+  assert.deepEqual(gw.map((c) => c.body.max_tokens), [128000, 9000]);
+  assert.ok(!r.events.some((e) => e.ownerStop && /ما عندي رصيد/.test(e.error || '')));
+  assert.equal(r.text, 'تم');
+});
+
+test('١٠. 402 حجز السقف في ownerStopNote ليس «ما عندي رصيد»؛ نفاد الرصيد يبقى', () => {
+  const { ownerStopNote } = chat.__imgWhy;
+  assert.equal(ownerStopNote({ status: 402, text: 'You requested up to 128000 tokens, but can only afford 9000.' }), 'ما قدرت أردّ الحين — خطأ 402: You requested up to 128000 tokens, but can only afford 9000.'); // v-why: سبب المزوّد بعد الرقم
+  assert.equal(ownerStopNote({ status: 402, text: 'Insufficient credits. Add more using https://openrouter.ai/settings/credits' }), 'ما عندي رصيد');
+  assert.equal(ownerStopNote({ status: 402, text: '' }), 'ما عندي رصيد');
+  const src = require('node:fs').readFileSync(require('node:path').join(root, 'api/_lib/chat.js'), 'utf8');
+  assert.ok(!src.includes('!__direct && __capTries'), 'إعادة السقف لم تعد تتخطّى المسار المباشر');
 });

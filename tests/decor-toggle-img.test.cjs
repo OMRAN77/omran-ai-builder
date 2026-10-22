@@ -31,10 +31,11 @@ test('٢. الصورة خلفية البطاقة وتدرّج الألوان ا�
   assert.ok(v > 564, 'وسم الملفّ مرفوع فوق نسخة الرسمة (564): ' + v);
 });
 
-test('٢-ب. الصورة صافية: لا تظليل ولا اسم فوقها — الاسم سطر تحتها', () => {
+// v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي») أحدث من «الاسم سطر تحتها»: لا شيء تحت الصورة، والاسم فوق أسفلها.
+test('٢-ب. البطاقة صورتها وحدها: الاسم فوق أسفل الصورة لا سطر تحتها', () => {
   const fn = src.slice(src.indexOf('function proToggle'), src.indexOf('v-decor-full-page'));
-  assert.ok(!fn.includes('rgba(0,0,0,.78)'), 'لا تظليل أسود فوق الصورة');
-  assert.ok(fn.includes('pic.appendChild(tk); d.appendChild(pic); d.appendChild(nm);'), 'الاسم بعد الصورة لا داخلها');
+  assert.ok(!fn.includes('rgba(0,0,0,.78)'), 'لا تظليل أسود ثقيل فوق الصورة');
+  assert.ok(fn.includes('pic.appendChild(tk); pic.appendChild(nm); d.appendChild(pic);') && !fn.includes('d.appendChild(nm)'), 'الاسم داخل الصورة لا بعدها');
 });
 
 test('٣. الاسم من مفتاح الترجمة، وكل مفتاح موجود في الـ١٤ لغة', () => {

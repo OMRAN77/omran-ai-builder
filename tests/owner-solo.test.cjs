@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'owner-solo-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-direct';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
@@ -80,7 +81,7 @@ test('١. المالك على Gemini بلا رصيد عند الوسيط → ر�
   assert.equal(r.text, '', 'لا ردّ من مزوّد آخر');
   const stop = r.events.find((e) => e.ownerStop === true);
   assert.ok(stop, 'حدث التوقّف للمالك');
-  assert.equal(stop.error, 'ما عندي رصيد', 'الرسالة وحدها بلا نصّ تقنيّ');
+  assert.equal(stop.error, 'ما عندي رصيد — OpenRouter', 'الرسالة وحدها بلا نصّ تقنيّ');
 });
 
 test('٢. المالك على كلود: المباشر بلا رصيد ← كلود عبر الوسيط (المزوّد نفسه) بلا رصيد ← السببان، ولا مزوّد آخر', async () => {
@@ -91,7 +92,7 @@ test('٢. المالك على كلود: المباشر بلا رصيد ← كل�
   assert.match(models[0], /^anthropic\/claude/, 'كلود نفسه');
   const stop = r.events.find((e) => e.ownerStop === true);
   assert.ok(stop);
-  assert.equal(stop.error, 'ما عندي رصيد');
+  assert.equal(stop.error, 'ما عندي رصيد — Anthropic و OpenRouter');
   assert.equal(r.text, '');
 });
 
@@ -113,7 +114,7 @@ test('٤. المالك على Kimi: مفتاح Moonshot المباشر 402 ← K
     assert.ok(!r.calls.some((c) => isAnth(c.url)));
     const stop = r.events.find((e) => e.ownerStop === true);
     assert.ok(stop);
-    assert.equal(stop.error, 'ما عندي رصيد');
+    assert.equal(stop.error, 'ما عندي رصيد — Kimi مباشر و OpenRouter');
   } finally { delete process.env.KIMI_API_KEY; }
 });
 
@@ -239,7 +240,7 @@ test('١١. Groq: رفض Groq نفسه (402) يتوقّف بـ«ما عندي ر
       (u) => (/api\.groq\.com/.test(u) ? new Response(JSON.stringify({ error: { message: 'Insufficient balance' } }), { status: 402 }) : isOR(u) ? sse('من الوسيط') : isAnth(u) ? sse('من كلود') : new Response('{}', { status: 404 })));
     assert.ok(r.calls.some((c) => /api\.groq\.com/.test(c.url)));
     assert.ok(!r.calls.some((c) => isOR(c.url) || isAnth(c.url)), 'لا وسيط ولا كلود');
-    assert.equal(r.events.find((e) => e.ownerStop).error, 'ما عندي رصيد');
+    assert.equal(r.events.find((e) => e.ownerStop).error, 'ما عندي رصيد — Groq مباشر');
   } finally { delete process.env.GROQ_API_KEY; }
 });
 
@@ -254,7 +255,7 @@ test('١٢. GPT: سقوط المفتاح المباشر يكمل عند الوس
     // المباشر بلا رصيد ثمّ الوسيط بخطأ غير الرصيد: السبب الأوّل (الرصيد) يبقى
     const r2 = await run('omran', { provider: 'openai', model: 'openai/gpt-6-astra', messages: ask('سؤال') },
       (u) => (/api\.openai\.com/.test(u) ? quota() : isOR(u) ? new Response('{"error":{"message":"upstream down"}}', { status: 503 }) : isAnth(u) ? sse('من كلود') : new Response('{}', { status: 404 })));
-    assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما عندي رصيد');
+    assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما عندي رصيد — OpenAI مباشر · OpenRouter خطأ 503');
     assert.ok(!r2.calls.some((c) => isAnth(c.url)));
   } finally { delete process.env.OPENAI_API_KEY; }
 });
@@ -268,7 +269,7 @@ test('١٣. صفّ الوسيط العامّ: Grok المرفوض (404 نصّ) �
   const r2 = await run('omran', { provider: 'openrouter', model: 'x-ai/grok-4.20', messages: ask('سؤال') },
     (u) => (isOR(u) ? new Response('{"error":{"message":"No endpoints found"}}', { status: 404 }) : new Response('{}', { status: 404 })));
   assert.deepEqual(orModels(r2.calls), ['x-ai/grok-4.20', 'x-ai/grok-4.6'], 'الافتراضيّ إن سقط يتوقّف — لا شركة أخرى');
-  assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما قدرت أردّ الحين — خطأ 404');
+  assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما قدرت أردّ الحين — خطأ 404: No endpoints found'); // v-why: سبب المزوّد بعد الرقم
 });
 
 test('١٤. مزوّد بلا طريق له أو غير معروف للخادم: لا يجيب كلود صامتًا عنه — للمالك وحده', async () => {
@@ -316,7 +317,7 @@ test('١٦. القائمة تسمّي ما يجيب فعلًا: Groq = GPT-OSS 1
     vm.runInNewContext('var model = this.model;\n' + line + '\nthis.out = model;', ctx);
     assert.equal(ctx.out, want, id);
   }
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m131026g/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m211026/);
 });
 
 // ── مراجعة مستقلّة (١٦ وكيلًا) على التعديل نفسه: أخطاء أكّدها مشكّك ثانٍ ──

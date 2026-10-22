@@ -1,0 +1,136 @@
+/* v-no-lines-2 — أمر المالك: «الخطوط الزائده والموجوده الحينه كامله شلها، فقط عند تمرير الماوس على المكان يكون لون ذهبي،
+   اريدها في التطبيق كامله، وتكون الخلفيه فقط لونين نفس درجة الاسود».
+   • الإطار الذهبيّ حول اللوحات والمحادثة (إطارات.css و إطارات-الجوال.css) ونقاط الخلفيّة الذهبيّة تختفي؛ واللوحة تتذهّب عند المرور فقط (#omFrameCenter إطار فارغ خلف #chatcol، فيتذهّب بـ :has).
+   • حدود صندوق الكتابة وصندوق أسفل الشريط الجانبيّ وحلقة زرّ الإرسال شفّافة، والذهبيّ عند المرور أو التركيز.
+   • للوضع الأسود وحده: الفاتح والثيمات (html.skin) والخشبيّ وصور الخلفيّة (bgimg) لا تُمسّ. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) body{--om-gold-line:linear-gradient(transparent,transparent); --om-dots:linear-gradient(transparent,transparent);}
+/* الخطوط التي علّمها js/app-41-three-colors.js بـ om3-line كانت تغلبها قواعد بمعرّفات (#cxBrief، #constructionArea…) فتبقى ظاهرة —
+   :not(#om3-a#om3-b) لا يطابق أيّ عنصر لكنّه يرفع الأولويّة بمعرّفين فتغلب، والذهبيّ عند المرور والتركيز والاختيار بنفس الأولويّة */
+/* لون الحدّ «شبح» (أسود بشفافيّة .06 لا يُرى على الأسود) بدل transparent: js/app-41-three-colors.js يعيد تصنيف العنصر عند انتهاء كلّ انتقال فينزع om3-line ويقرأ الحدّ فورًا — الشفّاف يُقرأ «بلا حدّ» فيعود الحدّ الرماديّ ثمّ يتكرّر الوميض بلا نهاية؛ الشبح (> .04) يُقرأ حدًّا فيبقى الصنف ثابتًا */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b){border-color:rgba(0,0,0,.06) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-hot.om3-line:not(#om3-a#om3-b):hover,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b):is(:focus-visible,:focus-within,.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:rgba(0,0,0,.06) !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter):hover,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) main:has(#chatcol:hover) > #omFrameCenter{--om-gold-line:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85));}
+/* المعرّفات مضاعفة/متسلسلة عمدًا لتغلب قواعد أقدم بمعرّفين (redesign.css: html #composerBox > #btnSend، إطارات.css: #omranSidebarFoot بخمس :not) */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox#composerBox,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox > #btnSend,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #omranSidebarFoot#omranSidebarFoot{border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox#composerBox,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox:not(.typing) > #btnSend{box-shadow:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox#composerBox:is(:hover,:focus-within),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #composerBox > #btnSend:is(:hover,:focus-visible),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #omranSidebarFoot#omranSidebarFoot:is(:hover,:focus-within){border-color:transparent !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+/* حدود بيضاء/رماديّة مكتوبة داخل عناصر يبنيها الجافاسكربت (style="border:1px solid rgba(255,255,255,…)") — شفّافة، وذهبيّة عند المرور */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255,255,255"],
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255, 255, 255"]{border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255,255,255"]:is(:hover,:focus-visible,:focus-within),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid rgba(255, 255, 255"]:is(:hover,:focus-visible,:focus-within){border-color:transparent !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+/* الخلفيّة لونان فقط: حبيبات الضجيج الخفيفة فوق الأسود (body::after على الكمبيوتر) تختفي */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) body::after{background-image:none !important;}
+/* صانع الفيديو: خطّ الإطار (--lux-line) وخطّ رأس الاستوديو وخطّ «الإعدادات المتقدّمة» وإطارات صور التبويبات */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal{--lux-line:transparent;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-studio>div:first-child,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal details.vmk-adv,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-tab-img{border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-tab[aria-selected=true] .vmk-tab-img{box-shadow:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #videoMakerModal .vmk-tab:hover .vmk-tab-img{border-color:transparent !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+/* بطاقات «أنماط الصور» وحدودها المكتوبة داخل العنصر (border:1px solid var(--border…)) وخلفيّتها #17171b → #101013؛ بلا حدّ دائمًا، والمختارة (#d4af37) والمرور توهّج أبيض */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid var(--border"],
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .pstyleCard.pstyleCard{border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) [style*="solid var(--border"]:is(:hover,:focus-visible),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .pstyleCard.pstyleCard:is([style*="#d4af37"],:hover,:focus-visible){box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .pstyleCard{background-color:#101013 !important;}
+/* مربّعات الرفع بصور المالك (رفع-الصور.css) وتبويبات «ستايل AI» — بلا حدّ، والمرور والمختار توهّج أبيض */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.omUpArt,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn{border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omUpArt.omUpArt:is(:hover,.over),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn:is(.active,:hover){box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn.active,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs .studioAiTabBtn.studioAiTabBtn.active > span{color:#fff !important;}
+/* v-main-lines (المالك ١٧ أكتوبر: «فقط ثبت الخطوط في الشاشة الرئيسه») نُسخت في ١٨ أكتوبر بـv-no-lines-3 أدناه: لا إطار حول اللوحات، وخطّان عموديّان بدلها. */
+/* v-no-phone-frame (المالك: «احذف برواز الهاتف»): في الجوال لا إطار حول المحادثة (body::after من إطارات-الجوال.css) ولا حافّة ذهبيّة للدُّرجين،
+   وفي كلّ الأوضاع (الفاتح أيضًا) — استثناء من «الوضع الأسود وحده» بنطاق قاعدة الإطار نفسها. */
+html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after{background:none !important;}
+/* v-white-glow (المالك: «نفس فسّر… اذا اشر عليه يكون نفس الدرجه وبدون حد… واذا امرر السهم عليه نفس الفكر… مااريد حدود عليهم»):
+   كلّ ما داخل الشاشة مثل زرّ «فسّر»: بلا حدّ، والمرور والمختار نفس الدرجة #101013 بتوهّج أبيض ونصّ أبيض بدل الذهبيّ —
+   المحادثة المختارة في الشريط، وتبويبات المعاينة والكود فوق، والتبويبات المختارة في الأدوات. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-fill.om3-line:not(#om3-a#om3-b):is(.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"]){background-color:#101013 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .hist-item.hist-item:is(.active,:hover){background:#101013 !important; border-color:rgba(0,0,0,.06) !important; color:#fff !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .hist-item.hist-item:is(.active,:hover) :is(.hist-title,.hist-thumb,.hist-menu-btn){color:#fff !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #tabs .tab.tab:not(#om3-a):is(.active,:hover){background:#101013 !important; border-color:transparent !important; color:#fff !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #tabs .tab.tab:not(#om3-a):is(.active,:hover) svg{color:#fff !important; stroke:#fff !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #tabs .tab.tab.active::after{background:none !important;}
+/* صفوف التبويبات المنزلقة (overflow-x:auto) تقصّ التوهّج فيظهر مستطيلًا حادًّا — مساحة داخليّة بقدر التوهّج يقابلها هامش سالب فلا يتغيّر مكانها */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) :is(#religionTabs,#studioAiTabs){padding:14px 18px 22px !important; margin-left:-18px !important; margin-right:-18px !important; margin-bottom:-18px !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #religionTabs{margin-top:-2px !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #studioAiTabs{margin-top:-14px !important;}
+/* v-no-green (المالك: «ليش هذا الاخضر احذفه نهائي»): وضع التحديد بالضغط المطوّل على المحادثات (js/delete-confirm.js) كان يرسم إطارًا أخضر
+   وخلفيّة خضراء ودائرة صحّ خضراء — بلا أخضر في كلّ الأوضاع: المحدَّد مثل المختار (#101013 وتوهّج أبيض بلا حدّ)، ودائرة الصحّ بيضاء بعلامة سوداء.
+   استثناء وحيد من «الوضع الأسود وحده» لأنّ الأخضر يُحذف في الفاتح والثيمات أيضًا (هناك ظلّ رماديّ خفيف). */
+.omran-selected.omran-selected{outline:0 !important; background:rgba(0,0,0,.06) !important; box-shadow:0 4px 18px rgba(0,0,0,.22) !important;}
+.omran-selected .omran-select-mark.omran-select-mark{background:#101013; border-color:#101013; color:#fff;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omran-selected.omran-selected{background:#101013 !important; color:#fff !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .omran-selected .omran-select-mark.omran-select-mark{background:#fff; border-color:#fff; color:#101013;}
+/* v-black-surfaces (تدقيق ١٨–١٩ أكتوبر): ما اعتمد على حدّه وحده صار بعد الحدّ الشبح أسود على أسود — خانات بلا حدّ ولا خلفيّة، وأزرار تبدو
+   كلمات، وقوائم ونوافذ بلا سطح. يظهر بدرجتي المالك لا بخطّ («الخلفيه فقط لونين نفس درجة الاسود»):
+   • الخانة التي يعلّمها js/app-41-three-colors.js بـom3-field (شفّافة أو بلون سطحها): #101013، وتحت تعبئة om3-fill #000، وتحت اثنتين #101013 —
+     مرآة تناوب أدوات-أسود.css. background-color وحده فيبقى سهم القائمة المنسدلة؛ الحدّ يبقى شبحًا والتوهّج عند التركيز كما هو.
+     :not(#om3-a#om3-b) يغلب قواعد المعرّف (#constructionModal input[type=number] …!important).
+   • زرّا الاسترداد (واتساب/تيليجرام) كبسولة كزرّ جوجل بجانبهما، قائمة ⋮ في السجلّ، بطاقة المشاركة، زرّ ↓ بتوهّج «فسّر» (الكمبيوتر وحده يُظهره)،
+     بطاقات الخطط و«اشترك الآن» (#000 فوق البطاقة) وباقات النقاط، وخيار «بطاقة» في الدفع — لون فقط: لا سعر ولا منطق دفع ولا حدّ. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-field:not(#om3-a#om3-b){background-color:#101013 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-fill .om3-field:not(#om3-a#om3-b){background-color:#000 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-fill .om3-fill .om3-field:not(#om3-a#om3-b){background-color:#101013 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #authOverlay [data-recover]{background:#101013 !important; border-radius:999px !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #histItemMenu,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #shareModal > div,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #pricingSection .pcard.pcard,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #pricingSection .pointsPackBtn.pointsPackBtn,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #checkoutModalOverlay button[onclick="startStripeCheckout()"]{background:#101013 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #pricingSection .pcard .pbtn:not(.primary):not(.ghost){background:#000 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #chatJumpBottom.visible{background:#101013 !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+/* ══ v-no-lines-3 (المالك ١٨ أكتوبر بصورتين): تصميم الكمبيوتر في الوضع الأسود وحده — لا الفاتح ولا الثيمات ولا الجوّال ولا «المجرّة».
+   ① لا إطارات ذهبيّة حول اللوحات الثلاث (ولا عند المرور)؛ خطّان عموديّان من أعلى الشاشة إلى أسفلها في منتصف الفراغين (المقابض .resizer، ١٤px)
+      بالـCSS (::before) بلون 240,222,170 يذوب في الطرفين وتوهّج خفيف.
+   ② أسفل القائمة (#omranSidebarFoot): بلا صندوق أبدًا، وخطّ رفيع فوقه من ١٢٪ إلى ١٢٪.
+   ③ أزرار الشريط: نصّ وأيقونة rgba(255,255,255,.86) بلا خلفيّة ولا إطار؛ عند المرور أبيض متوهّج (نصّ وأيقونة)، بلا صندوق.
+   ④ «محادثة جديدة»: بلا إطار ولا خلفيّة ولا ظلّ؛ النصّ أبيض يتوهّج عند المرور، و«+» ذهبيّة تتوهّج ذهبيًّا. ══ */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter):hover,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) main:has(#chatcol:hover) > #omFrameCenter{--om-gold-line:linear-gradient(transparent,transparent); --om-dots:linear-gradient(transparent,transparent); --om-glow:linear-gradient(transparent,transparent); border-color:transparent !important; box-shadow:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omFrameCenter{background:#000 !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) .resizer::before{content:""; position:absolute; top:-13px; bottom:-13px; left:50%; width:1px; transform:translateX(-50%); pointer-events:none; z-index:0;
+  background:linear-gradient(to bottom, rgba(240,222,170,0) 0%, rgba(240,222,170,.55) 8%, rgba(240,222,170,.55) 92%, rgba(240,222,170,0) 100%);
+  box-shadow:0 0 6px rgba(240,222,170,.22), 0 0 14px rgba(240,222,170,.08);}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot#omranSidebarFoot,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot#omranSidebarFoot:is(:hover,:focus-within){position:relative; background:transparent !important; border:0 !important; box-shadow:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot::before{content:""; position:absolute; top:0; left:12%; right:12%; height:1px; pointer-events:none;
+  background:linear-gradient(90deg, rgba(240,222,170,0), rgba(240,222,170,.45), rgba(240,222,170,0));}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot :is(.omNavBtn,.omIconBtn,.omModeNav){color:rgba(255,255,255,.86) !important; background:transparent !important; border:0 !important; box-shadow:none !important; filter:none !important; transition:color .2s, text-shadow .2s, filter .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot :is(.omNavBtn,.omIconBtn,.omModeNav) svg{stroke:rgba(255,255,255,.86); transition:stroke .2s, filter .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot :is(.omNavBtn,.omIconBtn,.omModeNav):is(:hover,:focus-visible){color:#fff !important; text-shadow:0 0 8px rgba(255,255,255,.7), 0 0 16px rgba(255,255,255,.3); background:transparent !important; filter:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranSidebarFoot :is(.omNavBtn,.omIconBtn,.omModeNav):is(:hover,:focus-visible) svg{stroke:#fff; filter:drop-shadow(0 0 5px rgba(255,255,255,.8));}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn#omranNewChatBtn,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn#omranNewChatBtn:is(:hover,:focus-visible){background:transparent !important; background-image:none !important; border:0 !important; box-shadow:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn .ncLabel{color:rgba(255,255,255,.9); transition:color .2s, text-shadow .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn:is(:hover,:focus-visible) .ncLabel{color:#fff; text-shadow:0 0 8px rgba(255,255,255,.75), 0 0 18px rgba(255,255,255,.35);}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn svg{transition:filter .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranNewChatBtn:is(:hover,:focus-visible) svg{filter:drop-shadow(0 0 6px rgba(240,222,170,.9));}
+/* v-tab-glow-only (المالك ١٨ أكتوبر بصورة تبويب الكود: «بدون مستطيل، وأريد وميضًا فقط، زد من الوميض قليلًا»): تبويبات المعاينة والكود فوق
+   بلا صندوق ولا خلفيّة ولا ظلّ حول المختار أو عند المرور — الأيقونة وحدها بيضاء تتوهّج أبيض (أقوى قليلًا من توهّج «فسّر»). الكمبيوتر في الأسود وحده. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs .tab.tab:not(#om3-a):is(.active,:hover){background:transparent !important; background-image:none !important; box-shadow:none !important; border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs .tab.tab svg{transition:filter .2s, stroke .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs .tab.tab:not(#om3-a):is(.active,:hover) svg{color:#fff !important; stroke:#fff !important; filter:drop-shadow(0 0 6px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(255,255,255,.55));}
+/* المالك: «✕ الموجود بعده شيل عنه المستطيل» — زرّ طيّ اللوحة (#waCollapseBtn) وزرّ خيارات الملفّ (⋮ #btnTabsMenu) في الشريط نفسه: بلا صندوق أبدًا، والمرور وميض أبيض على الأيقونة كالتبويبات */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs :is(#waCollapseBtn,#btnTabsMenu),
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs :is(#waCollapseBtn,#btnTabsMenu):is(:hover,:focus-visible){background:transparent !important; background-image:none !important; border:0 !important; box-shadow:none !important; outline:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs :is(#waCollapseBtn,#btnTabsMenu) svg{transition:filter .2s, stroke .2s, color .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #tabs :is(#waCollapseBtn,#btnTabsMenu):is(:hover,:focus-visible) svg{color:#fff !important; stroke:#fff !important; filter:drop-shadow(0 0 6px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(255,255,255,.55));}
+/* ✕ الحقيقيّ الذي قصده المالك: أزرار شريط عارض الكود (#omranCodeViewerBar: تحرير/حفظ/إغلاق) تُبنى في app-05 بحدّ أبيض مكتوب داخل العنصر
+   وخلفيّة عند المرور (onmouseenter) — الـ!important يغلب النمط المضمّن: بلا مستطيل أبدًا، والمرور وميض أبيض على الأيقونة */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranCodeViewerBar button,
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranCodeViewerBar button:is(:hover,:focus-visible){background:transparent !important; border-color:transparent !important; box-shadow:none !important; outline:none !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranCodeViewerBar button svg{transition:filter .2s, stroke .2s, color .2s;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranCodeViewerBar button:is(:hover,:focus-visible){color:#fff !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) #omranCodeViewerBar button:is(:hover,:focus-visible) svg{color:#fff !important; stroke:#fff !important; filter:drop-shadow(0 0 6px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(255,255,255,.55));}

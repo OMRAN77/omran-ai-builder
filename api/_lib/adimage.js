@@ -91,6 +91,7 @@ const SCENES = {
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (req.method !== 'POST') { res.status(405).end('{"error":"POST only"}'); return; }
+  let giveQuota = async () => {}; // v-quota-giveback
   try {
     let b = req.body;
     if (typeof b === 'string') b = JSON.parse(b);
@@ -110,9 +111,12 @@ module.exports = async (req, res) => {
       res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' صور) لتوليد الإعلانات. جرّب غدًا.' }));
       return;
     }
+    /* v-quota-giveback (أمر المالك ٢١ أكتوبر: «الطوابع والإعلان: المحاولة الفاشلة ما تنحسب من الحصة المجانية»): الحصّة تُحجز قبل النداء
+       (طلبان متزامنان لا يتجاوزان السقف)، وكلّ فشل بعدها يردّها — refundCustom بالمدخلات نفسها (v-refund-custom). مرّة واحدة. */
+    giveQuota = async () => { giveQuota = async () => {}; await require('./_usage.js').refundCustom(b.token, null, null, 'adimage'); };
 
     const key = process.env.OPENAI_API_KEY;
-    if (!key) { res.status(500).end(JSON.stringify({ error: 'no key' })); return; }
+    if (!key) { await giveQuota(); res.status(500).end(JSON.stringify({ error: 'no key' })); return; }
 
     const cut = (x, n) => String(x == null ? '' : x).slice(0, n).replace(/["\n\r]/g, ' ').trim();
     const look = LOOKS[b.look] || LOOKS.neon;
@@ -231,12 +235,18 @@ module.exports = async (req, res) => {
         return;
       }
       const m = String((data && data.error && data.error.message) || ('HTTP ' + upstream.status)).replace(/key=[^&\s"']+/g, 'key=***');
-      res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان: ' + m }));
+      /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد المزوّد نفد أو مفتاحه — رمز unavailable («الخدمة متوقّفة مؤقّتًا» بلغة الواجهة)، لا نصّ فوترة المزوّد بالإنجليزيّة داخل message_ar */
+      await giveQuota();
+      if (require('./_videoFail.js').isOutage(upstream.ok ? 0 : upstream.status, m)) { console.error('[adimage] upstream ' + upstream.status + ': ' + m.slice(0, 200)); res.status(503).end(JSON.stringify({ error: 'unavailable' })); return; }
+      console.error('[adimage] upstream ' + upstream.status + ': ' + m.slice(0, 300)); // v-rest-fixes: نصّ المزوّد للسجلّ لا للمستخدم
+      res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان الآن — حاول مرّة أخرى.' }));
       return;
     }
     res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: gate.limit || DAILY }));
   } catch (e) {
-    const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : (e && e.message ? e.message : String(e));
+    await giveQuota();
+    console.error('[adimage] ' + (e && e.message ? e.message : String(e)));
+    const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : 'تعذّر توليد الإعلان الآن — حاول مرّة أخرى.'; // v-rest-fixes: لا نصّ تقنيّ للمستخدم
     res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));
   }
 };

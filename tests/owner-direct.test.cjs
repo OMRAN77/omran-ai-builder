@@ -142,6 +142,9 @@ test('٣. الموديل المباشر: GPT يقصّ بادئة الوسيط، 
   assert.equal(od.directRoute('claude', { GROQ_API_KEY: 'k' }), null);
   assert.equal(od.directRoute('groq', { GROQ_API_KEY: 'k' }).url, 'https://api.groq.com/openai/v1/chat/completions');
   assert.equal(od.directRoute('openai', { OPENAI_API_KEY: 'k' }).url, 'https://api.openai.com/v1/chat/completions');
+  assert.deepEqual(od.directModel('gemini', 'google/gemini-3.8-flash', {}), { model: 'gemini-3.8-flash', picked: true, def: 'gemini-flash-latest' });
+  assert.equal(od.directModel('gemini', '', {}).model, 'gemini-flash-latest');
+  assert.equal(od.directRoute('gemini', { GEMINI_API_KEY: 'k' }).url, 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions');
 });
 
 test('٤. المالك + مفتاح Groq: الطلب إلى Groq نفسه بمفتاحه، وجولة أداة كاملة عبر الجسر، والردّ يصل', async () => {
@@ -184,7 +187,7 @@ test('٥. المالك + مفتاح Groq مرفوض (401) → سبب الفشل�
     ] });
     assert.equal(r.calls[0].url, 'https://api.groq.com/openai/v1/chat/completions');
     assert.ok(!r.calls.some((c) => /openrouter\.ai/.test(c.url)), 'لا وسيط');
-    assert.ok(r.events.some((e) => e.ownerStop === true && e.error === 'ما قدرت أردّ الحين — خطأ 401'));
+    assert.ok(r.events.some((e) => e.ownerStop === true && String(e.error).startsWith('ما قدرت أردّ الحين — خطأ 401') /* v-why: وبعده سبب المزوّد */));
     assert.equal(r.text, '');
   } finally { delete process.env.GROQ_API_KEY; }
 });
@@ -360,4 +363,19 @@ test('١٤. Groq المباشر: reasoning في البثّ يصل المالك t
     assert.equal(r.text, 'الناتج ١٢');
     assert.ok(!r.text.includes('أراجع'));
   } finally { delete process.env.GROQ_API_KEY; }
+});
+
+test('١٤. المالك + مفتاح Gemini: الطلب إلى Google مباشرة بموديله، لا الوسيط — رصيد AI Studio يصل المحادثة', async () => {
+  process.env.GEMINI_API_KEY = 'g-test';
+  try {
+    const r = await run({ user: 'omran', provider: 'gemini', model: 'google/gemini-3.8-flash', messages: ask('هلا'), script: [
+      () => oaText('من جيمناي', 'gemini-3.8-flash'),
+    ] });
+    assert.equal(r.calls.length, 1);
+    assert.equal(r.calls[0].url, 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions');
+    assert.equal(r.calls[0].headers.Authorization, 'Bearer g-test');
+    assert.equal(r.calls[0].body.model, 'gemini-3.8-flash');
+    assert.ok(!r.calls.some((c) => /openrouter/.test(c.url)), 'لا وسيط');
+    assert.equal(r.text, 'من جيمناي');
+  } finally { delete process.env.GEMINI_API_KEY; }
 });

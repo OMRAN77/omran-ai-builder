@@ -485,10 +485,82 @@ async function readImageFile(input, opts) {
   } catch (e) { return { error: 'تعذّر جلب الصورة: ' + String((e && e.message) || e).slice(0, 120) }; }
 }
 
+/* ---------- خريطة الكود (v-codemap) ----------
+   طلب المالك ١٠ أكتوبر: «المزوّدون يكون عندهم كافّة المعلومات… معلومات الكود من الصفر». الخريطة api/_lib/codemap.json
+   يولّدها scripts/codemap.mjs من الملفّات نفسها ويعيد توليدها codemap.yml بعد كلّ دمج: لكلّ ملفّ غرضه وحجمه ودوالّه
+   وصادراته وأدواته. what=map: بلا path = كلّ المجلّدات بملفّاتها · path=مجلّد = ملفّاته بأغراضها · path=ملفّ = دوالّه
+   · query = بحث في الخريطة. محلّيّة بلا نداء GitHub — فلا حدّ معدّل ولا مفتاح. */
+const MAP_MAX = 28000;
+const MAP_REPO_RE = /^omran-ai-builder$/i;
+let __codemap = null;
+function loadCodemap() {
+  if (__codemap) return __codemap;
+  try { __codemap = require('./codemap.json'); } catch (e) { __codemap = { files: [] }; }
+  return __codemap;
+}
+const mapGroup = (p) => { const s = p.split('/'); return s.length === 1 ? '(الجذر)' : (s[0] === 'api' && s[1] === '_lib' && s.length > 2) ? 'api/_lib' : s[0] === '.github' ? '.github/workflows' : s[0]; };
+const mapLine = (e) => e.p + ' (~' + e.n + ' سطر)' + (e.d ? ' — ' + e.d : '') + (e.t && e.t.length ? ' · أدوات: ' + e.t.join(', ') : '');
+function mapEntry(e) {
+  const out = ['### ' + e.p, 'الحجم: ~' + e.n + ' سطر', 'الغرض: ' + (e.d || '(بلا تعليق رأس — اقرأ الملفّ)')];
+  if (e.t && e.t.length) out.push('أدوات معرّفة فيه: ' + e.t.join(', '));
+  if (e.x && e.x.length) out.push('الصادرات: ' + e.x.join(', '));
+  if (e.f && e.f.length) out.push('الدوالّ (' + e.f.length + '): ' + e.f.join(', '));
+  if (e.u && e.u.length) out.push('عناصر الواجهة (' + e.u.length + ' — id«نصّه»): ' + e.u.join(' · '));
+  out.push('', 'الموضع الدقيق: read_github مع path=' + e.p + ' وquery=اسم الدالّة، ثمّ from= السطر.');
+  return out.join('\n');
+}
+function codeMap(t, input) {
+  const m = loadCodemap();
+  if (!t || !MAP_REPO_RE.test(t.repo || '')) return 'خريطة الكود لمستودع التطبيق وحده (OMRAN77/omran-ai-builder) — لغيره اقرأ الشجرة بلا what.';
+  if (!m.files || !m.files.length) return 'خريطة الكود غير موجودة في هذا النشر — اقرأ الشجرة بلا what=map.';
+  const files = m.files;
+  const p = String(t.path || '').replace(/^\/+|\/+$/g, '');
+  const q = String((input && input.query) || '').trim().toLowerCase();
+  const head = 'خريطة الكود — ' + files.length + ' ملفًّا' + (m.tests ? ' + ' + m.tests + ' اختبارًا في tests/' : '') + ' (مولَّدة آليًّا من main بعد كلّ دمج؛ الأحجام تقريبيّة).';
+  let list = p ? files.filter((e) => e.p === p || e.p.indexOf(p + '/') === 0) : files;
+  if (p && !list.length) return head + '\nلا شيء في الخريطة تحت «' + p + '» — ملفّ جديد لم تُعِد الخريطة توليده بعد، أو المسار خطأ: اقرأه بلا what.';
+  if (q) {
+    const all = q.split(/\s+/).filter(Boolean).slice(0, 8);
+    const long = all.filter((w) => w.length >= 3); // «عن» و«في» تطابق كلّ شيء
+    const words = long.length ? long : all;
+    const scored = list.map((e) => {
+      const hay = (e.p + ' ' + (e.d || '') + ' ' + (e.t || []).join(' ') + ' ' + (e.x || []).join(' ') + ' ' + (e.f || []).join(' ') + ' ' + (e.u || []).join(' ')).toLowerCase();
+      return { e, s: (all.length > 1 && hay.indexOf(q) !== -1 ? 10 : 0) + words.filter((w) => hay.indexOf(w) !== -1).length };
+    }).filter((r) => r.s > 0).sort((a, b) => b.s - a.s);
+    if (!scored.length) return head + '\nلا تطابق في الخريطة لـ«' + q + '» — ابحث في محتوى الملفّات: read_github مع query بلا what.';
+    const out = [head, 'نتائج «' + q + '» (' + scored.length + '):'];
+    for (const r of scored.slice(0, 30)) {
+      const e = r.e;
+      const names = [].concat(e.t || [], e.x || [], e.f || [], e.u || []);
+      const exact = names.filter((n) => n.toLowerCase().indexOf(q) !== -1);
+      const hits = exact.length ? exact : names.filter((n) => words.some((w) => n.toLowerCase().indexOf(w) !== -1));
+      out.push('- ' + mapLine(e) + (hits.length ? ' · يطابق: ' + Array.from(new Set(hits)).slice(0, 12).join(', ') : ''));
+    }
+    return out.join('\n').slice(0, MAP_MAX);
+  }
+  if (list.length === 1 && list[0].p === p) return head + '\n\n' + mapEntry(list[0]);
+  const groups = new Map();
+  for (const e of list) { const g = mapGroup(e.p); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(e); }
+  const full = [head];
+  for (const [g, es] of groups) { full.push('', '## ' + g + ' (' + es.length + ')'); for (const e of es) full.push('- ' + mapLine(e)); }
+  const text = full.join('\n');
+  if (text.length <= MAP_MAX) return text;
+  // كبيرة على ردّ واحد: الملفّات المحوريّة بأغراضها، والبقيّة بأسمائها — والتفصيل بـpath=المجلّد.
+  const short = [head, 'كبيرة على ردّ واحد: المحوريّة بأغراضها والبقيّة بأسمائها — path=المجلّد يعطي أغراض ملفّاته، وpath=الملفّ دوالّه.'];
+  for (const [g, es] of groups) {
+    short.push('', '## ' + g + ' (' + es.length + ')');
+    for (const e of es.filter((x) => x.k)) short.push('- ' + mapLine(e));
+    const rest = es.filter((x) => !x.k).map((x) => x.p.split('/').pop());
+    if (rest.length) short.push('  ' + rest.join(' · '));
+  }
+  return short.join('\n').slice(0, MAP_MAX);
+}
+
 async function readGithub(input, opts) {
   const t = parseTarget(input);
   if (!t) return 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ أو pull أو issue أو commits، أو owner/repo مع path (وwhat=commits لآخر الدفعات)، أو مع query للبحث.';
   const query = input && typeof input === 'object' ? String(input.query || '').trim() : '';
+  if (input && typeof input === 'object' && String(input.what || '').toLowerCase() === 'map') return codeMap(t, input); // v-codemap
   try {
     if (query) return await readSearch(t, opts, query, input && input.limit);
     if (t.kind === 'pr') return await readPR(t, opts);
@@ -536,4 +608,5 @@ async function fetchRepoZip(target, opts) {
 }
 
 module.exports = { imagePathOf, readImageFile, // v-owner-see-repo-img
+  codeMap, loadCodemap, // v-codemap
   parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, fileExcerpt, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, enclosingHead, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP, SEARCH_FILE_BYTES_MAX, SEARCH_SKIP_RE };

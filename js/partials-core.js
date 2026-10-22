@@ -5,7 +5,7 @@
   var S = document.currentScript;
   var H = String.raw`<div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:380px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); position:relative;">
-    <button type="button" id="authCloseBtn" aria-label="إغلاق" style="position:absolute; top:calc(10px + env(safe-area-inset-top,0px)); inset-inline-start:12px; width:34px; height:34px; border-radius:50%; background:rgba(128,128,128,.14); border:none; color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+    <button type="button" id="authCloseBtn" aria-label="إغلاق" data-i18n="[aria-label]closeTitle" style="position:absolute; top:calc(10px + env(safe-area-inset-top,0px)); inset-inline-start:12px; width:34px; height:34px; border-radius:50%; background:rgba(128,128,128,.14); border:none; color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
     <!-- v-simple-login: خانتان وزرّ ورابط، ثمّ جوجل و«إنشاء حساب جديد» — بلا عنوان ولا تبويبات ولا إيميل اختياريّ -->
     <h2 id="authHeading" style="display:none; margin:4px 0 18px; text-align:center; font-size:18px;"></h2>
     <div style="display:none;">
@@ -13,11 +13,13 @@
       <button type="button" class="btn" id="authTabSignup" data-i18n="authTabSignup">حساب جديد</button>
     </div>
     <form id="authForm" autocomplete="on" onsubmit="return false;" style="margin-top:34px;">
-    <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
+    <!-- v-auth-a11y: خانة الاسم الفارغة بـdir=auto تصير ltr (النصّ الدليليّ لا يُحسب) فيذهب «اسم المستخدم» يسارًا في العربيّ؛ المكتوب يبقى على dir=auto -->
+    <style id="authRtlCss">html[dir="rtl"] #authUsername:placeholder-shown{direction:rtl}</style>
+    <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" data-i18n="[aria-label]authIdPlaceholder" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
     <div id="authPasswordRow" style="display:block; position:relative; margin-bottom:12px;">
       <span id="authPasswordLabelText" style="display:none;" data-i18n="authPasswordLabel">كلمة المرور</span>
-      <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" style="height:50px; padding:0 44px 0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
-      <button type="button" id="authTogglePassBtn" title="👁" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;">🙈</button>
+      <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" data-i18n="[aria-label]authPasswordLabel" style="height:50px; padding-block:0; padding-inline:14px 44px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
+      <button type="button" id="authTogglePassBtn" aria-label="إظهار كلمة المرور" data-i18n="[aria-label]authShowPass" aria-pressed="false" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
     </div>
     <label id="authRememberRow" style="display:none;"><input type="checkbox" id="authRememberMe" checked></label>
     <div id="authInfoMsg" style="display:none; font-size:12px; color:var(--accent,#6b7280); margin-bottom:6px; text-align:center;"></div>
@@ -38,11 +40,13 @@
     </div>
     </form>
     <div id="authAltBlock" style="margin-top:34px; display:flex; flex-direction:column; gap:12px;">
-    <button type="button" id="authGoogleBtn" title="Continue with Google" style="width:100%; height:48px; border-radius:999px; border:none; background:rgba(128,128,128,.16); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size:15px; font-weight: var(--w-bold); color:var(--text);">
+    <button type="button" id="authGoogleBtn" title="المتابعة عبر Google" data-i18n-title="authGoogleBtn" style="width:100%; height:48px; border-radius:999px; border:none; background:rgba(128,128,128,.16); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size:15px; font-weight: var(--w-bold); color:var(--text);">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
       <span data-i18n="authGoogleBtn">المتابعة بجوجل</span>
     </button>
     <button type="button" id="authSwitchBtn" style="width:100%; height:48px; border-radius:999px; border:1px solid rgba(128,128,128,.5); background:transparent; color:var(--text); cursor:pointer; font-size:15px; font-weight: var(--w-bold);" data-i18n="authCreateAccount">إنشاء حساب جديد</button>
+    <!-- v-signup-forgot (المالك ٢٠ أكتوبر): في شاشة التسجيل، تحت «عندي حساب — تسجيل الدخول»، رابط «نسيت اسم المستخدم أو كلمة المرور؟» يفتح الاسترجاع نفسه -->
+    <a href="#" id="authSignupForgotLink" style="display:none; text-align:center; font-size:14px; font-weight:700; color:var(--text); text-decoration:none;" data-i18n="authForgotIdLink">نسيت اسم المستخدم أو كلمة المرور؟</a>
     </div>
 
     <div id="authEmailOtpSection" style="display:none; margin-top:14px;">
@@ -109,7 +113,7 @@
 
     <div class="mini-mic-field-row" id="videoMakerActorRow" style="margin-top:12px; display:none;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="videoActorSpeechLabel">🗣️ شو يقول الممثل؟ (بالحرف)</label>
-      <textarea id="videoMakerActorSpeech" rows="2" style="width:100%;" maxlength="300" data-i18n-placeholder="videoActorSpeechPlaceholder" placeholder="مثال: هلا والله! حياكم في تطبيق عمران AI، أقوى منصة ذكاء اصطناعي"></textarea>
+      <textarea id="videoMakerActorSpeech" rows="2" style="width:100%;" maxlength="300" data-i18n-placeholder="videoActorSpeechPlaceholder" placeholder="مثال: هلا والله! حياكم في تطبيق om ai، أقوى منصة ذكاء اصطناعي"></textarea>
       <button type="button" class="mini-mic-btn" data-target="videoMakerActorSpeech" title="🎤" data-i18n-title="micTitle">🎤</button>
     </div>
     <!-- v-actor-lipsync: الكلام يُنطق بصوت إماراتيّ أصيل — رجل أو امرأة حسب الممثّل -->
@@ -175,9 +179,15 @@
     </div>
     <p id="videoMakerHeroVeoNote" style="display:none; font-size:11.5px; color:#e8a13c; margin-top:10px;" data-i18n="videoMakerHeroVeoNote">ℹ️ صورة البطل تعمل مع محرّك «فيديو بالذكاء الاصطناعي» فقط — المحرّك السينمائيّ لا يقبل صورة في وضع الفيلم.</p>
 
-    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size: var(--fs-3); cursor:pointer;">
+    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size: var(--fs-3); cursor:pointer; flex-wrap:wrap;">
       <input type="checkbox" id="videoMakerNarrationToggle">
       <span data-i18n="videoMakerNarrationToggleLabel">🎙️ إضافة تعليق صوتي (صوت مُولّد)</span>
+      <!-- v-video-voice-speed: سرعة التعليق جنب «إضافة تعليق صوتي» (عادي / سريع / سريع جدًّا) — الافتراضيّ «سريع»؛ مفاتيح الترجمة نفسها لسرعة صوت مها (٤ لغات→١٤) -->
+      <select id="videoMakerNarrationSpeed" title="سرعة الصوت" data-i18n-title="voiceSpeedLabel" aria-label="سرعة الصوت" data-i18n="[aria-label]voiceSpeedLabel" style="margin-inline-start:auto; font-size:12.5px; padding:5px 10px; border-radius:8px; cursor:pointer; background:var(--panel2,#161616); color:var(--text,#eef0f6); border:1px solid var(--border,#333);">
+        <option value="normal" data-i18n="voiceSpeedNormal">عادي</option>
+        <option value="fast" data-i18n="voiceSpeedFast" selected>سريع</option>
+        <option value="xfast" data-i18n="voiceSpeedXFast">سريع جدًا</option>
+      </select>
     </label>
     <!-- اختيار الصوت: ذكر/أنثى -->
     <div id="videoMakerVoiceGenderRow" style="display:none; margin-top:8px; margin-bottom:2px; gap:16px; flex-wrap:wrap;" class="mini-mic-field-row">
@@ -330,12 +340,19 @@
         <option value="bright" data-i18n="designAiLightingBright">ساطعة</option>
         <option value="dim" data-i18n="designAiLightingDim">خافتة/ليلية</option>
         <!-- v-decor-light-sheet (طلب المالك ١٤ أكتوبر ٢٠٢٦): الستة الباقية من لوحة الإضاءة -->
-        <option value="natural" data-en="Natural">طبيعية</option>
-        <option value="neutral" data-en="Neutral white">أبيض محايد</option>
-        <option value="golden" data-en="Golden glow">وهج ذهبي</option>
-        <option value="purple" data-en="Purple night">ليلة بنفسجية</option>
-        <option value="sunset" data-en="Sunset">غروب</option>
-        <option value="moon" data-en="Moonlight">قمرية</option>
+        <option value="natural" data-i18n="designAiLightingNatural" data-en="Natural">طبيعية</option>
+        <option value="neutral" data-i18n="designAiLightingNeutral" data-en="Neutral white">أبيض محايد</option>
+        <option value="golden" data-i18n="designAiLightingGolden" data-en="Golden glow">وهج ذهبي</option>
+        <option value="purple" data-i18n="designAiLightingPurple" data-en="Purple night">ليلة بنفسجية</option>
+        <option value="sunset" data-i18n="designAiLightingSunset" data-en="Sunset">غروب</option>
+        <option value="moon" data-i18n="designAiLightingMoon" data-en="Moonlight">قمرية</option>
+        <option value="emerald" data-i18n="designAiLightingEmerald">زمردية هادئة</option>
+        <option value="turquoise" data-i18n="designAiLightingTurquoise">فيروزية ساحلية</option>
+        <option value="rose" data-i18n="designAiLightingRose">وردية ناعمة</option>
+        <option value="burgundy" data-i18n="designAiLightingBurgundy">خمرية سينمائية</option>
+        <option value="neon" data-i18n="designAiLightingNeon">نيون ثنائي</option>
+        <option value="cinematic" data-i18n="designAiLightingCinematic">سينمائية متوازنة</option>
+        <option value="aurora" data-i18n="designAiLightingAurora">ألوان الشفق</option>
       </select>
     </div>
 
@@ -348,6 +365,19 @@
         <option value="simple" data-i18n="designAiFurnitureSimple">بسيط</option>
         <option value="luxury" data-i18n="designAiFurnitureLuxury">فاخر</option>
         <option value="bohemian" data-i18n="designAiFurnitureBohemian">بوهيمي</option>
+        <!-- v-decor-18 (المالك ١٦ أكتوبر): سبعة عشر خيارًا كالإضاءة، ولكلّ خيار صورته -->
+        <option value="scandinavian" data-i18n="designAiFurnitureScandinavian" data-en="Scandinavian">سكندنافي</option>
+        <option value="japandi" data-i18n="designAiFurnitureJapandi" data-en="Japandi">جابندي</option>
+        <option value="industrial" data-i18n="designAiFurnitureIndustrial" data-en="Industrial">صناعي</option>
+        <option value="midcentury" data-i18n="designAiFurnitureMidcentury" data-en="Mid-century">ميدسنشري</option>
+        <option value="artdeco" data-i18n="designAiFurnitureArtdeco" data-en="Art Deco">آرت ديكو</option>
+        <option value="rattan" data-i18n="designAiFurnitureRattan" data-en="Rattan">خيزران وراتان</option>
+        <option value="velvet" data-i18n="designAiFurnitureVelvet" data-en="Velvet">مخمل فاخر</option>
+        <option value="leather" data-i18n="designAiFurnitureLeather" data-en="Leather">جلد كلاسيكي</option>
+        <option value="majlis" data-i18n="designAiFurnitureMajlis" data-en="Arabic floor seating">جلسة أرضية عربية</option>
+        <option value="modular" data-i18n="designAiFurnitureModular" data-en="Modular sectional">كنب زاوية مودولار</option>
+        <option value="curved" data-i18n="designAiFurnitureCurved" data-en="Curved sofa">كنب منحني</option>
+        <option value="rustic" data-i18n="designAiFurnitureRustic" data-en="Rustic wood">ريفي خشبي</option>
       </select>
     </div>
 
@@ -359,6 +389,20 @@
         <option value="marble" data-i18n="designAiFlooringMarble">رخام</option>
         <option value="ceramic" data-i18n="designAiFlooringCeramic">سيراميك</option>
         <option value="carpet" data-i18n="designAiFlooringCarpet">سجاد</option>
+        <!-- v-decor-18 (المالك ١٦ أكتوبر): سبعة عشر خيارًا كالإضاءة، ولكلّ خيار صورته -->
+        <option value="herringbone" data-i18n="designAiFlooringHerringbone" data-en="Herringbone parquet">باركيه سمكة</option>
+        <option value="darkwood" data-i18n="designAiFlooringDarkwood" data-en="Dark wood">خشب داكن</option>
+        <option value="lightwood" data-i18n="designAiFlooringLightwood" data-en="Light wood">خشب فاتح</option>
+        <option value="blackmarble" data-i18n="designAiFlooringBlackmarble" data-en="Black marble">رخام أسود</option>
+        <option value="travertine" data-i18n="designAiFlooringTravertine" data-en="Travertine">ترافرتين</option>
+        <option value="terrazzo" data-i18n="designAiFlooringTerrazzo" data-en="Terrazzo">تيرازو</option>
+        <option value="concrete" data-i18n="designAiFlooringConcrete" data-en="Polished concrete">خرسانة مصقولة</option>
+        <option value="porcelain" data-i18n="designAiFlooringPorcelain" data-en="Large porcelain">بورسلان كبير</option>
+        <option value="moroccan" data-i18n="designAiFlooringMoroccan" data-en="Moroccan tiles">بلاط مغربي</option>
+        <option value="hexagon" data-i18n="designAiFlooringHexagon" data-en="Hexagon tiles">بلاط سداسي</option>
+        <option value="checker" data-i18n="designAiFlooringChecker" data-en="Checkerboard">أبيض وأسود</option>
+        <option value="stone" data-i18n="designAiFlooringStone" data-en="Natural stone">حجر طبيعي</option>
+        <option value="persianrug" data-i18n="designAiFlooringPersianrug" data-en="Persian rug">سجاد فارسي</option>
       </select>
     </div>
 
@@ -370,6 +414,20 @@
         <option value="dark" data-i18n="designAiFabricDark">داكنة</option>
         <option value="neutral" data-i18n="designAiFabricNeutral">محايدة</option>
         <option value="bold" data-i18n="designAiFabricBold">جريئة</option>
+        <!-- v-decor-18 (المالك ١٦ أكتوبر): سبعة عشر خيارًا كالإضاءة، ولكلّ خيار صورته -->
+        <option value="cream" data-i18n="designAiFabricCream" data-en="Cream">كريمي</option>
+        <option value="navy" data-i18n="designAiFabricNavy" data-en="Navy">كحلي</option>
+        <option value="emerald" data-i18n="designAiFabricEmerald" data-en="Emerald">زمردي</option>
+        <option value="mustard" data-i18n="designAiFabricMustard" data-en="Mustard">خردلي</option>
+        <option value="terracotta" data-i18n="designAiFabricTerracotta" data-en="Terracotta">تيراكوتا</option>
+        <option value="blush" data-i18n="designAiFabricBlush" data-en="Blush pink">وردي بودري</option>
+        <option value="sage" data-i18n="designAiFabricSage" data-en="Sage green">أخضر مريمي</option>
+        <option value="charcoal" data-i18n="designAiFabricCharcoal" data-en="Charcoal">فحمي</option>
+        <option value="burgundy" data-i18n="designAiFabricBurgundy" data-en="Burgundy">عنابي</option>
+        <option value="teal" data-i18n="designAiFabricTeal" data-en="Teal">أزرق مخضر</option>
+        <option value="camel" data-i18n="designAiFabricCamel" data-en="Camel">جملي</option>
+        <option value="lavender" data-i18n="designAiFabricLavender" data-en="Lavender">لافندر</option>
+        <option value="skyblue" data-i18n="designAiFabricSkyblue" data-en="Sky blue">سماوي</option>
       </select>
     </div>
 
@@ -381,6 +439,20 @@
         <option value="beige" data-i18n="designAiWallColorBeige">بيج</option>
         <option value="gray" data-i18n="designAiWallColorGray">رمادي</option>
         <option value="bold" data-i18n="designAiWallColorBold">جريئة</option>
+        <!-- v-decor-18 (المالك ١٦ أكتوبر): سبعة عشر خيارًا كالإضاءة، ولكلّ خيار صورته -->
+        <option value="ivory" data-i18n="designAiWallColorIvory" data-en="Ivory">عاجي</option>
+        <option value="greige" data-i18n="designAiWallColorGreige" data-en="Greige">رمادي بيج</option>
+        <option value="taupe" data-i18n="designAiWallColorTaupe" data-en="Taupe">توبي</option>
+        <option value="sage" data-i18n="designAiWallColorSage" data-en="Sage green">أخضر مريمي</option>
+        <option value="olive" data-i18n="designAiWallColorOlive" data-en="Olive">زيتي</option>
+        <option value="navy" data-i18n="designAiWallColorNavy" data-en="Navy">كحلي</option>
+        <option value="forest" data-i18n="designAiWallColorForest" data-en="Forest green">أخضر غامق</option>
+        <option value="terracotta" data-i18n="designAiWallColorTerracotta" data-en="Terracotta">تيراكوتا</option>
+        <option value="blush" data-i18n="designAiWallColorBlush" data-en="Blush pink">وردي ناعم</option>
+        <option value="lightblue" data-i18n="designAiWallColorLightblue" data-en="Light blue">أزرق فاتح</option>
+        <option value="charcoal" data-i18n="designAiWallColorCharcoal" data-en="Charcoal">فحمي</option>
+        <option value="mocha" data-i18n="designAiWallColorMocha" data-en="Mocha">موكا</option>
+        <option value="black" data-i18n="designAiWallColorBlack" data-en="Matte black">أسود مطفي</option>
       </select>
     </div>
 
@@ -391,6 +463,21 @@
         <option value="simple" data-i18n="designAiCurtainsSimple">بسيطة</option>
         <option value="luxury" data-i18n="designAiCurtainsLuxury">فخمة</option>
         <option value="remove" data-i18n="designAiCurtainsRemove">بدون ستائر</option>
+        <!-- v-decor-18 (المالك ١٦ أكتوبر): سبعة عشر خيارًا كالإضاءة، ولكلّ خيار صورته -->
+        <option value="sheer" data-i18n="designAiCurtainsSheer" data-en="Sheer">شيفون شفاف</option>
+        <option value="linen" data-i18n="designAiCurtainsLinen" data-en="Linen">كتان طبيعي</option>
+        <option value="velvet" data-i18n="designAiCurtainsVelvet" data-en="Velvet">مخمل</option>
+        <option value="blackout" data-i18n="designAiCurtainsBlackout" data-en="Blackout">معتمة</option>
+        <option value="roman" data-i18n="designAiCurtainsRoman" data-en="Roman shades">ستائر رومانية</option>
+        <option value="roller" data-i18n="designAiCurtainsRoller" data-en="Roller blinds">رول</option>
+        <option value="wooden" data-i18n="designAiCurtainsWooden" data-en="Wooden blinds">شيش خشبي</option>
+        <option value="vertical" data-i18n="designAiCurtainsVertical" data-en="Vertical blinds">شرائح عمودية</option>
+        <option value="wave" data-i18n="designAiCurtainsWave" data-en="Wave curtains">ويفي</option>
+        <option value="double" data-i18n="designAiCurtainsDouble" data-en="Double layer">طبقتين</option>
+        <option value="embroidered" data-i18n="designAiCurtainsEmbroidered" data-en="Embroidered">مطرزة عربية</option>
+        <option value="motorized" data-i18n="designAiCurtainsMotorized" data-en="Motorized">كهربائية ذكية</option>
+        <option value="bamboo" data-i18n="designAiCurtainsBamboo" data-en="Bamboo shades">خيزران</option>
+        <option value="pelmet" data-i18n="designAiCurtainsPelmet" data-en="With pelmet">بكورنيش</option>
       </select>
     </div>
 
@@ -700,21 +787,24 @@
     <button type="button" class="btn primary" id="portraitStyleGenerateBtn" style="display:none;" data-i18n="portraitGenerateBtn">✨ حوّلها</button>
 
     <div id="portraitStyleStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
-    <div id="portraitCompareWrap" style="display:none; position:relative; margin-top:14px; border-radius:var(--r-2); overflow:hidden; background:#000; width:100%; user-select:none;">
+    <div id="portraitCompareWrap" style="display:none; position:relative; margin:14px auto 0; border-radius:var(--r-2); overflow:hidden; background:#000; width:fit-content; max-width:100%; user-select:none;">
       <!-- v-compare-fit: قصّة «الصورة ما تطلع كاملة» — النتيجة كانت تُمدَّد قسرًا
            لمقاس صورة الأصل (عرض بكسل + height:100%) فتتشوّه وتنقص أطرافها حين
-           تختلف نسبة الأبعاد. object-fit:contain يعرضها كاملة على خلفية سوداء. -->
-      <img id="portraitCompareBefore" style="display:block; width:100%; max-height:70vh; object-fit:contain; background:#000;">
-      <div id="portraitCompareAfterWrap" style="position:absolute; top:0; left:0; height:100%; overflow:hidden; width:50%;">
-        <img id="portraitStyleResult" style="position:absolute; top:0; left:0; height:100%; object-fit:contain; background:#000;">
+           تختلف نسبة الأبعاد. object-fit:contain يعرضها كاملة على خلفية سوداء.
+           v-pcompare-box (تدقيق ١٨ أكتوبر: «بعد» مزاحة عن الأصل): الإطار بعرض صورة الأصل (fit-content) والطبقة بملئه تُقصّ بـclip-path،
+           والنتيجة contain في الصندوق نفسه — فتنطبق الصورتان والتسميتان والمقبض على الصورة لا على هامش أسود. -->
+      <img id="portraitCompareBefore" style="display:block; width:auto; max-width:100%; max-height:70vh; object-fit:contain; background:#000;">
+      <div id="portraitCompareAfterWrap" style="position:absolute; inset:0; overflow:hidden;">
+        <img id="portraitStyleResult" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; background:#000;">
       </div>
       <div id="portraitCompareDivider" style="position:absolute; top:0; bottom:0; left:50%; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.7); pointer-events:none;">
         <!-- v-compare-drag: مقبض دائريّ فوق الصورة نفسها — السحب على الحاوية (compareWrap في
              app-12-studios.js) لا هذا العنصر تحديدًا؛ هو مؤشّر بصريّ فقط بلا مستمع خاصّ به. -->
         <div id="portraitCompareHandle" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414;">↔</div>
       </div>
-      <span style="position:absolute; top:6px; left:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareBeforeLabel">قبل</span>
-      <span style="position:absolute; top:6px; right:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareAfterLabel">بعد</span>
+      <!-- v-pcompare-sides (تدقيق ١٨ أكتوبر: التسمية معكوسة): طبقة النتيجة من اليسار، فـ«بعد» يسارًا معها و«قبل» يمينًا -->
+      <span style="position:absolute; top:6px; right:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareBeforeLabel">قبل</span>
+      <span style="position:absolute; top:6px; left:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareAfterLabel">بعد</span>
     </div>
     <a id="portraitStyleDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-portrait-style.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
     <button type="button" id="portraitShareBtn" style="display:none; margin-top:8px; width:100%;" class="btn" data-i18n="portraitShareBtn">↗️ مشاركة (واتساب/ستوري)</button>
@@ -738,12 +828,12 @@
 
     <div id="fashionAiImagePane">
       <input type="file" id="fashionAiFileInput" accept="image/*" style="display:none;">
-      <div id="fashionAiDropZone" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:150px; margin-top:12px; border:1.5px dashed rgba(212,175,55,.45); border-radius:14px; background:rgba(212,175,55,.04); cursor:pointer; text-align:center; padding:14px;">
-        <div style="font-size:26px;">📸</div>
-        <div style="font-size:14px; font-weight:600;" data-i18n="fashionDropTitle">ارفعي صورتك كاملة</div>
-        <div style="font-size:11.5px; color:var(--muted);" data-i18n="fashionDropHint">من الرأس إلى القدم · إضاءة واضحة</div>
-        <button type="button" class="btn" id="fashionAiFileBtn" style="width:auto; white-space:nowrap; border-color:rgba(212,175,55,.5);" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
-        <span id="fashionAiFileName" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
+      <div id="fashionAiDropZone" class="omUpArt omUpFashion om3-skip" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:150px; margin-top:12px; border:1.5px dashed rgba(212,175,55,.45); border-radius:14px; background:rgba(212,175,55,.04); cursor:pointer; text-align:center; padding:14px;">
+        <div class="omUpIco" style="font-size:26px;">📸</div>
+        <div class="omUpT" style="font-size:14px; font-weight:600;" data-i18n="fashionDropTitle">ارفعي صورتك كاملة</div>
+        <div class="omUpH" style="font-size:11.5px; color:var(--muted);" data-i18n="fashionDropHint">من الرأس إلى القدم · إضاءة واضحة</div>
+        <button type="button" class="btn omUpB" id="fashionAiFileBtn" style="width:auto; white-space:nowrap; border-color:rgba(212,175,55,.5);" data-i18n="uploadPlateBtn">اختيار الملف</button>
+        <span id="fashionAiFileName" class="omUpN" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
       </div>
       <img id="fashionAiSourcePreview" style="display:none; width:100%; margin-top:10px; border-radius:var(--r-2); max-height:220px; object-fit:contain; background:#000;">
     </div>
@@ -821,6 +911,7 @@
         <option value="traditional" data-i18n="fashionAiStyleTraditional">🌴 خليجي تقليدي</option>
         <option value="kaftan" data-en="👘 Kaftan">👘 قفطان مغربي</option>
         <option value="jalabiya" data-en="🌙 Jalabiya">🌙 جلابية</option>
+        <option value="mukhawara" data-en="🪡 Emirati mukhawar">🪡 مخورة إماراتية</option>
         <option value="hijabchic" data-en="🧕 Hijab chic">🧕 محجبة عصرية</option>
         <option value="oldmoney" data-en="🎩 Old money">🎩 أولد موني</option>
         <option value="streetwear" data-en="🛹 Streetwear">🛹 ستريت وير</option>
@@ -962,10 +1053,13 @@
       .stCmp{position:relative; display:flex; flex-direction:column; border:1px solid var(--border,#2a2a30); border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;}
       .stCmp input{position:absolute; opacity:0; pointer-events:none;}
       .stCmp img{width:100%; aspect-ratio:3/4; object-fit:cover; background:linear-gradient(160deg,#23232a,#101014); display:block;}
-      .stCmp span{font-size:12px; font-weight:700; color:#eef0f6; padding:8px 6px 9px; text-align:center; line-height:1.3;}
+      /* v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي»): الاسم فوق أسفل الصورة بتدرّج، لا شريط تحتها */
+      .stCmp span{position:absolute; inset:auto 0 0 0; pointer-events:none; font-size:12px; font-weight:700; color:#eef0f6; padding:20px 6px 7px; text-align:center; line-height:1.3; text-shadow:0 1px 3px rgba(0,0,0,.9); background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));}
       .stCmp.on{border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);}
       .stCmp.on span{color:#d4af37;}
       .stCmp.on::after{content:"✓"; position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center;}
+      /* v-studio-compare-sticky (تدقيق ١٨ أكتوبر: الزرّ بعد ١٠٤ بطاقة، ~٥٠٠٠px على الجوّال): لاصق أسفل النافذة ما دامت القائمة مفتوحة */
+      #studioAiCompareMore[open] #studioAiCompareBtn{position:sticky; bottom:8px; z-index:2; box-shadow:0 -6px 18px rgba(0,0,0,.45);}
       #studioAiMore{margin-top:14px; border:1px solid var(--border,#333); border-radius:var(--r-2); padding:8px 10px;}
       #studioAiMore > summary{cursor:pointer; font-size:13px; color:var(--muted);}
     </style>
@@ -974,9 +1068,9 @@
       <div id="studioAiImageAWrap" class="stSlotWrap">
         <label class="stSlotLbl" id="studioAiImageALabelEl" data-i18n="studioAiImageALabel">الصورة الأولى</label>
         <input type="file" id="studioAiFileInputA" accept="image/*" style="display:none;">
-        <div class="stSlot" id="studioAiSlotA" data-slot="A" role="button" tabindex="0">
+        <div class="stSlot omUpArt omUpStyle om3-skip" id="studioAiSlotA" data-slot="A" role="button" tabindex="0">
           <img id="studioAiSourcePreviewA" alt="" style="display:none;">
-          <div class="stSlotEmpty"><b data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small></div>
+          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="uploadPlateBtn">اختيار الملف</span><span class="omUpL" data-i18n="studioPlateLabel">ستايل</span></div>
           <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
         </div>
         <button type="button" class="btn" id="studioAiFileBtnA" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
@@ -985,9 +1079,9 @@
       <div id="studioAiImageBWrap" class="stSlotWrap" style="display:none;">
         <label class="stSlotLbl" data-i18n="studioAiImageBLabel">الصورة الثانية</label>
         <input type="file" id="studioAiFileInputB" accept="image/*" style="display:none;">
-        <div class="stSlot" id="studioAiSlotB" data-slot="B" role="button" tabindex="0">
+        <div class="stSlot omUpArt omUpStyle om3-skip" id="studioAiSlotB" data-slot="B" role="button" tabindex="0">
           <img id="studioAiSourcePreviewB" alt="" style="display:none;">
-          <div class="stSlotEmpty"><b data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small></div>
+          <div class="stSlotEmpty"><b class="omUpT" data-i18n="studioSlotAdd">📷 اضغط لإضافة صورتك</b><small class="omUpH" data-i18n="studioSlotDropHint">أو اسحبها هنا أو الصقها (Ctrl+V)</small><span class="omUpB" data-i18n="uploadPlateBtn">اختيار الملف</span><span class="omUpL" data-i18n="studioPlateLabel">ستايل</span></div>
           <button type="button" class="stSlotX" data-act="remove" aria-label="✕">✕</button>
         </div>
         <button type="button" class="btn" id="studioAiFileBtnB" style="display:none;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
@@ -1080,9 +1174,10 @@
       <img id="studioAiResult" style="display:block; width:100%; border-radius:var(--r-2); background:#000;">
       <div id="studioAiBeforeWrap" style="display:none; position:absolute; top:0; left:0; height:100%; overflow:hidden; border-right:2px solid #fff;">
         <img id="studioAiBeforeImg" style="display:block; height:100%; max-width:none;">
-        <!-- v-compare-drag-all: مقبض عند حافّة القصّ نفسها — يتبعها تلقائيًّا مع تغيّر عرض الحاوية -->
-        <div id="studioAiCompareHandle" style="position:absolute; top:50%; right:-20px; transform:translateY(-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414; pointer-events:none;">↔</div>
       </div>
+      <!-- v-compare-drag-all: مقبض عند حافّة القصّ. v-studio-handle (تدقيق ١٨ أكتوبر: نصّه مقصوص على الخطّ): كان ابن طبقة «قبل»
+           المقصوصة (overflow:hidden) بـright:-20px فيُقصّ نصفه دائمًا — صار ابن حاوية النتيجة، وupdateSliderClip يضع left عند الخطّ. -->
+      <div id="studioAiCompareHandle" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); align-items:center; justify-content:center; font-size:15px; color:#141414; pointer-events:none;">↔</div>
     </div>
 
     <a id="studioAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-studio-ai.png" data-i18n="studioAiDownloadBtn">⬇️ تحميل الصورة</a>
@@ -1114,16 +1209,20 @@
       <button type="button" class="btn iconBtn" id="religionCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
 
-    <div id="religionTabs" style="display:flex; gap:6px; overflow-x:auto; margin-top:12px; padding-bottom:4px;">
-      <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;" data-i18n="religionTabVerse">🕌 تفسير آية</button>
-      <button type="button" class="btn religionTabBtn" data-tool="hadith" style="white-space:nowrap;" data-i18n="religionTabHadith">📖 بحث حديث</button>
-      <button type="button" class="btn religionTabBtn" data-tool="dream" style="white-space:nowrap;" data-i18n="religionTabDream">🌙 تفسير الأحلام</button>
+    <div id="religionTabs" style="display:flex; gap:6px; overflow-x:auto; margin:-10px -18px -18px; padding:16px 18px 22px;">
+      <!-- v-religion-tabs (المالك ١٧ أكتوبر: «التبويبات يصير نفس فسّر» — «نفس فسّر بالضبط»، بلا فرق للمختار): صنف «فسّر» نفسه. الصفّ يبقى
+           يتمرّر (الأسماء الطويلة بالإنجليزيّة والمليالم لا تتّسع في الجوّال)، وحشوه يتّسع لوهج «فسّر» فلا يُقصّ شريطًا رماديًّا؛ والهوامش
+           السالبة تُبقي موضعه ومسافاته كما كانت -->
+
+      <button type="button" class="btn primary religionTabBtn relOn" data-tool="verse" style="white-space:nowrap;flex:1;" data-i18n="religionTabVerse">🕌 تفسير آية</button>
+      <button type="button" class="btn primary religionTabBtn" data-tool="hadith" style="white-space:nowrap;flex:1;" data-i18n="religionTabHadith">📖 بحث حديث</button>
+      <button type="button" class="btn primary religionTabBtn" data-tool="dream" style="white-space:nowrap;flex:1;" data-i18n="religionTabDream">🌙 تفسير الأحلام</button>
     </div>
 
     <div style="margin-top:14px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" id="religionInputLabel" data-i18n="religionInputLabelVerse">اكتب الآية أو رقمها (مثال: البقرة 255)</label>
       <div class="mini-mic-field-row">
-      <textarea id="religionInput" rows="3" style="width:100%; resize:vertical;" data-i18n-placeholder="religionInputPlaceholderVerse" placeholder="مثال: سورة البقرة آية 255 (آية الكرسي)"></textarea>
+      <textarea id="religionInput" rows="1" style="width:100%;"data-i18n-placeholder="religionInputPlaceholderVerse" placeholder="مثال: سورة البقرة آية 255 (آية الكرسي)"></textarea>
       <button type="button" class="mini-mic-btn" data-target="religionInput" title="🎤" data-i18n-title="micTitle">🎤</button>
       </div>
     </div>
@@ -1131,7 +1230,7 @@
     <button type="button" class="btn primary" id="religionGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="religionGenerateBtn">✨ فسّر</button>
 
     <div id="religionStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
-    <div id="religionResult" style="display:none; margin-top:14px; white-space:pre-wrap; line-height:1.9; font-size: var(--fs-3); background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:var(--r-2); padding:14px;"></div>
+    <div id="religionResult" class="msg-text" style="display:none; margin-top:14px; white-space:pre-wrap; line-height:1.9; font-size: var(--fs-3); background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:var(--r-2); padding:14px;"></div>
   </div>
 </div>
 
@@ -1153,8 +1252,10 @@
         <button type="button" class="btn" id="emailAssistVoiceBtn" data-i18n="eaVoiceBtn" style="padding:6px 12px; font-size:12.5px;">🔊 <span id="emailAssistVoiceLabel" data-i18n="voiceSummaryBtn">ملخص صوتي</span></button>
         <button type="button" class="btn" id="emailAssistRefreshBtn" data-i18n="eaRefreshBtn" style="padding:6px 12px; font-size:12.5px;">🔄 <span id="emailAssistRefreshLabel" data-i18n="refreshBtn">تحديث</span></button>
       </div>
-      <div id="emailAssistStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
+      <p id="emailAssistDisclaimer" data-i18n="emailAsst_disclaimer" style="margin:10px 0 0; font-size:12px; color:var(--muted);">⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.</p>
+      <div id="emailAssistStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted); white-space:pre-line;"></div>
       <div id="emailAssistList" style="margin-top:14px; display:flex; flex-direction:column; gap:14px;"></div>
+      <button type="button" class="btn" id="emailAssistMoreBtn" data-i18n="emailAsst_more" style="display:none; width:100%; margin-top:14px;">المزيد</button>
     </div>
   </div>
 </div>
@@ -1169,7 +1270,7 @@
         <button type="button" class="btn iconBtn" id="stocksGlobalBtn" title="الأسواق العالمية" data-i18n-title="worldMarketsTitle" style="padding:4px 8px;">🌍</button>
         <button type="button" class="btn iconBtn" id="stocksSearchBtn" title="اختيار سهم" data-i18n-title="pickStockTitle" style="padding:4px 8px;">🔍</button>
         <button type="button" class="btn iconBtn" id="stocksLearnBtn" data-i18n-title="stocksLearnTitle" title="تعلم التداول" style="padding:4px 8px;">🎓</button>
-        <button type="button" class="btn iconBtn" id="stocksPfBtn" title="محفظتي التعليمية" style="padding:4px 8px;">💼</button>
+        <button type="button" class="btn iconBtn" id="stocksPfBtn" title="محفظتي التعليمية" data-i18n-title="stocksPfTitle" style="padding:4px 8px;">💼</button>
         <button type="button" class="btn iconBtn" id="stocksFullBtn" data-i18n-title="stocksFullTitle" title="وضع شاشة البورصة" style="padding:4px 8px;">🖥️</button>
         <button type="button" class="btn iconBtn" id="stocksCloseBtn" style="padding:4px 8px;">✕</button>
       </div>
@@ -1181,17 +1282,17 @@
       <div id="goldCard" style="display:none; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px;">
           <div style="font-size:13.5px; font-weight:500;" data-i18n="goldNowTitle">🥇 الذهب الآن</div>
-          <div><span id="goldOz" style="font-size: var(--fs-2); font-weight: var(--w-bold);"></span> <span id="goldChg" style="font-size:12px;"></span></div>
+          <div dir="ltr"><span id="goldOz" style="font-size: var(--fs-2); font-weight: var(--w-bold);"></span> <span id="goldChg" style="font-size:12px;"></span></div>
         </div>
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; font-size: var(--fs-3); text-align:center;">
-          <span>24K: <b id="goldG24"></b> AED/g</span>
-          <span>22K: <b id="goldG22"></b> AED/g</span>
-          <span>21K: <b id="goldG21"></b> AED/g</span>
+          <span>24K: <b id="goldG24"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
+          <span>22K: <b id="goldG22"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
+          <span>21K: <b id="goldG21"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
         </div>
       </div>
       <div id="globalChips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
-        <button type="button" class="btn" data-tv="OANDA:XAUUSD" style="padding:4px 10px; font-size:12px;">🥇 Gold</button>
-        <button type="button" class="btn" data-tv="TVC:USOIL" style="padding:4px 10px; font-size:12px;">🛢️ Oil</button>
+        <button type="button" class="btn" data-tv="OANDA:XAUUSD" style="padding:4px 10px; font-size:12px;">🥇 <span data-i18n="stkGold">الذهب</span></button>
+        <button type="button" class="btn" data-tv="TVC:USOIL" style="padding:4px 10px; font-size:12px;">🛢️ <span data-i18n="stkOil">النفط</span></button>
         <button type="button" class="btn" data-tv="AMEX:DIA" style="padding:4px 10px; font-size:12px;">Dow Jones</button>
         <button type="button" class="btn" data-tv="NASDAQ:QQQ" style="padding:4px 10px; font-size:12px;">NASDAQ</button>
         <button type="button" class="btn" data-tv="AMEX:SPY" style="padding:4px 10px; font-size:12px;">S&amp;P 500</button>
@@ -1234,8 +1335,8 @@
           <div id="stockExchange" style="font-size: var(--fs-5); color:var(--muted);"></div>
         </div>
         <div style="text-align:end;">
-          <div id="stockPrice" style="font-size: var(--fs-1); font-weight: var(--w-bold);"></div>
-          <div id="stockChange" style="font-size: var(--fs-3);"></div>
+          <div style="font-size: var(--fs-1); font-weight: var(--w-bold);"><span id="stockPrice" dir="ltr"></span></div>
+          <div style="font-size: var(--fs-3);"><span id="stockChange" dir="ltr"></span></div>
         </div>
       </div>
       <div id="stockDetails" style="display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--muted);"></div>

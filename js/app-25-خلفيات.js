@@ -8,7 +8,7 @@
    آخر تبديل aiapp_bgimg_rotate_at فيُكمل العدّ بعد إعادة الفتح) يمرّ على صور الجهاز ثمّ صور المجلّد بالترتيب.
    v-skin-wood (أمر المالك ٤ أكتوبر بصورة «أعطني بالضبط مرتّبة نفس هذي في الخلفيّات، إذا اختارها يستوي نفسها»): الثيمات
    خلفيّات تكسو الواجهة كلّها لا الشاشة وحدها — «خشبي» أوّلها (css/ثيم-خشبي.css، خاماته assets/ثيمات/خشبي/). مصغّره في
-   الشبكة بعد «صورة من جهازك»، ويُحفظ كأيّ خلفيّة ({ ملف:'ثيم:خشبي', ثيم:'wood' })، ولا يدخل التبديل التلقائيّ.
+   الشبكة بعد «صورة من جهازك» (وبعد صور الجهاز منذ v-bg-custom-first)، ويُحفظ كأيّ خلفيّة ({ ملف:'ثيم:خشبي', ثيم:'wood' })، ولا يدخل التبديل التلقائيّ.
    («بيت» لوحة المعاينة الفارغة — الشعار النحاسيّ وزرّ + وآخر المحادثات والأزرار الدائريّة — شيل بأمر المالك بعد الثيمات:
    «شيل هذا من البنّيّ»؛ اللوحة الفارغة بكتّانها وحده كبقيّة الثيمات.) */
 (function(){
@@ -173,6 +173,9 @@
     if(!احفظ_خاصّة(a)){ if(typeof alert === 'function') alert(نصّ('bgImgFull', 'لا مساحة كافية على الجهاز لهذه الصورة')); return false; }
     ابنِ();
     طبّق({ ملف: CUSTOM + صورة.id, لون: صورة.لون, فاتحة: صورة.فاتحة });
+    // v-bg-custom-first: المصغّر المضاف (المختار الآن) يُمرَّر إلى المرأى — الدرج قد يكون ممرَّرًا تحت الشبكة الطويلة
+    var g = document.getElementById('bgImgGrid');
+    if(g) g.querySelectorAll('.bgImgOpt').forEach(function(b){ if(b.classList.contains('active') && b.scrollIntoView) b.scrollIntoView({ block: 'nearest' }); });
     return true;
   }
   function احذف(id){
@@ -245,18 +248,7 @@
     add.textContent = '+ ' + نصّ('bgImgAdd', 'صورة من جهازك');
     add.onclick = اختر;
     g.appendChild(add);
-    Object.keys(ثيمات).forEach(function(اسم){
-      var ث = ثيمات[اسم], b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'bgImgOpt bgImgTheme' + (cur && cur.ملف === ث.ملف ? ' active' : '');
-      b.dataset.file = ث.ملف;
-      b.title = نصّ(ث.عنوان, اسم);
-      b.setAttribute('aria-label', b.title);
-      b.style.backgroundImage = 'url("' + ث.مصغّر + '")';
-      b.onclick = function(){ طبّق(ث); };
-      g.appendChild(b);
-    });
-    كلّها().forEach(function(ص){
+    function ارسم(ص){
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'bgImgOpt' + (ص.ملف.indexOf(CUSTOM) === 0 ? ' bgImgCustom' : '') + (cur && cur.ملف === ص.ملف ? ' active' : '');
@@ -272,7 +264,23 @@
         b.appendChild(x);
       }
       g.appendChild(b);
+    }
+    /* v-bg-custom-first (تدقيق ١٨ أكتوبر): صور الجهاز أوّل الشبكة بعد «صورة من جهازك» — كانت بعد الثيمات الـ٢٤ (الخانة ٢٦ فما بعدها) فلا تُرى
+       هي ولا ×ها بعد رفعها. ترتيب التبديل التلقائيّ (كلّها: الجهاز ثمّ المجلّد) كما هو. */
+    var صور = كلّها();
+    صور.filter(function(ص){ return ص.ملف.indexOf(CUSTOM) === 0; }).forEach(ارسم);
+    Object.keys(ثيمات).forEach(function(اسم){
+      var ث = ثيمات[اسم], b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bgImgOpt bgImgTheme' + (cur && cur.ملف === ث.ملف ? ' active' : '');
+      b.dataset.file = ث.ملف;
+      b.title = نصّ(ث.عنوان, اسم);
+      b.setAttribute('aria-label', b.title);
+      b.style.backgroundImage = 'url("' + ث.مصغّر + '")';
+      b.onclick = function(){ طبّق(ث); };
+      g.appendChild(b);
     });
+    صور.filter(function(ص){ return ص.ملف.indexOf(CUSTOM) !== 0; }).forEach(ارسم);
   }
   function افتح(){
     var g = document.getElementById('bgImgGrid');

@@ -74,7 +74,7 @@ test('visionPlan: كلّ مزوّد له موديل يرى على مساره، �
   assert.deepEqual(ov.visionPlan('deepseek', 'or', 'deepseek/deepseek-v4-pro', 'deepseek/deepseek-v4-pro'),
     { model: 'deepseek/deepseek-v4-flash-vision-exp', def: 'deepseek/deepseek-v4-flash-vision-exp', forced: true });
   assert.equal(ov.visionPlan('cohere', 'or', 'cohere/command-a', 'cohere/command-a').model, 'cohere/command-a-plus');
-  assert.equal(ov.visionPlan('groq', 'direct', 'openai/gpt-oss-120b', 'openai/gpt-oss-120b').model, 'qwen/qwen3.6-27b');
+  assert.equal(ov.visionPlan('groq', 'direct', 'openai/gpt-oss-120b', 'openai/gpt-oss-120b').model, 'qwen/qwen3.8-27b'); // v-dead-models: Qwen3.6 أُوقف ١٤ سبتمبر
   assert.equal(ov.visionPlan('kimi', 'or', 'moonshotai/kimi-k2', 'moonshotai/kimi-k2').model, 'moonshotai/kimi-k3');
   // موديل يرى أصلًا: اختيار المالك يبقى، والافتراضيّ احتياطه
   assert.deepEqual(ov.visionPlan('openrouter', 'or', 'x-ai/grok-4.6', 'anthropic/claude-sonnet-5'),
@@ -100,7 +100,7 @@ test('المالك عبر الوسيط: Mistral وCohere وDeepSeek يرون ا�
 test('المالك بالمفتاح المباشر: Groq بموديل رؤيته وKimi بموديله — الصورة data URI', async () => {
   const g = await ask({ provider: 'groq', keys: { GROQ_API_KEY: 'q', OPENROUTER_API_KEY: 'or' } });
   assert.match(g.calls[0].url, /api\.groq\.com/);
-  assert.equal(g.calls[0].body.model, 'qwen/qwen3.6-27b');
+  assert.equal(g.calls[0].body.model, 'qwen/qwen3.8-27b');
   assert.equal(oaImage(g.calls[0]).image_url.url, 'data:image/png;base64,AAAA');
   assert.equal(g.calls.length, 1, 'لا سلسلة موديلات Groq النصّيّة');
   const k = await ask({ provider: 'kimi', keys: { KIMI_API_KEY: 'k' } });
@@ -139,7 +139,7 @@ test('اختيار المالك الذي لا يرى في صفّ الوسيط: �
   const q = await ask({ provider: 'openrouter', model: 'qwen/qwen3.6-27b', keys: { OPENROUTER_API_KEY: 'or' }, upstream: blind });
   assert.equal(q.calls.length, 1, 'Qwen لا يُبدَّل بكروك');
   assert.equal(q.calls[0].body.model, 'qwen/qwen3.6-27b');
-  assert.ok(q.events.some((e) => e.ownerStop === true && e.error === 'ما قدرت أردّ الحين — خطأ 404'));
+  assert.ok(q.events.some((e) => e.ownerStop === true && String(e.error).startsWith('ما قدرت أردّ الحين — خطأ 404') /* v-why: وبعده سبب المزوّد */));
 });
 
 test('CHAT_IMAGE_MODEL لا يحوّل صورة المالك عن مزوّده — وكلود يبقى عليه كما كان', async () => {

@@ -48,9 +48,9 @@
     var fb=document.getElementById(pfx+'FileBtn'), fi=document.getElementById(pfx+'FileInput'), fn=document.getElementById(pfx+'FileName');
     if(!fb||!fi||document.querySelector('#'+mid+' .dzArea')) return;
     var row=fb.parentElement, dz=document.createElement('div');
-    dz.className='dzArea';
-    dz.innerHTML='<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div class="dzT"><b data-i18n="fileChooseBtn"></b><br><span class="dzN"></span></div>';
-    dz.querySelector('b').textContent=(fb.textContent||'').trim();
+    dz.className='dzArea omUpArt omUpDecor om3-skip'; /* v-upload-art: صورة المالك خلفيّةً والنصّ فوقها مترجمًا (العربيّة بصورتها المكتوبة) */
+    dz.innerHTML='<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><b class="omUpT" data-i18n="designDropTitle">ارفع صورة غرفتك</b><small class="omUpH" data-i18n="designDropHint">تأكّد من وضوح الصورة وجودتها</small><div class="dzT"><b class="omUpB" data-i18n="uploadPlateBtn"></b><br><span class="dzN omUpN"></span></div>';
+    dz.querySelector('.dzT b').textContent=(fb.textContent||'').trim();
     row.parentElement.insertBefore(dz,row);
     if(fn) dz.querySelector('.dzN').appendChild(fn);
     row.style.display='none';
@@ -176,33 +176,16 @@
       '</svg>';
     return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") center/cover no-repeat';
   }
-  /* v-decor-light-sheet (طلب المالك ١٤ أكتوبر ٢٠٢٦: «اريد صور هذي الصور ضيفها» مع لوحة الإضاءة العشر):
-     اللوحة نفسها ملفّ واحد lighting-sheet.webp (١٠٢٤×١٥٣٦، عمودان × ٥ صفوف)، وكلّ بطاقة تعرض
-     قصّتها ٣:٤ (١٣٥×١٨٠ من وسط الصورة، فوق شريط الاسم المكتوب) بخلفيّة CSS — صور المالك كما هي بلا رسم. */
-  /* v-decor-light-clear (طلب المالك ١٤ أكتوبر ٢٠٢٦: «خلها نفس الصور لكن عدلها خلها واضحه»):
-     القصّة الصغيرة المكبّرة ٧٥٨٪ كانت مغبّشة ومقصوصة. الآن عمود اللوحة = عرض البطاقة (٢٠٠٪ ≈ ١:١)
-     فالصورة كاملة وحادّة في وسط البطاقة، وشريطان داكنان يخفيان الصفّ المجاور وشريط الاسم المكتوب. */
-  var LIGHT_SHEET='assets/design/opts/lighting-sheet.webp';
-  var LIGHT_POS={
-    warm:[0,-24.53], cool:[100,-24.53],
-    bright:[0,8.75], dim:[100,8.75],
-    natural:[0,42.04], neutral:[100,42.04],
-    golden:[0,75.31], purple:[100,75.31],
-    sunset:[0,108.72], moon:[100,108.72]
-  };
-  var LIGHT_MASK='linear-gradient(#141418 0 32.4%,transparent 32.4% 67.6%,#141418 67.6%)';
-  function lightBg(v){
-    var p=LIGHT_POS[v]; if(!p) return '';
-    return LIGHT_MASK+', url("'+LIGHT_SHEET+'") '+p[0]+'% '+p[1]+'% / 200% auto no-repeat, #141418';
-  }
+  /* v-lighting-3d: صور منفصلة حادّة؛ لا قصّ من لوحة مجمّعة ولا أشرطة تخفي الغرفة.
+     v-decor-18 (المالك ١٦ أكتوبر بلقطة الأقسام: «بدون تغيير» رسمة كرتونيّة، والأقمشة والحوائط والستائر بلا صور):
+     الأقسام الستّة كلّها صورة حقيقيّة لكلّ خيار، و«بدون تغيير» علامة ⊘ واحدة كالإضاءة. */
+  var NONE_BG='url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="none" stroke="#7d7d86" stroke-width="3"/><path d="M15 49L49 15" stroke="#7d7d86" stroke-width="3"/></svg>')+'") center /48px 48px no-repeat, #141418';
+  var OPT_FILE={designAiFurniture:'furniture',designAiFlooring:'flooring',designAiFabric:'fabric',designAiWallColor:'wallcolor',designAiCurtains:'curtains'};
+  var OPT6=['designAiLighting','designAiFurniture','designAiFlooring','designAiFabric','designAiWallColor','designAiCurtains'];
+  /* غلاف البطاقة حين لا اختيار: صورة خيار يمثّل القسم — كلّ بطاقة فيها صورة كالترندات. */
+  var COVER={designAiLighting:'natural',designAiFurniture:'modern',designAiFlooring:'herringbone',designAiFabric:'cream',designAiWallColor:'sage',designAiCurtains:'sheer'};
   function roomBg(id,v){
-    if(id==='designAiLighting'&&LIGHT_POS[v]) return lightBg(v);
-    /* v-decor-floor-bg (طلب المالك ١٥ أكتوبر ٢٠٢٦ بلقطة بطاقات الأرضيات): خلفية البطاقة نفسها صورة الأرضية الحقيقية لا رسمة roomSvg الكرتونية.
-       v-decor-floor-full (طلبه ١٥ أكتوبر ٢٠٢٦: «كمل ارفع وادمج»، وقبله «خلها نفس الصور لكن عدلها خلها واضحه» على الإضاءة):
-       البطاقة طولية (٣:٤) وصورة الأرضية عرضية، فـcover كان يعرض شريطًا ضيقًا منها مكبَّرًا فيُقتطع ويُغبَّش. الآن contain:
-       عرض الصورة = عرض البطاقة (ولا تكبير فوق مقاسها فتبقى حادّة)، والغرفة كاملة بأطرافها، و#141418 يملأ ما حولها.
-       وكاسر الكاش ?v=3 يتجاوز نسخة ?v=2 إن كانت مخزّنة في عامل الخدمة أو المتصفّح. */
-    if(id==='designAiFlooring'&&v&&PALS.designAiFlooring[v]) return 'url("assets/design/opts/flooring-'+v+'.webp?v=3") center/contain no-repeat, #141418';
+    if(OPT6.indexOf(id)!==-1) return v ? '#141418' : NONE_BG;
     var c=(PALS[id]||{})[v]; if(!c) return '';
     return roomSvg(c, ROOM_KIND[v]||'');
   }
@@ -247,7 +230,10 @@
     },
     designAiLighting:{ warm:'أصفر دافئ مريح', cool:'أبيض بارد منعش', bright:'نهاري ساطع', dim:'خافتة هادئة للمساء',
       natural:'ضوء نهار طبيعي من النافذة', neutral:'أبيض محايد متوازن', golden:'وهج ذهبي دافئ',
-      purple:'أجواء ليلية بنفسجية', sunset:'دفء الغروب الوردي', moon:'ضوء قمر أزرق هادئ' },
+      purple:'أجواء ليلية بنفسجية', sunset:'دفء الغروب الوردي', moon:'ضوء قمر أزرق هادئ',
+      emerald:'أخضر فاخر ومريح', turquoise:'انتعاش بأجواء بحرية', rose:'وردي بودري لطيف',
+      burgundy:'أحمر عميق وأجواء مسائية', neon:'سماوي وفوشي بإضاءة متقابلة',
+      cinematic:'أزرق بارد وكهرماني دافئ', aurora:'أخضر زمردي وبنفسجي هادئ' },
     designAiFurniture:{ modern:'قطع عصرية أنيقة', classic:'خشب فخم تقليدي', simple:'عملي بلا تكلّف', luxury:'فخامة في كل قطعة', bohemian:'قطع حرة متنوعة' },
     designAiFlooring:{ parquet:'خشب دافئ تحت قدميك', marble:'رخام لامع فاخر', ceramic:'عملي سهل التنظيف', carpet:'سجاد وثير مريح' },
     designAiFabric:{ light:'أقمشة فاتحة مشرقة', dark:'أقمشة داكنة فخمة', neutral:'درجات هادئة محايدة', bold:'ألوان جريئة لافتة' },
@@ -299,7 +285,9 @@
       'linear-gradient(155deg,'+c[0]+' 0%,'+c[1]+' 55%,'+c[2]+' 120%);';
     var nm=document.createElement('div');
     nm.textContent=txt;
-    nm.style.cssText='padding:6px 9px 7px;font-size:12.5px;font-weight:800;color:var(--text,#fff);line-height:1.3;';
+    /* v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي» — أحدث من «الاسم سطر تحتها» في v-decor-toggle-img):
+       البطاقة صورتها وحدها، والاسم المترجم فوق أسفلها بتدرّج كبقيّة معارض التطبيق. */
+    nm.style.cssText='position:absolute;inset:auto 0 0 0;pointer-events:none;padding:16px 9px 6px;font-size:12.5px;font-weight:800;color:#fff;line-height:1.3;text-shadow:0 1px 3px rgba(0,0,0,.9);background:linear-gradient(0deg,rgba(0,0,0,.8),rgba(0,0,0,0));';
     var tk=document.createElement('div'); tk.textContent='✓';
     tk.style.cssText='position:absolute;top:7px;inset-inline-start:8px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:none;align-items:center;justify-content:center;';
     function paint(){
@@ -307,10 +295,10 @@
       d.style.outlineOffset='-2px';
       d.style.boxShadow=cb.checked?'0 0 12px rgba(212,175,55,.35)':'none';
       tk.style.display=cb.checked?'flex':'none';
-      nm.style.color=cb.checked?'#d4af37':'var(--text,#fff)';
+      nm.style.color=cb.checked?'#d4af37':'#fff';
     }
     paint();
-    pic.appendChild(tk); d.appendChild(pic); d.appendChild(nm);
+    pic.appendChild(tk); pic.appendChild(nm); d.appendChild(pic);
     d.onclick=function(){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change',{bubbles:true})); paint(); };
     return d;
   }
@@ -318,47 +306,109 @@
      معرضًا ملء الشاشة — نفس نظام أنماط الصور (طلب المالك: كلهم مرة وحدة). */
   function selImg(id,v){
     if(!v) return '';
-    if(id==='designAiLighting'&&LIGHT_POS[v]) return ''; /* v-decor-light-sheet: صورتها من اللوحة في roomBg */
-    /* v-decor-furn-photos (المالك ١٤ أكتوبر: «الديكور قسم الأثاث مافي صور، حط صور على نفس الأسامي»): الأثاث كان يطلب
-       opts/furniture-*.webp وهي غير موجودة فيختفي. صور الأنماط الخمسة بالأسماء نفسها موجودة (كنبة وطاولة كلّ نمط) — بلا رسم ولا رصيد. */
-    if(id==='designAiStyle' || id==='designAiFurniture') return 'assets/design/styles/'+v+'.webp';
-    if(id==='designAiFlooring') return 'assets/design/opts/flooring-'+v+'.webp?v=3'; /* v-decor-floor-full: نفس كاسر الكاش في roomBg */
-    return 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp';
+    if(id==='designAiLighting') return 'assets/design/opts/lighting-'+v+'.webp';
+    /* v-decor-18: الأقسام الخمسة الأخرى صورة لكلّ خيار من assets/design/decor-opts (الغرفة نفسها والمتغيّر الخيار وحده).
+       كان الأثاث يستعير صور الأنماط (v-decor-furn-photos) والأرضيات صور قريبة عموديّة — صارت كلّها بمقاس الإضاءة. */
+    if(OPT_FILE[id]) return 'assets/design/decor-opts/'+OPT_FILE[id]+'-'+v+'.webp?v=3';
+    if(id==='designAiStyle') return 'assets/design/styles/'+v+'.webp?v=3'; /* قواعد الصور ١٧ أكتوبر: أُعيد توليدها بدقّتها الأصليّة (لا تكبير) */
+    return 'assets/design/opts/'+id.replace('designAi','').toLowerCase()+'-'+v+'.webp?v=3';
+  }
+  function optTxt(o){ return (typeof window.__optT==='function')?window.__optT(o):(((o&&o.textContent)||'')+'').trim(); } /* v657 */
+  function curOpt(s){ var os=s.options; for(var i=0;i<os.length;i++) if(os[i].value===s.value) return os[i]; return os[0]; }
+  function secTitle(s){ var lab=s.parentElement.querySelector('label'); return ((lab?lab.textContent:'')+'').trim().replace(EMO,''); }
+  /* إعدادات المعرض لقائمة واحدة — يشترك فيها صفّ «عرض الكل ›» وبطاقات الأقسام. */
+  function openCfg(s,after){
+    var ien=(document.documentElement.lang||'ar')==='en';
+    var six=OPT6.indexOf(s.id)!==-1;
+    return {
+      title: secTitle(s),
+      /* v-decor-18: الأقسام الستّة صور أفقيّة 16:9 والاسم فوق الصورة كبطاقات الترندات، عمودان على الجوّال. */
+      landscape: six, overlay: six,
+      count: s.options.length+' '+(typeof window.t==='function'&&window.t('pickerOptsPick')!=='pickerOptsPick'?window.t('pickerOptsPick'):(ien?'options — pick yours':'خيارًا — اختر ما يناسبك')),
+      items: Array.prototype.map.call(s.options,function(o){
+        return { v:o.value, title:optTxt(o)||(ien?'None':'بدون'), active:o.value===s.value,
+          img:selImg(s.id,o.value), bg:roomBg(s.id,o.value), sub:palSub(s.id,o.value) };
+      }),
+      /* اختيار البطاقة يحفظ القيمة فقط — التوليد لا يبدأ إلّا بزرّ «صمم الغرفة». */
+      onPick: function(v){ s.value=v; s.dispatchEvent(new Event('change',{bubbles:true})); if(after) after(); }
+    };
   }
   function selTrigger(s){
     var ien=(document.documentElement.lang||'ar')==='en';
-    function optTxt(o){ return (typeof window.__optT==='function')?window.__optT(o):(((o&&o.textContent)||'')+'').trim(); } /* v657 */
-    function cur(){ var os=s.options; for(var i=0;i<os.length;i++) if(os[i].value===s.value) return os[i]; return os[0]; }
-    var lab=s.parentElement.querySelector('label');
-    var labTxt=(lab?lab.textContent:'').trim();
     var tr=window.omranPicker.trigger(function(){
-      var o=cur();
+      var o=curOpt(s);
       return o && { name:optTxt(o), img:selImg(s.id,o.value), bg:roomBg(s.id,o.value),
         sub:palSub(s.id,o.value)||s.options.length+' '+(typeof window.t==='function'&&window.t('pickerOptsWord')!=='pickerOptsWord'?window.t('pickerOptsWord'):(ien?'options':'خيارًا')) };
-    }, function(){
-      return {
-        title: labTxt,
-        count: s.options.length+' '+(typeof window.t==='function'&&window.t('pickerOptsPick')!=='pickerOptsPick'?window.t('pickerOptsPick'):(ien?'options — pick yours':'خيارًا — اختر ما يناسبك')),
-        items: Array.prototype.map.call(s.options,function(o){
-          return { v:o.value, title:optTxt(o)||(ien?'None':'بدون'), active:o.value===s.value,
-            img:selImg(s.id,o.value), bg:roomBg(s.id,o.value), sub:palSub(s.id,o.value) };
-        }),
-        onPick: function(v){ s.value=v; s.dispatchEvent(new Event('change',{bubbles:true})); tr.refresh(); }
-      };
-    });
+    }, function(){ return openCfg(s,function(){ tr.refresh(); }); });
     tr.el.classList.add('optGrid');
+    /* v-decor-place-sync (تدقيق ١٨ أكتوبر؛ الدفعة ٤): البطاقة كانت تتحدّث من المعرض وحده — نقاط البوستر تكتب «نوع المكان» فتبقى «من صورتي».
+       تُحفظ على القائمة (app-12 يحدّثها بلا change)، ومستمع change واحد يتبع البطاقة الأحدث بعد إعادة البناء عند تبديل اللغة. */
+    s.__tr=tr;
+    if(!s.getAttribute('data-trhook')){ s.setAttribute('data-trhook','1'); s.addEventListener('change',function(){ if(s.__tr) s.__tr.refresh(); }); }
     return tr.el;
+  }
+  /* v-decor-18 (المالك ١٦ أكتوبر: «رتّبهم على شكل الفيديوهات مش بالطول»): الأقسام الستّة شبكة بطاقات صور كترندات الفيديو —
+     الصورة تملأ البطاقة واسم القسم والاختيار فوقها في أسفلها — بدل ستّة صفوف طويلة متراصّة. */
+  function secCard(s){
+    var c=document.createElement('div');
+    c.setAttribute('role','button'); c.tabIndex=0; c.setAttribute('data-dsec',s.id);
+    c.style.cssText='position:relative;aspect-ratio:3/4;border-radius:14px;overflow:hidden;cursor:pointer;background:#141418;';
+    var im=document.createElement('img'); im.alt=''; im.decoding='async';
+    im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+    im.onerror=function(){ im.style.visibility='hidden'; };
+    var tk=document.createElement('div'); tk.textContent='\u2713';
+    tk.style.cssText='position:absolute;top:6px;inset-inline-start:7px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:none;align-items:center;justify-content:center;';
+    var cap=document.createElement('div');
+    cap.style.cssText='position:absolute;inset:auto 0 0 0;padding:22px 8px 8px;text-align:center;line-height:1.35;background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
+    var sec=document.createElement('div'); sec.style.cssText='font-size:11px;font-weight:700;color:#e9d58f;';
+    var nm=document.createElement('div'); nm.style.cssText='font-size:12.5px;font-weight:800;color:#fff;';
+    cap.appendChild(sec); cap.appendChild(nm);
+    /* حلقة الاختيار طبقة فوق الصورة لا outline — فيبقى outline لإطار تركيز لوحة المفاتيح (:focus-visible) كبقيّة التطبيق. */
+    var ring=document.createElement('div'); ring.style.cssText='position:absolute;inset:0;border-radius:inherit;pointer-events:none;';
+    c.appendChild(im); c.appendChild(tk); c.appendChild(cap); c.appendChild(ring);
+    function refresh(){
+      var o=curOpt(s), v=o?o.value:'';
+      var src=selImg(s.id, v||COVER[s.id]);
+      if(window.__omranWhenSeen) window.__omranWhenSeen(im,function(){ im.src=src; }); else im.src=src;
+      im.style.visibility='visible';
+      im.style.filter=v?'none':'saturate(.55) brightness(.6)';
+      sec.textContent=secTitle(s); nm.textContent=o?optTxt(o):'';
+      ring.style.boxShadow=v?'inset 0 0 0 2px #d4af37':'inset 0 0 0 1px rgba(127,127,127,.25)';
+      tk.style.display=v?'flex':'none';
+    }
+    function open(){ window.omranPicker.open(openCfg(s,refresh)); }
+    c.onclick=open;
+    c.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } };
+    if(!s.getAttribute('data-sechook')){ s.setAttribute('data-sechook','1'); s.addEventListener('change',function(){ var cc=document.querySelector('[data-dsec="'+s.id+'"]'); if(cc&&cc.__refresh) cc.__refresh(); }); }
+    c.__refresh=refresh; refresh();
+    return c;
+  }
+  function secGrid(){
+    var first=document.getElementById(OPT6[0]); if(!first||!first.parentElement||!window.omranPicker) return;
+    var host=first.parentElement.parentElement;
+    var old=host.querySelector('.decorSecGrid'); if(old) old.remove();
+    var g=document.createElement('div'); g.className='decorSecGrid';
+    /* عمودان على الجوّال وصفّ واحد على الحاسوب — بطاقة 3:4 كبطاقات الترندات (auto-fit يملأ الصفّ بلا خانة فارغة). */
+    g.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:8px;';
+    OPT6.forEach(function(id){
+      var s=document.getElementById(id); if(!s||!s.parentElement) return;
+      s.style.display='none'; s.parentElement.style.display='none';
+      g.appendChild(secCard(s));
+    });
+    host.insertBefore(g, first.parentElement);
   }
   function build(){
     if(!document.getElementById('designAiModal')) return;
     dropZone('designAiModal','designAi');
     SELS.forEach(function(id){
+      if(OPT6.indexOf(id)!==-1&&window.omranPicker) return; /* v-decor-18: الأقسام الستّة في شبكة البطاقات تحت */
       var s=document.getElementById(id); if(!s||!s.parentElement) return;
       var old=s.parentElement.querySelector('.optGrid'); if(old) old.remove();
       s.style.display='none';
       var g=(window.omranPicker&&window.omranPicker.trigger)?selTrigger(s):buildGrid(s); s.parentElement.appendChild(g);
       if(!s.getAttribute('data-gridhook')){ s.setAttribute('data-gridhook','1'); s.addEventListener('change',function(){ var gg=s.parentElement.querySelector('.optGrid'); if(gg) mark(gg,s); }); }
     });
+    secGrid();
     var nt=document.getElementById('designAiNotes');
     /* v-notes-no-clobber: هذه الكتابة كانت تمحو ترجمة data-i18n (المليالم
        ترجع عربيًا) — المترجم العام أولًا، والثنائي احتياط فقط. */

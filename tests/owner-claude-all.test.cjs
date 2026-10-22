@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'owner-claude-all-secret';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
@@ -179,7 +180,7 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'max' });
   assert.equal(r.calls[0].body.max_tokens, 128000); // v-owner-cap-open
   r = await withoutAnth(() => run('omran', { messages: ask(HARD), effort: 'max' }, [() => new Response(JSON.stringify({ error: { message: 'This request requires more credits, or fewer max_tokens. You requested up to 64000 tokens, but can only afford 9000.', code: 402 } }), { status: 402 }), () => text('تم')]));
-  assert.deepEqual(r.calls.map((c) => c.body.max_tokens), [128000, 16000]); // v-owner-cap-open
+  assert.deepEqual(r.calls.map((c) => c.body.max_tokens), [128000, 9000]); // v-cap-not-credit: حدّ الرصيد من الرسالة لا ١٦ ألفًا
   assert.deepEqual(r.calls[1].body.output_config, { effort: 'max' }, 'الجهد نفسه');
   assert.ok(r.events.some((e) => /رصيد الوسيط لا يكفي/.test(e.status || '')));
   // مراجعة: دور صورة بموديل CHAT_IMAGE_MODEL آخر لا يأخذ جهدًا حُسب لموديل المحادثة (Haiku 4.5 يرفضه = 400)
@@ -325,8 +326,8 @@ test('١٠. الإعدادات لا تكتب فوق اختيار المالك، 
     const f = read('i18n/' + lg + '.js');
     for (const k of K) assert.ok(f.includes('"' + k + '":'), lg + ' ' + k);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=744';"));
-  assert.ok(read('index.html').includes('/js/modes.js?v=m131026g'));
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=770';"));
+  assert.ok(read('index.html').includes('/js/modes.js?v=m211026'));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.claudeEffortGet = effortGet;') && bundle.includes("return (__p === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined)"), 'الحزمة أُعيد بناؤها');
 });

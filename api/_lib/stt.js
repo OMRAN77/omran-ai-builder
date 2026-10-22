@@ -47,7 +47,8 @@ module.exports = async (req, res) => {
     }
 
     const buf = Buffer.from(audioBase64, 'base64');
-    const ext = (mimeType && mimeType.includes('mp4')) ? 'mp4'
+    const ext = (mimeType && /mpeg|mp3/.test(mimeType)) ? 'mp3' /* v-video-edit: صوت الفيديو المستخرَج mp3 */
+      : (mimeType && mimeType.includes('mp4')) ? 'mp4'
       : (mimeType && mimeType.includes('ogg')) ? 'ogg'
       : (mimeType && mimeType.includes('wav')) ? 'wav'
       : 'webm';
@@ -80,7 +81,10 @@ module.exports = async (req, res) => {
 
     const rawText = await upstream.text();
     if (!upstream.ok) {
-      res.status(upstream.status).setHeader('Content-Type', 'application/json').send(rawText);
+      /* v-maha-paused: كان ردّ المزوّد يُمرَّر بنصّه — كائن خطأ يعرضه العميل [object Object]، و402 رصيده ليس رصيد المستخدم. رمز نصّيّ والنصّ للسجلّ */
+      console.error('[stt] upstream ' + upstream.status + ': ' + rawText.slice(0, 300));
+      const fail = require('./_videoFail.js').toolFail(upstream.status, rawText);
+      res.status(fail.code).json(fail.body);
       return;
     }
 
@@ -154,6 +158,26 @@ module.exports = async (req, res) => {
       cleanText = '';
     }
     cleanText = cleanText.replace(/\s{2,}/g, ' ').trim();
+    // v-video-edit (طلب عمران «كتابة وصوت على الفيديو»): «اكتب الكلام تلقائيًا» يطلب المقاطع بتوقيتها
+    // لتصير ترجمة فوق الفيديو. كلّ مقطع يمرّ من مرشّح الهلوسة نفسه، والمقطع الذي يراه Whisper صمتًا يُسقَط.
+    // لا تصحيح LLM هنا: يغيّر الكلمات فلا تطابق توقيت المقاطع.
+    if (body.segments === true) {
+      const segs = [];
+      for (const s of segments) {
+        if (segs.length >= 300) break;
+        if (typeof s.no_speech_prob === 'number' && s.no_speech_prob > 0.6) continue;
+        let t = String((s && s.text) || '').trim();
+        for (const rx of HALLUCINATIONS) t = t.replace(rx, ' ');
+        t = t.replace(/\s{2,}/g, ' ').trim();
+        if (t.length <= 1) continue;
+        const start = Math.max(0, +s.start || 0);
+        const end = Math.max(start, +s.end || 0);
+        segs.push({ start: Math.round(start * 100) / 100, end: Math.round(end * 100) / 100, text: t });
+      }
+      res.status(200).json({ text: cleanText, segments: segs, language: detectedLanguage });
+      return;
+    }
+
     // If the filter removed everything (or nearly everything), the audio was
     // silence/noise — return empty so the UI simply ignores it.
     if (!cleanText || cleanText.length <= 2) {

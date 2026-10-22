@@ -191,7 +191,7 @@
       // وعشرات الأزرار غير مستخدَم أصلًا. الآن تُبنى فقط للمالك؛ لا فرق مرئيّ لغير المالك (كان مخفيًّا دومًا).
       /* v-owner-gpt-all: مرّة واحدة على جهاز المالك — اختيار GPT المحفوظ قبل اليوم يُمسح فيسري Astra (أمره ١١ أكتوبر)، وما يختاره بعدها يبقى */
       if(isOwner()){ try{ if(!localStorage.getItem('aiapp_owner_astra_v1')){ localStorage.removeItem('aiapp_model'); localStorage.setItem('aiapp_owner_astra_v1', '1'); } }catch(e){ /* guard-ok: تخزين محجوب */ } }
-      if(isOwner()) renderPop();
+      if(isOwner()) renderPop(); /* v-claude-back (المالك ١٧ أكتوبر «خلهم مكانهم… رجعهم نفس ماكانو»): صفوف Claude رجعت للمنتقي؛ الإيقاف في الخادم وحده (OWNER_CLAUDE_CHAT) */
       /* v-provider-models: القائمة الحيّة من الخادم تُلحق بالافتراضيّ الثابت؛ OpenAI يرتّب الثلاثة العامّة أولًا. */
       if(isOwner()){
         try{
@@ -218,14 +218,28 @@
       if(__row && __row.parentNode === host && __row.nextSibling){ host.insertBefore(bar, __row.nextSibling); }
       else { host.appendChild(bar); }
 
-      var ACCENT = 'var(--accent,#f0c040)', INK = 'var(--text,#eee)';
+      var INK = 'var(--text,#eee)';
+      /* v-chip-selected (تدقيق ١٨–١٩ أكتوبر): المختار كان بلون var(--accent) وحده — #6b7280 في الأسود، أبهت من النصّ فبدا معطّلًا.
+         صار بلون النصّ نفسه وخطّ عريض وخلفيّة رماديّة خفيفة (تُرى في الأسود والعاجيّ) وaria-current وعلامة ✓. */
+      function mark(el, on, w0){
+        el.style.color = INK; el.style.fontWeight = on ? '700' : w0; el.style.background = on ? 'rgba(127,127,127,.18)' : 'none';
+        if(on) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current');
+        var host = el.classList.contains('omProvHead') ? (el.firstElementChild || el) : el; /* الرأس: بجانب الاسم لا بعد السهم */
+        var ck = el.querySelector('.omSelCk');
+        if(on && !ck){ ck = document.createElement('span'); ck.className = 'omSelCk'; ck.setAttribute('aria-hidden', 'true'); ck.style.cssText = 'margin-inline-start:8px; font-weight:700;'; ck.textContent = '✓'; host.appendChild(ck); }
+        else if(!on && ck) ck.remove();
+      }
       function refresh(){
         var nm = wrap.querySelector('.omModelName');
         if(nm) nm.textContent = (window.__omMode === 'cc') ? 'Claude Code' : (window.__agentModeOn === true && curProv() === 'claude') /* v-prov-self: الوكيل يعمل مع Claude وحده؛ غيره يردّ بنفسه فاسمه هو */ ? agentLabel() : curProvName();
         try{
           var pk = curProv(); var pv = provOf(pk); var mid = pv ? curModelId(pv) : '';
-          var heads = pop.querySelectorAll('.omProvHead'); for(var i=0;i<heads.length;i++){ heads[i].style.color = (heads[i].getAttribute('data-prov') === pk) ? ACCENT : INK; }
-          var ms = pop.querySelectorAll('.omProvModel'); for(i=0;i<ms.length;i++){ var on = ms[i].getAttribute('data-prov') === pk && ms[i].getAttribute('data-model') === mid; ms[i].style.color = on ? ACCENT : INK; }
+          var heads = pop.querySelectorAll('.omProvHead'); for(var i=0;i<heads.length;i++){ mark(heads[i], heads[i].getAttribute('data-prov') === pk, '600'); }
+          var ms = pop.querySelectorAll('.omProvModel'); for(i=0;i<ms.length;i++){ mark(ms[i], ms[i].getAttribute('data-prov') === pk && ms[i].getAttribute('data-model') === mid, '500'); }
+          /* v-prov-self (١): «الوكيل مع Claude وحده» — صفّه يظهر معه وحده ويُعلَّم حين يعمل؛ مع غيره كان نقره يُطلق «الوكيل شغّال» بلا وكيل */
+          var ag = pop.querySelector('.omModelOpt[data-act="agent"]');
+          if(ag){ var agOk = pk === 'claude'; ag.style.display = agOk ? 'block' : 'none'; mark(ag, agOk && window.__agentModeOn === true, '600');
+            var agDiv = ag.nextElementSibling; if(agDiv && !agDiv.className) agDiv.style.display = agOk ? '' : 'none'; }
         }catch(e){ /* guard-ok */ }
         /* v-owner-claude-all + v-owner-gpt-all: صفّ الجهد لكلّ مزوّد يتبع موديله المحفوظ — موديل بلا جهد يُخفي الصفّ، ومستوى ينزل عند
            الموديل (Extra على Opus/Sonnet 4.6، Max على GPT-5.5/5.4/5.2) يُخفى؛ والقيمة المعروضة هي المرسَلة فعلًا. */
@@ -240,18 +254,19 @@
             eh.style.display = ok ? 'flex' : 'none'; if(!ok && eb){ eb.hidden = true; var ec3 = eh.querySelector('.omEffortChev'); if(ec3) ec3.textContent = '▸'; }
             var ev = forFn ? forFn(cm, sv) : '';
             var vl = eh.querySelector('.omEffortVal'); if(vl) vl.textContent = effortLabel(ev);
-            var eo = eb ? eb.querySelectorAll('.omEffortOpt') : []; for(var q=0;q<eo.length;q++){ var v = eo[q].getAttribute('data-effort'); eo[q].style.color = (v === ev) ? ACCENT : INK; eo[q].style.display = (v && forFn && forFn(cm, v) !== v) ? 'none' : 'block'; }
+            var eo = eb ? eb.querySelectorAll('.omEffortOpt') : []; for(var q=0;q<eo.length;q++){ var v = eo[q].getAttribute('data-effort'); mark(eo[q], v === ev, '500'); eo[q].style.display = (v && forFn && forFn(cm, v) !== v) ? 'none' : 'block'; }
           }
         }catch(e){ /* guard-ok: صفّ الجهد تحسينيّ */ }
       }
       function setAgent(on){ if((window.__agentModeOn === true) !== on){ var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); } }
       function collapseAll(){ var g = pop.querySelectorAll('.omProvModels, .omProvMore, .omEffortBox'); for(var i=0;i<g.length;i++) g[i].hidden = true; var c = pop.querySelectorAll('.omProvChev, .omMoreChev, .omEffortChev'); for(i=0;i<c.length;i++) c[i].textContent = '▸'; }
 
-      chip.addEventListener('click', function(e){ e.stopPropagation(); var showing = pop.style.display !== 'none'; pop.style.display = showing ? 'none' : 'block'; if(!showing){ collapseAll(); refresh(); } });
+      chip.addEventListener('click', function(e){ e.stopPropagation(); var showing = pop.style.display !== 'none'; if(!showing && !pop.firstChild && isOwner()) renderPop(); /* v-pop-after-login: الدخول بعد التحميل كان يترك القائمة فارغة حتّى التحديث */ pop.style.display = showing ? 'none' : 'block'; if(!showing){ collapseAll(); refresh(); } });
       pop.addEventListener('click', function(e){
         var mo = e.target.closest('.omModelOpt');
         if(mo){ e.stopPropagation(); var act = mo.getAttribute('data-act');
-          if(act === 'agent'){ var willOn = !(window.__agentModeOn === true); if(willOn && window.__omMode === 'cc') pick(null); setAgent(willOn); }
+          if(act === 'agent'){ if(curProv() !== 'claude'){ pop.style.display = 'none'; return; } /* v-prov-self: لا وكيل مع غير Claude */
+            var willOn = !(window.__agentModeOn === true); if(willOn && window.__omMode === 'cc') pick(null); setAgent(willOn); }
           else if(act === 'cc'){ if(window.__omMode === 'cc') pick(null); else { setAgent(false); pick('cc'); } }
           refresh(); pop.style.display = 'none'; return;
         }

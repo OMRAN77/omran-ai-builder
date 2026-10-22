@@ -5,8 +5,18 @@
 (function(){
   var el = document.getElementById('omranIntro');
   var done = false;
+  /* v-intro-keys (تدقيق ١٨–١٩ أكتوبر): مستمع العنصر وحده لا يصله مفتاح ما لم يُركَّز بـTab، فالتركيز على BODY.
+     ما دامت الشاشة ظاهرة: Enter والمسافة وEsc من أيّ مكان تُغلقها، بمرحلة الالتقاط مع إيقاف الانتشار —
+     فلا يصل Esc نفسه إلى معالج الأدوات (app-05-swipe-back) ولا تمرّر المسافة الصفحة. */
+  function onKey(e){
+    var k = e && e.key;
+    if(k !== 'Enter' && k !== ' ' && k !== 'Spacebar' && k !== 'Escape' && k !== 'Esc') return;
+    try{ e.preventDefault(); e.stopPropagation(); }catch(err){ __swallow(err, 'intro:key'); }
+    out();
+  }
   function out(){
     if(done) return; done = true;
+    try{ document.removeEventListener('keydown', onKey, true); }catch(e){ __swallow(e, 'intro:key-off'); }
     try{
       if(el){ el.classList.add('oiOut'); }
       setTimeout(function(){
@@ -22,6 +32,7 @@
     /* طلب المالك: تبقى الشاشة بوميضها حتى يضغط المستخدم — لا مؤقّت إغلاق تلقائي */
     el.addEventListener('touchend', out, { passive: true });
     el.addEventListener('keydown', out);
+    document.addEventListener('keydown', onKey, true);
   } else {
     done = true;
   }

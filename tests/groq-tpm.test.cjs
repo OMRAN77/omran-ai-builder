@@ -80,6 +80,7 @@ test('real chat handler: owner says «مرحبا» on Groq with an 8K-per-minute
   assert.match(sys, /^أنت موديل يعمل على خوادم Groq/, 'أوّل النظام (الهويّة والأسلوب) باقٍ');
   assert.match(sys, /\[هويّتك\]/, 'و[هويّتك]');
   assert.ok(sys.includes(OD.__TPM_NOTE || 'هذا الدور بلا أدوات'), 'والموديل يعرف أنّه بلا أدوات فلا يدّعي بحثًا ولا تعديلًا');
+  assert.match(sys, /حدّ مفتاح Groq في الدقيقة/, 'v-plan-models: للمالك ملاحظته التي تسمّي السبب (owner يصل directFetch من chat.js)');
   assert.equal(r.text, 'هلا والله');
   assert.deepEqual(r.errors, []);
   assert.equal(r.others.length, 0, 'لا مزوّد آخر يجيب مكانه (v-owner-solo)');
@@ -135,6 +136,12 @@ test('fitGroqTpm: cap alone when the input fits; tools off next; trimmed system 
   // Groq لا يعدّ السقف (الرقم = المدخل وحده): لا «السقف وحده»، بل بلا أدوات
   const d = OD.fitGroqTpm(body, msg(P - 1000, P));
   assert.ok(d && !d.tools, 'الرقم مدخل وحده → القصّ لا السقف');
+  // v-plan-models: ملاحظة الضيق للمالك تسمّي Groq و«عمران»؛ لغيره (المشترك على Groq) محايدة بلا اسم مزوّد ولا «عمران»
+  const own = OD.fitGroqTpm(body, msg(4200, P + 16000), true).messages[0].content;
+  const usr = b.messages[0].content;
+  assert.match(own, /\[هذا الدور بلا أدوات: حدّ مفتاح Groq في الدقيقة/, 'المالك: السبب باسمه');
+  assert.match(usr, /\[هذا الدور بلا أدوات لضيق السياق المتاح الآن/, 'غير المالك: صيغة محايدة');
+  assert.ok(!/Groq|عمران/.test(usr.slice(usr.lastIndexOf('[هذا الدور'))), 'لا اسم مزوّد ولا «عمران» في ملاحظة غير المالك');
 });
 
 test('429 per-minute right after (the owner\'s second screenshot: «مرحبا» answered, then «تقدر تفحص التطبيق» → «خطأ 429»): wait what Groq says, retry once, the reply arrives', async () => {
@@ -160,10 +167,10 @@ test('a wait longer than 40 s (or a per-day limit) is not slept on: the owner ge
 
 test('the retry lives in directFetch for Groq only, once, after the cap retry; and the stop note names the reason', () => {
   const src = read('api/_lib/oa-direct.js');
-  assert.match(src, /if \(!tpmFitted && route\.prov === 'groq' && r\.status === 413\) \{ const fit = fitGroqTpm\(body, t\); if \(fit\) \{ tpmFitted = true; body = fit; continue; \} \}/);
+  assert.match(src, /if \(!tpmFitted && route\.prov === 'groq' && r\.status === 413\) \{ const fit = fitGroqTpm\(body, t, !!o\.owner\); if \(fit\) \{ tpmFitted = true; body = fit; continue; \} \}/);
   const { ownerStopNote } = chat.__imgWhy;
   assert.equal(ownerStopNote({ status: 413, text: 'Request too large for model `x` on tokens per minute (TPM): Limit 8000, Requested 9000' }), 'ما قدرت أردّ الحين — المحادثة أكبر من حدّ المفتاح في الدقيقة؛ افتح محادثة جديدة');
-  assert.equal(ownerStopNote({ status: 413, text: 'Request Entity Too Large' }), 'ما قدرت أردّ الحين — خطأ 413', 'غير حدّ الدقيقة كما كان');
+  assert.equal(ownerStopNote({ status: 413, text: 'Request Entity Too Large' }), 'ما قدرت أردّ الحين — خطأ 413: Request Entity Too Large', 'غير حدّ الدقيقة كما كان');
   assert.equal(ownerStopNote({ status: 402, text: '' }), 'ما عندي رصيد');
 });
 

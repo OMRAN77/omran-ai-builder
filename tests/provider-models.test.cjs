@@ -102,7 +102,7 @@ test('٥. الواجهة: افتراضيّات السهم = ثوابت الخا�
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) {
     assert.ok(read(f).includes("window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : '');"), f);
   }
-  assert.ok(read('index.html').includes('js/modes.js?v=m131026g'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m211026'), 'وسم كاش modes رُفع');
 });
 
 test('٦. v-cohere-prefix (الخادم): تجريد بادئة الوسيط + قائمة مسحوبات مصحّحة رسميًّا + شبكة أمان', () => {

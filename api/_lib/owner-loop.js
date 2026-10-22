@@ -21,7 +21,7 @@ const SYS = '[تنبيه النظام — ليس من المالك]: ';
 const FINAL_NOTE = SYS + 'انتهت ميزانيّة الأدوات — اكتب الجواب الآن ممّا قرأت وصرّح بما لم تقرأه. وإن بقي شغل لم يُنفَّذ فاختم بما بقي بالتحديد '
   + '(الملفّ والأسطر والتغيير) — منه يكمل الدور التالي. لا تقل إنّك عدّلت ما لم تعدّله.';
 /* v-prov-finish-edit: ختام الميزانيّة كان «اكتب الجواب» وtool_choice none، فيتوقّف بعد القراءة بلا رفعة. إن طلب المالك تعديلًا وما رُفع شيء: نفّذ الآن والأدوات تبقى. */
-const FINAL_EDIT_NOTE = SYS + 'انتهت ميزانيّة القراءة — لا تلخّص ولا تعتذر. نفّذ التعديل الآن بـedit_github رقعة واحدة ممّا قرأت، ثمّ اكتب رابط طلب السحب. لا تقرأ من جديد.';
+const FINAL_EDIT_NOTE = SYS + 'انتهت ميزانيّة القراءة — لا تلخّص ولا تعتذر. نفّذ التعديل الآن بـedit_github رقعة واحدة ممّا قرأت، ثمّ اكتب رابط طلب السحب. لا تقرأ من جديد — إلّا إن رجع edit_github «النصّ القديم غير موجود»: اقرأ تلك الأسطر وحدها ثمّ أعد الرقعة بالنصّ الحرفيّ.'; // v-carry-fail
 /* v-owner-resume (لقطة المالك ١٣ أكتوبر، GPT-6 Astra وبطاقات الأزياء: «مب قادر يكمل»): الختام بالميزانيّة كان ينهي الدور بملخّص، و«كمل»
    بعده تصل كلمة وحدها فيعيد المزوّد وصف ما قرأ بلا أداة. الآن سطر ثابت من الخادم تحت ختام الميزانيّة (RESUME_KEY)، و«كمل» بعد ردّ يحمله
    تأخذ RESUME_NOTE في رسالة المالك، ودور الإكمال الذي يختم بنصّ بلا أداة يُعاد للحلقة مرّة (CARRY_NOTE في chat.js). */
@@ -60,6 +60,29 @@ const CREDIT_RE = /credit|balance|billing|insufficient|quota|payment/i; // v-mid
    لكشف تفكيره الداخليّ (التوثيق: لا يُعاد على موديل بديل، والمخرج قراءة ملخّص التفكير لا طلبه). الفئة تُترجم للمالك بمعناها، وشرح المزوّد إن أرسله يُلحق. */
 const REFUSAL_WHY = { reasoning_extraction: 'فُهم السؤال طلبًا لكشف تفكيره الداخليّ — اسأل عن الجواب لا عمّا فكّر فيه' };
 const DEAD_TTL_S = 6 * 3600;
+
+/* v-why (لقطات المالك ١٥ أكتوبر: Cohere «ما قدرت أردّ الحين — خطأ 400» ثمّ «خطأ 404»، والسبب لا يظهر لأحد): سطر الفشل كان الرقم وحده،
+   فلا المالك ولا المزوّد يعرف ما رُفض. الآن سبب المزوّد القصير بعد الرقم: رسالة الخطأ من JSON، وغلاف الوسيط «Provider returned error»
+   يُفتح إلى رسالة المزوّد الأصليّة (metadata.raw)، وأيّ مفتاح أو رمز يُمحى. */
+const WHY_MAX = 160;
+const SECRET_RE = /\b(?:sk-[A-Za-z0-9_*.-]{4,}|gh[pousr]_[A-Za-z0-9]{6,}|github_pat_[A-Za-z0-9_]{6,}|AIza[0-9A-Za-z_-]{10,})|Bearer\s+\S+/g;
+function errMsg(e) { return !e ? '' : (typeof e === 'string' ? e : String(e.message || e.msg || e.detail || (e.error && errMsg(e.error)) || '')); }
+function upstreamWhy(text) {
+  const t = String(text == null ? '' : text).trim();
+  if (!t) return '';
+  let msg = t;
+  try {
+    const j = JSON.parse(t), e = (j && (j.error || j.errors && j.errors[0])) || j;
+    msg = errMsg(e) || t;
+    const raw = e && e.metadata && e.metadata.raw;
+    if (raw && (!errMsg(e) || /provider returned error/i.test(msg))) { let r = String(raw); try { r = errMsg(JSON.parse(raw)) || r; } catch (x) { /* guard-ok — نصّ المزوّد كما هو */ } msg = r; }
+    const pn = e && e.metadata && e.metadata.provider_name;
+    if (pn && msg.indexOf(pn) === -1) msg = pn + ': ' + msg;
+  } catch (x) { /* guard-ok — ليس JSON: النصّ نفسه */ }
+  msg = msg.replace(SECRET_RE, '***').replace(/\s+/g, ' ').trim();
+  return msg.length > WHY_MAX ? msg.slice(0, WHY_MAX - 1) + '…' : msg;
+}
+function whyTail(text) { const w = upstreamWhy(text); return w ? ': ' + w : ''; }
 
 // هامش الختام: دقيقة من ٢٤٠ ث، وربع المهلة إن ضُيّقت (CHAT_MAX_MS=20000 ← ٥ ث) كي لا يُجبر الختام من أوّل خطوة.
 function margin(maxMs) { return Math.min(60000, Math.floor(Number(maxMs) / 4)); }
@@ -168,7 +191,7 @@ function got(s, r) {
 function beginStep(s, o) {
   if (!s || !s.on) return;
   s.stopDetails = null; s.t0 = Number(o.t0) || Date.now(); s.send = typeof o.send === 'function' ? o.send : null;
-  s.final = !!o.tools && (o.steps >= o.MAX_STEPS || Date.now() - o.t0 > o.MAX_MS - margin(o.MAX_MS));
+  s.final = !!o.tools && (o.steps >= o.MAX_STEPS - (o.editAsk && !o.pushed && o.MAX_STEPS > 4 ? 2 : 0) || Date.now() - o.t0 > o.MAX_MS - margin(o.MAX_MS)); // v-carry-fail: ختام التعديل قبل آخر خطوتين فيُعاد التعديل الفاشل
   s.editClose = !!(s.final && o.editAsk && !o.pushed);
   if (s.final && !s.nudged && o.steps > 1 && Array.isArray(o.convo) && o.convo.length) {
     const last = o.convo[o.convo.length - 1];
@@ -288,7 +311,7 @@ function afterStream(s, o) {
    واحدة في الدور (مثل C4) لفشل المزوّد أو انقطاع بثّه، وبعد حرف أو إعادة فاشلة = توقّف بسبب ظاهر وكود المزوّد. غير هذا الخطأ يمضي كما كان (null). */
 function midCode(m) {
   const t = String(m || '');
-  const k = /provider error — ([a-z_]{2,40})/.exec(t) || /response\.incomplete — ([a-z_]{2,40})/.exec(t);
+  const k = /\b(tool_use_failed)\b/.exec(t) || /provider error — ([a-z_]{2,40})/.exec(t) || /response\.incomplete — ([a-z_]{2,40})/.exec(t); // v-groq-final: كود Groq أوضح من نوعه
   if (k) return k[1];
   if (/without response terminal|without \[DONE\]/.test(t)) return 'stream_cut';
   if (/function_call arguments|tool arguments JSON/.test(t)) return 'tool_args_cut';
@@ -312,10 +335,50 @@ function midStream(s, e, o) {
     return { kind: 'fail', status: 402 };
   }
   const why = 'انقطع ردّ المزوّد في منتصفه' + (c ? ' (' + c + ')' : '');
-  if (!(o && o.sawText) && !s.midRetried && c !== 'tool_args_cut' && c !== 'bad_sse') { s.midRetried = true; // استدعاء أداة مكسور أو SSE تالف: لا نداء ثانٍ (chat-route-credentials)
+  if (!(o && o.sawText) && (!s.midRetried || (c === 'tool_use_failed' && (s.toolFails = (s.toolFails || 0) + 1) <= 2)) && c !== 'tool_args_cut' && c !== 'bad_sse') { s.midRetried = true; // استدعاء أداة مكسور أو SSE تالف: لا نداء ثانٍ (chat-route-credentials)
     return { kind: 'retry', status: '⏳ ' + why + ' — أعيد مرّة…' }; }
   return { kind: 'stop', msg: why };
 }
+
+/* v-pro-lanes (لقطة مشترك Pro ٧٥ ١٦ أكتوبر): لغير المالك — مسار الباقة الذي فشل قبل أيّ حرف (حدث خطأ داخل البثّ، انقطاع، مهلة أوّل بايت)
+   كان يصل catch الأعلى فيرى العميل «chat error» ويهبط لسلسلته القديمة بلا أدوات، ولا يُجرَّب المسار التالي. هنا الحالة التي يُعامل بها
+   كفشل ما قبل البثّ: 402 للرصيد/الحصّة، 504 للمهلة، 502 للباقي. خطأ برمجيّ (TypeError من الكود نفسه) = 0 فيمضي كما كان. */
+/* مراجعة v-pro-lanes: حدّ الطلبات ليس رصيدًا — 429 Gemini «RESOURCE_EXHAUSTED … check your plan and billing details» كان يُقرأ نفاد رصيد فيصل
+   المالك إشعار «الرصيد نفد» كاذب ويُحجب الصادق ٦ ساعات. نفاد الحصّة الحقيقيّ (insufficient_quota) يبقى رصيدًا. */
+const RATE_RE = /\b429\b|RESOURCE_EXHAUSTED|rate[- ]?limit|check quota|too many requests|requests per/i;
+const HARD_CREDIT_RE = /insufficient_quota|credit balance|insufficient (?:credits|funds|balance)|purchase credits|billing_error/i;
+function rateLimited(t) { const s = String(t || ''); return RATE_RE.test(s) && !HARD_CREDIT_RE.test(s); }
+function laneFail(e) {
+  if (!e) return 0;
+  const m = String(e.message || '');
+  if (e.code === 'OA_STREAM_PROTOCOL_ERROR') return /content_filter/.test(m) ? 0 : (CREDIT_RE.test(m) && !rateLimited(m)) ? 402 : 502; // رفض الرقابة لا يُعاد على مسار آخر (يمضي كما كان)
+  if (e.name === 'UpstreamTimeoutError') return 504;
+  return (NET_RE.test(m) || NET_RE.test(String((e.cause && (e.cause.code || e.cause.message)) || ''))) ? 502 : 0;
+}
+
+/* v-sse-error (فحص المزوّدين ١٥ أكتوبر، بعد لقطة DeepSeek «أرفع الرقعة…» بلا رفعة): خطأ المزوّد داخل البثّ بعد ٢٠٠ — event: error
+   ({"type":"error","error":{…}} عند أنثروبيك) أو كائن error في أعلى الدفعة (الوسيط) — كان يُتجاهل فينتهي الدور «ناجحًا» على نصّ ناقص أو
+   فارغًا بلا سبب ولا سجلّ، وأداة نصف مبثوثة تضيع. الآن يُرمى خطأ بروتوكول بكوده فيمرّ بمسار C9 نفسه (إعادة مرّة قبل أيّ نصّ، وإلّا سبب ظاهر). */
+function isSseError(ev) { return !!ev && typeof ev === 'object' && (ev.type === 'error' || (!!ev.error && typeof ev.error === 'object')); }
+function sseError(ev) {
+  const x = (ev && ev.error && typeof ev.error === 'object') ? ev.error : {};
+  const pick = [x.error_type, x.metadata && x.metadata.error_type, x.type, x.code].find((v) => typeof v === 'string' && /[a-z]/i.test(v)) || 'error';
+  const code = String(pick).toLowerCase().replace(/[^a-z_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'error';
+  const e = new Error('OA_STREAM_PROTOCOL_ERROR: provider error — ' + code + (x.message ? ': ' + String(x.message).replace(/\s+/g, ' ').slice(0, 200) : ''));
+  e.code = 'OA_STREAM_PROTOCOL_ERROR';
+  return e;
+}
+/* v-tool-stop: نداء أداة كامل (أُغلقت كتلته وJSON كائن) مع end_turn أو stop_sequence أو بلا message_delta = نداء أداة، لا جواب ختاميّ —
+   كان يُرمى فيبقى «أرفع الرقعة: » على الشاشة بلا رفعة. قائمة سماح: max_tokens (TOOL_CUT_NOTE) والرفض وpause_turn كما هي، وقطع الحارس كما هو. */
+function objJson(j) { try { const x = JSON.parse(j || '{}'); return !!x && typeof x === 'object' && !Array.isArray(x); } catch (e) { return false; } }
+function toolStop(s, stop, blocks) {
+  if (!s || !s.on || s.stalled || (stop && stop !== 'end_turn' && stop !== 'stop_sequence')) return stop;
+  const tu = (blocks || []).filter((b) => b && b.type === 'tool_use');
+  if (!tu.length || !tu.every((b) => b.closed && b.name && objJson(b.inputJson))) return stop;
+  return 'tool_use';
+}
+// بثّ انتهى بلا stop_reason وفيه كتلة أداة لم تُغلق أو JSON ناقص = مقطوع (يُعاد كـC9) — الكامل يمرّ لـtoolStop فيُنفَّذ.
+function toolOpen(blocks) { return (blocks || []).some((b) => b && b.type === 'tool_use' && !(b.closed && objJson(b.inputJson))); }
 
 // C1: خروج الحلقة بلا جواب ختاميّ (حدّ الخطوات أو المهلة) — السبب للمالك بدل «ما قدرت أردّ الحين». خطوة ختاميّة قبل حدّ الخطوات = ختام بالوقت.
 function exitText(o) {
@@ -420,6 +483,8 @@ function think(b, t, convo, route) {
 /* 400 يذكر التفكير أو التوقيع (أو العرض) = تُنزع كلّ الكتل وإعادة واحدة؛ والعرض يُطفأ للدور إن لم يكن الرفض عن كتلة في الرسائل
    (حقل thinking نفسه). بلا عرض: النزع لرفضٍ عن كتلة في الرسائل وحده (توقيع أو messages.N) — 400 عن حقول الجهد/التفكير
    (المجاملة الفوريّة v-owner-auto، إعداد الصورة) يمرّ لمعالجه بنصّه ولا يُضيّع تفكير الدور. والسبب سطر «↳» للمالك لا صمت. */
+// رفضٌ عن سقف الخرج أو النافذة أو الرصيد — بنصوص أنثروبيك وCohere وGoogle وOpenAI — ليس عن حقل التفكير.
+const CAP_WHY_RE = /max_?(?:completion_?|output_?)?tokens|max tokens|maximum output|too long|context|credit|afford|quota/i;
 async function think400(up, t, convo, again, send) {
   if (!t || !t.owner || !up || up.ok || Number(up.status) !== 400 || !(t.disp || t.talk || hasThink(convo))) return up;
   const why = await bodyText(up);
@@ -428,13 +493,13 @@ async function think400(up, t, convo, again, send) {
   // v-talk-400: بأيّ نصّ — الوسيط يترجم الحقل إلى reasoning المزوّد فيصل رفضه بنصّ المزوّد («reasoning…»، «Provider returned error») بلا
   // كلمة thinking. الحقل إضافتنا: 400 عليه = إعادة واحدة بلاه، و400 الإعادة يصل بسببه كما كان (t.talk يُصفَّر في think).
   // v-or-display: الوسيط يرفض العرض بنصّ المزوّد غالبًا (بلا كلمة display) — إعادة واحدة بلا عرض، والموديل لا يُرسل له ٦ ساعات.
-  if (t.orDisp && !blk && !/max_tokens|too long|context|credit|afford|quota/i.test(why)) { // السقف والنافذة والرصيد لمعالجاتها كما كانت
+  if (t.orDisp && !blk && !CAP_WHY_RE.test(why)) { // السقف والنافذة والرصيد لمعالجاتها كما كانت
     t.noDisplay = true;
     if (t.talkModel) NO_TALK.set(t.talkModel, Date.now());
     try { await require('./log-error.js').logErrorAndFlush('chat/thinking-or-display', new Error(why || 'upstream 400'), { action: 'thinking-or-display' }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
     return again();
   }
-  if (t.talk && !t.disp && !blk) {
+  if (t.talk && !t.disp && !blk && !CAP_WHY_RE.test(why)) { // v-owner-cap-live: رفض السقف/النافذة/الرصيد لمعالجه — كان يُهدر نداءً ويطفئ تفكير الموديل ٦ ساعات
     t.noTalk = true;
     if (t.talkModel) NO_TALK.set(t.talkModel, Date.now());
     if (t.effort && t.talkModel && /effort|output_config|reasoning|provider returned/i.test(why)) require('./owner-think.js').forgetEffort(t.talkModel); // v-owner-light: الرفض لا يميّز بين الحقلين (الوسيط يترجمهما معًا إلى reasoning) — يسقطان معًا في إعادة واحدة ويُذكران
@@ -543,11 +608,39 @@ async function rememberDeadPick(model, status, text, gone) {
   return true;
 }
 
+/* v-refusal-retry (لقطة المالك ١٥ أكتوبر: «رسم صور الستائر وارفعها» ← «رفض المزوّد الطلب (reasoning_extraction — فُهم السؤال طلبًا لكشف
+   تفكيره الداخليّ…)» ورسالته بلا أيّ كلمة تفكير): مصنّف أنثروبيك يقرأ الدور كلّه لا الرسالة وحدها. والعميل يلصق ملاحظة الرفض في نصّ
+   الردّ المحفوظ («⚠️ رفض المزوّد الطلب … كشف تفكيره الداخليّ … This request was blocked…») فتعود في التاريخ كلامًا عن كشف التفكير.
+   (١) للمالك قبل النداء: تُنزع ملاحظات الرفض من رسائل assistant في النسخة المرسَلة (نصّ التطبيق لا كلام الموديل).
+   (٢) رفض reasoning_extraction بلا كلمة تفكير تُزال: إعادة واحدة على الموديل نفسه بلا كتل التفكير وبلا عرضها، بسطر حالة. */
+const REFUSAL_NOTE_RE = /\n*⚠️\s*رفض المزوّد الطلب[\s\S]*$/;
+const BLOCKED_RE = /\n*[^\n]*This request was blocked as it seems to violate Anthropic[\s\S]*$/;
+function scrubRefusals(convo) {
+  let n = 0;
+  const fix = (s) => { const t = String(s).replace(REFUSAL_NOTE_RE, '').replace(BLOCKED_RE, '').replace(/\s+$/, ''); if (t === s) return s; n++; return t.trim() ? t : '…'; };
+  (Array.isArray(convo) ? convo : []).forEach((m) => {
+    if (!m || m.role !== 'assistant') return;
+    if (typeof m.content === 'string') m.content = fix(m.content);
+    else if (Array.isArray(m.content)) m.content.forEach((b) => { if (b && b.type === 'text' && typeof b.text === 'string') b.text = fix(b.text); });
+  });
+  return n;
+}
+function refusalRetry(convo, t) {
+  scrubRefusals(convo);
+  stripThink(convo, t);
+  if (t) t.noDisplay = true;
+  return true;
+}
+const REFUSAL_RETRY_STATUS = '↳ ⚠️ رفض المزوّد الدور كطلب كشف تفكير — أعيده مرّة بلا عرض التفكير';
+
 module.exports = {
-  state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, exitText, stallNote, shrinkOld, overTime,
+  state, beginStep, shape, signal, got, fetchFailed, read, stop, retryBusy, afterStream, midStream, midCode, laneFail, rateLimited, exitText, stallNote, shrinkOld, overTime,
   isDeadPick, rememberDeadPick, margin,
+  scrubRefusals, refusalRetry, REFUSAL_RETRY_STATUS, // v-refusal-retry
   thinkState, think, think400, thinkOpen, thinkDelta, thinkStop, thinkOut, asSent, thinkTail, stripThink, hasThink, isThink, DISPLAY_RE, // D1
   RESUME_KEY, RESUME_NOTE, resumeMark, isResume, resume, // v-owner-resume
+  upstreamWhy, whyTail, // v-why
+  isSseError, sseError, toolStop, toolOpen, // v-sse-error · v-tool-stop
   pulse, pushRef, closeMark, withRef, lateNote, closeTail, CLOSE_AT_MS, PULSE_MAX_MS, // v-turn-close
   FINAL_NOTE, FINAL_EDIT_NOTE, FN_BUDGET_MS, CONTINUE_NOTE, TOOL_CUT_NOTE, CUT_STOP, EMPTY_STOP, __deadPicks: deadPicks, __resetTalk: () => NO_TALK.clear(), // v-talk-400 · v-prov-finish-edit
 };

@@ -21,6 +21,13 @@ module.exports = async (req, res) => {
     const qd = await q.json().catch(() => ({}));
     if (!q.ok) {
       console.error('[minimax-status] query HTTP ' + q.status + ' ' + JSON.stringify(qd).slice(0, 300));
+      /* v-credit-out (أمر المالك ٢١ أكتوبر «ما تنخصم منه ولا نقطة»): المزوّد يرفض الاستطلاع نفسه لعطب عندنا (رصيده نفد، المفتاح، الصلاحيّة) — المهمّة لن
+         تُتابَع أبدًا، وكانت تذكرتها تنتهي بعد ساعتين بلا ردّ. تُسوّى فشلًا الآن (مرّة واحدة) وunavailable يعرضه العميل «الخدمة متوقّفة مؤقّتًا». */
+      if (require('./_videoFail.js').isOutage(q.status, JSON.stringify(qd))) {
+        await require('./video-job.js').settleVideoJob(taskId, false);
+        res.status(503).json({ error: 'unavailable', retryable: false });
+        return;
+      }
       res.status(q.status).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
       return;
     }

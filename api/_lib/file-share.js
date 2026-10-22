@@ -45,7 +45,9 @@ module.exports = async (req, res) => {
         pieces.push(String(c));
       }
       if (failed) { res.status(503).json({ error: 'chunk_missing', detail: 'جزء من الملف اختفى — حاول لاحقًا' }); return; }
-      s = prefix + pieces.join('');
+      /* v-chunk-fix: الرأس «chunks:n:mime:name» بلا «:» بعد الاسم، فكان الناتج «mime:name<base64>» — قراءة الصيغة
+         تبحث عن «:» الثانية فلا تجدها فينزل كلّ ملفّ فوق ~٥٢٠ ك.ب فارغًا (٠ بايت). الفاصل يعود هنا. */
+      s = prefix + ':' + pieces.join('');
     }
 
     // الصيغة: mime:name:base64

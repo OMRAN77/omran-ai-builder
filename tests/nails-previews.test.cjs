@@ -20,10 +20,13 @@ test('١. صورة كلّ بطاقة أظافر من المولّد أوّلًا
   for (const v of TWELVE) {
     const r = ctx.f('nails', v);
     assert.equal(r.img, '/api/studio-preview?feature=nails&value=' + v, v);
-    assert.equal(r.img2, 'assets/studio/options/nails-' + v + '.webp');
+    // v-sharp: الصورة الجاهزة موضَّحة فتحمل وسم كاش — يُقرأ ولا يُثبَّت.
+    assert.match(r.img2, /\?v=\d+$/, 'وسم كاش: ' + r.img2);
+    assert.equal(r.img2.replace(/\?v=\d+$/, ''), 'assets/studio/options/nails-' + v + '.webp');
   }
   assert.match(ctx.f('makeup', 'x').img, /^\/api\/studio-preview/);
-  assert.match(ctx.f('hair', 'x').img, /^assets\//, 'غيرها كما هو');
+  // v-studio-static-set: 'x' لا صورة جاهزة له فصار يذهب إلى المعاينة مباشرة (كان 404 أوّلًا) — الجاهز كما هو
+  assert.match(ctx.f('hair', 'black').img, /^assets\//, 'غيرها كما هو');
 });
 
 test('٢. لكلّ واحدة من الاثنتي عشرة وصف في المولّد، والتأطير يد قريبة بالأظافر', () => {

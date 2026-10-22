@@ -12,11 +12,34 @@ const VEO_FREE_IMAGE_MAX = 2000;
 const VEO_FREE_MAX = 1500;
 /* v-video-first-frame: قفل «الإطار جاهز — حرّكه كما هو» صار في trend-people.js يشترك فيه كلّ محرّك (نصّه كما هو). */
 const { FRAME_LOCK } = require('./trend-people.js');
+/* v-trend-scenes: مساحة «اكتب اللي تبيه» تُحسب من حدّ Veo نفسه بعد حجز قفل الإطار الأوّل (كان ١٤٨٠/١١٧٠ فيسقط مع الصورة) */
+const TREND_OPTS = { cap: VEO_PROMPT_MAX - FRAME_LOCK.length };
+
+/* v-talkchar-confirm (مراجعة ٢): خطوات الشخصيّة الناطقة بترتيب خصمها — [سبب، نقاط] كما يخصمها maha-image ثمّ هذا الملفّ. أمر الكرتنة
+   «تحويل أسلوب» (3D/chibi) فهو إبداعيّ: الأساس ثمّ فرق الإبداعيّ (image_creative كاملًا)، إلّا «العاديّة» المدفوعة من رصيد اشتراك الصور
+   (بلا فرق). كان السعر ١٧٥+٢٠ والخصم ١٧٥+٣٥ — أكثر ممّا وافق عليه، ومن رصيده ١٩٥–٢٠٩ يدفع الكرتون ثمّ points_insufficient. */
+async function talkSteps(username, withCartoon, C) {
+  const steps = [];
+  if (withCartoon) {
+    const media = require('./_mediaPlans.js');
+    const q = await media.imageQuality(username, '').catch(() => null);
+    const base = q === 'normal' ? 'image_normal' : 'image';
+    const baseCovered = (await media.coverage(username, [base]).catch(() => [false]))[0];
+    steps.push([base, C.image]);
+    if (!(baseCovered && q === 'normal')) steps.push(['image_creative', C.image_creative - C.image]);
+  }
+  steps.push(['veo_video', C.veo_video]);
+  return steps;
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  /* v-video-giveback: خارج try — الرمية بعد الخصم (نداء الإنشاء أو إطار المجموعة) كانت تردّ ٥٠٠ بلا ردّ نقاط ولا فكّ قفل */
+  let chargedUser = null;
+  let videoLocked = null;
+  let chargedPay = null; // v-refund-kind: نتيجة الخصم نفسها — الردّ يعود إلى نوعه
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
@@ -40,15 +63,15 @@ module.exports = async (req, res) => {
     let trendParams = null; /* v-two-people: لإعادة بناء أمر الترند بصيغة الجمع إن كشف الإطار شخصين في صورة واحدة */
     if (body.trend) {
       const trendsLib = require('./video-trends.js');
-      const bParams = Object.assign({}, body.params || {}, { hasImage });
+      const bParams = trendsLib.sceneParams(String(body.trend), Object.assign({}, body.params || {}, { hasImage })); /* v-trend-scenes: قبل القصّ */
       trendParams = bParams;
-      let built = trendsLib.buildTrendPrompt(String(body.trend), bParams);
+      let built = trendsLib.buildTrendPrompt(String(body.trend), bParams, TREND_OPTS);
       if (!built) { res.status(400).json({ error: 'unknown trend' }); return; }
       /* v-video-photo-identity: قفل الإطار الأوّل (FRAME_LOCK) يُلحق بعد البناء لترندات الأشخاص — فيُحجز له
          مكانه هنا: يُقصّ كلام المستخدم وحده (الاسم يتكرّر في بعض القوالب) لا الأقفال. أطول حالة قيست: ٢٧٨٩. */
       for (let keep = 360; (trendPeople.length > 1 || soloWanted) && built.prompt.length + FRAME_LOCK.length > VEO_PROMPT_MAX && keep >= 0; keep -= 40) {
         const cut = (v) => String(v || '').slice(0, keep);
-        built = trendsLib.buildTrendPrompt(String(body.trend), Object.assign({}, bParams, { name: cut(bParams.name), text: cut(bParams.text), extra: cut(bParams.extra) })) || built;
+        built = trendsLib.buildTrendPrompt(String(body.trend), Object.assign({}, bParams, { name: cut(bParams.name), text: cut(bParams.text), extra: cut(bParams.extra) }), TREND_OPTS) || built;
       }
       promptText = built.prompt; ratio = ratio || built.ratio; if (!durationSeconds) durationSeconds = 8;
     } else if (hasImage && promptText) {
@@ -71,8 +94,24 @@ module.exports = async (req, res) => {
     // 400 نقطة للفيديو الواحد. يُسترجع الرصيد تلقائيًا لو فشل الطلب.
     const pointsLib = require('./points.js');
     const gate = await checkOwnerBypass(token);
-    let chargedUser = null;
-    let videoLocked = null;
+    /* v-talkchar-confirm (مراجعة باب المال): سؤال السعر وحده قبل خطوة مدفوعة تسبق الفيديو (كرتنة الشخصيّة الناطقة) — كانت الكرتنة
+       تُخصم ثمّ يأتي سؤال الفيديو، فالإلغاء يقول «لم تُخصم أيّ نقاط» وقد خُصمت، ومن رصيده لا يكفي الفيديو يدفع الكرتون ثمّ يُردّ.
+       لا خصم هنا ولا قفل ولا نداء مزوّد ولا صلاحيّة باقة؛ الموافقة يحملها العميل إلى الإنشاء (confirmed:true). */
+    if (req.query && req.query.action === 'veo-price') { /* إجراء مستقلّ لا علم في الجسم: موجّه أقدم يرفضه (404) فلا يصير إنشاءً مدفوعًا عند تراجع النشر */
+      if (gate.allowed) { res.status(200).json({ ok: true, priceOk: true }); return; }
+      const pcUser = gate.reason === 'auth' ? null : pointsLib.verifyPointsToken(token);
+      if (!pcUser) { res.status(401).json({ error: 'auth_required' }); return; }
+      const withCartoon = body.withCartoon === true;
+      const pcSteps = await talkSteps(pcUser, withCartoon, pointsLib.COSTS);
+      const pcCost = pcSteps.reduce((a, s) => a + s[1], 0);
+      const pcLeft = await require('./abuse-guard.js').videoCooldownLeft(pcUser); // VIP خارج المهلة كما في videoLock أدناه (pay.owner)
+      if (pcLeft > 0 && !(await require('./_vip.js').isVip(pcUser))) { res.status(429).json({ error: 'video_cooldown', retryAfter: pcLeft }); return; }
+      if (!(await pointsLib.canAfford(pcUser, pcSteps))) { res.status(402).json({ error: 'points_insufficient', needed: pcCost }); return; }
+      const pcGate = withCartoon ? pointsLib.requireConfirmation(body, pcCost, 'شخصيّة كرتونيّة ناطقة') : pointsLib.requireConfirmation(body, pcCost, 'فيديو سينمائي بالصوت');
+      if (pcGate) { res.status(pcGate.status).json(pcGate.payload); return; }
+      res.status(200).json({ ok: true, priceOk: true });
+      return;
+    }
     if (!gate.allowed) {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
@@ -82,7 +121,7 @@ module.exports = async (req, res) => {
       let pay = (body.trend && (await require('./_planVideos.js').planVideoLeft(username)) > 0)
         ? await pointsLib.spendPoints(username, pointsLib.COSTS.veo_video, 'veo_video', { planVideoOnly: true }) : null;
       if (!pay || !pay.ok) {
-        const gateVeo = pointsLib.requireConfirmation(body, pointsLib.COSTS.veo_video, 'فيديو Veo 3');
+        const gateVeo = pointsLib.requireConfirmation(body, pointsLib.COSTS.veo_video, 'فيديو سينمائي بالصوت');
         if (gateVeo) { res.status(gateVeo.status).json(gateVeo.payload); return; }
         pay = await pointsLib.spendPoints(username, pointsLib.COSTS.veo_video, 'veo_video');
       }
@@ -90,12 +129,12 @@ module.exports = async (req, res) => {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.veo_video, points: pay.points || 0 });
         return;
       }
-      chargedUser = username;
+      chargedUser = username; chargedPay = pay;
       // v-plan-routing: فيديو واحد كلّ ٣ دقائق لكلّ حساب — VIP خارجها (pay.owner). القفل يُفكّ لو فشل Veo.
       if (!pay.owner) {
         const __vl = await require('./abuse-guard.js').videoLock(username);
         if (!__vl.ok) {
-          await pointsLib.refundPoints(username, pointsLib.COSTS.veo_video);
+          await pointsLib.refundPoints(username, pointsLib.COSTS.veo_video, pay); chargedUser = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
           res.status(429).json({ error: 'video_cooldown', retryAfter: __vl.retryAfter });
           return;
         }
@@ -118,8 +157,9 @@ module.exports = async (req, res) => {
         promptText += FRAME_LOCK;
       }
       else if (frame && frame.error) {
-        if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video);
+        if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video, chargedPay);
         if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+        chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
         res.status(frame.status || 502).json({ error: frame.error, retryable: !!frame.retryable });
         return;
       }
@@ -138,7 +178,7 @@ module.exports = async (req, res) => {
         if (solo.people > 1) {
           const vt = require('./video-trends.js');
           if (body.trend) {
-            const b2 = vt.buildTrendPrompt(String(body.trend), Object.assign({}, trendParams, { people: solo.people }));
+            const b2 = vt.buildTrendPrompt(String(body.trend), Object.assign({}, trendParams, { people: solo.people }), TREND_OPTS);
             if (b2 && b2.prompt.length + FRAME_LOCK.length <= VEO_PROMPT_MAX) promptText = b2.prompt;
           } else {
             promptText = vt.withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, undefined, solo.people);
@@ -178,16 +218,26 @@ module.exports = async (req, res) => {
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
       const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
-      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video);
+      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-      res.status(upstream.status).json({ error: 'Veo error: ' + String(msg).slice(0, 500) });
+      chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
+      console.error('[veo-create] upstream ' + upstream.status + ': ' + String(msg).slice(0, 300));
+      const fail = require('./_videoFail.js').startFail(upstream.status, msg); /* v-video-names: مؤقّت · عطب عندنا · رفض للطلب (_videoFail.js) */
+      res.status(fail.code).json(fail.body);
       return;
     }
     // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم ويفكّ القفل.
-    await require('./video-job.js').rememberVideoJob(data.name, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked });
+    await require('./video-job.js').rememberVideoJob(data.name, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked, pay: chargedPay });
+    chargedUser = null; videoLocked = null; /* v-video-giveback: التذكرة تملك الردّ من هنا — catch لا يردّ مرّتين (كـactor-create) */
     res.status(200).json({ op: data.name });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    /* v-video-giveback: أيّ رمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) تردّ النقاط وتفكّ القفل كـomni-create — أفضل جهد لا يحجب الردّ */
+    try {
+      if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.veo_video, chargedPay);
+      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+    } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
+    console.error('[veo-create] ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
   }
 };
 module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;

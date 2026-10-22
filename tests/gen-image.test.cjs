@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+process.env.OWNER_AGENT_CLAUDE = 'on'; // v-agent-claude-off: الاختبار يفحص الوكيل وهو شغّال
 process.env.AUTH_SECRET = 'gen-image-secret';
 process.env.OPENROUTER_API_KEY = 'test-or-key';
 process.env.ANTHROPIC_API_KEY = 'test-anth-key';

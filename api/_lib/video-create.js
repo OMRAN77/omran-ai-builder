@@ -24,16 +24,22 @@ const RW_ID_TAIL = '. IDENTITY (mandatory): it is this same person from the phot
 const RW_ID_PRE_FRAME_REAL = 'The opening frame already shows the real person from the user\'s photo in this scene. Keep this exact person — same face shape, eyes, nose, lips, jawline, beard, skin tone, hair and body — in every frame; animate that frame as it is, never redraw or replace them. ';
 const RW_ID_PRE_FRAME_ANIME = 'The opening frame already shows the real person from the user\'s photo, drawn in the style below. Keep them exactly as drawn there — same face and features — in every frame; animate that frame as it is, never redraw or replace them. ';
 
+/* v-ai-video-speed: صورة بلا وجه (منتج، مكان) — كانت تُرسَل بمرساة «صورة حقيقيّة لشخص حقيقيّ… الوجه والعينان…» فيخترع المحرّك
+   شخصًا أو يشوّه المنتج. المرساة هنا للشيء نفسه: شكله وألوانه وكتابته كما هي، والوصف يحرّك ما حوله. */
+const RW_OBJ_PRE = 'The opening frame is the user\'s own photo of this subject. Keep the subject exactly as it is in the photo — same shape, colors, materials, label and any text on it — in every frame; animate it as described, never swap it for a different one. ';
+const RW_OBJ_TAIL = '. SUBJECT (mandatory): the same subject from the photo throughout, unchanged.';
+
 /* v-two-people: الإطار المرسوم فيه شخصان (من صورة واحدة) — المرساة والقفل بصيغة الجمع، كلّ واحد بوجهه */
 const RW_ID_PRE_FRAME_TWO = 'The opening frame already shows the real people from the user\'s photo in this scene. Keep each of them exactly — their own face shape, eyes, nose, lips, jawline, beard, skin tone, hair and body — in every frame; animate that frame as it is, never redraw, swap or replace anyone. ';
 const RW_ID_TAIL_TWO = '. IDENTITY (mandatory): they are these same people from the photo throughout, each with their own face, never different or generic faces.';
 
-function buildRunwayPrompt(promptText, style, useImage, framed, people) {
+function buildRunwayPrompt(promptText, style, useImage, framed, people, noPerson) {
   const anime = style === 'anime';
   const suffix = anime ? RW_STYLE_ANIME : RW_STYLE_REAL;
   const two = !!(useImage && framed && people > 1);
-  const pre = useImage ? (two ? RW_ID_PRE_FRAME_TWO : framed ? (anime ? RW_ID_PRE_FRAME_ANIME : RW_ID_PRE_FRAME_REAL) : (anime ? RW_ID_PRE_ANIME : RW_ID_PRE_REAL)) : '';
-  const tail = useImage ? (two ? RW_ID_TAIL_TWO : RW_ID_TAIL) : '';
+  const obj = !!(useImage && !framed && noPerson); // v-ai-video-speed: كشفنا صفر وجوه
+  const pre = useImage ? (obj ? RW_OBJ_PRE : two ? RW_ID_PRE_FRAME_TWO : framed ? (anime ? RW_ID_PRE_FRAME_ANIME : RW_ID_PRE_FRAME_REAL) : (anime ? RW_ID_PRE_ANIME : RW_ID_PRE_REAL)) : '';
+  const tail = useImage ? (obj ? RW_OBJ_TAIL : two ? RW_ID_TAIL_TWO : RW_ID_TAIL) : '';
   const room = Math.max(0, RUNWAY_PROMPT_MAX - pre.length - suffix.length - tail.length);
   return pre + String(promptText || '').trim().slice(0, room) + suffix + tail;
 }
@@ -52,6 +58,10 @@ module.exports = async (req, res) => {
     return;
   }
 
+  /* v-video-giveback: خارج try — الرمية بعد الخصم تسقط في الـcatch الأخير، وكان يردّ ٥٠٠ بلا ردّ نقاط ولا فكّ قفل */
+  let chargedUser = null;
+  let videoLocked = null;
+  let chargedPay = null; // v-refund-kind: نتيجة الخصم نفسها — الردّ يعود إلى نوعه
   try {
     let body = req.body;
     if (!body || typeof body === 'string') {
@@ -69,6 +79,12 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Missing promptText' });
       return;
     }
+
+    /* v-video-giveback: فحص المفتاح قبل أيّ حجز أو خصم (كـveo-create، v-video-stream) — كان بعد spendPoints وvideoLock
+       ويردّ ٥٠٠ باسم المفتاح بلا ردّ ولا فكّ: النقاط تحترق وإعادة المحاولة ترجع video_cooldown. */
+    const picked = pickKey();
+    if (!picked) { console.error('[video-create] missing provider key'); res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.' }); return; }
+    const apiKey = picked.key;
 
     // "Long video" mode (many chained scenes for a multi-minute video) is
     // restricted to the owner's own account and bypasses the small daily
@@ -100,35 +116,26 @@ module.exports = async (req, res) => {
     // 💰 نظام النقاط: فيديو Runway = 60 نقطة لغير المالك. يُخصم قبل
     // الإنشاء ويُسترجع تلقائيًا لو فشل الطلب عند Runway.
     const pointsLib = require('./points.js');
-    let chargedUser = null;
-    let videoLocked = null;
     if (usageResult.username && !pointsLib.isOwnerUsername(usageResult.username)) {
-      const gateRw = pointsLib.requireConfirmation(body, pointsLib.COSTS.runway_video, 'فيديو Runway');
+      const gateRw = pointsLib.requireConfirmation(body, pointsLib.COSTS.runway_video, 'فيديو بالذكاء الاصطناعي');
       if (gateRw) { res.status(gateRw.status).json(gateRw.payload); return; }
       const pay = await pointsLib.spendPoints(usageResult.username, pointsLib.COSTS.runway_video, 'runway_video');
       if (!pay.ok) {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.runway_video, points: pay.points || 0 });
         return;
       }
-      chargedUser = usageResult.username;
+      chargedUser = usageResult.username; chargedPay = pay;
       // v-plan-routing: فيديو واحد كلّ ٣ دقائق لكلّ حساب — المالك وVIP خارجها (pay.owner). القفل يُفكّ لو فشل Runway.
       if (!pay.owner) {
         const __vl = await require('./abuse-guard.js').videoLock(chargedUser);
         if (!__vl.ok) {
-          await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video);
+          await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video, pay); chargedUser = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
           res.status(429).json({ error: 'video_cooldown', retryAfter: __vl.retryAfter });
           return;
         }
         videoLocked = chargedUser;
       }
     }
-
-    const picked = pickKey();
-    if (!picked) {
-      res.status(500).json({ error: 'Server is missing RUNWAY_API_KEY' });
-      return;
-    }
-    const apiKey = picked.key;
 
     const allowedRatios = ['1280:720', '720:1280'];
     const finalRatio = allowedRatios.includes(ratio) ? ratio : '1280:720';
@@ -146,14 +153,18 @@ module.exports = async (req, res) => {
     /* v-video-first-frame (المالك: «كل الفيديوات»): مع صورة ووصف يُبنى أوّل إطار بوجهه في مشهد الوصف وأسلوبه
        (الأنمي يُرسم أنمي — صورة حقيقيّة كإطار أوّل لا تصير أنمي)، بالنسبة نفسها فلا قصّ. keepPhoto («حرّكها» وحدها
        من المحادثة) = الصورة نفسها كما كانت. أيّ عطب = الصورة نفسها، فلا يفشل فيديو بسبب الإطار. */
-    let framed = false, framePeople = 0;
+    let framed = false, framePeople = 0, noPerson = false;
     const tp = require('./trend-people.js');
     if (useImage && !body.trend && !body.keepPhoto && tp.firstFrameOn() && process.env.GEMINI_API_KEY) {
-      const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64), mime: imageMime }, String(promptText), finalRatio, { style, budgetMs: 90000 });
+      /* v-ai-video-speed: needPerson — صورة بلا وجه (عطر، منتج) تبدأ الفيديو كما هي بلا إطار مرسوم (كان ١٥–٤٠ ث، حتّى ٩٠، قبل المحرّك) */
+      const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64), mime: imageMime }, String(promptText), finalRatio, { style, budgetMs: 90000, needPerson: true });
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime; framed = true; framePeople = solo.people || 0;
         console.log('[video-create] first frame ready' + (solo.cached ? ' (cached)' : ''));
-      } else console.warn('[video-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
+      } else {
+        noPerson = !!(solo && solo.noPerson);
+        console.warn('[video-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
+      }
     }
     // v-runway-host: مفاتيح الـAPI العامة تخدمها api.dev.runwayml.com حصرًا —
     // النداء على api.runwayml.com يرجع «Incorrect hostname for API key».
@@ -161,7 +172,7 @@ module.exports = async (req, res) => {
       ? RUNWAY_API_BASE + '/v1/image_to_video'
       : RUNWAY_API_BASE + '/v1/text_to_video';
     // Runway hard limit: promptText <= 1000 chars TOTAL — مع صورة: مرساة هويّة أوّلًا وقفل أخيرًا (v-video-photo-identity)
-    const finalPrompt = buildRunwayPrompt(promptText, style, useImage, framed, framePeople);
+    const finalPrompt = buildRunwayPrompt(promptText, style, useImage, framed, framePeople, noPerson);
 
     /* v-runway-model (لقطات المالك: «Validation of body failed … expected one of
        gen4.5 | kling3.0_pro | veo3.1 …»): Runway أوقف اسم gen4_turbo فصار كل
@@ -190,11 +201,14 @@ module.exports = async (req, res) => {
       }
     }
     if (!upstream.ok) {
-      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video);
+      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-      // رسالة مفهومة للمستخدم + ذيل تقني قصير للتشخيص — لا JSON خام بطول شاشة.
+      chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
+      // v-video-names: رسالة مفهومة للمستخدم، والذيل التقنيّ (قد يسمّي المزوّد أو نماذجه) للسجلّ وحده.
       const tech = String((data && (data.error || (data.issues && data.issues[0] && data.issues[0].message))) || ('HTTP ' + upstream.status)).slice(0, 160);
-      res.status(upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات. (' + tech + ')', retryable: true });
+      console.error('[video-create] upstream ' + upstream.status + ': ' + tech);
+      const fail = require('./_videoFail.js').startFail(upstream.status, tech); /* v-video-names: مؤقّت · عطب عندنا · رفض للطلب (_videoFail.js) */
+      res.status(fail.code).json(fail.body);
       return;
     }
 
@@ -205,10 +219,17 @@ module.exports = async (req, res) => {
     await saveLastTask(picked.index, data.id);
     const clientTaskId = encodeTaskId(picked.index, data.id);
     // v-video-refund: تذكرة المهمّة — فشلها لاحقًا عند الاستطلاع يردّ الخصم والقفل وحصّة اليوم.
-    await require('./video-job.js').rememberVideoJob(clientTaskId, { username: chargedUser, cost: pointsLib.COSTS.runway_video, locked: !!videoLocked, quota: longMode !== true });
+    await require('./video-job.js').rememberVideoJob(clientTaskId, { username: chargedUser, cost: pointsLib.COSTS.runway_video, locked: !!videoLocked, quota: longMode !== true, pay: chargedPay });
+    chargedUser = null; videoLocked = null; /* v-video-giveback: التذكرة تملك الردّ من هنا — catch لا يردّ مرّتين (كـactor-create) */
     res.status(200).json({ id: clientTaskId, remaining });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    /* v-video-giveback: أيّ رمية بعد الخصم (انقطاع أو مهلة عند نداء الإنشاء) تردّ النقاط وتفكّ القفل كـomni-create — أفضل جهد لا يحجب الردّ */
+    try {
+      if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.runway_video, chargedPay);
+      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+    } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
+    console.error('[video-create] ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
   }
 };
 module.exports.buildRunwayPrompt = buildRunwayPrompt;

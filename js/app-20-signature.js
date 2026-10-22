@@ -77,6 +77,7 @@
       }
       var el = document.createElement('link');
       el.rel = 'stylesheet';
+      el.crossOrigin = 'anonymous'; /* v-gfonts-cors: بلا CORS ترمي قراءة cssRules فيكتب html-to-image (تحويل PDF) خطأين في الكونسول */
       el.href = 'https://fonts.googleapis.com/css2?family=' + f.g + '&display=swap';
       el.setAttribute('data-sig-font', f.id);
       el.onerror = function(){ linked[f.id] = false; };
@@ -158,7 +159,7 @@
       try{ file = new File([blob], 'omran-signature.png', { type:'image/png' }); }
       catch(e){ tell(e, 'sig:file'); }
       if(file && navigator.canShare && navigator.canShare({ files:[file] })){
-        return navigator.share({ files:[file], title:'Omran AI', text:T('توقيعي ✍️', 'My signature ✍️') })
+        return navigator.share({ files:[file], title:'om ai', text:T('توقيعي ✍️', 'My signature ✍️') })
           .catch(function(err){
             if(err && err.name === 'AbortError') return;
             tell(err, 'sig:share');

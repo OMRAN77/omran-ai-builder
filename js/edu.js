@@ -52,6 +52,23 @@ ml:{currIntro:'പാഠ്യപദ്ധതിയും പാഠ വിവര
 "es":{"uploadSub":"PDF, imágenes o DOCX","pastePh":"Pega aquí el texto de la clase…","lessonsWord":"lección(es)","labTab":"🧪 Laboratorio en vivo","docxFail":"No se pudo leer el archivo DOCX — guárdalo como PDF.","tooBig":"Archivo demasiado grande (límite ≈ 10 MB).","cardsDone":"¡Terminaste todas las tarjetas! 🎉","streakWord":"día(s)"},
 "ml":{"uploadSub":"PDF, ചിത്രങ്ങൾ അല്ലെങ്കിൽ DOCX","pastePh":"ലക്ചർ ടെക്സ്റ്റ് ഇവിടെ ഒട്ടിക്കുക…","lessonsWord":"പാഠം","labTab":"🧪 ലൈവ് ലാബ്","docxFail":"DOCX ഫയൽ വായിക്കാനായില്ല — PDF ആയി സേവ് ചെയ്ത് ശ്രമിക്കുക.","tooBig":"ഫയൽ വളരെ വലുതാണ് (പരിധി ഏകദേശം 10 MB).","cardsDone":"എല്ലാ കാർഡുകളും പൂർത്തിയാക്കി! 🎉","streakWord":"ദിവസം"}
 }; for(var k in EX2){ if(I18N[k]) for(var kk in EX2[k]) I18N[k][kk]=EX2[k][kk]; } })();
+/* v-edu-upform (تصميم المالك ١٦ أكتوبر لنموذج «ارفع محاضرة جديدة»): نصوص النموذج وقائمة «محاضراتك المرفوعة» بالـ14 لغة */
+(function(){ var EX3={
+"ar":{"upName": "اسم المحاضرة:", "upNamePh": "مثلاً: \"مقدمة في الجبر\"", "upSubject": "الموضوع:", "upSubjectPh": "مثلاً: \"رياضيات\"", "upTerm": "الفصل الدراسي:", "upTerm1": "الفصل الأول", "upTerm2": "الفصل الثاني", "upTerm3": "الفصل الثالث", "upTermS": "الفصل الصيفي", "upFile": "الملف:", "upDrop": "اسحب ملف المحاضرة هنا أو", "upPick": "اختر ملف", "upDesc": "الوصف (اختياري):", "upDescPh": "أضف تفاصيل إضافية عن المحاضرة...", "upSave": "حفظ ورفع", "upNeed": "أكمل اسم المحاضرة والموضوع والفصل الدراسي، واختر ملف المحاضرة.", "upBadType": "نوع الملف غير مدعوم — ارفع PDF أو DOCX أو ZIP أو صورًا.", "myUploads": "محاضراتك المرفوعة:", "upOn": "رُفعت في"},
+"en":{"upName": "Lecture name:", "upNamePh": "e.g. \"Introduction to Algebra\"", "upSubject": "Subject:", "upSubjectPh": "e.g. \"Mathematics\"", "upTerm": "Semester:", "upTerm1": "First semester", "upTerm2": "Second semester", "upTerm3": "Third semester", "upTermS": "Summer semester", "upFile": "File:", "upDrop": "Drag the lecture file here or", "upPick": "Choose file", "upDesc": "Description (optional):", "upDescPh": "Add extra details about the lecture...", "upSave": "Save & upload", "upNeed": "Fill in the lecture name, subject and semester, and choose the lecture file.", "upBadType": "Unsupported file type — upload a PDF, DOCX, ZIP or images.", "myUploads": "Your uploaded lectures:", "upOn": "Uploaded on"},
+"fr":{"upName": "Nom du cours :", "upNamePh": "ex. : « Introduction à l’algèbre »", "upSubject": "Matière :", "upSubjectPh": "ex. : « Mathématiques »", "upTerm": "Semestre :", "upTerm1": "Premier semestre", "upTerm2": "Deuxième semestre", "upTerm3": "Troisième semestre", "upTermS": "Semestre d’été", "upFile": "Fichier :", "upDrop": "Glissez le fichier du cours ici ou", "upPick": "Choisir un fichier", "upDesc": "Description (facultatif) :", "upDescPh": "Ajoutez des détails sur le cours…", "upSave": "Enregistrer et téléverser", "upNeed": "Indiquez le nom du cours, la matière et le semestre, et choisissez le fichier.", "upBadType": "Type de fichier non pris en charge — envoyez un PDF, DOCX, ZIP ou des images.", "myUploads": "Vos cours téléversés :", "upOn": "Téléversé le"},
+"es":{"upName": "Nombre de la clase:", "upNamePh": "p. ej.: «Introducción al álgebra»", "upSubject": "Materia:", "upSubjectPh": "p. ej.: «Matemáticas»", "upTerm": "Semestre:", "upTerm1": "Primer semestre", "upTerm2": "Segundo semestre", "upTerm3": "Tercer semestre", "upTermS": "Semestre de verano", "upFile": "Archivo:", "upDrop": "Arrastra aquí el archivo de la clase o", "upPick": "Elegir archivo", "upDesc": "Descripción (opcional):", "upDescPh": "Añade más detalles sobre la clase…", "upSave": "Guardar y subir", "upNeed": "Completa el nombre de la clase, la materia y el semestre, y elige el archivo.", "upBadType": "Tipo de archivo no compatible: sube un PDF, DOCX, ZIP o imágenes.", "myUploads": "Tus clases subidas:", "upOn": "Subida el"},
+"tr":{"upName": "Ders adı:", "upNamePh": "örn. \"Cebire Giriş\"", "upSubject": "Konu:", "upSubjectPh": "örn. \"Matematik\"", "upTerm": "Dönem:", "upTerm1": "Birinci dönem", "upTerm2": "İkinci dönem", "upTerm3": "Üçüncü dönem", "upTermS": "Yaz dönemi", "upFile": "Dosya:", "upDrop": "Ders dosyasını buraya sürükleyin veya", "upPick": "Dosya seç", "upDesc": "Açıklama (isteğe bağlı):", "upDescPh": "Ders hakkında ek ayrıntılar ekleyin…", "upSave": "Kaydet ve yükle", "upNeed": "Ders adını, konuyu ve dönemi doldurun, ders dosyasını seçin.", "upBadType": "Desteklenmeyen dosya türü — PDF, DOCX, ZIP veya görsel yükleyin.", "myUploads": "Yüklediğiniz dersler:", "upOn": "Yüklenme tarihi"},
+"ru":{"upName": "Название лекции:", "upNamePh": "напр.: «Введение в алгебру»", "upSubject": "Предмет:", "upSubjectPh": "напр.: «Математика»", "upTerm": "Семестр:", "upTerm1": "Первый семестр", "upTerm2": "Второй семестр", "upTerm3": "Третий семестр", "upTermS": "Летний семестр", "upFile": "Файл:", "upDrop": "Перетащите файл лекции сюда или", "upPick": "Выбрать файл", "upDesc": "Описание (необязательно):", "upDescPh": "Добавьте подробности о лекции…", "upSave": "Сохранить и загрузить", "upNeed": "Укажите название лекции, предмет и семестр и выберите файл.", "upBadType": "Неподдерживаемый тип файла — загрузите PDF, DOCX, ZIP или изображения.", "myUploads": "Ваши загруженные лекции:", "upOn": "Загружено"},
+"zh":{"upName": "讲义名称：", "upNamePh": "例如：“代数入门”", "upSubject": "科目：", "upSubjectPh": "例如：“数学”", "upTerm": "学期：", "upTerm1": "第一学期", "upTerm2": "第二学期", "upTerm3": "第三学期", "upTermS": "暑期学期", "upFile": "文件：", "upDrop": "将讲义文件拖到这里，或", "upPick": "选择文件", "upDesc": "描述（可选）：", "upDescPh": "添加有关讲义的更多细节…", "upSave": "保存并上传", "upNeed": "请填写讲义名称、科目和学期，并选择讲义文件。", "upBadType": "不支持的文件类型——请上传 PDF、DOCX、ZIP 或图片。", "myUploads": "你上传的讲义：", "upOn": "上传于"},
+"hi":{"upName": "लेक्चर का नाम:", "upNamePh": "जैसे: \"बीजगणित का परिचय\"", "upSubject": "विषय:", "upSubjectPh": "जैसे: \"गणित\"", "upTerm": "सेमेस्टर:", "upTerm1": "पहला सेमेस्टर", "upTerm2": "दूसरा सेमेस्टर", "upTerm3": "तीसरा सेमेस्टर", "upTermS": "ग्रीष्म सेमेस्टर", "upFile": "फ़ाइल:", "upDrop": "लेक्चर फ़ाइल यहाँ खींचें या", "upPick": "फ़ाइल चुनें", "upDesc": "विवरण (वैकल्पिक):", "upDescPh": "लेक्चर के बारे में अतिरिक्त जानकारी जोड़ें…", "upSave": "सहेजें और अपलोड करें", "upNeed": "लेक्चर का नाम, विषय और सेमेस्टर भरें और लेक्चर फ़ाइल चुनें।", "upBadType": "असमर्थित फ़ाइल प्रकार — PDF, DOCX, ZIP या इमेज अपलोड करें।", "myUploads": "आपके अपलोड किए गए लेक्चर:", "upOn": "अपलोड किया गया"},
+"ur":{"upName": "لیکچر کا نام:", "upNamePh": "مثلاً: \"الجبرا کا تعارف\"", "upSubject": "مضمون:", "upSubjectPh": "مثلاً: \"ریاضی\"", "upTerm": "سمسٹر:", "upTerm1": "پہلا سمسٹر", "upTerm2": "دوسرا سمسٹر", "upTerm3": "تیسرا سمسٹر", "upTermS": "سمر سمسٹر", "upFile": "فائل:", "upDrop": "لیکچر فائل یہاں گھسیٹیں یا", "upPick": "فائل منتخب کریں", "upDesc": "تفصیل (اختیاری):", "upDescPh": "لیکچر کے بارے میں مزید تفصیلات شامل کریں…", "upSave": "محفوظ کریں اور اپ لوڈ کریں", "upNeed": "لیکچر کا نام، مضمون اور سمسٹر لکھیں اور لیکچر فائل منتخب کریں۔", "upBadType": "غیر معاون فائل — PDF، DOCX، ZIP یا تصاویر اپ لوڈ کریں۔", "myUploads": "آپ کے اپ لوڈ کردہ لیکچر:", "upOn": "اپ لوڈ کی تاریخ"},
+"bn":{"upName": "লেকচারের নাম:", "upNamePh": "যেমন: \"বীজগণিতের পরিচিতি\"", "upSubject": "বিষয়:", "upSubjectPh": "যেমন: \"গণিত\"", "upTerm": "সেমিস্টার:", "upTerm1": "প্রথম সেমিস্টার", "upTerm2": "দ্বিতীয় সেমিস্টার", "upTerm3": "তৃতীয় সেমিস্টার", "upTermS": "গ্রীষ্মকালীন সেমিস্টার", "upFile": "ফাইল:", "upDrop": "লেকচার ফাইল এখানে টেনে আনুন বা", "upPick": "ফাইল বাছুন", "upDesc": "বিবরণ (ঐচ্ছিক):", "upDescPh": "লেকচার সম্পর্কে আরও তথ্য যোগ করুন…", "upSave": "সংরক্ষণ ও আপলোড", "upNeed": "লেকচারের নাম, বিষয় ও সেমিস্টার লিখুন এবং লেকচার ফাইল বাছুন।", "upBadType": "অসমর্থিত ফাইল — PDF, DOCX, ZIP বা ছবি আপলোড করুন।", "myUploads": "আপনার আপলোড করা লেকচার:", "upOn": "আপলোড হয়েছে"},
+"ne":{"upName": "लेक्चरको नाम:", "upNamePh": "जस्तै: \"बीजगणितको परिचय\"", "upSubject": "विषय:", "upSubjectPh": "जस्तै: \"गणित\"", "upTerm": "सेमेस्टर:", "upTerm1": "पहिलो सेमेस्टर", "upTerm2": "दोस्रो सेमेस्टर", "upTerm3": "तेस्रो सेमेस्टर", "upTermS": "ग्रीष्म सेमेस्टर", "upFile": "फाइल:", "upDrop": "लेक्चर फाइल यहाँ तान्नुहोस् वा", "upPick": "फाइल छान्नुहोस्", "upDesc": "विवरण (ऐच्छिक):", "upDescPh": "लेक्चरबारे थप विवरण थप्नुहोस्…", "upSave": "सुरक्षित गरी अपलोड गर्नुहोस्", "upNeed": "लेक्चरको नाम, विषय र सेमेस्टर भर्नुहोस् र लेक्चर फाइल छान्नुहोस्।", "upBadType": "असमर्थित फाइल — PDF, DOCX, ZIP वा तस्बिर अपलोड गर्नुहोस्।", "myUploads": "तपाईंले अपलोड गरेका लेक्चर:", "upOn": "अपलोड मिति"},
+"id":{"upName": "Nama kuliah:", "upNamePh": "mis. \"Pengantar Aljabar\"", "upSubject": "Mata pelajaran:", "upSubjectPh": "mis. \"Matematika\"", "upTerm": "Semester:", "upTerm1": "Semester pertama", "upTerm2": "Semester kedua", "upTerm3": "Semester ketiga", "upTermS": "Semester pendek", "upFile": "Berkas:", "upDrop": "Seret berkas kuliah ke sini atau", "upPick": "Pilih berkas", "upDesc": "Deskripsi (opsional):", "upDescPh": "Tambahkan detail lain tentang kuliah…", "upSave": "Simpan & unggah", "upNeed": "Isi nama kuliah, mata pelajaran, dan semester, lalu pilih berkas kuliah.", "upBadType": "Jenis berkas tidak didukung — unggah PDF, DOCX, ZIP, atau gambar.", "myUploads": "Kuliah yang kamu unggah:", "upOn": "Diunggah"},
+"fil":{"upName": "Pangalan ng lektura:", "upNamePh": "hal. \"Panimula sa Algebra\"", "upSubject": "Paksa:", "upSubjectPh": "hal. \"Matematika\"", "upTerm": "Semestre:", "upTerm1": "Unang semestre", "upTerm2": "Ikalawang semestre", "upTerm3": "Ikatlong semestre", "upTermS": "Summer semestre", "upFile": "File:", "upDrop": "I-drag dito ang file ng lektura o", "upPick": "Pumili ng file", "upDesc": "Paglalarawan (opsyonal):", "upDescPh": "Magdagdag ng iba pang detalye tungkol sa lektura…", "upSave": "I-save at i-upload", "upNeed": "Punan ang pangalan ng lektura, paksa at semestre, at pumili ng file.", "upBadType": "Hindi suportadong file — mag-upload ng PDF, DOCX, ZIP o mga larawan.", "myUploads": "Mga na-upload mong lektura:", "upOn": "Na-upload noong"},
+"ml":{"upName": "ലക്ചറിന്റെ പേര്:", "upNamePh": "ഉദാ: \"ബീജഗണിതത്തിന് ഒരു ആമുഖം\"", "upSubject": "വിഷയം:", "upSubjectPh": "ഉദാ: \"ഗണിതം\"", "upTerm": "സെമസ്റ്റർ:", "upTerm1": "ഒന്നാം സെമസ്റ്റർ", "upTerm2": "രണ്ടാം സെമസ്റ്റർ", "upTerm3": "മൂന്നാം സെമസ്റ്റർ", "upTermS": "വേനൽ സെമസ്റ്റർ", "upFile": "ഫയൽ:", "upDrop": "ലക്ചർ ഫയൽ ഇവിടെ വലിച്ചിടുക അല്ലെങ്കിൽ", "upPick": "ഫയൽ തിരഞ്ഞെടുക്കുക", "upDesc": "വിവരണം (ഐച്ഛികം):", "upDescPh": "ലക്ചറിനെക്കുറിച്ച് കൂടുതൽ വിവരങ്ങൾ ചേർക്കുക…", "upSave": "സേവ് ചെയ്ത് അപ്‌ലോഡ് ചെയ്യുക", "upNeed": "ലക്ചറിന്റെ പേര്, വിഷയം, സെമസ്റ്റർ എന്നിവ നൽകി ഫയൽ തിരഞ്ഞെടുക്കുക.", "upBadType": "പിന്തുണയില്ലാത്ത ഫയൽ — PDF, DOCX, ZIP അല്ലെങ്കിൽ ചിത്രങ്ങൾ അപ്‌ലോഡ് ചെയ്യുക.", "myUploads": "നിങ്ങൾ അപ്‌ലോഡ് ചെയ്ത ലക്ചറുകൾ:", "upOn": "അപ്‌ലോഡ് ചെയ്തത്"}
+}; for(var k in EX3){ if(I18N[k]) for(var kk in EX3[k]) I18N[k][kk]=EX3[k][kk]; } })();
 function T(k){ var L=appLang(); var d=I18N[L]||I18N.en; return d[k]||I18N.en[k]||I18N.ar[k]||k; }
 function isRTL(){ return RTL_LANGS.indexOf(appLang())>=0; }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -277,7 +294,10 @@ function renderStreak(){
   var st=localStreak(); var n=st.streak||0;
   var today=new Date().toISOString().slice(0,10), y=new Date(Date.now()-86400000).toISOString().slice(0,10);
   if(st.lastActive!==today&&st.lastActive!==y) n=0;
-  el.style.display=n>0?'':'none'; el.textContent='🔥 '+n;
+  /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): المعنى كان في 🔥 وحده فينزعه v-clean-ui ويبقى رقم يتيم — الرقم مع كلمته
+     (العربيّ «أيام» من ٣ إلى ١٠ كقاعدة العدد)، وعنوان ووصف للقارئ من النصوص القائمة */
+  var word=(appLang()==='ar'&&n>=3&&n<=10)?'أيام':T('streakWord'), lbl=eduL('يوم متتالٍ','day streak');
+  el.style.display=n>0?'':'none'; el.textContent=n+' '+word; el.title=lbl; el.setAttribute('aria-label',lbl);
 }
 /* ---------- data layer (server for registered, localStorage for guests) ---------- */
 function listLessons(){
@@ -378,15 +398,19 @@ function md(src){
     }
     k++;
     if(!t){ closeList(); continue; }
+    /* v-edu-hr (تدقيق ١٨–١٩ أكتوبر «ردّ المعلّم يعرض --- كنصّ»؛ الدفعة ٤، من حزمة b9 في ten-a): «---» فاصل بالفراغ لا بخطّ (v-no-lines) ولا نصًّا خامًا */
+    /* v-edu-dir (الدفعة ٥، من v-edu-hub-polish في ten-a): كلّ كتلة dir="auto" باتّجاه نصّها — ملخّص الدرس العربيّ في الواجهة الإنجليزيّة
+       كان LTR فتذهب النقطة والنقطتان للجهة الخاطئة. القائمة على ul/ol وحدها (auto يتخطّى الأبناء ذوي dir فتصير LTR والنقاط خارجها). */
+    if(/^([-*_])\1{2,}$/.test(t)){ closeList(); out.push('<div class="eduGap" style="height:10px"></div>'); continue; }
     var h=t.match(/^(#{1,6})\s+(.*)$/);
-    if(h){ closeList(); var lv=Math.min(h[1].length+2,5); out.push('<h'+lv+'>'+inline(h[2])+'</h'+lv+'>'); continue; }
+    if(h){ closeList(); var lv=Math.min(h[1].length+2,5); out.push('<h'+lv+' dir="auto">'+inline(h[2])+'</h'+lv+'>'); continue; }
     var bq=t.match(/^>\s?(.*)$/);
-    if(bq){ closeList(); out.push('<blockquote>'+inline(bq[1])+'</blockquote>'); continue; }
+    if(bq){ closeList(); out.push('<blockquote dir="auto">'+inline(bq[1])+'</blockquote>'); continue; }
     var ul=t.match(/^[-*•]\s+(.*)$/);
-    if(ul){ if(list!=='ul'){ closeList(); out.push('<ul>'); list='ul'; } out.push('<li>'+inline(ul[1])+'</li>'); continue; }
+    if(ul){ if(list!=='ul'){ closeList(); out.push('<ul dir="auto">'); list='ul'; } out.push('<li>'+inline(ul[1])+'</li>'); continue; }
     var ol=t.match(/^\d+[.)]\s+(.*)$/);
-    if(ol){ if(list!=='ol'){ closeList(); out.push('<ol>'); list='ol'; } out.push('<li>'+inline(ol[1])+'</li>'); continue; }
-    closeList(); out.push('<p>'+inline(t)+'</p>');
+    if(ol){ if(list!=='ol'){ closeList(); out.push('<ol dir="auto">'); list='ol'; } out.push('<li>'+inline(ol[1])+'</li>'); continue; }
+    closeList(); out.push('<p dir="auto">'+inline(t)+'</p>');
   }
   closeList(); return out.join('');
 }
@@ -395,6 +419,7 @@ var modal=document.getElementById('eduHubModal');
 var body=document.getElementById('eduBody');
 var backBtn=document.getElementById('eduBackBtn');
 var navStack=[];
+var eduUpCloseFn=null; /* v-edu-upform: إغلاق بطاقة الرفع المفتوحة — يناديه closeModal وshowHome والسحب للرجوع */
 function setBack(show){ backBtn.style.display=show?'':'none'; }
 function openModal(){
   modal.classList.add('open');
@@ -402,14 +427,16 @@ function openModal(){
   document.getElementById('eduTitleTxt').textContent=T('title');
   renderStreak(); showHome();
 }
-function closeModal(){ modal.classList.remove('open'); navStack=[]; }
+function closeModal(){ if(eduUpCloseFn) eduUpCloseFn(); modal.classList.remove('open'); navStack=[]; }
+/* v-edu-upform (مراجعة): السحب للرجوع يغلق بطاقة الرفع أوّلًا لا التعليم كلّه (نمط ptOverlay في app-10) */
+(function(){ var prev=modal.__omranSwipeBackStep; modal.__omranSwipeBackStep=function(){ if(eduUpCloseFn){ eduUpCloseFn(); return true; } return typeof prev==='function'?prev():false; }; })();
 document.getElementById('eduCloseBtn').onclick=closeModal;
 backBtn.onclick=function(){ var fn=navStack.pop(); if(fn) fn(); else showHome(); };
 modal.addEventListener('click',function(e){ if(e.target===modal) closeModal(); });
 /* ---------- HOME ---------- */
 function subjectColor(subjects,name){ var i=subjects.indexOf(name); return PALETTE[(i>=0?i:subjects.length)%PALETTE.length]; }
 function showHome(){
-  setBack(false); navStack=[];
+  setBack(false); navStack=[]; if(eduUpCloseFn) eduUpCloseFn(); /* v-edu-upform: لا تبقى بطاقة رفع معلّقة فوق شاشة جديدة */
   body.innerHTML=''
    +'<button class="eduUploadBtn" id="eduUploadBtn">'
    +'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>'
@@ -425,12 +452,13 @@ function showHome(){
    +eduExamLangControl()
    +'<div class="eduSecTitle">'+esc(T('mySubjects'))+'</div>'
    +'<div id="eduSubjWrap"><div class="eduEmpty">…</div></div>'
+   +'<div id="eduUpWrap"></div>' /* v-edu-upform: «محاضراتك المرفوعة» تحت «موادي» */
    /* v306: entry to the OLD education modal so nothing old is lost */
    +'<div class="eduLessonRow" id="eduOldEduRow" style="margin-top:18px;">'
    +'<div class="eduLessonTitle">'+esc(T('oldEdu'))+'</div>'
    +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7;'+(isRTL()?'transform:scaleX(-1);':'')+'"><polyline points="9 18 15 12 9 6"></polyline></svg></div>';
   bindEduExamLang();
-  document.getElementById('eduUploadBtn').onclick=function(){ document.getElementById('eduFileInput').click(); };
+  document.getElementById('eduUploadBtn').onclick=showUploadForm; /* v-edu-upform (تصميم المالك): النموذج أوّلًا، ثمّ المسار القائم نفسه */
   document.getElementById('eduFileInput').onchange=function(){
     // احتفظ بالملفات قبل تفريغ الحقل (خصوصًا في Safari)، واستدعِ النسخة
     // المعلنة صراحةً كي لا تنكسر صفحات/كاش قديمة كانت تستدعي handleFiles عالميًا.
@@ -450,8 +478,9 @@ function showHome(){
   };
   var __cb=document.getElementById('eduCurricBtn'); if(__cb) __cb.onclick=showCurriculum;
   var oldRow=document.getElementById('eduOldEduRow');
-  if(oldRow) oldRow.onclick=function(){ closeModal(); if(typeof window.openOmranEduModal==='function') window.openOmranEduModal(); };
-  listLessons().then(function(r){ renderSubjects(r.lessons||[]); }).catch(function(){ renderSubjects([]); });
+  /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): كان يغلق المركز قبل الفتح فيرجعك Esc إلى الأدوات — الصانع القديم فوق المركز (10050) فيُغلَق وحده */
+  if(oldRow) oldRow.onclick=function(){ var om=document.getElementById('omranEduModal'); if(om) om.style.zIndex='10060'; if(typeof window.openOmranEduModal==='function') window.openOmranEduModal(); };
+  listLessons().then(function(r){ renderSubjects(r.lessons||[]); renderUploads(r.lessons||[]); }).catch(function(){ renderSubjects([]); });
   if(window.__eduPlus&&window.__eduPlus.home){ try{ window.__eduPlus.home(document.getElementById('eduPlusHome')); }catch(e){ __swallow(e,'edu:plus-home'); } }
 }
 function renderSubjects(lessons){
@@ -561,13 +590,15 @@ function eduRegenQuestions(pane,lesson,tab){
 }
 /* ---------- flashcards ---------- */
 function renderCards(pane,lesson){
-  var cards=lesson.flashcards||[]; var i=0,known=0,flipped=false;
+  /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): «أراجعه» كانت تُلحق البطاقة بالدرس نفسه فتصير النتيجة 8/9 والدرس ٨ —
+     الطابور نسخة، والإجماليّ عدد بطاقات الدرس */
+  var base=lesson.flashcards||[], total=base.length, cards=base.slice(); var i=0,known=0,flipped=false;
   if(!cards.length){ eduRegenQuestions(pane,lesson,'cards'); return; }
   function draw(){
     if(i>=cards.length){
-      pane.innerHTML='<div class="eduCenter"><div class="eduScoreBig">'+known+'/'+cards.length+'</div><p>'+esc(T('cardsDone'))+'</p>'
+      pane.innerHTML='<div class="eduCenter"><div class="eduScoreBig">'+known+'/'+total+'</div><p>'+esc(T('cardsDone'))+'</p>'
         +'<button class="eduPrimary" id="eduCardsAgain">'+esc(T('review'))+'</button></div>';
-      document.getElementById('eduCardsAgain').onclick=function(){ i=0;known=0;flipped=false;draw(); };
+      document.getElementById('eduCardsAgain').onclick=function(){ cards=base.slice();i=0;known=0;flipped=false;draw(); };
       saveProgress(lesson.id,{cardsKnown:known});
       return;
     }
@@ -658,7 +689,7 @@ function renderQuiz(pane,lesson){
       html+='<p style="font-size: var(--fs-3);line-height:1.8;max-width:340px;margin:6px auto 0;">'
         +esc(T2('ركّز مراجعتك على مستوى ','Focus your review on the '))
         +'<b>'+esc(LABEL[weak])+'</b>'
-        +esc(T2('.','level.'))+'</p>';
+        +esc(T2('.',' level.'))+'</p>'; /* v-edu-hub-polish: «Basiclevel.» كانت ملتصقة */
     }
     html+='<div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">'
       +'<button class="eduPrimary" id="eduRetry">'+esc(T('retry'))+'</button>';
@@ -710,9 +741,11 @@ function renderQuiz(pane,lesson){
         if(ok){ roundRight++; stats[level].right++; }
         stats[level].total++;
         var ex='';
-        if(q.explain) ex+='💡 '+esc(q.explain);
+        /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): شرح الدرس العربيّ في الواجهة الإنجليزيّة كان ترقيمه بالجهة الخاطئة —
+           كلّ سطر باتّجاه نصّه، واسم القسم معزول عن «Review: » */
+        if(q.explain) ex+='<div dir="auto">💡 '+esc(q.explain)+'</div>';
         /* Wrong answer points back into the summary, not just "incorrect". */
-        if(!ok&&q.section) ex+=(ex?'<br>':'')+'📌 '+esc(T2('راجع: ','Review: '))+'<b>'+esc(q.section)+'</b>';
+        if(!ok&&q.section) ex+='<div dir="auto">📌 '+esc(T2('راجع: ','Review: '))+'<b><bdi>'+esc(q.section)+'</bdi></b></div>';
         if(ex) document.getElementById('eduExpl').innerHTML='<div class="eduExplain">'+ex+'</div>';
         document.getElementById('eduNextQ').style.display='';
       };
@@ -755,6 +788,18 @@ function renderLab(pane,lesson){
       });
   }
   if(lesson.__labHtml){ showFrame(lesson.__labHtml); return; }
+  /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): التجربة المبنيّة محفوظة للمسجَّل على الخادم، لكنّنا لم نسأل عنها إلّا بعد «ابنِ» —
+     فعند إعادة فتح الدرس نسأل بـcachedOnly (بلا حصّة ولا نموذج) قبل عرض زرّ البناء */
+  if(getToken()){
+    pane.innerHTML='<div class="eduBusyBox" id="eduLabWait"><div class="eduSpin"></div></div>';
+    var still=function(){ return !!document.getElementById('eduLabWait'); }; /* انتقل لتبويب آخر: لا نكتب فوقه */
+    api({action:'lab',id:lesson.id,cachedOnly:true})
+      .then(function(j){ if(j&&j.html) lesson.__labHtml=j.html; if(!still()) return; if(j&&j.html) showFrame(j.html); else intro(); })
+      .catch(function(e){ __swallow(e,'edu:lab-cached'); if(still()) intro(); });
+    return;
+  }
+  intro();
+  function intro(){
   pane.innerHTML='<div class="eduCenter" style="padding:18px 6px;">'
     +'<div style="font-size:40px;margin-bottom:10px;">🧪</div>'
     +'<p style="font-size: var(--fs-2);font-weight: var(--w-bold);margin:0 0 8px;">'+esc(T('labTab'))+'</p>'
@@ -763,6 +808,7 @@ function renderLab(pane,lesson){
             'We turn this lesson into an interactive lab: sliders and buttons with instant results, then a challenge mode with points. A lesson you play, you never forget.'))+'</p>'
     +'<button class="eduPrimary" id="eduLabBuild">'+esc(TL('✨ ابنِ تجربتي الحية','✨ Build my live lab'))+'</button></div>';
   var bb=document.getElementById('eduLabBuild'); if(bb) bb.onclick=function(){ build(false); };
+  }
 }
 
 /* ---------- written questions graded by the model against a rubric ---------- */
@@ -777,7 +823,8 @@ function renderWritten(pane,lesson,written){
       return;
     }
     var w=written[i];
-    pane.innerHTML='<div style="font-size:12px;opacity:.7;margin-bottom:8px;">'+(i+1)+' / '+written.length+' · ✍️</div>'
+    /* v-edu-hub-polish: «· ✍️» كانت تبقى نقطة يتيمة «·3/1» بعد نزع الإيموجي (v-clean-ui) */
+    pane.innerHTML='<div style="font-size:12px;opacity:.7;margin-bottom:8px;">'+(i+1)+' / '+written.length+'</div>'
       +'<div style="font-size: var(--fs-2);font-weight: var(--w-bold);margin-bottom:12px;line-height:1.7;">'+esc(w.q)+'</div>'
       +'<textarea id="eduAns" rows="6" placeholder="'+esc(TW('اكتب إجابتك هنا…','Write your answer here…'))+'" '
       +'style="width:100%;box-sizing:border-box;padding:12px;border-radius:var(--r-2);border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:inherit;line-height:1.8;resize:vertical;"></textarea>'
@@ -894,21 +941,174 @@ function showCurriculum(){
     processContent({country:v('eduCurCountry'),stage:v('eduCurStage'),grade:v('eduCurGrade'),subject:subj,lesson:les,lang:appLang()},'explain');
   };
 }
-function processContent(payload,__act){
+/* ---------- v-edu-upform: نموذج «ارفع محاضرة جديدة» (تصميم المالك ١٦ أكتوبر) ----------
+   بطاقة فوق الصفحة بالترتيب نفسه: اسم المحاضرة ← الموضوع ← الفصل الدراسي ← الملف (سحب أو «اختر ملف»، ملفّ أو صور) ← الوصف
+   (اختياري) ← «حفظ ورفع». الرفع والتحليل هما المسار القائم نفسه (handleFiles ← processContent)؛ النموذج يضيف ما كتبه الطالب
+   فيصير اسمه وموضوعه اسم الدرس ومادّته بدل تخمين النموذج، ويُحفظ الفصل والوصف. بلا قفل باقة: الرفع مفتوح كما كان. */
+var EDU_TERMS=['t1','t2','t3','ts'];
+function eduTermLabel(k){ return T({t1:'upTerm1',t2:'upTerm2',t3:'upTerm3',ts:'upTermS'}[k]||'')||''; }
+function eduYmd(ts){ var d=new Date(ts||0); if(!ts||isNaN(d.getTime())) return ''; function p(n){ return (n<10?'0':'')+n; } return d.getFullYear()+'/'+p(d.getMonth()+1)+'/'+p(d.getDate()); }
+function eduUpIcon(){ return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M12 18v-6"></path><polyline points="9 15 12 12 15 15"></polyline></svg>'; }
+function eduUpCss(){
+  if(document.getElementById('eduUpCss')) return;
+  var st=document.createElement('style'); st.id='eduUpCss';
+  st.textContent=''
+   +'#eduHubModal .eduUpOv{position:absolute;inset:0;z-index:5;display:flex;align-items:flex-start;justify-content:center;padding:calc(84px + min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px)) 14px 24px;background:rgba(0,0,0,.3);overflow-y:auto;}'
+   +'#eduHubModal .eduUpCard{width:100%;max-width:400px;box-sizing:border-box;background:#141414;color:inherit;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px 18px 18px;box-shadow:0 18px 50px rgba(0,0,0,.45);}'
+   +'#eduHubModal .eduUpLab{display:block;margin:12px 0 6px;font-weight:var(--w-bold);font-size:var(--fs-3);}'
+   +'#eduHubModal .eduUpLab:first-child{margin-top:0;}'
+   +'#eduHubModal .eduUpFld{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:transparent;color:inherit;font:inherit;font-size:var(--fs-3);}'
+   +'#eduHubModal select.eduUpFld{margin-top:12px;appearance:auto;}'
+   +'#eduHubModal textarea.eduUpFld{min-height:96px;resize:vertical;}'
+   +'#eduHubModal .eduUpFld.bad{border-color:#f87171;}'
+   +'#eduHubModal .eduUpDrop{border:1.5px dashed rgba(255,255,255,.3);border-radius:12px;background:rgba(255,255,255,.04);padding:16px 12px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;transition:background .15s,border-color .15s;}'
+   +'#eduHubModal .eduUpDrop.drag{background:rgba(var(--accent-tint-rgb),.14);border-color:rgba(var(--accent-tint-rgb),.7);}'
+   +'#eduHubModal .eduUpDrop.bad{border-color:#f87171;}'
+   +'#eduHubModal .eduUpDrop svg{width:40px;height:40px;opacity:.7;}'
+   +'#eduHubModal .eduUpPick{padding:7px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:var(--fs-4);cursor:pointer;}'
+   +'#eduHubModal .eduUpFiles{font-size:var(--fs-4);opacity:.75;word-break:break-word;}'
+   +'#eduHubModal .eduUpErr{color:#f87171;font-size:var(--fs-4);margin-top:10px;display:none;}'
+   +'#eduHubModal .eduUpSave{display:block;width:100%;margin-top:14px;padding:12px;text-align:center;}'
+   +'#eduHubModal .eduUpList{border:1px solid rgba(255,255,255,.12);border-radius:16px;overflow:hidden;}'
+   +'#eduHubModal .eduUpList .eduUpRow{margin:0;border:none;border-radius:0;border-bottom:1px solid rgba(255,255,255,.08);gap:12px;}'
+   +'#eduHubModal .eduUpList .eduUpRow:last-child{border-bottom:none;}'
+   +'#eduHubModal .eduUpRow svg{flex:0 0 auto;opacity:.75;}'
+   +'#eduHubModal .eduUpRow .eduLessonTitle{overflow-wrap:anywhere;}'
+   +'html[data-mode="light"] #eduHubModal .eduUpOv{background:rgba(0,0,0,.12);}'
+   +'html[data-mode="light"] #eduHubModal .eduUpCard{background:#ffffff;color:var(--text);border-color:rgba(0,0,0,.08);box-shadow:0 18px 50px rgba(0,0,0,.18);}'
+   +'html[data-mode="light"] #eduHubModal .eduUpFld{border-color:rgba(0,0,0,.2);}'
+   +'html[data-mode="light"] #eduHubModal .eduUpDrop{border-color:rgba(0,0,0,.28);background:rgba(0,0,0,.04);}'
+   +'html[data-mode="light"] #eduHubModal .eduUpPick{border-color:rgba(0,0,0,.2);background:#ffffff;}'
+   +'html[data-mode="light"] #eduHubModal .eduUpList{border-color:rgba(0,0,0,.1);background:#ffffff;}'
+   +'html[data-mode="light"] #eduHubModal .eduUpList .eduUpRow{border-color:rgba(0,0,0,.08);}'
+   +'#eduHubModal .eduUpFld.bad,#eduHubModal .eduUpDrop.bad,html[data-mode="light"] #eduHubModal .eduUpFld.bad,html[data-mode="light"] #eduHubModal .eduUpDrop.bad{border-color:#f87171;}'
+   /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): الحدّ الشبح لـom3-line (بلا-خطوط.css، معرّفان و!important) غلب الأحمر فلا يتلوّن الناقص —
+      ثلاثة معرّفات تغلبه، مع توهّج أحمر خفيف بلغة التوهّج */
+   +'#eduHubModal .eduUpFld.bad:not(#om3-a#om3-b),#eduHubModal .eduUpDrop.bad:not(#om3-a#om3-b){border-color:#f87171 !important;box-shadow:0 0 0 1px rgba(248,113,113,.55),0 0 12px rgba(248,113,113,.3) !important;}';
+  document.head.appendChild(st);
+}
+function eduUpTypeOk(files){
+  var f0=files[0]; if(!f0) return false;
+  var n=(f0.name||'').toLowerCase();
+  if(/\.(docx|zip|jar|pdf)$/.test(n)||/pdf/.test(f0.type||'')) return true;
+  return files.some(function(f){ return /^image\//.test(f.type||''); });
+}
+function showUploadForm(){
+  eduUpCss();
+  if(eduUpCloseFn) eduUpCloseFn(); var old=document.getElementById('eduUpOv'); if(old) old.remove();
+  var ov=document.createElement('div'); ov.className='eduUpOv'; ov.id='eduUpOv';
+  ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true'); ov.setAttribute('aria-label',T('upload'));
+  ov.setAttribute('dir',isRTL()?'rtl':'ltr');
+  var terms=EDU_TERMS.map(function(k){ return '<option value="'+k+'">'+esc(eduTermLabel(k))+'</option>'; }).join('');
+  ov.innerHTML='<div class="eduUpCard">'
+   +'<label class="eduUpLab" for="eduUpName">'+esc(T('upName'))+'</label>'
+   +'<input class="eduUpFld" id="eduUpName" maxlength="160" autocomplete="off" placeholder="'+esc(T('upNamePh'))+'">'
+   +'<label class="eduUpLab" for="eduUpSubject">'+esc(T('upSubject'))+'</label>'
+   +'<input class="eduUpFld" id="eduUpSubject" maxlength="60" autocomplete="off" list="eduUpSubjList" placeholder="'+esc(T('upSubjectPh'))+'"><datalist id="eduUpSubjList"></datalist>'
+   +'<select class="eduUpFld" id="eduUpTerm" aria-label="'+esc(T('upTerm'))+'"><option value="" disabled selected>'+esc(T('upTerm'))+'</option>'+terms+'</select>'
+   +'<label class="eduUpLab">'+esc(T('upFile'))+'</label>'
+   +'<div class="eduUpDrop" id="eduUpDrop">'+eduUpIcon()
+   +'<div>'+esc(T('upDrop'))+'</div>'
+   +'<button type="button" class="eduUpPick" id="eduUpPick">'+esc(T('upPick'))+'</button>'
+   +'<div class="eduUpFiles" id="eduUpFiles">'+esc(T('uploadSub'))+'</div>'
+   +'<input type="file" id="eduUpInput" accept=".pdf,.docx,.zip,image/*" multiple style="display:none;"></div>'
+   +'<label class="eduUpLab" for="eduUpDesc">'+esc(T('upDesc'))+'</label>'
+   +'<textarea class="eduUpFld" id="eduUpDesc" maxlength="2000" placeholder="'+esc(T('upDescPh'))+'"></textarea>'
+   +'<div class="eduUpErr" id="eduUpErr"></div>'
+   +'<button class="eduPrimary eduUpSave" id="eduUpSave">'+esc(T('upSave'))+'</button>'
+   +'</div>';
+  (body.parentNode||modal).appendChild(ov);
+  /* تحت زرّ «ارفع محاضرة جديدة» مباشرةً كما في التصميم — الزرّ يبقى ظاهرًا فوق البطاقة */
+  try{ var ub=document.getElementById('eduUploadBtn'), ob=ov.getBoundingClientRect(); if(ub){ var ubr=ub.getBoundingClientRect(); if(ubr.bottom>0&&ubr.bottom<window.innerHeight*0.6) ov.style.paddingTop=Math.round(ubr.bottom-ob.top+10)+'px'; } }catch(e){ __swallow(e,'edu:upform-pos'); }
+  var picked=[];
+  var $=function(id){ return document.getElementById(id); };
+  function close(){ document.removeEventListener('keydown',onKey,true); if(ov.parentNode) ov.parentNode.removeChild(ov); if(eduUpCloseFn===close) eduUpCloseFn=null; }
+  function onKey(e){ if(e.key==='Escape'&&ov.parentNode){ e.stopPropagation(); close(); } }
+  document.addEventListener('keydown',onKey,true);
+  eduUpCloseFn=close;
+  /* الخلفيّة تغلق فقط حين يبدأ الضغط عليها وينتهي (لا سحب تحديد نصّ إلى خارج البطاقة، ولا النقرة الثانية من نقرتين على الزرّ) */
+  var downOnOv=false;
+  ov.addEventListener('pointerdown',function(e){ downOnOv=(e.target===ov); });
+  ov.addEventListener('click',function(e){ if(e.target===ov&&downOnOv&&!(e.detail>1)) close(); });
+  function setFiles(list){
+    picked=Array.prototype.slice.call(list||[]);
+    var names=picked.map(function(f){ return f.name||''; });
+    $('eduUpFiles').textContent=names.length?(names.slice(0,3).join(isRTL()?'، ':', ')+(names.length>3?' +'+(names.length-3):'')):T('uploadSub');
+    $('eduUpDrop').classList.remove('bad');
+  }
+  $('eduUpPick').onclick=function(){ $('eduUpInput').click(); };
+  /* v-edu-ios-files: قائمة سفاري حيّة — نسخة مصفوفة قبل تفريغ الحقل */
+  $('eduUpInput').onchange=function(){ var sel=Array.prototype.slice.call(this.files||[]); this.value=''; if(sel.length) setFiles(sel); };
+  var drop=$('eduUpDrop');
+  drop.addEventListener('dragover',function(e){ e.preventDefault(); drop.classList.add('drag'); });
+  drop.addEventListener('dragleave',function(){ drop.classList.remove('drag'); });
+  drop.addEventListener('drop',function(e){ e.preventDefault(); drop.classList.remove('drag'); var fl=e.dataTransfer&&e.dataTransfer.files; if(fl&&fl.length) setFiles(Array.prototype.slice.call(fl)); });
+  /* إفلات على أيّ مكان من البطاقة أو خلفيّتها يذهب للنموذج — وإلّا التقطه مُفلِت المحادثة العامّ (app-09) فصار مرفقًا مخفيًّا للرسالة التالية */
+  ov.addEventListener('dragover',function(e){ e.preventDefault(); });
+  ov.addEventListener('drop',function(e){ if(e.defaultPrevented) return; e.preventDefault(); var fl=e.dataTransfer&&e.dataTransfer.files; if(fl&&fl.length) setFiles(Array.prototype.slice.call(fl)); });
+  listLessons().then(function(r){
+    var seen={}, opts='';
+    (r.lessons||[]).forEach(function(l){ var s=l&&l.subject; if(s&&!seen[s]){ seen[s]=1; opts+='<option value="'+esc(s)+'">'; } });
+    var dl=$('eduUpSubjList'); if(dl) dl.innerHTML=opts;
+  }).catch(function(e){ __swallow(e,'edu:upform-subjects'); });
+  $('eduUpSave').onclick=function(){
+    var v=function(id){ var el=$(id); return el?String(el.value||'').trim():''; };
+    var name=v('eduUpName'), subj=v('eduUpSubject'), term=v('eduUpTerm'), desc=v('eduUpDesc');
+    var err=$('eduUpErr'), bad=false;
+    [['eduUpName',name],['eduUpSubject',subj],['eduUpTerm',term]].forEach(function(p){ var el=$(p[0]); if(el) el.classList.toggle('bad',!p[1]); if(!p[1]) bad=true; });
+    if(!picked.length){ drop.classList.add('bad'); bad=true; }
+    if(bad){ err.textContent=T('upNeed'); err.style.display='block'; return; }
+    if(!eduUpTypeOk(picked)){ drop.classList.add('bad'); err.textContent=T('upBadType'); err.style.display='block'; return; }
+    var allImg=picked.every(function(f){ return /^image\//.test(f.type||''); });
+    var total=picked.reduce(function(a,f){ return a+(f.size||0); },0);
+    if(!allImg&&total>10*1024*1024){ drop.classList.add('bad'); err.textContent=T('tooBig'); err.style.display='block'; return; }
+    var meta={ title:name, subject:subj, term:term, note:desc, fileName:(picked[0]&&picked[0].name)||'', src:'upload' };
+    close();
+    handleFiles(picked,meta);
+  };
+  setTimeout(function(){ try{ $('eduUpName').focus(); }catch(e){ /* guard-ok — التركيز ترف؛ النموذج يعمل بدونه */ } },30);
+}
+/* «محاضراتك المرفوعة» — المرفوعة من النموذج وحدها (src:'upload')، الأحدث أوّلًا، وتاريخ رفعها؛ الضغط يفتح الدرس */
+function renderUploads(lessons){
+  var wrap=document.getElementById('eduUpWrap'); if(!wrap) return;
+  var ups=(lessons||[]).filter(function(l){ return l&&l.src==='upload'; });
+  if(!ups.length){ wrap.innerHTML=''; return; }
+  eduUpCss();
+  var h='<div class="eduSecTitle">'+esc(T('myUploads'))+'</div><div class="eduUpList">';
+  ups.forEach(function(l){
+    h+='<div class="eduLessonRow eduUpRow" data-up="'+esc(l.id)+'">'+eduUpIcon()
+     +'<div style="flex:1;min-width:0;"><div class="eduLessonTitle">'+esc(l.title)+'</div>'
+     +'<div class="eduLessonMeta">'+esc(T('upOn'))+' '+eduYmd(l.createdAt)+(l.term&&eduTermLabel(l.term)?' · '+esc(eduTermLabel(l.term)):'')+'</div></div></div>';
+  });
+  wrap.innerHTML=h+'</div>';
+  wrap.querySelectorAll('[data-up]').forEach(function(row){
+    row.onclick=function(){
+      var id=row.getAttribute('data-up');
+      body.innerHTML='<div class="eduBusyBox"><div class="eduSpin"></div></div>';
+      getLesson(id).then(function(l){ showLesson(l,showHome); }).catch(function(err){ alert(err.message||T('err')); showHome(); });
+    };
+  });
+}
+function processContent(payload,__act,__meta){
+  /* v-edu-upform: ما كتبه الطالب في النموذج (اسم، موضوع، فصل، وصف) يُمرَّر مع الرفع نفسه — لا متغيّرًا عامًّا يمسحه فتح التعليم
+     من جديد أثناء تجهيز الملفّ (مراجعة عدائيّة). للتحليل وحده لا لـ«ألّف لي الدرس». */
+  var meta=(!__act&&__meta)||null;
+  var upInfo=meta?{upTitle:meta.title,upSubject:meta.subject,note:meta.note}:{};
   showBusy();
-  api(Object.assign({action:__act||'process',nativeLang:eduNativeLang(),examLang:eduExamLang()},payload)).then(function(j){
+  api(Object.assign({action:__act||'process',nativeLang:eduNativeLang(),examLang:eduExamLang()},payload,upInfo)).then(function(j){
     var L=j.lesson||{};
     return listLessons().catch(function(){ return {lessons:[]}; }).then(function(r){
       var subs=[]; (r.lessons||[]).forEach(function(x){ if(subs.indexOf(x.subject||'—')<0) subs.push(x.subject||'—'); });
-      var subj=L.subject||eduL('عام','General');
+      var subj=(meta&&meta.subject)||L.subject||eduL('عام','General');
       var lesson={
         id:'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
         subject:subj,
         color:(subs.indexOf(subj)>=0?subs.indexOf(subj):subs.length)%PALETTE.length,
-        title:L.title||subj, summary:L.summary||'', flashcards:L.flashcards||[], quiz:L.quiz||[],
+        title:(meta&&meta.title)||L.title||subj, summary:L.summary||'', flashcards:L.flashcards||[], quiz:L.quiz||[],
         written:L.written||[],
         createdAt:Date.now(), bestScore:null, scores:{}, cardsKnown:0
       };
+      if(meta){ lesson.src='upload'; lesson.term=meta.term||''; lesson.note=meta.note||''; lesson.fileName=meta.fileName||''; }
       /* v-edu-upload: فشل الحفظ في السحابة (القاعدة ممتلئة) كان يرمي التحليل الجاهز ويعرض «خطأ» — يُحفظ على الجهاز ويُعرض. */
       return persistLesson(lesson).catch(function(){ var arr=localLessons().filter(function(l){return l.id!==lesson.id;}); arr.unshift(lesson); saveLocalLessons(arr); })
         .then(function(){ showLesson(lesson,showHome); });
@@ -928,7 +1128,7 @@ function fileToBase64(file){
     r.readAsDataURL(file);
   });
 }
-function handleFiles(files){
+function handleFiles(files,meta){ /* v-edu-upform: meta = بيانات نموذج الرفع، تمرّ مع كلّ فرع حتّى processContent */
   files=Array.prototype.slice.call(files||[]);
   if(!files.length) return;
   var total=files.reduce(function(a,f){return a+f.size;},0);
@@ -937,12 +1137,12 @@ function handleFiles(files){
   if(!allImg&&total>10*1024*1024){ alert(T('tooBig')); return; }
   var f0=files[0];
   var name=(f0.name||'').toLowerCase();
-  if(/\.docx$/.test(name)){ handleDocx(f0); return; }
+  if(/\.docx$/.test(name)){ handleDocx(f0,meta); return; }
   // v412: الأرشيف كان يسقط في «حدث خطأ» بلا دلالة — الآن يُفكّ ويُستخرج نصّه هنا.
-  if(/\.(zip|jar)$/.test(name)){ handleArchive(f0); return; }
+  if(/\.(zip|jar)$/.test(name)){ handleArchive(f0,meta); return; }
   if(/pdf/.test(f0.type)||/\.pdf$/.test(name)){
     showBusy();
-    eduPdfPayload(f0).then(function(pl){ pl.lang=appLang(); processContent(pl); })
+    eduPdfPayload(f0).then(function(pl){ pl.lang=appLang(); processContent(pl,'',meta); })
       .catch(function(e){ alert(e.message||T('err')); showHome(); });
     return;
   }
@@ -957,14 +1157,14 @@ function handleFiles(files){
   }
   showBusy();
   eduImagesForUpload(imgs)
-    .then(function(arr){ processContent({images:arr,lang:appLang()}); })
+    .then(function(arr){ processContent({images:arr,lang:appLang()},'',meta); })
     .catch(function(e){ alert(e.message||T('err')); showHome(); });
 }
 // بعض نسخ الواجهة القديمة كانت تستدعي الدالة من معالج HTML عام. إبقاء هذا
 // الاسم متاحًا يمنع ReferenceError عند تداخل كاش الـPWA أثناء التحديث.
 window.handleFiles=handleFiles;
 /* v412: فكّ الأرشيف داخل المتصفح واستخراج نصّه للتحليل التعليمي */
-function handleArchive(file){
+function handleArchive(file,meta){
   showBusy();
   function fail(msg){
     body.innerHTML='<div class="eduCenter"><p style="font-size: var(--fs-3);line-height:1.9">'+esc(msg)+'</p>'+
@@ -985,7 +1185,7 @@ function handleArchive(file){
       })
       .then(function(txt){
         if(!txt.trim()) throw new Error(eduL('الأرشيف فارغ من النصوص.','The archive contains no text.'));
-        processContent({text:txt,lang:appLang()});
+        processContent({text:txt,lang:appLang()},'',meta);
       })
       .catch(function(e){ fail(e.message||eduL('تعذّر فتح الأرشيف.','Could not open the archive.')); });
   }
@@ -997,7 +1197,7 @@ function handleArchive(file){
     document.head.appendChild(sc);
   }
 }
-function handleDocx(file){
+function handleDocx(file,meta){
   showBusy();
   function fail(){ body.innerHTML='<div class="eduCenter"><p style="font-size: var(--fs-3);">'+esc(T('docxFail'))+'</p><button class="eduPrimary" id="eduErrBack">OK</button></div>'; document.getElementById('eduErrBack').onclick=showHome; setBack(true); navStack=[showHome]; }
   function run(){
@@ -1006,7 +1206,7 @@ function handleDocx(file){
       .then(function(xml){
         var text=xml.replace(/<w:p[ >]/g,'\n<w:p ').replace(/<[^>]+>/g,' ').replace(/[ \t]+/g,' ').replace(/\n\s*/g,'\n').trim();
         if(!text||text.length<20) throw new Error('empty');
-        processContent({text:text.slice(0,180000),lang:appLang()});
+        processContent({text:text.slice(0,180000),lang:appLang()},'',meta);
       }).catch(fail);
   }
   if(window.JSZip){ run(); return; }
@@ -1024,7 +1224,8 @@ window.__eduCore={
   body:function(){ return body; }, T:T, eduL:eduL, esc:esc, md:md, api:api, appLang:appLang, isRTL:isRTL,
   setBack:setBack, setNav:function(a){ navStack=a; }, showHome:showHome, showLesson:showLesson,
   listLessons:listLessons, getLesson:getLesson, getToken:getToken, nativeLang:eduNativeLang, bumpStreak:bumpStreak,
-  fileToBase64:fileToBase64, localStreak:localStreak
+  fileToBase64:fileToBase64, localStreak:localStreak,
+  showUploadForm:showUploadForm, renderUploads:renderUploads /* v-edu-upform */
 };
 /* first-open announcement */
 try{
@@ -1046,6 +1247,46 @@ try{
   var HINT_RE=/(لخص|لخّص|اختبرني|بطاقات مراجعة|محاضرة|مذاكرة|ذاكر|امتحان|study|summarize lecture|quiz me)/i;
   /* v-edu-homework: «واجب» في المحادثة → تلميح يفتح «حلّ الواجب» مباشرة (المالك: في المحادثة وفي التعليم، الاثنين) */
   var HW_RE=/(واجب|ورقة عمل|حل السؤال|حلّ السؤال|homework|worksheet)/i;
+  /* v-edu-hint-place (تدقيق ١٨–١٩ أكتوبر): البطاقة fixed بـinset-inline وmargin:auto كانت تتوسّط النافذة كلّها (الحاسوب:
+     تقطع الفاصل بين لوحة المعاينة والمحادثة)، وbottom:110px الثابت يضعها فوق صندوق الكتابة والإرسال (الجوّال).
+     الحاسوب: left/right من مستطيل #chatcol فتتوسّط العمود، وbottom يبقى من CSS (v399). الجوّال: bottom من المساعد
+     المشترك window.__omranAboveComposer (app-22) فوق الصندوق المقيس. */
+  function placeHint(h){
+    try{
+      if(!document.documentElement.classList.contains('mobile-ui')){
+        var col=document.getElementById('chatcol'), r=col&&col.getBoundingClientRect();
+        if(r&&r.width){ h.style.left=Math.round(r.left+14)+'px'; h.style.right=Math.round(window.innerWidth-r.right+14)+'px'; }
+        h.style.bottom='';
+      } else {
+        var p=(typeof window.__omranAboveComposer==='function')?window.__omranAboveComposer(10):null;
+        h.style.bottom=p?(p.bottom+'px'):'';
+        h.style.left=''; h.style.right='';
+      }
+    }catch(err){ __swallow(err, "ui:edu-hint-place"); }
+  }
+  function rePlace(){
+    var h=document.getElementById('eduChatHint');
+    if(h&&h.classList.contains('show')) placeHint(h);
+  }
+  window.addEventListener('resize',rePlace);
+  /* الإرسال نفسه يغيّر التخطيط بعد ظهور التلميح (تنتهي شاشة الترحيب فتتّسع لوحة المعاينة ويضيق العمود) — نتابع العمود */
+  var hintRO=null;
+  function watchCol(){
+    try{
+      if(hintRO||typeof ResizeObserver!=='function') return;
+      var col=document.getElementById('chatcol'); if(!col) return;
+      hintRO=new ResizeObserver(rePlace);
+      hintRO.observe(col);
+    }catch(err){ __swallow(err, "ui:edu-hint-watch"); }
+  }
+  /* الكتابة في الصندوق تُخفي التلميح (تفريغه بعد الإرسال لا يُحتسب كتابة) */
+  document.addEventListener('input',function(e){
+    try{
+      if(!e.target||e.target.id!=='prompt'||!String(e.target.value||'').trim()) return;
+      var h=document.getElementById('eduChatHint');
+      if(h&&h.classList.contains('show')) h.classList.remove('show');
+    }catch(err){ __swallow(err, "ui:edu-hint-type"); }
+  },true);
   function maybeHint(txt){
     var hw=!!txt&&HW_RE.test(txt);
     if(hintShown||!txt||!(hw||HINT_RE.test(txt))) return;
@@ -1054,6 +1295,8 @@ try{
     document.getElementById('eduChatHintTxt').textContent=hw?eduL('📷 عندك واجب؟ صوّره في «حلّ الواجب» وخذ التحليل والحلّ كاملًا.','📷 Got homework? Snap it in the homework solver for the full analysis and solution.'):T('hint');
     document.getElementById('eduChatHintBtn').textContent=T('title');
     h.setAttribute('dir',isRTL()?'rtl':'ltr');
+    placeHint(h);
+    watchCol();
     h.classList.add('show');
     document.getElementById('eduChatHintBtn').onclick=function(){ h.classList.remove('show'); openModal(); if(hw&&window.__eduPlus&&window.__eduPlus.showSolver) window.__eduPlus.showSolver(); };
     setTimeout(function(){ h.classList.remove('show'); },12000);

@@ -119,7 +119,7 @@ test('٧. التوصيل في chat.js: السقف أوّلًا، ثمّ الوي
   // v-live-fresh (المالك: «نعم ضيفها»): التواصل لكلّ بحث بلا استثناء، والمسار المخصّص يحدّد صيغة الدمج لا وجود التواصل
   assert.match(CHAT, /\n\s+__ls\.socialSearch\(__sq, \{ recency: __win \}\),\n/);
   assert.ok(!/Promise\.resolve\(null\) : __ls\.socialSearch/.test(CHAT));
-  assert.match(CHAT, /const __curated = isCuratedSearch\(__sq, reC, __plateAsk\) \|\| String\(__web \|\| ''\)\.indexOf\(PLACES_MARK\) >= 0;/);
+  assert.match(CHAT, /const __curated = !__ctAsk && isCuratedSearch\(__sq, reC, __plateAsk\) \|\| String\(__web \|\| ''\)\.indexOf\(PLACES_MARK\) >= 0;/); // v-reply-blocks: طلب أرقام التواصل بحث حيّ لا قائمة منسّقة
   assert.match(CHAT, /result = filterDuplicateUrls\(__ls\.mergeWebSocial\(__web, __social, \{ curated: __curated \}\)\)/);
   // السقف بعد فرعي «سؤال عن التطبيق» و«سقف البحثين» فلا يُعدّ ما لم يُبحث فيه
   assert.ok(CHAT.indexOf('} else if (mySearchNo > 2) {') < i);
@@ -135,8 +135,11 @@ test('٨. المسارات المخصّصة (صيغة الدمج): الأرقا�
     NUM_ASK_RE: /رقم مميز/,
     isRealEstateAsk: (q) => /عقار|شقة|فيلا للبيع/.test(q),
     HOTEL_ASK_RE: /فندق|hotel/i,
+    require: (p) => require(path.join(root, 'api/_lib', p)), // v-reply-blocks: طلب أرقام التواصل يُقرأ من reply-style
   };
   vm.runInNewContext(CHAT.slice(s, e + 2) + '\nthis.f = isCuratedSearch;', ctx);
+  assert.equal(ctx.f('أرقام مكاتب عقارية في الشارقة', null, false), false, 'v-reply-blocks: أرقام التواصل بحث حيّ لا قائمة العقار');
+  assert.equal(ctx.f('ارقام هواتف فنادق دبي', null, true), false, 'v-reply-blocks: ولا قائمة الفنادق أو اللوحات');
   assert.equal(ctx.f('رقم مميز للبيع', null, false), true);
   assert.equal(ctx.f('عقار في دبي', null, false), true);
   assert.equal(ctx.f('عقار في لندن', null, false), false, 'الأجنبيّ يمرّ بالبحث العامّ');

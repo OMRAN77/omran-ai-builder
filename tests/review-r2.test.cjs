@@ -183,7 +183,9 @@ test('ج. البروكسي يقبل ترويسة Bearer، وتذكرة التن�
   assert.equal(upstream.calls.length, 3);
   assert.equal(await tally('g_ticket@gmail.com', 'video-download'), 1, 'التنزيل بالتذكرة لا يُعدّ ثانية');
   assert.equal((await dl({ url: 'https://cdn.example/other.mp4', dt: t })).code, 401, 'التذكرة لرابطها وحده');
-  assert.equal((await dl({ url: URL1, dt: t.slice(0, -2) + (t.endsWith('A') ? 'BB' : 'AA') })).code, 401, 'تذكرة معدّلة');
+  // حرف في الوسط لا آخر حرفين: آخر حرف في base64url يحمل بتات يتجاهلها الفكّ، فتعديله قد يبقي البايتات نفسها (≈٠٫٢٪ — فشل عشوائيّ)
+  const mid = t.length >> 1;
+  assert.equal((await dl({ url: URL1, dt: t.slice(0, mid) + (t[mid] === 'A' ? 'B' : 'A') + t.slice(mid + 1) })).code, 401, 'تذكرة معدّلة');
   assert.equal((await dl({ url: URL1, dt: t, action: 'ticket' })).code, 401, 'تذكرة لا تصدر تذكرة');
   const realNow = Date.now;
   Date.now = () => realNow() + 61 * 60 * 1000;
@@ -500,9 +502,9 @@ test('ز-ب. لا يُعرض أبدًا اسم يبدأ بـg_ أو فيه @ —
   assert.equal(JSON.parse(store.get('db/shares/' + r.body.id + '.json')).username, 'زائر');
   const made = await share.createShare({ code: 'y', username: 'g_agent@gmail.com' });
   assert.equal(JSON.parse(store.get('db/shares/' + made.id + '.json')).username, 'زائر', 'مسار الوكيل (createShare) أيضًا');
-  // سجلّ قديم مخزَّن بالبريد قبل الإصلاح لا يُعرض به
+  // سجلّ قديم مخزَّن بالبريد قبل الإصلاح لا يُعرض به — والاسم الافتراضيّ يُقرأ "" فتترجمه الصفحتان (v-share-pages-i18n)
   store.set('db/shares/legacy1.json', JSON.stringify({ id: 'legacy1', code: 'z', username: 'g_old@gmail.com', createdAt: 1 }));
-  assert.equal((await run(share, { method: 'GET', query: { id: 'legacy1' } })).body.username, 'زائر');
+  assert.equal((await run(share, { method: 'GET', query: { id: 'legacy1' } })).body.username, '');
 });
 
 test('ز-ج. v-agent-publish-owner: مشاركة نشرها الوكيل لحساب Google يحذفها صاحبها بمفتاحه (200) لا غيره (403)، وباسمه المعروض', async () => {

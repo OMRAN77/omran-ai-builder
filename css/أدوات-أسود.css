@@ -1,0 +1,56 @@
+/* v-tools-black (المالك ١٦ أكتوبر: «تغيّر الخلفيّات داخل الأدوات فقط — إذا مختار اللون الأسود يكونون كلّهم نفس درجة لون
+   المحادثة… كلّها لون واحد»): في الوضع الأسود وحده (لا الفاتح ولا الثيمات html.skin) خلفيّة كلّ نافذة أداة وصناديقها الكبيرة
+   أسود المحادثة نفسه (#000). البطاقات والصور والأزرار والحقول والحدود كما هي. استوديو الإعلانات صفحة مستقلّة بخلفيّة المجرّة
+   (تصميم المالك ٥ سبتمبر) فلا تُمسّ هنا. */
+
+/* ── النوافذ: كانت شفّافة تُظهر المحادثة خلفها أو رماديّة ── */
+html:not([data-mode="light"]):not(.skin) #portraitStyleSheet,
+html:not([data-mode="light"]):not(.skin) #portraitStyleFoot,
+html:not([data-mode="light"]):not(.skin) #inspireScreen,
+html:not([data-mode="light"]):not(.skin) #videoMakerModal,
+html:not([data-mode="light"]):not(.skin) #videoMakerModal .vmk-studio,
+html:not([data-mode="light"]):not(.skin) #stocksModal,
+html:not([data-mode="light"]):not(.skin) #expModal,
+html:not([data-mode="light"]):not(.skin) #expModal .expWrap,
+html:not([data-mode="light"]):not(.skin) #eduHubModal,
+html:not([data-mode="light"]):not(.skin) #eduHubModal .eduWrap,
+html:not([data-mode="light"]):not(.skin) #omranEduModal,
+html:not([data-mode="light"]):not(.skin) #cvModal,
+html:not([data-mode="light"]):not(.skin) #docModal,
+html:not([data-mode="light"]):not(.skin) .xmWrap,
+html:not([data-mode="light"]):not(.skin) #fbOverlay,
+html:not([data-mode="light"]):not(.skin) #fbInner{background:#000 !important;}
+
+/* ── الصناديق الكبيرة داخلها: كانت رماديّة أو بمسحة ذهبيّة أو تدرّج — شفّافة فوق الأسود (الحدود باقية) ── */
+html:not([data-mode="light"]):not(.skin) #vmkTabs,
+html:not([data-mode="light"]):not(.skin) #vtRoot,
+html:not([data-mode="light"]):not(.skin) #designAiIdeas,
+html:not([data-mode="light"]):not(.skin) #fxCustomBar,
+html:not([data-mode="light"]):not(.skin) #expModal .expHead,
+html:not([data-mode="light"]):not(.skin) #expDrop,
+html:not([data-mode="light"]):not(.skin) #eduHubModal .eduHead,
+html:not([data-mode="light"]):not(.skin) .xmHead,
+html:not([data-mode="light"]):not(.skin) #docDrop,
+html:not([data-mode="light"]):not(.skin) #constructionModal .cx-head,
+html:not([data-mode="light"]):not(.skin) #cxBrief,
+html:not([data-mode="light"]):not(.skin) #cxStart,
+html:not([data-mode="light"]):not(.skin) #cxIdeas{background:transparent !important;}
+
+/* ── v-three-colors (المالك ١٦ أكتوبر: «فقط ٣ ألوان» — «الحدود كلّها ذهبي»، «عند التضليل عليها: الحدّ يصير رماديّ أفتح»):
+   الأصناف يضعها js/app-41-three-colors.js على الحدود الظاهرة وتعبئات الصناديق داخل الأدوات. ── */
+/* المالك بلقطة الإعدادات: «هذي الخطوط شيلها كلّها» — فواصل صفوف الإعدادات */
+html:not([data-mode="light"]):not(.skin) #portraitStyleSheetHeader, /* لقطة المالك ١٧ أكتوبر: «الخطوط الزايدة» — خطّ رأس ورقة أنماط الصور */
+html:not([data-mode="light"]):not(.skin) .settingsNavRow,
+html:not([data-mode="light"]):not(.skin) .settingsNavGroup .settingsNavRow{border-bottom:0 !important;}
+/* v-no-lines (المالك: «شيل كلّ الخطوط… الذهبي بس لما أمرّ عليها… والخلفيّات لونين أسود بس: #000 و#101013»):
+   الحدود شفّافة (مكانها باقٍ فلا يقفز شيء)، والذهبيّ عند المرور والتركيز والاختيار فقط. */
+html:not([data-mode="light"]):not(.skin) .om3-line{border-color:transparent !important;}
+html:not([data-mode="light"]):not(.skin) .om3-hot.om3-line:hover,
+html:not([data-mode="light"]):not(.skin) .om3-line:focus-visible,
+html:not([data-mode="light"]):not(.skin) .om3-line:is(input,textarea,select):focus,
+html:not([data-mode="light"]):not(.skin) .om3-line:is(.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:rgba(212,175,55,.85) !important;}
+/* الصناديق داخل الأدوات بالتناوب: فوق نافذة #000 تعبئة #101013، وداخلها #000، وداخل ذلك #101013 — فتبين بلا خطوط.
+   v-vmk-polish (تدقيق ١٨–١٩ أكتوبر): المربّع المفعَّل (:checked) لا يُطلى — كان «إضافة تعليق صوتي» المفعَّل #101013 بلا ✓ ظاهرة */
+html:not([data-mode="light"]):not(.skin) .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]):not(:checked){background:#101013 !important;}
+html:not([data-mode="light"]):not(.skin) .om3-fill .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]):not(:checked){background:#000 !important;}
+html:not([data-mode="light"]):not(.skin) .om3-fill .om3-fill .om3-fill:not(.sel):not(.selected):not(.active):not(.on):not([aria-pressed="true"]):not([aria-selected="true"]):not(:checked){background:#101013 !important;}

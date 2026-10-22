@@ -329,7 +329,8 @@ console.log('  \u2713 v-chat-visible-speed: لا حجز قبل النموذج و
   // v-clean-slate: قاعدة الأحلام فُصلت — النموذج يفسر بطبيعته المدربة.
   assert.ok(!/baseSystem[^;]*DREAM_NOTE/.test(ch), 'v-clean-slate: لا حقن قاعدة أحلام في النظام');
   const st = fs.readFileSync(path.join(__dirname, '../js/app-12-studios.js'), 'utf8');
-  assert.ok(st.includes('v-religion-rescue') && st.includes('callAIWithFallback(messages, onDelta)'), 'التفسير الديني على سلسلة الاحتياط الكاملة');
+  // v-religion-chain: taskPrompt يبقي السلسلة الكاملة حتّى للمالك (tests/religion-fix)
+  assert.ok(st.includes('v-religion-rescue') && st.includes('callAIWithFallback(messages, onDelta, null, { taskPrompt: true })'), 'التفسير الديني على سلسلة الاحتياط الكاملة');
 }
 console.log('  \u2713 v-dream-tafsir: تفسير حقيقي + أداة دينية لا تموت');
 

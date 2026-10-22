@@ -18,6 +18,10 @@
     EMO.lastIndex = 0; if(!EMO.test(v)) return; EMO.lastIndex = 0;
     var p = n.parentElement; if(!p || p.closest(SKIP)) return;
     var c = clean(v);
+    /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): القصّ كان يلصق النصّ بالعنصر المجاور («Review:التمثيل»، «المستوىأساسي») —
+       مسافة الحدّ تبقى إن كان للعقدة شقيق من جهتها */
+    if(c && n.nextSibling && /\s$/.test(v)) c += ' ';
+    if(c && n.previousSibling && /^\s/.test(v.replace(EMO, ''))) c = ' ' + c;
     if(HAS_WORD.test(c) && c !== v) n.nodeValue = c;
   }
   function fixAttrs(el){

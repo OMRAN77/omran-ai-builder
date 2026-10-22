@@ -103,6 +103,8 @@ function lightLesson(l) {
     cardsKnown: typeof l.cardsKnown === 'number' ? l.cardsKnown : 0,
     cardCount: Array.isArray(l.flashcards) ? l.flashcards.length : 0,
     quizCount: Array.isArray(l.quiz) ? l.quiz.length : 0,
+    // v-edu-upform: «محاضراتك المرفوعة» تُبنى من القائمة — علامة الرفع والفصل فقط (الوصف في get)
+    ...(l.src === 'upload' ? { src: 'upload', term: String(l.term || '').slice(0, 12) } : {}),
   };
 }
 
@@ -489,6 +491,13 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         blocks.push({ type: 'text', text: 'محتوى المحاضرة:\n\n' + String(text).slice(0, 200000) });
       }
       if (!blocks.length) { res.status(400).json({ error: 'لا يوجد محتوى للتحليل — ارفع ملفًا أو الصق نصًا.' }); return; }
+      // v-edu-upform (تصميم المالك): ما كتبه الطالب في نموذج الرفع — سياق للتركيز لا محتوى (لا يكفي وحده للتحليل: فُحص الفراغ قبله)
+      const __upInfo = [
+        body.upTitle ? 'اسم المحاضرة: ' + String(body.upTitle).slice(0, 160) : '',
+        body.upSubject ? 'المادّة: ' + String(body.upSubject).slice(0, 60) : '',
+        body.note ? 'وصف الطالب: ' + String(body.note).slice(0, 600) : '',
+      ].filter(Boolean).join('\n');
+      if (__upInfo) blocks.push({ type: 'text', text: 'معلومات أدخلها الطالب مع الملفّ (سياق للتركيز فقط، ليست من محتوى المحاضرة):\n' + __upInfo });
       blocks.push({ type: 'text', text: 'حلل هذه المحاضرة وأعد JSON فقط بالصيغة المطلوبة.' });
       if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' محاضرات). سجّل الدخول أو عد غدًا 🌙' }); return; }
 
@@ -648,17 +657,19 @@ module.exports = withErrorCapture('edu', async (req, res) => {
 
     // ---------------- 🧪 lab: الدرس الحي — تجربة تفاعلية مولّدة من الدرس (v-edu-lab) ----------------
     if (action === 'lab') {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
       const lessonId = String(body.id || '').slice(0, 64).replace(/[^A-Za-z0-9_-]/g, '');
       const labKey = (username && lessonId) ? ('db/edu/labs/' + encodeURIComponent(username) + '/' + lessonId + '.json') : null;
-      // المختبر المحفوظ يُعاد بلا استهلاك حصة ولا نداء نموذج
+      // المختبر المحفوظ يُعاد بلا استهلاك حصة ولا نداء نموذج — قبل فحص المفتاح (v-edu-hub-polish: لا يحتاجه)
       if (labKey && !body.force) {
         try {
           const cached = await kvGetJSON(labKey);
           if (cached && cached.html) { res.status(200).json({ ok: true, html: cached.html, cached: true }); return; }
         } catch (e) { /* best-effort: الكاش رفاهية — التوليد يغطي */ }
       }
+      // v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العميل يسأل عن المحفوظ عند إعادة فتح الدرس — الغياب جواب لا بناء
+      if (body.cachedOnly) { res.status(200).json({ ok: true, html: null }); return; }
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const max = __eduMax('proc');
@@ -1112,6 +1123,8 @@ module.exports = withErrorCapture('edu', async (req, res) => {
           // overall while understanding none of the "why". Kept per level.
           scores: l.scores && typeof l.scores === 'object' ? l.scores : {},
           cardsKnown: typeof l.cardsKnown === 'number' ? l.cardsKnown : 0,
+          // v-edu-upform: بيانات نموذج «ارفع محاضرة جديدة» — للمرفوعة منه وحدها، فلا يكبر غيرها في القاعدة
+          ...(l.src === 'upload' ? { src: 'upload', term: String(l.term || '').slice(0, 12), note: String(l.note || '').slice(0, 2000), fileName: String(l.fileName || '').slice(0, 160) } : {}),
         };
         lessons = lessons.filter((x) => x.id !== lesson.id);
         lessons.unshift(lesson);

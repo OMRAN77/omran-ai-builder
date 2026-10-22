@@ -1,0 +1,52 @@
+/* v-frame-gold-mobile — تصميم الكمبيوتر الجديد (css/إطارات.css، v-frame-gold) على الجوال. أمر المالك بعد دمجه على الكمبيوتر:
+   «غيّر في الهواتف بعد وادمج». للجوال وحده (كلّ قاعدة فيها html.mobile-ui)، والخلفيّات والثيمات (bgimg/skin/skin-wood) كما هي:
+     • الأسود: كلّه أسود صافٍ #000 (الصفحة والرأس والكتابة والشريط السفليّ والدُّرجان ومكان الكود)، بلا توهّج ذهبيّ.
+     • العاجيّ: ألوان الكمبيوتر العاجيّة نفسها للأسطح كلّها، والصفحة #f9f2e4 بتوهّج أسفلها.
+     • المحادثة داخل إطار بخطّ ذهبيّ متدرّج واحد ١px وزوايا ٢٢px (body::after — خطّ فقط، لا يمسك اللمس)، فوق الشريط السفليّ.
+     • الدُّرجان (القائمة والمعاينة): الخطّ الذهبيّ على حافّتهما الداخليّة بزاويتين ٢٢px، ونقاط ذهبيّة خافتة كلّ ٢٢px.
+     • الشعار بلا النجوم الملوّنة، وزرّ المعاينة المختار ذهبيّ، ولمسة الضغط في الدُّرجين (js/frame-touch.js).
+     • خانة الكتابة وأحجام كلّ شيء ومواضعه كما هي — ألوان وخطوط فقط، لا مقاس يتغيّر. */
+html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood){ --om-gold-line:linear-gradient(160deg,rgba(212,175,55,.6),rgba(212,175,55,.14) 32%,rgba(63,60,47,.55) 62%,rgba(212,175,55,.38)); --om-dots:radial-gradient(rgba(206,181,98,.14) 1px,transparent 1.3px); --om-panel:linear-gradient(#000,#000); --om-glow:linear-gradient(transparent,transparent); }
+html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood){
+  --om-gold-line:linear-gradient(160deg,rgba(184,144,44,.7),rgba(184,144,44,.2) 32%,rgba(150,120,60,.35) 62%,rgba(184,144,44,.5)); --om-dots:radial-gradient(rgba(150,112,40,.22) 1px,transparent 1.3px); --om-panel:linear-gradient(#f9f2e4,#f9f2e4); --om-glow:radial-gradient(120% 38% at 50% 100%,rgba(236,206,140,.32),transparent 70%);
+  /* العاجيّ نفسه الذي على الكمبيوتر (css/إطارات.css) بدل الرماديّ */
+  --bg:#f9f2e4 !important; --bg2:#f9f2e4 !important; --panel:#fbf5e9 !important; --panel2:#f3ead6 !important;
+  --text:#4a4034 !important; --muted:#625a4e !important; /* v-theme-contrast: كان #8e8477 (٣٫٤:١ على العاجيّ) */ --border:rgba(120,96,50,.14) !important;
+  --accent-ink:#4a4034 !important; --accent-on-surface:#4a4034 !important; --accent-surface:#efe5cf !important;
+  background:#f9f2e4 !important;
+}
+html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood){ background:#000 !important; }
+html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) body{ background:#000 !important; }
+html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) body{ background:radial-gradient(120% 38% at 50% 100%,rgba(236,206,140,.32),transparent 70%) no-repeat, #f9f2e4 !important; }
+html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body > header, html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) #inputbar{ background:transparent !important; }
+html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) #code{ background:#000 !important; }
+html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) #code{ background:#f9f2e4 !important; color:#3b332a !important; }
+html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) #omranBottomNav{ background:#000 !important; border-top-color:transparent !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
+html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) #omranBottomNav{ background:#f9f2e4 !important; border-top-color:transparent !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
+/* v-bg3d-mobile-band (تدقيق ١٨–١٩ أكتوبر، وأُعيد حيًّا على الإنتاج): مع خلفيّة WebGL (أمواج، ضباب، شبكة…) ظهر أعلى الشاشة شريط بلون الجسم بارتفاع
+   هذا الشريط السفليّ (٥١px). المعتم تمامًا بعرض الشاشة يحجب أسفل الكانفس، والمركِّب يقصّ المحجوب من صورة WebGL المقلوبة رأسيًّا فيقع القصّ أعلاها.
+   ألفا ٠٫٩٩ (اللون نفسه بالعين) تُبقيه غير حاجب فلا قصّ. ما دام body.vantaActive وحده — بلا خلفيّة ثلاثيّة يبقى كما هو. */
+html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) body.vantaActive #omranBottomNav{ background:rgba(0,0,0,.99) !important; }
+html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) body.vantaActive #omranBottomNav{ background:rgba(249,242,228,.99) !important; }
+
+/* المحادثة في إطار: خطّ ذهبيّ واحد من تحت شريط الحالة إلى فوق الشريط السفليّ (حجزه ‎48px‎ في redesign.css)؛ والكيبورد مفتوح إلى أسفل الشاشة */
+html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after{
+  content:""; position:absolute; z-index:20; pointer-events:none;
+  top:calc(min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px) + 2px); left:5px; right:5px; bottom:calc(48px + env(safe-area-inset-bottom,0px) + 3px);
+  border-radius:22px; padding:1px; box-sizing:border-box; background:var(--om-gold-line);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+html.kb-open.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after{ bottom:3px; }
+
+/* الدُّرجان: الخطّ الذهبيّ على الحافّة الداخليّة (inline-end: يسار في العربيّة، يمين في الإنجليزيّة) والنقاط */
+html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) #sidebar, html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) #workarea{
+  border:0 solid transparent !important; border-inline-end-width:1px !important;
+  border-radius:0 !important; border-start-end-radius:22px !important; border-end-end-radius:22px !important;
+  background:var(--om-dots) 0 0 / 22px 22px padding-box, var(--om-glow) padding-box, var(--om-panel) padding-box, var(--om-gold-line) border-box !important;
+}
+html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) #sidebarBrand .omStars{ display:none !important; }
+html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) #tabs .tab.active{ background:linear-gradient(135deg,rgba(212,175,55,.2),rgba(212,175,55,.06)) !important; box-shadow:inset 0 0 0 1px rgba(212,175,55,.35) !important; border-radius:10px !important; }
+html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) #tabs .tab.active svg{ color:#e9c869 !important; stroke:#e9c869 !important; }
+html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) #tabs .tab.active{ background:linear-gradient(135deg,rgba(184,144,44,.22),rgba(184,144,44,.08)) !important; box-shadow:inset 0 0 0 1px rgba(184,144,44,.45) !important; border-radius:10px !important; }
+html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) #tabs{ background:transparent !important; }

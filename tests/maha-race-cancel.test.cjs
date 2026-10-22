@@ -20,8 +20,9 @@ const src = fs.readFileSync(path.join(root, 'js/app-08-maha.js'), 'utf8');
 function extractFn(name) {
   const start = src.indexOf(name);
   assert.ok(start > 0, name + ' موجودة');
-  // نطاق سخيّ يكفي لاحتواء الدالّة كاملة (مستعمَل بنفس الأسلوب في tests/maha-mic-race.test.cjs)
-  return src.slice(start, start + 9000);
+  // الدالّة كاملة حتّى التعريف الأعلى التالي — نافذة ٩٠٠٠ حرف ثابتة انكسرت حين كبرت الدالّة سطرًا واحدًا (v-maha-close)
+  const next = src.slice(start + name.length).search(/\n(?:async )?function /);
+  return src.slice(start, next < 0 ? undefined : start + name.length + next);
 }
 
 test('v-maha-race-cancel: فحص الإلغاء يقع بعد المصافحة مباشرة وقبل mahaRtActive=true', () => {

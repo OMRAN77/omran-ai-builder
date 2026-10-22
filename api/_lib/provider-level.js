@@ -40,9 +40,9 @@ const FAMILIES = [
     peak: 'في المهامّ المركّبة نفّذ خطوة بخطوة بالأدوات (بحث ← قراءة صفحة ← run_js ← GitHub) حتّى تصل النتيجة النهائيّة، لا تقف عند أوّل خطوة. في الكود: كامل وقابل للتشغيل.',
     gap: 'العربيّة: لهجة المستخدم وبلا ترجمة حرفيّة. الحقائق الحديثة من البحث.' },
   { key: 'grok', re: /grok|^x-ai\//i,
-    strong: 'استدلال قويّ، اطّلاع على الأحداث الجارية والنقاش العامّ، صراحة ومباشرة، وبرمجة جيّدة، وإكمال المهمّة بعد القراءة.',
-    peak: 'أجب بصراحة ومباشرة وبلهجة المستخدم والنتيجة أوّلًا. لا تقف بعد القراءة: أكمل المهمّة في نفس الردّ (تعديل واختبار) حتى النهاية. في الصعب فكّر بعمق ثمّ أعطِ الخلاصة، وادعم كلّ ادّعاء بمصدر من بحثك.',
-    gap: 'لا تبنِ على شائعات التواصل الاجتماعيّ: افصل المؤكَّد من مصدر رسميّ عن المتداول.' },
+    strong: 'استدلال قويّ (قوّتك التفكير العميق لا الردّ السريع الفارغ)، اطّلاع على الأحداث الجارية والنقاش العامّ، صراحة ومباشرة، وبرمجة جيّدة، وإكمال المهمّة بعد القراءة.',
+    peak: 'أجب بصراحة ومباشرة وبلهجة المستخدم والنتيجة أوّلًا. لا تقف بعد القراءة: أكمل المهمّة في نفس الردّ (تعديل واختبار) حتى النهاية. فكّر بعمق ثمّ أعطِ الخلاصة، وادعم كلّ ادّعاء بمصدر من بحثك. قبل أيّ ادّعاء عن التطبيق اقرأ رأس knowledge/DECISIONS.md وknowledge/PITFALLS.md ثمّ الملفّ بـread_github — أو what=map إن احتجت موضع عنصر.',
+    gap: 'معرفتك بالمستودع ليست حيّة: لا تجب عن الكود أو الحالة من تدريبك. اقرأ بـread_github أوّلًا. لا تبنِ على شائعات التواصل الاجتماعيّ: افصل المؤكَّد من مصدر رسميّ عن المتداول.' },
   { key: 'qwen', re: /qwen/i,
     strong: 'برمجة ورياضيّات قويّة، تعدّد لغات بما فيها العربيّة، واستدعاء أدوات منضبط.',
     peak: 'في الكود والرياضيّات فكّر خطوة خطوة وتحقّق، والكود كاملًا. اعرض الخلاصة واضحة.',
@@ -138,6 +138,7 @@ function ownerBrief(text, noTools) {
   if (!text) return text;
   let s = String(text).replace(' ويُرفع معها.', BUNDLE_TRUTH);
   if (noTools) s = s.replace(/\n\nصلاحيّتك على كود التطبيق[^\n]*/, '');
+  if (noTools) s = s.replace(/\n\nخريطة الكود \(مولَّدة آليًّا[\s\S]*?(?=\n\n\[|$)/, ''); // v-codemap: الخريطة وقاعدتها تسمّيان الأدوات — دور بلا أدوات لا يُؤمر بها
   return s;
 }
 
@@ -164,10 +165,14 @@ const READ_CITE = ' وكلّ موضع تذكره من ملفّ قرأته اكت
 let __readTool = null;
 /* v-owner-solo-all: نسخة المالك تعرف «التزامًا واحدًا بفرقه» (what=commit مع ref = sha) — github-read يدعمه منذ v-agent-deep والوكيل
    وحده كان يراه. الأداة المشتركة لغير المالك كما هي حرفيًّا (كاشهم لا يتغيّر). */
+/* v-codemap: ونسخته تعرف map = خريطة الكود كلّه (github-read.js codeMap) — المحلّيّة بلا نداء GitHub. */
+const MAP_WHAT = ' · map = خريطة كود التطبيق كلّه (كلّ ملفّ: غرضه ودوالّه وأدواته وعناصر واجهته id«نصّها») — بلا path كلّ المجلّدات، path=مجلّد أغراض ملفّاته، path=ملفّ دوالّه، query بحث فيها (نصّ ظاهر من لقطة يعطي id العنصر وملفّه)';
 function withCommit(schema) {
   const p = schema && schema.properties;
-  if (!p || !p.what || !Array.isArray(p.what.enum) || p.what.enum.indexOf('commit') !== -1) return schema;
-  const what = Object.assign({}, p.what, { enum: p.what.enum.concat(['commit']), description: String(p.what.description || '') + ' · commit = التزام واحد بفرقه (ref = sha)' });
+  if (!p || !p.what || !Array.isArray(p.what.enum)) return schema;
+  const add = ['commit', 'map'].filter((w) => p.what.enum.indexOf(w) === -1);
+  if (!add.length) return schema;
+  const what = Object.assign({}, p.what, { enum: p.what.enum.concat(add), description: String(p.what.description || '') + (add.indexOf('commit') !== -1 ? ' · commit = التزام واحد بفرقه (ref = sha)' : '') + (add.indexOf('map') !== -1 ? MAP_WHAT : '') });
   return Object.assign({}, schema, { properties: Object.assign({}, p, { what }) });
 }
 function ownerReadTool(t) {
@@ -175,4 +180,4 @@ function ownerReadTool(t) {
   return __readTool.out;
 }
 
-module.exports = { levelNote, selfCard, familyOf, FAMILIES, SMALL_RE, OWNER_METHOD, NO_TOOLS_NOTE, ownerBrief, bundleNote, BUNDLE_WARN, ownerReadTool };
+module.exports = { levelNote, selfCard, familyOf, FAMILIES, SMALL_RE, OWNER_METHOD, NO_TOOLS_NOTE, ownerBrief, bundleNote, BUNDLE_WARN, ownerReadTool, MAP_WHAT };

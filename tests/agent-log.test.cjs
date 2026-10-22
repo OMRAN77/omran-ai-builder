@@ -11,6 +11,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
+process.env.OWNER_AGENT_CLAUDE = 'on'; // v-agent-claude-off: الاختبار يفحص الوكيل وهو شغّال
 process.env.AUTH_SECRET = 'agent-log-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 const root = path.resolve(__dirname, '..');
@@ -229,7 +230,7 @@ test('٨. الوصلات: الحلقة تمرّر الأحداث وتحفظ ال
   const r4 = read('js/app-04-i18n-state.js');
   const hook = r4.indexOf('window.omranAgentLog.render(m._agParts)');
   assert.ok(hook > 0 && hook < r4.indexOf('div.appendChild(textDiv);', hook), 'السجلّ قبل نصّ الردّ');
-  assert.ok(r4.includes("sc.src = 'i18n/' + lg + '.js?v=744';"));
+  assert.ok(r4.includes("sc.src = 'i18n/' + lg + '.js?v=770';"));
   const ar = read('js/app-03-i18n-data.js');
   assert.equal((ar.match(/agThought: '[^']+', agExplored: '[^']+\{n\}[^']*', agNoOutput: '[^']+'/g) || []).length, 2, 'العربيّة والإنجليزيّة');
   for (const lg of ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'id', 'fil', 'ml']) {

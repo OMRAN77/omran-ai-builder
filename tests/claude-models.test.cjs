@@ -93,7 +93,7 @@ test('٤. الواجهة: مبدّل النموذج في قائمة «+» (لل�
   assert.equal((i18n.match(/stModelFallback:/g) || []).length, 2);
   // v-custom-instructions: رُفع إلى 657 بعد إضافة حقل التعليمات المخصّصة للقسم؛ v-plan-routing: 659
   // (بطاقات الباقات)؛ v-maha-voice-speed: 660 (أزرار سرعة صوت مها في قسم الصوت).
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=695'), 'كسر كاش الجزء بعد تغييره');
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=705'), 'كسر كاش الجزء بعد تغييره');
 });
 
 test('٥. Haiku 4.5 بلا effort في دور الصورة، والجيل الحاليّ معه', () => {
@@ -127,5 +127,5 @@ test('٧. الافتراضيّ الاقتصاديّ: Haiku 4.5 في الخادم
   const picker = read('js/app-29-claude-model.js');
   assert.ok(picker.includes("'': ['الافتراضيّ: Haiku 4.5"), 'التلميح بلا اختيار');
   assert.ok(/'claude-haiku-4-5': \['[^']*هو الافتراضيّ/.test(picker) && !/'claude-sonnet-5': \['[^']*الافتراضيّ/.test(picker), 'وصف الافتراضيّ انتقل لـHaiku');
-  assert.ok(read('index.html').includes('js/modes.js?v=m131026g'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m211026'), 'وسم كاش modes رُفع');
 });

@@ -1,13 +1,14 @@
 'use strict';
 /* v-owner-light (المالك ١٣ أكتوبر: «اريد سرعة التفكير في الردود العاديه — افهم شو الي اريده بالضبط»، واختار أن يبقى البحث في كلّ
    سؤال): دور المالك ثلاث درجات — quick المجاملة فوريّة (v-owner-auto)، وdeep الشغل الثقيل بتفكير الموديل الكامل، وlight الردّ العاديّ
-   يفكّر ويظهر تفكيره لكن بالجهد الأدنى. المعالج الحقيقيّ (api/_lib/chat.js) بمزوّد مزيّف يسجّل كلّ طلب: كروك على الوسيط، وGPT
+   يفكّر ويظهر تفكيره لكن بالجهد الأدنى (كروك high — v-grok-high-feed). المعالج الحقيقيّ (api/_lib/chat.js) بمزوّد مزيّف يسجّل كلّ طلب: كروك على الوسيط، وGPT
    المباشر، وكلود المباشر؛ ورفض الجهد يُعاد بلاه ويُذكر، و400 توقيع التفكير لا يُتّهم به الجهد. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'owner-light-test-secret';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
@@ -76,13 +77,15 @@ test('١. الدرجات: المجاملة فوريّة، والردّ العا�
   assert.equal(ot.ownerThinks('ليش السماء زرقاء', {}), true, 'light يفكّر ويظهر تفكيره (v-owner-think-all باقٍ)');
 });
 
-test('٢. حقول الجهد الأدنى لكلّ مزوّد: GPT وكلود بدوالّهما، والوسيط output_config.effort، وCohere والمباشر لغير GPT وHaiku 4.5 بلا شيء', () => {
+test('٢. حقول الجهد الأدنى لكلّ مزوّد: GPT وكلود بدوالّهما، والوسيط output_config.effort، وكروك high، وCohere والمباشر لغير GPT وHaiku 4.5 بلا شيء', () => {
   ot.__deadEffort.clear();
   assert.deepEqual(ot.lightEffortFields('openai', 'gpt-6-astra', false, {}, false), { output_config: { effort: 'low' } });
   assert.deepEqual(ot.lightEffortFields('openai', 'openai/gpt-6-astra', true, null, false), { output_config: { effort: 'low' } });
   assert.deepEqual(ot.lightEffortFields('claude', 'claude-opus-5-5', false, null, false), { output_config: { effort: 'low' } });
   assert.equal(ot.lightEffortFields('claude', 'claude-haiku-4-5', false, null, false), null, 'Haiku 4.5 يرفض الجهد');
-  assert.deepEqual(ot.lightEffortFields('openrouter', 'x-ai/grok-4.6', true, null, false), { output_config: { effort: 'low' } }, 'كروك عبر الوسيط');
+  assert.deepEqual(ot.lightEffortFields('openrouter', 'x-ai/grok-4.6', true, null, false), { output_config: { effort: 'high' } }, 'كروك عبر الوسيط — v-grok-high-feed');
+  assert.deepEqual(ot.lightEffortFields('openrouter', 'x-ai/grok-4.20', true, null, false), { output_config: { effort: 'high' } }, 'كروك 4.20 كذلك');
+  assert.deepEqual(ot.lightEffortFields('openrouter', 'qwen/qwen3.6-27b', true, null, false), { output_config: { effort: 'low' } }, 'Qwen على صفّ الوسيط يبقى low');
   assert.deepEqual(ot.lightEffortFields('gemini', 'google/gemini-3.8-flash', true, null, false), { output_config: { effort: 'low' } });
   assert.equal(ot.lightEffortFields('cohere', 'cohere/command-a', true, null, false), null, 'v-cohere-reasoning');
   assert.equal(ot.lightEffortFields('groq', 'openai/gpt-oss-120b', false, { prov: 'groq' }, false), null, 'المباشر لغير GPT كما كان');
@@ -91,16 +94,18 @@ test('٢. حقول الجهد الأدنى لكلّ مزوّد: GPT وكلود �
   ot.__deadEffort.clear();
 });
 
-test('٣. كروك (الوسيط): السؤال العاديّ بجهد low وتفكيره ظاهر (تكيّفيّ)، والتحليل بتفكيره الكامل بلا جهد', async () => {
+test('٣. كروك (الوسيط): السؤال العاديّ بجهد high وتفكيره ظاهر (تكيّفيّ)، والتحليل بتفكيره الكامل بلا جهد', async () => {
   ot.__deadEffort.clear();
   let r = await run({ provider: 'openrouter', model: 'x-ai/grok-4.6', text: 'ليش السماء زرقاء؟', script: [() => anthropicText('لأنّ…')] });
   assert.match(r.calls[0].url, /openrouter\.ai/);
   assert.equal(r.calls[0].body.model, 'x-ai/grok-4.6');
-  assert.deepEqual(r.calls[0].body.output_config, { effort: 'low' });
+  assert.deepEqual(r.calls[0].body.output_config, { effort: 'high' });
   assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive' }, 'التفكير ظاهر للمالك (v-think-talk-all)');
   r = await run({ provider: 'openrouter', model: 'x-ai/grok-4.6', text: 'حلّل لي هذا التقرير بالتفصيل', script: [() => anthropicText('تم')] });
   assert.equal(r.calls[0].body.output_config, undefined, 'الثقيل بجهد الموديل الكامل');
   assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive' });
+  r = await run({ provider: 'openrouter', model: 'qwen/qwen3.6-27b', text: 'ليش السماء زرقاء؟', script: [() => anthropicText('لأنّ…')] });
+  assert.deepEqual(r.calls[0].body.output_config, { effort: 'low' }, 'Qwen في الدور العاديّ يبقى low');
 });
 
 test('٤. كروك يرفض الجهد (400) ← إعادة فوريّة بالموديل نفسه بلاه، ويُذكَر فلا يتكرّر', async () => {
@@ -109,7 +114,7 @@ test('٤. كروك يرفض الجهد (400) ← إعادة فوريّة بال�
     let r = await run({ provider: 'openrouter', model: 'x-ai/grok-4.6', text: 'وش رأيك في فيلم الأمس؟',
       script: [() => err400('reasoning effort is not supported for this model'), () => anthropicText('رأيي…')] });
     assert.equal(r.calls.length, 2);
-    assert.deepEqual(r.calls[0].body.output_config, { effort: 'low' });
+    assert.deepEqual(r.calls[0].body.output_config, { effort: 'high' });
     assert.equal(r.calls[1].body.output_config, undefined);
     assert.equal(r.calls[1].body.model, 'x-ai/grok-4.6', 'لا هبوط لموديل آخر');
     r = await run({ provider: 'openrouter', model: 'x-ai/grok-4.6', text: 'وش رأيك في فيلم الأمس؟', script: [() => anthropicText('تم')] });

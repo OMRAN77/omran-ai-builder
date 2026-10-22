@@ -49,3 +49,5 @@ eval/out/
 
 # v-branch-shots: لقطات ui-shot وbranch-shots المحلّيّة (المخرج الافتراضيّ)
 .shots/
+# v-social-bot: مخرجات بوت التسويق المحلّيّة
+social-out/

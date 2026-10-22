@@ -9,6 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 process.env.OMRAN_TEST_FAST_SLEEP = '1'; // v-time-seam: getUser لسجلّ غائب بلا ١٫٨ ثانية نوم حقيقيّ (المنطق والمحاولات كما هي)
 process.env.AUTH_SECRET = 'share-guard-test-secret';
@@ -276,4 +277,93 @@ test('١٠. v-share-bytes: ميزانيّة بايت يوميّة واحدة ل�
   } finally {
     if (prev === undefined) delete process.env.SHARE_BYTES_DAILY; else process.env.SHARE_BYTES_DAILY = prev;
   }
+});
+
+test('٩. v-chunk-fix: ملفّ أكبر من جزء واحد (فيديو ~١٫٥ م.ب) ينزل بايتًا ببايت — كان ينزل ٠ بايت لغياب «:» بعد الاسم', async () => {
+  const raw = crypto.randomBytes(1536 * 1024);
+  const up = await call(file, { method: 'POST', body: { token: makeToken('chunkUser'), data: raw.toString('base64'), name: 'v.mp4', mime: 'video/mp4' } });
+  assert.equal(up.status, 200);
+  assert.ok(String(store.get('db/file/' + up.body.id)).startsWith('chunks:'), 'خُزِّن أجزاءً فعلًا');
+  const got = await call(file, { method: 'GET', query: { id: up.body.id } });
+  assert.equal(got.status, 200);
+  assert.equal(got.headers['content-type'], 'video/mp4');
+  assert.match(got.headers['content-disposition'], /filename="v\.mp4"/);
+  assert.ok(Buffer.compare(got.body, raw) === 0, 'المحتوى مطابق');
+});
+
+test('١١. v-share-pages-i18n: الاسم الافتراضيّ «زائر» يُقرأ "" (التخزين كما هو) فتترجمه الصفحتان، والاسم الحقيقيّ كما هو', async () => {
+  store.set('db/shares/guest00000001.json', JSON.stringify({ id: 'guest00000001', title: 'g', code: 'x', username: 'زائر', createdAt: 1, public: true, owner: 'g_x@y.z' }));
+  store.set('db/shares/named0000001.json', JSON.stringify({ id: 'named0000001', title: 'n', code: 'x', username: 'sara', createdAt: 2, public: true }));
+  const g = await call(share, { method: 'GET', query: { id: 'guest00000001' } });
+  assert.equal(g.status, 200);
+  assert.equal(g.body.username, '');
+  assert.equal(g.body.owner, undefined, 'مفتاح الحساب لا يخرج');
+  assert.equal(JSON.parse(store.get('db/shares/guest00000001.json')).username, 'زائر', 'السجلّ المخزَّن لم يُمسّ');
+  assert.equal((await call(share, { method: 'GET', query: { id: 'named0000001' } })).body.username, 'sara');
+  // «استكشف»: نشرٌ عامّ يبطل الذاكرة، والضيف ""، والاسم المخفيّ (g_/بريد) "" كذلك
+  store.set('db/explore/9999999999990_guest00000001.json', JSON.stringify({ id: 'guest00000001', title: 'g', username: 'زائر', createdAt: 9999999999990 }));
+  store.set('db/explore/9999999999991_mail0000001.json', JSON.stringify({ id: 'mail0000001', title: 'm', username: 'a@b.c', createdAt: 9999999999991 }));
+  await call(share, { method: 'POST', body: { token: makeToken('lina'), title: 'fresh', code: 'z', isPublic: true } });
+  const ex = await call(share, { method: 'GET', query: { explore: '1' } });
+  const byId = Object.fromEntries(ex.body.items.map((x) => [x.id, x]));
+  assert.equal(byId.guest00000001.username, '');
+  assert.equal(byId.mail0000001.username, '');
+  assert.ok(ex.body.items.some((x) => x.username === 'lina'));
+  assert.ok(!ex.body.items.some((x) => x.username === 'زائر'));
+});
+
+test('١٢. v-share-once: نافذة المشاركة تتذكّر رابط المشروع في الجلسة — نقرتان = POST واحد والرابط نفسه، وتغيّر المشروع أو الظهور = رابط جديد', async () => {
+  const vm = require('node:vm');
+  const feat = fs.readFileSync(path.join(root, 'js/app-10-features.js'), 'utf8');
+  const from = feat.indexOf('/* ---------- 🔗 Share project');
+  const to = feat.indexOf('/* v-modal-img-release');
+  assert.ok(from > 0 && to > from);
+  const src = feat.slice(from, to);
+  const el = (extra) => Object.assign({ style: {}, value: '', checked: false, disabled: false, textContent: '', listeners: {}, addEventListener(t, f) { this.listeners[t] = f; }, select() {} }, extra);
+  const els = { '#shareModal': el(), '#shareModalCloseBtn': el(), '#shareCreateBtn': el(), '#shareCopyBtn': el(), '#shareStatusMsg': el(), '#shareResultBox': el(), '#shareResultUrl': el(), '#sharePublicYes': el() };
+  const posts = [];
+  let n = 0;
+  const ctx = {
+    $: (s) => els[s] || null,
+    t: (k) => k,
+    authGet: () => 'tok',
+    __swallow() {},
+    location: { origin: 'https://app.test' },
+    navigator: {}, document: { execCommand() {} }, window: {},
+    JSON, String, Error,
+    fetch: async (url, opts) => { posts.push({ url, body: JSON.parse(opts.body) }); n++; return { status: 200, ok: true, json: async () => ({ id: 'id' + n }) }; },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(src, ctx);
+  const click = () => els['#shareCreateBtn'].listeners.click();
+  const project = { id: 'p1', title: 'متجر', code: '<p>a</p>', messages: [] };
+  ctx.openShareModal(project);
+  await click();
+  assert.equal(posts.length, 1);
+  assert.equal(els['#shareResultUrl'].value, 'https://app.test/p.html?id=id1');
+  // إغلاق النافذة ثمّ فتحها للمشروع نفسه ثمّ «إنشاء» مرّة أخرى: الرابط نفسه بلا نداء
+  els['#shareModal'].listeners.click({ target: els['#shareModal'] });
+  els['#shareResultUrl'].value = '';
+  ctx.openShareModal(project);
+  await click();
+  assert.equal(posts.length, 1, 'لا مشاركة جديدة ولا سجلّ مكرّر في «استكشف»');
+  assert.equal(els['#shareResultUrl'].value, 'https://app.test/p.html?id=id1');
+  assert.equal(els['#shareResultBox'].style.display, 'block');
+  // الظهور الخاصّ مفتاح آخر
+  els['#sharePublicYes'].checked = false;
+  await click();
+  assert.equal(posts.length, 2);
+  assert.equal(posts[1].body.isPublic, false);
+  // المشروع تغيّر: رابط جديد، ثمّ يُتذكَّر الجديد
+  els['#sharePublicYes'].checked = true;
+  project.code = '<p>changed</p>';
+  await click();
+  assert.equal(posts.length, 3);
+  assert.equal(els['#shareResultUrl'].value, 'https://app.test/p.html?id=id3');
+  await click();
+  assert.equal(posts.length, 3);
+  // مشروع آخر بالعنوان نفسه لا يأخذ رابط الأوّل
+  ctx.openShareModal({ id: 'p2', title: 'متجر', code: '<p>changed</p>', messages: [] });
+  await click();
+  assert.equal(posts.length, 4);
 });

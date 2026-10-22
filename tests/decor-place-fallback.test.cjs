@@ -146,3 +146,63 @@ test('٧. العميل والحزمة: detail يظهر للمالك وحده ب�
   assert.ok(src.includes(line) && bundle.includes(line));
   assert.ok(src.includes("throw new Error((data.error || 'unknown') + __why);"));
 });
+
+// v-lighting-3d: كل لون جديد يصل إلى الطلب الفعلي، مع الصورة وبدونها، بلا شبكة أو رصيد حقيقي.
+test('الإضاءات السبع تصل للتوليد مع صورة وبدون صورة', async () => {
+  const colors = { emerald:'emerald-green', turquoise:'turquoise', rose:'powder-rose', burgundy:'burgundy-red', neon:'cyan from the left and fuchsia from the right', cinematic:'cool steel-blue from the left and warm amber from the right', aurora:'emerald-green on the left blending into muted violet' };
+  for (const [lighting,word] of Object.entries(colors)) {
+    for(const uploaded of [false,true]){
+      const prompts=[];
+      reset((m,init)=>{
+        const body=JSON.parse(init.body);
+        prompts.push(/^gpt-image/.test(m)?body.prompt:body.contents[0].parts.find(p=>p.text).text);
+        return null;
+      });
+      const r=await place({lighting,count:1,...(uploaded?{imageBase64:'test-room',mimeType:'image/png'}:{})});
+      assert.equal(r.code,200,lighting+' '+uploaded);
+      assert.ok(prompts.length>0);
+      assert.ok(prompts.every(p=>p.includes(word)),lighting+' لم يصل للأمر الفعلي');
+      assert.equal(tally(),1,'طلب واحد لا توليد متكرر عند الاختيار');
+    }
+  }
+});
+
+// v-decor-18 (المالك ١٦ أكتوبر: «تضيف لكلّ واحد ١٨… ويكونون يشتغلون على نفس الطلب»): كلّ خيار من الأقسام الخمسة (١٧ لكلّ قسم)
+// يصل وصفه إلى أمر التوليد الفعليّ، والأقسام الستّة معًا في الطلب نفسه — بصورة وبدونها، طلب واحد بلا رصيد حقيقيّ.
+test('الأقسام الخمسة: كلّ خيار من القائمة له وصف يصل للأمر، والستّة معًا في طلب واحد', async () => {
+  const core = fs.readFileSync(path.join(root, 'js/partials-core.js'), 'utf8');
+  const srv = fs.readFileSync(path.join(root, 'api/_lib/design-create.js'), 'utf8');
+  const grab = (n) => new Function('return {' + srv.match(new RegExp('const ' + n + ' = \\{([\\s\\S]*?)\\n\\};'))[1] + '}')();
+  const SECS = { furniture: ['designAiFurniture', 'FURNITURE_PROMPTS'], flooring: ['designAiFlooring', 'FLOORING_PROMPTS'], fabric: ['designAiFabric', 'FABRIC_PROMPTS'], wallColor: ['designAiWallColor', 'WALLCOLOR_PROMPTS'], curtains: ['designAiCurtains', 'CURTAIN_PROMPTS'] };
+  const promptsOf = async (extra) => {
+    const prompts = [];
+    reset((m, init) => { const body = JSON.parse(init.body); prompts.push(/^gpt-image/.test(m) ? body.prompt : body.contents[0].parts.find((p) => p.text).text); return null; });
+    const r = await place(Object.assign({ count: 1 }, extra));
+    assert.equal(r.code, 200);
+    assert.ok(prompts.length > 0);
+    assert.equal(tally(), 1, 'طلب واحد');
+    return prompts;
+  };
+  for (const [field, [id, map]] of Object.entries(SECS)) {
+    const vals = [...core.match(new RegExp('<select id="' + id + '"[\\s\\S]*?</select>'))[0].matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]).filter(Boolean);
+    assert.equal(vals.length, 17, id + ': ١٧ خيارًا + «بدون تغيير»');
+    const P = grab(map);
+    for (const v of vals) {
+      assert.ok(P[v], id + ': لا وصف توليد لـ' + v);
+      const prompts = await promptsOf({ [field]: v });
+      assert.ok(prompts.every((p) => p.includes(P[v])), id + '/' + v + ' لم يصل للأمر الفعليّ');
+    }
+  }
+  // خيار الرخام يجب أن يصل لأمر التوليد مثل بقية خيارات الأرضيات.
+  const marblePrompts = await promptsOf({ flooring: 'marble' });
+  assert.ok(marblePrompts.every((p) => p.includes(grab('FLOORING_PROMPTS').marble)), 'اختيار الرخام لا يصل لأمر التوليد');
+  const pick = { lighting: 'aurora', furniture: 'velvet', flooring: 'terrazzo', fabric: 'emerald', wallColor: 'navy', curtains: 'linen' };
+  for (const uploaded of [false, true]) {
+    const prompts = await promptsOf(Object.assign({}, pick, uploaded ? { imageBase64: 'test-room', mimeType: 'image/png' } : {}));
+    // مراجعة نقض: لون القماش لا يلوّن الستائر حين اختار المستخدم ستارة بعينها (كان الأمر يقول «ستائر زمرّديّة» و«ستائر كتّان» معًا).
+    const fabric = grab('FABRIC_PROMPTS').emerald;
+    const want = [grab('LIGHTING_PROMPTS').aurora, grab('FURNITURE_PROMPTS').velvet, grab('FLOORING_PROMPTS').terrazzo, fabric.replace('sofas/cushions/curtains', 'sofas and cushions'), grab('WALLCOLOR_PROMPTS').navy, grab('CURTAIN_PROMPTS').linen];
+    for (const p of prompts) for (const w of want) assert.ok(p.includes(w), (uploaded ? 'بصورة' : 'بلا صورة') + ': ' + w);
+    for (const p of prompts) assert.ok(!p.includes(fabric), 'لون القماش لا يناقض الستارة المختارة');
+  }
+});

@@ -124,7 +124,7 @@ async function editFiles(input, opts) {
   const t = parseTarget({ url: i.repo || i.url || '' });
   if (!t) return { error: 'حدّد المستودع بصيغة owner/repo أو برابطه.' };
   const v = validateEdits(i);
-  if (v.error) return v;
+  if (v.error) return Object.assign(v, { local: true }); // v-edit-refund: لم يُكتب شيء — لا يُعدّ من سقف الرفعات
   const R = '/repos/' + t.owner + '/' + t.repo;
   const { r: rr, j: repo } = await ghJson(R, o);
   if (!rr.ok) return { error: 'تعذّر الوصول إلى ' + t.owner + '/' + t.repo + ' (GitHub HTTP ' + rr.status + ')' };
@@ -135,13 +135,13 @@ async function editFiles(input, opts) {
   const texts = {};
   for (const p of new Set(v.edits.map((e) => e.path))) {
     const got = await readText(R, p, ref, o);
-    if (got.error) return got;
+    if (got.error) return Object.assign(got, { local: true });
     texts[p] = got.text;
   }
   const applied = applyEdits(texts, v.edits);
-  if (applied.error) return applied;
+  if (applied.error) return Object.assign(applied, { local: true });
   const broken = checkSyntax(texts, applied.texts); // v-claude-code-level (A3)
-  if (broken) return broken;
+  if (broken) return Object.assign(broken, { local: true });
   const files = Object.keys(applied.texts).map((p) => ({ path: p, content: applied.texts[p] })).concat(v.images || []); // v-agent-img
   // v-claude-code-level (F1): fromEdit = سقف الملفّ ١٫٥ مليون حرف لمسار التعديل وحده (write_github يبقى ٢٠٠ ألف)
   const res = await githubWrite.pushFiles({ repo: t.owner + '/' + t.repo, files, message: i.message, title: i.title, body: i.body, branch: i.branch, base }, Object.assign({}, o, { fromEdit: true }));

@@ -30,9 +30,9 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { model, token, guestId } = body;
-    const messages = stripPrivateKeys(body.messages); // v-static-leak: لا مفاتيح __ داخليّة إلى المزوّد
-    if (!messages) {
+    const { model, system, token, guestId, thinking, reasoning_effort } = body;
+    let messages = stripPrivateKeys(body.messages); // v-static-leak: لا مفاتيح __ داخليّة إلى المزوّد
+    if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ error: 'Missing messages' });
       return;
     }
@@ -48,26 +48,54 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // 🛠️ تغذية النموذج بتعليمات النظام (System Prompt) كما يفعل Claude:
+    //    شخصيّة الموقع + قواعد المالك + معرفة المشروع — تمرّ من العميل في body.system.
+    if (system && typeof system === 'string' && system.trim()) {
+      const __sys0 = messages.find(m => m && m.role === 'system');
+      if (__sys0) {
+        if (!__sys0.content.includes(system.trim())) {
+          __sys0.content = system.trim() + '\n\n' + __sys0.content;
+        }
+      } else {
+        messages.unshift({ role: 'system', content: system.trim() });
+      }
+    }
+
     // 🛠️ قاعدة الكود الكامل: DeepSeek يدّعي "بنيت" بدون كود → إلزام صريح
     try {
-      const __sys = Array.isArray(messages) ? messages.find(m => m && m.role === 'system') : null;
+      const __sys = messages.find(m => m && m.role === 'system');
       const __codeRule = '\n[قاعدة الكود — مطلقة]: إذا قلت إنك بنيت أو عدّلت أو أضفت شيئًا في تطبيق/موقع/لعبة فيجب أن يحتوي ردك نفسه على الكود الكامل داخل كتلة ```html واحدة من <!DOCTYPE html> إلى </html>. ممنوع منعًا باتًا الادعاء بالتنفيذ بدون إرجاع الكود كاملًا في نفس الرد.';
       if (__sys && typeof __sys.content === 'string' && !__sys.content.includes('[قاعدة الكود — مطلقة]')) __sys.content += __codeRule;
     } catch (e) { logError('deepseek/code-rule-inject', e); }
 
+    // 🛠️ اختيار النموذج الرسمي: معرّف OpenRouter (deepseek/deepseek-…) ← الاسم المباشر.
+    //    deepseek-flash = V4.1-Flash (الأسرع والأرخص والأحدث، يدعم التفكير والرؤية).
+    //    deepseek-v4-pro = V4-Pro (أعمق للمهام المعقّدة، بلا رؤية).
+    const m = String(model || '').toLowerCase();
+    const useModel = /v4[-_.]?pro|reasoner|\br1\b/.test(m) ? 'deepseek-v4-pro' : 'deepseek-flash';
+
+    // 🛠️ التفكير (Thinking): مفعّل افتراضيًّا وبجهد high عند DeepSeek — يجعله يحلّل
+    //    خطوة بخطوة قبل الإجابة (وهو ما يجعله ينافس Claude). يُعطَّل صراحةً بـ thinking=false.
     const wantStream = !!body.stream;
+    const enableThinking = body.thinking !== false;
+    const reqPayload = {
+      model: useModel,
+      messages,
+      thinking: { type: enableThinking ? 'enabled' : 'disabled' },
+      stream: wantStream,
+    };
+    if (enableThinking && reasoning_effort) reqPayload.reasoning_effort = String(reasoning_effort);
+    // temperature يُتجاهَل في وضع التفكير (بلا خطأ)؛ نرسله دائمًا للتوافق.
+    reqPayload.temperature = Number(body.temperature !== undefined ? body.temperature : 0.7);
+    if (body.max_tokens) reqPayload.max_tokens = Number(body.max_tokens);
+
     const upstream = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + apiKey,
       },
-      body: JSON.stringify({
-        model: 'deepseek-v4-pro',
-        messages,
-        temperature: 0.7,
-        stream: wantStream,
-      }),
+      body: JSON.stringify(reqPayload),
     });
 
     if (wantStream && upstream.ok && upstream.body) {

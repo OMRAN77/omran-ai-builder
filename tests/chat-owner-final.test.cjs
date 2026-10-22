@@ -13,6 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'chat-owner-final-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-direct';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
@@ -218,19 +219,20 @@ test('٥. oa-direct يترجم tool_choice none إلى «none» عند OpenAI (�
   assert.equal(oa.toOpenAIBody(Object.assign({}, ab, { tool_choice: undefined }), 'openai').tool_choice, undefined, 'بلا ختام = كما كان');
 });
 
-test('٦. المسار المباشر (Groq عبر oa-direct): الخطوة الختاميّة بـtool_choice «none» والأدوات نفسها', async () => {
+test('٦. المسار المباشر (Groq عبر oa-direct): الخطوة الختاميّة بتنبيه الختام والأدوات نفسها — بلا tool_choice «none» (v-groq-final: Groq يرفض التوليد به tool_use_failed)', async () => {
   process.env.GROQ_API_KEY = 'gsk-test'; process.env.CHAT_MAX_STEPS = '3';
   const oaSse = (chunks) => new Response(chunks.map((c) => 'data: ' + (typeof c === 'string' ? c : JSON.stringify(c)) + '\n\n').join(''), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
   try {
     const r = await run('omran', { provider: 'groq', messages: Q }, (u, b) => {
       if (!/api\.groq\.com/.test(u)) return new Response('{}', { status: 404 });
-      if (b.tool_choice === 'none') return oaSse([{ model: 'm', choices: [{ index: 0, delta: { content: 'جواب Groq الختاميّ' } }] }, { model: 'm', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] }, '[DONE]']);
+      if (JSON.stringify(b.messages).includes('انتهت ميزانيّة الأدوات')) return oaSse([{ model: 'm', choices: [{ index: 0, delta: { content: 'جواب Groq الختاميّ' } }] }, { model: 'm', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] }, '[DONE]']);
       return oaSse([{ model: 'm', choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: 'c' + Math.random().toString(36).slice(2, 7), type: 'function', function: { name: 'read_github', arguments: JSON.stringify({ url: 'OMRAN77/omran-ai-builder', path: 'g.js' }) } }] } }] },
         { model: 'm', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] }, '[DONE]']);
     });
     const g = r.calls.filter((c) => /api\.groq\.com/.test(c.url));
     assert.equal(g.length, 3);
-    assert.equal(g[2].body.tool_choice, 'none', 'الختام بـtool_choice على المسار المباشر');
+    assert.equal(g[2].body.tool_choice, undefined, 'Groq بلا tool_choice none (v-groq-final)');
+    assert.ok(JSON.stringify(g[2].body.messages).includes('انتهت ميزانيّة الأدوات'), 'تنبيه الختام يكفيه');
     assert.ok(g.slice(0, 2).every((c) => c.body.tool_choice === undefined));
     assert.deepEqual(g[2].body.tools.map((t) => t.function.name), g[0].body.tools.map((t) => t.function.name), 'الأدوات نفسها');
     assert.equal(r.text, 'جواب Groq الختاميّ' + resumeMark());

@@ -167,6 +167,24 @@
     renderAll(); saveState();
     try{ if(typeof window.refreshPointsWallet === 'function') window.refreshPointsWallet(); }catch(e){ __swallow(e, 'vwatch:wallet'); }
   }
+  /* v-video-write-ask: «اكتب … على/في الفيديو» = جواب صادق محلّيّ — لا رفع ولا تحليل ولا توليد ولا خصم */
+  async function writeSend(text, att){
+    var cur = getCurrent();
+    if(!cur){ var id = 'p_' + Date.now(); cur = { id: id, title: '', messages: [], code: '', codeType: 'html' }; state.projects.push(cur); state.currentId = id; }
+    if(cur.messages.length === 0) cur.title = String(text || '').slice(0, 30);
+    var um = { role: 'user', content: text };
+    if(att) um.attachments = [{ name: att.name, isImage: false, isVideoWatch: true, label: att.label, durationSec: Math.round(att.durationSec || 0) }];
+    cur.messages.push(um); cur.updatedAt = Date.now();
+    window.__chatEditRequest = null;
+    try{ if(typeof setChatEditNotice === 'function') setChatEditNotice(false); }catch(e){ __swallow(e, 'vwrite:edit'); }
+    var promptEl = $('#prompt'); if(promptEl) promptEl.value = '';
+    try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, 'vwrite:grow'); }
+    if(att){ pendingAttachments = pendingAttachments.filter(function(a){ return a !== att; }); renderAttachStrip(); }
+    document.body.classList.remove('omranWelcome');
+    cur.messages.push({ role: 'assistant', content: t('vwWriteNo') });
+    renderAll(); saveState();
+  }
+  window.omranVideoWriteSend = writeSend;
   window.omranIsVideoFile = isVideoFile;
   window.omranVideoAttachment = makeAttachment;
   window.omranVideoWatchSend = send;

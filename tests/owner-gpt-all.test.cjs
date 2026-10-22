@@ -237,6 +237,6 @@ test('٧. modes.js: صفّ GPT بمجموعتيه وصفّ جهده، والقا
   const name = new Function('localStorage', 'AR', 't', 'window', m.slice(i, m.indexOf('var ROW =', i)) + '; return curProvName;')(ls, true, (k) => k, {});
   assert.equal(name(), 'gpt-6-sol-pro', 'باسمه لا «GPT» وحده');
   assert.ok(m.includes("var setFn = (efor === 'openai') ? window.gptEffortSet : window.claudeEffortSet;"), 'كلّ صفّ جهد يحفظ لمزوّده');
-  assert.ok(read('index.html').includes('/js/modes.js?v=m131026g'));
+  assert.ok(read('index.html').includes('/js/modes.js?v=m211026'));
   assert.ok(read('js/app.bundle.js').includes('window.gptEffortGet = gptEffortGet;'), 'الحزمة أُعيد بناؤها');
 });

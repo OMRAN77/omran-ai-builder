@@ -140,9 +140,9 @@ module.exports = async (req, res) => {
     const abs = (host ? 'https://' + host : '') + '/i/' + id + '.raw.' + ext;
     const html = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">'
       + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-      + '<title>عمران AI</title><meta name="robots" content="noindex">'
+      + '<title>om ai</title><meta name="robots" content="noindex">'
       + '<meta property="og:type" content="website">'
-      + '<meta property="og:title" content="عمران AI">'
+      + '<meta property="og:title" content="om ai">'
       + '<meta property="og:image" content="' + abs + '">'
       + '<meta property="og:image:secure_url" content="' + abs + '">'
       + '<meta property="og:image:type" content="' + mime + '">'

@@ -97,9 +97,9 @@ window.postWithConfirm = postWithConfirm;
   card.style.cssText = 'width:min(100%,560px);background:var(--panel,#161616);border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(0,0,0,.5);text-align:start;';
   var pt = function(k, fb){ try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ __swallow(e, 'ui:privacy-t'); } return fb; };
   card.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;" data-i18n="privacyConsentTitle">' + pt('privacyConsentTitle', '🔒 خصوصيتك أولًا') + '</h3>'
-    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);" data-i18n="privacyConsentText">' + pt('privacyConsentText', 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.') + '</p>'
-    + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);" data-i18n="privacyConsentRead">' + pt('privacyConsentRead', 'قراءة السياسة') + '</a>'
-    + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;height:42px;border-radius:10px;font-weight:bold;" data-i18n="privacyConsentAgree">' + pt('privacyConsentAgree', 'أوافق وأتابع') + '</button></div>';
+    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);" data-i18n="privacyConsentText">' + pt('privacyConsentText', 'قبل استخدام om ai، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.') + '</p>'
+    + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;justify-content:center;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);" data-i18n="privacyConsentRead">' + pt('privacyConsentRead', 'قراءة السياسة') + '</a>'
+    + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;justify-content:center;height:42px;border-radius:10px;font-weight:bold;" data-i18n="privacyConsentAgree">' + pt('privacyConsentAgree', 'أوافق وأتابع') + '</button></div>';
   wrap.appendChild(card);
   function mount(){ try { document.body.appendChild(wrap); } catch(e){ __swallow(e, 'ui:privacy-consent'); } }
   if (document.body) mount(); else window.addEventListener('DOMContentLoaded', mount);
@@ -143,7 +143,8 @@ const btnInstall = $('#btnInstall');
        كانت رسائله تفشل. تهاجر لأقرب بديل حي (متحقَّق في ورشة model-probe). */
     const __orRemap = {
       'google/gemini-flash-1.5:free': 'google/gemma-4-31b-it:free',
-      'mistralai/mistral-7b-instruct:free': 'z-ai/glm-5.2:free',
+      'mistralai/mistral-7b-instruct:free': 'nvidia/nemotron-3-ultra-550b-a55b:free',
+      'z-ai/glm-5.2:free': 'nvidia/nemotron-3-ultra-550b-a55b:free', /* v-dead-models-2: GLM 5.2 المجّانيّ خرج من الوسيط (٧ سبتمبر) — ميّت في فحص ١٦ أكتوبر الحيّ */
       'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-5',
       'google/gemini-pro-1.5': 'google/gemini-3.8-flash',
       /* v-models-family: بدائل الجيل السابق في المنسدلة المدفوعة → معرّفاتها الحاليّة. */
@@ -301,15 +302,15 @@ if(btnShareApp){
   btnShareApp.onclick = async () => {
     const shareUrl = 'https://omran-ai-builder.vercel.app';
     const currentLang = (typeof lang !== 'undefined') ? lang : 'ar';
-    const titles = { ar:'عمران AI', en:'Omran AI', fr:'Omran AI', hi:'Omran AI', ur:'Omran AI', bn:'Omran AI', ne:'Omran AI' };
+    const titles = { ar:'om ai', en:'om ai', fr:'om ai', hi:'om ai', ur:'om ai', bn:'om ai', ne:'om ai' };
     const texts = {
-      ar: 'جرّب تطبيق عمران AI لإنشاء تطبيقات بالذكاء الاصطناعي مجانًا:',
-      en: 'Try Omran AI to build apps with AI for free:',
-      fr: "Essayez Omran AI pour créer des applications avec l'IA gratuitement :",
-      hi: 'AI से मुफ्त में ऐप बनाने के लिए Omran AI आज़माएं:',
-      ur: 'مفت میں AI سے ایپس بنانے کے لیے Omran AI آزمائیں:',
-      bn: 'বিনামূল্যে AI দিয়ে অ্যাপ তৈরি করতে Omran AI ব্যবহার করুন:',
-      ne: 'निःशुल्क AI ले एप बनाउन Omran AI प्रयोग गर्नुहोस्:'
+      ar: 'جرّب تطبيق om ai لإنشاء تطبيقات بالذكاء الاصطناعي مجانًا:',
+      en: 'Try om ai to build apps with AI for free:',
+      fr: "Essayez om ai pour créer des applications avec l'IA gratuitement :",
+      hi: 'AI से मुफ्त में ऐप बनाने के लिए om ai आज़माएं:',
+      ur: 'مفت میں AI سے ایپس بنانے کے لیے om ai آزمائیں:',
+      bn: 'বিনামূল্যে AI দিয়ে অ্যাপ তৈরি করতে om ai ব্যবহার করুন:',
+      ne: 'निःशुल्क AI ले एप बनाउन om ai प्रयोग गर्नुहोस्:'
     };
     const shareText = texts[currentLang] || texts.ar;
     if(navigator.share){
@@ -419,7 +420,11 @@ function switchWorkTab(tabName){
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tabName));
 }
-btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl); };
+btnToggleHistory.onclick = () => {
+  switchWorkTab('code'); openDrawer(workareaEl);
+  /* v-desk-strips: على الكمبيوتر openDrawer لا يُظهر شيئًا واللوحة مطويّة (display:none) — يُفرَد كما في كلّ طريق آخر يُظهرها */
+  if(!document.documentElement.classList.contains('mobile-ui') && typeof window.waAutoExpand === 'function') window.waAutoExpand();
+};
 
 // 🧠 Ask-All toggle button + first-time hint
 (function(){
@@ -450,7 +455,11 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         bar.parentNode.insertBefore(tip, bar);
         const dismiss = () => { try{ tip.remove(); localStorage.setItem('askAllHintSeen','1'); }catch(e){ __swallow(e, "save:app-10-features#7"); } };
         tip.addEventListener('click', dismiss);
-        setTimeout(dismiss, 25000);
+        /* v-hint-visible (تدقيق ١٨–١٩ أكتوبر): المؤقّت كان يبدأ مع الحزمة، فمن بقي على شاشة الافتتاح أو ورقة الموافقة
+           ٢٥ ثانية لا يرى التلميح أبدًا (dismiss يحفظه مُشاهَدًا). الآن يبدأ بعد زوالهما. */
+        const blocked = () => !!(document.getElementById('omranIntro') || document.getElementById('privacyConsent'));
+        const arm = () => { if(blocked()){ setTimeout(arm, 1000); return; } setTimeout(dismiss, 25000); };
+        arm();
       }
     }
   }catch(e){ __swallow(e, "save:app-10-features#8"); }
@@ -491,6 +500,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       dd.style.left = 'auto';
       dd.style.insetInlineEnd = 'auto';
       dd.style.zIndex = '99999';
+      /* v-nav-cards-menus: في العربيّ ⋮ قرب يسار الشاشة، والقائمة المحاذاة لحافّته اليمنى كانت تبدأ خارجها (-11px) — تُحصر بهامش ٦px */
+      const edge = window.innerWidth - parseFloat(dd.style.right);
+      if(edge - (dd.offsetWidth || 0) < 6){ dd.style.left = '6px'; dd.style.right = 'auto'; }
     }catch(e){ /* guard-ok */ }
   }
   function restore(){
@@ -500,6 +512,8 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     }catch(e){ /* guard-ok */ }
   }
   function close(){ dd.classList.remove('show'); btn.classList.remove('active'); restore(); }
+  // v-review-menu-close: «مراجعة» و«تحليل» (app-24/app-27) يوقفان انتشار نقرتهما فلا يصل مستمع الإغلاق أدناه — يناديان هذا قبل فتح نافذتيهما
+  window.omranCloseTabsMenu = close;
   btn.onclick = (e) => {
     e.stopPropagation();
     if(dd.classList.contains('show')){ close(); return; }
@@ -722,9 +736,12 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         return true;
       };
     }
-    window.addEventListener('popstate', () => { if(allState) closeAll(true); });
+    /* v-back-layers: الأدوات صار لها مدخل في التاريخ (app-05-swipe-back) — رجوع من أداة فُتحت فوق «عرض الكل» يصل إلى مدخل
+       «عرض الكل» نفسه، فلا يُغلق المستوى إلّا إن لم يعد مدخله هو الحاليّ */
+    window.addEventListener('popstate', () => { if(allState && !(history.state && history.state.omranToolsAll === allState.token)) closeAll(true); });
     ptSectionsView.querySelectorAll('.ptSection').forEach(section => {
       const viewport = section.querySelector('.ptCarousel');
+      if(viewport && typeof window.omranStripDesktopScroll === 'function') window.omranStripDesktopScroll(viewport); /* v-desk-strips: العجلة والسحب على الكمبيوتر — «التمرير بالماوس» الذي يذكره قرار إخفاء الأسهم */
       const start = section.querySelector('.ptSentinelStart'), end = section.querySelector('.ptSentinelEnd');
       const all = section.querySelector('.ptViewAll'), prev = section.querySelector('.ptShelfPrev'), next = section.querySelector('.ptShelfNext');
       const edge = { start:false, end:false, seenStart:false, seenEnd:false };
@@ -1218,7 +1235,10 @@ try{
   let __sbReopen = document.getElementById('sbReopen');
   if(!__sbReopen){
     __sbReopen = document.createElement('button');
-    __sbReopen.id = 'sbReopen'; __sbReopen.type = 'button'; __sbReopen.setAttribute('aria-label', 'فتح القائمة');
+    __sbReopen.id = 'sbReopen'; __sbReopen.type = 'button';
+    /* v-nav-cards-menus: الوصف بمفتاح الترجمة (١٤ لغة) لا بنصّ عربيّ ثابت — data-i18n يعيد كتابته مع كلّ تبديل لغة */
+    try{ const __sbT = t('sidePanelTitle'); __sbReopen.setAttribute('aria-label', __sbT); __sbReopen.title = __sbT; }catch(e){ __swallow(e, "ui:app-10-features#sb-reopen-i18n"); }
+    __sbReopen.setAttribute('data-i18n', '[aria-label]sidePanelTitle'); __sbReopen.setAttribute('data-i18n-title', 'sidePanelTitle');
     __sbReopen.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>';
     document.body.appendChild(__sbReopen);
   }
@@ -1398,7 +1418,14 @@ $('#history').addEventListener('click', () => {
       /* v-edu-selfhost: مستودع omran-edu غير موصول بالنشر التلقائي — الصفحة
          المحدثة تُستضاف هنا (edu-old/) فتنشر مع التطبيق، والخلفية تبقى على
          النشر القديم الشغال (CORS مفتوح). */
-      frame.src = '/edu-old/index.html?v=15i'; /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
+      frame.src = '/edu-old/index.html?v=15j'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
+    }
+    /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العنوان «التعليم» كان يتكرّر فوق رأس الإطار — نأخذ اسم صفّه المترجم في المركز،
+       ونرفع data-i18n كي لا تعيده الترجمة. الفتح المباشر بلا مركز يبقى كما هو. */
+    const oldTitle = modal.querySelector('h3'), oldLabel = document.querySelector('#eduOldEduRow .eduLessonTitle');
+    if(oldTitle && oldLabel && String(oldLabel.textContent || '').trim()){
+      oldTitle.textContent = String(oldLabel.textContent).trim();
+      oldTitle.removeAttribute('data-i18n');
     }
     modal.style.display = 'flex';
     if(window.innerWidth <= 860 && typeof closeDrawers === 'function') closeDrawers();
@@ -1444,6 +1471,10 @@ function openShareModal(project){
   function closeModal(){ modal.style.display = 'none'; shareModalProject = null; }
   if(closeBtn) closeBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+  /* v-share-once (تدقيق ١٨ أكتوبر): كلّ «إنشاء الرابط» كان مشاركة جديدة وسجلًّا جديدًا في «استكشف» — فتكرّرت المشاريع هناك.
+     ذاكرة جلسة {مشروع|ظهور → رابط}: المشروع نفسه بلا تغيير يأخذ رابطه الموجود بلا نداء، وتغيّر توقيعه (العنوان وطول الكود
+     وعدد الرسائل) يصنع رابطًا جديدًا يحلّ محلّه. لا حذف لأيّ مشاركة قائمة. */
+  const __shareMade = {};
 
   if(createBtn) createBtn.addEventListener('click', async () => {
     if(!shareModalProject) return;
@@ -1459,6 +1490,15 @@ function openShareModal(project){
       return;
     }
     const isPublic = $('#sharePublicYes').checked;
+    const __shareKey = shareModalProject.id ? (String(shareModalProject.id) + '|' + (isPublic ? 1 : 0)) : '';
+    const __shareSig = String(shareModalProject.title || '') + '|' + String(shareModalProject.code || '').length + '|' + __shareMsgs.length;
+    const __shareOld = __shareKey ? __shareMade[__shareKey] : null;
+    if(__shareOld && __shareOld.sig === __shareSig){
+      resultUrl.value = __shareOld.url;
+      resultBox.style.display = 'block';
+      statusMsg.style.display = 'none';
+      return;
+    }
     statusMsg.style.display = 'block';
     statusMsg.textContent = t('shareCreating');
     resultBox.style.display = 'none';
@@ -1480,6 +1520,7 @@ function openShareModal(project){
       const data = await resp.json();
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;
+      if(__shareKey) __shareMade[__shareKey] = { sig: __shareSig, url: fullUrl };
       resultUrl.value = fullUrl;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';

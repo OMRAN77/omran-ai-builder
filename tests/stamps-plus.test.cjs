@@ -80,11 +80,12 @@ test('٤. ثيمات الكرتون المشهورة تُلتقط من الكت�
 test('٥. العميل: لوحة الخيارات، ومجموعة الكرتون بصور اختياريّة، والصور والخيارات تُرسل — والحزمة محدَّثة', () => {
   for (const f of ['js/app-09-attach.js', 'js/app.bundle.js']) {
     const s = read(f);
-    assert.ok(s.includes("{ t:'⭐ شخصيات كرتون', th:["), f + ': مجموعة الكرتون');
-    assert.ok(s.includes("{k:'سبونج بوب',e:'🧽'}"), f);
-    assert.ok(s.includes("(t.img ? '<img src=\"'+t.img+'\""), f + ': صورة البطاقة متى أُضيفت');
-    assert.ok(s.includes("row('عدد الطوابع', 'count', [[6,'6 كبيرة'],[12,'12'],[24,'24 صغيرة']])"), f);
-    assert.ok(s.includes("row('الوجه', 'style', [['real','📷 حقيقي'],['cartoon','🎨 كرتوني']])"), f);
+    /* v-stamps-i18n: النصوص المعروضة من مفاتيح الـ١٤ لغة، وdata-k (k) يبقى عربيًّا لأنّه ما يُرسل للخادم */
+    assert.ok(s.includes("{ t:t('stampGrpCartoon'), th:["), f + ': مجموعة الكرتون');
+    assert.ok(s.includes("{k:'سبونج بوب',e:'🧽',n:t('stampThSponge')}"), f);
+    assert.ok(s.includes("(th.img ? '<img src=\"'+th.img+'\""), f + ': صورة البطاقة متى أُضيفت');
+    assert.ok(s.includes("row(t('stampSecCount'), 'count', [[6,t('stampCountBig')],[12,'12'],[24,t('stampCountSmall')]])"), f);
+    assert.ok(s.includes("row(t('stampSecFace'), 'style', [['real',t('stampFaceReal')],['cartoon',t('stampFaceCartoon')]])"), f);
     assert.ok(s.includes("imageAttachments.filter(function(a){ return a && a.dataUrl; }).slice(-3)"), f + ': حتّى ٣ صور');
     assert.ok(s.includes("images:__stImgs, count:window.__stOpts.count, shape:window.__stOpts.shape, style:window.__stOpts.style"), f);
     assert.ok(s.includes("localStorage.setItem('omStampOpts'"), f + ': الاختيار يُحفظ');
@@ -100,5 +101,5 @@ test('٦. «صورة 4K» و«صورة بنصّ دقيق» خرجا من «+» �
   const re = /(?:نصّ?|كتابه?ة?|خط)\s*(?:دقيق[هة]?|صحيح[هة]?|مضبوط[هة]?)/;
   assert.ok(re.test('سو دعوة بنص دقيق') && re.test('بكتابة صحيحة') && !re.test('ارسم قطة'));
   assert.ok(/4k|للطباعة/.test(mi.match(/const __want4K = [^\n]+/)[0]), '4K من الكتابة كان قائمًا في الخادم');
-  assert.ok(read('index.html').includes('js/modes.js?v=m131026g'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m211026'), 'وسم كاش modes رُفع');
 });

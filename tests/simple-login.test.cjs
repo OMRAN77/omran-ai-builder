@@ -31,9 +31,19 @@ async function call(body) {
   return res;
 }
 
+// v-signup-no-email: التسجيل لا يحفظ إيميلًا — حساب أكّد إيميله من «حسابي» (السجلّ والختم والفهرس كما يكتبها التأكيد بالرمز)
+async function confirmedEmail(key, email) {
+  const u = await auth.getUser(key);
+  await auth.putUser(key, Object.assign({}, u, { email, verifiedEmail: email }));
+  store.set('db/email-index/' + email, JSON.stringify({ username: key, at: Date.now() }));
+}
+
 test('الخادم: الدخول بالإيميل أو الاسم، والخطأ واحد للحالتين', async () => {
   const su = await call({ action: 'signup', username: 'Sara', password: 'pass12345', email: 'Sara@Example.com' });
   assert.equal(su.code, 200, JSON.stringify(su.body));
+  assert.equal((await auth.getUser('sara')).email, null, 'v-signup-no-email: التسجيل لا يحفظ الإيميل');
+  assert.equal((await call({ action: 'login', username: 'sara@example.com', password: 'pass12345' })).code, 401, 'ولا دخول به قبل تأكيده');
+  await confirmedEmail('sara', 'sara@example.com');
   const byName = await call({ action: 'login', username: 'sara', password: 'pass12345' });
   assert.equal(byName.code, 200);
   const byEmail = await call({ action: 'login', username: '  SARA@example.com ', password: 'pass12345' });
@@ -47,9 +57,15 @@ test('الخادم: الدخول بالإيميل أو الاسم، والخطأ
   assert.equal(none.body.error, bad.body.error, 'لا يكشف هل الإيميل مسجَّل');
 });
 
-test('الخادم: اسم مستخدم فيه @ يُقدَّم على فهرس الإيميل', async () => {
-  await call({ action: 'signup', username: 'ali@home.com', password: 'alipass123' });
-  await call({ action: 'signup', username: 'other', password: 'otherpass1', email: 'ali@home.com' });
+test('الخادم: اسم مستخدم فيه @ (حساب قديم) يُقدَّم على فهرس الإيميل', async () => {
+  /* v-name-no-at: التسجيل الجديد لا يقبل @ في الاسم — الحسابات القديمة بأسمائها كما هي، فيُصنع الحساب القديم مباشرةً في المخزن */
+  const fresh = await call({ action: 'signup', username: 'ali@home.com', password: 'alipass123' });
+  assert.equal(fresh.code, 400, 'تسجيل جديد باسم فيه @ مرفوض');
+  await call({ action: 'signup', username: 'ali-legacy', password: 'alipass123' });
+  const legacy = await auth.getUser('ali-legacy');
+  await auth.putUser('ali@home.com', Object.assign({}, legacy, { username: 'ali@home.com' }));
+  await call({ action: 'signup', username: 'other', password: 'otherpass1' });
+  await confirmedEmail('other', 'ali@home.com');
   const r = await call({ action: 'login', username: 'ali@home.com', password: 'alipass123' });
   assert.equal(r.code, 200);
   assert.equal(r.body.username, 'ali@home.com');
@@ -58,7 +74,7 @@ test('الخادم: اسم مستخدم فيه @ يُقدَّم على فهرس 
 test('الخادم: نسيت كلمة المرور يقبل الإيميل أيضًا', async () => {
   const src = read('api/_lib/auth.js');
   assert.match(src, /if \(action === 'forgotPassword'\) \{[\s\S]*?const \{ key, user \} = await resolveLoginUser\(username\);/);
-  assert.match(src, /if \(action === 'login'\) \{[\s\S]*?const \{ key, user \} = await resolveLoginUser\(username\);/);
+  assert.match(src, /if \(action === 'login'\) \{[\s\S]*?const \{ key, user, emailUnverified \} = await resolveLoginUser\(username\);/); // v-unverified-email
   const r = await call({ action: 'forgotPassword', username: 'ghost@example.com' });
   assert.notEqual(r.code, 404, 'v-account-email: البريد غير المسجَّل لا يُكشف بـ«الحساب غير موجود»');
   assert.equal((await call({ action: 'forgotPassword', username: 'ghost-name' })).code, 404, 'الاسم كما كان');
@@ -75,7 +91,7 @@ test('الواجهة: خانة واحدة وكلمة مرور وزرّ وراب�
   const order = ['id="authUsername"', 'id="authPassword"', 'id="authSubmitBtn"', 'id="authForgotLink"', 'id="authGoogleBtn"', 'id="authSwitchBtn"'].map((k) => ov.indexOf(k));
   assert.ok(order.every((i, j) => i > 0 && (j === 0 || i > order[j - 1])), 'الترتيب كما في لقطة المالك: ' + order);
   assert.match(ov, /id="authRememberRow" style="display:none;"><input type="checkbox" id="authRememberMe" checked>/, '«تذكّرني» مخفيّ ومفعّل');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=657'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=674'));
 });
 
 test('الواجهة: setMode يبدّل بزرّ واحد، والتبويبات مخفيّة دائمًا', () => {
@@ -99,5 +115,5 @@ test('النصوص الجديدة بالـ١٤ لغة', () => {
     const s = read('i18n/' + l + '.js');
     for (const k of ['authIdPlaceholder', 'authCreateAccount', 'authHaveAccount', 'authSubmitForgotEmail']) assert.match(s, new RegExp('"?' + k + '"?:\\s*"[^"]+"'), l + ': ' + k);
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=744'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=770'/);
 });

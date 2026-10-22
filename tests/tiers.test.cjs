@@ -72,13 +72,18 @@ test('freeChain: order from env, providers without keys skipped, model overrides
   assert.match(g.url, /generativelanguage\.googleapis\.com\/v1beta\/openai\/chat\/completions/);
   assert.match(g.modelsUrl, /\/v1beta\/openai\/models$/);
   assert.equal(tier.freeChain(env)[1].model, 'gemini-flash-latest', 'الاسم المستعار الذي يعمل في بقية الخادم');
-  assert.equal(tier.freeChain(env)[0].model, 'openai/gpt-oss-120b');
-  for (const s of tier.freeChain(env)) { assert.equal(typeof s.key, 'string'); assert.ok(s.models.length >= 4, s.id + ' candidates'); assert.ok(s.pick instanceof RegExp); }
+  assert.equal(tier.freeChain(env)[0].model, 'openai/gpt-oss-20b', 'v-plan-models: المجّانيّ على 20b أوّلًا');
+  assert.deepEqual(tier.freeChain(env)[0].models.slice(0, 2), ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'], 'v-plan-models: 120b بعد 20b (حدود Groq لكلّ موديل)');
+  for (const s of tier.freeChain(env)) { assert.equal(typeof s.key, 'string'); assert.ok(s.models.length >= (s.id === 'groq' ? 3 : 4), s.id + ' candidates'); /* v-dead-models: Groq المجّانيّ بقي له ثلاثة حيّة فقط (gpt-oss ×٢ وqwen3.8) — الموقوفان كانا طلبين ضائعين */ assert.ok(s.pick instanceof RegExp); }
   /* مرشّح الانتقاء يلتقط نماذج flash النصّية فقط عند Gemini، والمجانية فقط عند OpenRouter */
   const specs = tier.FREE_PROVIDER_SPECS;
   assert.ok(specs.gemini.pick.test('models/gemini-3.1-flash-preview')); assert.ok(specs.gemini.pick.test('gemini-2.5-flash-lite'));
   assert.ok(!specs.gemini.pick.test('gemini-3-pro-image')); assert.ok(!specs.gemini.pick.test('gemini-2.5-flash-image')); assert.ok(!specs.gemini.pick.test('gemini-embedding-001'));
   assert.ok(specs.openrouter.pick.test('meta-llama/llama-4-scout:free')); assert.ok(!specs.openrouter.pick.test('meta-llama/llama-4-scout'));
+  /* v-plan-models: مرشّحو الوسيط الجدد يلتقطهم مرشّح الاستكشاف نفسه، والمدفوع منهم (بلا :free) لا */
+  for (const m of specs.openrouter.models) assert.ok(specs.openrouter.pick.test(m), 'openrouter pick: ' + m);
+  for (const m of ['google/gemma-4-31b-it', 'nvidia/nemotron-3-ultra-550b-a55b', 'z-ai/glm-5.2']) assert.ok(!specs.openrouter.pick.test(m), 'paid slug: ' + m);
+  for (const m of specs.groq.models) assert.ok(specs.groq.pick.test(m), 'groq pick: ' + m);
   assert.ok(specs.groq.pick.test('meta-llama/llama-4-maverick-17b-128e-instruct')); assert.ok(specs.mistral.pick.test('mistral-small-2506'));
 });
 
@@ -127,10 +132,10 @@ test('streamFreeChain: 429 on the first provider falls through, deltas are forwa
   const sent = [];
   const r = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: (e) => sent.push(e), env, fetchImpl, log: () => {} });
   assert.equal(r.ok, true); assert.equal(r.provider, 'groq'); assert.equal(r.text, 'مرحبًا بك'); assert.equal(r.attempts, 2);
-  assert.equal(r.model, 'openai/gpt-oss-120b');
+  assert.equal(r.model, 'openai/gpt-oss-20b'); // v-plan-models: أوّل مرشّحي Groq
   assert.deepEqual(sent, [{ delta: 'مرحبًا ' }, { delta: 'بك' }]);
-  assert.equal(calls.length, 2, '429 عند Gemini ليس خطأ نموذج → لا تجربة مرشّحين آخرين عنده');
-  assert.equal(calls[1].body.model, 'openai/gpt-oss-120b');
+  assert.equal(calls.length, 2, '429 عند Gemini ليس خطأ نموذج → لا تجربة مرشّحين آخرين عنده (تجربة الموديل التالي عند 429 لـGroq وحده)');
+  assert.equal(calls[1].body.model, 'openai/gpt-oss-20b');
   assert.equal(calls[1].body.stream, true);
   assert.match(calls[1].body.messages[0].content, /الوضع المجاني/, 'ملاحظة الوضع المجاني في النظام');
   assert.equal(calls[1].body.messages[0].content.indexOf('SYS'), 0);
@@ -230,7 +235,8 @@ test('points: image 20 (4K 30), maha minute 15; refunds return the charged amoun
   const mi = read('api/_lib/maha-image.js');
   assert.match(mi, /const __imgCost = __ask4K \? pointsLib\.COSTS\.image_4k : pointsLib\.COSTS\.image;/);
   assert.match(mi, /mahaImgChargedAmount = __imgCost;/);
-  assert.match(mi, /const amount = mahaImgChargedAmount \|\| pointsLib\.COSTS\.image;\n\s+mahaImgCharged = null;\n\s+try \{ await pointsLib\.refundPoints\(user, amount\); \}/);
+  // v-credit-out: المبلغ المخصوم كلّه يُردّ — الأساس بنوع خصمه والفرق الإبداعيّ بنوع خصمه (amount - extra + extra)
+  assert.match(mi, /const amount = mahaImgChargedAmount \|\| pointsLib\.COSTS\.image;\n\s+mahaImgCharged = null;\n\s+try \{ const mine = await require\('\.\/image-hold\.js'\)\.closeTicket\(user, mahaImgTicket\); mahaImgTicket = undefined; const extra = Math\.min\(amount, mahaImgExtra\); if \(mine\) \{ await pointsLib\.refundPoints\(user, amount - extra, mahaImgPay \|\| undefined\); if \(extra\) await pointsLib\.refundPoints\(user, extra, mahaImgExtraPay \|\| undefined\); \}/); // v-img-deadline-refund: الردّ المباشر حين تملك الدالّة التسوية (لا ردّ مزدوج مع الكنس)
 });
 
 function parsePlans(src) {
@@ -268,27 +274,34 @@ test('completeJson: retired preferred name ignored, 404 tries the next candidate
     if (/\/models$/.test(url)) return new Response(JSON.stringify({ data: [] }), { status: 200 });
     const body = JSON.parse(init.body);
     calls.push(body.model);
-    if (body.model === 'openai/gpt-oss-120b') return new Response(JSON.stringify({ error: { message: 'The model `openai/gpt-oss-120b` does not exist or you do not have access to it.' } }), { status: 404 });
-    if (body.model === 'openai/gpt-oss-20b') return new Response(JSON.stringify({ choices: [{ message: { content: 'تمام' } }] }), { status: 200 });
+    /* v-plan-models: أوّل المرشّحين صار 20b — هو «غير الموجود» هنا كي يبقى الاختبار عن الانتقال إلى التالي */
+    if (body.model === 'openai/gpt-oss-20b') return new Response(JSON.stringify({ error: { message: 'The model `openai/gpt-oss-20b` does not exist or you do not have access to it.' } }), { status: 404 });
+    if (body.model === 'openai/gpt-oss-120b') return new Response(JSON.stringify({ choices: [{ message: { content: 'تمام' } }] }), { status: 200 });
     return new Response('x', { status: 500 });
   };
   fc.__workingModel.clear();
   const r = await fc.completeJson('groq', { key: 'k', model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'هلا' }], fetchImpl, env: {}, now: 5000 });
-  assert.equal(r.ok, true); assert.equal(r.model, 'openai/gpt-oss-20b');
+  assert.equal(r.ok, true); assert.equal(r.model, 'openai/gpt-oss-120b');
   assert.equal(r.json.choices[0].message.content, 'تمام');
-  assert.deepEqual(calls, ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'], 'الاسم المتقاعد لا يُجرَّب أصلًا');
+  assert.deepEqual(calls, ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'], 'الاسم المتقاعد لا يُجرَّب أصلًا');
   /* النداء التالي يبدأ بالناجح */
   calls.length = 0;
   await fc.completeJson('groq', { key: 'k', messages: [{ role: 'user', content: 'هلا' }], fetchImpl, env: {}, now: 6000 });
-  assert.deepEqual(calls, ['openai/gpt-oss-20b']);
+  assert.deepEqual(calls, ['openai/gpt-oss-120b']);
   /* خطأ غير النموذج يُعاد فورًا بلا تجربة الباقين */
   fc.__workingModel.clear();
-  const bad = await fc.completeJson('groq', { key: 'k', messages: [{ role: 'user', content: 'هلا' }], fetchImpl: async () => new Response('rate', { status: 429 }), env: {}, now: 7000 });
-  assert.deepEqual({ ok: bad.ok, status: bad.status, model: bad.model }, { ok: false, status: 429, model: 'openai/gpt-oss-120b' });
+  const bad = await fc.completeJson('groq', { key: 'k', messages: [{ role: 'user', content: 'هلا' }], fetchImpl: async () => new Response('boom', { status: 500 }), env: {}, now: 7000 });
+  assert.deepEqual({ ok: bad.ok, status: bad.status, model: bad.model }, { ok: false, status: 500, model: 'openai/gpt-oss-20b' });
+  /* v-plan-models: 429 عند Groq حدّ موديل لا حدّ المزوّد — يجرّب الباقين، وكلّها مزدحمة = آخرها بلا استكشاف */
+  fc.__workingModel.clear();
+  const tried = [];
+  const busy = await fc.completeJson('groq', { key: 'k', messages: [{ role: 'user', content: 'هلا' }], fetchImpl: async (u, init) => { tried.push(String(u)); return new Response('rate', { status: 429 }); }, env: {}, now: 7500 });
+  assert.deepEqual({ ok: busy.ok, status: busy.status, model: busy.model }, { ok: false, status: 429, model: 'qwen/qwen3.8-27b' });
+  assert.equal(tried.length, 3); assert.ok(!tried.some((u) => /\/models$/.test(u)), 'لا استكشاف');
   assert.deepEqual(await fc.completeJson('groq', { key: '', messages: [], env: {} }), { ok: false, status: 0, body: 'no-key', model: null });
   const spec = fc.providerSpec('groq', 'k', {});
   assert.deepEqual(fc.modelsToTry(spec, 'my-custom-model', 8000)[0], 'my-custom-model', 'اسم مخصّص غير متقاعد يُجرَّب أولًا');
-  assert.equal(fc.defaultModel('groq', {}), 'openai/gpt-oss-120b'); assert.equal(fc.defaultModel('mistral', {}), 'mistral-small-latest');
+  assert.equal(fc.defaultModel('groq', {}), 'openai/gpt-oss-20b'); assert.equal(fc.defaultModel('mistral', {}), 'mistral-small-latest'); // v-plan-models
   fc.__workingModel.clear();
 });
 
@@ -307,7 +320,7 @@ test('no retired model name is hard-wired anywhere on the server or in client de
 test('chat.js: king unavailable before the first character → SILENT server-side free-chain fallback (no visible notice)', () => {
   const chat = read('api/_lib/chat.js');
   // يهبط إلى السلسلة المجانية ويبثّها بـsend مباشرة (لا غلاف يُضيف بادئة).
-  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: __rawOwner \? '' : PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), raw: __rawOwner, convo: __ownerReq \? compactConversation\(convo\) : convo \/\* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة \*\/, send, requireVision: lastUserHasImage \}\);\n\s+if \(__fb\.ok\) \{[\s\S]*?send\(\{ done: true \}\); res\.end\(\); return;[\s\S]*?\}/);
+  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: __rawOwner \? '' : PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), raw: __rawOwner, paid: !!\(usage && usage\.subscriber\) \/\* v-plan-models: [^*\n]*\*\/, convo: __ownerReq \? compactConversation\(convo\) : convo \/\* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة \*\/, send, requireVision: lastUserHasImage \}\);\n\s+if \(__fb\.ok\) \{[\s\S]*?send\(\{ done: true \}\); res\.end\(\); return;[\s\S]*?\}/);
   // v-silent-fallback (طلب المالك «يبدّل بدون ما أحد يعرف»): لا بادئة مرئيّة في الردّ.
   assert.ok(!/فهذا ردّ من المحرّك الاحتياطي بلا أدوات/.test(chat), 'يجب ألّا تظهر بادئة التبديل للمستخدم');
   const groq = read('api/_lib/groq.js');

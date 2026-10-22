@@ -173,7 +173,10 @@ function formatCheck(res) {
 }
 
 /* ---------- تعريف الأداتين (للمالك وحده) ---------- */
-const KIMI_MODEL_IDS = ['kimi-k2.5', 'kimi-k2-thinking', 'kimi-k2-thinking-turbo', 'kimi-for-coding'];
+/* v-kimi-k3-delegate (فحص المزوّدين ١٥ أكتوبر): Moonshot أوقف kimi-k2.5 (٣١ أغسطس ٢٠٢٦، 404) وسلسلة kimi-k2 (٢٥ مايو)،
+   وkimi-for-coding موديل اشتراك Kimi Code على api.kimi.com/coding لا على api.moonshot.ai الذي يناديه الورك فلو — فكلّ تفويض
+   بالافتراضيّ كان يسقط. الحيّة على المنصّة المفتوحة: kimi-k3 (الافتراضيّ) وkimi-k2.7-code للكود الأرخص وkimi-k2.6. */
+const KIMI_MODEL_IDS = ['kimi-k3', 'kimi-k2.7-code', 'kimi-k2.6'];
 const CLAUDE_MODEL_IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
 /* v-code-not-primary (المالك ١١ أكتوبر: «الفاتورة كلّها راحت في كودي… خلّه صلاحيّات بس ما يكون الأساسيّ»): التسليم إلى
    Claude Code يشغّل تشغيلًا كاملًا في GitHub Actions على رصيد Anthropic، والمزوّدون كانوا يفوّضون من أنفسهم حتّى إصلاحًا صغيرًا.
@@ -196,7 +199,7 @@ const START_TOOL = {
     properties: {
       task: { type: 'string', description: 'وصف المهمّة الكامل (بلا أسرار)' },
       engine: { type: 'string', enum: ['claude', 'kimi'], description: 'نسختك أنت في Actions وحدها (v-self-only): kimi لـKimi (Kimi Code، يحتاج KIMI_API_KEY في أسرار المستودع)، وclaude لـClaude (Claude Code — موقوف ما لم يفعّله المالك). لا تفويض لمزوّد آخر' },
-      model: { type: 'string', description: 'نموذج المهمّة: من موديلات Claude لـengine=claude (الافتراضيّ Sonnet 5) أو موديلات Kimi لـengine=kimi (الافتراضيّ kimi-k2.5)' },
+      model: { type: 'string', description: 'نموذج المهمّة: من موديلات Claude لـengine=claude (الافتراضيّ Sonnet 5) أو موديلات Kimi لـengine=kimi (الافتراضيّ kimi-k3؛ للكود الأرخص kimi-k2.7-code)' },
       base: { type: 'string', description: 'الفرع الأساس (الافتراضيّ main)' },
       repo: { type: 'string', description: 'owner/repo (الافتراضيّ مستودع التطبيق)' },
     },

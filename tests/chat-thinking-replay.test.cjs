@@ -9,6 +9,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'chat-thinking-replay-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-direct';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
@@ -99,12 +100,14 @@ async function run(user, body, route) {
   return { calls: calls.filter((c) => isUp(c.url)), events, text: events.map((e) => e.delta || '').join('') };
 }
 const Q = [{ role: 'user', content: 'وين الخلل في دالّة foo في مستودعي؟' }];
-// غير المالك الذي يصل كلود فعلًا: مشترك Max — دور الكود على Sonnet 5 المباشر، والدردشة على Haiku 4.5 (tier.js PLAN_ROUTING).
-async function asMax(fn) {
+// غير المالك الذي يصل كلود فعلًا (v-plan-models، tier.js PLAN_ROUTING): مشترك Max — دور الكود على Sonnet 5.5 المباشر (مقياس premium)،
+// والدردشة على GPT-6 Sol؛ ومشترك Plus (basic) — دور الكود على Haiku 5.5 المباشر. لا باقة تضع Haiku 4.5 في أيّ وظيفة بعد الآن.
+async function asPlan(plan, fn) {
   const real = tierLib.resolveTier;
-  tierLib.resolveTier = async () => ({ tier: 'sub', plan: 'max', cap: 250, subscriber: true });
+  tierLib.resolveTier = async () => ({ tier: 'sub', plan, cap: 250, subscriber: true });
   try { return await fn(); } finally { tierLib.resolveTier = real; }
 }
+const asMax = (fn) => asPlan('max', fn);
 const READ = { url: 'OMRAN77/omran-ai-builder', query: 'foo' };
 
 test('١. الجولة الثانية تعيد التفكير كما وصل: الملخّص وتوقيعه SIG-1 والمحجوب وبترتيبها، والنظام والأدوات ثابتان والعرض ملخّص', async () => {
@@ -127,12 +130,12 @@ test('١. الجولة الثانية تعيد التفكير كما وصل: ا�
   assert.equal(r.text, 'الخلل في x.js:1');
 });
 
-test('٢. المالك وحده: مشترك Max في دور كود (Sonnet 5 المباشر) لا يعيد التفكير — جولته الثانية كما كانت، بلا حقل thinking ولا سطر ↳ 💭', async () => {
+test('٢. المالك وحده: مشترك Max في دور كود (Sonnet 5.5 المباشر) لا يعيد التفكير — جولته الثانية كما كانت، بلا حقل thinking ولا سطر ↳ 💭', async () => {
   await asMax(async () => {
     const r = await run('maxuser', { provider: 'claude', messages: [{ role: 'user', content: 'اكتب كود بايثون يحسب المتوسّط، وابحث عن تطبيق عمران' }] }, (u, b, n) => (!isUp(u) ? new Response('{}', { status: 404 })
-      : n === 1 ? thinkTool('SIG-V', 'web_search', { query: 'omran app' }, { model: 'claude-sonnet-5', summary: 'ملخّص' }) : text('أقدر أساعدك.', 'claude-sonnet-5')));
+      : n === 1 ? thinkTool('SIG-V', 'web_search', { query: 'omran app' }, { model: 'claude-sonnet-5-5', summary: 'ملخّص' }) : text('أقدر أساعدك.', 'claude-sonnet-5-5')));
     assert.equal(r.calls.length, 2);
-    assert.ok(r.calls.every((c) => isAnth(c.url) && c.body.model === 'claude-sonnet-5'));
+    assert.ok(r.calls.every((c) => isAnth(c.url) && c.body.model === 'claude-sonnet-5-5'), 'v-plan-models: كود Max على Sonnet 5.5 المباشر في الجولتين');
     assert.deepEqual(thinkBlocks(r.calls[1].body), [], 'غير المالك: لا كتلة تفكير معادة (لا إدخال مُفوتَر جديد)');
     const msgs = r.calls[1].body.messages;
     assert.deepEqual(msgs[msgs.length - 2].content.map((x) => x.type), ['tool_use'], 'ردّ الجولة كما كان قبل D1: الأداة وحدها');
@@ -232,12 +235,12 @@ test('٨. Grok (الوسيط): كتل تفكيره لا تُعاد، ولا حق
   assert.ok(r.events.some((e) => e.think && e.think.s === 'reasoning'), 'الملخّص يبقى في الفقاعة');
 });
 
-test('٩. Haiku 4.5 لا يصله adaptive ولا effort أبدًا (المالك سؤالًا وتحيّةً، واختيارًا صريحًا، وغير المالك)، ولا عرض في المجاملة الفوريّة', async () => {
+test('٩. Haiku 4.5 لا يصله adaptive ولا effort أبدًا (المالك سؤالًا وتحيّةً، واختيارًا صريحًا)، وغير المالك لا يصله من أيّ باقة وHaiku 5.5 الذي يصله بلاهما، ولا عرض في المجاملة الفوريّة', async () => {
   // v-owner-claude-all: المالك بلا اختيار صار Opus 5.5 — Haiku 4.5 للمالك اختيارًا صريحًا (سؤالًا وتحيّةً وبجهد مختار يُتجاهَل)
-  const cases = [['omran', { model: 'claude-haiku-4-5', effort: 'max' }, Q], ['omran', { model: 'claude-haiku-4-5' }, [{ role: 'user', content: 'السلام' }]], ['omran', { model: 'claude-haiku-4-5' }, Q], ['maxuser', {}, [{ role: 'user', content: 'وش أفضل وقت للمشي؟' }]]];
+  const cases = [['omran', { model: 'claude-haiku-4-5', effort: 'max' }, Q], ['omran', { model: 'claude-haiku-4-5' }, [{ role: 'user', content: 'السلام' }]], ['omran', { model: 'claude-haiku-4-5' }, Q]];
   for (const [user, extra, messages] of cases) {
-    const r = await (user === 'maxuser' ? asMax : (f) => f())(() => run(user, Object.assign({ provider: 'claude', messages }, extra), (u, b, n) => (!isAnth(u) ? new Response('{}', { status: 404 })
-      : n === 1 ? thinkTool('SIG-H', user === 'omran' ? 'read_github' : 'web_search', user === 'omran' ? READ : { query: 'omran app' }, { id: 'tu1', model: 'claude-haiku-4-5' }) : text('تم', 'claude-haiku-4-5'))));
+    const r = await run(user, Object.assign({ provider: 'claude', messages }, extra), (u, b, n) => (!isAnth(u) ? new Response('{}', { status: 404 })
+      : n === 1 ? thinkTool('SIG-H', 'read_github', READ, { id: 'tu1', model: 'claude-haiku-4-5' }) : text('تم', 'claude-haiku-4-5')));
     assert.ok(r.calls.length >= 1, user);
     for (const c of r.calls) {
       assert.equal(c.body.model, 'claude-haiku-4-5');
@@ -245,6 +248,37 @@ test('٩. Haiku 4.5 لا يصله adaptive ولا effort أبدًا (المال�
       assert.equal(c.body.output_config, undefined, user + ': لا effort');
     }
   }
+  /* v-plan-models: غير المالك كان يصل Haiku 4.5 في دردشة Max؛ الجدول الجديد لا يضعه في أيّ وظيفة لأيّ باقة — لا رأسًا ولا احتياطًا،
+     والمقاييس مفتوحة أو ممتلئة. */
+  const JOBS = { chat: ['وش أفضل وقت للمشي؟', false], code: ['اكتب كود بايثون يحسب المتوسّط', false], math: ['احسب معادلة x+1=2 وحلّها', false], image: ['شوف الصورة', true] };
+  for (const plan of Object.keys(tierLib.PLAN_ROUTING)) {
+    for (const [job, [said, img]] of Object.entries(JOBS)) {
+      for (const used of [{}, { premium: 999, gemini: 999, haiku: 999, sonnet: 999 }]) {
+        const pr = tierLib.planRoute({ tier: 'sub', plan }, 'claude', said, used, {}, img);
+        assert.equal(pr.job, job, plan + '/' + job);
+        for (const l of [pr].concat(pr.fallback)) assert.notEqual(l.model, 'claude-haiku-4-5', plan + '/' + job + ': لا Haiku 4.5 لغير المالك');
+      }
+    }
+  }
+  // دردشة Max (السؤال نفسه الذي كان على Haiku 4.5) صارت GPT-6 Sol — عبر الوسيط بلا OPENAI_API_KEY — بلا تكيّفيّ ولا جهد
+  const sol = await asMax(() => run('maxuser', { provider: 'claude', messages: [{ role: 'user', content: 'وش أفضل وقت للمشي؟' }] }, (u) => (!isOR(u) ? new Response('{}', { status: 404 }) : text('الفجر', 'openai/gpt-6-sol'))));
+  assert.ok(sol.calls.length >= 1 && sol.calls.every((c) => isOR(c.url) && c.body.model === 'openai/gpt-6-sol'), JSON.stringify(sol.calls.map((c) => c.url + ' ' + c.body.model)));
+  for (const c of sol.calls) {
+    assert.ok(!(c.body.thinking && c.body.thinking.type === 'adaptive'), 'maxuser: لا adaptive');
+    assert.equal(c.body.output_config, undefined, 'maxuser: لا effort');
+  }
+  assert.equal(sol.text, 'الفجر');
+  // Haiku الذي يصله غير المالك الآن: Haiku 5.5 المباشر في كود Plus — يقبل الجهد للمالك، لكنّ غير المالك بلا thinking ولا effort في الجولتين
+  const h55 = await asPlan('basic', () => run('plususer', { provider: 'claude', messages: [{ role: 'user', content: 'اكتب كود بايثون يحسب المتوسّط، وابحث عن تطبيق عمران' }] }, (u, b, n) => (!isAnth(u) ? new Response('{}', { status: 404 })
+    : n === 1 ? thinkTool('SIG-H5', 'web_search', { query: 'omran app' }, { id: 'tu1', model: 'claude-haiku-5-5' }) : text('تم', 'claude-haiku-5-5'))));
+  assert.equal(h55.calls.length, 2, 'جولة الأداة ثمّ الجواب');
+  for (const c of h55.calls) {
+    assert.ok(isAnth(c.url) && c.body.model === 'claude-haiku-5-5', c.url + ' ' + c.body.model);
+    assert.equal(c.body.thinking, undefined, 'plususer: لا thinking');
+    assert.equal(c.body.output_config, undefined, 'plususer: لا effort');
+  }
+  assert.deepEqual(thinkBlocks(h55.calls[1].body), [], 'غير المالك: لا كتلة تفكير معادة');
+  assert.equal(h55.text, 'تم');
   const q = await run('omran', { provider: 'claude', model: 'claude-opus-5-5', messages: [{ role: 'user', content: 'السلام' }] }, () => text('وعليكم السلام'));
   assert.equal(q.calls[0].body.thinking, undefined, 'المجاملة الفوريّة (v-owner-auto) بلا عرض');
   assert.deepEqual(q.calls[0].body.output_config, { effort: 'low' });
@@ -380,8 +414,8 @@ test('١٦. وسيط يرفض الحقل بنصّ بلا كلمة thinking ← �
   }
   OL.__resetTalk();
   const other = await run('omran', { provider: 'mistral', messages: Q }, (u, b) => (!isOR(u) ? new Response('{}', { status: 404 }) : err(400, 'prompt is too long')));
-  assert.equal(other.calls.length, 2, 'إعادة واحدة فقط');
-  assert.ok(other.events.some((e) => e.ownerStop && /خطأ 400/.test(e.error || '')), '400 لا علاقة له بالحقل يصل بسببه بعد الإعادة');
+  assert.equal(other.calls.length, 1, 'v-owner-cap-live: رفض النافذة ليس عن حقل التفكير — بلا إعادة مهدرة ولا إطفاء تفكير الموديل');
+  assert.ok(other.events.some((e) => e.ownerStop && /خطأ 400: prompt is too long/.test(e.error || '')), '400 لا علاقة له بالحقل يصل بسببه (v-why)');
   OL.__resetTalk();
 });
 

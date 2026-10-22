@@ -166,7 +166,7 @@ test('٨. مراسي design-gen ووسم إصداره، والنصوص بالـ1
   const dg = read('js/design-gen.js');
   assert.match(dg, /d\.setAttribute\('data-col',r\[0\]\);/);
   assert.match(dg, /d\.setAttribute\('data-ext',r\[0\]\);/);
-  assert.ok(read('index.html').includes('/js/design-gen.js?v=610'), 'وسم الإصدار رُفع');
+  assert.ok(Number((/\/js\/design-gen\.js\?v=(\d+)/.exec(read('index.html')) || [])[1]) >= 613, 'وسم الإصدار رُفع');
   const ctx = {};
   vm.runInNewContext(block(SRC, 'var TX = {', '\n  };', true) + '\nthis.TX = TX;', ctx);
   const LANGS = ['ar', 'en', 'fr', 'es', 'tr', 'ru', 'hi', 'ur', 'bn', 'ne', 'fil', 'id', 'zh', 'ml'];
@@ -175,4 +175,27 @@ test('٨. مراسي design-gen ووسم إصداره، والنصوص بالـ1
     for (const l of LANGS) assert.ok(!/gemini|chatgpt|gpt|openai|claude|veo/i.test(ctx.TX[k][l]), 'اسم مزوّد في ' + k + '/' + l);
   }
   assert.ok(read('js/app.bundle.js').includes("bar.id = 'fxCustomBar'"), 'الجزء داخل الحزمة');
+});
+
+test('٩. سطر «خصّصها» يسمّي الإضافات المختارة بأسمائها (كانت إيموجي وحده يمسحه v-clean-ui فيبقى «شتوي · كحلي · · كاجوال»)', () => {
+  const peek = block(SRC, 'function peekText(){', '\n  }', true);
+  const CU = read('js/app-36-clean-ui.js');
+  const noEmoji = new Function(CU.slice(CU.indexOf('var EMO;'), CU.indexOf('window.__noEmoji = clean;')).replace('catch(e){ return;', 'catch(e){ return null;') + '\nreturn clean;')();
+  const node = (txt) => ({ textContent: txt });
+  const run = (lang, accs, cols) => {
+    const ctx = {
+      lg: () => lang, gt: (k) => k, optText: (sel) => (sel === 'season' ? 'شتوي' : (sel === 'style' ? 'كاجوال' : '')),
+      $: (id) => ({ fashionAiSeason: 'season', fashionAiStyle: 'style' })[id] || null,
+      document: { querySelectorAll: (q) => (/\.colorRow \.cw\.sel \.cn$/.test(q) ? (cols || []).map(node) : (/\.fxAccCard\.sel \.ct$/.test(q) ? accs.map(node) : (/\.fxAccCard\.sel \.oi$/.test(q) ? accs.map((a) => node(a.split(' ')[0])) : []))) },
+    };
+    vm.runInNewContext(peek + '\nthis.out = peekText();', ctx);
+    return noEmoji(ctx.out);
+  };
+  const one = run('ar', ['👜 حقيبة'], ['كحلي']);
+  assert.ok(!/·\s*·/.test(one), 'لا خانة فارغة: ' + one);
+  assert.match(one, /حقيبة/);
+  const four = run('ar', ['👜 حقيبة', '⌚ ساعة', '🕶️ نظارات', '👟 حذاء'], ['كحلي']);
+  assert.match(four, /حقيبة، ساعة \+2/, 'أوّل اثنين ثمّ +N كالألوان: ' + four);
+  assert.match(run('en', ['👜 Handbag', '⌚ Watch'], []), /Handbag, Watch/);
+  assert.match(run('ar', [], []), /fxAccLbl/, 'بلا اختيار: عنوان القسم كما كان');
 });

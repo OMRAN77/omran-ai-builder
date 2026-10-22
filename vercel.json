@@ -114,7 +114,17 @@
       "includeFiles": "node_modules/@jsquash/webp/**"
     }
   },
+  "crons": [
+    {
+      "path": "/api/email-sweep",
+      "schedule": "23 3 * * *"
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/deploy-probe.txt",
+      "destination": "/api/system?action=deploy-probe"
+    },
     {
       "source": "/i/:id",
       "destination": "/api/media?action=img&id=:id"
@@ -314,6 +324,10 @@
     {
       "source": "/api/check-reminders",
       "destination": "/api/system?action=check-reminders"
+    },
+    {
+      "source": "/api/email-sweep",
+      "destination": "/api/system?action=email-sweep"
     },
     {
       "source": "/api/push-subscribe",

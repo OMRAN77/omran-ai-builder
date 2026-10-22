@@ -7,8 +7,10 @@
 <meta name="description" content="أداة ذكاء اصطناعي تولّد فيديوهات دروس تعليمية طويلة للمدارس والجامعات - by عمران" />
 <meta name="theme-color" content="#d4af37" />
 <link rel="manifest" href="manifest.json" />
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-<link rel="icon" href="icons/favicon-32.png" />
+<!-- v-favicon-gold: كانت تشير إلى edu-old/icons البنفسجيّة القديمة؛ الآن أيقونات التطبيق الذهبيّة نفسها. -->
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=black-20261022" />
+<link rel="icon" href="/favicon.ico" sizes="48x48" />
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192-v2.png?icon=black-20261022" />
 <style>
   :root{
     --bg:#000000; --panel:#0b0b0d; --panel2:#141414; --border:rgba(212,175,55,.28);
@@ -157,9 +159,9 @@
       <div>
         <label id="lblVoice">صوت الراوي</label>
         <select id="voice">
-          <option value="onyx" selected>ذكر (Onyx)</option>
-          <option value="nova">أنثى (Nova)</option>
-          <option value="alloy">محايد (Alloy)</option>
+          <option value="onyx" selected>ذكر</option>
+          <option value="nova">أنثى</option>
+          <option value="alloy">محايد</option>
         </select>
       </div>
     </div>
@@ -234,7 +236,7 @@
       done:'✅ تم إنشاء الفيديو بنجاح!', videoErr:'❌ خطأ أثناء إنشاء الفيديو: ',
       loadingFFmpeg:'⚙️ جاري تحميل أدوات معالجة الفيديو (أول مرة فقط، قد تستغرق دقيقة)...',
       min5:'5 دقائق', min10:'10 دقائق', min15:'15 دقيقة', min20:'20 دقيقة', min30:'30 دقيقة', min40:'40 دقيقة',
-      voiceMale:'ذكر (Onyx)', voiceFemale:'أنثى (Nova)', voiceNeutral:'محايد (Alloy)',
+      voiceMale:'ذكر', voiceFemale:'أنثى', voiceNeutral:'محايد',
     },
     en: {
       brand:'Education', setupTitle:'📝 Create your lesson', lblTopic:'Lesson topic',
@@ -252,7 +254,7 @@
       done:'✅ Video created successfully!', videoErr:'❌ Error creating video: ',
       loadingFFmpeg:'⚙️ Loading video processing tools (first time only, may take a minute)...',
       min5:'5 minutes', min10:'10 minutes', min15:'15 minutes', min20:'20 minutes', min30:'30 minutes', min40:'40 minutes',
-      voiceMale:'Male (Onyx)', voiceFemale:'Female (Nova)', voiceNeutral:'Neutral (Alloy)',
+      voiceMale:'Male', voiceFemale:'Female', voiceNeutral:'Neutral',
     },
     fr: {
       brand:'Éducation', setupTitle:'📝 Créez votre leçon', lblTopic:'Sujet de la leçon',
@@ -270,7 +272,7 @@
       done:'✅ Vidéo créée avec succès !', videoErr:'❌ Erreur lors de la création de la vidéo : ',
       loadingFFmpeg:'⚙️ Chargement des outils de traitement vidéo (première fois seulement, peut prendre une minute)...',
       min5:'5 minutes', min10:'10 minutes', min15:'15 minutes', min20:'20 minutes', min30:'30 minutes', min40:'40 minutes',
-      voiceMale:'Homme (Onyx)', voiceFemale:'Femme (Nova)', voiceNeutral:'Neutre (Alloy)',
+      voiceMale:'Homme', voiceFemale:'Femme', voiceNeutral:'Neutre',
     },
     hi: {
       brand:'शिक्षा', setupTitle:'📝 अपना पाठ बनाएँ', lblTopic:'पाठ का विषय',
@@ -288,7 +290,7 @@
       done:'✅ वीडियो सफलतापूर्वक बन गया!', videoErr:'❌ वीडियो बनाते समय त्रुटि: ',
       loadingFFmpeg:'⚙️ वीडियो प्रोसेसिंग टूल लोड हो रहे हैं (केवल पहली बार, एक मिनट लग सकता है)...',
       min5:'5 मिनट', min10:'10 मिनट', min15:'15 मिनट', min20:'20 मिनट', min30:'30 मिनट', min40:'40 मिनट',
-      voiceMale:'पुरुष (Onyx)', voiceFemale:'महिला (Nova)', voiceNeutral:'तटस्थ (Alloy)',
+      voiceMale:'पुरुष', voiceFemale:'महिला', voiceNeutral:'तटस्थ',
     },
     ur: {
       brand:'تعلیم', setupTitle:'📝 اپنا سبق بنائیں', lblTopic:'سبق کا موضوع',
@@ -306,7 +308,7 @@
       done:'✅ ویڈیو کامیابی سے بن گئی!', videoErr:'❌ ویڈیو بناتے وقت خرابی: ',
       loadingFFmpeg:'⚙️ ویڈیو پروسیسنگ ٹولز لوڈ ہو رہے ہیں (صرف پہلی بار، ایک منٹ لگ سکتا ہے)...',
       min5:'5 منٹ', min10:'10 منٹ', min15:'15 منٹ', min20:'20 منٹ', min30:'30 منٹ', min40:'40 منٹ',
-      voiceMale:'مرد (Onyx)', voiceFemale:'عورت (Nova)', voiceNeutral:'غیر جانبدار (Alloy)',
+      voiceMale:'مرد', voiceFemale:'عورت', voiceNeutral:'غیر جانبدار',
     },
     bn: {
       brand:'শিক্ষা', setupTitle:'📝 আপনার পাঠ তৈরি করুন', lblTopic:'পাঠের বিষয়',
@@ -320,8 +322,8 @@
       joining:'🔗 সমস্ত স্লাইডকে একটি ভিডিওতে যুক্ত করা হচ্ছে...', done:'✅ ভিডিও সফলভাবে তৈরি করা হয়েছে!', videoErr:'❌ ভিডিও তৈরিতে ত্রুটি: ',
       loadingFFmpeg:'⚙️ ভিডিও প্রসেসিং টুল লোড হচ্ছে (প্রথমবার শুধুমাত্র, এক মিনিট সময় লাগতে পারে)...', min5:'5 মিনিট', min10:'10 মিনিট',
       min15:'15 মিনিট', min20:'20 মিনিট', min30:'30 মিনিট',
-      min40:'40 মিনিট', voiceMale:'পুরুষ (Onyx)', voiceFemale:'মহিলা (Nova)',
-      voiceNeutral:'নিরপেক্ষ (Alloy)',
+      min40:'40 মিনিট', voiceMale:'পুরুষ', voiceFemale:'মহিলা',
+      voiceNeutral:'নিরপেক্ষ',
     },
     ne: {
       brand:'शिक्षा', setupTitle:'📝 आफ्नो पाठ सिर्जना गर्नुहोस्', lblTopic:'पाठ विषय',
@@ -335,8 +337,8 @@
       joining:'🔗 सबै स्लाइडहरू एउटै भिडियोमा जोड्दै...', done:'✅ भिडियो सफलतापूर्वक सिर्जना गरियो!', videoErr:'❌ भिडियो सिर्जना गर्दा त्रुटि: ',
       loadingFFmpeg:'⚙️ भिडियो प्रशोधन उपकरणहरू लोड गर्दै (पहिलो पटक मात्र, एक मिनेट लाग्न सक्छ)...', min5:'5 मिनेट', min10:'10 मिनेट',
       min15:'15 मिनेट', min20:'20 मिनेट', min30:'30 मिनेट',
-      min40:'40 मिनेट', voiceMale:'पुरुष (Onyx)', voiceFemale:'महिला (Nova)',
-      voiceNeutral:'तटस्थ (Alloy)',
+      min40:'40 मिनेट', voiceMale:'पुरुष', voiceFemale:'महिला',
+      voiceNeutral:'तटस्थ',
     },
     /* v-edu-14: بقية لغات التطبيق الـ14 — كانت الصفحة تسقط للإنجليزية */
     es: {
@@ -355,7 +357,7 @@
       done:'✅ ¡Video creado con éxito!', videoErr:'❌ Error al crear el video: ',
       loadingFFmpeg:'⚙️ Cargando las herramientas de video (solo la primera vez, puede tardar un minuto)...',
       min5:'5 minutos', min10:'10 minutos', min15:'15 minutos', min20:'20 minutos', min30:'30 minutos', min40:'40 minutos',
-      voiceMale:'Masculina (Onyx)', voiceFemale:'Femenina (Nova)', voiceNeutral:'Neutra (Alloy)',
+      voiceMale:'Masculina', voiceFemale:'Femenina', voiceNeutral:'Neutra',
     },
     fil: {
       brand:'Edukasyon', setupTitle:'📝 Gumawa ng iyong aralin', lblTopic:'Paksa ng aralin',
@@ -373,7 +375,7 @@
       done:'✅ Matagumpay na nagawa ang video!', videoErr:'❌ Error sa paggawa ng video: ',
       loadingFFmpeg:'⚙️ Nilo-load ang mga tool sa video (unang beses lang, maaaring tumagal ng isang minuto)...',
       min5:'5 minuto', min10:'10 minuto', min15:'15 minuto', min20:'20 minuto', min30:'30 minuto', min40:'40 minuto',
-      voiceMale:'Lalaki (Onyx)', voiceFemale:'Babae (Nova)', voiceNeutral:'Neutral (Alloy)',
+      voiceMale:'Lalaki', voiceFemale:'Babae', voiceNeutral:'Neutral',
     },
     id: {
       brand:'Pendidikan', setupTitle:'📝 Buat pelajaran Anda', lblTopic:'Topik pelajaran',
@@ -391,7 +393,7 @@
       done:'✅ Video berhasil dibuat!', videoErr:'❌ Kesalahan saat membuat video: ',
       loadingFFmpeg:'⚙️ Memuat alat pemrosesan video (hanya pertama kali, bisa memakan waktu satu menit)...',
       min5:'5 menit', min10:'10 menit', min15:'15 menit', min20:'20 menit', min30:'30 menit', min40:'40 menit',
-      voiceMale:'Pria (Onyx)', voiceFemale:'Wanita (Nova)', voiceNeutral:'Netral (Alloy)',
+      voiceMale:'Pria', voiceFemale:'Wanita', voiceNeutral:'Netral',
     },
     ml: {
       brand:'വിദ്യാഭ്യാസം', setupTitle:'📝 നിങ്ങളുടെ പാഠം സൃഷ്ടിക്കുക', lblTopic:'പാഠത്തിന്റെ വിഷയം',
@@ -409,7 +411,7 @@
       done:'✅ വീഡിയോ വിജയകരമായി സൃഷ്ടിച്ചു!', videoErr:'❌ വീഡിയോ സൃഷ്ടിക്കുന്നതിൽ പിശക്: ',
       loadingFFmpeg:'⚙️ വീഡിയോ ഉപകരണങ്ങൾ ലോഡ് ചെയ്യുന്നു (ആദ്യ തവണ മാത്രം, ഒരു മിനിറ്റ് എടുത്തേക്കാം)...',
       min5:'5 മിനിറ്റ്', min10:'10 മിനിറ്റ്', min15:'15 മിനിറ്റ്', min20:'20 മിനിറ്റ്', min30:'30 മിനിറ്റ്', min40:'40 മിനിറ്റ്',
-      voiceMale:'പുരുഷൻ (Onyx)', voiceFemale:'സ്ത്രീ (Nova)', voiceNeutral:'നിഷ്പക്ഷം (Alloy)',
+      voiceMale:'പുരുഷൻ', voiceFemale:'സ്ത്രീ', voiceNeutral:'നിഷ്പക്ഷം',
     },
     ru: {
       brand:'Образование', setupTitle:'📝 Создайте свой урок', lblTopic:'Тема урока',
@@ -427,7 +429,7 @@
       done:'✅ Видео успешно создано!', videoErr:'❌ Ошибка при создании видео: ',
       loadingFFmpeg:'⚙️ Загрузка инструментов обработки видео (только в первый раз, может занять минуту)...',
       min5:'5 минут', min10:'10 минут', min15:'15 минут', min20:'20 минут', min30:'30 минут', min40:'40 минут',
-      voiceMale:'Мужской (Onyx)', voiceFemale:'Женский (Nova)', voiceNeutral:'Нейтральный (Alloy)',
+      voiceMale:'Мужской', voiceFemale:'Женский', voiceNeutral:'Нейтральный',
     },
     tr: {
       brand:'Eğitim', setupTitle:'📝 Dersini oluştur', lblTopic:'Ders konusu',
@@ -445,7 +447,7 @@
       done:'✅ Video başarıyla oluşturuldu!', videoErr:'❌ Video oluşturulurken hata: ',
       loadingFFmpeg:'⚙️ Video işleme araçları yükleniyor (yalnızca ilk sefer, bir dakika sürebilir)...',
       min5:'5 dakika', min10:'10 dakika', min15:'15 dakika', min20:'20 dakika', min30:'30 dakika', min40:'40 dakika',
-      voiceMale:'Erkek (Onyx)', voiceFemale:'Kadın (Nova)', voiceNeutral:'Nötr (Alloy)',
+      voiceMale:'Erkek', voiceFemale:'Kadın', voiceNeutral:'Nötr',
     },
     zh: {
       brand:'教育', setupTitle:'📝 创建你的课程', lblTopic:'课程主题',
@@ -463,7 +465,7 @@
       done:'✅ 视频生成成功！', videoErr:'❌ 生成视频时出错：',
       loadingFFmpeg:'⚙️ 正在加载视频处理工具（仅首次，可能需要一分钟）…',
       min5:'5 分钟', min10:'10 分钟', min15:'15 分钟', min20:'20 分钟', min30:'30 分钟', min40:'40 分钟',
-      voiceMale:'男声 (Onyx)', voiceFemale:'女声 (Nova)', voiceNeutral:'中性 (Alloy)',
+      voiceMale:'男声', voiceFemale:'女声', voiceNeutral:'中性',
     },
   };
 
@@ -906,6 +908,8 @@
   document.addEventListener('touchmove',function(e){if(!t0)return;var dx=e.touches[0].clientX-t0.x,dy=e.touches[0].clientY-t0.y;if(!dragging){if(Math.abs(dx)<14||Math.abs(dx)<Math.abs(dy)*1.4)return;if(dx<=0){t0=null;return;}dragging=true;}setX(Math.max(0,dx),false);},{passive:true});
   function finish(e){if(!t0)return;var was=dragging;var dx=(was&&e.changedTouches&&e.changedTouches[0])?(e.changedTouches[0].clientX-t0.x):0;var dt=Date.now()-t0.ts;t0=null;dragging=false;if(!was)return;if(dx>w*0.35||(dt<300&&dx>70)){setX(w+40,true);setTimeout(function(){ try{ window.parent.postMessage({ omranSwipeBack: 1 }, '*'); }catch(err){} setTimeout(function(){ setX(0,false); },400); },190);}else{setX(0,true);}}
   document.addEventListener('touchend',finish,{passive:true});document.addEventListener('touchcancel',finish,{passive:true});
+  /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): Esc بعد الكتابة هنا لا يصل للتطبيق (المستمع في الصفحة الأمّ) — نبلّغه كالسحب فيغلق الصانع وحده */
+  document.addEventListener('keydown',function(e){ if(e.key!=='Escape'||e.defaultPrevented)return; try{ window.parent.postMessage({ omranSwipeBack: 1 }, '*'); }catch(err){ /* guard-ok — صفحة مستقلّة بلا أمّ */ } });
 })();
 </script>
 </body>

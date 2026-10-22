@@ -182,7 +182,7 @@
           .then(function (r) { return { text: String((r && r.reply) || ''), data: null }; });
       }
       var content = (blocks && blocks.length) ? blocks.concat([{ type: 'text', text: userText }]) : userText;
-      return claudeProxyRequest('claude-sonnet-4-20250514', system ? { content: system } : null, [{ role: 'user', content: content }], false)
+      return claudeProxyRequest('claude-sonnet-5', system ? { content: system } : null, [{ role: 'user', content: content }], false)
         .then(function (res) { return res.json().catch(function () { return {}; }); })
         .then(function (data) { return { text: textFrom(data), data: data }; });
     }

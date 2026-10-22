@@ -16,6 +16,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'chat-owner-errors-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-direct';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
@@ -126,8 +127,8 @@ test('١. C3+C4: تمهيد ثمّ 529 في الخطوة ٢ ← إعادتان �
 test('٢. C3: تمهيد ثمّ 529 بلا وسيط ← السبب تحت التمهيد عند المالك (كان يُبلع)', { timeout: 20000 }, async () => {
   const r = await withoutOR(() => run('omran', { provider: 'claude', messages: Q }, (u, b, n) => (isAnth(u) ? (n === 1 ? T.tool('read_github', READ, 'خلني أقرأ الملف أوّلًا.') : busy()) : new Response('{}', { status: 404 }))));
   const stop = r.events.find((e) => e.ownerStop);
-  assert.ok(stop && stop.error === 'ما قدرت أردّ الحين — خطأ 529', JSON.stringify(stop));
-  assert.equal((await client(r.raw)).reply, 'خلني أقرأ الملف أوّلًا.\n\n⚠️ ما قدرت أردّ الحين — خطأ 529');
+  assert.ok(stop && stop.error === 'ما قدرت أردّ الحين — خطأ 529: Overloaded' /* v-why: سبب المزوّد بعد الرقم */, JSON.stringify(stop));
+  assert.equal((await client(r.raw)).reply, 'خلني أقرأ الملف أوّلًا.\n\n⚠️ ما قدرت أردّ الحين — خطأ 529: Overloaded');
 });
 
 test('٣. C4: 529 ثمّ نجاح ← الموديل نفسه بلا وسيط؛ وretry-after أكبر من السقف (٨ ث) = لا انتظار بل السلسلة', { timeout: 20000 }, async () => {
@@ -156,7 +157,7 @@ test('٤-ب. v-refusal-why: رفض بفئة reasoning_extraction (لقطة ال�
   const ask = (details) => run('omran', { provider: 'claude', model: 'claude-fable-5-1', messages: [{ role: 'user', content: 'لا الكتابة الي فوق المحادثة فكر لمدة الوقت' }] },
     (u) => (isAnth(u) ? T.text('', 'refusal', details) : new Response('{}', { status: 404 })));
   const r = await ask({ type: 'refusal', category: 'reasoning_extraction', explanation: 'The request asks the model to reveal  its internal\nreasoning.' });
-  assert.equal(r.calls.filter((c) => isAnth(c.url)).length, 1, 'لا إعادة ولا وسيط');
+  assert.equal(r.calls.filter((c) => isAnth(c.url)).length, 2, 'إعادة واحدة على الموديل نفسه بلا عرض التفكير (v-refusal-retry) — ثمّ السبب، ولا وسيط');
   const stop = r.events.find((e) => e.ownerStop);
   assert.equal(stop && stop.error, 'رفض المزوّد الطلب (reasoning_extraction — فُهم السؤال طلبًا لكشف تفكيره الداخليّ — اسأل عن الجواب لا عمّا فكّر فيه) — The request asks the model to reveal its internal reasoning.');
   const c = await client(r.raw);

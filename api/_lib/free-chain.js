@@ -15,7 +15,7 @@
 const { freeChain } = require('./tier.js');
 
 // ملاحظة النظام للطبقة المجانية — بلا اسم أي مزوّد (قرار المالك: «بدون اسم كلاود»).
-const FREE_NOTE = '\n\n[الوضع المجاني — إلزامي]: أنت «عمران» مساعد التطبيق. في هذا الوضع تردّ نصًّا فقط: لا تملك بحثًا حيًّا ولا توليد صور ولا تشغيل كود، فلا تدّعِ أنك بحثت أو رسمت. ما يأتي في رسالة المستخدم تحت «[قرأ التطبيق هذا المحتوى الآن من …]» قُرئ فعلًا: اقرأه كاملًا وحلّله قبل أن تجيب، واستشهد بما فيه (اسم الملفّ أو السطر أو العبارة) دليلًا على كلامك، ولا تقل إنك لا تستطيع فتح الروابط. إن طلب المستخدم بحثًا حيًّا أو صورة أو بناء تطبيق فأجب بما تعرفه باختصار ثم قل بلطف إن هذه الميزة في النسخة الاحترافية. لا تذكر اسم النموذج أو الشركة المزوّدة أبدًا. أجب بلغة المستخدم ولهجته.';
+const FREE_NOTE = '\n\n[الوضع المجاني — إلزامي]: أنت «عمران» مساعد التطبيق. في هذا الوضع تردّ نصًّا فقط: لا تملك بحثًا حيًّا ولا توليد صور ولا تشغيل كود، فلا تدّعِ أنك بحثت أو رسمت. ما يأتي في رسالة المستخدم تحت «[قرأ التطبيق هذا المحتوى الآن من …]» قُرئ فعلًا: اقرأه كاملًا وحلّله قبل أن تجيب، واستشهد بما فيه (اسم الملفّ أو السطر أو العبارة) دليلًا على كلامك، ولا تقل إنك لا تستطيع فتح الروابط. إن طلب المستخدم بحثًا حيًّا أو صورة أو بناء تطبيق فأجب بما تعرفه باختصار ثم قل بلطف إن هذه الميزة في النسخة الاحترافية. لا تذكر اسم النموذج أو الشركة المزوّدة أبدًا. أجب بلغة المستخدم ولهجته.'; /* v-plan-models (خريطة الباقات ١٥ أكتوبر، أُعيد إنتاجه محلّيًّا): هذه السلسلة احتياط المشترك وVIP أيضًا حين تسقط مسارات باقته قبل أوّل حرف (chat.js)،    فكانت FREE_NOTE تقول لمن يدفع إنّ البحث والصور «في النسخة الاحترافيّة». له صيغة محايدة: نصّ فقط مؤقّتًا، بلا ترقية ولا ادّعاء. */ const PAID_NOTE = '\n\n[تنبيه — إلزامي]: أنت «عمران» مساعد التطبيق. هذا الردّ نصّيّ فقط لتعذّر الأدوات مؤقّتًا: لا بحث حيّ ولا توليد صور ولا تشغيل كود في هذا الردّ، فلا تدّعِ أنك بحثت أو رسمت. ما يأتي في رسالة المستخدم تحت «[قرأ التطبيق هذا المحتوى الآن من …]» قُرئ فعلًا فحلّله واستشهد به. إن طلب المستخدم بحثًا أو صورة أو بناء فأجب بما تعرفه باختصار ثم قل بلطف إنّ هذه الميزة متعذّرة في هذه اللحظة وإنّه يستطيع إعادة المحاولة بعد قليل.';
 
 function blockText(b) {
   if (!b) return '';
@@ -181,7 +181,7 @@ async function streamFreeChain(args) {
     : all;
   const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { /* لا شيء */ } });
   const now = typeof args.now === 'number' ? args.now : Date.now();
-  const system = args.raw ? '' : String(args.system || '') + FREE_NOTE; // v-owner-free: raw للمالك المتحقَّق منه فقط (chat.js)
+  const system = args.raw ? '' : String(args.system || '') + (args.paid ? PAID_NOTE : FREE_NOTE); // v-owner-free: raw للمالك المتحقَّق منه فقط (chat.js)؛ v-plan-models: paid = مشترك/VIP
   let attempts = 0;
   // أسباب الفشل (بلا مفاتيح) — تُعاد للمستدعي ليسجّلها ويبثّها كتشخيص للمالك.
   const errors = [];
@@ -203,7 +203,7 @@ async function streamFreeChain(args) {
       errors.push(spec.id + '/' + model + ': empty');
       return null;
     };
-    let providerDead = false;
+    let providerDead = false, busyN = 0;
     const models = candidateModels(spec, now);
     const tried = [];
     for (const model of models) {
@@ -212,14 +212,14 @@ async function streamFreeChain(args) {
         if (res) return res;
       } catch (e) {
         if (partial.trim()) return { ok: true, provider: spec.id, model, text: partial, attempts, truncated: true, errors };
-        if (isModelError(e)) { tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; }
+        if (isModelError(e)) { tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } if (spec.id === 'groq' && (e.status === 429 || e.status === 413)) { busyN++; tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } // v-plan-models: حدود Groq لكلّ موديل — المزدحم يجرّب التالي قبل الخروج من Groq
         log(spec.id + ' failed: ' + scrub(e.message));
         errors.push(spec.id + ': ' + scrub(e.message));
         providerDead = true;
         break;
       }
     }
-    if (providerDead) continue;
+    if (providerDead || (busyN && busyN === tried.length)) continue; // v-plan-models: كلّها مزدحمة — لا استكشاف
     if (spec.visionOnly) { errors.push(spec.id + ': no vision model answered'); continue; } // v-img-why: لا استكشاف قد يلتقط أعمى
     // كل المرشّحين «غير موجود» → اسأل المزوّد نفسه عن نماذجه.
     const found = await discoverModel(spec, args);
@@ -299,11 +299,14 @@ async function completeJson(id, opts) {
       return { ok: false, status: r.status, body, model };
     } finally { clearTimeout(timer); }
   };
+  let busy = 0;
   for (const model of models) {
     last = await tryOne(model);
     if (last.ok) return last;
+    if (id === 'groq' && (last.status === 429 || last.status === 413)) { busy++; continue; } // v-plan-models: حدود Groq لكلّ موديل (الذاكرة وتيليجرام والأسهم)
     if (!isModelErrorStatus(last.status, last.body)) return last;
   }
+  if (busy) return last; // مزدحمة — لا استكشاف /models
   const found = await discoverModel(spec, o);
   if (found && !models.includes(found)) last = await tryOne(found);
   return last;
@@ -323,7 +326,10 @@ async function completeFreeChain(opts) {
     try { r = await completeJson(spec.id, { env, messages: o.messages, max_tokens: o.max_tokens || 1500, temperature: typeof o.temperature === 'number' ? o.temperature : 0.5, timeoutMs: o.timeoutMs, fetchImpl: o.fetchImpl, now: o.now }); }
     catch (e) { errors.push(spec.id + ': ' + String((e && e.message) || e).slice(0, 120)); continue; }
     const text = r && r.ok && r.json && r.json.choices && r.json.choices[0] && r.json.choices[0].message && String(r.json.choices[0].message.content || '').trim();
-    if (text) return { ok: true, text, provider: spec.id, model: r.model, errors };
+    /* v-write-fix: «accept» اختياريّ — نصّ لا يقبله المستدعي (JSON مقطوع لأنّ موديلًا مفكّرًا صرف ميزانيّته في التفكير)
+       لا يوقف السلسلة؛ يُسجَّل «rejected» ويُجرَّب المزوّد التالي بدل أن يرجع للمستخدم «تعذّرت الكتابة». */
+    if (text && (typeof o.accept !== 'function' || o.accept(text))) return { ok: true, text, provider: spec.id, model: r.model, errors };
+    if (text) { errors.push(spec.id + ': rejected (' + String((r.json.choices[0].finish_reason) || '?') + ', ' + text.length + ' chars)'); continue; }
     errors.push(spec.id + ': ' + (r && r.ok ? 'empty' : ('http ' + (r && r.status) + ' ' + String((r && r.body) || '').replace(/[A-Za-z0-9_-]{24,}/g, '…').slice(0, 120))));
   }
   return { ok: false, text: '', provider: null, model: null, errors };

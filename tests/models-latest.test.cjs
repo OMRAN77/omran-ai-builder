@@ -113,7 +113,8 @@ test('٥. Groq: افتراضيّ السهم يُترجم لـgpt-oss-120b، وا
   assert.equal(od.GROQ_ALIAS['meta-llama/llama-4-maverick'], 'openai/gpt-oss-120b');
   const tier = require('../api/_lib/tier.js');
   const groq = tier.freeChain({ GROQ_API_KEY: 'k', FREE_CHAIN: 'groq' }).find((s) => s.id === 'groq');
-  assert.deepEqual(groq.models.slice(0, 2), ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']);
+  assert.deepEqual(groq.models.slice(0, 2), ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'], 'v-plan-models: المجّانيّ على 20b ثمّ 120b — الحيّان أوّلًا');
+  assert.ok(!groq.models.includes('meta-llama/llama-4-maverick-17b-128e-instruct') && !groq.models.includes('llama-3.1-8b-instant'), 'لا موقوف في السلسلة');
 });
 
 test('٦. Cohere: الافتراضيّ Command A+ مع رجوع إلى Command A إن لم يصله المفتاح', () => {
@@ -135,7 +136,7 @@ test('٧. كلود: Opus 5.5 في الوكيل وتحليل الكود والم�
   assert.ok(m.includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"));
   assert.ok(read('js/app.bundle.js').includes("var UPGRADES = { 'claude-opus-5': 'claude-opus-5-5' };"), 'الحزمة أُعيد بناؤها');
   assert.ok(read('js/modes.js').includes("['claude-opus-5-5','Opus 5.5']"));
-  assert.ok(read('index.html').includes('js/modes.js?v=m131026g') && read('index.html').includes('js/partials-settings.js?v=695'), 'وسوم الكاش رُفعت');
+  assert.ok(read('index.html').includes('js/modes.js?v=m211026') && read('index.html').includes('js/partials-settings.js?v=705'), 'وسوم الكاش رُفعت');
   assert.ok(read('js/app-10-features.js').includes("'anthropic/claude-opus-5': 'anthropic/claude-opus-5.5',"), 'اختيار الوسيط المحفوظ يهاجر');
 });
 

@@ -14,6 +14,10 @@
   const statusEl = $('#videoMakerStatus');
   const resultEl = $('#videoMakerResult');
   const downloadEl = $('#videoMakerDownloadLink');
+  /* v-vmk-dl-ext (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «الفيديو ينزل باسم mp4 وهو webm: الامتداد لازم يطابق النوع»): الرابط يحمل
+     download="omran-ai-video.mp4" ثابتًا من partials-core، وفيديو القوالب (المسجِّل) والدمج والصوت السريع WebM — فينزل WebM باسم mp4 ولا
+     تفتحه بعض الأجهزة. الاسم من نوع الملفّ نفسه حيث الملفّ Blob في يدنا، ورابط المزوّد (MP4) يبقى بالاسم الافتراضيّ الذي يُعاد قبل كلّ توليد. */
+  function dlName(base, type){ return base + '.' + (/webm/i.test(String(type || '')) ? 'webm' : 'mp4'); }
   // v291: تنزيل تلقائي للفيديو أول ما يجهز
   // v525: proxyVideoUrl — يمرّر رابط الفيديو عبر سيرفر عمران بدل جلبه مباشرة من المتصفح
   // يحل مشكلة CORS على الجوال وهواوي التي تمنع fetch() من مصادر خارجية
@@ -56,10 +60,10 @@
       },
       ok(){ errors = 0; },
       // خطأ شبكة: نتسامح مع العابر ونستسلم بعد ستّ محاولات متتالية فاشلة
-      fail(iv){
+      fail(iv, msg){
         if(++errors < 6) return;
         clearInterval(iv);
-        reject(new Error(bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.')));
+        reject(new Error(msg || bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.'))); /* v-ai-video-speed: نصّ الخادم إن جاء خطؤه منه */
       },
     };
   }
@@ -98,9 +102,9 @@
       const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
-      if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب' + (d.redisWhy ? ' — السبب: ' + String(d.redisWhy).slice(0, 200) : '')); /* v-redis-why: للمالك وحده */
+      if(!d.redisOk) problems.push(oT('ownerDbDown') + (d.redisWhy ? ' — ' + oT('ownerWhy', { w: oLtr(String(d.redisWhy).slice(0, 200)) }) : '')); /* v-redis-why: للمالك وحده */
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
-      if(missing.length) problems.push('مفاتيح ناقصة: ' + missing.join(', '));
+      if(missing.length) problems.push(oT('ownerKeysMissing', { k: oLtr(missing.join(', ')) }));
       /* v-err-build: أخطاء النسخة الحاليّة فقط — ما أُصلح في نسخة سابقة لا يُنذر بعد
          نشر الإصلاح. ومع كلّ خطأ ملفّه وسطره، فاللقطة وحدها تكفي للتشخيص. */
       const __build = (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '';
@@ -110,56 +114,115 @@
           const src = String(e.source || '').split('/').pop().split('?')[0].slice(0, 40);
           return '• ' + '\u2066' + String(e.message || '').slice(0,90) + (src ? ' — ' + src + (e.line ? ':' + e.line : '') : '') + (e.count > 1 ? ' (x' + e.count + ')' : '') + '\u2069'; /* v-err-ltr */
         }).join('\n');
-        problems.push('أخطاء مسجلة من المستخدمين: ' + __live.length + '\n' + top);
+        problems.push(oT('ownerUserErrors', { n: __live.length }) + '\n' + top);
       }
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');
-      /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): كانت
-         position:fixed;top:0 بـz-index أعلى من الهيدر الثابت (٩٩٩٩٩ مقابل ٩٠٠)
-         فتغطّي الهيدر بالكامل (شريط الأسهم وكل أزراره) خلفها بصمت — والمالك
-         لا يعرف بوجودها ليضغط ✕. جسم الصفحة شبكة CSS (body{display:grid})
-         بصفوف/أعمدة محدَّدة صراحةً للهيدر وشريط الأسهم وعمود المحادثة
-         (v-frame-c)، فإدراج الشريط كابن عاديّ بلا موضع شبكة صريح يُقحمه في
-         صفّ ضمنيّ أسفل الشاشة كلّها لا فوق الهيدر مباشرة — لذا الحلّ يبقى
-         fixed (يهرب من الشبكة تمامًا) لكن `top` يُحسَب من الارتفاع الفعليّ
-         لأسفل الهيدر بدل ٠ ثابت، فيظهر الشريط تحته دائمًا لا فوقه. */
-      const headerBottom = (function(){
-        try{ const h = document.querySelector('header'); return h ? Math.max(0, h.getBoundingClientRect().bottom) : 0; }
-        catch(e){ return 0; }
-      })();
-      bar.style.cssText = 'position:fixed;top:' + headerBottom + 'px;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
-      bar.textContent = '🩺 تنبيه للمالك — توجد ملاحظات في النظام:\n' + problems.join('\n');
+      bar.id = 'ownerHealthBar'; // v-maha-dock-bar: ينزل تحت شريط «م» العلويّ أثناء نافذة مها (css/modules.css)
+      /* v-ownerbar-pill (تدقيق ١٨ أكتوبر، لقطات ٠٠١ و٠٠٨ و٠٤٢ و٠٥٢): v-ownerbar-cover أنزل الشريط تحت الرأس، لكنّه بقي
+         بعرض الشاشة (z ٩٩٩٩٩، نصّ pre-wrap بثلاثة أخطاء خامّة ≈١٢٤px) فغطّى صفّ «إبداع» في الأدوات و«محادثة جديدة»
+         والبحث وزرّ إغلاق الشريط، وربع شاشة الجوّال، وكان عربيًّا بـdirection:rtl مفروض. صار كبسولة سطر واحد
+         «ملاحظات النظام (N)» مع ✕ أسفل الطرف المقابل للشريط الجانبيّ (bottom-start يغطّي أزرار ذيله على الحاسوب)،
+         وفوق صندوق الكتابة في الجوّال. التفاصيل الخامّة (v-err-build: الملفّ والسطر للتشخيص من لقطة) تُفتح بالنقر في
+         لوحة بسقف 40vh تُمرَّر، ومعها زرّ يفتح «فحص النظام». الاتّجاه اتّجاه الصفحة، والمعرّف كما هو (قاعدة v-maha-dock-bar). */
+      const mob = document.documentElement.classList.contains('mobile-ui') || (window.innerWidth || 1280) < 768;
+      let bottom = 12;
+      if(mob){
+        try{
+          let top = Infinity; // فوق الصندوق وفوق تلميحه الأوّل (askAllHintTip) إن ظهر
+          ['askAllHintTip', 'composerBox'].forEach(function(id){
+            const el = document.getElementById(id);
+            const r = el && el.getBoundingClientRect();
+            if(r && r.height > 0 && r.top > 0 && r.top < window.innerHeight) top = Math.min(top, r.top);
+          });
+          if(top < Infinity) bottom = Math.round(window.innerHeight - top + 10);
+        }catch(e){ __swallow(e, 'owner:healthbar-pos'); }
+      }
+      bar.style.cssText = 'position:fixed;bottom:' + bottom + 'px;inset-inline-end:12px;z-index:99999;max-width:min(360px,calc(100vw - 24px));background:#3a1010;color:#ffd7d7;border-radius:12px;font-size:13px;line-height:1.5;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+      const head = document.createElement('div');
+      head.setAttribute('role', 'button');
+      head.style.cssText = 'display:flex;align-items:center;gap:6px;min-height:36px;padding:0 4px 0 12px;cursor:pointer;white-space:nowrap';
+      const label = document.createElement('span');
+      label.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis';
+      label.textContent = oT('ownerHealthPill', { n: problems.length });
       const x = document.createElement('button');
+      x.type = 'button';
       x.textContent = '✕';
-      x.style.cssText = 'position:absolute;top:8px;left:10px;background:none;border:none;color:#ffd7d7;font-size:16px;cursor:pointer';
-      x.onclick = () => bar.remove();
-      bar.appendChild(x);
+      x.style.cssText = 'flex:none;background:none;border:none;color:#ffd7d7;font-size:15px;line-height:1;padding:8px;cursor:pointer';
+      x.onclick = (ev) => { if(ev && ev.stopPropagation) ev.stopPropagation(); bar.remove(); };
+      head.appendChild(label);
+      head.appendChild(x);
+      const det = document.createElement('div');
+      det.hidden = true;
+      det.style.cssText = 'max-height:40vh;overflow:auto;padding:6px 12px 10px;border-top:1px solid rgba(255,215,215,.2)';
+      const txt = document.createElement('div');
+      txt.style.cssText = 'white-space:pre-wrap;word-break:break-word';
+      txt.textContent = problems.join('\n');
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.textContent = oT('ownerHealthOpen');
+      go.style.cssText = 'margin-top:8px;background:none;border:1px solid rgba(255,215,215,.45);color:#ffd7d7;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer';
+      go.onclick = () => {
+        try{
+          const sd = document.getElementById('settingsDialog');
+          if(sd && typeof openDialogSafe === 'function') openDialogSafe(sd);
+          if(typeof renderSettingsNavList === 'function') renderSettingsNavList();
+          if(typeof showSettingsPage === 'function') showSettingsPage('ownerSection');
+          if(typeof window.runHealthCheck === 'function') window.runHealthCheck();
+        }catch(e){ __swallow(e, 'owner:healthbar-open'); }
+      };
+      det.appendChild(txt);
+      det.appendChild(go);
+      head.onclick = () => { det.hidden = !det.hidden; };
+      bar.appendChild(head);
+      bar.appendChild(det);
       document.body.appendChild(bar);
     }catch(e){ /* فحص صامت — لا نزعج المستخدم إذا فشل */ }
   }, 6000);
+
+  /* v-owner-i18n (تدقيق ١٨ أكتوبر، g14-owner): نصوص فحص النظام وكبسولة التنبيه من قاموس لغة الواجهة (كانت عربيّة ثابتة)،
+     والحمولة التقنيّة (مسارات، مفاتيح، رسائل الأخطاء) معزولة \u2066…\u2069 كما في v-err-ltr. خطأ الشبكة = acctNetError. */
+  function oT(k, p){
+    let v = (typeof window.t === 'function') ? window.t(k) : k;
+    v = (v == null || v === '') ? k : String(v);
+    if(p) Object.keys(p).forEach(function(n){ v = v.split('{' + n + '}').join(String(p[n])); });
+    return v;
+  }
+  function oLtr(s){ return '\u2066' + String(s == null ? '' : s) + '\u2069'; }
+  function oIso(s){ return '\u2068' + String(s == null ? '' : s) + '\u2069'; }
+  function oErr(e){
+    const m = String((e && e.message) || e || '');
+    return /Failed to fetch|NetworkError|Load failed|ERR_NETWORK|Network request failed/i.test(m) ? oT('acctNetError') : m;
+  }
+  /* v-owner-health-scroll: النتيجة تُكتب في صندوق تحت صفوف الأزرار — بلا تمرير لا يتغيّر شيء ظاهر بعد الضغط (لقطة ٠٢٠). */
+  function oShow(box){
+    try{ if(box && typeof box.scrollIntoView === 'function') box.scrollIntoView({ block: 'nearest' }); }
+    catch(e){ if(typeof __swallow === 'function') __swallow(e, 'owner:health-scroll'); }
+  }
 
   // 🩺 فحص النظام (لوحة المالك)
   window.runHealthCheck = async function(){
     const box = document.getElementById('adminHealthBox');
     if(!box) return;
-    box.textContent = '⏳ جاري الفحص...';
+    box.textContent = oT('ownerChecking');
+    oShow(box);
     const lines = [];
     const mark = ok => ok ? '✅' : '❌';
     // 1) الصفحات الأساسية
-    for(const [name, url] of [['الصفحة الرئيسية','/'], ['manifest.json','/manifest.json'], ['sw.js','/sw.js']]){
+    for(const [name, url] of [[oT('ownerHomePage'),'/'], ['manifest.json','/manifest.json'], ['sw.js','/sw.js']]){
       try{ const r = await fetch(url, {cache:'no-store'}); lines.push(mark(r.ok) + ' ' + name + ' (' + r.status + ')'); }
-      catch(e){ lines.push('❌ ' + name + ' (فشل الاتصال)'); }
+      catch(e){ lines.push('❌ ' + name + ' (' + oT('ownerConnFail') + ')'); }
     }
     // 2) فحص الخادم (مفاتيح + Blob + أخطاء المستخدمين)
     try{
       const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
-      lines.push(mark(d.redisOk) + ' قاعدة البيانات (Redis)' + (!d.redisOk && d.redisWhy ? ' — ' + String(d.redisWhy).slice(0, 200) : '')); /* v-redis-why */
+      lines.push(mark(d.redisOk) + ' ' + oT('ownerDbLabel') + (!d.redisOk && d.redisWhy ? ' — ' + oLtr(String(d.redisWhy).slice(0, 200)) : '')); /* v-redis-why */
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
-      lines.push(missing.length ? ('❌ مفاتيح ناقصة: ' + missing.join(', ')) : '✅ كل مفاتيح API موجودة');
+      lines.push(missing.length ? ('❌ ' + oT('ownerKeysMissing', { k: oLtr(missing.join(', ')) })) : '✅ ' + oT('ownerKeysAll'));
       if(d.clientErrorsCount > 0){
-        lines.push('⚠️ أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount);
+        lines.push('⚠️ ' + oT('ownerUserErrors', { n: d.clientErrorsCount }));
         /* v-err-date: بلا تاريخ لا نفرق خطأ اليوم عن خطأ الأسبوع الماضي */
         const __fmtD = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
         d.clientErrors.slice(0,10).forEach(e => {
@@ -178,12 +241,12 @@
           }
         });
       } else {
-        lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');
+        lines.push('✅ ' + oT('ownerUserErrorsNone'));
       }
       /* v-health-split: قياسات مسبار الذاكرة (v-mem-probe) أرقام من جهاز المالك لا أخطاء — بعنوانها، ولا تُحسب ملاحظة. */
       const __fmtT = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
       if((d.clientDiag || []).length){
-        lines.push('📏 قياسات جهازك (ليست أخطاء): ' + d.clientDiag.length);
+        lines.push('📏 ' + oT('ownerDeviceDiag', { n: d.clientDiag.length }));
         d.clientDiag.forEach(e => { lines.push('   · ' + String(e.message || '').replace(/^v-mem-probe\s*/, '').slice(0,200) + (__fmtT(e.lastSeen) ? ' — ' + __fmtT(e.lastSeen) : '')); });
       }
       /* v-health-srv: أخطاء الخادم نفسها (نداءات النماذج، المسارات) — كانت
@@ -196,73 +259,79 @@
       /* v-err-ltr: السطر التقنيّ (مسار + JSON إنجليزيّ) داخل صندوق يمين-يسار كان يتبعثر («'>>' Uncaught…») — يُعزل يسار-يمين كتلةً واحدة */
       const __srvLine = (e) => '\u2066' + '[' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtT(e.lastAt || e.at) ? ' — ' + __fmtT(e.lastAt || e.at) : '') + '\u2069';
       if(__now.length){
-        lines.push('⚠️ أخطاء الخادم' + (__cur ? ' في النشر الحاليّ' : '') + ': ' + __now.length);
+        lines.push('⚠️ ' + oT(__cur ? 'ownerSrvErrorsNow' : 'ownerSrvErrors', { n: __now.length }));
         __now.forEach(e => { lines.push('   • ' + __srvLine(e)); });
       } else {
-        lines.push('✅ لا توجد أخطاء في الخادم' + (__cur ? ' منذ آخر تحديث' : ''));
+        lines.push('✅ ' + oT(__cur ? 'ownerSrvNoneSince' : 'ownerSrvNone'));
       }
       if(__old.length){
-        lines.push('🗂️ من نشر سابق (أُصلحت أو لم تتكرّر بعد التحديث): ' + __old.length);
+        lines.push('🗂️ ' + oT('ownerSrvOld', { n: __old.length }));
         __old.forEach(e => { lines.push('   · ' + __srvLine(e)); });
       }
     }catch(e){
-      lines.push('❌ فحص الخادم فشل: ' + e.message);
+      lines.push('❌ ' + oT('ownerSrvCheckFail', { e: oLtr(oErr(e)) }));
     }
     const allOk = !lines.some(l => l.startsWith('❌') || l.startsWith('⚠️'));
-    lines.unshift((allOk ? '🟢 النظام سليم' : '🔴 توجد ملاحظات') + ' — ' + new Date().toLocaleTimeString('en-GB'));
+    lines.unshift((allOk ? '🟢 ' + oT('ownerSysOk') : '🔴 ' + oT('ownerSysNotes')) + ' — ' + new Date().toLocaleTimeString('en-GB'));
     box.textContent = lines.join('\n');
   };
   window.clearClientErrors = async function(){
     const box = document.getElementById('adminHealthBox');
+    /* v-owner-clear-confirm (تدقيق ١٨ أكتوبر): المسح نهائيّ للسجلّين — يسأل أوّلًا كبقيّة أفعال المالك الهدّامة
+       (حذف حساب، حذف حسابات الفحص، حذف مفتاح الخزنة). منطق المسح نفسه كما هو. */
+    if(!confirm(oT('ownerClearErrorsConfirm'))) return;
+    oShow(box);
     try{
       /* v-err-deploy: «مسح سجل الأخطاء» كان يمسح أخطاء المستخدمين وحدها — أخطاء الخادم لا تُمسح من التطبيق أبدًا
          (402 من ٢١ سبتمبر باقٍ). clear=errors في فحص الصحّة يمسح السجلّين معًا (للمالك وحده). */
       const r = await fetch('/api/system?action=health&clear=errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
-      if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
-    }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
+      if(box) box.textContent = r.ok ? oT('ownerClearDone') : '❌ ' + oT('ownerClearFail') + ' (' + r.status + ')';
+    }catch(e){ if(box) box.textContent = '❌ ' + oT('ownerClearFail') + ': ' + oErr(e); }
   };
   /* v-redis-capacity: «ما يملأ القاعدة» — قياس بالقراءة فقط (SCAN + STRLEN) يعرض العائلات الأكبر وأكبر المفاتيح في صندوق الفحص. */
   window.redisUsageCheck = async function(){
     const box = document.getElementById('adminHealthBox');
-    const mb = (n) => (n / 1048576).toFixed(1) + ' م.ب';
-    if(box) box.textContent = '⏳ أقيس ما في القاعدة… (قراءة فقط، لا يُحذف شيء)';
+    const mb = (n) => (n / 1048576).toFixed(1) + ' ' + oT('ownerMb');
+    if(box) box.textContent = oT('ownerUsageRunning');
+    oShow(box);
     try{
       const r = await fetch('/api/system?action=health&usage=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
       const d = await r.json().catch(() => ({}));
-      if(!r.ok || !d.usage){ if(box) box.textContent = '❌ فشل القياس (' + r.status + ')' + (d && d.message ? ': ' + d.message : ''); return; }
+      if(!r.ok || !d.usage){ if(box) box.textContent = '❌ ' + oT('ownerUsageFail') + ' (' + r.status + ')' + (d && d.message ? ': ' + oLtr(d.message) : ''); return; }
       const u = d.usage;
-      const lines = ['💾 القيم ≈ ' + mb(u.totalBytes) + ' في ' + u.totalKeys + ' مفتاحًا (الحدّ ٢٥٦ م.ب)' + (u.truncated ? ' — فُحص أوّل ' + u.scanned + ' فقط' : ''), '', 'العائلات الأكبر:'];
-      (u.groups || []).forEach(function(g){ lines.push('• ' + g.prefix + ' — ' + mb(g.bytes) + ' · ' + g.keys + ' مفتاحًا'); });
-      lines.push('', 'أكبر المفاتيح:');
-      (u.biggest || []).forEach(function(b){ lines.push('• ' + b.key + ' — ' + mb(b.bytes)); });
+      const lines = [oT('ownerUsageTotal', { size: mb(u.totalBytes), keys: u.totalKeys }) + (u.truncated ? ' — ' + oT('ownerUsageTrunc', { n: u.scanned }) : ''), '', oT('ownerUsageGroups')];
+      (u.groups || []).forEach(function(g){ lines.push('• ' + oLtr(g.prefix) + ' — ' + mb(g.bytes) + ' · ' + oT('ownerUsageKeysN', { n: g.keys })); });
+      lines.push('', oT('ownerUsageBiggest'));
+      (u.biggest || []).forEach(function(b){ lines.push('• ' + oLtr(b.key) + ' — ' + mb(b.bytes)); });
       if(box) box.textContent = lines.join('\n');
-    }catch(e){ if(box) box.textContent = '❌ فشل القياس: ' + e.message; }
+    }catch(e){ if(box) box.textContent = '❌ ' + oT('ownerUsageFail') + ': ' + oErr(e); }
   };
   /* v-cost-meter: «تكلفة المشتركين» — تكلفة كلّ حساب علينا هذا الشهر مجمّعة لكلّ باقة، مقابل ما يدفعه (قراءة فقط). */
   window.subscriberCostsCheck = async function(){
     const box = document.getElementById('adminHealthBox');
     const usd = (n) => (Number(n) || 0).toFixed(2) + '$';
-    const NAME = { basic: 'Plus', pro: 'Pro', max: 'Max', free: 'مجّاني', vip: 'VIP', owner: 'المالك' };
+    const NAME = { basic: 'Plus', pro: 'Pro', max: 'Max', free: oT('ownerPlanFree'), vip: 'VIP', owner: oT('ownerPlanOwner') };
     const NET = { basic: 9.41, pro: 19.12, max: 96.80 }; // ما يصلك من الاشتراك الشهريّ بعد رسوم الدفع
-    if(box) box.textContent = '⏳ أجمع تكلفة الشهر لكلّ باقة… (قراءة فقط)';
+    if(box) box.textContent = oT('ownerCostsRunning');
+    oShow(box);
     try{
       const r = await fetch('/api/system?action=health&costs=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
       const d = await r.json().catch(() => ({}));
-      if(!r.ok || !d.costs){ if(box) box.textContent = '❌ فشل التقرير (' + r.status + ')' + (d && d.message ? ': ' + d.message : ''); return; }
+      if(!r.ok || !d.costs){ if(box) box.textContent = '❌ ' + oT('ownerCostsFail') + ' (' + r.status + ')' + (d && d.message ? ': ' + oLtr(d.message) : ''); return; }
       const c = d.costs;
-      const lines = ['💵 تكلفة الحسابات علينا — ' + c.month + ' (من أوّل الشهر حتّى الآن)', 'المجموع ' + usd(c.total) + ' على ' + c.users + ' حسابًا', ''];
-      (c.byPlan || []).forEach(function(g){ lines.push('• ' + (NAME[g.plan] || g.plan) + ': ' + g.users + ' · متوسّط ' + usd(g.avg) + ' · الأعلى ' + usd(g.max) + (NET[g.plan] ? ' · يدفع ' + usd(NET[g.plan]) : '')); });
-      lines.push('', 'أعلى الحسابات تكلفةً:');
-      (c.top || []).forEach(function(u){ lines.push('• ' + u.user + ' (' + (NAME[u.plan] || u.plan) + ') — ' + usd(u.total) + '  [رسائل ' + usd(u.chat) + ' · وسائط ' + usd(u.media) + ' · صوت ' + usd(u.voice) + ']'); });
+      const lines = [oT('ownerCostsHead', { m: oLtr(c.month) }), oT('ownerCostsTotal', { total: usd(c.total), n: c.users }), ''];
+      (c.byPlan || []).forEach(function(g){ lines.push('• ' + oT('ownerCostsPlan', { plan: NAME[g.plan] || oLtr(g.plan), users: g.users, avg: usd(g.avg), max: usd(g.max) }) + (NET[g.plan] ? ' · ' + oT('ownerCostsPays', { net: usd(NET[g.plan]) }) : '')); });
+      lines.push('', oT('ownerCostsTop'));
+      (c.top || []).forEach(function(u){ lines.push('• ' + oT('ownerCostsUser', { user: oIso(u.user), plan: NAME[u.plan] || oLtr(u.plan), total: usd(u.total), chat: usd(u.chat), media: usd(u.media), voice: usd(u.voice) })); });
       /* v-tokens-meter: نسبة قراءة الكاش في الإنتاج لكلّ مسار (آخر ٧ أيّام) — للمالك وحده بجانب التكلفة */
       const tk = d.tokens, kt = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1000 ? Math.round(n / 1000) + 'k' : String(n || 0));
-      const LANE = { paid: 'المشتركون', free: 'المجّانيّ (تقديريّ)', owner: 'المالك', pro: 'الردّ الاحترافيّ' };
+      const LANE = { paid: 'ownerLanePaid', free: 'ownerLaneFree', owner: 'ownerPlanOwner', pro: 'ownerLanePro' };
       if(tk && tk.byLane && tk.byLane.length){
-        lines.push('', '🔢 التوكنات آخر ' + tk.days + ' أيّام — قراءة الكاش من كلّ الدخل:');
-        tk.byLane.forEach(function(l){ lines.push('• ' + (LANE[l.lane] || l.lane) + ': ' + l.turns + ' دورًا · قراءة ' + l.readPct + '% · جديد ' + kt(l.input) + ' · كتابة ' + kt(l.cacheWrite) + ' · خرج ' + kt(l.output)); });
+        lines.push('', oT('ownerTokensHead', { d: tk.days }));
+        tk.byLane.forEach(function(l){ lines.push('• ' + oT('ownerTokensLine', { lane: LANE[l.lane] ? oT(LANE[l.lane]) : oLtr(l.lane), turns: l.turns, read: l.readPct, input: kt(l.input), write: kt(l.cacheWrite), output: kt(l.output) })); });
       }
       if(box) box.textContent = lines.join('\n');
-    }catch(e){ if(box) box.textContent = '❌ فشل التقرير: ' + e.message; }
+    }catch(e){ if(box) box.textContent = '❌ ' + oT('ownerCostsFail') + ': ' + oErr(e); }
   };
   /* v-media-purge: «تنظيف التطبيق» عند المالك — يحذف روابط المشاركة الأقدم من ٧ أيّام (الخادم يتحقّق من المالك). */
   window.purgeOldMedia = async function(){
@@ -287,6 +356,14 @@
   function setStatus(text){
     statusEl.style.display = text ? 'block' : 'none';
     statusEl.textContent = text || '';
+  }
+  /* v-actor-notice (تدقيق ١٨ أكتوبر video-mode-actor «تنبيه «اكتب أول شي…» يطلع فوق خارج الشاشة وما ينشاف»؛ قرار المالك ٢١ أكتوبر «صندوق
+     الممثل في الجوال: إذا كان مخرّب أو مغطّى صلّحه، بدون ما تضيف شي جديد»): في الجوال (≤٨٦٠) عمود المعاينة — وفيه سطر الحالة — فوق الحقول،
+     فالتنبيه يُكتب فوق الشاشة بمئات البكسلات والمستخدم عند زرّ الإنشاء. التنبيه نفسه يُمرَّر إلى العين؛ nearest لا يحرّك شيئًا حين يُرى (الحاسوب).
+     لا في setStatus: تقدّم التوليد يكتب فيه كلّ ثوانٍ فيشدّ المستخدم للأعلى. */
+  function showNotice(text){
+    setStatus(text);
+    try{ if(typeof statusEl.scrollIntoView === 'function') statusEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }catch(e){ __swallow(e, 'video:notice-scroll'); }
   }
   function ensureLongMinutesOption(show){
     longMinutesOpt = document.getElementById('videoMakerDurationLongMinutesOpt');
@@ -340,6 +417,9 @@
           if(styleEl && styleEl.value !== 'realistic') styleEl.value = 'realistic';
         }catch(he){ try{ __swallow(he,'video:open-hero'); }catch(_){ /* guard-ok */ } }
       }
+      /* v-vmk-chat-tab (تدقيق ١٨–١٩ أكتوبر): نصّ أو صورة من المحادثة مكانهما قسم الوضع (الوصف وصورة البطل) — كان يُفتح على «الترندات» وهما
+         مخفيّان. video.js يقرأ العلامة عند الفتح مرّة ويمحوها؛ بلا نصّ ولا صورة (ترندات المحادثة، مها) يبقى على الترندات */
+      if((prompt && String(prompt).trim()) || heroDataUrl){ if(modal.style.display !== 'flex') modal.dataset.vmkTab = (modeEl && modeEl.value) || 'runway'; }
       modal.style.display = 'flex';
       try{ closeHeaderMenu(); }catch(e){ /* guard-ok — closeHeaderMenu اختيارية */ }
       const owner = isOwnerAccount();
@@ -492,18 +572,29 @@
   // user actually requests scene-chaining or narration — most single-scene,
   // no-narration videos never need this, keeping the feature lightweight.
   let ffmpegInstance = null;
-  async function getFFmpeg(){
-    if (ffmpegInstance) return ffmpegInstance;
+  /* v-ai-video-speed: التحميل يبدأ مبكّرًا بالتوازي مع الفيديو، فنداءان متزامنان ينتظران الوعد نفسه لا تحميلين (٣١ ميغا) */
+  let ffmpegLoading = null;
+  function getFFmpeg(){
+    if (ffmpegInstance) return Promise.resolve(ffmpegInstance);
+    if (!ffmpegLoading) ffmpegLoading = loadFFmpeg().catch((e) => { ffmpegLoading = null; throw e; });
+    return ffmpegLoading;
+  }
+  async function loadFFmpeg(){
     const { FFmpeg } = await import('/ffmpeg/lib/index.js');
     const ffmpeg = new FFmpeg();
-    await Promise.race([
-      ffmpeg.load({
-        coreURL: '/ffmpeg/core/ffmpeg-core.js',
-        wasmURL: '/ffmpeg/core/ffmpeg-core.wasm',
-        classWorkerURL: '/ffmpeg/lib/worker.js',
-      }),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('ffmpeg load timeout')), 90000)),
-    ]);
+    try{
+      await Promise.race([
+        ffmpeg.load({
+          coreURL: '/ffmpeg/core/ffmpeg-core.js',
+          wasmURL: '/ffmpeg/core/ffmpeg-core.wasm',
+          classWorkerURL: '/ffmpeg/lib/worker.js',
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('ffmpeg load timeout')), 90000)),
+      ]);
+    } catch(e){
+      try{ ffmpeg.terminate(); }catch(e2){ __swallow(e2, 'video:ff-terminate'); } /* v-ai-video-speed: لا عاملين حيّين بعد مهلة التحميل المسبق */
+      throw e;
+    }
     ffmpegInstance = ffmpeg;
     return ffmpeg;
   }
@@ -528,14 +619,21 @@
     return new Blob([data.buffer], { type: 'video/mp4' });
   }
 
+  let muxN = 0;
   async function muxNarration(videoSrc, audioBlob){
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
-    await ffmpeg.writeFile('v.mp4', await fetchFile(videoSrc));
-    await ffmpeg.writeFile('a.mp3', await fetchFile(audioBlob));
-    await ffmpeg.exec(['-i', 'v.mp4', '-i', 'a.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', 'out2.mp4']);
-    const data = await ffmpeg.readFile('out2.mp4');
-    return new Blob([data.buffer], { type: 'video/mp4' });
+    /* v-ai-video-speed: أسماء ملفّات لكلّ دمج — ترقية الخلفية قد تدمج والطلب التالي يدمج على النسخة نفسها من المحرّك */
+    const n = ++muxN, v = 'mxv' + n + '.mp4', a = 'mxa' + n + '.mp3', o = 'mxo' + n + '.mp4';
+    try{
+      await ffmpeg.writeFile(v, await fetchFile(videoSrc));
+      await ffmpeg.writeFile(a, await fetchFile(audioBlob));
+      await ffmpeg.exec(['-i', v, '-i', a, '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', o]);
+      const data = await ffmpeg.readFile(o);
+      return new Blob([data.buffer], { type: 'video/mp4' });
+    } finally {
+      for(const f of [v, a, o]){ try{ await ffmpeg.deleteFile(f); }catch(e){ __swallow(e, 'video:mux-clean'); } }
+    }
   }
 
   // Builds one long final video out of many {videoUrl, audioBlob} scenes:
@@ -572,7 +670,7 @@
     return new Blob([data.buffer], { type: 'video/mp4' });
   }
 
-  function pollTaskOnce(id){
+  function pollTaskOnce(id, quiet){
     return new Promise((resolve, reject) => {
       const guard = makePollGuard(reject, 5000);
       const iv = setInterval(async () => {
@@ -580,19 +678,32 @@
         try{
           const res = await fetch('/api/video-status?id=' + encodeURIComponent(id));
           const data = await res.json();
+          /* v-ai-video-speed: خطأ الاستطلاع عابر في الغالب (مهلة، ٥xx) — كان يرمي المهمّة الجارية فيُنشئ createSceneWithRetry مهمّة جديدة
+             من الصفر (+٧٠ ث محاكاةً، وتذكرة ثانية). الآن يُعدّ كعطب شبكة على المهمّة نفسها: ستّ مرّات متتالية ثمّ رسالة صريحة. */
+          if(data.error){
+            /* v-credit-out: المزوّد رفض الاستطلاع لعطب عندنا (رصيده نفد…) — الخادم سوّى التذكرة وردّ النقاط؛ لا انتظار ولا مهمّة جديدة تخصم */
+            if(data.error === 'unavailable'){ clearInterval(iv); reject(Object.assign(new Error('unavailable'), { code: 'unavailable', retryable: false })); return; }
+            if(res.status >= 500 || res.status === 429){ guard.fail(iv, data.error); return; }
+            clearInterval(iv); reject(new Error(data.error)); return; /* 4xx نهائيّ (مهمّة مجهولة…) لا يُنتظر ٣٠ ث */
+          }
           guard.ok();
-          if(data.error){ clearInterval(iv); reject(new Error(data.error)); return; }
           if(data.status === 'SUCCEEDED'){
             clearInterval(iv);
             resolve(Array.isArray(data.output) ? data.output[0] : data.output);
           } else if(data.status === 'FAILED'){
             clearInterval(iv);
             let reason = data.failure || data.failureCode || (data.error) || '';
-            if(/moderation|SAFETY|content did not pass/i.test(reason)){
+            const moderated = /moderation|SAFETY|content did not pass/i.test(reason);
+            if(moderated){
               reason = bT('الرقابة رفضت المحتوى — جرّب وصفًا أهدأ (بدون عنف أو خطر)، أو شِل صورة الشخص وحاول من جديد.','Content was rejected by safety filters — try a calmer description, or remove the person photo.');
             }
-            reject(new Error((bT('فشل إنشاء الفيديو.','Video generation failed.')) + (reason ? (' — ' + reason) : '')));
-          } else {
+            /* v-ai-video-speed: رفض الرقابة يتكرّر للطلب نفسه — لا يُعاد مرّتين بلا فائدة (noRetry) */
+            reject(Object.assign(new Error((bT('فشل إنشاء الفيديو.','Video generation failed.')) + (reason ? (' — ' + reason) : '')), { noRetry: moderated }));
+          } else if(data.status === 'CANCELLED'){
+            /* v-ai-video-speed: الملغاة نهائيّة — كانت تُستطلع ربع ساعة حتّى الحارس ثمّ تُعاد مرّتين (٤٥ دقيقة محاكاةً) */
+            clearInterval(iv);
+            reject(Object.assign(new Error(bT('أُلغي الفيديو عند المحرّك — أعد المحاولة.','The video was cancelled by the engine — please try again.')), { code: 'cancelled' }));
+          } else if(!quiet){
             setStatus((bT('⏳ الحالة: ','⏳ Status: ')) + (data.status || '...'));
           }
         } catch(e){ guard.fail(iv); }
@@ -625,8 +736,22 @@
     lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
   }
 
+  /* v-canvas-font: «sans-serif» يقع على خطّ أحاديّ العرض في بعض الأجهزة فتتفكّك الحروف العربيّة في فيديو القوالب —
+     Tajawal محمّل أصلًا في الموقع (Google Fonts)، ننتظر مجموعة الحروف العربيّة منه (مهلة ٢٫٥ث) قبل الرسم */
+  const CANVAS_FONT = "Tajawal, 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif";
+  function canvasFontsReady(text){
+    try{
+      if(!document.fonts || !document.fonts.load) return Promise.resolve();
+      const sample = String(text || '') + ' عربي';
+      return Promise.race([
+        Promise.all([document.fonts.load('bold 40px Tajawal', sample), document.fonts.load('40px Tajawal', sample)]),
+        new Promise((r) => setTimeout(r, 2500)),
+      ]).catch((e) => { __swallow(e, 'video:canvas-font'); });
+    }catch(e){ __swallow(e, 'video:canvas-font'); return Promise.resolve(); }
+  }
+
   function recordCanvasClip({ title, signature, seconds, ratio }){
-    return new Promise((resolve, reject) => {
+    return canvasFontsReady(String(title || '') + ' ' + String(signature || '')).then(() => new Promise((resolve, reject) => {
       const { w, h } = ratioDims(ratio);
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
@@ -665,13 +790,13 @@
         if(title){
           ctx.fillStyle = '#fff';
           ctx.textAlign = 'center';
-          ctx.font = 'bold ' + Math.round(w * 0.045) + 'px sans-serif';
+          ctx.font = 'bold ' + Math.round(w * 0.045) + 'px ' + CANVAS_FONT;
           wrapCanvasText(ctx, title, w / 2, h / 2, w * 0.8, Math.round(w * 0.06));
         }
         if(signature){
           ctx.fillStyle = 'rgba(255,255,255,0.85)';
           ctx.textAlign = 'center';
-          ctx.font = Math.round(w * 0.028) + 'px sans-serif';
+          ctx.font = Math.round(w * 0.028) + 'px ' + CANVAS_FONT;
           ctx.fillText(signature, w / 2, h - h * 0.08);
         }
         raf = requestAnimationFrame(draw);
@@ -682,7 +807,7 @@
         cancelAnimationFrame(raf);
         recorder.stop();
       }, Math.max(800, seconds * 1000));
-    });
+    }));
   }
 
   function makeWatermarkPng(signature, ratio){
@@ -693,7 +818,7 @@
       canvas.width = w; canvas.height = barH;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = Math.round(barH * 0.5) + 'px sans-serif';
+      ctx.font = Math.round(barH * 0.5) + 'px ' + CANVAS_FONT;
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'right';
       const textW = ctx.measureText(signature).width + 24;
@@ -711,10 +836,24 @@
     const inName = isWebmSource ? 'vin.webm' : 'vin.mp4';
     await ffmpeg.writeFile(inName, await fetchFile(videoSrc));
     await ffmpeg.writeFile('ain.mp3', await fetchFile(audioBlob));
-    const vcodec = isWebmSource ? ['-c:v', 'libx264', '-pix_fmt', 'yuv420p'] : ['-c:v', 'copy'];
-    await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', ...vcodec, '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.mp4']);
-    const data = await ffmpeg.readFile('muxout.mp4');
-    return new Blob([data.buffer], { type: 'video/mp4' });
+    /* v-canvas-mux-fast: إعادة ترميز libx264 داخل المتصفّح (خيط واحد) كانت تعلق دقائق عند «جاري دمج الصوت» لفيديو القوالب —
+       الآن ننسخ صورة WebM كما هي ونضيف الصوت (opus) بأقلّ من ثانية؛ ترميز ultrafast احتياط فقط، وكلّ خطوة لها مهلة.
+       apad + shortest: الفيديو يبقى بالمدّة المختارة (كان تعليق ٥ث يقصّ فيديو ١٠ث إلى ٥ث) والتعليق الأطول يُقصّ عند نهايته */
+    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); }catch(e){ __swallow(e, 'video:mux-any-clean'); } };
+    try{
+      if(isWebmSource){
+        if(await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', '-c:v', 'copy', '-c:a', 'libopus', '-af', 'apad', '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.webm'], 60000) === 0){
+          const w = await ffmpeg.readFile('muxout.webm');
+          if(w && w.length > 1000) return new Blob([w.buffer], { type: 'video/webm' });
+        }
+      }
+      const vcodec = isWebmSource ? ['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'] : ['-c:v', 'copy'];
+      if(await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', ...vcodec, '-af', 'apad', '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.mp4'], 180000) !== 0) throw new Error('mux failed');
+      const data = await ffmpeg.readFile('muxout.mp4');
+      return new Blob([data.buffer], { type: 'video/mp4' });
+    } finally {
+      for(const f of [inName, 'ain.mp3', 'muxout.webm', 'muxout.mp4']) await rm(f);
+    }
   }
 
   async function runCanvasOnly(text, ratio, seconds, signature, wantNarration, narrationVal){
@@ -727,7 +866,7 @@
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -741,6 +880,7 @@
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
+    downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
     downloadEl.style.display = 'block';
     autoSaveVideo(finalUrl);
   }
@@ -752,7 +892,7 @@
     setStatus(bT('🎨 جاري إنشاء الخاتمة...','🎨 Building outro...'));
     const outroBlob = await recordCanvasClip({
       title: '',
-      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة صانع فيديو عمران','Made with Omran AI Video')),
+      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة om ai','Made with om ai Video')),
       seconds: 2, ratio,
     });
 
@@ -804,7 +944,7 @@
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -819,8 +959,58 @@
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
+    downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
     downloadEl.style.display = 'block';
     autoSaveVideo(finalUrl);
+  }
+
+  /* v-ai-video-speed (المالك ١٦ أكتوبر: «طول كثير»): «جودة أعلى» كانت ترقية ثانية كاملة عند المزوّد بعد اكتمال الفيديو، والفيديو الجاهز
+     مخفيّ حتّى تنتهي (حتّى حارس الربع ساعة، وفشلها مبلوع). الآن يظهر الفيديو فور جاهزيّته، والترقية تجري في الخلفية بحالة هادئة
+     (✅/✨ لا تُظهر بطاقة الانتظار فوق النتيجة) ثمّ تستبدل المشغّل ورابط التحميل — ومع التعليق الصوتيّ يُدمَج الصوت نفسه على النسخة
+     الأعلى. runSeq: طلب أحدث بدأ = لا استبدال. */
+  let genSeq = 0;
+  async function upgradeInBackground(rawUrl, token, audioBlob, runSeq){
+    setStatus(bT('✅ الفيديو جاهز — ✨ نجهّز نسخة أعلى جودة في الخلفية وتستبدله تلقائيًّا…','✅ Video ready — ✨ preparing a higher-quality version in the background…'));
+    try{
+      const upRes = await fetch('/api/video-upscale-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl: rawUrl, token, resolution: '2k' }),
+      });
+      const upData = await upRes.json();
+      if(!upRes.ok || upData.error || !upData.id) throw new Error(upData.error || 'upscale');
+      const upUrl = await pollTaskOnce(upData.id, true);
+      if(runSeq !== genSeq) return;
+      let player, dl;
+      if(audioBlob){
+        const merged = await muxNarration(upUrl, audioBlob);
+        player = URL.createObjectURL(merged); dl = player;
+      } else {
+        dl = proxyVideoUrl(upUrl);
+        try{
+          const vres = await proxyFetch(upUrl);
+          if(!vres.ok) throw new Error('proxy ' + vres.status);
+          player = URL.createObjectURL(await vres.blob());
+        } catch(e){ player = upUrl; } // آخر ملاذ للمشغّل فقط (كالمسار الأساسيّ v525)
+      }
+      if(runSeq !== genSeq) return;
+      const at = resultEl.currentTime || 0, wasPlaying = !resultEl.paused, old = resultEl.src;
+      resultEl.src = player;
+      try{ resultEl.currentTime = at; }catch(e){ /* guard-ok — بعض المتصفّحات ترفض قبل التحميل؛ يبدأ من أوّله */ }
+      /* المشغّل بخاصيّة autoplay: تبديل المصدر يشغّله ولو أوقفه المستخدم أو أغلق النافذة (صوت التعليق من نافذة مغلقة) */
+      if(wasPlaying) resultEl.play().catch(function(){ /* autoplay may be blocked */ }); else resultEl.pause();
+      downloadEl.href = dl;
+      if(/^blob:/.test(old || '') && old !== dl && old !== player){ try{ URL.revokeObjectURL(old); }catch(e){ __swallow(e, 'video:revoke'); } }
+      setStatus(bT('✅ تم — صار الفيديو بجودة أعلى.','✅ Done — upgraded to higher quality.'));
+    } catch(e){
+      if(runSeq === genSeq) setStatus(bT('✅ تم الانتهاء! (تعذّرت النسخة الأعلى جودة — فيديوك الحاليّ جاهز)','✅ Done! (The higher-quality version was unavailable — your video is ready)'));
+    }
+  }
+
+  /* v-ai-video-speed: «إلغاء» في نافذة الخصم يرجع ردّ 428 نفسه مقروء الجسم — كان json() يرمي («body stream already read» خامًا في
+     السينمائيّ والاقتصاديّ)، وفي createScene يُعاد الطلب بعد ٦ و١٢ ث وتُفتح النافذة ثانيةً */
+  function throwIfDeclined(res){
+    if(res && res.status === 428) throw Object.assign(new Error((typeof window.t === 'function' && window.t('vidCancelled') !== 'vidCancelled') ? window.t('vidCancelled') : 'cancelled'), { code: 'confirm_declined' });
   }
 
   async function createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime){
@@ -832,8 +1022,9 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }));
+    throwIfDeclined(res);
     const data = await res.json();
-    if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error, retryAfter: data.retryAfter || 0 });
+    if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error, retryAfter: data.retryAfter || 0, retryable: data.retryable });
     return data.id;
   }
 
@@ -844,12 +1035,13 @@
   // with the video description. To make this invisible to the user, we
   // automatically recreate and retry the task a couple of times (with a
   // short backoff) before giving up and showing a real error.
-  async function createSceneWithRetry(text, style, duration, ratio, token, longMode, onRetryStatus, imageBase64, imageMime){
+  async function createSceneWithRetry(text, style, duration, ratio, token, longMode, onRetryStatus, imageBase64, imageMime, onAccepted){
     const maxAttempts = 3;
     let lastErr;
     for(let attempt = 1; attempt <= maxAttempts; attempt++){
       try{
         const id = await createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime);
+        if(onAccepted){ try{ onAccepted(id); }catch(e){ __swallow(e, 'video:accepted'); } } /* v-ai-video-speed: المزوّد قبِل — ما يُجهَّز بالتوازي يبدأ الآن */
         const url = await pollTaskOnce(id);
         return url;
       } catch(e){
@@ -859,6 +1051,8 @@
         if(e && e.code === 'owner_only') throw e;
         /* v-video-refund: مهلة الثلاث دقائق لا تُعالَج بإعادة بعد ٦ ثوانٍ — ارفعها للمستخدم برسالة مفهومة. */
         if(e && e.code === 'video_cooldown') throw e;
+        /* v-ai-video-speed: ما لا تحلّه الإعادة لا يُعاد — إلغاء الخصم، نفاد النقاط، رفض دائم للطلب (retryable:false)، ورفض الرقابة */
+        if(e && (e.code === 'confirm_declined' || e.code === 'points_insufficient' || e.retryable === false || e.noRetry)) throw e;
         if(attempt < maxAttempts){
           if(onRetryStatus) onRetryStatus(attempt, maxAttempts);
           await new Promise((r) => setTimeout(r, 6000 * attempt));
@@ -904,6 +1098,36 @@
     const el = document.querySelector('input[name="videoVoiceGender"]:checked');
     return el ? el.value : 'female';
   }
+
+  /* v-video-voice-speed (المالك ١٨ أكتوبر: «التعليق الصوتي في صانع الفيديو بطيء — فحصت «جرّب التطبيق وشوفوه» أخذت 2.7 ثانية مع وقفات
+     بين الكلمات والطبقة طبيعية؛ السبب إنّ صانع الفيديو ما يرسل speed لـ/api/tts فيطلع دائمًا normal»): كلّ نداء صوت في صانع الفيديو يرسل speed
+     (الافتراضيّ «fast» = +١٠٪ native في Azure/OpenAI، لا playbackRate فلا تتغيّر الطبقة) من اختيار «سرعة الصوت» جنب «إضافة تعليق صوتي»،
+     والنصّ يُنظَّف قبل الإرسال: «...» و«…» والفواصل المتتالية أو الزائدة تصنع وقفات في الصوت. window.__vmkVoice يشاركه video.js (المخرج) وvideo-edit.js. */
+  const NARRATION_SPEEDS = ['normal', 'fast', 'xfast'];
+  const NARRATION_SPEED_KEY = 'aiapp_video_voice_speed';
+  function getNarrationSpeed(){
+    const el = document.getElementById('videoMakerNarrationSpeed');
+    const v = el ? el.value : '';
+    return NARRATION_SPEEDS.indexOf(v) >= 0 ? v : 'fast';
+  }
+  function cleanNarrationText(t){
+    let s = String(t == null ? '' : t);
+    s = s.replace(/(?:\.{2,}|[…⋯])+/g, ' ');            // «...» و«…» ← مسافة (كانت وقفة طويلة)
+    s = s.replace(/([,،])(?:\s*[,،])+/g, '$1');          // فواصل متتالية ← واحدة
+    s = s.replace(/\s+([,،.!?؟:])/g, '$1');              // لا مسافة قبل العلامة
+    s = s.replace(/[,،]+(\s*)([.!?؟])/g, '$2$1');        // فاصلة قبل نقطة/تعجّب/سؤال ← تسقط
+    s = s.replace(/^[\s,،]+/, '');                        // فاصلة أو مسافة في الأوّل
+    s = s.replace(/[ \t]{2,}/g, ' ');
+    return s.trim();
+  }
+  (function(){
+    const sel = document.getElementById('videoMakerNarrationSpeed');
+    if(sel){
+      try{ const saved = localStorage.getItem(NARRATION_SPEED_KEY); if(NARRATION_SPEEDS.indexOf(saved) >= 0) sel.value = saved; }catch(e){ /* guard-ok — بلا تخزين: الافتراضيّ سريع */ }
+      sel.addEventListener('change', () => { try{ localStorage.setItem(NARRATION_SPEED_KEY, getNarrationSpeed()); }catch(e){ /* guard-ok — تفضيل فقط */ } });
+    }
+    window.__vmkVoice = { speed: getNarrationSpeed, clean: cleanNarrationText };
+  })();
 
   (function(){
     const btn = document.getElementById('videoMakerHeroBtn');
@@ -977,12 +1201,12 @@
   btnGenerate.onclick = async () => {
     const text = (promptEl.value || '').trim();
     if(!text && modeEl.value !== 'actor'){
-      setStatus((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (bT('⚠️ اكتب وصف الفيديو أولًا.','⚠️ Please describe the video first.')));
+      showNotice((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (bT('⚠️ اكتب وصف الفيديو أولًا.','⚠️ Please describe the video first.'))); // v-actor-notice: كان يُكتب فوق الشاشة في الجوّال
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
-      setStatus(bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.'));
+      showNotice(bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.')); // v-actor-notice
       return;
     }
 
@@ -996,19 +1220,31 @@
     const wantNarration = narrationToggle.checked;
     const wantQuality = qualityToggle.checked && !isLong;
 
+    const runSeq = ++genSeq; /* v-ai-video-speed: ترقية الجودة في الخلفية لا تستبدل نتيجة طلب أحدث — يُعدّ هنا بعد التحقّق (نقرة بلا وصف لا تُسقط ترقية مدفوعة) */
+    let scenesDone = 0; /* v-ai-video-speed: مشاهد اكتملت (وحُسبت) قبل إلغاء نافذة خصم مشهد لاحق */
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
+    downloadEl.download = 'omran-ai-video.mp4'; // v-vmk-dl-ext: الافتراضيّ قبل كلّ توليد
+    /* v-vmk-res-mode: النتيجة تُوسَم بالوضع الذي ينتجها — video.js يخفيها ويوقفها في غيره (كان فيديو القوالب المجّانيّ يظهر في «فيديو AI»). */
+    resultEl.dataset.mode = modeEl.value;
 
     function friendlyError(err){
-      const code = err && err.code;
+      const code = err && (err.code || err.message); // v-credit-out: استطلاعات المحرّكات ترمي الرمز رسالةً (new Error(d.error))
+      /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الفيديو نفد أو عطب عندنا — النصّ القائم بالـ14 لغة، والنقاط رُدّت في الخادم */
+      if(code === 'unavailable' && typeof window.t === 'function') return '⚠️ ' + window.t('svcPaused');
+      if((code === 'video_busy' || code === 'video_rejected') && typeof window.t === 'function') return '⚠️ ' + window.t(code === 'video_busy' ? 'vidBusy' : 'vidRejected'); // v-vid-codes
       if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
-      if(code === 'daily_limit_reached') return isEn() ? "⏳ You have reached today's free video limit. Try again tomorrow." : '⏳ لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
+      /* v-ai-video-speed: ⏳ «مشغول» في بطاقة الانتظار — رسالة الخطأ به كانت تُبقي بطاقة «يتولّد» وعدّادها فوق المشهد بلا نهاية → 🕒 */
+      if(code === 'daily_limit_reached') return isEn() ? "🕒 You have reached today's free video limit. Try again tomorrow." : '🕒 لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
       /* v-video-refund: بدل رمز «video_cooldown» الخام — مهلة بين فيديو وآخر، والانتظار بالدقائق. */
       if(code === 'video_cooldown'){
         const m = Math.max(1, Math.ceil((Number(err && err.retryAfter) || 180) / 60));
-        return isEn() ? ('⏳ One video every few minutes. Try again in about ' + m + ' min.') : ('⏳ فيديو واحد كل بضع دقائق. جرّب بعد ' + m + ' دقيقة تقريبًا.');
+        return isEn() ? ('🕒 One video every few minutes. Try again in about ' + m + ' min.') : ('🕒 فيديو واحد كل بضع دقائق. جرّب بعد ' + m + ' دقيقة تقريبًا.');
       }
+      /* v-ai-video-speed: الإلغاء سطر هادئ بلا ❌، ونفاد النقاط بنصّ الباقات القائم (١٤ لغة) لا الرمز الخامّ */
+      if(code === 'confirm_declined') return scenesDone > 0 ? bT('⛔ توقّف الفيديو عند إلغائك — المشاهد التي اكتملت قبله حُسبت.','⛔ Stopped at your cancel — the scenes completed before it were charged.') : err.message;
+      if(code === 'points_insufficient' && typeof window.t === 'function' && window.t('plansWhyPoints') !== 'plansWhyPoints') return '⚠️ ' + window.t('plansWhyPoints');
       return (bT('❌ خطأ: ','❌ Error: ')) + (err && err.message ? err.message : String(err));
     }
 
@@ -1129,6 +1365,7 @@
                   ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
                   : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
               }, filmHeroBase64, filmHeroMime));
+          scenesDone++;
           setStatus((bT('🎙️ جاري تسجيل سرد المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
@@ -1137,7 +1374,7 @@
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -1187,16 +1424,16 @@
         resultEl.onended = null;
         // دائماً ندمج — حتى على هواوي (الدمج يعمل بالجهاز لا بالسيرفر)
         setStatus(bT('🔗 جاري دمج كل المشاهد بالفيلم النهائي...','🔗 Merging all scenes into your final film...'));
-        let finalUrl = null;
+        let finalUrl = null, finalType = ''; // v-vmk-dl-ext
         try{
           const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
             setStatus((bT('🔗 جاري دمج المشهد ','🔗 Merging scene ')) + (i + 1) + '/' + total + '...');
           });
-          finalUrl = URL.createObjectURL(finalBlob);
+          finalUrl = URL.createObjectURL(finalBlob); finalType = finalBlob.type;
         } catch(e){
           try{
             const blob = await concatScenes(builtScenes.map(s => s.videoUrl));
-            finalUrl = URL.createObjectURL(blob);
+            finalUrl = URL.createObjectURL(blob); finalType = blob.type;
             setStatus(bT('⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.','⚠️ Narration merge failed; film merged without narration.'));
           } catch(e2){
             finalUrl = null;
@@ -1207,7 +1444,7 @@
           resultEl.src = finalUrl;
           resultEl.style.display = 'block';
           downloadEl.href = finalUrl;
-          downloadEl.download = 'omran-film.mp4'; // يجبر المتصفح على التحميل لا الفتح
+          downloadEl.download = dlName('omran-film', finalType); // يجبر المتصفح على التحميل لا الفتح — v-vmk-dl-ext: والامتداد من نوع الملفّ
           downloadEl.style.display = 'block';
         } else {
           // آخر ملاذ: عرض المشاهد ورا بعض مع روابط تحميل منفصلة
@@ -1233,6 +1470,7 @@
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=omni-create', payload)
           : fetch('/api/video?action=omni-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
+        throwIfDeclined(cr);
         const d = await cr.json();
         if(!cr.ok || d.error) throw Object.assign(new Error(d.error || 'omni failed'), { code: d.error });
         const videoUrl = d.url || d.dataUrl;
@@ -1267,6 +1505,7 @@
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=minimax-create', payload)
           : fetch('/api/video?action=minimax-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
+        throwIfDeclined(cr);
         const crData = await cr.json();
         if(!cr.ok || crData.error || !crData.task_id) throw Object.assign(new Error(crData.error || 'create failed'), { code: crData.error });
         const videoUrl = await new Promise((resolve, reject) => {
@@ -1306,7 +1545,7 @@
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
-          setStatus(bT('🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic engine is limited to the owner account for now.'));
+          showNotice(bT('🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic engine is limited to the owner account for now.')); // v-actor-notice
           return;
         }
         let veoPrompt = text;
@@ -1314,7 +1553,7 @@
           const speechEl = document.getElementById('videoMakerActorSpeech');
           const speech = speechEl ? speechEl.value.trim() : '';
           if(!speech){
-            setStatus(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.'));
+            showNotice(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.')); // v-actor-notice
             return;
           }
           /* v-actor-lipsync (المالك ٢ أكتوبر: «الصوت المتحدث ليس دقيق في اللهجة الإماراتية والكلام عربي ضعيف جدًّا»): Veo يخترع
@@ -1476,7 +1715,7 @@
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -1494,6 +1733,7 @@
         resultEl.src = finalUrl;
         resultEl.style.display = 'block';
         downloadEl.href = finalUrl;
+        downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
         downloadEl.style.display = 'block';
       } catch(e){
         setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
@@ -1505,6 +1745,18 @@
 
     try{
       let sceneUrls = [];
+      /* v-ai-video-speed: التعليق الصوتيّ يتجهّز مع الفيديو لا بعده (كان يبدأ بعد اكتماله)، ومحرّك الدمج (٣١ ميغا) يُحمَّل بالتوازي —
+         من لحظة قبول المزوّد (onAccepted) لا من الضغطة: إلغاء نافذة الخصم أو الرصيد أو المهلة لا يستهلك نداء صوت من السقف اليوميّ. */
+      let ttsEarly = null;
+      const startNarration = () => {
+        if(!wantNarration || ttsEarly) return;
+        ttsEarly = fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+        }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
+        getFFmpeg().catch(() => null);
+      };
       const okBal2 = await ensureRunwayCredits(isLong ? 100 : 50);
       if(!okBal2){ btnGenerate.disabled = false; return; }
       if(isLong){
@@ -1518,8 +1770,8 @@
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-          }, filmHeroBase64, filmHeroMime));
-          sceneUrls.push(url);
+          }, filmHeroBase64, filmHeroMime, startNarration));
+          sceneUrls.push(url); scenesDone++;
         }
       } else {
         setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
@@ -1527,7 +1779,7 @@
           setStatus(isEn()
             ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
             : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-        }, filmHeroBase64, filmHeroMime);
+        }, filmHeroBase64, filmHeroMime, startNarration);
         sceneUrls.push(url);
       }
 
@@ -1545,39 +1797,19 @@
         }
       }
 
-      if(wantQuality){
-        try{
-          setStatus(bT('🔎 جاري ترقية جودة الفيديو...','🔎 Upscaling video quality...'));
-          const upRes = await fetch('/api/video-upscale-create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ videoUrl: sceneUrls[0], token, resolution: '2k' }),
-          });
-          const upData = await upRes.json();
-          if(upRes.ok && !upData.error){
-            const upUrl = await pollTaskOnce(upData.id);
-            finalSrc = upUrl;
-            finalIsBlob = false;
-          }
-        } catch(e){ /* upscale is a best-effort enhancement; ignore failures */ }
-      }
-
+      let narrationBlob = null;
       if(wantNarration){
         try{
           setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
-          const narrationInput = (narrationText.value || '').trim() || text;
-          const ttsRes = await fetch('/api/tts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
-          });
-          if(ttsRes.ok){
-            const audioBlob = await ttsRes.blob();
+          startNarration(); // احتياط: لم يُنادَ onAccepted (لا يحدث في هذا المسار)
+          const audioBlob = await ttsEarly;
+          if(audioBlob){
             setStatus(bT('🎚️ جاري إضافة التعليق الصوتي للفيديو...','🎚️ Adding narration to the video...'));
             const merged = await muxNarration(finalSrc, audioBlob);
             finalSrc = merged;
             finalIsBlob = true;
-          }
+            narrationBlob = audioBlob;
+          } else throw new Error('tts');
         } catch(e){
           setStatus(bT('⚠️ تعذّر إضافة التعليق الصوتي؛ سيتم عرض الفيديو بدونه.','⚠️ Could not add narration; showing the video without it.'));
         }
@@ -1606,7 +1838,10 @@
       resultEl.style.display = 'block';
       resultEl.play().catch(function(){ /* autoplay may be blocked */ });
       downloadEl.href = dlUrl;
+      downloadEl.download = finalIsBlob ? dlName('omran-ai-video', finalSrc && finalSrc.type) : 'omran-ai-video.mp4'; // v-vmk-dl-ext
       downloadEl.style.display = 'block';
+      /* v-ai-video-speed: الترقية بعد ظهور الفيديو لا قبله (مشهد واحد؛ الطويل بلا ترقية أصلًا) */
+      if(wantQuality && sceneUrls.length === 1) upgradeInBackground(sceneUrls[0], token, narrationBlob, runSeq);
     } catch(e){
       setStatus(friendlyError(e));
     } finally {

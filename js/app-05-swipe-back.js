@@ -56,7 +56,8 @@
       try{ if(el.__omranSwipeBackStep()) return true; }catch(e){ /* guard-ok */ }
     }
     var btn = el && document.getElementById(MAP[el.id]);
-    if(btn){ try{ swipeClickGuardUntil = 0; btn.click(); return true; }catch(e){ /* guard-ok */ } }
+    /* v-maha-app: أثناء مكالمة مها كانت مراقبة الإغلاق تبتلع هذه النقرة البرمجيّة فتنتهي المكالمة وتبقى النافذة — السحب وEsc يغلقان النافذة وحدها */
+    if(btn){ try{ swipeClickGuardUntil = 0; if(typeof mahaActing === 'number') mahaActing++; try{ btn.click(); }finally{ if(typeof mahaActing === 'number') mahaActing--; } if(typeof mahaAppWinSync === 'function') mahaAppWinSync(); return true; }catch(e){ /* guard-ok */ } }
     return false;
   }
   /* الجزء الذي يتحرك مع الإصبع: صندوق المحتوى (أول ابن كبير) وإلا الحاوية نفسها */
@@ -202,7 +203,10 @@
       if(!el || el.__omranSwipe) return;
       el.__omranSwipe = true;
       bind(el);
+      backWatch(el, ['class', 'style', 'hidden']);
     });
+    var sd = document.getElementById('settingsDialog');
+    if(sd && !sd.__omranBackWatch) backWatch(sd, ['open']);
   }
 
   /* شاشة التعليم داخل إطار: السحب فيها يصل رسالةً من الإطار */
@@ -219,15 +223,101 @@
   }catch(e){ /* guard-ok */ }
 
   /* Esc يغلق أعلى أداة مفتوحة (الكمبيوتر) */
+  /* v-back-layers (تدقيق ١٨–١٩ أكتوبر): Esc طبقة واحدة. نافذة dialog مشروطة (ورقة الباقات فوق صانع الفيديو) يغلقها
+     Esc الأصليّ — كنّا نغلق الأداة تحتها ثمّ نلغي إغلاقها بـpreventDefault. وما سبق إليه مستمع التقاط (عارض الصور،
+     مشغّل الأمثلة، عارض الاقتراحات) لا نمسّه. */
+  function modalOpen(){
+    try{ return !!document.querySelector('dialog:modal'); }
+    catch(err){ return !!document.querySelector('dialog[open]'); /* محرّك بلا :modal */ }
+  }
   document.addEventListener('keydown', function(e){
-    if(e.key !== 'Escape') return;
+    if(e.key !== 'Escape' || e.defaultPrevented || modalOpen()) return;
     var t = topTool();
     if(t && closeTool(t)) e.preventDefault();
   });
+
+  /* v-back-layers (تدقيق ١٨–١٩ أكتوبر: «زرّ الرجوع يطلّعك من التطبيق بدل ما يسكّر الأدوات»): فتح الأداة لم يكن يضيف
+     مدخلًا في التاريخ (الوحيد «عرض الكل» في app-10)، وغلاف أندرويد يرجع فقط إن canGoBack() — فرجوع المتصفّح وزرّ
+     أندرويد كانا يغادران التطبيق. الآن كلّ طبقة (أدوات MAP، والإعدادات/الباقات) تأخذ مدخلًا لحظة فتحها؛ الرجوع يغلق
+     أعلاها بمنطق إغلاقها نفسه، وإغلاقها بالسحب أو Esc أو الكود وهي المدخل الحاليّ يسحب مدخلها بـhistory.back() تحت
+     علم تجاهل — فلا إغلاق مزدوج ولا تتكدّس المدخلات. لا ✕ ولا زرّ رجوع جديد (v-swipe-back). المدخل يحمل معرّف
+     الجلسة: حالة بقيت من قبل إعادة التحميل ليست لنا فلا نسحبها (قد يكون تحتها مستند آخر). */
+  var BACK_SID = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  var backSeq = 0, backStack = [], backIgnore = 0, backIgnoreTimer = 0, backTimer = 0;
+  var backMo = (typeof MutationObserver === 'function') ? new MutationObserver(backSchedule) : null;
+  function backOurs(st){ return !!(st && st.omranSid === BACK_SID && st.omranSeq); }
+  function backState(){ try{ return history.state; }catch(e){ return null; /* بيئة بلا تاريخ */ } }
+  function backWatch(el, attrs){
+    el.__omranBackWatch = true;
+    if(backMo){ try{ backMo.observe(el, { attributes: true, attributeFilter: attrs }); }catch(e){ /* guard-ok */ } }
+    backSchedule();
+  }
+  function backSchedule(){ if(!backTimer) backTimer = setTimeout(function(){ backTimer = 0; backSync(); }, 0); }
+  function zOf(el){ return parseInt(getComputedStyle(el).zIndex || '0', 10) || 0; }
+  function openLayers(){
+    var els = [];
+    Object.keys(MAP).forEach(function(id){ var el = document.getElementById(id); if(visible(el)) els.push(el); });
+    els.sort(function(a, b){ return (zOf(a) - zOf(b)) || ((a.compareDocumentPosition(b) & 4) ? -1 : 1); });
+    var ids = els.map(function(el){ return el.id; });
+    var sd = document.getElementById('settingsDialog');
+    if(sd && sd.hasAttribute('open')) ids.push('settingsDialog');
+    return ids;
+  }
+  function backPop(){
+    backIgnore++;
+    clearTimeout(backIgnoreTimer);
+    backIgnoreTimer = setTimeout(function(){ backIgnore = 0; backSchedule(); }, 1500);
+    try{ history.back(); }catch(e){ backIgnore = 0; /* بلا تاريخ: لا popstate ننتظره */ }
+  }
+  function backSync(){
+    if(backIgnore) return; /* رجوع منّا لم يصل بعد: نكمل عند popstate (دفعٌ قبله يسابقه) */
+    var open = openLayers(), st = backState(), cur = backOurs(st) ? st.omranSeq : 0, popCur = false;
+    backStack = backStack.filter(function(x){
+      if(open.indexOf(x.id) >= 0) return true;
+      if(x.seq === cur) popCur = true;
+      return false;
+    });
+    if(popCur){ backPop(); return; }
+    open.forEach(function(id){
+      if(backStack.some(function(x){ return x.id === id; })) return;
+      var below = backState(), seq = ++backSeq;
+      try{ history.pushState({ omranTool: id, omranSeq: seq, omranSid: BACK_SID }, '', location.href); }catch(e){ return; /* سقف pushState في سفاري */ }
+      backStack.push({ id: id, seq: seq, all: (below && below.omranToolsAll) || 0 });
+    });
+  }
+  function closeLayer(id){
+    var el = document.getElementById(id);
+    if(id === 'settingsDialog'){
+      if(el && el.hasAttribute('open')){ try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(el); else el.close(); }catch(e){ /* guard-ok */ } }
+      return;
+    }
+    if(visible(el)) closeTool(el);
+  }
+  window.addEventListener('popstate', function(){
+    var st = backState(), drop = [];
+    if(backIgnore){ backIgnore--; if(!backIgnore) clearTimeout(backIgnoreTimer); }
+    else {
+      if(backOurs(st)) drop = backStack.filter(function(x){ return x.seq > st.omranSeq; });
+      else if(st && st.omranToolsAll){
+        /* «عرض الكل» (app-10) مستوى داخل شاشة الأدوات: نغلق ما فُتح فوقه فقط، والمستوى نفسه لـapp-10 */
+        for(var i = 0; i < backStack.length; i++){ if(backStack[i].all === st.omranToolsAll){ drop = backStack.slice(i); break; } }
+      }
+      else drop = backStack.slice();
+      backStack = backStack.filter(function(x){ return drop.indexOf(x) < 0; });
+      drop.reverse().forEach(function(x){ closeLayer(x.id); });
+    }
+    /* مدخل أداة أغلقها الكود وهو ليس الحاليّ (تحت أداة أخرى): نتخطّاه فلا تضيع ضغطة رجوع */
+    if(backOurs(st) && !backStack.some(function(x){ return x.seq === st.omranSeq; })){ backPop(); return; }
+    backSchedule();
+  });
+  /* الشاشات التي تُنشأ عند فتحها (التلفزيون، القبلة، الاقتراحات) تُلحق بـbody: نربطها ونراقبها لحظتها */
+  try{ if(backMo && document.body) new MutationObserver(function(){ ensureBound(); }).observe(document.body, { childList: true }); }catch(e){ /* guard-ok */ }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureBound); else ensureBound();
   setInterval(ensureBound, 900);
   /* الشاشات التي تُنشأ عند فتحها (التلفزيون): نربطها لحظة أول لمسة قبل وصول الحدث إليها */
   document.addEventListener('touchstart', ensureBound, { capture: true, passive: true });
-  window.omranSwipeBack = { close: function(){ var t = topTool(); return t ? closeTool(t) : false; }, top: topTool };
+  /* v-maha-win-touch: ids/sheet لمراقبة إغلاق مها — «داخل النافذة» يُقرأ من الخريطة نفسها لا من نسخة */
+  window.omranSwipeBack = { close: function(){ var t = topTool(); return t ? closeTool(t) : false; }, top: topTool,
+    ids: function(){ return Object.keys(MAP); }, sheet: function(id){ return !!SELF[id]; } };
 })();
