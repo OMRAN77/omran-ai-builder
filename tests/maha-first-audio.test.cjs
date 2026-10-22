@@ -12,7 +12,9 @@ const root = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 const SRC = read('js/app-08-maha.js');
 const between = (s, a, b) => { const i = s.indexOf(a); const j = s.indexOf(b, i); assert.ok(i >= 0 && j > i, a); return s.slice(i, j + b.length); };
-const HELPERS = between(SRC, 'const MAHA_RT_SILENT_WAV = ', "__swallow(err, 'maha:rt-note'); }\n}");
+// v-maha-unlock-wav: الصمت صار ثابتًا واحدًا أعلى الملفّ (MAHA_SILENT_WAV) يستعمله التفعيلان
+const WAV = /const MAHA_SILENT_WAV = '([^']+)';/.exec(SRC)[1];
+const HELPERS = between(SRC, 'let mahaRtAudioOk = false', "__swallow(err, 'maha:rt-note'); }\n}");
 const GREET = between(SRC, "if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){", "__swallow(e, 'maha:greet'); }\n        });\n      }");
 const flush = () => new Promise((r) => setImmediate(r));
 
@@ -47,7 +49,7 @@ function sandbox() {
     __swallow() {}, JSON, Math, Promise, String, Error,
   };
   vm.createContext(ctx);
-  vm.runInContext('let mahaRtAudioEl = null, mahaRtDc = null; var mahaCallActive = true, preBufSent = false, mahaRtReconnecting = false, mahaCallMode = "assistant", lang = "ar";\n' + HELPERS
+  vm.runInContext('const MAHA_SILENT_WAV = ' + JSON.stringify(WAV) + '; let mahaRtAudioEl = null, mahaRtDc = null, mahaRtPlaying = false; var mahaCallActive = true, preBufSent = false, mahaRtReconnecting = false, mahaCallMode = "assistant", lang = "ar";\n' + HELPERS
     + '\nglobalThis.api = { get el(){ return mahaRtAudioEl; }, get ok(){ return mahaRtAudioOk; }, get responded(){ return mahaRtResponded; }, get log(){ return mahaRtLog; },'
     + ' setDc(d){ mahaRtDc = d; }, mahaRtBeginCall, mahaRtEnsureAudioEl, mahaRtPlay, mahaRtWhenAudio, mahaRtSetAudioOk, mahaRtNoteEvent, mahaRtTrace };', ctx);
   const runTimers = async () => { const due = env.timers.filter((t) => t.fn).map((t) => ({ ms: t.ms, fn: t.fn })); env.timers.forEach((t) => { t.fn = null; }); due.forEach((t) => t.fn()); await flush(); return due.map((t) => t.ms); };
@@ -227,7 +229,7 @@ test('٦. الأثر: أحداث الجلسة المهمّة وحالة response
 });
 
 test('٧. الصمت المستعمل للتفعيل ملفّ WAV صالح (الـmp3 القديم يرفضه كروم NotSupportedError)', () => {
-  const m = /const MAHA_RT_SILENT_WAV = 'data:audio\/wav;base64,([^']+)'/.exec(SRC);
+  const m = /const MAHA_SILENT_WAV = 'data:audio\/wav;base64,([^']+)'/.exec(SRC);
   assert.ok(m);
   const b = Buffer.from(m[1], 'base64');
   assert.equal(b.toString('ascii', 0, 4), 'RIFF');

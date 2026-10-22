@@ -18960,9 +18960,12 @@ let mahaCurrentAudio = null;
 // fetch/TTS) are not blocked by mobile/desktop autoplay policies.
 const mahaAudioEl = new Audio();
 mahaAudioEl.setAttribute('playsinline', '');
+/* v-maha-unlock-wav (المالك ٢١ أكتوبر «صوت التفعيل الخربان… صلّحه»): كان mp3 مبتورًا لا يُفكّ — play() يُرفض NotSupportedError في كروم،
+   فـ«التفعيل» لا يشغّل شيئًا. ١٠م.ث صمت WAV صالح، ومنه يُفعَّل عنصر المكالمة المباشرة أيضًا (v-maha-first-audio). */
+const MAHA_SILENT_WAV = 'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==';
 function mahaUnlockAudio(){
   try{
-    mahaAudioEl.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu93pgQGZgAAAA//tQxAADwAABpAAAACAAADSAAAAE';
+    mahaAudioEl.src = MAHA_SILENT_WAV;
     const p = mahaAudioEl.play();
     if(p && p.catch) p.catch(()=>{});
   }catch(e){ __swallow(e, "misc:app-08-maha#1"); }
@@ -20195,8 +20198,7 @@ let mahaRtPlaying = false; // v-maha-long-reply: صوت مها يُشغَّل ا
    كلّ إعادة اتّصال. الآن يُنشأ ويُشغَّل داخل الضغطة نفسها (mahaRtBeginCall من mahaStartCall قبل أيّ await) ويبقى للمكالمات التالية،
    وplay() صريح بعد srcObject مع إعادة محاولة، والتحيّة لا تُرسل قبل أن يشتغل العنصر فعلًا.
    الأثر (mahaRtTrace): توقيت كلّ خطوة لآخر مكالمة على هذا الجهاز بالملّي ثانية من الضغطة — تعرضه لوحة ?diag=1، ولا يُرسل لأيّ خادم. */
-const MAHA_RT_SILENT_WAV = 'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA=='; // ١٠م.ث صمت
-let mahaRtAudioOk = false, mahaRtOnAudioOk = null, mahaRtPlayTimer = 0, mahaRtPlayTries = 0, mahaRtResponded = false;
+let mahaRtAudioOk = false, mahaRtOnAudioOk = null, mahaRtPlayTimer = 0, mahaRtPlayTries = 0, mahaRtResponded = false, mahaRtAudioOkAt = 0;
 let mahaRtT0 = 0, mahaRtLog = [];
 function mahaRtTrace(s){
   try{
@@ -20227,7 +20229,7 @@ function mahaRtPrimeAudio(){
   try{
     const el = mahaRtEnsureAudioEl();
     if(el.srcObject) return;
-    el.src = MAHA_RT_SILENT_WAV;
+    el.src = MAHA_SILENT_WAV;
     const p = el.play();
     mahaRtTrace('prime play()');
     if(p && p.then) p.then(() => mahaRtTrace('prime ok'), (e) => mahaRtTrace('prime fail ' + (e && e.name)));
@@ -20242,6 +20244,7 @@ function mahaRtBeginCall(){
 function mahaRtSetAudioOk(){
   if(mahaRtAudioOk) return;
   mahaRtAudioOk = true;
+  mahaRtAudioOkAt = performance.now(); // v-maha-first-heard: منه يُحسب «سُمع» إن بدأ صوت الردّ قبل أن يشتغل العنصر
   clearTimeout(mahaRtPlayTimer);
   const fn = mahaRtOnAudioOk;
   mahaRtOnAudioOk = null;
@@ -20273,6 +20276,134 @@ function mahaRtWhenAudio(fn){
   mahaRtTrace('greet waits audio');
   mahaRtOnAudioOk = fn;
 }
+/* v-maha-first-heard (المالك ٢١ أكتوبر «أوّل ردّ ينسمع دايمًا، بدون تحية مرتين ولا صوت مكرر»): يُراقَب أوّل ردّ في المكالمة — التحيّة،
+   أو ردّها على كلام التجهيز، أو ردّ الخادم على أوّل جملة. «سُمع» = بدأ صوته والعنصر يشتغل، ثمّ انتهى أو استمرّ ٥٠٠م.ث على الأقلّ.
+   انتهى بلا سماع (أُلغي قبل صوته، أو قُطع في أوّله) ← إعادة واحدة في المكالمة يأخذها أوّل من يطلب ردًّا: حارس العميل بعد speech_stopped
+   (٠٫٣٥/١٫٥ث)، أو مؤقّت المراقبة (١٫٨ث) حين لا حارس، أو — في الوضع الطبيعيّ — ردّ الخادم الآليّ على الدور الذي قطعها: يُلغى قبل صوته
+   وتُرسل التحيّة مكانه. الحمولة: التحيّة نفسها إن كانت هي المقطوعة ولا كلام حقيقيّ، وإلّا ردّ عاديّ على كلامه.
+   «كلام حقيقيّ» من المايك نفسه: ٣٠٠م.ث مصوَّتة فأكثر من ٤٠٠م.ث قبل وصول speech_started (الحدث يصل متأخّرًا عن بدء الكلام، وأوقات الخادم تشمل
+   الحشو والصمت فتطول دائمًا)؛ ومؤشّر لا يقيس (سياق غير شغّال، صفحة مخفيّة، أو حلقة توقّفت ولو لحظة أثناء الكلام) = كلام حقيقيّ — لا يُلغى ردّ على كلام فعليّ. ردّ يستدعي أداة ليس «غير مسموع»: جوابها يأتي بعد نتيجتها ويُراقَب هو. */
+const MAHA_HEARD_MS = 500, MAHA_RECOVER_MS = 1800, MAHA_REAL_VOICE_MS = 300, MAHA_REAL_SPEECH_LVL = 8, MAHA_VAD_LAG_MS = 400, MAHA_MIC_GAP_MS = 250;
+let mahaRtFirst = null, mahaMicVoiced = [], mahaMicLastTick = 0, mahaMicGapAt = -Infinity; // [وقت، م.ث مصوَّتة] لكلّ إطار من مؤشّر المايك (آخر ١٠ث)
+function mahaRtFirstStart(dc, real){
+  mahaRtFirstStop();
+  mahaRtFirst = { dc, real: !!real, greetMsg: '', id: null, started: 0, okAtStart: false, spAt: 0, audioEnded: false, heard: false, pending: false, recovered: false, speaking: false, tool: false, swapId: null, timer: 0 };
+}
+function mahaRtFirstStop(){
+  if(mahaRtFirst && mahaRtFirst.timer) clearTimeout(mahaRtFirst.timer);
+  mahaRtFirst = null;
+}
+// مؤشّر المايك يقيس فعلًا (سياقه شغّال، وحلقته دارت للتوّ، والصفحة ظاهرة — الإطارات تتوقّف في صفحة مخفيّة) — وإلّا لا يُحكم أبدًا بأنّ الكلام غير حقيقيّ
+function mahaMicMeterLive(){
+  return !!(mahaMicMeterCtx && mahaMicMeterCtx.state === 'running' && mahaMicMeterRaf && document.visibilityState !== 'hidden'
+    && performance.now() - mahaMicLastTick < MAHA_MIC_GAP_MS);
+}
+// زمن الصوت الفعليّ في المايك منذ «from»، و-١ إن توقّف القياس لحظةً في هذه النافذة (= لا يُعرف)
+function mahaMicVoicedSince(from){
+  if(mahaMicGapAt >= from) return -1;
+  let ms = 0;
+  for(const v of mahaMicVoiced){ if(v[0] >= from) ms += v[1]; }
+  return ms;
+}
+// الإعادة الوحيدة: تُعلَّم مستعملة وتُرجع طلب التحيّة إن كانت هي المقطوعة ولا كلام حقيقيّ، وإلّا '' (ردّ عاديّ). null = لا إعادة مستحقّة.
+function mahaRtFirstTake(dc){
+  const f = mahaRtFirst;
+  if(!f || f.heard || f.recovered || !f.pending || f.dc !== dc) return null;
+  f.recovered = true;
+  f.pending = false;
+  clearTimeout(f.timer);
+  f.timer = 0;
+  const greet = !!f.greetMsg && !f.real;
+  mahaRtTrace(greet ? 'recover greet' : 'recover reply');
+  return greet ? f.greetMsg : '';
+}
+function mahaRtFirstArm(f){
+  clearTimeout(f.timer);
+  f.timer = setTimeout(() => {
+    f.timer = 0;
+    if(f !== mahaRtFirst || f.heard || f.recovered || !f.pending || f.speaking) return;
+    const dc = f.dc;
+    if(!mahaCallActive || dc !== mahaRtDc || !dc || dc.readyState !== 'open') return;
+    if(mahaRtPlaying || !mahaRtAudioOk){ mahaRtFirstArm(f); return; } // صوت يُشغَّل الآن أو العنصر لم يشتغل — لاحقًا
+    mahaClearRtResponseWatchdog(); // طلب واحد: لا يلحقه الحارس بثانٍ
+    try{ dc.send(mahaRtFirstTake(dc) || JSON.stringify({ type: 'response.create' })); }
+    catch(e){ __swallow(e, 'maha:first-recover'); }
+  }, MAHA_RECOVER_MS);
+}
+function mahaRtFirstUnheard(f){
+  if(f.heard || f.recovered || f.pending || f.tool) return;
+  f.pending = true;
+  mahaRtTrace('first unheard');
+  if(!f.speaking) mahaRtFirstArm(f); // كلام جارٍ: يُسلَّح عند speech_stopped
+}
+function mahaRtFirstOn(ev){
+  const f = mahaRtFirst;
+  if(!f || f.heard) return;
+  const t = ev.type, mine = (rid) => !rid || !f.id || rid === f.id;
+  if(t === 'input_audio_buffer.speech_started'){
+    f.speaking = true;
+    f.spAt = performance.now();
+    clearTimeout(f.timer);
+    f.timer = 0;
+  }else if(t === 'input_audio_buffer.speech_stopped'){
+    f.speaking = false;
+    const voiced = mahaMicVoicedSince((f.spAt || performance.now()) - MAHA_VAD_LAG_MS);
+    if(!mahaMicMeterLive() || voiced < 0 || voiced >= MAHA_REAL_VOICE_MS) f.real = true;
+    if(f.pending && !f.recovered) mahaRtFirstArm(f);
+  }else if(t === 'response.created'){
+    const rid = (ev.response && ev.response.id) || null;
+    clearTimeout(f.timer);
+    f.timer = 0;
+    // الوضع الطبيعيّ: الخادم يردّ آليًّا على الدور الذي قطع التحيّة. ضجيج/صدى لا كلام ← يُلغى قبل أن يصدر منه صوت، والتحيّة بعد انتهائه
+    if(f.pending && !f.recovered && f.greetMsg && !f.real && rid && f.dc === mahaRtDc){
+      f.recovered = true;
+      f.pending = false;
+      f.swapId = rid;
+      mahaClearRtResponseWatchdog();
+      mahaRtTrace('recover greet (swap)');
+      try{
+        f.dc.send(JSON.stringify({ type: 'response.cancel', response_id: rid }));
+        f.dc.send(JSON.stringify({ type: 'output_audio_buffer.clear' })); // WebRTC: الإلغاء يوقف التوليد وحده — ما تولّد منه يُمسح قبل أن يُسمع
+      }catch(e){ __swallow(e, 'maha:first-swap'); }
+      return;
+    }
+    f.pending = false; // ردّ جديد (من الخادم أو الحارس أو الإعادة أو بعد أداة) — يُراقَب هو
+    f.tool = false;
+    f.id = rid;
+    f.started = 0;
+    f.okAtStart = false;
+    f.audioEnded = false;
+  }else if(t === 'response.function_call_arguments.done'){
+    if(mine(ev.response_id)){ f.tool = true; f.pending = false; clearTimeout(f.timer); f.timer = 0; } // أداة تعمل: جوابها بعد نتيجتها هو المراقَب
+  }else if(t === 'output_audio_buffer.started'){
+    if(f.swapId && ev.response_id === f.swapId) return;
+    if(mine(ev.response_id)){ f.started = performance.now(); f.okAtStart = mahaRtAudioOk; }
+  }else if(t === 'output_audio_buffer.stopped' || t === 'output_audio_buffer.cleared'){
+    if(!f.started || !mine(ev.response_id)) return;
+    f.audioEnded = true;
+    const okFor = mahaRtAudioOk ? performance.now() - Math.max(f.started, mahaRtAudioOkAt) : 0;
+    if((f.okAtStart && mahaRtAudioOk && t === 'output_audio_buffer.stopped') || okFor >= MAHA_HEARD_MS){
+      f.heard = true;
+      clearTimeout(f.timer);
+      mahaRtTrace('first heard');
+      return;
+    }
+    mahaRtFirstUnheard(f);
+  }else if(t === 'response.done'){
+    const r = ev.response || {};
+    if(f.swapId && r.id === f.swapId){ // الردّ الآليّ المُلغى انتهى — الآن التحيّة (لا ردّان معًا)
+      f.swapId = null;
+      if(f.speaking){ f.recovered = false; f.pending = true; mahaRtTrace('swap held (speaking)'); return; }
+      if(f.dc === mahaRtDc && f.dc.readyState === 'open'){
+        try{ f.dc.send(f.greetMsg); mahaRtTrace('greet resent'); }catch(e){ __swallow(e, 'maha:first-swap-greet'); }
+      }
+      return;
+    }
+    if(!mine(r.id)) return;
+    if(f.tool || (Array.isArray(r.output) && r.output.some((o) => o && o.type === 'function_call'))) return; // ردّ أداة لا ردّ مقطوع
+    if(!f.started || f.audioEnded) mahaRtFirstUnheard(f); // انتهى بلا صوت أصلًا، أو صوته قُطع (وإلّا يُحكم عند انتهاء التشغيل)
+  }
+}
 function mahaRtNoteEvent(e){
   try{
     const ev = JSON.parse(e.data);
@@ -20283,6 +20414,7 @@ function mahaRtNoteEvent(e){
       const r = ev.response || {};
       mahaRtTrace('response.done ' + (r.status || '') + (r.status_details && r.status_details.reason ? ':' + r.status_details.reason : ''));
     }
+    if(t) mahaRtFirstOn(ev); // v-maha-first-heard
   }catch(err){ __swallow(err, 'maha:rt-note'); }
 }
     let mahaRtResponseWatchdog = null;
@@ -20303,7 +20435,8 @@ function mahaRtNoteEvent(e){
       if(!mahaRtReady || !mahaCallActive || mahaRtDc !== dc || !dc || dc.readyState !== 'open') return;
       try{
         // Only a fallback: response.created clears this before it can duplicate.
-        dc.send(JSON.stringify({ type: 'response.create' }));
+        // v-maha-first-heard: إن كان أوّل ردّ قُطع قبل أن يُسمع فهذا الطلب هو إعادته (التحيّة إن لم يكن كلام حقيقيّ) — طلب واحد لا اثنان.
+        dc.send(mahaRtFirstTake(dc) || JSON.stringify({ type: 'response.create' }));
       }catch(e){ __swallow(e, "misc:app-08-maha#rt-response-watchdog"); }
     }, delayMs);
     }
@@ -20329,6 +20462,12 @@ function mahaStartMicMeter(stream){
       let peak = 0;
       for(let i = 0; i < buf.length; i++){ const d = Math.abs(buf[i] - 128); if(d > peak) peak = d; }
       const lvl = Math.min(100, Math.round((peak / 128) * 260));
+      // v-maha-first-heard: سجلّ الإطارات المصوَّتة (كلام حقيقيّ أم صدى/ضجيج)، وكلّ فجوة قياس تُعلَّم فلا يُحكم بما فاتها
+      const tickAt = performance.now();
+      if(mahaMicLastTick && tickAt - mahaMicLastTick > MAHA_MIC_GAP_MS) mahaMicGapAt = tickAt;
+      if(lvl > MAHA_REAL_SPEECH_LVL && mahaMicLastTick) mahaMicVoiced.push([tickAt, Math.min(100, tickAt - mahaMicLastTick)]);
+      while(mahaMicVoiced.length && mahaMicVoiced[0][0] < tickAt - 10000) mahaMicVoiced.shift();
+      mahaMicLastTick = tickAt;
       fill.style.width = lvl + '%';
       if(lvl > 8){ mahaMicSilenceStart = Date.now(); if(mahaMicWarned){ mahaMicWarned = false; const st = document.getElementById('mahaStateLabel'); if(st) st.textContent = ''; } }
       else if(!mahaMicWarned && Date.now() - mahaMicSilenceStart > 7000){
@@ -20461,10 +20600,13 @@ function mahaFlushPreBuffer(dc){
 }
 // نغمة استعداد قصيرة جدًّا (≤120م.ث) تؤكّد للمستخدم أن المايك فتح فعليًّا؛
 // تُعاد استعمال سياق مؤشّر المايك القائم بدل إنشاء AudioContext جديد.
+// v-maha-start-seq: تُعزف والمايك مقفل، وتُرجع كم يُنتظر قبل فتحه: النغمة ١٢٠م.ث + تأخّر الإخراج (بلوتوث، أندرويد) + ١٣٠ ذيل الصدى
+// ودخل المايك، وأقلّه MAHA_BEEP_CLEAR_MS. سياق غير شغّال يؤخّر النغمة إلى ما بعد فتح المايك ← لا نغمة (٠).
+const MAHA_BEEP_CLEAR_MS = 250;
 function mahaPlayReadyBeep(){
   try{
     const ctx = mahaMicMeterCtx;
-    if(!ctx || ctx.state === 'closed') return;
+    if(!ctx || ctx.state !== 'running') return 0;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.frequency.value = 880;
@@ -20474,7 +20616,8 @@ function mahaPlayReadyBeep(){
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
     osc.start(now);
     osc.stop(now + 0.12);
-  }catch(e){ __swallow(e, "ui:app-08-maha#ready-beep"); }
+    return Math.max(MAHA_BEEP_CLEAR_MS, Math.ceil(120 + ((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000 + 130));
+  }catch(e){ __swallow(e, "ui:app-08-maha#ready-beep"); return 0; }
 }
 
 let mahaRtCancelled = false;
@@ -20657,16 +20800,32 @@ async function mahaStartRealtimeCall(){
       // v-maha-firstword: أفرغ المخزَّن المؤقّت (لو فيه كلام فعلي) قبل فتح
       // المسار الحيّ — حتى لا يُبثّ نفس الصوت مرتين (مرة من المخزن ومرة حيّة).
       const preBufSent = mahaFlushPreBuffer(dc);
+      /* v-maha-start-seq (المالك ٢١ أكتوبر «نغمة الجاهزية لازم ما يلقطها المايك على إنها كلام»): كانت تُعزف بعد فتح المايك وقبل التحيّة
+         مباشرة، فيسمعها كشف الكلام في الخادم كلامًا ويقطع التحيّة. الآن لا نغمة إن كانت مها ستتكلّم (التحيّة، أو ردّها على كلام التجهيز)
+         — صوتها هو الإشارة؛ وإلّا (البنّاء وإعادة الاتّصال) تُعزف والمايك ما زال مقفلًا (والمخزن المؤقّت أُوقف بالإفراغ)، ويُفتح بعد ذيلها. */
+      const mahaWillGreet = !preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder';
+      if(!mahaWillGreet && !preBufSent){
+        const beepMs = mahaPlayReadyBeep();
+        if(beepMs){
+          await new Promise(resolve => setTimeout(resolve, beepMs));
+          mahaRtTrace('beep (mic off) ' + beepMs);
+        }
+        if(mahaRtCancelled) throw new Error('cancelled'); // انتهت المكالمة أثناء النغمة — لا تُحيا (v-maha-race-cancel)
+      }
       if(inputTrack) inputTrack.enabled = true;
       // Let the browser resume the WebRTC audio encoder before saying "listening".
       await new Promise(resolve => setTimeout(resolve, 250));
+      if(mahaRtCancelled) throw new Error('cancelled'); // ولا بعد هذه المهلة: لا مراقبة ولا طلب معلّق يبقى لمكالمة تالية
       mahaRtReady = true;
       mahaRtTrace('ready' + (preBufSent ? ' prebuf-sent' : '') + (mahaRtAudioOk ? ' audio-ok' : ' audio-pending'));
+      // v-maha-first-heard: أوّل ردّ يُراقَب حتّى يُسمع (مكالمة مها الجديدة وحدها؛ لا البنّاء ولا إعادة الاتّصال). كلام التجهيز = كلام حقيقيّ.
+      if(!mahaRtReconnecting && mahaCallMode !== 'builder') mahaRtFirstStart(dc, preBufSent);
       /* v-maha-firstreply: الجملة الأولى المخزَّنة تأخذ ردًّا بعد مهلة قصيرة — إن كان المستخدم ما زال يتكلّم
-         (يكمل جملته في المايك الحيّ) فـspeech_started يلغي هذا الحارس، وspeech_stopped يطلب ردًّا واحدًا على الكلّ. */
-      if(preBufSent) mahaArmRtResponseWatchdog(900);
+         (يكمل جملته في المايك الحيّ) فـspeech_started يلغي هذا الحارس، وspeech_stopped يطلب ردًّا واحدًا على الكلّ.
+         v-maha-start-seq: ولا يُطلب قبل أن يشتغل عنصر الصوت — ردّها على كلام التجهيز يُسمع من أوّل مرّة. */
+      // وإن اشتغل الصوت متأخّرًا: لا طلب فوق ردّ موجود، ولا فوق حارس قائم (كلام جارٍ أو ردّ طُلب بعد speech_stopped)
+      if(preBufSent) mahaRtWhenAudio(() => { if(dc === mahaRtDc && !mahaRtResponded && !mahaRtResponseWatchdog) mahaArmRtResponseWatchdog(900); });
       mahaSetState('listening');
-      mahaPlayReadyBeep();
       /* v-maha-greet (المالك ١ أكتوبر «من أوّل ما تفتح تردّ عليك»): مها تبادر بتحيّة قصيرة لحظة الجاهزية كالمكالمة الحقيقيّة.
          لا تحيّة إن قال المستخدم شيئًا أثناء التجهيز (جملته تأخذ ردّها)، ولا في إعادة الاتّصال، ولا في البنّاء. كلامه يقاطعها. */
       if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){
@@ -20675,7 +20834,9 @@ async function mahaStartRealtimeCall(){
         mahaRtWhenAudio(() => {
           if(dc !== mahaRtDc || dc.readyState !== 'open' || mahaRtResponded){ mahaRtTrace('greet skipped'); return; }
           try{
-            dc.send(JSON.stringify({ type: 'response.create', response: { instructions: 'Open the call now like a close friend picking up: greet the user warmly in ONE short natural sentence and invite them to talk. Follow CALL HISTORY: on a first call say your name; otherwise do not introduce yourself - greet them as someone you know (by their name if your memory has it; a greeting that fits their local time of day is natural). Speak the language of the app interface (code "' + String(typeof lang === 'string' ? lang : 'ar') + '"); for Arabic use your usual warm Emirati dialect. Nothing else.' } }));
+            const greetMsg = JSON.stringify({ type: 'response.create', response: { instructions: 'Open the call now like a close friend picking up: greet the user warmly in ONE short natural sentence and invite them to talk. Follow CALL HISTORY: on a first call say your name; otherwise do not introduce yourself - greet them as someone you know (by their name if your memory has it; a greeting that fits their local time of day is natural). Speak the language of the app interface (code "' + String(typeof lang === 'string' ? lang : 'ar') + '"); for Arabic use your usual warm Emirati dialect. Nothing else.' } });
+            dc.send(greetMsg);
+            if(mahaRtFirst && mahaRtFirst.dc === dc) mahaRtFirst.greetMsg = greetMsg; // v-maha-first-heard: إن لم تُسمع تُعاد مرّة بالطلب نفسه
             mahaRtTrace('greet sent');
           }catch(e){ __swallow(e, 'maha:greet'); }
         });
@@ -21030,6 +21191,7 @@ function mahaEndRealtimeCall(){
   mahaRtAudioOk = false;
   mahaRtOnAudioOk = null;
   clearTimeout(mahaRtPlayTimer);
+  mahaRtFirstStop(); // v-maha-first-heard: لا إعادة لجلسة انتهت
   try{ if(window.mahaGoldWave) window.mahaGoldWave.detachStream(); }catch(e){ __swallow(e, 'maha:goldwave-rt-end'); } // v-maha-goldwave
 }
 

@@ -35,7 +35,8 @@ const readySite = src.indexOf('mahaRtReady = true;', callStart);
 const beepSite = src.indexOf('mahaPlayReadyBeep();', callStart);
 assert.ok(flushSite > 0 && flushSite < enableSite, 'الإفراغ قبل فتح المسار الحيّ');
 assert.ok(enableSite < readySite, 'فتح المسار الحيّ قبل الإعلان عن الجاهزية');
-assert.ok(readySite < beepSite, 'النغمة بعد الجاهزية لا قبلها');
+// v-maha-start-seq (المالك ٢١ أكتوبر): النغمة لا يلقطها المايك — تُعزف بعد الإفراغ والمايك مقفل، ويُفتح بعدها
+assert.ok(flushSite < beepSite && beepSite < enableSite, 'النغمة بعد الإفراغ وقبل فتح المايك');
 
 // الإفراغ نفسه: صمت = لا إرسال ولا commit؛ كلام فعلي = append مجزَّأ ثم commit واحد
 const flushFn = src.slice(src.indexOf('function mahaFlushPreBuffer('), src.indexOf('function mahaPlayReadyBeep('));
