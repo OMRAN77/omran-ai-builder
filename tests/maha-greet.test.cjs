@@ -16,7 +16,7 @@ const block = src.slice(a, src.indexOf(END, a) + END.length);
 function run(ctx) {
   const sent = [];
   const dc = { readyState: 'open', send: (m) => sent.push(JSON.parse(m)) };
-  const c = Object.assign({ preBufSent: false, mahaRtReconnecting: false, mahaCallMode: 'assistant', lang: 'ar', __swallow() {}, dc, mahaRtDc: dc, mahaRtResponded: false, mahaRtTrace() {}, mahaRtWhenAudio: (fn) => fn() }, ctx);
+  const c = Object.assign({ preBufSent: false, mahaRtReconnecting: false, mahaCallMode: 'assistant', lang: 'ar', __swallow() {}, dc, mahaRtDc: dc, mahaRtResponded: false, mahaRtTrace() {}, mahaRtWhenAudio: (fn) => fn(), mahaRtFirst: null }, ctx);
   vm.createContext(c);
   vm.runInContext(block, c);
   return sent;
@@ -38,12 +38,13 @@ test('٢. لا تحيّة: كلام أثناء التجهيز، إعادة ال�
   assert.equal(run({ mahaCallMode: 'builder' }).length, 0);
 });
 
-test('٣. الترتيب: بعد الجاهزية والنغمة — والحزمة محدَّثة', () => {
+test('٣. الترتيب: التحيّة بعد الجاهزية، ولا نغمة قبلها والمايك مفتوح (v-maha-start-seq) — والحزمة محدَّثة', () => {
   for (const f of ['js/app-08-maha.js', 'js/app.bundle.js']) {
     const s = fs.readFileSync(path.join(root, f), 'utf8');
     const ready = s.indexOf('mahaRtReady = true;', s.indexOf('const preBufSent = mahaFlushPreBuffer(dc);'));
-    const beep = s.indexOf('mahaPlayReadyBeep();', ready);
-    const greet = s.indexOf("if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){", beep);
-    assert.ok(ready > 0 && beep > ready && greet > beep, f);
+    const greet = s.indexOf("if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){", ready);
+    assert.ok(ready > 0 && greet > ready, f);
+    // النغمة كانت بين الجاهزية والتحيّة فيسمعها كشف الكلام ويقطع التحيّة — صارت قبل فتح المايك وبلا تحيّة فقط
+    assert.equal(s.indexOf('mahaPlayReadyBeep();', ready) > ready && s.indexOf('mahaPlayReadyBeep();', ready) < greet, false, f + ': لا نغمة بين الجاهزية والتحيّة');
   }
 });
