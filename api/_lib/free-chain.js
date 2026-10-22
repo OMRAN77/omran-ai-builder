@@ -212,7 +212,7 @@ async function streamFreeChain(args) {
         if (res) return res;
       } catch (e) {
         if (partial.trim()) return { ok: true, provider: spec.id, model, text: partial, attempts, truncated: true, errors };
-        if (isModelError(e)) { tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } if (spec.id === 'groq' && (e.status === 429 || e.status === 413)) { busyN++; tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } // v-plan-models: حدود Groq لكلّ موديل — المزدحم يجرّب التالي قبل الخروج من Groq
+        if (isModelError(e)) { tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } if ((spec.id === 'groq' && (e.status === 429 || e.status === 413)) || (spec.visionOnly && e.status === 429 && !/free-models-per-/i.test(e.body || ''))) { busyN++; tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } // v-plan-models: حدود Groq لكلّ موديل — المزدحم يجرّب التالي قبل الخروج من Groq؛ v-free-vision-next: ونماذج الرؤية المجّانيّة في الوسيط كذلك (429 «rate-limited upstream» زحمة نموذج واحد)، إلّا حدّ الحساب نفسه (free-models-per-day/min) فلا فائدة من التالي
         log(spec.id + ' failed: ' + scrub(e.message));
         errors.push(spec.id + ': ' + scrub(e.message));
         providerDead = true;

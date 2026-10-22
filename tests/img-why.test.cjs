@@ -120,7 +120,7 @@ test('٥. نموذج OpenRouter النصّيّ الناجح لا يُقدَّم 
   const r = await fc.streamFreeChain({ system: 'S', convo: IMG_CONVO, send: () => {}, env, log: () => {}, requireVision: true,
     fetchImpl: async (url, init) => { if (/\/models/.test(url)) { models.push('DISCOVERY'); return new Response('{"data":[]}', { status: 200 }); } models.push(JSON.parse(init.body).model); return new Response(JSON.stringify({ error: { message: 'No endpoints found for model' } }), { status: 404 }); } });
   assert.equal(r.ok, false);
-  assert.deepEqual(models, ['google/gemma-4-31b-it:free'], 'نماذج الرؤية وحدها وبترتيبها، بلا استكشاف');
+  assert.deepEqual(models, require('../api/_lib/tier.js').FREE_PROVIDER_SPECS.openrouter.visionModels, 'نماذج الرؤية وحدها وبترتيبها، بلا استكشاف'); // v-free-vision-next: صارت ثلاثة
   assert.ok(!models.includes(textR.model), 'الناجح النصّيّ الأعمى لا يُجرَّب في دور الصورة');
   assert.ok(r.errors.includes('openrouter: no vision model answered'), r.errors.join('|'));
   fc.__workingModel.clear();
