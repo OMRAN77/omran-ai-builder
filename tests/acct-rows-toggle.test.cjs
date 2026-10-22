@@ -171,6 +171,6 @@ test('٧. «إرسال ومشاركة» بلا alert في النسختين: ال
     r = await run(() => ({ clipboard: { writeText: async () => { throw new Error('denied'); } } }));
     assert.deepEqual(r.calls.prompt, [['COPY_IT', 'https://omran.test/app?ref=sara']], name + ': prompt بمفتاح');
     r = await run((calls) => ({ share: async (d) => { calls.share.push(d); } }));
-    assert.deepEqual(JSON.parse(JSON.stringify(r.calls.share)), [{ title: 'Omran AI', text: 'TRY', url: 'https://omran.test/app?ref=sara' }], name + ': المشاركة بمفتاح');
+    assert.deepEqual(JSON.parse(JSON.stringify(r.calls.share)), [{ title: 'om ai', text: 'TRY', url: 'https://omran.test/app?ref=sara' }] /* v-om-ai-name: الاسم ثابت لا من pageTitle */, name + ': المشاركة بمفتاح');
   }
 });

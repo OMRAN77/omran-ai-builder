@@ -31,8 +31,8 @@
   <div class="check">✅</div>
   <h1>تم تسجيل الدخول بنجاح</h1>
   <p>حسابك جاهز — باقي خطوة وحدة بس:</p>
-  <div class="hint">ارجع إلى تطبيق <b>Omran AI Builder</b> — اضغط اسمه أعلى الشاشة (بجانب الساعة)، وستجد نفسك داخلًا تلقائيًا خلال ثوانٍ.</div>
-  <p class="en">Signed in ✓ — return to the Omran AI Builder app (tap its name at the top of the screen). You'll be signed in automatically.</p>
+  <div class="hint">ارجع إلى تطبيق <b>om ai</b> — اضغط اسمه أعلى الشاشة (بجانب الساعة)، وستجد نفسك داخلًا تلقائيًا خلال ثوانٍ.</div>
+  <p class="en">Signed in ✓ — return to the om ai app (tap its name at the top of the screen). You'll be signed in automatically.</p>
 </div>
 <script>
 /* v-google-app-fail: الكولباك يهبط هنا بـ?gerror حين يفشل الدخول — نقول ذلك صراحة
@@ -44,8 +44,8 @@
     var android = /Android/i.test(navigator.userAgent || '');
     var g = new URLSearchParams(location.search).get('gerror');
     if(android && !g){
-      document.querySelector('.hint').textContent = 'ارجع إلى تطبيق «عمران AI» — اضغط ✕ أعلى هذه الصفحة أو زرّ الرجوع في جهازك، وستجد نفسك داخلًا تلقائيًا خلال ثوانٍ.';
-      document.querySelector('.en').textContent = 'Signed in ✓ — return to the Omran AI app (tap ✕ at the top of this page or your phone’s Back button). You’ll be signed in automatically.';
+      document.querySelector('.hint').textContent = 'ارجع إلى تطبيق «om ai» — اضغط ✕ أعلى هذه الصفحة أو زرّ الرجوع في جهازك، وستجد نفسك داخلًا تلقائيًا خلال ثوانٍ.';
+      document.querySelector('.en').textContent = 'Signed in ✓ — return to the om ai app (tap ✕ at the top of this page or your phone’s Back button). You’ll be signed in automatically.';
     }
     if(!g) return;
     document.title = 'تعذّر تسجيل الدخول';
@@ -53,9 +53,9 @@
     document.querySelector('h1').textContent = 'تعذّر إكمال الدخول بجوجل';
     document.querySelector('.wrap p').textContent = g === 'access_denied' ? 'ألغيتَ الدخول من شاشة جوجل.' : 'حدث خطأ أثناء الدخول (' + g + ').';
     document.querySelector('.hint').textContent = android
-      ? 'ارجع إلى تطبيق «عمران AI» (✕ أعلى هذه الصفحة أو زرّ الرجوع) واضغط «المتابعة عبر Google» مرة ثانية — السبب سيظهر لك هناك.'
-      : 'ارجع إلى تطبيق Omran AI Builder (اسمه أعلى الشاشة بجانب الساعة) واضغط «المتابعة عبر Google» مرة ثانية — السبب سيظهر لك هناك.';
-    document.querySelector('.en').textContent = 'Google sign-in failed (' + g + '). Return to the ' + (android ? 'Omran AI' : 'Omran AI Builder') + ' app and try again.';
+      ? 'ارجع إلى تطبيق «om ai» (✕ أعلى هذه الصفحة أو زرّ الرجوع) واضغط «المتابعة عبر Google» مرة ثانية — السبب سيظهر لك هناك.'
+      : 'ارجع إلى تطبيق om ai (اسمه أعلى الشاشة بجانب الساعة) واضغط «المتابعة عبر Google» مرة ثانية — السبب سيظهر لك هناك.';
+    document.querySelector('.en').textContent = 'Google sign-in failed (' + g + '). Return to the ' + (android ? 'om ai' : 'om ai') + ' app and try again.';
   } catch(e) { /* الصفحة الافتراضيّة تبقى */ }
 })();
 </script>

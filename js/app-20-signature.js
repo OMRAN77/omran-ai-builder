@@ -159,7 +159,7 @@
       try{ file = new File([blob], 'omran-signature.png', { type:'image/png' }); }
       catch(e){ tell(e, 'sig:file'); }
       if(file && navigator.canShare && navigator.canShare({ files:[file] })){
-        return navigator.share({ files:[file], title:'Omran AI', text:T('توقيعي ✍️', 'My signature ✍️') })
+        return navigator.share({ files:[file], title:'om ai', text:T('توقيعي ✍️', 'My signature ✍️') })
           .catch(function(err){
             if(err && err.name === 'AbortError') return;
             tell(err, 'sig:share');

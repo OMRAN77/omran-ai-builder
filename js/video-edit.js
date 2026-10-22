@@ -1166,7 +1166,7 @@
     if(!st.outBlob) return;
     try{
       var file = new File([st.outBlob], OUT_NAME, { type: 'video/mp4' });
-      if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'Omran AI' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'om ai' });
       else saveOut();
     }catch(e){ if(!(e && e.name === 'AbortError')) sw(e, 'ved:share'); }
   }

@@ -24,7 +24,7 @@ test('٢. شاشة «عن البرنامج»: لا شارة «صُنع في ال
   const about = s.slice(s.indexOf('id="aboutSection"'), s.indexOf('id="ownerSection"'));
   assert.ok(about.length > 500, 'القسم موجود');
   for (const bad of ['<video', '/assets/videos/', 'aboutChipUAE', 'videosGroupTitle', 'lang-videos', '🇦🇪', 'الفيديوهات التعريفية']) assert.ok(!about.includes(bad), bad);
-  assert.ok(about.includes('data-i18n="aboutCopyright">© فريق عمران AI</div>'));
+  assert.ok(about.includes('data-i18n="aboutCopyright">© فريق om ai</div>'));
   assert.ok(about.includes('data-i18n="aboutSectionTitle">ℹ️ عن البرنامج</h3>'));
   /* ما بقي: بطاقة الهوية، الشبكة، الدعم، التواصل */
   for (const keep of ['aboutChipPWA', 'aboutChipLangs', 'aboutFeatChat', 'supportContactBox', 'socialTitle']) assert.ok(about.includes(keep), keep);

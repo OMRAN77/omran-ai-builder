@@ -1,4 +1,23 @@
 # سجلّ القرارات
+## ٢٢ أكتوبر ٢٠٢٦ — v-om-ai-name: اسم التطبيق «om ai» في كلّ ما يراه المستخدم
+- **العرض (أمر المالك ٢٢ أكتوبر، بموافقته):** «اسم التطبيق om ai في كل مكان يشوفه المستخدم»: manifest، واسم الشاشة الرئيسيّة في index.html،
+  وكلّ نصّ ظاهر فيه «Omran AI Builder» أو «عمران AI». عنوان الصفحة وog:site_name وWebSite وalternateName كما هي (البحث). لا دومين ولا package id
+  ولا اسم مستودع ولا متغيّر بيئة. ثمّ: الصفحتان القانونيّتان «om ai (سابقاً Omran AI Builder)» والمطوّر om ai. ردّ الإيميل إلى ommntr77؛
+  وبريد التواصل الظاهر جُرِّب ommntr77 ثمّ أعاده المالك: «رجع للقديم ommntr2712».
+- **القرار:** `manifest.json` (الاسمان ووسم لقطة المتجر)؛ `index.html` apple-mobile-web-app-title + application-name جديد؛ الواجهة (app-05/06/08/09/10/11/13/20،
+  partials-core/settings، video-edit، templates-data، login-done، download، p، ad-studio) والقواميس الـ١٤ (عدا pageTitle = عنوان الصفحة، ومفتاح
+  «Made with Omran AI Video» مفتاحًا وقيمته جديدة، والأسماء المحلّيّة bn/ml)؛ كلام المساعد عن نفسه (المحادثة ai.js/chat.js، الوكيل، مها، تيليجرام،
+  مكالمات المساعد، الكتالوج، رسائل ربط الرقم) و«فريق عمران AI» ← «فريق om ai»؛ عناوين الإيميل واسم المرسل الافتراضيّ «om ai» (MAIL_FROM في
+  البيئة يغلب كما كان)، والردّ (reply_to) إلى `OWNER_NOTIFY_EMAIL` — Resend لا يرسل من gmail، والمستودع عامّ فلا عنوان في كود الخادم
+  (signup-notify يمنعه)؛ privacy/terms «om ai (سابقاً…)» والمطوّر om ai والمطوّر الشخص باقٍ، وبريد التواصل ommntr2712 فيهما وفي «عن التطبيق»
+  كما كان. المشاركة كانت تأخذ الاسم من pageTitle (يبقى قديمًا) فصارت «om ai» ثابتة.
+  **لم يُلمس:** التعليقات (اقتباسات المالك)، `codemap.json` المولَّد (قديم على main أصلًا)، `src/index.html` (نسخة غير مستعملة)،
+  `legal-strings.js` (غير محمَّل)، اسم APK هواوي (twa، build.gradle — يتغيّر مع إصدار متجر؛ أمّا `manifest-huawei.json` بيان الويب داخل التطبيق فصار «om ai» لأنّ store-huawei يلزمه مطابقة البيان العامّ — فشل CI الأوّل)، كاشف قالب «لوحة القيادة
+  الذكية | عمران AI» في app-09 (يطابق مشاريع محفوظة)، «عمران» وحدها (اسم شخص، «وكيل عمران»). وسوم: القواميس ٧٧٠، partials-core ٦٧٤،
+  partials-settings ٧٠٥، templates-data ٥٩٠، video-edit ٧، ad-studio ٦٠٦.
+- **الاختبار:** `tests/om-ai-name.test.cjs` (٦، مسجَّل): manifest، index (الجديد والباقي)، لا اسم قديم في نصّ ظاهر بثلاثين ملفًّا والقواميس، الصفحتان
+  القانونيّتان، الإيميل بلا عنوان في الكود، وما لا يُلمس. وحُدّثت تثبيتات النصّ القديم في signup-notify وmaha-app وacct-rows-toggle وgoogle-login-help
+  وcall-agent وabout-clean وversion-label وchat-style، ووسوم ~٤٠ اختبارًا.
 ## ٢٢ أكتوبر ٢٠٢٦ — v-favicon-gold: أيقونة الموقع الذهبيّة لـGoogle — favicon.ico في الجذر ورابطا rel="icon" في <head>
 - **العرض (المالك):** Google Search Console يعرض أيقونة التطبيق البنفسجيّة القديمة. السبب في الكود: `index.html` بلا `rel="icon"` منذ v468
   (حُذف السطران مع المزامنة)، و`/favicon.ico` غير موجود فيردّ 404، فلا يجد الزاحف أيقونة حديثة ويبقى على ما خزّنه. والبنفسجيّة نفسها

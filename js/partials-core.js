@@ -113,7 +113,7 @@
 
     <div class="mini-mic-field-row" id="videoMakerActorRow" style="margin-top:12px; display:none;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="videoActorSpeechLabel">🗣️ شو يقول الممثل؟ (بالحرف)</label>
-      <textarea id="videoMakerActorSpeech" rows="2" style="width:100%;" maxlength="300" data-i18n-placeholder="videoActorSpeechPlaceholder" placeholder="مثال: هلا والله! حياكم في تطبيق عمران AI، أقوى منصة ذكاء اصطناعي"></textarea>
+      <textarea id="videoMakerActorSpeech" rows="2" style="width:100%;" maxlength="300" data-i18n-placeholder="videoActorSpeechPlaceholder" placeholder="مثال: هلا والله! حياكم في تطبيق om ai، أقوى منصة ذكاء اصطناعي"></textarea>
       <button type="button" class="mini-mic-btn" data-target="videoMakerActorSpeech" title="🎤" data-i18n-title="micTitle">🎤</button>
     </div>
     <!-- v-actor-lipsync: الكلام يُنطق بصوت إماراتيّ أصيل — رجل أو امرأة حسب الممثّل -->

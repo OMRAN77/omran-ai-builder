@@ -614,7 +614,7 @@
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('aboutSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="aboutSectionTitle">ℹ️ عن البرنامج</h3><span class="settingsSectionArrow" id="aboutSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="aboutSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
       <!-- v-about-lux: بطاقة الهوية -->
       <div style="position:relative; overflow:hidden; border:1px solid rgba(212,175,55,.4); border-radius:20px; padding:24px 16px 20px; text-align:center; background:radial-gradient(130% 100% at 50% 0%, rgba(212,175,55,.16), transparent 55%), var(--panel2,#161616); margin-bottom:14px;">
-        <img src="/icons/omran-mark-64.png" alt="عمران AI" width="66" height="66" style="border-radius:17px; box-shadow:0 8px 28px rgba(212,175,55,.3);">
+        <img src="/icons/omran-mark-64.png" alt="om ai" width="66" height="66" style="border-radius:17px; box-shadow:0 8px 28px rgba(212,175,55,.3);">
         <div style="font-size:12.5px; color:var(--muted); margin-top:10px;" data-i18n="aboutTagline">منصة عربية لبناء التطبيقات بالذكاء الاصطناعي</div>
         <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:13px;">
           <span style="font-size:11px; padding:4px 11px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--muted);" data-i18n="aboutChipPWA">تطبيق PWA</span>
@@ -636,7 +636,7 @@
       <details style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 14px; margin-bottom:16px; background:var(--panel2,rgba(255,255,255,.02));">
         <summary style="cursor:pointer; font-size:13px; font-weight:700; user-select:none;" data-i18n="aboutMoreSummary">📖 المزيد عن المنصة</summary>
         <div style="font-size: var(--fs-3); line-height:1.9; color:var(--text); margin-top:10px;" data-i18n="aboutText">
-    <b>عمران AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، طوّرها فريق عمران AI. يتيح لك التحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حيّة جنبًا إلى جنب.<br><br>
+    <b>om ai</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، طوّرها فريق om ai. يتيح لك التحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حيّة جنبًا إلى جنب.<br><br>
     يجمع التطبيق 3 نماذج ذكاء قوية في مكان واحد: 👑 الكينج للبناء والتعديل والتشخيص، ⚡ السريع للردود الفورية والدردشة، 🧠 العميق للتحليل والبحث والمستندات — مع البحث المباشر وتوليد الصور والمساعدة الصوتية والأقسام المتخصصة.<br><br>
     يعمل البرنامج كتطبيق PWA قابل للتثبيت على أندرويد وآيفون مثل أي تطبيق عادي، ويدعم المحادثة الصوتية (تحويل الكلام إلى نص والاستماع للردود)، مع نظام حسابات كامل (تسجيل دخول/تسجيل حساب/استرجاع كلمة المرور)، ووضع ضيف يتيح تجربة 20 رسالة مجانية دون تسجيل.<br><br>
     كل إعدادات المظهر والألوان قابلة للتخصيص بالكامل، وخصوصيتك دائمًا أولوية.
@@ -675,7 +675,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5C10 9 9.4 7.6 9.2 7c-.2-.5-.4-.5-.6-.5h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3 4.8 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.5-.3zM12 2a10 10 0 00-8.6 15L2 22l5.1-1.3A10 10 0 1012 2zm0 18.3c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .8.8-3-.2-.3A8.3 8.3 0 1120.3 12 8.3 8.3 0 0112 20.3z"/></svg>
       </a>
         </div>
-        <div style="font-size:11px; color:var(--muted); opacity:.75; margin-top:16px;" data-i18n="aboutCopyright">© فريق عمران AI</div>
+        <div style="font-size:11px; color:var(--muted); opacity:.75; margin-top:16px;" data-i18n="aboutCopyright">© فريق om ai</div>
       </div>
       <div id="appVersionLabel" style="text-align:center; color:var(--muted); font-size:12px; opacity:.7; margin-top:18px; padding-bottom:6px; user-select:text;"></div>
   </div></div>
@@ -918,7 +918,7 @@
     var u = document.getElementById('acctReferralLink');
     var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
     if (navigator.share) {
-      try { await navigator.share({ title: tt('pageTitle').split(' — ')[0] || 'Omran AI', text: tt('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+      try { await navigator.share({ title: 'om ai', text: tt('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
