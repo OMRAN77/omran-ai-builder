@@ -648,7 +648,7 @@
         <div style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:13.5px; margin-bottom:8px;"><span style="width:4px; height:16px; border-radius:2px; background:#d4af37; display:inline-block;"></span><span data-i18n="aboutSupportTitle">📞 خدمة العملاء والدعم</span></div>
         <div style="font-size:12.5px; color:var(--muted); line-height:1.9;" data-i18n="aboutSupportDesc">نرد على استفساراتك خلال ٢٤-٤٨ ساعة.</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-          <a href="mailto:ommntr77@gmail.com" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid rgba(212,175,55,.45); color:#d4af37; direction:ltr; unicode-bidi:isolate;">✉️ ommntr77@gmail.com</a>
+          <a href="mailto:ommntr2712@gmail.com" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid rgba(212,175,55,.45); color:#d4af37; direction:ltr; unicode-bidi:isolate;">✉️ ommntr2712@gmail.com</a>
           <a href="/privacy.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);">🔒 <span data-i18n="privacyLink">سياسة الخصوصية</span></a>
           <a href="/terms.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);">📜 <span data-i18n="termsLink">الشروط والأحكام</span></a>
         </div>

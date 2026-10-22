@@ -46,12 +46,12 @@ test('٣. لا اسم قديم في نصّ ظاهر أو كلام المساعد
   assert.ok(read('js/app-11-video.js').includes("bT('صُنع بواسطة om ai','Made with om ai Video')"));
 });
 
-test('٤. الخصوصية والشروط: «om ai (سابقاً Omran AI Builder)»، المطوّر الشخص باقٍ، والبريد ommntr77', () => {
+test('٤. الخصوصية والشروط: «om ai (سابقاً Omran AI Builder)»، المطوّر الشخص باقٍ، وبريد التواصل ommntr2712 كما كان', () => {
   for (const f of ['privacy.html', 'terms.html']) {
     const s = read(f);
     assert.ok(s.includes('om ai (سابقاً Omran AI Builder)') && s.includes('om ai (formerly Omran AI Builder)'), f);
     assert.ok(!/فريق عمران AI|Omran AI Team/.test(s), f + ' المطوّر om ai');
-    assert.ok(!s.includes('ommntr2712@gmail.com') && s.includes('mailto:ommntr77@gmail.com'), f + ' البريد');
+    assert.ok(!s.includes('ommntr77@gmail.com') && s.includes('mailto:ommntr2712@gmail.com'), f + ' البريد كما كان (أمر المالك)');
   }
   assert.equal((read('privacy.html').match(/Omran Abdulla Eisa Rashid Alrukn Alshamsi/g) || []).length, 2, 'اسم المطوّر الشخص باقٍ');
 });

@@ -46,12 +46,12 @@ test('٤. ملفّات الفيديو التعريفيّة تبقى على ال�
   for (const n of ['intro-ar-short', 'intro-ar-long', 'intro-en-short', 'intro-en-long']) assert.ok(fs.existsSync(path.join(ROOT, 'assets', 'videos', n + '.mp4')), n);
 });
 
-test('٥. البريد ommntr77@gmail.com (v-om-ai-name، أمر المالك) في الشاشة وprivacy وterms (الخادم VAPID خارج الطلب)', () => {
+test('٥. البريد الجديد ommntr2712@gmail.com في الشاشة وprivacy وterms (الخادم VAPID خارج الطلب)', () => {
   for (const f of ['js/partials-settings.js', 'privacy.html', 'terms.html']) {
     const src = read(f);
-    assert.ok(src.includes('mailto:ommntr77@gmail.com'), f + ' رابط البريد الجديد');
-    assert.ok(src.includes('ommntr77@gmail.com</a>'), f + ' نصّ البريد الظاهر');
-    assert.ok(!src.includes('ommntr2712@gmail.com'), f + ' بلا البريد السابق (ommntr2712)');
+    assert.ok(src.includes('mailto:ommntr2712@gmail.com'), f + ' رابط البريد الجديد');
+    assert.ok(src.includes('ommntr2712@gmail.com</a>'), f + ' نصّ البريد الظاهر');
+    assert.ok(!src.includes('ommntr77@gmail.com'), f + ' بلا البريد القديم');
   }
 });
 
