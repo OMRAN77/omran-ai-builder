@@ -198,6 +198,7 @@ async function streamFreeChain(args) {
       const text = await streamOne(spec, model, messages, send, args);
       if (text && text.trim()) {
         workingModel.set(spec.cacheId || spec.id, { model, at: now });
+        if (needVision) log('vision ' + spec.id + '/' + model + (errors.length ? ' after ' + errors.join(' | ') : '')); // v-free-vision-next: النجاح كان صامتًا — من قرأ الصورة ومن زحم قبله، في سجلّ الخادم وحده
         return { ok: true, provider: spec.id, model, text, attempts, errors };
       }
       errors.push(spec.id + '/' + model + ': empty');

@@ -210,11 +210,11 @@ streamFreeChain(args)                             free-chain.js:167
 │     ['groq','gemini','mistral','openrouter']   ← v-plan-routing: Groq أوّلًا (المجّاني ٥ رسائل عليه)
 │     ومزوّد بلا مفتاح يُستبعد من القائمة أصلًا
 │
-├─ لكلّ مزوّد: modelsToTry                         free-chain.js:263
+├─ لكلّ مزوّد: modelsToTry                         free-chain.js:264
 │     المفضّل من البيئة أوّلًا، ثمّ مرشّحو المزوّد، ثمّ استكشاف /models
 │     والمتقاعدون مستبعَدون (RETIRED_MODELS)
 │
-├─ نجح → rememberWorking(id, model)               free-chain.js:270
+├─ نجح → rememberWorking(id, model)               free-chain.js:271
 │     يُحفظ في ذاكرة العمليّة فلا تتكرّر المحاولات كلّ رسالة
 │
 ├─ فشل (429 أو أيّ عطل) → المزوّد التالي **بصمت**

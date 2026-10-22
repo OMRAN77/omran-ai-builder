@@ -104,9 +104,13 @@ test('٣. حدّ الحساب نفسه (free-models-per-day) لا يُكرَّر
 test('٤. الناجح بعد الزحمة يُحفظ لدور الصورة القادم، ودور النصّ كما كان (429 الوسيط يُنهيه، بلا نماذج الرؤية)', async () => {
   fc.__workingModel.clear();
   const env = { OPENROUTER_API_KEY: 'o' };
-  const first = await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: () => {}, requireVision: true, env, now: 1000,
+  const logs = [];
+  const first = await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: (m) => logs.push(m), requireVision: true, env, now: 1000,
     fetchImpl: async (url, init) => { const m = JSON.parse(init.body).model; return m === VISION[2] ? sse(['تمام']) : UPSTREAM_429(m); } });
   assert.equal(first.ok, true); assert.equal(first.model, VISION[2]);
+  assert.equal(logs.length, 1, 'سطر واحد في سجلّ الخادم لنجاح دور الصورة');
+  assert.ok(logs[0].startsWith('vision openrouter/' + VISION[2] + ' after openrouter/' + VISION[0] + ': '), logs[0]);
+  assert.ok(logs[0].includes('openrouter/' + VISION[1] + ': '), 'والمزدحم الثاني قبله');
   const again = [];
   await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: () => {}, requireVision: true, env, now: 2000,
     fetchImpl: async (url, init) => { again.push(JSON.parse(init.body).model); return sse(['تمام']); } });
