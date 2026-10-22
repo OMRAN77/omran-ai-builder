@@ -47,15 +47,38 @@
     var rc = any && rgba(col);
     return !!(rc && rc[3] > 0.04);
   }
+  /* v-black-surfaces (تدقيق ١٨–١٩ أكتوبر): خانة الكتابة التي اعتمدت على حدّها وحده — شفّافة أو بلون سطحها — صارت بعد v-no-lines-2
+     أسود على أسود (حقلا الدخول، كلمة المرور والإيميل في الإعدادات، خانات المحفظة والمقاولات والتعليم). om3-field يعطيها درجة المالك
+     المقابلة لسطحها (css/بلا-خطوط.css)، في الأدوات ودرج الإعدادات وشاشة الدخول ونافذة الدفع. الداكن المحايد يُعدّ حقلًا أيضًا: هو ما
+     نرسمه نحن (#101013 / #000)، فيُقرأ هكذا حين يعاد التصنيف في منتصف انتقال ولا يومض (كالحدّ الشبح). */
+  var FIELDS = '#settingsDialog,#authOverlay,#checkoutModalOverlay';
+  var NOFIELD = { checkbox:1, radio:1, range:1, file:1, color:1, hidden:1, button:1, submit:1, reset:1, image:1 };
+  function surfaceOf(el){
+    for(var p = el.parentElement; p && p.nodeType === 1; p = p.parentElement){
+      var ps = getComputedStyle(p), pc = rgba(ps.backgroundColor);
+      if(ps.backgroundImage !== 'none' || (pc && pc[3] > 0)) return ps;
+    }
+    return null;
+  }
+  function fieldOf(el, bg){
+    if(el.tagName === 'INPUT' && NOFIELD[String(el.type || '').toLowerCase()]) return false;
+    var c = rgba(bg);
+    if(!c || c[3] === 0) return true;
+    var mx = Math.max(c[0], c[1], c[2]);
+    if(mx <= 24 && mx - Math.min(c[0], c[1], c[2]) <= 8) return true;
+    var s = surfaceOf(el);
+    return !!s && s.backgroundImage === 'none' && s.backgroundColor === bg;
+  }
   function mark(el, inTool){
     if(!el || el.nodeType !== 1 || SKIP[el.tagName] || el.closest('.om3-skip')) return;
-    el.classList.remove('om3-line', 'om3-fill', 'om3-hot');
-    var cs = getComputedStyle(el);
+    el.classList.remove('om3-line', 'om3-fill', 'om3-hot', 'om3-field');
+    var cs = getComputedStyle(el), bg0 = cs.backgroundColor; /* قبل om3-fill: التصنيف يقرأ لون الخانة نفسها */
     if(lineOf(cs)){ el.classList.add('om3-line'); if(cs.cursor === 'pointer' || /^(BUTTON|A|INPUT|TEXTAREA|SELECT|LABEL)$/.test(el.tagName)) el.classList.add('om3-hot'); }
     if(inTool && !overImage(el, cs)){
       var bi = cs.backgroundImage;
       if((bi === 'none' && boxFill(rgba(cs.backgroundColor))) || (bi !== 'none' && gradBox(bi))) el.classList.add('om3-fill');
     }
+    if(/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && (inTool || el.closest(FIELDS)) && fieldOf(el, bg0)) el.classList.add('om3-field');
   }
   /* طابور عناصر مسطّح يُعالَج على دفعات في وقت فراغ المتصفّح (لا مهمّة طويلة على أندرويد الضعيف): كلّ عقدة جديدة تُفرد بشجرتها */
   var items = [], seen = (typeof WeakSet === 'function') ? new WeakSet() : null, busy = false;

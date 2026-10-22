@@ -101,7 +101,7 @@ const RENAME_WINDOW_MS = 24 * 60 * 60 * 1000;
 // لصاحب حساب Resend نفسه — لغيره تردّ Resend بـ403 فيُسجَّل auth:mail resend_403
 // (v-signup-notify: التعليق القديم قال «ok:true» وهذا خلاف وثائق Resend).
 // وثّق نطاقك في Resend واضبط MAIL_FROM.
-const MAIL_FROM = process.env.MAIL_FROM || 'Omran AI Builder <onboarding@resend.dev>';
+const MAIL_FROM = process.env.MAIL_FROM || 'om ai <onboarding@resend.dev>'; // v-om-ai-name: اسم المرسل «om ai»؛ Resend لا يرسل من gmail (نطاق غير موثَّق) — الردّ يصل بريد المالك (OWNER_NOTIFY_EMAIL، لا عنوان في الكود)
 
 // ---------------------------------------------------------------------------
 // At-rest encryption for user records.
@@ -614,7 +614,7 @@ async function sendMail(toEmail, subject, html) {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: MAIL_FROM, to: [toEmail], subject, html }),
+      body: JSON.stringify({ from: MAIL_FROM, reply_to: String(process.env.OWNER_NOTIFY_EMAIL || '').trim() || undefined, to: [toEmail], subject, html }),
       signal: AbortSignal.timeout(10000),
     });
     if (!r.ok) logError('auth:mail', new Error('resend_' + r.status), { status: r.status });
@@ -628,7 +628,7 @@ async function sendMail(toEmail, subject, html) {
 async function sendResetEmail(toEmail, username, resetToken, isEn) {
   const link = siteUrl() + '/?resetToken=' + encodeURIComponent(resetToken) + '&ru=' + encodeURIComponent(username);
   const name = escapeHtml(username);
-  const subject = isEn ? 'Reset your password — Omran AI Builder' : 'إعادة تعيين كلمة المرور — Omran AI Builder';
+  const subject = isEn ? 'Reset your password — om ai' : 'إعادة تعيين كلمة المرور — om ai';
   const html = isEn
     ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
         <h2>Reset your password</h2>
@@ -649,7 +649,7 @@ async function sendResetEmail(toEmail, username, resetToken, isEn) {
 async function sendGoogleHintEmail(toEmail, username, isEn) {
   const name = escapeHtml(username);
   const link = siteUrl() + '/';
-  const subject = isEn ? 'How to sign in — Omran AI Builder' : 'طريقة دخولك — Omran AI Builder';
+  const subject = isEn ? 'How to sign in — om ai' : 'طريقة دخولك — om ai';
   const html = isEn
     ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
         <h2>Your account signs in with Google</h2>
@@ -672,7 +672,7 @@ function genNumericOtp() {
 }
 
 async function sendOtpEmail(toEmail, otpCode, isEn) {
-  const subject = isEn ? 'Verification Code — Omran AI Builder' : 'رمز التحقق — Omran AI Builder';
+  const subject = isEn ? 'Verification Code — om ai' : 'رمز التحقق — om ai';
   const html = isEn
     ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
         <h2 style="margin-bottom:4px">Your verification code</h2>
@@ -692,7 +692,7 @@ async function sendOtpEmail(toEmail, otpCode, isEn) {
 // v-vip-verified: رسالة رمز التغيير بصياغتها (لا «لتسجيل الدخول» — من يطلب تغيير بريده ثمّ يرى «دخول» يُخدع أو يرتبك).
 async function sendEmailChangeOtp(toEmail, otpCode, lang) {
   const isEn = !!lang && lang !== 'ar';
-  const subject = isEn ? 'Confirm your email — Omran AI Builder' : 'تأكيد الإيميل — Omran AI Builder';
+  const subject = isEn ? 'Confirm your email — om ai' : 'تأكيد الإيميل — om ai';
   const html = isEn
     ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
         <h2 style="margin-bottom:4px">Confirm this email for your account</h2>
@@ -968,6 +968,16 @@ module.exports = async (req, res) => {
       } finally {
         try { await kvDel(lockKey); } catch (e) { logError('auth:rename-unlock', e); }
       }
+      return;
+    }
+
+    // v-acct-delete (الدفعة ٢، أمر المالك): صاحب الحساب يحذفه من «حسابي» — التفاصيل في account-delete.js
+    if (action === 'deleteAccount') {
+      const u = verifyToken(token);
+      if (!u) { res.status(401).json({ ok: false, code: 'auth', error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') }); return; }
+      const r = await require('./account-delete.js').deleteAccount({ username: u, token, confirmUsername: String(body.confirmUsername || '').slice(0, 64), password });
+      if (r.status === 200) _banMemo.delete(u); // الشاهد جلسة ميّتة الآن (isBanned) كما في تغيير الاسم
+      res.status(r.status).json(r.body);
       return;
     }
 

@@ -6,7 +6,7 @@ const GL = 'https://generativelanguage.googleapis.com/v1beta';
    والشخصيّة الناطقة. النصّ للسجلّ، وللمستخدم سبب عربيّ ثابت مع failureCode: safety = الرقابة (العميل يترجمه)، failed = غيرها. */
 const SAFETY_RE = /safety|moderat|filter|responsible ai|\brai\b|guideline|content policy|prohibited|sensitive/i;
 const FAIL_SAFETY = 'الرقابة رفضت المحتوى — جرّب صورة أو وصفًا آخر.';
-const FAIL_OTHER = 'جرّب صورة أو وصفًا آخر.'; // كلّ متّصل يسبقه بـ«فشل إنشاء الفيديو» فلا يتكرّر
+const FAIL_OTHER = 'أعد المحاولة، وإن تكرّر فجرّب صورة أو وصفًا آخر.'; // كلّ متّصل يسبقه بـ«فشل إنشاء الفيديو» فلا يتكرّر — v-rest-fixes: كان «جرّب صورة أو وصفًا آخر» لكلّ فشل غير الرقابة، ولو كان عطلًا عند المزوّد
 function failed(res, why) {
   const safety = SAFETY_RE.test(String(why || ''));
   res.status(200).json({ status: 'FAILED', failure: safety ? FAIL_SAFETY : FAIL_OTHER, failureCode: safety ? 'safety' : 'failed' });
@@ -25,6 +25,13 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
       console.error('[veo-status] upstream ' + upstream.status + ': ' + String(msg).slice(0, 300));
+      /* v-credit-out (أمر المالك ٢١ أكتوبر «ما تنخصم منه ولا نقطة»): المزوّد يرفض الاستطلاع نفسه لعطب عندنا (رصيده نفد، المفتاح، الصلاحيّة) — المهمّة لن
+         تُتابَع أبدًا، وكانت تذكرتها تنتهي بعد ساعتين بلا ردّ. تُسوّى فشلًا الآن (مرّة واحدة) وunavailable يعرضه العميل «الخدمة متوقّفة مؤقّتًا». */
+      if (require('./_videoFail.js').isOutage(upstream.status, msg)) {
+        await require('./video-job.js').settleVideoJob(op, false);
+        res.status(503).json({ error: 'unavailable', retryable: false });
+        return;
+      }
       res.status(upstream.status).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
       return;
     }

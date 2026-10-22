@@ -41,6 +41,10 @@ test('٢. كلّ خيار يُعرض بصورة موجودة فعلًا (selImg 
   assert.ok(bare(place) === 'assets/design/opts/place-majlis.webp' && ver(place) >= 2, 'المكان (موضَّح — v-sharp): ' + place);
   assert.ok(bare(style) === 'assets/design/styles/modern.webp' && ver(style) >= 2, 'النمط (موضَّح — v-sharp): ' + style);
   assert.ok(bare(floor) === 'assets/design/decor-opts/flooring-parquet.webp' && ver(floor) >= 1, floor);
+  const marble = sb.selImg('designAiFlooring', 'marble');
+  assert.equal(bare(marble), 'assets/design/decor-opts/flooring-marble.webp');
+  assert.ok(ver(marble) >= 1, 'وسم كاش لصورة الرخام: ' + marble);
+  assert.ok(fs.statSync(path.join(root, 'assets/design/decor-opts/flooring-marble.webp')).size > 2000, 'صورة الرخام موجودة');
 });
 
 test('٣. وسم design-sels مرفوع فلا تبقى النسخة القديمة في الكاش، والاختبار مسجّل', () => {

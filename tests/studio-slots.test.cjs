@@ -59,8 +59,8 @@ test('٤. النصوص الجديدة بالـ١٤ لغة، والحزمة وا�
     for (const k of K) assert.ok(new RegExp('"?' + k + '"?:').test(s), lg + ' ' + k);
   }
   assert.ok(read('js/app.bundle.js').includes("function studioSetPhoto(which, file){"), 'الحزمة أُعيد بناؤها');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=669'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=761'"));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=674'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=770'"));
 });
 
 test('٥. المقارنة (لقطة المالك «كيف الشخص يعرف الشكل»): بطاقات مصوّرة مطويّة، وثلاثة كحدّ أقصى', () => {
@@ -70,10 +70,11 @@ test('٥. المقارنة (لقطة المالك «كيف الشخص يعرف �
   const b = js.slice(js.indexOf('function buildCompareChecks(){'), js.indexOf('const studioCardsEl'));
   assert.match(b, /const srcs = optionImgs\(feature, opt\.value\);/, 'صورة الخيار نفسها');
   assert.match(b, /window\.__omranWhenSeen\(img,/, 'تُحمَّل عند ظهورها');
-  assert.match(b, /querySelectorAll\('\.studioCompareCheck:checked'\)\.length > 3\)\{ cb\.checked = false; return; \}/);
+  // v-studio-compare-max: الرابعة تُلغى كما كانت، ومعها تلميح الحدّ على زرّ المقارنة (tests/studio-basket-compare.test.cjs)
+  assert.match(b, /querySelectorAll\('\.studioCompareCheck:checked'\)\.length > 3\)\{ cb\.checked = false; studioCompareMaxHint\(\); return; \}/);
   assert.doesNotMatch(b, /innerHTML = '<input type="checkbox"/, 'لا مربّعات نصّيّة');
   assert.match(js, /compareChecksEl\.querySelectorAll\('\.studioCompareCheck:checked'\)/, 'قارئ المقارنة كما هو');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=669'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=674'));
 });
 
 test('٦. قائمة المصدر (لقطة المالك «شوف وين تتحرك عند الإضافة»): ورقة من الأسفل للّمس، وتحت الخانة للحاسوب', () => {
@@ -82,5 +83,5 @@ test('٦. قائمة المصدر (لقطة المالك «شوف وين تتح�
   assert.match(js, /const below = r\.bottom \+ 8, above = r\.top - mh - 8;/, 'تحت الخانة، وفوقها إن ضاق ما تحتها');
   assert.doesNotMatch(js, /r\.top \+ r\.height \/ 2/, 'لا وسط الخانة فوق الميزات');
   assert.match(html, /\.stSrcMenu\.sheet\{left:0; right:0; bottom:0;/);
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=669'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=674'));
 });

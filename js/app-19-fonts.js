@@ -58,6 +58,7 @@
       }
       var link = document.createElement('link');
       link.rel = 'stylesheet';
+      link.crossOrigin = 'anonymous'; /* v-gfonts-cors: بلا CORS ترمي قراءة cssRules فيكتب html-to-image (تحويل PDF) خطأين في الكونسول */
       link.href = 'https://fonts.googleapis.com/css2?family=' + font.google + '&display=swap';
       link.setAttribute('data-chat-font', font.id);
       link.onerror = function(){ loaded[font.id] = false; };

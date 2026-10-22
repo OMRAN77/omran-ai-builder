@@ -23,7 +23,7 @@ function profile({ user, plan, avatar }){
 test('١. الرأس: الاسم والأحرف الأولى أو الصورة، وزرّ الدخول للضيف', () => {
   const m = profile({ user: 'ma', plan: 'free' });
   assert.equal(m.setProfileName.textContent, 'ma');
-  assert.equal(m.setProfileInitials.textContent, 'MA');
+  assert.equal(m.setProfileInitials.textContent, 'M', 'v-initials-one: حرف واحد كدائرة «حسابي»');
   assert.equal(m.setProfileImg.style.display, 'none');
   assert.equal(m.setProfileLogin.style.display, 'none');
   const withPic = profile({ user: 'ma', plan: 'free', avatar: 'data:image/png;base64,xx' });
@@ -54,7 +54,7 @@ test('٣. البنية: الرأس والبطاقة قبل القائمة، وا
   const css = read('css/tokens.css');
   for (const c of ['.setProfile{', '.setUpgrade{', '.settingsNavGroupTitle{', '.settingsNavGroup{', '.settingsNavValue{']) assert.ok(css.includes(c), c);
   const html = read('index.html');
-  assert.ok(html.includes('css/tokens.css?v=734') && html.includes('/js/partials-settings.js?v=699'));
+  assert.ok(html.includes('css/tokens.css?v=738') && html.includes('/js/partials-settings.js?v=705'));
 });
 
 test('٤. النصوص بالـ١٤ لغة، وبلا اسم مزوّد', () => {
@@ -70,7 +70,7 @@ test('٤. النصوص بالـ١٤ لغة، وبلا اسم مزوّد', () => 
       assert.doesNotMatch(m[1], /ChatGPT|Claude|Gemini|GPT|Groq|كلود|جيمناي/i, lg + ': ' + k);
     }
   }
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=761'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=770'/);
 });
 
 test('٥. الجوّال صفحة كاملة بزرّ ✕، والحاسوب بلا تغيير (v-settings-full-mobile)', () => {
@@ -80,6 +80,27 @@ test('٥. الجوّال صفحة كاملة بزرّ ✕، والحاسوب ب�
   assert.doesNotMatch(mob, /80vw/);
   assert.match(css, /\.setHomeClose\{ display:none;/);
   assert.match(css, /html\.mobile-ui \.setHomeClose\{ display:flex; \}/);
+  /* v-settings-x-desktop (تدقيق ١٨ أكتوبر): الإخفاء على الهاتف (v-tools-shelves) افترض أنّ الحاسوب يُظهره («يبقى على الحاسوب وحده»)
+     ولم يُظهره شيء — والإخفاءان بـ!important على الجوّال والنافذة الضيّقة يغلبانه (tools-shelves) */
+  assert.match(css, /@media \(min-width:861px\)\{ html:not\(\.mobile-ui\) \.setHomeClose\{ display:flex; \} \}/, '✕ على الحاسوب');
   assert.match(partial, /id="setHomeClose"[^>]*data-i18n-title="closeTitle"/);
   assert.match(app05, /getElementById\('setHomeClose'\)[\s\S]{0,200}closeDialogSafe\(settingsDialog\)/);
+});
+
+test('٦. الأحرف الأولى برأس الإعدادات ودائرة «حسابي» قاعدة واحدة (v-initials-one، تدقيق ١٨ أكتوبر: «TA» مقابل «T»)', () => {
+  const a1 = read('js/app-01-boot-auth.js');
+  const src = a1.slice(a1.indexOf('  function updateAvatarUI(){'), a1.indexOf("  const authFormEl = $('#authForm');"));
+  assert.ok(src.length > 100, 'updateAvatarUI');
+  const acct = (user) => {
+    const ph = { style: {}, textContent: '' };
+    const els = { '#acctAvatarPreview': { style: {}, src: '' }, '#acctAvatarPlaceholder': ph };
+    new Function('$', 'localStorage', 'authGet', 'window', src + '; return updateAvatarUI;')(
+      (q) => els[q] || null, { getItem: () => null }, (k) => (k === 'aiapp_username' ? user : k === 'aiapp_auth_token' ? 'tok' : null), {})();
+    return ph.textContent;
+  };
+  for (const [user, ini] of [['Taryam777777', 'T'], ['عمران', 'ع'], ['𝒜lpha', '𝒜'], ['  sara ', 'S'], ['ma', 'M']]) {
+    assert.equal(profile({ user, plan: 'free' }).setProfileInitials.textContent, ini, 'الرأس: ' + user);
+    assert.equal(acct(user), ini, '«حسابي»: ' + user);
+  }
+  assert.equal(profile({ user: '', plan: 'guest' }).setProfileInitials.textContent, '?', 'الضيف كما كان');
 });

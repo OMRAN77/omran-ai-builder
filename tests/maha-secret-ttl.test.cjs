@@ -129,7 +129,7 @@ test('٤. رفض ٤٠٠ بلا تسمية لا يزول إلّا بحذف الع
   assert.equal(await bal('d'), 70 - points.COSTS.maha_minute);
 
   const k = await mint('d', () => ({ status: 401, body: { error: { message: 'Incorrect API key provided.' } } }));
-  assert.equal(k.code, 401);
+  assert.equal(k.code, 503); // v-maha-paused: خطأ مفتاح المزوّد رمز unavailable لا حالته
   assert.ok(k.bodies.every((b) => b.expires_after), 'لا حذف للعمر على خطأ المفتاح');
   assert.equal(await bal('d'), 70 - points.COSTS.maha_minute, 'الجلسة لم تُفتح ⇒ دقيقة الافتتاح رُدّت');
 });

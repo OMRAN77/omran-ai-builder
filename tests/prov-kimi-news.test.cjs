@@ -103,7 +103,7 @@ test('٤. القائمة: ثلاث مجموعات مرتّبة بخطّ بينه
   assert.match(block, /key:'kimi',\s+name:'Kimi · Moonshot',\s+or:true, direct:true, store:'aiapp_kimi_model',\s+def:'moonshotai\/kimi-k3',\s+models:\[\['moonshotai\/kimi-k3','Kimi K3'\],\['moonshotai\/kimi-k2\.6','Kimi K2\.6'\]\]/);
   assert.match(m, /if\(i && p\.grp !== PROVS\[i-1\]\.grp\) out \+= divider;/);
   assert.match(m, /kimi:'provNickDeep'/);
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m171026b/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m211026/);
 });
 
 test('٥. العميل: Kimi على مسار الأدوات وحده، باسمه للمالك، وإغلاق الإعدادات لا يمسح الاختيار', () => {
@@ -128,7 +128,7 @@ test('٦. الأخبار أُزيلت كلّها: لا ملفّات ولا نا�
   assert.ok(!st.includes('id="notifSection"') && !st.includes('chkNewsAlerts'));
   assert.ok(!read('js/app-05-ui.js').match(/SETTINGS_NAV_IDS = \[[^\]]*notifSection/));
   const html = read('index.html');
-  assert.ok(html.includes('/js/partials-core.js?v=669') && html.includes('/js/partials-settings.js?v=699'));
+  assert.ok(html.includes('/js/partials-core.js?v=674') && html.includes('/js/partials-settings.js?v=705'));
   const cr = read('api/_lib/check-reminders.js');
   assert.ok(!cr.includes('newsItems') && !cr.includes('breaking-news'));
   assert.match(cr, /if \(r\.type === 'news'\) \{\n[^\n]*\n\s+nextList\.push\(r\);\n\s+continue;\n\s+\}/, 'سجلّ الأخبار القديم يبقى كما هو بلا دفع');
@@ -172,5 +172,5 @@ test('٨. شريط المزوّد للمالك وحده: لا قاعدة CSS ت�
   const m = read('js/modes.js');
   assert.match(m, /bar\.style\.cssText = 'align-self:flex-end; margin-top:-2px; display:' \+ \(isOwner\(\) \? 'inline-flex' : 'none'\)/);
   assert.match(m, /if\(bar\) bar\.style\.display = on \? 'flex' : 'none';/);
-  assert.match(read('index.html'), /css\/redesign\.css\?v=693/);
+  assert.match(read('index.html'), /css\/redesign\.css\?v=695/);
 });

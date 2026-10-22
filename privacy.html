@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="سياسة الخصوصية لتطبيق Omran AI Builder">
-  <title>سياسة الخصوصية | Omran AI Builder</title>
+  <meta name="description" content="سياسة الخصوصية لتطبيق om ai (سابقاً Omran AI Builder)">
+  <title>سياسة الخصوصية | om ai</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -116,6 +116,33 @@
     .english ul { padding-left: 22px; padding-right: 0; }
     .english h2 { letter-spacing: -0.02em; }
 
+    /* v-legal-lang: شريط علويّ — رابط العودة للتطبيق، وزرّ «العربية» في وضع الإنجليزيّة وحدها (لغة التطبيق غير العربيّة) */
+    .topnav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .back-link { font-size: 0.9rem; font-weight: 600; }
+    .back-link .t-en, .ar-btn { display: none; }
+    .ar-btn {
+      background: transparent;
+      color: var(--gold);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    html.en-only .back-link .t-ar { display: none; }
+    html.en-only .back-link .t-en { display: inline; }
+    html.en-only .ar-btn { display: inline-block; }
+    html.en-only .page > header,
+    html.en-only .page > .policy-card { display: none; }
+    html.en-only .english { border-top: 0; margin-top: 0; padding-top: 0; }
+
     footer {
       border-top: 1px solid rgba(255, 255, 255, 0.1);
       color: var(--muted);
@@ -138,18 +165,22 @@
 </head>
 <body>
   <main class="page">
+    <nav class="topnav">
+      <a class="back-link" href="/" onclick="return omBackToApp()"><span class="t-ar">→ العودة للتطبيق</span><span class="t-en" lang="en">← Back to app</span></a>
+      <button type="button" class="ar-btn" onclick="omShowArabic()">العربية</button>
+    </nav>
     <header>
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span>OMRAN AI BUILDER</div>
       <h1>سياسة الخصوصية</h1>
-      <p class="subtitle">Omran AI Builder by فريق عمران AI</p>
+      <p class="subtitle">om ai (سابقاً Omran AI Builder)</p>
       <p class="updated">آخر تحديث: 16 أغسطس 2026</p>
     </header>
 
     <div class="policy-card">
       <section>
         <h2>مقدمة</h2>
-        <p>توضح سياسة الخصوصية هذه كيفية تعامل تطبيق <strong>Omran AI Builder</strong> مع معلوماتك عند استخدام خدماتنا. نحن نلتزم بحماية خصوصيتك والتعامل مع بياناتك بمسؤولية وشفافية.</p>
-        <p><strong>اسم التطبيق:</strong> Omran AI Builder · <strong>المطوّر:</strong> Omran Abdulla Eisa Rashid Alrukn Alshamsi · <strong>بريد التواصل:</strong> ommntr2712@gmail.com — هذه السياسة تخص حماية معلوماتك الشخصية في هذا التطبيق حصرًا.</p>
+        <p>توضح سياسة الخصوصية هذه كيفية تعامل تطبيق <strong>om ai (سابقاً Omran AI Builder)</strong> مع معلوماتك عند استخدام خدماتنا. نحن نلتزم بحماية خصوصيتك والتعامل مع بياناتك بمسؤولية وشفافية.</p>
+        <p><strong>اسم التطبيق:</strong> om ai (سابقاً Omran AI Builder) · <strong>المطوّر:</strong> Omran Abdulla Eisa Rashid Alrukn Alshamsi · <strong>بريد التواصل:</strong> ommntr2712@gmail.com — هذه السياسة تخص حماية معلوماتك الشخصية في هذا التطبيق حصرًا.</p>
       </section>
     </div>
 
@@ -188,7 +219,7 @@
     <div class="policy-card">
       <section>
         <h2>حذف الحساب والبيانات</h2>
-        <p>يمكنك طلب حذف حسابك وجميع بياناتك عبر مراسلتنا على <a href="mailto:ommntr2712@gmail.com">ommntr2712@gmail.com</a>. سنحذف جميع البيانات المرتبطة بطلبك خلال 30 يومًا.</p>
+        <p>يمكنك حذف حسابك بنفسك من داخل التطبيق: الإعدادات ← حسابي ← حذف الحساب. يُحذف فورًا ومعه محادثاتك وذاكرتك وتذكيراتك والصور المحفوظة في حسابك ورصيد النقاط، ويتوقّف التجديد التلقائيّ. نحتفظ فقط بسجلّات الدفع التي يلزمنا بها القانون. ويمكنك أيضًا طلب الحذف بمراسلتنا على <a href="mailto:ommntr2712@gmail.com">ommntr2712@gmail.com</a>، ونحذف البيانات المرتبطة بطلبك خلال 30 يومًا.</p>
       </section>
     </div>
 
@@ -201,13 +232,13 @@
 
     <div class="english" lang="en">
       <h1>Privacy Policy</h1>
-      <p class="subtitle">Omran AI Builder by Omran AI Team</p>
+      <p class="subtitle">om ai (formerly Omran AI Builder)</p>
 
       <div class="policy-card">
         <section>
           <h2>Introduction</h2>
-          <p>This Privacy Policy explains how <strong>Omran AI Builder</strong> handles your information when you use our services. We are committed to protecting your privacy and handling your data responsibly and transparently.</p>
-          <p><strong>App name:</strong> Omran AI Builder · <strong>Developer:</strong> Omran Abdulla Eisa Rashid Alrukn Alshamsi · <strong>Contact:</strong> ommntr2712@gmail.com — this policy covers the protection of your personal information in this app.</p>
+          <p>This Privacy Policy explains how <strong>om ai (formerly Omran AI Builder)</strong> handles your information when you use our services. We are committed to protecting your privacy and handling your data responsibly and transparently.</p>
+          <p><strong>App name:</strong> om ai (formerly Omran AI Builder) · <strong>Developer:</strong> Omran Abdulla Eisa Rashid Alrukn Alshamsi · <strong>Contact:</strong> ommntr2712@gmail.com — this policy covers the protection of your personal information in this app.</p>
         </section>
       </div>
 
@@ -246,7 +277,7 @@
       <div class="policy-card">
         <section>
           <h2>Account and Data Deletion</h2>
-          <p>You may request deletion of your account and data by emailing <a href="mailto:ommntr2712@gmail.com">ommntr2712@gmail.com</a>. All data associated with your request will be deleted within 30 days.</p>
+          <p>You can delete your account yourself inside the app: Settings → My account → Delete account. It is deleted immediately together with your chats, memory, reminders, images saved to your account and your points balance, and auto-renewal stops. We keep only the payment records the law requires. You can also request deletion by emailing <a href="mailto:ommntr2712@gmail.com">ommntr2712@gmail.com</a>; data associated with your request will be deleted within 30 days.</p>
         </section>
       </div>
 
@@ -258,7 +289,32 @@
       </div>
     </div>
 
-    <footer>© 2026 Omran AI Builder by فريق عمران AI</footer>
+    <footer>© 2026 om ai</footer>
   </main>
+  <script>
+  /* v-legal-lang (تدقيق ١٨ أكتوبر): الصفحة كانت تفتح بالعربيّ والإنجليزيّ تحته لمستخدم الواجهة الإنجليزيّة. لغة التطبيق من ?lang=
+     أو aiapp_lang (الأصل نفسه)؛ للسياسة نسختان فقط، فكلّ لغة غير العربيّة ترى الإنجليزيّة وحدها، وزرّ «العربية» يعيد الصفحة كاملة. */
+  var omArTitle = document.title;
+  function omPageLang() {
+    try { return new URLSearchParams(location.search).get('lang') || localStorage.getItem('aiapp_lang') || ''; }
+    catch (e) { return ''; /* تخزين محجوب (نافذة خاصّة/إطار) — تبقى الصفحة بالعربيّة */ }
+  }
+  function omShowArabic() {
+    var h = document.documentElement;
+    h.classList.remove('en-only'); h.lang = 'ar'; h.dir = 'rtl'; document.title = omArTitle;
+  }
+  /* رابط «العودة للتطبيق»: إن فُتحت الصفحة من التطبيق (نافذة أمّ حيّة) تُغلق فيرجع المستخدم إليه، وإلّا ينتقل الرابط إلى / */
+  function omBackToApp() {
+    try { if (window.opener && !window.opener.closed) { window.close(); if (window.closed) return false; } }
+    catch (e) { /* نافذة أمّ من أصل آخر — الرابط ينتقل إلى / */ }
+    return true;
+  }
+  (function () {
+    var L = String(omPageLang()).toLowerCase();
+    if (!L || L.slice(0, 2) === 'ar') return;
+    var h = document.documentElement;
+    h.classList.add('en-only'); h.lang = 'en'; h.dir = 'ltr'; document.title = 'Privacy Policy | om ai';
+  })();
+  </script>
 </body>
 </html>

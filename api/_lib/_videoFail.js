@@ -10,11 +10,26 @@ const OURS = 'تعذّر توليد الفيديو الآن. أعد المحاو
 const BAD = 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.';
 const OURS_RE = /api[ _-]?key|unauthori[sz]ed|permission|forbidden|billing|credits?\b|insufficient balance|deprecated|unknown model|invalid model|model\b.{0,60}?\b(?:not (?:found|available|supported)|unavailable)/i;
 
+/* v-credit-out (أمر المالك ٢١ أكتوبر: «إذا رصيد مزوّد الصور أو الفيديو خلصان، المستخدم يشوف رسالة واضحة «الخدمة متوقفة مؤقتاً» وما تنخصم
+   منه ولا نقطة»): نفاد رصيد المزوّد يأتي أحيانًا ٤٢٩ («Your prepayment credits are depleted») فكان يُقرأ زحامًا «أعد المحاولة بعد لحظات»
+   فيعيد العميل ويخصم ويردّ مرّة بعد مرّة. نصّ الرصيد/الفوترة يُفحص أوّلًا أيًّا كانت الحالة، و٤٠١/٤٠٢/٤٠٣ عطب عندنا لا يحلّه الانتظار.
+   «quota» وحدها لا تكفي: «Resource has been exhausted (e.g. check quota)» زحام عابر عند المزوّد. */
+const CREDIT_RE = /prepay|billing|api[ _-]?key (?:not valid|invalid|expired)|(?:invalid|incorrect) api[ _-]?key|credits? (?:are |is |have been )?(?:depleted|exhausted|run out)|out of credits?|exhausted balance|insufficient[ _](?:balance|credits?|funds|quota)|exceeded your current quota|user is locked/i;
+function isOutage(status, tech) {
+  const st = Number(status) || 0;
+  return st === 401 || st === 402 || st === 403 || CREDIT_RE.test(String(tech || ''));
+}
+
+/* v-credit-out: العطب عندنا (رصيد المزوّد، المفتاح، الصلاحيّة، النموذج) رمز unavailable بـ503 لا نصّ عربيّ ثابت — فيعرض العميل
+   «الخدمة متوقّفة مؤقّتًا» بلغة واجهته (svcPaused) ولا يعيد (retryable:false)؛ كان OURS عربيًّا في كلّ اللغات ولا يقول «متوقّفة». */
 function startFail(status, tech) {
   const st = Number(status) || 0;
-  if (st === 429 || st >= 500) return { code: st, body: { error: TEMP, retryable: true } };
-  if (st === 401 || st === 403 || st === 404 || OURS_RE.test(String(tech || ''))) return { code: 502, body: { error: OURS, retryable: false } };
-  return { code: st || 502, body: { error: BAD, retryable: false } };
+  const busy = st === 429 || st >= 500;
+  if (isOutage(st, tech) || st === 404 || (!busy && OURS_RE.test(String(tech || '')))) return { code: 503, body: { error: 'unavailable', retryable: false } };
+  /* v-vid-codes (تدقيق ١٨ أكتوبر: الواجهة الإنجليزيّة تعرض «❌ Error: تعذّر بدء الفيديو…» عربيًّا): رمز في error يترجمه العميل (vidBusy · vidRejected،
+     ١٤ لغة) والنصّ العربيّ نفسه في message_ar لمن يقرؤه. */
+  if (busy) return { code: st, body: { error: 'video_busy', message_ar: TEMP, retryable: true } };
+  return { code: st || 502, body: { error: 'video_rejected', message_ar: BAD, retryable: false } };
 }
 
 /* v-provider-fail (تدقيق ١٨–١٩ أكتوبر: «Your prepayment credits are depleted. Please go to AI Studio…» بروابط فوترة المزوّد ظهر
@@ -26,10 +41,10 @@ function startFail(status, tech) {
    النصّ التقنيّ للسجلّ عند المتّصل؛ هنا للتصنيف وحده. */
 function toolFail(status, tech) {
   const st = Number(status) || 0;
-  if (st === 429 || st >= 500 || st === 401 || st === 402 || st === 403 || st === 404 || OURS_RE.test(String(tech || ''))) {
+  if (st === 429 || st >= 500 || isOutage(st, tech) || st === 404 || OURS_RE.test(String(tech || ''))) {
     return { code: 503, body: { error: 'unavailable' } };
   }
   return { code: 502, body: { error: 'failed' } };
 }
 
-module.exports = { startFail, toolFail, TEMP, OURS, BAD };
+module.exports = { startFail, toolFail, isOutage, TEMP, OURS, BAD };

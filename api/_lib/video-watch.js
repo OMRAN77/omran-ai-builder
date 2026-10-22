@@ -170,10 +170,10 @@ async function run(req, res, body, user, key) {
 
   const cost = costFor(sec);
   // «مدفوع» يُحفظ في المهمّة قبل التحليل: لو انقطعت الدالّة بعد الخصم وقبل الردّ فالإعادة تحلّل بلا خصم ثانٍ.
-  let pay = { ok: true, points: null };
+  let pay = { ok: true, points: null }, payHere = false; // v-credit-out: payHere = خُصم في هذا النداء فنوعه معروف
   let charged = Number.isFinite(j.paid) ? j.paid : null;
   if (charged === null) {
-    pay = await pointsLib.spendPoints(user, cost, 'video_watch');
+    pay = await pointsLib.spendPoints(user, cost, 'video_watch'); payHere = true;
     if (!pay.ok) { await kvDel(lockKey(id)); return fail(res, 402, 'points_insufficient', { needed: cost, points: pay.points || 0 }); }
     charged = pay.owner ? 0 : cost;
     j.paid = charged;
@@ -220,7 +220,7 @@ async function run(req, res, body, user, key) {
     return res.status(200).json(Object.assign({ ok: true }, j.result, fb));
   } catch (e) {
     console.error('[video-watch] analysis failed:', e && (e.diag || e.message));
-    if (charged) { try { await pointsLib.refundPoints(user, charged); } catch (e2) { console.error('[video-watch] refund failed:', e2 && e2.message); } }
+    if (charged) { try { await pointsLib.refundPoints(user, charged, payHere ? pay : undefined); } catch (e2) { console.error('[video-watch] refund failed:', e2 && e2.message); } }
     j.paid = null; // رُدّ — المحاولة التالية تخصم من جديد
     try { await saveJob(id, j); } catch (e3) { /* guard-ok — المهمّة تنتهي وحدها بعد ساعة */ }
     await kvDel(lockKey(id));

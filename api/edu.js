@@ -657,17 +657,19 @@ module.exports = withErrorCapture('edu', async (req, res) => {
 
     // ---------------- 🧪 lab: الدرس الحي — تجربة تفاعلية مولّدة من الدرس (v-edu-lab) ----------------
     if (action === 'lab') {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
       const lessonId = String(body.id || '').slice(0, 64).replace(/[^A-Za-z0-9_-]/g, '');
       const labKey = (username && lessonId) ? ('db/edu/labs/' + encodeURIComponent(username) + '/' + lessonId + '.json') : null;
-      // المختبر المحفوظ يُعاد بلا استهلاك حصة ولا نداء نموذج
+      // المختبر المحفوظ يُعاد بلا استهلاك حصة ولا نداء نموذج — قبل فحص المفتاح (v-edu-hub-polish: لا يحتاجه)
       if (labKey && !body.force) {
         try {
           const cached = await kvGetJSON(labKey);
           if (cached && cached.html) { res.status(200).json({ ok: true, html: cached.html, cached: true }); return; }
         } catch (e) { /* best-effort: الكاش رفاهية — التوليد يغطي */ }
       }
+      // v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العميل يسأل عن المحفوظ عند إعادة فتح الدرس — الغياب جواب لا بناء
+      if (body.cachedOnly) { res.status(200).json({ ok: true, html: null }); return; }
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const max = __eduMax('proc');

@@ -97,8 +97,9 @@
     var sep = /^(ar|ur)/.test(lg()) ? '، ' : ', ';
     var cols = Array.prototype.map.call(document.querySelectorAll('#fashionAiModal .colorRow .cw.sel .cn'), function(n){ return (n.textContent || '').trim(); }).filter(Boolean);
     parts.push('🎨 ' + (cols.length ? (cols.slice(0, 2).join(sep) + (cols.length > 2 ? ' +' + (cols.length - 2) : '')) : (gt('fxColorsLbl') || '…')));
-    var ex = Array.prototype.map.call(document.querySelectorAll('#fashionAiModal .fxAccCard.sel .oi'), function(n){ return (n.textContent || '').trim(); }).filter(Boolean);
-    parts.push('💎 ' + (ex.length ? ex.join('') : (gt('fxAccLbl') || '…')));
+    /* تدقيق ١٨ أكتوبر: الجزء كان إيموجي .oi وحده فيمسحه v-clean-ui («شتوي · كحلي · · كاجوال») — الأسماء المترجمة من .ct كالألوان */
+    var ex = Array.prototype.map.call(document.querySelectorAll('#fashionAiModal .fxAccCard.sel .ct'), function(n){ return (n.textContent || '').trim(); }).filter(Boolean);
+    parts.push('💎 ' + (ex.length ? (ex.slice(0, 2).join(sep) + (ex.length > 2 ? ' +' + (ex.length - 2) : '')) : (gt('fxAccLbl') || '…')));
     var st = optText($('fashionAiStyle')); if(st) parts.push(st);
     return parts.join(' · ');
   }

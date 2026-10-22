@@ -14,6 +14,10 @@
   const statusEl = $('#videoMakerStatus');
   const resultEl = $('#videoMakerResult');
   const downloadEl = $('#videoMakerDownloadLink');
+  /* v-vmk-dl-ext (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «الفيديو ينزل باسم mp4 وهو webm: الامتداد لازم يطابق النوع»): الرابط يحمل
+     download="omran-ai-video.mp4" ثابتًا من partials-core، وفيديو القوالب (المسجِّل) والدمج والصوت السريع WebM — فينزل WebM باسم mp4 ولا
+     تفتحه بعض الأجهزة. الاسم من نوع الملفّ نفسه حيث الملفّ Blob في يدنا، ورابط المزوّد (MP4) يبقى بالاسم الافتراضيّ الذي يُعاد قبل كلّ توليد. */
+  function dlName(base, type){ return base + '.' + (/webm/i.test(String(type || '')) ? 'webm' : 'mp4'); }
   // v291: تنزيل تلقائي للفيديو أول ما يجهز
   // v525: proxyVideoUrl — يمرّر رابط الفيديو عبر سيرفر عمران بدل جلبه مباشرة من المتصفح
   // يحل مشكلة CORS على الجوال وهواوي التي تمنع fetch() من مصادر خارجية
@@ -98,9 +102,9 @@
       const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
-      if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب' + (d.redisWhy ? ' — السبب: ' + String(d.redisWhy).slice(0, 200) : '')); /* v-redis-why: للمالك وحده */
+      if(!d.redisOk) problems.push(oT('ownerDbDown') + (d.redisWhy ? ' — ' + oT('ownerWhy', { w: oLtr(String(d.redisWhy).slice(0, 200)) }) : '')); /* v-redis-why: للمالك وحده */
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
-      if(missing.length) problems.push('مفاتيح ناقصة: ' + missing.join(', '));
+      if(missing.length) problems.push(oT('ownerKeysMissing', { k: oLtr(missing.join(', ')) }));
       /* v-err-build: أخطاء النسخة الحاليّة فقط — ما أُصلح في نسخة سابقة لا يُنذر بعد
          نشر الإصلاح. ومع كلّ خطأ ملفّه وسطره، فاللقطة وحدها تكفي للتشخيص. */
       const __build = (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '';
@@ -110,57 +114,115 @@
           const src = String(e.source || '').split('/').pop().split('?')[0].slice(0, 40);
           return '• ' + '\u2066' + String(e.message || '').slice(0,90) + (src ? ' — ' + src + (e.line ? ':' + e.line : '') : '') + (e.count > 1 ? ' (x' + e.count + ')' : '') + '\u2069'; /* v-err-ltr */
         }).join('\n');
-        problems.push('أخطاء مسجلة من المستخدمين: ' + __live.length + '\n' + top);
+        problems.push(oT('ownerUserErrors', { n: __live.length }) + '\n' + top);
       }
       if(!problems.length) return; // كل شيء سليم → لا إزعاج
       const bar = document.createElement('div');
       bar.id = 'ownerHealthBar'; // v-maha-dock-bar: ينزل تحت شريط «م» العلويّ أثناء نافذة مها (css/modules.css)
-      /* v-ownerbar-cover (بلاغ المالك «شريط الأسهم غير موجود»): كانت
-         position:fixed;top:0 بـz-index أعلى من الهيدر الثابت (٩٩٩٩٩ مقابل ٩٠٠)
-         فتغطّي الهيدر بالكامل (شريط الأسهم وكل أزراره) خلفها بصمت — والمالك
-         لا يعرف بوجودها ليضغط ✕. جسم الصفحة شبكة CSS (body{display:grid})
-         بصفوف/أعمدة محدَّدة صراحةً للهيدر وشريط الأسهم وعمود المحادثة
-         (v-frame-c)، فإدراج الشريط كابن عاديّ بلا موضع شبكة صريح يُقحمه في
-         صفّ ضمنيّ أسفل الشاشة كلّها لا فوق الهيدر مباشرة — لذا الحلّ يبقى
-         fixed (يهرب من الشبكة تمامًا) لكن `top` يُحسَب من الارتفاع الفعليّ
-         لأسفل الهيدر بدل ٠ ثابت، فيظهر الشريط تحته دائمًا لا فوقه. */
-      const headerBottom = (function(){
-        try{ const h = document.querySelector('header'); return h ? Math.max(0, h.getBoundingClientRect().bottom) : 0; }
-        catch(e){ return 0; }
-      })();
-      bar.style.cssText = 'position:fixed;top:' + headerBottom + 'px;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
-      bar.textContent = '🩺 تنبيه للمالك — توجد ملاحظات في النظام:\n' + problems.join('\n');
+      /* v-ownerbar-pill (تدقيق ١٨ أكتوبر، لقطات ٠٠١ و٠٠٨ و٠٤٢ و٠٥٢): v-ownerbar-cover أنزل الشريط تحت الرأس، لكنّه بقي
+         بعرض الشاشة (z ٩٩٩٩٩، نصّ pre-wrap بثلاثة أخطاء خامّة ≈١٢٤px) فغطّى صفّ «إبداع» في الأدوات و«محادثة جديدة»
+         والبحث وزرّ إغلاق الشريط، وربع شاشة الجوّال، وكان عربيًّا بـdirection:rtl مفروض. صار كبسولة سطر واحد
+         «ملاحظات النظام (N)» مع ✕ أسفل الطرف المقابل للشريط الجانبيّ (bottom-start يغطّي أزرار ذيله على الحاسوب)،
+         وفوق صندوق الكتابة في الجوّال. التفاصيل الخامّة (v-err-build: الملفّ والسطر للتشخيص من لقطة) تُفتح بالنقر في
+         لوحة بسقف 40vh تُمرَّر، ومعها زرّ يفتح «فحص النظام». الاتّجاه اتّجاه الصفحة، والمعرّف كما هو (قاعدة v-maha-dock-bar). */
+      const mob = document.documentElement.classList.contains('mobile-ui') || (window.innerWidth || 1280) < 768;
+      let bottom = 12;
+      if(mob){
+        try{
+          let top = Infinity; // فوق الصندوق وفوق تلميحه الأوّل (askAllHintTip) إن ظهر
+          ['askAllHintTip', 'composerBox'].forEach(function(id){
+            const el = document.getElementById(id);
+            const r = el && el.getBoundingClientRect();
+            if(r && r.height > 0 && r.top > 0 && r.top < window.innerHeight) top = Math.min(top, r.top);
+          });
+          if(top < Infinity) bottom = Math.round(window.innerHeight - top + 10);
+        }catch(e){ __swallow(e, 'owner:healthbar-pos'); }
+      }
+      bar.style.cssText = 'position:fixed;bottom:' + bottom + 'px;inset-inline-end:12px;z-index:99999;max-width:min(360px,calc(100vw - 24px));background:#3a1010;color:#ffd7d7;border-radius:12px;font-size:13px;line-height:1.5;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+      const head = document.createElement('div');
+      head.setAttribute('role', 'button');
+      head.style.cssText = 'display:flex;align-items:center;gap:6px;min-height:36px;padding:0 4px 0 12px;cursor:pointer;white-space:nowrap';
+      const label = document.createElement('span');
+      label.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis';
+      label.textContent = oT('ownerHealthPill', { n: problems.length });
       const x = document.createElement('button');
+      x.type = 'button';
       x.textContent = '✕';
-      x.style.cssText = 'position:absolute;top:8px;left:10px;background:none;border:none;color:#ffd7d7;font-size:16px;cursor:pointer';
-      x.onclick = () => bar.remove();
-      bar.appendChild(x);
+      x.style.cssText = 'flex:none;background:none;border:none;color:#ffd7d7;font-size:15px;line-height:1;padding:8px;cursor:pointer';
+      x.onclick = (ev) => { if(ev && ev.stopPropagation) ev.stopPropagation(); bar.remove(); };
+      head.appendChild(label);
+      head.appendChild(x);
+      const det = document.createElement('div');
+      det.hidden = true;
+      det.style.cssText = 'max-height:40vh;overflow:auto;padding:6px 12px 10px;border-top:1px solid rgba(255,215,215,.2)';
+      const txt = document.createElement('div');
+      txt.style.cssText = 'white-space:pre-wrap;word-break:break-word';
+      txt.textContent = problems.join('\n');
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.textContent = oT('ownerHealthOpen');
+      go.style.cssText = 'margin-top:8px;background:none;border:1px solid rgba(255,215,215,.45);color:#ffd7d7;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer';
+      go.onclick = () => {
+        try{
+          const sd = document.getElementById('settingsDialog');
+          if(sd && typeof openDialogSafe === 'function') openDialogSafe(sd);
+          if(typeof renderSettingsNavList === 'function') renderSettingsNavList();
+          if(typeof showSettingsPage === 'function') showSettingsPage('ownerSection');
+          if(typeof window.runHealthCheck === 'function') window.runHealthCheck();
+        }catch(e){ __swallow(e, 'owner:healthbar-open'); }
+      };
+      det.appendChild(txt);
+      det.appendChild(go);
+      head.onclick = () => { det.hidden = !det.hidden; };
+      bar.appendChild(head);
+      bar.appendChild(det);
       document.body.appendChild(bar);
     }catch(e){ /* فحص صامت — لا نزعج المستخدم إذا فشل */ }
   }, 6000);
+
+  /* v-owner-i18n (تدقيق ١٨ أكتوبر، g14-owner): نصوص فحص النظام وكبسولة التنبيه من قاموس لغة الواجهة (كانت عربيّة ثابتة)،
+     والحمولة التقنيّة (مسارات، مفاتيح، رسائل الأخطاء) معزولة \u2066…\u2069 كما في v-err-ltr. خطأ الشبكة = acctNetError. */
+  function oT(k, p){
+    let v = (typeof window.t === 'function') ? window.t(k) : k;
+    v = (v == null || v === '') ? k : String(v);
+    if(p) Object.keys(p).forEach(function(n){ v = v.split('{' + n + '}').join(String(p[n])); });
+    return v;
+  }
+  function oLtr(s){ return '\u2066' + String(s == null ? '' : s) + '\u2069'; }
+  function oIso(s){ return '\u2068' + String(s == null ? '' : s) + '\u2069'; }
+  function oErr(e){
+    const m = String((e && e.message) || e || '');
+    return /Failed to fetch|NetworkError|Load failed|ERR_NETWORK|Network request failed/i.test(m) ? oT('acctNetError') : m;
+  }
+  /* v-owner-health-scroll: النتيجة تُكتب في صندوق تحت صفوف الأزرار — بلا تمرير لا يتغيّر شيء ظاهر بعد الضغط (لقطة ٠٢٠). */
+  function oShow(box){
+    try{ if(box && typeof box.scrollIntoView === 'function') box.scrollIntoView({ block: 'nearest' }); }
+    catch(e){ if(typeof __swallow === 'function') __swallow(e, 'owner:health-scroll'); }
+  }
 
   // 🩺 فحص النظام (لوحة المالك)
   window.runHealthCheck = async function(){
     const box = document.getElementById('adminHealthBox');
     if(!box) return;
-    box.textContent = '⏳ جاري الفحص...';
+    box.textContent = oT('ownerChecking');
+    oShow(box);
     const lines = [];
     const mark = ok => ok ? '✅' : '❌';
     // 1) الصفحات الأساسية
-    for(const [name, url] of [['الصفحة الرئيسية','/'], ['manifest.json','/manifest.json'], ['sw.js','/sw.js']]){
+    for(const [name, url] of [[oT('ownerHomePage'),'/'], ['manifest.json','/manifest.json'], ['sw.js','/sw.js']]){
       try{ const r = await fetch(url, {cache:'no-store'}); lines.push(mark(r.ok) + ' ' + name + ' (' + r.status + ')'); }
-      catch(e){ lines.push('❌ ' + name + ' (فشل الاتصال)'); }
+      catch(e){ lines.push('❌ ' + name + ' (' + oT('ownerConnFail') + ')'); }
     }
     // 2) فحص الخادم (مفاتيح + Blob + أخطاء المستخدمين)
     try{
       const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
-      lines.push(mark(d.redisOk) + ' قاعدة البيانات (Redis)' + (!d.redisOk && d.redisWhy ? ' — ' + String(d.redisWhy).slice(0, 200) : '')); /* v-redis-why */
+      lines.push(mark(d.redisOk) + ' ' + oT('ownerDbLabel') + (!d.redisOk && d.redisWhy ? ' — ' + oLtr(String(d.redisWhy).slice(0, 200)) : '')); /* v-redis-why */
       const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
-      lines.push(missing.length ? ('❌ مفاتيح ناقصة: ' + missing.join(', ')) : '✅ كل مفاتيح API موجودة');
+      lines.push(missing.length ? ('❌ ' + oT('ownerKeysMissing', { k: oLtr(missing.join(', ')) })) : '✅ ' + oT('ownerKeysAll'));
       if(d.clientErrorsCount > 0){
-        lines.push('⚠️ أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount);
+        lines.push('⚠️ ' + oT('ownerUserErrors', { n: d.clientErrorsCount }));
         /* v-err-date: بلا تاريخ لا نفرق خطأ اليوم عن خطأ الأسبوع الماضي */
         const __fmtD = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
         d.clientErrors.slice(0,10).forEach(e => {
@@ -179,12 +241,12 @@
           }
         });
       } else {
-        lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');
+        lines.push('✅ ' + oT('ownerUserErrorsNone'));
       }
       /* v-health-split: قياسات مسبار الذاكرة (v-mem-probe) أرقام من جهاز المالك لا أخطاء — بعنوانها، ولا تُحسب ملاحظة. */
       const __fmtT = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
       if((d.clientDiag || []).length){
-        lines.push('📏 قياسات جهازك (ليست أخطاء): ' + d.clientDiag.length);
+        lines.push('📏 ' + oT('ownerDeviceDiag', { n: d.clientDiag.length }));
         d.clientDiag.forEach(e => { lines.push('   · ' + String(e.message || '').replace(/^v-mem-probe\s*/, '').slice(0,200) + (__fmtT(e.lastSeen) ? ' — ' + __fmtT(e.lastSeen) : '')); });
       }
       /* v-health-srv: أخطاء الخادم نفسها (نداءات النماذج، المسارات) — كانت
@@ -197,73 +259,79 @@
       /* v-err-ltr: السطر التقنيّ (مسار + JSON إنجليزيّ) داخل صندوق يمين-يسار كان يتبعثر («'>>' Uncaught…») — يُعزل يسار-يمين كتلةً واحدة */
       const __srvLine = (e) => '\u2066' + '[' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtT(e.lastAt || e.at) ? ' — ' + __fmtT(e.lastAt || e.at) : '') + '\u2069';
       if(__now.length){
-        lines.push('⚠️ أخطاء الخادم' + (__cur ? ' في النشر الحاليّ' : '') + ': ' + __now.length);
+        lines.push('⚠️ ' + oT(__cur ? 'ownerSrvErrorsNow' : 'ownerSrvErrors', { n: __now.length }));
         __now.forEach(e => { lines.push('   • ' + __srvLine(e)); });
       } else {
-        lines.push('✅ لا توجد أخطاء في الخادم' + (__cur ? ' منذ آخر تحديث' : ''));
+        lines.push('✅ ' + oT(__cur ? 'ownerSrvNoneSince' : 'ownerSrvNone'));
       }
       if(__old.length){
-        lines.push('🗂️ من نشر سابق (أُصلحت أو لم تتكرّر بعد التحديث): ' + __old.length);
+        lines.push('🗂️ ' + oT('ownerSrvOld', { n: __old.length }));
         __old.forEach(e => { lines.push('   · ' + __srvLine(e)); });
       }
     }catch(e){
-      lines.push('❌ فحص الخادم فشل: ' + e.message);
+      lines.push('❌ ' + oT('ownerSrvCheckFail', { e: oLtr(oErr(e)) }));
     }
     const allOk = !lines.some(l => l.startsWith('❌') || l.startsWith('⚠️'));
-    lines.unshift((allOk ? '🟢 النظام سليم' : '🔴 توجد ملاحظات') + ' — ' + new Date().toLocaleTimeString('en-GB'));
+    lines.unshift((allOk ? '🟢 ' + oT('ownerSysOk') : '🔴 ' + oT('ownerSysNotes')) + ' — ' + new Date().toLocaleTimeString('en-GB'));
     box.textContent = lines.join('\n');
   };
   window.clearClientErrors = async function(){
     const box = document.getElementById('adminHealthBox');
+    /* v-owner-clear-confirm (تدقيق ١٨ أكتوبر): المسح نهائيّ للسجلّين — يسأل أوّلًا كبقيّة أفعال المالك الهدّامة
+       (حذف حساب، حذف حسابات الفحص، حذف مفتاح الخزنة). منطق المسح نفسه كما هو. */
+    if(!confirm(oT('ownerClearErrorsConfirm'))) return;
+    oShow(box);
     try{
       /* v-err-deploy: «مسح سجل الأخطاء» كان يمسح أخطاء المستخدمين وحدها — أخطاء الخادم لا تُمسح من التطبيق أبدًا
          (402 من ٢١ سبتمبر باقٍ). clear=errors في فحص الصحّة يمسح السجلّين معًا (للمالك وحده). */
       const r = await fetch('/api/system?action=health&clear=errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
-      if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
-    }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
+      if(box) box.textContent = r.ok ? oT('ownerClearDone') : '❌ ' + oT('ownerClearFail') + ' (' + r.status + ')';
+    }catch(e){ if(box) box.textContent = '❌ ' + oT('ownerClearFail') + ': ' + oErr(e); }
   };
   /* v-redis-capacity: «ما يملأ القاعدة» — قياس بالقراءة فقط (SCAN + STRLEN) يعرض العائلات الأكبر وأكبر المفاتيح في صندوق الفحص. */
   window.redisUsageCheck = async function(){
     const box = document.getElementById('adminHealthBox');
-    const mb = (n) => (n / 1048576).toFixed(1) + ' م.ب';
-    if(box) box.textContent = '⏳ أقيس ما في القاعدة… (قراءة فقط، لا يُحذف شيء)';
+    const mb = (n) => (n / 1048576).toFixed(1) + ' ' + oT('ownerMb');
+    if(box) box.textContent = oT('ownerUsageRunning');
+    oShow(box);
     try{
       const r = await fetch('/api/system?action=health&usage=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
       const d = await r.json().catch(() => ({}));
-      if(!r.ok || !d.usage){ if(box) box.textContent = '❌ فشل القياس (' + r.status + ')' + (d && d.message ? ': ' + d.message : ''); return; }
+      if(!r.ok || !d.usage){ if(box) box.textContent = '❌ ' + oT('ownerUsageFail') + ' (' + r.status + ')' + (d && d.message ? ': ' + oLtr(d.message) : ''); return; }
       const u = d.usage;
-      const lines = ['💾 القيم ≈ ' + mb(u.totalBytes) + ' في ' + u.totalKeys + ' مفتاحًا (الحدّ ٢٥٦ م.ب)' + (u.truncated ? ' — فُحص أوّل ' + u.scanned + ' فقط' : ''), '', 'العائلات الأكبر:'];
-      (u.groups || []).forEach(function(g){ lines.push('• ' + g.prefix + ' — ' + mb(g.bytes) + ' · ' + g.keys + ' مفتاحًا'); });
-      lines.push('', 'أكبر المفاتيح:');
-      (u.biggest || []).forEach(function(b){ lines.push('• ' + b.key + ' — ' + mb(b.bytes)); });
+      const lines = [oT('ownerUsageTotal', { size: mb(u.totalBytes), keys: u.totalKeys }) + (u.truncated ? ' — ' + oT('ownerUsageTrunc', { n: u.scanned }) : ''), '', oT('ownerUsageGroups')];
+      (u.groups || []).forEach(function(g){ lines.push('• ' + oLtr(g.prefix) + ' — ' + mb(g.bytes) + ' · ' + oT('ownerUsageKeysN', { n: g.keys })); });
+      lines.push('', oT('ownerUsageBiggest'));
+      (u.biggest || []).forEach(function(b){ lines.push('• ' + oLtr(b.key) + ' — ' + mb(b.bytes)); });
       if(box) box.textContent = lines.join('\n');
-    }catch(e){ if(box) box.textContent = '❌ فشل القياس: ' + e.message; }
+    }catch(e){ if(box) box.textContent = '❌ ' + oT('ownerUsageFail') + ': ' + oErr(e); }
   };
   /* v-cost-meter: «تكلفة المشتركين» — تكلفة كلّ حساب علينا هذا الشهر مجمّعة لكلّ باقة، مقابل ما يدفعه (قراءة فقط). */
   window.subscriberCostsCheck = async function(){
     const box = document.getElementById('adminHealthBox');
     const usd = (n) => (Number(n) || 0).toFixed(2) + '$';
-    const NAME = { basic: 'Plus', pro: 'Pro', max: 'Max', free: 'مجّاني', vip: 'VIP', owner: 'المالك' };
+    const NAME = { basic: 'Plus', pro: 'Pro', max: 'Max', free: oT('ownerPlanFree'), vip: 'VIP', owner: oT('ownerPlanOwner') };
     const NET = { basic: 9.41, pro: 19.12, max: 96.80 }; // ما يصلك من الاشتراك الشهريّ بعد رسوم الدفع
-    if(box) box.textContent = '⏳ أجمع تكلفة الشهر لكلّ باقة… (قراءة فقط)';
+    if(box) box.textContent = oT('ownerCostsRunning');
+    oShow(box);
     try{
       const r = await fetch('/api/system?action=health&costs=1&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''), { cache: 'no-store' });
       const d = await r.json().catch(() => ({}));
-      if(!r.ok || !d.costs){ if(box) box.textContent = '❌ فشل التقرير (' + r.status + ')' + (d && d.message ? ': ' + d.message : ''); return; }
+      if(!r.ok || !d.costs){ if(box) box.textContent = '❌ ' + oT('ownerCostsFail') + ' (' + r.status + ')' + (d && d.message ? ': ' + oLtr(d.message) : ''); return; }
       const c = d.costs;
-      const lines = ['💵 تكلفة الحسابات علينا — ' + c.month + ' (من أوّل الشهر حتّى الآن)', 'المجموع ' + usd(c.total) + ' على ' + c.users + ' حسابًا', ''];
-      (c.byPlan || []).forEach(function(g){ lines.push('• ' + (NAME[g.plan] || g.plan) + ': ' + g.users + ' · متوسّط ' + usd(g.avg) + ' · الأعلى ' + usd(g.max) + (NET[g.plan] ? ' · يدفع ' + usd(NET[g.plan]) : '')); });
-      lines.push('', 'أعلى الحسابات تكلفةً:');
-      (c.top || []).forEach(function(u){ lines.push('• ' + u.user + ' (' + (NAME[u.plan] || u.plan) + ') — ' + usd(u.total) + '  [رسائل ' + usd(u.chat) + ' · وسائط ' + usd(u.media) + ' · صوت ' + usd(u.voice) + ']'); });
+      const lines = [oT('ownerCostsHead', { m: oLtr(c.month) }), oT('ownerCostsTotal', { total: usd(c.total), n: c.users }), ''];
+      (c.byPlan || []).forEach(function(g){ lines.push('• ' + oT('ownerCostsPlan', { plan: NAME[g.plan] || oLtr(g.plan), users: g.users, avg: usd(g.avg), max: usd(g.max) }) + (NET[g.plan] ? ' · ' + oT('ownerCostsPays', { net: usd(NET[g.plan]) }) : '')); });
+      lines.push('', oT('ownerCostsTop'));
+      (c.top || []).forEach(function(u){ lines.push('• ' + oT('ownerCostsUser', { user: oIso(u.user), plan: NAME[u.plan] || oLtr(u.plan), total: usd(u.total), chat: usd(u.chat), media: usd(u.media), voice: usd(u.voice) })); });
       /* v-tokens-meter: نسبة قراءة الكاش في الإنتاج لكلّ مسار (آخر ٧ أيّام) — للمالك وحده بجانب التكلفة */
       const tk = d.tokens, kt = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1000 ? Math.round(n / 1000) + 'k' : String(n || 0));
-      const LANE = { paid: 'المشتركون', free: 'المجّانيّ (تقديريّ)', owner: 'المالك', pro: 'الردّ الاحترافيّ' };
+      const LANE = { paid: 'ownerLanePaid', free: 'ownerLaneFree', owner: 'ownerPlanOwner', pro: 'ownerLanePro' };
       if(tk && tk.byLane && tk.byLane.length){
-        lines.push('', '🔢 التوكنات آخر ' + tk.days + ' أيّام — قراءة الكاش من كلّ الدخل:');
-        tk.byLane.forEach(function(l){ lines.push('• ' + (LANE[l.lane] || l.lane) + ': ' + l.turns + ' دورًا · قراءة ' + l.readPct + '% · جديد ' + kt(l.input) + ' · كتابة ' + kt(l.cacheWrite) + ' · خرج ' + kt(l.output)); });
+        lines.push('', oT('ownerTokensHead', { d: tk.days }));
+        tk.byLane.forEach(function(l){ lines.push('• ' + oT('ownerTokensLine', { lane: LANE[l.lane] ? oT(LANE[l.lane]) : oLtr(l.lane), turns: l.turns, read: l.readPct, input: kt(l.input), write: kt(l.cacheWrite), output: kt(l.output) })); });
       }
       if(box) box.textContent = lines.join('\n');
-    }catch(e){ if(box) box.textContent = '❌ فشل التقرير: ' + e.message; }
+    }catch(e){ if(box) box.textContent = '❌ ' + oT('ownerCostsFail') + ': ' + oErr(e); }
   };
   /* v-media-purge: «تنظيف التطبيق» عند المالك — يحذف روابط المشاركة الأقدم من ٧ أيّام (الخادم يتحقّق من المالك). */
   window.purgeOldMedia = async function(){
@@ -288,6 +356,14 @@
   function setStatus(text){
     statusEl.style.display = text ? 'block' : 'none';
     statusEl.textContent = text || '';
+  }
+  /* v-actor-notice (تدقيق ١٨ أكتوبر video-mode-actor «تنبيه «اكتب أول شي…» يطلع فوق خارج الشاشة وما ينشاف»؛ قرار المالك ٢١ أكتوبر «صندوق
+     الممثل في الجوال: إذا كان مخرّب أو مغطّى صلّحه، بدون ما تضيف شي جديد»): في الجوال (≤٨٦٠) عمود المعاينة — وفيه سطر الحالة — فوق الحقول،
+     فالتنبيه يُكتب فوق الشاشة بمئات البكسلات والمستخدم عند زرّ الإنشاء. التنبيه نفسه يُمرَّر إلى العين؛ nearest لا يحرّك شيئًا حين يُرى (الحاسوب).
+     لا في setStatus: تقدّم التوليد يكتب فيه كلّ ثوانٍ فيشدّ المستخدم للأعلى. */
+  function showNotice(text){
+    setStatus(text);
+    try{ if(typeof statusEl.scrollIntoView === 'function') statusEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }catch(e){ __swallow(e, 'video:notice-scroll'); }
   }
   function ensureLongMinutesOption(show){
     longMinutesOpt = document.getElementById('videoMakerDurationLongMinutesOpt');
@@ -341,6 +417,9 @@
           if(styleEl && styleEl.value !== 'realistic') styleEl.value = 'realistic';
         }catch(he){ try{ __swallow(he,'video:open-hero'); }catch(_){ /* guard-ok */ } }
       }
+      /* v-vmk-chat-tab (تدقيق ١٨–١٩ أكتوبر): نصّ أو صورة من المحادثة مكانهما قسم الوضع (الوصف وصورة البطل) — كان يُفتح على «الترندات» وهما
+         مخفيّان. video.js يقرأ العلامة عند الفتح مرّة ويمحوها؛ بلا نصّ ولا صورة (ترندات المحادثة، مها) يبقى على الترندات */
+      if((prompt && String(prompt).trim()) || heroDataUrl){ if(modal.style.display !== 'flex') modal.dataset.vmkTab = (modeEl && modeEl.value) || 'runway'; }
       modal.style.display = 'flex';
       try{ closeHeaderMenu(); }catch(e){ /* guard-ok — closeHeaderMenu اختيارية */ }
       const owner = isOwnerAccount();
@@ -602,6 +681,8 @@
           /* v-ai-video-speed: خطأ الاستطلاع عابر في الغالب (مهلة، ٥xx) — كان يرمي المهمّة الجارية فيُنشئ createSceneWithRetry مهمّة جديدة
              من الصفر (+٧٠ ث محاكاةً، وتذكرة ثانية). الآن يُعدّ كعطب شبكة على المهمّة نفسها: ستّ مرّات متتالية ثمّ رسالة صريحة. */
           if(data.error){
+            /* v-credit-out: المزوّد رفض الاستطلاع لعطب عندنا (رصيده نفد…) — الخادم سوّى التذكرة وردّ النقاط؛ لا انتظار ولا مهمّة جديدة تخصم */
+            if(data.error === 'unavailable'){ clearInterval(iv); reject(Object.assign(new Error('unavailable'), { code: 'unavailable', retryable: false })); return; }
             if(res.status >= 500 || res.status === 429){ guard.fail(iv, data.error); return; }
             clearInterval(iv); reject(new Error(data.error)); return; /* 4xx نهائيّ (مهمّة مجهولة…) لا يُنتظر ٣٠ ث */
           }
@@ -799,6 +880,7 @@
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
+    downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
     downloadEl.style.display = 'block';
     autoSaveVideo(finalUrl);
   }
@@ -810,7 +892,7 @@
     setStatus(bT('🎨 جاري إنشاء الخاتمة...','🎨 Building outro...'));
     const outroBlob = await recordCanvasClip({
       title: '',
-      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة صانع فيديو عمران','Made with Omran AI Video')),
+      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة om ai','Made with om ai Video')),
       seconds: 2, ratio,
     });
 
@@ -877,6 +959,7 @@
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
+    downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
     downloadEl.style.display = 'block';
     autoSaveVideo(finalUrl);
   }
@@ -1118,12 +1201,12 @@
   btnGenerate.onclick = async () => {
     const text = (promptEl.value || '').trim();
     if(!text && modeEl.value !== 'actor'){
-      setStatus((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (bT('⚠️ اكتب وصف الفيديو أولًا.','⚠️ Please describe the video first.')));
+      showNotice((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (bT('⚠️ اكتب وصف الفيديو أولًا.','⚠️ Please describe the video first.'))); // v-actor-notice: كان يُكتب فوق الشاشة في الجوّال
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
-      setStatus(bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.'));
+      showNotice(bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.')); // v-actor-notice
       return;
     }
 
@@ -1142,9 +1225,15 @@
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
+    downloadEl.download = 'omran-ai-video.mp4'; // v-vmk-dl-ext: الافتراضيّ قبل كلّ توليد
+    /* v-vmk-res-mode: النتيجة تُوسَم بالوضع الذي ينتجها — video.js يخفيها ويوقفها في غيره (كان فيديو القوالب المجّانيّ يظهر في «فيديو AI»). */
+    resultEl.dataset.mode = modeEl.value;
 
     function friendlyError(err){
-      const code = err && err.code;
+      const code = err && (err.code || err.message); // v-credit-out: استطلاعات المحرّكات ترمي الرمز رسالةً (new Error(d.error))
+      /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الفيديو نفد أو عطب عندنا — النصّ القائم بالـ14 لغة، والنقاط رُدّت في الخادم */
+      if(code === 'unavailable' && typeof window.t === 'function') return '⚠️ ' + window.t('svcPaused');
+      if((code === 'video_busy' || code === 'video_rejected') && typeof window.t === 'function') return '⚠️ ' + window.t(code === 'video_busy' ? 'vidBusy' : 'vidRejected'); // v-vid-codes
       if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
       /* v-ai-video-speed: ⏳ «مشغول» في بطاقة الانتظار — رسالة الخطأ به كانت تُبقي بطاقة «يتولّد» وعدّادها فوق المشهد بلا نهاية → 🕒 */
       if(code === 'daily_limit_reached') return isEn() ? "🕒 You have reached today's free video limit. Try again tomorrow." : '🕒 لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
@@ -1335,16 +1424,16 @@
         resultEl.onended = null;
         // دائماً ندمج — حتى على هواوي (الدمج يعمل بالجهاز لا بالسيرفر)
         setStatus(bT('🔗 جاري دمج كل المشاهد بالفيلم النهائي...','🔗 Merging all scenes into your final film...'));
-        let finalUrl = null;
+        let finalUrl = null, finalType = ''; // v-vmk-dl-ext
         try{
           const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
             setStatus((bT('🔗 جاري دمج المشهد ','🔗 Merging scene ')) + (i + 1) + '/' + total + '...');
           });
-          finalUrl = URL.createObjectURL(finalBlob);
+          finalUrl = URL.createObjectURL(finalBlob); finalType = finalBlob.type;
         } catch(e){
           try{
             const blob = await concatScenes(builtScenes.map(s => s.videoUrl));
-            finalUrl = URL.createObjectURL(blob);
+            finalUrl = URL.createObjectURL(blob); finalType = blob.type;
             setStatus(bT('⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.','⚠️ Narration merge failed; film merged without narration.'));
           } catch(e2){
             finalUrl = null;
@@ -1355,7 +1444,7 @@
           resultEl.src = finalUrl;
           resultEl.style.display = 'block';
           downloadEl.href = finalUrl;
-          downloadEl.download = 'omran-film.mp4'; // يجبر المتصفح على التحميل لا الفتح
+          downloadEl.download = dlName('omran-film', finalType); // يجبر المتصفح على التحميل لا الفتح — v-vmk-dl-ext: والامتداد من نوع الملفّ
           downloadEl.style.display = 'block';
         } else {
           // آخر ملاذ: عرض المشاهد ورا بعض مع روابط تحميل منفصلة
@@ -1456,7 +1545,7 @@
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
-          setStatus(bT('🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic engine is limited to the owner account for now.'));
+          showNotice(bT('🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic engine is limited to the owner account for now.')); // v-actor-notice
           return;
         }
         let veoPrompt = text;
@@ -1464,7 +1553,7 @@
           const speechEl = document.getElementById('videoMakerActorSpeech');
           const speech = speechEl ? speechEl.value.trim() : '';
           if(!speech){
-            setStatus(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.'));
+            showNotice(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.')); // v-actor-notice
             return;
           }
           /* v-actor-lipsync (المالك ٢ أكتوبر: «الصوت المتحدث ليس دقيق في اللهجة الإماراتية والكلام عربي ضعيف جدًّا»): Veo يخترع
@@ -1644,6 +1733,7 @@
         resultEl.src = finalUrl;
         resultEl.style.display = 'block';
         downloadEl.href = finalUrl;
+        downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
         downloadEl.style.display = 'block';
       } catch(e){
         setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
@@ -1748,6 +1838,7 @@
       resultEl.style.display = 'block';
       resultEl.play().catch(function(){ /* autoplay may be blocked */ });
       downloadEl.href = dlUrl;
+      downloadEl.download = finalIsBlob ? dlName('omran-ai-video', finalSrc && finalSrc.type) : 'omran-ai-video.mp4'; // v-vmk-dl-ext
       downloadEl.style.display = 'block';
       /* v-ai-video-speed: الترقية بعد ظهور الفيديو لا قبله (مشهد واحد؛ الطويل بلا ترقية أصلًا) */
       if(wantQuality && sceneUrls.length === 1) upgradeInBackground(sceneUrls[0], token, narrationBlob, runSeq);

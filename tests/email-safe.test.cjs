@@ -317,3 +317,26 @@ test('٧. التنبيه ظاهر في النافذة، والنصوص الثل�
   const all = [data].concat(['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'].map((lg) => read('i18n/' + lg + '.js'))).join('\n');
   for (const m of all.matchAll(/emailAsst_draft\w+: "([^"]*)"/g)) assert.ok(!/openai|gpt|claude|anthropic|gemini/i.test(m[1]), 'لا اسم مزوّد: ' + m[1]);
 });
+
+/* تدقيق ١٨ أكتوبر: البطاقة «Smart Email Assistant» والنافذة «AI Email Assistant»، وفتح النافذة بلا Gmail يطبع طلبًا فاشلًا (400) كلّ مرّة */
+test('٨. «غير مربوط» حالة طبيعيّة: ٢٠٠ بـnotConnected والواجهة تُظهر الربط، وعنوان النافذة مفتاح البطاقة نفسه', async () => {
+  await auth.putUser('nogmail', { username: 'nogmail', createdAt: Date.now(), points: 0 });
+  let r = await callList('nogmail');
+  assert.equal(r.code, 200, 'لا 400 لحالة طبيعيّة');
+  assert.equal(r.j.notConnected, true);
+  assert.equal(r.j.ok, false);
+  assert.deepEqual(r.j.emails, []);
+  await auth.putUser('badrt', { username: 'badrt', createdAt: Date.now(), points: 0, emailAssist: { connected: true, gmailAddress: 'b@gmail.com', refreshTokenEnc: 'not-encrypted', ignoreList: [] } });
+  r = await callList('badrt');
+  assert.equal(r.code, 200);
+  assert.equal(r.j.notConnected, true, 'صلاحية لا تُقرأ = أعد الربط');
+
+  const { ids } = runUi({ ok: false, notConnected: true, emails: [] });
+  ids['#btnEmailAssist'].click();
+  await settle();
+  assert.equal(ids['#emailAssistConnectBox'].style.display, 'block', 'مربّع الربط ظاهر');
+  assert.equal(ids['#emailAssistConnectedBox'].style.display, 'none');
+  assert.equal(ids['#emailAssistList'].children.length, 0);
+  assert.doesNotMatch(ids['#emailAssistList'].innerHTML, /emailAsst_empty/, 'لا «لا توجد رسائل» بدل الربط');
+  assert.equal(ids['#emailAssistHeaderTitle'].textContent, 'T:emailAssistTitle', 'عنوان النافذة = اسم البطاقة');
+});

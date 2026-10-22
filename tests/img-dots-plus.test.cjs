@@ -186,7 +186,7 @@ test('٦. المسار العاديّ: __showImgLoading داخل __sendPromptCor
   })(core);
   assert.ok(fn, '__showImgLoading باقية داخل __sendPromptCore (نداءاتها الاثنا عشر كما هي)');
   const body = SRC.slice(fn.body.start, fn.body.end);
-  assert.ok(body.indexOf('_st.release()') > 0 && body.indexOf('__omranImgDots(el, __mine());') > body.indexOf('_st.release()'), 'يفكّ الشريط ثمّ يرسم');
+  assert.ok(body.indexOf('_st.release()') > 0 && body.indexOf('__omranImgDots(el, __mine(), ') > body.indexOf('_st.release()'), 'يفكّ الشريط ثمّ يرسم');
   assert.ok(!/omDot|omran-imggen-css2/.test(body), 'الرسم نفسه خرج من الدالّة');
 });
 

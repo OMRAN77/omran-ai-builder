@@ -82,5 +82,5 @@ test('٤. نسخة فارغة حُفظت قبل الإصلاح (PNG بلا حب�
 });
 
 test('٥. الرسم: إن لم تُصنع نسخة العرض تُعرض الصورة الأصليّة (في الذاكرة أو المقروءة من المخزن) — لا صورة بلا src', () => {
-  assert.match(src, /__imgView\(a\)\.then\(u => __showSrc\(u \|\| \(__isBigDataImg\(a\.dataUrl\) \? a\.dataUrl : ''\)\)\)/);
+  assert.match(src, /__imgView\(a\)\.then\(u => __showSrc\(u \|\| \(String\(a\.dataUrl \|\| ''\)\.slice\(0, 11\) === 'data:image\/' \? a\.dataUrl : ''\)\)\)/);
 });

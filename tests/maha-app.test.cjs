@@ -60,7 +60,7 @@ test('١. المعرفة حيّة: أدوات الشاشة بأسمائها وو
   assert.equal(r.code, 200);
   const f = r.s.instructions;
   for (const want of ['# App Knowledge', '- Video Maker (Create and edit videos): the video maker', '- Brand New Tool (a feature added after this code).',
-    'Portrait styles: ', 'Style AI sections: ', 'Fashion AI: ', 'one-tap trend videos', 'SETTINGS (the gear)', 'فريق عمران AI']) assert.ok(f.includes(want), want);
+    'Portrait styles: ', 'Style AI sections: ', 'Fashion AI: ', 'one-tap trend videos', 'SETTINGS (the gear)', 'فريق om ai'] /* v-om-ai-name */) assert.ok(f.includes(want), want);
   for (const gone of ['The ⋮ menu has sections', '9 AI providers', '🚗 السيارات', 'استكشف explore', '🎙️ الصوت voice', 'free guest 20 messages']) assert.ok(!f.includes(gone), 'ذهب: ' + gone);
   const k = f.slice(f.indexOf('# App Knowledge'), f.indexOf('# App Control'));
   assert.ok(!M.PROVIDER_RE.test(k), 'لا اسم مزوّد في المعرفة: ' + (k.match(M.PROVIDER_RE) || [])[0]);

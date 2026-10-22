@@ -364,12 +364,13 @@ module.exports = async (req, res) => {
     if (!username) { res.status(401).json({ error: 'الجلسة منتهية، سجل الدخول من جديد' }); return; }
 
     const user = await getUser(username);
+    /* تدقيق ١٨ أكتوبر: «غير مربوط» حالة طبيعيّة لا خطأ — كان ٤٠٠ يطبع طلبًا فاشلًا في الكونسول عند كلّ فتح للنافذة. العميل يفحص notConnected أوّلًا. */
     if (!user || !user.emailAssist || !user.emailAssist.connected) {
-      res.status(400).json({ error: 'لم يتم ربط Gmail بعد', notConnected: true });
+      res.status(200).json({ ok: false, notConnected: true, emails: [] });
       return;
     }
     const refreshToken = decrypt(user.emailAssist.refreshTokenEnc);
-    if (!refreshToken) { res.status(400).json({ error: 'تعذر قراءة صلاحية Gmail، أعد الربط', notConnected: true }); return; }
+    if (!refreshToken) { res.status(200).json({ ok: false, notConnected: true, emails: [] }); return; }
 
     const accessToken = await getAccessToken(refreshToken);
     if (body.draftFor) { await handleDraft(req, res, { body, username, user, accessToken, tz }); return; }

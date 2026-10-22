@@ -1,6 +1,6 @@
 // 🎁 v343: رسائل ودّية بدل أكواد الأخطاء عند توليد/تعديل الصور — مع فتح
 // نافذة إنشاء حساب تلقائيًا للضيف الذي استهلك صوره المجانية.
-function imgErrFriendly(err, isAr){
+function imgErrFriendly(err, isAr, info){
   if(err === 'guest_image_used'){
     setTimeout(() => { try{ window.requireLogin && window.requireLogin('guestImage'); }catch(e){ __swallow(e, "auth:app-02-tts#1"); } }, 1500);
     return isAr
@@ -8,9 +8,25 @@ function imgErrFriendly(err, isAr){
       : '🎁 You have used your 3 free guest images! Create a free account in seconds and get 70 gift points to keep generating and editing images.';
   }
   if(err === 'points_insufficient'){
+    /* v-plans-real-balance (تدقيق ١٨ أكتوبر: «تقول تحتاج 10 نقاط والرصيد 10 والصورة أصلًا بـ20»): الرقم كان مكتوبًا هنا من سعر قديم.
+       الآن رصيده وسعر الصورة من ردّ الخادم نفسه (402: points · needed)، وبلاهما بلا رقم. */
+    const have = info && Number(info.points), need = info && Number(info.needed);
+    if(info && isFinite(have) && isFinite(need) && need > 0){
+      return isAr
+        ? '⚡ رصيدك ' + have + ' نقطة، وهذه الصورة تحتاج ' + need + ' نقطة. افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
+        : '⚡ You have ' + have + ' points; this image needs ' + need + '. Open Settings → Plans to top up and continue.';
+    }
     return isAr
-      ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة (تحتاج 10 نقاط). افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
-      : '⚡ Not enough points for this image (needs 10). Open Settings → Plans to top up and continue.';
+      ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة. افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
+      : '⚡ Not enough points for this image. Open Settings → Plans to top up and continue.';
+  }
+  /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الصور نفد أو عطب عندنا — «الخدمة متوقّفة مؤقّتًا» بلغة الواجهة، والخادم ردّ النقاط
+     (كان «مشغولة الآن، أعد المحاولة» فيعيد المستخدم ويُخصم ويُردّ مرّة بعد مرّة) */
+  if(err === 'unavailable') return t('svcPaused');
+  /* v-rest-fixes: سقف الصور في الساعة كان يصل رمزًا خامًّا «image_hourly_limit» — النصّ بالـ14 لغة بالحدّ والدقائق الباقية من ردّ الخادم */
+  if(err === 'image_hourly_limit'){
+    const m = Math.max(1, Math.ceil((Number(info && info.retryAfter) || 3600) / 60));
+    return t('imgHourlyLimit').replace('{max}', String((info && info.max) || 20)).replace('{m}', String(m));
   }
   if(err === 'image_generation_timeout'){
     return isAr

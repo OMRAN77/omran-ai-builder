@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
       } else {
-        res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.'), subscribeOnly: !!usage.subscribeOnly }); /* v-tiers */
+        res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.'), subscribeOnly: !!usage.subscribeOnly, tier: usage.tier }); /* v-tiers · v-limit-chain-stop: الطبقة تميّز حدّ المجّانيّ عن حدّ الباقة في العميل */
       }
       return;
     }

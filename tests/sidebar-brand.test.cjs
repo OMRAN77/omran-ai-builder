@@ -29,8 +29,10 @@ test('redesign.css: الشعار فوق الزرّ (order:-3) على سطح ال
   // v-sb-brand-mobile: صار يظهر على الجوّال أيضًا أعلى الدرج فوق «محادثة جديدة»
   assert.match(css, /html\.mobile-ui #sidebarBrand\{order:-3; display:flex;/, 'يظهر على الجوّال فوق الزرّ');
   assert.match(css, /#omranNewChatBtn\{order:-2;/, 'الزرّ يبقى بعد الشعار مباشرة');
-  // شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ
-  assert.match(css, /html:not\(\.mobile-ui\) body:has\(#stockTicker[^)]*\) #sidebarBrand\{margin-top:28px;\}/);
+  // شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ — ثابتًا بكلّ حالات الشريط (v-ticker-brand-fixed، تدقيق ١٨ أكتوبر:
+  // الحجز المشروط بالشريط مطويًّا كان يرفع الشعار و«محادثة جديدة» ١٨px عند فتحه)
+  assert.match(css, /\nhtml:not\(\.mobile-ui\) #sidebarBrand\{margin-top:28px;\}\n/);
+  assert.doesNotMatch(css, /body:has\(#stockTicker[^)]*\) #sidebarBrand\{/);
 });
 
 test('app-10 + الحزمة: تبديل اللغة يعكس الشعار في القائمة ويعطيه نقرة الرأس', () => {

@@ -843,12 +843,13 @@ test('١٧. مها ترفض أثناء التجربة برسالة ظاهرة (�
     const body = src.slice(src.indexOf('async function mahaStartCall('), src.indexOf('if(btnMahaEl) btnMahaEl.onclick'));
     for (const busy of [true, false]) {
       const toasts = [], inner = [];
-      const run = new Function('window', 'settingsToast', 't', '__swallow', 'mahaStartCallInner',
+      const run = new Function('window', 'settingsToast', 't', '__swallow', 'mahaStartCallInner', 'mahaRtBeginCall',
         'let mahaCallActive = false, mahaCallStarting = false;\n' + body + '\nreturn mahaStartCall;')(
-        { callAgentBusy: () => busy }, (m) => toasts.push(m), (k) => D.ar[k] || k, () => {}, async (mode) => { inner.push(mode); });
+        { callAgentBusy: () => busy }, (m) => toasts.push(m), (k) => D.ar[k] || k, () => {}, async (mode) => { inner.push(mode); }, () => inner.push('prime'));
       await run('x');
       assert.deepEqual(toasts, busy ? ['أنهِ المكالمة التجريبيّة أوّلًا.'] : [], 'busy=' + busy);
-      assert.deepEqual(inner, busy ? [] : ['x']);
+      // v-maha-first-audio: تفعيل صوت المكالمة قبل الدخول (داخل الضغطة) — ولا تفعيل لمكالمة مرفوضة
+      assert.deepEqual(inner, busy ? [] : ['prime', 'x']);
     }
   }
   assert.equal(D.en.callAgentErrTrialBusy, 'End the trial call first.');

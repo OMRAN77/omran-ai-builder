@@ -63,10 +63,10 @@ test('٢. لا لقطة شاشة إنستغرام بقيت: لا صورة بمق
 
 test('٣. الربط: index.html والإعدادات والحزمة وapplyBg3D، والملفّات القديمة زالت', () => {
   const html = rd('index.html');
-  assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=3">/, 'CSS الخلفيّات (٢←٣ مع v-bg-custom-rotate)');
+  assert.match(html, /<link rel="stylesheet" href="css\/خلفيات\.css\?v=5">/, 'CSS الخلفيّات (٢←٣ مع v-bg-custom-rotate)');
   assert.doesNotMatch(html, /partials-خلفيات-قسم/, 'الواجهة القديمة ما زالت مربوطة');
-  assert.match(html, /partials-settings\.js\?v=699/, 'وسم الإعدادات ارتفع');
-  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=761'/, 'وسم اللغات ارتفع');
+  assert.match(html, /partials-settings\.js\?v=705/, 'وسم الإعدادات ارتفع');
+  assert.match(rd('js/app-04-i18n-state.js'), /\.js\?v=770'/, 'وسم اللغات ارتفع');
   for (const old of ['js/app-25-خلفيات-مدير.js', 'js/partials-خلفيات-قسم.js']) assert.ok(!fs.existsSync(path.join(root, old)), old + ' يجب أن يُحذف');
 
   const settings = rd('js/partials-settings.js');
@@ -126,6 +126,7 @@ function makeEnv({ storage = {}, list, fetchFails = false, now = 1_000_000 } = {
         contains: (c) => set.has(c),
       },
       setAttribute(k, v) { this['@' + k] = String(v); }, // v-skin-wood: aria-label لمصغّر الثيم
+      scrollIntoView(o) { calls.scroll.push({ el: this, o }); }, // v-bg-custom-first: الإضافة تُظهر المصغّر المختار
       appendChild(c) { this.children.push(c); if (c.id) els[c.id] = c; return c; },
       insertBefore(c) { this.children.unshift(c); if (c.id) els[c.id] = c; return c; },
       querySelectorAll(sel) { return this.children.filter((c) => c.classList.contains(sel.replace('.', ''))); },
@@ -142,7 +143,7 @@ function makeEnv({ storage = {}, list, fetchFails = false, now = 1_000_000 } = {
   rot.id = 'bgImgRotateOpts'; els.bgImgRotateOpts = rot;
   for (const m of [0, 10, 30, 60]) { const b = mk('button'); b.className = 'bgImgRotOpt'; b.dataset.min = String(m); rot.appendChild(b); }
   const store = new Map(Object.entries(storage));
-  const calls = { applyBg3D: [], buildBg3DPicker: 0, swallow: [], fetch: 0, alerts: [] };
+  const calls = { applyBg3D: [], buildBg3DPicker: 0, swallow: [], fetch: 0, alerts: [], scroll: [] };
   // ساعة ومؤقّت مزيّفان: timers[{at, fn}] وclock.tick(ms) يشغّل ما حان
   const clock = { now, timers: [], tick(ms) { clock.now += ms; const due = clock.timers.filter((t) => t.at <= clock.now); clock.timers = clock.timers.filter((t) => t.at > clock.now); due.forEach((t) => t.fn()); } };
   let tid = 0;
@@ -245,8 +246,15 @@ test('٨. صورة من الجهاز: تُحفظ على الجهاز بمعرّ�
   assert.equal(ctx.window.خلفيات.أضف(PIC), true);
   assert.deepEqual(JSON.parse(store.get('aiapp_bgimg_custom')), [PIC]);
   assert.equal(grid.children.length, 5 + TH, 'أُعيد بناء الشبكة بصورة الجهاز');
-  const c = grid.children[2 + TH]; // بعد بلا خلفيّة وصورة من جهازك والثيمات
+  /* v-bg-custom-first (تدقيق ١٨ أكتوبر): كانت تقع بعد الثيمات الـ٢٤ (الخانة ٢٦) فلا تُرى هي ولا ×ها — صارت أوّل الشبكة بعد
+     «بلا خلفيّة» و«صورة من جهازك» وقبل الثيمات، والمصغّر المختار يُمرَّر إلى المرأى */
+  const c = grid.children[2];
   assert.ok(c.classList.contains('bgImgCustom') && c.classList.contains('active') && c.dataset.file === 'custom:1700');
+  assert.ok(grid.children[3].classList.contains('bgImgTheme') && grid.children[3].dataset.file === 'ثيم:خشبي', 'الثيمات بعد صورة الجهاز');
+  assert.equal(grid.children[3 + TH].dataset.file, '01-مدينة.jpg', 'ثمّ صور المجلّد');
+  assert.equal(calls.scroll.length, 1, 'المصغّر المضاف يُمرَّر إليه');
+  assert.equal(calls.scroll[0].el, c);
+  assert.equal(calls.scroll[0].o.block, 'nearest');
   assert.ok(c.style.backgroundImage.includes(PIC.data), 'مصغّر صورة الجهاز من بياناتها');
   assert.equal(c.children[0].className, 'bgImgDel');
   assert.equal(c.children[0].textContent, '×');
@@ -310,7 +318,7 @@ test('٩. التبديل التلقائيّ: المدّة تُحفظ وتُعل�
   assert.equal(JSON.parse(store.get('aiapp_bgimg')).ملف, 'custom:1700', 'ثمّ صورة الجهاز أوّل الدورة');
 
   // اختيار يدويّ لا يطفئ التبديل؛ «بلا خلفيّة» تطفئه
-  grid.children[3 + TH].onclick(); // 01 (بعد الثيمات وصورة الجهاز)
+  grid.children[3 + TH].onclick(); // 01 (بعد صورة الجهاز والثيمات)
   assert.equal(store.get('aiapp_bgimg_rotate'), '10');
   grid.children[0].onclick();
   assert.equal(store.has('aiapp_bgimg_rotate'), false);

@@ -93,7 +93,7 @@ check(styleRule.includes('التصحيح: صحّح باختصار ووضوح ف�
 check(styleRule.includes('الخطوة التالية: أضفها فقط إذا كان الطلب عمليًّا متعدد الخطوات') && styleRule.includes('لا تختم كل رد باقتراح أو سؤال'), 'الخطوة التالية ليست خاتمة آلية');
 check(styleRule.includes('بلا تقليد لعباراته أو مزاجه'), 'فهم النبرة لا يتحول إلى تقليد المستخدم');
 check(styleRule.includes('السؤال البسيط جواب قصير من ١–٣ جمل بلا عناوين أو تعداد'), 'السؤال البسيط له حد سلوكي قابل للقياس');
-check(attach.includes('APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE') && attach.includes("'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE"), 'القواعد المركزية مستخدمة في البناء والمحادثة العادية');
+check(attach.includes('APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE') && attach.includes("'أنت مساعد ذكي في تطبيق om ai من فريق om ai.' + CONVERSATION_QUALITY_RULE"), 'القواعد المركزية مستخدمة في البناء والمحادثة العادية');
 check(!checkout.includes('then ONE concrete next-step suggestion or question') && !checkout.includes('then 2-3 concrete suggestions'), 'أزيل فرض الاقتراح والسؤال من كل رد');
 check(chatServer.includes('تجاري لهجة المستخدم وروحه بروح المجلس'), 'v-clean-slate: مجاراة اللهجة في النظام القصير');
 check(chatServer.includes('إن نقصت معلومة تؤثّر فعليًّا في الدقّة') && chatServer.includes('لا تُلحق سؤالًا عامًا بكل رد'), 'سؤال الخادم مشروط بنقص مؤثر');

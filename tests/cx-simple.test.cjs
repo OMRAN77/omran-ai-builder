@@ -126,3 +126,38 @@ test('٦. الحزمة مبنيّة، والترتيب: الوصف ← السط�
   // والمعرض باقٍ آخر النافذة (v-cx-brief)
   assert.match(read('js/app-15-cx-ideas.js'), /tail\.insertAdjacentElement\('afterend', box\);/);
 });
+
+test('٧. v-cx-bidi: سطر «جاهز» بلا «m²» ولا «2×» — الأدوار بتسمية حقلها والمساحة بوحدته، وكلّ جزء معزول ⁨…⁩', () => {
+  const a = SRC.indexOf('  var TX = {');
+  const b = SRC.indexOf('  function card(p, st, all){', a);
+  assert.ok(a > 0 && b > a, 'كتلة apply');
+  const sel = (opts) => ({ options: opts.map(([v, text]) => ({ value: v, text })), value: '', dispatchEvent() {} });
+  const run = (lg, floorsLabel, areaLabel) => {
+    const els = {
+      constructionType: sel([['villa', '🏡 فيلا سكنية'], ['rest', '🌴 استراحة']]),
+      constructionStyle: sel([['modern', 'عصري'], ['gulf', 'خليجي']]),
+      constructionFloors: { value: '', dispatchEvent() {}, previousElementSibling: { textContent: floorsLabel } },
+      constructionArea: { value: '', dispatchEvent() {}, previousElementSibling: { textContent: areaLabel } },
+    };
+    const ctx = {
+      lang: lg, localStorage: { getItem: () => null }, Event: function () {},
+      document: { getElementById: (id) => els[id] || null, querySelectorAll: () => [] },
+    };
+    vm.runInNewContext(SRC.slice(a, b) + '\nthis.apply = apply; this.PRESETS = PRESETS;', ctx);
+    const st = { textContent: '', style: {} };
+    ctx.apply(ctx.PRESETS[0], st);
+    assert.equal(els.constructionFloors.value, '2', 'القيم تُوضع كما كانت');
+    assert.equal(els.constructionArea.value, '400');
+    return st.textContent;
+  };
+  const ar = run('ar', 'عدد الأدوار', 'المساحة (م²)');
+  assert.ok(!/m²/.test(ar), 'لا «m²» في العربيّة: ' + JSON.stringify(ar));
+  assert.ok(!/×/.test(ar), 'لا «2×» منفردة: ' + JSON.stringify(ar));
+  const s = ar.slice(ar.indexOf(': ') + 2, ar.indexOf(' — '));
+  const parts = s.split(' · ');
+  assert.equal(parts.length, 5, JSON.stringify(s));
+  for (const p of parts) assert.ok(p.startsWith('\u2068') && p.endsWith('\u2069'), 'جزء غير معزول: ' + JSON.stringify(p));
+  assert.deepEqual(parts, ['\u2068🏡 فيلا سكنية\u2069', '\u2068عصري\u2069', '\u2068عدد الأدوار 2\u2069', '\u2068400 م²\u2069', '\u2068+3\u2069']);
+  const en = run('en', 'Number of floors', 'Area (m²)');
+  assert.ok(en.includes('\u2068Number of floors 2\u2069') && en.includes('\u2068400 m²\u2069'), JSON.stringify(en));
+});

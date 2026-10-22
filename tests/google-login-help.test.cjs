@@ -130,7 +130,7 @@ test('٥. النصّ بالـ١٤ لغة باسم الزرّ نفسه، ووسم
     const o = JSON.parse(m[2]);
     assert.ok(o.authGoogleHint && o.authGoogleHint.includes('{btn}') && /Gmail/.test(o.authGoogleHint), lg);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=761'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=770'"));
 });
 
 test('٦. أندرويد الخام (; wv) وحده يأخذ مسار «ارجع للتطبيق» — Chrome والآيفون كما كانا', () => {
@@ -143,6 +143,6 @@ test('٦. أندرويد الخام (; wv) وحده يأخذ مسار «ارجع
   assert.equal(isWrap('Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36'), false, 'Chrome/TWA');
   assert.equal(isWrap('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'), false);
   const ld = read('login-done.html');
-  assert.ok(ld.includes('ارجع إلى تطبيق «عمران AI» — اضغط ✕ أعلى هذه الصفحة أو زرّ الرجوع'), 'أندرويد: ✕ أو زرّ الرجوع');
+  assert.ok(ld.includes('ارجع إلى تطبيق «om ai» — اضغط ✕ أعلى هذه الصفحة أو زرّ الرجوع') /* v-om-ai-name */, 'أندرويد: ✕ أو زرّ الرجوع');
   assert.ok(ld.includes('اسمه أعلى الشاشة بجانب الساعة'), 'الآيفون كما كان');
 });

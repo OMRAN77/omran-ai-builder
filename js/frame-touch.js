@@ -100,7 +100,8 @@
       if(!مسموح()) return;
       if(جوال && !html.classList.contains('mobile-ui')) return;
       var t = e.target;
-      if(t && t.closest && t.closest('button,a,input,textarea,select,label,[role=button],[contenteditable],iframe')) return;
+      /* v-nav-cards-menus: تبويبات المعاينة/الكود <div class="tab"> لا أزرار — كانت الحروف تنتثر على شريطها */
+      if(t && t.closest && t.closest('button,a,input,textarea,select,label,[role=button],[contenteditable],iframe,.tab,[data-tab],#tabs')) return;
       if(جوال && t && t.closest && t.closest('.msg,#inputbar,#composerBox')) return;
       if(!جهّز()) return;
       if(!on || W !== host.clientWidth || H !== host.clientHeight) قِس();

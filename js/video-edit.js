@@ -331,6 +331,7 @@
           if(ex && ex.sheet){ fin(); return; }
           if(!ex){
             ex = document.createElement('link'); ex.rel = 'stylesheet'; ex.setAttribute('data-ved-font', F.id);
+            ex.crossOrigin = 'anonymous'; /* v-gfonts-cors: بلا CORS ترمي قراءة cssRules فيكتب html-to-image (تحويل PDF) خطأين في الكونسول */
             ex.href = 'https://fonts.googleapis.com/css2?family=' + F.g + '&display=swap';
             document.head.appendChild(ex);
           }
@@ -1165,7 +1166,7 @@
     if(!st.outBlob) return;
     try{
       var file = new File([st.outBlob], OUT_NAME, { type: 'video/mp4' });
-      if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'Omran AI' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'om ai' });
       else saveOut();
     }catch(e){ if(!(e && e.name === 'AbortError')) sw(e, 'ved:share'); }
   }

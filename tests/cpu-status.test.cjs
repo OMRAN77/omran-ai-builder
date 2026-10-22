@@ -62,6 +62,6 @@ test('٣. صفحة بلا #messages: كلّ تغيّر يمسح كما قبل', 
 
 test('٤. وسوم الكاش ارتفعت', () => {
   const html = fs.readFileSync('index.html', 'utf8');
-  assert.ok(html.includes('css/tokens.css?v=734') && html.includes('/js/ui-wiring.js?v=664'));
+  assert.ok(html.includes('css/tokens.css?v=738') && html.includes('/js/ui-wiring.js?v=666'));
   assert.ok(fs.readFileSync('js/ui-wiring.js', 'utf8').includes("/js/delete-confirm.js?v=20261019b'"));
 });

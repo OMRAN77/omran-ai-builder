@@ -317,6 +317,10 @@
   }
 
   function status(txt){ var s = $('vtStatus'); if(!s) return; s.textContent = txt || ''; s.style.display = txt ? 'block' : 'none'; }
+  /* v-trend-scene-live (المالك بصورة مشاهد الترندات: «هذيل ما يشتغلون»): نصوص هذه اللوحة تمرّ بـnoEmoji (ui) فيُكتب «يصنع الفيديو…»
+     بلا ⏳ — ومشهد التوليد (app-34-gen-wait) كان يعرف «مشغول» بذلك الرمز، فلم يظهر قطّ بالمسار الحقيقيّ. الانشغال يُعلَن بسمة صريحة
+     على سطر الحالة تُضبط قبل كتابة النصّ (كتابته هي التي توقظ الرصد) وتُرفع قبل نصّ النهاية أو الخطأ. */
+  function setBusyFlag(on){ var s = $('vtStatus'); if(!s) return; if(on) s.setAttribute('data-genw-busy', '1'); else s.removeAttribute('data-genw-busy'); }
   function post(url, payload){
     return window.postWithConfirm ? window.postWithConfirm(url, payload) : fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
   }
@@ -345,6 +349,7 @@
       var sj = null; try{ sj = await sr.json(); }catch(e){ sj = null; }
       if(sj && sj.status === 'SUCCEEDED') return Array.isArray(sj.output) ? sj.output[0] : sj.output;
       if(sj && sj.status === 'FAILED') throw new Error(sj.failure || sj.error || 'failed');
+      if(sj && sj.error === 'unavailable') throw Object.assign(new Error('unavailable'), { code: 'unavailable' }); // v-credit-out: سُوّيت التذكرة ورُدّت النقاط — لا ٤٥ استطلاعًا
     }
     throw new Error('timeout');
   }
@@ -355,9 +360,17 @@
       var m = Math.max(1, Math.ceil((Number(e.retryAfter) || 180) / 60));
       return ui('cooldown').replace('{m}', String(m));
     }
+    /* v-trend-points (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٢٠: «تعذّر: points_insufficient»): رمزا النقاط والحدّ بنصّي الباقات القائمين (١٤ لغة)
+       — الصياغة وحدها، لا تغيير في الخصم ولا ترتيبه */
+    if(e && e.code === 'points_insufficient' && W('plansWhyPoints')) return W('plansWhyPoints');
+    if(e && e.code === 'daily_limit_reached' && W('plansWhyLimit')) return W('plansWhyLimit');
+    if(e && e.code === 'unavailable' && W('svcPaused')) return W('svcPaused');
+    if(e && (e.code === 'video_busy' || e.code === 'video_rejected') && W(e.code === 'video_busy' ? 'vidBusy' : 'vidRejected')) return W(e.code === 'video_busy' ? 'vidBusy' : 'vidRejected'); // v-vid-codes // v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الفيديو نفد — «الخدمة متوقّفة مؤقّتًا»
     /* v-trend-413: «HTTP 413» رمز حافّة لا رسالة — الصور أثقل من أن تُرسَل */
     if(/\b413\b/.test(String((e && e.message) || ''))) return ui('tooBig');
-    return ui('fail') + ': ' + String((e && e.message) || e).slice(0, 160);
+    var msg = String((e && e.message) || e);
+    if(/^[a-z][a-z0-9_]*$/.test(msg)) return ui('fail'); /* رمز خادم خامّ آخر («timeout»، «failed»…) لا يُعرض للمستخدم */
+    return ui('fail') + ': ' + msg.slice(0, 160);
   }
 
   /* v-video-seq-cooldown: ترند بأكثر من مشهد (قصّة بيكسار: ٣) كان يموت عند المشهد الثاني بـvideo_cooldown
@@ -409,6 +422,7 @@
       localStorage.setItem(bk, String(params.bg));
     }catch(e){ params.bg = Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
     busy = true; $('vtGo').disabled = true; $('vtOut').innerHTML = '';
+    setBusyFlag(true);
     status(ui('working'));
     try{
       var urls = [];
@@ -438,12 +452,14 @@
       });
       var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };
       out.appendChild(again);
+      setBusyFlag(false);
       status(ui('done'));
       try{ window.__chatVideoResult = { url: finalUrl || urls[0] }; }catch(e){ /* guard-ok */ }
     }catch(e){
+      setBusyFlag(false);
       if(String(e && e.message) !== 'cancelled') status(errText(e));
       else status('');
-    }finally{ busy = false; if($('vtGo')) $('vtGo').disabled = false; }
+    }finally{ busy = false; setBusyFlag(false); if($('vtGo')) $('vtGo').disabled = false; }
   }
 
   function boot(){
