@@ -36,7 +36,7 @@ test('قفل الخيط: الاختيار الصريح (المالك) يتجاو
 
 test('الخادم: الاحتياط المجّانيّ خام للمالك المتحقَّق منه (بلا بصمة ولا ملاحظة الوضع المجّانيّ)', async () => {
   // v-plan-models: الاستدعاء صار يحمل paid (المشترك وVIP بصيغة محايدة) — والمالك مشترك أيضًا، فـraw يغلب paid عنده
-  assert.ok(chat.includes("const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\\n' + baseSystem + nowNote(body && body.tz), raw: __rawOwner, paid: !!(usage && usage.subscriber) /* v-plan-models: المشترك وVIP بلا «النسخة الاحترافيّة» */, convo: __ownerReq ? compactConversation(convo) : convo /* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة */, send, requireVision: lastUserHasImage });"));
+  assert.ok(chat.includes("const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\\n' + baseSystem + nowNote(body && body.tz) + (lastUserHasImage ? require('./shot-reply.js').SHOT_REPLY_NOTE : '') /* v-shot-reply */, raw: __rawOwner, paid: !!(usage && usage.subscriber) /* v-plan-models: المشترك وVIP بلا «النسخة الاحترافيّة» */, convo: __ownerReq ? compactConversation(convo) : convo /* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة */, send, requireVision: lastUserHasImage });"));
   assert.ok(chat.includes('const __rawOwner = __ownerReq && !!(body && body.raw === true);'), 'v-owner-full: الخام للمالك اختياريّ (raw:true)، بتوثيق الرمز على الخادم');
   const fc = fs.readFileSync('api/_lib/free-chain.js', 'utf8');
   assert.ok(fc.includes("const system = args.raw ? '' : String(args.system || '') + (args.paid ? PAID_NOTE : FREE_NOTE);"), 'raw أوّلًا: لا ملاحظة أيًّا كانت للمالك الخام');

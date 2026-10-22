@@ -19,7 +19,8 @@ const root = path.join(__dirname, '..');
 const rp = (f) => require.resolve(path.join(root, f));
 const stub = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(f), loaded: true, exports }; };
 stub('api/_lib/kv.js', { kvGetJSON: async () => null, kvPutJSON: async () => {}, kvDel: async () => {}, kvExpire: async () => {} });
-stub('api/_lib/_usage.js', { DAILY_LIMIT: 20, clientIp: () => '127.0.0.1', checkAndConsume: async () => ({ allowed: true, username: 'shot-user' }) });
+let curUsage = { allowed: true, username: 'shot-user' };
+stub('api/_lib/_usage.js', { DAILY_LIMIT: 20, clientIp: () => '127.0.0.1', checkAndConsume: async () => Object.assign({}, curUsage) });
 stub('api/_lib/search.js', { fetchPlaces: async () => [] });
 const chat = require(rp('api/_lib/chat.js'));
 const SR = require(rp('api/_lib/shot-reply.js'));
@@ -67,6 +68,32 @@ test('١. (أ) الجواب أوّلًا: دور الصورة الحقيقيّ �
   const dump = 'في الصورة تظهر شاشة النسخ الاحتياطي للمحادثات، وفيها:\n- ⚠️ تعذّر النسخ الاحتياطي: مساحة التخزين السحابي ممتلئة (15 GB من 15 GB)\n- آخر نسخة ناجحة: ١٤ أكتوبر ٢٠٢٦ — ٣:١٠ ص\n- حجم النسخة: 2.4 GB\n- الحساب: user@example.com\n- نسخ احتياطي تلقائي: يوميًّا\n- تضمين الفيديو: مفعّل\n- النسخ عبر بيانات الجوّال: متوقّف\n- تشفير النسخ الاحتياطي من طرف لطرف: غير مفعّل\n- سجلّ المحادثات المؤرشفة: 37 محادثة\n- الوسائط المحفوظة: 1,284 صورة · 96 فيديو\nالسبب أنّ المساحة ممتلئة.';
   const f = failed(S.scoreQuestion(q('shot-answer'), { text: dump }));
   assert.ok(f.includes('أوّل سطر جواب') && f.includes('بلا وصف للّقطة') && f.includes('نصوص اللقطة ≤2'), f.join(' · '));
+});
+
+test('١ب. الطبقة المجّانيّة (السلسلة المجّانيّة بلا ملاحظات الدور — كشفها التقييم الحيّ على المعاينة): دور الصورة يحمل قاعدة الشكل، ودور النصّ بلاها', async () => {
+  const sys = [];
+  const save = global.fetch;
+  process.env.GEMINI_API_KEY = 'test-gemini-key';
+  curUsage = { allowed: true, username: 'shot-free', tier: 'free', subscriber: false };
+  global.fetch = async (url, init) => {
+    let b = {}; try { b = JSON.parse(init.body); } catch (e) { /* نداء جانبيّ ليس JSON */ }
+    if (/googleapis/.test(String(url)) && Array.isArray(b.messages)) sys.push(String((b.messages.find((m) => m.role === 'system') || {}).content || ''));
+    return new Response('data: ' + JSON.stringify({ choices: [{ delta: { content: 'تمام' } }] }) + '\n\ndata: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  };
+  const res = { setHeader() {}, status() { return this; }, json() { return this; }, write() { return true; }, end() { this.writableEnded = true; }, on() {}, flushHeaders() {} };
+  const run = (content) => chat({ method: 'POST', headers: { 'x-vercel-ip-country': 'AE' }, body: { messages: [{ role: 'user', content }], token: token('shot-free'), provider: 'claude', tz: 'Asia/Dubai' } }, res);
+  try {
+    await run([{ type: 'text', text: 'مين الأفضل فيهم؟' }, IMG]);
+    await run('وش أفضل وقت لزيارة دبي؟');
+  } finally {
+    global.fetch = save; delete process.env.GEMINI_API_KEY; curUsage = { allowed: true, username: 'shot-user' };
+    require(rp('api/_lib/free-chain.js')).__workingModel.clear();
+  }
+  assert.equal(sys.length, 2, 'الدوران وصلا السلسلة المجّانيّة');
+  assert.ok(sys[0].includes(NOTE), 'دور الصورة المجّانيّ يحمل قاعدة الشكل');
+  assert.ok(!sys[1].includes('[شكل الردّ على اللقطة'), 'دور النصّ المجّانيّ بلاها');
+  const src = read('api/_lib/chat.js');
+  assert.ok(/const __fb = await streamFreeChain\(\{ system: __rawOwner \? '' : PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\) \+ \(lastUserHasImage \? require\('\.\/shot-reply\.js'\)\.SHOT_REPLY_NOTE : ''\)/.test(src), 'واحتياط المدفوع حين يفشل مساره (السلسلة نفسها)');
 });
 
 test('٢. (ب) نتائج مزوّدين: القاعدة تسمّي الأعمدة الخمسة بترتيبها و«أفضل ٣» بسبب في سطر، والمقيِّم يقبل الجدول ويرفض ما عداه', () => {
