@@ -12,7 +12,7 @@
   (signup-notify يمنعه)؛ privacy/terms «om ai (سابقاً…)» والمطوّر om ai والمطوّر الشخص باقٍ، وبريد التواصل ommntr2712 فيهما وفي «عن التطبيق»
   كما كان. المشاركة كانت تأخذ الاسم من pageTitle (يبقى قديمًا) فصارت «om ai» ثابتة.
   **لم يُلمس:** التعليقات (اقتباسات المالك)، `codemap.json` المولَّد (قديم على main أصلًا)، `src/index.html` (نسخة غير مستعملة)،
-  `legal-strings.js` (غير محمَّل)، نسخة هواوي (`manifest-huawei.json`، twa، build.gradle — تتغيّر مع إصدار متجر)، كاشف قالب «لوحة القيادة
+  `legal-strings.js` (غير محمَّل)، اسم APK هواوي (twa، build.gradle — يتغيّر مع إصدار متجر؛ أمّا `manifest-huawei.json` بيان الويب داخل التطبيق فصار «om ai» لأنّ store-huawei يلزمه مطابقة البيان العامّ — فشل CI الأوّل)، كاشف قالب «لوحة القيادة
   الذكية | عمران AI» في app-09 (يطابق مشاريع محفوظة)، «عمران» وحدها (اسم شخص، «وكيل عمران»). وسوم: القواميس ٧٧٠، partials-core ٦٧٤،
   partials-settings ٧٠٥، templates-data ٥٩٠، video-edit ٧، ad-studio ٦٠٦.
 - **الاختبار:** `tests/om-ai-name.test.cjs` (٦، مسجَّل): manifest، index (الجديد والباقي)، لا اسم قديم في نصّ ظاهر بثلاثين ملفًّا والقواميس، الصفحتان
