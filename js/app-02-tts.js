@@ -594,6 +594,15 @@ function omranMdText(el, s){
   }
   if(last < s.length) el.appendChild(document.createTextNode(s.slice(last)));
 }
+/* v-shot-reply (المالك ٢٢ أكتوبر: «إذا كان الجدول أعرض من الشاشة يتمرّر بالعرض ويبين إنّ فيه أعمدة ثانية»): data-fade على الغلاف
+   بالطرف الفعليّ (l/r) الذي خلفه أعمدة، ويزول عند آخر التمرير. scrollLeft في RTL سالب نحو النهاية (المواصفة) فالموضع بقيمته المطلقة.
+   سمة data لا className: سطر التقطيع يقارن className الغلاف بالمساواة. */
+function omranMdTableEdges(w){
+  const max = w.scrollWidth - w.clientWidth, pos = Math.abs(w.scrollLeft), rtl = w.getAttribute('dir') === 'rtl';
+  const end = max > 2 && pos < max - 2, start = max > 2 && pos > 2;
+  const v = [(rtl ? end : start) ? 'l' : '', (rtl ? start : end) ? 'r' : ''].filter(Boolean).join(' ');
+  if(v) w.setAttribute('data-fade', v); else w.removeAttribute('data-fade');
+}
 function omranMdTableEl(tb){
   const wrap = document.createElement('div'); wrap.className = 'md-table-wrap';
   const all = tb.head.concat.apply(tb.head, tb.rows).join(' ');
@@ -604,6 +613,8 @@ function omranMdTableEl(tb){
   const thead = document.createElement('thead'); thead.appendChild(tr(tb.head, 'th')); table.appendChild(thead);
   const tbody = document.createElement('tbody'); tb.rows.forEach((r) => tbody.appendChild(tr(r, 'td'))); table.appendChild(tbody);
   wrap.appendChild(table);
+  wrap.addEventListener('scroll', () => omranMdTableEdges(wrap), { passive: true }); // v-shot-reply: الطرف الذي خلفه أعمدة يبهت
+  if(typeof ResizeObserver === 'function'){ const ro = new ResizeObserver(() => omranMdTableEdges(wrap)); ro.observe(wrap); ro.observe(table); } // أوّل رسم وتغيّر العرض
   return wrap;
 }
 /** كلمة فيها ` (أو داخل كود مفتوح): تُملأ رقائق md-ic؛ st.open يحمل الكود المفتوح إلى الكلمة التالية. false = ليست كودًا. */

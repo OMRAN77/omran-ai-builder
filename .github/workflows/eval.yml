@@ -13,6 +13,10 @@ on:
         description: 'معرّفات أسئلة محدّدة (اختياريّ)'
         default: ''
         required: false
+      base:
+        description: 'عنوان النشر المستهدف (فارغ = الإنتاج؛ ضع عنوان معاينة Vercel لفحص فرع قبل الدمج — v-shot-reply)'
+        default: ''
+        required: false
 
 permissions:
   contents: read
@@ -33,7 +37,7 @@ jobs:
       - name: Run eval against production
         shell: bash
         env:
-          EVAL_BASE: ${{ vars.PROBE_BASE_URL }}
+          EVAL_BASE: ${{ inputs.base || vars.PROBE_BASE_URL }}
           EVAL_TOKEN: ${{ secrets.EVAL_TOKEN }}
           EVAL_PROVIDERS: ${{ inputs.providers }}
           EVAL_ONLY: ${{ inputs.only }}
