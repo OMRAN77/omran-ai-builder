@@ -7,7 +7,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
+const http = require('node:http');
 const path = require('node:path');
+const { spawn } = require('node:child_process');
 
 process.env.AUTH_SECRET = 'free-vision-next-secret';
 process.env.GEMINI_API_KEY = 'gm-test';
@@ -108,9 +112,15 @@ test('٤. الناجح بعد الزحمة يُحفظ لدور الصورة ال
   const first = await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: (m) => logs.push(m), requireVision: true, env, now: 1000,
     fetchImpl: async (url, init) => { const m = JSON.parse(init.body).model; return m === VISION[2] ? sse(['تمام']) : UPSTREAM_429(m); } });
   assert.equal(first.ok, true); assert.equal(first.model, VISION[2]);
-  assert.equal(logs.length, 1, 'سطر واحد في سجلّ الخادم لنجاح دور الصورة');
-  assert.ok(logs[0].startsWith('vision openrouter/' + VISION[2] + ' after openrouter/' + VISION[0] + ': '), logs[0]);
-  assert.ok(logs[0].includes('openrouter/' + VISION[1] + ': '), 'والمزدحم الثاني قبله');
+  const ok = logs.filter((l) => l.startsWith('vision '));
+  assert.equal(ok.length, 1, 'سطر واحد في سجلّ الخادم لنجاح دور الصورة');
+  assert.ok(ok[0].startsWith('vision openrouter/' + VISION[2] + ' after openrouter/' + VISION[0] + ': '), ok[0]);
+  assert.ok(ok[0].includes('openrouter/' + VISION[1] + ': '), 'والمزدحم الثاني قبله');
+  // الجولة الثانية: كلّ محاولة فاشلة سطرٌ بسببها كاملًا — نصّ المزوّد الأصليّ بعد الـ١٦٠ حرفًا الذي كان يُقصّ
+  for (const m of [VISION[0], VISION[1]]) {
+    const l = logs.find((x) => x.startsWith('openrouter/' + m + ' http 429 '));
+    assert.ok(l && l.includes('add your own key to accumulate your rate limits'), 'سطر كامل لـ' + m + ': ' + l);
+  }
   const again = [];
   await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: () => {}, requireVision: true, env, now: 2000,
     fetchImpl: async (url, init) => { again.push(JSON.parse(init.body).model); return sse(['تمام']); } });
@@ -130,4 +140,85 @@ test('٥. قائمة الرؤية: Gemma 4 31B أوّلًا ثمّ عينان م
   for (const m of VISION) assert.ok(/:free$/.test(m), 'مجّانيّ: ' + m);
   const { guardModel } = require(rp('api/_lib/_model-guard.js'));
   for (const m of VISION) assert.equal(guardModel('openrouter', m, false), m, 'حارس الموديلات لا يستبدله: ' + m);
+});
+
+/* الجولة الثانية (تجربة المعاينة ٢٢ أكتوبر 09:09Z بإذن المالك: Gemma 31B ‏429 ← Gemma 26B فشل ← Nemotron بلا حرف ٦٠ ثانية ← «aborted»،
+   والمستخدم رأى «ما قدرت أقرأ الصورة» بعد ٦٢٫٨ ثانية): بلا تفكير قبل الردّ، ومهلة أوّل حرف لكلّ نموذج. */
+test('٦. نماذج الرؤية في الوسيط بلا «تفكير» (reasoning.enabled=false)، وGemini ودور النصّ بلا الحقل', async () => {
+  fc.__workingModel.clear();
+  const bodies = [];
+  const fetchImpl = async (url, init) => { const b = JSON.parse(init.body); bodies.push({ url: String(url), b }); return /googleapis/.test(url) ? GEMINI_402() : sse(['تمام']); };
+  const r = await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: () => {}, requireVision: true, env: { GEMINI_API_KEY: 'g', OPENROUTER_API_KEY: 'o' }, fetchImpl });
+  assert.equal(r.ok, true);
+  const gem = bodies.find((x) => /googleapis/.test(x.url)), or = bodies.find((x) => /openrouter/.test(x.url));
+  assert.deepEqual(or.b.reasoning, { enabled: false });
+  assert.equal(or.b.stream, true); assert.equal(or.b.model, VISION[0]);
+  assert.ok(!('reasoning' in gem.b), 'Gemini لم يُمسّ');
+  bodies.length = 0; fc.__workingModel.clear();
+  await fc.streamFreeChain({ system: 'S', convo: [{ role: 'user', content: 'هلا' }], send: () => {}, log: () => {}, env: { OPENROUTER_API_KEY: 'o' }, fetchImpl });
+  assert.ok(bodies.length && bodies.every((x) => !('reasoning' in x.b)), 'دور النصّ كما كان');
+  fc.__workingModel.clear();
+});
+
+// ردّ يبقى مفتوحًا بلا حرف حتّى يُقطع النداء (كنقطة مزدحمة أو نموذج يفكّر) — يحترم إشارة الإلغاء كما يفعل fetch الحقيقيّ.
+const hang = (signal) => new Response(new ReadableStream({ start(c) { signal.addEventListener('abort', () => c.error(Object.assign(new Error('This operation was aborted'), { name: 'AbortError' }))); } }), { status: 200 });
+// ردّ يبدأ بحرف بعد early ملّي ثانية ثمّ يكمل بعد late.
+const slowTail = (early, late) => new Response(new ReadableStream({ async start(c) {
+  const enc = new TextEncoder(), line = (x) => enc.encode('data: ' + JSON.stringify({ choices: [{ delta: { content: x } }] }) + '\n');
+  await new Promise((r) => setTimeout(r, early)); c.enqueue(line('أوّل '));
+  await new Promise((r) => setTimeout(r, late)); c.enqueue(line('الجواب')); c.enqueue(enc.encode('data: [DONE]\n')); c.close();
+} }), { status: 200 });
+
+test('٧. مهلة أوّل حرف: نموذج بلا حرف خلالها يُترك للتالي في ثوانٍ لا دقيقة، ومن بدأ يكتب لا يُقطع', async () => {
+  fc.__workingModel.clear();
+  const env = { OPENROUTER_API_KEY: 'o', FREE_VISION_FIRST_MS: '80' };
+  const tried = [], logs = [], t0 = Date.now();
+  const r = await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: (m) => logs.push(m), requireVision: true, env,
+    fetchImpl: async (url, init) => { const m = JSON.parse(init.body).model; tried.push(m); return m === VISION[0] ? hang(init.signal) : sse(['قرأتها']); } });
+  assert.equal(r.ok, true, r.errors.join(' | ')); assert.equal(r.model, VISION[1]); assert.equal(r.text, 'قرأتها');
+  assert.deepEqual(tried, [VISION[0], VISION[1]]);
+  assert.ok(Date.now() - t0 < 3000, 'انتقل بعد المهلة لا بعد ٦٠ ثانية');
+  assert.ok(r.errors.includes('openrouter/' + VISION[0] + ': free-chain openrouter no text in 80ms'), r.errors.join(' | '));
+  assert.ok(logs.some((l) => l === 'openrouter/' + VISION[0] + ' free-chain openrouter no text in 80ms'), logs.join(' || '));
+  fc.__workingModel.clear();
+  const started = await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: () => {}, requireVision: true, env,
+    fetchImpl: async () => slowTail(10, 200) });
+  assert.equal(started.ok, true); assert.equal(started.model, VISION[0]); assert.equal(started.text, 'أوّل الجواب', 'المهلة لأوّل حرف وحده');
+  fc.__workingModel.clear();
+  const all = [];
+  const none = await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: () => {}, requireVision: true, env,
+    fetchImpl: async (url, init) => { all.push(JSON.parse(init.body).model); return hang(init.signal); } });
+  assert.equal(none.ok, false); assert.deepEqual(all, VISION, 'كلّها بطيئة = كلّ نموذج مرّة بمهلته');
+  assert.ok(!('FREE_VISION_FIRST_MS' in process.env) && /FREE_VISION_FIRST_MS\) : 15000;/.test(fs.readFileSync(path.join(root, 'api/_lib/free-chain.js'), 'utf8')), 'الافتراضيّ ١٥ ثانية');
+  fc.__workingModel.clear();
+});
+
+test('٨. مشغّل التقييم يحفظ tierDiag مع النتيجة ويطبعه — كان يُهمل فلا يُعرف أيّ مزوّد فشل', async () => {
+  const diag = ['gemini: free-chain gemini http 402 …', 'openrouter/' + VISION[0] + ': free-chain openrouter http 429 …'];
+  const srv = http.createServer((req, res) => {
+    req.resume();
+    req.on('end', () => {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      res.end(['{"tier":"free"}', JSON.stringify({ tierDiag: diag }), JSON.stringify({ delta: tier.FREE_TEXT.imageBusy }), '{"done":true}'].map((x) => 'data: ' + x + '\n\n').join(''));
+    });
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'fvn-eval-'));
+  try {
+    let stdout = '';
+    const code = await new Promise((resolve) => {
+      const p = spawn(process.execPath, [path.join(root, 'scripts/eval-run.mjs')], {
+        env: Object.assign({}, process.env, { EVAL_BASE: 'http://127.0.0.1:' + srv.address().port, EVAL_TOKEN: 'tok-test', EVAL_ONLY: 'shot-answer', EVAL_OUT: out, EVAL_PREV_DIR: path.join(out, 'none') }),
+        stdio: ['ignore', 'pipe', 'ignore'],
+      });
+      p.stdout.on('data', (c) => { stdout += c; });
+      p.on('exit', resolve);
+    });
+    assert.equal(code, 0);
+    const res = JSON.parse(fs.readFileSync(path.join(out, 'result-claude.json'), 'utf8'));
+    assert.deepEqual(res.results[0].diag, diag);
+    assert.ok(stdout.includes('tierDiag: ' + diag.join(' | ')), stdout);
+  } finally {
+    srv.close();
+  }
 });
