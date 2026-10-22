@@ -37,14 +37,15 @@ function fakeDeps() {
 test('١. التذكرة تُسجَّل لمن خُصم منه وحده، والمالك (بلا خصم) بلا تذكرة', async () => {
   const kv = fakeKv();
   assert.equal(await job.rememberVideoJob('op/123', { username: 'sara', cost: 275, locked: true }, { kv }), true);
-  assert.equal(kv.m.size, 1);
-  const stored = JSON.parse([...kv.m.values()][0]);
+  const tickets = () => [...kv.m.keys()].filter((k) => !k.startsWith('vidjob:open:')); // v-video-sweep: وفهرس التذاكر المفتوحة بجانبها
+  assert.equal(tickets().length, 1);
+  const stored = JSON.parse(kv.m.get(tickets()[0]));
   assert.deepEqual(stored, { u: 'sara', c: 275, l: true, q: false });
   // المالك: chargedUser = null ⇒ لا تذكرة. وكذلك تكلفة صفر أو معرّف فارغ.
   assert.equal(await job.rememberVideoJob('op/9', { username: null, cost: 275 }, { kv }), false);
   assert.equal(await job.rememberVideoJob('op/9', { username: 'sara', cost: 0 }, { kv }), false);
   assert.equal(await job.rememberVideoJob('', { username: 'sara', cost: 275 }, { kv }), false);
-  assert.equal(kv.m.size, 1, 'لا مفتاح زائد');
+  assert.equal(tickets().length, 1, 'لا تذكرة زائدة');
 });
 
 test('٢. الفشل يردّ الخصم ويفكّ القفل ويعيد حصّة اليوم — والنجاح لا يردّ شيئًا', async () => {
@@ -159,7 +160,9 @@ test('٨. الواجهة: رمز video_cooldown الخام لا يظهر — ر�
   assert.equal(sandbox.errText({ code: 'video_cooldown', retryAfter: 180 }), ui.cooldown.ar.replace('{m}', '3'));
   assert.equal(sandbox.errText({ code: 'video_cooldown', retryAfter: 40 }), ui.cooldown.ar.replace('{m}', '1'));
   assert.equal(sandbox.errText({ code: 'video_cooldown' }), ui.cooldown.ar.replace('{m}', '3'), 'بلا retryAfter = المهلة الكاملة');
-  assert.equal(sandbox.errText(new Error('boom')), ui.fail.ar + ': boom');
+  /* v-trend-points: رسالة مقروءة تبقى كما كانت، والرمز الخامّ وحده («boom»، «timeout») يصير «تعذّر» بلا الرمز — tests/trend-err-text */
+  assert.equal(sandbox.errText(new Error('Boom happened.')), ui.fail.ar + ': Boom happened.');
+  assert.equal(sandbox.errText(new Error('boom')), ui.fail.ar);
   assert.match(src, /code: \(j && j\.error\) \|\| '', retryAfter: \(j && j\.retryAfter\) \|\| 0/, 'الرمز والمهلة يصلان من الخادم');
 
   // صانع الفيديو الرئيسيّ: رسالة مفهومة، وبلا إعادة محاولة عمياء على مهلة الثلاث دقائق.

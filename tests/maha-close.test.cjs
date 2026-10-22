@@ -166,9 +166,11 @@ test('٥. العميل: وقت آخر مكالمة على الجهاز يُقر�
 });
 
 test('٦. العميل: التحيّة تتبع سجلّ المكالمات، والقيمة تُقرأ مرّة لكلّ مكالمة وتُرسل وتُكتب بعد نجاح الفتح — والحزمة محدَّثة', () => {
-  const block = slice(client, "if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){", "__swallow(e, 'maha:greet'); }\n      }");
+  const block = slice(client, "if(!preBufSent && !mahaRtReconnecting && mahaCallMode !== 'builder'){", "__swallow(e, 'maha:greet'); }\n        });\n      }");
   const sent = [];
-  const ctx = { preBufSent: false, mahaRtReconnecting: false, mahaCallMode: 'assistant', lang: 'ar', __swallow() {}, dc: { send: (m) => sent.push(JSON.parse(m)) } };
+  const dc = { readyState: 'open', send: (m) => sent.push(JSON.parse(m)) };
+  // v-maha-first-audio: التحيّة تنتظر صوتًا يشتغل — هنا يشتغل فتُرسل فورًا
+  const ctx = { preBufSent: false, mahaRtReconnecting: false, mahaCallMode: 'assistant', lang: 'ar', __swallow() {}, dc, mahaRtDc: dc, mahaRtResponded: false, mahaRtTrace() {}, mahaRtWhenAudio: (fn) => fn(), mahaRtFirst: null };
   vm.createContext(ctx);
   vm.runInContext(block, ctx);
   const ins = sent[0].response.instructions;

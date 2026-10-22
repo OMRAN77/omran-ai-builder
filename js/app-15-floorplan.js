@@ -178,12 +178,13 @@
     '.stageWrap{overflow:auto;display:flex;justify-content:center;padding:10px 0}',
     '#stage{position:relative;background:#0b0b0d;border:3px solid #d4af37;touch-action:none}',
     '.rx{position:absolute;top:1px;inset-inline-end:3px;width:18px;height:18px;line-height:18px;text-align:center;border-radius:50%;background:rgba(255,255,255,.85);color:#b42318;font-size:12px;font-weight:800;cursor:pointer;z-index:3}' +
-    '.room{touch-action:none;position:absolute;border:2px solid rgba(212,175,55,.75);background:rgba(212,175,55,.08);color:#f3efe4;box-sizing:border-box;display:flex;flex-direction:column;',
-    ' align-items:center;justify-content:center;overflow:hidden;cursor:grab;touch-action:none}',
+    /* v-plan-contrast (تدقيق ١٨–١٩ أكتوبر): ألوان الغرف (PALETTE) فاتحة كلّها، فالنصّ الفاتح عليها ~١:١ — داكن بتباين ≥ 4.5، والاسم تحت ✕ */
+    '.room{touch-action:none;position:absolute;border:2px solid rgba(212,175,55,.75);background:rgba(212,175,55,.08);color:#f3efe4;box-sizing:border-box;display:flex;flex-direction:column;padding-top:16px;',
+    ' align-items:center;justify-content:center;justify-content:safe center;overflow:hidden;cursor:grab;touch-action:none}',
     '.room.sel{border-color:#f1d98a;border-width:3px;box-shadow:inset 0 0 0 2px rgba(241,217,138,.3),0 0 12px rgba(212,175,55,.45)}',
     '.room.clash{border-color:#c0453f;border-style:dashed}',
-    '.rn{font-size:12px;font-weight:700;text-align:center;padding:0 3px;line-height:1.25}',
-    '.ra{font-size:11px;color:#f1d98a}.rd{font-size:10px;color:#a9a290}',
+    '.rn{font-size:12px;font-weight:700;text-align:center;padding:0 3px;line-height:1.25;color:#1b1b1b}',
+    '.ra{font-size:11px;color:#7a5b12}.rd{font-size:10px;color:#5a5345}',
     '.grip{position:absolute;inset-inline-start:0;bottom:0;width:16px;height:16px;background:#d4af37;',
     ' border-radius:0 4px 0 0;cursor:nwse-resize;opacity:.75}',
     '.bar{display:flex;gap:8px;justify-content:center;margin:8px 0}',
@@ -615,7 +616,7 @@
           reply({ ok: true, dataUrl: 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64 });
         } else {
           /* v-view-err: مرّر سبب الخادم الحقيقي — والفارغ يعرضه المحرر بلغة التطبيق */
-          reply({ ok: false, error: (data && (data.message_ar || data.error)) || '' });
+          reply({ ok: false, error: (data && data.error === 'unavailable') ? t('svcPaused') : ((data && (data.message_ar || data.error)) || '') }); // v-credit-out: كان «⚠️ unavailable» خامًا
         }
       });
     }).catch(function () {
@@ -677,6 +678,10 @@
       }),
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
+        /* v-plan-limit (تدقيق ١٨–١٩ أكتوبر): حدّ اليوم والجلسة المنتهية كانا «حاول بعد قليل» — نصّ 402 في الخادم
+           عربيّ وحده ويذكر المزوّد، فيُعرض نصّ الواجهة القائم بالـ14 لغة بدله */
+        if (res.status === 402) throw new Error('limit');
+        if (res.status === 401) throw new Error('auth');
         if (!res.ok) throw new Error('plan_provider_failed');
         var candidates = data && data.candidates;
         var parts = candidates && candidates[0] && candidates[0].content && candidates[0].content.parts;
@@ -716,8 +721,13 @@
         statusMsg('');
         var modal = document.getElementById('constructionModal');
         if (modal) modal.style.display = 'none';
-    }).catch(function () {
-      statusMsg(ttt('planFail', '⚠️ تعذر تجهيز المخطط الآن. حاول مرة أخرى بعد قليل.'));
+    }).catch(function (err) {
+      var fail = ttt('planFail', '⚠️ تعذر تجهيز المخطط الآن. حاول مرة أخرى بعد قليل.');
+      var why = err && err.message;
+      function gt(k) { try { var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? v : ''; } catch (e4) { __swallow(e4, 'floorplan:t'); return ''; } }
+      var lim = why === 'limit' ? gt('portraitLimitReached') : '';
+      var auth = why === 'auth' ? gt('designAiNeedLogin') : '';
+      statusMsg(lim ? '⚠️ ' + lim : (auth || fail)); /* v-plan-limit */
     }).finally(function () {
       btn.disabled = false;
       btn.textContent = label;

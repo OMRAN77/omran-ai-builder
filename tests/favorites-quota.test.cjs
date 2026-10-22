@@ -140,6 +140,20 @@ test('٢. ستايل AI: امتلاء دائم يظهر على الزرّ وstor
   assert.equal(ctx.favSaveBtn.textContent, 'T:studioFavoriteSaveBtn', 'يعود الزرّ لنصّه');
 });
 
+test('٣. ستايل AI: الميزة تُحفظ باسم تبويبها، والمحفوظ قديمًا بالمفتاح الخامّ يُعرض مترجَمًا', async () => {
+  const st = makeStorage(1e9);
+  st.m.aiapp_studio_favorites = JSON.stringify([{ img: 'data:x', feature: 'hair', style: 'أومبري', ts: 1 }]);
+  const { ctx } = bootStudio(st);
+  ctx.render();
+  assert.equal(ctx.favoritesPanel.cards.length, 1);
+  assert.equal(ctx.favoritesPanel.cards[0].querySelector('span').textContent, '💇 الشعر · أومبري', 'لا «hair · أومبري»');
+  ctx.favSaveBtn.onclick();
+  await tick(); await tick();
+  const favs = JSON.parse(st.getItem('aiapp_studio_favorites'));
+  assert.equal(favs[0].feature, '💇 الشعر', 'يُحفظ اسم التبويب لا «hair»');
+  assert.equal(favs[0].style, '🎨 أومبري');
+});
+
 function bootFashion(storage) {
   const timers = [];
   const statusEl = { style: {}, textContent: '' };
@@ -183,6 +197,31 @@ test('٤. الأزياء: الحفظ الثاني والثالث ينجحان ب
   assert.equal(st2.m.aiapp_fashion_favorites, JSON.stringify([{ img: 'data:a', style: 'evening', ts: 7 }]), 'لا حذف تلقائيّ');
   b.timers.forEach((x) => x.fn());
   assert.equal(b.ctx.favSaveBtn.textContent, 'T:fashionFavoriteSaveBtn');
+});
+
+test('٥. الأزياء: النمط يُعرض بلغة الواجهة («كاجوال» لا «casual»)، واللوحة تحت صفّ رأسها وتُمرَّر إليها', () => {
+  const st = makeStorage(1e9);
+  st.m.aiapp_fashion_favorites = JSON.stringify([{ img: 'data:a', style: 'casual', ts: 1 }, { img: 'data:b', style: 'غير معروف', ts: 2 }]);
+  const { ctx, headerRow } = bootFashion(st);
+  assert.deepEqual(headerRow.inserted.map((x) => x[0]), ['afterend'], 'اللوحة نُقلت مرّة واحدة بعد صفّ الرأس');
+  assert.equal(headerRow.inserted[0][1], ctx.favoritesPanel);
+  ctx.favoritesBtn.onclick();
+  assert.equal(ctx.favoritesPanel.style.display, 'flex');
+  assert.equal(ctx.favoritesPanel.scrolled, 1, 'تُمرَّر إليها عند الفتح');
+  const caps = ctx.favoritesPanel.cards.map((c) => c.querySelector('span').textContent);
+  assert.deepEqual(caps, ['كاجوال', 'غير معروف']);
+});
+
+test('٦. الأزياء: «حفظ الملف» يغيّر نصّ الزرّ نفسه لا سطر الحالة البعيد، ثمّ يعود', () => {
+  const st = makeStorage(1e9);
+  const { ctx, timers, statusEl } = bootFashion(st);
+  ctx.profileHeightEl.value = "170"; // fillProfileInputs ملأها من المخزَّن الفارغ عند التهيئة
+  ctx.profileSaveBtn.onclick();
+  assert.equal(ctx.profileSaveBtn.textContent, 'T:fashionProfileSaved');
+  assert.equal(statusEl.textContent, '', 'سطر الحالة لم يُمسّ');
+  assert.equal(JSON.parse(st.getItem('aiapp_fashion_profile')).height, '170');
+  timers.forEach((x) => x.fn());
+  assert.equal(ctx.profileSaveBtn.textContent, 'T:fashionProfileSave');
 });
 
 test('٧. الحزمة: لا setItem مكشوف للمفضّلة في النطاقين', () => {

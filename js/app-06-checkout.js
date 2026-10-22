@@ -240,6 +240,8 @@ function openCheckout(plan){
     // If the settings dialog is open via showModal(), it sits in the browser
     // top layer and makes the rest of the page inert — close it first.
     const sd = document.getElementById('settingsDialog');
+    // v-checkout-back: من أين فُتح الدفع — ✕ وحده يعيد الإعدادات على الباقات (ومن البوّابة يبقى سهم رجوعها إلى المحادثة)
+    window.__ckFromSettings = (sd && sd.open) ? ((sd.dataset && sd.dataset.deepLink === '1') ? 'deep' : 'page') : '';
     if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
     overlay.style.display = 'flex';
     // v-ios-nogpay (طلب عمران): زر Google Pay منتج أندرويد ولا معنى له على
@@ -256,9 +258,23 @@ function openCheckout(plan){
 }
 window.openCheckout = openCheckout;
 
-function closeCheckout(){
+/* v-checkout-back (تدقيق ١٨ أكتوبر: «إغلاق الدفع يرجعك للرئيسيّة لا إلى الباقات»): openCheckout يُغلق الإعدادات قبل النافذة
+   (طبقة showModal تجعل الصفحة خامدة)، فـ✕ كان يترك المستخدم في الرئيسيّة. closeCheckout(true) — من ✕ وحده — يعيد فتحها على
+   «الباقات والنقاط» كما يفعل omranOpenPlans. النجاح وiOS والمهلات تنادي بلا وسيط (setTimeout قد يمرّر رقمًا: === true فقط).
+   تنقّل وحده: لا سعر ولا خطّة ولا نداء دفع يتغيّر. */
+function closeCheckout(back){
   const overlay = document.getElementById('checkoutModalOverlay');
   if (overlay) overlay.style.display = 'none';
+  const from = window.__ckFromSettings;
+  window.__ckFromSettings = '';
+  if (back !== true || !from) return;
+  try {
+    const sb = document.getElementById('btnSettings');
+    if (sb) sb.click();
+    if (typeof showSettingsPage === 'function') showSettingsPage('pricingSection');
+    const sd = document.getElementById('settingsDialog');
+    if (from === 'deep' && sd && sd.dataset) sd.dataset.deepLink = '1';
+  } catch (e) { __swallow(e, 'checkout:back'); }
 }
 window.closeCheckout = closeCheckout;
 
@@ -335,7 +351,7 @@ async function setupWalletPaymentRequest(plan){
     const pr = stripe.paymentRequest({
       country: 'AE',
       currency: cur,
-      total: { label: 'Omran AI Builder', amount },
+      total: { label: 'om ai', amount },
       requestPayerName: true,
       requestPayerEmail: true,
     });
@@ -1142,7 +1158,7 @@ $('#btnExportZip').onclick = async () => {
     const zip = new JSZip();
     const isPy = cur.codeType === 'python';
     zip.file(isPy ? 'main.py' : 'index.html', cur.code);
-    zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with Omran AI Builder — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
+    zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with om ai — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
     const blob = await zip.generateAsync({ type: 'blob' });
     await omranSaveOrShareFile(blob, (cur.title || 'app') + '.zip');
   }catch(e){
@@ -1183,7 +1199,7 @@ function formatTaskPlan(steps, done){
   return taskTxt('title') + ':\n' + steps.map((s, i) => ((done && done[i]) ? '✅ ' : '⬜ ') + s).join('\n');
 }
 // هوية التطبيق — نسخة مختصرة: الأساسيات فقط لتوفير التوكنز.
-const APP_IDENTITY_NOTE = '\n(APP IDENTITY: You are inside "Omran AI Builder" by فريق عمران AI. "عمران/Omran" = THIS app only. Features: AI app builder, 3 public providers (Claude/GPT/Gemini), مها voice assistant, image+video generation, live web search, memory, education, stocks. Creator: فريق عمران AI.)'
+const APP_IDENTITY_NOTE = '\n(APP IDENTITY: You are inside "om ai" by فريق om ai. "عمران/Omran" = THIS app only. Features: AI app builder, 3 public providers (Claude/GPT/Gemini), مها voice assistant, image+video generation, live web search, memory, education, stocks. Creator: فريق om ai.)'
 // ست قواعد عامة فقط؛ الدليل والتصحيح والخطوة التالية تعمل عند الحاجة لا آليًّا.
 const CONVERSATION_QUALITY_RULE = '\n[أسلوب المحادثة — ست قواعد عامة ملزمة]:\n' +
 '(١) ابدأ بالجواب أو المعلومة الأهم مباشرة، وقدّم الخطر أو الخطأ أولًا إن وُجد.\n' +
@@ -1652,12 +1668,19 @@ function throwProviderError(status, errText){
       if(__p && (__p.reason === 'points' || __p.error === 'insufficient_points')) __pointsErr = true;
     }catch(_){ if(/insufficient_points|"reason"\s*:\s*"points"/.test(errText || '')) __pointsErr = true; }
     /* v-plans-gate: حدّ باقتنا (ردّ خوادمنا يحمل subscribeOnly أو engine_limit) غير رصيد مزوّد خارجيّ — له سطره، وتنفتح الباقات. */
-    let __planLimit = false;
-    try{ const __p2 = JSON.parse(errText); __planLimit = !__pointsErr && !!__p2 && (__p2.reason === 'engine_limit' || Object.prototype.hasOwnProperty.call(__p2, 'subscribeOnly')); }
+    let __planLimit = false, __p2 = null;
+    try{ __p2 = JSON.parse(errText); __planLimit = !__pointsErr && !!__p2 && (__p2.reason === 'engine_limit' || Object.prototype.hasOwnProperty.call(__p2, 'subscribeOnly')); }
     catch(_){ __planLimit = false; }
     err = new Error(__planLimit ? t('plansWhyLimit') : t('dailyLimitError'));
     if(__pointsErr) err.premiumNoPoints = true;
-    if(__planLimit) err.planLimit = true;
+    if(__planLimit){
+      err.planLimit = true;
+      /* v-limit-chain-stop: نوع الحدّ — مزوّد مدفوع أمام غير مشترك (subscribeOnly)، أو حدّ محرّك الكود في الباقة (engine_limit)،
+         وإلّا السلّة اليوميّة المشتركة امتلأت فلا يجيب غيره. والطبقة (free/guest/sub) لنصّ الفقاعة. */
+      err.subscribeOnly = !!__p2.subscribeOnly;
+      err.engineLimit = __p2.reason === 'engine_limit';
+      if(typeof __p2.tier === 'string') err.limitTier = __p2.tier;
+    }
   } else if(status === 429){
     err = new Error(t('quotaError'));
   } else if(status === 401 || status === 403){
@@ -2533,7 +2556,11 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
   let firstRefusal = null; // أول رد رفض (نرجعه فقط إذا رفض الجميع)
   let refusalTries = 0;    // حد أقصى محاولتين إضافيتين بعد الرفض
   let errSwitched = false; // التبديل بسبب عطل/ضغط فقط هو اللي يظهر للمستخدم
+  /* v-limit-chain-stop: مرآة PAID_PROVIDERS في tier.js — بعد 402 subscribeOnly (المدفوع مقفل أمام غير المشترك) لا يُسأل مدفوع آخر */
+  const __paidProv = ['claude', 'openai', 'deepseek', 'cohere', 'perplexity'];
+  let __skipPaid = false;
   for(const providerKey of order){
+    if(__skipPaid && __paidProv.indexOf(providerKey) !== -1) continue;
     try{
       // Shown for every provider — the silent spinner was the reason Gemini
       // and GPT felt "dead" next to Claude, which had its own thinking output.
@@ -2595,6 +2622,11 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
         }
         throw err;
       }
+      /* v-limit-chain-stop (تدقيق ١٨–١٩ أكتوبر: طلب بناء بعد الحدّ = ٤ طلبات كلّها 402، و«التفسير الديني» ٥): حدّنا اليوميّ في سلّة
+         مشتركة لكلّ المزوّدين — لا يجيب غيره، فتقف السلسلة هنا بلا «الاحتياط فشل أيضًا». حدّ محرّك الكود (engine_limit) يكمل كما كان
+         (v-model-lock)، و402 subscribeOnly يتخطّى بقيّة المدفوعين فيصل غير المشترك إلى المجّانيّين. */
+      if(err && err.planLimit && !err.subscribeOnly && !err.engineLimit){ if(firstRefusal) break; throw err; } // ردّ رفض سابق يبقى جوابًا كما كان
+      if(err && err.planLimit && err.subscribeOnly) __skipPaid = true;
       try{
         if(((onDelta && onDelta.__status) || window.__chatStatus)){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);

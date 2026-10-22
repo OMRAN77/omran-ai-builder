@@ -8,8 +8,14 @@
   'use strict';
 
   var API = '/api/system?action=secrets';
-  function isAr() { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; }
+  // v-owner-i18n: العربيّة للعربيّة وحدها، وباقي اللغات الإنجليزيّة (أساس الاحتياط في التطبيق، v424) — كانت الفرنسيّة وغيرها تُعرض عربيّة.
+  function isAr() { return (localStorage.getItem('aiapp_lang') || 'ar') === 'ar'; }
   function t(ar, en) { return isAr() ? ar : en; }
+  /* v-owner-i18n (تدقيق ١٨ أكتوبر): نتيجة «فحص المفتاح» كانت تُطبع من الخادم عربيّة خامًا في كلّ لغة. الخادم يرجع الآن
+     رمزًا (error) والعربيّ في message، والرمز يُترجَم هنا من قاموس لغة الواجهة؛ وخطأ الشبكة = acctNetError. */
+  function gk(k) { try { if (typeof window.t === 'function') { var v = window.t(k); if (v && v !== k) return String(v); } } catch (e) { /* guard-ok — المترجم لم يجهز فيُعرض الاحتياط */ } return ''; }
+  var ERR_KEYS = { no_github_token: 'ownerVaultNoToken', bad_repo: 'ownerVaultBadRepo', token_rejected: 'ownerVaultRejected' };
+  function netMsg(e) { var m = String((e && e.message) || e || ''); return (/Failed to fetch|NetworkError|Load failed|ERR_NETWORK|Network request failed/i.test(m) && gk('acctNetError')) || m; }
   function tok() { try { return (window.authGet && window.authGet('aiapp_auth_token')) || ''; } catch (e) { return ''; } }
   function el(id) { return document.getElementById(id); }
   function toast(msg) { try { if (typeof window.settingsToast === 'function') window.settingsToast(msg); else alert(msg); } catch (e) { /* guard-ok — التنبيه ترف */ } }
@@ -21,7 +27,7 @@
       try { j = await r.json(); } catch (e) { j = null; }
       if (!r.ok) return { ok: false, error: (j && (j.error || j.message)) || ('HTTP ' + r.status) };
       return j || { ok: true };
-    } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+    } catch (e) { return { ok: false, error: netMsg(e) }; }
   }
 
   function fmtDate(ms) {
@@ -65,10 +71,10 @@
     box.textContent = t('⏳ يفحص المفتاح مع GitHub…', '⏳ Checking the key with GitHub…');
     var repo = ((el('vaultRepoInput') && el('vaultRepoInput').value) || '').trim();
     var r = await call('test', { repo: repo });
-    if (!r.ok) { box.textContent = '❌ ' + (r.error || ''); return; }
+    if (!r.ok) { box.textContent = '❌ ' + ((ERR_KEYS[r.error] && gk(ERR_KEYS[r.error])) || r.message || r.error || ''); return; }
     box.textContent = (r.login ? ('👤 ' + r.login + '\n') : '')
       + '📦 ' + r.repo + ': ' + (r.readable ? t('قراءة ✅', 'read ✅') : t('قراءة ❌ (المفتاح لا يرى المستودع)', 'read ❌ (key cannot see the repo)'))
       + ' · ' + (r.writable ? t('رفع ✅', 'push ✅') : t('رفع ❌ — الرفع يحتاج Contents: write + Pull requests: write', 'push ❌ — pushing needs Contents: write + Pull requests: write'))
-      + (r.rateLimit ? '\n⏱️ ' + t('حدّ الطلبات: ', 'Rate limit: ') + r.rateLimit : '');
+      + (r.rateLimit ? '\n⏱️ ' + (gk('ownerVaultRate') || t('حدّ الطلبات: {n}/ساعة', 'Rate limit: {n}/hour')).split('{n}').join('\u2066' + r.rateLimit + '\u2069') : '');
   };
 })();

@@ -18,6 +18,7 @@
     <button type="button" id="setHomeClose" class="setHomeClose" aria-label="إغلاق" data-i18n-title="closeTitle" title="إغلاق">✕</button>
     <button type="button" id="setProfileAvatar" class="setProfileAvatar" title="" data-i18n-title="setChangePhoto"><img id="setProfileImg" alt="" style="display:none;"><span id="setProfileInitials">?</span><span class="setProfileEdit"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span></button>
     <div id="setProfileName" class="setProfileName"></div>
+    <div id="setProfileMsg" role="status" style="display:none; font-size:12px; text-align:center;"></div>
     <button type="button" id="setProfileLogin" class="setUpgradeBtn" style="display:none;" data-i18n="loginAction">دخول</button>
   </div>
   <div id="settingsUpgradeCard" class="setUpgrade" style="display:none;">
@@ -65,6 +66,7 @@
         <input type="file" id="acctAvatarInput" accept="image/*" style="display:none;">
       </div>
       <button type="button" id="acctAvatarBtn" style="background:none; border:none; cursor:pointer; color:var(--accent); font-size:13px; font-weight:500; padding:2px 8px;" data-i18n="acctAvatarBtn">تغيير الصورة</button>
+      <div id="acctAvatarMsg" role="status" style="display:none; font-size:12px; text-align:center;"></div>
     </div>
     <div><button type="button" class="acctRowBtn" onclick="acctToggleRow('acctRowUser',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctUsernameLabel">اسم المستخدم</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowUser" style="display:none; padding:8px 8px 12px;">
@@ -109,13 +111,13 @@
         <button type="button" class="btn" id="acctReferralCopyBtn" style="width:auto; white-space:nowrap;" data-i18n="acctCopyBtn">نسخ</button>
       </div>
       <div style="display:flex; gap:8px; margin-top:8px;">
-        <button type="button" class="btn" id="acctShareBtn" onclick="acctShareApp()" style="flex:1; background:rgba(212,175,55,.12); border:1px solid rgba(212,175,55,.45); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;">إرسال ومشاركة</button>
-        <button type="button" class="btn" id="acctQrBtn" onclick="acctToggleQr()" style="flex:1; background:none; border:1px solid rgba(255,255,255,.2); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;">فتح الباركود</button>
+        <button type="button" class="btn" id="acctShareBtn" onclick="acctShareApp()" style="flex:1; background:rgba(212,175,55,.12); border:1px solid rgba(212,175,55,.45); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;" data-i18n="acctShareBtn">إرسال ومشاركة</button>
+        <button type="button" class="btn" id="acctQrBtn" onclick="acctToggleQr()" style="flex:1; background:none; border:1px solid rgba(255,255,255,.2); color:var(--text); font-size:13px; font-weight:700; padding:8px 10px;" data-i18n="acctQrOpen">فتح الباركود</button>
       </div>
       <div id="acctQrBox" style="display:none; margin-top:12px; padding:12px; background:rgba(0,0,0,.35); border-radius:var(--r-2); text-align:center; border:1px solid rgba(212,175,55,.25);">
         <canvas id="acctQrCanvas" aria-label="QR" style="width:180px; height:180px; border-radius:12px; background:#fff; padding:6px; box-shadow:0 4px 16px rgba(0,0,0,.4); display:inline-block;"></canvas>
         <div style="display:flex; gap:8px; margin-top:10px; justify-content:center;">
-          <a id="acctQrDl" download="omran-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;">تحميل الباركود</a>
+          <a id="acctQrDl" download="omran-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;" data-i18n="acctQrDownload">تحميل الباركود</a>
         </div>
       </div>
       <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية</div>
@@ -452,6 +454,13 @@
   .pcard .pprice{display:flex; align-items:baseline; gap:5px; margin:12px 0 2px;}
   .pcard .pnum{font-size:32px; font-weight:300; line-height:1;}
   .pcard .pcur{font-size:15px; color:var(--muted);}
+  /* v-cur-display (موافقة المالك ٢١ أكتوبر): بالإنجليزيّة الرمز قبل الرقم «$10» و«AED 10» (كان «10 $»)؛ العربيّة واللغات الأخرى كما هي */
+  html[lang="en"] .pcard .pprice{gap:1px;}
+  html[lang="en"] .pcard .pcur{order:-1;}
+  html[lang="en"] .pcard .pcur.curCode{margin-inline-end:5px;}
+  html[lang="en"] .pointsPackBtn span:has(> .cursym){display:inline-flex; align-items:baseline; gap:1px;}
+  html[lang="en"] .pointsPackBtn .cursym{order:-1;}
+  html[lang="en"] .pointsPackBtn .cursym.curCode{margin-inline-end:3px;}
   .pcard .pper{font-size:11.5px; color:var(--muted); min-height:15px;}
   .pcard .ppts{margin:14px 0 12px; padding:9px 11px; background:var(--panel,rgba(128,128,128,.10)); border-radius:10px; display:flex; align-items:baseline; justify-content:space-between; gap:6px;}
   .pcard .ppts b{font-size:18px;}
@@ -605,7 +614,7 @@
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('aboutSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="aboutSectionTitle">ℹ️ عن البرنامج</h3><span class="settingsSectionArrow" id="aboutSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="aboutSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
       <!-- v-about-lux: بطاقة الهوية -->
       <div style="position:relative; overflow:hidden; border:1px solid rgba(212,175,55,.4); border-radius:20px; padding:24px 16px 20px; text-align:center; background:radial-gradient(130% 100% at 50% 0%, rgba(212,175,55,.16), transparent 55%), var(--panel2,#161616); margin-bottom:14px;">
-        <img src="/icons/omran-mark-64.png" alt="عمران AI" width="66" height="66" style="border-radius:17px; box-shadow:0 8px 28px rgba(212,175,55,.3);">
+        <img src="/icons/omran-mark-64.png" alt="om ai" width="66" height="66" style="border-radius:17px; box-shadow:0 8px 28px rgba(212,175,55,.3);">
         <div style="font-size:12.5px; color:var(--muted); margin-top:10px;" data-i18n="aboutTagline">منصة عربية لبناء التطبيقات بالذكاء الاصطناعي</div>
         <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:13px;">
           <span style="font-size:11px; padding:4px 11px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--muted);" data-i18n="aboutChipPWA">تطبيق PWA</span>
@@ -627,7 +636,7 @@
       <details style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 14px; margin-bottom:16px; background:var(--panel2,rgba(255,255,255,.02));">
         <summary style="cursor:pointer; font-size:13px; font-weight:700; user-select:none;" data-i18n="aboutMoreSummary">📖 المزيد عن المنصة</summary>
         <div style="font-size: var(--fs-3); line-height:1.9; color:var(--text); margin-top:10px;" data-i18n="aboutText">
-    <b>عمران AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، طوّرها فريق عمران AI. يتيح لك التحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حيّة جنبًا إلى جنب.<br><br>
+    <b>om ai</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، طوّرها فريق om ai. يتيح لك التحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حيّة جنبًا إلى جنب.<br><br>
     يجمع التطبيق 3 نماذج ذكاء قوية في مكان واحد: 👑 الكينج للبناء والتعديل والتشخيص، ⚡ السريع للردود الفورية والدردشة، 🧠 العميق للتحليل والبحث والمستندات — مع البحث المباشر وتوليد الصور والمساعدة الصوتية والأقسام المتخصصة.<br><br>
     يعمل البرنامج كتطبيق PWA قابل للتثبيت على أندرويد وآيفون مثل أي تطبيق عادي، ويدعم المحادثة الصوتية (تحويل الكلام إلى نص والاستماع للردود)، مع نظام حسابات كامل (تسجيل دخول/تسجيل حساب/استرجاع كلمة المرور)، ووضع ضيف يتيح تجربة 20 رسالة مجانية دون تسجيل.<br><br>
     كل إعدادات المظهر والألوان قابلة للتخصيص بالكامل، وخصوصيتك دائمًا أولوية.
@@ -666,7 +675,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5C10 9 9.4 7.6 9.2 7c-.2-.5-.4-.5-.6-.5h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3 4.8 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.5-.3zM12 2a10 10 0 00-8.6 15L2 22l5.1-1.3A10 10 0 1012 2zm0 18.3c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .8.8-3-.2-.3A8.3 8.3 0 1120.3 12 8.3 8.3 0 0112 20.3z"/></svg>
       </a>
         </div>
-        <div style="font-size:11px; color:var(--muted); opacity:.75; margin-top:16px;" data-i18n="aboutCopyright">© فريق عمران AI</div>
+        <div style="font-size:11px; color:var(--muted); opacity:.75; margin-top:16px;" data-i18n="aboutCopyright">© فريق om ai</div>
       </div>
       <div id="appVersionLabel" style="text-align:center; color:var(--muted); font-size:12px; opacity:.7; margin-top:18px; padding-bottom:6px; user-select:text;"></div>
   </div></div>
@@ -679,18 +688,19 @@
 
   <!-- v-secret-vault: خزنة الأسرار — للمالك وحده -->
   <div id="vaultSectionWrap" class="ownerCard" style="display:none;">
-    <div class="ownerCardTitle">🔐 خزنة الأسرار</div>
+    <div class="ownerCardTitle" data-i18n="ownerVaultTitle">🔐 خزنة الأسرار</div>
     <div id="vaultSectionContent">
-      <div style="font-size:12.5px; line-height:1.8; opacity:.85;">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع. الرفع يحتاج توكن بصلاحيّة Contents: write وPull requests: write على المستودع.</div>
+      <!-- v-owner-i18n (تدقيق ١٨ أكتوبر): نصوص صفحة المالك بالـ١٤ لغة عبر data-i18n، ورمزا الصلاحيّتين خارج الترجمة معزولين لا يلتفّان (كانا يتلخبطان مع «و») -->
+      <div style="font-size:12.5px; line-height:1.8; opacity:.85;"><span data-i18n="ownerVaultDesc">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع.</span> <span data-i18n="ownerVaultPerms">الرفع يحتاج توكن بهاتين الصلاحيّتين على المستودع:</span> <bdi dir="ltr" style="white-space:nowrap">Contents: write</bdi> · <bdi dir="ltr" style="white-space:nowrap">Pull requests: write</bdi></div>
       <div id="vaultGhStatus" style="margin-top:10px; font-size:12.5px; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px;">…</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
-        <input type="password" id="vaultGhInput" autocomplete="off" spellcheck="false" placeholder="ghp_… أو github_pat_…" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
-        <button type="button" onclick="vaultSave('github_token')" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">حفظ</button>
-        <button type="button" onclick="vaultClear('github_token')" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">حذف</button>
+        <input type="password" id="vaultGhInput" autocomplete="off" spellcheck="false" placeholder="ghp_… أو github_pat_…" data-i18n-placeholder="ownerVaultTokenPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
+        <button type="button" onclick="vaultSave('github_token')" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="save">حفظ</button>
+        <button type="button" onclick="vaultClear('github_token')" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="bgImgDelete">حذف</button>
       </div>
       <div style="display:flex; gap:8px; margin-top:10px;">
         <input type="text" id="vaultRepoInput" value="OMRAN77/omran-ai-builder" spellcheck="false" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
-        <button type="button" onclick="vaultTest()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">فحص المفتاح</button>
+        <button type="button" onclick="vaultTest()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerVaultTest">فحص المفتاح</button>
       </div>
       <div id="vaultTestBox" style="display:none; margin-top:8px; font-size:12.5px; line-height:1.8; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px; white-space:pre-wrap;"></div>
     </div>
@@ -699,32 +709,32 @@
   <div id="adminSectionWrap" class="ownerCard" style="display:none;">
     <div class="ownerCardTitle" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</div>
     <div id="adminSectionContent">
-      <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;">🔄 تحديث الإحصائيات</button>
+      <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;" data-i18n="ownerStatsRefresh">🔄 تحديث الإحصائيات</button>
       <!-- v-claude-diag: فحص مفتاح كلود الفعلي في الخادم — يحسم «فيه رصيد» من عدمه -->
-      <button type="button" id="adminClaudeDiagBtn" onclick="adminClaudeDiag()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px; margin-inline-start:8px;">👑 فحص مفتاح كلود</button>
+      <button type="button" id="adminClaudeDiagBtn" onclick="adminClaudeDiag()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px; margin-inline-start:8px;" data-i18n="ownerClaudeDiag">👑 فحص مفتاح كلود</button>
       <div id="adminClaudeDiagBox" style="display:none; font-size:12.5px; line-height:1.8; background:var(--panel2); border-radius:var(--r-2); padding:10px 12px; white-space:pre-wrap; word-break:break-all; margin-bottom:10px;"></div>
-      <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "تحديث" لعرض الإحصائيات...</div>
-      <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
+      <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;"><span data-i18n="ownerStatsHint">اضغط "تحديث" لعرض الإحصائيات...</span></div>
+      <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerUsersTitle">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
       <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:320px; overflow-y:auto;"></div>
 
-      <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;">⭐ صلاحيات VIP (بلا حدود)</div>
+      <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerVipTitle">⭐ صلاحيات VIP (بلا حدود)</div>
       <div style="display:flex; gap:8px; margin-top:8px;">
-        <input type="text" id="vipInput" placeholder="إيميل أو اسم مستخدم" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
-        <button type="button" id="vipAddBtn" onclick="addVipUser()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">➕ إضافة</button>
+        <input type="text" id="vipInput" placeholder="إيميل أو اسم مستخدم" data-i18n-placeholder="ownerVipPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
+        <button type="button" id="vipAddBtn" onclick="addVipUser()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerVipAdd">➕ إضافة</button>
       </div>
       <div id="vipListBox" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:240px; overflow-y:auto;"></div>
 
 
-      <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;">🩺 فحص النظام</div>
+      <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerHealthTitle">🩺 فحص النظام</div>
       <div style="display:flex; gap:8px; margin-top:8px;">
-        <button type="button" id="adminHealthBtn" onclick="runHealthCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🩺 افحص الآن</button>
-        <button type="button" id="adminRedisUsageBtn" onclick="redisUsageCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">💾 ما يملأ القاعدة</button>
-        <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🧹 مسح سجل الأخطاء</button>
+        <button type="button" id="adminHealthBtn" onclick="runHealthCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerHealthRun">🩺 افحص الآن</button>
+        <button type="button" id="adminRedisUsageBtn" onclick="redisUsageCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerRedisUsage">💾 ما يملأ القاعدة</button>
+        <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid #a33; background:var(--panel2); color:#e66; font-size:12px; cursor:pointer;" data-i18n="ownerClearErrors">🧹 مسح سجل الأخطاء</button>
       </div>
       <div style="display:flex; gap:8px; margin-top:8px;">
-        <button type="button" id="adminCostsBtn" onclick="subscriberCostsCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">💵 تكلفة المشتركين هذا الشهر</button>
+        <button type="button" id="adminCostsBtn" onclick="subscriberCostsCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;" data-i18n="ownerCosts">💵 تكلفة المشتركين هذا الشهر</button>
       </div>
-      <div id="adminHealthBox" style="margin-top:10px; font-size:12.5px; line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "افحص الآن" لتشغيل الفحص...</div>
+      <div id="adminHealthBox" style="margin-top:10px; font-size:12.5px; line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;"><span data-i18n="ownerHealthHint">اضغط "افحص الآن" لتشغيل الفحص...</span></div>
     </div>
   </div>
 
@@ -736,7 +746,7 @@
 
   <div id="checkoutModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9999; align-items:center; justify-content:center;">
     <div style="background:var(--panel); border-radius:var(--r-3); padding:20px; width:min(420px, 92vw); max-height:88vh; overflow-y:auto; position:relative;">
-      <button type="button" onclick="closeCheckout()" style="position:absolute; inset-inline-end:12px; top:12px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text);">✕</button>
+      <button type="button" onclick="closeCheckout(true)" style="position:absolute; inset-inline-end:12px; top:12px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text);">✕</button>
       <h3 style="margin:0 0 4px;" data-i18n="checkoutTitle">إتمام الاشتراك</h3>
       <div id="checkoutPlanLabel" style="font-size: var(--fs-3); color:var(--muted); margin-bottom:14px;"></div>
 
@@ -832,7 +842,7 @@
       var sc = document.querySelector('script[data-omran-cur]');
       if (!sc) {
         sc = document.createElement('script');
-        sc.src = '/js/currency.js?v=2';
+        sc.src = '/js/currency.js?v=4'; /* v-cur-display */
         sc.charset = 'utf-8';
         sc.setAttribute('data-omran-cur', '1');
         sc.addEventListener('load', go);
@@ -864,6 +874,14 @@
     var q = document.getElementById('acctQrBox');
     if (q) q.style.display = (q.style.display === 'none' || !q.style.display) ? 'block' : 'none';
     if (q && q.style.display === 'block' && window.acctPaintQr) window.acctPaintQr();
+    // v-acct-referral-i18n: نصّ الزرّ ومفتاحه يتبعان الحالة (كان «فتح الباركود» بعد الفتح أيضًا)
+    var b = document.getElementById('acctQrBtn');
+    if (q && b) {
+      var k = q.style.display === 'block' ? 'acctQrClose' : 'acctQrOpen';
+      b.setAttribute('data-i18n', k);
+      var v = (typeof window.t === 'function') ? window.t(k) : '';
+      if (v && v !== k) b.textContent = v;
+    }
   };
   // v-qr-one: باركود واحد لكلّ الأجهزة برابط دعوة صاحب الحساب — /app يرسل كلّ جهاز إلى تطبيقه (download.html).
   // يُرسم هنا بـjs/qr.js (بلا شبكة) ويُعاد فقط إن تغيّر الرابط؛ «تحميل الباركود» ينزّل الصورة المرسومة نفسها.
@@ -894,18 +912,21 @@
     sc.onerror = function() { if (sc.parentNode) sc.parentNode.removeChild(sc); }; // الفتح التالي يعيد المحاولة بوسم واحد
     document.head.appendChild(sc);
   };
+  // v-acct-referral-i18n: نصّ المشاركة وprompt بمفاتيح، والنسخ يومض على الزرّ نفسه بدل alert عربيّ في كلّ اللغات
   window.acctShareApp = async function() {
+    var tt = function(k) { var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? String(v) : ''; };
     var u = document.getElementById('acctReferralLink');
     var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
-    var txt = 'جرّب تطبيق عمران AI لكافة المتاجر:';
     if (navigator.share) {
-      try { await navigator.share({ title: 'عمران AI', text: txt, url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+      try { await navigator.share({ title: 'om ai', text: tt('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
-        alert('تم نسخ رابط التطبيق والمشاركة بنجاح ✅');
+        var b = document.getElementById('acctShareBtn');
+        var done = tt('acctReferralCopied');
+        if (b && done) { b.textContent = done; setTimeout(function() { b.textContent = tt('acctShareBtn') || b.textContent; }, 1500); }
       } catch (e2) {
-        prompt('انسخ الرابط:', shareUrl);
+        prompt(tt('acctCopyPrompt'), shareUrl);
       }
     }
   };

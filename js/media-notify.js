@@ -12,9 +12,9 @@
 
   var LS_PREF = 'aiapp_media_notify';        // '0' = أطفأه من الإعدادات؛ الافتراضيّ مفعَّل
   var LS_NEVER = 'aiapp_media_notify_never'; // '1' = قال «لا شكرًا» للشريط — لا يُسأل ثانية
-  var ICON = './icons/icon-192-v2.png?icon=gold-20260819';
+  var ICON = './icons/icon-192-v2.png?icon=black-20261022';
 
-  /* النصوص محليّة هنا (ar/en) لا في قاموس الحزمة — الملفّ مستقلّ بلا ترقية وسم اللغات. */
+  /* النصوص محليّة هنا (١٤ لغة) لا في قاموس الحزمة — الملفّ مستقلّ بلا ترقية وسم اللغات. */
   var STR = {
     ar: {
       mediaNotifLabel: 'تنبيه اكتمال الصور والفيديو',
@@ -39,12 +39,159 @@
       mediaNotifFailVideo: 'The video could not be completed — come back and try again',
       mediaNotifDenied: 'Notifications are blocked by the browser — allow them from the browser site settings (lock icon).',
       notifSectionLabel: '🔔 Notifications'
+    },
+    /* v-notif-relang (تدقيق ١٨–١٩ أكتوبر): بقيّة اللغات الاثنتي عشرة كانت ترى القسم والشريط والإشعار بالإنجليزيّ.
+       notifSectionLabel كما في قاموس الحزمة لكلّ لغة. */
+    fr: {
+      mediaNotifLabel: 'Alertes images et vidéos prêtes',
+      mediaNotifHint: 'Si vous quittez l’application pendant la création d’une image ou d’une vidéo, une alerte vous prévient dès qu’elle est prête — touchez-la pour revenir à la conversation.',
+      mediaNotifAsk: 'Recevoir une alerte quand votre image est prête alors que vous êtes hors de l’application ?',
+      mediaNotifAskYes: 'Activer',
+      mediaNotifAskNo: 'Non merci',
+      mediaNotifReadyImage: '🎨 Votre image est prête — touchez pour revenir',
+      mediaNotifReadyVideo: '🎬 Votre vidéo est prête — touchez pour revenir',
+      mediaNotifFailVideo: 'La vidéo n’a pas pu être terminée — revenez et réessayez',
+      mediaNotifDenied: 'Les notifications sont bloquées par le navigateur — autorisez-les dans les paramètres du site (icône du cadenas).',
+      notifSectionLabel: '🔔 Notifications'
+    },
+    hi: {
+      mediaNotifLabel: 'इमेज और वीडियो तैयार होने की सूचना',
+      mediaNotifHint: 'अगर इमेज या वीडियो बनते समय आप ऐप से बाहर जाते हैं, तो तैयार होते ही आपको सूचना मिलेगी — चैट पर लौटने के लिए उसे टैप करें।',
+      mediaNotifAsk: 'ऐप से बाहर रहते हुए इमेज तैयार होने पर सूचना चाहिए?',
+      mediaNotifAskYes: 'चालू करें',
+      mediaNotifAskNo: 'नहीं, धन्यवाद',
+      mediaNotifReadyImage: '🎨 आपकी इमेज तैयार है — लौटने के लिए टैप करें',
+      mediaNotifReadyVideo: '🎬 आपका वीडियो तैयार है — लौटने के लिए टैप करें',
+      mediaNotifFailVideo: 'वीडियो पूरा नहीं हो सका — लौटकर फिर से कोशिश करें',
+      mediaNotifDenied: 'ब्राउज़र ने सूचनाएँ ब्लॉक की हैं — ब्राउज़र की साइट सेटिंग (ताले का आइकन) से अनुमति दें।',
+      notifSectionLabel: '🔔 सूचनाएँ'
+    },
+    ur: {
+      mediaNotifLabel: 'تصویر اور ویڈیو تیار ہونے کی اطلاع',
+      mediaNotifHint: 'اگر تصویر یا ویڈیو بنتے وقت آپ ایپ سے باہر چلے جائیں تو تیار ہوتے ہی آپ کو اطلاع ملے گی — چیٹ پر واپس آنے کے لیے اسے ٹیپ کریں۔',
+      mediaNotifAsk: 'ایپ سے باہر ہوتے ہوئے تصویر تیار ہونے پر اطلاع چاہیے؟',
+      mediaNotifAskYes: 'فعال کریں',
+      mediaNotifAskNo: 'نہیں، شکریہ',
+      mediaNotifReadyImage: '🎨 آپ کی تصویر تیار ہے — واپس آنے کے لیے ٹیپ کریں',
+      mediaNotifReadyVideo: '🎬 آپ کی ویڈیو تیار ہے — واپس آنے کے لیے ٹیپ کریں',
+      mediaNotifFailVideo: 'ویڈیو مکمل نہیں ہو سکی — واپس آ کر دوبارہ کوشش کریں',
+      mediaNotifDenied: 'براؤزر نے اطلاعات بلاک کر دی ہیں — براؤزر کی سائٹ سیٹنگز (تالے کا آئیکن) سے اجازت دیں۔',
+      notifSectionLabel: '🔔 اطلاعات'
+    },
+    bn: {
+      mediaNotifLabel: 'ছবি ও ভিডিও তৈরি হলে সতর্কতা',
+      mediaNotifHint: 'ছবি বা ভিডিও তৈরির সময় অ্যাপ থেকে বেরিয়ে গেলে, তৈরি হওয়ামাত্র আপনি একটি সতর্কতা পাবেন — চ্যাটে ফিরতে সেটিতে ট্যাপ করুন।',
+      mediaNotifAsk: 'অ্যাপের বাইরে থাকার সময় ছবি তৈরি হলে সতর্কতা চান?',
+      mediaNotifAskYes: 'চালু করুন',
+      mediaNotifAskNo: 'না, ধন্যবাদ',
+      mediaNotifReadyImage: '🎨 আপনার ছবি তৈরি — ফিরতে ট্যাপ করুন',
+      mediaNotifReadyVideo: '🎬 আপনার ভিডিও তৈরি — ফিরতে ট্যাপ করুন',
+      mediaNotifFailVideo: 'ভিডিওটি সম্পূর্ণ করা যায়নি — ফিরে এসে আবার চেষ্টা করুন',
+      mediaNotifDenied: 'ব্রাউজার বিজ্ঞপ্তি ব্লক করেছে — ব্রাউজারের সাইট সেটিংস (তালার আইকন) থেকে অনুমতি দিন।',
+      notifSectionLabel: '🔔 বিজ্ঞপ্তি'
+    },
+    ne: {
+      mediaNotifLabel: 'तस्बिर र भिडियो तयार भएको सूचना',
+      mediaNotifHint: 'तस्बिर वा भिडियो बन्दै गर्दा तपाईं एपबाट बाहिर जानुभयो भने, तयार हुनेबित्तिकै सूचना पाउनुहुनेछ — च्याटमा फर्कन त्यसमा ट्याप गर्नुहोस्।',
+      mediaNotifAsk: 'एपबाहिर हुँदा तस्बिर तयार भएपछि सूचना चाहिन्छ?',
+      mediaNotifAskYes: 'सक्रिय गर्नुहोस्',
+      mediaNotifAskNo: 'पर्दैन, धन्यवाद',
+      mediaNotifReadyImage: '🎨 तपाईंको तस्बिर तयार छ — फर्कन ट्याप गर्नुहोस्',
+      mediaNotifReadyVideo: '🎬 तपाईंको भिडियो तयार छ — फर्कन ट्याप गर्नुहोस्',
+      mediaNotifFailVideo: 'भिडियो पूरा हुन सकेन — फर्केर फेरि प्रयास गर्नुहोस्',
+      mediaNotifDenied: 'ब्राउजरले सूचनाहरू रोकेको छ — ब्राउजरको साइट सेटिङ (तालाको आइकन) बाट अनुमति दिनुहोस्।',
+      notifSectionLabel: '🔔 सूचनाहरू'
+    },
+    id: {
+      mediaNotifLabel: 'Peringatan gambar & video siap',
+      mediaNotifHint: 'Jika Anda keluar dari aplikasi saat gambar atau video sedang dibuat, Anda akan mendapat peringatan begitu selesai — ketuk untuk kembali ke obrolan.',
+      mediaNotifAsk: 'Ingin mendapat peringatan saat gambar Anda siap ketika Anda di luar aplikasi?',
+      mediaNotifAskYes: 'Aktifkan',
+      mediaNotifAskNo: 'Tidak, terima kasih',
+      mediaNotifReadyImage: '🎨 Gambar Anda sudah siap — ketuk untuk kembali',
+      mediaNotifReadyVideo: '🎬 Video Anda sudah siap — ketuk untuk kembali',
+      mediaNotifFailVideo: 'Video tidak dapat diselesaikan — kembali dan coba lagi',
+      mediaNotifDenied: 'Notifikasi diblokir oleh browser — izinkan dari pengaturan situs di browser (ikon gembok).',
+      notifSectionLabel: '🔔 Notifikasi'
+    },
+    fil: {
+      mediaNotifLabel: 'Alerto kapag handa na ang larawan at video',
+      mediaNotifHint: 'Kung aalis ka sa app habang ginagawa ang larawan o video, makakatanggap ka ng alerto sa sandaling handa na ito — i-tap ito para bumalik sa chat.',
+      mediaNotifAsk: 'Gusto mo bang makatanggap ng alerto kapag handa na ang larawan mo habang wala ka sa app?',
+      mediaNotifAskYes: 'I-on',
+      mediaNotifAskNo: 'Huwag na, salamat',
+      mediaNotifReadyImage: '🎨 Handa na ang larawan mo — i-tap para bumalik',
+      mediaNotifReadyVideo: '🎬 Handa na ang video mo — i-tap para bumalik',
+      mediaNotifFailVideo: 'Hindi natapos ang video — bumalik at subukan ulit',
+      mediaNotifDenied: 'Naka-block sa browser ang mga notipikasyon — payagan ito sa site settings ng browser (icon ng kandado).',
+      notifSectionLabel: '🔔 Mga notipikasyon'
+    },
+    tr: {
+      mediaNotifLabel: 'Görsel ve video hazır uyarıları',
+      mediaNotifHint: 'Bir görsel veya video hazırlanırken uygulamadan çıkarsanız, hazır olduğu anda bir uyarı alırsınız — sohbete dönmek için uyarıya dokunun.',
+      mediaNotifAsk: 'Uygulamanın dışındayken görseliniz hazır olduğunda uyarı almak ister misiniz?',
+      mediaNotifAskYes: 'Etkinleştir',
+      mediaNotifAskNo: 'Hayır, teşekkürler',
+      mediaNotifReadyImage: '🎨 Görseliniz hazır — geri dönmek için dokunun',
+      mediaNotifReadyVideo: '🎬 Videonuz hazır — geri dönmek için dokunun',
+      mediaNotifFailVideo: 'Video tamamlanamadı — geri dönüp tekrar deneyin',
+      mediaNotifDenied: 'Bildirimler tarayıcı tarafından engellendi — site ayarlarından izin verin (kilit simgesi).',
+      notifSectionLabel: '🔔 Bildirimler'
+    },
+    zh: {
+      mediaNotifLabel: '图片和视频完成提醒',
+      mediaNotifHint: '如果您在生成图片或视频时离开应用，完成后会立即收到提醒，点按即可返回对话。',
+      mediaNotifAsk: '离开应用时，图片完成后要提醒您吗？',
+      mediaNotifAskYes: '开启',
+      mediaNotifAskNo: '不用了，谢谢',
+      mediaNotifReadyImage: '🎨 您的图片已完成，点按返回',
+      mediaNotifReadyVideo: '🎬 您的视频已完成，点按返回',
+      mediaNotifFailVideo: '视频未能完成，请返回重试',
+      mediaNotifDenied: '浏览器已阻止通知，请在浏览器的网站设置（锁形图标）中允许。',
+      notifSectionLabel: '🔔 通知'
+    },
+    ru: {
+      mediaNotifLabel: 'Оповещения о готовых изображениях и видео',
+      mediaNotifHint: 'Если вы выйдете из приложения, пока создаётся изображение или видео, вы получите оповещение, как только оно будет готово, — нажмите на него, чтобы вернуться в чат.',
+      mediaNotifAsk: 'Сообщить, когда изображение будет готово, если вы не в приложении?',
+      mediaNotifAskYes: 'Включить',
+      mediaNotifAskNo: 'Нет, спасибо',
+      mediaNotifReadyImage: '🎨 Ваше изображение готово — нажмите, чтобы вернуться',
+      mediaNotifReadyVideo: '🎬 Ваше видео готово — нажмите, чтобы вернуться',
+      mediaNotifFailVideo: 'Не удалось завершить видео — вернитесь и попробуйте ещё раз',
+      mediaNotifDenied: 'Браузер блокирует уведомления — разрешите их в настройках сайта (значок замка).',
+      notifSectionLabel: '🔔 Уведомления'
+    },
+    es: {
+      mediaNotifLabel: 'Avisos de imagen y vídeo listos',
+      mediaNotifHint: 'Si sales de la app mientras se crea una imagen o un vídeo, te llega un aviso en cuanto esté listo — tócalo para volver al chat.',
+      mediaNotifAsk: '¿Quieres un aviso cuando tu imagen esté lista mientras estás fuera de la app?',
+      mediaNotifAskYes: 'Activar',
+      mediaNotifAskNo: 'No, gracias',
+      mediaNotifReadyImage: '🎨 Tu imagen está lista — toca para volver',
+      mediaNotifReadyVideo: '🎬 Tu vídeo está listo — toca para volver',
+      mediaNotifFailVideo: 'No se pudo completar el vídeo — vuelve e inténtalo de nuevo',
+      mediaNotifDenied: 'El navegador bloquea las notificaciones — permítelas en la configuración del sitio (icono del candado).',
+      notifSectionLabel: '🔔 Notificaciones'
+    },
+    ml: {
+      mediaNotifLabel: 'ചിത്രവും വീഡിയോയും തയ്യാറായാൽ അറിയിപ്പ്',
+      mediaNotifHint: 'ചിത്രമോ വീഡിയോയോ നിർമ്മിക്കുന്നതിനിടെ നിങ്ങൾ ആപ്പിൽ നിന്ന് പുറത്തുപോയാൽ, തയ്യാറായ ഉടൻ ഒരു അറിയിപ്പ് ലഭിക്കും — ചാറ്റിലേക്ക് മടങ്ങാൻ അതിൽ ടാപ്പ് ചെയ്യുക.',
+      mediaNotifAsk: 'ആപ്പിന് പുറത്തായിരിക്കുമ്പോൾ ചിത്രം തയ്യാറായാൽ അറിയിപ്പ് വേണോ?',
+      mediaNotifAskYes: 'ഓൺ ചെയ്യുക',
+      mediaNotifAskNo: 'വേണ്ട, നന്ദി',
+      mediaNotifReadyImage: '🎨 നിങ്ങളുടെ ചിത്രം തയ്യാർ — മടങ്ങാൻ ടാപ്പ് ചെയ്യുക',
+      mediaNotifReadyVideo: '🎬 നിങ്ങളുടെ വീഡിയോ തയ്യാർ — മടങ്ങാൻ ടാപ്പ് ചെയ്യുക',
+      mediaNotifFailVideo: 'വീഡിയോ പൂർത്തിയാക്കാനായില്ല — മടങ്ങിവന്ന് വീണ്ടും ശ്രമിക്കുക',
+      mediaNotifDenied: 'ബ്രൗസർ അറിയിപ്പുകൾ തടഞ്ഞിരിക്കുന്നു — ബ്രൗസറിന്റെ സൈറ്റ് ക്രമീകരണങ്ങളിൽ (പൂട്ട് ഐക്കൺ) നിന്ന് അനുവദിക്കുക.',
+      notifSectionLabel: '🔔 അറിയിപ്പുകൾ'
     }
   };
   function tr(k) {
-    var lg = 'en';
-    try { lg = (document.documentElement.lang || 'ar').slice(0, 2); } catch (e) { /* guard-ok — العربية افتراضيّ الواجهة */ }
-    return (STR[lg] && STR[lg][k]) || STR.en[k] || STR.ar[k] || k;
+    var lg = 'ar';
+    try { lg = String(document.documentElement.lang || 'ar').toLowerCase(); } catch (e) { /* guard-ok — العربية افتراضيّ الواجهة */ }
+    var d = STR[lg] || STR[lg.slice(0, 2)]; // fil ثلاثة أحرف — قصّها إلى fi كان يسقطها إلى الإنجليزيّ
+    return (d && d[k]) || STR.en[k] || STR.ar[k] || k;
   }
   function supported() {
     try { return typeof Notification !== 'undefined' && typeof Notification.permission === 'string'; }
@@ -213,7 +360,7 @@
   /* قسم «التنبيهات» يُحقن بعد «ذاكرتي» (partials-settings سبقتنا في التحميل)،
      وصفّه في قائمة الإعدادات يُراقَب: القائمة تُعاد كتابتها عند كلّ فتح فيُعاد الصفّ. */
   var SECTION_HTML = '<div id="notifSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">'
-    + '<div class="settingsSectionHeader" onclick="toggleSettingsSection(\'notifSection\')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-media-notif-i18n="notifSectionLabel"></h3><span class="settingsSectionArrow" id="notifSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">&#9654;</span></div>'
+    + '<div class="settingsSectionHeader" onclick="toggleSettingsSection(\'notifSection\')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-media-notif-i18n="notifSectionLabel" data-i18n="notifSectionLabel"></h3><span class="settingsSectionArrow" id="notifSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">&#9654;</span></div>'
     + '<div id="notifSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">'
     + '<label style="display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer;">'
     + '<span data-media-notif-i18n="mediaNotifLabel" style="font-size:var(--fs-6);"></span>'
@@ -274,6 +421,16 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectSection);
   else injectSection();
   try { placeNavRow(document.getElementById('settingsNavList')); } catch (e) { /* guard-ok */ }
+  /* v-notif-relang (تدقيق ١٨–١٩ أكتوبر): بعد تبديل اللغة بقي القسم وسطر الحالة بلغة لحظة الحقن — fillTexts وsyncToggle
+     لا تعملان إلّا عند الحقن ونقر #btnSettings. applyLanguage تكتب html.lang، فمراقب هذه السمة يعيدهما فورًا. وعنوان
+     القسم يحمل أيضًا data-i18n="notifSectionLabel" (مفتاح الحزمة بالـ١٤ لغة) فتترجمه applyLanguage نفسها قبل أن تنسخه
+     إلى عنوان صفحة الإعدادات المفتوحة — المراقب يعمل بعد ذلك النسخ، فلولا السمة لبقي العنوان العلويّ بلغة سابقة. */
+  try {
+    new MutationObserver(function () {
+      fillTexts(document.getElementById('notifSection'));
+      syncToggle();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+  } catch (e) { /* guard-ok — بلا مراقب: نقر الإعدادات أدناه يعيد النصوص كما كان */ }
   /* إعادة ترجمة النصوص المحقونة عند تبديل اللغة: الحدث العامّ للغة إن وُجد، وإلّا عند فتح الإعدادات. */
   document.addEventListener('click', function (e) {
     try {

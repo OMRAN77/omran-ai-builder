@@ -27,6 +27,8 @@
   }
   function whyText(reason, vars){
     if(reason === 'points') return pointsWhy(vars);
+    /* v-limit-msg-i18n (الدفعة ٥): المجّانيّ لا باقة له — سطر الحدّ هو نصّ ردّ المحادثة نفسه لا «وصلت حدّ باقتك» */
+    if(reason === 'limit' && String(window.__omranPlan || '') === 'free') return fill(t('chatFreeLimitMsg'), vars);
     return fill(t(WHY[reason] || WHY.points), vars);
   }
   /* v-plans-real-balance (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «صفحة الباقات تقول نقاطك خلصت والرصيد ١٠ — خلها تقرا الرصيد الحقيقي»):

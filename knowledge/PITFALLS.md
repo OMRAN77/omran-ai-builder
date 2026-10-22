@@ -3,6 +3,22 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **حارس الردّ يسبق أيّ إعادة:** في مكالمة مها يرسل `mahaArmRtResponseWatchdog` طلب `response.create` بعد كلّ speech_stopped (٠٫٣٥/١٫٥ث)،
+  فمؤقّت «إعادة» مستقلّ بعده لا يعمل أبدًا (الردّ الجديد يلغيه)، وقبله يصنع طلبين. اجعل الإعادة تمرّ عبر الحارس (`mahaRtFirstTake`) أو تلغيه —
+  ظهر في المسبار وحده لا في اختبار الوحدة. (v-maha-first-heard)
+- **لقطة قبل فكّ الصورة:** تبديل الثيم ثمّ لقطة بعد ٠٫٩ث صوّر «دخان» كحليًّا صافيًا (لون --th-page) — المشهد ٢٥٦٠px لم يُفكّ، فقاس المسبار
+  النصّ على لون لا يراه المستخدم وأخفى أعطاله. قبل أيّ قياس بكسلات: `new Image(); src = كلّ رابط background-image في الصفحة; await img.decode()`.
+  وعلى جهاز المالك يعلّق fonts.googleapis.com أحيانًا فيحجب DOMContentLoaded (ورقة الأنماط تحجب السكربتات المؤجَّلة) — اخدم نسخة مخبَّأة. (v-theme-contrast)
+
+- **autoplay بلا ضغطة:** مسبار Playwright هنا لا يفرض سياسة التشغيل التلقائيّ، و«اشتغل الصوت في المسبار» ليس دليلًا على الجوّال — `play()` بلا أيّ ضغطة
+  نجح في headless shell وفي كروم المثبَّت (headless وبنافذة) حتّى مع `--autoplay-policy=user-gesture-required`. ابدأ أيّ فحص صوت بشاهد بلا
+  ضغطة؛ إن نجح فالمسبار يقيس الترتيب والتوقيت فقط، وقاعدة الإيماءة تُثبت على الجهاز (أثر `?diag=1`) أو في vm بنموذج صريح. وصمت التفعيل
+  mp3 في `mahaUnlockAudio` لا يُفكّ (`NotSupportedError`) — استعمل WAV صالحًا (`MAHA_RT_SILENT_WAV`). (v-maha-first-audio)
+- **ffmpeg: صورة واحدة بلا zoompan = إطار واحد مهما كان `-t`:** مدخل PNG واحد يعطي إطارًا واحدًا، وzoompan هو الذي كان يولّد إطارات الخانة. مقطع «صورة ثابتة» يحتاج `fps=30,tpad=stop_mode=clone:stop_duration=<الخانة>` (أو `-loop 1`). تحقّق بـ`ffprobe -show_entries stream=nb_frames` لا بأنّ الأمر خرج بصفر. (v-app-director-watchdog)
+- **ffmpeg قُتل بإشارة يخرج بلا رمز ولا stderr:** `child.on('close', (code) => …)` وحده يُخرج «failed:» فارغة. اقرأ `signal` أيضًا؛ SIGKILL بلا stderr على حاوية صغيرة = قاتل الذاكرة على الأرجح. (v-app-director-watchdog)
+- **`page.evaluate` في Playwright بلا مهلة:** `setDefaultTimeout` لا يشمله، فصفحة يعلّق خيطها بعد `load` تُوقف المتسلسل كلّه. ضع مهلة خارجيّة (`Promise.race`) وأغلق الصفحة العالقة وافتح غيرها. (v-app-director-watchdog)
+- **`import()` لـplaywright-core من CommonJS يضع `chromium` تحت `default`:** `mod.chromium` غير معرَّف فيتخطّى اختبار «Chromium غير متاح» بصمت وهو متاح — اقرأ `mod.chromium || mod.default.chromium`. (v-app-director-watchdog)
+- **`white-space:nowrap` داخل عنصر شبكة بعمود `1fr`:** الحدّ الأدنى لـ`1fr` عرض المحتوى، فسطر لا يلتفّ يوسّع العمود ويُخرج البطاقات عن شاشة الجوّال (الحاسوب بـ`minmax(0,1fr)` لا يظهر فيه). التفاف + `min-width:0`. (v-app-director-watchdog)
 - **رصد يقرأ نصّ لوحة تنظّف نصوصها لا يرى شيئًا، وكتابة النصّ باليد في الاختبار تخفي ذلك:** مشهد الترندات رصد ⏳ في
   «⏳ يصنع الفيديو…»، لكنّ `ui()` في لوحة الترندات يمرّر كلّ نصّ بـ`noEmoji` فلا يصل الرمز أبدًا؛ والتحقّق كتب سطر الحالة باليد
   بالرمز فمرّ، والمالك لم يرَ المشهد قطّ. تحقّق من أيّ مؤشّر انتظار بضغط زرّ التوليد الحقيقيّ مع خادم وهميّ، واجعل اللوحة تعلن
@@ -1361,3 +1377,12 @@
 - **رسم وثيقة كاملة في لوحة canvas واحدة ثمّ قصّها يفشل بصمت على الآيفون (v-pdf-docs):** حدّ مساحة اللوحة ≈١٦ ميغابكسل (≈٥ صفحات بدقّة ×٢) فتخرج بيضاء بلا استثناء، ويُقطع السطر عند حافّة الصفحة. للوثائق: قِس الكتل ووزّعها على صفحات وارسم كلّ صفحة بلوحتها (`omranExportPagedPdfFile`)، ولا تستعمل `omranExportHtmlAsPdfFile` إلا لنصّ قصير (ردّ واحد).
 - **`push(...array)` على آلاف العناصر يرمي RangeError (v-pdf-docs):** حدّ وسائط الدالّة ≈١٢٠ ألفًا؛ ملفّ نصّيّ بمئات آلاف الأسطر يكسره. استعمل حلقة، وضع سقفًا لعدد الأسطر قبل بناء الكتل.
 - **`setInputFiles` في Playwright بمسار اسمه عربيّ لا يطلق `change` ولا يخطئ (مسبار v-pdf-docs):** مرّر `{name, mimeType, buffer}` بدل المسار، وإلا ظننت الكود معلّقًا.
+- **عنصر مخفيّ بـopacity:0 وحدها يلتقط النقرات:** #settingsCmdToast بعد تلاشيه بقي طبقة عالية بـpointer-events:auto فوق وسط صندوق الكتابة، فبدا الزرّ «لا يستجيب» ولا يظهر شيء في اللقطة. اجمع الشفافية مع pointer-events:none أو visibility:hidden بعد التلاشي، وافحص بـelementFromPoint بعد المهلة لا بالعين. (v-audit-ten)
+- **مستمع Esc على document في مرحلة الفقاعة يأتي متأخّرًا:** معالج swipe-back يُسجَّل عند الإقلاع فيغلق الأداة تحت الطبقة أوّلًا. طبقة فوق أداة تحتاج keydown بالتقاط مع stopImmediatePropagation، وhistory.back() غير متزامن فلا تدفع مدخلًا قبل popstate الذي طلبته. (v-audit-ten)
+- **data-i18n على صندوق يملؤه الكود يمحو نتيجته:** applyLanguage يكتب innerHTML لكلّ [data-i18n] عند كلّ تبديل لغة؛ ضع التلميح في span داخليّ عليه المفتاح. وdeepStrictEqual بين كائن من سياق vm وآخر من الاختبار يفشل لاختلاف النموذج — قارن عبر JSON. (v-audit-ten)
+- **`display:… !important` في ورقة الأنماط يغلب `el.style.display='none'` بصمت:** إخفاء مربّع رفع الديكور كان بلا أثر يومين. ابحث عن أصناف العنصر في css/ قبل إخفائه بالـJS، أو استعمل setProperty('display','none','important')، واختبر بمحرّك تتالٍ لا بقراءة style.display. (v-audit-ten)
+- **dir="auto" يتخطّى الأبناء الذين يحملون dir:** على ul وكلّ li معًا صارت القائمة LTR وبقي كلّ li RTL. ضعه على الحاوية وحدها. وaladhan يقرأ DD-MM-YYYY: صيغة YYYY-MM-DD لا تُرفض بل تجيب عن سنة أخرى (ظهر في الهجريّ وحده). (v-audit-ten)
+- **«var t» داخل IIFE يحجب t() العامّة:** رفع var يجعل t محلّيًّا undefined في الدالّة كلّها ولو كان في فرع لا يُنفَّذ، فأوّل t('…') يرمي. قبل إدخال الترجمة في جزء قديم ابحث عن var t/function t وسمِّ المؤقّت tm. وكذلك --eval في ui-shot يعمل في النطاق العامّ: `var t=` فيه يمحو t(). (v-audit-ten)
+- **نفاد رصيد المزوّد يأتي ٤٢٩ لا ٤٠٢:** «Your prepayment credits are depleted» بحالة ٤٢٩ RESOURCE_EXHAUSTED، و«You exceeded your current quota» كذلك — فاحص الحالة وحدها يقرؤه زحامًا ويعيد ويخصم. افحص النصّ أوّلًا (`_videoFail.isOutage`)، و«quota» وحدها زحام عابر لا نفاد (v-credit-out).
+- **تمرير ردّ المزوّد بحالته ونصّه (`res.status(upstream.status).send(rawText)`):** 402 رصيد المزوّد يقرؤه العميل «نقاطك خلصت»، و`error` فيه كائن يصير «[object Object]» عند `String()`/`new Error()`/`alert`. رمز نصّيّ بـ`_videoFail.toolFail` والنصّ للسجلّ (v-maha-paused).
+- **نداء داخل try يبتلع الخطأ يخفي دالّة غير مصدَّرة:** `imageHourlyGiveBack is not a function` ابتُلع في «user refund failed» فبدا الإصلاح سليمًا. اختبر السلوك (القيمة في التخزين) لا وجود السطر (v-img-hour-giveback).

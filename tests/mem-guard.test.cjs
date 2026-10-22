@@ -193,7 +193,7 @@ test('١١. المرآة المنحّفة عند الإقلاع لا تُقرأ 
 test('١٢. الرسم: نسخة العرض أوّلًا، والأصل يظهر فورًا فقط لصورة جديدة لم تُخزَّن، والمخفيّة بعد خطأ تعود ظاهرة', () => {
   assert.match(src, /if\(a\.viewUrl\) img\.src = a\.viewUrl;/);
   assert.match(src, /if\(__isBigDataImg\(a\.dataUrl\) && \(!a\.vaultId \|\| a\.vaultPending\)\) img\.src = a\.dataUrl;/);
-  assert.match(src, /__imgView\(a\)\.then\(u => __showSrc\(u \|\| \(__isBigDataImg\(a\.dataUrl\) \? a\.dataUrl : ''\)\)\)/); // v-view-blank: بلا نسخة عرض = الأصل
+  assert.match(src, /__imgView\(a\)\.then\(u => __showSrc\(u \|\| \(String\(a\.dataUrl \|\| ''\)\.slice\(0, 11\) === 'data:image\/' \? a\.dataUrl : ''\)\)\)/); // v-view-blank: بلا نسخة عرض = الأصل
   assert.match(src, /img\.style\.display = ''; img\.src = u;/);
   assert.match(src, /img\.decoding = 'async';/);
 });

@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
 
   let pointsLib = null;
   let mahaImgCharged = null;
-  let mahaImgChargedAmount = 0, mahaImgPay = null; /* v-costs-2026-09: الصورة 20 نقطة و4K 30 — يُردّ المبلغ المخصوم نفسه؛ v-maha-img-hold: ونتيجة الخصم (نوعه) لتذكرة الحجز */
+  let mahaImgChargedAmount = 0, mahaImgPay = null, mahaImgExtra = 0, mahaImgExtraPay = null, mahaImgHour = null, mahaImgTicket; /* v-costs-2026-09: الصورة 20 نقطة و4K 30 — يُردّ المبلغ المخصوم نفسه؛ v-maha-img-hold: ونتيجة الخصم (نوعه) لتذكرة الحجز؛ v-credit-out: وفرق الصورة الإبداعيّة خصمٌ ثانٍ يُردّ بنوعه */
   let guestImageCharge = null;
   /* v-img-engine-tag-owner (متابعة): مسار النصّ (__textRoute) يقرّر GPT هو الصحّ لكن قد يفشل نداؤه
      فيسقط بصمت إلى برو/نانو — بلا هذا السطر يرى المالك «nano» بلا أيّ فكرة عن سبب تجاوز GPT له. */
@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
       const user = mahaImgCharged;
       const amount = mahaImgChargedAmount || pointsLib.COSTS.image;
       mahaImgCharged = null;
-      try { await pointsLib.refundPoints(user, amount); } catch (error) { console.error('[maha-image] user refund failed'); }
+      try { const mine = await require('./image-hold.js').closeTicket(user, mahaImgTicket); mahaImgTicket = undefined; const extra = Math.min(amount, mahaImgExtra); if (mine) { await pointsLib.refundPoints(user, amount - extra, mahaImgPay || undefined); if (extra) await pointsLib.refundPoints(user, extra, mahaImgExtraPay || undefined); } if (mahaImgHour != null) { const hb = mahaImgHour; mahaImgHour = null; await require('./abuse-guard.js').imageHourlyGiveBack(user, hb); } } catch (error) { console.error('[maha-image] user refund failed'); } // v-credit-out: كلّ خصم إلى محفظته — بلا نوع كان points.js يطابق بالجشع تذكرة اشتراك
     }
     if (guestImageCharge) {
       const charge = guestImageCharge;
@@ -146,10 +146,10 @@ module.exports = async (req, res) => {
           return;
         }
         mahaImgCharged = mahaImgUser; mahaImgPay = pay; // v-maha-img-hold
-        mahaImgChargedAmount = __imgCost;
+        mahaImgChargedAmount = __imgCost; mahaImgTicket = await require('./image-hold.js').openTicket(mahaImgUser, __imgCost, pay); // v-img-deadline-refund: تذكرة خادم تُكنس إن قُتلت الدالّة قبل الردّ
         // v-plan-routing: ٢٠ صورة في الساعة لكلّ حساب — المالك وVIP خارجها (pay.owner). فوقها: ردّ الخصم و429.
         if (!pay.owner) {
-          const __hg = await require('./abuse-guard.js').imageHourlyGuard(mahaImgUser);
+          const __hg = await require('./abuse-guard.js').imageHourlyGuard(mahaImgUser); if (__hg.ok) mahaImgHour = __hg.bucket; // v-img-hour-giveback
           if (!__hg.ok) {
             await refundImageCharge();
             res.status(429).json({ error: 'image_hourly_limit', retryAfter: __hg.retryAfter, max: __hg.max });
@@ -248,7 +248,7 @@ module.exports = async (req, res) => {
       if (__textRouteFailNote) engine = engine + '(gpt-text-failed:' + __textRouteFailNote + ')';
       if (__cardsNote) engine = engine + '(cards:' + __cardsNote + ')'; /* v-img-cards: لوحة بطاقات لم تكتمل — السبب للمالك */
       if (__isOwnerReq) { try { await require('./prov-self.js').noteImage(userText || cleanPrompt); } catch (e) { /* guard-ok — فشل حفظ بناء الصورة في المخزن المشترك لا يمنع إرسالها */ } } // v-prov-one
-      const __holdOut = await require('./image-hold.js').holdFromRequest(body.hold, mahaImgCharged, mahaImgChargedAmount, mahaImgPay); /* v-maha-img-hold: مكالمة مها ترسل hold — الخصم يُحجز حتّى يؤكّد العميل حفظ الصورة (image-ack) وإلّا يُردّ تلقائيًّا؛ المحادثة بلا hold لا تتغيّر */
+      await require('./image-hold.js').closeTicket(mahaImgCharged, mahaImgTicket); mahaImgTicket = undefined; const __holdOut = await require('./image-hold.js').holdFromRequest(body.hold, mahaImgCharged, mahaImgChargedAmount, mahaImgPay); /* v-maha-img-hold: مكالمة مها ترسل hold — الخصم يُحجز حتّى يؤكّد العميل حفظ الصورة (image-ack) وإلّا يُردّ تلقائيًّا؛ المحادثة بلا hold لا تتغيّر */
       /* v-img-report (المالك ٢٣ سبتمبر «الكلام بعد الصورة بالدقّة… لين أوصل للصورة»): التقرير يصل جاهزًا من deliver (حكم الرؤية
          على الناتج قبل التكبير)، للتعديل والتوليد، ومعه الحكم نفسه (done/partial/not_done) ليصدق العميل وأداة الوكيل. */
       res.status(200).json({
@@ -386,7 +386,7 @@ module.exports = async (req, res) => {
           res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.image_creative, points: __xp.points || 0 });
           return;
         }
-        if (!__xp.owner) mahaImgChargedAmount += __extra;
+        if (!__xp.owner) { mahaImgChargedAmount += __extra; mahaImgExtra = __extra; mahaImgExtraPay = __xp; mahaImgTicket = await require('./image-hold.js').openTicket(mahaImgCharged, mahaImgChargedAmount, mahaImgPay, mahaImgTicket); }
       }
     }
     /* تبديل الحروف على برو أيضًا: نانو 2.5 يكسر الحروف العربية وبرو يبدّلها في مكانها (لقطة المالك من Gemini) */
@@ -464,6 +464,7 @@ module.exports = async (req, res) => {
     // v-img-visible: نلتقط سبب فشل خط الإنقاذ (OpenAI) ليظهر مع سبب Gemini في
     // لوحة المالك — كان كل ذلك يذهب لـconsole.error فقط، فيرى المالك «0» بلا سبب.
     let lastRescueErr = '';
+    const __rescueOutage = () => require('./_videoFail.js').isOutage(0, lastRescueErr) || /(?:status=| )(?:401|402|403)(?:\s|$)/.test(lastRescueErr); // v-credit-out: رصيد المحرّك البديل نفد أو مفتاحه/صلاحيّته (٤٠١/٤٠٢/٤٠٣) — «الخدمة متوقّفة» لا «مشغولة، أعد المحاولة»
     const __busyOnly = () => !__billRisk && /(?:status=| )(?:429|5\d\d)(?:\s|$)/.test(lastRescueErr); // v-img-no-rebill: GPT وحده يُعاد لزحام بلا خطر احتساب — لا رصيد ولا صلاحيّة ولا سلامة ولا مهلة
     async function openaiRescueImage(promptOverride, imagesOverride, timeoutMs) {
       const __gptPrompt = String(promptOverride || rescuePromptText).slice(0, 3800); /* v-img-honest: المحرّك الآخر قد يُعطى أمر إعادة بلا تناقض */
@@ -629,7 +630,7 @@ module.exports = async (req, res) => {
         await deliver({ b64: exactB64, mime: 'image/png', engine: 'openai-masked' }, null);
         return;
       }
-      await refundImageCharge();
+      await refundImageCharge(); if (__rescueOutage()) { res.status(503).json({ error: 'unavailable', retryable: false, billed: __billRisk || undefined }); return; } // v-credit-out
       res.status(502).json({ error: 'image_generation_busy', retryable: __busyOnly(), billed: __billRisk || undefined });
       return;
     }
@@ -845,8 +846,8 @@ module.exports = async (req, res) => {
       }
       await refundImageCharge();
       const timedOut = isImageTimeoutError(imageResult.error);
-      const busy = !!(upstream && (upstream.status === 429 || upstream.status >= 500)), retryable = busy && !timedOut && !__billRisk; // v-img-no-rebill: زحام بلا ناتج فقط
-      const errorCode = timedOut ? 'image_generation_timeout' : (busy ? 'image_generation_busy' : 'image_generation_failed');
+      const busy = !!(upstream && (upstream.status === 429 || upstream.status >= 500)), retryable = busy && !timedOut && !__billRisk, outage = !timedOut && require('./_videoFail.js').isOutage(upstream ? upstream.status : 0, (data && data.error && (data.error.message || data.error.status)) || ''); // v-img-no-rebill: زحام بلا ناتج فقط
+      const errorCode = outage ? 'unavailable' : timedOut ? 'image_generation_timeout' : (busy ? 'image_generation_busy' : 'image_generation_failed'); // v-credit-out (أمر المالك ٢١ أكتوبر): نفاد الرصيد يأتي ٤٢٩ «credits are depleted» فكان «مشغولة، أعد المحاولة» — نصّه أو ٤٠١/٤٠٢/٤٠٣ = unavailable بـ503 بلا إعادة
       console.error('[maha-image] upstream image request failed after ' + imageResult.attempts + ' attempt(s)' + (upstream ? ' status=' + upstream.status : ''));
       // v-img-visible: يظهر السبب الحقيقي (رصيد/حصة/موديل) في لوحة المالك.
       try { await require('./log-error.js').logErrorAndFlush('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
@@ -863,7 +864,7 @@ module.exports = async (req, res) => {
         attempts: imageResult.attempts,
         errName: String((imageResult.error && imageResult.error.name) || ''),
       };
-      res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable, billed: __billRisk || undefined, __diag });
+      res.status(outage ? 503 : timedOut ? 504 : 502).json({ error: errorCode, retryable: retryable && !outage, billed: __billRisk || undefined, __diag });
       return;
     }
 

@@ -124,7 +124,7 @@
       const sh = document.createElement('button'); sh.type = 'button';
       sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
       sh.textContent = gtx('imgShareBtn', '📤 مشاركة', '📤 Share');
-      sh.onclick = function(){ navigator.share({ files: [file], title: 'Omran AI' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
+      sh.onclick = function(){ navigator.share({ files: [file], title: 'om ai' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
       row.appendChild(sh);
     } else {
       const op = document.createElement('a');
@@ -133,10 +133,10 @@
       op.textContent = gtx('imgOpenBtn', '🔗 فتح', '🔗 Open');
       row.appendChild(op);
     }
-    const sub = document.createElement('div');
-    sub.style.cssText = 'margin-top:10px;font-size:11px;color:#9a9a9e;text-align:center;direction:ltr;';
-    sub.textContent = 'link unavailable' + (why ? ' · ' + why.slice(0, 60) : '');
-    sheet.appendChild(head); sheet.appendChild(row); sheet.appendChild(sub);
+    /* v-nav-cards-menus: سطر «link unavailable · Failed to fetch» كان إنجليزيًّا خامًّا بكلّ اللغات ويكشف نصّ الخطأ التقنيّ —
+       الورقة بزرّيها تكفي، والسبب للسجلّ */
+    if(why) console.warn('[img-save] link unavailable', String(why).slice(0, 200));
+    sheet.appendChild(head); sheet.appendChild(row);
     document.body.appendChild(sheet);
     setTimeout(function(){ try{ sheet.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } }, 120000);
     return true;
@@ -177,7 +177,7 @@
       const sh = document.createElement('button'); sh.type = 'button';
       sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
       sh.textContent = gtx('imgShareBtn', '📤 مشاركة', '📤 Share');
-      sh.onclick = function(){ navigator.share({ files: [file], title: 'Omran AI' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
+      sh.onclick = function(){ navigator.share({ files: [file], title: 'om ai' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
       row.appendChild(sh);
     }
     const op = document.createElement('a');
@@ -216,7 +216,7 @@
     try{ canNative = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canNative = false; }
     if(mobile && canNative){
       const t0 = Date.now();
-      try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }
+      try{ await navigator.share({ files: [file], title: 'om ai' }); return true; }
       catch(e){ if(e && e.name === 'AbortError' && (Date.now() - t0) > 1500) return true; }
     }
     /* v-share-desktop-both: على الكمبيوتر نطلب لوحة النظام (إن وُجدت) ونعرض ورقتنا خلفها في اللحظة
@@ -224,7 +224,7 @@
     if(!mobile && mode === 'share' && canNative){
       const t1 = Date.now();
       try{
-        navigator.share({ files: [file], title: 'Omran AI' }).then(() => { const o = document.getElementById('omranImgSheet'); if(o) o.remove(); }, (e) => { if(e && e.name === 'AbortError' && (Date.now() - t1) > 1500){ const o = document.getElementById('omranImgSheet'); if(o) o.remove(); } });
+        navigator.share({ files: [file], title: 'om ai' }).then(() => { const o = document.getElementById('omranImgSheet'); if(o) o.remove(); }, (e) => { if(e && e.name === 'AbortError' && (Date.now() - t1) > 1500){ const o = document.getElementById('omranImgSheet'); if(o) o.remove(); } });
       }catch(e){ /* guard-ok */ }
     }
     if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }

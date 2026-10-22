@@ -238,7 +238,7 @@ test('٦. v-interleave-fix: الجملة قبل الأداة سطر في الس�
   // خطأ بلا نصّ: السجلّ معه
   let err = null; try { await stream([{ status: '↳ x', k: 'trFetch', tool: 'read_github' }]); } catch (e) { err = e; }
   assert.ok(err && Array.isArray(err.log) && err.log[0].t === 'meta', 'السجلّ يبقى مع الخطأ');
-  assert.ok(APP09.includes("_agParts: (err && Array.isArray(err.log)) ? err.log : undefined,") && APP09.includes("_agParts: (err && Array.isArray(err.log)) ? err.log : undefined});"), 'الإيقاف والخطأ يحفظان السجلّ');
+  assert.ok(APP09.includes("cur.messages.push(omranStopMsg(partial, __run.timedOut, (err && Array.isArray(err.log)) ? err.log : undefined));") && APP09.includes("_agParts: log };") && APP09.includes("_agParts: (err && Array.isArray(err.log)) ? err.log : undefined});"), 'الإيقاف (omranStopMsg، v-chat-sys-msg) والخطأ يحفظان السجلّ');
 
   // الوكيل: أداة ← اكتمال ← أداة من النوع نفسه = مجموعة واحدة (كان «done» يمحو علامة الصفّ)
   const { sb } = client({ t: 0 });

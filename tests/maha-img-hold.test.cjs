@@ -172,7 +172,8 @@ function client(opts) {
   };
   vm.createContext(ctx);
   // mahaCallMode معرَّف لاحقًا في الملفّ؛ المكالمة أُغلقت: mahaEndCall يعيده 'assistant'
-  vm.runInContext("var mahaCallMode = 'assistant';\n" + a8.slice(s, e).replace(/^let /gm, 'var '), ctx);
+  // v-maha-img-wait (الدفعة ٦): عدّاد طلبات الصورة الجارية وحالة المكالمة معرَّفان لاحقًا في الملفّ
+  vm.runInContext("var mahaCallMode = 'assistant', mahaImgPending = 0, mahaCallActive = false, mahaLastActivity = 0;\n" + a8.slice(s, e).replace(/^let /gm, 'var '), ctx);
   return { ctx, calls, proj };
 }
 

@@ -235,7 +235,8 @@ test('points: image 20 (4K 30), maha minute 15; refunds return the charged amoun
   const mi = read('api/_lib/maha-image.js');
   assert.match(mi, /const __imgCost = __ask4K \? pointsLib\.COSTS\.image_4k : pointsLib\.COSTS\.image;/);
   assert.match(mi, /mahaImgChargedAmount = __imgCost;/);
-  assert.match(mi, /const amount = mahaImgChargedAmount \|\| pointsLib\.COSTS\.image;\n\s+mahaImgCharged = null;\n\s+try \{ await pointsLib\.refundPoints\(user, amount\); \}/);
+  // v-credit-out: المبلغ المخصوم كلّه يُردّ — الأساس بنوع خصمه والفرق الإبداعيّ بنوع خصمه (amount - extra + extra)
+  assert.match(mi, /const amount = mahaImgChargedAmount \|\| pointsLib\.COSTS\.image;\n\s+mahaImgCharged = null;\n\s+try \{ const mine = await require\('\.\/image-hold\.js'\)\.closeTicket\(user, mahaImgTicket\); mahaImgTicket = undefined; const extra = Math\.min\(amount, mahaImgExtra\); if \(mine\) \{ await pointsLib\.refundPoints\(user, amount - extra, mahaImgPay \|\| undefined\); if \(extra\) await pointsLib\.refundPoints\(user, extra, mahaImgExtraPay \|\| undefined\); \}/); // v-img-deadline-refund: الردّ المباشر حين تملك الدالّة التسوية (لا ردّ مزدوج مع الكنس)
 });
 
 function parsePlans(src) {

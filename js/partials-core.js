@@ -5,7 +5,7 @@
   var S = document.currentScript;
   var H = String.raw`<div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:380px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); position:relative;">
-    <button type="button" id="authCloseBtn" aria-label="إغلاق" style="position:absolute; top:calc(10px + env(safe-area-inset-top,0px)); inset-inline-start:12px; width:34px; height:34px; border-radius:50%; background:rgba(128,128,128,.14); border:none; color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+    <button type="button" id="authCloseBtn" aria-label="إغلاق" data-i18n="[aria-label]closeTitle" style="position:absolute; top:calc(10px + env(safe-area-inset-top,0px)); inset-inline-start:12px; width:34px; height:34px; border-radius:50%; background:rgba(128,128,128,.14); border:none; color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
     <!-- v-simple-login: خانتان وزرّ ورابط، ثمّ جوجل و«إنشاء حساب جديد» — بلا عنوان ولا تبويبات ولا إيميل اختياريّ -->
     <h2 id="authHeading" style="display:none; margin:4px 0 18px; text-align:center; font-size:18px;"></h2>
     <div style="display:none;">
@@ -13,11 +13,13 @@
       <button type="button" class="btn" id="authTabSignup" data-i18n="authTabSignup">حساب جديد</button>
     </div>
     <form id="authForm" autocomplete="on" onsubmit="return false;" style="margin-top:34px;">
-    <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
+    <!-- v-auth-a11y: خانة الاسم الفارغة بـdir=auto تصير ltr (النصّ الدليليّ لا يُحسب) فيذهب «اسم المستخدم» يسارًا في العربيّ؛ المكتوب يبقى على dir=auto -->
+    <style id="authRtlCss">html[dir="rtl"] #authUsername:placeholder-shown{direction:rtl}</style>
+    <input type="text" id="authUsername" name="username" autocomplete="username" dir="auto" placeholder="اسم المستخدم أو الإيميل" data-i18n-placeholder="authIdPlaceholder" aria-label="اسم المستخدم أو الإيميل" data-i18n="[aria-label]authIdPlaceholder" style="height:50px; padding:0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box; margin-bottom:12px;">
     <div id="authPasswordRow" style="display:block; position:relative; margin-bottom:12px;">
       <span id="authPasswordLabelText" style="display:none;" data-i18n="authPasswordLabel">كلمة المرور</span>
-      <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" style="height:50px; padding:0 44px 0 14px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
-      <button type="button" id="authTogglePassBtn" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+      <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="كلمة المرور" data-i18n-placeholder="authPasswordLabel" aria-label="كلمة المرور" data-i18n="[aria-label]authPasswordLabel" style="height:50px; padding-block:0; padding-inline:14px 44px; border-radius:14px; border:1px solid var(--border,#3a3a3a); background:transparent; font-size:15px; width:100%; box-sizing:border-box;">
+      <button type="button" id="authTogglePassBtn" aria-label="إظهار كلمة المرور" data-i18n="[aria-label]authShowPass" aria-pressed="false" style="position:absolute; inset-inline-end:4px; top:7px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
     </div>
     <label id="authRememberRow" style="display:none;"><input type="checkbox" id="authRememberMe" checked></label>
     <div id="authInfoMsg" style="display:none; font-size:12px; color:var(--accent,#6b7280); margin-bottom:6px; text-align:center;"></div>
@@ -38,7 +40,7 @@
     </div>
     </form>
     <div id="authAltBlock" style="margin-top:34px; display:flex; flex-direction:column; gap:12px;">
-    <button type="button" id="authGoogleBtn" title="Continue with Google" style="width:100%; height:48px; border-radius:999px; border:none; background:rgba(128,128,128,.16); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size:15px; font-weight: var(--w-bold); color:var(--text);">
+    <button type="button" id="authGoogleBtn" title="المتابعة عبر Google" data-i18n-title="authGoogleBtn" style="width:100%; height:48px; border-radius:999px; border:none; background:rgba(128,128,128,.16); display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size:15px; font-weight: var(--w-bold); color:var(--text);">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
       <span data-i18n="authGoogleBtn">المتابعة بجوجل</span>
     </button>
@@ -111,7 +113,7 @@
 
     <div class="mini-mic-field-row" id="videoMakerActorRow" style="margin-top:12px; display:none;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="videoActorSpeechLabel">🗣️ شو يقول الممثل؟ (بالحرف)</label>
-      <textarea id="videoMakerActorSpeech" rows="2" style="width:100%;" maxlength="300" data-i18n-placeholder="videoActorSpeechPlaceholder" placeholder="مثال: هلا والله! حياكم في تطبيق عمران AI، أقوى منصة ذكاء اصطناعي"></textarea>
+      <textarea id="videoMakerActorSpeech" rows="2" style="width:100%;" maxlength="300" data-i18n-placeholder="videoActorSpeechPlaceholder" placeholder="مثال: هلا والله! حياكم في تطبيق om ai، أقوى منصة ذكاء اصطناعي"></textarea>
       <button type="button" class="mini-mic-btn" data-target="videoMakerActorSpeech" title="🎤" data-i18n-title="micTitle">🎤</button>
     </div>
     <!-- v-actor-lipsync: الكلام يُنطق بصوت إماراتيّ أصيل — رجل أو امرأة حسب الممثّل -->
@@ -785,21 +787,24 @@
     <button type="button" class="btn primary" id="portraitStyleGenerateBtn" style="display:none;" data-i18n="portraitGenerateBtn">✨ حوّلها</button>
 
     <div id="portraitStyleStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
-    <div id="portraitCompareWrap" style="display:none; position:relative; margin-top:14px; border-radius:var(--r-2); overflow:hidden; background:#000; width:100%; user-select:none;">
+    <div id="portraitCompareWrap" style="display:none; position:relative; margin:14px auto 0; border-radius:var(--r-2); overflow:hidden; background:#000; width:fit-content; max-width:100%; user-select:none;">
       <!-- v-compare-fit: قصّة «الصورة ما تطلع كاملة» — النتيجة كانت تُمدَّد قسرًا
            لمقاس صورة الأصل (عرض بكسل + height:100%) فتتشوّه وتنقص أطرافها حين
-           تختلف نسبة الأبعاد. object-fit:contain يعرضها كاملة على خلفية سوداء. -->
-      <img id="portraitCompareBefore" style="display:block; width:100%; max-height:70vh; object-fit:contain; background:#000;">
-      <div id="portraitCompareAfterWrap" style="position:absolute; top:0; left:0; height:100%; overflow:hidden; width:50%;">
-        <img id="portraitStyleResult" style="position:absolute; top:0; left:0; height:100%; object-fit:contain; background:#000;">
+           تختلف نسبة الأبعاد. object-fit:contain يعرضها كاملة على خلفية سوداء.
+           v-pcompare-box (تدقيق ١٨ أكتوبر: «بعد» مزاحة عن الأصل): الإطار بعرض صورة الأصل (fit-content) والطبقة بملئه تُقصّ بـclip-path،
+           والنتيجة contain في الصندوق نفسه — فتنطبق الصورتان والتسميتان والمقبض على الصورة لا على هامش أسود. -->
+      <img id="portraitCompareBefore" style="display:block; width:auto; max-width:100%; max-height:70vh; object-fit:contain; background:#000;">
+      <div id="portraitCompareAfterWrap" style="position:absolute; inset:0; overflow:hidden;">
+        <img id="portraitStyleResult" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; background:#000;">
       </div>
       <div id="portraitCompareDivider" style="position:absolute; top:0; bottom:0; left:50%; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.7); pointer-events:none;">
         <!-- v-compare-drag: مقبض دائريّ فوق الصورة نفسها — السحب على الحاوية (compareWrap في
              app-12-studios.js) لا هذا العنصر تحديدًا؛ هو مؤشّر بصريّ فقط بلا مستمع خاصّ به. -->
         <div id="portraitCompareHandle" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414;">↔</div>
       </div>
-      <span style="position:absolute; top:6px; left:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareBeforeLabel">قبل</span>
-      <span style="position:absolute; top:6px; right:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareAfterLabel">بعد</span>
+      <!-- v-pcompare-sides (تدقيق ١٨ أكتوبر: التسمية معكوسة): طبقة النتيجة من اليسار، فـ«بعد» يسارًا معها و«قبل» يمينًا -->
+      <span style="position:absolute; top:6px; right:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareBeforeLabel">قبل</span>
+      <span style="position:absolute; top:6px; left:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareAfterLabel">بعد</span>
     </div>
     <a id="portraitStyleDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-portrait-style.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
     <button type="button" id="portraitShareBtn" style="display:none; margin-top:8px; width:100%;" class="btn" data-i18n="portraitShareBtn">↗️ مشاركة (واتساب/ستوري)</button>
@@ -1053,6 +1058,8 @@
       .stCmp.on{border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);}
       .stCmp.on span{color:#d4af37;}
       .stCmp.on::after{content:"✓"; position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center;}
+      /* v-studio-compare-sticky (تدقيق ١٨ أكتوبر: الزرّ بعد ١٠٤ بطاقة، ~٥٠٠٠px على الجوّال): لاصق أسفل النافذة ما دامت القائمة مفتوحة */
+      #studioAiCompareMore[open] #studioAiCompareBtn{position:sticky; bottom:8px; z-index:2; box-shadow:0 -6px 18px rgba(0,0,0,.45);}
       #studioAiMore{margin-top:14px; border:1px solid var(--border,#333); border-radius:var(--r-2); padding:8px 10px;}
       #studioAiMore > summary{cursor:pointer; font-size:13px; color:var(--muted);}
     </style>
@@ -1167,9 +1174,10 @@
       <img id="studioAiResult" style="display:block; width:100%; border-radius:var(--r-2); background:#000;">
       <div id="studioAiBeforeWrap" style="display:none; position:absolute; top:0; left:0; height:100%; overflow:hidden; border-right:2px solid #fff;">
         <img id="studioAiBeforeImg" style="display:block; height:100%; max-width:none;">
-        <!-- v-compare-drag-all: مقبض عند حافّة القصّ نفسها — يتبعها تلقائيًّا مع تغيّر عرض الحاوية -->
-        <div id="studioAiCompareHandle" style="position:absolute; top:50%; right:-20px; transform:translateY(-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; font-size:15px; color:#141414; pointer-events:none;">↔</div>
       </div>
+      <!-- v-compare-drag-all: مقبض عند حافّة القصّ. v-studio-handle (تدقيق ١٨ أكتوبر: نصّه مقصوص على الخطّ): كان ابن طبقة «قبل»
+           المقصوصة (overflow:hidden) بـright:-20px فيُقصّ نصفه دائمًا — صار ابن حاوية النتيجة، وupdateSliderClip يضع left عند الخطّ. -->
+      <div id="studioAiCompareHandle" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:40px; height:40px; border-radius:50%; background:#fff; border:2px solid #d4af37; box-shadow:0 2px 10px rgba(0,0,0,.5); align-items:center; justify-content:center; font-size:15px; color:#141414; pointer-events:none;">↔</div>
     </div>
 
     <a id="studioAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-studio-ai.png" data-i18n="studioAiDownloadBtn">⬇️ تحميل الصورة</a>
@@ -1262,7 +1270,7 @@
         <button type="button" class="btn iconBtn" id="stocksGlobalBtn" title="الأسواق العالمية" data-i18n-title="worldMarketsTitle" style="padding:4px 8px;">🌍</button>
         <button type="button" class="btn iconBtn" id="stocksSearchBtn" title="اختيار سهم" data-i18n-title="pickStockTitle" style="padding:4px 8px;">🔍</button>
         <button type="button" class="btn iconBtn" id="stocksLearnBtn" data-i18n-title="stocksLearnTitle" title="تعلم التداول" style="padding:4px 8px;">🎓</button>
-        <button type="button" class="btn iconBtn" id="stocksPfBtn" title="محفظتي التعليمية" style="padding:4px 8px;">💼</button>
+        <button type="button" class="btn iconBtn" id="stocksPfBtn" title="محفظتي التعليمية" data-i18n-title="stocksPfTitle" style="padding:4px 8px;">💼</button>
         <button type="button" class="btn iconBtn" id="stocksFullBtn" data-i18n-title="stocksFullTitle" title="وضع شاشة البورصة" style="padding:4px 8px;">🖥️</button>
         <button type="button" class="btn iconBtn" id="stocksCloseBtn" style="padding:4px 8px;">✕</button>
       </div>
@@ -1274,17 +1282,17 @@
       <div id="goldCard" style="display:none; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px;">
           <div style="font-size:13.5px; font-weight:500;" data-i18n="goldNowTitle">🥇 الذهب الآن</div>
-          <div><span id="goldOz" style="font-size: var(--fs-2); font-weight: var(--w-bold);"></span> <span id="goldChg" style="font-size:12px;"></span></div>
+          <div dir="ltr"><span id="goldOz" style="font-size: var(--fs-2); font-weight: var(--w-bold);"></span> <span id="goldChg" style="font-size:12px;"></span></div>
         </div>
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; font-size: var(--fs-3); text-align:center;">
-          <span>24K: <b id="goldG24"></b> AED/g</span>
-          <span>22K: <b id="goldG22"></b> AED/g</span>
-          <span>21K: <b id="goldG21"></b> AED/g</span>
+          <span>24K: <b id="goldG24"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
+          <span>22K: <b id="goldG22"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
+          <span>21K: <b id="goldG21"></b> <span data-i18n="stkAedPerGram" style="white-space:nowrap;">درهم/غ</span></span>
         </div>
       </div>
       <div id="globalChips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
-        <button type="button" class="btn" data-tv="OANDA:XAUUSD" style="padding:4px 10px; font-size:12px;">🥇 Gold</button>
-        <button type="button" class="btn" data-tv="TVC:USOIL" style="padding:4px 10px; font-size:12px;">🛢️ Oil</button>
+        <button type="button" class="btn" data-tv="OANDA:XAUUSD" style="padding:4px 10px; font-size:12px;">🥇 <span data-i18n="stkGold">الذهب</span></button>
+        <button type="button" class="btn" data-tv="TVC:USOIL" style="padding:4px 10px; font-size:12px;">🛢️ <span data-i18n="stkOil">النفط</span></button>
         <button type="button" class="btn" data-tv="AMEX:DIA" style="padding:4px 10px; font-size:12px;">Dow Jones</button>
         <button type="button" class="btn" data-tv="NASDAQ:QQQ" style="padding:4px 10px; font-size:12px;">NASDAQ</button>
         <button type="button" class="btn" data-tv="AMEX:SPY" style="padding:4px 10px; font-size:12px;">S&amp;P 500</button>
@@ -1327,8 +1335,8 @@
           <div id="stockExchange" style="font-size: var(--fs-5); color:var(--muted);"></div>
         </div>
         <div style="text-align:end;">
-          <div id="stockPrice" style="font-size: var(--fs-1); font-weight: var(--w-bold);"></div>
-          <div id="stockChange" style="font-size: var(--fs-3);"></div>
+          <div style="font-size: var(--fs-1); font-weight: var(--w-bold);"><span id="stockPrice" dir="ltr"></span></div>
+          <div style="font-size: var(--fs-3);"><span id="stockChange" dir="ltr"></span></div>
         </div>
       </div>
       <div id="stockDetails" style="display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--muted);"></div>

@@ -65,6 +65,9 @@ test('٢ب. امتلاء السعة ليس «حدّ الطلبات» (تنبيه
 
 test('٣. التنبيه ولوحة «فحص النظام» يعرضان السبب للمالك', () => {
   const v = fs.readFileSync(path.join(root, 'js/app-11-video.js'), 'utf8');
-  assert.match(v, /problems\.push\('قاعدة البيانات \(Redis\) لا تستجيب' \+ \(d\.redisWhy \? ' — السبب: '/);
-  assert.match(v, /lines\.push\(mark\(d\.redisOk\) \+ ' قاعدة البيانات \(Redis\)' \+ \(!d\.redisOk && d\.redisWhy/);
+  // v-owner-i18n: النصّان من قاموس لغة الواجهة (كانا عربيّين ثابتين) — والسبب ما زال يُعرض معزولًا بجانبهما
+  assert.match(v, /problems\.push\(oT\('ownerDbDown'\) \+ \(d\.redisWhy \? ' — ' \+ oT\('ownerWhy', \{ w: oLtr\(String\(d\.redisWhy\)/);
+  assert.match(v, /lines\.push\(mark\(d\.redisOk\) \+ ' ' \+ oT\('ownerDbLabel'\) \+ \(!d\.redisOk && d\.redisWhy/);
+  const a3 = fs.readFileSync(path.join(root, 'js/app-03-i18n-data.js'), 'utf8');
+  assert.ok(a3.includes('ownerDbDown: "قاعدة البيانات (Redis) لا تستجيب"') && a3.includes('ownerWhy: "السبب: {w}"'), 'النصّ العربيّ كما كان');
 });

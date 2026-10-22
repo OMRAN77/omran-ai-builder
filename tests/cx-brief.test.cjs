@@ -154,3 +154,63 @@ test('٦. النصوص بالـ14 لغة وبلا اسم مزوّد', () => {
   }
   assert.ok(ctx.TX.got.ar.includes('{s}'), 'ملخّص «فهمت» فيه المتغيّر');
 });
+
+/* ── v-cx-brief-name + v-cx-bidi (تدقيق ١٨–١٩ أكتوبر، المقاولات) ── */
+const LANGS14 = ['ar', 'en', 'fr', 'es', 'tr', 'ru', 'hi', 'ur', 'bn', 'ne', 'fil', 'id', 'zh', 'ml'];
+function briefTX() {
+  const src = read('js/app-15-cx-brief.js');
+  const i = src.indexOf('var TX = {');
+  const j = src.indexOf('\n  };', i);
+  const ctx = {};
+  vm.runInNewContext(src.slice(i, j + 4) + '\nthis.TX = TX;', ctx);
+  return ctx.TX;
+}
+
+test('٧. زرّ السطر اسمه «ولّد من وصفي» — لا يتكرّر اسم زرّ النموذج «ولّد التصميم» في أيّ لغة من الـ١٤', () => {
+  const TX = briefTX();
+  const core = read('js/app-03-i18n-data.js');
+  const runs = [...core.matchAll(/\bconstructionRunBtn:\s*'([^']+)'/g)].map((m) => m[1]);
+  assert.equal(runs.length, 2, 'العربيّة والإنجليزيّة في القاموس العامّ');
+  const RUN = { ar: runs[0], en: runs[1] };
+  for (const l of LANGS14.filter((x) => x !== 'ar' && x !== 'en')) {
+    const m = read('i18n/' + l + '.js').match(/["']?constructionRunBtn["']?\s*:\s*"([^"]+)"/);
+    assert.ok(m, 'constructionRunBtn في ' + l);
+    RUN[l] = m[1];
+  }
+  const norm = (s) => String(s).replace(/[✨\s]/g, '').toLowerCase();
+  for (const l of LANGS14) {
+    assert.ok(TX.go[l], 'TX.go/' + l);
+    assert.notEqual(norm(TX.go[l]), norm(RUN[l]), 'اسم زرّين متطابق في ' + l + ': ' + TX.go[l]);
+  }
+  assert.equal(TX.go.ar, '✨ ولّد من وصفي');
+  assert.equal(TX.go.en, '✨ Generate from my description');
+});
+
+test('٨. ملخّص «فهمت»: كلّ جزء معزول ⁨…⁩، والمساحة بوحدة النموذج المترجمة لا «m²» الإنجليزيّة', () => {
+  const src = read('js/app-15-cx-brief.js');
+  const a = src.indexOf('  var $ = function(id){');
+  const b = src.indexOf('  function status(el, txt){', a);
+  assert.ok(a > 0 && b > a, 'كتلة الملخّص');
+  const sel = (opts, value) => ({ options: opts.map(([v, text]) => ({ value: v, text })), value, get selectedIndex() { return this.options.findIndex((o) => o.value === this.value); } });
+  const run = (lg, floorsLabel, areaLabel) => {
+    const els = {
+      constructionType: sel([['villa', '🏡 فيلا سكنية']], 'villa'),
+      constructionStyle: sel([['modern', 'عصري']], 'modern'),
+      constructionFloors: { previousElementSibling: { textContent: floorsLabel } },
+      constructionArea: { previousElementSibling: { textContent: areaLabel } },
+    };
+    const ctx = { lang: lg, localStorage: { getItem: () => null }, document: { getElementById: (id) => els[id] || null }, Event: function () {} };
+    vm.runInNewContext(src.slice(a, b) + '\nthis.summarize = summarize;', ctx);
+    return ctx.summarize({ buildingType: 'villa', floors: 2, area: 400, style: 'modern', annexes: ['pool', 'majlis', 'garden'] });
+  };
+  const ar = run('ar', 'عدد الأدوار', 'المساحة (م²)');
+  assert.ok(!/m²/.test(ar), 'لا «m²» في العربيّة: ' + JSON.stringify(ar));
+  const parts = ar.split(' · ');
+  assert.equal(parts.length, 5, JSON.stringify(ar));
+  for (const p of parts) assert.ok(p.startsWith('\u2068') && p.endsWith('\u2069'), 'جزء غير معزول: ' + JSON.stringify(p));
+  assert.ok(parts.includes('\u2068عدد الأدوار 2\u2069'), 'الأدوار بتسمية حقلها');
+  assert.ok(parts.includes('\u2068400 م²\u2069'), 'المساحة بوحدة الحقل');
+  assert.ok(parts.includes('\u2068+3\u2069'));
+  const en = run('en', 'Number of floors', 'Area (m²)');
+  assert.ok(en.includes('\u2068400 m²\u2069') && en.includes('\u2068Number of floors 2\u2069'), JSON.stringify(en));
+});

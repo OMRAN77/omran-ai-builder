@@ -31,7 +31,9 @@ async function displayNameOf(key) {
   } catch (e) { /* سجلّ مقفل أو عطل قراءة — الاسم الآمن من المفتاح نفسه */ }
   return shownName(key);
 }
-const publicShare = (rec) => { const out = Object.assign({}, rec, { username: shownName(rec.username) }); delete out.owner; return out; };
+// v-share-pages-i18n (تدقيق ١٨ أكتوبر): الاسم الافتراضيّ العربيّ كان يخرج كما هو فيظهر «By زائر» في الإنجليزيّة. عند القراءة
+// وحدها يخرج "" فتترجمه الصفحتان (S.guest)؛ السجلّ المخزَّن وDEFAULT_NAME كما هما.
+const publicShare = (rec) => { const name = shownName(rec.username); const out = Object.assign({}, rec, { username: name === DEFAULT_NAME ? '' : name }); delete out.owner; return out; };
 
 // v-share-validate (المراجعة المعاكسة): المشروع الفارغ والأكبر من الحدّ يُرفضان قبل البوّابة — كانا يحرقان حصّة اليوم.
 function shareInputError(code, msgs) {

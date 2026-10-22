@@ -118,5 +118,6 @@ test('المزوّدون ومسار الأدوات يأخذون إشارة طل�
 
 test('القائمة تعلّم المحادثة العاملة بنقطة نابضة', () => {
   assert.match(a9, /el\.classList\.toggle\('omRunning', !!__omranRuns\[el\.dataset\.pid\]\)/);
-  assert.match(read('css/tokens.css'), /\.hist-item\.omRunning \.hist-title::after\{/);
+  // v-run-dot-row (تدقيق ١٨ أكتوبر): النقطة على صفّ المحادثة لا داخل العنوان المقصوص — layout-direction ٥
+  assert.match(read('css/tokens.css'), /\.hist-item\.omRunning::after\{content:"";/);
 });

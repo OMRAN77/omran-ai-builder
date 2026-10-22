@@ -12,6 +12,18 @@ html.bgimg-light #bgImgLayer::after{background:rgba(255,255,255,.42);}
 /* ألوان الكتابة تتبع الصورة لا الوضع */
 html.bgimg-dark{--text:#f4f5f8 !important; --muted:#c8ccd4 !important; --accent-ink:#ffffff !important;}
 html.bgimg-light{--text:#101114 !important; --muted:#3d4048 !important; --accent-ink:#101114 !important;}
+/* v-bgimg-surface-text (تدقيق ١٨ أكتوبر): …لكنّ ما سبق على html يصل الأسطح المعتمة التي بقيت بلون الوضع (#EBEBEB في الفاتح، والأسود في
+   الداكن): الفاتح مع صورة داكنة كتب أبيض على رماديّ (الإعدادات و«محادثة جديدة» والقائمة)، والداكن مع صورة فاتحة أسود على أسود. الأسطح
+   المعتمة تأخذ ألوان وضعها (المعلَن على العنصر يغلب الموروث ولو بـ!important)، وما فوق الصورة (المحادثة، ورأس الكمبيوتر الشفّاف) على
+   لونها؛ وعلى الجوّال الرأس وشريط الكتابة والشريط السفليّ مصمتة أيضًا. الثيمات (skin وskin-wood) لها ألوانها (css/ثيمات.css بالنمط نفسه). */
+html[data-mode="light"].bgimg-dark:not(.skin):not(.skin-wood) :is(#sidebar, #workarea, dialog, #plusToolsPopup, #headerMenuDropdown, #headerUserDropdown, #tabsMenuDropdown, #histItemMenu, .msgMoreMenu),
+html.mobile-ui[data-mode="light"].bgimg-dark:not(.skin):not(.skin-wood) > body > header,
+html.mobile-ui[data-mode="light"].bgimg-dark:not(.skin):not(.skin-wood) #inputbar,
+html.mobile-ui[data-mode="light"].bgimg-dark:not(.skin):not(.skin-wood) #omranBottomNav{--text:#0d0d0d; --muted:#5d5d5d; --accent-ink:#14161a;}
+html:not([data-mode="light"]).bgimg-light:not(.skin):not(.skin-wood) :is(#sidebar, #workarea, dialog, #plusToolsPopup, #headerMenuDropdown, #headerUserDropdown, #tabsMenuDropdown, #histItemMenu, .msgMoreMenu),
+html.mobile-ui:not([data-mode="light"]).bgimg-light:not(.skin):not(.skin-wood) > body > header,
+html.mobile-ui:not([data-mode="light"]).bgimg-light:not(.skin):not(.skin-wood) #inputbar,
+html.mobile-ui:not([data-mode="light"]).bgimg-light:not(.skin):not(.skin-wood) #omranBottomNav{--text:#eef0f6; --muted:#9a9a9e; --accent-ink:#eef0f6;}
 
 /* الشبكة في الإعدادات: مصغّرات فقط، بلا أسماء ولا وسوم */
 .bgImgGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px;}
@@ -25,8 +37,29 @@ html.bgimg-light{--text:#101114 !important; --muted:#3d4048 !important; --accent
 .bgImgAdd{font-size:12px; background:var(--panel2,#111); border-style:dashed;}
 .bgImgDel{position:absolute; top:6px; inset-inline-start:6px; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,.65); color:#fff; font-size:16px; line-height:22px; text-align:center; cursor:pointer;}
 .bgImgDel:hover{background:#c0392b;}
+/* v-bg-del-target (تدقيق ١٨ أكتوبر): × بـ٢٢px أقلّ من نصف هدف اللمس الموصى به — منطقة ضغط غير مرئيّة ٤٤px بلا تغيير في شكله،
+   وأكبر ظاهرًا على الجوّال */
+.bgImgDel::before{content:""; position:absolute; inset:-11px;}
+html.mobile-ui .bgImgDel{width:30px; height:30px; line-height:30px; font-size:19px;}
 .bgImgRotate{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
 .bgImgRotateLabel{font-size:13px; color:var(--muted);}
 .bgImgRotateOpts{display:flex; gap:6px; flex-wrap:wrap;}
 .bgImgRotOpt{font:inherit; font-size:12px; padding:5px 12px; border-radius:999px; border:1px solid var(--border,rgba(255,255,255,.12)); background:var(--panel2,#111); color:var(--text); cursor:pointer;}
 .bgImgRotOpt.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+
+/* v-theme-contrast (المالك ٢١ أكتوبر: «تباين الكلام مع الخلفية ما يقل عن 4.5:1… وخلفيات الشاشة»): كانت الرسائل وأيقوناتها نصًّا عاريًا
+   فوق الصورة والوشاح الخفيف (٠٫٣٨/٠٫٤٢)، فتنزل في الصور المزدحمة إلى ٢٫٣:١ (١١٨ حالة من ٤٦٠). الصورة نفسها والوشاح كما هما؛ الرسالة
+   وشريط أيقوناتها في فقاعة بلون الصورة نفسه — داكنة للصور الداكنة (كتابة فاتحة) وفاتحة للفاتحة (كتابة داكنة) — كفقاعات الثيمات.
+   الثيمات (skin وskin-wood) لها فقاعاتها في css/ثيمات.css وcss/ثيم-خشبي.css. */
+html.bgimg-dark:not(.skin):not(.skin-wood) #messages .msg.assistant,
+html.bgimg-dark:not(.skin):not(.skin-wood) #messages .msg.user{background:rgba(10,10,12,.58) !important; border:1px solid rgba(255,255,255,.12) !important; border-radius:16px !important; padding:10px 14px !important;}
+html.bgimg-light:not(.skin):not(.skin-wood) #messages .msg.assistant,
+html.bgimg-light:not(.skin):not(.skin-wood) #messages .msg.user{background:rgba(255,255,255,.68) !important; border:1px solid rgba(0,0,0,.1) !important; border-radius:16px !important; padding:10px 14px !important;}
+html.bgimg-dark:not(.skin):not(.skin-wood) #messages .msgActionBar{width:fit-content; padding:3px 10px !important; border-radius:999px !important; background:rgba(10,10,12,.58) !important;}
+html.bgimg-light:not(.skin):not(.skin-wood) #messages .msgActionBar{width:fit-content; padding:3px 10px !important; border-radius:999px !important; background:rgba(255,255,255,.68) !important;}
+/* والخلفيّات الثلاثيّة (body.vantaActive): ما ترسمه يتبدّل كلّ إطار ولا يتبع الوضع دائمًا («أمواج سائلة» فاتحة في الوضع الأسود فصار
+   النصّ الأبيض عليها لا يُقرأ — تدقيق ١٨ أكتوبر). الخلفيّة نفسها كما هي؛ الرسائل وأيقوناتها في فقاعة بلون الوضع تكفي فوق الأبيض والأسود معًا. */
+html:not([data-mode="light"]):not(.bgimg) body.vantaActive #messages :is(.msg.assistant, .msg.user){background:rgba(10,10,12,.78) !important; border:1px solid rgba(255,255,255,.12) !important; border-radius:16px !important; padding:10px 14px !important;}
+html[data-mode="light"]:not(.bgimg) body.vantaActive #messages :is(.msg.assistant, .msg.user){background:rgba(255,255,255,.78) !important; border:1px solid rgba(0,0,0,.1) !important; border-radius:16px !important; padding:10px 14px !important;}
+html:not([data-mode="light"]):not(.bgimg) body.vantaActive #messages .msgActionBar{width:fit-content; padding:3px 10px !important; border-radius:999px !important; background:rgba(10,10,12,.78) !important;}
+html[data-mode="light"]:not(.bgimg) body.vantaActive #messages .msgActionBar{width:fit-content; padding:3px 10px !important; border-radius:999px !important; background:rgba(255,255,255,.78) !important;}

@@ -272,7 +272,7 @@ module.exports = async (req, res) => {
       if (!trial) {
         pay = await pointsLib.spendPoints(rtUser, cost, 'maha_minute');
         if (!pay.ok) { res.status(402).json({ error: 'points_insufficient', needed: cost, points: pay.points || 0 }); return; }
-        undoBill = pay.media === 'maha' ? () => mediaLib.refundMahaMinute(rtUser) : (pay.owner ? null : () => pointsLib.refundPoints(rtUser, cost));
+        undoBill = pay.media === 'maha' ? () => mediaLib.refundMahaMinute(rtUser) : (pay.owner ? null : () => pointsLib.refundPoints(rtUser, cost, pay)); // v-maha-refund-kind: إلى محفظة الخصم — بلا نوع كان points.js يطابق بالجشع تذكرة اشتراك
       }
       // v-maha-plans: دقائق اشتراك مها تُصرف قبل النقاط، وحدّ المكالمة للمشترك وحده.
       let mahaMin = 0;
@@ -630,7 +630,11 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       console.error('[realtime-session] OpenAI error:', upstream.status, rawText);
       await refundOpening();
-      res.status(upstream.status).setHeader('Content-Type', 'application/json').send(rawText);
+      /* v-maha-paused (أمر المالك ٢١ أكتوبر: «إذا رصيد المزوّد خلصان تطلع «الخدمة متوقفة مؤقتاً»، مو «نقاطك خلصت». وممنوع يطلع [object Object]
+         أبداً»): كان يُمرَّر ردّ المزوّد بحالته ونصّه — 402 رصيده يقرؤه العميل «نقاطك خلصت» فيفتح الباقات، وكائن الخطأ يصير [object Object].
+         رمز نصّيّ لا حالة المزوّد: unavailable (رصيد/مفتاح/زحام) أو failed؛ والعميل يكمل بالوضع الأساسيّ كما كان لكلّ عطل غير النقاط. */
+      const fail = require('./_videoFail.js').toolFail(upstream.status, rawText);
+      res.status(fail.code).json(fail.body);
       return;
     }
 

@@ -37,7 +37,22 @@ const doc = { createElement: (t) => new El(t), createTextNode: (v) => new TextNo
 const hs = state.lastIndexOf('\n', state.indexOf('ملاحظة تلقائية آخر الرد'));
 const he = state.indexOf('messagesEl.appendChild(bubbleCol);', hs);
 assert.ok(hs > 0 && he > hs, 'كتلة الملاحظة موجودة');
-const hintFn = new Function('m', 'mIdx', 'cur', 'capabilityHintFor', 'document', 'lang', 'bubbleCol', 'openFeatureById', '__swallow', state.slice(hs, he));
+const hintFn = new Function('m', 'mIdx', 'cur', 'capabilityHintFor', 'document', 'lang', 'bubbleCol', 'openFeatureById', '__swallow', 't', state.slice(hs, he));
+
+// القواميس الحقيقيّة (app-03 للعربيّة والإنجليزيّة، وi18n/*.js للبقيّة فوق الإنجليزيّ كما في الصفحة) — v-cap-hint-i18n
+const vm = require('node:vm');
+const LANGS = ['fr', 'hi', 'ur', 'bn', 'ne', 'id', 'fil', 'tr', 'zh', 'ru', 'es', 'ml'];
+const D = (() => {
+  const ctx = { $: () => null, console };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(read('js/app-03-i18n-data.js').replace(/^const (codeEl|previewFrame|emptyState|historyEl) = .*$/mg, '') + '\n;this.I18N = I18N;', ctx);
+  for (const l of LANGS) vm.runInContext(read('i18n/' + l + '.js'), ctx);
+  const out = { ar: ctx.I18N.ar, en: ctx.I18N.en, own: {} };
+  for (const l of LANGS) { out[l] = Object.assign({}, ctx.I18N.en, ctx.I18N[l]); out.own[l] = ctx.I18N[l]; }
+  return out;
+})();
+const tFor = (l) => (k) => (D[l][k] !== undefined ? D[l][k] : k);
 
 /** يرسم ملاحظة ردّ على رسالة المستخدم ثمّ يمرّ عليها المنظّف كما في الصفحة، ويرجع النصّ الظاهر (أو null بلا ملاحظة). */
 function renderHint(userText, lng) {
@@ -45,7 +60,7 @@ function renderHint(userText, lng) {
   const m = { role: 'assistant', content: 'جواب' };
   const opened = [];
   let err = null;
-  hintFn(m, 1, { messages: [{ role: 'user', content: userText }, m] }, CAP.capabilityHintFor, doc, lng, bubbleCol, (id) => opened.push(id), (e) => { err = e; });
+  hintFn(m, 1, { messages: [{ role: 'user', content: userText }, m] }, CAP.capabilityHintFor, doc, lng, bubbleCol, (id) => opened.push(id), (e) => { err = e; }, tFor(lng));
   assert.equal(err, null, 'لا خطأ في بناء الملاحظة');
   const note = bubbleCol.childNodes[0];
   if (!note) return null;
@@ -81,8 +96,34 @@ test('٣. بعد منظّف الإيموجي تبقى المسافة بين نص
     const q = probe[c.id];
     assert.ok(q, c.id + ': أضف سؤالًا يطابقه هنا');
     const ar = renderHint(q, 'ar').text;
-    assert.equal(ar, 'ملاحظة: تقدر تسوي هذا عن طريق ' + c.ar, c.id + ' عربيّ');
+    assert.equal(ar, 'ملاحظة: تقدر تسوي هذا عن طريق ' + D.ar[c.key], c.id + ' عربيّ');
     const en = renderHint(q, 'en').text;
-    assert.equal(en, 'Note: you can do this with ' + c.en, c.id + ' إنجليزيّ');
+    assert.equal(en, 'Note: you can do this with ' + D.en[c.key], c.id + ' إنجليزيّ');
+  }
+});
+
+// v-cap-hint-i18n (تدقيق ١٨–١٩ أكتوبر، g03 chat-capability-hint): الملاحظة قالت «Religious Guidance» والأداة اسمها «Religious Insights»
+// (أسماء الكتالوج ثابتة عربيّ/إنجليزيّ لا من مفاتيح الأداة)، والجملة القائدة ثنائيّة: الفرنسيّة والعشر الباقية تأخذ ملاحظة عربيّة.
+test('٤. اسم الأداة في الملاحظة هو اسمها في الواجهة (مفتاحها)، والجملة القائدة بلغة الواجهة', () => {
+  for (const c of CAP.APP_CAPABILITIES) assert.ok(c.key && D.en[c.key], c.id + ': مفتاح اسم الأداة');
+  assert.equal(CAP.APP_CAPABILITIES.find((c) => c.id === 'btnReligion').key, 'religionMenuLabel');
+  assert.equal(CAP.APP_CAPABILITIES.find((c) => c.id === 'btnDocs').key, 'docsTitle');
+  assert.equal(renderHint('ما حكم الصيام', 'en').text, 'Note: you can do this with Religious Insights');
+  const fr = renderHint('ما حكم الصيام', 'fr').text;
+  assert.equal(fr, D.fr.capHintLead + ' ' + D.fr.religionMenuLabel);
+  assert.doesNotMatch(fr, /[؀-ۿ]/, 'الفرنسيّة بلا عربيّ: ' + fr);
+  for (const l of LANGS.filter((x) => x !== 'ur')) assert.doesNotMatch(renderHint('حلل هذا العقد', l).text, /[؀-ۿ]/, l);
+});
+
+test('٥. capHintLead بالـ١٤ لغة: مترجم في ملفّ كلّ لغة، بلا اسم مزوّد، والعربيّ والإنجليزيّ كما كانا حرفًا', () => {
+  assert.equal(D.ar.capHintLead, 'ملاحظة: تقدر تسوي هذا عن طريق');
+  assert.equal(D.en.capHintLead, 'Note: you can do this with');
+  const PROV = /gemini|google|openai|gpt|claude|anthropic|groq|mistral|deepseek|grok|جيمناي|كلود|غروق/i;
+  for (const l of LANGS) {
+    const v = D.own[l].capHintLead;
+    assert.ok(v && v.trim().length > 3, l + ': capHintLead غير موجود في i18n/' + l + '.js');
+    assert.notEqual(v, D.en.capHintLead, l + ': منسوخ من الإنجليزيّ');
+    assert.doesNotMatch(v, PROV, l);
+    if (l !== 'ur') assert.doesNotMatch(v, /[؀-ۿ]/, l + ': فيه عربيّ');
   }
 });

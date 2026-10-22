@@ -20,16 +20,21 @@
     --frame-pill-line:#454233; --frame-shadow:none;
   }
   html[data-mode="light"]:not(.mobile-ui):not(.bgimg){
-    --frame-line:#d0c6ac; --frame-line2:#e6dbca; --frame-gold:#9a7c38; --frame-gold2:#a8873a;
-    --frame-ink:#4a4034; --frame-muted:#8e8477; --frame-field:#e8dec8; --frame-active:#f6eeda; --frame-active-line:#dccb9f;
+    --frame-line:#d0c6ac; --frame-line2:#e6dbca; --frame-gold:#9a7c38; --frame-gold2:#7a612a; /* v-theme-contrast: كان #a8873a (٢٫٩:١ على المختار) */
+    --frame-ink:#4a4034; --frame-muted:#625a4e; --frame-field:#e8dec8; --frame-active:#f6eeda; --frame-active-line:#dccb9f;
     --frame-pill-line:#cdc2a7; --frame-shadow:0 6px 18px rgba(140,112,60,.16);
     /* العاجيّ نفسه للأسطح كلّها (كان أبيض صافيًا) */
     --bg:#fbf5e9 !important; --bg2:#fbf5e9 !important; --panel:#fbf5e9 !important; --panel2:#f3ead6 !important;
-    --text:#4a4034 !important; --muted:#8e8477 !important; --border:rgba(120,96,50,.14) !important;
+    --text:#4a4034 !important; --muted:#625a4e !important; --border:rgba(120,96,50,.14) !important; /* v-theme-contrast: الرماديّ #8e8477 كان ٣٫٤:١ */
     --accent-ink:#4a4034 !important; --accent-on-surface:#4a4034 !important; --accent-surface:#efe5cf !important;
     background:#e8dec8 !important;
   }
   html.bgimg:not(.mobile-ui){ --frame-line:rgba(214,190,140,.62); --frame-line2:rgba(214,190,140,.28); --frame-shadow:0 8px 22px rgba(0,0,0,.22); }
+  /* v-bgimg-surface-text (تدقيق ١٨ أكتوبر): قيم العاجيّ أعلاه تستثني الخلفيّات فبقيت خانة البحث بأسود الوضع الداكن (#0b0b0d) داخل
+     القائمة الفاتحة (#EBEBEB)؛ وحبر الإطار (var(--text) محسوبًا على html = لون الصورة) يكتب البحث بلون الصورة لا بلون القائمة المعتمة.
+     الخانة والحبر والرماديّ هنا لا تُستعمل إلّا داخل القائمة الجانبيّة. الثيمات (skin وskin-wood) بقيمها. */
+  html[data-mode="light"].bgimg:not(.skin):not(.skin-wood):not(.mobile-ui){ --frame-field:rgba(0,0,0,.06); --frame-muted:#5d5d5d; --frame-ink:#0d0d0d; }
+  html:not([data-mode="light"]).bgimg-light:not(.skin):not(.skin-wood):not(.mobile-ui){ --frame-ink:#eef0f6; }
   /* الثيم الخشبيّ: خاناته من خامته (ألواحه والرقّ) لا من الأسود؛ والخطّان بنّيّان كإطار البرواز */
   html.skin-wood:not(.mobile-ui){ --frame-line:rgba(140,98,60,.55); --frame-line2:rgba(140,98,60,.28); --frame-field:rgba(255,248,236,.62); --frame-ink:#3b2a1c; --frame-muted:#6b5038; --frame-gold2:#8a5a32; --frame-pill-line:rgba(140,98,60,.45); }
   html.skin-wood:not(.mobile-ui) .resizer{ background:transparent !important; }

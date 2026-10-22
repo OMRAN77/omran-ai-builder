@@ -20,6 +20,14 @@ function imgErrFriendly(err, isAr, info){
       ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة. افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
       : '⚡ Not enough points for this image. Open Settings → Plans to top up and continue.';
   }
+  /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الصور نفد أو عطب عندنا — «الخدمة متوقّفة مؤقّتًا» بلغة الواجهة، والخادم ردّ النقاط
+     (كان «مشغولة الآن، أعد المحاولة» فيعيد المستخدم ويُخصم ويُردّ مرّة بعد مرّة) */
+  if(err === 'unavailable') return t('svcPaused');
+  /* v-rest-fixes: سقف الصور في الساعة كان يصل رمزًا خامًّا «image_hourly_limit» — النصّ بالـ14 لغة بالحدّ والدقائق الباقية من ردّ الخادم */
+  if(err === 'image_hourly_limit'){
+    const m = Math.max(1, Math.ceil((Number(info && info.retryAfter) || 3600) / 60));
+    return t('imgHourlyLimit').replace('{max}', String((info && info.max) || 20)).replace('{m}', String(m));
+  }
   if(err === 'image_generation_timeout'){
     return isAr
       ? 'تأخر إنشاء الصورة هذه المرة. أعد المحاولة بعد لحظة.'

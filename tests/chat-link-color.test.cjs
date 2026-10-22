@@ -9,10 +9,10 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 
-test('index.html: روابط .msg-text ذهبيّة (#d4af37 داكن / #b8860b فاتح) لا فيروزيّة', () => {
+test('index.html: روابط .msg-text ذهبيّة (#d4af37 داكن / #835f08 فاتح — v-theme-contrast: #b8860b كان ٢٫٩:١ على العاجيّ) لا فيروزيّة', () => {
   const html = read('index.html');
   assert.match(html, /\.msg-text a\{ color:#d4af37 !important; \}/, 'الرابط ذهبيّ في الوضع الداكن');
-  assert.match(html, /html\[data-mode="light"\] \.msg-text a\{ color:#b8860b !important; \}/, 'الرابط ذهبيّ مقروء في الوضع الفاتح');
+  assert.match(html, /html\[data-mode="light"\] \.msg-text a\{ color:#835f08 !important; \}/, 'الرابط ذهبيّ مقروء في الوضع الفاتح');
   assert.doesNotMatch(html, /\.msg-text a\{ color:#2dd4bf/, 'لم يبقَ الفيروزيّ');
 });
 
