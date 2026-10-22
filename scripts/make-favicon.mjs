@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// v-favicon-gold: يولّد favicon.ico في الجذر بثلاثة مقاسات ١٦ و٣٢ و٤٨ — بلا أيّ اعتماديّة: فكّ PNG بـzlib،
-// تصغير بمتوسّط المساحة في الضوء الخطّيّ، وكتابة كلّ مقاس صورةً BMP بعمق ٣٢ بت (الصيغة التي يقرؤها كلّ متصفّح وزاحف).
-// المصدر icons/favicon-src.png (١٢٥٤×١٢٥٤): الأيقونة الذهبيّة gold-20260819 نفسها بعد تعديلها بمحرّر الصور في التطبيق
-// بأمر المالك — نفس الشكل وكتابة Ai، أحدّ، والخلفيّة أسود #000000 مثل خلفيّة الدردشة بدل الكحلي. لا يُنشر (.vercelignore).
+// v-favicon-gold: يولّد من مصدر واحد favicon.ico في الجذر (١٦ و٣٢ و٤٨، BMP بعمق ٣٢ بت — الصيغة التي يقرؤها كلّ متصفّح وزاحف)
+// وكلّ أيقونات التطبيق (ICONS أدناه) — بلا أيّ اعتماديّة: فكّ PNG بـzlib وتصغير بمتوسّط المساحة في الضوء الخطّيّ.
+// المصدر icons/ai-hub-mark.png (١٢٥٤×١٢٥٤، يقرؤه scripts/generate-qr.mjs أيضًا): الأيقونة الذهبيّة نفسها بعد تعديلها بمحرّر الصور
+// في التطبيق بأمر المالك — نفس الشكل وكتابة Ai، أحدّ، والخلفيّة أسود #000000 مثل خلفيّة الدردشة بدل الكحلي.
 //   node scripts/make-favicon.mjs            → يكتب favicon.ico
 //   node scripts/make-favicon.mjs --sheet x  → ويكتب أيضًا لوحة مكبّرة لكلّ مقاس (PNG) للمراجعة بالعين
 import fs from 'node:fs';
@@ -11,7 +11,16 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = path.join(ROOT, 'icons/favicon-src.png');
+const SRC = path.join(ROOT, 'icons/ai-hub-mark.png');
+// كلّ ملفّ بمقاسه وقناته كما كان (المعتمة RGB، والاثنان RGBA كانا RGBA معتمين).
+const ICONS = [
+  { file: 'icons/icon-512-v2.png', n: 512, ch: 3 },
+  { file: 'icons/icon-192-v2.png', n: 192, ch: 3 },
+  { file: 'icons/apple-touch-icon-v2.png', n: 180, ch: 3 },
+  { file: 'icons/favicon-32-v2.png', n: 32, ch: 3 },
+  { file: 'icons/ai-hub-mark-256.png', n: 256, ch: 4 },
+  { file: 'icons/omran-mark-64.png', n: 64, ch: 4 },
+];
 const OUT = path.join(ROOT, 'favicon.ico');
 const SIZES = [16, 32, 48];
 // المالك (٢٢ أكتوبر، بعد اللوحة المكبّرة): مقاس ١٦ من الحلقة الذهبيّة وحدها — بلا الخلفيّة ولا كتابة Ai — ليقرأ في التبويب؛
@@ -149,14 +158,31 @@ function buildIco(images) {
   return Buffer.concat([head, dir, ...bodies]);
 }
 
-// PNG بسيط (RGBA) للوحة المراجعة فقط.
-function encodePng({ w, h, rgba }) {
+// PNG بعمق ٨: RGB (ch=3) للأيقونات المعتمة كأصولها، أو RGBA (ch=4). مرشّح لكلّ صفّ بأقلّ مجموع فروق (Sub/Up/Average/Paeth)
+// كما تفعل المكتبات — بلا مرشّح كان الحجم أكبر بالثلث.
+function encodePng({ w, h, rgba }, ch = 4) {
   const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
   const crc = (b) => { let c = 0xffffffff; for (const v of b) c = crcTable[(c ^ v) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
   const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type, 'latin1'), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
-  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 6;
-  const raw = Buffer.alloc(h * (w * 4 + 1));
-  for (let y = 0; y < h; y++) rgba.copy(raw, y * (w * 4 + 1) + 1, y * w * 4, (y + 1) * w * 4);
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = ch === 3 ? 2 : 6;
+  const st = w * ch, px = Buffer.alloc(h * st);
+  for (let i = 0; i < w * h; i++) for (let c = 0; c < ch; c++) px[i * ch + c] = rgba[i * 4 + c];
+  const raw = Buffer.alloc(h * (st + 1)), line = Buffer.alloc(st);
+  for (let y = 0; y < h; y++) {
+    let best = null, bestSum = Infinity;
+    for (let f = 0; f <= 4; f++) {
+      let sum = 0;
+      for (let x = 0; x < st; x++) {
+        const v = px[y * st + x], a = x >= ch ? px[y * st + x - ch] : 0, b = y ? px[(y - 1) * st + x] : 0, c = x >= ch && y ? px[(y - 1) * st + x - ch] : 0;
+        let p = 0;
+        if (f === 1) p = a; else if (f === 2) p = b; else if (f === 3) p = (a + b) >> 1;
+        else if (f === 4) { const q = a + b - c, pa = Math.abs(q - a), pb = Math.abs(q - b), pc = Math.abs(q - c); p = pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
+        const d = (v - p) & 255; line[x] = d; sum += d < 128 ? d : 256 - d;
+      }
+      if (sum < bestSum) { bestSum = sum; best = { f, data: Buffer.from(line) }; }
+    }
+    raw[y * (st + 1)] = best.f; best.data.copy(raw, y * (st + 1) + 1);
+  }
   return Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
 }
 
@@ -181,6 +207,11 @@ const src = decodePng(fs.readFileSync(SRC));
 const images = SIZES.map((n) => resize(n === 16 ? ringOnly(src, RING) : src, n));
 fs.writeFileSync(OUT, buildIco(images));
 console.log(`favicon.ico: ${fs.statSync(OUT).size} بايت — ${SIZES.join('/')} من ${path.relative(ROOT, SRC)} (${src.w}×${src.h})`);
+// المالك: «خلّ الأيقونات كلها لون الأسود الجديد» — كلّ مقاس للأيقونة نفسها يُولَّد من المصدر بمقاسه وصيغته الأصليّة.
+for (const { file, n, ch } of ICONS) {
+  fs.writeFileSync(path.join(ROOT, file), encodePng(resize(src, n), ch));
+  console.log(`${file}: ${n}×${n} ${ch === 3 ? 'RGB' : 'RGBA'} — ${fs.statSync(path.join(ROOT, file)).size} بايت`);
+}
 const si = process.argv.indexOf('--sheet');
 if (si > 0 && process.argv[si + 1]) {
   fs.writeFileSync(process.argv[si + 1], sheet(images));

@@ -37,10 +37,10 @@ const ASSET_FILES = [
   './assets/tool-cards/sections/docs.png',
   './assets/tool-cards/sections/feedback.png',
   './assets/tool-cards/sections/email.png',
-  './icons/icon-192-v2.png?icon=gold-20260819',
-  './icons/icon-512-v2.png?icon=gold-20260819',
-  './icons/apple-touch-icon-v2.png?icon=gold-20260819',
-  './icons/favicon-32-v2.png?icon=gold-20260819',
+  './icons/icon-192-v2.png?icon=black-20261022',
+  './icons/icon-512-v2.png?icon=black-20261022',
+  './icons/apple-touch-icon-v2.png?icon=black-20261022',
+  './icons/favicon-32-v2.png?icon=black-20261022',
 ];
 
 // هل هذا تنصيب أول أم تحديث فوق عامل قديم؟ التحديث وحده يعيد تحميل الصفحات.
@@ -87,8 +87,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'مها', {
       body: data.body || 'تذكير',
-      icon: './icons/icon-192-v2.png?icon=gold-20260819',
-      badge: './icons/icon-192-v2.png?icon=gold-20260819',
+      icon: './icons/icon-192-v2.png?icon=black-20261022',
+      badge: './icons/icon-192-v2.png?icon=black-20261022',
       tag: 'maha-reminder-' + Date.now(),
       silent: false,
       vibrate: [300, 150, 300, 150, 300],

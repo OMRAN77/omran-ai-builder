@@ -1,8 +1,9 @@
 // tests/favicon-gold.test.cjs — أيقونة الموقع ذهبيّة لكلّ زاحف ومتصفّح (v-favicon-gold).
 // العرض (المالك ٢٢ أكتوبر): Google Search Console يعرض أيقونة التطبيق البنفسجيّة القديمة. index.html بلا rel="icon" منذ v468،
 // و/favicon.ico كان 404، فيبقى الزاحف على ما خزّنه قديمًا؛ وصفحة «التعليم» (edu-old/) تشير إلى أيقوناتها البنفسجيّة.
-// القرار: favicon.ico ذهبيّ في الجذر (١٦/٣٢/٤٨ من icons/icon-512-v2.png بـscripts/make-favicon.mjs) ورابطان في <head>،
-// وكلّ صفحة وملفّ manifest وكود يشير إلى المجموعة الذهبيّة وحدها، ولا كود يعيد كتابة link[rel=icon].
+// القرار: favicon.ico ذهبيّ في الجذر ورابطان في <head>، وكلّ صفحة وملفّ manifest وكود يشير إلى المجموعة الذهبيّة وحدها، ولا كود
+// يعيد كتابة link[rel=icon]. ثمّ بأمره: المصدر icons/ai-hub-mark.png معدّلًا في التطبيق (نفس الشكل وAi، خلفيّة #000000 كالدردشة)،
+// ومنه بـscripts/make-favicon.mjs الـico وكلّ مقاسات الأيقونة، ووسم الكاش black-20261022 بدل gold-20260819.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,7 +12,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
-const GOLD = 'icon=gold-20260819';
+const TAG = 'icon=black-20261022';
 
 function parseIco(buf) {
   assert.equal(buf.readUInt16LE(0), 0, 'محجوز = 0');
@@ -77,19 +78,29 @@ test('٢ب. مقاس ١٦ الحلقة الذهبيّة وحدها (زواياه
   }
 });
 
-test('٢ج. مصدر الأيقونة في المستودع ولا يُنشر على الـCDN', () => {
-  const src = fs.readFileSync(path.join(root, 'icons/favicon-src.png'));
-  assert.equal(src.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
-  assert.ok(src.readUInt32BE(16) >= 512 && src.readUInt32BE(16) === src.readUInt32BE(20), 'مربّع ≥ ٥١٢');
-  const ignore = read('.vercelignore').split(/\r?\n/).map((l) => l.trim());
-  assert.ok(ignore.includes('icons/favicon-src.png'), '١٫٣ م.ب لا يطلبها أيّ زائر');
+test('٢ج. «خلّ الأيقونات كلها لون الأسود الجديد»: كلّ مقاس للأيقونة بمقاسه وزواياه أسود الدردشة وذهبه ذهب', () => {
+  const { PNG } = require('pngjs');
+  const icons = { 'icons/ai-hub-mark.png': 1254, 'icons/icon-512-v2.png': 512, 'icons/icon-192-v2.png': 192, 'icons/apple-touch-icon-v2.png': 180,
+    'icons/favicon-32-v2.png': 32, 'icons/ai-hub-mark-256.png': 256, 'icons/omran-mark-64.png': 64 };
+  for (const [f, n] of Object.entries(icons)) {
+    const p = PNG.sync.read(fs.readFileSync(path.join(root, f)));
+    assert.equal(p.width, n, f); assert.equal(p.height, n, f);
+    const at = (x, y) => p.data.subarray((y * n + x) * 4, (y * n + x) * 4 + 4);
+    for (const [x, y] of [[0, 0], [n - 1, 0], [0, n - 1], [n - 1, n - 1], [0, n >> 1]]) {
+      const [r, g, b, a] = at(x, y);
+      assert.ok(a === 255 && r <= 3 && g <= 3 && b <= 3, `${f} (${x},${y}) = ${r},${g},${b},${a} — ليس أسود الدردشة`);
+    }
+    let R = 0, G = 0, B = 0, k = 0;
+    for (let i = 0; i < n * n; i++) { const r = p.data[i * 4], g = p.data[i * 4 + 1], b = p.data[i * 4 + 2]; if (Math.max(r, g, b) > 90) { R += r; G += g; B += b; k++; } }
+    assert.ok(k > 0 && R / k > (B / k) * 1.5 && G / k > B / k, `${f}: المضيء ليس ذهبيًّا`);
+  }
 });
 
 test('٣. رابطا الأيقونة في <head> في index.html بالنصّ الذي طلبه المالك', () => {
   const html = read('index.html');
   const head = html.slice(0, html.indexOf('</head>'));
   assert.ok(head.includes('<link rel="icon" href="/favicon.ico" sizes="48x48">'));
-  assert.ok(head.includes(`<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192-v2.png?${GOLD}">`));
+  assert.ok(head.includes(`<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192-v2.png?${TAG}">`));
   assert.ok(fs.existsSync(path.join(root, 'icons/icon-192-v2.png')));
 });
 
@@ -123,11 +134,13 @@ test('٥. لا صفحة ولا manifest ولا كود يشير إلى أيقون
   for (const f of [...jsFiles, 'sw.js', ...pages, ...manifests]) {
     const s = read(f);
     if (oldIcon.test(s)) bad.push(`${f}: أيقونة قديمة ${s.match(oldIcon)[0].trim()}`);
+    // وسم الكاش القديم يبقي الكحليّة في كاش المتصفّح والعامل والتطبيق المثبّت.
+    if (s.includes('icon=gold-20260819')) bad.push(`${f}: وسم الأيقونة الكحليّة القديم gold-20260819`);
     if (f.endsWith('.js') && rewrite.test(s)) bad.push(`${f}: يعيد كتابة الأيقونة ${s.match(rewrite)[0]}`);
   }
   assert.deepEqual(bad, []);
   for (const m of manifests) {
-    for (const ic of JSON.parse(read(m)).icons) assert.ok(/icons\/icon-(192|512)-v2\.png\?icon=gold-20260819$/.test(ic.src), `${m}: ${ic.src}`);
+    for (const ic of JSON.parse(read(m)).icons) assert.ok(/icons\/icon-(192|512)-v2\.png\?icon=black-20261022$/.test(ic.src), `${m}: ${ic.src}`);
   }
   const edu = read('edu-old/index.html');
   assert.ok(edu.includes('<link rel="icon" href="/favicon.ico"'), 'صفحة التعليم بأيقونة الموقع الذهبيّة');

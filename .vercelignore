@@ -127,6 +127,3 @@ store/
 
 # v-inspire: مصادر تجارب «الإلهام» (النواة والقوالب) — المنشور هو inspire/city/*.html المبنيّ منها.
 inspire/src/
-
-# v-favicon-gold: مصدر favicon.ico (١٢٥٤×١٢٥٤، ١٫٣ م.ب) بعد تعديله في التطبيق — يعيش في المستودع لـscripts/make-favicon.mjs ولا يطلبه أيّ زائر.
-icons/favicon-src.png
