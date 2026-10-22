@@ -1,8 +1,9 @@
-# ملاحظات المراجع ونصوص المتجر — om ai (AppGallery)
+# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.13)
 
 > إعادة تقديم بعد رفض 1.3.13 (٢٢ أكتوبر ٢٠٢٦: 1.14/1.15 و4.1). انسخ النصّ الإنجليزيّ في خانة **Remarks / Notes for review**،
 > وأضف تحته حساب التجربة (اسم مستخدم + كلمة مرور تُنشئهما في التطبيق قبل الرفع؛ لا تكتبهما في المستودع، ولا تعطِ حساب «omran»).
-> النصّ مكتوب لـ1.3.14 (اسم «om ai» على الهاتف). إن أعدت تقديم 1.3.13 بلا بناء فاحذف سطر «launcher label».
+> إعادة تقديم **1.3.13 نفسها بلا بناء** (المالك: «رقم الإصدار 1.3.13، ما يريد إصدار جديد»). اسم التطبيق في AGC يبقى كما هو — يطابق
+> اسم الهاتف «عمران AI»؛ و«om ai» اسمه داخل التطبيق، فالوصف يجمعهما في أوّل سطر.
 > كلّ ما في النصوص أدناه موجود في البناء الحاليّ — لا تُضِف أداة مخفيّة (التلفزيون، السيرة الذاتيّة، المصاريف، الاقتراحات،
 > الخدمات الحكوميّة) ولا كلمة مثل «رسمي/موثوق/مفضّل/مميّز/الأفضل» في أيّ خانة.
 > **قبل Submit:** الأزياء والديكور والستايل وأنماط الصور والمقاولات وصورة الإعلان وقراءة الصور تسقط ما دام رصيدا Google AI Studio
@@ -10,7 +11,7 @@
 
 ## Notes for review (English — paste in AGC)
 ```
-om ai: resubmission after the review report of 2026-10-22 (rules 1.14, 1.15 and 4.1).
+Omran AI (om ai), version 1.3.13: resubmission after the review report of 2026-10-22 (rules 1.14, 1.15 and 4.1).
 
 Rules 1.14 and 1.15 (app information):
 - All 8 screenshots were retaken on 2026-10-22 from this build (Huawei package, phone size, a normal user account).
@@ -20,7 +21,8 @@ Rules 1.14 and 1.15 (app information):
 - The listing does not use words such as "official", "trusted", "preferred" or "featured", and it does not mention
   government services. om ai is an independent app. It is not affiliated with or endorsed by any government body,
   broadcaster or other brand.
-- The app name is "om ai" in the store listing, on the launcher label and inside the app.
+- Same package, version 1.3.13. Its launcher label stays "عمران AI" (Omran AI Builder); inside the app the same
+  product now uses its short name "om ai". The description names both.
 
 Rule 4.1 (the app offers several types of content):
 On the first launch the app opens the Tools panel by itself. It has 13 tools in three groups:
@@ -50,11 +52,11 @@ Test account: (username) / (password)
 
 ## ملاحظات المراجع (عربيّ — للمراجعة العربيّة إن وُجدت)
 ```
-om ai — إعادة تقديم بعد تقرير ٢٢ أكتوبر ٢٠٢٦ (القواعد 1.14 و1.15 و4.1).
+عمران AI (om ai)، الإصدار 1.3.13 — إعادة تقديم بعد تقرير ٢٢ أكتوبر ٢٠٢٦ (القواعد 1.14 و1.15 و4.1).
 1.14 و1.15: اللقطات الثماني أُخذت ٢٢ أكتوبر من هذا البناء نفسه بحساب مستخدم عاديّ، وفيها فقط ما يفتحه المستخدم في هذا الإصدار
 (مربّع الأدوات وستّ أدوات) بلا أيّ رسم فوقها. حُذفت لقطة التلفزيون (أسماء قنوات لجهات أخرى) وكلّ أداة غير متاحة في هذا الإصدار،
 والوصف يعدّ الأدوات الموجودة فقط. لا كلمات مثل «رسمي» أو «موثوق» أو «مفضّل» أو «مميّز»، ولا خدمات حكوميّة. om ai تطبيق مستقلّ
-لا يتبع أيّ جهة حكوميّة أو قناة أو علامة تجاريّة. الاسم «om ai» في المتجر وعلى الهاتف وداخل التطبيق.
+لا يتبع أيّ جهة حكوميّة أو قناة أو علامة تجاريّة. الحزمة نفسها 1.3.13: اسمها على الهاتف «عمران AI» كاسم المتجر، و«om ai» اسمها المختصر داخل التطبيق.
 4.1: عند أوّل تشغيل يفتح مربّع الأدوات تلقائيًّا: ١٣ أداة في ثلاث مجموعات
 (إبداع: أنماط الصور، صانع الفيديو، ديكور AI، أزياء AI، ستايل AI · أعمال: استوديو الإعلانات، مساعد المستندات، مساعد البريد الذكي،
 تصاميم المقاولات والبناء · حياة يوميّة: القبلة والمواقيت، التعليم، التفسير الدينيّ، رأيك يهمّنا)، ومعها محادثة بالصوت والكتابة.
@@ -63,12 +65,12 @@ om ai — إعادة تقديم بعد تقرير ٢٢ أكتوبر ٢٠٢٦ (ا
 ```
 
 ## وصف المتجر (عربيّ)
-**اسم التطبيق:** om ai
+**اسم التطبيق:** كما هو في AGC (لا يتغيّر — يطابق اسم الهاتف «عمران AI» في 1.3.13)
 
-**عنوان قصير:** om ai — أدوات ذكاء اصطناعيّ في تطبيق واحد
+**عنوان قصير:** أدوات ذكاء اصطناعيّ في تطبيق واحد
 
 **الوصف:**
-om ai تطبيق واحد يجمع أدوات ذكاء اصطناعيّ ومحادثة بالعربيّة و١٣ لغة أخرى:
+عمران AI (om ai) تطبيق واحد يجمع أدوات ذكاء اصطناعيّ ومحادثة بالعربيّة و١٣ لغة أخرى:
 - محادثة بالصوت والكتابة، مع إرفاق الصور والمستندات.
 - أنماط الصور، وصانع الفيديو، وستايل AI للشعر والمكياج والإطلالة على صورتك.
 - استوديو الأزياء: خيارات ملابس على صورتك أو من وصف نصّيّ؛ وديكور داخليّ وخارجيّ من صورة مكانك.
@@ -77,12 +79,12 @@ om ai تطبيق واحد يجمع أدوات ذكاء اصطناعيّ ومحا
 كلّ الأدوات تعمل داخل التطبيق، على الجوّال والحاسوب.
 
 ## Store description (English)
-**App name:** om ai
+**App name:** unchanged in AGC (matches the launcher label of 1.3.13)
 
-**Short:** om ai — AI tools in one app
+**Short:** AI tools in one app
 
 **Description:**
-om ai brings AI tools and an AI chat together in one app, in Arabic and 13 other languages:
+Omran AI (om ai) brings AI tools and an AI chat together in one app, in Arabic and 13 other languages:
 - Chat by voice or text, with image and document attachments.
 - Photo styles, a video maker, and Style AI for hair, makeup and looks on your photo.
 - Fashion studio (outfit options on your photo or from a text description) and interior/exterior decor design from a photo of your space.

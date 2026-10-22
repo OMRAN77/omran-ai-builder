@@ -50,7 +50,7 @@ try {
     packageId: PACKAGE_ID,
     host: HOST,
     name: web.name,
-    launcherName: web.short_name, // v-hw-resubmit-1314: «om ai» من بيان هواوي (كان «عمران AI» ثابتًا)
+    launcherName: 'عمران AI',
     display: web.display,
     themeColor: web.theme_color,
     themeColorDark: web.theme_color,
