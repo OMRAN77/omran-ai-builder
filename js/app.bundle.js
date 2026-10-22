@@ -46404,7 +46404,7 @@ if(document.readyState === 'loading'){
     try{ if(navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]); }catch(e){ /* guard-ok */ }
     try{
       if(!('Notification' in window) || Notification.permission !== 'granted'){ localToast('🕌 ' + body); return; }
-      var opts = { body: body, icon: './icons/icon-192-v2.png?icon=gold-20260819', badge: './icons/icon-192-v2.png?icon=gold-20260819', tag: 'prayer-local-' + x.k, vibrate: [300, 150, 300, 150, 300], requireInteraction: true };
+      var opts = { body: body, icon: './icons/icon-192-v2.png?icon=black-20261022', badge: './icons/icon-192-v2.png?icon=black-20261022', tag: 'prayer-local-' + x.k, vibrate: [300, 150, 300, 150, 300], requireInteraction: true };
       if('serviceWorker' in navigator){
         navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, opts); }).catch(function(){ try{ new Notification(title, opts); }catch(e){ localToast('🕌 ' + body); } });
       } else { new Notification(title, opts); }
