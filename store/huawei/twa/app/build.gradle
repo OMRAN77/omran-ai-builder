@@ -24,8 +24,8 @@ def twaManifest = [
     applicationId: 'com.omran.aibuilder.twa',
     hostName: 'omran-ai-builder.vercel.app', // The domain being opened in the TWA.
     launchUrl: '/?store=huawei', // The start path for the TWA. Must be relative to the domain.
-    name: 'om ai', // The application name.
-    launcherName: 'om ai', // The name shown on the Android Launcher.
+    name: 'Omran AI Builder', // The application name.
+    launcherName: 'عمران AI', // The name shown on the Android Launcher.
     themeColor: '#000000', // The color used for the status bar.
     themeColorDark: '#000000', // The color used for the dark status bar.
     navigationColor: '#000000', // The color used for the navigation bar.

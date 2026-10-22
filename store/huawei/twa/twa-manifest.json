@@ -1,8 +1,8 @@
 {
   "packageId": "com.omran.aibuilder.twa",
   "host": "omran-ai-builder.vercel.app",
-  "name": "om ai",
-  "launcherName": "om ai",
+  "name": "Omran AI Builder",
+  "launcherName": "عمران AI",
   "display": "standalone",
   "themeColor": "#000000",
   "themeColorDark": "#000000",

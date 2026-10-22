@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// store/huawei/shots.mjs — لقطات متجر هواوي الثماني من البناء الحاليّ (v-hw-resubmit-1314).
+// store/huawei/shots.mjs — لقطات متجر هواوي الثماني من البناء الحاليّ (v-hw-resubmit-1313).
 // كلّ لقطة = تشغيلة scripts/ui-shot.mjs واحدة: رابط الحزمة /?store=huawei، حساب غير المالك (المالك يرى واجهة زائدة)،
 // هاتف ٣٦٠×٦٤٠ ×٣ = ١٠٨٠×١٩٢٠ (٩:١٦)، عربيّ. لا شيء يُرسم فوق التطبيق: ما في الصورة هو ما يراه المراجع.
 // الاستعمال: node store/huawei/shots.mjs [--pw /path/to/node_modules/playwright-core] [--only 03-fashion,08-qibla] [--out dir]
