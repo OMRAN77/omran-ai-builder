@@ -137,7 +137,7 @@ const FREE_PROVIDER_SPECS = {
     /* v-img-why (لقطة المالك ٣ أكتوبر: «ما قدرت أقرأ الصورة الحين» مرّتين): Gemini كان وحده من يرى في الاحتياط المجّانيّ،
        فتعثّره مع تعثّر المحرّك الأساسيّ = لا قراءة. هذه نماذج مجّانيّة ترى الصور (نصّ + صورة) — تُجرَّب في دور الصورة وحده
        وبعد Gemini، ولا يُرسَل إليها غيرها في هذا الدور (لا نموذج أعمى يستلم صورة). */
-    visionModels: ['google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free', 'nvidia/nemotron-3.5-super-vl:free'], // v-plan-models: Gemma 3 وMistral Small 3.2 وQwen2.5-VL المجّانيّة ميّتة في فحص ١٦ أكتوبر الحيّ؛ v-free-vision-next (٢٢ أكتوبر، بأمر المالك): Gemma 4 31B وحده كان 429 «rate-limited upstream» في كلّ دور صورة بالسجلّ (١٩–٢٢ أكتوبر) — بعده عينان مجّانيّتان (نقاطهما العامّة ١٠٠٪ ذلك اليوم؛ Nemotron Nano Omni ٠٪ فلم يُضَف)
+    visionModels: ['google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free'], // v-plan-models: Gemma 3 وMistral Small 3.2 وQwen2.5-VL المجّانيّة ميّتة في فحص ١٦ أكتوبر الحيّ؛ v-free-vision-next (٢٢ أكتوبر، بأمر المالك): Gemma 4 31B وحده كان 429 «rate-limited upstream» في كلّ دور صورة بالسجلّ (١٩–٢٢ أكتوبر) — بعده Gemma 4 26B (Nemotron Nano Omni ٠٪ فلم يُضَف). وNemotron 3.5 Super VL أُزيل بأمر المالك بعد ثلاث تجارب حيّة: يقرأ الأرقام ويخربط الكلام العربيّ (١ من ٣ صحيح) — جواب واثق خاطئ أسوأ من «ما قدرت أقرأ الصورة»
   },
 };
 // v-plan-routing (قرار المالك ٢٠ سبتمبر: «المجّاني ٥ رسائل على Groq من غير أيّ شي»): Groq أوّلًا،

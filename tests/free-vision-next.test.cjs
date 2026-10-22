@@ -110,21 +110,18 @@ test('٤. الناجح بعد الزحمة يُحفظ لدور الصورة ال
   const env = { OPENROUTER_API_KEY: 'o' };
   const logs = [];
   const first = await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: (m) => logs.push(m), requireVision: true, env, now: 1000,
-    fetchImpl: async (url, init) => { const m = JSON.parse(init.body).model; return m === VISION[2] ? sse(['تمام']) : UPSTREAM_429(m); } });
-  assert.equal(first.ok, true); assert.equal(first.model, VISION[2]);
+    fetchImpl: async (url, init) => { const m = JSON.parse(init.body).model; return m === VISION[1] ? sse(['تمام']) : UPSTREAM_429(m); } });
+  assert.equal(first.ok, true); assert.equal(first.model, VISION[1]);
   const ok = logs.filter((l) => l.startsWith('vision '));
   assert.equal(ok.length, 1, 'سطر واحد في سجلّ الخادم لنجاح دور الصورة');
-  assert.ok(ok[0].startsWith('vision openrouter/' + VISION[2] + ' after openrouter/' + VISION[0] + ': '), ok[0]);
-  assert.ok(ok[0].includes('openrouter/' + VISION[1] + ': '), 'والمزدحم الثاني قبله');
+  assert.ok(ok[0].startsWith('vision openrouter/' + VISION[1] + ' after openrouter/' + VISION[0] + ': '), ok[0]);
   // الجولة الثانية: كلّ محاولة فاشلة سطرٌ بسببها كاملًا — نصّ المزوّد الأصليّ بعد الـ١٦٠ حرفًا الذي كان يُقصّ
-  for (const m of [VISION[0], VISION[1]]) {
-    const l = logs.find((x) => x.startsWith('openrouter/' + m + ' http 429 '));
-    assert.ok(l && l.includes('add your own key to accumulate your rate limits'), 'سطر كامل لـ' + m + ': ' + l);
-  }
+  const busyLine = logs.find((x) => x.startsWith('openrouter/' + VISION[0] + ' http 429 '));
+  assert.ok(busyLine && busyLine.includes('add your own key to accumulate your rate limits'), 'سطر كامل للمزدحم: ' + busyLine);
   const again = [];
   await fc.streamFreeChain({ system: 'S', convo: IMG_MSG, send: () => {}, log: () => {}, requireVision: true, env, now: 2000,
     fetchImpl: async (url, init) => { again.push(JSON.parse(init.body).model); return sse(['تمام']); } });
-  assert.deepEqual(again, [VISION[2]], 'الذاكرة تبدأ بالناجح فلا يُضرب المزدحم في كلّ دور');
+  assert.deepEqual(again, [VISION[1]], 'الذاكرة تبدأ بالناجح فلا يُضرب المزدحم في كلّ دور');
   fc.__workingModel.clear();
   const text = [];
   const t = await fc.streamFreeChain({ system: 'S', convo: [{ role: 'user', content: 'هلا' }], send: () => {}, log: () => {}, env,
@@ -134,8 +131,10 @@ test('٤. الناجح بعد الزحمة يُحفظ لدور الصورة ال
   fc.__workingModel.clear();
 });
 
-test('٥. قائمة الرؤية: Gemma 4 31B أوّلًا ثمّ عينان مجّانيّتان، كلّها :free بلا تكرار، والحارس يقبلها', () => {
-  assert.deepEqual(VISION, ['google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free', 'nvidia/nemotron-3.5-super-vl:free']);
+test('٥. قائمة الرؤية: Gemma 4 31B ثمّ 26B، كلّها :free بلا تكرار، والحارس يقبلها، وNemotron 3.5 Super VL خارجها', () => {
+  assert.deepEqual(VISION, ['google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free']);
+  // أمر المالك ٢٢ أكتوبر بعد ثلاث تجارب حيّة: يخربط الكلام العربيّ («مهمّة سريّة» بدل «مصمّم سريع»، «المساحة كافية» واللقطة «ممتلئة»)
+  assert.ok(!VISION.some((m) => /nemotron-3.5-super-vl/.test(m)), 'Nemotron 3.5 Super VL لا يرجع لقائمة الرؤية بلا أمر المالك');
   assert.equal(new Set(VISION).size, VISION.length);
   for (const m of VISION) assert.ok(/:free$/.test(m), 'مجّانيّ: ' + m);
   const { guardModel } = require(rp('api/_lib/_model-guard.js'));
