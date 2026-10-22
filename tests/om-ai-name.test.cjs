@@ -64,10 +64,13 @@ test('٥. الإيميل: اسم المرسل «om ai» والعناوين با�
   assert.doesNotMatch(a, /@gmail\.com['"]/);
 });
 
-test('٦. بيان هواوي على الويب «om ai» كالعامّ؛ وما لا يُلمس: اسم APK وأسماء الحزم والدومينات ومتغيّرات البيئة', () => {
+test('٦. بيان هواوي على الويب «om ai» كالعامّ؛ وما لا يُلمس: أسماء الحزم والدومينات ومتغيّرات البيئة', () => {
   const hw = JSON.parse(read('manifest-huawei.json')); assert.equal(hw.name, 'om ai'); assert.equal(hw.short_name, 'om ai'); // بيان الويب داخل تطبيق هواوي يطابق العامّ (store-huawei)
   const g = read('store/huawei/twa/app/build.gradle');
-  assert.match(g, /applicationId/); assert.ok(/Omran AI Builder/.test(read('store/huawei/twa/twa-manifest.json')), 'اسم APK يتغيّر مع إصدار متجر');
+  // v-hw-resubmit-1314: اسم APK تغيّر مع إصدار المتجر التالي (1.3.14) — الاسم واسم الشاشة «om ai»، والحزمة كما هي
+  assert.match(g, /applicationId: 'com\.omran\.aibuilder\.twa'/); assert.match(g, /name: 'om ai',/); assert.match(g, /launcherName: 'om ai',/);
+  const tm = JSON.parse(read('store/huawei/twa/twa-manifest.json')); assert.equal(tm.name, 'om ai'); assert.equal(tm.launcherName, 'om ai');
+  assert.equal(tm.packageId, 'com.omran.aibuilder.twa');
   assert.ok(read('vercel.json').indexOf('om ai') === -1);
   assert.ok(read('api/_lib/env.js').includes('MAIL_FROM:') && read('api/_lib/env.js').includes('OWNER_NOTIFY_EMAIL:'));
 });
