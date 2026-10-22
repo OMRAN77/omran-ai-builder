@@ -62,6 +62,17 @@ test('٢. الأيقونة ذهبيّة لا بنفسجيّة: صبغة الأج
   }
 });
 
+test('٢ب. مقاس ١٦ الحلقة الذهبيّة وحدها (زواياه شفّافة ووسطه معتم)، و٣٢ و٤٨ الأيقونة كاملة بإطارها المعتم', () => {
+  for (const e of parseIco(fs.readFileSync(path.join(root, 'favicon.ico')))) {
+    const alpha = (x, y) => e.body[40 + ((e.w - 1 - y) * e.w + x) * 4 + 3];
+    const corners = [alpha(0, 0), alpha(e.w - 1, 0), alpha(0, e.w - 1), alpha(e.w - 1, e.w - 1)];
+    const mid = e.w >> 1;
+    assert.equal(alpha(mid, mid), 255, `وسط ${e.w}px معتم`);
+    if (e.w === 16) assert.deepEqual(corners, [0, 0, 0, 0], 'زوايا ١٦ شفّافة: لا إطار داكن ولا كتابة Ai');
+    else assert.deepEqual(corners, [255, 255, 255, 255], `${e.w}px الأيقونة كاملة كما وافق عليها المالك`);
+  }
+});
+
 test('٣. رابطا الأيقونة في <head> في index.html بالنصّ الذي طلبه المالك', () => {
   const html = read('index.html');
   const head = html.slice(0, html.indexOf('</head>'));

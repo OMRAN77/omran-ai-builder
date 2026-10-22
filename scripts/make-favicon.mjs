@@ -13,6 +13,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(ROOT, 'icons/icon-512-v2.png');
 const OUT = path.join(ROOT, 'favicon.ico');
 const SIZES = [16, 32, 48];
+// المالك (٢٢ أكتوبر، بعد اللوحة المكبّرة): مقاس ١٦ من الحلقة الذهبيّة وحدها — بلا الإطار الداكن ولا كتابة Ai — ليقرأ في التبويب؛
+// ٣٢ و٤٨ الأيقونة كاملة كما هي. القطع الناقص يحيط بالحافّة الخارجيّة للحلقة في المصدر ٥١٢ (Ai تبدأ تحته عند y≈380)، وما خارجه شفّاف.
+const RING = { cx: 255, cy: 228, rx: 180, ry: 165 };
 
 function decodePng(buf) {
   const sig = '89504e470d0a1a0a';
@@ -98,6 +101,18 @@ function resize(img, n) {
   return { w: n, h: n, rgba: out };
 }
 
+// مربّع حول الحلقة، وكلّ بكسل خارج القطع الناقص شفّاف؛ التصغير بعده بمتوسّط المساحة ينعّم الحافّة وحده.
+function ringOnly(img, { cx, cy, rx, ry }) {
+  const side = 2 * rx, x0 = cx - rx, y0 = cy - rx;
+  const rgba = Buffer.alloc(side * side * 4);
+  for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) {
+    const sx = x0 + x, sy = y0 + y, d = (y * side + x) * 4;
+    if (((sx + 0.5 - cx) / rx) ** 2 + ((sy + 0.5 - cy) / ry) ** 2 > 1) continue;
+    img.rgba.copy(rgba, d, (sy * img.w + sx) * 4, (sy * img.w + sx) * 4 + 4);
+  }
+  return { w: side, h: side, rgba };
+}
+
 // مدخل ICO بصيغة BMP: رأس BITMAPINFOHEADER (الارتفاع مضاعف: الصورة + قناع AND)، صفوف من الأسفل، BGRA، ثمّ قناع ١ بت.
 function bmpEntry(img) {
   const { w, h, rgba } = img;
@@ -162,7 +177,7 @@ function sheet(images) {
 }
 
 const src = decodePng(fs.readFileSync(SRC));
-const images = SIZES.map((n) => resize(src, n));
+const images = SIZES.map((n) => resize(n === 16 ? ringOnly(src, RING) : src, n));
 fs.writeFileSync(OUT, buildIco(images));
 console.log(`favicon.ico: ${fs.statSync(OUT).size} بايت — ${SIZES.join('/')} من ${path.relative(ROOT, SRC)} (${src.w}×${src.h})`);
 const si = process.argv.indexOf('--sheet');
