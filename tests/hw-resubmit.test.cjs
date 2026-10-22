@@ -1,4 +1,4 @@
-// tests/hw-resubmit.test.cjs — v-hw-resubmit-1314: هواوي رفضت 1.3.13 (٢٢ أكتوبر ٢٠٢٦) بالقاعدتين 1.14/1.15 (معلومات التطبيق لا تطابقه،
+// tests/hw-resubmit.test.cjs — v-hw-resubmit-1313: هواوي رفضت 1.3.13 (٢٢ أكتوبر ٢٠٢٦) بالقاعدتين 1.14/1.15 (معلومات التطبيق لا تطابقه،
 // وكلمات «رسمي/موثوق»، وإيحاء بجهات أخرى) و4.1 (نوع محتوى واحد). لقطات ١٨ سبتمبر كانت تعرض التلفزيون والسيرة الذاتيّة وهما
 // مخفيّتان منذ ١٠ أكتوبر (OMRAN_PAUSED_TOOLS)، والوصف يعدّ ١٩ أداة منها «خدمات حكوميّة» المخفيّة منذ v473.
 // الاختبار يربط نصوص المتجر بالكود: الأدوات الظاهرة في حزمة هواوي تُحسب من مصدرها، فإخفاء أداة أو إظهارها يُسقطه حتّى تُحدَّث النصوص.
@@ -57,13 +57,14 @@ test('١. الملاحظات تعدّ الأدوات الظاهرة في حزم�
   }
 });
 
-test('٢. وصف المتجر بلا «رسمي/موثوق/مفضّل/مميّز» والاسم «om ai» وحده', () => {
+test('٢. وصف المتجر بلا «رسمي/موثوق/مفضّل/مميّز»، واسم الهاتف «عمران AI» واسم الواجهة «om ai» معًا', () => {
   assert.ok(descriptions.length > 500, 'قسما الوصف موجودان');
   assert.doesNotMatch(descriptions, BANNED);
   assert.doesNotMatch(enToolList + arToolList, BANNED);
-  assert.ok(descriptions.includes('**اسم التطبيق:** om ai') && descriptions.includes('**App name:** om ai'));
-  assert.doesNotMatch(descriptions, /Omran AI|عمران AI|Omran Ai/);
-  assert.match(notes, /^# ملاحظات المراجع ونصوص المتجر — om ai/);
+  // 1.3.13 بلا بناء: اسم AGC كما هو (يطابق اسم الهاتف «عمران AI»)، والوصف يجمع اسم الهاتف واسم الواجهة «om ai» في أوّل سطر
+  assert.ok(descriptions.includes('**اسم التطبيق:** كما هو في AGC') && descriptions.includes('**App name:** unchanged in AGC'));
+  assert.ok(descriptions.includes('عمران AI (om ai) تطبيق واحد') && descriptions.includes('Omran AI (om ai) brings'));
+  assert.ok(notes.startsWith('# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.13)'));
   // 11.4 باقية صادقة (hw-nomarkets)، وحساب التجربة بلا كلمة مرور في المستودع
   assert.match(notes, /all market screens \(stock ticker, stock market, currency\/forex rates\) are removed from this package/);
   assert.ok(notes.includes('Test account: (username) / (password)'));
@@ -83,11 +84,11 @@ test('٣. اللقطات الثماني من store/huawei/shots.mjs: رابط ا
   for (const id of [...sh.matchAll(/open\('(\w+)'\)/g)].map((m) => m[1])) assert.ok(visible.includes(id), 'لقطة لأداة ظاهرة فقط: ' + id);
 });
 
-test('٤. الاسم على الهاتف «om ai» في مشروع الحزمة والمولّد، والبناء يحتاج أمر المالك (لا يُبنى هنا)', () => {
+test('٤. إعادة تقديم 1.3.13 نفسها بلا بناء (المالك: «ما يريد إصدار جديد»): المشروع باسم الحزمة المرفوعة، والنصوص بلا إصدار جديد', () => {
   const g = read('store/huawei/twa/app/build.gradle');
-  assert.match(g, /name: 'om ai',/); assert.match(g, /launcherName: 'om ai',/);
-  assert.ok(read('scripts/twa-generate.mjs').includes('launcherName: web.short_name,'), 'إعادة التوليد لا ترجع «عمران AI»');
+  assert.match(g, /name: 'Omran AI Builder',/); assert.match(g, /launcherName: 'عمران AI',/);
+  assert.ok(notes.includes('version 1.3.13') && notes.includes('launcher label stays "عمران AI"'), 'الملاحظات تقول اسم الهاتف الفعليّ');
   const readme = read('store/huawei/README.md');
-  assert.ok(readme.includes('**`1.3.14`**') && readme.includes('**`20261022`**'), 'خانتا الإصدار للبناء التالي');
-  assert.ok(readme.includes('v-hw-resubmit-1314'));
+  assert.ok(readme.includes('**إعادة تقديم 1.3.13 (٢٢ أكتوبر): لا بناء.**') && readme.includes('v-hw-resubmit-1313'));
+  assert.ok(!(readme + notes).includes('1.3.14') && !(readme + notes).includes('20261022'), 'لا إصدار جديد');
 });
