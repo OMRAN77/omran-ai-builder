@@ -92,12 +92,16 @@ async function streamOne(spec, model, messages, send, opts) {
   const fetchImpl = opts.fetchImpl || fetch;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs || 60000);
+  /* v-free-vision-next (تجربة المعاينة ٢٢ أكتوبر: Nemotron بلا حرف ٦٠ ثانية ثمّ «aborted»، والمستخدم ينتظر دقيقة ليرى «ما قدرت أقرأ الصورة»):
+     firstTextMs = مهلة أوّل حرف — إن لم يصل نصّ قبلها يُقطع النداء بخطأ slow فيُجرَّب النموذج التالي؛ وreqExtra حقول إضافيّة للطلب. */
+  let slow = false;
+  const firstTimer = spec.firstTextMs ? setTimeout(() => { slow = true; ctrl.abort(); }, spec.firstTextMs) : null;
   let text = '';
   try {
     const r = await fetchImpl(spec.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + spec.key },
-      body: JSON.stringify({ model, messages, max_tokens: opts.maxTokens || 4000, temperature: 0.7, stream: true }),
+      body: JSON.stringify(Object.assign({ model, messages, max_tokens: opts.maxTokens || 4000, temperature: 0.7, stream: true }, spec.reqExtra || {})),
       signal: ctrl.signal,
     });
     if (!r.ok || !r.body) {
@@ -118,12 +122,16 @@ async function streamOne(spec, model, messages, send, opts) {
         let ev;
         try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
         const d = ev.choices && ev.choices[0] && ev.choices[0].delta && ev.choices[0].delta.content;
-        if (d) { text += d; send({ delta: d }); }
+        if (d) { if (firstTimer) clearTimeout(firstTimer); text += d; send({ delta: d }); }
       }
     }
     return text;
+  } catch (e) {
+    if (slow && !text) { const er = new Error('free-chain ' + spec.id + ' no text in ' + spec.firstTextMs + 'ms'); er.slow = true; er.model = model; throw er; }
+    throw e;
   } finally {
     clearTimeout(timer);
+    if (firstTimer) clearTimeout(firstTimer);
   }
 }
 
@@ -174,10 +182,12 @@ async function streamFreeChain(args) {
   // العمياء كلّها؛ ولا مزوّد يرى = فشل صريح (no-vision-provider) يقوله المستدعي بصدق.
   const needVision = convoHasImage(args.convo);
   /* v-img-why: مزوّد أعمى له نماذج ترى (visionModels) يدخل دور الصورة بها وحدها، بعد من يرى أصلًا، وبلا استكشاف /models
-     (قد يلتقط نموذجًا أعمى). */
+     (قد يلتقط نموذجًا أعمى). v-free-vision-next: بلا «تفكير» قبل الردّ (reasoning.enabled=false في توثيق الوسيط)، ومهلة أوّل حرف
+     FREE_VISION_FIRST_MS (١٥ ثانية) لكلّ نموذج — البطيء يُترك للتالي. Gemini لم يُمسّ. */
+  const visionFirstMs = Number((args.env || process.env).FREE_VISION_FIRST_MS) > 0 ? Number((args.env || process.env).FREE_VISION_FIRST_MS) : 15000;
   const chain = needVision
     ? all.filter((s) => s.vision).concat(all.filter((s) => !s.vision && Array.isArray(s.visionModels) && s.visionModels.length)
-      .map((s) => Object.assign({}, s, { vision: true, visionOnly: true, models: s.visionModels.slice(), model: s.visionModels[0], cacheId: s.id + ':vision' })))
+      .map((s) => Object.assign({}, s, { vision: true, visionOnly: true, models: s.visionModels.slice(), model: s.visionModels[0], cacheId: s.id + ':vision', reqExtra: { reasoning: { enabled: false } }, firstTextMs: visionFirstMs })))
     : all;
   const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { /* لا شيء */ } });
   const now = typeof args.now === 'number' ? args.now : Date.now();
@@ -188,6 +198,8 @@ async function streamFreeChain(args) {
   if (!all.length) errors.push('no-provider-keys');
   else if (!chain.length) errors.push('no-vision-provider');
   const scrub = (s) => String(s || '').replace(/[A-Za-z0-9_-]{24,}/g, '…').replace(/\s+/g, ' ').slice(0, 160);
+  // v-free-vision-next: سبب الفشل كاملًا لسجلّ الخادم (المقصوص عند ١٦٠ حرفًا أخفى سبب Gemma 26B) — جسم الردّ بلا مفاتيح.
+  const detail = (e) => String(e && e.status ? 'http ' + e.status + ' ' + (e.body || '') : (e && e.message) || e).replace(/[A-Za-z0-9_-]{24,}/g, '…').replace(/\s+/g, ' ').slice(0, 800);
   for (const spec of chain) {
     attempts++;
     const messages = toOpenAIMessages(system, args.convo, spec.vision);
@@ -198,6 +210,7 @@ async function streamFreeChain(args) {
       const text = await streamOne(spec, model, messages, send, args);
       if (text && text.trim()) {
         workingModel.set(spec.cacheId || spec.id, { model, at: now });
+        if (needVision) log('vision ' + spec.id + '/' + model + (errors.length ? ' after ' + errors.join(' | ') : '')); // v-free-vision-next: النجاح كان صامتًا — من قرأ الصورة ومن زحم قبله، في سجلّ الخادم وحده
         return { ok: true, provider: spec.id, model, text, attempts, errors };
       }
       errors.push(spec.id + '/' + model + ': empty');
@@ -212,8 +225,9 @@ async function streamFreeChain(args) {
         if (res) return res;
       } catch (e) {
         if (partial.trim()) return { ok: true, provider: spec.id, model, text: partial, attempts, truncated: true, errors };
-        if (isModelError(e)) { tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } if (spec.id === 'groq' && (e.status === 429 || e.status === 413)) { busyN++; tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } // v-plan-models: حدود Groq لكلّ موديل — المزدحم يجرّب التالي قبل الخروج من Groq
-        log(spec.id + ' failed: ' + scrub(e.message));
+        if (needVision) log(spec.id + '/' + model + ' ' + detail(e)); // v-free-vision-next: كلّ محاولة فاشلة في دور الصورة بسببها كاملًا
+        if (isModelError(e)) { tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } if ((spec.id === 'groq' && (e.status === 429 || e.status === 413)) || (spec.visionOnly && ((e.status === 429 && !/free-models-per-/i.test(e.body || '')) || e.slow))) { busyN++; tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } // v-plan-models: حدود Groq لكلّ موديل — المزدحم يجرّب التالي قبل الخروج من Groq؛ v-free-vision-next: ونماذج الرؤية المجّانيّة في الوسيط كذلك (429 «rate-limited upstream» زحمة نموذج واحد)، إلّا حدّ الحساب نفسه (free-models-per-day/min) فلا فائدة من التالي
+        if (!needVision) log(spec.id + ' failed: ' + scrub(e.message)); // دور الصورة سجّله كاملًا أعلاه
         errors.push(spec.id + ': ' + scrub(e.message));
         providerDead = true;
         break;
