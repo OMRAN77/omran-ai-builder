@@ -44,10 +44,10 @@ const SPEC = {
   TAVILY_API_KEY:         ['feature', 'بحث'],
   GOOGLE_SEARCH_API_KEY:  ['feature', 'بحث Google'],
   GOOGLE_SEARCH_CX:       ['feature', 'بحث Google'],
-  // v-serp-cards: بديل بحث Google (يتوقّف ١ يناير ٢٠٢٧) للبطاقات والبحث الحيّ — أوّل مفتاح موجود يعمل، وبلاها السلسلة كما كانت. اشتراك = إنفاق بموافقة المالك
-  SERPER_API_KEY:         ['tunable', 'بديل بحث Google (serper.dev) — أوّلًا إن وُجد'],
-  SEARCHAPI_API_KEY:      ['tunable', 'بديل بحث Google (searchapi.io) — إن غاب SERPER_API_KEY'],
-  SERPAPI_API_KEY:        ['tunable', 'بديل بحث Google (serpapi.com) — إن غاب الاثنان'],
+  // v-serp-cards: بديل بحث Google (يتوقّف ١ يناير ٢٠٢٧) للبطاقات والبحث الحيّ والتواصل ومعرض الأفكار (v-serp-modules) — أوّل مفتاح موجود يعمل، وبلاها السلسلة كما كانت. اشتراك = إنفاق بموافقة المالك
+  SERPER_API_KEY:         ['tunable', 'بديل بحث Google (serper.dev) — أوّلًا إن وُجد؛ بلا صور (لا SafeSearch موثّق)'],
+  SEARCHAPI_API_KEY:      ['tunable', 'بديل بحث Google (searchapi.io) — إن غاب SERPER_API_KEY؛ والصور بـSafeSearch أوّلًا'],
+  SERPAPI_API_KEY:        ['tunable', 'بديل بحث Google (serpapi.com) — إن غاب الاثنان؛ والصور إن غاب SEARCHAPI_API_KEY'],
   CARDS_SHOPPING:         ['tunable', 'on: نتائج التسوّق (صورة · سعر بعملة البلد · متجر) لبطاقات المنتجات بمفتاح SERPER_API_KEY وحده — رصيدان للنداء؛ الافتراضيّ مطفأ'],
   GOOGLE_CLIENT_ID:       ['feature', 'دخول Google'],
   GOOGLE_CLIENT_SECRET:   ['feature', 'دخول Google'],
