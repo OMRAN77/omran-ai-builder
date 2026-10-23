@@ -1,0 +1,82 @@
+# مسبار لهجة مها: ٣٠ طلبًا إماراتيًّا بصوت حقيقيّ على جلسة مها كما يبنيها الإنتاج — هل فهمت، هل ردّت بالخليجي، أيّ نافذة
+# فتحت، وكم م.ث من نهاية الكلام إلى أوّل صوت منها. يُشغَّل يدويًّا وحده (workflow_dispatch): وسم في رسالة التزام كان يشغّله ولو اقتُبس
+# في شرح (التزام 6a8ff8f — أُلغي في الاستنساخ قبل أيّ نداء)، ودمج squash يحمله إلى main.
+# كلفة: مكالمات صوتيّة قصيرة على حساب المالك — لا تُشغَّل إلّا بطلب. كلام مها في السجلّ مختوم (ذاكرة المالك تصلها).
+name: maha-dialect-probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'أرقام طلبات مفصولة بفواصل (فارغ = الثلاثون)'
+        default: ''
+      patch:
+        description: 'تجربة إعداد جلسة (JSON يُدمج في session، الوضع المحلّيّ) — فارغ = كما في المعالج'
+        default: ''
+      code_ref:
+        description: 'كود مها من التزام آخر (realtime-session.js وmaha-app.js) — لقياس «قبل» ثانٍ بالمسبار نفسه؛ فارغ = هذا الفرع'
+        default: ''
+      requests:
+        description: 'ملفّ طلبات آخر (مثل scripts/maha-dialect-guard.json) — فارغ = الثلاثون'
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    # طابور واحد معلّق لكلّ مجموعة: «قبل» ثمّ «بعد» بالتتابع، وثالث يصل يلغي المعلّق
+    concurrency:
+      group: maha-dialect-probe
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund && npm i --no-save --ignore-scripts --no-audit --no-fund ws@8.18.0
+      - run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      # الصوت نفسه في كلّ تشغيلة (قبل/بعد): مخبّأ ببصمة ملفّ الطلبات
+      - uses: actions/cache@v4
+        with:
+          path: .maha-tts-cache
+          # المفتاح ثابت لا يُكتب فوقه: كلّ تشغيلة تحفظ نسختها وتستعيد آخر نسخة بالبادئة (تجربة طلبين ثمّ الثلاثون بالصوت نفسه)
+          key: maha-tts-${{ hashFiles('scripts/maha-dialect-requests.json') }}-v1-${{ github.run_id }}
+          restore-keys: maha-tts-${{ hashFiles('scripts/maha-dialect-requests.json') }}-v1-
+      - name: Credentials present (names only)
+        env:
+          A: ${{ secrets.SAMPLE_TOKEN }}
+          B: ${{ secrets.EVAL_TOKEN }}
+          C: ${{ secrets.PROBE_TOKEN }}
+          D: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          for p in "SAMPLE_TOKEN:$A" "EVAL_TOKEN:$B" "PROBE_TOKEN:$C" "OPENAI_API_KEY:$D"; do n="${p%%:*}"; v="${p#*:}"; [ -n "$v" ] && echo "$n: set" || echo "$n: empty"; done
+      - name: Maha code from another ref
+        if: inputs.code_ref != ''
+        env:
+          REF: ${{ inputs.code_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$REF"
+          git checkout FETCH_HEAD -- api/_lib/realtime-session.js api/_lib/maha-app.js
+          echo "MAHA_CODE_REF $(git rev-parse FETCH_HEAD)"
+      - name: Probe Maha
+        env:
+          # الموقع المنشور برمز جلسة المالك (السرّ نفسه الذي يستعمله video-samples) — بلا حدّ دقائق؛ رمز غيره يوقف المسبار.
+          # المنشور هو main: من فرع أو بتجربة patch/code_ref يُقاس كود الفرع محلّيًّا لا main بصمت.
+          MAHA_TOKEN: ${{ github.ref == 'refs/heads/main' && inputs.patch == '' && inputs.code_ref == '' && (secrets.SAMPLE_TOKEN || secrets.EVAL_TOKEN || secrets.PROBE_TOKEN) || '' }}
+          # احتياط محلّيّ إن غاب الرمز: معالج الجلسة في العمليّة نفسها بمفتاح المستودع
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ONLY_INPUT: ${{ inputs.only }}
+          REQS: ${{ inputs.requests }}
+          MAHA_SESSION_PATCH: ${{ inputs.patch }}
+        # only كما كُتب يصل المسبار، وهو يرفض ما ليس أرقام طلبات (لا «الثلاثون كلّها» لأنّه كُتب «1-3»)
+        run: |
+          node scripts/maha-dialect-probe.mjs --cache .maha-tts-cache --out maha-dialect-results.json ${ONLY_INPUT:+--only "$ONLY_INPUT"} ${REQS:+--requests "$REQS"}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: maha-dialect-${{ github.run_id }}
+          path: maha-dialect-results.json
+          retention-days: 30

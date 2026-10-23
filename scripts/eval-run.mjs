@@ -43,7 +43,7 @@ async function ask(token, provider, messages) {
   const t0 = Date.now();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  const run = { text: '', sources: 0, firstDeltaMs: 0, totalMs: 0, tier: '', model: '', error: '' };
+  const run = { text: '', sources: 0, firstDeltaMs: 0, totalMs: 0, tier: '', model: '', error: '', diag: [] };
   try {
     const res = await fetch(BASE + '/api/ai?action=chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
@@ -67,6 +67,7 @@ async function ask(token, provider, messages) {
         if (Array.isArray(ev.sources)) run.sources += ev.sources.length;
         if (typeof ev.tier === 'string') run.tier = ev.tier;
         if (typeof ev.modelLabel === 'string') run.model = ev.modelLabel;
+        if (Array.isArray(ev.tierDiag)) run.diag = ev.tierDiag.map((d) => String(d).slice(0, 300)); // v-free-vision-next: أسباب فشل السلسلة المجّانيّة (بلا مفاتيح من الخادم) — كانت تُهمل
         if (ev.error) run.error = String(ev.error).slice(0, 160);
       }
     }
@@ -90,7 +91,7 @@ async function runQuestion(token, provider, q) {
     run = await ask(token, provider, history.slice());
     history.push({ role: 'assistant', content: run.text || '…' });
   }
-  return Object.assign(S.scoreQuestion(q, run), { question: turns[turns.length - 1], reply: run.text.slice(0, 4000), error: run.error, sources: run.sources });
+  return Object.assign(S.scoreQuestion(q, run), { question: turns[turns.length - 1], reply: run.text.slice(0, 4000), error: run.error, sources: run.sources, diag: run.diag });
 }
 
 async function pool(items, n, fn) {
@@ -110,6 +111,7 @@ for (const provider of PROVIDERS) {
   const results = await pool(questions, CONCURRENCY, async (q) => {
     const r = await runQuestion(token, provider, q);
     console.log((r.score === 100 ? '✓' : '✗') + ' ' + String(r.score).padStart(3) + '  ' + q.id + (r.error ? '  [' + r.error + ']' : ''));
+    if (r.diag && r.diag.length) console.log('     tierDiag: ' + r.diag.join(' | '));
     return r;
   });
   const tiers = [...new Set(results.map((r) => r.tier).filter(Boolean))];

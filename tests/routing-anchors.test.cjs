@@ -98,9 +98,9 @@ const NAMED = [
   ['api/_lib/tier.js', 187, 'async function resolveTier('],
   ['api/_lib/tier.js', 235, 'function freeChain('],
   ['api/_lib/free-chain.js', 18, 'const FREE_NOTE'],
-  ['api/_lib/free-chain.js', 167, 'async function streamFreeChain('],
-  ['api/_lib/free-chain.js', 263, 'function modelsToTry('],
-  ['api/_lib/free-chain.js', 270, 'function rememberWorking('],
+  ['api/_lib/free-chain.js', 175, 'async function streamFreeChain('],
+  ['api/_lib/free-chain.js', 277, 'function modelsToTry('],
+  ['api/_lib/free-chain.js', 284, 'function rememberWorking('],
   ['api/_lib/router.js', 32, 'function quickIntent('],
   ['api/_lib/router.js', 78, 'const INTENT_NOTES'],
 ];
