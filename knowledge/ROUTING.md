@@ -181,7 +181,7 @@ PERSONA_NOTE هو ميثاق الشخصيّة (الهويّة · اللغة · �
 
 ```
 if (__freeLane || !__visionRoute)                 chat.js:1602
-   للمجانيّ: send({tier}) ثمّ streamFreeChain(...) free-chain.js:167
+   للمجانيّ: send({tier}) ثمّ streamFreeChain(...) free-chain.js:175
    بلا أدوات · بلا بحث حيّ · الصورة تُمرَّر فقط لمزوّد يرى (Gemini)، وينتهي الطلب
    الصورة تطلب الرؤية تلقائيًّا؛ لا تُرسل إلى مزوّد نصّيّ أعمى
    فشل السلسلة كلّها → logError + tierDiag + FREE_TEXT.busy
@@ -203,27 +203,27 @@ groq · cohere (v-cohere-tools: Cohere عبر الوسيط `cohere/command-a`). 
 ## ٤. سلسلة الاحتياط المجانيّة
 
 ```
-streamFreeChain(args)                             free-chain.js:167
+streamFreeChain(args)                             free-chain.js:175
 │
 ├─ الترتيب: freeChain(env)                        tier.js:235
 │     من FREE_CHAIN في البيئة، وإلّا DEFAULT_CHAIN  tier.js:145
 │     ['groq','gemini','mistral','openrouter']   ← v-plan-routing: Groq أوّلًا (المجّاني ٥ رسائل عليه)
 │     ومزوّد بلا مفتاح يُستبعد من القائمة أصلًا
 │
-├─ لكلّ مزوّد: modelsToTry                         free-chain.js:263
+├─ لكلّ مزوّد: modelsToTry                         free-chain.js:277
 │     المفضّل من البيئة أوّلًا، ثمّ مرشّحو المزوّد، ثمّ استكشاف /models
 │     والمتقاعدون مستبعَدون (RETIRED_MODELS)
 │
-├─ نجح → rememberWorking(id, model)               free-chain.js:270
+├─ نجح → rememberWorking(id, model)               free-chain.js:284
 │     يُحفظ في ذاكرة العمليّة فلا تتكرّر المحاولات كلّ رسالة
 │
 ├─ فشل (429 أو أيّ عطل) → المزوّد التالي **بصمت**
 └─ فشل الجميع → {ok:false, errors}
 ```
 
-في دور الصورة تُشتقّ ضرورة الرؤية تلقائيًّا من المحادثة في `free-chain.js:175`؛
-تُستبعد كلّ الوجهات العمياء في `free-chain.js:178`، ولو لم يبقَ مزوّد رؤية يُعاد
-`no-vision-provider` صراحةً (`free-chain.js:189`). لا تحاول السلسلة نصًّا بديلًا بلا بكسلات.
+في دور الصورة تُشتقّ ضرورة الرؤية تلقائيًّا من المحادثة في `free-chain.js:183`؛
+تُستبعد كلّ الوجهات العمياء في `free-chain.js:188`، ولو لم يبقَ مزوّد رؤية يُعاد
+`no-vision-provider` صراحةً (`free-chain.js:199`). لا تحاول السلسلة نصًّا بديلًا بلا بكسلات.
 كلّها بصيغة OpenAI المتوافقة (`chat/completions` + SSE) فدالّة بثّ واحدة تكفي.
 ملاحظة نظامها `FREE_NOTE` — `free-chain.js:18` (بلا اسم أيّ مزوّد — قرار المالك).
 

@@ -48,3 +48,55 @@ test('٣. الألوان الثلاثة في CSS للوضع الأسود وحد�
   assert.ok(blk.includes('.hero .tile i{background:#000 !important;border-color:rgba(212,175,55,.6) !important'), 'حلقات الفئات ذهبيّة لا ملوّنة');
   assert.ok(read('js/app.bundle.js').includes('window.__om3Mark'), 'الحزمة مبنيّة');
 });
+
+/* v-om3-still (المالك ٢١ أكتوبر: «صفحة الفيديوات فيها وميض»): نموذج لمحرّك الانتقالات — كلّ قراءة لأسلوب العنصر «تُثبّته»، وإن تغيّر لون
+   الحدّ والانتقال غير معطَّل بدأ انتقال (ثمّ transitionend يعيد التصنيف: الحلقة). mark الحقيقيّ من الملفّ يجري عليه. */
+function om3Engine(honorStill, baseDur) {
+  const ops = [];
+  const cls = new Set(['vmk-tab', 'om3-line', 'om3-hot']);
+  const el = {
+    nodeType: 1, tagName: 'BUTTON', parentElement: null, closest: () => null,
+    classList: {
+      add: (...c) => { c.forEach((x) => cls.add(x)); ops.push('+' + c.join(',')); },
+      remove: (...c) => { c.forEach((x) => cls.delete(x)); ops.push('-' + c.join(',')); },
+      contains: (c) => cls.has(c),
+    },
+  };
+  /* CSS الوضع الأسود: om3-line = حدّ شفّاف، وإلّا حدّ التبويب الأصليّ؛ والتبويب انتقاله .15s إلّا تحت om3-still */
+  const styleNow = () => ({ border: cls.has('om3-line') ? 'rgba(0, 0, 0, 0)' : 'rgba(255, 255, 255, 0.12)', dur: honorStill && cls.has('om3-still') ? '0s' : (baseDur || '0.15s') });
+  const st = { committed: styleNow().border, transitions: 0 };
+  const flush = () => { const s = styleNow(); if (s.border !== st.committed && s.dur !== '0s') st.transitions++; st.committed = s.border; return s; };
+  const cs = new Proxy({}, { get(_, k) {
+    const s = flush();
+    if (/^border(Top|Right|Bottom|Left)Color$/.test(k)) return s.border;
+    if (/^border(Top|Right|Bottom|Left)Width$/.test(k)) return '1px';
+    if (/^border(Top|Right|Bottom|Left)Style$/.test(k)) return 'solid';
+    return { transitionDuration: s.dur, animationName: 'none', cursor: 'pointer', backgroundColor: 'rgba(0, 0, 0, 0)', backgroundImage: 'none', position: 'static' }[k];
+  } });
+  const box = { getComputedStyle: () => cs };
+  vm.runInNewContext(pick('  var SKIP', '  /* طابور عناصر') + '\nthis.mark=mark;', box);
+  return { el, cls, ops, st, mark: box.mark };
+}
+
+test('٤. v-om3-still: إعادة التصنيف لا تبدأ انتقالًا — فلا حلقة transitionend ولا وميض على تبويبات صانع الفيديو', () => {
+  // بلا om3-still (كما كان): كلّ إعادة تصنيف تبدأ انتقالين (إلى الحدّ الأصليّ ثمّ إلى الشفّاف) — هذا ما يعيد transitionend الحلقة به
+  const old = om3Engine(false);
+  old.mark(old.el, true);
+  assert.equal(old.st.transitions, 2, 'النموذج يُظهر العطل: انتقالان لكلّ إعادة تصنيف');
+  // مع om3-still: صفر انتقال، والأصناف نفسها، والصنف المؤقّت زال
+  const e = om3Engine(true);
+  for (let i = 0; i < 5; i++) e.mark(e.el, true);
+  assert.equal(e.st.transitions, 0, 'لا انتقال يبدأ من القياس');
+  assert.deepEqual([...e.cls].sort(), ['om3-hot', 'om3-line', 'vmk-tab'], 'التصنيف كما هو، وom3-still أُزيل');
+  assert.deepEqual(e.ops.slice(0, 5), ['+om3-still', '-om3-line,om3-fill,om3-hot,om3-field', '+om3-line', '+om3-hot', '-om3-still'], 'معطَّل قبل الإزالة، ويُزال بعد إعادة الأصناف');
+  // عنصر بلا انتقال: لا om3-still أصلًا (لا كلفة زائدة على آلاف العناصر)
+  const z = om3Engine(true, '0s');
+  z.mark(z.el, true);
+  assert.ok(!z.ops.some((o) => /om3-still/.test(o)) && z.st.transitions === 0, 'بلا انتقال: لا om3-still');
+  const src2 = read('js/app-41-three-colors.js');
+  assert.ok(src2.includes("var cs = getComputedStyle(el), still = /[1-9]/.test(cs.transitionDuration || '');") && src2.includes("if(still) el.classList.add('om3-still');"), 'om3-still لما له انتقال فقط');
+  assert.ok(src2.includes("finally{ if(still){ void cs.borderTopColor; el.classList.remove('om3-still'); } }"), 'الأسلوب النهائيّ يُثبَّت قبل إعادة الانتقال');
+  assert.ok(src2.includes("st.textContent = '.om3-still{transition:none !important}'; document.head.appendChild(st);"), 'القاعدة لكلّ الأوضاع، في head (أدوات-أسود.css للأسود وألوانه وحدها — tools-black)');
+  assert.ok(!read('css/أدوات-أسود.css').includes('om3-still'));
+  assert.ok(read('js/app.bundle.js').includes("el.classList.add('om3-still')") && read('js/app.bundle.js').includes("st.id = 'om3StillCss'"), 'الحزمة مبنيّة');
+});

@@ -2830,6 +2830,15 @@ function omranMdText(el, s){
   }
   if(last < s.length) el.appendChild(document.createTextNode(s.slice(last)));
 }
+/* v-shot-reply (المالك ٢٢ أكتوبر: «إذا كان الجدول أعرض من الشاشة يتمرّر بالعرض ويبين إنّ فيه أعمدة ثانية»): data-fade على الغلاف
+   بالطرف الفعليّ (l/r) الذي خلفه أعمدة، ويزول عند آخر التمرير. scrollLeft في RTL سالب نحو النهاية (المواصفة) فالموضع بقيمته المطلقة.
+   سمة data لا className: سطر التقطيع يقارن className الغلاف بالمساواة. */
+function omranMdTableEdges(w){
+  const max = w.scrollWidth - w.clientWidth, pos = Math.abs(w.scrollLeft), rtl = w.getAttribute('dir') === 'rtl';
+  const end = max > 2 && pos < max - 2, start = max > 2 && pos > 2;
+  const v = [(rtl ? end : start) ? 'l' : '', (rtl ? start : end) ? 'r' : ''].filter(Boolean).join(' ');
+  if(v) w.setAttribute('data-fade', v); else w.removeAttribute('data-fade');
+}
 function omranMdTableEl(tb){
   const wrap = document.createElement('div'); wrap.className = 'md-table-wrap';
   const all = tb.head.concat.apply(tb.head, tb.rows).join(' ');
@@ -2840,6 +2849,8 @@ function omranMdTableEl(tb){
   const thead = document.createElement('thead'); thead.appendChild(tr(tb.head, 'th')); table.appendChild(thead);
   const tbody = document.createElement('tbody'); tb.rows.forEach((r) => tbody.appendChild(tr(r, 'td'))); table.appendChild(tbody);
   wrap.appendChild(table);
+  wrap.addEventListener('scroll', () => omranMdTableEdges(wrap), { passive: true }); // v-shot-reply: الطرف الذي خلفه أعمدة يبهت
+  if(typeof ResizeObserver === 'function'){ const ro = new ResizeObserver(() => omranMdTableEdges(wrap)); ro.observe(wrap); ro.observe(table); } // أوّل رسم وتغيّر العرض
   return wrap;
 }
 /** كلمة فيها ` (أو داخل كود مفتوح): تُملأ رقائق md-ic؛ st.open يحمل الكود المفتوح إلى الكلمة التالية. false = ليست كودًا. */
@@ -3487,7 +3498,8 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
+    // v-om-voices-chat: src 'reply' = «استمع» على ردّ المحادثة؛ للمالك يقرأ الخادم بأصوات om (api/_lib/om-voices.js)
+    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -3707,6 +3719,14 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
         try{ url = await ensureFetched(i); }
         catch(e){
           if(currentCloudToken !== token) return;
+          /* v-om-voices-chat (المالك: «ليش تتدخل مها… الأصوات بس»): خلص حدّ أصوات om اليوميّ ⇐ رسالة الحدّ
+             المترجمة نفسها (portraitLimitReached) ويقف الصوت — لا مها ولا صوت الجهاز بدلها. */
+          if(e && e.message === 'om-quota'){
+            currentCloudToken = null; currentCloudAudio = null; clearWordHighlight();
+            try{ if(typeof settingsToast === 'function') settingsToast(t('portraitLimitReached')); }catch(err){ __swallow(err, 'tts:om-quota-toast'); }
+            if(onEnd) onEnd();
+            return;
+          }
           if('speechSynthesis' in window){
             currentCloudToken = null; currentCloudAudio = null;
             speakOnDevice(chunks[i].wordStart, started);
@@ -28544,7 +28564,7 @@ DESIGN RULES (non-negotiable):
         : 'You are the visual assistant inside the om ai app. Rely ONLY on what is visible in the screenshot, never on your memory of how the program looks elsewhere. Keep the FULL conversation context: device type, UI language, app name, the user goal, and every step you already gave — a short message like "I do not understand" means re-explain the same situation, not start a new topic. On a phone, NEVER give keyboard shortcuts (Ctrl / Alt / Shift / Delete) — give the touch alternative from the menus. Quote button labels verbatim as they appear, in the UI language, then give their position on screen. If the feature the user asks about does not exist in this program, say so plainly in the first line and name the program that does have it — "it does not exist here" is a correct answer. Never suggest a different-purpose tool because its name, icon or menu position looks similar, and never point the user to a destructive tool (Redact / Flatten / Apply / Delete) as a substitute for a feature they asked about. One step per reply, then ask for a fresh screenshot; if the new screen looks unchanged the step failed — give a different route, not the same words. If you cannot find the element in the screenshot, say so and ask for a clearer one — never "look around" or "try tapping". The forbidden failure here is sending the user to the wrong button, not admitting a feature is missing.'});
     }
     if(imageAttachments.length && !cur.adMode){
-      apiMessages.push({role: 'system', content: 'صورة مرفقة — القاعدة الأولى والأهم:\n0) إذا كتب المستخدم مع الصورة سؤالًا أو طلبًا محددًا فأجب عن طلبه هو فقط، مباشرة وباختصار مفيد — ممنوع منعًا باتًا نسخ نصوص الصورة كاملة أو سرد تحليل شامل (عناصر/ألوان/تقييم/خطوات) لم يطلبه. التحليل الشامل أدناه يُطبَّق فقط إذا أرسل الصورة بلا طلب محدد أو طلب صراحةً «حلّل الصورة».\n1) عند التحليل الشامل فقط: اقرأ كل نص ظاهر في الصورة حرفيًا كما هو (عربي أو إنجليزي أو أي لغة) واذكره كاملًا بدون تلخيص.\n2) عند التحليل الشامل فقط: حلّل الصورة بعمق: العناصر، الأشخاص، الألوان، المكان، السياق، الأرقام، الجداول، أي أخطاء أو ملاحظات مهمة، واستنتاجاتك.\n3) في كل الحالات، الإجابة تكون مربوطة بالصورة نفسها: حدّد أولًا أي شاشة/صفحة بالضبط تظهر في الصورة (اسم التطبيق والقسم)، ثم أعط الخطوة الدقيقة انطلاقًا من هذه الشاشة بالذات — سمِّ الزر أو الخيار الظاهر في الصورة حرفيًا الذي يضغطه المستخدم، وإذا كان المطلوب غير موجود في هذه الشاشة قل له بوضوح: «هذا غير موجود هنا، ارجع/ادخل على …» بخطوة واحدة محددة. ممنوع سرد كل الطرق والأماكن الممكنة — طريق واحد دقيق فقط.\n3ب) إذا أعاد المستخدم إرسال نفس الصورة بعد إجابة سابقة فمعناها أن إجابتك ما كانت دقيقة كفاية — ممنوع تكرار نفس الإجابة؛ دقّق في الصورة أكثر وأعطه خطوة أدق وأكثر تحديدًا، أو اسأله سؤالًا واحدًا قصيرًا يحدد وين توقف.\n4) لا تقل أبدًا "لا أستطيع رؤية الصورة" — الصورة أمامك، حلّلها مباشرة.' +
+      apiMessages.push({role: 'system', content: 'صورة مرفقة — القاعدة الأولى والأهم:\n0) إذا كتب المستخدم مع الصورة سؤالًا أو طلبًا محددًا فأجب عن طلبه هو فقط، مباشرة وباختصار مفيد — ممنوع منعًا باتًا نسخ نصوص الصورة كاملة أو سرد تحليل شامل (عناصر/ألوان/تقييم/خطوات) لم يطلبه. التحليل الشامل أدناه يُطبَّق فقط إذا أرسل الصورة بلا طلب محدد أو طلب صراحةً «حلّل الصورة».\n1) عند التحليل الشامل فقط: اقرأ كل نص ظاهر في الصورة بدقّة (عربي أو إنجليزي أو أي لغة) واذكر منه المهمّ فقط — نسخ نصوص الصورة كاملةً حرفيًا فقط إن طلبه المستخدم صراحةً («وش مكتوب»، «انسخ النص»، «ترجم»).\n2) عند التحليل الشامل فقط: حلّل الصورة بعمق: العناصر، الأشخاص، الألوان، المكان، السياق، الأرقام، الجداول، أي أخطاء أو ملاحظات مهمة، واستنتاجاتك.\n3) في كل الحالات، الإجابة تكون مربوطة بالصورة نفسها: حدّد لنفسك أي شاشة/صفحة بالضبط تظهر في الصورة (اسم التطبيق والقسم) بلا وصفها في الردّ، ثم أعط الخطوة الدقيقة انطلاقًا من هذه الشاشة بالذات — سمِّ الزر أو الخيار الظاهر في الصورة حرفيًا الذي يضغطه المستخدم، وإذا كان المطلوب غير موجود في هذه الشاشة قل له بوضوح: «هذا غير موجود هنا، ارجع/ادخل على …» بخطوة واحدة محددة. ممنوع سرد كل الطرق والأماكن الممكنة — طريق واحد دقيق فقط.\n3ب) إذا أعاد المستخدم إرسال نفس الصورة بعد إجابة سابقة فمعناها أن إجابتك ما كانت دقيقة كفاية — ممنوع تكرار نفس الإجابة؛ دقّق في الصورة أكثر وأعطه خطوة أدق وأكثر تحديدًا، أو اسأله سؤالًا واحدًا قصيرًا يحدد وين توقف.\n4) لا تقل أبدًا "لا أستطيع رؤية الصورة" — الصورة أمامك، حلّلها مباشرة.' +
         // v604 — المشاهد والأماكن والديكور: الأربع الأولى تعطي وصفًا محايدًا بلا
         // تسمية نمط ولا تقييم ولا توصية عمليّة، وتجرّ حشوًا جنائيًّا (غياب أشخاص/علامات).
         '\n5) عند التحليل الشامل فقط: إذا كانت الصورة مكانًا أو غرفة أو ديكورًا أو واجهة أو مبنى أو حديقة أو أثاثًا أو تصميمًا معماريًا فالتقرير إلزاميًا بهذا الترتيب: ① سمِّ النمط التصميميّ باسمه المعروف (Japandi أو Minimal أو Scandinavian أو Industrial أو Boho أو Classic أو Modern Luxury أو غيره) وسبب التصنيف. ② العناصر: الأرضيّة والجدران والإضاءة ودرجة حرارتها والأثاث والأقمشة والنباتات ولوحة الألوان. ③ نقاط القوّة ثمّ ملاحظات التحسين بصراحة بلا مجاملة. ④ تقييم من 10 لكلّ بند: الفكرة العامّة، تناسق الألوان، الإضاءة، الفخامة والذوق النهائيّ. ⑤ قائمة ترقية عمليّة: من 4 إلى 6 خطوات محدّدة قابلة للتنفيذ (قطعة أو لون أو إضاءة أو نسيج) مع أثر كلّ خطوة.' +
@@ -49820,9 +49840,13 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var t = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null), n;
     while((n = t.nextNode())){ if(n.nodeType === 3) fixText(n); else fixAttrs(n); }
   }
-  var queue = [], timer = 0;
-  function flush(){ timer = 0; var q = queue; queue = []; q.forEach(walk); }
-  function schedule(n){ queue.push(n); if(!timer) timer = setTimeout(flush, 40); }
+  /* v-no-emoji-flash (المالك ٢٣ أكتوبر بلقطة «أنماط الصور»: «إذا اختار أي صورة من الأنماط تستوي حركة قوية عند جرّب على صورتك»):
+     التنظيف كان بعد ٤٠ م.ث (setTimeout) فيُرسم النصّ بإيموجيه إطارًا أو اثنين ثمّ يُقصّ — «✨ جرّب على صورتك» يكبر ١٧ بكسل ثمّ يرجع،
+     والنجمة و📁 تقفزان معه في كلّ اختيار (قيس في الإنتاج: ١٥٠←١٦٧←١٥٠ خلال ~٥٠ م.ث). المراقب يُسلَّم في مهمّة دقيقة قبل الرسم،
+     فالتنظيف داخله = لا إطار بالإيموجي أبدًا، في كلّ نصّ يُكتب بإيموجي لا هذا الزرّ وحده. */
+  var queue = [];
+  function flush(){ var q = queue; queue = []; q.forEach(walk); }
+  function schedule(n){ queue.push(n); }
   function start(){
     if(!document.body) return;
     walk(document.body);
@@ -49833,6 +49857,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
           else if(m.type === 'characterData') schedule(m.target);
           else if(m.type === 'attributes') schedule(m.target);
         });
+        flush(); /* قبل الرسم */
       }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label'] });
     }catch(e){ __swallow(e, 'clean-ui:observer'); }
   }
@@ -50443,10 +50468,20 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var s = surfaceOf(el);
     return !!s && s.backgroundImage === 'none' && s.backgroundColor === bg;
   }
+  /* v-om3-still (المالك ٢١ أكتوبر: «صفحة الفيديوات فيها وميض»): التصنيف يزيل الأصناف ثمّ يقرأ الأسلوب ثمّ يعيدها، والقراءة تُثبّت
+     الحالة بلا أصناف — فعنصر له انتقال (تبويبات صانع الفيديو: حدّ .15s) يبدأ انتقالًا إلى حدّه الأصليّ ثمّ يعود، وtransitionend يعيد
+     تصنيفه فيبدأ انتقالًا جديدًا: حلقة لا تنتهي (قيس في الإنتاج: ٢٤٤ transitionend و٢٤٤ تبديل صنف في ٥ ث، والحدّ يومض بين الشفّاف
+     والظاهر). om3-still (transition:none) طوال القياس، ثمّ تثبيت الأسلوب النهائيّ قبل إزالته — فلا انتقال يبدأ ولا حلقة. */
   function mark(el, inTool){
     if(!el || el.nodeType !== 1 || SKIP[el.tagName] || el.closest('.om3-skip')) return;
+    var cs = getComputedStyle(el), still = /[1-9]/.test(cs.transitionDuration || '');
+    if(still) el.classList.add('om3-still');
     el.classList.remove('om3-line', 'om3-fill', 'om3-hot', 'om3-field');
-    var cs = getComputedStyle(el), bg0 = cs.backgroundColor; /* قبل om3-fill: التصنيف يقرأ لون الخانة نفسها */
+    var bg0 = cs.backgroundColor; /* قبل om3-fill: التصنيف يقرأ لون الخانة نفسها (cs حيّ: يُقرأ بعد الإزالة) */
+    try{ classify(el, inTool, cs, bg0); }
+    finally{ if(still){ void cs.borderTopColor; el.classList.remove('om3-still'); } } /* الأسلوب النهائيّ يُثبَّت والانتقال معطَّل */
+  }
+  function classify(el, inTool, cs, bg0){
     if(lineOf(cs)){ el.classList.add('om3-line'); if(cs.cursor === 'pointer' || /^(BUTTON|A|INPUT|TEXTAREA|SELECT|LABEL)$/.test(el.tagName)) el.classList.add('om3-hot'); }
     if(inTool && !overImage(el, cs)){
       var bi = cs.backgroundImage;
@@ -50475,6 +50510,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     schedule();
   }
   function start(){
+    /* v-om3-still: قاعدة القياس هنا لا في أدوات-أسود.css (ذاك للوضع الأسود وألوانه وحدها) — في head فلا يراها المراقب */
+    try{ var st = document.createElement('style'); st.id = 'om3StillCss'; st.textContent = '.om3-still{transition:none !important}'; document.head.appendChild(st); }catch(e){ __swallow(e, "three-colors:still-css"); }
     add(document.body);
     try{
       new MutationObserver(function(list){

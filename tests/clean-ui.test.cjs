@@ -68,3 +68,24 @@ test('fixText: المسافة الطرفيّة تبقى إن كان للعقدة
   assert.equal(alone.nodeValue, '1', 'بلا أشقّاء: قصّ كما كان');
   assert.equal(onlyEmoji.nodeValue, '🔥 ', 'عقدة كلّها إيموجي تبقى');
 });
+
+test('v-no-emoji-flash: النصّ الذي يُكتب بإيموجي يُنظَّف داخل المراقب نفسه (قبل الرسم) لا بعد ٤٠ م.ث — فلا يقفز زرّ «جرّب على صورتك»', () => {
+  const vm = require('node:vm');
+  let cb = null; const timers = [];
+  const parent = { closest: () => null };
+  const node = { nodeType: 3, nodeValue: '✨ جرّب على صورتك', parentElement: parent, nextSibling: null, previousSibling: null };
+  const body = { nodeType: 1, closest: () => null, getAttribute: () => null };
+  const document = { readyState: 'complete', body, createTreeWalker: () => ({ nextNode: () => null }) };
+  vm.runInNewContext(src, { window: {}, document, NodeFilter: { SHOW_ELEMENT: 1, SHOW_TEXT: 4 }, MutationObserver: function (f) { cb = f; this.observe = () => {}; }, setTimeout: (f, ms) => { timers.push(ms); return 1; }, __swallow() {} });
+  assert.equal(typeof cb, 'function');
+  cb([{ type: 'characterData', target: node }]);
+  assert.equal(node.nodeValue, 'جرّب على صورتك', 'نُظِّف قبل أن يعود المراقب — لا إطار يُرسم بالإيموجي');
+  assert.deepEqual(timers, [], 'لا مؤقّت');
+  // عنصر أُضيف بشجرته يُنظَّف كذلك في النداء نفسه
+  const kid = { nodeType: 3, nodeValue: '🎬 قصة', parentElement: parent, nextSibling: null, previousSibling: null };
+  const el = { nodeType: 1, closest: () => null, getAttribute: () => null };
+  document.createTreeWalker = () => { let i = 0; return { nextNode: () => [kid][i++] || null }; };
+  cb([{ type: 'childList', addedNodes: [el] }]);
+  assert.equal(kid.nodeValue, 'قصة');
+  assert.ok(!/setTimeout\(flush/.test(src) && src.includes('flush(); /* قبل الرسم */'));
+});

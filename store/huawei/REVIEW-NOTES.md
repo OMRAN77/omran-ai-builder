@@ -1,71 +1,93 @@
-# ملاحظات المراجع ونصوص المتجر — Omran AI Builder (AppGallery)
+# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.13)
 
-> انسخ النصّ الإنجليزيّ في خانة **Remarks / Notes for review** عند الرفع، وأضف تحته حساب التجربة
-> (اسم مستخدم + كلمة مرور تُنشئهما في التطبيق قبل الرفع؛ لا تكتبهما في المستودع).
+> إعادة تقديم بعد رفض 1.3.13 (٢٢ أكتوبر ٢٠٢٦: 1.14/1.15 و4.1). انسخ النصّ الإنجليزيّ في خانة **Remarks / Notes for review**،
+> وأضف تحته حساب التجربة (اسم مستخدم + كلمة مرور تُنشئهما في التطبيق قبل الرفع؛ لا تكتبهما في المستودع، ولا تعطِ حساب «omran»).
+> إعادة تقديم **1.3.13 نفسها بلا بناء** (المالك: «رقم الإصدار 1.3.13، ما يريد إصدار جديد»). اسم التطبيق في AGC يبقى كما هو — يطابق
+> اسم الهاتف «عمران AI»؛ و«om ai» اسمه داخل التطبيق، فالوصف يجمعهما في أوّل سطر.
+> كلّ ما في النصوص أدناه موجود في البناء الحاليّ — لا تُضِف أداة مخفيّة (التلفزيون، السيرة الذاتيّة، المصاريف، الاقتراحات،
+> الخدمات الحكوميّة) ولا كلمة مثل «رسمي/موثوق/مفضّل/مميّز/الأفضل» في أيّ خانة.
+> **قبل Submit:** الأزياء والديكور والستايل وأنماط الصور والمقاولات وصورة الإعلان وقراءة الصور تسقط ما دام رصيدا Google AI Studio
+> وOpenAI فارغين (٢٢ أكتوبر) — اشحنهما ثمّ جرّب أداة صورة بحساب التجربة نفسه، وإلّا يرى المراجع المحادثة وحدها تعمل (4.1 مرّة ثالثة).
 
 ## Notes for review (English — paste in AGC)
 ```
-Omran AI Builder is a native-feeling multi-tool AI application, not a single-feature website wrapper.
-Resubmission after the review report of 2026-09-29 (rules 4.1 and 11.4). Both issues are fixed in the content served to this package:
+Omran AI (om ai), version 1.3.13: resubmission after the review report of 2026-10-22 (rules 1.14, 1.15 and 4.1).
 
-1. On first launch the app opens the Tools panel automatically. It shows 19 in-app tools in three groups:
-   Creativity: Photo styles, Suggestions, Video maker, Decor AI, Fashion studio, Style AI.
-   Business: Ad studio, Expense analyzer, CV generator, Documents assistant, Email assistant, Construction designs.
-   Daily life: Qibla & prayer times, TV (live channels), Education, Religious Q&A, Government services, Feedback.
-   (Reopen it any time from the bottom bar: "Tools".)
-2. Every tool runs inside the app (no external browser): AI chat with voice, image generation and editing,
-   video generation, fashion try-on, interior/exterior decor design, live TV, lecture summarizer, CV/PDF builder,
-   prayer times with Qibla compass, and more.
-3. The package launches at https://omran-ai-builder.vercel.app/?store=huawei with verified Digital Asset Links
-   (.well-known/assetlinks.json for com.omran.aibuilder.twa), so it runs full-screen without any browser UI.
-4. Rule 11.4: all market screens (stock ticker, stock market, currency/forex rates) are removed from this package for every user. No cryptocurrency, foreign-exchange or stock-market content is shown in the AppGallery build, and the app offers no trading, exchange or payment-in-crypto service.
+Rules 1.14 and 1.15 (app information):
+- All 8 screenshots were retaken on 2026-10-22 from this build (Huawei package, phone size, a normal user account).
+  They show only screens that a user can open in this version: the Tools panel and six tools. Nothing was drawn on them.
+- Removed from the screenshots and the description: the TV screen (it showed third-party channel names) and every tool
+  that is not available in this version. The description now lists only the tools that are in the app.
+- The listing does not use words such as "official", "trusted", "preferred" or "featured", and it does not mention
+  government services. om ai is an independent app. It is not affiliated with or endorsed by any government body,
+  broadcaster or other brand.
+- Same package, version 1.3.13. Its launcher label stays "عمران AI" (Omran AI Builder); inside the app the same
+  product now uses its short name "om ai". The description names both.
+
+Rule 4.1 (the app offers several types of content):
+On the first launch the app opens the Tools panel by itself. It has 13 tools in three groups:
+  Creativity: Photo Style, Video Maker, Design AI (interior and exterior decor), Fashion AI, Style AI.
+  Business: Ad Studio, Document Assistant, Smart Email Assistant, Construction & Contracting Design.
+  Daily life: Qibla & Prayer (prayer times and Qibla compass), Education (curriculum lessons, lecture summaries,
+  homework help), Religious Insights (verse explanation and hadith search), Feedback.
+The home screen also has an AI chat by text or voice, with image and document attachments.
+Every tool runs inside the app, full screen, without a browser.
+If this phone already ran the app in an earlier review, the Tools panel does not open by itself again.
+Tap "Tools" (the grid icon in the bottom bar) to open it.
+
+Rule 11.4 (report of 2026-09-29, still true): all market screens (stock ticker, stock market, currency/forex rates) are removed from this package for every user. No cryptocurrency, foreign-exchange or stock-market content is shown, and the app offers no trading, exchange or crypto payment service.
 
 How to test each feature quickly:
-- Tools panel: opens on first launch, or tap "Tools" (bottom bar) → tap any card.
-- Chat: type a request on the home screen; "+" attaches images; microphone for voice.
-- Video maker: Tools → Video maker → pick a trend card → Create.
-- Fashion studio: Tools → Fashion → choose category/occasion → results appear in-app.
-- Decor AI: Tools → Decor AI → pick a room type and style.
-- TV: Tools → TV → tap any "Live" channel.
-- Education: Tools → Education → "Lesson from curriculum" or upload a lecture.
-- Qibla & prayer times: Tools → Qibla (allow location).
+- Tools panel: opens on first launch, or tap "Tools" in the bottom bar, then tap any card.
+- Chat: type a request on the home screen; "+" attaches images or files; the microphone records voice.
+- Fashion AI: Tools > Fashion AI > choose a photo, a category and an occasion.
+- Design AI: Tools > Design AI > tap a room type, or upload a photo of your space.
+- Ad Studio: Tools > Ad Studio > pick a business type and answer the questions.
+- Construction: Tools > Construction & Contracting Design > describe the project in one line > Generate.
+- Education: Tools > Education > "Lesson from curriculum" or upload a lecture.
+- Qibla & Prayer: Tools > Qibla & Prayer (allow location).
 
 Test account: (username) / (password)
 ```
 
 ## ملاحظات المراجع (عربيّ — للمراجعة العربيّة إن وُجدت)
 ```
-تطبيق عمران AI منصّة أدوات ذكاء اصطناعيّ متعدّدة، لا غلاف موقع بميزة واحدة.
-ردًّا على القاعدة 4.1 — هذا الإصدار (1.3.12) يغيّر ما يراه المراجع من أوّل ثانية:
-١) عند أوّل تشغيل يفتح التطبيق مربّع الأدوات تلقائيًّا: ١٩ أداة داخل التطبيق في ثلاث مجموعات
-   (إبداع: أنماط الصور، اقتراحات، صانع الفيديو، ديكور، أزياء، ستايل · أعمال: استوديو الإعلانات،
-   محلّل المصاريف، السيرة الذاتيّة، المستندات، البريد، المقاولات · حياة يوميّة: القبلة والمواقيت،
-   التلفزيون، التعليم، التفسير الدينيّ، الخدمات الحكوميّة، رأيك يهمّنا).
-٢) كلّ أداة تعمل داخل التطبيق بلا متصفّح خارجيّ.
-٣) الحزمة تنطلق من الرابط ?store=huawei مع Digital Asset Links موثّقة فتعمل ملء الشاشة بلا واجهة متصفّح.
-٤) لا عملات رقميّة ولا صرف ولا أسواق أسهم في هذا الإصدار (القاعدة 11.4).
+عمران AI (om ai)، الإصدار 1.3.13 — إعادة تقديم بعد تقرير ٢٢ أكتوبر ٢٠٢٦ (القواعد 1.14 و1.15 و4.1).
+1.14 و1.15: اللقطات الثماني أُخذت ٢٢ أكتوبر من هذا البناء نفسه بحساب مستخدم عاديّ، وفيها فقط ما يفتحه المستخدم في هذا الإصدار
+(مربّع الأدوات وستّ أدوات) بلا أيّ رسم فوقها. حُذفت لقطة التلفزيون (أسماء قنوات لجهات أخرى) وكلّ أداة غير متاحة في هذا الإصدار،
+والوصف يعدّ الأدوات الموجودة فقط. لا كلمات مثل «رسمي» أو «موثوق» أو «مفضّل» أو «مميّز»، ولا خدمات حكوميّة. om ai تطبيق مستقلّ
+لا يتبع أيّ جهة حكوميّة أو قناة أو علامة تجاريّة. الحزمة نفسها 1.3.13: اسمها على الهاتف «عمران AI» كاسم المتجر، و«om ai» اسمها المختصر داخل التطبيق.
+4.1: عند أوّل تشغيل يفتح مربّع الأدوات تلقائيًّا: ١٣ أداة في ثلاث مجموعات
+(إبداع: أنماط الصور، صانع الفيديو، ديكور AI، أزياء AI، ستايل AI · أعمال: استوديو الإعلانات، مساعد المستندات، مساعد البريد الذكي،
+تصاميم المقاولات والبناء · حياة يوميّة: القبلة والمواقيت، التعليم، التفسير الدينيّ، رأيك يهمّنا)، ومعها محادثة بالصوت والكتابة.
+إن شُغّل التطبيق على الهاتف نفسه في مراجعة سابقة فلن يفتح المربّع وحده مرّة ثانية: زرّ «الأدوات» (أيقونة المربّعات في الشريط السفليّ).
+11.4: لا عملات رقميّة ولا صرف ولا أسواق أسهم في هذه الحزمة.
 ```
 
 ## وصف المتجر (عربيّ)
-**عنوان قصير:** عمران AI — أدوات ذكاء اصطناعيّ في تطبيق واحد
+**اسم التطبيق:** كما هو في AGC (لا يتغيّر — يطابق اسم الهاتف «عمران AI» في 1.3.13)
+
+**عنوان قصير:** أدوات ذكاء اصطناعيّ في تطبيق واحد
 
 **الوصف:**
-عمران AI تطبيق واحد فيه ١٩ أداة ذكاء اصطناعيّ تعمل بالعربيّة و١٣ لغة أخرى:
-- محادثة ذكيّة بالصوت والكتابة، مع قراءة الصور والمستندات.
-- إنشاء وتعديل الصور بأنماط جاهزة، وصانع فيديو من فكرة أو صورة.
-- استوديو الأزياء: جرّب الملابس على صورتك، وديكور داخليّ وخارجيّ من صورة مكانك.
-- استوديو الإعلانات، مولّد السيرة الذاتيّة (PDF)، مساعد المستندات والبريد، تصاميم المقاولات والبناء.
-- القبلة ومواقيت الصلاة، تلفزيون بقنوات مباشرة، التعليم (تلخيص المحاضرات ودروس المنهج)، أسئلة دينيّة، خدمات حكوميّة.
-كلّ شيء داخل التطبيق، بواجهة عربيّة أنيقة تعمل على الجوّال والحاسوب.
+عمران AI (om ai) تطبيق واحد يجمع أدوات ذكاء اصطناعيّ ومحادثة بالعربيّة و١٣ لغة أخرى:
+- محادثة بالصوت والكتابة، مع إرفاق الصور والمستندات.
+- أنماط الصور، وصانع الفيديو، وستايل AI للشعر والمكياج والإطلالة على صورتك.
+- استوديو الأزياء: خيارات ملابس على صورتك أو من وصف نصّيّ؛ وديكور داخليّ وخارجيّ من صورة مكانك.
+- استوديو الإعلانات، مساعد المستندات، مساعد البريد، وتصاميم المقاولات والبناء (تصوّر أوّليّ وقائمة مواد وتقدير تكلفة).
+- القبلة ومواقيت الصلاة، والتعليم (دروس المنهج وتلخيص المحاضرات وحلّ الواجب)، والتفسير الدينيّ (تفسير آية والبحث في الحديث).
+كلّ الأدوات تعمل داخل التطبيق، على الجوّال والحاسوب.
 
 ## Store description (English)
-**Short:** Omran AI — 19 AI tools in one app
+**App name:** unchanged in AGC (matches the launcher label of 1.3.13)
+
+**Short:** AI tools in one app
 
 **Description:**
-Omran AI puts 19 AI tools in one app, in Arabic and 13 other languages:
-- Smart chat by voice or text, with image and document understanding.
-- Image creation and editing with ready styles, and a video maker from an idea or a photo.
-- Fashion studio (try outfits on your photo) and interior/exterior decor design from a photo of your space.
-- Ad studio, CV generator (PDF), documents and email assistants, construction designs.
-- Qibla and prayer times, live TV channels, education (lecture summaries and curriculum lessons), religious Q&A, government services.
-Everything runs inside the app, with a clean Arabic-first interface for phone and desktop.
+Omran AI (om ai) brings AI tools and an AI chat together in one app, in Arabic and 13 other languages:
+- Chat by voice or text, with image and document attachments.
+- Photo styles, a video maker, and Style AI for hair, makeup and looks on your photo.
+- Fashion studio (outfit options on your photo or from a text description) and interior/exterior decor design from a photo of your space.
+- Ad studio, document assistant, email assistant, and construction designs (a first concept, a materials list and a rough cost estimate).
+- Qibla and prayer times, education (curriculum lessons, lecture summaries, homework help) and religious Q&A (verse explanation and hadith search).
+Every tool runs inside the app, on phone and desktop.
