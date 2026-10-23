@@ -832,7 +832,7 @@ async function liveSearch(query, foreign, countryCode, cityName, win) {
           return items.length ? items.join('\n\n') : null;
         }],
         ['perplexity', function(){ return pplxSearch(searchQuery, win); }],
-        ['google', function(){ return gcseSearch(searchQuery, win); }],
+        ['google', async function(){ return (await require('./serp-search.js').liveText(searchQuery, { win: winOf(searchQuery, win), gl: countryCode || 'AE' })) || gcseSearch(searchQuery, win); }], // v-serp-cards: البديل بمفتاحه أوّلًا، وبلاه جوجل كما كان
       ];
       const failed = [];
       for (const pair of chain) {
@@ -849,7 +849,7 @@ async function liveSearch(query, foreign, countryCode, cityName, win) {
     const wikiP = arWikiLookup(query);
     const chain = [
       ['perplexity', function(){ return pplxSearch(query, win); }],
-      ['google', function(){ return gcseSearch(query, win); }],
+      ['google', async function(){ return (await require('./serp-search.js').liveText(query, { win: winOf(query, win), gl: foreign ? '' : (countryCode || 'AE') })) || gcseSearch(query, win); }], // v-serp-cards
       ['tavily', function(){ return tavilyRaw(query, foreign, win); }],
     ];
     const failed = [];
