@@ -49842,7 +49842,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   }
   var queue = [], timer = 0;
   function flush(){ timer = 0; var q = queue; queue = []; q.forEach(walk); }
-  function schedule(n){ queue.push(n); if(!timer) timer = setTimeout(flush, 40); }
+  /* v-om3-press: الدفعة الصغيرة تُنظَّف فورًا في المراقب (قبل الرسم) — كانت تنتظر ٤٠ مللي ثانية فيظهر النصّ بإيموجيه ثمّ يتغيّر عرضه */
+  function schedule(n){ queue.push(n); if(queue.length <= 400){ if(timer){ clearTimeout(timer); timer = 0; } flush(); } else if(!timer) timer = setTimeout(flush, 40); }
   function start(){
     if(!document.body) return;
     walk(document.body);
@@ -50498,11 +50499,22 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   }
   function schedule(){ if(busy) return; busy = true; (window.requestIdleCallback || function(f){ return setTimeout(f, 60); })(pump, { timeout: 500 }); }
   function push(el){ if(seen){ if(seen.has(el)) return; seen.add(el); } items.push(el); }
-  function add(node, shallow){
+  /* v-om3-press (المالك ٢٣ أكتوبر: «نفس الشي ما تغيّر الوميض عند الضغط» بعد v-om3-still): الضغط على تبويب يعيد بناء
+     شريطه، والعناصر الجديدة كانت تُرسم إطارًا أو اثنين بأسلوبها الأصليّ (حدّ ذهبيّ مصمت وخلفيّة أفتح) ثمّ يصنّفها
+     وقت الفراغ فيطفئ الحدّ — وميض مقيس ٥٠ مللي ثانية على الحاسوب والجوّال. الدفعة الصغيرة (ما يأتي من المراقب
+     أو transitionend) تُصنَّف الآن فورًا: المراقب مهمّة دقيقة قبل الرسم فيولد العنصر بأصنافه. الفحص الأوّل
+     للصفحة كلّها يبقى في وقت الفراغ (لا مهمّة طويلة على أندرويد الضعيف). */
+  var SYNC_MAX = 400;
+  function drainNow(){
+    var n = 0;
+    while(items.length && n < SYNC_MAX){ var el = items.shift(); n++; if(seen) seen.delete(el); if(el.isConnected) mark(el, !!el.closest(TOOLS)); }
+    if(items.length) schedule();
+  }
+  function add(node, shallow, now){
     if(!node || node.nodeType !== 1) return;
     push(node);
     if(!shallow){ var all = node.getElementsByTagName('*'); for(var i = 0; i < all.length; i++) push(all[i]); }
-    schedule();
+    if(now && items.length <= SYNC_MAX) drainNow(); else schedule();
   }
   function start(){
     /* v-om3-still: قاعدة القياس هنا لا في أدوات-أسود.css (ذاك للوضع الأسود وألوانه وحدها) — في head فلا يراها المراقب */
@@ -50512,14 +50524,14 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       new MutationObserver(function(list){
         for(var i = 0; i < list.length; i++){
           var r = list[i];
-          if(r.type === 'childList'){ for(var j = 0; j < r.addedNodes.length; j++) add(r.addedNodes[j]); }
-          else add(r.target, true); /* style تغيّر (تبويب، حالة) */
+          if(r.type === 'childList'){ for(var j = 0; j < r.addedNodes.length; j++) add(r.addedNodes[j], false, true); }
+          else add(r.target, true, true); /* style تغيّر (تبويب، حالة) */
         }
       }).observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['style'] });
       /* لقطة المالك ١٧ أكتوبر (مربّعات سوداء بحدّ ذهبيّ فوق ملصق الديكور): زرّ شفّاف يتلوّن عند المرور بانتقال .15s — تغيّر style
          يُقرأ في منتصف الانتقال (خلفيّة .05 وحدّ ذهبيّ باهت) فيُصنَّف تعبئةً وحدًّا ويعلق أسود بعد مغادرة الفأرة. نعيد التصنيف
          عند انتهاء كلّ انتقال فتُقرأ الحالة الساكنة. */
-      document.addEventListener('transitionend', function(e){ if(e.target && e.target.nodeType === 1) add(e.target, true); }, true);
+      document.addEventListener('transitionend', function(e){ if(e.target && e.target.nodeType === 1) add(e.target, true, true); }, true);
     }catch(e){ __swallow(e, "three-colors:observe"); }
   }
   window.__om3Mark = function(root){ add(root || document.body); };

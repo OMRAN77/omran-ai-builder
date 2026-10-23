@@ -42,7 +42,8 @@
   }
   var queue = [], timer = 0;
   function flush(){ timer = 0; var q = queue; queue = []; q.forEach(walk); }
-  function schedule(n){ queue.push(n); if(!timer) timer = setTimeout(flush, 40); }
+  /* v-om3-press: الدفعة الصغيرة تُنظَّف فورًا في المراقب (قبل الرسم) — كانت تنتظر ٤٠ مللي ثانية فيظهر النصّ بإيموجيه ثمّ يتغيّر عرضه */
+  function schedule(n){ queue.push(n); if(queue.length <= 400){ if(timer){ clearTimeout(timer); timer = 0; } flush(); } else if(!timer) timer = setTimeout(flush, 40); }
   function start(){
     if(!document.body) return;
     walk(document.body);

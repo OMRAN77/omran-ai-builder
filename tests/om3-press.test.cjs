@@ -1,0 +1,78 @@
+// tests/om3-press.test.cjs — v-om3-press: «نفس الشي ما تغيّر الوميض عند الضغط» (المالك ٢٣ أكتوبر ٢٠٢٦ بعد v-om3-still).
+//
+// المقيس بالمسبار (لكلّ إطار، حاسوب وجوّال): الضغط على تبويب في صانع الفيديو يعيد بناء شريطه، والتبويب الجديد
+// يُرسم إطارًا أو اثنين (~٥٠ مللي ثانية) بأسلوبه الأصليّ (حدّ ذهبيّ مصمت وخلفيّة أفتح) ثمّ يصنّفه مصنّف الألوان الثلاثة
+// في وقت الفراغ فيطفئ الحدّ — وميض. وعلى أندرويد فوقه غطاء اللمس الأزرق الافتراضيّ. بعد الإصلاح: صفر إطارات بلا أصناف.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const root = path.join(__dirname, '..');
+const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
+const src41 = read('js/app-41-three-colors.js');
+const src36 = read('js/app-36-clean-ui.js');
+const pick = (src, from, to) => { const a = src.indexOf(from), b = src.indexOf(to, a); if (a < 0 || b < 0) throw new Error('مقطع غير موجود: ' + from); return src.slice(a, b); };
+
+/** طابور app-41 الحقيقيّ (push/add/pump/schedule/drainNow) فوق mark وهميّ يسجّل، ووقت فراغ لا يأتي أبدًا */
+function queue41() {
+  const marked = [], idle = [];
+  const node = (n, kids) => ({ nodeType: 1, isConnected: true, id: n, closest: () => null, getElementsByTagName: () => kids || [] });
+  const sb = { window: { requestIdleCallback: (f, o) => { idle.push(f); return 1; } }, WeakSet, setTimeout: (f) => { idle.push(f); return 1; }, document: {},
+    TOOLS: '#x', mark: (el) => marked.push(el.id) };
+  sb.window.requestIdleCallback = (f) => { idle.push(f); return 1; };
+  vm.runInNewContext(pick(src41, '  /* طابور عناصر', '  function start(){') + '\nthis.add=add;this.itemsOf=function(){return items;};', sb);
+  return { add: sb.add, marked, idle, node, items: sb.itemsOf };
+}
+
+test('١. app-41: الدفعة الصغيرة من المراقب تُصنَّف فورًا (قبل الرسم)، وبلا «الآن» تنتظر وقت الفراغ كما كانت', () => {
+  const q = queue41();
+  const kids = Array.from({ length: 12 }, (_, i) => q.node('k' + i));
+  q.add(q.node('tab', kids), false, true);
+  assert.deepEqual(q.marked, ['tab', ...kids.map((k) => k.id)], 'التبويب وأبناؤه مصنَّفون في النداء نفسه — لا إطار بلا أصناف');
+  assert.equal(q.items().length, 0);
+  const q2 = queue41();
+  q2.add(q2.node('lazy'));
+  assert.deepEqual(q2.marked, [], 'بلا now: في الطابور حتّى وقت الفراغ (الفحص الأوّل للصفحة)');
+  assert.equal(q2.idle.length, 1, 'جُدول في وقت الفراغ');
+  q2.idle[0]({ timeRemaining: () => 50 });
+  assert.deepEqual(q2.marked, ['lazy']);
+  const q3 = queue41();
+  q3.add(q3.node('x'), true, true);
+  assert.deepEqual(q3.marked, ['x'], 'تغيّر style أو transitionend: العنصر وحده فورًا');
+});
+
+test('٢. app-41: دفعة أكبر من ٤٠٠ لا تُصنَّف فورًا (لا مهمّة طويلة على أندرويد) بل في وقت الفراغ', () => {
+  const q = queue41();
+  const kids = Array.from({ length: 450 }, (_, i) => q.node('k' + i));
+  q.add(q.node('big', kids), false, true);
+  assert.deepEqual(q.marked, [], 'ما فوق SYNC_MAX يُؤجَّل');
+  assert.equal(q.items().length, 451);
+  assert.equal(q.idle.length, 1);
+  assert.ok(src41.includes('var SYNC_MAX = 400;'));
+  assert.ok(src41.includes("if(r.type === 'childList'){ for(var j = 0; j < r.addedNodes.length; j++) add(r.addedNodes[j], false, true); }") && src41.includes('else add(r.target, true, true);'), 'المراقب يطلب التصنيف الفوريّ');
+  assert.ok(src41.includes("add(e.target, true, true); }, true);"), 'transitionend كذلك');
+  assert.ok(src41.includes('    add(document.body);\n'), 'الفحص الأوّل بلا now');
+  assert.ok(src41.includes('if(now && items.length <= SYNC_MAX) drainNow(); else schedule();'));
+});
+
+test('٣. app-36: الإيموجي يُنظَّف فورًا من العقدة الجديدة لا بعد ٤٠ مللي ثانية — والدفعة الكبيرة بمؤقّت كما كانت', () => {
+  const walked = []; let timers = 0;
+  const sb = { walk: (n) => walked.push(n), setTimeout: () => { timers++; return 7; }, clearTimeout: () => {} };
+  vm.runInNewContext(pick(src36, '  var queue = [], timer = 0;', '  function start(){') + '\nthis.schedule=schedule;', sb);
+  sb.schedule('a'); sb.schedule('b');
+  assert.deepEqual(walked, ['a', 'b'], 'تنظيف فوريّ بلا مؤقّت');
+  assert.equal(timers, 0);
+  assert.ok(src36.includes("if(queue.length <= 400){ if(timer){ clearTimeout(timer); timer = 0; } flush(); } else if(!timer) timer = setTimeout(flush, 40);"));
+});
+
+test('٤. CSS: لا توهّج لمس افتراضيّ على أيّ عنصر، في أوّل redesign.css (كلّ الأوضاع — بلا-خطوط.css للأسود وحده)، والوسم مرفوع؛ والحزمة مبنيّة', () => {
+  const css = read('css/redesign.css');
+  assert.ok(/^\/\* v-om3-press[^\n]*\*\/\n\*\{-webkit-tap-highlight-color:transparent\}\n/.test(css), 'قاعدة عامّة في رأس الملفّ (لكلّ الأوضاع لا الأسود وحده)');
+  assert.equal((css.match(/tap-highlight-color/g) || []).length, 2, 'العامّة + القديمة على بطاقات الأدوات');
+  assert.ok(!read('css/بلا-خطوط.css').includes('tap-highlight'), 'بلا-خطوط.css للوضع الأسود وحده (no-lines-2 ٢)');
+  const tag = Number((read('index.html').match(/css\/redesign\.css\?v=(\d+)/) || [])[1]);
+  assert.ok(tag >= 696, 'وسم redesign.css رُفع (يُقرأ لا يُثبَّت)');
+  const bundle = read('js/app.bundle.js');
+  assert.ok(bundle.includes('var SYNC_MAX = 400;') && bundle.includes('function drainNow(){') && bundle.includes('if(queue.length <= 400){'), 'شغّل npm run bundle');
+});
