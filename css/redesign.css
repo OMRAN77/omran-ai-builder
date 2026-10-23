@@ -1,3 +1,5 @@
+/* v-om3-press: لا توهّج لمس افتراضيّ على أيّ عنصر في كلّ الأوضاع (أندرويد يرسم غطاءً أزرق ٤٠٪ عند كلّ ضغط — المالك: «الوميض عند الضغط») */
+*{-webkit-tap-highlight-color:transparent}
 /* ================== Omran AI Builder — redesign (visual only, v400) ==================
    حدود مستقيمة 1px solid فقط — لا أي تأثير رسم يد أو حدود متعرجة. */
 :root{ --omGold:#6b7280; --omGoldSoft:rgba(var(--accent-tint-rgb),.32); --omLine:rgba(255,255,255,.09); }

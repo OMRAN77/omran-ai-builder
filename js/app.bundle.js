@@ -50503,10 +50503,33 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   }
   function schedule(){ if(busy) return; busy = true; (window.requestIdleCallback || function(f){ return setTimeout(f, 60); })(pump, { timeout: 500 }); }
   function push(el){ if(seen){ if(seen.has(el)) return; seen.add(el); } items.push(el); }
-  function add(node, shallow){
+  /* v-om3-press (المالك ٢٣ أكتوبر: «نفس الشي ما تغيّر الوميض عند الضغط» بعد v-om3-still): الضغط على تبويب يعيد بناء
+     شريطه، والعناصر الجديدة كانت تُرسم إطارًا أو اثنين بأسلوبها الأصليّ (حدّ ذهبيّ مصمت وخلفيّة أفتح) ثمّ يصنّفها
+     وقت الفراغ فيطفئ الحدّ — وميض مقيس ٥٠ مللي ثانية على الحاسوب والجوّال. الدفعة الصغيرة (ما يأتي من المراقب
+     أو transitionend) تُصنَّف الآن فورًا: المراقب مهمّة دقيقة قبل الرسم فيولد العنصر بأصنافه. الفحص الأوّل
+     للصفحة كلّها يبقى في وقت الفراغ (لا مهمّة طويلة على أندرويد الضعيف). */
+  /* الفوريّ يصنّف عناصر التغيّر نفسه فقط، بميزانيّة لكلّ نداء مراقب، ولا يمسّ الطابور المؤجَّل: كان drainNow يفرّغ حتّى ٤٠٠ من
+     طابور فتح النافذة (٨٤٤ عنصرًا) عند أوّل تغيّر صغير بعده — قيس على جوّال بمعالج ×٤: فتح صانع الفيديو ٨٢٠–٨٧٠ م.ث متواصلة (main ١٧٠–٣٩٠).
+     اختيار محرّك يضيف ٢٧–٥٣ عنصرًا فيُصنَّف كلّه قبل الرسم؛ والميزانيّة ١٢٠ لا ٤٠٠ — بـ٤٠٠ بقي الفتح ٤٨٥–٦٥٢ م.ث (عشرات الأشجار الصغيرة في نداء واحد). */
+  var SYNC_MAX = 120, budget = SYNC_MAX;
+  function markNow(list){ for(var i = 0; i < list.length; i++){ var el = list[i]; if(el.isConnected) mark(el, !!el.closest(TOOLS)); } }
+  /* الفوريّ للظاهر على الشاشة وحده (بالميزانيّة) والباقي للفراغ: فتح صانع الفيديو يضيف ١٠٣٢ عنصرًا منها ~٥٦ ظاهرة، وكانت كلّها
+     تُؤجَّل فيُرسم شريط المحرّكات بحدوده الذهبيّة إطارًا (٢٨ عنصرًا يومض عند الفتح، قيس) — المستطيلات تُقرأ كلّها قبل أيّ كتابة (تخطيط واحد) */
+  /* عموديًّا فقط: تبويبات الشريط المنزلق على الجوّال خارج الشاشة أفقيًّا تُصنَّف معه فلا تومض إن سُحب */
+  function onScreen(el, H){ var r = el.getBoundingClientRect(); return (r.width > 0 || r.height > 0) && r.bottom > 0 && r.top < H; }
+  function add(node, shallow, now){
     if(!node || node.nodeType !== 1) return;
+    var all = shallow ? [] : node.getElementsByTagName('*');
+    if(now){
+      var list = [node].concat(Array.prototype.slice.call(all)), vis = [], H = window.innerHeight || 0, i;
+      for(i = 0; i < list.length; i++){ if(vis.length < budget && onScreen(list[i], H)) vis.push(list[i]); else push(list[i]); }
+      budget -= vis.length;
+      markNow(vis);
+      if(vis.length < list.length) schedule();
+      return;
+    }
     push(node);
-    if(!shallow){ var all = node.getElementsByTagName('*'); for(var i = 0; i < all.length; i++) push(all[i]); }
+    for(i = 0; i < all.length; i++) push(all[i]);
     schedule();
   }
   function start(){
@@ -50515,16 +50538,17 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     add(document.body);
     try{
       new MutationObserver(function(list){
+        budget = SYNC_MAX; /* ميزانيّة الفوريّ لكلّ نداء */
         for(var i = 0; i < list.length; i++){
           var r = list[i];
-          if(r.type === 'childList'){ for(var j = 0; j < r.addedNodes.length; j++) add(r.addedNodes[j]); }
-          else add(r.target, true); /* style تغيّر (تبويب، حالة) */
+          if(r.type === 'childList'){ for(var j = 0; j < r.addedNodes.length; j++) add(r.addedNodes[j], false, true); }
+          else add(r.target, true, true); /* style تغيّر (تبويب، حالة) */
         }
       }).observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['style'] });
       /* لقطة المالك ١٧ أكتوبر (مربّعات سوداء بحدّ ذهبيّ فوق ملصق الديكور): زرّ شفّاف يتلوّن عند المرور بانتقال .15s — تغيّر style
          يُقرأ في منتصف الانتقال (خلفيّة .05 وحدّ ذهبيّ باهت) فيُصنَّف تعبئةً وحدًّا ويعلق أسود بعد مغادرة الفأرة. نعيد التصنيف
          عند انتهاء كلّ انتقال فتُقرأ الحالة الساكنة. */
-      document.addEventListener('transitionend', function(e){ if(e.target && e.target.nodeType === 1) add(e.target, true); }, true);
+      document.addEventListener('transitionend', function(e){ if(e.target && e.target.nodeType === 1){ budget = SYNC_MAX; add(e.target, true, true); } }, true);
     }catch(e){ __swallow(e, "three-colors:observe"); }
   }
   window.__om3Mark = function(root){ add(root || document.body); };
