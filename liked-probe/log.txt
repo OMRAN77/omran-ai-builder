@@ -1,0 +1,2 @@
+مصدر الرمز: none
+✗ OWNER_TOKEN مفقود — أضف سرّ SAMPLE_TOKEN في المستودع = قيمة aiapp_auth_token من متصفّح المالك (DevTools ← Application ← Local Storage).
