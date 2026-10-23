@@ -109,17 +109,18 @@
      وقت الفراغ فيطفئ الحدّ — وميض مقيس ٥٠ مللي ثانية على الحاسوب والجوّال. الدفعة الصغيرة (ما يأتي من المراقب
      أو transitionend) تُصنَّف الآن فورًا: المراقب مهمّة دقيقة قبل الرسم فيولد العنصر بأصنافه. الفحص الأوّل
      للصفحة كلّها يبقى في وقت الفراغ (لا مهمّة طويلة على أندرويد الضعيف). */
-  var SYNC_MAX = 400;
-  function drainNow(){
-    var n = 0;
-    while(items.length && n < SYNC_MAX){ var el = items.shift(); n++; if(seen) seen.delete(el); if(el.isConnected) mark(el, !!el.closest(TOOLS)); }
-    if(items.length) schedule();
-  }
+  /* الفوريّ يصنّف عناصر التغيّر نفسه فقط، بميزانيّة لكلّ نداء مراقب، ولا يمسّ الطابور المؤجَّل: كان drainNow يفرّغ حتّى ٤٠٠ من
+     طابور فتح النافذة (٨٤٤ عنصرًا) عند أوّل تغيّر صغير بعده — قيس على جوّال بمعالج ×٤: فتح صانع الفيديو ٨٢٠–٨٧٠ م.ث متواصلة (main ١٧٠–٣٩٠).
+     اختيار محرّك يضيف ٢٧–٥٣ عنصرًا فيُصنَّف كلّه قبل الرسم؛ والميزانيّة ١٢٠ لا ٤٠٠ — بـ٤٠٠ بقي الفتح ٤٨٥–٦٥٢ م.ث (عشرات الأشجار الصغيرة في نداء واحد). */
+  var SYNC_MAX = 120, budget = SYNC_MAX;
+  function markNow(list){ for(var i = 0; i < list.length; i++){ var el = list[i]; if(el.isConnected) mark(el, !!el.closest(TOOLS)); } }
   function add(node, shallow, now){
     if(!node || node.nodeType !== 1) return;
+    var all = shallow ? [] : node.getElementsByTagName('*');
+    if(now && all.length + 1 <= budget){ budget -= all.length + 1; markNow([node]); markNow(all.length ? Array.prototype.slice.call(all) : []); return; }
     push(node);
-    if(!shallow){ var all = node.getElementsByTagName('*'); for(var i = 0; i < all.length; i++) push(all[i]); }
-    if(now && items.length <= SYNC_MAX) drainNow(); else schedule();
+    for(var i = 0; i < all.length; i++) push(all[i]);
+    schedule();
   }
   function start(){
     /* v-om3-still: قاعدة القياس هنا لا في أدوات-أسود.css (ذاك للوضع الأسود وألوانه وحدها) — في head فلا يراها المراقب */
@@ -127,6 +128,7 @@
     add(document.body);
     try{
       new MutationObserver(function(list){
+        budget = SYNC_MAX; /* ميزانيّة الفوريّ لكلّ نداء */
         for(var i = 0; i < list.length; i++){
           var r = list[i];
           if(r.type === 'childList'){ for(var j = 0; j < r.addedNodes.length; j++) add(r.addedNodes[j], false, true); }
@@ -136,7 +138,7 @@
       /* لقطة المالك ١٧ أكتوبر (مربّعات سوداء بحدّ ذهبيّ فوق ملصق الديكور): زرّ شفّاف يتلوّن عند المرور بانتقال .15s — تغيّر style
          يُقرأ في منتصف الانتقال (خلفيّة .05 وحدّ ذهبيّ باهت) فيُصنَّف تعبئةً وحدًّا ويعلق أسود بعد مغادرة الفأرة. نعيد التصنيف
          عند انتهاء كلّ انتقال فتُقرأ الحالة الساكنة. */
-      document.addEventListener('transitionend', function(e){ if(e.target && e.target.nodeType === 1) add(e.target, true, true); }, true);
+      document.addEventListener('transitionend', function(e){ if(e.target && e.target.nodeType === 1){ budget = SYNC_MAX; add(e.target, true, true); } }, true);
     }catch(e){ __swallow(e, "three-colors:observe"); }
   }
   window.__om3Mark = function(root){ add(root || document.body); };
