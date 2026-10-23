@@ -125,7 +125,7 @@
             var vb = /^data:/i.test(url) ? dataUrlToBlob(url) : await (await fetch(url)).blob();
             var vf = new File([vb], nm, { type: vb.type || 'video/mp4' });
             if(navigator.canShare && navigator.canShare({ files: [vf] })){
-              try{ await navigator.share({ files: [vf], title: 'Omran AI' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
+              try{ await navigator.share({ files: [vf], title: 'om ai' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
             }
             if(showSheet(URL.createObjectURL(vb), vf, nm, 'video')) return true;
           } else {
@@ -139,7 +139,7 @@
           if(link && showSheet(link.dl, ifile, link.name, 'image', link.open)) return true;
           /* تعذّر الرفع: المشاركة بالملف ثم الفتح */
           if(ifile && navigator.canShare && navigator.canShare({ files: [ifile] })){
-            try{ await navigator.share({ files: [ifile], title: 'Omran AI' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
+            try{ await navigator.share({ files: [ifile], title: 'om ai' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
           }
           if(showSheet(URL.createObjectURL(ib), ifile, nm, 'image')) return true;
         }
@@ -153,7 +153,7 @@
       try{
         var file = new File([blob], nm, { type: blob.type || 'application/octet-stream' });
         if(isMobile() && navigator.canShare && navigator.canShare({ files: [file] })){
-          try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }
+          try{ await navigator.share({ files: [file], title: 'om ai' }); return true; }
           catch(err){ if(err && err.name === 'AbortError') return true; }
         }
       }catch(e){ /* guard-ok — نكمل بالرابط */ }

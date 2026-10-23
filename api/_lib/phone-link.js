@@ -48,8 +48,8 @@ function channelReady(channel, purpose) {
 
 function prefill(code, purpose) {
   return purpose === 'recover'
-    ? 'استرجاع حسابي في Omran AI — رمز: ' + code + ' (لا ترسلها إن لم تطلبها أنت)'
-    : 'ربط رقمي بحسابي في Omran AI — رمز: ' + code;
+    ? 'استرجاع حسابي في om ai — رمز: ' + code + ' (لا ترسلها إن لم تطلبها أنت)'
+    : 'ربط رقمي بحسابي في om ai — رمز: ' + code;
 }
 function linkFor(channel, code, purpose) {
   if (channel === 'telegram') return 'https://t.me/' + botName() + '?start=' + code;
@@ -131,9 +131,9 @@ async function complete(code, rawPhone, channel, o) {
 function replyText(r) {
   if (r && r.status === 'verified') return '✓ حسابك: ' + r.username + '\nافتح هذا الرابط واكتب كلمة مرور جديدة (صالح ٣٠ دقيقة):\n' + r.resetLink + '\n\nلا تشارك الرابط مع أحد.';
   return {
-    linked: '✓ تمّ ربط رقمك بحسابك في Omran AI. ارجع للتطبيق.',
-    taken: 'هذا الرقم مرتبط بحساب آخر في Omran AI.',
-    nouser: 'لا يوجد حساب مرتبط بهذا الرقم في Omran AI.',
+    linked: '✓ تمّ ربط رقمك بحسابك في om ai. ارجع للتطبيق.',
+    taken: 'هذا الرقم مرتبط بحساب آخر في om ai.',
+    nouser: 'لا يوجد حساب مرتبط بهذا الرقم في om ai.',
   }[r && r.status] || 'انتهت صلاحيّة الرابط — اطلب رابطًا جديدًا من التطبيق.';
 }
 

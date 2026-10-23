@@ -524,7 +524,7 @@ function msgPrintAfterFont(view, family, ctx){
 function exportReplyAsPdf(text){
   const font = msgPdfFontSpec();
   const pdfFont = msgPdfFontHead(font);
-  const html = '<html><head><meta charset="utf-8"><title>عمران AI</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
+  const html = '<html><head><meta charset="utf-8"><title>om ai</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
   /* v-app-share: window.open داخل تطبيق المتجر يرجع null — نرسل للجسر مباشرة */
   const pdfBridge = omranNativeBridge('omranPdf');
   if(pdfBridge){
@@ -541,7 +541,7 @@ function exportReplyAsPdf(text){
   });
 }
 function exportReplyAsWord(text){
-  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>om ai</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
   msgSaveExport(blob, 'omran-ai-reply.doc');
 }
@@ -3456,13 +3456,13 @@ window.acctToggleQr = function() {
   }
 };
 /* v-acct-referral-i18n (تدقيق ١٨ أكتوبر): «إرسال ومشاركة» كان يُظهر alert عربيًّا (ونصّ المشاركة وprompt عربيّان) في كلّ اللغات.
-   النصوص بمفاتيح، واسم التطبيق من pageTitle (عمران AI / Omran AI)، والنسخ يومض على الزرّ نفسه كزرّ «نسخ» — التوست يقع
+   النصوص بمفاتيح، واسم التطبيق من pageTitle (om ai / om ai)، والنسخ يومض على الزرّ نفسه كزرّ «نسخ» — التوست يقع
    تحت طبقة نافذة الإعدادات فلا يُرى. */
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
   var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
   if (navigator.share) {
-    try { await navigator.share({ title: String(t('pageTitle') || '').split(' — ')[0] || 'Omran AI', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+    try { await navigator.share({ title: 'om ai', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
   } else {
     try {
       await navigator.clipboard.writeText(shareUrl);

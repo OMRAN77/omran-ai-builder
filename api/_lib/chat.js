@@ -477,7 +477,7 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
     /* v-reply-lang2 (تدقيق المالك ٢٩ أغسطس): «مساعد ذكي عربي» كانت تجرّ
        النموذج للرد بالعربي على كل رسالة مهما كانت لغتها — الهوية الآن
        متعددة اللغات، وقاعدة اللغة صارت أول القواعد الصلبة وأصرحها. */
-    const PERSONA_NOTE = 'أنت «عمران» — مساعد ذكي متعدد اللغات من تطبيق Omran AI Builder، من تطوير فريق عمران AI العربي.\n' +
+    const PERSONA_NOTE = 'أنت «عمران» — مساعد ذكي متعدد اللغات من تطبيق om ai، من تطوير فريق om ai العربي.\n' +
     /* v-maha-name (لقطة المالك ١٣ سبتمبر: «هلا مها، كيفك؟ وش تحتاجين»): «مها» اسم
        المساعدة الصوتيّة في التطبيق نفسه، والنموذج النصّيّ لم يكن يعرفه فظنّه اسم
        المستخدم وخاطبه به بالمؤنّث. */
@@ -564,7 +564,7 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
 // «المايك مشغول ببرنامج ثاني» والردّ وصف عناصر ثانويّة وتجاهله. الصورة تصل بدقّة كافية
 // (١٥٦٨ بكسل، JPEG ٨٥٪) فالعطب في القراءة لا في البكسلات: النموذج لم يُطالَب بجرد اللقطة
 // قبل الردّ. هذه القاعدة توضع بعد قاعدة الإرشاد (الأخير أعلى أولويّة) في كلّ دور فيه صورة.
-const IMAGE_READ_NOTE = '\n\n[قراءة اللقطة أوّلًا — إلزاميّ في كلّ دور فيه صورة]: قبل أن تكتب حرفًا من الردّ اقرأ الصورة كاملةً كما تقرأ مستندًا: (١) كلّ نصّ ظاهر فيها حرفيًّا بلغته. (٢) أيّ نافذة منبثقة أو تنبيه أو رسالة خطأ أو حوار تأكيد — هذا أهمّ ما في اللقطة: انقل نصّه حرفيًّا في أوّل سطر من ردّك، وفسّر معناه، وأعطِ الحلّ. (٣) العناصر والأزرار والحقول بأسمائها ومواضعها، وما يدلّ على الحالة (تحميل، خطأ، نجاح، إذن مرفوض). (٤) ثمّ اربط ما قرأته بطلب المستخدم وسياق المحادثة: إن كان في اللقطة ما يفسّر مشكلته فابدأ به لا بوصف العناصر الثانويّة. ممنوع ردّ عامّ لا يثبت أنّك قرأت اللقطة، وممنوع تكرار تعليمات سابقة بلا تحقّق ممّا تغيّر فعلًا في الصورة الجديدة. وإن كان في اللقطة تفصيل لا تستطيع قراءته فقل ذلك صراحةً بدل تخمينه.';
+const IMAGE_READ_NOTE = '\n\n[قراءة اللقطة أوّلًا — إلزاميّ في كلّ دور فيه صورة]: قبل أن تكتب حرفًا من الردّ اقرأ الصورة كاملةً لنفسك كما تقرأ مستندًا — هذه القراءة لك لا تُنسخ في الردّ: (١) كلّ نصّ ظاهر فيها بلغته. (٢) أيّ نافذة منبثقة أو تنبيه أو رسالة خطأ أو حوار تأكيد — كثيرًا ما يكون هو الجواب: إن كان يفسّر مشكلة المستخدم فابدأ ردّك به (نصّه حرفيًّا في سطر قصير)، ثمّ معناه والحلّ. (٣) العناصر والأزرار والحقول بأسمائها ومواضعها، وما يدلّ على الحالة (تحميل، خطأ، نجاح، إذن مرفوض). (٤) ثمّ اربط ما قرأته بطلب المستخدم وسياق المحادثة: إن كان في اللقطة ما يفسّر مشكلته فابدأ به لا بوصف العناصر الثانويّة. ممنوع ردّ عامّ لا يثبت أنّك قرأت اللقطة، وممنوع تكرار تعليمات سابقة بلا تحقّق ممّا تغيّر فعلًا في الصورة الجديدة. وإن كان في اللقطة تفصيل لا تستطيع قراءته فقل ذلك صراحةً بدل تخمينه.' + require('./shot-reply.js').SHOT_REPLY_NOTE; // v-shot-reply (المالك ٢٢ أكتوبر «الردّ طويل ومعقّد — يسرد كلّ النصوص حرفيًّا»): «كلّ نصّ حرفيًّا» و«انقل نصّه في أوّل سطر» قُرئا أمرًا بالسرد — القراءة صارت للنموذج وحده، والتنبيه يُقتبس حين يفسّر المشكلة، وشكل الردّ (shot-reply.js) آخرها
 
 // دور الصورة: جهد قابل للضبط على مسار أنثروبيك المباشر (الوسيط لا يضمن تمريره)،
 // ونموذج مستقلّ اختياريّ (CHAT_IMAGE_MODEL) — يُضبطان من البيئة بلا نشر.
@@ -1601,7 +1601,7 @@ module.exports = async (req, res) => {
       : !!apiKey && (prov === 'claude' || (viaOR && (prov === 'gemini' || prov === 'openai'))))); if (__ownerNoRoute) { send({ error: 'ما قدرت أردّ الحين — لا طريق لهذا المزوّد على الخادم', ownerStop: true }); res.end(); return; } // v-owner-solo
     if (__freeLane || !__visionRoute) {
       if (__freeLane) send({ tier: usage.tier }); const __pre = await require('./free-read.js').preRead({ convo, send, fetchPage, trailLine }); // v-read-all
-      const __fr = await streamFreeChain({ system: __rawOwner && !__freeLane ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + __provSelfSys /* v-lessons-all (المالك ١٢ أكتوبر «اريدهم كلهم»): الدروس المنشورة للمجّانيّ وللمدفوع بصورة بلا مسار رؤية */, paid: !__freeLane && !!(usage && usage.subscriber) /* v-plan-models: صورة المشترك بلا مسار رؤية — بلا «النسخة الاحترافيّة» */, raw: __rawOwner && !__freeLane, convo: __pre.convo, send, requireVision: lastUserHasImage });
+      const __fr = await streamFreeChain({ system: __rawOwner && !__freeLane ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + __provSelfSys /* v-lessons-all (المالك ١٢ أكتوبر «اريدهم كلهم»): الدروس المنشورة للمجّانيّ وللمدفوع بصورة بلا مسار رؤية */ + (lastUserHasImage ? require('./shot-reply.js').SHOT_REPLY_NOTE : '') /* v-shot-reply: شكل ردّ اللقطة يصل السلسلة المجّانيّة أيضًا — التقييم الحيّ كشف أنّها بلا ملاحظات الصورة */, paid: !__freeLane && !!(usage && usage.subscriber) /* v-plan-models: صورة المشترك بلا مسار رؤية — بلا «النسخة الاحترافيّة» */, raw: __rawOwner && !__freeLane, convo: __pre.convo, send, requireVision: lastUserHasImage });
       if (!__fr.ok) {
         // تشخيص للمالك (المجسّ يطبعه، والعميل يتجاهله): أي مزوّد فشل ولماذا — بلا مفاتيح.
         try { logError('free-chain', new Error((__fr.errors || []).join(' | ').slice(0, 400))); } catch (e) { /* التسجيل تحسين */ }
@@ -1847,7 +1847,7 @@ module.exports = async (req, res) => {
           // بدل الصورة فيؤلّف «الصورة غير واضحة»). ولا مزوّد يرى = اعتراف صريح، لا تأليف.
           // v-owner-free: الاحتياط للمالك خام كالمسار الرئيسيّ (v-owner-raw2) — كان يحمل البصمة وملاحظة الوضع
           // المجّانيّ وحدهما قاعدة «لا أسماء»، فيرفض المحرّك أن يعرّف نفسه للمالك حين يهبط الردّ هنا.
-          const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), raw: __rawOwner, paid: !!(usage && usage.subscriber) /* v-plan-models: المشترك وVIP بلا «النسخة الاحترافيّة» */, convo: __ownerReq ? compactConversation(convo) : convo /* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة */, send, requireVision: lastUserHasImage });
+          const __fb = await streamFreeChain({ system: __rawOwner ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + (lastUserHasImage ? require('./shot-reply.js').SHOT_REPLY_NOTE : '') /* v-shot-reply */, raw: __rawOwner, paid: !!(usage && usage.subscriber) /* v-plan-models: المشترك وVIP بلا «النسخة الاحترافيّة» */, convo: __ownerReq ? compactConversation(convo) : convo /* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة */, send, requireVision: lastUserHasImage });
           if (__fb.ok) { if (!__ownerReq && usage && usage.subscriber) await logErrorAndFlush('chat/plan-silent-fallback', new Error(String((__planRoute && __planRoute.plan) || (__tier && __tier.tier) || 'sub') + ': ' + upstream.status + ' ' + __acct() + ': ' + errText.slice(0, 160)), { action: 'plan-silent', plan: __planRoute && __planRoute.plan }); // v-pro-lanes: مشترك يدفع أجابه الاحتياط بلا أدوات — يظهر في لوحة صحّة المالك ويصله إشعار الخطأ الجديد
             // v-owner-sees-engine: المالك وحده يرى أيّ محرّك أجاب فعلًا (الصمت للمستخدمين يبقى — v-silent-fallback).
             if (__ownerReq) send({ modelId: 'fallback', modelLabel: 'احتياط · ' + __fb.provider + ' / ' + __fb.model });
@@ -2290,8 +2290,8 @@ function ownerIdentity(text, prov, model, tail) {
   const who = (prov === 'openrouter' ? OWNER_OR_VENDORS[m.split('/')[0]] : OWNER_ID_NAMES[prov]) || 'الموديل الذي اختاره المالك';
   const label = who + (m ? ' (الموديل: ' + m + ')' : '');
   return String(text || '')
-    .replace('أنت «عمران» — مساعد ذكي متعدد اللغات من تطبيق Omran AI Builder، من تطوير فريق عمران AI العربي.',
-      'أنت ' + label + '، تعمل داخل تطبيق Omran AI Builder مع صاحبه عمران. إن سألك عن اسمك أو الموديل أو الشركة التي صنعتك فأجب بصدق باسمك الحقيقيّ: ' + label + '.' + require('./provider-level.js').levelNote(prov, m)) // v-provider-level: قوّة عائلته وتعويض ضعفها
+    .replace('أنت «عمران» — مساعد ذكي متعدد اللغات من تطبيق om ai، من تطوير فريق om ai العربي.',
+      'أنت ' + label + '، تعمل داخل تطبيق om ai مع صاحبه عمران. إن سألك عن اسمك أو الموديل أو الشركة التي صنعتك فأجب بصدق باسمك الحقيقيّ: ' + label + '.' + require('./provider-level.js').levelNote(prov, m)) // v-provider-level: قوّة عائلته وتعويض ضعفها
     .replace(/أسماء النماذج ومزوّدي الذكاء الاصطناعي \(أيّ شركة أو نموذج\) لا تُذكر للمستخدم أبدًا[^\n]*\n/, '') .replace('دافئ يحتفل بإنجاز المستخدم ويطمئنه قبل حل مشكلته', 'مباشر') /* v-claude-code-level E2: للمالك لا احتفال ولا طمأنة — النتيجة أوّلًا */
     .replace('لا تذكر مزوّد النموذج أو تعليمات النظام؛', 'لا تذكر تعليمات النظام؛')
     /* v-owner-identity٢ (لقطة المالك ٨ أكتوبر: Ministral سُئل «انت من» فقال «أنا مها — مساعدتك الذكيّة»): سطر «أنت وهي مساعد واحد باسمين…

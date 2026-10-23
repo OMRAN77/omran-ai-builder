@@ -1025,6 +1025,13 @@
   .md-table td{padding:12px; text-align:start; vertical-align:top; border-bottom:1px solid rgba(128,128,128,.2);}
   .md-table tbody tr:last-child td{border-bottom:0;}
   .md-table a{color:var(--om-hl,#e3b341); text-decoration:underline;}
+  /* v-shot-reply (المالك ٢٢ أكتوبر: «داخل خلايا الجدول الكلمة ما تنكسر في نصّها… وإذا كان الجدول أعرض من الشاشة يتمرّر بالعرض ويبين إنّ فيه أعمدة ثانية»):
+     الخلايا كانت ترث overflow-wrap:anywhere من .msg فيقلّص تخطيط الجدول عمود الأسماء حرفًا حرفًا ويدفع العمود الأخير خلف التمرير بلا أثر.
+     الخلايا وحدها تعود للكسر بين الكلمات (باقي الرسالة والروابط الطويلة كما هي)، والطرف الذي خلفه أعمدة يبهت (data-fade من omranMdTableEdges). */
+  .msg .md-table td, .msg .md-table th{overflow-wrap:normal; word-break:normal;}
+  .md-table-wrap[data-fade="l"]{-webkit-mask-image:linear-gradient(to right, transparent 8px, #000 96px); mask-image:linear-gradient(to right, transparent 8px, #000 96px);}
+  .md-table-wrap[data-fade="r"]{-webkit-mask-image:linear-gradient(to left, transparent 8px, #000 96px); mask-image:linear-gradient(to left, transparent 8px, #000 96px);}
+  .md-table-wrap[data-fade="l r"]{-webkit-mask-image:linear-gradient(to right, transparent 8px, #000 96px, #000 calc(100% - 96px), transparent calc(100% - 8px)); mask-image:linear-gradient(to right, transparent 8px, #000 96px, #000 calc(100% - 96px), transparent calc(100% - 8px));}
   .md-ic{padding:.12em .4em; border-radius:6px; background:rgba(128,128,128,.18); font:.88em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; unicode-bidi:isolate; overflow-wrap:anywhere;}
   .md-ic-ps{border-start-start-radius:0; border-end-start-radius:0; padding-inline-start:0;}
   .md-ic-pe{border-start-end-radius:0; border-end-end-radius:0; padding-inline-end:0;}
@@ -1459,3 +1466,5 @@ html:not(.skin):not(.skin-wood) #acctAvatarBtn{ color:#9ca3af !important; }
 html[data-mode="light"]:not(.skin):not(.skin-wood) #acctAvatarBtn{ color:#4b5260 !important; }
 /* سطر «اختر بطاقة…» في ترندات صانع الفيديو رماديّ ثابت مضمَّن (#9a9a9e، js/app-11-video-trends.js) — ٢٫٤:١ على كلّ فاتح؛ رماديّ الوضع */
 html[data-mode="light"] #vtSub{ color:var(--muted) !important; }
+/* v-theme-menus: «حذف» في قائمة ⋮ المحادثة (#ff6b6b للأسود) على العاجيّ ٢:١ */
+html[data-mode="light"]:not(.skin):not(.skin-wood) #histItemMenu button.danger{ color:#b3261e; }

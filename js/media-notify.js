@@ -12,7 +12,7 @@
 
   var LS_PREF = 'aiapp_media_notify';        // '0' = أطفأه من الإعدادات؛ الافتراضيّ مفعَّل
   var LS_NEVER = 'aiapp_media_notify_never'; // '1' = قال «لا شكرًا» للشريط — لا يُسأل ثانية
-  var ICON = './icons/icon-192-v2.png?icon=gold-20260819';
+  var ICON = './icons/icon-192-v2.png?icon=black-20261022';
 
   /* النصوص محليّة هنا (١٤ لغة) لا في قاموس الحزمة — الملفّ مستقلّ بلا ترقية وسم اللغات. */
   var STR = {

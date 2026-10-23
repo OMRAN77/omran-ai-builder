@@ -170,7 +170,7 @@ test('٦. العميل: التحيّة تتبع سجلّ المكالمات، و
   const sent = [];
   const dc = { readyState: 'open', send: (m) => sent.push(JSON.parse(m)) };
   // v-maha-first-audio: التحيّة تنتظر صوتًا يشتغل — هنا يشتغل فتُرسل فورًا
-  const ctx = { preBufSent: false, mahaRtReconnecting: false, mahaCallMode: 'assistant', lang: 'ar', __swallow() {}, dc, mahaRtDc: dc, mahaRtResponded: false, mahaRtTrace() {}, mahaRtWhenAudio: (fn) => fn() };
+  const ctx = { preBufSent: false, mahaRtReconnecting: false, mahaCallMode: 'assistant', lang: 'ar', __swallow() {}, dc, mahaRtDc: dc, mahaRtResponded: false, mahaRtTrace() {}, mahaRtWhenAudio: (fn) => fn(), mahaRtFirst: null };
   vm.createContext(ctx);
   vm.runInContext(block, ctx);
   const ins = sent[0].response.instructions;

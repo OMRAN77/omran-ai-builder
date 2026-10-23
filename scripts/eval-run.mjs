@@ -84,7 +84,9 @@ async function runQuestion(token, provider, q) {
   const history = [];
   let run = null;
   for (const t of turns) {
-    history.push({ role: 'user', content: t });
+    /* v-shot-reply: سؤال اللقطة (q.image) يُرسل كما يرسله التطبيق — كتلة صورة base64 مع نصّ أوّل رسالة. */
+    const img = !history.length && q.image ? { type: 'image', source: { type: 'base64', media_type: 'image/png', data: fs.readFileSync(path.join(ROOT, 'eval', q.image)).toString('base64') } } : null;
+    history.push({ role: 'user', content: img ? [img, { type: 'text', text: t }] : t });
     run = await ask(token, provider, history.slice());
     history.push({ role: 'assistant', content: run.text || '…' });
   }

@@ -892,7 +892,7 @@
     setStatus(bT('🎨 جاري إنشاء الخاتمة...','🎨 Building outro...'));
     const outroBlob = await recordCanvasClip({
       title: '',
-      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة صانع فيديو عمران','Made with Omran AI Video')),
+      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة om ai','Made with om ai Video')),
       seconds: 2, ratio,
     });
 

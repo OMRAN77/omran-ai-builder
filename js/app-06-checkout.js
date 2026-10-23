@@ -351,7 +351,7 @@ async function setupWalletPaymentRequest(plan){
     const pr = stripe.paymentRequest({
       country: 'AE',
       currency: cur,
-      total: { label: 'Omran AI Builder', amount },
+      total: { label: 'om ai', amount },
       requestPayerName: true,
       requestPayerEmail: true,
     });
@@ -1158,7 +1158,7 @@ $('#btnExportZip').onclick = async () => {
     const zip = new JSZip();
     const isPy = cur.codeType === 'python';
     zip.file(isPy ? 'main.py' : 'index.html', cur.code);
-    zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with Omran AI Builder — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
+    zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with om ai — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
     const blob = await zip.generateAsync({ type: 'blob' });
     await omranSaveOrShareFile(blob, (cur.title || 'app') + '.zip');
   }catch(e){
@@ -1199,7 +1199,7 @@ function formatTaskPlan(steps, done){
   return taskTxt('title') + ':\n' + steps.map((s, i) => ((done && done[i]) ? '✅ ' : '⬜ ') + s).join('\n');
 }
 // هوية التطبيق — نسخة مختصرة: الأساسيات فقط لتوفير التوكنز.
-const APP_IDENTITY_NOTE = '\n(APP IDENTITY: You are inside "Omran AI Builder" by فريق عمران AI. "عمران/Omran" = THIS app only. Features: AI app builder, 3 public providers (Claude/GPT/Gemini), مها voice assistant, image+video generation, live web search, memory, education, stocks. Creator: فريق عمران AI.)'
+const APP_IDENTITY_NOTE = '\n(APP IDENTITY: You are inside "om ai" by فريق om ai. "عمران/Omran" = THIS app only. Features: AI app builder, 3 public providers (Claude/GPT/Gemini), مها voice assistant, image+video generation, live web search, memory, education, stocks. Creator: فريق om ai.)'
 // ست قواعد عامة فقط؛ الدليل والتصحيح والخطوة التالية تعمل عند الحاجة لا آليًّا.
 const CONVERSATION_QUALITY_RULE = '\n[أسلوب المحادثة — ست قواعد عامة ملزمة]:\n' +
 '(١) ابدأ بالجواب أو المعلومة الأهم مباشرة، وقدّم الخطر أو الخطأ أولًا إن وُجد.\n' +

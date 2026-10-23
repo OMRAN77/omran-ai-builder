@@ -194,8 +194,12 @@ window.__omranWhenSeen = (function () {
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Omran AI Builder">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
+<meta name="apple-mobile-web-app-title" content="om ai"><meta name="application-name" content="om ai">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=black-20261022">
+<!-- v-favicon-gold (المالك ٢٢ أكتوبر): Search Console يعرض الأيقونة البنفسجيّة القديمة — الصفحة بلا rel="icon" منذ v468
+     و/favicon.ico كان 404. favicon.ico الذهبيّ (١٦/٣٢/٤٨، على أسود الدردشة) يولّده scripts/make-favicon.mjs من icons/favicon-src.png. -->
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192-v2.png?icon=black-20261022">
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- v-perf-fonts-async: خطّ جوجل كان <link rel=stylesheet> عاديًّا يحجب الرسم الأوّل كاملًا حتى يستقرّ الاتصال
@@ -205,14 +209,14 @@ window.__omranWhenSeen = (function () {
      في الكونسول عند كلّ تحويل إلى PDF؛ جوجل يردّ Access-Control-Allow-Origin:* فالناتج نفسه. والاتّصال المسبق بالوضع نفسه. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" crossorigin="anonymous" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" crossorigin="anonymous"></noscript>
-<link rel="stylesheet" href="css/tokens.css?v=737">
+<link rel="stylesheet" href="css/tokens.css?v=739">
 <link rel="stylesheet" href="css/redesign.css?v=695">
 <link rel="stylesheet" href="css/modules.css?v=691">
 <link rel="stylesheet" href="css/خلفيات.css?v=5">
 <link rel="stylesheet" href="css/إطارات.css?v=9"><!-- v-frame-design: التصميم الجديد للكمبيوتر -->
 <link rel="stylesheet" href="css/إطارات-الجوال.css?v=3"><!-- v-frame-gold-mobile: تصميم الكمبيوتر الجديد على الجوال -->
-<link rel="stylesheet" href="css/ثيم-خشبي.css?v=4"><!-- v-skin-wood: كلّه تحت html.skin-wood -->
-<link rel="stylesheet" href="css/ثيمات.css?v=9"><!-- v-themes: الثيمات الثلاثة عشر، كلّها تحت html.skin -->
+<link rel="stylesheet" href="css/ثيم-خشبي.css?v=5"><!-- v-skin-wood: كلّه تحت html.skin-wood -->
+<link rel="stylesheet" href="css/ثيمات.css?v=10"><!-- v-themes: الثيمات الثلاثة عشر، كلّها تحت html.skin -->
 <link rel="stylesheet" href="css/أدوات-أسود.css?v=7">
 <link rel="stylesheet" href="css/رفع-الصور.css?v=5"><link rel="stylesheet" href="css/بلا-خطوط.css?v=11"><!-- v-no-lines-2: بلا إطارات ذهبيّة، الذهبيّ عند المرور فقط --><!-- v-upload-art: صور المالك خلفيّات مربّعات الرفع (الديكور، الأزياء، الستايل) --><!-- v-tools-black: خلفيّات الأدوات بلون المحادثة في الوضع الأسود -->
 <script>
@@ -684,12 +688,12 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script defer src="/js/partials-core.js?v=673"></script>
+<script defer src="/js/partials-core.js?v=674"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
 <script defer src="/js/design-sels.js?v=576"></script>
 <!-- v417 · أزياء AI: فئة + بطاقات نمط/موسم/مناسبة + دائرات ألوان + رقاقات إضافات. الحقول الجديدة تصل إلى /api/fashion-create عبر window.omranFashionExtras. القوائم الأصلية باقية مخفيّة. -->
-<script defer src="/js/design-gen.js?v=616"></script>
+<script defer src="/js/design-gen.js?v=617"></script>
 
 
 <header>
@@ -1021,12 +1025,12 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script defer src="/js/partials-settings.js?v=704"></script>
+<script defer src="/js/partials-settings.js?v=705"></script>
 
 <script src="/js/selfdiag.js?v=hw-twa-10"></script>
-<script defer src="/templates-data.js?v=589"></script>
+<script defer src="/templates-data.js?v=590"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=87ddd0fd"></script>
+    <script defer src="/js/app.bundle.js?v=9d902abc"></script>
     <script defer src="/js/frame-touch.js?v=4"></script><!-- v-frame-gold: لمسة الضغط للكمبيوتر والجوال (v-touch-mobile: وفراغ المحادثة في الجوال) -->
     <script defer src="/js/modes.js?v=m211026"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
@@ -1086,7 +1090,7 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 <!-- v412 — استوديو صانع الفيديو (كمبيوتر فقط، لا يلمس الجوّال) -->
 <script defer src="/js/video.js?v=458"></script>
 <!-- v-video-edit: «كتابة وصوت على الفيديو» — زرّ في قائمة + بالمحادثة وقسم في صانع الفيديو -->
-<script defer src="/js/video-edit.js?v=6"></script>
+<script defer src="/js/video-edit.js?v=7"></script>
 
 <!-- v413 ديكور: إطار البطاقات · ذوبان حرفَي الشريط · مقبض اللوحة · زرّ المحادثة · الفواصل — كمبيوتر وجوّال -->
 

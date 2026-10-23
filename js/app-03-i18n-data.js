@@ -255,7 +255,7 @@ const I18N = {
     acctSectionTitle: 'حسابي',
     aboutSupportTitle: '📞 خدمة العملاء والدعم',
     aboutSupportDesc: 'نرد على استفساراتك خلال ٢٤-٤٨ ساعة.',
-    aboutCopyright: '© فريق عمران AI',
+    aboutCopyright: '© فريق om ai',
     adminPanelTitle: '🛠️ لوحة التحكم (خاص بالمالك)',
     ownerSectionTitle: '👑 صفحة المالك',
     videoBadgeShort: 'قصير',
@@ -269,7 +269,7 @@ const I18N = {
     provSwitchNote: 'اخترتَ {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
     provSwitchNoteHidden: 'محادثتك على {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
     privacyConsentTitle: '🔒 خصوصيتك أولًا',
-    privacyConsentText: 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.',
+    privacyConsentText: 'قبل استخدام om ai، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.',
     privacyConsentRead: 'قراءة السياسة',
     privacyConsentAgree: 'أوافق وأتابع',
     acctPointsLabel: 'رصيد النقاط',
@@ -411,7 +411,7 @@ const I18N = {
     videoModeVeo: '🚀 سينمائي (أعلى جودة + صوت)',
     videoModeActor: "🗣️ ممثل يتكلم — لهجة إماراتية",
     videoActorSpeechLabel: "🗣️ شو يقول الممثل؟ (بالحرف)",
-    videoActorSpeechPlaceholder: "مثال: هلا والله! حياكم في تطبيق عمران AI",
+    videoActorSpeechPlaceholder: "مثال: هلا والله! حياكم في تطبيق om ai",
     videoActorVoiceLabel: "🎙️ صوت الممثل",
     videoActorVoiceMale: "🧔 رجل — صوت إماراتي",
     videoActorVoiceFemale: "🧕 امرأة — صوت إماراتي",
@@ -1117,7 +1117,7 @@ const I18N = {
     shareAppBtn: 'مشاركة التطبيق',
     refreshBtnTitle: 'تحديث الصفحة',
     langBtn: 'EN',
-    systemPrompt: `أنت ذكاء اصطناعي واسع المعرفة داخل تطبيق «Omran AI Builder» من فريق عمران AI.
+    systemPrompt: `أنت ذكاء اصطناعي واسع المعرفة داخل تطبيق «om ai» من فريق om ai.
 أسلوبك (بصمة المالك — التزم بها في كل رد): زميل خبير محبّ للخير، دافئ وحماسي بصدق — لا روبوت جامد ولا موظف استقبال. احتفل بإنجاز المستخدم مهما صغُر (كفو عليك! / يا سلام! / ولا يهمك)، وعند أي مشكلة امتصّ إحباطه بطمأنة صادقة («اطمّن، واضحة ونحلها») قبل الحل مباشرة. الزبدة أولًا: الجواب في أول سطر أو سطرين ثم التفصيل لمن أراد.
 - جارِ المستخدم في مجلسه: لهجته نفسها (خليجي/فصحى/إنجليزي) وطول جمله ومستوى حماسه — مزيج مريح من الفصحى المبسطة وروح الكلام اليومي القريب للقلب، مع بقاء شخصيتك الدافئة ورأيك الواضح.
 - لا تبدأ بتحية من نفسك. إذا حيّاك المستخدم فرحّب به ترحيبًا حارًّا راقيًا بروح المجلس — جملة أو جملتان فيهما حضور وشخصية (لا «هلا» جافة وحدها) — واسأله سؤالًا واحدًا طبيعيًّا عن حاله أو يومه. سؤال «كيف الحال؟» أجب عنه بدفء كحديث مستمر واسأله عن حاله. الممنوع الوحيد: عرض الخدمات الرسمي («كيف أقدر أساعدك؟») وسرد المواضيع القديمة.
@@ -1315,7 +1315,7 @@ const I18N = {
     acctQrOpen: "فتح الباركود",
     acctQrClose: "إخفاء الباركود",
     acctQrDownload: "تحميل الباركود",
-    acctShareText: "جرّب تطبيق عمران AI لكافة المتاجر:",
+    acctShareText: "جرّب تطبيق om ai لكافة المتاجر:",
     acctCopyPrompt: "انسخ الرابط:",
     /* v-stocks-i18n: شريحتا الذهب والنفط ووحدة الغرام وتبويبات النظرة العامّة وتفاصيل السهم ورمز غير موجود وتلميح 💼 (كانت إنجليزيّة أو عربيّة ثابتة) */
     stkGold: "الذهب",
@@ -1485,7 +1485,7 @@ const I18N = {
     feedbackPlaceholder: 'اكتب رأيك أو مقترحك هنا...',
     feedbackSubmitBtn: '📤 إرسال',
     feedbackIdeasTitle: '🗳️ أفضل المقترحات (صوّت لصالح ما يعجبك)',
-    aboutText: '<b>Omran AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، من تطوير فريق عمران AI. تحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حية جنبًا إلى جنب.<br><br>يجمع التطبيق 3 نماذج ذكاء قوية في مكان واحد: 👑 الكينج للبناء والتعديل والتشخيص، ⚡ السريع للردود الفورية والدردشة، 🧠 العميق للتحليل والبحث والمستندات — مع البحث المباشر وتوليد الصور والمساعدة الصوتية والأقسام المتخصصة.<br><br>يعمل كتطبيق PWA قابل للتثبيت على أندرويد وآيفون تمامًا كأي تطبيق أصلي، ويدعم المحادثة الصوتية (تحويل الصوت إلى نص وقراءة الردود بصوت عالٍ)، ويحتوي على نظام حسابات كامل (تسجيل / دخول / استرجاع كلمة المرور)، ووضع ضيف يتيح 20 رسالة مجانية دون الحاجة لتسجيل.<br><br>جميع إعدادات المظهر والألوان قابلة للتخصيص بالكامل، وخصوصيتك دائمًا أولًا.',
+    aboutText: '<b>om ai</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، من تطوير فريق om ai. تحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حية جنبًا إلى جنب.<br><br>يجمع التطبيق 3 نماذج ذكاء قوية في مكان واحد: 👑 الكينج للبناء والتعديل والتشخيص، ⚡ السريع للردود الفورية والدردشة، 🧠 العميق للتحليل والبحث والمستندات — مع البحث المباشر وتوليد الصور والمساعدة الصوتية والأقسام المتخصصة.<br><br>يعمل كتطبيق PWA قابل للتثبيت على أندرويد وآيفون تمامًا كأي تطبيق أصلي، ويدعم المحادثة الصوتية (تحويل الصوت إلى نص وقراءة الردود بصوت عالٍ)، ويحتوي على نظام حسابات كامل (تسجيل / دخول / استرجاع كلمة المرور)، ووضع ضيف يتيح 20 رسالة مجانية دون الحاجة لتسجيل.<br><br>جميع إعدادات المظهر والألوان قابلة للتخصيص بالكامل، وخصوصيتك دائمًا أولًا.',
     videoArShortTitle: '🎬 فيديو تعريفي عربي (قصير)',
     videoArLongTitle: '🎬 فيديو تعريفي عربي (كامل)',
     videoEnShortTitle: '🎬 فيديو تعريفي إنجليزي (قصير)',
@@ -1791,7 +1791,7 @@ const I18N = {
     feedbackPlaceholder: 'Write your feedback or suggestion here...',
     feedbackSubmitBtn: '📤 Submit',
     feedbackIdeasTitle: '🗳️ Top suggestions (vote for what you like)',
-    aboutText: '<b>Omran AI Builder</b> is a fully Arabic-first AI app-building platform, developed by the Omran AI Team (فريق عمران AI). Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your privacy always comes first.',
+    aboutText: '<b>om ai</b> is a fully Arabic-first AI app-building platform, developed by the om ai team (فريق om ai). Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your privacy always comes first.',
     videoArShortTitle: '🎬 Arabic intro video (short)',
     videoArLongTitle: '🎬 Arabic intro video (full)',
     videoEnShortTitle: '🎬 English intro video (short)',
@@ -1963,7 +1963,7 @@ const I18N = {
     acctQrOpen: "Open QR code",
     acctQrClose: "Hide QR code",
     acctQrDownload: "Download QR code",
-    acctShareText: "Try the Omran AI app, available on every app store:",
+    acctShareText: "Try the om ai app, available on every app store:",
     acctCopyPrompt: "Copy the link:",
     /* v-stocks-i18n: شريحتا الذهب والنفط ووحدة الغرام وتبويبات النظرة العامّة وتفاصيل السهم ورمز غير موجود وتلميح 💼 (كانت إنجليزيّة أو عربيّة ثابتة) */
     stkGold: "Gold",
@@ -2129,7 +2129,7 @@ const I18N = {
     acctSectionTitle: 'My account',
     aboutSupportTitle: '📞 Customer service & support',
     aboutSupportDesc: 'We answer your inquiries within 24–48 hours.',
-    aboutCopyright: '© Omran AI team',
+    aboutCopyright: '© om ai team',
     adminPanelTitle: '🛠️ Admin panel (owner only)',
     ownerSectionTitle: '👑 Owner page',
     videoBadgeShort: 'Short',
@@ -2143,7 +2143,7 @@ const I18N = {
     provSwitchNote: 'You chose {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
     provSwitchNoteHidden: 'Your chat runs on {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
     privacyConsentTitle: '🔒 Your privacy first',
-    privacyConsentText: 'Before using Omran AI Builder, please read the <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Terms of Use</a>. They explain what we collect, how we protect it, and your right to delete your data.',
+    privacyConsentText: 'Before using om ai, please read the <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Terms of Use</a>. They explain what we collect, how we protect it, and your right to delete your data.',
     privacyConsentRead: 'Read the policy',
     privacyConsentAgree: 'Agree & continue',
     acctPointsLabel: 'Points balance',
@@ -2462,7 +2462,7 @@ const I18N = {
     videoModeVeo: '🚀 Cinematic (top quality + sound)',
     videoModeActor: "🗣️ Talking actor — Emirati dialect",
     videoActorSpeechLabel: "🗣️ What does the actor say? (exactly)",
-    videoActorSpeechPlaceholder: "Example: Welcome to Omran AI, the best AI platform!",
+    videoActorSpeechPlaceholder: "Example: Welcome to om ai, the best AI platform!",
     videoActorVoiceLabel: "🎙️ Actor's voice",
     videoActorVoiceMale: "🧔 Man — Emirati voice",
     videoActorVoiceFemale: "🧕 Woman — Emirati voice",
@@ -3008,7 +3008,7 @@ const I18N = {
     shareAppBtn: 'Share App',
     refreshBtnTitle: 'Refresh Page',
     langBtn: 'ع',
-    systemPrompt: `You are a deeply knowledgeable AI inside 'Omran AI Builder', developed by the Omran AI Team (فريق عمران AI).
+    systemPrompt: `You are a deeply knowledgeable AI inside 'om ai', developed by the om ai team (فريق om ai).
 Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic expert friend — never a stiff robot or a front-desk clerk. Celebrate the user's wins however small ("Nice one!" / "There you go!"), and when something breaks, absorb their frustration with honest reassurance ("Don't worry — it's clear, we'll fix it") before diving straight into the fix. Bottom line first: the direct answer in the first line or two, details after for those who want them. Mirror the user's own register — their dialect, sentence length and energy — while keeping your warm personality and clear opinions. Break complex problems into short numbered steps with no dry jargon. Even greetings get warmth: a refined welcoming line with presence plus one natural question back — never a bare clipped "hi"; the only things banned are corporate service offers ("How can I help you?") and dredging up old topics.
 - General questions or chat = rich, informative conversational reply. NO code.
 - Build/modify an app, site, or game = brief explanation (2 lines) then one complete working HTML+CSS+JS file in a \`\`\`html block. CDN allowed. 3D games = Three.js via CDN.
