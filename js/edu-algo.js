@@ -148,6 +148,10 @@ function loop(cv, fn){
 function clear(g){ g.fillStyle = '#07070a'; g.fillRect(0, 0, W, H); }
 /* اتّجاه النصّ من محتواه: الأرقام والقوائم يسار-يمين، والعربيّ يمين-يسار (وإلّا انقلب ترتيب «56, 91, 66») */
 function ltr(s){ return '\u2066' + s + '\u2069'; }
+/* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): نصوص لوحة المعلومات كانت إنجليزيّة ثابتة — تُترجم بـL()،
+   واللوحة LTR (معادلات وكود) فالنصّ المترجم معزول FSI…PDI كي يأخذ العربيّ اتّجاهه داخلها. أسماء المتغيّرات والدوالّ
+   كما في كود الدرس ونصّ التحدّي (state، hit، visited…) تبقى. */
+function fsi(s){ return '\u2068' + s + '\u2069'; }
 function text(g, s, x, y, col, size, align){ try{ g.direction = /[\u0600-\u06FF]/.test(s) ? 'rtl' : 'ltr'; }catch(e){ __swallow(e, 'ui:edu-algo-dir'); } g.fillStyle = col || '#ddd'; g.font = (size || 13) + 'px Tahoma, Arial, sans-serif'; g.textAlign = align || 'center'; g.fillText(s, x, y); }
 function slider(ctl, label, min, max, val, step, on){
   var l = document.createElement('label'); l.innerHTML = '<span>' + esc(label) + '</span>';
@@ -181,7 +185,7 @@ var DEMOS = {
       trail.forEach(function(p, i){ s.g.fillStyle = 'rgba(212,175,55,' + (i / trail.length * 0.35) + ')'; s.g.beginPath(); s.g.arc(p[0], p[1], 5, 0, 7); s.g.fill(); });
       s.g.fillStyle = GOLD; s.g.beginPath(); s.g.arc(b.x, b.y, 14, 0, 7); s.g.fill();
       acc++;
-      info.textContent = 'frame #' + frames + '   FPS ≈ ' + Math.round(1 / Math.max(dt, 0.001)) + '   dt = ' + dt.toFixed(3) + 's\n'
+      info.textContent = fsi(L('الإطار', 'frame')) + ' #' + frames + '   FPS ≈ ' + Math.round(1 / Math.max(dt, 0.001)) + '   dt = ' + dt.toFixed(3) + 's\n'
         + '1) input  2) update: x += vx × ' + (useDt ? 'dt' : '(1/60)') + '  3) draw\n'
         + 'x = ' + b.x.toFixed(0) + '  y = ' + b.y.toFixed(0);
     });
@@ -210,7 +214,7 @@ var DEMOS = {
       s.g.fillStyle = GOLD; s.g.fillRect(box.x, box.y, box.w, box.h);
       s.g.strokeStyle = BLUE; s.g.lineWidth = 2; s.g.beginPath(); s.g.moveTo(p.x, p.y - 13); s.g.lineTo(p.x, p.y - 13 + p.vy * 0.08); s.g.stroke();
       text(s.g, '✓ ' + passed, W - 30, 24, GREEN, 15);
-      info.textContent = 'vy += g × dt   →   vy = ' + p.vy.toFixed(0) + '\ny  += vy × dt  →   y = ' + (ground - p.y).toFixed(0) + ' px above ground\ng = ' + g + '   jump = ' + jump;
+      info.textContent = 'vy += g × dt   →   vy = ' + p.vy.toFixed(0) + '\ny  += vy × dt  →   y = ' + (ground - p.y).toFixed(0) + ' ' + fsi(L('بكسل فوق الأرض', 'px above ground')) + '\ng = ' + g + '   jump = ' + jump;
     });
   },
   collide: function(host, ctl, info){
@@ -264,7 +268,7 @@ var DEMOS = {
       }
       s.g.fillStyle = GREEN; s.g.beginPath(); s.g.arc(start[1] * cs + cs / 2, start[0] * cs + cs / 2, 13, 0, 7); s.g.fill();
       s.g.fillStyle = RED; s.g.beginPath(); s.g.arc(goal[1] * cs + cs / 2, goal[0] * cs + cs / 2, 13, 0, 7); s.g.fill();
-      info.textContent = anim ? (anim.mode === 'astar' ? 'A*' : 'BFS') + '   visited = ' + shown + ' / ' + anim.res.visited.length + '   path = ' + (anim.res.path ? anim.res.path.length - 1 + ' steps' : 'no path!')
+      info.textContent = anim ? (anim.mode === 'astar' ? 'A*' : 'BFS') + '   visited = ' + shown + ' / ' + anim.res.visited.length + '   ' + (anim.res.path ? fsi(L('طول المسار', 'path length')) + ' = ' + (anim.res.path.length - 1) : fsi(L('لا يوجد مسار!', 'no path!')))
         : L('ارسم جدرانًا بإصبعك ثمّ شغّل BFS أو A*', 'Draw walls, then run BFS or A*');
     });
   },
@@ -291,7 +295,7 @@ var DEMOS = {
       s.g.fillStyle = power ? BLUE : GREEN; s.g.beginPath(); s.g.arc(pl.x, pl.y, 11, 0, 7); s.g.fill();
       s.g.fillStyle = state === 'chase' ? RED : state === 'flee' ? '#9aa' : GOLD; s.g.fillRect(en.x - 13, en.y - 13, 26, 26);
       ['patrol', 'chase', 'flee'].forEach(function(k, i){ var x = 70 + i * 110, y = 22; s.g.fillStyle = k === state ? GOLD : 'rgba(255,255,255,.08)'; s.g.fillRect(x - 48, y - 14, 96, 24); text(s.g, NAMES[k], x, y + 3, k === state ? '#000' : '#bbb', 12); });
-      info.textContent = 'state = ' + state + '   distance = ' + dist.toFixed(0) + (power ? '   ⚡ ' + power.toFixed(1) + 's' : '') + '\npatrol →(d<150)→ chase →(d>220)→ patrol ;  ⚡ → flee';
+      info.textContent = 'state = ' + state + '   ' + fsi(L('المسافة', 'distance')) + ' = ' + dist.toFixed(0) + (power ? '   ⚡ ' + power.toFixed(1) + 's' : '') + '\npatrol →(d<150)→ chase →(d>220)→ patrol ;  ⚡ → flee';
     });
   },
   minimax: function(host, ctl, info){
@@ -326,7 +330,8 @@ var DEMOS = {
       text(s.g, L('أنت', 'You') + ' X', 70, 60, GOLD, 16); text(s.g, L('الكمبيوتر', 'Computer') + ' O', 70, 85, BLUE, 14);
       text(s.g, '✓' + tally.w + '  =' + tally.d + '  ✗' + tally.l, 70, 120, '#ccc', 14);
       if(over) text(s.g, over === 'draw' ? L('تعادل — كما تتوقّع الرياضيّات', 'Draw — exactly as math predicts') : over === 'X' ? L('فزت!؟ هذا لا يُفترض أن يحدث', 'You won?! That should be impossible') : L('فاز الكمبيوتر — اضغط للعب مجدّدًا', 'Computer wins — tap to replay'), W / 2 + 60, H - 10, GOLD2, 14);
-      info.textContent = 'minimax: ' + (nodes ? nodes.toLocaleString('en') + ' positions evaluated for the last move' : 'waiting for your move') + '\nscore = +(10 − depth) win · 0 draw · −(10 − depth) loss';
+      info.textContent = 'minimax: ' + (nodes ? fsi(L('وضعيّات قُيّمت للحركة الأخيرة', 'positions evaluated for the last move')) + ': ' + nodes.toLocaleString('en') : fsi(L('بانتظار حركتك', 'waiting for your move')))
+        + '\nscore = +(10 − depth) ' + fsi(L('فوز', 'win')) + ' · 0 ' + fsi(L('تعادل', 'draw')) + ' · −(10 − depth) ' + fsi(L('خسارة', 'loss'));
     });
     if(!youStart) cpu();
   },
@@ -355,7 +360,7 @@ var DEMOS = {
         text(s.g, L('توقّعي:', 'My guess:') + ' ' + ltr(cracked.next.join(', ')), 530, 222, GOLD, 14);
         text(s.g, L('الحقيقة:', 'Actual:') + ' ' + ltr(cracked.real.join(', ')), 530, 248, cracked.next.join() === cracked.real.join() ? GREEN : RED, 14);
       }
-      info.textContent = 'next = (state × 1103515245 + 12345) mod 2^31\nsame seed → same numbers → same map';
+      info.textContent = 'next = (state × 1103515245 + 12345) mod 2^31\n' + fsi(L('نفس البذرة ← نفس الأرقام ← نفس الخريطة', 'same seed → same numbers → same map'));
     });
   },
   cups: function(host, ctl, info){
@@ -401,7 +406,7 @@ var DEMOS = {
       var msg = phase === 'guess' ? L('وين الكرة؟ اضغط على كوب', 'Where is the ball? Tap a cup') : phase === 'reveal' ? (guess === cupsTrack(ball, swaps) ? L('✓ صح!', '✓ Correct!') : L('✗ غلط', '✗ Wrong')) : phase === 'idle' ? L('اضغط «ابدأ جولة»', 'Press «Start a round»') : '';
       text(s.g, msg, W / 2, track && phase !== 'reveal' && phase !== 'idle' ? 62 : 40, '#ddd', 16);
       text(s.g, score.w + '/' + score.n, W - 40, 24, GREEN, 15);
-      info.textContent = 'swap ' + Math.min(k + 1, swaps.length) + '/' + swaps.length + (sw ? '   [' + (sw[0] + 1) + ' ↔ ' + (sw[1] + 1) + ']' : '') + '\nif pos == a: pos = b   elif pos == b: pos = a   else: stay';
+      info.textContent = fsi(L('تبديل', 'swap')) + ' ' + Math.min(k + 1, swaps.length) + '/' + swaps.length + (sw ? '   [' + (sw[0] + 1) + ' ↔ ' + (sw[1] + 1) + ']' : '') + '\nif pos == a: pos = b   elif pos == b: pos = a   else: stay';
     });
   }
 };

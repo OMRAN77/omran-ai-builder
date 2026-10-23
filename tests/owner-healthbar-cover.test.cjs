@@ -23,16 +23,13 @@ test('v-ownerbar-cover: شريط تنبيه صحّة المالك يُحسَب �
       /position:fixed;top:0;left:0;right:0;z-index:99999;background:#3a1010/,
       'لا top:0 ثابت يغطّي الهيدر'
     );
-    // الارتفاع يُحسَب من موضع الهيدر الفعليّ
+    // v-ownerbar-pill (تدقيق ١٨ أكتوبر): تحت الهيدر بعرض الشاشة كان ما زال يغطّي صفّ «إبداع» و«محادثة جديدة» —
+    // صار كبسولة مثبّتة أسفل الطرف، فلا top أصلًا ولا يجلس فوق الهيدر ولا تحته (tests/owner-healthbar.test.cjs يفحص سلوكها).
     assert.match(
       src,
-      /getBoundingClientRect\(\)\.bottom.*headerBottom|headerBottom\s*=[\s\S]{0,120}getBoundingClientRect\(\)\.bottom/,
-      'top يُحسَب من أسفل الهيدر'
+      /bar\.style\.cssText = 'position:fixed;bottom:' \+ bottom \+ 'px;inset-inline-end:12px;z-index:99999;/,
+      'الكبسولة أسفل الطرف لا أعلى الشاشة'
     );
-    assert.match(
-      src,
-      /position:fixed;top:'\s*\+\s*headerBottom\s*\+\s*'px/,
-      'الشريط يستعمل الإزاحة المحسوبة لا صفرًا ثابتًا'
-    );
+    assert.doesNotMatch(src, /bar\.style\.cssText = 'position:fixed;top:/, 'لا top لشريط المالك');
   }
 });

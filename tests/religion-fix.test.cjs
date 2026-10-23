@@ -83,7 +83,7 @@ function fakeEl(id, extra) {
   }, extra || {});
   return el;
 }
-function religionCtx() {
+function religionCtx(extra) {
   const tabs = ['verse', 'hadith', 'dream'].map((tool) => { const b = fakeEl('tab-' + tool); b.dataset.tool = tool; b.closest = () => b; return b; });
   const mic = fakeEl('mic');
   const els = {
@@ -105,6 +105,7 @@ function religionCtx() {
       if (onDelta.__signal) onDelta.__signal.addEventListener('abort', () => { const e = new Error('Generation stopped'); e.name = 'AbortError'; reject(e); });
     }),
   };
+  Object.assign(ctx, extra || {});
   vm.createContext(ctx);
   vm.runInContext(RELIGION, ctx);
   return { els, tabs, calls, painted };
@@ -207,4 +208,61 @@ test('٦. الحقل والميكروفون بارتفاع «فسّر» عند �
   els.religionInput.scrollHeight = 400;
   await els.religionInput.fire('input');
   assert.equal(els.religionInput.style.height, '150px', 'سقف ١٥٠px');
+});
+
+/* تدقيق ١٨ أكتوبر: الخطأ كان «حدث خطأ، حاول مرة أخرى: … (الاحتياط فشل أيضًا — …)» تحته صندوق نتيجة فارغ، ومثال الأحلام مقصوص على الجوّال */
+test('٧. حدّ الباقة: نصّ الباقات وحده ويفتحها، بلا «الاحتياط» ولا صندوق فارغ', async () => {
+  const opened = [];
+  const { els, calls } = religionCtx({ window: { omranOpenPlans: (a, b) => opened.push([a, b]) } });
+  await els.btnReligion.fire('click');
+  els.religionInput.value = 'البقرة 255';
+  const done = els.religionGenerateBtn.fire('click');
+  await tick();
+  const e = new Error('وصلت حدّ باقتك (الاحتياط فشل أيضًا — السريع: 402)'); e.planLimit = true;
+  calls[0].reject(e);
+  await done;
+  assert.equal(els.religionStatus.textContent, 'plansWhyLimit');
+  assert.doesNotMatch(els.religionStatus.textContent, /الاحتياط/);
+  assert.deepEqual(opened, [['limit', 'chat']], 'الباقات تُفتح من حدّ الدردشة');
+  assert.equal(els.religionResult.style.display, 'none', 'لا صندوق نتيجة فارغ تحت الرسالة');
+  assert.equal(els.religionGenerateBtn.disabled, false);
+});
+
+test('٨. خطأ عاديّ: «حدث خطأ» وحده والتفاصيل للكونسول؛ وما كُتب قبل الخطأ يبقى ظاهرًا', async () => {
+  const warned = [];
+  const cons = Object.assign(Object.create(console), { warn: (...a) => warned.push(a.join(' ')) });
+  const extra = { console: cons, renderStreamingAssistant: (el, txt) => { el.textContent = txt; } };
+  let { els, calls } = religionCtx(extra);
+  await els.btnReligion.fire('click');
+  els.religionInput.value = 'حديث';
+  let done = els.religionGenerateBtn.fire('click');
+  await tick();
+  calls[0].reject(new Error('quota 402 (الاحتياط فشل أيضًا — fast: 402)'));
+  await done;
+  assert.equal(els.religionStatus.textContent, 'religionError', 'بلا نصّ تقنيّ ملصوق');
+  assert.ok(warned.some((w) => /الاحتياط فشل/.test(w)), 'التفاصيل في الكونسول');
+  assert.equal(els.religionResult.style.display, 'none');
+  ({ els, calls } = religionCtx(extra));
+  await els.btnReligion.fire('click');
+  els.religionInput.value = 'حديث';
+  done = els.religionGenerateBtn.fire('click');
+  await tick();
+  calls[0].onDelta('## بداية الجواب');
+  calls[0].reject(new Error('انقطع'));
+  await done;
+  assert.equal(els.religionResult.style.display, 'block', 'جواب جزئيّ لا يُخفى');
+});
+
+test('٩. تبديل التبويب يعيد مقاس الحقل لمثاله (الأحلام سطران على الجوّال)', async () => {
+  const { els, tabs } = religionCtx();
+  els.religionGenerateBtn.offsetHeight = 33;
+  els.religionInput.scrollHeight = 20; els.religionInput.clientHeight = 31; els.religionInput.offsetHeight = 33;
+  await els.btnReligion.fire('click');
+  assert.equal(els.religionInput.style.height, '33px');
+  els.religionInput.scrollHeight = 46; // مثال الأحلام الطويل على هاتف ٣٩٠
+  await els.religionTabs.fire('click', { target: tabs[2] });
+  assert.equal(els.religionInput.style.height, '48px', 'الحقل يطول لمثال التبويب');
+  els.religionInput.scrollHeight = 20;
+  await els.religionTabs.fire('click', { target: tabs[0] });
+  assert.equal(els.religionInput.style.height, '33px', 'ويرجع لمثال قصير');
 });

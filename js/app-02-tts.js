@@ -1,6 +1,6 @@
 // 🎁 v343: رسائل ودّية بدل أكواد الأخطاء عند توليد/تعديل الصور — مع فتح
 // نافذة إنشاء حساب تلقائيًا للضيف الذي استهلك صوره المجانية.
-function imgErrFriendly(err, isAr){
+function imgErrFriendly(err, isAr, info){
   if(err === 'guest_image_used'){
     setTimeout(() => { try{ window.requireLogin && window.requireLogin('guestImage'); }catch(e){ __swallow(e, "auth:app-02-tts#1"); } }, 1500);
     return isAr
@@ -8,9 +8,25 @@ function imgErrFriendly(err, isAr){
       : '🎁 You have used your 3 free guest images! Create a free account in seconds and get 70 gift points to keep generating and editing images.';
   }
   if(err === 'points_insufficient'){
+    /* v-plans-real-balance (تدقيق ١٨ أكتوبر: «تقول تحتاج 10 نقاط والرصيد 10 والصورة أصلًا بـ20»): الرقم كان مكتوبًا هنا من سعر قديم.
+       الآن رصيده وسعر الصورة من ردّ الخادم نفسه (402: points · needed)، وبلاهما بلا رقم. */
+    const have = info && Number(info.points), need = info && Number(info.needed);
+    if(info && isFinite(have) && isFinite(need) && need > 0){
+      return isAr
+        ? '⚡ رصيدك ' + have + ' نقطة، وهذه الصورة تحتاج ' + need + ' نقطة. افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
+        : '⚡ You have ' + have + ' points; this image needs ' + need + '. Open Settings → Plans to top up and continue.';
+    }
     return isAr
-      ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة (تحتاج 10 نقاط). افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
-      : '⚡ Not enough points for this image (needs 10). Open Settings → Plans to top up and continue.';
+      ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة. افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
+      : '⚡ Not enough points for this image. Open Settings → Plans to top up and continue.';
+  }
+  /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الصور نفد أو عطب عندنا — «الخدمة متوقّفة مؤقّتًا» بلغة الواجهة، والخادم ردّ النقاط
+     (كان «مشغولة الآن، أعد المحاولة» فيعيد المستخدم ويُخصم ويُردّ مرّة بعد مرّة) */
+  if(err === 'unavailable') return t('svcPaused');
+  /* v-rest-fixes: سقف الصور في الساعة كان يصل رمزًا خامًّا «image_hourly_limit» — النصّ بالـ14 لغة بالحدّ والدقائق الباقية من ردّ الخادم */
+  if(err === 'image_hourly_limit'){
+    const m = Math.max(1, Math.ceil((Number(info && info.retryAfter) || 3600) / 60));
+    return t('imgHourlyLimit').replace('{max}', String((info && info.max) || 20)).replace('{m}', String(m));
   }
   if(err === 'image_generation_timeout'){
     return isAr
@@ -578,6 +594,15 @@ function omranMdText(el, s){
   }
   if(last < s.length) el.appendChild(document.createTextNode(s.slice(last)));
 }
+/* v-shot-reply (المالك ٢٢ أكتوبر: «إذا كان الجدول أعرض من الشاشة يتمرّر بالعرض ويبين إنّ فيه أعمدة ثانية»): data-fade على الغلاف
+   بالطرف الفعليّ (l/r) الذي خلفه أعمدة، ويزول عند آخر التمرير. scrollLeft في RTL سالب نحو النهاية (المواصفة) فالموضع بقيمته المطلقة.
+   سمة data لا className: سطر التقطيع يقارن className الغلاف بالمساواة. */
+function omranMdTableEdges(w){
+  const max = w.scrollWidth - w.clientWidth, pos = Math.abs(w.scrollLeft), rtl = w.getAttribute('dir') === 'rtl';
+  const end = max > 2 && pos < max - 2, start = max > 2 && pos > 2;
+  const v = [(rtl ? end : start) ? 'l' : '', (rtl ? start : end) ? 'r' : ''].filter(Boolean).join(' ');
+  if(v) w.setAttribute('data-fade', v); else w.removeAttribute('data-fade');
+}
 function omranMdTableEl(tb){
   const wrap = document.createElement('div'); wrap.className = 'md-table-wrap';
   const all = tb.head.concat.apply(tb.head, tb.rows).join(' ');
@@ -588,6 +613,8 @@ function omranMdTableEl(tb){
   const thead = document.createElement('thead'); thead.appendChild(tr(tb.head, 'th')); table.appendChild(thead);
   const tbody = document.createElement('tbody'); tb.rows.forEach((r) => tbody.appendChild(tr(r, 'td'))); table.appendChild(tbody);
   wrap.appendChild(table);
+  wrap.addEventListener('scroll', () => omranMdTableEdges(wrap), { passive: true }); // v-shot-reply: الطرف الذي خلفه أعمدة يبهت
+  if(typeof ResizeObserver === 'function'){ const ro = new ResizeObserver(() => omranMdTableEdges(wrap)); ro.observe(wrap); ro.observe(table); } // أوّل رسم وتغيّر العرض
   return wrap;
 }
 /** كلمة فيها ` (أو داخل كود مفتوح): تُملأ رقائق md-ic؛ st.open يحمل الكود المفتوح إلى الكلمة التالية. false = ليست كودًا. */
@@ -1235,7 +1262,8 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
+    // v-om-voices-chat: src 'reply' = «استمع» على ردّ المحادثة؛ للمالك يقرأ الخادم بأصوات om (api/_lib/om-voices.js)
+    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -1455,6 +1483,14 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
         try{ url = await ensureFetched(i); }
         catch(e){
           if(currentCloudToken !== token) return;
+          /* v-om-voices-chat (المالك: «ليش تتدخل مها… الأصوات بس»): خلص حدّ أصوات om اليوميّ ⇐ رسالة الحدّ
+             المترجمة نفسها (portraitLimitReached) ويقف الصوت — لا مها ولا صوت الجهاز بدلها. */
+          if(e && e.message === 'om-quota'){
+            currentCloudToken = null; currentCloudAudio = null; clearWordHighlight();
+            try{ if(typeof settingsToast === 'function') settingsToast(t('portraitLimitReached')); }catch(err){ __swallow(err, 'tts:om-quota-toast'); }
+            if(onEnd) onEnd();
+            return;
+          }
           if('speechSynthesis' in window){
             currentCloudToken = null; currentCloudAudio = null;
             speakOnDevice(chunks[i].wordStart, started);

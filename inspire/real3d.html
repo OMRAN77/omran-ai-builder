@@ -28,7 +28,7 @@ canvas{display:block;width:100vw;height:100vh;touch-action:none}
 }}</script>
 </head><body>
 <div id="bar"></div><div id="msg"></div><div id="credit"></div><div id="hint"></div><div id="diag"></div>
-<div id="drive"><div id="garage"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><input id="cmd" style="flex:1;min-width:170px;border:1px solid rgba(255,255,255,.18);background:rgba(10,14,22,.72);color:#fff;border-radius:999px;padding:8px 14px;font:13px inherit;font-family:inherit"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="pri" id="dropBtn"></button><button id="droneBtn"></button><button id="chaseBtn" style="display:none"></button><button id="aiBtn"></button><button id="raceBtn" style="display:none"></button><button id="exitBtn" style="display:none"></button></div></div><div id="speedo"></div><div id="aiOut" style="display:none;position:fixed;inset:0;z-index:5;background:rgba(0,0,0,.82);align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:16px"><img id="aiImg" alt="" style="max-width:min(1200px,96vw);max-height:80vh;border-radius:12px"><div style="display:flex;gap:8px"><a id="aiSave" download="city.jpg" target="_blank" rel="noopener" style="background:#f2a33a;color:#1a1206;border-radius:999px;padding:8px 14px;font-weight:700;text-decoration:none"></a><button id="aiClose" style="border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:999px;padding:8px 14px;font-family:inherit;cursor:pointer"></button></div></div><div id="lifeStat" style="position:fixed;top:56px;inset-inline-start:12px;z-index:2;font-size:12px;color:#fff;background:rgba(10,14,22,.6);border-radius:999px;padding:4px 10px;display:none"></div>
+<div id="drive"><div id="garage"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><input id="cmd" style="flex:1;min-width:170px;border:1px solid rgba(255,255,255,.18);background:rgba(10,14,22,.72);color:#fff;border-radius:999px;padding:8px 14px;font:13px inherit;font-family:inherit"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="pri" id="dropBtn"></button><button id="droneBtn"></button><button id="chaseBtn" style="display:none"></button><button id="aiBtn"></button><button id="raceBtn" style="display:none"></button><button id="exitBtn" style="display:none"></button></div></div><div id="speedo"></div><div id="aiOut" style="display:none;position:fixed;inset:0;z-index:5;background:rgba(0,0,0,.82);align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:16px"><img id="aiImg" alt="" style="max-width:min(1200px,96vw);max-height:80vh;border-radius:12px"><div style="display:flex;gap:8px"><a id="aiSave" download="city.jpg" target="_blank" rel="noopener" style="background:#f2a33a;color:#1a1206;border-radius:999px;padding:8px 14px;font-weight:700;text-decoration:none"></a><button id="aiClose" style="border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:999px;padding:8px 14px;font-family:inherit;cursor:pointer"></button></div></div><div id="lifeStat" style="position:fixed;inset-inline-start:12px;z-index:2;font-size:12px;color:#fff;background:rgba(10,14,22,.6);border-radius:999px;padding:4px 10px;display:none"></div>
 <script>
 /* ?debug=1: شريط تشخيص على الشاشة — أوّل الأخطاء والتحذيرات وعدّادات البلاطات والصور، فلقطة واحدة تكفي بلا أدوات المطوّر. */
 window.__diag = { on: /[?&]debug=1/.test(location.search), log: [] };
@@ -113,10 +113,14 @@ function place(i) {
 
 PLACES.forEach((p, i) => { const b = document.createElement('button'); b.textContent = T(p.ar, p.en); b.onclick = () => place(i); $('bar').appendChild(b); });
 
+// v-life-stat-pos (تدقيق ١٨ أكتوبر): حالة الشوارع كانت على top:56px ثابت يفترض صفًّا واحدًا من أزرار المدن — في الجوّال
+// يلتفّ #bar صفوفًا فتغطّي أبوظبي والرياض. الموضع من أسفل الشريط الحقيقيّ عند الإظهار وعند تغيّر المقاس.
+function placeLifeStat() { $('lifeStat').style.top = ($('bar').getBoundingClientRect().bottom + 6) + 'px'; }
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   if (tiles) tiles.setResolutionFromRenderer(camera, renderer);
+  if ($('lifeStat').style.display === 'block') placeLifeStat();
 });
 
 /* v-car-drop (المالك: «كيف أنزّل السيّارة»): سيّارات مختبر السيّارات تنزل على أيّ شارع تنقره وتُساق بالأسهم.
@@ -298,7 +302,7 @@ function diag() {
 renderer.setAnimationLoop(() => {
   if (controls.enabled) controls.update();
   driveTick();
-  { const st = life.state.status || ''; const el = $('lifeStat'); if (el.textContent !== st) { el.textContent = st; el.style.display = st ? 'block' : 'none'; } }
+  { const st = life.state.status || ''; const el = $('lifeStat'); if (el.textContent !== st) { el.textContent = st; el.style.display = st ? 'block' : 'none'; if (st) placeLifeStat(); } }
   { const n = performance.now(), dt = Math.min(0.05, (n - (life.__t || n)) / 1000); life.tick(dt, DRV); modes.tick(dt); life.__t = n; }
   camera.updateMatrixWorld();
   if (tiles) {

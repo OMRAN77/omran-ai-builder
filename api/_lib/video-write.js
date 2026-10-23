@@ -43,17 +43,22 @@ function nonEmirati(r) {
   return NON_EMIRATI_RE.test(spoken) || NEG_SH_RE.test(spoken);
 }
 
+/* v-trend-scenes: ترند المشاهد (قصّة بيكسار) يطلب `scenes` = عدد خاناته — وصف مستقلّ لكلّ مشهد يملأ خانته،
+   لا وصفًا واحدًا يذهب لخانة الاسم. بلا scenes: الأمر كما كان حرفيًّا. */
+const MAX_SCENES = 5;
 function buildPrompt(o) {
-  const sec = o.seconds, words = speechBudget(sec), scenes = sceneCount(sec);
+  const sec = o.seconds, words = speechBudget(sec), many = Math.max(0, Math.min(MAX_SCENES, parseInt(o.scenes, 10) || 0)), scenes = many || sceneCount(sec);
   const names = (o.characters || []).slice(0, MAX_CHARS);
   return [
     'You are a video scriptwriter for short social videos in the UAE. Write in the user\'s language; Arabic means natural Emirati/Gulf dialect, never stiff formal Arabic.',
     isArabic(o.request) ? EMIRATI_RULES : '',
     'The video lasts EXACTLY ' + sec + ' seconds, so ALL spoken words together must be at most ' + words + ' words. Be tight: a hook in the first second, one idea, a clear ending' + (o.kind === 'ad' ? ' with a short call to action' : '') + '.',
-    'Plan ' + scenes + ' scene(s). "scene" is a visual description for a video generator (setting, action, camera, light) in at most ' + (scenes * 35) + ' words, no dialogue inside it.',
+    many
+      ? 'Plan ' + many + ' consecutive scene(s) of ONE story with the same characters (if the request itself asks for a different number of scenes, use that number, at most ' + MAX_SCENES + '). "scenes" is an array with one visual description per scene for a video generator (setting, action, camera, light), each at most 35 words, no dialogue inside; "scene" is a one-sentence summary of the whole story.'
+      : 'Plan ' + scenes + ' scene(s). "scene" is a visual description for a video generator (setting, action, camera, light) in at most ' + (scenes * 35) + ' words, no dialogue inside it.',
     names.length ? 'Characters (use these exact names for "who"): ' + names.join(', ') + '.' : 'No named characters: put any speech in "narration".',
     'Kind: ' + o.kind + (o.kind === 'dialogue' ? ' — a short exchange between the characters' : o.kind === 'story' ? ' — a tiny story with a beginning and an end' : o.kind === 'ad' ? ' — a persuasive ad' : ' — a visual scene') + '.',
-    'Reply with JSON only, no prose: {"scene":"...","narration":"..." or "","lines":[{"who":"name","text":"..."}],"onScreen":"short title/price/phrase, max 6 words" or ""}',
+    'Reply with JSON only, no prose: {"scene":"...",' + (many ? '"scenes":["...", ...],' : '') + '"narration":"..." or "","lines":[{"who":"name","text":"..."}],"onScreen":"short title/price/phrase, max 6 words" or ""}',
     'Request: "' + String(o.request || '').replace(/["\n]+/g, ' ').slice(0, MAX_REQ) + '"',
   ].filter(Boolean).join('\n');
 }
@@ -79,7 +84,12 @@ function parseReply(raw, sec, characters) {
   /* الأسطر أوّلًا: الحوار بين الشخصيّات أثمن من الراوي حين تضيق المدّة */
   const narration = trimTo(clip(obj.narration, 600));
   const out = { scene: clip(obj.scene, 600), narration, lines, onScreen: clip(obj.onScreen, 60) };
-  return (out.scene || out.narration || out.lines.length) ? out : null;
+  /* v-trend-scenes: وصف لكلّ مشهد (حدّ خانة المشهد ٤٠٠) — يُضاف فقط إن جاء */
+  const scenes = (Array.isArray(obj.scenes) ? obj.scenes : [])
+    .map((x) => (x && typeof x === 'object' ? (x.description || x.scene || x.text || x.visual) : x)) /* {"description":…} لا «[object Object]» */
+    .map((x) => (typeof x === 'string' ? clip(x, 400) : '')).filter(Boolean).slice(0, MAX_SCENES);
+  if (scenes.length) out.scenes = scenes;
+  return (out.scene || out.narration || out.lines.length || scenes.length) ? out : null;
 }
 
 async function write(opts) {
@@ -93,6 +103,7 @@ async function write(opts) {
   const accept = (t) => {
     const p = parseReply(t, sec, o.characters); if (!p) return false;
     if (ar && nonEmirati(p)) { if (!fallback) fallback = p; return false; } /* v-emirati: دخيل ← المزوّد التالي */
+    if (o.scenes && !p.scenes) { if (!fallback) fallback = p; return false; } /* v-trend-scenes: بلا مصفوفة المشاهد ← التالي */
     return true;
   };
   const messages = [{ role: 'user', content: buildPrompt(Object.assign({}, o, { seconds: sec })) }];
@@ -128,14 +139,16 @@ async function handler(req, res) {
   const request = clip(body && body.request, MAX_REQ);
   if (!request) { res.status(400).json({ error: 'request required' }); return; }
   const kind = KINDS.includes(body.kind) ? body.kind : 'story';
-  const seconds = secondsOf(body.duration);
+  /* v-trend-scenes: ترند المشاهد — ٨ ثوانٍ لكلّ مشهد، فميزانيّة الكلام بطول القصّة كلّها */
+  const scenes = Math.max(0, Math.min(MAX_SCENES, parseInt(body.scenes, 10) || 0));
+  const seconds = scenes ? 8 * scenes : secondsOf(body.duration);
   const characters = (Array.isArray(body.characters) ? body.characters : []).map((c) => clip(c, 40)).filter(Boolean).slice(0, MAX_CHARS);
   let gate = null;
   try { gate = await checkAndConsumePlanCustom(body.token, null, clientIp(req), 'video-write', DAILY_LIMIT); } catch (e) { gate = null; /* عطب العدّاد لا يفتح الباب */ }
   if (gate && !gate.allowed) { res.status(200).json({ result: null, reason: gate.reason === 'limit' ? 'limit' : 'auth' }); return; }
   if (!gate || !gate.username) { res.status(200).json({ result: null, reason: 'auth' }); return; }
   let result = null; const diag = [], info = {};
-  try { result = await write({ request, kind, seconds, characters, env: process.env, diag, info }); } catch (e) { console.error('[video-write] ' + (e && e.message)); }
+  try { result = await write({ request, kind, seconds, characters, scenes, env: process.env, diag, info }); } catch (e) { console.error('[video-write] ' + (e && e.message)); }
   let owner = false; try { owner = require('./_owner.js').isOwnerName(gate.username); } catch (e) { owner = false; }
   if (!result) {
     if (diag.length) console.warn('[video-write] unavailable: ' + diag.join(' | '));

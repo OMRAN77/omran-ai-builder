@@ -81,7 +81,7 @@ test('١. المالك على Gemini بلا رصيد عند الوسيط → ر�
   assert.equal(r.text, '', 'لا ردّ من مزوّد آخر');
   const stop = r.events.find((e) => e.ownerStop === true);
   assert.ok(stop, 'حدث التوقّف للمالك');
-  assert.equal(stop.error, 'ما عندي رصيد', 'الرسالة وحدها بلا نصّ تقنيّ');
+  assert.equal(stop.error, 'ما عندي رصيد — OpenRouter', 'الرسالة وحدها بلا نصّ تقنيّ');
 });
 
 test('٢. المالك على كلود: المباشر بلا رصيد ← كلود عبر الوسيط (المزوّد نفسه) بلا رصيد ← السببان، ولا مزوّد آخر', async () => {
@@ -92,7 +92,7 @@ test('٢. المالك على كلود: المباشر بلا رصيد ← كل�
   assert.match(models[0], /^anthropic\/claude/, 'كلود نفسه');
   const stop = r.events.find((e) => e.ownerStop === true);
   assert.ok(stop);
-  assert.equal(stop.error, 'ما عندي رصيد');
+  assert.equal(stop.error, 'ما عندي رصيد — Anthropic و OpenRouter');
   assert.equal(r.text, '');
 });
 
@@ -114,7 +114,7 @@ test('٤. المالك على Kimi: مفتاح Moonshot المباشر 402 ← K
     assert.ok(!r.calls.some((c) => isAnth(c.url)));
     const stop = r.events.find((e) => e.ownerStop === true);
     assert.ok(stop);
-    assert.equal(stop.error, 'ما عندي رصيد');
+    assert.equal(stop.error, 'ما عندي رصيد — Kimi مباشر و OpenRouter');
   } finally { delete process.env.KIMI_API_KEY; }
 });
 
@@ -240,7 +240,7 @@ test('١١. Groq: رفض Groq نفسه (402) يتوقّف بـ«ما عندي ر
       (u) => (/api\.groq\.com/.test(u) ? new Response(JSON.stringify({ error: { message: 'Insufficient balance' } }), { status: 402 }) : isOR(u) ? sse('من الوسيط') : isAnth(u) ? sse('من كلود') : new Response('{}', { status: 404 })));
     assert.ok(r.calls.some((c) => /api\.groq\.com/.test(c.url)));
     assert.ok(!r.calls.some((c) => isOR(c.url) || isAnth(c.url)), 'لا وسيط ولا كلود');
-    assert.equal(r.events.find((e) => e.ownerStop).error, 'ما عندي رصيد');
+    assert.equal(r.events.find((e) => e.ownerStop).error, 'ما عندي رصيد — Groq مباشر');
   } finally { delete process.env.GROQ_API_KEY; }
 });
 
@@ -255,7 +255,7 @@ test('١٢. GPT: سقوط المفتاح المباشر يكمل عند الوس
     // المباشر بلا رصيد ثمّ الوسيط بخطأ غير الرصيد: السبب الأوّل (الرصيد) يبقى
     const r2 = await run('omran', { provider: 'openai', model: 'openai/gpt-6-astra', messages: ask('سؤال') },
       (u) => (/api\.openai\.com/.test(u) ? quota() : isOR(u) ? new Response('{"error":{"message":"upstream down"}}', { status: 503 }) : isAnth(u) ? sse('من كلود') : new Response('{}', { status: 404 })));
-    assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما عندي رصيد');
+    assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما عندي رصيد — OpenAI مباشر · OpenRouter خطأ 503');
     assert.ok(!r2.calls.some((c) => isAnth(c.url)));
   } finally { delete process.env.OPENAI_API_KEY; }
 });
@@ -317,7 +317,7 @@ test('١٦. القائمة تسمّي ما يجيب فعلًا: Groq = GPT-OSS 1
     vm.runInNewContext('var model = this.model;\n' + line + '\nthis.out = model;', ctx);
     assert.equal(ctx.out, want, id);
   }
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m171026b/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m211026/);
 });
 
 // ── مراجعة مستقلّة (١٦ وكيلًا) على التعديل نفسه: أخطاء أكّدها مشكّك ثانٍ ──

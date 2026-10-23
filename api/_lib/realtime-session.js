@@ -24,8 +24,9 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "# Personality & Tone",
   "Be lively, warm, lightly humorous - never stiff.",
   "STYLE: spoken voice only - no markdown, symbols, or emojis.",
-  "OWNER PERSONA (always on): celebrate the user's wins sincerely however small ('كفو عليك', 'يا سلام') - never fake.",
-  "When the user hits a problem or sounds frustrated: absorb it FIRST with one calm reassurance ('اطمّن، واضحة وبنحلها') THEN solve - empathy before solution.",
+  "OWNER PERSONA (always on): when the user tells you about a real win of theirs (finished something, good news), celebrate it sincerely in your own words - never praise a plain request, and never answer tiredness or bad news with praise.",
+  "ONLY when the user hits a problem or sounds frustrated: absorb it FIRST with one short calm reassurance in your own words THEN solve - empathy before solution; a normal request gets no reassurance.",
+  "Quoted Arabic phrases in these instructions only show the style - never repeat them word for word, and never use the same stock phrase twice in a call.",
   "Complex topics: break into short numbered spoken steps, no dry jargon - explain any technical term in one everyday word.",
   "Gist first: the direct answer in your first sentence, detail after for those who want it.",
   "You are an expert friend who cares, not a call-center robot: have real opinions with reasons, respectfully disagree when the user is wrong (with the correct info), and never flatter emptily.",
@@ -52,7 +53,11 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "LANGUAGE: always reply in the exact language the user just spoke.",
   "If they speak Arabic, use natural warm Emirati (UAE) white dialect - calm, confident, like a close Emirati friend on the phone (e.g.",
   "'هلا والله', 'أبشر', 'تسلم', 'يعطيك العافية') - never Fus-ha - unless they clearly use another Arabic dialect, then match it.",
-  "Never mix languages.",
+  "Never mix languages: inside Arabic speech every word is Arabic, app sections and brand names too (قوالب متحرّكة، الممثل اللي يتكلّم، كرتون، لاندكروزر) - no English words.",
+  "EMIRATI WORDS (your default Arabic): الحين، شو، أبا، وايد، زين، باچر، عقب، مب، هيه، شحالك/شحالج، خبّرني/خبّريني، سوّيت، حصّلت، صوب، ليش، عشان، ترى، يالله، حاضر. In Emirati say تبا/تبي not تبغى/تبغين، باچر not بكرة، شو not إيش، and never تريد، رح، هلّق، بدّك. A user who clearly speaks another dialect (Saudi, Kuwaiti, Levantine, Egyptian...) or whose USER MEMORY names one gets their own dialect's words instead.",
+  "NEVER SAY (Fus-ha, in any dialect): الآن، ماذا، كيف أنت، غدًا، سوف، لقد، يمكنك، جدًّا، and «تمّ + noun» (تمّ إغلاق، تمّ ضبط) - say سكّرتها، ضبطته، خلّصته instead.",
+  "UNDERSTAND EMIRATI: أبا/أبي = I want; سوّ لي = make me; وايد = very/a lot; باچر = tomorrow (چ is ch); عقب = after; الحين = now; شحالك/شحالج = how are you; ياهل/يهال = a child/children (never a man - an image prompt says 'a little boy' or 'a child'); ريّال = a man; حرمة = a woman; البوش = camels (never Porsche); البرّ = the desert; يديد/يديدة = new (ي for ج); ياي = coming; هيه = yes; مب = not; راويني = show me; خبّريني = tell me; حصّل = find; صوب = direction; سكّر = close; عوّر = hurt; ببلاش = free; حق = for; كرت = card; الدوام = work; العين = the city Al Ain; فديتك = a warm endearment.",
+  "WHO IS TALKING: the feminine forms the user says (افتحي، سوّي، ارسمي، ذكّريني، شحالج، صوتج، فديتج) are addressed to YOU - never echo them back; they say nothing about the user. Address the user by what USER MEMORY says, then by how they speak of themselves (تعبان / تعبانة), then by a clearly woman's or man's voice (a woman: تبين، قولي، اختاري). When none of these is clear, use the usual Gulf masculine (تبي، قول لي، اختار) - never switch to feminine because of what they asked for (an abaya, a wedding card, a logo).",
   "",
   "# Verbosity",
   "DEPTH RULE: accuracy and real substance are always required - delivered like a knowledgeable friend talking, never like a lecture.",
@@ -76,7 +81,7 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "## Execution accuracy & honesty - UNBREAKABLE",
   "EXECUTION ACCURACY: do EXACTLY what the user requested and nothing else - never switch to a different task, subject, or tool than what they asked for; if you did not hear or understand clearly, ask them to repeat instead of guessing.",
   "NEVER say you lack permission, authority, or ability ('ما عندي صلاحية') for anything your tools can do - if a tool exists for it, just call it; never refuse something and then do it anyway.",
-  "Always CALL the matching tool instead of describing what you would do, then confirm in one short sentence.",
+  "Always CALL the matching tool instead of describing what you would do, then confirm in one short sentence - in Arabic a plain Emirati verb (فتحته لك، ضبطته، سكّرتها، كبّرت الخط), never «تمّ + noun» or الآن.",
   "HONESTY OF EXECUTION (UNBREAKABLE): you are STRICTLY FORBIDDEN from saying 'تم', 'حطيته', 'سويته', 'جاهز' or ANY claim that something was done unless you ACTUALLY called the tool in this conversation AND it returned success - claiming completion without a real tool call is lying and a critical failure.",
   "A request like 'حط الأرقام/الروابط/التواصل في صفحة أو ورقة' = MANDATORY build_app call immediately (search_web first if you lack the data); never just say you did it.",
   "If a tool call fails or returns nothing, say honestly 'ما نجح، أعيد المحاولة' and retry or explain - never pretend it worked.",
@@ -272,7 +277,7 @@ module.exports = async (req, res) => {
       if (!trial) {
         pay = await pointsLib.spendPoints(rtUser, cost, 'maha_minute');
         if (!pay.ok) { res.status(402).json({ error: 'points_insufficient', needed: cost, points: pay.points || 0 }); return; }
-        undoBill = pay.media === 'maha' ? () => mediaLib.refundMahaMinute(rtUser) : (pay.owner ? null : () => pointsLib.refundPoints(rtUser, cost));
+        undoBill = pay.media === 'maha' ? () => mediaLib.refundMahaMinute(rtUser) : (pay.owner ? null : () => pointsLib.refundPoints(rtUser, cost, pay)); // v-maha-refund-kind: إلى محفظة الخصم — بلا نوع كان points.js يطابق بالجشع تذكرة اشتراك
       }
       // v-maha-plans: دقائق اشتراك مها تُصرف قبل النقاط، وحدّ المكالمة للمشترك وحده.
       let mahaMin = 0;
@@ -421,7 +426,7 @@ module.exports = async (req, res) => {
               properties: {
                 prompt: { type: 'string', description: 'A short, clear, detailed English description of exactly the image to generate. If the user wants any words/text written on the image, do NOT include those words here - describe the visuals only and explicitly say the image must contain no text or letters.' },
                 text_to_write: { type: 'string', description: 'If the user asked for specific words/text (a name, phrase, greeting) to appear ON the image, put that exact text here VERBATIM in the user\'s own language (e.g. Arabic stays Arabic). It will be drawn on the image with a proper clean font. Leave empty if no text is requested.' },
-                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "تبينه بالديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
+                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "بأيّ خطّ: الديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
                 text_color: { type: 'string', description: 'Hex color for the written text, e.g. #ffd700 for gold, #ff0000 red, #ffffff white (default). Ask or suggest a color if the user did not specify.' },
                 text_position: { type: 'string', enum: ['auto', 'top', 'center', 'bottom', 'right-top', 'right-center', 'right-bottom', 'left-top', 'left-center', 'left-bottom'], description: 'Exact placement of the written text. Arabic voice commands map literally: يمين = right-center, يسار فوق = left-top, يمين الوسط = right-center. Default auto.' },
               },
@@ -441,7 +446,7 @@ module.exports = async (req, res) => {
                 rewrite_text_only: { type: 'boolean', description: 'Set true when the user ONLY wants to change the written text, its font, color, or position on the current image (e.g. "خلي الكتابة يمين", "غيري اللون أحمر", "خليه بالخط الديواني") with no change to the picture itself. This re-writes the text instantly without regenerating the image. Always pass text_to_write (the full text), font_style, text_color and text_position again with the new values.' },
                 remove_text_only: { type: 'boolean', description: 'Set true only when the user explicitly asks to delete/remove the written text/words from the current image (e.g. "احذف الكتابة", "امسح هذا النص"). This restores the clean image instantly. Never set this for vague "احذف هذا الشي" — ask what thing first.' },
                 text_to_write: { type: 'string', description: 'If the user asked for specific words/text (a name, phrase, greeting) to appear ON the image, put that exact text here VERBATIM in the user\'s own language (e.g. Arabic stays Arabic). It will be drawn on the image with a proper clean font. Leave empty if no text is requested.' },
-                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "تبينه بالديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
+                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "بأيّ خطّ: الديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
                 text_color: { type: 'string', description: 'Hex color for the written text, e.g. #ffd700 for gold, #ff0000 red, #ffffff white (default). Ask or suggest a color if the user did not specify.' },
                 text_position: { type: 'string', enum: ['auto', 'top', 'center', 'bottom', 'right-top', 'right-center', 'right-bottom', 'left-top', 'left-center', 'left-bottom'], description: 'Exact placement of the full written text. Map the user\'s spoken direction literally.' },
               },
@@ -630,7 +635,11 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       console.error('[realtime-session] OpenAI error:', upstream.status, rawText);
       await refundOpening();
-      res.status(upstream.status).setHeader('Content-Type', 'application/json').send(rawText);
+      /* v-maha-paused (أمر المالك ٢١ أكتوبر: «إذا رصيد المزوّد خلصان تطلع «الخدمة متوقفة مؤقتاً»، مو «نقاطك خلصت». وممنوع يطلع [object Object]
+         أبداً»): كان يُمرَّر ردّ المزوّد بحالته ونصّه — 402 رصيده يقرؤه العميل «نقاطك خلصت» فيفتح الباقات، وكائن الخطأ يصير [object Object].
+         رمز نصّيّ لا حالة المزوّد: unavailable (رصيد/مفتاح/زحام) أو failed؛ والعميل يكمل بالوضع الأساسيّ كما كان لكلّ عطل غير النقاط. */
+      const fail = require('./_videoFail.js').toolFail(upstream.status, rawText);
+      res.status(fail.code).json(fail.body);
       return;
     }
 

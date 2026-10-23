@@ -9,6 +9,7 @@
 // افتراضيًا الإنتاج. MONITOR_KEY اختياري: بوجوده يتعمّق فحص الصحّة.
 import { createHash } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 
 const BASE = (process.argv[2] || 'https://omran-ai-builder.vercel.app').replace(/\/$/, '');
 const KEY = process.env.MONITOR_KEY || '';
@@ -126,21 +127,36 @@ const IPHONE_UA =
 // ⓘ بطاقة هويّة النشرة خلف هذا العنوان. غرضها واحد: حين ينجح فحصٌ على
 // عنوان النشرة ويفشل على النطاق بنفس الالتزام، فالسؤال ليس «ما العطب؟»
 // بل «هل هما النشرة نفسها؟». رؤوس Vercel تجيب بلا تخمين.
-// \u2461 مِجسّ النشرة: ملفّ بمسار لم يوجد قبل هذه النشرة. المسار الجديد لا
-// يمكن أن يكون مخزَّنًا في كاش — فإن غاب عن عنوان بينما هو موجود في الشجرة
-// المنشورة، فذلك العنوان لا يخدم هذه النشرة أصلًا. لا تأويل آخر.
+// ② مِجسّ النشرة (v-deploy-probe): /deploy-probe.txt يكتبه الخادم من التزام النشرة الحيّة نفسها
+// (VERCEL_GIT_COMMIT_SHA — api/_lib/deploy-probe.js)، ويُقارَن بالالتزام المنتظَر: EXPECT_COMMIT إن ضُبط، وإلّا
+// HEAD هذه النسخة (smoke.yml يسحب deployment.sha). كان ملفًّا ثابتًا في المستودع يُقارَن بنفسه فينجح دائمًا.
+// لا التزام منتظَر، أو غياب المِجسّ، أو رقم آخر = فشل — لا تخطٍّ ولا نجاح كاذب.
+function expectedCommit() {
+  const env = String(process.env.EXPECT_COMMIT || '').trim();
+  if (env) return env.toLowerCase();
+  try { return execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim().toLowerCase(); } catch (e) { return ''; }
+}
+// دمجان متتاليان: النطاق قد يخدم النشرة الأحدث قبل أن يصله فحص الأقدم — وهي تحوي التزامه، فالدمج حيّ (مراجعة النقض: كان ✗ كاذبًا
+// «من نشرة أخرى»). سلف بالـgit: محلّيًّا أوّلًا، وإلّا جلب تاريخ الحيّ من origin (نسخة الورك فلو ضحلة). أيّ عطب = ليس سلفًا = ✗.
+// الجلب فقط حين لا يوجد الحيّ محلّيًّا؛ SMOKE_FETCH=0 يمنعه (الاختبار بلا شبكة).
+function isAncestor(want, got) {
+  const git = (c) => { try { execSync('git ' + c, { stdio: 'ignore', timeout: 30000 }); return true; } catch (e) { return false; } };
+  if (!git('cat-file -e ' + got + '^{commit}') && (process.env.SMOKE_FETCH === '0' || !git('fetch --quiet --depth=200 origin ' + got))) return false;
+  return git('merge-base --is-ancestor ' + want + ' ' + got);
+}
 async function probe() {
-  console.log('\u2461 مِجسّ النشرة');
-  const local = existsSync('deploy-probe.txt') ? readFileSync('deploy-probe.txt', 'utf8').trim() : '';
-  if (!local) { console.log('  · لا مِجسّ محلّيّ — تُخطّى'); return; }
-  const want = (local.match(/commit=(\w+)/) || [])[1] || '';
+  console.log('② مِجسّ النشرة');
+  const want = expectedCommit();
+  if (!/^[0-9a-f]{7,40}$/.test(want)) { no('لا التزام منتظَر (EXPECT_COMMIT أو git) — لا يُثبت شيء'); return; }
   const r = await get('/deploy-probe.txt');
-  if (r.status === 404) { no('المِجسّ غائب (404) → هذا العنوان لا يخدم النشرة الحاليّة'); return; }
-  if (r.status !== 200) { no(`المِجسّ → ${r.status}`); return; }
-  const live = (await r.text()).trim();
-  const got = (live.match(/commit=(\w+)/) || [])[1] || '؟';
-  got === want ? ok(`المِجسّ يطابق: commit=${got}`)
-               : no(`المِجسّ من نشرة أخرى: حيّ=${got} ≠ محلّيّ=${want}`);
+  if (r.status !== 200) { no(`المِجسّ → ${r.status} — النشرة لا تعلن التزامها`); return; }
+  const got = (((await r.text()).match(/commit=([0-9a-f]{7,40})\b/i) || [])[1] || '').toLowerCase();
+  if (!got) { no('المِجسّ بلا رقم التزام'); return; }
+  // الرقمان كاملان عادةً (٤٠)؛ إن قَصُر أحدهما فالمطابقة على طول الأقصر، ولا أقلّ من ٧.
+  const n = Math.min(got.length, want.length);
+  if (got.slice(0, n) === want.slice(0, n)) ok(`المِجسّ يطابق: commit=${got.slice(0, 7)}`);
+  else if (got.length === 40 && want.length === 40 && isAncestor(want, got)) ok(`المِجسّ: نشرة أحدث تحوي الالتزام — حيّ=${got.slice(0, 7)} ⊇ منتظَر=${want.slice(0, 7)}`);
+  else no(`المِجسّ من نشرة أخرى: حيّ=${got.slice(0, 7)} ≠ منتظَر=${want.slice(0, 7)}`);
 }
 
 async function identity() {
@@ -237,6 +253,9 @@ async function navRoutes() {
         : no(`${label} → ${r.status} (خطأ خادم)`);
     } else ok(`${label} → ${r.status}`);
   }
+  // v-unverified-email: الجرد اليوميّ موصول (إعادة الكتابة ← system) — POST يُرفض ٤٠٥ بلا جرد؛ ٤٠٤ = غير موصول، والجدول يفشل بصمت.
+  const sweepR = await get('/api/email-sweep', { method: 'POST', redirect: 'manual' });
+  sweepR.status === 405 ? ok('/api/email-sweep [POST] → 405 (الجرد موصول ولم يُشغَّل)') : no('/api/email-sweep [POST] → ' + (sweepR.status || sweepR.err) + ' (المتوقّع ٤٠٥)');
 }
 
 const vHash = await page();

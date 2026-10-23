@@ -61,3 +61,16 @@ test('v-car-drop: زرّ «نزّل سيّارتك» يقرأ سيّارات ا�
   assert.match(h, /DRV\.speed = 0/); // الاصطدام يوقف السيّارة
   assert.match(h, /if \(window\.__diag && window\.__diag\.on\) window\.__real3d =/);
 });
+
+test('v-life-stat-pos (تدقيق ١٨ أكتوبر، g14): حالة الشوارع تحت شريط المدن أيًّا كان عدد صفوفه — لا top:56px ثابت يغطّي أبوظبي والرياض في الجوّال', () => {
+  const h = fs.readFileSync(path.join(root, 'inspire/real3d.html'), 'utf8');
+  const tag = (h.match(/<div id="lifeStat"[^>]*>/) || [''])[0];
+  assert.ok(tag, '#lifeStat موجود');
+  assert.doesNotMatch(tag, /top:\s*56px/, 'لا موضع ثابت يفترض صفًّا واحدًا من الأزرار');
+  // الموضع من أسفل #bar الحقيقيّ عند الإظهار وعند تغيّر المقاس
+  const fn = (h.match(/function placeLifeStat\(\)\s*\{[^\n]*\}/) || [''])[0];
+  assert.match(fn, /\$\('bar'\)\.getBoundingClientRect\(\)\.bottom \+ 6/);
+  assert.match(fn, /\$\('lifeStat'\)\.style\.top =/);
+  assert.match(h, /el\.style\.display = st \? 'block' : 'none'; if \(st\) placeLifeStat\(\);/);
+  assert.match(h, /addEventListener\('resize', \(\) => \{[\s\S]{0,300}placeLifeStat\(\)/);
+});

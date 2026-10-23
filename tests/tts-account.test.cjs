@@ -143,6 +143,6 @@ test('٤. كلّ حساب حصّته مهما تغيّر عنوانه، وحسا
 
 test('٥. الحزمة مطابقة', () => {
   const bundle = read('js/app.bundle.js');
-  assert.ok(bundle.includes("body: JSON.stringify({ voice: 'maha', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })"));
+  assert.ok(bundle.includes("body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })"));
   assert.ok(bundle.includes("speed: 'normal' /* v-speed-chat-only: «بطيء وسريع للدردشة فقط، ليس لمها وعبدالله» */, token: ttsAuthToken(), guestId: ttsGuestId() })"));
 });

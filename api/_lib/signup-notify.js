@@ -70,12 +70,12 @@ async function send(info) {
     ['إجمالي الحسابات بعد التسجيل', total == null ? 'تعذّر العدّ' : String(total)],
   ];
   const html = '<div dir="rtl" style="font-family:sans-serif;max-width:520px;margin:0 auto">'
-    + '<h2 style="margin:0 0 12px">حساب جديد في عمران AI</h2>'
+    + '<h2 style="margin:0 0 12px">حساب جديد في om ai</h2>'
     + '<table style="border-collapse:collapse;width:100%">'
     + rows.map(([k, v]) => '<tr><td style="padding:6px 10px;border-bottom:1px solid #ddd;color:#666;white-space:nowrap">' + escapeHtml(k)
       + '</td><td style="padding:6px 10px;border-bottom:1px solid #ddd"><b>' + escapeHtml(v) + '</b></td></tr>').join('')
     + '</table></div>';
-  const subject = ('حساب جديد في عمران AI: ' + name).replace(/[\r\n]+/g, ' ').slice(0, 120);
+  const subject = ('حساب جديد في om ai: ' + name).replace(/[\r\n]+/g, ' ').slice(0, 120);
   const ok = await sendMail(to, subject, html);
   if (!ok) logError('signup-notify:send', new Error('mail_not_sent'), { method, testSender: /@resend\.dev>?\s*$/i.test(String(process.env.MAIL_FROM || '@resend.dev')) });
   return ok ? 'sent' : 'failed';

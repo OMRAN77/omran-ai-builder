@@ -150,7 +150,7 @@ test('ترتيب الكمبيوتر نسخ/استماع/إعادة/المزيد�
   bar.children[2].click();
   assert.deepEqual(e.calls.regen, [7]);
   assert.deepEqual(titles(setup({ mobile: true }).render()), ['copyMsgTitle', 'speakBtn', 'moreOptionsTitle']);
-  assert.deepEqual(titles(setup({ mobile: true }).render(e.message({ role: 'user' }))), ['copyMsgTitle']);
+  assert.deepEqual(titles(setup({ mobile: true }).render(e.message({ role: 'user' }))), ['copyCode']); // v-chat-sys-msg: نسخ رسالة المستخدم «نسخ» لا «نسخ الردّ»
 });
 
 test('المزيد يعرض المشاركة/التقييم/البلاغ وأربع صيغ التصدير بالترتيب ويُرسل الأفعال', () => {

@@ -155,17 +155,19 @@ test('٤. عشرة تسجيلات متزامنة من عنوان واحد على
   assert.equal(counter(allKey()), 3, 'الرفض عند العنوان لا يأكل من القاطع العامّ');
 });
 
-test('٥. تسجيل مرفوض (اسم مأخوذ، محجوز، إيميل مكرّر أو خاطئ، كلمة مرور قصيرة) لا يأكل حصّة', async () => {
+test('٥. تسجيل مرفوض (اسم مأخوذ، محجوز، كلمة مرور قصيرة) لا يأكل حصّة — والإيميل في التسجيل يُتجاهل (v-signup-no-email)', async () => {
   reset({ WELCOME_GIFT_PER_IP_DAILY: '3' });
   assert.equal((await signup('first', '203.0.113.8', { email: 'first@example.com' })).code, 200);
   const before = JSON.stringify(counters());
   assert.equal((await signup('first', '203.0.113.8')).code, 409, 'اسم مأخوذ');
   assert.equal((await signup('admin', '203.0.113.8')).code, 409, 'اسم محجوز');
-  assert.equal((await signup('second', '203.0.113.8', { email: 'first@example.com' })).code, 409, 'إيميل مكرّر');
-  assert.equal((await signup('third', '203.0.113.8', { email: 'not-an-email' })).code, 400, 'إيميل خاطئ');
   assert.equal((await signup('fourth', '203.0.113.8', { password: 'short' })).code, 400, 'كلمة مرور قصيرة');
   assert.equal(JSON.stringify(counters()), before, 'العدّادات كما هي');
   assert.equal(counter(ipKey('203.0.113.8')), 1);
+  // الإيميل في التسجيل لا يُرفض (مكرّرًا أو خاطئًا) ولا يُحفظ: حساب عاديّ يأخذ حصّته كأيّ تسجيل
+  assert.equal((await signup('second', '203.0.113.8', { email: 'first@example.com' })).code, 200, 'إيميل غيره يُتجاهل');
+  assert.equal((await signup('third', '203.0.113.8', { email: 'not-an-email' })).code, 200, 'إيميل خاطئ يُتجاهل');
+  for (const k of ['first', 'second', 'third']) assert.equal((await auth.getUser(k)).email, null, k + ' بلا إيميل');
 });
 
 test('٦. القاطع العامّ ٤ بعناوين مختلفة: أربع هدايا بالضبط، والتجاوز يُبقي عدّاد عنوانه (يعدّ التسجيلات — farm-2)؛ وبلا عنوان القاطع وحده', async () => {

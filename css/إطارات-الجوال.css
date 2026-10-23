@@ -11,7 +11,7 @@ html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood){
   --om-gold-line:linear-gradient(160deg,rgba(184,144,44,.7),rgba(184,144,44,.2) 32%,rgba(150,120,60,.35) 62%,rgba(184,144,44,.5)); --om-dots:radial-gradient(rgba(150,112,40,.22) 1px,transparent 1.3px); --om-panel:linear-gradient(#f9f2e4,#f9f2e4); --om-glow:radial-gradient(120% 38% at 50% 100%,rgba(236,206,140,.32),transparent 70%);
   /* العاجيّ نفسه الذي على الكمبيوتر (css/إطارات.css) بدل الرماديّ */
   --bg:#f9f2e4 !important; --bg2:#f9f2e4 !important; --panel:#fbf5e9 !important; --panel2:#f3ead6 !important;
-  --text:#4a4034 !important; --muted:#8e8477 !important; --border:rgba(120,96,50,.14) !important;
+  --text:#4a4034 !important; --muted:#625a4e !important; /* v-theme-contrast: كان #8e8477 (٣٫٤:١ على العاجيّ) */ --border:rgba(120,96,50,.14) !important;
   --accent-ink:#4a4034 !important; --accent-on-surface:#4a4034 !important; --accent-surface:#efe5cf !important;
   background:#f9f2e4 !important;
 }
@@ -23,6 +23,11 @@ html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) #
 html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) #code{ background:#f9f2e4 !important; color:#3b332a !important; }
 html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) #omranBottomNav{ background:#000 !important; border-top-color:transparent !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
 html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) #omranBottomNav{ background:#f9f2e4 !important; border-top-color:transparent !important; -webkit-backdrop-filter:none; backdrop-filter:none; }
+/* v-bg3d-mobile-band (تدقيق ١٨–١٩ أكتوبر، وأُعيد حيًّا على الإنتاج): مع خلفيّة WebGL (أمواج، ضباب، شبكة…) ظهر أعلى الشاشة شريط بلون الجسم بارتفاع
+   هذا الشريط السفليّ (٥١px). المعتم تمامًا بعرض الشاشة يحجب أسفل الكانفس، والمركِّب يقصّ المحجوب من صورة WebGL المقلوبة رأسيًّا فيقع القصّ أعلاها.
+   ألفا ٠٫٩٩ (اللون نفسه بالعين) تُبقيه غير حاجب فلا قصّ. ما دام body.vantaActive وحده — بلا خلفيّة ثلاثيّة يبقى كما هو. */
+html.mobile-ui:not([data-mode="light"]):not(.bgimg):not(.skin):not(.skin-wood) body.vantaActive #omranBottomNav{ background:rgba(0,0,0,.99) !important; }
+html.mobile-ui[data-mode="light"]:not(.bgimg):not(.skin):not(.skin-wood) body.vantaActive #omranBottomNav{ background:rgba(249,242,228,.99) !important; }
 
 /* المحادثة في إطار: خطّ ذهبيّ واحد من تحت شريط الحالة إلى فوق الشريط السفليّ (حجزه ‎48px‎ في redesign.css)؛ والكيبورد مفتوح إلى أسفل الشاشة */
 html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after{

@@ -113,6 +113,19 @@ const CARD_SETS = {
     { name: 'shoes', style: 'evening', gender: 'women', d: 'close-up on elegant designer heels worn by a model' },
     { name: 'scarf', style: 'casual', gender: 'women', d: 'close-up on an elegant silk scarf styled on a model' },
     { name: 'makeup', style: 'evening', gender: 'women', d: 'close-up beauty portrait with elegant evening makeup' },
+    // v-fx-gender-pics: إضافات الرجال والأطفال (كانت صور امرأة لكلّ الفئات) — القطعة الأولى من كتالوج الخادم نفسه (fashion-variety ACCESSORIES)
+    { name: 'men-glasses', style: 'casual', gender: 'men', d: 'close-up on aviator glasses with gold metal frames worn by the model' },
+    { name: 'men-watch', style: 'formal', gender: 'men', d: 'close-up on a classic dress watch with a steel case on the model wrist and shirt cuff; the dial is completely plain with simple stick hour markers only, no numerals, no letters, no logo' },
+    { name: 'men-handbag', style: 'formal', gender: 'men', d: 'close-up on a cognac leather briefcase held by the model' },
+    { name: 'men-shoes', style: 'formal', gender: 'men', d: 'close-up on polished oxford shoes worn by the model' },
+    { name: 'men-scarf', style: 'winterlux', gender: 'men', d: 'close-up on a cashmere scarf draped loosely over the model coat' },
+    { name: 'men-makeup', style: 'formal', gender: 'men', d: 'close-up grooming portrait: subtle natural grooming with matte even skin and tidy brows, the beard neatly kept' },
+    { name: 'kids-glasses', style: 'casual', gender: 'kids', d: 'close-up on round kids sunglasses worn by the smiling child' },
+    { name: 'kids-watch', style: 'casual', gender: 'kids', d: 'extreme close-up macro shot of a colorful analog kids watch on the child wrist, the watch filling most of the frame; the dial shows only simple dot markers, no numbers, no letters, no logo' },
+    { name: 'kids-handbag', style: 'casual', gender: 'kids', d: 'close-up on a mini crossbody purse carried by the child' },
+    { name: 'kids-shoes', style: 'casual', gender: 'kids', d: 'close-up on clean new low-top canvas sneakers with plain socks worn by the child, no logos, no prints, no marks' },
+    { name: 'kids-scarf', style: 'winterlux', gender: 'kids', d: 'close-up on a soft knit scarf worn by the child' },
+    { name: 'kids-makeup', style: 'eidkids', gender: 'kids', d: 'close-up portrait of the child with a natural face and a little festive cheek glitter, no adult makeup' },
   ],
 };
 
@@ -182,12 +195,14 @@ if (isMode('fashion')) {
   const want = sub('fashion') || ['women', 'men', 'kids', 'category', 'occasion', 'season', 'extras'];
   const W = grabFrom('api/_lib/fashion-create.js', 'STYLE_PROMPTS'), M = grabFrom('api/_lib/fashion-create.js', 'STYLE_PROMPTS_MEN'), K = grabFrom('api/_lib/fashion-create.js', 'STYLE_PROMPTS_KIDS');
   const styleOf = (g, s) => ((g === 'men' ? M : g === 'kids' ? K : null) || {})[s] || W[s] || W.evening;
+  // v-fx-mukhawara: البطاقة على صورة المالك المرجعيّة نفسها («هذا شكل المخوره») لا على الوصف القصير
+  const CARD_DESC = { women: { mukhawara: 'a traditional Emirati mukhawar: a flowing floor-length A-line dress with long wide sleeves, a stand collar opening into a V, a sequined metallic talli-embroidered panel down the front with a row of small buttons, matching embroidered cuffs, in printed floral chiffon over a lining with metallic embroidered swirls and sequins, modest' } };
   for (const g of want) {
     if (CARD_SETS[g]) {
       CARD_SETS[g].forEach((c) => JOBS.push({ kind: g, name: c.name, shape: 'port', prompt: 'Fashion catalog photo of ' + PERSON[c.gender] + styleOf(c.gender, c.style) + ' — ' + c.d + '.' + F_LOOK + ' No text, no letters, no watermark, no logo.' }));
     } else {
       const map = g === 'men' ? M : g === 'kids' ? K : g === 'women' ? W : null; if (!map) continue;
-      Object.entries(map).forEach(([v, desc]) => JOBS.push({ kind: g, name: v, shape: 'port', prompt: 'Fashion catalog photo of ' + PERSON[g] + desc + '.' + F_LOOK + ' No text, no letters, no watermark, no logo.' }));
+      Object.entries(map).forEach(([v, desc]) => JOBS.push({ kind: g, name: v, shape: 'port', prompt: 'Fashion catalog photo of ' + PERSON[g] + (((CARD_DESC[g] || {})[v]) || desc) + '.' + F_LOOK + ' No text, no letters, no watermark, no logo.' }));
     }
   }
 }

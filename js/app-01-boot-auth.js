@@ -216,6 +216,7 @@ try{
   const passLabelText = $('#authPasswordLabelText');
   const forgotLink = $('#authForgotLink');
   const backToLoginLink = $('#authBackToLoginLink');
+  const signupForgotLink = $('#authSignupForgotLink'); // v-signup-forgot: يظهر في التسجيل وحده تحت «عندي حساب»
   const passwordRow = $('#authPasswordRow');
   const infoMsg = $('#authInfoMsg');
   /* v-perf-boot-defer: partials-core.js يحقن مودال الدخول ديناميكيًّا؛ فشل تحميله (شبكة جوّال متقطّعة) كان
@@ -262,9 +263,21 @@ try{
     if(heading){ heading.textContent = headText || ''; heading.style.display = headText ? 'block' : 'none'; }
     if(altBlock) altBlock.style.display = (m === 'login' || m === 'signup') ? 'flex' : 'none';
     if(switchBtn) switchBtn.textContent = m === 'signup' ? t.authHaveAccount : t.authCreateAccount;
+    if(signupForgotLink) signupForgotLink.style.display = m === 'signup' ? 'block' : 'none';
     userInput.placeholder = (m === 'login' || m === 'forgotEmail') ? (t.authIdPlaceholder || '') : (t.authUsernameLabel || '');
     passInput.placeholder = (m === 'resetToken') ? (t.authNewPasswordLabel || '') : (t.authPasswordLabel || '');
     passInput.autocomplete = m === 'login' ? 'current-password' : 'new-password';
+    /* v-reset-link: ملفّ اللغة الكسول (١٢ لغة) يصل بعد الإقلاع فيعيد applyLanguage كتابة [data-i18n] — المفاتيح تتبع الوضع،
+       وإلّا رجع نموذج الاسترجاع بزرّ «دخول» وعنوان بلغة الاحتياط. */
+    submitBtn.setAttribute('data-i18n', m === 'resetToken' ? 'authSubmitReset' : m === 'forgotEmail' ? 'authSubmitForgotEmail' : m === 'signup' ? 'authSubmitSignup' : 'authSubmitLogin');
+    passInput.setAttribute('data-i18n-placeholder', m === 'resetToken' ? 'authNewPasswordLabel' : 'authPasswordLabel');
+    /* v-auth-a11y (تدقيق ١٨ أكتوبر): وصف قارئ الشاشة كان عربيًّا ثابتًا في كلّ اللغات — يتبع الوضع ولغة الواجهة كالنصّ الدليليّ،
+       ومفتاحه [aria-label] يتبع الوضع أيضًا فيكتبه applyLanguage صحيحًا عند وصول ملفّ اللغة الكسول. */
+    [[userInput, (m === 'login' || m === 'forgotEmail') ? 'authIdPlaceholder' : 'authUsernameLabel'], [passInput, m === 'resetToken' ? 'authNewPasswordLabel' : 'authPasswordLabel']].forEach(function(p){
+      p[0].setAttribute('data-i18n', '[aria-label]' + p[1]);
+      if(t[p[1]]) p[0].setAttribute('aria-label', t[p[1]]);
+    });
+    if(heading){ if(headText) heading.setAttribute('data-i18n', m === 'signup' ? 'authCreateAccount' : 'authForgotLink'); else heading.removeAttribute('data-i18n'); }
     if(m === 'forgotEmail'){
       tabsRow.style.display = 'none';
       passwordRow.style.display = 'none';
@@ -294,20 +307,33 @@ try{
   tabSignup.onclick = () => setMode('signup');
   forgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
   backToLoginLink.onclick = (e) => { e.preventDefault(); setMode('login'); };
+  if(signupForgotLink) signupForgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
   const authSwitchBtn = $('#authSwitchBtn');
   if(authSwitchBtn) authSwitchBtn.onclick = () => setMode(mode === 'signup' ? 'login' : 'signup');
 
   const togglePassBtn = $('#authTogglePassBtn');
   if(togglePassBtn){
+    /* v-signup-forgot: عين SVG رسميّة (مفتوحة = اضغط لتُظهر، مشطوبة = اضغط لتُخفي) بدل إيموجي القرد والعين — «شي رسمي» */
+    const EYE_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+    const EYE_OFF_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
     togglePassBtn.onclick = () => {
       const showing = passInput.type === 'text';
       passInput.type = showing ? 'password' : 'text';
-      togglePassBtn.textContent = showing ? '🙈' : '👁';
+      togglePassBtn.innerHTML = showing ? EYE_SVG : EYE_OFF_SVG;
+      /* v-auth-a11y: كان بلا وصف ولا حالة — الوصف بلغة الواجهة ومفتاحه وaria-pressed يتبعون الحالة */
+      const k = showing ? 'authShowPass' : 'authHidePass';
+      togglePassBtn.setAttribute('data-i18n', '[aria-label]' + k);
+      const lbl = curT()[k];
+      if(lbl) togglePassBtn.setAttribute('aria-label', lbl);
+      togglePassBtn.setAttribute('aria-pressed', showing ? 'false' : 'true');
     };
   }
 
   function showOverlay(){ overlay.style.display = 'flex'; }
   function hideOverlay(){ overlay.style.display = 'none'; }
+  /* v-reset-link (تدقيق الإنتاج ١٩ أكتوبر: رابط «إعادة تعيين كلمة المرور» يفتح النموذج لحظة ثمّ يرجع للرئيسيّة): الحزمة defer،
+     فـcheckResetTokenUrl يفتح وضع الاسترجاع قبل معالج DOMContentLoaded — والمعالج (وonAuthed بعد تحقّق جلسة) لا يطمسانه. */
+  function resetLinkOpen(){ return mode === 'resetToken' && !!window.__pendingResetToken; }
   /* v-auth-optional: الدخول اختياري — الشاشة صارت تُغلق بـ✕ ويتابع كضيف.
      (كانت تُفرض عند الإقلاع وتظهر وميضًا مزعجًا مع كل ريلود — شكوى ٢٨ أغسطس) */
   const authCloseBtn = $('#authCloseBtn');
@@ -461,7 +487,7 @@ try{
     else if(avatar === null){ localStorage.removeItem('aiapp_avatar'); }
     // ☁️ v306: استرجاع/دمج المحادثات من السيرفر (عند الإقلاع وعند تسجيل الدخول).
     try{ if(window.chatsSyncOnAuth) window.chatsSyncOnAuth(); }catch(e){ __swallow(e, "save:app-01-boot-auth#9"); }
-    hideOverlay();
+    if(!resetLinkOpen()) hideOverlay(); // v-reset-link: تحقّق جلسة الإقلاع لا يُغلق نموذج الرابط؛ نجاح الاسترجاع يمسح الرمز قبل هذا النداء فتُغلق
     setAuthToggleUI(true);
     if(userLabel) userLabel.textContent = username;
     // v214: الاسم صار داخل قائمة ⋮ — الشارة العلوية تبقى مخفية
@@ -477,7 +503,15 @@ try{
   // Single header button next to ⚙️ Settings that doubles as the login/logout
   // entry point: shows "🔑 Login" for guests (opens the auth overlay) and
   // "🚪 Logout" once signed in (clears the session).
-  function doLogout(){
+  async function doLogout(opts){
+    // v-logout-wipe (الدفعة ٢): المحادثات والصور تُمسح من الجهاز بعد رفع أخير وتأكيد — قبل مسح الرمز لأنّ الرفع يحتاجه. «لا» = لا خروج.
+    // v-acct-delete: بعد حذف الحساب المسح صامت (لا حساب يُرفع إليه ولا سؤال ثانٍ).
+    if(typeof window.chatsLogoutWipe === 'function'){
+      let ok = true;
+      try{ ok = await window.chatsLogoutWipe({ silent: !!(opts && opts.deleted) }); }catch(e){ __swallow(e, 'auth:logout-wipe'); }
+      if(ok === false) return;
+    }
+    emailConfirmAlert(null); // v-unverified-email: تنبيه الحساب لا يبقى بعد خروجه
     authRemove('aiapp_auth_token');
     authRemove('aiapp_username');
     localStorage.removeItem('aiapp_avatar');
@@ -488,56 +522,103 @@ try{
     if(window.refreshProviderQuickBar) window.refreshProviderQuickBar();
   }
   window.doLogout = doLogout;
+  /* v-acct-delete (تدقيق ١٨ أكتوبر «ما في حذف حساب داخل التطبيق»، وأمر المالك ٢٠ أكتوبر، الدفعة ٢ — Apple وGoogle يطلبانه): «حسابي» ←
+     «حذف الحساب»: الاسم مكتوبًا تأكيدًا (يُفحص هنا قبل أيّ نداء)، وكلمة المرور إن كان الحساب بها، ثمّ سؤال أخير. الخادم يوقف التجديد
+     ويمحو البيانات (api/_lib/account-delete.js)، ثمّ خروج يمسح الجهاز بصمت. أيّ فشل = لم يُحذف شيء ورسالة بسببه. */
+  async function acctDeleteAccount(){
+    const nameEl = $('#acctDeleteName'), passEl = $('#acctDeletePass'), btn = $('#acctDeleteBtn'), msg = $('#acctDeleteMsg');
+    const say = (k) => { if(msg) msg.textContent = t(k); };
+    const me = String(authGet('aiapp_username') || '').trim().toLowerCase();
+    if(!me || !nameEl) return;
+    if(String(nameEl.value || '').trim().toLowerCase() !== me){ say('acctDeleteWrongName'); return; }
+    if(!confirm(t('acctDeleteConfirm'))) return;
+    if(btn) btn.disabled = true;
+    say('acctDeleteWorking');
+    let d = null;
+    try{
+      const r = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'deleteAccount', token: authGet('aiapp_auth_token'), confirmUsername: String(nameEl.value).trim(), password: passEl ? passEl.value : '', lang }) });
+      d = await r.json().catch(() => null);
+    }catch(e){ __swallow(e, 'auth:acct-delete'); }
+    if(!(d && d.ok)){
+      if(btn) btn.disabled = false;
+      const c = d && d.code;
+      say(c === 'name_mismatch' ? 'acctDeleteWrongName' : c === 'wrong_password' ? 'acctDeleteWrongPass' : c === 'too_many' ? 'acctDeleteTooMany' : 'acctDeleteFailed');
+      return;
+    }
+    if(passEl) passEl.value = '';
+    nameEl.value = '';
+    if(btn) btn.disabled = false;
+    say('');
+    try{ const sd = document.getElementById('settingsDialog'); if(sd && sd.close) sd.close(); }catch(e){ __swallow(e, 'auth:acct-delete#close'); }
+    await doLogout({ deleted: true });
+    alert(t('acctDeleteDone'));
+  }
+  window.acctDeleteAccount = acctDeleteAccount;
+  /* v-owner-i18n (تدقيق ١٨ أكتوبر، g14-owner): لوحة المالك كانت عربيّة ثابتة في كلّ لغة. النصوص الآن من قاموس لغة الواجهة
+     (curT كبقيّة هذا الملفّ)، والأسماء والأرقام والرموز التقنيّة معزولة (\u2068…\u2069 / \u2066…\u2069 / <bdi>) فلا يقلبها اتّجاه السطر.
+     خطأ الشبكة («Failed to fetch» وأخواته) = acctNetError بلغة الواجهة؛ غيره يبقى كما هو (التشخيص يحتاجه). */
+  function ownT(k, p){
+    let v = '';
+    try{ v = curT()[k]; }catch(e){ __swallow(e, 'owner:i18n'); }
+    v = (v == null || v === '') ? k : String(v);
+    if(p) Object.keys(p).forEach(n => { v = v.split('{' + n + '}').join(String(p[n])); });
+    return v;
+  }
+  const ownIso = (s) => '\u2068' + String(s == null ? '' : s) + '\u2069';
+  const ownLtr = (s) => '\u2066' + String(s == null ? '' : s) + '\u2069';
+  function ownErr(e){
+    const m = String((e && e.message) || e || '');
+    return /Failed to fetch|NetworkError|Load failed|ERR_NETWORK|Network request failed/i.test(m) ? ownT('acctNetError') : m;
+  }
+  /* أسماء الخدمات: مفتاح العدّاد آخره سلّة الحصّة (MOVE_BUCKETS في _usage.js) لا مزوّد — اسم وظيفيّ بلغة الواجهة،
+     والسلّة الخامّة معزولة بجانب المجمَّع منها، وغير المعروف يبقى خامًا معزولًا. */
+  const OWN_SVC = { chat: 'ownerSvcChat', plan: 'ownerSvcPlan', agent: 'ownerSvcAgent', 'maha-realtime': 'ownerSvcVoice', tts: 'ownerSvcTts', stt: 'ownerSvcStt', 'media-intent': 'ownerSvcMedia', search: 'ownerSvcSearch', translate: 'ownerSvcTranslate' };
+  const OWN_SVC_PREFIX = [[/^plan-/, 'ownerSvcPlan'], [/^search-|-search$/, 'ownerSvcSearch'], [/^ad(chat|image)$/, 'ownerSvcAds'], [/^video-/, 'ownerSvcVideo'], [/-suggest$|^design-ideas$/, 'ownerSvcSuggest'], [/^share|^media-save-/, 'ownerSvcShare'], [/^stocks-/, 'ownerSvcStocks']];
+  function ownSvc(b){
+    if(OWN_SVC[b]) return ownT(OWN_SVC[b]);
+    const hit = OWN_SVC_PREFIX.find(([re]) => re.test(b));
+    return hit ? ownT(hit[1]) + ' ' + ownLtr('(' + b + ')') : ownLtr(b);
+  }
   window.loadAdminStats = async function loadAdminStats(){
     const box = document.getElementById('adminStatsBox');
     if(!box) return;
-    box.textContent = '⏳ جارِ التحميل...';
+    box.textContent = ownT('ownerLoading');
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-stats?token=' + encodeURIComponent(token || ''));
       const data = await res.json();
-      if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
+      if(!res.ok){ box.textContent = '❌ ' + (data.error || ownT('ownerUnauthorized')); return; }
       const lines = [];
-      lines.push('👥 إجمالي الحسابات: ' + data.totalAccounts + '  (حقيقية: ' + data.realAccounts + '، اختبار: ' + data.testAccounts + ')');
+      lines.push(ownT('ownerStatsAccounts', { total: data.totalAccounts, real: data.realAccounts, test: data.testAccounts }));
       lines.push('');
-      lines.push('💬 رسائل اليوم: ' + data.messagesToday + '   |   إجمالي كل الوقت: ' + data.totalMessagesAllTime);
+      lines.push(ownT('ownerStatsMessages', { today: data.messagesToday, all: data.totalMessagesAllTime }));
       if(data.perProviderToday && Object.keys(data.perProviderToday).length){
         lines.push('');
-        lines.push('📊 حسب المزوّد اليوم:');
-        Object.entries(data.perProviderToday).sort((a,b)=>b[1]-a[1]).forEach(([p,c])=>lines.push('  • ' + p + ': ' + c));
+        lines.push(ownT('ownerStatsByService'));
+        Object.entries(data.perProviderToday).sort((a,b)=>b[1]-a[1]).forEach(([p,c])=>lines.push('  • ' + ownSvc(p) + ': ' + c));
       }
       if(data.topUsersToday && data.topUsersToday.length){
         lines.push('');
-        lines.push('🏆 الأكثر نشاطًا اليوم:');
-        data.topUsersToday.forEach(u=>lines.push('  • ' + u.username + ': ' + u.messages + ' رسالة'));
+        lines.push(ownT('ownerStatsTop'));
+        data.topUsersToday.forEach(u=>lines.push('  • ' + ownIso(u.username) + ': ' + ownT('ownerStatsMsgCount', { n: u.messages })));
       }
       if(data.recentUsers && data.recentUsers.length){
         lines.push('');
-        lines.push('🆕 آخر الحسابات نشاطًا:');
-        data.recentUsers.slice(0,15).forEach(u=>lines.push('  • ' + u.username + '  (' + String(u.lastWrite||'').slice(0,10) + ')'));
+        lines.push(ownT('ownerStatsRecent'));
+        data.recentUsers.slice(0,15).forEach(u=>lines.push('  • ' + ownIso(u.username) + '  ' + ownLtr('(' + String(u.lastWrite||'').slice(0,10) + ')')));
       }
       lines.push('');
-      lines.push('🕐 آخر تحديث: ' + new Date(data.generatedAt).toLocaleString('en-GB'));
+      lines.push(ownT('ownerStatsUpdated', { t: ownLtr(new Date(data.generatedAt).toLocaleString('en-GB')) }));
       box.textContent = lines.join('\n');
       window.__adminUsersCache = data.manageableUsers || [];
       renderAdminUserTable();
     }catch(e){
-      box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
+      box.textContent = '❌ ' + ownT('ownerLoadFailed', { e: ownErr(e) });
     }
   };
   function renderAdminUserTable(){
     const wrap = document.getElementById('adminUsersTable');
     if(!wrap) return;
-    const users = window.__adminUsersCache || [];
-    if(!users.length){ wrap.innerHTML = '<div style="opacity:.6;padding:8px">لا يوجد مستخدمون لإدارتهم.</div>'; return; }
-    // v-purge-checks: زر واحد يمسح كل حسابات الفحص الآلية بدل حذفها واحدًا واحدًا.
-    const checksCount = users.filter(u => /^zzcheck/i.test(String(u.username || ''))).length;
-    const purgeBar = checksCount
-      ? '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(212,175,55,.3)">'
-        + '<span style="flex:1;font-size:12px;opacity:.75">حسابات فحص آلية (zzcheck…): ' + checksCount + '</span>'
-        + '<button type="button" onclick="adminPurgeChecks()" style="background:none;border:1px solid #d4af37;color:#d4af37;border-radius:6px;padding:4px 10px;cursor:pointer">🧹 حذفها كلها</button>'
-        + '</div>'
-      : '';
     /* v-sec-admin-xss: تدقيق ١٠ أكتوبر — التسجيل يقبل أيّ حروف في الاسم، وهذا الجدول كان يلصق الاسم والإيميل في
        HTML وفي onclick بتهريب «'» وحده: اسم مثل ‹<img src=x onerror=…>› جرى سكربتًا حين فتح المالك لوحة الإدارة،
        و«"» في الاسم كسر السمة وحقن onmouseover، و«\'» أغلق نصّ JS (المسبار: pwned=1, attrInjected=true).
@@ -546,19 +627,37 @@ try{
        ‹adminDeleteUser('…')› منها ليحدّد الصفوف بالضغط المطوّل ويحذفها دفعة واحدة. الشكل والأفعال كما كانت. */
     const escAdm = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const jsAdm = (s) => String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+    const users = window.__adminUsersCache || [];
+    if(!users.length){ wrap.innerHTML = '<div style="opacity:.6;padding:8px">' + escAdm(ownT('ownerUsersNone')) + '</div>'; return; }
+    // v-purge-checks: زر واحد يمسح كل حسابات الفحص الآلية بدل حذفها واحدًا واحدًا.
+    const checksCount = users.filter(u => /^zzcheck/i.test(String(u.username || ''))).length;
+    const purgeBar = checksCount
+      ? '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(212,175,55,.3)">'
+        + '<span style="flex:1;font-size:12px;opacity:.75">' + escAdm(ownT('ownerChecksCount', { n: checksCount })) + '</span>'
+        + '<button type="button" onclick="adminPurgeChecks()" style="background:none;border:1px solid #d4af37;color:#d4af37;border-radius:6px;padding:4px 10px;cursor:pointer">' + escAdm(ownT('ownerChecksPurge')) + '</button>'
+        + '</div>'
+      : '';
+    /* v-owner-row (تدقيق ١٨ أكتوبر، لقطة ٠١٩): خانة الاسم كانت flex:1 بـmin-width:110px فاسم طويل بلا مسافات
+       (g_…@gmail.com) يفيض فوق الإيميل، والصفّ يلتفّ فتنزل الأزرار سطرًا. الآن الاسم والإيميل في خانة واحدة مرنة
+       min-width:0 تلتفّ داخلها (overflow-wrap:anywhere)، والأزرار الثلاثة مجموعة flex:none في آخر الصفّ نفسه.
+       الغلافان span لا div: delete-confirm.js يأخذ صفّ زرّ الحذف بـclosest('div'). */
     wrap.innerHTML = purgeBar + users.map(u => {
       const safeName = escAdm(jsAdm(u.username));
-      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
-        + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + escAdm(u.username) + '</span>'
-        + '<span style="font-size:11px;opacity:.6">' + escAdm(u.email || 'بدون إيميل') + '</span>'
-        + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="إرسال رسالة" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
-        + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + (u.banned ? 'فك الحظر' : 'حظر') + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
-        + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="حذف نهائي" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333)">'
+        + '<span style="flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px">'
+        + '<span style="min-width:0;overflow-wrap:anywhere;font-weight:500">' + (u.banned ? '🚫 ' : '') + '<bdi>' + escAdm(u.username) + '</bdi></span>'
+        + '<span style="min-width:0;overflow-wrap:anywhere;font-size:11px;opacity:.6">' + (u.email ? '<bdi dir="ltr">' + escAdm(u.email) + '</bdi>' : escAdm(ownT('ownerNoEmail'))) + '</span>'
+        + '</span>'
+        + '<span style="display:flex;gap:6px;flex:none">'
+        + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerMsgTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
+        + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + escAdm(ownT(u.banned ? 'ownerUnbanTitle' : 'ownerBanTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
+        + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerDeleteTitle')) + '" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+        + '</span>'
         + '</div>';
     }).join('');
   }
   window.adminToggleBan = async function(username, ban){
-    if(!confirm((ban ? 'حظر' : 'فك حظر') + ' المستخدم "' + username + '"؟')) return;
+    if(!confirm(ownT(ban ? 'ownerBanConfirm' : 'ownerUnbanConfirm', { u: ownIso(username) }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -566,14 +665,14 @@ try{
         body: JSON.stringify({ token, action: ban ? 'ban' : 'unban', targetUsername: username }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       const u = (window.__adminUsersCache||[]).find(x=>x.username===username);
       if(u) u.banned = ban;
       renderAdminUserTable();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   window.adminDeleteUser = async function(username){
-    if(!confirm('⚠️ حذف نهائي لحساب "' + username + '"؟ لا يمكن التراجع.')) return;
+    if(!confirm(ownT('ownerDeleteConfirm', { u: ownIso(username) }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -581,13 +680,13 @@ try{
         body: JSON.stringify({ token, action: 'delete', targetUsername: username }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x=>x.username!==username);
       renderAdminUserTable();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   window.adminPurgeChecks = async function(){
-    if(!confirm('🧹 حذف كل حسابات الفحص الآلية (zzcheck…) ونقاطها نهائيًّا؟ لا تطال أي حساب حقيقي.')) return;
+    if(!confirm(ownT('ownerPurgeConfirm'))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -595,17 +694,17 @@ try{
         body: JSON.stringify({ token, action: 'purge-checks' }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
-      alert('✅ حُذف ' + data.removed + ' حساب فحص.');
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
+      alert(ownT('ownerPurgeDone', { n: data.removed }));
       window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x => !/^zzcheck/i.test(String(x.username||'')));
       renderAdminUserTable();
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   /* v-claude-diag: يجرب مفتاح كلود الفعلي في الخادم ويعرض رد أنثروبيك
      الكامل + ذيل المفتاح — يحسم فورًا أي حساب يخص المفتاح وهل رصيده يكفي. */
   window.adminClaudeDiag = async function(){
     const box = document.getElementById('adminClaudeDiagBox');
-    if(box){ box.style.display = 'block'; box.textContent = '⏳ يفحص مفتاح كلود على أنثروبيك…'; }
+    if(box){ box.style.display = 'block'; box.textContent = ownT('ownerDiagRunning'); }
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -613,14 +712,14 @@ try{
         body: JSON.stringify({ token, action: 'claude-diag' }),
       });
       const data = await res.json();
-      if(!res.ok){ if(box) box.textContent = '❌ ' + (data.error || 'فشل'); return; }
-      if(box) box.textContent = (data.ok ? '✅' : '❌') + ' المفتاح: ' + (data.keyTail || '؟')
-        + '\nالحالة: HTTP ' + (data.status || '؟')
+      if(!res.ok){ if(box) box.textContent = '❌ ' + (data.error || ownT('ownerFailed')); return; }
+      if(box) box.textContent = (data.ok ? '✅' : '❌') + ' ' + ownT('ownerDiagKey', { k: ownLtr(data.keyTail || '?') })
+        + '\n' + ownT('ownerDiagStatus', { s: ownLtr('HTTP ' + (data.status || '?')) })
         + '\n' + (data.detail || '');
-    }catch(e){ if(box) box.textContent = '❌ خطأ: ' + (e && e.message || e); }
+    }catch(e){ if(box) box.textContent = '❌ ' + ownT('ownerErrorLine', { e: ownErr(e) }); }
   };
   window.adminMessageUser = async function(username){
-    const text = prompt('اكتب الرسالة التي ستصل لـ "' + username + '" (تظهر له عند فتح البرنامج):');
+    const text = prompt(ownT('ownerMsgPrompt', { u: ownIso(username) }));
     if(!text || !text.trim()) return;
     try{
       const token = authGet('aiapp_auth_token');
@@ -629,9 +728,9 @@ try{
         body: JSON.stringify({ token, action: 'message', targetUsername: username, text }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
-      alert('✅ تم إرسال الرسالة.');
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
+      alert(ownT('ownerMsgSent'));
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
 
   // ⭐ صلاحيات VIP — قائمة يملؤها المالك، مَن فيها بلا حدود (api/_lib/_vip.js).
@@ -643,33 +742,77 @@ try{
     const box = document.getElementById('vipListBox');
     if(!box) return;
     const items = list || [];
-    if(!items.length){ box.innerHTML = '<div style="opacity:.6;padding:8px">لا أحد في قائمة VIP.</div>'; return; }
+    if(!items.length){ box.innerHTML = '<div style="opacity:.6;padding:8px">' + vipEscape(ownT('ownerVipNone')) + '</div>'; return; }
+    // v-vip-verified (مراجعة النقض): المعرّف في data-id لا داخل JS السطر — كان « ' » وحده يُهرَّب، فاسم مستخدم بـ« \\ » يكسر
+    // السلسلة وينفّذ كودًا في جلسة المالك عند 🗑️؛ والأسماء تدخل القائمة الآن تلقائيًّا حين يؤكّد صاحب إيميل بريده.
+    // v-owner-row: المعرّف الطويل يلتفّ داخل خانته (min-width:0) والزرّ flex:none في السطر نفسه — كان يفيض ويلتفّ الصفّ.
     box.innerHTML = items.map(id => {
-      const safeAttr = String(id).replace(/'/g,"\\'");
-      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
-        + '<span style="flex:1;min-width:110px;font-weight:500">⭐ ' + vipEscape(id) + '</span>'
-        + '<button type="button" onclick="removeVipUser(\'' + vipEscape(safeAttr) + '\')" title="إزالة من VIP" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333)">'
+        + '<span style="flex:1;min-width:0;overflow-wrap:anywhere;font-weight:500">⭐ <bdi>' + vipEscape(id) + '</bdi></span>'
+        + '<button type="button" data-id="' + vipEscape(id) + '" onclick="removeVipUser(this.dataset.id)" title="' + vipEscape(ownT('ownerVipRemoveTitle')) + '" style="flex:none;background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
         + '</div>';
     }).join('');
   }
   window.loadVipList = async function loadVipList(){
     const box = document.getElementById('vipListBox');
     if(!box) return;
-    box.textContent = '⏳ جارِ التحميل...';
+    box.textContent = ownT('ownerLoading');
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/vip?token=' + encodeURIComponent(token || ''));
       const data = await res.json();
-      if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
+      if(!res.ok){ box.textContent = '❌ ' + (data.error || ownT('ownerUnauthorized')); return; }
       renderVipList(data.list || []);
+      vipAuditButton();
     }catch(e){
-      box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
+      box.textContent = '❌ ' + ownT('ownerLoadFailed', { e: ownErr(e) });
     }
   };
+  /* v-vip-verified (أمر المالك: «أرسل لي قائمة الحسابات اللي عندها الحين إيميل من قائمة VIP وهي غير متحقّق منها»): الجرد من
+     الخادم لجلسة المالك وحدها، ويُعرض هنا — لا في سجلّ ورك فلو ولا طلب سحب (المستودع علنيّ). مربّع شقيق لقائمة VIP، فإعادة
+     رسمها بعد إضافة أو إزالة لا تمسحه. بزرّ لا عند كلّ إقلاع: الجرد يقرأ كلّ الحسابات (كلوحة الإحصاء بزرّ تحديثها). لا حذف ولا تعديل. */
+  function vipAuditButton(){
+    const list = document.getElementById('vipListBox');
+    if(!list || !list.parentNode || document.getElementById('vipAuditBtn')) return;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'vipAuditBtn';
+    b.textContent = ownT('ownerVipAuditBtn');
+    b.setAttribute('data-i18n', 'ownerVipAuditBtn'); // يُنشأ مرّة عند الإقلاع — تبديل اللغة يعيد تسميته (applyLanguage)
+    b.style.cssText = 'margin-top:8px;background:none;border:1px solid var(--border,#333);color:inherit;border-radius:6px;padding:6px 10px;cursor:pointer';
+    b.onclick = () => loadVipAudit();
+    list.parentNode.insertBefore(b, list.nextSibling);
+  }
+  const VIP_AUDIT_KIND = { 'email': 'ownerVipKindEmail', 'legacy-name': 'ownerVipKindLegacy', 'vip-name': 'ownerVipKindName' };
+  async function loadVipAudit(){
+    const list = document.getElementById('vipListBox');
+    if(!list || !list.parentNode) return;
+    let box = document.getElementById('vipAuditBox');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'vipAuditBox';
+      box.style.cssText = 'margin-top:8px;font-size:13px;';
+      const btn = document.getElementById('vipAuditBtn');
+      list.parentNode.insertBefore(box, (btn || list).nextSibling);
+    }
+    box.textContent = ownT('ownerVipAuditRunning');
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/vip?audit=1&token=' + encodeURIComponent(token || ''));
+      const data = await res.json();
+      if(!res.ok || !data.audit){ box.textContent = '❌ ' + (data.error || ownT('ownerVipAuditFail')); return; }
+      const rows = data.audit.rows || [];
+      box.innerHTML = '<div style="font-weight:600;margin:6px 0">' + vipEscape(ownT('ownerVipAuditHead', { n: rows.length, s: Number(data.audit.scanned || 0) })) + '</div>'
+        + (rows.length ? rows.map(r => '<div style="padding:6px;border-bottom:1px solid var(--border,#333)"><b><bdi>' + vipEscape(r.username) + '</bdi></b> · <bdi dir="ltr">' + vipEscape(r.email || '—') + '</bdi>'
+          + '<div style="opacity:.75">' + vipEscape(VIP_AUDIT_KIND[r.kind] ? ownT(VIP_AUDIT_KIND[r.kind]) : r.kind) + '</div></div>').join('') : '<div style="opacity:.6;padding:6px">' + vipEscape(ownT('ownerNobody')) + '</div>');
+    }catch(e){
+      box.textContent = '❌ ' + ownT('ownerVipAuditFail') + ': ' + ownErr(e);
+    }
+  }
   window.addVipUser = async function addVipUser(){
     const input = document.getElementById('vipInput');
     const id = input ? String(input.value || '').trim() : '';
-    if(!id){ alert('اكتب إيميلًا أو اسم مستخدم أولًا.'); return; }
+    if(!id){ alert(ownT('ownerVipNeedId')); return; }
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/vip', {
@@ -677,13 +820,16 @@ try{
         body: JSON.stringify({ token, id }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       if(input) input.value = '';
       renderVipList(data.list || []);
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+      // v-vip-verified: إيميل بلا حساب أثبته يبقى خامًا ولا يعطي أحدًا شيئًا حتّى يؤكّده صاحبه.
+      if(data.pending) alert(ownT('ownerVipPending'));
+      if(document.getElementById('vipAuditBox')) loadVipAudit();
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   window.removeVipUser = async function removeVipUser(id){
-    if(!confirm('إزالة "' + id + '" من قائمة VIP؟')) return;
+    if(!confirm(ownT('ownerVipRemoveConfirm', { id: ownIso(id) }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       // المعرّف في المسار والجسم معًا: بعض الوسطاء يُسقط جسم DELETE بصمت.
@@ -692,9 +838,10 @@ try{
         body: JSON.stringify({ token, id }),
       });
       const data = await res.json();
-      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       renderVipList(data.list || []);
-    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+      if(document.getElementById('vipAuditBox')) loadVipAudit();
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
 
   function setAuthToggleUI(loggedIn){
@@ -729,6 +876,8 @@ try{
       acctNameWrap.style.display = loggedIn ? 'flex' : 'none';
       if(acctNameEl) acctNameEl.textContent = loggedIn ? (authGet('aiapp_username') || '') : '';
     }
+    const acctDeleteWrap = $('#acctDeleteWrap'); // v-acct-delete: للمسجَّل غير المالك (حساب المالك لا يُحذف من هنا)
+    if(acctDeleteWrap) acctDeleteWrap.style.display = (loggedIn && String(authGet('aiapp_username') || '').trim().toLowerCase() !== 'omran') ? '' : 'none';
     const acctLogoutBtn = $('#acctLogoutBtn');
     if(acctLogoutBtn){
       acctLogoutBtn.style.display = loggedIn ? 'block' : 'none';
@@ -1135,7 +1284,7 @@ try{
         });
         const data = await res.json();
         if(!res.ok || data.error){
-          errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+          errBox.textContent = (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-unverified-email
           return;
         }
         infoMsg.textContent = data.message || (isEn ? 'Check your email' : 'تحقق من بريدك');
@@ -1195,7 +1344,7 @@ try{
       });
       const data = await res.json();
       if(!res.ok || data.error){
-        errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-name-no-at: بلغة الواجهة
+        errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-name-no-at · v-unverified-email: بلغة الواجهة
         if(mode === 'login' && res.status === 401 && username.indexOf('@') !== -1) googleLoginHint(); // v-google-login-help
         return;
       }
@@ -1204,6 +1353,7 @@ try{
         localStorage.removeItem('aiapp_pending_ref');
       }
       onAuthed(data.username, data.avatar);
+      emailConfirmAlert(data.emailToConfirm); // v-unverified-email
     } catch(e){
       errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
     } finally {
@@ -1226,6 +1376,31 @@ try{
   const acctEmail = $('#acctEmail');
   const acctEmailSaveBtn = $('#acctEmailSaveBtn');
   const acctEmailMsg = $('#acctEmailMsg');
+  /* v-vip-verified (أمر المالك ١٨ أكتوبر: «تغيير الإيميل في «حسابي» ما ينحفظ إلا بعد ما يدخل المستخدم الكود اللي يوصله على
+     الإيميل الجديد»): «حفظ» الأولى ترسل الرمز وتُظهر خانته، و«حفظ» بعد كتابته تؤكّده وتحفظ. الخانة تُصنع هنا لا في
+     partials-settings (لا وسم ?v= يُرفع). الإيميل المحفوظ قبل اليوم غير مؤكَّد: «حفظ» بالقيمة نفسها يرسل رمزه. */
+  let acctEmailState = { email: '', verified: false };
+  let acctEmailPending = '';
+  let acctEmailPendingUser = ''; // رمز معلَّق لحساب آخر (خروج ودخول في التبويب نفسه) لا يظهر لهذا
+  function acctEmailCodeBox(show){
+    let box = $('#acctEmailCode');
+    if(!box && show && acctEmailMsg && acctEmailMsg.parentNode){
+      box = document.createElement('input');
+      box.type = 'text';
+      box.id = 'acctEmailCode';
+      box.setAttribute('autocomplete', 'one-time-code');
+      box.setAttribute('inputmode', 'numeric');
+      box.setAttribute('maxlength', '6');
+      box.style.cssText = 'display:block; width:100%; box-sizing:border-box; height:44px; margin-top:8px; padding:0 10px; border-radius:var(--r-2); direction:ltr; text-align:center; font-size:20px; letter-spacing:8px; font-weight:bold;';
+      acctEmailMsg.parentNode.insertBefore(box, acctEmailMsg);
+    }
+    if(box){
+      box.style.display = show ? 'block' : 'none';
+      box.placeholder = '000000'; // كخانة رمز الدخول — نصّ «رمز التحقّق» يُقصّ بخطّها الكبير، والتعليمات في السطر تحته
+      if(!show) box.value = '';
+    }
+    return box;
+  }
 
   function prefillAccountFields(){
     if(acctUsername) acctUsername.value = authGet('aiapp_username') || '';
@@ -1239,7 +1414,14 @@ try{
           body: JSON.stringify({ action: 'getProfile', token }),
         }).then(r => r.json()).then(data => {
           if(!data || !data.ok) return;
-          if(acctEmail) acctEmail.value = data.email || '';
+          if(acctEmailPending && acctEmailPendingUser !== (authGet('aiapp_username') || '')){ acctEmailPending = ''; acctEmailCodeBox(false); }
+          // رمز معلَّق لإيميل جديد: إعادة فتح الإعدادات (لقراءة البريد) لا تعيد الإيميل القديم إلى الخانة فيضيع الجديد
+          if(acctEmail) acctEmail.value = acctEmailPending || data.email || '';
+          acctEmailState = { email: String(data.email || '').toLowerCase(), verified: data.emailVerified === true }; // v-vip-verified
+          if(acctEmailMsg && !acctEmailPending){
+            acctEmailMsg.textContent = (data.email && data.emailVerified !== true) ? (curT().acctEmailUnverified || '') : '';
+            acctEmailMsg.style.color = 'var(--muted,#999)';
+          }
           // v-phone-link: الرقم المربوط مكان «غير مربوط» — بلا data-i18n كي لا يعيده تبديل اللغة
           const pv = $('#acctPhoneVal');
           if(pv && data.phone){ pv.removeAttribute('data-i18n'); pv.textContent = data.phone; }
@@ -1309,38 +1491,114 @@ try{
     acctEmailSaveBtn.onclick = async () => {
       const t2 = curT();
       const emailVal = acctEmail.value.trim();
-      acctEmailMsg.textContent = '';
+      const emailKey = emailVal.toLowerCase();
+      const say = (txt, color) => { acctEmailMsg.textContent = txt || ''; acctEmailMsg.style.color = color; };
       if(!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)){
-        acctEmailMsg.textContent = t2.acctInvalidEmail;
-        acctEmailMsg.style.color = '#ef4444';
+        say(t2.acctInvalidEmail, '#ef4444');
         return;
       }
-      acctEmailMsg.textContent = t2.acctSaving;
-      acctEmailMsg.style.color = 'var(--muted,#999)';
+      if(emailKey === acctEmailState.email && acctEmailState.verified){ acctEmailPending = ''; acctEmailCodeBox(false); say(t2.acctSaved, '#22c55e'); return; }
+      const codeEl = $('#acctEmailCode');
+      const code = (codeEl && codeEl.style.display !== 'none') ? codeEl.value.trim() : '';
+      const confirming = !!acctEmailPending && acctEmailPending === emailKey && code !== '';
+      if(confirming && !/^\d{6}$/.test(code)){ say(t2.acctEmailBadCode, '#ef4444'); return; }
+      say(t2.acctSaving, 'var(--muted,#999)');
       acctEmailSaveBtn.disabled = true;
       try {
         const token = authGet('aiapp_auth_token');
+        const lang = localStorage.getItem('aiapp_lang') || 'ar';
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'setEmail', token, email: emailVal }),
+          body: JSON.stringify(confirming
+            ? { action: 'email-otp-verify', purpose: 'change', token, email: emailVal, otp: code, lang }
+            : { action: 'email-otp-request', purpose: 'change', token, email: emailVal, lang }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if(!res.ok || data.error){
-          acctEmailMsg.textContent = data.error || t2.acctGenericError;
-          acctEmailMsg.style.color = '#ef4444';
+          // رسالة الخادم عربيّة/إنجليزيّة فقط — الحالات المعروفة بنصّ الواجهة بلغتها الـ١٤
+          const byCode = { bad_otp: t2.acctEmailBadCode, email_taken: t2.acctEmailTaken, bad_email: t2.acctInvalidEmail,
+            too_many: String(t2.acctEmailTooMany || '').replace('{minutes}', String(Number(data.minutes) || 15)),
+            session: t2.acctGenericError, mail_off: t2.acctGenericError, mail_failed: t2.acctGenericError }[data.code];
+          say(byCode || data.error || t2.acctGenericError, '#ef4444');
           return;
         }
-        acctEmailMsg.textContent = t2.acctSaved;
-        acctEmailMsg.style.color = '#22c55e';
+        if(confirming || data.verified === true){
+          acctEmailPending = '';
+          acctEmailCodeBox(false);
+          acctEmailState = { email: emailKey, verified: true };
+          emailConfirmAlert(null); // v-unverified-email: تأكّد — لا يبقى التنبيه
+          say(t2.acctSaved, '#22c55e');
+          return;
+        }
+        acctEmailPending = emailKey;
+        acctEmailPendingUser = authGet('aiapp_username') || '';
+        const box = acctEmailCodeBox(true);
+        if(box){ box.value = ''; box.focus(); }
+        say(String(t2.acctEmailCodeSent || '').replace('{email}', emailVal), 'var(--muted,#999)');
       } catch(e){
-        acctEmailMsg.textContent = t2.acctNetError;
-        acctEmailMsg.style.color = '#ef4444';
+        say(t2.acctNetError, '#ef4444');
       } finally {
         acctEmailSaveBtn.disabled = false;
       }
     };
   }
+  /* v-unverified-email (أمر المالك ١٨ أكتوبر: «أي حساب إيميله غير متأكَّد، أول ما يدخل يطلع له تنبيه «أكّد إيميلك» وزرّ يرسل
+     الكود»): الخادم يعيد emailToConfirm مع الدخول ومع التحقّق عند كلّ فتح ما دام البريد غير مؤكَّد. الزرّ يفتح «حسابي» ويرسل الرمز
+     من مسار «حفظ» نفسه (purpose:'change') فتظهر خانة الرمز هناك. ✕ يخفيه لهذه الجلسة. بعد ٣٠ يومًا بلا تأكيد يُشال البريد فلا تنبيه.
+     ألوانه كشريط الباقات (#plansNoticeBar) فيُقرأ في الفاتح والداكن والثيمات؛ z-index ٥٠: فوق المحادثة وتحت الدُّرج والأدوات والهيدر. */
+  function emailConfirmAlert(email){
+    const old = $('#emailConfirmBar');
+    if(old) old.remove();
+    email = String(email || '').trim();
+    if(!email || !acctEmail || !acctEmailSaveBtn) return;
+    try{ if(sessionStorage.getItem('omran_email_confirm_x') === email) return; }catch(e){ __swallow(e, 'email-confirm:read'); }
+    const t2 = curT();
+    let top = 8;
+    try{ const h = document.querySelector('header'); if(h) top = Math.max(0, h.getBoundingClientRect().bottom) + 8; }catch(e){ __swallow(e, 'email-confirm:top'); }
+    const bar = document.createElement('div');
+    bar.id = 'emailConfirmBar';
+    bar.setAttribute('role', 'alert');
+    bar.style.cssText = 'position:fixed; top:' + top + 'px; left:50%; transform:translateX(-50%); z-index:50; width:min(460px, calc(100vw - 24px)); box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--panel2, #1c2230); color:var(--text, #eee); border:1px solid rgba(201,162,39,.45); border-radius:var(--r-3, 14px); box-shadow:var(--sh-2, 0 8px 24px rgba(0,0,0,.45));';
+    const txt = document.createElement('div');
+    txt.style.cssText = 'flex:1; min-width:0; line-height:1.4;';
+    const title = document.createElement('div');
+    title.style.fontWeight = '700';
+    title.setAttribute('data-i18n', 'emailConfirmTitle'); // ملفّ اللغة يصل لاحقًا أو تتغيّر اللغة: applyLanguage يعيده
+    title.textContent = t2.emailConfirmTitle || '';
+    const addr = document.createElement('div');
+    addr.style.cssText = 'font-size:var(--fs-4, 12.5px); color:var(--muted, #999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+    addr.appendChild(document.createElement('bdi')).textContent = email; // يحاذي العنوان، والبريد باتّجاهه
+    txt.append(title, addr);
+    const send = document.createElement('button');
+    send.type = 'button';
+    send.className = 'btn primary';
+    send.style.cssText = 'flex:none; white-space:nowrap;';
+    send.setAttribute('data-i18n', 'emailConfirmSend');
+    send.textContent = t2.emailConfirmSend || '';
+    send.onclick = () => {
+      bar.remove();
+      const sb = document.getElementById('btnSettings');
+      if(sb) sb.click();
+      if(typeof showSettingsPage === 'function') showSettingsPage('accountSection');
+      const row = document.getElementById('acctRowEmail'); // صفّ الإيميل مطويّ — خانة الرمز داخله
+      if(row && row.style.display === 'none' && typeof window.acctToggleRow === 'function') window.acctToggleRow('acctRowEmail', row.previousElementSibling);
+      acctEmail.value = email;
+      acctEmailSaveBtn.onclick();
+    };
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '✕';
+    x.setAttribute('aria-label', '✕');
+    x.style.cssText = 'flex:none; background:none; border:none; color:var(--muted, #999); font-size:16px; line-height:1; cursor:pointer; padding:4px;';
+    x.onclick = () => {
+      bar.remove();
+      try{ sessionStorage.setItem('omran_email_confirm_x', email); }catch(e){ __swallow(e, 'email-confirm:dismiss'); }
+    };
+    bar.append(txt, send, x);
+    document.body.appendChild(bar);
+  }
+  window.emailConfirmAlert = emailConfirmAlert;
   // v-perf-boot-defer: كان يُستدعى أيضًا عند DOMContentLoaded — نداء fetch(getProfile) إضافيّ يتزاحم
   // مع verify الحرج عند كلّ إقلاع، لحقل بريد في لوحة إعدادات لا يراها أحد قبل فتحها فعليًّا. النداء
   // الوحيد الباقي (أدناه) يُحدَّث حين يُفتح فعلًا، وهو يكفي — لا فرق مرئيّ لأنّ اللوحة مخفيّة أصلًا.
@@ -1350,6 +1608,17 @@ try{
   if(settingsBtnForAcct) settingsBtnForAcct.addEventListener('click', prefillAccountFields);
 
   if(acctAvatarBtn && acctAvatarInput){
+    /* v-acct-avatar-msg (تدقيق ١٨ أكتوبر): أخطاء الرفع كانت تُكتب في #acctUsernameMsg داخل صفّ «اسم المستخدم» المطويّ فلا تُرى.
+       الآن تحت زرّ «تغيير الصورة» في «حسابي» وتحت الاسم في رأس الإعدادات (الرفع يبدأ من الاثنين)، والخانة مخفيّة وهي فارغة. */
+    const avatarMsg = (text, color) => {
+      ['#acctAvatarMsg', '#setProfileMsg'].forEach((q) => {
+        const el = $(q);
+        if(!el) return;
+        el.textContent = text || '';
+        el.style.color = color || '';
+        el.style.display = text ? '' : 'none';
+      });
+    };
     acctAvatarBtn.onclick = () => acctAvatarInput.click();
     acctAvatarInput.onchange = () => {
       const file = acctAvatarInput.files && acctAvatarInput.files[0];
@@ -1358,7 +1627,9 @@ try{
       const t2 = curT();
       const img = new Image();
       const reader = new FileReader();
+      avatarMsg('');
       reader.onload = () => {
+        img.onerror = () => avatarMsg(t2.acctGenericError, '#ef4444');
         img.onload = async () => {
           const size = 160;
           const canvas = document.createElement('canvas');
@@ -1369,10 +1640,10 @@ try{
           ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
           const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
           if(dataUrl.length > 280000){
-            acctUsernameMsg.textContent = t2.acctAvatarTooBig;
-            acctUsernameMsg.style.color = '#ef4444';
+            avatarMsg(t2.acctAvatarTooBig, '#ef4444');
             return;
           }
+          avatarMsg(t2.acctSaving, 'var(--muted,#999)');
           try {
             const token = authGet('aiapp_auth_token');
             const res = await fetch('/api/auth', {
@@ -1382,15 +1653,14 @@ try{
             });
             const data = await res.json();
             if(!res.ok || data.error){
-              acctUsernameMsg.textContent = data.error || t2.acctGenericError;
-              acctUsernameMsg.style.color = '#ef4444';
+              avatarMsg(data.error || t2.acctGenericError, '#ef4444');
               return;
             }
             localStorage.setItem('aiapp_avatar', data.avatar);
+            avatarMsg('');
             updateAvatarUI();
           } catch(e){
-            acctUsernameMsg.textContent = t2.acctNetError;
-            acctUsernameMsg.style.color = '#ef4444';
+            avatarMsg(t2.acctNetError, '#ef4444');
           }
         };
         img.src = reader.result;
@@ -1523,7 +1793,7 @@ try{
   };
 
   window.addEventListener('DOMContentLoaded', async () => {
-    setMode('login');
+    setMode(resetLinkOpen() ? 'resetToken' : 'login'); // v-reset-link: لا «دخول» فوق نموذج رابط الاسترجاع
     // إن مُسح التخزين المحلي (يحدث في iOS) استعد الجلسة من نسخة الكوكي الاحتياطية.
     if(!authGet('aiapp_auth_token')){
       const ct = cookieGet('aiapp_auth_token');
@@ -1539,7 +1809,8 @@ try{
       // «لا-توكن» وصف عامّ — إن سبقه سبب أدقّ في هذا التحميل (عودة جوجل
       // الفاشلة تُسجّل «جوجل-…» قبل هذا السطر) فلا نطمسه به.
       if(!sessionNoted) noteSession('لا-توكن');
-      hideOverlay(); return;
+      if(!resetLinkOpen()) hideOverlay(); // v-reset-link: الدخول اختياريّ للزائر، إلّا من فتح رابط الاسترجاع
+      return;
     }
     try {
       const res = await fetch('/api/auth', {
@@ -1556,6 +1827,7 @@ try{
         if(data.token) authSet('aiapp_auth_token', data.token);
         noteSession('تحقّق-ناجح');
         onAuthed(data.username, data.avatar);
+        emailConfirmAlert(data.emailToConfirm); // v-unverified-email: عند كلّ فتح ما دام البريد غير مؤكَّد
         if(data.adminMessage && data.adminMessage.text){
           setTimeout(() => { alert('📩 رسالة من الإدارة:\n\n' + data.adminMessage.text); }, 600);
         }
@@ -1603,6 +1875,9 @@ try{
   } catch(e){ return; }
 
   const has = (v) => v ? '✅ موجود' : '❌ غائب';
+  /* v-auth-a11y (تدقيق ١٨ أكتوبر: «18T14:17:38.106Z-10-2026»): التاريخ والأوقات ووكيل المتصفّح نصوص LTR داخل خليّة RTL بلا عزل
+     فتعيد خوارزميّة الاتّجاه ترتيب أجزائها — LRI…PDI يعزلها فتُقرأ كما هي. */
+  const ltr = (v) => '\u2066' + v + '\u2069';
   const get = (k) => { try { return localStorage.getItem(k); } catch(e){ return null; } };
   const sget = (k) => { try { return sessionStorage.getItem(k); } catch(e){ return null; } };
 
@@ -1622,17 +1897,25 @@ try{
       ['التوكن في الكوكي', has(tokC)],
       ['اسم المستخدم المحفوظ', get('aiapp_username') || sget('aiapp_username') || '—'],
       ['«تذكّرني» وقت الحفظ', tokL ? 'مفعّل (حُفظ في localStorage)' : (tokS ? 'مطفأ (حُفظ في الجلسة فقط)' : '—')],
-      ['سبب آخر خروج', note ? (note.reason + '  ·  ' + note.at) : '— لم يُسجَّل بعد'],
+      ['سبب آخر خروج', note ? (note.reason + '  ·  ' + ltr(note.at)) : '— لم يُسجَّل بعد'],
       ['سلسلة آخر الأحداث', (() => {
         try {
           const t = JSON.parse(get('aiapp_session_notes') || '[]');
           if(!t.length) return '—';
-          return t.map((e, i) => (i + 1) + '. ' + e.reason + '  ·  ' + String(e.at).slice(11, 19)).join('\n');
+          return t.map((e, i) => (i + 1) + '. ' + e.reason + '  ·  ' + ltr(String(e.at).slice(11, 19))).join('\n');
+        } catch(e){ return '—'; }
+      })()],
+      // v-maha-first-audio: توقيت آخر مكالمة مها على هذا الجهاز (عنصر الصوت وأحداث الجلسة) — أنواع أحداث وأوقات فقط، لا كلام
+      ['آخر مكالمة مها (م.ث من الضغطة)', (() => {
+        try {
+          const m = JSON.parse(get('aiapp_maha_rt_trace') || 'null');
+          if(!m || !m.log || !m.log.length) return '—';
+          return ltr(String(m.at).slice(11, 19) + ' · ' + m.log.join(' · '));
         } catch(e){ return '—'; }
       })()],
       ['الحزمة التي يشغّلها متصفّحك', (bundle.split('/').pop() || '—')],
       ['عامل الخدمة', sw ? '✅ يتحكّم' : '❌ لا يتحكّم'],
-      ['المتصفّح', navigator.userAgent.slice(0, 80)],
+      ['المتصفّح', ltr(navigator.userAgent.slice(0, 80))],
     ];
 
     const box = document.createElement('div');
@@ -1754,7 +2037,7 @@ try{
           otpSubmitBtn.textContent = isEn ? 'Verify' : (t.authOtpVerifyBtn || 'تحقق');
           otpCodeInput.focus();
         } else {
-          otpError.textContent = d.error || (isEn ? 'Failed to send code' : 'فشل إرسال الرمز');
+          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || (isEn ? 'Failed to send code' : 'فشل إرسال الرمز'); // v-unverified-email
         }
       } catch(e){
         otpError.textContent = isEn ? 'Connection error' : 'خطأ في الاتصال';
@@ -1784,7 +2067,7 @@ try{
           otpCodeInput.value = '';
           window.onAuthed(d.username, d.avatar || null);
         } else {
-          otpError.textContent = d.error || (isEn ? 'Invalid code' : 'رمز غير صحيح');
+          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || (isEn ? 'Invalid code' : 'رمز غير صحيح'); // v-unverified-email
         }
       } catch(e){
         otpError.textContent = isEn ? 'Connection error' : 'خطأ في الاتصال';

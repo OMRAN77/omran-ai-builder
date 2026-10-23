@@ -83,10 +83,13 @@ test('٤. زرّ «ما يملأ القاعدة» في لوحة المالك ي�
   const v = read('js/app-11-video.js');
   assert.match(v, /window\.redisUsageCheck = async function\(\)\{/);
   assert.match(v, /'\/api\/system\?action=health&usage=1&token=' \+/);
-  assert.match(v, /'العائلات الأكبر:'/);
-  assert.match(v, /'أكبر المفاتيح:'/);
+  // v-owner-i18n: العنوانان من قاموس لغة الواجهة (كانا عربيّين ثابتين)، والعربيّ نصّهما كما كان
+  assert.match(v, /oT\('ownerUsageGroups'\)/);
+  assert.match(v, /oT\('ownerUsageBiggest'\)/);
+  const a3 = read('js/app-03-i18n-data.js');
+  assert.ok(a3.includes('ownerUsageGroups: "العائلات الأكبر:"') && a3.includes('ownerUsageBiggest: "أكبر المفاتيح:"'));
   assert.ok(read('js/app.bundle.js').includes('window.redisUsageCheck'));
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=698'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=705'));
   const h = read('api/_lib/health.js');
   assert.ok(h.indexOf('if (!isOwner(req))') < h.indexOf("req.query.usage === '1'"), 'التحقّق من المالك قبل القياس');
 });

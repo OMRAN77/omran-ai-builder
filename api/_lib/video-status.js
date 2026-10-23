@@ -42,6 +42,13 @@ module.exports = async (req, res) => {
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
       console.error('[video-status] upstream ' + upstream.status + ': ' + JSON.stringify(data).slice(0, 300));
+      /* v-credit-out (أمر المالك ٢١ أكتوبر «ما تنخصم منه ولا نقطة»): المزوّد يرفض الاستطلاع نفسه لعطب عندنا (رصيده نفد، المفتاح، الصلاحيّة) — المهمّة لن
+         تُتابَع أبدًا، وكانت تذكرتها تنتهي بعد ساعتين بلا ردّ. تُسوّى فشلًا الآن (مرّة واحدة) وunavailable يعرضه العميل «الخدمة متوقّفة مؤقّتًا». */
+      if (require('./_videoFail.js').isOutage(upstream.status, JSON.stringify(data))) {
+        await require('./video-job.js').settleVideoJob(id, false);
+        res.status(503).json({ error: 'unavailable', retryable: false });
+        return;
+      }
       res.status(upstream.status).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
       return;
     }

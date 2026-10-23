@@ -7,7 +7,7 @@ const TRENDS = {
   "ratio": "1280:720",
   "photo": "opt",
   "kind": "name",
-  "prompt": "Pixar-style 3D animated scene {i} of 3: {scene}. Main character: a cheerful child named {name}{look}, the SAME character design in every scene. Warm cinematic lighting, expressive faces, gentle camera movement, soft family music, short Arabic narration voice-over.",
+  "prompt": "Pixar-style 3D animated scene {i} of {n}: {scene}. Main character: a cheerful child named {name}{look}, the SAME character design in every scene. Warm cinematic lighting, expressive faces, gentle camera movement, soft family music, short Arabic narration voice-over.",
   "scenes": [
    "{name} wakes up smiling to the alarm clock, gets dressed quickly and eats breakfast with the family in a sunny kitchen",
    "{name} arrives at school, greets friends in a bright classroom, raises a hand happily and plays at recess",
@@ -671,18 +671,108 @@ const TRENDS = {
 /* v-trend-extra: الحدّ ٢٤٠ ← ٤٠٠ — المالك يكتب أكثر من جملة («دمج الكلمات») */
 function clean(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 400); }
 const BACKDROPS = require('./video-backdrops.js');
-/** يبني أمر الفيديو لترند معيّن. params: {name, text, sceneIndex, hasImage} */
-function buildTrendPrompt(key, params) {
+/* v-trend-scenes (المالك: «كتبت مشهدين عن البحر وطلع الفيديو عن المدرسة»): مشاهد بيكسار الثلاثة كانت ثابتة
+   (صباح، مدرسة، مساء) وما يُكتب في «اكتب اللي تبيه» يُلحق بعدها توجيهًا فقط، فيغلب المشهدُ المكتوب كلامَه.
+   الآن مشاهد المستخدم تحلّ محلّ الافتراضيّة وعدد المقاطع بعددها: «المشهد الأول: … المشهد الثاني: …» داخل
+   «اكتب اللي تبيه» أوّلًا، ثمّ خانات المشاهد في العميل (params.scenes)، ثمّ الافتراضيّ. العلامة تُقبل بفاصل
+   (: دائمًا، أو شرطة/نقطة بعدها فراغ، أو سطر جديد)، وبلا فاصل إن تكرّرت (قائمة مشاهد) — «زي المشهد الأول بس
+   بالليل» لا تُقسَم، ولا «scene one-shot».
+   الدالّة منسوخة حرفيًّا في js/app-11-video-trends.js (العميل يعرض بها الخانات ويعدّ المقاطع) وtrend-scenes يطابق
+   النسختين؛ بلا lookbehind ولا \p (الحزمة تُحلَّل على المحرّكات القديمة — v-es-floor).
+   بعد المراجعة: «المشهد الأول، …» و«الـ1» و«١)» و«(1):» و«؛» و«اللقطة/المقطع» وعلامات الاتّجاه الخفيّة من اللصق وإيموجي
+   قبلها تُقبل؛ رقم القائمة («1- المشهد…») وروابط «ثم/and» لا تبقى في المشهد؛ ونصّ المدخل يُقصّ ١٠٠٠ قبل أيّ تعبير. */
+function splitScenes(text){
+  var s = String(text == null ? '' : text).slice(0, 1000); /* الخانة ٤٠٠ — والحدّ يمنع كلفة التعابير على نصّ ضخم من خارج الواجهة */
+  var MAX = 5;
+  var SP = '[ \\t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*';
+  var NUM = '[0-9\u0660-\u0669\u06F0-\u06F9\u0966-\u096F\u09E6-\u09EF]+';
+  var ORD = '(?:ال)?(?:[أاإ]و[\u064B-\u0652]*لى?|ثان[يى]ة?|ثالثة?|رابعة?|خامسة?|سادسة?|سابعة?|ثامنة?|تاسعة?|عاشرة?|[أا]خيرة?)[\u064B-\u0652]*';
+  var MARK = new RegExp('[وف]?(?:المشهد|مشهد|اللقطة|لقطة|المقطع|مقطع)' + SP + '(?:رقم' + SP + ')?(\\()?' + SP + '(?:(?:ال\u0640*)?' + NUM + '|' + ORD + ')'
+    + '|(?:scene|scène|escena|sahne|сцена|eksena|adegan|दृश्य|منظر|দৃশ্য|രംഗം)' + SP + '(?:#|no\\.?' + SP + ')?(\\()?' + SP + '(?:' + NUM + '|one|two|three|four|five|six|seven|eight|nine|ten)'
+    + '|(?:first|second|third|fourth|fifth|last)' + SP + 'scene'
+    + '|第' + SP + '[0-9一二三四五六七八九十]+' + SP + '幕|场景' + SP + '[0-9一二三四五六七八九十]+', 'gi');
+  var WORD = /[A-Za-z0-9_\u00C0-\u024F\u0400-\u04FF\u0621-\u063A\u0641-\u065F\u0660-\u0669\u0670-\u06D3\u06FA-\u06FF\u0900-\u097F\u0980-\u09FF\u0D00-\u0D7F]/;
+  var cands = [], m;
+  while((m = MARK.exec(s))){
+    var at = m.index, end = at + m[0].length, cjk = /^[第场]/.test(m[0]);
+    if(!cjk && at > 0 && WORD.test(s.charAt(at - 1))) continue; /* «بالمشهد» و«obscene 1» ليستا علامة */
+    var close = /^[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*\)/.exec(s.slice(end));
+    if(close) end += close[0].length;
+    var sep = /^[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*(?:[:：;؛]|[\-–—.](?!\S)|\r?\n)/.exec(s.slice(end));
+    var strong = !!sep || (!!close && !(m[1] || m[2])); /* «المشهد ١)» فاصل؛ «المشهد (١)» قوس فقط */
+    if(!strong && !cjk && end < s.length && !/[\s,،\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/.test(s.charAt(end))) continue; /* «one-shot» */
+    cands.push({ at: at, body: end + (sep ? sep[0].length : 0), strong: strong });
+  }
+  if(!cands.length) return { scenes: [], rest: s.trim() };
+  var LISTNUM = /(?:(?:^|\s)[0-9\u0660-\u0669\u06F0-\u06F9]{1,2}[ \t]*[\-–—.)]|(?:^|\n)[ \t]*[0-9\u0660-\u0669\u06F0-\u06F9]{1,2})[ \t]*$/;
+  var tidy = function(x){
+    var y = x.replace(LISTNUM, '').replace(/^[\s,،؛;:.\-–—\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+/, '');
+    for(var r = 0; r < 3; r++){
+      y = y.replace(/[\s,،؛;\-–—\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+$/, '').replace(/(^|[\s,،])(?:و?ثم[\u064B-\u0652]*|و?بعدين|و?بعدها|and then|and|then|و)$/i, '');
+    }
+    return y;
+  };
+  /* بلا فاصل («المشهد الأول سالم… المشهد الثاني…») تُعدّ العلامات فقط إن بدأ بها النصّ (أو بعد نهاية جملة):
+     «غيّر المشهد الثاني والمشهد الثالث…» و«زي المشهد الأول بس بالليل» إشارة إلى المشاهد لا قائمة مشاهد */
+  var head = s.slice(0, cands[0].at).replace(LISTNUM, '').replace(/[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+$/, '');
+  var weakOK = !head.trim() || /[.!?؟:：;؛\n]$/.test(head);
+  var marks = (weakOK && cands.length > 1) ? cands : cands.filter(function(c){ return c.strong; });
+  if(!marks.length) return { scenes: [], rest: s.trim() };
+  var scenes = [];
+  for(var k = 0; k < marks.length; k++){
+    var body = tidy(s.slice(marks[k].body, k + 1 < marks.length ? marks[k + 1].at : s.length));
+    if(body) scenes.push(body);
+  }
+  if(scenes.length > MAX) scenes = scenes.slice(0, MAX - 1).concat([scenes.slice(MAX - 1).join(' ')]);
+  var rest = tidy(s.slice(0, marks[0].at));
+  return { scenes: scenes, rest: /^[\s\uD800-\uDFFF\u2600-\u27BF\uFE0F\u200D]*$/.test(rest) ? '' : rest }; /* «🌊» وحدها ليست توجيهًا */
+}
+const MAX_SCENES = 5;
+/** مشاهد «اكتب اللي تبيه» ← params.scenes والباقي توجيهًا. مرّة واحدة قبل البناء — veo-create يقصّ extra إن طال الأمر،
+ *  وقصّ نصّ فيه العلامات قد يُسقط مشهدًا. تُعاد بلا أثر: بعدها لا علامة في extra. */
+function sceneParams(key, params) {
+  const t = TRENDS[key];
+  const p = Object.assign({}, params || {});
+  if (!t || !t.scenes || !t.scenes.length) return p;
+  const sp = splitScenes(p.extra);
+  if (sp.scenes.length) { p.scenes = sp.scenes; p.extra = sp.rest; }
+  /* v-chat-trend-scenes: مقطع المحادثة الواحد — قصّة بلا علامات ولا مشاهد هي المشهد نفسه، لا توجيهًا على مشهد الصباح */
+  else if (p.oneClip && !(Array.isArray(p.scenes) && p.scenes.length) && clean(p.extra)) { p.scenes = [p.extra]; p.extra = ''; }
+  return p;
+}
+/** يبني أمر الفيديو لترند معيّن. params: {name, text, sceneIndex, scenes, oneClip, extra, hasImage, people, bg}
+ *  scenes (ترند المشاهد): نصّ المستخدم لكلّ مشهد، أو رقم مشهد افتراضيّ لم يُعدَّل (فيبقى أمره الإنجليزيّ).
+ *  oneClip (المحادثة): مشاهد المستخدم كلّها لقطات في مقطع واحد (sceneCount ١) — بلاها المشهد الأوّل الافتراضيّ.
+ *  opts.cap (من الخادم وحده): سقف الأمر الذي تُحسب منه مساحة «اكتب اللي تبيه» — veo-create يمرّر حدّه الحقيقيّ. */
+function buildTrendPrompt(key, params, opts) {
   const t = TRENDS[key];
   if (!t) return null;
-  const p = params || {};
+  const p = sceneParams(key, params);
   const name = clean(p.name) || clean(p.text) || '';
   const text = clean(p.text) || clean(p.name) || '';
   let prompt = t.prompt;
+  let n = 1;
   if (t.scenes && t.scenes.length) {
-    const i = Math.max(0, Math.min(t.scenes.length - 1, parseInt(p.sceneIndex, 10) || 0));
-    const scene = t.scenes[i].replace(/\{name\}/g, name || 'the child');
-    prompt = prompt.replace('{i}', String(i + 1)).replace('{scene}', scene)
+    const list = Array.isArray(p.scenes) ? p.scenes.slice(0, 50).map((e) => (Number.isInteger(e) && e >= 0 && e < t.scenes.length) ? t.scenes[e]
+      : clean(typeof e === 'string' ? e : '')).filter(Boolean).slice(0, MAX_SCENES) : [];
+    const scenes = list.length ? list : t.scenes;
+    n = scenes.length;
+    const i = Math.max(0, Math.min(n - 1, parseInt(p.sceneIndex, 10) || 0));
+    const fill = (s) => s.replace(/\{name\}/g, name || 'the child').replace(/[\s.。]+$/, ''); /* القالب يضع النقطة بعده */
+    let scene = fill(scenes[i]);
+    /* v-chat-trend-scenes (المالك، الخيار «أ»): المحادثة تصنع مقطعًا واحدًا ٨ ثوانٍ — مشاهد المستخدم كلّها لقطات فيه بالترتيب
+       بدل «scene 1 of n» الذي يصنع أوّلها وحده. حصّة كلّ مشهد من ١٠٠٠ حرف فلا يُقصّ آخرها ولا قفل الذيل. بلا مشاهد مستخدم
+       = المشهد الأوّل الافتراضيّ كما كان. */
+    if (p.oneClip && list.length) {
+      const share = Math.min(400, Math.floor(1000 / n));
+      const shots = list.map((s) => fill(s.slice(0, share)));
+      scene = n > 1 ? 'one short story told in ' + n + ' consecutive shots within this single clip, in this exact order — '
+        + shots.map((s, k) => 'shot ' + (k + 1) + ': ' + s).join('; ') : shots[0];
+      n = 1;
+    }
+    /* مشهد واحد: «scene 1 of 1» لا معنى لها؛ وبلا اسم: «child named ,» تصير «child» */
+    prompt = prompt.replace(n > 1 ? '{i}' : ' {i} of {n}', n > 1 ? String(i + 1) : '').replace('{n}', String(n))
+      .replace('{scene}', () => scene).replace(' named {name}', name ? ' named {name}' : '')
       .replace('{look}', p.hasImage ? ' whose look is based on the reference image, rendered in Pixar 3D style' : '');
   }
   prompt = prompt.replace(/\{name\}/g, name).replace(/\{text\}/g, text || 'a joyful moment');
@@ -730,7 +820,7 @@ function buildTrendPrompt(key, params) {
   if (bd) addons += ' SETTING (replaces the default location, same action and style): ' + bd + '.';
   /* v-trend-extra (المالك: «ليش ما أقدر أكتب اللي أريده؟»): ٤٦ من ٥٥ ترندًا بلا خانة كتابة أصلًا.
      الآن لكلّ ترند خانة «اكتب اللي تبيه» اختياريّة تُدمج هنا توجيهًا يعدّل الترند ولا يلغيه. */
-  const extra = clean(p.extra);
+  const extra = clean(p.extra); /* v-trend-scenes: بعد sceneParams — بلا المشاهد التي قُسِّمت منه */
   if (extra) addons += ' USER DIRECTION (follow it; it wins over the setting if it names a place): ' + extra + '.';
   const base = prompt;
   prompt = '';
@@ -765,9 +855,13 @@ function buildTrendPrompt(key, params) {
      فقط، فتُقصّ هي ولا يُقصّ الذيل أبدًا. */
   const tail = prompt;
   /* شخص واحد: حدّ المحرّك ١٥٠٠؛ أكثر: يُلحق بعد البناء سطر الإطار الأوّل (≈٣٣٠ حرفًا) فيُحجز له */
-  const room = Math.max(0, (people > 1 ? 1170 : 1480) - base.length - tail.length);
+  /* v-trend-scenes (قياس أثناء المراجعة): مع صورة شخصين كان «اكتب اللي تبيه» يسقط كلّه في الـ٥٥ ترندًا، ومع شخص واحد يُقصّ في ١٦
+     — السقفان ١٤٨٠/١١٧٠ من زمن حدّ ١٥٠٠، وحدّ Veo للترندات ٢٦٠٠ (v-video-photo-identity). veo-create يمرّر سقفه بعد حجز
+     FRAME_LOCK؛ بقيّة المسارات (١٥٠٠) كما كانت حرفيًّا. */
+  const cap = (opts && opts.cap > 0) ? opts.cap : (people > 1 ? 1170 : 1480);
+  const room = Math.max(0, cap - base.length - tail.length);
   prompt = base + (addons.length > room ? addons.slice(0, room) : addons) + tail;
-  return { prompt, engine: t.engine, ratio: t.ratio, people, sceneCount: (t.scenes && t.scenes.length) || 1 };
+  return { prompt, engine: t.engine, ratio: t.ratio, people, sceneCount: n };
 }
 /* v-video-identity (المالك بفيديو «سفينة حربيّة» وصورته: «يغيّر الشخصيّة، مش نفس الشخصيّة»): صانع الفيديو
    الحرّ (Omni وVeo) كان يرسل الصورة مع وصف المستخدم **بلا أيّ أمر يحفظ الوجه** — الترندات وحدها كان لها
@@ -789,4 +883,4 @@ function withIdentityLock(promptText, max, subject, people) {
   const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
   return pre + body + post;
 }
-module.exports = { TRENDS, buildTrendPrompt, withIdentityLock };
+module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, splitScenes, sceneParams, MAX_SCENES };

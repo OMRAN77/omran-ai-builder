@@ -567,6 +567,7 @@ module.exports = async (req, res) => {
         style,
         budget,
         annexes: annexList,
+        lang: uiLang, // v-cx-lib: لغة تسميات المخطّط (ar/ur عربيّ) — المكتبة تعرض لكلّ مستخدم لغته
         planImageBase64,
         planMimeType,
       }).catch(() => {});

@@ -23,11 +23,11 @@ test('٢. كلّ قاعدة للوضع الأسود وحده: لا الفاتح 
   for (const r of rules) for (const s of r.sels) assert.ok(s.startsWith(P + ' ') || s.startsWith(P + ':not(.mobile-ui) ') || s.startsWith(P + '.mobile-ui ') || s.startsWith('.omran-selected') || s === 'html.mobile-ui:not(.bgimg):not(.skin):not(.skin-wood) body::after', s); /* .omran-selected: الأخضر يُحذف في كلّ الأوضاع (v-no-green) */
 });
 
-test('٣. الألوان: شفّاف، أو ذهبيّ إطار اللوحات rgba(212,175,55,.85)، أو #101013، أو توهّج «فسّر» الأبيض، أو الحدّ الشبح — لا رماديّ (قبل كتلة v-no-lines-3)', () => {
+test('٣. الألوان: شفّاف، أو ذهبيّ إطار اللوحات rgba(212,175,55,.85)، أو درجتا المالك #101013 و#000 (#000 من v-black-surfaces)، أو توهّج «فسّر» الأبيض، أو الحدّ الشبح — لا رماديّ (قبل كتلة v-no-lines-3)', () => {
   const noAttr = bare.slice(0, bare.indexOf(':not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter),')).replace(/\[style\*="[^"]*"\]/g, ''); /* محدِّدات [style*="…"] تطابق نصّ الحدّ داخل العنصر، ليست ألوانًا */
   const vals = noAttr.match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/gi) || [];
   assert.ok(vals.length >= 8);
-  for (const v of vals) assert.match(v.replace(/\s/g, ''), /^(rgba\(212,175,55,\.85\)|#101013|#fff|rgba\(255,255,255,\.35\)|rgba\(0,0,0,\.06\)|rgba\(0,0,0,\.22\))$/i, v);
+  for (const v of vals) assert.match(v.replace(/\s/g, ''), /^(rgba\(212,175,55,\.85\)|#101013|#000|#fff|rgba\(255,255,255,\.35\)|rgba\(0,0,0,\.06\)|rgba\(0,0,0,\.22\))$/i, v);
 });
 
 test('٤. الإطار الذهبيّ ونقاط الخلفيّة وحبيبات الضجيج تختفي، واللوحات تتذهّب عند المرور فقط', () => {

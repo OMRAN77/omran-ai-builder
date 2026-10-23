@@ -81,7 +81,10 @@ module.exports = async (req, res) => {
 
     const rawText = await upstream.text();
     if (!upstream.ok) {
-      res.status(upstream.status).setHeader('Content-Type', 'application/json').send(rawText);
+      /* v-maha-paused: كان ردّ المزوّد يُمرَّر بنصّه — كائن خطأ يعرضه العميل [object Object]، و402 رصيده ليس رصيد المستخدم. رمز نصّيّ والنصّ للسجلّ */
+      console.error('[stt] upstream ' + upstream.status + ': ' + rawText.slice(0, 300));
+      const fail = require('./_videoFail.js').toolFail(upstream.status, rawText);
+      res.status(fail.code).json(fail.body);
       return;
     }
 

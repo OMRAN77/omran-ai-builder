@@ -25,11 +25,20 @@ async function imageHourlyGuard(username, o) {
       try { await kv.kvDecrBy(key, 1); } catch (e) { /* أفضل جهد — العدّاد يسقط مع الساعة */ }
       return { ok: false, reason: 'image_hourly_limit', retryAfter: Math.max(1, Math.ceil(((bucket + 1) * HOUR_MS - now) / 1000)), max };
     }
-    return { ok: true, count, max };
+    return { ok: true, count, max, bucket };
   } catch (e) {
     console.error('[abuse-guard] image meter unavailable: ' + (e && e.message));
     return { ok: true, count: 0, max, degraded: true };
   }
+}
+
+/** v-img-hour-giveback (أمر المالك ٢١ أكتوبر: «عدّاد الصور بالساعة: ينقص لما ترجع النقاط»): ردّ نقاط صورة يردّ خانتها في عدّاد ساعتها
+    (bucket من imageHourlyGuard) — محاولات فاشلة (نفاد رصيد المزوّد مع الإعادة) كانت تحرق سقف العشرين فيُرفض image_hourly_limit بلا صورة. */
+async function imageHourlyGiveBack(username, bucket, o) {
+  const opt = o || {};
+  const kv = opt.kv || require('./kv.js');
+  if (!username || bucket == null || !Number.isFinite(Number(bucket))) return false;
+  try { await kv.kvDecrBy('abuse:img:' + userKey(username) + ':' + Number(bucket), 1); return true; } catch (e) { return false; }
 }
 
 /* v-video-seq-cooldown: المتبقّي الفعليّ من المهلة لا طولها كلّه — سلسلة مشاهد (فيلم متكامل، ٢٠ ثانية،
@@ -85,4 +94,4 @@ async function releaseVideoLock(username, o) {
   try { await kv.kvDel('abuse:video:' + userKey(username)); } catch (e) { /* أفضل جهد — القفل يسقط بعد ٣ دقائق */ }
 }
 
-module.exports = { IMAGE_HOURLY_MAX, VIDEO_COOLDOWN_SEC, imageHourlyGuard, videoLock, releaseVideoLock, videoCooldownLeft };
+module.exports = { IMAGE_HOURLY_MAX, VIDEO_COOLDOWN_SEC, imageHourlyGuard, imageHourlyGiveBack, videoLock, releaseVideoLock, videoCooldownLeft };

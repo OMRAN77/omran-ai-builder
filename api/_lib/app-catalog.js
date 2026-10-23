@@ -93,7 +93,7 @@ function buildCatalog(opts) {
   }));
   const pt = portraitStyles();
   return {
-    app: { name: 'عمران AI', languages: LANGS.length, assistant: { female: 'مها', male: 'عبدالله' } },
+    app: { name: 'om ai', languages: LANGS.length, assistant: { female: 'مها', male: 'عبدالله' } },
     screens,
     portraitStyles: pt.styles,
     portraitTools: pt.tools,

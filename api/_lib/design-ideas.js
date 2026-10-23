@@ -52,11 +52,27 @@ const PLACE_AR = {
 
 function cleanQ(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 120); }
 const ADULT = /nude|naked|nsfw|porn|xxx|sex|erotic|adult|bikini|lingerie|escort|onlyfans|xvideos|xnxx|redtube|pornhub/i;
+/* v-ideas-hosts (تدقيق ١٨ أكتوبر): مضيفات تمنع الربط المباشر (tiktok.com/api/img، cdninstagram، fbcdn…) تعود 403 في المتصفّح —
+   أخطاء كونسول وصور تُعدّ ولا تظهر. تُرفض بمضيفها. */
+const HOTLINK_BLOCKED = ['tiktok.com', 'tiktokcdn.com', 'tiktokcdn-us.com', 'tiktokv.com', 'instagram.com', 'cdninstagram.com', 'facebook.com', 'fbcdn.net', 'fbsbx.com'];
+function blockedHost(u) {
+  let h = '';
+  try { h = new URL(u).hostname.toLowerCase(); } catch (e) { return true; }
+  return HOTLINK_BLOCKED.some((d) => h === d || h.endsWith('.' + d));
+}
 function looksLikePhoto(u) {
   if (!/^https?:\/\//i.test(u)) return false;
   if (ADULT.test(u)) return false;
   if (/\.svg(\?|$)|\/logo|favicon|sprite|icon|avatar|\.gif(\?|$)|pixel|tracking|1x1/i.test(u)) return false;
+  if (blockedHost(u)) return false;
   return true;
+}
+/* المخبوء قبل v-ideas-hosts قد يحمل تلك الروابط — يُصفّى عند القراءة بلا رفع ideas:v3 (لا حصص بحث جديدة)، وما لا يبقى منه شيء يُجمع من جديد */
+function cleanCached(c) {
+  if (!c || !Array.isArray(c.images)) return null;
+  const images = c.images.filter((u) => typeof u === 'string' && looksLikePhoto(u));
+  if (!images.length) return null;
+  return images.length === c.images.length ? c : Object.assign({}, c, { images, count: images.length });
 }
 function norm(q) { return String(q || '').replace(/\s+/g, ' ').trim(); }
 
@@ -272,7 +288,7 @@ module.exports = async (req, res) => {
   if (!subjectEn) { res.status(400).json({ error: 'Missing q or place' }); return; }
 
   const key = cacheKey(['decor', subjectEn, subjectAr, style]);
-  const cached = await cacheGet(key);
+  const cached = cleanCached(await cacheGet(key));
   if (cached && cached.images && cached.images.length) { res.setHeader('Cache-Control', 'private, max-age=600'); res.status(200).json(cached); return; }
   if (!(await meterFresh(req, res, body))) return;
 
@@ -334,7 +350,7 @@ async function constructionIdeas(req, res, body, apiKey) {
   const en = (extra) => [st[0], f[0], t[0], v[0], free, extra].filter(Boolean).join(' ');
   const ar = (extra) => [free, 'تصميم', v[1], t[1], f[1], st[1], extra].filter(Boolean).join(' ');
   const key = cacheKey(['cx', t[0], f[0], v[0], st[0], free]);
-  const cached = await cacheGet(key);
+  const cached = cleanCached(await cacheGet(key));
   if (cached && cached.images && cached.images.length) { res.setHeader('Cache-Control', 'private, max-age=600'); res.status(200).json(cached); return; }
   if (!(await meterFresh(req, res, body))) return;
   const wave1 = [en('design ideas'), en('photos'), ar(''), en('architecture'), ar('صور'), en('3d render'), ar('حديث'), en('inspiration')];

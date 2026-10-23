@@ -56,8 +56,8 @@ test('٥. سحب الرجوع يعمل فوق شبكة هواوي، ويبقى �
 test('٦. الحزمة ووسوم الكاش', () => {
   assert.ok(BUNDLE.includes("if(ptHwGrid) ptSectionsView.classList.add('ptHwGrid');"), 'الحزمة تحمل الجزء');
   assert.ok(!BUNDLE.includes('ptShelfDrag'), 'لا بقايا السحب في الحزمة');
-  assert.match(R('js/ui-wiring.js'), /\/css\/tool-card-images\.css\?v=23/);
-  assert.match(R('index.html'), /\/js\/ui-wiring\.js\?v=662/);
+  assert.match(R('js/ui-wiring.js'), /\/css\/tool-card-images\.css\?v=24/);
+  assert.match(R('index.html'), /\/js\/ui-wiring\.js\?v=666/);
 });
 
 /* v-tools-one-col (المالك بلقطة من جهازه: «رجّعلي في الأدوات نفس قبل… نفس الهواوي اللي

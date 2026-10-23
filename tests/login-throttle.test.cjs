@@ -150,7 +150,8 @@ test('٧. المحظور بكلمته الصحيحة 403 كما كان، وال�
 });
 
 test('٨. rateWait ذرّيّ: ٥٠ «نسيت كلمة المرور» متوازية لبريد واحد = ثلاث رسائل على الأكثر والباقي ٤٢٩', async () => {
-  await account('rana', { email: 'rana@example.com' });
+  // v-unverified-email: الاسترجاع لبريد مؤكَّد على حسابه وحده — البذرة بختمها كما يكتبه التأكيد بالرمز
+  await account('rana', { email: 'rana@example.com', verifiedEmail: 'rana@example.com' });
   store.set('db/email-index/rana@example.com', JSON.stringify({ username: 'rana', at: Date.now() }));
   mails = 0;
   const rs = await Promise.all(Array.from({ length: 50 }, (_, i) => call({ action: 'forgotPassword', email: 'rana@example.com' }, '70.0.' + i + '.1')));
@@ -163,8 +164,12 @@ test('٨. rateWait ذرّيّ: ٥٠ «نسيت كلمة المرور» متوا�
 // مراجعة الدفعة A (sec-1): «الشبكة المعروفة» كانت تُكتب بعد الدخول بكلمة المرور وحده — من سجّل ثمّ بقي بالتحقّق المنزلق
 // (المالك نادرًا ما يدخل بكلمته) أو دخل برمز البريد يُقفَل حتّى من بيته برشّ ٥٠ كلمة خاطئة من شبكات متفرّقة (المسبار: ٤٢٩).
 test('٩. كلّ نجاح موثَّق يحفظ شبكته: تسجيل من S، تحقّق منزلق من V، رمز بريد من O — بعد رشّ ٦٠ موزَّعًا كلمته من الثلاث 200', async () => {
-  const su = await call({ action: 'signup', username: 'homeowner', password: PASS, email: 'homeowner@example.com' }, '10.7.7.1');
+  const su = await call({ action: 'signup', username: 'homeowner', password: PASS }, '10.7.7.1');
   assert.equal(su.status, 200);
+  // v-signup-no-email: التسجيل لا يحفظ الإيميل — أكّده من «حسابي» (السجلّ والختم والفهرس كما يكتبها التأكيد بالرمز) ليصله رمز الدخول
+  const ho = await auth.getUser('homeowner');
+  await auth.putUser('homeowner', Object.assign({}, ho, { email: 'homeowner@example.com', verifiedEmail: 'homeowner@example.com' }));
+  store.set('db/email-index/homeowner@example.com', JSON.stringify({ username: 'homeowner', at: Date.now() }));
   assert.equal((await call({ action: 'verify', token: su.body.token }, '10.7.8.1')).status, 200, 'تحقّق منزلق من شبكة أخرى بلا دخول بكلمة');
   assert.equal((await call({ action: 'email-otp-request', email: 'homeowner@example.com' }, '10.7.9.1')).status, 200);
   const code = JSON.parse(store.get('db/otp/homeowner@example.com')).otp;
@@ -178,7 +183,7 @@ test('٩. كلّ نجاح موثَّق يحفظ شبكته: تسجيل من S، 
 });
 
 test('١٠. الاسترجاع برابط البريد يحفظ شبكته أيضًا، وعطب KV في الحفظ لا يُفشل الدخول', async () => {
-  await account('resetter', { email: 'resetter@example.com' });
+  await account('resetter', { email: 'resetter@example.com', verifiedEmail: 'resetter@example.com' }); // v-unverified-email: الرابط لبريد مؤكَّد
   const rt = 'reset-token-abc';
   const rec = await auth.getUser('resetter');
   rec.resetTokenHash = crypto.createHash('sha256').update(rt).digest('hex');

@@ -44,6 +44,7 @@ test('التوصيل: التبويب والبطاقة والفتح يمرّون 
   assert.ok(js.includes("if(o.hidden&&sel.id==='videoMakerMode') return;"));
   assert.ok(js.includes('loadManifest(); guardModes(); build();'));
   assert.ok(js.includes("var TAB_ART={actor:'/assets/studio/options/heritage-emirati.webp'};"));
-  assert.ok(js.includes("im.src=TAB_ART[v]||'/assets/videos/tabs/'+v+'.jpg") && js.includes("if(TAB_ART[v]) im.style.objectPosition='50% 0';"));
+  /* v-vmk-tab-warm: الرابط من tabArt (يرسم التبويب ويسخّن الذاكرة بالرابط نفسه) */
+  assert.ok(js.includes("function tabArt(v){ return TAB_ART[v]||'/assets/videos/tabs/'+v+'.jpg") && js.includes('im.src=tabArt(v);') && js.includes("if(TAB_ART[v]) im.style.objectPosition='50% 0';"));
   assert.ok(fs.existsSync(path.join(root, 'assets/studio/options/heritage-emirati.webp')), 'صورة الرجل الإماراتيّ موجودة');
 });
