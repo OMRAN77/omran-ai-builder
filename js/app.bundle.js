@@ -49840,10 +49840,13 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var t = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null), n;
     while((n = t.nextNode())){ if(n.nodeType === 3) fixText(n); else fixAttrs(n); }
   }
-  var queue = [], timer = 0;
-  function flush(){ timer = 0; var q = queue; queue = []; q.forEach(walk); }
-  /* v-om3-press: الدفعة الصغيرة تُنظَّف فورًا في المراقب (قبل الرسم) — كانت تنتظر ٤٠ مللي ثانية فيظهر النصّ بإيموجيه ثمّ يتغيّر عرضه */
-  function schedule(n){ queue.push(n); if(queue.length <= 400){ if(timer){ clearTimeout(timer); timer = 0; } flush(); } else if(!timer) timer = setTimeout(flush, 40); }
+  /* v-no-emoji-flash (المالك ٢٣ أكتوبر بلقطة «أنماط الصور»: «إذا اختار أي صورة من الأنماط تستوي حركة قوية عند جرّب على صورتك»):
+     التنظيف كان بعد ٤٠ م.ث (setTimeout) فيُرسم النصّ بإيموجيه إطارًا أو اثنين ثمّ يُقصّ — «✨ جرّب على صورتك» يكبر ١٧ بكسل ثمّ يرجع،
+     والنجمة و📁 تقفزان معه في كلّ اختيار (قيس في الإنتاج: ١٥٠←١٦٧←١٥٠ خلال ~٥٠ م.ث). المراقب يُسلَّم في مهمّة دقيقة قبل الرسم،
+     فالتنظيف داخله = لا إطار بالإيموجي أبدًا، في كلّ نصّ يُكتب بإيموجي لا هذا الزرّ وحده. */
+  var queue = [];
+  function flush(){ var q = queue; queue = []; q.forEach(walk); }
+  function schedule(n){ queue.push(n); }
   function start(){
     if(!document.body) return;
     walk(document.body);
@@ -49854,6 +49857,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
           else if(m.type === 'characterData') schedule(m.target);
           else if(m.type === 'attributes') schedule(m.target);
         });
+        flush(); /* قبل الرسم */
       }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label'] });
     }catch(e){ __swallow(e, 'clean-ui:observer'); }
   }

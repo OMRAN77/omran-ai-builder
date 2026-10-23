@@ -3,6 +3,7 @@
 // المقيس بالمسبار (لكلّ إطار، حاسوب وجوّال): الضغط على تبويب في صانع الفيديو يعيد بناء شريطه، والتبويب الجديد
 // يُرسم إطارًا أو اثنين (~٥٠ مللي ثانية) بأسلوبه الأصليّ (حدّ ذهبيّ مصمت وخلفيّة أفتح) ثمّ يصنّفه مصنّف الألوان الثلاثة
 // في وقت الفراغ فيطفئ الحدّ — وميض. وعلى أندرويد فوقه غطاء اللمس الأزرق الافتراضيّ. بعد الإصلاح: صفر إطارات بلا أصناف.
+// (نظيره في app-36-clean-ui.js — الإيموجي يُرسم إطارًا ثمّ يُقصّ — أصلحه #1221 v-no-emoji-flash، واختباره clean-ui ٦.)
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -56,17 +57,7 @@ test('٢. app-41: دفعة أكبر من ٤٠٠ لا تُصنَّف فورًا (
   assert.ok(src41.includes('if(now && items.length <= SYNC_MAX) drainNow(); else schedule();'));
 });
 
-test('٣. app-36: الإيموجي يُنظَّف فورًا من العقدة الجديدة لا بعد ٤٠ مللي ثانية — والدفعة الكبيرة بمؤقّت كما كانت', () => {
-  const walked = []; let timers = 0;
-  const sb = { walk: (n) => walked.push(n), setTimeout: () => { timers++; return 7; }, clearTimeout: () => {} };
-  vm.runInNewContext(pick(src36, '  var queue = [], timer = 0;', '  function start(){') + '\nthis.schedule=schedule;', sb);
-  sb.schedule('a'); sb.schedule('b');
-  assert.deepEqual(walked, ['a', 'b'], 'تنظيف فوريّ بلا مؤقّت');
-  assert.equal(timers, 0);
-  assert.ok(src36.includes("if(queue.length <= 400){ if(timer){ clearTimeout(timer); timer = 0; } flush(); } else if(!timer) timer = setTimeout(flush, 40);"));
-});
-
-test('٤. CSS: لا توهّج لمس افتراضيّ على أيّ عنصر، في أوّل redesign.css (كلّ الأوضاع — بلا-خطوط.css للأسود وحده)، والوسم مرفوع؛ والحزمة مبنيّة', () => {
+test('٣. CSS: لا توهّج لمس افتراضيّ على أيّ عنصر، في أوّل redesign.css (كلّ الأوضاع — بلا-خطوط.css للأسود وحده)، والوسم مرفوع؛ والحزمة مبنيّة', () => {
   const css = read('css/redesign.css');
   assert.ok(/^\/\* v-om3-press[^\n]*\*\/\n\*\{-webkit-tap-highlight-color:transparent\}\n/.test(css), 'قاعدة عامّة في رأس الملفّ (لكلّ الأوضاع لا الأسود وحده)');
   assert.equal((css.match(/tap-highlight-color/g) || []).length, 2, 'العامّة + القديمة على بطاقات الأدوات');
@@ -74,5 +65,5 @@ test('٤. CSS: لا توهّج لمس افتراضيّ على أيّ عنصر، 
   const tag = Number((read('index.html').match(/css\/redesign\.css\?v=(\d+)/) || [])[1]);
   assert.ok(tag >= 696, 'وسم redesign.css رُفع (يُقرأ لا يُثبَّت)');
   const bundle = read('js/app.bundle.js');
-  assert.ok(bundle.includes('var SYNC_MAX = 400;') && bundle.includes('function drainNow(){') && bundle.includes('if(queue.length <= 400){'), 'شغّل npm run bundle');
+  assert.ok(bundle.includes('var SYNC_MAX = 400;') && bundle.includes('function drainNow(){'), 'شغّل npm run bundle');
 });
