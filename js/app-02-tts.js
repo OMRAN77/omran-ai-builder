@@ -1262,7 +1262,8 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
+    // v-om-voices-chat: src 'reply' = «استمع» على ردّ المحادثة؛ للمالك يقرأ الخادم بأصوات om (api/_lib/om-voices.js)
+    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -1482,6 +1483,14 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
         try{ url = await ensureFetched(i); }
         catch(e){
           if(currentCloudToken !== token) return;
+          /* v-om-voices-chat (المالك: «ليش تتدخل مها… الأصوات بس»): خلص حدّ أصوات om اليوميّ ⇐ رسالة الحدّ
+             المترجمة نفسها (portraitLimitReached) ويقف الصوت — لا مها ولا صوت الجهاز بدلها. */
+          if(e && e.message === 'om-quota'){
+            currentCloudToken = null; currentCloudAudio = null; clearWordHighlight();
+            try{ if(typeof settingsToast === 'function') settingsToast(t('portraitLimitReached')); }catch(err){ __swallow(err, 'tts:om-quota-toast'); }
+            if(onEnd) onEnd();
+            return;
+          }
           if('speechSynthesis' in window){
             currentCloudToken = null; currentCloudAudio = null;
             speakOnDevice(chunks[i].wordStart, started);
