@@ -58,9 +58,13 @@
     setVal('constructionFloors', p.floors);
     setVal('constructionArea', p.area);
     applyAnnexes(p.annexes);
-    var bits = [optText('constructionType', p.type), optText('constructionStyle', p.style), p.floors + '×', p.area + ' m²'];
+    /* v-cx-bidi (تدقيق ١٨–١٩ أكتوبر: «2× وm² إنجليزيّة وترتيب مقلوب»): الأدوار بتسمية حقلها والمساحة بوحدة تسمية حقلها
+       («المساحة (م²)» ← «م²»، مترجمتين بالـ14 لغة)، وكلّ جزء معزول ⁨…⁩ فلا ينقلب ترتيبه في السطر العربيّ */
+    var lab = function(id){ var e = $(id); return (e && e.previousElementSibling) ? e.previousElementSibling.textContent.trim() : ''; };
+    var areaLab = lab('constructionArea'), unit = (areaLab.match(/\(([^)]+)\)/) || [])[1];
+    var bits = [optText('constructionType', p.type), optText('constructionStyle', p.style), (lab('constructionFloors') + ' ' + p.floors).trim(), unit ? p.area + ' ' + unit : (areaLab + ' ' + p.area).trim()];
     if(p.annexes.length) bits.push('+' + p.annexes.length);
-    st.textContent = T(TX.ready).replace('{s}', bits.filter(Boolean).join(' · '));
+    st.textContent = T(TX.ready).replace('{s}', bits.filter(Boolean).map(function(s){ return '⁨' + s + '⁩'; }).join(' · '));
     st.style.display = 'block';
   }
 

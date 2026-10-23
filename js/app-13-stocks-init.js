@@ -1,3 +1,60 @@
+/* ---------- v-md-lite: ماركداون خفيف آمن لردود التحليل والدرس و«التفاصيل والتكلفة» (الدفعة ٤؛ من حزمة a10 في ten-a) ----------
+   كانت تُوضع textContent فيظهر ### و** و--- خامًا، وعلامات ** المحايدة تقلب «RSI 14 = 61.2» في السطر العربيّ (تدقيق ١٨–١٩ أكتوبر).
+   النصّ يمرّ نصًّا دائمًا (لا innerHTML لنصّ الردّ): «### عنوان» سطر عريض، و**x** عريض، وسطر --- فاصل، و- أو * أوّل السطر نقطة •.
+   الحاويات white-space:pre-wrap فتبقى السطور بفواصلها. __omMdLiteHtml للتقرير المطبوع: يُهرَّب كلّ جزء ثمّ الوسوم نفسها. */
+(function(){
+  function inline(s){
+    var out = [], re = /\*\*([^*]+?)\*\*/g, last = 0, m;
+    function plain(x){ x = x.replace(/\*\*/g, ''); if(x) out.push({ t: x }); }
+    while((m = re.exec(s))){ plain(s.slice(last, m.index)); out.push({ t: m[1], b: true }); last = re.lastIndex; }
+    plain(s.slice(last));
+    return out;
+  }
+  function lines(text){
+    return String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n').map(function(line){
+      var m;
+      if(/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) return { hr: true };
+      if((m = line.match(/^\s*#{1,6}\s+(.*?)[\s#]*$/))) return { head: true, parts: inline(m[1]) };
+      if((m = line.match(/^(\s*)[-*+]\s+(.*)$/))) return { pre: m[1] + '• ', parts: inline(m[2]) };
+      return { parts: inline(line) };
+    });
+  }
+  window.__omMdLite = function(text){
+    var frag = document.createDocumentFragment(), afterBlock = true;
+    lines(text).forEach(function(L){
+      if(L.hr){
+        var hr = document.createElement('hr');
+        hr.style.cssText = 'border:0; border-top:1px solid rgba(128,128,128,.35); margin:8px 0;';
+        frag.appendChild(hr); afterBlock = true; return;
+      }
+      if(!afterBlock) frag.appendChild(document.createTextNode('\n'));
+      afterBlock = false;
+      var host = frag;
+      if(L.head){ host = document.createElement('b'); frag.appendChild(host); }
+      if(L.pre) host.appendChild(document.createTextNode(L.pre));
+      L.parts.forEach(function(p){
+        if(p.b){ var b = document.createElement('b'); b.textContent = p.t; host.appendChild(b); return; }
+        /* مسافتا الطرفين عقدتان منفصلتان: منظِّف الإيموجي (v-clean-ui) يقصّ أطراف كلّ عقدة فيها إيموجي فتلتصق الكلمة بالعريض جنبها */
+        var w = p.t.match(/^(\s*)([\s\S]*?)(\s*)$/);
+        [w[1], w[2], w[3]].forEach(function(x){ if(x) host.appendChild(document.createTextNode(x)); });
+      });
+    });
+    return frag;
+  };
+  function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  window.__omMdLiteHtml = function(text){
+    var out = '', afterBlock = true;
+    lines(text).forEach(function(L){
+      if(L.hr){ out += '<hr>'; afterBlock = true; return; }
+      if(!afterBlock) out += '\n';
+      afterBlock = false;
+      var s = (L.pre ? esc(L.pre) : '') + L.parts.map(function(p){ return p.b ? '<b>' + esc(p.t) + '</b>' : esc(p.t); }).join('');
+      out += L.head ? '<b>' + s + '</b>' : s;
+    });
+    return out;
+  };
+})();
+
 /* ---------- 📈 Stocks (Twelve Data, server-side owner key) ---------- */
 (function(){
   /* v-store-safe-revert (أمر عمران صريح ٢٢ سبتمبر — بعد تحذيره من مخاطرة رفض
@@ -25,16 +82,28 @@
       method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
     });
     const j = await r.json();
-    if(!r.ok) throw new Error(j.error || 'HTTP '+r.status);
+    if(!r.ok){
+      /* v-stocks-fail (تدقيق ١٨ أكتوبر + الدفعة ٥): الخادم يرسل رمزًا لا رسالة مزوّد الأسعار (كانت «**symbol** or **figi** … https://…» باسمه ورابطه وبالإنجليزيّ) */
+      if(j.error === 'symbol_not_found') throw new Error(t('stocksSymbolNotFound'));
+      if(j.error === 'unavailable') throw new Error(t('svcPaused'));
+      throw new Error(j.error || 'HTTP '+r.status);
+    }
     return j;
   }
+  /* v-md-lite: ردّ ماركداون يُرسم منسّقًا (بلا ### و** و--- خامّة) */
+  function setMd(el, text){ el.textContent = ''; el.appendChild(window.__omMdLite(text)); }
 
   function fmt(n, d){ return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('en-US', {maximumFractionDigits: d==null?2:d}) : '—'; }
 
   function drawChart(values){
     if(!values || values.length < 2){ chart.style.display='none'; return; }
+    chart.style.display = 'block'; // يُعرض أوّلًا ليُقاس عرضه المعروض (clientWidth)
     const ctx = chart.getContext('2d');
-    const W = chart.width, H = chart.height, P = 50;
+    /* v-stocks-chart: الكانفس يرث rtl فكان textAlign 'start' = اليمين، فيُرسم رقم المحور يسار x=4 خارج اللوحة ويُقصّ أوّل تاريخ.
+       واللوحة ١٠٠٠px تُعرض بعرض الجوّال (~٣٣٠) فيصغر خطّ 20px إلى ~٧px: الخطّ لا يقلّ عن 12px معروضة، والحاسوب 20 كما كان. */
+    ctx.direction = 'ltr'; ctx.textAlign = 'left';
+    const W = chart.width, H = chart.height;
+    const FS = Math.max(20, Math.round(12 * W / (chart.clientWidth || W))), K = FS / 20, P = Math.round(50 * K);
     ctx.clearRect(0,0,W,H);
     const closes = values.map(v=>v.c);
     let min = Math.min(...closes), max = Math.max(...closes);
@@ -43,11 +112,11 @@
     const y = c => H - P - (H - 2*P) * (c - min) / (max - min);
     // grid + labels
     ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.font = '20px sans-serif'; ctx.lineWidth = 1;
+    ctx.font = FS + 'px sans-serif'; ctx.lineWidth = 1;
     for(let g=0; g<=4; g++){
       const val = min + (max-min)*g/4, gy = y(val);
       ctx.beginPath(); ctx.moveTo(P, gy); ctx.lineTo(W-P, gy); ctx.stroke();
-      ctx.fillText(fmt(val), 4, gy+6);
+      ctx.fillText(fmt(val), 4, gy + Math.round(6 * K));
     }
     const up = closes[closes.length-1] >= closes[0];
     const col = up ? '#22c55e' : '#ef4444';
@@ -67,9 +136,8 @@
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     [0, Math.floor(values.length/2), values.length-1].forEach(i=>{
       const label = String(values[i].t).slice(0, 10);
-      ctx.fillText(label, Math.min(x(i), W - 130), H - 12);
+      ctx.fillText(label, Math.min(x(i), W - Math.round(130 * K)), H - Math.round(12 * K));
     });
-    chart.style.display = 'block';
   }
 
   async function loadSymbol(sym){
@@ -92,9 +160,10 @@
       chEl.textContent = (up?'▲ +':'▼ ') + fmt(q.change) + ' (' + fmt(q.changePct) + '%)';
       chEl.style.color = up ? '#22c55e' : '#ef4444';
       $('#stockDetails').innerHTML = '';
-      [['O', q.open], ['H', q.high], ['L', q.low], ['Vol', q.volume]].forEach(function(pair){
+      /* v-stocks-i18n: كانت «O: H: L: Vol:» إنجليزيّة ثابتة في كلّ اللغات */
+      [['stkOpen', q.open], ['stkHigh', q.high], ['stkLow', q.low], ['stkVol', q.volume]].forEach(function(pair){
         const sp = document.createElement('span');
-        sp.textContent = pair[0] + ': ' + fmt(pair[1], pair[0]==='Vol'?0:2);
+        sp.textContent = t(pair[0]) + ': ' + fmt(pair[1], pair[0]==='stkVol'?0:2);
         $('#stockDetails').appendChild(sp);
       });
       card.style.display = 'block';
@@ -132,8 +201,10 @@
     items.forEach(function(it){
       const up = (it.change||0) >= 0;
       const col = up ? '#22c55e' : '#ef4444';
-      html += '<span data-tsym="'+(it.gold?'__GOLD':it.symbol)+'" style="cursor:pointer; padding:0 18px; font-size:13px; font-weight:500;">' +
-        it.symbol + ' <span style="color:'+col+';">' + (up?'▲':'▼') + ' ' + fmt(it.price) + (it.unit?(' '+it.unit):'') + (it.noPct?'':' (' + fmt(it.changePct) + '%)') + '</span></span><span style="color:rgba(255,255,255,0.2);">|</span>';
+      /* v-ticker-bidi: كلّ عنصر معزول (dir=auto) فلا تتّحد تسميات الذهب العربيّة المتتالية في مقطع RTL واحد يقلب ترتيبها
+         (كانت الأونصة قبل عيار 24)، والسعر والنسبة بقوسيها معزولان LTR (كانت «(%0.26)» بجانب «درهم»). */
+      html += '<span data-tsym="'+(it.gold?'__GOLD':it.symbol)+'" dir="auto" style="cursor:pointer; padding:0 18px; font-size:13px; font-weight:500;">' +
+        it.symbol + ' <span style="color:'+col+';">' + (up?'▲':'▼') + ' <bdi dir="ltr">' + fmt(it.price) + '</bdi>' + (it.unit?(' '+it.unit):'') + (it.noPct?'':' <bdi dir="ltr">(' + fmt(it.changePct) + '%)</bdi>') + '</span></span><span style="color:rgba(255,255,255,0.2);">|</span>';
     });
     tickerTrack.innerHTML = html + html; // نسخة مكرّرة للّفّة السلسة (‑50% = نسخة واحدة)
     tickerWrap.style.display = 'block';
@@ -251,7 +322,7 @@
     try{
       const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
       const j = await api({ mode:'analyze', symbol: currentSym, question: questionEl.value.trim(), lang: lang });
-      analysisEl.textContent = j.analysis || '⚠️';
+      if(j.analysis) setMd(analysisEl, j.analysis); else analysisEl.textContent = '⚠️'; // v-md-lite
     }catch(err){
       analysisEl.textContent = '⚠️ ' + (err && err.message || err);
     }
@@ -277,7 +348,8 @@
     try{
       const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
       const j = await api({ mode:'learn', topic: topic||'', question: question||'', symbol: currentSym || 'AAPL', lang: lang });
-      lessonEl.textContent = j.lesson || ('⚠️ ' + (j.claudeError || ''));
+      /* v-md-lite · v-stocks-fail: الفشل سطر وظيفيّ بلغة الواجهة، لا claudeError (نصّ المزوّد الخامّ) */
+      if(j.lesson) setMd(lessonEl, j.lesson); else lessonEl.textContent = '⚠️ ' + t('svcPaused');
     }catch(err){
       lessonEl.textContent = '⚠️ ' + (err && err.message || err);
     }
@@ -297,20 +369,24 @@
   const globalWrap = $('#stockGlobalWrap');
   let globalLoaded = false;
   function uiLang(){ return (localStorage.getItem('aiapp_lang')||'ar').slice(0,2); }
+  /* v-stocks-tv-locale: رموز لغات TradingView (ar_AE لا ar، وzh_CN)؛ ما لا يدعمه يأخذ en */
+  function tvLocale(){ return ({ ar:'ar_AE', zh:'zh_CN', ru:'ru', tr:'tr', id:'id', fr:'fr', es:'es' })[uiLang()] || 'en'; }
   function setTvChart(sym){
     $('#tvChart').src = 'https://s.tradingview.com/widgetembed/?symbol=' + encodeURIComponent(sym) +
-      '&interval=60&theme=dark&style=1&locale=' + uiLang() + '&hide_side_toolbar=1&allow_symbol_change=1&withdateranges=1';
+      '&interval=60&theme=dark&style=1&locale=' + tvLocale() + '&hide_side_toolbar=1&allow_symbol_change=1&withdateranges=1';
   }
   async function loadGlobal(){
     setTvChart('OANDA:XAUUSD');
-    const ov = { colorTheme:'dark', dateRange:'1D', showChart:false, locale: uiLang(), isTransparent:true, width:'100%', height:400,
+    /* v-stocks-global: isTransparent:false — الإطار الشفّاف تحت :root{color-scheme:dark} يُرسم خلفه أبيض فتضيع أسعار الثيم الداكن،
+       والودجة غير الشفّافة ترسم خلفيّتها الداكنة بنفسها مثل #tvChart. التبويبات وأوصاف السلع من القاموس؛ أسماء المؤشّرات أعلام. */
+    const ov = { colorTheme:'dark', dateRange:'1D', showChart:false, locale: tvLocale(), isTransparent:false, width:'100%', height:400,
       tabs:[
-        { title:'Indices', symbols:[{s:'AMEX:DIA',d:'Dow Jones'},{s:'NASDAQ:QQQ',d:'NASDAQ 100'},{s:'AMEX:SPY',d:'S&P 500'},{s:'FOREXCOM:GRXEUR',d:'DAX'},{s:'TVC:NI225',d:'Nikkei 225'}] },
-        { title:'Commodities', symbols:[{s:'OANDA:XAUUSD',d:'Gold'},{s:'TVC:SILVER',d:'Silver'},{s:'TVC:USOIL',d:'Oil WTI'},{s:'TVC:UKOIL',d:'Brent'}] },
-        { title:'Forex', symbols:[{s:'FX:EURUSD'},{s:'FX:GBPUSD'},{s:'FX:USDJPY'},{s:'FX_IDC:USDAED',d:'USD/AED'}] }
+        { title:t('stkIndices'), symbols:[{s:'AMEX:DIA',d:'Dow Jones'},{s:'NASDAQ:QQQ',d:'NASDAQ 100'},{s:'AMEX:SPY',d:'S&P 500'},{s:'FOREXCOM:GRXEUR',d:'DAX'},{s:'TVC:NI225',d:'Nikkei 225'}] },
+        { title:t('stkCommodities'), symbols:[{s:'OANDA:XAUUSD',d:t('stkGold')},{s:'TVC:SILVER',d:t('stkSilver')},{s:'TVC:USOIL',d:t('stkOil') + ' WTI'},{s:'TVC:UKOIL',d:'Brent'}] },
+        { title:t('stkForex'), symbols:[{s:'FX:EURUSD'},{s:'FX:GBPUSD'},{s:'FX:USDJPY'},{s:'FX_IDC:USDAED',d:'USD/AED'}] }
         /* v-no-crypto: قسم «Crypto» (Bitcoin/Ethereum) أُزيل امتثالًا لسياسة متجر هواوي */
       ] };
-    $('#tvOverview').src = 'https://s.tradingview.com/embed-widget/market-overview/?locale=' + uiLang() + '#' + encodeURIComponent(JSON.stringify(ov));
+    $('#tvOverview').src = 'https://s.tradingview.com/embed-widget/market-overview/?locale=' + tvLocale() + '#' + encodeURIComponent(JSON.stringify(ov));
     try{
       const g = await api({ mode:'gold' });
       if(g && g.ozUsd){
@@ -336,26 +412,41 @@
   const fullBtn = $('#stocksFullBtn');
   const panel = modal.firstElementChild;
   let isFull = false;
+  /* v-stocks-full-restore: الخروج كان يكتب أنماط نافذة v384 القديمة (صندوق بعرض ثابت وزوايا وحشوة) فوق الصفحة الكاملة
+     (v-stocks-fullpage)؛ الآن تُحفظ أنماط ما قبل الدخول وتُعاد كما هي، ومثله عند الخروج من ملء الشاشة بـEsc. */
+  let fullSaved = null;
+  function fullOff(){
+    if(!isFull) return;
+    isFull = false;
+    if(fullSaved){
+      panel.style.maxWidth = fullSaved.maxWidth; panel.style.maxHeight = fullSaved.maxHeight; panel.style.height = fullSaved.height;
+      panel.style.borderRadius = fullSaved.borderRadius; modal.style.padding = fullSaved.padding;
+      fullSaved = null;
+    }
+    fullBtn.textContent = '🖥️';
+  }
   fullBtn.addEventListener('click', function(){
-    isFull = !isFull;
-    if(isFull){
+    if(!isFull){
+      isFull = true;
+      fullSaved = { maxWidth: panel.style.maxWidth, maxHeight: panel.style.maxHeight, height: panel.style.height, borderRadius: panel.style.borderRadius, padding: modal.style.padding };
       panel.style.maxWidth = '100%'; panel.style.maxHeight = '100vh'; panel.style.height = '100vh';
       panel.style.borderRadius = '0'; modal.style.padding = '0';
       fullBtn.textContent = '🗗';
       if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){ /* المتصفّح يرفض ملء الشاشة بلا إيماءة مستخدم */ });
     }else{
-      panel.style.maxWidth = '560px'; panel.style.maxHeight = '90vh'; panel.style.height = '';
-      panel.style.borderRadius = '16px'; modal.style.padding = '20px';
-      fullBtn.textContent = '🖥️';
+      fullOff();
       if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){ /* لم نكن في ملء الشاشة — لا شيء يُغلق */ });
     }
   });
+  document.addEventListener('fullscreenchange', function(){ if(!document.fullscreenElement) fullOff(); });
 
   const origLoad = loadSymbol;
   loadSymbol = async function(sym){
     await origLoad(sym);
     currentSym = String(input.value || '').trim().toUpperCase();
     if(currentSym && card.style.display !== 'none') analyzeWrap.style.display = 'block';
+    /* v-stocks-fail: الفشل كان يُبقي «حلل السهم» ظاهرًا من سهم سابق فيحلّل رمزًا غير موجود */
+    else if(card.style.display === 'none'){ analyzeWrap.style.display = 'none'; currentSym = ''; }
   };
 
   const searchWrap = $('#stockSearchWrap');
@@ -386,17 +477,21 @@
   /* v-pf-i18n (شكوى المالك ٢٩ أغسطس: نافذة الأسهم عربية وسط واجهة المليالم):
      عربي/أردو ← عربي، وغير ذلك ← إنجليزي — نفس قاعدة v-tools-i18n. */
   function stT(arTxt, enTxt){ return (window.__bT) ? window.__bT(arTxt, enTxt) : (isEn()?enTxt:arTxt); }
+  /* v-pf-bidi: كلّ مقطع رقميّ بإشاراته ($ و+ و% والأقواس) معزول LTR — كانت «%100» و«(0%) 0+» و«AAPL @ $343.46 × 1» تنقلب في العربيّ.
+     العزل بمحرفَي LRI/PDI داخل العقدة النصّيّة نفسها لا بوسم <bdi>: منظِّف الإيموجي (v-clean-ui) يقصّ أطراف كلّ عقدة نصّيّة فيها إيموجي،
+     فالمسافة بين «🟢 شراء » ووسم بعده تضيع («شراء1 × AAPL»)، والمحرفان ليسا مسافة فلا يُقصّان. */
+  function pfIso(s){ return '\u2066' + s + '\u2069'; }
   function pfRender(d){
     if(!pfWrap) return;
     var p = d.portfolio, bd = d.board || { top: [], rank: null, total: 0 };
     var h = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
-      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">' + stT('🎓 وضع تعليمي — أموال افتراضية 100٪','🎓 Learning mode — 100% virtual money') + '</span></div>'
+      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">' + stT('🎓 وضع تعليمي — أموال افتراضية 100٪','🎓 Learning mode — 100% virtual money').replace(/\d[\d,.]*\s?[%٪]/, pfIso) + '</span></div>'
       // البطاقة العلوية: القيمة الكلية والربح/الخسارة
       + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:14px;background:rgba(255,255,255,.02);margin-bottom:12px;">'
       + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
-      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('قيمة المحفظة','Portfolio value') + '</div><div style="font-size:22px;font-weight:700;">$' + pfMoney(p.equity) + '</div></div>'
-      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الكاش المتاح','Available cash') + '</div><div style="font-size:16px;font-weight:600;">$' + pfMoney(p.cash) + '</div></div>'
-      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الربح/الخسارة','Profit/Loss') + '</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + (p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('قيمة المحفظة','Portfolio value') + '</div><div style="font-size:22px;font-weight:700;">' + pfIso('$' + pfMoney(p.equity)) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الكاش المتاح','Available cash') + '</div><div style="font-size:16px;font-weight:600;">' + pfIso('$' + pfMoney(p.cash)) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الربح/الخسارة','Profit/Loss') + '</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + pfIso((p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)') + '</div></div>'
       + '</div></div>'
       // نموذج الصفقة
       + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:12px;margin-bottom:12px;">'
@@ -415,8 +510,8 @@
       p.positions.forEach(function(pos){
         h += '<div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(128,128,128,.15);padding:8px 2px;font-size:12.5px;flex-wrap:wrap;">'
           + '<b style="min-width:56px;">' + pfEsc(pos.symbol) + '</b>'
-          + '<span style="color:var(--muted);">' + pos.qty + ' ' + stT('سهم','shares') + ' × $' + pos.price + '</span>'
-          + '<span style="margin-inline-start:auto;font-weight:700;color:' + pfCol(pos.pl) + ';">' + (pos.pl >= 0 ? '+' : '') + pfMoney(pos.pl) + ' (' + pos.plPct + '%)</span>'
+          + '<span style="color:var(--muted);">' + pos.qty + ' ' + stT('سهم', pos.qty === 1 ? 'share' : 'shares') + ' × ' + pfIso('$' + pos.price) + '</span>'
+          + '<span style="margin-inline-start:auto;font-weight:700;color:' + pfCol(pos.pl) + ';">' + pfIso((pos.pl >= 0 ? '+' : '') + pfMoney(pos.pl) + ' (' + pos.plPct + '%)') + '</span>'
           + '<button class="btn" data-pfsell="' + pfEsc(pos.symbol) + '" data-pfqty="' + pos.qty + '" style="padding:4px 10px;font-size:11px;">' + stT('بيع الكل','Sell all') + '</button>'
           + '<button class="btn" data-pfwhy="' + pfEsc(pos.symbol) + '" style="padding:4px 10px;font-size:11px;">' + stT('🎓 علّمني','🎓 Teach me') + '</button>'
           + '</div>';
@@ -429,13 +524,13 @@
       h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
         + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
         + '<span style="flex:1;">' + pfEsc(r.user) + '</span>'
-        + '<b style="color:' + pfCol(r.plPct) + ';">' + (r.plPct >= 0 ? '+' : '') + r.plPct + '%</b></div>';
+        + '<b style="color:' + pfCol(r.plPct) + ';">' + pfIso((r.plPct >= 0 ? '+' : '') + r.plPct + '%') + '</b></div>';
     });
     // آخر الصفقات + إعادة الضبط
     if((p.trades || []).length){
       h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">' + stT('آخر صفقاتك','Your recent trades') + '</div>';
       p.trades.forEach(function(t){
-        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? stT('🟢 شراء','🟢 Buy') : stT('🔴 بيع','🔴 Sell')) + ' ' + t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price + '</div>';
+        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? stT('🟢 شراء','🟢 Buy') : stT('🔴 بيع','🔴 Sell')) + ' ' + pfIso(t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price) + '</div>';
       });
     }
     h += '<div id="pfLesson" style="display:none;margin-top:12px;border:1px solid rgba(212,175,55,.35);border-radius:12px;padding:12px;font-size:12.5px;line-height:1.9;white-space:pre-wrap;"></div>'
@@ -458,7 +553,13 @@
       .then(function(d){
         pfBusy = false; pfRender(d);
         var last = d.portfolio.trades && d.portfolio.trades[0];
-        pfMsgShow(last ? ('✅ تمت: ' + (last.side === 'buy' ? 'شراء' : 'بيع') + ' ' + last.qty + ' × ' + last.sym + ' بسعر $' + last.price + (last.side === 'buy' ? ' — 🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.' : ' — 🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.')) : '✅ تمت الصفقة', true);
+        /* v-pf-trade-msg: كانت عربيّة ثابتة في كلّ اللغات (ومخربطة في الإنجليزيّ) — الأجزاء بـstT والأرقام معزولة */
+        if(!last){ pfMsgShow(stT('✅ تمت الصفقة', '✅ Trade done'), true); return; }
+        var buy = last.side === 'buy';
+        pfMsgShow((buy ? stT('✅ تمت: شراء', '✅ Bought') : stT('✅ تمت: بيع', '✅ Sold')) + ' ' + pfIso(last.qty + ' × ' + last.sym)
+          + stT(' بسعر ', ' @ ') + pfIso('$' + last.price) + ' — '
+          + (buy ? stT('🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.', '🎓 Lesson: don’t put all your cash in one stock — diversifying protects you.')
+                 : stT('🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.', '🎓 Lesson: selling locks in a profit or stops a loss — good decisions follow a plan, not emotion.')), true);
       })
       .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || stT('تعذرت الصفقة','Trade failed')), false); });
   }
@@ -480,7 +581,7 @@
         var box = $('#pfLesson');
         box.style.display = 'block'; box.textContent = '🎓 معلمك يجهز درسًا على ' + sym + ' بالأرقام الحية…';
         api({ mode:'learn', symbol: sym, question: 'أنا مبتدئ وأملك هذا السهم في محفظتي التعليمية. علمني ماذا أراقب فيه الآن (الاتجاه، الدعم والمقاومة، متى أفكر بالبيع) بالأرقام الحية.', lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
-          .then(function(d){ box.textContent = d.lesson || 'تعذر الدرس الآن — حاول بعد قليل.'; })
+          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = 'تعذر الدرس الآن — حاول بعد قليل.'; }) // v-md-lite
           .catch(function(e){ box.textContent = '⚠️ ' + (e.message || 'تعذر الدرس'); });
       };
     });
@@ -646,7 +747,8 @@
         const res = await fetch('/api/construction-library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value }),
+          /* v-cx-lib: المكتبة مشتركة وتسميات كلّ مخطّط بلغة صاحبه — نطلب مخطّطات لغتنا وحدها */
+          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
         });
         const data = await res.json();
         const items = (data && data.items) || [];
@@ -658,12 +760,9 @@
             img.src = 'data:' + (item.planMimeType || 'image/png') + ';base64,' + item.planImageBase64;
             img.style.cssText = 'width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; cursor:pointer; background:#000;';
             img.title = (item.floors || '') + ' | ' + (item.area || '') + ' m²';
-            img.onclick = () => {
-              resultImageEl.src = img.src;
-              downloadLink.href = img.src;
-              resultImageWrap.style.display = 'block';
-              resultImageWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            };
+            /* v-cx-lib (تدقيق ١٨–١٩ أكتوبر): كانت تكتب فوق «المخطط 2D» الذي ولّده المستخدم وتترك جدوله وتقريره لمشروعه —
+               الآن تُفتح كبيرة في المعرض المشترك (app-15-cx-ideas) ونتيجة المستخدم كما هي */
+            img.onclick = () => { if(window.omranLightbox) window.omranLightbox(img.src); };
             libraryWrap.appendChild(img);
           });
           libraryWrap.style.display = 'grid';
@@ -756,7 +855,7 @@
         }
         lastData = data;
         if(data.planText){
-          planTextEl.textContent = data.planText;
+          planTextEl.textContent = ''; planTextEl.appendChild(window.__omMdLite(data.planText)); /* v-md-lite: كان ### و** خامًا */
           planTextEl.style.display = 'block';
         }
         renderBoq(boqRows());
@@ -801,7 +900,8 @@
       }).join('') + '</table>';
     }
     const oTxt = function(el){ return (el && el.options[el.selectedIndex]) ? el.options[el.selectedIndex].text : ''; };
-    const meta = [oTxt(typeEl), floorsEl.value + ' أدوار', areaEl.value + ' م² بناء',
+    /* v-md-lite: «عدد الأدوار: N» بدل «N أدوار» (كان «1 أدوار») */
+    const meta = [oTxt(typeEl), 'عدد الأدوار: ' + floorsEl.value, areaEl.value + ' م² بناء',
       (plotEl && plotEl.value ? plotEl.value + ' م² أرض' : ''), oTxt(styleEl),
       (emirateEl && emirateEl.value ? oTxt(emirateEl) : '')].filter(Boolean).join(' · ');
     const __docHtml = ('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير مشروع البناء</title><style>'
@@ -813,7 +913,7 @@
       + 'th,td{border:1px solid #bbb;padding:5px 7px;text-align:right}th{background:#e6f2f0}'
       + 'figure{margin:0 0 12px;page-break-inside:avoid}img{width:100%;border:1px solid #ccc;border-radius:6px}'
       + 'figcaption{font-size:11.5px;color:#555;margin-top:4px;text-align:center}'
-      + 'pre{white-space:pre-wrap;font-family:inherit;font-size:12.5px;line-height:1.85;margin:0}'
+      + '.plan{white-space:pre-wrap;font-size:12.5px;line-height:1.85;margin:0}.plan hr{border:0;border-top:1px solid #ccc;margin:8px 0}' /* v-md-lite */
       + 'footer{margin-top:22px;font-size:11px;color:#666;border-top:1px solid #ddd;padding-top:8px}'
       + '@media print{header,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
       + '</style></head><body><header><h1>🏗️ تقرير مشروع البناء</h1><p>' + esc(meta)
@@ -821,7 +921,7 @@
       + fig(lastData.imageBase64, lastData.mimeType, 'المخطط المعماري')
       + fig(lastData.photoImageBase64, lastData.photoMimeType, 'الواجهة الخارجية')
       + fig(lastData.interiorImageBase64, lastData.interiorMimeType, 'التصميم الداخلي')
-      + '<h2>📋 التفاصيل والتكلفة</h2><pre>' + esc(lastData.planText || '') + '</pre>' + tbl
+      + '<h2>📋 التفاصيل والتكلفة</h2><div class="plan">' + window.__omMdLiteHtml(lastData.planText || '') + '</div>' + tbl
       + '<footer>تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.</footer>'
       + '</body></html>');
     /* v-cons-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة الطباعة
@@ -866,6 +966,9 @@
         if(!res.ok){
           if(data.error === 'auth_required') angleStatusEl.textContent = t('designAiNeedLogin');
           else if(data.error === 'daily_limit_reached') angleStatusEl.textContent = t('designAiLimitReached');
+          /* v-provider-fail-rest: الخادم يرسل رمزًا لا نصّ المزوّد (كان «❌ خطأ: Your prepayment credits are depleted…») */
+          else if(data.error === 'unavailable') angleStatusEl.textContent = t('svcPaused');
+          else if(data.error === 'failed') angleStatusEl.textContent = '❌ ' + t('voiceImageFailed');
           else angleStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
           return;
         }
@@ -899,6 +1002,8 @@
       if(!res.ok){
         if(data.error === 'auth_required') roomStatusEl.textContent = t('designAiNeedLogin');
         else if(data.error === 'daily_limit_reached') roomStatusEl.textContent = t('designAiLimitReached');
+        else if(data.error === 'unavailable') roomStatusEl.textContent = t('svcPaused'); /* v-provider-fail-rest */
+        else if(data.error === 'failed') roomStatusEl.textContent = '❌ ' + t('voiceImageFailed');
         else roomStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
         return;
       }
@@ -1006,6 +1111,7 @@
   const compareChecksEl = $('#studioAiCompareChecks');
   const compareBtn = $('#studioAiCompareBtn');
   const compareStatusEl = $('#studioAiCompareStatus');
+  const compareHandle = $('#studioAiCompareHandle'); /* v-studio-handle */
   const compareResultsEl = $('#studioAiCompareResults');
   const heritageCompareWrap = $('#studioAiHeritageCompareWrap');
   const heritageCompareBtn = $('#studioAiHeritageCompareBtn');
@@ -2092,9 +2198,23 @@
      صور الأظافر الجاهزة الاثنتا عشرة (assets/studio/options/nails-*.webp) فساتين وأيادٍ عامّة لا تُظهر اللون ولا الشكل.
      الأظافر صارت معاينة-أوّلًا كالمكياج: يد قريبة بالأظافر المطلوبة من وصفها نفسه، تُولَّد مرّة وتُخزَّن للجميع. */
   const PREVIEW_FIRST = ['makeup', 'nails'];
+  /* v-studio-static-set (تدقيق ١٨ أكتوبر: مئات أخطاء 404 ومربّعات فارغة نحو ٨ ث): الصور الجاهزة ٩٦ خيارًا و١٠ تبويبات فقط، وكلّ خيار
+     غيرها (~٩٠٪، وكلّ الميزات الأربع عشرة الإضافيّة) كان يطلب ملفًّا غائبًا فيرجع 404 ثمّ تبدأ المعاينة. القائمتان تطابقان
+     assets/studio/options وfeatures (tests/studio-static-assets يقارنهما بالمجلّدين) — ما ليس فيهما يذهب إلى المعاينة مباشرة. */
+  const STUDIO_STATIC_OPTS = new Set(('anime-chibi anime-classic anime-cyberpunk anime-ghibli anime-kawaii anime-manga anime-retro90s anime-shonenstudio anime-webtoon'
+    + ' beard-anchor beard-boxed beard-clean beard-faded beard-full beard-goatee beard-longbeard beard-mustache beard-stubble beard-vandyke'
+    + ' glasses-aviator glasses-catseye glasses-clearframe glasses-goldframe glasses-hexagon glasses-oversized glasses-retroglasses glasses-rimless glasses-round glasses-sportglasses glasses-sunglasses glasses-wayfarer'
+    + ' hair-black hair-blonde hair-blue hair-bob hair-brown hair-burgundy hair-colorful hair-curly hair-highlights hair-longlayers hair-ombre hair-pixie hair-platinum hair-red hair-rose hair-silver hair-straight hair-waves'
+    + ' heritage-abaya heritage-bisht heritage-embroidered heritage-emirati heritage-kandora heritage-moroccanher heritage-omani heritage-palestinian heritage-saudi heritage-saudimen2'
+    + ' makeup-bridal makeup-dewy makeup-editorial makeup-glam makeup-kohl makeup-matte makeup-natural makeup-redlips makeup-smokey makeup-softglam'
+    + ' nails-artnails nails-black nails-chrome nails-french nails-glitter nails-gold nails-marble nails-mattegray nails-nude nails-ombrenails nails-pink nails-red'
+    + ' skin-circles skin-freckles skin-glow skin-matteskin skin-subtle skin-tan'
+    + ' tattoo-arabictattoo tattoo-back tattoo-custom tattoo-floraltattoo tattoo-geometric tattoo-minimalline tattoo-sleeve tattoo-tribal tattoo-wrist').split(' '));
+  const STUDIO_STATIC_FEATS = new Set(['anime', 'beard', 'glasses', 'hair', 'heritage', 'makeup', 'merge', 'nails', 'skin', 'tattoo']);
   function optionImgs(f, v){
-    const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     const gen = PREVIEW_API(f, v);
+    if(!STUDIO_STATIC_OPTS.has(f + '-' + v)) return { img: gen, img2: '' }; /* v-studio-static-set: لا صورة جاهزة ⇒ المعاينة وحدها */
+    const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     return PREVIEW_FIRST.indexOf(f) !== -1 ? { img: gen, img2: asset } : { img: asset, img2: gen };
   }
   const IS_MORE = (f) => !!MORE.options[f];
@@ -2162,10 +2282,18 @@
   function loadFavorites(){
     try{ return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }catch(e){ return []; }
   }
-  function saveFavorite(dataUrl, featureLabel, styleLabel){
-    const favs = loadFavorites();
-    favs.unshift({ img: dataUrl, feature: featureLabel || '', style: styleLabel || '', ts: Date.now() });
-    localStorage.setItem(FAV_KEY, JSON.stringify(favs.slice(0, 30)));
+  /* v-fav-quota (app-12): مصغّرة JPEG وحفظ بحارس يرجع نجح/فشل — لا حذف تلقائيّ لمفضّلة قائمة */
+  function saveFavorite(dataUrl, featureLabel, styleLabel, onDone){
+    __omranFavThumb(dataUrl, (img) => {
+      const favs = loadFavorites();
+      favs.unshift({ img: img, feature: featureLabel || '', style: styleLabel || '', ts: Date.now() });
+      onDone(__omranLsPut(FAV_KEY, favs.slice(0, 30)));
+    });
+  }
+  /* v-fav-label (تدقيق ١٨ أكتوبر: «hair · أومبري»): المحفوظ قديمًا مفتاح الميزة الخامّ — يُعرض باسم تبويبه بلغة الواجهة */
+  function studioFavFeature(v){
+    const b = (v && /^[\w-]+$/.test(v)) ? tabsWrap.querySelector('.studioAiTabBtn[data-feature="' + v + '"]') : null;
+    return b ? b.textContent.trim() : (v || '');
   }
   function renderFavorites(){
     const favs = loadFavorites();
@@ -2178,12 +2306,13 @@
       const card = document.createElement('div');
       card.style.cssText = 'display:flex; align-items:center; gap:8px; border:1px solid var(--border,#333); border-radius:8px; padding:6px;';
       card.innerHTML = '<img src="' + f.img + '" style="width:50px; height:50px; object-fit:cover; border-radius:6px;">' +
-        '<span style="flex:1; font-size:11.5px; color:var(--muted,#999);">' + (f.feature || '') + (f.style ? (' · ' + f.style) : '') + '</span>' +
+        '<span style="flex:1; font-size:11.5px; color:var(--muted,#999);"></span>' +
         '<button type="button" class="btn iconBtn" data-idx=' + idx + '" style="padding:2px 8px; font-size:12px;">✕</button>';
+      card.querySelector('span').textContent = studioFavFeature(f.feature) + (f.style ? (' · ' + f.style) : '');
       card.querySelector('button').onclick = () => {
         const arr = loadFavorites();
         arr.splice(idx, 1);
-        localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+        __omranLsPut(FAV_KEY, arr);
         renderFavorites();
       };
       favoritesPanel.appendChild(card);
@@ -2198,26 +2327,35 @@
   if(favSaveBtn) favSaveBtn.onclick = () => {
     if(!resultEl.src) return;
     const styleLabel = (styleEl.querySelector('option[value="' + styleEl.value + '"]') || {}).textContent || styleEl.value;
-    saveFavorite(resultEl.src, feature, styleLabel);
-    favSaveBtn.textContent = t2('studioFavoriteSaved');
-    setTimeout(() => { favSaveBtn.textContent = t2('studioFavoriteSaveBtn'); }, 1800);
+    /* v-fav-label: اسم التبويب بلغة الواجهة لا المفتاح الخامّ. v-fav-quota: النتيجة على الزرّ، وسبب الفشل في سطر الحالة */
+    saveFavorite(resultEl.src, featureTitle() || feature, styleLabel, (ok) => {
+      favSaveBtn.textContent = t2(ok ? 'studioFavoriteSaved' : 'memorySaveError');
+      if(!ok) setStatus(t2('storageFullWarning'));
+      setTimeout(() => { favSaveBtn.textContent = t2('studioFavoriteSaveBtn'); }, ok ? 1800 : 2500);
+    });
   };
 
   /* ---- 🔄 before/after slider ----
      v-compare-drag-all (طلب المالك ٢١ سبتمبر «غيّرها»): كانت مُقفلة كليًّا (`if(true) return;`) منذ
      v-no-slider — السحب صار مباشرة على resultWrap نفسه بدل <input type=range> مخفيّ. */
+  /* v-studio-handle: المقبض صار أخًا لطبقة «قبل» لا ابنها المقصوص — يظهر ويختفي معها ويتبع الخطّ */
+  function studioBaShow(on){
+    beforeWrap.style.display = on ? 'block' : 'none';
+    if(compareHandle) compareHandle.style.display = on ? 'flex' : 'none';
+  }
   function updateSliderClip(pct){
     pct = Math.max(0, Math.min(100, pct));
     beforeWrap.style.width = pct + '%';
     beforeImg.style.width = resultWrap.clientWidth + 'px';
+    if(compareHandle) compareHandle.style.left = pct + '%';
   }
   function setupBeforeAfter(){
     if(feature === 'merge' || !selectedBase64A){
-      beforeWrap.style.display = 'none';
+      studioBaShow(false);
       return;
     }
     beforeImg.src = 'data:' + selectedMimeA + ';base64,' + selectedBase64A;
-    beforeWrap.style.display = 'block';
+    studioBaShow(true);
     updateSliderClip(50);
   }
   let __studioBaDragging = false;
@@ -2263,6 +2401,15 @@
   }
 
   /* ---- 📊 compare checkboxes (built from style options) ---- */
+  /* v-studio-compare-max (تدقيق ١٨ أكتوبر: العلامة الرابعة تُلغى بصمت): الجملة القائمة «اختر ستايلين أو ثلاثة…» تظهر ٢٫٥ ث على
+     زرّ المقارنة — هو اللاصق أسفل النافذة (v-studio-compare-sticky)، أمّا #studioAiCompareStatus فبعد ١٠٤ بطاقة لا يُرى. */
+  let studioCmpHintTimer = 0;
+  function studioCompareMaxHint(){
+    if(!compareBtn) return;
+    compareBtn.textContent = t2('studioCompareHint');
+    clearTimeout(studioCmpHintTimer);
+    studioCmpHintTimer = setTimeout(() => { compareBtn.textContent = t2('studioCompareBtn'); }, 2500);
+  }
   function buildCompareChecks(){
     /* v-studio-compare-cards (لقطة المالك «كيف الشخص يعرف الشكل»): كلّ خيار بطاقة بصورته (optionImgs نفسها)
        بدل مربّع نصّيّ، وثلاثة كحدّ أقصى. الصور تُحمَّل عند ظهورها فقط. */
@@ -2274,10 +2421,10 @@
       const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy';
       const srcs = optionImgs(feature, opt.value);
       if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = srcs.img; }); else img.src = srcs.img;
-      img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = srcs.img2; } else img.style.visibility = 'hidden'; };
+      img.onerror = function(){ if(!img.__alt && srcs.img2){ img.__alt = 1; img.src = srcs.img2; } else img.style.visibility = 'hidden'; };
       const nm = document.createElement('span'); nm.textContent = opt.textContent.trim();
       cb.onchange = () => {
-        if(cb.checked && compareChecksEl.querySelectorAll('.studioCompareCheck:checked').length > 3){ cb.checked = false; return; }
+        if(cb.checked && compareChecksEl.querySelectorAll('.studioCompareCheck:checked').length > 3){ cb.checked = false; studioCompareMaxHint(); return; }
         label.classList.toggle('on', cb.checked);
       };
       label.appendChild(cb); label.appendChild(img); label.appendChild(nm);
@@ -2323,7 +2470,7 @@
     const __srcs = optionImgs(feature, cur.value); /* v-studio-more-looks */
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __srcs.img; });
     else img.src = __srcs.img;
-    img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = __srcs.img2; } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
+    img.onerror = function(){ if(!img.__alt && __srcs.img2){ img.__alt = 1; img.src = __srcs.img2; } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
@@ -2365,6 +2512,16 @@
     feats.forEach((f) => { const next = []; combos.forEach((c) => groups[f].forEach((it) => next.push(c.concat([it])))); combos = next; });
     return combos.slice(0, STUDIO_IMAGES_MAX);
   }
+  /* v-studio-basket-honest (تدقيق ١٨ أكتوبر: «ولّد بالاختيارات (5)» والنتيجة ٣ صور بصمت): عدد الصور = حاصل ضرب عدد خيارات كلّ ميزة،
+     وما زاد على STUDIO_IMAGES_MAX كان يُقصّ بصمت. الاختيار الذي يجاوزه يُرفض برسالة (حدّ المالك ٣ صور كما هو، v-studio-chain). */
+  function studioComboCount(list){
+    const n = {};
+    list.forEach((it) => { n[it.f] = (n[it.f] || 0) + 1; });
+    return Object.keys(n).reduce((p, k) => p * n[k], 1);
+  }
+  /* رسالة رفض السلّة في سطر الحالة المشترك — تُمسح عند حذف شريحة إن بقيت هي المعروضة (كانت تبقى بعد تفريغ السلّة) */
+  let studioBasketMsg = '';
+  function studioBasketRefuse(text){ studioBasketMsg = text; setStatus(text); }
   function renderStudioBasket(){
     if(!studioCardsEl) return;
     let box = document.getElementById('studioBasket');
@@ -2379,7 +2536,8 @@
     addBtn.textContent = inB ? bT('✓ مضاف للاختيارات', '✓ Added') : bT('➕ أضف هذا للاختيارات', '➕ Add to selection');
     addBtn.disabled = inB || feature === 'merge';
     addBtn.onclick = () => {
-      if(studioBasket.length >= STUDIO_BASKET_MAX){ setStatus(bT('الحدّ ' + STUDIO_BASKET_MAX + ' اختيارات — احذف واحدًا لتضيف غيره.', 'Up to ' + STUDIO_BASKET_MAX + ' picks — remove one first.')); return; }
+      if(studioBasket.length >= STUDIO_BASKET_MAX){ studioBasketRefuse(bT('الحدّ ' + STUDIO_BASKET_MAX + ' اختيارات — احذف واحدًا لتضيف غيره.', 'Up to ' + STUDIO_BASKET_MAX + ' picks — remove one first.')); return; }
+      if(studioComboCount(studioBasket.concat([{ f: feature }])) > STUDIO_IMAGES_MAX){ studioBasketRefuse(t2('studioBasketImgMax').replace('{n}', STUDIO_IMAGES_MAX)); return; }
       const lb = studioBasketLabel(feature, styleEl.value);
       studioBasket.push({ f: feature, v: styleEl.value, ft: lb.ft, vt: lb.vt });
       renderStudioBasket(); refreshGenerateLabel();
@@ -2392,7 +2550,12 @@
       const x = document.createElement('button');
       x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', '✕');
       x.style.cssText = 'background:none; border:none; color:inherit; cursor:pointer; padding:0; font-size:12px;';
-      x.onclick = () => { studioBasket.splice(i, 1); renderStudioBasket(); refreshGenerateLabel(); };
+      x.onclick = () => {
+        studioBasket.splice(i, 1);
+        if(studioBasketMsg && statusEl.textContent === studioBasketMsg) setStatus('');
+        studioBasketMsg = '';
+        renderStudioBasket(); refreshGenerateLabel();
+      };
       chip.appendChild(x);
       box.appendChild(chip);
     });
@@ -2499,18 +2662,21 @@
     Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
       if(b.querySelector('img')) return;
       const f = b.dataset.feature;
-      b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700;';
+      /* v-studio-tab-wrap (تدقيق ١٨ أكتوبر: «Heritage/Traditional» مقصوص «eritage/Tradition»؛ الدفعة ٥، من a11 في ten-a): nowrap الموروث من الوسم
+         مع عرض ٨٦px وoverflow:hidden يقصّ الاسم الطويل من الطرفين — يلتفّ سطرين فوق الظلّ (البطاقة ١٠٤px). */
+      b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700; white-space:normal;';
       const img = document.createElement('img');
-      img.src = 'assets/studio/features/' + f + '.webp';
+      const staticTab = STUDIO_STATIC_FEATS.has(f) || !IS_MORE(f); /* v-studio-static-set: الميزات الإضافيّة بلا صورة جاهزة ⇒ المعاينة مباشرة */
+      img.src = staticTab ? 'assets/studio/features/' + f + '.webp' : PREVIEW_API(f, '__tab');
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;';
-      img.onerror = function(){ if(!img.__alt && IS_MORE(f)){ img.__alt = 1; img.src = PREVIEW_API(f, '__tab'); } else img.remove(); }; /* v-studio-14 */
+      img.onerror = function(){ if(!img.__alt && staticTab && IS_MORE(f)){ img.__alt = 1; img.src = PREVIEW_API(f, '__tab'); } else img.remove(); }; /* v-studio-14 */
       const shade = document.createElement('div');
       shade.style.cssText = 'position:absolute; left:0; right:0; bottom:0; height:44%; background:linear-gradient(transparent,rgba(0,0,0,.88)); z-index:1;';
       b.insertBefore(shade, b.firstChild);
       b.insertBefore(img, b.firstChild);
       const txt = Array.from(b.childNodes).find((n) => n.nodeType === 3);
-      if(txt){ const sp = document.createElement('span'); sp.textContent = txt.textContent; sp.style.cssText = 'position:relative; z-index:2;'; b.replaceChild(sp, txt); }
+      if(txt){ const sp = document.createElement('span'); sp.textContent = txt.textContent; sp.style.cssText = 'position:relative; z-index:2; max-width:100%; text-align:center; line-height:1.15; overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;'; b.replaceChild(sp, txt); }
     });
   }
   photoizeStudioTabs();
@@ -2539,7 +2705,7 @@
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
-    beforeWrap.style.display = 'none';
+    studioBaShow(false);
     setStatus('');
     if(typeof studioUpdateCta === 'function') studioUpdateCta();
   }
@@ -2557,17 +2723,40 @@
     const phone = () => document.documentElement.classList.contains('mobile-ui');
     const room = () => Math.max(0, el.scrollWidth - el.clientWidth);
     const rtl = () => getComputedStyle(el).direction === 'rtl';
+    /* v-strip-wheel-latch (المالك ١٧ أكتوبر: «لو كنت أمرّر الصفحة ومرّ الماوس فوق الشريط، الصفحة تكمّل وما توقف»): بعد عجلة تمرّر
+       الصفحة لا يأخذ الشريط العجلة ما دام الدوران متّصلًا أو الصفحة تقدر تتحرّك في اتّجاهها — حتّى يتحرّك الماوس فوقه فعلًا (١٠px بعد
+       آخر دفعة) أو يُضغط أو تُفتح النافذة من جديد. المؤقّت وحده لا يكفي: Chrome/Edge يقفلان هدف العجلة ٥٠٠ms، وبعد أيّ توقّف أطول كان
+       الشريط يأكل ~١١ دفعة. حدث غير قابل للإلغاء في أوّل تسلسل يعني أنّ المتصفّح مرّر الصفحة قبل أن يصلنا: لا نحرّك الشريط معها؛ أمّا
+       بقيّة تسلسل بدأ على طرف الشريط (يصل غير قابل للإلغاء أيضًا) فكما في #1154. */
+    let lastPage = 0, armed = false, moved = 0, edgeAt = 0;
+    const scroller = () => { for(let n = el.parentElement; n; n = n.parentElement){ const oy = getComputedStyle(n).overflowY; if((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight) return n; } return document.scrollingElement; };
+    const canPage = (dy) => { const p = scroller(); return !!p && (dy > 0 ? p.scrollTop < p.scrollHeight - p.clientHeight - 1 : p.scrollTop > 0); };
+    const pageTurn = () => { lastPage = Date.now(); armed = true; moved = 0; };
+    window.addEventListener('wheel', (e) => {
+      if(phone() || e.ctrlKey || !el.offsetParent || el.contains(e.target) || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if(canPage(e.deltaY)) pageTurn();
+    }, { passive: true, capture: true });
+    el.addEventListener('pointermove', (e) => {
+      if(e.pointerType !== 'mouse' || !armed || Date.now() - lastPage < 150) return; // انجراف لحظة الدفعة لا يُحسب
+      moved += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0);
+      if(moved >= 10) armed = false; // حركة حقيقيّة فوق الشريط بعد آخر دفعة = يريد الشريط
+    });
     el.addEventListener('wheel', (e) => {
       if(phone() || e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if(!e.cancelable){
+        if(Date.now() - edgeAt >= 500){ pageTurn(); return; } // المتصفّح مرّر الصفحة قبل أن يصلنا
+        edgeAt = Date.now(); // بقيّة تسلسل بدأ على طرف الشريط
+      } else if(armed && (Date.now() - lastPage < 500 || canPage(e.deltaY))){ pageTurn(); return; } // الصفحة تُمرَّر — تكمل، والدوران المتّصل يبقى لها حتّى في آخرها؛ الحركة تفكّه كقفل المتصفّح
       const max = room(); if(!max) return;
       const pos = Math.abs(el.scrollLeft); // RTL: ‎0 ← -max‎ في المتصفّحات الحديثة
-      if(e.deltaY > 0 ? pos >= max - 1 : pos <= 1) return;
+      if(e.deltaY > 0 ? pos >= max - 1 : pos <= 1){ edgeAt = Date.now(); return; }
       e.preventDefault();
       const d = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * el.clientWidth : e.deltaY);
       el.scrollLeft += rtl() ? -d : d;
     }, { passive: false });
     let drag = null, dragEnd = 0;
     el.addEventListener('pointerdown', (e) => {
+      if(e.pointerType === 'mouse') armed = false;
       if(phone() || e.pointerType !== 'mouse' || e.button !== 0 || !room()) return;
       e.preventDefault(); // لا تحديد نصّ أثناء السحب — الضغطة نفسها تبقى
       drag = { x: e.clientX, left: el.scrollLeft, moved: false };
@@ -2584,10 +2773,25 @@
     window.addEventListener('pointercancel', end);
     el.addEventListener('click', (e) => { if(Date.now() - dragEnd < 350){ e.stopPropagation(); e.preventDefault(); } }, true);
     el.addEventListener('dragstart', (e) => { if(!phone()) e.preventDefault(); });
+    return () => { armed = false; };
   }
-  stripDesktopScroll(tabsWrap);
+  const stripUnlatch = stripDesktopScroll(tabsWrap);
+  /* v-desk-strips (المالك ١٨ أكتوبر: «في اشياء موجوده في الهاتف وغير موجوده في الكمبيوتر»): صفوف أفقيّة يسحبها الهاتف باللمس وكانت
+     مقصوصة على الكمبيوتر (أشرطة التمرير مخفيّة في التطبيق كلّه): «قارن بين إطلالات» في الأزياء (٣ من ٣٧)، و«غرفتي بكل الأنماط» ونتائجها في
+     الديكور (١٠ من ٤٨)، ورفوف شاشة الأدوات. الدالّة نفسها (للحاسوب وحده، الفأرة وحدها) بغلاف لا يربط العنصر مرّتين؛ والالتقاط (snap)
+     يُلغى على الكمبيوتر في redesign.css وإلّا ترجع كلّ نقرة عجلة لنفس البطاقة. */
+  /* بعد #1163 الدالّة ترجع «فكّ القفل»: الغلاف يحفظه لكلّ عنصر ويرجعه، وفتح النافذة يفكّ قفل صفّها كما يفعل الاستوديو. */
+  const omranDeskStrip = (el) => { if(!el) return null; if(!el.__deskStrip) el.__deskStrip = stripDesktopScroll(el) || (() => {}); return el.__deskStrip; };
+  window.omranStripDesktopScroll = omranDeskStrip;
+  ['fashionAiCompareChecks', 'designCompareChecks', 'designCompareResults'].forEach((id) => omranDeskStrip(document.getElementById(id)));
+  document.querySelectorAll('#sectionsToolsPopup .ptCarousel').forEach(omranDeskStrip); /* رفوف بُنيت قبل هذا الجزء؛ اللاحقة من app-10 */
+  [['btnFashionAI', ['fashionAiCompareChecks']], ['btnDesignAI', ['designCompareChecks', 'designCompareResults']]].forEach(([btn, ids]) => {
+    const b = document.getElementById(btn);
+    if(b) b.addEventListener('click', () => ids.forEach((id) => { const u = omranDeskStrip(document.getElementById(id)); if(u) u(); }));
+  });
 
   btnOpen.onclick = () => {
+    if(stripUnlatch) stripUnlatch(); // v-strip-wheel-latch: تمرير زيارة سابقة لا يقرّر عن الشريط الآن
     modal.style.display = 'flex';
     closeHeaderMenu();
     setFeature(feature);
@@ -2672,7 +2876,7 @@
     });
   }
   function studioClearPhoto(which){
-    if(which === 'A'){ selectedBase64A = ''; if(fileInputA) fileInputA.value = ''; if(fileNameA) fileNameA.textContent = ''; beforeWrap.style.display = 'none'; }
+    if(which === 'A'){ selectedBase64A = ''; if(fileInputA) fileInputA.value = ''; if(fileNameA) fileNameA.textContent = ''; studioBaShow(false); }
     else { selectedBase64B = ''; if(fileInputB) fileInputB.value = ''; if(fileNameB) fileNameB.textContent = ''; }
     studioRenderSlot(which);
   }
@@ -2769,7 +2973,7 @@
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
-    beforeWrap.style.display = 'none';
+    studioBaShow(false);
     setStatus(t('studioAiGenerating'));
     { const mr = document.getElementById('studioMultiResults'); if(mr){ mr.innerHTML = ''; mr.style.display = 'none'; } }
 
@@ -2853,6 +3057,10 @@
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; } /* v-open-tools-cap */
+        /* v-provider-fail (لقطة التدقيق ٠١٩: «خطأ: Your prepayment credits are depleted… AI Studio» بروابط فوترة المزوّد): الخادم يرسل رمزًا
+           لا نصّ المزوّد، وstudioErrText لا يعرفه فكان سيعرض «خطأ: unavailable» — نصّ الواجهة بلغة المستخدم */
+        if(data.error === 'unavailable'){ setStatus(t2('svcPaused')); return; }
+        if(data.error === 'failed'){ setStatus(t2('designAiSuggestError')); return; }
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];
@@ -3014,14 +3222,25 @@ window.updateVersionLabel = function(){
     // (تأكيد وصول التحديث بدل التخمين).
     var __bv = '';
     try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ /* guard-ok */ }
-    el.textContent = 'Omran AI Builder — ' + APP_VERSION
-      + ' · بندل: ' + (__bv || '؟')
-      + ' · سحب: ' + fmt(pull) + pullErr
-      + ' · رفع: ' + fmt(push) + pushErr
-      + ' · سيرفر: ' + srvN
-      + ' · محلي: ' + n
-      + ' · دمج: ' + mrgR
-      + (mrgE ? (' ⚠️' + mrgE) : '');
+    /* v-ver-label (تدقيق ١٨ أكتوبر، لقطتا ٠٢٣ و٠٤٦): العناوين كانت عربيّة في كلّ لغة، والسطر نصّ واحد يقلبه اتّجاه الفقرة
+       و«رفع:» تنفصل عن قيمتها عند الالتفاف. الآن العنوان من القاموس، وكلّ «عنوان: قيمة» span لا يلتفّ ومعزول، والقيمة
+       <bdi dir=ltr> (نصّ لا HTML)؛ الالتفاف بين الأزواج وحدها، وداخل القيمة الطويلة (خطأ) وحدها. */
+    var __L = function(k){ var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? String(v) : k; };
+    var __pairs = [[null, 'om ai — ' + APP_VERSION], ['verBundle', __bv || '?'], ['verPull', fmt(pull) + pullErr], ['verPush', fmt(push) + pushErr],
+      ['verServer', String(srvN)], ['verLocal', String(n)], ['verMerge', mrgR + (mrgE ? (' ⚠️' + mrgE) : '')]];
+    el.textContent = '';
+    __pairs.forEach(function(p, i){
+      if (i) el.appendChild(document.createTextNode(' · '));
+      var s = document.createElement('span');
+      s.style.cssText = 'white-space:nowrap;unicode-bidi:isolate';
+      if (p[0]) s.appendChild(document.createTextNode(__L(p[0]) + ': '));
+      var b = document.createElement('bdi');
+      b.setAttribute('dir', 'ltr');
+      b.style.whiteSpace = 'normal';
+      b.textContent = p[1];
+      s.appendChild(b);
+      el.appendChild(s);
+    });
     el.style.display = '';
     if (!window.__verLabelTimer) { window.__verLabelTimer = setInterval(function(){ try{ window.updateVersionLabel(); }catch(e){ __swallow(e, "ui:app-13-stocks-init#8"); } }, 5000); }
   } else {

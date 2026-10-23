@@ -12,6 +12,7 @@
 const SPEC = {
   AUTH_SECRET:            ['core',    'الجلسات وبوّابة المالك'],
   AUTH_SECRET_PREVIOUS:   ['tunable', 'مناوبة السرّ: يُقرأ به السجلّ القديم ثمّ يُعاد تعميته بالجديد'],
+  CRON_SECRET:            ['tunable', 'Vercel يرسله مع نداء الجرد اليوميّ /api/email-sweep فلا يمرّ غيره — بدونه يمرّ أيّ نداء لكن مرّة كلّ ٢٠ ساعة (v-unverified-email)'],
   OWNER_USERNAME:         ['core',    'بوّابة المالك'],
   MONITOR_KEY:            ['core',    'المراقبة الخارجية'],
   UPSTASH_REDIS_REST_URL: ['core',    'قاعدة البيانات'],

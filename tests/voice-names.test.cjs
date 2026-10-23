@@ -21,7 +21,7 @@ test('١. الاسمان وجملة التعريف في اللغات الـ١٤�
     assert.match(s, /"?voiceSampleIntro"?: "[^"]*\{name\}[^"]*"/, lg);
     assert.doesNotMatch(s, /"?voiceGenderMale"?: "(?:Male voice|Voz masculina|Мужской голос)"/, lg);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=752'"), 'وسم الكاش ارتفع');
+  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=770'"), 'وسم الكاش ارتفع');
 });
 
 test('٢. الضغط يختار ويُسمع تعريف الشخصيّة؛ والتجربة تُسمع المختار', () => {
@@ -67,6 +67,8 @@ test('٣. اختيار عبدالله يبقى: الإقلاع وبداية ال
     localStorage: { getItem: (k) => store[k] || null, setItem: (k, v) => { store[k] = v; } },
     document: { getElementById: (id) => els[id] || null, createElement: () => ({ style: {}, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; } }), querySelector: (q) => (q === '#btnMahaDock .mahaGlyph' ? glyph : null) },
     btnMahaEl: { get title() { return fab.title; }, set title(v) { fab.title = v; }, querySelector: () => fab.img },
+    // v-maha-title-lang: التلميحات من القاموس (mahaTitle / voiceGenderMale) لا اسمًا عربيًّا ثابتًا — هنا العربيّة
+    t: (k) => ({ mahaTitle: 'مها - مساعدة صوتية', voiceGenderMale: 'عبدالله' })[k] || k,
     __swallow() {}, Promise,
   };
   vm.createContext(ctx);

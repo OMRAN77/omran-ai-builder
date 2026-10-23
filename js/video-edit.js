@@ -262,6 +262,7 @@
       writeHere: 'اكتب مكانها', play: 'تشغيل', pause: 'إيقاف',
       audio: 'الصوت', aNone: 'بدون صوت إضافي', aFile: 'ملف صوت من جهازك', aTts: 'صوت يقرأ نصّك',
       aFileHint: 'أغنية، موسيقى، قرآن، أو أي تسجيل.', aFilePick: 'اختر ملف الصوت', ttsPh: 'اكتب النص اللي تبيه ينقرأ…',
+      spNormal: 'عادي', spFast: 'سريع', spXFast: 'سريع جدًا', spLabel: 'سرعة الصوت',
       female: 'صوت نسائي', male: 'صوت رجالي', ttsMake: 'جهّز الصوت', ttsBusy: 'جارٍ تجهيز الصوت…',
       mix: 'امزجه مع صوت الفيديو', replace: 'بدّل صوت الفيديو', volOrig: 'صوت الفيديو', volNew: 'الصوت الجديد',
       loop: 'كرّره لين آخر الفيديو', mute: 'اكتم صوت الفيديو الأصلي',
@@ -286,6 +287,7 @@
       writeHere: 'Write in its place', play: 'Play', pause: 'Pause',
       audio: 'Sound', aNone: 'No extra sound', aFile: 'Audio file from device', aTts: 'Voice reads your text',
       aFileHint: 'Song, music, Quran or any recording.', aFilePick: 'Choose audio file', ttsPh: 'Type the text to be read…',
+      spNormal: 'Normal', spFast: 'Fast', spXFast: 'Very fast', spLabel: 'Voice speed',
       female: 'Female voice', male: 'Male voice', ttsMake: 'Make voice', ttsBusy: 'Making voice…',
       mix: 'Mix with video sound', replace: 'Replace video sound', volOrig: 'Video sound', volNew: 'New sound',
       loop: 'Repeat until the end', mute: 'Mute original sound',
@@ -329,6 +331,7 @@
           if(ex && ex.sheet){ fin(); return; }
           if(!ex){
             ex = document.createElement('link'); ex.rel = 'stylesheet'; ex.setAttribute('data-ved-font', F.id);
+            ex.crossOrigin = 'anonymous'; /* v-gfonts-cors: بلا CORS ترمي قراءة cssRules فيكتب html-to-image (تحويل PDF) خطأين في الكونسول */
             ex.href = 'https://fonts.googleapis.com/css2?family=' + F.g + '&display=swap';
             document.head.appendChild(ex);
           }
@@ -596,7 +599,7 @@
           '<div class="ved-sec"><h4 data-k="hAudio"></h4><div class="ved-row" data-k="aSrc"></div>' +
             '<div data-k="aFileBox" hidden><div class="ved-row"><button type="button" class="ved-btn" data-k="aPick"></button><span class="ved-hint" data-k="aName"></span></div>' +
               '<div class="ved-hint" data-k="aHint"></div><input type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus" data-k="afile" hidden></div>' +
-            '<div data-k="ttsBox" hidden><textarea data-k="ttsText" rows="3" maxlength="4000"></textarea><div class="ved-row" style="margin-top:6px"><select data-k="ttsGender"></select><button type="button" class="ved-btn" data-k="ttsMake"></button></div></div>' +
+            '<div data-k="ttsBox" hidden><textarea data-k="ttsText" rows="3" maxlength="4000"></textarea><div class="ved-row" style="margin-top:6px"><select data-k="ttsGender"></select><select data-k="ttsSpeed"></select><button type="button" class="ved-btn" data-k="ttsMake"></button></div></div>' +
             '<audio data-k="aPrev" controls hidden style="width:100%;margin-top:8px"></audio>' +
             '<div data-k="mixBox" hidden><div class="ved-row" style="margin-top:8px" data-k="modeRow"></div>' +
               '<div class="ved-row" style="margin-top:6px"><label data-k="lOrig"><span></span><input type="range" min="0" max="100" data-k="vOrig"><b data-k="pOrig"></b></label><label><span data-k="lNew"></span><input type="range" min="0" max="150" data-k="vNew"><b data-k="pNew"></b></label></div>' +
@@ -640,6 +643,12 @@
     K('afile').onchange = function(){ var f = this.files && this.files[0]; this.value = ''; if(f){ st.aFile = f; K('aName').textContent = f.name; setPrev(f); syncAudio(); } };
     K('ttsText').placeholder = T_('ttsPh');
     [['female', 'female'], ['male', 'male']].forEach(function(g){ K('ttsGender').appendChild(el('option', { value: g[0], text: T_(g[1]) })); });
+    /* v-video-voice-speed: سرعة الصوت (الافتراضيّ «سريع») — تسميات الـ١٤ لغة من window.t ومفاتيح voiceSpeed* نفسها؛ التفضيل مشترك مع نموذج صانع الفيديو */
+    var spLab = function(k, fb){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ sw(e, 'ved:spLab'); } return fb; };
+    [['normal', 'voiceSpeedNormal', 'spNormal'], ['fast', 'voiceSpeedFast', 'spFast'], ['xfast', 'voiceSpeedXFast', 'spXFast']].forEach(function(o){ K('ttsSpeed').appendChild(el('option', { value: o[0], text: spLab(o[1], T_(o[2])) })); });
+    var spV = 'fast'; try{ var spS = localStorage.getItem('aiapp_video_voice_speed'); if(spS === 'normal' || spS === 'fast' || spS === 'xfast') spV = spS; }catch(e){ sw(e, 'ved:spRead'); }
+    K('ttsSpeed').value = spV; K('ttsSpeed').title = spLab('voiceSpeedLabel', T_('spLabel'));
+    K('ttsSpeed').onchange = function(){ try{ localStorage.setItem('aiapp_video_voice_speed', this.value); }catch(e){ sw(e, 'ved:spSave'); } };
     K('ttsMake').textContent = T_('ttsMake'); K('ttsMake').onclick = makeTts;
     ['mix', 'replace'].forEach(function(v){
       var lb = el('label', null, [el('input', { type: 'radio', name: 'vedAMode', value: v }), el('span', { text: T_(v) })]);
@@ -1064,12 +1073,14 @@
     K('pOrig').textContent = K('vOrig').value + '%'; K('pNew').textContent = K('vNew').value + '%';
     K('loop').checked = st.loop; K('mute').checked = st.mute;
   }
+  /* v-video-voice-speed: تنظيف «...» والفواصل الزائدة من app-11-video.js (window.__vmkVoice)؛ لو غاب النصّ كما هو */
+  function vvClean(t){ try{ var V = window.__vmkVoice; return (V && V.clean) ? V.clean(t) : t; }catch(e){ sw(e, 'ved:vvClean'); return t; } }
   async function makeTts(){
     var text = K('ttsText').value.trim(); if(!text || st.busy) return;
     K('ttsMake').disabled = true; setStatus(T_('ttsBusy'));
     try{
       var r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', gender: K('ttsGender').value, lang: isRtl(text) ? 'ar' : 'en', text: text.slice(0, 4000), token: tok(), guestId: gid() }) });
+        body: JSON.stringify({ voice: 'maha', gender: K('ttsGender').value, lang: isRtl(text) ? 'ar' : 'en', text: vvClean(text).slice(0, 4000), speed: K('ttsSpeed').value || 'fast', token: tok(), guestId: gid() }) });
       if(!r.ok){ var j = null; try{ j = await r.json(); }catch(e){ j = null; } throw new Error((j && j.error) || ('tts ' + r.status)); }
       var b = await r.blob();
       if(!b || b.size < 200) throw new Error('tts empty');
@@ -1155,7 +1166,7 @@
     if(!st.outBlob) return;
     try{
       var file = new File([st.outBlob], OUT_NAME, { type: 'video/mp4' });
-      if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'Omran AI' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'om ai' });
       else saveOut();
     }catch(e){ if(!(e && e.name === 'AbortError')) sw(e, 'ved:share'); }
   }

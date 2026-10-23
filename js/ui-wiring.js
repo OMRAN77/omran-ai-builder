@@ -200,18 +200,43 @@
     files:    function(){ tap('#btnToggleHistory'); },
     settings: function(){ tap('#btnSettings'); }
   };
+  /* v-nav-truth (تدقيق ١٨–١٩ أكتوبر): التبويب المضيء يتبع الشاشة الظاهرة فعلًا لا آخر نقرة. كان «الأدوات» مضيئًا
+     من الإقلاع (active ثابت في index.html منذ حلّ محلّ «الرئيسيّة») و«المحادثات» يبقى بعد إغلاق الدرج بالخلفيّة أو السهم
+     أو السحب أو اختيار محادثة. لا تبويب للمحادثة نفسها، فلا شيء مضيء وهي الظاهرة. المراقب يغطّي كلّ طرق الفتح والإغلاق. */
+  function navOpen(k){
+    var el;
+    if(k === 'chats'){ el = document.getElementById('sidebar'); return !!el && el.classList.contains('open'); }
+    if(k === 'files'){ el = document.getElementById('workarea'); return !!el && el.classList.contains('open'); }
+    if(k === 'tools'){ el = document.getElementById('sectionsToolsOverlay'); return !!el && el.classList.contains('show'); }
+    if(k === 'settings'){ el = document.getElementById('settingsDialog'); return !!el && el.hasAttribute('open'); }
+    return false;
+  }
+  function syncNavActive(){
+    document.querySelectorAll('.omNavBtn').forEach(function(x){ x.classList.toggle('active', navOpen(x.getAttribute('data-omnav'))); });
+  }
+  function watchNav(){ /* يُعاد عند كلّ نقرة: نافذة الإعدادات قد تُبنى بعد الأسلاك */
+    if(typeof MutationObserver !== 'function') return;
+    [['sidebar', 'class'], ['workarea', 'class'], ['sectionsToolsOverlay', 'class'], ['settingsDialog', 'open']].forEach(function(w){
+      var el = document.getElementById(w[0]);
+      if(!el || el.__omNavWatch) return;
+      el.__omNavWatch = true;
+      try{ new MutationObserver(syncNavActive).observe(el, { attributes:true, attributeFilter:[w[1]] }); }catch(e){ __swallow(e, "wiring:nav-truth"); }
+    });
+  }
+  watchNav();
+  syncNavActive();
   document.querySelectorAll('.omNavBtn').forEach(function(b){
     b.addEventListener('click', function(){
       b.__omLastClick = Date.now(); /* v-ios-tap-fallback */
       var k = b.getAttribute('data-omnav');
-      document.querySelectorAll('.omNavBtn').forEach(function(x){ x.classList.remove('active'); });
-      b.classList.add('active');
       /* v-nav-top: الشريط صار فوق الأدراج — تبويب غير درجيّ يغلق أي درج مفتوح
          أولًا حتى لا ينفّذ فعله خلف الدُّرج. (chats/files تبديلهما يتكفّل بذلك) */
       if(k !== 'chats' && k !== 'files'){
         try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ __swallow(e, "wiring:nav-top"); }
       }
       var f = NAV[k]; if(f) f();
+      watchNav();
+      syncNavActive();
     });
     /* v-ios-tap-fallback: بعض حالات سفاري iOS لا تولّد نقرة click بعد اللمس
        (خصوصًا قرب حافة الشاشة السفلية) فتبدو التبويبات ميتة. إن لم تصل click
@@ -287,7 +312,7 @@ try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا
   if(!document.querySelector('link[data-omran-tool-photos]')){
     var css = document.createElement('link');
     css.rel = 'stylesheet';
-    css.href = '/css/tool-card-images.css?v=23';
+    css.href = '/css/tool-card-images.css?v=24';
     css.setAttribute('data-omran-tool-photos', '');
     document.head.appendChild(css);
   }
@@ -305,7 +330,7 @@ try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا
   if(document.getElementById('omranDeleteConfirmLoader')) return;
   var s=document.createElement('script');
   s.id='omranDeleteConfirmLoader';
-  s.src='/js/delete-confirm.js?v=20260929a';
+  s.src='/js/delete-confirm.js?v=20261019b';
   s.defer=true;
   (document.head||document.documentElement).appendChild(s);
 })();

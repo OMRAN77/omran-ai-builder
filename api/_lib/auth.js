@@ -101,7 +101,7 @@ const RENAME_WINDOW_MS = 24 * 60 * 60 * 1000;
 // لصاحب حساب Resend نفسه — لغيره تردّ Resend بـ403 فيُسجَّل auth:mail resend_403
 // (v-signup-notify: التعليق القديم قال «ok:true» وهذا خلاف وثائق Resend).
 // وثّق نطاقك في Resend واضبط MAIL_FROM.
-const MAIL_FROM = process.env.MAIL_FROM || 'Omran AI Builder <onboarding@resend.dev>';
+const MAIL_FROM = process.env.MAIL_FROM || 'om ai <onboarding@resend.dev>'; // v-om-ai-name: اسم المرسل «om ai»؛ Resend لا يرسل من gmail (نطاق غير موثَّق) — الردّ يصل بريد المالك (OWNER_NOTIFY_EMAIL، لا عنوان في الكود)
 
 // ---------------------------------------------------------------------------
 // At-rest encryption for user records.
@@ -282,6 +282,8 @@ function isValidEmail(email) {
 
 // v-simple-login: خانة الدخول تقبل اسم المستخدم أو الإيميل. الاسم أوّلًا (الأسماء بلا قيد أحرف،
 // فقد يحمل اسمٌ قديم «@»)، ثمّ فهرس الإيميل الذي يكتبه التسجيل وجوجل والدخول بالرمز.
+// v-unverified-email: الوصول بالفهرس لا يكفي — الحساب يُرجَع ومعه emailUnverified إن لم يكن هذا البريد مؤكَّدًا عليه
+// (أو لم يعد بريده)، فيرفض الدخول والاسترجاع برسالة المالك بدل أن يفتحا الحساب.
 async function resolveLoginUser(identifier) {
   const key = String(identifier || '').trim().toLowerCase();
   const direct = key ? await getUser(key) : null;
@@ -291,7 +293,7 @@ async function resolveLoginUser(identifier) {
     const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
     if (uname) {
       const user = await getUser(uname);
-      if (user && !user.deleted) return { key: uname, user };
+      if (user && !user.deleted) return { key: uname, user, emailUnverified: !(user.email === key && await emailProven(uname, user)) };
     }
   } catch (e) { logError('auth:login-email-index', e); }
   return { key, user: direct };
@@ -317,16 +319,174 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/* v-account-email (أمر المالك ٤ أكتوبر، بعد فحص #792): مالك البريد الحيّ من الفهرس — مدخل يشير إلى حساب محذوف أو غيّر
-   بريده لا يُحسب. يمنع حسابين ببريد واحد (كان الاسترجاع بالبريد يذهب للأوّل). */
-async function emailOwner(emailKey) {
+
+/* v-vip-verified (أمر المالك ١٨ أكتوبر: «VIP بالإيميل ما ينعطى إلا لإيميل متحقّق منه… تغيير الإيميل في «حسابي» ما ينحفظ إلا بعد
+   ما يدخل المستخدم الكود… أي إيميل محفوظ وما تحقّقنا منه ما يعطي VIP»). الختم verifiedEmail = البريد نفسه الذي ثبت لا true:
+   كلّ كتابة أخرى للبريد (التسجيل بإيميل من الـAPI، سجلّ قديم، كتابة متأخّرة لنسخة قديمة) تتركه غير مؤكَّد من تلقاء نفسها.
+   يُختم في ثلاثة مواضع فقط: رمز «حسابي» المربوط بالحساب (emailChange*)، وحساب أنشأه رمز البريد، وحساب g_<البريد> عند دخول
+   Google. لا يُختم عند الدخول برمز إلى حساب قائم: من وضع بريد غيره في حسابه يستقبل دخول صاحب البريد، والختم هناك يجعله صاحبه.
+   حساب Google هويّته مفتاحه g_<البريد> (تثبته Google في كلّ دخول)، فهو مؤكَّد لبريد مفتاحه. */
+function emailVerifiedFor(key, user) {
+  if (!user || user.deleted || !user.email) return false;
+  return user.verifiedEmail === user.email || (user.googleAuth === true && String(key) === 'g_' + user.email);
+}
+
+// حساب آخر أثبت هذا البريد (برمز أو بـGoogle): هو صاحبه، ولا يأخذه غيره. من وضعه بلا إثبات لا يحجزه (كان أوّل من يكتبه يحجبه
+// عن صاحبه بـ409 للأبد) — سجلّه يبقى كما هو، والفهرس ينتقل إلى من أثبت.
+async function verifiedHolderOf(emailKey, exceptKey) {
+  try {
+    // الفهرس وحساب Google معًا لا تتابعًا (يمرّ هنا تنبيه «أكّد إيميلك» عند كلّ فتح — v-unverified-email)؛ الفهرس يسبق كما كان.
+    const [idx, g] = await Promise.all([kvGetJSON('db/email-index/' + emailKey), googleAccountFor(emailKey)]);
+    const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
+    if (uname && uname !== exceptKey) {
+      const user = await getUser(uname, 1);
+      if (user && user.email === emailKey && emailVerifiedFor(uname, user)) return uname;
+    }
+    if (g && g.key !== exceptKey && (g.key !== 'g_' + emailKey || g.user.googleAuth === true)) return g.key;
+  } catch (e) { logError('auth:email-holder', e); }
+  return null;
+}
+
+// بريد ثبت للتوّ لصاحبه: مدخل VIP بهذا البريد خامًا (أضافه المالك قبل أن يُعرف صاحبه) يصير اسم حسابه. _vip.js يُستبدل في
+// بعض الاختبارات بـ{ isVip } وحدها، فالفحص بـtypeof. لا يرمي: الدخول لا يفشل بسبب القائمة.
+// v-unverified-email (مراجعة النقض): الترقية قراءة القائمة ثمّ كتابتها — الجرد يختم ٢٥ حسابًا معًا فتتسابق وتضيع إحداها للأبد
+// (علامة «رُقّي» تُكتب قبل القائمة). سلسلة واحدة في العمليّة تجعلها واحدة بعد واحدة — وكلّ حلقة تُحرَّر بعد ٥ ثوانٍ على الأكثر:
+// طلب KV عالق (fetch بلا مهلة ≈ ٣٠٠ ث) لا يحبس تسجيلات وتأكيدات الآخرين خلفه (المراجعة الثانية).
+let vipPromoteChain = Promise.resolve();
+function promoteVip(emailKey, key) {
+  const run = vipPromoteChain.then(async () => {
+    try {
+      const vip = require('./_vip.js');
+      if (typeof vip.promoteVerifiedEmail === 'function') await vip.promoteVerifiedEmail(emailKey, key);
+    } catch (e) { logError('auth:vip-promote', e); }
+  });
+  vipPromoteChain = Promise.race([run.catch(() => {}), new Promise((r) => { const t = setTimeout(r, 5000); if (t && t.unref) t.unref(); })]);
+  return run;
+}
+
+/* v-unverified-email (أمر المالك ١٨ أكتوبر: «الدخول واسترجاع الحساب بالإيميل يشتغلون بس على إيميل متأكَّد… أي حساب إيميله غير
+   متأكَّد، أول ما يدخل يطلع له تنبيه «أكّد إيميلك»… بعد ٣٠ يوم، الإيميل اللي ما تأكّد ينشال من الحساب تلقائيًا، والحساب نفسه يبقى»).
+   سجلّات ما قبل v-signup-no-email تحمل بريدًا وفهرسه بلا ختم: كان الدخول بكلمة المرور أو بالرمز، ورابط الاسترجاع، يصل صاحبَ البريد
+   حسابَ من زرعه. الآن كلّها على emailProven، والرفض برسالة المالك (code: 'email_unverified') تعرضها الواجهة بلغتها الـ١٤. */
+const UNVERIFIED_EMAIL_AR = 'هذا الإيميل غير مؤكَّد، ادخل باسم المستخدم وأكّده من حسابي';
+const UNVERIFIED_EMAIL_EN = 'This email is not confirmed — sign in with your username and confirm it in My account';
+const UNVERIFIED_EMAIL_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
+
+// سجلّات أُثبت بريدها قبل الختم (١٨ أكتوبر) تُختم مرّة بدليل من السجلّ نفسه — لا تُعامَل كالمزروعة، ولا تُقفل عن أصحابها:
+// • حساب Google غيّر اسمه: googleAuth (لا يضعه إلّا الكولباك) ومفتاحه الأوّل g_<البريد> في prevUsernames (منذ ٥ أكتوبر) أو شاهده يقود إليه.
+// • هويّة Google دمجها المالك فيه (db/alias/g_<البريد> ← هذا الحساب): كلّ دخول Google بهذا البريد يصله.
+// • حساب أنشأه رمز البريد (otpOnly، بلا كلمة مرور يعرفها صاحبه): اسم الإنشاء <مقدّمة البريد>_<٦ ست عشريّة>، وفهرس البريد له كُتب في
+//   الطلب نفسه (٠–١٠ ثوانٍ بعد createdAt؛ setEmail القديم كتبه وقت التغيير)، فإن غيّر اسمه بعدها فشاهد اسم الإنشاء يقود إليه.
+function otpNamePrefix(email) { return String(email).split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase() || 'user'; }
+async function leadsHere(fromKey, key) {
+  try { return await tombstoneLeadsTo(await getUser(fromKey, 1), key); } catch (e) { logError('auth:legacy-chain', e); return false; }
+}
+async function emailProven(key, user) {
+  if (emailVerifiedFor(key, user)) return true;
+  if (!user || user.deleted || !user.email) return false;
+  if (user.googleAuth === true && ((Array.isArray(user.prevUsernames) && user.prevUsernames.indexOf('g_' + user.email) !== -1)
+      || await leadsHere('g_' + user.email, key))) return stampLegacyEmail(key, user);
+  try {
+    const alias = await kvGetJSON('db/alias/g_' + user.email);
+    if (alias && alias.primary && String(alias.primary).trim().toLowerCase() === key) return stampLegacyEmail(key, user);
+  } catch (e) { logError('auth:legacy-alias', e); }
+  if (user.otpOnly !== true) return false;
+  let idx = null;
+  try { idx = await kvGetJSON('db/email-index/' + user.email); } catch (e) { logError('auth:otp-legacy-index', e); return false; }
+  const origin = idx ? String(idx.username || '').trim().toLowerCase() : '';
+  const named = new RegExp('^' + otpNamePrefix(user.email) + '_[0-9a-f]{6}$').test(origin) || /^user_[0-9a-f]{12}$/.test(origin);
+  const gap = Number(idx && idx.at) - Number(user.createdAt);
+  if (!origin || !named || !(gap >= 0 && gap <= 10 * 1000)) return false;
+  if (origin !== key && !(await leadsHere(origin, key))) return false;
+  return stampLegacyEmail(key, user);
+}
+// الختم على نسخة تُقرأ الآن لا على ما بيد المستدعي (بين قراءته وهنا كلمة مرور وscrypt): تأكيد أو تغيير اسم في الفجوة لا يُمحى ولا يُبعث.
+async function stampLegacyEmail(key, user) {
+  let fresh = null;
+  try { fresh = await getUser(key, 1); } catch (e) { logError('auth:legacy-email-read', e); }
+  if (fresh && (fresh.deleted || fresh.email !== user.email)) return false;
+  user.verifiedEmail = user.email;
+  delete user.emailUnverified;
+  if (!fresh) return true; // قراءة عابرة فارغة: الدليل من نسخة المستدعي — لا ختم ولا ترقية الآن، ولا «غير مؤكَّد» لصاحبه
+  fresh.verifiedEmail = fresh.email;
+  delete fresh.emailUnverified;
+  try { await putUser(key, fresh); } catch (e) { logError('auth:legacy-email-stamp', e); }
+  await promoteVip(user.email, key);
+  return true;
+}
+
+// عدّاد الثلاثين يومًا يبدأ أوّل ما يُرى البريد غير المؤكَّد (الدخول، أو الجرد اليوميّ) — لا من تاريخ قديم، فلا يُشال شيء يوم النشر.
+// بعده يُشال البريد (email=null) وفهرسه إن كان يشير لهذا الحساب (لا فهرس من أكّده بعده)، والحساب وكلّ ما فيه باقٍ. السجلّ يُقرأ من
+// جديد قبل الكتابة فتضيق نافذة تأكيد متزامن إلى رحلة واحدة (لا قفل؛ ككلّ كاتب آخر للسجلّ). الحالات: none · verified · pending · removed · changed.
+async function settleUnverifiedEmail(key, user, now) {
+  now = now || Date.now();
+  if (!user || user.deleted || !user.email) return { state: 'none' };
+  if (await emailProven(key, user)) return { state: 'verified' };
+  const email = user.email;
+  const mark = user.emailUnverified;
+  const since = (mark && mark.email === email && Number(mark.since) > 0) ? Number(mark.since) : 0;
+  if (since && now - since < UNVERIFIED_EMAIL_GRACE_MS) return { state: 'pending', email, removeAt: since + UNVERIFIED_EMAIL_GRACE_MS };
+  const fresh = await getUser(key, 1);
+  if (!fresh || fresh.deleted || fresh.email !== email || emailVerifiedFor(key, fresh)) return { state: 'changed' };
+  if (!since) {
+    fresh.emailUnverified = { email, since: now };
+    await putUser(key, fresh);
+    return { state: 'pending', email, removeAt: now + UNVERIFIED_EMAIL_GRACE_MS };
+  }
+  fresh.email = null;
+  delete fresh.emailUnverified;
+  await putUser(key, fresh);
+  try {
+    const idx = await kvGetJSON('db/email-index/' + email);
+    if (idx && String(idx.username || '').trim().toLowerCase() === key) await require('./kv.js').kvDel('db/email-index/' + email);
+  } catch (e) { logError('auth:unverified-index', e); }
+  return { state: 'removed', email };
+}
+
+// الحساب الذي يصل إليه الدخول بالرمز (فهرس البريد، وبريده هو نفسه) إن لم يكن البريد مؤكَّدًا عليه — بمعيار email-otp-verify نفسه.
+async function unverifiedHolderOf(emailKey) {
   try {
     const idx = await kvGetJSON('db/email-index/' + emailKey);
-    if (!idx || !idx.username) return null;
-    const user = await getUser(String(idx.username).trim().toLowerCase());
-    if (user && !user.deleted && user.email === emailKey) return { key: String(idx.username).trim().toLowerCase(), user };
-  } catch (e) { logError('auth:email-owner', e); }
+    const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
+    if (!uname) return null;
+    const user = await getUser(uname, 1);
+    if (user && !user.deleted && user.email === emailKey && !(await emailProven(uname, user))) return uname;
+  } catch (e) { logError('auth:email-unverified-holder', e); }
   return null;
+}
+
+// «أكّد إيميلك» بعد الدخول والتحقّق عند الإقلاع: البريد إن بقي غير مؤكَّد بعد التسوية، وإلّا null. عطبٌ هنا لا يُفشل الدخول.
+async function emailToConfirmFor(key, user) {
+  try {
+    // حساب آخر أثبته (برمز أو Google): زرّ «أرسل الكود» يعود ٤٠٩ دائمًا — لا تنبيه، والعدّاد يمضي فيُشال. يُسأل مع التسوية لا بعدها،
+    // وللبريد غير المختوم وحده (المؤكَّد لا يدفع شيئًا). verifiedHolderOf لا يرمي.
+    const held = (user && user.email && !emailVerifiedFor(key, user)) ? verifiedHolderOf(user.email, key) : null;
+    const r = await settleUnverifiedEmail(key, user);
+    if (r.state !== 'pending') return null;
+    if (held && (await held)) return null;
+    return r.email;
+  } catch (e) { logError('auth:email-confirm-hint', e); return null; }
+}
+
+// الجرد اليوميّ (email-sweep.js ← Vercel Cron): كلّ حساب ببريد يمرّ على settleUnverifiedEmail — يُختم القديم المُنشأ بالرمز، ويبدأ
+// عدّاد غير المؤكَّد، ويُشال ما تجاوز ثلاثين يومًا. لا يحذف حسابًا. دفعات من ٢٥ كجرد VIP، ويقف قبل حدّ الدالّة (partial في سجلّه).
+async function sweepUnverifiedEmails(now, budgetMs) {
+  const started = Date.now();
+  const { kvList } = require('./kv.js');
+  const names = (await kvList('db/users/'))
+    .map((k) => { try { return decodeURIComponent(String(k).replace(/^db\/users\//, '').replace(/\.json$/, '')).trim().toLowerCase(); } catch (e) { return ''; } })
+    .filter(Boolean);
+  const tally = { users: names.length, verified: 0, pending: 0, removed: 0, failed: 0, partial: false };
+  for (let i = 0; i < names.length; i += 25) {
+    if (Date.now() - started > (budgetMs || 240000)) { tally.partial = true; break; }
+    await Promise.all(names.slice(i, i + 25).map(async (key) => {
+      try {
+        const r = await settleUnverifiedEmail(key, await getUserOnce(key), now);
+        if (r.state in tally) tally[r.state]++;
+      } catch (e) { tally.failed++; logError('auth:email-sweep', e, { key: key.slice(0, 40) }); }
+    }));
+  }
+  return tally;
 }
 /* v-auth-throttle (الدفعة A، أمان): عدّادات المحاولات ذرّيّة. كانت rateWait وقفل الدخول وعدّاد رموز البريد قراءةً ثمّ كتابة،
    فالطلبات المتوازية تقرأ العدد نفسه وتمرّ كلّها (المسبار: ٢٠٠ كلمة مرور خاطئة متوازية = ٢٠٠ تقييم، والقفل لم يقع).
@@ -454,7 +614,7 @@ async function sendMail(toEmail, subject, html) {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: MAIL_FROM, to: [toEmail], subject, html }),
+      body: JSON.stringify({ from: MAIL_FROM, reply_to: String(process.env.OWNER_NOTIFY_EMAIL || '').trim() || undefined, to: [toEmail], subject, html }),
       signal: AbortSignal.timeout(10000),
     });
     if (!r.ok) logError('auth:mail', new Error('resend_' + r.status), { status: r.status });
@@ -468,7 +628,7 @@ async function sendMail(toEmail, subject, html) {
 async function sendResetEmail(toEmail, username, resetToken, isEn) {
   const link = siteUrl() + '/?resetToken=' + encodeURIComponent(resetToken) + '&ru=' + encodeURIComponent(username);
   const name = escapeHtml(username);
-  const subject = isEn ? 'Reset your password — Omran AI Builder' : 'إعادة تعيين كلمة المرور — Omran AI Builder';
+  const subject = isEn ? 'Reset your password — om ai' : 'إعادة تعيين كلمة المرور — om ai';
   const html = isEn
     ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
         <h2>Reset your password</h2>
@@ -489,7 +649,7 @@ async function sendResetEmail(toEmail, username, resetToken, isEn) {
 async function sendGoogleHintEmail(toEmail, username, isEn) {
   const name = escapeHtml(username);
   const link = siteUrl() + '/';
-  const subject = isEn ? 'How to sign in — Omran AI Builder' : 'طريقة دخولك — Omran AI Builder';
+  const subject = isEn ? 'How to sign in — om ai' : 'طريقة دخولك — om ai';
   const html = isEn
     ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
         <h2>Your account signs in with Google</h2>
@@ -512,7 +672,7 @@ function genNumericOtp() {
 }
 
 async function sendOtpEmail(toEmail, otpCode, isEn) {
-  const subject = isEn ? 'Verification Code — Omran AI Builder' : 'رمز التحقق — Omran AI Builder';
+  const subject = isEn ? 'Verification Code — om ai' : 'رمز التحقق — om ai';
   const html = isEn
     ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
         <h2 style="margin-bottom:4px">Your verification code</h2>
@@ -527,6 +687,115 @@ async function sendOtpEmail(toEmail, otpCode, isEn) {
         <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
        </div>`;
   return sendMail(toEmail, subject, html);
+}
+
+// v-vip-verified: رسالة رمز التغيير بصياغتها (لا «لتسجيل الدخول» — من يطلب تغيير بريده ثمّ يرى «دخول» يُخدع أو يرتبك).
+async function sendEmailChangeOtp(toEmail, otpCode, lang) {
+  const isEn = !!lang && lang !== 'ar';
+  const subject = isEn ? 'Confirm your email — om ai' : 'تأكيد الإيميل — om ai';
+  const html = isEn
+    ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
+        <h2 style="margin-bottom:4px">Confirm this email for your account</h2>
+        <p style="color:#888;font-size:13px;margin-top:0">Enter this code in My account to link this email. It expires in 10 minutes.</p>
+        <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otpCode}</div>
+        <p style="color:#888;font-size:13px">If you didn't request this, ignore this email — nothing changes.</p>
+       </div>`
+    : `<div dir="rtl" style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
+        <h2 style="margin-bottom:4px">تأكيد هذا الإيميل لحسابك</h2>
+        <p style="color:#888;font-size:13px;margin-top:0">اكتب هذا الرمز في «حسابي» لربط الإيميل بحسابك. صالح لمدة 10 دقائق.</p>
+        <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otpCode}</div>
+        <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل — لا شيء يتغيّر.</p>
+       </div>`;
+  return sendMail(toEmail, subject, html);
+}
+
+/* v-vip-verified: تغيير الإيميل في «حسابي» بخطوتين — email-otp-request ثمّ email-otp-verify بـpurpose:'change' ورمز الجلسة.
+   الرمز مربوط بالحساب والبريد الجديد معًا (db/otp-change/<الاسم>)، وفي مفتاح وحدود غير رمز الدخول (db/otp/<البريد>): رمز الدخول
+   لا يؤكّد تغييرًا، ورمز التغيير لا يُدخل ولا يُنشئ حسابًا، ومن يطلب رموز دخول لبريدٍ لا يُتلف رمز تغييره. الحفظ بعد الرمز وحده،
+   ومعه الختم والفهرس ومدخل VIP. الأخطاء برمز code تعرضه الواجهة بلغتها الـ١٤. */
+const EMAIL_CHANGE_TTL_MS = 10 * 60 * 1000;
+const EMAIL_CHANGE_MAX_TRIES = 5;
+const EMAIL_CHANGE_NET_MAX = 30;
+const EMAIL_CHANGE_NET_WINDOW_MS = 15 * 60 * 1000;
+function emailChangeKey(u) { return 'db/otp-change/' + encodeURIComponent(u); }
+
+async function emailChangeRequest(req, res, body, m) {
+  const u = verifyToken(body.token);
+  if (!u) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
+  if (!body.email || !isValidEmail(body.email)) { res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format'), code: 'bad_email' }); return; }
+  const key = String(body.email).trim().toLowerCase();
+  const user = await getUser(u);
+  if (!user || user.deleted) { res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') }); return; }
+  if (user.banned) { res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true }); return; }
+  if (user.email === key && emailVerifiedFor(u, user)) { res.status(200).json({ ok: true, verified: true, email: key }); return; }
+  // الحدود قبل فحص «مرتبط بحساب آخر» (كان قبلها سؤالًا بلا حدّ: هل لهذا البريد حساب؟ — مراجعة النقض). حدّ البريد لكلّ زوج (حساب، بريد)
+  // فغريبٌ لا يستنفد حصّة صاحب البريد؛ وسقف أوسع للبريد من كلّ الحسابات يمنع إغراق صندوقه.
+  // الحساب الذي يحمل هذا البريد محفوظًا (من يؤكّد بريده القائم) خارج السقف العامّ: غرباء يستنفدونه لا يقفلونه عنه (مراجعة النقض).
+  const mins = (await rateWait('mail-change-acct', u, 5, 15 * 60 * 1000))
+    || (await rateWait('mail-change-to', u + '|' + key, 3, 15 * 60 * 1000))
+    || (user.email === key ? 0 : await rateWait('mail-change-all', key, 10, 60 * 60 * 1000));
+  if (mins) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins }); return; }
+  if (await verifiedHolderOf(key, u)) { res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'), code: 'email_taken' }); return; }
+  if (!RESEND_API_KEY) { res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin'), code: 'mail_off' }); return; }
+  const otpCode = genNumericOtp();
+  await kvPutJSON(emailChangeKey(u), { email: key, otp: otpCode, exp: Date.now() + EMAIL_CHANGE_TTL_MS });
+  if (!(await sendEmailChangeOtp(key, otpCode, body.lang))) {
+    res.status(500).json({ error: m('تعذر إرسال الإيميل، حاول لاحقًا', 'Could not send the email, try again later'), code: 'mail_failed' });
+    return;
+  }
+  res.status(200).json({ ok: true, sent: true });
+}
+
+async function emailChangeVerify(req, res, body, m) {
+  const bad = () => res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code'), code: 'bad_otp' });
+  const u = verifyToken(body.token);
+  if (!u) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
+  if (!body.email || !isValidEmail(body.email) || !body.otp) { bad(); return; }
+  const key = String(body.email).trim().toLowerCase();
+  // حدّ الشبكة كرمز الدخول (v-otp-cap): ٣٠ محاولة فاشلة في ربع ساعة، والناجحة تُرَدّ.
+  let netBase = null;
+  try {
+    const { clientIp, giftNet } = require('./welcome-gift.js');
+    const net = giftNet(clientIp(req));
+    if (net) netBase = 'db/otp-verify-net/' + encodeURIComponent(net);
+    if (netBase && (await windowHit(netBase, EMAIL_CHANGE_NET_WINDOW_MS)) > EMAIL_CHANGE_NET_MAX) {
+      const mins = await windowMinutes(netBase, EMAIL_CHANGE_NET_WINDOW_MS);
+      res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins });
+      return;
+    }
+  } catch (e) { logError('auth:change-net', e); netBase = null; }
+  let record = null;
+  try { record = await kvGetJSON(emailChangeKey(u)); } catch (e) { logError('auth:change-read', e); record = null; }
+  if (!record || record.email !== key || typeof record.otp !== 'string' || !record.exp || record.exp < Date.now()) { bad(); return; }
+  const burn = async () => { try { await kvPutJSON(emailChangeKey(u), { otp: null, exp: 0 }); } catch (e) { logError('auth:change-burn', e); } };
+  let tries = 0;
+  try {
+    const ttl = Math.max(1, Math.ceil((Number(record.exp) - Date.now()) / 1000)) || 600;
+    tries = (await hitCounter('db/otp-change-fail/' + encodeURIComponent(u) + '/' + Number(record.exp), ttl)).n;
+  } catch (e) { logError('auth:change-tries', e); }
+  if (tries > EMAIL_CHANGE_MAX_TRIES) { await burn(); bad(); return; }
+  const submitted = String(body.otp).trim();
+  const known = Buffer.from(record.otp);
+  const given = Buffer.from(submitted.padEnd(known.length, '\0'));
+  const matches = submitted.length === record.otp.length && given.length === known.length && crypto.timingSafeEqual(given, known);
+  if (!matches) {
+    if (tries >= EMAIL_CHANGE_MAX_TRIES) await burn();
+    bad();
+    return;
+  }
+  if (netBase) await windowBack(netBase);
+  await burn();
+  const user = await getUser(u);
+  if (!user || user.deleted) { res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') }); return; }
+  // سباق: أثبته حساب آخر بين الطلب والتأكيد.
+  if (await verifiedHolderOf(key, u)) { res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'), code: 'email_taken' }); return; }
+  user.email = key;
+  user.verifiedEmail = key;
+  delete user.emailUnverified; // v-unverified-email: عدّاد الثلاثين يومًا انتهى بالتأكيد
+  await putUser(u, user);
+  try { await kvPutJSON('db/email-index/' + key, { username: u, at: Date.now() }); } catch (e) { logError('auth:email-index', e); }
+  await promoteVip(key, u);
+  res.status(200).json({ ok: true, email: key, verified: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -558,7 +827,7 @@ module.exports = async (req, res) => {
     const {
       action, username, password, token, newPassword,
       newUsername, currentPassword, avatarDataUrl, lang,
-      email, resetToken, otp,
+      email, resetToken, otp, purpose,
     } = body;
 
     const isEn = lang === 'en';
@@ -596,22 +865,17 @@ module.exports = async (req, res) => {
         res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
         return;
       }
-      if (email && !isValidEmail(email)) {
-        res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
-        return;
-      }
-      // v-account-email: الإيميل كالاسم — حساب واحد لكلّ بريد، وإلّا ضاع الاسترجاع بالبريد بين حسابين.
-      if (email && await emailOwner(String(email).trim().toLowerCase())) {
-        res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.') });
-        return;
-      }
+      /* v-signup-no-email (أمر المالك ١٨ أكتوبر: «التسجيل ما يحفظ إيميل أبدًا، والإيميل ينضاف بس من «حسابي» بالكود»): كان التسجيل
+         من الـAPI يقبل email بلا تحقّق (الواجهة بلا خانة منذ v-simple-login) ويكتب فهرسه — فيزرع أحدٌ إيميل صديق المالك عند تسجيله،
+         فيصل صاحب البريد حسابَ الزارع بالاسترجاع أو برمز البريد ويؤكّده هناك (v-vip-verified، مراجعة النقض). الحقل يُتجاهل كلّه:
+         لا تحقّق صيغة، ولا «مرتبط بحساب آخر» (سؤال عن وجود الحساب)، ولا حفظ، ولا فهرس. يُضاف من «حسابي» برمز يصل البريد (purpose:'change'). */
       // v-welcome-cap: الهديّة تُحجز بعد كلّ رفض (محاولة فاشلة لا تأكل حصّة)، وفوق السقف حساب برصيد 0 لا رفض.
       const giftOut = {}; // v-farm-gate: capped = سقف الشبكة رفض الهديّة (free-tier.js)
       const gift = await takeWelcomeGift(req, { out: giftOut });
       const { salt, hash } = hashPassword(password);
       const user = {
         username: String(username).trim(), salt, hash,
-        email: email ? String(email).trim().toLowerCase() : null,
+        email: null, // v-signup-no-email
         avatar: null,
         createdAt: Date.now(),
         // 🎁 هدية الترحيب: 70 نقطة عند التسجيل = فيديو واحد (60) + صورة واحدة (10).
@@ -620,20 +884,7 @@ module.exports = async (req, res) => {
         welcomeGift: gift,
         giftCapped: giftOut.capped === true,
       };
-      await putUser(key, user);
-      // v380: فهرس الإيميل → الدخول بجوجل بنفس الإيميل يفتح هذا الحساب نفسه
-      // الفهرس يُكتب مرة واحدة فقط (أول من يدّعي البريد)، ولا يُستخدم للدخول
-      // إلا بموافقة صريحة عبر ALLOW_EMAIL_AUTOLINK. الكتابة فوق مدخل قائم كانت
-      // هي الخطوة التي تسمح بانتحال بريد شخص آخر.
-      if (user.email) {
-        try {
-          const existingIdx = await kvGetJSON('db/email-index/' + user.email);
-          // v-account-email: مدخل لحساب محذوف أو غيّر بريده لا يحجز البريد — لا مالك حيّ (فُحص قبل الإنشاء) = يُكتب للجديد.
-          if (!existingIdx || !existingIdx.username || !(await emailOwner(user.email))) {
-            await kvPutJSON('db/email-index/' + user.email, { username: key, at: Date.now() });
-          }
-        } catch (e) { logError('auth:email-index', e); }
-      }
+      await putUser(key, user); // v-signup-no-email: ولا فهرس بريد — يكتبه تأكيد «حسابي» وحده
       await notifyNewAccount({ key, user, method: 'password', req }); // v-signup-notify: بعد الكتابة الناجحة وحدها — في الخلفيّة
       await markKnownNet(key, req);
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: null });
@@ -720,6 +971,16 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // v-acct-delete (الدفعة ٢، أمر المالك): صاحب الحساب يحذفه من «حسابي» — التفاصيل في account-delete.js
+    if (action === 'deleteAccount') {
+      const u = verifyToken(token);
+      if (!u) { res.status(401).json({ ok: false, code: 'auth', error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') }); return; }
+      const r = await require('./account-delete.js').deleteAccount({ username: u, token, confirmUsername: String(body.confirmUsername || '').slice(0, 64), password });
+      if (r.status === 200) _banMemo.delete(u); // الشاهد جلسة ميّتة الآن (isBanned) كما في تغيير الاسم
+      res.status(r.status).json(r.body);
+      return;
+    }
+
     if (action === 'changePassword') {
       const u = verifyToken(token);
       if (!u) {
@@ -775,44 +1036,16 @@ module.exports = async (req, res) => {
         res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
         return;
       }
-      res.status(200).json({ ok: true, email: user.email || null, phone: user.phone || null }); // v-phone-link
+      // v-vip-verified: «حسابي» يعرف إن كان الإيميل مؤكَّدًا — المحفوظ قبل اليوم غير مؤكَّد، وحفظه بالقيمة نفسها يطلب رمزه.
+      res.status(200).json({ ok: true, email: user.email || null, emailVerified: await emailProven(u, user), phone: user.phone || null }); // v-phone-link · v-unverified-email: وحساب الرمز القديم
       return;
     }
 
     if (action === 'setEmail') {
-      const u = verifyToken(token);
-      if (!u) {
-        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
-        return;
-      }
-      if (!email || !isValidEmail(email)) {
-        res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
-        return;
-      }
-      const user = await getUser(u);
-      if (!user || user.deleted) {
-        res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
-        return;
-      }
-      const nextEmail = String(email).trim().toLowerCase();
-      // بريد مرتبط بحساب آخر لا يُدّعى. هذا هو الباب الذي كان يسمح بالاستيلاء
-      // على مدخل الفهرس ثم توجيه دخول جوجل الخاص بالضحية.
-      try {
-        const claimed = await kvGetJSON('db/email-index/' + nextEmail);
-        if (claimed && claimed.username && String(claimed.username) !== u) {
-          res.status(409).json({
-            error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'),
-          });
-          return;
-        }
-      } catch (e) { logError('auth:email-claim', e); }
-      user.email = nextEmail;
-      await putUser(u, user);
-      try {
-        const existingIdx = await kvGetJSON('db/email-index/' + nextEmail);
-        if (!existingIdx || !existingIdx.username) await kvPutJSON('db/email-index/' + nextEmail, { username: u, at: Date.now() });
-      } catch (e) { logError('auth:email-index', e); }
-      res.status(200).json({ ok: true, email: user.email });
+      // v-vip-verified: لا حفظ بلا رمز — «حسابي» يطلب الرمز (email-otp-request) ويؤكّده (email-otp-verify) بـpurpose:'change'.
+      // كان يحفظ أيّ بريد بلا أيّ تحقّق، فيضع أحدٌ إيميل صديق للمالك في حسابه قبل أن يضيفه المالك إلى VIP فيأخذها هو.
+      // نسخة قديمة مخزَّنة من التطبيق ما زالت تنادي هذا: رسالة واضحة لا حفظًا.
+      res.status(400).json({ error: m('تغيير الإيميل صار برمز يصلك عليه — حدّث التطبيق وجرّب من «حسابي»', 'Changing your email now needs a code sent to it — update the app and try again from My account'), code: 'email_code_required' });
       return;
     }
 
@@ -837,6 +1070,11 @@ module.exports = async (req, res) => {
         }
         const found = await resolveLoginUser(emailKey);
         const owner = (found.user && !found.user.deleted && found.user.email) ? found : null;
+        // v-unverified-email: رابط الاسترجاع لبريد مؤكَّد على حسابه وحده — وإلّا رسالة المالك ولا رابط ولا بريد.
+        if (found.emailUnverified || (owner && !(await emailProven(owner.key, owner.user)))) {
+          res.status(403).json({ error: m(UNVERIFIED_EMAIL_AR, UNVERIFIED_EMAIL_EN), code: 'email_unverified' });
+          return;
+        }
         if (owner) {
           const rt = crypto.randomBytes(24).toString('hex');
           owner.user.resetTokenHash = crypto.createHash('sha256').update(rt).digest('hex');
@@ -869,6 +1107,10 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: user.phone
           ? m('لا يوجد إيميل مسجل لهذا الحساب — استرجع حسابك برقم هاتفك المربوط', 'No email is registered for this account — recover it with your linked phone number')
           : m('لا يوجد إيميل ولا رقم هاتف مرتبط بهذا الحساب، فلا يمكن استرجاعه من هنا', 'This account has no email or phone number linked, so it cannot be recovered from here') });
+        return;
+      }
+      if (!(await emailProven(key, user))) { // v-unverified-email: الرابط كان يذهب لبريد لم يُثبت — صندوق صاحبه لا صاحب الحساب
+        res.status(403).json({ error: m(UNVERIFIED_EMAIL_AR, UNVERIFIED_EMAIL_EN), code: 'email_unverified' });
         return;
       }
       const rt = crypto.randomBytes(24).toString('hex');
@@ -914,7 +1156,7 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل وكلمة المرور', 'Enter your username or email and password') });
         return;
       }
-      const { key, user } = await resolveLoginUser(username);
+      const { key, user, emailUnverified } = await resolveLoginUser(username);
       // v-auth-throttle: الحدّ قبل تقييم كلمة المرور، وبعدّادات ذرّيّة لكلّ (حساب، شبكة) — انظر loginGate.
       const gate = await loginGate(key, req);
       if (gate.wait) {
@@ -927,11 +1169,16 @@ module.exports = async (req, res) => {
         return;
       }
       await gate.passed();
+      // v-unverified-email: بعد كلمة المرور الصحيحة لا قبلها — من لا يعرفها يرى «غير صحيحة» كما كان، ولا يعرف أنّ البريد على حساب.
+      if (emailUnverified) {
+        res.status(403).json({ error: m(UNVERIFIED_EMAIL_AR, UNVERIFIED_EMAIL_EN), code: 'email_unverified' });
+        return;
+      }
       if (user.banned) {
         res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true });
         return;
       }
-      res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: user.avatar || null });
+      res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: user.avatar || null, emailToConfirm: await emailToConfirmFor(key, user) });
       return;
     }
 
@@ -965,7 +1212,9 @@ module.exports = async (req, res) => {
       // 🔄 جلسة منزلقة: توكن جديد بعمر كامل مع كل تحقق ناجح — المستخدم
       // النشط لا يُطرد أبدًا بانتهاء صلاحية الثلاثين يومًا الثابتة.
       await markKnownNet(u, req);
-      res.status(200).json({ ok: true, token: makeToken(u), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
+      // v-unverified-email: التنبيه عند كلّ فتح ما دام البريد غير مؤكَّد. نسخة بلا الرسالة المسلَّمة: ختم حساب الرمز القديم يكتبها فلا تعود.
+      const emailToConfirm = user ? await emailToConfirmFor(u, adminMessage ? Object.assign({}, user, { pendingMessage: null }) : user) : null;
+      res.status(200).json({ ok: true, token: makeToken(u), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage, emailToConfirm });
       return;
     }
 
@@ -996,6 +1245,13 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // v-vip-verified: purpose:'change' = تغيير الإيميل في «حسابي» برمز الجلسة — مسار منفصل لا يمسّ الدخول بالرمز.
+    if ((action === 'email-otp-request' || action === 'email-otp-verify') && purpose === 'change') {
+      if (action === 'email-otp-request') await emailChangeRequest(req, res, body, m);
+      else await emailChangeVerify(req, res, body, m);
+      return;
+    }
+
     if (action === 'email-otp-request') {
       if (!email || !isValidEmail(email)) {
         res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
@@ -1008,6 +1264,11 @@ module.exports = async (req, res) => {
       const mins = await rateWait('otp-rate', key, 3, 5 * 60 * 1000);
       if (mins) {
         res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min') });
+        return;
+      }
+      // v-unverified-email: بريد على حساب ولم يُؤكَّد عليه — لا رمز دخول (صاحب البريد لا يدخل حساب من زرعه). بعد الحدّ: السؤال محدود.
+      if (await unverifiedHolderOf(key)) {
+        res.status(403).json({ error: m(UNVERIFIED_EMAIL_AR, UNVERIFIED_EMAIL_EN), code: 'email_unverified' });
         return;
       }
 
@@ -1094,16 +1355,24 @@ module.exports = async (req, res) => {
       // Find an existing account linked to this email via the email index.
       let userKey = null;
       let user = null;
+      let unverified = false;
       try {
         const idx = await kvGetJSON('db/email-index/' + key);
         if (idx && idx.username) {
           const candidate = await getUser(idx.username);
           if (candidate && !candidate.deleted && candidate.email === key) {
-            userKey = idx.username;
-            user = candidate;
+            // v-unverified-email: رمز صحيح لبريد غير مؤكَّد على هذا الحساب = صاحب البريد لا صاحب الحساب — لا دخول ولا حساب جديد.
+            if (await emailProven(String(idx.username).trim().toLowerCase(), candidate)) {
+              userKey = idx.username;
+              user = candidate;
+            } else unverified = true;
           }
         }
       } catch (e) { logError('auth:otp-index', e); }
+      if (unverified) {
+        res.status(403).json({ error: m(UNVERIFIED_EMAIL_AR, UNVERIFIED_EMAIL_EN), code: 'email_unverified' });
+        return;
+      }
 
       let isNew = false;
       if (!user) {
@@ -1131,6 +1400,7 @@ module.exports = async (req, res) => {
         user = {
           username: candidateKey, salt, hash,
           email: key,
+          verifiedEmail: key, // v-vip-verified: الرمز وصل هذا البريد وأنشأ له الحساب — لا مالك آخر له
           avatar: null,
           createdAt: Date.now(),
           points: gift ? OTP_SIGNUP_GIFT : 0,
@@ -1146,6 +1416,7 @@ module.exports = async (req, res) => {
             await kvPutJSON('db/email-index/' + key, { username: userKey, at: Date.now() });
           }
         } catch (e) { logError('auth:email-index', e); }
+        await promoteVip(key, userKey);
         isNew = true;
         await notifyNewAccount({ key: userKey, user, method: 'email-otp', req }); // v-signup-notify
       }
@@ -1220,3 +1491,8 @@ async function isBanned(username) {
   return v;
 }
 module.exports.isBanned = isBanned;
+module.exports.emailVerifiedFor = emailVerifiedFor; // v-vip-verified: vip.js يحوّل الإيميل إلى حساب أثبته وحده
+module.exports.emailProven = emailProven; // v-unverified-email: والكولباك (الربط التلقائيّ بالبريد)
+module.exports.settleUnverifiedEmail = settleUnverifiedEmail;
+module.exports.sweepUnverifiedEmails = sweepUnverifiedEmails; // email-sweep.js
+module.exports.UNVERIFIED_EMAIL_GRACE_MS = UNVERIFIED_EMAIL_GRACE_MS;

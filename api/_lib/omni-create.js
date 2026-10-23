@@ -156,7 +156,8 @@ module.exports = async (req, res) => {
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
       console.error('[omni-create] upstream ' + upstream.status + ': ' + String(msg).slice(0, 300));
-      res.status(upstream.status).json({ error: 'تعذّر توليد الفيديو — أعد المحاولة.', retryable: true });
+      const fail = require('./_videoFail.js').startFail(upstream.status, msg); /* v-credit-out: كان «أعد المحاولة» لكلّ رفض — نفاد رصيد المزوّد يُعاد ويُخصم ويُردّ بلا نهاية */
+      res.status(fail.code).json(fail.body);
       return;
     }
 

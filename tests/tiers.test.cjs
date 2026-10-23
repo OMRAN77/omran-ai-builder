@@ -235,7 +235,8 @@ test('points: image 20 (4K 30), maha minute 15; refunds return the charged amoun
   const mi = read('api/_lib/maha-image.js');
   assert.match(mi, /const __imgCost = __ask4K \? pointsLib\.COSTS\.image_4k : pointsLib\.COSTS\.image;/);
   assert.match(mi, /mahaImgChargedAmount = __imgCost;/);
-  assert.match(mi, /const amount = mahaImgChargedAmount \|\| pointsLib\.COSTS\.image;\n\s+mahaImgCharged = null;\n\s+try \{ await pointsLib\.refundPoints\(user, amount\); \}/);
+  // v-credit-out: المبلغ المخصوم كلّه يُردّ — الأساس بنوع خصمه والفرق الإبداعيّ بنوع خصمه (amount - extra + extra)
+  assert.match(mi, /const amount = mahaImgChargedAmount \|\| pointsLib\.COSTS\.image;\n\s+mahaImgCharged = null;\n\s+try \{ const mine = await require\('\.\/image-hold\.js'\)\.closeTicket\(user, mahaImgTicket\); mahaImgTicket = undefined; const extra = Math\.min\(amount, mahaImgExtra\); if \(mine\) \{ await pointsLib\.refundPoints\(user, amount - extra, mahaImgPay \|\| undefined\); if \(extra\) await pointsLib\.refundPoints\(user, extra, mahaImgExtraPay \|\| undefined\); \}/); // v-img-deadline-refund: الردّ المباشر حين تملك الدالّة التسوية (لا ردّ مزدوج مع الكنس)
 });
 
 function parsePlans(src) {
@@ -319,7 +320,7 @@ test('no retired model name is hard-wired anywhere on the server or in client de
 test('chat.js: king unavailable before the first character → SILENT server-side free-chain fallback (no visible notice)', () => {
   const chat = read('api/_lib/chat.js');
   // يهبط إلى السلسلة المجانية ويبثّها بـsend مباشرة (لا غلاف يُضيف بادئة).
-  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: __rawOwner \? '' : PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), raw: __rawOwner, paid: !!\(usage && usage\.subscriber\) \/\* v-plan-models: [^*\n]*\*\/, convo: __ownerReq \? compactConversation\(convo\) : convo \/\* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة \*\/, send, requireVision: lastUserHasImage \}\);\n\s+if \(__fb\.ok\) \{[\s\S]*?send\(\{ done: true \}\); res\.end\(\); return;[\s\S]*?\}/);
+  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: __rawOwner \? '' : PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\)(?: \+ \(lastUserHasImage \? require\('\.\/shot-reply\.js'\)\.SHOT_REPLY_NOTE : ''\) \/\* v-shot-reply \*\/)?, raw: __rawOwner, paid: !!\(usage && usage\.subscriber\) \/\* v-plan-models: [^*\n]*\*\/, convo: __ownerReq \? compactConversation\(convo\) : convo \/\* v-owner-memory: الاحتياط المجّانيّ نوافذه صغيرة \*\/, send, requireVision: lastUserHasImage \}\);\n\s+if \(__fb\.ok\) \{[\s\S]*?send\(\{ done: true \}\); res\.end\(\); return;[\s\S]*?\}/);
   // v-silent-fallback (طلب المالك «يبدّل بدون ما أحد يعرف»): لا بادئة مرئيّة في الردّ.
   assert.ok(!/فهذا ردّ من المحرّك الاحتياطي بلا أدوات/.test(chat), 'يجب ألّا تظهر بادئة التبديل للمستخدم');
   const groq = read('api/_lib/groq.js');

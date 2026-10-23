@@ -324,6 +324,6 @@ async function learn(user, messages, opts) {
 
 module.exports = {
   KINDS, SHORT_TERM_MESSAGES, CONTEXT_TOKENS, MAX_FACTS, estimateTokens,
-  cleanFact, clean, extractFacts, parseFacts, mergeFacts, buildContext, voiceContext, shortTerm, lastUserText,
+  cleanFact, clean, extractFacts, parseFacts, mergeFacts, buildContext, voiceContext, shortTerm, lastUserText, tokens, /* v-liked-reply: صلة الموضوع للردود المعتمدة والمعمّم (prov-self.js) */
   readFacts, writeFacts, removeFact, clearFacts, learn, worthLearning, isSocialTurn,
 };

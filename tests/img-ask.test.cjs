@@ -28,7 +28,7 @@ test('٣. القائمة بلا وسائط (تحليل وثيقة · لقطة ا
   assert.deepEqual(names(TOOLS_NO_MEDIA), names(TOOLS).filter((n) => !['generate_image', 'edit_image', 'generate_video'].includes(n)));
   assert.ok(TOOLS_NO_MEDIA.length >= 3);
   const src = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
-  assert.ok(src.includes('tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined')); // v-tokens-tools: القائمة ثابتة في دور الاستيضاح (بادئة الكاش)، والمنع بالذيل والحارس — tokens-cache ٦ و٧ · v-tokens-owner-tools: ولقطة المالك ورسالته الطويلة كذلك (TOOLS_NO_MEDIA باقية للمساعد toolsFor)
+  assert.ok(src.includes('tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia, __callPaid) : undefined')); // v-tokens-tools: القائمة ثابتة في دور الاستيضاح (بادئة الكاش)، والمنع بالذيل والحارس — tokens-cache ٦ و٧ · v-tokens-owner-tools: ولقطة المالك ورسالته الطويلة كذلك (TOOLS_NO_MEDIA باقية للمساعد toolsFor)
 });
 
 test('٤. وصف edit_image: الاستيضاح ليس طلبًا، والوثيقة الرسميّة لا تُعدَّل', () => {

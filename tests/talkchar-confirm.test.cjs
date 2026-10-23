@@ -84,7 +84,7 @@ const TD = { window: {} };
 vm.runInNewContext(fs.readFileSync(path.join(root, 'js/app-11-video-trends-data.js'), 'utf8'), TD);
 const TRENDS = TD.window.__VIDEO_TRENDS;
 const coolText = (lg, m) => TRENDS.ui.cooldown[lg].replace('⏳', '').trim().replace('{m}', String(m));
-const I18N = { vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.', plansWhyPoints: 'نقاطك خلصت — اشحن من الباقات وكمّل مباشرة.' };
+const I18N = { vidRejected: 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.', vidBusy: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', /* v-vid-codes: الخادم يردّ رمزًا والعميل يترجمه */ vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.', plansWhyPoints: 'نقاطك خلصت — اشحن من الباقات وكمّل مباشرة.' };
 
 // «خل الشخصية تتكلم وتقول: …» بشخصيّة جاهزة من المكتبة (__alreadyCartoon: بلا كرتنة) أو بصورته (photo: الكرتنة المدفوعة أوّلًا)
 // — الحركة والمدّة من نافذة الخيارين. seq ترتيب الأحداث: price/create/cartoon/confirm.

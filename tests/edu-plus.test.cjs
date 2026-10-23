@@ -42,7 +42,7 @@ test('العارض: صندوق كود بلغته، والكود مهرَّب', (
   const out = md('قبل\n```js\nif (a < b) { alert("<script>") }\n```\nبعد');
   assert.ok(out.includes('<pre class="eduCode" dir="ltr">') && out.includes('<span class="eduCodeLang">js</span>'));
   assert.ok(out.includes('if (a &lt; b)') && !out.includes('<script>'), 'لا حقن من داخل الكود');
-  assert.ok(out.includes('<p>قبل</p>') && out.includes('<p>بعد</p>'));
+  assert.ok(out.includes('<p dir="auto">قبل</p>') && out.includes('<p dir="auto">بعد</p>'));
 });
 
 test('العارض: جدول ماركداون بعناوينه وصفوفه', () => {
@@ -69,8 +69,8 @@ test('العارض: علامة $ في الأسعار لا تتحوّل معاد�
 
 test('العارض: القديم باقٍ (عناوين، قوائم، خطّ عريض، اقتباس)', () => {
   const out = md('## عنوان\n- أ\n- ب\n1. ج\n> ملاحظة **مهمّة**');
-  assert.ok(out.includes('<h4>عنوان</h4>') && out.includes('<ul><li>أ</li><li>ب</li></ul>') && out.includes('<ol><li>ج</li></ol>'));
-  assert.ok(out.includes('<blockquote>ملاحظة <b>مهمّة</b></blockquote>'));
+  assert.ok(out.includes('<h4 dir="auto">عنوان</h4>') && out.includes('<ul dir="auto"><li>أ</li><li>ب</li></ul>') && out.includes('<ol dir="auto"><li>ج</li></ol>'));
+  assert.ok(out.includes('<blockquote dir="auto">ملاحظة <b>مهمّة</b></blockquote>'));
 });
 
 /* ---------- خوارزميّات المسار ---------- */

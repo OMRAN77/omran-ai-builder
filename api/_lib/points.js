@@ -331,13 +331,17 @@ module.exports = async (req, res) => {
     const username = verifyToken(token);
 
     if (action === 'balance') {
-      if (!username) { res.status(200).json({ ok: true, authed: false, points: 0 }); return; }
+      // v-vmk-price-src: الأسعار عامّة — الزائر يرى في صانع الفيديو الرقم الذي يُخصم نفسه (COSTS) لا رقمًا مكتوبًا في الواجهة.
+      if (!username) { res.status(200).json({ ok: true, authed: false, points: 0, costs: COSTS }); return; }
       if (isOwner(username)) { res.status(200).json({ ok: true, authed: true, owner: true, points: null, unlimited: true, costs: COSTS, tier: 'owner', plan: null }); return; }
       // VIP: الواجهة تقرأ unlimited وحده (∞ بدل الرقم)، وowner يبقى false
       // لأنّه ليس مالكًا — لوحة التحكّم لا تُفتح له، الحدّ وحده يسقط.
       if (await isVip(username)) { res.status(200).json({ ok: true, authed: true, owner: false, vip: true, points: null, unlimited: true, costs: COSTS, tier: 'vip', plan: null }); return; }
+      // v-maha-img-hold: صورة مها لم يؤكَّد حفظها خلال دقائق = لم تصل — تُردّ نقاطها قبل قراءة الرصيد فيظهر الرقم بعد الردّ.
+      try { await require('./image-hold.js').settleStale(username); } catch (e) { /* guard-ok — التسوية أفضل جهد ولا توقف قراءة الرصيد */ }
+      try { await require('./video-job.js').sweepStaleVideoJobs(username); } catch (e) { /* guard-ok — v-video-sweep: فيديو لم يُسلَّم تُردّ نقاطه هنا، وعطبه لا يوقف قراءة الرصيد */ }
       const rec = await readPoints(username);
-      if (!rec) { res.status(200).json({ ok: true, authed: false, points: 0 }); return; }
+      if (!rec) { res.status(200).json({ ok: true, authed: false, points: 0, costs: COSTS }); return; }
       // v-plan-routing: الباقة السارية مع الرصيد (الواجهة تقفل منتقي المزوّد لغير Max). عطب القراءة = مجّاني.
       let __t = null;
       try { __t = await require('./tier.js').resolveTier(username); } catch (e) { __t = null; }
@@ -365,6 +369,14 @@ module.exports = async (req, res) => {
       if (!allowed.includes(amt)) { res.status(400).json({ ok: false, reason: 'bad_amount' }); return; }
       const result = await spendPoints(username, amt, String(reason || 'client'));
       res.status(200).json(result);
+      return;
+    }
+
+    // v-maha-img-hold: العميل حفظ صورة مكالمة مها في المحادثة ← يثبت خصمها (بلا هذا تُردّ تلقائيًّا بعد دقائق).
+    if (action === 'image-ack') {
+      if (!username) { res.status(401).json({ ok: false, reason: 'auth' }); return; }
+      const r = await require('./image-hold.js').ackImage(username, body.hold);
+      res.status(200).json({ ok: true, committed: !!(r && r.committed) });
       return;
     }
 

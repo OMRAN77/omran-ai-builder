@@ -93,7 +93,7 @@ check(styleRule.includes('التصحيح: صحّح باختصار ووضوح ف�
 check(styleRule.includes('الخطوة التالية: أضفها فقط إذا كان الطلب عمليًّا متعدد الخطوات') && styleRule.includes('لا تختم كل رد باقتراح أو سؤال'), 'الخطوة التالية ليست خاتمة آلية');
 check(styleRule.includes('بلا تقليد لعباراته أو مزاجه'), 'فهم النبرة لا يتحول إلى تقليد المستخدم');
 check(styleRule.includes('السؤال البسيط جواب قصير من ١–٣ جمل بلا عناوين أو تعداد'), 'السؤال البسيط له حد سلوكي قابل للقياس');
-check(attach.includes('APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE') && attach.includes("'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE"), 'القواعد المركزية مستخدمة في البناء والمحادثة العادية');
+check(attach.includes('APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE') && attach.includes("'أنت مساعد ذكي في تطبيق om ai من فريق om ai.' + CONVERSATION_QUALITY_RULE"), 'القواعد المركزية مستخدمة في البناء والمحادثة العادية');
 check(!checkout.includes('then ONE concrete next-step suggestion or question') && !checkout.includes('then 2-3 concrete suggestions'), 'أزيل فرض الاقتراح والسؤال من كل رد');
 check(chatServer.includes('تجاري لهجة المستخدم وروحه بروح المجلس'), 'v-clean-slate: مجاراة اللهجة في النظام القصير');
 check(chatServer.includes('إن نقصت معلومة تؤثّر فعليًّا في الدقّة') && chatServer.includes('لا تُلحق سؤالًا عامًا بكل رد'), 'سؤال الخادم مشروط بنقص مؤثر');
@@ -143,9 +143,9 @@ check(chatServer.includes('quietSocialTurn ? [lastUser] : messages'), 'الخا�
 // ═══ الأدوات والبحث ═══
 group('الأدوات والبحث');
 
-check(chatServer.includes('tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined'), // v-providers-like-agent: أدوات المالك له دائمًا · v-tokens-owner-tools: القائمة لا تتبدّل (الصور تُرفض عند التنفيذ — tokens-share)
+check(chatServer.includes('tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia, __callPaid) : undefined'), // v-providers-like-agent: أدوات المالك له دائمًا · v-tokens-owner-tools: القائمة لا تتبدّل (الصور تُرفض عند التنفيذ — tokens-share)
       'الأدوات تُمرَّر خلف toolTurn لا دائمًا'); // v-img-ask: دور الاستيضاح بلا أدوات الصورة؛ v-provider-errors: أداة المالك تُضاف له وحده
-check(chatServer.includes("const toolsFor = (owner, noMedia) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).map((t) => (owner && t.name === 'read_github' ? require('./provider-level.js').ownerReadTool(t) : t)).concat(owner ? OWNER_TOOLS : []);"), 'أدوات المالك تُضاف له وحده ولا تُعرض لغيره (ووصف read_github الموسَّع له وحده — v-claude-code-level E5)');
+check(chatServer.includes("const toolsFor = (owner, noMedia, callPaid) => (noMedia ? TOOLS_NO_MEDIA : TOOLS).map((t) => (owner && t.name === 'read_github' ? require('./provider-level.js').ownerReadTool(t) : t)).concat(owner ? OWNER_TOOLS : []).concat((owner || callPaid) ? CALL_TOOLS : []);"), 'أدوات المالك تُضاف له وحده ولا تُعرض لغيره (ووصف read_github الموسَّع له وحده — v-claude-code-level E5)');
 // v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»
 // — قِيس بالمِجسّ ردٌّ بلا بحث يطلب التاريخ. القرار الآن للنموذج في كل دور غير اجتماعي.
 check(chatServer.includes('const toolTurn = !quietSocialTurn && (!__analyzeDoc || __ownerReq);'), 'كل دور غير اجتماعي (عدا تحليل مستند لغير المالك) يحمل الأدوات والتاريخ والموقع'); // v-providers-like-agent

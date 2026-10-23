@@ -55,7 +55,8 @@ const call = (body, ip) => new Promise((resolve) => {
 });
 // حساب قائم مربوط ببريده (بلا كلمة مرور تُقيَّم) — الدخول برمز البريد يجده من الفهرس.
 async function account(name, email) {
-  await auth.putUser(name, { username: name, email, createdAt: Date.now(), points: 0, salt: 'x', hash: 'y' });
+  // v-unverified-email: الدخول بالرمز لبريد مؤكَّد على حسابه وحده — البذرة بختمها كما يكتبه التأكيد بالرمز
+  await auth.putUser(name, { username: name, email, verifiedEmail: email, createdAt: Date.now(), points: 0, salt: 'x', hash: 'y' });
   store.set('db/email-index/' + email, JSON.stringify({ username: name, at: Date.now() }));
 }
 const wrong = (code, i) => String((Number(code) + 1 + i) % 1000000).padStart(6, '0');

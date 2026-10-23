@@ -36,7 +36,8 @@ test('٢. «عرض الكل» يستبدل المحتوى، يحفظ الموض�
   assert.match(css, /grid-template-columns:repeat\(auto-fill,minmax\(220px,1fr\)\)/);
   assert.match(features, /top:ptPopup\.scrollTop, left:viewport\.scrollLeft/);
   assert.match(features, /history\.pushState\(\{ omranToolsAll:historyToken \}/);
-  assert.match(features, /addEventListener\('popstate', \(\) => \{ if\(allState\) closeAll\(true\); \}\)/);
+  /* v-back-layers: لا يُغلق «عرض الكل» ومدخله هو الحاليّ (رجوع من أداة فُتحت فوقه) */
+  assert.match(features, /addEventListener\('popstate', \(\) => \{ if\(allState && !\(history\.state && history\.state\.omranToolsAll === allState\.token\)\) closeAll\(true\); \}\)/);
   assert.match(features, /requestAnimationFrame\(\(\) => requestAnimationFrame/);
   assert.match(features, /target\.scrollIntoView\(\{ behavior:[\s\S]*?inline:'start'/);
 });
@@ -69,8 +70,8 @@ test('٦. X الإعدادات مخفي في الهواتف وحدها، ونس�
   assert.match(tokens, /html\.mobile-ui #setHomeClose\{display:none!important;\}/);
   assert.match(tokens, /@media \(max-width:860px\)\{ #setHomeClose\{display:none!important;\} \}/);
   assert.doesNotMatch(tokens, /(?:^|\n)\s*#setHomeClose\{display:none!important;\}/);
-  assert.match(read('index.html'), /css\/tokens\.css\?v=733/);
-  assert.match(wiring, /tool-card-images\.css\?v=23/); // v-card-photo-only
+  assert.match(read('index.html'), /css\/tokens\.css\?v=739/);
+  assert.match(wiring, /tool-card-images\.css\?v=24/); // v-card-photo-only
   assert.match(wiring, /tool-card-images\.js\?v=18/);
 });
 

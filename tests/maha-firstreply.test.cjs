@@ -24,6 +24,7 @@ function sandbox(){
     btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
     console: { warn(){}, error(){} },
     __swallow(){},
+    mahaRtFirstTake: () => null, // v-maha-first-heard: لا أوّل ردّ مقطوع هنا — الحارس يطلب ردًّا عاديًّا كما كان
   };
   ctx.mahaStopPreBuffer = () => { ctx.stopped++; ctx.mahaPreBufChunks = []; };
   ctx.dc = { readyState: 'open', send: (m) => ctx.sent.push(JSON.parse(m).type) };
@@ -75,7 +76,8 @@ test('٤. التوصيل في المكالمة: الحارس يُسلَّح بع
   const call = src.slice(src.indexOf('async function mahaStartRealtimeCall(){'));
   const f = call.indexOf('const preBufSent = mahaFlushPreBuffer(dc);');
   const ready = call.indexOf('mahaRtReady = true;', f);
-  const arm = call.indexOf('if(preBufSent) mahaArmRtResponseWatchdog(900);', f);
+  // v-maha-start-seq: الحارس نفسه، لكن بعد أن يشتغل عنصر الصوت (ردّ كلام التجهيز يُسمع من أوّل مرّة)
+  const arm = call.indexOf('if(preBufSent) mahaRtWhenAudio(() => { if(dc === mahaRtDc && !mahaRtResponded && !mahaRtResponseWatchdog) mahaArmRtResponseWatchdog(900); });', f);
   assert.ok(f > 0 && ready > f && arm > ready, 'إفراغ ← جاهزية ← حارس الردّ');
   assert.match(src, /if\(!mahaRtReady \|\| !mahaCallActive \|\| mahaRtDc !== dc/, 'الحارس لا يعمل قبل الجاهزية');
 });
@@ -88,5 +90,5 @@ test('٥. جلسة المكالمة بلا تفريغ غير مستعمل (gpt-l
   const clientUses = fs.readdirSync(path.join(root, 'js')).filter((f) => /^app-\d\d-.*\.js$/.test(f))
     .some((f) => /input_audio_transcription/.test(fs.readFileSync(path.join(root, 'js', f), 'utf8')));
   assert.equal(clientUses, false, 'لا مستقبل لأحداث التفريغ في العميل — حذفه لا يُفقد شيئًا');
-  assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('if(preBufSent) mahaArmRtResponseWatchdog(900);'), 'الحزمة أُعيد بناؤها');
+  assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('if(preBufSent) mahaRtWhenAudio(() => { if(dc === mahaRtDc && !mahaRtResponded && !mahaRtResponseWatchdog) mahaArmRtResponseWatchdog(900); });'), 'الحزمة أُعيد بناؤها');
 });

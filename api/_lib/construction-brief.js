@@ -78,6 +78,11 @@ function parseBriefReply(raw) {
   return any ? out : null;
 }
 
+/* v-cx-brief-fail (تدقيق ١٨ أكتوبر: «فيلا دور واحد ١٥٠ متر مودرن» ومثال الخانة نفسه رجعا «ما وضح لي الوصف» في ٠٫٦ ث): ردّ 402
+   من المزوّد (رصيده خلص) بلا مرشّح كان يُقرأ «لم يُفهم شيء». رفض المزوّد أو انقطاعه أو مهلته أو ردّ بلا مرشّح = «تعذّرت القراءة»
+   لا «وصف غامض» — فيردّ المعالج unavailable وتعرض الواجهة نصّها القائم «تعذّرت القراءة الآن — عبّي النموذج تحت». */
+const READ_FAILED = Object.freeze({ failed: true });
+
 async function readBriefLLM(opts) {
   const o = opts || {};
   if (!o.apiKey || !String(o.text || '').trim()) return null;
@@ -93,11 +98,16 @@ async function readBriefLLM(opts) {
       }),
     });
     const d = await r.json().catch(() => null);
-    const txt = String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' '));
+    const cands = (d && d.candidates) || [];
+    if (!r.ok || !cands.length) {
+      console.error('[cx-brief] provider ' + r.status + ': ' + String((d && d.error && d.error.message) || 'no candidates').slice(0, 200));
+      return READ_FAILED;
+    }
+    const txt = String((((cands[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' '));
     return parseBriefReply(txt);
   } catch (e) {
     console.error('[cx-brief] read failed: ' + (e && e.message));
-    return null;
+    return READ_FAILED;
   }
 }
 
@@ -122,6 +132,7 @@ async function handler(req, res) {
   if (gate && !gate.allowed) { res.status(200).json({ fields: null, reason: gate.reason === 'limit' ? 'limit' : 'auth' }); return; }
   if (!gate || !gate.username) { res.status(200).json({ fields: null, reason: 'auth' }); return; }
   const fields = await readBriefLLM({ apiKey, text });
+  if (fields === READ_FAILED) { res.status(200).json({ fields: null, reason: 'unavailable' }); return; } // v-cx-brief-fail
   if (!fields) { res.status(200).json({ fields: null, reason: 'unclear' }); return; }
   res.status(200).json({ fields });
 }

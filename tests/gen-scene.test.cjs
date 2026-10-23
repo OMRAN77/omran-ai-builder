@@ -216,7 +216,7 @@ test('٧. العطب القائم: المنظِّف يحذف «🎨» من سط�
     assert.equal(w._panelBusy(p, cleaned), false, id + ': ولا تعود مشغولة بنصّ قديم بعد الانتهاء');
   }
   assert.match(SRC, /new MutationObserver\(function\(\)\{ sample\(\); schedule\(\); \}\)/);
-  assert.match(SRC, /var busy = panelBusy\(p, ptxt\);/);
+  assert.match(SRC, /var busy = p\.busyAttr \? attrBusy\(p, pel\) : panelBusy\(p, ptxt\);/); // v-trend-scene-live: لوحة الترندات بسمتها، والباقي بنصّها كما هنا
 });
 
 test('٨. بلا منظِّف (متصفّح قديم): البادئة تبقى في النصّ والمطابقة كما كانت', () => {

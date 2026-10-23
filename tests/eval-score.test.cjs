@@ -14,10 +14,10 @@ const S = require(path.join(root, 'eval/score.cjs'));
 const Q = JSON.parse(fs.readFileSync(path.join(root, 'eval/questions.json'), 'utf8')).questions;
 const q = (id) => Q.find((x) => x.id === id);
 
-test('١. بنك الأسئلة: ٥٠ سؤالًا بمعرّفات فريدة وعشر فئات، وكلّ سؤال له فحص واحد على الأقلّ', () => {
-  assert.equal(Q.length, 50);
-  assert.equal(new Set(Q.map((x) => x.id)).size, 50);
-  assert.equal(new Set(Q.map((x) => x.cat)).size, 10);
+test('١. بنك الأسئلة: ٥٠ سؤالًا وثلاث لقطات شاشة (v-shot-reply) بمعرّفات فريدة وإحدى عشرة فئة، وكلّ سؤال له فحص واحد على الأقلّ', () => {
+  assert.equal(Q.length, 53);
+  assert.equal(new Set(Q.map((x) => x.id)).size, 53);
+  assert.equal(new Set(Q.map((x) => x.cat)).size, 11);
   Q.forEach((x) => { assert.ok(x.q || (x.turns && x.turns.length >= 2), x.id); assert.ok(Object.keys(x.checks || {}).length, x.id); });
 });
 

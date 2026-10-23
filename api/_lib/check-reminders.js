@@ -30,7 +30,10 @@ function todayStr(d) { return d.toISOString().slice(0, 10); }
 async function fetchPrayerTimeMs(lat, lng, prayerName, dateStr, method) {
   try {
     const m = Number.isFinite(method) ? method : 4; /* v-prayer-method: نفس طريقة الشاشة (الافتراضي أم القرى) */
-    const url = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=${m}`;
+    // v-qibla-dir-hijri (تدقيق ١٨–١٩ أكتوبر): aladhan يقرأ DD-MM-YYYY — YYYY-MM-DD كان يجيب عن سنة أخرى (٢٠١٩).
+    // dateStr يبقى Y-M-D للحساب أدناه؛ الرابط وحده يُقلب.
+    const urlDate = String(dateStr).split('-').reverse().join('-');
+    const url = `https://api.aladhan.com/v1/timings/${urlDate}?latitude=${lat}&longitude=${lng}&method=${m}`;
     const r = await fetch(url, { signal: AbortSignal.timeout(20000) });
     if (!r.ok) return null;
     const data = await r.json();

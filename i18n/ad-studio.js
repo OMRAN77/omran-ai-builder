@@ -3,7 +3,7 @@
  * اللغة تُقرأ من localStorage.aiapp_lang، والارتداد إلى الإنجليزيّة. */
 window.ADI18N = {
 ar: {
-  dir: "rtl", pageTitle: "استوديو الإعلانات — عمران AI", h1: "استوديو الإعلانات — تحدّث، ثمّ اختر تصميمك", sub: "تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج عشرة تصاميم جاهزة تختار منها.",
+  dir: "rtl", pageTitle: "استوديو الإعلانات — om ai", h1: "استوديو الإعلانات — تحدّث، ثمّ اختر تصميمك", sub: "تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج عشرة تصاميم جاهزة تختار منها.",
   back: "← رجوع إلى التطبيق", asstName: "مساعد الإعلانات", stepStart: "ابدأ", inpPh: "اكتب هنا…", gTitle: "عشرة تصاميم — اختر واحدًا", dragHint: "اسحب أيّ نصّ — والمسه ثمّ كبّره أو صغّره",
   ratioTitle: "نسبة الصورة المولَّدة", rSquare: "◻ مربّع", rTall: "▯ طولي", rWide: "▭ عرضي", genBtn: "ولّد الإعلان صورةً", bgLight: "خلفيّة فاتحة", bgDark: "خلفيّة داكنة", resetAll: "أعِد الكلّ لأصله",
   zoomHint: "اضغط في أي مكان للإغلاق", stepOf: "{n} من {m}", stepReady: "جاهز", nm0: "سينمائيّ", nm1: "طبقات", nm2: "ملصق حرّ", nm3: "أنيق", nm4: "جريء", nm5: "فخم", nm6: "بسيط", nm7: "مجلّة", nm8: "نيون",
@@ -43,7 +43,7 @@ ar: {
   edHint: "اضغط على أيّ نصّ لتكتبه، وعلى أيّ صورة لترفعها، و× يمسح العنصر.", addBox: "مربّع نصّ", zoomB: "تكبير", resetBoard: "رجّع اللوحة", newBoxTxt: "اكتب هنا"
 },
 en: {
-  dir: "ltr", pageTitle: "Ad Studio — Omran AI", h1: "Ad Studio — talk to it, then pick your design",
+  dir: "ltr", pageTitle: "Ad Studio — om ai", h1: "Ad Studio — talk to it, then pick your design",
   sub: "Describe what you want to advertise in your own words, answer two questions, upload your photo — and ten finished designs come out for you to choose from.", back: "← Back to the app", asstName: "Ad assistant",
   stepStart: "Start", inpPh: "Type here…", gTitle: "Ten designs — pick one", dragHint: "Drag any text — tap it, then make it bigger or smaller", ratioTitle: "Generated image ratio", rSquare: "◻ Square", rTall: "▯ Portrait",
   rWide: "▭ Landscape", genBtn: "Generate the ad as an image", bgLight: "Light background", bgDark: "Dark background", resetAll: "Reset everything", zoomHint: "Tap anywhere to close", stepOf: "{n} of {m}",
@@ -93,7 +93,7 @@ en: {
   edHint: "Tap any text to type it, any image to upload it, and × removes the element.", addBox: "Text box", zoomB: "Zoom", resetBoard: "Reset board", newBoxTxt: "Type here"
 },
 fr: {
-  dir: "ltr", pageTitle: "Studio Pub — Omran AI", h1: "Studio Pub — parlez-lui, puis choisissez votre design",
+  dir: "ltr", pageTitle: "Studio Pub — om ai", h1: "Studio Pub — parlez-lui, puis choisissez votre design",
   sub: "Décrivez ce que vous voulez annoncer avec vos mots, répondez à deux questions, envoyez votre photo — puis choisissez parmi dix designs finis.", back: "← Retour à l’application", asstName: "Assistant publicitaire",
   stepStart: "Commencer", inpPh: "Écrivez ici…", gTitle: "Dix designs — choisissez-en un", dragHint: "Faites glisser un texte — touchez-le, puis agrandissez-le ou réduisez-le", ratioTitle: "Format de l’image générée",
   rSquare: "◻ Carré", rTall: "▯ Portrait", rWide: "▭ Paysage", genBtn: "Générer la pub en image", bgLight: "Fond clair", bgDark: "Fond sombre", resetAll: "Tout réinitialiser", zoomHint: "Touchez n’importe où pour fermer",
@@ -144,7 +144,7 @@ fr: {
   edHint: "Touchez un texte pour l’écrire, une image pour l’envoyer ; × supprime l’élément.", addBox: "Zone de texte", zoomB: "Agrandir", resetBoard: "Réinitialiser", newBoxTxt: "Écrivez ici"
 },
 hi: {
-  dir: "ltr", pageTitle: "विज्ञापन स्टूडियो — Omran AI", h1: "विज्ञापन स्टूडियो — बात करें, फिर डिज़ाइन चुनें",
+  dir: "ltr", pageTitle: "विज्ञापन स्टूडियो — om ai", h1: "विज्ञापन स्टूडियो — बात करें, फिर डिज़ाइन चुनें",
   sub: "जिसका विज्ञापन चाहिए उसे अपने शब्दों में लिखें, दो सवालों के जवाब दें, फोटो अपलोड करें — चुनने के लिए दस तैयार डिज़ाइन मिलेंगे।", back: "← ऐप पर वापस", asstName: "विज्ञापन सहायक", stepStart: "शुरू करें",
   inpPh: "यहाँ लिखें…", gTitle: "दस डिज़ाइन — एक चुनें", dragHint: "किसी भी पाठ को खींचें — टैप करें, फिर बड़ा या छोटा करें", ratioTitle: "बनी हुई छवि का अनुपात", rSquare: "◻ वर्गाकार", rTall: "▯ पोर्ट्रेट",
   rWide: "▭ लैंडस्केप", genBtn: "विज्ञापन को छवि के रूप में बनाएँ", bgLight: "हल्की पृष्ठभूमि", bgDark: "गहरी पृष्ठभूमि", resetAll: "सब रीसेट करें", zoomHint: "बंद करने के लिए कहीं भी टैप करें", stepOf: "{n} में से {m}",
@@ -188,7 +188,7 @@ hi: {
   edHint: "किसी भी टेक्स्ट पर टैप करके लिखें, किसी भी तस्वीर पर टैप करके अपलोड करें, × से हटाएँ।", addBox: "टेक्स्ट बॉक्स", zoomB: "बड़ा करें", resetBoard: "बोर्ड रीसेट", newBoxTxt: "यहाँ लिखें"
 },
 ur: {
-  dir: "rtl", pageTitle: "اشتہار اسٹوڈیو — Omran AI", h1: "اشتہار اسٹوڈیو — بات کریں، پھر ڈیزائن چنیں",
+  dir: "rtl", pageTitle: "اشتہار اسٹوڈیو — om ai", h1: "اشتہار اسٹوڈیو — بات کریں، پھر ڈیزائن چنیں",
   sub: "اپنے الفاظ میں بتائیں کیا اشتہار دینا ہے، دو سوالوں کے جواب دیں، تصویر اپ لوڈ کریں — انتخاب کے لیے دس تیار ڈیزائن ملیں گے۔", back: "← ایپ پر واپس", asstName: "اشتہار معاون", stepStart: "شروع کریں",
   inpPh: "یہاں لکھیں…", gTitle: "دس ڈیزائن — ایک چنیں", dragHint: "کوئی بھی متن کھینچیں — اسے چھوئیں، پھر بڑا یا چھوٹا کریں", ratioTitle: "بنائی گئی تصویر کا تناسب", rSquare: "◻ مربع", rTall: "▯ پورٹریٹ",
   rWide: "▭ لینڈاسکیپ", genBtn: "اشتہار کو تصویر بنائیں", bgLight: "ہلکا پس منظر", bgDark: "گہرا پس منظر", resetAll: "سب کچھ ری سیٹ کریں", zoomHint: "بند کرنے کے لیے کہیں بھی چھوئیں", stepOf: "{n} از {m}",
@@ -231,7 +231,7 @@ ur: {
   edHint: "کسی بھی متن پر ٹیپ کر کے لکھیں، کسی بھی تصویر پر ٹیپ کر کے اپ لوڈ کریں، × سے ہٹائیں۔", addBox: "ٹیکسٹ باکس", zoomB: "بڑا کریں", resetBoard: "بورڈ ری سیٹ", newBoxTxt: "یہاں لکھیں"
 },
 bn: {
-  dir: "ltr", pageTitle: "বিজ্ঞাপন স্টুডিও — Omran AI", h1: "বিজ্ঞাপন স্টুডিও — কথা বলুন, তারপর ডিজাইন নিন",
+  dir: "ltr", pageTitle: "বিজ্ঞাপন স্টুডিও — om ai", h1: "বিজ্ঞাপন স্টুডিও — কথা বলুন, তারপর ডিজাইন নিন",
   sub: "নিজের ভাষায় কী বিজ্ঞাপন চান বলুন, দুটি প্রশ্নের উত্তর দিন, ছবি আপলোড করুন — বাছাইয়ের জন্য দশটি তৈরি ডিজাইন পাবেন।", back: "← অ্যাপে ফিরুন", asstName: "বিজ্ঞাপন সহকারী", stepStart: "শুরু", inpPh: "এখানে লিখুন…",
   gTitle: "দশ ডিজাইন — একটি বাছুন", dragHint: "যেকোনো লেখা টানুন — ট্যাপ করে বড় বা ছোট করুন", ratioTitle: "তৈরি ছবির অনুপাত", rSquare: "◻ বর্গাকার", rTall: "▯ পোর্ট্রেট", rWide: "▭ ল্যান্ডস্কেপ",
   genBtn: "বিজ্ঞাপনটি ছবি হিসেবে তৈরি করুন", bgLight: "হালকা পটভূমি", bgDark: "গাঢ় পটভূমি", resetAll: "সব রিসেট করুন", zoomHint: "বন্ধ করতে যেকোনো জায়গায় ট্যাপ করুন", stepOf: "{n} এর {m}", stepReady: "প্রস্তুত",
@@ -274,7 +274,7 @@ bn: {
   edHint: "যেকোনো লেখায় ট্যাপ করে লিখুন, যেকোনো ছবিতে ট্যাপ করে আপলোড করুন, × দিয়ে সরান।", addBox: "টেক্সট বক্স", zoomB: "বড় করুন", resetBoard: "বোর্ড রিসেট", newBoxTxt: "এখানে লিখুন"
 },
 ml: {
-  dir: "ltr", pageTitle: "പരസ്യ സ്റ്റുഡിയോ — Omran AI", h1: "പരസ്യ സ്റ്റുഡിയോ — സംസാരിക്കൂ, എന്നിട്ട് ഡിസൈൻ തിരഞ്ഞെടുക്കൂ",
+  dir: "ltr", pageTitle: "പരസ്യ സ്റ്റുഡിയോ — om ai", h1: "പരസ്യ സ്റ്റുഡിയോ — സംസാരിക്കൂ, എന്നിട്ട് ഡിസൈൻ തിരഞ്ഞെടുക്കൂ",
   sub: "നിങ്ങൾ പരസ്യപ്പെടുത്താൻ ആഗ്രഹിക്കുന്നത് സ്വന്തം വാക്കുകളിൽ പറയൂ, രണ്ട് ചോദ്യങ്ങൾക്ക് ഉത്തരം നൽകൂ, ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യൂ — തിരഞ്ഞെടുക്കാൻ പത്ത് പൂർത്തിയായ ഡിസൈനുകൾ ലഭിക്കും.", back: "← ആപ്പിലേക്ക് മടങ്ങുക",
   asstName: "പരസ്യ സഹായി", stepStart: "ആരംഭിക്കുക", inpPh: "ഇവിടെ ടൈപ്പ് ചെയ്യൂ…", gTitle: "പത്ത് ഡിസൈനുകൾ — ഒന്ന് തിരഞ്ഞെടുക്കൂ", dragHint: "ഏതെങ്കിലും ടെക്സ്റ്റ് വലിച്ചിടൂ — ടാപ്പ് ചെയ്ത് വലുതോ ചെറുതോ ആക്കൂ",
   ratioTitle: "ജനറേറ്റ് ചെയ്ത ചിത്രത്തിന്റെ അനുപാതം", rSquare: "◻ ചതുരം", rTall: "▯ പോർട്രെയ്റ്റ്", rWide: "▭ ലാൻഡ്‌സ്കേപ്പ്", genBtn: "പരസ്യം ചിത്രമായി സൃഷ്ടിക്കുക", bgLight: "ഇളം പശ്ചാത്തലം", bgDark: "ഇരുണ്ട പശ്ചാത്തലം",
@@ -330,7 +330,7 @@ ml: {
   edHint: "ഏതു വാചകത്തിലും ടാപ്പ് ചെയ്ത് എഴുതുക, ഏതു ചിത്രത്തിലും ടാപ്പ് ചെയ്ത് അപ്‌ലോഡ് ചെയ്യുക, × നീക്കും.", addBox: "ടെക്സ്റ്റ് ബോക്സ്", zoomB: "വലുതാക്കുക", resetBoard: "ബോർഡ് പുനഃസജ്ജം", newBoxTxt: "ഇവിടെ എഴുതുക"
 },
 ne: {
-  dir: "ltr", pageTitle: "विज्ञापन स्टुडियो — Omran AI", h1: "विज्ञापन स्टुडियो — कुरा गर्नुहोस्, अनि आफ्नो डिजाइन छान्नुहोस्",
+  dir: "ltr", pageTitle: "विज्ञापन स्टुडियो — om ai", h1: "विज्ञापन स्टुडियो — कुरा गर्नुहोस्, अनि आफ्नो डिजाइन छान्नुहोस्",
   sub: "आफ्नो शब्दमा के विज्ञापन गर्न चाहनुहुन्छ भन्नुहोस्, दुई प्रश्नको जवाफ दिनुहोस्, आफ्नो फोटो अपलोड गर्नुहोस् — अनि छान्नका लागि दस तयार डिजाइन तयार हुनेछन्।", back: "← एपमा फर्कनुहोस्", asstName: "विज्ञापन सहायक",
   stepStart: "सुरु गर्नुहोस्", inpPh: "यहाँ टाइप गर्नुहोस्…", gTitle: "दस डिजाइन — एउटा छान्नुहोस्", dragHint: "कुनै पनि लेखलाई तान्नुहोस् — छोइनुहोस्, अनि ठूलो वा सानो बनाउनुहोस्", ratioTitle: "तयार हुने तस्बिरको अनुपात",
   rSquare: "◻ वर्गाकार", rTall: "▯ अग्लो", rWide: "▭ फराकिलो", genBtn: "विज्ञापनलाई तस्बिरको रूपमा बनाउनुहोस्", bgLight: "उज्यालो पृष्ठभूमि", bgDark: "अँध्यारो पृष्ठभूमि", resetAll: "सबै रिसेट गर्नुहोस्",
@@ -378,7 +378,7 @@ ne: {
   edHint: "कुनै पनि पाठमा ट्याप गरेर लेख्नुहोस्, कुनै पनि तस्बिरमा ट्याप गरेर अपलोड गर्नुहोस्, × ले हटाउँछ।", addBox: "पाठ बाकस", zoomB: "ठूलो पार्नुहोस्", resetBoard: "बोर्ड रिसेट", newBoxTxt: "यहाँ लेख्नुहोस्"
 },
 fil: {
-  dir: "ltr", pageTitle: "Ad Studio ng Omran AI", h1: "Ad Studio — makipag-usap, pagkatapos piliin ang disenyo mo",
+  dir: "ltr", pageTitle: "Ad Studio ng om ai", h1: "Ad Studio — makipag-usap, pagkatapos piliin ang disenyo mo",
   sub: "Ilarawan mo sa sarili mong pananalita kung ano ang ia-advertise mo, sagutin ang dalawang tanong, i-upload ang larawan mo — at may sampung tapos na disenyo na lalabas para pili-pilihin mo.", back: "← Bumalik sa app",
   asstName: "Ad assistant", stepStart: "Simulan", inpPh: "I-type dito…", gTitle: "Sampung disenyo — pumili ng isa", dragHint: "I-drag ang kahit anong teksto — i-tap ito, pagkatapos palakihin o paliitin",
   ratioTitle: "Ratio ng nabuong larawan", rSquare: "◻ Parisukat", rTall: "▯ Patayo", rWide: "▭ Pahalang", genBtn: "Buuin ang ad bilang larawan", bgLight: "Maliwanag na background", bgDark: "Madilim na background",
@@ -434,7 +434,7 @@ fil: {
   edHint: "Pindutin ang alinmang teksto para isulat, alinmang larawan para i-upload, at × ang nagtatanggal.", addBox: "Text box", zoomB: "Palakihin", resetBoard: "I-reset ang board", newBoxTxt: "Isulat dito"
 },
 id: {
-  dir: "ltr", pageTitle: "Studio Iklan — Omran AI", h1: "Studio Iklan — ceritakan, lalu pilih desain",
+  dir: "ltr", pageTitle: "Studio Iklan — om ai", h1: "Studio Iklan — ceritakan, lalu pilih desain",
   sub: "Jelaskan iklan Anda dengan kata sendiri, jawab dua pertanyaan, unggah foto — lalu pilih dari sepuluh desain jadi.", back: "← Kembali ke aplikasi", asstName: "Asisten iklan", stepStart: "Mulai",
   inpPh: "Ketik di sini…", gTitle: "Sepuluh desain — pilih satu", dragHint: "Seret teks apa pun — ketuk lalu besarkan atau kecilkan", ratioTitle: "Rasio gambar yang dibuat", rSquare: "◻ Persegi", rTall: "▯ Potret",
   rWide: "▭ Lanskap", genBtn: "Buat iklan sebagai gambar", bgLight: "Latar terang", bgDark: "Latar gelap", resetAll: "Atur ulang semuanya", zoomHint: "Ketuk di mana saja untuk menutup", stepOf: "{n} dari {m}",
@@ -484,7 +484,7 @@ id: {
   edHint: "Ketuk teks mana pun untuk menulisnya, gambar mana pun untuk mengunggahnya, × menghapus elemen.", addBox: "Kotak teks", zoomB: "Perbesar", resetBoard: "Atur ulang papan", newBoxTxt: "Tulis di sini"
 },
 zh: {
-  dir: "ltr", pageTitle: "广告工作室 — Omran AI", h1: "广告工作室 — 说出需求，再选设计", sub: "用自己的话描述要宣传什么，回答两个问题，上传照片 — 即可从十个成品设计中选择。", back: "← 返回应用", asstName: "广告助手", stepStart: "开始", inpPh: "在此输入…", gTitle: "十个设计 — 选一个",
+  dir: "ltr", pageTitle: "广告工作室 — om ai", h1: "广告工作室 — 说出需求，再选设计", sub: "用自己的话描述要宣传什么，回答两个问题，上传照片 — 即可从十个成品设计中选择。", back: "← 返回应用", asstName: "广告助手", stepStart: "开始", inpPh: "在此输入…", gTitle: "十个设计 — 选一个",
   dragHint: "拖动任意文字 — 点按后可放大或缩小", ratioTitle: "生成图片比例", rSquare: "◻ 方形", rTall: "▯ 竖版", rWide: "▭ 横版", genBtn: "将广告生成为图片", bgLight: "浅色背景", bgDark: "深色背景", resetAll: "全部重置", zoomHint: "点按任意处关闭", stepOf: "{n} / {m}",
   stepReady: "准备好了", nm0: "电影感", nm1: "层次", nm2: "自由海报", nm3: "优雅", nm4: "大胆", nm5: "奢华", nm6: "极简", nm7: "杂志", nm8: "霓虹", nm9: "参数卡", cp0: "满版照片，文字融入底部。", cp1: "照片悬浮于拱门内，巨幅文字在后方。", cp2: "倾斜文字与圆形印章 — 街头海报感。",
   cp3: "细边框和宽留白 — 从容自信。", cp4: "斜条与大标题 — 让人停下手指。", cp5: "双边框与单个首字母 — 奢华感。", cp6: "让照片呼吸，只留一行文字。", cp7: "上方照片，下方文字面板 — 杂志感。", cp8: "发光竖版故事 — 适用于 WhatsApp 和 Instagram。", cp9: "所有细节整齐列于表格 — 经典出售广告风格。", pickBtn: "选择此设计",
@@ -511,7 +511,7 @@ zh: {
   edHint: "点任意文字即可编辑，点任意图片即可上传，× 删除元素。", addBox: "文字框", zoomB: "放大", resetBoard: "重置版面", newBoxTxt: "在此输入"
 },
 ru: {
-  dir: "ltr", pageTitle: "Студия рекламы — Omran AI", h1: "Студия рекламы — расскажите, затем выберите дизайн",
+  dir: "ltr", pageTitle: "Студия рекламы — om ai", h1: "Студия рекламы — расскажите, затем выберите дизайн",
   sub: "Опишите, что хотите рекламировать, ответьте на два вопроса, загрузите фото — и выберите один из десяти готовых дизайнов.", back: "← Назад в приложение", asstName: "Помощник по рекламе", stepStart: "Начать",
   inpPh: "Введите здесь…", gTitle: "Десять дизайнов — выберите один", dragHint: "Перетаскивайте любой текст — коснитесь его и увеличьте или уменьшите", ratioTitle: "Соотношение сторон изображения", rSquare: "◻ Квадрат",
   rTall: "▯ Портрет", rWide: "▭ Альбом", genBtn: "Создать рекламу как изображение", bgLight: "Светлый фон", bgDark: "Тёмный фон", resetAll: "Сбросить всё", zoomHint: "Коснитесь любого места, чтобы закрыть",
@@ -561,7 +561,7 @@ ru: {
   edHint: "Нажмите на любой текст, чтобы ввести его, на изображение — чтобы загрузить; × удаляет элемент.", addBox: "Текстовый блок", zoomB: "Увеличить", resetBoard: "Сбросить макет", newBoxTxt: "Введите здесь"
 },
 tr: {
-  dir: "ltr", pageTitle: "Reklam Stüdyosu — Omran AI", h1: "Reklam Stüdyosu — onunla konuşun, sonra tasarımınızı seçin",
+  dir: "ltr", pageTitle: "Reklam Stüdyosu — om ai", h1: "Reklam Stüdyosu — onunla konuşun, sonra tasarımınızı seçin",
   sub: "Neyi tanıtmak istediğinizi kendi sözlerinizle anlatın, iki soruyu yanıtlayın, fotoğrafınızı yükleyin — seçmeniz için on tamamlanmış tasarım hazır olsun.", back: "← Uygulamaya dön", asstName: "Reklam asistanı",
   stepStart: "Başla", inpPh: "Buraya yazın…", gTitle: "On tasarım — birini seçin", dragHint: "Herhangi bir metni sürükleyin — dokunun, sonra büyütün veya küçültün", ratioTitle: "Oluşturulan görsel oranı", rSquare: "◻ Kare",
   rTall: "▯ Dikey", rWide: "▭ Yatay", genBtn: "Reklamı görsel olarak oluştur", bgLight: "Açık arka plan", bgDark: "Koyu arka plan", resetAll: "Her şeyi sıfırla", zoomHint: "Kapatmak için herhangi bir yere dokunun",
@@ -610,7 +610,7 @@ tr: {
   edHint: "Yazmak için herhangi bir metne, yüklemek için herhangi bir görsele dokunun; × öğeyi siler.", addBox: "Metin kutusu", zoomB: "Büyüt", resetBoard: "Panoyu sıfırla", newBoxTxt: "Buraya yazın"
 },
 es: {
-  dir: "ltr", pageTitle: "Estudio de anuncios — Omran AI", h1: "Estudio de anuncios — habla con él y elige tu diseño",
+  dir: "ltr", pageTitle: "Estudio de anuncios — om ai", h1: "Estudio de anuncios — habla con él y elige tu diseño",
   sub: "Describe lo que quieres anunciar con tus palabras, responde dos preguntas, sube tu foto y tendrás diez diseños listos para elegir.", back: "← Volver a la aplicación", asstName: "Asistente de anuncios",
   stepStart: "Empezar", inpPh: "Escribe aquí…", gTitle: "Diez diseños — elige uno", dragHint: "Arrastra cualquier texto — tócalo y hazlo más grande o pequeño", ratioTitle: "Proporción de imagen generada",
   rSquare: "◻ Cuadrado", rTall: "▯ Vertical", rWide: "▭ Horizontal", genBtn: "Generar el anuncio como imagen", bgLight: "Fondo claro", bgDark: "Fondo oscuro", resetAll: "Restablecer todo",
