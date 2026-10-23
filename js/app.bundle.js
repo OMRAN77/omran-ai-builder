@@ -3498,7 +3498,8 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
+    // v-om-voices-chat: src 'reply' = «استمع» على ردّ المحادثة؛ للمالك يقرأ الخادم بأصوات om (api/_lib/om-voices.js)
+    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -3718,6 +3719,14 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
         try{ url = await ensureFetched(i); }
         catch(e){
           if(currentCloudToken !== token) return;
+          /* v-om-voices-chat (المالك: «ليش تتدخل مها… الأصوات بس»): خلص حدّ أصوات om اليوميّ ⇐ رسالة الحدّ
+             المترجمة نفسها (portraitLimitReached) ويقف الصوت — لا مها ولا صوت الجهاز بدلها. */
+          if(e && e.message === 'om-quota'){
+            currentCloudToken = null; currentCloudAudio = null; clearWordHighlight();
+            try{ if(typeof settingsToast === 'function') settingsToast(t('portraitLimitReached')); }catch(err){ __swallow(err, 'tts:om-quota-toast'); }
+            if(onEnd) onEnd();
+            return;
+          }
           if('speechSynthesis' in window){
             currentCloudToken = null; currentCloudAudio = null;
             speakOnDevice(chunks[i].wordStart, started);
@@ -49831,9 +49840,13 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var t = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null), n;
     while((n = t.nextNode())){ if(n.nodeType === 3) fixText(n); else fixAttrs(n); }
   }
-  var queue = [], timer = 0;
-  function flush(){ timer = 0; var q = queue; queue = []; q.forEach(walk); }
-  function schedule(n){ queue.push(n); if(!timer) timer = setTimeout(flush, 40); }
+  /* v-no-emoji-flash (المالك ٢٣ أكتوبر بلقطة «أنماط الصور»: «إذا اختار أي صورة من الأنماط تستوي حركة قوية عند جرّب على صورتك»):
+     التنظيف كان بعد ٤٠ م.ث (setTimeout) فيُرسم النصّ بإيموجيه إطارًا أو اثنين ثمّ يُقصّ — «✨ جرّب على صورتك» يكبر ١٧ بكسل ثمّ يرجع،
+     والنجمة و📁 تقفزان معه في كلّ اختيار (قيس في الإنتاج: ١٥٠←١٦٧←١٥٠ خلال ~٥٠ م.ث). المراقب يُسلَّم في مهمّة دقيقة قبل الرسم،
+     فالتنظيف داخله = لا إطار بالإيموجي أبدًا، في كلّ نصّ يُكتب بإيموجي لا هذا الزرّ وحده. */
+  var queue = [];
+  function flush(){ var q = queue; queue = []; q.forEach(walk); }
+  function schedule(n){ queue.push(n); }
   function start(){
     if(!document.body) return;
     walk(document.body);
@@ -49844,6 +49857,7 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
           else if(m.type === 'characterData') schedule(m.target);
           else if(m.type === 'attributes') schedule(m.target);
         });
+        flush(); /* قبل الرسم */
       }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label'] });
     }catch(e){ __swallow(e, 'clean-ui:observer'); }
   }
@@ -50454,10 +50468,20 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     var s = surfaceOf(el);
     return !!s && s.backgroundImage === 'none' && s.backgroundColor === bg;
   }
+  /* v-om3-still (المالك ٢١ أكتوبر: «صفحة الفيديوات فيها وميض»): التصنيف يزيل الأصناف ثمّ يقرأ الأسلوب ثمّ يعيدها، والقراءة تُثبّت
+     الحالة بلا أصناف — فعنصر له انتقال (تبويبات صانع الفيديو: حدّ .15s) يبدأ انتقالًا إلى حدّه الأصليّ ثمّ يعود، وtransitionend يعيد
+     تصنيفه فيبدأ انتقالًا جديدًا: حلقة لا تنتهي (قيس في الإنتاج: ٢٤٤ transitionend و٢٤٤ تبديل صنف في ٥ ث، والحدّ يومض بين الشفّاف
+     والظاهر). om3-still (transition:none) طوال القياس، ثمّ تثبيت الأسلوب النهائيّ قبل إزالته — فلا انتقال يبدأ ولا حلقة. */
   function mark(el, inTool){
     if(!el || el.nodeType !== 1 || SKIP[el.tagName] || el.closest('.om3-skip')) return;
+    var cs = getComputedStyle(el), still = /[1-9]/.test(cs.transitionDuration || '');
+    if(still) el.classList.add('om3-still');
     el.classList.remove('om3-line', 'om3-fill', 'om3-hot', 'om3-field');
-    var cs = getComputedStyle(el), bg0 = cs.backgroundColor; /* قبل om3-fill: التصنيف يقرأ لون الخانة نفسها */
+    var bg0 = cs.backgroundColor; /* قبل om3-fill: التصنيف يقرأ لون الخانة نفسها (cs حيّ: يُقرأ بعد الإزالة) */
+    try{ classify(el, inTool, cs, bg0); }
+    finally{ if(still){ void cs.borderTopColor; el.classList.remove('om3-still'); } } /* الأسلوب النهائيّ يُثبَّت والانتقال معطَّل */
+  }
+  function classify(el, inTool, cs, bg0){
     if(lineOf(cs)){ el.classList.add('om3-line'); if(cs.cursor === 'pointer' || /^(BUTTON|A|INPUT|TEXTAREA|SELECT|LABEL)$/.test(el.tagName)) el.classList.add('om3-hot'); }
     if(inTool && !overImage(el, cs)){
       var bi = cs.backgroundImage;
@@ -50486,6 +50510,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
     schedule();
   }
   function start(){
+    /* v-om3-still: قاعدة القياس هنا لا في أدوات-أسود.css (ذاك للوضع الأسود وألوانه وحدها) — في head فلا يراها المراقب */
+    try{ var st = document.createElement('style'); st.id = 'om3StillCss'; st.textContent = '.om3-still{transition:none !important}'; document.head.appendChild(st); }catch(e){ __swallow(e, "three-colors:still-css"); }
     add(document.body);
     try{
       new MutationObserver(function(list){

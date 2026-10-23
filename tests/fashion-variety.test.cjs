@@ -300,3 +300,37 @@ test('١٠. النصوص الجديدة بالـ١٤ لغة، ووسوم الك�
   // الحزمة مبنيّة من الأجزاء (العدّاد ورقم التصميم فيها)
   assert.ok(R('js/app.bundle.js').includes("const FX_VARIANT_KEY = 'aiapp_fashion_variant';"));
 });
+
+test('١١. الوضع النصّيّ: الوصف أوّل الأمر والنمط واللوحة والمناسبة والموسم داخل جملة «لما تركه الوصف» (تدقيق ١٨ أكتوبر + الدفعة ٤: سهرة زرقاء طلعت كاجوال بيج)', async () => {
+  const r = await run({ mode: 'text', imageBase64: undefined, description: 'Long blue evening dress', style: 'casual', occasion: 'casual', season: 'winter', variant: 7 });
+  assert.equal(r.status, 200);
+  const p = r.prompt;
+  const iDesc = p.indexOf('Long blue evening dress');
+  const iStyle = p.indexOf('a casual everyday outfit style');
+  const iOpen = p.indexOf('Design direction for anything the description leaves open');
+  const iStudio = p.indexOf('Full-body studio fashion photography');
+  assert.ok(iDesc >= 0 && iStyle > iDesc, 'الوصف قبل وصف النمط');
+  assert.ok(iOpen > iDesc && iOpen < iStyle, 'النمط داخل الجملة المشروطة');
+  for (const k of ['Colour story for this design', 'The look is intended for', 'Dress for cold winter']) {
+    const i = p.indexOf(k);
+    assert.ok(i > iOpen && i < iStudio, k + ' داخل الجملة المشروطة لا بعدها');
+  }
+  assert.doesNotMatch(p.slice(0, iDesc), /casual/, 'لا «wearing casual» قبل الوصف');
+  assert.match(p, /wearing exactly the outfit/);
+  // لون اختاره المستخدم يبقى تابعًا للوصف أيضًا، والإضافات والفئة كما هي
+  const col = await run({ mode: 'text', imageBase64: undefined, description: 'Long blue evening dress', style: 'casual', colors: ['Beige'], extras: ['Watch'], variant: 7 });
+  const iCol = col.prompt.indexOf('Preferred colour palette: Beige');
+  assert.ok(iCol > col.prompt.indexOf('Design direction') && iCol < col.prompt.indexOf('Full-body studio'), 'لوحة المستخدم داخل الجملة المشروطة');
+  assert.match(col.prompt, /The outfit must be womenswear\./);
+  assert.match(col.prompt, /Add these accessories: /);
+});
+
+test('١٢. المقارنة (fairness) على أمرها القديم: النمط المختار صراحةً أوّلًا ويُفرض — وإلّا خرجت البطاقات الثلاث الفستانَ نفسه', async () => {
+  const r = await run({ mode: 'text', imageBase64: undefined, fairness: true, description: 'Long blue evening dress', style: 'casual', occasion: 'casual', season: 'winter', variant: 7 });
+  assert.equal(r.status, 200);
+  const p = r.prompt;
+  assert.ok(p.indexOf('wearing a casual everyday outfit style') >= 0 && p.indexOf('wearing a casual everyday outfit style') < p.indexOf('Long blue evening dress'), 'النمط قبل الوصف');
+  assert.doesNotMatch(p, /wearing exactly the outfit|use these only for details it does not specify/);
+  assert.ok(p.indexOf('Dress for cold winter') > p.indexOf('Full-body studio'), 'الموسم بعد الجملة كما كان');
+  assert.match(p, /Use the same model appearance across this comparison set\./);
+});
