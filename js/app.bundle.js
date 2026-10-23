@@ -50513,12 +50513,23 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
      اختيار محرّك يضيف ٢٧–٥٣ عنصرًا فيُصنَّف كلّه قبل الرسم؛ والميزانيّة ١٢٠ لا ٤٠٠ — بـ٤٠٠ بقي الفتح ٤٨٥–٦٥٢ م.ث (عشرات الأشجار الصغيرة في نداء واحد). */
   var SYNC_MAX = 120, budget = SYNC_MAX;
   function markNow(list){ for(var i = 0; i < list.length; i++){ var el = list[i]; if(el.isConnected) mark(el, !!el.closest(TOOLS)); } }
+  /* الفوريّ للظاهر على الشاشة وحده (بالميزانيّة) والباقي للفراغ: فتح صانع الفيديو يضيف ١٠٣٢ عنصرًا منها ~٥٦ ظاهرة، وكانت كلّها
+     تُؤجَّل فيُرسم شريط المحرّكات بحدوده الذهبيّة إطارًا (٢٨ عنصرًا يومض عند الفتح، قيس) — المستطيلات تُقرأ كلّها قبل أيّ كتابة (تخطيط واحد) */
+  /* عموديًّا فقط: تبويبات الشريط المنزلق على الجوّال خارج الشاشة أفقيًّا تُصنَّف معه فلا تومض إن سُحب */
+  function onScreen(el, H){ var r = el.getBoundingClientRect(); return (r.width > 0 || r.height > 0) && r.bottom > 0 && r.top < H; }
   function add(node, shallow, now){
     if(!node || node.nodeType !== 1) return;
     var all = shallow ? [] : node.getElementsByTagName('*');
-    if(now && all.length + 1 <= budget){ budget -= all.length + 1; markNow([node]); markNow(all.length ? Array.prototype.slice.call(all) : []); return; }
+    if(now){
+      var list = [node].concat(Array.prototype.slice.call(all)), vis = [], H = window.innerHeight || 0, i;
+      for(i = 0; i < list.length; i++){ if(vis.length < budget && onScreen(list[i], H)) vis.push(list[i]); else push(list[i]); }
+      budget -= vis.length;
+      markNow(vis);
+      if(vis.length < list.length) schedule();
+      return;
+    }
     push(node);
-    for(var i = 0; i < all.length; i++) push(all[i]);
+    for(i = 0; i < all.length; i++) push(all[i]);
     schedule();
   }
   function start(){

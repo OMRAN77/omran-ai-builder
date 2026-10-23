@@ -18,8 +18,9 @@ const pick = (src, from, to) => { const a = src.indexOf(from), b = src.indexOf(t
 /** طابور app-41 الحقيقيّ (push/add/pump/schedule/markNow) فوق mark وهميّ يسجّل، ووقت فراغ لا يأتي أبدًا */
 function queue41() {
   const marked = [], idle = [];
-  const node = (n, kids) => ({ nodeType: 1, isConnected: true, id: n, closest: () => null, getElementsByTagName: () => kids || [] });
-  const sb = { window: { requestIdleCallback: (f, o) => { idle.push(f); return 1; } }, WeakSet, setTimeout: (f) => { idle.push(f); return 1; }, document: {},
+  const node = (n, kids, off) => ({ nodeType: 1, isConnected: true, id: n, closest: () => null, getElementsByTagName: () => kids || [],
+    getBoundingClientRect: () => (off ? { width: 0, height: 0, top: 0, bottom: 0 } : { width: 100, height: 40, top: 100, bottom: 140 }) });
+  const sb = { window: { requestIdleCallback: (f, o) => { idle.push(f); return 1; }, innerHeight: 800 }, WeakSet, setTimeout: (f) => { idle.push(f); return 1; }, document: {},
     TOOLS: '#x', mark: (el) => marked.push(el.id) };
   sb.window.requestIdleCallback = (f) => { idle.push(f); return 1; };
   vm.runInNewContext(pick(src41, '  /* طابور عناصر', '  function start(){') + '\nthis.add=add;this.itemsOf=function(){return items;};', sb);
@@ -43,18 +44,20 @@ test('١. app-41: الدفعة الصغيرة من المراقب تُصنَّف
   assert.deepEqual(q3.marked, ['x'], 'تغيّر style أو transitionend: العنصر وحده فورًا');
 });
 
-test('٢. app-41: دفعة أكبر من الميزانيّة (١٢٠) لا تُصنَّف فورًا (لا مهمّة طويلة على أندرويد) بل في وقت الفراغ', () => {
+test('٢. app-41: الفوريّ بالميزانيّة (١٢٠) لكلّ نداء — ما فوقها يُؤجَّل إلى وقت الفراغ (لا مهمّة طويلة على أندرويد)', () => {
   const q = queue41();
   const kids = Array.from({ length: 450 }, (_, i) => q.node('k' + i));
   q.add(q.node('big', kids), false, true);
-  assert.deepEqual(q.marked, [], 'ما فوق SYNC_MAX يُؤجَّل');
-  assert.equal(q.items().length, 451);
+  assert.equal(q.marked.length, 120, 'أوّل ١٢٠ ظاهرة بترتيب الصفحة');
+  assert.deepEqual(q.marked.slice(0, 2), ['big', 'k0']);
+  assert.equal(q.items().length, 331, 'الباقي في الطابور');
   assert.equal(q.idle.length, 1);
   assert.ok(src41.includes('var SYNC_MAX = 120, budget = SYNC_MAX;'));
   assert.ok(src41.includes("if(r.type === 'childList'){ for(var j = 0; j < r.addedNodes.length; j++) add(r.addedNodes[j], false, true); }") && src41.includes('else add(r.target, true, true);'), 'المراقب يطلب التصنيف الفوريّ');
   assert.ok(src41.includes("{ budget = SYNC_MAX; add(e.target, true, true); } }, true);"), 'transitionend كذلك');
   assert.ok(src41.includes('    add(document.body);\n'), 'الفحص الأوّل بلا now');
-  assert.ok(src41.includes('if(now && all.length + 1 <= budget){ budget -= all.length + 1; markNow([node]);'), 'الفوريّ بعناصر التغيّر نفسه وبالميزانيّة');
+  assert.ok(src41.includes('if(vis.length < budget && onScreen(list[i], H)) vis.push(list[i]); else push(list[i]);') && src41.includes('budget -= vis.length;'), 'الفوريّ للظاهر من عناصر التغيّر نفسه وبالميزانيّة');
+  assert.ok(src41.includes('return (r.width > 0 || r.height > 0) && r.bottom > 0 && r.top < H; }'), 'الظاهر: له مقاس وفي ارتفاع الشاشة (لا أفقيًّا: الشريط المنزلق)');
 });
 
 test('٣. CSS: لا توهّج لمس افتراضيّ على أيّ عنصر، في أوّل redesign.css (كلّ الأوضاع — بلا-خطوط.css للأسود وحده)، والوسم مرفوع؛ والحزمة مبنيّة', () => {
@@ -68,21 +71,23 @@ test('٣. CSS: لا توهّج لمس افتراضيّ على أيّ عنصر، 
   assert.ok(bundle.includes('var SYNC_MAX = 120, budget = SYNC_MAX;') && bundle.includes('function markNow(list){'), 'شغّل npm run bundle');
 });
 
-test('٤. app-41: التغيّر الصغير لا يفرّغ طابور الفتح المؤجَّل (كان ٨٢٠–٨٧٠ م.ث متواصلة عند فتح صانع الفيديو على جوّال بمعالج ×٤)، والميزانيّة لكلّ نداء', () => {
+test('٤. app-41: فتح النافذة يصنّف ظاهرها فورًا ويؤجّل المخفيّ، والتغيّر الصغير بعده لا يفرّغ الطابور المؤجَّل (كان ٨٢٠–٨٧٠ م.ث عند فتح صانع الفيديو على جوّال بمعالج ×٤)', () => {
   const q = queue41();
-  const big = Array.from({ length: 844 }, (_, i) => q.node('o' + i));
+  const big = Array.from({ length: 844 }, (_, i) => q.node('o' + i, null, i >= 50));
   q.add(q.node('modal', big), false, true);
-  assert.equal(q.items().length, 845, 'فتح النافذة (٨٤٤) مؤجَّل كلّه');
+  assert.equal(q.marked.length, 51, 'النافذة و٥٠ عنصرًا ظاهرًا فورًا (شريط المحرّكات لا يومض بحدوده الذهبيّة عند الفتح)');
+  assert.equal(q.items().length, 794, 'المخفيّ (٧٩٤) مؤجَّل');
+  q.marked.length = 0;
   const tabKids = Array.from({ length: 46 }, (_, i) => q.node('t' + i));
   q.add(q.node('tabbar', tabKids), false, true);
-  assert.equal(q.marked.length, 47, 'اختيار محرّك (٤٧ عنصرًا) مصنَّف فورًا');
+  assert.equal(q.marked.length, 47, 'اختيار محرّك (٤٧ عنصرًا) مصنَّف فورًا رغم الطابور');
   assert.ok(q.marked.every((id) => !/^o/.test(id)), 'ولا عنصر من طابور الفتح صُنِّف معه');
-  assert.equal(q.items().length, 845, 'الطابور المؤجَّل كما هو');
-  // الميزانيّة: في نداء واحد ١٠٠ ثمّ ١٠٠ — الثانية تُؤجَّل (فتح النافذة عشرات الأشجار الصغيرة في نداء واحد)
+  assert.equal(q.items().length, 794, 'الطابور المؤجَّل كما هو');
+  // الميزانيّة لكلّ النداء لا لكلّ شجرة: ١٠٠ ثمّ ١٠٠ في نداء واحد ← ١٢٠ فورًا و٨٠ مؤجَّلة
   const q2 = queue41();
   q2.add(q2.node('a', Array.from({ length: 99 }, (_, i) => q2.node('a' + i))), false, true);
   q2.add(q2.node('b', Array.from({ length: 99 }, (_, i) => q2.node('b' + i))), false, true);
-  assert.equal(q2.marked.length, 100); assert.equal(q2.items().length, 100);
+  assert.equal(q2.marked.length, 120); assert.equal(q2.items().length, 80);
   assert.ok(src41.includes('budget = SYNC_MAX; /* ميزانيّة الفوريّ لكلّ نداء */') && src41.includes("{ budget = SYNC_MAX; add(e.target, true, true); }"), 'تتجدّد لكلّ نداء مراقب ولكلّ transitionend');
   assert.ok(!src41.includes('function drainNow'), 'لا تفريغ للطابور المؤجَّل من الفوريّ');
 });
