@@ -3,6 +3,12 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **إخفاء أداة يكذّب ملفّات المتجر:** `OMRAN_PAUSED_TOOLS` أخفى التلفزيون والسيرة الذاتيّة (١٠ أكتوبر) ولقطات هواوي ووصفها بقيت تعرضهما،
+  فرُفض 1.3.13 بقاعدة 1.14. أيّ إخفاء أو إظهار أداة = أعد `node store/huawei/shots.mjs` وحدّث REVIEW-NOTES (`hw-resubmit` يسقط حتّى تفعل).
+  ورصيد مزوّد فارغ يُسقط أدوات الصور لكلّ الطبقات: حساب تجربة مشترك لا يغني عن الشحن قبل Submit. (v-hw-resubmit-1313)
+- **أداة تبحر في `ui-shot --eval`:** «استوديو الإعلانات» `location.href='/ad-studio.html'` فيسقط التقييم بـ«Execution context was destroyed»
+  — صوّر المسار مباشرة (`--path`). و`await img.decode()` لكلّ صور المربّع قد يعلّق التشغيلة: سابقه بمهلة (`Promise.race` ٦ ث). (v-hw-resubmit-1313)
+
 - **حارس الردّ يسبق أيّ إعادة:** في مكالمة مها يرسل `mahaArmRtResponseWatchdog` طلب `response.create` بعد كلّ speech_stopped (٠٫٣٥/١٫٥ث)،
   فمؤقّت «إعادة» مستقلّ بعده لا يعمل أبدًا (الردّ الجديد يلغيه)، وقبله يصنع طلبين. اجعل الإعادة تمرّ عبر الحارس (`mahaRtFirstTake`) أو تلغيه —
   ظهر في المسبار وحده لا في اختبار الوحدة. (v-maha-first-heard)
@@ -14,6 +20,8 @@
   نجح في headless shell وفي كروم المثبَّت (headless وبنافذة) حتّى مع `--autoplay-policy=user-gesture-required`. ابدأ أيّ فحص صوت بشاهد بلا
   ضغطة؛ إن نجح فالمسبار يقيس الترتيب والتوقيت فقط، وقاعدة الإيماءة تُثبت على الجهاز (أثر `?diag=1`) أو في vm بنموذج صريح. وصمت التفعيل
   mp3 في `mahaUnlockAudio` لا يُفكّ (`NotSupportedError`) — استعمل WAV صالحًا (`MAHA_RT_SILENT_WAV`). (v-maha-first-audio)
+- **منظّف يعدّل الصفحة بعد مؤقّت يترك إطارًا يُرسم قبله:** `setTimeout(flush, 40)` في منظّف الإيموجي جعل كلّ نصّ يُكتب بإيموجي يُرسم به ثمّ يقفز (زرّ «جرّب على صورتك» ١٥٠←١٦٧←١٥٠). نظّف داخل نداء MutationObserver نفسه — يُسلَّم قبل الرسم. وعدّ الحالات المختلفة إطارًا إطارًا بـrequestAnimationFrame يكشف القفزة التي لا تراها اللقطة. (v-no-emoji-flash)
+- **قراءة الأسلوب بين إزالة صنف وإعادته تبدأ انتقالًا:** `getComputedStyle` يُثبّت الحالة الوسطى، فعنصر له `transition` ينتقل إليها ثمّ يعود، ومستمع `transitionend` يعيد العمليّة = حلقة ووميض بلا نهاية (app-41، تبويبات صانع الفيديو). عطّل الانتقال بصنف مؤقّت طوال القياس وثبّت الأسلوب النهائيّ قبل إزالته. وعدّ `transitionend` في صفحة ساكنة يكشفها فورًا. (v-om3-still)
 - **ffmpeg: صورة واحدة بلا zoompan = إطار واحد مهما كان `-t`:** مدخل PNG واحد يعطي إطارًا واحدًا، وzoompan هو الذي كان يولّد إطارات الخانة. مقطع «صورة ثابتة» يحتاج `fps=30,tpad=stop_mode=clone:stop_duration=<الخانة>` (أو `-loop 1`). تحقّق بـ`ffprobe -show_entries stream=nb_frames` لا بأنّ الأمر خرج بصفر. (v-app-director-watchdog)
 - **ffmpeg قُتل بإشارة يخرج بلا رمز ولا stderr:** `child.on('close', (code) => …)` وحده يُخرج «failed:» فارغة. اقرأ `signal` أيضًا؛ SIGKILL بلا stderr على حاوية صغيرة = قاتل الذاكرة على الأرجح. (v-app-director-watchdog)
 - **`page.evaluate` في Playwright بلا مهلة:** `setDefaultTimeout` لا يشمله، فصفحة يعلّق خيطها بعد `load` تُوقف المتسلسل كلّه. ضع مهلة خارجيّة (`Promise.race`) وأغلق الصفحة العالقة وافتح غيرها. (v-app-director-watchdog)

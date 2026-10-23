@@ -38,11 +38,39 @@ function stepLinkRatio(text) {
 }
 function arabicShare(text) {
   const a = (String(text).match(AR) || []).length;
-  const l = (String(text).replace(/```[\s\S]*?```/g, '').match(LA) || []).length;
+  const l = (String(text).replace(/```[\s\S]*?```/g, '').replace(/https?:\/\/[^\s)\]]+/g, '').match(LA) || []).length; // v-shot-reply: الرابط ليس لغة الردّ
   return a + l ? a / (a + l) : 0;
 }
 const has = (text, s) => String(text).toLowerCase().indexOf(String(s).toLowerCase()) !== -1;
 const anyOf = (text, alts) => (Array.isArray(alts) ? alts : [alts]).some((s) => has(text, s));
+
+/* v-shot-reply — شكل الردّ على لقطة الشاشة (فئة shot): مقارنة بلا تشكيل ولا علامات، أوّل سطر، الجدول، «أفضل ٣». */
+const loose = (s) => String(s || '').replace(/[ً-ْٰـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي')
+  .replace(/[*_`«»"'،,.:؛!؟?()[\]]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+const nonEmpty = (text) => lines(text).map((l) => l.trim()).filter(Boolean);
+const firstLine = (text) => (nonEmpty(text)[0] || '').replace(/^[\s#>*_\-•\p{Extended_Pictographic}️]+/u, '');
+const INTRO = /^(?:في\s+(?:هذه\s+)?(?:الصورة|اللقطة|الشاشة)|(?:هذه|الصورة|اللقطة|الشاشة)\s+(?:الصورة|اللقطة|الشاشة|صفحة|شاشة|تعرض|تظهر|توضح)|(?:تظهر|يظهر|تعرض|أرى|ارى)\s)/;
+const REASON = /\S\s*(?:—|–|-|:)\s*\S.{3,}/;
+function tableOf(text) {
+  const ls = lines(text);
+  const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((x) => x.trim());
+  for (let i = 0; i + 1 < ls.length; i++) {
+    if (!/\|/.test(ls[i]) || !/^\s*\|?\s*:?-{3,}/.test(ls[i + 1])) continue;
+    const rows = [];
+    for (let j = i + 2; j < ls.length && /\|/.test(ls[j]); j++) rows.push(cells(ls[j]));
+    return { head: cells(ls[i]), rows };
+  }
+  return null;
+}
+/* البنود المرقّمة بعد آخر سطر «أفضل ٣» مباشرةً — سطر غير مرقّم (سبب نزل لسطر ثانٍ) يقطعها. */
+function top3Of(text) {
+  const ls = nonEmpty(text);
+  const k = ls.findLastIndex((l) => /أفضل\s*(?:3|٣|ثلاث)/.test(l));
+  if (k === -1) return null;
+  const items = [];
+  for (let j = k + 1; j < ls.length && NUM_LINE.test(ls[j]); j++) items.push(ls[j].replace(NUM_LINE, ''));
+  return items;
+}
 
 /* يعيد قائمة الفحوص: { name, pass, detail } — الفحوص العامّة لكلّ سؤال + فحوص السؤال نفسه. */
 function checkReply(question, run) {
@@ -75,6 +103,15 @@ function checkReply(question, run) {
   if (c.codeBlock) add('صندوق كود', /```/.test(text));
   if (c.arabic && question.cat === 'code') add('عربيّ', arabicShare(text) >= 0.5);
   if (c.noPhone) add('بلا رقم خاصّ', !PHONE.test(text));
+  if (c.firstLineAny) add('أوّل سطر جواب', c.firstLineAny.some((s) => loose(firstLine(text)).includes(loose(s))), firstLine(text).slice(0, 60));
+  if (c.noIntro) add('بلا وصف للّقطة', !INTRO.test(firstLine(text)), firstLine(text).slice(0, 40));
+  if (c.maxVerbatim) { const n = c.maxVerbatim.texts.filter((s) => loose(text).includes(loose(s))).length; add('نصوص اللقطة ≤' + c.maxVerbatim.max, n <= c.maxVerbatim.max, n); }
+  if (c.tableCols) { const t = tableOf(text); add('أعمدة: ' + c.tableCols.join(' · '), !!t && c.tableCols.every((col, i) => loose(t.head[i]).includes(loose(col))), t ? t.head.join(' | ') : 'بلا جدول'); }
+  if (c.tableRows) { const t = tableOf(text); add('صفوف ≥' + c.tableRows, !!t && t.rows.length >= c.tableRows, t ? t.rows.length : 0); }
+  if (c.top3) { const it = top3Of(text); add('أفضل ٣ بسبب في سطر', !!it && it.length === 3 && it.every((l) => REASON.test(l)), it ? it.length : 'بلا سطر «أفضل ٣»'); }
+  if (c.maxLines) { const n = nonEmpty(text).length; add('أسطر ≤' + c.maxLines, n <= c.maxLines, n); }
+  if (c.phrase) add('العبارة: ' + c.phrase, loose(text).includes(loose(c.phrase)));
+  if (c.linkIncludes) add('رابط ' + c.linkIncludes, links(text).some((u) => u.includes(c.linkIncludes)), links(text).join(' '));
   return out;
 }
 
@@ -110,7 +147,7 @@ function compare(prev, cur) {
   return { overallFrom: prev.summary && prev.summary.overall, overallTo: cur.summary.overall, up, down };
 }
 
-const CAT_AR = { guide: 'الإرشاد بين المواقع', live: 'معلومات حيّة', knowledge: 'معرفة عامّة', format: 'الترتيب والتنسيق', dialect: 'اللهجة والحوار', code: 'البرمجة', math: 'الحساب', memory: 'الذاكرة', writing: 'الكتابة', honesty: 'الصدق' };
+const CAT_AR = { guide: 'الإرشاد بين المواقع', live: 'معلومات حيّة', knowledge: 'معرفة عامّة', format: 'الترتيب والتنسيق', dialect: 'اللهجة والحوار', code: 'البرمجة', math: 'الحساب', memory: 'الذاكرة', writing: 'الكتابة', honesty: 'الصدق', shot: 'لقطات الشاشة' };
 
 function report(cur, cmp) {
   const s = cur.summary;
