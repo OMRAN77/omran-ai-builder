@@ -60,6 +60,25 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // v-om-voices-chat: «استمع» على ردود المحادثة (src: 'reply') للمالك وحده بأصوات «أصوات om» بدل مها
+    // (api/_lib/om-voices.js). عند حدّها اليوميّ ⇐ om-quota فيُظهر العميل رسالة الحدّ ولا يقرأ بصوت آخر.
+    // مكالمة مها وبقيّة الأدوات لا ترسل src فلا تتغيّر، ولغة لا ينطقها المحرّك تبقى بمها.
+    if (voice === 'maha' && body.src === 'reply') {
+      const om = require('./om-voices.js');
+      if (om.enabledFor(usage.username, lang)) {
+        try {
+          const wav = await om.speak({ text, lang, gender });
+          res.setHeader('Content-Type', 'audio/wav');
+          res.setHeader('Cache-Control', 'no-store');
+          res.status(200).send(wav);
+        } catch (e) {
+          const quota = e && e.code === 'om_quota';
+          res.status(quota ? 429 : 502).json({ error: quota ? 'om-quota' : (e && e.message) || 'om-failed', code: quota ? 'om_quota' : 'om_failed' });
+        }
+        return;
+      }
+    }
+
     // Special voice "maha" -> Azure Neural TTS. Maha is multilingual: the
     // voice locale is picked based on the language actually spoken by the
     // caller (detected server-side by Whisper in api/stt.js and passed
