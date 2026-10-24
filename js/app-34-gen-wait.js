@@ -99,7 +99,7 @@
     /* v-trend-scene-live: نصوص الترندات تُكتب بلا إيموجي أصلًا (ui ← noEmoji) فلم تُعرف «مشغولة» قطّ بالمسار الحقيقيّ — «مشغول» سمة
        صريحة تضبطها اللوحة نفسها (busyAttr)، تصمد لكلّ لغة ولتبدّل النصّ («المشهد ٢ من ٣…»، العدّ التنازليّ بين المشاهد). */
     { id: 'vtrend', sel: '#vtStatus', kind: 'vtrend', busyAttr: 'data-genw-busy', scroll: true },
-    /* v-scene-kinds: الديكور — المشهد مكان صندوق الأفكار والرفع (#designAiIdeas) ويُخفى ما دام هو والنتيجة السابقة */
+    /* v-scene-kinds: الديكور — المشهد مكان صندوق الأفكار (#designAiIdeas، تحت الرفع منذ v-decor-upload-top) ويُخفى ما دام هو والنتيجة السابقة؛ الرفع لا يُخفى */
     { id: 'decor', sel: '#designAiStatus', kind: 'decor',
       busy: ['🎨'],
       scope: '#designAiModal', topSel: '#designAiIdeas', top: ['🎨'],

@@ -182,7 +182,9 @@ test('١٠ __compressImg: HEIC يُحوَّل قبل الأداة، والفشل
 
 test('١١ الديكور: صورتك الظاهرة تُرسل ولو اختير مكان من الملصق قبلها، وإعادة التحديث لا تقع والأداة مفتوحة', () => {
   const S2 = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-12-studios.js'), 'utf8');
-  assert.match(S2, /const photoOn = !!\(selectedBase64 && sourcePreview && sourcePreview\.style\.display !== 'none'\);[^\n]*\n\s*const placeVal = photoOn \? '' :/);
+  /* v-decor-ideas-ai: المعالج صار designRun(run) — «صمم الغرفة» run=null فيبقى الضمان نفسه؛ تشغيل صندوق الأفكار بلا صورة عمدًا */
+  assert.match(S2, /const photoOn = !run && !!\(selectedBase64 && sourcePreview && sourcePreview\.style\.display !== 'none'\);[^\n]*\n\s*const placeVal = run \? \(run\.place \|\| ''\) : \(photoOn \? '' :/);
+  assert.match(S2, /btnGenerate\.onclick = \(\) => designRun\(null\);/);
   const SD = fs.readFileSync(path.join(__dirname, '..', 'js', 'selfdiag.js'), 'utf8');
   const busy = SD.slice(SD.indexOf('var __v653Busy'), SD.indexOf('var __v653Go'));
   assert.match(busy, /window\.omranSwipeBack && window\.omranSwipeBack\.top\(\)\) return true;/, 'منتقي الصور يخفي الصفحة والأداة مفتوحة: لا إعادة تحميل');

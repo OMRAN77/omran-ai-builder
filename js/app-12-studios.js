@@ -74,19 +74,25 @@ async function __safeJson(res){
   const sourcePreview = $('#designAiSourcePreview');
   const placeEl = $('#designAiPlace');
   const gridEl = $('#designAiGrid');
+  /* v-decor-upload-top (المالك ٢٤ أكتوبر: «اذا فتحت الأفكار خاصية التحميل ماتسكر»): مربّع الرفع أوّل النافذة ولا يُخفى أبدًا — كان syncPlace
+     (v-decor-place-sync) يخفيه مع أيّ مكان: من المعرض، أو عند إعادة فتح النافذة بعد نقطة في البوستر (تكتب المكان بلا change).
+     «نوع المكان» يبقى صادقًا: مكان مختار = تصميم بلا صورة، فتُخفى المعاينة وحدها ويقول المربّع «لم يتم اختيار ملف» (الصورة لا تُرسل —
+     لا إسقاط بلا تنبيه)، و«من صورتي» يعيدهما. وصندوق الأفكار لا يكتب المكان ما دامت صورة مرفوعة (ideaPlace) — تصفّح الأفكار لا يمسّ الرفع. */
   function syncPlace(){
     const on = !!(placeEl && placeEl.value);
-    const dz = modal.querySelector('.dzArea');
-    /* v-decor-place-sync (تدقيق ١٨ أكتوبر + أمر المالك ٢٠ أكتوبر، الدفعة ٤: «الديكور يحذف الصورة بدون تنبيه»): ‎.omUpArt{display:block !important}‎
-       (v-upload-art) كان يغلب الإخفاء المضمَّن العاديّ، فبقي مربّع الرفع واسم الملفّ ظاهرين مع المكان والصورة لا تُرسل. المضمَّن المهمّ يغلب مهمّ ورقة الأنماط. */
-    if(dz){ if(on) dz.style.setProperty('display', 'none', 'important'); else dz.style.removeProperty('display'); }
-    /* والرجوع إلى «من صورتي» يعيد معاينة الصورة المرفوعة (كانت تبقى مخفيّة والصورة تُرسل) */
     if(sourcePreview) sourcePreview.style.display = (!on && selectedBase64) ? 'block' : 'none';
+    if(selectedFile) fileLabel(on ? '' : selectedFile.name);
   }
-  /* بطاقة «نوع المكان» (selTrigger في design-sels) تتبع ما تكتبه نقاط البوستر ورقائقه بلا change — فلا يُخفى مربّع الرفع لمجرّد تصفّح الأفكار */
-  function placeCard(){ try{ if(placeEl && placeEl.__tr) placeEl.__tr.refresh(); }catch(e){ __swallow(e, 'decor:place-card'); } }
+  /* v-decor-file-lang: السطر يحمل data-i18n="fileNoneChosen" فكان تبديل اللغة (applyLanguage يكتب كلّ [data-i18n]) يعيده «لم يتم اختيار ملف»
+     وصورتك مرفوعة. اسم الملفّ يُكتب بلا المفتاح، و«لا ملفّ» يعيده فيُترجم مع اللغة كما كان. */
+  function fileLabel(name){
+    if(!fileNameEl) return;
+    if(name){ fileNameEl.removeAttribute('data-i18n'); fileNameEl.textContent = name; }
+    else { fileNameEl.setAttribute('data-i18n', 'fileNoneChosen'); fileNameEl.textContent = t('fileNoneChosen'); }
+  }
+  /* بطاقة «نوع المكان» (selTrigger في design-sels) تتبع ما يكتبه صندوق الأفكار بلا change، والمعاينة معها */
+  function placeCard(){ try{ if(placeEl && placeEl.__tr) placeEl.__tr.refresh(); }catch(e){ __swallow(e, 'decor:place-card'); } syncPlace(); }
   if(placeEl) placeEl.addEventListener('change', syncPlace);
-  if(btnOpen) btnOpen.addEventListener('click', () => setTimeout(syncPlace, 0));
   const styleEl = $('#designAiStyle');
   const lightingEl = $('#designAiLighting');
   const furnitureEl = $('#designAiFurniture');
@@ -137,10 +143,10 @@ async function __safeJson(res){
     if(!file) return;
     if(suggestStatusEl) suggestStatus(''); /* v-decor-suggest-msg: «ارفع صورة الغرفة أولًا» تحت الزرّ لا يبقى بعد رفعها */
     selectedFile = file;
-    /* v-decor-place-sync: صورة جديدة ترجع «نوع المكان» إلى «من صورتي» (بحدث change فتتبعه البطاقة والمربّع) — كان المكان يُسقطها بلا تنبيه */
+    /* v-decor-place-sync: صورة جديدة ترجع «نوع المكان» إلى «من صورتي» (بحدث change فتتبعه البطاقة) — كان المكان يُسقطها بلا تنبيه */
     if(placeEl && placeEl.value){ placeEl.value = ''; placeEl.dispatchEvent(new Event('change', { bubbles: true })); }
     selectedMime = 'image/jpeg';
-    if(fileNameEl) fileNameEl.textContent = file.name;
+    fileLabel(file.name);
     __compressImg(file, function(dataUrl){
       if(!dataUrl){ selectedBase64 = ''; sourcePreview.style.display = 'none'; return; }
       selectedBase64 = dataUrl.split(',')[1] || '';
@@ -187,7 +193,7 @@ async function __safeJson(res){
         c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
         c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
         c.textContent = optName(o);
-        c.onclick = function(){ placeEl.value = o.value; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+        c.onclick = function(){ ideaPlace(o.value); };
         ideaChips.appendChild(c);
       });
     }
@@ -230,7 +236,7 @@ async function __safeJson(res){
           ' font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
         b.appendChild(cap);
       }
-      b.onclick = function(){ placeEl.value = o.value; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+      b.onclick = function(){ ideaPlace(o.value); };
       wrap.appendChild(b);
     });
 
@@ -255,8 +261,10 @@ async function __safeJson(res){
   function ideaStatus(txt){ if(!ideaStatusEl) return; ideaStatusEl.textContent = txt || ''; ideaStatusEl.style.display = txt ? 'block' : 'none'; }
   function noPhotos(){ return '😕 ' + bT('ما حصلت صورًا لهذا الطلب — جرّب وصفًا آخر، أو ولّد تصاميم بالذكاء.', 'No photos found for this — try another description, or generate AI designs.'); }
   let ideaReq = 0;
+  let lastIdea = null; /* v-decor-ideas-ai: آخر ما فُتح في صندوق الأفكار (مكان أو وصف) — «ولّد ٤ تصاميم» يولّده هو */
   async function loadIdeas(opts){
     const my = ++ideaReq;
+    lastIdea = { place: opts.place || '', q: opts.q || '' };
     if(ideaGallery){ ideaGallery.style.display = 'none'; ideaGallery.innerHTML = ''; }
     if(ideaAI) ideaAI.style.display = 'none';
     ideaStatus('⏳ ' + bT('أجمع لك صورًا وتصاميم…', 'Collecting photos and designs…'));
@@ -304,19 +312,30 @@ async function __safeJson(res){
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
   }
   if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button[data-place]'), function(c){
-    c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
+    c.onclick = function(){ ideaPlace(c.dataset.place); };
   });
+  /* v-decor-upload-top: مكان من صندوق الأفكار يُكتب في «نوع المكان» ما لم تكن صورتك المرفوعة قيد الاستعمال («من صورتي») — حينها تبقى
+     هي ما يُصمَّم والبطاقة «من صورتي» والمعاينة ظاهرة؛ وفي وضع المكان (اختير من المعرض) تبدّله النقطة كما بلا صورة */
+  function ideaPlace(v){
+    if(placeEl && !(selectedBase64 && !placeEl.value)){ placeEl.value = v; placeCard(); }
+    if(ideaText) ideaText.value = '';
+    loadIdeas({ place: v });
+  }
   if(ideaGo) ideaGo.onclick = function(){
     const v = ideaText ? ideaText.value.trim() : '';
     if(!v){ ideaStatus(bT('اكتب ما تريد أو اختر نوع المكان.', 'Describe what you want or pick a place.')); return; }
-    if(placeEl) placeEl.value = '';
-    placeCard();
+    if(placeEl && !selectedBase64){ placeEl.value = ''; placeCard(); }
     loadIdeas({ q: v });
   };
   if(ideaAI) ideaAI.onclick = async function(){
     ideaAI.disabled = true;
     ideaStatus('⏳ ' + bT('يولّد ٤ تصاميم بالذكاء… نحو دقيقة', 'Generating 4 AI designs… about a minute'));
-    try{ await btnGenerate.onclick(); }finally{ ideaAI.disabled = false; }
+    /* v-decor-ideas-ai: كان ينادي «صمم الغرفة» نفسه فيصمّم صورتك المرفوعة (تصميمًا واحدًا) والزرّ يقول ٤ تصاميم بلا صورة. الآن بلا صورتك دائمًا:
+       النصّ الظاهر في السطر (وإلّا آخر وصف فُتح)، والمكان من «نوع المكان» كما كان — إلّا وصورتك قيد الاستعمال فالأفكار لا تكتبه، فمن آخر نقطة. */
+    const q = (ideaText ? ideaText.value.trim() : '') || (lastIdea ? lastIdea.q : '');
+    const photoInUse = !!(selectedBase64 && !(placeEl && placeEl.value));
+    const pl = (photoInUse ? (lastIdea ? lastIdea.place : '') : (placeEl ? placeEl.value : '')) || (q ? 'custom' : '');
+    try{ await designRun(pl ? { place: pl, idea: q } : null); }finally{ ideaAI.disabled = false; }
     ideaStatus('');
     try{
       const target = (gridEl && gridEl.style.display !== 'none') ? gridEl : ((resultEl && resultEl.style.display !== 'none') ? resultEl : statusEl);
@@ -326,12 +345,18 @@ async function __safeJson(res){
   if(ideaAI) ideaAI.textContent = '🎨 ' + bT('ولّد ٤ تصاميم بالذكاء الاصطناعي', 'Generate 4 AI designs');
   if(ideaText) ideaText.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); if(ideaGo) ideaGo.onclick(); } });
 
-  btnGenerate.onclick = async () => {
-    const idea = ideaText ? ideaText.value.trim() : '';
-    const photoOn = !!(selectedBase64 && sourcePreview && sourcePreview.style.display !== 'none'); // v-tool-drop: صورة المستخدم الظاهرة تُرسل — مكان من الملصق قبلها كان يُسقطها بصمت
-    const placeVal = photoOn ? '' : ((placeEl ? placeEl.value : '') || (idea && !selectedBase64 ? 'custom' : ''));
+  /* run: null = «صمم الغرفة» (صورتك الظاهرة، وإلّا «نوع المكان»)؛ {place, idea} = تشغيل بلا صورة — من صندوق الأفكار (v-decor-ideas-ai)،
+     أو «زوّدني مثله» على شبكة بمكانها نفسه. */
+  async function designRun(run){
+    const idea = run ? (run.idea || '') : (ideaText ? ideaText.value.trim() : '');
+    const photoOn = !run && !!(selectedBase64 && sourcePreview && sourcePreview.style.display !== 'none'); // v-tool-drop: صورة المستخدم الظاهرة تُرسل — مكان من الملصق قبلها كان يُسقطها بصمت
+    const placeVal = run ? (run.place || '') : (photoOn ? '' : ((placeEl ? placeEl.value : '') || (idea && !selectedBase64 ? 'custom' : '')));
+    /* v-decor-before-pin: الصورة تُلتقط عند البدء — صورة ثانية تُرفع أثناء التوليد كانت تصير «قبل» في السحّاب لنتيجة الأولى */
+    const srcB64 = placeVal ? '' : selectedBase64;
+    const srcMime = selectedMime;
+    const again = run || (placeVal ? { place: placeVal, idea } : null); /* «زوّدني مثله» يعيد مكان شبكته ولو رُفعت صورة بعدها (كان يقرأ الحالة الحاليّة) */
     const notesEl = document.getElementById('designAiNotes');
-    if(!selectedBase64 && !placeVal){
+    if(!srcB64 && !placeVal){
       setStatus(t('designAiNeedPick'));
       return;
     }
@@ -356,10 +381,10 @@ async function __safeJson(res){
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageBase64: placeVal ? '' : selectedBase64,
-          mimeType: selectedMime,
+          imageBase64: srcB64,
+          mimeType: srcMime,
           place: placeVal,
-          count: selectedBase64 ? 1 : 4,
+          count: srcB64 ? 1 : 4, /* المكان ٤ تصاميم ولو بقيت صورتك في الذاكرة (كان selectedBase64 ? 1 : 4) */
           notes: ((placeVal && idea ? idea + '. ' : '') + (notesEl ? String(notesEl.value || '') : '')).slice(0, 400),
           variantOf: variantSrc || '',
           style: styleEl.value,
@@ -409,7 +434,7 @@ async function __safeJson(res){
           vb.className = 'btn';
           vb.textContent = bT('\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647','\u2728 More like this');
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
-          vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; btnGenerate.onclick(); };
+          vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; designRun(again); };
           cell.appendChild(vb);
           gridEl.appendChild(cell);
         });
@@ -419,7 +444,7 @@ async function __safeJson(res){
       }
       const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
       // v-decor-ba: مع صورة مرفوعة السحّاب يعرض قبل/بعد؛ وبدونها صورة عادية.
-      if(selectedBase64 && !placeVal && showBeforeAfter('data:' + selectedMime + ';base64,' + selectedBase64, dataUrl)){
+      if(srcB64 && showBeforeAfter('data:' + srcMime + ';base64,' + srcB64, dataUrl)){
         resultEl.style.display = 'none';
       } else {
         resultEl.src = dataUrl;
@@ -434,7 +459,8 @@ async function __safeJson(res){
     } finally {
       btnGenerate.disabled = false;
     }
-  };
+  }
+  btnGenerate.onclick = () => designRun(null);
 
   /* v-decor-suggest-msg (تدقيق ١٨ أكتوبر): رسائل «اقترح لي أفكار» كانت في #designAiStatus تحت «صمم الغرفة» — حاسوب top 1047 من 900،
      جوّال أبعد من الشاشة بـ650px — فلا يرى المستخدم شيئًا جنب الزرّ. سطرها تحت زرّها يُنشأ مرّة (بلا لمس partials-core).
@@ -537,8 +563,8 @@ async function __safeJson(res){
   window.__designBAHide = baHide;
   window.__designSourceUrl = function(){ return selectedBase64 ? ('data:' + selectedMime + ';base64,' + selectedBase64) : ''; };
 
-  /* v-scene-kinds (المالك ١١ أكتوبر بصورة مشاهد الديكور: «والثانية للديكور… وكلّهم نفس الأفكار»): مشهد التوليد يُركَّب أعلى الاستوديو
-     مكان صندوق الأفكار والرفع (app-34-gen-wait، اللوحة decor). والنتيجة — سحّاب قبل/بعد أو الصورة المفردة أو شبكة التصاميم الأربعة —
+  /* v-scene-kinds (المالك ١١ أكتوبر بصورة مشاهد الديكور: «والثانية للديكور… وكلّهم نفس الأفكار»): مشهد التوليد يُركَّب مكان صندوق
+     الأفكار تحت الرفع (app-34-gen-wait، اللوحة decor؛ الرفع فوقه منذ v-decor-upload-top ولا يُخفى). والنتيجة — سحّاب قبل/بعد أو الصورة المفردة أو شبكة التصاميم الأربعة —
      وزرّ التحميل كانت تحت زرّ «صمم الغرفة» بلا تمرير إليها؛ تُنقل (العقد نفسها بمستمعيها) إلى قبل صندوق الأفكار، حيث كان المشهد،
      وبعرضه (٧٦٠ موسَّطة). */
   const DS_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };
