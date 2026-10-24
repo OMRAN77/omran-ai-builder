@@ -9,11 +9,12 @@
    ٣) ردّ الرصيد (/api/points) يحمل subs: تنبيه مرّة قبل انتهاء الاشتراك بثلاثة أيّام ومرّة بعد انتهائه، بزرّ «جدّد». */
 (function(){
   var GUARD_MS = 8000, NOTICE_DAYS = 3, DAY_MS = 86400000, lastOpen = 0, noticeShown = false;
-  var WHY = { points: 'plansWhyPoints', limit: 'plansWhyLimit', expired: 'plansWhyExpired', expiring: 'plansWhyExpiring' };
+  var WHY = { points: 'plansWhyPoints', limit: 'plansWhyLimit', expired: 'plansWhyExpired', expiring: 'plansWhyExpiring', subs: 'plansWhyVideoSubs' };
   /* رموز الوسائط والاستوديوهات وحدها: طلب واحد ونتيجته نهائيّة. حدّ المحادثة (subscribeOnly · engine_limit ·
      insufficient_points) لا يُلتقط هنا — مسارها يجرّب مزوّدًا بعد مزوّد وقد يجيب التالي، فتفتح الباقات من نهايتها
      (err.planLimit · free-limit · premiumNoPoints) لا من أوّل 402. */
-  var CODES = { points_insufficient: 'points', daily_limit_reached: 'limit' };
+  /* v-video-subs (قرار المالك ٢٤ أكتوبر: الفيديو للمشتركين): ٤٠٣ video_subscribers من خوادم الفيديو ← «صور وفيديو» (tabFor) بسطر السبب */
+  var CODES = { points_insufficient: 'points', daily_limit_reached: 'limit', video_subscribers: 'subs' };
   // v-media-merge: الصور والفيديو قسم واحد «صور وفيديو» — باقتهما القديمة والمدموجة (mix) تفتحانه.
   var TAB_OF_KIND = { chat: 'chat', mix: 'media', image: 'media', video: 'media', maha: 'maha' };
   var PLAN_NAME = { basic: 'Plus', pro: 'Pro', max: 'Max' };

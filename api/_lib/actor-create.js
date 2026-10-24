@@ -121,6 +121,7 @@ module.exports = async (req, res) => {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(body.token);
       if (!username) { res.status(401).json({ error: 'auth_required' }); return; }
+      if (await require('./_videoSubs.js').denyFree(res, username)) return; // v-video-subs: الفيديو للمشتركين — قبل سؤال الخصم
       const g = pointsLib.requireConfirmation(body, COST, 'فيديو ممثل يتكلم');
       if (g) { res.status(g.status).json(g.payload); return; }
       const pay = await pointsLib.spendPoints(username, COST, 'veo_video');

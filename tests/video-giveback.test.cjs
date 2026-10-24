@@ -6,6 +6,8 @@
 // والنجاح والمهلة كما كانا حرفيًّا.
 'use strict';
 const test = require('node:test');
+/* v-video-subs: بوّابة «الفيديو للمشتركين» تُختبر وحدها في video-subs.test.cjs — مستخدمو هذا الاختبار يمرّون بها كما قبلها */
+{ const __vs = require('path').join(__dirname, '..', 'api', '_lib', '_videoSubs.js'); require.cache[__vs] = { id: __vs, filename: __vs, loaded: true, exports: { CODE: 'video_subscribers', videoAllowed: async () => true, denyFree: async () => false } }; }
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');

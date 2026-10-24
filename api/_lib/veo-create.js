@@ -101,6 +101,7 @@ module.exports = async (req, res) => {
       if (gate.allowed) { res.status(200).json({ ok: true, priceOk: true }); return; }
       const pcUser = gate.reason === 'auth' ? null : pointsLib.verifyPointsToken(token);
       if (!pcUser) { res.status(401).json({ error: 'auth_required' }); return; }
+      if (await require('./_videoSubs.js').denyFree(res, pcUser)) return; // v-video-subs: الفيديو للمشتركين — قبل سؤال الخصم
       const withCartoon = body.withCartoon === true;
       const pcSteps = await talkSteps(pcUser, withCartoon, pointsLib.COSTS);
       const pcCost = pcSteps.reduce((a, s) => a + s[1], 0);
@@ -116,6 +117,7 @@ module.exports = async (req, res) => {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
       if (!username) { res.status(401).json({ error: 'auth_required' }); return; }
+      if (await require('./_videoSubs.js').denyFree(res, username)) return; // v-video-subs: الفيديو للمشتركين — قبل سؤال الخصم
       quality = await require('./_qualityGate.js').gateQuality(username, quality); // v-quality-gate: الجودة العالية للمشتركين والمالك
       /* v-plan-videos: الترند وحده (لا الوصف الحرّ) يُصرف من صلاحيّة فيديوهات الباقة أوّلًا — بلا تأكيد خصم. نفادها = كما كان. */
       let pay = (body.trend && (await require('./_planVideos.js').planVideoLeft(username)) > 0)
