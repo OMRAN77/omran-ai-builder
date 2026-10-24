@@ -24,10 +24,12 @@ function aspectOf(ratio) {
 }
 
 /** مهمّة الدمج: أوّل إطار من مشهد الترند وفيه كلّ الأشخاص، وكلّ واحد بوجهه هو. */
-function frameTask(n, scene) {
+function frameTask(n, scene, start) {
   return 'Create the OPENING FRAME of a video. Place ALL ' + n + ' people from the reference photos together in one shared scene, '
     + 'side by side and all ' + n + ' clearly visible with their faces unobstructed, in this scene: '
     + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 700) + '\n'
+    /* v-trend-omni-face: ترند يتحوّل أثناء الفيديو — الإطار لحظته الأولى قبل التحوّل */
+    + (start ? 'Show the moment BEFORE the change this scene describes happens: everyone still wears their own clothing and look from their own photo.\n' : '')
     + 'Each person keeps their own exact face and identity from their own photo. Never merge two people into one face, '
     + 'never swap a face onto the wrong body, never replace anyone with an invented person, never drop anyone, '
     + 'and never add a person who is not in the reference photos. A single photorealistic still frame, all ' + n + ' faces sharp.';
@@ -75,7 +77,7 @@ async function groupFirstFrame(apiKey, photos, scene, ratio, o) {
   let crops = [];
   // لقطات الوجوه ترفع الأمانة ولا تُوقف المسار: عطب الكشف = الدمج بالصور وعناوينها كما في الاستوديو.
   try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, shaped); } catch (e) { console.warn('[trend-people] face crops skipped: ' + (e && e.message)); crops = []; }
-  const parts = mergeIdentity.mergeParts(shaped, crops, frameTask(shaped.length, scene));
+  const parts = mergeIdentity.mergeParts(shaped, crops, frameTask(shaped.length, scene, !!opt.start));
   /* v-trend-omni: مهلة الإطار تُمرَّر حين يتبعه محرّك متزامن (Omni) في الدالّة نفسها — بلاها الإعداد السابق حرفيًّا (٢٤٠ث) */
   return (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl, opt.timeoutMs ? { timeoutMs: opt.timeoutMs } : undefined);
 }
@@ -95,9 +97,31 @@ const ART_STYLE_RE = /(?:^|[\s،,])(?:ب|ك|ال|بال|كال|لل)?(?:أنمي
 const SOLO_CLOSEUP_LABEL = 'Close-up — the face of the same person in Photo 1, cropped and zoomed in from that same photo (identity reference only: NOT a second person, never drawn as an extra face, an inset or a frame):';
 
 /** مهمّة أوّل إطار لشخص الصورة داخل مشهد الوصف — الوجه والجسم منه، والمكان واللبس من الوصف.
- *  o: { closeup، art، styleText (سطر أسلوب صريح يغلب سطر art — أنمي الواجهة) } */
+ *  o: { closeup، art، styleText (سطر أسلوب صريح يغلب سطر art — أنمي الواجهة)،
+ *       start (v-trend-omni-face: تحوّل داخل الفيديو — اللحظة قبله)، ageShift (عمر آخر في القالب — ملامحه بذلك العمر) } */
 function soloFrameTask(scene, o) {
   const opt = o || {};
+  /* v-trend-omni-face: تحوّل أثناء الفيديو (start) — اللحظة قبله: لبسه وشكله من الصورة، والمكان من الوصف (لا «اللبس من الوصف» معها).
+     ورحلة العمر (start + ageShift): لحظتها الأولى طفل — العمر واللبس من الوصف، لا «كما في الصورة». */
+  const look = opt.start && !opt.ageShift
+    ? ' — BEFORE the change the description makes during the video begins. The setting, pose and lighting follow the description; their clothing, hairstyle and look stay exactly as in Photo 1, because that change has not happened yet. '
+    : (opt.start ? ' — its very first moment, before the change the description makes during the video begins' : '')
+      + '. The setting, clothing, hairstyle, pose and lighting follow the description; anything it does not mention stays as in Photo 1. ';
+  /* قالب يُظهرهم بعمر آخر (طفلًا، أو مع نفسه الأصغر أو الأكبر) — سطر «نفس العمر، لا أصغر» يكسره */
+  if (opt.ageShift) {
+    const many = opt.people > 1;
+    return 'TASK: create the OPENING FRAME of a video — one single still image — for this video description: "'
+      + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 900) + '".\n'
+      + 'Show the real ' + (many ? 'people from Photo 1 (all ' + opt.people + ' of them)' : 'person from Photo 1') + ' inside the scene the description asks for, as it looks at the very start of the video'
+      + look + 'Never remove a hijab or headscarf that Photo 1 shows.\n'
+      + (many
+        ? 'IDENTITY (mandatory): Photo 1 shows ' + opt.people + ' different real people. Every figure the description makes of each one (as a toddler, as their younger or older self) is that same person — their own face shape, eyes, eyebrows, nose, lips, skin tone and marks — copied from Photo 1'
+          + (opt.closeup ? ' and from the close-up of their own face' : '') + ', drawn at the age the description asks for. Never swap faces between them, never merge them, never a stranger or a generic face; someone who knows them must recognize every one of them instantly at every age.\n'
+        : 'IDENTITY (mandatory): every figure the description makes of them (as a toddler, as their younger or older self) is this exact same real person — the same face shape, eyes, eyebrows, nose, lips, skin tone and marks — copied from Photo 1'
+          + (opt.closeup ? ' and the close-up of their face' : '') + ', drawn at the age the description asks for. Never a stranger or a generic face; someone who knows them must recognize them instantly at every age.\n')
+      + (opt.styleText || (opt.art ? 'Use the art style the description asks for, drawing their own real features in that style.' : 'Photorealistic, like a real film still.'))
+      + ' Their face is clearly visible, unobstructed and sharp. No text, captions, logos or watermarks.';
+  }
   /* v-two-people: صورة فيها شخصان — كلّ واحد بوجهه ولقطته، ولا تبادل؛ المفرد كما كان حرفيًّا */
   const identity = opt.people > 1
     ? 'IDENTITY (mandatory): Photo 1 shows ' + opt.people + ' different real people and ALL of them appear, each one exactly themselves — their own face shape, eyes, eyebrows, nose, lips, jawline, facial hair, skin tone and marks, apparent age, and their own body shape and size — copied from Photo 1'
@@ -106,8 +130,8 @@ function soloFrameTask(scene, o) {
       + (opt.closeup ? ' and the close-up of their face' : '') + '. Never a different, younger, slimmer, prettier or more generic person; someone who knows them must recognize them instantly.\n';
   return 'TASK: create the OPENING FRAME of a video — one single still image — for this video description: "'
     + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 900) + '".\n'
-    + 'Show the real person from Photo 1 (if Photo 1 shows several people, all of them) inside the scene the description asks for, as it looks at the very start of the video. '
-    + 'The setting, clothing, hairstyle, pose and lighting follow the description; anything it does not mention stays as in Photo 1. Never remove a hijab or headscarf that Photo 1 shows.\n'
+    + 'Show the real person from Photo 1 (if Photo 1 shows several people, all of them) inside the scene the description asks for, as it looks at the very start of the video'
+    + look + 'Never remove a hijab or headscarf that Photo 1 shows.\n'
     + identity
     + (opt.styleText || (opt.art ? 'Use the art style the description asks for, drawing their own real features in that style.' : 'Photorealistic, like a real film still.'))
     + ' Their face is clearly visible, unobstructed and sharp. No text, captions, logos or watermarks.';
@@ -134,6 +158,30 @@ const SOLO_FRAME_TRENDS = new Set(['heritagesing', 'tencountries', 'dance', 'cel
 /* منها بأسلوب فنّيّ صريح في قالبها (لعبة، ليغو) */
 const SOLO_FRAME_ART_TRENDS = new Set(['actionfigure', 'legofy']);
 
+/* ── v-trend-omni-face (المالك ٢٤ أكتوبر بعد أوّل ترند على Omni: «يغيّر شكل الشخصيّة الملامح، والصورة اللي أحطها موجودة في أوّل الفيديو»).
+   Omni يجعل <FIRST_FRAME> أوّل إطار حرفيًّا، ويصنع افتراضيًّا عدّة لقطات بقطع بينها (توثيقه: «a few different shots… you must prompt
+   In a single continuous shot / No scene cuts») — فصورة المستخدم الخام تظهر أوّلًا ثمّ يقطع إلى المشهد ويرسم الوجه من جديد. على Omni وحده
+   (Veo كما كان حرفيًّا) تُقسَّم ترندات الصورة خارج SOLO_FRAME_TRENDS بدور الصورة فيها (تصنيفان مستقلّان اتّفقا):
+   - OMNI_FRAME_TRENDS: شخص ينتقل إلى مشهد أو أسلوب أو عمر آخر ويبقى عليه — أوّل إطار مبنيّ وقفله كترندات الشخص الواحد.
+   - OMNI_MORPH_TRENDS: الشخص يتحوّل أثناء الفيديو — أوّل إطار للحظة قبل التحوّل، بلا قفل الإطار (القفل يمنع التحوّل).
+   - OMNI_REF_TRENDS: الصورة مرجع شكل لا لقطة أولى (شخصيّة بيكسار عبر المشاهد، تهنئة رمضان بلا شخص في القالب).
+   - AGE_SHIFT_TRENDS: منها بعمر آخر — مهمّة الإطار بلا «نفس العمر»، ولا لقطة وجه البالغ مرجعًا للمحرّك (تشدّ الطفل إلى عمره).
+   الباقي (منتجات، أماكن، حيوانات، «حرّك الصورة كما هي») الصورة نفسها أوّل إطار كما هي — هذا المقصود منها. */
+const OMNI_FRAME_TRENDS = new Set(['underwater', 'vhsflashback', 'ghibli', 'claymation', 'animeaction', 'babyversion', 'hugyounger', 'timecapsule']);
+const OMNI_MORPH_TRENDS = new Set(['superhero', 'outfitswap', 'agejourney']);
+const OMNI_REF_TRENDS = new Set(['pixarstory', 'ramadan']);
+const AGE_SHIFT_TRENDS = new Set(['babyversion', 'hugyounger', 'timecapsule', 'agejourney']);
+/* قوالب مونتاج أو عدّة لقطات بنصّها (عشر دول، يوم في الحياة، إعلان المنتج، الاسكتش) — لا يُطلب لها «بلا قطع» */
+const MULTI_SHOT_TRENDS = new Set(['tencountries', 'dayinlife', 'productad', 'pixarsketch']);
+/** ترند فيه شخص يُنقل إلى مشهد (لا «حرّك الصورة») — صورته الخام لا تكون أوّل إطار على Omni. وترند بلا خانة صورة
+ *  وصلته صورة (أداة المحادثة ترفق صورة المستخدم بأيّ ترند) = مرجع كذلك: قالبه لا يحرّك صورة. */
+function omniPersonTrend(id) {
+  const k = String(id || '');
+  if (SOLO_FRAME_TRENDS.has(k) || OMNI_FRAME_TRENDS.has(k) || OMNI_MORPH_TRENDS.has(k) || OMNI_REF_TRENDS.has(k)) return true;
+  const t = require('./video-trends.js').TRENDS[k];
+  return !!(t && t.photo === 'none');
+}
+
 /** مشهد قالب الترند وحده (بعد «SCENE:» وقبل منع الكتابة وقفل الهويّة) — فقرة «WHO THEY ARE» ليست مشهدًا. */
 function trendScene(prompt) {
   const m = /SCENE:\s*([\s\S]*?)(?=\s*No on-screen text|\s*IDENTITY \(mandatory\)|$)/.exec(String(prompt || ''));
@@ -154,7 +202,7 @@ function frameKey(photo, scene, ratio, style, art) {
 /**
  * أوّل إطار لشخص صورة واحدة داخل مشهد وصف المستخدم.
  * photo: { data, mime? }؛ o: { budgetMs (الكشف + التوليد معًا)، style ('anime' من الواجهة)، artHint (قالب ترند فنّيّ)،
- *   faceCrops، callImage، fetchImpl }.
+ *   start وageShift (v-trend-omni-face، انظر soloFrameTask)، faceCrops، callImage، fetchImpl }.
  * يرجع { b64, mime, ref } — ref لقطة الوجه (مرجع الملامح للمحرّك) أو null — أو { error } أو null بلا مدخلات.
  */
 async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
@@ -167,7 +215,7 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     const text = String(scene || '');
     const anime = opt.style === 'anime';
     const art = anime || !!opt.artHint || ART_STYLE_RE.test(text);
-    const key = frameKey(shaped, text, aspectOf(ratio), anime ? 'anime' : '', art);
+    const key = frameKey(shaped, text, aspectOf(ratio), (anime ? 'anime' : '') + (opt.start ? '|start' : '') + (opt.ageShift ? '|age' : ''), art);
     const hit = FRAME_CACHE.get(key);
     if (hit && Date.now() - hit.t < FRAME_CACHE_TTL) return { b64: hit.b64, mime: hit.mime, ref: hit.ref, people: hit.people, cached: true };
     let crops = [];
@@ -187,7 +235,7 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     const parts = [{ text: 'Photo 1 — the user\'s own photo of the real ' + (two ? 'people' : 'person') + ' to feature:' }, { inlineData: { mimeType: shaped.mime, data: shaped.data } }];
     if (crop) parts.push({ text: SOLO_CLOSEUP_LABEL }, { inlineData: { mimeType: crop.mime, data: crop.data } });
     if (two) crops.forEach((c, k) => parts.push({ text: 'Close-up ' + (k + 1) + ' — the face of ' + c.who + ' in Photo 1, cropped and zoomed in from that same photo (identity reference for that one person only: NOT an extra person, never drawn as an extra face, an inset or a frame):' }, { inlineData: { mimeType: c.mime, data: c.data } }));
-    parts.push({ text: soloFrameTask(text, { closeup: !!crop || two, art, people, styleText: anime ? ANIME_FRAME_STYLE : '' }) });
+    parts.push({ text: soloFrameTask(text, { closeup: !!crop || two, art, people, styleText: anime ? ANIME_FRAME_STYLE : '', start: !!opt.start, ageShift: !!opt.ageShift }) });
     const left = budget - (Date.now() - started);
     if (left < 20000) return { error: 'budget' };
     /* 1K: الفيديو 720p/1080p، والسعر نفسه لـ1K و2K — وحمولة أصغر للمحرّك. الأسلوب الفنّيّ بحرارة الأسلوب (mergeTemperature). */
@@ -207,4 +255,5 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
 module.exports = {
   MAX_PEOPLE, aspectOf, callImage /* v-actor-lipsync: بورتريه الممثّل */, frameTask, groupFirstFrame, ART_STYLE_RE, SOLO_CLOSEUP_LABEL, soloFrameTask, soloFirstFrame,
   ANIME_FRAME_STYLE, STYLE_ANIME_VIDEO, FRAME_LOCK, SOLO_FRAME_TRENDS, SOLO_FRAME_ART_TRENDS, trendScene, firstFrameOn, FRAME_CACHE,
+  OMNI_FRAME_TRENDS, OMNI_MORPH_TRENDS, OMNI_REF_TRENDS, AGE_SHIFT_TRENDS, MULTI_SHOT_TRENDS, omniPersonTrend,
 };
