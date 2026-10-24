@@ -223,6 +223,15 @@
       <button type="button" class="btn iconBtn" id="designAiCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="designAiDesc">ارفع صورة لغرفتك واختر نمط الديكور، وسيقوم الذكاء الاصطناعي بإعادة تصميمها. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
+    <!-- v-decor-upload-top (المالك ٢٤ أكتوبر بلقطتي النافذة: «اريد التحميل فوق والأفكار تحت واذا فتحت الأفكار خاصية التحميل ماتسكر»):
+         الرفع (مربّع design-sels الذهبيّ يُركَّب مكان صفّ الملفّ هنا) ومعاينته أوّل النافذة، وصندوق الأفكار بعده — والنتيجة بينهما. -->
+    <input type="file" id="designAiFileInput" accept="image/*" style="display:none;">
+    <div style="display:flex; align-items:center; gap:10px; margin-top:12px;">
+      <button type="button" class="btn" id="designAiFileBtn" style="width:auto; white-space:nowrap;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
+      <span id="designAiFileName" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
+    </div>
+    <img id="designAiSourcePreview" style="display:none; width:100%; margin-top:10px; border-radius:var(--r-2); max-height:220px; object-fit:contain; background:#000;">
+
     <!-- v-decor-ideas (طلب المالك): أفكار جاهزة بلا صورة — يختار نوع المكان بلمسة أو يكتب ما يريد -->
     <div id="designAiIdeas" style="margin:10px 0 4px; padding:10px 12px; border:1px solid var(--omGoldSoft,rgba(212,175,55,.35)); border-radius:14px; background:rgba(212,175,55,.06);">
       <div id="designAiIdeasTitle" style="font-size:13px; font-weight:700; margin-bottom:8px;">💡 أفكار بلا صورة — اختر نوع المكان أو اكتب ما تريد</div>
@@ -261,13 +270,6 @@
         <option value="pathway" data-en="🪴 Outdoor Pathway">🪴 ممر ومدخل خارجي</option>
       </select>
     </div>
-
-    <input type="file" id="designAiFileInput" accept="image/*" style="display:none;">
-    <div style="display:flex; align-items:center; gap:10px; margin-top:12px;">
-      <button type="button" class="btn" id="designAiFileBtn" style="width:auto; white-space:nowrap;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
-      <span id="designAiFileName" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
-    </div>
-    <img id="designAiSourcePreview" style="display:none; width:100%; margin-top:10px; border-radius:var(--r-2); max-height:220px; object-fit:contain; background:#000;">
 
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="designAiStyleLabel">نمط الديكور</label>

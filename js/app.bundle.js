@@ -34148,19 +34148,11 @@ async function __safeJson(res){
   const sourcePreview = $('#designAiSourcePreview');
   const placeEl = $('#designAiPlace');
   const gridEl = $('#designAiGrid');
-  function syncPlace(){
-    const on = !!(placeEl && placeEl.value);
-    const dz = modal.querySelector('.dzArea');
-    /* v-decor-place-sync (تدقيق ١٨ أكتوبر + أمر المالك ٢٠ أكتوبر، الدفعة ٤: «الديكور يحذف الصورة بدون تنبيه»): ‎.omUpArt{display:block !important}‎
-       (v-upload-art) كان يغلب الإخفاء المضمَّن العاديّ، فبقي مربّع الرفع واسم الملفّ ظاهرين مع المكان والصورة لا تُرسل. المضمَّن المهمّ يغلب مهمّ ورقة الأنماط. */
-    if(dz){ if(on) dz.style.setProperty('display', 'none', 'important'); else dz.style.removeProperty('display'); }
-    /* والرجوع إلى «من صورتي» يعيد معاينة الصورة المرفوعة (كانت تبقى مخفيّة والصورة تُرسل) */
-    if(sourcePreview) sourcePreview.style.display = (!on && selectedBase64) ? 'block' : 'none';
-  }
-  /* بطاقة «نوع المكان» (selTrigger في design-sels) تتبع ما تكتبه نقاط البوستر ورقائقه بلا change — فلا يُخفى مربّع الرفع لمجرّد تصفّح الأفكار */
+  /* v-decor-upload-top (المالك ٢٤ أكتوبر: «اذا فتحت الأفكار خاصية التحميل ماتسكر»): مربّع الرفع أوّل النافذة ولا يُخفى أبدًا، ومعاينة الصورة
+     المرفوعة باقية — كان syncPlace (v-decor-place-sync) يخفيهما مع أيّ مكان: من المعرض، أو عند إعادة فتح النافذة بعد نقطة في البوستر.
+     الصورة الظاهرة هي ما يُصمَّم (photoOn في «صمم الغرفة»، v-tool-drop) فلا تسقط بلا تنبيه، والمكان للتصميم بلا صورة. */
+  /* بطاقة «نوع المكان» (selTrigger في design-sels) تتبع ما تكتبه نقاط البوستر ورقائقه بلا change */
   function placeCard(){ try{ if(placeEl && placeEl.__tr) placeEl.__tr.refresh(); }catch(e){ __swallow(e, 'decor:place-card'); } }
-  if(placeEl) placeEl.addEventListener('change', syncPlace);
-  if(btnOpen) btnOpen.addEventListener('click', () => setTimeout(syncPlace, 0));
   const styleEl = $('#designAiStyle');
   const lightingEl = $('#designAiLighting');
   const furnitureEl = $('#designAiFurniture');
