@@ -4,7 +4,7 @@
       ثمّ «نوع المكان» و«نمط الديكور» كما كانا.
    ٢) النتيجة (سحّاب قبل/بعد، الصورة، الشبكة، التحميل) تُنقل إلى قبل صندوق الأفكار — فتأتي بين الرفع والأفكار — ومشهد التوليد مكان الأفكار
       يخفيها والنتيجة السابقة وحدها: الرفع لا يُخفى أثناء التوليد.
-   ٣) لا شيء في الديكور يخفي مربّع الرفع بالمكان (سلوكه في vm: decor-place-sync ٤ و٥ و٧). */
+   ٣) لا شيء في الديكور يلمس مربّع الرفع؛ المكان المختار يخفي المعاينة وحدها (سلوكه في vm: decor-place-sync ٤ و٥ و٧ و٨). */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -25,6 +25,8 @@ test('١ partials-core: الرفع أوّل نافذة الديكور بعد ا�
   ].map(at);
   assert.deepEqual(order, order.slice().sort((x, y) => x - y), 'الترتيب: الوصف ← الرفع ← المعاينة ← الأفكار ← المكان ← النمط');
   assert.equal(modal.split('id="designAiFileInput"').length, 2, 'عنصر رفع واحد لا اثنان');
+  const pv = (modal.match(/<img id="designAiSourcePreview" style="([^"]*)"/) || [])[1] || '';
+  assert.match(pv, /background:transparent;/, 'المعاينة بلا شريط أسود تحت الرفع في الفاتح');
 });
 
 test('٢ design-sels: المربّع الذهبيّ يُركَّب مكان صفّ الملفّ (فيصعد معه) ويأخذ اسم الملفّ، والصفّ يُخفى', () => {
@@ -48,13 +50,21 @@ test('٣ النتيجة بين الرفع والأفكار، ومشهد التو
   }
 });
 
-test('٤ لا شيء في الديكور يخفي مربّع الرفع أو معاينته بالمكان المختار', () => {
+test('٤ لا شيء في الديكور يلمس مربّع الرفع، والمعاينة تُخفى في موضعين فقط: مكان مختار (syncPlace) وفشل قراءة الصورة', () => {
   const st = read('js/app-12-studios.js');
   const decor = st.slice(0, st.indexOf('/* v-tools-i18n-full'));
-  assert.ok(!/function syncPlace\(/.test(decor), 'syncPlace أُزيل');
-  assert.ok(!decor.includes("querySelector('.dzArea')"), 'لا لمس لمربّع الرفع من الديكور');
-  assert.ok(!/placeEl\.addEventListener\('change'/.test(decor), 'لا مستمع change يخفي شيئًا');
-  /* المعاينة تُخفى في موضع واحد: فشل قراءة الصورة (لا صورة أصلًا) */
-  const hides = decor.match(/sourcePreview\.style\.display = '?[^;]*none/g) || [];
-  assert.deepEqual(hides, ["sourcePreview.style.display = 'none"], 'إخفاء المعاينة عند فشل الضغط وحده');
+  const code = decor.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/dzArea|omUp/.test(code), 'لا إشارة إلى المربّع الذهبيّ في كود الديكور');
+  assert.ok(!/fileBtn\.(style|hidden)|fileBtn\.parentElement/.test(code), 'ولا إخفاء لزرّ الملفّ أو صفّه');
+  const i = decor.indexOf('  function syncPlace(){');
+  assert.ok(i > 0, 'syncPlace');
+  const sync = decor.slice(i, decor.indexOf('\n  }\n', i));
+  assert.ok(!/\.style\.(display|setProperty)|hidden/.test(sync.replace(/sourcePreview\.style\.display/g, '')), 'syncPlace يلمس المعاينة وحدها');
+  assert.ok(!/btnOpen\.addEventListener\('click'/.test(decor), 'لا مزامنة عند فتح النافذة (كانت تخفي بالمكان المكتوب من البوستر)');
+  const hides = decor.match(/sourcePreview\.style\.display = [^;]*/g) || [];
+  assert.deepEqual(hides, [
+    "sourcePreview.style.display = (!on && selectedBase64) ? 'block' : 'none'",
+    "sourcePreview.style.display = 'none'",
+    "sourcePreview.style.display = 'block'",
+  ], 'المعاينة: syncPlace، وفشل الضغط، والنجاح');
 });

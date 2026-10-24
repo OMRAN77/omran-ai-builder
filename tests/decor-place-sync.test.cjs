@@ -4,8 +4,9 @@
       فيولّد «صمم الغرفة» مجلسًا والبطاقة تقول «من صورتي». البطاقة الآن تتبع القائمة (مستمع change واحد في design-sels)،
       والنقاط تحدّثها مباشرة بلا change (فلا يُخفى مربّع الرفع لمجرّد التصفّح).
    ٢) رفع صورة بعد اختيار مكان يرجع «نوع المكان» إلى «من صورتي» (كان المكان يُسقط الصورة بلا تنبيه)، ويبقى ضمان v-tool-drop.
-   ٣) و٤) كان اختيار المكان يخفي مربّع الرفع (مضمَّن مهمّ يغلب ‎.omUpArt{display:block !important}‎) والمعاينة؛ v-decor-upload-top (المالك ٢٤
-      أكتوبر: «اذا فتحت الأفكار خاصية التحميل ماتسكر») ألغى الإخفاء: المربّع والمعاينة باقيان مع أيّ مكان، والصورة الظاهرة هي ما يُرسل (٤، ٥، ٧).
+   ٣) و٤) كان اختيار المكان يخفي مربّع الرفع (مضمَّن مهمّ يغلب ‎.omUpArt{display:block !important}‎)؛ v-decor-upload-top (المالك ٢٤ أكتوبر:
+      «اذا فتحت الأفكار خاصية التحميل ماتسكر») ألغى إخفاء المربّع (٤): مكان مختار يخفي المعاينة وحدها ويقول المربّع «لم يتم اختيار ملف»
+      والمكان يُرسل، و«من صورتي» يعيدهما والصورة تُرسل (٥)؛ وصندوق الأفكار لا يكتب المكان وصورتك قيد الاستعمال (٧، ٨).
    ٥) المعرض: عدد «… صورة» يتبع الصور الظاهرة بعد سقوط المكسورة، وصفر = «ما حصلت صورًا»، والصور بلا مُحيل.
    الكود الحقيقيّ (IIFE الديكور من app-12 وselTrigger من design-sels) في vm بـDOM مزيّف. */
 const test = require('node:test');
@@ -148,7 +149,7 @@ test('٣ رفع صورة بعد اختيار مكان يرجع «من صورتي
   let changes = 0; E.place.addEventListener('change', () => { changes++; });
   E.upload();
   assert.equal(E.place.value, '', 'المكان يرجع «من صورتي»');
-  assert.equal(changes, 1, 'بحدث change فتتبعه البطاقة وsyncPlace');
+  assert.equal(changes, 1, 'بحدث change فتتبعه البطاقة');
   assert.notEqual(E.dz.style.display, 'none');
   assert.equal(E.byId('designAiSourcePreview').style.display, 'block');
   const req = await E.generate();
@@ -169,21 +170,26 @@ test('٤ (v-decor-upload-top) اختيار مكان من المعرض لا يخ�
   }
 });
 
-test('٥ (v-decor-upload-top) رفع ← صالة ← «من صورتي»: المعاينة باقية طوال الوقت، والصورة الظاهرة هي ما يُرسل', async () => {
+test('٥ (v-decor-upload-top) رفع ← صالة ← «من صورتي»: المكان يخفي المعاينة وحدها ويقول المربّع «لم يتم اختيار ملف» ويُرسل المكان؛ والرجوع يعيد صورتك وتُرسل', async () => {
   const E = decorEnv();
   E.upload();
   const pv = E.byId('designAiSourcePreview');
+  const fn = E.byId('designAiFileName');
   assert.equal(pv.style.display, 'block');
+  assert.equal(fn.textContent, 'room.jpg');
   E.pick('living');
-  assert.equal(pv.style.display, 'block', 'المكان لا يخفي صورتك');
+  assert.equal(pv.style.display, 'none', 'تصميم بلا صورة — المعاينة لا تكذب');
+  assert.equal(fn.textContent, 'fileNoneChosen', 'المربّع يقول «لم يتم اختيار ملف» (مفتاح الترجمة القائم)');
+  assert.equal(E.dz.style.display || '', '', 'والمربّع نفسه ظاهر');
   let req = await E.generate();
-  assert.equal(req.body.imageBase64, 'QUJD', 'صورتك الظاهرة تُرسل (v-tool-drop) — لا تسقط بلا تنبيه');
-  assert.equal(req.body.place, '');
+  assert.equal(req.body.place, 'living', 'المكان المعروض في البطاقة هو ما يُرسل');
+  assert.equal(req.body.imageBase64, '');
   E.pick('');
-  assert.equal(pv.style.display, 'block');
+  assert.equal(pv.style.display, 'block', 'المعاينة ترجع');
+  assert.equal(fn.textContent, 'room.jpg', 'واسم الملفّ');
   req = await E.generate();
   assert.equal(req.body.place, '');
-  assert.equal(req.body.imageBase64, 'QUJD');
+  assert.equal(req.body.imageBase64, 'QUJD', 'photoOn صحيح');
 });
 
 test('٦ المعرض: العدد يتبع الصور الظاهرة، وصفر = «ما حصلت صورًا» مع زرّ التوليد، والصور بلا مُحيل', async () => {
@@ -204,19 +210,45 @@ test('٦ المعرض: العدد يتبع الصور الظاهرة، وصفر 
   assert.equal(E.byId('designAiIdeaAI').style.display, '', 'زرّ التوليد ظاهر');
 });
 
-test('٧ (v-decor-upload-top) «إذا فتحت الأفكار خاصية التحميل ما تسكّر»: نقطة البوستر ثمّ إغلاق النافذة وفتحها — المربّع والمعاينة باقيان والصورة تُرسل', async () => {
+test('٧ (v-decor-upload-top) «إذا فتحت الأفكار خاصية التحميل ما تسكّر»: مع صورة مرفوعة نقطة البوستر و«أعطني أفكارًا» لا تكتبان المكان، وإعادة فتح النافذة لا تخفي شيئًا، وصورتك تُرسل', async () => {
   const E = decorEnv();
   E.upload();
   E.hot('majlis').onclick();
-  assert.equal(E.place.value, 'majlis');
+  assert.equal(E.place.value, '', 'البطاقة باقية «من صورتي» — صورتك ما يُصمَّم');
+  E.byId('designAiIdeaText').value = 'مجلس فخم';
+  E.byId('designAiIdeaGo').onclick();
+  assert.equal(E.place.value, '');
+  const ideasAsked = E.fetched.filter((f) => f.u === '/api/design-ideas').map((f) => f.body.place || f.body.q);
+  assert.deepEqual(ideasAsked, ['majlis', 'مجلس فخم'], 'والأفكار تُجلب كما هي');
   E.byId('designAiCloseBtn').onclick();
   const open = E.byId('btnDesignAI');
   open.onclick();
   open.dispatchEvent(new E.ctx.Event('click'));
   await tick(30);
-  assert.equal(E.dz.style.display || '', '', 'إعادة الفتح لا تخفي مربّع الرفع (كان syncPlace يخفيه بالمكان المختار من البوستر)');
+  assert.equal(E.dz.style.display || '', '', 'إعادة الفتح لا تخفي مربّع الرفع (كان syncPlace يخفيه بالمكان المكتوب من البوستر)');
   assert.equal(E.byId('designAiSourcePreview').style.display, 'block', 'ولا معاينة صورتك');
+  assert.equal(E.byId('designAiFileName').textContent, 'room.jpg');
   const req = await E.generate();
   assert.equal(req.body.imageBase64, 'QUJD');
   assert.equal(req.body.place, '');
+});
+
+test('٨ (v-decor-upload-top) في وضع المكان (اختير من المعرض مع صورة) نقطة البوستر تبدّل المكان، و«أعطني أفكارًا» لا ترجع الصورة؛ وبلا صورة كما كانت', async () => {
+  const E = decorEnv();
+  E.upload();
+  E.pick('living');
+  E.hot('majlis').onclick();
+  assert.equal(E.place.value, 'majlis', 'المكان المعروض يتبع النقطة');
+  assert.equal(E.byId('designAiSourcePreview').style.display, 'none');
+  E.byId('designAiIdeaText').value = 'مجلس فخم';
+  E.byId('designAiIdeaGo').onclick();
+  assert.equal(E.place.value, 'majlis', 'الأفكار لا تمسّ وضع الرفع');
+  const req = await E.generate();
+  assert.equal(req.body.place, 'majlis');
+  assert.equal(req.body.imageBase64, '');
+  const F = decorEnv();
+  F.hot('kitchen').onclick();
+  assert.equal(F.place.value, 'kitchen', 'بلا صورة: النقطة تكتب المكان كما كانت');
+  assert.equal(F.byId('designAiSourcePreview').style.display, 'none');
+  await tick();
 });

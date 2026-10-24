@@ -34148,11 +34148,18 @@ async function __safeJson(res){
   const sourcePreview = $('#designAiSourcePreview');
   const placeEl = $('#designAiPlace');
   const gridEl = $('#designAiGrid');
-  /* v-decor-upload-top (المالك ٢٤ أكتوبر: «اذا فتحت الأفكار خاصية التحميل ماتسكر»): مربّع الرفع أوّل النافذة ولا يُخفى أبدًا، ومعاينة الصورة
-     المرفوعة باقية — كان syncPlace (v-decor-place-sync) يخفيهما مع أيّ مكان: من المعرض، أو عند إعادة فتح النافذة بعد نقطة في البوستر.
-     الصورة الظاهرة هي ما يُصمَّم (photoOn في «صمم الغرفة»، v-tool-drop) فلا تسقط بلا تنبيه، والمكان للتصميم بلا صورة. */
-  /* بطاقة «نوع المكان» (selTrigger في design-sels) تتبع ما تكتبه نقاط البوستر ورقائقه بلا change */
-  function placeCard(){ try{ if(placeEl && placeEl.__tr) placeEl.__tr.refresh(); }catch(e){ __swallow(e, 'decor:place-card'); } }
+  /* v-decor-upload-top (المالك ٢٤ أكتوبر: «اذا فتحت الأفكار خاصية التحميل ماتسكر»): مربّع الرفع أوّل النافذة ولا يُخفى أبدًا — كان syncPlace
+     (v-decor-place-sync) يخفيه مع أيّ مكان: من المعرض، أو عند إعادة فتح النافذة بعد نقطة في البوستر (تكتب المكان بلا change).
+     «نوع المكان» يبقى صادقًا: مكان مختار = تصميم بلا صورة، فتُخفى المعاينة وحدها ويقول المربّع «لم يتم اختيار ملف» (الصورة لا تُرسل —
+     لا إسقاط بلا تنبيه)، و«من صورتي» يعيدهما. وصندوق الأفكار لا يكتب المكان ما دامت صورة مرفوعة (ideaPlace) — تصفّح الأفكار لا يمسّ الرفع. */
+  function syncPlace(){
+    const on = !!(placeEl && placeEl.value);
+    if(sourcePreview) sourcePreview.style.display = (!on && selectedBase64) ? 'block' : 'none';
+    if(fileNameEl && selectedFile) fileNameEl.textContent = on ? t('fileNoneChosen') : selectedFile.name;
+  }
+  /* بطاقة «نوع المكان» (selTrigger في design-sels) تتبع ما يكتبه صندوق الأفكار بلا change، والمعاينة معها */
+  function placeCard(){ try{ if(placeEl && placeEl.__tr) placeEl.__tr.refresh(); }catch(e){ __swallow(e, 'decor:place-card'); } syncPlace(); }
+  if(placeEl) placeEl.addEventListener('change', syncPlace);
   const styleEl = $('#designAiStyle');
   const lightingEl = $('#designAiLighting');
   const furnitureEl = $('#designAiFurniture');
@@ -34203,7 +34210,7 @@ async function __safeJson(res){
     if(!file) return;
     if(suggestStatusEl) suggestStatus(''); /* v-decor-suggest-msg: «ارفع صورة الغرفة أولًا» تحت الزرّ لا يبقى بعد رفعها */
     selectedFile = file;
-    /* v-decor-place-sync: صورة جديدة ترجع «نوع المكان» إلى «من صورتي» (بحدث change فتتبعه البطاقة والمربّع) — كان المكان يُسقطها بلا تنبيه */
+    /* v-decor-place-sync: صورة جديدة ترجع «نوع المكان» إلى «من صورتي» (بحدث change فتتبعه البطاقة) — كان المكان يُسقطها بلا تنبيه */
     if(placeEl && placeEl.value){ placeEl.value = ''; placeEl.dispatchEvent(new Event('change', { bubbles: true })); }
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
@@ -34253,7 +34260,7 @@ async function __safeJson(res){
         c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
         c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
         c.textContent = optName(o);
-        c.onclick = function(){ placeEl.value = o.value; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+        c.onclick = function(){ ideaPlace(o.value); };
         ideaChips.appendChild(c);
       });
     }
@@ -34296,7 +34303,7 @@ async function __safeJson(res){
           ' font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
         b.appendChild(cap);
       }
-      b.onclick = function(){ placeEl.value = o.value; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+      b.onclick = function(){ ideaPlace(o.value); };
       wrap.appendChild(b);
     });
 
@@ -34370,13 +34377,19 @@ async function __safeJson(res){
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
   }
   if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button[data-place]'), function(c){
-    c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; placeCard(); if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
+    c.onclick = function(){ ideaPlace(c.dataset.place); };
   });
+  /* v-decor-upload-top: مكان من صندوق الأفكار يُكتب في «نوع المكان» ما لم تكن صورتك المرفوعة قيد الاستعمال («من صورتي») — حينها تبقى
+     هي ما يُصمَّم والبطاقة «من صورتي» والمعاينة ظاهرة؛ وفي وضع المكان (اختير من المعرض) تبدّله النقطة كما بلا صورة */
+  function ideaPlace(v){
+    if(placeEl && !(selectedBase64 && !placeEl.value)){ placeEl.value = v; placeCard(); }
+    if(ideaText) ideaText.value = '';
+    loadIdeas({ place: v });
+  }
   if(ideaGo) ideaGo.onclick = function(){
     const v = ideaText ? ideaText.value.trim() : '';
     if(!v){ ideaStatus(bT('اكتب ما تريد أو اختر نوع المكان.', 'Describe what you want or pick a place.')); return; }
-    if(placeEl) placeEl.value = '';
-    placeCard();
+    if(placeEl && !selectedBase64){ placeEl.value = ''; placeCard(); }
     loadIdeas({ q: v });
   };
   if(ideaAI) ideaAI.onclick = async function(){
@@ -34603,8 +34616,8 @@ async function __safeJson(res){
   window.__designBAHide = baHide;
   window.__designSourceUrl = function(){ return selectedBase64 ? ('data:' + selectedMime + ';base64,' + selectedBase64) : ''; };
 
-  /* v-scene-kinds (المالك ١١ أكتوبر بصورة مشاهد الديكور: «والثانية للديكور… وكلّهم نفس الأفكار»): مشهد التوليد يُركَّب أعلى الاستوديو
-     مكان صندوق الأفكار والرفع (app-34-gen-wait، اللوحة decor). والنتيجة — سحّاب قبل/بعد أو الصورة المفردة أو شبكة التصاميم الأربعة —
+  /* v-scene-kinds (المالك ١١ أكتوبر بصورة مشاهد الديكور: «والثانية للديكور… وكلّهم نفس الأفكار»): مشهد التوليد يُركَّب مكان صندوق
+     الأفكار تحت الرفع (app-34-gen-wait، اللوحة decor؛ الرفع فوقه منذ v-decor-upload-top ولا يُخفى). والنتيجة — سحّاب قبل/بعد أو الصورة المفردة أو شبكة التصاميم الأربعة —
      وزرّ التحميل كانت تحت زرّ «صمم الغرفة» بلا تمرير إليها؛ تُنقل (العقد نفسها بمستمعيها) إلى قبل صندوق الأفكار، حيث كان المشهد،
      وبعرضه (٧٦٠ موسَّطة). */
   const DS_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };
@@ -48694,7 +48707,7 @@ if(document.readyState === 'loading'){
     /* v-trend-scene-live: نصوص الترندات تُكتب بلا إيموجي أصلًا (ui ← noEmoji) فلم تُعرف «مشغولة» قطّ بالمسار الحقيقيّ — «مشغول» سمة
        صريحة تضبطها اللوحة نفسها (busyAttr)، تصمد لكلّ لغة ولتبدّل النصّ («المشهد ٢ من ٣…»، العدّ التنازليّ بين المشاهد). */
     { id: 'vtrend', sel: '#vtStatus', kind: 'vtrend', busyAttr: 'data-genw-busy', scroll: true },
-    /* v-scene-kinds: الديكور — المشهد مكان صندوق الأفكار والرفع (#designAiIdeas) ويُخفى ما دام هو والنتيجة السابقة */
+    /* v-scene-kinds: الديكور — المشهد مكان صندوق الأفكار (#designAiIdeas، تحت الرفع منذ v-decor-upload-top) ويُخفى ما دام هو والنتيجة السابقة؛ الرفع لا يُخفى */
     { id: 'decor', sel: '#designAiStatus', kind: 'decor',
       busy: ['🎨'],
       scope: '#designAiModal', topSel: '#designAiIdeas', top: ['🎨'],
