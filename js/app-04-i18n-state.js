@@ -1790,7 +1790,7 @@ function omranOptCss(){
   st.id = 'omranOptCss';
   st.textContent = '.omranOpts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px;}'
     + '.omranOpt{padding:8px 14px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.16));background:rgba(255,255,255,.05);color:var(--text,#eee);font:inherit;font-size:13.5px;cursor:pointer;transition:.15s;}'
-    + '.omranOpt:hover{border-color:var(--accent2,#a78bfa);transform:translateY(-1px);}'
+    + '.omranOpt:hover{border-color:var(--accent2,#a78bfa);}' /* v-btn-no-lift */
     + '.omranOpt.on{background:var(--accent2,#a78bfa);color:#fff;border-color:transparent;}'
     + '.omranOptDone{padding:8px 18px;border-radius:14px;border:0;background:linear-gradient(135deg,var(--accent2,#a78bfa),#06b6d4);color:#fff;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;}'
     + '.omranOptDone:disabled{opacity:.45;cursor:default;}'
