@@ -1349,7 +1349,7 @@ $('#btnDeleteAll').onclick = () => {
 #fbNote{width:100%;min-height:72px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#eee;font-size:13.5px;padding:12px;resize:none;outline:none;margin-bottom:16px;font-family:inherit;}
 #fbNote:focus{border-color:#d4af37;box-shadow:0 0 0 3px rgba(212,175,55,.22);}
 #fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#141414;cursor:pointer;background:linear-gradient(135deg,#d4af37,#f1d98a);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
-#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(212,175,55,.5);}
+#fbSendBtn:hover{box-shadow:0 8px 24px rgba(212,175,55,.5);}
 #fbSendBtn::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);animation:fbShine 2.8s ease-in-out infinite;}
 @keyframes fbShine{0%,60%{left:-80%}100%{left:130%}}
 #fbClose{position:absolute;top:14px;inset-inline-end:14px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.08);color:#bbb;font-size:16px;cursor:pointer;z-index:2;}
