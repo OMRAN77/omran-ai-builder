@@ -147,3 +147,19 @@ html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPho
   -webkit-line-clamp:2; color:#f3d77a!important; text-shadow:0 1px 3px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.6);
 }
 html #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto.tcTxt .tcLive{inset-block-start:8px; inset-block-end:auto; z-index:1;}
+/* v-tools-hover-flash (المالك ٢٤ أكتوبر بلقطة صفحة الأدوات: «عندما احرك الماوس عليها تتحرك… اريدها توميض بدون حركة»): المرور كان يرفع
+   البطاقة ٢px (translateY أعلاه، و.btn:hover في tokens.css). الآن لا حركة، والمرور ومضة على حوافّ البطاقة تشتدّ ثمّ تستقرّ ما دام الماوس
+   فوقها، والتوهّج الخارجيّ كما كان. الومضة في ::after لا في البطاقة: app-41 يعيد تصنيف البطاقة عند كلّ transitionend، وعنصر عليه
+   animation ليس «خطًّا» عنده — فكانت تفقد om3-line ويعود حدّها الذهبيّ حتّى بعد خروج الماوس (قِيس بمسبار). الأسود أبيض، والفاتح ذهبيّ. */
+html #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto:hover{transform:none!important;}
+html #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto::after{
+  --tcFlashRgb:255,255,255;
+  content:""; position:absolute; inset:0; z-index:2; border-radius:inherit; pointer-events:none; opacity:0;
+  box-shadow:inset 0 0 0 1px rgba(var(--tcFlashRgb),.9), inset 0 0 26px rgba(var(--tcFlashRgb),.5);
+}
+html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto::after{--tcFlashRgb:212,175,55;}
+html #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto:hover::after{animation:tcFlash .7s ease-out both;}
+@keyframes tcFlash{0%{opacity:0;} 40%{opacity:1;} 100%{opacity:.55;}}
+@media (prefers-reduced-motion:reduce){
+  html #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.hasToolPhoto:hover::after{animation:none; opacity:.55;}
+}

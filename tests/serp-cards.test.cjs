@@ -253,6 +253,6 @@ test('١٠. سلسلة البحث الحيّ الحقيقيّة (chat.js): ال�
 test('١١. التوثيق: المفاتيح الأربعة في فهرس البيئة بلا قيمة، ومدخل القرار في رأس السجلّ', () => {
   const SPEC = require(rp('api/_lib/env.js')).SPEC;
   for (const k of ['SERPER_API_KEY', 'SEARCHAPI_API_KEY', 'SERPAPI_API_KEY', 'CARDS_SHOPPING']) assert.equal(SPEC[k] && SPEC[k][0], 'tunable', k + ': له بديل آمن (السلسلة كما كانت)');
-  /* مدخل بعنوانه في السجلّ — لا موضعه: «أوّل ١٢٠٠٠ حرف» يسقط مع كلّ مدخل جديد فوقه (سقط بـv-trend-omni-face) */
+  /* السجلّ ينمو من رأسه، فنافذة «أوّل ١٢٠٠٠ حرف» تُسقط أيّ مدخل جديد (v-decor-hover-flash) — المدخل بعنوانه في السجلّ */
   assert.match(read('knowledge/DECISIONS.md'), /^## [^\n]*v-serp-cards/m);
 });
