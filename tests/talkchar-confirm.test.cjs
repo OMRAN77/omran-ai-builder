@@ -10,6 +10,8 @@
 // تسأل ثانيةً. الآن priceCheck (لا خصم ولا قفل ولا مزوّد) يسبق كلّ شيء: المهلة والرصيد ثمّ السعر — مع الكرتون إن لزم — مرّة واحدة،
 // وconfirmed:true يُحمل إلى الإنشاء وإعادته؛ ورفض الطلب الدائم (4xx) لا يُعاد.
 const test = require('node:test');
+/* v-video-subs: بوّابة «الفيديو للمشتركين» تُختبر وحدها في video-subs.test.cjs — مستخدمو هذا الاختبار يمرّون بها كما قبلها */
+{ const __vs = require('path').join(__dirname, '..', 'api', '_lib', '_videoSubs.js'); require.cache[__vs] = { id: __vs, filename: __vs, loaded: true, exports: { CODE: 'video_subscribers', videoAllowed: async () => true, denyFree: async () => false } }; }
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');

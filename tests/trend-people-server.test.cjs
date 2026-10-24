@@ -94,7 +94,7 @@ test('٤. veo-create: شخصيّتان تبنيان أوّل إطار قبل ا�
   assert.match(src, /if \(body\.trend && trendPeople\.length > 1\) \{/);
   /* v-two-people: مشهد القالب وحده إلى إطار المجموعة — لا فقرة «WHO THEY ARE» المفردة */
   assert.match(src, /groupFirstFrame\(apiKey, trendPeople, tp\.trendScene\(promptText\), ratio\)/);
-  assert.match(src, /if \(chargedUser\) await pointsLib\.refundPoints\(chargedUser, pointsLib\.COSTS\.veo_video, chargedPay\);\n\s+if \(videoLocked\) await require\('\.\/abuse-guard\.js'\)\.releaseVideoLock\(videoLocked\);\n\s+chargedUser = null; videoLocked = null;[^\n]*\n\s+res\.status\(frame\.status \|\| 502\)/, 'الفشل يردّ الاثنين (بنوع الخصم، ثمّ يُصفَّران فلا يردّ catch ثانيةً)');
+  assert.match(src, /if \(chargedUser\) await pointsLib\.refundPoints\(chargedUser, pointsLib\.COSTS\.veo_video, chargedPay\);\n\s+if \(videoLocked\) await require\('\.\/abuse-guard\.js'\)\.releaseVideoLock\(videoLocked\);\n\s+chargedUser = null; videoLocked = null;[^\n]*\n(?:\s+\/\*[\s\S]*?\*\/\n)?\s+const fail = frame\.rejected[\s\S]{0,300}?startFail\(frame\.upstream \|\| frame\.status \|\| 502, frame\.tech\);\n\s+res\.status\(fail\.code\)\.json\(fail\.body\);/, 'الفشل يردّ الاثنين (بنوع الخصم، ثمّ يُصفَّران فلا يردّ catch ثانيةً) قبل الردّ — والردّ رمز (v-trend-codes)');
   // الدمج بعد القفل عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءاته
   assert.ok(src.indexOf('videoLocked = username;') < src.indexOf('groupFirstFrame'), 'بعد القفل');
   assert.ok(src.indexOf('groupFirstFrame') < src.indexOf("await fetch(GL + '/models/'"), 'قبل نداء المحرّك');

@@ -117,6 +117,8 @@ module.exports = async (req, res) => {
     // الإنشاء ويُسترجع تلقائيًا لو فشل الطلب عند Runway.
     const pointsLib = require('./points.js');
     if (usageResult.username && !pointsLib.isOwnerUsername(usageResult.username)) {
+      /* v-video-subs: الفيديو للمشتركين — قبل سؤال الخصم؛ مقعد حصّة اليوم المحجوز يُردّ وحده مع الردّ (v-atomic-quota) */
+      if (await require('./_videoSubs.js').denyFree(res, usageResult.username)) return;
       const gateRw = pointsLib.requireConfirmation(body, pointsLib.COSTS.runway_video, 'فيديو بالذكاء الاصطناعي');
       if (gateRw) { res.status(gateRw.status).json(gateRw.payload); return; }
       const pay = await pointsLib.spendPoints(usageResult.username, pointsLib.COSTS.runway_video, 'runway_video');

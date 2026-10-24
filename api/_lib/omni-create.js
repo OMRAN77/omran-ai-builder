@@ -72,6 +72,7 @@ module.exports = async (req, res) => {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
       if (!username) { res.status(401).json({ error: 'auth_required' }); return; }
+      if (await require('./_videoSubs.js').denyFree(res, username)) return; // v-video-subs: الفيديو للمشتركين — قبل سؤال الخصم
       quality = await require('./_qualityGate.js').gateQuality(username, quality); // v-quality-gate: الجودة العالية للمشتركين والمالك
       const gateOm = pointsLib.requireConfirmation(body, pointsLib.COSTS.omni_video, 'فيديو المحرّك السينمائيّ');
       if (gateOm) { res.status(gateOm.status).json(gateOm.payload); return; }

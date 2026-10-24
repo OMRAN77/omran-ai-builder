@@ -3857,6 +3857,7 @@ async function omranMediaIntent(text){
 function omranVideoCodeText(code, retryAfter){
   if(code === 'points_insufficient') return (typeof t === 'function' && t('plansWhyPoints') !== 'plansWhyPoints') ? t('plansWhyPoints') : '';
   if(code === 'unavailable') return t('svcPaused'); // v-credit-out: رصيد مزوّد الفيديو نفد — النقاط رُدّت في الخادم
+  if(code === 'video_subscribers') return t('plansWhyVideoSubs'); // v-video-subs: الفيديو للمشتركين (والباقات تُفتح من app-33)
   if(code === 'video_busy') return t('vidBusy'); // v-vid-codes: كان النصّ العربيّ في كلّ اللغات
   if(code === 'video_rejected') return t('vidRejected');
   if(code !== 'video_cooldown') return '';

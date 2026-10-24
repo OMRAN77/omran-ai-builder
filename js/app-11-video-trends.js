@@ -325,9 +325,22 @@
     return window.postWithConfirm ? window.postWithConfirm(url, payload) : fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
   }
   var sleep = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
+  /* v-trend-one-confirm (المالك ٢٤ أكتوبر «سويه»): قصّة بعدّة مشاهد كانت تسأل «تخصم ١٧٥» عند كلّ مشهد بلا المجموع، وإلغاء الثاني يُضيع
+     الأوّل المدفوع. السؤال مرّة واحدة بالمجموع قبل الأوّل (veo-price: لا خصم ولا قفل ولا مزوّد)، ثمّ المشاهد كلّها confirmed — والخصم نفسه
+     لكلّ مشهد عند إنشائه كما كان. */
+  var preConfirmed = false;
+  async function priceOnce(t, n, token){
+    var r = await post('/api/video?action=veo-price', { trend: t.key, scenes: n, params: {}, token: token });
+    var j = null; try{ j = await r.json(); }catch(e){ j = null; }
+    if(r.status === 428) throw new Error('cancelled');
+    if(r.status === 401 || (j && j.error === 'auth_required')) throw new Error(ui('login'));
+    if(!r.ok || !j || j.priceOk !== true) throw Object.assign(new Error((j && j.error) || ('HTTP ' + r.status)), { code: (j && j.error) || '', retryAfter: (j && j.retryAfter) || 0 });
+    preConfirmed = true;
+  }
 
   async function oneClip(t, params, token){
     var payload = { trend: t.key, params: params, ratio: t.ratio, token: token };
+    if(preConfirmed) payload.confirmed = true; // v-trend-one-confirm: وافق على مجموع القصّة مرّة واحدة
     /* v-trend-people: الأولى في imageBase64 كما كانت (توافق)، وما زاد عنها في imagesBase64 للخادم. */
     if(photos.length){
       var raw = photos.map(function(p){ return { b64: p.dataUrl.slice(p.dataUrl.indexOf(',') + 1), mime: p.mime }; });
@@ -348,7 +361,7 @@
       var sr = await fetch(t.engine === 'veo' ? ('/api/video?action=veo-status&op=' + encodeURIComponent(j.op || '')) : ('/api/video-status?id=' + encodeURIComponent(j.id || '')));
       var sj = null; try{ sj = await sr.json(); }catch(e){ sj = null; }
       if(sj && sj.status === 'SUCCEEDED') return Array.isArray(sj.output) ? sj.output[0] : sj.output;
-      if(sj && sj.status === 'FAILED') throw new Error(sj.failure || sj.error || 'failed');
+      if(sj && sj.status === 'FAILED') throw Object.assign(new Error(sj.failure || sj.error || 'failed'), { failureCode: sj.failureCode || '' }); // v-trend-codes: سبب الرفض رمزًا لغير العربيّة
       if(sj && sj.error === 'unavailable') throw Object.assign(new Error('unavailable'), { code: 'unavailable' }); // v-credit-out: سُوّيت التذكرة ورُدّت النقاط — لا ٤٥ استطلاعًا
     }
     throw new Error('timeout');
@@ -365,10 +378,17 @@
     if(e && e.code === 'points_insufficient' && W('plansWhyPoints')) return W('plansWhyPoints');
     if(e && e.code === 'daily_limit_reached' && W('plansWhyLimit')) return W('plansWhyLimit');
     if(e && e.code === 'unavailable' && W('svcPaused')) return W('svcPaused');
+    if(e && e.code === 'video_subscribers' && W('plansWhyVideoSubs')) return W('plansWhyVideoSubs'); // v-video-subs: الفيديو للمشتركين (والباقات تُفتح من app-33)
     if(e && (e.code === 'video_busy' || e.code === 'video_rejected') && W(e.code === 'video_busy' ? 'vidBusy' : 'vidRejected')) return W(e.code === 'video_busy' ? 'vidBusy' : 'vidRejected'); // v-vid-codes // v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الفيديو نفد — «الخدمة متوقّفة مؤقّتًا»
     /* v-trend-413: «HTTP 413» رمز حافّة لا رسالة — الصور أثقل من أن تُرسَل */
     if(/\b413\b/.test(String((e && e.message) || ''))) return ui('tooBig');
     var msg = String((e && e.message) || e);
+    /* v-trend-codes (فحص الترندات ٢٤ أكتوبر: الواجهة الإنجليزيّة عرضت «Failed: الرقابة رفضت المحتوى…»): نصّ الخادم العربيّ (سبب رفض الفيديو،
+       وأعطاب الإنشاء) لا يُعرض في اللغات الـ١٣ — سبب الرفض بنصّه القائم (vidRejected للرقابة، vidBusy لغيرها، ١٤ لغة) وإلّا «تعذّر». العربيّة كما كانت. */
+    if(lg() !== 'ar' && /[؀-ۿ]/.test(msg)){
+      var fc = e && e.failureCode;
+      return (fc === 'safety' && W('vidRejected')) || (fc === 'failed' && W('vidBusy')) || ui('fail');
+    }
     if(/^[a-z][a-z0-9_]*$/.test(msg)) return ui('fail'); /* رمز خادم خامّ آخر («timeout»، «failed»…) لا يُعرض للمستخدم */
     return ui('fail') + ': ' + msg.slice(0, 160);
   }
@@ -424,42 +444,53 @@
     busy = true; $('vtGo').disabled = true; $('vtOut').innerHTML = '';
     setBusyFlag(true);
     status(ui('working'));
+    var urls = [];
     try{
-      var urls = [];
+      if(n > 1 && t.engine === 'veo') await priceOnce(t, n, token);
       for(var i = 0; i < n; i++){
         if(n > 1) status(ui('scene').replace('{i}', i + 1).replace('{n}', n) + ' ' + ui('working'));
         urls.push(await clipInSequence(t, Object.assign({ sceneIndex: i }, params), token, i + 1, n));
       }
-      /* v-trend-dl-fix (بلاغ: تحميل الترند لا يعمل، ومشهد الدمج يظهر [object Blob]):
-         __omranConcatScenes يرجّع Blob لا رابطًا — يلزمه URL.createObjectURL قبل أي src/href.
-         ورابط خارجيّ خام (Runway/Veo) لا يُحمَّل بوسم download عبر أصل مختلف؛ يمرّ ببروكسي الخادم
-         (نفس ما يفعله app-11-video.js دائمًا)، والزرّ يعمل افتراضيًّا بلا اعتراض نقرة. */
-      var finalUrl = urls[0];
-      var finalIsBlob = false;
-      if(urls.length > 1 && window.__omranConcatScenes){
-        try{ finalUrl = URL.createObjectURL(await window.__omranConcatScenes(urls)); finalIsBlob = true; }catch(e){ finalUrl = null; finalIsBlob = false; }
-      }
-      var out = $('vtOut');
-      (finalUrl ? [finalUrl] : urls).forEach(function(u){
-        var isBlobUrl = finalUrl ? finalIsBlob : false;
-        var v = document.createElement('video'); v.src = u; v.controls = true; v.playsInline = true; v.style.cssText = 'width:100%;border-radius:12px;background:#000;margin-top:6px;';
-        out.appendChild(v);
-        var dl = document.createElement('a');
-        dl.href = isBlobUrl ? u : (window.__omranProxyVideoUrl ? window.__omranProxyVideoUrl(u) : u);
-        dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
-        dl.textContent = ui('download');
-        out.appendChild(dl);
-      });
-      var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };
-      out.appendChild(again);
+      await show(t, urls);
       setBusyFlag(false);
       status(ui('done'));
-      try{ window.__chatVideoResult = { url: finalUrl || urls[0] }; }catch(e){ /* guard-ok */ }
     }catch(e){
       setBusyFlag(false);
-      if(String(e && e.message) !== 'cancelled') status(errText(e));
+      /* v-trend-one-confirm: المشاهد التي اكتملت (ودُفعت) قبل العطب تُعرض ولا تضيع — مع سبب التوقّف وعدد ما اكتمل */
+      if(urls.length){
+        try{ await show(t, urls); }catch(e2){ /* guard-ok — العرض أفضل جهد، والسطر يقول ما حدث */ }
+        status((String(e && e.message) !== 'cancelled' ? errText(e) + ' ' : '') + ui('partial').replace('{k}', String(urls.length)).replace('{n}', String(n)));
+      }
+      else if(String(e && e.message) !== 'cancelled') status(errText(e));
       else status('');
-    }finally{ busy = false; setBusyFlag(false); if($('vtGo')) $('vtGo').disabled = false; }
+    }finally{ busy = false; setBusyFlag(false); preConfirmed = false; if($('vtGo')) $('vtGo').disabled = false; }
+  }
+
+  /* عرض النتيجة: المقاطع مدموجة في فيديو واحد (أو كلّ مقطع وحده إن تعذّر الدمج)، مع التحميل و«أعد المحاولة» */
+  async function show(t, urls){
+    /* v-trend-dl-fix (بلاغ: تحميل الترند لا يعمل، ومشهد الدمج يظهر [object Blob]):
+       __omranConcatScenes يرجّع Blob لا رابطًا — يلزمه URL.createObjectURL قبل أي src/href.
+       ورابط خارجيّ خام (Runway/Veo) لا يُحمَّل بوسم download عبر أصل مختلف؛ يمرّ ببروكسي الخادم
+       (نفس ما يفعله app-11-video.js دائمًا)، والزرّ يعمل افتراضيًّا بلا اعتراض نقرة. */
+    var finalUrl = urls[0];
+    var finalIsBlob = false;
+    if(urls.length > 1 && window.__omranConcatScenes){
+      try{ finalUrl = URL.createObjectURL(await window.__omranConcatScenes(urls)); finalIsBlob = true; }catch(e){ finalUrl = null; finalIsBlob = false; }
+    }
+    var out = $('vtOut');
+    (finalUrl ? [finalUrl] : urls).forEach(function(u){
+      var isBlobUrl = finalUrl ? finalIsBlob : false;
+      var v = document.createElement('video'); v.src = u; v.controls = true; v.playsInline = true; v.style.cssText = 'width:100%;border-radius:12px;background:#000;margin-top:6px;';
+      out.appendChild(v);
+      var dl = document.createElement('a');
+      dl.href = isBlobUrl ? u : (window.__omranProxyVideoUrl ? window.__omranProxyVideoUrl(u) : u);
+      dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
+      dl.textContent = ui('download');
+      out.appendChild(dl);
+    });
+    var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };
+    out.appendChild(again);
+    try{ window.__chatVideoResult = { url: finalUrl || urls[0] }; }catch(e){ /* guard-ok */ }
   }
 
   function boot(){

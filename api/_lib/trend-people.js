@@ -49,13 +49,14 @@ async function callImage(apiKey, parts, aspect, fetchImpl, cfg) {
     // المفتاح لا يُطبع أبدًا في السجلّ ولا في ردّ المستخدم.
     const detail = String((data && data.error && data.error.message) || 'unknown').replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
     console.error('[trend-people] ' + (c.tag || 'group') + ' frame failed status=' + upstream.status + ' detail=' + detail);
-    return { error: 'تعذّر تجهيز الأشخاص معًا الآن. أعد المحاولة بعد لحظات.', status: 502, retryable: true };
+    /* v-trend-codes: حالة المزوّد ونصّه المنظَّف (بلا المفتاح) للتصنيف عند المتّصل — veo-create يحوّلهما رمزًا (_videoFail.startFail) */
+    return { error: 'تعذّر تجهيز الأشخاص معًا الآن. أعد المحاولة بعد لحظات.', status: 502, retryable: true, upstream: upstream.status, tech: detail };
   }
   const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
   const img = respParts.find((p) => p && p.inlineData && p.inlineData.data);
   if (!img) {
     const why = String((((data.candidates || [])[0] || {}).finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '').slice(0, 40);
-    return { error: 'ما قدرت أجمع الأشخاص في مشهد واحد (قد تكون إحدى الصور محجوبة). جرّب صورًا أوضح.' + (why ? ' (' + why + ')' : ''), status: 502, why };
+    return { error: 'ما قدرت أجمع الأشخاص في مشهد واحد (قد تكون إحدى الصور محجوبة). جرّب صورًا أوضح.' + (why ? ' (' + why + ')' : ''), status: 502, why, rejected: true };
   }
   return { b64: img.inlineData.data, mime: img.inlineData.mimeType || 'image/png' };
 }

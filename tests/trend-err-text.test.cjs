@@ -19,7 +19,7 @@ function errText() {
   const b = SRC.indexOf('\n  }\n', a);
   const dict = { plansWhyPoints: 'نقاطك خلصت — اشحن من الباقات وكمّل مباشرة.', plansWhyLimit: 'وصلت حدّ باقتك لليوم — رقِّ باقتك أو انتظر إلى الغد.' };
   const UI = { fail: 'تعذّر', cooldown: 'جرّب بعد {m} دقيقة', tooBig: 'الصور كبيرة' };
-  const ctx = { window: { t: (k) => (k in dict ? dict[k] : k) }, ui: (k) => UI[k] || k, noEmoji: (x) => String(x) };
+  const ctx = { window: { t: (k) => (k in dict ? dict[k] : k) }, ui: (k) => UI[k] || k, noEmoji: (x) => String(x), lg: () => 'ar' /* v-trend-codes: errText تقرأ لغة الواجهة */ };
   vm.createContext(ctx);
   /* W من الملفّ نفسه (مساعد الكتابة) إن وُجدت: نصّ القاموس بلا إيموجي أو فراغ */
   const w = SRC.indexOf('  function W(k){');
