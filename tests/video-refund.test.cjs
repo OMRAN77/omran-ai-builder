@@ -155,7 +155,7 @@ test('٨. الواجهة: رمز video_cooldown الخام لا يظهر — ر�
   const i = src.indexOf('function errText(e){');
   const j = src.indexOf('async function make(t){', i);
   assert.ok(i > 0 && j > i);
-  const sandbox = { ui: (k) => (k === 'cooldown' ? ui.cooldown.ar : ui.fail.ar) };
+  const sandbox = { ui: (k) => (k === 'cooldown' ? ui.cooldown.ar : ui.fail.ar), lg: () => 'ar' /* v-trend-codes: errText تقرأ لغة الواجهة */ };
   vm.runInNewContext(src.slice(i, j) + '\nthis.errText = errText;', sandbox);
   assert.equal(sandbox.errText({ code: 'video_cooldown', retryAfter: 180 }), ui.cooldown.ar.replace('{m}', '3'));
   assert.equal(sandbox.errText({ code: 'video_cooldown', retryAfter: 40 }), ui.cooldown.ar.replace('{m}', '1'));

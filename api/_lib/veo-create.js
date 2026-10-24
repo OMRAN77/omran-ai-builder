@@ -160,7 +160,13 @@ module.exports = async (req, res) => {
         if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video, chargedPay);
         if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
         chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
-        res.status(frame.status || 502).json({ error: frame.error, retryable: !!frame.retryable });
+        /* v-trend-codes (فحص الترندات ٢٤ أكتوبر): فشل إطار المجموعة كان نصًّا عربيًّا ثابتًا «أعد المحاولة» بـ٥٠٢ لكلّ سبب — نفاد رصيد
+           المزوّد يُقرأ زحامًا (والعميل لا يعرض «الخدمة متوقّفة مؤقّتًا»)، والنصّ عربيّ في اللغات الـ١٣. الآن رمز كبدء الفيديو نفسه:
+           نفاد/مفتاح = unavailable، زحام = video_busy، صورة محجوبة = video_rejected؛ والعربيّ في message_ar. */
+        const fail = frame.rejected
+          ? { code: 502, body: { error: 'video_rejected', message_ar: String(frame.error).replace(/ \([A-Z_]+\)$/, ''), retryable: false } }
+          : require('./_videoFail.js').startFail(frame.upstream || frame.status || 502, frame.tech);
+        res.status(fail.code).json(fail.body);
         return;
       }
     }

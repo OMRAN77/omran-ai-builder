@@ -348,7 +348,7 @@
       var sr = await fetch(t.engine === 'veo' ? ('/api/video?action=veo-status&op=' + encodeURIComponent(j.op || '')) : ('/api/video-status?id=' + encodeURIComponent(j.id || '')));
       var sj = null; try{ sj = await sr.json(); }catch(e){ sj = null; }
       if(sj && sj.status === 'SUCCEEDED') return Array.isArray(sj.output) ? sj.output[0] : sj.output;
-      if(sj && sj.status === 'FAILED') throw new Error(sj.failure || sj.error || 'failed');
+      if(sj && sj.status === 'FAILED') throw Object.assign(new Error(sj.failure || sj.error || 'failed'), { failureCode: sj.failureCode || '' }); // v-trend-codes: سبب الرفض رمزًا لغير العربيّة
       if(sj && sj.error === 'unavailable') throw Object.assign(new Error('unavailable'), { code: 'unavailable' }); // v-credit-out: سُوّيت التذكرة ورُدّت النقاط — لا ٤٥ استطلاعًا
     }
     throw new Error('timeout');
@@ -369,6 +369,12 @@
     /* v-trend-413: «HTTP 413» رمز حافّة لا رسالة — الصور أثقل من أن تُرسَل */
     if(/\b413\b/.test(String((e && e.message) || ''))) return ui('tooBig');
     var msg = String((e && e.message) || e);
+    /* v-trend-codes (فحص الترندات ٢٤ أكتوبر: الواجهة الإنجليزيّة عرضت «Failed: الرقابة رفضت المحتوى…»): نصّ الخادم العربيّ (سبب رفض الفيديو،
+       وأعطاب الإنشاء) لا يُعرض في اللغات الـ١٣ — سبب الرفض بنصّه القائم (vidRejected للرقابة، vidBusy لغيرها، ١٤ لغة) وإلّا «تعذّر». العربيّة كما كانت. */
+    if(lg() !== 'ar' && /[؀-ۿ]/.test(msg)){
+      var fc = e && e.failureCode;
+      return (fc === 'safety' && W('vidRejected')) || (fc === 'failed' && W('vidBusy')) || ui('fail');
+    }
     if(/^[a-z][a-z0-9_]*$/.test(msg)) return ui('fail'); /* رمز خادم خامّ آخر («timeout»، «failed»…) لا يُعرض للمستخدم */
     return ui('fail') + ': ' + msg.slice(0, 160);
   }
