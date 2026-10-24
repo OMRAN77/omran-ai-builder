@@ -55,7 +55,80 @@ const index = (() => { try { return JSON.parse(fs.readFileSync(indexFile, 'utf8'
 const browser = await chromium.launch({ executablePath: exe });
 let ok = 0, fail = 0;
 
+/* فرع التجربة الحيّة v-trend-omni (المالك ٢٤ أكتوبر «فيه رصيد»): --modes trend:<مفتاح> يشغّل ترندًا واحدًا من لوحة الترندات الحقيقيّة
+   بصورة (--photo، الافتراضيّ صورة «قبل» النموذجيّة المولّدة في التطبيق)، ضغطة «إنشاء» واحدة بلا إعادة، ويكتب تقريرًا (الشبكة والحالة
+   ومواصفات الفيديو) وثلاث لقطات — ولا يرمي، فخطوة الدفع ترفع التقرير حتّى عند الفشل. لا يُدمج في main. */
+const PHOTO = path.resolve(ROOT, String(opt('photo', 'assets/portrait/before.webp')));
+async function runTrend(trend, n) {
+  const key = 'trend-' + trend + '-' + n;
+  const T0 = Date.now();
+  const sec = () => Math.round((Date.now() - T0) / 1000);
+  const report = { trend, photo: path.relative(ROOT, PHOTO), base: LOCAL ? 'local' : base, startedAt: new Date().toISOString(), steps: [], net: [], console: [], result: null, error: null };
+  const note = (s) => { report.steps.push({ t: sec(), s }); console.log('   ', sec() + 's', s); };
+  const save = () => fs.writeFileSync(path.join(OUT, key + '.json'), JSON.stringify(report, null, 1) + '\n');
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' }); // PITFALLS: العامل الخدميّ يخفي الاستطلاع
+  await ctx.addInitScript(([u, t]) => {
+    try { sessionStorage.setItem('omran_sess_v1', '1'); localStorage.setItem('aiapp_intro', '0'); localStorage.setItem('aiapp_privacy_ack', '1'); localStorage.setItem('aiapp_lang', 'ar'); localStorage.setItem('aiapp_username', u); localStorage.setItem('aiapp_auth_token', t); } catch (e) { /* لا شيء */ }
+  }, [USER, TOKEN]);
+  const page = await ctx.newPage();
+  page.on('dialog', (d) => { note('تأكيد: ' + d.message().replace(/\s+/g, ' ').slice(0, 200)); d.accept(); });
+  page.on('console', (m) => { if (m.type() === 'error') report.console.push(m.text().slice(0, 300)); });
+  page.on('pageerror', (e) => report.console.push('pageerror: ' + String(e && e.message).slice(0, 300)));
+  page.on('response', async (r) => {
+    const u = r.url(); if (!/\/api\/video\?action=veo-(create|status|price)/.test(u)) return;
+    let b = ''; try { b = (await r.text()).slice(0, 700); } catch (e) { b = '(بلا جسم)'; }
+    report.net.push({ t: sec(), action: (/action=([\w-]+)/.exec(u) || [])[1], code: r.status(), body: b });
+  });
+  try {
+    await page.goto(base + '/', { waitUntil: 'load' }); await page.waitForTimeout(2500);
+    await page.evaluate(() => { ['omranIntro', 'privacyConsent'].forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); }); });
+    await page.evaluate(() => document.getElementById('btnVideoMaker').click());
+    await page.waitForFunction(() => window.omranVideoTrends && document.getElementById('vtRoot'), null, { timeout: 15000 });
+    await page.evaluate((k) => window.omranVideoTrends.open(k), trend);
+    await page.waitForSelector('#vtGo', { state: 'visible', timeout: 10000 });
+    const fi = page.locator('#vtPanel input[type=file]');
+    if (await fi.count()) {
+      await fi.first().setInputFiles(PHOTO);
+      await page.waitForFunction(() => document.querySelectorAll('#vtPeople img').length === 1, null, { timeout: 15000 });
+      note('الصورة مرفوعة');
+    }
+    report.goLabel = (await page.locator('#vtGo').innerText()).trim();
+    note('الزرّ: ' + report.goLabel);
+    if (DRY) { await page.locator('#vtPanel').screenshot({ path: path.join(OUT, key + '-dry.png') }); note('تجريبيّ — بلا ضغط'); return 'dry'; }
+    await page.click('#vtGo'); note('ضغط «إنشاء» (مرّة واحدة)');
+    let src = '', last = '';
+    await page.waitForTimeout(1500);
+    while (Date.now() - T0 < TIMEOUT) {
+      src = await page.evaluate(() => { const v = document.querySelector('#vtOut video'); return v ? (v.currentSrc || v.getAttribute('src') || '') : ''; });
+      if (src) break;
+      const st = await page.evaluate(() => { const s = document.getElementById('vtStatus'); return s ? { txt: s.innerText || '', busy: s.hasAttribute('data-genw-busy') } : { txt: '', busy: false }; });
+      if (st.txt && st.txt !== last) { last = st.txt; note('حالة: ' + st.txt.replace(/\s+/g, ' ').slice(0, 200)); }
+      if (!st.busy && st.txt && !(await page.locator('#vtGo').isDisabled())) { report.error = 'انتهى بلا فيديو: ' + st.txt.slice(0, 200); break; }
+      await page.waitForTimeout(5000);
+    }
+    try { await page.locator('#vtPanel').screenshot({ path: path.join(OUT, key + '-panel.png') }); } catch (e) { note('تعذّرت لقطة اللوحة'); }
+    if (!src) { if (!report.error) report.error = 'انتهت المهلة بلا فيديو'; return 'report'; }
+    note('الفيديو ظهر: ' + src.replace(/uri=[^&]+/, 'uri=…').slice(0, 120));
+    const b64 = await page.evaluate(async ([s, tk]) => {
+      const r = await fetch(s, { headers: { Authorization: 'Bearer ' + tk } });
+      if (!r.ok) throw new Error('تنزيل ' + r.status);
+      const buf = new Uint8Array(await r.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+      return btoa(bin);
+    }, [src, TOKEN]);
+    const mp4 = path.join(OUT, key + '.mp4'); fs.writeFileSync(mp4, Buffer.from(b64, 'base64'));
+    const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration,size:stream=codec_type,codec_name,width,height', '-of', 'json', mp4], { encoding: 'utf8' }));
+    report.result = { bytes: fs.statSync(mp4).size, duration: Number(probe.format && probe.format.duration), streams: (probe.streams || []).map((x) => [x.codec_type, x.codec_name, x.width, x.height].filter(Boolean).join(' ')) };
+    for (const at of [0.3, 3.5, 7]) { try { execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', String(at), '-i', mp4, '-frames:v', '1', '-q:v', '3', path.join(OUT, key + '-' + String(at).replace('.', '_') + 's.jpg')]); } catch (e) { note('تعذّر إطار ' + at + 's'); } }
+    note('✓ ' + JSON.stringify(report.result));
+    return 'ok';
+  } catch (e) {
+    report.error = String(e && e.message || e).slice(0, 400);
+    return 'report';
+  } finally { report.seconds = sec(); save(); await ctx.close(); }
+}
+
 async function runOne(mode, n) {
+  if (mode.indexOf('trend:') === 0) return runTrend(mode.slice(6), n);
   const key = mode + '-' + n;
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await ctx.addInitScript(([u, t]) => {
