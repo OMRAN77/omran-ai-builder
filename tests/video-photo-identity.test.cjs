@@ -6,6 +6,9 @@
 // والمحادثة ترمي كلام المستخدم. هنا تُنفَّذ الدوالّ والمعالجات الحقيقيّة ويُفحص الطلب المُرسَل فعلًا.
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'synthetic-test-secret-' + 'x'.repeat(40);
 const test = require('node:test');
+/* v-trend-omni: هذا الاختبار يفحص بناء أمر الترند وإطاره الأوّل وخصمه — المشترك بين المحرّكين — على طلب Veo المصطنع؛
+   مسار Omni نفسه (الأمر والصور ذاتهما حرفيًّا، والتذكرة والاسترجاع) في trend-omni.test.cjs */
+process.env.TREND_ENGINE = 'veo';
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');

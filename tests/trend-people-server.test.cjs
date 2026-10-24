@@ -5,6 +5,9 @@
 // الصحيحة، وأنّ صورة واحدة تمرّ كما كانت، وأنّ فشل الدمج يردّ الخصم ويفكّ القفل.
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'synthetic-test-secret-' + 'x'.repeat(40);
 const test = require('node:test');
+/* v-trend-omni: هذا الاختبار يفحص بناء أمر الترند وإطاره الأوّل وخصمه — المشترك بين المحرّكين — على طلب Veo المصطنع؛
+   مسار Omni نفسه (الأمر والصور ذاتهما حرفيًّا، والتذكرة والاسترجاع) في trend-omni.test.cjs */
+process.env.TREND_ENGINE = 'veo';
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
@@ -64,12 +67,16 @@ test('٣. أوّل إطار: صورتان → نداء دمج واحد بكلّ 
   const seen = [];
   const opts = {
     faceCrops: async () => [],
-    callImage: async (key, parts, aspect) => { seen.push({ key, parts, aspect }); return { b64: 'GROUP', mime: 'image/png' }; },
+    callImage: async (key, parts, aspect, fetchImpl, cfg) => { seen.push({ key, parts, aspect, cfg }); return { b64: 'GROUP', mime: 'image/png' }; },
   };
   const two = [{ data: 'AAAA', mime: 'image/png' }, { data: 'BBBB', mime: 'image/jpeg' }];
   const out = await tp.groupFirstFrame('K', two, 'a souq scene', '720:1280', opts);
   assert.deepEqual([out.b64, out.mime], ['GROUP', 'image/png']);
   assert.equal(seen.length, 1);
+  assert.equal(seen[0].cfg, undefined, 'بلا مهلة: الافتراضيّة كما كانت');
+  /* v-trend-omni: مهلة الإطار تمرّ إلى نداء الصورة (Omni متزامن داخل حدّ الدالّة) */
+  await tp.groupFirstFrame('K', two, 'a souq scene', '720:1280', Object.assign({ timeoutMs: 120000 }, opts));
+  assert.deepEqual(seen.pop().cfg, { timeoutMs: 120000 });
   assert.equal(seen[0].aspect, '9:16');
   const texts = seen[0].parts.filter((p) => p.text).map((p) => p.text);
   const datas = seen[0].parts.filter((p) => p.inlineData).map((p) => p.inlineData.data);
@@ -93,7 +100,7 @@ test('٤. veo-create: شخصيّتان تبنيان أوّل إطار قبل ا�
   assert.match(src, /const trendPeople = Array\.isArray\(body\.imagesBase64\)/);
   assert.match(src, /if \(body\.trend && trendPeople\.length > 1\) \{/);
   /* v-two-people: مشهد القالب وحده إلى إطار المجموعة — لا فقرة «WHO THEY ARE» المفردة */
-  assert.match(src, /groupFirstFrame\(apiKey, trendPeople, tp\.trendScene\(promptText\), ratio\)/);
+  assert.match(src, /groupFirstFrame\(apiKey, trendPeople, tp\.trendScene\(promptText\), ratio[,)]/); // v-trend-omni: ووسيط مهلة اختياريّ لـOmni
   assert.match(src, /if \(chargedUser\) await pointsLib\.refundPoints\(chargedUser, pointsLib\.COSTS\.veo_video, chargedPay\);\n\s+if \(videoLocked\) await require\('\.\/abuse-guard\.js'\)\.releaseVideoLock\(videoLocked\);\n\s+chargedUser = null; videoLocked = null;[^\n]*\n(?:\s+\/\*[\s\S]*?\*\/\n)?\s+const fail = frame\.rejected[\s\S]{0,300}?startFail\(frame\.upstream \|\| frame\.status \|\| 502, frame\.tech\);\n\s+res\.status\(fail\.code\)\.json\(fail\.body\);/, 'الفشل يردّ الاثنين (بنوع الخصم، ثمّ يُصفَّران فلا يردّ catch ثانيةً) قبل الردّ — والردّ رمز (v-trend-codes)');
   // الدمج بعد القفل عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءاته
   assert.ok(src.indexOf('videoLocked = username;') < src.indexOf('groupFirstFrame'), 'بعد القفل');

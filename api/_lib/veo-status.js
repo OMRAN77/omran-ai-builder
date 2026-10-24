@@ -20,6 +20,18 @@ module.exports = async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) { console.error('[veo-status] missing provider key'); res.status(500).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' }); return; }
 
+    /* v-trend-omni: مهمّة الترند على Omni اكتملت عند الإنشاء (نداء متزامن) — ناتجها في التخزين، والتذكرة تُسوّى هنا عند التسليم كـVeo.
+       عطل القراءة = RUNNING (يعيد العميل) لا فشلًا: الفيديو مدفوع وموجود. */
+    const vc = require('./veo-create.js');
+    if (op.indexOf(vc.OMNI_OP_PREFIX) === 0) {
+      let rec;
+      try { rec = JSON.parse((await require('./kv.js').kvGetRaw(vc.omniOpKey(op))) || 'null'); }
+      catch (e) { console.error('[veo-status] omni result read failed: ' + (e && e.message)); res.status(200).json({ status: 'RUNNING' }); return; }
+      if (!rec || !rec.uri) { await require('./video-job.js').settleVideoJob(op, false); failed(res, 'omni result missing'); return; }
+      await require('./video-job.js').settleVideoJob(op, true);
+      res.status(200).json({ status: 'SUCCEEDED', output: [require('./veo-download.js').downloadUrl(rec.uri)] });
+      return;
+    }
     const upstream = await fetch(GL + '/' + op, { headers: { 'x-goog-api-key': apiKey } });
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
