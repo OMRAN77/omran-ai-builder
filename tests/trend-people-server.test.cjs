@@ -5,6 +5,9 @@
 // الصحيحة، وأنّ صورة واحدة تمرّ كما كانت، وأنّ فشل الدمج يردّ الخصم ويفكّ القفل.
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'synthetic-test-secret-' + 'x'.repeat(40);
 const test = require('node:test');
+/* v-trend-omni: هذا الاختبار يفحص بناء أمر الترند وإطاره الأوّل وخصمه — المشترك بين المحرّكين — على طلب Veo المصطنع؛
+   مسار Omni نفسه (الأمر والصور ذاتهما حرفيًّا، والتذكرة والاسترجاع) في trend-omni.test.cjs */
+process.env.TREND_ENGINE = 'veo';
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
@@ -93,7 +96,7 @@ test('٤. veo-create: شخصيّتان تبنيان أوّل إطار قبل ا�
   assert.match(src, /const trendPeople = Array\.isArray\(body\.imagesBase64\)/);
   assert.match(src, /if \(body\.trend && trendPeople\.length > 1\) \{/);
   /* v-two-people: مشهد القالب وحده إلى إطار المجموعة — لا فقرة «WHO THEY ARE» المفردة */
-  assert.match(src, /groupFirstFrame\(apiKey, trendPeople, tp\.trendScene\(promptText\), ratio\)/);
+  assert.match(src, /groupFirstFrame\(apiKey, trendPeople, tp\.trendScene\(promptText\), ratio[,)]/); // v-trend-omni: ووسيط مهلة اختياريّ لـOmni
   assert.match(src, /if \(chargedUser\) await pointsLib\.refundPoints\(chargedUser, pointsLib\.COSTS\.veo_video, chargedPay\);\n\s+if \(videoLocked\) await require\('\.\/abuse-guard\.js'\)\.releaseVideoLock\(videoLocked\);\n\s+chargedUser = null; videoLocked = null;[^\n]*\n(?:\s+\/\*[\s\S]*?\*\/\n)?\s+const fail = frame\.rejected[\s\S]{0,300}?startFail\(frame\.upstream \|\| frame\.status \|\| 502, frame\.tech\);\n\s+res\.status\(fail\.code\)\.json\(fail\.body\);/, 'الفشل يردّ الاثنين (بنوع الخصم، ثمّ يُصفَّران فلا يردّ catch ثانيةً) قبل الردّ — والردّ رمز (v-trend-codes)');
   // الدمج بعد القفل عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءاته
   assert.ok(src.indexOf('videoLocked = username;') < src.indexOf('groupFirstFrame'), 'بعد القفل');

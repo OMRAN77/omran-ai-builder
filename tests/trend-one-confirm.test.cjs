@@ -61,7 +61,10 @@ account('none1', 'free', 1000);    // بلا صلاحيّة (مشترك بالح
 account('poor1', 'basic', 100);    // صلاحيّة واحد ونقاط لا تكفي الباقي
 account('vip1', 'free', 0); vip.add('vip1');
 let upstream = 0;
-global.fetch = async () => { upstream++; return new Response(JSON.stringify({ name: 'operations/v' + upstream }), { status: 200 }); };
+/* الترند على Omni (v-trend-omni): ردّ الواجهة المتزامنة بفيديو؛ وغيره (Veo) اسم مهمّة */
+global.fetch = async (url) => { upstream++; return /\/interactions$/.test(String(url))
+  ? new Response(JSON.stringify({ steps: [{ type: 'model_output', content: [{ type: 'video', uri: 'https://generativelanguage.googleapis.com/v1beta/files/v' + upstream + ':download?alt=media' }] }] }), { status: 200 })
+  : new Response(JSON.stringify({ name: 'operations/v' + upstream }), { status: 200 }); };
 async function serve(action, body) {
   const res = { code: 200, body: null, setHeader() {}, status(c) { this.code = c; return this; }, end() { return this; }, json(v) { this.body = v; return this; } };
   await veo({ method: 'POST', query: { action }, body }, res);
@@ -114,7 +117,7 @@ test('٥. الإنشاء بـconfirmed:true: المشهد يُخصم بسعره 
   assert.equal(ask.code, 428, 'بلا موافقة يسأل كما كان');
   const go = await serve('veo-create', { trend: 'pixarstory', params: { sceneIndex: 1 }, token: token('none1'), confirmed: true });
   assert.equal(go.code, 200, JSON.stringify(go.body));
-  assert.ok(go.body.op);
+  assert.match(String(go.body.op), /^omni\//, 'الترند على Omni');
   assert.equal(Number(kv.get('points:none1')), before - COST, 'المشهد الواحد بسعره');
 });
 

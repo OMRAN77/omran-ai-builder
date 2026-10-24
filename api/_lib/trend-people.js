@@ -76,7 +76,8 @@ async function groupFirstFrame(apiKey, photos, scene, ratio, o) {
   // لقطات الوجوه ترفع الأمانة ولا تُوقف المسار: عطب الكشف = الدمج بالصور وعناوينها كما في الاستوديو.
   try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, shaped); } catch (e) { console.warn('[trend-people] face crops skipped: ' + (e && e.message)); crops = []; }
   const parts = mergeIdentity.mergeParts(shaped, crops, frameTask(shaped.length, scene));
-  return (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl);
+  /* v-trend-omni: مهلة الإطار تُمرَّر حين يتبعه محرّك متزامن (Omni) في الدالّة نفسها — بلاها الإعداد السابق حرفيًّا (٢٤٠ث) */
+  return (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl, opt.timeoutMs ? { timeoutMs: opt.timeoutMs } : undefined);
 }
 
 /* ── v-omni-first-frame (١ أكتوبر ٢٠٢٦، المالك بعد فشل قفل النصّ مرّتين بالدليل: «مافي شي تغيّر… شوف الفرق الشخصيّة»؛

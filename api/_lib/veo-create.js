@@ -43,7 +43,55 @@ async function trendSteps(username, scenes, C) {
   return Array.from({ length: paid }, () => ['veo_video', C.veo_video]);
 }
 
+/* v-trend-omni (المالك ٢٤ أكتوبر: «ننقل الترندات لمحرّك Gemini Omni Flash» — «السعر يبقى ١٧٥»): أوقفت جوجل Veo 3.1 Preview في ٢٢ أكتوبر
+   (فحص الموديلات #1225: veo-3.1-fast-generate-preview وveo-3.1-generate-preview غير موجودين)، فكانت الترندات كلّها «الخدمة متوقّفة».
+   الترند يمرّ هنا كما كان — الأمر والإطار الأوّل والخصم (veo_video ١٧٥ وصلاحيّة الباقة) والمهلة والتذكرة — والمحرّك وحده Omni، بنداء
+   متزامن كـomni-create (الواجهة نفسها وأدواره)، ويُحفظ ناتجه بمعرّف مهمّة omni/… يقرؤه veo-status: العملاء كلّهم كما هم (op ثمّ استطلاع)،
+   والتذكرة تُسوّى عند التسليم كـVeo. TREND_ENGINE=veo يعيد المسار القديم بلا نشر (لنموذج Veo حيّ لاحقًا). */
+const OMNI_OP_PREFIX = 'omni/';
+const OMNI_OP_TTL_SEC = 2 * 86400; // كتذكرة المهمّة: يومان
+function omniOpKey(op) { return 'omni:op:' + String(op); }
+const OMNI_FRAME_MS = 120000; // إطار المجموعة قبل Omni: يترك للمحرّك وقته داخل حدّ الدالّة (٣٠٠ث)
+function trendEngine() { return String(process.env.TREND_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }
+async function trendOmni(o) {
+  const omni = require('./omni-create.js');
+  const input = [];
+  let prompt = o.prompt;
+  if (o.imageBase64) {
+    input.push({ type: 'image', data: o.imageBase64, mime_type: o.imageMime || 'image/png' });
+    if (o.framed && o.ref) {
+      /* الإطار الأوّل بوجهه في المشهد + لقطة الوجه مرجعًا — أدوار omni-create حرفيًّا */
+      input.push({ type: 'image', data: o.ref.data, mime_type: o.ref.mime || 'image/png' });
+      prompt = omni.FRAME_DECL + prompt + omni.FRAME_GUIDE;
+    } else if (o.framed) {
+      prompt = '[# Sources <FIRST_FRAME>@Image1] ' + prompt + ' Use Image1 as the starting frame.';
+    } else {
+      prompt = '[# References <IMAGE_REF_0>@Image1] ' + prompt; // صورة المستخدم كما هي: «the reference image» في قالب الترند
+    }
+  }
+  input.push({ type: 'text', text: prompt });
+  const upstream = await fetch((process.env.GEMINI_API_BASE || GL).replace(/\/+$/, '') + '/interactions', {
+    method: 'POST',
+    headers: { 'x-goog-api-key': o.apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: process.env.OMNI_VIDEO_MODEL || 'gemini-omni-1.1-flash',
+      input,
+      response_format: { type: 'video', resolution: o.quality === 'high' ? '1080p' : '720p', aspect_ratio: o.ratio === '720:1280' ? '9:16' : '16:9', delivery: 'uri' },
+      background: false, store: true, stream: false, // v-omni-store: الرابط يشترط store:true
+    }),
+    signal: AbortSignal.timeout(omni.omniTimeoutFor(Date.now() - o.t0, Number(process.env.OMNI_TIMEOUT_MS || 270000))),
+  });
+  const data = await upstream.json().catch(() => ({}));
+  if (!upstream.ok) return { status: upstream.status, msg: (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data) };
+  for (const s of (data.steps || [])) {
+    if (!s || s.type !== 'model_output') continue;
+    for (const c of (s.content || [])) if (c && c.type === 'video' && c.uri) return { uri: c.uri };
+  }
+  return { empty: true }; // اكتمل بلا فيديو (غالبًا فلاتر الأمان)
+}
+
 module.exports = async (req, res) => {
+  const t0 = Date.now(); // v-trend-omni: ميزانيّة النداء المتزامن داخل حدّ الدالّة
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
@@ -165,11 +213,12 @@ module.exports = async (req, res) => {
 
     /* v-trend-people: أوّل إطار فيه كلّ الأشخاص معًا في مشهد الترند، ثمّ يحرّكه المحرّك. بعد القفل
        عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءات الدمج. فشله = لا خصم ولا قفل (يُردّان هنا). */
+    let groupFramed = false; // v-trend-omni: الصورة صارت أوّل إطار (دور Image1 عند Omni)
     if (body.trend && trendPeople.length > 1) {
       /* v-two-people: مشهد القالب وحده — فقرة «WHO THEY ARE» ليست مشهدًا (كانت أوّل ٧٠٠ حرف من «المشهد») */
-      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio);
+      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio, trendEngine() === 'omni' ? { timeoutMs: OMNI_FRAME_MS } : undefined);
       if (frame && frame.b64) {
-        imageBase64 = frame.b64; imageMime = frame.mime;
+        imageBase64 = frame.b64; imageMime = frame.mime; groupFramed = true;
         /* v-trend-identity: الإطار الأوّل بُني للتوّ بوجوه الأشخاص الحقيقيّة داخل مشهد الترند، لكنّ أمر
            الترند نفسه يبقى «Transform the person … into …» — فيعيد المحرّك تنفيذ التحويل فوق إطار
            نُفِّذ فيه أصلًا، ويرسم وجوهًا جديدة. هذا السطر يُلحق أخيرًا فيغلب: التحويل انتهى، والمطلوب
@@ -194,6 +243,7 @@ module.exports = async (req, res) => {
     /* v-video-first-frame: شخص واحد — أوّل إطار بوجهه في المشهد (الترند: مشهد القالب وحده وأسلوبه)، ثمّ القفل نفسه
        كإطار المجموعة. أيّ عطب = الصورة نفسها أوّل إطار كما كانت، فلا يفشل فيديو بسبب الإطار. */
     let framed = false;
+    let frameRef = null; // v-trend-omni: لقطة الوجه من الإطار الفرديّ (Image2 عند Omni)
     if (soloWanted) {
       const solo = await tp.soloFirstFrame(apiKey, { data: String(imageBase64).trim(), mime: imageMime },
         body.trend ? tp.trendScene(promptText) : String(rawDesc), ratio,
@@ -211,9 +261,36 @@ module.exports = async (req, res) => {
           }
         }
         promptText += FRAME_LOCK;
-        framed = true;
+        framed = true; frameRef = solo.ref || null;
         console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : ''));
       } else console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
+    }
+
+    if (body.trend && trendEngine() === 'omni') {
+      const r = await trendOmni({ apiKey, prompt: String(promptText).trim().slice(0, VEO_PROMPT_MAX), imageBase64: imageBase64 && String(imageBase64).trim(),
+        imageMime, framed: framed || groupFramed, ref: frameRef, ratio, quality, t0 });
+      if (!r.uri) {
+        if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video, chargedPay);
+        if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+        chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
+        if (r.status) {
+          console.error('[veo-create] omni upstream ' + r.status + ': ' + String(r.msg).slice(0, 300));
+          const fail = require('./_videoFail.js').startFail(r.status, r.msg); /* نفاد الرصيد unavailable · زحام video_busy · رفض video_rejected */
+          res.status(fail.code).json(fail.body);
+        } else {
+          console.warn('[veo-create] omni: completed without a video (likely safety filters)');
+          res.status(502).json({ error: 'video_rejected', message_ar: 'لم يُنتَج فيديو (قد يكون الطلب محجوبًا بفلاتر الأمان) — جرّب صورة أو وصفًا آخر.', retryable: false });
+        }
+        return;
+      }
+      const op = OMNI_OP_PREFIX + require('crypto').randomUUID();
+      await require('./kv.js').kvSetRaw(omniOpKey(op), JSON.stringify({ uri: r.uri }), OMNI_OP_TTL_SEC);
+      // v-video-refund: التذكرة كـVeo — veo-status يسوّيها عند التسليم، والكنس يردّها إن لم يُسلَّم
+      await require('./video-job.js').rememberVideoJob(op, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked, pay: chargedPay });
+      chargedUser = null; videoLocked = null;
+      console.log('[veo-create] trend ' + String(body.trend).slice(0, 20) + ' ready on omni in ' + Math.round((Date.now() - t0) / 1000) + 's');
+      res.status(200).json({ op });
+      return;
     }
 
     const model = quality === 'high' ? 'veo-3.1-generate-preview' : 'veo-3.1-fast-generate-preview';
@@ -267,6 +344,9 @@ module.exports = async (req, res) => {
   }
 };
 module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;
+module.exports.OMNI_OP_PREFIX = OMNI_OP_PREFIX;
+module.exports.omniOpKey = omniOpKey;
+module.exports.trendEngine = trendEngine;
 module.exports.VEO_FREE_IMAGE_MAX = VEO_FREE_IMAGE_MAX;
 module.exports.VEO_FREE_MAX = VEO_FREE_MAX;
 module.exports.FRAME_LOCK = FRAME_LOCK;
