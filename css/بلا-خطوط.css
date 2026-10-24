@@ -9,7 +9,12 @@ html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) body{--om-g
 /* لون الحدّ «شبح» (أسود بشفافيّة .06 لا يُرى على الأسود) بدل transparent: js/app-41-three-colors.js يعيد تصنيف العنصر عند انتهاء كلّ انتقال فينزع om3-line ويقرأ الحدّ فورًا — الشفّاف يُقرأ «بلا حدّ» فيعود الحدّ الرماديّ ثمّ يتكرّر الوميض بلا نهاية؛ الشبح (> .04) يُقرأ حدًّا فيبقى الصنف ثابتًا */
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b){border-color:rgba(0,0,0,.06) !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-hot.om3-line:not(#om3-a#om3-b):hover,
-html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b):is(:focus-visible,:focus-within,.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:rgba(0,0,0,.06) !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b):is(:focus,.sel,.selected,.active,.on,[aria-pressed="true"],[aria-selected="true"],[aria-checked="true"]){border-color:rgba(0,0,0,.06) !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
+/* v-no-box-glow (المالك ٢٤ أكتوبر بلقطتي صانع الفيديو: «اذا اضغط على اي محرك كل شي يضيى تحت»): كان :focus-within فوق، فيتوهّج كلّ
+   صندوق فيه العنصر المركَّز — الضغط يركّز زرّ المحرّك، فيضيء شريط المحرّكات (#vmkTabs) والاستوديو كلّه معه. التوهّج للعنصر المركَّز
+   نفسه (:focus)، ولغلاف حقل كتابة بلا حدّ (ابنه المباشر، كـ#sbSearchWrap)؛ لا للصناديق التي تحوي أزرارًا. قاعدة وحدها: متصفّح بلا :has
+   يُسقطها هي فقط لا قائمة المرور والاختيار كلّها. */
+html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) .om3-line:not(#om3-a#om3-b):has(> :is(input,textarea,select):focus){border-color:rgba(0,0,0,.06) !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) :is(#sidebar,#workarea,#omFrameCenter):hover,
 html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg):not(.mobile-ui) main:has(#chatcol:hover) > #omFrameCenter{--om-gold-line:linear-gradient(rgba(212,175,55,.85),rgba(212,175,55,.85));}
 /* المعرّفات مضاعفة/متسلسلة عمدًا لتغلب قواعد أقدم بمعرّفين (redesign.css: html #composerBox > #btnSend، إطارات.css: #omranSidebarFoot بخمس :not) */
