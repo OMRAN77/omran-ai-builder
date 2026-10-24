@@ -86,11 +86,21 @@ async function both(body) {
 const text = (c) => c.body.input.filter((x) => x.type === 'text').map((x) => x.text).join('');
 const images = (c) => c.body.input.filter((x) => x.type === 'image').map((x) => x.data);
 
-test('١. التكافؤ: صورة بلا إطار (صورة المستخدم نفسها مرجعًا) — الأمر نفسه حرفيًّا مسبوقًا بدورها، والصورة نفسها', async () => {
-  const { inst, omni } = await both({ trend: 'oldphoto', params: { sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'USERPHOTO', imageMime: 'image/jpeg' });
-  assert.equal(text(omni), '[# References <IMAGE_REF_0>@Image1] ' + inst.prompt);
-  assert.deepEqual(images(omni), ['USERPHOTO']);
-  assert.equal(inst.image.bytesBase64Encoded, 'USERPHOTO');
+test('١. التكافؤ: صورة بلا إطار مبنيّ — صورة المستخدم نفسها «الإطار الأوّل» كما كانت عند Veo، في كلّ ترند بصورة خارج SOLO، وترند SOLO تعذّر إطاره', async () => {
+  const { TRENDS } = require(rp('api/_lib/video-trends.js'));
+  const ids = Object.keys(TRENDS).filter((id) => TRENDS[id].photo !== 'none' && !TP.SOLO_FRAME_TRENDS.has(id));
+  for (const want of ['productad', 'oldphoto', 'familywave', 'babyversion', 'outfitswap', 'superhero', 'talkingpet', 'pixarstory']) assert.ok(ids.includes(want), want);
+  const check = async (trend) => {
+    const { inst, omni } = await both({ trend, params: { text: 'يا هلا', sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'USERPHOTO', imageMime: 'image/jpeg' });
+    assert.equal(inst.image.bytesBase64Encoded, 'USERPHOTO', trend + ': Veo يبدأ من الصورة');
+    assert.deepEqual(images(omni), ['USERPHOTO'], trend);
+    assert.equal(text(omni), '[# Sources <FIRST_FRAME>@Image1] ' + inst.prompt + ' Use Image1 as the starting frame.', trend + ': دور «الإطار الأوّل» لا «المرجع»');
+  };
+  for (const id of ids) await check(id);
+  /* ترند الشخص الواحد وتعذّر إطاره: الصورة نفسها أوّل إطار (لا لقطة وجه) */
+  const real = TP.soloFirstFrame;
+  TP.soloFirstFrame = async () => ({ error: 'frame down' });
+  try { await check('heritagesing'); } finally { TP.soloFirstFrame = real; }
 });
 
 test('٢. التكافؤ: ترند الشخص الواحد بإطار أوّل — الإطار Image1 ولقطة الوجه Image2 بأدوار omni-create، والأمر نفسه بينهما', async () => {
@@ -108,7 +118,17 @@ test('٣. التكافؤ: شخصان — إطار المجموعة Image1 «ال
   assert.equal(groupOpts, undefined, 'Veo: مهلة الإطار الافتراضيّة كما كانت');
   const inst = calls.find((c) => /predictLongRunning/.test(c.url)).body.instances[0];
   calls = []; delete process.env.TREND_ENGINE;
-  const b = await create(Object.assign({ token: ownerTok }, body));
+  /* الميزانيّة: الوقت يُجمَّد ويقفز ٢٠٠ث أثناء بناء الإطار — مهلة Omni الباقي من حدّ الدالّة لا ٢٧٠ث كاملة */
+  const realNow = Date.now, realTimeout = AbortSignal.timeout, realGroup = TP.groupFirstFrame;
+  let clock = realNow(); const timeouts = [];
+  Date.now = () => clock;
+  AbortSignal.timeout = (ms) => { timeouts.push(ms); return realTimeout.call(AbortSignal, ms); };
+  TP.groupFirstFrame = async (...a) => { clock += 200000; return realGroup(...a); };
+  let b;
+  try { b = await create(Object.assign({ token: ownerTok }, body)); } finally { Date.now = realNow; AbortSignal.timeout = realTimeout; TP.groupFirstFrame = realGroup; }
+  const budget = OMNI.omniTimeoutFor(200000, 270000);
+  assert.ok(budget < 270000, 'الميزانيّة أقصر من المهلة الافتراضيّة');
+  assert.deepEqual(timeouts, [budget], 'نداء Omni بمهلة الباقي بعد الإطار');
   assert.deepEqual(groupOpts, { timeoutMs: 120000 });
   const omni = calls.find((c) => /\/interactions$/.test(c.url));
   assert.equal(a.code, 200); assert.equal(b.code, 200);

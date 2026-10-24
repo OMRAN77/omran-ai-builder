@@ -63,10 +63,10 @@ async function trendOmni(o) {
       /* الإطار الأوّل بوجهه في المشهد + لقطة الوجه مرجعًا — أدوار omni-create حرفيًّا */
       input.push({ type: 'image', data: o.ref.data, mime_type: o.ref.mime || 'image/png' });
       prompt = omni.FRAME_DECL + prompt + omni.FRAME_GUIDE;
-    } else if (o.framed) {
-      prompt = '[# Sources <FIRST_FRAME>@Image1] ' + prompt + ' Use Image1 as the starting frame.';
     } else {
-      prompt = '[# References <IMAGE_REF_0>@Image1] ' + prompt; // صورة المستخدم كما هي: «the reference image» في قالب الترند
+      /* إطار المجموعة، أو صورة المستخدم نفسها (ترند بلا إطار مبنيّ، أو تعذّر الإطار): أوّل إطار كما كانت عند Veo (instance.image) — دور
+         «المرجع» عند Omni يرسم المشهد من جديد بوجه آخر (DECISIONS v-omni-first-frame)، و«الصورة القديمة تتحرّك» تبدأ من الصورة نفسها */
+      prompt = '[# Sources <FIRST_FRAME>@Image1] ' + prompt + ' Use Image1 as the starting frame.';
     }
   }
   input.push({ type: 'text', text: prompt });

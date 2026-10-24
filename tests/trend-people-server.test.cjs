@@ -67,12 +67,16 @@ test('٣. أوّل إطار: صورتان → نداء دمج واحد بكلّ 
   const seen = [];
   const opts = {
     faceCrops: async () => [],
-    callImage: async (key, parts, aspect) => { seen.push({ key, parts, aspect }); return { b64: 'GROUP', mime: 'image/png' }; },
+    callImage: async (key, parts, aspect, fetchImpl, cfg) => { seen.push({ key, parts, aspect, cfg }); return { b64: 'GROUP', mime: 'image/png' }; },
   };
   const two = [{ data: 'AAAA', mime: 'image/png' }, { data: 'BBBB', mime: 'image/jpeg' }];
   const out = await tp.groupFirstFrame('K', two, 'a souq scene', '720:1280', opts);
   assert.deepEqual([out.b64, out.mime], ['GROUP', 'image/png']);
   assert.equal(seen.length, 1);
+  assert.equal(seen[0].cfg, undefined, 'بلا مهلة: الافتراضيّة كما كانت');
+  /* v-trend-omni: مهلة الإطار تمرّ إلى نداء الصورة (Omni متزامن داخل حدّ الدالّة) */
+  await tp.groupFirstFrame('K', two, 'a souq scene', '720:1280', Object.assign({ timeoutMs: 120000 }, opts));
+  assert.deepEqual(seen.pop().cfg, { timeoutMs: 120000 });
   assert.equal(seen[0].aspect, '9:16');
   const texts = seen[0].parts.filter((p) => p.text).map((p) => p.text);
   const datas = seen[0].parts.filter((p) => p.inlineData).map((p) => p.inlineData.data);
