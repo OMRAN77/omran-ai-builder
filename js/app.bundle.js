@@ -34404,8 +34404,12 @@ async function __safeJson(res){
   if(ideaAI) ideaAI.onclick = async function(){
     ideaAI.disabled = true;
     ideaStatus('⏳ ' + bT('يولّد ٤ تصاميم بالذكاء… نحو دقيقة', 'Generating 4 AI designs… about a minute'));
-    /* v-decor-ideas-ai: كان ينادي «صمم الغرفة» نفسه فيصمّم صورتك المرفوعة (تصميمًا واحدًا) والزرّ يقول ٤ تصاميم بلا صورة */
-    try{ await designRun(lastIdea ? { place: lastIdea.place || (lastIdea.q ? 'custom' : ''), idea: lastIdea.q } : null); }finally{ ideaAI.disabled = false; }
+    /* v-decor-ideas-ai: كان ينادي «صمم الغرفة» نفسه فيصمّم صورتك المرفوعة (تصميمًا واحدًا) والزرّ يقول ٤ تصاميم بلا صورة. الآن بلا صورتك دائمًا:
+       النصّ الظاهر في السطر (وإلّا آخر وصف فُتح)، والمكان من «نوع المكان» كما كان — إلّا وصورتك قيد الاستعمال فالأفكار لا تكتبه، فمن آخر نقطة. */
+    const q = (ideaText ? ideaText.value.trim() : '') || (lastIdea ? lastIdea.q : '');
+    const photoInUse = !!(selectedBase64 && !(placeEl && placeEl.value));
+    const pl = (photoInUse ? (lastIdea ? lastIdea.place : '') : (placeEl ? placeEl.value : '')) || (q ? 'custom' : '');
+    try{ await designRun(pl ? { place: pl, idea: q } : null); }finally{ ideaAI.disabled = false; }
     ideaStatus('');
     try{
       const target = (gridEl && gridEl.style.display !== 'none') ? gridEl : ((resultEl && resultEl.style.display !== 'none') ? resultEl : statusEl);
@@ -34415,8 +34419,8 @@ async function __safeJson(res){
   if(ideaAI) ideaAI.textContent = '🎨 ' + bT('ولّد ٤ تصاميم بالذكاء الاصطناعي', 'Generate 4 AI designs');
   if(ideaText) ideaText.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); if(ideaGo) ideaGo.onclick(); } });
 
-  /* run: null = «صمم الغرفة» (صورتك الظاهرة، وإلّا «نوع المكان»)؛ {place, idea} = تشغيل من صندوق الأفكار بلا صورة (v-decor-ideas-ai)،
-     ويُعاد هو نفسه لـ«زوّدني مثله» على شبكته. */
+  /* run: null = «صمم الغرفة» (صورتك الظاهرة، وإلّا «نوع المكان»)؛ {place, idea} = تشغيل بلا صورة — من صندوق الأفكار (v-decor-ideas-ai)،
+     أو «زوّدني مثله» على شبكة بمكانها نفسه. */
   async function designRun(run){
     const idea = run ? (run.idea || '') : (ideaText ? ideaText.value.trim() : '');
     const photoOn = !run && !!(selectedBase64 && sourcePreview && sourcePreview.style.display !== 'none'); // v-tool-drop: صورة المستخدم الظاهرة تُرسل — مكان من الملصق قبلها كان يُسقطها بصمت
@@ -34424,6 +34428,7 @@ async function __safeJson(res){
     /* v-decor-before-pin: الصورة تُلتقط عند البدء — صورة ثانية تُرفع أثناء التوليد كانت تصير «قبل» في السحّاب لنتيجة الأولى */
     const srcB64 = placeVal ? '' : selectedBase64;
     const srcMime = selectedMime;
+    const again = run || (placeVal ? { place: placeVal, idea } : null); /* «زوّدني مثله» يعيد مكان شبكته ولو رُفعت صورة بعدها (كان يقرأ الحالة الحاليّة) */
     const notesEl = document.getElementById('designAiNotes');
     if(!srcB64 && !placeVal){
       setStatus(t('designAiNeedPick'));
@@ -34503,7 +34508,7 @@ async function __safeJson(res){
           vb.className = 'btn';
           vb.textContent = bT('\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647','\u2728 More like this');
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
-          vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; designRun(run); };
+          vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; designRun(again); };
           cell.appendChild(vb);
           gridEl.appendChild(cell);
         });

@@ -328,3 +328,37 @@ test('١١ (v-decor-ideas-ai) «ولّد ٤ تصاميم» يولّد ما تت�
   const fb = F.fetched.filter((f) => f.u === '/api/design-create').pop().body;
   assert.equal(fb.place, 'kitchen'); assert.equal(fb.count, 4); assert.equal(fb.imageBase64, '');
 });
+
+test('١٢ (v-decor-ideas-ai) «ولّد ٤ تصاميم» يقرأ النصّ الظاهر في السطر والمكان كما كان بلا صورة، و«زوّدني مثله» على شبكة «صمم الغرفة» يعيد مكانها ولو رُفعت صورة بعدها', async () => {
+  const reply = (u) => (u === '/api/design-create' ? new Response(JSON.stringify({ images: [{ imageBase64: 'WDE=', mimeType: 'image/webp' }] }), { status: 200 }) : null);
+  const last = (E) => E.fetched.filter((f) => f.u === '/api/design-create').pop().body;
+  // بلا صورة: نقطة «مجلس» ثمّ نصّ يُكتب بلا «أعطني أفكارًا» — يُرسل كما كان قبل الإصلاح
+  let E = decorEnv(reply);
+  E.hot('majlis').onclick(); await tick();
+  E.byId('designAiIdeaText').value = 'لعشرين شخصًا';
+  await E.byId('designAiIdeaAI').onclick();
+  let b = last(E);
+  assert.equal(b.place, 'majlis'); assert.match(b.notes, /^لعشرين شخصًا\. /, 'النصّ الظاهر يُرسل'); assert.equal(b.count, 4);
+  // وصف أُرسل ثمّ عُدّل: المعدَّل الظاهر هو ما يُرسل
+  E.byId('designAiIdeaText').value = 'مجلس عربي فخم'; E.byId('designAiIdeaGo').onclick(); await tick();
+  E.byId('designAiIdeaText').value = 'مطبخ مودرن أبيض';
+  await E.byId('designAiIdeaAI').onclick();
+  b = last(E);
+  assert.equal(b.place, 'custom'); assert.match(b.notes, /^مطبخ مودرن أبيض\. /);
+  // بلا صورة: نقطة «مجلس» ثمّ «صالة» من المعرض — المكان المعروض في البطاقة
+  E = decorEnv(reply);
+  E.hot('majlis').onclick(); await tick();
+  E.pick('living');
+  await E.byId('designAiIdeaAI').onclick();
+  assert.equal(last(E).place, 'living', 'كما كان: البطاقة والطلب واحد');
+  // شبكة «صمم الغرفة» في وضع المكان ثمّ رفع صورة ثمّ «زوّدني مثله»
+  E = decorEnv(reply);
+  E.pick('living');
+  await E.byId('designAiGenerateBtn').onclick();
+  assert.equal(last(E).place, 'living');
+  E.upload();
+  const vb = E.created.filter((e) => e.tagName === 'BUTTON' && /زوّدني مثله/.test(e.textContent)).pop();
+  await vb.click();
+  b = last(E);
+  assert.equal(b.variantOf, 'WDE='); assert.equal(b.place, 'living', 'المتغيّر بمكان شبكته'); assert.equal(b.imageBase64, '', 'لا صورتك الجديدة');
+});
