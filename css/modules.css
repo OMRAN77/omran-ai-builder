@@ -887,3 +887,21 @@ html #videoMakerModal .vmk-tab[aria-selected=true]:not(.vmk-tab-noimg) .vmk-tab-
 /* v-photo-only: اسم تبويب الستايل فوق صورته — أبيض بظلّ في الوضعين (في الفاتح كان بنّيًّا على التدرّج الأسود لا يُقرأ)، والمختار ذهبيّ كما هو */
 #studioAiTabs .studioAiTabBtn > img ~ span{text-shadow:0 1px 3px rgba(0,0,0,.9)}
 #studioAiTabs .studioAiTabBtn:not(.active) > img ~ span{color:#fff}
+/* v-decor-hover-flash (المالك ٢٤ أكتوبر بلقطة الديكور: «هذي الاربعه تؤميض عند الحركه»): بطاقات «لمسات ديكوريّة إضافيّة» الأربع (proToggle في
+   design-sels.js) كانت بلا أيّ ردّ على المرور. الآن ومضة كبطاقات صفحة الأدوات (v-tools-hover-flash): حافّة وتوهّج داخليّ في ::after تشتدّ ثمّ
+   تستقرّ ما دام الماوس فوقها، وتوهّج خارجيّ، بلا حركة. للفأرة وحدها: على اللمس يعلق المرور بعد النقر فيختلط بإطار الاختيار الذهبيّ.
+   الظلّ الخارجيّ !important لأنّ paint() يكتبه مضمَّنًا. الأسود أبيض، والفاتح ذهبيّ. */
+@media (hover:hover) and (pointer:fine){
+  #designAiModal [data-dtoggle]{--dtFlashRgb:255,255,255;}
+  html[data-mode="light"] #designAiModal [data-dtoggle]{--dtFlashRgb:212,175,55;}
+  #designAiModal [data-dtoggle]::after{
+    content:""; position:absolute; inset:0; z-index:2; border-radius:inherit; pointer-events:none; opacity:0;
+    box-shadow:inset 0 0 0 1px rgba(var(--dtFlashRgb),.9), inset 0 0 26px rgba(var(--dtFlashRgb),.5);
+  }
+  #designAiModal [data-dtoggle]:hover{box-shadow:0 4px 18px rgba(var(--dtFlashRgb),.35) !important;}
+  #designAiModal [data-dtoggle]:hover::after{animation:dtFlash .7s ease-out both;}
+}
+@keyframes dtFlash{0%{opacity:0;} 40%{opacity:1;} 100%{opacity:.55;}}
+@media (prefers-reduced-motion:reduce){
+  #designAiModal [data-dtoggle]:hover::after{animation:none; opacity:.55;}
+}

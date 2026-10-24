@@ -47,3 +47,7 @@
   .omUpStyle .omUpL{left:40% !important; right:40% !important; font-size:max(9px,min(11px,3.8cqw)) !important;}
   .omUpStyle :is(.omUpB,.omUpL){white-space:normal; overflow:visible; text-overflow:clip; line-height:1.05 !important;}
 }
+/* v-decor-file-name (فحص الديكور من الصفر، المالك ٢٤ أكتوبر): سطر اسم الملفّ أسفل لوحة الديكور («لم يتم اختيار ملف» ثمّ اسم الصورة) رماديّ
+   (--muted مضمَّن في #designAiFileName) بظلّ أسود على رخام أبيض — لا يُقرأ. لوحة الديكور وحدها فاتحة: بنّيّ داكن بظلّ فاتح. */
+.omUpDecor .omUpN{text-shadow:0 1px 2px rgba(255,255,255,.85) !important;}
+.omUpDecor .omUpN > *{color:#3d2f14 !important;}
