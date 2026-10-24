@@ -259,8 +259,8 @@ test('١٢. تناقض النصّ على الإطار انحلّ: أربعة ص�
    وdl.onclick كان يعترض النقرة بـpreventDefault ثمّ يستدعي autoSaveVideo — دالّة فارغة عمدًا
    في app-11-video.js (v526: الزرّ يعمل بنفسه عبر href/download، لا نقر برمجيّ). */
 function trendResultBody() {
-  const i = SRC.indexOf('      var finalUrl = urls[0];');
-  const j = SRC.indexOf('      var again = document.createElement', i);
+  const i = SRC.indexOf('    var finalUrl = urls[0];'); // v-trend-one-confirm: صار في show(t, urls) — للنجاح وللمشاهد المكتملة قبل عطل
+  const j = SRC.indexOf('    var again = document.createElement', i);
   assert.ok(i > 0 && j > i, 'مقطع عرض نتيجة الترند موجود في المصدر');
   return SRC.slice(i, j);
 }

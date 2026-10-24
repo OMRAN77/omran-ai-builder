@@ -123,7 +123,7 @@ test('٤. الترتيب في الكود: الحارس بعد التعرّف ع�
   const G = "if (await require('./_videoSubs.js').denyFree(res, ";
   const at = (src, s) => { const i = src.indexOf(s); assert.ok(i > 0, s); return i; };
   const veo = read('api/_lib/veo-create.js');
-  assert.ok(at(veo, G + 'pcUser)) return;') < at(veo, "const pcSteps = await talkSteps("), 'سؤال السعر');
+  assert.ok(at(veo, G + 'pcUser)) return;') < at(veo, "const pcSteps = "), 'سؤال السعر');
   assert.ok(at(veo, G + 'username)) return;') < at(veo, "quality = await require('./_qualityGate.js')"), 'الإنشاء');
   for (const f of ['minimax-create', 'omni-create', 'actor-create']) {
     const s = read('api/_lib/' + f + '.js');

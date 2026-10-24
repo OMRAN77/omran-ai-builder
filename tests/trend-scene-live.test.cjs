@@ -89,7 +89,10 @@ test('٢. الترندات تعلن انشغالها بسمة: تُضبط قبل
   assert.equal((make.match(/setBusyFlag\(true\)/g) || []).length, 1);
   const done = make.indexOf("status(ui('done'));");
   assert.ok(make.lastIndexOf('setBusyFlag(false);', done) > make.lastIndexOf('out.appendChild(again);', done), 'تُرفع قبل «جاهز» مباشرة');
-  assert.match(make, /\}catch\(e\)\{\n\s+setBusyFlag\(false\);\n\s+if\(String\(e && e\.message\) !== 'cancelled'\) status\(errText\(e\)\);/, 'وقبل نصّ الخطأ');
+  /* v-trend-one-confirm: في catch فرع المشاهد المكتملة قبل نصّ الخطأ — السمة ما زالت أوّل ما يُرفع */
+  assert.match(make, /\}catch\(e\)\{\n\s+setBusyFlag\(false\);\n[\s\S]*?else if\(String\(e && e\.message\) !== 'cancelled'\) status\(errText\(e\)\);/, 'وقبل نصّ الخطأ');
+  const cat = make.slice(make.lastIndexOf('}catch(e){')); // catch التوليد (الأوّل في make لتخزين رقم الخلفيّة)
+  assert.ok(cat.indexOf('setBusyFlag(false);') < cat.indexOf('status('), 'أوّل ما في catch');
   assert.match(make, /\}finally\{ busy = false; setBusyFlag\(false\);/, 'وفي finally — لا تبقى عالقة');
 });
 

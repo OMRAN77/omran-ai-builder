@@ -32,6 +32,17 @@ async function talkSteps(username, withCartoon, C) {
   return steps;
 }
 
+/* v-trend-one-confirm (فحص الترندات، المالك ٢٤ أكتوبر «سويه»): قصّة الترند بعدّة مشاهد (بيكسار ٣ افتراضيًّا، حتّى ٥) — كلّ مشهد فيديو
+   مستقلّ بسعره، فكان المستخدم يُسأل «تخصم ١٧٥» عند كلّ مشهد ولا يرى المجموع، وإلغاء الثاني يُضيع الأوّل المدفوع. السؤال الآن مرّة
+   واحدة بالمجموع قبل الأوّل: ما تغطّيه صلاحيّة فيديوهات الباقة (كما يصرفها الإنشاء للترند) لا يُحسب، والباقي سعر Veo لكلّ مشهد. */
+const TREND_SCENES_MAX = 5;
+async function trendSteps(username, scenes, C) {
+  let planLeft = 0;
+  try { planLeft = Math.max(0, Number(await require('./_planVideos.js').planVideoLeft(username)) || 0); } catch (e) { planLeft = 0; }
+  const paid = Math.max(0, scenes - planLeft);
+  return Array.from({ length: paid }, () => ['veo_video', C.veo_video]);
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
@@ -103,12 +114,19 @@ module.exports = async (req, res) => {
       if (!pcUser) { res.status(401).json({ error: 'auth_required' }); return; }
       if (await require('./_videoSubs.js').denyFree(res, pcUser)) return; // v-video-subs: الفيديو للمشتركين — قبل سؤال الخصم
       const withCartoon = body.withCartoon === true;
-      const pcSteps = await talkSteps(pcUser, withCartoon, pointsLib.COSTS);
+      /* v-trend-one-confirm: قصّة ترند (trend + scenes) — المجموع، ومهلة الثلاث دقائق يتولّاها العميل بين المشاهد (لا تُرفض القصّة هنا) */
+      const tScenes = body.trend ? Math.min(TREND_SCENES_MAX, Math.max(1, parseInt(body.scenes, 10) || 1)) : 0;
+      const story = tScenes ? await trendSteps(pcUser, tScenes, pointsLib.COSTS) : null;
+      const pcSteps = story || await talkSteps(pcUser, withCartoon, pointsLib.COSTS);
       const pcCost = pcSteps.reduce((a, s) => a + s[1], 0);
-      const pcLeft = await require('./abuse-guard.js').videoCooldownLeft(pcUser); // VIP خارج المهلة كما في videoLock أدناه (pay.owner)
+      const pcLeft = story ? 0 : await require('./abuse-guard.js').videoCooldownLeft(pcUser); // VIP خارج المهلة كما في videoLock أدناه (pay.owner)
       if (pcLeft > 0 && !(await require('./_vip.js').isVip(pcUser))) { res.status(429).json({ error: 'video_cooldown', retryAfter: pcLeft }); return; }
       if (!(await pointsLib.canAfford(pcUser, pcSteps))) { res.status(402).json({ error: 'points_insufficient', needed: pcCost }); return; }
-      const pcGate = withCartoon ? pointsLib.requireConfirmation(body, pcCost, 'شخصيّة كرتونيّة ناطقة') : pointsLib.requireConfirmation(body, pcCost, 'فيديو سينمائي بالصوت');
+      /* لا خصم على القصّة كلّها (صلاحيّة الباقة) أو على VIP (spendPoints لا يخصم منه) = لا سؤال */
+      if (story && (!pcCost || await require('./_vip.js').isVip(pcUser))) { res.status(200).json({ ok: true, priceOk: true }); return; }
+      const pcGate = story
+        ? pointsLib.requireConfirmation(body, pcCost, 'قصّة ترند بعدّة مشاهد — فيديو بالصوت لكلّ مشهد') /* حرفيّ (video-names): المجموع في النصّ نفسه */
+        : withCartoon ? pointsLib.requireConfirmation(body, pcCost, 'شخصيّة كرتونيّة ناطقة') : pointsLib.requireConfirmation(body, pcCost, 'فيديو سينمائي بالصوت');
       if (pcGate) { res.status(pcGate.status).json(pcGate.payload); return; }
       res.status(200).json({ ok: true, priceOk: true });
       return;
