@@ -4,8 +4,11 @@
       فيولّد «صمم الغرفة» مجلسًا والبطاقة تقول «من صورتي». البطاقة الآن تتبع القائمة (مستمع change واحد في design-sels)،
       والنقاط تحدّثها مباشرة بلا change (فلا يُخفى مربّع الرفع لمجرّد التصفّح).
    ٢) رفع صورة بعد اختيار مكان يرجع «نوع المكان» إلى «من صورتي» (كان المكان يُسقط الصورة بلا تنبيه)، ويبقى ضمان v-tool-drop.
-   ٣) ‎.omUpArt{display:block !important}‎ (v-upload-art) كان يغلب إخفاء مربّع الرفع المضمَّن — الإخفاء الآن مضمَّن مهمّ.
-   ٤) الرجوع إلى «من صورتي» يعيد معاينة الصورة المرفوعة (كانت تبقى مخفيّة والصورة تُرسل).
+   ٣) و٤) كان اختيار المكان يخفي مربّع الرفع (مضمَّن مهمّ يغلب ‎.omUpArt{display:block !important}‎)؛ v-decor-upload-top (المالك ٢٤ أكتوبر:
+      «اذا فتحت الأفكار خاصية التحميل ماتسكر») ألغى إخفاء المربّع (٤): مكان مختار يخفي المعاينة وحدها ويقول المربّع «لم يتم اختيار ملف»
+      والمكان يُرسل، و«من صورتي» يعيدهما والصورة تُرسل (٥)؛ وصندوق الأفكار لا يكتب المكان وصورتك قيد الاستعمال (٧، ٨).
+   ٩) اسم الملفّ يصمد لتبديل اللغة (v-decor-file-lang). ١٠) «قبل» في السحّاب صورة الطلب ولو رُفعت أخرى أثناءه (v-decor-before-pin).
+   ١١) «ولّد ٤ تصاميم» في صندوق الأفكار يولّد ما تتصفّحه بلا صورتك، ٤ تصاميم (v-decor-ideas-ai).
    ٥) المعرض: عدد «… صورة» يتبع الصور الظاهرة بعد سقوط المكسورة، وصفر = «ما حصلت صورًا»، والصور بلا مُحيل.
    الكود الحقيقيّ (IIFE الديكور من app-12 وselTrigger من design-sels) في vm بـDOM مزيّف. */
 const test = require('node:test');
@@ -148,7 +151,7 @@ test('٣ رفع صورة بعد اختيار مكان يرجع «من صورتي
   let changes = 0; E.place.addEventListener('change', () => { changes++; });
   E.upload();
   assert.equal(E.place.value, '', 'المكان يرجع «من صورتي»');
-  assert.equal(changes, 1, 'بحدث change فتتبعه البطاقة وsyncPlace');
+  assert.equal(changes, 1, 'بحدث change فتتبعه البطاقة');
   assert.notEqual(E.dz.style.display, 'none');
   assert.equal(E.byId('designAiSourcePreview').style.display, 'block');
   const req = await E.generate();
@@ -156,30 +159,36 @@ test('٣ رفع صورة بعد اختيار مكان يرجع «من صورتي
   assert.equal(req.body.place, '');
 });
 
-test('٤ اختيار مكان يخفي مربّع الرفع فعلًا رغم ‎.omUpArt{display:block !important}‎، والرجوع يعيده', () => {
+test('٤ (v-decor-upload-top) اختيار مكان من المعرض لا يخفي مربّع الرفع — لا display مضمَّن عليه، فيبقى ‎.omUpArt{display:block !important}‎', () => {
   const css = read('css/رفع-الصور.css');
   const rule = (css.match(/\.omUpArt\{([^}]*)\}/) || [])[1] || '';
   const decl = (rule.match(/display:([^;]*)/) || [])[1];
   assert.equal(decl, 'block !important', 'قاعدة v-upload-art كما هي');
   const E = decorEnv();
-  E.pick('living');
-  assert.equal(cascade(decl, E.dz.style.display, E.dz.style.getPropertyPriority('display')), 'none', 'المضمَّن المهمّ يغلب');
-  E.pick('');
-  assert.equal(cascade(decl, E.dz.style.display, E.dz.style.getPropertyPriority('display')), 'block', 'والرجوع يعيد المربّع');
+  for (const v of ['living', '', 'majlis']) {
+    E.pick(v);
+    assert.equal(E.dz.style.display || '', '', 'لا إخفاء مضمَّن مع «' + v + '»');
+    assert.equal(cascade(decl, E.dz.style.display, E.dz.style.getPropertyPriority('display')), 'block', 'المربّع ظاهر مع «' + v + '»');
+  }
 });
 
-test('٥ رفع ← صالة ← «من صورتي»: المكان يرسل المكان وحده، والرجوع يعيد المعاينة وتُرسل الصورة', async () => {
+test('٥ (v-decor-upload-top) رفع ← صالة ← «من صورتي»: المكان يخفي المعاينة وحدها ويقول المربّع «لم يتم اختيار ملف» ويُرسل المكان؛ والرجوع يعيد صورتك وتُرسل', async () => {
   const E = decorEnv();
   E.upload();
   const pv = E.byId('designAiSourcePreview');
+  const fn = E.byId('designAiFileName');
   assert.equal(pv.style.display, 'block');
+  assert.equal(fn.textContent, 'room.jpg');
   E.pick('living');
-  assert.equal(pv.style.display, 'none');
+  assert.equal(pv.style.display, 'none', 'تصميم بلا صورة — المعاينة لا تكذب');
+  assert.equal(fn.textContent, 'fileNoneChosen', 'المربّع يقول «لم يتم اختيار ملف» (مفتاح الترجمة القائم)');
+  assert.equal(E.dz.style.display || '', '', 'والمربّع نفسه ظاهر');
   let req = await E.generate();
-  assert.equal(req.body.place, 'living');
+  assert.equal(req.body.place, 'living', 'المكان المعروض في البطاقة هو ما يُرسل');
   assert.equal(req.body.imageBase64, '');
   E.pick('');
   assert.equal(pv.style.display, 'block', 'المعاينة ترجع');
+  assert.equal(fn.textContent, 'room.jpg', 'واسم الملفّ');
   req = await E.generate();
   assert.equal(req.body.place, '');
   assert.equal(req.body.imageBase64, 'QUJD', 'photoOn صحيح');
@@ -201,4 +210,155 @@ test('٦ المعرض: العدد يتبع الصور الظاهرة، وصفر 
   assert.match(st.textContent, /ما حصلت صورًا/, 'كلّها سقطت');
   assert.equal(E.byId('designAiIdeaGallery').style.display, 'none');
   assert.equal(E.byId('designAiIdeaAI').style.display, '', 'زرّ التوليد ظاهر');
+});
+
+test('٧ (v-decor-upload-top) «إذا فتحت الأفكار خاصية التحميل ما تسكّر»: مع صورة مرفوعة نقطة البوستر و«أعطني أفكارًا» لا تكتبان المكان، وإعادة فتح النافذة لا تخفي شيئًا، وصورتك تُرسل', async () => {
+  const E = decorEnv();
+  E.upload();
+  E.hot('majlis').onclick();
+  assert.equal(E.place.value, '', 'البطاقة باقية «من صورتي» — صورتك ما يُصمَّم');
+  E.byId('designAiIdeaText').value = 'مجلس فخم';
+  E.byId('designAiIdeaGo').onclick();
+  assert.equal(E.place.value, '');
+  const ideasAsked = E.fetched.filter((f) => f.u === '/api/design-ideas').map((f) => f.body.place || f.body.q);
+  assert.deepEqual(ideasAsked, ['majlis', 'مجلس فخم'], 'والأفكار تُجلب كما هي');
+  E.byId('designAiCloseBtn').onclick();
+  const open = E.byId('btnDesignAI');
+  open.onclick();
+  open.dispatchEvent(new E.ctx.Event('click'));
+  await tick(30);
+  assert.equal(E.dz.style.display || '', '', 'إعادة الفتح لا تخفي مربّع الرفع (كان syncPlace يخفيه بالمكان المكتوب من البوستر)');
+  assert.equal(E.byId('designAiSourcePreview').style.display, 'block', 'ولا معاينة صورتك');
+  assert.equal(E.byId('designAiFileName').textContent, 'room.jpg');
+  const req = await E.generate();
+  assert.equal(req.body.imageBase64, 'QUJD');
+  assert.equal(req.body.place, '');
+});
+
+test('٨ (v-decor-upload-top) في وضع المكان (اختير من المعرض مع صورة) نقطة البوستر تبدّل المكان، و«أعطني أفكارًا» لا ترجع الصورة؛ وبلا صورة كما كانت', async () => {
+  const E = decorEnv();
+  E.upload();
+  E.pick('living');
+  E.hot('majlis').onclick();
+  assert.equal(E.place.value, 'majlis', 'المكان المعروض يتبع النقطة');
+  assert.equal(E.byId('designAiSourcePreview').style.display, 'none');
+  E.byId('designAiIdeaText').value = 'مجلس فخم';
+  E.byId('designAiIdeaGo').onclick();
+  assert.equal(E.place.value, 'majlis', 'الأفكار لا تمسّ وضع الرفع');
+  const req = await E.generate();
+  assert.equal(req.body.place, 'majlis');
+  assert.equal(req.body.imageBase64, '');
+  const F = decorEnv();
+  F.hot('kitchen').onclick();
+  assert.equal(F.place.value, 'kitchen', 'بلا صورة: النقطة تكتب المكان كما كانت');
+  assert.equal(F.byId('designAiSourcePreview').style.display, 'none');
+  await tick();
+});
+
+test('٩ (v-decor-file-lang) اسم الملفّ يصمد لتبديل اللغة: بلا data-i18n ما دامت صورتك مستعمَلة، ومع المكان يعود المفتاح فيُترجم', () => {
+  const E = decorEnv();
+  const fn = E.byId('designAiFileName');
+  fn.setAttribute('data-i18n', 'fileNoneChosen'); // كما في partials-core
+  const relang = () => { if (fn.getAttribute('data-i18n') === 'fileNoneChosen') fn.textContent = 'No file chosen'; }; // ما يفعله applyLanguage
+  E.upload();
+  relang();
+  assert.equal(fn.textContent, 'room.jpg', 'تبديل اللغة لا يمحو اسم صورتك');
+  assert.equal(fn.getAttribute('data-i18n'), null);
+  E.pick('living');
+  assert.equal(fn.getAttribute('data-i18n'), 'fileNoneChosen', 'وضع المكان: «لم يتم اختيار ملف» يُترجم مع اللغة');
+  relang();
+  assert.equal(fn.textContent, 'No file chosen');
+  E.pick('');
+  relang();
+  assert.equal(fn.textContent, 'room.jpg');
+  assert.equal(fn.getAttribute('data-i18n'), null);
+});
+
+test('١٠ (v-decor-before-pin) صورة ثانية تُرفع أثناء التوليد: الطلب والسحّاب «قبل» للصورة الأولى', async () => {
+  let release;
+  const E = decorEnv((u) => (u === '/api/design-create' ? new Promise((r) => { release = () => r(new Response(JSON.stringify({ imageBase64: 'UkVT', mimeType: 'image/webp' }), { status: 200 })); }) : null));
+  E.upload(); // QUJD
+  const run = E.byId('designAiGenerateBtn').onclick();
+  await tick();
+  E.ctx.__compressImg = (file, cb) => cb('data:image/jpeg;base64,QkJC');
+  E.upload(); // صورة ثانية أثناء التوليد
+  release();
+  await run;
+  const req = E.fetched.find((f) => f.u === '/api/design-create');
+  assert.equal(req.body.imageBase64, 'QUJD');
+  assert.equal(E.byId('designBABefore').src, 'data:image/jpeg;base64,QUJD', '«قبل» صورة الطلب لا الصورة الجديدة');
+  assert.equal(E.byId('designBAAfter').src, 'data:image/webp;base64,UkVT');
+});
+
+test('١١ (v-decor-ideas-ai) «ولّد ٤ تصاميم» يولّد ما تتصفّحه في الأفكار بلا صورتك (٤)، و«زوّدني مثله» على شبكته بالمكان نفسه، و«صمم الغرفة» يبقى لصورتك', async () => {
+  const E = decorEnv((u) => (u === '/api/design-create' ? new Response(JSON.stringify({ images: [{ imageBase64: 'WDE=', mimeType: 'image/webp' }, { imageBase64: 'WDI=', mimeType: 'image/webp' }] }), { status: 200 }) : null));
+  const creates = () => E.fetched.filter((f) => f.u === '/api/design-create').map((f) => f.body);
+  E.upload();
+  E.hot('majlis').onclick();
+  await tick();
+  assert.equal(E.place.value, '', 'البطاقة «من صورتي» (v-decor-upload-top)');
+  const ai = E.byId('designAiIdeaAI');
+  await ai.onclick();
+  let b = creates().pop();
+  assert.equal(b.place, 'majlis', 'المكان الذي تتصفّحه');
+  assert.equal(b.imageBase64, '', 'بلا صورتك');
+  assert.equal(b.count, 4, '٤ تصاميم كما يقول الزرّ (كان ١ لصورتك)');
+  const vb = E.created.find((e) => e.tagName === 'BUTTON' && /زوّدني مثله/.test(e.textContent));
+  assert.ok(vb, 'زرّ «زوّدني مثله» على الشبكة');
+  await vb.click();
+  b = creates().pop();
+  assert.equal(b.variantOf, 'WDE=');
+  assert.equal(b.place, 'majlis', 'المتغيّر بالمكان نفسه لا بصورتك');
+  assert.equal(b.imageBase64, '');
+  E.byId('designAiIdeaText').value = 'مجلس فخم';
+  E.byId('designAiIdeaGo').onclick();
+  await tick();
+  await ai.onclick();
+  b = creates().pop();
+  assert.equal(b.place, 'custom');
+  assert.match(b.notes, /^مجلس فخم\. /, 'الوصف المكتوب يُرسل');
+  assert.equal(b.imageBase64, '');
+  const req = await E.generate();
+  assert.equal(req.body.imageBase64, 'QUJD', '«صمم الغرفة» لصورتك');
+  assert.equal(req.body.count, 1);
+  const F = decorEnv(() => null);
+  F.hot('kitchen').onclick();
+  await tick();
+  await F.byId('designAiIdeaAI').onclick();
+  const fb = F.fetched.filter((f) => f.u === '/api/design-create').pop().body;
+  assert.equal(fb.place, 'kitchen'); assert.equal(fb.count, 4); assert.equal(fb.imageBase64, '');
+});
+
+test('١٢ (v-decor-ideas-ai) «ولّد ٤ تصاميم» يقرأ النصّ الظاهر في السطر والمكان كما كان بلا صورة، و«زوّدني مثله» على شبكة «صمم الغرفة» يعيد مكانها ولو رُفعت صورة بعدها', async () => {
+  const reply = (u) => (u === '/api/design-create' ? new Response(JSON.stringify({ images: [{ imageBase64: 'WDE=', mimeType: 'image/webp' }] }), { status: 200 }) : null);
+  const last = (E) => E.fetched.filter((f) => f.u === '/api/design-create').pop().body;
+  // بلا صورة: نقطة «مجلس» ثمّ نصّ يُكتب بلا «أعطني أفكارًا» — يُرسل كما كان قبل الإصلاح
+  let E = decorEnv(reply);
+  E.hot('majlis').onclick(); await tick();
+  E.byId('designAiIdeaText').value = 'لعشرين شخصًا';
+  await E.byId('designAiIdeaAI').onclick();
+  let b = last(E);
+  assert.equal(b.place, 'majlis'); assert.match(b.notes, /^لعشرين شخصًا\. /, 'النصّ الظاهر يُرسل'); assert.equal(b.count, 4);
+  // وصف أُرسل ثمّ عُدّل: المعدَّل الظاهر هو ما يُرسل
+  E.byId('designAiIdeaText').value = 'مجلس عربي فخم'; E.byId('designAiIdeaGo').onclick(); await tick();
+  E.byId('designAiIdeaText').value = 'مطبخ مودرن أبيض';
+  await E.byId('designAiIdeaAI').onclick();
+  b = last(E);
+  assert.equal(b.place, 'custom'); assert.match(b.notes, /^مطبخ مودرن أبيض\. /);
+  // بلا صورة: نقطة «مجلس» ثمّ «صالة» من المعرض — المكان المعروض في البطاقة
+  E = decorEnv(reply);
+  E.hot('majlis').onclick(); await tick();
+  E.pick('living');
+  await E.byId('designAiIdeaAI').onclick();
+  assert.equal(last(E).place, 'living', 'كما كان: البطاقة والطلب واحد');
+  // شبكة «صمم الغرفة» في وضع المكان ثمّ رفع صورة ثمّ «زوّدني مثله»
+  E = decorEnv(reply);
+  E.pick('living');
+  await E.byId('designAiGenerateBtn').onclick();
+  assert.equal(last(E).place, 'living');
+  E.upload();
+  const vb = E.created.filter((e) => e.tagName === 'BUTTON' && /زوّدني مثله/.test(e.textContent)).pop();
+  await vb.click();
+  b = last(E);
+  assert.equal(b.variantOf, 'WDE='); assert.equal(b.place, 'living', 'المتغيّر بمكان شبكته'); assert.equal(b.imageBase64, '', 'لا صورتك الجديدة');
 });
