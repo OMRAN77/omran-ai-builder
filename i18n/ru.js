@@ -841,7 +841,7 @@ I18N['ru'] = {
     "fashionAiStyleCasual": "👕 Повседневный",
     "fashionAiStyleAbaya": "🖤 Абайя",
     "fashionAiStyleWedding": "💍 Свадебное платье",
-    "fashionAiStyleTraditional": "🌴 Традиционный залив",
+    "fashionAiStyleTraditional": "🌴 Традиционный наряд стран Залива",
     "fashionAiGenerateBtn": "✨ Создать дизайн",
     "fashionAiDownloadBtn": "⬇️ Скачать изображение",
     "fashionAiNeedImage": "⚠️ Пожалуйста, сначала загрузите фото.",

@@ -840,7 +840,7 @@ I18N['id'] = {
     "fashionAiStyleCasual": "👕 Santai",
     "fashionAiStyleAbaya": "🖤 Abaya",
     "fashionAiStyleWedding": "💍 Gaun pengantin",
-    "fashionAiStyleTraditional": "🌴 Teluk Tradisional",
+    "fashionAiStyleTraditional": "🌴 Busana Tradisional Khas Teluk",
     "fashionAiGenerateBtn": "✨ Buat desain",
     "fashionAiDownloadBtn": "⬇️ Unduh gambar",
     "fashionAiNeedImage": "⚠️ Silakan unggah foto terlebih dahulu.",

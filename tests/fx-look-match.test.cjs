@@ -111,3 +111,62 @@ test('٣. بطاقة المناسبة للرجال والأطفال تولّد �
   assert.ok(bundle.includes("graduation: { women:'formal',  men:'threepiece',  kids:'preppy' },"), 'الحزمة قديمة — npm run bundle');
   assert.ok(Number((/\/js\/design-gen\.js\?v=(\d+)/.exec(read('index.html')) || [])[1]) >= 618, 'وسم design-gen');
 });
+
+// ── v-fx-dedupe (المالك: «ولدها… وشوف اذا فيه شي متكرر» ثمّ «ولّد الست كلها») ──
+// «واي تو كي» خرجت بوهيميّة من الوصف القصير، وخمس بطاقات توأم جارتها في المعرض نفسه. أُعيد توليد الستّ بوصف يميّزها.
+const REGEN = { women: { y2k: 'boho', evening: 'traditional', casual: 'minimal' }, men: { sporty: 'athleisure' }, kids: { evening: 'formal', streetwear: 'denim' } };
+
+test('٤. الصور الستّ المعاد توليدها: وصف بطاقة يميّزها عن توأمها، والملفّ جديد بمقاس 1024×1371، ووسم الكاش رُفع', () => {
+  const th = read('scripts/thumbs-paid.mjs');
+  const CD = new Function('return ' + th.match(/const CARD_DESC = (\{[\s\S]*?\n  \});/)[1])();
+  const hashes = new Map();
+  for (const [g, pairs] of Object.entries(REGEN)) {
+    for (const [v, twin] of Object.entries(pairs)) {
+      const d = CD[g] && CD[g][v];
+      assert.ok(d && d.length > 150, g + '/' + v + ': وصف بطاقة مفصَّل');
+      assert.match(d, /— no |— not /, g + '/' + v + ': ينفي شكل التوأم ' + twin);
+      const file = 'assets/fashion/looks/' + g + '/' + v + '.webp';
+      assert.deepEqual(webpSize(file), [1024, 1371], file);
+      const buf = fs.readFileSync(path.join(root, file)), tw = fs.readFileSync(path.join(root, 'assets/fashion/looks/' + g + '/' + twin + '.webp'));
+      assert.ok(!buf.equals(tw), file + ' نسخة من توأمه');
+      hashes.set(file, buf.length);
+    }
+  }
+  // الوصف المختصر في الخادم لم يُمسّ (التوليد للمستخدم يأخذ تصميمه من fashion-variety)
+  assert.match(read('api/_lib/fashion-create.js'), /y2k: 'a Y2K 2000s revival style, playful colors, bold accessories',/);
+  // الصورة الجديدة بالمسار نفسه: وسم الكاش ≥٤ على صور الأنماط في الأماكن الثلاثة (البطاقة/المقارنة، المعرض، بطاقة المناسبة للرجال والأطفال)
+  // يُقرأ الرقم ولا يُثبَّت حرفيًّا (arch-ratchet: vPinTests)
+  const tag = (src, re) => Number((re.exec(src) || [])[1]);
+  assert.ok(tag(STUDIOS, /const __src = 'assets\/fashion\/looks\/' \+ gender \+ '\/' \+ value \+ '\.webp\?v=(\d+)'/) >= 4, 'lookImg');
+  assert.ok(tag(STUDIOS, /img: 'assets\/fashion\/looks\/' \+ g \+ '\/' \+ v \+ '\.webp\?v=(\d+)'/) >= 4, 'المعرض');
+  assert.ok(tag(DG, /return s \? LOOKS\+st\.gender\+'\/'\+s\+'\.webp\?v=(\d+)'/) >= 4, 'بطاقة المناسبة للرجال والأطفال');
+  assert.ok(tag(read('js/app.bundle.js'), /value \+ '\.webp\?v=(\d+)'; \/\* الوسم يكسر كاش/) >= 4, 'الحزمة قديمة — npm run bundle');
+  assert.ok(Number((/\/js\/design-gen\.js\?v=(\d+)/.exec(read('index.html')) || [])[1]) >= 619, 'وسم design-gen');
+});
+
+test('٥. لا صورة مكرّرة بايتًا داخل أيّ معرض أزياء', () => {
+  for (const dir of ['women', 'men', 'kids', 'occasion', 'season', 'category', 'extras']) {
+    const seen = new Map();
+    for (const f of fs.readdirSync(path.join(root, 'assets/fashion/looks', dir)).filter((x) => x.endsWith('.webp'))) {
+      const h = require('crypto').createHash('sha1').update(fs.readFileSync(path.join(root, 'assets/fashion/looks', dir, f))).digest('hex');
+      assert.ok(!seen.has(h), dir + '/' + f + ' = ' + dir + '/' + seen.get(h));
+      seen.set(h, f);
+    }
+  }
+});
+
+test('٦. الترجمة تطابق الصورة: «خليجي تقليدي» لباس لا بحر، و«لون واحد» بالصينيّة لونٌ واحد لا أبيض وأسود', () => {
+  const bad = { fr: 'Golfe traditionnel"', es: 'Golfo tradicional"', ru: 'Традиционный залив"', hi: 'पारंपरिक खाड़ी"', bn: 'ঐতিহ্যবাহী উপসাগর"', ne: 'परम्परागत खाडी"', id: 'Teluk Tradisional"', tr: 'Geleneksel Körfez"', fil: 'Tradisyunal na Gulf"', ml: 'പരമ്പരാഗത ഗൾഫ്"' };
+  const dress = { fr: /Tenue/, es: /Traje/, ru: /наряд/, hi: /पोशाक/, bn: /পোশাক/, ne: /पोशाक/, id: /Busana/, tr: /kıyafeti/, fil: /kasuotang/, ml: /വസ്ത്രം/ };
+  for (const [lg, b] of Object.entries(bad)) {
+    const s = read('i18n/' + lg + '.js');
+    const m = s.match(/fashionAiStyleTraditional"?: "([^"]*)"/);
+    assert.ok(m, lg);
+    assert.notEqual(m[1] + '"', '🌴 ' + b, lg + ': ما زالت «خليج/بحر» بلا لباس'); // المفتاح وحده — constructionStyleGulf (المقاولات) خارج الأزياء
+    assert.match(m[1], dress[lg], lg + ': ' + m[1]);
+  }
+  const zh = read('i18n/zh.js');
+  assert.ok(!zh.includes('黑白极简'), 'zh: «أبيض وأسود» والصورة خردليّة');
+  assert.ok(zh.includes('"⬛ Monochrome":"⬛ 单色同色系"'));
+  assert.ok(Number((/i18n\/' \+ lg \+ '\.js\?v=(\d+)'/.exec(read('js/app-04-i18n-state.js')) || [])[1]) >= 773, 'وسم ملفّات اللغات رُفع');
+});

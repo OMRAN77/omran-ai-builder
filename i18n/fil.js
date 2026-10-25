@@ -842,7 +842,7 @@ I18N['fil'] = {
     "fashionAiStyleCasual": "👕 Casual",
     "fashionAiStyleAbaya": "🖤 Abaya",
     "fashionAiStyleWedding": "💍 Wedding dress",
-    "fashionAiStyleTraditional": "🌴 Tradisyunal na Gulf",
+    "fashionAiStyleTraditional": "🌴 Tradisyunal na kasuotang Gulf",
     "fashionAiGenerateBtn": "✨ Gumawa ng disenyo",
     "fashionAiDownloadBtn": "⬇️ I-download ang larawan",
     "fashionAiNeedImage": "⚠️ Mangyaring mag-upload muna ng larawan.",

@@ -46,7 +46,7 @@
   function kindImg(kind,v){
     if(!v) return '';
     var g=KIND_LOOK[st.gender], s=g&&g[kind]&&g[kind][v];
-    return s ? LOOKS+st.gender+'/'+s+'.webp?v=3' : LOOKS+kind+'/'+v+'.webp?v=3';
+    return s ? LOOKS+st.gender+'/'+s+'.webp?v=4' : LOOKS+kind+'/'+v+'.webp?v=3'; /* v=4 لصور الأنماط كما في app-12 (v-fx-dedupe) */
   }
   var kindTriggers=[]; /* بطاقتا المناسبة والموسم — تُعاد رسمًا عند تغيّر الفئة */
   /* صور الإضافات الستّ (extras/<القطعة>) كلّها لامرأة. للرجال والأطفال صورهم من مولّد الموقع (extras/<الفئة>-<القطعة>، موافقة المالك

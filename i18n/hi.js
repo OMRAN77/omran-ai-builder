@@ -724,7 +724,7 @@ I18N['hi'] = {
     fashionAiStyleCasual: "👕 कैज़ुअल",
     fashionAiStyleAbaya: "🖤 अबाया",
     fashionAiStyleWedding: "💍 शादी का गाउन",
-    fashionAiStyleTraditional: "🌴 पारंपरिक खाड़ी",
+    fashionAiStyleTraditional: "🌴 पारंपरिक खाड़ी पोशाक",
     fashionAiGenerateBtn: "✨ डिज़ाइन जनरेट करें",
     fashionAiDownloadBtn: "⬇️ छवि डाउनलोड करें",
     fashionAiNeedImage: "⚠️ कृपया पहले फोटो अपलोड करें।",

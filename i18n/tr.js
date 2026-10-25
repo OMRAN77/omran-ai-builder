@@ -840,7 +840,7 @@ I18N['tr'] = {
     "fashionAiStyleCasual": "👕 Günlük",
     "fashionAiStyleAbaya": "🖤 Abaya",
     "fashionAiStyleWedding": "💍 Gelinlik",
-    "fashionAiStyleTraditional": "🌴 Geleneksel Körfez",
+    "fashionAiStyleTraditional": "🌴 Geleneksel Körfez kıyafeti",
     "fashionAiGenerateBtn": "✨ Tasarım oluştur",
     "fashionAiDownloadBtn": "⬇️ Görseli indir",
     "fashionAiNeedImage": "⚠️ Lütfen önce bir fotoğraf yükleyin.",
