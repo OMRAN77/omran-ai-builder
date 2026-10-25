@@ -101,7 +101,8 @@ const { TRENDS } = require(rp('api/_lib/video-trends.js'));
 const PHOTO_TRENDS = Object.keys(TRENDS).filter((id) => TRENDS[id].photo !== 'none');
 /* ما يبقى صورته أوّل إطار: منتجات وأماكن وحيوانات و«حرّك الصورة كما هي» — مثبَّت حرفيًّا: ترند جديد بصورة يُصنَّف عمدًا (اختبار ١٢) */
 const ANIMATE_PHOTO = ['oldphoto', 'productad', 'beforeafter', 'talkingpet', 'productfly', 'asmr', 'drone', 'orbit360', 'bullettime', 'materialize',
-  'parallaxpop', 'realtour', 'carreveal', 'foodsizzle', 'buildprogress', 'offercountdown', 'newborn', 'familywave', 'paintingalive', 'miniature', 'weathershift'];
+  'parallaxpop', 'realtour', 'carreveal', 'foodsizzle', 'buildprogress', 'offercountdown', 'newborn', 'familywave', 'paintingalive', 'miniature', 'weathershift',
+  'tears', 'flyingcar', 'petclap']; /* v-trends-oct-12: الدموع من الصورة نفسها، وسيّارته وحيوانه */
 
 test('١. التكافؤ: ترند «حرّك الصورة» (منتج، مكان، حيوان، صورة قديمة) — صورة المستخدم نفسها «الإطار الأوّل» كما عند Veo، بلقطة واحدة بلا قطع', async () => {
   for (const trend of ANIMATE_PHOTO) {
@@ -326,7 +327,7 @@ test('١١. الصورة مرجع لا لقطة أولى: بيكسار ورمض�
 });
 
 test('١٢. التصنيف: كلّ ترند بصورة في فئة واحدة، والقوائم موجودة ومنفصلة، ومهمّة الإطار للحظة الأولى وللعمر الآخر', () => {
-  const sets = { SOLO: TP.SOLO_FRAME_TRENDS, FRAME: TP.OMNI_FRAME_TRENDS, MORPH: TP.OMNI_MORPH_TRENDS, REF: TP.OMNI_REF_TRENDS };
+  const sets = { SOLO: TP.SOLO_FRAME_TRENDS, FRAME: TP.OMNI_FRAME_TRENDS, MORPH: TP.OMNI_MORPH_TRENDS, REF: TP.OMNI_REF_TRENDS, REVEAL: TP.OMNI_REVEAL_TRENDS };
   const seen = new Map();
   for (const [name, set] of Object.entries(sets)) for (const id of set) {
     assert.ok(TRENDS[id] && TRENDS[id].photo !== 'none', name + ': ' + id + ' ترند بصورة');
@@ -363,7 +364,7 @@ test('١٢. التصنيف: كلّ ترند بصورة في فئة واحدة، 
   assert.doesNotMatch(TP.frameTask(2, 's'), /BEFORE the change/);
   /* المونتاج بنصّه وحده بلا «بلا قطع» */
   const all = Object.keys(TRENDS);
-  const multi = (id) => /montage|\bshots\b/i.test(String(TRENDS[id].prompt));
+  const multi = (id) => /montage|\bshots\b|\bcuts to\b/i.test(String(TRENDS[id].prompt)); // v-trends-oct-12: «cuts to» قطع مقصود بنصّه
   assert.deepEqual(all.filter(multi).sort(), [...TP.MULTI_SHOT_TRENDS].sort());
 });
 
@@ -495,7 +496,8 @@ test('١٨. إطار ترندات Omni بوجه كبير مفصَّل: 2K (لا 
   assert.equal(r.omniSolo[0].o.budgetMs, 90000, 'ميزانيّة الإطار كما كانت');
   for (const trend of ['underwater', 'superhero', 'babyversion']) assert.equal((await pair(photoBody(trend))).omniSolo[0].o.detail, true, trend);
   /* الدمية والليغو: 2K وحده — «سدس الارتفاع» يكسر لعبة صغيرة في عبوتها */
-  for (const trend of TP.SOLO_FRAME_ART_TRENDS) { const x = (await pair(photoBody(trend))).omniSolo[0].o; assert.deepEqual([x.detail, x.hiRes], [false, true], trend); }
+  for (const trend of TP.SOLO_FRAME_TOY_TRENDS) { const x = (await pair(photoBody(trend))).omniSolo[0].o; assert.deepEqual([x.detail, x.hiRes], [false, true], trend); }
+  for (const trend of TP.SOLO_FRAME_TOY_TRENDS) assert.ok(TP.SOLO_FRAME_ART_TRENDS.has(trend), trend + ': لعبة بأسلوب فنّيّ');
   assert.equal(TP.FRAME_FACE_DETAIL, 'Compose the frame so their face is large and finely detailed — at least about a sixth of the image height (a medium or medium-wide shot, never a small distant figure); the video can move the camera from there. Keep their natural hair colour from Photo 1 unless the description changes it.');
   for (const o of [{ closeup: true }, { closeup: true, start: true }, { closeup: true, ageShift: true }, { ageShift: true, people: 2 }]) {
     const plain = TP.soloFrameTask('a runway', o);
@@ -544,5 +546,49 @@ test('١٨. إطار ترندات Omni بوجه كبير مفصَّل: 2K (لا 
   try {
     const x = await pair(photoBody('catwalk'));
     assert.deepEqual(x.omni.body.input.filter((i) => i.type === 'image').map((i) => [i.data, i.mime_type]), [['JFRAME', 'image/jpeg'], ['FACEREF', 'image/jpeg']]);
+  } finally { TP.soloFirstFrame = real; }
+});
+
+test('٢٠. ترندات أكتوبر على Omni: الشخص في مشهد = إطار ولقطة الوجه (اللعبة بأسلوبها، والزومبي بقطعه)؛ «سامحوني» = الإطار أوّلًا وصورته نفسها <LAST_FRAME> آخرًا', async () => {
+  for (const trend of ['saveyourself', 'jetflyover', 'lostfilm', 'zombielove', 'standstill', 'streetfreestyle', 'orangebooth', 'gamechar']) {
+    assert.ok(TP.SOLO_FRAME_TRENDS.has(trend), trend);
+    const r = await pair(photoBody(trend));
+    assert.equal(r.omniSolo.length, 1, trend + ': إطار');
+    const o = r.omniSolo[0].o;
+    /* اللعبة المرسومة بأسلوبها ووجهها كبير (ليست لعبة في عبوة) */
+    assert.deepEqual([!!o.artHint, o.detail, o.hiRes], [trend === 'gamechar', true, true], trend);
+    assert.deepEqual(images(r.omni), ['SOLOFRAME', 'FACEREF'], trend);
+    assert.ok(r.veoPrompt.endsWith(TP.FRAME_LOCK.trim()), trend + ': قفل الإطار (ترند الشخص الواحد على المحرّكين)');
+    assert.equal(text(r.omni), DECL(r.veoPrompt, trend), trend);
+    assert.ok(text(r.omni).includes(NO_CUTS), trend);
+  }
+  /* «سامحوني» و«من ينقذك؟» شخص واحد بطبيعتهما: الصورة الثانية تُهمل والأمر بالمفرد */
+  for (const trend of TP.SINGLE_SUBJECT_TRENDS) {
+    calls = []; soloCalls = []; groupOpts = 'unset';
+    const g = await create({ token: ownerTok, trend, params: { people: 2, sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'USERPHOTO', imageMime: 'image/jpeg', imagesBase64: ['USERPHOTO', 'P2'], imagesMime: ['image/jpeg', 'image/png'] });
+    assert.equal(g.code, 200, trend);
+    assert.equal(groupOpts, 'unset', trend + ': لا إطار مجموعة');
+    assert.equal(soloCalls.length, 1, trend + ': إطار الشخص الواحد');
+    const om = calls.find((c) => /\/interactions$/.test(c.url));
+    assert.ok(!images(om).includes('P2'), trend + ': الصورة الثانية مهملة');
+    assert.doesNotMatch(text(om), /2 real, specific people|2 different people/, trend + ': الأمر بالمفرد');
+    if (trend === 'sorryreveal') { assert.deepEqual(images(om), ['SOLOFRAME', 'USERPHOTO']); assert.ok(text(om).startsWith(veo.TREND_REVEAL_DECL)); }
+  }
+  /* «سامحوني.. هذي الحقيقة» */
+  const r = await pair(photoBody('sorryreveal'));
+  assert.equal(r.veoSolo, 0, 'Veo: بلا إطار');
+  assert.equal(r.omniSolo.length, 1);
+  assert.deepEqual([r.omniSolo[0].o.start, r.omniSolo[0].o.detail], [false, true]);
+  assert.deepEqual(images(r.omni), ['SOLOFRAME', 'USERPHOTO'], 'الإطار أوّلًا وصورته آخرًا');
+  assert.equal(text(r.omni), '[# Sources <FIRST_FRAME>@Image1 <LAST_FRAME>@Image2] ' + r.veoPrompt + ' Use Image1 as the starting frame and Image2 as the final frame: the clip ends exactly on Image2, the plain real photo.');
+  assert.ok(!text(r.omni).includes(TP.FRAME_LOCK.trim()), 'بلا قفل الإطار — ينتهي بصورته');
+  assert.deepEqual(r.omni.body.input.filter((x) => x.type === 'image').map((x) => x.mime_type), ['image/png', 'image/jpeg']);
+  /* تعذّر الإطار: مرجع كترندات الشخص */
+  const real = TP.soloFirstFrame;
+  TP.soloFirstFrame = async () => ({ error: 'frame down' });
+  try {
+    const f = await pair(photoBody('sorryreveal'));
+    assert.deepEqual(images(f.omni), ['USERPHOTO']);
+    assert.equal(text(f.omni), REF(f.veoPrompt, 'sorryreveal'));
   } finally { TP.soloFirstFrame = real; }
 });
