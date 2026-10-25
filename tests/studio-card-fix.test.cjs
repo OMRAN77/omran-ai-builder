@@ -245,3 +245,32 @@ test('٩. الواجهة: رابط المراجعة، والصورة الجاه�
   assert.deepEqual([...ctx.T].sort(), ['makeup', 'nails', 'skin']);
   assert.match(src, /const staticTab = !STUDIO_TAB_PREVIEW\.has\(f\) && \(STUDIO_STATIC_FEATS\.has\(f\) \|\| !IS_MORE\(f\)\);/);
 });
+
+test('١٠. أوصاف البطاقات المؤكَّدة في التدقيق صُحّحت ولا ترجع (أبرز ما رآه المالك)', () => {
+  // «حلاقة كاملة» × لون كانت «وجه حليق بلون أسود» فرُسمت لحية
+  for (const v of ['bdcleannat', 'bdcleanblk', 'bdcleanbrn', 'bdcleangrey', 'bdcleanhenna']) {
+    assert.match(textOf('beard', v), /clean-shaven/, v); assert.match(textOf('beard', v), /no beard/, v);
+    assert.ok(CARD_FIX.REV['beard:' + v] >= 1, v + ': بطاقته الخاطئة بلا مراجعة');
+  }
+  // «عين بلون وعين بلون» كان يقول «نفس اللون في العينين»
+  for (const v of ['irheteron', 'irheterov']) assert.ok(!/same in both eyes/.test(textOf('eyes', v)), v);
+  // «توكسيدو أبيض» كان «توكسيدو أسود بدرجات بيضاء»
+  assert.ok(!/black tuxedo/.test(textOf('wedding', 'wdtuxwht')));
+  // «عربي» في الأنمي كان زيّ راقصة
+  for (const v of ['anarabicwarm', 'anarabiccool', 'anarabicvivid', 'anarabicpastel']) {
+    assert.ok(!/arabian-nights/i.test(textOf('anime', v)), v); assert.match(textOf('anime', v), /modest/, v);
+  }
+  assert.ok(!/many fine braids/.test(textOf('hair', 'hairbraidsgulf')), 'ضفائر خليجيّة ما زالت «ضفائر رفيعة كثيرة»');
+  // جنس البطاقة
+  for (const v of ['icsheikhstd', 'icsheikhscene', 'icsheikhposter', 'icbusinessstd', 'icdiverstd']) assert.equal(CARD_FIX.SUBJECT['iconic:' + v], 'm', v);
+  for (const v of ['bdhourglassa', 'bdhourglassb', 'bdhourglassc']) assert.equal(CARD_FIX.SUBJECT['body:' + v], 'w', v);
+  // صور جاهزة خاطئة
+  const app13 = read('js/app-13-stocks-init.js');
+  for (const n of ['anime-shonenstudio', 'anime-retro90s', 'heritage-emirati', 'tattoo-back']) assert.ok(app13.includes("'" + n + "'"), n + ': الجاهزة الخاطئة ما زالت تُعرض');
+  // أسماء خاطئة: «تاج» في الحجاب كعكة خلفيّة، و«مجوهرات» في الألوان ألوان الجواهر
+  const more = read('js/app-12-studio-more.js');
+  assert.ok(!/"hjcrown[a-z]+","ar":"🧕 تاج/.test(more), 'لفّات الحجاب ما زالت «تاج»');
+  assert.ok(!/مجوهرات —/.test(more), 'ألوان الجواهر ما زالت «مجوهرات»');
+  // بوليوود الثلاث كانت فاضية (التوليد يفشل)
+  for (const v of ['icbollywoodstd', 'icbollywoodscene', 'icbollywoodposter']) assert.ok(CARD_FIX.REV['iconic:' + v] >= 1, v);
+});
