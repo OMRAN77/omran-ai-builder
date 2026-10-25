@@ -696,10 +696,10 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Starting exactly from the reference photo of the car: blue jet flames ignite under its bumpers with a deep roar, the car lifts off the ground, rises above the road and the traffic around it, and flies forward low over the highway as the camera follows from behind and to the side; the car's exact shape, colour and details stay unchanged, no readable licence plate, dust and heat shimmer, cinematic action music, photorealistic, clearly a fun fantasy effect.",
+   "prompt": "Starting exactly from the reference photo of the car: white cold-gas thruster jets hiss out from under its body in sharp puffs, the car lifts straight up off the road, hovers for a beat, then rolls one slow full barrel turn in mid-air as it soars over the vehicles ahead, a big semi-truck among them, and lands smoothly back on its wheels on the open road beyond and drives on; the camera follows from the side; the car's exact shape, colour and details stay unchanged, no readable licence plate, hiss of the thrusters and gasps of onlookers, cinematic, photorealistic, clearly a fun fantasy effect.",
    "scenes": null,
    "preview": {
-     "frame": "photorealistic still of a white sports car flying above a traffic jam on a desert highway with blue jet flames under it, golden hour",
+     "frame": "photorealistic still of a white sports car hovering in a mid-air barrel roll above a semi-truck on a desert highway, white thruster jets puffing beneath it, golden hour",
      "gender": "m"
    }
  },
@@ -715,15 +715,15 @@ const TRENDS = {
      "gender": "m"
    }
  },
- "lostfilm": {
+ "lostfilm80s": {
    "engine": "veo",
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Grainy, warm footage from a lost 1980s fantasy-adventure film shot on 35mm with practical effects: the person from the reference image, in a flowing period costume, explores a candle-lit Arabian Nights palace hall with tall carved arches, while a small puppet-like magical creature flutters around them and sparkles of light drift through the dust; soft film grain, slight gate weave, faded colours, mysterious synth-and-orchestra score.",
+   "prompt": "Grainy, warm footage from a lost 1980s fantasy film shot on 35mm with practical effects: in a candle-lit medieval barn strewn with straw beside an old spinning wheel, the person from the reference image, dressed as a mischievous trickster in a ragged velvet tunic and a pointed felt hat, does a sly, gleeful tiptoe dance in a little circle, grinning, while a frightened young princess in a flowing gown backs away clutching her skirts; dust and straw float in the shafts of light; soft film grain, slight gate weave, faded colours, eerie playful harpsichord-and-synth score.",
    "scenes": null,
    "preview": {
-     "frame": "grainy 1980s fantasy film still of a woman in a flowing period costume in a candle-lit Arabian palace hall with a small puppet-like magical creature, film grain, faded colours",
+     "frame": "grainy 1980s 35mm fantasy film still: a grinning trickster in a ragged velvet tunic and pointed felt hat tiptoe-dancing in a candle-lit straw barn beside a spinning wheel while a frightened princess in a gown backs away",
      "gender": "w"
    }
  },
@@ -763,15 +763,15 @@ const TRENDS = {
      "gender": "m"
    }
  },
- "streetfreestyle": {
+ "spanishrap": {
    "engine": "veo",
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Vertical night-time street clip outside a red-lit venue: the person from the reference image freestyles with confident swagger and a signature shoulder bounce to a punchy original dembow-style beat blasting from a portable speaker a friend holds up beside them, while a small crowd around them films on their phones and cheers; handheld phone-camera feel, red and pink neon glow, wordless vocal ad-libs only, photorealistic.",
+   "prompt": "Vertical night phone clip at a red-lit restaurant entrance, filmed handheld by a street freestyler whose hand holds a small portable speaker in the foreground, blasting a dembow beat; people in the doorway film on their phones. The person from the reference image, in an open pale-pink mesh short-sleeve shirt, has stopped on the way in and faces the lens. The freestyler raps a playful line at them first; they grin and answer with an improvised Spanish-language rap freestyle into the phone, lips synced, with the signature nonstop shoulder bounce: right shoulder up, then left, on every beat, loose hands rolling at chest height. At the end the freestyler takes the vocals back while they lean in laughing, then point straight at the lens. Shaky handheld, photorealistic.",
    "scenes": null,
    "preview": {
-     "frame": "photorealistic night street still of a young man dancing with a shoulder bounce outside a red-lit venue while a friend holds up a portable speaker and people film on their phones",
+     "frame": "photorealistic vertical night still at a red-lit restaurant entrance: a grinning young man in an open pale-pink mesh short-sleeve shirt rapping into the lens with a shoulder bounce, a street freestyler's hand holding a small portable speaker in the foreground, people in the doorway filming on their phones",
      "gender": "m"
    }
  },
@@ -780,7 +780,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "The person (or people) from the reference image stand in a bare, bright-orange recording booth under a single hanging microphone, stepping up to it (taking turns if there are several of them) and bobbing to an original hip-hop beat with short wordless ad-libs and playful reactions; locked-off, centred camera framed from the knees up, even studio light, fun and cool mood, photorealistic.",
+   "prompt": "The person (or people) from the reference image stand in a bare, bright-orange recording booth under a single hanging microphone and trade short rap verses into it over an original trap beat, stepping up in turn (taking turns if there are several of them), lips synced, while whoever is not rapping bobs to the beat and hypes with ad-libs and playful reactions; locked-off, centred camera framed from the knees up, even studio light, fun and cool mood, photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of two young men standing in a bare bright orange recording booth under a single hanging microphone, framed from the knees up, centred",

@@ -551,7 +551,7 @@ test('١٨. إطار ترندات Omni بوجه كبير مفصَّل: 2K (لا 
 });
 
 test('٢٠. ترندات أكتوبر على Omni: الشخص في مشهد = إطار ولقطة الوجه (اللعبة بأسلوبها، والزومبي بقطعه)؛ «سامحوني» = الإطار أوّلًا وصورته نفسها <LAST_FRAME> آخرًا', async () => {
-  for (const trend of ['saveyourself', 'jetflyover', 'lostfilm', 'zombielove', 'standstill', 'streetfreestyle', 'orangebooth', 'gamechar']) {
+  for (const trend of ['saveyourself', 'jetflyover', 'lostfilm80s', 'zombielove', 'standstill', 'spanishrap', 'orangebooth', 'gamechar']) {
     assert.ok(TP.SOLO_FRAME_TRENDS.has(trend), trend);
     const r = await pair(photoBody(trend));
     assert.equal(r.omniSolo.length, 1, trend + ': إطار');
