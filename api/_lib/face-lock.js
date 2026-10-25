@@ -118,7 +118,13 @@ const PROTECT = {
   nails: 'face', tattoo: 'face', henna: 'face',
 };
 const RANK = { none: 0, face: 1, head: 2, body: 3 };
-function protectLevel(feature, comboItems) {
+/* v-style-match (تدقيق ٢٥ أكتوبر): قفل 'body' في التراثي و'head' في الصورة الرسميّة يعيدان الرأس كلّه من الأصل —
+   فالكمّة والشماغ والشيلة والعمامة المسمّاة في الخيار نفسه لا تظهر أبدًا. حين يسمّي الخيار غطاء رأس يُقفل الوجه وحده؛
+   وبلا غطاء مسمّى يبقى القفل كما كان (شكوى «طلبت بشت فتغيّرت الغترة» — v-studio-lock). */
+const HEADWEAR = /ghutra|shemagh|shmagh|keffiyeh|hatta|agal|igal|kumm|massar|turban|\bimma\b|\bhat\b|\bcap\b|headdress|headscarf|head scarf|head covering|head wrap|headwrap|headband|veil|sheila|shayla|hijab|niqab|burqa|batoola|crown|tiara|\bfez\b|tarboosh|kufi|taqiyah|bonnet|bandana|beret|kalpak|ushanka|sombrero|hairpin|\bgele\b|kokoshnik|coif|mantilla|bowler/;
+const HEAD_SENSITIVE = { heritage: 1, idphoto: 1 };
+function protectLevel(feature, comboItems, styleText) {
+  if (HEAD_SENSITIVE[feature] && styleText && HEADWEAR.test(String(styleText).toLowerCase())) return 'face';
   if (feature === 'combo') {
     const items = Array.isArray(comboItems) ? comboItems : [];
     if (!items.length) return 'none';

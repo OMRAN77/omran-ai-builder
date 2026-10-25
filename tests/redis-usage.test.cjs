@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.OPENAI_API_KEY = 'test-openai-key';
+process.env.GEMINI_API_KEY = 'test-gemini-key'; // v-style-match: بطاقات الستايل من نانو بنانا برو
 const root = path.resolve(__dirname, '..');
 const rp = (f) => require.resolve(path.join(root, f));
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
