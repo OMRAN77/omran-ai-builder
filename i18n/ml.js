@@ -1,4 +1,5 @@
 I18N['ml'] = {
+    sheetCopyImg: "ചിത്രം പകർത്തുക", sheetCopyLink: "ലിങ്ക് പകർത്തുക", sheetCopied: "പകർത്തി", sheetCopyFail: "പകർത്തൽ പരാജയപ്പെട്ടു", sheetShareFail: "പങ്കിടൽ പരാജയപ്പെട്ടു — ഡൗൺലോഡ് പരീക്ഷിക്കുക", sheetDlDesktop: "ഡൗൺലോഡ് ചെയ്തു — Downloads ഫോൾഡറിൽ കണ്ടെത്തുക",
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
     "designAiFurnitureScandinavian": "സ്കാൻഡിനേവിയൻ",
     "designAiFurnitureJapandi": "ജപ്പാൻഡി",
@@ -841,7 +842,7 @@ I18N['ml'] = {
     "fashionAiStyleCasual": "👕 കാഷ്വൽ",
     "fashionAiStyleAbaya": "🖤 അബായ",
     "fashionAiStyleWedding": "💍 വെഡ്ഡിംഗ് ഡ്രസ്",
-    "fashionAiStyleTraditional": "🌴 പരമ്പരാഗത ഗൾഫ്",
+    "fashionAiStyleTraditional": "🌴 പരമ്പരാഗത ഗൾഫ് വസ്ത്രം",
     "fashionAiGenerateBtn": "✨ ഡിസൈൻ ഉണ്ടാക്കുക",
     "fashionAiDownloadBtn": "⬇️ ചിത്രം ഡൗൺലോഡ് ചെയ്യുക",
     "fashionAiNeedImage": "⚠️ ദയവായി ആദ്യം ഒരു ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക.",

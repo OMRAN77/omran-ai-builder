@@ -1,4 +1,5 @@
 I18N['id'] = {
+    sheetCopyImg: "Salin gambar", sheetCopyLink: "Salin tautan", sheetCopied: "Tersalin", sheetCopyFail: "Gagal menyalin", sheetShareFail: "Gagal berbagi — coba Unduh", sheetDlDesktop: "Terunduh — temukan di folder Unduhan",
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
     "designAiFurnitureScandinavian": "Skandinavia",
     "designAiFurnitureJapandi": "Japandi",
@@ -839,7 +840,7 @@ I18N['id'] = {
     "fashionAiStyleCasual": "👕 Santai",
     "fashionAiStyleAbaya": "🖤 Abaya",
     "fashionAiStyleWedding": "💍 Gaun pengantin",
-    "fashionAiStyleTraditional": "🌴 Teluk Tradisional",
+    "fashionAiStyleTraditional": "🌴 Busana Tradisional Khas Teluk",
     "fashionAiGenerateBtn": "✨ Buat desain",
     "fashionAiDownloadBtn": "⬇️ Unduh gambar",
     "fashionAiNeedImage": "⚠️ Silakan unggah foto terlebih dahulu.",

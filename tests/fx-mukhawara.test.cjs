@@ -41,7 +41,8 @@ test('٢. للنساء وحدهنّ في الواجهة ومولّد الصور 
   assert.equal(G.women[G.women.indexOf('jalabiya') + 1], 'mukhawara');
   assert.ok(!G.men.includes('mukhawara') && !G.kids.includes('mukhawara'));
   const th = read('scripts/thumbs-paid.mjs');
-  assert.match(th, /const CARD_DESC = \{ women: \{ mukhawara: 'a traditional Emirati mukhawar: [^']*stand collar opening into a V[^']*small buttons[^']*printed floral[^']*modest' \} \};/);
+  // v-fx-dedupe: CARD_DESC صار كائنًا بعدّة أوصاف — المخورة فيه بوصف صورة المالك نفسه
+  assert.match(th, /const CARD_DESC = \{\n    women: \{\n      mukhawara: 'a traditional Emirati mukhawar: [^']*stand collar opening into a V[^']*small buttons[^']*printed floral[^']*modest',/);
   assert.ok(th.includes("(((CARD_DESC[g] || {})[v]) || desc)"), 'الوصف الأغنى للبطاقة وحدها');
   assert.ok(read('scripts/fashion-thumbs.mjs').includes("'jalabiya', 'mukhawara', 'hijabchic'"));
   // الصورة داخل صندوق ثابت بتدرّجه: إزالتها عند غيابها لا تغيّر ارتفاع البطاقة

@@ -1,4 +1,5 @@
 I18N['es'] = {
+    sheetCopyImg: "Copiar imagen", sheetCopyLink: "Copiar enlace", sheetCopied: "Copiado", sheetCopyFail: "No se pudo copiar", sheetShareFail: "No se pudo compartir — prueba Descargar", sheetDlDesktop: "Descargado — búscalo en la carpeta de Descargas",
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
     "designAiFurnitureScandinavian": "Escandinavo",
     "designAiFurnitureJapandi": "Japandi",
@@ -840,7 +841,7 @@ I18N['es'] = {
     "fashionAiStyleCasual": "👕 Informal",
     "fashionAiStyleAbaya": "🖤 Abaya",
     "fashionAiStyleWedding": "💍 Vestido de novia",
-    "fashionAiStyleTraditional": "🌴 Golfo tradicional",
+    "fashionAiStyleTraditional": "🌴 Traje tradicional del Golfo",
     "fashionAiGenerateBtn": "✨ Generar diseño",
     "fashionAiDownloadBtn": "⬇️ Descargar imagen",
     "fashionAiNeedImage": "⚠️ Primero sube una foto.",

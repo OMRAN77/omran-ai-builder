@@ -593,41 +593,37 @@ test('ح-ب. الواجهة: مسارات الحفظ ترسل purpose:download،
 });
 
 // ─────────────── (ح) ورقة الصورة الجاهزة: رابط «تحميل» يعيش ساعة فلا يُشارَك على واتساب ───────────────
+// v-ready-sheet: بناء الورقة انتقل للمكوّن الموحّد window.omranReadySheet؛ هنا نتجسّس على opts: وضع الحفظ
+// يمرّر downloadUrl (رابط الساعة) بلا shareUrl (فلا واتساب)، ووضع المشاركة يمرّر shareUrl الدائم (٧ أيّام).
 function imgSaver() {
-  const made = [];
-  const el = (tag) => {
-    const e = { tag, dataset: {}, style: {}, children: [], attrs: {}, href: '', textContent: '',
-      appendChild(c) { this.children.push(c); return c; }, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; },
-      remove() {}, click() {} };
-    made.push(e);
-    return e;
-  };
+  const sheets = [];
   const posts = [];
   const ctx = {
     location: { origin: 'https://app.example' },
     navigator: { userAgent: 'Mozilla/5.0 (Linux; Android 14; wv) AppleWebKit/537.36 Version/4.0 Chrome/124.0 Mobile' },
-    document: { createElement: el, getElementById: () => null, querySelector: () => null, addEventListener() {}, body: { appendChild() {} } },
+    document: { createElement: () => ({ dataset: {}, style: {}, appendChild() {}, setAttribute() {}, remove() {} }), getElementById: () => null, querySelector: () => null, addEventListener() {}, body: { appendChild() {} } },
     FileReader: function () { this.readAsDataURL = (b) => { b.arrayBuffer().then((ab) => { this.result = 'data:' + b.type + ';base64,' + Buffer.from(ab).toString('base64'); this.onload(); }); }; },
     fetch: async (u, init) => { posts.push(JSON.parse(init.body)); return { ok: true, status: 200, json: async () => ({ id: 'img1' }) }; },
     authGet: () => 'tok-abc', localStorage: { getItem: () => 'ar' },
+    omranReadySheet: (opts) => { sheets.push(opts); return true; },
     Blob, File, URL, atob, encodeURIComponent, setTimeout: () => 0, String, Number, Math, Date, Error, JSON, Uint8Array, Promise, console,
   };
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(read('js/app-05-img-save.js'), ctx);
-  return { save: ctx.omranSaveImage, made, posts };
+  return { save: ctx.omranSaveImage, sheets, posts };
 }
 
-test('ح-د. v-save-no-wa: ورقة الحفظ (رابط ساعة) بلا زرّ واتساب — من يستلمه بعد ساعة يجد 404؛ وورقة المشاركة (٧ أيّام) تبقيه', async () => {
+test('ح-د. v-save-no-wa: ورقة الحفظ (رابط ساعة) بلا shareUrl — من يستلمه بعد ساعة يجد 404؛ وورقة المشاركة بالرابط الدائم (٧ أيّام)', async () => {
   const png = () => new Blob([Buffer.from('omran-png')], { type: 'image/png' });
   const s = imgSaver();
   assert.equal(await s.save(png(), 'a.png', 'save'), true);
   assert.equal(s.posts[0].purpose, 'download');
-  const hrefs = s.made.map((e) => String(e.href || ''));
-  assert.ok(hrefs.some((h) => h.includes('/i/img1.raw.png?dl=1')), 'زرّ «تحميل» كما كان');
-  assert.ok(!hrefs.some((h) => /wa\.me/.test(h)), 'كان يشارك رابطًا يموت بعد ساعة');
+  assert.equal(s.sheets.length, 1);
+  assert.match(String(s.sheets[0].downloadUrl), /\/i\/img1\.raw\.png\?dl=1/, 'زرّ «تحميل» برابط الحفظ');
+  assert.ok(!s.sheets[0].shareUrl, 'لا رابط دائم في الحفظ → لا واتساب/نسخ (الرابط يموت بعد ساعة)');
   const sh = imgSaver();
   assert.equal(await sh.save(png(), 'b.png', 'share'), true);
   assert.equal(sh.posts[0].purpose, undefined, 'المشاركة في سلّتها وعمرها');
-  assert.ok(sh.made.some((e) => /^https:\/\/wa\.me\/\?text=/.test(String(e.href || ''))), 'زرّ واتساب في المشاركة كما كان');
+  assert.match(String(sh.sheets[0].shareUrl), /^https:\/\/app\.example\/i\/img1\.png$/, 'المشاركة بالرابط الدائم (٧ أيّام) للواتساب/النسخ');
 });

@@ -205,5 +205,5 @@ test('٨. النصوص الجديدة بالـ١٤ لغة، واسم الوضع 
     assert.ok(!/videoModeActor"?\s*:\s*"[^"]*Veo/.test(s), lg);
   }
   assert.ok(!/videoModeActor:\s*"[^"]*Veo/.test(data));
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=771'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=773'/);
 });

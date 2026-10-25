@@ -161,8 +161,9 @@ test('٥. ترندات الأشخاص: قفل «الإطار الأوّل يُظ
   assert.ok(VEO_PROMPT_MAX <= 2600, 'يبقى بعيدًا عن حدّ المحرّك (١٠٢٤ رمزًا)');
   const long = 'ا'.repeat(400); // حدّ خانة الترند وclean() الفعليّ
   let n = 0;
+  const SINGLE = require('../api/_lib/trend-people.js').SINGLE_SUBJECT_TRENDS; // v-trends-oct-12: تُهمل الصور الزائدة فلا إطار جماعيّ (trend-omni ٢٠)
   for (const k of Object.keys(T.TRENDS)) for (const people of [2, 3]) {
-    if (!T.buildTrendPrompt(k, { hasImage: true, people, name: long, text: long })) continue;
+    if (SINGLE.has(k) || !T.buildTrendPrompt(k, { hasImage: true, people, name: long, text: long })) continue;
     const inst = await veoSent({ trend: k, params: { name: long, text: long, people }, token: 't', imageBase64: PHOTO, imageMime: 'image/jpeg', imagesBase64: Array(people).fill(PHOTO), imagesMime: Array(people).fill('image/jpeg') });
     assert.ok(inst, k + ': لم يُلتقط الطلب');
     assert.ok(inst.prompt.length <= VEO_PROMPT_MAX, k + '/' + people + ': ' + inst.prompt.length);

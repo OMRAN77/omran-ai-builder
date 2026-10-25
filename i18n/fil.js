@@ -1,4 +1,5 @@
 I18N['fil'] = {
+    sheetCopyImg: "Kopyahin ang larawan", sheetCopyLink: "Kopyahin ang link", sheetCopied: "Nakopya", sheetCopyFail: "Nabigo ang pagkopya", sheetShareFail: "Nabigo ang pagbabahagi — subukan ang Download", sheetDlDesktop: "Na-download — hanapin ito sa Downloads folder",
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
     "designAiFurnitureScandinavian": "Iskandinabo",
     "designAiFurnitureJapandi": "Japandi",
@@ -841,7 +842,7 @@ I18N['fil'] = {
     "fashionAiStyleCasual": "👕 Casual",
     "fashionAiStyleAbaya": "🖤 Abaya",
     "fashionAiStyleWedding": "💍 Wedding dress",
-    "fashionAiStyleTraditional": "🌴 Tradisyunal na Gulf",
+    "fashionAiStyleTraditional": "🌴 Tradisyunal na kasuotang Gulf",
     "fashionAiGenerateBtn": "✨ Gumawa ng disenyo",
     "fashionAiDownloadBtn": "⬇️ I-download ang larawan",
     "fashionAiNeedImage": "⚠️ Mangyaring mag-upload muna ng larawan.",
