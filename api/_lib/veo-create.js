@@ -286,7 +286,9 @@ module.exports = async (req, res) => {
       const solo = await tp.soloFirstFrame(apiKey, { data: String(imageBase64).trim(), mime: imageMime },
         body.trend ? tp.trendScene(promptText) : String(rawDesc), ratio,
         { style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000,
-          start: morph, ageShift: omniTrend && tp.AGE_SHIFT_TRENDS.has(trendId) });
+          start: morph, ageShift: omniTrend && tp.AGE_SHIFT_TRENDS.has(trendId),
+          /* v-trend-frame-face: Omni يحفظ وجه الإطار طوال المقطع — فالإطار 2K بوجه كبير؛ الدمية والليغو 2K وحده (لعبة صغيرة في عبوتها) */
+          detail: omniTrend && !tp.SOLO_FRAME_ART_TRENDS.has(trendId), hiRes: omniTrend });
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
         /* v-two-people: الإطار كشف شخصين في الصورة الواحدة — الأمر بصيغة الجمع (كلّ واحد بوجهه) قبل القفل */
