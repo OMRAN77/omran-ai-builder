@@ -93,7 +93,7 @@ test('٣. الحمولة: الأولى تبقى imageBase64 (توافق)، وا�
   assert.match(SRC, /payload\.params = Object\.assign\(\{\}, params, \{ people: raw\.length \}\)/, 'عدد الأشخاص يصل للخادم');
   assert.match(SRC, /if\(t\.photo === 'req' && !photos\.length\)\{ status\(ui\('photoReq'\)\); return; \}/, 'الترند الذي يلزمه صورة يفحص المصفوفة');
   assert.ok(!/\bphoto\s*=\s*null\b/.test(SRC), 'لا بقايا من المتغيّر المفرد');
-  assert.match(SRC, /fi\.multiple = true/, 'اختيار عدّة صور دفعة واحدة');
+  assert.match(SRC, /fi\.multiple = cap > 1;/, 'اختيار عدّة صور دفعة واحدة (إلّا ترند الشخص الواحد — v-trends-oct-12)');
 });
 
 test('٤. النصّان الجديدان في الـ14 لغة، و«شخصية {n}» فيها المتغيّر، وبلا اسم مزوّد', () => {

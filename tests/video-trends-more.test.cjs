@@ -66,3 +66,43 @@ test('٦. الدفعة الثانية من الترندات موجودة — ٤�
   ['actionfigure', 'superhero', 'catwalk', 'animeaction', 'claymation', 'legofy', 'vhsflashback',
     'podcastclip', 'dayinlife', 'birthdaybash'].forEach((k) => assert.ok(keys.includes(k), 'ترند ناقص: ' + k));
 });
+
+/* v-trends-oct-12 (المالك ٢٥ أكتوبر بعد بحث الترندات الرائجة سبتمبر–أكتوبر ٢٠٢٦: «ضيف كلهم»): +١٢ — ٥٥ ← ٦٧. */
+const OCT12 = ['tears', 'saveyourself', 'flyingcar', 'jetflyover', 'lostfilm', 'zombielove', 'standstill', 'sorryreveal',
+  'streetfreestyle', 'orangebooth', 'petclap', 'gamechar'];
+test('٧. الدفعة الثالثة (ترندات أكتوبر) موجودة — ٥٥ ← ٦٧، بلا أسماء أعمال أو فنّانين أو ألعاب حقيقيّة، والزومبي بلا دم', () => {
+  const keys = D.trends.map((t) => t.key);
+  assert.ok(keys.length >= 67, 'عدد الترندات نقص: ' + keys.length);
+  OCT12.forEach((k) => assert.ok(keys.includes(k) && TRENDS[k], 'ترند ناقص: ' + k));
+  assert.deepEqual(keys.slice(-12), OCT12, 'آخر القائمة بالترتيب');
+  /* أسماء حقيقيّة تحرّكت عليها هذه الموجات — لا تُكتب في قالب ولا بطاقة */
+  const BANNED = /\b(GTA|Grand Theft|Rockstar|Bulin|Kevin Wai|Quavo|Takeoff|Roadster|Tesla|Rumpelstiltskin|CapCut|Higgsfield|Pika|Kling|Hailuo|TikTok)\b/i;
+  for (const k of OCT12) {
+    const card = D.trends.find((t) => t.key === k);
+    assert.equal(card.engine, 'veo'); assert.equal(card.scenes, 1);
+    assert.doesNotMatch(TRENDS[k].prompt + ' ' + TRENDS[k].preview.frame, BANNED, k + ': اسم حقيقيّ في القالب');
+    for (const l of LANGS) assert.doesNotMatch(card.title[l] + ' ' + card.sub[l], BANNED, k + '/' + l);
+    for (const l of LANGS) assert.doesNotMatch(card.title[l] + card.sub[l], /[‌‍]/, k + '/' + l + ': حرف رابط خفيّ (PITFALLS)');
+  }
+  assert.match(TRENDS.zombielove.prompt, /no blood or gore/);
+  assert.match(TRENDS.flyingcar.prompt, /no readable licence plate/);
+  assert.match(TRENDS.gamechar.prompt, /no game name, no logos, no text/);
+  /* مراجعة الدفعة: الزومبي لقطة واحدة بلا قطع للذكرى (قفل الإطار متّسق)، والاستوديو من الركبة (الوجه كبير في الإطار) */
+  assert.doesNotMatch(TRENDS.zombielove.prompt, /\bcuts to\b|memory/);
+  assert.match(TRENDS.orangebooth.prompt, /framed from the knees up/);
+  assert.doesNotMatch(TRENDS.orangebooth.prompt, /full-body/);
+  /* ترندا الشخص الواحد: خانة صورة واحدة بنصّ «اختر صورة» القائم (١٤ لغة) */
+  for (const k of ['sorryreveal', 'saveyourself']) assert.equal(D.trends.find((t) => t.key === k).maxPeople, 1, k);
+  const C = require('fs').readFileSync(require('path').join(__dirname, '..', 'js', 'app-11-video-trends.js'), 'utf8');
+  assert.match(C, /var cap = t\.maxPeople \|\| MAX_PEOPLE;[^\n]*\n\s+if\(photos\.length >= cap\) return;/);
+  assert.match(C, /fi\.multiple = cap > 1;/);
+  assert.match(C, /\.slice\(0, cap - photos\.length\)/);
+  assert.match(C, /plab\.textContent = \(t\.maxPeople === 1 \? ui\('photo'\) : ui\('people'\)\)/);
+  /* صيغة المخاطبة في الهنديّة والأرديّة والبنغاليّة والنيباليّة والمليالميّة كبقيّة التطبيق (لا تُمْ/تمہ/তুমি/तिमी/നീ) */
+  for (const k of OCT12) {
+    const c = D.trends.find((t) => t.key === k);
+    assert.doesNotMatch(c.title.hi + c.sub.hi, /तुम/, k + '/hi'); assert.doesNotMatch(c.title.ur + c.sub.ur, /تم(?:ہیں|ہارا|ہاری)?(?=\s|$)/, k + '/ur');
+    assert.doesNotMatch(c.title.bn + c.sub.bn, /তুমি|তোমা/, k + '/bn'); assert.doesNotMatch(c.title.ne + c.sub.ne, /तिमी|तिम्रो/, k + '/ne');
+    assert.doesNotMatch(c.title.ml + c.sub.ml, /(^|\s)നീ(\s|$)|നിന്റെ|നിന്നെ/, k + '/ml');
+  }
+});

@@ -54,6 +54,8 @@ function omniOpKey(op) { return 'omni:op:' + String(op); }
 const OMNI_FRAME_MS = 120000; // إطار المجموعة قبل Omni: يترك للمحرّك وقته داخل حدّ الدالّة (٣٠٠ث)
 function trendEngine() { return String(process.env.TREND_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }
 const TREND_NO_CUTS = ' In a single continuous shot, no scene cuts.';
+const TREND_REVEAL_DECL = '[# Sources <FIRST_FRAME>@Image1 <LAST_FRAME>@Image2] ';
+const TREND_REVEAL_GUIDE = ' Use Image1 as the starting frame and Image2 as the final frame: the clip ends exactly on Image2, the plain real photo.';
 const TREND_REF_GUIDE = ' Use the given image as a reference for video generation — keep the face and identity of the person in it. The image should not be used as a literal initial frame.';
 /* v-trend-omni-refs: التوثيق يربط المرجع بالشخص داخل النصّ («a woman <IMAGE_REF_0> is walking»)، وomni-create يفعل ذلك في قفله؛
    أوامر الترندات (مكتوبة لـVeo) تقول «the reference image» بلا وسم — فيُلحق الوسم بها حين يكون للصورة مرجع واحد. */
@@ -81,7 +83,12 @@ async function trendOmni(o) {
     /* v-trend-omni-face: Omni يصنع افتراضيًّا عدّة لقطات بقطع بينها، والقطع يعيد رسم الوجه — لقطة واحدة متّصلة (توثيقه حرفيًّا) */
     const cuts = o.multiShot ? '' : TREND_NO_CUTS; // قالب مونتاج بنصّه (عشر دول…) يبقى بلقطاته
     const refs = o.framed ? (o.refs || []).filter((r) => r && r.data).slice(0, 3) : [];
-    if (refs.length === 1) {
+    if (o.framed && o.lastFrame && o.lastFrame.data) {
+      /* v-trends-oct-12 («سامحوني.. هذي الحقيقة»): الإطار الأسطوريّ أوّلًا وصورته نفسها آخرًا — صيغة التوثيق حرفيًّا
+         «[# Sources <FIRST_FRAME>@Image1 <LAST_FRAME>@Image2]… the second image as the final frame» */
+      input.push({ type: 'image', data: o.lastFrame.data, mime_type: o.lastFrame.mime || 'image/png' });
+      prompt = TREND_REVEAL_DECL + prompt + cuts + TREND_REVEAL_GUIDE;
+    } else if (refs.length === 1) {
       /* الإطار الأوّل بوجهه في المشهد + مرجع ملامحه (لقطة الوجه أو صورته) — أدوار omni-create حرفيًّا، والمرجع مربوط في النصّ */
       input.push({ type: 'image', data: refs[0].data, mime_type: refs[0].mime || 'image/png' });
       prompt = omni.FRAME_DECL + bindTrendRef(prompt) + cuts + (o.people > 1 ? TREND_FRAME_GUIDE_MANY : omni.FRAME_GUIDE);
@@ -135,7 +142,9 @@ module.exports = async (req, res) => {
     let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
     const rawDesc = promptText; /* v-video-first-frame: وصف المستخدم قبل الأسلوب والقفل — مشهد أوّل الإطار */
     /* v-trend-people: شخصيّتان أو ثلاث — الصور الزائدة تصل في imagesBase64 ويُبنى منها أوّل إطار واحد. */
-    const trendPeople = Array.isArray(body.imagesBase64)
+    /* v-trends-oct-12: ترند شخص واحد بطبيعته («سامحوني»، «من ينقذك؟») — الصور الزائدة تُهمل، والأولى في imageBase64 كما كانت */
+    const singleSubject = !!body.trend && require('./trend-people.js').SINGLE_SUBJECT_TRENDS.has(String(body.trend));
+    const trendPeople = (!singleSubject && Array.isArray(body.imagesBase64))
       ? body.imagesBase64.map((d, i) => ({ data: d, mime: (body.imagesMime || [])[i] })).filter((x) => x && x.data)
       : [];
     /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند ومدخلات المستخدم */
@@ -151,15 +160,16 @@ module.exports = async (req, res) => {
     const trendId = String(body.trend || '');
     const omniTrend = !!body.trend && trendEngine() === 'omni';
     const morph = omniTrend && tp.OMNI_MORPH_TRENDS.has(trendId);
+    const reveal = omniTrend && tp.OMNI_REVEAL_TRENDS.has(trendId); // v-trends-oct-12: إطار أسطوريّ أوّلًا وصورته نفسها آخرًا
     const soloWanted = hasImage && !body.keepPhoto && tp.firstFrameOn() && (body.trend
-      ? (trendPeople.length <= 1 && (tp.SOLO_FRAME_TRENDS.has(trendId) || (omniTrend && (tp.OMNI_FRAME_TRENDS.has(trendId) || morph))))
+      ? (trendPeople.length <= 1 && (tp.SOLO_FRAME_TRENDS.has(trendId) || (omniTrend && (tp.OMNI_FRAME_TRENDS.has(trendId) || morph || reveal))))
       : !!(rawDesc && String(rawDesc).trim()));
     /* أنمي/كرتون الواجهة: سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا) */
     if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = tp.STYLE_ANIME_VIDEO + String(promptText).trim();
     let trendParams = null; /* v-two-people: لإعادة بناء أمر الترند بصيغة الجمع إن كشف الإطار شخصين في صورة واحدة */
     if (body.trend) {
       const trendsLib = require('./video-trends.js');
-      const bParams = trendsLib.sceneParams(String(body.trend), Object.assign({}, body.params || {}, { hasImage })); /* v-trend-scenes: قبل القصّ */
+      const bParams = trendsLib.sceneParams(String(body.trend), Object.assign({}, body.params || {}, { hasImage }, singleSubject ? { people: 1 } : {})); /* v-trend-scenes: قبل القصّ */
       trendParams = bParams;
       let built = trendsLib.buildTrendPrompt(String(body.trend), bParams, TREND_OPTS);
       if (!built) { res.status(400).json({ error: 'unknown trend' }); return; }
@@ -253,7 +263,11 @@ module.exports = async (req, res) => {
     let groupFramed = false; // v-trend-omni: الصورة صارت أوّل إطار (دور Image1 عند Omni)
     if (body.trend && trendPeople.length > 1) {
       /* v-two-people: مشهد القالب وحده — فقرة «WHO THEY ARE» ليست مشهدًا (كانت أوّل ٧٠٠ حرف من «المشهد») */
-      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio, trendEngine() === 'omni' ? Object.assign({ timeoutMs: OMNI_FRAME_MS }, morph ? { start: true } : {}) : undefined);
+      /* v-trend-frame-look: العمر الآخر والأسلوب الفنّيّ يصلان إطار المجموعة على المحرّكين (قفل الشكل بلا عمر آخر وبصيغته الفنّيّة)؛
+         بلا خيار = undefined كما كان على Veo */
+      const gOpt = Object.assign(trendEngine() === 'omni' ? { timeoutMs: OMNI_FRAME_MS } : {}, morph ? { start: true } : {},
+        tp.AGE_SHIFT_TRENDS.has(trendId) ? { ageShift: true } : {}, tp.SOLO_FRAME_ART_TRENDS.has(trendId) ? { art: true } : {});
+      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio, Object.keys(gOpt).length ? gOpt : undefined);
       if (frame && frame.b64) {
         imageBase64 = frame.b64; imageMime = frame.mime; groupFramed = true;
         /* v-trend-identity: الإطار الأوّل بُني للتوّ بوجوه الأشخاص الحقيقيّة داخل مشهد الترند، لكنّ أمر
@@ -288,11 +302,11 @@ module.exports = async (req, res) => {
         { style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000,
           start: morph, ageShift: omniTrend && tp.AGE_SHIFT_TRENDS.has(trendId),
           /* v-trend-frame-face: Omni يحفظ وجه الإطار طوال المقطع — فالإطار 2K بوجه كبير؛ الدمية والليغو 2K وحده (لعبة صغيرة في عبوتها) */
-          detail: omniTrend && !tp.SOLO_FRAME_ART_TRENDS.has(trendId), hiRes: omniTrend });
+          detail: omniTrend && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId), hiRes: omniTrend });
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
         /* v-two-people: الإطار كشف شخصين في الصورة الواحدة — الأمر بصيغة الجمع (كلّ واحد بوجهه) قبل القفل */
-        if (solo.people > 1) {
+        if (solo.people > 1 && !singleSubject) {
           const vt = require('./video-trends.js');
           if (body.trend) {
             const b2 = vt.buildTrendPrompt(String(body.trend), Object.assign({}, trendParams, { people: solo.people }), TREND_OPTS);
@@ -301,8 +315,9 @@ module.exports = async (req, res) => {
             promptText = vt.withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, undefined, solo.people);
           }
         }
-        if (!morph) promptText += FRAME_LOCK; /* v-trend-omni-face: المتحوّل أثناء الفيديو — إطاره قبل التحوّل، والقفل يمنعه */
-        framed = true; frameRef = solo.ref || null; soloPeople = solo.people || 0;
+        /* v-trend-omni-face: المتحوّل أثناء الفيديو — إطاره قبل التحوّل، والقفل يمنعه؛ v-trends-oct-12: والكشف ينتهي بصورته لا بالإطار */
+        if (!morph && !reveal) promptText += FRAME_LOCK;
+        framed = true; frameRef = solo.ref || null; soloPeople = singleSubject ? 0 : (solo.people || 0);
         console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : ''));
       } else console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }
@@ -313,7 +328,9 @@ module.exports = async (req, res) => {
         /* v-trend-omni-refs (المالك بعد v-trend-omni-face: «بعده يغيّر شكل الشخصيّة في الملامح»): مرجع الملامح مع كلّ إطار مبنيّ —
            لقطة الوجه، وإلّا الصورة نفسها كما في omni-create (السيلفي: وجه يملأ الصورة لا تُقصّ له لقطة، فكان الإطار وحده)، وصور
            الأشخاص مع إطار المجموعة (كان بلا أيّ مرجع). ترند العمر الآخر بلا مرجع البالغ (يشدّ الطفل إلى عمره) إلّا رحلة العمر. */
-        refs: (tp.AGE_SHIFT_TRENDS.has(trendId) && !morph) ? []
+        /* v-trends-oct-12: الكشف — صورته نفسها <LAST_FRAME> بدل المرجع */
+        lastFrame: reveal && framed ? userPhoto : null,
+        refs: ((tp.AGE_SHIFT_TRENDS.has(trendId) && !morph) || (reveal && framed)) ? []
           : groupFramed ? (tp.omniPersonTrend(trendId) ? trendPeople.map((x) => ({ data: String(x.data).trim(), mime: x.mime || 'image/png' })) : []) /* منتج أو مكان بعدّة صور: ليست وجوه أشخاص */
             : framed ? [frameRef || userPhoto] : [],
         people: soloPeople,
@@ -404,6 +421,8 @@ module.exports.groupRefDecl = groupRefDecl;
 module.exports.groupRefGuide = groupRefGuide;
 module.exports.bindGroupRefs = bindGroupRefs;
 module.exports.TREND_FRAME_GUIDE_MANY = TREND_FRAME_GUIDE_MANY;
+module.exports.TREND_REVEAL_DECL = TREND_REVEAL_DECL;
+module.exports.TREND_REVEAL_GUIDE = TREND_REVEAL_GUIDE;
 module.exports.VEO_FREE_IMAGE_MAX = VEO_FREE_IMAGE_MAX;
 module.exports.VEO_FREE_MAX = VEO_FREE_MAX;
 module.exports.FRAME_LOCK = FRAME_LOCK;
