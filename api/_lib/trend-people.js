@@ -184,13 +184,13 @@ const FRAME_LOCK = ' The attached first frame ALREADY shows every person exactly
    يمنع التحوّل فيكسرها؛ وبيكسار (شخصيّة طفل «مستوحاة» وتصميم واحد عبر ٣ مشاهد). */
 const SOLO_FRAME_TRENDS = new Set(['heritagesing', 'tencountries', 'dance', 'celebselfie', 'eidgreeting', 'movieposter', 'agentpitch', 'testimonial', 'graduation', 'wedding', 'nationalday', 'actionhero', 'neonnight', 'actionfigure', 'catwalk', 'legofy', 'podcastclip', 'dayinlife', 'birthdaybash',
   /* v-trends-oct-12 (المالك ٢٥ أكتوبر «ضيف كلهم»): شخص في مشهد جديد بعمره ومظهره */
-  'saveyourself', 'jetflyover', 'lostfilm', 'zombielove', 'standstill', 'streetfreestyle', 'orangebooth', 'gamechar']);
+  'saveyourself', 'jetflyover', 'lostfilm80s', 'zombielove', 'standstill', 'spanishrap', 'orangebooth', 'gamechar']);
 /* منها بأسلوب فنّيّ صريح في قالبها (لعبة، ليغو) */
 const SOLO_FRAME_ART_TRENDS = new Set(['actionfigure', 'legofy', 'gamechar']);
 /* منها لعبة صغيرة في عبوتها (دمية، ليغو): إطار 2K بلا سطر «الوجه سدس الارتفاع» (يخرج العبوة من الإطار) — اللعبة المرسومة وجهها كبير */
 const SOLO_FRAME_TOY_TRENDS = new Set(['actionfigure', 'legofy']);
 /* v-trends-oct-12: ترند شخص واحد بطبيعته («سامحوني» ينتهي بصورته، و«من ينقذك؟» نسختان منه) — صورة واحدة، والصور الزائدة تُهمل */
-const SINGLE_SUBJECT_TRENDS = new Set(['sorryreveal', 'saveyourself']);
+const SINGLE_SUBJECT_TRENDS = new Set(['sorryreveal', 'saveyourself', 'spanishrap']); // v-trends-faithful: المؤدّي واحد ومغنّي الشارع من المشهد
 
 /* ── v-trend-omni-face (المالك ٢٤ أكتوبر بعد أوّل ترند على Omni: «يغيّر شكل الشخصيّة الملامح، والصورة اللي أحطها موجودة في أوّل الفيديو»).
    Omni يجعل <FIRST_FRAME> أوّل إطار حرفيًّا، ويصنع افتراضيًّا عدّة لقطات بقطع بينها (توثيقه: «a few different shots… you must prompt

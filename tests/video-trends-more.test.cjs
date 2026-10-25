@@ -68,8 +68,9 @@ test('٦. الدفعة الثانية من الترندات موجودة — ٤�
 });
 
 /* v-trends-oct-12 (المالك ٢٥ أكتوبر بعد بحث الترندات الرائجة سبتمبر–أكتوبر ٢٠٢٦: «ضيف كلهم»): +١٢ — ٥٥ ← ٦٧. */
-const OCT12 = ['tears', 'saveyourself', 'flyingcar', 'jetflyover', 'lostfilm', 'zombielove', 'standstill', 'sorryreveal',
-  'streetfreestyle', 'orangebooth', 'petclap', 'gamechar'];
+/* v-trends-faithful: streetfreestyle ← spanishrap، وlostfilm ← lostfilm80s (معاينة جديدة للمشهد الأصليّ) */
+const OCT12 = ['tears', 'saveyourself', 'flyingcar', 'jetflyover', 'lostfilm80s', 'zombielove', 'standstill', 'sorryreveal',
+  'spanishrap', 'orangebooth', 'petclap', 'gamechar'];
 test('٧. الدفعة الثالثة (ترندات أكتوبر) موجودة — ٥٥ ← ٦٧، بلا أسماء أعمال أو فنّانين أو ألعاب حقيقيّة، والزومبي بلا دم', () => {
   const keys = D.trends.map((t) => t.key);
   assert.ok(keys.length >= 67, 'عدد الترندات نقص: ' + keys.length);
@@ -92,7 +93,7 @@ test('٧. الدفعة الثالثة (ترندات أكتوبر) موجودة �
   assert.match(TRENDS.orangebooth.prompt, /framed from the knees up/);
   assert.doesNotMatch(TRENDS.orangebooth.prompt, /full-body/);
   /* ترندا الشخص الواحد: خانة صورة واحدة بنصّ «اختر صورة» القائم (١٤ لغة) */
-  for (const k of ['sorryreveal', 'saveyourself']) assert.equal(D.trends.find((t) => t.key === k).maxPeople, 1, k);
+  for (const k of ['sorryreveal', 'saveyourself', 'spanishrap']) assert.equal(D.trends.find((t) => t.key === k).maxPeople, 1, k);
   const C = require('fs').readFileSync(require('path').join(__dirname, '..', 'js', 'app-11-video-trends.js'), 'utf8');
   assert.match(C, /var cap = t\.maxPeople \|\| MAX_PEOPLE;[^\n]*\n\s+if\(photos\.length >= cap\) return;/);
   assert.match(C, /fi\.multiple = cap > 1;/);
@@ -105,4 +106,27 @@ test('٧. الدفعة الثالثة (ترندات أكتوبر) موجودة �
     assert.doesNotMatch(c.title.bn + c.sub.bn, /তুমি|তোমা/, k + '/bn'); assert.doesNotMatch(c.title.ne + c.sub.ne, /तिमी|तिम्रो/, k + '/ne');
     assert.doesNotMatch(c.title.ml + c.sub.ml, /(^|\s)നീ(\s|$)|നിന്റെ|നിന്നെ/, k + '/ml');
   }
+});
+
+/* v-trends-faithful (المالك: «مش الترند… مش الأغنية ولا نفس الحركات، هذي اختراع من عندك ولا التيسلا» ثمّ لقطة المقطع الأصليّ
+   «Spain having an epic rap battle»): أربعة قوالب كانت مشهدًا مخترعًا يشبه الموجة لا الموجة نفسها — تُعاد على المقطع الأصليّ
+   (بلا أسماء ولا كلمات ولا لحن حقيقيّ): الراب الإسبانيّ بتسلسله وحركة الكتف وراب إسبانيّ لا أصوات بلا كلمات؛ السيّارة بحركات عرض
+   السيّارة الطائرة (نفّاثات غاز بارد، دحرجة في الهواء فوق شاحنة، نزول على العجلات)؛ فيلم الثمانينات برقصة أطراف الأصابع في الحظيرة
+   قدّام أميرة خائفة؛ والاستوديو البرتقاليّ يتبادلان مقاطع راب. */
+test('٨. ترندات أكتوبر على مقاطعها الأصليّة: الراب الإسبانيّ، السيّارة الطائرة، فيلم الثمانينات، الاستوديو البرتقاليّ', () => {
+  const R = TRENDS.spanishrap.prompt;
+  for (const re of [/red-lit restaurant entrance/, /portable speaker/, /film on their phones/, /freestyler raps a playful line at them first/,
+    /improvised Spanish-language rap freestyle/, /lips synced/, /right shoulder up, then left, on every beat/, /point straight at the lens/, /pale-pink mesh/]) assert.match(R, re);
+  assert.doesNotMatch(R, /wordless|sunglasses/, 'راب لا أصوات بلا كلمات، وبلا نظّارة تخفي العينين');
+  const sr = D.trends.find((t) => t.key === 'spanishrap');
+  assert.equal(sr.title.ar, 'الراب الإسباني'); assert.equal(sr.maxPeople, 1);
+  assert.ok(require('../api/_lib/trend-people.js').SINGLE_SUBJECT_TRENDS.has('spanishrap'));
+  const C = TRENDS.flyingcar.prompt;
+  for (const re of [/cold-gas thruster jets/, /barrel turn in mid-air/, /semi-truck/, /lands smoothly back on its wheels/]) assert.match(C, re);
+  assert.doesNotMatch(C, /flames/);
+  const F = TRENDS.lostfilm80s.prompt;
+  for (const re of [/1980s fantasy film/, /straw/, /spinning wheel/, /tiptoe dance/, /frightened young princess/]) assert.match(F, re);
+  assert.doesNotMatch(F, /Arabian Nights|palace/);
+  assert.match(TRENDS.orangebooth.prompt, /trade short rap verses/); assert.doesNotMatch(TRENDS.orangebooth.prompt, /wordless/);
+  for (const k of ['spanishrap', 'lostfilm80s']) assert.ok(!TRENDS[k.replace('spanishrap', 'streetfreestyle').replace('lostfilm80s', 'lostfilm')], k + ': المفتاح القديم أُزيل');
 });
