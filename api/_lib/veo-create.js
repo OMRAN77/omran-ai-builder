@@ -258,6 +258,16 @@ module.exports = async (req, res) => {
     }
 
 
+    /* v-trend-face-swap (المالك: «صلحة الاشكال الملامح»): برو يعيد رسم الوجه في الإطار وOmni يحفظ وجه الإطار — فبعد بنائه يُبدَّل وجه
+       كلّ شخص بوجه صورته (face-swap.js). مطفأ افتراضيًّا (TREND_FACE_SWAP) والإنفاق بموافقة المالك؛ لترندات الشخص على Omni وحدها، بلا
+       الفنّيّة واللعب والعمر الآخر و«فلاش باك VHS». «الزومبي» المرجع الأوّل وحده (الثاني هو المتحوّل)، و«من ينقذك؟» نسختان منه.
+       مطفأ = الخيارات كما كانت حرفيًّا. */
+    const swapOpt = (omniTrend && tp.omniPersonTrend(trendId) && !tp.SOLO_FRAME_ART_TRENDS.has(trendId) && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId)
+      && !tp.AGE_SHIFT_TRENDS.has(trendId) && trendId !== 'vhsflashback' && !tp.ART_STYLE_RE.test(tp.trendScene(promptText))
+      && require('./face-swap.js').enabledFor(gate.allowed))
+      ? Object.assign({ until: t0 + OMNI_FRAME_MS, owner: !!gate.allowed }, trendId === 'zombielove' ? { only: [0] } : {}, trendId === 'saveyourself' ? { multi: true } : {})
+      : null;
+
     /* v-trend-people: أوّل إطار فيه كلّ الأشخاص معًا في مشهد الترند، ثمّ يحرّكه المحرّك. بعد القفل
        عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءات الدمج. فشله = لا خصم ولا قفل (يُردّان هنا). */
     let groupFramed = false; // v-trend-omni: الصورة صارت أوّل إطار (دور Image1 عند Omni)
@@ -267,9 +277,11 @@ module.exports = async (req, res) => {
          بلا خيار = undefined كما كان على Veo */
       const gOpt = Object.assign(trendEngine() === 'omni' ? { timeoutMs: OMNI_FRAME_MS } : {}, morph ? { start: true } : {},
         tp.AGE_SHIFT_TRENDS.has(trendId) ? { ageShift: true } : {}, tp.SOLO_FRAME_ART_TRENDS.has(trendId) ? { art: true } : {});
+      if (swapOpt) gOpt.swap = swapOpt; // v-trend-face-swap: مطفأ = الخيارات كما كانت
       const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio, Object.keys(gOpt).length ? gOpt : undefined);
       if (frame && frame.b64) {
         imageBase64 = frame.b64; imageMime = frame.mime; groupFramed = true;
+        if (swapOpt) console.log('[veo-create] group frame ready swap=' + (frame.swapped || 0) + (frame.swapWhy ? ' (' + String(frame.swapWhy).slice(0, 60) + ')' : ''));
         /* v-trend-identity: الإطار الأوّل بُني للتوّ بوجوه الأشخاص الحقيقيّة داخل مشهد الترند، لكنّ أمر
            الترند نفسه يبقى «Transform the person … into …» — فيعيد المحرّك تنفيذ التحويل فوق إطار
            نُفِّذ فيه أصلًا، ويرسم وجوهًا جديدة. هذا السطر يُلحق أخيرًا فيغلب: التحويل انتهى، والمطلوب
@@ -299,10 +311,10 @@ module.exports = async (req, res) => {
     if (soloWanted) {
       const solo = await tp.soloFirstFrame(apiKey, { data: String(imageBase64).trim(), mime: imageMime },
         body.trend ? tp.trendScene(promptText) : String(rawDesc), ratio,
-        { style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000,
+        Object.assign({ style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000,
           start: morph, ageShift: omniTrend && tp.AGE_SHIFT_TRENDS.has(trendId),
           /* v-trend-frame-face: Omni يحفظ وجه الإطار طوال المقطع — فالإطار 2K بوجه كبير؛ الدمية والليغو 2K وحده (لعبة صغيرة في عبوتها) */
-          detail: omniTrend && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId), hiRes: omniTrend });
+          detail: omniTrend && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId), hiRes: omniTrend }, swapOpt ? { swap: swapOpt } : {}));
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
         /* v-two-people: الإطار كشف شخصين في الصورة الواحدة — الأمر بصيغة الجمع (كلّ واحد بوجهه) قبل القفل */
@@ -318,7 +330,8 @@ module.exports = async (req, res) => {
         /* v-trend-omni-face: المتحوّل أثناء الفيديو — إطاره قبل التحوّل، والقفل يمنعه؛ v-trends-oct-12: والكشف ينتهي بصورته لا بالإطار */
         if (!morph && !reveal) promptText += FRAME_LOCK;
         framed = true; frameRef = solo.ref || null; soloPeople = singleSubject ? 0 : (solo.people || 0);
-        console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : ''));
+        console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : '')
+          + (swapOpt ? ' swap=' + (solo.swapped || 0) + (solo.swapWhy ? ' (' + String(solo.swapWhy).slice(0, 60) + ')' : '') : ''));
       } else console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }
 
