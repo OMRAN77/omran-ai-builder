@@ -75,7 +75,7 @@ test('٧. الدفعة الثالثة (ترندات أكتوبر) موجودة �
   const keys = D.trends.map((t) => t.key);
   assert.ok(keys.length >= 67, 'عدد الترندات نقص: ' + keys.length);
   OCT12.forEach((k) => assert.ok(keys.includes(k) && TRENDS[k], 'ترند ناقص: ' + k));
-  assert.deepEqual(keys.slice(-12), OCT12, 'آخر القائمة بالترتيب');
+  assert.deepEqual(keys.slice(keys.indexOf(OCT12[0]), keys.indexOf(OCT12[0]) + 12), OCT12, 'متتالية بالترتيب'); // v-trends-oct-4: دفعة بعدها
   /* أسماء حقيقيّة تحرّكت عليها هذه الموجات — لا تُكتب في قالب ولا بطاقة */
   const BANNED = /\b(GTA|Grand Theft|Rockstar|Bulin|Kevin Wai|Quavo|Takeoff|Roadster|Tesla|Rumpelstiltskin|CapCut|Higgsfield|Pika|Kling|Hailuo|TikTok)\b/i;
   for (const k of OCT12) {
@@ -129,4 +129,38 @@ test('٨. ترندات أكتوبر على مقاطعها الأصليّة: ال
   assert.doesNotMatch(F, /Arabian Nights|palace/);
   assert.match(TRENDS.orangebooth.prompt, /trade short rap verses/); assert.doesNotMatch(TRENDS.orangebooth.prompt, /wordless/);
   for (const k of ['spanishrap', 'lostfilm80s']) assert.ok(!TRENDS[k.replace('spanishrap', 'streetfreestyle').replace('lostfilm80s', 'lostfilm')], k + ': المفتاح القديم أُزيل');
+});
+
+/* v-trends-oct-4 (المالك بقائمة ترندات آخر أكتوبر: «حطهم في الترندات»، ثمّ «لا تغير أي شي، فقط اشتغل على الترندات»): +٤ بالمحرّك
+   نفسه، كلّ قالب من وصف مصادره (بحث بأربعة باحثين) لا مشهد مخترع؛ بلا اسم أغنية أو فنّان أو شخصيّة تجاريّة في القالب. «جاوب بكلمة»
+   و«الأكل» ليسا تأثيرًا من صورة، وRamalama قال المالك إنّه لا يناسب الجمهور — لم تُضف. */
+const OCT4 = ['bbywow', 'invisiblebike', 'ceilingfan', 'slowmoentry'];
+test('٩. ترندات آخر أكتوبر الأربعة: آخر القائمة، ١٤ لغة، صورة واحدة، تصنيفها على Omni، وبلا أسماء حقيقيّة', () => {
+  const keys = D.trends.map((t) => t.key);
+  assert.ok(keys.length >= 71, 'عدد الترندات: ' + keys.length);
+  assert.deepEqual(keys.slice(-4), OCT4, 'آخر القائمة بالترتيب');
+  const TP = require('../api/_lib/trend-people.js');
+  const BANNED = /\b(Crazy Frog|Axel|Weeknd|Kendrick|Pray For Me|ChatGPT|TikTok|CapCut|Viggle|Shaba|LOS MENOR3S|STAFF)\b/i;
+  for (const k of OCT4) {
+    const c = D.trends.find((t) => t.key === k);
+    assert.ok(TRENDS[k], k + ': قالب الخادم');
+    assert.equal(c.engine, 'veo'); assert.equal(c.scenes, 1); assert.equal(c.photo, 'req'); assert.equal(c.maxPeople, 1, k + ': صورة واحدة');
+    assert.ok(TP.SINGLE_SUBJECT_TRENDS.has(k), k + ': شخص واحد على الخادم');
+    assert.doesNotMatch(TRENDS[k].prompt + ' ' + TRENDS[k].preview.frame, BANNED, k);
+    assert.ok(TRENDS[k].prompt.length <= 700, k + ': طول القالب ' + TRENDS[k].prompt.length);
+    for (const l of LANGS) {
+      assert.ok(c.title[l] && c.sub[l], k + '/' + l + ': نصّ ناقص');
+      assert.doesNotMatch(c.title[l] + ' ' + c.sub[l], BANNED, k + '/' + l);
+      assert.doesNotMatch(c.title[l] + c.sub[l], /[\u200c\u200d]/, k + '/' + l + ': حرف رابط خفيّ');
+    }
+    assert.doesNotMatch(c.title.hi + c.sub.hi, /तुम/); assert.doesNotMatch(c.title.bn + c.sub.bn, /তুমি|তোমা/); assert.doesNotMatch(c.title.ne + c.sub.ne, /तिमी|तिम्रो/);
+    assert.doesNotMatch(c.title.ml + c.sub.ml, /(^|\s)നീ(\s|$)|നിന്റെ|നിന്നെ/);
+  }
+  /* الراقص والدرّاجة والدخلة = إطار شخص في المشهد؛ المروحة = اللبس يتبدّل أثناء الفيديو (إطاره قبل التبديل، بلا قفل الإطار) */
+  for (const k of ['bbywow', 'invisiblebike', 'slowmoentry']) assert.ok(TP.SOLO_FRAME_TRENDS.has(k), k);
+  assert.ok(TP.OMNI_MORPH_TRENDS.has('ceilingfan') && !TP.SOLO_FRAME_TRENDS.has('ceilingfan'));
+  assert.match(TRENDS.ceilingfan.prompt, /blade sweeps fully across the lens their outfit changes/);
+  assert.match(TRENDS.bbywow.prompt, /bite of the bun on the beat/); assert.match(TRENDS.bbywow.prompt, /deadpan stare/);
+  assert.match(TRENDS.invisiblebike.prompt, /invisible handlebars, nothing at all beneath them/);
+  assert.match(TRENDS.slowmoentry.prompt, /slow-motion entrance/);
 });

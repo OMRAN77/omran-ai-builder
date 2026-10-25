@@ -810,6 +810,54 @@ const TRENDS = {
      "frame": "painted illustration in the style of a video game loading screen of a confident young man standing in a sunny coastal city street with palm trees and sports cars",
      "gender": "m"
    }
+ },
+ "bbywow": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Vertical handheld phone clip filmed by a guest at a party in a banquet hall, purple, pink and green party lights, formally dressed guests around the dance floor. The person from the reference image, in a plain black polo, holds a round sugar-topped sweet bun and starts a few steps back on the dance floor, dancing toward the phone, rolling their shoulders and swaying. Reaching the lens in close-up, they take one bite of the bun on the beat, then hold a deadpan stare straight into the lens while chewing, cheeks puffed, head still. Then they turn and dance back into the crowd. Fast sped-up dancehall beat with party chatter, one continuous shot, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical phone still in a banquet hall with purple, pink and green party lights: a young man in a plain black polo close to the lens, cheeks full mid-chew, holding a round sugar-topped sweet bun, deadpan stare straight into the camera, formally dressed guests blurred behind him",
+     "gender": "m"
+   }
+ },
+ "invisiblebike": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "One continuous vertical tracking shot on a concrete highway overpass by day: the camera rolls backward at chest height in front of the person from the reference image, in their own clothes, riding toward it in a deep squat in mid-air, both fists forward on invisible handlebars, nothing at all beneath them, grinning at the lens as the road streams past. Close behind, a helmeted officer with no insignia chases on a white futuristic hover-bike with round red lights. The rider glances back, kicks off into a mid-air flip, lands in the same squat and speeds away as the camera drops to road level. High-energy instrumental Eurodance synth beat, hover-bike whine, wind, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical still on a concrete highway overpass by day: a grinning young man in a hoodie squatting in mid-air with both fists forward on invisible handlebars and nothing beneath him, a helmeted rider on a white futuristic hover-bike with round red lights chasing close behind, motion blur on the road",
+     "gender": "m"
+   }
+ },
+ "ceilingfan": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Locked overhead camera pointing straight down past a slowly turning wooden ceiling fan, its blades in the foreground and its hub just outside a top corner. Below, the person from the reference image lies still on their back, face up, on a patterned rug in warm afternoon light, in their own outfit. The camera never moves. Each time a blade sweeps fully across the lens their outfit changes instantly behind it, no dissolve or morph: first to an all-black modest look, then to a modest shimmering gold one. Face, hair, any headscarf, pose, spot, rug and light stay identical. Upbeat beat with each blade pass landing on a drop, one continuous shot, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic overhead still looking straight down past the soft-blurred blades of a wooden ceiling fan at a young woman in a modest long shimmering gold outfit and headscarf lying on her back on a patterned rug in warm afternoon light",
+     "gender": "w"
+   }
+ },
+ "slowmoentry": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Static wide vertical shot from a phone on a tripod in an ordinary open-air parking lot by day; the camera never moves. The person from the reference image, in casual streetwear, makes an exaggerated cinematic slow-motion entrance: starting at the left edge of the frame, they stride across the lot toward the lens, every step slow, heavy and deliberate, with a dramatically serious, intense face, each step landing on a big hit of the music, until they reach the foreground. True slow-motion movement throughout, an ordinary place played like a blockbuster opening. Dark, dramatic cinematic hip-hop instrumental with heavy drums, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical still from a fixed camera in an ordinary open-air parking lot by day: a young man in casual streetwear striding in from the left in slow motion, mid-step, with a dramatically serious, intense face",
+     "gender": "m"
+   }
  }
 };
 /* v-trend-extra: الحدّ ٢٤٠ ← ٤٠٠ — المالك يكتب أكثر من جملة («دمج الكلمات») */
