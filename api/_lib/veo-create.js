@@ -55,6 +55,23 @@ const OMNI_FRAME_MS = 120000; // إطار المجموعة قبل Omni: يترك
 function trendEngine() { return String(process.env.TREND_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }
 const TREND_NO_CUTS = ' In a single continuous shot, no scene cuts.';
 const TREND_REF_GUIDE = ' Use the given image as a reference for video generation — keep the face and identity of the person in it. The image should not be used as a literal initial frame.';
+/* v-trend-omni-refs: التوثيق يربط المرجع بالشخص داخل النصّ («a woman <IMAGE_REF_0> is walking»)، وomni-create يفعل ذلك في قفله؛
+   أوامر الترندات (مكتوبة لـVeo) تقول «the reference image» بلا وسم — فيُلحق الوسم بها حين يكون للصورة مرجع واحد. */
+function bindTrendRef(p) { return String(p).replace(/the reference image(?! <IMAGE_REF_)/g, 'the reference image <IMAGE_REF_0>'); }
+/* صورة واحدة فيها شخصان (كشفهما الإطار): مرجعها الصورة نفسها، والإرشاد بالجمع كالأمر */
+const TREND_FRAME_GUIDE_MANY = ' Use Image1 as the starting frame. Use Image2 as a reference for the video generation: it shows the same real people as Image1 — use it only to keep each person\'s own face and identity; the clothing and setting come from Image1 and the description, not from Image2.';
+/* إطار المجموعة: «the reference image shows/contains N people» (أمر Veo) ← صور المراجع، كلّ صورة شخص */
+function bindGroupRefs(p, n) {
+  const tags = Array.from({ length: n }, (_, k) => '<IMAGE_REF_' + k + '>').join(n > 2 ? ', ' : ' and ').replace(/, (<IMAGE_REF_\d>)$/, ' and $1');
+  return String(p).replace(/the reference image (shows|contains)/g, 'the reference photos ' + tags + ' show')
+    .replace(/the reference image(?! <IMAGE_REF_)/g, 'the reference photos ' + tags);
+}
+const imgList = (n) => Array.from({ length: n }, (_, k) => 'Image' + (k + 2)).join(n > 2 ? ', ' : ' and ').replace(/, (Image\d)$/, ' and $1');
+function groupRefDecl(n) { return '[# Sources <FIRST_FRAME>@Image1] [# References ' + Array.from({ length: n }, (_, k) => '<IMAGE_REF_' + k + '>@Image' + (k + 2)).join(' ') + '] '; }
+function groupRefGuide(n) {
+  return ' Use Image1 as the starting frame. Use ' + imgList(n) + ' as references for the video generation: each one shows one of the real people already in Image1'
+    + ' — use them only to keep each person\'s own face and identity, never as extra people; the clothing and setting come from Image1 and the description.';
+}
 async function trendOmni(o) {
   const omni = require('./omni-create.js');
   const input = [];
@@ -63,18 +80,23 @@ async function trendOmni(o) {
     input.push({ type: 'image', data: o.imageBase64, mime_type: o.imageMime || 'image/png' });
     /* v-trend-omni-face: Omni يصنع افتراضيًّا عدّة لقطات بقطع بينها، والقطع يعيد رسم الوجه — لقطة واحدة متّصلة (توثيقه حرفيًّا) */
     const cuts = o.multiShot ? '' : TREND_NO_CUTS; // قالب مونتاج بنصّه (عشر دول…) يبقى بلقطاته
-    if (o.framed && o.ref && (!o.ageShift || o.morph)) { /* رحلة العمر: الإطار طفل، ولقطة وجهه بعمره الحقيقيّ مرجع لما بعده */
-      /* الإطار الأوّل بوجهه في المشهد + لقطة الوجه مرجعًا — أدوار omni-create حرفيًّا */
-      input.push({ type: 'image', data: o.ref.data, mime_type: o.ref.mime || 'image/png' });
-      prompt = omni.FRAME_DECL + prompt + cuts + omni.FRAME_GUIDE;
+    const refs = o.framed ? (o.refs || []).filter((r) => r && r.data).slice(0, 3) : [];
+    if (refs.length === 1) {
+      /* الإطار الأوّل بوجهه في المشهد + مرجع ملامحه (لقطة الوجه أو صورته) — أدوار omni-create حرفيًّا، والمرجع مربوط في النصّ */
+      input.push({ type: 'image', data: refs[0].data, mime_type: refs[0].mime || 'image/png' });
+      prompt = omni.FRAME_DECL + bindTrendRef(prompt) + cuts + (o.people > 1 ? TREND_FRAME_GUIDE_MANY : omni.FRAME_GUIDE);
+    } else if (refs.length > 1) {
+      /* إطار المجموعة + صورة كلّ شخص مرجعًا لوجهه (صيغة التوثيق لعدّة مراجع) */
+      refs.forEach((r) => input.push({ type: 'image', data: r.data, mime_type: r.mime || 'image/png' }));
+      prompt = groupRefDecl(refs.length) + bindGroupRefs(prompt, refs.length) + cuts + groupRefGuide(refs.length);
     } else if (o.framed || !o.person) {
-      /* إطار مبنيّ (المجموعة، أو بلا لقطة وجه، أو بعمر آخر — لقطة البالغ تشدّ الطفل إلى عمره)، أو صورة يُقصد تحريكها هي نفسها
+      /* إطار مبنيّ بلا مرجع (ترند بعمر آخر — مرجع البالغ يشدّ الطفل إلى عمره)، أو صورة يُقصد تحريكها هي نفسها
          (منتج، مكان، حيوان، «حرّك الصورة»): أوّل إطار كما كانت عند Veo (instance.image) */
       prompt = '[# Sources <FIRST_FRAME>@Image1] ' + prompt + cuts + ' Use Image1 as the starting frame.';
     } else {
       /* ترند شخص بلا إطار مبنيّ (بيكسار ورمضان، أو تعذّر الإطار): الصورة مرجع لا لقطة أولى — كانت تظهر خامًا في أوّل الفيديو.
          صيغة التوثيق: «Use the given image(s) as references… should not be used as literal initial frames». */
-      prompt = '[# References <IMAGE_REF_0>@Image1] ' + prompt + cuts + TREND_REF_GUIDE;
+      prompt = '[# References <IMAGE_REF_0>@Image1] ' + bindTrendRef(prompt) + cuts + TREND_REF_GUIDE;
     }
   }
   input.push({ type: 'text', text: prompt });
@@ -118,6 +140,8 @@ module.exports = async (req, res) => {
       : [];
     /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند ومدخلات المستخدم */
     const hasImage = !!(imageBase64 && String(imageBase64).trim());
+    /* v-trend-omni-refs: صورة المستخدم كما رفعها — الإطار يحلّ محلّها في imageBase64، وتبقى هي مرجع الملامح عند Omni */
+    const userPhoto = hasImage ? { data: String(imageBase64).trim(), mime: imageMime || 'image/png' } : null;
     /* v-video-first-frame (المالك: «كل الفيديوات»): مع صورة يُبنى أوّل إطار بوجه الشخص في مشهد الوصف أو الترند ثمّ
        يحرّكه المحرّك (trend-people.soloFirstFrame) — للوصف الحرّ، ولترندات الشخص الواحد في SOLO_FRAME_TRENDS.
        keepPhoto (شخصيّة المحادثة الكرتونيّة الجاهزة) = الصورة نفسها أوّل إطار كما كانت. */
@@ -257,11 +281,15 @@ module.exports = async (req, res) => {
        كإطار المجموعة. أيّ عطب = الصورة نفسها أوّل إطار كما كانت، فلا يفشل فيديو بسبب الإطار. */
     let framed = false;
     let frameRef = null; // v-trend-omni: لقطة الوجه من الإطار الفرديّ (Image2 عند Omni)
+    let soloPeople = 0; // v-trend-omni-refs: شخصان كشفهما الإطار في صورة واحدة — إرشاد المرجع بالجمع
     if (soloWanted) {
       const solo = await tp.soloFirstFrame(apiKey, { data: String(imageBase64).trim(), mime: imageMime },
         body.trend ? tp.trendScene(promptText) : String(rawDesc), ratio,
         { style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000,
-          start: morph, ageShift: omniTrend && tp.AGE_SHIFT_TRENDS.has(trendId) });
+          start: morph, ageShift: omniTrend && tp.AGE_SHIFT_TRENDS.has(trendId),
+          /* v-trend-frame-face: Omni يحفظ وجه الإطار طوال المقطع — فالإطار 2K بوجه كبير؛ الدمية والليغو 2K وحده (لعبة صغيرة في عبوتها) */
+          detail: omniTrend && !tp.SOLO_FRAME_ART_TRENDS.has(trendId), hiRes: omniTrend,
+          refine: omniTrend && tp.faceRefineOn() /* v-trend-face-refine: تصحيح الوجه بعد البناء (بقرار المالك وكلفته) */ });
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
         /* v-two-people: الإطار كشف شخصين في الصورة الواحدة — الأمر بصيغة الجمع (كلّ واحد بوجهه) قبل القفل */
@@ -275,15 +303,21 @@ module.exports = async (req, res) => {
           }
         }
         if (!morph) promptText += FRAME_LOCK; /* v-trend-omni-face: المتحوّل أثناء الفيديو — إطاره قبل التحوّل، والقفل يمنعه */
-        framed = true; frameRef = solo.ref || null;
-        console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : ''));
+        framed = true; frameRef = solo.ref || null; soloPeople = solo.people || 0;
+        console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (solo.refined ? ' (face refined)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : ''));
       } else console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }
 
     if (body.trend && trendEngine() === 'omni') {
       const r = await trendOmni({ apiKey, prompt: String(promptText).trim().slice(0, VEO_PROMPT_MAX), imageBase64: imageBase64 && String(imageBase64).trim(),
-        imageMime, framed: framed || groupFramed, ref: frameRef, ratio, quality, t0,
-        person: tp.omniPersonTrend(trendId), ageShift: tp.AGE_SHIFT_TRENDS.has(trendId), morph,
+        imageMime, framed: framed || groupFramed, ratio, quality, t0, person: tp.omniPersonTrend(trendId),
+        /* v-trend-omni-refs (المالك بعد v-trend-omni-face: «بعده يغيّر شكل الشخصيّة في الملامح»): مرجع الملامح مع كلّ إطار مبنيّ —
+           لقطة الوجه، وإلّا الصورة نفسها كما في omni-create (السيلفي: وجه يملأ الصورة لا تُقصّ له لقطة، فكان الإطار وحده)، وصور
+           الأشخاص مع إطار المجموعة (كان بلا أيّ مرجع). ترند العمر الآخر بلا مرجع البالغ (يشدّ الطفل إلى عمره) إلّا رحلة العمر. */
+        refs: (tp.AGE_SHIFT_TRENDS.has(trendId) && !morph) ? []
+          : groupFramed ? (tp.omniPersonTrend(trendId) ? trendPeople.map((x) => ({ data: String(x.data).trim(), mime: x.mime || 'image/png' })) : []) /* منتج أو مكان بعدّة صور: ليست وجوه أشخاص */
+            : framed ? [frameRef || userPhoto] : [],
+        people: soloPeople,
         /* قصّة المحادثة في مقطع واحد (oneClip بعدّة مشاهد) لقطات متتالية بنصّها — كقوالب المونتاج */
         multiShot: tp.MULTI_SHOT_TRENDS.has(trendId) || !!(trendParams && trendParams.oneClip && Array.isArray(trendParams.scenes) && trendParams.scenes.length > 1) });
       if (!r.uri) {
@@ -366,6 +400,11 @@ module.exports.omniOpKey = omniOpKey;
 module.exports.trendEngine = trendEngine;
 module.exports.TREND_NO_CUTS = TREND_NO_CUTS;
 module.exports.TREND_REF_GUIDE = TREND_REF_GUIDE;
+module.exports.bindTrendRef = bindTrendRef;
+module.exports.groupRefDecl = groupRefDecl;
+module.exports.groupRefGuide = groupRefGuide;
+module.exports.bindGroupRefs = bindGroupRefs;
+module.exports.TREND_FRAME_GUIDE_MANY = TREND_FRAME_GUIDE_MANY;
 module.exports.VEO_FREE_IMAGE_MAX = VEO_FREE_IMAGE_MAX;
 module.exports.VEO_FREE_MAX = VEO_FREE_MAX;
 module.exports.FRAME_LOCK = FRAME_LOCK;

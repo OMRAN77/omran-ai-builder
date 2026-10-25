@@ -93,7 +93,10 @@ const images = (c) => c.body.input.filter((x) => x.type === 'image').map((x) => 
 const NO_CUTS = veo.TREND_NO_CUTS;
 const cutsOf = (t) => (t && TP.MULTI_SHOT_TRENDS.has(t) ? '' : NO_CUTS); // قالب مونتاج بنصّه يبقى بلقطاته
 const FIRST = (p, t) => '[# Sources <FIRST_FRAME>@Image1] ' + p + cutsOf(t) + ' Use Image1 as the starting frame.';
-const REF = (p, t) => '[# References <IMAGE_REF_0>@Image1] ' + p + cutsOf(t) + veo.TREND_REF_GUIDE;
+const bind = veo.bindTrendRef; // v-trend-omni-refs: «the reference image» ← «the reference image <IMAGE_REF_0>» (حرفيًّا في ١٦)
+const REF = (p, t) => '[# References <IMAGE_REF_0>@Image1] ' + bind(p) + cutsOf(t) + veo.TREND_REF_GUIDE;
+const DECL = (p, t) => OMNI.FRAME_DECL + bind(p) + cutsOf(t) + OMNI.FRAME_GUIDE;
+const GROUP = (p, n, t) => veo.groupRefDecl(n) + veo.bindGroupRefs(p, n) + cutsOf(t) + veo.groupRefGuide(n);
 const { TRENDS } = require(rp('api/_lib/video-trends.js'));
 const PHOTO_TRENDS = Object.keys(TRENDS).filter((id) => TRENDS[id].photo !== 'none');
 /* ما يبقى صورته أوّل إطار: منتجات وأماكن وحيوانات و«حرّك الصورة كما هي» — مثبَّت حرفيًّا: ترند جديد بصورة يُصنَّف عمدًا (اختبار ١٢) */
@@ -114,7 +117,7 @@ test('٢. التكافؤ: ترند الشخص الواحد بإطار أوّل �
   const { inst, omni } = await both({ trend: 'heritagesing', params: { text: 'يا هلا', sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'USERPHOTO', imageMime: 'image/jpeg' });
   assert.equal(inst.image.bytesBase64Encoded, 'SOLOFRAME', 'Veo: الإطار أوّلًا');
   assert.deepEqual(images(omni), ['SOLOFRAME', 'FACEREF']);
-  assert.equal(text(omni), OMNI.FRAME_DECL + inst.prompt + NO_CUTS + OMNI.FRAME_GUIDE);
+  assert.equal(text(omni), DECL(inst.prompt));
   assert.ok(inst.prompt.endsWith(TP.FRAME_LOCK.trim()), 'قفل الإطار كما كان');
 });
 
@@ -139,8 +142,9 @@ test('٣. التكافؤ: شخصان — إطار المجموعة Image1 «ال
   assert.deepEqual(groupOpts, { timeoutMs: 120000 });
   const omni = calls.find((c) => /\/interactions$/.test(c.url));
   assert.equal(a.code, 200); assert.equal(b.code, 200);
-  assert.deepEqual(images(omni), ['GROUPFRAME']);
-  assert.equal(text(omni), FIRST(inst.prompt));
+  /* v-trend-omni-refs: صورة كلّ شخص مرجعًا لوجهه مع إطار المجموعة (كان الإطار وحده) */
+  assert.deepEqual(images(omni), ['GROUPFRAME', 'P1', 'P2']);
+  assert.equal(text(omni), GROUP(inst.prompt, 2));
 });
 
 test('٤. التكافؤ: بلا صورة (اسكتش بيكسار) — الأمر وحده حرفيًّا؛ والطلب: النموذج والنسبة والدقّة والرابط والتخزين والمفتاح والمهلة', async () => {
@@ -261,7 +265,7 @@ test('٩. شخص يُنقل إلى مشهد أو أسلوب أو عمر (تحت 
       assert.equal(text(r.omni), FIRST(p), trend);
     } else {
       assert.deepEqual(images(r.omni), ['SOLOFRAME', 'FACEREF'], trend);
-      assert.equal(text(r.omni), OMNI.FRAME_DECL + p + NO_CUTS + OMNI.FRAME_GUIDE, trend);
+      assert.equal(text(r.omni), DECL(p), trend);
     }
     assert.ok(!images(r.omni).includes('USERPHOTO'), trend + ': الصورة الخام لا تصل أوّل إطار');
   }
@@ -277,7 +281,7 @@ test('١٠. المتحوّل أثناء الفيديو (بطل خارق، تبد
     assert.equal(r.omniSolo[0].o.ageShift, TP.AGE_SHIFT_TRENDS.has(trend), trend);
     /* رحلة العمر أيضًا: الإطار طفل، ولقطة وجهه بعمره الحقيقيّ مرجع لما بعده (كانت لا تصل المحرّك أبدًا) */
     assert.deepEqual(images(r.omni), ['SOLOFRAME', 'FACEREF'], trend);
-    assert.equal(text(r.omni), OMNI.FRAME_DECL + r.veoPrompt + NO_CUTS + OMNI.FRAME_GUIDE, trend);
+    assert.equal(text(r.omni), DECL(r.veoPrompt), trend);
   }
   assert.ok(TP.OMNI_MORPH_TRENDS.has('superhero'), 'الترند الذي جرّبه المالك');
   /* صورتان: إطار المجموعة بلحظته الأولى وبلا قفل على Omni؛ Veo كما كان (بالقفل) */
@@ -292,8 +296,8 @@ test('١٠. المتحوّل أثناء الفيديو (بطل خارق، تبد
   assert.equal(a.code, 200); assert.equal(b.code, 200);
   assert.deepEqual(groupOpts, { timeoutMs: 120000, start: true });
   const om = calls.find((c) => /\/interactions$/.test(c.url));
-  assert.deepEqual(images(om), ['GROUPFRAME']);
-  assert.equal(text(om), FIRST(vp.slice(0, vp.length - TP.FRAME_LOCK.length)), 'Omni: بلا قفل');
+  assert.deepEqual(images(om), ['GROUPFRAME', 'P1', 'P2']);
+  assert.equal(text(om), GROUP(vp.slice(0, vp.length - TP.FRAME_LOCK.length), 2), 'Omni: بلا قفل، وصورتاهما مرجعان');
 });
 
 test('١١. الصورة مرجع لا لقطة أولى: بيكسار ورمضان، وتعذّر الإطار في كلّ ترند شخص، وإطفاء الإطار — لا تظهر الصورة الخام في أوّل الفيديو', async () => {
@@ -385,7 +389,7 @@ test('١٣. soloFirstFrame الحقيقيّ يمرّر «اللحظة الأول
 
 test('١٤. المونتاج بنصّه بلا «بلا قطع» (عشر دول، إعلان المنتج)، وصورة مرفقة بترند بلا خانة صورة (المحادثة) مرجع لا لقطة أولى', async () => {
   let r = await pair(photoBody('tencountries'));
-  assert.equal(text(r.omni), OMNI.FRAME_DECL + r.veoPrompt + OMNI.FRAME_GUIDE, 'عشر دول: الإطار ولقطة الوجه، ولقطاته كما هي');
+  assert.equal(text(r.omni), DECL(r.veoPrompt, 'tencountries'), 'عشر دول: الإطار ولقطة الوجه، ولقطاته كما هي');
   r = await pair(photoBody('productad'));
   assert.equal(text(r.omni), '[# Sources <FIRST_FRAME>@Image1] ' + r.veoPrompt + ' Use Image1 as the starting frame.');
   for (const trend of ['pixarsketch', 'calligraphy']) {
@@ -404,7 +408,7 @@ test('١٥. النصوص نفسها حرفيًّا (لا ثابت يُفرَّغ
   const story = (scenes) => pair({ trend: 'pixarstory', params: { name: 'سعيد', oneClip: true, scenes, sceneIndex: 0 }, ratio: '1280:720', imageBase64: 'USERPHOTO', imageMime: 'image/jpeg' });
   let r = await story(['يسبح في البحر', 'يبني قلعة رمل']);
   assert.match(r.veoPrompt, /consecutive shots within this single clip/);
-  assert.equal(text(r.omni), '[# References <IMAGE_REF_0>@Image1] ' + r.veoPrompt + veo.TREND_REF_GUIDE, 'لقطاتها كما هي');
+  assert.equal(text(r.omni), '[# References <IMAGE_REF_0>@Image1] ' + bind(r.veoPrompt) + veo.TREND_REF_GUIDE, 'لقطاتها كما هي');
   r = await story(['يسبح في البحر']);
   assert.equal(text(r.omni), REF(r.veoPrompt), 'مشهد واحد: لقطة واحدة');
   const age = TP.soloFrameTask('a scene', { closeup: true, ageShift: true });
@@ -412,4 +416,221 @@ test('١٥. النصوص نفسها حرفيًّا (لا ثابت يُفرَّغ
   assert.match(age, /Photorealistic, like a real film still\./);
   assert.match(TP.soloFrameTask('a scene', { ageShift: true, art: true }), /Use the art style the description asks for/);
   assert.match(TP.soloFrameTask('a scene', { ageShift: true, styleText: 'ANIME-X' }), /ANIME-X Their face is clearly visible/);
+});
+
+test('١٦. مرجع الملامح مع كلّ إطار مبنيّ: السيلفي (لا لقطة وجه) صورته نفسها Image2، وثلاثة أشخاص صورهم الثلاث، وترند العمر الآخر بلا مرجع؛ والوسم مربوط في النصّ', async () => {
+  /* البلاغ: «بعده يغيّر شكل الشخصيّة في الملامح» — وجه يملأ الصورة لا تُقصّ له لقطة (merge-identity)، فكان الإطار يصل Omni وحده */
+  const real = TP.soloFirstFrame;
+  TP.soloFirstFrame = async (k, photo, scene, ratio, o) => { soloCalls.push({ scene, o }); return { b64: 'SOLOFRAME', mime: 'image/png', ref: null, people: 0 }; };
+  try {
+    for (const trend of ['heritagesing', 'underwater', 'superhero', 'agejourney']) {
+      const r = await pair(photoBody(trend));
+      assert.deepEqual(images(r.omni), ['SOLOFRAME', 'USERPHOTO'], trend + ': صورته مرجعًا');
+      assert.deepEqual(r.omni.body.input.filter((x) => x.type === 'image').map((x) => x.mime_type), ['image/png', 'image/jpeg'], trend + ': نوع كلّ صورة');
+      const p = TP.OMNI_FRAME_TRENDS.has(trend) ? r.veoPrompt + TP.FRAME_LOCK : r.veoPrompt;
+      assert.equal(text(r.omni), DECL(p, trend), trend);
+    }
+    const age = await pair(photoBody('babyversion'));
+    assert.deepEqual(images(age.omni), ['SOLOFRAME'], 'نسخة طفل: مرجع البالغ يشدّ الطفل إلى عمره');
+    assert.equal(text(age.omni), FIRST(age.veoPrompt + TP.FRAME_LOCK));
+  } finally { TP.soloFirstFrame = real; }
+  /* ثلاثة أشخاص */
+  const body = { trend: 'heritagesing', params: { text: 'يا هلا', people: 3, sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'P1', imageMime: 'image/png', imagesBase64: ['P1', 'P2', 'P3'], imagesMime: ['image/png', 'image/jpeg', 'image/png'] };
+  calls = []; delete process.env.TREND_ENGINE;
+  const g = await create(Object.assign({ token: ownerTok }, body));
+  assert.equal(g.code, 200);
+  const om = calls.find((c) => /\/interactions$/.test(c.url));
+  assert.deepEqual(images(om), ['GROUPFRAME', 'P1', 'P2', 'P3']);
+  assert.match(text(om), /the reference photos <IMAGE_REF_0>, <IMAGE_REF_1> and <IMAGE_REF_2> show 3 different people/);
+  assert.deepEqual(om.body.input.filter((x) => x.type === 'image').map((x) => x.mime_type), ['image/png', 'image/png', 'image/jpeg', 'image/png']);
+  assert.ok(text(om).startsWith('[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2 <IMAGE_REF_1>@Image3 <IMAGE_REF_2>@Image4] '));
+  assert.ok(text(om).endsWith(' Use Image1 as the starting frame. Use Image2, Image3 and Image4 as references for the video generation: each one shows one of the real people already in Image1 — use them only to keep each person\'s own face and identity, never as extra people; the clothing and setting come from Image1 and the description.'));
+  /* نسخة طفل لشخصين: بلا مراجع البالغين */
+  calls = [];
+  await create(Object.assign({ token: ownerTok }, body, { trend: 'babyversion', imagesBase64: ['P1', 'P2'], imagesMime: ['image/png', 'image/png'], params: { people: 2, sceneIndex: 0 } }));
+  assert.deepEqual(images(calls.find((c) => /\/interactions$/.test(c.url))), ['GROUPFRAME']);
+  /* الوسم حرفيًّا */
+  assert.equal(bind('the person from the reference image stands; same as in the reference image <IMAGE_REF_0>.'),
+    'the person from the reference image <IMAGE_REF_0> stands; same as in the reference image <IMAGE_REF_0>.');
+  const r = await pair(photoBody('heritagesing'));
+  assert.ok((r.veoPrompt.match(/the reference image/g) || []).length >= 2, 'أمر Veo كما كان بلا وسم');
+  assert.ok(!/the reference image(?! <IMAGE_REF_0>)/.test(text(r.omni)), 'Omni: كلّ «the reference image» مربوطة بمرجعها');
+});
+
+test('١٧. صورة واحدة فيها شخصان: مرجعها الصورة والإرشاد بالجمع؛ أمر المجموعة يسمّي صور المراجع لا «صورة فيها N»؛ ومنتج بعدّة صور بلا مراجع «أشخاص»', async () => {
+  const real = TP.soloFirstFrame;
+  TP.soloFirstFrame = async () => ({ b64: 'SOLOFRAME', mime: 'image/png', ref: null, people: 2 });
+  try {
+    const r = await pair(photoBody('heritagesing'));
+    assert.deepEqual(images(r.omni), ['SOLOFRAME', 'USERPHOTO']);
+    assert.ok(text(r.omni).startsWith('[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2] '), 'الأدوار حرفيًّا');
+    assert.ok(!/the reference image(?! <IMAGE_REF_0>)/.test(text(r.omni)), 'الوسم مربوط');
+    assert.ok(text(r.omni).endsWith(veo.TREND_FRAME_GUIDE_MANY), 'الإرشاد بالجمع');
+    assert.match(veo.TREND_FRAME_GUIDE_MANY, /it shows the same real people as Image1 — use it only to keep each person's own face and identity/);
+  } finally { TP.soloFirstFrame = real; }
+  assert.equal(veo.bindGroupRefs('WHO: the reference image shows 2 real people. IMPORTANT — the reference image contains 2 different people, each from the reference image.', 2),
+    'WHO: the reference photos <IMAGE_REF_0> and <IMAGE_REF_1> show 2 real people. IMPORTANT — the reference photos <IMAGE_REF_0> and <IMAGE_REF_1> show 2 different people, each from the reference photos <IMAGE_REF_0> and <IMAGE_REF_1>.');
+  const body = { trend: 'heritagesing', params: { text: 'يا هلا', people: 2, sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'P1', imageMime: 'image/png', imagesBase64: ['P1', 'P2'], imagesMime: ['image/png', 'image/png'] };
+  calls = []; delete process.env.TREND_ENGINE;
+  await create(Object.assign({ token: ownerTok }, body));
+  const t = text(calls.find((c) => /\/interactions$/.test(c.url)));
+  assert.ok(!/the reference image\b/.test(t), 'لا «the reference image» في أمر المجموعة');
+  assert.ok(t.startsWith('[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2 <IMAGE_REF_1>@Image3] '), 'الأدوار حرفيًّا');
+  assert.ok(t.endsWith(' Use Image1 as the starting frame. Use Image2 and Image3 as references for the video generation: each one shows one of the real people already in Image1 — use them only to keep each person\'s own face and identity, never as extra people; the clothing and setting come from Image1 and the description.'));
+  assert.match(t, /the reference photos <IMAGE_REF_0> and <IMAGE_REF_1> show 2 different people/);
+  calls = [];
+  await create(Object.assign({ token: ownerTok }, body, { trend: 'productad', params: { text: 'عطر', people: 2, sceneIndex: 0 }, ratio: '1280:720' }));
+  const pc = calls.find((c) => /\/interactions$/.test(c.url));
+  assert.deepEqual(images(pc), ['GROUPFRAME'], 'منتج: الإطار وحده كما كان');
+  assert.ok(text(pc).startsWith('[# Sources <FIRST_FRAME>@Image1] '));
+});
+
+test('١٨. إطار ترندات Omni بوجه كبير مفصَّل: 2K (لا 1K) ولقطة لا تُصغّر الوجه ولون الشعر من الصورة — على Omni وحده، والمهمّة الافتراضيّة كما كانت', async () => {
+  /* البلاغ: «عرض الأزياء» — وجه الثانية الأولى غير وجهها، ووجه وسط الفيديو هو وجه الثانية الأولى: التغيّر في الإطار المبنيّ */
+  const r = await pair(photoBody('catwalk'));
+  assert.equal(r.veoSolo, 1, 'Veo: إطار ترند الشخص الواحد كما كان');
+  assert.ok(!soloCalls[0].o.detail, 'Veo: بلا detail');
+  assert.equal(r.omniSolo.length, 1);
+  assert.equal(r.omniSolo[0].o.detail, true, 'Omni: detail');
+  assert.equal(r.omniSolo[0].o.budgetMs, 90000, 'ميزانيّة الإطار كما كانت');
+  for (const trend of ['underwater', 'superhero', 'babyversion']) assert.equal((await pair(photoBody(trend))).omniSolo[0].o.detail, true, trend);
+  /* الدمية والليغو: 2K وحده — «سدس الارتفاع» يكسر لعبة صغيرة في عبوتها */
+  for (const trend of TP.SOLO_FRAME_ART_TRENDS) { const x = (await pair(photoBody(trend))).omniSolo[0].o; assert.deepEqual([x.detail, x.hiRes], [false, true], trend); }
+  assert.equal(TP.FRAME_FACE_DETAIL, 'Compose the frame so their face is large and finely detailed — at least about a sixth of the image height (a medium or medium-wide shot, never a small distant figure); the video can move the camera from there. Keep their natural hair colour from Photo 1 unless the description changes it.');
+  for (const o of [{ closeup: true }, { closeup: true, start: true }, { closeup: true, ageShift: true }, { ageShift: true, people: 2 }]) {
+    const plain = TP.soloFrameTask('a runway', o);
+    const det = TP.soloFrameTask('a runway', Object.assign({ detail: true }, o));
+    assert.ok(!plain.includes(TP.FRAME_FACE_DETAIL), JSON.stringify(o) + ': الافتراضيّ بلا السطر');
+    assert.equal(det, plain.replace(' No text, captions, logos or watermarks.', ' ' + TP.FRAME_FACE_DETAIL + ' No text, captions, logos or watermarks.'), JSON.stringify(o));
+  }
+  /* soloFirstFrame الحقيقيّ: الحجم والمهمّة والذاكرة */
+  const seen = [];
+  const o = {
+    faceCrops: async () => [{ who: 'the person', data: 'CROP', mime: 'image/jpeg' }],
+    callImage: async (k, parts, aspect, f, cfg) => { seen.push({ cfg, task: parts[parts.length - 1].text }); return { b64: 'F' + seen.length, mime: 'image/png' }; },
+  };
+  const photo = { data: 'Q-' + Date.now(), mime: 'image/jpeg' };
+  const a = await realSolo('K', photo, 'a runway', '720:1280', o);
+  const b = await realSolo('K', photo, 'a runway', '720:1280', Object.assign({ detail: true }, o));
+  assert.deepEqual([a.b64, b.b64], ['F1', 'F2'], 'لا نسخة مخزَّنة بين الحجمين');
+  assert.equal(seen[0].cfg.imageSize, '1K', 'الافتراضيّ كما كان');
+  assert.equal(seen[1].cfg.imageSize, '2K');
+  assert.ok(!seen[0].task.includes(TP.FRAME_FACE_DETAIL));
+  assert.ok(seen[1].task.includes(TP.FRAME_FACE_DETAIL));
+  /* إطار PNG كبير (2K) يُرمَّز JPEG قبل طلب المحرّك؛ الصغير وبلا detail كما هو */
+  const { PNG } = require('pngjs');
+  const png = new PNG({ width: 1000, height: 1400 }); crypto.randomFillSync(png.data); for (let i = 3; i < png.data.length; i += 4) png.data[i] = 255;
+  const big = PNG.sync.write(png).toString('base64');
+  assert.ok(big.length > 6000000, 'إطار أكبر من الحدّ');
+  const bigCall = (detail, b64) => realSolo('K', { data: 'B-' + detail + b64.length + Date.now(), mime: 'image/jpeg' }, 'a runway', '720:1280',
+    { detail, faceCrops: async () => [], callImage: async () => ({ b64, mime: 'image/png' }) });
+  const j = await bigCall(true, big);
+  assert.equal(j.mime, 'image/jpeg');
+  assert.equal(Buffer.from(j.b64, 'base64')[0], 0xFF, 'JPEG فعلًا');
+  const dec = require('jpeg-js').decode(Buffer.from(j.b64, 'base64'), { maxMemoryUsageInMB: 512 });
+  assert.deepEqual([dec.width, dec.height], [1000, 1400], 'الأبعاد نفسها (طوليّ)');
+  assert.ok(j.b64.length < big.length);
+  assert.equal((await bigCall(false, big)).mime, 'image/png', 'بلا detail كما كان');
+  const small = new PNG({ width: 64, height: 64 }); const sb = PNG.sync.write(small).toString('base64');
+  assert.deepEqual([(await bigCall(true, sb)).mime, (await bigCall(true, sb)).b64 === sb], ['image/png', true], 'الصغير كما هو');
+  /* إطار JPEG كبير لا يُعاد ضغطه */
+  const bigJpeg = Buffer.from(require('jpeg-js').encode({ width: 1000, height: 1400, data: png.data }, 100).data).toString('base64');
+  assert.ok(bigJpeg.length > 6000000);
+  const jj = await realSolo('K', { data: 'J-' + Date.now(), mime: 'image/jpeg' }, 'a runway', '720:1280', { detail: true, faceCrops: async () => [], callImage: async () => ({ b64: bigJpeg, mime: 'image/jpeg' }) });
+  assert.equal(jj.b64, bigJpeg, 'JPEG كما هو');
+  /* نوع الإطار يصل المحرّك كما هو */
+  const real = TP.soloFirstFrame;
+  TP.soloFirstFrame = async () => ({ b64: 'JFRAME', mime: 'image/jpeg', ref: { data: 'FACEREF', mime: 'image/jpeg' }, people: 1 });
+  try {
+    const x = await pair(photoBody('catwalk'));
+    assert.deepEqual(x.omni.body.input.filter((i) => i.type === 'image').map((i) => [i.data, i.mime_type]), [['JFRAME', 'image/jpeg'], ['FACEREF', 'image/jpeg']]);
+  } finally { TP.soloFirstFrame = real; }
+});
+
+test('١٩. تصحيح الوجه بعد بناء الإطار (بقرار المالك): نداء ثانٍ لنموذج الصور بالإطار ولقطة الوجه — لشخص واحد مؤكَّد بملامح واقعيّة، وأيّ عطب = الإطار كما بُني، وTREND_FACE_REFINE=off يرجعه', async () => {
+  /* المسار: Omni يطلبه، وVeo لا، والإطفاء (والقيمة الأصليّة تُعاد) */
+  const prevEnv = process.env.TREND_FACE_REFINE;
+  delete process.env.TREND_FACE_REFINE;
+  let r;
+  try {
+    r = await pair(photoBody('catwalk'));
+    assert.ok(!soloCalls[0].o.refine, 'Veo: بلا تصحيح');
+    assert.equal(r.omniSolo[0].o.refine, true, 'Omni: تصحيح');
+    process.env.TREND_FACE_REFINE = 'off';
+    r = await pair(photoBody('catwalk'));
+    assert.equal(r.omniSolo[0].o.refine, false, 'الإطفاء بلا نشر');
+  } finally { if (prevEnv === undefined) delete process.env.TREND_FACE_REFINE; else process.env.TREND_FACE_REFINE = prevEnv; }
+  assert.match(TP.REFINE_TASK, /^TASK: edit Image A\. Correct ONLY the face of the person in Image A so that it is exactly the real person shown in Image B/);
+  assert.match(TP.REFINE_TASK, /Do not beautify, slim, smooth or restyle the face, and change nothing else\./);
+  assert.equal(TP.REFINE_UNTIL_MS, 120000);
+
+  /* soloFirstFrame الحقيقيّ: الكشف يكتب stats.faces كما في merge-identity (لا قيمة عند عطبه) */
+  const CROP1 = [{ who: 'the person', data: 'CROP', mime: 'image/jpeg' }];
+  const run = async (opts, replies, crops, faces, scene) => {
+    const calls2 = [];
+    const res = await realSolo('K', { data: 'S-' + Math.random(), mime: 'image/jpeg' }, scene || 'a runway', '720:1280', Object.assign({
+      faceCrops: async (k, photos, o) => { const c = crops === undefined ? CROP1 : crops; const f = faces === undefined ? c.length : faces; if (f !== null && o && o.stats) o.stats.faces = f; return c; },
+      callImage: async (k, parts, aspect, f, cfg) => { calls2.push({ parts, aspect, cfg }); const rep = replies[calls2.length - 1]; if (typeof rep === 'function') return rep(); if (rep instanceof Error) throw rep; return rep; },
+    }, opts));
+    return { res, calls2 };
+  };
+  const ok = [{ b64: 'FRAME1', mime: 'image/png' }, { b64: 'FIXED', mime: 'image/png' }];
+  let x = await run({ detail: true, hiRes: true, refine: true }, ok);
+  assert.equal(x.calls2.length, 2, 'نداءان');
+  assert.deepEqual([x.res.b64, x.res.refined, x.res.ref.data], ['FIXED', true, 'CROP']);
+  assert.deepEqual(ok.map((o) => o.b64), ['FRAME1', 'FIXED'], 'ردّ المزوّد لا يُعدَّل في مكانه');
+  const rp2 = x.calls2[1];
+  assert.deepEqual(rp2.parts.map((p) => p.text || p.inlineData.data), ['Image A — the opening frame to correct:', 'FRAME1',
+    'Image B — close-up of the real person\'s face, cropped from their own photo (identity reference only):', 'CROP', TP.REFINE_TASK]);
+  assert.deepEqual([rp2.aspect, rp2.cfg.tag, rp2.cfg.imageSize, rp2.cfg.temperature], ['9:16', 'refine', '2K', 0.15]);
+  assert.ok(rp2.cfg.timeoutMs <= 50000 && rp2.cfg.timeoutMs >= 20000);
+  /* السيلفي (كشفٌ أجاب بوجه واحد بلا لقطة): الصورة نفسها مرجعًا */
+  x = await run({ detail: true, refine: true }, ok, [], 1);
+  assert.equal(x.calls2[1].parts[2].text, 'Image B — the real person\'s own photo (identity reference only):');
+  assert.match(x.calls2[1].parts[3].inlineData.data, /^S-/);
+  assert.equal(x.res.b64, 'FIXED');
+  /* العطب والرمية = الإطار كما بُني */
+  x = await run({ detail: true, refine: true }, [ok[0], { error: 'blocked', status: 502 }]);
+  assert.deepEqual([x.res.b64, x.res.refined], ['FRAME1', false]);
+  x = await run({ detail: true, refine: true }, [ok[0], Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' })]);
+  assert.deepEqual([x.res.b64, x.res.refined], ['FRAME1', false]);
+  /* لا تصحيح: أسلوب فنّيّ (علَم القالب ونصّ المشهد)، عمر آخر، شخصان، جماعة بلا لقطة، عطب الكشف، لا وجه، وبلا الخيار */
+  const two = [{ who: 'the person on the left', data: 'C1', mime: 'image/jpeg' }, { who: 'the person on the right', data: 'C2', mime: 'image/jpeg' }];
+  for (const [label, o, crops, faces, scene] of [['art', { refine: true, artHint: true }], ['ghibli', { refine: true }, undefined, undefined, 'a hand-painted Studio Ghibli-style scene'],
+    ['age', { refine: true, ageShift: true }], ['two', { refine: true }, two], ['group', { refine: true }, [], 3], ['detect-down', { refine: true }, [], null],
+    ['no-face', { refine: true }, [], 0], ['big-and-small', { refine: true }, CROP1, 2], ['off', {}]]) {
+    x = await run(o, ok, crops, faces, scene);
+    assert.equal(x.calls2.length, 1, label + ': نداء واحد');
+    assert.deepEqual([x.res.b64, x.res.refined], ['FRAME1', false], label);
+  }
+  /* ضيق الوقت: الإطار أخذ ١١٠ث من ١٢٠ — يُقاس من بدء الإطار */
+  const realNow = Date.now;
+  let skew = 0;
+  Date.now = () => realNow() + skew;
+  try { x = await run({ refine: true }, [() => { skew = 110000; return ok[0]; }, ok[1]]); } finally { Date.now = realNow; }
+  assert.equal(x.calls2.length, 1, 'لا وقت للتصحيح');
+  assert.equal(x.res.refined, false);
+  /* الذاكرة: المبنيّ يُعاد استعماله للتصحيح (لا يُدفع الإطار ثانيةً)، والمصحَّح من مدخله، والتصحيح الفاشل يُعاد وحده */
+  const photo = { data: 'M-' + Date.now(), mime: 'image/jpeg' };
+  let n = 0; const tags = [];
+  const mk = (fail) => ({ faceCrops: async (k, p, o) => { o.stats.faces = 1; return CROP1; }, callImage: async (k, p, a, f, cfg) => { tags.push(cfg.tag); if (fail && cfg.tag === 'refine') return { error: 'x' }; return { b64: 'R' + (++n), mime: 'image/png' }; } });
+  const a = await realSolo('K', photo, 'a runway', '720:1280', mk());
+  const bad = await realSolo('K', photo, 'a runway', '720:1280', Object.assign({ refine: true }, mk(true)));
+  const b = await realSolo('K', photo, 'a runway', '720:1280', Object.assign({ refine: true }, mk()));
+  const c = await realSolo('K', photo, 'a runway', '720:1280', Object.assign({ refine: true }, mk()));
+  assert.deepEqual(tags, ['solo', 'refine', 'refine'], 'إطار واحد، وتصحيحان (الأوّل فشل)');
+  assert.deepEqual([a.b64, bad.b64, bad.refined, b.b64, b.refined, c.b64, c.cached, c.refined], ['R1', 'R1', false, 'R2', true, 'R2', true, true]);
+  /* ناتج التصحيح PNG كبير ← JPEG */
+  const { PNG } = require('pngjs');
+  const png = new PNG({ width: 1000, height: 1400 }); crypto.randomFillSync(png.data); for (let i = 3; i < png.data.length; i += 4) png.data[i] = 255;
+  const big = PNG.sync.write(png).toString('base64');
+  x = await run({ detail: true, refine: true }, [{ b64: 'FRAME1', mime: 'image/png' }, { b64: big, mime: 'image/png' }]);
+  assert.equal(x.res.mime, 'image/jpeg');
+  assert.equal(Buffer.from(x.res.b64, 'base64')[0], 0xFF);
+  /* إطار PNG كبير: Image A يصل التصحيح JPEG، وردّ المزوّد كما هو */
+  const bigFirst = { b64: big, mime: 'image/png' };
+  x = await run({ detail: true, refine: true }, [bigFirst, { b64: 'FIXED', mime: 'image/png' }]);
+  assert.equal(x.calls2[1].parts[1].inlineData.mimeType, 'image/jpeg');
+  assert.equal(Buffer.from(x.calls2[1].parts[1].inlineData.data, 'base64')[0], 0xFF);
+  assert.deepEqual([bigFirst.b64 === big, bigFirst.mime], [true, 'image/png'], 'لا تعديل في مكانه');
 });
