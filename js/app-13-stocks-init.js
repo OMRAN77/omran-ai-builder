@@ -1178,7 +1178,7 @@
       { value:'pastelpink', ar:'🌸 وردي باستيل', en:'Pastel pink' },
       { value:'peachhair', ar:'🍑 خوخي', en:'Peach' },
       { value:'minthair', ar:'🌿 نعناعي', en:'Mint' },
-      { value:'tealhair', ar:'🦚 تركوازي', en:'Teal' },
+      { value:'tealhair', ar:'🦚 بترولي', en:'Teal' },
       { value:'navyhair', ar:'🔵 أزرق كحلي', en:'Navy' },
       { value:'emeraldhair', ar:'💚 زمردي', en:'Emerald' },
       { value:'charcoalhair', ar:'🩶 رمادي فحمي', en:'Charcoal' },
@@ -1191,7 +1191,7 @@
       { value:'underlayer', ar:'🎨 الطبقة السفلية ملوّنة', en:'Coloured underlayer' },
       { value:'splitdye', ar:'🪓 لونان منفصلان', en:'Split dye' },
       { value:'ecaille', ar:'🐢 إيكاي', en:'Tortoiseshell' },
-      { value:'bronde', ar:'🌗 برونزي أشقر', en:'Bronde' },
+      { value:'bronde', ar:'🌗 بني ممزوج بالأشقر', en:'Bronde' },
       { value:'butterflycut', ar:'🦋 قصّة فراشة', en:'Butterfly cut' },
       { value:'wolfcut', ar:'🐺 وولف كت', en:'Wolf cut' },
       { value:'bluntcut', ar:'📏 قصّة مستقيمة', en:'Blunt cut' },
@@ -1326,7 +1326,7 @@
       { value:'pearlnails2', ar:'🦪 لؤلؤ ثلاثي الأبعاد', en:'3D pearls' },
       { value:'flowers3d', ar:'🌸 زهور بارزة', en:'3D flowers' },
       { value:'charmnails', ar:'🔗 تعليقات', en:'Charms' },
-      { value:'chromebutterfly', ar:'🦋 كروم لامع', en:'Chrome art' },
+      { value:'chromebutterfly', ar:'💫 كروم لامع', en:'Chrome art' },
       { value:'bridalnails', ar:'👰 نيلز عروس', en:'Bridal' },
       { value:'eidnails', ar:'🌙 نيلز العيد', en:'Eid' },
       { value:'ramadannails', ar:'🕌 نيلز رمضان', en:'Ramadan' },
@@ -1569,11 +1569,11 @@
       { value:'bdkhaleejibrn', ar:'🧔 خليجية مرتّبة — بنّي', en:'Gulf trim — dark brown' },
       { value:'bdkhaleejigrey', ar:'🧔 خليجية مرتّبة — شايب', en:'Gulf trim — salt & pepper' },
       { value:'bdkhaleejihenna', ar:'🧔 خليجية مرتّبة — محنّاة', en:'Gulf trim — henna red' },
-      { value:'bdcleannat', ar:'🧔 حلاقة كاملة — لونها', en:'clean shave — natural colour' },
-      { value:'bdcleanblk', ar:'🧔 حلاقة كاملة — أسود', en:'clean shave — black' },
-      { value:'bdcleanbrn', ar:'🧔 حلاقة كاملة — بنّي', en:'clean shave — dark brown' },
-      { value:'bdcleangrey', ar:'🧔 حلاقة كاملة — شايب', en:'clean shave — salt & pepper' },
-      { value:'bdcleanhenna', ar:'🧔 حلاقة كاملة — محنّاة', en:'clean shave — henna red' },
+      { value:'bdcleannat', ar:'🧔 حلاقة كاملة — موس', en:'clean shave — razor smooth' },
+      { value:'bdcleanblk', ar:'🧔 حلاقة كاملة — ظلّ خفيف', en:'clean shave — light shadow' },
+      { value:'bdcleanbrn', ar:'🧔 حلاقة كاملة — سوالف قصيرة', en:'clean shave — short sideburns' },
+      { value:'bdcleangrey', ar:'🧔 حلاقة كاملة — سوالف طويلة', en:'clean shave — long sideburns' },
+      { value:'bdcleanhenna', ar:'🧔 حلاقة كاملة — بلا سوالف', en:'clean shave — no sideburns' },
     ],
     skin: [
       { value:'subtle', ar:'✨ تنعيم خفيف', en:'✨ Subtle Smoothing', fr:'✨ Lissage subtil', hi:'✨ हल्का स्मूदिंग', ur:'✨ ہلکی ہمواری', bn:'✨ হালকা মসৃণতা', ne:'✨ हल्का चिल्लो' },
@@ -1599,21 +1599,21 @@
       { value:'skclearm', ar:'✨ إزالة الحبوب — مطفي', en:'clear skin — matte' },
       { value:'skclears', ar:'✨ إزالة الحبوب — ساتان', en:'clear skin — satin' },
       { value:'skcleard', ar:'✨ إزالة الحبوب — ندي', en:'clear skin — dewy' },
-      { value:'skscarsm', ar:'✨ آثار الحبوب — مطفي', en:'fade scars — matte' },
-      { value:'skscarss', ar:'✨ آثار الحبوب — ساتان', en:'fade scars — satin' },
-      { value:'skscarsd', ar:'✨ آثار الحبوب — ندي', en:'fade scars — dewy' },
-      { value:'skcirclesm', ar:'✨ الهالات — مطفي', en:'dark circles — matte' },
-      { value:'skcircless', ar:'✨ الهالات — ساتان', en:'dark circles — satin' },
-      { value:'skcirclesd', ar:'✨ الهالات — ندي', en:'dark circles — dewy' },
-      { value:'skporesm', ar:'✨ المسام — مطفي', en:'refine pores — matte' },
-      { value:'skporess', ar:'✨ المسام — ساتان', en:'refine pores — satin' },
-      { value:'skporesd', ar:'✨ المسام — ندي', en:'refine pores — dewy' },
-      { value:'skshinem', ar:'✨ اللمعة الدهنية — مطفي', en:'oil control — matte' },
-      { value:'skshines', ar:'✨ اللمعة الدهنية — ساتان', en:'oil control — satin' },
-      { value:'skshined', ar:'✨ اللمعة الدهنية — ندي', en:'oil control — dewy' },
-      { value:'skrednessm', ar:'✨ الاحمرار — مطفي', en:'calm redness — matte' },
-      { value:'skrednesss', ar:'✨ الاحمرار — ساتان', en:'calm redness — satin' },
-      { value:'skrednessd', ar:'✨ الاحمرار — ندي', en:'calm redness — dewy' },
+      { value:'skscarsm', ar:'✨ تخفيف آثار الحبوب — مطفي', en:'fade scars — matte' },
+      { value:'skscarss', ar:'✨ تخفيف آثار الحبوب — ساتان', en:'fade scars — satin' },
+      { value:'skscarsd', ar:'✨ تخفيف آثار الحبوب — ندي', en:'fade scars — dewy' },
+      { value:'skcirclesm', ar:'✨ تخفيف الهالات — مطفي', en:'reduce dark circles — matte' },
+      { value:'skcircless', ar:'✨ تخفيف الهالات — ساتان', en:'reduce dark circles — satin' },
+      { value:'skcirclesd', ar:'✨ تخفيف الهالات — ندي', en:'reduce dark circles — dewy' },
+      { value:'skporesm', ar:'✨ تصغير المسام — مطفي', en:'refine pores — matte' },
+      { value:'skporess', ar:'✨ تصغير المسام — ساتان', en:'refine pores — satin' },
+      { value:'skporesd', ar:'✨ تصغير المسام — ندي', en:'refine pores — dewy' },
+      { value:'skshinem', ar:'✨ إزالة اللمعة الدهنية — مطفي', en:'oil control — matte' },
+      { value:'skshines', ar:'✨ إزالة اللمعة الدهنية — ساتان', en:'oil control — satin' },
+      { value:'skshined', ar:'✨ إزالة اللمعة الدهنية — ندي', en:'oil control — dewy' },
+      { value:'skrednessm', ar:'✨ تهدئة الاحمرار — مطفي', en:'calm redness — matte' },
+      { value:'skrednesss', ar:'✨ تهدئة الاحمرار — ساتان', en:'calm redness — satin' },
+      { value:'skrednessd', ar:'✨ تهدئة الاحمرار — ندي', en:'calm redness — dewy' },
       { value:'sktan1m', ar:'✨ سمرة خفيفة — مطفي', en:'light tan — matte' },
       { value:'sktan1s', ar:'✨ سمرة خفيفة — ساتان', en:'light tan — satin' },
       { value:'sktan1d', ar:'✨ سمرة خفيفة — ندي', en:'light tan — dewy' },
@@ -1629,9 +1629,9 @@
       { value:'skfrecklem', ar:'✨ نمش — مطفي', en:'freckles — matte' },
       { value:'skfreckles', ar:'✨ نمش — ساتان', en:'freckles — satin' },
       { value:'skfreckled', ar:'✨ نمش — ندي', en:'freckles — dewy' },
-      { value:'skwrinklesm', ar:'✨ التجاعيد — مطفي', en:'soften lines — matte' },
-      { value:'skwrinkless', ar:'✨ التجاعيد — ساتان', en:'soften lines — satin' },
-      { value:'skwrinklesd', ar:'✨ التجاعيد — ندي', en:'soften lines — dewy' },
+      { value:'skwrinklesm', ar:'✨ تخفيف التجاعيد — مطفي', en:'soften lines — matte' },
+      { value:'skwrinkless', ar:'✨ تخفيف التجاعيد — ساتان', en:'soften lines — satin' },
+      { value:'skwrinklesd', ar:'✨ تخفيف التجاعيد — ندي', en:'soften lines — dewy' },
       { value:'skglassm', ar:'✨ بشرة زجاجية — مطفي', en:'glass skin — matte' },
       { value:'skglasss', ar:'✨ بشرة زجاجية — ساتان', en:'glass skin — satin' },
       { value:'skglassd', ar:'✨ بشرة زجاجية — ندي', en:'glass skin — dewy' },
@@ -1641,15 +1641,15 @@
       { value:'skhydram', ar:'✨ ترطيب — مطفي', en:'hydrated — matte' },
       { value:'skhydras', ar:'✨ ترطيب — ساتان', en:'hydrated — satin' },
       { value:'skhydrad', ar:'✨ ترطيب — ندي', en:'hydrated — dewy' },
-      { value:'skspotsm', ar:'✨ البقع — مطفي', en:'fade spots — matte' },
-      { value:'skspotss', ar:'✨ البقع — ساتان', en:'fade spots — satin' },
-      { value:'skspotsd', ar:'✨ البقع — ندي', en:'fade spots — dewy' },
-      { value:'sksunburnm', ar:'✨ حروق الشمس — مطفي', en:'sunburn fix — matte' },
-      { value:'sksunburns', ar:'✨ حروق الشمس — ساتان', en:'sunburn fix — satin' },
-      { value:'sksunburnd', ar:'✨ حروق الشمس — ندي', en:'sunburn fix — dewy' },
-      { value:'skbeardshadowm', ar:'✨ ظلّ اللحية — مطفي', en:'soften shadow — matte' },
-      { value:'skbeardshadows', ar:'✨ ظلّ اللحية — ساتان', en:'soften shadow — satin' },
-      { value:'skbeardshadowd', ar:'✨ ظلّ اللحية — ندي', en:'soften shadow — dewy' },
+      { value:'skspotsm', ar:'✨ تخفيف البقع — مطفي', en:'fade spots — matte' },
+      { value:'skspotss', ar:'✨ تخفيف البقع — ساتان', en:'fade spots — satin' },
+      { value:'skspotsd', ar:'✨ تخفيف البقع — ندي', en:'fade spots — dewy' },
+      { value:'sksunburnm', ar:'✨ تهدئة حروق الشمس — مطفي', en:'sunburn fix — matte' },
+      { value:'sksunburns', ar:'✨ تهدئة حروق الشمس — ساتان', en:'sunburn fix — satin' },
+      { value:'sksunburnd', ar:'✨ تهدئة حروق الشمس — ندي', en:'sunburn fix — dewy' },
+      { value:'skbeardshadowm', ar:'✨ تخفيف ظلّ اللحية — مطفي', en:'soften beard shadow — matte' },
+      { value:'skbeardshadows', ar:'✨ تخفيف ظلّ اللحية — ساتان', en:'soften beard shadow — satin' },
+      { value:'skbeardshadowd', ar:'✨ تخفيف ظلّ اللحية — ندي', en:'soften beard shadow — dewy' },
       { value:'skradiantm', ar:'✨ إشراق — مطفي', en:'radiant — matte' },
       { value:'skradiants', ar:'✨ إشراق — ساتان', en:'radiant — satin' },
       { value:'skradiantd', ar:'✨ إشراق — ندي', en:'radiant — dewy' },
@@ -2002,10 +2002,10 @@
       { value:'ancybercool', ar:'🎭 سايبربنك — بارد', en:'cyberpunk anime — cool' },
       { value:'ancybervivid', ar:'🎭 سايبربنك — ألوان قوية', en:'cyberpunk anime — vivid' },
       { value:'ancyberpastel', ar:'🎭 سايبربنك — باستيل', en:'cyberpunk anime — pastel' },
-      { value:'anmangawarm', ar:'🎭 مانجا — دافئ', en:'black-and-white manga — warm' },
-      { value:'anmangacool', ar:'🎭 مانجا — بارد', en:'black-and-white manga — cool' },
-      { value:'anmangavivid', ar:'🎭 مانجا — ألوان قوية', en:'black-and-white manga — vivid' },
-      { value:'anmangapastel', ar:'🎭 مانجا — باستيل', en:'black-and-white manga — pastel' },
+      { value:'anmangawarm', ar:'🎭 مانجا — دافئ', en:'manga — warm' },
+      { value:'anmangacool', ar:'🎭 مانجا — بارد', en:'manga — cool' },
+      { value:'anmangavivid', ar:'🎭 مانجا — ألوان قوية', en:'manga — vivid' },
+      { value:'anmangapastel', ar:'🎭 مانجا — باستيل', en:'manga — pastel' },
       { value:'anwebtoonwarm', ar:'🎭 ويبتون — دافئ', en:'webtoon — warm' },
       { value:'anwebtooncool', ar:'🎭 ويبتون — بارد', en:'webtoon — cool' },
       { value:'anwebtoonvivid', ar:'🎭 ويبتون — ألوان قوية', en:'webtoon — vivid' },
@@ -2054,10 +2054,10 @@
       { value:'anpixelcool', ar:'🎭 بكسل — بارد', en:'pixel-art anime — cool' },
       { value:'anpixelvivid', ar:'🎭 بكسل — ألوان قوية', en:'pixel-art anime — vivid' },
       { value:'anpixelpastel', ar:'🎭 بكسل — باستيل', en:'pixel-art anime — pastel' },
-      { value:'anarabicwarm', ar:'🎭 عربي — دافئ', en:'Arabian-nights anime — warm' },
-      { value:'anarabiccool', ar:'🎭 عربي — بارد', en:'Arabian-nights anime — cool' },
-      { value:'anarabicvivid', ar:'🎭 عربي — ألوان قوية', en:'Arabian-nights anime — vivid' },
-      { value:'anarabicpastel', ar:'🎭 عربي — باستيل', en:'Arabian-nights anime — pastel' },
+      { value:'anarabicwarm', ar:'🎭 عربي — دافئ', en:'Arab heritage anime — warm' },
+      { value:'anarabiccool', ar:'🎭 عربي — بارد', en:'Arab heritage anime — cool' },
+      { value:'anarabicvivid', ar:'🎭 عربي — ألوان قوية', en:'Arab heritage anime — vivid' },
+      { value:'anarabicpastel', ar:'🎭 عربي — باستيل', en:'Arab heritage anime — pastel' },
       { value:'anschoolwarm', ar:'🎭 مدرسي — دافئ', en:'school-life anime — warm' },
       { value:'anschoolcool', ar:'🎭 مدرسي — بارد', en:'school-life anime — cool' },
       { value:'anschoolvivid', ar:'🎭 مدرسي — ألوان قوية', en:'school-life anime — vivid' },
@@ -2190,7 +2190,16 @@
   /* v-studio-14: الميزات الأربع عشرة الجديدة (app-12-studio-more.js) */
   const MORE = window.__STUDIO_MORE || { features: [], options: {} };
   Object.keys(MORE.options).forEach((k) => { STUDIO_OPTIONS[k] = MORE.options[k]; });
-  const PREVIEW_API = (f, v) => '/api/studio-preview?feature=' + encodeURIComponent(f) + '&value=' + encodeURIComponent(v);
+  /* v-style-match (تدقيق ٢٥ أكتوبر، «الصور ما تطابق الشي اللي اخترته»): البطاقات المصحَّحة لها رقم مراجعة — نفس
+     REV في api/_lib/studio-card-fix.js (tests/studio-card-fix يقارنهما). الرقم في الرابط (&r=) لأنّ الصورة القديمة
+     مخزّنة «immutable» سنة كاملة في المتصفّح وكاش الشبكة؛ و__tab يأخذ مراجعة أوّل خيار (الخادم يرسمه هو). */
+  const PREVIEW_API = (f, v) => {
+    const opts = (v === '__tab' && typeof STUDIO_OPTIONS !== 'undefined') ? STUDIO_OPTIONS[f] : null;
+    const k = f + ':' + (opts && opts[0] ? opts[0].value : v);
+    const r = Object.prototype.hasOwnProperty.call(STUDIO_CARD_REV, k) ? STUDIO_CARD_REV[k] : 0;
+    return '/api/studio-preview?feature=' + encodeURIComponent(f) + '&value=' + encodeURIComponent(v) + (r ? '&r=' + r : '');
+  };
+  const STUDIO_CARD_REV = {'accessories:acbagmod':1,'accessories:acbagstat':1,'accessories:acbeanievin':1,'accessories:acbroochmod':2,'accessories:accapmin':1,'accessories:accapstat':1,'accessories:acclutchmod':2,'accessories:accufflinksmod':1,'accessories:accufflinksstat':1,'accessories:acheadbandstat':1,'accessories:acheadphonesstat':1,'accessories:acmisbahamod':1,'accessories:acmisbahastat':1,'accessories:acmisbahavin':1,'accessories:acnecklacevin':1,'accessories:acpenmod':1,'accessories:acpenstat':1,'accessories:acpenvin':1,'accessories:acsmartwatchmod':1,'accessories:acsmartwatchstat':1,'accessories:acsmartwatchvin':1,'accessories:actiaramin':1,'accessories:actiaramod':1,'accessories:actiarastat':1,'accessories:actiaravin':1,'accessories:bag':1,'age:child':1,'age:forties':1,'age:older10':2,'age:older15':2,'age:older20':2,'age:older25':2,'age:older30':2,'age:older5':2,'age:twenties':1,'age:younger10':2,'age:younger15':2,'age:younger20':2,'age:younger25':2,'age:younger30':2,'age:younger5':2,'anime:anarabiccool':2,'anime:anarabicpastel':1,'anime:anarabicvivid':1,'anime:anarabicwarm':1,'anime:ancel3dvivid':2,'anime:anchibicool':1,'anime:anchibipastel':1,'anime:anchibivivid':1,'anime:anchibiwarm':1,'anime:ancinematiccool':3,'anime:ancinematicpastel':3,'anime:ancinematicvivid':2,'anime:ancinematicwarm':1,'anime:anclassicvivid':1,'anime:anghiblicool':2,'anime:anghiblipastel':2,'anime:anghiblivivid':1,'anime:anghibliwarm':2,'anime:anhorrorvivid':1,'anime:anidolcool':1,'anime:anidolpastel':1,'anime:anidolvivid':1,'anime:anidolwarm':1,'anime:anmangacool':1,'anime:anmangapastel':2,'anime:anmangavivid':1,'anime:anmangawarm':1,'anime:anpixelcool':1,'anime:anpixelpastel':1,'anime:anpixelvivid':1,'anime:anpixelwarm':1,'anime:anretro80cool':3,'anime:anretro80pastel':2,'anime:anretro80vivid':2,'anime:anretro80warm':3,'anime:anretro90vivid':1,'anime:ansamuraivivid':1,'anime:anschoolvivid':1,'anime:anseinenvivid':1,'anime:anshonenvivid':1,'anime:anwebtoonvivid':1,'anime:cyberpunk':2,'anime:retro90s':1,'anime:shonenstudio':1,'background:bgstudiogold':1,'beard:anchor':1,'beard:bdanchorbrn':2,'beard:bdanchorgrey':2,'beard:bdanchorhenna':2,'beard:bdanchornat':3,'beard:bdbalboblk':3,'beard:bdbalbobrn':2,'beard:bdbalbogrey':2,'beard:bdbalbohenna':3,'beard:bdcircleblk':2,'beard:bdcirclebrn':2,'beard:bdcirclegrey':2,'beard:bdcirclehenna':2,'beard:bdcirclenat':2,'beard:bdcleanblk':2,'beard:bdcleanbrn':2,'beard:bdcleangrey':1,'beard:bdcleanhenna':2,'beard:bdcleannat':1,'beard:bdducktailnat':1,'beard:bdfadedhenna':1,'beard:bdfullbrn':1,'beard:bdgoateebrn':2,'beard:bdhandlebarblk':1,'beard:bdhandlebarbrn':1,'beard:bdhandlebargrey':1,'beard:bdhandlebarhenna':1,'beard:bdhandlebarnat':1,'beard:bdkhaleejibrn':1,'beard:bdstubbleblk':1,'beard:bdstubblehenna':2,'beard:bdvandykebrn':2,'body:bdabsa':2,'body:bdabsb':2,'body:bdboxera':1,'body:bdclimbera':1,'body:bdcrossfita':2,'body:bdcrossfitb':1,'body:bdcrossfitc':2,'body:bddancera':3,'body:bdflatstomacha':2,'body:bdflatstomachb':1,'body:bdflatstomachc':1,'body:bdfootballera':1,'body:bdgymnasta':2,'body:bdgymnastb':1,'body:bdgymnastc':2,'body:bdhourglassa':1,'body:bdhourglassb':1,'body:bdhourglassc':2,'body:bdmodela':1,'body:bdmodelb':1,'body:bdmodelc':1,'body:bdpilatesa':1,'body:bdpilatesb':1,'body:bdpilatesc':2,'body:bdposturea':1,'body:bdpostureb':1,'body:bdposturec':2,'body:bdrunnera':1,'body:bdrunnerb':1,'body:bdrunnerc':1,'body:bdsprintera':2,'body:bdsurfera':1,'body:bdsurferb':1,'body:bdswimmera':1,'body:bdswimmerb':1,'body:bdswimmerc':1,'body:bdwrestlera':4,'body:bdyogaa':1,'body:bdyogac':2,'body:flatstomach':1,'body:posture':2,'body:slim':1,'body:toned':2,'eyes:browlift':3,'eyes:dimples':2,'eyes:glasseyes':2,'eyes:green':1,'eyes:hazel':1,'eyes:jawsmile':1,'eyes:lashbottom':1,'eyes:lipsfull':1,'eyes:nobags':3,'eyes:nodark':2,'eyes:nored':3,'eyes:openeyes':1,'eyes:tearshine':2,'eyes:teethgap':2,'eyes:teethstraight':1,'eyes:teethwhite':1,'glasses:gbrowclr':1,'glasses:gwaygld':1,'glasses:gwayslv':2,'glasses:hexagon':3,'glasses:octagon':1,'glasses:sunglasses':1,'gulfmen:cobra':1,'gulfmen:gmcobbge':1,'gulfmen:gmcobblu':1,'gulfmen:gmcobbrn':1,'gulfmen:gmcobbshb':1,'gulfmen:gmcobchr':2,'gulfmen:gmcobgry':1,'gulfmen:gmcobnvy':1,'gulfmen:gmcobolv':1,'gulfmen:gmcobwht':2,'hair:balayage':1,'hair:braids':1,'hair:coils':1,'hair:curtainbangs':1,'hair:greyblend':1,'hair:hairbraidsgulf':1,'hair:lowlights':1,'hair:navyhair':1,'hair:twistout':1,'henna:anklecuff':1,'henna:armband':2,'henna:backfinger':1,'henna:backhand':1,'henna:bracelettassel':1,'henna:calligraphyhenna':1,'henna:crystalhenna':1,'henna:cuff':1,'henna:engagementhenna':3,'henna:falconhenna':2,'henna:feet':1,'henna:fingerbands':1,'henna:glossgel':2,'henna:glowhenna':2,'henna:handharness':1,'henna:kidshenna':1,'henna:minimal':1,'henna:neckhenna':1,'henna:shoulderhenna':1,'henna:sudanese':1,'henna:thumbmotif':1,'henna:tribalhenna':1,'henna:wristband':1,'heritage:embroidered':1,'heritage:emirati':1,'heritage:hrcnc':1,'heritage:hrcnf':1,'heritage:hrjpf':1,'heritage:hrmaMf':1,'heritage:hrmxf':2,'heritage:hromWc':1,'heritage:hromWf':1,'heritage:hrqaMc':1,'heritage:hrqaWc':1,'heritage:hrruf':1,'heritage:hrscc':1,'heritage:hrscf':1,'heritage:hrsdMc':1,'heritage:hrsdMf':1,'heritage:hrtnf':1,'heritage:hryeWc':1,'heritage:hryeWf':1,'heritage:kandora':1,'heritage:omani':1,'heritage:saudimen2':1,'hijab:hjlayblk':1,'hijab:shayla':1,'iconic:icbedouinstd':1,'iconic:icbollywoodposter':1,'iconic:icbollywoodscene':1,'iconic:icbollywoodstd':1,'iconic:icbusinessposter':1,'iconic:icbusinessscene':1,'iconic:icbusinessstd':1,'iconic:icchefposter':1,'iconic:icchefstd':2,'iconic:icdisco70sposter':2,'iconic:icdisco70sscene':1,'iconic:icdisco70sstd':1,'iconic:icdiverposter':2,'iconic:icdiverscene':1,'iconic:icdiverstd':1,'iconic:icfashionweekstd':1,'iconic:icgamerstd':2,'iconic:ichollywood50poster':1,'iconic:ichollywood50scene':1,'iconic:ichollywood50std':1,'iconic:ickpopposter':1,'iconic:ickpopscene':1,'iconic:ickpopstd':1,'iconic:icnasaposter':2,'iconic:icnasastd':2,'iconic:icoldmoneyposter':1,'iconic:icoldmoneystd':1,'iconic:icpharaohposter':1,'iconic:icpharaohscene':1,'iconic:icpharaohstd':1,'iconic:icredcarpetposter':1,'iconic:icredcarpetscene':3,'iconic:icredcarpetstd':1,'iconic:icsheikhposter':2,'iconic:icsheikhscene':1,'iconic:icsheikhstd':1,'iconic:icsuperheroposter':1,'iconic:ictennisposter':2,'iconic:ictennisstd':1,'iconic:icvintage20sposter':2,'iconic:icvintage20sscene':1,'iconic:icvintage20sstd':2,'iconic:kpop':2,'iconic:redcarpet':3,'idphoto:idbgrad':1,'idphoto:idblgrad':1,'idphoto:idcgrad':1,'idphoto:idggrad':1,'idphoto:idngrad':2,'idphoto:idrgrad':1,'idphoto:idsgrad':1,'idphoto:idwgrad':1,'idphoto:suit':1,'makeup:bridal':1,'makeup:bronzeglow':1,'makeup:lashliner':1,'makeup:puppyeye':2,'makeup:sunkissedfreckle':1,'makeup:turkishglam':1,'makeup:tvstudio':1,'menhair:mhafrowet':1,'menhair:mhburstmat':1,'menhair:mhburstmess':1,'menhair:mhburstwet':2,'menhair:mhbuzzmess':2,'menhair:mhbuzzwet':2,'menhair:mhcaesarneat':1,'menhair:mhlowfademat':1,'menhair:mhlowfademess':1,'menhair:mhlowfadeneat':2,'menhair:mhlowfadewet':1,'menhair:mhmulletneat':1,'menhair:mhtapermat':1,'menhair:mhtapermess':1,'menhair:mhtaperneat':1,'menhair:mhtaperwet':1,'nails:ballerina':1,'nails:builderclear':2,'nails:charmnails':1,'nails:diagonalfrench':1,'nails:flarenails':3,'nails:gelnatural':1,'nails:heartsnails':1,'nails:jellynails':1,'nails:lipsticknails':2,'nails:minimalline':2,'nails:peachnails':1,'palette:plautacc':1,'palette:plautaccent':1,'palette:plautblock':1,'palette:plautgrad':1,'palette:plauttone':1,'palette:plauttop':1,'palette:pldesertaccent':1,'palette:pldeserttone':1,'palette:pldeserttop':2,'palette:plearthaccent':1,'palette:plearthgrad':1,'palette:plearthtop':1,'palette:pljewelaccent':2,'palette:pljewelblock':1,'palette:pljeweltop':1,'palette:plmonoaccent':1,'palette:plmonotop':1,'palette:plneonaccent':1,'palette:plneontone':2,'palette:plneontop':1,'palette:plneutaccent':1,'palette:plneutgrad':1,'palette:plneuttop':1,'palette:ploceanacc':1,'palette:ploceanaccent':1,'palette:ploceantop':1,'palette:plpastaccent':2,'palette:plpasttone':1,'palette:plpasttop':1,'palette:plspraccent':1,'palette:plsprtone':1,'palette:plsprtop':1,'palette:plsumaccent':1,'palette:plsumtone':1,'palette:plsumtop':2,'palette:plwinacc':2,'palette:plwinaccent':2,'palette:plwintone':1,'palette:plwintop':1,'seasons:party':1,'seasons:ssautumncas':1,'seasons:ssautumnlux':1,'seasons:ssautumnmod':1,'seasons:ssbdaycas':1,'seasons:ssbdaycls':1,'seasons:ssbdaylux':2,'seasons:ssbdaymod':1,'seasons:ssbeachcas':1,'seasons:ssbeachcls':1,'seasons:ssbeachlux':2,'seasons:ssbeachmod':1,'seasons:ssbeachtrd':1,'seasons:sseidcas':1,'seasons:sseidmod':1,'seasons:sseidtrd':1,'seasons:ssgradcas':1,'seasons:ssgradlux':2,'seasons:ssgradmod':1,'seasons:ssgradtrd':1,'seasons:sshennacas':1,'seasons:sshennalux':1,'seasons:sshennamod':2,'seasons:sshennatrd':1,'seasons:ssinterviewcas':1,'seasons:ssinterviewlux':1,'seasons:ssinterviewmod':1,'seasons:ssinterviewtrd':1,'seasons:ssksalux':1,'seasons:ssksamod':1,'seasons:ssksatrd':1,'seasons:ssnewyearcls':1,'seasons:ssnewyearmod':1,'seasons:ssnewyeartrd':1,'seasons:sspartycas':1,'seasons:sspartycls':1,'seasons:sspartylux':2,'seasons:sspartymod':1,'seasons:ssqacas':1,'seasons:ssqatrd':1,'seasons:ssramadancas':2,'seasons:ssramadanmod':1,'seasons:ssramadantrd':1,'seasons:sssummercls':1,'seasons:sssummerlux':1,'seasons:ssuaecas':1,'seasons:ssuaemod':1,'seasons:ssuaetrd':1,'seasons:sswedguestcas':2,'seasons:sswintermod':1,'seasons:sswintertrd':1,'skin:circles':3,'skin:skbeardshadowd':3,'skin:skbeardshadowm':3,'skin:skbeardshadows':3,'skin:skglassm':1,'skin:skmatted':1,'skin:skneckd':2,'skin:skneckm':1,'skin:sknecks':1,'skin:sknosed':1,'skin:skporesm':1,'skin:skrednessd':1,'skin:skrednessm':1,'skin:skrednesss':1,'skin:skscarsm':1,'skin:skscarss':1,'skin:skshined':2,'skin:skspotsd':2,'skin:skspotsm':1,'skin:skspotss':1,'skin:sksunburnd':1,'skin:sksunburns':2,'skin:sktan2d':1,'skin:sktan3d':2,'tattoo:arabictattoo':1,'tattoo:back':2,'tattoo:geometric':2,'tattoo:ttarabicfa':2,'tattoo:ttarabichd':1,'tattoo:ttarabicsh':2,'tattoo:ttbutterflyfa':1,'tattoo:ttclockwr':1,'tattoo:ttdatefa':1,'tattoo:ttdatehd':1,'tattoo:ttdatesh':1,'tattoo:ttdatewr':1,'tattoo:tteaglewr':2,'tattoo:ttgeometricsh':1,'tattoo:tthearthd':1,'tattoo:ttheartwr':1,'tattoo:ttkoifa':1,'tattoo:ttkoiwr':1,'tattoo:ttlionwr':1,'tattoo:ttnamehd':1,'tattoo:ttnamesh':1,'tattoo:ttnamewr':1,'tattoo:ttrosewr':1,'tattoo:ttsnakewr':1,'tattoo:ttstarsh':1,'tattoo:ttstarwr':2,'tattoo:tttreefa':1,'tattoo:ttwolffa':1,'tattoo:ttwolfwr':1,'wedding:wdbohogld':1,'wedding:wdbohoivr':1,'wedding:wdbohopst':1,'wedding:wdbridesmaidivr':1,'wedding:wdbridesmaidpst':1,'wedding:wdbridesmaidwht':1,'wedding:wdengageivr':1,'wedding:wdengagepst':2,'wedding:wdengagewht':2,'wedding:wdguestmivr':1,'wedding:wdguestmwht':1,'wedding:wdgulfbpst':1,'wedding:wdgulfgpst':1,'wedding:wdhennabgld':1,'wedding:wdindianbgld':1,'wedding:wdindianbivr':2,'wedding:wdindianbpst':1,'wedding:wdindianbwht':1,'wedding:wdmermaidgld':3,'wedding:wdmermaidivr':3,'wedding:wdmermaidpst':1,'wedding:wdmermaidwht':3,'wedding:wdminimalivr':2,'wedding:wdminimalpst':1,'wedding:wdminimalwht':2,'wedding:wdmoroccanbgld':1,'wedding:wdmoroccangpst':1,'wedding:wdprincessgld':1,'wedding:wdprincessivr':1,'wedding:wdprincesspst':1,'wedding:wdprincesswht':1,'wedding:wdsaudibpst':1,'wedding:wdsaudiggld':1,'wedding:wdsaudigwht':1,'wedding:wdsuitgpst':1,'wedding:wdturkbgld':1,'wedding:wdturkbivr':1,'wedding:wdturkbpst':1,'wedding:wdturkbwht':1,'wedding:wdtuxgld':1,'wedding:wdtuxivr':1,'wedding:wdtuxpst':1,'wedding:wdtuxwht':1,'wedding:wdwhitesuitivr':1,'wedding:wdwhitesuitpst':1,'wedding:wdwhitesuitwht':1};
   /* v-studio-more-looks: صور خيارات المكياج الجاهزة لقطات جسم كامل لا يظهر فيها المكياج،
      فبدت العشرة صورة واحدة في المنتقي. لهذه الميزات المعاينة المولّدة (وجه قريب من
      /api/studio-preview، تُولَّد مرّة وتُخزَّن) أوّلًا، والصورة الجاهزة احتياطًا. */
@@ -2211,9 +2220,14 @@
     + ' skin-circles skin-freckles skin-glow skin-matteskin skin-subtle skin-tan'
     + ' tattoo-arabictattoo tattoo-back tattoo-custom tattoo-floraltattoo tattoo-geometric tattoo-minimalline tattoo-sleeve tattoo-tribal tattoo-wrist').split(' '));
   const STUDIO_STATIC_FEATS = new Set(['anime', 'beard', 'glasses', 'hair', 'heritage', 'makeup', 'merge', 'nails', 'skin', 'tattoo']);
+  /* v-style-match: صور جاهزة لا تطابق اسمها («شونين» صورة حقيقيّة لا أنمي، «كافتان إماراتي» النسائيّ فيه رجل…) —
+     تُترك ملفّاتها (قرار المالك: الوسائط تبقى) والبطاقة تأخذ المعاينة المولّدة من الوصف. وتبويبات الأظافر والبشرة
+     والمكياج صورتها جسم كامل لا يظهر فيه شيء منها (الأظافر والبشرة الصورة نفسها) — تأخذ معاينة أوّل خيار. */
+  const STUDIO_STATIC_WRONG = new Set(['anime-cyberpunk', 'anime-retro90s', 'anime-shonenstudio', 'beard-anchor', 'glasses-hexagon', 'glasses-sunglasses', 'heritage-embroidered', 'heritage-emirati', 'heritage-kandora', 'heritage-omani', 'heritage-saudimen2', 'skin-circles', 'tattoo-arabictattoo', 'tattoo-back', 'tattoo-geometric']);
+  const STUDIO_TAB_PREVIEW = new Set(['nails', 'makeup', 'skin']);
   function optionImgs(f, v){
     const gen = PREVIEW_API(f, v);
-    if(!STUDIO_STATIC_OPTS.has(f + '-' + v)) return { img: gen, img2: '' }; /* v-studio-static-set: لا صورة جاهزة ⇒ المعاينة وحدها */
+    if(!STUDIO_STATIC_OPTS.has(f + '-' + v) || STUDIO_STATIC_WRONG.has(f + '-' + v)) return { img: gen, img2: '' }; /* v-studio-static-set: لا صورة جاهزة ⇒ المعاينة وحدها */
     const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     return PREVIEW_FIRST.indexOf(f) !== -1 ? { img: gen, img2: asset } : { img: asset, img2: gen };
   }
@@ -2666,7 +2680,7 @@
          مع عرض ٨٦px وoverflow:hidden يقصّ الاسم الطويل من الطرفين — يلتفّ سطرين فوق الظلّ (البطاقة ١٠٤px). */
       b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700; white-space:normal;';
       const img = document.createElement('img');
-      const staticTab = STUDIO_STATIC_FEATS.has(f) || !IS_MORE(f); /* v-studio-static-set: الميزات الإضافيّة بلا صورة جاهزة ⇒ المعاينة مباشرة */
+      const staticTab = !STUDIO_TAB_PREVIEW.has(f) && (STUDIO_STATIC_FEATS.has(f) || !IS_MORE(f)); /* v-studio-static-set: الميزات الإضافيّة بلا صورة جاهزة ⇒ المعاينة مباشرة؛ v-style-match: والتبويبات الثلاثة الخاطئة */
       img.src = staticTab ? 'assets/studio/features/' + f + '.webp' : PREVIEW_API(f, '__tab');
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;';

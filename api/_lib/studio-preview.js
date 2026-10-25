@@ -3,12 +3,16 @@
 // Redis وتُقدَّم للجميع بعدها فورًا. GET /api/studio-preview?feature=..&value=..
 // (value=__tab لصورة تبويب الميزة). القائمة البيضاء تمنع أي استغلال.
 'use strict';
-const { kvGetRaw, kvSetRaw, kvSetIfAbsent } = require('./kv.js');
+const { kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
 const MORE = require('./studio-more.js');
 /* v-studio-more-looks: الميزات الأساسيّة أيضًا (شعر، أظافر، مكياج…) — صور المكياج
    الجاهزة كانت لقطات جسم كامل لا يظهر فيها المكياج، فبدت الخيارات صورة واحدة.
    ملفّ البيانات صرف بلا أسرار، فلا يُحمَّل studio-create (يقرأ الحصص في نطاق الوحدة). */
 const BASE = require('./studio-styles.js');
+const CARD_FIX = require('./studio-card-fix.js'); /* v-style-match */
+/* v-style-match: مفتاح البطاقة المصحَّحة القديم يُحذف مرّة لكلّ نسخة دالّة — في الإنتاج وحده، فنشر المعاينة
+   (نفس Redis) لا يمسح صورةً ما زال الإنتاج يقدّمها قبل الدمج */
+const cleaned = new Set();
 
 function reqOrigin(req) {
   const h = String((req && req.headers && (req.headers['x-forwarded-host'] || req.headers.host)) || '').split(',')[0].trim();
@@ -17,9 +21,9 @@ function reqOrigin(req) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function sendImage(res, b64) {
+function sendImage(res, b64, temporary) {
   res.setHeader('Content-Type', 'image/webp');
-  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  res.setHeader('Cache-Control', temporary ? 'no-store' : 'public, max-age=31536000, immutable');
   res.status(200).end(Buffer.from(b64, 'base64'));
 }
 
@@ -42,15 +46,28 @@ module.exports = async (req, res) => {
   if (!map) { res.status(404).json({ error: 'unknown feature' }); return; }
   if (value === '__tab') value = Object.keys(map)[0];
   if (!own(map, value) || typeof map[value] !== 'string' || !map[value]) { res.status(404).json({ error: 'unknown value' }); return; }
-  const key = 'studio:preview:v2:' + feature + ':' + value; /* v2: توليد من الصفر بتأطير يُظهر الميزة (الإصدار الأول عدّل صورة كاملة فلم تظهر الحناء ولا شكل الجسم) */
+  const fk = feature + ':' + value;
+  const rev = (!isTrend && own(CARD_FIX.REV, fk)) ? CARD_FIX.REV[fk] : 0;
+  const baseKey = 'studio:preview:v2:' + feature + ':' + value; /* v2: توليد من الصفر بتأطير يُظهر الميزة (الإصدار الأول عدّل صورة كاملة فلم تظهر الحناء ولا شكل الجسم) */
+  const key = rev ? baseKey + ':r' + rev : baseKey; /* v-style-match: البطاقة المصحَّحة بمفتاح جديد */
+  const dropOld = () => {
+    if (!rev || cleaned.has(fk) || process.env.VERCEL_ENV !== 'production') return;
+    cleaned.add(fk);
+    const old = [baseKey];
+    for (let i = 1; i < rev; i++) old.push(baseKey + ':r' + i);
+    Promise.all(old.map((k) => kvDel(k))).catch((e) => console.warn('[studio-preview] old key cleanup ' + fk + ': ' + (e && e.message)));
+  };
 
   try {
     const cached = await kvGetRaw(key);
-    if (cached) { sendImage(res, cached); return; }
+    if (cached) { dropOld(); sendImage(res, cached); return; }
   } catch (e) { /* بلا كاش نولّد مباشرة */ }
 
+  /* v-style-match (المالك ٢٥ أكتوبر: «استعين بنانو بي الصور، أريد الصور مش غبشه ونظيفه ومرتبه»): بطاقات الستايل من
+     نانو بنانا برو؛ معاينات الترندات كما كانت */
   const oaKey = (process.env.OPENAI_API_KEY || '').trim();
-  if (!oaKey) { res.status(503).json({ error: 'preview generator not configured' }); return; }
+  const gemKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (isTrend ? !oaKey : !gemKey) { res.status(503).json({ error: 'preview generator not configured' }); return; }
 
   // قفل: توليد واحد فقط لكل خيار مهما تزامنت الطلبات؛ الباقون ينتظرون الكاش
   /* v-redis-capacity: القفل كان يفتح على الفشل (got = true) — فحين تمتلئ القاعدة (كلّ كتابة مرفوضة) يُولَّد كلّ طلب صورةً مدفوعة
@@ -87,34 +104,65 @@ module.exports = async (req, res) => {
       sendImage(res, tb); return;
     }
     const subjects = (isBase ? BASE.PREVIEW_SUBJECT : MORE.PREVIEW_SUBJECT)[feature] || {};
-    const gender = subjects[value] || subjects.__tab || 'w';
+    const gender = (own(CARD_FIX.SUBJECT, fk) && CARD_FIX.SUBJECT[fk]) || subjects[value] || subjects.__tab || 'w'; /* v-style-match */
     const who = (feature === 'age') ? ('an Arab ' + (gender === 'm' ? 'man' : 'woman')) : ('a young Arab ' + (gender === 'm' ? 'man' : 'woman'));
     const frames = isBase ? BASE.PREVIEW_FRAME : MORE.PREVIEW_FRAME;
     const names = isBase ? BASE.PREVIEW_FEATURE_NAME : MORE.PREVIEW_FEATURE_NAME;
-    const frame = frames[feature] || 'three-quarter portrait';
-    const fname = names[feature] || 'the requested style';
-    const desc = map[value];
-    const bg = (feature === 'background' || feature === 'idphoto' || feature === 'iconic' || feature === 'seasons')
-      ? ''
-      : ' Dark warm brown studio backdrop with soft golden light.';
+    /* v-style-match: تأطير البطاقة ووصفها الخاصّان حين يخفي تأطير الميزة أو وصف التعديل الشيءَ المختار */
+    const frame = (own(CARD_FIX.FRAME, fk) && CARD_FIX.FRAME[fk]) || frames[feature] || 'three-quarter portrait';
+    /* v-style-match: «يجب أن تُظهر نمط اللحية» كان يدفع المولّد إلى رسم لحية حتّى على «حلاقة كاملة» */
+    const fname = (feature === 'beard' && /clean-shaven|no beard/.test(String(map[value]).toLowerCase()))
+      ? 'the completely clean-shaven face with no beard' : (names[feature] || 'the requested style');
+    const desc = (own(CARD_FIX.DESC, fk) && CARD_FIX.DESC[fk]) || map[value];
+    /* v-style-match (الفحص الثاني): في الأنمي «خلفيّة استوديو بنّيّة» كانت تُلصق المشهد المطلوب لوحًا أو شريطًا داخلها —
+       الأنمي بلا خلفيّة ثابتة كالمشاهد؛ وكلمة «studio» في بطاقات المشهد كانت ترسم حوامل الإضاءة واللفّة الخلفيّة */
+    const SCENE = feature === 'background' || feature === 'idphoto' || feature === 'iconic' || feature === 'seasons' || feature === 'anime';
+    const bg = SCENE ? '' : ' Dark warm brown studio backdrop with soft golden light.';
     /* الأنمي رسمة لا صورة — «photorealistic» كان يناقض الستايل نفسه */
-    const head = feature === 'anime' ? 'A character illustration of ' : 'Photorealistic editorial studio photograph of ';
+    const head = feature === 'anime' ? 'A full-frame character illustration of '
+      : (SCENE ? 'Photorealistic editorial photograph of ' : 'Photorealistic editorial studio photograph of ');
+    /* v-style-match: «مش غبشه ونظيفه ومرتبه» — حدّة على الشخص والشيء المختار، وخلفيّة بلا زحام، والشخص في المنتصف؛
+       وفي الميزات التي لا تخصّ اللبس لبس ساتر (بطاقات شعر قديمة كانت بأكتاف مكشوفة) */
+    const dress = MODEST_CARD[feature] ? ' The person wears modest clothing with a high neckline and long sleeves.' : '';
     const prompt = head + who + ', ' + frame + ', ' + desc + ' — the image must clearly and prominently show ' + fname + '.' +
-      bg + ' Consistent premium studio style, natural skin texture, high detail. No text, no watermark, no logo.';
-    const r = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-image-2.5-flare', prompt: prompt.slice(0, 3900), size: '1024x1536', quality: 'medium', n: 1, output_format: 'webp', output_compression: 72 }),
-      signal: AbortSignal.timeout(240000),
-    });
-    const d = await r.json();
-    const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
-    if (!r.ok || !b64) throw new Error('openai ' + r.status + ' ' + String((d && d.error && d.error.message) || '').slice(0, 120));
-    try { await kvSetRaw(key, b64); } catch (e) { require('./log-error.js').logError('studio-preview/save', e); /* الصورة تُقدَّم الآن ولو تعذّر الحفظ — وتُسجَّل لأنّها توليد مدفوع ضاع */ }
+      bg + dress + ' Tack-sharp focus on the subject and on ' + fname + ', crisp fine detail, clean uncluttered composition with the subject centred, ' +
+      (SCENE ? 'the scene filling the whole frame edge to edge with no inset panel, border or frame-within-a-frame' : 'consistent premium studio style') +
+      ', natural skin texture. No light stands, softboxes, lighting equipment or backdrop edges anywhere in the image. ' +
+      (WRITING_ON_SKIN[feature] ? 'No watermark or logo, and no writing other than lettering the design itself names.' : 'No text, letters, signs, numbers, watermark or logo.');
+    const b64 = await nanoCard(gemKey, prompt);
+    try { await kvSetRaw(key, b64); dropOld(); } catch (e) { require('./log-error.js').logError('studio-preview/save', e); /* الصورة تُقدَّم الآن ولو تعذّر الحفظ — وتُسجَّل لأنّها توليد مدفوع ضاع */ }
     sendImage(res, b64);
   } catch (e) {
     console.error('[studio-preview] ' + feature + '/' + value + ': ' + (e && e.message));
+    /* v-style-match: البطاقة المصحَّحة إن تعذّر توليدها (نفاد رصيد المولّد مثلًا) تعرض أحدث نسخة سابقة لها — المراجعة الأقرب
+       قبلها ثمّ الأصل — مؤقّتًا بلا تخزين في المتصفّح، فتأتي الجديدة لاحقًا */
+    if (rev) {
+      for (let i = rev - 1; i >= 0; i--) {
+        try { const old = await kvGetRaw(i ? baseKey + ':r' + i : baseKey); if (old) { sendImage(res, old, true); return; } } catch (e2) { /* نجرّب الأقدم */ }
+      }
+    }
     res.setHeader('Retry-After', '60');
     res.status(502).json({ error: 'preview failed' });
   }
 };
+
+/* v-style-match: بطاقة واحدة من نانو بنانا برو (gemini-3-pro-image) بدقّة 2K وطول ٢:٣، تُصغَّر بمتوسّط المساحة إلى عرض ١٠٢٤
+   وتُكتب WebP عالية الجودة (الناتج PNG بالميغابايتات لا يتّسع له Redis). يرمي بسبب واضح عند الفشل. */
+const CARD_MODEL = 'gemini-3-pro-image';
+/* الوشم والحنّاء قد يكون الخيار نفسه كلمة أو تاريخًا على الجلد */
+const WRITING_ON_SKIN = { tattoo: 1, henna: 1 };
+const MODEST_CARD = { hair: 1, menhair: 1, makeup: 1, skin: 1, nails: 1, eyes: 1, glasses: 1, beard: 1, henna: 1, age: 1, accessories: 1 };
+async function nanoCard(apiKey, prompt) {
+  const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + CARD_MODEL + ':generateContent?key=' + apiKey, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt.slice(0, 3900) }] }], generationConfig: { imageConfig: { imageSize: '2K', aspectRatio: '2:3' } } }),
+    signal: AbortSignal.timeout(240000),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error('nano ' + r.status + ' ' + String((d && d.error && d.error.message) || '').replace(/key=[^&\s"']+/g, 'key=***').slice(0, 120));
+  const parts = (((d.candidates || [])[0] || {}).content || {}).parts || [];
+  const img = parts.find((p) => p.inlineData && p.inlineData.data);
+  if (!img) throw new Error('nano no image ' + String((((d.candidates || [])[0] || {}).finishReason) || (d.promptFeedback && d.promptFeedback.blockReason) || '').slice(0, 40));
+  return (await require('./img-convert.js').toCardWebp(img.inlineData.data, 1024, 88)).b64;
+}
