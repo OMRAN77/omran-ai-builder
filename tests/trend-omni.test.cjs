@@ -52,6 +52,7 @@ const TP = require(rp('api/_lib/trend-people.js'));
 let groupOpts = 'unset';
 let soloCalls = [];
 const realSolo = TP.soloFirstFrame;
+const realGroup = TP.groupFirstFrame; // v-trend-frame-look ٢١ب
 TP.soloFirstFrame = async (k, photo, scene, ratio, o) => { soloCalls.push({ scene, o }); return { b64: 'SOLOFRAME', mime: 'image/png', ref: { data: 'FACEREF', mime: 'image/jpeg' }, people: 1 }; };
 TP.groupFirstFrame = async (k, photos, scene, ratio, o) => { groupOpts = o; return { b64: 'GROUPFRAME', mime: 'image/png' }; };
 
@@ -591,4 +592,74 @@ test('٢٠. ترندات أكتوبر على Omni: الشخص في مشهد = إ
     assert.deepEqual(images(f.omni), ['USERPHOTO']);
     assert.equal(text(f.omni), REF(f.veoPrompt, 'sorryreveal'));
   } finally { TP.soloFirstFrame = real; }
+});
+
+/* v-trend-frame-look (المالك بلقطتين — صورته في السيّارة ووجهه في «فري ستايل الشارع»: «شوف الفرق في الملامح… وشوف الإضافات خلها دقيقة
+   في الأشكال»): الإطار المبنيّ أدار رأسه وغيّر تعبيره (ابتسامة جانبيّة وعيون نصف مغمضة) وغمر وجهه بالنيون الأحمر، والعقال صار حلقة
+   سميكة بشكل آخر. قائمة الهويّة كانت الوجه وحده — لا زاوية ولا تعبير ولا إضاءة الوجه ولا ما يُلبس على الرأس والوجه. */
+test('٢١. إطار الشخص: زاوية الرأس والتعبير من الصورة، والوجه بلونه الحقيقيّ تحت إضاءة المشهد، وما على الرأس والوجه (غترة، عقال، حجاب، نظّارة) بشكله ومقاسه — فرديًّا وجماعيًّا، لا في العمر الآخر', () => {
+  assert.equal(typeof TP.frameLookLock, 'function', 'الدالّة مصدَّرة');
+  const one = TP.frameLookLock(false), many = TP.frameLookLock(true);
+  for (const s of [one, many]) {
+    assert.match(s, /head angle and facial expression/, 'زاوية الرأس والتعبير');
+    assert.match(s, /no new smile, smirk or squint/, 'لا تعبير جديد');
+    assert.match(s, /ghutra or shemagh, agal, hijab or scarf, cap, glasses, jewellery/, 'ما على الرأس والوجه بأسمائه');
+    assert.match(s, /exact shape, size, thickness, pattern, colour and way of wearing/, 'بشكله ومقاسه وسماكته');
+    assert.match(s, /true skin tone/, 'الوجه بلونه تحت إضاءة المشهد');
+  }
+  assert.match(one, /Photo 1/); assert.doesNotMatch(one, /each person/i);
+  assert.match(many, /each person|their own photo/i, 'الجمع لكلّ شخص');
+  /* فرديّ: الافتراضيّ، والتحوّل، و2K — كلّها بالسطر بعد الهويّة وقبل سطر الأسلوب */
+  for (const o of [{ closeup: true }, { closeup: true, start: true }, { closeup: true, detail: true }]) {
+    const t = TP.soloFrameTask('a red-lit street', o);
+    assert.ok(t.includes(one + '\nPhotorealistic'), JSON.stringify(o));
+    assert.ok(t.indexOf(one) > t.indexOf('IDENTITY (mandatory)'), JSON.stringify(o) + ': بعد الهويّة');
+    assert.match(t, /No text, captions, logos or watermarks\.$/, JSON.stringify(o));
+  }
+  /* شخصان في صورة واحدة: بالجمع ومصدرهما Photo 1 (لا «صورته») */
+  const two = TP.frameLookLock(true, { src: 'Photo 1' });
+  assert.ok(TP.soloFrameTask('s', { closeup: true, people: 2 }).includes(two), 'شخصان في صورة: بالجمع');
+  assert.doesNotMatch(two, /their own photo/);
+  /* الأسلوب الفنّيّ (أنمي، لعبة، دمية): الزاوية والتعبير وما على الرأس — بلا «كما صُوّر» ولا «لون البشرة الحقيقيّ» */
+  const art = TP.frameLookLock(false, { art: true });
+  assert.match(art, /^Keep their head angle/); assert.match(art, /agal/);
+  assert.doesNotMatch(art, /as photographed|true skin tone/);
+  for (const o of [{ art: true }, { styleText: 'ANIME-X' }]) assert.ok(TP.soloFrameTask('s', o).includes(art), JSON.stringify(o));
+  /* العمر الآخر (طفل، نسخة أكبر): يُرسم بعمر القالب — لا زاوية الصورة ولا عقال البالغ */
+  for (const o of [{ ageShift: true }, { ageShift: true, start: true }, { ageShift: true, people: 2 }]) {
+    const t = TP.soloFrameTask('s', o);
+    assert.ok(!t.includes(one) && !t.includes(many), JSON.stringify(o));
+  }
+  /* تغيير البشرة الذي يطلبه الوصف نفسه («قصّة حبّ الزومبي»: الثاني هو المتحوّل؛ «خلّني زومبي») يغلب «لون البشرة الحقيقيّ» */
+  for (const s of [one, many]) assert.match(s, /Light alone never recolours a face; only a change the description itself makes to (?:their|someone's) skin or face \(make-up, face paint, a pale or tinted creature look\) is applied/);
+  assert.doesNotMatch(art, /Light alone/);
+  /* إطار المجموعة (عدّة صور): وصفه «the scene»، والعمر الآخر بلا قفل، والأسلوب الفنّيّ بصيغته */
+  const groupLock = TP.frameLookLock(true, { desc: 'the scene' });
+  assert.match(groupLock, /unless the scene changes it/); assert.doesNotMatch(groupLock, /the description/);
+  for (const start of [false, true]) {
+    const g = TP.frameTask(2, 'an old souq', start);
+    assert.ok(g.includes(groupLock), 'المجموعة');
+    assert.match(g, /all 2 faces sharp\.$/, 'آخر المهمّة كما كان');
+    assert.ok(!TP.frameTask(2, 's', start, { ageShift: true }).includes('head angle'), 'المجموعة بعمر آخر: بلا قفل');
+    assert.match(TP.frameTask(2, 's', start, { ageShift: true }), /reference photos\. A single photorealistic still frame, all 2 faces sharp\.$/, 'بلا قفل = النصّ السابق حرفيًّا');
+  }
+  assert.ok(TP.frameTask(3, 's', false, { art: true }).includes(TP.frameLookLock(true, { art: true, desc: 'the scene' })), 'المجموعة بأسلوب فنّيّ');
+  const zombie = TP.frameTask(2, TP.trendScene(require(rp('api/_lib/video-trends.js')).buildTrendPrompt('zombielove', { hasImage: true, people: 2 }).prompt));
+  assert.match(zombie, /zombie/); assert.match(zombie, /only a change the scene itself makes to someone's skin or face/);
+});
+
+test('٢١ب. veo-create يمرّر العمر الآخر والأسلوب الفنّيّ إلى إطار المجموعة على المحرّكين — وبلاهما الخيارات كما كانت', async () => {
+  const src = require('fs').readFileSync(path.join(root, 'api/_lib/veo-create.js'), 'utf8');
+  assert.match(src, /tp\.AGE_SHIFT_TRENDS\.has\(trendId\) \? \{ ageShift: true \} : \{\}, tp\.SOLO_FRAME_ART_TRENDS\.has\(trendId\) \? \{ art: true \} : \{\}\);/);
+  assert.match(src, /groupFirstFrame\(apiKey, trendPeople, tp\.trendScene\(promptText\), ratio, Object\.keys\(gOpt\)\.length \? gOpt : undefined\)/, 'بلا خيار = undefined');
+  /* groupFirstFrame الحقيقيّ: ageShift يُسقط القفل، والوصف الفنّيّ يُكتشف من المشهد */
+  const seen = [];
+  const run = (scene, o) => realGroup('K', [{ data: 'A', mime: 'image/png' }, { data: 'B', mime: 'image/png' }], scene, '720:1280',
+    Object.assign({ faceCrops: async () => [], callImage: async (k, parts) => { seen.push(parts.map((x) => x.text || '').join('\n')); return { b64: 'G', mime: 'image/png' }; } }, o));
+  await run('a toddler version of them', { ageShift: true });
+  await run('a family at the beach', {});
+  await run('an anime battle scene', {});
+  assert.ok(!seen[0].includes('head angle'), 'عمر آخر: بلا قفل');
+  assert.ok(seen[1].includes('as photographed, never reinterpreted'), 'واقعيّ: القفل كاملًا');
+  assert.ok(seen[2].includes('Keep each one\'s head angle') && !seen[2].includes('true skin tone'), 'أنمي: صيغته الفنّيّة');
 });
