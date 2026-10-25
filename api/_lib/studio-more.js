@@ -167,7 +167,6 @@ const STYLE_PROMPTS = {
   "daintyhenna": "a few tiny scattered motifs — a flower, a leaf, three dots — spaced far apart on bare skin",
   "geometricmodern": "a modern geometric design of clean triangles, thin parallel lines and one solid filled shape",
   "kidshenna": "a simple playful design for a child: a small flower, a star and a tiny heart in a light stain",
-  "menssimple": "a simple bold design suited to a man's hand: one strong geometric band across the back of the hand, nothing delicate or floral",
   "bracelettassel": "a tasselled henna bracelet in a reddish-brown stain: a narrow band around the wrist with long strands of dots and tiny drops falling from it across the back of the hand toward the knuckles like a fringe, the fingers and the palm bare"
  },
  "wedding": {
@@ -468,7 +467,6 @@ const PREVIEW_SUBJECT = {
   "daintyhenna": "w",
   "geometricmodern": "w",
   "kidshenna": "w",
-  "menssimple": "m",
   "bracelettassel": "w"
  },
  "wedding": {

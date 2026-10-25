@@ -279,3 +279,15 @@ test('١٠. أوصاف البطاقات المؤكَّدة في التدقيق �
   // بوليوود الثلاث كانت فاضية (التوليد يفشل)
   for (const v of ['icbollywoodstd', 'icbollywoodscene', 'icbollywoodposter']) assert.ok(CARD_FIX.REV['iconic:' + v] >= 1, v);
 });
+
+test('١١. الحنّاء للنساء فقط: لا خيار «رجالي» ولا بطاقة برجل (المالك: «صورة الرجال بالحنّاء ما شلتها»)', () => {
+  const MORE = require(rp('api/_lib/studio-more.js'));
+  assert.ok(!('menssimple' in MORE.STYLE_PROMPTS.henna), 'وصف «رجالي بسيط» ما زال في الخادم');
+  // الجنس الذي يرسمه الخادم: تصحيح البطاقة أوّلًا ثمّ الأصل (صقر وقبلي أصلهما «m» وصُحّحتا في التدقيق)
+  for (const k of Object.keys(MORE.STYLE_PROMPTS.henna)) {
+    const g = CARD_FIX.SUBJECT['henna:' + k] || MORE.PREVIEW_SUBJECT.henna[k];
+    assert.notEqual(g, 'm', k + ': بطاقة حنّاء برجل');
+  }
+  assert.ok(!/"menssimple"/.test(read('js/app-12-studio-more.js')), 'خيار «رجالي بسيط» ما زال في الواجهة');
+  assert.ok(!/"menssimple"/.test(read('js/app.bundle.js')), 'الحزمة ما زالت فيها «رجالي بسيط»');
+});
