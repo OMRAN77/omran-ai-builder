@@ -75,6 +75,18 @@ function isGoogleKey(key) { return /^g_.*@/.test(String(key || '')); }
 const NAME_AT_AR = 'اختر اسم مستخدم بدون @ — تقدر تضيف إيميلك من «حسابي» بعد التسجيل';
 const NAME_AT_EN = 'Choose a username without @ — you can add your email in My account after signing up';
 
+/* v-sec-name-chars: الاسم مفتاحُ تخزينٍ ومعاملُ SCAN (planvid:<اسم>:* وغيره). حرفٌ من أنماط Redis
+   (* ? [ ] \ ^) أو فاصلة (OWNER_USERNAMES تُقسَّم بالفواصل) أو محرف تحكّم/مسافة طرفيّة كان يسمح
+   بحذف حساب اسمه «***» يمسح مفاتيح كلّ المستخدمين (account-delete). يُرفَض في التسجيل وتغيير الاسم
+   وحدهما — الحسابات القائمة لا تُلمس. التطبيع إلى الأحرف الصغيرة يبقى كما هو. */
+const NAME_BAD_CHARS_RE = /[*?\[\]\\^,\u0000-\u001f\u007f]/;
+const NAME_BAD_AR = 'اسم المستخدم فيه رموز غير مسموحة (مثل * ؟ [ ] \\ أو فاصلة)';
+const NAME_BAD_EN = 'Username contains disallowed characters (such as * ? [ ] \\ or comma)';
+function nameHasBadChars(key) {
+  const s = String(key || '');
+  return NAME_BAD_CHARS_RE.test(s) || s !== s.trim();
+}
+
 // سجلّ محذوف يعود لهذا الحساب فقط إن قادت شواهده (كلّها {deleted, movedTo}) إليه. حذف المالك (بلا movedTo) أو سلسلة
 // تنتهي عند حساب حيّ آخر = ليس لك. سجلّ مقفل في الطريق = ليس لك أيضًا.
 async function tombstoneLeadsTo(rec, targetKey) {
@@ -860,6 +872,10 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: m(NAME_AT_AR, NAME_AT_EN), code: 'name_at' });
         return;
       }
+      if (nameHasBadChars(key)) { // v-sec-name-chars
+        res.status(400).json({ error: m(NAME_BAD_AR, NAME_BAD_EN), code: 'name_bad' });
+        return;
+      }
       const existing = await getUser(key);
       if (existing) { // v-name-reuse: والمحذوف أيضًا — الاسم لا يُعاد لغير صاحبه
         res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
@@ -910,6 +926,10 @@ module.exports = async (req, res) => {
       // نفس الحجز المطبَّق في signup: بدونه يُلتفّ عليه من هنا.
       if (RESERVED_USERNAMES.has(newKey) && newKey !== oldKey) {
         res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
+        return;
+      }
+      if (nameHasBadChars(newKey)) { // v-sec-name-chars: لا رموز أنماط/تحكّم في الاسم الجديد
+        res.status(400).json({ error: m(NAME_BAD_AR, NAME_BAD_EN), code: 'name_bad' });
         return;
       }
       // المراجعة العدائيّة: قفل لكلّ حساب طوال التغيير. بلا قفل يقرأ طلبان متوازيان السجلّ الحيّ نفسه فيصير الحساب اسمين حيّين

@@ -51,14 +51,14 @@ async function fetchPage(url) {
       signal: ctrl.signal,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranChat/1.0)' },
     });
-    clearTimeout(t);
-    if (!r.ok) return 'فشل فتح الصفحة: HTTP ' + r.status;
-    const text = (await r.text())
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
-      .replace(/\s+/g, ' ').trim();
+    if (!r.ok) { clearTimeout(t); return 'فشل فتح الصفحة: HTTP ' + r.status; }
+    // v-sec-fetchpage: كانت r.text() بلا سقف حجم والمؤقّت يُوقَف فور الترويسة (بثّ لا نهائيّ يعلّق الدالّة)،
+    // والتجريد بتعابير تربيعيّة (/<[^>]+>/) بطيء على مدخل فيه كثير من «<». الآن قراءة محدودة الحجم
+    // (المؤقّت ساريٍ طوال القراءة) وتجريد خطّيّ — الوحدة المشتركة _html-text.js (نفسها في chat/agent).
+    const { readCappedText, htmlToText } = require('./_html-text.js');
+    let raw;
+    try { raw = await readCappedText(r); } finally { clearTimeout(t); }
+    const text = htmlToText(raw);
     return text ? text.slice(0, 6000) : 'الصفحة فارغة.';
   } catch (e) {
     return 'فشل فتح الصفحة: ' + (e && e.message);

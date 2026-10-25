@@ -41,6 +41,10 @@ function mkEl(tag, id) {
       if (q[sel]) return q[sel];
       const m = /^\.([\w-]+)$/.exec(sel);
       if (m) {
+        // v-sec-card-xss: البطاقات تُبنى الآن بـcreateElement/appendChild (لا innerHTML) — نطابق
+        // العقدة المضافة بصنفها أوّلًا، ثمّ القالب النصّيّ القديم للبطاقات التي ما زالت تستعمله.
+        const byClass = (function find(e) { for (const c of e.children) { if (String(c.className || '').split(/\s+/).includes(m[1])) return c; const r = find(c); if (r) return r; } return null; })(el);
+        if (byClass) return byClass;
         const tm = new RegExp('<(\\w+)[^>]*class="[^"]*\\b' + m[1] + '\\b[^"]*"[^>]*>([^<]*)<').exec(html);
         if (tm) { const c = mkEl(tm[1]); c.textContent = tm[2]; c.className = m[1]; c.parentElement = el; q[sel] = c; return c; }
       }

@@ -16,15 +16,24 @@ function findEOCD(buf) {
   return -1;
 }
 
+// v-sec-zipbomb: حدود صارمة ضدّ قنبلة الضغط. كانت inflateRawSync بلا maxOutputLength، والحجم
+// المعلَن غير مفروض، ولا سقف لعدد المدخلات ولا للمجموع — فأرشيف ٨٨ ك.ب يتمدّد إلى ٥١٢ م.ب في
+// الذاكرة ويقتل الدالّة. الآن: سقف لكلّ مدخل، وسقف إجماليّ يوقف التوسيع، وحدّ لعدد المدخلات،
+// ورفض المدخلات التي تشير إلى البيانات نفسها (إزاحة محليّة مكرّرة) حتّى لا تُفكّ مرارًا.
+const ZIP_MAX_ENTRIES = 4000;
+const ZIP_MAX_ENTRY_BYTES = 12 * 1024 * 1024;   // لكلّ ملفّ مفكوك
+const ZIP_MAX_TOTAL_BYTES = 80 * 1024 * 1024;   // مجموع المفكوك عبر الأرشيف كلّه
+
 function unzip(buf) {
   const eocdOffset = findEOCD(buf);
   if (eocdOffset === -1) throw new Error('Not a valid ZIP file (EOCD not found)');
-  const totalEntries = buf.readUInt16LE(eocdOffset + 10);
+  const totalEntries = Math.min(buf.readUInt16LE(eocdOffset + 10), ZIP_MAX_ENTRIES);
   const cdOffset = buf.readUInt32LE(eocdOffset + 16);
 
   const entries = [];
   let ptr = cdOffset;
   for (let i = 0; i < totalEntries; i++) {
+    if (ptr + 46 > buf.length) break;
     const sig = buf.readUInt32LE(ptr);
     if (sig !== 0x02014b50) break;
     const compMethod = buf.readUInt16LE(ptr + 10);
@@ -40,21 +49,34 @@ function unzip(buf) {
   }
 
   const files = [];
+  const seenOffsets = new Set();
+  let totalOut = 0;
   for (const e of entries) {
     if (e.name.endsWith('/')) continue; // directory
+    if (seenOffsets.has(e.localHeaderOffset)) continue; // v-sec-zipbomb: إزاحة مكرّرة = نفس البيانات
+    seenOffsets.add(e.localHeaderOffset);
+    if (totalOut >= ZIP_MAX_TOTAL_BYTES) break; // v-sec-zipbomb: بلغنا السقف الإجماليّ
     const lh = e.localHeaderOffset;
+    if (lh < 0 || lh + 30 > buf.length) continue;
     const lNameLen = buf.readUInt16LE(lh + 26);
     const lExtraLen = buf.readUInt16LE(lh + 28);
     const dataStart = lh + 30 + lNameLen + lExtraLen;
     const compData = buf.subarray(dataStart, dataStart + e.compSize);
+    // سقف هذا المدخل: الأصغر من المتبقّي والحدّ الفرديّ (والحجم المعلَن إن كان معقولًا).
+    const budget = Math.min(ZIP_MAX_ENTRY_BYTES, ZIP_MAX_TOTAL_BYTES - totalOut);
     let data;
     try {
-      if (e.compMethod === 0) data = compData;
-      else if (e.compMethod === 8) data = zlib.inflateRawSync(compData);
-      else continue; // unsupported method
+      if (e.compMethod === 0) {
+        if (compData.length > budget) continue; // مخزّن بلا ضغط وأكبر من الميزانيّة
+        data = compData;
+      } else if (e.compMethod === 8) {
+        // maxOutputLength يرمي RangeError إن تجاوز الناتجُ الميزانيّة، فيُتخطّى المدخل بأمان.
+        data = zlib.inflateRawSync(compData, { maxOutputLength: budget });
+      } else continue; // unsupported method
     } catch (err) {
       continue;
     }
+    totalOut += data.length;
     files.push({ name: e.name, data });
   }
   return files;
@@ -69,7 +91,17 @@ function stripXmlTags(xml) {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   try {
-    const { filename, fileBase64 } = req.body || {};
+    const { filename, fileBase64, token, guestId } = req.body || {};
+
+    // v-sec-zip-gate: كانت النقطة مفتوحة بلا جلسة ولا حصّة — أيّ زائر يكرّرها. الآن حصّة يوميّة
+    // لكلّ حساب/شبكة (٣٠). الحجز قبل العمل، ويُردّ إن فشل التحليل قبل أن يخدم المستخدم.
+    const usage = require('./_usage.js');
+    const gate = await usage.checkAndConsumeCustom(token, guestId, usage.clientIp(req), 'analyze-zip', 30);
+    if (!gate.allowed) {
+      res.status(gate.reason === 'auth' ? 401 : 429).json({ error: gate.reason === 'auth' ? 'سجّل الدخول لتحليل الأرشيف.' : 'وصلت للحدّ اليوميّ لتحليل الأرشيفات.' });
+      return;
+    }
+    const refundGate = () => { try { usage.refundCustom(token, guestId, usage.clientIp(req), 'analyze-zip'); } catch (e) { /* أفضل جهد */ } };
 
     // مسار الرفع المباشر (fileBase64) هو الأساسي الآن.
     //
@@ -84,27 +116,32 @@ module.exports = async function handler(req, res) {
       try {
         buf = Buffer.from(String(fileBase64), 'base64');
       } catch (e) {
+        refundGate();
         res.status(400).json({ error: 'تعذّر قراءة الملف المرسل.' });
         return;
       }
       // جسم دالة Vercel محدود بـ ~4.5 م.ب، وbase64 يزيد الحجم ~33%.
       // نرفض مبكرًا برسالة مفهومة بدل أن تفشل المنصة برسالة غامضة.
       if (buf.length > 3 * 1024 * 1024) {
+        refundGate();
         res.status(413).json({
           error: 'الملف كبير جدًا للتحليل المباشر (الحد ~3 ميجابايت). احذف مجلدات مثل node_modules أو أرسل الملفات المهمة فقط.',
         });
         return;
       }
     } else {
+      refundGate();
       res.status(400).json({ error: 'لم يصل الملف. حاول اختياره مجددًا.' });
       return;
     }
 
     if (!buf || !buf.length) {
+      refundGate();
       res.status(400).json({ error: 'الملف فارغ.' });
       return;
     }
     if (buf.length > 30 * 1024 * 1024) {
+      refundGate();
       res.status(400).json({ error: 'الأرشيف كبير جدًا للتحليل.' });
       return;
     }
@@ -113,6 +150,7 @@ module.exports = async function handler(req, res) {
     try {
       files = unzip(buf);
     } catch (err) {
+      refundGate();
       res.status(400).json({ error: 'الملف ليس أرشيفًا صالحًا (تأكد أنه zip أو docx أو xlsx أو pptx سليم).' });
       return;
     }

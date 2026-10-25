@@ -103,8 +103,10 @@ async function google(email, ip) {
 const rec = (key) => auth.getUser(key, 1);
 const balance = async (key) => (await points.readPoints(key)).points;
 
-test('١. حالة العرض: عشرون تسجيلًا من عنوان المكتب بالقيم الافتراضيّة — كلّهم ٧٠', async () => {
-  reset();
+// v-sec-gift-cap: الافتراضيّ صار ٣/شبكة/يوم (كان ٥٠). هذا الاختبار يثبت «الكلّ ٧٠ تحت سقف عالٍ»
+// بضبط السقف صراحةً إلى ٥٠، وحالة السقف الافتراضيّ المنخفض يغطّيها الاختبار التالي (٢+٣).
+test('١. عشرون تسجيلًا من عنوان المكتب تحت سقف ٥٠ — كلّهم ٧٠', async () => {
+  reset({ WELCOME_GIFT_PER_IP_DAILY: '50' });
   const res = await Promise.all(Array.from({ length: 20 }, (_, i) => signup('office' + i, '94.200.1.1')));
   for (const r of res) assert.equal(r.code, 200, JSON.stringify(r.body));
   for (let i = 0; i < 20; i++) {

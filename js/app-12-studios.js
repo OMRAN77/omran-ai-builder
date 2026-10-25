@@ -2267,16 +2267,26 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       list.forEach(s => {
         const card = document.createElement('div');
         card.style.cssText = 'border:1px solid var(--border,#333); border-radius:10px; padding:10px;';
-        card.innerHTML =
-          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<strong style="font-size:13px;">' + (s.title || '') + '</strong>' +
-            '<span style="font-size:11.5px; color:#4ade80;">' + t('fashionMatchLabel') + ': ' + s.matchPercent + '%</span>' +
-          '</div>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.clothing || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0;">🎨 ' + (s.colors || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">' + (currentGender() === 'men' ? '💼 ' : '👜 ') + (s.accessories || '') + '</p>' + /* v-fx-gender-pics: كبطاقة الحقيبة */
-          '<button type="button" class="btn primary useLookBtn" style="width:100%; font-size:12px; padding:5px;">' + t('fashionUseThisLook') + '</button>';
-        card.querySelector('.useLookBtn').onclick = () => {
+        /* v-sec-card-xss: حقول النموذج تُبنى بـtextContent لا بـinnerHTML — صورةٌ نصُّها المضمَّن كانت
+           تجعل النموذج يعيد «<img onerror=…>» في title/clothing فيُنفَّذ في الصفحة الأمّ. */
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+        const titleEl = document.createElement('strong');
+        titleEl.style.cssText = 'font-size:13px;'; titleEl.textContent = String(s.title || '');
+        const matchEl = document.createElement('span');
+        matchEl.style.cssText = 'font-size:11.5px; color:#4ade80;'; matchEl.textContent = t('fashionMatchLabel') + ': ' + String(s.matchPercent == null ? '' : s.matchPercent) + '%';
+        head.appendChild(titleEl); head.appendChild(matchEl);
+        const pClothing = document.createElement('p');
+        pClothing.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:6px 0 2px;'; pClothing.textContent = String(s.clothing || '');
+        const pColors = document.createElement('p');
+        pColors.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0;'; pColors.textContent = '🎨 ' + String(s.colors || '');
+        const pAcc = document.createElement('p');
+        pAcc.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0 8px;'; pAcc.textContent = (currentGender() === 'men' ? '💼 ' : '👜 ') + String(s.accessories || ''); /* v-fx-gender-pics: كبطاقة الحقيبة */
+        const useBtn = document.createElement('button');
+        useBtn.type = 'button'; useBtn.className = 'btn primary useLookBtn';
+        useBtn.style.cssText = 'width:100%; font-size:12px; padding:5px;'; useBtn.textContent = t('fashionUseThisLook');
+        card.appendChild(head); card.appendChild(pClothing); card.appendChild(pColors); card.appendChild(pAcc); card.appendChild(useBtn);
+        useBtn.onclick = () => {
           /* تدقيق ١٨ أكتوبر: الوصف كان «… . Colors: … Accessories: …» بتسميات إنجليزيّة و«..» — الأجزاء الثلاثة بلا نقطتها الختاميّة مربوطة بـ«. » */
           const look = [s.clothing, s.colors, s.accessories].map((x) => String(x || '').trim().replace(/[.。।]+$/, '').trim()).filter(Boolean).join('. ');
           /* مع صورة مرفوعة يبقى الزرّ كما كان: لبس الإطلالة على صورتك (v-fashion-use-look) يحتاج أمر الخادم — مع طلب الأزياء المنفصل */

@@ -3067,13 +3067,19 @@
       list.forEach(s => {
         const card = document.createElement('div');
         card.style.cssText = 'border:1px solid var(--border,#333); border-radius:10px; padding:10px;';
-        card.innerHTML =
-          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<strong style="font-size:13px;">' + (s.title || '') + '</strong>' +
-            '<span style="font-size:11.5px; color:#4ade80;">' + t2('fashionMatchLabel') + ': ' + s.matchPercent + '%</span>' +
-          '</div>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.description || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">🎨 ' + (s.colors || '') + '</p>';
+        /* v-sec-card-xss: حقول النموذج بـtextContent لا innerHTML (منع حقن وسم من ردّ النموذج). */
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+        const titleEl = document.createElement('strong');
+        titleEl.style.cssText = 'font-size:13px;'; titleEl.textContent = String(s.title || '');
+        const matchEl = document.createElement('span');
+        matchEl.style.cssText = 'font-size:11.5px; color:#4ade80;'; matchEl.textContent = t2('fashionMatchLabel') + ': ' + String(s.matchPercent == null ? '' : s.matchPercent) + '%';
+        head.appendChild(titleEl); head.appendChild(matchEl);
+        const pDesc = document.createElement('p');
+        pDesc.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:6px 0 2px;'; pDesc.textContent = String(s.description || '');
+        const pColors = document.createElement('p');
+        pColors.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0 8px;'; pColors.textContent = '🎨 ' + String(s.colors || '');
+        card.appendChild(head); card.appendChild(pDesc); card.appendChild(pColors);
         suggestionsEl.appendChild(card);
       });
       suggestionsEl.style.display = list.length ? 'flex' : 'none';

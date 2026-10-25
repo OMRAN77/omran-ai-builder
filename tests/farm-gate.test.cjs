@@ -174,8 +174,9 @@ test('١. المزرعة: حساب فوق سقف شبكته — كلّ أداة 
   assert.equal((await auth.getUser('giftedone')).giftCapped, false);
 });
 
-test('٢. المكتب: عشرون تسجيلًا من IPv4 واحد بالافتراضيّ — هديّة كلّها، لا سقف، ٣ ديكور ثمّ ٤٠٢، وتجربة مها لكلّ واحد', async () => {
-  reset();
+// v-sec-gift-cap: هديّة الترحيب الافتراضيّة صارت ٣/شبكة؛ نضبط السقف صراحةً ٥٠ لنثبت «هديّة كلّها» تحت سقف عالٍ.
+test('٢. المكتب: عشرون تسجيلًا من IPv4 واحد تحت سقف هديّة ٥٠ — هديّة كلّها، لا سقف، ٣ ديكور ثمّ ٤٠٢، وتجربة مها لكلّ واحد', async () => {
+  reset({ WELCOME_GIFT_PER_IP_DAILY: '50' });
   const names = Array.from({ length: 20 }, (_, i) => 'office' + i);
   const tokens = await Promise.all(names.map((n) => signup(n, '198.51.100.20')));
   for (let i = 0; i < names.length; i++) {

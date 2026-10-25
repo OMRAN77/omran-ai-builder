@@ -585,11 +585,13 @@
   /* v-sec-postmsg (إعادة التقييم ١٠ أكتوبر): أيّ نافذة (موقع آخر فتح التطبيق في نافذة منبثقة) كانت ترسل {__omranView:1} فيولّد التطبيق
      صورة مدفوعة برمز المستخدم ونقاطه. الطلب يُقبل الآن من إطار داخل صفحة التطبيق نفسها وحده — المحرّر يعيش في iframe المعاينة. */
   function fromOwnFrame(e) {
-    // المراجعة العدائيّة: إطارات التطبيق المعزولة (جرّبه لي، run_js/test_html) تشغّل كود النموذج وأصلها «null» — المحرّر في المعاينة يرث أصل التطبيق
-    if (e.origin !== window.location.origin) return false;
+    // v-sec-sandbox: المعاينة وإطارات run_js/test_html كلّها معزولة وأصلها «null» فلا يميّزها الأصل.
+    // الحارس هويّة إطار المعاينة بعينه (#previewFrame): e.source يجب أن يساوي contentWindow له وحده —
+    // لا أيّ iframe (إطار run_js يشغّل كود النموذج ولا يجوز أن يولّد صورةً مدفوعة)، ولا يُزوَّر من نافذة أخرى.
+    if (!e.source) return false;
     try {
-      var fr = document.getElementsByTagName('iframe');
-      for (var i = 0; i < fr.length; i++) { if (fr[i].contentWindow && fr[i].contentWindow === e.source) return true; }
+      var pf = document.getElementById('previewFrame');
+      if (pf && pf.contentWindow && pf.contentWindow === e.source) return true;
     } catch (err) { __swallow(err, 'floorplan:bridge#src'); }
     return false;
   }

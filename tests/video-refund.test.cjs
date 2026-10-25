@@ -111,8 +111,8 @@ test('٦. التوصيل: نقاط الحالة الثلاث تسوّي عند �
   assert.match(mm, /settleVideoJob\(taskId, false\)/);
   assert.match(mm, /settleVideoJob\(taskId, true\)/);
   const rw = read('api/_lib/video-status.js');
-  assert.match(rw, /if \(st === 'FAILED' \|\| st === 'CANCELLED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(id, false\);/);
-  assert.match(rw, /else if \(st === 'SUCCEEDED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(id, true\);/);
+  assert.match(rw, /if \(st === 'FAILED' \|\| st === 'CANCELLED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(canonId, false\);/);
+  assert.match(rw, /else if \(st === 'SUCCEEDED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(canonId, true\);/);
 
   // نقطة حالة Veo فعليًّا: اكتمال بلا فيديو = FAILED (المسار الذي كان يحرق فيديو المشترك).
   process.env.GEMINI_API_KEY = 'test-key';
