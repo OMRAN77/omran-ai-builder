@@ -196,7 +196,23 @@ if (isMode('fashion')) {
   const W = grabFrom('api/_lib/fashion-create.js', 'STYLE_PROMPTS'), M = grabFrom('api/_lib/fashion-create.js', 'STYLE_PROMPTS_MEN'), K = grabFrom('api/_lib/fashion-create.js', 'STYLE_PROMPTS_KIDS');
   const styleOf = (g, s) => ((g === 'men' ? M : g === 'kids' ? K : null) || {})[s] || W[s] || W.evening;
   // v-fx-mukhawara: البطاقة على صورة المالك المرجعيّة نفسها («هذا شكل المخوره») لا على الوصف القصير
-  const CARD_DESC = { women: { mukhawara: 'a traditional Emirati mukhawar: a flowing floor-length A-line dress with long wide sleeves, a stand collar opening into a V, a sequined metallic talli-embroidered panel down the front with a row of small buttons, matching embroidered cuffs, in printed floral chiffon over a lining with metallic embroidered swirls and sequins, modest' } };
+  // v-fx-dedupe (المالك ٢٥ أكتوبر: «ولدها… وشوف اذا فيه شي متكرر»): الوصف القصير أعطى «واي تو كي» بوهيميّة، وخمس بطاقات توأم جارتها
+  // في المعرض نفسه. كلّ وصف هنا يحدّد ما يميّز النمط (من كتالوج fashion-variety) وينفي صراحةً شكل التوأم.
+  const CARD_DESC = {
+    women: {
+      mukhawara: 'a traditional Emirati mukhawar: a flowing floor-length A-line dress with long wide sleeves, a stand collar opening into a V, a sequined metallic talli-embroidered panel down the front with a row of small buttons, matching embroidered cuffs, in printed floral chiffon over a lining with metallic embroidered swirls and sequins, modest',
+      y2k: 'a modest Y2K 2000s revival outfit: a fitted baby-pink velour zip-up track jacket with small rhinestone details over a long-sleeve white top, low-slung light-wash flared jeans, chunky white platform sneakers, a small shiny silver baguette shoulder bag, tinted rectangular sunglasses, a satin hijab with a small butterfly clip, playful glossy 2000s pop styling — no paisley, no ethnic prints, no bead necklaces, nothing bohemian',
+      evening: 'a modest floor-length evening gown in deep midnight-blue crepe: a sculpted draped bodice with a fine crystal-embellished neckline, long sheer chiffon cape sleeves falling from the shoulders, a fluid column skirt with a small sweep train, a matching midnight-blue chiffon hijab, refined red-carpet evening glamour — not green, no gold embroidery, not a kaftan or jalabiya',
+      casual: 'a relaxed modest everyday weekend outfit: a loose navy-and-white striped Breton long-sleeve tunic top, relaxed wide-leg cream trousers, white canvas sneakers, a woven straw tote bag on the shoulder, a soft navy jersey hijab, easy cheerful look — no long cardigan, no duster coat, no blazer',
+    },
+    men: {
+      sporty: 'a bright sporty men\'s training tracksuit: a two-tone cobalt-blue and white athletic track jacket with contrast side stripes, matching tapered track pants, running shoes, a plain sports watch, dynamic warm-up pose as if about to run, energetic sportswear colours — not black, not a dark zip jacket',
+    },
+    kids: {
+      evening: 'a festive children\'s evening party look: a little girl in a deep burgundy velvet party dress with a satin sash bow and a short tulle petticoat, sparkly ballet flats, a small velvet bow headband, joyful party pose with soft warm fairy lights in the background — not a blazer, not a suit',
+      streetwear: 'a mini streetwear children\'s outfit: an oversized plain colour-block hoodie in mustard yellow and black, loose black cargo joggers with pockets, chunky high-top sneakers, a backward plain baseball cap, a small crossbody belt bag, cool confident pose — no overalls, no dungarees, no denim, no prints, no letters, no logos on the clothes',
+    },
+  };
   for (const g of want) {
     if (CARD_SETS[g]) {
       CARD_SETS[g].forEach((c) => JOBS.push({ kind: g, name: c.name, shape: 'port', prompt: 'Fashion catalog photo of ' + PERSON[c.gender] + styleOf(c.gender, c.style) + ' — ' + c.d + '.' + F_LOOK + ' No text, no letters, no watermark, no logo.' }));
