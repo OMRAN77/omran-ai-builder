@@ -100,27 +100,6 @@ const SOLO_CLOSEUP_LABEL = 'Close-up — the face of the same person in Photo 1,
    لا في المحرّك: وجه وسط الفيديو هو وجه الثانية الأولى نفسه). الإطار 1K وشخص كامل على المنصّة = وجه نحو ١/١٢ من ارتفاعه، فيرسم النموذج
    وجهًا عامًّا (فخّ الوجه الصغير، PITFALLS). مع detail: الإطار 2K (السعر نفسه) ولقطة تُبقي الوجه كبيرًا، ولون الشعر من الصورة. */
 const FRAME_B64_MAX = 6000000; // ~٤٫٥ ميغا ثنائيّة: فوقها يُرمَّز إطار PNG بصيغة JPEG
-/** إطار PNG كبير ← JPEG ٩٢ مرّة واحدة (من أصل بلا فقد)؛ أيّ عطب = كما هو. يعدّل out في مكانه. */
-function lightenFrame(out) {
-  if (!out || !out.b64 || !/png/i.test(out.mime || 'image/png') || out.b64.length <= FRAME_B64_MAX) return out;
-  try {
-    const img = require('./image-diff.js').decodeImage(Buffer.from(out.b64, 'base64'));
-    if (img) { out.b64 = Buffer.from(require('./face-composite.js').encodeJpeg(img, 92)).toString('base64'); out.mime = 'image/jpeg'; }
-  } catch (e) { console.warn('[trend-people] frame jpeg skipped: ' + (e && e.message)); }
-  return out;
-}
-
-/* ── v-trend-face-refine (المالك بعد v-trend-frame-face بلقطة «ملعب»: «أفضل من قبل» — وبقي الوجه «مجمَّلًا»: عظام خدّ أبرز وأنف أنحف؛
-   واختار صراحةً خطوة تصحيح الوجه بكلفتها ≈ ٠٫١٣٤$ لكلّ فيديو ترند بصورة على مفتاحه، ونقاط المستخدم كما هي، و«إذا مش تمام نرجع»).
-   بعد بناء الإطار يمرّ عليه نموذج الصور نفسه مرّة ثانية: يصحّح الوجه وحده من لقطة الوجه (أو الصورة نفسها في السيلفي) ويُبقي كلّ
-   شيء آخر. لشخص واحد بملامحه الواقعيّة فقط — لا أسلوب فنّيّ (وجه لعبة/أنمي) ولا عمر آخر (طفل) ولا شخصان. أيّ عطب أو ضيق وقت
-   = الإطار كما بُني. TREND_FACE_REFINE=off يرجعه بلا نشر. */
-const REFINE_TASK = 'TASK: edit Image A. Correct ONLY the face of the person in Image A so that it is exactly the real person shown in Image B — '
-  + 'the same face shape, eyes, eyebrows, nose, lips, jawline, cheekbones, skin tone, skin texture and marks, at their real proportions. '
-  + 'Keep their expression, head angle, gaze, makeup level, hair, headwear, jewellery, clothing, body, pose, lighting, colours, background and framing exactly as they are in Image A. '
-  + 'Do not beautify, slim, smooth or restyle the face, and change nothing else. Same size and aspect ratio as Image A. No text, captions, logos or watermarks.';
-const REFINE_UNTIL_MS = 120000; // الإطار والتصحيح معًا من بدء الإطار — فيبقى للمحرّك ≥ ١٦٥ث داخل حدّ الدالّة (٣٠٠ث − ١٥ث هامش)
-function faceRefineOn() { return String(process.env.TREND_FACE_REFINE || 'on').toLowerCase() !== 'off'; }
 const FRAME_FACE_DETAIL = 'Compose the frame so their face is large and finely detailed — at least about a sixth of the image height (a medium or medium-wide shot, never a small distant figure); the video can move the camera from there. Keep their natural hair colour from Photo 1 unless the description changes it.';
 
 /** مهمّة أوّل إطار لشخص الصورة داخل مشهد الوصف — الوجه والجسم منه، والمكان واللبس من الوصف.
@@ -231,8 +210,7 @@ function frameKey(photo, scene, ratio, style, art) {
  * أوّل إطار لشخص صورة واحدة داخل مشهد وصف المستخدم.
  * photo: { data, mime? }؛ o: { budgetMs (الكشف + التوليد معًا)، style ('anime' من الواجهة)، artHint (قالب ترند فنّيّ)،
  *   start وageShift (v-trend-omni-face، انظر soloFrameTask)، detail (v-trend-frame-face: 2K ووجه كبير)، hiRes (2K وحده — ترند الدمية
- *   والليغو: الوجه رأس لعبة صغير في عبوتها، وسطر «سدس الارتفاع» يكسرها)، refine (v-trend-face-refine: تصحيح الوجه بعد البناء)،
- *   refineUntilMs، faceCrops، callImage، fetchImpl }.
+ *   والليغو: الوجه رأس لعبة صغير في عبوتها، وسطر «سدس الارتفاع» يكسرها)، faceCrops، callImage، fetchImpl }.
  * يرجع { b64, mime, ref } — ref لقطة الوجه (مرجع الملامح للمحرّك) أو null — أو { error } أو null بلا مدخلات.
  */
 async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
@@ -246,73 +224,44 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     const anime = opt.style === 'anime';
     const art = anime || !!opt.artHint || ART_STYLE_RE.test(text);
     const key = frameKey(shaped, text, aspectOf(ratio), (anime ? 'anime' : '') + (opt.start ? '|start' : '') + (opt.ageShift ? '|age' : '') + (opt.detail ? '|detail' : '') + (opt.hiRes ? '|2k' : ''), art);
-    /* v-trend-face-refine: الإطار المبنيّ في مدخله والمصحَّح في مدخل ثانٍ — تصحيح فشل يُعاد وحده بلا دفع الإطار ثانيةً */
-    const fresh = (h) => h && Date.now() - h.t < FRAME_CACHE_TTL;
-    const done = opt.refine ? FRAME_CACHE.get(key + '|refine') : null;
-    if (fresh(done)) return { b64: done.b64, mime: done.mime, ref: done.ref, people: done.people, refined: true, cached: true };
-    let base = FRAME_CACHE.get(key);
-    const fromCache = fresh(base);
-    if (!fromCache) {
-      let crops = [];
-      const stats = {}; // v-ai-video-speed: stats.faces = عدد الوجوه حين نجح الكشف (لا قيمة عند العطب)
-      try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, [shaped], { timeoutMs: Math.min(15000, budget), fetchImpl: opt.fetchImpl, stats }); } catch (e) { console.warn('[trend-people] solo face crop skipped: ' + (e && e.message)); crops = []; }
-      /* وجه واحد بارز: لقطته (v-pstyle-closeup). v-two-people: وجهان بارزان ولكلٍّ لقطته = كلّ لقطة بعنوان موضعها
-         («the person on the left/right» كخطّ الدمج v-merge-faces) — كان الوجهان بلا لقطة فيُرسم الثاني من جديد.
-         لقطة لأحد الوجهين وحده تبقى ممنوعة: تسحب ملامحه إلى الآخر. */
-      const two = crops.length === 2 && crops.every((c) => c.who && c.who !== 'the person');
-      const crop = (crops.length === 1 && crops[0].who === 'the person') ? crops[0] : null;
-      const people = two ? 2 : (crop ? 1 : 0);
-      /* v-ai-video-speed (المالك ١٦ أكتوبر بلقطة «١٥٦ث» على صورة عطر في «فيديو AI فقط»): صورة كشفنا فيها صفر وجوه (منتج، مكان)
-         في الوصف الحرّ لا تحتاج إطارًا مرسومًا — المحرّك يبدأ من الصورة نفسها. كان يُرسم إطار «شخص حقيقي» لزجاجة عطر
-         (١٥–٤٠ ث، حتّى ٩٠) قبل أن يبدأ الفيديو أصلًا. needPerson يطلبه المتّصل؛ الأسلوب الفنّيّ يبقى (تحويله يحتاج الإطار)،
-         وعطب الكشف (لا stats.faces) يبقى كما كان. */
-      if (opt.needPerson && stats.faces === 0 && !art) return { error: 'no-person', noPerson: true };
-      const parts = [{ text: 'Photo 1 — the user\'s own photo of the real ' + (two ? 'people' : 'person') + ' to feature:' }, { inlineData: { mimeType: shaped.mime, data: shaped.data } }];
-      if (crop) parts.push({ text: SOLO_CLOSEUP_LABEL }, { inlineData: { mimeType: crop.mime, data: crop.data } });
-      if (two) crops.forEach((c, k) => parts.push({ text: 'Close-up ' + (k + 1) + ' — the face of ' + c.who + ' in Photo 1, cropped and zoomed in from that same photo (identity reference for that one person only: NOT an extra person, never drawn as an extra face, an inset or a frame):' }, { inlineData: { mimeType: c.mime, data: c.data } }));
-      parts.push({ text: soloFrameTask(text, { closeup: !!crop || two, art, people, styleText: anime ? ANIME_FRAME_STYLE : '', start: !!opt.start, ageShift: !!opt.ageShift, detail: !!opt.detail }) });
-      const left = budget - (Date.now() - started);
-      if (left < 20000) return { error: 'budget' };
-      /* 1K: الفيديو 720p/1080p، والسعر نفسه لـ1K و2K — وحمولة أصغر للمحرّك. الأسلوب الفنّيّ بحرارة الأسلوب (mergeTemperature).
-         v-trend-frame-face: detail (ترندات Omni) = 2K — ضعف البكسلات للوجه في لقطة واسعة، بالسعر نفسه. */
-      const out = await (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl, { timeoutMs: left, temperature: mergeIdentity.mergeTemperature(art, text), imageSize: (opt.detail || opt.hiRes) ? '2K' : '1K', tag: 'solo' });
-      if (!out || !out.b64) return { error: (out && (out.why || out.status)) || 'no image' };
-      const fr = { b64: out.b64, mime: out.mime || 'image/png' }; // نسخة — لا يُعدَّل ردّ المزوّد في مكانه
-      /* v-trend-frame-face: إطار 2K بصيغة PNG قد يبلغ ~١٠ ميغا بعد base64 في طلب المحرّك — يُرمَّز JPEG ٩٢ مرّة واحدة (من أصل بلا فقد)
-         فوق FRAME_B64_MAX؛ أيّ عطب = PNG كما هو */
-      if (opt.detail || opt.hiRes) lightenFrame(fr);
-      /* ref: لقطة الوجه الواحد مرجعًا للمحرّك؛ مع شخصين الصورة نفسها (فيها الاثنان). people: عدد من كشفناهم (٠ = لا نعرف)؛
-         faces: عدد الوجوه حين أجاب الكشف (لا قيمة عند عطبه) */
-      base = { t: Date.now(), b64: fr.b64, mime: fr.mime, ref: crop ? { data: crop.data, mime: crop.mime } : null, people, faces: stats.faces };
-      FRAME_CACHE.set(key, base);
-      while (FRAME_CACHE.size > 4) FRAME_CACHE.delete(FRAME_CACHE.keys().next().value);
-    }
-    const res = { b64: base.b64, mime: base.mime, ref: base.ref, people: base.people, refined: false };
-    if (fromCache) res.cached = true;
-    /* v-trend-face-refine: تصحيح الوجه وحده — شخص واحد مؤكَّد: كشفٌ أجاب بوجه واحد في الصورة كلّها (بلقطته، أو يملأ الصورة: السيلفي)،
-       بملامحه الواقعيّة، والوقت يكفي. people وحده لا يكفي: ٠ = جماعة أو زوجان بلقطة ناقصة أو عطب الكشف أو لا وجه، و١ قد يكون
-       وجهًا بارزًا وبجانبه وجه أصغر — فيُصحَّح إطار فيه شخصان بلقطة أحدهما */
-    const single = (base.people === 1 || base.people === 0) && base.faces === 1;
-    const refineLeft = (opt.refineUntilMs || REFINE_UNTIL_MS) - (Date.now() - started);
-    if (opt.refine && !art && !opt.ageShift && single && refineLeft >= 20000) {
-      const id = base.ref || shaped; /* السيلفي: الصورة نفسها (لا لقطة لوجه يملأ الصورة) */
-      const rParts = [
-        { text: 'Image A — the opening frame to correct:' }, { inlineData: { mimeType: base.mime, data: base.b64 } },
-        { text: base.ref ? 'Image B — close-up of the real person\'s face, cropped from their own photo (identity reference only):' : 'Image B — the real person\'s own photo (identity reference only):' },
-        { inlineData: { mimeType: id.mime || 'image/jpeg', data: id.data } },
-        { text: REFINE_TASK },
-      ];
+    const hit = FRAME_CACHE.get(key);
+    if (hit && Date.now() - hit.t < FRAME_CACHE_TTL) return { b64: hit.b64, mime: hit.mime, ref: hit.ref, people: hit.people, cached: true };
+    let crops = [];
+    const stats = {}; // v-ai-video-speed: stats.faces = عدد الوجوه حين نجح الكشف (لا قيمة عند العطب)
+    try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, [shaped], { timeoutMs: Math.min(15000, budget), fetchImpl: opt.fetchImpl, stats }); } catch (e) { console.warn('[trend-people] solo face crop skipped: ' + (e && e.message)); crops = []; }
+    /* وجه واحد بارز: لقطته (v-pstyle-closeup). v-two-people: وجهان بارزان ولكلٍّ لقطته = كلّ لقطة بعنوان موضعها
+       («the person on the left/right» كخطّ الدمج v-merge-faces) — كان الوجهان بلا لقطة فيُرسم الثاني من جديد.
+       لقطة لأحد الوجهين وحده تبقى ممنوعة: تسحب ملامحه إلى الآخر. */
+    const two = crops.length === 2 && crops.every((c) => c.who && c.who !== 'the person');
+    const crop = (crops.length === 1 && crops[0].who === 'the person') ? crops[0] : null;
+    const people = two ? 2 : (crop ? 1 : 0);
+    /* v-ai-video-speed (المالك ١٦ أكتوبر بلقطة «١٥٦ث» على صورة عطر في «فيديو AI فقط»): صورة كشفنا فيها صفر وجوه (منتج، مكان)
+       في الوصف الحرّ لا تحتاج إطارًا مرسومًا — المحرّك يبدأ من الصورة نفسها. كان يُرسم إطار «شخص حقيقي» لزجاجة عطر
+       (١٥–٤٠ ث، حتّى ٩٠) قبل أن يبدأ الفيديو أصلًا. needPerson يطلبه المتّصل؛ الأسلوب الفنّيّ يبقى (تحويله يحتاج الإطار)،
+       وعطب الكشف (لا stats.faces) يبقى كما كان. */
+    if (opt.needPerson && stats.faces === 0 && !art) return { error: 'no-person', noPerson: true };
+    const parts = [{ text: 'Photo 1 — the user\'s own photo of the real ' + (two ? 'people' : 'person') + ' to feature:' }, { inlineData: { mimeType: shaped.mime, data: shaped.data } }];
+    if (crop) parts.push({ text: SOLO_CLOSEUP_LABEL }, { inlineData: { mimeType: crop.mime, data: crop.data } });
+    if (two) crops.forEach((c, k) => parts.push({ text: 'Close-up ' + (k + 1) + ' — the face of ' + c.who + ' in Photo 1, cropped and zoomed in from that same photo (identity reference for that one person only: NOT an extra person, never drawn as an extra face, an inset or a frame):' }, { inlineData: { mimeType: c.mime, data: c.data } }));
+    parts.push({ text: soloFrameTask(text, { closeup: !!crop || two, art, people, styleText: anime ? ANIME_FRAME_STYLE : '', start: !!opt.start, ageShift: !!opt.ageShift, detail: !!opt.detail }) });
+    const left = budget - (Date.now() - started);
+    if (left < 20000) return { error: 'budget' };
+    /* 1K: الفيديو 720p/1080p، والسعر نفسه لـ1K و2K — وحمولة أصغر للمحرّك. الأسلوب الفنّيّ بحرارة الأسلوب (mergeTemperature).
+       v-trend-frame-face: detail (ترندات Omni) = 2K — ضعف البكسلات للوجه في لقطة واسعة، بالسعر نفسه. */
+    const out = await (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl, { timeoutMs: left, temperature: mergeIdentity.mergeTemperature(art, text), imageSize: (opt.detail || opt.hiRes) ? '2K' : '1K', tag: 'solo' });
+    if (!out || !out.b64) return { error: (out && (out.why || out.status)) || 'no image' };
+    /* v-trend-frame-face: إطار 2K بصيغة PNG قد يبلغ ~١٠ ميغا بعد base64 في طلب المحرّك — يُرمَّز JPEG ٩٢ مرّة واحدة (من أصل بلا فقد)
+       فوق FRAME_B64_MAX؛ أيّ عطب = PNG كما هو */
+    if ((opt.detail || opt.hiRes) && /png/i.test(out.mime || 'image/png') && out.b64.length > FRAME_B64_MAX) {
       try {
-        const fixed = await (opt.callImage || callImage)(apiKey, rParts, aspectOf(ratio), opt.fetchImpl, { timeoutMs: Math.min(50000, refineLeft), temperature: 0.15, imageSize: (opt.detail || opt.hiRes) ? '2K' : '1K', tag: 'refine' });
-        if (fixed && fixed.b64) {
-          const fx = lightenFrame({ b64: fixed.b64, mime: fixed.mime || 'image/png' });
-          res.b64 = fx.b64; res.mime = fx.mime; res.refined = true; delete res.cached;
-          FRAME_CACHE.set(key + '|refine', Object.assign({ t: Date.now() }, res));
-          while (FRAME_CACHE.size > 4) FRAME_CACHE.delete(FRAME_CACHE.keys().next().value);
-        }
-        else console.warn('[trend-people] face refine skipped: ' + ((fixed && (fixed.why || fixed.status)) || 'no image'));
-      } catch (e) { console.warn('[trend-people] face refine skipped: ' + (e && e.name === 'TimeoutError' ? 'timeout' : String((e && e.message) || e).replace(/key=[^&\s"']+/g, 'key=***').slice(0, 120))); }
+        const img = require('./image-diff.js').decodeImage(Buffer.from(out.b64, 'base64'));
+        if (img) { out.b64 = Buffer.from(require('./face-composite.js').encodeJpeg(img, 92)).toString('base64'); out.mime = 'image/jpeg'; }
+      } catch (e) { console.warn('[trend-people] frame jpeg skipped: ' + (e && e.message)); }
     }
+    /* ref: لقطة الوجه الواحد مرجعًا للمحرّك؛ مع شخصين الصورة نفسها (فيها الاثنان). people: عدد من كشفناهم (٠ = لا نعرف) */
+    const res = { b64: out.b64, mime: out.mime || 'image/png', ref: crop ? { data: crop.data, mime: crop.mime } : null, people };
+    FRAME_CACHE.set(key, Object.assign({ t: Date.now() }, res));
+    while (FRAME_CACHE.size > 4) FRAME_CACHE.delete(FRAME_CACHE.keys().next().value);
     return res;
   } catch (e) {
     // يصل السجلّ — والمفتاح لا يُطبع أبدًا (كما في callImage).
@@ -324,5 +273,4 @@ module.exports = {
   MAX_PEOPLE, aspectOf, callImage /* v-actor-lipsync: بورتريه الممثّل */, frameTask, groupFirstFrame, ART_STYLE_RE, SOLO_CLOSEUP_LABEL, soloFrameTask, soloFirstFrame,
   ANIME_FRAME_STYLE, STYLE_ANIME_VIDEO, FRAME_LOCK, SOLO_FRAME_TRENDS, SOLO_FRAME_ART_TRENDS, trendScene, firstFrameOn, FRAME_CACHE,
   OMNI_FRAME_TRENDS, OMNI_MORPH_TRENDS, OMNI_REF_TRENDS, AGE_SHIFT_TRENDS, MULTI_SHOT_TRENDS, omniPersonTrend, FRAME_FACE_DETAIL,
-  REFINE_TASK, REFINE_UNTIL_MS, faceRefineOn,
 };
