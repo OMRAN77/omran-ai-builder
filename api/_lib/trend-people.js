@@ -190,13 +190,14 @@ const FRAME_LOCK = ' The attached first frame ALREADY shows every person exactly
    يمنع التحوّل فيكسرها؛ وبيكسار (شخصيّة طفل «مستوحاة» وتصميم واحد عبر ٣ مشاهد). */
 const SOLO_FRAME_TRENDS = new Set(['heritagesing', 'tencountries', 'dance', 'celebselfie', 'eidgreeting', 'movieposter', 'agentpitch', 'testimonial', 'graduation', 'wedding', 'nationalday', 'actionhero', 'neonnight', 'actionfigure', 'catwalk', 'legofy', 'podcastclip', 'dayinlife', 'birthdaybash',
   /* v-trends-oct-12 (المالك ٢٥ أكتوبر «ضيف كلهم»): شخص في مشهد جديد بعمره ومظهره */
-  'saveyourself', 'jetflyover', 'lostfilm80s', 'zombielove', 'standstill', 'spanishrap', 'orangebooth', 'gamechar']);
+  'saveyourself', 'jetflyover', 'lostfilm80s', 'zombielove', 'standstill', 'spanishrap', 'orangebooth', 'gamechar',
+  'bbywow', 'invisiblebike', 'slowmoentry']); // v-trends-oct-4
 /* منها بأسلوب فنّيّ صريح في قالبها (لعبة، ليغو) */
 const SOLO_FRAME_ART_TRENDS = new Set(['actionfigure', 'legofy', 'gamechar']);
 /* منها لعبة صغيرة في عبوتها (دمية، ليغو): إطار 2K بلا سطر «الوجه سدس الارتفاع» (يخرج العبوة من الإطار) — اللعبة المرسومة وجهها كبير */
 const SOLO_FRAME_TOY_TRENDS = new Set(['actionfigure', 'legofy']);
 /* v-trends-oct-12: ترند شخص واحد بطبيعته («سامحوني» ينتهي بصورته، و«من ينقذك؟» نسختان منه) — صورة واحدة، والصور الزائدة تُهمل */
-const SINGLE_SUBJECT_TRENDS = new Set(['sorryreveal', 'saveyourself', 'spanishrap']); // v-trends-faithful: المؤدّي واحد ومغنّي الشارع من المشهد
+const SINGLE_SUBJECT_TRENDS = new Set(['sorryreveal', 'saveyourself', 'spanishrap', 'bbywow', 'invisiblebike', 'ceilingfan', 'slowmoentry']); // v-trends-faithful: المؤدّي واحد ومغنّي الشارع من المشهد
 
 /* ── v-trend-omni-face (المالك ٢٤ أكتوبر بعد أوّل ترند على Omni: «يغيّر شكل الشخصيّة الملامح، والصورة اللي أحطها موجودة في أوّل الفيديو»).
    Omni يجعل <FIRST_FRAME> أوّل إطار حرفيًّا، ويصنع افتراضيًّا عدّة لقطات بقطع بينها (توثيقه: «a few different shots… you must prompt
@@ -208,7 +209,7 @@ const SINGLE_SUBJECT_TRENDS = new Set(['sorryreveal', 'saveyourself', 'spanishra
    - AGE_SHIFT_TRENDS: منها بعمر آخر — مهمّة الإطار بلا «نفس العمر»، ولا لقطة وجه البالغ مرجعًا للمحرّك (تشدّ الطفل إلى عمره).
    الباقي (منتجات، أماكن، حيوانات، «حرّك الصورة كما هي») الصورة نفسها أوّل إطار كما هي — هذا المقصود منها. */
 const OMNI_FRAME_TRENDS = new Set(['underwater', 'vhsflashback', 'ghibli', 'claymation', 'animeaction', 'babyversion', 'hugyounger', 'timecapsule']);
-const OMNI_MORPH_TRENDS = new Set(['superhero', 'outfitswap', 'agejourney']);
+const OMNI_MORPH_TRENDS = new Set(['superhero', 'outfitswap', 'agejourney', 'ceilingfan']); // v-trends-oct-4: اللبس يتبدّل خلف شفرة المروحة أثناء الفيديو
 const OMNI_REF_TRENDS = new Set(['pixarstory', 'ramadan']);
 /* v-trends-oct-12: «سامحوني.. هذي الحقيقة» — يبدأ بإطار مبنيّ لنسخة أسطوريّة منه وينتهي بصورته نفسها: <FIRST_FRAME> الإطار
    و<LAST_FRAME> صورته (توثيق Omni: «the first image as the starting frame and the second image as the final frame») */
