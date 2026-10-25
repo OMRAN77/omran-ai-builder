@@ -48,7 +48,7 @@ stub('_qualityGate.js', { gateQuality: async (u, q) => q, allowHigh: async () =>
 stub('video-job.js', { rememberVideoJob: async () => true, settleVideoJob: async (id, ok) => { log.settles.push([id, ok]); return null; } });
 stub('our-media.js', { rememberOurMedia: async () => {} });
 stub('video-upscale-create.js', { rememberOutputs: async () => {} });
-stub('runway-keys.js', { resolveTaskId: () => ({ key: 'k', rawId: 'raw' }), RUNWAY_API_BASE: 'https://runway.test' });
+stub('runway-keys.js', { resolveTaskId: () => ({ key: 'k', rawId: 'raw', index: 0 }), canonicalId: (id) => id, RUNWAY_API_BASE: 'https://runway.test', RUNWAY_VERSION: '2024-11-06' }); // v-sec-video-canon: canonicalId يُستعمل للتسوية
 
 function resObj() {
   return { code: 0, body: null, setHeader() {}, status(c) { this.code = c; return this; }, json(v) { this.body = v; return this; }, end(s) { if (typeof s === 'string') { try { this.body = JSON.parse(s); } catch (e) { this.body = s; } } return this; } };

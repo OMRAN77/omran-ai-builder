@@ -22,7 +22,9 @@ export const ALLOWED_TOOLS = [
   'Read', 'Edit', 'MultiEdit', 'Write', 'NotebookEdit', 'Glob', 'Grep', 'LS', 'TodoWrite', 'Task',
   'WebFetch', 'WebSearch',
   'Bash(npm run *)', 'Bash(npm test*)', 'Bash(npm ci*)', 'Bash(npm install*)', 'Bash(npm i *)', 'Bash(npm ls*)', 'Bash(npm view*)',
-  'Bash(npx *)', 'Bash(node *)', 'Bash(python3 *)', 'Bash(pip *)', 'Bash(pip3 *)',
+  // v-sec-bridge-interp: node/npx/python3/pip لم تعد مسموحة مسبقًا — تمرّ الآن على decideTool فتُفحص.
+  // كانت الموافقة المسبقة تتخطّى كلّ قواعد المنع، فـ«node -e» أو «python3 -c» يشغّل git push أو يقرأ
+  // الأسرار بلا أيّ فحص. «node ملف.js» يبقى مسموحًا (لا يطابق قاعدة منع)، والمحظور هو التنفيذ السطريّ.
   'Bash(git status*)', 'Bash(git diff*)', 'Bash(git log*)', 'Bash(git show*)', 'Bash(git add*)',
   'Bash(git commit*)', 'Bash(git checkout*)', 'Bash(git switch*)', 'Bash(git stash*)', 'Bash(git restore*)',
   'Bash(git rev-parse*)', 'Bash(git rev-list*)', 'Bash(git merge*)', 'Bash(git rebase*)', 'Bash(git cherry-pick*)',
@@ -41,6 +43,18 @@ export const DENIED_TOOLS = [];
 
 /** الأبواب المقفلة في الأوامر — ما يُرفض دائمًا ولو طلبه النموذج. */
 export const DENY_RULES = [
+  // v-sec-bridge-interp: التنفيذ السطريّ لمفسّر (node -e/-p، python -c، ruby/perl/php -e، أو قراءة من stdin «-»)
+  // يشغّل أيّ أمر فيتخطّى كلّ ما تحته — فيُرفض. تشغيل ملفّ (node script.js) يبقى مسموحًا.
+  { re: /\b(?:node|nodejs|deno|bun|python|python3|ruby|perl|php)\s+(?:-{1,2}\S+\s+)*-(?:e|p|c|print|eval)\b/i, why: 'تشغيل كود سطريّ بمفسّر ممنوع — استعمل ملفًّا أو سكربت npm.' },
+  { re: /\b(?:node|nodejs|deno|bun|python|python3|ruby|perl|php)\s+-\s*(?:$|[<;|&])/i, why: 'تمرير كود عبر stdin لمفسّر ممنوع.' },
+  { re: /(^|[|&;])\s*(?:cat|echo|printf)\b[^|]*\|\s*(?:node|nodejs|deno|bun|python|python3|ruby|perl|php|sh|bash|zsh)\b/i, why: 'أنبوب إلى مفسّر لتشغيل كود ممنوع.' },
+  // أغلفة الصدفة والتنفيذ غير المباشر: bash -c/sh -c/eval/xargs/env تُعيد تشغيل أمر فتلتفّ على الفحص.
+  { re: /(^|[\s;&|(])(?:bash|sh|zsh|dash)\s+-[a-z]*c\b/i, why: 'صدفة فرعيّة (-c) تلتفّ على الفحص — ممنوعة.' },
+  { re: /(^|[\s;&|(])(?:eval|exec|source)\b|(^|[\s;&|(])\.\s+\//i, why: 'eval/exec/source تلتفّ على الفحص — ممنوعة.' },
+  { re: /(^|[\s;&|(])(?:xargs|timeout|nohup|setsid|nice|ionice|stdbuf|watch)\b/i, why: 'تغليف أمرٍ بأداةٍ أخرى (timeout/xargs…) يلتفّ على الفحص — نفّذ الأمر مباشرةً.' },
+  { re: /(^|[\s;&|(])npx\b/i, why: 'npx يجلب ويشغّل حزمةً من الشبكة — استعمل سكربت npm معرَّفًا.' },
+  // كتابة سير العمل والإعدادات: المالك وحده يلمس .github (الوكيل يلتزم على فرع ويُراجَع).
+  { re: /(^|[\s;&|=(])(?:\.?\/)?\.github\//i, why: 'ملفّات .github لا تُكتب من الجسر — بيد المالك.' },
   { re: /\bgh\s+pr\s+merge\b/, why: 'الدمج بأمر المالك «ادمج» وحده.' },
   { re: /\bgh\s+(auth|secret|variable|ssh-key|gpg-key|config)\b/, why: 'مفاتيح GitHub وإعداداته لا تُمسّ.' },
   { re: /\bgh\s+repo\s+(delete|archive|unarchive|rename|edit|sync|create|fork|deploy-key|set-default)\b/, why: 'المستودع نفسه لا يُمسّ.' },
@@ -60,12 +74,32 @@ export const DENY_RULES = [
 ];
 
 const PUSH_FLAGS_DENIED = /^(-f|--force|--force-with-lease(=.*)?|--force-if-includes|-d|--delete|--mirror|--all|--branches|--prune)$/;
+// خيارات git العامّة التي تأخذ قيمةً في الوسيط التالي (تُتخطّى مع قيمتها قبل الأمر الفرعيّ).
+const GIT_GLOBAL_OPT_VALUE = new Set(['-c', '-C', '--git-dir', '--work-tree', '--namespace', '--exec-path', '--super-prefix']);
+// الوجهة الممنوعة (بعد تجريد + وrefs/heads/ واقتباس): الفرع الرئيسيّ.
+function pushDstIsMain(ref) {
+  const r = String(ref).replace(/^['"]+|['"]+$/g, '').replace(/^\+/, '');
+  const dst = (r.includes(':') ? r.slice(r.lastIndexOf(':') + 1) : r).replace(/^refs\/heads\//, '');
+  return /^(main|master)$/i.test(dst);
+}
 
-/** فحص git push وحده: فرع مسمّى غير الرئيسيّ، بلا قسر ولا حذف — وإلّا رُفض. */
+/* فحص git push وحده: فرع مسمّى غير الرئيسيّ، بلا قسر ولا حذف — وإلّا رُفض.
+   v-sec-gitpush: التحليل السابق كان يتسامح مع «-C مسار» وحده بين git وpush، فـ«git -c k=v push
+   origin HEAD:main» أو refspec بين علامتَي اقتباس كانا يتخطّيانه. الآن: نجرّد الاقتباس من كلّ رمز،
+   نتخطّى كلّ خيارات git العامّة (وقيَمها)، ونحسم إلى main بفحص مستقلّ لكلّ رمز مهما اختلّ ترتيب الخيارات. */
 export function checkGitPush(segment) {
-  const m = /\bgit\s+(?:-C\s+\S+\s+)?push\b(.*)$/.exec(String(segment || ''));
-  if (!m) return '';
-  const args = m[1].replace(/[)`]+$/, '').trim().split(/\s+/).filter(Boolean);
+  const stripQ = (t) => t.replace(/^['"]+|['"]+$/g, '');
+  const toks = String(segment || '').replace(/[)`]+$/, '').split(/\s+/).map(stripQ).filter(Boolean);
+  const gi = toks.indexOf('git');
+  if (gi < 0) return '';
+  let i = gi + 1;
+  while (i < toks.length && toks[i].startsWith('-')) {
+    i += GIT_GLOBAL_OPT_VALUE.has(toks[i]) ? 2 : 1;
+  }
+  if (toks[i] !== 'push') return '';
+  const args = toks.slice(i + 1);
+  // حسم مستقلّ عن ترتيب الخيارات: أيّ رمزٍ وجهتُه main/master = رفض (يمسك القيم ذات المسافات أيضًا).
+  for (const a of args) { if (!a.startsWith('-') && pushDstIsMain(a)) return 'الدفع إلى main ممنوع: ادفع فرعًا وافتح طلب سحب، والمالك يدمج بأمر «ادمج».'; }
   const positional = [];
   for (const a of args) {
     if (PUSH_FLAGS_DENIED.test(a)) return 'لا دفع قسريّ ولا حذف فروع ولا دفع كلّ الفروع.';
@@ -76,9 +110,8 @@ export function checkGitPush(segment) {
   for (const ref of positional.slice(1)) {
     if (ref.startsWith('+')) return 'لا دفع قسريّ.';
     if (ref.startsWith(':') || ref.endsWith(':')) return 'لا حذف فروع عن بُعد.';
-    const dst = (ref.includes(':') ? ref.slice(ref.indexOf(':') + 1) : ref).replace(/^refs\/heads\//, '');
+    const dst = (ref.includes(':') ? ref.slice(ref.lastIndexOf(':') + 1) : ref).replace(/^refs\/heads\//, '');
     if (!dst) return 'لا حذف فروع عن بُعد.';
-    if (/^(main|master)$/i.test(dst)) return 'الدفع إلى main ممنوع: ادفع فرعًا وافتح طلب سحب، والمالك يدمج بأمر «ادمج».';
     if (/^HEAD$/i.test(dst)) return 'اذكر اسم الفرع بدل HEAD.';
     if (/[$`()]/.test(dst)) return 'اذكر اسم الفرع حرفيًّا لا عبر متغيّر.';
   }

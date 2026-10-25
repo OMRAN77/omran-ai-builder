@@ -338,18 +338,18 @@ async function fetchPage(url) {
       signal: ctrl.signal,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranAgent/1.0)' },
     });
-    clearTimeout(t);
-    if (!r.ok) return 'فشل فتح الصفحة: HTTP ' + r.status;
-    const html = await r.text();
-    // Strip scripts/styles/tags → plain text.
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/\s+/g, ' ')
-      .trim();
+    if (!r.ok) { clearTimeout(t); return 'فشل فتح الصفحة: HTTP ' + r.status; }
+    // v-sec-fetchpage: الجذر — fetchPage كان (١) يوقف مؤقّت القطع فور وصول الترويسة، فقراءة الجسم
+    // r.text() بلا سقف حجم ولا مهلة: خادمٌ يبثّ بلا نهاية يعلّق هذه الدالّة (وهي داخل حلقة أدوات
+    // الوكيل) ويملأ الذاكرة. و(٢) ينظّف الوسوم بتعابير تربيعيّة (/<[^>]+>/ و<script[\s\S]*?>) فمدخلٌ
+    // فيه عشرات الكيلوبايتات من «<» يأخذ دقائق تتجاوز مهلة الدالّة. الآن:
+    //   • readCappedText — قراءة من التدفّق حتّى سقف بايت ثمّ قطع، والمؤقّت ساريٍ طوال القراءة (try/finally).
+    //   • htmlToText — إزالة script/style بالبحث لا بالتعبير، ووسم واحد بـ/<[^<>]*>/ الخطّيّ.
+    // الوحدة المشتركة api/_lib/_html-text.js (نفسها في chat.js وlive-deps.js).
+    const { readCappedText, htmlToText } = require('./_html-text.js');
+    let html;
+    try { html = await readCappedText(r); } finally { clearTimeout(t); }
+    const text = htmlToText(html);
     return text ? text.slice(0, 6000) : 'الصفحة فارغة أو محتواها غير قابل للقراءة.';
   } catch (e) {
     return 'فشل فتح الصفحة: ' + e.message;

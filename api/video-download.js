@@ -28,6 +28,23 @@ const { fetchPublicUrl } = require('./_lib/safe-url.js');
 
 const MAX_BYTES = 400 * 1024 * 1024; // أطول فيلم دقائق يبقى دونه بكثير
 const DOWNLOAD_DAILY = 20;
+// v-sec-dl-bytes: ميزانيّة بايت يوميّة لكلّ حساب. العدّ اليوميّ (٢٠) يعدّ الروابط المميَّزة، وتكرار
+// رابطٍ عُدّ من قبل كان مجّانيًّا بلا حدّ — فحلقةٌ على ملفّ ٤٠٠ م.ب تكلّف المالك نقلًا بلا سقف.
+// الآن سقف إجماليّ لما يُبثّ في اليوم (٣ غ.ب افتراضيًّا، يُضبط بالبيئة)، والمالك معفى.
+const DOWNLOAD_BYTES_DAILY = () => Math.max(1, Number(process.env.DOWNLOAD_BYTES_DAILY) || 3 * 1024 * 1024 * 1024);
+function dlBytesKey(username) { return 'dl:bytes:' + encodeURIComponent(String(username || '').toLowerCase()) + ':' + new Date().toISOString().slice(0, 10); }
+async function dlBytesUsed(username) {
+  try { return Number(await require('./_lib/kv.js').kvGetRaw(dlBytesKey(username))) || 0; } catch (e) { return 0; }
+}
+async function dlBytesAdd(username, n) {
+  const amt = Math.max(0, Math.floor(Number(n) || 0));
+  if (!amt) return;
+  try {
+    const kv = require('./_lib/kv.js');
+    const total = Number(await kv.kvIncrBy(dlBytesKey(username), amt));
+    if (total === amt) { try { await kv.kvExpire(dlBytesKey(username), 2 * 86400); } catch (e) { /* مؤرَّخ أصلًا */ } }
+  } catch (e) { /* أفضل جهد — عطب KV لا يوقف البثّ */ }
+}
 const TICKET_TTL_MS = 60 * 60 * 1000; // v-dl-ticket: ساعة — ورقة الجوّال تُغلق بعد دقيقتين، ومنزّل النظام يعيد خلال ثوانٍ
 const EXT_TYPE = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
 const TYPE_EXT = { 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif' };
@@ -132,6 +149,14 @@ module.exports = async (req, res) => {
     res.status(200).json({ ticket: mintTicket(admitted.username, url), ttl: TICKET_TTL_MS / 1000 });
     return;
   }
+  // v-sec-dl-bytes: سقف البايت اليوميّ — يمسك تكرار رابطٍ عُدّ من قبل. المالك معفى.
+  const dlUser = admitted.username;
+  if (dlUser && !require('./_lib/_owner.js').isOwnerName(dlUser)) {
+    if ((await dlBytesUsed(dlUser)) >= DOWNLOAD_BYTES_DAILY()) {
+      res.status(429).json({ error: 'daily_limit_reached' });
+      return;
+    }
+  }
   // v-dl-refund-scope: يُردّ العدّ ما دام لم يخرج طلب إلى المضيف (reached)
   let reached = false;
   const fetchFn = deps.fetchFn || fetch;
@@ -182,6 +207,7 @@ module.exports = async (req, res) => {
       }
     }
     res.end();
+    if (dlUser) { try { await dlBytesAdd(dlUser, sent); } catch (e) { /* أفضل جهد */ } } // v-sec-dl-bytes: خصم المبثوث فعلًا
   } catch (e) {
     if (!res.headersSent) {
       res.status(502).json({ error: String(e && e.message || e).slice(0, 120) });

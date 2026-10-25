@@ -94,7 +94,32 @@ async function settleVideoJob(taskId, ok, o) {
   return { settled: true, refunded: true, username: job.u, cost: job.c };
 }
 
-/** v-video-sweep: يسوّي فشلًا تذاكر المستخدم المفتوحة الأقدم من STALE_MS (لم يُسلَّم فيديوها). يرجع {refunded, points}. لا يرمي. */
+/* v-sec-video-verify: حكم المزوّد على مهمّة Runway قبل أن يردّ التنظيف نقاطها.
+   skip = ليس معرّف Runway حديثًا (veo/minimax/قديم) → السلوك السابق. delivered/failed/pending/unknown
+   من حالة Runway. fetch قابل للحقن للاختبار؛ أيّ تعذّر = unknown (لا ردّ، تبقى التذكرة). */
+async function runwayVerdict(id, o) {
+  const opt = o || {};
+  const str = String(id || '');
+  if (!/^\d+:.+/.test(str)) return 'skip';
+  let rk, apiKey, rawId;
+  try { rk = require('./runway-keys'); ({ key: apiKey, rawId } = rk.resolveTaskId(str)); } catch (e) { return 'unknown'; }
+  if (!apiKey) return 'unknown';
+  const fetchImpl = opt.fetch || (typeof fetch === 'function' ? fetch : null);
+  if (!fetchImpl) return 'unknown';
+  try {
+    const r = await fetchImpl(rk.RUNWAY_API_BASE + '/v1/tasks/' + encodeURIComponent(rawId), {
+      method: 'GET', headers: { 'Authorization': 'Bearer ' + apiKey, 'X-Runway-Version': rk.RUNWAY_VERSION },
+    });
+    if (!r.ok) return 'unknown';
+    const data = await r.json().catch(() => ({}));
+    const st = String((data && data.status) || '').toUpperCase();
+    if (st === 'SUCCEEDED') return 'delivered';
+    if (st === 'FAILED' || st === 'CANCELLED') return 'failed';
+    return 'pending';
+  } catch (e) { return 'unknown'; }
+}
+
+/** v-video-sweep: يسوّي تذاكر المستخدم المفتوحة الأقدم من STALE_MS، بتأكيد المزوّد قبل الردّ. يرجع {refunded, points}. لا يرمي. */
 async function sweepStaleVideoJobs(username, o) {
   const opt = o || {};
   const kv = opt.kv || require('./kv.js');
@@ -108,7 +133,11 @@ async function sweepStaleVideoJobs(username, o) {
   for (const x of list) {
     if (!x || !x.id) continue;
     if (now - Number(x.at || 0) < STALE_MS) { keep.push(x); continue; }
-    const r = await settleVideoJob(x.id, false, opt); // سُلِّم أو سُوّي من قبل = لا تذكرة = لا أثر
+    // v-sec-video-verify: نسأل المزوّد قبل الردّ. المُسلَّم يُسوّى بلا ردّ؛ غير المحسوم/تعذّر الوصول تبقى تذكرته.
+    const verdict = await runwayVerdict(x.id, opt);
+    if (verdict === 'delivered') { await settleVideoJob(x.id, true, opt); continue; }
+    if (verdict === 'pending' || verdict === 'unknown') { keep.push(x); continue; }
+    const r = await settleVideoJob(x.id, false, opt); // 'failed' أو 'skip': سُلِّم أو سُوّي من قبل = لا تذكرة = لا أثر
     if (r && r.refunded) { out.refunded++; out.points += Number(r.cost) || 0; }
   }
   try {

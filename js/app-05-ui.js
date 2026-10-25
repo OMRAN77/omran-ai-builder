@@ -1128,6 +1128,24 @@ function omranPanelReopen(){
   }catch(e){ __swallow(e, 'ui:panel-reopen'); }
 }
 window.omranPanelReopen = omranPanelReopen;
+/* v-sec-sandbox: المعاينة صارت iframe معزولًا (sandbox بلا allow-same-origin)، فأصلها «null»
+   وlocalStorage/sessionStorage يرميان فيه. تطبيقات المستخدم التي تحفظ حالتها كانت تنكسر، فنحقن
+   طبقة تخزين بديلة في الذاكرة أوّلَ <head> (أو <html> أو بعد <!doctype>): تعمل أثناء الجلسة ولا
+   تبقى بعد إعادة التحميل — وهي لا تفعل شيئًا إن كان التخزين الحقيقيّ متاحًا (معاينة غير معزولة). */
+const OMRAN_PREVIEW_SHIM = '<script>(function(){var ok=true;try{window.localStorage.getItem("__p");}catch(e){ok=false;}if(ok)return;var mk=function(){var m={};return Object.create(Object.prototype,{getItem:{value:function(k){k=String(k);return Object.prototype.hasOwnProperty.call(m,k)?m[k]:null;}},setItem:{value:function(k,v){m[String(k)]=String(v);}},removeItem:{value:function(k){delete m[String(k)];}},clear:{value:function(){m={};}},key:{value:function(i){return Object.keys(m)[i]||null;}},length:{get:function(){return Object.keys(m).length;}}});};try{Object.defineProperty(window,"localStorage",{value:mk(),configurable:true});}catch(_){/*noop*/}try{Object.defineProperty(window,"sessionStorage",{value:mk(),configurable:true});}catch(_){/*noop*/}})();<\/script>';
+function omranPreviewInject(code){
+  const s = String(code == null ? '' : code);
+  let m = s.match(/<head[^>]*>/i);
+  if(m){ const i = m.index + m[0].length; return s.slice(0, i) + OMRAN_PREVIEW_SHIM + s.slice(i); }
+  m = s.match(/<html[^>]*>/i);
+  if(m){ const i = m.index + m[0].length; return s.slice(0, i) + OMRAN_PREVIEW_SHIM + s.slice(i); }
+  m = s.match(/<!doctype[^>]*>/i);
+  if(m){ const i = m.index + m[0].length; return s.slice(0, i) + OMRAN_PREVIEW_SHIM + s.slice(i); }
+  return OMRAN_PREVIEW_SHIM + s;
+}
+function omranSetPreview(frame, code){ frame.srcdoc = omranPreviewInject(code); }
+window.omranSetPreview = omranSetPreview;
+
 function renderCodeAndPreview(){
   const cur = getCurrent();
   const pyConsole = $('#pyConsole');
@@ -1209,7 +1227,7 @@ function renderCodeAndPreview(){
     if(previewFrame._lastSrc !== cur.code){
       previewFrame._lastSrc = cur.code;
       previewFrame._imageView = false;
-      previewFrame.srcdoc = cur.code;
+      omranSetPreview(previewFrame, cur.code);
     }
   }
 }

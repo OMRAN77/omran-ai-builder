@@ -184,7 +184,7 @@ test('٢. الشراء: بالدولار (صفحة Stripe) وبالدرهم (Str
   assert.equal(r.code, 200, JSON.stringify(r.body));
   const order = JSON.parse(net.calls[net.calls.length - 1].body).purchase_units[0];
   assert.deepEqual([order.custom_id, order.amount.value, order.amount.currency_code, order.reference_id], ['media_pro', '20.42', 'USD', 'sami']);
-  net.orders[r.body.id] = { id: r.body.id, status: 'COMPLETED', purchase_units: [{ reference_id: 'sami', custom_id: 'media_pro', payments: { captures: [{ id: 'CAP_s', amount: { value: '20.42' }, custom_id: 'media_pro' }] } }] };
+  net.orders[r.body.id] = { id: r.body.id, status: 'COMPLETED', purchase_units: [{ reference_id: 'sami', custom_id: 'media_pro', payments: { captures: [{ status: 'COMPLETED', id: 'CAP_s', amount: { value: '20.42' }, custom_id: 'media_pro' }] } }] };
   r = await pp({ action: 'capture', orderId: r.body.id, token: tok('sami') });
   assert.equal(r.body.credited, true, JSON.stringify(r.body));
   assert.equal(r.body.planGranted, 'media_pro');
@@ -270,7 +270,7 @@ test('٥. img_/vid_ لا تُباع جديدةً (Stripe وApple/Google Pay وPa
   assert.equal(r.code, 200, JSON.stringify(r.body));
   assert.equal(Number(store.get('media:video:omar')), 1200);
   // طلب PayPal لـimg_basic أُنشئ قبل النشر
-  net.orders.PP_old = { id: 'PP_old', status: 'COMPLETED', create_time: '2026-10-01T09:00:00Z', purchase_units: [{ reference_id: 'omar', custom_id: 'img_basic', payments: { captures: [{ id: 'CAP_old', amount: { value: '10.21' }, custom_id: 'img_basic' }] } }] };
+  net.orders.PP_old = { id: 'PP_old', status: 'COMPLETED', create_time: '2026-10-01T09:00:00Z', purchase_units: [{ reference_id: 'omar', custom_id: 'img_basic', payments: { captures: [{ status: 'COMPLETED', id: 'CAP_old', amount: { value: '10.21' }, custom_id: 'img_basic' }] } }] };
   await fresh('omar2');
   net.orders.PP_old.purchase_units[0].reference_id = 'omar2';
   r = await pp({ action: 'capture', orderId: 'PP_old', token: tok('omar2') });
@@ -451,7 +451,7 @@ test('١٢. قسم «صور وفيديو»: ثلاث بطاقات بالسعر �
     assert.match(line, /media_basic: (1021|3750), media_pro: (2042|7500), media_max: (10211|37500)/, t);
     assert.doesNotMatch(line, /img_|vid_/, t + ': img_/vid_ خرجت من مرآة البيع');
   }
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=705'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=706'));
   assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=771'"));
 });
 
@@ -519,7 +519,7 @@ test('١٤. فتح الباقات: جدار الصور والفيديو وتنب
 // ───────────────────────── إصلاح المراجعة المعاكسة ─────────────────────────
 
 test('١٥. PayPal: طلب img_/vid_ أُنشئ بعد الإيقاف خارج create (حزمة PayPal في المتصفّح بالمعرّف العامّ) يُمنح المدموجة بمبلغه — بالالتقاط وبـclaim', async () => {
-  const order = (id, ref, plan, value, extra) => Object.assign({ id, status: 'COMPLETED', purchase_units: [{ reference_id: ref, custom_id: plan, payments: { captures: [{ id: 'CAP_' + id, amount: { value }, custom_id: plan }] } }] }, extra || {});
+  const order = (id, ref, plan, value, extra) => Object.assign({ id, status: 'COMPLETED', purchase_units: [{ reference_id: ref, custom_id: plan, payments: { captures: [{ status: 'COMPLETED', id: 'CAP_' + id, amount: { value }, custom_id: plan }] } }] }, extra || {});
   // الالتقاط من معالجنا: كان يمنح img_max (٢٠٣٠٢ فلس صور) بدل ما يُباع اليوم بالمبلغ نفسه (media_max ١٢٥٠٠)
   await fresh('eve');
   net.orders.PP_hack = order('PP_hack', 'eve', 'img_max', '102.11', { create_time: new Date().toISOString() });
@@ -598,7 +598,7 @@ test('١٧. وسم الصورة لمشترك «صور وفيديو» يسمّي 
 test('١٨. استرداد PayPal لطلب img_ بعد الإيقاف ضاع سجلّ منحه: المسار البديل يبني السجلّ بالمدموجة الممنوحة فيسحبها (كان custom_id الخامّ img_max فلا يُسحب شيء)', async () => {
   const pr = require(rp('api/_lib/pay-refund.js'));
   await fresh('eve9');
-  net.orders.PP_lost = { id: 'PP_lost', status: 'COMPLETED', create_time: new Date().toISOString(), purchase_units: [{ reference_id: 'eve9', custom_id: 'img_max', payments: { captures: [{ id: 'CAP_lost', amount: { value: '102.11' }, custom_id: 'img_max' }] } }] };
+  net.orders.PP_lost = { id: 'PP_lost', status: 'COMPLETED', create_time: new Date().toISOString(), purchase_units: [{ reference_id: 'eve9', custom_id: 'img_max', payments: { captures: [{ status: 'COMPLETED', id: 'CAP_lost', amount: { value: '102.11' }, custom_id: 'img_max' }] } }] };
   const r = await pp({ action: 'capture', orderId: 'PP_lost', token: tok('eve9') });
   assert.equal(r.body.planGranted, 'media_max');
   assert.equal(mixLeft('eve9'), 12500);
@@ -611,7 +611,7 @@ test('١٨. استرداد PayPal لطلب img_ بعد الإيقاف ضاع س�
 });
 
 test('١٩. v-paypal-currency: طلب بعملة غير الدولار وبالرقم نفسه لا يُمنح أيّ باقة (كان ١٠٢٫١١ بيزو يمنح الكبرى)، والدولار كما كان', async () => {
-  const order = (id, ref, plan, value, cur) => ({ id, status: 'COMPLETED', create_time: new Date().toISOString(), purchase_units: [{ reference_id: ref, custom_id: plan, payments: { captures: [{ id: 'CAP_' + id, amount: { currency_code: cur, value }, custom_id: plan }] } }] });
+  const order = (id, ref, plan, value, cur) => ({ id, status: 'COMPLETED', create_time: new Date().toISOString(), purchase_units: [{ reference_id: ref, custom_id: plan, payments: { captures: [{ status: 'COMPLETED', id: 'CAP_' + id, amount: { currency_code: cur, value }, custom_id: plan }] } }] });
   for (const [id, plan, value, cur] of [['PP_php', 'media_max', '102.11', 'PHP'], ['PP_php2', undefined, '100.00', 'php'], ['PP_inr', 'media_basic', '10.21', 'INR']]) {
     const u = 'cur_' + id.toLowerCase();
     await fresh(u);

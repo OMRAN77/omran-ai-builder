@@ -38,9 +38,18 @@ function resolveTaskId(id) {
   if (m) {
     const idx = parseInt(m[1], 10);
     const key = keys[idx] || keys[0] || null;
-    return { key, rawId: m[2] };
+    // v-sec-video-canon: نعيد الفهرس كما حُسم (keys[idx] موجود → idx، وإلّا 0) فيُبنى المعرّف
+    // القانونيّ الوحيد (canonicalId) ويُسوّى به دائمًا — لا تترك تهجئةٌ بديلة تذكرةً مفتوحةً.
+    const index = (keys[idx] != null) ? idx : 0;
+    return { key, rawId: m[2], index };
   }
-  return { key: keys[0] || null, rawId: str };
+  return { key: keys[0] || null, rawId: str, index: 0 };
+}
+
+// المعرّف القانونيّ «الفهرس:المعرّف‑الخام» — نفس ما يسكّه encodeTaskId عند الإنشاء.
+function canonicalId(id) {
+  const { rawId, index } = resolveTaskId(id);
+  return index + ':' + rawId;
 }
 
 // --- Stuck-task auto-cleanup -------------------------------------------
@@ -124,4 +133,4 @@ async function clearStuckTask(index, apiKey) {
   }
 }
 
-module.exports = { getKeys, pickKey, encodeTaskId, resolveTaskId, getLastTask, saveLastTask, clearStuckTask, RUNWAY_API_BASE, STUCK_MS };
+module.exports = { getKeys, pickKey, encodeTaskId, resolveTaskId, canonicalId, getLastTask, saveLastTask, clearStuckTask, RUNWAY_API_BASE, RUNWAY_VERSION, STUCK_MS };

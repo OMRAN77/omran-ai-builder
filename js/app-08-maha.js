@@ -1055,6 +1055,15 @@ function mahaShowImage(base64, mimeType){
 // AI-generated picture - used when the user asks about a real, existing
 // thing (a specific car/plane model, a place, a person...) so they see the
 // true real image, not an artist's imagined approximation.
+/* v-sec-imgurl: رابط الصورة يأتي من بحث الويب — نقبل http(s) فقط عبر new URL ونهرّب المحارف الخطيرة
+   قبل دمجه في سمة HTML، فلا ينكسر الاقتباس ويحقن وسمًا داخل المعاينة. غير الصالح يُتجاهل. */
+function omranSafeImgUrl(u){
+  try {
+    const p = new URL(String(u || ''), window.location.href);
+    if(p.protocol !== 'https:' && p.protocol !== 'http:') return '';
+    return p.href.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  } catch(e){ return ''; }
+}
 function mahaShowRealPhotoUrl(url){
   mahaLastImageBase64 = null;
   mahaLastImageMime = null;
@@ -1069,7 +1078,9 @@ function mahaShowRealPhotoUrl(url){
       state.projects.push(cur);
       state.currentId = id;
     }
-    cur.code = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0b12;}img{max-width:100%;max-height:100vh;display:block;}</style></head><body><img src="' + url + '" alt=""></body></html>';
+    const safeUrl = omranSafeImgUrl(url);
+    if(!safeUrl) return;
+    cur.code = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0b12;}img{max-width:100%;max-height:100vh;display:block;}</style></head><body><img src="' + safeUrl + '" alt=""></body></html>';
     cur.codeType = 'html';
     renderAll();
     switchWorkTab('preview');

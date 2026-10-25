@@ -65,9 +65,16 @@ async function kvDel(key) {
   }
 }
 
+/* v-sec-scan-escape: محارف أنماط Redis (* ? [ ] \ ^) في البادئة كانت تُفسَّر في SCAN MATCH، فحذف
+   حساب اسمه «***» يصير `planvid:***:*` فيطابق مفاتيح كلّ المستخدمين. نهرّب البادئة (لا الـ* المُذيَّل
+   المقصود) فتُطابَق حرفيًّا. البادئات العاديّة بلا هذه المحارف لا تتغيّر. */
+function escapeGlob(s) {
+  return String(s == null ? '' : s).replace(/[\\*?[\]^]/g, (c) => '\\' + c);
+}
+
 // SCAN-based prefix listing: returns every key matching `${prefix}*`.
 async function kvList(prefix) {
-  const match = prefix + '*';
+  const match = escapeGlob(prefix) + '*';
   const keys = [];
   let cursor = '0';
   do {
