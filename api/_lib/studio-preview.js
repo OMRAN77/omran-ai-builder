@@ -134,9 +134,12 @@ module.exports = async (req, res) => {
     sendImage(res, b64);
   } catch (e) {
     console.error('[studio-preview] ' + feature + '/' + value + ': ' + (e && e.message));
-    /* v-style-match: البطاقة المصحَّحة إن تعذّر توليدها تعرض صورتها القديمة مؤقّتًا — بلا تخزين في المتصفّح، فتأتي الجديدة لاحقًا */
+    /* v-style-match: البطاقة المصحَّحة إن تعذّر توليدها (نفاد رصيد المولّد مثلًا) تعرض أحدث نسخة سابقة لها — المراجعة الأقرب
+       قبلها ثمّ الأصل — مؤقّتًا بلا تخزين في المتصفّح، فتأتي الجديدة لاحقًا */
     if (rev) {
-      try { const old = await kvGetRaw(baseKey); if (old) { sendImage(res, old, true); return; } } catch (e2) { /* بلا قديمة: الخطأ كما هو */ }
+      for (let i = rev - 1; i >= 0; i--) {
+        try { const old = await kvGetRaw(i ? baseKey + ':r' + i : baseKey); if (old) { sendImage(res, old, true); return; } } catch (e2) { /* نجرّب الأقدم */ }
+      }
     }
     res.setHeader('Retry-After', '60');
     res.status(502).json({ error: 'preview failed' });

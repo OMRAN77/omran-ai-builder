@@ -174,6 +174,11 @@ test('٦. الإنتاج يحذف المفتاح القديم مرّة؛ وفش�
     assert.equal(Buffer.from(fail.body).toString(), 'old');
     assert.equal(fail.headers['Cache-Control'], 'no-store', 'القديمة لا تُخزَّن سنة تحت الرابط الجديد');
     assert.ok(!raw.has('studio:preview:v2:' + fk + ':r2'));
+    // أحدث نسخة سابقة قبل الأصل: r1 موجودة ⇒ تُعرض هي لا الأصل
+    raw.set('studio:preview:v2:' + fk + ':r1', Buffer.from('r1').toString('base64'));
+    const fail2 = await call({ feature: f, value: v, r: '2' });
+    assert.equal(Buffer.from(fail2.body).toString(), 'r1', 'الفشل يعرض أحدث مراجعة سابقة');
+    assert.equal(fail2.headers['Cache-Control'], 'no-store');
     nanoFails = false;
     process.env.VERCEL_ENV = 'production';
     const ok = await call({ feature: f, value: v, r: '2' });
