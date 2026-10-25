@@ -666,6 +666,150 @@ const TRENDS = {
      "frame": "photorealistic still of a person smiling before a decorated birthday cake with lit candles, balloons and warm confetti drifting, cheerful party light",
      "gender": "w"
    }
+ },
+ "tears": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Close-up emotional portrait starting exactly from the reference photo of the person: at first a calm, soft smile, then their eyes slowly fill and glisten, the eyelids redden, and a few tears roll gently down their cheeks as the expression turns quietly sad; tiny natural movements of breathing and blinking, the camera almost still with a very slow push-in, the face, hair, makeup, clothing and background exactly as in the photo, soft emotional piano music, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic close-up portrait of a young woman with a single tear rolling down her cheek, soft window light, quiet emotional mood",
+     "gender": "w"
+   }
+ },
+ "saveyourself": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Cinematic rescue on a sea cliff at sunset: the person from the reference image hangs from the crumbling edge of a high rocky cliff above crashing waves, fingers slipping; a second figure who is the very same person, standing strong and calm on the edge in different, darker clothes, kneels, grabs their wrist and pulls them up to safety; both share the same face; wind, dust and sea spray, dramatic orchestral music, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic cinematic still of a man hanging from a rocky cliff edge above the sea at sunset while a strong hand reaches down and grabs his wrist",
+     "gender": "m"
+   }
+ },
+ "flyingcar": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Starting exactly from the reference photo of the car: blue jet flames ignite under its bumpers with a deep roar, the car lifts off the ground, rises above the road and the traffic around it, and flies forward low over the highway as the camera follows from behind and to the side; the car's exact shape, colour and details stay unchanged, no readable licence plate, dust and heat shimmer, cinematic action music, photorealistic, clearly a fun fantasy effect.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a white sports car flying above a traffic jam on a desert highway with blue jet flames under it, golden hour",
+     "gender": "m"
+   }
+ },
+ "jetflyover": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Selfie-style view from inside a parked car with an open panoramic sunroof: the person from the reference image sits in the driver's seat and looks up through the sunroof as a fighter jet roars low directly overhead against a clear blue sky, trailing long coloured smoke; the car shakes gently, the camera tilts up to follow the jet, thunderous engine rumble, proud and thrilling mood, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic selfie from inside a car with an open panoramic sunroof as a fighter jet flies low overhead trailing coloured smoke against a blue sky",
+     "gender": "m"
+   }
+ },
+ "lostfilm": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Grainy, warm footage from a lost 1980s fantasy-adventure film shot on 35mm with practical effects: the person from the reference image, in a flowing period costume, explores a candle-lit Arabian Nights palace hall with tall carved arches, while a small puppet-like magical creature flutters around them and sparkles of light drift through the dust; soft film grain, slight gate weave, faded colours, mysterious synth-and-orchestra score.",
+   "scenes": null,
+   "preview": {
+     "frame": "grainy 1980s fantasy film still of a woman in a flowing period costume in a candle-lit Arabian palace hall with a small puppet-like magical creature, film grain, faded colours",
+     "gender": "w"
+   }
+ },
+ "zombielove": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "A short post-apocalyptic love story in an abandoned, dusty city street at dusk: the person from the reference image walks toward someone they love — the second person in the reference photos, if one is given — who has turned into a zombie: pale grey-tinted skin, dark circles and torn clothes, but their own face still clearly recognizable, with no blood or gore. They hesitate with tears in their eyes, then embrace them tenderly, and as they hug a flicker of recognition softens the zombie's eyes and they gently hug back; emotional piano music, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic cinematic still of a woman embracing a pale zombie-like man in torn clothes on an abandoned dusty city street at dusk, emotional, no blood",
+     "gender": "w"
+   }
+ },
+ "standstill": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image stands perfectly still at the front of a vast dark hall, staring calmly into the lens, while hundreds of adult dancers in identical dark uniforms behind them move in sharp robotic sync under cold white spotlights; the camera slowly pulls back to reveal the scale of the crowd; deep electronic beat, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a young man standing still at the front of a dark hall while a huge crowd of dancers in identical dark uniforms dance in sync behind him under white spotlights",
+     "gender": "m"
+   }
+ },
+ "sorryreveal": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Epic glow-up reveal: the clip opens on a legendary, heroic version of the person from the reference image — a desert knight in ornate golden armour and a flowing cape on a cliff at golden hour, wind in their hair, an epic orchestral swell — then in the final second it cuts to the plain, ordinary reference photo itself, as a funny self-mocking reveal; photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic epic still of a heroic desert knight in ornate golden armour with a flowing cape standing on a cliff at golden hour",
+     "gender": "m"
+   }
+ },
+ "streetfreestyle": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Vertical night-time street clip outside a red-lit venue: the person from the reference image freestyles with confident swagger and a signature shoulder bounce to a punchy original dembow-style beat blasting from a portable speaker a friend holds up beside them, while a small crowd around them films on their phones and cheers; handheld phone-camera feel, red and pink neon glow, wordless vocal ad-libs only, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic night street still of a young man dancing with a shoulder bounce outside a red-lit venue while a friend holds up a portable speaker and people film on their phones",
+     "gender": "m"
+   }
+ },
+ "orangebooth": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person (or people) from the reference image stand in a bare, bright-orange recording booth under a single hanging microphone, stepping up to it (taking turns if there are several of them) and bobbing to an original hip-hop beat with short wordless ad-libs and playful reactions; locked-off, centred camera framed from the knees up, even studio light, fun and cool mood, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of two young men standing in a bare bright orange recording booth under a single hanging microphone, framed from the knees up, centred",
+     "gender": "m"
+   }
+ },
+ "petclap": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Starting exactly from the reference photo of the pet: it suddenly stands up on its hind legs, gives a big uncanny human-like grin, and claps a pair of small human hands together in time with a cheerful beat, then freezes and blinks innocently; same fur, colours and markings as in the photo, natural home setting, funny and charming, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a black cat standing on its hind legs clapping small human hands with a big grin in a cosy living room",
+     "gender": "w"
+   }
+ },
+ "gamechar": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image reimagined as the hero of an open-world action video game, in the painted illustration art style of a game loading screen: they stand confidently in a sun-bleached coastal city street with palm trees and sports cars, the camera sweeps around them in a slow cinematic arc as the painted scene gains parallax depth, ending on a heroic character pose; no game name, no logos, no text, energetic synth music.",
+   "scenes": null,
+   "preview": {
+     "frame": "painted illustration in the style of a video game loading screen of a confident young man standing in a sunny coastal city street with palm trees and sports cars",
+     "gender": "m"
+   }
  }
 };
 /* v-trend-extra: الحدّ ٢٤٠ ← ٤٠٠ — المالك يكتب أكثر من جملة («دمج الكلمات») */

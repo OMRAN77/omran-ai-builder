@@ -94,7 +94,8 @@
       s.appendChild(im); s.appendChild(tag(i)); s.appendChild(x);
       strip.appendChild(s);
     });
-    if(photos.length >= MAX_PEOPLE) return;
+    var cap = t.maxPeople || MAX_PEOPLE; /* v-trends-oct-12: ترند بصورة واحدة («سامحوني»، «من ينقذك؟») */
+    if(photos.length >= cap) return;
     var add = slot();
     add.style.cssText += 'border:1px dashed rgba(255,255,255,.28);background:rgba(255,255,255,.03);cursor:pointer;display:flex;align-items:center;justify-content:center;';
     /* صورة شخصيّة (ظلّ رأس وكتفين) + ＋ صغيرة — يُفهم من المربّع أنّه مكان إنسان لا ملفّ */
@@ -106,9 +107,9 @@
     var plus = document.createElement('div'); plus.textContent = '＋'; plus.style.cssText = 'font-size:15px;line-height:1;color:var(--omGold,#d4af37);margin-top:-2px;';
     ghost.appendChild(plus);
     add.appendChild(ghost); add.appendChild(tag(photos.length));
-    var fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = true; fi.style.display = 'none';
+    var fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = cap > 1; fi.style.display = 'none';
     fi.onchange = function(){
-      var files = Array.prototype.slice.call(fi.files || []).slice(0, MAX_PEOPLE - photos.length);
+      var files = Array.prototype.slice.call(fi.files || []).slice(0, cap - photos.length);
       var left = files.length; if(!left) return;
       files.forEach(function(f){
         shrink(f, function(dataUrl){
@@ -277,7 +278,7 @@
     head.appendChild(im); head.appendChild(ht); panel.appendChild(head);
     if(t.photo !== 'none'){
       var plab = document.createElement('div'); plab.style.cssText = 'font-size:12px;color:#9a9a9e;margin:2px 0 7px;line-height:1.6;';
-      plab.textContent = ui('people') + (t.photo === 'opt' ? '' : ' *');
+      plab.textContent = (t.maxPeople === 1 ? ui('photo') : ui('people')) + (t.photo === 'opt' ? '' : ' *');
       var strip = document.createElement('div'); strip.id = 'vtPeople'; strip.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
       panel.appendChild(plab); panel.appendChild(strip);
       renderPeople(strip, t);

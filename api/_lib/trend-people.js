@@ -161,9 +161,15 @@ const FRAME_LOCK = ' The attached first frame ALREADY shows every person exactly
    والأماكن والسيّارات والحيوانات والطعام؛ و«حرّك الصورة كما هي» (صورة قديمة، عائلة، بارالاكس، دوران، درون، مصغّر)؛
    وتغيّر العمر أو المظهر داخل الفيديو (طفولة، شيخوخة، نسخة أصغر أو مستقبليّة، تبديل اللبس، البطل الخارق) — قفل الإطار
    يمنع التحوّل فيكسرها؛ وبيكسار (شخصيّة طفل «مستوحاة» وتصميم واحد عبر ٣ مشاهد). */
-const SOLO_FRAME_TRENDS = new Set(['heritagesing', 'tencountries', 'dance', 'celebselfie', 'eidgreeting', 'movieposter', 'agentpitch', 'testimonial', 'graduation', 'wedding', 'nationalday', 'actionhero', 'neonnight', 'actionfigure', 'catwalk', 'legofy', 'podcastclip', 'dayinlife', 'birthdaybash']);
+const SOLO_FRAME_TRENDS = new Set(['heritagesing', 'tencountries', 'dance', 'celebselfie', 'eidgreeting', 'movieposter', 'agentpitch', 'testimonial', 'graduation', 'wedding', 'nationalday', 'actionhero', 'neonnight', 'actionfigure', 'catwalk', 'legofy', 'podcastclip', 'dayinlife', 'birthdaybash',
+  /* v-trends-oct-12 (المالك ٢٥ أكتوبر «ضيف كلهم»): شخص في مشهد جديد بعمره ومظهره */
+  'saveyourself', 'jetflyover', 'lostfilm', 'zombielove', 'standstill', 'streetfreestyle', 'orangebooth', 'gamechar']);
 /* منها بأسلوب فنّيّ صريح في قالبها (لعبة، ليغو) */
-const SOLO_FRAME_ART_TRENDS = new Set(['actionfigure', 'legofy']);
+const SOLO_FRAME_ART_TRENDS = new Set(['actionfigure', 'legofy', 'gamechar']);
+/* منها لعبة صغيرة في عبوتها (دمية، ليغو): إطار 2K بلا سطر «الوجه سدس الارتفاع» (يخرج العبوة من الإطار) — اللعبة المرسومة وجهها كبير */
+const SOLO_FRAME_TOY_TRENDS = new Set(['actionfigure', 'legofy']);
+/* v-trends-oct-12: ترند شخص واحد بطبيعته («سامحوني» ينتهي بصورته، و«من ينقذك؟» نسختان منه) — صورة واحدة، والصور الزائدة تُهمل */
+const SINGLE_SUBJECT_TRENDS = new Set(['sorryreveal', 'saveyourself']);
 
 /* ── v-trend-omni-face (المالك ٢٤ أكتوبر بعد أوّل ترند على Omni: «يغيّر شكل الشخصيّة الملامح، والصورة اللي أحطها موجودة في أوّل الفيديو»).
    Omni يجعل <FIRST_FRAME> أوّل إطار حرفيًّا، ويصنع افتراضيًّا عدّة لقطات بقطع بينها (توثيقه: «a few different shots… you must prompt
@@ -177,14 +183,17 @@ const SOLO_FRAME_ART_TRENDS = new Set(['actionfigure', 'legofy']);
 const OMNI_FRAME_TRENDS = new Set(['underwater', 'vhsflashback', 'ghibli', 'claymation', 'animeaction', 'babyversion', 'hugyounger', 'timecapsule']);
 const OMNI_MORPH_TRENDS = new Set(['superhero', 'outfitswap', 'agejourney']);
 const OMNI_REF_TRENDS = new Set(['pixarstory', 'ramadan']);
+/* v-trends-oct-12: «سامحوني.. هذي الحقيقة» — يبدأ بإطار مبنيّ لنسخة أسطوريّة منه وينتهي بصورته نفسها: <FIRST_FRAME> الإطار
+   و<LAST_FRAME> صورته (توثيق Omni: «the first image as the starting frame and the second image as the final frame») */
+const OMNI_REVEAL_TRENDS = new Set(['sorryreveal']);
 const AGE_SHIFT_TRENDS = new Set(['babyversion', 'hugyounger', 'timecapsule', 'agejourney']);
 /* قوالب مونتاج أو عدّة لقطات بنصّها (عشر دول، يوم في الحياة، إعلان المنتج، الاسكتش) — لا يُطلب لها «بلا قطع» */
-const MULTI_SHOT_TRENDS = new Set(['tencountries', 'dayinlife', 'productad', 'pixarsketch']);
+const MULTI_SHOT_TRENDS = new Set(['tencountries', 'dayinlife', 'productad', 'pixarsketch', 'sorryreveal']);
 /** ترند فيه شخص يُنقل إلى مشهد (لا «حرّك الصورة») — صورته الخام لا تكون أوّل إطار على Omni. وترند بلا خانة صورة
  *  وصلته صورة (أداة المحادثة ترفق صورة المستخدم بأيّ ترند) = مرجع كذلك: قالبه لا يحرّك صورة. */
 function omniPersonTrend(id) {
   const k = String(id || '');
-  if (SOLO_FRAME_TRENDS.has(k) || OMNI_FRAME_TRENDS.has(k) || OMNI_MORPH_TRENDS.has(k) || OMNI_REF_TRENDS.has(k)) return true;
+  if (SOLO_FRAME_TRENDS.has(k) || OMNI_FRAME_TRENDS.has(k) || OMNI_MORPH_TRENDS.has(k) || OMNI_REF_TRENDS.has(k) || OMNI_REVEAL_TRENDS.has(k)) return true;
   const t = require('./video-trends.js').TRENDS[k];
   return !!(t && t.photo === 'none');
 }
@@ -271,6 +280,6 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
 
 module.exports = {
   MAX_PEOPLE, aspectOf, callImage /* v-actor-lipsync: بورتريه الممثّل */, frameTask, groupFirstFrame, ART_STYLE_RE, SOLO_CLOSEUP_LABEL, soloFrameTask, soloFirstFrame,
-  ANIME_FRAME_STYLE, STYLE_ANIME_VIDEO, FRAME_LOCK, SOLO_FRAME_TRENDS, SOLO_FRAME_ART_TRENDS, trendScene, firstFrameOn, FRAME_CACHE,
-  OMNI_FRAME_TRENDS, OMNI_MORPH_TRENDS, OMNI_REF_TRENDS, AGE_SHIFT_TRENDS, MULTI_SHOT_TRENDS, omniPersonTrend, FRAME_FACE_DETAIL,
+  ANIME_FRAME_STYLE, STYLE_ANIME_VIDEO, FRAME_LOCK, SOLO_FRAME_TRENDS, SOLO_FRAME_ART_TRENDS, SOLO_FRAME_TOY_TRENDS, SINGLE_SUBJECT_TRENDS, trendScene, firstFrameOn, FRAME_CACHE,
+  OMNI_FRAME_TRENDS, OMNI_MORPH_TRENDS, OMNI_REF_TRENDS, OMNI_REVEAL_TRENDS, AGE_SHIFT_TRENDS, MULTI_SHOT_TRENDS, omniPersonTrend, FRAME_FACE_DETAIL,
 };

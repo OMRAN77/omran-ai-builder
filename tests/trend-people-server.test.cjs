@@ -97,7 +97,7 @@ test('٣. أوّل إطار: صورتان → نداء دمج واحد بكلّ 
 
 test('٤. veo-create: شخصيّتان تبنيان أوّل إطار قبل المحرّك، وفشل الدمج يردّ الخصم ويفكّ القفل', async () => {
   const src = read('api/_lib/veo-create.js');
-  assert.match(src, /const trendPeople = Array\.isArray\(body\.imagesBase64\)/);
+  assert.match(src, /const trendPeople = \(?(?:!singleSubject && )?Array\.isArray\(body\.imagesBase64\)/); // v-trends-oct-12: ترند الشخص الواحد يُهمل الصور الزائدة
   assert.match(src, /if \(body\.trend && trendPeople\.length > 1\) \{/);
   /* v-two-people: مشهد القالب وحده إلى إطار المجموعة — لا فقرة «WHO THEY ARE» المفردة */
   assert.match(src, /groupFirstFrame\(apiKey, trendPeople, tp\.trendScene\(promptText\), ratio[,)]/); // v-trend-omni: ووسيط مهلة اختياريّ لـOmni
