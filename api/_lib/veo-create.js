@@ -288,8 +288,7 @@ module.exports = async (req, res) => {
         { style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000,
           start: morph, ageShift: omniTrend && tp.AGE_SHIFT_TRENDS.has(trendId),
           /* v-trend-frame-face: Omni يحفظ وجه الإطار طوال المقطع — فالإطار 2K بوجه كبير؛ الدمية والليغو 2K وحده (لعبة صغيرة في عبوتها) */
-          detail: omniTrend && !tp.SOLO_FRAME_ART_TRENDS.has(trendId), hiRes: omniTrend,
-          refine: omniTrend && tp.faceRefineOn() /* v-trend-face-refine: تصحيح الوجه بعد البناء (بقرار المالك وكلفته) */ });
+          detail: omniTrend && !tp.SOLO_FRAME_ART_TRENDS.has(trendId), hiRes: omniTrend });
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
         /* v-two-people: الإطار كشف شخصين في الصورة الواحدة — الأمر بصيغة الجمع (كلّ واحد بوجهه) قبل القفل */
@@ -304,7 +303,7 @@ module.exports = async (req, res) => {
         }
         if (!morph) promptText += FRAME_LOCK; /* v-trend-omni-face: المتحوّل أثناء الفيديو — إطاره قبل التحوّل، والقفل يمنعه */
         framed = true; frameRef = solo.ref || null; soloPeople = solo.people || 0;
-        console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (solo.refined ? ' (face refined)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : ''));
+        console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : ''));
       } else console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }
 
