@@ -724,7 +724,7 @@ I18N['bn'] = {
     fashionAiStyleCasual: "👕 নৈমিত্তিক",
     fashionAiStyleAbaya: "🖤 ​​আবায়া",
     fashionAiStyleWedding: "💍 বিয়ের পোশাক",
-    fashionAiStyleTraditional: "🌴 ঐতিহ্যবাহী উপসাগর",
+    fashionAiStyleTraditional: "🌴 উপসাগরীয় ঐতিহ্যবাহী পোশাক",
     fashionAiGenerateBtn: "✨ ডিজাইন তৈরি করুন",
     fashionAiDownloadBtn: "⬇️ ছবি ডাউনলোড করুন",
     fashionAiNeedImage: "⚠️ অনুগ্রহ করে প্রথমে একটি ছবি আপলোড করুন।",

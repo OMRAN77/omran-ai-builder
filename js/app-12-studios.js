@@ -1713,7 +1713,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
        فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
        التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
-    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=4'; /* الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) — v=4: v-fx-dedupe أعاد توليد ستّ صور بالمسار نفسه */
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
@@ -1736,7 +1736,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const opt = fashionOptFor(v);
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
-          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=3',
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=4',
           img2: g === 'women' ? 'assets/fashion/looks/' + v + '.webp' : '',
         };
       }).filter(Boolean),
@@ -1787,15 +1787,17 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-fx-simple (تبسيط الأزياء): الخادم يبني التصميم من النمط («SPECIFIC DESIGN» من ≥١٠٠ للنمط) ثمّ يقول
      «مخصّص لـ{المناسبة}». فلمّا طُوي منتقي النمط تحت «خصّصها» صار افتراضه («سهرة» أوّل القائمة) يُطبَّق بصمت:
      مناسبة «كاجوال» + نمط «سهرة» = فستان سهرة لطلعة كاجوال. الآن المناسبة الظاهرة تختار النمط المطابق لها
-     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب). */
+     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب).
+     v-fx-occ-look (المالك ٢٥ أكتوبر: «الصور لي ماتطابق الشي الي اخترته»): للرجال والأطفال النمط هو ما في صورة بطاقة المناسبة
+     (KIND_LOOK في design-gen.js) — كان تخرّج الرجل يعرض ثلاث قطع ويولّد رسميًّا، وسفر الطفل دنيم ← كاجوال، وتخرّجه بريبي ← رسمي. */
   const FX_OCC_STYLE = {
     wedding:    { women:'wedding', men:'wedding',     kids:'wedding' },
     work:       { women:'office',  men:'office',      kids:'school' },
     casual:     { women:'casual',  men:'casual',      kids:'casual' },
     sport:      { women:'sporty',  men:'sporty',      kids:'sporty' },
-    travel:     { women:'casual',  men:'smartcasual', kids:'casual' },
+    travel:     { women:'casual',  men:'smartcasual', kids:'denim' },
     formal:     { women:'formal',  men:'formal',      kids:'formal' },
-    graduation: { women:'formal',  men:'formal',      kids:'formal' },
+    graduation: { women:'formal',  men:'threepiece',  kids:'preppy' },
     religious:  { women:'abaya',   men:'traditional', kids:'eidkids' },
   };
   function fxStyleForOccasion(){

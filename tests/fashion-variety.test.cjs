@@ -264,9 +264,9 @@ test('٩. بطاقات الإضافات: شبكة حقيقيّة، والاسم 
   assert.doesNotMatch(fn, /className='chipGrid/);
   assert.match(fn, /__omranWhenSeen\(pic,function\(\)\{ im\.src=url; \}\)/, 'الصورة المزاحة خارج القصّ لا تتقاطع — المراقَب هو المربّع');
   assert.match(dg, /row\.insertAdjacentElement\('afterend',hint\('fxAccHint'\)\);/);
-  // focusCss الحقيقيّة: كلّ إضافة لها نقطة تركيز، والصورة (٢:٣) تغطّي المربّع كاملًا بلا فراغ
+  // focusCss الحقيقيّة: كلّ إضافة لها نقطة تركيز، والصورة بنسبتها (٣:٤ منذ v-fx-acc-ratio) تغطّي المربّع كاملًا بلا فراغ
   const ctx = {};
-  vm.runInNewContext(dg.match(/var EXT=\[[^\n]*\];/)[0] + '\n' + dg.match(/  var EXT_FOCUS=\{[^\n]*\};/)[0] + '\n' +
+  vm.runInNewContext(dg.match(/var EXT=\[[^\n]*\];/)[0] + '\n' + dg.match(/var R34=[^,]*/)[0] + ';\n' + dg.match(/  var EXT_FOCUS=\{[^\n]*\};/)[0] + '\n' +
     dg.slice(dg.indexOf('  function focusCss(f){'), dg.indexOf('  function paintAcc(')) + '\nthis.EXT=EXT; this.F=EXT_FOCUS; this.css=focusCss;', ctx);
   for (const r of ctx.EXT) {
     const f = ctx.F[r[0]];
@@ -276,7 +276,7 @@ test('٩. بطاقات الإضافات: شبكة حقيقيّة، والاسم 
     const w = num('width'), l = num('left'), tp = num('top');
     assert.ok(w >= 100, r[0] + ': تكبير ≥١');
     assert.ok(l <= 0 && l + w >= 100 - 0.1, r[0] + ': فراغ أفقيّ');
-    assert.ok(tp <= 0 && tp + 1.5 * w >= 100 - 0.1, r[0] + ': فراغ عموديّ');
+    assert.ok(tp <= 0 && tp + (f[3] || 1.5) * w >= 100 - 0.1, r[0] + ': فراغ عموديّ');
   }
 });
 
@@ -295,7 +295,7 @@ test('١٠. النصوص الجديدة بالـ١٤ لغة، ووسوم الك�
   // لا اسم مزوّد أو نموذج في نصّ يراه المستخدم
   const lines = [i18n03, ...langs.map((lg) => R('i18n/' + lg + '.js'))].join('\n').split('\n').filter((l) => /fxDesignNo/.test(l));
   for (const l of lines) assert.doesNotMatch(l, /gemini|gpt|openai|claude|جيمناي|كلود/i);
-  assert.match(R('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=772'/);
+  assert.match(R('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=773'/);
   assert.ok(Number((/\/js\/design-gen\.js\?v=(\d+)/.exec(R('index.html')) || [])[1]) >= 613); // v-fx-simple (مراسي data-ext/data-col) — يُرفع بعدها
   // الحزمة مبنيّة من الأجزاء (العدّاد ورقم التصميم فيها)
   assert.ok(R('js/app.bundle.js').includes("const FX_VARIANT_KEY = 'aiapp_fashion_variant';"));

@@ -741,7 +741,7 @@ I18N['fr'] = {
     fashionAiStyleCasual: "👕 Décontracté",
     fashionAiStyleAbaya: "🖤 Abaya",
     fashionAiStyleWedding: "💍 Robe de mariée",
-    fashionAiStyleTraditional: "🌴 Golfe traditionnel",
+    fashionAiStyleTraditional: "🌴 Tenue traditionnelle du Golfe",
     fashionAiGenerateBtn: "✨ Générer le design",
     fashionAiDownloadBtn: "⬇️ Télécharger l'image",
     fashionAiNeedImage: "⚠️ Veuillez d'abord télécharger une photo.",

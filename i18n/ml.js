@@ -842,7 +842,7 @@ I18N['ml'] = {
     "fashionAiStyleCasual": "👕 കാഷ്വൽ",
     "fashionAiStyleAbaya": "🖤 അബായ",
     "fashionAiStyleWedding": "💍 വെഡ്ഡിംഗ് ഡ്രസ്",
-    "fashionAiStyleTraditional": "🌴 പരമ്പരാഗത ഗൾഫ്",
+    "fashionAiStyleTraditional": "🌴 പരമ്പരാഗത ഗൾഫ് വസ്ത്രം",
     "fashionAiGenerateBtn": "✨ ഡിസൈൻ ഉണ്ടാക്കുക",
     "fashionAiDownloadBtn": "⬇️ ചിത്രം ഡൗൺലോഡ് ചെയ്യുക",
     "fashionAiNeedImage": "⚠️ ദയവായി ആദ്യം ഒരു ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക.",
