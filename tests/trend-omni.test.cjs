@@ -484,3 +484,65 @@ test('١٧. صورة واحدة فيها شخصان: مرجعها الصورة �
   assert.deepEqual(images(pc), ['GROUPFRAME'], 'منتج: الإطار وحده كما كان');
   assert.ok(text(pc).startsWith('[# Sources <FIRST_FRAME>@Image1] '));
 });
+
+test('١٨. إطار ترندات Omni بوجه كبير مفصَّل: 2K (لا 1K) ولقطة لا تُصغّر الوجه ولون الشعر من الصورة — على Omni وحده، والمهمّة الافتراضيّة كما كانت', async () => {
+  /* البلاغ: «عرض الأزياء» — وجه الثانية الأولى غير وجهها، ووجه وسط الفيديو هو وجه الثانية الأولى: التغيّر في الإطار المبنيّ */
+  const r = await pair(photoBody('catwalk'));
+  assert.equal(r.veoSolo, 1, 'Veo: إطار ترند الشخص الواحد كما كان');
+  assert.ok(!soloCalls[0].o.detail, 'Veo: بلا detail');
+  assert.equal(r.omniSolo.length, 1);
+  assert.equal(r.omniSolo[0].o.detail, true, 'Omni: detail');
+  assert.equal(r.omniSolo[0].o.budgetMs, 90000, 'ميزانيّة الإطار كما كانت');
+  for (const trend of ['underwater', 'superhero', 'babyversion']) assert.equal((await pair(photoBody(trend))).omniSolo[0].o.detail, true, trend);
+  /* الدمية والليغو: 2K وحده — «سدس الارتفاع» يكسر لعبة صغيرة في عبوتها */
+  for (const trend of TP.SOLO_FRAME_ART_TRENDS) { const x = (await pair(photoBody(trend))).omniSolo[0].o; assert.deepEqual([x.detail, x.hiRes], [false, true], trend); }
+  assert.equal(TP.FRAME_FACE_DETAIL, 'Compose the frame so their face is large and finely detailed — at least about a sixth of the image height (a medium or medium-wide shot, never a small distant figure); the video can move the camera from there. Keep their natural hair colour from Photo 1 unless the description changes it.');
+  for (const o of [{ closeup: true }, { closeup: true, start: true }, { closeup: true, ageShift: true }, { ageShift: true, people: 2 }]) {
+    const plain = TP.soloFrameTask('a runway', o);
+    const det = TP.soloFrameTask('a runway', Object.assign({ detail: true }, o));
+    assert.ok(!plain.includes(TP.FRAME_FACE_DETAIL), JSON.stringify(o) + ': الافتراضيّ بلا السطر');
+    assert.equal(det, plain.replace(' No text, captions, logos or watermarks.', ' ' + TP.FRAME_FACE_DETAIL + ' No text, captions, logos or watermarks.'), JSON.stringify(o));
+  }
+  /* soloFirstFrame الحقيقيّ: الحجم والمهمّة والذاكرة */
+  const seen = [];
+  const o = {
+    faceCrops: async () => [{ who: 'the person', data: 'CROP', mime: 'image/jpeg' }],
+    callImage: async (k, parts, aspect, f, cfg) => { seen.push({ cfg, task: parts[parts.length - 1].text }); return { b64: 'F' + seen.length, mime: 'image/png' }; },
+  };
+  const photo = { data: 'Q-' + Date.now(), mime: 'image/jpeg' };
+  const a = await realSolo('K', photo, 'a runway', '720:1280', o);
+  const b = await realSolo('K', photo, 'a runway', '720:1280', Object.assign({ detail: true }, o));
+  assert.deepEqual([a.b64, b.b64], ['F1', 'F2'], 'لا نسخة مخزَّنة بين الحجمين');
+  assert.equal(seen[0].cfg.imageSize, '1K', 'الافتراضيّ كما كان');
+  assert.equal(seen[1].cfg.imageSize, '2K');
+  assert.ok(!seen[0].task.includes(TP.FRAME_FACE_DETAIL));
+  assert.ok(seen[1].task.includes(TP.FRAME_FACE_DETAIL));
+  /* إطار PNG كبير (2K) يُرمَّز JPEG قبل طلب المحرّك؛ الصغير وبلا detail كما هو */
+  const { PNG } = require('pngjs');
+  const png = new PNG({ width: 1000, height: 1400 }); crypto.randomFillSync(png.data); for (let i = 3; i < png.data.length; i += 4) png.data[i] = 255;
+  const big = PNG.sync.write(png).toString('base64');
+  assert.ok(big.length > 6000000, 'إطار أكبر من الحدّ');
+  const bigCall = (detail, b64) => realSolo('K', { data: 'B-' + detail + b64.length + Date.now(), mime: 'image/jpeg' }, 'a runway', '720:1280',
+    { detail, faceCrops: async () => [], callImage: async () => ({ b64, mime: 'image/png' }) });
+  const j = await bigCall(true, big);
+  assert.equal(j.mime, 'image/jpeg');
+  assert.equal(Buffer.from(j.b64, 'base64')[0], 0xFF, 'JPEG فعلًا');
+  const dec = require('jpeg-js').decode(Buffer.from(j.b64, 'base64'), { maxMemoryUsageInMB: 512 });
+  assert.deepEqual([dec.width, dec.height], [1000, 1400], 'الأبعاد نفسها (طوليّ)');
+  assert.ok(j.b64.length < big.length);
+  assert.equal((await bigCall(false, big)).mime, 'image/png', 'بلا detail كما كان');
+  const small = new PNG({ width: 64, height: 64 }); const sb = PNG.sync.write(small).toString('base64');
+  assert.deepEqual([(await bigCall(true, sb)).mime, (await bigCall(true, sb)).b64 === sb], ['image/png', true], 'الصغير كما هو');
+  /* إطار JPEG كبير لا يُعاد ضغطه */
+  const bigJpeg = Buffer.from(require('jpeg-js').encode({ width: 1000, height: 1400, data: png.data }, 100).data).toString('base64');
+  assert.ok(bigJpeg.length > 6000000);
+  const jj = await realSolo('K', { data: 'J-' + Date.now(), mime: 'image/jpeg' }, 'a runway', '720:1280', { detail: true, faceCrops: async () => [], callImage: async () => ({ b64: bigJpeg, mime: 'image/jpeg' }) });
+  assert.equal(jj.b64, bigJpeg, 'JPEG كما هو');
+  /* نوع الإطار يصل المحرّك كما هو */
+  const real = TP.soloFirstFrame;
+  TP.soloFirstFrame = async () => ({ b64: 'JFRAME', mime: 'image/jpeg', ref: { data: 'FACEREF', mime: 'image/jpeg' }, people: 1 });
+  try {
+    const x = await pair(photoBody('catwalk'));
+    assert.deepEqual(x.omni.body.input.filter((i) => i.type === 'image').map((i) => [i.data, i.mime_type]), [['JFRAME', 'image/jpeg'], ['FACEREF', 'image/jpeg']]);
+  } finally { TP.soloFirstFrame = real; }
+});
