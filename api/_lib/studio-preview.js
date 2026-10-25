@@ -114,16 +114,21 @@ module.exports = async (req, res) => {
     const fname = (feature === 'beard' && /clean-shaven|no beard/.test(String(map[value]).toLowerCase()))
       ? 'the completely clean-shaven face with no beard' : (names[feature] || 'the requested style');
     const desc = (own(CARD_FIX.DESC, fk) && CARD_FIX.DESC[fk]) || map[value];
-    const bg = (feature === 'background' || feature === 'idphoto' || feature === 'iconic' || feature === 'seasons')
-      ? ''
-      : ' Dark warm brown studio backdrop with soft golden light.';
+    /* v-style-match (الفحص الثاني): في الأنمي «خلفيّة استوديو بنّيّة» كانت تُلصق المشهد المطلوب لوحًا أو شريطًا داخلها —
+       الأنمي بلا خلفيّة ثابتة كالمشاهد؛ وكلمة «studio» في بطاقات المشهد كانت ترسم حوامل الإضاءة واللفّة الخلفيّة */
+    const SCENE = feature === 'background' || feature === 'idphoto' || feature === 'iconic' || feature === 'seasons' || feature === 'anime';
+    const bg = SCENE ? '' : ' Dark warm brown studio backdrop with soft golden light.';
     /* الأنمي رسمة لا صورة — «photorealistic» كان يناقض الستايل نفسه */
-    const head = feature === 'anime' ? 'A character illustration of ' : 'Photorealistic editorial studio photograph of ';
+    const head = feature === 'anime' ? 'A full-frame character illustration of '
+      : (SCENE ? 'Photorealistic editorial photograph of ' : 'Photorealistic editorial studio photograph of ');
     /* v-style-match: «مش غبشه ونظيفه ومرتبه» — حدّة على الشخص والشيء المختار، وخلفيّة بلا زحام، والشخص في المنتصف؛
        وفي الميزات التي لا تخصّ اللبس لبس ساتر (بطاقات شعر قديمة كانت بأكتاف مكشوفة) */
     const dress = MODEST_CARD[feature] ? ' The person wears modest clothing with a high neckline and long sleeves.' : '';
     const prompt = head + who + ', ' + frame + ', ' + desc + ' — the image must clearly and prominently show ' + fname + '.' +
-      bg + dress + ' Tack-sharp focus on the subject and on ' + fname + ', crisp fine detail, clean uncluttered composition with the subject centred, consistent premium studio style, natural skin texture. No text, no watermark, no logo.';
+      bg + dress + ' Tack-sharp focus on the subject and on ' + fname + ', crisp fine detail, clean uncluttered composition with the subject centred, ' +
+      (SCENE ? 'the scene filling the whole frame edge to edge with no inset panel, border or frame-within-a-frame' : 'consistent premium studio style') +
+      ', natural skin texture. No light stands, softboxes, lighting equipment or backdrop edges anywhere in the image. ' +
+      (WRITING_ON_SKIN[feature] ? 'No watermark or logo, and no writing other than lettering the design itself names.' : 'No text, letters, signs, numbers, watermark or logo.');
     const b64 = await nanoCard(gemKey, prompt);
     try { await kvSetRaw(key, b64); dropOld(); } catch (e) { require('./log-error.js').logError('studio-preview/save', e); /* الصورة تُقدَّم الآن ولو تعذّر الحفظ — وتُسجَّل لأنّها توليد مدفوع ضاع */ }
     sendImage(res, b64);
@@ -141,6 +146,8 @@ module.exports = async (req, res) => {
 /* v-style-match: بطاقة واحدة من نانو بنانا برو (gemini-3-pro-image) بدقّة 2K وطول ٢:٣، تُصغَّر بمتوسّط المساحة إلى عرض ١٠٢٤
    وتُكتب WebP عالية الجودة (الناتج PNG بالميغابايتات لا يتّسع له Redis). يرمي بسبب واضح عند الفشل. */
 const CARD_MODEL = 'gemini-3-pro-image';
+/* الوشم والحنّاء قد يكون الخيار نفسه كلمة أو تاريخًا على الجلد */
+const WRITING_ON_SKIN = { tattoo: 1, henna: 1 };
 const MODEST_CARD = { hair: 1, menhair: 1, makeup: 1, skin: 1, nails: 1, eyes: 1, glasses: 1, beard: 1, henna: 1, age: 1, accessories: 1 };
 async function nanoCard(apiKey, prompt) {
   const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + CARD_MODEL + ':generateContent?key=' + apiKey, {
