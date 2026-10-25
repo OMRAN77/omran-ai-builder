@@ -592,3 +592,47 @@ test('٢٠. ترندات أكتوبر على Omni: الشخص في مشهد = إ
     assert.equal(text(f.omni), REF(f.veoPrompt, 'sorryreveal'));
   } finally { TP.soloFirstFrame = real; }
 });
+
+/* v-trend-frame-look (المالك بلقطتين — صورته في السيّارة ووجهه في «فري ستايل الشارع»: «شوف الفرق في الملامح… وشوف الإضافات خلها دقيقة
+   في الأشكال»): الإطار المبنيّ أدار رأسه وغيّر تعبيره (ابتسامة جانبيّة وعيون نصف مغمضة) وغمر وجهه بالنيون الأحمر، والعقال صار حلقة
+   سميكة بشكل آخر. قائمة الهويّة كانت الوجه وحده — لا زاوية ولا تعبير ولا إضاءة الوجه ولا ما يُلبس على الرأس والوجه. */
+test('٢١. إطار الشخص: زاوية الرأس والتعبير من الصورة، والوجه بلونه الحقيقيّ تحت إضاءة المشهد، وما على الرأس والوجه (غترة، عقال، حجاب، نظّارة) بشكله ومقاسه — فرديًّا وجماعيًّا، لا في العمر الآخر', () => {
+  assert.equal(typeof TP.frameLookLock, 'function', 'الدالّة مصدَّرة');
+  const one = TP.frameLookLock(false), many = TP.frameLookLock(true);
+  for (const s of [one, many]) {
+    assert.match(s, /head angle and facial expression/, 'زاوية الرأس والتعبير');
+    assert.match(s, /no new smile, smirk or squint/, 'لا تعبير جديد');
+    assert.match(s, /ghutra or shemagh, agal, hijab or scarf, cap, glasses, jewellery/, 'ما على الرأس والوجه بأسمائه');
+    assert.match(s, /exact shape, size, thickness, pattern, colour and way of wearing/, 'بشكله ومقاسه وسماكته');
+    assert.match(s, /true skin tone/, 'الوجه بلونه تحت إضاءة المشهد');
+  }
+  assert.match(one, /Photo 1/); assert.doesNotMatch(one, /each person/i);
+  assert.match(many, /each person|their own photo/i, 'الجمع لكلّ شخص');
+  /* فرديّ: الافتراضيّ، والتحوّل، و2K — كلّها بالسطر بعد الهويّة وقبل سطر الأسلوب */
+  for (const o of [{ closeup: true }, { closeup: true, start: true }, { closeup: true, detail: true }]) {
+    const t = TP.soloFrameTask('a red-lit street', o);
+    assert.ok(t.includes(one + '\nPhotorealistic'), JSON.stringify(o));
+    assert.ok(t.indexOf(one) > t.indexOf('IDENTITY (mandatory)'), JSON.stringify(o) + ': بعد الهويّة');
+    assert.match(t, /No text, captions, logos or watermarks\.$/, JSON.stringify(o));
+  }
+  /* شخصان في صورة واحدة: بالجمع ومصدرهما Photo 1 (لا «صورته») */
+  const two = TP.frameLookLock(true, { src: 'Photo 1' });
+  assert.ok(TP.soloFrameTask('s', { closeup: true, people: 2 }).includes(two), 'شخصان في صورة: بالجمع');
+  assert.doesNotMatch(two, /their own photo/);
+  /* الأسلوب الفنّيّ (أنمي، لعبة، دمية): الزاوية والتعبير وما على الرأس — بلا «كما صُوّر» ولا «لون البشرة الحقيقيّ» */
+  const art = TP.frameLookLock(false, { art: true });
+  assert.match(art, /^Keep their head angle/); assert.match(art, /agal/);
+  assert.doesNotMatch(art, /as photographed|true skin tone/);
+  for (const o of [{ art: true }, { styleText: 'ANIME-X' }]) assert.ok(TP.soloFrameTask('s', o).includes(art), JSON.stringify(o));
+  /* العمر الآخر (طفل، نسخة أكبر): يُرسم بعمر القالب — لا زاوية الصورة ولا عقال البالغ */
+  for (const o of [{ ageShift: true }, { ageShift: true, start: true }, { ageShift: true, people: 2 }]) {
+    const t = TP.soloFrameTask('s', o);
+    assert.ok(!t.includes(one) && !t.includes(many), JSON.stringify(o));
+  }
+  /* إطار المجموعة (عدّة صور) */
+  for (const start of [false, true]) {
+    const g = TP.frameTask(2, 'an old souq', start);
+    assert.ok(g.includes(many), 'المجموعة');
+    assert.match(g, /all 2 faces sharp\.$/, 'آخر المهمّة كما كان');
+  }
+});
