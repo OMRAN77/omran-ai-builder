@@ -66,4 +66,54 @@ async function toPathFormat(b64, filePath) {
   }
 }
 
-module.exports = { sniff, extFormat, toPathFormat, __webpLib: webpLib };
+/* v-style-match (المالك ٢٥ أكتوبر: «استعين بنانو بي الصور، أريد الصور مش غبشه ونظيفه ومرتبه»): بطاقات الستايل تُولَّد
+   2K من نانو بنانا برو (PNG بالميغابايتات) — تُصغَّر بمتوسّط المساحة (لا أقرب جار: الحدّة تبقى بلا تسنّن) إلى عرض البطاقة
+   وتُكتب WebP بجودة عالية، فتبقى في Redis بحجم المعاينة القديمة تقريبًا. */
+function shrinkArea(img, outW, outH) {
+  const { data, width: W, height: H } = img;
+  if (outW >= W && outH >= H) return img;
+  const sx = W / outW, sy = H / outH;
+  const tmp = new Float32Array(outW * H * 4); // أفقيًّا أوّلًا
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < outW; x++) {
+      const a = x * sx, b = a + sx;
+      let r = 0, g = 0, bl = 0, al = 0;
+      for (let i = Math.floor(a); i < Math.ceil(b) && i < W; i++) {
+        const w = Math.min(b, i + 1) - Math.max(a, i);
+        const p = (y * W + i) * 4;
+        r += data[p] * w; g += data[p + 1] * w; bl += data[p + 2] * w; al += data[p + 3] * w;
+      }
+      const q = (y * outW + x) * 4;
+      tmp[q] = r / sx; tmp[q + 1] = g / sx; tmp[q + 2] = bl / sx; tmp[q + 3] = al / sx;
+    }
+  }
+  const out = new Uint8Array(outW * outH * 4); // ثمّ عموديًّا
+  for (let x = 0; x < outW; x++) {
+    for (let y = 0; y < outH; y++) {
+      const a = y * sy, b = a + sy;
+      let r = 0, g = 0, bl = 0, al = 0;
+      for (let j = Math.floor(a); j < Math.ceil(b) && j < H; j++) {
+        const w = Math.min(b, j + 1) - Math.max(a, j);
+        const p = (j * outW + x) * 4;
+        r += tmp[p] * w; g += tmp[p + 1] * w; bl += tmp[p + 2] * w; al += tmp[p + 3] * w;
+      }
+      const q = (y * outW + x) * 4;
+      out[q] = Math.round(r / sy); out[q + 1] = Math.round(g / sy); out[q + 2] = Math.round(bl / sy); out[q + 3] = Math.round(al / sy);
+    }
+  }
+  return { data: out, width: outW, height: outH };
+}
+/** صورة base64 (PNG/JPEG/WebP) ← WebP بعرض maxW كحدّ أقصى: { b64, width, height } أو يرمي */
+async function toCardWebp(b64, maxW, quality) {
+  const buf = Buffer.from(String(b64 || ''), 'base64');
+  const fmt = sniff(buf);
+  if (!fmt || fmt === 'gif') throw new Error('card image is not PNG/JPEG/WebP');
+  const src = await decodeRGBA(buf, fmt);
+  const outW = Math.min(src.width, maxW || 1024);
+  const outH = Math.round(src.height * outW / src.width);
+  const img = shrinkArea(src, outW, outH);
+  const enc = Buffer.from(await (await webpLib()).encode({ data: new Uint8ClampedArray(img.data.buffer, img.data.byteOffset, img.data.length), width: img.width, height: img.height, colorSpace: 'srgb' }, { quality: quality || 88 }));
+  return { b64: enc.toString('base64'), width: img.width, height: img.height };
+}
+
+module.exports = { sniff, extFormat, toPathFormat, toCardWebp, __shrinkArea: shrinkArea, __webpLib: webpLib };

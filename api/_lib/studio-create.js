@@ -115,7 +115,8 @@ const VARIETY_NOTE = {
    فوق الجلد نفسه لا على يد بديلة. */
 const SKIN_LOCK = '\nSKIN LOCK (highest priority): the pigment is added ON TOP of the exact skin already in the photo. ' +
   'Keep the same hands/limbs pixel-for-pixel apart from the added design: same skin tone and shade, same body hair, same veins, knuckles and wrinkles, ' +
-  'same nail shape and length, same size, same pose and same background. ' +
+  /* v-style-match: «same nail shape and length» كان يمنع خيارات الشكل نفسها (ستيليتو، كوفن، طويلة…) — الشكل المطلوب يغلب */
+  'same nail shape and length unless the requested style itself names a nail shape or length, same size, same pose and same background. ' +
   'Never replace them with someone else\'s hands or feet, never make them look younger, smoother, slimmer, lighter or more feminine, ' +
   'and never add jewellery, rings, bracelets, sleeves or clothing that is not already there.';
 
@@ -127,11 +128,12 @@ const SKIN_LOCK = '\nSKIN LOCK (highest priority): the pigment is added ON TOP o
    اليسرى» للعيون، «عدسة شفّافة» لنظّارة شمسيّة، «مطفي» لخيار لامع. الآن: الخيار المختار هو المرجع،
    والتنويع لا يمسّ إلّا ما تركه الخيار مفتوحًا، والتغيير يجب أن يكون ظاهرًا. والتعديلات الدقيقة
    المطلوبة بعينها (العمر، الجسم، تبييض الأسنان…) بلا تنويع أصلًا. */
-function varietyLine(feature, variant, style) {
-  if (!variants.hasVariation(feature, style)) return '';
-  const total = variants.variantCount(feature, style);
+/* v-style-match: وصف الخيار يصل المحاور — ما سمّاه الخيار (لونه، طوله، مكانه، خامته…) لا يُنوَّع */
+function varietyLine(feature, variant, style, text) {
+  if (!variants.hasVariation(feature, style, text)) return '';
+  const total = variants.variantCount(feature, style, text);
   const n = Number.isFinite(variant) ? Math.abs(Math.floor(variant)) : Math.floor(Math.random() * total);
-  const directive = variants.variantDirective(feature, n, style);
+  const directive = variants.variantDirective(feature, n, style, text);
   const note = VARIETY_NOTE[feature] || 'Produce a fresh original execution of this exact style; do not repeat an earlier one.';
   return '\nVARIATION #' + (n % total) + ' — a fresh execution of the chosen style. The chosen style described above is the authority: ' +
     'keep every colour, finish, shape, size and placement it names exactly. Use the following ideas only for details the style leaves open, ' +
@@ -144,14 +146,24 @@ function varietyLine(feature, variant, style) {
 const COLLAGE_FEATURES = ['hair', 'heritage', 'beard'];
 const COLLAGE_CLAUSE = 'Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
 
+/* وصف الخيار كما هو في البيانات (الأوّل احتياطًا لمفتاح مجهول) — يقرؤه الأمر وقفل الوجه وسطر التنويع */
+function styleTextOf(feature, style) {
+  const styleMap = STYLE_TEXT[feature] || {};
+  if (styleMap[style]) return styleMap[style];
+  const firstKey = Object.keys(styleMap)[0];
+  return firstKey ? styleMap[firstKey] : 'a stylish new look';
+}
+/* v-style-match: الصورة الرسميّة — القفل كان يقول «غيّر الخلفية والتأطير فقط» و١٠٣ من ١٠٤ خيارات تغيّر اللبس أيضًا */
+const IDPHOTO_OUTFIT = /suit|shirt|\btie\b|blazer|kandora|kandura|thobe|abaya|uniform|coat|scrubs|polo|sweater|gown|dress|jacket|hijab|ghutra|shemagh|sheila|shayla|outfit|clothing|robe/;
+function lockWhatOf(feature, text) {
+  if (feature === 'idphoto' && IDPHOTO_OUTFIT.test(String(text || '').toLowerCase())) return 'the background, framing and the outfit named in the request';
+  return LOCK_WHAT[feature] || 'the requested detail';
+}
+
 /* ───── بناء أمر ميزة واحدة (كان داخل المعالج) ───── */
 function buildSinglePrompt(feature, style, description, multiAngle, variant) {
-  const styleMap = STYLE_TEXT[feature] || {};
-  let styleDesc = styleMap[style];
-  if (!styleDesc) {
-    const firstKey = Object.keys(styleMap)[0];
-    styleDesc = firstKey ? styleMap[firstKey] : 'a stylish new look';
-  }
+  const baseDesc = styleTextOf(feature, style);
+  let styleDesc = baseDesc;
   if (feature === 'tattoo' && style === 'custom' && description) {
     styleDesc = 'a tattoo design of ' + String(description).slice(0, 300);
   } else if (description) {
@@ -160,12 +172,12 @@ function buildSinglePrompt(feature, style, description, multiAngle, variant) {
   const buildFn = FEATURE_INSTRUCTIONS[feature];
   if (!buildFn) return null;
   let promptText = buildFn(styleDesc);
-  if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK(LOCK_WHAT[feature] || 'the requested detail');
+  if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK(lockWhatOf(feature, baseDesc));
   if (multiAngle && COLLAGE_FEATURES.indexOf(feature) !== -1) {
     promptText += ' ' + COLLAGE_CLAUSE;
   }
   if (DESIGN_FEATURES.indexOf(feature) !== -1) promptText += SKIN_LOCK;
-  promptText += varietyLine(feature, variant, style);
+  promptText += varietyLine(feature, variant, style, baseDesc);
   return promptText;
 }
 
@@ -369,7 +381,7 @@ module.exports = async (req, res) => {
     try {
       const r = await runEdit({
         apiKey, openaiKey, feature, promptText, imageBase64, mimeType,
-        lockLevel: faceLock.protectLevel(feature),
+        lockLevel: faceLock.protectLevel(feature, null, styleTextOf(feature, style)), /* v-style-match: غطاء الرأس المسمّى في الخيار لا يُقفل */
         collage,
         guard: guardOpts, skipGuard: !guardOpts,
       });
@@ -409,4 +421,5 @@ module.exports = async (req, res) => {
 module.exports.STYLE_TEXT = STYLE_TEXT;
 module.exports.FEATURE_INSTRUCTIONS = FEATURE_INSTRUCTIONS;
 module.exports.buildSinglePrompt = buildSinglePrompt; /* v-studio-variety: للاختبار */
+module.exports.styleTextOf = styleTextOf; /* v-style-match: للاختبار */
 module.exports.DESIGN_FEATURES = DESIGN_FEATURES;

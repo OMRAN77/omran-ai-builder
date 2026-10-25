@@ -39422,7 +39422,16 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-studio-14: الميزات الأربع عشرة الجديدة (app-12-studio-more.js) */
   const MORE = window.__STUDIO_MORE || { features: [], options: {} };
   Object.keys(MORE.options).forEach((k) => { STUDIO_OPTIONS[k] = MORE.options[k]; });
-  const PREVIEW_API = (f, v) => '/api/studio-preview?feature=' + encodeURIComponent(f) + '&value=' + encodeURIComponent(v);
+  /* v-style-match (تدقيق ٢٥ أكتوبر، «الصور ما تطابق الشي اللي اخترته»): البطاقات المصحَّحة لها رقم مراجعة — نفس
+     REV في api/_lib/studio-card-fix.js (tests/studio-card-fix يقارنهما). الرقم في الرابط (&r=) لأنّ الصورة القديمة
+     مخزّنة «immutable» سنة كاملة في المتصفّح وكاش الشبكة؛ و__tab يأخذ مراجعة أوّل خيار (الخادم يرسمه هو). */
+  const PREVIEW_API = (f, v) => {
+    const opts = (v === '__tab' && typeof STUDIO_OPTIONS !== 'undefined') ? STUDIO_OPTIONS[f] : null;
+    const k = f + ':' + (opts && opts[0] ? opts[0].value : v);
+    const r = Object.prototype.hasOwnProperty.call(STUDIO_CARD_REV, k) ? STUDIO_CARD_REV[k] : 0;
+    return '/api/studio-preview?feature=' + encodeURIComponent(f) + '&value=' + encodeURIComponent(v) + (r ? '&r=' + r : '');
+  };
+  const STUDIO_CARD_REV = {};
   /* v-studio-more-looks: صور خيارات المكياج الجاهزة لقطات جسم كامل لا يظهر فيها المكياج،
      فبدت العشرة صورة واحدة في المنتقي. لهذه الميزات المعاينة المولّدة (وجه قريب من
      /api/studio-preview، تُولَّد مرّة وتُخزَّن) أوّلًا، والصورة الجاهزة احتياطًا. */
@@ -39443,9 +39452,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     + ' skin-circles skin-freckles skin-glow skin-matteskin skin-subtle skin-tan'
     + ' tattoo-arabictattoo tattoo-back tattoo-custom tattoo-floraltattoo tattoo-geometric tattoo-minimalline tattoo-sleeve tattoo-tribal tattoo-wrist').split(' '));
   const STUDIO_STATIC_FEATS = new Set(['anime', 'beard', 'glasses', 'hair', 'heritage', 'makeup', 'merge', 'nails', 'skin', 'tattoo']);
+  /* v-style-match: صور جاهزة لا تطابق اسمها («شونين» صورة حقيقيّة لا أنمي، «كافتان إماراتي» النسائيّ فيه رجل…) —
+     تُترك ملفّاتها (قرار المالك: الوسائط تبقى) والبطاقة تأخذ المعاينة المولّدة من الوصف. وتبويبات الأظافر والبشرة
+     والمكياج صورتها جسم كامل لا يظهر فيه شيء منها (الأظافر والبشرة الصورة نفسها) — تأخذ معاينة أوّل خيار. */
+  const STUDIO_STATIC_WRONG = new Set([]);
+  const STUDIO_TAB_PREVIEW = new Set(['nails', 'makeup', 'skin']);
   function optionImgs(f, v){
     const gen = PREVIEW_API(f, v);
-    if(!STUDIO_STATIC_OPTS.has(f + '-' + v)) return { img: gen, img2: '' }; /* v-studio-static-set: لا صورة جاهزة ⇒ المعاينة وحدها */
+    if(!STUDIO_STATIC_OPTS.has(f + '-' + v) || STUDIO_STATIC_WRONG.has(f + '-' + v)) return { img: gen, img2: '' }; /* v-studio-static-set: لا صورة جاهزة ⇒ المعاينة وحدها */
     const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     return PREVIEW_FIRST.indexOf(f) !== -1 ? { img: gen, img2: asset } : { img: asset, img2: gen };
   }
@@ -39898,7 +39912,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
          مع عرض ٨٦px وoverflow:hidden يقصّ الاسم الطويل من الطرفين — يلتفّ سطرين فوق الظلّ (البطاقة ١٠٤px). */
       b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700; white-space:normal;';
       const img = document.createElement('img');
-      const staticTab = STUDIO_STATIC_FEATS.has(f) || !IS_MORE(f); /* v-studio-static-set: الميزات الإضافيّة بلا صورة جاهزة ⇒ المعاينة مباشرة */
+      const staticTab = !STUDIO_TAB_PREVIEW.has(f) && (STUDIO_STATIC_FEATS.has(f) || !IS_MORE(f)); /* v-studio-static-set: الميزات الإضافيّة بلا صورة جاهزة ⇒ المعاينة مباشرة؛ v-style-match: والتبويبات الثلاثة الخاطئة */
       img.src = staticTab ? 'assets/studio/features/' + f + '.webp' : PREVIEW_API(f, '__tab');
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;';

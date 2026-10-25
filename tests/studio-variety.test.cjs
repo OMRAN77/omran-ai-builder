@@ -57,9 +57,16 @@ test('كلّ خيارات الحنّاء والمكياج أوصافها ممي�
   }
 });
 
+/* v-style-match: أوّل خيار في الميزة يترك للتنويع شيئًا لم يسمّه وصفه */
+function openStyle(f) {
+  const v = require(path.join(root, 'api/_lib/studio-variants.js'));
+  const map = studioCreate.STYLE_TEXT[f] || studioMore.STYLE_PROMPTS[f];
+  return Object.keys(map).find((k) => v.hasVariation(f, k, map[k]));
+}
 test('بذرة التنويع: الخيار نفسه يعطي أمرًا مختلفًا كلّ مرّة لميزات الرسم', () => {
   for (const feature of studioCreate.DESIGN_FEATURES) {
-    const style = Object.keys(studioCreate.STYLE_TEXT[feature])[0];
+    /* v-style-match: الخيار الذي يحدّد كلّ صفاته (طلاء أحمر لامع سادة) بلا تنويع — يُختبر أوّل خيار يترك شيئًا مفتوحًا */
+    const style = openStyle(feature);
     const a = studioCreate.buildSinglePrompt(feature, style, '', false, 1);
     const b = studioCreate.buildSinglePrompt(feature, style, '', false, 2);
     assert.match(a, /VARIATION #\d+ — a fresh execution of the chosen style/, feature + ': لا توجيه تنويع في الأمر');
@@ -186,7 +193,7 @@ test('الأرقام المتتالية تعطي توجيهات مختلفة و�
 
 test('التوجيه محسوس ويصل كلّ ميزة في الأمر، ولا يمسّ الشخص ولا الوقفة', () => {
   for (const f of ['henna', 'glasses', 'makeup', 'hair', 'heritage', 'nails']) {
-    const style = Object.keys((studioCreate.STYLE_TEXT[f] || studioMore.STYLE_PROMPTS[f]))[0];
+    const style = openStyle(f); // v-style-match: أوّل خيار يترك للتنويع شيئًا
     const p = studioCreate.buildSinglePrompt(f, style, '', false, 12);
     assert.match(p, /VARIATION #\d+ — a fresh execution of the chosen style\. The chosen style described above is the authority/, f + ': لا توجيه تنويع في الأمر');
     assert.notEqual(p, studioCreate.buildSinglePrompt(f, style, '', false, 13), f + ': رقمان مختلفان يعطيان الأمر نفسه');
