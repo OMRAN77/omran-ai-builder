@@ -152,6 +152,14 @@ async function spendPoints(username, amount, reason, opts) {
   if (await isVip(username)) return { ok: true, points: Infinity, owner: true, vip: true };
   // Suspended account: never let a live token drain the points balance.
   if (await isBanned(username)) return { ok: false, reason: 'auth', banned: true, points: 0 };
+  // v-sec-rename-spend: تغيير الاسم ينقل الرصيد (نسخ ثمّ حذف) تحت قفل خاصّ به. خصمٌ بالاسم القديم
+  // أثناء النقل كان يُخصم ثمّ يُمحى مع المفتاح القديم فيضيع — فنرفض الخصم ما دام القفل قائمًا (أقلّ
+  // من ثانية، والواجهة تعيد المحاولة برمزها الجديد). القفل أفضل جهد: عطب قراءته لا يوقف خصمًا.
+  try {
+    if (await require('./kv.js').kvGetRaw('db/rename-lock/' + encodeURIComponent(username))) {
+      return { ok: false, reason: 'renaming', points: 0 };
+    }
+  } catch (e) { /* guard-ok — تعذّر قراءة القفل لا يوقف الخصم */ }
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (amt === 0) return { ok: true, points: 0 };
 
