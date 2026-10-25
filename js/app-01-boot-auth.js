@@ -515,6 +515,8 @@ try{
     authRemove('aiapp_auth_token');
     authRemove('aiapp_username');
     localStorage.removeItem('aiapp_avatar');
+    // v-sec-sw-token: امسح تخزين الكاش عند الخروج — لئلّا يبقى تنقّلٌ قديم يحمل رمزًا في الرابط.
+    try { if(window.caches && caches.keys) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {}); } catch(e){ __swallow(e, 'auth:logout-cache'); }
     setAuthToggleUI(false);
     const badge = $('#authUserBadge');
     if(badge) badge.style.display = 'none';
@@ -612,10 +614,64 @@ try{
       box.textContent = lines.join('\n');
       window.__adminUsersCache = data.manageableUsers || [];
       renderAdminUserTable();
+      try{ loadKnowledgeFacts(); }catch(e){ __swallow(e, 'owner:knowledge-load'); }
     }catch(e){
       box.textContent = '❌ ' + ownT('ownerLoadFailed', { e: ownErr(e) });
     }
   };
+
+  /* v-sec-knowledge-approve: حقائق «المعرفة الجماعيّة» لم تعد تُحقن في تعليمات المستخدمين إلّا بموافقة
+     المالك. هذه اللوحة تعرض المنتظِرة والمعتمَدة مع أزرار إيموجي (✅ موافقة · 🗑️ رفض) — بلا نصّ واجهة
+     مترجَم جديد: الرموز إيموجي ونصّ الحقيقة بيانات تُهرَّب. النداء محميّ بـisOwner في الخادم بالرمز. */
+  function knEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function knJs(s){ return String(s).replace(/\\/g,String.fromCharCode(92,92)).replace(/'/g,String.fromCharCode(92,39)).replace(/[\u2028\u2029]/g,' '); }
+  window.loadKnowledgeFacts = async function loadKnowledgeFacts(){
+    const box = document.getElementById('knowledgeFactsBox');
+    if(!box) return;
+    const token = authGet('aiapp_auth_token');
+    box.innerHTML = '<div style="opacity:.6;font-size:12px;padding:6px">🧠 …</div>';
+    try{
+      const res = await fetch('/api/system?action=knowledge&op=list', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token }),
+      });
+      const d = await res.json();
+      if(!res.ok){ box.innerHTML = '<div style="font-size:12px;opacity:.7;padding:6px">❌ ' + knEsc(d.error || '') + '</div>'; return; }
+      const pending = Array.isArray(d.pending) ? d.pending : [];
+      const approved = Array.isArray(d.approved) ? d.approved : [];
+      const row = (f) => {
+        const safe = knEsc(f.t);
+        const kJs = knJs(f.k);
+        return '<div style="display:flex;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border,#333)">'
+          + '<bdi style="flex:1;min-width:0;overflow-wrap:anywhere;font-size:12.5px">' + safe + '</bdi>'
+          + (f.approved
+              ? '<button type="button" title="🗑️" onclick="knowledgeReject(\'' + kJs + '\')" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:3px 8px;cursor:pointer">🗑️</button>'
+              : '<button type="button" title="✅" onclick="knowledgeApprove(\'' + kJs + '\')" style="background:none;border:1px solid #4ade80;color:#4ade80;border-radius:6px;padding:3px 8px;cursor:pointer">✅</button>'
+                + '<button type="button" title="🗑️" onclick="knowledgeReject(\'' + kJs + '\')" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:3px 8px;cursor:pointer">🗑️</button>')
+          + '</div>';
+      };
+      let html = '<div style="font-size:13px;font-weight:700;opacity:.8;margin-bottom:6px">🧠 ' + knEsc(ownT('ownerKnowledgeTitle')) + '</div>';
+      html += '<div style="background:var(--panel2);border-radius:var(--r-2);padding:6px 10px;max-height:260px;overflow-y:auto">';
+      if(!pending.length && !approved.length){
+        html += '<div style="opacity:.6;font-size:12px;padding:6px">—</div>';
+      } else {
+        if(pending.length){ html += '<div style="font-size:11px;opacity:.6;margin:4px 0">⏳ ' + pending.length + '</div>' + pending.map(row).join(''); }
+        if(approved.length){ html += '<div style="font-size:11px;opacity:.6;margin:8px 0 4px">✅ ' + approved.length + '</div>' + approved.map(row).join(''); }
+      }
+      html += '</div>';
+      box.innerHTML = html;
+    }catch(e){ box.innerHTML = '<div style="font-size:12px;opacity:.7;padding:6px">❌ ' + knEsc(ownErr(e)) + '</div>'; }
+  };
+  async function knowledgeAct(op, k){
+    const token = authGet('aiapp_auth_token');
+    try{
+      await fetch('/api/system?action=knowledge&op=' + encodeURIComponent(op), {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token, k }),
+      });
+    }catch(e){ __swallow(e, 'owner:knowledge-act'); }
+    loadKnowledgeFacts();
+  }
+  window.knowledgeApprove = (k) => knowledgeAct('approve', k);
+  window.knowledgeReject = (k) => knowledgeAct('reject', k);
   function renderAdminUserTable(){
     const wrap = document.getElementById('adminUsersTable');
     if(!wrap) return;
@@ -1022,8 +1078,13 @@ try{
         let expected = null;
         try { expected = sessionStorage.getItem('aiapp_oauth_state'); } catch(e){ console.warn('[oauth] no sessionStorage', e); }
         const returned = params.get('state');
-        if(expected && returned !== expected){
-          console.error('[oauth] state mismatch — login refused');
+        // v-sec-oauth-state: نرفض الآن أيّ gtoken لا يحمل state يطابق ما بدأه هذا التبويب —
+        // لا «نقبل عند الغياب» كما كان. بلا هذا الشرط، رابط فيه gtoken المهاجم يُقبل في أيّ تبويب
+        // لم يبدأ دخول جوجل، فيُدخل الضحية حسابَ المهاجم وترتفع محادثاتها إليه. مسارات الأغلفة
+        // (آيفون/أندرويد) لا تمرّ من هنا أصلًا — تكمل عبر oauth-claim بالـstate المحفوظ. وإن تعذّر
+        // sessionStorage (تصفّح خاصّ) فلا دخول آمنًا بجوجل هنا، والرسالة تطلب المحاولة من جديد.
+        if(!expected || !returned || returned !== expected){
+          console.error('[oauth] missing-or-mismatched state — login refused');
           try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#10"); }
           noteSession('جوجل-تحقّق-أمني'); // اللوحة كانت عمياء عن هذا الخروج بالذات
           window.history.replaceState({}, document.title, cleanUrl);

@@ -4,6 +4,12 @@
 // محميّة برمز بوابة (RAW_GATE) حتّى لا يستنزف غريبٌ رصيد المفاتيح.
 require('./_lib/_fetch-timeout.js');
 require('./_lib/_env-keys.js'); // v-key-shape: مفتاح OpenRouter الموضوع خطأً في ANTHROPIC_API_KEY يُنقل إلى مكانه
+const crypto = require('crypto');
+// v-sec-timing: مقارنة ثابتة الزمن لرمز البوّابة.
+function tsEqual(a, b) {
+  const x = Buffer.from(String(a == null ? '' : a)); const y = Buffer.from(String(b == null ? '' : b));
+  return x.length > 0 && x.length === y.length && crypto.timingSafeEqual(x, y);
+}
 
 const MODELS = {
   opus: { direct: 'claude-opus-5-5', or: 'anthropic/claude-opus-5.5' }, // v-models-latest
@@ -32,7 +38,7 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return; }
 
   const gate = process.env.RAW_GATE || '';
-  if (!gate || (req.headers['x-gate'] || '') !== gate) { res.status(403).json({ error: 'gate' }); return; }
+  if (!gate || !tsEqual(req.headers['x-gate'], gate)) { res.status(403).json({ error: 'gate' }); return; }
 
   const body = await readBody(req);
   const messages = Array.isArray(body.messages) ? body.messages : null;

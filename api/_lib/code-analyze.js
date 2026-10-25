@@ -717,13 +717,16 @@ module.exports = async function handler(req, res) {
       send({ status: '🐙 يحمّل من GitHub: ' + t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') + '…', k: 'stGithub' });
       try {
         let asFile = null;
+        // v-sec-gh-token: مفتاح المالك (GITHUB_TOKEN/الخزنة) يُرسَل فقط حين يكون المنادي المالكَ نفسه.
+        // كان {} يُرسله لكلّ منادٍ، فيقرأ أيّ زائرٍ أيَّ مستودعٍ خاصّ يصل إليه المفتاح. غير المالك: anonymous.
+        const ghOpt = { anonymous: !owner };
         if (t.kind === 'file' || t.kind === 'path') {
-          const c = await gh.getContents(t, {});
+          const c = await gh.getContents(t, ghOpt);
           if (c.error && t.kind === 'file') { send({ error: c.error }); finish(); return; }
           if (c.type === 'file') asFile = c;
         }
         if (asFile) { body.files = (Array.isArray(body.files) ? body.files : []).concat([{ name: asFile.name || t.path, content: asFile.content }]); }
-        else { const z = await gh.fetchRepoZip(t, {}); body._zipEntries = z.entries; }
+        else { const z = await gh.fetchRepoZip(t, ghOpt); body._zipEntries = z.entries; }
       } catch (e) {
         logError('code-analyze/github', e);
         send({ error: 'تعذّر جلب GitHub: ' + String((e && e.message) || e).slice(0, 200) }); finish(); return;

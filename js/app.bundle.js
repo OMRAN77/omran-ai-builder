@@ -664,6 +664,8 @@ try{
     authRemove('aiapp_auth_token');
     authRemove('aiapp_username');
     localStorage.removeItem('aiapp_avatar');
+    // v-sec-sw-token: امسح تخزين الكاش عند الخروج — لئلّا يبقى تنقّلٌ قديم يحمل رمزًا في الرابط.
+    try { if(window.caches && caches.keys) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {}); } catch(e){ __swallow(e, 'auth:logout-cache'); }
     setAuthToggleUI(false);
     const badge = $('#authUserBadge');
     if(badge) badge.style.display = 'none';
@@ -761,10 +763,64 @@ try{
       box.textContent = lines.join('\n');
       window.__adminUsersCache = data.manageableUsers || [];
       renderAdminUserTable();
+      try{ loadKnowledgeFacts(); }catch(e){ __swallow(e, 'owner:knowledge-load'); }
     }catch(e){
       box.textContent = '❌ ' + ownT('ownerLoadFailed', { e: ownErr(e) });
     }
   };
+
+  /* v-sec-knowledge-approve: حقائق «المعرفة الجماعيّة» لم تعد تُحقن في تعليمات المستخدمين إلّا بموافقة
+     المالك. هذه اللوحة تعرض المنتظِرة والمعتمَدة مع أزرار إيموجي (✅ موافقة · 🗑️ رفض) — بلا نصّ واجهة
+     مترجَم جديد: الرموز إيموجي ونصّ الحقيقة بيانات تُهرَّب. النداء محميّ بـisOwner في الخادم بالرمز. */
+  function knEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function knJs(s){ return String(s).replace(/\\/g,String.fromCharCode(92,92)).replace(/'/g,String.fromCharCode(92,39)).replace(/[\u2028\u2029]/g,' '); }
+  window.loadKnowledgeFacts = async function loadKnowledgeFacts(){
+    const box = document.getElementById('knowledgeFactsBox');
+    if(!box) return;
+    const token = authGet('aiapp_auth_token');
+    box.innerHTML = '<div style="opacity:.6;font-size:12px;padding:6px">🧠 …</div>';
+    try{
+      const res = await fetch('/api/system?action=knowledge&op=list', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token }),
+      });
+      const d = await res.json();
+      if(!res.ok){ box.innerHTML = '<div style="font-size:12px;opacity:.7;padding:6px">❌ ' + knEsc(d.error || '') + '</div>'; return; }
+      const pending = Array.isArray(d.pending) ? d.pending : [];
+      const approved = Array.isArray(d.approved) ? d.approved : [];
+      const row = (f) => {
+        const safe = knEsc(f.t);
+        const kJs = knJs(f.k);
+        return '<div style="display:flex;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border,#333)">'
+          + '<bdi style="flex:1;min-width:0;overflow-wrap:anywhere;font-size:12.5px">' + safe + '</bdi>'
+          + (f.approved
+              ? '<button type="button" title="🗑️" onclick="knowledgeReject(\'' + kJs + '\')" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:3px 8px;cursor:pointer">🗑️</button>'
+              : '<button type="button" title="✅" onclick="knowledgeApprove(\'' + kJs + '\')" style="background:none;border:1px solid #4ade80;color:#4ade80;border-radius:6px;padding:3px 8px;cursor:pointer">✅</button>'
+                + '<button type="button" title="🗑️" onclick="knowledgeReject(\'' + kJs + '\')" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:3px 8px;cursor:pointer">🗑️</button>')
+          + '</div>';
+      };
+      let html = '<div style="font-size:13px;font-weight:700;opacity:.8;margin-bottom:6px">🧠 ' + knEsc(ownT('ownerKnowledgeTitle')) + '</div>';
+      html += '<div style="background:var(--panel2);border-radius:var(--r-2);padding:6px 10px;max-height:260px;overflow-y:auto">';
+      if(!pending.length && !approved.length){
+        html += '<div style="opacity:.6;font-size:12px;padding:6px">—</div>';
+      } else {
+        if(pending.length){ html += '<div style="font-size:11px;opacity:.6;margin:4px 0">⏳ ' + pending.length + '</div>' + pending.map(row).join(''); }
+        if(approved.length){ html += '<div style="font-size:11px;opacity:.6;margin:8px 0 4px">✅ ' + approved.length + '</div>' + approved.map(row).join(''); }
+      }
+      html += '</div>';
+      box.innerHTML = html;
+    }catch(e){ box.innerHTML = '<div style="font-size:12px;opacity:.7;padding:6px">❌ ' + knEsc(ownErr(e)) + '</div>'; }
+  };
+  async function knowledgeAct(op, k){
+    const token = authGet('aiapp_auth_token');
+    try{
+      await fetch('/api/system?action=knowledge&op=' + encodeURIComponent(op), {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token, k }),
+      });
+    }catch(e){ __swallow(e, 'owner:knowledge-act'); }
+    loadKnowledgeFacts();
+  }
+  window.knowledgeApprove = (k) => knowledgeAct('approve', k);
+  window.knowledgeReject = (k) => knowledgeAct('reject', k);
   function renderAdminUserTable(){
     const wrap = document.getElementById('adminUsersTable');
     if(!wrap) return;
@@ -1171,8 +1227,13 @@ try{
         let expected = null;
         try { expected = sessionStorage.getItem('aiapp_oauth_state'); } catch(e){ console.warn('[oauth] no sessionStorage', e); }
         const returned = params.get('state');
-        if(expected && returned !== expected){
-          console.error('[oauth] state mismatch — login refused');
+        // v-sec-oauth-state: نرفض الآن أيّ gtoken لا يحمل state يطابق ما بدأه هذا التبويب —
+        // لا «نقبل عند الغياب» كما كان. بلا هذا الشرط، رابط فيه gtoken المهاجم يُقبل في أيّ تبويب
+        // لم يبدأ دخول جوجل، فيُدخل الضحية حسابَ المهاجم وترتفع محادثاتها إليه. مسارات الأغلفة
+        // (آيفون/أندرويد) لا تمرّ من هنا أصلًا — تكمل عبر oauth-claim بالـstate المحفوظ. وإن تعذّر
+        // sessionStorage (تصفّح خاصّ) فلا دخول آمنًا بجوجل هنا، والرسالة تطلب المحاولة من جديد.
+        if(!expected || !returned || returned !== expected){
+          console.error('[oauth] missing-or-mismatched state — login refused');
           try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#10"); }
           noteSession('جوجل-تحقّق-أمني'); // اللوحة كانت عمياء عن هذا الخروج بالذات
           window.history.replaceState({}, document.title, cleanUrl);
@@ -5339,6 +5400,7 @@ const I18N = {
     ownerClaudeDiag: "👑 فحص مفتاح كلود",
     ownerStatsHint: "اضغط \"تحديث\" لعرض الإحصائيات...",
     ownerUsersTitle: "👤 إدارة المستخدمين (حظر / حذف / رسالة)",
+    ownerKnowledgeTitle: "🧠 المعرفة الجماعيّة (مراجعة قبل النشر)",
     ownerVipTitle: "⭐ صلاحيات VIP (بلا حدود)",
     ownerVipPh: "إيميل أو اسم مستخدم",
     ownerVipAdd: "➕ إضافة",
@@ -5988,6 +6050,7 @@ const I18N = {
     ownerClaudeDiag: "👑 Check Claude key",
     ownerStatsHint: "Press “Refresh” to show the stats…",
     ownerUsersTitle: "👤 User management (ban / delete / message)",
+    ownerKnowledgeTitle: "🧠 Collective knowledge (review before publish)",
     ownerVipTitle: "⭐ VIP access (no limits)",
     ownerVipPh: "Email or username",
     ownerVipAdd: "➕ Add",
@@ -11974,6 +12037,24 @@ function omranPanelReopen(){
   }catch(e){ __swallow(e, 'ui:panel-reopen'); }
 }
 window.omranPanelReopen = omranPanelReopen;
+/* v-sec-sandbox: المعاينة صارت iframe معزولًا (sandbox بلا allow-same-origin)، فأصلها «null»
+   وlocalStorage/sessionStorage يرميان فيه. تطبيقات المستخدم التي تحفظ حالتها كانت تنكسر، فنحقن
+   طبقة تخزين بديلة في الذاكرة أوّلَ <head> (أو <html> أو بعد <!doctype>): تعمل أثناء الجلسة ولا
+   تبقى بعد إعادة التحميل — وهي لا تفعل شيئًا إن كان التخزين الحقيقيّ متاحًا (معاينة غير معزولة). */
+const OMRAN_PREVIEW_SHIM = '<script>(function(){var ok=true;try{window.localStorage.getItem("__p");}catch(e){ok=false;}if(ok)return;var mk=function(){var m={};return Object.create(Object.prototype,{getItem:{value:function(k){k=String(k);return Object.prototype.hasOwnProperty.call(m,k)?m[k]:null;}},setItem:{value:function(k,v){m[String(k)]=String(v);}},removeItem:{value:function(k){delete m[String(k)];}},clear:{value:function(){m={};}},key:{value:function(i){return Object.keys(m)[i]||null;}},length:{get:function(){return Object.keys(m).length;}}});};try{Object.defineProperty(window,"localStorage",{value:mk(),configurable:true});}catch(_){/*noop*/}try{Object.defineProperty(window,"sessionStorage",{value:mk(),configurable:true});}catch(_){/*noop*/}})();<\/script>';
+function omranPreviewInject(code){
+  const s = String(code == null ? '' : code);
+  let m = s.match(/<head[^>]*>/i);
+  if(m){ const i = m.index + m[0].length; return s.slice(0, i) + OMRAN_PREVIEW_SHIM + s.slice(i); }
+  m = s.match(/<html[^>]*>/i);
+  if(m){ const i = m.index + m[0].length; return s.slice(0, i) + OMRAN_PREVIEW_SHIM + s.slice(i); }
+  m = s.match(/<!doctype[^>]*>/i);
+  if(m){ const i = m.index + m[0].length; return s.slice(0, i) + OMRAN_PREVIEW_SHIM + s.slice(i); }
+  return OMRAN_PREVIEW_SHIM + s;
+}
+function omranSetPreview(frame, code){ frame.srcdoc = omranPreviewInject(code); }
+window.omranSetPreview = omranSetPreview;
+
 function renderCodeAndPreview(){
   const cur = getCurrent();
   const pyConsole = $('#pyConsole');
@@ -12055,7 +12136,7 @@ function renderCodeAndPreview(){
     if(previewFrame._lastSrc !== cur.code){
       previewFrame._lastSrc = cur.code;
       previewFrame._imageView = false;
-      previewFrame.srcdoc = cur.code;
+      omranSetPreview(previewFrame, cur.code);
     }
   }
 }
@@ -16116,7 +16197,7 @@ codeEl.addEventListener('input', () => {
       runPythonCode(cur.code);
     } else {
       previewFrame._lastSrc = cur.code; previewFrame._imageView = false;
-      previewFrame.srcdoc = cur.code;
+      omranSetPreview(previewFrame, cur.code);
     }
   }, 500);
 });
@@ -16143,7 +16224,7 @@ $('#btnRunCode').onclick = () => {
     runPythonCode(cur.code);
   } else {
     previewFrame._lastSrc = cur.code; previewFrame._imageView = false;
-    previewFrame.srcdoc = cur.code;
+    omranSetPreview(previewFrame, cur.code);
   }
   switchWorkTab('preview');
 };
@@ -19998,6 +20079,15 @@ function mahaShowImage(base64, mimeType){
 // AI-generated picture - used when the user asks about a real, existing
 // thing (a specific car/plane model, a place, a person...) so they see the
 // true real image, not an artist's imagined approximation.
+/* v-sec-imgurl: رابط الصورة يأتي من بحث الويب — نقبل http(s) فقط عبر new URL ونهرّب المحارف الخطيرة
+   قبل دمجه في سمة HTML، فلا ينكسر الاقتباس ويحقن وسمًا داخل المعاينة. غير الصالح يُتجاهل. */
+function omranSafeImgUrl(u){
+  try {
+    const p = new URL(String(u || ''), window.location.href);
+    if(p.protocol !== 'https:' && p.protocol !== 'http:') return '';
+    return p.href.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  } catch(e){ return ''; }
+}
 function mahaShowRealPhotoUrl(url){
   mahaLastImageBase64 = null;
   mahaLastImageMime = null;
@@ -20012,7 +20102,9 @@ function mahaShowRealPhotoUrl(url){
       state.projects.push(cur);
       state.currentId = id;
     }
-    cur.code = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0b12;}img{max-width:100%;max-height:100vh;display:block;}</style></head><body><img src="' + url + '" alt=""></body></html>';
+    const safeUrl = omranSafeImgUrl(url);
+    if(!safeUrl) return;
+    cur.code = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0b12;}img{max-width:100%;max-height:100vh;display:block;}</style></head><body><img src="' + safeUrl + '" alt=""></body></html>';
     cur.codeType = 'html';
     renderAll();
     switchWorkTab('preview');
@@ -23237,7 +23329,7 @@ async function processArchiveAttachment(file, attachment, preReadB64){
     const resp = await fetch('/api/analyze-zip', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileBase64, filename: file.name })
+      body: JSON.stringify({ fileBase64, filename: file.name, token: authGet('aiapp_auth_token'), guestId: (window.getGuestId ? window.getGuestId() : undefined) }) // v-sec-zip-gate: الحصّة على الحساب/الشبكة
     });
     const data = await resp.json().catch(() => ({}));
     if(!resp.ok || !data.ok) throw new Error(data.error || ('فشل التحليل (HTTP ' + resp.status + ')'));
@@ -36341,16 +36433,26 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       list.forEach(s => {
         const card = document.createElement('div');
         card.style.cssText = 'border:1px solid var(--border,#333); border-radius:10px; padding:10px;';
-        card.innerHTML =
-          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<strong style="font-size:13px;">' + (s.title || '') + '</strong>' +
-            '<span style="font-size:11.5px; color:#4ade80;">' + t('fashionMatchLabel') + ': ' + s.matchPercent + '%</span>' +
-          '</div>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.clothing || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0;">🎨 ' + (s.colors || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">' + (currentGender() === 'men' ? '💼 ' : '👜 ') + (s.accessories || '') + '</p>' + /* v-fx-gender-pics: كبطاقة الحقيبة */
-          '<button type="button" class="btn primary useLookBtn" style="width:100%; font-size:12px; padding:5px;">' + t('fashionUseThisLook') + '</button>';
-        card.querySelector('.useLookBtn').onclick = () => {
+        /* v-sec-card-xss: حقول النموذج تُبنى بـtextContent لا بـinnerHTML — صورةٌ نصُّها المضمَّن كانت
+           تجعل النموذج يعيد «<img onerror=…>» في title/clothing فيُنفَّذ في الصفحة الأمّ. */
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+        const titleEl = document.createElement('strong');
+        titleEl.style.cssText = 'font-size:13px;'; titleEl.textContent = String(s.title || '');
+        const matchEl = document.createElement('span');
+        matchEl.style.cssText = 'font-size:11.5px; color:#4ade80;'; matchEl.textContent = t('fashionMatchLabel') + ': ' + String(s.matchPercent == null ? '' : s.matchPercent) + '%';
+        head.appendChild(titleEl); head.appendChild(matchEl);
+        const pClothing = document.createElement('p');
+        pClothing.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:6px 0 2px;'; pClothing.textContent = String(s.clothing || '');
+        const pColors = document.createElement('p');
+        pColors.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0;'; pColors.textContent = '🎨 ' + String(s.colors || '');
+        const pAcc = document.createElement('p');
+        pAcc.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0 8px;'; pAcc.textContent = (currentGender() === 'men' ? '💼 ' : '👜 ') + String(s.accessories || ''); /* v-fx-gender-pics: كبطاقة الحقيبة */
+        const useBtn = document.createElement('button');
+        useBtn.type = 'button'; useBtn.className = 'btn primary useLookBtn';
+        useBtn.style.cssText = 'width:100%; font-size:12px; padding:5px;'; useBtn.textContent = t('fashionUseThisLook');
+        card.appendChild(head); card.appendChild(pClothing); card.appendChild(pColors); card.appendChild(pAcc); card.appendChild(useBtn);
+        useBtn.onclick = () => {
           /* تدقيق ١٨ أكتوبر: الوصف كان «… . Colors: … Accessories: …» بتسميات إنجليزيّة و«..» — الأجزاء الثلاثة بلا نقطتها الختاميّة مربوطة بـ«. » */
           const look = [s.clothing, s.colors, s.accessories].map((x) => String(x || '').trim().replace(/[.。।]+$/, '').trim()).filter(Boolean).join('. ');
           /* مع صورة مرفوعة يبقى الزرّ كما كان: لبس الإطلالة على صورتك (v-fashion-use-look) يحتاج أمر الخادم — مع طلب الأزياء المنفصل */
@@ -40197,13 +40299,19 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       list.forEach(s => {
         const card = document.createElement('div');
         card.style.cssText = 'border:1px solid var(--border,#333); border-radius:10px; padding:10px;';
-        card.innerHTML =
-          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<strong style="font-size:13px;">' + (s.title || '') + '</strong>' +
-            '<span style="font-size:11.5px; color:#4ade80;">' + t2('fashionMatchLabel') + ': ' + s.matchPercent + '%</span>' +
-          '</div>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.description || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">🎨 ' + (s.colors || '') + '</p>';
+        /* v-sec-card-xss: حقول النموذج بـtextContent لا innerHTML (منع حقن وسم من ردّ النموذج). */
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+        const titleEl = document.createElement('strong');
+        titleEl.style.cssText = 'font-size:13px;'; titleEl.textContent = String(s.title || '');
+        const matchEl = document.createElement('span');
+        matchEl.style.cssText = 'font-size:11.5px; color:#4ade80;'; matchEl.textContent = t2('fashionMatchLabel') + ': ' + String(s.matchPercent == null ? '' : s.matchPercent) + '%';
+        head.appendChild(titleEl); head.appendChild(matchEl);
+        const pDesc = document.createElement('p');
+        pDesc.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:6px 0 2px;'; pDesc.textContent = String(s.description || '');
+        const pColors = document.createElement('p');
+        pColors.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0 8px;'; pColors.textContent = '🎨 ' + String(s.colors || '');
+        card.appendChild(head); card.appendChild(pDesc); card.appendChild(pColors);
         suggestionsEl.appendChild(card);
       });
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
@@ -41751,11 +41859,13 @@ window.updateVersionLabel();
   /* v-sec-postmsg (إعادة التقييم ١٠ أكتوبر): أيّ نافذة (موقع آخر فتح التطبيق في نافذة منبثقة) كانت ترسل {__omranView:1} فيولّد التطبيق
      صورة مدفوعة برمز المستخدم ونقاطه. الطلب يُقبل الآن من إطار داخل صفحة التطبيق نفسها وحده — المحرّر يعيش في iframe المعاينة. */
   function fromOwnFrame(e) {
-    // المراجعة العدائيّة: إطارات التطبيق المعزولة (جرّبه لي، run_js/test_html) تشغّل كود النموذج وأصلها «null» — المحرّر في المعاينة يرث أصل التطبيق
-    if (e.origin !== window.location.origin) return false;
+    // v-sec-sandbox: المعاينة وإطارات run_js/test_html كلّها معزولة وأصلها «null» فلا يميّزها الأصل.
+    // الحارس هويّة إطار المعاينة بعينه (#previewFrame): e.source يجب أن يساوي contentWindow له وحده —
+    // لا أيّ iframe (إطار run_js يشغّل كود النموذج ولا يجوز أن يولّد صورةً مدفوعة)، ولا يُزوَّر من نافذة أخرى.
+    if (!e.source) return false;
     try {
-      var fr = document.getElementsByTagName('iframe');
-      for (var i = 0; i < fr.length; i++) { if (fr[i].contentWindow && fr[i].contentWindow === e.source) return true; }
+      var pf = document.getElementById('previewFrame');
+      if (pf && pf.contentWindow && pf.contentWindow === e.source) return true;
     } catch (err) { __swallow(err, 'floorplan:bridge#src'); }
     return false;
   }

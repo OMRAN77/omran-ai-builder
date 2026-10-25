@@ -198,7 +198,10 @@ async function createCheckoutSession(req, res) {
     // v-checkout-autorenew: يدويّ (payment) لشهر واحد افتراضيًّا — الباقة تسقط بعد ٣٥ يومًا (tier.js)؛
     // الاشتراك الشهريّ المتجدّد لمن فعّل autoRenew صراحةً. رزمة النقاط دفعة واحدة دائمًا.
     const recurring = !planInfo.pack && autoRenew === true;
-    const base = origin || 'https://omran-ai-builder.vercel.app';
+    // v-sec-checkout-origin: عنوان الرجوع بعد الدفع (success/cancel) كان يؤخذ من origin الذي يرسله
+    // العميل بلا فحص، فيصنع رابط دفعٍ حقيقيّ يحوّل الدافع إلى موقع المهاجم (تصيّد). نقبله فقط إن كان
+    // أصلًا مسموحًا (نفس الموقع أو قائمة ALLOWED_ORIGINS)، وإلّا نرجع إلى الموقع القانونيّ.
+    const base = require('./cors.js').isAllowedOrigin(req, origin) ? origin : require('./_site.js').siteUrl();
     const params = new URLSearchParams();
     params.append('mode', recurring ? 'subscription' : 'payment');
     params.append('payment_method_types[0]', 'card');

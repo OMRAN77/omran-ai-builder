@@ -965,15 +965,15 @@ async function fetchPage(url) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 12000);
     const r = await fetchPublicUrl(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranChat/1.0)' } });
-    clearTimeout(t);
-    if (!r.ok) return 'فشل فتح الصفحة: HTTP ' + r.status;
-    const html = await r.text();
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
-      .replace(/\s+/g, ' ').trim();
+    if (!r.ok) { clearTimeout(t); return 'فشل فتح الصفحة: HTTP ' + r.status; }
+    // v-sec-fetchpage: الجذر — fetchPage كان (١) يوقف مؤقّت القطع فور وصول الترويسة فـr.text() بلا
+    // سقف ولا مهلة (خادمٌ يبثّ بلا نهاية يعلّق الدالّة ويملأ الذاكرة)، و(٢) ينظّف الوسوم بتعابير
+    // تربيعيّة (/<[^>]+>/ و<script[\s\S]*?>) فمدخلٌ فيه كثير من «<» يأخذ دقائق. الآن قراءة محدودة
+    // الحجم (المؤقّت ساريٍ طوال القراءة عبر try/finally) وتجريد خطّيّ في _html-text.js.
+    const { readCappedText, htmlToText } = require('./_html-text.js');
+    let html;
+    try { html = await readCappedText(r); } finally { clearTimeout(t); }
+    const text = htmlToText(html);
     const links = pageLinks(html, (r && r.url) || url);
     return text ? text.slice(0, 6000) + links : 'الصفحة فارغة أو محتواها غير قابل للقراءة.' + links;
   } catch (e) { return 'فشل فتح الصفحة: ' + e.message; }

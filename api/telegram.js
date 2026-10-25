@@ -9,6 +9,12 @@ const { withErrorCapture } = require('./_lib/_errors.js');
 
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv');
 const { logError } = require('./_lib/log-error.js');
+const crypto = require('crypto');
+// v-sec-timing: مقارنة ثابتة الزمن لسرّ طوله غير سرّيّ — طولان مختلفان = لا تطابق بلا تسريب.
+function tsEqual(a, b) {
+  const x = Buffer.from(String(a == null ? '' : a)); const y = Buffer.from(String(b == null ? '' : b));
+  return x.length > 0 && x.length === y.length && crypto.timingSafeEqual(x, y);
+}
 
 const APP_URL = 'https://omran-ai-builder.vercel.app';
 const DAILY_LIMIT = 10;
@@ -50,7 +56,8 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
     res.status(503).json({ error: 'webhook not configured' });
     return;
   }
-  if (req.headers['x-telegram-bot-api-secret-token'] !== secret) {
+  // v-sec-timing: مقارنة ثابتة الزمن للسرّ (كانت !== تُفشي الفرق زمنيًّا).
+  if (!tsEqual(req.headers['x-telegram-bot-api-secret-token'], secret)) {
     res.status(401).json({ ok: false }); return;
   }
 

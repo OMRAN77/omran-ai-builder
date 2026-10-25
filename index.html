@@ -976,7 +976,8 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
           <h2 id="emptyTitleEl" data-i18n="emptyTitle" style="display:none;">ابدأ ببناء أول تطبيق لك</h2>
           <p id="emptyDescEl" data-i18n="emptyDesc" style="display:none;">اكتب وصفًا في المربع على اليسار، مثال:<br>"لعبة كسر الطوب"، "موقع لمطعم بيتزا"، "قائمة مهام يومية"</p>
         </div>
-        <iframe id="previewFrame" style="display:none;"></iframe>
+        <!-- v-sec-sandbox: معاينة كود النموذج معزولة عن أصل التطبيق — بلا allow-same-origin فلا تصل إلى localStorage/الكوكي/التوكن في النافذة الأمّ. تطبيقات المستخدم لا تنكسر: طبقة تخزين بديلة تُحقن في srcdoc (omranPreviewInject). -->
+        <iframe id="previewFrame" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-presentation allow-pointer-lock" allow="autoplay; fullscreen" allowfullscreen style="display:none;"></iframe>
         <div id="pyConsole" style="display:none;">
           <div id="pyConsoleToolbar">
             <button class="btn" id="btnRunPython" type="button" data-i18n="runPythonBtn">▶️ تشغيل</button>
@@ -1025,12 +1026,12 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script defer src="/js/partials-settings.js?v=705"></script>
+<script defer src="/js/partials-settings.js?v=706"></script>
 
 <script src="/js/selfdiag.js?v=hw-twa-10"></script>
 <script defer src="/templates-data.js?v=590"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=c8ec40a6"></script>
+    <script defer src="/js/app.bundle.js?v=010cc73d"></script>
     <script defer src="/js/frame-touch.js?v=4"></script><!-- v-frame-gold: لمسة الضغط للكمبيوتر والجوال (v-touch-mobile: وفراغ المحادثة في الجوال) -->
     <script defer src="/js/modes.js?v=m211026"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->

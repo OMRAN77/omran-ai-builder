@@ -218,7 +218,11 @@ self.addEventListener('fetch', (event) => {
   event.respondWith((async () => {
     try {
       const res = await fetch(req, { cache: 'no-store' });
-      if (cacheable(res)) {
+      // v-sec-sw-token: لا نخبّئ تنقّلًا يحمل استعلامًا (?gtoken=/?resetToken=/?token=) — كان يُخزَّن
+      // الرمز في مفتاح الكاش ويبقى بعد الخروج، فيستردّه من يصل الجهاز لاحقًا. القشرة تُخبّأ بلا استعلام.
+      let hasQuery = true;
+      try { hasQuery = !!new URL(req.url).search; } catch (e) { hasQuery = true; }
+      if (cacheable(res) && !hasQuery) {
         const cache = await caches.open(SHELL_CACHE);
         cache.put(req, res.clone()).catch(() => {});
       }

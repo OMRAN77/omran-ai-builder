@@ -1207,7 +1207,7 @@ async function processArchiveAttachment(file, attachment, preReadB64){
     const resp = await fetch('/api/analyze-zip', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileBase64, filename: file.name })
+      body: JSON.stringify({ fileBase64, filename: file.name, token: authGet('aiapp_auth_token'), guestId: (window.getGuestId ? window.getGuestId() : undefined) }) // v-sec-zip-gate: الحصّة على الحساب/الشبكة
     });
     const data = await resp.json().catch(() => ({}));
     if(!resp.ok || !data.ok) throw new Error(data.error || ('فشل التحليل (HTTP ' + resp.status + ')'));

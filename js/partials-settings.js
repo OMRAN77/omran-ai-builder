@@ -717,6 +717,9 @@
       <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerUsersTitle">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
       <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:320px; overflow-y:auto;"></div>
 
+      <!-- v-sec-knowledge-approve: مراجعة حقائق «المعرفة الجماعيّة» قبل حقنها — يُملأ بالـJS بأزرار إيموجي بلا نصّ مترجَم جديد. -->
+      <div id="knowledgeFactsBox" style="margin-top:14px;"></div>
+
       <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerVipTitle">⭐ صلاحيات VIP (بلا حدود)</div>
       <div style="display:flex; gap:8px; margin-top:8px;">
         <input type="text" id="vipInput" placeholder="إيميل أو اسم مستخدم" data-i18n-placeholder="ownerVipPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
@@ -824,7 +827,7 @@
   <div id="templatesGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; padding:22px; overflow-y:auto; max-height:calc(85vh - 60px);"></div>
   <div id="templatePreviewWrap" style="display:none; position:relative; height:calc(85vh - 60px);">
     <button type="button" id="btnClosePreviewTpl" style="position:absolute; top:calc(12px + env(safe-area-inset-top, 0px)); inset-inline-start:12px; z-index:5; width:38px; height:38px; border-radius:50%; background:#fff; color:#12141d; border:none; font-size:18px; font-weight:700; cursor:pointer; box-shadow:var(--sh-1); display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
-    <iframe id="templatePreviewFrame" style="width:100%; height:100%; border:0; background:#fff;"></iframe>
+    <iframe id="templatePreviewFrame" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-presentation allow-pointer-lock" allow="autoplay; fullscreen" allowfullscreen style="width:100%; height:100%; border:0; background:#fff;"></iframe>
     <div style="position:absolute; bottom:0; inset-inline:0; padding:14px 22px; background:linear-gradient(0deg,#12141d,transparent); display:flex; justify-content:flex-end;">
       <button type="button" class="btn primary" id="btnUseThisTemplate" data-i18n="useThisTemplate">✅ استخدام هذا القالب</button>
     </div>

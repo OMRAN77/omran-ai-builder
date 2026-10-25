@@ -1026,7 +1026,7 @@ codeEl.addEventListener('input', () => {
       runPythonCode(cur.code);
     } else {
       previewFrame._lastSrc = cur.code; previewFrame._imageView = false;
-      previewFrame.srcdoc = cur.code;
+      omranSetPreview(previewFrame, cur.code);
     }
   }, 500);
 });
@@ -1053,7 +1053,7 @@ $('#btnRunCode').onclick = () => {
     runPythonCode(cur.code);
   } else {
     previewFrame._lastSrc = cur.code; previewFrame._imageView = false;
-    previewFrame.srcdoc = cur.code;
+    omranSetPreview(previewFrame, cur.code);
   }
   switchWorkTab('preview');
 };

@@ -74,13 +74,17 @@ function matchOrder(order) {
     ? customId
     : Object.keys(PLANS).find((p) => PLANS[p].amount === amountValue && !PLANS[p].media);
   // v-pay-refund: رقم الالتقاط ومبلغه بالسنت — الاسترداد والاعتراض يصلان برقم الالتقاط لا الطلب.
-  return { plan: plan || null, ref: String(pu.reference_id || ''), capture: String((capture && capture.id) || ''), cents: Math.round(Number(amountValue) * 100) || 0 };
+  // v-sec-paypal-capture: حالة الالتقاط نفسه — الطلب قد يكون COMPLETED والالتقاط PENDING (شيك بنكيّ/مراجعة).
+  return { plan: plan || null, ref: String(pu.reference_id || ''), capture: String((capture && capture.id) || ''), cents: Math.round(Number(amountValue) * 100) || 0, status: String((capture && capture.status) || '') };
 }
 
 async function creditOrder(order, username) {
   if (!username) return { credited: false, reason: 'auth' };
   const m = matchOrder(order);
   if (!m.plan) return { credited: false, reason: 'no_plan' };
+  // v-sec-paypal-capture: لا نشحن إلّا إذا اكتمل الالتقاط فعلًا. التقاط PENDING/غيره = لا شحن الآن؛
+  // يكتمل لاحقًا عبر ويب هوك PAYMENT.CAPTURE.COMPLETED أو إعادة 'claim' حين يصير COMPLETED.
+  if (m.status !== 'COMPLETED') return { credited: false, reason: 'capture_' + (m.status || 'unknown').toLowerCase() };
   if (m.ref && m.ref !== username && !(await wasNamed(username, m.ref))) return { credited: false, reason: 'not_owner' };
   m.plan = grantablePlan(m.plan, order);
   const g = await grantPlanToUser(username, m.plan, 'lastPaypalOrderId', order.id);
