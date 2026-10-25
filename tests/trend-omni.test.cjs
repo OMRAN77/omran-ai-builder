@@ -52,6 +52,7 @@ const TP = require(rp('api/_lib/trend-people.js'));
 let groupOpts = 'unset';
 let soloCalls = [];
 const realSolo = TP.soloFirstFrame;
+const realGroup = TP.groupFirstFrame; // v-trend-frame-look ٢١ب
 TP.soloFirstFrame = async (k, photo, scene, ratio, o) => { soloCalls.push({ scene, o }); return { b64: 'SOLOFRAME', mime: 'image/png', ref: { data: 'FACEREF', mime: 'image/jpeg' }, people: 1 }; };
 TP.groupFirstFrame = async (k, photos, scene, ratio, o) => { groupOpts = o; return { b64: 'GROUPFRAME', mime: 'image/png' }; };
 
@@ -629,10 +630,36 @@ test('٢١. إطار الشخص: زاوية الرأس والتعبير من ا�
     const t = TP.soloFrameTask('s', o);
     assert.ok(!t.includes(one) && !t.includes(many), JSON.stringify(o));
   }
-  /* إطار المجموعة (عدّة صور) */
+  /* تغيير البشرة الذي يطلبه الوصف نفسه («قصّة حبّ الزومبي»: الثاني هو المتحوّل؛ «خلّني زومبي») يغلب «لون البشرة الحقيقيّ» */
+  for (const s of [one, many]) assert.match(s, /Light alone never recolours a face; only a change the description itself makes to (?:their|someone's) skin or face \(make-up, face paint, a pale or tinted creature look\) is applied/);
+  assert.doesNotMatch(art, /Light alone/);
+  /* إطار المجموعة (عدّة صور): وصفه «the scene»، والعمر الآخر بلا قفل، والأسلوب الفنّيّ بصيغته */
+  const groupLock = TP.frameLookLock(true, { desc: 'the scene' });
+  assert.match(groupLock, /unless the scene changes it/); assert.doesNotMatch(groupLock, /the description/);
   for (const start of [false, true]) {
     const g = TP.frameTask(2, 'an old souq', start);
-    assert.ok(g.includes(many), 'المجموعة');
+    assert.ok(g.includes(groupLock), 'المجموعة');
     assert.match(g, /all 2 faces sharp\.$/, 'آخر المهمّة كما كان');
+    assert.ok(!TP.frameTask(2, 's', start, { ageShift: true }).includes('head angle'), 'المجموعة بعمر آخر: بلا قفل');
+    assert.match(TP.frameTask(2, 's', start, { ageShift: true }), /reference photos\. A single photorealistic still frame, all 2 faces sharp\.$/, 'بلا قفل = النصّ السابق حرفيًّا');
   }
+  assert.ok(TP.frameTask(3, 's', false, { art: true }).includes(TP.frameLookLock(true, { art: true, desc: 'the scene' })), 'المجموعة بأسلوب فنّيّ');
+  const zombie = TP.frameTask(2, TP.trendScene(require(rp('api/_lib/video-trends.js')).buildTrendPrompt('zombielove', { hasImage: true, people: 2 }).prompt));
+  assert.match(zombie, /zombie/); assert.match(zombie, /only a change the scene itself makes to someone's skin or face/);
+});
+
+test('٢١ب. veo-create يمرّر العمر الآخر والأسلوب الفنّيّ إلى إطار المجموعة على المحرّكين — وبلاهما الخيارات كما كانت', async () => {
+  const src = require('fs').readFileSync(path.join(root, 'api/_lib/veo-create.js'), 'utf8');
+  assert.match(src, /tp\.AGE_SHIFT_TRENDS\.has\(trendId\) \? \{ ageShift: true \} : \{\}, tp\.SOLO_FRAME_ART_TRENDS\.has\(trendId\) \? \{ art: true \} : \{\}\);/);
+  assert.match(src, /groupFirstFrame\(apiKey, trendPeople, tp\.trendScene\(promptText\), ratio, Object\.keys\(gOpt\)\.length \? gOpt : undefined\)/, 'بلا خيار = undefined');
+  /* groupFirstFrame الحقيقيّ: ageShift يُسقط القفل، والوصف الفنّيّ يُكتشف من المشهد */
+  const seen = [];
+  const run = (scene, o) => realGroup('K', [{ data: 'A', mime: 'image/png' }, { data: 'B', mime: 'image/png' }], scene, '720:1280',
+    Object.assign({ faceCrops: async () => [], callImage: async (k, parts) => { seen.push(parts.map((x) => x.text || '').join('\n')); return { b64: 'G', mime: 'image/png' }; } }, o));
+  await run('a toddler version of them', { ageShift: true });
+  await run('a family at the beach', {});
+  await run('an anime battle scene', {});
+  assert.ok(!seen[0].includes('head angle'), 'عمر آخر: بلا قفل');
+  assert.ok(seen[1].includes('as photographed, never reinterpreted'), 'واقعيّ: القفل كاملًا');
+  assert.ok(seen[2].includes('Keep each one\'s head angle') && !seen[2].includes('true skin tone'), 'أنمي: صيغته الفنّيّة');
 });

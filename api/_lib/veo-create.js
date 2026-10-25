@@ -263,7 +263,11 @@ module.exports = async (req, res) => {
     let groupFramed = false; // v-trend-omni: الصورة صارت أوّل إطار (دور Image1 عند Omni)
     if (body.trend && trendPeople.length > 1) {
       /* v-two-people: مشهد القالب وحده — فقرة «WHO THEY ARE» ليست مشهدًا (كانت أوّل ٧٠٠ حرف من «المشهد») */
-      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio, trendEngine() === 'omni' ? Object.assign({ timeoutMs: OMNI_FRAME_MS }, morph ? { start: true } : {}) : undefined);
+      /* v-trend-frame-look: العمر الآخر والأسلوب الفنّيّ يصلان إطار المجموعة على المحرّكين (قفل الشكل بلا عمر آخر وبصيغته الفنّيّة)؛
+         بلا خيار = undefined كما كان على Veo */
+      const gOpt = Object.assign(trendEngine() === 'omni' ? { timeoutMs: OMNI_FRAME_MS } : {}, morph ? { start: true } : {},
+        tp.AGE_SHIFT_TRENDS.has(trendId) ? { ageShift: true } : {}, tp.SOLO_FRAME_ART_TRENDS.has(trendId) ? { art: true } : {});
+      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio, Object.keys(gOpt).length ? gOpt : undefined);
       if (frame && frame.b64) {
         imageBase64 = frame.b64; imageMime = frame.mime; groupFramed = true;
         /* v-trend-identity: الإطار الأوّل بُني للتوّ بوجوه الأشخاص الحقيقيّة داخل مشهد الترند، لكنّ أمر

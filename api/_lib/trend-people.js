@@ -24,7 +24,8 @@ function aspectOf(ratio) {
 }
 
 /** مهمّة الدمج: أوّل إطار من مشهد الترند وفيه كلّ الأشخاص، وكلّ واحد بوجهه هو. */
-function frameTask(n, scene, start) {
+function frameTask(n, scene, start, o) {
+  const opt = o || {}; // v-trend-frame-look: { ageShift } = بلا قفل الشكل (عمر آخر)، { art } = صيغته الفنّيّة
   return 'Create the OPENING FRAME of a video. Place ALL ' + n + ' people from the reference photos together in one shared scene, '
     + 'side by side and all ' + n + ' clearly visible with their faces unobstructed, in this scene: '
     + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 700) + '\n'
@@ -32,7 +33,7 @@ function frameTask(n, scene, start) {
     + (start ? 'Show the moment BEFORE the change this scene describes happens: everyone still wears their own clothing and look from their own photo.\n' : '')
     + 'Each person keeps their own exact face and identity from their own photo. Never merge two people into one face, '
     + 'never swap a face onto the wrong body, never replace anyone with an invented person, never drop anyone, '
-    + 'and never add a person who is not in the reference photos. ' + frameLookLock(true) + ' A single photorealistic still frame, all ' + n + ' faces sharp.';
+    + 'and never add a person who is not in the reference photos.' + (opt.ageShift ? '' : ' ' + frameLookLock(true, { art: !!opt.art, desc: 'the scene' })) + ' A single photorealistic still frame, all ' + n + ' faces sharp.';
 }
 
 /* cfg اختياريّ (v-omni-first-frame): { timeoutMs, temperature, imageSize, tag } — بلا cfg تبقى إعدادات إطار
@@ -68,7 +69,7 @@ async function callImage(apiKey, parts, aspect, fetchImpl, cfg) {
  * photos: [{ data, mime }] بترتيب رفع المستخدم (شخصية ١…٣).
  * يرجع { b64, mime } أو { error, status }. صورة واحدة أو صفر = null (لا عمل، المسار القديم كما هو).
  */
-async function groupFirstFrame(apiKey, photos, scene, ratio, o) {
+async function groupFirstFrame(apiKey, photos, scene, ratio, o) { // o: { timeoutMs, start, ageShift, art } (v-trend-frame-look)
   const opt = o || {};
   const list = (photos || []).filter((p) => p && p.data).slice(0, MAX_PEOPLE);
   if (list.length < 2) return null;
@@ -77,7 +78,7 @@ async function groupFirstFrame(apiKey, photos, scene, ratio, o) {
   let crops = [];
   // لقطات الوجوه ترفع الأمانة ولا تُوقف المسار: عطب الكشف = الدمج بالصور وعناوينها كما في الاستوديو.
   try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, shaped); } catch (e) { console.warn('[trend-people] face crops skipped: ' + (e && e.message)); crops = []; }
-  const parts = mergeIdentity.mergeParts(shaped, crops, frameTask(shaped.length, scene, !!opt.start));
+  const parts = mergeIdentity.mergeParts(shaped, crops, frameTask(shaped.length, scene, !!opt.start, { ageShift: !!opt.ageShift, art: !!opt.art || ART_STYLE_RE.test(String(scene || '')) }));
   /* v-trend-omni: مهلة الإطار تُمرَّر حين يتبعه محرّك متزامن (Omni) في الدالّة نفسها — بلاها الإعداد السابق حرفيًّا (٢٤٠ث) */
   return (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl, opt.timeoutMs ? { timeoutMs: opt.timeoutMs } : undefined);
 }
@@ -109,12 +110,16 @@ const FRAME_FACE_DETAIL = 'Compose the frame so their face is large and finely d
 function frameLookLock(many, o) {
   const opt = o || {};
   const src = opt.src || (many ? 'their own photo' : 'Photo 1'); // شخصان في صورة واحدة: Photo 1 لكليهما
+  const desc = opt.desc || 'the description'; // إطار المجموعة يسمّي وصفه «the scene»
   /* الأسلوب الفنّيّ (أنمي، لعبة، دمية): ملامحه تُرسم بالأسلوب — لا «كما صُوّر» ولا «لون البشرة الحقيقيّ» */
   const copy = opt.art ? '' : (many ? 'Copy each person\'s face from ' + src + ' as photographed, never reinterpreted: ' : 'Copy their face from ' + src + ' as photographed, never reinterpreted: ');
   return copy + (copy ? 'keep ' : 'Keep ') + (many ? 'each one\'s' : 'their')
-    + ' head angle and facial expression close to ' + src + ' wherever the scene allows (no new smile, smirk or squint the description does not ask for) — a new angle or expression is what makes a face drift.'
-    + ' Everything ' + (many ? 'each person wears' : 'worn') + ' on the head and face — ghutra or shemagh, agal, hijab or scarf, cap, glasses, jewellery — keeps the exact shape, size, thickness, pattern, colour and way of wearing shown in ' + src + ', unless the description changes it.'
-    + (opt.art ? '' : ' Coloured scene light (neon, sunset, stage) may tint the background and the edges, but ' + (many ? 'every face stays' : 'their face stays') + ' clearly lit in its true skin tone so every feature reads exactly as in ' + src + '.');
+    + ' head angle and facial expression close to ' + src + ' wherever the scene allows (no new smile, smirk or squint ' + desc + ' does not ask for) — a new angle or expression is what makes a face drift.'
+    + ' Everything ' + (many ? 'each person wears' : 'worn') + ' on the head and face — ghutra or shemagh, agal, hijab or scarf, cap, glasses, jewellery — keeps the exact shape, size, thickness, pattern, colour and way of wearing shown in ' + src + ', unless ' + desc + ' changes it.'
+    + (opt.art ? '' : ' Coloured scene light (neon, sunset, stage) may tint the background and the edges, but ' + (many ? 'every face stays' : 'their face stays') + ' clearly lit in its true skin tone so every feature reads exactly as in ' + src + '.'
+      /* «قصّة حبّ الزومبي» (الشخص الثاني هو المتحوّل) والوصف الحرّ «خلّني زومبي/بصبغة وجه»: تغيير البشرة الذي يطلبه الوصف نفسه يُطبَّق
+         على ملامحه هو — الضوء وحده لا يلوّن الوجه */
+      + ' Light alone never recolours a face; only a change ' + desc + ' itself makes to ' + (many ? 'someone\'s' : 'their') + ' skin or face (make-up, face paint, a pale or tinted creature look) is applied, drawn on their own features.');
 }
 
 /** مهمّة أوّل إطار لشخص الصورة داخل مشهد الوصف — الوجه والجسم منه، والمكان واللبس من الوصف.
