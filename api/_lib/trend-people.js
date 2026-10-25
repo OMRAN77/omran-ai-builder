@@ -69,7 +69,7 @@ async function callImage(apiKey, parts, aspect, fetchImpl, cfg) {
  * photos: [{ data, mime }] بترتيب رفع المستخدم (شخصية ١…٣).
  * يرجع { b64, mime } أو { error, status }. صورة واحدة أو صفر = null (لا عمل، المسار القديم كما هو).
  */
-async function groupFirstFrame(apiKey, photos, scene, ratio, o) { // o: { timeoutMs, start, ageShift, art } (v-trend-frame-look)
+async function groupFirstFrame(apiKey, photos, scene, ratio, o) { // o: { timeoutMs, start, ageShift, art } (v-trend-frame-look)، swap (v-trend-face-swap)
   const opt = o || {};
   const list = (photos || []).filter((p) => p && p.data).slice(0, MAX_PEOPLE);
   if (list.length < 2) return null;
@@ -78,9 +78,15 @@ async function groupFirstFrame(apiKey, photos, scene, ratio, o) { // o: { timeou
   let crops = [];
   // لقطات الوجوه ترفع الأمانة ولا تُوقف المسار: عطب الكشف = الدمج بالصور وعناوينها كما في الاستوديو.
   try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, shaped); } catch (e) { console.warn('[trend-people] face crops skipped: ' + (e && e.message)); crops = []; }
-  const parts = mergeIdentity.mergeParts(shaped, crops, frameTask(shaped.length, scene, !!opt.start, { ageShift: !!opt.ageShift, art: !!opt.art || ART_STYLE_RE.test(String(scene || '')) }));
+  const art = !!opt.art || ART_STYLE_RE.test(String(scene || ''));
+  const parts = mergeIdentity.mergeParts(shaped, crops, frameTask(shaped.length, scene, !!opt.start, { ageShift: !!opt.ageShift, art }));
   /* v-trend-omni: مهلة الإطار تُمرَّر حين يتبعه محرّك متزامن (Omni) في الدالّة نفسها — بلاها الإعداد السابق حرفيًّا (٢٤٠ث) */
-  return (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl, opt.timeoutMs ? { timeoutMs: opt.timeoutMs } : undefined);
+  const out = await (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl, opt.timeoutMs ? { timeoutMs: opt.timeoutMs } : undefined);
+  /* v-trend-face-swap: وجه كلّ شخص من مرجعه (لقطة وجهه من صورته، وإلّا صورته يكشف face-swap وجهها) — عطبه = الإطار نفسه بلا مسار خطأ جديد */
+  if (!opt.swap || !out || !out.b64 || opt.ageShift || art) return out;
+  const refs = shaped.map((p, k) => { const c = crops.find((x) => x && x.of === k); return c ? { data: c.data, mime: c.mime, face: true } : { data: p.data, mime: p.mime, face: false }; });
+  const sw = await require('./face-swap.js').lockFaces({ b64: out.b64, mime: out.mime }, refs, Object.assign({ apiKey, fetchImpl: opt.fetchImpl }, opt.swap));
+  return Object.assign({}, out, sw.swapped ? { b64: sw.b64, mime: sw.mime } : {}, { swapped: sw.swapped, swapWhy: sw.reason || '' });
 }
 
 /* ── v-omni-first-frame (١ أكتوبر ٢٠٢٦، المالك بعد فشل قفل النصّ مرّتين بالدليل: «مافي شي تغيّر… شوف الفرق الشخصيّة»؛
@@ -241,7 +247,8 @@ function frameKey(photo, scene, ratio, style, art) {
  * أوّل إطار لشخص صورة واحدة داخل مشهد وصف المستخدم.
  * photo: { data, mime? }؛ o: { budgetMs (الكشف + التوليد معًا)، style ('anime' من الواجهة)، artHint (قالب ترند فنّيّ)،
  *   start وageShift (v-trend-omni-face، انظر soloFrameTask)، detail (v-trend-frame-face: 2K ووجه كبير)، hiRes (2K وحده — ترند الدمية
- *   والليغو: الوجه رأس لعبة صغير في عبوتها، وسطر «سدس الارتفاع» يكسرها)، faceCrops، callImage، fetchImpl }.
+ *   والليغو: الوجه رأس لعبة صغير في عبوتها، وسطر «سدس الارتفاع» يكسرها)، faceCrops، callImage، fetchImpl،
+ *   swap (v-trend-face-swap: { until, owner, only, multi } — تبديل وجه الإطار بوجه الصورة، انظر face-swap.js) }.
  * يرجع { b64, mime, ref } — ref لقطة الوجه (مرجع الملامح للمحرّك) أو null — أو { error } أو null بلا مدخلات.
  */
 async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
@@ -254,9 +261,10 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     const text = String(scene || '');
     const anime = opt.style === 'anime';
     const art = anime || !!opt.artHint || ART_STYLE_RE.test(text);
-    const key = frameKey(shaped, text, aspectOf(ratio), (anime ? 'anime' : '') + (opt.start ? '|start' : '') + (opt.ageShift ? '|age' : '') + (opt.detail ? '|detail' : '') + (opt.hiRes ? '|2k' : ''), art);
+    const swap = !!opt.swap && !art && !opt.ageShift; // v-trend-face-swap: لا للأسلوب الفنّيّ (لعبة، أنمي) ولا للعمر الآخر
+    const key = frameKey(shaped, text, aspectOf(ratio), (anime ? 'anime' : '') + (opt.start ? '|start' : '') + (opt.ageShift ? '|age' : '') + (opt.detail ? '|detail' : '') + (opt.hiRes ? '|2k' : '') + (swap ? '|swap' : ''), art);
     const hit = FRAME_CACHE.get(key);
-    if (hit && Date.now() - hit.t < FRAME_CACHE_TTL) return { b64: hit.b64, mime: hit.mime, ref: hit.ref, people: hit.people, cached: true };
+    if (hit && Date.now() - hit.t < FRAME_CACHE_TTL) return Object.assign({ b64: hit.b64, mime: hit.mime, ref: hit.ref, people: hit.people, cached: true }, swap ? { swapped: hit.swapped, swapWhy: hit.swapWhy } : {});
     let crops = [];
     const stats = {}; // v-ai-video-speed: stats.faces = عدد الوجوه حين نجح الكشف (لا قيمة عند العطب)
     try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, [shaped], { timeoutMs: Math.min(15000, budget), fetchImpl: opt.fetchImpl, stats }); } catch (e) { console.warn('[trend-people] solo face crop skipped: ' + (e && e.message)); crops = []; }
@@ -281,16 +289,26 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
        v-trend-frame-face: detail (ترندات Omni) = 2K — ضعف البكسلات للوجه في لقطة واسعة، بالسعر نفسه. */
     const out = await (opt.callImage || callImage)(apiKey, parts, aspectOf(ratio), opt.fetchImpl, { timeoutMs: left, temperature: mergeIdentity.mergeTemperature(art, text), imageSize: (opt.detail || opt.hiRes) ? '2K' : '1K', tag: 'solo' });
     if (!out || !out.b64) return { error: (out && (out.why || out.status)) || 'no image' };
+    /* v-trend-face-swap: قبل ترميز JPEG — التبديل يرمّز JPEG ٩٢ مرّة واحدة بنفسه، فلا ترميز ثانٍ فوقه. المراجع: لقطة الوجه، أو لقطتا
+       الشخصين، وإلّا الصورة نفسها (يصغّرها face-swap ≤١٠٢٤) */
+    let sw = null;
+    /* only مع شخصين من صورة واحدة: ترتيب اللقطتين بحجم الوجه لا بالدور (من يصير زومبي يقرّره برو) = لا تبديل */
+    if (swap && two && Array.isArray(opt.swap.only) && opt.swap.only.length) sw = { swapped: 0, reason: 'roles' };
+    else if (swap) {
+      const refs = two ? crops.map((c) => ({ data: c.data, mime: c.mime, face: true })) : (crop ? [{ data: crop.data, mime: crop.mime, face: true }] : [{ data: shaped.data, mime: shaped.mime, face: false }]);
+      sw = await require('./face-swap.js').lockFaces({ b64: out.b64, mime: out.mime }, refs, Object.assign({ apiKey, fetchImpl: opt.fetchImpl }, opt.swap));
+      if (sw.swapped) { out.b64 = sw.b64; out.mime = sw.mime; }
+    }
     /* v-trend-frame-face: إطار 2K بصيغة PNG قد يبلغ ~١٠ ميغا بعد base64 في طلب المحرّك — يُرمَّز JPEG ٩٢ مرّة واحدة (من أصل بلا فقد)
        فوق FRAME_B64_MAX؛ أيّ عطب = PNG كما هو */
-    if ((opt.detail || opt.hiRes) && /png/i.test(out.mime || 'image/png') && out.b64.length > FRAME_B64_MAX) {
+    if (!(sw && sw.swapped) && (opt.detail || opt.hiRes) && /png/i.test(out.mime || 'image/png') && out.b64.length > FRAME_B64_MAX) {
       try {
         const img = require('./image-diff.js').decodeImage(Buffer.from(out.b64, 'base64'));
         if (img) { out.b64 = Buffer.from(require('./face-composite.js').encodeJpeg(img, 92)).toString('base64'); out.mime = 'image/jpeg'; }
       } catch (e) { console.warn('[trend-people] frame jpeg skipped: ' + (e && e.message)); }
     }
     /* ref: لقطة الوجه الواحد مرجعًا للمحرّك؛ مع شخصين الصورة نفسها (فيها الاثنان). people: عدد من كشفناهم (٠ = لا نعرف) */
-    const res = { b64: out.b64, mime: out.mime || 'image/png', ref: crop ? { data: crop.data, mime: crop.mime } : null, people };
+    const res = Object.assign({ b64: out.b64, mime: out.mime || 'image/png', ref: crop ? { data: crop.data, mime: crop.mime } : null, people }, sw ? { swapped: sw.swapped, swapWhy: sw.reason || '' } : {});
     FRAME_CACHE.set(key, Object.assign({ t: Date.now() }, res));
     while (FRAME_CACHE.size > 4) FRAME_CACHE.delete(FRAME_CACHE.keys().next().value);
     return res;

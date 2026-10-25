@@ -248,4 +248,5 @@ function mergeAspect(photo, text) {
   return d && d.w && d.h ? nearestRatio(d.w, d.h) : '3:4';
 }
 
-module.exports = { faceCrops, detectFaces, mergeParts, mergeInstruction, mergeTemperature, mergeAspect, headRect, whereIn, orient, sniffMime, MAX_HUMAN_REFS };
+module.exports = { faceCrops, detectFaces, mergeParts, mergeInstruction, mergeTemperature, mergeAspect, headRect, whereIn, orient, sniffMime, MAX_HUMAN_REFS,
+  decodeWork, shrinkTo, DETECT_URL /* v-trend-face-swap: نفس الفكّ والتصغير ونقطة الكشف في face-swap.js */ };
