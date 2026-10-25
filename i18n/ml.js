@@ -1,4 +1,5 @@
 I18N['ml'] = {
+    sheetCopyImg: "ചിത്രം പകർത്തുക", sheetCopyLink: "ലിങ്ക് പകർത്തുക", sheetCopied: "പകർത്തി", sheetCopyFail: "പകർത്തൽ പരാജയപ്പെട്ടു", sheetShareFail: "പങ്കിടൽ പരാജയപ്പെട്ടു — ഡൗൺലോഡ് പരീക്ഷിക്കുക", sheetDlDesktop: "ഡൗൺലോഡ് ചെയ്തു — Downloads ഫോൾഡറിൽ കണ്ടെത്തുക",
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
     "designAiFurnitureScandinavian": "സ്കാൻഡിനേവിയൻ",
     "designAiFurnitureJapandi": "ജപ്പാൻഡി",

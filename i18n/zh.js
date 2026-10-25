@@ -1,4 +1,5 @@
 I18N['zh'] = {
+    sheetCopyImg: "复制图片", sheetCopyLink: "复制链接", sheetCopied: "已复制", sheetCopyFail: "复制失败", sheetShareFail: "分享失败 — 请试试下载", sheetDlDesktop: "已下载 — 请在下载文件夹中查看",
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
     "designAiFurnitureScandinavian": "北欧风",
     "designAiFurnitureJapandi": "日式北欧",

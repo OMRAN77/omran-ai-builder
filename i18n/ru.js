@@ -1,4 +1,5 @@
 I18N['ru'] = {
+    sheetCopyImg: "Копировать изображение", sheetCopyLink: "Копировать ссылку", sheetCopied: "Скопировано", sheetCopyFail: "Не удалось скопировать", sheetShareFail: "Не удалось поделиться — попробуйте «Скачать»", sheetDlDesktop: "Загружено — найдите в папке «Загрузки»",
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
     "designAiFurnitureScandinavian": "Скандинавская",
     "designAiFurnitureJapandi": "Джапанди",

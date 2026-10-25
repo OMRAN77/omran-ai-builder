@@ -1,4 +1,5 @@
 I18N['fil'] = {
+    sheetCopyImg: "Kopyahin ang larawan", sheetCopyLink: "Kopyahin ang link", sheetCopied: "Nakopya", sheetCopyFail: "Nabigo ang pagkopya", sheetShareFail: "Nabigo ang pagbabahagi — subukan ang Download", sheetDlDesktop: "Na-download — hanapin ito sa Downloads folder",
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
     "designAiFurnitureScandinavian": "Iskandinabo",
     "designAiFurnitureJapandi": "Japandi",

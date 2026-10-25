@@ -1,4 +1,5 @@
 I18N['id'] = {
+    sheetCopyImg: "Salin gambar", sheetCopyLink: "Salin tautan", sheetCopied: "Tersalin", sheetCopyFail: "Gagal menyalin", sheetShareFail: "Gagal berbagi — coba Unduh", sheetDlDesktop: "Terunduh — temukan di folder Unduhan",
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
     "designAiFurnitureScandinavian": "Skandinavia",
     "designAiFurnitureJapandi": "Japandi",

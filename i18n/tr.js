@@ -1,4 +1,5 @@
 I18N['tr'] = {
+    sheetCopyImg: "Görseli kopyala", sheetCopyLink: "Bağlantıyı kopyala", sheetCopied: "Kopyalandı", sheetCopyFail: "Kopyalama başarısız", sheetShareFail: "Paylaşım başarısız — İndir’i deneyin", sheetDlDesktop: "İndirildi — İndirilenler klasöründe bulun",
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
     "designAiFurnitureScandinavian": "İskandinav",
     "designAiFurnitureJapandi": "Japandi",
