@@ -264,7 +264,7 @@ test('مولّد المعاينات يشمل الميزات الأساسيّة �
   const prev = fs.readFileSync(path.join(root, 'api/_lib/studio-preview.js'), 'utf8');
   assert.match(prev, /require\('\.\/studio-styles\.js'\)/, 'studio-preview لا يعرف الميزات الأساسيّة');
   assert.match(prev, /MORE\.STYLE_PROMPTS\[feature\] \|\| BASE\.STYLE_TEXT\[feature\]/, 'القائمة البيضاء لا تشمل الأساسيّة');
-  assert.match(prev, /feature === 'anime' \? 'A character illustration of '/, 'الأنمي يجب ألّا يُطلب كصورة فوتوغرافيّة');
+  assert.match(prev, /feature === 'anime' \? 'A (?:full-frame )?character illustration of '/, 'الأنمي يجب ألّا يُطلب كصورة فوتوغرافيّة'); // v-style-match: «full-frame» — المشهد يملأ البطاقة
   for (const feature of Object.keys(studioStyles.STYLE_TEXT)) {
     assert.ok(studioStyles.PREVIEW_FRAME[feature], feature + ': لا تأطير معاينة');
     assert.ok(studioStyles.PREVIEW_FEATURE_NAME[feature], feature + ': لا اسم ميزة للمعاينة');
