@@ -35981,15 +35981,17 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-fx-simple (تبسيط الأزياء): الخادم يبني التصميم من النمط («SPECIFIC DESIGN» من ≥١٠٠ للنمط) ثمّ يقول
      «مخصّص لـ{المناسبة}». فلمّا طُوي منتقي النمط تحت «خصّصها» صار افتراضه («سهرة» أوّل القائمة) يُطبَّق بصمت:
      مناسبة «كاجوال» + نمط «سهرة» = فستان سهرة لطلعة كاجوال. الآن المناسبة الظاهرة تختار النمط المطابق لها
-     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب). */
+     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب).
+     v-fx-occ-look (المالك ٢٥ أكتوبر: «الصور لي ماتطابق الشي الي اخترته»): للرجال والأطفال النمط هو ما في صورة بطاقة المناسبة
+     (KIND_LOOK في design-gen.js) — كان تخرّج الرجل يعرض ثلاث قطع ويولّد رسميًّا، وسفر الطفل دنيم ← كاجوال، وتخرّجه بريبي ← رسمي. */
   const FX_OCC_STYLE = {
     wedding:    { women:'wedding', men:'wedding',     kids:'wedding' },
     work:       { women:'office',  men:'office',      kids:'school' },
     casual:     { women:'casual',  men:'casual',      kids:'casual' },
     sport:      { women:'sporty',  men:'sporty',      kids:'sporty' },
-    travel:     { women:'casual',  men:'smartcasual', kids:'casual' },
+    travel:     { women:'casual',  men:'smartcasual', kids:'denim' },
     formal:     { women:'formal',  men:'formal',      kids:'formal' },
-    graduation: { women:'formal',  men:'formal',      kids:'formal' },
+    graduation: { women:'formal',  men:'threepiece',  kids:'preppy' },
     religious:  { women:'abaya',   men:'traditional', kids:'eidkids' },
   };
   function fxStyleForOccasion(){

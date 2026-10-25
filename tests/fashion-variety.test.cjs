@@ -264,9 +264,9 @@ test('٩. بطاقات الإضافات: شبكة حقيقيّة، والاسم 
   assert.doesNotMatch(fn, /className='chipGrid/);
   assert.match(fn, /__omranWhenSeen\(pic,function\(\)\{ im\.src=url; \}\)/, 'الصورة المزاحة خارج القصّ لا تتقاطع — المراقَب هو المربّع');
   assert.match(dg, /row\.insertAdjacentElement\('afterend',hint\('fxAccHint'\)\);/);
-  // focusCss الحقيقيّة: كلّ إضافة لها نقطة تركيز، والصورة (٢:٣) تغطّي المربّع كاملًا بلا فراغ
+  // focusCss الحقيقيّة: كلّ إضافة لها نقطة تركيز، والصورة بنسبتها (٣:٤ منذ v-fx-acc-ratio) تغطّي المربّع كاملًا بلا فراغ
   const ctx = {};
-  vm.runInNewContext(dg.match(/var EXT=\[[^\n]*\];/)[0] + '\n' + dg.match(/  var EXT_FOCUS=\{[^\n]*\};/)[0] + '\n' +
+  vm.runInNewContext(dg.match(/var EXT=\[[^\n]*\];/)[0] + '\n' + dg.match(/var R34=[^,]*/)[0] + ';\n' + dg.match(/  var EXT_FOCUS=\{[^\n]*\};/)[0] + '\n' +
     dg.slice(dg.indexOf('  function focusCss(f){'), dg.indexOf('  function paintAcc(')) + '\nthis.EXT=EXT; this.F=EXT_FOCUS; this.css=focusCss;', ctx);
   for (const r of ctx.EXT) {
     const f = ctx.F[r[0]];
@@ -276,7 +276,7 @@ test('٩. بطاقات الإضافات: شبكة حقيقيّة، والاسم 
     const w = num('width'), l = num('left'), tp = num('top');
     assert.ok(w >= 100, r[0] + ': تكبير ≥١');
     assert.ok(l <= 0 && l + w >= 100 - 0.1, r[0] + ': فراغ أفقيّ');
-    assert.ok(tp <= 0 && tp + 1.5 * w >= 100 - 0.1, r[0] + ': فراغ عموديّ');
+    assert.ok(tp <= 0 && tp + (f[3] || 1.5) * w >= 100 - 0.1, r[0] + ': فراغ عموديّ');
   }
 });
 
