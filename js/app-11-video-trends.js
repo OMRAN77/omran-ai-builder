@@ -442,6 +442,9 @@
       params.bg = (parseInt(localStorage.getItem(bk) || '0', 10) || 0) + 1;
       localStorage.setItem(bk, String(params.bg));
     }catch(e){ params.bg = Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
+    /* v-audit-video (cli-video-4): «أعد المحاولة» كانت تمحو الفيديو المدفوع السابق قبل سؤال السعر — فإلغاء نافذة الخصم أو المهلة
+       أو نفاد النقاط يُضيّعه بلا تحميل ولا سجلّ. الناتج السابق يُحفظ ويعود مكانه ما لم يصل ناتج جديد. */
+    var outEl = $('vtOut'), prevOut = outEl ? Array.prototype.slice.call(outEl.childNodes) : [];
     busy = true; $('vtGo').disabled = true; $('vtOut').innerHTML = '';
     setBusyFlag(true);
     status(ui('working'));
@@ -462,8 +465,11 @@
         try{ await show(t, urls); }catch(e2){ /* guard-ok — العرض أفضل جهد، والسطر يقول ما حدث */ }
         status((String(e && e.message) !== 'cancelled' ? errText(e) + ' ' : '') + ui('partial').replace('{k}', String(urls.length)).replace('{n}', String(n)));
       }
-      else if(String(e && e.message) !== 'cancelled') status(errText(e));
-      else status('');
+      else {
+        if(outEl && $('vtOut') === outEl && !outEl.childNodes.length) prevOut.forEach(function(nd){ outEl.appendChild(nd); }); // v-audit-video: الناتج السابق يعود
+        if(String(e && e.message) !== 'cancelled') status(errText(e));
+        else status('');
+      }
     }finally{ busy = false; setBusyFlag(false); preConfirmed = false; if($('vtGo')) $('vtGo').disabled = false; }
   }
 

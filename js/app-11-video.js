@@ -1857,4 +1857,19 @@
       btnGenerate.disabled = false;
     }
   };
+  /* v-audit-video (cli-video-4): «إنشاء» يخفي الناتج السابق وزرّ تحميله قبل أيّ فحص — فإلغاء نافذة الخصم أو المهلة أو الرصيد يتركهما
+     مخفيّين والفيديو المدفوع لا يُرى. الغلاف يعيدهما (والوضع واسم الملفّ) ما لم يظهر ناتج جديد. */
+  { const __vmkGenRun = btnGenerate.onclick;
+    btnGenerate.onclick = async function(ev){
+      const prev = (resultEl.style.display !== 'none' && resultEl.getAttribute('src'))
+        ? { src: resultEl.getAttribute('src'), mode: resultEl.dataset.mode, dl: downloadEl.style.display, name: downloadEl.download } : null;
+      try{ return await __vmkGenRun.call(this, ev); }
+      finally{
+        if(prev && resultEl.style.display === 'none' && resultEl.getAttribute('src') === prev.src){
+          if(prev.mode == null) delete resultEl.dataset.mode; else resultEl.dataset.mode = prev.mode;
+          resultEl.style.display = 'block'; downloadEl.style.display = prev.dl; downloadEl.download = prev.name;
+        }
+      }
+    };
+  }
 })();

@@ -317,6 +317,70 @@ test('cli-video-3: فيديو مجهول المدّة (WebM من MediaRecorder) 
   assert.ok(read('js/video-edit.js').includes('dur: st.dur || P.dur,'));
 });
 
+// ─────────────────────────────── cli-video-4 ───────────────────────────────
+const TRENDS = read('js/app-11-video-trends.js');
+function fakeEl(id) {
+  const e = { id, childNodes: [], value: '', disabled: false, parentNode: null,
+    appendChild(n) { this.childNodes.push(n); n.parentNode = this; return n; } };
+  Object.defineProperty(e, 'innerHTML', { get() { return this.childNodes.length ? '<…>' : ''; }, set() { this.childNodes.forEach((n) => { n.parentNode = null; }); this.childNodes = []; } });
+  return e;
+}
+function trendsMake(clip) {
+  const els = { vtText: fakeEl('vtText'), vtExtra: fakeEl('vtExtra'), vtGo: fakeEl('vtGo'), vtOut: fakeEl('vtOut') };
+  const statuses = [];
+  const ctx = {
+    $: (id) => els[id] || null, tokenOf: () => 'tok', photos: [], pullScenes() {}, sceneTrend: () => false, readScenes: () => [], setScenes() {},
+    ui: (k) => k, status: (s) => statuses.push(s), setBusyFlag() {}, priceOnce: async () => {}, clipInSequence: clip,
+    show: async (t, urls) => { urls.forEach((u) => els.vtOut.appendChild({ kind: 'video', src: u })); },
+    errText: (e) => 'ERR:' + (e.code || e.message), localStorage: { getItem: () => null, setItem() {} }, busy: false, preConfirmed: false, Object, String, parseInt, Math,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractBlock(TRENDS, 'async function make(t){'), ctx);
+  return { ctx, els, statuses };
+}
+
+test('cli-video-4 (أ): «أعد المحاولة» في الترندات ثمّ إلغاء نافذة الخصم أو المهلة — الفيديو المدفوع السابق يرجع مكانه (كان يُمحى)', async () => {
+  for (const fail of [new Error('cancelled'), Object.assign(new Error('video_cooldown'), { code: 'video_cooldown' }), Object.assign(new Error('points_insufficient'), { code: 'points_insufficient' })]) {
+    const h = trendsMake(async () => { throw fail; });
+    const old = [{ kind: 'video', src: 'blob:paid-1' }, { kind: 'a', href: '/dl' }, { kind: 'button' }];
+    old.forEach((n) => h.els.vtOut.appendChild(n));
+    await h.ctx.make({ key: 'pixarsketch', scenes: 1, engine: 'veo' });
+    assert.deepEqual(h.els.vtOut.childNodes, old, fail.message + ': الناتج السابق بكامله (الفيديو والتحميل و«أعد المحاولة»)');
+    assert.equal(h.ctx.busy, false);
+  }
+  // النجاح: الجديد وحده كما كان
+  const ok = trendsMake(async () => 'https://cdn.example/new.mp4');
+  ok.els.vtOut.appendChild({ kind: 'video', src: 'blob:paid-1' });
+  await ok.ctx.make({ key: 'pixarsketch', scenes: 1, engine: 'veo' });
+  assert.deepEqual(ok.els.vtOut.childNodes.map((n) => n.src), ['https://cdn.example/new.mp4']);
+  assert.equal(ok.statuses[ok.statuses.length - 1], 'done');
+});
+
+test('cli-video-4 (ب): صانع الفيديو — إلغاء أو رفض قبل أيّ ناتج جديد يعيد الناتج السابق وزرّ تحميله (كانا يبقيان مخفيّين)', async () => {
+  const block = extractBlock(VIDEO, '{ const __vmkGenRun = btnGenerate.onclick;');
+  const mk = (inner) => {
+    const attrs = { src: 'blob:old-paid' };
+    const resultEl = { style: { display: 'block' }, dataset: { mode: 'runway' }, getAttribute: (k) => attrs[k], set src(v) { attrs.src = v; }, get src() { return attrs.src; } };
+    const downloadEl = { style: { display: 'block' }, download: 'omran-film.mp4' };
+    const btnGenerate = { onclick: null };
+    const ctx = { resultEl, downloadEl, btnGenerate };
+    btnGenerate.onclick = async () => inner(ctx);
+    vm.createContext(ctx); vm.runInContext(block, ctx);
+    return ctx;
+  };
+  const hide = (c) => { c.resultEl.style.display = 'none'; c.downloadEl.style.display = 'none'; c.downloadEl.download = 'omran-ai-video.mp4'; c.resultEl.dataset.mode = 'omni'; };
+  let c = mk(async (x) => { hide(x); }); // الإلغاء: return بلا ناتج
+  await c.btnGenerate.onclick();
+  assert.deepEqual([c.resultEl.style.display, c.downloadEl.style.display, c.downloadEl.download, c.resultEl.dataset.mode], ['block', 'block', 'omran-film.mp4', 'runway']);
+  c = mk(async (x) => { hide(x); x.resultEl.src = 'blob:new'; x.resultEl.style.display = 'block'; x.downloadEl.style.display = 'block'; x.resultEl.dataset.mode = 'omni'; });
+  await c.btnGenerate.onclick();
+  assert.deepEqual([c.resultEl.src, c.resultEl.dataset.mode, c.downloadEl.download], ['blob:new', 'omni', 'omran-ai-video.mp4'], 'الناتج الجديد لا يُمسّ');
+  c = mk(async (x) => { x.resultEl.style.display = 'none'; x.resultEl.getAttribute = () => null; });
+  c.resultEl.style.display = 'none';
+  await c.btnGenerate.onclick();
+  assert.equal(c.resultEl.style.display, 'none', 'لا ناتج سابق = لا شيء يُعاد');
+});
+
 test('srv-video-4 (د): الواجهة تعرض حدّ اليوم بنصّ الـ١٤ لغة القائم (portraitLimitReached) لا «تعذّر التحليل»', () => {
   const s = read('js/app-32-video-watch.js');
   const fn = s.slice(s.indexOf('function errText(d){'), s.indexOf('var lastWatch'));
