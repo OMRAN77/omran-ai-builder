@@ -311,6 +311,118 @@ test('srv-edu-bots-6: الأسئلة المولَّدة في eduRegenQuestions �
   } finally { process.off('unhandledRejection', onU); }
 });
 
+/* خادم دروس في الذاكرة يشترك فيه «جهازان»: save = ok | fail (القاعدة لا تقبل الكتابة والقراءة تعمل) | ghost (وصل وضاع ردّه) */
+function eduServer() {
+  const SRV = new Map();
+  const st = { save: 'ok', saved: [] };
+  const light = (l) => ({ id: l.id, subject: l.subject, title: l.title, createdAt: l.createdAt, quizCount: (l.quiz || []).length });
+  const route = (p) => {
+    if (p.action === 'questions') return { status: 200, body: { ok: true, flashcards: [{ q: 'a', a: 'b' }], quiz: [{ q: 'q', options: ['1', '2', '3', '4'], correct: 0 }], written: [] } };
+    if (p.action === 'process') return { status: 200, body: { ok: true, lesson: { title: 'الخليّة', subject: 'أحياء', summary: 'ملخّص الخليّة', flashcards: [], quiz: [], written: [] } } };
+    if (p.action === 'save') {
+      if (st.save === 'fail') return { status: 500, body: { error: 'تعذّر الحفظ' } };
+      const write = () => {
+        SRV.set(p.lesson.id, p.lesson); st.saved.push(p.lesson);
+        return st.save === 'ghost' ? { status: 500, body: { error: 'تعذّر الحفظ' } } : { status: 200, body: { ok: true, id: p.lesson.id } };
+      };
+      return st.lag ? new Promise((r) => setTimeout(() => r(write()), st.lag)) : write(); // lag: الكتابة تصل الخادم بعد زمن
+    }
+    if (p.action === 'list') return { status: 200, body: { ok: true, lessons: [...SRV.values()].map(light), streak: {} } };
+    if (p.action === 'get') { const f = SRV.get(p.id); return f ? { status: 200, body: { ok: true, lesson: f } } : { status: 404, body: { error: 'الدرس غير موجود' } }; }
+    if (p.action === 'delete') { SRV.delete(p.id); return { status: 200, body: { ok: true } }; }
+    return null;
+  };
+  return { SRV, st, route };
+}
+
+test('srv-edu-bots-6 (مراجعة): أسئلة درسٍ في الخادم فشل حفظها — تُفتح من الجهاز، وتُرفع حين يعود الحفظ، ثمّ لا تحجب الخادم ولا تعيد المحذوف', async () => {
+  const tok = addUser('huda');
+  const S = eduServer();
+  S.SRV.set('s0', { id: 's0', title: 'الضوء', subject: 'فيزياء', summary: 'ملخّص الضوء', flashcards: [], quiz: [], written: [], createdAt: 1 });
+  const h = boot({ lang: 'ar', token: tok, user: 'huda', route: S.route });
+  const opened = await h.x.getLesson('s0');
+  assert.equal(opened.quiz.length, 0);
+  S.st.save = 'fail';
+  h.x.eduRegenQuestions(el('pane'), opened, 'quiz');
+  h.get('eduRegenQsBtn').onclick();
+  await tick(40);
+  assert.ok(h.x.localLessons().some((l) => l.id === 's0' && l.pendingSync && l.quiz.length === 1), 'الأسئلة معلّقة على الجهاز');
+  // يرجع للقائمة ويفتح الدرس والكتابة ما زالت معطّلة: يرى أسئلته لا «ولّد الأسئلة» (حصّة يوم أخرى)
+  await h.x.listLessons(); await tick(30);
+  assert.equal((await h.x.getLesson('s0')).quiz.length, 1, 'الجهاز يعرض الأسئلة المولَّدة');
+  assert.equal(S.st.saved.length, 0);
+  // عاد الحفظ: فتحتان للقائمة → رُفعت مرّة واحدة، والخادم فيه الأسئلة للأجهزة الأخرى، ولا معلّق
+  S.st.save = 'ok';
+  await h.x.listLessons(); await tick(30);
+  await h.x.listLessons(); await tick(30);
+  assert.deepEqual(S.st.saved.map((l) => l.id), ['s0'], 'رُفعت مرّة واحدة');
+  assert.equal(S.SRV.get('s0').quiz.length, 1, 'الخادم فيه الأسئلة');
+  assert.ok(!('pendingSync' in S.SRV.get('s0')) && !('pendingFor' in S.SRV.get('s0')), 'وسوم الجهاز لا تُرفع');
+  assert.ok(!h.x.localLessons().some((l) => l.id === 's0' && l.pendingSync), 'لا معلّق بعد الرفع');
+  // جهاز آخر يعدّل ثمّ يحذف: هذا الجهاز يرى نسخة الخادم، والمحذوف لا يعود ولا يُرفع
+  S.SRV.get('s0').quiz.push({ q: 'q2', options: ['1', '2', '3', '4'], correct: 1 });
+  const fresh = await h.x.getLesson('s0');
+  assert.equal(fresh.quiz.length, 2, 'نسخة الخادم الأحدث لا تحجبها نسخة الجهاز');
+  assert.ok(!fresh.pendingSync);
+  S.SRV.delete('s0');
+  const after = await h.x.listLessons(); await tick(30);
+  assert.ok(!after.lessons.some((l) => l.id === 's0'), 'المحذوف من جهاز آخر لا يعود');
+  assert.equal(S.st.saved.length, 1, 'ولا يُرفع من جديد');
+});
+
+test('srv-edu-bots-6 (مراجعة): الحفظ الناجح يُزيل النسخة المعلّقة، والحفظ الذي وصل وضاع ردّه لا يُبقي نسخة تحجب الخادم أو تعيد المحذوف', async () => {
+  const tok = addUser('rana');
+  const S = eduServer();
+  const h = boot({ lang: 'ar', token: tok, user: 'rana', route: S.route });
+  // (١) فشل حفظ درس جديد → معلّق يُفتح من الجهاز (الخادم 404)
+  S.st.save = 'fail';
+  h.x.processContent({ text: 'محاضرة الخليّة', lang: 'ar' });
+  await tick(40);
+  const p = h.x.localLessons().find((l) => l.pendingSync);
+  assert.ok(p, 'معلّق على الجهاز');
+  const opened = await h.x.getLesson(p.id);
+  assert.equal(opened.summary, 'ملخّص الخليّة');
+  // (٢) عاد الحفظ وولّد الطالب الأسئلة على المعلّق: الحفظ نجح → لا معلّق، والفتح التالي نسخة الخادم
+  S.st.save = 'ok';
+  h.x.eduRegenQuestions(el('pane'), opened, 'quiz');
+  h.get('eduRegenQsBtn').onclick();
+  await tick(40);
+  assert.ok(!h.x.localLessons().some((l) => l.id === p.id && l.pendingSync), 'الحفظ الناجح أزال المعلّق');
+  const got = await h.x.getLesson(p.id);
+  assert.equal(got.quiz.length, 1);
+  assert.ok(!got.pendingSync && !('pendingFor' in S.SRV.get(p.id)), 'بلا وسم معلّق');
+  await h.x.listLessons(); await tick(30);
+  assert.equal(S.st.saved.filter((l) => l.id === p.id).length, 1, 'لا رفع مكرّر');
+  // (٣) حفظ وصل الخادم وضاع ردّه: أوّل فتح يرفع النسخة ويزيلها، ثمّ نسخة الخادم هي المعروضة
+  S.st.save = 'ghost';
+  h.x.processContent({ text: 'محاضرة ثانية', lang: 'ar' });
+  await tick(40);
+  const g = h.x.localLessons().find((l) => l.pendingSync);
+  assert.ok(g && S.SRV.has(g.id), 'وصل الخادم والجهاز يظنّه فشل');
+  S.st.save = 'ok';
+  const g1 = await h.x.getLesson(g.id);
+  assert.equal(g1.summary, 'ملخّص الخليّة');
+  assert.ok(!g1.pendingSync, 'فُتح بلا وسم معلّق');
+  assert.ok(!h.x.localLessons().some((l) => l.id === g.id && l.pendingSync), 'زال المعلّق');
+  S.SRV.get(g.id).summary = 'ملخّص معدّل من جهاز آخر';
+  assert.equal((await h.x.getLesson(g.id)).summary, 'ملخّص معدّل من جهاز آخر', 'نسخة الخادم لا تحجبها نسخة الجهاز');
+  S.SRV.delete(g.id);
+  const n = S.st.saved.length;
+  const after = await h.x.listLessons(); await tick(30);
+  assert.ok(!after.lessons.some((l) => l.id === g.id), 'المحذوف من جهاز آخر لا يعود');
+  assert.equal(S.st.saved.length, n, 'ولا يُرفع من جديد');
+  // حذف درس من هذا الجهاز أثناء رفع معلّقه لا يعيده (الحذف ينتظر الرفع)
+  S.st.save = 'fail';
+  h.x.processContent({ text: 'محاضرة ثالثة', lang: 'ar' });
+  await tick(40);
+  const d = h.x.localLessons().find((l) => l.pendingSync);
+  S.st.save = 'ok'; S.st.lag = 25;
+  await h.x.listLessons(); // الرفع بدأ ولم يصل
+  await h.x.deleteLesson(d.id); await tick(60);
+  assert.ok(!S.SRV.has(d.id), 'المحذوف لا يعود من رفع كان في الطريق');
+  assert.ok(!h.x.localLessons().some((l) => l.id === d.id), 'ولا نسخة على الجهاز');
+});
+
 /* ---------------- srv-edu-bots-8 ---------------- */
 test('srv-edu-bots-8: نفاد رصيد المزوّد في التحليل — نصّ وظيفيّ ورمز، لا «credit balance … Anthropic API»', async () => {
   upstream = (c) => (c.host === 'api.anthropic.com' ? jsonRes(400, { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.' } }) : null);

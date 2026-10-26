@@ -318,24 +318,28 @@ function renderStreak(){
 /* ---------- data layer (server for registered, localStorage for guests) ---------- */
 /* v-audit-edu (srv-edu-bots-6): فشل الحفظ السحابيّ للمسجَّل (القاعدة ممتلئة، انقطاع) كان يكتب الدرس على الجهاز ويعرضه مرّة،
    ثمّ لا تعرضه «موادي» (قائمة الخادم وحدها) ولا يُفتح (404) — فيضيع بعد أوّل رجوع. الآن النسخة المحلّيّة موسومة
-   pendingSync باسم صاحبها: تُدمج مع قائمة الخادم، وتُفتح من الجهاز، وتُرفع في الفتحة التالية ثمّ تُزال. ضيف أو حساب آخر
-   على الجهاز نفسه لا يراها ولا يرفعها لحسابه. */
+   pendingSync باسم صاحبها (pendingFor) ووقتها (pendingAt) = آخر كتابة لم تصل: تُدمج مع قائمة الخادم، وتُرفع في الفتحة
+   التالية — ولو كان معرّفها في الخادم (أسئلة ولّدها لدرس قائم) — ثمّ تُزال، وأيّ حفظ ناجح للمعرّف يُزيلها، فلا تبقى نسخة
+   قديمة تحجب الخادم أو تعيد درسًا حُذف من جهاز آخر. ضيف أو حساب آخر على الجهاز نفسه لا يراها ولا يرفعها لحسابه. */
 function eduUser(){ try{ return String((typeof authGet==='function'?authGet('aiapp_username'):null)||localStorage.getItem('aiapp_username')||'').trim().toLowerCase(); }catch(e){ return ''; } }
 function eduLocalFor(me){ return localLessons().filter(function(l){ return l&&(!l.pendingFor||l.pendingFor===me); }); }
+function eduClean(l){ var c=Object.assign({},l); delete c.pendingSync; delete c.pendingFor; delete c.pendingAt; return c; }
 function eduKeepLocal(lesson){
-  lesson.pendingSync=true; lesson.pendingFor=eduUser();
-  var arr=localLessons().filter(function(l){return l.id!==lesson.id;}); arr.unshift(lesson); saveLocalLessons(arr);
+  var c=Object.assign(eduClean(lesson),{pendingSync:true,pendingFor:eduUser(),pendingAt:Date.now()});
+  var arr=localLessons().filter(function(l){return l.id!==lesson.id;}); arr.unshift(c); saveLocalLessons(arr);
+}
+/* at: وقت النسخة المرفوعة — معلّق أحدث كُتب أثناء الرفع لا يُزال معها */
+function eduDropPending(id,at){
+  var me=eduUser();
+  saveLocalLessons(localLessons().filter(function(x){ return !(x&&x.id===id&&x.pendingSync&&x.pendingFor===me&&(at==null||x.pendingAt===at)); }));
 }
 var eduSyncing={};
-function eduSyncPending(me,serverIds){
-  localLessons().forEach(function(l){
-    if(!l||!l.pendingSync||l.pendingFor!==me||serverIds[l.id]||eduSyncing[l.id]) return;
-    eduSyncing[l.id]=1;
-    var up=Object.assign({},l); delete up.pendingSync; delete up.pendingFor;
-    api({action:'save',lesson:up}).then(function(j){
-      if(j&&!j.guest) saveLocalLessons(localLessons().filter(function(x){ return !(x.id===l.id&&x.pendingSync); }));
-    }).catch(function(e){ __swallow(e,'save:edu-resync'); }).then(function(){ delete eduSyncing[l.id]; });
-  });
+function eduFlushPending(l){
+  if(eduSyncing[l.id]) return eduSyncing[l.id];
+  return (eduSyncing[l.id]=api({action:'save',lesson:eduClean(l)}).then(function(j){
+    if(!j||j.guest) return false;
+    eduDropPending(l.id,l.pendingAt); return true;
+  }).catch(function(e){ __swallow(e,'save:edu-resync'); return false; }).then(function(ok){ delete eduSyncing[l.id]; return ok; }));
 }
 function listLessons(){
   if(!getToken()) return Promise.resolve({lessons:eduLocalFor('')});
@@ -344,31 +348,37 @@ function listLessons(){
     mergeServerStreak(j.streak);
     var me=eduUser(), out=(j.lessons||[]).slice(), ids={};
     out.forEach(function(l){ if(l&&l.id) ids[l.id]=1; });
-    var pend=localLessons().filter(function(l){ return l&&l.pendingSync&&l.pendingFor===me&&!ids[l.id]; });
-    if(pend.length) eduSyncPending(me,ids);
-    return {lessons:pend.concat(out)};
+    var mine=localLessons().filter(function(l){ return l&&l.pendingSync&&l.pendingFor===me; });
+    mine.forEach(function(l){ eduFlushPending(l); });
+    return {lessons:mine.filter(function(l){ return !ids[l.id]; }).concat(out)};
   }).catch(function(){ return {lessons:eduLocalFor(eduUser())}; });
 }
+/* الخادم أوّلًا: لا معلّق → نسخته. معلّق والخادم أجاب → يُرفع المعلّق الآن (هو آخر كتابة) — نجح فهو نسخة الخادم بلا وسم،
+   وفشل (القاعدة لا تقبل الكتابة والقراءة تعمل) يبقى هو المعروض كي لا يرى الطالب درسه بلا أسئلة فيولّدها من حصّته ثانية.
+   خطأ أو 404 → المعلّق إن وُجد. */
 function getLesson(id){
   if(!getToken()){ var f=eduLocalFor('').filter(function(l){return l.id===id;})[0]; return f?Promise.resolve(f):Promise.reject(new Error(T('err'))); }
   var me=eduUser(), p=localLessons().filter(function(l){ return l&&l.id===id&&l.pendingSync&&l.pendingFor===me; })[0];
-  if(p) return Promise.resolve(p);
   return api({action:'get',id:id}).then(function(j){
     if(j.guest){ var f=eduLocalFor('').filter(function(l){return l.id===id;})[0]; if(!f) throw new Error(T('err')); return f; }
-    return j.lesson;
-  });
+    if(!p) return j.lesson;
+    return eduFlushPending(p).then(function(ok){ return ok?eduClean(p):p; });
+  }, function(e){ if(p) return p; throw e; });
 }
 function persistLesson(lesson){
   bumpStreak();
+  delete lesson.pendingSync; delete lesson.pendingFor; delete lesson.pendingAt; /* v-audit-edu: وسوم الجهاز لا تُحفظ مع الدرس */
   if(!getToken()){ var arr=localLessons().filter(function(l){return l.id!==lesson.id;}); arr.unshift(lesson); saveLocalLessons(arr); return Promise.resolve(lesson.id); }
   return api({action:'save',lesson:lesson}).then(function(j){
     if(j.guest){ var arr=localLessons().filter(function(l){return l.id!==lesson.id;}); arr.unshift(lesson); saveLocalLessons(arr); return lesson.id; }
+    if(lesson.id) eduDropPending(lesson.id); /* v-audit-edu: حُفظ — نسخته المعلّقة القديمة لا تحجب الخادم */
     return j.id;
   });
 }
 function deleteLesson(id){
   if(!getToken()){ saveLocalLessons(localLessons().filter(function(l){return l.id!==id;})); return Promise.resolve(); }
-  return api({action:'delete',id:id}).then(function(j){ if(j.guest) saveLocalLessons(localLessons().filter(function(l){return l.id!==id;}));
+  /* v-audit-edu: الحذف ينتظر رفع معلّقه إن كان في الطريق — فلا يصل الرفع بعد الحذف فيعيده */
+  return Promise.resolve(eduSyncing[id]).then(function(){ return api({action:'delete',id:id}); }).then(function(j){ if(j.guest) saveLocalLessons(localLessons().filter(function(l){return l.id!==id;}));
     else saveLocalLessons(localLessons().filter(function(l){ return !(l.id===id&&l.pendingSync); })); /* v-audit-edu: المعلّق المحذوف لا يعود ولا يُرفع */ });
 }
 function saveProgress(id,fields){
