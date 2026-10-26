@@ -208,8 +208,11 @@ async function moveLiveCounters(oldKey, newKey, user) {
   await step('cost-meter', () => require('./cost-meter.js').moveMonthCosts(oldKey, newKey));
 }
 
-function makeToken(username) {
-  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 1000 * 60 * 60 * 24 * 30 })).toString('base64url');
+function makeToken(username, sv) {
+  const body = { u: username, exp: Date.now() + 1000 * 60 * 60 * 24 * 30 };
+  const v = Number(sv);
+  if (Number.isInteger(v) && v > 0) body.v = v; // v-audit-auth (srv-auth-8): إصدار الجلسة — انظر sessionVersion
+  const payload = Buffer.from(JSON.stringify(body)).toString('base64url');
   const sig = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
   return payload + '.' + sig;
 }
@@ -282,6 +285,41 @@ async function putUser(key, user) {
   await kvPutJSON(userPath(key), encryptUserBlob(user));
 }
 
+/* v-audit-auth (srv-auth-4 · srv-auth-5): فهرسا البريد والهاتف ومفتاح Google يحملون الاسم وقت كتابتهم، وتغيير الاسم يترك هناك
+   شاهدًا {deleted, movedTo} — فكان الدخول بالإيميل والاسترجاع بالإيميل وبالهاتف والدخول بالرمز يقفون عند الشاهد. يُتبع movedTo
+   إلى الحساب الحيّ (٣٢ قفزة كالشحن). الشاهد لا يكتبه إلّا changeUsername من جلسة صاحبه، والاسم المتروك لا يُعطى لغيره (v-name-reuse)،
+   فآخر السلسلة هو الحساب نفسه. سجلّ محذوف بلا movedTo (حذف حقيقيّ) يعود كما هو. */
+async function liveAccount(key, attempts) {
+  let k = String(key || '').trim().toLowerCase();
+  let user = k ? await getUser(k, attempts) : null;
+  for (let i = 0; i < 32 && user && user.deleted && user.movedTo; i++) {
+    k = String(user.movedTo).trim().toLowerCase();
+    user = await getUser(k, attempts);
+  }
+  return { key: k, user };
+}
+// الحساب الحيّ الذي يصل إليه فهرس البريد وبريده هو هذا البريد نفسه، وإلّا null. يرمي عطب القراءة للمستدعي.
+async function indexOwner(emailKey, attempts) {
+  const idx = await kvGetJSON('db/email-index/' + emailKey);
+  const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
+  if (!uname) return null;
+  const live = await liveAccount(uname, attempts);
+  return (live.user && !live.user.deleted && live.user.email === emailKey) ? live : null;
+}
+
+/* v-audit-auth (srv-auth-8): رقم إصدار الجلسة. الرمز {u, exp} وحده كان يبقى صالحًا بعد تغيير كلمة المرور أو استعادتها، و'verify'
+   يسكّ منه رمزًا جديدًا ثلاثين يومًا في كلّ نداء — فالرمز المسرَّب لا يموت. الآن sv في السجلّ يُزاد عند changePassword وresetWithToken،
+   والرمز يحمله (v، يُكتب حين يكون > 0 فرموز من لم يغيّر كلمته بالشكل نفسه)، ورمز أقدم من السجلّ يُرفض في verify وفي إجراءات الحساب. */
+function sessionVersion(user) { const v = Number(user && user.sv); return Number.isInteger(v) && v > 0 ? v : 0; }
+function tokenVersion(token) {
+  try {
+    const d = JSON.parse(Buffer.from(String(token || '').split('.')[0], 'base64url').toString());
+    const v = Number(d && d.v);
+    return Number.isInteger(v) && v > 0 ? v : 0;
+  } catch (e) { return 0; } // رمز مشوّه لا يصل هنا إلّا بعد verifyToken — والإصدار صفر احتياطًا
+}
+function sessionCurrent(user, token) { return !user || tokenVersion(token) >= sessionVersion(user); }
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 // عبر _site.js لا من البيئة مباشرة: وُجد في الإنتاج أنّ SITE_URL كان سرّ
 // عميل جوجل، ورابط استرجاع كلمة المرور يُرسَل بالبريد — فكان السرّ يخرج إلى
@@ -304,8 +342,8 @@ async function resolveLoginUser(identifier) {
     const idx = await kvGetJSON('db/email-index/' + key);
     const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
     if (uname) {
-      const user = await getUser(uname);
-      if (user && !user.deleted) return { key: uname, user, emailUnverified: !(user.email === key && await emailProven(uname, user)) };
+      const { key: liveKey, user } = await liveAccount(uname); // v-audit-auth (srv-auth-5): فهرس على اسم تغيّر يتبع شاهده
+      if (user && !user.deleted) return { key: liveKey, user, emailUnverified: !(user.email === key && await emailProven(liveKey, user)) };
     }
   } catch (e) { logError('auth:login-email-index', e); }
   return { key, user: direct };
@@ -317,8 +355,8 @@ async function googleAccountFor(emailKey) {
   try {
     const gKey = 'g_' + emailKey;
     const alias = await kvGetJSON('db/alias/' + gKey);
-    const key = (alias && alias.primary) ? String(alias.primary) : gKey;
-    const user = await getUser(key, 1);
+    // v-audit-auth (srv-auth-4): حساب Google غيّر اسمه — مفتاحه شاهد يقود إليه
+    const { key, user } = await liveAccount((alias && alias.primary) ? String(alias.primary) : gKey, 1);
     if (user && !user.deleted) return { key, user };
   } catch (e) { logError('auth:google-account', e); }
   return null;
@@ -350,9 +388,9 @@ async function verifiedHolderOf(emailKey, exceptKey) {
     // الفهرس وحساب Google معًا لا تتابعًا (يمرّ هنا تنبيه «أكّد إيميلك» عند كلّ فتح — v-unverified-email)؛ الفهرس يسبق كما كان.
     const [idx, g] = await Promise.all([kvGetJSON('db/email-index/' + emailKey), googleAccountFor(emailKey)]);
     const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
-    if (uname && uname !== exceptKey) {
-      const user = await getUser(uname, 1);
-      if (user && user.email === emailKey && emailVerifiedFor(uname, user)) return uname;
+    if (uname) {
+      const { key: liveKey, user } = await liveAccount(uname, 1); // v-audit-auth (srv-auth-5): الفهرس على اسم تغيّر
+      if (liveKey !== exceptKey && user && user.email === emailKey && emailVerifiedFor(liveKey, user)) return liveKey;
     }
     if (g && g.key !== exceptKey && (g.key !== 'g_' + emailKey || g.user.googleAuth === true)) return g.key;
   } catch (e) { logError('auth:email-holder', e); }
@@ -458,11 +496,8 @@ async function settleUnverifiedEmail(key, user, now) {
 // الحساب الذي يصل إليه الدخول بالرمز (فهرس البريد، وبريده هو نفسه) إن لم يكن البريد مؤكَّدًا عليه — بمعيار email-otp-verify نفسه.
 async function unverifiedHolderOf(emailKey) {
   try {
-    const idx = await kvGetJSON('db/email-index/' + emailKey);
-    const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
-    if (!uname) return null;
-    const user = await getUser(uname, 1);
-    if (user && !user.deleted && user.email === emailKey && !(await emailProven(uname, user))) return uname;
+    const own = await indexOwner(emailKey, 1); // v-audit-auth (srv-auth-4): بمعيار email-otp-verify نفسه — والفهرس على اسم تغيّر يتبع شاهده
+    if (own && !(await emailProven(own.key, own.user))) return own.key;
   } catch (e) { logError('auth:email-unverified-holder', e); }
   return null;
 }
@@ -637,6 +672,31 @@ async function sendMail(toEmail, subject, html) {
   }
 }
 
+/* v-audit-auth (srv-auth-9): رسائل المصادقة بلا حساب (رمز الدخول، الاسترجاع، إرشاد Google، رمز «حسابي») لم يكن لها سقف عامّ —
+   سكربت يطلب رموزًا لآلاف العناوين يستنفد حصّة البريد فتتوقّف رموز الدخول وروابط الاسترجاع للجميع ويتضرّر صيت النطاق.
+   الآن سقف يوميّ (UTC) عامّ AUTH_MAIL_DAY_CAP (الافتراضيّ ١٠٠٠، يُقرأ عند النداء) يُحجز قبل الإرسال؛ فوقه لا رسالة (المسار القائم
+   «تعذّر الإرسال»)، ويُسجَّل الخطأ ويصل المالك إشعار واحد في اليوم. عطب KV = يُسمح (لا يُقفل الجميع بعطل). إشعارات المالك (sendMail) خارجه. */
+const AUTH_MAIL_DAY_CAP_DEFAULT = 1000;
+async function authMailAllowed() {
+  const cap = Math.max(1, Math.floor(Number(process.env.AUTH_MAIL_DAY_CAP) || AUTH_MAIL_DAY_CAP_DEFAULT));
+  const day = new Date().toISOString().slice(0, 10);
+  try {
+    if ((await hitCounter('db/rl/auth-mail-day/' + day + '/n', 2 * 86400)).n <= cap) return true;
+    logError('auth:mail-cap', new Error('auth mail daily cap reached'), { cap });
+    if (await require('./kv.js').kvSetIfAbsent('db/alerts/auth-mail-cap/' + day, '1', 2 * 86400)) {
+      try {
+        await require('./_owner-alert.js').pushToOwners({ title: '⚠️ سقف رسائل الدخول اليوميّ', body: 'بلغت رسائل رموز الدخول والاسترجاع ' + cap + ' اليوم — توقّف الإرسال حتّى الغد. راجع سجلّ الأخطاء.', url: '/' });
+      } catch (e) { logError('auth:mail-cap-alert', e); }
+    }
+    return false;
+  } catch (e) { logError('auth:mail-budget', e); return true; }
+}
+async function sendAuthMail(toEmail, subject, html) {
+  if (!RESEND_API_KEY) return false; // لا مفتاح = لا رسالة ولا حجز
+  if (!(await authMailAllowed())) return false;
+  return sendMail(toEmail, subject, html);
+}
+
 async function sendResetEmail(toEmail, username, resetToken, isEn) {
   const link = siteUrl() + '/?resetToken=' + encodeURIComponent(resetToken) + '&ru=' + encodeURIComponent(username);
   const name = escapeHtml(username);
@@ -654,7 +714,7 @@ async function sendResetEmail(toEmail, username, resetToken, isEn) {
         <p><a href="${link}" style="background:#00c896;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">إعادة تعيين كلمة المرور</a></p>
         <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
        </div>`;
-  return sendMail(toEmail, subject, html);
+  return sendAuthMail(toEmail, subject, html); // v-audit-auth (srv-auth-9)
 }
 
 // v-google-login-help: بريد «نسيت كلمة المرور» لحساب أُنشئ بزرّ Google — لا رابط إعادة (لا كلمة مرور له أصلًا) بل الطريق الصحيح للدخول.
@@ -675,7 +735,7 @@ async function sendGoogleHintEmail(toEmail, username, isEn) {
         <p><a href="${link}" style="background:#00c896;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">افتح التطبيق</a></p>
         <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
        </div>`;
-  return sendMail(toEmail, subject, html);
+  return sendAuthMail(toEmail, subject, html); // v-audit-auth (srv-auth-9)
 }
 
 function genNumericOtp() {
@@ -698,7 +758,7 @@ async function sendOtpEmail(toEmail, otpCode, isEn) {
         <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otpCode}</div>
         <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
        </div>`;
-  return sendMail(toEmail, subject, html);
+  return sendAuthMail(toEmail, subject, html); // v-audit-auth (srv-auth-9)
 }
 
 // v-vip-verified: رسالة رمز التغيير بصياغتها (لا «لتسجيل الدخول» — من يطلب تغيير بريده ثمّ يرى «دخول» يُخدع أو يرتبك).
@@ -718,7 +778,7 @@ async function sendEmailChangeOtp(toEmail, otpCode, lang) {
         <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otpCode}</div>
         <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل — لا شيء يتغيّر.</p>
        </div>`;
-  return sendMail(toEmail, subject, html);
+  return sendAuthMail(toEmail, subject, html); // v-audit-auth (srv-auth-9)
 }
 
 /* v-vip-verified: تغيير الإيميل في «حسابي» بخطوتين — email-otp-request ثمّ email-otp-verify بـpurpose:'change' ورمز الجلسة.
@@ -737,8 +797,10 @@ async function emailChangeRequest(req, res, body, m) {
   if (!body.email || !isValidEmail(body.email)) { res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format'), code: 'bad_email' }); return; }
   const key = String(body.email).trim().toLowerCase();
   const user = await getUser(u);
-  if (!user || user.deleted) { res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') }); return; }
-  if (user.banned) { res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true }); return; }
+  if (!user || user.deleted) { res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account'), code: 'not_found' }); return; }
+  // v-audit-auth (srv-auth-8): رمز أقدم من آخر تغيير لكلمة المرور لا يربط بريدًا (ثمّ يستعيد به الحساب)
+  if (!sessionCurrent(user, body.token)) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
+  if (user.banned) { res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true, code: 'banned' }); return; }
   if (user.email === key && emailVerifiedFor(u, user)) { res.status(200).json({ ok: true, verified: true, email: key }); return; }
   // الحدود قبل فحص «مرتبط بحساب آخر» (كان قبلها سؤالًا بلا حدّ: هل لهذا البريد حساب؟ — مراجعة النقض). حدّ البريد لكلّ زوج (حساب، بريد)
   // فغريبٌ لا يستنفد حصّة صاحب البريد؛ وسقف أوسع للبريد من كلّ الحسابات يمنع إغراق صندوقه.
@@ -798,14 +860,24 @@ async function emailChangeVerify(req, res, body, m) {
   if (netBase) await windowBack(netBase);
   await burn();
   const user = await getUser(u);
-  if (!user || user.deleted) { res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') }); return; }
+  if (!user || user.deleted) { res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account'), code: 'not_found' }); return; }
+  if (!sessionCurrent(user, body.token)) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; } // v-audit-auth (srv-auth-8)
   // سباق: أثبته حساب آخر بين الطلب والتأكيد.
   if (await verifiedHolderOf(key, u)) { res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'), code: 'email_taken' }); return; }
+  const prevEmail = String(user.email || '').trim().toLowerCase();
   user.email = key;
   user.verifiedEmail = key;
   delete user.emailUnverified; // v-unverified-email: عدّاد الثلاثين يومًا انتهى بالتأكيد
   await putUser(u, user);
   try { await kvPutJSON('db/email-index/' + key, { username: u, at: Date.now() }); } catch (e) { logError('auth:email-index', e); }
+  // v-audit-auth (srv-auth-4): فهرس البريد القديم كان يبقى على الحساب فلا يصل بعدها حسابًا حيًّا به — فكلّ دخول برمز البريد القديم ينشئ
+  // حسابًا آخر. يُحذف إن كان يشير إلى هذا الحساب وحده (كحذف الحساب).
+  if (prevEmail && prevEmail !== key) {
+    try {
+      const old = await kvGetJSON('db/email-index/' + prevEmail);
+      if (old && String(old.username || '').trim().toLowerCase() === u) await require('./kv.js').kvDel('db/email-index/' + prevEmail);
+    } catch (e) { logError('auth:email-index-old', e); }
+  }
   await promoteVip(key, u);
   res.status(200).json({ ok: true, email: key, verified: true });
 }
@@ -842,7 +914,9 @@ module.exports = async (req, res) => {
       email, resetToken, otp, purpose,
     } = body;
 
-    const isEn = lang === 'en';
+    /* v-audit-auth (srv-auth-13): كلّ ما ليس en كان يُعامَل عربيًّا — الفرنسيّ والأورديّ يريان العربيّة. الآن الاحتياط إنجليزيّ لأيّ لغة
+       غير العربيّة (وبلا lang عربيّ كما كان)، وكلّ خطأ يحمل code ثابتًا تترجمه الواجهة بلغتها الـ١٤ (axAuthL10n). */
+    const isEn = !!lang && !/^ar(-|$)/i.test(String(lang));
     // Small helper to return the message matching the caller's UI language
     // (client always sends its current language along with every request).
     const m = (ar, en) => (isEn ? en : ar);
@@ -854,18 +928,18 @@ module.exports = async (req, res) => {
       (resetToken && String(resetToken).length > 256) ||
       (email && String(email).length > 254);
     if (tooLong) {
-      res.status(400).json({ error: m('المدخلات طويلة جدًا', 'Input too long') });
+      res.status(400).json({ error: m('المدخلات طويلة جدًا', 'Input too long'), code: 'too_long' });
       return;
     }
 
     if (action === 'signup') {
       if (!username || !password || String(username).length < 3 || String(password).length < MIN_PASSWORD) {
-        res.status(400).json({ error: m('اسم المستخدم 3 أحرف على الأقل وكلمة المرور ' + MIN_PASSWORD + ' أحرف على الأقل', 'Username must be at least 3 characters and password at least ' + MIN_PASSWORD + ' characters') });
+        res.status(400).json({ error: m('اسم المستخدم 3 أحرف على الأقل وكلمة المرور ' + MIN_PASSWORD + ' أحرف على الأقل', 'Username must be at least 3 characters and password at least ' + MIN_PASSWORD + ' characters'), code: 'signup_short', min: MIN_PASSWORD });
         return;
       }
       const key = String(username).trim().toLowerCase();
       if (RESERVED_USERNAMES.has(key) || isGoogleKey(key)) {
-        res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
+        res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved'), code: 'name_reserved' });
         return;
       }
       if (key.includes('@')) { // v-name-no-at
@@ -878,7 +952,7 @@ module.exports = async (req, res) => {
       }
       const existing = await getUser(key);
       if (existing) { // v-name-reuse: والمحذوف أيضًا — الاسم لا يُعاد لغير صاحبه
-        res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
+        res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken'), code: 'name_taken' });
         return;
       }
       /* v-signup-no-email (أمر المالك ١٨ أكتوبر: «التسجيل ما يحفظ إيميل أبدًا، والإيميل ينضاف بس من «حسابي» بالكود»): كان التسجيل
@@ -910,11 +984,11 @@ module.exports = async (req, res) => {
     if (action === 'changeUsername') {
       const u = verifyToken(token);
       if (!u) {
-        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
+        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
         return;
       }
       if (!newUsername || String(newUsername).trim().length < 3) {
-        res.status(400).json({ error: m('اسم المستخدم يجب أن يكون 3 أحرف على الأقل', 'Username must be at least 3 characters') });
+        res.status(400).json({ error: m('اسم المستخدم يجب أن يكون 3 أحرف على الأقل', 'Username must be at least 3 characters'), code: 'name_short' });
         return;
       }
       const oldKey = u;
@@ -925,7 +999,7 @@ module.exports = async (req, res) => {
       }
       // نفس الحجز المطبَّق في signup: بدونه يُلتفّ عليه من هنا.
       if (RESERVED_USERNAMES.has(newKey) && newKey !== oldKey) {
-        res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
+        res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved'), code: 'name_reserved' });
         return;
       }
       if (nameHasBadChars(newKey)) { // v-sec-name-chars: لا رموز أنماط/تحكّم في الاسم الجديد
@@ -937,14 +1011,18 @@ module.exports = async (req, res) => {
       const { kvSetIfAbsent, kvDel } = require('./kv.js');
       const lockKey = 'db/rename-lock/' + encodeURIComponent(oldKey);
       if (!(await kvSetIfAbsent(lockKey, '1', 30))) {
-        res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + 1 + ' دقيقة', 'Too many attempts, try again in ' + 1 + ' min') });
+        res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + 1 + ' دقيقة', 'Too many attempts, try again in ' + 1 + ' min'), code: 'too_many', minutes: 1 });
         return;
       }
       try {
         // v-name-reuse: رمز اسم ميّت (غيّره صاحبه أو حذفه المالك) لا ينقل شيئًا.
         const user = await getUser(oldKey);
         if (!user || user.deleted) {
-          res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
+          res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account'), code: 'not_found' });
+          return;
+        }
+        if (!sessionCurrent(user, token)) { // v-audit-auth (srv-auth-8): رمز أقدم من آخر تغيير لكلمة المرور لا ينقل الحساب
+          res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
           return;
         }
         const clash = await getUser(newKey);
@@ -952,11 +1030,11 @@ module.exports = async (req, res) => {
         // مفتاح Google لصاحبه وحده: حسابه (googleAuth) ببريده نفسه، راجعًا إلى مفتاحه بسلسلة شواهده.
         const ownGoogleKey = ownPrev && user.googleAuth === true && newKey === 'g_' + String(user.email || '').trim().toLowerCase();
         if (isGoogleKey(newKey) && !ownGoogleKey) {
-          res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
+          res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved'), code: 'name_reserved' });
           return;
         }
         if (clash && !ownPrev) {
-          res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
+          res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken'), code: 'name_taken' });
           return;
         }
         // v-name-no-at: الاسم الجديد وحده — الاسم القائم (newKey === oldKey أعلاه) والعودة إلى اسمك القديم بسلسلة شواهده (ownPrev) لا يُمسّان.
@@ -972,7 +1050,7 @@ module.exports = async (req, res) => {
         const renameLog = (Array.isArray(user.renameLog) ? user.renameLog : []).map(Number).filter((t) => Number.isFinite(t) && now - t < RENAME_WINDOW_MS);
         if (renameLog.length >= RENAME_MAX && !require('./_owner.js').isOwnerName(oldKey)) {
           const mins = Math.max(1, Math.ceil((Math.min(...renameLog) + RENAME_WINDOW_MS - now) / 60000));
-          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min') });
+          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins });
           return;
         }
         const movedUser = Object.assign({}, user, { username: String(newUsername).trim() });
@@ -984,7 +1062,7 @@ module.exports = async (req, res) => {
         await putUser(oldKey, { deleted: true, movedTo: newKey });
         try { await moveLiveCounters(oldKey, newKey, movedUser); } catch (e) { logError('auth:rename-move', e, { from: String(oldKey).slice(0, 40) }); }
         _banMemo.delete(oldKey); _banMemo.delete(newKey); // الشاهد جلسة ميّتة الآن (isBanned) — لا ينتظر ذاكرة الخمس ثوانٍ
-        res.status(200).json({ ok: true, token: makeToken(newKey), username: movedUser.username, avatar: movedUser.avatar || null });
+        res.status(200).json({ ok: true, token: makeToken(newKey, movedUser.sv), username: movedUser.username, avatar: movedUser.avatar || null });
       } finally {
         try { await kvDel(lockKey); } catch (e) { logError('auth:rename-unlock', e); }
       }
@@ -995,6 +1073,8 @@ module.exports = async (req, res) => {
     if (action === 'deleteAccount') {
       const u = verifyToken(token);
       if (!u) { res.status(401).json({ ok: false, code: 'auth', error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') }); return; }
+      const cur = await getUser(u, 1); // v-audit-auth (srv-auth-8): رمز أقدم من آخر تغيير لكلمة المرور لا يحذف الحساب
+      if (cur && !cur.deleted && !sessionCurrent(cur, token)) { res.status(401).json({ ok: false, code: 'auth', error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') }); return; }
       const r = await require('./account-delete.js').deleteAccount({ username: u, token, confirmUsername: String(body.confirmUsername || '').slice(0, 64), password });
       if (r.status === 200) _banMemo.delete(u); // الشاهد جلسة ميّتة الآن (isBanned) كما في تغيير الاسم
       res.status(r.status).json(r.body);
@@ -1004,41 +1084,47 @@ module.exports = async (req, res) => {
     if (action === 'changePassword') {
       const u = verifyToken(token);
       if (!u) {
-        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
+        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
         return;
       }
       if (!currentPassword || !newPassword || String(newPassword).length < MIN_PASSWORD) {
-        res.status(400).json({ error: m('أدخل كلمة المرور الحالية وكلمة مرور جديدة (' + MIN_PASSWORD + ' أحرف على الأقل)', 'Enter your current password and a new password (at least ' + MIN_PASSWORD + ' characters)') });
+        res.status(400).json({ error: m('أدخل كلمة المرور الحالية وكلمة مرور جديدة (' + MIN_PASSWORD + ' أحرف على الأقل)', 'Enter your current password and a new password (at least ' + MIN_PASSWORD + ' characters)'), code: 'pw_short', min: MIN_PASSWORD });
         return;
       }
       const user = await getUser(u);
+      if (user && !user.deleted && !sessionCurrent(user, token)) { // v-audit-auth (srv-auth-8)
+        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
+        return;
+      }
       if (!user || user.deleted || !verifyPassword(currentPassword, user.salt, user.hash)) {
-        res.status(401).json({ error: m('كلمة المرور الحالية غير صحيحة', 'Current password is incorrect') });
+        res.status(401).json({ error: m('كلمة المرور الحالية غير صحيحة', 'Current password is incorrect'), code: 'pw_wrong' });
         return;
       }
       const { salt, hash } = hashPassword(newPassword);
       user.salt = salt;
       user.hash = hash;
+      user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): كلّ جلسة سابقة تموت — وهذا الجهاز يأخذ رمزه الجديد
       await putUser(u, user);
-      res.status(200).json({ ok: true });
+      res.status(200).json({ ok: true, token: makeToken(u, user.sv) });
       return;
     }
 
     if (action === 'setAvatar') {
       const u = verifyToken(token);
       if (!u) {
-        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
+        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
         return;
       }
       if (!avatarDataUrl || typeof avatarDataUrl !== 'string' || avatarDataUrl.length > 300000) {
-        res.status(400).json({ error: m('الصورة غير صالحة أو كبيرة جدًا', 'Image is invalid or too large') });
+        res.status(400).json({ error: m('الصورة غير صالحة أو كبيرة جدًا', 'Image is invalid or too large'), code: 'avatar_bad' });
         return;
       }
       const user = await getUser(u);
       if (!user || user.deleted) {
-        res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
+        res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account'), code: 'not_found' });
         return;
       }
+      if (!sessionCurrent(user, token)) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; } // v-audit-auth (srv-auth-8)
       user.avatar = avatarDataUrl;
       await putUser(u, user);
       res.status(200).json({ ok: true, avatar: avatarDataUrl });
@@ -1048,14 +1134,15 @@ module.exports = async (req, res) => {
     if (action === 'getProfile') {
       const u = verifyToken(token);
       if (!u) {
-        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
+        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
         return;
       }
       const user = await getUser(u);
       if (!user || user.deleted) {
-        res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
+        res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account'), code: 'not_found' });
         return;
       }
+      if (!sessionCurrent(user, token)) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; } // v-audit-auth (srv-auth-8): لا بريد ولا هاتف لرمز قديم
       // v-vip-verified: «حسابي» يعرف إن كان الإيميل مؤكَّدًا — المحفوظ قبل اليوم غير مؤكَّد، وحفظه بالقيمة نفسها يطلب رمزه.
       res.status(200).json({ ok: true, email: user.email || null, emailVerified: await emailProven(u, user), phone: user.phone || null }); // v-phone-link · v-unverified-email: وحساب الرمز القديم
       return;
@@ -1072,20 +1159,30 @@ module.exports = async (req, res) => {
     if (action === 'forgotPassword') {
       /* v-account-email: من كتب بريدًا يأخذ ردًّا واحدًا وُجد الحساب أم لا — كان «الحساب غير موجود» يكشف أيّ بريد مسجَّل —
          وثلاث محاولات لكلّ بريد في ربع ساعة. الاسم يبقى كما كان (الاسم يُكشف أصلًا عند التسجيل «مستخدم من قبل»). */
+      /* v-audit-auth (srv-auth-7): فرع الاسم كان بلا أيّ حدّ — نداء في حلقة يرسل للضحيّة رسالة كلّ مرّة ويستبدل resetTokenHash فيُبطل
+         رابطها السابق. الآن حدّ لكلّ شبكة عبر الفرعين (FORGOT_NET_MAX في ربع ساعة)، وحدّ المستلِم نفسه (٣ في ربع ساعة) يتشاركه الفرعان
+         بالبريد الذي تذهب إليه الرسالة. */
+      const FORGOT_NET_MAX = 30;
+      try {
+        const { clientIp, giftNet } = require('./welcome-gift.js');
+        const fnet = giftNet(clientIp(req));
+        const w = fnet ? await rateWait('forgot-net', fnet, FORGOT_NET_MAX, 15 * 60 * 1000) : 0;
+        if (w) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + w + ' دقيقة', 'Too many attempts, try again in ' + w + ' min'), code: 'too_many', minutes: w }); return; }
+      } catch (e) { logError('auth:forgot-net', e); }
       const byEmail = email || (username && isValidEmail(String(username).trim()) ? username : null);
       if (byEmail) {
         const emailKey = String(byEmail).trim().toLowerCase();
         if (!isValidEmail(emailKey)) {
-          res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
+          res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format'), code: 'bad_email' });
           return;
         }
         if (!RESEND_API_KEY) {
-          res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin') });
+          res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin'), code: 'mail_off' });
           return;
         }
         const wait = await rateWait('forgot-rate', emailKey, 3, 15 * 60 * 1000);
         if (wait) {
-          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') });
+          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min'), code: 'too_many', minutes: wait });
           return;
         }
         const found = await resolveLoginUser(emailKey);
@@ -1111,26 +1208,32 @@ module.exports = async (req, res) => {
             if (!sent) logError('auth:forgot-google-send', new Error('google hint mail not sent'));
           }
         }
-        res.status(200).json({ ok: true, message: m('إن كان هذا الإيميل مرتبطًا بحساب فسيصلك رابط إعادة التعيين خلال دقائق.', 'If this email is linked to an account, a reset link will reach you within minutes.') });
+        res.status(200).json({ ok: true, message: m('إن كان هذا الإيميل مرتبطًا بحساب فسيصلك رابط إعادة التعيين خلال دقائق.', 'If this email is linked to an account, a reset link will reach you within minutes.'), code: 'forgot_sent' });
         return;
       }
       if (!username) {
-        res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل', 'Enter your username or email') });
+        res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل', 'Enter your username or email'), code: 'missing_fields' });
         return;
       }
       const { key, user } = await resolveLoginUser(username);
       if (!user || user.deleted) {
-        res.status(404).json({ error: m('الحساب غير موجود', 'Account not found') });
+        res.status(404).json({ error: m('الحساب غير موجود', 'Account not found'), code: 'not_found' });
         return;
       }
       if (!user.email) {
         res.status(400).json({ error: user.phone
           ? m('لا يوجد إيميل مسجل لهذا الحساب — استرجع حسابك برقم هاتفك المربوط', 'No email is registered for this account — recover it with your linked phone number')
-          : m('لا يوجد إيميل ولا رقم هاتف مرتبط بهذا الحساب، فلا يمكن استرجاعه من هنا', 'This account has no email or phone number linked, so it cannot be recovered from here') });
+          : m('لا يوجد إيميل ولا رقم هاتف مرتبط بهذا الحساب، فلا يمكن استرجاعه من هنا', 'This account has no email or phone number linked, so it cannot be recovered from here'),
+          code: user.phone ? 'no_email_phone' : 'no_recovery' });
         return;
       }
       if (!(await emailProven(key, user))) { // v-unverified-email: الرابط كان يذهب لبريد لم يُثبت — صندوق صاحبه لا صاحب الحساب
         res.status(403).json({ error: m(UNVERIFIED_EMAIL_AR, UNVERIFIED_EMAIL_EN), code: 'email_unverified' });
+        return;
+      }
+      const toWait = await rateWait('forgot-rate', String(user.email).trim().toLowerCase(), 3, 15 * 60 * 1000); // v-audit-auth (srv-auth-7)
+      if (toWait) {
+        res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + toWait + ' دقيقة', 'Too many attempts, try again in ' + toWait + ' min'), code: 'too_many', minutes: toWait });
         return;
       }
       const rt = crypto.randomBytes(24).toString('hex');
@@ -1140,24 +1243,24 @@ module.exports = async (req, res) => {
       await putUser(key, user);
       const sent = await sendResetEmail(user.email, user.username, rt, isEn);
       if (!sent) {
-        res.status(500).json({ error: m('تعذر إرسال الإيميل، حاول لاحقًا', 'Could not send the email, try again later') });
+        res.status(500).json({ error: m('تعذر إرسال الإيميل، حاول لاحقًا', 'Could not send the email, try again later'), code: 'mail_failed' });
         return;
       }
       const masked = user.email.replace(/^(.{2}).*(@.*)$/, '$1***$2');
-      res.status(200).json({ ok: true, message: m('تم إرسال رابط إعادة التعيين إلى ' + masked, 'A reset link was sent to ' + masked) });
+      res.status(200).json({ ok: true, message: m('تم إرسال رابط إعادة التعيين إلى ' + masked, 'A reset link was sent to ' + masked), code: 'forgot_sent_to', masked });
       return;
     }
 
     if (action === 'resetWithToken') {
       if (!username || !resetToken || !newPassword || String(newPassword).length < MIN_PASSWORD) {
-        res.status(400).json({ error: m('رابط غير صالح أو كلمة مرور قصيرة (' + MIN_PASSWORD + ' أحرف على الأقل)', 'Invalid link or password too short (at least ' + MIN_PASSWORD + ' characters)') });
+        res.status(400).json({ error: m('رابط غير صالح أو كلمة مرور قصيرة (' + MIN_PASSWORD + ' أحرف على الأقل)', 'Invalid link or password too short (at least ' + MIN_PASSWORD + ' characters)'), code: 'reset_short', min: MIN_PASSWORD });
         return;
       }
       const key = String(username).trim().toLowerCase();
       const user = await getUser(key);
       const rtHash = crypto.createHash('sha256').update(String(resetToken)).digest('hex');
       if (!user || user.deleted || !user.resetTokenHash || user.resetTokenHash !== rtHash || !user.resetTokenExpiry || user.resetTokenExpiry < Date.now()) {
-        res.status(401).json({ error: m('الرابط غير صالح أو منتهي الصلاحية، اطلب رابطًا جديدًا', 'The link is invalid or expired, request a new one') });
+        res.status(401).json({ error: m('الرابط غير صالح أو منتهي الصلاحية، اطلب رابطًا جديدًا', 'The link is invalid or expired, request a new one'), code: 'reset_bad' });
         return;
       }
       const { salt, hash } = hashPassword(newPassword);
@@ -1165,15 +1268,16 @@ module.exports = async (req, res) => {
       user.hash = hash;
       user.resetTokenHash = null;
       user.resetTokenExpiry = null;
+      user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): الاستعادة تُبطل كلّ جلسة سابقة
       await putUser(key, user);
       await markKnownNet(key, req);
-      res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: user.avatar || null });
+      res.status(200).json({ ok: true, token: makeToken(key, user.sv), username: user.username, avatar: user.avatar || null });
       return;
     }
 
     if (action === 'login') {
       if (!username || !password) {
-        res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل وكلمة المرور', 'Enter your username or email and password') });
+        res.status(400).json({ error: m('أدخل اسم المستخدم أو الإيميل وكلمة المرور', 'Enter your username or email and password'), code: 'missing_fields' });
         return;
       }
       const { key, user, emailUnverified } = await resolveLoginUser(username);
@@ -1181,11 +1285,11 @@ module.exports = async (req, res) => {
       const gate = await loginGate(key, req);
       if (gate.wait) {
         const mins = gate.wait;
-        res.status(429).json({ error: m('محاولات كثيرة فاشلة. حاول بعد ' + mins + ' دقيقة', 'Too many failed attempts. Try again in ' + mins + ' min') });
+        res.status(429).json({ error: m('محاولات كثيرة فاشلة. حاول بعد ' + mins + ' دقيقة', 'Too many failed attempts. Try again in ' + mins + ' min'), code: 'too_many', minutes: mins });
         return;
       }
       if (!user || user.deleted || !verifyPassword(password, user.salt, user.hash)) {
-        res.status(401).json({ error: m('اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة', 'Incorrect username, email or password') });
+        res.status(401).json({ error: m('اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة', 'Incorrect username, email or password'), code: 'bad_credentials' });
         return;
       }
       await gate.passed();
@@ -1195,29 +1299,30 @@ module.exports = async (req, res) => {
         return;
       }
       if (user.banned) {
-        res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true });
+        res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true, code: 'banned' });
         return;
       }
-      res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: user.avatar || null, emailToConfirm: await emailToConfirmFor(key, user) });
+      res.status(200).json({ ok: true, token: makeToken(key, user.sv), username: user.username, avatar: user.avatar || null, emailToConfirm: await emailToConfirmFor(key, user) });
       return;
     }
 
     if (action === 'verify') {
       const u = verifyToken(token);
       if (!u) {
-        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
+        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
         return;
       }
       // Trust a validly-signed, unexpired token even if the user record lookup
       // is momentarily unavailable (e.g. right after signup) — avoids forcing a
       // fresh login due to brief storage propagation delay.
       const user = await getUser(u);
-      if (user && user.deleted) {
-        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
+      // v-audit-auth (srv-auth-8): رمز أقدم من آخر تغيير لكلمة المرور أو استعادتها لا يُجدَّد — الجلسة المسرَّبة تموت هنا
+      if ((user && user.deleted) || !sessionCurrent(user, token)) {
+        res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
         return;
       }
       if (user && user.banned) {
-        res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true });
+        res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true, code: 'banned' });
         return;
       }
       let adminMessage = null;
@@ -1234,7 +1339,7 @@ module.exports = async (req, res) => {
       await markKnownNet(u, req);
       // v-unverified-email: التنبيه عند كلّ فتح ما دام البريد غير مؤكَّد. نسخة بلا الرسالة المسلَّمة: ختم حساب الرمز القديم يكتبها فلا تعود.
       const emailToConfirm = user ? await emailToConfirmFor(u, adminMessage ? Object.assign({}, user, { pendingMessage: null }) : user) : null;
-      res.status(200).json({ ok: true, token: makeToken(u), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage, emailToConfirm });
+      res.status(200).json({ ok: true, token: makeToken(u, user ? user.sv : tokenVersion(token)), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage, emailToConfirm });
       return;
     }
 
@@ -1251,14 +1356,18 @@ module.exports = async (req, res) => {
       let me = null;
       if (action === 'phone-link-start') {
         me = verifyToken(token);
-        if (!me) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') }); return; }
+        if (!me) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
+        // v-audit-auth (srv-auth-8): رمز أقدم من آخر تغيير لكلمة المرور لا يربط هاتفًا (ثمّ يستعيد به الحساب)
+        if (!sessionCurrent(await getUser(me, 1), token)) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
       }
       const ip = String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim().slice(0, 64);
       const wait = await rateWait('phone-start-rate', me ? 'u/' + me : 'ip/' + (ip || 'none'), 5, 15 * 60 * 1000);
-      if (wait) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min') }); return; }
+      if (wait) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min'), code: 'too_many', minutes: wait }); return; }
       const r = await pl.start({ purpose: me ? 'link' : 'recover', channel, username: me });
       if (r.error === 'channel_unavailable') {
-        res.status(503).json({ error: channel === 'whatsapp' ? m('الربط عبر واتساب غير مهيّأ بعد — جرّب تيليجرام', 'WhatsApp linking is not set up yet — try Telegram') : m('الربط عبر تيليجرام غير مهيّأ', 'Telegram linking is not set up') });
+        res.status(503).json(channel === 'whatsapp'
+          ? { error: m('الربط عبر واتساب غير مهيّأ بعد — جرّب تيليجرام', 'WhatsApp linking is not set up yet — try Telegram'), code: 'channel_off_wa' }
+          : { error: m('الربط عبر تيليجرام غير مهيّأ', 'Telegram linking is not set up'), code: 'channel_off_tg' });
         return;
       }
       res.status(200).json({ ok: true, code: r.code, link: r.link, expiresIn: r.expiresIn, channel: r.channel });
@@ -1274,16 +1383,21 @@ module.exports = async (req, res) => {
 
     if (action === 'email-otp-request') {
       if (!email || !isValidEmail(email)) {
-        res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
+        res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format'), code: 'bad_email' });
         return;
       }
       const key = String(email).trim().toLowerCase();
 
       // Rate limit: max 3 OTP requests per email per 5 minutes — v-auth-throttle: ذرّيًّا (كان قراءة ثمّ كتابة).
+      // v-audit-auth (srv-auth-9): وحدّ لكلّ شبكة (giftNet) عبر كلّ العناوين — كان سكربت بلا حساب يرسل لآلاف العناوين من شبكة واحدة.
+      const OTP_REQ_NET_MAX = 30; // كحدّ التحقّق للشبكة: مكتب بعشرين موظّفًا خلف عنوان واحد يطلب رموزه
       const now = Date.now();
-      const mins = await rateWait('otp-rate', key, 3, 5 * 60 * 1000);
+      let reqNet = '';
+      try { const { clientIp, giftNet } = require('./welcome-gift.js'); reqNet = giftNet(clientIp(req)); } catch (e) { logError('auth:otp-req-net', e); }
+      const mins = (reqNet ? await rateWait('otp-req-net', reqNet, OTP_REQ_NET_MAX, 15 * 60 * 1000) : 0)
+        || await rateWait('otp-rate', key, 3, 5 * 60 * 1000);
       if (mins) {
-        res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min') });
+        res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins });
         return;
       }
       // v-unverified-email: بريد على حساب ولم يُؤكَّد عليه — لا رمز دخول (صاحب البريد لا يدخل حساب من زرعه). بعد الحدّ: السؤال محدود.
@@ -1295,7 +1409,7 @@ module.exports = async (req, res) => {
       // تشخيص واضح: غياب مفتاح Resend كان يظهر كـ«تعذر الإرسال» العامة،
       // فيضيع أصل العطل (إعدادات Vercel) خلف رسالة توحي بخلل عابر.
       if (!RESEND_API_KEY) {
-        res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin') });
+        res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin'), code: 'mail_off' });
         return;
       }
 
@@ -1305,7 +1419,7 @@ module.exports = async (req, res) => {
 
       const sent = await sendOtpEmail(key, otpCode, isEn);
       if (!sent) {
-        res.status(500).json({ error: m('تعذر إرسال الإيميل، حاول لاحقًا', 'Could not send the email, try again later') });
+        res.status(500).json({ error: m('تعذر إرسال الإيميل، حاول لاحقًا', 'Could not send the email, try again later'), code: 'mail_failed' });
         return;
       }
       res.status(200).json({ ok: true, message: m('تم إرسال رمز التحقق', 'Verification code sent') });
@@ -1314,7 +1428,7 @@ module.exports = async (req, res) => {
 
     if (action === 'email-otp-verify') {
       if (!email || !isValidEmail(email) || !otp) {
-        res.status(400).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        res.status(400).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code'), code: 'bad_otp' });
         return;
       }
       const key = String(email).trim().toLowerCase();
@@ -1327,13 +1441,15 @@ module.exports = async (req, res) => {
       const OTP_NET_MAX = 30;
       const OTP_NET_WINDOW_MS = 15 * 60 * 1000;
       let netBase = null;
+      let otpNet = '';
       try {
         const { clientIp, giftNet } = require('./welcome-gift.js');
         const net = giftNet(clientIp(req));
+        otpNet = net;
         if (net) netBase = 'db/otp-verify-net/' + encodeURIComponent(net);
         if (netBase && (await windowHit(netBase, OTP_NET_WINDOW_MS)) > OTP_NET_MAX) {
           const mins = await windowMinutes(netBase, OTP_NET_WINDOW_MS);
-          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min') });
+          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins });
           return;
         }
       } catch (e) { logError('auth:otp-net', e); netBase = null; }
@@ -1341,7 +1457,7 @@ module.exports = async (req, res) => {
       try { record = await kvGetJSON('db/otp/' + key); } catch (e) { logError('auth:otp-read', e); record = null; }
       const submitted = String(otp).trim();
       if (!record || typeof record.otp !== 'string' || !record.exp || record.exp < Date.now()) {
-        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code'), code: 'bad_otp' });
         return;
       }
       const burnOtp = async () => { try { await kvPutJSON('db/otp/' + key, { otp: null, exp: 0 }); } catch (e) { logError('auth:otp-burn', e); } };
@@ -1354,9 +1470,30 @@ module.exports = async (req, res) => {
       } catch (e) { logError('auth:otp-tries', e); }
       if (tries > OTP_MAX_TRIES) {
         await burnOtp();
-        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code'), code: 'bad_otp' });
         return;
       }
+      /* v-audit-auth (srv-auth-11): العدّاد لكلّ رمز ولكلّ شبكة لا يكفي — من يبدّل شبكته (‏/64 جديد كلّ ٣٠ محاولة) ويطلب ٣ رموز كلّ ٥ دقائق
+         يجرّب آلاف التخمينات يوميًّا على بريد واحد (≈١٢٪ للاستيلاء في شهر). الآن عدّاد لكلّ بريد عبر كلّ رموزه (OTP_MAIL_SOFT في ٢٤ ساعة)،
+         ذرّيّ قبل المقارنة وبعد عدّاد الرمز (فلا يُحسب إلّا ما سيُقارَن)؛ فوقه لا يُقيَّم رمز إلّا من شبكة دخل منها صاحب الحساب بنجاح (db/login-ok — حدّ loginGate الليّن نفسه)، فالحدّ
+         لا يُستعمل سلاحًا على صاحبه من بيته، ومن شبكة جديدة أثناء الهجوم يدخل بكلمة المرور أو بـGoogle أو ينتظر. المحجوبة والناجحة تُرَدّان. */
+      const OTP_MAIL_SOFT = 20;
+      const OTP_MAIL_WINDOW_MS = 24 * 60 * 60 * 1000;
+      const mailBase = 'db/otp-fail-mail/' + encodeURIComponent(key);
+      let mailTaken = false;
+      try {
+        if ((await windowHit(mailBase, OTP_MAIL_WINDOW_MS)) > OTP_MAIL_SOFT) {
+          const acct = (await indexOwner(key, 1)) || (await googleAccountFor(key));
+          const knownNet = !!(acct && otpNet && (await require('./kv.js').kvGetRaw(knownNetKey(acct.key, otpNet))));
+          if (!knownNet) {
+            await windowBack(mailBase);
+            const mins = await windowMinutes(mailBase, OTP_MAIL_WINDOW_MS);
+            res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins });
+            return;
+          }
+        }
+        mailTaken = true;
+      } catch (e) { logError('auth:otp-mail', e); }
       // 6 numeric digits — a plain, constant-length string compare is fine here;
       // timingSafeEqual is used elsewhere only because those secrets vary in
       // encoded length. Both sides here are always padded to 6 bytes.
@@ -1365,10 +1502,11 @@ module.exports = async (req, res) => {
       const matches = submitted.length === record.otp.length && given.length === known.length && crypto.timingSafeEqual(given, known);
       if (!matches) {
         if (tries >= OTP_MAX_TRIES) await burnOtp();
-        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code'), code: 'bad_otp' });
         return;
       }
       if (netBase) await windowBack(netBase);
+      if (mailTaken) await windowBack(mailBase);
       // Invalidate immediately so the same code can't be replayed — overwrite with an already-expired record.
       await burnOtp();
 
@@ -1377,15 +1515,20 @@ module.exports = async (req, res) => {
       let user = null;
       let unverified = false;
       try {
-        const idx = await kvGetJSON('db/email-index/' + key);
-        if (idx && idx.username) {
-          const candidate = await getUser(idx.username);
-          if (candidate && !candidate.deleted && candidate.email === key) {
-            // v-unverified-email: رمز صحيح لبريد غير مؤكَّد على هذا الحساب = صاحب البريد لا صاحب الحساب — لا دخول ولا حساب جديد.
-            if (await emailProven(String(idx.username).trim().toLowerCase(), candidate)) {
-              userKey = idx.username;
-              user = candidate;
-            } else unverified = true;
+        // v-audit-auth (srv-auth-4): الفهرس على اسم تغيّر يتبع شاهده إلى الحساب الحيّ (كان ينشئ حسابًا فارغًا في كلّ دخول).
+        const own = await indexOwner(key);
+        if (own) {
+          // v-unverified-email: رمز صحيح لبريد غير مؤكَّد على هذا الحساب = صاحب البريد لا صاحب الحساب — لا دخول ولا حساب جديد.
+          if (await emailProven(own.key, own.user)) {
+            userKey = own.key;
+            user = own.user;
+          } else unverified = true;
+        } else {
+          // v-audit-auth (srv-auth-4): حساب «المتابعة عبر Google» بلا فهرس بريد — البريد مثبت عليه، والرمز أثبته للتوّ: هو حسابه.
+          const g = await googleAccountFor(key);
+          if (g && g.user.email === key && await emailProven(g.key, g.user)) {
+            userKey = g.key;
+            user = g.user;
           }
         }
       } catch (e) { logError('auth:otp-index', e); }
@@ -1431,8 +1574,9 @@ module.exports = async (req, res) => {
         userKey = candidateKey;
         await putUser(userKey, user);
         try {
-          const existingIdx = await kvGetJSON('db/email-index/' + key);
-          if (!existingIdx || !existingIdx.username) {
+          // v-audit-auth (srv-auth-4): يُكتب فوق أيّ مدخل لا يصل إلى حساب حيّ بهذا البريد (كان يُكتب حين يغيب وحده، فالمدخل القديم
+          // بعد تغيير البريد يبقى، وكلّ دخول لاحق ينشئ حسابًا آخر). عطب القراءة يرمي فلا كتابة فوق فهرس صحيح.
+          if (!(await indexOwner(key))) {
             await kvPutJSON('db/email-index/' + key, { username: userKey, at: Date.now() });
           }
         } catch (e) { logError('auth:email-index', e); }
@@ -1442,12 +1586,12 @@ module.exports = async (req, res) => {
       }
 
       if (user.banned) {
-        res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true });
+        res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true, code: 'banned' });
         return;
       }
 
       await markKnownNet(userKey, req);
-      res.status(200).json({ ok: true, token: makeToken(userKey), username: user.username, avatar: user.avatar || null, isNew });
+      res.status(200).json({ ok: true, token: makeToken(userKey, user.sv), username: user.username, avatar: user.avatar || null, isNew });
       return;
     }
 
@@ -1456,7 +1600,7 @@ module.exports = async (req, res) => {
     // رسالة الاستثناء لا تصل العميل: كانت تكشف داخل الخادم لأيّ أحد
     // (وهي التي كانت تعرض "otp is not defined" للمستخدم).
     logError('auth:handler', e);
-    res.status(500).json({ error: 'Auth error' });
+    res.status(500).json({ error: 'Auth error', code: 'server' });
   }
 };
 
@@ -1467,6 +1611,7 @@ module.exports.putUser = putUser;
 module.exports.hashPassword = hashPassword;
 module.exports.makeToken = makeToken;
 module.exports.markKnownNet = markKnownNet; // v-known-net: والكولباك (auth-google-callback.js)
+module.exports.liveAccount = liveAccount; // v-audit-auth (srv-auth-2): الكولباك يتبع شاهد تغيير الاسم
 module.exports.verifyToken = verifyToken;
 module.exports.encryptUserBlob = encryptUserBlob;
 module.exports.decryptUserBlob = decryptUserBlob;

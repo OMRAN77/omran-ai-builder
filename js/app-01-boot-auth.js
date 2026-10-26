@@ -243,6 +243,31 @@ try{
     return D ? (D[lang] || D.ar || {}) : {};
   }
 
+  /* v-audit-auth (srv-auth-13): نصّ أخطاء auth من الخادم عربيّ أو إنجليزيّ فقط — الفرنسيّ والأورديّ وغيرهما كانوا يرون العربيّة.
+     الخادم يرسل code ثابتًا، وهنا يُستبدل النصّ بمفتاح القاموس بلغة الواجهة الـ١٤ قبل أيّ عرض؛ رمز بلا مفتاح = نصّ الخادم (احتياط).
+     mail_off مفتاحه الخاصّ لا «تعذّر الإرسال» العامّة: تشخيص غياب مفتاح البريد مقصود (auth.js) فلا يختفي خلف خلل عابر. */
+  const AX_AUTH_KEYS = {
+    bad_credentials: 'axAuthBadCredentials', name_taken: 'axAuthNameTaken', name_reserved: 'axAuthNameReserved', name_bad: 'axAuthNameBad',
+    name_at: 'nameNoAt', name_short: 'acctFillUsername', signup_short: 'axAuthSignupShort', session: 'axAuthSession', too_many: 'acctEmailTooMany',
+    not_found: 'axAuthNotFound', pw_short: 'axAuthPwShort', pw_wrong: 'axAuthPwWrong', avatar_bad: 'acctAvatarTooBig', bad_email: 'acctInvalidEmail',
+    mail_off: 'axAuthMailOff', mail_failed: 'axAuthMailFailed', no_email_phone: 'axAuthNoEmailPhone', no_recovery: 'axAuthNoRecovery',
+    forgot_sent: 'axAuthForgotSent', forgot_sent_to: 'axAuthForgotSentTo', reset_short: 'axAuthResetShort', reset_bad: 'axAuthResetBad',
+    banned: 'axAuthBanned', bad_otp: 'axAuthBadOtp', channel_off_wa: 'axAuthWaOff', channel_off_tg: 'axAuthTgOff',
+    email_unverified: 'authEmailUnverified', too_long: 'axAuthTooLong', server: 'acctGenericError',
+  };
+  function axAuthL10n(d){
+    try {
+      const k = d && typeof d === 'object' && AX_AUTH_KEYS[d.code];
+      const s = k && curT()[k];
+      if(s){
+        const txt = String(s).replace('{minutes}', String(Number(d.minutes) || 15)).replace('{n}', String(Number(d.min) || 8)).replace('{email}', String(d.masked || ''));
+        if(d.error) d.error = txt; else if(d.message) d.message = txt;
+      }
+    } catch(e){ __swallow(e, 'auth:l10n'); }
+    return d;
+  }
+  window.axAuthL10n = axAuthL10n;
+
   function setMode(m){
     mode = m;
     errBox.textContent = '';
@@ -1064,6 +1089,7 @@ try{
 
   // If the page was reached via the Google login redirect
   // (?gtoken=...&guser=...&gavatar=...), finish the login immediately.
+  let __oauthPick = null; // v-audit-auth (srv-auth-10): {state, claim} من رابط العودة — يستلم بهما جسر oauth-claim أدناه
   (function checkGoogleAuthUrl(){
     try {
       const params = new URLSearchParams(window.location.search);
@@ -1071,13 +1097,15 @@ try{
       const guser = params.get('guser');
       const gavatar = params.get('gavatar');
       const gerror = params.get('gerror');
+      const gclaim = params.get('gclaim');
       const cleanUrl = window.location.origin + window.location.pathname;
       // نرفض أي جلسة لم يبدأها هذا التبويب. بلا هذا الفحص يستطيع مهاجم أن
       // يدفع متصفحك لإكمال تسجيل دخول بحسابه هو، فتعمل داخل حسابه دون أن تدري.
-      if(gtoken && guser){
+      // v-audit-auth (srv-auth-10): الويب يعود الآن بـgstate ورمز استلام لمرّة واحدة (gclaim) بدل الرمز نفسه — الفحص نفسه على gstate.
+      if((gtoken && guser) || gclaim){
         let expected = null;
         try { expected = sessionStorage.getItem('aiapp_oauth_state'); } catch(e){ console.warn('[oauth] no sessionStorage', e); }
-        const returned = params.get('state');
+        const returned = gclaim ? params.get('gstate') : params.get('state');
         // v-sec-oauth-state: نرفض الآن أيّ gtoken لا يحمل state يطابق ما بدأه هذا التبويب —
         // لا «نقبل عند الغياب» كما كان. بلا هذا الشرط، رابط فيه gtoken المهاجم يُقبل في أيّ تبويب
         // لم يبدأ دخول جوجل، فيُدخل الضحية حسابَ المهاجم وترتفع محادثاتها إليه. مسارات الأغلفة
@@ -1092,6 +1120,13 @@ try{
           return;
         }
         try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#11"); }
+        if(gclaim){
+          // الجسر يستلم الإيداع بـ{state, claim} فور تشغيله — لا رمز في الرابط ولا في سجلّ الزيارات
+          __oauthPick = { state: returned, claim: gclaim };
+          noteSession('جوجل-عاد');
+          window.history.replaceState({}, document.title, cleanUrl);
+          return;
+        }
         authSet('aiapp_auth_token', gtoken);
         authSet('aiapp_username', guser);
         if(gavatar){ localStorage.setItem('aiapp_avatar', gavatar); }
@@ -1235,19 +1270,21 @@ try{
     // v-google-app-fail: فشل الدخول في سفاري — الخادم أودع السبب فنعرضه بدل انتظار صامت.
     function claimFail(err){
       try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-fail'); }
+      __oauthPick = null;
       showGoogleAuthError(String(err));
     }
     let busy = false;
     async function claim(){
-      const st = pending();
+      const pk = __oauthPick; // v-audit-auth (srv-auth-10): عودة الويب برمز الاستلام أولى، والرمز يُرسل معها
+      const st = pk ? pk.state : pending();
       if(!st || busy) return;
-      if(authGet('aiapp_auth_token')){ try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-clear'); } return; }
+      if(authGet('aiapp_auth_token')){ __oauthPick = null; try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-clear'); } return; }
       busy = true;
       try {
         const r = await fetch('/api/account?action=oauth-claim', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ state: st }),
+          body: JSON.stringify({ state: st, claim: pk && pk.claim }),
           signal: AbortSignal.timeout(10000), // v-perf-boot-defer: تعليق الشبكة كان يبقي busy=true للأبد
         });
         if(r.ok){
@@ -1343,7 +1380,7 @@ try{
           body: JSON.stringify({ action: 'forgotPassword', username, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
           signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
           errBox.textContent = (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-unverified-email
           return;
@@ -1370,10 +1407,10 @@ try{
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'resetWithToken', username, resetToken: window.__pendingResetToken, newPassword: password }),
+          body: JSON.stringify({ action: 'resetWithToken', username, resetToken: window.__pendingResetToken, newPassword: password, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
           signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
           errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
           return;
@@ -1403,7 +1440,7 @@ try{
         body: JSON.stringify({ action: mode, username, password, lang: (localStorage.getItem('aiapp_lang') || 'ar'), ref: (mode === 'signup' ? (localStorage.getItem('aiapp_pending_ref') || undefined) : undefined) }),
         signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600) — «أحيانًا ما يدخل»
       });
-      const data = await res.json();
+      const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
       if(!res.ok || data.error){
         errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-name-no-at · v-unverified-email: بلغة الواجهة
         if(mode === 'login' && res.status === 401 && username.indexOf('@') !== -1) googleLoginHint(); // v-google-login-help
@@ -1510,7 +1547,7 @@ try{
       const body = { action: recover ? 'phone-recover-start' : 'phone-link-start', channel };
       if(!recover) body.token = authGet('aiapp_auth_token');
       const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      data = await res.json();
+      data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
       if(!res.ok || !data || !data.link) throw Object.assign(new Error('start'), { said: (data && data.error) || t2.acctGenericError });
     } catch(e){
       if(win) try { win.close(); } catch(e2){ window.__swallow(e2, 'phone-link:close'); }
@@ -1710,9 +1747,9 @@ try{
             const res = await fetch('/api/auth', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'setAvatar', token, avatarDataUrl: dataUrl }),
+              body: JSON.stringify({ action: 'setAvatar', token, avatarDataUrl: dataUrl, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
             });
-            const data = await res.json();
+            const data = (typeof axAuthL10n === 'function' ? axAuthL10n : (x) => x)(await res.json()); // v-audit-auth (srv-auth-13) — typeof: الاختبار يشغّل المعالج وحده
             if(!res.ok || data.error){
               avatarMsg(data.error || t2.acctGenericError, '#ef4444');
               return;
@@ -1751,7 +1788,7 @@ try{
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'changeUsername', token, newUsername: newUsernameVal, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
           acctUsernameMsg.textContent = (data.code === 'name_at' && t2.nameNoAt) || data.error || t2.acctGenericError; // v-name-no-at
           acctUsernameMsg.style.color = '#ef4444';
@@ -1791,14 +1828,15 @@ try{
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'changePassword', token, currentPassword: curPass, newPassword: newPass }),
+          body: JSON.stringify({ action: 'changePassword', token, currentPassword: curPass, newPassword: newPass, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
           acctPasswordMsg.textContent = data.error || t2.acctGenericError;
           acctPasswordMsg.style.color = '#ef4444';
           return;
         }
+        if(data.token) authSet('aiapp_auth_token', data.token); // v-audit-auth (srv-auth-8): الجلسات الأخرى تموت، وهذا الجهاز برمزه الجديد
         acctCurrentPassword.value = '';
         acctNewPassword.value = '';
         acctPasswordMsg.textContent = t2.acctSaved;
@@ -1881,7 +1919,7 @@ try{
         signal: AbortSignal.timeout(10000), // v-perf-boot-defer: بلا هذا، تعليق الشبكة يبقي شاشة
         // الدخول معلَّقة بلا قرار؛ التعليق الآن يسقط في مسار «تعذّر الاتّصال» أدناه (جلسة مخبَّأة).
       });
-      const data = await res.json();
+      const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
       if(res.ok && data.ok){
         // 🔄 جلسة منزلقة: الخادم يعيد توكن جديدًا مع كل تحقق ناجح، فلا
         // ينقطع المستخدم النشط أبدًا بانتهاء صلاحية الثلاثين يومًا.
@@ -2085,7 +2123,7 @@ try{
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ action: 'email-otp-request', email, lang })
         });
-        const d = await r.json();
+        const d = window.axAuthL10n ? window.axAuthL10n(await r.json()) : await r.json(); // v-audit-auth (srv-auth-13)
         if(d.ok){
           otpEmail = email;
           otpStep = 'code';
@@ -2119,7 +2157,7 @@ try{
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ action: 'email-otp-verify', email: otpEmail, otp: code, lang })
         });
-        const d = await r.json();
+        const d = window.axAuthL10n ? window.axAuthL10n(await r.json()) : await r.json(); // v-audit-auth (srv-auth-13)
         if(d.ok){
           // Login successful — apply session the same way the password
           // flow does, then run the shared post-login pipeline.

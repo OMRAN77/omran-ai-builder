@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getUser, putUser, makeToken, markKnownNet, emailProven } = require('./auth.js'); // داخل _lib
+const { getUser, putUser, makeToken, markKnownNet, emailProven, liveAccount } = require('./auth.js'); // داخل _lib
 const { takeWelcomeGift, giftNet, clientIp } = require('./welcome-gift.js'); // v-welcome-cap · v-oauth-bind
 const { notifyNewAccount } = require('./signup-notify.js'); // v-signup-notify
 
@@ -96,12 +96,14 @@ module.exports = async (req, res) => {
 
     const email = String(profile.email).trim().toLowerCase();
     let key = 'g_' + email;
+    let viaAlias = false;
 
     try {
       const { kvGetJSON } = require('./kv.js'); // داخل _lib
       const alias = await kvGetJSON('db/alias/' + key);
       if (alias && alias.primary) {
         key = String(alias.primary);
+        viaAlias = true;
       } else if ((process.env.ALLOW_EMAIL_AUTOLINK || '').trim() === '1') {
         const idx = await kvGetJSON('db/email-index/' + email);
         if (idx && idx.username) {
@@ -131,6 +133,25 @@ module.exports = async (req, res) => {
         console.warn('[auth] sealed record reclaimed via verified Google email: ' + key);
         user = null;
       } else { throw e; }
+    }
+
+    /* v-audit-auth (srv-auth-2): حساب Google غيّر اسمه يترك على مفتاحه شاهدًا {deleted, movedTo}، وكان الكولباك يراه «محذوفًا» فينشئ فوقه
+       حسابًا فارغًا بهديّة جديدة — فيضيع الطريق إلى حسابه الحقيقيّ وينقطع movedTo الذي يتبعه الشحن. الآن تُتبع السلسلة: حساب حيّ
+       googleAuth ببريد Google نفسه (أو ما ربطه المالك بالاسم المستعار) يُدخَل إليه؛ وحيّ غير ذلك = account_conflict ولا كتابة فوق الشاهد.
+       سلسلة تنتهي بحذف حقيقيّ (بلا movedTo) تبقى كما كانت: حساب جديد على المفتاح. */
+    if (user && user.deleted && user.movedTo) {
+      const live = await liveAccount(key);
+      if (!live.user) { await failRedirect('server_error'); return; } // قراءة متعثّرة في الطريق: لا كتابة فوق الشاهد
+      if (!live.user.deleted) {
+        const same = live.user.googleAuth === true && String(live.user.email || '').trim().toLowerCase() === email;
+        if (!viaAlias && !same) {
+          console.warn('[auth] renamed Google key leads to a different account — refused: ' + key);
+          await failRedirect('account_conflict');
+          return;
+        }
+        key = live.key;
+        user = live.user;
+      }
     }
 
     // v-name-reuse: مفتاح g_<البريد> لم يكن محجوزًا قبل ٨ أكتوبر، فقد يحمل حسابًا سجّله غير صاحب البريد بكلمة مرور
@@ -177,7 +198,7 @@ module.exports = async (req, res) => {
       } catch (e) { console.warn('[auth] vip promote failed:', e && e.message); }
     }
 
-    const token = makeToken(key);
+    const token = makeToken(key, user.sv); // v-audit-auth (srv-auth-8): بإصدار جلسة الحساب
     await markKnownNet(key, req); // v-known-net: دخول Google نجاح موثَّق — شبكته معروفة لحدّ الدخول الليّن
     // v-ios-bridge: على آيفون المثبَّت تهبط هذه العودة في ورقة متصفّح منفصلة
     // عن التطبيق (تخزينهما منفصل) فيضيع الدخول. نودع الجلسة تحت state
@@ -190,27 +211,29 @@ module.exports = async (req, res) => {
     // v-oauth-bind: state يختارها البادئ — قد يكون مهاجمًا أرسل الرابط للضحيّة، و«-app» يضعها هو أيضًا. فالإيداع
     // (للويب و«-app»: تطبيق الشاشة الرئيسيّة في الآيفون ومعاينات Vercel يحتاجانه) يحمل شبكة من أكمل الدخول، و
     // oauth-claim لا يسلّمه إلّا لطلب من الشبكة نفسها — مهاجم من شبكة أخرى لا يستلم شيئًا.
+    /* v-audit-auth (srv-auth-10): الويب كان يُحوَّل إلى /?gtoken=<رمز ٣٠ يومًا> فيدخل الرمز سجلّ زيارات المتصفّح وسجلّات الطلبات وما
+       تقرؤه الإضافات (replaceState ينظّف الشريط لا السجلّ). الآن الويب يستلم الإيداع نفسه بـoauth-claim: الرابط يحمل state ورمز
+       استلام عشوائيًّا لمرّة واحدة (gclaim، يُحفظ مجزوءًا sha256 في الإيداع) — يثبت أنّ الطالب هو المتصفّح الذي أكمل الدخول فلا يُشترط
+       تطابق الشبكة (Private Relay)، ومن نسخه من السجلّ بعد الاستلام لا يجد شيئًا. بلا state صالحة أو بعطل الإيداع لا جلسة. */
     const stM = typeof state === 'string' ? /^([0-9a-f]{16,64})(-app)?$/i.exec(state) : null;
-    if (stM) {
-      try {
-        const { kvPutJSON, kvExpire } = require('./kv.js');
-        await kvPutJSON('db/oauth-claim/' + stM[1].toLowerCase(), {
-          token, user: user.username, avatar: user.avatar || '', ts: Date.now(), net: giftNet(clientIp(req)),
-        });
-        await kvExpire('db/oauth-claim/' + stM[1].toLowerCase(), 600);
-      } catch (e) { console.warn('[oauth] claim store failed:', e && e.message); }
+    if (!stM) { await failRedirect('bad_state'); return; }
+    const pick = stM[2] ? '' : crypto.randomBytes(16).toString('hex');
+    try {
+      const { kvPutJSON, kvExpire } = require('./kv.js');
+      await kvPutJSON('db/oauth-claim/' + stM[1].toLowerCase(), Object.assign({
+        token, user: user.username, avatar: user.avatar || '', ts: Date.now(), net: giftNet(clientIp(req)),
+      }, pick ? { claim: crypto.createHash('sha256').update(pick).digest('hex') } : {}));
+      await kvExpire('db/oauth-claim/' + stM[1].toLowerCase(), 600);
+    } catch (e) {
+      console.warn('[oauth] claim store failed:', e && e.message);
+      if (pick) { await failRedirect('server_error'); return; } // الويب بلا إيداع لا يستلم شيئًا — الغلاف كما كان
     }
-    if (stM && stM[2]) {
+    if (stM[2]) {
       res.writeHead(302, { Location: siteUrl() + '/login-done.html' });
       res.end();
       return;
     }
-    const params = new URLSearchParams({
-      gtoken: token,
-      guser: user.username,
-      gavatar: user.avatar || '',
-      state: typeof state === 'string' ? state : '',
-    });
+    const params = new URLSearchParams({ gstate: state, gclaim: pick });
     res.writeHead(302, { Location: siteUrl() + '/?' + params.toString() });
     res.end();
   } catch (e) {
