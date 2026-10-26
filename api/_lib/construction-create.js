@@ -558,9 +558,11 @@ module.exports = async (req, res) => {
 
     // Best-effort: save this generated design into the shared library so
     // future users with similar requirements can browse it before generating
-    // a brand-new one. Fire-and-forget — never blocks or fails the response.
+    // a brand-new one. Never fails the response.
+    /* v-audit-stud2 (srv-studios-2-1): الحفظ صار يصغّر المخطّط WebP قبل الكتابة (أقلّ من ثانية) — يُنتظر قبل الردّ، فالدالّة قد
+       تُجمَّد بعد الردّ فيضيع الحفظ؛ saveDesign لا يرمي أبدًا */
     if (planImageBase64) {
-      saveDesign({
+      await saveDesign({
         buildingType,
         floors,
         area,

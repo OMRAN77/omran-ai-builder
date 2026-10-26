@@ -116,4 +116,17 @@ async function toCardWebp(b64, maxW, quality) {
   return { b64: enc.toString('base64'), width: img.width, height: img.height };
 }
 
-module.exports = { sniff, extFormat, toPathFormat, toCardWebp, __shrinkArea: shrinkArea, __webpLib: webpLib };
+/* v-audit-stud2 (srv-studios-2-4): إطارات «أفاتار متحرّك» — ثلاث صور في ردّ JSON واحد تجاوزت حدّ الدالّة (٤٫٥ م.ب)، والعميل
+   يكتبها f<i>.png لـffmpeg ثمّ يصغّرها إلى ٤٨٠. تُصغَّر هنا بمتوسّط المساحة إلى عرض maxW وتُكتب PNG (الصيغة التي يقرؤها العميل).
+   صورة base64 (PNG/JPEG/WebP) ← PNG base64، أو يرمي */
+async function toPngMaxW(b64, maxW) {
+  const buf = Buffer.from(String(b64 || ''), 'base64');
+  const fmt = sniff(buf);
+  if (!fmt || fmt === 'gif') throw new Error('frame is not PNG/JPEG/WebP');
+  const src = await decodeRGBA(buf, fmt);
+  const outW = Math.min(src.width, maxW || 512);
+  const outH = Math.max(1, Math.round(src.height * outW / src.width));
+  return Buffer.from(await encodeRGBA(shrinkArea(src, outW, outH), 'png')).toString('base64');
+}
+
+module.exports = { sniff, extFormat, toPathFormat, toCardWebp, toPngMaxW, __shrinkArea: shrinkArea, __webpLib: webpLib };

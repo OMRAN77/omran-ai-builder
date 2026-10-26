@@ -755,6 +755,9 @@
 
   if(libraryBtn){
     libraryBtn.onclick = async () => {
+      /* v-audit-stud2 (srv-studios-2-2): المكتبة صارت بجلسة وسقف يوميّ في الخادم — نرسل الرمز، وبلاه «سجّل الدخول» بلا طلب */
+      const libToken = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+      if(!libToken){ setStatus(t('portraitNeedLogin')); return; } /* «سجّل الدخول لاستخدام هذه الميزة» — نصّ designAiNeedLogin يسمّي الديكور */
       libraryBtn.disabled = true;
       libraryEmptyEl.style.display = 'none';
       libraryWrap.style.display = 'none';
@@ -764,9 +767,11 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           /* v-cx-lib: المكتبة مشتركة وتسميات كلّ مخطّط بلغة صاحبه — نطلب مخطّطات لغتنا وحدها */
-          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
+          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar', token: libToken }),
         });
         const data = await res.json();
+        if(res.status === 401 || (data && data.error === 'auth_required')){ setStatus(t('portraitNeedLogin')); return; }
+        if(res.status === 429 || (data && data.error === 'daily_limit_reached')){ setStatus(t('portraitLimitReached')); return; }
         const items = (data && data.items) || [];
         if(!items.length){
           libraryEmptyEl.style.display = 'block';

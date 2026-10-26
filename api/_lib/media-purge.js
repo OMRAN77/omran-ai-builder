@@ -9,6 +9,9 @@ const GROUPS = [
   { prefix: 'db/img/', ttlSec: 60 * 60 * 24 * 30, keepIfTtlBelow: 60 * 60 * 24 * 7 },
   { prefix: 'db/file/', ttlSec: 60 * 60 * 24 * 7 },
   { prefix: 'db/pdf/', ttlSec: 60 * 60 * 24 * 7 },
+  /* v-audit-stud2 (srv-studios-2-1): مكتبة المقاولات المشتركة (صور مخطّطات) — عمرها LIB_TTL_SEC في _constructionLibrary.js.
+     سجلّاتها القديمة بلا عمر (قبل الإصلاح) لا تُحذف هنا (keepNoTtl): حذفها قرار المالك. */
+  { prefix: 'db/construction-library/', ttlSec: 60 * 60 * 24 * 30, keepNoTtl: true },
 ];
 const BATCH = 200;
 
@@ -25,7 +28,7 @@ async function purgeOldShares(kv, opts) {
       // -1 = بلا عمر (لا يُفترض أن يوجد) يُحذف؛ -2 = انتهى للتوّ.
       const old = part.filter((k, j) => {
         const t = Number(ttls[j]);
-        if (t === -1) return true;
+        if (t === -1) return !g.keepNoTtl;
         if (t < 0 || (g.keepIfTtlBelow && t <= g.keepIfTtlBelow)) return false;
         return g.ttlSec - t > maxAgeSec;
       });

@@ -1053,6 +1053,10 @@ rtEl.onclick=e=>{ const b=e.target.closest('button[data-r]'); if(!b) return;
 
 /* ============ توليد الإعلان صورةً كاملة (OpenAI gpt-image-1) ============ */
 const LOOKMAP=['cinema','layers','poster','elegant','bold','luxe','minimal','magazine','neon'];
+/* v-audit-stud2 (srv-studios-2-9): رموز الخادم بنصّ الصفحة بلغة AL — نفاد رصيد المزوّد كان «⚠️ unavailable» حرفيًّا، و«بلغتَ حدّ اليوم…»
+   عربيّة لكلّ اللغات. مفتاح القاموس أوّلًا، وبلاه نصّ الخادم: العربيّ للعربيّة وحدها والإنجليزيّ لغيرها، ثمّ «خطأ {code}» — لا الرمز الخامّ */
+const GEN_ERR={unavailable:'axStud2AdPaused',limit:'axStud2AdLimit',upstream:'axStud2AdFailed',proxy:'axStud2AdFailed'};
+function genErrMsg(j,st){ j=j||{}; const k=GEN_ERR[j.error], x=k?T(k,{n:NU(j.limit||'')}):''; if(k&&x!==k) return x; return (AL==='ar'?(j.message_ar||j.message):j.message)||T('genErrCode',{code:st}); }
 const genB=document.getElementById('genB'), genOut=document.getElementById('genOut');
 genB.textContent='🎨 '+T('genBtn');
 genB.onclick=async()=>{
@@ -1070,7 +1074,7 @@ genB.onclick=async()=>{
         title:S.title||c.title,spec:S.spec||c.spec,price:S.price||fmtNum(c.price),unit:S.unit||c.unit,
         tel:S.tel||'',kick:S.kick||c.kick,imageBase64:m?m[2]:'',mimeType:m?m[1]:''})});
     const j=await r.json().catch(()=>({}));
-    if(!r.ok||!j.imageBase64){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(j.message||j.message_ar||j.error||T('genErrCode',{code:r.status}))+'</div>'; }
+    if(!r.ok||!j.imageBase64){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(genErrMsg(j,r.status))+'</div>'; }
     else{ const mt=j.mimeType||'image/webp', src='data:'+mt+';base64,'+j.imageBase64, ext=(mt.split('/')[1]||'webp');
       genOut.innerHTML='<h3>'+T('genOutTitle')+'</h3><img src="'+src+'"><a download="ad.'+ext+'" href="'+src+'">⬇︎ '+T('genDl')+'</a>'; }
   }catch(e){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(e.message||T('genErrConn'))+'</div>'; }

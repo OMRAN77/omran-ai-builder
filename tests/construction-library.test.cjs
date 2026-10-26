@@ -19,6 +19,7 @@ const kvPath = require.resolve('../api/_lib/kv.js');
 const usagePath = require.resolve('../api/_lib/_constructionUsage.js');
 const store = new Map();
 const puts = [];
+const index = []; // v-audit-stud2: فهرس المكتبة (قائمة Redis) — الأحدث أوّلًا
 require.cache[kvPath] = {
   id: kvPath, filename: kvPath, loaded: true,
   exports: {
@@ -27,6 +28,13 @@ require.cache[kvPath] = {
     kvPutJSON: async (k, v) => { puts.push([k, v]); store.set(k, v); },
     kvSetIfAbsent: async () => true,
     kvDel: async () => {},
+    // v-audit-stud2: saveDesign/listDesigns بأوامر pipeline (SET بمدّة + فهرس)
+    kvPipeline: async (cmds) => cmds.map((c) => {
+      if (c[0] === 'SET') { const v = JSON.parse(c[2]); puts.push([c[1], v]); store.set(c[1], v); return 'OK'; }
+      if (c[0] === 'LPUSH') { index.unshift(c[2]); return index.length; }
+      if (c[0] === 'LRANGE') return index.slice(Number(c[2]), Number(c[3]) < 0 ? undefined : Number(c[3]) + 1);
+      return 'OK';
+    }),
   },
 };
 require.cache[usagePath] = {
@@ -41,7 +49,12 @@ const lib = require('../api/_lib/_constructionLibrary.js');
 
 function seed() {
   store.clear();
-  const put = (id, extra) => store.set('db/construction-library/' + id + '.json', Object.assign({ id, buildingType: 'villa', floors: '2', area: '400', planImageBase64: 'x' }, extra));
+  index.length = 0;
+  const put = (id, extra) => {
+    const d = Object.assign({ id, buildingType: 'villa', floors: '2', area: '400', planImageBase64: 'x' }, extra);
+    store.set('db/construction-library/' + id + '.json', d);
+    index.push(JSON.stringify({ id, t: d.createdAt, b: d.buildingType, f: d.floors, a: d.area, l: d.lang })); // v-audit-stud2: سطر الفهرس
+  };
   put('ar1', { lang: 'ar', createdAt: 9 });
   put('es1', { lang: 'es', createdAt: 8 });
   put('id1', { lang: 'id', createdAt: 7 });
@@ -111,6 +124,7 @@ test('٤. الواجهة: الطلب يحمل اللغة، والمصغّرة ت
   let sent = null;
   const ctx = {
     lang: 'ar', localStorage: { getItem: () => null },
+    authGet: () => 'tok', // v-audit-stud2: المكتبة بجلسة
     libraryBtn: { disabled: false }, libraryEmptyEl: { style: {} },
     libraryWrap: { style: {}, innerHTML: 'x', appendChild: (el) => kids.push(el) },
     typeEl: { value: 'villa' }, floorsEl: { value: '2' }, areaEl: { value: '400' },
@@ -125,7 +139,7 @@ test('٤. الواجهة: الطلب يحمل اللغة، والمصغّرة ت
   vm.runInNewContext(S.slice(a, b), ctx);
   await ctx.libraryBtn.onclick();
   assert.equal(sent[0], '/api/construction-library');
-  assert.deepEqual(sent[1], { buildingType: 'villa', floors: '2', area: '400', lang: 'ar' });
+  assert.deepEqual(sent[1], { buildingType: 'villa', floors: '2', area: '400', lang: 'ar', token: 'tok' });
   assert.equal(kids.length, 2);
   assert.equal(ctx.libraryWrap.style.display, 'grid');
   kids[0].onclick();

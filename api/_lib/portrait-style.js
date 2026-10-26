@@ -139,6 +139,10 @@ const BACKDROP_PROMPTS = {
   marble: 'a luxurious polished marble wall backdrop',
 };
 
+/* v-audit-stud2 (srv-studios-2-4): إطارات الأفاتار — عرضها بعد التصغير، وسقف base64 الإطارات الثلاثة معًا تحت حدّ ردّ الدالّة */
+const AVATAR_FRAME_W = 512;
+const AVATAR_FRAMES_MAX = 4000000;
+
 /* v-pstyle-closeup: عنوان لقطة الوجه وقواعدها. العنوان مكيَّف من merge-identity.js («نفس الشخص، مقرَّبًا؛
    مرجع هويّة لا شخص إضافيّ»)، والقواعد تمنع الخطر المعاكس المثبَت في PITFALLS: مرجع فوتوغرافيّ يسحب
    الناتج نحو الواقعيّة فيضعف الأسلوب الفنّيّ. */
@@ -168,7 +172,7 @@ module.exports = async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.error('[portrait-style] image provider is not configured');
-      res.status(503).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      res.status(503).json({ error: 'unavailable' }); /* v-audit-stud2 (srv-studios-2-8): رموز تترجمها الواجهة (imgErrFriendly) لا نصّ عربيّ لكلّ اللغات */
       return;
     }
 
@@ -179,6 +183,12 @@ module.exports = async (req, res) => {
     const { imageBase64, mimeType, style, backdrop, beautify, ageTarget, hairStyle, adText, era, extraImages, token, charName, removeText, outfit, profession } = body;
     if (!imageBase64) {
       res.status(400).json({ error: 'Missing imageBase64' });
+      return;
+    }
+    /* v-audit-stud2 (srv-studios-2-5): «دمج شخصين» و«ستايل عائلي» بلا صورة إضافيّة كانا يرسلان صورة واحدة بأمر «two/several separate
+       photos» فيخترع النموذج الآخرين، والدمج بلا حارس فيُسلَّم ويُحتسب. رمز تترجمه الواجهة، قبل حجز الحصّة وقبل أيّ نداء */
+    if ((style === 'merge2' || style === 'familystyle') && !(Array.isArray(extraImages) ? extraImages : []).filter(Boolean).length) {
+      res.status(400).json({ error: 'missing_extra_images' });
       return;
     }
 
@@ -210,7 +220,7 @@ module.exports = async (req, res) => {
               ],
             },
           ],
-          generationConfig: { imageConfig: { imageSize: '2K' } },
+          generationConfig: { imageConfig: { imageSize: '1K' } }, /* v-audit-stud2: العميل يبني GIF بعرض ٤٨٠ — 2K كان ثلاثة أضعاف ردّ البورتريه */
         };
         const frameUpstream = await fetch(endpointGif, {
           method: 'POST',
@@ -221,13 +231,13 @@ module.exports = async (req, res) => {
         const frameData = await frameUpstream.json();
         if (!frameUpstream.ok) {
           console.error('[portrait-style] avatar frame failed status=' + frameUpstream.status + ' detail=' + ((frameData && frameData.error && frameData.error.message) || 'unknown'));
-          res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+          res.status(502).json({ error: require('./_videoFail.js').isOutage(frameUpstream.status, (frameData && frameData.error && frameData.error.message) || '') ? 'unavailable' : 'image_generation_failed' });
           return;
         }
         const frameParts = (((frameData.candidates || [])[0] || {}).content || {}).parts || [];
         const frameImgPart = frameParts.find((p) => p.inlineData && p.inlineData.data);
         if (!frameImgPart) {
-          res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بصورة أخرى.' });
+          res.status(500).json({ error: 'image_generation_failed' });
           return;
         }
         const frameGuard = await verifyLocalizedImageEdit({
@@ -245,7 +255,16 @@ module.exports = async (req, res) => {
           res.status(422).json({ error: publicGuardError(frameGuard), retryable: false });
           return;
         }
-        frames.push(frameImgPart.inlineData.data);
+        /* v-audit-stud2 (srv-studios-2-4): الإطار PNG بعرض ٥١٢ قبل الإرسال (العميل يصغّره إلى ٤٨٠ أصلًا)؛ تعذّر التصغير = الأصل */
+        let frameOut = frameImgPart.inlineData.data;
+        try { frameOut = await require('./img-convert.js').toPngMaxW(frameOut, AVATAR_FRAME_W); } catch (e) { console.warn('[portrait-style] avatar frame shrink ' + (e && e.message)); }
+        frames.push(frameOut);
+      }
+      /* ردّ لن يصل (فوق حدّ الدالّة) لا يُحتسب — بلا consume يُردّ الحجز قبل الردّ (v-atomic-quota) */
+      if (frames.reduce((n, f) => n + String(f).length, 0) > AVATAR_FRAMES_MAX) {
+        console.error('[portrait-style] avatar frames too large for one response');
+        res.status(502).json({ error: 'image_generation_failed' });
+        return;
       }
       const remainingGif = await consumePortrait(quota.username, quota.limit);
       res.status(200).json({
@@ -507,14 +526,14 @@ module.exports = async (req, res) => {
         res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT });
         return;
       }
-      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
+      res.status(502).json({ error: require('./_videoFail.js').isOutage(upstream.status, detail) ? 'unavailable' : 'image_generation_failed', upstream: upstream.status, detail });
       return;
     }
 
     const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     const imgPart = parts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
-      res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بصورة أو ستايل آخر.' });
+      res.status(500).json({ error: 'image_generation_failed' });
       return;
     }
 
@@ -547,7 +566,7 @@ module.exports = async (req, res) => {
     });
   } catch (e) {
     console.error('[portrait-style] exception: ' + (e && e.stack ? e.stack : e));
-    res.status(500).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+    res.status(500).json({ error: 'image_generation_failed' });
   }
 };
 /* v-app-director: خرائط الأنماط تُقرأ من كتالوج التطبيق (app-catalog.js) — بيانات فقط، لا تغيير في المعالج */
