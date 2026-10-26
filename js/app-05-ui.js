@@ -253,8 +253,11 @@ async function omranSaveBlob(blob, filename){
   const sheetKind = isPdfFile ? 'pdf' : (/^image\//i.test((blob && blob.type) || '') ? 'image' : 'file');
   const sheetMime = isPdfFile ? 'application/pdf' : ((blob && blob.type) || 'application/octet-stream');
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
+  /* v-audit-uicore: مشاركة النظام على الجوّال والأغلفة وحدها (قرار v-ready-sheet، كما في img-save وsave-media) — على الكمبيوتر
+     كانت تفتح لوحة ويندوز/ماك بلا «حفظ»، وإغلاقها (AbortError) يُنهي الدالّة بلا تنزيل. الكمبيوتر ينزّل مباشرة في الأسفل. */
+  const mobileish = omranLikelyApp() || omranMobileUA();
   try{
-    if(navigator.canShare && typeof File === 'function'){
+    if(mobileish && navigator.canShare && typeof File === 'function'){
       const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare({ files: [f] })){
         try{ await navigator.share({ files: [f], title: filename }); return; }
@@ -268,7 +271,7 @@ async function omranSaveBlob(blob, filename){
   }catch(e){ __swallow(e, 'share:universal'); }
   /* داخل الأغلفة وعلى أي جوال: رابط سيرفر حقيقي لكلّ الأنواع (v-reply-export: كان PDF فقط، فكان
      Word/TXT يسقطان على تنزيل blob الذي تخطفه مصيدة الصور وترفعه «صورة» مكسورة) */
-  if(omranLikelyApp() || omranMobileUA()){
+  if(mobileish){
     try{
       const url = await omranBlobToServerLink(blob, filename);
       let fileForShare = null;
@@ -571,11 +574,11 @@ async function omranExportPagedPdfFile(blocks, opts){
       let canvas;
       try{
         await Promise.all(Array.from(holder.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
-        canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 1.3, style: { position: 'static', left: '0', top: '0' } });
+        canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: opts.pixelRatio || 1.3, style: { position: 'static', left: '0', top: '0' } });
       } finally { holder.remove(); }
       if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
       if(k > 0) pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير */
+      pdf.addImage(canvas.toDataURL('image/jpeg', opts.jpegQuality || 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير (PDF الردّ يمرّر دقّته السابقة x٢ و٠٫٩٢: v-audit-uicore) */
     }
     await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-docs.pdf');
     return { pages: pages.length, total, truncated: total > pages.length };
@@ -633,18 +636,128 @@ function msgPrintAfterFont(view, family, ctx){
     else wait();
   }catch(e){ __swallow(e, ctx + ':font-link'); wait(); }
 }
+/* v-audit-uicore (فحص التطبيق: تصدير الردّ كان يكتب ** و### و``` خامًا، ويفرض rtl في كلّ اللغات، ويقطع PDF الطويل وسط
+   السطر): محلّل ماركداون صغير واحد لمصدّري الردّ الثلاثة (PDF/Word/صورة) — TXT يبقى خامًا كما هو.
+   الاتّجاه بقاعدة الشاشة نفسها (omranMdBlocks في app-02): الردّ عربيّ إن غلب العربيّ (الكود لا يُحسب)، وفي الردّ العربيّ
+   السطر الإنجليزيّ الخالص يسار، وفي غيره السطر العربيّ الخالص يمين؛ الكود يسار دائمًا.
+   الناتج عنصر لكلّ سطر — فمصدّر PDF المقسَّم يوزّع الأسطر على الصفحات ولا يقطع سطرًا عند حدّها. */
+function msgExportParse(text){
+  const AR = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/;
+  const src = String(text || '').replace(/\r\n?/g, '\n');
+  const prose = src.replace(/(```|~~~)[\s\S]*?(\1|$)/g, ' ').replace(/`[^`\n]*`/g, ' ');
+  const arN = (prose.match(/[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/g) || []).length;
+  const laN = (prose.match(/[A-Za-z]/g) || []).length;
+  const rtl = arN > 0 && arN * 2 >= laN;
+  const lineRtl = (s) => { const la = (String(s).match(/[A-Za-z]/g) || []).length; return rtl ? (AR.test(s) || la < 12) : (AR.test(s) && !la); };
+  const items = [];
+  let fence = null;
+  src.split('\n').forEach((ln) => {
+    const fm = /^\s*(```|~~~)/.exec(ln);
+    if(fence){
+      if(fm && fm[1] === fence && !ln.trim().slice(3).trim()){ fence = null; return; }
+      items.push({ type: 'code', text: ln.replace(/\t/g, '    ') });
+      return;
+    }
+    if(fm){ fence = fm[1]; return; }
+    const s = ln.trim();
+    const depth = Math.min(3, Math.floor(((/^\s*/.exec(ln) || [''])[0].replace(/\t/g, '  ').length) / 2));
+    let m;
+    if(!s) items.push({ type: 'blank', text: '' });
+    else if(/^([-*_])(\s*\1){2,}$/.test(s)) items.push({ type: 'hr', text: '' });
+    else if((m = /^(#{1,6})\s+(.*?)(\s+#+)?$/.exec(s))) items.push({ type: 'h', level: m[1].length, text: m[2] });
+    else if(/^\|?(\s*:?-{2,}:?\s*\|)+\s*(:?-{2,}:?\s*)?\|?$/.test(s)){ const prev = items[items.length - 1]; if(prev && prev.type === 'row') prev.head = true; }
+    else if(/^\|.*\|$/.test(s)) items.push({ type: 'row', cells: s.slice(1, -1).split('|').map((c) => c.trim()), text: s });
+    else if((m = /^[-*+•]\s+(.*)$/.exec(s))) items.push({ type: 'li', depth: depth, text: m[1] });
+    else if((m = /^(\d{1,4})[.)]\s+(.*)$/.exec(s))) items.push({ type: 'li', depth: depth, num: m[1], text: m[2] });
+    else if((m = /^>\s?(.*)$/.exec(s))) items.push({ type: 'quote', text: m[1] });
+    else items.push({ type: 'p', text: s });
+  });
+  items.forEach((it) => { it.rtl = (it.type === 'code') ? false : lineRtl(it.text); });
+  /* v-audit-uicore: الجدول كلّه باتّجاه واحد بقاعدة الشاشة (omranMdTableEl في app-02: يمين إن كان فيه حرف عربيّ) — لا اتّجاه
+     لكلّ صفّ، وإلّا انعكس ترتيب أعمدة صفّ إنجليزيّ خالص في جدول عربيّ (أو العكس) فوقعت قيمه تحت عمود غير عمودها. */
+  for(let i = 0, j; i < items.length; i = j){
+    j = i + 1;
+    if(items[i].type !== 'row') continue;
+    while(j < items.length && items[j].type === 'row') j++;
+    const run = items.slice(i, j), tr = run.some((x) => AR.test(x.text));
+    run.forEach((x) => { x.rtl = tr; });
+  }
+  return { rtl: rtl, items: items };
+}
+/* العريض والمائل والمشطوب والروابط والكود داخل السطر — HTML مهرَّب، أو نصّ مجرّد للصورة (plain) */
+function msgExportInline(s, plain){
+  const codes = [];
+  let h = String(s || '').replace(/`([^`\n]+)`/g, (m0, c) => { codes.push(c); return '\ue000' + (codes.length - 1) + '\ue001'; });
+  if(!plain) h = msgEscapeHtml(h);
+  const W = (tag, x) => plain ? x : '<' + tag + '>' + x + '</' + tag + '>';
+  h = h.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (m0, a, u) => plain ? a + ' (' + u + ')' : a + ' <span dir="ltr" style="color:#555">(' + u + ')</span>')
+    .replace(/\*\*(?!\s)([^\n]+?)\*\*/g, (m0, x) => W('b', x))
+    .replace(/(^|[^*\w])\*(?![\s*])([^*\n]+?)\*(?!\w)/g, (m0, p, x) => p + W('i', x))
+    .replace(/~~(?!\s)([^\n]+?)~~/g, (m0, x) => W('s', x));
+  return h.replace(/\ue000(\d+)\ue001/g, (m0, i) => plain ? codes[+i] : '<code dir="ltr" style="font-family:Consolas,\'Courier New\',monospace;font-size:.9em;background:#f1f1f1;border-radius:3px;padding:0 4px">' + msgEscapeHtml(codes[+i]) + '</code>');
+}
+/* كتل HTML (سطر لكلّ كتلة) لـPDF وWord، كلّ كتلة باتّجاهها الصريح */
+function msgExportBlocks(text, lineH){
+  const P = msgExportParse(text);
+  const lh = lineH ? 'line-height:' + lineH + ';' : '';
+  const D = (it) => ' dir="' + (it.rtl ? 'rtl' : 'ltr') + '"';
+  const blocks = P.items.map((it, i) => {
+    const prev = P.items[i - 1], next = P.items[i + 1];
+    if(it.type === 'blank') return '<div style="' + lh + '">&nbsp;</div>';
+    if(it.type === 'hr') return '<hr style="border:0;border-top:1px solid #ccc;margin:.5em 0">';
+    if(it.type === 'h'){ const L = Math.min(6, it.level); return '<h' + L + D(it) + '>' + msgExportInline(it.text) + '</h' + L + '>'; }
+    if(it.type === 'li'){
+      const pad = 'margin:0;padding-inline-start:' + (1.6 + 1.4 * (it.depth || 0)) + 'em;' + lh;
+      return it.num ? '<ol start="' + it.num + '"' + D(it) + ' style="' + pad + '"><li>' + msgExportInline(it.text) + '</li></ol>'
+                    : '<ul' + D(it) + ' style="' + pad + '"><li>' + msgExportInline(it.text) + '</li></ul>';
+    }
+    if(it.type === 'quote') return '<div' + D(it) + ' style="' + lh + 'border-inline-start:3px solid #ccc;padding-inline-start:10px;color:#444;white-space:pre-wrap;word-break:break-word">' + msgExportInline(it.text) + '</div>';
+    if(it.type === 'row'){
+      const top = (prev && prev.type === 'row') ? 'border-top:0;' : '';
+      return '<table' + D(it) + ' style="table-layout:fixed;width:100%;border-collapse:collapse;margin:0"><tr>' + it.cells.map((c) => '<td style="border:1px solid #999;' + top + 'padding:3px 8px;vertical-align:top;word-break:break-word' + (it.head ? ';font-weight:700;background:#f3f3f3' : '') + '">' + msgExportInline(c) + '</td>').join('') + '</tr></table>';
+    }
+    if(it.type === 'code'){
+      const first = !(prev && prev.type === 'code'), last = !(next && next.type === 'code');
+      return '<div dir="ltr" style="font-family:Consolas,\'Courier New\',monospace;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-all;text-align:left;background:#f4f4f4;padding:' + (first ? '6px' : '0') + ' 10px ' + (last ? '6px' : '0') + '">' + (it.text ? msgEscapeHtml(it.text) : '&nbsp;') + '</div>';
+    }
+    return '<div' + D(it) + ' style="' + lh + 'white-space:pre-wrap;word-break:break-word">' + msgExportInline(it.text) + '</div>';
+  });
+  return { rtl: P.rtl, blocks: blocks };
+}
+/* التفاف سطر الصورة: عند المسافات، وبالحرف حين لا تتّسع الكلمة وحدها (رابط، سطر كود) أو النصّ بلا مسافات (الصينيّة) */
+function msgExportWrap(ctx, text, maxWidth){
+  const out = [];
+  const fits = (s) => ctx.measureText(s).width <= maxWidth;
+  let line = null;
+  String(text || '').split(' ').forEach((word) => {
+    const test = (line === null) ? word : line + ' ' + word;
+    if(fits(test)){ line = test; return; }
+    if(line !== null && line.trim() && fits(word)){ out.push(line); line = word; return; }
+    let cur = (line === null) ? '' : line + ' ';
+    Array.from(word).forEach((ch) => {
+      if(cur.trim() && !fits(cur + ch)){ out.push(cur.replace(/\s+$/, '')); cur = ch; }
+      else cur += ch;
+    });
+    line = cur;
+  });
+  out.push(line === null ? '' : line);
+  return out;
+}
 function exportReplyAsPdf(text){
   const font = msgPdfFontSpec();
   const pdfFont = msgPdfFontHead(font);
-  const html = '<html><head><meta charset="utf-8"><title>om ai</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
+  const doc = msgExportBlocks(text, font.line); /* v-audit-uicore: ماركداون محوَّل واتّجاه من النصّ */
+  const dir = doc.rtl ? 'rtl' : 'ltr';
+  const html = '<html><head><meta charset="utf-8"><title>om ai</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:' + dir + ';padding:28px;line-height:' + font.line + ';color:#111;word-break:break-word;}</style></head><body dir="' + dir + '">' + doc.blocks.join('') + '</body></html>';
   /* v-app-share: window.open داخل تطبيق المتجر يرجع null — نرسل للجسر مباشرة */
   const pdfBridge = omranNativeBridge('omranPdf');
   if(pdfBridge){
     try{ pdfBridge.postMessage({ html, name: 'omran-ai.pdf' }); return; }catch(e){ __swallow(e, 'ui:app-05-ui#1-app'); }
   }
-  /* v-pdf-file: ملف PDF ينزل مباشرة بدل نافذة الطباعة — الطباعة احتياط أخير */
-  const inner = '<div style="white-space:pre-wrap; word-break:break-word; line-height:' + font.line + ';">' + msgEscapeHtml(text) + '</div>';
-  omranExportHtmlAsPdfFile(inner, { fontFamily: pdfFont.family, fileName: 'omran-ai.pdf' }).catch((e) => {
+  /* v-pdf-file: ملف PDF ينزل مباشرة بدل نافذة الطباعة — الطباعة احتياط أخير.
+     v-audit-uicore: المصدّر المقسَّم (كمسار المستندات) لا اللوحة الواحدة المقصوصة بارتفاع ثابت — لا سطر يُقطع بين صفحتين،
+     ولا لوحة تتجاوز حدّ سفاري الآيفون (~١٦ ميغابكسل) فيخرج الملفّ أبيض؛ بدقّة الردّ السابقة (x٢، JPEG ٠٫٩٢). */
+  omranExportPagedPdfFile(doc.blocks.map((h) => ({ html: h })), { rtl: doc.rtl, fontFamily: pdfFont.family, fileName: 'omran-ai.pdf', pixelRatio: 2, jpegQuality: 0.92 }).catch((e) => {
     __swallow(e, 'ui:app-05-ui#1-file');
     const w = window.open('', '_blank');
     if(!w) return;
@@ -653,7 +766,8 @@ function exportReplyAsPdf(text){
   });
 }
 function exportReplyAsWord(text){
-  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>om ai</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
+  const doc = msgExportBlocks(text, null); /* v-audit-uicore */
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>om ai</title></head><body dir="' + (doc.rtl ? 'rtl' : 'ltr') + '" style="font-family:Tahoma,Arial,sans-serif; line-height:2;">' + doc.blocks.join('') + '</body></html>';
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
   msgSaveExport(blob, 'omran-ai-reply.doc');
 }
@@ -663,29 +777,48 @@ function exportReplyAsImage(text){
   const ctx = canvas.getContext('2d');
   const padding = 40;
   const fontSize = 22;
-  ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
+  const FP = fontSize + 'px Tahoma, Arial, sans-serif', FB = 'bold ' + FP, FC = (fontSize - 3) + "px Consolas, 'Courier New', monospace";
   const maxWidth = width - 2 * padding;
+  /* v-audit-uicore: نصّ نظيف من رموز الماركداون، واتّجاه كلّ سطر من حروفه (الكود يسار)، والتفاف بالحرف */
   const lines = [];
-  String(text || '').split('\n').forEach(paragraph => {
-    const words = paragraph.split(' ');
-    let line = '';
-    words.forEach(word => {
-      const test = line ? line + ' ' + word : word;
-      if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = word; }
-      else line = test;
-    });
-    lines.push(line);
+  msgExportParse(text).items.forEach((it) => {
+    if(it.type === 'hr'){ lines.push({ hr: true }); return; }
+    let s = '', f = FP;
+    if(it.type === 'code'){ s = it.text; f = FC; }
+    else if(it.type === 'h'){ s = msgExportInline(it.text, true); f = FB; }
+    else if(it.type === 'li') s = '    '.repeat(it.depth || 0) + (it.num ? it.num + '. ' : '• ') + msgExportInline(it.text, true);
+    else if(it.type === 'row'){
+      /* علامة اتّجاه قويّة (RLM/LRM) حول الفاصل: بدونها يندمج صفّ إنجليزيّ في جدول عربيّ مقطعًا يساريًّا واحدًا، فيُرسم عموده الأوّل يسارًا */
+      const mk = it.rtl ? '\u200f' : '\u200e';
+      s = it.cells.map((c) => msgExportInline(c, true)).join(mk + '   |   ' + mk); if(it.head) f = FB;
+    }
+    else if(it.type === 'quote') s = '    ' + msgExportInline(it.text, true);
+    else if(it.type === 'p') s = msgExportInline(it.text, true);
+    ctx.font = f;
+    msgExportWrap(ctx, s, maxWidth).forEach((w) => lines.push({ s: w, f: f, rtl: it.rtl }));
   });
   const lineHeight = Math.round(fontSize * 1.55);
+  const height = padding * 2 + lines.length * lineHeight;
+  /* سقف اللوحة ١٦٠٠٠ بكسل (٩٠٠×١٦٠٠٠ ≈ ١٤٫٤ ميغابكسل: تحت حدّ سفاري الآيفون ~١٦٫٧ وحدّ كروم ٣٢٧٦٧ للارتفاع). الأطول، أو
+     toBlob=null، كان يضيع بصمت — الآن رسالة مترجمة وPDF المقسَّم بدل الصورة (لا سقف لطوله). */
+  const asPdf = () => {
+    try{ const m = t('axUicoreImgAsPdf'); if(m && m !== 'axUicoreImgAsPdf') settingsToast(m); }catch(e){ __swallow(e, 'export:img-as-pdf'); }
+    exportReplyAsPdf(text);
+  };
+  if(height > 16000){ asPdf(); return; }
   canvas.width = width;
-  canvas.height = padding * 2 + lines.length * lineHeight;
+  canvas.height = height;
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#111111';
-  ctx.direction = 'rtl';
-  ctx.textAlign = 'right';
-  ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
-  lines.forEach((line, i) => { ctx.fillText(line, canvas.width - padding, padding + (i + 1) * lineHeight - Math.round(fontSize * 0.4)); });
-  canvas.toBlob(blob => { if(blob) msgSaveExport(blob, 'omran-ai-reply.png'); }, 'image/png');
+  lines.forEach((ln, i) => {
+    const y = padding + (i + 1) * lineHeight - Math.round(fontSize * 0.4);
+    if(ln.hr){ ctx.fillStyle = '#cccccc'; ctx.fillRect(padding, y - Math.round(fontSize * 0.35), maxWidth, 1); ctx.fillStyle = '#111111'; return; }
+    ctx.font = ln.f;
+    ctx.direction = ln.rtl ? 'rtl' : 'ltr';
+    ctx.textAlign = ln.rtl ? 'right' : 'left';
+    ctx.fillText(ln.s, ln.rtl ? canvas.width - padding : padding, y);
+  });
+  canvas.toBlob(blob => { if(blob) msgSaveExport(blob, 'omran-ai-reply.png'); else asPdf(); }, 'image/png');
 }
 function exportReplyAsTxt(text){
   const blob = new Blob([text || ''], { type: 'text/plain;charset=utf-8' });
@@ -700,9 +833,10 @@ function msgSaveExport(blob, filename){
   try{ viaSheet = !!(omranNativeBridge('omranShare') || omranLikelyApp() || omranMobileUA()); }catch(e){ viaSheet = false; }
   if(viaSheet){
     omranSaveBlob(blob, filename).catch((e) => { __swallow(e, 'export:save-blob'); msgDownloadBlob(blob, filename); });
-    return;
+    return true; /* v-audit-uicore: المسار الموحّد — ورقته هي التأكيد، فلا رسالة «تمّ» من المنادي */
   }
   msgDownloadBlob(blob, filename);
+  return false;
 }
 let __msgMoreMenuOpen = null;
 let __msgMoreMenuAnchor = null;
@@ -1356,7 +1490,7 @@ async function getPyodideInstance(){
           const s = document.createElement('script');
           s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';
           s.onload = resolve;
-          s.onerror = reject;
+          s.onerror = (e) => { try{ s.remove(); }catch(e2){ __swallow(e2, 'py:script-rm'); } reject(e); }; /* v-audit-uicore: وسم فاشل لا يبقى — المحاولة التالية تضيف جديدًا */
           document.head.appendChild(s);
         });
       }
@@ -1378,8 +1512,18 @@ async function getPyodideInstance(){
         Date.prototype.toLocaleTimeString = __tlt;
       }
     })();
+    /* v-audit-uicore: الوعد المرفوض كان يُخزَّن للأبد — انقطاع عابر واحد يكسر بايثون حتّى إعادة تحميل الصفحة.
+       الفشل يصفّره فيعيد التشغيلُ التالي المحاولة. */
+    pyodideLoadingPromise.catch(() => { pyodideLoadingPromise = null; });
   }
-  return pyodideLoadingPromise;
+  /* v-audit-uicore: مهلة ٦٠ ث — CDN معلّق بلا خطأ كان يترك الزرّ معطّلًا و«جاري تحميل البيئة» للأبد. التحميل الجاري لا يُلغى
+     ولا يُكرَّر: التشغيل التالي ينتظر الوعد نفسه (فلا يُلفّ toLocaleTimeString مرّتين). */
+  let __pyTimer = null;
+  try{
+    return await Promise.race([pyodideLoadingPromise, new Promise((_, reject) => { __pyTimer = setTimeout(() => reject(new Error('pyodide-timeout')), 60000); })]);
+  }finally{
+    clearTimeout(__pyTimer);
+  }
 }
 
 async function runPythonCode(code){
@@ -1400,7 +1544,12 @@ async function runPythonCode(code){
   }catch(err){
     /* v-py-locale: فشل تحميل البيئة نفسها نصّه إنجليزيّ تقنيّ («Program terminated with exit(1)») لا يخصّ كود المستخدم —
        يذهب للكونسول وحده ويرى المستخدم سطر الحالة بلغته. خطأ كود المستخدم (Traceback) يبقى ظاهرًا: هو ناتج البرنامج. */
-    if(__pyStage === 'load') console.warn('[python] runtime load failed:', (err && err.message) || err);
+    if(__pyStage === 'load'){
+      console.warn('[python] runtime load failed:', (err && err.message) || err);
+      /* v-audit-uicore: سطر يشرح بلغته أنّ البيئة لم تُحمَّل وأنّ «تشغيل» يعيد المحاولة (لا «خطأ» بلا سبب) */
+      const __pyMsg = t('axUicorePyLoadFail');
+      if(__pyMsg && __pyMsg !== 'axUicorePyLoadFail') outputEl.textContent = __pyMsg;
+    }
     else outputEl.textContent += '\n⚠️ ' + (err.message || err);
     statusEl.textContent = t('pythonError');
   }finally{
@@ -2655,6 +2804,7 @@ async function ensureVantaEffectScript(id){
   await loadScriptOnce('https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.' + id + '.min.js');
 }
 let currentVantaEffect = null;
+let bg3dGen = 0; /* v-audit-uicore: جيل الاختيار — نداء applyBg3D أقدم ينتظر سكربتاته لا يُنشئ أثره فوق اختيار أحدث */
 let bg3dAutoTimer = null;
 let currentCustomBg = null; // {raf, resizeHandler, canvas}
 function destroyBg3D(){
@@ -3277,6 +3427,7 @@ function getBg3DAccentColorHex(){
   } catch(e){ return 0x6b7280; }
 }
 async function applyBg3D(id, save){
+  const gen = ++bg3dGen;
   if(save !== false) localStorage.setItem('aiapp_bg3d', id);
   destroyBg3D();
   document.body.classList.toggle('vantaActive', id !== 'none');
@@ -3291,7 +3442,11 @@ async function applyBg3D(id, save){
   }
   try {
     await ensureBg3DDeps(eff.lib);
+    if(gen !== bg3dGen) return;
     await ensureVantaEffectScript(id);
+    /* v-audit-uicore: اختيار أحدث جاء أثناء التحميل («أمواج» ثمّ «ضباب»، أو «أمواج» ثمّ «محيط») — لا إنشاء: كان الأبطأ يكتب
+       currentVantaEffect فيُعرض غير المختار، ويبقى الآخر بحلقة rAF وسياق WebGL بلا destroy حتّى إعادة التحميل */
+    if(gen !== bg3dGen) return;
     if(!window.VANTA || !window.VANTA[id.toUpperCase()]) return;
     const color = getBg3DAccentColorHex();
     const P = bg3dPalette();
@@ -3490,16 +3645,11 @@ function exportProjects(){
       projects: state.projects || []
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
     const dateStr = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = `omran-ai-builder-projects-${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    alert(t('exportProjectsSuccess'));
+    /* v-audit-uicore: كان <a download> لـblob مباشرة — ميّت داخل الأغلفة (هواوي/آيفون) ثمّ alert «تمّ التصدير» فيظنّ المستخدم
+       أنّ نسخته محفوظة. المسار الموحّد (جسر التطبيق ← المشاركة ← رابط خادم بورقة «الملف جاهز»)؛ الكمبيوتر ينزّل مباشرة كما
+       كان، ورسالة النجاح له وحده — في الأغلفة الورقة نفسها هي التأكيد. */
+    if(!msgSaveExport(blob, `omran-ai-builder-projects-${dateStr}.json`)) alert(t('exportProjectsSuccess'));
   }catch(err){
     console.error('exportProjects failed', err);
   }
