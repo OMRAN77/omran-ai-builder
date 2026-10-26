@@ -283,6 +283,7 @@ async function runClient(q, lsInit, ssInit) {
     localStorage: { getItem: (k) => (ls.has(k) ? ls.get(k) : null), setItem: (k, v) => ls.set(k, String(v)), removeItem: (k) => ls.delete(k) },
     sessionStorage: { getItem: (k) => (ss.has(k) ? ss.get(k) : null), setItem: (k, v) => ss.set(k, String(v)), removeItem: (k) => ss.delete(k) },
     noteSession() {}, alert: (m) => seen.errors.push('alert'), __swallow() {},
+    authMsg: (k, en) => en, // v-audit-boot (cli-boot-6): رسائل الدخول من قاموس الواجهة — هنا الاحتياط الإنجليزيّ
     authSet: (k, v) => { seen.set[k] = v; }, authGet: (k) => seen.set[k] || null,
     onAuthed: (u) => { seen.authed = u; }, showGoogleAuthError: (e) => seen.errors.push(e),
     fetch: async (url, opts) => {

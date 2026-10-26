@@ -1144,7 +1144,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const writes = action === 'save' || action === 'delete' || action === 'progress';
       let lessons;
       try { lessons = writes ? await kvGetJSON(key, { strict: true }) : await kvGetJSON(key); }
-      catch (e) { res.status(503).json({ ok: false, code: 'storage_retry' }); return; }
+      catch (e) { if (!writes) throw e; /* القراءة: المعالج الخارجيّ يعطي مهلتها 504 وعطبها 500 برمز (srv-edu-bots-4/8) */ res.status(503).json({ ok: false, code: 'storage_retry' }); return; }
       lessons = lessons || [];
       if (!Array.isArray(lessons)) lessons = [];
 
