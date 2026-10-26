@@ -379,7 +379,8 @@ test('srv-auth-13: الواجهة تترجم رمز الخطأ بلغتها قب
   const fn = src.slice(i, src.indexOf('\n  }\n', i) + 4);
   const map = (src.match(/^ {2}const AX_AUTH_KEYS = \{[\s\S]*?\};$/m) || [''])[0];
   assert.ok(map, 'خريطة الرموز');
-  const dict = { axAuthBadCredentials: 'Identifiants incorrects', acctEmailTooMany: 'Trop de tentatives — réessayez dans {minutes} min', axAuthForgotSentTo: 'Lien envoyé à {email}' };
+  const dict = { axAuthBadCredentials: 'Identifiants incorrects', acctEmailTooMany: 'Trop de tentatives — réessayez dans {minutes} min', axAuthForgotSentTo: 'Lien envoyé à {email}',
+    axAuthMailFailed: 'Échec de l’envoi', axAuthMailOff: 'Service d’e-mail non configuré' };
   const ctx = { curT: () => dict, __swallow() {}, window: {} };
   vm.runInNewContext(map + '\n' + fn + '\nthis.L = axAuthL10n;', ctx);
   assert.equal(ctx.L({ error: 'اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة', code: 'bad_credentials' }).error, 'Identifiants incorrects');
@@ -387,6 +388,11 @@ test('srv-auth-13: الواجهة تترجم رمز الخطأ بلغتها قب
   assert.equal(ctx.L({ ok: true, message: 'm', code: 'forgot_sent_to', masked: 'la***@mail.com' }).message, 'Lien envoyé à la***@mail.com');
   assert.equal(ctx.L({ error: 'Account not found', code: 'not_found' }).error, 'Account not found', 'بلا مفتاح في القاموس = نصّ الخادم');
   assert.equal(ctx.L({ error: 'plain' }).error, 'plain');
+  // مراجعة: mail_off تشخيص «خدمة البريد غير مهيأة» المقصود — لا يذوب في «تعذّر الإرسال» العامّة بأيّ لغة
+  assert.equal(ctx.L({ error: 'x', code: 'mail_failed' }).error, 'Échec de l’envoi');
+  assert.equal(ctx.L({ error: 'Mail service is not configured — contact the app admin', code: 'mail_off' }).error, 'Service d’e-mail non configuré');
+  delete dict.axAuthMailOff;
+  assert.equal(ctx.L({ error: 'Mail service is not configured — contact the app admin', code: 'mail_off' }).error, 'Mail service is not configured — contact the app admin', 'mail_off بلا مفتاحه = نصّ الخادم لا الرسالة العامّة');
   // كلّ ردّ auth يُعرض نصّه يمرّ بالمترجم
   for (const head of ["body: JSON.stringify({ action: 'forgotPassword'", "body: JSON.stringify({ action: 'resetWithToken'", "body: JSON.stringify({ action: mode, username, password",
     "body: JSON.stringify({ action: 'setAvatar'", "body: JSON.stringify({ action: 'changeUsername'", "body: JSON.stringify({ action: 'changePassword'"]) {

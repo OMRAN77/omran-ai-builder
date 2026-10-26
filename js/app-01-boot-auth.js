@@ -244,12 +244,13 @@ try{
   }
 
   /* v-audit-auth (srv-auth-13): نصّ أخطاء auth من الخادم عربيّ أو إنجليزيّ فقط — الفرنسيّ والأورديّ وغيرهما كانوا يرون العربيّة.
-     الخادم يرسل code ثابتًا، وهنا يُستبدل النصّ بمفتاح القاموس بلغة الواجهة الـ١٤ قبل أيّ عرض؛ رمز بلا مفتاح = نصّ الخادم (احتياط). */
+     الخادم يرسل code ثابتًا، وهنا يُستبدل النصّ بمفتاح القاموس بلغة الواجهة الـ١٤ قبل أيّ عرض؛ رمز بلا مفتاح = نصّ الخادم (احتياط).
+     mail_off مفتاحه الخاصّ لا «تعذّر الإرسال» العامّة: تشخيص غياب مفتاح البريد مقصود (auth.js) فلا يختفي خلف خلل عابر. */
   const AX_AUTH_KEYS = {
     bad_credentials: 'axAuthBadCredentials', name_taken: 'axAuthNameTaken', name_reserved: 'axAuthNameReserved', name_bad: 'axAuthNameBad',
     name_at: 'nameNoAt', name_short: 'acctFillUsername', signup_short: 'axAuthSignupShort', session: 'axAuthSession', too_many: 'acctEmailTooMany',
     not_found: 'axAuthNotFound', pw_short: 'axAuthPwShort', pw_wrong: 'axAuthPwWrong', avatar_bad: 'acctAvatarTooBig', bad_email: 'acctInvalidEmail',
-    mail_off: 'axAuthMailFailed', mail_failed: 'axAuthMailFailed', no_email_phone: 'axAuthNoEmailPhone', no_recovery: 'axAuthNoRecovery',
+    mail_off: 'axAuthMailOff', mail_failed: 'axAuthMailFailed', no_email_phone: 'axAuthNoEmailPhone', no_recovery: 'axAuthNoRecovery',
     forgot_sent: 'axAuthForgotSent', forgot_sent_to: 'axAuthForgotSentTo', reset_short: 'axAuthResetShort', reset_bad: 'axAuthResetBad',
     banned: 'axAuthBanned', bad_otp: 'axAuthBadOtp', channel_off_wa: 'axAuthWaOff', channel_off_tg: 'axAuthTgOff',
     email_unverified: 'authEmailUnverified', too_long: 'axAuthTooLong', server: 'acctGenericError',
