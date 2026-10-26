@@ -682,7 +682,7 @@ function step2(t){
   const tel = n.find(x=>x.replace(/\D/g,'').length>=9);
   const pr  = n.find(x=>x!==tel);
   S.price = fmtNum(pr || CATS[S.cat].price);
-  S.tel   = tel ? tel.replace(/(\d{3})(\d{3})(\d+)/,'$1 $2 $3') : '050 504 0108';
+  S.tel   = tel ? tel.replace(/(\d{3})(\d{3})(\d+)/,'$1 $2 $3') : '';   // v-audit-pages (x-prod-4): لا رقم غريب بدل رقم المستخدم
   askPhoto();
 }
 function askPhoto(){
@@ -698,7 +698,7 @@ function askPhoto(){
 fileEl.onchange=e=>{
   const f=e.target.files[0]; if(!f) return;
   push('u','📷 '+f.name);
-  const r=new FileReader(); r.onload=()=>{ S.img=r.result; done(); }; r.readAsDataURL(f);
+  rdFile(f).then(d=>{ if(!d) return; S.img=d; done(); });   // v-audit-pages (pages-static-5): مصغَّرة كخانات اللوحة
 };
 function done(){
   S.step=4; setChips([]); stepLbl.textContent=step(0);
@@ -810,59 +810,63 @@ function esc(s){ return String(s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&
 function render(){
   const c=CATS[S.cat], ac=S.ac||c.ac, grad=c.grad, nc=S.ac||'#a855f7';
   const img=S.img, title=esc(S.title||c.title), spec=esc(S.spec||c.spec),
-        price=esc(S.price||fmtNum(c.price)), unit=esc(S.unit||c.unit), tel=esc(S.tel||'050 504 0108'),
+        price=esc(S.price||fmtNum(c.price)), unit=esc(S.unit||c.unit), tel=esc(S.tel||''),
         kick=esc(S.kick||c.kick), chips=(S.chips&&S.chips.length?S.chips:c.chips), ghost=(S.title||c.title).split(' ')[0].slice(0,9),
         mono=(S.title||c.title).trim().charAt(0);
   const bg = img? '<img class="bg" src="'+img+'">' : '';
   const ni = img? '' : ' noImg';
   const gs = ghost.length>6?42:70;
   const t=(x)=>'<bdi dir="auto">'+x+'</bdi>';
+  /* v-audit-pages (x-prod-4): بلا رقم من المستخدم كان يُطبع رقم المثال الثابت في كلّ تصميم وفي الملفّ المنزَّل، فيتّصل الزبائن
+     برقم غريب. الآن يُخفى سطر التواصل كلّه (العنوان والرقم)؛ الرقم المثال يبقى داخل «استخدم مثالًا جاهزًا» وحده.
+     عنصر التواصل إمّا داخل حاوية أو آخر أبناء اللوحة، فغيابه لا يزيح أرقام السحب (data-di) لما قبله. */
+  const TL=h=>tel?h:'';
 
   const A='<div class="canvas A'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
     '<div class="ovl veil"></div><div class="kick">'+kick+'</div><div class="rule"></div>'+
     '<div class="body"><h2>'+title+'</h2><div class="spec">'+spec+'</div>'+
     '<div class="foot"><div class="pr"><em>'+T('lblPrice',{unit:unit})+'</em>'+price+'</div>'+
-    '<div class="tel"><em>'+T('lblContact')+'</em><bdi dir="ltr">'+tel+'</bdi></div></div></div></div>';
+    TL('<div class="tel"><em>'+T('lblContact')+'</em><bdi dir="ltr">'+tel+'</bdi></div>')+'</div></div></div>';
 
   const arch = img? '<div class="arch"><img src="'+img+'"></div>' : '';
   const B='<div class="canvas B" style="--ac:'+ac+';--grad:'+grad+'">'+
     '<div class="ovl glow"></div><div class="ghost" style="font-size:'+gs+'px">'+esc(ghost)+'</div>'+arch+
     '<div class="top"><span>'+kick+'</span><b>'+esc(chips[0])+'</b></div><h2>'+title+'</h2>'+
     '<div class="chps">'+chips.map(x=>'<span>'+esc(x)+'</span>').join(' · ')+'</div>'+
-    '<div class="bar"><div class="p">'+price+' <em>'+unit+'</em></div><div class="t"><bdi dir="ltr">'+tel+'</bdi></div></div></div>';
+    '<div class="bar"><div class="p">'+price+' <em>'+unit+'</em></div>'+TL('<div class="t"><bdi dir="ltr">'+tel+'</bdi></div>')+'</div></div>';
 
   const C='<div class="canvas C'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
     '<div class="ovl tint"></div><div class="stamp"><b>'+price+'</b><i>'+unit+'</i></div>'+
     '<div class="slash"></div><h2>'+title+'</h2>'+
     '<div class="scat">'+chips.map(x=>'<span>'+esc(x)+'</span>').join('')+'</div>'+
-    '<div class="telc"><i>'+T('lblContact')+'</i><b><bdi dir="ltr">'+tel+'</bdi></b></div></div>';
+    TL('<div class="telc"><i>'+T('lblContact')+'</i><b><bdi dir="ltr">'+tel+'</bdi></b></div>')+'</div>';
 
   const D='<div class="canvas D'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
     '<div class="ovl soft"></div><div class="ovl frm"></div><div class="dk">'+kick+'</div>'+
     '<h2>'+title+'</h2><div class="dl"></div><div class="dsp">'+spec+'</div>'+
-    '<div class="dpr"><em>'+unit+'</em>'+price+'</div><div class="dtl"><bdi dir="ltr">'+tel+'</bdi></div></div>';
+    '<div class="dpr"><em>'+unit+'</em>'+price+'</div>'+TL('<div class="dtl"><bdi dir="ltr">'+tel+'</bdi></div>')+'</div>';
 
   const E='<div class="canvas E'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
     '<div class="ovl tint"></div><div class="band">'+kick+'</div><h2>'+title+'</h2>'+
     '<div class="ech">'+chips.map(x=>'<span>'+esc(x)+'</span>').join('')+'</div>'+
     '<div class="epr"><em>'+unit+'</em>'+price+'</div>'+
-    '<div class="etl"><em>'+T('lblContact')+'</em><bdi dir="ltr">'+tel+'</bdi></div></div>';
+    TL('<div class="etl"><em>'+T('lblContact')+'</em><bdi dir="ltr">'+tel+'</bdi></div>')+'</div>';
 
   const F='<div class="canvas F'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
     '<div class="ovl vig"></div><div class="ovl frm"></div><div class="ovl frm2"></div>'+
     '<div class="mono">'+esc(mono)+'</div><div class="fk">'+kick+'</div><h2>'+title+'</h2>'+
     '<div class="fl"></div><div class="fsp">'+spec+'</div>'+
-    '<div class="fpr"><em>'+unit+'</em>'+price+'</div><div class="ftl"><bdi dir="ltr">'+tel+'</bdi></div></div>';
+    '<div class="fpr"><em>'+unit+'</em>'+price+'</div>'+TL('<div class="ftl"><bdi dir="ltr">'+tel+'</bdi></div>')+'</div>';
 
   const G='<div class="canvas G'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
     '<div class="ovl tint"></div><h2>'+title+'</h2><div class="gsp">'+chips.map(esc).join(' · ')+'</div>'+
-    '<div class="gpill">'+price+' '+unit+'</div><div class="gtl"><bdi dir="ltr">'+tel+'</bdi></div></div>';
+    '<div class="gpill">'+price+' '+unit+'</div>'+TL('<div class="gtl"><bdi dir="ltr">'+tel+'</bdi></div>')+'</div>';
 
   const hph = img? '<div class="ovl hph"><img src="'+img+'"></div>' : '<div class="ovl hph" style="background:'+grad+'"></div>';
   const H='<div class="canvas H" style="--ac:'+ac+';--grad:'+grad+'">'+hph+
     '<div class="ovl hpan"></div><div class="hnum">'+String(price).split(/[٬,]/)[0]+'</div><div class="hk">'+kick+'</div>'+
     '<h2>'+title+'</h2><div class="hsp">'+spec+'</div>'+
-    '<div class="hbar"><b><em>'+unit+'</em>'+price+'</b><span><bdi dir="ltr">'+tel+'</bdi></span></div></div>';
+    '<div class="hbar"><b><em>'+unit+'</em>'+price+'</b>'+TL('<span><bdi dir="ltr">'+tel+'</bdi></span>')+'</div></div>';
 
   const ti=(S.title||c.title).trim(), isz = ti.length>15?25:ti.length>10?31:39;
   const I='<div class="canvas I'+ni+'" style="--ac:'+nc+';--grad:'+grad+'">'+bg+
@@ -870,7 +874,7 @@ function render(){
     '<h2 style="font-size:'+isz+'px">'+title+'</h2><div class="isub">'+spec+'</div>'+
     '<div class="icard"><em>'+unit+'</em><b>'+price+'</b></div>'+
     '<div class="ibar">'+chips.slice(0,4).map(x=>'<span>'+esc(x)+'</span>').join('')+
-    '<span><bdi dir="ltr">'+tel+'</bdi></span></div></div>';
+    TL('<span><bdi dir="ltr">'+tel+'</bdi></span>')+'</div></div>';
 
   const rawSpec=String(S.spec||c.spec), rawTitle=String(S.title||c.title).trim();
   const nrm=x=>String(x).replace(/[\s\u064B-\u0652\u060C,.:\u00b7]/g,''), seenF=new Set();
@@ -886,7 +890,7 @@ function render(){
     '<h2>'+tw+'</h2>'+(jsub?'<div class="jsub">'+jsub+'</div>':'')+
     '<div class="jgrid">'+facts.map((f,k)=>'<span><i>'+ICO[k%8]+'</i>'+esc(f)+'</span>').join('')+'</div>'+
     '<div class="jrow"><div><em>'+T('lblPrice',{unit:unit})+'</em><b>'+price+'</b></div>'+
-    '<div><em>'+T('lblContact')+'</em><b><bdi dir="ltr">'+tel+'</bdi></b></div></div>'+
+    TL('<div><em>'+T('lblContact')+'</em><b><bdi dir="ltr">'+tel+'</bdi></b></div>')+'</div>'+
     (place?'<div class="jloc"><b>\ud83d\udccd '+T('lblView')+'</b> '+place+'</div>':'')+
     (note?'<div class="jnote"><b>\u26a0\ufe0f</b> '+note+'</div>':'')+'</div>';
 
@@ -1177,8 +1181,9 @@ function cStrip(P,cls,n,caps){
     h+='<figure'+ED(P+'thumb.'+i)+'>'+cImg(MED.thumbs[i],T('mThumbPh'),'thumb.'+i)+c+'</figure>'; }
   return h+'</div>';
 }
+/* v-audit-pages (pages-static-6): علامة تنصيص زائدة كانت تجعل style فارغًا و«left:…» اسم سمة، فيرجع المربّع إلى الزاوية بعد كلّ رسم */
 function cFree(i){ return (FREE[i]||[]).map((b,j)=>
-  '<div class="fbx" data-fb="'+i+'.'+j+'" data-del="fb.'+i+'.'+j+'" style=""left:'+b.x+'%;top:'+b.y+'%;font-size:calc(var(--u)*'+(b.s||2.4)+')">'+
+  '<div class="fbx" data-fb="'+i+'.'+j+'" data-del="fb.'+i+'.'+j+'" style="left:'+b.x+'%;top:'+b.y+'%;font-size:calc(var(--u)*'+(b.s||2.4)+')">'+
   esc(b.t)+'</div>').join(''); }
 
 /* ================= اللوحات الثلاث ================= */
@@ -1284,8 +1289,33 @@ function renderComp(){
 addEventListener('resize',cSetAll);
 
 /* ================= المحرّر على اللوحة ================= */
-function rdFile(f){ return new Promise(ok=>{ const r=new FileReader(); r.onload=()=>ok(r.result);
+/* v-audit-pages (pages-static-5): صورة الهاتف (٤ م.ب فأكثر) كانت تُقرأ data URL كما هي وتُرسل base64 داخل JSON إلى
+   /api/adimage، فيتجاوز الطلب حدّ جسم الطلب في Vercel (٤٫٥ م.ب) ويسقط بـ413 قبل الخادم، وتُنسخ نصًّا في كلّ تصميم.
+   الآن تُصغَّر عند الرفع (الصورة الرئيسيّة وكلّ خانات اللوحة) إلى ٢٠٤٨ بكسل للضلع الأطول بجودة ٩٠ — JPEG يبقى JPEG،
+   وغيره WebP كي لا تضيع شفافيّة الشعار والقصّة — وتنزل الأبعاد ربعًا إن بقيت فوق السقف. الصغيرة تبقى كما هي (لا ضغط
+   فوق ضغط)، وصيغة لا يفكّها المتصفّح تبقى أصلًا كما كانت. الأرقام بأحرف base64: ≈١٫٥ م.ب تبقى، والسقف ≈٢٫٢ م.ب. */
+const IMG_SIDE=2048, IMG_KEEP=2000000, IMG_CAP=3000000;
+function rdRaw(f){ return new Promise(ok=>{ const r=new FileReader(); r.onload=()=>ok(r.result);
   r.onerror=()=>ok(null); r.readAsDataURL(f); }); }
+async function rdFile(f){
+  const raw=await rdRaw(f); if(!raw) return null;
+  try{
+    const im=await new Promise((ok,no)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=no; i.src=raw; });
+    const w=im.naturalWidth||im.width, h=im.naturalHeight||im.height, big=Math.max(w,h);
+    if(!big||(big<=IMG_SIDE&&raw.length<=IMG_KEEP)) return raw;
+    const mt=/^image\/jpe?g$/i.test(f.type||'')?'image/jpeg':'image/webp';
+    let side=Math.min(IMG_SIDE,big), out=raw;
+    for(let k=0;k<4;k++){
+      const s=side/big, cv=document.createElement('canvas');
+      cv.width=Math.max(1,Math.round(w*s)); cv.height=Math.max(1,Math.round(h*s));
+      const g=cv.getContext('2d'); g.imageSmoothingQuality='high'; g.drawImage(im,0,0,cv.width,cv.height);
+      out=cv.toDataURL(mt,0.9);
+      if(out.length<=IMG_CAP) return out;
+      side=Math.round(side*0.75);
+    }
+    return out.length<raw.length?out:raw;
+  }catch(e){ return raw; /* صيغة لا يفكّها المتصفّح (HEIC مثلًا) أو قماش محجوب — الأصل كما كان */ }
+}
 let PEND=null, FBSUP=false;
 const fSlot=document.getElementById('fSlot');
 fSlot.onchange=async e=>{
