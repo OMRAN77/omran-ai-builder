@@ -2463,6 +2463,17 @@ function detectSpeechLang(text){
     if(/[\u0679\u0688\u0691\u06BA\u06BE\u06C1\u06C2\u06D2]/.test(t)) return 'ur';
     return 'ar';
   }
+  /* v-audit-voice (cli-voice-7): الخادم له لهجة لكلّ لغة من الأربع عشرة، والكشف كان يعرف سبعًا — الروسيّ والصينيّ
+     والمالايالاميّ تُكشف بكتابتها، واللاتينيّ بلغة الواجهة إن كانت إسبانيّة أو تركيّة أو إندونيسيّة أو فلبينيّة، وإلّا فالتركيّ
+     والإسبانيّ بحروفهما الخاصّة (كانت «la» تجعل الإسبانيّ فرنسيًّا و«ç» التركيّ فرنسيًّا، والإندونيسيّ والفلبينيّ إنجليزيًّا).
+     الفرنسيّة والإنجليزيّة على تخمينهما القديم كما كانتا. */
+  if(/[\u0D00-\u0D7F]/.test(t)) return 'ml';
+  if(/[\u0400-\u04FF]/.test(t)) return 'ru';
+  if(/[\u4E00-\u9FFF\u3400-\u4DBF]/.test(t)) return 'zh';
+  const uiLang = (typeof lang === 'string') ? lang : '';
+  if(['es', 'tr', 'id', 'fil'].indexOf(uiLang) !== -1) return uiLang;
+  if(/[ğışİĞŞ]/.test(t)) return 'tr';
+  if(/[ñÑ¿¡]/.test(t)) return 'es';
   const frenchHints = /[àâäæçéèêëîïôœùûüÿ]/i;
   const frenchWords = /\b(le|la|les|des|une|est|et|vous|nous|bonjour|merci|s'il|être|avec|pour|dans)\b/i;
   if(frenchHints.test(t) || frenchWords.test(t)) return 'fr';
@@ -3804,7 +3815,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
     if(base === undefined){ if(onEnd) onEnd(); return; }
     const sayText = base ? text.slice(base) : text;
     const detectedLang = detectSpeechLang(sayText);
-    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US' };
+    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US', bn: 'bn-BD', ne: 'ne-NP', es: 'es-ES', tr: 'tr-TR', ru: 'ru-RU', zh: 'zh-CN', id: 'id-ID', fil: 'fil-PH', ml: 'ml-IN' }; // v-audit-voice (cli-voice-7): الأربع عشرة كخادم القراءة
     const utter = new SpeechSynthesisUtterance(sayText);
     utter.lang = langTags[detectedLang] || 'en-US';
     const v = pickVoice(detectedLang);
@@ -4344,7 +4355,7 @@ const I18N = {
     voiceTabAssistantName: 'المساعد',
     copyCode: 'نسخ',
     copiedMsg: 'تم النسخ ✅',
-    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", sheetCopyImg: "نسخ الصورة", sheetCopyLink: "نسخ الرابط", sheetCopied: "تم النسخ", sheetCopyFail: "تعذّر النسخ", sheetShareFail: "تعذّرت المشاركة — جرّب التحميل", sheetDlDesktop: "تم التحميل — تلقاها في مجلد التنزيلات", axAuthBadCredentials: "اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة", axAuthNameTaken: "اسم المستخدم مستخدم من قبل", axAuthNameReserved: "اسم المستخدم محجوز", axAuthNameBad: "اسم المستخدم فيه رموز غير مسموحة (مثل * ؟ [ ] أو الفاصلة)", axAuthSignupShort: "اسم المستخدم 3 أحرف على الأقل وكلمة المرور {n} أحرف على الأقل", axAuthSession: "الجلسة منتهية، سجّل الدخول من جديد", axAuthNotFound: "الحساب غير موجود", axAuthPwShort: "أدخل كلمة المرور الحالية وكلمة مرور جديدة ({n} أحرف على الأقل)", axAuthPwWrong: "كلمة المرور الحالية غير صحيحة", axAuthMailFailed: "تعذّر إرسال الإيميل، حاول لاحقًا", axAuthMailOff: "خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق", axAuthNoEmailPhone: "لا يوجد إيميل مسجّل لهذا الحساب — استرجع حسابك برقم هاتفك المربوط", axAuthNoRecovery: "لا يوجد إيميل ولا رقم هاتف مرتبط بهذا الحساب، فلا يمكن استرجاعه من هنا", axAuthForgotSent: "إن كان هذا الإيميل مرتبطًا بحساب فسيصلك رابط إعادة التعيين خلال دقائق.", axAuthForgotSentTo: "تم إرسال رابط إعادة التعيين إلى {email}", axAuthResetShort: "رابط غير صالح أو كلمة مرور قصيرة ({n} أحرف على الأقل)", axAuthResetBad: "الرابط غير صالح أو منتهي الصلاحية، اطلب رابطًا جديدًا", axAuthBanned: "تم إيقاف هذا الحساب من قبل الإدارة", axAuthBadOtp: "رمز غير صحيح أو منتهي", axAuthWaOff: "الربط عبر واتساب غير مهيّأ بعد — جرّب تيليجرام", axAuthTgOff: "الربط عبر تيليجرام غير مهيّأ", axAuthTooLong: "المدخلات طويلة جدًا", axBootEnterId: "الرجاء إدخال اسم المستخدم أو الإيميل", axBootWait: "جاري المعالجة…", axBootCheckEmail: "تحقق من بريدك", axBootFillAll: "الرجاء تعبئة جميع الحقول", axBootFillBoth: "الرجاء تعبئة الحقلين", axBootSigningIn: "جاري الدخول…", axBootGoogleFailed: "تعذّر إكمال الدخول بجوجل ({code}) — أعد المحاولة", axBootGoogleUnverified: "بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة", axBootGoogleCancelled: "ألغيتَ الدخول من شاشة جوجل", axBootGoogleInBrowser: "أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.", axBootSecurityCheck: "تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.", axBootAdminMsg: "رسالة من الإدارة", axBootBanned: "تم إيقاف هذا الحساب من قبل الإدارة", axBootSending: "جاري الإرسال…", axBootCodeSent: "تم إرسال الرمز إلى {email}", axBootVerify: "تحقق", axBootSendFailed: "فشل إرسال الرمز", axBootEnterCode: "أدخل رمز التحقق", axBootVerifying: "جاري التحقق…", axBootBadCode: "رمز غير صحيح", axBridgeGitBusy: "عمليّة git جارية في الجسر (نشر أو دمج أو تراجع) — انتظر انتهاءها ثمّ أعد المحاولة.", axBridgeMergeKept: "نسخة العمل بقيت كما هي: فيها تعديلات أو التزامات لم تُنشر، فلم تُعَد إلى الفرع الرئيسيّ.", axEduCapGuest: "وصلت للحد اليومي المجاني — سجّل الدخول أو عد غدًا.", axEduCapUser: "وصلت للحد اليومي — عد غدًا.", axEduErrSlow: "التوليد أخذ وقتًا أطول من المتوقع — أعد المحاولة الآن، غالبًا تنجح فورًا.", axToolsDocTooBig: "الملفّ أكبر من {n} ميغابايت — صغّره أو قسّمه ثمّ ارفعه من جديد.", axSearchSessionExpired: "انتهت الجلسة — سجّل الدخول من جديد.", axSearchEmBadEvent: "تعذّر قراءة وقت الموعد — أضفه إلى تقويمك يدويًّا.", axSearchEmScope30: "لا رسائل أساسيّة خلال آخر ٧ أيام — عرضتُ رسائل الوارد خلال ٣٠ يومًا (بكلّ الفئات).", axSearchEmScopeLatest: "لا رسائل خلال آخر ٣٠ يومًا — عرضتُ آخر رسائل الوارد.", axSearchEmScopeEmpty: "الربط سليم ✅ لكن صندوق الوارد فارغ تمامًا في هذا الحساب.", axSearchEmLinkDenied: "لم يُربط Gmail — أُلغيت الموافقة في صفحة Google.", axSearchEmLinkScopes: "الربط يحتاج كلّ الصلاحيّات المطلوبة (قراءة البريد وإرساله) — اربط Gmail من جديد وفعّلها كلّها.", axSearchEmLinkFailed: "تعذّر ربط Gmail — حاول الربط مرّة ثانية.", axSearchPfNoCash: "رصيدك الافتراضي لا يكفي: عندك {cash} والصفقة تحتاج {cost}", axSearchPfNoShares: "ما تملك هذه الكمية — عندك {qty} سهم من {sym}", axSearchPfLimit: "وصلت لحدّ الصفقات اليوميّ ({limit}) — عد غدًا 🌙", axSearchCxReportTitle: "تقرير مشروع البناء", axSearchCxBuiltArea: "{n} م² بناء", axSearchCxPlotArea: "{n} م² أرض", axSearchCxBoq: "📊 جدول الكميات", axSearchCxDetails: "📋 التفاصيل والتكلفة", axSearchCxFooter: "تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.", axStudengImgFailed: "تعذّر إنشاء الصورة هذه المرة. جرّب مرة أخرى.", axStudengImgBusy: "خدمة الصور مشغولة الآن. أعد المحاولة بعد لحظة.", axVideoNarrMissing: "⚠️ السرد ناقص في {k} من {n} مشاهد.", axVideoCooldown: "🕒 فيديو واحد كل بضع دقائق. جرّب بعد {m} دقيقة تقريبًا.", axVideoBusyRetry: "⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة ({a}/{m})...", axVideoBusyRetryScene: "⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد {i} ({a}/{m})...", axStudcliSigTitle: "توقيعي", axStudcliSigMenuTitle: "توقيعي — اصنع توقيعك وشاركه", axStudcliSigPh: "اكتب اسمك…", axStudcliSigYourName: "اسمك", axStudcliSigName: "اسمك", axStudcliSigSize: "الحجم", axStudcliSigSlant: "الميل", axStudcliSigInk: "اللون", axStudcliSigFlourish: "ذيل التوقيع", axStudcliSigDownload: "تنزيل PNG شفّاف", axStudcliSigNote: "خلفيّة شفافة · يعمل بلا اتصال بعد تحميل الخطّ · بلا نقاط.", axStudcliSigCopied: "نُسخ التوقيع — الصقه في أي محادثة.", axStudcliSigFontRuqaa: "الرقعة", axStudcliSigFontThuluth: "الثلث", axStudcliSigFontDiwani: "الديواني", axStudcliSigFontNaskh: "النسخ", axStudcliSigFontKufi: "الكوفي", axStudcliSigFontFarsi: "الفارسي", imgReadyTitle: "✅ الصورة جاهزة", fileReadyTitle: "✅ الملف جاهز", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح", imgPreparing: "⏳ جارٍ تجهيز الصورة…",
+    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", sheetCopyImg: "نسخ الصورة", sheetCopyLink: "نسخ الرابط", sheetCopied: "تم النسخ", sheetCopyFail: "تعذّر النسخ", sheetShareFail: "تعذّرت المشاركة — جرّب التحميل", sheetDlDesktop: "تم التحميل — تلقاها في مجلد التنزيلات", axAuthBadCredentials: "اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة", axAuthNameTaken: "اسم المستخدم مستخدم من قبل", axAuthNameReserved: "اسم المستخدم محجوز", axAuthNameBad: "اسم المستخدم فيه رموز غير مسموحة (مثل * ؟ [ ] أو الفاصلة)", axAuthSignupShort: "اسم المستخدم 3 أحرف على الأقل وكلمة المرور {n} أحرف على الأقل", axAuthSession: "الجلسة منتهية، سجّل الدخول من جديد", axAuthNotFound: "الحساب غير موجود", axAuthPwShort: "أدخل كلمة المرور الحالية وكلمة مرور جديدة ({n} أحرف على الأقل)", axAuthPwWrong: "كلمة المرور الحالية غير صحيحة", axAuthMailFailed: "تعذّر إرسال الإيميل، حاول لاحقًا", axAuthMailOff: "خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق", axAuthNoEmailPhone: "لا يوجد إيميل مسجّل لهذا الحساب — استرجع حسابك برقم هاتفك المربوط", axAuthNoRecovery: "لا يوجد إيميل ولا رقم هاتف مرتبط بهذا الحساب، فلا يمكن استرجاعه من هنا", axAuthForgotSent: "إن كان هذا الإيميل مرتبطًا بحساب فسيصلك رابط إعادة التعيين خلال دقائق.", axAuthForgotSentTo: "تم إرسال رابط إعادة التعيين إلى {email}", axAuthResetShort: "رابط غير صالح أو كلمة مرور قصيرة ({n} أحرف على الأقل)", axAuthResetBad: "الرابط غير صالح أو منتهي الصلاحية، اطلب رابطًا جديدًا", axAuthBanned: "تم إيقاف هذا الحساب من قبل الإدارة", axAuthBadOtp: "رمز غير صحيح أو منتهي", axAuthWaOff: "الربط عبر واتساب غير مهيّأ بعد — جرّب تيليجرام", axAuthTgOff: "الربط عبر تيليجرام غير مهيّأ", axAuthTooLong: "المدخلات طويلة جدًا", axBootEnterId: "الرجاء إدخال اسم المستخدم أو الإيميل", axBootWait: "جاري المعالجة…", axBootCheckEmail: "تحقق من بريدك", axBootFillAll: "الرجاء تعبئة جميع الحقول", axBootFillBoth: "الرجاء تعبئة الحقلين", axBootSigningIn: "جاري الدخول…", axBootGoogleFailed: "تعذّر إكمال الدخول بجوجل ({code}) — أعد المحاولة", axBootGoogleUnverified: "بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة", axBootGoogleCancelled: "ألغيتَ الدخول من شاشة جوجل", axBootGoogleInBrowser: "أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.", axBootSecurityCheck: "تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.", axBootAdminMsg: "رسالة من الإدارة", axBootBanned: "تم إيقاف هذا الحساب من قبل الإدارة", axBootSending: "جاري الإرسال…", axBootCodeSent: "تم إرسال الرمز إلى {email}", axBootVerify: "تحقق", axBootSendFailed: "فشل إرسال الرمز", axBootEnterCode: "أدخل رمز التحقق", axBootVerifying: "جاري التحقق…", axBootBadCode: "رمز غير صحيح", axBridgeGitBusy: "عمليّة git جارية في الجسر (نشر أو دمج أو تراجع) — انتظر انتهاءها ثمّ أعد المحاولة.", axBridgeMergeKept: "نسخة العمل بقيت كما هي: فيها تعديلات أو التزامات لم تُنشر، فلم تُعَد إلى الفرع الرئيسيّ.", axEduCapGuest: "وصلت للحد اليومي المجاني — سجّل الدخول أو عد غدًا.", axEduCapUser: "وصلت للحد اليومي — عد غدًا.", axEduErrSlow: "التوليد أخذ وقتًا أطول من المتوقع — أعد المحاولة الآن، غالبًا تنجح فورًا.", axToolsDocTooBig: "الملفّ أكبر من {n} ميغابايت — صغّره أو قسّمه ثمّ ارفعه من جديد.", axSearchSessionExpired: "انتهت الجلسة — سجّل الدخول من جديد.", axSearchEmBadEvent: "تعذّر قراءة وقت الموعد — أضفه إلى تقويمك يدويًّا.", axSearchEmScope30: "لا رسائل أساسيّة خلال آخر ٧ أيام — عرضتُ رسائل الوارد خلال ٣٠ يومًا (بكلّ الفئات).", axSearchEmScopeLatest: "لا رسائل خلال آخر ٣٠ يومًا — عرضتُ آخر رسائل الوارد.", axSearchEmScopeEmpty: "الربط سليم ✅ لكن صندوق الوارد فارغ تمامًا في هذا الحساب.", axSearchEmLinkDenied: "لم يُربط Gmail — أُلغيت الموافقة في صفحة Google.", axSearchEmLinkScopes: "الربط يحتاج كلّ الصلاحيّات المطلوبة (قراءة البريد وإرساله) — اربط Gmail من جديد وفعّلها كلّها.", axSearchEmLinkFailed: "تعذّر ربط Gmail — حاول الربط مرّة ثانية.", axSearchPfNoCash: "رصيدك الافتراضي لا يكفي: عندك {cash} والصفقة تحتاج {cost}", axSearchPfNoShares: "ما تملك هذه الكمية — عندك {qty} سهم من {sym}", axSearchPfLimit: "وصلت لحدّ الصفقات اليوميّ ({limit}) — عد غدًا 🌙", axSearchCxReportTitle: "تقرير مشروع البناء", axSearchCxBuiltArea: "{n} م² بناء", axSearchCxPlotArea: "{n} م² أرض", axSearchCxBoq: "📊 جدول الكميات", axSearchCxDetails: "📋 التفاصيل والتكلفة", axSearchCxFooter: "تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.", axStudengImgFailed: "تعذّر إنشاء الصورة هذه المرة. جرّب مرة أخرى.", axStudengImgBusy: "خدمة الصور مشغولة الآن. أعد المحاولة بعد لحظة.", axVideoNarrMissing: "⚠️ السرد ناقص في {k} من {n} مشاهد.", axVideoCooldown: "🕒 فيديو واحد كل بضع دقائق. جرّب بعد {m} دقيقة تقريبًا.", axVideoBusyRetry: "⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة ({a}/{m})...", axVideoBusyRetryScene: "⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد {i} ({a}/{m})...", axStudcliSigTitle: "توقيعي", axStudcliSigMenuTitle: "توقيعي — اصنع توقيعك وشاركه", axStudcliSigPh: "اكتب اسمك…", axStudcliSigYourName: "اسمك", axStudcliSigName: "اسمك", axStudcliSigSize: "الحجم", axStudcliSigSlant: "الميل", axStudcliSigInk: "اللون", axStudcliSigFlourish: "ذيل التوقيع", axStudcliSigDownload: "تنزيل PNG شفّاف", axStudcliSigNote: "خلفيّة شفافة · يعمل بلا اتصال بعد تحميل الخطّ · بلا نقاط.", axStudcliSigCopied: "نُسخ التوقيع — الصقه في أي محادثة.", axStudcliSigFontRuqaa: "الرقعة", axStudcliSigFontThuluth: "الثلث", axStudcliSigFontDiwani: "الديواني", axStudcliSigFontNaskh: "النسخ", axStudcliSigFontKufi: "الكوفي", axStudcliSigFontFarsi: "الفارسي", axUicoreImgAsPdf: "الردّ أطول من أن يتّسع في صورة واحدة — جارٍ حفظه PDF بدلًا منها", axUicorePyLoadFail: "تعذّر تحميل بيئة تشغيل بايثون — تحقّق من الاتصال واضغط «تشغيل الكود» لإعادة المحاولة", axShellDeleteSelected: "⚠️ سيتم حذف العناصر المحدّدة ({n}) نهائيًّا. متأكد؟", axAttachImgOpenedTab: "فتحت الصورة في صفحة مستقلّة — اضغط عليها مطوّلًا ثمّ «مشاركة»", axAttachImgLongPress: "اضغط مطوّلًا على الصورة ثمّ «مشاركة»", axAttachImgCopied: "نُسخت الصورة — الصقها في أيّ محادثة", axAttachImgSavedSend: "حُفظت الصورة في «التنزيلات» — أرسلها من هناك لأيّ تطبيق", axAttachLinkPasteIn: "نُسخ الرابط — الصقه في {app}", axAttachAppMessages: "الرسائل", axAttachAppEmail: "البريد", axAttachMailSubject: "صورة", axAttachTheApp: "التطبيق", axAttachSavedAttachIn: "حُفظت الصورة في «التنزيلات» — أرفقها في {app}", axAttachBrowserRefused: "رفض المتصفّح إرسال الملفّ", axAttachSendImage: "إرسال الصورة", axAttachSentAsFile: "تُرسَل الصورة ملفًّا — بلا رابط ولا بطاقة", axAttachSentAsLink: "سيُرسَل رابط الصورة مباشرةً للتطبيق الذي تختاره", axAttachShareDevice: "مشاركة عبر تطبيقات الجهاز", axAttachLinkFailed: "تعذّر تحضير الرابط", axAttachDownloadImage: "تنزيل الصورة", axAttachOpenChrome: "فتح الموقع في متصفّح كروم", axAttachImgAutoCopied: "نُسخت الصورة تلقائيًّا — الصقها داخل المحادثة بعد فتح التطبيق", axAttachBinary: "صيغة هذا الملفّ لا تُقرأ نصًّا — أرسله PDF أو DOCX أو XLSX أو TXT أو صورة.", axAttachPastedCode: "كود ملصوق", axAttachPastedText: "نص ملصوق", axAttachCutShort: "مقتطع", axAttachPasteToast: "حُوّل النص إلى مرفق — اضغط عليه لعرضه", axAttachImgDropped: "انقطع الاتصال قبل وصول الصورة — أعد المحاولة.", axAttachImgStopped: "تم إيقاف إنشاء الصورة.", axAttachDrawingImage: "أرسم لك الصورة…", axAttachExactWording: "أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.", axAttachImgFailedNow: "تعذّر توليد الصورة الآن", axAttachImgFailedRetry: "تعذّر توليد الصورة الآن — جرّب مرّة ثانية.", axAttachAnotherVersion: "أرسم لك نسخة ثانية…", axAttachAnotherFailed: "تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.", axAttachVidLogin: "سجّل الدخول أولًا عشان أسوي لك الفيديو.", axAttachSecretTag: "سرّ حُذف من الرسالة", axAttachSecretToast: "حُذف السرّ من رسالتك — الأسرار لا تُكتب في المحادثة", axAttachWaitPending: "الرجاء الانتظار حتى تنتهي معالجة المرفقات", axAttachAnalyzingImage: "جاري تحليل الصورة...", axAttachLogoFetching: "أجيب لك الشعار الأصلي من البحث…", axAttachImgsFetching: "أجيب لك صور حقيقية من البحث…", axAttachLogoFound: "هذا الشعار الأصلي من البحث المباشر 👇 اضغط على الصورة لعرضها كبيرة، أو حمّلها مباشرة.", axAttachImgsFound: "هذي صور حقيقية من البحث المباشر 👇 اضغط على أي صورة لعرضها كبيرة، أو حمّلها مباشرة.", axAttachLogoNotFound: "ما حصلت الشعار في البحث المباشر 😕 جرب تكتب اسم الجهة بشكل أوضح (مثال: \"شعار شرطة دبي\").", axAttachLogoFetchFail: "تعذر جلب الشعار الآن — جرب مرة ثانية.", axAttachTcEmiratiMan: "شاب إماراتي", axAttachTcEmiratiWoman: "فتاة إماراتية", axAttachTcRobot: "روبوت", axAttachTcBoy: "ولد", axAttachTcGirl: "بنت", axAttachTcGrandpa: "جدّ", axAttachTcPickTitle: "اختر شخصية تتكلم", axAttachTcPickSub: "اختر شخصية جاهزة، أو ارفع صورتك.", axAttachTcUploadOwn: "أو ارفع صورتك بدل ذلك", axAttachTcAttachHint: "ارفع صورتك من زر المشبك ثم أعد نفس الطلب مع الجملة اللي تبي الشخصية تقولها.", axAttachTcLoadFail: "تعذّر تحميل الشخصية، جرّب مرة ثانية.", axAttachTcSeconds: "{n} ثواني", axAttachTcOptsTitle: "إعدادات الشخصية المتكلمة", axAttachTcMotion: "حركة الشخصية:", axAttachTcStatic: "ثابتة (تتكلم فقط)", axAttachTcMoving: "متحركة", axAttachTcDuration: "مدة الفيديو:", axAttachTcMore: "أبي فيديو أطول / أكثر", axAttachTcStart: "ابدأ", axAttachTcPaidMore: "الفيديوهات الأطول والخيارات الإضافية متاحة في الباقات المدفوعة — افتح ⚙️ ← الاشتراك لترقية باقتك وتطلّع فيديوهات أطول بجودة أعلى.", axAttachTcCartoonizing: "جاري تحويل صورتك لشخصية كرتونية…", axAttachTcCartoonFail: "تعذر تحويل الصورة لكرتون، جرّب صورة أوضح.", axAttachTcCartoonReady: "صارت شخصية كرتونية ✅ الحين أحرّكها تتكلم…", axAttachTcAnimating: "جاري تحريك الشخصية لتتكلم بصوت… قد يستغرق ١–٣ دقائق", axAttachTcNoBalance: "رصيدك غير كافٍ لإنشاء فيديو ناطق.", axAttachVidTimeout: "تأخر إنشاء الفيديو، جرّب مرة ثانية.", axAttachTcSafety: "الرقابة رفضت المحتوى — جرّب صورة ثانية", axAttachVidFailed: "فشل إنشاء الفيديو", axAttachTcAnimatingShort: "جاري تحريك الشخصية بصوت…", axAttachTcReady: "شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)", axAttachVidAskWhat: "فيديو عن شو؟ وصفلي المشهد اللي تبيه", axAttachVidCreating: "جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق", axAttachVidDaily: "وصلت حد الفيديوهات اليومي، جرّب بكرة.", axAttachVidSafety: "الرقابة رفضت المحتوى — جرّب وصفًا أهدأ أو شِل صورة الشخص", axAttachVidCreatingShort: "جاري إنشاء الفيديو…", axAttachVidReady: "فيديوك جاهز ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)", axAttachTextNoRoom: "ما في مساحة أكبر هنا بدون ما يغطي الوجوه — تبيني أنقل الكتابة فوق أو تحت؟", axAttachTextStyleFail: "تعذّر تعديل تنسيق الكتابة.", axAttachPrayerFail: "تعذّر تأليف الدعاء بدقة الآن. جرّب مرة أخرى.", axAttachEditingBg: "جاري تعديل الخلفية…", axAttachWritingText: "جاري كتابة النص…", axAttachTextAddFail: "تعذّرت كتابة النص على الصورة.", axAttachBgChangeFail: "كتبت على صورتك، بس تغيير الخلفية ما نجح هالمرة — تبيني أحاول مرة ثانية؟", axAttachTextSwapFail: "تعذّر تبديل النصّ هذه المرّة — أعد المحاولة أو صِف الكلمة المطلوبة بوضوح أكثر.", axAttachImgEditFailed: "تعذر تعديل الصورة", axAttachImgAskWhat: "صورة عن شو؟ وصفلي اللي تبيه", axAttachImgGenFailed: "تعذر إنشاء الصورة", axAttachNewTopic: "موضوع جديد", axAttachBackTopic: "عودة إلى موضوع سابق", axAttachNetDrop: "انقطع الاتصال لحظة أثناء الرد 📡 — أعد إرسال سؤالك وسيصلك الجواب.", axAttachHistRename: "إعادة تسمية", axAttachHistNewName: "الاسم الجديد للمشروع:", axAttachDecorFacade: "🏡 واجهة منزل", axAttachDecorPool: "🏊 مسبح وجلسة", axAttachDecorPergola: "⛺ مظلة وبرجولا", axAttachDecorBbq: "🔥 شواء وجلسة نار", axAttachDecorRooftop: "🌇 سطح روف", axAttachDecorPathway: "🪴 ممر ومدخل خارجي", stWriting: "✍️ المزوّد يكتب الآن…", stGenVideo: "🎬 ينشئ الفيديو داخل المحادثة…", stCarry: "🛠️ ينفّذ…", stGithub: "🐙 يحمّل من GitHub: {repo}…", stAnalyze: "🔎 يقرأ {n} ملفًّا · {lines} سطرًا ويفكّر…", axChatcliStAnalyzeWriting: "✍️ يكتب التحليل… {n} حرفًا", axChatcliGenwImageHint: "جاري توليد الصورة", axChatcliGenwImageExpect: "الصور تاخذ ~٣٠ ثانية", axChatcliGenwImageS1: "نفهم طلبك…", axChatcliGenwImageS2: "نرسم التفاصيل…", axChatcliGenwImageS3: "نلوّن المشهد…", axChatcliGenwFinal: "اللمسات الأخيرة ✨", axChatcliGenwSlow: "ما زال يتولّد — الاتصال أبطأ من المعتاد…", axChatcliGenwVideoHint: "جاري توليد الفيديو", axChatcliGenwVideoExpect: "الفيديو ياخذ ١-٣ دقائق", axChatcliGenwVideoS1: "نبني المشاهد…", axChatcliGenwVideoS2: "نحرّك الإطارات…", axChatcliGenwVideoS3: "نركّب الحركة…", axChatcliGenwVideoSlow: "ما زال يتولّد — المشاهد السينمائيّة تاخذ وقتًا…", axChatcliGenwStylesHint: "جاري توليد الأنماط", axChatcliGenwStylesExpect: "الأنماط تاخذ ~٤٥ ثانية", axChatcliGenwStylesS1: "نحلّل ملامح الصورة…", axChatcliGenwStylesS2: "نطبّق الأنماط…", axChatcliGenwStylesS3: "نضبط الإضاءة…", axChatcliGenwFashionHint: "جاري تصميم الإطلالة", axChatcliGenwFashionExpect: "الإطلالات تاخذ ~٤٠ ثانية", axChatcliGenwFashionS1: "نفهم ذوقك…", axChatcliGenwFashionS2: "نرسم القطع…", axChatcliGenwFashionS3: "ننسّق الإطلالة…", axChatcliGenwSec: "ث", axChatcliSnapKindMenu: "قائمة طعام", axChatcliSnapKindApp: "واجهة تطبيق", axChatcliSnapKindDesign: "تصميم", axChatcliSnapKindForm: "نموذج", axChatcliSnapKindList: "قائمة", axChatcliSnapKindOther: "محتوى", axChatcliSnapRead: "📸 قرأتُ من الصورة: **{kind}**", axChatcliSnapCounts: "• {s} قسم · {n} صنف", axChatcliSnapScreens: "• {n} شاشة", axChatcliSnapUnsure: "⚠️ {n} عنصر غير واضح في الصورة — راجعه بعد البناء.", axChatcliSnapBadImage: "صورة غير مقروءة", axChatcliSnapReading: "📸 يقرأ الصورة بدقة (الأسعار والنصوص حرفيًا)…", axChatcliSnapReadFail: "لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية", axChatcliSnapBuilding: "🏗️ يبني من المقروء…", axChatcliSnapNoCode: "لم يصل كود صالح — حاول مرة ثانية", axChatcliSnapTitle: "من الصورة 📸", axChatcliSnapDone: "✅ بنيته لك — افتح المعاينة، وراجع الأسعار والنصوص، وقل لي أي تعديل.", axChatcliSnapFail: "تعذّر البناء من الصورة — حاول مرّة ثانية", axChatcliAttReadFail: "تعذّر قراءة الملف{why}. تأكد أنه محمّل على جهازك فعلًا وليس على السحابة فقط، ثم أعد المحاولة.", axChatcliAttEmpty: "الملف فارغ أو تعذّر فتحه.", axChatcliAttZipBig: "الملف {size} م.ب — الحد {max} م.ب للتحليل على الخادم. احذف مجلدات مثل node_modules وأعد الضغط.", axChatcliAttZipFail: "فشل التحليل (HTTP {status})", axChatcliCopyLinkPrompt: "انسخ الرابط:", axChatcliPfResetConfirm: "تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.", axChatcliPfLessonLoading: "🎓 معلمك يجهز درسًا على {sym} بالأرقام الحية…", axChatcliPfLessonFail: "تعذر الدرس الآن — حاول بعد قليل.", axChatcliCsTitle: "تحليل الكود وتقييمه", axChatcliCsMenu: "تحليل", axChatcliCsMenuTitle: "تحليل الكود وتقييمه بالذكاء الاصطناعي", axChatcliCsPickFiles: "اختر ملفّات أو zip", axChatcliCsCurrent: "كود المشروع الحالي", axChatcliCsPaste: "الصق كودًا", axChatcliCsAdd: "أضف", axChatcliCsPasteName: "اسم الملفّ (مثال app.js)", axChatcliCsPastePh: "الصق الكود هنا…", axChatcliCsAsk: "ركّز على شيء معيّن؟ (اختياري)", axChatcliCsGithub: "رابط GitHub", axChatcliCsGithubPh: "https://github.com/owner/repo أو رابط مجلّد أو ملفّ", axChatcliCsGithubAdd: "أضف من GitHub", axChatcliCsGithubBad: "رابط GitHub غير مفهوم", axChatcliCsAskPh: "مثال: الأمان فقط، أو الأداء في دالة الحفظ، أو هل يصلح للإنتاج؟", axChatcliCsGo: "حلّل وقيّم كلّ شيء", axChatcliCsNote: "يُقرأ كلّ ملفّ سطرًا سطرًا ويُحلَّل من ستّ زوايا (الصحّة، الأمان، الأداء، الوضوح، الصيانة، أفضل الممارسات) ثمّ يُقيَّم من ١٠٠ مع أفضل خطوة تالية. الطلب يُحسب رسالةً واحدة من رصيدك اليوميّ.", axChatcliCsNoFiles: "اختر ملفًّا أو الصق كودًا أوّلًا", axChatcliCsTooBig: "أكبر من الحدّ — تُخطّي: ", axChatcliCsZipBig: "الأرشيف أكبر من ٣ ميجابايت", axChatcliCsNoProject: "لا يوجد كود في المشروع الحالي", axChatcliCsReading: "يقرأ الملفّات…", axChatcliCsSec: "ث", axChatcliCsFiles: "ملفّ", axChatcliCsLines: "سطر", axChatcliCsScore: "الدرجة", axChatcliCsVerdict: "الحكم", axChatcliCsStrengths: "نقاط القوّة", axChatcliCsIssues: "المشاكل", axChatcliCsRecs: "أفضل ما تفعله الآن", axChatcliCsRanking: "ترتيب الملفّات — الأفضل أوّلًا", axChatcliCsMetrics: "قياسات آليّة", axChatcliCsNoIssues: "لا مشاكل مؤثّرة — الكود نظيف.", axChatcliCsBest: "★ الأفضل", axChatcliCsFix: "الإصلاح", axChatcliCsFixBtn: "أصلح أهمّ المشاكل", axChatcliCsDownload: "تنزيل التقرير", axChatcliCsCopy: "نسخ", axChatcliCsCopied: "نُسخ", axChatcliCsAgain: "تحليل جديد", axChatcliCsEnginePro: "المحرّك الاحترافيّ", axChatcliCsEngineFree: "ردّ مجاني", axChatcliCsFail: "تعذّر التحليل: ", axChatcliCsUnparsed: "لم يصل تقرير مُهيكل — هذا نصّ النموذج كما هو:", axChatcliCsSkipped: "تُخطّيت", axChatcliCsUpgrade: "اشترك للنسخة الاحترافية", axChatcliCsSignup: "سجّل مجانًا", axChatcliCsCommentRatio: "نسبة التعليقات", axChatcliCsTruncated: "مقتطع", axChatcliCsDeep: "التحليل التفصيليّ — ملفًّا ملفًّا ودالّةً دالّة", axChatcliCsFreeNote: "هذا تقرير الوضع المجانيّ. النسخة الاحترافيّة تحلّل بعمق أكبر وبملفّات أكبر.", axChatcliCsReadNote: "قرأ بنفسه: {n} فتحًا وتفتيشًا في {r} جولة · {f} ملفًّا متاحًا للقراءة", axChatcliCsFixAsk: "أصلح هذه المشاكل التي كشفها التحليل:", axChatcliCsSevCritical: "حرِج", axChatcliCsSevHigh: "عالٍ", axChatcliCsSevMedium: "متوسّط", axChatcliCsSevLow: "منخفض", axChatcliCsSevInfo: "ملاحظة", axChatcliCsCatCorrectness: "الصحّة", axChatcliCsCatSecurity: "الأمان", axChatcliCsCatPerformance: "الأداء", axChatcliCsCatReadability: "الوضوح", axChatcliCsCatMaintainability: "الصيانة", axChatcliCsCatBestPractices: "أفضل الممارسات", axVoiceSessionEnded: "انتهت جلستك — سجّل الدخول من جديد.", axVoiceBasicFallback: "الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️", imgReadyTitle: "✅ الصورة جاهزة", fileReadyTitle: "✅ الملف جاهز", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح", imgPreparing: "⏳ جارٍ تجهيز الصورة…",
     adStudioTitle: 'استوديو الإعلانات',
     adStudioHint: 'استوديو الإعلانات — اصنع إعلانك بالمحادثة',
     appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
@@ -6451,7 +6462,7 @@ const I18N = {
     copyCode: 'Copy',
     copyCodeTitle: 'Copy code',
     copiedMsg: 'Copied ✅',
-    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", sheetCopyImg: "Copy image", sheetCopyLink: "Copy link", sheetCopied: "Copied", sheetCopyFail: "Copy failed", sheetShareFail: "Share failed — try Download", sheetDlDesktop: "Downloaded — find it in your Downloads folder", axAuthBadCredentials: "Incorrect username, email or password", axAuthNameTaken: "Username already taken", axAuthNameReserved: "This username is reserved", axAuthNameBad: "Username contains characters that aren’t allowed (such as * ? [ ] or a comma)", axAuthSignupShort: "Username must be at least 3 characters and password at least {n} characters", axAuthSession: "Session expired, please log in again", axAuthNotFound: "Account not found", axAuthPwShort: "Enter your current password and a new password (at least {n} characters)", axAuthPwWrong: "Current password is incorrect", axAuthMailFailed: "Could not send the email, try again later", axAuthMailOff: "Mail service is not configured — contact the app admin", axAuthNoEmailPhone: "No email is registered for this account — recover it with your linked phone number", axAuthNoRecovery: "This account has no email or phone number linked, so it cannot be recovered from here", axAuthForgotSent: "If this email is linked to an account, a reset link will reach you within minutes.", axAuthForgotSentTo: "A reset link was sent to {email}", axAuthResetShort: "Invalid link or password too short (at least {n} characters)", axAuthResetBad: "The link is invalid or expired, request a new one", axAuthBanned: "This account has been suspended by the admin", axAuthBadOtp: "Invalid or expired code", axAuthWaOff: "WhatsApp linking is not set up yet — try Telegram", axAuthTgOff: "Telegram linking is not set up", axAuthTooLong: "Input too long", axBootEnterId: "Please enter your username or email", axBootWait: "Please wait…", axBootCheckEmail: "Check your email", axBootFillAll: "Please fill in all fields", axBootFillBoth: "Please fill in both fields", axBootSigningIn: "Signing in…", axBootGoogleFailed: "Couldn't complete the Google sign-in ({code}) — please try again", axBootGoogleUnverified: "Your Google account email is not verified — verify it, then try again", axBootGoogleCancelled: "You cancelled the Google sign-in", axBootGoogleInBrowser: "Finish signing in with Google in the browser, then come back here — you will be signed in automatically.", axBootSecurityCheck: "Couldn't complete sign-in (security check). Please try again.", axBootAdminMsg: "Message from the administration", axBootBanned: "This account has been suspended by the administration", axBootSending: "Sending…", axBootCodeSent: "Code sent to {email}", axBootVerify: "Verify", axBootSendFailed: "Couldn't send the code", axBootEnterCode: "Enter the verification code", axBootVerifying: "Verifying…", axBootBadCode: "Invalid code", axBridgeGitBusy: "A git operation (publish, merge or reset) is running on the bridge — wait for it to finish, then try again.", axBridgeMergeKept: "The working copy was left as is: it has unpublished changes or commits, so it was not reset to the main branch.", axEduCapGuest: "You’ve reached today’s free limit — sign in or come back tomorrow.", axEduCapUser: "You’ve reached today’s limit — come back tomorrow.", axEduErrSlow: "This took longer than expected — try again now; it usually works right away.", axToolsDocTooBig: "The file is larger than {n} MB — compress or split it, then upload it again.", axSearchSessionExpired: "Your session has expired — please sign in again.", axSearchEmBadEvent: "Couldn't read the meeting time — add it to your calendar manually.", axSearchEmScope30: "No primary mail in the last 7 days — showing all inbox mail from the last 30 days.", axSearchEmScopeLatest: "No mail in the last 30 days — showing the latest inbox mail.", axSearchEmScopeEmpty: "Connected ✅ but this inbox is completely empty.", axSearchEmLinkDenied: "Gmail wasn't connected — the permission was declined on the Google page.", axSearchEmLinkScopes: "Connecting needs all the requested permissions (reading and sending mail) — connect Gmail again and allow them all.", axSearchEmLinkFailed: "Couldn't connect Gmail — please try connecting again.", axSearchPfNoCash: "Not enough virtual cash: you have {cash} and this trade needs {cost}", axSearchPfNoShares: "You don't own that many — you have {qty} shares of {sym}", axSearchPfLimit: "You've reached today's trade limit ({limit}) — come back tomorrow 🌙", axSearchCxReportTitle: "Construction project report", axSearchCxBuiltArea: "{n} m² built", axSearchCxPlotArea: "{n} m² plot", axSearchCxBoq: "📊 Bill of quantities", axSearchCxDetails: "📋 Details and cost", axSearchCxFooter: "Initial concept only — not a substitute for a licensed engineer or an official building permit. Issued by the om ai app.", axStudengImgFailed: "The image could not be generated this time. Please try again.", axStudengImgBusy: "Image generation is busy right now. Please try again in a moment.", axVideoNarrMissing: "⚠️ Narration is missing from {k} of {n} scenes.", axVideoCooldown: "🕒 One video every few minutes. Try again in about {m} min.", axVideoBusyRetry: "⏳ The AI engine is busy, retrying ({a}/{m})...", axVideoBusyRetryScene: "⏳ The AI engine is busy, retrying scene {i} ({a}/{m})...", axStudcliSigTitle: "My Signature", axStudcliSigMenuTitle: "My Signature — craft and share it", axStudcliSigPh: "Type your name…", axStudcliSigYourName: "Your name", axStudcliSigName: "Name", axStudcliSigSize: "Size", axStudcliSigSlant: "Slant", axStudcliSigInk: "Ink", axStudcliSigFlourish: "Flourish", axStudcliSigDownload: "Download transparent PNG", axStudcliSigNote: "Transparent background · works offline once the font loads · no credits.", axStudcliSigCopied: "Copied — paste it in any chat.", axStudcliSigFontRuqaa: "Ruqaa", axStudcliSigFontThuluth: "Thuluth", axStudcliSigFontDiwani: "Diwani", axStudcliSigFontNaskh: "Naskh", axStudcliSigFontKufi: "Kufi", axStudcliSigFontFarsi: "Nastaliq", imgReadyTitle: "✅ Image ready", fileReadyTitle: "✅ File ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open", imgPreparing: "⏳ Preparing the image…",
+    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", sheetCopyImg: "Copy image", sheetCopyLink: "Copy link", sheetCopied: "Copied", sheetCopyFail: "Copy failed", sheetShareFail: "Share failed — try Download", sheetDlDesktop: "Downloaded — find it in your Downloads folder", axAuthBadCredentials: "Incorrect username, email or password", axAuthNameTaken: "Username already taken", axAuthNameReserved: "This username is reserved", axAuthNameBad: "Username contains characters that aren’t allowed (such as * ? [ ] or a comma)", axAuthSignupShort: "Username must be at least 3 characters and password at least {n} characters", axAuthSession: "Session expired, please log in again", axAuthNotFound: "Account not found", axAuthPwShort: "Enter your current password and a new password (at least {n} characters)", axAuthPwWrong: "Current password is incorrect", axAuthMailFailed: "Could not send the email, try again later", axAuthMailOff: "Mail service is not configured — contact the app admin", axAuthNoEmailPhone: "No email is registered for this account — recover it with your linked phone number", axAuthNoRecovery: "This account has no email or phone number linked, so it cannot be recovered from here", axAuthForgotSent: "If this email is linked to an account, a reset link will reach you within minutes.", axAuthForgotSentTo: "A reset link was sent to {email}", axAuthResetShort: "Invalid link or password too short (at least {n} characters)", axAuthResetBad: "The link is invalid or expired, request a new one", axAuthBanned: "This account has been suspended by the admin", axAuthBadOtp: "Invalid or expired code", axAuthWaOff: "WhatsApp linking is not set up yet — try Telegram", axAuthTgOff: "Telegram linking is not set up", axAuthTooLong: "Input too long", axBootEnterId: "Please enter your username or email", axBootWait: "Please wait…", axBootCheckEmail: "Check your email", axBootFillAll: "Please fill in all fields", axBootFillBoth: "Please fill in both fields", axBootSigningIn: "Signing in…", axBootGoogleFailed: "Couldn't complete the Google sign-in ({code}) — please try again", axBootGoogleUnverified: "Your Google account email is not verified — verify it, then try again", axBootGoogleCancelled: "You cancelled the Google sign-in", axBootGoogleInBrowser: "Finish signing in with Google in the browser, then come back here — you will be signed in automatically.", axBootSecurityCheck: "Couldn't complete sign-in (security check). Please try again.", axBootAdminMsg: "Message from the administration", axBootBanned: "This account has been suspended by the administration", axBootSending: "Sending…", axBootCodeSent: "Code sent to {email}", axBootVerify: "Verify", axBootSendFailed: "Couldn't send the code", axBootEnterCode: "Enter the verification code", axBootVerifying: "Verifying…", axBootBadCode: "Invalid code", axBridgeGitBusy: "A git operation (publish, merge or reset) is running on the bridge — wait for it to finish, then try again.", axBridgeMergeKept: "The working copy was left as is: it has unpublished changes or commits, so it was not reset to the main branch.", axEduCapGuest: "You’ve reached today’s free limit — sign in or come back tomorrow.", axEduCapUser: "You’ve reached today’s limit — come back tomorrow.", axEduErrSlow: "This took longer than expected — try again now; it usually works right away.", axToolsDocTooBig: "The file is larger than {n} MB — compress or split it, then upload it again.", axSearchSessionExpired: "Your session has expired — please sign in again.", axSearchEmBadEvent: "Couldn't read the meeting time — add it to your calendar manually.", axSearchEmScope30: "No primary mail in the last 7 days — showing all inbox mail from the last 30 days.", axSearchEmScopeLatest: "No mail in the last 30 days — showing the latest inbox mail.", axSearchEmScopeEmpty: "Connected ✅ but this inbox is completely empty.", axSearchEmLinkDenied: "Gmail wasn't connected — the permission was declined on the Google page.", axSearchEmLinkScopes: "Connecting needs all the requested permissions (reading and sending mail) — connect Gmail again and allow them all.", axSearchEmLinkFailed: "Couldn't connect Gmail — please try connecting again.", axSearchPfNoCash: "Not enough virtual cash: you have {cash} and this trade needs {cost}", axSearchPfNoShares: "You don't own that many — you have {qty} shares of {sym}", axSearchPfLimit: "You've reached today's trade limit ({limit}) — come back tomorrow 🌙", axSearchCxReportTitle: "Construction project report", axSearchCxBuiltArea: "{n} m² built", axSearchCxPlotArea: "{n} m² plot", axSearchCxBoq: "📊 Bill of quantities", axSearchCxDetails: "📋 Details and cost", axSearchCxFooter: "Initial concept only — not a substitute for a licensed engineer or an official building permit. Issued by the om ai app.", axStudengImgFailed: "The image could not be generated this time. Please try again.", axStudengImgBusy: "Image generation is busy right now. Please try again in a moment.", axVideoNarrMissing: "⚠️ Narration is missing from {k} of {n} scenes.", axVideoCooldown: "🕒 One video every few minutes. Try again in about {m} min.", axVideoBusyRetry: "⏳ The AI engine is busy, retrying ({a}/{m})...", axVideoBusyRetryScene: "⏳ The AI engine is busy, retrying scene {i} ({a}/{m})...", axStudcliSigTitle: "My Signature", axStudcliSigMenuTitle: "My Signature — craft and share it", axStudcliSigPh: "Type your name…", axStudcliSigYourName: "Your name", axStudcliSigName: "Name", axStudcliSigSize: "Size", axStudcliSigSlant: "Slant", axStudcliSigInk: "Ink", axStudcliSigFlourish: "Flourish", axStudcliSigDownload: "Download transparent PNG", axStudcliSigNote: "Transparent background · works offline once the font loads · no credits.", axStudcliSigCopied: "Copied — paste it in any chat.", axStudcliSigFontRuqaa: "Ruqaa", axStudcliSigFontThuluth: "Thuluth", axStudcliSigFontDiwani: "Diwani", axStudcliSigFontNaskh: "Naskh", axStudcliSigFontKufi: "Kufi", axStudcliSigFontFarsi: "Nastaliq", axUicoreImgAsPdf: "This reply is too long for one image — saving it as a PDF instead", axUicorePyLoadFail: "Could not load the Python runtime — check your connection and press “Run code” to try again", axShellDeleteSelected: "⚠️ The selected items ({n}) will be permanently deleted. Are you sure?", axAttachImgOpenedTab: "Image opened in a new tab — long-press it, then Share", axAttachImgLongPress: "Long-press the image, then Share", axAttachImgCopied: "Image copied — paste it anywhere", axAttachImgSavedSend: "Saved to Downloads — send it from there to any app", axAttachLinkPasteIn: "Link copied — paste it in {app}", axAttachAppMessages: "Messages", axAttachAppEmail: "Email", axAttachMailSubject: "Image", axAttachTheApp: "the app", axAttachSavedAttachIn: "Saved to Downloads — attach it in {app}", axAttachBrowserRefused: "Browser refused the file", axAttachSendImage: "Send image", axAttachSentAsFile: "Sent as a file — no link, no card", axAttachSentAsLink: "A direct image link will be sent to the app you pick", axAttachShareDevice: "Share via device apps", axAttachLinkFailed: "Could not prepare the link", axAttachDownloadImage: "Download image", axAttachOpenChrome: "Open in Chrome", axAttachImgAutoCopied: "Image copied — paste it after opening the app", axAttachBinary: "This file format can't be read as text — send it as PDF, DOCX, XLSX, TXT or an image.", axAttachPastedCode: "Pasted code", axAttachPastedText: "Pasted text", axAttachCutShort: "truncated", axAttachPasteToast: "Converted to an attachment — tap it to view", axAttachImgDropped: "The connection dropped before the image arrived — please try again.", axAttachImgStopped: "Image generation stopped.", axAttachDrawingImage: "Generating your image…", axAttachExactWording: "Send the exact wording you want on the image, and I will reproduce it verbatim.", axAttachImgFailedNow: "Image generation failed", axAttachImgFailedRetry: "Image generation failed — please try again.", axAttachAnotherVersion: "Creating another version…", axAttachAnotherFailed: "Could not create another version — try again.", axAttachVidLogin: "Please log in first to create videos.", axAttachSecretTag: "secret removed", axAttachSecretToast: "The secret was removed from your message — never paste secrets in chat", axAttachWaitPending: "Please wait until the attachments finish processing", axAttachAnalyzingImage: "Analyzing image...", axAttachLogoFetching: "Fetching the original logo from live search…", axAttachImgsFetching: "Fetching real images from live search…", axAttachLogoFound: "Here is the original logo from live search 👇 Tap the image to view it large, or download it directly.", axAttachImgsFound: "Here are real images from live search 👇 Tap any image to view it large, or download it directly.", axAttachLogoNotFound: "Could not find the logo via live search 😕 Try writing the organization name more clearly (e.g. \"Dubai Police logo\").", axAttachLogoFetchFail: "Could not fetch the logo right now — try again.", axAttachTcEmiratiMan: "Emirati man", axAttachTcEmiratiWoman: "Emirati woman", axAttachTcRobot: "Robot", axAttachTcBoy: "Boy", axAttachTcGirl: "Girl", axAttachTcGrandpa: "Grandpa", axAttachTcPickTitle: "Pick a talking character", axAttachTcPickSub: "Pick a ready character, or upload your photo.", axAttachTcUploadOwn: "Or upload your own photo", axAttachTcAttachHint: "Attach your photo, then resend the same request with the line you want the character to say.", axAttachTcLoadFail: "Could not load the character, try again.", axAttachTcSeconds: "{n}s", axAttachTcOptsTitle: "Talking character options", axAttachTcMotion: "Character motion:", axAttachTcStatic: "Static (talk only)", axAttachTcMoving: "Moving", axAttachTcDuration: "Video duration:", axAttachTcMore: "I want a longer / more video", axAttachTcStart: "Start", axAttachTcPaidMore: "Longer videos and extra options are available on paid plans — open ⚙️ → Subscription to upgrade and create longer, higher-quality videos.", axAttachTcCartoonizing: "Turning your photo into a cartoon character…", axAttachTcCartoonFail: "Could not cartoonize the image, try a clearer photo.", axAttachTcCartoonReady: "Cartoon character ready ✅ now animating it to talk…", axAttachTcAnimating: "Animating the character to talk with voice… 1–3 minutes", axAttachTcNoBalance: "Not enough balance for a talking video.", axAttachVidTimeout: "Video generation timed out, please try again.", axAttachTcSafety: "Content rejected by safety filters — try another photo", axAttachVidFailed: "Video generation failed", axAttachTcAnimatingShort: "Animating with voice…", axAttachTcReady: "Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)", axAttachVidAskWhat: "A video about what? Describe the scene you want", axAttachVidCreating: "Creating video… this can take 1–3 minutes", axAttachVidDaily: "Daily video limit reached, try again tomorrow.", axAttachVidSafety: "Content rejected by safety filters — try a calmer description or remove the person photo", axAttachVidCreatingShort: "Creating video…", axAttachVidReady: "Your video is ready ✅ (link valid 24h — download it to keep it)", axAttachTextNoRoom: "There is no room to make it bigger here without covering faces — want me to move the text up or down?", axAttachTextStyleFail: "Could not update the text styling.", axAttachPrayerFail: "Could not author the prayer accurately. Please try again.", axAttachEditingBg: "Editing background…", axAttachWritingText: "Writing text…", axAttachTextAddFail: "Could not add text to image.", axAttachBgChangeFail: "I wrote it on your photo, but the background change did not work this time — want me to try again?", axAttachTextSwapFail: "Could not swap the text this time — retry or describe the target word more clearly.", axAttachImgEditFailed: "Image edit failed", axAttachImgAskWhat: "An image of what? Describe what you want", axAttachImgGenFailed: "Image generation failed", axAttachNewTopic: "New topic", axAttachBackTopic: "Back to an earlier topic", axAttachNetDrop: "Connection dropped for a moment 📡 — resend your question.", axAttachHistRename: "Rename", axAttachHistNewName: "New project name:", axAttachDecorFacade: "🏡 House Facade", axAttachDecorPool: "🏊 Pool & Patio", axAttachDecorPergola: "⛺ Pergola Seating", axAttachDecorBbq: "🔥 BBQ & Firepit", axAttachDecorRooftop: "🌇 Rooftop Terrace", axAttachDecorPathway: "🪴 Outdoor Pathway", stWriting: "✍️ Writing the reply now…", stGenVideo: "🎬 Creating the video in the chat…", stCarry: "🛠️ Working on it…", stGithub: "🐙 Loading from GitHub: {repo}…", stAnalyze: "🔎 Reading {n} files · {lines} lines and thinking…", axChatcliStAnalyzeWriting: "✍️ Writing the analysis… {n} characters", axChatcliGenwImageHint: "Generating image", axChatcliGenwImageExpect: "images usually take ~30s", axChatcliGenwImageS1: "Understanding your request…", axChatcliGenwImageS2: "Drawing the details…", axChatcliGenwImageS3: "Coloring the scene…", axChatcliGenwFinal: "Final touches ✨", axChatcliGenwSlow: "Still generating — slower than usual…", axChatcliGenwVideoHint: "Generating video", axChatcliGenwVideoExpect: "video usually takes 1-3 min", axChatcliGenwVideoS1: "Building the scenes…", axChatcliGenwVideoS2: "Animating the frames…", axChatcliGenwVideoS3: "Compositing the motion…", axChatcliGenwVideoSlow: "Still rendering — cinematic scenes take time…", axChatcliGenwStylesHint: "Generating styles", axChatcliGenwStylesExpect: "styles usually take ~45s", axChatcliGenwStylesS1: "Reading your features…", axChatcliGenwStylesS2: "Applying the styles…", axChatcliGenwStylesS3: "Tuning the light…", axChatcliGenwFashionHint: "Designing the look", axChatcliGenwFashionExpect: "looks usually take ~40s", axChatcliGenwFashionS1: "Reading your taste…", axChatcliGenwFashionS2: "Sketching the pieces…", axChatcliGenwFashionS3: "Styling the look…", axChatcliGenwSec: "s", axChatcliSnapKindMenu: "food menu", axChatcliSnapKindApp: "app screen", axChatcliSnapKindDesign: "design", axChatcliSnapKindForm: "form", axChatcliSnapKindList: "list", axChatcliSnapKindOther: "content", axChatcliSnapRead: "📸 Read from the image: **{kind}**", axChatcliSnapCounts: "• {s} sections · {n} items", axChatcliSnapScreens: "• {n} screens", axChatcliSnapUnsure: "⚠️ {n} unclear items in the image — review them after building.", axChatcliSnapBadImage: "Unreadable image", axChatcliSnapReading: "📸 Reading the image precisely (prices and text word for word)…", axChatcliSnapReadFail: "I couldn't read the image — take it in better light and try again", axChatcliSnapBuilding: "🏗️ Building from what was read…", axChatcliSnapNoCode: "No valid code arrived — try again", axChatcliSnapTitle: "From the photo 📸", axChatcliSnapDone: "✅ Built it for you — open the preview, check the prices and text, and tell me any changes.", axChatcliSnapFail: "Couldn't build from the image — try again", axChatcliAttReadFail: "Couldn't read the file{why}. Make sure it's actually on your device, not only in the cloud, then try again.", axChatcliAttEmpty: "The file is empty or could not be opened.", axChatcliAttZipBig: "The file is {size} MB — the limit for server analysis is {max} MB. Remove folders like node_modules and zip it again.", axChatcliAttZipFail: "Analysis failed (HTTP {status})", axChatcliCopyLinkPrompt: "Copy the link:", axChatcliPfResetConfirm: "Start over with a virtual 100K? Your current portfolio and trades will be erased.", axChatcliPfLessonLoading: "🎓 Your tutor is preparing a lesson on {sym} with live numbers…", axChatcliPfLessonFail: "The lesson isn't available right now — try again shortly.", axChatcliCsTitle: "Code analysis & rating", axChatcliCsMenu: "Analyze", axChatcliCsMenuTitle: "AI code analysis and rating", axChatcliCsPickFiles: "Pick files or zip", axChatcliCsCurrent: "Current project code", axChatcliCsPaste: "Paste code", axChatcliCsAdd: "Add", axChatcliCsPasteName: "File name (e.g. app.js)", axChatcliCsPastePh: "Paste code here…", axChatcliCsAsk: "Focus on something? (optional)", axChatcliCsGithub: "GitHub link", axChatcliCsGithubPh: "https://github.com/owner/repo or a folder/file link", axChatcliCsGithubAdd: "Add from GitHub", axChatcliCsGithubBad: "Unrecognized GitHub link", axChatcliCsAskPh: "e.g. security only, performance of the save function, or is it production-ready?", axChatcliCsGo: "Analyze & rate everything", axChatcliCsNote: "Every file is read line by line and reviewed from six angles (correctness, security, performance, readability, maintainability, best practices), then scored out of 100 with the best next step. Counts as one message of your daily quota.", axChatcliCsNoFiles: "Pick a file or paste code first", axChatcliCsTooBig: "Over the size limit — skipped: ", axChatcliCsZipBig: "Archive is larger than 3 MB", axChatcliCsNoProject: "The current project has no code", axChatcliCsReading: "Reading files…", axChatcliCsSec: "s", axChatcliCsFiles: "files", axChatcliCsLines: "lines", axChatcliCsScore: "Score", axChatcliCsVerdict: "Verdict", axChatcliCsStrengths: "Strengths", axChatcliCsIssues: "Issues", axChatcliCsRecs: "Best things to do now", axChatcliCsRanking: "File ranking — best first", axChatcliCsMetrics: "Automatic metrics", axChatcliCsNoIssues: "No significant issues — clean code.", axChatcliCsBest: "★ Best", axChatcliCsFix: "Fix", axChatcliCsFixBtn: "Fix the top issues", axChatcliCsDownload: "Download report", axChatcliCsCopy: "Copy", axChatcliCsCopied: "Copied", axChatcliCsAgain: "New analysis", axChatcliCsEnginePro: "Pro engine", axChatcliCsEngineFree: "Free reply", axChatcliCsFail: "Analysis failed: ", axChatcliCsUnparsed: "No structured report arrived — raw model text:", axChatcliCsSkipped: "skipped", axChatcliCsUpgrade: "Upgrade to Pro", axChatcliCsSignup: "Sign up free", axChatcliCsCommentRatio: "comment ratio", axChatcliCsTruncated: "truncated", axChatcliCsDeep: "Detailed analysis — file by file, function by function", axChatcliCsFreeNote: "This is the free-tier report. The Pro engine analyzes deeper and accepts larger files.", axChatcliCsReadNote: "Read on its own: {n} opens & searches across {r} rounds · {f} files available to read", axChatcliCsFixAsk: "Fix these issues found by the analysis:", axChatcliCsSevCritical: "Critical", axChatcliCsSevHigh: "High", axChatcliCsSevMedium: "Medium", axChatcliCsSevLow: "Low", axChatcliCsSevInfo: "Info", axChatcliCsCatCorrectness: "Correctness", axChatcliCsCatSecurity: "Security", axChatcliCsCatPerformance: "Performance", axChatcliCsCatReadability: "Readability", axChatcliCsCatMaintainability: "Maintainability", axChatcliCsCatBestPractices: "Best practices", axVoiceSessionEnded: "Your session has ended — please sign in again.", axVoiceBasicFallback: "HD voice isn't available right now — continuing in basic mode 🎙️", imgReadyTitle: "✅ Image ready", fileReadyTitle: "✅ File ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open", imgPreparing: "⏳ Preparing the image…",
     uploadCodeTitle: 'Upload a code file (HTML or Python)',
     newProject: '+ New Project',
     promptPlaceholder: 'Type your message here ...',
@@ -7222,7 +7233,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=774'; /* v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (774): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات (١٤ لغة) */
+    sc.src = 'i18n/' + lg + '.js?v=774'; /* v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (774): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات والتصدير والمحادثة والصوت (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -15586,26 +15597,6 @@ function showPriceTab(tab){
 }
 window.showPriceTab = showPriceTab;
 
-/* v-audit-shell (cli-ui-shell-5): «باقتك الحالية» كانت ثابتة على بطاقة «مجاني» في الجزء (partials-settings)، و«اشترك الآن» على باقة المشترك
-   نفسها — فيُدعى المشترك لشراء باقته مرّة ثانية. بطاقة الباقة الفعليّة (__omranPlan) تأخذ الزرّ المعطّل بمفتاحه، وزرّ «مجاني» يُخفى لمن ليس
-   مجّانيًّا أو ضيفًا، وكلّ زرّ يعود كما كان حين تتغيّر الباقة. عرض فقط: الأسعار والدفع (openCheckout) والخادم كما هي. */
-function pricingMarkCurrentPlan(plan){
-  const p = String(plan || '').toLowerCase();
-  const cur = (!p || p === 'free' || p === 'guest') ? 'free' : p;
-  document.querySelectorAll('#pricingSection .priceTab[data-tab="chat"] .pcard .pbtn').forEach(function(b){
-    if(b.dataset.planCard === undefined){
-      b.dataset.planCard = ((b.getAttribute('onclick') || '').match(/openCheckout\('(\w+)'\)/) || [])[1] || 'free';
-      b.dataset.planCls = b.className;
-      b.dataset.planKey = b.getAttribute('data-i18n') || '';
-    }
-    const id = b.dataset.planCard, on = id === cur, key = on ? 'planCurrentBtn' : b.dataset.planKey;
-    b.className = on ? 'pbtn ghost' : b.dataset.planCls;
-    b.disabled = on || id === 'free';
-    b.style.visibility = (id === 'free' && !on) ? 'hidden' : '';
-    if(key && b.getAttribute('data-i18n') !== key){ b.setAttribute('data-i18n', key); b.textContent = t(key); }
-  });
-}
-
 // v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
 // v-media-merge: قسم «صور وفيديو» يعرض رصيد المدموجة، ومتبقّي باقة الصور أو الفيديو القديمة ما دامت سارية.
 function renderMediaPlanStatus(media){
@@ -15647,7 +15638,6 @@ async function refreshPointsWallet(){
   const val = document.getElementById('pricingWalletValue');
   if(!row || !val) return;
   const token = authGet('aiapp_auth_token');
-  pricingMarkCurrentPlan(token ? window.__omranPlan : 'guest'); // v-audit-shell: فورًا بالمعروف، ثمّ بردّ الرصيد
   if(!token){ row.style.display = 'none'; return; }
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
@@ -15659,8 +15649,7 @@ async function refreshPointsWallet(){
       window.__pointsBalance = d.unlimited ? Infinity : d.points;
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
       renderMediaPlanStatus(d.media);
-      pricingMarkCurrentPlan(window.__omranPlan); // v-audit-shell
-    } else { row.style.display = 'none'; pricingMarkCurrentPlan('guest'); }
+    } else { row.style.display = 'none'; }
   }catch(e){ /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
@@ -18421,22 +18410,48 @@ let recordedChunks = [];
 let micStream = null;
 
 let activeMicBtn = null;
+/* v-audit-voice (cli-voice-4): isListening لا تصير true إلّا بعد وصول إذن المايك، فالنقرة الثانية من نقرة مزدوجة (أو نقرة
+   أثناء فتح بطيء لسمّاعة بلوتوث) كانت تفتح مسارًا ثانيًا يستبدل micStream وmediaRecorder، فيبقى الأوّل مضاءً حتّى إعادة التحميل
+   ويدفع مسجّله اليتيم مقاطعه في التسجيلات التالية. الآن علم «يبدأ» قبل الانتظار، ولكلّ مسجّل مصفوفته. */
+let micStarting = false;
 async function startMicRecording(targetBtn){
-  activeMicBtn = targetBtn || btnMic;
-  micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  let mimeType = '';
-  for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
-    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
-  }
-  mediaRecorder = mimeType ? new MediaRecorder(micStream, { mimeType }) : new MediaRecorder(micStream);
-  recordedChunks = [];
-  mediaRecorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) recordedChunks.push(e.data); };
-  // timeslice=1000ms: collect audio progressively. On some Android/Chrome builds a
-  // single final chunk gets truncated on stop(), so only the first 1-2 words survive.
-  mediaRecorder.start(1000);
-  isListening = true;
-  activeMicBtn.classList.remove('maha-orb-idle');
-  activeMicBtn.classList.add('recording');
+  if(micStarting || isListening) return;
+  micStarting = true;
+  let stream = null;
+  try{
+    activeMicBtn = targetBtn || btnMic;
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let mimeType = '';
+    for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
+    }
+    const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const chunks = [];
+    rec.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
+    // timeslice=1000ms: collect audio progressively. On some Android/Chrome builds a
+    // single final chunk gets truncated on stop(), so only the first 1-2 words survive.
+    rec.start(1000);
+    micStream = stream; mediaRecorder = rec; recordedChunks = chunks;
+    isListening = true;
+    activeMicBtn.classList.remove('maha-orb-idle');
+    activeMicBtn.classList.add('recording');
+  }catch(e){
+    if(stream){ try{ stream.getTracks().forEach(tr => tr.stop()); }catch(_){ __swallow(_, 'voice:mic-start-cleanup'); } } // مسجّل تعذّر = لا مايك مفتوح
+    throw e;
+  }finally{ micStarting = false; }
+}
+/* v-audit-voice (cli-voice-8): نصّ فشل التفريغ من الحالة والرمز وحدهما — كان نصّ الخادم يُعرض كما هو: عربيّ لكلّ اللغات،
+   ويذكر «المزوّد» و«مفتاحك الخاص»، و500 باسم مزوّد؛ وعطل الشبكة أو المهلة كان «المتصفّح لا يدعم إدخال الصوت». */
+function voiceTr(key, en, ar){
+  const v = t(key);
+  return (v && v !== key) ? v : ((typeof lang === 'string' && lang === 'ar') ? ar : en);
+}
+function voiceSttErrorText(status, data){
+  const code = (data && typeof data.error === 'string') ? data.error : '';
+  if(code === 'unavailable') return t('svcPaused');
+  if(status === 402 || code === 'daily_limit') return t('portraitLimitReached');
+  if(status === 401 || code === 'auth_required') return voiceTr('axVoiceSessionEnded', 'Your session has ended — please sign in again.', 'انتهت جلستك — سجّل الدخول من جديد.');
+  return t('mahaSttError');
 }
 
 function blobToBase64(blob){
@@ -18582,16 +18597,19 @@ function handleVoiceVideoIntent(promptText){
 async function stopMicRecordingAndTranscribe(autoRoute){
   if(!mediaRecorder) return;
   const btn = activeMicBtn || btnMic;
-  const mimeType = mediaRecorder.mimeType || 'audio/webm';
-  const finished = new Promise((resolve) => { mediaRecorder.onstop = resolve; });
-  mediaRecorder.stop();
+  // v-audit-voice (cli-voice-4): هذا المسجّل ومساره ومقاطعه وحدها — ونقرة إيقاف ثانية أثناء الانتظار لا تكرّر
+  const rec = mediaRecorder, stream = micStream, chunks = recordedChunks;
+  mediaRecorder = null; micStream = null;
+  const mimeType = rec.mimeType || 'audio/webm';
+  const finished = new Promise((resolve) => { rec.onstop = resolve; });
+  rec.stop();
   await finished;
-  if(micStream){ micStream.getTracks().forEach(tr => tr.stop()); micStream = null; }
+  if(stream){ stream.getTracks().forEach(tr => tr.stop()); }
   isListening = false;
   btn.classList.remove('recording');
   btn.classList.add('transcribing');
   try{
-    const blob = new Blob(recordedChunks, { type: mimeType });
+    const blob = new Blob(chunks, { type: mimeType });
     if(blob.size < 500){ btn.classList.remove('transcribing'); return; } // too short / no audio
     const audioBase64 = await blobToBase64(blob);
     const res = await fetch('/api/stt', {
@@ -18600,10 +18618,10 @@ async function stopMicRecordingAndTranscribe(autoRoute){
       signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
       body: JSON.stringify({ audioBase64, mimeType, lang, langHint: (autoRoute ? undefined : lang), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
     btn.classList.remove('transcribing');
     if(!res.ok){
-      alert(data && data.error === 'unavailable' ? t('svcPaused') : (data && typeof data.error === 'string' && data.error !== 'failed') ? data.error : t('micNotSupported')); // v-maha-paused: لا [object Object]
+      alert(voiceSttErrorText(res.status, data)); // v-audit-voice (cli-voice-8): لا نصّ الخادم الخامّ — v-maha-paused: ولا [object Object]
       return;
     }
     const transcript = (data && data.text ? data.text : '').trim();
@@ -18637,7 +18655,7 @@ async function stopMicRecordingAndTranscribe(autoRoute){
     }
   } catch(e){
     btn.classList.remove('transcribing');
-    alert(t('micNotSupported'));
+    alert(voiceSttErrorText(0, null)); // v-audit-voice (cli-voice-8): عطل الشبكة أو المهلة ليس «المتصفّح لا يدعم»
   }
 }
 
@@ -18674,24 +18692,34 @@ if(btnVoiceTabMic){
 // MediaRecorder and transcribes via the same server-side /api/stt endpoint,
 // then appends the transcript directly into its target field's value. ----
 const miniMicStates = {};
+const miniMicPending = {}; // v-audit-voice (cli-voice-4): هدف ينتظر إذن المايك — النقرة الثانية لا تفتح مسارًا ثانيًا
 
 async function miniMicStart(btn, targetId){
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  let mimeType = '';
-  for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
-    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
-  }
-  const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-  const chunks = [];
-  recorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
-  recorder.start();
-  miniMicStates[targetId] = { stream, recorder, chunks, mimeType };
-  btn.classList.add('recording');
+  if(miniMicPending[targetId] || miniMicStates[targetId]) return;
+  miniMicPending[targetId] = true;
+  let stream = null;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let mimeType = '';
+    for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
+    }
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
+    recorder.start();
+    miniMicStates[targetId] = { stream, recorder, chunks, mimeType };
+    btn.classList.add('recording');
+  }catch(e){
+    if(stream){ try{ stream.getTracks().forEach(tr => tr.stop()); }catch(_){ __swallow(_, 'voice:mini-start-cleanup'); } }
+    throw e;
+  }finally{ delete miniMicPending[targetId]; }
 }
 
 async function miniMicStop(btn, targetId){
   const st = miniMicStates[targetId];
   if(!st) return;
+  delete miniMicStates[targetId]; // v-audit-voice: نقرة إيقاف ثانية أثناء الانتظار لا تكرّر
   const finished = new Promise((resolve) => { st.recorder.onstop = resolve; });
   st.recorder.stop();
   await finished;
@@ -18700,7 +18728,6 @@ async function miniMicStop(btn, targetId){
   btn.classList.add('transcribing');
   try{
     const blob = new Blob(st.chunks, { type: st.recorder.mimeType || st.mimeType || 'audio/webm' });
-    delete miniMicStates[targetId];
     if(blob.size < 500){ btn.classList.remove('transcribing'); return; }
     const audioBase64 = await blobToBase64(blob);
     const res = await fetch('/api/stt', {
@@ -18709,10 +18736,10 @@ async function miniMicStop(btn, targetId){
       signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
       body: JSON.stringify({ audioBase64, mimeType: st.mimeType, lang, langHint: lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
     btn.classList.remove('transcribing');
     if(!res.ok){
-      alert(data && data.error === 'unavailable' ? t('svcPaused') : (data && typeof data.error === 'string' && data.error !== 'failed') ? data.error : t('micNotSupported')); // v-maha-paused: لا [object Object]
+      alert(voiceSttErrorText(res.status, data)); // v-audit-voice (cli-voice-8): لا نصّ الخادم الخامّ — v-maha-paused: ولا [object Object]
       return;
     }
     const transcript = (data && data.text ? data.text : '').trim();
@@ -18724,7 +18751,7 @@ async function miniMicStop(btn, targetId){
     }
   } catch(e){
     btn.classList.remove('transcribing');
-    alert(t('micNotSupported'));
+    alert(voiceSttErrorText(0, null)); // v-audit-voice (cli-voice-8)
   }
 }
 
@@ -19415,6 +19442,9 @@ const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat
 let mahaStream = null, mahaMediaRecorder = null, mahaChunks = [];
 let mahaAudioCtx = null, mahaAnalyser = null, mahaVadRaf = null, mahaLastPeakRms = 0, mahaLowMicStreak = 0;
 let mahaCallActive = false, mahaState = 'idle'; // idle | listening | thinking | speaking
+/* v-audit-voice (cli-voice-5): رقم جيل المكالمة — يزيد عند كلّ بدء. الحلقة الأساسيّة ونطقها يأخذانه عند البدء ويخرجان إن تغيّر:
+   mahaCallActive وحده كان يرجع true لمكالمة أُنهيت ثمّ فُتحت أثناء انتظار ردّ النموذج، فتنطق الحلقة القديمة ردّها فيها وتكمل بجانبها. */
+let mahaCallGen = 0;
 let mahaLastActivity = 0; // v-maha-band: آخر كلام أو ردّ — مهلة السكوت تُحسب منه
 let mahaHistory = [];
 let mahaIntroduced = false;
@@ -19829,7 +19859,7 @@ let mahaReplyLang = (typeof lang !== 'undefined' ? lang : 'ar');
 // تثبيت لغة الرد (المسار الاحتياطي): يمنع تقلب اللغة من كشف خاطئ واحد.
 let mahaLangLocked = false, mahaLangCandidate = null;
 
-async function mahaSpeak(text){
+async function mahaSpeak(text, gen){
   return new Promise(async (resolve) => {
     try{
       const resp = await fetch('/api/tts', {
@@ -19837,6 +19867,8 @@ async function mahaSpeak(text){
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: 'normal' /* v-speed-chat-only: «بطيء وسريع للدردشة فقط، ليس لمها وعبدالله» */, token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
       });
+      // v-audit-voice (cli-voice-5): الصوت وصل بعد إنهاء المكالمة أو بدء غيرها — لا يُشغَّل فيها ولا يُكتب في سطرها
+      if(gen !== undefined && (gen !== mahaCallGen || !mahaCallActive)){ resolve(); return; }
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
         // أجابت فعلًا — نعرض نص ردها على الشاشة مدة تكفي لقراءته ثم نكمل.
@@ -19848,6 +19880,7 @@ async function mahaSpeak(text){
         return;
       }
       const blob = await resp.blob();
+      if(gen !== undefined && (gen !== mahaCallGen || !mahaCallActive)){ resolve(); return; } // v-audit-voice
       const url = URL.createObjectURL(blob);
       const audio = mahaAudioEl;
       mahaCurrentAudio = audio;
@@ -19874,32 +19907,40 @@ async function mahaSpeak(text){
 
 // Records the mic and uses volume-based silence detection to know when the
 // user finished talking (hands-free - no button press needed per turn).
-async function mahaRecordUntilSilence(){
+/* v-audit-voice (cli-voice-5): المايك والمسجّل والمحلّل والمقاطع محلّيّة لهذا الدور (والعامّة مقابض فقط يطفئها mahaEndCall)،
+   وgen رقم مكالمته: مايك وصل بعد بدء مكالمة أخرى يُطفأ ولا يستبدل مايكها، ودورٌ صار قديمًا لا يمسّ مواردها. */
+async function mahaRecordUntilSilence(gen){
+  const live = () => mahaCallActive && (gen === undefined || gen === mahaCallGen);
   // نفس تحسينات المايك التي يطلبها الوضع الحديث: كانت الغائبة هنا، فصوت
   // المستخدم الهادئ يصل ضعيفًا وينرمى كأنه ضجيج — «أول مرة ما ترد».
-  mahaStream = await mahaGetUserMediaRetry({
+  const stream = await mahaGetUserMediaRetry({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
   });
+  if(!live()){ stream.getTracks().forEach(tr => tr.stop()); return null; }
+  mahaStream = stream;
   let mimeType = '';
   for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
     if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
   }
-  mahaMediaRecorder = mimeType ? new MediaRecorder(mahaStream, { mimeType }) : new MediaRecorder(mahaStream);
-  mahaChunks = [];
-  mahaMediaRecorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) mahaChunks.push(e.data); };
+  const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  const chunks = [];
+  mahaMediaRecorder = rec; mahaChunks = chunks;
+  rec.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
 
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  mahaAudioCtx = new AudioCtx();
-  const source = mahaAudioCtx.createMediaStreamSource(mahaStream);
-  mahaAnalyser = mahaAudioCtx.createAnalyser();
-  mahaAnalyser.fftSize = 2048;
-  source.connect(mahaAnalyser);
-  const dataArr = new Uint8Array(mahaAnalyser.fftSize);
+  const actx = new AudioCtx();
+  mahaAudioCtx = actx;
+  const source = actx.createMediaStreamSource(stream);
+  const analyser = actx.createAnalyser();
+  mahaAnalyser = analyser;
+  analyser.fftSize = 2048;
+  source.connect(analyser);
+  const dataArr = new Uint8Array(analyser.fftSize);
 
-  const finished = new Promise((resolve) => { mahaMediaRecorder.onstop = resolve; });
+  const finished = new Promise((resolve) => { rec.onstop = resolve; });
   // Collect progressively: some Android/Chrome builds truncate a single final
     // chunk on stop(), making the fallback hear only part of the first turn.
-    mahaMediaRecorder.start(1000);
+    rec.start(1000);
 
   const startTime = Date.now();
   // العتبات كانت ثابتة وعالية (0.022 صمت / ثانية كلام كاملة) — بغرفة هادئة
@@ -19918,8 +19959,8 @@ async function mahaRecordUntilSilence(){
 
   await new Promise((resolve) => {
     const tick = () => {
-      if(!mahaCallActive || mahaMediaRecorder.state !== 'recording'){ resolve(); return; }
-      mahaAnalyser.getByteTimeDomainData(dataArr);
+      if(!live() || rec.state !== 'recording'){ resolve(); return; }
+      analyser.getByteTimeDomainData(dataArr);
       let sumSq = 0;
       for(let i = 0; i < dataArr.length; i++){ const v = (dataArr[i] - 128) / 128; sumSq += v * v; }
       const rms = Math.sqrt(sumSq / dataArr.length);
@@ -19949,17 +19990,25 @@ async function mahaRecordUntilSilence(){
     };
     mahaVadRaf = requestAnimationFrame(tick);
   });
+  if(!live()){ // v-audit-voice: دور مكالمة سابقة — يُطفئ ما فتحه هو وحده، لا مقابض المكالمة الجديدة
+    if(rec.state === 'recording'){ try{ rec.stop(); }catch(e){ __swallow(e, 'maha:stale-rec'); } }
+    stream.getTracks().forEach(tr => tr.stop());
+    if(mahaAudioCtx === actx) mahaStopVad(); // غير ذلك أغلقه mahaEndCall أصلًا، أو المقبض لدور أحدث
+    if(mahaStream === stream) mahaStream = null;
+    return null;
+  }
   if(mahaOrbEl) mahaOrbEl.style.transform = '';
   mahaLastPeakRms = peakRms;
   // (أُزيل هنا كاشف الجنس من نبرة الصوت: كان يحسب ارتباطًا ذاتيًا ثقيلًا جدًا
   //  على الجوال طوال المكالمة ونتيجته مهملة منذ v493 — المستخدم يختار الصوت.)
 
   mahaStopVad();
-  if(mahaMediaRecorder.state === 'recording') mahaMediaRecorder.stop();
+  if(rec.state === 'recording') rec.stop();
   await finished;
-  mahaStopStream();
+  stream.getTracks().forEach(tr => tr.stop());
+  if(mahaStream === stream) mahaStream = null;
 
-  const blob = new Blob(mahaChunks, { type: mahaMediaRecorder.mimeType || mimeType || 'audio/webm' });
+  const blob = new Blob(chunks, { type: rec.mimeType || mimeType || 'audio/webm' });
   return blob;
 }
 
@@ -20957,11 +21006,15 @@ function mahaStartMicMeter(stream){
       while(mahaMicVoiced.length && mahaMicVoiced[0][0] < tickAt - 10000) mahaMicVoiced.shift();
       mahaMicLastTick = tickAt;
       fill.style.width = lvl + '%';
-      if(lvl > 8){ mahaMicSilenceStart = Date.now(); if(mahaMicWarned){ mahaMicWarned = false; const st = document.getElementById('mahaStateLabel'); if(st) st.textContent = ''; } }
+      /* v-audit-voice (cli-voice-9): التحذير كان عربيًّا ثابتًا لكلّ اللغات، ويظهر ومها تتكلّم (إلغاء الصدى يُسكت المايك وهو سليم)،
+         ويمسح سطر الحالة حين يتكلّم المستخدم. الآن: السكوت يُعدّ في الاستماع وحده، والنصّ mahaLowMic القائم بالـ١٤ لغة،
+         وزواله يعيد «أستمع» — وتغيّر الحالة كتب سطره بنفسه. */
+      const notListening = mahaRtPlaying || mahaState !== 'listening';
+      if(lvl > 8 || notListening){ mahaMicSilenceStart = Date.now(); if(mahaMicWarned){ mahaMicWarned = false; if(!notListening) mahaSetState('listening'); } }
       else if(!mahaMicWarned && Date.now() - mahaMicSilenceStart > 7000){
         mahaMicWarned = true;
         const st = document.getElementById('mahaStateLabel');
-        if(st){ const mw = t('axChatcliMahaMicWarn'); st.textContent = (mw && mw !== 'axChatcliMahaMicWarn') ? mw : '⚠️ صوتك ما يوصل — تحقق من المايك'; } // v-audit-chatcli (x-i18n-5): بلغة الواجهة
+        if(st) st.textContent = '⚠️ ' + t('mahaLowMic'); // v-audit-voice (cli-voice-9) + v-audit-chatcli (x-i18n-5): mahaLowMic القائم بالـ١٤ لغة
       }
       mahaMicMeterRaf = requestAnimationFrame(tick);
     })();
@@ -21443,6 +21496,7 @@ async function mahaLookCamera(question){
 
 async function mahaHandleRtFunctionCall(ev){
   if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
+  const askDc = mahaRtDc; // v-audit-voice (cli-voice-5): النتيجة لقناة الجلسة التي طلبتها وحدها
   let args = {};
   try{ args = JSON.parse(ev.arguments || '{}'); }catch(e){ /* ignore */ }
 
@@ -21500,6 +21554,8 @@ async function mahaHandleRtFunctionCall(ev){
 
   // v-maha-img-wait: الأداة قد تأخذ ٢٠ث وأكثر، والمكالمة قد أُغلقت أثناءها (mahaRtDc = null) — لا نتيجة لقناة مغلقة، بصمت
   if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
+  // v-audit-voice (cli-voice-5): أُنهيت المكالمة وفُتحت غيرها أثناء الأداة — نتيجتها وresponse.create كانا يصلان الجلسة الجديدة فتردّ مها بلا سؤال
+  if(mahaRtDc !== askDc) return;
   try{
     mahaRtDc.send(JSON.stringify({
       type: 'conversation.item.create',
@@ -21684,12 +21740,16 @@ function mahaEndRealtimeCall(){
 }
 
 async function mahaCallLoop(){
-  while(mahaCallActive){
+  // v-audit-voice (cli-voice-5): حلقة هذه المكالمة وحدها — تخرج إن انتهت أو بدأت غيرها أثناء أيّ انتظار
+  const gen = mahaCallGen;
+  const live = () => mahaCallActive && gen === mahaCallGen;
+  while(live()){
     mahaSetState('listening');
     let blob;
     try{
-      blob = await mahaRecordUntilSilence();
+      blob = await mahaRecordUntilSilence(gen);
     }catch(e){
+      if(!live()) break; // خطأ مايك مكالمة سابقة لا يُنهي الجديدة
       // إن فشل شيء بعد فتح المايك (مثلاً MediaRecorder غير مدعوم) كان المايك
       // يظل «حيًّا» والمؤشر شغالًا حتى إعادة تحميل الصفحة — نطفيه هنا دائمًا.
       mahaStopVad();
@@ -21701,7 +21761,7 @@ async function mahaCallLoop(){
       alert(__m);
       break;
     }
-    if(!mahaCallActive) break;
+    if(!live()) break;
     if(!blob || blob.size < 800 || mahaLastPeakRms < 0.018){
       // Essentially silent/noise-only turn - the mic didn't pick up real speech,
       // just background noise. Don't send it to speech-to-text at all (avoids
@@ -21724,12 +21784,11 @@ async function mahaCallLoop(){
         signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
         body: JSON.stringify({ audioBase64, mimeType: blob.type, lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
-      const data = await res.json();
-      if(!mahaCallActive) break;
+      const data = await res.json().catch(() => null);
+      if(!live()) break;
       if(!res.ok){
         console.error('[maha] stt failed:', res.status, data);
-        const detail = (data && typeof data.error === 'string') ? data.error : ('HTTP ' + res.status); // v-maha-paused: لا [object Object]
-        mahaSetState('error', detail === 'unavailable' ? t('svcPaused') : (t('mahaSttError') + ' (' + detail.slice(0, 80) + ')')); // v-maha-paused: رصيد المزوّد نفد
+        mahaSetState('error', voiceSttErrorText(res.status, data)); // v-audit-voice (cli-voice-8): مترجم من الحالة والرمز، بلا نصّ الخادم بين قوسين — v-maha-paused: unavailable = svcPaused
         await new Promise(r => setTimeout(r, 3000));
         continue;
       }
@@ -21761,7 +21820,7 @@ async function mahaCallLoop(){
       if(data && data.lowConfidence){
         console.log('[maha] low-confidence transcript, asking user to repeat:', transcript);
         mahaSetState('speaking');
-        await mahaSpeak(t('mahaAskRepeat'));
+        await mahaSpeak(t('mahaAskRepeat'), gen);
         continue;
       }
 
@@ -21793,6 +21852,7 @@ async function mahaCallLoop(){
           __voiceRewrite = true;
         }
         const imgResult = await mahaGenerateOrEditImage(__voicePrompt, editMode, __voiceText, __voiceFont, __voiceColor, __voiceRewrite, __voicePos, __voiceTextRemove);
+        if(!live()) break; // v-audit-voice: لا ردّ صورة في تاريخ مكالمة أخرى
         let imgReply;
         if(imgResult.ok){
           imgReply = editMode ? t('mahaImageEditedReply') : t('mahaImageReadyReply');
@@ -21802,7 +21862,7 @@ async function mahaCallLoop(){
         mahaHistory.push({ role: 'assistant', content: imgReply });
         if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
         mahaSetState('speaking');
-        await mahaSpeak(imgReply);
+        await mahaSpeak(imgReply, gen);
         continue;
       }
 
@@ -21843,9 +21903,9 @@ async function mahaCallLoop(){
       let lastErr = null;
       for(const providerKey of order){
         try{ reply = await callProviderAI(providerKey, messages); lastErr = null; break; }
-        catch(e){ console.error('[maha] provider', providerKey, 'failed:', e); lastErr = e; continue; }
+        catch(e){ console.error('[maha] provider', providerKey, 'failed:', e); lastErr = e; if(!live()) break; continue; }
       }
-      if(!mahaCallActive) break;
+      if(!live()) break; // v-audit-voice: ردّ سؤال مكالمة سابقة لا يُنطق في الجديدة
       if(lastErr && !reply){
         console.error('[maha] all providers failed');
         mahaSetState('error', t('mahaConnectionError'));
@@ -21858,7 +21918,7 @@ async function mahaCallLoop(){
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       mahaSetState('speaking');
-      await mahaSpeak(reply);
+      await mahaSpeak(reply, gen);
     }catch(e){ console.error('[maha] turn error', e); }
   }
 }
@@ -22122,6 +22182,7 @@ async function mahaStartCallInner(mode){
   const __mahaName = (__mahaLang === 'ar' || __mahaLang === 'ur') ? 'مها' : 'Maha';
   if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : __mahaName;
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
+  mahaCallGen++; // v-audit-voice (cli-voice-5): حلقة مكالمة سابقة لم تخرج بعد تخرج عند أوّل فحص
   mahaCallActive = true;
   if(mahaCallScreenEl){
     mahaCallScreenEl.style.display = 'flex';
@@ -22167,7 +22228,8 @@ async function mahaStartCallInner(mode){
     mahaEndRealtimeCall();
     // v-maha-mute: السقوط للوضع الأساسي كان صامتًا (وسم صغير فقط) — نبّه
     // المتصل لحظةً حتى لا يظن المكالمة معلّقة.
-    try{ mahaSetState('thinking', 'الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️'); }catch(e2){ __swallow(e2, 'maha:fallback-note'); }
+    // v-audit-voice (cli-voice-9): بلغة الواجهة — كان عربيًّا ثابتًا لكلّ اللغات (والاحتياط حتّى يصل المفتاح بالـ١٤ لغة)
+    try{ mahaSetState('thinking', voiceTr('axVoiceBasicFallback', "HD voice isn't available right now — continuing in basic mode 🎙️", 'الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️')); }catch(e2){ __swallow(e2, 'maha:fallback-note'); }
   }
   if(!mahaCallActive) return;
   if(!window.MediaRecorder){
@@ -22655,11 +22717,15 @@ function omranAttachT(key, ar, en){
 /* v-audit-attach (cli-chat-attach-4): حقل الإرفاق بلا accept، وكلّ ما ليس صورة ولا PDF ولا أرشيفًا ولا فيديو كان يُقرأ نصًّا — رسالة
    صوتيّة ٢ م.ب صارت ٤٥٠ ألف حرف (١٩٧ ألف منها U+FFFD) تُرسل للنموذج في كلّ رسالة، والبطاقة تعرضها ملفًّا نصّيًّا. الثنائيّ يُعرف
    بنوعه أو امتداده قبل القراءة، أو بعيّنة النصّ بعدها (NUL، أو أكثر من ٢٪ حروفًا تالفة في أوّل ٨ آلاف حرف)، فيصير شريحة خطأ مترجمة.
-   لا .dot ولا .pot في القائمة: مخطّط Graphviz وقالب ترجمة gettext نصّان؛ قالبا Word/PowerPoint بهما تكشفهما العيّنة. */
-const OMRAN_BINARY_EXT_RE = /\.(?:mp3|m4a|aac|ogg|oga|opus|wav|flac|amr|wma|aiff?|midi?|doc|xls|xlt|ppt|pps|odt|ods|odp|pages|numbers|epub|rar|7z|gz|tgz|bz2|xz|tar|zst|cab|apk|aab|xapk|ipa|exe|msi|dll|so|dylib|bin|dmg|iso|psd|sketch|fig|xcf|ttf|otf|woff2?|eot|class|dex|pyc|wasm|db|sqlite3?|mdb|accdb)$/i;
+   لا .dot ولا .pot في القائمة: مخطّط Graphviz وقالب ترجمة gettext نصّان؛ قالبا Word/PowerPoint بهما تكشفهما العيّنة.
+   ولا doc/xls/xlt/ppt/pps: كشوف البنوك و«تصدير إلى Excel» في الأنظمة الحكوميّة وERP جدول HTML أو SpreadsheetML محفوظ ‎.xls‎،
+   و«تصدير إلى Word» HTML أو RTF محفوظ ‎.doc‎ — نصّ كان يُقرأ قبل الإصلاح؛ وملفّ Office 97 الحقيقيّ (OLE2) فيه NUL في أوّل ٥١٢ بايتًا
+   دائمًا فتكشفه العيّنة. وقوائم التشغيل النصّيّة (‎.m3u‎ بنوع audio/x-mpegurl، و‎.pls‎ بنوع audio/x-scpls) خارج قاعدة audio. */
+const OMRAN_BINARY_EXT_RE = /\.(?:mp3|m4a|aac|ogg|oga|opus|wav|flac|amr|wma|aiff?|midi?|odt|ods|odp|pages|numbers|epub|rar|7z|gz|tgz|bz2|xz|tar|zst|cab|apk|aab|xapk|ipa|exe|msi|dll|so|dylib|bin|dmg|iso|psd|sketch|fig|xcf|ttf|otf|woff2?|eot|class|dex|pyc|wasm|db|sqlite3?|mdb|accdb)$/i;
 function omranIsBinaryAttach(file, text){
   try{
-    if(text == null) return /^(?:audio|font)\//i.test((file && file.type) || '') || OMRAN_BINARY_EXT_RE.test((file && file.name) || '');
+    const ty = String((file && file.type) || '');
+    if(text == null) return (/^(?:audio|font)\//i.test(ty) && !/(?:mpegurl|scpls)$/i.test(ty)) || OMRAN_BINARY_EXT_RE.test((file && file.name) || '');
     const s = String(text).slice(0, 8000);
     if(!s) return false;
     if(s.indexOf('\u0000') !== -1) return true;
@@ -42853,6 +42919,26 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
 
     /* v-audit-chatcli (x-i18n-5): خطأ نصّه للمستخدم بلغة الواجهة؛ وغيره (نصّ مزوّد أو خادم خامّ) سطر عامّ مترجَم ويُسجَّل في الطرفيّة */
     function uiErr(k, fb) { var e = new Error(S.tx(k, fb)); e.snapUi = true; return e; }
+    /* v-audit-chatcli-r (x-i18n-5): ردّ الوسيط المرفوض سببه للمستخدم لا «صوّرها بإضاءة أوضح» — 401 جلسة منتهية و402 حدّ يوميّ:
+       العربيّ يرى نصّ الخادم العربيّ كما كان (كأرشيف المرفقات في app-09)، وغيره مفتاحه القائم بالـ١٤ لغة (الضيف والمجّانيّ بسطري
+       المحادثة كـomranPlanLimitMsg، والمشترك حدّ الميزة). وغيرهما (429 زحام المزوّد بعد إعادتين في الخادم، 5xx) سطر عامّ مترجَم،
+       ونصّ الخادم أو المزوّد للطرفيّة. ردّ ناجح لا يُقرأ وحده «صوّرها بإضاءة أوضح». */
+    function httpErr(rd) {
+      var st = (rd && rd.status) || 0, data = (rd && rd.data) || {};
+      if (st < 400) return null;
+      if (data.error) console.warn('[snap] proxy ' + st + ':', data.error.message || data.error);
+      if ((st === 401 || st === 402) && typeof data.error === 'string' && data.error && (typeof lang === 'undefined' || lang === 'ar')) {
+        var e = new Error(data.error); e.snapUi = true; return e;
+      }
+      if (st === 401) return uiErr('portraitNeedLogin', 'يرجى تسجيل الدخول لاستخدام هذه الميزة');
+      if (st === 402) {
+        var pl = window.__omranPlan;
+        if (pl === 'guest') return uiErr('chatGuestLimitMsg', 'سجّل حسابًا مجانيًّا لتبدأ الدردشة.');
+        if (pl === 'free') return uiErr('chatFreeLimitMsg', 'انتهت رسائلك المجانية لليوم. اشترك لترفع حدّك اليوميّ.');
+        return uiErr('portraitLimitReached', 'وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا');
+      }
+      return uiErr('axChatcliSnapFail', 'تعذّر البناء من الصورة — حاول مرّة ثانية');
+    }
 
     function fileToBlock(f) {
       return new Promise(function (resolve, reject) {
@@ -42901,8 +42987,10 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       }
       var content = (blocks && blocks.length) ? blocks.concat([{ type: 'text', text: userText }]) : userText;
       return claudeProxyRequest('claude-sonnet-5', system ? { content: system } : null, [{ role: 'user', content: content }], false)
-        .then(function (res) { return res.json().catch(function () { return {}; }); })
-        .then(function (data) { return { text: textFrom(data), data: data }; });
+        .then(function (res) {
+          return res.json().catch(function () { return {}; })
+            .then(function (data) { return { text: textFrom(data), data: data, status: res.status }; }); /* v-audit-chatcli-r: الحالة لـhttpErr */
+        });
     }
 
     input.addEventListener('change', function () {
@@ -42913,16 +43001,16 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       Promise.all(files.map(fileToBlock)).then(function (blocks) {
         return askText(S.READ_PROMPT, 'اقرأ الصورة/الصور حسب تعليمات النظام وأعد JSON فقط.', blocks);
       }).then(function (rd) {
-        var data = rd.data;
+        var he = httpErr(rd); /* v-audit-chatcli-r: الرفض (دخول/حدّ) بسببه قبل الحكم على الصورة */
+        if (he) throw he;
         var parsed = S.extract(rd.text);
-        if (!parsed) {
-          if (data && data.error) console.warn('[snap] read failed:', data.error.message || data.error); // نصّ المزوّد للطرفيّة لا للمستخدم
-          throw uiErr('axChatcliSnapReadFail', 'لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية');
-        }
+        if (!parsed) throw uiErr('axChatcliSnapReadFail', 'لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية');
         var summary = S.summarize(parsed);
         statusMsg(S.tx('axChatcliSnapBuilding', '🏗️ يبني من المقروء…'));
         return askText(null, S.buildPrompt(parsed), null)
           .then(function (b) {
+            var he2 = httpErr(b); /* v-audit-chatcli-r: البناء طلب ثانٍ يُحسب — حدّه بسببه لا «لم يصل كود صالح» */
+            if (he2) throw he2;
             var code = extractHtml(b.text);
             if (!code) throw uiErr('axChatcliSnapNoCode', 'لم يصل كود صالح — حاول مرة ثانية');
             var cur = {
