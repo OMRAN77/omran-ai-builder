@@ -80,7 +80,7 @@ const block = (src, head, end) => { const i = src.indexOf(head); assert.ok(i >= 
 const TALK = block(SRC, '    if(__wantsTalkChar){\n', '      cur.lastMsgWasImageEdit = false;\n      renderAll(); saveState();\n      return;\n    }');
 const POST = block(SRC, 'async function postWithConfirm(url, payload', '\n}\n');
 const FRIENDLY = block(SRC, 'function __friendlyErr(e){', '\n}\n');
-const HELPER = block(SRC, 'function omranVideoCodeText(', '\n}\n');
+const HELPER = block(SRC, 'function omranVideoCodeText(', '\n}\n') + '\n' + block(SRC, 'function omranAttachT(', '\n}\n'); // v-audit-attach: نصوص الشخصيّة بمفتاح الـ١٤ لغة
 const PRICE = block(SRC, 'async function omranTalkPriceCheck(', '\n}\n');
 const TD = { window: {} };
 vm.runInNewContext(fs.readFileSync(path.join(root, 'js/app-11-video-trends-data.js'), 'utf8'), TD);

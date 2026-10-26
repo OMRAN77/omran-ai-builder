@@ -705,6 +705,20 @@
      فقاعة التفكير («🎬 جاري إنشاء الفيديو…») فبقي بلا بطاقة. نرصد السطر الجاري ونركّب
      بطاقة الفيديو العريضة في الفقاعة نفسها؛ تُرفع معها عند وصول النتيجة. */
   var CHAT_VIDEO_RE = /🎬 (?:جاري إنشاء الفيديو|Creating video)/;
+  /* v-audit-attach (x-i18n-6): سطرا فيديو المحادثة صارا بمفتاح الـ١٤ لغة في app-09 (axAttachVidCreating/axAttachVidCreatingShort) —
+     التعبير الحرفيّ وحده يُسقط البطاقة عن الفرنسيّة والهنديّة وغيرهما، فيُطابَق نصّ اللغة الحاليّة أيضًا (بلا نقاط الختام). */
+  function chatVideoLine(s){
+    if(CHAT_VIDEO_RE.test(s)) return true;
+    if(s.indexOf('🎬') < 0 || typeof t !== 'function') return false;
+    var ks = ['axAttachVidCreating', 'axAttachVidCreatingShort'];
+    for(var i = 0; i < ks.length; i++){
+      var v = '';
+      try{ v = String(t(ks[i]) || ''); }catch(e){ v = ''; }
+      v = v.replace(/[\s….]+$/, '');
+      if(v && v !== ks[i] && s.indexOf(v) !== -1) return true;
+    }
+    return false;
+  }
 
   /* ١٥ أكتوبر ٢٠٢٦ — طلب المالك إرجاع انتظار صور المحادثة لما قبل البطاقة:
      تبقى رسالة «أرسم لك الصورة…» من العارض، بلا عدّاد إضافي. بقية اللوحات كما هي. */
@@ -759,7 +773,7 @@
     for(var ci = 0; ci < cvEls.length; ci++){
       var ctxt = '';
       try{ ctxt = String(cvEls[ci].textContent || ''); }catch(e){ continue; }
-      if(!CHAT_VIDEO_RE.test(ctxt)) continue;
+      if(!chatVideoLine(ctxt)) continue;
       var chost = cvEls[ci].closest ? cvEls[ci].closest('.msg.assistant') : null;
       if(!chost) continue;
       cvFound = true;
