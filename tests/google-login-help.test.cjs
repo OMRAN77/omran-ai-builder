@@ -49,7 +49,7 @@ async function googleSignup(email) {
   const r = { writeHead(c, h) { this.c = c; this.h = h; }, end() {} };
   await cb({ query: { code: 'c', state: 'ab'.repeat(16) } }, r);
   assert.equal(r.c, 302);
-  assert.match(r.h.Location, /gtoken=/, 'حساب Google أُنشئ بالكولباك الحقيقيّ');
+  assert.match(r.h.Location, /gclaim=/, 'حساب Google أُنشئ بالكولباك الحقيقيّ'); // v-audit-auth (srv-auth-10): الويب يعود برمز استلام لا بالرمز نفسه
 }
 
 test('١. الجذر كما في اللقطة: حساب Google يفشل دخوله بالإيميل بالرسالة العامّة نفسها', async () => {

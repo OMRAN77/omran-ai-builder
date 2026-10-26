@@ -79,8 +79,13 @@ async function phoneOwner(phone, o) {
   try {
     const idx = await kvOf(o).kvGetJSON('db/phone-index/' + phone);
     if (!idx || !idx.username) return null;
-    const key = String(idx.username).trim().toLowerCase();
-    const user = await authOf(o).getUser(key);
+    let key = String(idx.username).trim().toLowerCase();
+    let user = await authOf(o).getUser(key);
+    // v-audit-auth (srv-auth-5): تغيير الاسم يترك الفهرس على الاسم القديم (شاهد {deleted, movedTo}) — يُتبع إلى الحساب الحيّ (٣٢ قفزة كالشحن)
+    for (let i = 0; i < 32 && user && user.deleted && user.movedTo; i++) {
+      key = String(user.movedTo).trim().toLowerCase();
+      user = await authOf(o).getUser(key);
+    }
     if (user && !user.deleted && user.phone === phone) return { key, user };
   } catch (e) { /* فهرس متعثّر = لا مالك */ }
   return null;

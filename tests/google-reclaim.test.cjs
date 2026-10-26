@@ -56,11 +56,11 @@ const mkRes = () => { const r = { code: 0, headers: null }; r.writeHead = (c, h)
   auth = fresh.auth;
 
   const r = mkRes();
-  await fresh.cb({ query: { code: 'c', state: 'st' } }, r);
+  await fresh.cb({ query: { code: 'c', state: 'ab'.repeat(16) } }, r); // v-audit-auth (srv-auth-10): state غير صالحة = bad_state، والويب يعود برمز استلام
   check(r.code === 302, 'العودة تحويل 302 لا انهيار');
   const loc = (r.headers && r.headers.Location) || '';
   check(!/gerror=/.test(loc), 'لا gerror — الدخول اكتمل رغم السجلّ المقفل: ' + loc.slice(0, 60));
-  check(/gtoken=/.test(loc) && /state=st/.test(loc), 'ومعه gtoken وstate كما هما');
+  check(/gclaim=[0-9a-f]{32}/.test(loc) && loc.includes('gstate=' + 'ab'.repeat(16)), 'ومعه رمز الاستلام وstate كما هي');
 
   const reborn = await auth.getUser('g_user@example.com');
   check(reborn && reborn.email === 'user@example.com' && reborn.googleAuth === true,
@@ -68,8 +68,8 @@ const mkRes = () => { const r = { code: 0, headers: null }; r.writeHead = (c, h)
 
   // والدخول الثاني بعد الاسترداد طبيعيّ تمامًا
   const r2 = mkRes();
-  await fresh.cb({ query: { code: 'c2', state: 'st2' } }, r2);
-  check(r2.code === 302 && /gtoken=/.test((r2.headers || {}).Location || ''), 'الدخول التالي يمرّ من المسار العاديّ');
+  await fresh.cb({ query: { code: 'c2', state: 'cd'.repeat(16) } }, r2);
+  check(r2.code === 302 && /gclaim=/.test((r2.headers || {}).Location || ''), 'الدخول التالي يمرّ من المسار العاديّ');
 
   console.log('google reclaim tests passed');
 })().catch((e) => { console.error(e); process.exit(1); });
