@@ -1,7 +1,7 @@
 // Stores/removes the browser's Web Push subscription for a logged-in user,
 // so /api/check-reminders can wake them up with a real system notification
 // even when the app/tab is closed. One JSON record per user (db/push-subs/{username}.json).
-const { kvPutJSON } = require('./kv.js');
+const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 
 function subPath(username) {
@@ -27,6 +27,13 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'DELETE') {
+    // v-audit-boot (srv-maha-6): الخروج يرسل عنوان هذا المتصفّح (في الجسم والرابط — بعض الوسطاء يُسقط جسم DELETE). السجلّ واحد
+    // للحساب (آخر جهاز اشترك)، فإن كان لجهاز آخر يبقى: الخروج من الحاسوب لا يُطفئ تذكيرات الجوّال. بلا عنوان: الحذف كما كان.
+    const endpoint = String((req.body && req.body.endpoint) || (req.query && req.query.endpoint) || '');
+    if (endpoint) {
+      const cur = await kvGetJSON(subPath(username));
+      if (cur && cur.endpoint && cur.endpoint !== endpoint) { res.status(200).json({ ok: true, kept: true }); return; }
+    }
     await kvPutJSON(subPath(username), null);
     res.status(200).json({ ok: true });
     return;

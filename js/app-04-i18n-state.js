@@ -916,7 +916,14 @@ let __slimCache = null;
 // الملف والاستدعاء يحدث بعد اكتمال التحميل، فالمرجع آمن وقت التنفيذ.
 let __mirrorAt = 0;
 let __idbSavedAt = 0; /* v-no-purge: آخر حفظ فعلي في IndexedDB — للتباعد مع كبر السجل */
+/* v-audit-boot (cli-boot-4): تبويب حمّل محادثات حساب ثمّ خرج الحساب من تبويب آخر (فمسح الجهاز) — لم يعد في هذا التبويب رمز، والذاكرة
+   ما زالت محادثات الحساب. إغلاقه كان يكتبها من جديد في المرآة وIndexedDB فتظهر للضيف التالي ويرفعها أوّل حساب يدخل. لا كتابة حينها. */
+function __chatsAccountGone(){
+  try{ return !!__chatsLoadedFor && !chatsAuthToken(); }
+  catch(e){ return false; } /* guard-ok — قبل تعريف __chatsLoadedFor (لا نداء متوقَّع قبله): لا حساب محمَّل بعد */
+}
 function __writeChatsMirror(){
+  if(__chatsAccountGone()) return;
   try{ localStorage.setItem('aiapp_projects_slim', JSON.stringify(chatsSlimForServer())); }
   catch(e){ /* guard-ok: المرآة رفاهية إقلاع — امتلاء التخزين لا يكسر الحفظ الأصلي */ }
 }
@@ -924,6 +931,7 @@ window.__writeChatsMirror = __writeChatsMirror;
 function __saveFlush(force){
   if(!__saveDirty) return;
   __saveDirty = false;
+  if(__chatsAccountGone()) return; // v-audit-boot (cli-boot-4): لا تُعاد محادثات حساب خرج من تبويب آخر إلى IndexedDB
   try{ clearTimeout(__saveTimer); }catch(e){ __swallow(e, "save:app-04-i18n-state#11"); }
   __saveTimer = null;
   if(!__idbBroken && window.indexedDB){
@@ -1310,6 +1318,30 @@ function scheduleChatsServerSync(){
   try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, "sync:app-04-i18n-state#32"); }
   __chatsSyncTimer = setTimeout(chatsServerSave, 4000);
 }
+/* v-audit-boot (cli-boot-5): بيانات الجهاز بلا صاحب كانت تُدمج في أيّ حساب يدخل: جلسة (أ) رُفضت عند الإقلاع (٣٠ يومًا أو إيقاف) أو جلسة
+   «لا تتذكّرني» انتهت، فيُحذف الرمز وحده وتبقى محادثاته — ثمّ يدخل (ب) فيضمّ __chatsMergeServer كلّ مشروع محلّيّ إلى حسابه ويرفعه.
+   الآن صاحب البيانات موسوم (DATA_OWNER_KEY): دخول اسم آخر يمسح بيانات السابق بصمت قبل الدمج (المحادثات وIndexedDB والمفضّلة وصورة
+   البطل وما في الذاكرة — ونسخة محادثاته في حسابه على الخادم)، ويُلغي اشتراك الدفع لهذا المتصفّح (تذكيراته). بيانات الضيف (بلا وسم)
+   تُدمج كما كانت، وصاحب البيانات نفسه إن عاد لا يُمسح له شيء (وما لم يُرفع يُرفع). يرجع true إن تولّى المسح ثمّ استأنف بعده. */
+function __chatsOwnerSwitch(resume){
+  let me = '';
+  try{ me = String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase(); }catch(e){ __swallow(e, 'sync:owner-me'); }
+  if(!me) return false;
+  let owner = '';
+  try{ owner = localStorage.getItem(DATA_OWNER_KEY) || ''; }catch(e){ __swallow(e, 'sync:owner-read'); }
+  const mark = () => { try{ localStorage.setItem(DATA_OWNER_KEY, me); }catch(e){ __swallow(e, 'sync:owner-write'); } };
+  if(!owner){ mark(); return false; }
+  if(owner === me) return false;
+  try{ if(typeof window.__pushDropDevice === 'function') window.__pushDropDevice(''); }catch(e){ __swallow(e, 'sync:owner-push'); }
+  Promise.resolve().then(() => window.chatsLogoutWipe({ silent: true })).catch(e => __swallow(e, 'sync:owner-wipe')).then(() => {
+    const tk = chatsAuthToken();
+    if(!tk) return; // خرج أثناء المسح
+    __chatsLoadedFor = tk; // المسح يصفّره
+    mark();
+    resume();
+  });
+  return true;
+}
 window.chatsSyncOnAuth = function(){
   const token = chatsAuthToken();
   if(!token || __chatsLoadedFor === token) return;
@@ -1318,6 +1350,7 @@ window.chatsSyncOnAuth = function(){
   var __waited = 0;
   var __tick = function(){
     if(!window.__localChatsLoaded && __waited < 10000){ __waited += 200; setTimeout(__tick, 200); return; }
+    if(__chatsOwnerSwitch(__tick)) return; // v-audit-boot (cli-boot-5): بعد تحميل IndexedDB (وإلّا عادت بيانات السابق فوق المسح) وقبل الدمج
     chatsServerPull(ok => {
       // v378: فشل التنزيل (شبكة/خطأ سيرفر) → إعادة المحاولة تلقائيًا بعد 8 ثواني.
       if(ok === false){ __chatsLoadedFor = null; setTimeout(function(){ try{ window.chatsSyncOnAuth(); }catch(e){ __swallow(e, "sync:app-04-i18n-state#33"); } }, 8000); return; }
@@ -1341,6 +1374,9 @@ var __chatsLastPull = 0;
    الإعدادات والتعليمات والثيم تبقى (ليست محادثات ولا صورًا). يرجع false إن ألغى. */
 const LOGOUT_WIPE_KEYS = ['aiapp_projects', 'aiapp_projects_slim', 'aiapp_current_id', 'aiapp_provider_projects', 'aiapp_deleted_chats',
   'aiapp_studio_favorites', 'aiapp_fashion_favorites', 'omran_hero_b64', 'omran_hero_mime'];
+/* v-audit-boot (cli-boot-5): صاحب بيانات الجهاز (اسمه بحروف صغيرة) — يُكتب حين تُحمَّل بيانات حساب، ويُزال بالخروج. خارج LOGOUT_WIPE_KEYS
+   لأنّ وجوده وحده ليس «بيانات على الجهاز» تستدعي سؤال الخروج. */
+const DATA_OWNER_KEY = 'aiapp_data_owner';
 function __chatsFlushNow(ms){
   return new Promise(res => {
     let done = false;
@@ -1362,23 +1398,38 @@ function __chatsFlushNow(ms){
     }catch(e){ __swallow(e, 'logout:flush'); fin(false); }
   });
 }
+/* v-audit-boot (cli-video-1): الخروج والدخول لا يعيدان تحميل الصفحة، والمسح كان للتخزين وحده — فصورة بطل الفيلم في المتغيّر والمعاينة
+   تُرسل مع فيديو من يدخل بعده في الجلسة نفسها، وكذا صور الأشخاص في لوحة الترند المفتوحة وملفّ محرّر «كتابة وصوت». يُفرَّغ ما في الذاكرة. */
+function __logoutClearMemory(){
+  try{ if(typeof mahaClearImageRef === 'function') mahaClearImageRef(); }catch(e){ __swallow(e, 'logout:maha'); }
+  try{ if(typeof window.__clearFilmHero === 'function') window.__clearFilmHero(); }catch(e){ __swallow(e, 'logout:hero'); }
+  try{ if(window.omranVideoTrends && typeof window.omranVideoTrends.reset === 'function') window.omranVideoTrends.reset(); }catch(e){ __swallow(e, 'logout:trends'); }
+  try{ if(window.omranVideoEdit && typeof window.omranVideoEdit.reset === 'function') window.omranVideoEdit.reset(); }catch(e){ __swallow(e, 'logout:ved'); }
+}
 function __hasLocalAccountData(){
   if((state.projects || []).some(p => p && Array.isArray(p.messages) && p.messages.length)) return true;
   try{ return LOGOUT_WIPE_KEYS.slice(5).some(k => { const v = localStorage.getItem(k); return !!v && v !== '[]'; }); }catch(e){ return false; }
 }
+/* v-audit-boot: ما ينتهي بانتهاء جلسة الحساب في هذا التبويب — المؤقّتات، وعلم «حساب محمَّل» (بقاؤه بعد خروج بلا محادثات كان سيمنع حفظ
+   الضيف بحارس cli-boot-4)، وما في الذاكرة (cli-video-1). */
+function __chatsForgetSession(){
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, 'logout:sync-timer'); }
+  try{ if(__chatsLivePollTimer){ clearInterval(__chatsLivePollTimer); __chatsLivePollTimer = null; } }catch(e){ __swallow(e, 'logout:live-timer'); }
+  __chatsLoadedFor = null; window.__chatsMergeDone = false; window.__usingSlimProjects = false; __slimCache = null;
+  __logoutClearMemory();
+}
+function __chatsDropOwner(){ try{ localStorage.removeItem(DATA_OWNER_KEY); }catch(e){ __swallow(e, 'logout:owner'); } } // v-audit-boot (cli-boot-5): الجهاز بعده للضيف
 window.chatsLogoutWipe = async function(opts){
   const silent = !!(opts && opts.silent); // v-acct-delete: الحساب حُذف — لا حساب يُرفع إليه ولا سؤال ثانٍ
   if(!silent){
-    if(!__hasLocalAccountData()) return true;
+    if(!__hasLocalAccountData()){ __chatsForgetSession(); __chatsDropOwner(); return true; }
     if(!confirm(t('logoutWipeConfirm'))) return false;
     const synced = await __chatsFlushNow(8000);
     if(!synced && !confirm(t('logoutWipeOffline'))) return false;
   }
-  try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, 'logout:sync-timer'); }
-  try{ if(__chatsLivePollTimer){ clearInterval(__chatsLivePollTimer); __chatsLivePollTimer = null; } }catch(e){ __swallow(e, 'logout:live-timer'); }
-  __chatsLoadedFor = null; window.__chatsMergeDone = false; window.__usingSlimProjects = false; __slimCache = null;
+  __chatsForgetSession();
+  __chatsDropOwner();
   LOGOUT_WIPE_KEYS.forEach(k => { try{ localStorage.removeItem(k); }catch(e){ __swallow(e, 'logout:ls'); } });
-  try{ if(typeof mahaClearImageRef === 'function') mahaClearImageRef(); }catch(e){ __swallow(e, 'logout:maha'); }
   // IndexedDB كلّها (المحادثات ومخزن الصور) — الفتح التالي (حفظ المحادثة الفارغة) يُنتظر خلف الحذف حسب المعيار فيُنشئها جديدة
   await new Promise(res => {
     try{
@@ -1415,6 +1466,22 @@ function __chatsStartLiveSync(){
   try{ document.addEventListener('visibilitychange', onFocus); }catch(e){ __swallow(e, "sync:app-04-i18n-state#35"); }
   try{ window.addEventListener('focus', onFocus); }catch(e){ __swallow(e, "sync:app-04-i18n-state#36"); }
 }
+/* v-audit-boot (cli-boot-4): خروج من تبويب آخر — الرمز أُزيل (أو ظهر رمز بعد غيابه: دخول بعد خروج فاتنا) — وهذا التبويب يحمل محادثات
+   حساب بلا جلسة خاصّة به (sessionStorage): تُفرَّغ من الذاكرة بلا أيّ كتابة (التبويب الآخر مسح الجهاز)، ومعها صورة البطل وما يشبهها.
+   تجديد الجلسة (رمز يحلّ محلّ رمز) لا يمسّ شيئًا. */
+window.addEventListener('storage', function(e){
+  try{
+    if(!e || e.key !== 'aiapp_auth_token' || (e.oldValue && e.newValue) || !__chatsLoadedFor) return;
+    try{ if(sessionStorage.getItem('aiapp_auth_token')) return; }catch(e2){ __swallow(e2, 'logout:other-tab-ss'); }
+    try{ clearTimeout(__saveTimer); }catch(e2){ __swallow(e2, 'logout:other-tab-save'); }
+    __saveTimer = null; __saveDirty = false;
+    __chatsForgetSession();
+    const nid = 'p_' + Date.now();
+    state.projects = [{ id: nid, title: (typeof t === 'function' ? t('defaultProjectTitle') : '') || 'محادثة جديدة', messages: [], code: '' }];
+    state.currentId = nid;
+    try{ renderAll(); }catch(e2){ __swallow(e2, 'logout:other-tab-render'); }
+  }catch(err){ __swallow(err, 'logout:other-tab'); }
+});
 
 function getCurrent(){
   return state.projects.find(p => p.id === state.currentId);

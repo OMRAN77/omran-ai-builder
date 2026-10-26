@@ -331,7 +331,8 @@ test('١٢. العميل يعرض network_changed بلا تعديل ولا نص�
     assert.ok(i > 0, f);
     const poll = s.slice(i, i + 1400);
     assert.ok(/if\(r\.ok\)\{/.test(poll) && poll.includes('} else if(d && d.error) claimFail(d.error);'), f + ': ٢٠٠ بخطأ يصل claimFail');
-    assert.ok(s.includes("'تعذر تسجيل الدخول بجوجل (' + gerror + ')'"), f + ': القالب العامّ يعرض الرمز');
+    // v-audit-boot (cli-boot-6): القالب العامّ صار مفتاحًا بالـ١٤ لغة (كان عربيًّا/إنجليزيًّا) — وما زال يعرض الرمز
+    assert.ok(s.includes("authMsg('axBootGoogleFailed'") && s.includes("{ code: '\\u2066' + code + '\\u2069' }"), f + ': القالب العامّ يعرض الرمز');
     assert.ok(!s.includes('network_changed'), f + ': لا مفتاح ولا نصّ خاصّ');
   }
   for (const f of ['js/app-12-studios.js', 'js/app.bundle.js']) {

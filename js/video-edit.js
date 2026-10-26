@@ -495,9 +495,10 @@
   }
 
   /* ───────── الحالة والواجهة ───────── */
-  var st = { file: null, url: '', dur: 0, vw: 0, vh: 0, items: [], regions: [], nid: 1, written: false, inName: '', probe: null,
+  function stInit(){ return { file: null, url: '', dur: 0, vw: 0, vh: 0, items: [], regions: [], nid: 1, written: false, inName: '', probe: null,
     aSrc: 'none', aFile: null, ttsBlob: null, aMode: 'mix', loop: true, vol: 0.45, origVol: 1, mute: false, hq: false,
-    busy: false, outUrl: '', sel: null, drawMode: false, lastFont: 'default' };
+    busy: false, outUrl: '', sel: null, drawMode: false, lastFont: 'default' }; }
+  var st = stInit();
   var M = null, Q = function(s){ return M ? M.querySelector(s) : null; };
   var COLORS = ['#ffffff', '#ffd400', '#e8b04a', '#000000'];
   var GOLD = 'rgba(212,175,55,.85)';
@@ -675,16 +676,16 @@
       sizeStage(); redraw();
     });
     ['timeupdate', 'seeked', 'loadeddata', 'pause'].forEach(function(ev){ v.addEventListener(ev, redraw); });
-    v.addEventListener('play', function loop(){ redraw(); if(!v.paused && !v.ended && M.classList.contains('open')) requestAnimationFrame(loop); });
+    v.addEventListener('play', function loop(){ redraw(); if(!v.paused && !v.ended && M && M.classList.contains('open')) requestAnimationFrame(loop); });
     K('play').onclick = togglePlay;
     K('seek').addEventListener('input', function(){ seekTo(+this.value || 0); });
     K('seek').addEventListener('pointerdown', function(){ seeking = true; });
     K('seek').addEventListener('change', function(){ seeking = false; syncCtl(); });
     bindCanvas(Q('.ved-stage canvas'));
-    window.addEventListener('resize', function(){ if(M.classList.contains('open')){ sizeStage(); fitPick(); } });
+    window.addEventListener('resize', function(){ if(M && M.classList.contains('open')){ sizeStage(); fitPick(); } }); /* v-audit-boot: النافذة قد تُزال (reset) */
     M.__K = K;
   }
-  function K(k){ return M.__K(k); }
+  function K(k){ return M ? M.__K(k) : null; }
   function vid(){ return Q('.ved-stage video'); }
   function cnv(){ return Q('.ved-stage canvas'); }
   function maxMB(){ return isMobile() ? 80 : 200; }
@@ -750,6 +751,18 @@
     setDrawMode(false);
     var v = vid(); try{ v.pause(); }catch(e){ /* guard-ok */ }
     M.classList.remove('open');
+  }
+  /* v-audit-boot (cli-video-1): الخروج (chatsLogoutWipe في app-04) يفرّغ المحرّر — فيديو الحساب السابق ونصوصه وصوته ونتيجته لا تبقى
+     لمن يدخل بعده في الجلسة نفسها (الخروج لا يعيد تحميل الصفحة). النافذة تُزال وتُبنى من جديد عند الفتح التالي، والحالة من أوّلها. */
+  function reset(){
+    if(!M) return;
+    try{ close(); }catch(e){ sw(e, 'ved:reset-close'); }
+    try{ var ap = K('aPrev'); if(ap && ap.src) URL.revokeObjectURL(ap.src); }catch(e){ sw(e, 'ved:reset-aprev'); }
+    [st.url, st.outUrl].forEach(function(u){ if(u) try{ URL.revokeObjectURL(u); }catch(e){ sw(e, 'ved:reset-url'); } });
+    if(ff && st.inName) rmf(st.inName);
+    try{ M.remove(); }catch(e){ sw(e, 'ved:reset-remove'); }
+    M = null;
+    st = stInit();
   }
 
   function loadVideo(f){
@@ -1205,7 +1218,7 @@
     addMenuBtn();
     var tries = 0;
     (function poll(){ if(watchVmk() || ++tries > 60) return; setTimeout(poll, 1000); })();
-    window.omranVideoEdit = { open: open };
+    window.omranVideoEdit = { open: open, reset: reset };
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
