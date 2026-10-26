@@ -714,7 +714,8 @@ module.exports = async function handler(req, res) {
       const t = gh.parseTarget({ url: body.githubUrl, ref: body.githubRef });
       if (!t) { send({ error: 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ.' }); finish(); return; }
       if (t.kind === 'pr' || t.kind === 'issue') { send({ error: 'أعطِ رابط مستودع أو مجلّد أو ملفّ على GitHub — لا طلب سحب أو مسألة.' }); finish(); return; }
-      send({ status: '🐙 يحمّل من GitHub: ' + t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') + '…', k: 'stGithub' });
+      /* v-audit-chatcli (x-i18n-2): أرقام الحالة وأسماؤها بارامترات (p) فيترجم العميل السطر كاملًا بـtStatus بالـ١٤ لغة */
+      send({ status: '🐙 يحمّل من GitHub: ' + t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') + '…', k: 'stGithub', p: { repo: t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') } });
       try {
         let asFile = null;
         // v-sec-gh-token: مفتاح المالك (GITHUB_TOKEN/الخزنة) يُرسَل فقط حين يكون المنادي المالكَ نفسه.
@@ -744,7 +745,7 @@ module.exports = async function handler(req, res) {
       finish(); return;
     }
     const metrics = metricsOf(col.files);
-    send({ status: '🔎 يقرأ ' + col.files.length + ' ملفًّا · ' + metrics.totals.lines + ' سطرًا ويفكّر…', k: 'stAnalyze', tier: usage.tier });
+    send({ status: '🔎 يقرأ ' + col.files.length + ' ملفًّا · ' + metrics.totals.lines + ' سطرًا ويفكّر…', k: 'stAnalyze', p: { n: col.files.length, lines: metrics.totals.lines }, tier: usage.tier });
     /* v-provider-errors: للمالك وحده — أخطاء الإنتاج الحيّة ترافق الكود، فيفحص بما وقع فعلًا لا بما قد يقع. */
     let live = '';
     if (owner) {
@@ -757,7 +758,7 @@ module.exports = async function handler(req, res) {
     const prompt = buildPrompt(col.files, metrics, body.ask, body.lang, live,
       reader ? { index: deepIndex(col.pool, col.files) } : null);
     let lastSent = 0;
-    const onProgress = (n) => { if (n - lastSent >= 1500) { lastSent = n; send({ status: '✍️ يكتب التحليل… ' + n + ' حرفًا', k: 'stWriting' }); } };
+    const onProgress = (n) => { if (n - lastSent >= 1500) { lastSent = n; send({ status: '✍️ يكتب التحليل… ' + n + ' حرفًا', k: 'axChatcliStAnalyzeWriting', p: { n } }); } }; // v-audit-chatcli: مفتاحه — stWriting نصّ المحادثة بلا عدد
     let text = '';
     let readStats = null;
     try {

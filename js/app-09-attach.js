@@ -1147,16 +1147,23 @@ const MAX_ARCHIVE_DIRECT_BYTES = 3 * 1024 * 1024;
 /* v412 — قراءة مجزّأة بدل FileReader.readAsDataURL:
  * ① arrayBuffer() يرمي خطأً يحمل اسمه وسببه (بدل onerror الصامت).
  * ② التحويل على أجزاء 32 ك.ب يبقي الذاكرة منخفضة. */
+/* v-audit-chatcli (x-i18n-5): أخطاء المرفقات الظاهرة في شريطها بلغة الواجهة (axChatcliAtt*) — كانت عربيّة ثابتة لكلّ اللغات؛ العربيّة احتياطها */
+function omranAttTx(k, fb, vars){
+  let v = '';
+  try{ v = (typeof t === 'function') ? t(k) : ''; }catch(e){ v = ''; } // guard-ok — بلا قاموس يبقى الاحتياط العربيّ
+  let s = String((v && v !== k) ? v : fb);
+  if(vars) Object.keys(vars).forEach(n => { s = s.split('{' + n + '}').join(String(vars[n])); });
+  return s;
+}
 async function fileToBase64(file){
   let buf;
   try {
     buf = await file.arrayBuffer();
   } catch (e) {
     const why = (e && (e.name || e.message)) ? (' (' + (e.name || e.message) + ')') : '';
-    throw new Error('تعذّر قراءة الملف' + why +
-      '. تأكد أنه محمّل على جهازك فعلًا وليس على السحابة فقط، ثم أعد المحاولة.');
+    throw new Error(omranAttTx('axChatcliAttReadFail', 'تعذّر قراءة الملف{why}. تأكد أنه محمّل على جهازك فعلًا وليس على السحابة فقط، ثم أعد المحاولة.', { why }));
   }
-  if (!buf || !buf.byteLength) throw new Error('الملف فارغ أو تعذّر فتحه.');
+  if (!buf || !buf.byteLength) throw new Error(omranAttTx('axChatcliAttEmpty', 'الملف فارغ أو تعذّر فتحه.'));
   const bytes = new Uint8Array(buf);
   let binary = '';
   const CHUNK = 32768;
@@ -1305,8 +1312,8 @@ async function processArchiveAttachment(file, attachment, preReadB64){
       // ملفات Office (docx/xlsx/pptx) بنيتها خاصة — الخادم يعرف كيف يقرأها.
     }
     if(file.size > MAX_ARCHIVE_DIRECT_BYTES){
-      throw new Error('الملف ' + (file.size / 1048576).toFixed(1) + ' م.ب — الحد ' +
-        (MAX_ARCHIVE_DIRECT_BYTES / 1048576) + ' م.ب للتحليل على الخادم. احذف مجلدات مثل node_modules وأعد الضغط.');
+      throw new Error(omranAttTx('axChatcliAttZipBig', 'الملف {size} م.ب — الحد {max} م.ب للتحليل على الخادم. احذف مجلدات مثل node_modules وأعد الضغط.',
+        { size: (file.size / 1048576).toFixed(1), max: MAX_ARCHIVE_DIRECT_BYTES / 1048576 }));
     }
     const fileBase64 = preReadB64 || await fileToBase64(file);
     const resp = await fetch('/api/analyze-zip', {
@@ -1315,7 +1322,8 @@ async function processArchiveAttachment(file, attachment, preReadB64){
       body: JSON.stringify({ fileBase64, filename: file.name, token: authGet('aiapp_auth_token'), guestId: (window.getGuestId ? window.getGuestId() : undefined) }) // v-sec-zip-gate: الحصّة على الحساب/الشبكة
     });
     const data = await resp.json().catch(() => ({}));
-    if(!resp.ok || !data.ok) throw new Error(data.error || ('فشل التحليل (HTTP ' + resp.status + ')'));
+    /* v-audit-chatcli: نصّ الخادم عربيّ ثابت — يظهر للعربيّ وحده، وغيره سطر مترجَم بحالة الطلب (دخول/حدّ يوميّ قائمان، وغيرهما فشل التحليل) */
+    if(!resp.ok || !data.ok) throw new Error(((typeof lang === 'undefined' || lang === 'ar') && data.error) || omranAttTx(resp.status === 401 ? 'portraitNeedLogin' : (resp.status === 429 ? 'portraitLimitReached' : 'axChatcliAttZipFail'), data.error || 'فشل التحليل (HTTP {status})', { status: resp.status }));
     attachment.text = data.content;
   }catch(err){
     console.error('archive analyze error', err);
@@ -6936,10 +6944,10 @@ DESIGN RULES (non-negotiable):
             catch(e){ if(e && e.name === 'AbortError') throw e; __swallow(e, 'askall:site-guide-tools'); }
           }
           if(reply === null) reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 360000);
-          var __chatVideo = window.__chatVideoResult;
+          var __chatVideo = (window.__chatVideoByChat && window.__chatVideoByChat[cur.id]) || window.__chatVideoResult; /* v-audit-chatcli: فيديو محادثة هذا الطلب */
           if (__chatVideo && __chatVideo.url) {
             msg.attachments = (msg.attachments || []).concat([{ isVideo: true, url: __chatVideo.url, name: __chatVideo.name || 'chat-video.mp4', mime: 'video/mp4' }]);
-            window.__chatVideoResult = null;
+            if (window.__chatVideoByChat && window.__chatVideoByChat[cur.id] === __chatVideo) delete window.__chatVideoByChat[cur.id]; else window.__chatVideoResult = null;
           }
           let { code, explanation, edits: __edits } = extractReply(reply, cur.code); // v-chat-edit
           // 🔁 v326: مهمة بناء/تصميم رجعت نصًا بلا أي كود (مثل «تمام، هذا
@@ -7456,7 +7464,7 @@ DESIGN RULES (non-negotiable):
       let __ctModel = ''; /* v-owner-model-badge: ما أعلنه الخادم عن الموديل الذي أجاب (للمالك) */
       let __ctServed = ''; /* v-owner-identity: الموديل كما أعلنه المزوّد نفسه — دليل المالك فوق الردّ */
       let __ctTier = null; /* v-tiers: طبقة الردّ (free / free-limit / guest / guest-limit) لشارة «ردّ مجاني» */
-      let __ctLog = null; /* v-read-all: سجلّ ما قرأه وفعله قبل الردّ — يُحفظ كسجلّ الوكيل (m._agParts) */
+      let __ctLog = null, __ctCards = null; /* v-read-all: سجلّ ما قرأه وفعله قبل الردّ — يُحفظ كسجلّ الوكيل (m._agParts) · v-audit-chatcli: بطاقات هذا الطلب (كانت window.__chatCardsResult يصفّره طلب محادثة أخرى أو يلتقطه ردّها) */
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
       // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
@@ -7502,7 +7510,7 @@ DESIGN RULES (non-negotiable):
             }
           }
         }
-        if(__ct){ __ctUsed = true; __ctFenceCut = !!__ct.fenceCut; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; window.__chatCardsResult = __ct.cards || null; /* v-cards */ if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
+        if(__ct){ __ctUsed = true; __ctFenceCut = !!__ct.fenceCut; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; __ctCards = __ct.cards || null; /* v-cards */ if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, __sigFn(onDelta), __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })); // v-owner-solo
       }finally{
         window.__claudeModelOverride = null;
@@ -7570,8 +7578,8 @@ DESIGN RULES (non-negotiable):
          «اسأل الكل» فقط — فيضيع الفيديو وتبدو الرسالة إنجازًا وهميًّا. */
       let __chatVidAtt;
       try{
-        const __cv = window.__chatVideoResult;
-        if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; window.__chatVideoResult = null; }
+        const __cv = (window.__chatVideoByChat && window.__chatVideoByChat[cur.id]) || window.__chatVideoResult; /* v-audit-chatcli: فيديو محادثة هذا الطلب (app-17) — العامّ لما بلا محادثة */
+        if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; if(window.__chatVideoByChat && window.__chatVideoByChat[cur.id] === __cv) delete window.__chatVideoByChat[cur.id]; else window.__chatVideoResult = null; }
       }catch(e){ __swallow(e, 'ui:chat-video-attach'); }
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, model: __ctModel || undefined /* v-owner-model-badge */, askAllReply: false, attachments: __chatVidAtt,
         tier: __ctTier || undefined, /* v-tiers */
@@ -7579,7 +7587,7 @@ DESIGN RULES (non-negotiable):
         _agParts: __ctLog || undefined,
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
-        searchImages: (__searchData && __searchData.images) || undefined, cards: (function(c){ window.__chatCardsResult = null; return c || undefined; })(window.__chatCardsResult) /* v-cards: تُقرأ مرّة وتُصفَّر فلا تلتصق برسالة تالية بلا أدوات */});
+        searchImages: (__searchData && __searchData.images) || undefined, cards: __ctCards || undefined /* v-cards · v-audit-chatcli: بطاقات هذا الطلب وحده فلا تلتصق برسالة تالية ولا بمحادثة أخرى */});
       // v-plans-gate: انتهت الرسائل المجّانيّة/التجربة — الردّ نفسه يبقى بشارته وزرّه، والباقات (أو التسجيل للضيف) تنفتح.
       if(__ctTier === 'free-limit' || __ctTier === 'guest-limit'){
         try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(e){ __swallow(e, 'chat:plans-gate'); }

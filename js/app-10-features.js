@@ -323,7 +323,8 @@ if(btnShareApp){
         const copiedMsg = { ar:'تم نسخ رابط التطبيق!', en:'App link copied!', fr:"Lien de l'application copié !", hi:'ऐप लिंक कॉपी हो गया!', ur:'ایپ کا لنک کاپی ہو گیا!', bn:'অ্যাপ লিঙ্ক কপি হয়েছে!', ne:'एप लिंक कपी भयो!' };
         alert(copiedMsg[currentLang] || copiedMsg.ar);
       } catch(e){
-        prompt('انسخ الرابط:', shareUrl);
+        const cp = (typeof t === 'function') ? t('axChatcliCopyLinkPrompt') : '';
+        prompt((cp && cp !== 'axChatcliCopyLinkPrompt') ? cp : 'انسخ الرابط:', shareUrl); // v-audit-chatcli (x-i18n-5): بلغة الواجهة
       }
     }
   };

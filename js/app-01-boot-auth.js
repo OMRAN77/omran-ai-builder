@@ -1151,7 +1151,9 @@ try{
           try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#10"); }
           noteSession('جوجل-تحقّق-أمني'); // اللوحة كانت عمياء عن هذا الخروج بالذات
           window.history.replaceState({}, document.title, cleanUrl);
-          alert(authMsg('axBootSecurityCheck', "Couldn't complete sign-in (security check). Please try again.", 'تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.')); // v-audit-boot (cli-boot-6)
+          /* v-audit-boot (cli-boot-6) + v-audit-chatcli (x-i18n-5): بلغة الواجهة — هذا الإقلاع قبل القاموس (app-03/04)، فيُؤجَّل التنبيه حتّى يجهز ملفّ اللغة */
+          const __stAlert = () => alert(authMsg('axBootSecurityCheck', "Couldn't complete sign-in (security check). Please try again.", 'تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.'));
+          setTimeout(() => { try{ window.loadLangFile(document.documentElement.lang || localStorage.getItem('aiapp_lang') || 'ar').then(__stAlert, __stAlert); }catch(e){ __stAlert(); } }, 0);
           return;
         }
         try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#11"); }
