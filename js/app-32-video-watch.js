@@ -67,6 +67,7 @@
     if(c === 'format') return t('vwFormat');
     if(c === 'points_insufficient') return t('vwNoPoints').replace('{p}', String(d.points || 0)).replace('{n}', String(d.needed || ''));
     if(c === 'unavailable') return t('vwUnavailable'); // v-plans-gate: رصيد المزوّد عندنا — لا ذنب للمستخدم ولا تحويل للباقات
+    if(c === 'limit') return t('portraitLimitReached'); // v-audit-video (srv-video-4): حدّ فتح الرفع لليوم — النصّ العامّ القائم بالـ١٤ لغة
     return t('vwFailed');
   }
   var lastWatch = null;

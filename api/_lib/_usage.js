@@ -400,6 +400,7 @@ const MOVE_BUCKETS = ['plan', 'chat', 'plan-haiku', 'plan-sonnet', 'plan-gemini'
   'search', 'search-classify', 'chat-search', 'translate', 'tts', 'media-intent', 'adchat', 'adimage', 'stamps', 'cx-brief', 'video-write', 'stocks-ai', 'stocks-pf',
   'design-ideas', 'design-suggest', 'fashion-suggest', 'studio-suggest',
   'video-prompt', 'video-upscale', 'video-download', 'video-enhance', 'analyze-zip', /* v-sec-zip-gate: حصّة تحليل الأرشيف تنتقل مع تغيير الاسم */
+  'video-watch', /* v-audit-video (srv-video-4): حدّ فتح رفع «شاهد الفيديو» اليوميّ لا يتصفّر بتغيير الاسم */
   'share', 'share-img', 'share-pdf', 'share-file', 'media-save-img', 'media-save-pdf', 'media-save-file'];
 async function moveTodayTallies(oldUser, newUser) {
   if (!oldUser || !newUser) return;

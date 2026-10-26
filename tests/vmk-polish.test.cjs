@@ -175,7 +175,8 @@ test('ط. فيديو القوالب WebM ينزل بامتداده، والاس�
     const ctx = { setStatus() {}, bT: (a) => a, recordCanvasClip: async () => ({ type, size: 9 }),
       fetch: async () => ({ ok: true, blob: async () => ({ type: 'audio/mpeg' }) }), muxNarrationAny: async () => ({ type: muxType || type }),
       cleanNarrationText: (x) => x, getNarrationGender: () => 'female', getNarrationSpeed: () => 'fast', URL: { createObjectURL: () => 'blob:x' },
-      resultEl: { style: {} }, downloadEl: { style: {}, download: 'omran-film.mp4' }, autoSaveVideo() {}, JSON };
+      resultEl: { style: {} }, downloadEl: { style: {}, download: 'omran-film.mp4' }, autoSaveVideo() {}, JSON,
+      ttsAuthToken: () => '', ttsGuestId: () => '' }; // v-audit-video (cli-video-2): مساعدا الحساب من app-02 (الدالّة تُقتطع وحدها هنا)
     vm.createContext(ctx); vm.runInContext(dlNameSrc + '\n' + src, ctx); return ctx; // dlName (الدفعة ١، v-vmk-dl-ext) يسمّي الامتداد من النوع
   };
   let c = mk('video/webm;codecs=vp9'); await c.runCanvasOnly('x', '16:9', 5, '', false, '');

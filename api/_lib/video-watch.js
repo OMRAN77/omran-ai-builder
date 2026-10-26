@@ -11,13 +11,19 @@
              مرّتين — وقفل ذرّيّ يمنع تشغيلين متزامنين للمهمّة نفسها. رسائل الخطأ بلا اسم مزوّد (قاعدة المالك). */
 const crypto = require('node:crypto');
 const pointsLib = require('./points.js');
-const { kvGetJSON, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
+const { kvGetJSON, kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
 
 const BASE = 'https://generativelanguage.googleapis.com';
 const MAX_BYTES = 100 * 1024 * 1024;
 const MAX_SEC = 600;
 const CHUNK = 10 * 256 * 1024; // 2.5MB: مضاعف ٢٥٦ ك.ب، وbase64 ≈ ٣٫٥MB تحت حدّ الجسم
 const JOB_TTL = 3600;
+/* v-audit-video (srv-video-4): start وchunk كانا بلا حدّ ولا خصم (الخصم وحذف الملفّ في run وحده)، فحساب بثلاث نقاط يفتح رفعات
+   ١٠٠ م.ب بلا نهاية ولا يشغّلها، وملفّاتها تبقى عند المزوّد ٤٨ ساعة حتّى يمتلئ مخزن المشروع على الجميع. الآن حدّ يوميّ لفتح الرفع
+   (checkAndConsumeCustom كالتحسين الشقيق؛ يُردّ إن تعذّر فتح الجلسة، والمالك وVIP معفيّان)، ومهمّة رفع واحدة مفتوحة للحساب: بدء
+   أخرى يُغلق السابقة غير المشغّلة ويحذف ملفّها عند المزوّد — فلا يبقى للحساب أكثر من ملفّ متروك واحد. */
+const DAILY = 20;
+const openKey = (user) => 'vwatch:open:' + String(user || '').toLowerCase();
 const RUN_LOCK_SEC = 300;
 const GEN_TIMEOUT_MS = 240000; // التحليل غير المتدفّق لا يرسل رأسًا قبل اكتماله — مهلة الثلاثين ثانية العامّة تقطعه
 const MIME = {
@@ -67,6 +73,18 @@ async function dropFile(key, j) { // أفضل جهد — الملفّ عند ا�
   if (!j || !j.file || !/^files\/[a-z0-9-]+$/i.test(j.file.name)) return;
   try { await fetch(BASE + '/v1beta/' + j.file.name, { method: 'DELETE', headers: { 'x-goog-api-key': key } }); } catch (e) { /* guard-ok — التنظيف لا يُسقط الردّ */ }
 }
+/* v-audit-video (srv-video-4): المهمّة المفتوحة السابقة للحساب — تُغلق ويُحذف ملفّها ما لم تُشغَّل (نتيجة)، أو تُدفع (paid: تُعاد بلا
+   خصم ثانٍ)، أو يجري تشغيلها الآن (القفل). أفضل جهد: عطب KV لا يمنع رفعًا جديدًا. */
+async function closeOpen(user, key) {
+  try {
+    const prev = await kvGetRaw(openKey(user));
+    if (!prev) return;
+    const j = await readJob(prev, user);
+    if (!j || j.result || Number.isFinite(j.paid) || (await kvGetRaw(lockKey(prev)))) return;
+    await dropFile(key, j);
+    await kvDel(jobKey(prev));
+  } catch (e) { /* guard-ok — التنظيف لا يمنع رفعًا جديدًا، والملفّ ينتهي وحده بعد يومين */ }
+}
 async function isFree(user) {
   if (pointsLib.isOwnerUsername(user)) return true;
   try { return !!(await require('./_vip.js').isVip(user)); } catch (e) { return false; }
@@ -106,19 +124,32 @@ async function start(req, res, body, user, key) {
     const have = rec ? Number(rec.points) || 0 : 0;
     if (have < need) return fail(res, 402, 'points_insufficient', { needed: need, points: have });
   }
-  const r = await fetch(BASE + '/upload/v1beta/files', {
-    method: 'POST',
-    headers: {
-      'x-goog-api-key': key, 'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start',
-      'X-Goog-Upload-Header-Content-Length': String(size), 'X-Goog-Upload-Header-Content-Type': mime, 'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ file: { display_name: 'chat-video' } }),
-  });
+  // v-audit-video (srv-video-4): حدّ اليوم قبل فتح أيّ جلسة عند المزوّد — 429 limit (حدّ لا تفكّه ترقية، كالتحسين)
+  const usage = require('./_usage.js');
+  const ip = usage.clientIp(req);
+  const q = await usage.checkAndConsumeCustom(body.token, null, ip, 'video-watch', DAILY);
+  if (!q.allowed) return q.banned ? fail(res, 403, 'banned') : fail(res, q.reason === 'limit' ? 429 : 401, q.reason === 'limit' ? 'limit' : 'auth');
+  await closeOpen(user, key);
+  let r;
+  try {
+    r = await fetch(BASE + '/upload/v1beta/files', {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': key, 'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start',
+        'X-Goog-Upload-Header-Content-Length': String(size), 'X-Goog-Upload-Header-Content-Type': mime, 'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ file: { display_name: 'chat-video' } }),
+    });
+  } catch (e) { await usage.refundCustom(body.token, null, ip, 'video-watch'); throw e; }
   const url = r.ok ? r.headers.get('x-goog-upload-url') : '';
-  if (!url) return failUp(res, user, r.ok ? 'start: no upload url' : await upstreamText('start', r));
+  if (!url) {
+    await usage.refundCustom(body.token, null, ip, 'video-watch'); // لم تُفتح جلسة — الفتحة تعود لحدّ اليوم
+    return failUp(res, user, r.ok ? 'start: no upload url' : await upstreamText('start', r));
+  }
   const gran = Number(r.headers.get('x-goog-upload-chunk-granularity')) || 0; // للتشخيص إن رُفضت قطعة
   const id = crypto.randomBytes(12).toString('hex');
   await saveJob(id, { u: user, url, size, mime, off: 0, dur, gran, at: Date.now() });
+  try { await kvSetRaw(openKey(user), id, JOB_TTL); } catch (e) { /* guard-ok — بلا العلامة لا تُغلق هذه المهمّة عند التالية فقط */ }
   return res.status(200).json({ ok: true, id, chunk: CHUNK });
 }
 
@@ -255,3 +286,4 @@ module.exports.instruction = instruction;
 module.exports.CHUNK = CHUNK;
 module.exports.MAX_BYTES = MAX_BYTES;
 module.exports.MAX_SEC = MAX_SEC;
+module.exports.DAILY = DAILY;

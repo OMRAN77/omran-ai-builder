@@ -151,6 +151,7 @@ test('٤. التشغيل: ينتظر الجاهزيّة، يخصم مرّة با
   kv.delete('points:reem');
   G.fileState = 'PROCESSING'; G.gens.length = 0; G.deleted.length = 0;
   const id = await uploadAll(CH + 10, 'reem');
+  G.deleted.length = 0; // v-audit-video (srv-video-4): البدء حذف ملفّ مهمّة ٣ المتروكة (مهمّة واحدة مفتوحة للحساب) — المقيس هنا حذف ملفّ هذه بعد تحليلها
   const before = await bal('reem');
   const p = await call('run', { id, prompt: 'وش يقول الرجّال؟', lang: 'ar' });
   assert.deepEqual([p.code, p.j.pending], [200, true]);
