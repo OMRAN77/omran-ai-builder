@@ -381,6 +381,140 @@ test('cli-video-4 (ب): صانع الفيديو — إلغاء أو رفض قب�
   assert.equal(c.resultEl.style.display, 'none', 'لا ناتج سابق = لا شيء يُعاد');
 });
 
+// ─────────────────────────── cli-video-5 · x-runtime-ui-2 ───────────────────────────
+const VEDSRC = read('js/video-edit.js');
+const AR_RE = /[؀-ۿ]/;
+/** قاموس S ودالّة T_ كما في الملفّ، بلغة محفوظة lg. */
+function vedDict(lg) {
+  const box = { localStorage: { getItem: (k) => (k === 'aiapp_lang' ? lg : null) } };
+  const a = VEDSRC.indexOf('  var S = {'), b = VEDSRC.indexOf('  function dirRtl(){');
+  assert.ok(a > 0 && b > a, 'قاموس S وT_');
+  vm.runInNewContext(VEDSRC.slice(a, b) + '\nthis.S = S; this.T_ = T_;', box);
+  return box;
+}
+
+test('cli-video-5 (أ): كلّ نصّ في قاموس المحرّر S مترجم إلى الـ١٤ لغة بالعناصر النائبة نفسها — والأرديّة ليست العربيّة', () => {
+  const { S } = vedDict('ar');
+  const keys = Object.keys(S.en);
+  assert.ok(keys.length >= 80, 'المفاتيح كاملة: ' + keys.length);
+  for (const l of LANGS) {
+    assert.ok(S[l], 'لغة ' + l + ' في S (كانت ar وen وحدهما)');
+    for (const k of keys) {
+      const v = S[l][k];
+      assert.equal(typeof v, 'string', l + '.' + k);
+      assert.ok(v.trim(), l + '.' + k + ' فارغ');
+      const ph = (s) => (String(s).match(/\{\w+\}/g) || []).sort().join();
+      assert.equal(ph(v), ph(S.en[k]), l + '.' + k + ' العناصر النائبة');
+    }
+    if (l !== 'en') for (const k of ['title', 'tab', 'exp', 'close', 'addText', 'audio']) assert.notEqual(S[l][k], S.en[k], l + '.' + k + ' ما زال إنجليزيًّا');
+  }
+  for (const k of keys) assert.notEqual(S.ur[k], S.ar[k], 'ur.' + k + ' = العربيّة');
+  for (const l of LANGS) if (l !== 'ar' && l !== 'ur') for (const k of keys) assert.ok(!AR_RE.test(S[l][k]), l + '.' + k + ' فيه عربيّة');
+});
+
+test('cli-video-5 (ب): T_ تُرجع نصّ لغة الواجهة (الفرنسيّة والأرديّة والصينيّة) لا الإنجليزيّة، والعناصر النائبة تُملأ', () => {
+  const fr = vedDict('fr'), ur = vedDict('ur'), zh = vedDict('zh');
+  assert.equal(fr.T_('exp'), fr.S.fr.exp);
+  assert.notEqual(fr.T_('exp'), 'Export video');
+  assert.equal(ur.T_('title'), ur.S.ur.title);
+  assert.ok(!/[A-Za-z]{3}/.test(ur.T_('title')), 'الأرديّة بلا إنجليزيّة داخل إطار RTL');
+  assert.match(zh.T_('working', { p: 40 }), /40/);
+  assert.equal(vedDict('xx').T_('exp'), 'Export video', 'لغة غير معروفة = الإنجليزيّة كما كان');
+});
+
+/** DOM مزيّف بقدر ما تحتاجه نقاط الدخول (قائمة + وتبويب صانع الفيديو) ومراقبات html[lang]. */
+function vedEntryDom(lg) {
+  const ls = { v: lg };
+  const observers = [];
+  function mkEl(tag) {
+    const e = {
+      tagName: String(tag).toUpperCase(), children: [], className: '', id: '', title: '', textContent: '', attrs: {}, parentNode: null, style: {},
+      setAttribute(k, v) { this.attrs[k] = String(v); if (k === 'id') this.id = String(v); }, getAttribute(k) { return this.attrs[k] == null ? null : this.attrs[k]; },
+      appendChild(c) { this.children.push(c); c.parentNode = this; return c; },
+      insertBefore(c, ref) { const i = ref ? this.children.indexOf(ref) : -1; if (i < 0) this.children.push(c); else this.children.splice(i, 0, c); c.parentNode = this; return c; },
+      addEventListener() {}, classList: { add() {}, remove() {}, contains() { return false; } },
+      querySelector(sel) { return find(this, sel); },
+    };
+    Object.defineProperty(e, 'innerHTML', { get() { return ''; }, set(h) { this.children = []; if (/btnLabel/.test(h)) { const s = mkEl('span'); s.className = 'btnLabel'; this.appendChild(s); } } });
+    return e;
+  }
+  function match(n, sel) { return sel[0] === '#' ? n.id === sel.slice(1) : sel[0] === '.' ? String(n.className).split(/\s+/).includes(sel.slice(1)) : false; }
+  function find(root, sel) {
+    const parts = sel.trim().split(/\s+/);
+    const walk = (n, i) => { for (const c of n.children) { if (match(c, parts[i])) { if (i === parts.length - 1) return c; const r = walk(c, i + 1); if (r) return r; } const r2 = walk(c, i); if (r2) return r2; } return null; };
+    return walk(root, 0);
+  }
+  const html = mkEl('html'), body = mkEl('body');
+  html.appendChild(body);
+  const pop = mkEl('div'); pop.id = 'plusToolsPopup'; body.appendChild(pop);
+  const vmm = mkEl('div'); vmm.id = 'videoMakerModal'; body.appendChild(vmm);
+  const tabs = mkEl('div'); tabs.id = 'vmkTabs'; vmm.appendChild(tabs); tabs.appendChild(mkEl('button'));
+  const document = {
+    readyState: 'complete', documentElement: html, body, head: mkEl('head'),
+    getElementById: (id) => (html.id === id ? html : find(html, '#' + id)), querySelector: (s) => find(html, s), createElement: mkEl, addEventListener() {},
+  };
+  class MutationObserver { constructor(cb) { this.cb = cb; } observe(target, opts) { observers.push({ cb: this.cb, target, opts }); } disconnect() {} }
+  const win = { localStorage: { getItem: (k) => (k === 'aiapp_lang' ? ls.v : null), setItem() {} } };
+  const ctx = { window: win, document, MutationObserver, localStorage: win.localStorage, navigator: { userAgent: 'test' }, setTimeout: () => 0, clearTimeout() {}, console, encodeURIComponent };
+  win.document = document;
+  vm.createContext(ctx);
+  vm.runInContext(VEDSRC, ctx);
+  const label = () => { const b = document.getElementById('btnVideoEdit'); return b && b.querySelector('.btnLabel').textContent; };
+  const tab = () => { const t = document.getElementById('vedTabBtn'); return t && t.querySelector('.vmk-tab-lbl').textContent; };
+  const setLang = (l) => { ls.v = l; html.lang = l; observers.filter((o) => o.target === html).forEach((o) => o.cb([{ type: 'attributes', attributeName: 'lang' }])); };
+  return { label, tab, setLang, observers, title: () => document.getElementById('btnVideoEdit').title };
+}
+
+test('x-runtime-ui-2: بند قائمة + وتبويب صانع الفيديو بلغة الواجهة، ويتبعانها حين تتبدّل (كانا يُكتبان مرّة بالإنجليزيّة)', () => {
+  const { S } = vedDict('ar');
+  const d = vedEntryDom('fr');
+  assert.equal(d.label(), S.fr.menu, 'بند القائمة بالفرنسيّة (كان «Text & sound on video»)');
+  assert.equal(d.tab(), S.fr.tab, 'التبويب بالفرنسيّة (كان «Text & sound»)');
+  d.setLang('ur');
+  assert.equal(d.label(), S.ur.menu, 'تبديل اللغة يعيد التسمية');
+  assert.equal(d.title(), S.ur.menu);
+  assert.equal(d.tab(), S.ur.tab);
+  d.setLang('en');
+  assert.deepEqual([d.label(), d.tab()], ['Text & sound on video', 'Text & sound']);
+});
+
+// ─────────────────────────────── cli-video-6 ───────────────────────────────
+/** friendlyError من نقرة «إنشاء» كما في الملفّ، بلغة واجهة غير العربيّة والإنجليزيّة. */
+function vmkErrors(dict) {
+  const ctx = {
+    window: { t: (k) => (dict && dict[k] != null ? dict[k] : k) },
+    bT: (a, e) => e, // window.__bT لغير ar: القاموس الثنائيّ ثمّ الإنجليزيّة — لا العربيّة
+    isEn: () => false, scenesDone: 0, localStorage: { getItem: () => 'fr' }, Math, Number, String,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractBlock(VIDEO, 'function vmkT(') + '\n' + extractBlock(VIDEO, 'function busyRetryText(') + '\n' + extractBlock(VIDEO, '    function friendlyError(err){') + '\nthis.fe = friendlyError; this.br = busyRetryText;', ctx);
+  return ctx;
+}
+
+test('cli-video-6 (أ): حدّ اليوم والمهلة بلغة الواجهة (فرنسيّة) لا العربيّة — بالمفاتيح، والاحتياط إنجليزيّ لا عربيّ', () => {
+  const fr = vmkErrors({ plansWhyLimit: 'Limite du jour atteinte.', axVideoCooldown: '🕒 Une vidéo toutes les quelques minutes. Réessayez dans environ {m} min.' });
+  assert.equal(fr.fe({ code: 'daily_limit_reached' }), '🕒 Limite du jour atteinte.', 'نصّ الباقات القائم بالـ١٤ لغة');
+  assert.equal(fr.fe({ code: 'video_cooldown', retryAfter: 120 }), '🕒 Une vidéo toutes les quelques minutes. Réessayez dans environ 2 min.');
+  const bare = vmkErrors(null); // المفتاح الجديد قبل دمج الترجمات
+  for (const c of [{ code: 'daily_limit_reached' }, { code: 'video_cooldown', retryAfter: 180 }]) {
+    const s = bare.fe(c);
+    assert.ok(!AR_RE.test(s), c.code + ': ظهرت العربيّة لواجهة فرنسيّة — ' + s);
+    assert.ok(s.startsWith('🕒 '), 'البادئة ليست «مشغول» (⏳) فلا تعلق بطاقة الانتظار');
+  }
+  assert.match(bare.fe({ code: 'video_cooldown', retryAfter: 180 }), /about 3 min/);
+});
+
+test('cli-video-6 (ب): سطور «المحرّك مزدحم، إعادة المحاولة» الخمسة بالمفتاح لا isEn()', () => {
+  const fr = vmkErrors({ axVideoBusyRetry: 'Occupé ({a}/{m})', axVideoBusyRetryScene: 'Occupé scène {i} ({a}/{m})' });
+  assert.equal(fr.br(2, 3), 'Occupé (2/3)');
+  assert.equal(fr.br(1, 3, 4), 'Occupé scène 4 (1/3)');
+  const bare = vmkErrors(null);
+  assert.ok(!AR_RE.test(bare.br(1, 3)) && !AR_RE.test(bare.br(1, 3, 2)), 'الاحتياط إنجليزيّ');
+  assert.equal((VIDEO.match(/The AI engine is busy, retrying/g) || []).length, 2, 'النصّ الإنجليزيّ في الاحتياط وحده (كان في خمسة فروع isEn)');
+  assert.equal((VIDEO.match(/setStatus\(busyRetryText\(attempt, max(, i \+ 1)?\)\)/g) || []).length, 5, 'المواضع الخمسة');
+  assert.ok(!/isEn\(\)\s*\?\s*"🕒|isEn\(\)\s*\?\s*\('🕒|isEn\(\)\s*\n?\s*\?\s*'⏳ The AI engine/.test(VIDEO));
+});
+
 test('srv-video-4 (د): الواجهة تعرض حدّ اليوم بنصّ الـ١٤ لغة القائم (portraitLimitReached) لا «تعذّر التحليل»', () => {
   const s = read('js/app-32-video-watch.js');
   const fn = s.slice(s.indexOf('function errText(d){'), s.indexOf('var lastWatch'));

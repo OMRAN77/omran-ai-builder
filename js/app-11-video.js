@@ -899,9 +899,7 @@
     setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
     /* v-video-photo-identity: وضع الدمج يُظهر خانة صورة البطل لكنّه كان لا يرسلها — فيخترع المحرّك شخصًا. */
     const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
-      setStatus(isEn()
-        ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
-        : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+      setStatus(busyRetryText(attempt, max)); // v-audit-video (cli-video-6)
     }, filmHeroBase64, filmHeroMime);
     setStatus(bT('🎬 جاري إنهاء الفيديو...','🎬 Finalizing your video...'));
 
@@ -1072,6 +1070,18 @@
     const tpl = (typeof window.t === 'function' && window.t('videoSceneWait') !== 'videoSceneWait') ? window.t('videoSceneWait')
       : bT('⏳ المشهد {i}/{n}: مهلة بين الفيديوهات — يبدأ تلقائيًا بعد {s} ثانية.', '⏳ Scene {i}/{n}: cooldown between videos — starting automatically in {s}s.');
     return String(tpl).replace('{i}', sceneNo).replace('{n}', total).replace('{s}', secs);
+  }
+  /* v-audit-video (cli-video-6): نصوص حدّ اليوم والمهلة و«المحرّك مزدحم» كانت isEn() — فكلّ لغة غير الإنجليزيّة تأخذ العربيّة.
+     الآن مفتاح I18N بالـ١٤ لغة، والاحتياط bT (القاموس الثنائيّ ثمّ الإنجليزيّة — لا عربيّة لغير العربيّة). */
+  function vmkT(key, ar, en){
+    const v = (typeof window.t === 'function') ? window.t(key) : key;
+    return (v && v !== key) ? String(v) : bT(ar, en);
+  }
+  function busyRetryText(attempt, max, sceneNo){
+    const tpl = sceneNo
+      ? vmkT('axVideoBusyRetryScene', '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد {i} ({a}/{m})...', '⏳ The AI engine is busy, retrying scene {i} ({a}/{m})...')
+      : vmkT('axVideoBusyRetry', '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة ({a}/{m})...', '⏳ The AI engine is busy, retrying ({a}/{m})...');
+    return String(tpl).replace('{i}', sceneNo).replace('{a}', attempt).replace('{m}', max);
   }
   /* v-audit-video (cli-video-2): مشهد سقط سرده (حدّ اليوم أو عطب) كان يُدمج بصوت فارغ بلا كلمة — فيلم مدفوع بلا سرد بصمت.
      يُقال في سطر النهاية: «السرد ناقص في {k} من {n} مشاهد». */
@@ -1245,11 +1255,12 @@
       if((code === 'video_busy' || code === 'video_rejected') && typeof window.t === 'function') return '⚠️ ' + window.t(code === 'video_busy' ? 'vidBusy' : 'vidRejected'); // v-vid-codes
       if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
       /* v-ai-video-speed: ⏳ «مشغول» في بطاقة الانتظار — رسالة الخطأ به كانت تُبقي بطاقة «يتولّد» وعدّادها فوق المشهد بلا نهاية → 🕒 */
-      if(code === 'daily_limit_reached') return isEn() ? "🕒 You have reached today's free video limit. Try again tomorrow." : '🕒 لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
+      /* v-audit-video (cli-video-6): نصّ الباقات القائم بالـ١٤ لغة (plansWhyLimit) لا isEn() */
+      if(code === 'daily_limit_reached') return '🕒 ' + vmkT('plansWhyLimit', 'لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.', "You have reached today's free video limit. Try again tomorrow.");
       /* v-video-refund: بدل رمز «video_cooldown» الخام — مهلة بين فيديو وآخر، والانتظار بالدقائق. */
       if(code === 'video_cooldown'){
         const m = Math.max(1, Math.ceil((Number(err && err.retryAfter) || 180) / 60));
-        return isEn() ? ('🕒 One video every few minutes. Try again in about ' + m + ' min.') : ('🕒 فيديو واحد كل بضع دقائق. جرّب بعد ' + m + ' دقيقة تقريبًا.');
+        return String(vmkT('axVideoCooldown', '🕒 فيديو واحد كل بضع دقائق. جرّب بعد {m} دقيقة تقريبًا.', '🕒 One video every few minutes. Try again in about {m} min.')).replace('{m}', m);
       }
       /* v-ai-video-speed: الإلغاء سطر هادئ بلا ❌، ونفاد النقاط بنصّ الباقات القائم (١٤ لغة) لا الرمز الخامّ */
       if(code === 'confirm_declined') return scenesDone > 0 ? bT('⛔ توقّف الفيديو عند إلغائك — المشاهد التي اكتملت قبله حُسبت.','⛔ Stopped at your cancel — the scenes completed before it were charged.') : err.message;
@@ -1370,9 +1381,7 @@
           const videoUrl = await sceneInSequence(i + 1, scenes.length, () => filmUseVeo
             ? createVeoScene(scenePromptWithHero, ratio, token, wantQuality, filmHeroBase64, filmHeroMime)
             : createSceneWithRetry(scenePromptWithHero, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
-                setStatus(isEn()
-                  ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
-                  : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
+                setStatus(busyRetryText(attempt, max, i + 1)); // v-audit-video (cli-video-6)
               }, filmHeroBase64, filmHeroMime));
           scenesDone++;
           setStatus((bT('🎙️ جاري تسجيل سرد المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
@@ -1712,9 +1721,7 @@
           const sc = scenes[i];
           setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenes.length + '...');
           const videoUrl = await createSceneWithRetry(sc.visual || text, style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
-            setStatus(isEn()
-              ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
-              : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
+            setStatus(busyRetryText(attempt, max, i + 1)); // v-audit-video (cli-video-6)
           }, filmHeroBase64, filmHeroMime);
           setStatus((bT('🎙️ جاري تسجيل صوت المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
@@ -1776,18 +1783,14 @@
         for(let i = 0; i < scenePrompts.length; i++){
           setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenePrompts.length + '...');
           const url = await sceneInSequence(i + 1, scenePrompts.length, () => createSceneWithRetry(scenePrompts[i], style, 10, ratio, token, false, (attempt, max) => {
-            setStatus(isEn()
-              ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
-              : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+            setStatus(busyRetryText(attempt, max)); // v-audit-video (cli-video-6)
           }, filmHeroBase64, filmHeroMime, startNarration));
           sceneUrls.push(url); scenesDone++;
         }
       } else {
         setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
         const url = await createSceneWithRetry(text, style, durationEl.value, ratio, token, false, (attempt, max) => {
-          setStatus(isEn()
-            ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
-            : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+          setStatus(busyRetryText(attempt, max)); // v-audit-video (cli-video-6)
         }, filmHeroBase64, filmHeroMime, startNarration);
         sceneUrls.push(url);
       }

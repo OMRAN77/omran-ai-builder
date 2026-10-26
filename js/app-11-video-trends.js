@@ -460,16 +460,15 @@
       status(ui('done'));
     }catch(e){
       setBusyFlag(false);
+      /* v-audit-video (cli-video-4): لا ناتج جديد — الناتج السابق يعود مكانه */
+      if(!urls.length && outEl && $('vtOut') === outEl && !outEl.childNodes.length) prevOut.forEach(function(nd){ outEl.appendChild(nd); });
       /* v-trend-one-confirm: المشاهد التي اكتملت (ودُفعت) قبل العطب تُعرض ولا تضيع — مع سبب التوقّف وعدد ما اكتمل */
       if(urls.length){
         try{ await show(t, urls); }catch(e2){ /* guard-ok — العرض أفضل جهد، والسطر يقول ما حدث */ }
         status((String(e && e.message) !== 'cancelled' ? errText(e) + ' ' : '') + ui('partial').replace('{k}', String(urls.length)).replace('{n}', String(n)));
       }
-      else {
-        if(outEl && $('vtOut') === outEl && !outEl.childNodes.length) prevOut.forEach(function(nd){ outEl.appendChild(nd); }); // v-audit-video: الناتج السابق يعود
-        if(String(e && e.message) !== 'cancelled') status(errText(e));
-        else status('');
-      }
+      else if(String(e && e.message) !== 'cancelled') status(errText(e));
+      else status('');
     }finally{ busy = false; setBusyFlag(false); preConfirmed = false; if($('vtGo')) $('vtGo').disabled = false; }
   }
 
