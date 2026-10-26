@@ -321,7 +321,11 @@ test('cli-studios-4 مساعد الخطأ: رموز معروفة بنصّها، 
   assert.ok(!/Proxy|GEMINI/.test(noT) && /image/i.test(noT), noT);
   // لم يبقَ موضع في الاستوديوهات يلصق e.message بعد «❌ خطأ:»
   assert.ok(!/bT\('❌ خطأ: ','❌ Error: '\)\) \+ \(e && e\.message/.test(ST), 'لا «❌ خطأ: <نصّ الخادم>»');
-  assert.ok(!/error: e\.message \}/.test(ST), 'خليّة المقارنة لا تحمل e.message');
+  // ٤١٣ من الاستضافة بنصّ __safeJson، والرسالة المترجمة التي تبدأ بـ❌ أصلًا لا تتكرّر علامتها
+  assert.equal(run('Request Entity Too Large\n\nFUNCTION_PAYLOAD_TOO_LARGE'), '❌ [acctAvatarTooBig]');
+  const ctxX = { window: { t: (k) => '❌ Could not ' + k }, omranOwnerUi: () => false, localStorage: { getItem: () => null }, console };
+  vm.runInNewContext(HELPERS + '\nthis.out = __studioErrMsg({ message: "x" }, "designAiSuggestError");', ctxX);
+  assert.equal(ctxX.out, '❌ Could not designAiSuggestError');
 });
 
 /* ───────────────────────── cli-studios-3: معرض أفكار الديكور ───────────────────────── */
