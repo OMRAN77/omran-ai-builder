@@ -369,6 +369,35 @@ test('x-i18n-6 ⑦ خيارات الديكور الخارجيّ الستّة ب�
   assert.equal(ctx.window.__optT(opt), '🏊 Piscine et patio');
 });
 
+/* بطاقة انتظار فيديو المحادثة (app-34) تُركَّب حين يرصد سطر «🎬 جاري إنشاء الفيديو…» — والسطر صار بلغة الواجهة */
+function chatVideoScan(line, dict) {
+  const hostCalls = [];
+  const host = { querySelector: (s) => { hostCalls.push(s); return {}; } }; // بطاقة موجودة = لا تركيب جديد، ويكفي أنّه سأل عنها
+  const sb = {
+    window: {}, __swallow() {},
+    t: (k) => (dict && dict[k] !== undefined ? dict[k] : k),
+    document: {
+      body: {}, documentElement: {}, getElementById: () => null, querySelector: () => null,
+      querySelectorAll: (s) => (s === '.chat-status-text' ? [{ textContent: line, closest: () => host }] : []),
+    },
+    MutationObserver: function () { return { observe() {} }; },
+    setTimeout: () => 0,
+  };
+  vm.createContext(sb);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', 'app-34-gen-wait.js'), 'utf8'), sb);
+  sb.window.omranGenWait.scan();
+  return hostCalls.some((s) => /chatvideo/.test(s));
+}
+
+test('x-i18n-6 ⑧ بطاقة انتظار فيديو المحادثة تُرصد بسطر اللغة الحاليّة لا بالعربيّ والإنجليزيّ وحدهما', () => {
+  assert.equal(chatVideoScan('🎬 جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق'), true, 'العربيّ كما كان');
+  assert.equal(chatVideoScan('🎬 Creating video… PENDING'), true, 'الإنجليزيّ كما كان');
+  const fr = { axAttachVidCreating: 'Création de la vidéo… cela peut prendre 1 à 3 minutes', axAttachVidCreatingShort: 'Création de la vidéo…' };
+  assert.equal(chatVideoScan('🎬 Création de la vidéo… cela peut prendre 1 à 3 minutes', fr), true, 'سطر البدء بالفرنسيّة');
+  assert.equal(chatVideoScan('🎬 Création de la vidéo… RUNNING', fr), true, 'سطر الاستطلاع بالفرنسيّة');
+  assert.equal(chatVideoScan('🎬 Animation du personnage…', fr), false, 'سطر آخر بـ🎬 ليس فيديو المحادثة');
+});
+
 const STR = String.raw`('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")`;
 test('x-i18n-6 ⑤ كلّ مفتاح axAttach* بنصّين احتياطيّين متطابقين في كلّ مواضعه، وبلا اسم مزوّد أو نموذج', () => {
   const seen = new Map();
