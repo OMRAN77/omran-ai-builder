@@ -1608,8 +1608,9 @@ function ensureHistItemMenu(){
   return m;
 }
 function histRenameProject(p){
-  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
-  const nv = prompt(isAr ? 'الاسم الجديد للمشروع:' : 'New project name:', p.title);
+  /* v-audit-attach (x-i18n-6): كانت الأورديّة تُعامَل عربيّة وبقيّة اللغات إنجليزيّة — مفتاح الـ١٤ لغة، وبلا مفتاح العربيّة للعربيّة وحدها */
+  const __k = t('axAttachHistNewName');
+  const nv = prompt((__k && __k !== 'axAttachHistNewName') ? __k : (lang === 'ar' ? 'الاسم الجديد للمشروع:' : 'New project name:'), p.title);
   if(nv === null) return;
   const clean = String(nv).trim();
   if(!clean) return;
@@ -1648,7 +1649,6 @@ function histDeleteProject(p, provKey){
 }
 function openHistItemMenu(anchorBtn, p, provKey){
   const m = ensureHistItemMenu();
-  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
   m.innerHTML = '';
   const mkBtn = (label, svg, cls, fn) => {
     const b = document.createElement('button');
@@ -1659,13 +1659,15 @@ function openHistItemMenu(anchorBtn, p, provKey){
     m.appendChild(b);
   };
   const svgPre = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
-  mkBtn(isAr ? 'إعادة تسمية' : 'Rename',
+  /* v-audit-attach (x-i18n-6): قائمة ⋮ كانت «Rename/Delete» لاثنتي عشرة لغة والعربيّة للأورديّة — مفاتيح الـ١٤ لغة */
+  const __rn = t('axAttachHistRename');
+  mkBtn((__rn && __rn !== 'axAttachHistRename') ? __rn : (lang === 'ar' ? 'إعادة تسمية' : 'Rename'),
     svgPre + '<path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path></svg>',
     '', () => histRenameProject(p));
-  mkBtn(t('shareProjectBtnTitle') || (isAr ? 'مشاركة' : 'Share'),
+  mkBtn(t('shareProjectBtnTitle'),
     svgPre + '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>',
     '', () => { if(typeof openShareModal === 'function') openShareModal(p); });
-  mkBtn(isAr ? 'حذف' : 'Delete',
+  mkBtn(t('bgImgDelete'), /* «حذف/Delete» العامّ نفسه بالـ١٤ لغة */
     svgPre + '<polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
     'danger', () => histDeleteProject(p, provKey));
   // موضع القائمة بجانب زر ⋮ مع البقاء داخل الشاشة

@@ -156,12 +156,18 @@ test('cli-chat-attach-4 ② امتداد مجهول بمحتوى ثنائيّ (N
   assert.ok(ctx.pendingAttachments.every((a) => a.text.length < 400));
 });
 
-test('cli-chat-attach-4 ③ النصّ الحقيقيّ يمرّ كما كان: عربيّ وCSV فيه حرف تالف واحد', async () => {
+test('cli-chat-attach-4 ③ النصّ الحقيقيّ يمرّ كما كان: عربيّ وCSV فيه حرف تالف واحد، ومخطّط ‎.dot‎ وقالب ‎.pot‎ النصّيّان', async () => {
   const ar = 'السلام عليكم، هذا ملفّ ملاحظات عربيّ.\n'.repeat(200);
   const csv = 'name,score\n' + 'a,1\n'.repeat(3000) + 'b�,2\n';
-  const { ctx } = ingestCtx((f) => (f.name === 'notes.txt' ? ar : csv));
-  await ctx.omranIngestFiles([{ name: 'notes.txt', type: 'text/plain', size: 9000 }, { name: 'data.csv', type: 'text/csv', size: 12000 }]);
-  assert.deepEqual(Array.from(ctx.pendingAttachments, (a) => [a.error || false, a.text]), [[false, ar], [false, csv]]);
+  const dot = 'digraph G { a -> b; b -> c; }\n';
+  const pot = 'msgid "Hello"\nmsgstr ""\n';
+  const word97 = 'ÐÏ\u0011à¡±\u001aá\u0000\u0000' + 'x'.repeat(3000); // قالب Word قديم ‎.dot‎ ثنائيّ
+  const by = { 'notes.txt': ar, 'data.csv': csv, 'graph.dot': dot, 'messages.pot': pot, 'letter.dot': word97 };
+  const { ctx } = ingestCtx((f) => by[f.name]);
+  await ctx.omranIngestFiles([{ name: 'notes.txt', type: 'text/plain', size: 9000 }, { name: 'data.csv', type: 'text/csv', size: 12000 },
+    { name: 'graph.dot', type: '', size: 40 }, { name: 'messages.pot', type: '', size: 30 }, { name: 'letter.dot', type: 'application/msword', size: 3010 }]);
+  assert.deepEqual(Array.from(ctx.pendingAttachments.slice(0, 4), (a) => [a.error || false, a.text]), [[false, ar], [false, csv], [false, dot], [false, pot]]);
+  assert.equal(ctx.pendingAttachments[4].error, true, 'قالب Word الثنائيّ تكشفه العيّنة');
 });
 
 test('cli-chat-attach-4 ④ نصّ الشريحة بلغة الواجهة: مفتاح الفرنسيّة إن وُجد، والأورديّة بلا مفتاح = إنجليزيّة لا عربيّة', async () => {
@@ -312,6 +318,55 @@ const BILINGUAL_MAX = 56;
 test('x-i18n-6 ④ سقف ثنائيّات العربيّ/الإنجليزيّ في app-09 لا يزيد عن ' + BILINGUAL_MAX + ' (كانت ١٦٦)', () => {
   const n = (SRC.match(BILINGUAL_RE) || []).length;
   assert.ok(n <= BILINGUAL_MAX, 'ثنائيّات: ' + n);
+});
+
+/* قائمة ⋮ لكلّ محادثة في الشريط الجانبيّ (app-04): الدالّتان الحقيقيّتان في vm بـDOM مزيّف */
+const SRC04 = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-04-i18n-state.js'), 'utf8');
+const AST04 = acorn.parse(SRC04, { ecmaVersion: 'latest', sourceType: 'script' });
+const fn04 = (name) => { const n = AST04.body.find((x) => x.type === 'FunctionDeclaration' && x.id && x.id.name === name); assert.ok(n, name); return SRC04.slice(n.start, n.end); };
+function histMenu(langCode, dict) {
+  const prompts = [];
+  const mk = () => { const el = { children: [], classList: { add() {}, remove() {} }, style: {}, appendChild(c) { this.children.push(c); } }; return el; };
+  const menu = mk();
+  const ctx = baseCtx({
+    lang: langCode, prompt: (q) => { prompts.push(q); return null; },
+    document: { documentElement: { dir: 'ltr' }, createElement: mk, getElementById: () => menu },
+    ensureHistItemMenu: () => menu,
+  });
+  ctx.window.innerWidth = 1280; ctx.window.innerHeight = 800;
+  ctx.I18N.en = { shareProjectBtnTitle: 'Share project via public link', bgImgDelete: 'Delete' };
+  ctx.I18N.ar = { shareProjectBtnTitle: 'شارك المشروع برابط عام', bgImgDelete: 'حذف' };
+  if (dict) ctx.I18N[langCode] = dict;
+  vm.runInContext(optSrc() + '\n' + fn04('histRenameProject') + '\n' + fn04('openHistItemMenu'), ctx);
+  ctx.openHistItemMenu({ getBoundingClientRect: () => ({ left: 10, right: 40, top: 10, bottom: 30 }) }, { title: 'x' }, 'claude');
+  const labels = menu.children.map((b) => String(b.innerHTML).replace(/^[\s\S]*<span>|<\/span>$/g, ''));
+  menu.children[0].onclick({ stopPropagation() {} }); // «إعادة تسمية» يفتح نافذة الاسم
+  return { labels, prompt: prompts[0] };
+}
+
+test('x-i18n-6 ⑥ قائمة ⋮ في الشريط الجانبيّ ونافذة إعادة التسمية: مفاتيح الـ١٤ لغة، والأورديّة لا ترى العربيّة', () => {
+  const fr = histMenu('fr', { axAttachHistRename: 'Renommer', axAttachHistNewName: 'Nouveau nom :', bgImgDelete: 'Supprimer', shareProjectBtnTitle: 'Partager' });
+  assert.deepEqual(fr.labels, ['Renommer', 'Partager', 'Supprimer']);
+  assert.equal(fr.prompt, 'Nouveau nom :');
+  const ur = histMenu('ur');
+  assert.doesNotMatch(ur.labels.join(' ') + ' ' + ur.prompt, /[؀-ۿ]/, 'لا عربيّة لمستخدم الأورديّة: ' + ur.labels.join(' | '));
+  const ar = histMenu('ar');
+  assert.deepEqual(ar.labels, ['إعادة تسمية', 'شارك المشروع برابط عام', 'حذف']);
+  assert.equal(ar.prompt, 'الاسم الجديد للمشروع:');
+});
+
+test('x-i18n-6 ⑦ خيارات الديكور الخارجيّ الستّة بمفتاح data-i18n يقرؤه مترجم الخيارات (__optT)', () => {
+  const P = fs.readFileSync(path.join(__dirname, '..', 'js', 'partials-core.js'), 'utf8');
+  for (const v of ['facade', 'pool', 'pergola', 'bbq', 'rooftop', 'pathway']) {
+    assert.match(P, new RegExp('<option value="' + v + '" data-en="[^"]+" data-i18n="axAttachDecor[A-Z][a-z]+">'), v);
+  }
+  const D = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-03-i18n-data.js'), 'utf8');
+  const line = D.split('\n').find((l) => l.startsWith('window.__optT='));
+  const ctx = baseCtx({ lang: 'fr' });
+  ctx.window.t = ctx.t; ctx.I18N.fr = { axAttachDecorPool: '🏊 Piscine et patio' };
+  vm.runInContext(line + '\n' + D.split('\n').find((l) => l.startsWith('window.__optXlLang=')), ctx);
+  const opt = { textContent: '🏊 مسبح وجلسة', getAttribute: (a) => ({ 'data-i18n': 'axAttachDecorPool', 'data-en': '🏊 Pool & Patio' })[a] || null };
+  assert.equal(ctx.window.__optT(opt), '🏊 Piscine et patio');
 });
 
 const STR = String.raw`('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")`;

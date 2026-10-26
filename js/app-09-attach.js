@@ -158,8 +158,9 @@ function omranAttachT(key, ar, en){
 }
 /* v-audit-attach (cli-chat-attach-4): حقل الإرفاق بلا accept، وكلّ ما ليس صورة ولا PDF ولا أرشيفًا ولا فيديو كان يُقرأ نصًّا — رسالة
    صوتيّة ٢ م.ب صارت ٤٥٠ ألف حرف (١٩٧ ألف منها U+FFFD) تُرسل للنموذج في كلّ رسالة، والبطاقة تعرضها ملفًّا نصّيًّا. الثنائيّ يُعرف
-   بنوعه أو امتداده قبل القراءة، أو بعيّنة النصّ بعدها (NUL، أو أكثر من ٢٪ حروفًا تالفة في أوّل ٨ آلاف حرف)، فيصير شريحة خطأ مترجمة. */
-const OMRAN_BINARY_EXT_RE = /\.(?:mp3|m4a|aac|ogg|oga|opus|wav|flac|amr|wma|aiff?|midi?|doc|dot|xls|xlt|ppt|pps|pot|odt|ods|odp|pages|numbers|epub|rar|7z|gz|tgz|bz2|xz|tar|zst|cab|apk|aab|xapk|ipa|exe|msi|dll|so|dylib|bin|dmg|iso|psd|sketch|fig|xcf|ttf|otf|woff2?|eot|class|dex|pyc|wasm|db|sqlite3?|mdb|accdb)$/i;
+   بنوعه أو امتداده قبل القراءة، أو بعيّنة النصّ بعدها (NUL، أو أكثر من ٢٪ حروفًا تالفة في أوّل ٨ آلاف حرف)، فيصير شريحة خطأ مترجمة.
+   لا .dot ولا .pot في القائمة: مخطّط Graphviz وقالب ترجمة gettext نصّان؛ قالبا Word/PowerPoint بهما تكشفهما العيّنة. */
+const OMRAN_BINARY_EXT_RE = /\.(?:mp3|m4a|aac|ogg|oga|opus|wav|flac|amr|wma|aiff?|midi?|doc|xls|xlt|ppt|pps|odt|ods|odp|pages|numbers|epub|rar|7z|gz|tgz|bz2|xz|tar|zst|cab|apk|aab|xapk|ipa|exe|msi|dll|so|dylib|bin|dmg|iso|psd|sketch|fig|xcf|ttf|otf|woff2?|eot|class|dex|pyc|wasm|db|sqlite3?|mdb|accdb)$/i;
 function omranIsBinaryAttach(file, text){
   try{
     if(text == null) return /^(?:audio|font)\//i.test((file && file.type) || '') || OMRAN_BINARY_EXT_RE.test((file && file.name) || '');
@@ -1260,7 +1261,7 @@ async function unzipInBrowser(file){
   }
   const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
   if(zip.files['[Content_Types].xml']) return omranOfficeZipText(zip, file.name); // v-audit-attach (cli-chat-attach-3): Office = نصّه لا XML
-  const TEXT =/\.(txt|md|markdown|js|jsx|ts|tsx|mjs|cjs|json|html?|css|scss|less|py|rb|php|java|c|cpp|h|hpp|cs|go|rs|swift|kt|sh|bash|yml|yaml|xml|sql|env|vue|svelte|toml|ini|conf|csv)$/i;
+  const TEXT = /\.(txt|md|markdown|js|jsx|ts|tsx|mjs|cjs|json|html?|css|scss|less|py|rb|php|java|c|cpp|h|hpp|cs|go|rs|swift|kt|sh|bash|yml|yaml|xml|sql|env|vue|svelte|toml|ini|conf|csv)$/i;
   const SKIP = /(^|\/)(node_modules|\.git|dist|build|\.next|__pycache__|__MACOSX)\//;
   const names = Object.keys(zip.files)
     .filter(n => !zip.files[n].dir && TEXT.test(n) && !SKIP.test(n))
