@@ -327,6 +327,8 @@ function portraitCtx(opts) {
     backdropEl: null, beautifySkinEl: null, beautifyLightEl: null, beautifyTeethEl: null, setComparePct() {},
     document: { createElement: () => el() },
     FileReader: class { readAsDataURL(f) { this.file = f; st.readers.push(this); } },
+    /* بعد دمج v-audit-studcli: الصور الإضافيّة تمرّ بـ__compressImg (تصغير + HEIC) — القراءة الجارية = نداء لم يُستدعَ ردّه بعد */
+    __compressImg: (file, cb) => { st.readers.push({ file, cb }); },
     __safeJson: async (r) => r.json(),
     __swallow() {},
     fetch: async (url, init) => { st.sent.push(JSON.parse(init.body)); return o.reply ? o.reply() : { ok: true, json: async () => ({ imageBase64: 'OUT', mimeType: 'image/png' }) }; },
@@ -344,37 +346,46 @@ function portraitCtx(opts) {
 }
 
 test('srv-studios-2-5 الواجهة: «حوّلها» لا يرسل الدمج قبل أن تُقرأ الصورة الإضافيّة، ولا بلاها', async () => {
+  const tick = () => new Promise((r) => setImmediate(r));
   let m = portraitCtx({ style: 'merge2' });
   await m.ctx.btnGenerate.onclick();
   assert.equal(m.st.sent.length, 0, 'بلا صورة إضافيّة لا طلب');
   assert.deepEqual(m.st.status, ['[portraitMultiLabelMerge]']);
-  // الصورة اختيرت والقراءة لم تكتمل بعد (FileReader غير متزامن)
+  // الصورة اختيرت والقراءة لم تكتمل بعد: «حوّلها» ينتظرها (v-audit-studcli) ولا يرسل بصورة واحدة
   m.els['#portraitMultiFileInput'].files = [{ type: 'image/jpeg' }];
   m.els['#portraitMultiFileInput'].onchange();
   assert.equal(m.st.readers.length, 1);
-  await m.ctx.btnGenerate.onclick();
+  let p = m.ctx.btnGenerate.onclick();
+  await tick();
   assert.equal(m.st.sent.length, 0, 'القراءة جارية — لا طلب بصورة واحدة');
-  m.st.readers[0].result = 'data:image/jpeg;base64,EXTRA';
-  m.st.readers[0].onload();
-  await m.ctx.btnGenerate.onclick();
+  m.st.readers[0].cb('data:image/jpeg;base64,EXTRA');
+  await p;
   assert.equal(m.st.sent.length, 1);
   assert.deepEqual(m.st.sent[0].extraImages, ['EXTRA']);
-  // العائلي: ما دامت قراءة واحدة جارية لا طلب
+  // العائلي: ما دامت قراءة واحدة جارية لا طلب، وبعد اكتمالهما تُرسلان بترتيبهما
   m = portraitCtx({ style: 'familystyle' });
   m.els['#portraitMultiFileInput'].files = [{ type: 'image/jpeg' }, { type: 'image/png' }];
   m.els['#portraitMultiFileInput'].onchange();
-  m.st.readers[0].result = 'data:image/jpeg;base64,F1'; m.st.readers[0].onload();
-  await m.ctx.btnGenerate.onclick();
+  m.st.readers[0].cb('data:image/jpeg;base64,F1');
+  p = m.ctx.btnGenerate.onclick();
+  await tick();
   assert.equal(m.st.sent.length, 0, 'صورة من اثنتين قُرئت');
-  assert.deepEqual(m.st.status, ['[portraitMultiLabelFamily]']);
-  m.st.readers[1].result = 'data:image/png;base64,F2'; m.st.readers[1].onload();
-  await m.ctx.btnGenerate.onclick();
+  m.st.readers[1].cb('data:image/jpeg;base64,F2');
+  await p;
   assert.deepEqual(m.st.sent[0].extraImages, ['F1', 'F2']);
+  // قراءة فشلت (ردّ فارغ) = بلا صورة إضافيّة: لا طلب، ونصّ خانة الرفع
+  m = portraitCtx({ style: 'familystyle' });
+  m.els['#portraitMultiFileInput'].files = [{ type: 'image/jpeg' }];
+  m.els['#portraitMultiFileInput'].onchange();
+  m.st.readers[0].cb('');
+  await m.ctx.btnGenerate.onclick();
+  assert.equal(m.st.sent.length, 0);
+  assert.deepEqual(m.st.status, ['[portraitMultiLabelFamily]']);
   // رمز الخادم نفسه برسالة الواجهة
   m = portraitCtx({ style: 'merge2', reply: () => ({ ok: false, json: async () => ({ error: 'missing_extra_images' }) }) });
   m.els['#portraitMultiFileInput'].files = [{ type: 'image/jpeg' }];
   m.els['#portraitMultiFileInput'].onchange();
-  m.st.readers[0].result = 'data:image/jpeg;base64,X'; m.st.readers[0].onload();
+  m.st.readers[0].cb('data:image/jpeg;base64,X');
   await m.ctx.btnGenerate.onclick();
   assert.equal(m.st.status[m.st.status.length - 1], '[portraitMultiLabelMerge]');
   // نمط عاديّ لا يتأثّر
@@ -465,7 +476,7 @@ test('srv-studios-2-8 الواجهة: رمز الحارس وغيره بنصّ im
   assert.equal(m.ctx.stud2ErrText(new Error('weird_code'), '❌ Error: '), '❌ Error: weird_code');
   // مواضع الأزياء الثلاثة (التوليد، التعديل، الاقتراح) تمرّ بالمترجم نفسه
   const fx = A12.slice(A12.indexOf('/* ---------- 👗 AI Fashion Design'), A12.indexOf('/* ---------- 🕌 Religious Insights'));
-  const sites = fx.match(/setStatus\(stud2ErrText\(e, bT\('❌ خطأ: ','❌ Error: '\)\)\);/g) || [];
+  const sites = fx.match(/setStatus\(stud2ErrText\(e, bT\('❌ خطأ: ','❌ Error: '\)(?:, '[A-Za-z]+')?\)\);/g) || [];
   assert.equal(sites.length, 3, 'التوليد والتعديل والاقتراح');
   assert.doesNotMatch(fx, /setStatus\(\(bT\('❌ خطأ: ','❌ Error: '\)\) \+ \(e && e\.message/, 'لا عرض خام باقٍ في الأزياء');
 });

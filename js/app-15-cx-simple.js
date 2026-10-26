@@ -68,16 +68,23 @@
     st.style.display = 'block';
   }
 
+  /* v-audit-studcli (x-runtime-ui-3): اسم البطاقة كان يُكتب مرّة في boot() — قبل وصول ملفّ اللغة الكسول، فبقي إنجليزيًّا لـ١٢ لغة
+     وعربيًّا بعد التحويل إلى الإنجليزيّة. يُعاد الآن من خيار #constructionType نفسه في كلّ render() (المربوطة بتغيّر html[lang]). */
+  function cardLabel(b, type){
+    var txt = optText('constructionType', type) || type;
+    var emRe; try{ emRe = new RegExp('^(\\p{Extended_Pictographic}\\uFE0F?)\\s*(.*)$', 'u'); }catch(e){ emRe = /^((?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF])\uFE0F?)\s*(.*)$/; /* v-es-floor: محرّك قديم — تقريب */ }
+    var m = txt.match(emRe);
+    b.children[0].textContent = m ? m[1] : '🏗️';
+    b.children[1].textContent = m ? m[2] : txt;
+  }
   function card(p, st, all){
     var b = document.createElement('button'); b.type = 'button';
     b.setAttribute('data-cx-preset', p.type);
     b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.14));background:rgba(255,255,255,.03);color:inherit;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1.35;cursor:pointer;text-align:center;';
-    var txt = optText('constructionType', p.type) || p.type;
-    var emRe; try{ emRe = new RegExp('^(\\p{Extended_Pictographic}\\uFE0F?)\\s*(.*)$', 'u'); }catch(e){ emRe = /^((?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF])\uFE0F?)\s*(.*)$/; /* v-es-floor: محرّك قديم — تقريب */ }
-    var m = txt.match(emRe);
-    var em = document.createElement('span'); em.textContent = m ? m[1] : '🏗️'; em.style.cssText = 'font-size:22px;';
-    var nm = document.createElement('span'); nm.textContent = m ? m[2] : txt;
+    var em = document.createElement('span'); em.style.cssText = 'font-size:22px;';
+    var nm = document.createElement('span');
     b.appendChild(em); b.appendChild(nm);
+    cardLabel(b, p.type);
     b.onclick = function(){
       all.forEach(function(x){ x.style.borderColor = 'var(--border,rgba(255,255,255,.14))'; x.style.background = 'rgba(255,255,255,.03)'; });
       b.style.borderColor = 'var(--omGold,#d4af37)'; b.style.background = 'rgba(212,175,55,.14)';
@@ -105,6 +112,8 @@
     var m = $('cxMoreBtn');
     if(m) m.textContent = ($('cxMore') && $('cxMore').style.display !== 'none') ? ('▴ ' + T(TX.less)) : (T(TX.more) + ' ▾');
     var p = $('cxMorePeek'); if(p) p.textContent = peek();
+    var cs = $('cxStartCards');
+    if(cs) Array.prototype.forEach.call(cs.children, function(b){ cardLabel(b, b.getAttribute('data-cx-preset')); });
   }
 
   function boot(){

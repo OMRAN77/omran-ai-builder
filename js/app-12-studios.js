@@ -58,6 +58,32 @@ async function __safeJson(res){
   try{ return JSON.parse(txt); }
   catch(e){ return { error: txt.slice(0,200) || ('HTTP '+res.status) }; }
 }
+/* v-audit-studcli (cli-studios-4): كتل catch في الاستوديوهات كانت تلصق e.message بعد «❌ خطأ:» — فيرى المستخدم بأيّ لغة جملة الخادم
+   العربيّة («تعذّر إنشاء الصورة الآن…»)، أو نصًّا تقنيًّا فيه اسم مزوّد ومتغيّر («Server is missing <المفتاح>»، «Proxy error: …»)، أو
+   نصّ ٤١٣ الخامّ من __safeJson. الرموز المعروفة تُحوَّل إلى مفاتيحها بالـ١٤ لغة، وما سواها رسالة عامّة مترجمة (fbKey وإلّا «تعذّر إنشاء
+   الصورة»)، والنصّ الخامّ للمالك وحده بين قوسين للتشخيص. الاحتياط العربيّ/الإنجليزيّ لا يُستعمل إلّا قبل جاهزيّة المترجم. */
+const __STUDIO_ERR_FB = {
+  voiceImageFailed: ['ما قدرت أسوي الصورة، حاول مرة ثانية.', "Couldn't create the image, please try again."],
+  designAiSuggestError: ['تعذر توليد أفكار، حاول مرة أخرى.', 'Could not generate ideas, try again.'],
+  svcPaused: ['الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.', 'This service is temporarily unavailable — please try again shortly.'],
+  portraitLimitReached: ['وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا', 'You reached the daily limit for this feature, try again tomorrow'],
+  portraitNeedLogin: ['يرجى تسجيل الدخول لاستخدام هذه الميزة', 'Please log in to use this feature'],
+  acctAvatarTooBig: ['الصورة كبيرة جدًا، اختر صورة أصغر', 'The image is too large, choose a smaller one'],
+};
+function __studioErrMsg(e, fbKey){
+  const raw = String((e && e.message) || e || '').trim();
+  let key = fbKey || 'voiceImageFailed';
+  if(raw === 'unavailable') key = 'svcPaused';
+  else if(raw === 'daily_limit_reached') key = 'portraitLimitReached';
+  else if(raw === 'auth_required') key = 'portraitNeedLogin';
+  else if(/\b413\b|Entity Too Large|PAYLOAD_TOO_LARGE/i.test(raw)) key = 'acctAvatarTooBig';
+  let msg = '';
+  try{ if(typeof window.t === 'function'){ const v = window.t(key); if(v && v !== key) msg = String(v); } }catch(_){ /* guard-ok — المترجم لم يجهز: الاحتياط أدناه */ }
+  if(!msg){ const fb = __STUDIO_ERR_FB[key] || __STUDIO_ERR_FB.voiceImageFailed; msg = (typeof window.__bT === 'function') ? window.__bT(fb[0], fb[1]) : fb[0]; }
+  msg = '❌ ' + String(msg).replace(/^\s*❌\s*/, '');
+  if(raw && !/^[a-z_]+$/.test(raw) && typeof omranOwnerUi === 'function' && omranOwnerUi()) msg += ' (' + raw.slice(0, 300) + ')';
+  return msg;
+}
 
 /* ---------- 🏠 AI Interior Design (Gemini image, server-side owner key) ---------- */
 (function(){
@@ -279,7 +305,8 @@ async function __safeJson(res){
       if(!imgs.length){
         /* v-ideas-resilient: مصدر الصور متوقف (حصّة) ≠ لا نتائج — نقول الحقيقة */
         if(d && d.error === 'provider'){
-          var __dt = ''; try{ __dt = d.detail ? (' (' + Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
+          /* v-audit-studcli (cli-studios-3): حالة المصادر (أسماء المزوّدين، off للمفتاح الناقص، عدد المدفوع) للمالك وحده — كـv-decor-fallback في designRun */
+          var __dt = ''; try{ __dt = (d.detail && typeof omranOwnerUi === 'function' && omranOwnerUi()) ? (' (' +Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
           ideaStatus('⚠️ ' + bT('مصدر الصور متوقف مؤقتًا — جرّب بعد قليل، أو ولّد تصاميم بالذكاء.', 'The photo source is temporarily unavailable — try again shortly, or generate AI designs.') + __dt);
         }
         else ideaStatus(noPhotos());
@@ -455,7 +482,7 @@ async function __safeJson(res){
       dsReveal((baWrap && baWrap.style.display !== 'none') ? baWrap : resultEl); /* v-scene-kinds */
       setStatus(t('designAiDone'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(__studioErrMsg(e));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -737,7 +764,7 @@ async function __safeJson(res){
         if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحب وقارن واختر','✓ Done — swipe and pick'));
       }
     } catch(e){
-      cmpStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      cmpStatus(__studioErrMsg(e));
     } finally {
       cmpBtn.disabled = false;
     }
@@ -859,14 +886,15 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
 /* v-audit-stud2 (srv-studios-2-8): رمز الخادم (حارس الهويّة/الأسلوب، image_generation_failed، unavailable…) بنصّ الواجهة عبر
    imgErrFriendly كما في studioErrText (app-13) — كان «❌ خطأ: image_edit_identity_mismatch» خامًا في الأنماط والأزياء. العربيّة
    للعربيّة وحدها (الأردو وغيرها تأخذ الإنجليزيّة لا العربيّة)، وما لا ترجمة له يبقى كما كان بالبادئة. */
-function stud2ErrText(e, prefix){
+function stud2ErrText(e, prefix, fbKey){
   const code = (e && e.message) ? String(e.message) : String(e);
   try{
     const lg = (typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar');
     const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, lg === 'ar') : null;
     if(friendly) return '⚠️ ' + friendly;
   }catch(err){ __swallow(err, 'stud2:err-text'); }
-  return prefix + code;
+  /* v-audit-studcli (cli-studios-4): ما لا ترجمة له لا يُعرض خامًّا — رسالة الاستوديو المترجمة (والخامّ للمالك وحده) */
+  return (typeof __studioErrMsg === 'function') ? __studioErrMsg(e, fbKey) : prefix + code;
 }
 
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
@@ -1455,9 +1483,12 @@ function stud2ErrText(e, prefix){
      #portraitMulti* تخصّ أنماط الصور فقط؛ styleEl هنا هو portraitStyleSelect الصحيح (كان في
      مكانها القديم styleEl الأزياء الداخلية، فمقارنة 'merge2' لا تتحقّق أبدًا هناك). */
   let extraImagesB64 = [];
-  /* v-audit-stud2 (srv-studios-2-5): FileReader غير متزامن — «حوّلها» قبل اكتمال القراءة كان يرسل extraImages: [] فيخترع النموذج
-     الشخص الثاني. القراءات الجارية تُعدّ لكلّ اختيار (القراءة من اختيار أقدم لا تُحسب)، والزرّ لا يرسل الدمج قبل اكتمالها */
-  let extraPending = 0, extraGen = 0;
+  /* v-audit-studcli (cli-studios-2) + v-audit-stud2 (srv-studios-2-5): الصور الإضافيّة كانت تُقرأ بـreadAsDataURL بحجمها الأصليّ
+     (صورة كاميرا ٣ م.ب تكفي لتجاوز حدّ الاستضافة ٤٫٥ م.ب فيُرفض الطلب بـ٤١٣) وبلا تحويل HEIC، والقراءة غير متزامنة فكان «حوّلها»
+     قبل اكتمالها يرسل extraImages: [] فيخترع النموذج الشخص الثاني. الآن تمرّ كلّ واحدة بـ__compressImg(…, 1024) كالصورة الرئيسيّة،
+     بترتيبها، و«حوّلها» ينتظر اكتمال الدفعة (extraReady) ثمّ يرفض الإرسال بلا صورة إضافيّة؛ ودفعة أحدث تُلغي ما لم يكتمل من سابقتها. */
+  let extraReady = Promise.resolve();
+  let extraBatch = 0;
   const multiFileInput = $('#portraitMultiFileInput');
   const multiFileBtn = $('#portraitMultiFileBtn');
   const multiPreviewWrap = $('#portraitMultiPreviewWrap');
@@ -1466,27 +1497,24 @@ function stud2ErrText(e, prefix){
     multiFileInput.onchange = () => {
       const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
       const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
+      const batch = ++extraBatch;
+      const slots = [];
       extraImagesB64 = [];
-      const gen = ++extraGen;
-      extraPending = files.length;
       if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onerror = () => { if(gen === extraGen) extraPending = Math.max(0, extraPending - 1); };
-        reader.onload = () => {
-          if(gen !== extraGen) return;
-          extraPending = Math.max(0, extraPending - 1);
-          const dataUrl = String(reader.result || '');
-          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
-          if(multiPreviewWrap){
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
-            multiPreviewWrap.appendChild(img);
+      extraReady = Promise.all(files.map((file, i) => new Promise((done) => {
+        __compressImg(file, (dataUrl) => {
+          if(batch === extraBatch && dataUrl){
+            slots[i] = { base64: dataUrl.split(',')[1] || '', mime: 'image/jpeg' };
+            if(multiPreviewWrap){
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
+              multiPreviewWrap.appendChild(img);
+            }
           }
-        };
-        reader.readAsDataURL(file);
-      });
+          done();
+        }, 1024);
+      }))).then(() => { if(batch === extraBatch) extraImagesB64 = slots.filter(Boolean); });
     };
   }
 
@@ -1502,7 +1530,8 @@ function stud2ErrText(e, prefix){
     }
     /* v-audit-stud2 (srv-studios-2-5): الدمج والعائلي بلا صورة إضافيّة مقروءة = نصّ خانة الرفع نفسه، بلا طلب */
     const multiStyle = styleEl.value === 'merge2' || styleEl.value === 'familystyle';
-    if(multiStyle && (extraPending > 0 || !extraImagesB64.length)){
+    if(multiStyle) await extraReady; /* v-audit-studcli: الصور الإضافيّة مصغّرة وكاملة قبل الفحص والإرسال */
+    if(multiStyle && !extraImagesB64.length){
       setStatus(t(styleEl.value === 'merge2' ? 'portraitMultiLabelMerge' : 'portraitMultiLabelFamily'));
       return;
     }
@@ -1570,7 +1599,7 @@ function stud2ErrText(e, prefix){
         setStatus(t('portraitDone'));
       }
     } catch(e){
-      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) */
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -2139,7 +2168,7 @@ function stud2ErrText(e, prefix){
       const __dl = fxDesignLine(data.design);
       setStatus(t('fashionAiDone') + (__dl ? ' ' + __dl : ''));
     } catch(e){
-      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) */
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -2245,7 +2274,7 @@ function stud2ErrText(e, prefix){
       refineInput.value = '';
       setStatus(t('fashionAiDone'));
     }catch(e){
-      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) */
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     }finally{
       refineBtn.disabled = false; btnGenerate.disabled = false;
     }
@@ -2330,7 +2359,7 @@ function stud2ErrText(e, prefix){
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('fashionSuggestNeedImage'));
     } catch(e){
-      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) */
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '), 'designAiSuggestError')); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       suggestBtn.disabled = false;
     }
@@ -2405,6 +2434,10 @@ function stud2ErrText(e, prefix){
             resultEl.src = r.dataUrl; if(resultWrap) resultWrap.style.display = 'block'; resultEl.style.display = 'block'; /* v-fashion-show */
             downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
             favSaveBtn.style.display = 'block';
+            /* v-audit-studcli (cli-studios-6): المختارة تصير مصدر «عدّل شيئًا محددًا» — كان __lastFxB64 يبقى على التوليد السابق فيُعدَّل
+               التصميم القديم ويحلّ محلّ المختارة. __refineRemember يبني الصفّ إن لم يُبنَ ويفرّغ خانته */
+            const __pm = /^data:([^;,]+);base64,(.*)$/.exec(r.dataUrl);
+            if(__pm) __refineRemember(__pm[2], __pm[1]);
             /* v-fashion-result-inplace: النتيجة وزرّ التحميل صارا أعلى النافذة — نصعد إليهما ليرى الاختيار */
             fxRevealResult();
           };
@@ -2417,7 +2450,7 @@ function stud2ErrText(e, prefix){
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = __studioErrMsg(e);
     } finally {
       compareBtn.disabled = false;
     }
