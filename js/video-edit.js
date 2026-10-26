@@ -192,13 +192,17 @@
       fc.push('[' + cur + ']format=yuv420p[vout]');
     }
     var aMap = null;
+    /* v-audit-video (cli-video-3): مدّة الفيديو مجهولة (WebM من MediaRecorder: المتصفّح Infinity وffmpeg ‏Duration: N/A) فلا -t،
+       والصوت البديل المكرّر (-stream_loop -1) بلا نهاية — فلا يتوقّف ffmpeg أبدًا (الشريط عند ٩٩٪ والذاكرة تكبر). الصوت البديل هنا
+       يُكمَّل صمتًا (apad) و-shortest يُنهي المخرج بانتهاء الفيديو (لا أطول بآخر إطار ولا أقصر)، وسقف المحرّر -t احتياطًا. */
+    var endless = !!A && !(A.mode === 'mix' && o.hasAudio) && !(T > 0);
     if(A){
       var nv = r2(A.vol == null ? 1 : A.vol), ov = r2(A.origVol == null ? 1 : A.origVol);
       if(A.mode === 'mix' && o.hasAudio){
         fc.push('[0:a]volume=' + ov + '[a0]', '[' + aIdx + ':a]volume=' + nv + '[a1]',
           '[a0][a1]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]');
       } else {
-        fc.push('[' + aIdx + ':a]volume=' + nv + '[aout]');
+        fc.push('[' + aIdx + ':a]volume=' + nv + (endless ? ',apad' : '') + '[aout]');
       }
       aMap = '[aout]';
     }
@@ -215,6 +219,7 @@
     if(aMap || !o.mute) args.push('-c:a', 'aac', '-b:a', '160k');
     else args.push('-an');
     if(T > 0) args.push('-t', String(r2(T)));
+    else { if(endless) args.push('-shortest'); if(A) args.push('-t', String(MAX_SEC)); } /* v-audit-video: مدّة مجهولة — نهاية مضمونة */
     args.push('-movflags', '+faststart', o.out || 'out.mp4');
     return args;
   }

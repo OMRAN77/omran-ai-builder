@@ -291,6 +291,32 @@ test('cli-video-2 (ب): المواضع الخمسة لـ/api/tts في صانع �
   assert.equal((VIDEO.match(/narrMissNote\(builtScenes\.filter\(\(s\) => !\(s\.audioBlob && s\.audioBlob\.size\)\)\.length, builtScenes\.length\)/g) || []).length, 2);
 });
 
+// ─────────────────────────────── cli-video-3 ───────────────────────────────
+const VED = require(rp('js/video-edit.js'));
+const has = (a, k, v) => a.some((x, i) => x === k && (v === undefined || a[i + 1] === v));
+
+test('cli-video-3: فيديو مجهول المدّة (WebM من MediaRecorder) مع صوت مكرّر أو بديل يُصدَّر بنهاية — لا أمر بلا -t ولا -shortest', () => {
+  const base = { inName: 'in.webm', dur: 0, W: 720, H: 1280, overlays: [], hasAudio: false, copyVideo: false, out: 'out.mp4' };
+  // الحالة المبلَّغة: «كرّره لين آخر الفيديو» (الافتراضيّ للملفّ) والفيديو بلا صوت فيُفرض replace
+  const loop = VED.buildArgs(Object.assign({}, base, { audio: { name: 'add.mp3', mode: 'replace', loop: true, vol: 0.45 } }));
+  assert.ok(has(loop, '-stream_loop', '-1'), 'التكرار كما هو');
+  assert.ok(has(loop, '-shortest'), 'ينتهي بانتهاء الفيديو: ' + loop.join(' '));
+  assert.ok(has(loop, '-t', String(VED.MAX_SEC)), 'وسقف المحرّر نفسه احتياطًا');
+  // بلا تكرار: أغنية أطول من الفيديو لا تمدّه بآخر إطار ثابت، وأقصر منه تُكمَّل صمتًا
+  const once = VED.buildArgs(Object.assign({}, base, { audio: { name: 'add.mp3', mode: 'replace', loop: false, vol: 1 } }));
+  assert.ok(has(once, '-shortest'));
+  assert.match(once[once.indexOf('-filter_complex') + 1], /\[1:a\]volume=1,apad\[aout\]/);
+  // المدّة المعروفة كما كانت: -t بطولها ولا -shortest ولا apad
+  const known = VED.buildArgs(Object.assign({}, base, { dur: 12, audio: { name: 'add.mp3', mode: 'replace', loop: true, vol: 1 } }));
+  assert.ok(has(known, '-t', '12') && !has(known, '-shortest'));
+  assert.doesNotMatch(known[known.indexOf('-filter_complex') + 1], /apad/);
+  // مزج مع صوت الفيديو الأصليّ: amix ينتهي بالأوّل — بلا -shortest، والسقف وحده
+  const mix = VED.buildArgs(Object.assign({}, base, { hasAudio: true, audio: { name: 'add.mp3', mode: 'mix', loop: true, vol: 0.45, origVol: 1 } }));
+  assert.ok(!has(mix, '-shortest') && has(mix, '-t', String(VED.MAX_SEC)));
+  // والتصدير يمرّر المدّة المعروفة أو صفرًا (المجهولة) كما كان
+  assert.ok(read('js/video-edit.js').includes('dur: st.dur || P.dur,'));
+});
+
 test('srv-video-4 (د): الواجهة تعرض حدّ اليوم بنصّ الـ١٤ لغة القائم (portraitLimitReached) لا «تعذّر التحليل»', () => {
   const s = read('js/app-32-video-watch.js');
   const fn = s.slice(s.indexOf('function errText(d){'), s.indexOf('var lastWatch'));
