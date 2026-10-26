@@ -344,7 +344,12 @@ function swipeWorld() {
   const result = box.append(mk('religionResult'));
   /* عقدة نصّ النتيجة: سطر واحد بين x=100..500 وy=200..220 */
   const text = { nodeType: 3, nodeValue: 'The verse explains patience and gratitude.', parentElement: result, __rects: [{ left: 100, right: 500, top: 200, bottom: 220 }] };
-  const els = { religionModal: modal, religionCloseBtn: closeBtn, religionBox: box, religionResult: result };
+  /* زرّ خيار داخل الأداة: حروفه لا تُحدَّد بالسحب، فالسحب منه رجوع كما كان */
+  const chip = box.append(mk('chip', 'button'));
+  chip.closest = (s) => (/button/.test(s) ? chip : null);
+  const chipText = { nodeType: 3, nodeValue: 'Choose this option', parentElement: chip, __rects: [{ left: 100, right: 300, top: 300, bottom: 330 }] };
+  const caret = { node: text };
+  const els = { religionModal: modal, religionCloseBtn: closeBtn, religionBox: box, religionResult: result, chip };
   const sel = { removed: 0, removeAllRanges() { this.removed++; } };
   const htmlCls = new Set();
   const document = {
@@ -355,7 +360,7 @@ function swipeWorld() {
     querySelector: () => null,
     addEventListener: (t, fn) => { (docL[t] = docL[t] || []).push(fn); },
     /* كمتصفّح Chromium: النقطة تُلصق بأقرب موضع نصّ حتّى في الفراغ — الفحص الحقيقيّ صندوق السطر */
-    caretRangeFromPoint: () => ({ startContainer: text, startOffset: 3 }),
+    caretRangeFromPoint: () => ({ startContainer: caret.node, startOffset: 3 }),
     createRange: () => ({ n: null, selectNodeContents(n) { this.n = n; }, getClientRects() { return (this.n && this.n.__rects) || []; } }),
   };
   const ctx = {
@@ -376,7 +381,7 @@ function swipeWorld() {
     for (const step of [20, dx / 2, dx]) (docL.mousemove || []).forEach((f) => f({ clientX: x + step, clientY: y, preventDefault() {} }));
     (docL.mouseup || []).forEach((f) => f({ clientX: x + dx, clientY: y }));
   };
-  return { modal, closeBtn, box, result, sel, drag, htmlCls };
+  return { modal, closeBtn, box, result, chip, chipText, caret, sel, drag, htmlCls };
 }
 
 test('cli-ui-shell-4: سحب الفأرة لليمين فوق نصّ النتيجة تحديدٌ لا رجوع — لا يُمسح التحديد ولا تُغلق الأداة', async () => {
@@ -394,6 +399,12 @@ test('cli-ui-shell-4: بلا تغيير — السحب من فراغ الأدا�
   await tick(300);
   assert.equal(w.closeBtn.clicks, 1, 'سحب الرجوع بالفأرة من الفراغ يبقى');
   assert.equal(w.modal.hidden, true);
+  /* ومن حروف زرّ (لا تُحدَّد بالسحب أصلًا) يبقى رجوعًا كما كان */
+  const w2 = swipeWorld();
+  w2.caret.node = w2.chipText;
+  w2.drag(w2.chip, 150, 315, 240);
+  await tick(300);
+  assert.equal(w2.closeBtn.clicks, 1, 'السحب من نصّ زرّ لا يُحسب تحديدًا');
 });
 
 /* ══════════════ ٥: «باقتك الحالية» على بطاقة الباقة الفعليّة ══════════════ */

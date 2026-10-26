@@ -105,6 +105,8 @@
       if(document.caretPositionFromPoint){ var cp = document.caretPositionFromPoint(x, y); n = cp && cp.offsetNode; }
       else if(document.caretRangeFromPoint){ var cr = document.caretRangeFromPoint(x, y); n = cr && cr.startContainer; }
       if(!n || n.nodeType !== 3 || !/\S/.test(n.nodeValue || '') || !n.parentElement) return false;
+      /* حروف الأزرار والروابط لا تُحدَّد بالسحب — السحب منها رجوع كما كان */
+      if(n.parentElement.closest && n.parentElement.closest('button,a[href],[role="button"],label,summary')) return false;
       var cs = getComputedStyle(n.parentElement);
       if((cs.userSelect || cs.webkitUserSelect) === 'none') return false;
       var rg = document.createRange(); rg.selectNodeContents(n);
