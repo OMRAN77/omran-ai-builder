@@ -335,8 +335,9 @@ test('١٢. العميل يعرض network_changed بلا تعديل ولا نص�
     assert.ok(s.includes("authMsg('axBootGoogleFailed'") && s.includes("{ code: '\\u2066' + code + '\\u2069' }"), f + ': القالب العامّ يعرض الرمز');
     assert.ok(!s.includes('network_changed'), f + ': لا مفتاح ولا نصّ خاصّ');
   }
+  // v-audit-search (srv-search-7): تنبيه ربط Gmail صار نصًّا بلغة الواجهة لا الرمز الخامّ — network_changed وغيره «حاول مرّة ثانية» (بلا مفتاح خاصّ)
   for (const f of ['js/app-12-studios.js', 'js/app.bundle.js']) {
-    assert.ok(fs.readFileSync(path.join(root, f), 'utf8').includes("const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);"), f);
+    assert.ok(fs.readFileSync(path.join(root, f), 'utf8').includes("const emLinkError = (err) => alert('⚠️ ' + t(err === 'access_denied' ? 'axSearchEmLinkDenied' : (err === 'missing_scopes' ? 'axSearchEmLinkScopes' : 'axSearchEmLinkFailed')));"), f);
   }
 });
 
