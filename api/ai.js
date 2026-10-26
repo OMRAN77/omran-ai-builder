@@ -14,7 +14,7 @@ const { logError } = require('./_lib/log-error.js');
 const { BIDI_RULE } = require('./_lib/_bidi.js'); // v568
 const { quickIntent, INTENT_NOTES } = require('./_lib/router.js'); // v--- مصنّف النيّة
 const { toneSection, extractUserMessages } = require('./_lib/tone.js'); // v--- مطابقة الأسلوب
-const { isOwner } = require('./_lib/_owner.js'); // v-owner-raw: المالك يجرّب المزوّد خامًا
+const { isOwnerSession: isOwner } = require('./_lib/_owner.js'); // v-owner-raw: المالك يجرّب المزوّد خامًا · v-audit-agent (srv-agent-3): جلسته وحدها لا MONITOR_KEY
 
 function load(action) {
   switch (action) {

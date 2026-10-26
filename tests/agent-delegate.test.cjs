@@ -66,13 +66,13 @@ test('checkTask: queued → running → done (opens the PR with the owner key, r
   let r = await D.checkTask({ issue: 7 }, n.opts);
   assert.equal(r.phase, 'queued'); assert.match(D.formatCheck(r), /لم يبدأ التشغيل بعد/);
   // قيد التنفيذ
-  n = mk([{ body: '🏃 بدأ\n<!-- omran-agent {"phase":"start","run_id":"1","run_url":"https://github.com/OMRAN77/omran-ai-builder/actions/runs/1"} -->' }]);
+  n = mk([{ user: { login: 'github-actions[bot]', type: 'Bot' }, body: '🏃 بدأ\n<!-- omran-agent {"phase":"start","run_id":"1","run_url":"https://github.com/OMRAN77/omran-ai-builder/actions/runs/1"} -->' }]);
   r = await D.checkTask({ issue: 7 }, n.opts);
   assert.equal(r.phase, 'running'); assert.match(D.formatCheck(r), /قيد التنفيذ.*runs\/1/s);
   // انتهى ودُفع → لا طلب سحب بعد → يُفتح بمفتاح المالك، ثمّ فحوصه
   n = mk([
-    { body: '🏃 بدأ\n<!-- omran-agent {"phase":"start","run_id":"1","run_url":"https://x/runs/1"} -->' },
-    { body: '✅ دُفع\n<!-- omran-agent {"phase":"done","pushed":true,"changed":2,"ci":"pass","sha":"abc1234567","claude":"success","run_id":"1","run_url":"https://x/runs/1"} -->' },
+    { user: { login: 'github-actions[bot]', type: 'Bot' }, body: '🏃 بدأ\n<!-- omran-agent {"phase":"start","run_id":"1","run_url":"https://x/runs/1"} -->' },
+    { user: { login: 'github-actions[bot]', type: 'Bot' }, body: '✅ دُفع\n<!-- omran-agent {"phase":"done","pushed":true,"changed":2,"ci":"pass","sha":"abc1234567","claude":"success","run_id":"1","run_url":"https://x/runs/1"} -->' },
   ], [
     ['GET', /^\/repos\/OMRAN77\/omran-ai-builder\/pulls\?state=all&head=OMRAN77(%3A|:)omran-agent(%2F|\/)fix-abc/, res([])],
     ['POST', /^\/repos\/OMRAN77\/omran-ai-builder\/pulls$/, (u, b) => res({ number: 99, html_url: 'https://github.com/OMRAN77/omran-ai-builder/pull/99', state: 'open', head: { sha: 'abc1234567' }, title: b.title }, 201)],
@@ -86,7 +86,7 @@ test('checkTask: queued → running → done (opens the PR with the owner key, r
   const txt = D.formatCheck(r);
   assert.ok(txt.includes('pull/99') && txt.includes('test ✅') && txt.includes('smoke ➖') && txt.includes('gemini-task ⏳') && /npm run ci داخل التشغيل: ✅/.test(txt), txt);
   // طلب موجود مسبقًا → لا يُفتح ثانية؛ وفشل ci يوسم العنوان
-  n = mk([{ body: '<!-- omran-agent {"phase":"done","pushed":true,"changed":1,"ci":"fail","sha":"def","run_id":"2","run_url":"https://x/runs/2"} -->' }], [
+  n = mk([{ user: { login: 'github-actions[bot]', type: 'Bot' }, body: '<!-- omran-agent {"phase":"done","pushed":true,"changed":1,"ci":"fail","sha":"def","run_id":"2","run_url":"https://x/runs/2"} -->' }], [
     ['GET', /\/pulls\?state=all/, res([{ number: 100, html_url: 'https://github.com/OMRAN77/omran-ai-builder/pull/100', state: 'open', head: { sha: 'def' } }])],
     ['GET', /\/commits\/def\/check-runs/, res({ check_runs: [] })],
   ]);
@@ -95,7 +95,7 @@ test('checkTask: queued → running → done (opens the PR with the owner key, r
   assert.ok(!n.calls.some((c) => c.method === 'POST'), 'لا نداء إنشاء');
   assert.match(D.formatCheck(r), /❌ فشل/);
   // بلا تغيير
-  n = mk([{ body: '<!-- omran-agent {"phase":"done","pushed":false,"changed":0,"claude":"failure","run_id":"3","run_url":"https://x/runs/3"} -->' }]);
+  n = mk([{ user: { login: 'github-actions[bot]', type: 'Bot' }, body: '<!-- omran-agent {"phase":"done","pushed":false,"changed":0,"claude":"failure","run_id":"3","run_url":"https://x/runs/3"} -->' }]);
   r = await D.checkTask({ issue: 7 }, n.opts);
   assert.equal(r.phase, 'nochange'); assert.match(D.formatCheck(r), /بلا تغيير.*ANTHROPIC_API_KEY/s);
   // إدخال ناقص

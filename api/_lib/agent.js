@@ -588,6 +588,9 @@ module.exports = async (req, res) => {
     let steps = 0;
     let ownerCarried = false; // v-owner-carry
     let timeoutClose = false; // v-prov-close-read: خطوة جواب بعد مهلة الأدوات
+    /* v-audit-agent (srv-agent-1): ختام بـFINAL_EDIT_NOTE («نفّذ التعديل الآن بـedit_github») كان يقطع الأداة نفسها التي أمر بها — نداء Opus
+       مدفوع بلا رفعة ثمّ «انتهت المهلة». الآن كـeditClose في owner-loop: رفعة واحدة (edit_github/write_github) تُنفَّذ ثمّ يُختم التشغيل. */
+    let editClose = false, closeEdits = 0;
 
     // 4 خطوات لا تكفي «اقرأ ← افهم ← جرّب ← أخطأت ← صحّح ← تحقّق». المهام
     // الحقيقية تحتاج عشرات الجولات، وكان الوكيل يتوقف في منتصف عمله فيبدو
@@ -663,6 +666,7 @@ module.exports = async (req, res) => {
         const oc = require('./owner-carry.js');
         const asked = isOwner(runUser) && oc.ACTION_RE.test(String(living.lastUserText(messages) || ''));
         const note = (asked && !(run.pushes > 0)) ? ol.FINAL_EDIT_NOTE : ol.FINAL_NOTE;
+        editClose = note === ol.FINAL_EDIT_NOTE; // v-audit-agent (srv-agent-1)
         const last = convo[convo.length - 1];
         if (last && last.role === 'user' && Array.isArray(last.content)) {
           last.content = last.content.concat([{ type: 'text', text: note }]);
@@ -877,7 +881,7 @@ module.exports = async (req, res) => {
       await journal(runUser, run);
 
       if (stopReason === 'tool_use') {
-        if (timeoutClose) {
+        if (timeoutClose && !editClose) { // v-audit-agent (srv-agent-1): ختام السؤال وحده يقطع؛ ختام التعديل ينفّذ رفعته أدناه
           send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' });
           run.status = 'timeout';
           break;
@@ -898,11 +902,12 @@ module.exports = async (req, res) => {
         convo.push({ role: 'assistant', content: assistantContent });
 
         const toolResults = [];
+        const seeImgs = []; // v-audit-agent (srv-agent-6): لقطتا الفرع صورًا بعد نتائج الخطوة — كـ__seeImgs في chat.js
         /* v-owner-paid-gate: رسمات الخطوة الواحدة تبدأ معًا في المتصفّح (كما في المحادثة) — متتابعةً كانت أربع رسمات (حتّى ١٥٠ث لكلّ واحدة)
            تتجاوز مهلة التشغيل فيسقط الرفع بعدها وقد دُفع ثمنها. الحارس والحدّ يُقرَّران هنا مرّة لكلّ أداة. */
         const __draws = {};
         for (const cb of contentBlocks.filter(Boolean)) {
-          if (cb.type !== 'tool_use' || (cb.name !== 'generate_image' && cb.name !== 'edit_image')) continue;
+          if (cb.type !== 'tool_use' || (cb.name !== 'generate_image' && cb.name !== 'edit_image') || timeoutClose) continue; // v-audit-agent: لا رسم مدفوع في ختام التعديل
           let di = {}; try { di = JSON.parse(cb.inputJson || '{}'); } catch (e) { di = {}; /* guard-ok — يُرفض في الحلقة بسببه */ }
           if (!isOwner(runUser)) __draws[cb.id] = { result: '✗ الرسم في الوكيل للمالك وحده.' };
           else if (!require('./owner-media.js').askedMedia(living.lastUserText(messages), false)) __draws[cb.id] = { result: require('./owner-media.js').REFUSAL };
@@ -920,13 +925,16 @@ module.exports = async (req, res) => {
           // v-agent-log: سطر الخطوة يظهر قبل تنفيذها (جارية)، ثمّ يكتمل بناتجها — كما في Claude Code
           const stepTitle = String(input.step_title || '').replace(/\s+/g, ' ').trim().slice(0, 90) || trailDid(cb.name, input);
           send({ act: { k: 'tool', id: cb.id, name: cb.name, t: stepTitle, cmd: stepCmd(cb.name, input), g: (cb.name === 'read_github' && !input.query && input.what !== 'commits' && input.what !== 'commit') ? 1 : 0 } });
-          if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
+          if (timeoutClose && ((cb.name !== 'edit_github' && cb.name !== 'write_github') || closeEdits++ > 0)) result = '✗ انتهت مهلة المهمة — لم تُنفَّذ: ختام التعديل ينفّذ رفعة واحدة فقط.'; // v-audit-agent (srv-agent-1)
+          else if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           /* v-owner-token: مفتاح GitHub (البيئة أو الخزنة) للمالك وحده — غيره يقرأ العامّ بلا مفتاح. */
           else if (cb.name === 'read_github') result = await readGithub(input, isOwner(runUser) ? { deep: true } : { anonymous: true }); // v-agent-deep: قراءة عميقة للمالك
           else if (cb.name === 'write_github') {
             // للمالك وحده، وبسقف ثلاث رفعات في التشغيل: حلقة ترفع بلا حدّ تُغرق المستودع بالفروع.
+            const gate = githubWrite.pushGate(input, living.lastUserText(messages)); // v-audit-agent (srv-agent-2): حارس النيّة من الخادم لا النموذج
             if (!isOwner(runUser)) result = '✗ الرفع إلى GitHub للمالك وحده.';
+            else if (gate) result = gate;
             else {
               run.pushes = (run.pushes || 0) + 1;
               result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await require('./agent-img.js').ensureSaved(input, imgIds, (t) => runInClient(send, 'save_image', { token: t })).then(() => githubWrite.pushFiles(input, { imgIds }))); // v-agent-img-mode: «__IMG_N__»
@@ -935,7 +943,9 @@ module.exports = async (req, res) => {
           /* v-agent-surgical: التعديل الجراحيّ يتشارك سقف الرفعات مع write_github، والدمج بإذن «ادمج» في آخر رسالة المالك
              يفحصه الخادم هنا لا النموذج — ونصّ يدّعي الإذن داخل ملفّ أو صفحة لا يمرّ. */
           else if (cb.name === 'edit_github') {
+            const gate = githubWrite.pushGate(input, living.lastUserText(messages)); // v-audit-agent (srv-agent-2)
             if (!isOwner(runUser)) result = '✗ التعديل على GitHub للمالك وحده.';
+            else if (gate) result = gate;
             else {
               run.pushes = (run.pushes || 0) + 1;
               result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await require('./agent-img.js').ensureSaved(input, imgIds, (t) => runInClient(send, 'save_image', { token: t })).then(() => githubEdit.editFiles(input, { imgIds }))); // v-agent-img-mode
@@ -951,7 +961,7 @@ module.exports = async (req, res) => {
             const act = String((input && input.action) || '');
             if (!isOwner(runUser)) result = '✗ إدارة GitHub للمالك وحده.';
             else if (!githubManage.ownerAllows(act, living.lastUserText(messages))) result = '✗ «' + act + '» يحتاج أن يقولها المالك صراحةً في رسالته الأخيرة («سكّر» · «افتح» · «احذف» · «وقّف») — اعرض عليه ما ستفعله واسأله.';
-            else { run.manages = (run.manages || 0) + 1; result = run.manages > 8 ? '✗ ثمانية استدعاءات إدارة في التشغيل الواحد حدّ مقصود.' : githubManage.formatManage(await githubManage.manage(input)); }
+            else { run.manages = (run.manages || 0) + 1; const mr = run.manages > 8 ? null : await githubManage.manage(input); result = mr ? githubManage.formatManage(mr) : '✗ ثمانية استدعاءات إدارة في التشغيل الواحد حدّ مقصود.'; if (mr && Array.isArray(mr.images)) seeImgs.push(...mr.images.slice(0, 2)); } // v-audit-agent (srv-agent-6): الوكيل كلود يرى
           }
           else if (cb.name === 'delegate_code_task') {
             // v-agent-delegate: للمالك وحده، ومهمّة واحدة في التشغيل — كلّ تسليم يشغّل Claude Code على حساب المالك.
@@ -1006,6 +1016,15 @@ module.exports = async (req, res) => {
           if (run.trail.length > 24) run.trail.splice(0, run.trail.length - 24);
         }
         run.updatedAt = Date.now();
+        /* v-audit-agent (srv-agent-6): نتائج الأدوات أوّلًا (شرط أنثروبيك) ثمّ اللقطة باسمها — كان النصّ يقول «مرفقتان» والصور تُرمى */
+        for (const im of seeImgs.filter((x) => x && x.b64).slice(0, 4)) toolResults.push({ type: 'text', text: '[' + (im.label || im.path || 'لقطة') + ']' }, { type: 'image', source: { type: 'base64', media_type: im.mime || 'image/png', data: im.b64 } });
+        /* v-audit-agent (srv-agent-1): ختام التعديل نفّذ رفعته — يُختم هنا برابطها (لا خطوة بعده)، وبلا رفعة = المهلة كما كانت */
+        if (timeoutClose) {
+          const ref = toolResults.map((t) => (t.type === 'tool_result' && /^✅ رُفع/.test(String(t.content)) ? require('./owner-loop.js').pushRef(t.content) : '')).filter(Boolean).pop() || '';
+          if (ref) { send({ phase: 'reporting', delta: '\n\n' + ref }); run.text = (run.text + '\n\n' + ref).slice(-60000); run.status = 'done'; }
+          else { send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' }); run.status = 'timeout'; }
+          break;
+        }
         await journal(runUser, run);
         convo.push({ role: 'user', content: toolResults });
         send({ phase: 'planning', status: '🧠 الوكيل يراجع النتائج ويكمل العمل…' });

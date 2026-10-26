@@ -230,7 +230,7 @@ async function rejectFact(k) {
 
 /** نقطة المالك: /api/system?action=knowledge — list · approve · reject. محميّة بـisOwner في الخادم. */
 async function handle(req, res) {
-  if (!require('./_owner.js').isOwner(req)) { res.status(403).json({ error: 'owner_only' }); return; }
+  if (!require('./_owner.js').isOwnerSession(req)) { res.status(403).json({ error: 'owner_only' }); return; } // v-audit-agent (srv-agent-3): اعتماد حقيقة تصل نظام كلّ مستخدم — جلسة المالك وحدها لا MONITOR_KEY
   const body = (req.body && typeof req.body === 'object') ? req.body : {};
   const op = String((req.query && req.query.op) || body.op || 'list');
   try {

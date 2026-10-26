@@ -7,7 +7,7 @@
 //
 // العمليّات: chat (بثّ) · attach (استئناف بثّ تشغيل من نقطة) · stop · status ·
 // publish · pr · merge · reset — الأربع الأخيرة تُطلب صراحةً من المالك في التطبيق.
-const { isOwner } = require('./_owner.js');
+const { isOwnerSession: isOwner } = require('./_owner.js'); // v-audit-agent (srv-agent-3): جلسة المالك وحدها — لا MONITOR_KEY
 const { safeParse } = require('./safe-parse.js');
 
 const OPS = {
