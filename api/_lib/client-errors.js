@@ -5,6 +5,26 @@ const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const LOG_PATH = 'db/client-errors/log.json';
 const MAX_ITEMS = 60;
+/* v-audit-mahakv (srv-core-4): line وcol كانا يُخزَّنان خامًا (وline داخل التوقيع فيتضاعف) — طلب واحد بلا دخول بـline
+   طوله ميغابايتان ضخّم السجلّ إلى ٤ م.ب فتفشل كلّ كتابة بعده وتعمى لوحة المالك. الآن عددان صحيحان محدودان، والتوقيع
+   منهما، وجسم فوق ٣٢ ك.ب يُرفض، و٦٠ بلاغًا في الدقيقة لكلّ IP (العميل يرسل ≤ ١٢ في الجلسة؛ السقف واسع لشبكات NAT). */
+const MAX_BODY_CHARS = 32 * 1024;
+const IP_PER_MINUTE = 60;
+function posInt(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? Math.max(0, Math.min(1e7, n)) : (n === Infinity ? 1e7 : 0);
+}
+async function overIpRate(req) {
+  try {
+    const ip = String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim().slice(0, 64);
+    if (!ip) return false;
+    const { kvIncr, kvExpire } = require('./kv.js');
+    const key = 'rl:client-errors:' + ip + ':' + Math.floor(Date.now() / 60000);
+    const n = Number(await kvIncr(key));
+    if (n === 1) await kvExpire(key, 120);
+    return n > IP_PER_MINUTE;
+  } catch (e) { return false; /* عطل العدّاد لا يُسكت البلاغات — الحدّ حماية لا بوّابة */ }
+}
 const { isOwner } = require('./_owner.js');
 
 async function readLog() {
@@ -40,7 +60,9 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'method' }); return; }
 
   try {
+    if (await overIpRate(req)) { res.status(429).json({ error: 'rate' }); return; }
     let body = req.body;
+    if ((typeof body === 'string' ? body.length : JSON.stringify(body || {}).length) > MAX_BODY_CHARS) { res.status(413).json({ error: 'too large' }); return; }
     if (typeof body === 'string') body = JSON.parse(body || '{}');
     body = body || {};
     const msg = String(body.message || '').slice(0, 500);
@@ -53,7 +75,8 @@ module.exports = async (req, res) => {
     // لا يختلط بتكراره في النسخة الحاليّة، وتنبيه المالك يعرض النسخة الحاليّة فقط.
     const build = /^[0-9a-f]{4,16}$/.test(String(body.build || '')) ? String(body.build) : '';
     const items = await readLog();
-    const sig = msg + '|' + String(body.source || '').slice(0, 200) + '|' + (body.line || 0) + (build ? '|' + build : '');
+    const line = posInt(body.line), col = posInt(body.col);
+    const sig = msg + '|' + String(body.source || '').slice(0, 200) + '|' + line + (build ? '|' + build : '');
     const existing = items.find(it => it.sig === sig);
     const now = new Date().toISOString();
     if (existing) {
@@ -64,8 +87,8 @@ module.exports = async (req, res) => {
         sig,
         message: msg,
         source: String(body.source || '').slice(0, 300),
-        line: body.line || 0,
-        col: body.col || 0,
+        line,
+        col,
         stack: String(body.stack || '').slice(0, 1500),
         url: String(body.url || '').slice(0, 300),
         ua: String(body.ua || '').slice(0, 200),

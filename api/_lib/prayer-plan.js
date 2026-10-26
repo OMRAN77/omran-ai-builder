@@ -5,6 +5,22 @@ const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 
 const ISTIKHARA_PRAYER = 'اللَّهُمَّ إِنِّي أَسْتَخِيرُكَ بِعِلْمِكَ، وَأَسْتَقْدِرُكَ بِقُدْرَتِكَ، وَأَسْأَلُكَ مِنْ فَضْلِكَ الْعَظِيمِ، فَإِنَّكَ تَقْدِرُ وَلَا أَقْدِرُ، وَتَعْلَمُ وَلَا أَعْلَمُ، وَأَنْتَ عَلَّامُ الْغُيُوبِ. اللَّهُمَّ إِنْ كُنْتَ تَعْلَمُ أَنَّ هَذَا الْأَمْرَ خَيْرٌ لِي فِي دِينِي وَمَعَاشِي وَعَاقِبَةِ أَمْرِي، فَاقْدُرْهُ لِي وَيَسِّرْهُ لِي، ثُمَّ بَارِكْ لِي فِيهِ، وَإِنْ كُنْتَ تَعْلَمُ أَنَّ هَذَا الْأَمْرَ شَرٌّ لِي فِي دِينِي وَمَعَاشِي وَعَاقِبَةِ أَمْرِي، فَاصْرِفْهُ عَنِّي وَاصْرِفْنِي عَنْهُ، وَاقْدُرْ لِيَ الْخَيْرَ حَيْثُ كَانَ، ثُمَّ أَرْضِنِي بِهِ.';
 
+/* v-audit-mahakv (srv-maha-7): دعاء السفر المأثور (صحيح مسلم ١٣٤٢) بالآليّة نفسها — كان النموذج يكتبه مختصرًا أو معاد الصياغة
+   ضمن قيد ١٠–٢٢ كلمة كأنّه المأثور. */
+const TRAVEL_PRAYER = 'اللَّهُ أَكْبَرُ، اللَّهُ أَكْبَرُ، اللَّهُ أَكْبَرُ، سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ، وَإِنَّا إِلَى رَبِّنَا لَمُنْقَلِبُونَ. اللَّهُمَّ إِنَّا نَسْأَلُكَ فِي سَفَرِنَا هَذَا الْبِرَّ وَالتَّقْوَى، وَمِنَ الْعَمَلِ مَا تَرْضَى. اللَّهُمَّ هَوِّنْ عَلَيْنَا سَفَرَنَا هَذَا، وَاطْوِ عَنَّا بُعْدَهُ. اللَّهُمَّ أَنْتَ الصَّاحِبُ فِي السَّفَرِ، وَالْخَلِيفَةُ فِي الْأَهْلِ. اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنْ وَعْثَاءِ السَّفَرِ، وَكَآبَةِ الْمَنْظَرِ، وَسُوءِ الْمُنْقَلَبِ فِي الْمَالِ وَالْأَهْلِ.';
+
+/* v-audit-mahakv (srv-maha-7): المطابقة على جذر «استخار» بأيّ همزة ومع «ال» أو بدونها (كان «الاستخار» بالضبط فيخرج «دعاء استخارة»
+   و«استخاره» و«الأستخارة» بنصّ مخترع)، و«دعاء السفر» المعرّف وحده (لا «دعاء لمسافر»). للدعاء وحده: الشعر والغزل والعبارة لا تُستبدل. */
+const TRANSMITTED = [
+  { re: /[اأإآ]?ستخار[ةه]|istikhara/i, text: ISTIKHARA_PRAYER },
+  { re: /دعاء\s+السفر(?![\u0600-\u06ff])/, text: TRAVEL_PRAYER },
+];
+function transmittedPrayer(request, kind) {
+  if (kind === 'poetry' || kind === 'flirt' || kind === 'phrase') return null;
+  const hit = TRANSMITTED.find((t) => t.re.test(request));
+  return hit ? hit.text : null;
+}
+
 const VISUAL_DIRECTIONS = [
   'an intimate still life built from objects that directly symbolize the request',
   'a wide place-based scene with no posed subject, chosen specifically for the request',
@@ -44,7 +60,7 @@ function buildPlannerPrompt(request, options = {}) {
   const direction = options.direction || chooseDirection(options.directionIndex);
   const retry = options.retryReason ? '\nYour previous plan was rejected because: ' + options.retryReason + '. Make this attempt materially different.' : '';
   const kind = options.kind === 'poetry' ? 'short original Arabic poem' : options.kind === 'flirt' ? 'elegant original Arabic romantic passage' : options.kind === 'phrase' ? 'short elegant original Arabic sentence of 6 to 12 words that fits the request exactly, with no supplication or religious wording' : 'complete Arabic supplication';
-  return `Create one ${kind} and one original visual concept for this exact user request:\n"${clean}"\n\nReturn one JSON object only, with these string fields: prayerText, visualBrief, topicLabel.\n\nRules for prayerText:\n- Understand any supplication topic dynamically; never choose from a fixed topic list.\n- ${options.kind === 'poetry' ? 'Write an original polished 2–3 line Arabic poem' : options.kind === 'flirt' ? 'Write elegant respectful Arabic romantic words' : 'Write a complete natural Arabic supplication'}, not a title; use 10–22 words, short and impactful and never falsely attribute original wording to Quran, hadith, or a poet.\n- For supplications only, if the request explicitly names a well-known transmitted wording such as istikhara or travel, reproduce it accurately.\n- Do not add a heading, quotation marks, source, explanation, or emoji.\n\nRules for visualBrief:\n- Describe a concrete, production-ready scene that expresses this request’s specific meaning. Name the subject, setting, composition, light, palette, and camera viewpoint.\n- Do not default to a boat, sea/coast, sunset, mosque silhouette, posed person praying, steaming cup or mug, open book or notebook, lamp by a window, olive branch, or decorative sprout. Use one only when the user explicitly requested it.\n- Do not merely swap props inside the same still-life/poster template. Different topics must lead to materially different subjects, settings, viewpoints, compositions, light, and palettes.\n- Include no legible writing, calligraphy, signs, numbers, watermark, or decorative pseudo-text in the scene.\n- Keep the ${position} region calm enough for a separate Arabic text overlay, but do not draw the overlay.\n- Creative-direction nudge: ${direction}. Use it only when it fits the request; semantic fit wins.\n\nRules for topicLabel:\n- Give a short Arabic label describing the actual topic, without the word "دعاء".${retry}`;
+  return `Create one ${kind} and one original visual concept for this exact user request:\n"${clean}"\n\nReturn one JSON object only, with these string fields: prayerText, visualBrief, topicLabel.\n\nRules for prayerText:\n- Understand any supplication topic dynamically; never choose from a fixed topic list.\n- ${options.kind === 'poetry' ? 'Write an original polished 2–3 line Arabic poem' : options.kind === 'flirt' ? 'Write elegant respectful Arabic romantic words' : 'Write a complete natural Arabic supplication'}, not a title; use 10–22 words, short and impactful and never falsely attribute original wording to Quran, hadith, or a poet.\n- For supplications only, if the request explicitly names a well-known transmitted wording such as istikhara or travel, reproduce it accurately and completely; the word limit does not apply to it.\n- Do not add a heading, quotation marks, source, explanation, or emoji.\n\nRules for visualBrief:\n- Describe a concrete, production-ready scene that expresses this request’s specific meaning. Name the subject, setting, composition, light, palette, and camera viewpoint.\n- Do not default to a boat, sea/coast, sunset, mosque silhouette, posed person praying, steaming cup or mug, open book or notebook, lamp by a window, olive branch, or decorative sprout. Use one only when the user explicitly requested it.\n- Do not merely swap props inside the same still-life/poster template. Different topics must lead to materially different subjects, settings, viewpoints, compositions, light, and palettes.\n- Include no legible writing, calligraphy, signs, numbers, watermark, or decorative pseudo-text in the scene.\n- Keep the ${position} region calm enough for a separate Arabic text overlay, but do not draw the overlay.\n- Creative-direction nudge: ${direction}. Use it only when it fits the request; semantic fit wins.\n\nRules for topicLabel:\n- Give a short Arabic label describing the actual topic, without the word "دعاء".${retry}`;
 }
 
 function extractJsonText(data) {
@@ -53,7 +69,7 @@ function extractJsonText(data) {
   return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 }
 
-function validatePrayerPlan(value, request) {
+function validatePrayerPlan(value, request, kind) {
   if (!value || typeof value !== 'object') throw new Error('planner_json_missing');
   const prayerText = String(value.prayerText || '').trim();
   const visualBrief = String(value.visualBrief || '').replace(/\s+/g, ' ').trim();
@@ -73,7 +89,7 @@ function validatePrayerPlan(value, request) {
     { asked: /(?:نبت|برعم|شتل|sprout|seedling)/i, shown: /(?:decorative sprout|tiny (?:green )?sprout|small (?:green )?sprout|برعم|نبتة صغيرة)/i },
   ];
   if (forbiddenDefaults.some((item) => !item.asked.test(requested) && item.shown.test(visualBrief))) throw new Error('generic_visual_cliche');
-  const finalPrayerText = /(?:دعاء\s*)?الاستخار[ةه]/i.test(requested) ? ISTIKHARA_PRAYER : prayerText;
+  const finalPrayerText = transmittedPrayer(requested, kind) || prayerText;
   return { prayerText: finalPrayerText, visualBrief, topicLabel };
 }
 
@@ -115,7 +131,7 @@ async function authorPrayerPlan(apiKey, request, options = {}) {
       continue;
     }
     try {
-      return validatePrayerPlan(JSON.parse(extractJsonText(data)), request);
+      return validatePrayerPlan(JSON.parse(extractJsonText(data)), request, options.kind);
     } catch (error) {
       lastError = error;
     }
@@ -140,7 +156,7 @@ async function authorPrayerPlan(apiKey, request, options = {}) {
       const data = await upstream.json().catch(() => ({}));
       if (upstream.ok) {
         const text = String((((data.choices || [])[0] || {}).message || {}).content || '').trim();
-        return validatePrayerPlan(JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')), request);
+        return validatePrayerPlan(JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')), request, options.kind);
       }
       lastError = new Error('rescue_upstream_' + upstream.status);
     } catch (error) {
