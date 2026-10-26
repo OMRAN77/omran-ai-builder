@@ -171,3 +171,81 @@ test('srv-video-3 (د): veo-download له سقف بايت يوميّ للملف�
   const ok = par.find((r) => r.code === 200);
   assert.equal(ok.chunks.reduce((a, b) => a + b, 0), 60 * 1024, 'المسموح يُبثّ كاملًا');
 });
+
+// ─────────────────────────────── srv-video-4 ───────────────────────────────
+const watch = require(rp('api/_lib/video-watch.js'));
+const W = { starts: 0, deleted: [], startFail: 0 };
+const VW_SESSION = 'https://upload.example/vw-session/';
+function watchNet() {
+  global.fetch = async (url, init) => {
+    const u = String(url);
+    if (u.endsWith('/upload/v1beta/files')) {
+      W.starts++;
+      if (W.startFail) return new Response(JSON.stringify({ error: { message: 'boom' } }), { status: W.startFail });
+      return new Response('{}', { status: 200, headers: { 'x-goog-upload-url': VW_SESSION + W.starts } });
+    }
+    if (u.startsWith(VW_SESSION)) {
+      const n = u.slice(VW_SESSION.length);
+      if (/finalize/.test(init.headers['X-Goog-Upload-Command'])) return new Response(JSON.stringify({ file: { name: 'files/vw' + n, uri: 'https://generativelanguage.googleapis.com/v1beta/files/vw' + n, mimeType: 'video/mp4' } }), { status: 200 });
+      return new Response('', { status: 200 });
+    }
+    if (init && init.method === 'DELETE') { W.deleted.push(u); return new Response('{}', { status: 200 }); }
+    throw new Error('unexpected fetch ' + u);
+  };
+}
+async function vw(step, body, tk) {
+  const res = { code: 200, j: null, status(c) { res.code = c; return res; }, json(j) { res.j = j; return res; }, setHeader() { return res; }, end() { return res; } };
+  await watch({ method: 'POST', headers: { 'x-forwarded-for': '198.51.100.20' }, query: { step }, body: Object.assign({ token: tk }, body) }, res);
+  return res;
+}
+const vwStart = (tk) => vw('start', { size: 1000, mime: 'video/mp4', name: 'v.mp4', durationSec: 8 }, tk);
+
+test('srv-video-4 (أ): فتح الرفع له حدّ يوميّ للحساب — الحادي والعشرون يُرفض «limit» قبل أيّ جلسة عند المزوّد، والمالك معفى', async () => {
+  watchNet(); W.starts = 0;
+  const tk = await user('vwcap1'); store.set('points:vwcap1', '70');
+  const N = watch.DAILY || 20;
+  for (let i = 0; i < N; i++) assert.equal((await vwStart(tk)).code, 200, 'فتح ' + (i + 1));
+  const over = await vwStart(tk);
+  assert.deepEqual([over.code, over.j && over.j.error], [429, 'limit']);
+  assert.equal(W.starts, N, 'لا جلسة رفع عند المزوّد بعد الحدّ');
+  const own = await user('omran');
+  for (let i = 0; i <= N; i++) assert.equal((await vwStart(own)).code, 200, 'المالك ' + (i + 1));
+});
+
+test('srv-video-4 (ب): فشل فتح الجلسة عند المزوّد يردّ الفتحة إلى حدّ اليوم', async () => {
+  watchNet(); W.starts = 0;
+  const tk = await user('vwcap2'); store.set('points:vwcap2', '70');
+  const N = watch.DAILY || 20;
+  W.startFail = 500;
+  for (let i = 0; i < 3; i++) assert.equal((await vwStart(tk)).code, 502);
+  W.startFail = 0;
+  for (let i = 0; i < N; i++) assert.equal((await vwStart(tk)).code, 200, 'الفاشلة لم تأكل الحدّ — ' + (i + 1));
+  assert.equal((await vwStart(tk)).code, 429, 'والحدّ نفسه قائم');
+});
+
+test('srv-video-4 (ج): مهمّة رفع واحدة مفتوحة للحساب — بدء أخرى يحذف ملفّ السابقة غير المشغّلة عند المزوّد ويُغلقها', async () => {
+  watchNet(); W.deleted.length = 0;
+  const tk = await user('vwone1'); store.set('points:vwone1', '70');
+  const a = await vwStart(tk);
+  const up = await vw('chunk', { id: a.j.id, offset: 0, data: Buffer.alloc(1000, 7).toString('base64') }, tk);
+  assert.deepEqual([up.code, up.j.done], [200, true], 'الملفّ رُفع ولم يُشغَّل');
+  const b = await vwStart(tk);
+  assert.equal(b.code, 200);
+  assert.equal(W.deleted.length, 1, 'ملفّ المهمّة المتروكة حُذف عند المزوّد (كان يبقى ٤٨ ساعة)');
+  assert.equal((await vw('run', { id: a.j.id }, tk)).code, 404, 'السابقة أُغلقت');
+  // مهمّة دُفعت (paid) لا تُمسّ: تُعاد بلا خصم ثانٍ
+  const pj = JSON.parse(store.get('vwatch:' + b.j.id)); pj.paid = 3; pj.file = { name: 'files/vwpaid', uri: 'x', mime: 'video/mp4' };
+  store.set('vwatch:' + b.j.id, JSON.stringify(pj));
+  await vwStart(tk);
+  assert.equal(W.deleted.length, 1, 'المدفوعة تبقى');
+  assert.ok(store.has('vwatch:' + b.j.id));
+});
+
+test('srv-video-4 (د): الواجهة تعرض حدّ اليوم بنصّ الـ١٤ لغة القائم (portraitLimitReached) لا «تعذّر التحليل»', () => {
+  const s = read('js/app-32-video-watch.js');
+  const fn = s.slice(s.indexOf('function errText(d){'), s.indexOf('var lastWatch'));
+  const box = { t: (k) => 'T:' + k };
+  vm.runInNewContext(fn + '\nthis.errText = errText;', box);
+  assert.equal(box.errText({ error: 'limit' }), 'T:portraitLimitReached');
+  assert.equal(box.errText({ error: 'failed' }), 'T:vwFailed');
+});
