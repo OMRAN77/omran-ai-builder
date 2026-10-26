@@ -91,7 +91,9 @@ var EDU_X={
 function eduL(ar, en){
   var l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
   /* دمج جدولين: EDU_XL (80 نصًا) أولًا ثم EDU_X (جلسة موازية، 18 نصًا) */
-  if(l === 'ar' || l === 'ur') return ar;
+  /* v-audit-edu (x-i18n-3): الأرديّة لغتها لا العربيّة — تصل إلى EDU_X.ur، وما لا ترجمة أرديّة له إنجليزيّ كبقيّة اللغات
+     (الاتّجاه rtl يبقى من RTL_LANGS) */
+  if(l === 'ar') return ar;
   if(l === 'en') return en;
   var m = EDU_XL[ar];
   if(m && m[l]) return m[l];
@@ -186,6 +188,20 @@ var EDU_XL = {
   '🧪 نبني تجربتك الحية… تحتاج دقيقة إلى دقيقتين — تستاهل الانتظار': { fr:'🧪 Création de votre labo en direct… cela prend une à deux minutes — ça en vaut la peine', hi:'🧪 आपकी लाइव लैब बनाई जा रही है… एक से دو मिनट लगते हैं — यह प्रतीक्षा के योग्य है', bn:'🧪 আপনার লাইভ ল্যাب তৈरी করা হচ্ছে… এক থেকে দuo मिनुट सময় लাগे — एट अपेক्षा करनwortühr योग्य', ne:'🧪 आपको लाइभ ल्याब बनाइँदैछु… एक देखि dui मिनेट लाग्छ — प्रतीक्षा गर्न योग्य', id:'🧪 Membuat lab langsung Anda… membutuhkan satu hingga dua menit — patut ditunggu', fil:'🧪 Binubuo ang iyong live lab… tumatagal ng isang hanggang dalawang minuto — karapat-dapat na maghintay', tr:'🧪 Canlı labınız oluşturuluyor… bir ila iki dakika sürer — beklemeye değer', zh:'🧪 正在创建您的实时实验室…需要一到两分钟——值得等待', ru:'🧪 Создаём ваш живой лабораторный опыт… нужно одну-две минуты — оно того стоит', es:'🧪 Creando tu laboratorio en vivo… toma uno o dos minutos — vale la pena esperar', ml:'🧪 നിങ്ങളുടെ ലൈവ് ലാബ് നിർമ്മിക്കുന്നു… ഒന്ന് മുതൽ രണ്ട് മിനിറ്റ് എടുക്കുന്നു — കാത്തിരിപ്പിന് യോഗ്യമാണ്' },
 };
 function getToken(){ try{ return (typeof authGet==='function'?authGet('aiapp_auth_token'):null)||localStorage.getItem('aiapp_auth_token')||sessionStorage.getItem('aiapp_auth_token')||''; }catch(e){ return ''; } }
+/* v-audit-edu (srv-edu-bots-9): نصّ الخادم عربيّ وحده وكان يُرمى كما هو في واجهات الـ١٤ لغة. الخادم يرسل رمزًا (code)
+   مع نصّه: العربيّة تقرأ نصّ الخادم (فيه العدد)، وبقيّة اللغات — والأرديّة منها — نصّ القاموس العامّ (t) بلغة الواجهة،
+   وما لا رمز له خطأ الواجهة المترجم. reason = ما كتبه النموذج بلغة الطالب فيمرّ كما هو. */
+function eduGT(k,fb){ try{ if(typeof t==='function'){ var v=t(k); if(v&&v!==k) return v; } }catch(e){ __swallow(e,'edu:gt'); } return fb; }
+function eduErrText(j,status){
+  var c=j&&j.code;
+  if(c==='reason'&&j.error) return j.error;
+  if(appLang()==='ar'&&j&&j.error) return j.error;
+  if(c==='daily_cap') return j.scope==='guest'?eduGT('axEduCapGuest','You’ve reached today’s free limit — sign in or come back tomorrow.'):eduGT('axEduCapUser','You’ve reached today’s limit — come back tomorrow.');
+  if(c==='unavailable') return eduGT('svcPaused',T('err'));
+  if(c==='timeout') return eduGT('axEduErrSlow','This took longer than expected — try again now; it usually works right away.');
+  if(c==='too_big'||status===413) return T('tooBig');
+  return T('err');
+}
 function api(payload){
   payload=payload||{}; payload.token=getToken()||undefined;
   /* v-edu-upload (المالك ٤ أكتوبر: «طالبة رفعت الملف بدون أي تحليل»): ردّ غير JSON (413 من Vercel فوق ~4.5 م.ب، أو صفحة خطأ)
@@ -195,7 +211,7 @@ function api(payload){
     .then(function(r){
       return r.text().then(function(txt){
         var j=null; try{ j=JSON.parse(txt); }catch(e){ j=null; }
-        if(!r.ok||!j) throw new Error((j&&j.error)||(r.status===413?T('tooBig'):T('err')));
+        if(!r.ok||!j) throw new Error(eduErrText(j,r.status));
         return j;
       });
     }, function(){ throw new Error(T('err')); })
@@ -300,18 +316,45 @@ function renderStreak(){
   el.style.display=n>0?'':'none'; el.textContent=n+' '+word; el.title=lbl; el.setAttribute('aria-label',lbl);
 }
 /* ---------- data layer (server for registered, localStorage for guests) ---------- */
+/* v-audit-edu (srv-edu-bots-6): فشل الحفظ السحابيّ للمسجَّل (القاعدة ممتلئة، انقطاع) كان يكتب الدرس على الجهاز ويعرضه مرّة،
+   ثمّ لا تعرضه «موادي» (قائمة الخادم وحدها) ولا يُفتح (404) — فيضيع بعد أوّل رجوع. الآن النسخة المحلّيّة موسومة
+   pendingSync باسم صاحبها: تُدمج مع قائمة الخادم، وتُفتح من الجهاز، وتُرفع في الفتحة التالية ثمّ تُزال. ضيف أو حساب آخر
+   على الجهاز نفسه لا يراها ولا يرفعها لحسابه. */
+function eduUser(){ try{ return String((typeof authGet==='function'?authGet('aiapp_username'):null)||localStorage.getItem('aiapp_username')||'').trim().toLowerCase(); }catch(e){ return ''; } }
+function eduLocalFor(me){ return localLessons().filter(function(l){ return l&&(!l.pendingFor||l.pendingFor===me); }); }
+function eduKeepLocal(lesson){
+  lesson.pendingSync=true; lesson.pendingFor=eduUser();
+  var arr=localLessons().filter(function(l){return l.id!==lesson.id;}); arr.unshift(lesson); saveLocalLessons(arr);
+}
+var eduSyncing={};
+function eduSyncPending(me,serverIds){
+  localLessons().forEach(function(l){
+    if(!l||!l.pendingSync||l.pendingFor!==me||serverIds[l.id]||eduSyncing[l.id]) return;
+    eduSyncing[l.id]=1;
+    var up=Object.assign({},l); delete up.pendingSync; delete up.pendingFor;
+    api({action:'save',lesson:up}).then(function(j){
+      if(j&&!j.guest) saveLocalLessons(localLessons().filter(function(x){ return !(x.id===l.id&&x.pendingSync); }));
+    }).catch(function(e){ __swallow(e,'save:edu-resync'); }).then(function(){ delete eduSyncing[l.id]; });
+  });
+}
 function listLessons(){
-  if(!getToken()) return Promise.resolve({lessons:localLessons()});
+  if(!getToken()) return Promise.resolve({lessons:eduLocalFor('')});
   return api({action:'list'}).then(function(j){
-    if(j.guest) return {lessons:localLessons()};
+    if(j.guest) return {lessons:eduLocalFor('')};
     mergeServerStreak(j.streak);
-    return {lessons:j.lessons||[]};
-  }).catch(function(){ return {lessons:localLessons()}; });
+    var me=eduUser(), out=(j.lessons||[]).slice(), ids={};
+    out.forEach(function(l){ if(l&&l.id) ids[l.id]=1; });
+    var pend=localLessons().filter(function(l){ return l&&l.pendingSync&&l.pendingFor===me&&!ids[l.id]; });
+    if(pend.length) eduSyncPending(me,ids);
+    return {lessons:pend.concat(out)};
+  }).catch(function(){ return {lessons:eduLocalFor(eduUser())}; });
 }
 function getLesson(id){
-  if(!getToken()){ var f=localLessons().filter(function(l){return l.id===id;})[0]; return f?Promise.resolve(f):Promise.reject(new Error(T('err'))); }
+  if(!getToken()){ var f=eduLocalFor('').filter(function(l){return l.id===id;})[0]; return f?Promise.resolve(f):Promise.reject(new Error(T('err'))); }
+  var me=eduUser(), p=localLessons().filter(function(l){ return l&&l.id===id&&l.pendingSync&&l.pendingFor===me; })[0];
+  if(p) return Promise.resolve(p);
   return api({action:'get',id:id}).then(function(j){
-    if(j.guest){ var f=localLessons().filter(function(l){return l.id===id;})[0]; if(!f) throw new Error(T('err')); return f; }
+    if(j.guest){ var f=eduLocalFor('').filter(function(l){return l.id===id;})[0]; if(!f) throw new Error(T('err')); return f; }
     return j.lesson;
   });
 }
@@ -325,7 +368,8 @@ function persistLesson(lesson){
 }
 function deleteLesson(id){
   if(!getToken()){ saveLocalLessons(localLessons().filter(function(l){return l.id!==id;})); return Promise.resolve(); }
-  return api({action:'delete',id:id}).then(function(j){ if(j.guest) saveLocalLessons(localLessons().filter(function(l){return l.id!==id;})); });
+  return api({action:'delete',id:id}).then(function(j){ if(j.guest) saveLocalLessons(localLessons().filter(function(l){return l.id!==id;}));
+    else saveLocalLessons(localLessons().filter(function(l){ return !(l.id===id&&l.pendingSync); })); /* v-audit-edu: المعلّق المحذوف لا يعود ولا يُرفع */ });
 }
 function saveProgress(id,fields){
   bumpStreak();
@@ -578,7 +622,8 @@ function eduRegenQuestions(pane,lesson,tab){
       .then(function(j){
         if(!j||!Array.isArray(j.quiz)||!j.quiz.length) throw new Error(TL('تعذر التوليد — أعد المحاولة.','Generation failed — try again.'));
         lesson.flashcards=j.flashcards||[]; lesson.quiz=j.quiz||[]; lesson.written=j.written||[];
-        persistLesson(lesson);
+        /* v-audit-edu (srv-edu-bots-6): كان بلا catch — فشل الحفظ رفضٌ غير معالَج وتضيع الأسئلة المولَّدة من حصّة اليوم */
+        persistLesson(lesson).catch(function(){ eduKeepLocal(lesson); });
         showLesson(lesson);
       })
       .catch(function(e){
@@ -909,7 +954,9 @@ function bindEduExamLang(){
   if(el) el.onchange=function(){ setEduExamLang(el.value); };
 }
 
-function eduNativeLang(){ try{ return AL()||'ar'; }catch(e){ return 'ar'; } }
+/* v-audit-edu (srv-edu-bots-1): AL() غير معرّفة خارج IIFE ui-docs.js فكان الـcatch يرجع 'ar' دائمًا — فيكتب الخادم كلّ
+   المحتوى بالعربيّة في الـ١٣ لغة الأخرى. لغة الطالب الأمّ = لغة الواجهة نفسها. */
+function eduNativeLang(){ return appLang()||'ar'; }
 function eduExamLang(){ try{ return localStorage.getItem('edu_exam_lang')||''; }catch(e){ return ''; } }
 function setEduExamLang(v){ try{ if(v) localStorage.setItem('edu_exam_lang',v); else localStorage.removeItem('edu_exam_lang'); }catch(e){ __swallow(e, "save:index#10"); } }
 
@@ -1110,7 +1157,7 @@ function processContent(payload,__act,__meta){
       };
       if(meta){ lesson.src='upload'; lesson.term=meta.term||''; lesson.note=meta.note||''; lesson.fileName=meta.fileName||''; }
       /* v-edu-upload: فشل الحفظ في السحابة (القاعدة ممتلئة) كان يرمي التحليل الجاهز ويعرض «خطأ» — يُحفظ على الجهاز ويُعرض. */
-      return persistLesson(lesson).catch(function(){ var arr=localLessons().filter(function(l){return l.id!==lesson.id;}); arr.unshift(lesson); saveLocalLessons(arr); })
+      return persistLesson(lesson).catch(function(){ eduKeepLocal(lesson); }) /* v-audit-edu: معلّق للرفع ويظهر في «موادي» */
         .then(function(){ showLesson(lesson,showHome); });
     });
   }).catch(function(err){
