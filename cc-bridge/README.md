@@ -13,7 +13,8 @@ Claude Code **الخام** (حزمة الوكيل الرسميّة، لا حلق
 | `CC_ENABLED` | **`on` وحدها تشغّله** — بدونها الجسر موقوف (v-cc-off، أمر المالك ١٤ أكتوبر بعد ١٥٠ دولارًا في يوم): لا تشغيل ولا إيقاظ ذاتيّ ولا نشر ولا دمج؛ والمتغيّر نفسه في Vercel |
 | `CC_BRIDGE_SECRET` | سرّ عشوائيّ ≥ ٢٤ حرفًا (نفسه في Vercel) |
 | `ANTHROPIC_API_KEY` **أو** `CLAUDE_CODE_OAUTH_TOKEN` | مفتاح API يُدفع بالاستهلاك، أو رمز اشتراكك من `claude setup-token` (الموثّق رسميًّا لحزمة الوكيل هو المفتاح؛ الرمز يمرّ للحزمة كما هو فجرّبه أوّلًا) |
-| `GITHUB_TOKEN` | مفتاح GitHub بصلاحيّات Contents + Pull requests + Actions (read) على المستودع؛ يمرّ إلى Claude Code باسم `GH_TOKEN` ليعمل `gh` و`git push` إلى الفروع (حماية الفرع `main` على GitHub تمنع الدفع إليه من طبقة ثانية) |
+| `GITHUB_TOKEN` | مفتاح GitHub بصلاحيّات Contents + Pull requests + Actions (read) على المستودع؛ **يبقى في الجسر وحده** (v-audit-bridge): «انشر» و«ادمج» و`git push -u origin <فرع>` الذي يكتبه Claude Code يجريها الجسر بهذا المفتاح بوجهة `refs/heads/<فرع>` صريحة، لا `main` ولا قسر. لا يصل إلى بيئة Claude Code، لأنّ Contents: write يكفي للدفع إلى `main` والدمج بأيّ صيغة تفوت السياج النصّيّ. **حماية `main` على GitHub غير مفعّلة الآن** — فعّلها طبقةً ثانية (Settings ← Rules: لا دفع مباشر، والدمج عبر طلب سحب) |
+| `CC_AGENT_GH_TOKEN` | اختياريّ: رمز fine-grained **بلا Contents: write** (Contents/Actions/Commit statuses: read، وPull requests: read/write) يصل إلى Claude Code باسم `GH_TOKEN` ليعمل `gh pr create/view/checks` و`gh run view`. بدونه يعمل `gh` في Claude Code بلا رمز (القراءة العامّة فقط) و«انشر» يفتح الطلب |
 | `CC_REPO` | `OMRAN77/omran-ai-builder` (الافتراضيّ) |
 | `CC_MODEL` | `claude-fable-5-1` افتراضيًّا (نموذج جلسة المالك على الويب نفسه)؛ أو `claude-opus-5` |
 | `CC_FALLBACK_MODEL` | احتياط إن لم يتوفّر الأساسيّ: `claude-opus-5` افتراضيًّا |
