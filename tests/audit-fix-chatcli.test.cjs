@@ -110,3 +110,132 @@ test('cli-chat-rest-3: ملفّ بأسطر ويندوز (CRLF) تطابق رقع
   lf.c.document.getElementById('cfxDl').click();
   assert.equal(await lf.c.__saved[0].b.text(), 'var a = 3;\nvar b = 4;\n');
 });
+
+/* ───────── app-17/18/09: فيديو المحادثة ───────── */
+const A17 = read('js/app-17-agent-tools.js');
+const A18 = read('js/app-18-chat-tools.js');
+const A09 = read('js/app-09-attach.js');
+/* ساعة مزيّفة: كلّ setTimeout يقدّم الساعة بمدّته ويُطلق فورًا، فيُقاس زمن الانتظار الذي يراه الخادم بلا انتظار حقيقيّ */
+function load17(opts = {}) {
+  const clock = { now: 1e12 };
+  class FakeDate extends Date { static now() { return clock.now; } }
+  const calls = [];
+  const sb = {
+    console, lang: 'ar', t: (k) => k, Date: FakeDate,
+    authGet: () => 'tok', localStorage: { getItem: () => null },
+    setTimeout: (fn, ms) => { clock.now += Number(ms) || 0; setImmediate(fn); return 1; }, clearTimeout: () => {},
+    fetch: async (url, init) => { calls.push(String(url)); return opts.fetch(String(url), init, calls); },
+  };
+  sb.window = sb;
+  vm.createContext(sb);
+  vm.runInContext(A17, sb);
+  sb.__clock = clock; sb.__calls = calls;
+  return sb;
+}
+const jsonRes = (body, status = 200) => ({ ok: status < 400, status, json: async () => body });
+const createOk = (url) => (/video-create/.test(url) ? jsonRes({ id: 'task-77' }) : (/veo-create/.test(url) ? jsonRes({ op: 'op-88' }) : null));
+
+test('cli-chat-rest-4: فيديو أداة المحادثة يُحفظ لمحادثة طلبه لا في window.__chatVideoResult العامّ', async () => {
+  const sb = load17({ fetch: (url) => createOk(url) || jsonRes({ status: 'SUCCEEDED', output: ['https://cdn.example/v.mp4'] }) });
+  const chatA = { id: 'A', messages: [] };
+  const out = await sb.omranAgentTools.run('generate_video', { prompt: 'a cat' }, { chat: chatA, imgs: {}, ref: null, userText: 'make a video' });
+  assert.match(out, /^✅/);
+  assert.equal(sb.__chatVideoResult, undefined, 'لا متغيّر عامّ يصفّره طلب محادثة أخرى أو يلتقطه ردّها');
+  assert.deepEqual(JSON.parse(JSON.stringify(sb.__chatVideoByChat || null)), { A: { url: 'https://cdn.example/v.mp4', name: 'chat-video.mp4', provider: 'runway' } });
+});
+
+test('cli-chat-rest-4: محادثتان متوازيتان — طلب (ب) أثناء فيديو (أ) لا يمحوه، وردّ (ب) لا يأخذه', async () => {
+  const { document } = makeDom();
+  let toolDone; const toolP = new Promise((r) => { toolDone = r; });
+  let releaseA; const holdA = new Promise((r) => { releaseA = r; });
+  const enc = new TextEncoder();
+  /* بثّ (أ): أداة generate_video ثمّ ينتظر ناتجها كما ينتظره الخادم (runInClient) قبل أن يكمل */
+  const streamA = () => {
+    const chunks = [{ clientTool: { id: 'c1', name: 'generate_video', input: { prompt: 'a cat' } } }, '__wait__', { delta: 'done A' }];
+    let i = 0;
+    return { ok: true, status: 200, body: { getReader() { return { async read() {
+      if (i >= chunks.length) return { done: true };
+      const c = chunks[i++];
+      if (c === '__wait__') { await toolP; return { done: false, value: enc.encode(': ka\n\n') }; }
+      return { done: false, value: enc.encode('data: ' + JSON.stringify(c) + '\n\n') };
+    }, cancel() { return Promise.resolve(); } }; } } };
+  };
+  const sb = {
+    console, document, lang: 'en', t: (k) => k, Image: function () {}, Intl, TextDecoder, TextEncoder,
+    setTimeout, clearTimeout, setInterval, clearInterval,
+    authGet: () => 'tok', getGuestId: () => 'g', localStorage: { getItem: () => null }, sessionStorage: { getItem: () => null },
+  };
+  sb.window = sb;
+  sb.fetch = async (url, init) => {
+    url = String(url);
+    if (url.startsWith('/api/ai?action=chat')) return JSON.parse(init.body).messages[0].content === 'A' ? streamA() : sseResponse([{ delta: 'done B' }]);
+    if (url.startsWith('/api/agent-tool-result')) { toolDone(); return jsonRes({ ok: true }); }
+    if (/video-create/.test(url)) return jsonRes({ id: 'task-77' });
+    if (/video-status/.test(url)) { await holdA; return jsonRes({ status: 'SUCCEEDED', output: ['https://cdn.example/a.mp4'] }); }
+    throw new Error('unexpected ' + url);
+  };
+  vm.createContext(sb);
+  sb.setTimeout = (fn, ms) => setTimeout(fn, ms >= 5000 && ms <= 8000 ? 1 : ms); /* استطلاع الفيديو بلا انتظار حقيقيّ */
+  vm.runInContext(A17, sb);
+  vm.runInContext(A18, sb);
+  const chatA = { id: 'A', messages: [] }, chatB = { id: 'B', messages: [] };
+  const dA = () => {}; dA.__chat = chatA;
+  const dB = () => {}; dB.__chat = chatB;
+  const pA = sb.callChatWithTools([{ role: 'user', content: 'A' }], dA, 'claude');
+  await settle(200);
+  const rB = await sb.callChatWithTools([{ role: 'user', content: 'B' }], dB, 'claude'); /* (ب) يبدأ وينتهي والفيديو قيد الإنشاء */
+  assert.equal(rB.reply, 'done B');
+  releaseA();
+  const rA = await pA;
+  assert.equal(rA.reply, 'done A');
+  const byChat = sb.__chatVideoByChat || {};
+  assert.equal(byChat.A && byChat.A.url, 'https://cdn.example/a.mp4', 'فيديو (أ) محفوظ لـ(أ) رغم طلب (ب)');
+  assert.equal(byChat.B, undefined, '(ب) بلا فيديو');
+  assert.ok(!sb.__chatVideoResult, 'العامّ فارغ فلا يلتقطه ردّ أيّ محادثة');
+});
+
+test('cli-chat-rest-4: الواجهة تقرأ فيديو المحادثة وبطاقاتها لطلبها — لا window.__chatCardsResult ولا عامّ الفيديو وحده', () => {
+  const cardsGlobal = /window\.__chatCardsResult\s*=|\(window\.__chatCardsResult\)/;
+  assert.ok(!cardsGlobal.test(A09) && !cardsGlobal.test(A18), 'لا بطاقات في متغيّر عامّ');
+  assert.ok(A09.includes('let __ctLog = null, __ctCards = null;'), 'بطاقات الطلب في متغيّره بلا سطر جديد في __sendPromptCore');
+  assert.ok(A09.includes('__ctCards = __ct.cards || null;') && A09.includes('cards: __ctCards || undefined'), 'تُحفظ في رسالة طلبها');
+  const reads = A09.match(/const __cv = [^;]+;|var __chatVideo = [^;]+;/g) || [];
+  assert.equal(reads.length, 2, 'موضعا القراءة (الردّ العاديّ واسأل الكلّ)');
+  for (const r of reads) assert.ok(r.includes('window.__chatVideoByChat[cur.id]'), 'بمحادثة الطلب: ' + r);
+  assert.ok(!/window\.__chatVideoResult = \{ url: videoUrl/.test(A17), 'app-17 لا يكتب العامّ بمحادثة معروفة');
+});
+
+test('cli-chat-rest-5: عثرة شبكة في الاستطلاع لا تُسقط الفيديو، وRunway يُنتظر بعد ١٨٠ ث حتّى يكتمل', async () => {
+  let polls = 0;
+  const sb = load17({ fetch: (url) => {
+    const c = createOk(url); if (c) return c;
+    polls++;
+    if (polls === 1 || polls === 7) throw new TypeError('Failed to fetch');
+    return jsonRes(polls >= 42 ? { status: 'SUCCEEDED', output: ['https://cdn.example/late.mp4'] } : { status: 'RUNNING' });
+  } });
+  const t0 = sb.__clock.now;
+  const rc = { chat: { id: 'A' }, imgs: {}, ref: null, userText: 'video' };
+  const out = await sb.omranAgentTools.run('generate_video', { prompt: 'x' }, rc);
+  assert.match(out, /^✅/, 'اكتمل: ' + out);
+  assert.ok(sb.__clock.now - t0 > 180000, 'انتظر بعد سقف ١٨٠ ث القديم');
+  assert.equal(sb.__chatVideoByChat.A.url, 'https://cdn.example/late.mp4');
+});
+
+test('cli-chat-rest-5: المهلة بسقف واحد قبل مهلة الخادم (٢٩٠ ث) للمحرّكين، ورسالتها بمعرّف المهمّة ولا تدعو لإعادة الطلب', async () => {
+  for (const [provider, id] of [['runway', 'task-77'], ['veo', 'op-88']]) {
+    const sb = load17({ fetch: (url) => createOk(url) || jsonRes({ status: 'RUNNING' }) });
+    const t0 = sb.__clock.now;
+    const out = await sb.omranAgentTools.run('generate_video', { prompt: 'x', provider }, { chat: { id: 'A' }, imgs: {}, ref: null, userText: 'video' });
+    const waited = sb.__clock.now - t0;
+    assert.ok(waited >= 270000 && waited <= 285000, provider + ': انتظر ' + waited + ' مث');
+    assert.ok(out.includes(id), provider + ': معرّف المهمّة في الناتج: ' + out);
+    assert.ok(!/حاول مرة أخرى/.test(out), provider + ': لا دعوة لإعادة الطلب');
+    assert.match(out, /generate_video/, provider + ': ينهى النموذج عن استدعائها ثانية');
+  }
+  /* veo بعثرة أيضًا */
+  let n = 0;
+  const sb = load17({ fetch: (url) => { const c = createOk(url); if (c) return c; n++; if (n === 2) throw new TypeError('network'); return jsonRes(n >= 4 ? { status: 'SUCCEEDED', output: 'https://cdn.example/veo.mp4' } : { status: 'RUNNING' }); } });
+  const out = await sb.omranAgentTools.run('generate_video', { prompt: 'x', provider: 'veo' }, { chat: { id: 'V' }, imgs: {}, ref: null, userText: 'video' });
+  assert.match(out, /^✅/);
+  assert.equal(sb.__chatVideoByChat.V.url, 'https://cdn.example/veo.mp4');
+});

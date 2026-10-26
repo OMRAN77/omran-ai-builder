@@ -177,6 +177,7 @@
         }
         // 🎬 إنشاء فيديو من داخل المحادثة — يستخدم نفس محركات صانع الفيديو الحالي.
         if (name === 'generate_video') {
+          var vT0 = Date.now(); /* v-audit-chatcli: مهلة الخادم (runInClient ٢٩٠ ث) تبدأ من طلب الأداة، وتأكيد النقاط منها */
           var va = args || {};
           var vp = String(va.prompt || '').trim();
           if (!vp) return 'وصف الفيديو فارغ — لم يبدأ التوليد.';
@@ -234,19 +235,29 @@
           if (vrsp.status === 428) return 'لم يتم تشغيل الفيديو لأن المستخدم لم يؤكد خصم النقاط.';
           if (!vrsp.ok || !vjson) return 'تعذّر بدء الفيديو: ' + String((vjson && typeof omranVideoCodeText === 'function' && omranVideoCodeText(vjson.error, vjson.retryAfter)) || (vjson && vjson.error) || ('HTTP ' + vrsp.status)).slice(0, 160); // v-chat-video-cooldown: النموذج يرى المهلة بالدقائق لا الرمز
           var videoUrl = null;
-          var maxPoll = engine === 'veo' ? 34 : 36;
-          for (var pi = 0; pi < maxPoll; pi++) {
-            await new Promise(function (resolve) { setTimeout(resolve, engine === 'veo' ? 8000 : 5000); });
-            var sr = engine === 'veo'
-              ? await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(vjson.op || ''))
-              : await fetch('/api/video-status?id=' + encodeURIComponent(vjson.id || ''));
-            var sj = null; try { sj = await sr.json(); } catch (e2) { sj = null; }
+          /* v-audit-chatcli (cli-chat-rest-5): عثرة شبكة في استطلاع واحد كانت ترمي إلى catch العامّ («تعذّر التنفيذ: Failed to fetch») فيُترك
+             فيديو مدفوع يكتمل عند المزوّد ولا يراه أحد، وسقف Runway ‏٣٦×٥ ث = ١٨٠ ث والخادم ينتظر الأداة ٢٩٠ ث. الآن كلّ استطلاع في try يُعاد
+             بعد مهلته، والانتظار للمحرّكين حتّى ٢٨٠ ث من طلب الأداة (قبل مهلة الخادم)، ولا خروج إلّا بنتيجة أو فشل أو انتهاء الوقت. */
+          var vStep = engine === 'veo' ? 8000 : 5000;
+          while (Date.now() + vStep <= vT0 + 280000) {
+            await new Promise(function (resolve) { setTimeout(resolve, vStep); });
+            var sj = null;
+            try {
+              var sr = engine === 'veo'
+                ? await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(vjson.op || ''))
+                : await fetch('/api/video-status?id=' + encodeURIComponent(vjson.id || ''));
+              try { sj = await sr.json(); } catch (e2) { sj = null; }
+            } catch (e3) { sj = null; /* guard-ok — عثرة شبكة عابرة: المهمّة قائمة عند المزوّد، نستطلعها ثانية */ }
             if (sj && sj.status === 'SUCCEEDED') { videoUrl = Array.isArray(sj.output) ? sj.output[0] : sj.output; break; }
             if (sj && sj.status === 'FAILED') return 'فشل إنشاء الفيديو: ' + String(sj.failure || sj.error || 'سبب غير معروف').slice(0, 180);
             if (sj && sj.error === 'unavailable') return 'تعذّر إكمال الفيديو: ' + t('svcPaused') + ' (رُدّت نقاط المستخدم).'; // v-credit-out: الخادم سوّى التذكرة — لا انتظار ٤٫٥ دقيقة
           }
-          if (!videoUrl) return 'انتهت مهلة انتظار الفيديو قبل وصول النتيجة. حاول مرة أخرى إذا لم يظهر خلال دقائق.';
-          window.__chatVideoResult = { url: videoUrl, name: 'chat-video.mp4', provider: engine };
+          if (!videoUrl) return 'لم يصل الفيديو خلال مهلة الانتظار هنا (نحو ٤ دقائق ونصف) والمهمّة ما زالت عند المزوّد (المعرّف: ' + String(vjson.id || vjson.op || '') + '). لا تقل إنّه فشل، ولا تستدعِ generate_video من جديد الآن — طلب جديد يُخصم مرّة ثانية ويصطدم بقفل الفيديو الجاري. قل للمستخدم بجملة واحدة إنّ الفيديو أخذ أطول من المعتاد ولم يصل إلى المحادثة.';
+          /* v-audit-chatcli (cli-chat-rest-4): الفيديو لمحادثة طلبه — كان في window.__chatVideoResult العامّ، يصفّره طلب محادثة أخرى (app-18)
+             أو يلتقطه ردّها (app-09) مع المحادثات المتوازية، كما رُبطت الصور بمحادثتها (v-img-run-bind). بلا محادثة معروفة كما كان. */
+          var vRes = { url: videoUrl, name: 'chat-video.mp4', provider: engine }, vChat = CHAT();
+          if (vChat && vChat.id != null) (window.__chatVideoByChat = window.__chatVideoByChat || {})[vChat.id] = vRes;
+          else window.__chatVideoResult = vRes;
           return '✅ تم إنشاء الفيديو بنجاح. سيظهر الآن داخل المحادثة مع زر التنزيل.';
         }
         // 🎨 صورة حقيقية بدل رابط عشوائي. تُخزَّن محليًّا ويُعاد للنموذج رمز قصير
