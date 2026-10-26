@@ -1217,7 +1217,8 @@ async function processArchiveAttachment(file, attachment, preReadB64){
       body: JSON.stringify({ fileBase64, filename: file.name, token: authGet('aiapp_auth_token'), guestId: (window.getGuestId ? window.getGuestId() : undefined) }) // v-sec-zip-gate: الحصّة على الحساب/الشبكة
     });
     const data = await resp.json().catch(() => ({}));
-    if(!resp.ok || !data.ok) throw new Error(data.error || omranAttTx('axChatcliAttZipFail', 'فشل التحليل (HTTP {status})', { status: resp.status }));
+    /* v-audit-chatcli: نصّ الخادم عربيّ ثابت — يظهر للعربيّ وحده، وغيره سطر مترجَم بحالة الطلب (دخول/حدّ يوميّ قائمان، وغيرهما فشل التحليل) */
+    if(!resp.ok || !data.ok) throw new Error(((typeof lang === 'undefined' || lang === 'ar') && data.error) || omranAttTx(resp.status === 401 ? 'portraitNeedLogin' : (resp.status === 429 ? 'portraitLimitReached' : 'axChatcliAttZipFail'), data.error || 'فشل التحليل (HTTP {status})', { status: resp.status }));
     attachment.text = data.content;
   }catch(err){
     console.error('archive analyze error', err);

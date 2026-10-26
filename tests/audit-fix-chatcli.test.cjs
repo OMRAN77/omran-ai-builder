@@ -407,6 +407,19 @@ test('x-i18n-5: أخطاء قراءة الملفّ والأرشيف في شري�
   const att2 = {};
   await c2.arc({ name: 'p.zip', size: 10 }, att2, 'QUJD');
   assert.ok(att2.text.includes('T:axChatcliAttZipFail') && !AR_RE.test(att2.text), 'فشل الخادم: ' + att2.text);
+  /* نصّ الخادم العربيّ الثابت لا يظهر لغير العربيّ (ولا للأرديّ): الدخول والحدّ اليوميّ بمفتاحيهما القائمين، وغيرهما فشل التحليل */
+  for (const [status, key] of [[401, 'portraitNeedLogin'], [429, 'portraitLimitReached'], [400, 'axChatcliAttZipFail']]) {
+    for (const lg of ['fr', 'ur']) {
+      const cs = mk({ lang: lg, fetch: async () => ({ ok: false, status, json: async () => ({ error: 'نصّ الخادم العربيّ' }) }) });
+      const a = {};
+      await cs.arc({ name: 'p.zip', size: 10 }, a, 'QUJD');
+      assert.ok(a.text.includes('T:' + key) && !a.text.includes('نصّ الخادم العربيّ'), lg + '/' + status + ': ' + a.text);
+    }
+  }
+  const cAr = mk({ lang: 'ar', fetch: async () => ({ ok: false, status: 429, json: async () => ({ error: 'نصّ الخادم العربيّ' }) }) });
+  const aAr = {};
+  await cAr.arc({ name: 'p.zip', size: 10 }, aAr, 'QUJD');
+  assert.ok(aAr.text.includes('نصّ الخادم العربيّ'), 'العربيّ يرى نصّ الخادم كما كان');
   /* بلا مفتاح: العربيّة كما كانت بأرقامها */
   const c3 = mk({ t: (k) => k });
   const att3 = {};
