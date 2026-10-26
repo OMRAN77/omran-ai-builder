@@ -241,6 +241,56 @@ test('srv-video-4 (ج): مهمّة رفع واحدة مفتوحة للحساب �
   assert.ok(store.has('vwatch:' + b.j.id));
 });
 
+// ─────────────────────────────── cli-video-2 ───────────────────────────────
+const VIDEO = read('js/app-11-video.js');
+/** كتلة متوازنة الأقواس بالعدّ (نمط tests/video-seq-cooldown). */
+function extractBlock(source, startNeedle) {
+  const a = source.indexOf(startNeedle);
+  assert.ok(a >= 0, 'بداية الكتلة: ' + startNeedle);
+  let depth = 0, i = source.indexOf('{', a);
+  for (; i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') { depth--; if (depth === 0) break; }
+  }
+  return source.slice(a, i + 1);
+}
+const APP02 = read('js/app-02-tts.js');
+const TTS_HELPERS = APP02.slice(APP02.indexOf('function ttsAuthToken('), APP02.indexOf('async function fetchCloudSpeech('));
+
+test('cli-video-2 (أ): فيديو القوالب بتعليق صوتيّ يرسل رمز الحساب ومعرّف الضيف إلى /api/tts (كان يُعدّ على عنوان IP)', async () => {
+  const bodies = [];
+  const ctx = {
+    setStatus() {}, bT: (a) => a, recordCanvasClip: async () => ({ type: 'video/webm', size: 9 }),
+    fetch: async (url, init) => { if (url === '/api/tts') bodies.push(JSON.parse(init.body)); return { ok: false, status: 402 }; },
+    muxNarrationAny: async (b) => b, cleanNarrationText: (x) => x, getNarrationGender: () => 'female', getNarrationSpeed: () => 'fast',
+    URL: { createObjectURL: () => 'blob:x' }, resultEl: { style: {} }, downloadEl: { style: {} }, autoSaveVideo() {}, dlName: () => 'v.webm', JSON,
+    authGet: (k) => (k === 'aiapp_auth_token' ? 'tok-sub-1' : null), window: { getGuestId: () => 'g_guest_9' },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(TTS_HELPERS + '\n' + extractBlock(VIDEO, 'async function runCanvasOnly('), ctx);
+  await ctx.runCanvasOnly('عرض', '9:16', 5, '', true, 'سرد');
+  assert.equal(bodies.length, 1);
+  assert.equal(bodies[0].token, 'tok-sub-1', 'الحساب يصل الخادم فيُطبَّق حدّه هو لا حدّ العنوان المشترك');
+  assert.equal(bodies[0].guestId, 'g_guest_9');
+  assert.equal(bodies[0].speed, 'fast', 'السرعة كما كانت');
+});
+
+test('cli-video-2 (ب): المواضع الخمسة لـ/api/tts في صانع الفيديو كلّها ترسل الحساب، والسرد الساقط من مشهد في الفيلم يُعلَن', () => {
+  const calls = [...VIDEO.matchAll(/fetch\('\/api\/tts', \{[\s\S]*?body: JSON\.stringify\(\{([^\n]*)\}\),/g)];
+  assert.equal(calls.length, 5);
+  for (const c of calls) assert.ok(c[1].includes('token: ttsAuthToken(), guestId: ttsGuestId()'), c[1].slice(0, 90));
+  // نصّ «السرد ناقص في {k} من {n}» — بالمفتاح، وبلا شيء حين لا نقص
+  const ctx = { window: { t: (k) => (k === 'axVideoNarrMissing' ? 'NM {k}/{n}' : k) }, bT: (a, e) => e };
+  vm.runInNewContext(extractBlock(VIDEO, 'function narrMissNote(') + '\nthis.f = narrMissNote;', ctx);
+  assert.equal(ctx.f(0, 3), '');
+  assert.equal(ctx.f(2, 3), ' NM 2/3');
+  const noKey = { window: { t: (k) => k }, bT: (a, e) => e };
+  vm.runInNewContext(extractBlock(VIDEO, 'function narrMissNote(') + '\nthis.f = narrMissNote;', noKey);
+  assert.equal(noKey.f(1, 5), ' ⚠️ Narration is missing from 1 of 5 scenes.', 'الاحتياط الإنجليزيّ قبل وصول المفتاح');
+  // الفيلم والطويل: عدّ المشاهد بلا صوت في سطر النهاية
+  assert.equal((VIDEO.match(/narrMissNote\(builtScenes\.filter\(\(s\) => !\(s\.audioBlob && s\.audioBlob\.size\)\)\.length, builtScenes\.length\)/g) || []).length, 2);
+});
+
 test('srv-video-4 (د): الواجهة تعرض حدّ اليوم بنصّ الـ١٤ لغة القائم (portraitLimitReached) لا «تعذّر التحليل»', () => {
   const s = read('js/app-32-video-watch.js');
   const fn = s.slice(s.indexOf('function errText(d){'), s.indexOf('var lastWatch'));

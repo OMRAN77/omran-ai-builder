@@ -866,7 +866,7 @@
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -944,7 +944,7 @@
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -1072,6 +1072,14 @@
     const tpl = (typeof window.t === 'function' && window.t('videoSceneWait') !== 'videoSceneWait') ? window.t('videoSceneWait')
       : bT('⏳ المشهد {i}/{n}: مهلة بين الفيديوهات — يبدأ تلقائيًا بعد {s} ثانية.', '⏳ Scene {i}/{n}: cooldown between videos — starting automatically in {s}s.');
     return String(tpl).replace('{i}', sceneNo).replace('{n}', total).replace('{s}', secs);
+  }
+  /* v-audit-video (cli-video-2): مشهد سقط سرده (حدّ اليوم أو عطب) كان يُدمج بصوت فارغ بلا كلمة — فيلم مدفوع بلا سرد بصمت.
+     يُقال في سطر النهاية: «السرد ناقص في {k} من {n} مشاهد». */
+  function narrMissNote(miss, total){
+    if(!miss) return '';
+    const tpl = (typeof window.t === 'function' && window.t('axVideoNarrMissing') !== 'axVideoNarrMissing') ? window.t('axVideoNarrMissing')
+      : bT('⚠️ السرد ناقص في {k} من {n} مشاهد.', '⚠️ Narration is missing from {k} of {n} scenes.');
+    return ' ' + String(tpl).replace('{k}', miss).replace('{n}', total);
   }
   async function waitOutCooldown(err, sceneNo, total){
     const secs = Math.max(1, Math.ceil(Number(err && err.retryAfter) || 180));
@@ -1375,7 +1383,7 @@
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -1441,7 +1449,7 @@
           }
         }
         if(finalUrl){
-          setStatus(bT('✅ فيلمك جاهز!','✅ Your film is ready!'));
+          setStatus(bT('✅ فيلمك جاهز!','✅ Your film is ready!') + narrMissNote(builtScenes.filter((s) => !(s.audioBlob && s.audioBlob.size)).length, builtScenes.length)); // v-audit-video
           resultEl.src = finalUrl;
           resultEl.style.display = 'block';
           downloadEl.href = finalUrl;
@@ -1716,7 +1724,7 @@
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -1730,7 +1738,7 @@
           setStatus((bT('🔗 جاري دمج المشهد ','🔗 Joining scene ')) + (i + 1) + '/' + total + '...');
         });
         const finalUrl = URL.createObjectURL(finalBlob);
-        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!') + narrMissNote(builtScenes.filter((s) => !(s.audioBlob && s.audioBlob.size)).length, builtScenes.length)); // v-audit-video
         resultEl.src = finalUrl;
         resultEl.style.display = 'block';
         downloadEl.href = finalUrl;
@@ -1754,7 +1762,7 @@
         ttsEarly = fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
         getFFmpeg().catch(() => null);
       };
