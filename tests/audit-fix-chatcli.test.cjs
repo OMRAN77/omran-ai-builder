@@ -111,6 +111,167 @@ test('cli-chat-rest-3: ملفّ بأسطر ويندوز (CRLF) تطابق رقع
   assert.equal(await lf.c.__saved[0].b.text(), 'var a = 3;\nvar b = 4;\n');
 });
 
+/* ───────── القواميس الأربعة عشر (كما يقرؤها tRaw في app-04) ───────── */
+const LAZY = ['fr', 'hi', 'ur', 'bn', 'ne', 'id', 'fil', 'tr', 'zh', 'ru', 'es', 'ml'];
+const DICT = (() => {
+  const acorn = require('acorn');
+  const DATA = read('js/app-03-i18n-data.js');
+  const ast = acorn.parse(DATA, { ecmaVersion: 'latest', sourceType: 'script' });
+  const parts = ast.body.filter((n) => (n.type === 'VariableDeclaration' && n.declarations.some((d) => d.id && d.id.name === 'I18N'))
+    || (n.type === 'ExpressionStatement' && DATA.slice(n.start, n.start + 18).startsWith('Object.assign(I18N'))).map((n) => DATA.slice(n.start, n.end));
+  const sb = {};
+  vm.createContext(sb);
+  vm.runInContext(parts.join('\n') + '\nthis.I18N = I18N;', sb);
+  const out = { ar: sb.I18N.ar, en: sb.I18N.en };
+  for (const lg of LAZY) {
+    const s2 = { I18N: {} }; s2.window = s2; s2.self = s2;
+    vm.createContext(s2);
+    vm.runInContext(read('i18n/' + lg + '.js'), s2);
+    out[lg] = Object.assign({}, sb.I18N[lg] || {}, s2.I18N[lg]);
+  }
+  return out;
+})();
+/* مفاتيح جديدة تُدمج في القواميس مركزيًّا (ناتج هذه الدفعة i18nKeys) — ما دامت غائبة يقبلها الاختبار، وحين تحضر يشترط اللغات الأربع عشرة */
+const CENTRAL = {
+  stWriting: [], stGenVideo: [], stCarry: [], stGithub: ['{repo}'], stAnalyze: ['{n}', '{lines}'], axChatcliStAnalyzeWriting: ['{n}'],
+};
+function checkKeys(keys, label) {
+  for (const k of keys) {
+    const has = Object.keys(DICT).filter((lg) => typeof DICT[lg][k] === 'string');
+    if (!has.length) { assert.ok(Object.prototype.hasOwnProperty.call(CENTRAL, k), label + ': المفتاح ' + k + ' غائب عن القواميس كلّها'); continue; }
+    assert.equal(has.length, 14, label + ': ' + k + ' في ' + has.length + ' لغة فقط');
+    for (const lg of has) {
+      const v = DICT[lg][k];
+      assert.ok(v.trim(), lg + ': ' + k + ' فارغ');
+      for (const ph of (CENTRAL[k] || [])) assert.ok(v.includes(ph), lg + ': ' + k + ' بلا ' + ph);
+      if (lg !== 'ar' && lg !== 'ur') assert.ok(!AR_RE.test(v), lg + ': ' + k + ' فيه عربيّ');
+    }
+  }
+}
+
+test('cli-chat-rest-6 · x-i18n-2: كلّ مفتاح حالة يبثّه الخادم (k) له ترجمة بالأربع عشرة لغة — لا نصّ الخادم العربيّ في الإنجليزيّ', () => {
+  for (const f of ['api/_lib/chat.js', 'api/_lib/code-analyze.js']) {
+    const src = read(f);
+    /* stModelFallback خارج هذه الدفعة: بالعربيّة والإنجليزيّة وحدهما ويحمل اسم النموذج نفسه ({model}) — مذكور في ملاحظات الدفعة */
+    const keys = [...new Set([...src.matchAll(/\bk:\s*'((?:st[A-Z]|axChatcliSt)\w*)'/g)].map((m) => m[1]))].filter((k) => k !== 'stModelFallback');
+    assert.ok(keys.length >= (f.includes('chat.js') ? 10 : 3), f + ': ' + keys.join(','));
+    checkKeys(keys, f);
+  }
+  /* المفاتيح الثلاثة التي ثبّت الفحص غيابها لها ترجمة هنا */
+  for (const k of ['stWriting', 'stGenVideo', 'stCarry', 'stGithub', 'stAnalyze']) assert.ok(k in CENTRAL || typeof DICT.en[k] === 'string', k);
+});
+
+test('x-i18n-2: «تحليل الكود» يبثّ أرقام حالته بارامترات (p) فتُترجم كاملة، وكتابة التحليل بمفتاحها لا بمفتاح «المزوّد يكتب»', () => {
+  const ca = read('api/_lib/code-analyze.js');
+  assert.match(ca, /k: 'stGithub', p: \{ repo: /, 'المستودع بارامتر');
+  assert.match(ca, /k: 'stAnalyze', p: \{ n: col\.files\.length, lines: metrics\.totals\.lines \}/, 'الملفّات والأسطر بارامتران');
+  assert.match(ca, /k: 'axChatcliStAnalyzeWriting', p: \{ n \}/, 'عدد الحروف بارامتر');
+  assert.ok(!/k: 'stWriting'/.test(ca), 'لا يشارك stWriting نصًّا آخر');
+  /* tStatus الحقيقيّ (app-04) يملأ البارامترات */
+  const A04 = read('js/app-04-i18n-state.js');
+  const src = A04.slice(A04.indexOf('function tStatus(ev){'), A04.indexOf("try{ window.tStatus = tStatus;"));
+  const sb = { __swallow() {}, t: (k) => ({ stAnalyze: '🔎 Reading {n} files · {lines} lines…' })[k] || k };
+  vm.createContext(sb);
+  vm.runInContext(src + ';this.tStatus = tStatus;', sb);
+  assert.equal(sb.tStatus({ status: 'عربيّ', k: 'stAnalyze', p: { n: 3, lines: 120 } }), '🔎 Reading 3 files · 120 lines…');
+  assert.equal(sb.tStatus({ status: '✍️ يكتب', k: 'axChatcliStAnalyzeWriting', p: { n: 1500 } }), '✍️ يكتب', 'غياب الترجمة = نصّ الخادم كما كان');
+});
+
+/* ───────── app-27: تحليل الكود وتقييمه ───────── */
+const A27 = read('js/app-27-codescore.js');
+const REPORT = {
+  parsed: true, score: 72, grade: 'B', language: 'JavaScript', summary: 's', verdict: 'v', engine: 'free', deep: '# d\n- x',
+  reading: { toolCalls: 3, rounds: 2, pool: 5 },
+  categories: { correctness: 80, security: 60, performance: 70, readability: 75, maintainability: 70, best_practices: 65 },
+  recommendations: ['r1', 'r2'], strengths: ['s1'],
+  files: [{ name: 'a.js', score: 80, note: 'n' }, { name: 'b.js', score: 60, note: 'm' }],
+  issues: [{ severity: 'high', category: 'security', title: 'XSS', file: 'a.js', line: 3, detail: 'd', fix: 'esc()' }, { severity: 'low', category: 'best_practices', title: '', detail: 'd2' }],
+  counts: { high: 1, low: 1 },
+  metrics: { totals: { files: 2, lines: 40, comments: 4, languages: ['js'] }, files: [{ name: 'a.js', flags: [], truncated: true }] },
+  skipped: [{ name: 'big.bin' }],
+};
+function load27(lg, opts = {}) {
+  const { document } = makeDom();
+  const dd = document.createElement('div'); dd.id = 'tabsMenuDropdown'; document.body.appendChild(dd);
+  const ctx = {
+    document, lang: lg, t: opts.t || fakeT(true), tStatus: opts.tStatus, console,
+    sessionStorage: { getItem: () => '' }, localStorage: { getItem: () => '' },
+    fetch: opts.fetch || (() => Promise.reject(new Error('no fetch'))),
+    TextDecoder, TextEncoder, Intl, setTimeout, clearTimeout, setInterval, clearInterval, getCurrent: () => null,
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(A27, ctx);
+  return ctx;
+}
+function pasteAndGo(c) {
+  const D = c.document;
+  D.getElementById('csPasteName').value = 'a.js';
+  D.getElementById('csPaste').value = 'var a = 1;';
+  D.getElementById('csPasteAdd').click();
+  D.getElementById('csGo').click();
+}
+
+test('x-i18n-4: «تحليل الكود» كلّه من قاموس الواجهة (axChatcliCs*) — الزرّ وتلميحه بـdata-i18n، والاختيار والتقرير والخطورة والفئات', async () => {
+  for (const lg of ['fr', 'zh', 'ur']) {
+    let release; const hold = new Promise((r) => { release = r; });
+    const enc = new TextEncoder();
+    const evs = [{ status: '🔎 يقرأ ١ ملفًّا', k: 'stAnalyze', p: { n: 1, lines: 1 } }, '__hold__', { report: REPORT }];
+    let i = 0;
+    const res = { ok: true, status: 200, body: { getReader() { return { async read() {
+      if (i >= evs.length) return { done: true };
+      const e = evs[i++];
+      if (e === '__hold__') { await hold; return { done: false, value: enc.encode(': ka\n\n') }; }
+      return { done: false, value: enc.encode('data: ' + JSON.stringify(e) + '\n\n') };
+    } }; } } };
+    const c = load27(lg, { fetch: () => Promise.resolve(res), tStatus: (ev) => 'TS:' + ev.k });
+    const D = c.document;
+    const b = D.getElementById('btnCodeScore');
+    assert.equal(b.title, 'T:axChatcliCsMenuTitle', lg + ': التلميح');
+    assert.equal(b.getAttribute('data-i18n-title'), 'axChatcliCsMenuTitle', lg + ': التلميح يتبع تبديل اللغة');
+    assert.ok(b.innerHTML.includes('data-i18n="axChatcliCsMenu"') && b.innerHTML.includes('>T:axChatcliCsMenu<'), lg + ': الوسم');
+    c.omranCodeScoreOpen();
+    const ov = D.getElementById('csOverlay');
+    const pick = D.allText(ov);
+    for (const k of ['Title', 'PickFiles', 'Current', 'Paste', 'Add', 'PasteName', 'PastePh', 'Ask', 'Github', 'GithubPh', 'GithubAdd', 'AskPh', 'Go', 'Note']) {
+      assert.ok(pick.includes('T:axChatcliCs' + k), lg + ': شاشة الاختيار بلا axChatcliCs' + k);
+    }
+    assert.ok(!AR_RE.test(pick.replace(/T:axChatcliCs\w+/g, '')), lg + ': عربيّ ثابت في شاشة الاختيار');
+    assert.ok(pick.includes('aria-label="T:closeTitle"'), lg + ': زرّ الإغلاق بلغته');
+    let asked = null; c.omranCodeFixOpenWith = (n, txt, ask) => { asked = ask; };
+    pasteAndGo(c);
+    await settle();
+    assert.equal(D.getElementById('csProg').textContent, 'TS:stAnalyze', lg + ': الحالة بـtStatus لا نصّ الخادم الخامّ');
+    release();
+    await settle();
+    const rep = D.getElementById('csBody').innerHTML;
+    for (const k of ['EngineFree', 'Verdict', 'FreeNote', 'Upgrade', 'Deep', 'ReadNote', 'Recs', 'Best', 'Ranking', 'Strengths', 'Issues', 'Fix', 'Metrics', 'Files', 'Lines', 'CommentRatio', 'Truncated', 'Skipped', 'Download', 'Copy', 'Again', 'FixBtn',
+      'SevHigh', 'SevLow', 'CatCorrectness', 'CatSecurity', 'CatPerformance', 'CatReadability', 'CatMaintainability', 'CatBestPractices']) {
+      assert.ok(rep.includes('T:axChatcliCs' + k), lg + ': التقرير بلا axChatcliCs' + k);
+    }
+    assert.ok(!AR_RE.test(rep.replace(/T:axChatcliCs\w+/g, '')), lg + ': عربيّ ثابت في التقرير');
+    /* «أصلح أهمّ المشاكل» يسلّم طلبًا بلغة الواجهة */
+    D.getElementById('csFix').click();
+    assert.ok(asked && asked.startsWith('T:axChatcliCsFixAsk\n'), lg + ': طلب الإصلاح: ' + asked);
+  }
+});
+
+test('x-i18n-4: بلا مفتاح في القاموس يبقى الجدول احتياطًا (العربيّة والإنجليزيّة كما كانتا)، والحدّ بمفاتيح المحادثة القائمة', async () => {
+  const ar = load27('ar', { t: (k) => k });
+  ar.omranCodeScoreOpen();
+  assert.ok(ar.document.getElementById('csBody').innerHTML.includes('حلّل وقيّم كلّ شيء'));
+  assert.ok(ar.document.getElementById('btnCodeScore').innerHTML.includes('>تحليل<'));
+  const en = load27('en', { t: (k) => k });
+  en.omranCodeScoreOpen();
+  assert.ok(en.document.getElementById('csBody').innerHTML.includes('Analyze &amp; rate everything'));
+  const lim = load27('fr', { fetch: () => Promise.resolve(sseResponse([{ tier: 'free-limit', error: 'نصّ الخادم العربيّ' }])) });
+  lim.omranCodeScoreOpen();
+  pasteAndGo(lim);
+  await settle();
+  const h = lim.document.getElementById('csBody').innerHTML;
+  assert.ok(h.includes('T:chatFreeLimitMsg') && !h.includes('نصّ الخادم العربيّ'), 'رسالة الحدّ بلغة الواجهة: ' + h.slice(0, 200));
+});
+
 /* ───────── app-17/18/09: فيديو المحادثة ───────── */
 const A17 = read('js/app-17-agent-tools.js');
 const A18 = read('js/app-18-chat-tools.js');
