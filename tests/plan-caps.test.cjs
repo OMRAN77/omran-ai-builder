@@ -119,7 +119,7 @@ const CUSTOM_TOOLS = [
   { name: 'تحليل السهم', bucket: 'stocks-ai', base: 30, file: 'stocks.js', body: (t) => ({ token: t, mode: 'analyze', symbol: 'AAPL' }),
     refused: (o) => o.code === 402 && o.body.error === 'daily_limit_reached' },
   { name: 'صفقات المحفظة', bucket: 'stocks-pf', base: 40, file: 'stocks.js', body: (t) => ({ token: t, mode: 'pf-trade', tradeSymbol: '', qty: 0 }),
-    refused: (o) => o.code === 402, msg: limitMsg },
+    refused: (o) => o.code === 402 && o.body.error === 'trade_limit', msg: (o) => '(' + o.body.limit + ')' }, // v-audit-search: رمز والحدّ حقلًا (كانت جملة عربيّة)
 ];
 
 const CHAT = { basic: 50, pro: 100, max: 250 }; // الافتراضيّ في tier.caps() — FREE_DAILY ٢٠
