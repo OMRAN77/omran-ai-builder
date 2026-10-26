@@ -228,7 +228,7 @@ test('srv-studios-2-2 الواجهة: زرّ المكتبة يرسل رمز ال
   m = mk(null, { ok: true, status: 200, json: async () => ({ items: [] }) });
   await m.ctx.libraryBtn.onclick();
   assert.equal(m.st.sent, null, 'بلا جلسة لا طلب');
-  assert.deepEqual(m.st.status, ['[designAiNeedLogin]']);
+  assert.deepEqual(m.st.status, ['[portraitNeedLogin]']);
   assert.equal(m.ctx.libraryBtn.disabled, false);
   m = mk('tok-1', { ok: false, status: 429, json: async () => ({ error: 'daily_limit_reached' }) });
   await m.ctx.libraryBtn.onclick();
@@ -236,7 +236,7 @@ test('srv-studios-2-2 الواجهة: زرّ المكتبة يرسل رمز ال
   assert.equal(m.ctx.libraryEmptyEl.style.display, 'none', 'لا «لا توجد تصاميم» للسقف');
   m = mk('expired', { ok: false, status: 401, json: async () => ({ error: 'auth_required' }) });
   await m.ctx.libraryBtn.onclick();
-  assert.deepEqual(m.st.status, ['[designAiNeedLogin]']);
+  assert.deepEqual(m.st.status, ['[portraitNeedLogin]']);
 });
 
 /* ═════════════════ srv-studios-2-4 ═════════════════ */
