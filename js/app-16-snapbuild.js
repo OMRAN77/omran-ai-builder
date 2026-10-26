@@ -151,6 +151,26 @@
 
     /* v-audit-chatcli (x-i18n-5): خطأ نصّه للمستخدم بلغة الواجهة؛ وغيره (نصّ مزوّد أو خادم خامّ) سطر عامّ مترجَم ويُسجَّل في الطرفيّة */
     function uiErr(k, fb) { var e = new Error(S.tx(k, fb)); e.snapUi = true; return e; }
+    /* v-audit-chatcli-r (x-i18n-5): ردّ الوسيط المرفوض سببه للمستخدم لا «صوّرها بإضاءة أوضح» — 401 جلسة منتهية و402 حدّ يوميّ:
+       العربيّ يرى نصّ الخادم العربيّ كما كان (كأرشيف المرفقات في app-09)، وغيره مفتاحه القائم بالـ١٤ لغة (الضيف والمجّانيّ بسطري
+       المحادثة كـomranPlanLimitMsg، والمشترك حدّ الميزة). وغيرهما (429 زحام المزوّد بعد إعادتين في الخادم، 5xx) سطر عامّ مترجَم،
+       ونصّ الخادم أو المزوّد للطرفيّة. ردّ ناجح لا يُقرأ وحده «صوّرها بإضاءة أوضح». */
+    function httpErr(rd) {
+      var st = (rd && rd.status) || 0, data = (rd && rd.data) || {};
+      if (st < 400) return null;
+      if (data.error) console.warn('[snap] proxy ' + st + ':', data.error.message || data.error);
+      if ((st === 401 || st === 402) && typeof data.error === 'string' && data.error && (typeof lang === 'undefined' || lang === 'ar')) {
+        var e = new Error(data.error); e.snapUi = true; return e;
+      }
+      if (st === 401) return uiErr('portraitNeedLogin', 'يرجى تسجيل الدخول لاستخدام هذه الميزة');
+      if (st === 402) {
+        var pl = window.__omranPlan;
+        if (pl === 'guest') return uiErr('chatGuestLimitMsg', 'سجّل حسابًا مجانيًّا لتبدأ الدردشة.');
+        if (pl === 'free') return uiErr('chatFreeLimitMsg', 'انتهت رسائلك المجانية لليوم. اشترك لترفع حدّك اليوميّ.');
+        return uiErr('portraitLimitReached', 'وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا');
+      }
+      return uiErr('axChatcliSnapFail', 'تعذّر البناء من الصورة — حاول مرّة ثانية');
+    }
 
     function fileToBlock(f) {
       return new Promise(function (resolve, reject) {
@@ -199,8 +219,10 @@
       }
       var content = (blocks && blocks.length) ? blocks.concat([{ type: 'text', text: userText }]) : userText;
       return claudeProxyRequest('claude-sonnet-5', system ? { content: system } : null, [{ role: 'user', content: content }], false)
-        .then(function (res) { return res.json().catch(function () { return {}; }); })
-        .then(function (data) { return { text: textFrom(data), data: data }; });
+        .then(function (res) {
+          return res.json().catch(function () { return {}; })
+            .then(function (data) { return { text: textFrom(data), data: data, status: res.status }; }); /* v-audit-chatcli-r: الحالة لـhttpErr */
+        });
     }
 
     input.addEventListener('change', function () {
@@ -211,16 +233,16 @@
       Promise.all(files.map(fileToBlock)).then(function (blocks) {
         return askText(S.READ_PROMPT, 'اقرأ الصورة/الصور حسب تعليمات النظام وأعد JSON فقط.', blocks);
       }).then(function (rd) {
-        var data = rd.data;
+        var he = httpErr(rd); /* v-audit-chatcli-r: الرفض (دخول/حدّ) بسببه قبل الحكم على الصورة */
+        if (he) throw he;
         var parsed = S.extract(rd.text);
-        if (!parsed) {
-          if (data && data.error) console.warn('[snap] read failed:', data.error.message || data.error); // نصّ المزوّد للطرفيّة لا للمستخدم
-          throw uiErr('axChatcliSnapReadFail', 'لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية');
-        }
+        if (!parsed) throw uiErr('axChatcliSnapReadFail', 'لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية');
         var summary = S.summarize(parsed);
         statusMsg(S.tx('axChatcliSnapBuilding', '🏗️ يبني من المقروء…'));
         return askText(null, S.buildPrompt(parsed), null)
           .then(function (b) {
+            var he2 = httpErr(b); /* v-audit-chatcli-r: البناء طلب ثانٍ يُحسب — حدّه بسببه لا «لم يصل كود صالح» */
+            if (he2) throw he2;
             var code = extractHtml(b.text);
             if (!code) throw uiErr('axChatcliSnapNoCode', 'لم يصل كود صالح — حاول مرة ثانية');
             var cur = {

@@ -325,7 +325,7 @@ function fnOf(src, head) { /* دالّة علويّة كاملة بنصّها (�
   }
   throw new Error('غير مغلق: ' + head);
 }
-function load16(lg, t, replies) {
+function load16(lg, t, replies, extra) {
   const { document } = makeDom();
   const btn = document.createElement('button'); btn.id = 'btnSnapBuild'; document.body.appendChild(btn);
   const input = document.createElement('input'); input.id = 'snapInput'; document.body.appendChild(input);
@@ -337,8 +337,10 @@ function load16(lg, t, replies) {
     workareaEl: { classList: { contains: () => true } }, openDrawer() {},
     matchMedia: () => ({ matches: false }), localStorage: { getItem: () => null },
     FileReader: class { readAsDataURL() { this.result = 'data:image/png;base64,QUJD'; this.onload(); } },
-    claudeProxyRequest: async () => { const r = replies.shift(); if (r instanceof Error) throw r; return { json: async () => r }; },
+    /* ردّ الوسيط بحالته كـfetch الحقيقيّ: withSt(402, {...}) للمرفوض، وغيره 200 */
+    claudeProxyRequest: async () => { const r = replies.shift(); if (r instanceof Error) throw r; const st = (r && r.__st) || 200; return { ok: st < 400, status: st, json: async () => r }; },
   };
+  Object.assign(ctx, extra || {});
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(A16, ctx);
@@ -354,6 +356,7 @@ function load16(lg, t, replies) {
 }
 const READ_JSON = { content: [{ text: '{"kind":"menu","title":"","sections":[{"name":"Main","items":[{"name":"Tea","price":"5?"}]}],"screens":[{"name":"s","elements":[]}]}' }] };
 const BUILT = { content: [{ text: 'ok\n```html\n<!DOCTYPE html><html><body>x</body></html>\n```' }] };
+const withSt = (st, body) => Object.assign({ __st: st }, body);
 
 test('x-i18n-5: «ورّني وأبنيه» بلغة الواجهة — الحالات واسم المشروع ورسالة المحادثة وملخّص المقروء (axChatcliSnap*)', async () => {
   /* قوالب الملخّص بعلاماتها كما في القاموس، فيظهر فيها اسم النوع والأعداد */
@@ -369,10 +372,13 @@ test('x-i18n-5: «ورّني وأبنيه» بلغة الواجهة — الحا
     for (const k of ['SnapRead', 'SnapKindMenu', 'SnapCounts', 'SnapScreens', 'SnapUnsure', 'SnapDone']) assert.ok(msg.includes('T:axChatcli' + k), lg + ': الرسالة بلا ' + k + ': ' + msg);
     assert.ok(!AR_RE.test(msg.replace(/T:axChatcli\w+/g, '')), lg + ': عربيّ ثابت في الرسالة: ' + msg);
   }
-  /* الفشل: نصّ المزوّد الخامّ لا يظهر — سطر مترجَم بدله */
-  const bad = load16('en', fakeT(true), [{ error: { message: 'overloaded_error: upstream says no' } }]);
+  /* الفشل: نصّ المزوّد الخامّ لا يظهر — سطر مترجَم بدله؛ وردّ ناجح لا يُقرأ وحده «صوّرها بإضاءة أوضح» */
+  const bad = load16('en', fakeT(true), [withSt(529, { error: { message: 'overloaded_error: upstream says no' } })]);
   await bad.fire();
-  assert.equal(bad.statuses[1], '⚠️ T:axChatcliSnapReadFail');
+  assert.equal(bad.statuses[1], '⚠️ T:axChatcliSnapFail');
+  const blurry = load16('en', fakeT(true), [{ content: [{ text: 'I cannot make out this photo' }] }]);
+  await blurry.fire();
+  assert.equal(blurry.statuses[1], '⚠️ T:axChatcliSnapReadFail');
   const boom = load16('en', fakeT(true), [new Error('chat 500: {"type":"error"}')]);
   await boom.fire();
   assert.equal(boom.statuses[1], '⚠️ T:axChatcliSnapFail', 'عطل مجهول = سطر عامّ مترجَم');
@@ -385,6 +391,39 @@ test('x-i18n-5: «ورّني وأبنيه» بلغة الواجهة — الحا
   assert.equal(ar.statuses[0], '📸 يقرأ الصورة بدقة (الأسعار والنصوص حرفيًا)…');
   assert.equal(ar.state.projects[0].title, 'من الصورة 📸');
   assert.ok(ar.state.projects[0].messages[0].content.includes('📸 قرأتُ من الصورة: **قائمة طعام**') && ar.state.projects[0].messages[0].content.includes('✅ بنيته لك'));
+});
+
+test('x-i18n-5: «ورّني وأبنيه» ردّ الوسيط المرفوض (401 جلسة، 402 حدّ يوميّ) بسببه — العربيّ يرى نصّ الخادم، وغيره مفتاح الدخول أو الحدّ، لا «صوّرها بإضاءة أوضح»', async () => {
+  const LIMIT_AR = 'وصلت للحد اليومي المجاني (20 رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.';
+  const SESSION_AR = 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد';
+  /* العربيّ: نصّ الخادم العربيّ كما كان قبل الدفعة (الحدّ والجلسة)، لا سطر الإضاءة */
+  for (const [st, msg] of [[402, LIMIT_AR], [401, SESSION_AR]]) {
+    const w = load16('ar', fakeT(true), [withSt(st, { error: msg })], { __omranPlan: 'free' });
+    await w.fire();
+    assert.equal(w.statuses[1], '⚠️ ' + msg, 'ar/' + st);
+    assert.equal(w.state.projects.length, 0);
+  }
+  /* غير العربيّ (والأرديّ منه): مفتاح قائم بالـ١٤ لغة بحسب الحالة والطبقة، ولا حرف من نصّ الخادم */
+  for (const lg of ['en', 'fr', 'ur']) {
+    for (const [st, plan, key] of [[402, 'free', 'chatFreeLimitMsg'], [402, 'guest', 'chatGuestLimitMsg'], [402, 'plus', 'portraitLimitReached'], [401, 'free', 'portraitNeedLogin']]) {
+      const w = load16(lg, fakeT(true), [withSt(st, { error: st === 402 ? LIMIT_AR : SESSION_AR })], { __omranPlan: plan });
+      await w.fire();
+      assert.equal(w.statuses[1], '⚠️ T:' + key, lg + '/' + st + '/' + plan);
+    }
+  }
+  /* 429 من الوسيط = زحام المزوّد بعد إعادتين في الخادم (لا حدّ المستخدم): سطر عامّ مترجَم */
+  const busy = load16('fr', fakeT(true), [withSt(429, { type: 'error', error: { type: 'rate_limit_error', message: 'Number of requests has exceeded your rate limit' } })], { __omranPlan: 'free' });
+  await busy.fire();
+  assert.equal(busy.statuses[1], '⚠️ T:axChatcliSnapFail');
+  /* البناء طلب ثانٍ يُحسب: حدّه بعد قراءة ناجحة بسببه، لا «لم يصل كود صالح» */
+  const late = load16('en', fakeT(true), [READ_JSON, withSt(402, { error: LIMIT_AR })], { __omranPlan: 'free' });
+  await late.fire();
+  assert.equal(late.statuses[1], '⚠️ T:chatFreeLimitMsg');
+  assert.equal(late.state.projects.length, 0);
+  /* بلا مفتاح في القاموس: احتياط عربيّ للمفتاح القائم */
+  const fb = load16('ur', (k) => k, [withSt(401, { error: SESSION_AR })]);
+  await fb.fire();
+  assert.equal(fb.statuses[1], '⚠️ يرجى تسجيل الدخول لاستخدام هذه الميزة');
 });
 
 test('x-i18n-5: أخطاء قراءة الملفّ والأرشيف في شريط المرفقات بلغة الواجهة (axChatcliAtt*)', async () => {
