@@ -162,17 +162,17 @@ module.exports = async (req, res) => {
             upstream = await doRequest(preferred, wantStream);
           } else {
             await giveBack(); // v-meter-atomic: لا نموذج يخدم — الحجز يُردّ
-            res.status(404).setHeader('Content-Type', 'application/json').send(errTextFirst);
+            require('./_videoFail.js').chatFail(res, 'claude', 404, errTextFirst, usage.tier === 'owner'); // v-audit-prov
             return;
           }
         } else {
           await giveBack();
-          res.status(404).setHeader('Content-Type', 'application/json').send(errTextFirst);
+          require('./_videoFail.js').chatFail(res, 'claude', 404, errTextFirst, usage.tier === 'owner'); // v-audit-prov
           return;
         }
       } else {
         await giveBack();
-        res.status(404).setHeader('Content-Type', 'application/json').send(errTextFirst);
+        require('./_videoFail.js').chatFail(res, 'claude', 404, errTextFirst, usage.tier === 'owner'); // v-audit-prov
         return;
       }
     }
@@ -213,6 +213,7 @@ module.exports = async (req, res) => {
       } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
     }
     if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
+    if (!upstream.ok) { require('./_videoFail.js').chatFail(res, 'claude', upstream.status, data, usage.tier === 'owner'); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {
     await giveBack();

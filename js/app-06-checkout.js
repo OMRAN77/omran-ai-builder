@@ -1660,6 +1660,10 @@ function throwProviderError(status, errText){
   // (429) or daily-quota (402) failure apart from a hard failure worth surfacing
   // immediately (auth, bad request, etc.).
   let err;
+  /* v-audit-prov (srv-providers-5): رمز الخادم الثابت لخطأ المزوّد ({error:'provider_failed', code}) يُعرض بنصّ الواجهة (providerError)
+     لا بجسمه — لا JSON في الفقاعة ولا في سطر الحالة. نصّ المزوّد الخامّ يصل المالك وحده من الخادم. */
+  let __pf = null;
+  try{ const __j = JSON.parse(errText); if(__j && __j.error === 'provider_failed') __pf = __j; }catch(_){ /* guard-ok — جسم غير JSON يُعامَل كما كان */ }
   if(status === 402){
     // 👑 الرد الاحترافي: 402 مع reason:'points' يعني نفاد النقاط (وليس حد يومي).
     let __pointsErr = false;
@@ -1694,12 +1698,13 @@ function throwProviderError(status, errText){
     }catch(e){ __swallow(e, "auth:app-06-checkout#10"); }
     err = sessionMsg ? new Error('🔒 ' + sessionMsg) : new Error(t('authError'));
   } else {
-    err = new Error(t('providerError') + status + ' - ' + (errText || '').slice(0, 200));
+    err = new Error(t('providerError') + status + (__pf ? '' : ' - ' + (errText || '').slice(0, 200)));
   }
   err.status = status;
   // v-claude-shape: مقتطف خطأ المزود الأصلي يظهر في سطر الحالة — «HTTP 400»
   // وحدها كانت تخفي السبب الحقيقي (شكل رسائل مرفوض، مفتاح، نموذج...).
   err.upstreamText = String(errText || '').replace(/\s+/g, ' ').slice(0, 160);
+  if(__pf) err.upstreamText = __pf.code === 'model_not_found' ? 'model_not_found' : ''; // v-audit-prov: model_not_found يُهبط callGroq إلى «الوصف ثمّ النصّ»
   throw err;
 }
 

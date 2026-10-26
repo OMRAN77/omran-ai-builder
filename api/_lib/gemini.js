@@ -76,11 +76,13 @@ module.exports = async (req, res) => {
     // it here rather than letting it fall through as an empty stream.
     if (wantStream && !upstream.ok) {
       let detail = '';
+      const rawErr = await upstream.text().catch(() => '');
       try {
-        const parsed = JSON.parse(await upstream.text());
+        const parsed = JSON.parse(rawErr);
         detail = (parsed && parsed.error && parsed.error.message) || '';
       } catch (e2) { /* non-JSON error body */ }
       console.error('[gemini] stream ' + upstream.status + ' (' + useModel + '): ' + detail);
+      if (usage.tier !== 'owner') { require('./_videoFail.js').chatFail(res, 'gemini', upstream.status, rawErr, false); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
       res.status(upstream.status).json({
         error: 'Gemini (' + upstream.status + '): ' + (detail || 'خطأ غير معروف'),
         provider: 'gemini',
@@ -123,6 +125,7 @@ module.exports = async (req, res) => {
         detail = String(data || '').slice(0, 300);
       }
       console.error('[gemini] upstream ' + upstream.status + ' (' + useModel + '): ' + detail);
+      if (usage.tier !== 'owner') { require('./_videoFail.js').chatFail(res, 'gemini', upstream.status, data, false); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
       res.status(upstream.status).json({
         error: 'Gemini (' + upstream.status + '): ' + (detail || 'خطأ غير معروف'),
         provider: 'gemini',
