@@ -88,10 +88,14 @@
     if(!l) return 4;
     var la = l.lat, lo = l.lng;
     var inBox = function(a, b, c, d){ return la >= a && la <= b && lo >= c && lo <= d; };
-    if(inBox(22.4, 26.6, 51.0, 56.6)) return 16;      /* الإمارات */
-    if(inBox(24.4, 26.3, 50.6, 51.8)) return 10;      /* قطر */
-    if(inBox(28.4, 30.2, 46.4, 48.6)) return 9;       /* الكويت */
+    /* v-audit-tools: البحرين ثمّ قطر قبل الإمارات — مربّع الإمارات (من خطّ ٥١) يغطّي أغلب قطر فكانت الدوحة والخور
+       تأخذان طريقة دبي، ومربّع قطر (من ٥٠٫٦) يغطّي شرق البحرين (المحرّق). وعُمان شرق خطّ ٥٦ كانت تسقط إلى
+       رابطة العالم الإسلاميّ؛ مربّعها جنوب ٢٤٫٩٥ فلا يدخله ساحل إيران */
     if(inBox(25.5, 26.4, 50.3, 50.9)) return 8;       /* البحرين — الخليج */
+    if(inBox(24.4, 26.3, 50.6, 51.8)) return 10;      /* قطر */
+    if(inBox(16.6, 24.95, 56.2, 59.9)) return 4;      /* عُمان: الباطنة ومسقط والشرقيّة — أم القرى */
+    if(inBox(22.4, 26.6, 51.0, 56.6)) return 16;      /* الإمارات */
+    if(inBox(28.4, 30.2, 46.4, 48.6)) return 9;       /* الكويت */
     if(inBox(16.0, 32.5, 34.4, 56.0)) return 4;       /* السعودية وعُمان واليمن — أم القرى */
     if(inBox(29.1, 33.5, 34.8, 39.4)) return 23;      /* الأردن */
     if(inBox(21.9, 31.8, 24.6, 36.9)) return 5;       /* مصر */
@@ -248,6 +252,9 @@
   function renderTimes(){
     var el = shell();
     var body = el.querySelector('#qBody');
+    /* v-audit-tools: مؤقّت عدّ واحد فقط — كلّ رسم يوقف السابق (كان حلول الوقت ينشئ مؤقّتًا فوق آخر لا يوقف نفسه
+       فيُجلب aladhan كلّ ثانية بلا نهاية، حتّى بعد إغلاق الشاشة) */
+    if(S.ticker){ clearInterval(S.ticker); S.ticker = null; }
     if(!S.timings){
       body.innerHTML = '<div style="text-align:center;color:var(--muted,#98a0b3);padding:30px 0;">⏳ ' + tx('locating') + '</div>';
       fetchTimings().then(function(){ renderTimes(); }).catch(function(e){
@@ -293,11 +300,13 @@
       b.onclick = function(){ toggleAlert(b.getAttribute('data-p'), b); };
     });
     if(np){
-      S.ticker = setInterval(function(){
+      var tk = S.ticker = setInterval(function(){
         var cd = document.getElementById('qCountdown');
-        if(!cd){ clearInterval(S.ticker); S.ticker = null; return; }
+        /* v-audit-tools: المؤقّت يوقف نفسه هو (لا S.ticker أيًّا كان) إن غاب العدّاد أو أُغلقت الشاشة — مواقيت رجعت
+           بعد الإغلاق كانت ترسم مؤقّتًا يعمل والشاشة مخفيّة، والعدّاد باقٍ في DOM المخفيّ */
+        if(!cd || el.style.display === 'none'){ clearInterval(tk); if(S.ticker === tk) S.ticker = null; return; }
         var left = np.at - new Date();
-        if(left <= 0){ S.timings = null; renderTimes(); return; }
+        if(left <= 0){ clearInterval(tk); if(S.ticker === tk) S.ticker = null; S.timings = null; renderTimes(); return; }
         cd.textContent = fmtDur(left);
       }, 1000);
     }

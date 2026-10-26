@@ -1590,13 +1590,16 @@ function openShareModal(project){
       for(var i = 0; i < imgs.length; i++){
         var im = imgs[i];
         if(!im.__omHold) continue;
+        /* v-audit-tools: مصدر كُتب والنافذة مغلقة (نتيجة توليد اكتمل بعد الإغلاق) أحدث من المحجوز — لا يُكتب فوقه
+           (كانت إعادة الفتح تعرض القديمة وزرّ التحميل يشير إلى الجديدة) */
+        if(im.getAttribute('src') !== null){ im.__omHold = null; continue; }
         im.src = im.__omHold;
         im.__omHold = null;
       }
     }catch(e){ __swallow(e, 'modal-img-restore'); }
   }
   /* أيّ كود يقرأ .src ونافذته مغلقة يجد الفراغ — لذلك مُتاح استرجاعها صراحةً. */
-  window.omranModalImgSrc = function(img){ return (img && (img.__omHold || img.getAttribute('src'))) || ''; };
+  window.omranModalImgSrc = function(img){ return (img && (img.getAttribute('src') || img.__omHold)) || ''; }; /* v-audit-tools: المكتوب بعد الإغلاق أوّلًا */
 
   function watch(id){
     var m = document.getElementById(id);
