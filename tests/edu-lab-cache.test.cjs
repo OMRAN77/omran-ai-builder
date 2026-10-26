@@ -80,8 +80,10 @@ test('٣. الضيف بـcachedOnly: {html:null}، والبناء الفعليّ
   const g = await call({ action: 'lab', id: 'L3', cachedOnly: true });
   assert.deepEqual(g.j, { ok: true, html: null });
   const miss = await call({ action: 'lab', id: 'L9', title: 't', summary: 's', token: TOKEN });
-  assert.equal(miss.code, 500);
-  assert.match(miss.j.error, /missing ANTHROPIC_API_KEY/);
+  /* v-audit-edu: بلا مفتاح = 503 unavailable بنصّ وظيفيّ (كان 500 «Server is missing ANTHROPIC_API_KEY» يراه الطالب) */
+  assert.equal(miss.code, 503);
+  assert.equal(miss.j.code, 'unavailable');
+  assert.doesNotMatch(miss.j.error, /API_KEY/);
   assert.equal(g.calls.length + miss.calls.length, 0);
 });
 
