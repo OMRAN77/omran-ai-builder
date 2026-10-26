@@ -1,4 +1,6 @@
 // «طوابع المدرسة» — ورقة طوابع/ملصقات قابلة للطباعة والقص عبر OpenAI.
+// v-hw-resubmit-2: ثيمات شخصيّات العلامات التجاريّة — تُستثنى من «فاجئني» حين يرسل تطبيق هواوي noBrands
+const STAMP_BRAND_RE = /SANRIO|CHROMIE|WE BARE BEARS|SPONGEBOB|TOM AND JERRY|MICKEY|FROZEN|SPIDER HERO|PAW PATROL|PEPPA PIG|POKEMON|SUPER MARIO|MINIONS|BARBIE|RACING CARS cartoon/;
 // يأخذ صورة الطفل + اسمه ويعيد ورقة كاملة فيها طوابع صغيرة كثيرة بأشكال جميلة.
 // نفس حرّاس adimage.js: هويّة مُتحقَّقة ثم سقف يومي، وsignal خاص يتخطى حارس الـ٣٠ ثانية.
 // v-ad-suite: عدّاد مستقلّ ('stamps') — كان يشارك عدّاد 'adimage' فتأكل الطوابع رصيد الإعلانات.
@@ -85,6 +87,8 @@ module.exports = async (req, res) => {
       else if (girlHint) pool = THEMES.filter((t) => t.girlx || /أميرة|يونيكورن|ورد|فراشة|فراش|ميلودي|كيتي|حلوى/.test(String(t.k)));
       else pool = THEMES.filter((t) => !t.teen && !t.girlx);
       if (!pool.length) pool = THEMES;
+      /* v-hw-resubmit-2: تطبيق هواوي (noBrands) — العشوائيّ بلا شخصيّات علامات تجاريّة (القاعدة 1.15) */
+      if (b.noBrands === true) { const nb = pool.filter((t) => !STAMP_BRAND_RE.test(t.d)); pool = nb.length ? nb : THEMES.filter((t) => !STAMP_BRAND_RE.test(t.d)); }
       theme = pool[Math.floor(Math.random() * pool.length)];
     }
     /* v-stamps-plus (طلب عمران ٢٥ سبتمبر «مافيها مميزات — صورة وحدة ولا صورتين…»): خيارات الورقة —

@@ -2264,7 +2264,8 @@
   }
 
   function populateStyleSelect(){
-    const opts = STUDIO_OPTIONS[feature] || [];
+    const opts = (STUDIO_OPTIONS[feature] || [])
+      .filter((o) => !(typeof omranHwHidden === 'function' && omranHwHidden('studio', feature + ':' + o.value))); // v-hw-resubmit-2
     const langKey = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
     styleEl.innerHTML = opts.map((o) => '<option value="' + o.value + '">' + (o[langKey] || (window.__bT ? window.__bT(o.ar, o.en) : o.en)) + '</option>').join('');
   }

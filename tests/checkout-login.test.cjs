@@ -130,8 +130,8 @@ test('نافذة الدفع بلا مربّع تجديد — v-autorenew-one: ا
   const html = read('js/partials-settings.js');
   assert.equal(/<label id="checkoutAutoRenewRow"/.test(html), false, 'المربّع حُذف من نافذة الدفع');
   assert.match(html, /<input type="checkbox" id="chkAutoRenew" role="switch"(?![^>]*\bchecked\b)[^>]*>/, 'الزرّ الواحد غير مفعّل افتراضيًّا');
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=706'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=773'"));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=707'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=774'"));
 });
 
 test('النصّان الجديدان في ١٤ لغة بلا اسم مزوّد', () => {
