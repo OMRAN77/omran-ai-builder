@@ -523,8 +523,9 @@
     (bd.top || []).forEach(function(r){
       h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
         + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
-        /* v-audit-search (srv-search-1): الخادم يرسل اسمًا مقنَّعًا (لا مفتاح الحساب/البريد) وعلم me لسطرك */
-        + '<span style="flex:1;' + (r.me ? 'font-weight:700;' : '') + '">' + pfEsc(r.name != null ? r.name : '') + '</span>'
+        /* v-audit-search (srv-search-1): الخادم يرسل اسمًا مقنَّعًا (لا مفتاح الحساب/البريد) وعلم me لسطرك؛ الاسم معزول FSI (اتّجاه أوّل حرف)
+           فلا تنقلب «ah***» إلى «***ah» في العربيّ */
+        + '<span style="flex:1;' + (r.me ? 'font-weight:700;' : '') + '">\u2068' + pfEsc(r.name != null ? r.name : '') + '\u2069</span>'
         + '<b style="color:' + pfCol(r.plPct) + ';">' + pfIso((r.plPct >= 0 ? '+' : '') + r.plPct + '%') + '</b></div>';
     });
     // آخر الصفقات + إعادة الضبط

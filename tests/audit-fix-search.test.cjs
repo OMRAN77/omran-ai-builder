@@ -297,8 +297,8 @@ test('srv-search-1 الواجهة: اللوحة تعرض الاسم المقنَ
   const h = boot({ lang: 'en', route: (m) => (m === 'pf-get' ? PF : {}) });
   h.ctx.__stkShowTab('pf'); await h.flush();
   const html = h.$('stockPfWrap').innerHTML;
-  assert.ok(html.includes('>ah***</span>'), html.slice(html.indexOf('🏆')));
-  assert.ok(html.includes('font-weight:700;">omar</span>'), 'سطري معلَّم');
+  assert.ok(html.includes('>\u2068ah***\u2069</span>'), 'معزول FSI: ' + html.slice(html.indexOf('🏆')));
+  assert.ok(html.includes('font-weight:700;">\u2068omar\u2069</span>'), 'سطري معلَّم');
   assert.ok(!html.includes('undefined'));
 });
 
