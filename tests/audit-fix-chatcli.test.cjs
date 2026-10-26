@@ -272,6 +272,47 @@ test('x-i18n-4: بلا مفتاح في القاموس يبقى الجدول اح
   assert.ok(h.includes('T:chatFreeLimitMsg') && !h.includes('نصّ الخادم العربيّ'), 'رسالة الحدّ بلغة الواجهة: ' + h.slice(0, 200));
 });
 
+/* ───────── app-34: بطاقة انتظار التوليد ───────── */
+const A34 = read('js/app-34-gen-wait.js');
+function load34(lg, t) {
+  const { document } = makeDom();
+  document.readyState = 'loading';
+  document.head = document.createElement('head'); document.documentElement.appendChild(document.head);
+  const sb = { document, lang: lg, t, console, MutationObserver: function () { return { observe() {} }; },
+    setTimeout: () => 0, setInterval: () => 0, clearInterval: () => {}, localStorage: { getItem: () => null, setItem() {} } };
+  sb.window = sb;
+  vm.createContext(sb);
+  vm.runInContext(A34, sb);
+  return sb.omranGenWait;
+}
+const card = (W, kind) => { const r = W.render({ kind, t0: Date.now() }); return { stage: r.querySelector('.genw-stage').textContent, timer: r.querySelector('.genw-timer').textContent }; };
+const GENW_KINDS = { image: 'Image', video: 'Video', styles: 'Styles', fashion: 'Fashion', studio: 'Styles', vmaker: 'Video', vtrend: 'Video', decor: 'Image' };
+
+test('cli-chat-rest-7: مراحل بطاقة الانتظار وسطر وقتها بلغة الواجهة (axChatcliGenw*) في كلّ الأنواع — لا إنجليزيّة للفرنسيّ ولا للأرديّ', () => {
+  for (const lg of ['fr', 'ur', 'zh']) {
+    const W = load34(lg, fakeT(true));
+    for (const [kind, fam] of Object.entries(GENW_KINDS)) {
+      const c = card(W, kind);
+      assert.equal(c.stage, 'T:axChatcliGenw' + fam + 'S1', lg + '/' + kind + ': المرحلة الأولى');
+      assert.ok(c.timer.includes('T:axChatcliGenwSec') && c.timer.includes('T:axChatcliGenw' + (kind === 'studio' ? 'Image' : fam) + 'Expect'), lg + '/' + kind + ': سطر الوقت: ' + c.timer);
+      assert.ok(!/usually|images|Understanding/.test(c.stage + c.timer), lg + '/' + kind + ': إنجليزيّة ثابتة');
+    }
+    /* التلميح والبطء والمرحلة الأخيرة مفاتيح أيضًا */
+    const K = W.KINDS;
+    assert.equal(K.image.hint.k, 'axChatcliGenwImageHint');
+    assert.equal(K.video.slow.k, 'axChatcliGenwVideoSlow');
+    assert.equal(K.image.slow.k, 'axChatcliGenwSlow');
+    assert.deepEqual(Array.from(K.fashion.stages.k), ['axChatcliGenwFashionS1', 'axChatcliGenwFashionS2', 'axChatcliGenwFashionS3', 'axChatcliGenwFinal']);
+    assert.deepEqual(Array.from(K.studio.stages.k), ['axChatcliGenwStylesS1', 'axChatcliGenwImageS2', 'axChatcliGenwStylesS3', 'axChatcliGenwFinal']);
+  }
+  /* بلا مفتاح في القاموس: العربيّة للعربيّ والإنجليزيّة لغيره كما كانتا */
+  const ar = card(load34('ar', (k) => k), 'image'), en = card(load34('fr', (k) => k), 'image');
+  assert.equal(ar.stage, 'نفهم طلبك…');
+  assert.ok(ar.timer.includes('ث — الصور تاخذ ~٣٠ ثانية'), ar.timer);
+  assert.equal(en.stage, 'Understanding your request…');
+  assert.ok(en.timer.includes('s — images usually take ~30s'), en.timer);
+});
+
 /* ───────── app-17/18/09: فيديو المحادثة ───────── */
 const A17 = read('js/app-17-agent-tools.js');
 const A18 = read('js/app-18-chat-tools.js');
