@@ -67,4 +67,13 @@ function isOwner(req) {
   return keyIsValid(q.key || b.key) || sessionIsOwner(q.token || b.token);
 }
 
-module.exports = { isOwner, isOwnerName, ownerList };
+/* v-audit-agent (تدقيق ٢٦ أكتوبر، srv-agent-3): جلسة المالك الموقَّعة وحدها — لبوّابات تشغّل أو تكتب أو تصرف أو تقرأ بيانات المستخدمين
+   (جسر Claude Code ودمجه، صندوق بلاغات المستخدمين، مخرج التطبيق، خزنة الأسرار). MONITOR_KEY تحمله ورك فلوهات مستودع علنيّ ويمرّ في الرابط
+   (قرار v-vip-verified عدّه أقلّ ثقة)، فيبقى للنقاط الرقابيّة أعلاه (health · client-errors · feedback) عبر isOwner. */
+function isOwnerSession(req) {
+  const q = (req && req.query) || {};
+  const b = (req && req.body && typeof req.body === 'object') ? req.body : {};
+  return sessionIsOwner(q.token || b.token);
+}
+
+module.exports = { isOwner, isOwnerSession, isOwnerName, ownerList };
