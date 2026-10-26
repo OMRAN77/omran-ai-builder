@@ -70,9 +70,10 @@ module.exports = async (req, res) => {
     }
     refund = () => refundCustom(token, null, clientIp(req), 'studio-suggest');
 
-    const isArabic = lang !== 'en' && lang !== 'fr' && lang !== 'hi' && lang !== 'ur' && lang !== 'bn' && lang !== 'ne';
-    const langNames = { en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali' };
-    const targetLang = langNames[lang] || 'Arabic';
+    /* v-audit-studeng (srv-studios-1-4): اللغات الأربع عشرة (كما في construction-create) — كانت ستًّا، فالإسبانيّة والتركيّة والروسيّة
+       والصينيّة والإندونيسيّة والفلبينيّة والمالايالاميّة تصلها البطاقات بالعربيّة. العربيّة لـar (وللطلب بلا لغة كما كان). */
+    const langNames = { ar: 'Arabic', en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali', id: 'Indonesian', fil: 'Filipino', tr: 'Turkish', zh: 'Simplified Chinese', ru: 'Russian', es: 'Spanish', ml: 'Malayalam' };
+    const targetLang = langNames[String(lang || 'ar').toLowerCase()] || 'Arabic';
 
     const featureName = FEATURE_NAMES[feature] || 'overall style';
 

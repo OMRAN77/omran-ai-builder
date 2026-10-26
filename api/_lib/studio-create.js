@@ -42,15 +42,22 @@ async function openaiStudioEdit(promptText, images) {
 }
 const { sourceStylePreservationRule } = require('./image-prompt');
 /* v-studio-lock: الإنقاذ بـgpt-image-1 يمرّ بحارس الهوية أيضًا — إن تغيّر الشخص نعيد مرة بقفل أشدّ */
-async function rescueGuarded(promptText, images, apiKey, feature) {
+/* v-audit-studeng (srv-studios-1-2): المحاولة الثانية تُفحص كالأولى، ورفض المحاولتين { rejected } يصير ٤٢٢ عند المتّصل —
+   كان `second || first` يسلّم الثانية بلا فحص أو الأولى المرفوضة نفسها (وجه شخص آخر) ويُخصم. verdictOf = حارس runEdit نفسه
+   (طلبه بسطر المجمّع وrequireChange)؛ بدونه (الدمج) الحارس القديم. */
+async function rescueGuarded(promptText, images, apiKey, feature, verdictOf) {
   const first = await openaiStudioEdit(promptText, images);
   if (!first || feature === 'anime' || feature === 'merge' || !apiKey) return first;
+  const judge = verdictOf || ((b64) => verifyLocalizedImageEdit({ apiKey, sourceBase64: images[0][0], sourceMime: images[0][1] || 'image/jpeg', resultBase64: b64, resultMime: 'image/png', userPrompt: promptText.slice(0, 600) }));
+  const passed = (g) => !!(g && (g.ok || g.reason === 'validation_unavailable'));
   try {
-    const g = await verifyLocalizedImageEdit({ apiKey, sourceBase64: images[0][0], sourceMime: images[0][1] || 'image/jpeg', resultBase64: first, resultMime: 'image/png', userPrompt: promptText.slice(0, 600) });
-    if (g.ok || g.reason === 'validation_unavailable') return first;
-    const second = await openaiStudioEdit(promptText + STRONGER_LOCK, images);
-    return second || first;
-  } catch (e) { return first; }
+    const g = await judge(first, 'image/png');
+    if (passed(g)) return first;
+    const second = await openaiStudioEdit(promptText + (g.reason === 'no_change' ? NO_CHANGE_RETRY : STRONGER_LOCK), images);
+    if (!second) return { rejected: g };
+    const g2 = await judge(second, 'image/png');
+    return passed(g2) ? second : { rejected: g2 };
+  } catch (e) { return first; /* الحارس لا يرمي؛ عطب غير متوقّع لا يُسقط صورة مدفوعة (v-guard-fail-open) */ }
 }
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const faceLock = require('./face-lock.js');
@@ -195,15 +202,21 @@ async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
   });
   const data = await upstream.json();
   if (!upstream.ok) {
-    const detail = String((data && data.error && data.error.message) || 'unknown').replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
+    const tech = String((data && data.error && data.error.message) || 'unknown');
+    const detail = tech.replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
     console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + detail);
-    return { error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', status: 502, upstream: upstream.status, detail };
+    /* v-audit-studeng (srv-studios-1-3): رمز لا نصّ — كان «تعذّر إنشاء الصورة الآن…» عربيًّا لكلّ اللغات ومعه نصّ المزوّد الخامّ (detail).
+       نفاد الرصيد أو عطب المفتاح = unavailable بـ503 («الخدمة متوقّفة مؤقّتًا»، v-credit-out)؛ الزحام busy؛ والباقي failed. السبب في السجلّ وحده. */
+    if (require('./_videoFail.js').isOutage(upstream.status, tech)) return { error: 'unavailable', status: 503 };
+    const busy = upstream.status === 429 || upstream.status >= 500;
+    return { error: busy ? 'image_generation_busy' : 'image_generation_failed', status: 502 };
   }
   const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
   const imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
   if (!imgPart) {
     const why = String((((data.candidates || [])[0] || {}).finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '').slice(0, 40);
-    return { error: 'لم يرجع الموديل صورة. حاول بصورة أو خيار آخر.' + (why ? ' (' + why + ')' : ''), status: 500, why };
+    console.warn('[studio-create] no image from upstream (' + (why || 'none') + ')'); /* v-audit-studeng: رمز المزوّد (IMAGE_SAFETY…) للسجلّ لا للمستخدم */
+    return { error: 'image_generation_failed', status: 500, why };
   }
   return { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' };
 }
@@ -223,26 +236,42 @@ async function runEdit(o) {
   /* v-image-duo: مع قفل الوجه يعمل Gemini بالتوازي مع تعديل gpt-image بالقناع، والحكم يختار */
   const duo = duoEnabled() && !!o.openaiKey;
   let gemP = null;
-  const guardOf = async (b64, mime) => {
-    if (o.skipGuard) return true;
-    const g = await verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange), requireChange: !!(o.guard && o.guard.requireChange) });
-    return !!(g && (g.ok || g.reason === 'validation_unavailable'));
+  /* v-audit-studeng: الحكم نفسه (لا نعم/لا فقط) — سبب الرفض يختار سطر المحاولة الثانية ورمز ٤٢٢ في مسارَي القناع والإنقاذ أيضًا */
+  const verdictOf = async (b64, mime) => {
+    if (o.skipGuard) return { ok: true, reason: 'skipped' };
+    return verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange), requireChange: !!(o.guard && o.guard.requireChange) });
+  };
+  const passes = (g) => !!(g && (g.ok || g.reason === 'validation_unavailable'));
+  const guardOf = async (b64, mime) => passes(await verdictOf(b64, mime));
+  /* v-studio-guard-retry (شكوى المالك: «image_edit_identity_mismatch» على صورة كفّ):
+     رسمةٌ واحدة شاردة كانت تُسقط الطلب كلّه بخطأ أحمر. محاولة ثانية واحدة بقفل
+     أشدّ وحرارة ٠٫١٥ قبل الإبلاغ — الفشل يبقى فشلًا إن تكرّر (٤٢٢ ← keepGuardCharge في المعالج). */
+  const retryOrReject = async (guard) => {
+    console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
+    const retryNote = guard.reason === 'no_change' ? NO_CHANGE_RETRY : STRONGER_LOCK;
+    const retryParts = [{ text: o.promptText + retryNote }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
+    const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
+    if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
+    throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
   };
   if (prep) {
     if (duo) gemP = geminiImage(o.apiKey, parts, o.feature).catch(function () { return {}; });
     const masked = await faceLock.maskedEdit(prep, o.openaiKey, o.promptText);
     if (masked) {
-      if (gemP) {
+      /* v-audit-studeng (srv-studios-1-1): نتيجة القناع تمرّ على الحارس نفسه (requireChange) — كانت تُسلَّم بلا سؤال في ١٦ ميزة،
+         فصورة «لم يتغيّر فيها شيء» تُخصم (v-edit-no-change لا يعمل). يُرفض القناع ومرشّح Gemini معًا ⇒ المحاولة الثانية ثمّ ٤٢٢. */
+      const g = gemP ? await gemP : null;
+      const [mv, gv] = await Promise.all([verdictOf(masked, 'image/png'), (g && g.b64) ? verdictOf(g.b64, g.mime) : null]);
+      const maskOk = passes(mv), gemOk = !!(g && g.b64) && passes(gv);
+      if (maskOk && gemOk) {
         try {
-          const g = await gemP;
-          if (g && g.b64 && await guardOf(g.b64, g.mime)) {
-            const pick = await judgeBest({ apiKey: o.apiKey, prompt: o.promptText, source: { b64: o.imageBase64, mime: o.mimeType || 'image/jpeg' }, a: { b64: masked, mime: 'image/png' }, b: { b64: g.b64, mime: g.mime } });
-            if (pick === 'b') return finish(g.b64, g.mime, 'gemini+judge');
-          }
+          const pick = await judgeBest({ apiKey: o.apiKey, prompt: o.promptText, source: { b64: o.imageBase64, mime: o.mimeType || 'image/jpeg' }, a: { b64: masked, mime: 'image/png' }, b: { b64: g.b64, mime: g.mime } });
+          if (pick === 'b') return finish(g.b64, g.mime, 'gemini+judge');
         } catch (e) { console.warn('[studio-create] duo judge skipped: ' + (e && e.message)); }
-        return finish(masked, 'image/png', 'openai-lock+judge');
       }
-      return finish(masked, 'image/png', 'openai-lock');
+      if (maskOk) return finish(masked, 'image/png', gemP ? 'openai-lock+judge' : 'openai-lock');
+      if (gemOk) return finish(g.b64, g.mime, 'gemini+judge');
+      return retryOrReject(mv);
     }
     console.warn('[studio-create] masked edit unavailable for ' + o.feature + ' — falling back to gemini');
   } else if (o.lockLevel && o.lockLevel !== 'none') {
@@ -251,11 +280,12 @@ async function runEdit(o) {
   const out = gemP ? await gemP : await geminiImage(o.apiKey, parts, o.feature);
   if (!out.b64) {
     /* v-studio-rescue / v-studio-noimg-rescue: gpt-image-1 قبل إبلاغ الفشل */
-    const rescue = await rescueGuarded(o.promptText, [[o.imageBase64, o.mimeType]], o.apiKey, o.feature);
+    const rescue = await rescueGuarded(o.promptText, [[o.imageBase64, o.mimeType]], o.apiKey, o.feature, verdictOf);
+    /* v-audit-studeng (srv-studios-1-2): رفض الحارس للمحاولتين = ٤٢٢ كمسار Gemini (لا تسليم صورة مرفوضة) */
+    if (rescue && rescue.rejected) throw { status: 422, payload: { error: publicGuardError(rescue.rejected), retryable: false } };
     if (rescue) return finish(rescue, 'image/png', 'openai');
-    const payload = { error: out.error };
-    if (out.upstream) { payload.upstream = out.upstream; payload.detail = out.detail; }
-    throw { status: out.status || 502, payload };
+    /* v-audit-studeng (srv-studios-1-3): الرمز وحده — upstream/detail (نصّ المزوّد) بقيا في السجلّ */
+    throw { status: out.status || 502, payload: { error: out.error || 'image_generation_failed' } };
   }
   if (!o.skipGuard) {
     const guard = await verifyLocalizedImageEdit({
@@ -267,17 +297,7 @@ async function runEdit(o) {
     });
     /* v-guard-fail-open: تعطّل الحارس نفسه لا يُسقط صورةً جاهزة */
     if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
-    else if (!guard.ok) {
-      /* v-studio-guard-retry (شكوى المالك: «image_edit_identity_mismatch» على صورة كفّ):
-         رسمةٌ واحدة شاردة كانت تُسقط الطلب كلّه بخطأ أحمر. محاولة ثانية واحدة بقفل
-         أشدّ وحرارة ٠٫١٥ قبل الإبلاغ — الفشل يبقى فشلًا إن تكرّر. */
-      console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
-      const retryNote = guard.reason === 'no_change' ? NO_CHANGE_RETRY : STRONGER_LOCK;
-      const retryParts = [{ text: o.promptText + retryNote }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
-      const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
-      if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
-      throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
-    }
+    else if (!guard.ok) return retryOrReject(guard);
   }
   return finish(out.b64, out.mime, 'gemini');
 }
@@ -300,7 +320,7 @@ module.exports = async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.error('[studio-create] image provider is not configured');
-      res.status(503).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      res.status(503).json({ error: 'unavailable' }); /* v-audit-studeng (srv-studios-1-3): رمز «الخدمة متوقّفة مؤقّتًا» بلغة الواجهة */
       return;
     }
 
@@ -363,7 +383,7 @@ module.exports = async (req, res) => {
         res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
         return;
       }
-      res.status(out.status || 502).json({ error: out.error || 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      res.status(out.status || 502).json({ error: out.error || 'image_generation_failed' }); /* v-audit-studeng: رمز لا نصّ */
       return;
     }
 
@@ -415,7 +435,7 @@ module.exports = async (req, res) => {
     }
   } catch (e) {
     console.error('[studio-create] exception: ' + (e && e.stack ? e.stack : e));
-    res.status(500).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+    res.status(500).json({ error: 'image_generation_failed' }); /* v-audit-studeng: رمز يترجمه imgErrFriendly */
   }
 };
 module.exports.STYLE_TEXT = STYLE_TEXT;
