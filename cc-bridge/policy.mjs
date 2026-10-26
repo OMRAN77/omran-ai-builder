@@ -86,8 +86,9 @@ function pushDstIsMain(ref) {
   const dst = (r.includes(':') ? r.slice(r.lastIndexOf(':') + 1) : r).replace(/^refs\//, '').replace(/^heads\//, '');
   return /^(main|master)$/i.test(dst);
 }
-// v-audit-bridge: الأمر باسمه الأساسيّ — «/usr/bin/git» و«\git» هما git نفسه.
-const cmdName = (t) => String(t || '').replace(/^\\+/, '').split('/').pop();
+// v-audit-bridge: الأمر باسمه الأساسيّ — «/usr/bin/git» و«\git» هما git نفسه، و«$(gh» و«(gh» و«`gh» هي gh داخل
+// استبدال أمر أو صدفة فرعيّة (الجولة ٢: «echo $(gh -R o/r pr merge 5)» كان لا يُرى).
+const cmdName = (t) => String(t || '').replace(/^[\\$({`!]+/, '').split('/').pop();
 const cmdTokens = (segment) => String(segment || '').replace(/[)`]+$/, '').split(/\s+/).map((t) => t.replace(/^['"]+|['"]+$/g, '')).filter(Boolean);
 
 /* فحص git push وحده: فرع مسمّى غير الرئيسيّ، بلا قسر ولا حذف — وإلّا رُفض.
@@ -168,29 +169,42 @@ export function pushRequest(cmd) {
 }
 
 /* v-audit-bridge (sat-bridges-2): gh بالرموز لا بالنصّ — الخيار الملتصق بقيمته (‎-XPUT، ‎-fbase=main، ‎--method=PUT)، والعناقيد
-   (‎-iXPUT)، و«gh pr -R x merge». gh api للقراءة فقط: طريقة غير GET أو أيّ حقل (الحقول تجعلها POST) = رفض. */
+   (‎-iXPUT)، و«gh pr -R x merge». gh api للقراءة فقط: طريقة غير GET أو أيّ حقل (الحقول تجعلها POST) = رفض.
+   الجولة ٢: gh (cobra) يقبل الخيارات قبل الأمر الفرعيّ ويحملها إلى الأمر الأخير («gh -X PUT api …/merge»، «gh -R o/r pr
+   merge 5») — فلا خيار قبل الأمر الفرعيّ الأوّل. والفرعيّ الثاني يُحسم كما يحسمه cobra (خيار بلا «=» بصيغة ‎--x أو ‎-x
+   يأخذ ما بعده قيمةً، فـ«gh pr --body x merge 5» يدمج) ثمّ يُفحص بقواعد gh في DENY_RULES («gh workflow -R x run»).
+   والاقتباس والشرطة المائلة داخل الرمز يُزالان كما تزيلهما الصدفة («m''erge»)، والمتغيّر في موضع الأمر مرفوض،
+   و«gh extension install|exec» يجلب كودًا ويشغّله. الضمان الأخير الرمز نفسه (CC_AGENT_GH_TOKEN بلا Contents: write). */
 const GH_API_VALUE_SHORT = 'XfFHpqt';
+const GH_RULES = DENY_RULES.filter((r) => r.re.source.startsWith('\\bgh\\s+'));
 export function checkGh(segment) {
-  const rest = cmdTokens(segment);
+  const rest = cmdTokens(segment).map((x) => x.replace(/['"\\]/g, '')).filter(Boolean);
   const gi = rest.findIndex((x) => cmdName(x) === 'gh');
   if (gi < 0) return '';
   rest.splice(0, gi + 1);
   const ci = rest.findIndex((x) => !x.startsWith('-'));
+  if (ci > 0) return 'خيارات gh قبل الأمر الفرعيّ تُخفيه عن الفحص — اكتبها بعده: gh pr view 5 -R o/r.';
   const sub = ci < 0 ? '' : rest[ci];
-  if (sub === 'pr') {
-    for (let j = ci + 1; j < rest.length; j++) {
+  const literal = 'اكتب أمر gh الفرعيّ حرفيًّا لا عبر متغيّر أو استبدال أمر.';
+  if (sub !== 'api') {
+    let sub2 = '';
+    for (let j = ci + 1; ci >= 0 && j < rest.length; j++) {
       const a = rest[j];
-      if (a === '-R' || a === '--repo') { j++; continue; }
-      if (a.startsWith('-')) continue;
-      return a === 'merge' ? 'الدمج بأمر المالك «ادمج» وحده.' : '';
+      if (a === '--') break;
+      if (!a.startsWith('-')) { sub2 = a; break; }
+      if (!a.includes('=') && a !== '-h' && a !== '--help' && (a.startsWith('--') || a.length === 2)) j++; // ‎-R x، ‎--body x
     }
+    if (/[$`]/.test(sub + sub2)) return literal;
+    if (/^(?:extensions?|ext)$/.test(sub) && /^(?:install|exec)$/.test(sub2)) return 'إضافات gh تجلب كودًا وتشغّله — بيد المالك.';
+    const canon = 'gh ' + sub + ' ' + sub2;
+    for (const r of GH_RULES) if (r.re.test(canon)) return r.why;
     return '';
   }
-  if (sub !== 'api') return '';
   const ro = 'gh api للقراءة فقط (GET).';
   let method = '';
   for (let j = ci + 1; j < rest.length; j++) {
     const a = rest[j];
+    if (/[$`]/.test(a)) return literal;
     if (a === '--') break;
     const m = /^--method(?:=(.*))?$/.exec(a);
     if (m) { method = m[1] != null ? m[1] : (rest[++j] || ''); continue; }
@@ -207,9 +221,10 @@ export function checkGh(segment) {
   return method && !/^GET$/i.test(method) ? ro : '';
 }
 
-/** يقسّم سطر الأوامر إلى مقاطع (&& || ; | & وأسطر) ليُفحص كلّ أمر على حدة. */
+/** يقسّم سطر الأوامر إلى مقاطع (&& || ; | & وأسطر) ليُفحص كلّ أمر على حدة.
+    v-audit-bridge (الجولة ٢): «\» قبل نهاية السطر وصلُ سطر عند الصدفة لا فاصل — «gh pr \⏎merge 5» أمر واحد. */
 export function commandSegments(cmd) {
-  return String(cmd || '').split(/\|\||&&|[;|&\n]/).map((s) => s.trim()).filter(Boolean);
+  return String(cmd || '').replace(/\\\r?\n/g, ' ').split(/\|\||&&|[;|&\n]/).map((s) => s.trim()).filter(Boolean);
 }
 
 /** سبب الرفض لأمر Bash كامل، أو '' إن كان مسموحًا. */

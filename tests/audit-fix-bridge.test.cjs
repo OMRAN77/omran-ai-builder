@@ -161,11 +161,47 @@ test('sat-bridges-2: gh — الدمج والكتابة مرفوضان بكلّ 
     'gh alias import x.yml',
     'gh pr -R o/r merge 5',
     'gh pr --repo=o/r merge 5',
+    // الجولة ٢: خيارات قبل الأمر الفرعيّ — gh (cobra) يحملها إلى الأمر الأخير فتعمل (GH_DEBUG=api أثبت ‎-X قبل api).
+    'gh -X PUT api repos/o/r/pulls/12/merge',
+    'gh -XPUT api repos/o/r/pulls/12/merge',
+    'gh --method PUT api repos/o/r/pulls/12/merge',
+    'gh -f base=main api repos/o/r/merges',
+    'gh -R o/r pr merge 5',
+    'gh --repo o/r pr merge 5',
+    'gh -- api -X PUT repos/o/r/pulls/12/merge',
+    // خيار مجموعة بلا «=» يأخذ ما بعده قيمةً عند cobra: «--body x» ثمّ merge يدمج؛ و‎-R على المجموعات الأخرى.
+    'gh pr --body x merge 5',
+    'gh pr -b x merge 5',
+    'gh workflow -R o/r run ci',
+    'gh release --repo o/r create v1',
+    'gh issue -R o/r delete 3',
+    'gh run -R o/r cancel 9',
+    // إضافات gh تجلب كودًا وتشغّله.
+    'gh extension install o/gh-x',
+    'gh ext install o/gh-x',
+    'gh extensions install o/gh-x',
+    'gh extension exec x',
+    // ما تزيله الصدفة قبل gh: الاقتباس داخل الرمز، الشرطة المائلة، وصل السطر، استبدال الأمر، والمتغيّر.
+    "gh pr m''erge 5",
+    'gh p\\r merge 5',
+    'gh pr \\\nmerge 5',
+    'gh \\\n-X PUT api repos/o/r/pulls/12/merge',
+    'echo $(gh -R o/r pr merge 5)',
+    '(gh -R o/r pr merge 5)',
+    'echo `gh -R o/r pr merge 5`',
+    'gh pr $M 5',
+    "gh api $'-f' x=1 repos/o/r/merges",
   ];
   for (const c of deny) assert.equal(P.decideTool('Bash', { command: c }).behavior, 'deny', 'يُرفض: ' + c);
-  const allow = ['gh api -XGET repos/o/r', 'gh api -X GET repos/o/r', 'gh api repos/o/r/pulls/5', 'gh api repos/o/r/pulls -q .[].number', 'gh pr view 5', 'gh pr create --title merge --body x', 'gh pr checks 5', 'gh alias list'];
+  const allow = [
+    'gh api -XGET repos/o/r', 'gh api -X GET repos/o/r', 'gh api repos/o/r/pulls/5', 'gh api repos/o/r/pulls -q .[].number', 'gh pr view 5', 'gh pr create --title merge --body x', 'gh pr checks 5', 'gh alias list',
+    'gh --version', 'gh --help', 'gh pr --help', 'gh pr -R o/r view 5', 'gh pr view 5 -R o/r', 'gh run rerun 1', 'gh repo clone o/r', 'gh extension list', 'gh status --org x',
+    'gh api repos/{owner}/{repo}/pulls -q .[].number', 'gh pr create --title x --body "$(cat <<\'EOF\'\nbody\nEOF\n)"', 'gh run view $(gh run list -L1 --json databaseId -q .[0].databaseId) --log-failed',
+  ];
   for (const c of allow) assert.equal(P.decideTool('Bash', { command: c }).behavior, 'allow', 'يُسمح: ' + c);
-  assert.ok(/CC_AGENT_GH_TOKEN/.test(read('cc-bridge/README.md')), 'README يوثّق رمز Claude Code بلا كتابة');
+  const readme = read('cc-bridge/README.md');
+  assert.ok(/CC_AGENT_GH_TOKEN/.test(readme), 'README يوثّق رمز Claude Code بلا كتابة');
+  assert.ok(/gh run rerun[^|]*Actions: write/.test(readme), 'README يقول إنّ gh run rerun يحتاج Actions: write الذي لا يحمله الرمز المقترح');
 });
 
 // ─────────────────────────── sat-bridges-5 ───────────────────────────
