@@ -164,6 +164,24 @@ test('srv-agent-2: pushGate — فعل تعديل أو رفع أو إكمال أ
   assert.equal(GW.pushGate(f('vercel.json'), 'عدّل vercel.json وزد المهلة'), '');
 });
 
+test('srv-agent-2 (جولة المراجعة): نفي التعديل، والموافقة في غير موضعها، و«غير»/«changes» لا تُقرأ طلب رفع — والطلب الحقيقيّ يمرّ', () => {
+  const e = { edits: [{ path: 'js/x.js', old: 'a', new: 'b' }] };
+  // (أ) نفي فعل التعديل: ACTION_RE كان يجد الفعل داخل النفي
+  for (const s of ['لا تعدل شي، بس راجع', 'لا تغيّر أي شي، اقرأ README', 'لا تعدل شي بس راجع', 'بدون تعديل، قل لي وش فيه', 'لا تكتب كود، اشرح لي', "don't change anything, just review",
+    'just read the file and tell me what to change', 'بس اقرأ الملف وقل لي وين أعدّل', 'لا تلمس شي'])
+    assert.match(GW.pushGate(e, s), /^✗/, 'نفي/قراءة فقط: ' + s);
+  // (ب) الموافقة والإكمال ردٌّ قصير كلّه موافقة — لا كلمة في أيّ موضع
+  for (const s of ['تمام، بس اقرأ الـREADME وقل لي', 'ok شكراً', 'كمل القراءة وقل لي', 'تابع الشرح', 'ok thanks', 'تمام، وش التعديل اللي بتسويه؟'])
+    assert.match(GW.pushGate(e, s), /^✗/, 'موافقة في غير موضعها: ' + s);
+  // (ج) «غير» الشائعة و«changes»
+  for (const s of ['اقرأ README وقل لي إذا فيه شي غير واضح', 'please review PR #5 and tell me the changes', 'اقرأ الملفات غير المستخدمة وقل لي'])
+    assert.match(GW.pushGate(e, s), /^✗/, 'ليس فعل أمر: ' + s);
+  // ما زال يمرّ: أمر صريح مع نفي جانبيّ، و«غير» فعلًا في رأس الجملة، والموافقة القصيرة، واللقطة المرفقة
+  for (const s of ['صلّح الزر، لا تغيّر اللون', 'عدّل الزر، لا تلمس الباقي', "don't change the colour, fix the button", 'غير اللون للأحمر', 'لو سمحت غير اللون', 'تمام. غير اللون',
+    'كمل', 'يلا كمل', 'ايوه', 'تمام', 'تمام كمل الشغل', 'ok', 'yes do it', 'go ahead', 'ايوه\n\n[مرفقات: image.png]', 'احذف هذا الزر\n\n[مرفقات: image.png]', 'please change the button colour', 'ممكن تصلح الزر؟'])
+    assert.equal(GW.pushGate(e, s), '', 'طلب حقيقيّ: ' + s);
+});
+
 test('srv-agent-2: الوكيل لا يرفع بمحتوى مقروء محقون — «راجع PR» ثمّ write_github يُرفض قبل الشبكة، وطلب التعديل يمرّ', async () => {
   resetSpies();
   const W = { repo: 'OMRAN77/omran-ai-builder', files: [{ path: '.github/workflows/x.yml', content: 'on: push' }], message: 'x' };
@@ -173,6 +191,9 @@ test('srv-agent-2: الوكيل لا يرفع بمحتوى مقروء محقون
   r = await runAgent('صلّح الزر في js/x.js', [callTool('write_github', W), say('تمام')]);
   assert.equal(spy.push.length, 0, 'مسار .github/ بلا اسمه في رسالة المالك = لا رفع');
   assert.match(toolResultOf(r.calls[1]), /\.github/);
+  r = await runAgent('لا تعدل شي، بس راجع PR #5', [callTool('edit_github', { repo: 'OMRAN77/omran-ai-builder', edits: [{ path: 'api/x.js', old: 'a', new: 'b' }], message: 'm' }), say('تمام')]);
+  assert.equal(spy.edit.length, 0, 'نفي التعديل = لا رفع (جولة المراجعة)');
+  assert.match(toolResultOf(r.calls[1]), /^✗/);
   r = await runAgent('صلّح الزر في js/x.js', [callTool('edit_github', { repo: 'OMRAN77/omran-ai-builder', edits: [{ path: 'js/x.js', old: 'a', new: 'b' }], message: 'm' }), say('تمام')]);
   assert.equal(spy.edit.length, 1, 'الطلب الصريح يمرّ كما كان');
 });
@@ -185,6 +206,9 @@ test('srv-agent-2: المحادثة (chat.js) بالحارس نفسه — write_
   assert.match(toolResultOf(r.calls[1]), /^✗/);
   r = await runChat('اقرأ README', [callTool('edit_github', { repo: 'OMRAN77/omran-ai-builder', edits: [{ path: 'api/x.js', old: 'a', new: 'b' }], message: 'm' }), say('تمام')]);
   assert.equal(spy.edit.length, 0);
+  r = await runChat('تمام، بس اقرأ الـREADME وقل لي', [callTool('write_github', W), say('تمام')]);
+  assert.equal(spy.push.length, 0, '«تمام» في رأس رسالة قراءة ليست موافقة على رفع (جولة المراجعة)');
+  assert.match(toolResultOf(r.calls[1]), /^✗/);
   r = await runChat('صلّح الزر في js/x.js', [callTool('edit_github', { repo: 'OMRAN77/omran-ai-builder', edits: [{ path: 'js/x.js', old: 'a', new: 'b' }], message: 'm' }), say('تمام')]);
   assert.equal(spy.edit.length, 1, 'الطلب الصريح يمرّ');
 });
@@ -229,12 +253,77 @@ test('srv-agent-3: MONITOR_KEY وحده لا يفتح جسر Claude Code ولا 
     res = mkRes(); await SV({ method: 'POST', query: { key }, body: { op: 'status' } }, res);
     assert.equal(res.code, 401, 'خزنة الأسرار لجلسة المالك وحدها');
 
+    // جولة المراجعة: المعرفة الجماعيّة (كتابة تصل نظام كلّ مستخدم) وآراء المستخدمين وبلاغاتهم (بيانات مستخدمين)
+    const COL = require(rp('api/_lib/collective.js'));
+    db.set('db/knowledge/global.json', { facts: [{ k: 'f1', t: 'حقيقة معلّقة', v: ['a', 'b', 'c'], at: 1 }] });
+    res = mkRes(); await COL.handle({ method: 'POST', query: { op: 'list', key }, body: {} }, res);
+    assert.equal(res.code, 403, 'لا عرض للمعرفة المعلّقة بالمفتاح');
+    res = mkRes(); await COL.handle({ method: 'POST', query: { op: 'approve', key }, body: { k: 'f1' } }, res);
+    assert.equal(res.code, 403, 'ولا اعتماد حقيقة بالمفتاح');
+    assert.notEqual(db.get('db/knowledge/global.json').facts[0].approved, true, 'الحقيقة باقية معلّقة');
+    res = mkRes(); await COL.handle({ method: 'POST', query: { op: 'list' }, body: { token: token('omran') } }, res);
+    assert.equal(res.code, 200, 'جلسة المالك كما كانت');
+    const FB = require(rp('api/_lib/feedback.js'));
+    db.set('db/feedback/list.json', [{ user: 'sara', note: 'رأي خاصّ', at: 1 }]);
+    res = mkRes(); await FB({ method: 'GET', query: { key }, headers: {}, body: {} }, res);
+    assert.equal(res.code, 401, 'آراء المستخدمين وبلاغاتهم لجلسة المالك وحدها');
+    res = mkRes(); await FB({ method: 'GET', query: { token: token('omran') }, headers: {}, body: {} }, res);
+    assert.equal(res.code, 200); assert.equal(res.body.feedback.length, 1);
+
     // النقاط الرقابيّة باقية على المفتاح (ورك فلو client-errors-report وsmoke)
     const CE = require(rp('api/_lib/client-errors.js'));
     res = mkRes(); await CE({ method: 'GET', query: { key }, body: {} }, res);
     assert.equal(res.code, 200, 'client-errors بالمفتاح كما كان');
     assert.equal(require(rp('api/_lib/_owner.js')).isOwner({ query: { key } }), true, 'isOwner الرقابيّ كما كان');
   } finally { global.fetch = save; }
+});
+
+test('srv-agent-3 (جولة المراجعة): MONITOR_KEY لا يفتح ملخّص المالك ولا وضعه الخام ولا قائمة الموديلات ولا رصيد الفيديو — لا مستهلك للمفتاح فيها', async () => {
+  const key = process.env.MONITOR_KEY;
+  const tok = token('omran');
+  // ملخّص المالك وخريطة الكود (_knowledge.js الحقيقيّ — المحمَّل في رأس الملفّ بديل)
+  const kp = rp('api/_lib/_knowledge.js'), kStub = require.cache[kp];
+  delete require.cache[kp];
+  let K;
+  try { K = require(kp); } finally { require.cache[kp] = kStub; }
+  assert.equal(K.ownerKnowledge({ query: { key }, body: {} }), '', 'لا معرفة المالك بالمفتاح');
+  assert.ok(K.ownerKnowledge({ query: {}, body: {} }, tok).length > 100, 'جلسة المالك كما كانت');
+
+  // الوضع الخام (__ownerFactory في api/ai.js): raw:true ينزع نظام العميل للمالك وحده
+  const gp = rp('api/_lib/gemini.js'), gSaved = require.cache[gp];
+  let seen = null;
+  require.cache[gp] = { id: gp, filename: gp, loaded: true, exports: async (req, res) => { seen = req.body; res.status(200).json({ ok: true }); } };
+  delete require.cache[rp('api/ai.js')];
+  try {
+    const ai = require(rp('api/ai.js'));
+    const aiRes = { setHeader() {}, status() { return this; }, json() { return this; }, end() {}, getHeader() { return null; } };
+    const ask = (query, extra) => ai({ method: 'POST', headers: { host: 'x' }, query: Object.assign({ action: 'gemini' }, query), body: Object.assign({ contents: [{ role: 'user', parts: [{ text: 'هلا' }] }], systemInstruction: 'نظام العميل الكامل', raw: true }, extra) }, aiRes);
+    const sys = () => (seen && (typeof seen.systemInstruction === 'string' ? seen.systemInstruction : JSON.stringify(seen.systemInstruction || ''))) || '';
+    await ask({ key }, {});
+    assert.ok(sys().includes('نظام العميل الكامل') && !sys().includes('تعليمات المالك — دائمة'), 'المفتاح لا يعطي وضع المالك الخام: ' + sys().slice(0, 120));
+    await ask({}, { token: tok });
+    assert.ok(!sys().includes('نظام العميل الكامل') && sys().includes('تعليمات المالك — دائمة'), 'جلسة المالك كما كانت');
+  } finally {
+    if (gSaved) require.cache[gp] = gSaved; else delete require.cache[gp];
+    delete require.cache[rp('api/ai.js')];
+  }
+
+  // قائمة الموديلات الحيّة ورصيد الفيديو
+  db.set('provmodels:v5', { at: Date.now(), models: { openai: [['openai/x', 'x']] } });
+  const PM = require(rp('api/_lib/provider-models.js'));
+  let res = mkRes(); await PM({ method: 'POST', query: { key }, body: {} }, res);
+  assert.equal(res.code, 403, 'لا قائمة موديلات بالمفتاح');
+  res = mkRes(); await PM({ method: 'POST', query: {}, body: { token: tok } }, res);
+  assert.equal(res.code, 200, 'جلسة المالك كما كانت');
+  const envR = ['RUNWAY_API_KEY', 'RUNWAY_API_KEY_2', 'RUNWAY_API_KEY_3'].map((k) => [k, process.env[k]]);
+  envR.forEach(([k]) => delete process.env[k]);
+  try {
+    const VB = require(rp('api/_lib/video-balance.js'));
+    res = mkRes(); await VB({ method: 'GET', query: { key }, headers: {} }, res);
+    assert.equal(res.code, 403, 'رصيد المالك وعدد مفاتيحه لا يُكشفان بالمفتاح');
+    res = mkRes(); await VB({ method: 'GET', query: { token: tok }, headers: {} }, res);
+    assert.equal(res.code, 200); assert.equal(res.body.keys, 0, 'جلسة المالك كما كانت');
+  } finally { envR.forEach(([k, v]) => { if (v !== undefined) process.env[k] = v; }); }
 });
 
 /* ───────── srv-agent-5 ───────── */

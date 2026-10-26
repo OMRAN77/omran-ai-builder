@@ -162,7 +162,7 @@ test('٤. clearStuckTask: لا يلغي فيديو مستخدم آخر يتول�
 test('٥. رصيد المالك: المفاتيح معًا لا واحدًا بعد واحد', async () => {
   const ownKey = rp('api/_lib/_owner.js');
   const savedOwn = require.cache[ownKey];
-  require.cache[ownKey] = { id: ownKey, filename: ownKey, loaded: true, exports: Object.assign({}, savedOwn ? savedOwn.exports : {}, { isOwner: () => true }) };
+  require.cache[ownKey] = { id: ownKey, filename: ownKey, loaded: true, exports: Object.assign({}, savedOwn ? savedOwn.exports : {}, { isOwner: () => true, isOwnerSession: () => true }) }; // v-audit-agent (srv-agent-3): الرصيد صار على جلسة المالك
   const env = { RUNWAY_API_KEY: process.env.RUNWAY_API_KEY, RUNWAY_API_KEY_2: process.env.RUNWAY_API_KEY_2, RUNWAY_API_KEY_3: process.env.RUNWAY_API_KEY_3 };
   Object.assign(process.env, { RUNWAY_API_KEY: 'a', RUNWAY_API_KEY_2: 'b', RUNWAY_API_KEY_3: 'c' });
   delete require.cache[rp('api/_lib/video-balance.js')];
