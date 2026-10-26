@@ -856,6 +856,19 @@ function stuL(ar, en){
 const PSTYLE_IMG_V = '16'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
 function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYLE_IMG_V; }
 
+/* v-audit-stud2 (srv-studios-2-8): رمز الخادم (حارس الهويّة/الأسلوب، image_generation_failed، unavailable…) بنصّ الواجهة عبر
+   imgErrFriendly كما في studioErrText (app-13) — كان «❌ خطأ: image_edit_identity_mismatch» خامًا في الأنماط والأزياء. العربيّة
+   للعربيّة وحدها (الأردو وغيرها تأخذ الإنجليزيّة لا العربيّة)، وما لا ترجمة له يبقى كما كان بالبادئة. */
+function stud2ErrText(e, prefix){
+  const code = (e && e.message) ? String(e.message) : String(e);
+  try{
+    const lg = (typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar');
+    const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, lg === 'ar') : null;
+    if(friendly) return '⚠️ ' + friendly;
+  }catch(err){ __swallow(err, 'stud2:err-text'); }
+  return prefix + code;
+}
+
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
 (function(){
   const modal = $('#portraitStyleModal');
@@ -1442,6 +1455,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
      #portraitMulti* تخصّ أنماط الصور فقط؛ styleEl هنا هو portraitStyleSelect الصحيح (كان في
      مكانها القديم styleEl الأزياء الداخلية، فمقارنة 'merge2' لا تتحقّق أبدًا هناك). */
   let extraImagesB64 = [];
+  /* v-audit-stud2 (srv-studios-2-5): FileReader غير متزامن — «حوّلها» قبل اكتمال القراءة كان يرسل extraImages: [] فيخترع النموذج
+     الشخص الثاني. القراءات الجارية تُعدّ لكلّ اختيار (القراءة من اختيار أقدم لا تُحسب)، والزرّ لا يرسل الدمج قبل اكتمالها */
+  let extraPending = 0, extraGen = 0;
   const multiFileInput = $('#portraitMultiFileInput');
   const multiFileBtn = $('#portraitMultiFileBtn');
   const multiPreviewWrap = $('#portraitMultiPreviewWrap');
@@ -1451,10 +1467,15 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
       const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
       extraImagesB64 = [];
+      const gen = ++extraGen;
+      extraPending = files.length;
       if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
       files.forEach((file) => {
         const reader = new FileReader();
+        reader.onerror = () => { if(gen === extraGen) extraPending = Math.max(0, extraPending - 1); };
         reader.onload = () => {
+          if(gen !== extraGen) return;
+          extraPending = Math.max(0, extraPending - 1);
           const dataUrl = String(reader.result || '');
           extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
           if(multiPreviewWrap){
@@ -1479,6 +1500,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       setStatus(t('portraitNeedLogin'));
       return;
     }
+    /* v-audit-stud2 (srv-studios-2-5): الدمج والعائلي بلا صورة إضافيّة مقروءة = نصّ خانة الرفع نفسه، بلا طلب */
+    const multiStyle = styleEl.value === 'merge2' || styleEl.value === 'familystyle';
+    if(multiStyle && (extraPending > 0 || !extraImagesB64.length)){
+      setStatus(t(styleEl.value === 'merge2' ? 'portraitMultiLabelMerge' : 'portraitMultiLabelFamily'));
+      return;
+    }
 
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
@@ -1497,6 +1524,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('portraitNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('portraitLimitReached')); return; }
+        if(data.error === 'missing_extra_images'){ setStatus(t(styleEl.value === 'merge2' ? 'portraitMultiLabelMerge' : 'portraitMultiLabelFamily')); return; } /* v-audit-stud2 */
         throw new Error(data.error || 'unknown');
       }
       if(styleEl.value === 'avatargif' && Array.isArray(data.frames) && data.frames.length){
@@ -1542,7 +1570,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         setStatus(t('portraitDone'));
       }
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -2111,7 +2139,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const __dl = fxDesignLine(data.design);
       setStatus(t('fashionAiDone') + (__dl ? ' ' + __dl : ''));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -2217,7 +2245,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       refineInput.value = '';
       setStatus(t('fashionAiDone'));
     }catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) */
     }finally{
       refineBtn.disabled = false; btnGenerate.disabled = false;
     }
@@ -2302,7 +2330,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('fashionSuggestNeedImage'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) */
     } finally {
       suggestBtn.disabled = false;
     }

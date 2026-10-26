@@ -11,6 +11,11 @@ const LANGN = { ar:'العربيّة', en:'English', fr:'French', hi:'Hindi', ur
 const pickLang = (b) => { const l = String((b && b.lang) || 'ar').slice(0, 3); return LANGN[l] ? l : 'ar'; };
 
 const DAILY = 8; // صورة/يوم للمستخدم المسجَّل (المالك وVIP معفيان داخل الدالّة)
+/* v-audit-stud2 (srv-studios-2-9): نصوص الخطأ لغير العربيّة (كما في adchat) — ad-studio.html يعرض مفتاح قاموسه أوّلًا وبلاه هذه.
+   «unavailable» كان بلا أيّ نصّ فتعرض الصفحة الكلمة حرفيًّا */
+const AD_FAIL_EN = 'Could not generate the ad right now — please try again.';
+const adPaused = (lg) => ({ error: 'unavailable', message_ar: 'الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.',
+  message: lg === 'ar' ? undefined : 'This service is temporarily unavailable — please try again shortly.' });
 
 // v-ad-rescue: توليد الإعلان عبر Gemini عند رفض OpenAI — يرجع {data,mime} أو null، لا يرمي أبدًا.
 async function geminiAdImage(promptText, images) {
@@ -92,6 +97,7 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (req.method !== 'POST') { res.status(405).end('{"error":"POST only"}'); return; }
   let giveQuota = async () => {}; // v-quota-giveback
+  let adLang = 'ar'; // v-audit-stud2: لغة الطالب لنصّ الاستثناء أدناه
   try {
     let b = req.body;
     if (typeof b === 'string') b = JSON.parse(b);
@@ -99,6 +105,7 @@ module.exports = async (req, res) => {
 
     // ① الهويّة قبل المفتاح.
     const lg = pickLang(b);
+    adLang = lg;
     const username = verifyPointsToken(typeof b.token === 'string' ? b.token : '');
     if (!username) {
       res.status(401).end(JSON.stringify({ error: 'auth', message_ar: 'سجّل الدخول أوّلًا لتوليد الإعلان صورةً.',
@@ -108,7 +115,9 @@ module.exports = async (req, res) => {
     // ② سقف يوميّ مستقلّ — الصورة أغلى من الرسالة.
     const gate = await checkAndConsumePlanCustom(b.token, null, null, 'adimage', DAILY);
     if (!gate.allowed) {
-      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' صور) لتوليد الإعلانات. جرّب غدًا.' }));
+      /* v-audit-stud2 (srv-studios-2-9): message لغير العربيّة كما في adchat، والحدّ رقمًا لنصّ الصفحة — كان message_ar وحده فيراه الكلّ عربيًّا */
+      res.status(429).end(JSON.stringify({ error: 'limit', limit: gate.limit, message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' صور) لتوليد الإعلانات. جرّب غدًا.',
+        message: lg === 'ar' ? undefined : 'You have reached today\'s limit (' + gate.limit + ' images) for ad images. Try again tomorrow.' }));
       return;
     }
     /* v-quota-giveback (أمر المالك ٢١ أكتوبر: «الطوابع والإعلان: المحاولة الفاشلة ما تنحسب من الحصة المجانية»): الحصّة تُحجز قبل النداء
@@ -116,7 +125,7 @@ module.exports = async (req, res) => {
     giveQuota = async () => { giveQuota = async () => {}; await require('./_usage.js').refundCustom(b.token, null, null, 'adimage'); };
 
     const key = process.env.OPENAI_API_KEY;
-    if (!key) { await giveQuota(); res.status(500).end(JSON.stringify({ error: 'no key' })); return; }
+    if (!key) { await giveQuota(); res.status(503).end(JSON.stringify(adPaused(lg))); return; } /* v-audit-stud2: كان «no key» حرفيًّا في الصفحة */
 
     const cut = (x, n) => String(x == null ? '' : x).slice(0, n).replace(/["\n\r]/g, ' ').trim();
     const look = LOOKS[b.look] || LOOKS.neon;
@@ -237,9 +246,9 @@ module.exports = async (req, res) => {
       const m = String((data && data.error && data.error.message) || ('HTTP ' + upstream.status)).replace(/key=[^&\s"']+/g, 'key=***');
       /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد المزوّد نفد أو مفتاحه — رمز unavailable («الخدمة متوقّفة مؤقّتًا» بلغة الواجهة)، لا نصّ فوترة المزوّد بالإنجليزيّة داخل message_ar */
       await giveQuota();
-      if (require('./_videoFail.js').isOutage(upstream.ok ? 0 : upstream.status, m)) { console.error('[adimage] upstream ' + upstream.status + ': ' + m.slice(0, 200)); res.status(503).end(JSON.stringify({ error: 'unavailable' })); return; }
+      if (require('./_videoFail.js').isOutage(upstream.ok ? 0 : upstream.status, m)) { console.error('[adimage] upstream ' + upstream.status + ': ' + m.slice(0, 200)); res.status(503).end(JSON.stringify(adPaused(lg))); return; }
       console.error('[adimage] upstream ' + upstream.status + ': ' + m.slice(0, 300)); // v-rest-fixes: نصّ المزوّد للسجلّ لا للمستخدم
-      res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان الآن — حاول مرّة أخرى.' }));
+      res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان الآن — حاول مرّة أخرى.', message: lg === 'ar' ? undefined : AD_FAIL_EN }));
       return;
     }
     res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: gate.limit || DAILY }));
@@ -247,6 +256,6 @@ module.exports = async (req, res) => {
     await giveQuota();
     console.error('[adimage] ' + (e && e.message ? e.message : String(e)));
     const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : 'تعذّر توليد الإعلان الآن — حاول مرّة أخرى.'; // v-rest-fixes: لا نصّ تقنيّ للمستخدم
-    res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));
+    res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg, message: adLang === 'ar' ? undefined : (e && e.name === 'TimeoutError' ? 'Generation took longer than allowed. Please try again.' : AD_FAIL_EN) }));
   }
 };
