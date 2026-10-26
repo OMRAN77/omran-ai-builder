@@ -62,6 +62,9 @@ export const DENY_RULES = [
   { re: /\bgh\s+(workflow\s+(run|enable|disable)|run\s+(cancel|delete)|issue\s+delete)\b/, why: 'تشغيل سير العمل وحذفه بيد المالك (المشاهدة وإعادة التشغيل مسموحتان).' },
   { re: /\bgh\s+api\b(?=.*\s(?:-X|--method)[\s=]+(?!GET\b)\w)/i, why: 'gh api للقراءة فقط (GET).' },
   { re: /\bgh\s+api\b(?=.*\s(?:-f|-F|--field|--raw-field|--input)\b)/, why: 'gh api للقراءة فقط (GET).' },
+  // v-audit-bridge: الأسماء المستعارة تُخفي الأمر الفعليّ عن الفحص («gh alias set m 'pr merge'»، «git config alias.pp push»).
+  { re: /\bgh\s+alias\s+(set|import)\b/, why: 'أسماء gh المستعارة تُخفي الأمر الفعليّ عن الفحص — اكتب الأمر نفسه.' },
+  { re: /\bgit\b[^;&|\n]*(?:\s-c\s*alias\.|\sconfig\b[^;&|\n]*\salias\.)/i, why: 'أسماء git المستعارة تُخفي الأمر الفعليّ عن الفحص — اكتب الأمر نفسه.' },
   { re: /\bgit\s+remote\s+(add|set-url|remove|rm|rename)\b/, why: 'المستودع البعيد ثابت.' },
   { re: /\bgit\s+branch\s+(-D|-d|--delete)\s+(main|master)\b/, why: 'الفرع الرئيسيّ لا يُحذف.' },
   { re: /\bvercel\b(?!\s+(ls|list|inspect|logs|whoami|help|--version|-v)\b)/, why: 'النشر على Vercel بيد المالك (يدمج من التطبيق فينشر Vercel من main).' },
@@ -69,28 +72,32 @@ export const DENY_RULES = [
   { re: /\bgit\s+(reset\s+--hard|clean\s+-\S*[fx]|checkout\s+--\s+\.)/, why: 'الرجوع المدمّر عن التغييرات بأمر المالك «تراجع» وحده.' },
   { re: /\brm\s+(?:-\S+\s+)*(?:\/|~|\$HOME|\/work(?:\/repo|\/state)?|\/app|\.git|\.|\.\.|\*)\/?(?=\s|$)/, why: 'حذف المستودع أو النظام ممنوع.' },
   { re: /(^|[\s;&|])(sudo|su|doas)\b|\b(shutdown|reboot|halt|poweroff|systemctl|pkill|killall)\b/, why: 'لا صلاحيّات نظام ولا إيقاف للخدمات.' },
-  { re: /\.env(?!\.example\b)(\.[\w-]+)?\b|\.npmrc\b|\b(AUTH_SECRET|ANTHROPIC_API_KEY|GH_TOKEN|GITHUB_TOKEN|CLAUDE_CODE_OAUTH_TOKEN|CC_BRIDGE_SECRET)\b|\/work\/state\b|\.claude\/settings/, why: 'ملفّات البيئة والأسرار وإعدادات السياج لا تُقرأ ولا تُكتب.' },
+  { re: /\.env(?!\.example\b)(\.[\w-]+)?\b|\.npmrc\b|\b(AUTH_SECRET|ANTHROPIC_API_KEY|GH_TOKEN|GITHUB_TOKEN|CC_AGENT_GH_TOKEN|CLAUDE_CODE_OAUTH_TOKEN|CC_BRIDGE_SECRET)\b|\/work\/state\b|\.claude\/settings|\/proc\/\S*environ\b/, why: 'ملفّات البيئة والأسرار وإعدادات السياج لا تُقرأ ولا تُكتب.' },
   { re: /(^|[\s;&|])(printenv|env)\s*($|[;&|>])/, why: 'لا طباعة للبيئة كاملة (فيها الأسرار).' },
 ];
 
 const PUSH_FLAGS_DENIED = /^(-f|--force|--force-with-lease(=.*)?|--force-if-includes|-d|--delete|--mirror|--all|--branches|--prune)$/;
 // خيارات git العامّة التي تأخذ قيمةً في الوسيط التالي (تُتخطّى مع قيمتها قبل الأمر الفرعيّ).
 const GIT_GLOBAL_OPT_VALUE = new Set(['-c', '-C', '--git-dir', '--work-tree', '--namespace', '--exec-path', '--super-prefix']);
-// الوجهة الممنوعة (بعد تجريد + وrefs/heads/ واقتباس): الفرع الرئيسيّ.
+// الوجهة الممنوعة (بعد تجريد + واقتباس وrefs/ وheads/): الفرع الرئيسيّ.
+// v-audit-bridge: git يحسم «HEAD:heads/main» إلى refs/heads/main (قاعدة refs/%s) — كان يمرّ لأنّ التجريد refs/heads/ وحده.
 function pushDstIsMain(ref) {
   const r = String(ref).replace(/^['"]+|['"]+$/g, '').replace(/^\+/, '');
-  const dst = (r.includes(':') ? r.slice(r.lastIndexOf(':') + 1) : r).replace(/^refs\/heads\//, '');
+  const dst = (r.includes(':') ? r.slice(r.lastIndexOf(':') + 1) : r).replace(/^refs\//, '').replace(/^heads\//, '');
   return /^(main|master)$/i.test(dst);
 }
+// v-audit-bridge: الأمر باسمه الأساسيّ — «/usr/bin/git» و«\git» هما git نفسه، و«$(gh» و«(gh» و«`gh» هي gh داخل
+// استبدال أمر أو صدفة فرعيّة (الجولة ٢: «echo $(gh -R o/r pr merge 5)» كان لا يُرى).
+const cmdName = (t) => String(t || '').replace(/^[\\$({`!]+/, '').split('/').pop();
+const cmdTokens = (segment) => String(segment || '').replace(/[)`]+$/, '').split(/\s+/).map((t) => t.replace(/^['"]+|['"]+$/g, '')).filter(Boolean);
 
 /* فحص git push وحده: فرع مسمّى غير الرئيسيّ، بلا قسر ولا حذف — وإلّا رُفض.
    v-sec-gitpush: التحليل السابق كان يتسامح مع «-C مسار» وحده بين git وpush، فـ«git -c k=v push
    origin HEAD:main» أو refspec بين علامتَي اقتباس كانا يتخطّيانه. الآن: نجرّد الاقتباس من كلّ رمز،
    نتخطّى كلّ خيارات git العامّة (وقيَمها)، ونحسم إلى main بفحص مستقلّ لكلّ رمز مهما اختلّ ترتيب الخيارات. */
 export function checkGitPush(segment) {
-  const stripQ = (t) => t.replace(/^['"]+|['"]+$/g, '');
-  const toks = String(segment || '').replace(/[)`]+$/, '').split(/\s+/).map(stripQ).filter(Boolean);
-  const gi = toks.indexOf('git');
+  const toks = cmdTokens(segment);
+  const gi = toks.findIndex((t) => cmdName(t) === 'git');
   if (gi < 0) return '';
   let i = gi + 1;
   while (i < toks.length && toks[i].startsWith('-')) {
@@ -118,21 +125,143 @@ export function checkGitPush(segment) {
   return '';
 }
 
-/** يقسّم سطر الأوامر إلى مقاطع (&& || ; | & وأسطر) ليُفحص كلّ أمر على حدة. */
+/* v-audit-bridge (sat-bridges-1): Claude Code بلا مفتاح كتابة على GitHub — «git push» الذي يجيزه السياج يجريه الجسر نفسه
+   بمفتاحه (bridgeDecision أدناه ← git.mjs pushBranch) بوجهة refs/heads/<فرع> صريحة، فلا remote.origin.push ولا اسم مستعار
+   ولا تخمين git يغيّر الوجهة. الشكل الوحيد: أمر مستقلّ «git [-C <المستودع>] push [-u] origin <مصدر>[:<فرع>]».
+   يعود null إن لم يكن في الأمر دفع، و{ error } لشكل لا يُجرى، و{ src, branch, upstream, dir } للطلب. */
+const PUSH_NOOP_FLAGS = /^(-q|--quiet|-v|--verbose|--progress|--no-verify)$/;
+const BRANCH_NAME = /^(?!-)(?!.*\.\.)(?!.*\/\/)(?!.*\.lock$)[A-Za-z0-9._/-]+(?<![./])$/;
+function isGitPushSeg(seg) {
+  const t = cmdTokens(seg);
+  const gi = t.findIndex((x) => cmdName(x) === 'git');
+  if (gi < 0) return false;
+  let i = gi + 1;
+  while (i < t.length && t[i].startsWith('-')) i += GIT_GLOBAL_OPT_VALUE.has(t[i]) ? 2 : 1;
+  return t[i] === 'push';
+}
+export function pushRequest(cmd) {
+  const s = String(cmd || '').replace(/\s+2>&1\s*$/, '');
+  const segs = commandSegments(s);
+  if (!segs.some(isGitPushSeg)) return null;
+  const alone = 'شغّل الدفع وحده في أمر مستقلّ: git push -u origin <الفرع> — الجسر يجريه بمفتاحه (لا مفتاح كتابة في بيئتك).';
+  if (segs.length !== 1 || /[$`(){}<>*?~!\\]/.test(s)) return { error: alone };
+  const t = cmdTokens(s);
+  if (cmdName(t[0]) !== 'git') return { error: alone };
+  let i = 1, dir = '';
+  while (i < t.length && t[i] !== 'push') {
+    if (t[i] === '-C' && t[i + 1]) { dir = t[i + 1]; i += 2; continue; }
+    return { error: 'دفع الجسر بلا خيارات git العامّة (عدا ‎-C المستودع): git push -u origin <الفرع>.' };
+  }
+  let upstream = false;
+  const pos = [];
+  for (const a of t.slice(i + 1)) {
+    if (a === '-u' || a === '--set-upstream') { upstream = true; continue; }
+    if (PUSH_NOOP_FLAGS.test(a)) continue;
+    if (a.startsWith('-')) return { error: 'خيار غير مدعوم في دفع الجسر: ' + a + ' — المسموح: git push [-u] origin <الفرع>.' };
+    pos.push(a);
+  }
+  if (pos.length !== 2 || pos[0] !== 'origin') return { error: 'ادفع إلى origin فرعًا واحدًا: git push -u origin <الفرع>.' };
+  const ref = pos[1], colon = ref.indexOf(':');
+  const src = (colon < 0 ? ref : ref.slice(0, colon)).replace(/^refs\/heads\//, '');
+  const branch = (colon < 0 ? ref : ref.slice(colon + 1)).replace(/^refs\/heads\//, '');
+  if ((src !== 'HEAD' && !BRANCH_NAME.test(src)) || !BRANCH_NAME.test(branch) || /^HEAD$/i.test(branch) || pushDstIsMain(branch)) return { error: 'اذكر فرعًا مسمّى غير main: git push -u origin <الفرع>.' };
+  return { src, branch, upstream, dir };
+}
+
+/* v-audit-bridge (sat-bridges-2): gh بالرموز لا بالنصّ — الخيار الملتصق بقيمته (‎-XPUT، ‎-fbase=main، ‎--method=PUT)، والعناقيد
+   (‎-iXPUT)، و«gh pr -R x merge». gh api للقراءة فقط: طريقة غير GET أو أيّ حقل (الحقول تجعلها POST) = رفض.
+   الجولة ٢: gh (cobra) يقبل الخيارات قبل الأمر الفرعيّ ويحملها إلى الأمر الأخير («gh -X PUT api …/merge»، «gh -R o/r pr
+   merge 5») — فلا خيار قبل الأمر الفرعيّ الأوّل. والفرعيّ الثاني يُحسم كما يحسمه cobra (خيار بلا «=» بصيغة ‎--x أو ‎-x
+   يأخذ ما بعده قيمةً، فـ«gh pr --body x merge 5» يدمج) ثمّ يُفحص بقواعد gh في DENY_RULES («gh workflow -R x run»).
+   والاقتباس والشرطة المائلة داخل الرمز يُزالان كما تزيلهما الصدفة («m''erge»)، والمتغيّر في موضع الأمر مرفوض،
+   و«gh extension install|exec» يجلب كودًا ويشغّله. الضمان الأخير الرمز نفسه (CC_AGENT_GH_TOKEN بلا Contents: write). */
+const GH_API_VALUE_SHORT = 'XfFHpqt';
+const GH_RULES = DENY_RULES.filter((r) => r.re.source.startsWith('\\bgh\\s+'));
+export function checkGh(segment) {
+  const rest = cmdTokens(segment).map((x) => x.replace(/['"\\]/g, '')).filter(Boolean);
+  const gi = rest.findIndex((x) => cmdName(x) === 'gh');
+  if (gi < 0) return '';
+  rest.splice(0, gi + 1);
+  const ci = rest.findIndex((x) => !x.startsWith('-'));
+  if (ci > 0) return 'خيارات gh قبل الأمر الفرعيّ تُخفيه عن الفحص — اكتبها بعده: gh pr view 5 -R o/r.';
+  const sub = ci < 0 ? '' : rest[ci];
+  const literal = 'اكتب أمر gh الفرعيّ حرفيًّا لا عبر متغيّر أو استبدال أمر.';
+  if (sub !== 'api') {
+    let sub2 = '';
+    for (let j = ci + 1; ci >= 0 && j < rest.length; j++) {
+      const a = rest[j];
+      if (a === '--') break;
+      if (!a.startsWith('-')) { sub2 = a; break; }
+      if (!a.includes('=') && a !== '-h' && a !== '--help' && (a.startsWith('--') || a.length === 2)) j++; // ‎-R x، ‎--body x
+    }
+    if (/[$`]/.test(sub + sub2)) return literal;
+    if (/^(?:extensions?|ext)$/.test(sub) && /^(?:install|exec)$/.test(sub2)) return 'إضافات gh تجلب كودًا وتشغّله — بيد المالك.';
+    const canon = 'gh ' + sub + ' ' + sub2;
+    for (const r of GH_RULES) if (r.re.test(canon)) return r.why;
+    return '';
+  }
+  const ro = 'gh api للقراءة فقط (GET).';
+  let method = '';
+  for (let j = ci + 1; j < rest.length; j++) {
+    const a = rest[j];
+    if (/[$`]/.test(a)) return literal;
+    if (a === '--') break;
+    const m = /^--method(?:=(.*))?$/.exec(a);
+    if (m) { method = m[1] != null ? m[1] : (rest[++j] || ''); continue; }
+    if (/^--(?:field|raw-field|input)(?:=|$)/.test(a)) return ro;
+    if (a.startsWith('--') || !a.startsWith('-') || a.length < 2) continue;
+    for (let k = 1; k < a.length; k++) {
+      if (!GH_API_VALUE_SHORT.includes(a[k])) continue; // خيار منطقيّ (‎-i…) في العنقود
+      if (a[k] === 'f' || a[k] === 'F') return ro;
+      const v = a.slice(k + 1).replace(/^=/, '') || rest[++j] || '';
+      if (a[k] === 'X') method = v;
+      break;
+    }
+  }
+  return method && !/^GET$/i.test(method) ? ro : '';
+}
+
+/** يقسّم سطر الأوامر إلى مقاطع (&& || ; | & وأسطر) ليُفحص كلّ أمر على حدة.
+    v-audit-bridge (الجولة ٢): «\» قبل نهاية السطر وصلُ سطر عند الصدفة لا فاصل — «gh pr \⏎merge 5» أمر واحد. */
 export function commandSegments(cmd) {
-  return String(cmd || '').split(/\|\||&&|[;|&\n]/).map((s) => s.trim()).filter(Boolean);
+  return String(cmd || '').replace(/\\\r?\n/g, ' ').split(/\|\||&&|[;|&\n]/).map((s) => s.trim()).filter(Boolean);
 }
 
 /** سبب الرفض لأمر Bash كامل، أو '' إن كان مسموحًا. */
 export function denyReason(cmd) {
   const s = String(cmd || '');
   for (const r of DENY_RULES) if (r.re.test(s)) return r.why;
-  for (const seg of commandSegments(s)) { const why = checkGitPush(seg); if (why) return why; }
-  return '';
+  for (const seg of commandSegments(s)) { const why = checkGitPush(seg) || checkGh(seg); if (why) return why; }
+  const push = pushRequest(s);
+  return (push && push.error) || '';
 }
 
-/** مسارات الملفّات التي لا تُمسّ بأدوات القراءة والتعديل (الأسرار، وسياج الجسر نفسه). */
-const PROTECTED_PATH = /(^|\/)\.env(?!\.example$)(\.[\w-]+)?$|(^|\/)\.npmrc$|(^|\/)\.git\/|^\/work\/state(\/|$)|^\/app(\/|$)|(^|\/)\.claude\/settings(\.local)?\.json$/;
+/** v-audit-bridge (sat-bridges-1/2): بيئة Claude Code — بلا سرّ الجسر ولا مفتاح الكتابة على GitHub (GITHUB_TOKEN يبقى في
+    git.mjs وحده: الدفع بـGIT_ASKPASS والدمج). gh يأخذ CC_AGENT_GH_TOKEN إن ضبطه المالك: رمز قراءة وفتح طلبات سحب بلا
+    Contents: write، فلا دفع ولا دمج بأيّ صيغة مهما فات السياجَ النصّيّ. */
+export function agentEnv(env) {
+  const e = Object.assign({}, env || {});
+  const ro = String(e.CC_AGENT_GH_TOKEN || '').trim();
+  for (const k of ['CC_BRIDGE_SECRET', 'GITHUB_TOKEN', 'GH_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'CC_AGENT_GH_TOKEN', 'CC_GH_TOKEN']) delete e[k];
+  if (ro) e.GH_TOKEN = ro;
+  return e;
+}
+
+/** v-audit-bridge (sat-bridges-1): قرار canUseTool في الجسر — decideTool، ثمّ «git push» الذي يجيزه يجريه الجسر نفسه بمفتاحه
+    (pushBranch من git.mjs) ويُستبدل الأمر بطباعة النتيجة فيراها Claude Code ناتجَ أمره؛ ورفض الدفع يصله سببًا. */
+const shQuote = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";
+export async function bridgeDecision(name, input, pushBranch) {
+  const d = decideTool(name, input);
+  const p = (d.behavior === 'allow' && name === 'Bash') ? pushRequest(input && input.command) : null;
+  if (!p || p.error) return d;
+  const r = await Promise.resolve().then(() => pushBranch(p)).catch((e) => ({ error: redact(String((e && e.message) || e).slice(0, 400)) }));
+  if (!r || r.error) return { behavior: 'deny', message: (r && r.error) || 'تعذّر الدفع.' };
+  const msg = '✓ الجسر دفع ' + r.src + ' إلى origin/' + r.branch + ' (' + r.sha + ') بمفتاحه' + (p.upstream ? ' وضبط المتعقَّب' : '') + ' — لا تُعِد الدفع؛ تابع (gh pr create…).';
+  return { behavior: 'allow', updatedInput: Object.assign({}, input, { command: "printf '%s\\n' " + shQuote(msg) }) };
+}
+
+/** مسارات الملفّات التي لا تُمسّ بأدوات القراءة والتعديل (الأسرار، وسياج الجسر نفسه، وبيئة العمليّات). */
+const PROTECTED_PATH = /(^|\/)\.env(?!\.example$)(\.[\w-]+)?$|(^|\/)\.npmrc$|(^|\/)\.git\/|^\/work\/state(\/|$)|^\/app(\/|$)|(^|\/)\.claude\/settings(\.local)?\.json$|^\/proc\/.*environ$/;
 
 /**
  * قرار الأداة عند سؤال Claude Code: يعود بالشكل الذي ينتظره canUseTool.
@@ -154,7 +283,7 @@ export function decideTool(name, input) {
 /** الإضافة الوحيدة على تعليمات Claude Code — الحدود، لا الأسلوب. */
 export const RULES_APPEND = [
   'أنت تعمل داخل مستودع المالك عبر جسر خاصّ به، بصلاحيّات جلسته على الويب: بحث الويب وجلبه، الشبكة من داخل الأوامر، git fetch/pull، الدفع إلى فرع غير main، وفتح طلبات السحب وقراءة فحوصها بـgh. القواعد الإضافيّة الوحيدة:',
-  '- اعمل دائمًا على فرع غير main (أنشئ cc/<اسم-قصير> إن كنت على main) والتزم برسائل واضحة. لا تدفع إلى main أبدًا ولا دفعًا قسريًّا.',
+  '- اعمل دائمًا على فرع غير main (أنشئ cc/<اسم-قصير> إن كنت على main) والتزم برسائل واضحة. لا تدفع إلى main أبدًا ولا دفعًا قسريًّا. الدفع يجريه الجسر نفسه بمفتاحه (لا مفتاح كتابة في بيئتك): اكتب git push -u origin <الفرع> وحده في أمر مستقلّ.',
   '- لا تدمج طلب سحب ولا تنشر على Vercel ولا تنشر حزمًا: المالك يدمج بأمر «ادمج» من التطبيق فينشر Vercel من main. «انشر» عنده = دفع الفرع وفتح طلب السحب؛ وإن طلب ذلك منك في المهمّة فادفع الفرع وافتح الطلب بـgh pr create وأعطه الرابط.',
   '- لا تقرأ ولا تكتب ملفّات البيئة والأسرار (.env، الرموز) ولا /work/state ولا .claude/settings؛ والرجوع المدمّر عن التغييرات (git reset --hard) بأمر المالك «تراجع» وحده.',
   '- بعد أيّ تعديل على js/app-NN-*.js أو js/partials-*.js شغّل npm run bundle، ثمّ npm run ci حتّى يمرّ قبل أن تقول إنّك انتهيت.',
@@ -184,7 +313,7 @@ export function commandWord(text) {
 export function redact(text, env) {
   let s = String(text == null ? '' : text);
   const e = env || process.env;
-  for (const k of ['ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN', 'GITHUB_TOKEN', 'GH_TOKEN', 'CC_BRIDGE_SECRET']) {
+  for (const k of ['ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN', 'GITHUB_TOKEN', 'GH_TOKEN', 'CC_AGENT_GH_TOKEN', 'CC_BRIDGE_SECRET']) {
     const v = e[k]; if (v && v.length >= 8) s = s.split(v).join('[' + k + ']');
   }
   return s.replace(/sk-ant-[A-Za-z0-9_\-]{10,}/g, '[key]').replace(/gh[pousr]_[A-Za-z0-9]{20,}/g, '[token]');
