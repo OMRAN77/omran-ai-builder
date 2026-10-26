@@ -1,0 +1,173 @@
+// tests/audit-fix-video.test.cjs — v-audit-video: دفعة «الفيديو» من الفحص الشامل (موافقة المالك على كلّ عطب غير مقفل في طلب سحب واحد).
+// كلّ اختبار يبدأ برقم العطب، ويثبت السلوك على الكود الحقيقيّ (الخادم بـrequire مع KV في الذاكرة وجلب مزيّف، والواجهة بـvm):
+//   srv-video-3  بروكسي التنزيل وveo-download: قطع العميل لا يعلّق الدالّة ويُحسب ما بُثّ، والطلبات المتوازية تُحجز ذرّيًّا، وسقف لـveo.
+//   srv-video-4  «شاهد الفيديو»: حدّ يوميّ لفتح الرفع، ومهمّة رفع واحدة مفتوحة للحساب (ملفّ السابقة غير المشغّلة يُحذف).
+//   cli-video-2  تعليق صانع الفيديو يرسل رمز الحساب إلى /api/tts، والسرد الساقط من مشهد في الفيلم يُعلَن.
+//   cli-video-3  محرّر «كتابة وصوت»: فيديو مجهول المدّة مع صوت مكرّر/بديل يُصدَّر بنهاية.
+//   cli-video-4  «اصنع/أعد المحاولة» في الترندات لا يمحو الفيديو السابق قبل القبول، وصانع الفيديو يعيد ناتجه السابق.
+//   cli-video-5 · x-runtime-ui-2  المحرّر بالـ١٤ لغة عبر I18N، والتبويب وبند القائمة يتبعان اللغة.
+//   cli-video-6  رسائل حدّ اليوم والمهلة وإعادة المحاولة في صانع الفيديو بالـ١٤ لغة لا isEn().
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const http = require('node:http');
+const vm = require('node:vm');
+
+process.env.AUTH_SECRET = 'audit-fix-video-secret-' + 'x'.repeat(32);
+process.env.GEMINI_API_KEY = 'gm-test';
+delete process.env.OWNER_USERNAMES; delete process.env.OWNER_USERNAME;
+const root = path.resolve(__dirname, '..');
+const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
+const rp = (f) => require.resolve(path.join(root, f));
+const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(f), loaded: true, exports }; };
+const LANGS = ['ar', 'en', 'fr', 'hi', 'ur', 'bn', 'ne', 'id', 'fil', 'tr', 'zh', 'ru', 'es', 'ml'];
+
+const store = new Map();
+const kvImpl = {
+  kvGetJSON: async (k) => { if (!store.has(k)) return null; const v = store.get(k); try { return JSON.parse(v); } catch (e) { return v; } },
+  kvPutJSON: async (k, v) => { store.set(k, JSON.stringify(v)); },
+  kvGetRaw: async (k) => (store.has(k) ? String(store.get(k)) : null),
+  kvSetRaw: async (k, v) => { store.set(k, String(v)); },
+  kvSetIfAbsent: async (k, v) => { if (store.has(k)) return false; store.set(k, String(v)); return true; },
+  kvIncr: async (k) => { const v = Number(store.get(k) || 0) + 1; store.set(k, String(v)); return v; },
+  kvIncrBy: async (k, n) => { const v = Number(store.get(k) || 0) + Math.trunc(Number(n)); store.set(k, String(v)); return v; },
+  kvDecrBy: async (k, n) => { const v = Number(store.get(k) || 0) - Math.trunc(Number(n)); store.set(k, String(v)); return v; },
+  kvDel: async (k) => { store.delete(k); },
+  kvExpire: async () => {},
+  kvList: async (p) => [...store.keys()].filter((k) => k.startsWith(p)),
+  kvPipeline: async (cmds) => cmds.map(() => null),
+};
+mock('api/_lib/kv.js', new Proxy(kvImpl, { get: (t, p) => t[p] || (async () => null) }));
+mock('api/_lib/log-error.js', { logError: () => {}, logErrorAndFlush: async () => {} });
+mock('api/_lib/_vip.js', { isVip: async () => false });
+
+const auth = require(rp('api/_lib/auth.js'));
+async function user(name, extra) { await auth.putUser(name, Object.assign({ username: name, points: 1000, createdAt: Date.now() }, extra || {})); return auth.makeToken(name); }
+const day = () => new Date().toISOString().slice(0, 10);
+
+// ─────────────────────────────── srv-video-3 ───────────────────────────────
+const videoDownload = require(rp('api/video-download.js'));
+const veoDownload = require(rp('api/_lib/veo-download.js'));
+
+/** مجرى مصدر بطول معلن يُولَّد عند الطلب (لا ذاكرة)، بقطع ٦٤ ك.ب. */
+function bigBody(total) {
+  let left = total;
+  return new ReadableStream({
+    pull(c) {
+      if (left <= 0) { c.close(); return; }
+      const n = Math.min(65536, left); left -= n; c.enqueue(new Uint8Array(n));
+    },
+  });
+}
+const mediaRes = (total, type) => new Response(bigBody(total), { status: 200, headers: { 'content-type': type || 'video/mp4', 'content-length': String(total) } });
+
+/** خادم Node حقيقيّ حول المعالج (ردّ بشكل Vercel)، والعميل يقرأ readBytes ثمّ يقطع. يرجع: هل انتهى المعالج خلال المهلة. */
+async function abortMidway(handler, query, readBytes) {
+  let done = null;
+  const server = http.createServer((req, res) => {
+    res.status = function (c) { this.statusCode = c; return this; };
+    res.json = function (v) { if (!this.headersSent) this.setHeader('content-type', 'application/json'); this.end(JSON.stringify(v)); return this; };
+    req.query = query;
+    done = Promise.resolve(handler(req, res)).then(() => 'finished', (e) => 'threw:' + (e && e.message));
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  await new Promise((resolve) => {
+    const creq = http.get({ host: '127.0.0.1', port, path: '/', headers: { 'x-forwarded-for': '198.51.100.7' } }, (cres) => {
+      let got = 0;
+      cres.on('data', (b) => { got += b.length; if (got >= readBytes) { creq.destroy(); resolve(); } });
+      cres.on('end', resolve);
+    });
+    creq.on('error', () => resolve());
+  });
+  let timer;
+  const outcome = await Promise.race([done, new Promise((r) => { timer = setTimeout(() => r('hung'), 4000); })]);
+  clearTimeout(timer);
+  server.closeAllConnections && server.closeAllConnections();
+  server.close();
+  return outcome;
+}
+
+function fakeRes() {
+  return {
+    code: 200, body: null, headers: {}, chunks: [], headersSent: false,
+    setHeader(k, v) { this.headers[String(k).toLowerCase()] = v; }, status(c) { this.code = c; return this; },
+    json(v) { this.body = v; return this; }, write(b) { this.headersSent = true; this.chunks.push(b.length); return true; },
+    once() {}, end() { return this; },
+  };
+}
+
+test('srv-video-3 (أ): قطع العميل في منتصف تنزيل ٤٨ م.ب لا يعلّق البروكسي، وما بُثّ يُحسب في ميزانيّة اليوم', async () => {
+  const tk = await user('dlabort1');
+  videoDownload.__deps.lookup = async () => [{ address: '93.184.216.34', family: 4 }];
+  videoDownload.__deps.fetchFn = async () => mediaRes(48 * 1024 * 1024);
+  let outcome;
+  try { outcome = await abortMidway(videoDownload, { url: 'https://cdn.example/big.mp4', token: tk }, 1024 * 1024); }
+  finally { videoDownload.__deps.lookup = undefined; videoDownload.__deps.fetchFn = undefined; }
+  assert.equal(outcome, 'finished', 'المعالج ينتهي بعد رحيل العميل (كان معلّقًا ينتظر drain)');
+  const counted = Number(store.get('dl:bytes:dlabort1:' + day()) || 0);
+  assert.ok(counted > 0, 'المبثوث قبل القطع محسوب (كان صفرًا)');
+  assert.ok(counted < 48 * 1024 * 1024, 'المحسوب هو المبثوث فعلًا لا الحجز كلّه: ' + counted);
+});
+
+test('srv-video-3 (ب): خمسة تنزيلات متوازية بحجم ٥٠ ك.ب تحت سقف ٧٥ ك.ب — يُحجز ذرّيًّا فلا يمرّ إلّا ما يمرّ تتابعًا', async () => {
+  const tk = await user('dlpar1');
+  const prev = process.env.DOWNLOAD_BYTES_DAILY;
+  process.env.DOWNLOAD_BYTES_DAILY = String(75 * 1024);
+  videoDownload.__deps.lookup = async () => [{ address: '93.184.216.34', family: 4 }];
+  videoDownload.__deps.fetchFn = async () => mediaRes(50 * 1024);
+  let codes;
+  try {
+    codes = await Promise.all([0, 1, 2, 3, 4].map(async () => {
+      const r = fakeRes();
+      await videoDownload({ method: 'GET', headers: { 'x-forwarded-for': '198.51.100.8' }, query: { url: 'https://cdn.example/same50.mp4', token: tk } }, r);
+      return r.code;
+    }));
+  } finally {
+    videoDownload.__deps.lookup = undefined; videoDownload.__deps.fetchFn = undefined;
+    if (prev === undefined) delete process.env.DOWNLOAD_BYTES_DAILY; else process.env.DOWNLOAD_BYTES_DAILY = prev;
+  }
+  assert.equal(codes.filter((c) => c === 200).length, 2, 'كما لو كانت متتابعة: ٠ ثمّ ٥٠ تحت السقف، والثالث فوقه — ' + codes.join(','));
+  assert.equal(codes.filter((c) => c === 429).length, 3);
+  assert.equal(Number(store.get('dl:bytes:dlpar1:' + day())), 100 * 1024, 'العدّاد = المبثوث فعلًا (المرفوض رُدّ حجزه)');
+});
+
+const VEO_FILE = 'https://generativelanguage.googleapis.com/v1beta/files/aud1t9:download?alt=media';
+function veoQuery() {
+  const link = new URL(veoDownload.downloadUrl(VEO_FILE), 'https://app.example');
+  return { uri: link.searchParams.get('uri'), sig: link.searchParams.get('sig') };
+}
+
+test('srv-video-3 (ج): veo-download — قطع العميل لا يعلّق الدالّة', async () => {
+  veoDownload.__deps.lookup = async () => [{ address: '142.250.1.1', family: 4 }];
+  veoDownload.__deps.fetchFn = async () => mediaRes(48 * 1024 * 1024);
+  let outcome;
+  try { outcome = await abortMidway(veoDownload, veoQuery(), 1024 * 1024); }
+  finally { veoDownload.__deps.lookup = undefined; veoDownload.__deps.fetchFn = undefined; }
+  assert.equal(outcome, 'finished');
+});
+
+test('srv-video-3 (د): veo-download له سقف بايت يوميّ للملفّ — الرابط الموقّع لا يعيد البثّ بلا حدّ (والتوازي محجوز)', async () => {
+  const prev = process.env.VEO_DL_BYTES_DAILY;
+  process.env.VEO_DL_BYTES_DAILY = String(100 * 1024);
+  for (const k of [...store.keys()]) if (k.startsWith('veo:dl:bytes:')) store.delete(k);
+  veoDownload.__deps.lookup = async () => [{ address: '142.250.1.1', family: 4 }];
+  let fetched = 0;
+  veoDownload.__deps.fetchFn = async () => { fetched++; return mediaRes(60 * 1024); };
+  const one = async () => { const r = fakeRes(); await veoDownload({ method: 'GET', query: veoQuery(), headers: {} }, r); return r; };
+  let par, after;
+  try {
+    par = await Promise.all([one(), one(), one()]);
+    after = await one();
+  } finally {
+    veoDownload.__deps.lookup = undefined; veoDownload.__deps.fetchFn = undefined;
+    if (prev === undefined) delete process.env.VEO_DL_BYTES_DAILY; else process.env.VEO_DL_BYTES_DAILY = prev;
+  }
+  assert.deepEqual(par.map((r) => r.code).sort(), [200, 200, 429], 'اثنان تحت السقف والثالث فوقه');
+  assert.equal(after.code, 429); assert.equal(after.body.error, 'daily_limit_reached');
+  assert.equal(fetched, 3, 'بعد امتلاء السقف لا جلب بمفتاحنا أصلًا');
+  const ok = par.find((r) => r.code === 200);
+  assert.equal(ok.chunks.reduce((a, b) => a + b, 0), 60 * 1024, 'المسموح يُبثّ كاملًا');
+});
