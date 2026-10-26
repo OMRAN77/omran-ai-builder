@@ -242,18 +242,21 @@ async function restoreProtected(prep, origBase64, resultBase64, geminiKey, resul
     /* v-face-map: الموديل قد يحرّك الشخص أو يغيّر حجمه (خلفية جديدة مثلًا). نكشف الصندوق في
        الناتج أيضًا؛ إن انزاح عن الأصل نلصق وجه الأصل في مكانه الجديد بالتحجيم بدل مكانه القديم. */
     const w = prep.size.w, h = prep.size.h;
-    const srcRect = boxToRect(prep.box, w, h, prep.level === 'face' ? 0.06 : 0.08);
+    const pad = prep.level === 'face' ? 0.06 : 0.08;
+    const srcRect = boxToRect(prep.box, w, h, pad);
     const src = { x0: srcRect.x0 / w, y0: srcRect.y0 / h, x1: srcRect.x1 / w, y1: srcRect.y1 / h };
     const resBoxes = geminiKey ? await detectBoxes(geminiKey, resultBase64, resultMime || 'image/png') : null;
     const resBox = resBoxes && (prep.level === 'face' ? resBoxes.face : (resBoxes.head || resBoxes.face));
     if (resBox) {
+      /* v-audit-studeng (srv-images-1): الانزياح ونسبة الحجم على الصندوقين **بلا هامش**، والوجهة بهامش المصدر نفسه — كان المصدر
+         بـ٨٪ (أو ٦٪) والوجهة بـ٣٪: النسبة (١٫٠٦/١٫١٦)² = ٠٫٨٣٥ < ٠٫٨٥ في كلّ مرّة، فيدخل «الإزاحة» بلا حركة ويُلصق الرأس أصغر ~٩٪
+         (وفي 'body' يسقط قفل ما فوق الرقبة). الآن لا حركة = rect/above كما حُضّرت، والحركة الحقيقيّة تُلصق بمقياس ١. */
+      const s0 = { x0: prep.box[1] / 1000, y0: prep.box[0] / 1000, x1: prep.box[3] / 1000, y1: prep.box[2] / 1000 };
       const dst = { x0: resBox[1] / 1000, y0: resBox[0] / 1000, x1: resBox[3] / 1000, y1: resBox[2] / 1000 };
-      const pad = 0.03; /* هامش صغير حول الصندوق الجديد — أقلّ هالة من خلفية الأصل */
       const dw = dst.x1 - dst.x0, dh = dst.y1 - dst.y0;
       const dstP = { x0: dst.x0 - dw * pad, y0: dst.y0 - dh * pad, x1: dst.x1 + dw * pad, y1: dst.y1 + dh * pad };
-      const cxs = (src.x0 + src.x1) / 2, cys = (src.y0 + src.y1) / 2, cxd = (dstP.x0 + dstP.x1) / 2, cyd = (dstP.y0 + dstP.y1) / 2;
-      const shift = Math.hypot(cxs - cxd, cys - cyd);
-      const sizeRatio = ((dstP.x1 - dstP.x0) * (dstP.y1 - dstP.y0)) / Math.max(1e-6, (src.x1 - src.x0) * (src.y1 - src.y0));
+      const shift = Math.hypot((s0.x0 + s0.x1) / 2 - (dst.x0 + dst.x1) / 2, (s0.y0 + s0.y1) / 2 - (dst.y0 + dst.y1) / 2);
+      const sizeRatio = (dw * dh) / Math.max(1e-6, (s0.x1 - s0.x0) * (s0.y1 - s0.y0));
       if (shift > 0.025 || sizeRatio < 0.85 || sizeRatio > 1.18) {
         console.warn('[face-lock] subject moved (shift ' + shift.toFixed(3) + ', size ' + sizeRatio.toFixed(2) + ') — mapping face to new place');
         zones = [{ kind: 'map', src, dst: dstP }];

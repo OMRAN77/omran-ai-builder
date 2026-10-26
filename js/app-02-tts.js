@@ -33,6 +33,10 @@ function imgErrFriendly(err, isAr, info){
       ? 'تأخر إنشاء الصورة هذه المرة. أعد المحاولة بعد لحظة.'
       : 'Image generation took too long this time. Please try again in a moment.';
   }
+  /* v-audit-studeng (srv-studios-1-3): الاستوديو صار يرسل الرمزين بدل «تعذّر إنشاء الصورة الآن…» العربيّ لكلّ اللغات — بالـ١٤ لغة،
+     والعربيّ/الإنجليزيّ أدناه احتياطًا ما لم يُعرف المفتاح (t يعيد اسمه) */
+  if(err === 'image_generation_busy' && t('axStudengImgBusy') !== 'axStudengImgBusy') return t('axStudengImgBusy');
+  if(err === 'image_generation_failed' && t('axStudengImgFailed') !== 'axStudengImgFailed') return t('axStudengImgFailed');
   if(err === 'image_generation_busy'){
     return isAr
       ? 'خدمة الصور مشغولة الآن. أعد المحاولة بعد لحظة.'

@@ -3171,7 +3171,9 @@
           const label = (styleEl.querySelector('option[value="' + r.styleVal + '"]') || {}).textContent || r.styleVal;
           cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* v-audit-studeng (srv-studios-1-3): الرمز بنصّ الواجهة (studioErrText) — كان «❌ image_generation_failed» أو نصّ الخادم خامًا */
+          const errP = document.createElement('p'); errP.style.cssText = 'font-size:11.5px; color:#f87171;';
+          errP.textContent = studioErrText(new Error(r.error || 'unknown')); cell.appendChild(errP);
         }
         compareResultsEl.appendChild(cell);
       });
@@ -3231,7 +3233,9 @@
         if(r.dataUrl){
           cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* v-audit-studeng (srv-studios-1-3): الرمز بنصّ الواجهة (studioErrText) — كان «❌ image_generation_failed» أو نصّ الخادم خامًا */
+          const errP = document.createElement('p'); errP.style.cssText = 'font-size:11.5px; color:#f87171;';
+          errP.textContent = studioErrText(new Error(r.error || 'unknown')); cell.appendChild(errP);
         }
         heritageCompareResultsEl.appendChild(cell);
       });
