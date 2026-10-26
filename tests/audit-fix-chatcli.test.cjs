@@ -477,7 +477,7 @@ test('x-i18n-5: المتفرّقات تُقرأ بمفاتيحها مع الاح
     [A01, "authMsg('axBootAdminMsg'"],
     [A01, "authMsg('axBootBanned'"],
     [A12, "'axSearchEmLinkFailed'"],
-    [A08, "'axChatcliMahaMicWarn'"],
+    [A08, "t('mahaLowMic')"], // تحذير المايك أصلحته voice (cli-voice-9) بالمفتاح القائم — لا مفتاح مكرّر
     [A10, "'axChatcliCopyLinkPrompt'"],
   ];
   for (const [src, s] of want) assert.ok(src.includes(s), 'غائب: ' + s);

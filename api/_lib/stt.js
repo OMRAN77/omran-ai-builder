@@ -22,7 +22,9 @@ module.exports = async (req, res) => {
   try {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GROQ_API_KEY' });
+      /* v-audit-voice (cli-voice-8): رمز ثابت لا نصّ — كان اسم المزوّد ومفتاحه يظهران للمستخدم في نافذة المايك */
+      console.error('[stt] missing speech key');
+      res.status(500).json({ error: 'unavailable' });
       return;
     }
 
@@ -38,10 +40,11 @@ module.exports = async (req, res) => {
 
     const usage = await checkAndConsume(token, guestId, 'stt', clientIp(req));
     if (!usage.allowed) {
+      // v-audit-voice (cli-voice-8): رمزان ثابتان يترجمهما العميل (voiceSttErrorText) — كان نصًّا عربيًّا لكلّ اللغات يذكر «المزوّد» و«مفتاحك الخاص»
       if (usage.reason === 'auth') {
-        res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
+        res.status(401).json({ error: 'auth_required' });
       } else {
-        res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.' });
+        res.status(402).json({ error: 'daily_limit', limit: DAILY_LIMIT });
       }
       return;
     }
@@ -227,6 +230,7 @@ module.exports = async (req, res) => {
 
     res.status(200).json({ text: cleanText, lowConfidence, language: detectedLanguage });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[stt] proxy error: ' + (e && e.message ? e.message : String(e)).slice(0, 300)); // v-audit-voice: التفاصيل للسجلّ لا للمستخدم
+    res.status(500).json({ error: 'failed' });
   }
 };
