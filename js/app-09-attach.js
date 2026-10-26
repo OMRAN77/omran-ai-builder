@@ -149,6 +149,28 @@ function isImageAttachment(file){
   }catch(_e){ __swallow(_e, "attach:isImage"); }
   return false;
 }
+/* v-audit-attach (cli-chat-attach-8 · x-i18n-6): نصّ واجهة بمفتاح الـ١٤ لغة عبر t(). إن غاب المفتاح (نصّ جديد قبل وصول ترجمته
+   أو ملفّ لغة لم يُحمَّل) فالعربيّة للعربيّة وحدها والإنجليزيّة لغيرها — كانت ثنائيّات lang==='ar' تعرض الإنجليزيّة لاثنتي عشرة
+   لغة، وبعضها العربيّة لكلّ غير الإنجليزيّة وللأورديّة. */
+function omranAttachT(key, ar, en){
+  try{ const v = (typeof t === 'function') ? t(key) : key; if(v && v !== key) return v; }catch(e){ __swallow(e, 'attach:t'); }
+  return (typeof lang !== 'undefined' && lang === 'ar') ? ar : en;
+}
+/* v-audit-attach (cli-chat-attach-4): حقل الإرفاق بلا accept، وكلّ ما ليس صورة ولا PDF ولا أرشيفًا ولا فيديو كان يُقرأ نصًّا — رسالة
+   صوتيّة ٢ م.ب صارت ٤٥٠ ألف حرف (١٩٧ ألف منها U+FFFD) تُرسل للنموذج في كلّ رسالة، والبطاقة تعرضها ملفًّا نصّيًّا. الثنائيّ يُعرف
+   بنوعه أو امتداده قبل القراءة، أو بعيّنة النصّ بعدها (NUL، أو أكثر من ٢٪ حروفًا تالفة في أوّل ٨ آلاف حرف)، فيصير شريحة خطأ مترجمة. */
+const OMRAN_BINARY_EXT_RE = /\.(?:mp3|m4a|aac|ogg|oga|opus|wav|flac|amr|wma|aiff?|midi?|doc|dot|xls|xlt|ppt|pps|pot|odt|ods|odp|pages|numbers|epub|rar|7z|gz|tgz|bz2|xz|tar|zst|cab|apk|aab|xapk|ipa|exe|msi|dll|so|dylib|bin|dmg|iso|psd|sketch|fig|xcf|ttf|otf|woff2?|eot|class|dex|pyc|wasm|db|sqlite3?|mdb|accdb)$/i;
+function omranIsBinaryAttach(file, text){
+  try{
+    if(text == null) return /^(?:audio|font)\//i.test((file && file.type) || '') || OMRAN_BINARY_EXT_RE.test((file && file.name) || '');
+    const s = String(text).slice(0, 8000);
+    if(!s) return false;
+    if(s.indexOf('\u0000') !== -1) return true;
+    let bad = 0;
+    for(let i = 0; i < s.length; i++) if(s.charCodeAt(i) === 0xFFFD) bad++;
+    return bad / s.length > 0.02;
+  }catch(e){ __swallow(e, 'attach:binary'); return false; }
+}
 
 /* v-gold-badge: الشرائح مضمّنة داخل الملفّ — لا مسارات ولا ملفّات صور
    منفصلة، فلا تتعطّل البطاقة إن لم يُنشَر مجلّد الصور. ~30KB إجمالًا. */
@@ -1143,6 +1165,87 @@ async function fileToBase64(file){
   return btoa(binary);
 }
 
+/* v-audit-attach (cli-chat-attach-3): وثيقة Office (docx/xlsx/pptx) أرشيف zip من XML. الفكّ المحلّيّ كان يقرأ كلّ ‎.xml‎ فيها نصًّا
+   خامًا بوسومه (styles وtheme و[Content_Types]…) ويقصّ document.xml عند ٨٠ ألف حرف — وثيقة ٦٠٠ فقرة وصل منها ٣١٧ بسبعة أضعاف
+   التكلفة، وخلايا Excel منفصلة عن نصوصها — ولا خطأ فلا يبلغ الخادمَ أبدًا. الآن أجزاء المحتوى وحدها بلا وسوم: كلّ فقرة سطر، وكلّ
+   صفّ سطر بخلاياه (النصوص المشتركة في خلاياها)، والشرائح بترتيبها. وثيقة بلا نصّ = خطأ فيكمل المسار إلى الخادم كما كان. */
+function omranXmlText(xml){
+  return String(xml || '').replace(/\r?\n/g, ' ')
+    .replace(/<(?:\w+:)?tab\/>/g, '\t')
+    .replace(/<\/(?:\w+:)?p>|<(?:\w+:)?(?:br|cr)\b[^>]*\/>/g, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&#x([0-9a-f]+);|&#(\d+);/gi, (m, h, d) => { try{ return String.fromCodePoint(h ? parseInt(h, 16) : parseInt(d, 10)); }catch(e){ return m; } })
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
+    .split('\n').map((l) => l.replace(/ {2,}/g, ' ').replace(/^ +| +$/g, '')).join('\n')
+    .replace(/\n{3,}/g, '\n\n').trim();
+}
+function omranXlsxShared(xml){
+  const out = [];
+  String(xml || '').replace(/<(?:\w+:)?si\b[^>]*>([\s\S]*?)<\/(?:\w+:)?si>|<(?:\w+:)?si\s*\/>/g, (m, body) => {
+    let s = '';
+    String(body || '').replace(/<(?:\w+:)?rPh\b[\s\S]*?<\/(?:\w+:)?rPh>/g, '')
+      .replace(/<(?:\w+:)?t(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?t>/g, (m2, tx) => { s += tx; return m2; });
+    out.push(omranXmlText(s));
+    return m;
+  });
+  return out;
+}
+function omranXlsxSheetText(xml, shared){
+  const rows = [];
+  String(xml || '').replace(/<(?:\w+:)?row\b[^>]*>([\s\S]*?)<\/(?:\w+:)?row>/g, (m, body) => {
+    const cells = [];
+    body.replace(/<(?:\w+:)?c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g, (m2, attrs, inner) => {
+      const ref = (attrs.match(/\br="([A-Z]+)\d*"/) || [])[1];
+      const typ = (attrs.match(/\bt="(\w+)"/) || [])[1] || '';
+      let val = '';
+      if(inner){
+        if(typ === 'inlineStr') val = omranXmlText(inner);
+        else {
+          const v = (inner.match(/<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/) || [])[1];
+          if(v != null) val = typ === 's' ? String(shared[parseInt(v, 10)] || '') : omranXmlText(v);
+        }
+      }
+      let col = cells.length;
+      if(ref){ col = 0; for(const ch of ref) col = col * 26 + (ch.charCodeAt(0) - 64); col -= 1; }
+      while(cells.length < col && cells.length < 256) cells.push(''); // عمود بعيد في ورقة متناثرة لا يصنع آلاف الخلايا الفارغة
+      cells.push(val.replace(/\t/g, ' '));
+      return m2;
+    });
+    while(cells.length && !cells[cells.length - 1]) cells.pop();
+    if(cells.length) rows.push(cells.join('\t'));
+    return m;
+  });
+  return rows.join('\n');
+}
+async function omranOfficeZipText(zip, fileName){
+  const names = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
+  const num = (n) => parseInt((n.match(/(\d+)\.xml$/) || [])[1] || '0', 10);
+  const pick = (re) => names.filter((n) => re.test(n)).sort((a, b) => num(a) - num(b));
+  const read = async (n) => { try{ return await zip.files[n].async('string'); }catch(e){ __swallow(e, 'attach:office-part'); return ''; } };
+  const sections = [];
+  for(const n of pick(/^word\/document\d*\.xml$/)) sections.push([n, omranXmlText(await read(n))]);
+  const sheets = pick(/^xl\/worksheets\/sheet\d+\.xml$/);
+  if(sheets.length){
+    const shared = names.indexOf('xl/sharedStrings.xml') !== -1 ? omranXlsxShared(await read('xl/sharedStrings.xml')) : [];
+    for(const n of sheets) sections.push([n, omranXlsxSheetText(await read(n), shared)]);
+  }
+  for(const n of pick(/^ppt\/slides\/slide\d+\.xml$/)) sections.push([n, omranXmlText(await read(n))]);
+  const MAX_TOTAL = 300000;
+  const parts = ['النصّ المستخرج من المستند "' + fileName + '" (بلا تنسيق):'];
+  let used = 0, readCount = 0, cut = false;
+  for(const [n, txt] of sections){
+    if(!txt) continue;
+    if(used >= MAX_TOTAL){ cut = true; break; }
+    const piece = txt.slice(0, MAX_TOTAL - used);
+    if(piece.length < txt.length) cut = true;
+    parts.push('\n--- ' + n + ' ---\n' + piece);
+    used += piece.length; readCount++;
+  }
+  if(!used) throw new Error('لا يوجد نصّ قابل للقراءة داخل المستند.');
+  parts.push('\n\n=== خلاصة القراءة ===\nقُرئ ' + readCount + ' جزء (' + used.toLocaleString('en-US') + ' حرف).' + (cut ? ' اختُصر الباقي بعد بلوغ الحدّ الإجماليّ.' : ''));
+  return parts.join('\n');
+}
+
 /* v412 — فكّ الأرشيف في المتصفح: يزيل حدّ الـ3 م.ب كليًا. بدل إرسال الأرشيف
  * كاملًا للخادم، نرسل النص المستخرج فقط (الصور والثنائيات وnode_modules
  * و.git تُستبعد أصلًا — مشروع 20 م.ب قد يصير 200 ك.ب نصًّا مفيدًا). */
@@ -1156,7 +1259,8 @@ async function unzipInBrowser(file){
     });
   }
   const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
-  const TEXT = /\.(txt|md|markdown|js|jsx|ts|tsx|mjs|cjs|json|html?|css|scss|less|py|rb|php|java|c|cpp|h|hpp|cs|go|rs|swift|kt|sh|bash|yml|yaml|xml|sql|env|vue|svelte|toml|ini|conf|csv)$/i;
+  if(zip.files['[Content_Types].xml']) return omranOfficeZipText(zip, file.name); // v-audit-attach (cli-chat-attach-3): Office = نصّه لا XML
+  const TEXT =/\.(txt|md|markdown|js|jsx|ts|tsx|mjs|cjs|json|html?|css|scss|less|py|rb|php|java|c|cpp|h|hpp|cs|go|rs|swift|kt|sh|bash|yml|yaml|xml|sql|env|vue|svelte|toml|ini|conf|csv)$/i;
   const SKIP = /(^|\/)(node_modules|\.git|dist|build|\.next|__pycache__|__MACOSX)\//;
   const names = Object.keys(zip.files)
     .filter(n => !zip.files[n].dir && TEXT.test(n) && !SKIP.test(n))
@@ -1404,7 +1508,11 @@ async function omranIngestFiles(files, opts){
         try{ archiveB64 = file.size <= MAX_ARCHIVE_DIRECT_BYTES ? await fileToBase64(file) : null; }catch(e){ __swallow(e, 'attach:zipread'); }
         processArchiveAttachment(file, attachment, archiveB64);
       } else {
+        /* v-audit-attach (cli-chat-attach-4): الثنائيّ شريحة خطأ — لا قراءة ولا إرسال لحروفه التالفة */
+        const __binErr = () => ({ name: file.name, isImage: false, error: true, text: '⚠️ ' + file.name + ': ' + omranAttachT('axAttachBinary', 'صيغة هذا الملفّ لا تُقرأ نصًّا — أرسله PDF أو DOCX أو XLSX أو TXT أو صورة.', "This file format can't be read as text — send it as PDF, DOCX, XLSX, TXT or an image.") });
+        if(omranIsBinaryAttach(file)){ pendingAttachments.push(__binErr()); continue; }
         let text = await readFileAsText(file);
+        if(omranIsBinaryAttach(file, text)){ pendingAttachments.push(__binErr()); continue; }
         if(text.length > MAX_TEXT_ATTACH_CHARS){
           text = text.slice(0, MAX_TEXT_ATTACH_CHARS) + '\n... (' + t('attachTruncated') + ')';
         }
@@ -1476,17 +1584,17 @@ $('#attachInput').addEventListener('change', async (e) => {
               e.preventDefault();
               let __body = __pt;
               if(__body.length > MAX_TEXT_ATTACH_CHARS) __body = __body.slice(0, MAX_TEXT_ATTACH_CHARS) + '\n... (' + t('attachTruncated') + ')';
-              const __isArP = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
               /* الاسم يعكس المخزَّن فعلًا لا الملصوق الأصلي، ويميّز الكود عن النثر */
               const __looksCode = /[{}();=<>]/.test(__body.slice(0, 4000)) && /\n/.test(__body);
               const __kb = Math.max(1, Math.round(__body.length / 1024));
               pendingAttachments.push({
-                name: (__isArP ? (__looksCode ? 'كود ملصوق' : 'نص ملصوق') : (__looksCode ? 'Pasted code' : 'Pasted text'))
-                  + ' · ' + __kb + ' KB' + (__body.length < __pt.length ? (__isArP ? ' (مقتطع)' : ' (truncated)') : ''),
+                /* v-audit-attach (cli-chat-attach-8): كانت الأورديّة تُعامَل عربيّة («نص ملصوق»)، وبقيّة اللغات إنجليزيّة — مفاتيح الـ١٤ لغة */
+                name: (__looksCode ? omranAttachT('axAttachPastedCode', 'كود ملصوق', 'Pasted code') : omranAttachT('axAttachPastedText', 'نص ملصوق', 'Pasted text'))
+                  + ' · ' + __kb + ' KB' + (__body.length < __pt.length ? ' (' + omranAttachT('axAttachCutShort', 'مقتطع', 'truncated') + ')' : ''),
                 isImage: false, text: __body, _pasted: true
               });
               renderAttachStrip();
-              try{ if(typeof settingsToast === 'function') settingsToast(__isArP ? '📄 حُوّل النص إلى مرفق — اضغط عليه لعرضه' : '📄 Converted to an attachment — tap it to view'); }catch(_e){ /* guard-ok */ }
+              try{ if(typeof settingsToast === 'function') settingsToast('📄 ' + omranAttachT('axAttachPasteToast', 'حُوّل النص إلى مرفق — اضغط عليه لعرضه', 'Converted to an attachment — tap it to view')); }catch(_e){ /* guard-ok */ }
               try{ $('#prompt').focus(); }catch(_e){ /* guard-ok */ }
             }
           }catch(err2){ __swallow(err2, 'attach:paste-text'); }
@@ -3989,7 +4097,7 @@ async function __sendPromptCore(){
     }
   }catch(e){ __swallow(e, 'vault:intercept'); }
   if(pendingAttachments.some(a => a.pending)){
-    alert(lang === 'ar' ? 'الرجاء الانتظار حتى ينتهي تحليل الأرشيف' : 'Please wait until archive analysis finishes');
+    alert(omranAttachT('axAttachWaitPending', 'الرجاء الانتظار حتى تنتهي معالجة المرفقات', 'Please wait until the attachments finish processing')); // v-audit-attach (cli-chat-attach-8): PDF معلَّق ليس «أرشيفًا»
     return;
   }
   /* v-video-watch: فيديو مرفق = يُشاهَد ويُسمَع (app-32) — قبل بوّابات الوسائط كي لا يُفهم «وش يقول في الفيديو؟» طلبَ إنشاء فيديو. */
@@ -4070,7 +4178,7 @@ async function __sendPromptCore(){
           // افتح المودال فوراً بنص مؤقت
           window.omranOpenVideoMaker('', __heroAtt.dataUrl, __heroAtt.mime || 'image/jpeg');
           // اعرض رسالة تحميل
-          if(__statusEl){ __statusEl.textContent = (typeof lang !== 'undefined' && lang === 'en') ? '🔍 Analyzing image...' : '🔍 جاري تحليل الصورة...'; __statusEl.style.display = 'block'; }
+          if(__statusEl){ __statusEl.textContent = '🔍 ' + omranAttachT('axAttachAnalyzingImage', 'جاري تحليل الصورة...', 'Analyzing image...'); /* v-audit-attach (cli-chat-attach-8): كان عربيًّا لكلّ لغة غير الإنجليزيّة */ __statusEl.style.display = 'block'; }
           const b64 = __heroAtt.dataUrl.indexOf(',') !== -1 ? __heroAtt.dataUrl.split(',')[1] : __heroAtt.dataUrl;
           const res = await fetch('/api/video-prompt', {
             method: 'POST',
@@ -6937,7 +7045,7 @@ DESIGN RULES (non-negotiable):
         }
       };
       const settled = await Promise.allSettled(Array.from({ length: Math.min(5, providers.length) }, () => __poolWorker()));
-      if(__runCtl.signal.aborted){
+      if(__runCtl.signal.aborted){ omranAskAllSealStop(cur, placeholders, prepMsg, revealStates); // v-audit-attach (cli-chat-attach-6): لا ⏳ عالقة ولا مؤقّت حيّ
         // User cancelled while "ask all" was mid-flight: skip showing any of
         // these results and let the outer catch restore the message for editing.
         const abortErr = new Error('aborted');
@@ -7714,6 +7822,29 @@ function omranStopMsg(partial, timedOut, log){
   const m = { role: 'assistant', content: partial || t(timedOut ? 'stTimeout' : 'msgStopped'), _stopped: true, askAllReply: false, _agParts: log };
   if(!partial){ m._stopEmpty = true; m._sys = 'stop'; }
   return m;
+}
+/* v-audit-attach (cli-chat-attach-6): الإيقاف (⏹ أو قطع الحارس) أثناء «اسأل الكل» — ومسار البناء بمزوّد واحد يمرّ به — كان يرمي
+   AbortError وفقاعات المزوّدين ما زالت _loading. الإمساك الخارجيّ لا يضيف رسالة الإيقاف إلّا بعد رسالة مستخدم، فتبقى ⏳ بلا شريط
+   أدوات حتّى إعادة التحميل، ويُسقط فلتر !m._loading نصّها الجزئيّ من سياق الدور التالي، ومؤقّت العرض (كلّ ٣٠مل) لا يُطفأ لأنّ
+   done لا يُضبط. هنا قبل الرمي: كلّ مؤقّت عرض يُطفأ، والفقاعة بنصّ جزئيّ تُختم ردًّا موقوفًا (_stopped كالمحادثة العاديّة)، والفارغة
+   وفقاعة التجهيز تُحذفان فيضيف الإمساك الخارجيّ رسالة الإيقاف المترجمة كما يفعل للمزوّد الواحد. */
+function omranAskAllSealStop(cur, placeholders, prepMsg, revealStates){
+  try{
+    if(revealStates && typeof revealStates.forEach === 'function'){
+      revealStates.forEach((st) => { try{ if(st && st.timer) clearInterval(st.timer); }catch(e){ __swallow(e, 'askall:stop-timer'); } });
+    }
+    const drop = (m) => { const i = cur.messages.indexOf(m); if(i !== -1) cur.messages.splice(i, 1); };
+    (placeholders || []).forEach((m) => {
+      if(!m || !m._loading) return;
+      const st = (revealStates && revealStates.get) ? revealStates.get(m._uid) : null;
+      const txt = String((st && st.target) || m.content || '');
+      m._loading = false;
+      if(txt.trim()){ m.content = txt; m._stopped = true; }
+      else drop(m);
+    });
+    if(prepMsg){ prepMsg._loading = false; drop(prepMsg); }
+    if(revealStates && typeof revealStates.clear === 'function') revealStates.clear();
+  }catch(e){ __swallow(e, 'askall:stop-seal'); }
 }
 /* v-chat-sys-msg: سطر «المسار الأوّل» (v-img-err) لغير المالك برمز الحالة وحده («خطأ 503») — خطأ الشبكة («Failed to fetch»)
    والنصّ بلا رمز تقنيّان لا يفيدان المستخدم (المالك شاله لنفسه، v-owner-solo)، فيذهبان إلى سجلّ الأخطاء. */
