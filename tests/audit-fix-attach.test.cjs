@@ -1,7 +1,8 @@
 'use strict';
 /* v-audit-attach (فحص التطبيق كاملًا — مجموعة «المرفقات» في js/app-09-attach.js):
    cli-chat-attach-3 — وثائق Word/Excel/PowerPoint كانت تصل للنموذج XML خامًا مقصوصًا (styles وtheme، ونصف الوثيقة يضيع).
-   cli-chat-attach-4 — الملفّات الثنائيّة (صوت، doc/xls القديمة، أرشيفات rar/7z/apk) تُقرأ نصًّا وتُرسل حروفًا تالفة.
+   cli-chat-attach-4 — الملفّات الثنائيّة (صوت، doc/xls القديمة، أرشيفات rar/7z/apk) تُقرأ نصًّا وتُرسل حروفًا تالفة؛
+     و‎.xls/.doc‎ النصّيّة (جدول HTML أو SpreadsheetML أو RTF) تبقى تُقرأ — تكشف العيّنةُ OLE2 لا الامتداد.
    cli-chat-attach-6 — الإيقاف أثناء «اسأل الكل»/البناء يترك فقاعة ⏳ عالقة ومؤقّت عرض حيًّا، ويُسقط الردّ الجزئيّ من السياق.
    cli-chat-attach-8 · x-i18n-6 — نصوص واجهة بلغتين فقط، وبعضها يعرض العربيّة لكلّ لغة غير الإنجليزيّة (والأورديّة عربيّة).
    الدوالّ الحقيقيّة تُستخرج من الملفّ بـacorn وتُشغَّل في vm بـDOM مزيّف. */
@@ -132,11 +133,11 @@ function ingestCtx(readImpl, langCode, dict) {
 }
 const garbage = (n) => { let s = ''; for (let i = 0; i < n; i++) s += (i % 3 === 0 ? '�' : String.fromCharCode(33 + (i % 90))); return s; };
 
-test('cli-chat-attach-4 ① رسالة صوتيّة ‎.ogg‎ (٢ م.ب) و‎.doc‎ قديم و‎.apk‎: شريحة خطأ بلا قراءة ولا إرسال للحروف التالفة', async () => {
+test('cli-chat-attach-4 ① رسالة صوتيّة ‎.ogg‎ (٢ م.ب) و‎.rar‎ و‎.apk‎: شريحة خطأ بلا قراءة ولا إرسال للحروف التالفة', async () => {
   const { ctx, reads } = ingestCtx(() => garbage(450000));
   await ctx.omranIngestFiles([
     { name: 'voice-note.ogg', type: 'audio/ogg', size: 2e6 },
-    { name: 'تقرير قديم.doc', type: '', size: 300000 },
+    { name: 'أرشيف قديم.rar', type: '', size: 300000 },
     { name: 'game.apk', type: 'application/vnd.android.package-archive', size: 5e6 },
     { name: 'song.m4a', type: '', size: 4e6 },
   ]);
@@ -177,6 +178,44 @@ test('cli-chat-attach-4 ④ نصّ الشريحة بلغة الواجهة: مف�
   r = ingestCtx(() => '', 'ur');
   await r.ctx.omranIngestFiles([{ name: 'v.ogg', type: 'audio/ogg', size: 10 }]);
   assert.doesNotMatch(r.ctx.pendingAttachments[0].text, /[؀-ۿ]/, 'لا عربيّة لمستخدم الأورديّة');
+});
+
+test('cli-chat-attach-4 ⑤ ‎.xls/.doc‎ النصّيّة (جدول HTML وSpreadsheetML وRTF وHTML) تُقرأ نصًّا، ونسخ OLE2 منها شريحة خطأ، وقوائم التشغيل النصّيّة تمرّ', async () => {
+  const OLE2 = '��\u0011ࡱ\u001a�\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000'; // D0 CF 11 E0 A1 B1 1A E1 + CLSID أصفار بقراءة UTF-8
+  const htmlXls = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><body><table><tr><td>التاريخ</td><td>المبلغ</td></tr>'
+    + '<tr><td>2026-10-01</td><td>1,250.00</td></tr>'.repeat(300) + '</table></body></html>';
+  const xmlXls = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="كشف"><Table>'
+    + '<Row><Cell><Data ss:Type="String">رسوم</Data></Cell><Cell><Data ss:Type="Number">35</Data></Cell></Row>'.repeat(200) + '</Table></Worksheet></Workbook>';
+  const rtfDoc = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}\\f0\\fs24 Dear customer,\\par Your request No. 4471 was approved.\\par}';
+  const htmlDoc = '<html xmlns:w="urn:schemas-microsoft-com:office:word"><body><p>شهادة راتب</p><p>الراتب الأساسيّ: 12,000</p></body></html>';
+  const m3u = '#EXTM3U\n#EXTINF:-1,قناة الأخبار\nhttps://example.com/live.m3u8\n';
+  const pls = '[playlist]\nFile1=https://example.com/radio\nTitle1=إذاعة\nNumberOfEntries=1\n';
+  const by = { 'bank-statement.xls': htmlXls, 'erp-export.xls': xmlXls, 'letter.doc': rtfDoc, 'salary.doc': htmlDoc, 'channels.m3u': m3u, 'radio.pls': pls,
+    'old-report.xls': OLE2 + 'Workbook'.repeat(500), 'old-letter.doc': OLE2 + 'WordDocument'.repeat(400), 'deck.ppt': OLE2 + 'PowerPoint'.repeat(400), 'deck.pps': OLE2 + 'x'.repeat(4000) };
+  const { ctx, reads } = ingestCtx((f) => by[f.name]);
+  await ctx.omranIngestFiles([
+    { name: 'bank-statement.xls', type: 'application/vnd.ms-excel', size: htmlXls.length },
+    { name: 'erp-export.xls', type: 'application/vnd.ms-excel', size: xmlXls.length },
+    { name: 'letter.doc', type: 'application/msword', size: rtfDoc.length },
+    { name: 'salary.doc', type: '', size: htmlDoc.length },
+    { name: 'channels.m3u', type: 'audio/x-mpegurl', size: m3u.length },
+    { name: 'radio.pls', type: 'audio/x-scpls', size: pls.length },
+    { name: 'old-report.xls', type: 'application/vnd.ms-excel', size: 4016 },
+    { name: 'old-letter.doc', type: 'application/msword', size: 4816 },
+    { name: 'deck.ppt', type: 'application/vnd.ms-powerpoint', size: 4016 },
+    { name: 'deck.pps', type: '', size: 4016 },
+    { name: 'song.mp3', type: 'audio/mpeg', size: 3e6 },
+  ]);
+  const got = Object.fromEntries(Array.from(ctx.pendingAttachments, (a) => [a.name, a]));
+  for (const n of ['bank-statement.xls', 'erp-export.xls', 'letter.doc', 'salary.doc', 'channels.m3u', 'radio.pls']) {
+    assert.ok(got[n] && !got[n].error, n + ' نصّ يجب أن يُقرأ لا أن يصير شريحة خطأ');
+    assert.equal(got[n].text, by[n], n + ': النصّ كما هو');
+  }
+  for (const n of ['old-report.xls', 'old-letter.doc', 'deck.ppt', 'deck.pps', 'song.mp3']) {
+    assert.equal(got[n] && got[n].error, true, n + ' ثنائيّ يجب أن يكون شريحة خطأ');
+    assert.ok(got[n].text.length < 400 && !got[n].text.includes('\u0000'), n + ': بلا بايتات OLE2 في الشريحة');
+  }
+  assert.ok(!reads.includes('song.mp3'), 'الصوت الحقيقيّ يبقى مرفوضًا بنوعه قبل القراءة');
 });
 
 // ── cli-chat-attach-6: الإيقاف أثناء «اسأل الكل» ──
