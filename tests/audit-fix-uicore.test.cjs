@@ -217,6 +217,40 @@ test('cli-ui-core-4: الماركداون يُحوَّل في PDF وWord وال�
   assert.equal(await txt.saved[0].text(), MD);
 });
 
+test('cli-ui-core-4: جدول مختلط (عربيّ فيه صفّ إنجليزيّ خالص، وإنجليزيّ فيه صفّ عربيّ) — اتّجاه واحد للجدول كلّه فلا ينعكس ترتيب الأعمدة', async () => {
+  const cases = [
+    ['AR', 'هذه مقارنة الهواتف:\n| الهاتف | الوصف |\n|---|---|\n| iPhone 15 Pro Max | Apple flagship smartphone |\n| سامسونج | هاتف ممتاز |', true],
+    ['EN', 'Here is the vocabulary list you asked for, with translations:\n| Word | Meaning |\n|---|---|\n| hello | greeting |\n| مرحبا | سلام |', true],
+    ['EN-only', 'Here is the comparison table for the two phones you asked about:\n| Phone | Notes |\n|---|---|\n| Pixel | good |\n| Galaxy | great |', false],
+  ];
+  for (const [tag, text, rtl] of cases) {
+    const want = rtl ? 'rtl' : 'ltr';
+    let e = exportEnv();
+    e.ctx.exportReplyAsWord(text);
+    const word = await e.log.saved[0].blob.text();
+    e = exportEnv();
+    e.ctx.exportReplyAsPdf(text);
+    await settle();
+    const pdf = pdfCall(e.log).html;
+    for (const [fmt, html] of [['Word', word], ['PDF', pdf]]) {
+      const dirs = [...html.matchAll(/<table dir="(rtl|ltr)"/g)].map((m) => m[1]);
+      assert.equal(dirs.length, 3, tag + ' ' + fmt + ': ثلاثة صفوف جدول: ' + dirs.length);
+      assert.deepEqual(dirs, [want, want, want], tag + ' ' + fmt + ': كلّ صفوف الجدول باتّجاه واحد (قاعدة الشاشة)');
+    }
+    e = exportEnv();
+    e.ctx.exportReplyAsImage(text);
+    const rows = e.log.fills.filter((f) => f.s.includes('|'));
+    assert.equal(rows.length, 3, tag + ' الصورة: ثلاثة صفوف: ' + rows.map((f) => f.s).join(' / '));
+    const mk = rtl ? '\u200f' : '\u200e';
+    for (const f of rows) {
+      assert.equal(f.direction, want, tag + ' الصورة: ' + f.s);
+      assert.equal(f.textAlign, rtl ? 'right' : 'left', tag + ' الصورة: ' + f.s);
+      assert.equal(f.x, rtl ? 860 : 40, tag + ' الصورة: ' + f.s);
+      assert.ok(f.s.includes(mk + '   |   ' + mk), tag + ' الصورة: علامة اتّجاه قويّة حول الفاصل فلا يندمج الصفّ مقطعًا واحدًا: ' + JSON.stringify(f.s));
+    }
+  }
+});
+
 test('cli-ui-core-5: الصورة تلتفّ بالحرف — الصينيّة بلا مسافات والرابط الطويل لا يخرجان عن اللوحة', () => {
   const zh = '这是一个很长的中文段落没有任何空格所以以前整个段落会变成一行并且被裁剪到画布之外'.repeat(4);
   const url = 'https://example.com/' + 'a'.repeat(200);

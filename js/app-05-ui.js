@@ -673,6 +673,15 @@ function msgExportParse(text){
     else items.push({ type: 'p', text: s });
   });
   items.forEach((it) => { it.rtl = (it.type === 'code') ? false : lineRtl(it.text); });
+  /* v-audit-uicore: الجدول كلّه باتّجاه واحد بقاعدة الشاشة (omranMdTableEl في app-02: يمين إن كان فيه حرف عربيّ) — لا اتّجاه
+     لكلّ صفّ، وإلّا انعكس ترتيب أعمدة صفّ إنجليزيّ خالص في جدول عربيّ (أو العكس) فوقعت قيمه تحت عمود غير عمودها. */
+  for(let i = 0, j; i < items.length; i = j){
+    j = i + 1;
+    if(items[i].type !== 'row') continue;
+    while(j < items.length && items[j].type === 'row') j++;
+    const run = items.slice(i, j), tr = run.some((x) => AR.test(x.text));
+    run.forEach((x) => { x.rtl = tr; });
+  }
   return { rtl: rtl, items: items };
 }
 /* العريض والمائل والمشطوب والروابط والكود داخل السطر — HTML مهرَّب، أو نصّ مجرّد للصورة (plain) */
@@ -778,7 +787,11 @@ function exportReplyAsImage(text){
     if(it.type === 'code'){ s = it.text; f = FC; }
     else if(it.type === 'h'){ s = msgExportInline(it.text, true); f = FB; }
     else if(it.type === 'li') s = '    '.repeat(it.depth || 0) + (it.num ? it.num + '. ' : '• ') + msgExportInline(it.text, true);
-    else if(it.type === 'row'){ s = it.cells.map((c) => msgExportInline(c, true)).join('   |   '); if(it.head) f = FB; }
+    else if(it.type === 'row'){
+      /* علامة اتّجاه قويّة (RLM/LRM) حول الفاصل: بدونها يندمج صفّ إنجليزيّ في جدول عربيّ مقطعًا يساريًّا واحدًا، فيُرسم عموده الأوّل يسارًا */
+      const mk = it.rtl ? '\u200f' : '\u200e';
+      s = it.cells.map((c) => msgExportInline(c, true)).join(mk + '   |   ' + mk); if(it.head) f = FB;
+    }
     else if(it.type === 'quote') s = '    ' + msgExportInline(it.text, true);
     else if(it.type === 'p') s = msgExportInline(it.text, true);
     ctx.font = f;
