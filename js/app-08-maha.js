@@ -1563,7 +1563,7 @@ function mahaStartMicMeter(stream){
       else if(!mahaMicWarned && Date.now() - mahaMicSilenceStart > 7000){
         mahaMicWarned = true;
         const st = document.getElementById('mahaStateLabel');
-        if(st) st.textContent = '⚠️ صوتك ما يوصل — تحقق من المايك';
+        if(st){ const mw = t('axChatcliMahaMicWarn'); st.textContent = (mw && mw !== 'axChatcliMahaMicWarn') ? mw : '⚠️ صوتك ما يوصل — تحقق من المايك'; } // v-audit-chatcli (x-i18n-5): بلغة الواجهة
       }
       mahaMicMeterRaf = requestAnimationFrame(tick);
     })();

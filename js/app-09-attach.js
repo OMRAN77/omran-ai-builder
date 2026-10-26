@@ -1124,16 +1124,23 @@ const MAX_ARCHIVE_DIRECT_BYTES = 3 * 1024 * 1024;
 /* v412 — قراءة مجزّأة بدل FileReader.readAsDataURL:
  * ① arrayBuffer() يرمي خطأً يحمل اسمه وسببه (بدل onerror الصامت).
  * ② التحويل على أجزاء 32 ك.ب يبقي الذاكرة منخفضة. */
+/* v-audit-chatcli (x-i18n-5): أخطاء المرفقات الظاهرة في شريطها بلغة الواجهة (axChatcliAtt*) — كانت عربيّة ثابتة لكلّ اللغات؛ العربيّة احتياطها */
+function omranAttTx(k, fb, vars){
+  let v = '';
+  try{ v = (typeof t === 'function') ? t(k) : ''; }catch(e){ v = ''; } // guard-ok — بلا قاموس يبقى الاحتياط العربيّ
+  let s = String((v && v !== k) ? v : fb);
+  if(vars) Object.keys(vars).forEach(n => { s = s.split('{' + n + '}').join(String(vars[n])); });
+  return s;
+}
 async function fileToBase64(file){
   let buf;
   try {
     buf = await file.arrayBuffer();
   } catch (e) {
     const why = (e && (e.name || e.message)) ? (' (' + (e.name || e.message) + ')') : '';
-    throw new Error('تعذّر قراءة الملف' + why +
-      '. تأكد أنه محمّل على جهازك فعلًا وليس على السحابة فقط، ثم أعد المحاولة.');
+    throw new Error(omranAttTx('axChatcliAttReadFail', 'تعذّر قراءة الملف{why}. تأكد أنه محمّل على جهازك فعلًا وليس على السحابة فقط، ثم أعد المحاولة.', { why }));
   }
-  if (!buf || !buf.byteLength) throw new Error('الملف فارغ أو تعذّر فتحه.');
+  if (!buf || !buf.byteLength) throw new Error(omranAttTx('axChatcliAttEmpty', 'الملف فارغ أو تعذّر فتحه.'));
   const bytes = new Uint8Array(buf);
   let binary = '';
   const CHUNK = 32768;
@@ -1200,8 +1207,8 @@ async function processArchiveAttachment(file, attachment, preReadB64){
       // ملفات Office (docx/xlsx/pptx) بنيتها خاصة — الخادم يعرف كيف يقرأها.
     }
     if(file.size > MAX_ARCHIVE_DIRECT_BYTES){
-      throw new Error('الملف ' + (file.size / 1048576).toFixed(1) + ' م.ب — الحد ' +
-        (MAX_ARCHIVE_DIRECT_BYTES / 1048576) + ' م.ب للتحليل على الخادم. احذف مجلدات مثل node_modules وأعد الضغط.');
+      throw new Error(omranAttTx('axChatcliAttZipBig', 'الملف {size} م.ب — الحد {max} م.ب للتحليل على الخادم. احذف مجلدات مثل node_modules وأعد الضغط.',
+        { size: (file.size / 1048576).toFixed(1), max: MAX_ARCHIVE_DIRECT_BYTES / 1048576 }));
     }
     const fileBase64 = preReadB64 || await fileToBase64(file);
     const resp = await fetch('/api/analyze-zip', {
@@ -1210,7 +1217,7 @@ async function processArchiveAttachment(file, attachment, preReadB64){
       body: JSON.stringify({ fileBase64, filename: file.name, token: authGet('aiapp_auth_token'), guestId: (window.getGuestId ? window.getGuestId() : undefined) }) // v-sec-zip-gate: الحصّة على الحساب/الشبكة
     });
     const data = await resp.json().catch(() => ({}));
-    if(!resp.ok || !data.ok) throw new Error(data.error || ('فشل التحليل (HTTP ' + resp.status + ')'));
+    if(!resp.ok || !data.ok) throw new Error(data.error || omranAttTx('axChatcliAttZipFail', 'فشل التحليل (HTTP {status})', { status: resp.status }));
     attachment.text = data.content;
   }catch(err){
     console.error('archive analyze error', err);

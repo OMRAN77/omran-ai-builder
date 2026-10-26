@@ -2995,7 +2995,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-oauth-bind: state كان رمز الجلسة نفسه (٣٠ يومًا) — يمرّ في روابط جوجل وسجلّاتها، ومن أكمل رابطًا يحمل رمز
      غيره رُبطت Gmail الخاصّة به بحساب ذلك الغير. الآن تذكرة ربط من الخادم (استعمال واحد، عشر دقائق) تُسكّ مسبقًا
      حين يظهر زرّ الربط، فيبقى فتح سفاري في غلاف الآيفون داخل لمسة المستخدم بلا انتظار شبكة قبله. */
-  const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);
+  const emLinkError = (err) => { const v = t('axChatcliGmailLinkErr'); alert('⚠️ ' + ((v && v !== 'axChatcliGmailLinkErr') ? v : 'خطأ ربط Gmail') + ': ' + err); }; // v-audit-chatcli (x-i18n-5): بلغة الواجهة
   let emTicket = null; // { t: التذكرة، at: وقت سكّها، tok: الجلسة التي سكّتها — حساب آخر على الجهاز نفسه لا يستعملها }
   async function emMintTicket(token){
     const r = await fetch('/api/system?action=email-link-ticket', {

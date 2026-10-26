@@ -335,7 +335,8 @@ test('١٢. العميل يعرض network_changed بلا تعديل ولا نص�
     assert.ok(!s.includes('network_changed'), f + ': لا مفتاح ولا نصّ خاصّ');
   }
   for (const f of ['js/app-12-studios.js', 'js/app.bundle.js']) {
-    assert.ok(fs.readFileSync(path.join(root, f), 'utf8').includes("const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);"), f);
+    /* v-audit-chatcli (x-i18n-5): القالب نفسه والرمز بعده كما هو — عنوانه بلغة الواجهة (axChatcliGmailLinkErr) واحتياطه العربيّ */
+    assert.ok(fs.readFileSync(path.join(root, f), 'utf8').includes("const emLinkError = (err) => { const v = t('axChatcliGmailLinkErr'); alert('⚠️ ' + ((v && v !== 'axChatcliGmailLinkErr') ? v : 'خطأ ربط Gmail') + ': ' + err); };"), f);
   }
 });
 

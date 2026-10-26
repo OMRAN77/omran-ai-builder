@@ -1088,7 +1088,9 @@ try{
           try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#10"); }
           noteSession('جوجل-تحقّق-أمني'); // اللوحة كانت عمياء عن هذا الخروج بالذات
           window.history.replaceState({}, document.title, cleanUrl);
-          alert('تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.');
+          /* v-audit-chatcli (x-i18n-5): بلغة الواجهة — هذا الإقلاع قبل القاموس (app-03/04)، فيُؤجَّل التنبيه حتّى يجهز ملفّ اللغة */
+          const __stAlert = () => alert(curT().axChatcliOauthState || 'تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.');
+          setTimeout(() => { try{ window.loadLangFile(document.documentElement.lang || localStorage.getItem('aiapp_lang') || 'ar').then(__stAlert, __stAlert); }catch(e){ __stAlert(); } }, 0);
           return;
         }
         try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#11"); }
@@ -1890,12 +1892,12 @@ try{
         onAuthed(data.username, data.avatar);
         emailConfirmAlert(data.emailToConfirm); // v-unverified-email: عند كلّ فتح ما دام البريد غير مؤكَّد
         if(data.adminMessage && data.adminMessage.text){
-          setTimeout(() => { alert('📩 رسالة من الإدارة:\n\n' + data.adminMessage.text); }, 600);
+          setTimeout(() => { alert((curT().axChatcliAdminMsg || '📩 رسالة من الإدارة:') + '\n\n' + data.adminMessage.text); }, 600); // v-audit-chatcli: الرأس بلغة الواجهة، ونصّ الإدارة كما كتبته
         }
       } else if(data && data.banned){
         noteSession('حساب-موقوف');
         authRemove('aiapp_auth_token');
-        alert('🚫 ' + (data.error || 'تم إيقاف هذا الحساب من قبل الإدارة'));
+        alert('🚫 ' + (curT().axChatcliBanned || data.error || 'تم إيقاف هذا الحساب من قبل الإدارة')); // v-audit-chatcli: banned رمز ثابت ← نصّه بلغة الواجهة، ونصّ الخادم احتياط
         showOverlay();
       } else if(res.status === 401 || res.status === 403){
         // رفض صريح من الخادم: التوكن فعلًا غير صالح.

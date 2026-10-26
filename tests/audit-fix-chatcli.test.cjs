@@ -313,6 +313,132 @@ test('cli-chat-rest-7: مراحل بطاقة الانتظار وسطر وقته�
   assert.ok(en.timer.includes('s — images usually take ~30s'), en.timer);
 });
 
+/* ───────── x-i18n-5: «ورّني وأبنيه» ومتفرّقات عربيّة ثابتة ───────── */
+const A16 = read('js/app-16-snapbuild.js');
+function fnOf(src, head) { /* دالّة علويّة كاملة بنصّها (قوسها الأخير) */
+  const i = src.indexOf(head);
+  assert.ok(i >= 0, head);
+  let d = 0;
+  for (let k = src.indexOf('{', i); k < src.length; k++) {
+    if (src[k] === '{') d++;
+    else if (src[k] === '}' && --d === 0) return src.slice(i, k + 1);
+  }
+  throw new Error('غير مغلق: ' + head);
+}
+function load16(lg, t, replies) {
+  const { document } = makeDom();
+  const btn = document.createElement('button'); btn.id = 'btnSnapBuild'; document.body.appendChild(btn);
+  const input = document.createElement('input'); input.id = 'snapInput'; document.body.appendChild(input);
+  const state = { projects: [], currentId: null };
+  const statuses = [];
+  const ctx = {
+    document, lang: lg, t, console: { log() {}, warn() {}, error() {} }, state, __swallow() {}, setTimeout: () => 0, setInterval: () => 0,
+    saveState() {}, renderHistory() {}, renderMessages() {}, renderCodeAndPreview() {}, switchWorkTab() {},
+    workareaEl: { classList: { contains: () => true } }, openDrawer() {},
+    matchMedia: () => ({ matches: false }), localStorage: { getItem: () => null },
+    FileReader: class { readAsDataURL() { this.result = 'data:image/png;base64,QUJD'; this.onload(); } },
+    claudeProxyRequest: async () => { const r = replies.shift(); if (r instanceof Error) throw r; return { json: async () => r }; },
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(A16, ctx);
+  const fire = async () => {
+    input.files = [{ name: 'menu.png' }];
+    for (const fn of input._ls.change) fn.call(input, {});
+    const el = document.getElementById('snapBuildStatus');
+    statuses.push(el && el.textContent);
+    await settle();
+    statuses.push(el && el.textContent);
+  };
+  return { ctx, state, fire, statuses };
+}
+const READ_JSON = { content: [{ text: '{"kind":"menu","title":"","sections":[{"name":"Main","items":[{"name":"Tea","price":"5?"}]}],"screens":[{"name":"s","elements":[]}]}' }] };
+const BUILT = { content: [{ text: 'ok\n```html\n<!DOCTYPE html><html><body>x</body></html>\n```' }] };
+
+test('x-i18n-5: «ورّني وأبنيه» بلغة الواجهة — الحالات واسم المشروع ورسالة المحادثة وملخّص المقروء (axChatcliSnap*)', async () => {
+  /* قوالب الملخّص بعلاماتها كما في القاموس، فيظهر فيها اسم النوع والأعداد */
+  const phT = (k) => 'T:' + k + (/Snap(Read|Counts|Screens|Unsure)$/.test(k) ? ' {kind}{s}{n}' : '');
+  for (const lg of ['en', 'zh', 'ur']) {
+    const w = load16(lg, phT, [READ_JSON, BUILT]);
+    await w.fire();
+    assert.equal(w.statuses[0], 'T:axChatcliSnapReading', lg + ': حالة القراءة');
+    const p = w.state.projects[0];
+    assert.ok(p, lg + ': المشروع بُني');
+    assert.equal(p.title, 'T:axChatcliSnapTitle', lg + ': اسم المشروع');
+    const msg = p.messages[0].content;
+    for (const k of ['SnapRead', 'SnapKindMenu', 'SnapCounts', 'SnapScreens', 'SnapUnsure', 'SnapDone']) assert.ok(msg.includes('T:axChatcli' + k), lg + ': الرسالة بلا ' + k + ': ' + msg);
+    assert.ok(!AR_RE.test(msg.replace(/T:axChatcli\w+/g, '')), lg + ': عربيّ ثابت في الرسالة: ' + msg);
+  }
+  /* الفشل: نصّ المزوّد الخامّ لا يظهر — سطر مترجَم بدله */
+  const bad = load16('en', fakeT(true), [{ error: { message: 'overloaded_error: upstream says no' } }]);
+  await bad.fire();
+  assert.equal(bad.statuses[1], '⚠️ T:axChatcliSnapReadFail');
+  const boom = load16('en', fakeT(true), [new Error('chat 500: {"type":"error"}')]);
+  await boom.fire();
+  assert.equal(boom.statuses[1], '⚠️ T:axChatcliSnapFail', 'عطل مجهول = سطر عامّ مترجَم');
+  const noCode = load16('fr', fakeT(true), [READ_JSON, { content: [{ text: 'no code here' }] }]);
+  await noCode.fire();
+  assert.equal(noCode.statuses[1], '⚠️ T:axChatcliSnapNoCode');
+  /* بلا مفتاح في القاموس: العربيّة كما كانت */
+  const ar = load16('ar', (k) => k, [READ_JSON, BUILT]);
+  await ar.fire();
+  assert.equal(ar.statuses[0], '📸 يقرأ الصورة بدقة (الأسعار والنصوص حرفيًا)…');
+  assert.equal(ar.state.projects[0].title, 'من الصورة 📸');
+  assert.ok(ar.state.projects[0].messages[0].content.includes('📸 قرأتُ من الصورة: **قائمة طعام**') && ar.state.projects[0].messages[0].content.includes('✅ بنيته لك'));
+});
+
+test('x-i18n-5: أخطاء قراءة الملفّ والأرشيف في شريط المرفقات بلغة الواجهة (axChatcliAtt*)', async () => {
+  const src = fnOf(A09, 'function omranAttTx(') + '\n' + fnOf(A09, 'async function fileToBase64(file){') + '\n' + fnOf(A09, 'async function processArchiveAttachment(file, attachment, preReadB64){')
+    + '\nconst MAX_ARCHIVE_DIRECT_BYTES = 3 * 1024 * 1024;\nthis.f2b = fileToBase64; this.arc = processArchiveAttachment;';
+  const mk = (over) => {
+    const ctx = Object.assign({ t: fakeT(true), lang: 'fr', console: { error() {}, warn() {} }, btoa, renderAttachStrip() {}, authGet: () => '', unzipInBrowser: async () => { throw new Error('local'); } }, over);
+    ctx.window = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(src, ctx);
+    return ctx;
+  };
+  const c = mk();
+  await assert.rejects(c.f2b({ arrayBuffer: async () => { throw Object.assign(new Error('x'), { name: 'NotReadableError' }); } }), (e) => e.message === 'T:axChatcliAttReadFail' || (e.message.startsWith('T:axChatcliAttReadFail') && !AR_RE.test(e.message)));
+  await assert.rejects(c.f2b({ arrayBuffer: async () => new ArrayBuffer(0) }), { message: 'T:axChatcliAttEmpty' });
+  const att = {};
+  await c.arc({ name: 'big.zip', size: 9 * 1048576 }, att);
+  assert.ok(att.error && att.text.includes('T:axChatcliAttZipBig') && !AR_RE.test(att.text), 'حدّ الحجم: ' + att.text);
+  const c2 = mk({ fetch: async () => ({ ok: false, status: 502, json: async () => ({}) }) });
+  const att2 = {};
+  await c2.arc({ name: 'p.zip', size: 10 }, att2, 'QUJD');
+  assert.ok(att2.text.includes('T:axChatcliAttZipFail') && !AR_RE.test(att2.text), 'فشل الخادم: ' + att2.text);
+  /* بلا مفتاح: العربيّة كما كانت بأرقامها */
+  const c3 = mk({ t: (k) => k });
+  const att3 = {};
+  await c3.arc({ name: 'big.zip', size: 9 * 1048576 }, att3);
+  assert.ok(att3.text.includes('الملف 9.0 م.ب — الحد 3 م.ب للتحليل على الخادم'), att3.text);
+});
+
+test('x-i18n-5: المتفرّقات تُقرأ بمفاتيحها مع الاحتياط العربيّ — المحفظة، الدخول، الحظر، رسالة الإدارة، Gmail، المايك، نسخ الرابط', () => {
+  const A13 = read('js/app-13-stocks-init.js'), A01 = read('js/app-01-boot-auth.js'), A12 = read('js/app-12-studios.js'), A08 = read('js/app-08-maha.js'), A10 = read('js/app-10-features.js');
+  const want = [
+    [A13, "confirm(pfT('axChatcliPfResetConfirm', 'تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.'))"],
+    [A13, "pfT('axChatcliPfLessonLoading', '🎓 معلمك يجهز درسًا على {sym} بالأرقام الحية…').split('{sym}').join(sym)"],
+    [A13, "pfT('axChatcliPfLessonFail', 'تعذر الدرس الآن — حاول بعد قليل.')"],
+    [A01, "curT().axChatcliOauthState || 'تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.'"],
+    [A01, "(curT().axChatcliAdminMsg || '📩 رسالة من الإدارة:')"],
+    [A01, "curT().axChatcliBanned || data.error || 'تم إيقاف هذا الحساب من قبل الإدارة'"],
+    [A12, "'axChatcliGmailLinkErr'"],
+    [A08, "'axChatcliMahaMicWarn'"],
+    [A10, "'axChatcliCopyLinkPrompt'"],
+  ];
+  for (const [src, s] of want) assert.ok(src.includes(s), 'غائب: ' + s);
+  /* لا يبقى النصّ العربيّ خارج احتياطه */
+  assert.ok(!A13.includes("box.textContent = '🎓 معلمك"), 'المحفظة');
+  assert.ok(!/alert\('تعذّر إكمال تسجيل الدخول/.test(A01) && !/alert\('📩 رسالة من الإدارة/.test(A01), 'الدخول والإدارة');
+  assert.ok(!/alert\('⚠️ خطأ ربط Gmail: ' \+ err\)/.test(A12), 'Gmail');
+  assert.ok(!A08.includes("st.textContent = '⚠️ صوتك ما يوصل — تحقق من المايك'"), 'المايك');
+  assert.ok(!A10.includes("prompt('انسخ الرابط:', shareUrl)"), 'نسخ الرابط');
+  /* تنبيه تحقّق جوجل يأتي في الإقلاع قبل القاموس (app-03/04) — يؤجَّل حتّى يجهز ملفّ اللغة */
+  const i = A01.indexOf('axChatcliOauthState');
+  assert.ok(/setTimeout\(/.test(A01.slice(i - 400, i + 400)) && A01.slice(i - 400, i + 400).includes('loadLangFile'), 'مؤجَّل حتّى ملفّ اللغة');
+});
+
 /* ───────── app-17/18/09: فيديو المحادثة ───────── */
 const A17 = read('js/app-17-agent-tools.js');
 const A18 = read('js/app-18-chat-tools.js');

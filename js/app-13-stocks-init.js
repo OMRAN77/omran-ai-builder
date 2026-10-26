@@ -569,7 +569,7 @@
     if(b1) b1.onclick = function(){ pfTrade('buy'); };
     if(b2) b2.onclick = function(){ pfTrade('sell'); };
     if(rs) rs.onclick = function(){
-      if(!confirm('تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.')) return;
+      if(!confirm(pfT('axChatcliPfResetConfirm', 'تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.'))) return; // v-audit-chatcli (x-i18n-5): بلغة الواجهة
       api({ mode:'pf-reset', token: pfTok() }).then(pfRender).catch(function(e){ pfMsgShow('⚠️ ' + e.message, false); });
     };
     pfWrap.querySelectorAll('[data-pfsell]').forEach(function(b){
@@ -579,10 +579,10 @@
       b.onclick = function(){
         var sym = b.getAttribute('data-pfwhy');
         var box = $('#pfLesson');
-        box.style.display = 'block'; box.textContent = '🎓 معلمك يجهز درسًا على ' + sym + ' بالأرقام الحية…';
+        box.style.display = 'block'; box.textContent = pfT('axChatcliPfLessonLoading', '🎓 معلمك يجهز درسًا على {sym} بالأرقام الحية…').split('{sym}').join(sym); // v-audit-chatcli
         api({ mode:'learn', symbol: sym, question: 'أنا مبتدئ وأملك هذا السهم في محفظتي التعليمية. علمني ماذا أراقب فيه الآن (الاتجاه، الدعم والمقاومة، متى أفكر بالبيع) بالأرقام الحية.', lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
-          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = 'تعذر الدرس الآن — حاول بعد قليل.'; }) // v-md-lite
-          .catch(function(e){ box.textContent = '⚠️ ' + (e.message || 'تعذر الدرس'); });
+          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = pfT('axChatcliPfLessonFail', 'تعذر الدرس الآن — حاول بعد قليل.'); }) // v-md-lite
+          .catch(function(e){ box.textContent = '⚠️ ' + (e.message || pfT('axChatcliPfLessonFail', 'تعذر الدرس الآن — حاول بعد قليل.')); });
       };
     });
   }
