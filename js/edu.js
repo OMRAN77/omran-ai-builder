@@ -1282,7 +1282,8 @@ window.__eduCore={
   setBack:setBack, setNav:function(a){ navStack=a; }, showHome:showHome, showLesson:showLesson,
   listLessons:listLessons, getLesson:getLesson, getToken:getToken, nativeLang:eduNativeLang, bumpStreak:bumpStreak,
   fileToBase64:fileToBase64, localStreak:localStreak,
-  showUploadForm:showUploadForm, renderUploads:renderUploads /* v-edu-upform */
+  showUploadForm:showUploadForm, renderUploads:renderUploads, /* v-edu-upform */
+  deleteLesson:deleteLesson /* v-audit-shell (cli-ui-shell-3): حذف الدروس المحدَّدة بالضغط المطوّل (delete-confirm.js) — كانت داخل الـIIFE وحدها */
 };
 /* first-open announcement */
 try{
