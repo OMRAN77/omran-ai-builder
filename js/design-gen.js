@@ -249,7 +249,7 @@
   try{
     if (document.querySelector('script[data-media-notify]')) return;
     var s = document.createElement('script');
-    s.src = '/js/media-notify.js?v=4';
+    s.src = '/js/media-notify.js?v=5'; /* v-audit-tools: ٥ — إشعار أندرويد من عامل الخدمة */
     s.charset = 'utf-8';
     s.setAttribute('data-media-notify', '1');
     document.head.appendChild(s);
