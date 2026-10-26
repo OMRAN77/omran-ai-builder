@@ -1102,7 +1102,14 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     if (['save', 'list', 'get', 'delete', 'progress'].includes(action)) {
       if (!username) { res.status(200).json({ guest: true }); return; }
       const key = lessonsKey(username);
-      let lessons = (await kvGetJSON(key)) || [];
+      /* v-audit-mahakv (srv-edu-bots-2): الحفظ والحذف والتقدّم تكتب القائمة كاملة — عطل قراءة عابر كان يصير [] فيكتب
+         الحفظ [الجديد] والحذف [] فوق كلّ الدروس بلا رجعة. هنا قراءة صارمة: العطل 503 بلا كتابة، والعميل يعرض رسالته
+         المترجمة (لا نصّ خادم). القائمة والعرض يبقيان على القراءة المتسامحة. */
+      const writes = action === 'save' || action === 'delete' || action === 'progress';
+      let lessons;
+      try { lessons = writes ? await kvGetJSON(key, { strict: true }) : await kvGetJSON(key); }
+      catch (e) { res.status(503).json({ ok: false, code: 'storage_retry' }); return; }
+      lessons = lessons || [];
       if (!Array.isArray(lessons)) lessons = [];
 
       if (action === 'save') {
@@ -1132,7 +1139,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         await kvPutJSON(key, lessons);
         // streak update (server-side merge)
         try {
-          const st = (await kvGetJSON(streakKey(username))) || { streak: 0, lastActive: '' };
+          const st = (await kvGetJSON(streakKey(username), { strict: true })) || { streak: 0, lastActive: '' }; // v-audit-mahakv: العطل يترك السلسلة كما هي لا يصفّرها
           const today = todayStr();
           if (st.lastActive !== today) {
             const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -1193,7 +1200,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         await kvPutJSON(key, lessons);
         // streak on any activity
         try {
-          const st = (await kvGetJSON(streakKey(username))) || { streak: 0, lastActive: '' };
+          const st = (await kvGetJSON(streakKey(username), { strict: true })) || { streak: 0, lastActive: '' }; // v-audit-mahakv: العطل يترك السلسلة كما هي لا يصفّرها
           const today = todayStr();
           if (st.lastActive !== today) {
             const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
