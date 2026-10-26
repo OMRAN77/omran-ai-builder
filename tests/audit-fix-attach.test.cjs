@@ -272,18 +272,56 @@ test('cli-chat-attach-8 ③ «جاري تحليل الصورة» بمفتاح ل
   assert.ok(has(/alert\(omranAttachT\('axAttachWaitPending'/), 'مفتاح الانتظار العامّ');
 });
 
-test('x-i18n-6 ① ورقة «إرسال الصورة» على كلّ صورة: مفاتيح الورقة القائمة (sheetCopyImg/sheetCopyLink/closeTitle) بدل ثنائيّات ar?', () => {
+test('x-i18n-6 ① ورقة «إرسال الصورة» على كلّ صورة: مفاتيح الورقة القائمة (sheetCopyImg/sheetCopyLink/closeTitle) وبلا ثنائيّات إلّا أسماء التطبيقات', () => {
   const s = SRC.indexOf('window.__omranImgTools = function(');
   const body = SRC.slice(s, SRC.indexOf('\n};', s));
-  for (const k of ['sheetCopyImg', 'sheetCopyLink', 'closeTitle']) assert.ok(body.includes("'" + k + "'"), k);
-  const left = (body.match(/\bar \? ['(]/g) || []).length;
-  assert.ok(left <= 5, 'بقيت ثنائيّات في الورقة: ' + left + ' (أسماء العلامات التجاريّة وحدها مسموحة)');
+  for (const k of ['sheetCopyImg', 'sheetCopyLink', 'closeTitle', 'axAttachSendImage', 'axAttachShareDevice']) assert.ok(body.includes("omranAttachT('" + k + "'"), k);
+  const pairs = Array.from(body.matchAll(/\bar \? '([^']*)' : '([^']*)'/g), (m) => m[2]);
+  const BRANDS = ['WhatsApp', 'Telegram', 'Instagram', 'Snapchat', 'Facebook'];
+  assert.deepEqual(pairs.filter((en) => !BRANDS.includes(en)), [], 'نصّ واجهة بثنائيّة عربيّ/إنجليزيّ في الورقة');
+  assert.ok(!/\bar \? \(/.test(body), 'ثنائيّة بأقواس');
 });
 
-/* سقف تراجعيّ: عدد ثنائيّات «عربيّ ؟ إنجليزيّ» في الملفّ لا يزيد — كلّ نصّ واجهة جديد بمفتاح الـ١٤ لغة. */
+test('x-i18n-6 ② الشخصيّة المتكلّمة والفيديو: لا ثنائيّة isAr/lang في النافذتين ولا حالات الفيديو، والأورديّة من اليمين، والثواني بأرقام اللغة', () => {
+  const a = SRC.indexOf('window.pickTalkCharacter = ');
+  const b = SRC.indexOf('const __tcChoice = await window.askTalkCharOpts(');
+  assert.ok(a > 0 && b > a);
+  const modal = SRC.slice(a, b);
+  assert.ok(!/isAr\s*\?\s*'/.test(modal), 'نصّ بثنائيّة isAr في نافذتي الشخصيّة');
+  assert.equal((modal.match(/lang === 'ur'/g) || []).length, 2, 'اتّجاه الأورديّة في النافذتين');
+  assert.match(modal, /__tcSec\(4\)[\s\S]*__tcSec\(6\)[\s\S]*__tcSec\(8\)/);
+  const v0 = SRC.indexOf('if(__wantsVideo){');
+  const vid = SRC.slice(v0, SRC.indexOf("omranAttachT('axAttachVidReady'", v0));
+  assert.ok(vid.length > 100 && !/lang === 'ar' \?/.test(vid), 'حالات الفيديو في المحادثة بمفاتيح');
+});
+
+test('x-i18n-6 ③ إيقاف الصورة بلغة الواجهة: مفتاح الفرنسيّة، والأورديّة بلا مفتاح إنجليزيّة لا عربيّة', () => {
+  const ctx = baseCtx();
+  vm.runInContext(optSrc() + '\n' + decl('__imgAbortNote'), ctx);
+  const run = (lg, dict, timedOut) => { ctx.lang = lg; ctx.I18N[lg] = dict || {}; ctx.window.__omranTimedOut = !!timedOut; const c = { messages: [] }; ctx.__imgAbortNote(c); return c.messages[0].content; };
+  assert.equal(run('fr', { axAttachImgStopped: 'Génération arrêtée.' }), 'Génération arrêtée.');
+  assert.doesNotMatch(run('ur'), /[؀-ۿ]/);
+  assert.equal(run('ar'), 'تم إيقاف إنشاء الصورة.');
+  assert.match(run('en', null, true), /^⚠️ The connection dropped/);
+});
+
+/* سقف تراجعيّ: عدد ثنائيّات «عربيّ ؟ إنجليزيّ» في الملفّ لا يزيد — كلّ نصّ واجهة جديد بمفتاح الـ١٤ لغة. الباقي: أسماء التطبيقات،
+   ونصوص الوكيل (للمالك وحده)، وأوامر النموذج (لا تُعرض)، والديكور بأسماء أنماطه، والمخطّط، والإعلان، وتعليمات الكتابة الطويلة. */
 const BILINGUAL_RE = /\b(?:lang\s*===?\s*'ar'|isAr|__isAr|__ar|ar)\s*\)?\s*\?\s*\(?\s*['"(]/g;
-const BILINGUAL_MAX = 62;
-test('x-i18n-6 ② سقف ثنائيّات العربيّ/الإنجليزيّ في app-09 لا يزيد عن ' + BILINGUAL_MAX, () => {
+const BILINGUAL_MAX = 56;
+test('x-i18n-6 ④ سقف ثنائيّات العربيّ/الإنجليزيّ في app-09 لا يزيد عن ' + BILINGUAL_MAX + ' (كانت ١٦٦)', () => {
   const n = (SRC.match(BILINGUAL_RE) || []).length;
   assert.ok(n <= BILINGUAL_MAX, 'ثنائيّات: ' + n);
+});
+
+const STR = String.raw`('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")`;
+test('x-i18n-6 ⑤ كلّ مفتاح axAttach* بنصّين احتياطيّين متطابقين في كلّ مواضعه، وبلا اسم مزوّد أو نموذج', () => {
+  const seen = new Map();
+  for (const m of SRC.matchAll(new RegExp(String.raw`omranAttachT\('(axAttach[A-Za-z0-9]+)', ` + STR + ', ' + STR + String.raw`\)`, 'g'))) {
+    const v = m[2] + '|' + m[3];
+    if (seen.has(m[1])) assert.equal(seen.get(m[1]), v, m[1]);
+    seen.set(m[1], v);
+    assert.doesNotMatch(v, /Claude|Gemini|GPT|OpenAI|Groq|Grok|Veo|Runway|MiniMax|DeepSeek|Kling|Mistral|Cohere|Perplexity|Kimi|كلود|جيمناي|جيميني/i, m[1]);
+  }
+  assert.ok(seen.size >= 90, 'مفاتيح: ' + seen.size);
 });
