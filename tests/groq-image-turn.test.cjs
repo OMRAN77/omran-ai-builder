@@ -69,7 +69,7 @@ test('١. الخادم: دور فيه صورة لا يُرسَل بمصفوفت�
   const { res, calls } = await run(IMG_HISTORY, SCOUT);
   assert.deepEqual(calls, [SCOUT], 'نموذج الرؤية المطلوب وحده — لا gpt-oss بصورة');
   assert.equal(res.code, 404);
-  assert.match(res.body, /does not exist/);
+  assert.match(res.body, /model_not_found/); // v-audit-prov: لغير المالك رمز الخادم الثابت لا نصّ المزوّد («does not exist»)
   assert.doesNotMatch(res.body, /must be a string/);
 });
 

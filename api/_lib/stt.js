@@ -189,14 +189,18 @@ module.exports = async (req, res) => {
     // Whisper often garbles dialectal Arabic ("همارة" بدل "إمارة"، "وغيرت" بدل
     // "أبغي"...). Run the transcript through a fast Groq LLM that ONLY fixes
     // mis-heard words using sentence context, without adding or changing meaning.
-    if (cleanText.length >= 8) {
+    /* v-audit-prov (srv-providers-3): التعليمة خليجيّة — كلام بلغة أخرى كان يمرّ بها فقد يُستبدل بترجمة أو بجواب ما دام طوله في
+       النطاق. العربيّة وحدها (لغة Whisper المكتشفة، أو تلميح الواجهة إن غابت). */
+    const sttAr = detectedLanguage ? /^(?:ar|arabic)$/i.test(String(detectedLanguage).trim()) : langHint === 'ar';
+    if (cleanText.length >= 8 && sttAr) {
       try {
         // v-free-models: اسم النموذج لم يعد مزروعًا — مرشّحون ثم استكشاف (free-chain.js).
         const fixResp = await require('./free-chain.js').completeJson('groq', {
           key: apiKey,
           timeoutMs: 8000,
           temperature: 0,
-          max_tokens: 1024,
+          // v-audit-prov: الموديل يفكّر وتفكيره من السقف نفسه — ١٠٢٤ ثابتة كانت تقطع إملاء دقيقتين (≈ ٢٧٠٠ حرف) عند نصفه
+          max_tokens: Math.min(8192, 1024 + cleanText.length * 2),
           messages: [
             {
               role: 'system',
@@ -212,7 +216,9 @@ module.exports = async (req, res) => {
           fixed = fixed.replace(/^["'«»\u201C\u201D]+|["'«»\u201C\u201D]+$/g, '').trim();
           // Sanity check: accept only if non-empty and not wildly longer/shorter
           // than the original (guards against the model chatting instead of fixing).
-          if (fixed && fixed.length >= cleanText.length * 0.4 && fixed.length <= cleanText.length * 1.8) {
+          // v-audit-prov: ردّ مقطوع (finish_reason غير stop) يُسقط ذيل الكلام بصمت وطوله في النطاق — لا يُقبل أبدًا.
+          const fixDone = !!(fixJson.choices && fixJson.choices[0] && fixJson.choices[0].finish_reason === 'stop');
+          if (fixDone && fixed && fixed.length >= cleanText.length * 0.4 && fixed.length <= cleanText.length * 1.8) {
             cleanText = fixed;
           }
         }
