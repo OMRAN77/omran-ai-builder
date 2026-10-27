@@ -198,8 +198,11 @@ async function moveLiveCounters(oldKey, newKey, user) {
     if (left > 0) await move('media:' + kind + ':' + n(oldKey), 'media:' + kind + ':' + n(newKey), left);
     else await kvDel('media:' + kind + ':' + n(newKey));
   }
-  const at = Math.floor(Number(user.planUpdatedAt) || 0); // فيديوهات الباقة للفترة الحاليّة (_planVideos.js)
-  if (at > 0) await move('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
+  // فيديوهات الباقة للفترة الحاليّة (_planVideos.js). v-lock-subs (srv-money-4): وفترات planNext (أدنى مدفوعة تسري بعد الأعلى بعدّاد فترتها)
+  const ats = [user.planUpdatedAt].concat(Array.isArray(user.planNext) ? user.planNext.map((x) => x && x.at) : []);
+  for (const at of [...new Set(ats.map((v) => Math.floor(Number(v) || 0)))]) {
+    if (at > 0) await move('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
+  }
   // كلّ نقل مستقلّ: عطل في واحد لا يترك البقيّة على الاسم القديم (فتتجدّد مع الاسم الجديد).
   const step = async (label, fn) => { try { await fn(); } catch (e) { console.warn('[rename] move ' + label + ' failed: ' + (e && e.message)); } };
   await step('usage', () => require('./_usage.js').moveTodayTallies(oldKey, newKey));

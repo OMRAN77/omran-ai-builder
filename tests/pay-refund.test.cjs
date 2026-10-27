@@ -80,6 +80,7 @@ global.fetch = async (url, init) => {
       const pi = u.searchParams.get('payment_intent'), sub = u.searchParams.get('subscription');
       return reply(200, { data: net.sessions.filter((s) => (pi && s.payment_intent === pi) || (sub && s.subscription === sub)) });
     }
+    if (p === 'subscriptions/search') return reply(200, { data: [] }); // v-lock-subs (srv-money-3): اشتراك جديد يبحث عن القديم من خانته
     if ((m = p.match(/^invoices\/(.+)$/))) return net.invoices[m[1]] ? reply(200, net.invoices[m[1]]) : reply(404, { error: { message: 'No such invoice' } });
     if ((m = p.match(/^charges\/(.+)$/))) return net.charges[m[1]] ? reply(200, net.charges[m[1]]) : reply(404, { error: { message: 'No such charge' } });
     if (p === 'invoice_payments') {

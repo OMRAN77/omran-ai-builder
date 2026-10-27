@@ -146,8 +146,9 @@ async function refreshPointsWallet(){
       window.__pointsBalance = d.unlimited ? Infinity : d.points;
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
       renderMediaPlanStatus(d.media);
+      window.__omranMediaStatus = d.media || {}; // v-lock-subs (srv-money-4): checkoutLowerThanCurrent
       pricingMarkCurrentPlan(window.__omranPlan); // v-audit-shell
-    } else { row.style.display = 'none'; pricingMarkCurrentPlan('guest'); }
+    } else { row.style.display = 'none'; window.__omranMediaStatus = {}; pricingMarkCurrentPlan('guest'); }
   }catch(e){ /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
@@ -248,6 +249,7 @@ function openCheckout(plan){
     else settingsToast(t('checkoutLoginFirst'));
     return;
   }
+  if(checkoutLowerThanCurrent(plan)){ checkoutSayLowerPlan(); return; } // v-lock-subs (srv-money-4)
   checkoutCurrentPlan = plan;
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
@@ -307,6 +309,31 @@ function closeCheckout(back){
 }
 window.closeCheckout = closeCheckout;
 
+/* v-lock-subs (srv-money-4، موافقة المالك ٢٧ أكتوبر): «اشترك الآن» على باقة أدنى من الحاليّة السارية كان يفتح دفعًا يُسقط الأعلى فورًا
+   (سقف Max وبقيّة أيّامه، أو رصيد «صور وفيديو»/مها المتبقّي). الخادم يرفضه (409 lower_plan)، وهنا يُقال قبل النافذة: المحادثة من الباقة
+   السارية (__omranPlan)، والوسائط من ردّ الرصيد (__omranMediaStatus) ما دام في الأعلى رصيد. الترقية والباقة نفسها والرزم كما كانت. */
+const CHECKOUT_PLAN_RANK = { basic: 1, pro: 2, max: 3 };
+function checkoutLowerThanCurrent(plan){
+  const p = String(plan || ''), m = /^(media|maha)_(basic|pro|max)$/.exec(p);
+  if (m){
+    const s = (window.__omranMediaStatus || {})[m[1] === 'media' ? 'mix' : 'maha'];
+    const cur = s && /_(basic|pro|max)$/.exec(String(s.plan || ''));
+    return !!(cur && Number(s.left) > 0 && CHECKOUT_PLAN_RANK[cur[1]] > CHECKOUT_PLAN_RANK[m[2]]);
+  }
+  return !!(CHECKOUT_PLAN_RANK[p] && CHECKOUT_PLAN_RANK[String(window.__omranPlan || '')] > CHECKOUT_PLAN_RANK[p]);
+}
+// التوست يُرسم تحت نافذة الإعدادات (showModal في الطبقة العليا) فلا يُرى فوق بطاقات الباقات — السبب في سطر «لماذا» داخل القسم نفسه (app-33).
+function checkoutSayLowerPlan(){
+  const sd = document.getElementById('settingsDialog'), g = window.__omranPlansGate;
+  if (sd && sd.open && g && typeof g.showWhy === 'function'){
+    g.showWhy(t('axLkSubsLowerPlan'));
+    const w = document.getElementById('plansWhy');
+    if (w && typeof w.scrollIntoView === 'function') w.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return;
+  }
+  settingsToast(t('axLkSubsLowerPlan'));
+}
+
 // "بطاقة" — opens the Stripe-hosted Checkout page (redirect). Creates a real
 // recurring Stripe subscription; see the KNOWN LIMITATION note in
 // api/_lib/create-checkout-session.js about renewal re-crediting.
@@ -331,7 +358,8 @@ async function startStripeCheckout(){
     });
     const data = await r.json();
     if (!r.ok || !data.url) {
-      fail(data.error || t('checkoutNotConfigured'), r.status === 401 ? 'checkoutLoginFirst' : 'checkoutError');
+      if (data.code === 'lower_plan') fail(t('axLkSubsLowerPlan'), 'axLkSubsLowerPlan'); // v-lock-subs: رمز الخادم ← نصّ مترجم (ومعه تنبيه الغلاف، v-lock-ckui)
+      else fail(data.error || t('checkoutNotConfigured'), r.status === 401 ? 'checkoutLoginFirst' : 'checkoutError');
       return;
     }
     // v-ios-bridge: على آيفون المثبَّت يهبط نجاح الدفع في ورقة متصفح منفصلة
@@ -471,7 +499,7 @@ async function handleWalletPaymentMethod(ev, plan, currency){
     const cd = await cr.json();
     if (!cr.ok || !cd.clientSecret) {
       ev.complete('fail');
-      if (statusMsg) statusMsg.textContent = cd.error || t('checkoutNotConfigured');
+      if (statusMsg) statusMsg.textContent = cd.code === 'lower_plan' ? t('axLkSubsLowerPlan') : (cd.error || t('checkoutNotConfigured')); // v-lock-subs
       return;
     }
     piId = String(cd.id || '');
@@ -610,16 +638,18 @@ async function loadPaypalButtons(){
     if (!window.paypal) throw new Error('paypal-sdk-empty'); // v-lock-ckui (cli-money-11): كان لا يُرسم شيء ولا يظهر الاحتياطيّ
     paypalLoadState = '';
     if (window.paypal) {
+      let ppLowerPlan = false; // v-lock-subs (srv-money-4): رفض الأدنى من create يُقال بنصّه لا «حدث خطأ»
       window.paypal.Buttons({
         style: { color: 'blue', shape: 'rect', label: 'paypal', height: 45 },
         createOrder: async () => {
+          ppLowerPlan = false;
           const cr = await fetch('/api/account?action=paypal-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan, token: authGet('aiapp_auth_token') }),
           });
           const cd = await cr.json();
-          if (!cr.ok) throw new Error(cd.error || 'error');
+          if (!cr.ok) { ppLowerPlan = cd.code === 'lower_plan'; throw new Error(cd.error || 'error'); }
           return cd.id;
         },
         onApprove: async (data) => {
@@ -679,7 +709,7 @@ async function loadPaypalButtons(){
         },
         onError: () => {
           const statusMsg = document.getElementById('checkoutStatusMsg');
-          if (statusMsg) statusMsg.textContent = t('checkoutError');
+          if (statusMsg) statusMsg.textContent = t(ppLowerPlan ? 'axLkSubsLowerPlan' : 'checkoutError');
         },
       }).render('#paypalButtonContainer');
     }
@@ -2938,10 +2968,12 @@ async function postWithConfirm(url, payload){
    حالة الزرّ تُقرأ من Stripe عند فتح الإعدادات إن وُجد اشتراك، وإلّا من التفضيل المحفوظ. */
 function autoRenewPref(){ try{ return localStorage.getItem('aiapp_autorenew') === '1'; }catch(e){ return false; } }
 function autoRenewHintText(on){ return t(on ? 'autoRenewOnHint' : 'autoRenewOffHint'); }
-function setAutoRenewUI(on){
+/* v-lock-subs (cli-money-10): مفعّل ولا اشتراك متجدّد عند Stripe (اشترى بـApple/Google Pay أو PayPal — دفعة لشهر) كان يقول «يتجدّد اشتراكك»
+   فتسقط باقته بعد ٣٥ يومًا وهو يظنّها تتجدّد. noSub = ردّ الخادم subs=0: النصّ يقول إنّ التجديد للشراء القادم بالبطاقة وحدها. */
+function setAutoRenewUI(on, noSub){
   const chk = document.getElementById('chkAutoRenew'), hint = document.getElementById('autoRenewHint');
   if (chk) chk.checked = !!on;
-  if (hint) hint.textContent = autoRenewHintText(!!on);
+  if (hint) hint.textContent = (on && noSub) ? t('axLkSubsRenewCardOnly') : autoRenewHintText(!!on);
 }
 async function autoRenewCall(on){
   const tk = authGet('aiapp_auth_token');
@@ -2956,6 +2988,7 @@ async function syncAutoRenewUI(){
   try{
     const j = await autoRenewCall();
     if (j && j.subs > 0){ localStorage.setItem('aiapp_autorenew', j.on ? '1' : '0'); setAutoRenewUI(j.on); }
+    else if (j && autoRenewPref()) setAutoRenewUI(true, true); // v-lock-subs (cli-money-10)
   }catch(e){ __swallow(e, 'checkout:autorenew-sync'); }
 }
 (function wireAutoRenew(){
@@ -2973,7 +3006,7 @@ async function syncAutoRenewUI(){
       if (j && j.subs > 0){
         const d = j.periodEnd ? new Date(j.periodEnd * 1000).toLocaleDateString(lang === 'ar' ? 'ar-AE' : undefined) : '';
         settingsToast(on ? t('autoRenewResumed') : t('autoRenewStopped').replace('{date}', d));
-      }
+      } else if (j && on) setAutoRenewUI(true, true); // v-lock-subs (cli-money-10): لا اشتراك يتجدّد الآن — التجديد للشراء القادم بالبطاقة
     }catch(e){
       __swallow(e, 'checkout:autorenew-set');
       try{ localStorage.setItem('aiapp_autorenew', prev ? '1' : '0'); }catch(e2){ __swallow(e2, 'checkout:autorenew-revert'); }

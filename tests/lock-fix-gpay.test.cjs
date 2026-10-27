@@ -422,7 +422,8 @@ test('cli-money-1: انقطاع الشبكة بعد «تمّ»: «وصلنا د�
 test('cli-money-1: التحقّق ينجح في الإعادة الثانية داخل النافذة: «تمّ» والرقم يُمسح والنافذة تُغلق، شحنة واحدة', async () => {
   fresh('noor');
   const env = client({ user: 'noor' });
-  fail.get = 2; // قراءة الحساب معطوبة في التحقّق الأوّل (getUser الحقيقيّ null ⇒ 404) — 404 لا يُسقط الرقم المعلّق
+  fail.get = 3; // قراءة الحساب معطوبة في التحقّق الأوّل (getUser الحقيقيّ null ⇒ 404) — 404 لا يُسقط الرقم المعلّق
+  // (+١: فحص «الباقة الأدنى» قبل الدفع، v-lock-subs srv-money-4، يقرأ الحساب مرّة في create-payment-intent ولا يمنع الشراء عند عطب القراءة)
   await env.pay('pro');
   assert.equal(env.status(), 'T:checkoutSuccessMsg');
   assert.equal(verifies(env), 2, 'الأوّل 404 والإعادة الثانية شحنت');

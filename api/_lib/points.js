@@ -310,7 +310,9 @@ function subsOf(user, now) {
     out.push({ kind, plan, endsAt, active: t <= endsAt });
   };
   const plan = String(user.plan || '').toLowerCase();
-  if (tier.PLAN_KEYS.includes(plan)) add('chat', plan, user.planUpdatedAt, tier.SUB_WINDOW_DAYS);
+  const cp = tier.chatPeriod(user, t); // v-lock-subs (srv-money-4): الفعليّة — بعد انتهاء الأعلى تسري الأدنى المدفوعة تحتها، فلا «انتهى» وهو مشترك
+  if (cp) add('chat', cp.plan, cp.at, tier.SUB_WINDOW_DAYS);
+  else if (tier.PLAN_KEYS.includes(plan)) add('chat', plan, user.planUpdatedAt, tier.SUB_WINDOW_DAYS);
   for (const kind of media.MEDIA_KINDS) { // v-media-merge: والمدموجة ('mix')
     const m = user.media && user.media[kind];
     if (m && media.MEDIA_PLANS[m.plan] && media.MEDIA_PLANS[m.plan].media === kind) add(kind, m.plan, m.at, media.MEDIA_WINDOW_DAYS);

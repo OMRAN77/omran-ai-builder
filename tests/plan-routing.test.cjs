@@ -407,7 +407,7 @@ test('٨. الباقات ٣٦٠/٩٢٠/٣٬٢٠٠ متطابقة في Stripe وP
   const amounts = Object.values(paypal).map((p) => p.amount);
   assert.equal(new Set(amounts).size, amounts.length, 'المبالغ مميّزة — الالتقاط يطابق بالمبلغ');
   const ccs = read('api/_lib/create-checkout-session.js');
-  assert.match(ccs, /if \(!PLANS\[plan\]\.pack\) \{ user\.plan = plan; user\.planUpdatedAt = Date\.now\(\); \}/);
+  assert.match(ccs, /if \(!PLANS\[plan\]\.pack && !kept\) \{ user\.plan = plan; user\.planUpdatedAt = Date\.now\(\); \}/); // v-lock-subs (srv-money-4): وأدنى تحت أعلى سارية لا يغيّرها
   // v-checkout-autorenew: الرزمة لا تتجدّد أبدًا، والباقة تتجدّد باختيار صريح فقط (checkout-login يفحص السلوك).
   assert.match(ccs, /const recurring = !planInfo\.pack && autoRenew === true;/);
   assert.match(ccs, /params\.append\('mode', recurring \? 'subscription' : 'payment'\);/);

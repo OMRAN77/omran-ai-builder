@@ -88,6 +88,9 @@ async function priorOf(user, username, p) {
       if (!m || !m.plan) return null;
       return Object.assign({}, m, { budget: Math.max(0, Number(await kvGetRaw(budgetKey(username, p.media))) || 0) });
     }
+    // v-lock-subs (srv-money-4): الفترة الفعليّة — وقد تكون فترة أدنى من planNext بعد انتهاء الأعلى (tier.chatPeriod)
+    const cp = require('./tier.js').chatPeriod(user);
+    if (cp) return { plan: cp.plan, planUpdatedAt: cp.at, planPayId: cp.payId };
     return user.plan ? { plan: String(user.plan), planUpdatedAt: Number(user.planUpdatedAt) || null, planPayId: user.planPayId ? String(user.planPayId) : null } : null;
   } catch (e) { logError('pay-refund:prior', e); return null; }
 }
@@ -155,9 +158,13 @@ async function priorPeriod(rec) {
 }
 
 // هل الفترة الحاليّة على u (فترة المحادثة، أو باقة الوسائط من نوع r) من الدفعة r؟
+const holdsMain = (u, r) => CHAT_PLANS.includes(r.plan) && String(u.plan || '') === r.plan && sameGrant(u.planUpdatedAt, r, u.planPayId);
+// v-lock-subs (srv-money-4): دفعة أدنى وصلت تحت أعلى سارية — فترتها في planNext برقمها (create-checkout-session.js)، تسري بعد الأعلى
+const isNextOf = (n, r) => !!(n && String(n.plan || '') === r.plan && n.payId && String(n.payId) === String(r.id));
+const holdsNext = (u, r) => !r.media && CHAT_PLANS.includes(r.plan) && Array.isArray(u.planNext) && u.planNext.some((n) => isNextOf(n, r));
 function holds(u, r) {
   if (r.media) { const x = u.media && u.media[r.media]; return !!(x && x.plan === r.plan && sameGrant(x.at, r, x.payId)); }
-  return CHAT_PLANS.includes(r.plan) && String(u.plan || '') === r.plan && sameGrant(u.planUpdatedAt, r, u.planPayId);
+  return holdsMain(u, r) || holdsNext(u, r);
 }
 
 // الدفعة التي فتحت الفترة الحاليّة في خانة rec إن كان سجلّها مسحوبًا كاملًا (revoked.plan) — فترة لا يجوز أن تبقى على الحساب.
@@ -185,7 +192,15 @@ async function dropPeriod(name, u, r) {
       const ttl = Math.max(60, Math.ceil((Number(back.at) + MEDIA_WINDOW_DAYS * 86400000 - Date.now()) / 1000));
       await kvSetRaw(budgetKey(name, r.media), left, ttl);
     } else await kvDel(budgetKey(name, r.media));
-  } else if (back) { u.plan = back.plan; u.planUpdatedAt = back.planUpdatedAt; u.planPayId = back.planPayId; } else { u.plan = null; delete u.planUpdatedAt; delete u.planPayId; }
+  } else {
+    const main = holdsMain(u, r);
+    if (holdsNext(u, r)) { // v-lock-subs (srv-money-4): فترة planNext لهذه الدفعة تخرج — لا تسري بعد الأعلى وثمنها مُستردّ
+      u.planNext = u.planNext.filter((n) => !isNextOf(n, r));
+      if (!u.planNext.length) delete u.planNext;
+    }
+    if (!main) { await require('./auth.js').putUser(name, u); return null; }
+    if (back) { u.plan = back.plan; u.planUpdatedAt = back.planUpdatedAt; u.planPayId = back.planPayId; } else { u.plan = null; delete u.planUpdatedAt; delete u.planPayId; }
+  }
   await require('./auth.js').putUser(name, u);
   return back ? back.plan : null;
 }
@@ -572,3 +587,4 @@ async function paypalEvent(event) {
 }
 
 module.exports = { recordGrant, linkGrant, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC };
+module.exports.alertOwner = alertOwner; // v-lock-subs (srv-money-5): الويب هوك ينبّه المالك بدفعة لحساب محذوف بالمسار نفسه (سجلّ أخطائه + الإشعار بمهلة)
