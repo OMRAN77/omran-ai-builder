@@ -4,6 +4,8 @@
 //  cli-chat-attach-1 — الاستطلاع كان على متحكّم الدور العامّ: الحارس الصلب (٣٠٠ ث من بدء الدور) وحارس الرجوع (٦٠ ث بعد العودة
 //    لدور أقدم من دقيقتين) يقطعانه والاستطلاع يسمح بستّ دقائق، وcatch الداخليّ يبتلع AbortError بلا رسالة: نقاط مخصومة ومهمّة
 //    تكتمل عند المزوّد ولا تصل، والكنس يعدّها «مُسلَّمة» فلا يردّ شيئًا.
+//    المراجعة الثانية: بعد المهلة الكلّيّة كانت عثرة واحدة (أو مهلة نداء جارٍ عند الرجوع من تجميد) تُنهي الاستطلاع والفيديو جاهز (ATK1/ATK1b)،
+//    وردّ إنشاء 2xx قطع الحارس قراءة جسمه كان يُعاد بـconfirmed بلا إشارة = مهمّة ثانية وخصم ثانٍ (ATK2).
 //  cli-chat-attach-2 — قفل الإرسال (btnSend.disabled وgenAbortController) لا يُضبط إلّا بعد انتظار المصنّف (حتّى ٢٫٥ ث) والنصّ
 //    باقٍ في الصندوق، فنقرة ثانية أو Enter تبدأ دورًا ثانيًا بالنصّ نفسه = صورتان وخصمان.
 //  cli-chat-attach-5 — إعادة الإنشاء بعد فشل غير نهائيّ قبل سؤال السعر (500 retryable، 502/504) كانت ترسل confirmed:true فيتخطّى
@@ -32,6 +34,7 @@ const HELPERS = [
   block(SRC, 'async function postWithConfirm(url, payload', '\n}\n'),
   block(SRC, 'function omranStopMsg(', '\n}\n'),
   maybe('async function omranChatVidPoll(', '\n}\n'), // الإصلاح (غائب في الأساس)
+  maybe('function omranChatVidNoRetry(', '\n}\n'), // المراجعة الثانية (غائب في الأساس)
 ].join('\n');
 
 const I18N = { stTimeout: '⏱️ انتهت مهلة الردّ.', vidCancelled: 'أُلغي إنشاء الفيديو — لم تُخصم أيّ نقاط.', svcPaused: 'الخدمة متوقّفة مؤقّتًا' };
@@ -203,17 +206,28 @@ test('cli-chat-attach-1 ح. الشخصيّة الناطقة: الحارس الص
   assert.equal(e.log.bodies.length, 1);
 });
 
-test('cli-chat-attach-1 ي. الحارس يقطع بعد أن قبل المزوّد المهمّة وخصم (ردّ الإنشاء وصل عند ٢٩٨ ث وجسمه بعد الحدّ): الاستطلاع يكمل والفيديو يصل مرّة', async () => {
+/* المراجعة الثانية: جسم الردّ كالمتصفّح — يُقرأ بعد ms، ويُرفض بـAbortError إن قُطعت إشارة الطلب قبل اكتماله (كان الجسم المزيّف يتجاهل
+   القطع فيُقرأ المعرّف، والمتصفّح يرفض القراءة فيظنّ الكود الردّ فاشلًا ويعيد الإنشاء). */
+const slowBody = (c, ms, body, init) => () => new Promise((res, rej) => {
+  const s = init && init.signal;
+  const id = c.setTimeout(() => res(body), ms);
+  if (s) { const cut = () => { c.clearTimeout(id); rej(abortErr()); }; if (s.aborted) cut(); else s.addEventListener('abort', cut); }
+});
+// ردّ إنشاء 2xx يصل عند at (رؤوسه)، وجسمه بعد ٣ ث — والحارس الصلب عند ٣٠٠ ث يقع أثناء قراءته
+const lateOk = (c, at, n, init) => new Promise((res) => c.setTimeout(() => res({ ok: true, status: 200, json: slowBody(c, 3000, { id: 'rw-' + n }, init) }), at));
+
+test('cli-chat-attach-1 ي. الحارس يقطع أثناء قراءة جسم ردّ إنشاء 2xx (المزوّد قبل المهمّة وخصم): لا إنشاء ثانٍ ولا خصم ثانٍ، وسطر المهلة', async () => {
   const c = clock();
   const e = videoEnv(c, {
-    create: () => new Promise((res) => c.setTimeout(() => res({ ok: true, status: 200, json: () => new Promise((r2) => c.setTimeout(() => r2({ id: 'rw-1' }), 3000)) }), 298_000)),
+    create: (b, n, init) => lateOk(c, 298_000, n, init),
     status: () => reply(200, { status: 'SUCCEEDED', output: [VID_URL] }),
   });
   await c.advance(330_000);
   assert.equal(e.run.timedOut, true, 'الحارس قطع الدور أثناء قراءة ردّ الإنشاء');
-  assert.equal(e.video(), true, 'المهمّة المخصومة ضاعت بعد قطع الحارس: ' + JSON.stringify(e.ctx.cur.messages));
-  assert.equal(e.ctx.cur.messages.filter((m) => m.attachments).length, 1, 'الفيديو مرّة واحدة');
-  assert.equal(e.log.bodies.length, 1, 'لا إنشاء ثانٍ');
+  assert.equal(e.log.bodies.length, 1, 'إعادة عمياء لـ2xx لم يُقرأ جسمه = مهمّة ثانية وخصم ثانٍ: ' + e.log.seq.join(' → '));
+  assert.equal(e.last() && e.last().content, I18N.stTimeout, 'لا سطر مهلة: ' + JSON.stringify(e.ctx.cur.messages));
+  await c.advance(400_000);
+  assert.equal(e.log.bodies.length, 1, 'إنشاء متأخّر بعد قطع الدور');
 });
 
 test('cli-chat-attach-1 ط. ما سوى الفيديو كما كان: دور عاديّ ما زال يقطعه الحارس الصلب عند ٣٠٠ ث', async () => {
@@ -400,4 +414,106 @@ test('cli-chat-attach-2 و. شكل الأصل الذي يقوم عليه الب�
   const runStart = core.indexOf('const __run = __omranRunStart(cur.id, __runCtl);');
   assert.ok(intent > 0 && clear > intent && runStart > clear, 'تغيّر ترتيب الأصل — حدّث البديل');
   assert.ok(core.indexOf("if(typeof genAbortController !== 'undefined' && genAbortController) return;") < intent, 'قفل v301 قبل الانتظار');
+});
+
+// ───────────── cli-chat-attach-1 — المراجعة الثانية (هجمات المراجع ATK1 · ATK1b · ATK2) ─────────────
+
+const SUCC = () => reply(200, { status: 'SUCCEEDED', output: [VID_URL] });
+
+test('cli-chat-attach-1 ك. (ATK1) صفحة مجمّدة ٧ د بعد قبول المهمّة، وأوّل استطلاع بعد الرجوع «Load failed»: يُعاد والفيديو المخصوم يصل', async () => {
+  const c = clock();
+  let thawed = false, after = 0;
+  const e = videoEnv(c, { create: okCreate(false), status: () => { if (!thawed) return reply(200, { status: 'RUNNING' }); if (++after === 1) throw new TypeError('Load failed'); return SUCC(); } });
+  await c.advance(12_000);           // أُنشئت المهمّة (خُصمت) واستطلاعان RUNNING
+  c.jump(7 * 60_000); thawed = true; // التطبيق في الخلفيّة ٧ د — المزوّد أنهى الفيديو
+  e.listeners.visibilitychange();
+  await c.advance(60_000);
+  assert.equal(e.video(), true, 'عثرة واحدة بعد المهلة أضاعت فيديو جاهزًا: ' + JSON.stringify(e.ctx.cur.messages));
+  assert.ok(!e.ctx.cur.messages.some((m) => String(m.content).includes(TIMEOUT_AR)), 'سطر «جرّب مرة ثانية» = دعوة لخصم ثانٍ');
+  assert.equal(e.log.bodies.length, 1, 'إنشاء واحد');
+});
+
+test('cli-chat-attach-1 ل. (ATK1b) جُمّدت الصفحة واستطلاعٌ جارٍ: مهلة النداء المتأخّرة تقطعه عند الرجوع — يُستطلع ثانيةً والفيديو يصل', async () => {
+  const c = clock();
+  let thawed = false;
+  const e = videoEnv(c, { create: okCreate(false), status: (n, init) => (thawed ? SUCC() : n === 3 ? hang(init) : reply(200, { status: 'RUNNING' })) });
+  await c.advance(16_000);           // الاستطلاع الثالث (عند ١٥ ث) جارٍ
+  assert.equal(e.log.polls, 3);
+  c.jump(7 * 60_000); thawed = true; // مجمّدة ٧ د: مؤقّت الـ٣٠ ث للنداء الجاري فات موعده
+  e.listeners.visibilitychange();
+  await c.advance(60_000);
+  assert.ok(e.log.polls >= 4, 'لم يُستطلع مرّة واحدة بعد الرجوع');
+  assert.equal(e.video(), true, 'النداء المقطوع بمهلته أنهى الدور بلا استطلاع: ' + JSON.stringify(e.ctx.cur.messages));
+  assert.equal(e.log.bodies.length, 1);
+});
+
+test('cli-chat-attach-1 م. (ATK1) الشخصيّة الناطقة: مجمّدة ٧ د ثمّ عثرة شبكة — الفيديو الناطق المخصوم يصل', async () => {
+  const c = clock();
+  let thawed = false, after = 0;
+  const e = videoEnv(c, { talk: true, create: okCreate(true), status: () => { if (!thawed) return reply(200, { status: 'RUNNING' }); if (++after === 1) throw new TypeError('Failed to fetch'); return SUCC(); } });
+  await c.advance(13_000);
+  c.jump(7 * 60_000); thawed = true;
+  e.listeners.visibilitychange();
+  await c.advance(60_000);
+  assert.equal(e.video(), true, 'الفيديو الناطق ضاع: ' + JSON.stringify(e.ctx.cur.messages));
+  assert.equal(e.log.bodies.length, 1);
+});
+
+test('cli-chat-attach-1 ن. بعد المهلة الكلّيّة العثرات محدودة: شبكة ميتة = ٣ عثرات متتالية بعد المهلة ثمّ سطر المهلة، ولا استطلاع بعده', async () => {
+  const c = clock();
+  let e;
+  e = videoEnv(c, { create: okCreate(false), status: () => { if (c.now - e.t0 < 300_000) return reply(200, { status: 'RUNNING' }); throw new TypeError('Failed to fetch'); } });
+  await c.advance(6 * 60_000);
+  const atDeadline = e.log.polls;
+  await c.advance(2 * 60_000);
+  assert.equal(e.out.done, true, 'استطلاع بلا نهاية بعد المهلة');
+  const m = e.last();
+  assert.ok(m && String(m.content).includes(TIMEOUT_AR), 'لا سطر مهلة: ' + JSON.stringify(e.ctx.cur.messages));
+  assert.equal(e.log.polls - atDeadline, 3, 'العثرات بعد المهلة ليست ٣ بالضبط');
+  const polls = e.log.polls;
+  await c.advance(5 * 60_000);
+  assert.equal(e.log.polls, polls, 'استطلاع بعد النهاية');
+});
+
+test('cli-chat-attach-1 س. (ATK2) وافق على السعر ثمّ قطع الحارس جسم ردّ الإنشاء المؤكَّد: لا إنشاء مؤكَّد ثانٍ بلا نافذة سعر (خصم ثانٍ)', async () => {
+  const c = clock();
+  const e = videoEnv(c, { create: (b, n, init) => (b.confirmed !== true ? reply(428, QUOTE) : lateOk(c, 298_000, n, init)), status: okPoll });
+  await c.advance(330_000);
+  assert.equal(e.run.timedOut, true);
+  assert.deepEqual(e.log.seq, ['create:ask', 'confirm', 'create:confirmed'], 'خصم ثانٍ بلا نافذة سعر: ' + e.log.seq.join(' → '));
+  assert.equal(e.last() && e.last().content, I18N.stTimeout);
+  await c.advance(400_000);
+  assert.equal(e.log.bodies.length, 2, 'إنشاء متأخّر بعد قطع الدور');
+});
+
+test('cli-chat-attach-1 ع. ردّ إنشاء 2xx انقطع جسمه بلا قطع الدور: لا إعادة عمياء (مهمّة واحدة وخصم واحد) — سطر المهلة القائم لا نصّ خام', async () => {
+  const c = clock();
+  const broken = () => ({ ok: true, status: 200, json: async () => { throw new TypeError('network error'); } });
+  const e = videoEnv(c, { create: (b) => (b.confirmed !== true ? reply(428, QUOTE) : broken()), status: okPoll });
+  await c.advance(60_000);
+  assert.equal(e.out.done, true);
+  assert.deepEqual(e.log.seq, ['create:ask', 'confirm', 'create:confirmed'], 'إعادة 2xx = مهمّة ثانية وخصم ثانٍ: ' + e.log.seq.join(' → '));
+  assert.equal(e.last() && e.last().content, I18N.stTimeout);
+  assert.equal(e.last()._sys, 'stop', 'سطر المهلة رسالة تطبيق (omranStopMsg) لا ردّ نموذج بوسم «محتوى مولّد»');
+  // الشخصيّة الناطقة: الحلقة نفسها (الموافقة سبقت فكلّ إنشاء confirmed)
+  const c2 = clock();
+  const e2 = videoEnv(c2, { talk: true, create: broken, status: okPoll });
+  await c2.advance(60_000);
+  assert.equal(e2.log.bodies.length, 1, 'إعادة 2xx بلا op في الشخصيّة الناطقة = خصم ثانٍ');
+  assert.equal(e2.last() && e2.last().content, I18N.stTimeout);
+  assert.equal(e2.last()._sys, 'stop');
+});
+
+test('cli-chat-attach-1 ف. دور قطعه الحارس أثناء انتظار الإعادة (والمستخدم في محادثة أخرى، فلا إشارة على الطلب): لا طلب مدفوع جديد بعد القطع', async () => {
+  const c = clock();
+  const e = videoEnv(c, {
+    create: (b, n) => (b.confirmed !== true ? reply(428, QUOTE)
+      : n === 2 ? new Promise((res) => c.setTimeout(() => res(reply(500, { error: 'x', retryable: true })), 297_000)) : reply(200, { id: 'rw-1' })),
+    status: okPoll,
+  });
+  e.ctx.state.currentId = 'B'; e.ctx.__omranSyncRunView(); // انتقل إلى محادثة أخرى: genAbortController لا يخصّ هذا الدور
+  await c.advance(330_000);
+  assert.equal(e.run.timedOut, true);
+  assert.deepEqual(e.log.seq, ['create:ask', 'confirm', 'create:confirmed'], 'طلب مؤكَّد بعد قطع الدور: ' + e.log.seq.join(' → '));
+  assert.equal(e.last() && e.last().content, I18N.stTimeout);
 });

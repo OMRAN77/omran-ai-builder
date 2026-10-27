@@ -81,7 +81,7 @@ const TALK = block(SRC, '    if(__wantsTalkChar){\n', '      cur.lastMsgWasImage
 const POST = block(SRC, 'async function postWithConfirm(url, payload', '\n}\n');
 const FRIENDLY = block(SRC, 'function __friendlyErr(e){', '\n}\n');
 const HELPER = block(SRC, 'function omranVideoCodeText(', '\n}\n') + '\n' + block(SRC, 'function omranAttachT(', '\n}\n'); // v-audit-attach: نصوص الشخصيّة بمفتاح الـ١٤ لغة
-const PRICE = block(SRC, 'async function omranTalkPriceCheck(', '\n}\n') + '\n' + block(SRC, 'async function omranChatVidPoll(', '\n}\n'); // v-lock-chatvid: الاستطلاع
+const PRICE = block(SRC, 'async function omranTalkPriceCheck(', '\n}\n') + '\n' + block(SRC, 'async function omranChatVidPoll(', '\n}\n') + '\n' + block(SRC, 'function omranChatVidNoRetry(', '\n}\n'); // v-lock-chatvid: الاستطلاع، وهل يُعاد الإنشاء
 const TD = { window: {} };
 vm.runInNewContext(fs.readFileSync(path.join(root, 'js/app-11-video-trends-data.js'), 'utf8'), TD);
 const TRENDS = TD.window.__VIDEO_TRENDS;

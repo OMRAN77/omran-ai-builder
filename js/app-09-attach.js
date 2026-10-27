@@ -4044,8 +4044,21 @@ async function omranChatVidPoll(run, url, step, t0, maxMs){
   try{ const r = await fetch(url, { signal: ctl.signal }); d = await r.json().catch(function(){ return null; }); }
   catch(e){ if(stopped()) throw Object.assign(new Error('aborted'), { name: 'AbortError' }); d = null; /* guard-ok — عثرة شبكة أو مهلة استطلاع: المهمّة قائمة عند المزوّد، تُستطلع ثانيةً */ }
   finally{ clearTimeout(tm); sig.removeEventListener('abort', cut); }
-  if(!(d && (d.status === 'SUCCEEDED' || d.status === 'FAILED' || d.error === 'unavailable')) && Date.now() - t0 > maxMs) throw new Error(omranAttachT('axAttachVidTimeout', 'تأخر إنشاء الفيديو، جرّب مرة ثانية.', 'Video generation timed out, please try again.'));
+  /* v-lock-chatvid (cli-chat-attach-1، المراجعة الثانية): بعد المهلة الكلّيّة ينهيه ردٌّ حقيقيّ لم يُحسم (status) وحده؛ والعثرة (شبكة، مهلة
+     نداء، خطأ خادم بلا status) تُعاد حتّى ٣ متتالية بعد المهلة. صفحة جُمّدت أكثر من ٦ د ثمّ عثرة عند الرجوع — أو مهلة النداء المتأخّرة تقطع
+     نداءً كان جاريًا — كانت تُنهيه قبل استطلاع حقيقيّ واحد، والفيديو المخصوم جاهز عند المزوّد. */
+  const late = !(d && (d.status === 'SUCCEEDED' || d.status === 'FAILED' || d.error === 'unavailable')) && Date.now() - t0 > maxMs;
+  run.vidLateMiss = (late && !(d && d.status)) ? (run.vidLateMiss || 0) + 1 : 0;
+  if(late && ((d && d.status) || run.vidLateMiss >= 3)) throw new Error(omranAttachT('axAttachVidTimeout', 'تأخر إنشاء الفيديو، جرّب مرة ثانية.', 'Video generation timed out, please try again.'));
   return d || {};
+}
+/* v-lock-chatvid (cli-chat-attach-1، المراجعة الثانية): إنشاء فيديو المحادثة لم يرجع بمعرّف — هل يُعاد؟ دور مقطوع (الحارس أو الإيقاف) لا
+   يُرسل بعده شيء: AbortError، فيكتب الإمساك سطر المهلة لقطع الحارس ويسكت للإيقاف. وردّ 2xx = قبل الخادم المهمّة وخصم وجسمه لم يُقرأ
+   (قطعه الحارس أثناء القراءة أو انقطع)، فإعادته كانت مهمّة ثانية وخصمًا ثانيًا بـconfirmed بلا نافذة سعر — سطر المهلة القائم بدلها
+   (__cut: رسالة تطبيق كقطع الحارس، omranStopMsg). خارج __sendPromptCore كي لا يكبر سقفها. */
+function omranChatVidNoRetry(ctl, r){
+  if(ctl && ctl.signal && ctl.signal.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+  if(r && r.ok) throw Object.assign(new Error('aborted'), { name: 'AbortError', __cut: true });
 }
 /* مراجعة الدفعة A (rel-1 · rel-5): ما لا يحسمه التعبير وحده يُبنى صورةً فقط إن قال المصنّف image — لا «ليس none»، فالتعذّر (null) لا يكفي
    ولوحة/خلفية ليستا كلمتَي وسائط فلا يُسأل عنهما أصلًا: (أ) «ممكن/تقدر ترسم…» بلا مفعول صورة («ممكن ترسم لي مسار مهني» مجاز)؛
@@ -5441,7 +5454,7 @@ function __friendlyErr(e){
           const __r = await postWithConfirm('/api/video?action=veo-create', __vp, __runCtl.signal); /* v-talkchar-confirm: 428 = سؤال الخصم مرّة ثمّ confirmed:true (كان fetch خامًا فـ«⚠️ confirm_required» لكلّ غير المالك) */
           const __d = await __r.json().catch(()=>({}));
           if(__r.ok && __d.op){ __op = __d.op; }
-          else { __verr = (__d && __d.error) || ('HTTP ' + __r.status); __vra = (__d && __d.retryAfter) || 0; if(__verr === 'auth_required' || __verr === 'points_insufficient' || __verr === 'video_cooldown' || __r.status === 428 || __d.retryable === false) break; if(__a === 0) await new Promise(r=>setTimeout(r,6000)); } /* المهلة والنقاط والإلغاء بلا إعادة (ولا تأكيد ثانٍ) */
+          else { omranChatVidNoRetry(__runCtl, __r); __verr = (__d && __d.error) || ('HTTP ' + __r.status); __vra = (__d && __d.retryAfter) || 0; if(__verr === 'auth_required' || __verr === 'points_insufficient' || __verr === 'video_cooldown' || __r.status === 428 || __d.retryable === false) break; if(__a === 0){ await new Promise(r=>setTimeout(r,6000)); omranChatVidNoRetry(__runCtl); } } /* المهلة والنقاط والإلغاء بلا إعادة (ولا تأكيد ثانٍ). v-lock-chatvid (المراجعة الثانية): ولا 2xx بلا op (مهمّة قُبلت وخُصمت) ولا دور مقطوع */
         }
         if(!__op){
           if(__verr === 'auth_required') throw new Error(omranAttachT('axAttachVidLogin', 'سجّل الدخول أولًا عشان أسوي لك الفيديو.', 'Please log in first to create videos.'));
@@ -5458,7 +5471,7 @@ function __friendlyErr(e){
         cur.messages.push({ role:'assistant', content:'🎬 ' + omranAttachT('axAttachTcReady', 'شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)', 'Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)'), attachments:[{ name:'talking-character.mp4', isVideo:true, url:__vurl }] });
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
-        if(e && e.name === 'AbortError'){ if(__run.timedOut) cur.messages.push(omranStopMsg('', true)); } else { cur.messages.push({ role:'assistant', content:(e && e.__note) ? String(e.message) : '⚠️ ' + __friendlyErr(e) }); } /* v-lock-chatvid (cli-chat-attach-1): قطع الحارس (لا زرّ الإيقاف) = سطر المهلة لا صمت */
+        if(e && e.name === 'AbortError'){ if(__run.timedOut || e.__cut) cur.messages.push(omranStopMsg('', true)); } else { cur.messages.push({ role:'assistant', content:(e && e.__note) ? String(e.message) : '⚠️ ' + __friendlyErr(e) }); } /* v-lock-chatvid (cli-chat-attach-1): قطع الحارس (لا زرّ الإيقاف) أو 2xx بلا op (__cut، omranChatVidNoRetry) = سطر المهلة لا صمت */
       }
       cur.lastMsgWasImageEdit = false;
       renderAll(); saveState();
@@ -5549,9 +5562,9 @@ function __friendlyErr(e){
           const __d = await __r.json().catch(() => ({}));
           if(__r.ok && __d.id){ __vid = __d.id; }
           else {
-            __verr = (__d && __d.error) || ('HTTP ' + __r.status); __vra = (__d && __d.retryAfter) || 0;
+            omranChatVidNoRetry(__runCtl, __r); __verr = (__d && __d.error) || ('HTTP ' + __r.status); __vra = (__d && __d.retryAfter) || 0; /* v-lock-chatvid (cli-chat-attach-1، المراجعة الثانية): دور مقطوع أو 2xx بلا معرّف (مهمّة قُبلت وخُصمت) = لا إعادة عمياء */
             if(__verr === 'auth_required' || __verr === 'daily_limit_reached' || __verr === 'video_cooldown' || __verr === 'points_insufficient' || __r.status === 428 || __d.retryable === false) break; if(__r.__omApproved) __vp.confirmed = true; /* v-chat-video-cooldown: المهلة والنقاط وإلغاء التأكيد والرفض الدائم لا يُعاد طلبها بعد ٦ ث؛ والإعادة بالموافقة نفسها (v-talkchar-confirm: كانت تفتح نافذة السعر ثانيةً). v-lock-chatvid (cli-chat-attach-5): الموافقة إن وُجدت فقط — فشل قبل سؤال السعر (500 retryable، 502/504) كان يُعاد بـconfirmed:true فيخصم الخادم بلا أن يرى المستخدم السعر */
-            if(__a === 0) await new Promise(r => setTimeout(r, 6000));
+            if(__a === 0){ await new Promise(r => setTimeout(r, 6000)); omranChatVidNoRetry(__runCtl); } // v-lock-chatvid: قطعٌ أثناء الانتظار = لا إعادة بلا إشارة
           }
         }
         if(!__vid){
@@ -5570,7 +5583,7 @@ function __friendlyErr(e){
         cur.messages.push({ role: 'assistant', content: '🎬 ' + omranAttachT('axAttachVidReady', 'فيديوك جاهز ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)', 'Your video is ready ✅ (link valid 24h — download it to keep it)'), attachments: [{ name: 'video.mp4', isVideo: true, url: __vurl }] });
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
-        if(e && e.name === 'AbortError'){ if(__run.timedOut) cur.messages.push(omranStopMsg('', true)); } else { /* v-lock-chatvid (cli-chat-attach-1): قطع الحارس (لا زرّ الإيقاف) = سطر المهلة لا صمت */
+        if(e && e.name === 'AbortError'){ if(__run.timedOut || e.__cut) cur.messages.push(omranStopMsg('', true)); } else { /* v-lock-chatvid (cli-chat-attach-1): قطع الحارس (لا زرّ الإيقاف) أو 2xx بلا معرّف (__cut، omranChatVidNoRetry) = سطر المهلة لا صمت */
           cur.messages.push({ role: 'assistant', content: (e && e.__note) ? String(e.message) : '⚠️ ' + __friendlyErr(e) });
         }
       }
