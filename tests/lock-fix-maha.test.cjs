@@ -224,6 +224,32 @@ test('cli-voice-1 د. إعادة الاتّصال الناجحة لا تدفع �
   assert.equal(rc.v('mahaPointsTimer') !== null, true, 'العدّاد مستمرّ بعد الرجوع');
 });
 
+test('cli-voice-1 د٢. نبضة وقعت أثناء إعادة الاتّصال تؤجَّل: يدفعها افتتاح الإعادة إن نجحت (لا مرّتين)، ولا تُدفع إن فشلت', async () => {
+  const base = world();
+  const t0 = base.clock.now;
+  await liveCall(base);
+  await base.advance(t0 + 299000 - base.clock.now);
+  const baseline = base.mints().length + base.consumes().length;
+  for (const ok of [true, false]) {
+    const gate = deferred();
+    const w = world({ mint: (n) => (n === 2 ? gate.p : res(200, { clientSecret: 'ek' + n, mahaBudget: Object.assign({}, PAID), turn: 'natural' })) });
+    await liveCall(w);
+    await w.advance(t0 + 58000 - w.clock.now);
+    w.pc().setState('failed');
+    await w.advance(t0 + 62000 - w.clock.now); // نبضة الدقيقة الثانية (٦٠ث) والإعادة جارية
+    assert.equal(w.consumes().length, 0, 'لا خصم والمكالمة تُعاد');
+    gate.resolve(ok ? res(200, { clientSecret: 'ek2', mahaBudget: Object.assign({}, PAID), turn: 'natural' }) : res(500, { error: 'failed' }));
+    await w.advance(t0 + 299000 - w.clock.now);
+    if (ok) {
+      assert.equal(w.v('mahaCallActive'), true);
+      assert.equal(w.mints().length + w.consumes().length, baseline, 'كانت دقيقة زائدة: النبضة ثمّ افتتاح الإعادة عن الوقت نفسه');
+    } else {
+      assert.equal(w.v('mahaCallActive'), false);
+      assert.equal(w.consumes().length, 0, 'المكالمة ماتت في تلك الدقيقة — لا تُخصم');
+    }
+  }
+});
+
 test('cli-voice-1 هـ. مشترك مها بحدّ ٣ دقائق: إعادة الاتّصال لا تصفّر عدّاد الحدّ — المدفوع لا يتجاوز الحدّ', async () => {
   const MEDIA = { unlimited: false, points: 70, trial: false, prepaid: 'media', cost: 15, mahaMin: 5, capMin: 3 };
   const w = world({ mint: () => res(200, { clientSecret: 'ek', mahaBudget: Object.assign({}, MEDIA), turn: 'natural' }), consume: () => ({ ok: true, media: 'maha', mediaLeft: 55 * 3 }) });
