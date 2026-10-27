@@ -141,6 +141,7 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
   const claim = (sourceField && sourceId) ? claimKey(sourceField, sourceId) : null;
   if (claim && !(await kvSetIfAbsent(claim, username, CLAIM_TTL_SEC))) return already; // v-pay-once
 
+  let added = null; // v-lock-gpay: { key, n } بعد أن أُضيفت النقاط فعلًا — أثر لا يُعاد
   try {
     const prev = await require('./pay-refund.js').priorOf(user, username, PLANS[plan]); // v-pay-refund: قبل أن تُستبدل الفترة. لا يرمي
     if (PLANS[plan].media) {
@@ -165,13 +166,24 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     await require('./points.js').ensureBalance(username);
     const balanceKey = 'points:' + encodeURIComponent(String(username).trim().toLowerCase());
     const newBalance = await kvIncrBy(balanceKey, PLANS[plan].points);
+    added = { key: balanceKey, n: PLANS[plan].points };
     user.points = Number(newBalance);
 
     await putUser(username, user);
     await noteGrant(username, plan, sourceField, sourceId, meta, user, prev); // v-pay-refund
     return { ok: true, plan: PLANS[plan].pack ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
   } catch (e) {
-    if (claim) await kvDel(claim); // لم يكتمل الشحن — يُفكّ الحجز فتنجح المحاولة التالية
+    /* v-lock-gpay: فشلٌ بعد أن أُضيفت النقاط (حفظ الحساب) — فكّ الحجز وحده كان يجعل الإعادة (الويب هوك، أو تحقّق Apple/Google Pay
+       المعلّق في المتصفّح) تضيفها مرّة ثانية. يُقرأ الحساب: الحفظ وصل ⇒ الشحنة تمّت، يبقى الحجز؛ لم يصل ⇒ تُردّ النقاط ثمّ يُفكّ؛
+       ولا يُعرف أو تعذّر الردّ ⇒ يبقى الحجز: شحنة واحدة قد تنقصها الباقة خيرٌ من اثنتين. */
+    let release = !added;
+    if (added && claim) {
+      try {
+        const now = await getUser(username);
+        if (!(now && now[sourceField] === sourceId)) { await kvIncrBy(added.key, -added.n); release = true; }
+      } catch (e2) { console.error('[grant] after-credit failure — claim kept', String(sourceId).slice(0, 40), e2 && e2.message); }
+    }
+    if (claim && release) await kvDel(claim); // لم يكتمل الشحن ولا أثر باقٍ — يُفكّ الحجز فتنجح المحاولة التالية
     throw e;
   }
 }

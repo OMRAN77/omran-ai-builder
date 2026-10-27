@@ -24,6 +24,9 @@ let stripeJsLoaded = false;
 let stripeInstance = null;
 let currentPaymentRequest = null;
 let currentWalletAvailability = null; // { applePay, googlePay } | null while unknown/unsupported
+// v-lock-gpay (cli-money-9): رقم آخر إعداد للمحفظة — إعداد نافذة أقدم ينتهي بعد أحدث فلا يكتب فوقه؛ والفحص الجاري «جارٍ التجهيز» لا «غير متوفر».
+let walletSetupGen = 0;
+let walletSetupPending = false;
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
@@ -362,14 +365,17 @@ async function ensureStripeJs(){
 // remain visible either way — clicking an unavailable one just shows a
 // "not available on this device" message (per design).
 async function setupWalletPaymentRequest(plan){
+  const gen = ++walletSetupGen; // v-lock-gpay (cli-money-9)
   currentWalletAvailability = null;
   currentPaymentRequest = null;
+  walletSetupPending = false;
   const cur = checkoutCurrency(); // v-aed-checkout — الورقة والعمليّة في الخادم بالعملة والمبلغ نفسيهما
   const amount = cur === 'aed' ? CHECKOUT_AED_FILS[plan] : CHECKOUT_PLAN_AMOUNTS[plan];
   if (!amount) return;
+  walletSetupPending = true;
   try {
     const stripe = await ensureStripeJs();
-    if (!stripe) return;
+    if (!stripe || gen !== walletSetupGen) return;
     const pr = stripe.paymentRequest({
       country: 'AE',
       currency: cur,
@@ -378,14 +384,55 @@ async function setupWalletPaymentRequest(plan){
       requestPayerEmail: true,
     });
     const availability = await pr.canMakePayment();
+    if (gen !== walletSetupGen) return; // فُتحت النافذة لباقة أخرى أثناء الفحص: لا تُعرض ورقة بمبلغ هذه ولا تُمنح هي
     currentWalletAvailability = availability || null;
     pr.on('paymentmethod', (ev) => { handleWalletPaymentMethod(ev, plan, cur); });
     currentPaymentRequest = pr;
-  } catch (e) { currentWalletAvailability = null; currentPaymentRequest = null; }
+  } catch (e) { if (gen === walletSetupGen) { currentWalletAvailability = null; currentPaymentRequest = null; } }
+  finally { if (gen === walletSetupGen) walletSetupPending = false; }
+}
+
+/* v-lock-gpay (cli-money-1، موافقة المالك ٢٧ أكتوبر): عمليّة Apple/Google Pay كانت تُشحن بطلب تحقّق واحد بعد ev.complete('success') —
+   انقطاع الشبكة أو 500 (قفل الحساب مشغول) = مبلغ مسحوب بلا شحن ولا أثر يعيده، ثمّ «حاول مرة أخرى» تقود إلى خصم ثانٍ. الآن رقم
+   العمليّة يُحفظ قبل التأكيد (كـaiapp_ck_pending وaiapp_pp_pending، قائمة صغيرة بنافذة الخادم ٧٢ ساعة) ويُعاد تحقّقه عند العودة
+   للتطبيق حتّى يُشحن؛ verify-payment-intent آمن التكرار بالحجز الذرّيّ (v-pay-once)، والويب هوك يشحنه من الخادم أيضًا. */
+const WALLET_PI_KEY = 'aiapp_pi_pending';
+const WALLET_PI_TTL_MS = 72 * 3600 * 1000; // VERIFY_WINDOW_SEC في create-checkout-session.js — بعدها 410 من الخادم
+const walletPiBusy = new Set(); // أرقام يتحقّق منها مسار الآن (نافذة الدفع أو العودة) — لا تحقّقان معًا ولا رسالتا نجاح
+function walletPiList(){
+  try {
+    const a = JSON.parse(localStorage.getItem(WALLET_PI_KEY) || '[]');
+    return Array.isArray(a) ? a.filter((x) => x && typeof x.id === 'string' && x.id && (Date.now() - Number(x.ts || 0)) < WALLET_PI_TTL_MS) : [];
+  } catch (e) { return []; }
+}
+function walletPiSave(list){
+  try {
+    if (list.length) localStorage.setItem(WALLET_PI_KEY, JSON.stringify(list.slice(-5)));
+    else localStorage.removeItem(WALLET_PI_KEY);
+  } catch (e) { __swallow(e, 'checkout:pi-save'); }
+}
+function walletPiAdd(id){ walletPiSave(walletPiList().filter((x) => x.id !== id).concat([{ id, ts: Date.now() }])); }
+function walletPiDrop(id){ walletPiSave(walletPiList().filter((x) => x.id !== id)); }
+// 'ok' شُحنت (أو سبق شحنها) · 'stop' لا فائدة من الإعادة (ليست لهذا الحساب، قديمة، فاسدة) · 'retry' عطل عابر أو لم تكتمل بعد
+async function walletPiVerify(id){
+  const token = authGet('aiapp_auth_token');
+  if (!id || !token) return 'retry';
+  try {
+    const r = await fetch('/api/account?action=verify-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payment_intent_id: id, token }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { walletPiDrop(id); return 'ok'; }
+    if (r.status === 400 || r.status === 403 || r.status === 410) { walletPiDrop(id); return 'stop'; }
+  } catch (e) { __swallow(e, 'checkout:pi-verify'); }
+  return 'retry';
 }
 
 async function handleWalletPaymentMethod(ev, plan, currency){
   const statusMsg = document.getElementById('checkoutStatusMsg');
+  let piId = '', charged = false; // v-lock-gpay (cli-money-1): charged = الورقة قالت «تمّ» — بعدها لا «حاول مرة أخرى»
   try {
     const stripe = await ensureStripeJs();
     const cr = await fetch('/api/account?action=create-payment-intent', {
@@ -399,6 +446,8 @@ async function handleWalletPaymentMethod(ev, plan, currency){
       if (statusMsg) statusMsg.textContent = cd.error || t('checkoutNotConfigured');
       return;
     }
+    piId = String(cd.id || '');
+    if (piId) { walletPiBusy.add(piId); walletPiAdd(piId); } // v-lock-gpay: قبل التأكيد — إغلاق التطبيق بعده لا يُضيع الدفعة
 
     const { paymentIntent, error } = await stripe.confirmCardPayment(
       cd.clientSecret,
@@ -407,10 +456,12 @@ async function handleWalletPaymentMethod(ev, plan, currency){
     );
     if (error) {
       ev.complete('fail');
+      if (piId && error.type === 'card_error') walletPiDrop(piId); // رفضٌ صريح من البنك: لم يُسحب شيء
       if (statusMsg) statusMsg.textContent = t('checkoutError');
       return;
     }
     ev.complete('success');
+    charged = true;
 
     let finalIntent = paymentIntent;
     if (finalIntent && finalIntent.status === 'requires_action') {
@@ -422,23 +473,25 @@ async function handleWalletPaymentMethod(ev, plan, currency){
       finalIntent = confirmResult.paymentIntent;
     }
 
-    const vr = await fetch('/api/account?action=verify-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payment_intent_id: cd.id, token: authGet('aiapp_auth_token') }),
-    });
-    const vd = await vr.json();
-    if (vr.ok && vd.ok) {
+    // v-lock-gpay: التحقّق يُعاد ثلاثًا (كالتقاط PayPal)، وإلّا رسالة صادقة والرقم معلّق يُستكمل عند العودة (claimWallet).
+    let v = await walletPiVerify(piId);
+    for (let i = 0; v === 'retry' && i < 3; i++) {
+      await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+      v = await walletPiVerify(piId);
+    }
+    if (v === 'ok') {
       if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
       if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
       setTimeout(closeCheckout, 2500);
     } else if (statusMsg) {
       statusMsg.style.color = '';
-      statusMsg.textContent = vd.error || t('checkoutError');
+      statusMsg.textContent = t('checkoutPaidPending');
     }
   } catch (e) {
-    try { ev.complete('fail'); } catch (e2) { /* guard-ok */ }
-    if (statusMsg) statusMsg.textContent = t('checkoutError');
+    if (!charged) { try { ev.complete('fail'); } catch (e2) { /* guard-ok */ } }
+    if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t(charged ? 'checkoutPaidPending' : 'checkoutError'); }
+  } finally {
+    if (piId) walletPiBusy.delete(piId);
   }
 }
 
@@ -447,9 +500,20 @@ function showWalletUnavailableMsg(){
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutWalletUnavailable'); }
 }
 
+// v-lock-gpay (cli-money-9): الضغط قبل أن ينتهي فحص التوفّر كان يقول «غير متوفر» ويبقى. show() يلزمها ضغطة المستخدم نفسها فلا تُنتظر.
+function showWalletPreparingMsg(){
+  const statusMsg = document.getElementById('checkoutStatusMsg');
+  if (!statusMsg) return;
+  const k = 'axLkGpayPreparing', v = t(k);
+  statusMsg.style.color = '';
+  statusMsg.textContent = v !== k ? v : (lang === 'ar' ? 'جارٍ تجهيز الدفع… اضغط مرّة ثانية بعد لحظة' : 'Getting the payment ready… tap again in a moment');
+}
+
 function clickApplePay(){
   if (currentPaymentRequest && currentWalletAvailability && currentWalletAvailability.applePay) {
     currentPaymentRequest.show();
+  } else if (walletSetupPending) {
+    showWalletPreparingMsg();
   } else {
     showWalletUnavailableMsg();
   }
@@ -459,6 +523,8 @@ window.clickApplePay = clickApplePay;
 function clickGooglePay(){
   if (currentPaymentRequest && currentWalletAvailability && currentWalletAvailability.googlePay) {
     currentPaymentRequest.show();
+  } else if (walletSetupPending) {
+    showWalletPreparingMsg();
   } else {
     showWalletUnavailableMsg();
   }
@@ -474,6 +540,7 @@ async function paypalClaim(orderId){
     const r = await fetch('/api/account?action=paypal-order', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'claim', orderId, token }) });
     const d = await r.json().catch(() => ({}));
     if(r.ok && d.credited === true) return 'ok';
+    if(r.status === 409 && d.reason === 'not_completed') return 'none'; // v-lock-gpay: لم يُلتقط — لم يُسحب شيء (كـ'stop' لمن لا يميّز)
     if(r.status === 404 || r.status === 409 || (r.ok && /^(not_owner|no_plan|account)$/.test(String(d.reason || '')))) return 'stop';
   }catch(e){ __swallow(e, 'checkout:pp-claim'); }
   return 'retry';
@@ -516,13 +583,17 @@ async function loadPaypalButtons(){
         },
         onApprove: async (data) => {
           const statusMsg = document.getElementById('checkoutStatusMsg');
-          const cap = await fetch('/api/account?action=paypal-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'capture', orderId: data.orderID, token: authGet('aiapp_auth_token') }),
-          });
-          const capData = await cap.json().catch(() => ({}));
-          if (cap.ok && capData.status === 'COMPLETED') {
+          // v-lock-gpay (cli-money-5): ردّ الالتقاط قد يضيع بعد أن سحب PayPal المبلغ (شبكة، مهلة الدالّة) — لا يُرمى إلى onError.
+          let cap = null, capData = {};
+          try {
+            cap = await fetch('/api/account?action=paypal-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'capture', orderId: data.orderID, token: authGet('aiapp_auth_token') }),
+            });
+            capData = await cap.json().catch(() => ({}));
+          } catch (e) { __swallow(e, 'checkout:pp-capture'); }
+          if (cap && cap.ok && capData.status === 'COMPLETED') {
             /* v-paypal-honest: «تمّ» كانت تظهر بحالة الدفع وحدها ولو فشل الشحن بعد السحب. الآن بالشحن نفسه، ومحاولات
                إعادة على الخادم (claim آمن التكرار)، وإلّا رسالة صادقة ويبقى الطلب معلّقًا يُستكمل عند العودة للتطبيق. */
             let credited = capData.credited === true;
@@ -537,6 +608,28 @@ async function loadPaypalButtons(){
             } else {
               try { localStorage.setItem('aiapp_pp_pending', data.orderID + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pp-pending'); }
               if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutPaidPending'); }
+            }
+          } else if (!cap || cap.status >= 500 || cap.ok) {
+            /* v-lock-gpay (cli-money-5): لا ردّ، أو عطل بعد طلب الالتقاط، أو حالة غير مكتملة — قد يكون المبلغ سُحب، فـ«حاول مرة أخرى»
+               تقود إلى دفع ثانٍ. PayPal نفسه يُسأل (claim آمن التكرار): لم يُلتقط ⇒ الخطأ كما كان؛ لا يُعرف ⇒ معلّق يُستكمل عند العودة. */
+            let res = await paypalClaim(data.orderID);
+            for (let i = 0; res === 'retry' && i < 2; i++) {
+              await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+              res = await paypalClaim(data.orderID);
+            }
+            if (res === 'ok') {
+              if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
+              if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
+              setTimeout(closeCheckout, 2500);
+            } else if (res === 'none') {
+              if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = capData.error || t('checkoutError'); }
+            } else {
+              if (res === 'retry') { try { localStorage.setItem('aiapp_pp_pending', data.orderID + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pp-pending'); } }
+              if (statusMsg) {
+                const k = res === 'retry' ? 'axLkGpayPayCheck' : 'checkoutPaidPending', v = t(k);
+                statusMsg.style.color = '';
+                statusMsg.textContent = v !== k ? v : (lang === 'ar' ? 'نتأكّد من دفعك الآن — لا تدفع مرّة ثانية. إن خُصم المبلغ يُضاف لحسابك تلقائيًّا.' : 'We are confirming your payment — please do not pay again. If the amount was taken, it will be added to your account automatically.');
+              }
             }
           } else if (statusMsg) {
             statusMsg.style.color = '';
@@ -568,19 +661,32 @@ window.startPaypalCheckout = startPaypalCheckout;
     const checkoutResult = params.get('checkout');
     if (checkoutResult === 'success' || checkoutResult === 'cancel') {
       const sessionId = params.get('session_id');
+      /* v-lock-gpay (cli-money-5): صفحة النجاح بعد دفع مكتمل كانت تقول «حدث خطأ ما، حاول مرة أخرى» إن تعذّر التحقّق (Safari الغلاف
+         بلا رمز ⇒ 401، أو شبكة أو 500)، وتمسح aiapp_ck_pending قبل النتيجة — فيدفع المستخدم ثانيةً. الآن تبقى الجلسة معلّقة حتّى يُشحن
+         (claim أدناه يكملها، والويب هوك يشحنها من الخادم)، والرسالة «وصلنا دفعك…» لا «حاول مرة أخرى». العلم يمنع claim من تحقّق ثانٍ معًا. */
+      const verifying = !!(checkoutResult === 'success' && sessionId);
+      if (verifying) {
+        window.__ckRedirectVerify = sessionId;
+        try { localStorage.setItem('aiapp_ck_pending', sessionId + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:keep'); }
+      }
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(async () => {
-          if (checkoutResult === 'success' && sessionId) {
+          if (verifying) {
+            let vr = null, vd = {};
             try {
-              const vr = await fetch('/api/account?action=verify-checkout', {
+              vr = await fetch('/api/account?action=verify-checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'verify-checkout', session_id: sessionId, token: authGet('aiapp_auth_token') }),
               });
-              const vd = await vr.json();
-              alert(vr.ok && vd.ok ? t('checkoutSuccessMsg') : t('checkoutError'));
-              if (vr.ok && vd.ok && typeof refreshPointsWallet === 'function') refreshPointsWallet();
-            } catch (e) { alert(t('checkoutError')); }
+              vd = await vr.json().catch(() => ({}));
+            } catch (e) { __swallow(e, 'checkout:redirect-verify'); }
+            const ok = !!(vr && vr.ok && vd.ok);
+            // شُحنت، أو لا فائدة من الإعادة (ليست لهذا الحساب، قديمة، فاسدة) — الويب هوك يشحن صاحبها
+            if (ok || (vr && (vr.status === 400 || vr.status === 403 || vr.status === 410))) { try { localStorage.removeItem('aiapp_ck_pending'); } catch(e){ __swallow(e, 'checkout:clear'); } }
+            window.__ckRedirectVerify = '';
+            alert(ok ? t('checkoutSuccessMsg') : t('checkoutPaidPending'));
+            if (ok && typeof refreshPointsWallet === 'function') refreshPointsWallet();
           } else {
             alert(checkoutResult === 'success' ? t('checkoutSuccessMsg') : t('checkoutCancelMsg'));
           }
@@ -591,8 +697,8 @@ window.startPaypalCheckout = startPaypalCheckout;
       params.delete('session_id');
       const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
       window.history.replaceState({}, '', newUrl);
-      // نفس السياق أكمل بنفسه — لا حاجة لجسر الآيفون.
-      try { localStorage.removeItem('aiapp_ck_pending'); } catch(e){ __swallow(e, 'checkout:clear'); }
+      // نفس السياق أكمل بنفسه — لا حاجة لجسر الآيفون. (v-lock-gpay: صفحة نجاح بجلسة تمسحها بعد الشحن وحده — أعلاه.)
+      if (!verifying) { try { localStorage.removeItem('aiapp_ck_pending'); } catch(e){ __swallow(e, 'checkout:clear'); } }
     }
   } catch(e){ __swallow(e, "auth:app-06-checkout#1"); }
 })();
@@ -614,7 +720,7 @@ window.startPaypalCheckout = startPaypalCheckout;
   let busy = false;
   async function claim(){
     const id = pending();
-    if(!id || busy) return;
+    if(!id || busy || window.__ckRedirectVerify === id) return; // v-lock-gpay: صفحة النجاح تتحقّق منها الآن
     const token = authGet('aiapp_auth_token');
     if(!token) return;
     busy = true;
@@ -653,11 +759,29 @@ window.startPaypalCheckout = startPaypalCheckout;
     drop();
     if(res === 'ok'){ alert(t('checkoutSuccessMsg')); if(typeof refreshPointsWallet === 'function') refreshPointsWallet(); }
   }
+  // v-lock-gpay (cli-money-1): عمليّة Apple/Google Pay سُحب مبلغها ولم يُؤكَّد شحنها — يُعاد تحقّقها عند كلّ عودة حتّى ٧٢ ساعة.
+  let piBusy = false;
+  async function claimWallet(){
+    if(piBusy) return;
+    const list = walletPiList();
+    if(!list.length || !authGet('aiapp_auth_token')) return;
+    piBusy = true;
+    let ok = false;
+    for(const x of list){
+      if(walletPiBusy.has(x.id)) continue; // نافذة الدفع تتحقّق منها الآن
+      walletPiBusy.add(x.id);
+      try { if(await walletPiVerify(x.id) === 'ok') ok = true; } finally { walletPiBusy.delete(x.id); }
+    }
+    piBusy = false;
+    if(ok){ alert(t('checkoutSuccessMsg')); if(typeof refreshPointsWallet === 'function') refreshPointsWallet(); }
+  }
   window.addEventListener('focus', () => { claim(); claimPaypal(); });
-  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ claim(); claimPaypal(); } });
+  window.addEventListener('focus', claimWallet);
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ claim(); claimPaypal(); claimWallet(); } });
   const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 5000);
   claim();
   claimPaypal();
+  claimWallet();
 })();
 const btnExportProjectsEl = $('#btnExportProjects');
 if(btnExportProjectsEl) btnExportProjectsEl.onclick = exportProjects;

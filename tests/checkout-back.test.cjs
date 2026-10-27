@@ -88,6 +88,6 @@ test('٥. ✕ وحده ينادي closeCheckout(true)؛ بقيّة النداء�
   const code = (A06 + PS).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, ''); // التعليقات خارج العدّ
   const all = code.match(/closeCheckout\([^)]*\)/g) || [];
   assert.equal(all.filter((c) => c === 'closeCheckout(true)').length, 1, 'نداء true واحد: ✕');
-  assert.equal((A06.match(/setTimeout\(closeCheckout, 2500\)/g) || []).length, 2, 'مهلتا النجاح بلا وسيط');
+  assert.equal((A06.match(/setTimeout\(closeCheckout, 2500\)/g) || []).length, 3, 'مهل النجاح بلا وسيط (v-lock-gpay: +التقاط PayPal الضائع حين يؤكّده claim)');
   assert.ok(A06.includes('if (w){ closeCheckout(); return; }'), 'مسار iOS بلا وسيط');
 });
