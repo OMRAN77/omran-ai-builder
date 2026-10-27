@@ -14,7 +14,7 @@ const { oaLightFetch } = require('./_lib/_oa-light.js'); // v-models-latest
 const { isRetired, retiredResponse } = require('./_lib/_retired.js');
 
 const { verifyToken } = require('./_lib/auth.js');
-const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv.js');
+const { kvGetJSON, kvPutJSON, kvIncr, kvExpire, kvDecrBy } = require('./_lib/kv.js');
 const { clientIp } = require('./_lib/_usage.js');
 const { logError } = require('./_lib/log-error.js');
 const { toolFail } = require('./_lib/_videoFail.js');
@@ -77,7 +77,11 @@ function guestLightCap() {
  * One daily counter per subject (ip or username) per bucket. Owner is exempt.
  * Returns true when the caller is over the limit.
  */
-async function overDailyLimit(subject, bucket, max) {
+/* v-lock-quotaa (srv-edu-bots-7، باب المال بموافقة المالك ٢٧ أكتوبر): العدّاد حجز ذرّيّ كـv-atomic-quota — المرفوض فوق السقف
+   يُنقص فورًا (كان يبقى فيرفع العدّاد فوق ما خُدم)، والحجز المقبول يُسجَّل في `held` ليردّه giveBackDaily إن فشل الطلب قبل
+   أن يجيب المزوّد. الجواب الذي خدمه المزوّد (مدفوع) يبقى معدودًا ولو لم يُقرأ — كما في v-ideas-paid — وإلّا صار نصّ يُفسد
+   الـJSON عمدًا حلقةَ نداءات مدفوعة بلا حدّ. */
+async function overDailyLimit(subject, bucket, max, held) {
   const key = 'edu:' + bucket + ':' + encodeURIComponent(subject) + ':' + todayStr();
   let count = 0;
   try {
@@ -86,7 +90,18 @@ async function overDailyLimit(subject, bucket, max) {
   } catch (e) {
     return false; // never block a student over a bookkeeping failure
   }
-  return count > max;
+  if (count > max) {
+    try { await kvDecrBy(key, 1); } catch (e) { /* أفضل جهد — العدّاد يسقط مع اليوم */ }
+    return true;
+  }
+  if (held) held.push(key);
+  return false;
+}
+// v-lock-quotaa (srv-edu-bots-7): يردّ ما حجزه هذا الطلب مرّة واحدة (splice يفرغ القائمة فالنداء الثاني لا يردّ شيئًا).
+async function giveBackDaily(held) {
+  for (const key of held.splice(0)) {
+    try { await kvDecrBy(key, 1); } catch (e) { /* أفضل جهد — يضيع على صاحبه وحدة واحدة لا تُردّ (يفشل مغلقًا) */ }
+  }
 }
 
 function lessonsKey(u) { return 'edu:lessons:' + encodeURIComponent(u); }
@@ -224,7 +239,9 @@ const EDU_LANG_NAMES = {
   tr: 'Turkish', ne: 'Nepali', ml: 'Malayalam',
 };
 function eduLangName(code) {
-  const c = String(code || '').trim();
+  /* v-lock-quotaa (srv-edu-bots-3، المراجعة): الرمز غير المعروف كان يُعاد خامًّا بلا حدّ إلى موجّه النظام — nativeLang من
+     ٧٠٠ ألف حرف أعاد نداء التصحيح إلى ~١٩٠ ألف توكن. الرموز ٢–٣ أحرف؛ ١٦ حرفًا تكفي أيّ رمز لغة (ar-AE، zh-Hans-CN). */
+  const c = String(code || '').trim().slice(0, 16);
   return EDU_LANG_NAMES[c.toLowerCase()] || c;
 }
 function languageRules(lang, nativeLang, examLang) {
@@ -334,7 +351,8 @@ async function callClaudeGrade(apiKey, payload, lang, nativeLang, model) {
 
   const user = 'السؤال:\n' + String(payload.question || '').slice(0, 4000)
     + '\n\nمعيار التصحيح (النقاط المطلوبة):\n'
-    + (Array.isArray(payload.rubric) ? payload.rubric : []).map((r, i) => (i + 1) + '. ' + String(r).slice(0, 500)).join('\n')
+    // v-lock-quotaa (srv-edu-bots-3): ٨ عناصر كما يُقصّ المعيار المُعاد — ١٥٠٠ عنصر كانت موجّهًا من ~٧٥٠ ألف حرف (~١٩٠ ألف توكن)
+    + (Array.isArray(payload.rubric) ? payload.rubric : []).slice(0, 8).map((r, i) => (i + 1) + '. ' + String(r).slice(0, 500)).join('\n')
     + '\n\nإجابة الطالب:\n"""\n' + String(payload.answer || '').slice(0, 8000) + '\n"""'
     + (payload.dispute ? '\n\nاعتراض الطالب على تصحيح سابق (أعد التقييم بإنصاف وخذه بجدية):\n' + String(payload.dispute).slice(0, 1500) : '');
 
@@ -454,6 +472,15 @@ module.exports = withErrorCapture('edu', async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
+  // v-lock-quotaa (srv-edu-bots-7): حجوز هذا الطلب من الحصّة اليوميّة الفرديّة — تُردّ مرّة واحدة إن فشل قبل أن يجيب المزوّد.
+  const __held = [];
+  const __giveBack = () => giveBackDaily(__held);
+  /* v-lock-quotaa (srv-edu-bots-7، المراجعة): جواب المزوّد (ok) مدفوع — الحجز يثبت لحظة وصوله، قبل أيّ معالجة بعده، فلا يردّه
+     عطل لاحق ولا الـcatch الخارجيّ (كان flashcards نصًّا أو content «null» يرميان TypeError فيُردّ المدفوع: حساب مجّانيّ
+     نال ١٢ نداءً مدفوعًا والعدّاد صفر). والمهلة لا تُردّ كذلك: المزوّد استلم الطلب وغالبًا ولّد وفوتر، ودرس فيديو ٤٥ دقيقة
+     يتجاوزها دائمًا فيصير حلقة مدفوعة لا تُعدّ. يُردّ فقط رفض المزوّد بحالة خطأ (لم يُجب) وعطل الشبكة أو البناء قبل أن يصله. */
+  const __served = () => { __held.length = 0; };
+  const __failBack = async (e) => { if ((Number(e && e.status) || 0) || !isEduTimeout(e)) await __giveBack(); };
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
@@ -471,29 +498,17 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // v-edu-econ: نموذج الطلب حسب الطبقة (null = الافتراضيّ)، وسقف الضيوف الكلّيّ اليوميّ
     // (يُفحص بعد التحقّق من المحتوى وقبل النداء مباشرة كي لا يستنزفه طلب فارغ؛ فشل KV لا يقفل).
     const __eduModel = eduModelFor(__tier);
-    const __guestTotalOver = async () => !username && overDailyLimit('*', 'guest-total', guestTotalCap());
+    // v-lock-quotaa (srv-edu-bots-7): السقف الكلّيّ يرفض قبل أيّ نداء — فالحصّة الفرديّة المحجوزة قبله تُردّ (لم يُخدم).
+    // والسقفان الكلّيّان نفساهما لا يُردّان: حدّ إنفاق على كلّ الضيوف معًا يعدّ كلّ طلب وصل المزوّد.
+    const __guestTotalOver = async () => { const over = !username && await overDailyLimit('*', 'guest-total', guestTotalCap()); if (over) await __giveBack(); return over; };
+    // v-lock-quotaa (srv-edu-bots-3): السقف الخفيف الكلّيّ (كلّ الـIP معًا) لـ«اسأل المستند» والتصحيح المقاليّ — تدوير الـIP لا يفتحهما.
+    const __guestLightOver = async () => { const over = !username && !isOwner && await overDailyLimit('*', 'guest-light-total', guestLightCap()); if (over) await __giveBack(); return over; };
 
     // ---------------- process ----------------
     if (action === 'process') {
       // v-audit-edu (v-or-fallback): sendClaude يعمل بمفتاح OpenRouter وحده — لا يُشترط المباشر
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
-
-      // Daily cap. Guests are limited by IP, registered users by account, and
-      // only the owner is exempt.
-      if (!isOwner) {
-        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = __eduMax('proc');
-        if (await overDailyLimit(subject, 'proc', max)) {
-          res.status(402).json({
-            ...eduCap(username),
-            error: username
-              ? 'وصلت للحد اليومي (' + max + ' محاضرة). عد غدًا 🌙'
-              : 'وصلت للحد اليومي المجاني (' + max + ' محاضرات). سجّل الدخول أو عد غدًا 🌙',
-          });
-          return;
-        }
-      }
 
       const { fileBase64, mime, text, images, lang, nativeLang, examLang, stage } = body;
       let totalB64 = (fileBase64 || '').length;
@@ -526,15 +541,34 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       ].filter(Boolean).join('\n');
       if (__upInfo) blocks.push({ type: 'text', text: 'معلومات أدخلها الطالب مع الملفّ (سياق للتركيز فقط، ليست من محتوى المحاضرة):\n' + __upInfo });
       blocks.push({ type: 'text', text: 'حلل هذه المحاضرة وأعد JSON فقط بالصيغة المطلوبة.' });
+
+      // Daily cap. Guests are limited by IP, registered users by account, and
+      // only the owner is exempt.
+      // v-lock-quotaa (srv-edu-bots-7): بعد فحص المحتوى (الفراغ 400 والحجم 413) لا قبله — الطلب الذي لا يصل النموذج لا يُعدّ.
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const max = __eduMax('proc');
+        if (await overDailyLimit(subject, 'proc', max, __held)) {
+          res.status(402).json({
+            ...eduCap(username),
+            error: username
+              ? 'وصلت للحد اليومي (' + max + ' محاضرة). عد غدًا 🌙'
+              : 'وصلت للحد اليومي المجاني (' + max + ' محاضرات). سجّل الدخول أو عد غدًا 🌙',
+          });
+          return;
+        }
+      }
       if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' محاضرات). سجّل الدخول أو عد غدًا 🌙' }); return; }
 
       let result = null;
       try {
         result = await callClaude(apiKey, blocks, lang, nativeLang, examLang, stage, __eduModel);
       } catch (e) {
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7): المزوّد رفض قبل أن يجيب (زحام/عطل) — «حاول مرة أخرى» لا تكلّف وحدة؛ المهلة تُعدّ
         eduUpstreamFail(res, e, 'تعذر تحليل المحاضرة — حاول مرة أخرى.', 'process');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع) — لا ردّ بعد هذا السطر
       if (!result || !result.summary || !Array.isArray(result.flashcards) || !Array.isArray(result.quiz)) {
         res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.', code: 'failed' });
         return;
@@ -558,7 +592,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // الصفحة لا ترسل توكن — سقف يومي بالـIP يحمي المفتاح دون تغيير التجربة.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        if (await overDailyLimit(subject, 'lscript', __eduMax('lscript'))) {
+        if (await overDailyLimit(subject, 'lscript', __eduMax('lscript'), __held)) {
           res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي لدروس الفيديو. عد غدًا 🌙' });
           return;
         }
@@ -589,6 +623,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         }, { signal: AbortSignal.timeout(280000) });
       const LS_FAIL = 'تعذّر توليد سكربت الدرس الآن — حاول بعد قليل.';
       if (!upstream.ok) {
+        await __giveBack(); // v-lock-quotaa (srv-edu-bots-7): رفض المزوّد قبل أيّ جواب
         const errText = await upstream.text().catch(() => '');
         const err = Object.assign(new Error(String(errText).slice(0, 300) || ('HTTP ' + upstream.status)), { status: upstream.status });
         logError('edu/lesson-script', err, { status: upstream.status });
@@ -596,12 +631,14 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         res.status(upstream.status === 429 ? 429 : 502).json({ error: kind === 'unavailable' ? EDU_DOWN : LS_FAIL, code: kind });
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): 200 = جواب مدفوع — قراءة الجسم وتحليله بعده لا يردّان الوحدة
       const oaiData = await upstream.json();
       const content = oaiData && oaiData.choices && oaiData.choices[0] && oaiData.choices[0].message && oaiData.choices[0].message.content;
       if (!content) { res.status(502).json({ error: LS_FAIL, code: 'failed' }); return; }
       let parsed;
       try { parsed = JSON.parse(content); } catch (e) { res.status(502).json({ error: LS_FAIL, code: 'failed' }); return; }
-      if (!parsed.slides || !Array.isArray(parsed.slides) || parsed.slides.length === 0) {
+      // v-lock-quotaa (srv-edu-bots-7): content «null» كان يرمي TypeError عند parsed.slides (500) — الآن «تعذّر» برمزه
+      if (!parsed || !parsed.slides || !Array.isArray(parsed.slides) || parsed.slides.length === 0) {
         res.status(502).json({ error: LS_FAIL, code: 'failed' });
         return;
       }
@@ -613,10 +650,17 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     if (action === 'explain') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
+      const country = String(body.country || '').slice(0, 60).trim();
+      const stageTxt = String(body.stage || '').slice(0, 60).trim();
+      const grade = String(body.grade || '').slice(0, 60).trim();
+      const subjName = String(body.subject || '').slice(0, 80).trim();
+      const lessonName = String(body.lesson || '').slice(0, 200).trim();
+      if (!subjName || !lessonName) { res.status(400).json({ error: 'اكتب المادة واسم الدرس على الأقل.' }); return; }
+      // v-lock-quotaa (srv-edu-bots-7): الحصّة بعد فحص المادّة والدرس لا قبله
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const max = __eduMax('proc');
-        if (await overDailyLimit(subject, 'proc', max)) {
+        if (await overDailyLimit(subject, 'proc', max, __held)) {
           res.status(402).json({
             ...eduCap(username),
             error: username
@@ -626,12 +670,6 @@ module.exports = withErrorCapture('edu', async (req, res) => {
           return;
         }
       }
-      const country = String(body.country || '').slice(0, 60).trim();
-      const stageTxt = String(body.stage || '').slice(0, 60).trim();
-      const grade = String(body.grade || '').slice(0, 60).trim();
-      const subjName = String(body.subject || '').slice(0, 80).trim();
-      const lessonName = String(body.lesson || '').slice(0, 200).trim();
-      if (!subjName || !lessonName) { res.status(400).json({ error: 'اكتب المادة واسم الدرس على الأقل.' }); return; }
       const blocks = [{ type: 'text', text: 'لا توجد محاضرة مرفوعة هذه المرة. أنت مدرّس خبير بالمناهج الدراسية، والمطلوب أن تؤلّف درسًا تعليميًا كاملًا وفق المواصفات التالية:\n'
         + (country ? '- البلد/المنهج: ' + country + ' (التزم بمصطلحات المنهج الرسمي لهذا البلد قدر معرفتك، ولا تختلق أرقام وحدات أو صفحات إن لم تتأكد).\n' : '')
         + (stageTxt ? '- المرحلة: ' + stageTxt + '\n' : '')
@@ -643,9 +681,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       try {
         result = await callClaude(apiKey, blocks, body.lang, body.nativeLang, body.examLang, (stageTxt && /جامع|كلي|university|college/i.test(stageTxt)) ? 'university' : ((stageTxt + ' ' + grade).trim() || 'school'), __eduModel);
       } catch (e) {
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذر توليد الدرس — حاول مرة أخرى.', 'explain');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (!result || !result.summary || !Array.isArray(result.flashcards) || !Array.isArray(result.quiz)) {
         res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.', code: 'failed' });
         return;
@@ -666,7 +706,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const max = __eduMax('proc');
-        if (await overDailyLimit(subject, 'proc', max)) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
+        if (await overDailyLimit(subject, 'proc', max, __held)) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       }
       // نفس سلّة proc — نصّ الضيف نفسه الذي في process.
       if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' محاضرات). سجّل الدخول أو عد غدًا 🌙' }); return; }
@@ -676,15 +716,18 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         qResult = await anthropicJSON(apiKey, buildQuestionsSys(qTail),
           [{ type: 'text', text: 'محتوى المحاضرة (ملخص الدرس):\n\n' + qSummary }], 9000, __eduModel);
       } catch (e) {
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذر توليد الأسئلة — أعد المحاولة.', 'questions');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (!qResult || !Array.isArray(qResult.quiz) || !qResult.quiz.length) {
         res.status(502).json({ error: 'تعذر توليد الأسئلة — أعد المحاولة.', code: 'failed' });
         return;
       }
       qResult.quiz = qResult.quiz.filter((q) => q && q.q && Array.isArray(q.options) && q.options.length === 4 && q.correct >= 0 && q.correct <= 3);
-      qResult.flashcards = (qResult.flashcards || []).filter((c) => c && c.q && c.a);
+      // v-lock-quotaa (srv-edu-bots-7): flashcards نصًّا («none») كان يرمي TypeError — 500 للطالب والأسئلة المدفوعة تضيع
+      qResult.flashcards = (Array.isArray(qResult.flashcards) ? qResult.flashcards : []).filter((c) => c && c.q && c.a);
       res.status(200).json({ ok: true, flashcards: qResult.flashcards, quiz: qResult.quiz, written: Array.isArray(qResult.written) ? qResult.written : [] });
       return;
     }
@@ -704,18 +747,19 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (body.cachedOnly) { res.status(200).json({ ok: true, html: null }); return; }
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
-      if (!isOwner) {
-        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = __eduMax('proc');
-        if (await overDailyLimit(subject, 'proc', max)) {
-          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' });
-          return;
-        }
-      }
       const title = String(body.title || '').slice(0, 160).trim();
       const subjName = String(body.subject || '').slice(0, 80).trim();
       const summary = String(body.summary || '').slice(0, 14000).trim();
       if (!title || !summary) { res.status(400).json({ error: 'الدرس غير مكتمل — حلّل المحاضرة أولًا.' }); return; }
+      // v-lock-quotaa (srv-edu-bots-7): الحصّة بعد فحص الدرس لا قبله
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const max = __eduMax('proc');
+        if (await overDailyLimit(subject, 'proc', max, __held)) {
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' });
+          return;
+        }
+      }
       // v-edu-econ (المراجعة): المختبر ثقيل (١٤٠٠٠ + تكملة) فتحت سقف الضيوف الكلّيّ كالتحليل — كان تدوير الـIP يفتحه بعد امتلاء السقف.
       if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       const nat = String(body.nativeLang || body.lang || 'ar').slice(0, 8);
@@ -746,10 +790,12 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         r2 = await doRequest(labModel, baseMsgs, 14000);
       }
       if (!r2.ok) {
+        await __giveBack(); // v-lock-quotaa (srv-edu-bots-7): رفض المزوّد قبل أيّ جواب — «تجربة غير مكتملة» بعد جواب مدفوع تبقى معدودة
         const msg = (r2.data && r2.data.error && r2.data.error.message) || ('HTTP ' + r2.status);
         eduUpstreamFail(res, Object.assign(new Error(msg), { status: r2.status }), 'تعذر بناء التجربة — حاول مرة أخرى.', 'lab');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع) — جولة الإتمام والتحليل بعده لا يردّان
       let raw = (r2.data && r2.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
       // جولة إتمام واحدة: الرد انقطع عند السقف → نكمله من حيث توقف حرفيًا.
       if (r2.data && r2.data.stop_reason === 'max_tokens') {
@@ -778,14 +824,6 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     if (action === 'cv') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
-      // v-edu-tiers: كان المسجّل بلا سقف إطلاقًا (تسريب) — الآن حسب الطبقة.
-      if (!isOwner) {
-        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        if (await overDailyLimit(subject, 'cv', __eduMax('cv'))) {
-          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' سير ذاتية). عد غدًا 🌙' });
-          return;
-        }
-      }
       const info = body.info || {};
       const cvName = String(info.name || '').trim();
       if (!cvName) { res.status(400).json({ error: 'الاسم مطلوب.' }); return; }
@@ -794,14 +832,25 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         const v = String(info[k] == null ? '' : info[k]).slice(0, 4000).trim();
         if (v) clean[k] = v;
       });
+      // v-edu-tiers: كان المسجّل بلا سقف إطلاقًا (تسريب) — الآن حسب الطبقة.
+      // v-lock-quotaa (srv-edu-bots-7): بعد فحص الاسم لا قبله
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        if (await overDailyLimit(subject, 'cv', __eduMax('cv'), __held)) {
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' سير ذاتية). عد غدًا 🌙' });
+          return;
+        }
+      }
       if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' سير ذاتية). عد غدًا 🌙' }); return; }
       let out = null;
       try {
         out = await callClaudeCv(apiKey, clean, body.lang, __eduModel);
       } catch (e) {
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذر توليد السيرة الآن — حاول مرة أخرى.', 'cv');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (!out || typeof out.cvHtml !== 'string' || out.cvHtml.indexOf('<') === -1) {
         res.status(502).json({ error: 'تعذر توليد السيرة الآن — حاول مرة أخرى.', code: 'failed' });
         return;
@@ -813,15 +862,6 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     if (action === 'expense') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
-
-      // v-edu-tiers: كان المسجّل بلا سقف إطلاقًا (تسريب) — الآن حسب الطبقة.
-      if (!isOwner) {
-        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        if (await overDailyLimit(subject, 'exp', __eduMax('cv'))) {
-          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' كشوفات). عد غدًا 🌙' });
-          return;
-        }
-      }
 
       const { fileBase64, mime, text, images, lang } = body;
       let totalB64 = (fileBase64 || '').length;
@@ -847,15 +887,26 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!blocks.length) { res.status(400).json({ error: 'لا يوجد محتوى للتحليل — ارفع كشف حساب أو الصق قائمة المصاريف.' }); return; }
       blocks.push({ type: 'text', text: 'حلّل هذه المصاريف وأعد JSON فقط بالصيغة المطلوبة.' });
+      // v-edu-tiers: كان المسجّل بلا سقف إطلاقًا (تسريب) — الآن حسب الطبقة.
+      // v-lock-quotaa (srv-edu-bots-7): بعد فحص المحتوى (الفراغ 400 والحجم 413) لا قبله
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        if (await overDailyLimit(subject, 'exp', __eduMax('cv'), __held)) {
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' كشوفات). عد غدًا 🌙' });
+          return;
+        }
+      }
       if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' كشوفات). عد غدًا 🌙' }); return; }
 
       let result = null;
       try {
         result = await callClaudeExpense(apiKey, blocks, lang, __eduModel);
       } catch (e) {
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذر تحليل الكشف — حاول مرة أخرى.', 'expense');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (result && result.error) { res.status(422).json({ error: result.error, code: 'reason' }); return; }
       if (!result || typeof result.total === 'undefined' || !Array.isArray(result.categories) || !result.categories.length) {
         res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — تأكد أن الملف كشف حساب واضح وحاول مرة أخرى.', code: 'failed' });
@@ -873,21 +924,6 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     if (action === 'docqa') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
-      // حدّ يومي (ضيف بالـIP، مسجّل بالحساب، المالك معفى) — يعالج سبب التقاعد
-      // الأمني: لا نداء كلود بلا هوية/حدّ.
-      if (!isOwner) {
-        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
-        const max = __eduMax('proc');
-        if (await overDailyLimit(subject, 'doc', max)) {
-          res.status(402).json({
-            ...eduCap(username),
-            error: username
-              ? 'وصلت للحد اليومي (' + max + ' مستندًا). عد غدًا 🌙'
-              : 'وصلت للحد اليومي المجاني (' + max + ' مستندات). سجّل الدخول أو عد غدًا 🌙',
-          });
-          return;
-        }
-      }
       const { fileBase64, mime, text, lang } = body;
       if ((fileBase64 || '').length > MAX_BASE64_CHARS) {
         res.status(413).json({ error: 'حجم الملف كبير جدًا (الحد الأقصى حوالي 10 ميغابايت). جرّب ملفًا أصغر.', code: 'too_big' });
@@ -904,14 +940,32 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!blocks.length) { res.status(400).json({ error: 'لا يوجد محتوى للتحليل — ارفع مستندًا أو الصق نصًا.' }); return; }
       blocks.push({ type: 'text', text: 'حلّل هذا المستند وأعد JSON فقط بالصيغة المطلوبة.' });
+      // حدّ يومي (ضيف بالـIP، مسجّل بالحساب، المالك معفى) — يعالج سبب التقاعد
+      // الأمني: لا نداء كلود بلا هوية/حدّ.
+      // v-lock-quotaa (srv-edu-bots-7): بعد فحص المحتوى (الفراغ 400 والحجم 413) لا قبله
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const max = __eduMax('proc');
+        if (await overDailyLimit(subject, 'doc', max, __held)) {
+          res.status(402).json({
+            ...eduCap(username),
+            error: username
+              ? 'وصلت للحد اليومي (' + max + ' مستندًا). عد غدًا 🌙'
+              : 'وصلت للحد اليومي المجاني (' + max + ' مستندات). سجّل الدخول أو عد غدًا 🌙',
+          });
+          return;
+        }
+      }
       if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' مستندات). سجّل الدخول أو عد غدًا 🌙' }); return; }
       let result = null;
       try {
         result = await callClaudeDoc(apiKey, blocks, lang, __eduModel);
       } catch (e) {
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذر تحليل المستند — حاول مرة أخرى.', 'docqa');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (!result || !result.summary) {
         res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.', code: 'failed' });
         return;
@@ -936,13 +990,13 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const cap = __eduMax('docask');
-        if (await overDailyLimit(subject, 'docask', cap)) {
+        if (await overDailyLimit(subject, 'docask', cap, __held)) {
           res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي للأسئلة (' + cap + '). عد غدًا 🌙' });
           return;
         }
       }
       // v-edu-econ (المراجعة): سقف كلّيّ للضيوف على الأسئلة (كلّ الـIP معًا) — يغلق تدويرها.
-      if (!username && !isOwner && await overDailyLimit('*', 'guest-light-total', guestLightCap())) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
+      if (await __guestLightOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       const lang = body.lang;
       const outLang = (lang && /^ar/i.test(lang)) ? 'بالعربية' : ('in ' + eduLangName(lang || 'ar') + ' — not in Arabic');
       const sys = 'أنت مساعد مستندات. يُعطى إليك نصّ مستند وسؤال عنه. أجب عن السؤال بالاعتماد على المستند فقط، '
@@ -961,10 +1015,12 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         RESOLVED_MODEL = null; const m = await resolveModel(apiKey); r = await sendClaude({ ...base, model: m }, 120000);
       }
       if (!r.ok) {
+        await __giveBack(); // v-lock-quotaa (srv-edu-bots-7)
         const msg = (r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status);
         eduUpstreamFail(res, Object.assign(new Error(msg), { status: r.status }), 'تعذّر الإجابة — حاول مرة أخرى.', 'docask');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       const answer = (r.data && r.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
       if (!answer) { res.status(502).json({ error: 'تعذّر توليد إجابة — أعد المحاولة.', code: 'failed' }); return; }
       res.status(200).json({ ok: true, answer });
@@ -990,19 +1046,24 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const cap = __eduMax('grade');
-        if (await overDailyLimit(subject, 'grade', cap)) {
+        if (await overDailyLimit(subject, 'grade', cap, __held)) {
           res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي للتصحيح (' + cap + '). عد غدًا 🌙' });
           return;
         }
       }
+      // v-lock-quotaa (srv-edu-bots-3): التصحيح كان خارج كلّ سقف كلّيّ للضيوف — تدوير الـIP يفتحه بلا حدّ. الآن تحت
+      // السقف الخفيف الكلّيّ نفسه الذي يحدّ «اسأل المستند» (EDU_GUEST_LIGHT_TOTAL_DAILY، ١٥٠٠ افتراضيًّا — الرقم لم يتغيّر)، وبنصّه.
+      if (await __guestLightOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
 
       let result = null;
       try {
         result = await callClaudeGrade(apiKey, { question, rubric, answer, dispute }, lang, nativeLang, __eduModel);
       } catch (e) {
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذّر التصحيح — حاول مرة أخرى.', 'grade');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (!result || typeof result.score !== 'number') {
         res.status(502).json({ error: 'تعذّر قراءة نتيجة التصحيح. حاول مرة أخرى.', code: 'failed' });
         return;
@@ -1036,7 +1097,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const cap = __eduMax('tutor');
-        if (await overDailyLimit(subject, 'tutor', cap)) {
+        if (await overDailyLimit(subject, 'tutor', cap, __held)) {
           res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي لأسئلة المعلّم (' + cap + '). عد غدًا 🌙' });
           return;
         }
@@ -1056,7 +1117,8 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         + (history ? '\n\nآخر المحادثة:\n' + history : '') + '\n\nسؤال الطالب الآن:\n' + question }];
       let result = null;
       try { result = await anthropicJSON(apiKey, sys, blocks, 1800, __eduModel); }
-      catch (e) { eduUpstreamFail(res, e, 'تعذّر الردّ الآن — حاول مرة أخرى.', 'tutor'); return; }
+      catch (e) { await __failBack(e); eduUpstreamFail(res, e, 'تعذّر الردّ الآن — حاول مرة أخرى.', 'tutor'); return; } // v-lock-quotaa (srv-edu-bots-7)
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       const reply = String((result && result.reply) || '').trim();
       if (!reply) { res.status(502).json({ error: 'وصل ردّ فارغ — حاول مرة أخرى.', code: 'failed' }); return; }
       res.status(200).json({ ok: true, reply: reply.slice(0, 8000) });
@@ -1076,7 +1138,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const cap = __eduMax('solve');
-        if (await overDailyLimit(subject, 'solve', cap)) {
+        if (await overDailyLimit(subject, 'solve', cap, __held)) {
           res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي لحلّ المسائل (' + cap + '). عد غدًا 🌙' });
           return;
         }
@@ -1105,7 +1167,8 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي لحلّ المسائل (' + __eduMax('solve') + '). عد غدًا 🌙' }); return; }
       let result = null;
       try { result = await anthropicJSON(apiKey, sys, blocks, 8000, __eduModel); }
-      catch (e) { eduUpstreamFail(res, e, 'تعذّر الحلّ الآن — حاول مرة أخرى.', 'solve'); return; }
+      catch (e) { await __failBack(e); eduUpstreamFail(res, e, 'تعذّر الحلّ الآن — حاول مرة أخرى.', 'solve'); return; } // v-lock-quotaa (srv-edu-bots-7)
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       // سبب الرفض كتبه النموذج بلغة الطالب (languageRules) — يمرّ كما هو (code: reason)
       if (result && result.error) { res.status(422).json({ error: String(result.error).slice(0, 300), code: 'reason' }); return; }
       const steps = (result && Array.isArray(result.steps) ? result.steps : [])
@@ -1255,6 +1318,9 @@ module.exports = withErrorCapture('edu', async (req, res) => {
 
     res.status(400).json({ error: 'unknown action: ' + action });
   } catch (e) {
+    // v-lock-quotaa (srv-edu-bots-7): رمية قبل أن يجيب المزوّد (عطل شبكة في نداء خارج try) — الحجز يعود. ما رُمي بعد جوابه
+    // فارغ القائمة (__served)، والمهلة تُعدّ (المزوّد استلم الطلب وغالبًا فوتر).
+    await __failBack(e);
     const __m = (e && e.message ? e.message : String(e));
     // v-edu-timeouts: مهلة التوليد تُشرح بالعربي لا بخطأ إنجليزي خام.
     /* v-audit-edu: مهلة _fetch-timeout اسمها UpstreamTimeoutError ونصّها «timed out» (لا «timeout») فكانت تصير 500 خامًّا؛

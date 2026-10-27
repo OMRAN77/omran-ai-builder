@@ -489,6 +489,20 @@
     };
     for (const k in X) { if (STR[k]) Object.assign(STR[k], X[k]); }
   })();
+  /* v-lock-quotaa (pages-static-9): الصوت والإملاء صارا من خادم التطبيق بحدّه اليوميّ وحسابه — رفض الدخول (سقف إملاء الضيف صفر،
+     أو جلسة موقوفة) نصّه portraitNeedLogin بقيم قاموس التطبيق نفسها؛ والحدّ axEduCapUser والعطل svcPaused أعلاه. */
+  (function(){
+    const L = {
+      ar:'يرجى تسجيل الدخول لاستخدام هذه الميزة', en:'Please log in to use this feature',
+      fr:'Veuillez vous connecter pour utiliser cette fonctionnalité', hi:'इस सुविधा का उपयोग करने के लिए लॉगिन करें',
+      ur:'اس فیچر کو استعمال کرنے کے لیے لاگ ان کریں', bn:'এই ফিচারটি ব্যবহার করতে লগইন করুন',
+      ne:'यो सुविधा प्रयोग गर्न लगइन गर्नुहोस्', es:'Inicia sesión para usar esta función',
+      fil:'Mangyaring mag-log in para magamit ang feature na ito', id:'Silakan masuk untuk menggunakan fitur ini',
+      ml:'ഈ ഫീച്ചർ ഉപയോഗിക്കാൻ ദയവായി ലോഗിൻ ചെയ്യുക', ru:'Пожалуйста, войдите в аккаунт, чтобы использовать эту функцию',
+      tr:'Bu özelliği kullanmak için lütfen giriş yapın', zh:'请登录以使用此功能',
+    };
+    for (const k in L) { if (STR[k]) STR[k].portraitNeedLogin = L[k]; }
+  })();
 
   const RTL_LANGS = ['ar', 'ur'];
   function isEn(){ return lang !== 'ar' && lang !== 'ur'; } // used for LTR canvas/text layout
@@ -554,6 +568,18 @@
 
   function setStatus1(msg){ $('#status1').textContent = msg || ''; }
   function setStatus2(msg){ $('#status2').textContent = msg || ''; }
+  /* v-lock-quotaa (pages-static-9): الصفحة على نطاق التطبيق نفسه — رمز الجلسة ومعرّف الضيف كما يقرؤهما authGet وgetGuestId،
+     فيُعدّ الصوت والإملاء على حساب صاحبهما (والمالك معفى) لا على الشبكة كلّها. */
+  function eduAuth(){
+    const o = {};
+    try {
+      const tok = sessionStorage.getItem('aiapp_auth_token') || localStorage.getItem('aiapp_auth_token');
+      if (tok) o.token = tok;
+      const gid = localStorage.getItem('aiapp_guest_id');
+      if (gid) o.guestId = gid;
+    } catch (e) { /* guard-ok — تخزين محجوب: الخادم يعدّ بالشبكة */ }
+    return o;
+  }
 
   function renderSlides(){
     const container = $('#slidesContainer');
@@ -609,7 +635,7 @@
     setStatus1(T('genScriptWorking'));
     try{
       /* v-edu-14: التوليد صار من خادم التطبيق نفسه (14 لغة) — الخلفية القديمة
-         تعرف 7 لغات فقط وترجع للعربية فيما عداها. TTS/STT باقيان عليها. */
+         تعرف 7 لغات فقط وترجع للعربية فيما عداها. (v-lock-quotaa: وTTS/STT كذلك الآن.) */
       const res = await fetch('/api/edu', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ action: 'lesson-script', topic, durationMinutes: duration, lang, level })
@@ -795,11 +821,18 @@
         await ffmpeg.writeFile('slide' + i + '.png', imgData);
 
         setStatus2(T('genSlideAudio') + (i+1) + '/' + total + '...');
-        const ttsRes = await fetch('https://omran-edu.vercel.app/api/tts', {
+        /* v-lock-quotaa (pages-static-9، باب المال بموافقة المالك ٢٧ أكتوبر): كان الصوت من النشر القديم omran-edu بلا رمز
+           ولا حدّ — مفتاح الصوت المدفوع مفتوح لأيّ أصل وخارج حدود هذا المستودع. الآن /api/tts في التطبيق نفسه: حدّه اليوميّ بالحساب
+           أو بالشبكة والمالك معفى. الرفض نصّ بلغة الدرس (الحدّ 402، الدخول 401، وغيرهما العطل) لا «TTS failed» إنجليزيًّا. */
+        const ttsRes = await fetch('/api/tts', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ text: slide.narration || slide.heading || '', voice })
+          body: JSON.stringify(Object.assign({ text: slide.narration || slide.heading || '', voice }, eduAuth()))
         });
-        if(!ttsRes.ok){ throw new Error('TTS failed on slide ' + (i+1)); }
+        if(!ttsRes.ok){
+          const er = new Error('tts ' + ttsRes.status + ' @' + (i+1));
+          er.eduMsg = ttsRes.status === 402 ? T('axEduCapUser') : (ttsRes.status === 401 ? T('portraitNeedLogin') : T('svcPaused'));
+          throw er;
+        }
         const audioBlob = await ttsRes.blob();
         const audioData = await fileToUint8(audioBlob);
         await ffmpeg.writeFile('audio' + i + '.mp3', audioData);
@@ -837,7 +870,7 @@
       $('#downloadLink').href = url;
       $('#downloadLink').style.display = 'block';
     } catch(e){
-      setStatus2(T('videoErr') + (e.message || e));
+      setStatus2(T('videoErr') + ((e && e.eduMsg) || e.message || e));
     } finally {
       btn.disabled = false;
     }
@@ -861,6 +894,14 @@
   const miniMicStates = {};
   const MIC_ERR = { ar:'المتصفح لا يدعم إدخال الصوت. جرّب متصفح Chrome.', en:'This browser does not support voice input. Try Chrome.', fr:"Ce navigateur ne prend pas en charge la saisie vocale. Essayez Chrome.", hi:'यह ब्राउज़र वॉइस इनपुट का समर्थन नहीं करता। Chrome आज़माएं।', ur:'یہ براؤزر وائس ان پٹ کو سپورٹ نہیں کرتا۔ Chrome آزمائیں۔', bn:'এই ব্রাউজার ভয়েস ইনপুট সমর্থন করে না। Chrome ব্যবহার করুন।', ne:'यो ब्राउजरले आवाज इनपुट समर्थन गर्दैन। Chrome प्रयोग गर्नुहोस्।', es:'Este navegador no admite entrada de voz. Prueba Chrome.', fil:'Hindi sinusuportahan ng browser na ito ang voice input. Subukan ang Chrome.', id:'Browser ini tidak mendukung input suara. Coba Chrome.', ml:'ഈ ബ്രൗസർ വോയ്സ് ഇൻപുട്ട് പിന്തുണയ്ക്കുന്നില്ല. Chrome ഉപയോഗിക്കുക.', ru:'Этот браузер не поддерживает голосовой ввод. Попробуйте Chrome.', tr:'Bu tarayıcı sesli girişi desteklemiyor. Chrome deneyin.', zh:'此浏览器不支持语音输入。请尝试 Chrome。' };
   function micErr(){ return MIC_ERR[lang] || MIC_ERR.ar; }
+  /* v-lock-quotaa (pages-static-9): /api/stt يرسل رموزًا (daily_limit · auth_required · unavailable · failed) — كان alert يعرض نصّ
+     الخلفية القديمة كما هو. الضيف سقف إملائه صفر (GUEST_DAILY: التسجيل أوّلًا) فحدّه «سجّل الدخول»، والمسجّل «عد غدًا». */
+  function sttErr(status, data){
+    const code = data && data.error;
+    if (code === 'daily_limit') return eduAuth().token ? T('axEduCapUser') : T('portraitNeedLogin');
+    if (status === 401 || code === 'auth_required') return T('portraitNeedLogin');
+    return T('svcPaused');
+  }
 
   async function miniMicStart(btn, targetId){
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -890,14 +931,15 @@
       delete miniMicStates[targetId];
       if(blob.size < 500){ btn.classList.remove('transcribing'); return; }
       const audioBase64 = await blobToBase64(blob);
-      const res = await fetch('https://omran-edu.vercel.app/api/stt', {
+      // v-lock-quotaa (pages-static-9): /api/stt في التطبيق نفسه برمز الجلسة (حدّه اليوميّ بالحساب) — لا النشر القديم بلا رمز
+      const res = await fetch('/api/stt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioBase64, mimeType: st.mimeType }),
+        body: JSON.stringify(Object.assign({ audioBase64, mimeType: st.mimeType }, eduAuth())),
       });
       const data = await res.json();
       btn.classList.remove('transcribing');
-      if(!res.ok){ alert((data && data.error) ? data.error : micErr()); return; }
+      if(!res.ok){ alert(sttErr(res.status, data)); return; }
       const transcript = (data && data.text ? data.text : '').trim();
       if(!transcript) return;
       const targetEl = document.getElementById(targetId);

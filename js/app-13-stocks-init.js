@@ -86,6 +86,9 @@
       /* v-stocks-fail (تدقيق ١٨ أكتوبر + الدفعة ٥): الخادم يرسل رمزًا لا رسالة مزوّد الأسعار (كانت «**symbol** or **figi** … https://…» باسمه ورابطه وبالإنجليزيّ) */
       if(j.error === 'symbol_not_found') throw new Error(t('stocksSymbolNotFound'));
       if(j.error === 'unavailable') throw new Error(t('svcPaused'));
+      /* v-lock-quotaa (srv-search-2): رمزا الحصّة كانا يظهران خامّين «⚠️ daily_limit_reached» — المفتاحان العامّان القائمان (١٤ لغة) */
+      if(j.error === 'daily_limit_reached') throw new Error(t('portraitLimitReached'));
+      if(j.error === 'auth_required') throw new Error(t('portraitNeedLogin'));
       throw Object.assign(new Error(j.error || 'HTTP '+r.status), { data: j }); /* v-audit-search: الرمز وحقوله لمن يترجمه (pfErrText) */
     }
     return j;
@@ -321,7 +324,9 @@
     analysisEl.textContent = '🤖 ...';
     try{
       const lang = localStorage.getItem('aiapp_lang')||'ar'; /* v-audit-search (srv-search-8): الرمز كاملًا — slice(0,2) كان يجعل fil «fi» */
-      const j = await api({ mode:'analyze', symbol: currentSym, question: questionEl.value.trim(), lang: lang });
+      /* v-lock-quotaa (srv-search-2، باب المال بموافقة المالك): بلا رمز الجلسة كان الخادم يعدّ كلّ مستخدم ضيفًا بشبكته على سقف الأساس (٣٠)
+         — المشترك لا يأخذ سقف باقته (v-plan-caps)، والمالك يُحجب، ومن يتشاركون شبكة واحدة يتقاسمون سلّة واحدة. كزرّ «علّمني» في المحفظة. */
+      const j = await api({ mode:'analyze', symbol: currentSym, question: questionEl.value.trim(), lang: lang, token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') });
       if(j.analysis) setMd(analysisEl, j.analysis); else analysisEl.textContent = '⚠️'; // v-md-lite
     }catch(err){
       analysisEl.textContent = '⚠️ ' + (err && err.message || err);
@@ -347,7 +352,7 @@
     lessonEl.textContent = '🎓 ...';
     try{
       const lang = localStorage.getItem('aiapp_lang')||'ar'; /* v-audit-search (srv-search-8) */
-      const j = await api({ mode:'learn', topic: topic||'', question: question||'', symbol: currentSym || 'AAPL', lang: lang });
+      const j = await api({ mode:'learn', topic: topic||'', question: question||'', symbol: currentSym || 'AAPL', lang: lang, token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') }); /* v-lock-quotaa (srv-search-2) */
       /* v-md-lite · v-stocks-fail: الفشل سطر وظيفيّ بلغة الواجهة، لا claudeError (نصّ المزوّد الخامّ) */
       if(j.lesson) setMd(lessonEl, j.lesson); else lessonEl.textContent = '⚠️ ' + t('svcPaused');
     }catch(err){
