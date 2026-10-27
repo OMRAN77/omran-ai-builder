@@ -13,29 +13,33 @@ assert.ok(start > 0, 'كتلة الجسر موجودة');
 const BLOCK = SRC.slice(start);
 
 function harness(frameWin) {
-  let handler = null; const fetches = []; const replies = [];
+  let handler = null; const fetches = []; const replies = []; const asks = [];
   const ctx = {
     window: { location: { origin: 'https://app.example' }, omranFloorplan: { facadePrompt: () => 'facade prompt' }, addEventListener: (t, f) => { if (t === 'message') handler = f; }, getGuestId: () => 'g' },
     document: { getElementsByTagName: () => [{ contentWindow: frameWin }], getElementById: (id) => id === 'previewFrame' ? { contentWindow: frameWin } : null, querySelectorAll: () => [] },
     fetch: (url, init) => { fetches.push({ url, init }); return Promise.resolve({ ok: true, json: () => Promise.resolve({ imageBase64: 'AAAA', mimeType: 'image/png' }) }); },
     authGet: () => 'tok', __swallow: () => {}, console,
-    confirm: () => true, // v-lock-quotab (cli-studios-12): المستخدم وافق على السعر في نافذة التطبيق
+    confirm: (m) => { asks.push(m); return true; }, // v-lock-quotab (cli-studios-12): المستخدم وافق على السعر في نافذة التطبيق
   };
   ctx.window.window = ctx.window;
   vm.runInNewContext('var window = this.window; var document = this.document;\n' + BLOCK, ctx);
   assert.equal(typeof handler, 'function', 'المستمع مسجَّل');
-  return { handler, fetches, replies };
+  return { handler, fetches, replies, asks };
 }
-
-test('رسالة من نافذة خارجيّة (ليست إطارًا في الصفحة) لا تولّد صورة', () => {
-  const ownFrame = { postMessage() {} };
-  const evil = { postMessage() {} };
-  const h = harness(ownFrame);
-  h.handler({ data: { __omranView: 1, id: 1, view: 'front', spec: {} }, source: evil, origin: 'https://evil.example' });
-  assert.equal(h.fetches.length, 0, 'لا نداء مدفوع لمصدر خارجيّ');
-});
-
 const flush = () => new Promise((r) => setImmediate(r)); // v-lock-quotab: التوليد بعد تأكيد السعر (وعد) لا في المستمع نفسه
+// v-lock-quotab (cli-studios-12، المراجعة): الرفض يُفحص بعد أن تجري الوعود — فحص متزامن بعد handler() كان ينجح ولو أُزيل الحارس كلّه.
+const spyWin = (replies) => ({ postMessage: (m) => replies.push(m) });
+
+test('رسالة من نافذة خارجيّة (ليست إطارًا في الصفحة) لا تولّد صورة', async () => {
+  const ownFrame = { postMessage() {} };
+  const h = harness(ownFrame);
+  const evil = spyWin(h.replies);
+  h.handler({ data: { __omranView: 1, id: 1, view: 'front', spec: {} }, source: evil, origin: 'https://evil.example' });
+  await flush(); await flush();
+  assert.equal(h.fetches.length, 0, 'لا نداء مدفوع لمصدر خارجيّ');
+  assert.equal(h.asks.length, 0, 'ولا سؤال سعر يفتحه مصدر خارجيّ');
+  assert.equal(h.replies.length, 0, 'ولا ردّ له');
+});
 
 test('رسالة المحرّر من إطار المعاينة نفسه تعمل كما كانت', async () => {
   const ownFrame = { postMessage() {} };
@@ -46,14 +50,17 @@ test('رسالة المحرّر من إطار المعاينة نفسه تعمل
   assert.equal(h.fetches[0].url, '/api/maha-image');
 });
 
-test('المراجعة العدائيّة: إطار معزول آخر (جرّبه لي، run_js — أصله «null» وليس إطار المعاينة) لا يولّد صورة مدفوعة', () => {
+test('المراجعة العدائيّة: إطار معزول آخر (جرّبه لي، run_js — أصله «null» وليس إطار المعاينة) لا يولّد صورة مدفوعة', async () => {
   // v-sec-sandbox: المعاينة نفسها صارت معزولة (أصلها null)، فالتمييز صار بهويّة الإطار لا بالأصل:
   // إطار المعاينة (#previewFrame) مسموح، وأيّ إطار معزول آخر (run_js/test_html) مرفوض ولو كان أصله null أيضًا.
   const previewWin = { postMessage() {} };   // إطار المعاينة (يحمله المحرّر)
-  const sandboxedRunJs = { postMessage() {} }; // إطار «جرّبه لي» — نافذة أخرى
   const h = harness(previewWin);
+  const sandboxedRunJs = spyWin(h.replies); // إطار «جرّبه لي» — نافذة أخرى
   h.handler({ data: { __omranView: 1, id: 3, view: 'front', spec: {} }, source: sandboxedRunJs, origin: 'null' });
+  await flush(); await flush();
   assert.equal(h.fetches.length, 0, 'كود النموذج في إطار معزول غير المعاينة لا ينفق نقاط المستخدم');
+  assert.equal(h.asks.length, 0, 'ولا يفتح سؤال سعر في نافذة التطبيق');
+  assert.equal(h.replies.length, 0, 'ولا ردّ له');
 });
 
 test('إطار المعاينة المعزول (أصله «null» بعد sandbox) يعمل بهويّته', async () => {

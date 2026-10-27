@@ -6,6 +6,8 @@
 //  srv-studios-2-3  إنقاذ الديكور بلا صورة يرجع ٤ صور 2K فوق حدّ ردّ الدالّة بعد احتساب الحصّة.
 //  srv-studios-1-10 قفل بطاقة المعاينة أقصر من مهلة التوليد فتتكرّر الصورة المدفوعة.
 //  cli-studios-12   كود إطار المعاينة يولّد صورًا مدفوعة برسائل postMessage بلا ضغطة من المستخدم.
+// جولة المراجعة: (srv-images-2) تذكرة محسومة تعيدها كتابة متزامنة للقائمة تُردّ بعد انقضاء مفتاح تسويتها، وتذاكر الخادم بلا حدّ؛
+//                (cli-studios-12) التأكيد يعرض سعر الصورة والخادم يخصم سعر 4K حين يحمل الوصف «4k» من الإطار.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -205,6 +207,84 @@ test('srv-images-2: صورة «لم تتغيّر» بعد سقف ردّها ال
   }
 });
 
+// ── srv-images-2 (المراجعة): كتابة متزامنة للقائمة تعيد تذكرة محسومة، ومفتاح تسويتها ينقضي بعد يومين والقائمة حيّة ──
+const DAY = 86400000;
+const flushNow = () => new Promise((r) => setImmediate(r)); // الطلب الثاني يبلغ قراءته ويقف عند البوّابة
+// مخزن ببوّابة: أوّل قراءة لقائمة الحجوز بعد pause() تنتظر حتّى يُفتح الباب — قراءة قبل حسم تذكرة وكتابة بعده (كطلبين متزامنين)
+function gatedKv() {
+  let gate = null;
+  const g = Object.assign({}, kv, { kvGetJSON: async (k) => { const v = await kv.kvGetJSON(k); if (gate) { const w = gate; gate = null; await w; } return v; } });
+  return { kv: g, pause() { let open; gate = new Promise((r) => { open = r; }); return open; } };
+}
+const at = () => Date.now() + clock.skew; // ساعة المنطق نفسها ساعة انقضاء المخزن
+
+test('srv-images-2 (المراجعة): صورة سُلّمت وأعادها طلب متزامن إلى القائمة لا تُردّ بعد انقضاء مفتاح تسويتها — ولو أبقى المستخدم القائمة حيّة يومين بلا قراءة رصيد', async () => {
+  const hold = fresh('image-hold.js');
+  store.clear(); clock.skew = 0;
+  const g = gatedKv();
+  const P = spy();
+  try {
+    for (let i = 0; i < 6; i++) { // ست صور سُلّمت، لكلّ واحدة طلب ثانٍ متزامن قرأ القائمة قبل إغلاقها وكتبها بعده
+      const a = await hold.openTicket('sara', 20, PAY_PTS, undefined, { kv: g.kv, now: at() });
+      const open = g.pause();
+      const pb = hold.openTicket('sara', 20, PAY_PTS, undefined, { kv: g.kv, now: at() });
+      await flushNow();
+      assert.equal(await hold.closeTicket('sara', a, { kv: g.kv }), true, 'الصورة الأولى سُلّمت');
+      open();
+      assert.equal(await hold.closeTicket('sara', await pb, { kv: g.kv }), true, 'والثانية سُلّمت');
+    }
+    assert.equal((await kv.kvGetJSON('imghold:sara')).length, 6, 'التذاكر المحسومة عادت إلى القائمة (السباق قائم في القاعدة)');
+    clock.skew = 1.5 * DAY; // يواصل التوليد بلا قراءة رصيد — كلّ كتابة تجدّد عمر القائمة
+    await hold.closeTicket('sara', await hold.openTicket('sara', 20, PAY_PTS, undefined, { kv, now: at() }), { kv });
+    clock.skew = 2 * DAY; // ودالّة قُتلت فعلًا قبل الردّ: تذكرتها تُردّ كما يجب
+    await hold.openTicket('sara', 20, PAY_PTS, undefined, { kv, now: at() });
+    clock.skew = 2 * DAY + 10 * MIN; // انقضت مفاتيح تسوية الستّ، والقائمة حيّة
+    const r = await hold.settleStale('sara', { kv, points: P, now: at() });
+    assert.deepEqual(r, { refunded: 1, points: 20 }, 'كان: الستّ تُردّ (٦ في الفرع بلا سقف، ٣ في القاعدة) بعد أن وصلت صورها');
+    assert.equal(await kv.kvGetJSON('imghold:sara'), null, 'القديمة تُسقط بلا ردّ، فلا تبقى لكنس لاحق');
+    assert.deepEqual(await hold.settleStale('sara', { kv, points: P, now: at() + MIN }), { refunded: 0, points: 0 });
+  } finally { clock.skew = 0; }
+});
+
+test('srv-images-2 (المراجعة): تذكرة دالّة قُتلت تُردّ مرّة واحدة — طلب متزامن مع الكنس يعيدها إلى القائمة، ولا تُردّ ثانية بعد يومين', async () => {
+  const hold = fresh('image-hold.js');
+  store.clear(); clock.skew = 0;
+  const g = gatedKv();
+  const P = spy();
+  try {
+    const k = await hold.openTicket('sara', 20, PAY_PTS, undefined, { kv: g.kv, now: at() }); // قُتلت الدالّة: لا إغلاق
+    clock.skew = 7 * MIN;
+    const open = g.pause();
+    const pb = hold.openTicket('sara', 20, PAY_PTS, undefined, { kv: g.kv, now: at() }); // طلب جديد قرأ القائمة [k]
+    await flushNow();
+    assert.deepEqual(await hold.settleStale('sara', { kv: g.kv, points: P, now: at() }), { refunded: 1, points: 20 }, 'الردّ الأوّل المستحقّ');
+    open();
+    assert.equal(await hold.closeTicket('sara', await pb, { kv: g.kv }), true);
+    assert.deepEqual((await kv.kvGetJSON('imghold:sara')).map((h) => h.id), [k], 'التذكرة المردودة عادت إلى القائمة');
+    clock.skew = 1.5 * DAY;
+    await hold.closeTicket('sara', await hold.openTicket('sara', 20, PAY_PTS, undefined, { kv, now: at() }), { kv });
+    clock.skew = 2 * DAY + 15 * MIN;
+    await hold.settleStale('sara', { kv, points: P, now: at() });
+    assert.equal(P.refunds.length, 1, 'كان: تُردّ ثانية بعد انقضاء مفتاح تسويتها');
+  } finally { clock.skew = 0; }
+});
+
+test('srv-images-2 (المراجعة): لتذاكر الخادم حدّ احتياطيّ يوميّ منفصل — عطب KV عند التسليم لا يردّ بلا حدّ، ولا يمسّ سقف حجوز العميل', async () => {
+  const hold = fresh('image-hold.js');
+  store.clear();
+  const P = spy();
+  const t0 = Date.UTC(2026, 9, 27, 10);
+  for (let i = 0; i < 20; i++) await hold.openTicket('sara', 20, PAY_PTS, undefined, { kv, now: t0 });
+  assert.equal((await hold.settleStale('sara', { kv, points: P, now: t0 + 7 * MIN })).refunded, 20, 'كان ٣: تذاكر الخادم تحت سقف حجوز العميل');
+  for (let i = 0; i < 3; i++) await hold.openTicket('sara', 20, PAY_PTS, undefined, { kv, now: t0 + 10 * MIN });
+  for (let i = 0; i < 3; i++) assert.ok(await hold.holdFromRequest('h_client0' + i, 'sara', 20, PAY_PTS, { kv, now: t0 + 11 * MIN }));
+  assert.equal((await hold.settleStale('sara', { kv, points: P, now: t0 + 20 * MIN })).refunded, 3, 'كان ٦: فوق العشرين يثبت خصم تذاكر الخادم، وحجوز العميل الثلاثة تُردّ بسقفها');
+  await hold.openTicket('sara', 20, PAY_PTS, undefined, { kv, now: t0 + DAY });
+  assert.equal((await hold.settleStale('sara', { kv, points: P, now: t0 + DAY + 7 * MIN })).refunded, 1, 'اليوم التالي بحدّ جديد');
+  assert.equal(P.refunds.length, 24);
+  assert.equal(hold.SRV_REFUND_DAY_MAX, 20, 'حدّ واسع: عشرون دالّة قُتلت في يوم واحد');
+});
+
 // ═════════════════ srv-studios-2-13 ═════════════════
 async function adchat(fetchImpl, body) {
   reset();
@@ -369,7 +449,8 @@ test('srv-studios-1-10: توليد بطاقة يتجاوز ١٢٠ث — القف
 // ═════════════════ cli-studios-12 ═════════════════
 const FP_SRC = read('js/app-15-floorplan.js');
 const BRIDGE = FP_SRC.slice(FP_SRC.indexOf('/* ───────── التكامل: زر المقاولات + جسر توليد الصور'));
-function bridge(answer) {
+const FACADE = FP_SRC.slice(FP_SRC.indexOf('/* ───────── الواجهة من نفس المواصفات'), FP_SRC.indexOf('/* ───────── التكامل: زر المقاولات'));
+function bridge(answer, realPrompt) {
   let handler = null;
   const fetches = []; const asks = []; const replies = []; const pending = [];
   const frame = { postMessage: (m) => replies.push(m) };
@@ -387,10 +468,12 @@ function bridge(answer) {
     authGet: () => 'tok', __swallow: () => {}, console,
   };
   ctx.window.window = ctx.window;
+  if (realPrompt) { ctx.window.omranFloorplan = {}; vm.runInNewContext('var window = this.window;\n' + FACADE, ctx); } // وصف الواجهة الحقيقيّ
   vm.runInNewContext('var window = this.window; var document = this.document;\n' + BRIDGE, ctx);
   assert.equal(typeof handler, 'function');
   const msg = (id) => handler({ data: { __omranView: 1, id, view: 'exterior', spec: { floors: [{ rooms: [] }] } }, source: frame, origin: 'null' });
-  return { msg, fetches, asks, replies, pending };
+  const send = (id, view, spec) => handler({ data: { __omranView: 1, id, view, spec }, source: frame, origin: 'null' });
+  return { msg, send, fetches, asks, replies, pending, FP: ctx.window.omranFloorplan };
 }
 const flush = () => new Promise((r) => setImmediate(r));
 
@@ -452,4 +535,31 @@ test('cli-studios-12: محرّر المخطّط الجديد يعيد زرّه �
   answer({ ok: false, error: '' });
   assert.equal(els.views.children.length, 1, 'فشل حقيقيّ يُعرض كما كان');
   assert.match(els.views.children[0].textContent, /⚠️/);
+});
+
+// v-lock-quotab (cli-studios-12، المراجعة): الإطار يرسل الطراز ومقاسات الغرفة نصًّا حرًّا يدخل الوصف، والخادم يسعّر 4K بقاعدته على نصّ الوصف.
+const reOf = (src, re) => { const m = src.match(re); assert.ok(m, 'القاعدة موجودة: ' + re); return new RegExp(m[1], 'i'); };
+const SERVER_4K = reOf(read('api/_lib/maha-image.js'), /const __ask4K = \/(.*)\/i\n/);
+
+test('cli-studios-12 (المراجعة): سعر التأكيد هو ما يخصمه الخادم — طراز أو مقاس «4k» من الإطار يُسعَّر 4K في الخادم فيُعرض سعر 4K', async () => {
+  const b = bridge(false, true);
+  const cases = [
+    ['exterior', { style: '4k', floors: [{ rooms: [] }] }, '30'],
+    ['majlis', { style: 'عصري', floors: [{ rooms: [{ name: 'مجلس', w: '4k', h: 5 }] }] }, '30'],
+    ['living', { style: 'print-ready', floors: [{ rooms: [{ name: 'صالة', w: 5, h: 4 }] }] }, '30'],
+    ['exterior', { style: 'عصري', plotWidth: 15, floors: [{ rooms: [{ name: 'مجلس', w: 6, h: 5 }, { name: 'كراج', w: 6, h: 5 }] }] }, '20'],
+    ['majlis', { style: 'Classic', floors: [{ rooms: [{ name: 'مجلس', w: 6, h: 5 }] }] }, '20'],
+  ];
+  for (let i = 0; i < cases.length; i++) {
+    const [view, spec, want] = cases[i];
+    const server = SERVER_4K.test(' ' + b.FP.facadePrompt(spec, view)) ? '30' : '20'; // ما يخصمه maha-image لهذا الوصف (userText فارغ)
+    assert.equal(server, want, 'سعر الخادم للحالة ' + i);
+    b.send(i + 1, view, spec);
+    await flush(); await flush();
+    assert.equal(b.asks.length, i + 1, 'كلّ توليد يُسأل عنه');
+    assert.ok(b.asks[i].includes(' ' + want + ' '), 'كان: «20» والخادم يخصم ' + want + ' — ' + b.asks[i]);
+  }
+  assert.equal(b.fetches.length, 0, 'ألغى المستخدم كلّها');
+  const client = reOf(FP_SRC, /var VIEW_ASK_4K = \/(.*)\/i;/);
+  assert.equal(client.source, SERVER_4K.source, 'قاعدة الجسر هي قاعدة الخادم حرفيًّا — أيّ تغيير في أحدهما يُكسر هنا');
 });

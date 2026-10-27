@@ -599,6 +599,9 @@
      {__omranView} في حلقة فيُخصم لكلّ رسالة بلا ضغطة. الآن طلب مدفوع واحد جارٍ في كلّ مرّة (ما يصل أثناءه يُرفض بلا سؤال)، وقبل كلّ توليد
      تأكيد بسعره من نافذة التطبيق نفسها — الإطار لا يملك ضغط زرّ فيها. السعر من مصدر الخصم (omranLoadCosts — v-vmk-price-src). */
   var viewBusy = false;
+  /* v-lock-quotab (cli-studios-12): الوصف يحمل نصًّا حرًّا يرسله الإطار (الطراز، مقاسات الغرفة)، والخادم يسعّر 4K بقاعدته على نصّ الوصف
+     (maha-image.js __ask4K: «4k»، «print-ready»…) — فالسعر في التأكيد يُختار بالقاعدة نفسها حرفيًّا، واختبار يطابق النصّين. */
+  var VIEW_ASK_4K = /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i;
   window.addEventListener('message', function (e) {
     var d = e.data;
     if (!d || d.__omranView !== 1 || !e.source || !fromOwnFrame(e)) return;
@@ -615,7 +618,8 @@
     var costs = (typeof window.omranLoadCosts === 'function') ? window.omranLoadCosts() : (window.__omranCosts || null);
     Promise.resolve(costs).catch(function (err) { __swallow(err, 'floorplan:bridge#costs'); return null; }).then(function (c) {
       var ask = (typeof t === 'function' && t('spendConfirm')) || 'هذه العملية تخصم {n} نقطة. أكمل؟';
-      if (!confirm(String(ask).replace('{n}', (c && c.image) || '?'))) { reply({ ok: false, cancelled: true, error: '' }); return null; }
+      var price = c && (VIEW_ASK_4K.test(' ' + String(prompt)) ? c.image_4k : c.image); // ما يخصمه الخادم لهذا الوصف بعينه
+      if (!confirm(String(ask).replace('{n}', price || '?'))) { reply({ ok: false, cancelled: true, error: '' }); return null; }
       return fetch('/api/maha-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
