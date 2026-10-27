@@ -81,7 +81,7 @@ const TALK = block(SRC, '    if(__wantsTalkChar){\n', '      cur.lastMsgWasImage
 const POST = block(SRC, 'async function postWithConfirm(url, payload', '\n}\n');
 const FRIENDLY = block(SRC, 'function __friendlyErr(e){', '\n}\n');
 const HELPER = block(SRC, 'function omranVideoCodeText(', '\n}\n') + '\n' + block(SRC, 'function omranAttachT(', '\n}\n'); // v-audit-attach: نصوص الشخصيّة بمفتاح الـ١٤ لغة
-const PRICE = block(SRC, 'async function omranTalkPriceCheck(', '\n}\n');
+const PRICE = block(SRC, 'async function omranTalkPriceCheck(', '\n}\n') + '\n' + block(SRC, 'async function omranChatVidPoll(', '\n}\n') + '\n' + block(SRC, 'function omranChatVidNoRetry(', '\n}\n'); // v-lock-chatvid: الاستطلاع، وهل يُعاد الإنشاء
 const TD = { window: {} };
 vm.runInNewContext(fs.readFileSync(path.join(root, 'js/app-11-video-trends-data.js'), 'utf8'), TD);
 const TRENDS = TD.window.__VIDEO_TRENDS;
@@ -93,11 +93,11 @@ const I18N = { vidRejected: 'تعذّر بدء الفيديو بهذا الطل�
 async function talk(u, opt) {
   const o = Object.assign({ confirm: true, lg: 'ar', photo: false }, opt || {});
   const log = { confirms: [], creates: [], polls: 0, seq: [] };
-  const runSignal = { aborted: false };
+  const runCtl = new AbortController(), runSignal = runCtl.signal; // v-lock-chatvid: إشارة حقيقيّة (الاستطلاع يستمع لزرّ الإيقاف)
   const sb = {
     lang: o.lg, text: 'خل الشخصية تتكلم وتقول: هلا والله', localStorage: { getItem: () => o.lg },
     cur: { messages: [] }, thinkingDiv: null, __wantsTalkChar: true, __alreadyCartoon: !o.photo, __charImg: { b64: 'iVBORw0KGgo=', mime: 'image/png' },
-    __runCtl: { signal: runSignal }, chatPhase() {}, renderAll() {}, saveState() {}, __swallow() {},
+    __runCtl: runCtl, __run: { ctl: runCtl, timedOut: false }, AbortController, clearTimeout() {}, chatPhase() {}, renderAll() {}, saveState() {}, __swallow() {},
     authGet: () => token(u), t: (k) => I18N[k] || k, AL: () => o.lg, genAbortController: null, Response,
     setTimeout: (fn) => fn(), // انتظار الاستطلاع والإعادة بلا وقت حقيقيّ
     confirm: (m) => { log.confirms.push(m); log.seq.push('confirm'); return o.confirm; },
