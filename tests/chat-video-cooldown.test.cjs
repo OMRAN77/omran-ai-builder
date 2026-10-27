@@ -37,7 +37,7 @@ async function chatVideo(reply, lg, extra) {
     cur: { messages: [] }, thinkingDiv: null, __vidSrc: null, __srcImg: null, __animateRe: /(?!)/, __wantsVideo: true,
     __runCtl: { signal: { aborted: false } }, chatPhase() {}, renderAll() {}, saveState() {}, authGet: () => 'tok', __swallow() {},
     setTimeout: (fn) => fn(), // إعادة المحاولة القائمة بلا انتظار ٦ث
-    postWithConfirm: async (url, body) => { calls.push(url); bodies.push(Object.assign({}, body)); const rp = Array.isArray(reply) ? reply[Math.min(bodies.length - 1, reply.length - 1)] : reply; return { ok: rp.status === 200, status: rp.status, json: async () => rp.body }; },
+    postWithConfirm: async (url, body) => { calls.push(url); bodies.push(Object.assign({}, body)); const rp = Array.isArray(reply) ? reply[Math.min(bodies.length - 1, reply.length - 1)] : reply; return Object.assign({ ok: rp.status === 200, status: rp.status, json: async () => rp.body }, rp.approved ? { __omApproved: true } : {}); }, // approved = رأى المستخدم السعر ووافق (postWithConfirm يعلّم ردّه)
   };
   sb.window = sb; sb.__VIDEO_TRENDS = TRENDS; Object.assign(sb, extra || {});
   vm.runInNewContext(HELPER + '\n' + FRIENDLY + '\nthis.go = async function(){\n' + VIDEO_BLOCK + '\n};', sb);
@@ -94,10 +94,14 @@ test('٥. نفاد النقاط بنصّ الباقات القائم، وإلغ�
 });
 
 test('٦. مراجعة باب المال ٢: الإعادة بعد عطل عابر بالموافقة نفسها (لا نافذة سعر ثانية)، والرفض الدائم (retryable:false) لا يُعاد', async () => {
-  const t = await chatVideo([{ status: 502, body: { error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true } }, { status: 502, body: { error: 'x', retryable: true } }]);
+  const t = await chatVideo([{ status: 502, body: { error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true }, approved: true }, { status: 502, body: { error: 'x', retryable: true } }]);
   assert.equal(t.calls.length, 2);
   assert.notEqual(t.bodies[0].confirmed, true, 'الأولى تسأل');
   assert.equal(t.bodies[1].confirmed, true, 'الإعادة تحمل الموافقة فلا 428 ثانية');
+  /* v-lock-chatvid (cli-chat-attach-5): فشل قبل سؤال السعر (لم يرَ المستخدم سعرًا) = الإعادة بلا confirmed فيسأل الخادم — كانت تخصم بلا موافقة */
+  const u = await chatVideo([{ status: 502, body: { error: 'x', retryable: true } }, { status: 502, body: { error: 'x', retryable: true } }]);
+  assert.equal(u.calls.length, 2);
+  assert.notEqual(u.bodies[1].confirmed, true, 'إعادة بلا موافقة حملت confirmed:true');
   const bad = await chatVideo({ status: 400, body: { error: 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.', retryable: false } });
   assert.equal(bad.calls.length, 1, 'لا إعادة عمياء لطلب مرفوض');
   assert.match(bad.msg.content, /غيّر الوصف أو الصورة/);

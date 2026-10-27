@@ -1,6 +1,6 @@
 {
  "_note": "سقّاطة البنية (scripts/arch-ratchet.mjs عبر npm run guard): كلّ قيمة سقف لا يُتجاوز، وتنزل ولا ترتفع أبدًا — حين يتحسّن مقياس اخفض قيمته هنا في الالتزام نفسه. قيست على شجرة الدفعة A المدموجة (السقّاطة وُلدت في الدفعة نفسها، فأساسها بعد تعديلات التوجيه والتوكنز فيها).",
- "sendPromptCoreLines": 3616,
+ "sendPromptCoreLines": 3608,
  "sendPromptCoreRegex": 258,
  "sendPromptCoreTests": 301,
  "verifyTokenDefs": 10,
