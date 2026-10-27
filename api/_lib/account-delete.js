@@ -48,9 +48,13 @@ function prefixKeys(key) {
 /* v-lock-acct (srv-auth-3): الكولباك ورمز البريد ينشئان salt/hash عشوائيّين لا يعرفهما صاحب الحساب، فكان الحذف يطلب كلمة مرور لا
    وجود لها (wrong_password دائمًا). كلمة المرور تُطلب ممّن وضعها بنفسه: حساب التسجيل، أو حساب Google/رمز البريد بعد استرجاع أو تغيير
    (passwordSet من resetWithToken وchangePassword في auth.js؛ وما قبل العلامة: sv > 0 لا يرفعه إلّا هذان). */
+/* v-lock-acct (srv-auth-3، المراجعة): sv والعلامة لم يبلغا الإنتاج بعد، فالسجلّ الذي وضع صاحبه كلمته بالاسترجاع قبل هذا الإصلاح لا
+   يحمل أيّهما — وكان يُحذف بالاسم وحده لمن يحمل رمز جلسته. أثره القائم resetTokenHash === null: لا يكتب null إلّا resetWithToken
+   (طلب الاسترجاع وربط الهاتف يكتبان نصًّا، والكولباك ورمز البريد لا يكتبانه). */
 function needsPassword(user) {
   if (!(user.hash && user.salt)) return false;
-  const passwordless = (user.googleAuth === true || user.otpOnly === true) && user.passwordSet !== true && !(Number(user.sv) > 0);
+  const ownPassword = user.passwordSet === true || Number(user.sv) > 0 || user.resetTokenHash === null;
+  const passwordless = (user.googleAuth === true || user.otpOnly === true) && !ownPassword;
   return !passwordless;
 }
 
@@ -88,14 +92,20 @@ function ownsShare(rec, keys) {
   const u = String(rec.username || '');
   return u !== SHARE_DEFAULT_NAME && keys.has(u);
 }
-/** مشاركاته ومداخل فهرسها — قراءة وحدها قبل أيّ أثر؛ تعذّر السرد يرمي فلا يُحذف شيء. */
+/** مشاركاته ومداخل فهرسها — قراءة وحدها قبل أيّ أثر؛ تعذّر السرد أو قراءة سجلّ يرمي فلا يُحذف شيء. */
+/* v-lock-acct (pages-static-3، المراجعة): القراءة غير الصارمة تبتلع عطل النقل (مهلة، ٤٢٩ حدّ الطلبات) فتُرجع null — فمشاركة له
+   تعذّرت قراءتها تُحسب لغيره، ويخرج «تم» وهي منشورة للأبد (جلسته ماتت فلا يحذفها share.js بعدها). الآن صارمة: السجلّ التالف
+   (ليس JSON) وحده يُتخطّى، وأيّ عطل آخر يرمي ← 503 retry قبل إيقاف التجديد. */
+function readShare(kv, k) {
+  return Promise.resolve().then(() => kv.kvGetJSON(k, { strict: true })).catch((e) => { if (e instanceof SyntaxError) return null; throw e; });
+}
 async function ownedShares(kv, keys) {
   const shareKeys = await kv.kvList('db/shares/');
   const exploreKeys = await kv.kvList('db/explore/');
   const owned = [];
   for (let i = 0; i < shareKeys.length; i += 16) {
     const chunk = shareKeys.slice(i, i + 16);
-    const recs = await Promise.all(chunk.map((k) => Promise.resolve().then(() => kv.kvGetJSON(k)).catch(() => null)));
+    const recs = await Promise.all(chunk.map((k) => readShare(kv, k)));
     recs.forEach((rec, j) => { if (ownsShare(rec, keys)) owned.push(chunk[j]); });
   }
   const idOf = (k) => { const raw = k.slice('db/shares/'.length).replace(/\.json$/, ''); try { return decodeURIComponent(raw); } catch (e) { return raw; } }; // مفتاح بترميز تالف: المعرّف كما هو
