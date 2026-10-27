@@ -73,8 +73,10 @@ module.exports = async (req, res) => {
   /* v-redis-capacity: القفل كان يفتح على الفشل (got = true) — فحين تمتلئ القاعدة (كلّ كتابة مرفوضة) يُولَّد كلّ طلب صورةً مدفوعة
      ولا تُحفظ، فيُولَّد مثلها عند الطلب التالي: كلّ مصغّر في شبكة الاستوديو = توليد جديد. امتلاء القاعدة = لا توليد (٥٠٣)، وأيّ عطل
      عابر آخر يبقى كما كان (يفتح). */
+  /* v-lock-quotab (srv-studios-1-10): القفل ١٢٠ث ومهلة التوليد ٢٤٠ث — توليد بطيء يفقد قفله وهو جارٍ فيولّد الطلب التالي نسخة مدفوعة ثانية
+     للبطاقة نفسها. مدّته الآن عمر الدالّة كلّه (maxDuration ‏٣٠٠ث في vercel.json): ما دام التوليد حيًّا فالقفل حيّ. */
   let got = false;
-  try { got = await kvSetIfAbsent(key + ':lock', String(Date.now()), 120); }
+  try { got = await kvSetIfAbsent(key + ':lock', String(Date.now()), 300); }
   catch (e) {
     if (require('./media-purge.js').isStoreFull(e)) { res.setHeader('Retry-After', '600'); res.status(503).json({ error: 'preview store full' }); return; }
     got = true;

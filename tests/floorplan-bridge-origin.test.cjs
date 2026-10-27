@@ -19,6 +19,7 @@ function harness(frameWin) {
     document: { getElementsByTagName: () => [{ contentWindow: frameWin }], getElementById: (id) => id === 'previewFrame' ? { contentWindow: frameWin } : null, querySelectorAll: () => [] },
     fetch: (url, init) => { fetches.push({ url, init }); return Promise.resolve({ ok: true, json: () => Promise.resolve({ imageBase64: 'AAAA', mimeType: 'image/png' }) }); },
     authGet: () => 'tok', __swallow: () => {}, console,
+    confirm: () => true, // v-lock-quotab (cli-studios-12): المستخدم وافق على السعر في نافذة التطبيق
   };
   ctx.window.window = ctx.window;
   vm.runInNewContext('var window = this.window; var document = this.document;\n' + BLOCK, ctx);
@@ -34,10 +35,13 @@ test('رسالة من نافذة خارجيّة (ليست إطارًا في ال
   assert.equal(h.fetches.length, 0, 'لا نداء مدفوع لمصدر خارجيّ');
 });
 
-test('رسالة المحرّر من إطار المعاينة نفسه تعمل كما كانت', () => {
+const flush = () => new Promise((r) => setImmediate(r)); // v-lock-quotab: التوليد بعد تأكيد السعر (وعد) لا في المستمع نفسه
+
+test('رسالة المحرّر من إطار المعاينة نفسه تعمل كما كانت', async () => {
   const ownFrame = { postMessage() {} };
   const h = harness(ownFrame);
   h.handler({ data: { __omranView: 1, id: 2, view: 'front', spec: {} }, source: ownFrame, origin: 'https://app.example' /* معاينة srcdoc ترث أصل التطبيق */ });
+  await flush();
   assert.equal(h.fetches.length, 1);
   assert.equal(h.fetches[0].url, '/api/maha-image');
 });
@@ -52,9 +56,10 @@ test('المراجعة العدائيّة: إطار معزول آخر (جرّب�
   assert.equal(h.fetches.length, 0, 'كود النموذج في إطار معزول غير المعاينة لا ينفق نقاط المستخدم');
 });
 
-test('إطار المعاينة المعزول (أصله «null» بعد sandbox) يعمل بهويّته', () => {
+test('إطار المعاينة المعزول (أصله «null» بعد sandbox) يعمل بهويّته', async () => {
   const previewWin = { postMessage() {} };
   const h = harness(previewWin);
   h.handler({ data: { __omranView: 1, id: 4, view: 'front', spec: {} }, source: previewWin, origin: 'null' });
+  await flush();
   assert.equal(h.fetches.length, 1, 'المحرّر في إطار المعاينة يولّد كما كان ولو صار أصله null');
 });

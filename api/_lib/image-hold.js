@@ -9,7 +9,7 @@
 // HOLD_STALE_MS تُردّ نقاطها تلقائيًّا عند أوّل قراءة لرصيد صاحبها (/api/points balance — تقرؤه الواجهة عند كلّ فتح).
 // «مرّة واحدة» محروسة بـSET NX على مفتاح تسوية لكلّ تذكرة (كـvideo-job.js): تأكيد وتسوية متزامنان لا يردّان مرّتين.
 // حارس إساءة: من يحجب التأكيد عمدًا يأخذ الصورة ويستردّ — فالردّ التلقائيّ REFUND_DAY_MAX مرّات في اليوم لكلّ حساب،
-// وما زاد يثبت خصمه. عطب KV لا يوقف شيئًا: الحجز أفضل جهد، وأسوأ حالاته سلوك ما قبل هذا الملفّ (خصم ثابت).
+// وما زاد يثبت خصمه (حجوز العميل وحدها؛ تذاكر الخادم بعلامتها t خارج السقف — v-lock-quotab). عطب KV لا يوقف شيئًا: الحجز أفضل جهد، وأسوأ حالاته سلوك ما قبل هذا الملفّ (خصم ثابت).
 const crypto = require('crypto');
 
 const HOLD_STALE_MS = 5 * 60 * 1000; // الصورة تصل بعد ثوانٍ من الردّ؛ خمس دقائق بلا تأكيد = لم تصل
@@ -53,7 +53,8 @@ async function holdImage(username, id, cost, pay, o) {
   if (pay && pay.owner) return false; // المالك وVIP لم يُخصم منهما شيء
   const p = pay && typeof pay === 'object' ? pay : null;
   const h = Object.assign({ id: hid, c, at: Number(opt.now) || Date.now() },
-    p ? { k: p.planVideo ? 'v' : (p.media ? 'm' : 'p') } : {}, p && p.media && p.pool ? { pl: String(p.pool) } : {});
+    p ? { k: p.planVideo ? 'v' : (p.media ? 'm' : 'p') } : {}, p && p.media && p.pool ? { pl: String(p.pool) } : {},
+    opt.srv ? { t: 1 } : {}); /* v-lock-quotab (srv-images-2): علامة تذكرة الخادم يكتبها openTicket وحده — لا من المعرّف (العميل يرسل أيّ معرّف في hold) */
   try {
     const list = (await readList(kv, username)).filter((x) => x.id !== hid);
     list.push(h);
@@ -106,9 +107,13 @@ async function settleStale(username, o) {
     try { mine = await kv.kvSetIfAbsent(doneKey(username, h.id), '0', TTL_SEC); } catch (e) { continue; }
     settled.add(h.id);
     if (!mine) continue; // أكّدها العميل أو سوّاها نداء آخر
-    let n = 1;
-    try { n = Number(await kv.kvIncr(dayKey(username, now))); if (n === 1) await kv.kvExpire(dayKey(username, now), 2 * 86400); } catch (e) { n = 1; }
-    if (n > REFUND_DAY_MAX) { console.warn('[image-hold] daily auto-refund cap reached — charge kept'); continue; }
+    /* v-lock-quotab (srv-images-2): السقف لمن يحجب التأكيد عمدًا — حجوز العميل وحدها. تذكرة الخادم تغلقها الدالّة قبل ردّ الصورة، فبقاؤها
+       مفتوحة = قُتلت الدالّة ولم تصل الصورة؛ لا يملك العميل إبقاءها، فتُردّ كلّها ولا تأكل من سقف حجوزه («إذا ما وصلت، النقاط ترجع»). */
+    if (!h.t) {
+      let n = 1;
+      try { n = Number(await kv.kvIncr(dayKey(username, now))); if (n === 1) await kv.kvExpire(dayKey(username, now), 2 * 86400); } catch (e) { n = 1; }
+      if (n > REFUND_DAY_MAX) { console.warn('[image-hold] daily auto-refund cap reached — charge kept'); continue; }
+    }
     const how = h.k ? { planVideo: h.k === 'v', media: h.k === 'm', pool: h.pl || '' } : undefined;
     try { await points.refundPoints(username, h.c, how); out.refunded++; out.points += h.c; } catch (e) { console.error('[image-hold] refund failed: ' + (e && e.message)); }
   }
@@ -125,7 +130,7 @@ const TICKET_GRACE_MS = 60 * 1000;
 async function openTicket(username, cost, pay, id, o) {
   const tid = cleanId(id) || ('srv' + crypto.randomBytes(9).toString('hex'));
   const at = (Number(o && o.now) || Date.now()) + TICKET_GRACE_MS;
-  try { return (await holdImage(username, tid, cost, pay, Object.assign({}, o, { now: at }))) ? tid : undefined; } catch (e) { return undefined; }
+  try { return (await holdImage(username, tid, cost, pay, Object.assign({}, o, { now: at, srv: true }))) ? tid : undefined; } catch (e) { return undefined; }
 }
 /** يغلق تذكرة الخادم: true = القرار للدالّة (أخذت مفتاح التسوية، أو لا تذكرة) فتردّ هي إن فشلت؛ false = سوّاها الكنس قبلها أو تعذّر الحسم
     فلا تردّ هي (تبقى التذكرة للكنس) — فلا تُردّ النقاط مرّتين. */
