@@ -166,6 +166,15 @@ const MAHA_CLASSIC_TURN = {
   create_response: false,
 };
 
+/* v-lock-maha (cli-voice-3، باب المال بموافقة المالك ٢٧ أكتوبر): من أنهى المكالمة أثناء «أجهّز الجلسة» كان يُخصم دقيقة الافتتاح (أو تُحرق
+   تجربته) بلا مكالمة — الطلب وصل والخادم خصم قبل أن يُلغيه العميل. الآن طلب الجلسة يحمل معرّف فتح من العميل، وعليه حجز ذرّيّ واحد:
+   الخادم يأخذه «سُلِّم» قبل أن يردّ بالمفتاح، والعميل الذي أنهى المكالمة والطلب في الطريق يأخذه «أُلغي» (action: 'cancel'). من سبق كسب:
+   إلغاء قبل التسليم = ردّ الدقيقة أو التجربة و409 بلا مفتاح؛ إلغاء بعد التسليم = لا شيء (المفتاح قد يُستعمل، فالخصم قائم). المعرّف يُسلَّم
+   مرّة واحدة، والإلغاء نفسه لا يردّ شيئًا — الردّ داخل طلب الجلسة لخصمه هو وحده، فلا ردّ مزدوج ولا ردّ لمفتاح مُسلَّم. */
+const OPEN_KEY = 'maha:open:';
+const OPEN_TTL_SEC = 600; // أطول من عمر الدالّة (٣٠٠ث) — لا يسقط الحجز وطلبه ما زال يعمل
+const openIdOf = (v) => (typeof v === 'string' && /^[a-z0-9]{8,64}$/i.test(v) ? v.toLowerCase() : '');
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -192,6 +201,14 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
+    const openId = openIdOf(body.openId); // v-lock-maha (cli-voice-3): بلا معرّف (حزمة قديمة) = كما كان
+    if (body.action === 'cancel') {
+      if (!openId) { res.status(400).json({ error: 'bad_open_id' }); return; }
+      const cancelled = await require('./kv.js').kvSetIfAbsent(OPEN_KEY + openId, 'cancelled', OPEN_TTL_SEC);
+      res.status(200).json({ ok: true, cancelled });
+      return;
+    }
+    let undoTrialMark = null; // v-lock-maha (cli-voice-3): علامة تجربة الضيف — تُرفع إن أُلغي الطلب قبل تسليم المفتاح
     const { token, guestId } = body;
     const mode = body.mode === 'builder' ? 'builder' : 'assistant';
     const voiceGender = body.voiceGender === 'male' ? 'male' : 'female';
@@ -287,7 +304,7 @@ module.exports = async (req, res) => {
         : { unlimited: false, points: (pay && !pay.media) ? pay.points : rec.points, trial, prepaid: paidWith, cost, mahaMin,
           capMin: (mahaMin > 0 || paidWith === 'media') ? mediaLib.MAHA_CALL_CAP_MIN : 0 };
     } else {
-      const { kvGetJSON, kvPutJSON } = require('./kv.js');
+      const { kvGetJSON, kvPutJSON, kvDel } = require('./kv.js');
       // The free guest minute was keyed on an id the browser itself generates, so
       // clearing localStorage minted a fresh free minute forever. Key it on the
       // network address first, exactly like every other guest allowance here.
@@ -303,6 +320,7 @@ module.exports = async (req, res) => {
       if (!slot.ok) { res.status(402).json({ error: 'guest_trial_used' }); return; }
       undoBill = () => freeTier.giveDailySlot(slot);
       await kvPutJSON(gk, { at: Date.now() });
+      undoTrialMark = () => kvDel(gk);
       mahaBudget = { unlimited: false, points: 0, trial: true, guest: true };
     }
 
@@ -649,6 +667,17 @@ module.exports = async (req, res) => {
       await refundOpening();
       res.status(500).json({ error: 'Unexpected response from OpenAI Realtime API' });
       return;
+    }
+    // v-lock-maha (cli-voice-3): التسليم يأخذ الحجز قبل الردّ — أُلغي قبله أو سُلِّم بالمعرّف نفسه من قبل = ردّ خصم هذا الطلب ولا مفتاح.
+    // عطب التخزين هنا يرمي إلى catch أدناه فيُردّ الخصم أيضًا: لا مفتاح يُسلَّم بلا حجز ثابت.
+    if (openId) {
+      if (!(await require('./kv.js').kvSetIfAbsent(OPEN_KEY + openId, 'served', OPEN_TTL_SEC))) {
+        await refundOpening();
+        if (undoTrialMark) { try { await undoTrialMark(); } catch (e) { console.error('[realtime-session] guest trial unmark failed:', e && e.message); } }
+        res.status(409).json({ error: 'cancelled' });
+        return;
+      }
+      undoBill = null; // سُلِّم المعرّف: خطأ بعده لا يردّ خصم مفتاح قد يكون وصل، والإلغاء بعده لا يكسب
     }
 
     // v-cost-meter: دقيقة التجربة مجّانيّة للمستخدم لكنّها تكلّفنا — تُحسب في عدّاد الشهر (المدفوعة حسبها الخصم نفسه).
