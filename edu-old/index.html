@@ -468,6 +468,27 @@
       voiceMale:'男声', voiceFemale:'女声', voiceNeutral:'中性',
     },
   };
+  /* v-audit-edu (pages-static-10): الخطأ كان «❌ Error: OpenAI error: {…جسم المزوّد الخامّ…}» — الآن نصّ الصفحة بلغة الدرس:
+     svcPaused (نصّ التطبيق نفسه) لأيّ عطب، وaxEduCapUser لرمز السقف daily_cap. الصفحة مستقلّة لا تحمّل قاموس التطبيق. */
+  (function(){
+    const X = {
+      ar:{ svcPaused:'الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.', axEduCapUser:'وصلت للحد اليومي — عد غدًا.' },
+      en:{ svcPaused:'This service is temporarily unavailable — please try again shortly.', axEduCapUser:'You’ve reached today’s limit — come back tomorrow.' },
+      fr:{ svcPaused:'Ce service est temporairement indisponible — réessayez dans un instant.', axEduCapUser:'Vous avez atteint la limite du jour — revenez demain.' },
+      hi:{ svcPaused:'यह सेवा अस्थायी रूप से उपलब्ध नहीं है — थोड़ी देर बाद फिर कोशिश करें।', axEduCapUser:'आप आज की सीमा तक पहुँच गए हैं — कल फिर आएँ।' },
+      ur:{ svcPaused:'یہ سروس عارضی طور پر دستیاب نہیں — تھوڑی دیر بعد دوبارہ کوشش کریں۔', axEduCapUser:'آپ آج کی حد تک پہنچ گئے ہیں — کل دوبارہ آئیں۔' },
+      bn:{ svcPaused:'এই সেবাটি সাময়িকভাবে বন্ধ আছে — একটু পরে আবার চেষ্টা করুন।', axEduCapUser:'আপনি আজকের সীমায় পৌঁছে গেছেন — আগামীকাল আবার আসুন।' },
+      ne:{ svcPaused:'यो सेवा अस्थायी रूपमा उपलब्ध छैन — केही बेरपछि फेरि प्रयास गर्नुहोस्।', axEduCapUser:'तपाईं आजको सीमामा पुग्नुभयो — भोलि फेरि आउनुहोस्।' },
+      es:{ svcPaused:'Este servicio no está disponible temporalmente — inténtalo de nuevo en un momento.', axEduCapUser:'Has alcanzado el límite de hoy — vuelve mañana.' },
+      fil:{ svcPaused:'Pansamantalang hindi available ang serbisyong ito — subukan ulit mamaya.', axEduCapUser:'Naabot mo na ang limitasyon para sa araw na ito — bumalik bukas.' },
+      id:{ svcPaused:'Layanan ini sementara tidak tersedia — coba lagi sebentar lagi.', axEduCapUser:'Anda telah mencapai batas hari ini — kembali lagi besok.' },
+      ml:{ svcPaused:'ഈ സേവനം താൽക്കാലികമായി ലഭ്യമല്ല — അൽപ്പസമയം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കൂ.', axEduCapUser:'ഇന്നത്തെ പരിധിയിൽ നിങ്ങൾ എത്തി — നാളെ വീണ്ടും വരൂ.' },
+      ru:{ svcPaused:'Сервис временно недоступен — попробуйте чуть позже.', axEduCapUser:'Вы достигли лимита на сегодня — возвращайтесь завтра.' },
+      tr:{ svcPaused:'Bu hizmet geçici olarak kullanılamıyor — birazdan tekrar deneyin.', axEduCapUser:'Bugünkü sınıra ulaştınız — yarın tekrar gelin.' },
+      zh:{ svcPaused:'该服务暂时不可用 — 请稍后再试。', axEduCapUser:'您已达到今天的上限 — 请明天再来。' },
+    };
+    for (const k in X) { if (STR[k]) Object.assign(STR[k], X[k]); }
+  })();
 
   const RTL_LANGS = ['ar', 'ur'];
   function isEn(){ return lang !== 'ar' && lang !== 'ur'; } // used for LTR canvas/text layout
@@ -593,15 +614,21 @@
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ action: 'lesson-script', topic, durationMinutes: duration, lang, level })
       });
-      const data = await res.json();
-      if(!res.ok || data.error) throw new Error(data.error || 'unknown');
+      const data = await res.json().catch(() => null);
+      /* v-audit-edu: نصّ الخادم لا يُعرض (عربيّ وحده، وكان فيه نصّ المزوّد الخامّ) — رمزه يختار نصّ الصفحة بلغة الدرس */
+      if(!res.ok || !data || data.error){
+        const er = new Error('lesson-script ' + res.status);
+        er.eduMsg = (data && data.code === 'daily_cap') ? T('axEduCapUser') : T('svcPaused');
+        throw er;
+      }
       lessonData = data;
       renderSlides();
       $('#editorCard').classList.remove('hidden');
       $('#editorCard').scrollIntoView({behavior:'smooth'});
       setStatus1('');
     } catch(e){
-      setStatus1(T('genScriptErr') + (e.message || e));
+      console.warn('lesson-script', e);
+      setStatus1(T('genScriptErr') + ((e && e.eduMsg) || T('svcPaused')));
     } finally {
       $('#btnGenerateScript').disabled = false;
     }
@@ -621,11 +648,15 @@
     setStatus2(T('loadingFFmpeg'));
     // Self-hosted (same-origin) ffmpeg.wasm assets — avoids cross-origin Worker
     // restrictions that cause ffmpeg.load() to hang forever when loaded from a CDN.
+    /* v-audit-edu (pages-static-2): ffmpeg-core.wasm غير متتبَّع في edu-old/ffmpeg-assets/core/esm (لا يُنشر) فكان الطلب 404
+       صفحة HTML ويفشل التحميل («expected magic word… 3c 21 64 6f»). النسخة المتتبَّعة على الأصل نفسه /ffmpeg/core/ (نفس
+       ffmpeg-core.js حرفًا — md5 eaefa8c3…)، والمحرّر الرئيسيّ يحمّلها من هناك (app-11-video). */
     const cdns = [
       {
         ffmpegPkg: '/edu-old/ffmpeg-assets/ffmpeg/esm/index.js',
         utilPkg: '/edu-old/ffmpeg-assets/util/esm/index.js',
         core: '/edu-old/ffmpeg-assets/core/esm',
+        wasm: '/ffmpeg/core/ffmpeg-core.wasm',
         pkgBase: '/edu-old/ffmpeg-assets/ffmpeg/esm',
       },
     ];
@@ -639,7 +670,7 @@
           const ffmpeg = new FFmpeg();
           await ffmpeg.load({
             coreURL: await toBlobURL(c.core + '/ffmpeg-core.js', 'text/javascript'),
-            wasmURL: await toBlobURL(c.core + '/ffmpeg-core.wasm', 'application/wasm'),
+            wasmURL: await toBlobURL(c.wasm, 'application/wasm'),
           });
           return ffmpeg;
         })();

@@ -27,11 +27,20 @@
     try{ if(typeof window.__swallow === 'function') window.__swallow(e, ctx); else console.warn(ctx, e); }
     catch(_){ /* guard-ok: تعذّر التسجيل نفسه؛ لا نُسقط الواجهة. */ }
   }
-  function isAr(){
-    try{ return (document.documentElement.lang || 'ar').toLowerCase() !== 'en'; }
-    catch(e){ tell(e, 'sig:lang'); return true; }
+  /* v-audit-studcli (cli-studios-5): isAr() كان true لكلّ لغة سوى en فالأداة كلّها عربيّة لـ١٢ لغة. النصوص الآن من t() بالـ١٤ لغة،
+     والاحتياط (مترجم لم يجهز أو مفتاح ناقص) عربيّ للعربيّة وحدها وإنجليزيّ لغيرها — لا عربيّة للأرديّة؛ والاتّجاه RTL للعربيّة والأرديّة. */
+  function lg(){
+    try{ return String(document.documentElement.lang || 'ar').toLowerCase(); }
+    catch(e){ tell(e, 'sig:lang'); return 'ar'; }
   }
-  function T(a, b){ return isAr() ? a : b; }
+  function isRtl(){ return /^(ar|ur)/.test(lg()); }
+  function T(k, a, b){
+    try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return String(v); } }
+    catch(e){ tell(e, 'sig:t'); }
+    return lg().indexOf('ar') === 0 ? a : b;
+  }
+  var INK_KEYS = { white:'fxColWhite', ink:'fxColBlack', gold:'fxColGold' };
+  function fontName(f){ return T('axStudcliSigFont' + f.id.charAt(0).toUpperCase() + f.id.slice(1), f.ar, f.en); }
   function fontById(id){
     for(var i=0;i<FONTS.length;i++) if(FONTS[i].id === id) return FONTS[i];
     return FONTS[0];
@@ -96,7 +105,7 @@
   function paint(canvas, txt, scale){
     var f = fontById(state.font);
     var size = state.size;
-    var name = String(txt || '').trim() || T('اسمك', 'Your name');
+    var name = String(txt || '').trim() || T('axStudcliSigYourName', 'اسمك', 'Your name');
     var dpr = scale || 3;
     var pad = Math.round(size * 0.5);
     var probe = document.createElement('canvas').getContext('2d');
@@ -154,12 +163,12 @@
   /* المشاركة أوّلًا: ورقة النظام بالملفّ · ثمّ الحافظة · ثمّ التنزيل. */
   function shareCanvas(canvas){
     return blobOf(canvas).then(function(blob){
-      if(!blob){ toast(T('تعذّر توليد الصورة.', 'Could not build the image.')); return; }
+      if(!blob){ toast(T('voiceImageFailed', 'تعذّر توليد الصورة.', 'Could not build the image.')); return; }
       var file = null;
       try{ file = new File([blob], 'omran-signature.png', { type:'image/png' }); }
       catch(e){ tell(e, 'sig:file'); }
       if(file && navigator.canShare && navigator.canShare({ files:[file] })){
-        return navigator.share({ files:[file], title:'om ai', text:T('توقيعي ✍️', 'My signature ✍️') })
+        return navigator.share({ files:[file], title:'om ai', text:T('axStudcliSigTitle', 'توقيعي', 'My Signature') + ' ✍️' })
           .catch(function(err){
             if(err && err.name === 'AbortError') return;
             tell(err, 'sig:share');
@@ -173,7 +182,7 @@
     try{
       if(navigator.clipboard && window.ClipboardItem && navigator.clipboard.write){
         return navigator.clipboard.write([new window.ClipboardItem({ 'image/png':blob })])
-          .then(function(){ toast(T('نُسخ التوقيع — الصقه في أي محادثة.', 'Copied — paste it in any chat.')); })
+          .then(function(){ toast(T('axStudcliSigCopied', 'نُسخ التوقيع — الصقه في أي محادثة.', 'Copied — paste it in any chat.')); })
           .catch(function(err){ tell(err, 'sig:clip'); grab(blob); });
       }
     }catch(e){ tell(e, 'sig:clipboard'); }
@@ -193,12 +202,11 @@
   var BTN = 'flex:1; min-width:120px; border:none; border-radius:12px; padding:12px 16px; font-size:14px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px;';
 
   function open(){
-    var ar = isAr();
     var old = document.getElementById('sigOverlay');
     if(old) old.remove();
     var ov = document.createElement('div');
     ov.id = 'sigOverlay';
-    ov.dir = ar ? 'rtl' : 'ltr';
+    ov.dir = isRtl() ? 'rtl' : 'ltr';
     ov.style.cssText = 'position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.62); backdrop-filter:blur(4px); display:flex; align-items:flex-start; justify-content:center; padding:6vh 14px 20px; overflow:auto;';
     var card = document.createElement('div');
     card.style.cssText = 'width:100%; max-width:620px; background:var(--panel,#0b0b0f); border:1px solid rgba(128,128,128,.26); border-radius:18px; box-shadow:0 22px 64px rgba(0,0,0,.55); overflow:hidden;';
@@ -206,10 +214,10 @@
     head.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid rgba(128,128,128,.22);';
     var ttl = document.createElement('div');
     ttl.style.cssText = 'font-size:15.5px; font-weight:800; color:var(--text,#fff);';
-    ttl.textContent = T('توقيعي', 'My Signature');
+    ttl.textContent = T('axStudcliSigTitle', 'توقيعي', 'My Signature');
     var xb = document.createElement('button');
     xb.type = 'button';
-    xb.setAttribute('aria-label', T('إغلاق', 'Close'));
+    xb.setAttribute('aria-label', T('closeTitle', 'إغلاق', 'Close'));
     xb.style.cssText = 'background:none; border:none; color:#8b8ba7; font-size:22px; line-height:1; cursor:pointer; padding:2px 6px;';
     xb.textContent = '×';
     xb.onclick = function(){ ov.remove(); };
@@ -223,7 +231,7 @@
     input.maxLength = 40;
     input.autocomplete = 'off';
     input.value = state.name;
-    input.placeholder = T('اكتب اسمك…', 'Type your name…');
+    input.placeholder = T('axStudcliSigPh', 'اكتب اسمك…', 'Type your name…');
     input.style.cssText = 'width:100%; box-sizing:border-box; background:rgba(128,128,128,.12); border:1px solid rgba(128,128,128,.3); border-radius:12px; color:var(--text,#fff); font-size:16px; padding:12px 14px; outline:none;';
 
     var grid = document.createElement('div');
@@ -257,13 +265,13 @@
     inkRow.style.cssText = 'display:flex; align-items:center; gap:8px; font-size:12.5px; color:#8b8ba7;';
     var inkLbl = document.createElement('span');
     inkLbl.style.cssText = 'min-width:58px;';
-    inkLbl.textContent = T('اللون', 'Ink');
+    inkLbl.textContent = T('axStudcliSigInk', 'اللون', 'Ink');
     inkRow.appendChild(inkLbl);
     INKS.forEach(function(k){
       var b = document.createElement('button');
       b.type = 'button';
       b.setAttribute('data-sig-ink', k.id);
-      b.title = ar ? k.ar : k.en;
+      b.title = T(INK_KEYS[k.id], k.ar, k.en);
       b.style.cssText = 'width:26px; height:26px; border-radius:50%; cursor:pointer; background:' + k.v + '; border:2px solid ' + (state.ink === k.id ? '#c8a24a' : 'rgba(128,128,128,.4)') + ';';
       b.onclick = function(){
         state.ink = k.id;
@@ -282,12 +290,12 @@
     floBox.style.cssText = 'accent-color:var(--accent,#c8a24a);';
     floBox.onchange = function(){ state.flourish = floBox.checked; render(); };
     var floTxt = document.createElement('span');
-    floTxt.textContent = T('ذيل التوقيع', 'Flourish');
+    floTxt.textContent = T('axStudcliSigFlourish', 'ذيل التوقيع', 'Flourish');
     flo.appendChild(floBox); flo.appendChild(floTxt);
     inkRow.appendChild(flo);
 
-    rows.appendChild(slider(T('الحجم', 'Size'), 40, 200, state.size, 2, function(v){ state.size = v; render(); }));
-    rows.appendChild(slider(T('الميل', 'Slant'), -20, 20, state.slant, 1, function(v){ state.slant = v; render(); }));
+    rows.appendChild(slider(T('axStudcliSigSize', 'الحجم', 'Size'), 40, 200, state.size, 2, function(v){ state.size = v; render(); }));
+    rows.appendChild(slider(T('axStudcliSigSlant', 'الميل', 'Slant'), -20, 20, state.slant, 1, function(v){ state.slant = v; render(); }));
     rows.appendChild(inkRow);
 
     var acts = document.createElement('div');
@@ -295,7 +303,7 @@
     var shareBtn = document.createElement('button');
     shareBtn.type = 'button';
     shareBtn.style.cssText = BTN + 'background:linear-gradient(135deg,#d8b45c,#b8912f); color:#14161a; box-shadow:0 6px 18px rgba(184,145,47,.28);';
-    shareBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg><span>' + T('مشاركة', 'Share') + '</span>';
+    shareBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg><span>' + T('shareMsgTitle', 'مشاركة', 'Share') + '</span>';
     shareBtn.onclick = function(){
       shareBtn.disabled = true;
       Promise.resolve(shareCanvas(canvas)).then(function(){ shareBtn.disabled = false; }, function(e){ tell(e, 'sig:shareclick'); shareBtn.disabled = false; });
@@ -303,14 +311,14 @@
     var dlBtn = document.createElement('button');
     dlBtn.type = 'button';
     dlBtn.style.cssText = BTN + 'flex:0 0 auto; min-width:0; background:rgba(128,128,128,.16); color:var(--text,#cfcfe0);';
-    dlBtn.title = T('تنزيل PNG شفّاف', 'Download transparent PNG');
+    dlBtn.title = T('axStudcliSigDownload', 'تنزيل PNG شفّاف', 'Download transparent PNG');
     dlBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>';
     dlBtn.onclick = function(){ blobOf(canvas).then(function(b){ if(b) grab(b); }); };
     acts.appendChild(shareBtn); acts.appendChild(dlBtn);
 
     var note = document.createElement('div');
     note.style.cssText = 'margin-top:10px; color:#8b8ba7; font-size:12px; line-height:1.7;';
-    note.textContent = T('خلفيّة شفافة · يعمل بلا اتصال بعد تحميل الخطّ · بلا نقاط.', 'Transparent background · works offline once the font loads · no credits.');
+    note.textContent = T('axStudcliSigNote', 'خلفيّة شفافة · يعمل بلا اتصال بعد تحميل الخطّ · بلا نقاط.', 'Transparent background · works offline once the font loads · no credits.');
 
     body.appendChild(input); body.appendChild(grid); body.appendChild(stage); body.appendChild(rows); body.appendChild(acts); body.appendChild(note);
     card.appendChild(head); card.appendChild(body);
@@ -331,10 +339,10 @@
       var pv = document.createElement('span');
       pv.className = 'sigCardPv';
       pv.style.cssText = 'font-family:' + f.family + ", 'Tajawal', sans-serif; font-size:19px; color:var(--text,#fff); line-height:1.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;";
-      pv.textContent = state.name || T('اسمك', 'Name');
+      pv.textContent = state.name || T('axStudcliSigName', 'اسمك', 'Name');
       var nm = document.createElement('span');
       nm.style.cssText = 'font-size:11px; color:#8b8ba7;';
-      nm.textContent = ar ? f.ar : f.en;
+      nm.textContent = fontName(f);
       b.appendChild(pv); b.appendChild(nm);
       b.onclick = function(){
         state.font = f.id;
@@ -350,7 +358,7 @@
     var pending = 0;
     function render(){
       state.name = input.value.slice(0, 40);
-      grid.querySelectorAll('.sigCardPv').forEach(function(p){ p.textContent = state.name || T('اسمك', 'Name'); });
+      grid.querySelectorAll('.sigCardPv').forEach(function(p){ p.textContent = state.name || T('axStudcliSigName', 'اسمك', 'Name'); });
       stage.style.background = (state.ink === 'ink' ? '#f2f2f4' : '#17171c');
       var mine = ++pending;
       var f = fontById(state.font);
@@ -373,8 +381,8 @@
     var b = document.createElement('button');
     b.className = 'btn';
     b.id = 'btnSignature';
-    b.title = T('توقيعي — اصنع توقيعك وشاركه', 'My Signature — craft and share it');
-    b.innerHTML = '<svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17c3.5 0 5-8 8-8s2.5 8 6 8h4"></path><path d="M14 21h7"></path></svg> <span class="btnLabel">' + T('توقيعي', 'My Signature') + '</span>';
+    b.title = T('axStudcliSigMenuTitle', 'توقيعي — اصنع توقيعك وشاركه', 'My Signature — craft and share it');
+    b.innerHTML = '<svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17c3.5 0 5-8 8-8s2.5 8 6 8h4"></path><path d="M14 21h7"></path></svg> <span class="btnLabel">' + T('axStudcliSigTitle', 'توقيعي', 'My Signature') + '</span>';
     b.onclick = function(){ open(); };
     var logout = document.getElementById('btnMenuLogout');
     if(logout && logout.parentElement === dd) dd.insertBefore(b, logout);
@@ -382,8 +390,8 @@
     try{
       new MutationObserver(function(){
         var lbl = b.querySelector('.btnLabel');
-        if(lbl) lbl.textContent = T('توقيعي', 'My Signature');
-        b.title = T('توقيعي — اصنع توقيعك وشاركه', 'My Signature — craft and share it');
+        if(lbl) lbl.textContent = T('axStudcliSigTitle', 'توقيعي', 'My Signature');
+        b.title = T('axStudcliSigMenuTitle', 'توقيعي — اصنع توقيعك وشاركه', 'My Signature — craft and share it');
       }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] });
     }catch(e){ tell(e, 'sig:langwatch'); }
   }

@@ -26,7 +26,8 @@ const coolText = (lg, m) => COOL[lg].replace('⏳', '').trim().replace('{m}', St
 
 const VIDEO_BLOCK = block(SRC, "    if(__wantsVideo){\n      chatPhase('🎬'", "      cur.lastMsgWasImageEdit = false;\n      renderAll(); saveState();\n      return;\n    }");
 const FRIENDLY = block(SRC, 'function __friendlyErr(e){', '\n}\n');
-const HELPER = SRC.includes('function omranVideoCodeText(') ? block(SRC, 'function omranVideoCodeText(', '\n}\n') : '';
+const HELPER = (SRC.includes('function omranVideoCodeText(') ? block(SRC, 'function omranVideoCodeText(', '\n}\n') : '')
+  + '\n' + block(SRC, 'function omranAttachT(', '\n}\n'); // v-audit-attach: نصوص الفيديو بمفتاح الـ١٤ لغة عبر هذا المساعد
 
 async function chatVideo(reply, lg, extra) {
   const calls = [];

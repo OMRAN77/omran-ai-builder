@@ -62,6 +62,7 @@ test('٣. صفحة بلا #messages: كلّ تغيّر يمسح كما قبل', 
 
 test('٤. وسوم الكاش ارتفعت', () => {
   const html = fs.readFileSync('index.html', 'utf8');
-  assert.ok(html.includes('css/tokens.css?v=739') && html.includes('/js/ui-wiring.js?v=667'));
-  assert.ok(fs.readFileSync('js/ui-wiring.js', 'utf8').includes("/js/delete-confirm.js?v=20261019b'"));
+  assert.ok(html.includes('css/tokens.css?v=739') && html.includes('/js/ui-wiring.js?v=668'));
+  const dc = /\/js\/delete-confirm\.js\?v=(\w+)'/.exec(fs.readFileSync('js/ui-wiring.js', 'utf8')); /* v-audit-shell: الوسم يرتفع ولا يُثبَّت */
+  assert.ok(dc && dc[1] >= '20261019b');
 });

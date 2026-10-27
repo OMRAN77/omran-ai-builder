@@ -33,6 +33,10 @@ function imgErrFriendly(err, isAr, info){
       ? 'تأخر إنشاء الصورة هذه المرة. أعد المحاولة بعد لحظة.'
       : 'Image generation took too long this time. Please try again in a moment.';
   }
+  /* v-audit-studeng (srv-studios-1-3): الاستوديو صار يرسل الرمزين بدل «تعذّر إنشاء الصورة الآن…» العربيّ لكلّ اللغات — بالـ١٤ لغة،
+     والعربيّ/الإنجليزيّ أدناه احتياطًا ما لم يُعرف المفتاح (t يعيد اسمه) */
+  if(err === 'image_generation_busy' && t('axStudengImgBusy') !== 'axStudengImgBusy') return t('axStudengImgBusy');
+  if(err === 'image_generation_failed' && t('axStudengImgFailed') !== 'axStudengImgFailed') return t('axStudengImgFailed');
   if(err === 'image_generation_busy'){
     return isAr
       ? 'خدمة الصور مشغولة الآن. أعد المحاولة بعد لحظة.'
@@ -88,6 +92,17 @@ function detectSpeechLang(text){
     if(/[\u0679\u0688\u0691\u06BA\u06BE\u06C1\u06C2\u06D2]/.test(t)) return 'ur';
     return 'ar';
   }
+  /* v-audit-voice (cli-voice-7): الخادم له لهجة لكلّ لغة من الأربع عشرة، والكشف كان يعرف سبعًا — الروسيّ والصينيّ
+     والمالايالاميّ تُكشف بكتابتها، واللاتينيّ بلغة الواجهة إن كانت إسبانيّة أو تركيّة أو إندونيسيّة أو فلبينيّة، وإلّا فالتركيّ
+     والإسبانيّ بحروفهما الخاصّة (كانت «la» تجعل الإسبانيّ فرنسيًّا و«ç» التركيّ فرنسيًّا، والإندونيسيّ والفلبينيّ إنجليزيًّا).
+     الفرنسيّة والإنجليزيّة على تخمينهما القديم كما كانتا. */
+  if(/[\u0D00-\u0D7F]/.test(t)) return 'ml';
+  if(/[\u0400-\u04FF]/.test(t)) return 'ru';
+  if(/[\u4E00-\u9FFF\u3400-\u4DBF]/.test(t)) return 'zh';
+  const uiLang = (typeof lang === 'string') ? lang : '';
+  if(['es', 'tr', 'id', 'fil'].indexOf(uiLang) !== -1) return uiLang;
+  if(/[ğışİĞŞ]/.test(t)) return 'tr';
+  if(/[ñÑ¿¡]/.test(t)) return 'es';
   const frenchHints = /[àâäæçéèêëîïôœùûüÿ]/i;
   const frenchWords = /\b(le|la|les|des|une|est|et|vous|nous|bonjour|merci|s'il|être|avec|pour|dans)\b/i;
   if(frenchHints.test(t) || frenchWords.test(t)) return 'fr';
@@ -1429,7 +1444,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
     if(base === undefined){ if(onEnd) onEnd(); return; }
     const sayText = base ? text.slice(base) : text;
     const detectedLang = detectSpeechLang(sayText);
-    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US' };
+    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US', bn: 'bn-BD', ne: 'ne-NP', es: 'es-ES', tr: 'tr-TR', ru: 'ru-RU', zh: 'zh-CN', id: 'id-ID', fil: 'fil-PH', ml: 'ml-IN' }; // v-audit-voice (cli-voice-7): الأربع عشرة كخادم القراءة
     const utter = new SpeechSynthesisUtterance(sayText);
     utter.lang = langTags[detectedLang] || 'en-US';
     const v = pickVoice(detectedLang);

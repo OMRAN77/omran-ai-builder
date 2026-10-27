@@ -12,7 +12,7 @@
                           يعود مع الرمز من البيئة (CC_BRIDGE_URL) لا من العميل.
    لا نقاط ولا خصم: المالك بلا نقاط. لا اسم مزوّد في أيّ نصّ يصل العميل. */
 const crypto = require('crypto');
-const { isOwner } = require('./_owner.js');
+const { isOwnerSession } = require('./_owner.js'); // v-audit-agent (srv-agent-3)
 const { safeParse } = require('./safe-parse.js');
 const CAT = require('./app-catalog.js');
 
@@ -430,7 +430,7 @@ async function handler(req, res) {
   let body = req.body;
   if (!body || typeof body === 'string') body = safeParse(body, {}, 'app-director:body');
   const action = String((req.query && req.query.action) || '');
-  if (!isOwner({ query: req.query || {}, body })) { res.status(403).json({ error: 'owner_only' }); return; }
+  if (!isOwnerSession({ query: req.query || {}, body })) { res.status(403).json({ error: 'owner_only' }); return; } // v-audit-agent (srv-agent-3): إنفاق ورمز مهمّة للجسر — جلسة المالك وحدها
 
   if (action === 'app-director-token') {
     const secret = String(process.env.CC_BRIDGE_SECRET || '').trim();

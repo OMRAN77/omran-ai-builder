@@ -340,6 +340,46 @@ try{
     const D = (typeof window.I18N === 'object' && window.I18N) || null;
     return D ? (D[lang] || D.ar || {}) : {};
   }
+  /* v-audit-boot (cli-boot-6): رسائل الدخول والتسجيل والاسترجاع وجوجل ورمز البريد كانت ثنائيّة isEn — عربيّة لاثنتي عشرة لغة.
+     الآن من قاموس لغة الواجهة (curT)، واحتياط مفتاح لم يصل بعد: العربيّ للعربيّة وحدها والإنجليزيّ لغيرها (الأرديّة لا ترى عربيًّا). */
+  function authMsg(k, en, ar, p){
+    let v = '';
+    try{ v = curT()[k]; }catch(e){ __swallow(e, 'auth:i18n'); }
+    if(!v){
+      let lg = 'ar';
+      try{ lg = document.documentElement.lang || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ __swallow(e, 'auth:i18n-lang'); }
+      v = lg === 'ar' ? ar : en;
+    }
+    v = String(v);
+    if(p) Object.keys(p).forEach(n => { v = v.split('{' + n + '}').join(String(p[n])); });
+    return v;
+  }
+  window.__authMsg = authMsg;
+
+  /* v-audit-auth (srv-auth-13): نصّ أخطاء auth من الخادم عربيّ أو إنجليزيّ فقط — الفرنسيّ والأورديّ وغيرهما كانوا يرون العربيّة.
+     الخادم يرسل code ثابتًا، وهنا يُستبدل النصّ بمفتاح القاموس بلغة الواجهة الـ١٤ قبل أيّ عرض؛ رمز بلا مفتاح = نصّ الخادم (احتياط).
+     mail_off مفتاحه الخاصّ لا «تعذّر الإرسال» العامّة: تشخيص غياب مفتاح البريد مقصود (auth.js) فلا يختفي خلف خلل عابر. */
+  const AX_AUTH_KEYS = {
+    bad_credentials: 'axAuthBadCredentials', name_taken: 'axAuthNameTaken', name_reserved: 'axAuthNameReserved', name_bad: 'axAuthNameBad',
+    name_at: 'nameNoAt', name_short: 'acctFillUsername', signup_short: 'axAuthSignupShort', session: 'axAuthSession', too_many: 'acctEmailTooMany',
+    not_found: 'axAuthNotFound', pw_short: 'axAuthPwShort', pw_wrong: 'axAuthPwWrong', avatar_bad: 'acctAvatarTooBig', bad_email: 'acctInvalidEmail',
+    mail_off: 'axAuthMailOff', mail_failed: 'axAuthMailFailed', no_email_phone: 'axAuthNoEmailPhone', no_recovery: 'axAuthNoRecovery',
+    forgot_sent: 'axAuthForgotSent', forgot_sent_to: 'axAuthForgotSentTo', reset_short: 'axAuthResetShort', reset_bad: 'axAuthResetBad',
+    banned: 'axAuthBanned', bad_otp: 'axAuthBadOtp', channel_off_wa: 'axAuthWaOff', channel_off_tg: 'axAuthTgOff',
+    email_unverified: 'authEmailUnverified', too_long: 'axAuthTooLong', server: 'acctGenericError',
+  };
+  function axAuthL10n(d){
+    try {
+      const k = d && typeof d === 'object' && AX_AUTH_KEYS[d.code];
+      const s = k && curT()[k];
+      if(s){
+        const txt = String(s).replace('{minutes}', String(Number(d.minutes) || 15)).replace('{n}', String(Number(d.min) || 8)).replace('{email}', String(d.masked || ''));
+        if(d.error) d.error = txt; else if(d.message) d.message = txt;
+      }
+    } catch(e){ __swallow(e, 'auth:l10n'); }
+    return d;
+  }
+  window.axAuthL10n = axAuthL10n;
 
   function setMode(m){
     mode = m;
@@ -598,6 +638,27 @@ try{
     }
   }
 
+  /* v-audit-boot (srv-maha-6): الخروج كان يُبقي اشتراك الدفع — تذكيرات الحساب الخارج (وتنبيهات المالك) تصل من يستعمل المتصفّح بعده.
+     الآن يُلغى اشتراك هذا المتصفّح (عنوانه يموت عند خدمة الدفع، فالاشتراك الجديد لمن بعده بعنوان آخر)، ويُطلب حذفه من الحساب
+     برمزه قبل مسحه — بعنوانه، فلا يُحذف اشتراك جهاز آخر للحساب نفسه. بلا رمز (حساب سابق رُفضت جلسته) الإلغاء وحده. لا يُنتظر. */
+  function pushDropDevice(token){
+    try{
+      const sw = navigator.serviceWorker;
+      if(!sw || typeof sw.getRegistration !== 'function') return;
+      sw.getRegistration().then(reg => (reg && reg.pushManager) ? reg.pushManager.getSubscription() : null).then(sub => {
+        if(!sub) return;
+        if(token){
+          fetch('/api/push-subscribe?endpoint=' + encodeURIComponent(sub.endpoint || ''), {
+            method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body: JSON.stringify({ endpoint: sub.endpoint || '' }),
+          }).catch(e => __swallow(e, 'auth:push-delete'));
+        }
+        return sub.unsubscribe();
+      }).catch(e => __swallow(e, 'auth:push-drop'));
+    }catch(e){ __swallow(e, 'auth:push-drop'); }
+  }
+  window.__pushDropDevice = pushDropDevice;
+
   // Single header button next to ⚙️ Settings that doubles as the login/logout
   // entry point: shows "🔑 Login" for guests (opens the auth overlay) and
   // "🚪 Logout" once signed in (clears the session).
@@ -610,6 +671,7 @@ try{
       if(ok === false) return;
     }
     emailConfirmAlert(null); // v-unverified-email: تنبيه الحساب لا يبقى بعد خروجه
+    pushDropDevice(authGet('aiapp_auth_token')); // v-audit-boot (srv-maha-6): الرمز قبل مسحه
     authRemove('aiapp_auth_token');
     authRemove('aiapp_username');
     localStorage.removeItem('aiapp_avatar');
@@ -1001,7 +1063,12 @@ try{
   function setAuthToggleUI(loggedIn){
     const t = curT();
     // v214: قبل الدخول = زر «دخول» في الهيدر فقط؛ بعد الدخول = الاسم داخل قائمة ⋮ + خروج آخر خانة
-    if(authToggleBtn) authToggleBtn.style.display = 'none';
+    if(authToggleBtn){
+      authToggleBtn.style.display = 'none';
+      /* v-audit-boot (cli-boot-3): الزرّ المخفيّ بابٌ ينادي .click() عليه «سجّل مجانًا» في شارة الردّ وتقييم الكود ومراجعته و«اربط Gmail»
+         للضيف — ولم يكن له معالج، فتُغلق النافذة ولا يُفتح شيء. يفتح شاشة إنشاء الحساب كـrequireLogin('guestLimit'). */
+      authToggleBtn.onclick = () => { setMode('signup'); showOverlay(); };
+    }
     const headerLoginBtn = $('#btnHeaderLogin');
     if(headerLoginBtn){
       /* v-auth-optional-2 (أمر عمران ٢٩ أغسطس): زر «دخول» يُحذف من الهيدر
@@ -1139,20 +1206,13 @@ try{
   // فيبقى الزائر ضيفًا والرسالة في صندوق مخفيّ، فإذا فتح شاشة الدخول بنفسه
   // مسحها setMode — شاشة دخول فارغة بلا سبب (فيديو المالك ٢ أكتوبر).
   function showGoogleAuthError(gerror){
-    const isEn = (localStorage.getItem('aiapp_lang') === 'en');
     const box = $('#authError');
-    const M = {
-      google_not_configured: ['إعداد جوجل ناقص في الخادم — GOOGLE_CLIENT_ID أو GOOGLE_CLIENT_SECRET غير مضبوط', 'Google is not configured on the server (missing client id/secret)'],
-      token_exchange_failed: ['رفضت جوجل إتمام الدخول — غالبًا سرّ العميل في الخادم لا يطابق ما في Google Console', 'Google rejected the sign-in — the server\'s client secret likely does not match Google Console'],
-      missing_code:          ['عاد المتصفّح من جوجل بلا رمز — أعد المحاولة', 'Returned from Google without a code — try again'],
-      profile_fetch_failed:  ['تعذّر جلب ملفّك من جوجل — أعد المحاولة', 'Could not fetch your Google profile — try again'],
-      email_not_verified:    ['بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة', 'Your Google email is not verified'],
-      access_denied:         ['ألغيتَ الدخول من شاشة جوجل', 'You cancelled the Google sign-in'],
-      server_error:          ['خطأ في الخادم أثناء إتمام الدخول — أعد المحاولة', 'Server error while completing sign-in'],
-    };
-    const pair = M[gerror];
-    const text = pair ? (isEn ? pair[1] : pair[0])
-      : (isEn ? 'Google sign-in failed (' + gerror + ')' : 'تعذر تسجيل الدخول بجوجل (' + gerror + ')');
+    /* v-audit-boot (cli-boot-6): بلغة الواجهة الـ١٤، وبلا أسماء إعداد الخادم وأسراره (كانت تُعرض للمستخدم). ما يقدر المستخدم عليه
+       (ألغى، بريد غير مفعَّل) بنصّه؛ والباقي «تعذّر… أعد المحاولة» برمز السبب معزول الاتّجاه للتشخيص — والسبب في ملاحظة الجلسة (?diag=1). */
+    const code = String(gerror || '');
+    const text = code === 'access_denied' ? authMsg('axBootGoogleCancelled', 'You cancelled the Google sign-in', 'ألغيتَ الدخول من شاشة جوجل')
+      : code === 'email_not_verified' ? authMsg('axBootGoogleUnverified', 'Your Google account email is not verified — verify it, then try again', 'بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة')
+      : authMsg('axBootGoogleFailed', "Couldn't complete the Google sign-in ({code}) — please try again", 'تعذّر إكمال الدخول بجوجل ({code}) — أعد المحاولة', { code: '\u2066' + code + '\u2069' });
     try { setMode('login'); showOverlay(); } catch(e){ /* فتح الشاشة تيسير؛ الرسالة محفوظة في الملاحظة على كلّ حال */ }
     if(box){ box.style.color = ''; box.textContent = text; }
     // setMode('login') عند الإقلاع يمسح errBox — نعيد الكتابة بعده،
@@ -1162,6 +1222,7 @@ try{
 
   // If the page was reached via the Google login redirect
   // (?gtoken=...&guser=...&gavatar=...), finish the login immediately.
+  let __oauthPick = null; // v-audit-auth (srv-auth-10): {state, claim} من رابط العودة — يستلم بهما جسر oauth-claim أدناه
   (function checkGoogleAuthUrl(){
     try {
       const params = new URLSearchParams(window.location.search);
@@ -1169,13 +1230,15 @@ try{
       const guser = params.get('guser');
       const gavatar = params.get('gavatar');
       const gerror = params.get('gerror');
+      const gclaim = params.get('gclaim');
       const cleanUrl = window.location.origin + window.location.pathname;
       // نرفض أي جلسة لم يبدأها هذا التبويب. بلا هذا الفحص يستطيع مهاجم أن
       // يدفع متصفحك لإكمال تسجيل دخول بحسابه هو، فتعمل داخل حسابه دون أن تدري.
-      if(gtoken && guser){
+      // v-audit-auth (srv-auth-10): الويب يعود الآن بـgstate ورمز استلام لمرّة واحدة (gclaim) بدل الرمز نفسه — الفحص نفسه على gstate.
+      if((gtoken && guser) || gclaim){
         let expected = null;
         try { expected = sessionStorage.getItem('aiapp_oauth_state'); } catch(e){ console.warn('[oauth] no sessionStorage', e); }
-        const returned = params.get('state');
+        const returned = gclaim ? params.get('gstate') : params.get('state');
         // v-sec-oauth-state: نرفض الآن أيّ gtoken لا يحمل state يطابق ما بدأه هذا التبويب —
         // لا «نقبل عند الغياب» كما كان. بلا هذا الشرط، رابط فيه gtoken المهاجم يُقبل في أيّ تبويب
         // لم يبدأ دخول جوجل، فيُدخل الضحية حسابَ المهاجم وترتفع محادثاتها إليه. مسارات الأغلفة
@@ -1186,10 +1249,19 @@ try{
           try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#10"); }
           noteSession('جوجل-تحقّق-أمني'); // اللوحة كانت عمياء عن هذا الخروج بالذات
           window.history.replaceState({}, document.title, cleanUrl);
-          alert('تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.');
+          /* v-audit-boot (cli-boot-6) + v-audit-chatcli (x-i18n-5): بلغة الواجهة — هذا الإقلاع قبل القاموس (app-03/04)، فيُؤجَّل التنبيه حتّى يجهز ملفّ اللغة */
+          const __stAlert = () => alert(authMsg('axBootSecurityCheck', "Couldn't complete sign-in (security check). Please try again.", 'تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.'));
+          setTimeout(() => { try{ window.loadLangFile(document.documentElement.lang || localStorage.getItem('aiapp_lang') || 'ar').then(__stAlert, __stAlert); }catch(e){ __stAlert(); } }, 0);
           return;
         }
         try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#11"); }
+        if(gclaim){
+          // الجسر يستلم الإيداع بـ{state, claim} فور تشغيله — لا رمز في الرابط ولا في سجلّ الزيارات
+          __oauthPick = { state: returned, claim: gclaim };
+          noteSession('جوجل-عاد');
+          window.history.replaceState({}, document.title, cleanUrl);
+          return;
+        }
         authSet('aiapp_auth_token', gtoken);
         authSet('aiapp_username', guser);
         if(gavatar){ localStorage.setItem('aiapp_avatar', gavatar); }
@@ -1285,9 +1357,7 @@ try{
           const bx = $('#authError');
           if (bx) {
             bx.style.color = 'var(--accent, #7c6cff)';
-            bx.textContent = (localStorage.getItem('aiapp_lang') === 'en')
-              ? 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.'
-              : 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.';
+            bx.textContent = authMsg('axBootGoogleInBrowser', 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.', 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.'); // v-audit-boot (cli-boot-6)
           }
         } catch(e){ __swallow(e, 'auth:google-hint'); }
         return;
@@ -1302,9 +1372,7 @@ try{
           const bx = $('#authError');
           if (bx) {
             bx.style.color = 'var(--accent, #7c6cff)';
-            bx.textContent = (localStorage.getItem('aiapp_lang') === 'en')
-              ? 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.'
-              : 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.';
+            bx.textContent = authMsg('axBootGoogleInBrowser', 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.', 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.'); // v-audit-boot (cli-boot-6)
           }
         } catch(e){ __swallow(e, 'auth:google-hint-android'); }
         window.location.href = gStartUrl + '&app=1';
@@ -1333,19 +1401,21 @@ try{
     // v-google-app-fail: فشل الدخول في سفاري — الخادم أودع السبب فنعرضه بدل انتظار صامت.
     function claimFail(err){
       try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-fail'); }
+      __oauthPick = null;
       showGoogleAuthError(String(err));
     }
     let busy = false;
     async function claim(){
-      const st = pending();
+      const pk = __oauthPick; // v-audit-auth (srv-auth-10): عودة الويب برمز الاستلام أولى، والرمز يُرسل معها
+      const st = pk ? pk.state : pending();
       if(!st || busy) return;
-      if(authGet('aiapp_auth_token')){ try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-clear'); } return; }
+      if(authGet('aiapp_auth_token')){ __oauthPick = null; try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-clear'); } return; }
       busy = true;
       try {
         const r = await fetch('/api/account?action=oauth-claim', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ state: st }),
+          body: JSON.stringify({ state: st, claim: pk && pk.claim }),
           signal: AbortSignal.timeout(10000), // v-perf-boot-defer: تعليق الشبكة كان يبقي busy=true للأبد
         });
         if(r.ok){
@@ -1421,7 +1491,9 @@ try{
     const username = userInput.value.trim();
     const password = passInput.value;
     errBox.textContent = '';
-    const isEn = (localStorage.getItem('aiapp_lang') === 'en');
+    // v-audit-boot (cli-boot-6): النصوص من authMsg بلغة الواجهة (كانت ثنائيّة: إنجليزيّ أو عربيّ)
+    const genericErr = () => authMsg('acctGenericError', 'Something went wrong, try again', 'حدث خطأ، حاول مرة أخرى');
+    const netErr = () => authMsg('acctNetError', 'Could not reach the server, check your connection', 'تعذر الاتصال بالخادم، تحقق من الإنترنت');
     // v-perf-boot-defer: الزرّ كان يُعطَّل بصمت بلا أيّ إشارة أنّ شيئًا يحدث (بخلاف مسار OTP في هذا
     // الملف الذي يغيّر النصّ فعلًا) — على شبكة بطيئة يبدو التطبيق معلّقًا. نلتقط النصّ الأصليّ هنا
     // ونعيده في finally كلّ فرع، بلا حاجة لمعرفة مفتاح الترجمة لكلّ وضع (forgotEmail/resetToken/login/signup).
@@ -1429,11 +1501,11 @@ try{
 
     if(mode === 'forgotEmail'){
       if(!username){
-        errBox.textContent = isEn ? 'Please enter your username or email' : 'الرجاء إدخال اسم المستخدم أو الإيميل';
+        errBox.textContent = authMsg('axBootEnterId', 'Please enter your username or email', 'الرجاء إدخال اسم المستخدم أو الإيميل');
         return;
       }
       submitBtn.disabled = true;
-      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
+      submitBtn.textContent = authMsg('axBootWait', 'Please wait…', 'جاري المعالجة…');
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
@@ -1441,15 +1513,15 @@ try{
           body: JSON.stringify({ action: 'forgotPassword', username, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
           signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
-          errBox.textContent = (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-unverified-email
+          errBox.textContent = (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || genericErr(); // v-unverified-email
           return;
         }
-        infoMsg.textContent = data.message || (isEn ? 'Check your email' : 'تحقق من بريدك');
+        infoMsg.textContent = data.message || authMsg('axBootCheckEmail', 'Check your email', 'تحقق من بريدك');
         infoMsg.style.display = 'block';
       } catch(e){
-        errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+        errBox.textContent = netErr();
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = submitBtnLabel;
@@ -1459,28 +1531,28 @@ try{
 
     if(mode === 'resetToken'){
       if(!username || !window.__pendingResetToken || !password){
-        errBox.textContent = isEn ? 'Please fill in all fields' : 'الرجاء تعبئة جميع الحقول';
+        errBox.textContent = authMsg('axBootFillAll', 'Please fill in all fields', 'الرجاء تعبئة جميع الحقول');
         return;
       }
       submitBtn.disabled = true;
-      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
+      submitBtn.textContent = authMsg('axBootWait', 'Please wait…', 'جاري المعالجة…');
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'resetWithToken', username, resetToken: window.__pendingResetToken, newPassword: password }),
+          body: JSON.stringify({ action: 'resetWithToken', username, resetToken: window.__pendingResetToken, newPassword: password, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
           signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
-          errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+          errBox.textContent = data.error || genericErr();
           return;
         }
         authSet('aiapp_auth_token', data.token);
         window.__pendingResetToken = null;
         onAuthed(data.username, data.avatar);
       } catch(e){
-        errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+        errBox.textContent = netErr();
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = submitBtnLabel;
@@ -1489,11 +1561,11 @@ try{
     }
 
     if(!username || !password){
-      errBox.textContent = isEn ? 'Please fill in both fields' : 'الرجاء تعبئة الحقلين';
+      errBox.textContent = authMsg('axBootFillBoth', 'Please fill in both fields', 'الرجاء تعبئة الحقلين');
       return;
     }
     submitBtn.disabled = true;
-    submitBtn.textContent = isEn ? 'Please wait…' : 'جاري الدخول…';
+    submitBtn.textContent = authMsg('axBootSigningIn', 'Signing in…', 'جاري الدخول…');
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
@@ -1501,9 +1573,9 @@ try{
         body: JSON.stringify({ action: mode, username, password, lang: (localStorage.getItem('aiapp_lang') || 'ar'), ref: (mode === 'signup' ? (localStorage.getItem('aiapp_pending_ref') || undefined) : undefined) }),
         signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600) — «أحيانًا ما يدخل»
       });
-      const data = await res.json();
+      const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
       if(!res.ok || data.error){
-        errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-name-no-at · v-unverified-email: بلغة الواجهة
+        errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || genericErr(); // v-name-no-at · v-unverified-email: بلغة الواجهة
         if(mode === 'login' && res.status === 401 && username.indexOf('@') !== -1) googleLoginHint(); // v-google-login-help
         return;
       }
@@ -1514,7 +1586,7 @@ try{
       onAuthed(data.username, data.avatar);
       emailConfirmAlert(data.emailToConfirm); // v-unverified-email
     } catch(e){
-      errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+      errBox.textContent = netErr();
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = submitBtnLabel;
@@ -1608,7 +1680,7 @@ try{
       const body = { action: recover ? 'phone-recover-start' : 'phone-link-start', channel };
       if(!recover) body.token = authGet('aiapp_auth_token');
       const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      data = await res.json();
+      data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
       if(!res.ok || !data || !data.link) throw Object.assign(new Error('start'), { said: (data && data.error) || t2.acctGenericError });
     } catch(e){
       if(win) try { win.close(); } catch(e2){ window.__swallow(e2, 'phone-link:close'); }
@@ -1808,9 +1880,9 @@ try{
             const res = await fetch('/api/auth', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'setAvatar', token, avatarDataUrl: dataUrl }),
+              body: JSON.stringify({ action: 'setAvatar', token, avatarDataUrl: dataUrl, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
             });
-            const data = await res.json();
+            const data = (typeof axAuthL10n === 'function' ? axAuthL10n : (x) => x)(await res.json()); // v-audit-auth (srv-auth-13) — typeof: الاختبار يشغّل المعالج وحده
             if(!res.ok || data.error){
               avatarMsg(data.error || t2.acctGenericError, '#ef4444');
               return;
@@ -1849,13 +1921,15 @@ try{
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'changeUsername', token, newUsername: newUsernameVal, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
           acctUsernameMsg.textContent = (data.code === 'name_at' && t2.nameNoAt) || data.error || t2.acctGenericError; // v-name-no-at
           acctUsernameMsg.style.color = '#ef4444';
           return;
         }
         authSet('aiapp_auth_token', data.token);
+        // v-audit-boot (cli-boot-5): بيانات الجهاز لصاحبها باسمه الجديد — وإلّا حسبها الدخول التالي بيانات حساب آخر فمسحها
+        try{ const __ow = localStorage.getItem('aiapp_data_owner'); if(__ow && __ow === String(authGet('aiapp_username') || '').trim().toLowerCase()) localStorage.setItem('aiapp_data_owner', String(data.username || '').trim().toLowerCase()); }catch(e){ __swallow(e, 'auth:rename-owner'); }
         authSet('aiapp_username', data.username);
         updateAvatarUI(); // v-formal-account: حرف الدائرة يتبع الاسم الجديد
         if(userLabel) userLabel.textContent = data.username;
@@ -1889,14 +1963,15 @@ try{
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'changePassword', token, currentPassword: curPass, newPassword: newPass }),
+          body: JSON.stringify({ action: 'changePassword', token, currentPassword: curPass, newPassword: newPass, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
           acctPasswordMsg.textContent = data.error || t2.acctGenericError;
           acctPasswordMsg.style.color = '#ef4444';
           return;
         }
+        if(data.token) authSet('aiapp_auth_token', data.token); // v-audit-auth (srv-auth-8): الجلسات الأخرى تموت، وهذا الجهاز برمزه الجديد
         acctCurrentPassword.value = '';
         acctNewPassword.value = '';
         acctPasswordMsg.textContent = t2.acctSaved;
@@ -1979,7 +2054,7 @@ try{
         signal: AbortSignal.timeout(10000), // v-perf-boot-defer: بلا هذا، تعليق الشبكة يبقي شاشة
         // الدخول معلَّقة بلا قرار؛ التعليق الآن يسقط في مسار «تعذّر الاتّصال» أدناه (جلسة مخبَّأة).
       });
-      const data = await res.json();
+      const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
       if(res.ok && data.ok){
         // 🔄 جلسة منزلقة: الخادم يعيد توكن جديدًا مع كل تحقق ناجح، فلا
         // ينقطع المستخدم النشط أبدًا بانتهاء صلاحية الثلاثين يومًا.
@@ -1988,12 +2063,13 @@ try{
         onAuthed(data.username, data.avatar);
         emailConfirmAlert(data.emailToConfirm); // v-unverified-email: عند كلّ فتح ما دام البريد غير مؤكَّد
         if(data.adminMessage && data.adminMessage.text){
-          setTimeout(() => { alert('📩 رسالة من الإدارة:\n\n' + data.adminMessage.text); }, 600);
+          setTimeout(() => { alert('📩 ' + authMsg('axBootAdminMsg', 'Message from the administration', 'رسالة من الإدارة') + ':\n\n' + data.adminMessage.text); }, 600); // v-audit-boot (cli-boot-6)
         }
       } else if(data && data.banned){
         noteSession('حساب-موقوف');
         authRemove('aiapp_auth_token');
-        alert('🚫 ' + (data.error || 'تم إيقاف هذا الحساب من قبل الإدارة'));
+        // v-audit-boot (cli-boot-6): العلم banned ثابت — النصّ من قاموس الواجهة لا من الخادم (عربيّ لغير الإنجليزيّة)
+        alert('🚫 ' + authMsg('axBootBanned', 'This account has been suspended by the administration', 'تم إيقاف هذا الحساب من قبل الإدارة'));
         showOverlay();
       } else if(res.status === 401 || res.status === 403){
         // رفض صريح من الخادم: التوكن فعلًا غير صالح.
@@ -2167,23 +2243,25 @@ try{
   otpSubmitBtn.onclick = async () => {
     otpError.textContent = '';
     const lang = document.documentElement.lang || localStorage.getItem('aiapp_lang') || 'ar';
-    const isEn = lang === 'en';
+    // v-audit-boot (cli-boot-6): بلغة الواجهة عبر authMsg (app-01 نفسه) — كانت ثنائيّة إنجليزيّ/عربيّ
+    const msg = (k, en, ar, p) => (typeof window.__authMsg === 'function' ? window.__authMsg(k, en, ar, p) : en);
+    const netErr = () => msg('acctNetError', 'Could not reach the server, check your connection', 'تعذر الاتصال بالخادم، تحقق من الإنترنت');
 
     if(otpStep === 'email'){
       const email = (otpEmailInput.value || '').trim();
       if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-        otpError.textContent = isEn ? 'Enter a valid email' : 'أدخل بريد إلكتروني صحيح';
+        otpError.textContent = msg('acctInvalidEmail', 'Invalid email format', 'صيغة الإيميل غير صحيحة');
         return;
       }
       otpSubmitBtn.disabled = true;
-      otpSubmitBtn.textContent = isEn ? 'Sending...' : 'جاري الإرسال...';
+      otpSubmitBtn.textContent = msg('axBootSending', 'Sending…', 'جاري الإرسال…');
       try {
         const r = await fetch('/api/account?action=email-otp-request', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ action: 'email-otp-request', email, lang })
         });
-        const d = await r.json();
+        const d = window.axAuthL10n ? window.axAuthL10n(await r.json()) : await r.json(); // v-audit-auth (srv-auth-13)
         if(d.ok){
           otpEmail = email;
           otpStep = 'code';
@@ -2191,33 +2269,32 @@ try{
           otpCodeRow.style.display = 'flex';
           otpInfo.style.display = 'block';
           const masked = email.replace(/^(.{2}).*(@.*)$/, '$1***$2');
-          otpInfo.textContent = (isEn ? 'Code sent to ' : 'تم إرسال الرمز إلى ') + masked;
-          const t = (window.curT ? window.curT() : {});
-          otpSubmitBtn.textContent = isEn ? 'Verify' : (t.authOtpVerifyBtn || 'تحقق');
+          otpInfo.textContent = msg('axBootCodeSent', 'Code sent to {email}', 'تم إرسال الرمز إلى {email}', { email: '\u2066' + masked + '\u2069' });
+          otpSubmitBtn.textContent = msg('axBootVerify', 'Verify', 'تحقق');
           otpCodeInput.focus();
         } else {
-          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || (isEn ? 'Failed to send code' : 'فشل إرسال الرمز'); // v-unverified-email
+          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || msg('axBootSendFailed', "Couldn't send the code", 'فشل إرسال الرمز'); // v-unverified-email
         }
       } catch(e){
-        otpError.textContent = isEn ? 'Connection error' : 'خطأ في الاتصال';
+        otpError.textContent = netErr();
       }
       otpSubmitBtn.disabled = false;
     } else {
       // Step: verify OTP
       const code = (otpCodeInput.value || '').trim();
       if(!code || code.length < 4){
-        otpError.textContent = isEn ? 'Enter the verification code' : 'أدخل رمز التحقق';
+        otpError.textContent = msg('axBootEnterCode', 'Enter the verification code', 'أدخل رمز التحقق');
         return;
       }
       otpSubmitBtn.disabled = true;
-      otpSubmitBtn.textContent = isEn ? 'Verifying...' : 'جاري التحقق...';
+      otpSubmitBtn.textContent = msg('axBootVerifying', 'Verifying…', 'جاري التحقق…');
       try {
         const r = await fetch('/api/account?action=email-otp-verify', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ action: 'email-otp-verify', email: otpEmail, otp: code, lang })
         });
-        const d = await r.json();
+        const d = window.axAuthL10n ? window.axAuthL10n(await r.json()) : await r.json(); // v-audit-auth (srv-auth-13)
         if(d.ok){
           // Login successful — apply session the same way the password
           // flow does, then run the shared post-login pipeline.
@@ -2226,16 +2303,13 @@ try{
           otpCodeInput.value = '';
           window.onAuthed(d.username, d.avatar || null);
         } else {
-          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || (isEn ? 'Invalid code' : 'رمز غير صحيح'); // v-unverified-email
+          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || msg('axBootBadCode', 'Invalid code', 'رمز غير صحيح'); // v-unverified-email
         }
       } catch(e){
-        otpError.textContent = isEn ? 'Connection error' : 'خطأ في الاتصال';
+        otpError.textContent = netErr();
       }
       otpSubmitBtn.disabled = false;
-      if(otpStep === 'code'){
-        const t = (window.curT ? window.curT() : {});
-        otpSubmitBtn.textContent = isEn ? 'Verify' : (t.authOtpVerifyBtn || 'تحقق');
-      }
+      if(otpStep === 'code') otpSubmitBtn.textContent = msg('axBootVerify', 'Verify', 'تحقق');
     }
   };
 
@@ -2279,6 +2353,10 @@ function imgErrFriendly(err, isAr, info){
       ? 'تأخر إنشاء الصورة هذه المرة. أعد المحاولة بعد لحظة.'
       : 'Image generation took too long this time. Please try again in a moment.';
   }
+  /* v-audit-studeng (srv-studios-1-3): الاستوديو صار يرسل الرمزين بدل «تعذّر إنشاء الصورة الآن…» العربيّ لكلّ اللغات — بالـ١٤ لغة،
+     والعربيّ/الإنجليزيّ أدناه احتياطًا ما لم يُعرف المفتاح (t يعيد اسمه) */
+  if(err === 'image_generation_busy' && t('axStudengImgBusy') !== 'axStudengImgBusy') return t('axStudengImgBusy');
+  if(err === 'image_generation_failed' && t('axStudengImgFailed') !== 'axStudengImgFailed') return t('axStudengImgFailed');
   if(err === 'image_generation_busy'){
     return isAr
       ? 'خدمة الصور مشغولة الآن. أعد المحاولة بعد لحظة.'
@@ -2334,6 +2412,17 @@ function detectSpeechLang(text){
     if(/[\u0679\u0688\u0691\u06BA\u06BE\u06C1\u06C2\u06D2]/.test(t)) return 'ur';
     return 'ar';
   }
+  /* v-audit-voice (cli-voice-7): الخادم له لهجة لكلّ لغة من الأربع عشرة، والكشف كان يعرف سبعًا — الروسيّ والصينيّ
+     والمالايالاميّ تُكشف بكتابتها، واللاتينيّ بلغة الواجهة إن كانت إسبانيّة أو تركيّة أو إندونيسيّة أو فلبينيّة، وإلّا فالتركيّ
+     والإسبانيّ بحروفهما الخاصّة (كانت «la» تجعل الإسبانيّ فرنسيًّا و«ç» التركيّ فرنسيًّا، والإندونيسيّ والفلبينيّ إنجليزيًّا).
+     الفرنسيّة والإنجليزيّة على تخمينهما القديم كما كانتا. */
+  if(/[\u0D00-\u0D7F]/.test(t)) return 'ml';
+  if(/[\u0400-\u04FF]/.test(t)) return 'ru';
+  if(/[\u4E00-\u9FFF\u3400-\u4DBF]/.test(t)) return 'zh';
+  const uiLang = (typeof lang === 'string') ? lang : '';
+  if(['es', 'tr', 'id', 'fil'].indexOf(uiLang) !== -1) return uiLang;
+  if(/[ğışİĞŞ]/.test(t)) return 'tr';
+  if(/[ñÑ¿¡]/.test(t)) return 'es';
   const frenchHints = /[àâäæçéèêëîïôœùûüÿ]/i;
   const frenchWords = /\b(le|la|les|des|une|est|et|vous|nous|bonjour|merci|s'il|être|avec|pour|dans)\b/i;
   if(frenchHints.test(t) || frenchWords.test(t)) return 'fr';
@@ -3675,7 +3764,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
     if(base === undefined){ if(onEnd) onEnd(); return; }
     const sayText = base ? text.slice(base) : text;
     const detectedLang = detectSpeechLang(sayText);
-    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US' };
+    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US', bn: 'bn-BD', ne: 'ne-NP', es: 'es-ES', tr: 'tr-TR', ru: 'ru-RU', zh: 'zh-CN', id: 'id-ID', fil: 'fil-PH', ml: 'ml-IN' }; // v-audit-voice (cli-voice-7): الأربع عشرة كخادم القراءة
     const utter = new SpeechSynthesisUtterance(sayText);
     utter.lang = langTags[detectedLang] || 'en-US';
     const v = pickVoice(detectedLang);
@@ -4215,7 +4304,7 @@ const I18N = {
     voiceTabAssistantName: 'المساعد',
     copyCode: 'نسخ',
     copiedMsg: 'تم النسخ ✅',
-    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", sheetCopyImg: "نسخ الصورة", sheetCopyLink: "نسخ الرابط", sheetCopied: "تم النسخ", sheetCopyFail: "تعذّر النسخ", sheetShareFail: "تعذّرت المشاركة — جرّب التحميل", sheetDlDesktop: "تم التحميل — تلقاها في مجلد التنزيلات", imgReadyTitle: "✅ الصورة جاهزة", fileReadyTitle: "✅ الملف جاهز", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح", imgPreparing: "⏳ جارٍ تجهيز الصورة…",
+    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", sheetCopyImg: "نسخ الصورة", sheetCopyLink: "نسخ الرابط", sheetCopied: "تم النسخ", sheetCopyFail: "تعذّر النسخ", sheetShareFail: "تعذّرت المشاركة — جرّب التحميل", sheetDlDesktop: "تم التحميل — تلقاها في مجلد التنزيلات", axAuthBadCredentials: "اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة", axAuthNameTaken: "اسم المستخدم مستخدم من قبل", axAuthNameReserved: "اسم المستخدم محجوز", axAuthNameBad: "اسم المستخدم فيه رموز غير مسموحة (مثل * ؟ [ ] أو الفاصلة)", axAuthSignupShort: "اسم المستخدم 3 أحرف على الأقل وكلمة المرور {n} أحرف على الأقل", axAuthSession: "الجلسة منتهية، سجّل الدخول من جديد", axAuthNotFound: "الحساب غير موجود", axAuthPwShort: "أدخل كلمة المرور الحالية وكلمة مرور جديدة ({n} أحرف على الأقل)", axAuthPwWrong: "كلمة المرور الحالية غير صحيحة", axAuthMailFailed: "تعذّر إرسال الإيميل، حاول لاحقًا", axAuthMailOff: "خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق", axAuthNoEmailPhone: "لا يوجد إيميل مسجّل لهذا الحساب — استرجع حسابك برقم هاتفك المربوط", axAuthNoRecovery: "لا يوجد إيميل ولا رقم هاتف مرتبط بهذا الحساب، فلا يمكن استرجاعه من هنا", axAuthForgotSent: "إن كان هذا الإيميل مرتبطًا بحساب فسيصلك رابط إعادة التعيين خلال دقائق.", axAuthForgotSentTo: "تم إرسال رابط إعادة التعيين إلى {email}", axAuthResetShort: "رابط غير صالح أو كلمة مرور قصيرة ({n} أحرف على الأقل)", axAuthResetBad: "الرابط غير صالح أو منتهي الصلاحية، اطلب رابطًا جديدًا", axAuthBanned: "تم إيقاف هذا الحساب من قبل الإدارة", axAuthBadOtp: "رمز غير صحيح أو منتهي", axAuthWaOff: "الربط عبر واتساب غير مهيّأ بعد — جرّب تيليجرام", axAuthTgOff: "الربط عبر تيليجرام غير مهيّأ", axAuthTooLong: "المدخلات طويلة جدًا", axBootEnterId: "الرجاء إدخال اسم المستخدم أو الإيميل", axBootWait: "جاري المعالجة…", axBootCheckEmail: "تحقق من بريدك", axBootFillAll: "الرجاء تعبئة جميع الحقول", axBootFillBoth: "الرجاء تعبئة الحقلين", axBootSigningIn: "جاري الدخول…", axBootGoogleFailed: "تعذّر إكمال الدخول بجوجل ({code}) — أعد المحاولة", axBootGoogleUnverified: "بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة", axBootGoogleCancelled: "ألغيتَ الدخول من شاشة جوجل", axBootGoogleInBrowser: "أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.", axBootSecurityCheck: "تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.", axBootAdminMsg: "رسالة من الإدارة", axBootBanned: "تم إيقاف هذا الحساب من قبل الإدارة", axBootSending: "جاري الإرسال…", axBootCodeSent: "تم إرسال الرمز إلى {email}", axBootVerify: "تحقق", axBootSendFailed: "فشل إرسال الرمز", axBootEnterCode: "أدخل رمز التحقق", axBootVerifying: "جاري التحقق…", axBootBadCode: "رمز غير صحيح", axBridgeGitBusy: "عمليّة git جارية في الجسر (نشر أو دمج أو تراجع) — انتظر انتهاءها ثمّ أعد المحاولة.", axBridgeMergeKept: "نسخة العمل بقيت كما هي: فيها تعديلات أو التزامات لم تُنشر، فلم تُعَد إلى الفرع الرئيسيّ.", axEduCapGuest: "وصلت للحد اليومي المجاني — سجّل الدخول أو عد غدًا.", axEduCapUser: "وصلت للحد اليومي — عد غدًا.", axEduErrSlow: "التوليد أخذ وقتًا أطول من المتوقع — أعد المحاولة الآن، غالبًا تنجح فورًا.", axToolsDocTooBig: "الملفّ أكبر من {n} ميغابايت — صغّره أو قسّمه ثمّ ارفعه من جديد.", axSearchSessionExpired: "انتهت الجلسة — سجّل الدخول من جديد.", axSearchEmBadEvent: "تعذّر قراءة وقت الموعد — أضفه إلى تقويمك يدويًّا.", axSearchEmScope30: "لا رسائل أساسيّة خلال آخر ٧ أيام — عرضتُ رسائل الوارد خلال ٣٠ يومًا (بكلّ الفئات).", axSearchEmScopeLatest: "لا رسائل خلال آخر ٣٠ يومًا — عرضتُ آخر رسائل الوارد.", axSearchEmScopeEmpty: "الربط سليم ✅ لكن صندوق الوارد فارغ تمامًا في هذا الحساب.", axSearchEmLinkDenied: "لم يُربط Gmail — أُلغيت الموافقة في صفحة Google.", axSearchEmLinkScopes: "الربط يحتاج كلّ الصلاحيّات المطلوبة (قراءة البريد وإرساله) — اربط Gmail من جديد وفعّلها كلّها.", axSearchEmLinkFailed: "تعذّر ربط Gmail — حاول الربط مرّة ثانية.", axSearchPfNoCash: "رصيدك الافتراضي لا يكفي: عندك {cash} والصفقة تحتاج {cost}", axSearchPfNoShares: "ما تملك هذه الكمية — عندك {qty} سهم من {sym}", axSearchPfLimit: "وصلت لحدّ الصفقات اليوميّ ({limit}) — عد غدًا 🌙", axSearchCxReportTitle: "تقرير مشروع البناء", axSearchCxBuiltArea: "{n} م² بناء", axSearchCxPlotArea: "{n} م² أرض", axSearchCxBoq: "📊 جدول الكميات", axSearchCxDetails: "📋 التفاصيل والتكلفة", axSearchCxFooter: "تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.", axStudengImgFailed: "تعذّر إنشاء الصورة هذه المرة. جرّب مرة أخرى.", axStudengImgBusy: "خدمة الصور مشغولة الآن. أعد المحاولة بعد لحظة.", axVideoNarrMissing: "⚠️ السرد ناقص في {k} من {n} مشاهد.", axVideoCooldown: "🕒 فيديو واحد كل بضع دقائق. جرّب بعد {m} دقيقة تقريبًا.", axVideoBusyRetry: "⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة ({a}/{m})...", axVideoBusyRetryScene: "⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد {i} ({a}/{m})...", axStudcliSigTitle: "توقيعي", axStudcliSigMenuTitle: "توقيعي — اصنع توقيعك وشاركه", axStudcliSigPh: "اكتب اسمك…", axStudcliSigYourName: "اسمك", axStudcliSigName: "اسمك", axStudcliSigSize: "الحجم", axStudcliSigSlant: "الميل", axStudcliSigInk: "اللون", axStudcliSigFlourish: "ذيل التوقيع", axStudcliSigDownload: "تنزيل PNG شفّاف", axStudcliSigNote: "خلفيّة شفافة · يعمل بلا اتصال بعد تحميل الخطّ · بلا نقاط.", axStudcliSigCopied: "نُسخ التوقيع — الصقه في أي محادثة.", axStudcliSigFontRuqaa: "الرقعة", axStudcliSigFontThuluth: "الثلث", axStudcliSigFontDiwani: "الديواني", axStudcliSigFontNaskh: "النسخ", axStudcliSigFontKufi: "الكوفي", axStudcliSigFontFarsi: "الفارسي", axUicoreImgAsPdf: "الردّ أطول من أن يتّسع في صورة واحدة — جارٍ حفظه PDF بدلًا منها", axUicorePyLoadFail: "تعذّر تحميل بيئة تشغيل بايثون — تحقّق من الاتصال واضغط «تشغيل الكود» لإعادة المحاولة", axShellDeleteSelected: "⚠️ سيتم حذف العناصر المحدّدة ({n}) نهائيًّا. متأكد؟", axAttachImgOpenedTab: "فتحت الصورة في صفحة مستقلّة — اضغط عليها مطوّلًا ثمّ «مشاركة»", axAttachImgLongPress: "اضغط مطوّلًا على الصورة ثمّ «مشاركة»", axAttachImgCopied: "نُسخت الصورة — الصقها في أيّ محادثة", axAttachImgSavedSend: "حُفظت الصورة في «التنزيلات» — أرسلها من هناك لأيّ تطبيق", axAttachLinkPasteIn: "نُسخ الرابط — الصقه في {app}", axAttachAppMessages: "الرسائل", axAttachAppEmail: "البريد", axAttachMailSubject: "صورة", axAttachTheApp: "التطبيق", axAttachSavedAttachIn: "حُفظت الصورة في «التنزيلات» — أرفقها في {app}", axAttachBrowserRefused: "رفض المتصفّح إرسال الملفّ", axAttachSendImage: "إرسال الصورة", axAttachSentAsFile: "تُرسَل الصورة ملفًّا — بلا رابط ولا بطاقة", axAttachSentAsLink: "سيُرسَل رابط الصورة مباشرةً للتطبيق الذي تختاره", axAttachShareDevice: "مشاركة عبر تطبيقات الجهاز", axAttachLinkFailed: "تعذّر تحضير الرابط", axAttachDownloadImage: "تنزيل الصورة", axAttachOpenChrome: "فتح الموقع في متصفّح كروم", axAttachImgAutoCopied: "نُسخت الصورة تلقائيًّا — الصقها داخل المحادثة بعد فتح التطبيق", axAttachBinary: "صيغة هذا الملفّ لا تُقرأ نصًّا — أرسله PDF أو DOCX أو XLSX أو TXT أو صورة.", axAttachPastedCode: "كود ملصوق", axAttachPastedText: "نص ملصوق", axAttachCutShort: "مقتطع", axAttachPasteToast: "حُوّل النص إلى مرفق — اضغط عليه لعرضه", axAttachImgDropped: "انقطع الاتصال قبل وصول الصورة — أعد المحاولة.", axAttachImgStopped: "تم إيقاف إنشاء الصورة.", axAttachDrawingImage: "أرسم لك الصورة…", axAttachExactWording: "أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.", axAttachImgFailedNow: "تعذّر توليد الصورة الآن", axAttachImgFailedRetry: "تعذّر توليد الصورة الآن — جرّب مرّة ثانية.", axAttachAnotherVersion: "أرسم لك نسخة ثانية…", axAttachAnotherFailed: "تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.", axAttachVidLogin: "سجّل الدخول أولًا عشان أسوي لك الفيديو.", axAttachSecretTag: "سرّ حُذف من الرسالة", axAttachSecretToast: "حُذف السرّ من رسالتك — الأسرار لا تُكتب في المحادثة", axAttachWaitPending: "الرجاء الانتظار حتى تنتهي معالجة المرفقات", axAttachAnalyzingImage: "جاري تحليل الصورة...", axAttachLogoFetching: "أجيب لك الشعار الأصلي من البحث…", axAttachImgsFetching: "أجيب لك صور حقيقية من البحث…", axAttachLogoFound: "هذا الشعار الأصلي من البحث المباشر 👇 اضغط على الصورة لعرضها كبيرة، أو حمّلها مباشرة.", axAttachImgsFound: "هذي صور حقيقية من البحث المباشر 👇 اضغط على أي صورة لعرضها كبيرة، أو حمّلها مباشرة.", axAttachLogoNotFound: "ما حصلت الشعار في البحث المباشر 😕 جرب تكتب اسم الجهة بشكل أوضح (مثال: \"شعار شرطة دبي\").", axAttachLogoFetchFail: "تعذر جلب الشعار الآن — جرب مرة ثانية.", axAttachTcEmiratiMan: "شاب إماراتي", axAttachTcEmiratiWoman: "فتاة إماراتية", axAttachTcRobot: "روبوت", axAttachTcBoy: "ولد", axAttachTcGirl: "بنت", axAttachTcGrandpa: "جدّ", axAttachTcPickTitle: "اختر شخصية تتكلم", axAttachTcPickSub: "اختر شخصية جاهزة، أو ارفع صورتك.", axAttachTcUploadOwn: "أو ارفع صورتك بدل ذلك", axAttachTcAttachHint: "ارفع صورتك من زر المشبك ثم أعد نفس الطلب مع الجملة اللي تبي الشخصية تقولها.", axAttachTcLoadFail: "تعذّر تحميل الشخصية، جرّب مرة ثانية.", axAttachTcSeconds: "{n} ثواني", axAttachTcOptsTitle: "إعدادات الشخصية المتكلمة", axAttachTcMotion: "حركة الشخصية:", axAttachTcStatic: "ثابتة (تتكلم فقط)", axAttachTcMoving: "متحركة", axAttachTcDuration: "مدة الفيديو:", axAttachTcMore: "أبي فيديو أطول / أكثر", axAttachTcStart: "ابدأ", axAttachTcPaidMore: "الفيديوهات الأطول والخيارات الإضافية متاحة في الباقات المدفوعة — افتح ⚙️ ← الاشتراك لترقية باقتك وتطلّع فيديوهات أطول بجودة أعلى.", axAttachTcCartoonizing: "جاري تحويل صورتك لشخصية كرتونية…", axAttachTcCartoonFail: "تعذر تحويل الصورة لكرتون، جرّب صورة أوضح.", axAttachTcCartoonReady: "صارت شخصية كرتونية ✅ الحين أحرّكها تتكلم…", axAttachTcAnimating: "جاري تحريك الشخصية لتتكلم بصوت… قد يستغرق ١–٣ دقائق", axAttachTcNoBalance: "رصيدك غير كافٍ لإنشاء فيديو ناطق.", axAttachVidTimeout: "تأخر إنشاء الفيديو، جرّب مرة ثانية.", axAttachTcSafety: "الرقابة رفضت المحتوى — جرّب صورة ثانية", axAttachVidFailed: "فشل إنشاء الفيديو", axAttachTcAnimatingShort: "جاري تحريك الشخصية بصوت…", axAttachTcReady: "شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)", axAttachVidAskWhat: "فيديو عن شو؟ وصفلي المشهد اللي تبيه", axAttachVidCreating: "جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق", axAttachVidDaily: "وصلت حد الفيديوهات اليومي، جرّب بكرة.", axAttachVidSafety: "الرقابة رفضت المحتوى — جرّب وصفًا أهدأ أو شِل صورة الشخص", axAttachVidCreatingShort: "جاري إنشاء الفيديو…", axAttachVidReady: "فيديوك جاهز ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)", axAttachTextNoRoom: "ما في مساحة أكبر هنا بدون ما يغطي الوجوه — تبيني أنقل الكتابة فوق أو تحت؟", axAttachTextStyleFail: "تعذّر تعديل تنسيق الكتابة.", axAttachPrayerFail: "تعذّر تأليف الدعاء بدقة الآن. جرّب مرة أخرى.", axAttachEditingBg: "جاري تعديل الخلفية…", axAttachWritingText: "جاري كتابة النص…", axAttachTextAddFail: "تعذّرت كتابة النص على الصورة.", axAttachBgChangeFail: "كتبت على صورتك، بس تغيير الخلفية ما نجح هالمرة — تبيني أحاول مرة ثانية؟", axAttachTextSwapFail: "تعذّر تبديل النصّ هذه المرّة — أعد المحاولة أو صِف الكلمة المطلوبة بوضوح أكثر.", axAttachImgEditFailed: "تعذر تعديل الصورة", axAttachImgAskWhat: "صورة عن شو؟ وصفلي اللي تبيه", axAttachImgGenFailed: "تعذر إنشاء الصورة", axAttachNewTopic: "موضوع جديد", axAttachBackTopic: "عودة إلى موضوع سابق", axAttachNetDrop: "انقطع الاتصال لحظة أثناء الرد 📡 — أعد إرسال سؤالك وسيصلك الجواب.", axAttachHistRename: "إعادة تسمية", axAttachHistNewName: "الاسم الجديد للمشروع:", axAttachDecorFacade: "🏡 واجهة منزل", axAttachDecorPool: "🏊 مسبح وجلسة", axAttachDecorPergola: "⛺ مظلة وبرجولا", axAttachDecorBbq: "🔥 شواء وجلسة نار", axAttachDecorRooftop: "🌇 سطح روف", axAttachDecorPathway: "🪴 ممر ومدخل خارجي", stWriting: "✍️ المزوّد يكتب الآن…", stGenVideo: "🎬 ينشئ الفيديو داخل المحادثة…", stCarry: "🛠️ ينفّذ…", stGithub: "🐙 يحمّل من GitHub: {repo}…", stAnalyze: "🔎 يقرأ {n} ملفًّا · {lines} سطرًا ويفكّر…", axChatcliStAnalyzeWriting: "✍️ يكتب التحليل… {n} حرفًا", axChatcliGenwImageHint: "جاري توليد الصورة", axChatcliGenwImageExpect: "الصور تاخذ ~٣٠ ثانية", axChatcliGenwImageS1: "نفهم طلبك…", axChatcliGenwImageS2: "نرسم التفاصيل…", axChatcliGenwImageS3: "نلوّن المشهد…", axChatcliGenwFinal: "اللمسات الأخيرة ✨", axChatcliGenwSlow: "ما زال يتولّد — الاتصال أبطأ من المعتاد…", axChatcliGenwVideoHint: "جاري توليد الفيديو", axChatcliGenwVideoExpect: "الفيديو ياخذ ١-٣ دقائق", axChatcliGenwVideoS1: "نبني المشاهد…", axChatcliGenwVideoS2: "نحرّك الإطارات…", axChatcliGenwVideoS3: "نركّب الحركة…", axChatcliGenwVideoSlow: "ما زال يتولّد — المشاهد السينمائيّة تاخذ وقتًا…", axChatcliGenwStylesHint: "جاري توليد الأنماط", axChatcliGenwStylesExpect: "الأنماط تاخذ ~٤٥ ثانية", axChatcliGenwStylesS1: "نحلّل ملامح الصورة…", axChatcliGenwStylesS2: "نطبّق الأنماط…", axChatcliGenwStylesS3: "نضبط الإضاءة…", axChatcliGenwFashionHint: "جاري تصميم الإطلالة", axChatcliGenwFashionExpect: "الإطلالات تاخذ ~٤٠ ثانية", axChatcliGenwFashionS1: "نفهم ذوقك…", axChatcliGenwFashionS2: "نرسم القطع…", axChatcliGenwFashionS3: "ننسّق الإطلالة…", axChatcliGenwSec: "ث", axChatcliSnapKindMenu: "قائمة طعام", axChatcliSnapKindApp: "واجهة تطبيق", axChatcliSnapKindDesign: "تصميم", axChatcliSnapKindForm: "نموذج", axChatcliSnapKindList: "قائمة", axChatcliSnapKindOther: "محتوى", axChatcliSnapRead: "📸 قرأتُ من الصورة: **{kind}**", axChatcliSnapCounts: "• {s} قسم · {n} صنف", axChatcliSnapScreens: "• {n} شاشة", axChatcliSnapUnsure: "⚠️ {n} عنصر غير واضح في الصورة — راجعه بعد البناء.", axChatcliSnapBadImage: "صورة غير مقروءة", axChatcliSnapReading: "📸 يقرأ الصورة بدقة (الأسعار والنصوص حرفيًا)…", axChatcliSnapReadFail: "لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية", axChatcliSnapBuilding: "🏗️ يبني من المقروء…", axChatcliSnapNoCode: "لم يصل كود صالح — حاول مرة ثانية", axChatcliSnapTitle: "من الصورة 📸", axChatcliSnapDone: "✅ بنيته لك — افتح المعاينة، وراجع الأسعار والنصوص، وقل لي أي تعديل.", axChatcliSnapFail: "تعذّر البناء من الصورة — حاول مرّة ثانية", axChatcliAttReadFail: "تعذّر قراءة الملف{why}. تأكد أنه محمّل على جهازك فعلًا وليس على السحابة فقط، ثم أعد المحاولة.", axChatcliAttEmpty: "الملف فارغ أو تعذّر فتحه.", axChatcliAttZipBig: "الملف {size} م.ب — الحد {max} م.ب للتحليل على الخادم. احذف مجلدات مثل node_modules وأعد الضغط.", axChatcliAttZipFail: "فشل التحليل (HTTP {status})", axChatcliCopyLinkPrompt: "انسخ الرابط:", axChatcliPfResetConfirm: "تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.", axChatcliPfLessonLoading: "🎓 معلمك يجهز درسًا على {sym} بالأرقام الحية…", axChatcliPfLessonFail: "تعذر الدرس الآن — حاول بعد قليل.", axChatcliCsTitle: "تحليل الكود وتقييمه", axChatcliCsMenu: "تحليل", axChatcliCsMenuTitle: "تحليل الكود وتقييمه بالذكاء الاصطناعي", axChatcliCsPickFiles: "اختر ملفّات أو zip", axChatcliCsCurrent: "كود المشروع الحالي", axChatcliCsPaste: "الصق كودًا", axChatcliCsAdd: "أضف", axChatcliCsPasteName: "اسم الملفّ (مثال app.js)", axChatcliCsPastePh: "الصق الكود هنا…", axChatcliCsAsk: "ركّز على شيء معيّن؟ (اختياري)", axChatcliCsGithub: "رابط GitHub", axChatcliCsGithubPh: "https://github.com/owner/repo أو رابط مجلّد أو ملفّ", axChatcliCsGithubAdd: "أضف من GitHub", axChatcliCsGithubBad: "رابط GitHub غير مفهوم", axChatcliCsAskPh: "مثال: الأمان فقط، أو الأداء في دالة الحفظ، أو هل يصلح للإنتاج؟", axChatcliCsGo: "حلّل وقيّم كلّ شيء", axChatcliCsNote: "يُقرأ كلّ ملفّ سطرًا سطرًا ويُحلَّل من ستّ زوايا (الصحّة، الأمان، الأداء، الوضوح، الصيانة، أفضل الممارسات) ثمّ يُقيَّم من ١٠٠ مع أفضل خطوة تالية. الطلب يُحسب رسالةً واحدة من رصيدك اليوميّ.", axChatcliCsNoFiles: "اختر ملفًّا أو الصق كودًا أوّلًا", axChatcliCsTooBig: "أكبر من الحدّ — تُخطّي: ", axChatcliCsZipBig: "الأرشيف أكبر من ٣ ميجابايت", axChatcliCsNoProject: "لا يوجد كود في المشروع الحالي", axChatcliCsReading: "يقرأ الملفّات…", axChatcliCsSec: "ث", axChatcliCsFiles: "ملفّ", axChatcliCsLines: "سطر", axChatcliCsScore: "الدرجة", axChatcliCsVerdict: "الحكم", axChatcliCsStrengths: "نقاط القوّة", axChatcliCsIssues: "المشاكل", axChatcliCsRecs: "أفضل ما تفعله الآن", axChatcliCsRanking: "ترتيب الملفّات — الأفضل أوّلًا", axChatcliCsMetrics: "قياسات آليّة", axChatcliCsNoIssues: "لا مشاكل مؤثّرة — الكود نظيف.", axChatcliCsBest: "★ الأفضل", axChatcliCsFix: "الإصلاح", axChatcliCsFixBtn: "أصلح أهمّ المشاكل", axChatcliCsDownload: "تنزيل التقرير", axChatcliCsCopy: "نسخ", axChatcliCsCopied: "نُسخ", axChatcliCsAgain: "تحليل جديد", axChatcliCsEnginePro: "المحرّك الاحترافيّ", axChatcliCsEngineFree: "ردّ مجاني", axChatcliCsFail: "تعذّر التحليل: ", axChatcliCsUnparsed: "لم يصل تقرير مُهيكل — هذا نصّ النموذج كما هو:", axChatcliCsSkipped: "تُخطّيت", axChatcliCsUpgrade: "اشترك للنسخة الاحترافية", axChatcliCsSignup: "سجّل مجانًا", axChatcliCsCommentRatio: "نسبة التعليقات", axChatcliCsTruncated: "مقتطع", axChatcliCsDeep: "التحليل التفصيليّ — ملفًّا ملفًّا ودالّةً دالّة", axChatcliCsFreeNote: "هذا تقرير الوضع المجانيّ. النسخة الاحترافيّة تحلّل بعمق أكبر وبملفّات أكبر.", axChatcliCsReadNote: "قرأ بنفسه: {n} فتحًا وتفتيشًا في {r} جولة · {f} ملفًّا متاحًا للقراءة", axChatcliCsFixAsk: "أصلح هذه المشاكل التي كشفها التحليل:", axChatcliCsSevCritical: "حرِج", axChatcliCsSevHigh: "عالٍ", axChatcliCsSevMedium: "متوسّط", axChatcliCsSevLow: "منخفض", axChatcliCsSevInfo: "ملاحظة", axChatcliCsCatCorrectness: "الصحّة", axChatcliCsCatSecurity: "الأمان", axChatcliCsCatPerformance: "الأداء", axChatcliCsCatReadability: "الوضوح", axChatcliCsCatMaintainability: "الصيانة", axChatcliCsCatBestPractices: "أفضل الممارسات", axVoiceSessionEnded: "انتهت جلستك — سجّل الدخول من جديد.", axVoiceBasicFallback: "الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️", imgReadyTitle: "✅ الصورة جاهزة", fileReadyTitle: "✅ الملف جاهز", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح", imgPreparing: "⏳ جارٍ تجهيز الصورة…",
     adStudioTitle: 'استوديو الإعلانات',
     adStudioHint: 'استوديو الإعلانات — اصنع إعلانك بالمحادثة',
     appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
@@ -6322,7 +6411,7 @@ const I18N = {
     copyCode: 'Copy',
     copyCodeTitle: 'Copy code',
     copiedMsg: 'Copied ✅',
-    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", sheetCopyImg: "Copy image", sheetCopyLink: "Copy link", sheetCopied: "Copied", sheetCopyFail: "Copy failed", sheetShareFail: "Share failed — try Download", sheetDlDesktop: "Downloaded — find it in your Downloads folder", imgReadyTitle: "✅ Image ready", fileReadyTitle: "✅ File ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open", imgPreparing: "⏳ Preparing the image…",
+    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", sheetCopyImg: "Copy image", sheetCopyLink: "Copy link", sheetCopied: "Copied", sheetCopyFail: "Copy failed", sheetShareFail: "Share failed — try Download", sheetDlDesktop: "Downloaded — find it in your Downloads folder", axAuthBadCredentials: "Incorrect username, email or password", axAuthNameTaken: "Username already taken", axAuthNameReserved: "This username is reserved", axAuthNameBad: "Username contains characters that aren’t allowed (such as * ? [ ] or a comma)", axAuthSignupShort: "Username must be at least 3 characters and password at least {n} characters", axAuthSession: "Session expired, please log in again", axAuthNotFound: "Account not found", axAuthPwShort: "Enter your current password and a new password (at least {n} characters)", axAuthPwWrong: "Current password is incorrect", axAuthMailFailed: "Could not send the email, try again later", axAuthMailOff: "Mail service is not configured — contact the app admin", axAuthNoEmailPhone: "No email is registered for this account — recover it with your linked phone number", axAuthNoRecovery: "This account has no email or phone number linked, so it cannot be recovered from here", axAuthForgotSent: "If this email is linked to an account, a reset link will reach you within minutes.", axAuthForgotSentTo: "A reset link was sent to {email}", axAuthResetShort: "Invalid link or password too short (at least {n} characters)", axAuthResetBad: "The link is invalid or expired, request a new one", axAuthBanned: "This account has been suspended by the admin", axAuthBadOtp: "Invalid or expired code", axAuthWaOff: "WhatsApp linking is not set up yet — try Telegram", axAuthTgOff: "Telegram linking is not set up", axAuthTooLong: "Input too long", axBootEnterId: "Please enter your username or email", axBootWait: "Please wait…", axBootCheckEmail: "Check your email", axBootFillAll: "Please fill in all fields", axBootFillBoth: "Please fill in both fields", axBootSigningIn: "Signing in…", axBootGoogleFailed: "Couldn't complete the Google sign-in ({code}) — please try again", axBootGoogleUnverified: "Your Google account email is not verified — verify it, then try again", axBootGoogleCancelled: "You cancelled the Google sign-in", axBootGoogleInBrowser: "Finish signing in with Google in the browser, then come back here — you will be signed in automatically.", axBootSecurityCheck: "Couldn't complete sign-in (security check). Please try again.", axBootAdminMsg: "Message from the administration", axBootBanned: "This account has been suspended by the administration", axBootSending: "Sending…", axBootCodeSent: "Code sent to {email}", axBootVerify: "Verify", axBootSendFailed: "Couldn't send the code", axBootEnterCode: "Enter the verification code", axBootVerifying: "Verifying…", axBootBadCode: "Invalid code", axBridgeGitBusy: "A git operation (publish, merge or reset) is running on the bridge — wait for it to finish, then try again.", axBridgeMergeKept: "The working copy was left as is: it has unpublished changes or commits, so it was not reset to the main branch.", axEduCapGuest: "You’ve reached today’s free limit — sign in or come back tomorrow.", axEduCapUser: "You’ve reached today’s limit — come back tomorrow.", axEduErrSlow: "This took longer than expected — try again now; it usually works right away.", axToolsDocTooBig: "The file is larger than {n} MB — compress or split it, then upload it again.", axSearchSessionExpired: "Your session has expired — please sign in again.", axSearchEmBadEvent: "Couldn't read the meeting time — add it to your calendar manually.", axSearchEmScope30: "No primary mail in the last 7 days — showing all inbox mail from the last 30 days.", axSearchEmScopeLatest: "No mail in the last 30 days — showing the latest inbox mail.", axSearchEmScopeEmpty: "Connected ✅ but this inbox is completely empty.", axSearchEmLinkDenied: "Gmail wasn't connected — the permission was declined on the Google page.", axSearchEmLinkScopes: "Connecting needs all the requested permissions (reading and sending mail) — connect Gmail again and allow them all.", axSearchEmLinkFailed: "Couldn't connect Gmail — please try connecting again.", axSearchPfNoCash: "Not enough virtual cash: you have {cash} and this trade needs {cost}", axSearchPfNoShares: "You don't own that many — you have {qty} shares of {sym}", axSearchPfLimit: "You've reached today's trade limit ({limit}) — come back tomorrow 🌙", axSearchCxReportTitle: "Construction project report", axSearchCxBuiltArea: "{n} m² built", axSearchCxPlotArea: "{n} m² plot", axSearchCxBoq: "📊 Bill of quantities", axSearchCxDetails: "📋 Details and cost", axSearchCxFooter: "Initial concept only — not a substitute for a licensed engineer or an official building permit. Issued by the om ai app.", axStudengImgFailed: "The image could not be generated this time. Please try again.", axStudengImgBusy: "Image generation is busy right now. Please try again in a moment.", axVideoNarrMissing: "⚠️ Narration is missing from {k} of {n} scenes.", axVideoCooldown: "🕒 One video every few minutes. Try again in about {m} min.", axVideoBusyRetry: "⏳ The AI engine is busy, retrying ({a}/{m})...", axVideoBusyRetryScene: "⏳ The AI engine is busy, retrying scene {i} ({a}/{m})...", axStudcliSigTitle: "My Signature", axStudcliSigMenuTitle: "My Signature — craft and share it", axStudcliSigPh: "Type your name…", axStudcliSigYourName: "Your name", axStudcliSigName: "Name", axStudcliSigSize: "Size", axStudcliSigSlant: "Slant", axStudcliSigInk: "Ink", axStudcliSigFlourish: "Flourish", axStudcliSigDownload: "Download transparent PNG", axStudcliSigNote: "Transparent background · works offline once the font loads · no credits.", axStudcliSigCopied: "Copied — paste it in any chat.", axStudcliSigFontRuqaa: "Ruqaa", axStudcliSigFontThuluth: "Thuluth", axStudcliSigFontDiwani: "Diwani", axStudcliSigFontNaskh: "Naskh", axStudcliSigFontKufi: "Kufi", axStudcliSigFontFarsi: "Nastaliq", axUicoreImgAsPdf: "This reply is too long for one image — saving it as a PDF instead", axUicorePyLoadFail: "Could not load the Python runtime — check your connection and press “Run code” to try again", axShellDeleteSelected: "⚠️ The selected items ({n}) will be permanently deleted. Are you sure?", axAttachImgOpenedTab: "Image opened in a new tab — long-press it, then Share", axAttachImgLongPress: "Long-press the image, then Share", axAttachImgCopied: "Image copied — paste it anywhere", axAttachImgSavedSend: "Saved to Downloads — send it from there to any app", axAttachLinkPasteIn: "Link copied — paste it in {app}", axAttachAppMessages: "Messages", axAttachAppEmail: "Email", axAttachMailSubject: "Image", axAttachTheApp: "the app", axAttachSavedAttachIn: "Saved to Downloads — attach it in {app}", axAttachBrowserRefused: "Browser refused the file", axAttachSendImage: "Send image", axAttachSentAsFile: "Sent as a file — no link, no card", axAttachSentAsLink: "A direct image link will be sent to the app you pick", axAttachShareDevice: "Share via device apps", axAttachLinkFailed: "Could not prepare the link", axAttachDownloadImage: "Download image", axAttachOpenChrome: "Open in Chrome", axAttachImgAutoCopied: "Image copied — paste it after opening the app", axAttachBinary: "This file format can't be read as text — send it as PDF, DOCX, XLSX, TXT or an image.", axAttachPastedCode: "Pasted code", axAttachPastedText: "Pasted text", axAttachCutShort: "truncated", axAttachPasteToast: "Converted to an attachment — tap it to view", axAttachImgDropped: "The connection dropped before the image arrived — please try again.", axAttachImgStopped: "Image generation stopped.", axAttachDrawingImage: "Generating your image…", axAttachExactWording: "Send the exact wording you want on the image, and I will reproduce it verbatim.", axAttachImgFailedNow: "Image generation failed", axAttachImgFailedRetry: "Image generation failed — please try again.", axAttachAnotherVersion: "Creating another version…", axAttachAnotherFailed: "Could not create another version — try again.", axAttachVidLogin: "Please log in first to create videos.", axAttachSecretTag: "secret removed", axAttachSecretToast: "The secret was removed from your message — never paste secrets in chat", axAttachWaitPending: "Please wait until the attachments finish processing", axAttachAnalyzingImage: "Analyzing image...", axAttachLogoFetching: "Fetching the original logo from live search…", axAttachImgsFetching: "Fetching real images from live search…", axAttachLogoFound: "Here is the original logo from live search 👇 Tap the image to view it large, or download it directly.", axAttachImgsFound: "Here are real images from live search 👇 Tap any image to view it large, or download it directly.", axAttachLogoNotFound: "Could not find the logo via live search 😕 Try writing the organization name more clearly (e.g. \"Dubai Police logo\").", axAttachLogoFetchFail: "Could not fetch the logo right now — try again.", axAttachTcEmiratiMan: "Emirati man", axAttachTcEmiratiWoman: "Emirati woman", axAttachTcRobot: "Robot", axAttachTcBoy: "Boy", axAttachTcGirl: "Girl", axAttachTcGrandpa: "Grandpa", axAttachTcPickTitle: "Pick a talking character", axAttachTcPickSub: "Pick a ready character, or upload your photo.", axAttachTcUploadOwn: "Or upload your own photo", axAttachTcAttachHint: "Attach your photo, then resend the same request with the line you want the character to say.", axAttachTcLoadFail: "Could not load the character, try again.", axAttachTcSeconds: "{n}s", axAttachTcOptsTitle: "Talking character options", axAttachTcMotion: "Character motion:", axAttachTcStatic: "Static (talk only)", axAttachTcMoving: "Moving", axAttachTcDuration: "Video duration:", axAttachTcMore: "I want a longer / more video", axAttachTcStart: "Start", axAttachTcPaidMore: "Longer videos and extra options are available on paid plans — open ⚙️ → Subscription to upgrade and create longer, higher-quality videos.", axAttachTcCartoonizing: "Turning your photo into a cartoon character…", axAttachTcCartoonFail: "Could not cartoonize the image, try a clearer photo.", axAttachTcCartoonReady: "Cartoon character ready ✅ now animating it to talk…", axAttachTcAnimating: "Animating the character to talk with voice… 1–3 minutes", axAttachTcNoBalance: "Not enough balance for a talking video.", axAttachVidTimeout: "Video generation timed out, please try again.", axAttachTcSafety: "Content rejected by safety filters — try another photo", axAttachVidFailed: "Video generation failed", axAttachTcAnimatingShort: "Animating with voice…", axAttachTcReady: "Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)", axAttachVidAskWhat: "A video about what? Describe the scene you want", axAttachVidCreating: "Creating video… this can take 1–3 minutes", axAttachVidDaily: "Daily video limit reached, try again tomorrow.", axAttachVidSafety: "Content rejected by safety filters — try a calmer description or remove the person photo", axAttachVidCreatingShort: "Creating video…", axAttachVidReady: "Your video is ready ✅ (link valid 24h — download it to keep it)", axAttachTextNoRoom: "There is no room to make it bigger here without covering faces — want me to move the text up or down?", axAttachTextStyleFail: "Could not update the text styling.", axAttachPrayerFail: "Could not author the prayer accurately. Please try again.", axAttachEditingBg: "Editing background…", axAttachWritingText: "Writing text…", axAttachTextAddFail: "Could not add text to image.", axAttachBgChangeFail: "I wrote it on your photo, but the background change did not work this time — want me to try again?", axAttachTextSwapFail: "Could not swap the text this time — retry or describe the target word more clearly.", axAttachImgEditFailed: "Image edit failed", axAttachImgAskWhat: "An image of what? Describe what you want", axAttachImgGenFailed: "Image generation failed", axAttachNewTopic: "New topic", axAttachBackTopic: "Back to an earlier topic", axAttachNetDrop: "Connection dropped for a moment 📡 — resend your question.", axAttachHistRename: "Rename", axAttachHistNewName: "New project name:", axAttachDecorFacade: "🏡 House Facade", axAttachDecorPool: "🏊 Pool & Patio", axAttachDecorPergola: "⛺ Pergola Seating", axAttachDecorBbq: "🔥 BBQ & Firepit", axAttachDecorRooftop: "🌇 Rooftop Terrace", axAttachDecorPathway: "🪴 Outdoor Pathway", stWriting: "✍️ Writing the reply now…", stGenVideo: "🎬 Creating the video in the chat…", stCarry: "🛠️ Working on it…", stGithub: "🐙 Loading from GitHub: {repo}…", stAnalyze: "🔎 Reading {n} files · {lines} lines and thinking…", axChatcliStAnalyzeWriting: "✍️ Writing the analysis… {n} characters", axChatcliGenwImageHint: "Generating image", axChatcliGenwImageExpect: "images usually take ~30s", axChatcliGenwImageS1: "Understanding your request…", axChatcliGenwImageS2: "Drawing the details…", axChatcliGenwImageS3: "Coloring the scene…", axChatcliGenwFinal: "Final touches ✨", axChatcliGenwSlow: "Still generating — slower than usual…", axChatcliGenwVideoHint: "Generating video", axChatcliGenwVideoExpect: "video usually takes 1-3 min", axChatcliGenwVideoS1: "Building the scenes…", axChatcliGenwVideoS2: "Animating the frames…", axChatcliGenwVideoS3: "Compositing the motion…", axChatcliGenwVideoSlow: "Still rendering — cinematic scenes take time…", axChatcliGenwStylesHint: "Generating styles", axChatcliGenwStylesExpect: "styles usually take ~45s", axChatcliGenwStylesS1: "Reading your features…", axChatcliGenwStylesS2: "Applying the styles…", axChatcliGenwStylesS3: "Tuning the light…", axChatcliGenwFashionHint: "Designing the look", axChatcliGenwFashionExpect: "looks usually take ~40s", axChatcliGenwFashionS1: "Reading your taste…", axChatcliGenwFashionS2: "Sketching the pieces…", axChatcliGenwFashionS3: "Styling the look…", axChatcliGenwSec: "s", axChatcliSnapKindMenu: "food menu", axChatcliSnapKindApp: "app screen", axChatcliSnapKindDesign: "design", axChatcliSnapKindForm: "form", axChatcliSnapKindList: "list", axChatcliSnapKindOther: "content", axChatcliSnapRead: "📸 Read from the image: **{kind}**", axChatcliSnapCounts: "• {s} sections · {n} items", axChatcliSnapScreens: "• {n} screens", axChatcliSnapUnsure: "⚠️ {n} unclear items in the image — review them after building.", axChatcliSnapBadImage: "Unreadable image", axChatcliSnapReading: "📸 Reading the image precisely (prices and text word for word)…", axChatcliSnapReadFail: "I couldn't read the image — take it in better light and try again", axChatcliSnapBuilding: "🏗️ Building from what was read…", axChatcliSnapNoCode: "No valid code arrived — try again", axChatcliSnapTitle: "From the photo 📸", axChatcliSnapDone: "✅ Built it for you — open the preview, check the prices and text, and tell me any changes.", axChatcliSnapFail: "Couldn't build from the image — try again", axChatcliAttReadFail: "Couldn't read the file{why}. Make sure it's actually on your device, not only in the cloud, then try again.", axChatcliAttEmpty: "The file is empty or could not be opened.", axChatcliAttZipBig: "The file is {size} MB — the limit for server analysis is {max} MB. Remove folders like node_modules and zip it again.", axChatcliAttZipFail: "Analysis failed (HTTP {status})", axChatcliCopyLinkPrompt: "Copy the link:", axChatcliPfResetConfirm: "Start over with a virtual 100K? Your current portfolio and trades will be erased.", axChatcliPfLessonLoading: "🎓 Your tutor is preparing a lesson on {sym} with live numbers…", axChatcliPfLessonFail: "The lesson isn't available right now — try again shortly.", axChatcliCsTitle: "Code analysis & rating", axChatcliCsMenu: "Analyze", axChatcliCsMenuTitle: "AI code analysis and rating", axChatcliCsPickFiles: "Pick files or zip", axChatcliCsCurrent: "Current project code", axChatcliCsPaste: "Paste code", axChatcliCsAdd: "Add", axChatcliCsPasteName: "File name (e.g. app.js)", axChatcliCsPastePh: "Paste code here…", axChatcliCsAsk: "Focus on something? (optional)", axChatcliCsGithub: "GitHub link", axChatcliCsGithubPh: "https://github.com/owner/repo or a folder/file link", axChatcliCsGithubAdd: "Add from GitHub", axChatcliCsGithubBad: "Unrecognized GitHub link", axChatcliCsAskPh: "e.g. security only, performance of the save function, or is it production-ready?", axChatcliCsGo: "Analyze & rate everything", axChatcliCsNote: "Every file is read line by line and reviewed from six angles (correctness, security, performance, readability, maintainability, best practices), then scored out of 100 with the best next step. Counts as one message of your daily quota.", axChatcliCsNoFiles: "Pick a file or paste code first", axChatcliCsTooBig: "Over the size limit — skipped: ", axChatcliCsZipBig: "Archive is larger than 3 MB", axChatcliCsNoProject: "The current project has no code", axChatcliCsReading: "Reading files…", axChatcliCsSec: "s", axChatcliCsFiles: "files", axChatcliCsLines: "lines", axChatcliCsScore: "Score", axChatcliCsVerdict: "Verdict", axChatcliCsStrengths: "Strengths", axChatcliCsIssues: "Issues", axChatcliCsRecs: "Best things to do now", axChatcliCsRanking: "File ranking — best first", axChatcliCsMetrics: "Automatic metrics", axChatcliCsNoIssues: "No significant issues — clean code.", axChatcliCsBest: "★ Best", axChatcliCsFix: "Fix", axChatcliCsFixBtn: "Fix the top issues", axChatcliCsDownload: "Download report", axChatcliCsCopy: "Copy", axChatcliCsCopied: "Copied", axChatcliCsAgain: "New analysis", axChatcliCsEnginePro: "Pro engine", axChatcliCsEngineFree: "Free reply", axChatcliCsFail: "Analysis failed: ", axChatcliCsUnparsed: "No structured report arrived — raw model text:", axChatcliCsSkipped: "skipped", axChatcliCsUpgrade: "Upgrade to Pro", axChatcliCsSignup: "Sign up free", axChatcliCsCommentRatio: "comment ratio", axChatcliCsTruncated: "truncated", axChatcliCsDeep: "Detailed analysis — file by file, function by function", axChatcliCsFreeNote: "This is the free-tier report. The Pro engine analyzes deeper and accepts larger files.", axChatcliCsReadNote: "Read on its own: {n} opens & searches across {r} rounds · {f} files available to read", axChatcliCsFixAsk: "Fix these issues found by the analysis:", axChatcliCsSevCritical: "Critical", axChatcliCsSevHigh: "High", axChatcliCsSevMedium: "Medium", axChatcliCsSevLow: "Low", axChatcliCsSevInfo: "Info", axChatcliCsCatCorrectness: "Correctness", axChatcliCsCatSecurity: "Security", axChatcliCsCatPerformance: "Performance", axChatcliCsCatReadability: "Readability", axChatcliCsCatMaintainability: "Maintainability", axChatcliCsCatBestPractices: "Best practices", axVoiceSessionEnded: "Your session has ended — please sign in again.", axVoiceBasicFallback: "HD voice isn't available right now — continuing in basic mode 🎙️", imgReadyTitle: "✅ Image ready", fileReadyTitle: "✅ File ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open", imgPreparing: "⏳ Preparing the image…",
     uploadCodeTitle: 'Upload a code file (HTML or Python)',
     newProject: '+ New Project',
     promptPlaceholder: 'Type your message here ...',
@@ -7096,7 +7185,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=774'; /* v-hw-resubmit-2 (774): أسطر «أفكار بلا صورة» في الديكور (١٤ لغة) · v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */
+    sc.src = 'i18n/' + lg + '.js?v=775'; /* v-hw-resubmit-2 (774): أسطر «أفكار بلا صورة» في الديكور (١٤ لغة) · v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (775): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات والتصدير والمحادثة والصوت (١٤ لغة)؛ ٧٧٤ نشره main بنصوص هواوي فارتفع الوسم مرّة أخرى */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7991,7 +8080,14 @@ let __slimCache = null;
 // الملف والاستدعاء يحدث بعد اكتمال التحميل، فالمرجع آمن وقت التنفيذ.
 let __mirrorAt = 0;
 let __idbSavedAt = 0; /* v-no-purge: آخر حفظ فعلي في IndexedDB — للتباعد مع كبر السجل */
+/* v-audit-boot (cli-boot-4): تبويب حمّل محادثات حساب ثمّ خرج الحساب من تبويب آخر (فمسح الجهاز) — لم يعد في هذا التبويب رمز، والذاكرة
+   ما زالت محادثات الحساب. إغلاقه كان يكتبها من جديد في المرآة وIndexedDB فتظهر للضيف التالي ويرفعها أوّل حساب يدخل. لا كتابة حينها. */
+function __chatsAccountGone(){
+  try{ return !!__chatsLoadedFor && !chatsAuthToken(); }
+  catch(e){ return false; } /* guard-ok — قبل تعريف __chatsLoadedFor (لا نداء متوقَّع قبله): لا حساب محمَّل بعد */
+}
 function __writeChatsMirror(){
+  if(__chatsAccountGone()) return;
   try{ localStorage.setItem('aiapp_projects_slim', JSON.stringify(chatsSlimForServer())); }
   catch(e){ /* guard-ok: المرآة رفاهية إقلاع — امتلاء التخزين لا يكسر الحفظ الأصلي */ }
 }
@@ -7999,6 +8095,7 @@ window.__writeChatsMirror = __writeChatsMirror;
 function __saveFlush(force){
   if(!__saveDirty) return;
   __saveDirty = false;
+  if(__chatsAccountGone()) return; // v-audit-boot (cli-boot-4): لا تُعاد محادثات حساب خرج من تبويب آخر إلى IndexedDB
   try{ clearTimeout(__saveTimer); }catch(e){ __swallow(e, "save:app-04-i18n-state#11"); }
   __saveTimer = null;
   if(!__idbBroken && window.indexedDB){
@@ -8385,6 +8482,30 @@ function scheduleChatsServerSync(){
   try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, "sync:app-04-i18n-state#32"); }
   __chatsSyncTimer = setTimeout(chatsServerSave, 4000);
 }
+/* v-audit-boot (cli-boot-5): بيانات الجهاز بلا صاحب كانت تُدمج في أيّ حساب يدخل: جلسة (أ) رُفضت عند الإقلاع (٣٠ يومًا أو إيقاف) أو جلسة
+   «لا تتذكّرني» انتهت، فيُحذف الرمز وحده وتبقى محادثاته — ثمّ يدخل (ب) فيضمّ __chatsMergeServer كلّ مشروع محلّيّ إلى حسابه ويرفعه.
+   الآن صاحب البيانات موسوم (DATA_OWNER_KEY): دخول اسم آخر يمسح بيانات السابق بصمت قبل الدمج (المحادثات وIndexedDB والمفضّلة وصورة
+   البطل وما في الذاكرة — ونسخة محادثاته في حسابه على الخادم)، ويُلغي اشتراك الدفع لهذا المتصفّح (تذكيراته). بيانات الضيف (بلا وسم)
+   تُدمج كما كانت، وصاحب البيانات نفسه إن عاد لا يُمسح له شيء (وما لم يُرفع يُرفع). يرجع true إن تولّى المسح ثمّ استأنف بعده. */
+function __chatsOwnerSwitch(resume){
+  let me = '';
+  try{ me = String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase(); }catch(e){ __swallow(e, 'sync:owner-me'); }
+  if(!me) return false;
+  let owner = '';
+  try{ owner = localStorage.getItem(DATA_OWNER_KEY) || ''; }catch(e){ __swallow(e, 'sync:owner-read'); }
+  const mark = () => { try{ localStorage.setItem(DATA_OWNER_KEY, me); }catch(e){ __swallow(e, 'sync:owner-write'); } };
+  if(!owner){ mark(); return false; }
+  if(owner === me) return false;
+  try{ if(typeof window.__pushDropDevice === 'function') window.__pushDropDevice(''); }catch(e){ __swallow(e, 'sync:owner-push'); }
+  Promise.resolve().then(() => window.chatsLogoutWipe({ silent: true })).catch(e => __swallow(e, 'sync:owner-wipe')).then(() => {
+    const tk = chatsAuthToken();
+    if(!tk) return; // خرج أثناء المسح
+    __chatsLoadedFor = tk; // المسح يصفّره
+    mark();
+    resume();
+  });
+  return true;
+}
 window.chatsSyncOnAuth = function(){
   const token = chatsAuthToken();
   if(!token || __chatsLoadedFor === token) return;
@@ -8393,6 +8514,7 @@ window.chatsSyncOnAuth = function(){
   var __waited = 0;
   var __tick = function(){
     if(!window.__localChatsLoaded && __waited < 10000){ __waited += 200; setTimeout(__tick, 200); return; }
+    if(__chatsOwnerSwitch(__tick)) return; // v-audit-boot (cli-boot-5): بعد تحميل IndexedDB (وإلّا عادت بيانات السابق فوق المسح) وقبل الدمج
     chatsServerPull(ok => {
       // v378: فشل التنزيل (شبكة/خطأ سيرفر) → إعادة المحاولة تلقائيًا بعد 8 ثواني.
       if(ok === false){ __chatsLoadedFor = null; setTimeout(function(){ try{ window.chatsSyncOnAuth(); }catch(e){ __swallow(e, "sync:app-04-i18n-state#33"); } }, 8000); return; }
@@ -8416,6 +8538,9 @@ var __chatsLastPull = 0;
    الإعدادات والتعليمات والثيم تبقى (ليست محادثات ولا صورًا). يرجع false إن ألغى. */
 const LOGOUT_WIPE_KEYS = ['aiapp_projects', 'aiapp_projects_slim', 'aiapp_current_id', 'aiapp_provider_projects', 'aiapp_deleted_chats',
   'aiapp_studio_favorites', 'aiapp_fashion_favorites', 'omran_hero_b64', 'omran_hero_mime'];
+/* v-audit-boot (cli-boot-5): صاحب بيانات الجهاز (اسمه بحروف صغيرة) — يُكتب حين تُحمَّل بيانات حساب، ويُزال بالخروج. خارج LOGOUT_WIPE_KEYS
+   لأنّ وجوده وحده ليس «بيانات على الجهاز» تستدعي سؤال الخروج. */
+const DATA_OWNER_KEY = 'aiapp_data_owner';
 function __chatsFlushNow(ms){
   return new Promise(res => {
     let done = false;
@@ -8437,23 +8562,38 @@ function __chatsFlushNow(ms){
     }catch(e){ __swallow(e, 'logout:flush'); fin(false); }
   });
 }
+/* v-audit-boot (cli-video-1): الخروج والدخول لا يعيدان تحميل الصفحة، والمسح كان للتخزين وحده — فصورة بطل الفيلم في المتغيّر والمعاينة
+   تُرسل مع فيديو من يدخل بعده في الجلسة نفسها، وكذا صور الأشخاص في لوحة الترند المفتوحة وملفّ محرّر «كتابة وصوت». يُفرَّغ ما في الذاكرة. */
+function __logoutClearMemory(){
+  try{ if(typeof mahaClearImageRef === 'function') mahaClearImageRef(); }catch(e){ __swallow(e, 'logout:maha'); }
+  try{ if(typeof window.__clearFilmHero === 'function') window.__clearFilmHero(); }catch(e){ __swallow(e, 'logout:hero'); }
+  try{ if(window.omranVideoTrends && typeof window.omranVideoTrends.reset === 'function') window.omranVideoTrends.reset(); }catch(e){ __swallow(e, 'logout:trends'); }
+  try{ if(window.omranVideoEdit && typeof window.omranVideoEdit.reset === 'function') window.omranVideoEdit.reset(); }catch(e){ __swallow(e, 'logout:ved'); }
+}
 function __hasLocalAccountData(){
   if((state.projects || []).some(p => p && Array.isArray(p.messages) && p.messages.length)) return true;
   try{ return LOGOUT_WIPE_KEYS.slice(5).some(k => { const v = localStorage.getItem(k); return !!v && v !== '[]'; }); }catch(e){ return false; }
 }
+/* v-audit-boot: ما ينتهي بانتهاء جلسة الحساب في هذا التبويب — المؤقّتات، وعلم «حساب محمَّل» (بقاؤه بعد خروج بلا محادثات كان سيمنع حفظ
+   الضيف بحارس cli-boot-4)، وما في الذاكرة (cli-video-1). */
+function __chatsForgetSession(){
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, 'logout:sync-timer'); }
+  try{ if(__chatsLivePollTimer){ clearInterval(__chatsLivePollTimer); __chatsLivePollTimer = null; } }catch(e){ __swallow(e, 'logout:live-timer'); }
+  __chatsLoadedFor = null; window.__chatsMergeDone = false; window.__usingSlimProjects = false; __slimCache = null;
+  __logoutClearMemory();
+}
+function __chatsDropOwner(){ try{ localStorage.removeItem(DATA_OWNER_KEY); }catch(e){ __swallow(e, 'logout:owner'); } } // v-audit-boot (cli-boot-5): الجهاز بعده للضيف
 window.chatsLogoutWipe = async function(opts){
   const silent = !!(opts && opts.silent); // v-acct-delete: الحساب حُذف — لا حساب يُرفع إليه ولا سؤال ثانٍ
   if(!silent){
-    if(!__hasLocalAccountData()) return true;
+    if(!__hasLocalAccountData()){ __chatsForgetSession(); __chatsDropOwner(); return true; }
     if(!confirm(t('logoutWipeConfirm'))) return false;
     const synced = await __chatsFlushNow(8000);
     if(!synced && !confirm(t('logoutWipeOffline'))) return false;
   }
-  try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, 'logout:sync-timer'); }
-  try{ if(__chatsLivePollTimer){ clearInterval(__chatsLivePollTimer); __chatsLivePollTimer = null; } }catch(e){ __swallow(e, 'logout:live-timer'); }
-  __chatsLoadedFor = null; window.__chatsMergeDone = false; window.__usingSlimProjects = false; __slimCache = null;
+  __chatsForgetSession();
+  __chatsDropOwner();
   LOGOUT_WIPE_KEYS.forEach(k => { try{ localStorage.removeItem(k); }catch(e){ __swallow(e, 'logout:ls'); } });
-  try{ if(typeof mahaClearImageRef === 'function') mahaClearImageRef(); }catch(e){ __swallow(e, 'logout:maha'); }
   // IndexedDB كلّها (المحادثات ومخزن الصور) — الفتح التالي (حفظ المحادثة الفارغة) يُنتظر خلف الحذف حسب المعيار فيُنشئها جديدة
   await new Promise(res => {
     try{
@@ -8490,6 +8630,22 @@ function __chatsStartLiveSync(){
   try{ document.addEventListener('visibilitychange', onFocus); }catch(e){ __swallow(e, "sync:app-04-i18n-state#35"); }
   try{ window.addEventListener('focus', onFocus); }catch(e){ __swallow(e, "sync:app-04-i18n-state#36"); }
 }
+/* v-audit-boot (cli-boot-4): خروج من تبويب آخر — الرمز أُزيل (أو ظهر رمز بعد غيابه: دخول بعد خروج فاتنا) — وهذا التبويب يحمل محادثات
+   حساب بلا جلسة خاصّة به (sessionStorage): تُفرَّغ من الذاكرة بلا أيّ كتابة (التبويب الآخر مسح الجهاز)، ومعها صورة البطل وما يشبهها.
+   تجديد الجلسة (رمز يحلّ محلّ رمز) لا يمسّ شيئًا. */
+window.addEventListener('storage', function(e){
+  try{
+    if(!e || e.key !== 'aiapp_auth_token' || (e.oldValue && e.newValue) || !__chatsLoadedFor) return;
+    try{ if(sessionStorage.getItem('aiapp_auth_token')) return; }catch(e2){ __swallow(e2, 'logout:other-tab-ss'); }
+    try{ clearTimeout(__saveTimer); }catch(e2){ __swallow(e2, 'logout:other-tab-save'); }
+    __saveTimer = null; __saveDirty = false;
+    __chatsForgetSession();
+    const nid = 'p_' + Date.now();
+    state.projects = [{ id: nid, title: (typeof t === 'function' ? t('defaultProjectTitle') : '') || 'محادثة جديدة', messages: [], code: '' }];
+    state.currentId = nid;
+    try{ renderAll(); }catch(e2){ __swallow(e2, 'logout:other-tab-render'); }
+  }catch(err){ __swallow(err, 'logout:other-tab'); }
+});
 
 function getCurrent(){
   return state.projects.find(p => p.id === state.currentId);
@@ -8683,8 +8839,9 @@ function ensureHistItemMenu(){
   return m;
 }
 function histRenameProject(p){
-  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
-  const nv = prompt(isAr ? 'الاسم الجديد للمشروع:' : 'New project name:', p.title);
+  /* v-audit-attach (x-i18n-6): كانت الأورديّة تُعامَل عربيّة وبقيّة اللغات إنجليزيّة — مفتاح الـ١٤ لغة، وبلا مفتاح العربيّة للعربيّة وحدها */
+  const __k = t('axAttachHistNewName');
+  const nv = prompt((__k && __k !== 'axAttachHistNewName') ? __k : (lang === 'ar' ? 'الاسم الجديد للمشروع:' : 'New project name:'), p.title);
   if(nv === null) return;
   const clean = String(nv).trim();
   if(!clean) return;
@@ -8723,7 +8880,6 @@ function histDeleteProject(p, provKey){
 }
 function openHistItemMenu(anchorBtn, p, provKey){
   const m = ensureHistItemMenu();
-  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
   m.innerHTML = '';
   const mkBtn = (label, svg, cls, fn) => {
     const b = document.createElement('button');
@@ -8734,13 +8890,15 @@ function openHistItemMenu(anchorBtn, p, provKey){
     m.appendChild(b);
   };
   const svgPre = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
-  mkBtn(isAr ? 'إعادة تسمية' : 'Rename',
+  /* v-audit-attach (x-i18n-6): قائمة ⋮ كانت «Rename/Delete» لاثنتي عشرة لغة والعربيّة للأورديّة — مفاتيح الـ١٤ لغة */
+  const __rn = t('axAttachHistRename');
+  mkBtn((__rn && __rn !== 'axAttachHistRename') ? __rn : (lang === 'ar' ? 'إعادة تسمية' : 'Rename'),
     svgPre + '<path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path></svg>',
     '', () => histRenameProject(p));
-  mkBtn(t('shareProjectBtnTitle') || (isAr ? 'مشاركة' : 'Share'),
+  mkBtn(t('shareProjectBtnTitle'),
     svgPre + '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>',
     '', () => { if(typeof openShareModal === 'function') openShareModal(p); });
-  mkBtn(isAr ? 'حذف' : 'Delete',
+  mkBtn(t('bgImgDelete'), /* «حذف/Delete» العامّ نفسه بالـ١٤ لغة */
     svgPre + '<polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
     'danger', () => histDeleteProject(p, provKey));
   // موضع القائمة بجانب زر ⋮ مع البقاء داخل الشاشة
@@ -10284,8 +10442,11 @@ function renderMessages(keepScroll){
   };
   /* كل روابط التحميل في التطبيق تمرّ من الحافظ الموحّد — نقرة المستخدم فقط
      (v-pdf-loop: النقرات البرمجية من مصدّر الـPDF ومن هذا الحافظ لا تُلتقط) */
+  /* v-audit-shell (cli-ui-shell-2): مصيدة app-05-img-save تُسجَّل قبل هذه على document نفسه وتملك صور data:/blob: داخل الأغلفة —
+     stopPropagation فيها لا يوقف مستمعًا آخر على العقدة نفسها، فكانت النقرة الواحدة ترفع الصورة مرّتين (سلّة media-save-img) وتفتح ورقتين.
+     نقرة منعها مستمع قبلنا = لها مالك: لا نلمسها. */
   document.addEventListener('click', function(e){
-    if(!e.isTrusted) return;
+    if(!e.isTrusted || e.defaultPrevented) return;
     var a = e.target && e.target.closest ? e.target.closest('a[download]') : null;
     if(!a || a.dataset.nativeDownload === '1') return;
     var href = a.getAttribute('href') || '';
@@ -10550,6 +10711,25 @@ function renderMessages(keepScroll){
     }
     return false;
   }
+  /* v-audit-shell (cli-ui-shell-4): بالفأرة، الضغط فوق حروف نصّ قابل للتحديد بداية تحديد لا سحب رجوع — كان سحب الفأرة لليمين على نتيجة
+     التفسير أو الأسهم أو المستند (١٢ لغة من اليسار) يمسح التحديد (removeAllRanges) ويغلق الأداة. caret*FromPoint تُلصق النقطة بأقرب
+     نصّ حتّى في الفراغ، فالحكم صندوق سطور العقدة نفسها؛ والسحب من الفراغ والهوامش، واللمس كلّه، كما كانا. */
+  function overText(x, y){
+    try{
+      var n = null;
+      if(document.caretPositionFromPoint){ var cp = document.caretPositionFromPoint(x, y); n = cp && cp.offsetNode; }
+      else if(document.caretRangeFromPoint){ var cr = document.caretRangeFromPoint(x, y); n = cr && cr.startContainer; }
+      if(!n || n.nodeType !== 3 || !/\S/.test(n.nodeValue || '') || !n.parentElement) return false;
+      /* حروف الأزرار والروابط لا تُحدَّد بالسحب — السحب منها رجوع كما كان */
+      if(n.parentElement.closest && n.parentElement.closest('button,a[href],[role="button"],label,summary')) return false;
+      var cs = getComputedStyle(n.parentElement);
+      if((cs.userSelect || cs.webkitUserSelect) === 'none') return false;
+      var rg = document.createRange(); rg.selectNodeContents(n);
+      var rs = rg.getClientRects();
+      for(var i = 0; i < rs.length; i++){ if(x >= rs[i].left && x <= rs[i].right && y >= rs[i].top && y <= rs[i].bottom) return true; }
+    }catch(err){ /* guard-ok — بلا واجهة نقطة النصّ يبقى السحب كما كان */ }
+    return false;
+  }
 
   function bind(el){
     var t0 = null, dragging = false, w = 0, p = null;
@@ -10611,7 +10791,7 @@ function renderMessages(keepScroll){
       return blocked(t);
     };
     el.addEventListener('mousedown', function(e){
-      if(e.button !== 0 || mouseBlocked(e.target)){ m0 = null; return; }
+      if(e.button !== 0 || mouseBlocked(e.target) || overText(e.clientX, e.clientY)){ m0 = null; return; }
       if(topTool() !== el){ m0 = null; return; }
       m0 = { x: e.clientX, y: e.clientY, ts: Date.now() };
       mDrag = false; p = panel(el); w = window.innerWidth || 360;
@@ -11030,8 +11210,11 @@ async function omranSaveBlob(blob, filename){
   const sheetKind = isPdfFile ? 'pdf' : (/^image\//i.test((blob && blob.type) || '') ? 'image' : 'file');
   const sheetMime = isPdfFile ? 'application/pdf' : ((blob && blob.type) || 'application/octet-stream');
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
+  /* v-audit-uicore: مشاركة النظام على الجوّال والأغلفة وحدها (قرار v-ready-sheet، كما في img-save وsave-media) — على الكمبيوتر
+     كانت تفتح لوحة ويندوز/ماك بلا «حفظ»، وإغلاقها (AbortError) يُنهي الدالّة بلا تنزيل. الكمبيوتر ينزّل مباشرة في الأسفل. */
+  const mobileish = omranLikelyApp() || omranMobileUA();
   try{
-    if(navigator.canShare && typeof File === 'function'){
+    if(mobileish && navigator.canShare && typeof File === 'function'){
       const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare({ files: [f] })){
         try{ await navigator.share({ files: [f], title: filename }); return; }
@@ -11045,7 +11228,7 @@ async function omranSaveBlob(blob, filename){
   }catch(e){ __swallow(e, 'share:universal'); }
   /* داخل الأغلفة وعلى أي جوال: رابط سيرفر حقيقي لكلّ الأنواع (v-reply-export: كان PDF فقط، فكان
      Word/TXT يسقطان على تنزيل blob الذي تخطفه مصيدة الصور وترفعه «صورة» مكسورة) */
-  if(omranLikelyApp() || omranMobileUA()){
+  if(mobileish){
     try{
       const url = await omranBlobToServerLink(blob, filename);
       let fileForShare = null;
@@ -11348,11 +11531,11 @@ async function omranExportPagedPdfFile(blocks, opts){
       let canvas;
       try{
         await Promise.all(Array.from(holder.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
-        canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 1.3, style: { position: 'static', left: '0', top: '0' } });
+        canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: opts.pixelRatio || 1.3, style: { position: 'static', left: '0', top: '0' } });
       } finally { holder.remove(); }
       if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
       if(k > 0) pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير */
+      pdf.addImage(canvas.toDataURL('image/jpeg', opts.jpegQuality || 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير (PDF الردّ يمرّر دقّته السابقة x٢ و٠٫٩٢: v-audit-uicore) */
     }
     await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-docs.pdf');
     return { pages: pages.length, total, truncated: total > pages.length };
@@ -11410,18 +11593,128 @@ function msgPrintAfterFont(view, family, ctx){
     else wait();
   }catch(e){ __swallow(e, ctx + ':font-link'); wait(); }
 }
+/* v-audit-uicore (فحص التطبيق: تصدير الردّ كان يكتب ** و### و``` خامًا، ويفرض rtl في كلّ اللغات، ويقطع PDF الطويل وسط
+   السطر): محلّل ماركداون صغير واحد لمصدّري الردّ الثلاثة (PDF/Word/صورة) — TXT يبقى خامًا كما هو.
+   الاتّجاه بقاعدة الشاشة نفسها (omranMdBlocks في app-02): الردّ عربيّ إن غلب العربيّ (الكود لا يُحسب)، وفي الردّ العربيّ
+   السطر الإنجليزيّ الخالص يسار، وفي غيره السطر العربيّ الخالص يمين؛ الكود يسار دائمًا.
+   الناتج عنصر لكلّ سطر — فمصدّر PDF المقسَّم يوزّع الأسطر على الصفحات ولا يقطع سطرًا عند حدّها. */
+function msgExportParse(text){
+  const AR = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/;
+  const src = String(text || '').replace(/\r\n?/g, '\n');
+  const prose = src.replace(/(```|~~~)[\s\S]*?(\1|$)/g, ' ').replace(/`[^`\n]*`/g, ' ');
+  const arN = (prose.match(/[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/g) || []).length;
+  const laN = (prose.match(/[A-Za-z]/g) || []).length;
+  const rtl = arN > 0 && arN * 2 >= laN;
+  const lineRtl = (s) => { const la = (String(s).match(/[A-Za-z]/g) || []).length; return rtl ? (AR.test(s) || la < 12) : (AR.test(s) && !la); };
+  const items = [];
+  let fence = null;
+  src.split('\n').forEach((ln) => {
+    const fm = /^\s*(```|~~~)/.exec(ln);
+    if(fence){
+      if(fm && fm[1] === fence && !ln.trim().slice(3).trim()){ fence = null; return; }
+      items.push({ type: 'code', text: ln.replace(/\t/g, '    ') });
+      return;
+    }
+    if(fm){ fence = fm[1]; return; }
+    const s = ln.trim();
+    const depth = Math.min(3, Math.floor(((/^\s*/.exec(ln) || [''])[0].replace(/\t/g, '  ').length) / 2));
+    let m;
+    if(!s) items.push({ type: 'blank', text: '' });
+    else if(/^([-*_])(\s*\1){2,}$/.test(s)) items.push({ type: 'hr', text: '' });
+    else if((m = /^(#{1,6})\s+(.*?)(\s+#+)?$/.exec(s))) items.push({ type: 'h', level: m[1].length, text: m[2] });
+    else if(/^\|?(\s*:?-{2,}:?\s*\|)+\s*(:?-{2,}:?\s*)?\|?$/.test(s)){ const prev = items[items.length - 1]; if(prev && prev.type === 'row') prev.head = true; }
+    else if(/^\|.*\|$/.test(s)) items.push({ type: 'row', cells: s.slice(1, -1).split('|').map((c) => c.trim()), text: s });
+    else if((m = /^[-*+•]\s+(.*)$/.exec(s))) items.push({ type: 'li', depth: depth, text: m[1] });
+    else if((m = /^(\d{1,4})[.)]\s+(.*)$/.exec(s))) items.push({ type: 'li', depth: depth, num: m[1], text: m[2] });
+    else if((m = /^>\s?(.*)$/.exec(s))) items.push({ type: 'quote', text: m[1] });
+    else items.push({ type: 'p', text: s });
+  });
+  items.forEach((it) => { it.rtl = (it.type === 'code') ? false : lineRtl(it.text); });
+  /* v-audit-uicore: الجدول كلّه باتّجاه واحد بقاعدة الشاشة (omranMdTableEl في app-02: يمين إن كان فيه حرف عربيّ) — لا اتّجاه
+     لكلّ صفّ، وإلّا انعكس ترتيب أعمدة صفّ إنجليزيّ خالص في جدول عربيّ (أو العكس) فوقعت قيمه تحت عمود غير عمودها. */
+  for(let i = 0, j; i < items.length; i = j){
+    j = i + 1;
+    if(items[i].type !== 'row') continue;
+    while(j < items.length && items[j].type === 'row') j++;
+    const run = items.slice(i, j), tr = run.some((x) => AR.test(x.text));
+    run.forEach((x) => { x.rtl = tr; });
+  }
+  return { rtl: rtl, items: items };
+}
+/* العريض والمائل والمشطوب والروابط والكود داخل السطر — HTML مهرَّب، أو نصّ مجرّد للصورة (plain) */
+function msgExportInline(s, plain){
+  const codes = [];
+  let h = String(s || '').replace(/`([^`\n]+)`/g, (m0, c) => { codes.push(c); return '\ue000' + (codes.length - 1) + '\ue001'; });
+  if(!plain) h = msgEscapeHtml(h);
+  const W = (tag, x) => plain ? x : '<' + tag + '>' + x + '</' + tag + '>';
+  h = h.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (m0, a, u) => plain ? a + ' (' + u + ')' : a + ' <span dir="ltr" style="color:#555">(' + u + ')</span>')
+    .replace(/\*\*(?!\s)([^\n]+?)\*\*/g, (m0, x) => W('b', x))
+    .replace(/(^|[^*\w])\*(?![\s*])([^*\n]+?)\*(?!\w)/g, (m0, p, x) => p + W('i', x))
+    .replace(/~~(?!\s)([^\n]+?)~~/g, (m0, x) => W('s', x));
+  return h.replace(/\ue000(\d+)\ue001/g, (m0, i) => plain ? codes[+i] : '<code dir="ltr" style="font-family:Consolas,\'Courier New\',monospace;font-size:.9em;background:#f1f1f1;border-radius:3px;padding:0 4px">' + msgEscapeHtml(codes[+i]) + '</code>');
+}
+/* كتل HTML (سطر لكلّ كتلة) لـPDF وWord، كلّ كتلة باتّجاهها الصريح */
+function msgExportBlocks(text, lineH){
+  const P = msgExportParse(text);
+  const lh = lineH ? 'line-height:' + lineH + ';' : '';
+  const D = (it) => ' dir="' + (it.rtl ? 'rtl' : 'ltr') + '"';
+  const blocks = P.items.map((it, i) => {
+    const prev = P.items[i - 1], next = P.items[i + 1];
+    if(it.type === 'blank') return '<div style="' + lh + '">&nbsp;</div>';
+    if(it.type === 'hr') return '<hr style="border:0;border-top:1px solid #ccc;margin:.5em 0">';
+    if(it.type === 'h'){ const L = Math.min(6, it.level); return '<h' + L + D(it) + '>' + msgExportInline(it.text) + '</h' + L + '>'; }
+    if(it.type === 'li'){
+      const pad = 'margin:0;padding-inline-start:' + (1.6 + 1.4 * (it.depth || 0)) + 'em;' + lh;
+      return it.num ? '<ol start="' + it.num + '"' + D(it) + ' style="' + pad + '"><li>' + msgExportInline(it.text) + '</li></ol>'
+                    : '<ul' + D(it) + ' style="' + pad + '"><li>' + msgExportInline(it.text) + '</li></ul>';
+    }
+    if(it.type === 'quote') return '<div' + D(it) + ' style="' + lh + 'border-inline-start:3px solid #ccc;padding-inline-start:10px;color:#444;white-space:pre-wrap;word-break:break-word">' + msgExportInline(it.text) + '</div>';
+    if(it.type === 'row'){
+      const top = (prev && prev.type === 'row') ? 'border-top:0;' : '';
+      return '<table' + D(it) + ' style="table-layout:fixed;width:100%;border-collapse:collapse;margin:0"><tr>' + it.cells.map((c) => '<td style="border:1px solid #999;' + top + 'padding:3px 8px;vertical-align:top;word-break:break-word' + (it.head ? ';font-weight:700;background:#f3f3f3' : '') + '">' + msgExportInline(c) + '</td>').join('') + '</tr></table>';
+    }
+    if(it.type === 'code'){
+      const first = !(prev && prev.type === 'code'), last = !(next && next.type === 'code');
+      return '<div dir="ltr" style="font-family:Consolas,\'Courier New\',monospace;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-all;text-align:left;background:#f4f4f4;padding:' + (first ? '6px' : '0') + ' 10px ' + (last ? '6px' : '0') + '">' + (it.text ? msgEscapeHtml(it.text) : '&nbsp;') + '</div>';
+    }
+    return '<div' + D(it) + ' style="' + lh + 'white-space:pre-wrap;word-break:break-word">' + msgExportInline(it.text) + '</div>';
+  });
+  return { rtl: P.rtl, blocks: blocks };
+}
+/* التفاف سطر الصورة: عند المسافات، وبالحرف حين لا تتّسع الكلمة وحدها (رابط، سطر كود) أو النصّ بلا مسافات (الصينيّة) */
+function msgExportWrap(ctx, text, maxWidth){
+  const out = [];
+  const fits = (s) => ctx.measureText(s).width <= maxWidth;
+  let line = null;
+  String(text || '').split(' ').forEach((word) => {
+    const test = (line === null) ? word : line + ' ' + word;
+    if(fits(test)){ line = test; return; }
+    if(line !== null && line.trim() && fits(word)){ out.push(line); line = word; return; }
+    let cur = (line === null) ? '' : line + ' ';
+    Array.from(word).forEach((ch) => {
+      if(cur.trim() && !fits(cur + ch)){ out.push(cur.replace(/\s+$/, '')); cur = ch; }
+      else cur += ch;
+    });
+    line = cur;
+  });
+  out.push(line === null ? '' : line);
+  return out;
+}
 function exportReplyAsPdf(text){
   const font = msgPdfFontSpec();
   const pdfFont = msgPdfFontHead(font);
-  const html = '<html><head><meta charset="utf-8"><title>om ai</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
+  const doc = msgExportBlocks(text, font.line); /* v-audit-uicore: ماركداون محوَّل واتّجاه من النصّ */
+  const dir = doc.rtl ? 'rtl' : 'ltr';
+  const html = '<html><head><meta charset="utf-8"><title>om ai</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:' + dir + ';padding:28px;line-height:' + font.line + ';color:#111;word-break:break-word;}</style></head><body dir="' + dir + '">' + doc.blocks.join('') + '</body></html>';
   /* v-app-share: window.open داخل تطبيق المتجر يرجع null — نرسل للجسر مباشرة */
   const pdfBridge = omranNativeBridge('omranPdf');
   if(pdfBridge){
     try{ pdfBridge.postMessage({ html, name: 'omran-ai.pdf' }); return; }catch(e){ __swallow(e, 'ui:app-05-ui#1-app'); }
   }
-  /* v-pdf-file: ملف PDF ينزل مباشرة بدل نافذة الطباعة — الطباعة احتياط أخير */
-  const inner = '<div style="white-space:pre-wrap; word-break:break-word; line-height:' + font.line + ';">' + msgEscapeHtml(text) + '</div>';
-  omranExportHtmlAsPdfFile(inner, { fontFamily: pdfFont.family, fileName: 'omran-ai.pdf' }).catch((e) => {
+  /* v-pdf-file: ملف PDF ينزل مباشرة بدل نافذة الطباعة — الطباعة احتياط أخير.
+     v-audit-uicore: المصدّر المقسَّم (كمسار المستندات) لا اللوحة الواحدة المقصوصة بارتفاع ثابت — لا سطر يُقطع بين صفحتين،
+     ولا لوحة تتجاوز حدّ سفاري الآيفون (~١٦ ميغابكسل) فيخرج الملفّ أبيض؛ بدقّة الردّ السابقة (x٢، JPEG ٠٫٩٢). */
+  omranExportPagedPdfFile(doc.blocks.map((h) => ({ html: h })), { rtl: doc.rtl, fontFamily: pdfFont.family, fileName: 'omran-ai.pdf', pixelRatio: 2, jpegQuality: 0.92 }).catch((e) => {
     __swallow(e, 'ui:app-05-ui#1-file');
     const w = window.open('', '_blank');
     if(!w) return;
@@ -11430,7 +11723,8 @@ function exportReplyAsPdf(text){
   });
 }
 function exportReplyAsWord(text){
-  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>om ai</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
+  const doc = msgExportBlocks(text, null); /* v-audit-uicore */
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>om ai</title></head><body dir="' + (doc.rtl ? 'rtl' : 'ltr') + '" style="font-family:Tahoma,Arial,sans-serif; line-height:2;">' + doc.blocks.join('') + '</body></html>';
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
   msgSaveExport(blob, 'omran-ai-reply.doc');
 }
@@ -11440,29 +11734,48 @@ function exportReplyAsImage(text){
   const ctx = canvas.getContext('2d');
   const padding = 40;
   const fontSize = 22;
-  ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
+  const FP = fontSize + 'px Tahoma, Arial, sans-serif', FB = 'bold ' + FP, FC = (fontSize - 3) + "px Consolas, 'Courier New', monospace";
   const maxWidth = width - 2 * padding;
+  /* v-audit-uicore: نصّ نظيف من رموز الماركداون، واتّجاه كلّ سطر من حروفه (الكود يسار)، والتفاف بالحرف */
   const lines = [];
-  String(text || '').split('\n').forEach(paragraph => {
-    const words = paragraph.split(' ');
-    let line = '';
-    words.forEach(word => {
-      const test = line ? line + ' ' + word : word;
-      if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = word; }
-      else line = test;
-    });
-    lines.push(line);
+  msgExportParse(text).items.forEach((it) => {
+    if(it.type === 'hr'){ lines.push({ hr: true }); return; }
+    let s = '', f = FP;
+    if(it.type === 'code'){ s = it.text; f = FC; }
+    else if(it.type === 'h'){ s = msgExportInline(it.text, true); f = FB; }
+    else if(it.type === 'li') s = '    '.repeat(it.depth || 0) + (it.num ? it.num + '. ' : '• ') + msgExportInline(it.text, true);
+    else if(it.type === 'row'){
+      /* علامة اتّجاه قويّة (RLM/LRM) حول الفاصل: بدونها يندمج صفّ إنجليزيّ في جدول عربيّ مقطعًا يساريًّا واحدًا، فيُرسم عموده الأوّل يسارًا */
+      const mk = it.rtl ? '\u200f' : '\u200e';
+      s = it.cells.map((c) => msgExportInline(c, true)).join(mk + '   |   ' + mk); if(it.head) f = FB;
+    }
+    else if(it.type === 'quote') s = '    ' + msgExportInline(it.text, true);
+    else if(it.type === 'p') s = msgExportInline(it.text, true);
+    ctx.font = f;
+    msgExportWrap(ctx, s, maxWidth).forEach((w) => lines.push({ s: w, f: f, rtl: it.rtl }));
   });
   const lineHeight = Math.round(fontSize * 1.55);
+  const height = padding * 2 + lines.length * lineHeight;
+  /* سقف اللوحة ١٦٠٠٠ بكسل (٩٠٠×١٦٠٠٠ ≈ ١٤٫٤ ميغابكسل: تحت حدّ سفاري الآيفون ~١٦٫٧ وحدّ كروم ٣٢٧٦٧ للارتفاع). الأطول، أو
+     toBlob=null، كان يضيع بصمت — الآن رسالة مترجمة وPDF المقسَّم بدل الصورة (لا سقف لطوله). */
+  const asPdf = () => {
+    try{ const m = t('axUicoreImgAsPdf'); if(m && m !== 'axUicoreImgAsPdf') settingsToast(m); }catch(e){ __swallow(e, 'export:img-as-pdf'); }
+    exportReplyAsPdf(text);
+  };
+  if(height > 16000){ asPdf(); return; }
   canvas.width = width;
-  canvas.height = padding * 2 + lines.length * lineHeight;
+  canvas.height = height;
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#111111';
-  ctx.direction = 'rtl';
-  ctx.textAlign = 'right';
-  ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
-  lines.forEach((line, i) => { ctx.fillText(line, canvas.width - padding, padding + (i + 1) * lineHeight - Math.round(fontSize * 0.4)); });
-  canvas.toBlob(blob => { if(blob) msgSaveExport(blob, 'omran-ai-reply.png'); }, 'image/png');
+  lines.forEach((ln, i) => {
+    const y = padding + (i + 1) * lineHeight - Math.round(fontSize * 0.4);
+    if(ln.hr){ ctx.fillStyle = '#cccccc'; ctx.fillRect(padding, y - Math.round(fontSize * 0.35), maxWidth, 1); ctx.fillStyle = '#111111'; return; }
+    ctx.font = ln.f;
+    ctx.direction = ln.rtl ? 'rtl' : 'ltr';
+    ctx.textAlign = ln.rtl ? 'right' : 'left';
+    ctx.fillText(ln.s, ln.rtl ? canvas.width - padding : padding, y);
+  });
+  canvas.toBlob(blob => { if(blob) msgSaveExport(blob, 'omran-ai-reply.png'); else asPdf(); }, 'image/png');
 }
 function exportReplyAsTxt(text){
   const blob = new Blob([text || ''], { type: 'text/plain;charset=utf-8' });
@@ -11477,9 +11790,10 @@ function msgSaveExport(blob, filename){
   try{ viaSheet = !!(omranNativeBridge('omranShare') || omranLikelyApp() || omranMobileUA()); }catch(e){ viaSheet = false; }
   if(viaSheet){
     omranSaveBlob(blob, filename).catch((e) => { __swallow(e, 'export:save-blob'); msgDownloadBlob(blob, filename); });
-    return;
+    return true; /* v-audit-uicore: المسار الموحّد — ورقته هي التأكيد، فلا رسالة «تمّ» من المنادي */
   }
   msgDownloadBlob(blob, filename);
+  return false;
 }
 let __msgMoreMenuOpen = null;
 let __msgMoreMenuAnchor = null;
@@ -12157,7 +12471,7 @@ async function getPyodideInstance(){
           const s = document.createElement('script');
           s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';
           s.onload = resolve;
-          s.onerror = reject;
+          s.onerror = (e) => { try{ s.remove(); }catch(e2){ __swallow(e2, 'py:script-rm'); } reject(e); }; /* v-audit-uicore: وسم فاشل لا يبقى — المحاولة التالية تضيف جديدًا */
           document.head.appendChild(s);
         });
       }
@@ -12179,8 +12493,18 @@ async function getPyodideInstance(){
         Date.prototype.toLocaleTimeString = __tlt;
       }
     })();
+    /* v-audit-uicore: الوعد المرفوض كان يُخزَّن للأبد — انقطاع عابر واحد يكسر بايثون حتّى إعادة تحميل الصفحة.
+       الفشل يصفّره فيعيد التشغيلُ التالي المحاولة. */
+    pyodideLoadingPromise.catch(() => { pyodideLoadingPromise = null; });
   }
-  return pyodideLoadingPromise;
+  /* v-audit-uicore: مهلة ٦٠ ث — CDN معلّق بلا خطأ كان يترك الزرّ معطّلًا و«جاري تحميل البيئة» للأبد. التحميل الجاري لا يُلغى
+     ولا يُكرَّر: التشغيل التالي ينتظر الوعد نفسه (فلا يُلفّ toLocaleTimeString مرّتين). */
+  let __pyTimer = null;
+  try{
+    return await Promise.race([pyodideLoadingPromise, new Promise((_, reject) => { __pyTimer = setTimeout(() => reject(new Error('pyodide-timeout')), 60000); })]);
+  }finally{
+    clearTimeout(__pyTimer);
+  }
 }
 
 async function runPythonCode(code){
@@ -12201,7 +12525,12 @@ async function runPythonCode(code){
   }catch(err){
     /* v-py-locale: فشل تحميل البيئة نفسها نصّه إنجليزيّ تقنيّ («Program terminated with exit(1)») لا يخصّ كود المستخدم —
        يذهب للكونسول وحده ويرى المستخدم سطر الحالة بلغته. خطأ كود المستخدم (Traceback) يبقى ظاهرًا: هو ناتج البرنامج. */
-    if(__pyStage === 'load') console.warn('[python] runtime load failed:', (err && err.message) || err);
+    if(__pyStage === 'load'){
+      console.warn('[python] runtime load failed:', (err && err.message) || err);
+      /* v-audit-uicore: سطر يشرح بلغته أنّ البيئة لم تُحمَّل وأنّ «تشغيل» يعيد المحاولة (لا «خطأ» بلا سبب) */
+      const __pyMsg = t('axUicorePyLoadFail');
+      if(__pyMsg && __pyMsg !== 'axUicorePyLoadFail') outputEl.textContent = __pyMsg;
+    }
     else outputEl.textContent += '\n⚠️ ' + (err.message || err);
     statusEl.textContent = t('pythonError');
   }finally{
@@ -13456,6 +13785,7 @@ async function ensureVantaEffectScript(id){
   await loadScriptOnce('https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.' + id + '.min.js');
 }
 let currentVantaEffect = null;
+let bg3dGen = 0; /* v-audit-uicore: جيل الاختيار — نداء applyBg3D أقدم ينتظر سكربتاته لا يُنشئ أثره فوق اختيار أحدث */
 let bg3dAutoTimer = null;
 let currentCustomBg = null; // {raf, resizeHandler, canvas}
 function destroyBg3D(){
@@ -14078,6 +14408,7 @@ function getBg3DAccentColorHex(){
   } catch(e){ return 0x6b7280; }
 }
 async function applyBg3D(id, save){
+  const gen = ++bg3dGen;
   if(save !== false) localStorage.setItem('aiapp_bg3d', id);
   destroyBg3D();
   document.body.classList.toggle('vantaActive', id !== 'none');
@@ -14092,7 +14423,11 @@ async function applyBg3D(id, save){
   }
   try {
     await ensureBg3DDeps(eff.lib);
+    if(gen !== bg3dGen) return;
     await ensureVantaEffectScript(id);
+    /* v-audit-uicore: اختيار أحدث جاء أثناء التحميل («أمواج» ثمّ «ضباب»، أو «أمواج» ثمّ «محيط») — لا إنشاء: كان الأبطأ يكتب
+       currentVantaEffect فيُعرض غير المختار، ويبقى الآخر بحلقة rAF وسياق WebGL بلا destroy حتّى إعادة التحميل */
+    if(gen !== bg3dGen) return;
     if(!window.VANTA || !window.VANTA[id.toUpperCase()]) return;
     const color = getBg3DAccentColorHex();
     const P = bg3dPalette();
@@ -14291,16 +14626,11 @@ function exportProjects(){
       projects: state.projects || []
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
     const dateStr = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = `omran-ai-builder-projects-${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    alert(t('exportProjectsSuccess'));
+    /* v-audit-uicore: كان <a download> لـblob مباشرة — ميّت داخل الأغلفة (هواوي/آيفون) ثمّ alert «تمّ التصدير» فيظنّ المستخدم
+       أنّ نسخته محفوظة. المسار الموحّد (جسر التطبيق ← المشاركة ← رابط خادم بورقة «الملف جاهز»)؛ الكمبيوتر ينزّل مباشرة كما
+       كان، ورسالة النجاح له وحده — في الأغلفة الورقة نفسها هي التأكيد. */
+    if(!msgSaveExport(blob, `omran-ai-builder-projects-${dateStr}.json`)) alert(t('exportProjectsSuccess'));
   }catch(err){
     console.error('exportProjects failed', err);
   }
@@ -16835,6 +17165,10 @@ function throwProviderError(status, errText){
   // (429) or daily-quota (402) failure apart from a hard failure worth surfacing
   // immediately (auth, bad request, etc.).
   let err;
+  /* v-audit-prov (srv-providers-5): رمز الخادم الثابت لخطأ المزوّد ({error:'provider_failed', code}) يُعرض بنصّ الواجهة (providerError)
+     لا بجسمه — لا JSON في الفقاعة ولا في سطر الحالة. نصّ المزوّد الخامّ يصل المالك وحده من الخادم. */
+  let __pf = null;
+  try{ const __j = JSON.parse(errText); if(__j && __j.error === 'provider_failed') __pf = __j; }catch(_){ /* guard-ok — جسم غير JSON يُعامَل كما كان */ }
   if(status === 402){
     // 👑 الرد الاحترافي: 402 مع reason:'points' يعني نفاد النقاط (وليس حد يومي).
     let __pointsErr = false;
@@ -16869,12 +17203,13 @@ function throwProviderError(status, errText){
     }catch(e){ __swallow(e, "auth:app-06-checkout#10"); }
     err = sessionMsg ? new Error('🔒 ' + sessionMsg) : new Error(t('authError'));
   } else {
-    err = new Error(t('providerError') + status + ' - ' + (errText || '').slice(0, 200));
+    err = new Error(t('providerError') + status + (__pf ? '' : ' - ' + (errText || '').slice(0, 200)));
   }
   err.status = status;
   // v-claude-shape: مقتطف خطأ المزود الأصلي يظهر في سطر الحالة — «HTTP 400»
   // وحدها كانت تخفي السبب الحقيقي (شكل رسائل مرفوض، مفتاح، نموذج...).
   err.upstreamText = String(errText || '').replace(/\s+/g, ' ').slice(0, 160);
+  if(__pf) err.upstreamText = __pf.code === 'model_not_found' ? 'model_not_found' : ''; // v-audit-prov: model_not_found يُهبط callGroq إلى «الوصف ثمّ النصّ»
   throw err;
 }
 
@@ -18051,22 +18386,48 @@ let recordedChunks = [];
 let micStream = null;
 
 let activeMicBtn = null;
+/* v-audit-voice (cli-voice-4): isListening لا تصير true إلّا بعد وصول إذن المايك، فالنقرة الثانية من نقرة مزدوجة (أو نقرة
+   أثناء فتح بطيء لسمّاعة بلوتوث) كانت تفتح مسارًا ثانيًا يستبدل micStream وmediaRecorder، فيبقى الأوّل مضاءً حتّى إعادة التحميل
+   ويدفع مسجّله اليتيم مقاطعه في التسجيلات التالية. الآن علم «يبدأ» قبل الانتظار، ولكلّ مسجّل مصفوفته. */
+let micStarting = false;
 async function startMicRecording(targetBtn){
-  activeMicBtn = targetBtn || btnMic;
-  micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  let mimeType = '';
-  for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
-    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
-  }
-  mediaRecorder = mimeType ? new MediaRecorder(micStream, { mimeType }) : new MediaRecorder(micStream);
-  recordedChunks = [];
-  mediaRecorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) recordedChunks.push(e.data); };
-  // timeslice=1000ms: collect audio progressively. On some Android/Chrome builds a
-  // single final chunk gets truncated on stop(), so only the first 1-2 words survive.
-  mediaRecorder.start(1000);
-  isListening = true;
-  activeMicBtn.classList.remove('maha-orb-idle');
-  activeMicBtn.classList.add('recording');
+  if(micStarting || isListening) return;
+  micStarting = true;
+  let stream = null;
+  try{
+    activeMicBtn = targetBtn || btnMic;
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let mimeType = '';
+    for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
+    }
+    const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const chunks = [];
+    rec.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
+    // timeslice=1000ms: collect audio progressively. On some Android/Chrome builds a
+    // single final chunk gets truncated on stop(), so only the first 1-2 words survive.
+    rec.start(1000);
+    micStream = stream; mediaRecorder = rec; recordedChunks = chunks;
+    isListening = true;
+    activeMicBtn.classList.remove('maha-orb-idle');
+    activeMicBtn.classList.add('recording');
+  }catch(e){
+    if(stream){ try{ stream.getTracks().forEach(tr => tr.stop()); }catch(_){ __swallow(_, 'voice:mic-start-cleanup'); } } // مسجّل تعذّر = لا مايك مفتوح
+    throw e;
+  }finally{ micStarting = false; }
+}
+/* v-audit-voice (cli-voice-8): نصّ فشل التفريغ من الحالة والرمز وحدهما — كان نصّ الخادم يُعرض كما هو: عربيّ لكلّ اللغات،
+   ويذكر «المزوّد» و«مفتاحك الخاص»، و500 باسم مزوّد؛ وعطل الشبكة أو المهلة كان «المتصفّح لا يدعم إدخال الصوت». */
+function voiceTr(key, en, ar){
+  const v = t(key);
+  return (v && v !== key) ? v : ((typeof lang === 'string' && lang === 'ar') ? ar : en);
+}
+function voiceSttErrorText(status, data){
+  const code = (data && typeof data.error === 'string') ? data.error : '';
+  if(code === 'unavailable') return t('svcPaused');
+  if(status === 402 || code === 'daily_limit') return t('portraitLimitReached');
+  if(status === 401 || code === 'auth_required') return voiceTr('axVoiceSessionEnded', 'Your session has ended — please sign in again.', 'انتهت جلستك — سجّل الدخول من جديد.');
+  return t('mahaSttError');
 }
 
 function blobToBase64(blob){
@@ -18212,16 +18573,19 @@ function handleVoiceVideoIntent(promptText){
 async function stopMicRecordingAndTranscribe(autoRoute){
   if(!mediaRecorder) return;
   const btn = activeMicBtn || btnMic;
-  const mimeType = mediaRecorder.mimeType || 'audio/webm';
-  const finished = new Promise((resolve) => { mediaRecorder.onstop = resolve; });
-  mediaRecorder.stop();
+  // v-audit-voice (cli-voice-4): هذا المسجّل ومساره ومقاطعه وحدها — ونقرة إيقاف ثانية أثناء الانتظار لا تكرّر
+  const rec = mediaRecorder, stream = micStream, chunks = recordedChunks;
+  mediaRecorder = null; micStream = null;
+  const mimeType = rec.mimeType || 'audio/webm';
+  const finished = new Promise((resolve) => { rec.onstop = resolve; });
+  rec.stop();
   await finished;
-  if(micStream){ micStream.getTracks().forEach(tr => tr.stop()); micStream = null; }
+  if(stream){ stream.getTracks().forEach(tr => tr.stop()); }
   isListening = false;
   btn.classList.remove('recording');
   btn.classList.add('transcribing');
   try{
-    const blob = new Blob(recordedChunks, { type: mimeType });
+    const blob = new Blob(chunks, { type: mimeType });
     if(blob.size < 500){ btn.classList.remove('transcribing'); return; } // too short / no audio
     const audioBase64 = await blobToBase64(blob);
     const res = await fetch('/api/stt', {
@@ -18230,10 +18594,10 @@ async function stopMicRecordingAndTranscribe(autoRoute){
       signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
       body: JSON.stringify({ audioBase64, mimeType, lang, langHint: (autoRoute ? undefined : lang), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
     btn.classList.remove('transcribing');
     if(!res.ok){
-      alert(data && data.error === 'unavailable' ? t('svcPaused') : (data && typeof data.error === 'string' && data.error !== 'failed') ? data.error : t('micNotSupported')); // v-maha-paused: لا [object Object]
+      alert(voiceSttErrorText(res.status, data)); // v-audit-voice (cli-voice-8): لا نصّ الخادم الخامّ — v-maha-paused: ولا [object Object]
       return;
     }
     const transcript = (data && data.text ? data.text : '').trim();
@@ -18267,7 +18631,7 @@ async function stopMicRecordingAndTranscribe(autoRoute){
     }
   } catch(e){
     btn.classList.remove('transcribing');
-    alert(t('micNotSupported'));
+    alert(voiceSttErrorText(0, null)); // v-audit-voice (cli-voice-8): عطل الشبكة أو المهلة ليس «المتصفّح لا يدعم»
   }
 }
 
@@ -18304,24 +18668,34 @@ if(btnVoiceTabMic){
 // MediaRecorder and transcribes via the same server-side /api/stt endpoint,
 // then appends the transcript directly into its target field's value. ----
 const miniMicStates = {};
+const miniMicPending = {}; // v-audit-voice (cli-voice-4): هدف ينتظر إذن المايك — النقرة الثانية لا تفتح مسارًا ثانيًا
 
 async function miniMicStart(btn, targetId){
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  let mimeType = '';
-  for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
-    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
-  }
-  const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-  const chunks = [];
-  recorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
-  recorder.start();
-  miniMicStates[targetId] = { stream, recorder, chunks, mimeType };
-  btn.classList.add('recording');
+  if(miniMicPending[targetId] || miniMicStates[targetId]) return;
+  miniMicPending[targetId] = true;
+  let stream = null;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let mimeType = '';
+    for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
+    }
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
+    recorder.start();
+    miniMicStates[targetId] = { stream, recorder, chunks, mimeType };
+    btn.classList.add('recording');
+  }catch(e){
+    if(stream){ try{ stream.getTracks().forEach(tr => tr.stop()); }catch(_){ __swallow(_, 'voice:mini-start-cleanup'); } }
+    throw e;
+  }finally{ delete miniMicPending[targetId]; }
 }
 
 async function miniMicStop(btn, targetId){
   const st = miniMicStates[targetId];
   if(!st) return;
+  delete miniMicStates[targetId]; // v-audit-voice: نقرة إيقاف ثانية أثناء الانتظار لا تكرّر
   const finished = new Promise((resolve) => { st.recorder.onstop = resolve; });
   st.recorder.stop();
   await finished;
@@ -18330,7 +18704,6 @@ async function miniMicStop(btn, targetId){
   btn.classList.add('transcribing');
   try{
     const blob = new Blob(st.chunks, { type: st.recorder.mimeType || st.mimeType || 'audio/webm' });
-    delete miniMicStates[targetId];
     if(blob.size < 500){ btn.classList.remove('transcribing'); return; }
     const audioBase64 = await blobToBase64(blob);
     const res = await fetch('/api/stt', {
@@ -18339,10 +18712,10 @@ async function miniMicStop(btn, targetId){
       signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
       body: JSON.stringify({ audioBase64, mimeType: st.mimeType, lang, langHint: lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
     btn.classList.remove('transcribing');
     if(!res.ok){
-      alert(data && data.error === 'unavailable' ? t('svcPaused') : (data && typeof data.error === 'string' && data.error !== 'failed') ? data.error : t('micNotSupported')); // v-maha-paused: لا [object Object]
+      alert(voiceSttErrorText(res.status, data)); // v-audit-voice (cli-voice-8): لا نصّ الخادم الخامّ — v-maha-paused: ولا [object Object]
       return;
     }
     const transcript = (data && data.text ? data.text : '').trim();
@@ -18354,7 +18727,7 @@ async function miniMicStop(btn, targetId){
     }
   } catch(e){
     btn.classList.remove('transcribing');
-    alert(t('micNotSupported'));
+    alert(voiceSttErrorText(0, null)); // v-audit-voice (cli-voice-8)
   }
 }
 
@@ -19045,6 +19418,9 @@ const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat
 let mahaStream = null, mahaMediaRecorder = null, mahaChunks = [];
 let mahaAudioCtx = null, mahaAnalyser = null, mahaVadRaf = null, mahaLastPeakRms = 0, mahaLowMicStreak = 0;
 let mahaCallActive = false, mahaState = 'idle'; // idle | listening | thinking | speaking
+/* v-audit-voice (cli-voice-5): رقم جيل المكالمة — يزيد عند كلّ بدء. الحلقة الأساسيّة ونطقها يأخذانه عند البدء ويخرجان إن تغيّر:
+   mahaCallActive وحده كان يرجع true لمكالمة أُنهيت ثمّ فُتحت أثناء انتظار ردّ النموذج، فتنطق الحلقة القديمة ردّها فيها وتكمل بجانبها. */
+let mahaCallGen = 0;
 let mahaLastActivity = 0; // v-maha-band: آخر كلام أو ردّ — مهلة السكوت تُحسب منه
 let mahaHistory = [];
 let mahaIntroduced = false;
@@ -19459,7 +19835,7 @@ let mahaReplyLang = (typeof lang !== 'undefined' ? lang : 'ar');
 // تثبيت لغة الرد (المسار الاحتياطي): يمنع تقلب اللغة من كشف خاطئ واحد.
 let mahaLangLocked = false, mahaLangCandidate = null;
 
-async function mahaSpeak(text){
+async function mahaSpeak(text, gen){
   return new Promise(async (resolve) => {
     try{
       const resp = await fetch('/api/tts', {
@@ -19467,6 +19843,8 @@ async function mahaSpeak(text){
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: 'normal' /* v-speed-chat-only: «بطيء وسريع للدردشة فقط، ليس لمها وعبدالله» */, token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
       });
+      // v-audit-voice (cli-voice-5): الصوت وصل بعد إنهاء المكالمة أو بدء غيرها — لا يُشغَّل فيها ولا يُكتب في سطرها
+      if(gen !== undefined && (gen !== mahaCallGen || !mahaCallActive)){ resolve(); return; }
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
         // أجابت فعلًا — نعرض نص ردها على الشاشة مدة تكفي لقراءته ثم نكمل.
@@ -19478,6 +19856,7 @@ async function mahaSpeak(text){
         return;
       }
       const blob = await resp.blob();
+      if(gen !== undefined && (gen !== mahaCallGen || !mahaCallActive)){ resolve(); return; } // v-audit-voice
       const url = URL.createObjectURL(blob);
       const audio = mahaAudioEl;
       mahaCurrentAudio = audio;
@@ -19504,32 +19883,40 @@ async function mahaSpeak(text){
 
 // Records the mic and uses volume-based silence detection to know when the
 // user finished talking (hands-free - no button press needed per turn).
-async function mahaRecordUntilSilence(){
+/* v-audit-voice (cli-voice-5): المايك والمسجّل والمحلّل والمقاطع محلّيّة لهذا الدور (والعامّة مقابض فقط يطفئها mahaEndCall)،
+   وgen رقم مكالمته: مايك وصل بعد بدء مكالمة أخرى يُطفأ ولا يستبدل مايكها، ودورٌ صار قديمًا لا يمسّ مواردها. */
+async function mahaRecordUntilSilence(gen){
+  const live = () => mahaCallActive && (gen === undefined || gen === mahaCallGen);
   // نفس تحسينات المايك التي يطلبها الوضع الحديث: كانت الغائبة هنا، فصوت
   // المستخدم الهادئ يصل ضعيفًا وينرمى كأنه ضجيج — «أول مرة ما ترد».
-  mahaStream = await mahaGetUserMediaRetry({
+  const stream = await mahaGetUserMediaRetry({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
   });
+  if(!live()){ stream.getTracks().forEach(tr => tr.stop()); return null; }
+  mahaStream = stream;
   let mimeType = '';
   for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
     if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
   }
-  mahaMediaRecorder = mimeType ? new MediaRecorder(mahaStream, { mimeType }) : new MediaRecorder(mahaStream);
-  mahaChunks = [];
-  mahaMediaRecorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) mahaChunks.push(e.data); };
+  const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  const chunks = [];
+  mahaMediaRecorder = rec; mahaChunks = chunks;
+  rec.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
 
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  mahaAudioCtx = new AudioCtx();
-  const source = mahaAudioCtx.createMediaStreamSource(mahaStream);
-  mahaAnalyser = mahaAudioCtx.createAnalyser();
-  mahaAnalyser.fftSize = 2048;
-  source.connect(mahaAnalyser);
-  const dataArr = new Uint8Array(mahaAnalyser.fftSize);
+  const actx = new AudioCtx();
+  mahaAudioCtx = actx;
+  const source = actx.createMediaStreamSource(stream);
+  const analyser = actx.createAnalyser();
+  mahaAnalyser = analyser;
+  analyser.fftSize = 2048;
+  source.connect(analyser);
+  const dataArr = new Uint8Array(analyser.fftSize);
 
-  const finished = new Promise((resolve) => { mahaMediaRecorder.onstop = resolve; });
+  const finished = new Promise((resolve) => { rec.onstop = resolve; });
   // Collect progressively: some Android/Chrome builds truncate a single final
     // chunk on stop(), making the fallback hear only part of the first turn.
-    mahaMediaRecorder.start(1000);
+    rec.start(1000);
 
   const startTime = Date.now();
   // العتبات كانت ثابتة وعالية (0.022 صمت / ثانية كلام كاملة) — بغرفة هادئة
@@ -19548,8 +19935,8 @@ async function mahaRecordUntilSilence(){
 
   await new Promise((resolve) => {
     const tick = () => {
-      if(!mahaCallActive || mahaMediaRecorder.state !== 'recording'){ resolve(); return; }
-      mahaAnalyser.getByteTimeDomainData(dataArr);
+      if(!live() || rec.state !== 'recording'){ resolve(); return; }
+      analyser.getByteTimeDomainData(dataArr);
       let sumSq = 0;
       for(let i = 0; i < dataArr.length; i++){ const v = (dataArr[i] - 128) / 128; sumSq += v * v; }
       const rms = Math.sqrt(sumSq / dataArr.length);
@@ -19579,17 +19966,25 @@ async function mahaRecordUntilSilence(){
     };
     mahaVadRaf = requestAnimationFrame(tick);
   });
+  if(!live()){ // v-audit-voice: دور مكالمة سابقة — يُطفئ ما فتحه هو وحده، لا مقابض المكالمة الجديدة
+    if(rec.state === 'recording'){ try{ rec.stop(); }catch(e){ __swallow(e, 'maha:stale-rec'); } }
+    stream.getTracks().forEach(tr => tr.stop());
+    if(mahaAudioCtx === actx) mahaStopVad(); // غير ذلك أغلقه mahaEndCall أصلًا، أو المقبض لدور أحدث
+    if(mahaStream === stream) mahaStream = null;
+    return null;
+  }
   if(mahaOrbEl) mahaOrbEl.style.transform = '';
   mahaLastPeakRms = peakRms;
   // (أُزيل هنا كاشف الجنس من نبرة الصوت: كان يحسب ارتباطًا ذاتيًا ثقيلًا جدًا
   //  على الجوال طوال المكالمة ونتيجته مهملة منذ v493 — المستخدم يختار الصوت.)
 
   mahaStopVad();
-  if(mahaMediaRecorder.state === 'recording') mahaMediaRecorder.stop();
+  if(rec.state === 'recording') rec.stop();
   await finished;
-  mahaStopStream();
+  stream.getTracks().forEach(tr => tr.stop());
+  if(mahaStream === stream) mahaStream = null;
 
-  const blob = new Blob(mahaChunks, { type: mahaMediaRecorder.mimeType || mimeType || 'audio/webm' });
+  const blob = new Blob(chunks, { type: rec.mimeType || mimeType || 'audio/webm' });
   return blob;
 }
 
@@ -20587,11 +20982,15 @@ function mahaStartMicMeter(stream){
       while(mahaMicVoiced.length && mahaMicVoiced[0][0] < tickAt - 10000) mahaMicVoiced.shift();
       mahaMicLastTick = tickAt;
       fill.style.width = lvl + '%';
-      if(lvl > 8){ mahaMicSilenceStart = Date.now(); if(mahaMicWarned){ mahaMicWarned = false; const st = document.getElementById('mahaStateLabel'); if(st) st.textContent = ''; } }
+      /* v-audit-voice (cli-voice-9): التحذير كان عربيًّا ثابتًا لكلّ اللغات، ويظهر ومها تتكلّم (إلغاء الصدى يُسكت المايك وهو سليم)،
+         ويمسح سطر الحالة حين يتكلّم المستخدم. الآن: السكوت يُعدّ في الاستماع وحده، والنصّ mahaLowMic القائم بالـ١٤ لغة،
+         وزواله يعيد «أستمع» — وتغيّر الحالة كتب سطره بنفسه. */
+      const notListening = mahaRtPlaying || mahaState !== 'listening';
+      if(lvl > 8 || notListening){ mahaMicSilenceStart = Date.now(); if(mahaMicWarned){ mahaMicWarned = false; if(!notListening) mahaSetState('listening'); } }
       else if(!mahaMicWarned && Date.now() - mahaMicSilenceStart > 7000){
         mahaMicWarned = true;
         const st = document.getElementById('mahaStateLabel');
-        if(st) st.textContent = '⚠️ صوتك ما يوصل — تحقق من المايك';
+        if(st) st.textContent = '⚠️ ' + t('mahaLowMic'); // v-audit-voice (cli-voice-9) + v-audit-chatcli (x-i18n-5): mahaLowMic القائم بالـ١٤ لغة
       }
       mahaMicMeterRaf = requestAnimationFrame(tick);
     })();
@@ -21073,6 +21472,7 @@ async function mahaLookCamera(question){
 
 async function mahaHandleRtFunctionCall(ev){
   if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
+  const askDc = mahaRtDc; // v-audit-voice (cli-voice-5): النتيجة لقناة الجلسة التي طلبتها وحدها
   let args = {};
   try{ args = JSON.parse(ev.arguments || '{}'); }catch(e){ /* ignore */ }
 
@@ -21130,6 +21530,8 @@ async function mahaHandleRtFunctionCall(ev){
 
   // v-maha-img-wait: الأداة قد تأخذ ٢٠ث وأكثر، والمكالمة قد أُغلقت أثناءها (mahaRtDc = null) — لا نتيجة لقناة مغلقة، بصمت
   if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
+  // v-audit-voice (cli-voice-5): أُنهيت المكالمة وفُتحت غيرها أثناء الأداة — نتيجتها وresponse.create كانا يصلان الجلسة الجديدة فتردّ مها بلا سؤال
+  if(mahaRtDc !== askDc) return;
   try{
     mahaRtDc.send(JSON.stringify({
       type: 'conversation.item.create',
@@ -21314,12 +21716,16 @@ function mahaEndRealtimeCall(){
 }
 
 async function mahaCallLoop(){
-  while(mahaCallActive){
+  // v-audit-voice (cli-voice-5): حلقة هذه المكالمة وحدها — تخرج إن انتهت أو بدأت غيرها أثناء أيّ انتظار
+  const gen = mahaCallGen;
+  const live = () => mahaCallActive && gen === mahaCallGen;
+  while(live()){
     mahaSetState('listening');
     let blob;
     try{
-      blob = await mahaRecordUntilSilence();
+      blob = await mahaRecordUntilSilence(gen);
     }catch(e){
+      if(!live()) break; // خطأ مايك مكالمة سابقة لا يُنهي الجديدة
       // إن فشل شيء بعد فتح المايك (مثلاً MediaRecorder غير مدعوم) كان المايك
       // يظل «حيًّا» والمؤشر شغالًا حتى إعادة تحميل الصفحة — نطفيه هنا دائمًا.
       mahaStopVad();
@@ -21331,7 +21737,7 @@ async function mahaCallLoop(){
       alert(__m);
       break;
     }
-    if(!mahaCallActive) break;
+    if(!live()) break;
     if(!blob || blob.size < 800 || mahaLastPeakRms < 0.018){
       // Essentially silent/noise-only turn - the mic didn't pick up real speech,
       // just background noise. Don't send it to speech-to-text at all (avoids
@@ -21354,12 +21760,11 @@ async function mahaCallLoop(){
         signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
         body: JSON.stringify({ audioBase64, mimeType: blob.type, lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
-      const data = await res.json();
-      if(!mahaCallActive) break;
+      const data = await res.json().catch(() => null);
+      if(!live()) break;
       if(!res.ok){
         console.error('[maha] stt failed:', res.status, data);
-        const detail = (data && typeof data.error === 'string') ? data.error : ('HTTP ' + res.status); // v-maha-paused: لا [object Object]
-        mahaSetState('error', detail === 'unavailable' ? t('svcPaused') : (t('mahaSttError') + ' (' + detail.slice(0, 80) + ')')); // v-maha-paused: رصيد المزوّد نفد
+        mahaSetState('error', voiceSttErrorText(res.status, data)); // v-audit-voice (cli-voice-8): مترجم من الحالة والرمز، بلا نصّ الخادم بين قوسين — v-maha-paused: unavailable = svcPaused
         await new Promise(r => setTimeout(r, 3000));
         continue;
       }
@@ -21391,7 +21796,7 @@ async function mahaCallLoop(){
       if(data && data.lowConfidence){
         console.log('[maha] low-confidence transcript, asking user to repeat:', transcript);
         mahaSetState('speaking');
-        await mahaSpeak(t('mahaAskRepeat'));
+        await mahaSpeak(t('mahaAskRepeat'), gen);
         continue;
       }
 
@@ -21423,6 +21828,7 @@ async function mahaCallLoop(){
           __voiceRewrite = true;
         }
         const imgResult = await mahaGenerateOrEditImage(__voicePrompt, editMode, __voiceText, __voiceFont, __voiceColor, __voiceRewrite, __voicePos, __voiceTextRemove);
+        if(!live()) break; // v-audit-voice: لا ردّ صورة في تاريخ مكالمة أخرى
         let imgReply;
         if(imgResult.ok){
           imgReply = editMode ? t('mahaImageEditedReply') : t('mahaImageReadyReply');
@@ -21432,7 +21838,7 @@ async function mahaCallLoop(){
         mahaHistory.push({ role: 'assistant', content: imgReply });
         if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
         mahaSetState('speaking');
-        await mahaSpeak(imgReply);
+        await mahaSpeak(imgReply, gen);
         continue;
       }
 
@@ -21473,9 +21879,9 @@ async function mahaCallLoop(){
       let lastErr = null;
       for(const providerKey of order){
         try{ reply = await callProviderAI(providerKey, messages); lastErr = null; break; }
-        catch(e){ console.error('[maha] provider', providerKey, 'failed:', e); lastErr = e; continue; }
+        catch(e){ console.error('[maha] provider', providerKey, 'failed:', e); lastErr = e; if(!live()) break; continue; }
       }
-      if(!mahaCallActive) break;
+      if(!live()) break; // v-audit-voice: ردّ سؤال مكالمة سابقة لا يُنطق في الجديدة
       if(lastErr && !reply){
         console.error('[maha] all providers failed');
         mahaSetState('error', t('mahaConnectionError'));
@@ -21488,7 +21894,7 @@ async function mahaCallLoop(){
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       mahaSetState('speaking');
-      await mahaSpeak(reply);
+      await mahaSpeak(reply, gen);
     }catch(e){ console.error('[maha] turn error', e); }
   }
 }
@@ -21752,6 +22158,7 @@ async function mahaStartCallInner(mode){
   const __mahaName = (__mahaLang === 'ar' || __mahaLang === 'ur') ? 'مها' : 'Maha';
   if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : __mahaName;
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
+  mahaCallGen++; // v-audit-voice (cli-voice-5): حلقة مكالمة سابقة لم تخرج بعد تخرج عند أوّل فحص
   mahaCallActive = true;
   if(mahaCallScreenEl){
     mahaCallScreenEl.style.display = 'flex';
@@ -21797,7 +22204,8 @@ async function mahaStartCallInner(mode){
     mahaEndRealtimeCall();
     // v-maha-mute: السقوط للوضع الأساسي كان صامتًا (وسم صغير فقط) — نبّه
     // المتصل لحظةً حتى لا يظن المكالمة معلّقة.
-    try{ mahaSetState('thinking', 'الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️'); }catch(e2){ __swallow(e2, 'maha:fallback-note'); }
+    // v-audit-voice (cli-voice-9): بلغة الواجهة — كان عربيًّا ثابتًا لكلّ اللغات (والاحتياط حتّى يصل المفتاح بالـ١٤ لغة)
+    try{ mahaSetState('thinking', voiceTr('axVoiceBasicFallback', "HD voice isn't available right now — continuing in basic mode 🎙️", 'الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️')); }catch(e2){ __swallow(e2, 'maha:fallback-note'); }
   }
   if(!mahaCallActive) return;
   if(!window.MediaRecorder){
@@ -22275,6 +22683,33 @@ function isImageAttachment(file){
   }catch(_e){ __swallow(_e, "attach:isImage"); }
   return false;
 }
+/* v-audit-attach (cli-chat-attach-8 · x-i18n-6): نصّ واجهة بمفتاح الـ١٤ لغة عبر t(). إن غاب المفتاح (نصّ جديد قبل وصول ترجمته
+   أو ملفّ لغة لم يُحمَّل) فالعربيّة للعربيّة وحدها والإنجليزيّة لغيرها — كانت ثنائيّات lang==='ar' تعرض الإنجليزيّة لاثنتي عشرة
+   لغة، وبعضها العربيّة لكلّ غير الإنجليزيّة وللأورديّة. */
+function omranAttachT(key, ar, en){
+  try{ const v = (typeof t === 'function') ? t(key) : key; if(v && v !== key) return v; }catch(e){ __swallow(e, 'attach:t'); }
+  return (typeof lang !== 'undefined' && lang === 'ar') ? ar : en;
+}
+/* v-audit-attach (cli-chat-attach-4): حقل الإرفاق بلا accept، وكلّ ما ليس صورة ولا PDF ولا أرشيفًا ولا فيديو كان يُقرأ نصًّا — رسالة
+   صوتيّة ٢ م.ب صارت ٤٥٠ ألف حرف (١٩٧ ألف منها U+FFFD) تُرسل للنموذج في كلّ رسالة، والبطاقة تعرضها ملفًّا نصّيًّا. الثنائيّ يُعرف
+   بنوعه أو امتداده قبل القراءة، أو بعيّنة النصّ بعدها (NUL، أو أكثر من ٢٪ حروفًا تالفة في أوّل ٨ آلاف حرف)، فيصير شريحة خطأ مترجمة.
+   لا .dot ولا .pot في القائمة: مخطّط Graphviz وقالب ترجمة gettext نصّان؛ قالبا Word/PowerPoint بهما تكشفهما العيّنة.
+   ولا doc/xls/xlt/ppt/pps: كشوف البنوك و«تصدير إلى Excel» في الأنظمة الحكوميّة وERP جدول HTML أو SpreadsheetML محفوظ ‎.xls‎،
+   و«تصدير إلى Word» HTML أو RTF محفوظ ‎.doc‎ — نصّ كان يُقرأ قبل الإصلاح؛ وملفّ Office 97 الحقيقيّ (OLE2) فيه NUL في أوّل ٥١٢ بايتًا
+   دائمًا فتكشفه العيّنة. وقوائم التشغيل النصّيّة (‎.m3u‎ بنوع audio/x-mpegurl، و‎.pls‎ بنوع audio/x-scpls) خارج قاعدة audio. */
+const OMRAN_BINARY_EXT_RE = /\.(?:mp3|m4a|aac|ogg|oga|opus|wav|flac|amr|wma|aiff?|midi?|odt|ods|odp|pages|numbers|epub|rar|7z|gz|tgz|bz2|xz|tar|zst|cab|apk|aab|xapk|ipa|exe|msi|dll|so|dylib|bin|dmg|iso|psd|sketch|fig|xcf|ttf|otf|woff2?|eot|class|dex|pyc|wasm|db|sqlite3?|mdb|accdb)$/i;
+function omranIsBinaryAttach(file, text){
+  try{
+    const ty = String((file && file.type) || '');
+    if(text == null) return (/^(?:audio|font)\//i.test(ty) && !/(?:mpegurl|scpls)$/i.test(ty)) || OMRAN_BINARY_EXT_RE.test((file && file.name) || '');
+    const s = String(text).slice(0, 8000);
+    if(!s) return false;
+    if(s.indexOf('\u0000') !== -1) return true;
+    let bad = 0;
+    for(let i = 0; i < s.length; i++) if(s.charCodeAt(i) === 0xFFFD) bad++;
+    return bad / s.length > 0.02;
+  }catch(e){ __swallow(e, 'attach:binary'); return false; }
+}
 
 /* v-gold-badge: الشرائح مضمّنة داخل الملفّ — لا مسارات ولا ملفّات صور
    منفصلة، فلا تتعطّل البطاقة إن لم يُنشَر مجلّد الصور. ~30KB إجمالًا. */
@@ -22527,14 +22962,14 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       const w = window.open(u, '_blank');
       if(w){
         setTimeout(() => { try{ URL.revokeObjectURL(u); }catch(e){ /* guard-ok — cleanup revoke */ } }, 60000);
-        note(ar ? 'فتحت الصورة في صفحة مستقلّة — اضغط عليها مطوّلًا ثمّ «مشاركة»' : 'Image opened in a new tab — long-press it, then Share');
+        note(omranAttachT('axAttachImgOpenedTab', 'فتحت الصورة في صفحة مستقلّة — اضغط عليها مطوّلًا ثمّ «مشاركة»', 'Image opened in a new tab — long-press it, then Share'));
         return true;
       }
       try{ URL.revokeObjectURL(u); }catch(e){ /* guard-ok — cleanup, intentional */ }
     }catch(e){ __swallow(e, 'openFull:app-09-attach#v625'); }
     return false;
   };
-  const hint = (bl) => { if(openFull(bl)) return; note(ar ? 'اضغط مطوّلًا على الصورة ثمّ «مشاركة»' : 'Long-press the image, then Share'); };
+  const hint = (bl) => { if(openFull(bl)) return; note(omranAttachT('axAttachImgLongPress', 'اضغط مطوّلًا على الصورة ثمّ «مشاركة»', 'Long-press the image, then Share')); };
   const copyImg = (b, bl) => {
     try{
       if(bl && navigator.clipboard && window.ClipboardItem && navigator.clipboard.write){
@@ -22542,7 +22977,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
            وصور التراجع والمحرّكات JPEG فكانت تُرفض. غير PNG يُحوَّل بالكانفس (pngBlob كـautoCopy)، والوعد داخل ClipboardItem فلا يضيع إذن النقرة في سفاري. */
         const png = (bl.type || 'image/png') === 'image/png' ? bl : pngBlob();
         navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
-          .then(() => { flash(b, svg('done')); note(ar ? 'نُسخت الصورة — الصقها في أيّ محادثة' : 'Image copied — paste it anywhere'); })
+          .then(() => { flash(b, svg('done')); note(omranAttachT('axAttachImgCopied', 'نُسخت الصورة — الصقها في أيّ محادثة', 'Image copied — paste it anywhere')); })
           .catch((e) => { __swallow(e, 'copy:app-09-attach#v625'); hint(bl); });
         return;
       }
@@ -22552,7 +22987,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
   const saveThen = (b, bl) => {
     if(saveDl(bl)){
       flash(b, svg('done'));
-      note(ar ? 'حُفظت الصورة في «التنزيلات» — أرسلها من هناك لأيّ تطبيق' : 'Saved to Downloads — send it from there to any app');
+      note(omranAttachT('axAttachImgSavedSend', 'حُفظت الصورة في «التنزيلات» — أرسلها من هناك لأيّ تطبيق', 'Saved to Downloads — send it from there to any app'));
       return;
     }
     copyImg(b, bl);
@@ -22565,12 +23000,12 @@ window.__omranImgTools = function(wrap, dataUrl, att){
   const APPS = [
     { n: ar ? 'واتساب' : 'WhatsApp', g: 'wa', c: '#25D366', u: (l) => 'https://wa.me/?text=' + encodeURIComponent(l) },
     { n: ar ? 'تيليجرام' : 'Telegram', g: 'tg', c: '#229ED9', u: (l) => 'https://t.me/share/url?url=' + encodeURIComponent(l) },
-    { n: ar ? 'انستغرام' : 'Instagram', g: 'ig', c: 'radial-gradient(circle at 30% 110%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%)', copy: ar ? 'نُسخ الرابط — الصقه في انستغرام' : 'Link copied — paste it in Instagram' },
-    { n: ar ? 'سناب شات' : 'Snapchat', g: 'sn', c: '#FFFC00', fg: '#16161a', copy: ar ? 'نُسخ الرابط — الصقه في سناب شات' : 'Link copied — paste it in Snapchat' },
+    { n: ar ? 'انستغرام' : 'Instagram', g: 'ig', c: 'radial-gradient(circle at 30% 110%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%)', copy: omranAttachT('axAttachLinkPasteIn', 'نُسخ الرابط — الصقه في {app}', 'Link copied — paste it in {app}').replace('{app}', ar ? 'انستغرام' : 'Instagram') },
+    { n: ar ? 'سناب شات' : 'Snapchat', g: 'sn', c: '#FFFC00', fg: '#16161a', copy: omranAttachT('axAttachLinkPasteIn', 'نُسخ الرابط — الصقه في {app}', 'Link copied — paste it in {app}').replace('{app}', ar ? 'سناب شات' : 'Snapchat') },
     { n: ar ? 'فيسبوك' : 'Facebook', g: 'fb', c: '#1877F2', u: (l) => 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(l) },
     { n: 'X', g: 'x', c: '#111114', u: (l) => 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(l) },
-    { n: ar ? 'الرسائل' : 'Messages', g: 'sms', c: '#34C759', u: (l) => 'sms:?body=' + encodeURIComponent(l) },
-    { n: ar ? 'البريد' : 'Email', g: 'ml', c: '#EA4335', u: (l) => 'mailto:?subject=' + encodeURIComponent(ar ? 'صورة' : 'Image') + '&body=' + encodeURIComponent(l) }
+    { n: omranAttachT('axAttachAppMessages', 'الرسائل', 'Messages'), g: 'sms', c: '#34C759', u: (l) => 'sms:?body=' + encodeURIComponent(l) },
+    { n: omranAttachT('axAttachAppEmail', 'البريد', 'Email'), g: 'ml', c: '#EA4335', u: (l) => 'mailto:?subject=' + encodeURIComponent(omranAttachT('axAttachMailSubject', 'صورة', 'Image')) + '&body=' + encodeURIComponent(l) }
   ];
   const GL = {
     wa: '<path d="M21 11.6a8.6 8.6 0 0 1-12.8 7.5L3.6 20.4l1.4-4.5A8.6 8.6 0 1 1 21 11.6z"/><path d="M9.2 9.1c.5 1.9 2.1 3.6 4.1 4.2"/>',
@@ -22629,9 +23064,9 @@ window.__omranImgTools = function(wrap, dataUrl, att){
   const saveOpen = (t) => {
     let bl = null;
     try{ bl = toBlob(dataUrl); }catch(e){ __swallow(e, 'saveOpen:app-09-attach#v642'); }
-    const nm = (t && t.n) ? t.n : (ar ? 'التطبيق' : 'the app');
+    const nm = (t && t.n) ? t.n : omranAttachT('axAttachTheApp', 'التطبيق', 'the app');
     if(saveDl(bl)){
-      note(ar ? ('حُفظت الصورة في «التنزيلات» — أرفقها في ' + nm) : ('Saved to Downloads — attach it in ' + nm));
+      note(omranAttachT('axAttachSavedAttachIn', 'حُفظت الصورة في «التنزيلات» — أرفقها في {app}', 'Saved to Downloads — attach it in {app}').replace('{app}', nm));
       return true;
     }
     hint(bl);
@@ -22659,13 +23094,13 @@ window.__omranImgTools = function(wrap, dataUrl, att){
         if(e && e.name === 'AbortError') return;
         __why = 'file:' + ((e && (e.name || e.message)) || '?');
         __swallow(e, 'shareFile:app-09-attach#v642');
-        note((ar ? 'رفض المتصفّح إرسال الملفّ' : 'Browser refused the file') + ' — ' + ((e && (e.name || e.message)) || '?'));
+        note(omranAttachT('axAttachBrowserRefused', 'رفض المتصفّح إرسال الملفّ', 'Browser refused the file') + ' — ' + ((e && (e.name || e.message)) || '?'));
         if(typeof onFail === 'function') onFail();
       });
       return true;
     }catch(e){
       __swallow(e, 'shareFile:app-09-attach#v642');
-      try{ note((ar ? 'رفض المتصفّح إرسال الملفّ' : 'Browser refused the file') + ' — ' + ((e && (e.name || e.message)) || '?')); }catch(_){ /* guard-ok — cleanup, intentional */ }
+      try{ note(omranAttachT('axAttachBrowserRefused', 'رفض المتصفّح إرسال الملفّ', 'Browser refused the file') + ' — ' + ((e && (e.name || e.message)) || '?')); }catch(_){ /* guard-ok — cleanup, intentional */ }
     }
     return false;
   };
@@ -22778,14 +23213,14 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     ov.onclick = (e) => { if(e.target === ov) close(); };
     document.addEventListener('keydown', esc);
     const hd = document.createElement('div'); hd.className = 'oShHd';
-    hd.innerHTML = '<span>' + (ar ? 'إرسال الصورة' : 'Send image') + '</span>';
+    hd.innerHTML = '<span>' + omranAttachT('axAttachSendImage', 'إرسال الصورة', 'Send image') + '</span>';
     const xb = document.createElement('button'); xb.type = 'button'; xb.className = 'oShX';
-    xb.textContent = ar ? 'إغلاق' : 'Close'; xb.onclick = close; hd.appendChild(xb);
+    xb.textContent = omranAttachT('closeTitle', 'إغلاق', 'Close'); xb.onclick = close; hd.appendChild(xb);
     sh.appendChild(hd);
     const stx = document.createElement('p'); stx.className = 'oShS';
     stx.textContent = filePossible()
-      ? (ar ? 'تُرسَل الصورة ملفًّا — بلا رابط ولا بطاقة' : 'Sent as a file — no link, no card')
-      : (ar ? 'سيُرسَل رابط الصورة مباشرةً للتطبيق الذي تختاره' : 'A direct image link will be sent to the app you pick');
+      ? omranAttachT('axAttachSentAsFile', 'تُرسَل الصورة ملفًّا — بلا رابط ولا بطاقة', 'Sent as a file — no link, no card')
+      : omranAttachT('axAttachSentAsLink', 'سيُرسَل رابط الصورة مباشرةً للتطبيق الذي تختاره', 'A direct image link will be sent to the app you pick');
     sh.appendChild(stx);
     /* v-share-bridge: سطر التشخيص (no-share-api • Chrome …) أُزيل من ورقة المستخدم — أدّى غرضه */
     const gr = document.createElement('div'); gr.className = 'oShGr'; sh.appendChild(gr);
@@ -22830,23 +23265,23 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       ac.appendChild(b);
       return b;
     };
-    act(ar ? 'مشاركة عبر تطبيقات الجهاز' : 'Share via device apps', 'share', () => {
+    act(omranAttachT('axAttachShareDevice', 'مشاركة عبر تطبيقات الجهاز', 'Share via device apps'), 'share', () => {
       if(nativeBridgeShare()){ close(); return; }
       // v642 — الملفّ فقط. إن رفضه المتصفّح تُحفظ الصورة — لا يُشارَك رابط.
       if(shareFile(() => saveOpen(null))){ close(); return; }
       saveOpen(null);
     });
-    act(ar ? 'نسخ رابط الصورة' : 'Copy image link', 'lnk', () => {
-      const run = (l) => { if(l && cpTxt(l)) note(ar ? 'نُسخ الرابط' : 'Link copied'); else note(ar ? 'تعذّر تحضير الرابط' : 'Link failed'); };
+    act(omranAttachT('sheetCopyLink', 'نسخ رابط الصورة', 'Copy image link'), 'lnk', () => {
+      const run = (l) => { if(l && cpTxt(l)) note(omranAttachT('sheetCopied', 'نُسخ الرابط', 'Link copied')); else note(omranAttachT('axAttachLinkFailed', 'تعذّر تحضير الرابط', 'Could not prepare the link')); };
       if(shUrl) run(shUrl); else upload().then(run);
     });
-    act(ar ? 'تنزيل الصورة' : 'Download image', 'dl', () => {
+    act(omranAttachT('axAttachDownloadImage', 'تنزيل الصورة', 'Download image'), 'dl', () => {
       let bl = null;
       try{ bl = toBlob(dataUrl); }catch(e){ __swallow(e, 'dl:app-09-attach#v627'); }
-      if(saveDl(bl)){ note(ar ? 'حُفظت الصورة في «التنزيلات»' : 'Saved to Downloads'); close(); return; }
+      if(saveDl(bl)){ note(omranAttachT('sheetDlDesktop', 'حُفظت الصورة في «التنزيلات»', 'Saved to Downloads')); close(); return; }
       hint(bl);
     });
-    act(ar ? 'نسخ الصورة' : 'Copy image', 'img', (b) => {
+    act(omranAttachT('sheetCopyImg', 'نسخ الصورة', 'Copy image'), 'img', (b) => {
       let bl = null;
       try{ bl = toBlob(dataUrl); }catch(e){ __swallow(e, 'cpimg:app-09-attach#v627'); }
       copyImg(b, bl);
@@ -22855,7 +23290,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     //    قائمة النظام الحقيقية تعمل كاملة (نشاط كروم يعلن BROWSABLE).
     try{
       if(/android/i.test(navigator.userAgent || '') && typeof navigator.share !== 'function' && !inWebView()){
-        act(ar ? 'فتح الموقع في متصفّح كروم' : 'Open in Chrome', 'share', () => {
+        act(omranAttachT('axAttachOpenChrome', 'فتح الموقع في متصفّح كروم', 'Open in Chrome'), 'share', () => {
           const u = new URL(location.href); u.hash = '';
           const tg = u.host + u.pathname + u.search;
           location.href = 'intent://' + tg + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(u.href) + ';end';
@@ -22893,7 +23328,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     if(!abar && !last) return;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'oSendOut';
-    b.title = ar ? 'إرسال الصورة' : 'Send image';
+    b.title = omranAttachT('axAttachSendImage', 'إرسال الصورة', 'Send image');
     b.setAttribute('aria-label', b.title);
     b.innerHTML = svg('share');
     b.onclick = (e) => {
@@ -22947,7 +23382,7 @@ window.__omranImgTools = function(wrap, dataUrl, att){
       };
       __why = 'no-share-api';
       // v653 — قبل فتح ورقتنا: انسخ الصورة نفسها للحافظة ليلصقها المستخدم صورةً
-      try{ autoCopy().then((ok) => { if(ok) note(ar ? 'نُسخت الصورة تلقائيًّا — الصقها داخل المحادثة بعد فتح التطبيق' : 'Image copied — paste it after opening the app'); }); }catch(_){ /* guard-ok — cleanup, intentional */ }
+      try{ autoCopy().then((ok) => { if(ok) note(omranAttachT('axAttachImgAutoCopied', 'نُسخت الصورة تلقائيًّا — الصقها داخل المحادثة بعد فتح التطبيق', 'Image copied — paste it after opening the app')); }); }catch(_){ /* guard-ok — cleanup, intentional */ }
       if(shUrl){ if(tryIntent(shUrl)) return; openSheet(); return; }
       upload().then((u) => { if(u && tryIntent(u)) return; openSheet(); });
     };
@@ -23250,16 +23685,23 @@ const MAX_ARCHIVE_DIRECT_BYTES = 3 * 1024 * 1024;
 /* v412 — قراءة مجزّأة بدل FileReader.readAsDataURL:
  * ① arrayBuffer() يرمي خطأً يحمل اسمه وسببه (بدل onerror الصامت).
  * ② التحويل على أجزاء 32 ك.ب يبقي الذاكرة منخفضة. */
+/* v-audit-chatcli (x-i18n-5): أخطاء المرفقات الظاهرة في شريطها بلغة الواجهة (axChatcliAtt*) — كانت عربيّة ثابتة لكلّ اللغات؛ العربيّة احتياطها */
+function omranAttTx(k, fb, vars){
+  let v = '';
+  try{ v = (typeof t === 'function') ? t(k) : ''; }catch(e){ v = ''; } // guard-ok — بلا قاموس يبقى الاحتياط العربيّ
+  let s = String((v && v !== k) ? v : fb);
+  if(vars) Object.keys(vars).forEach(n => { s = s.split('{' + n + '}').join(String(vars[n])); });
+  return s;
+}
 async function fileToBase64(file){
   let buf;
   try {
     buf = await file.arrayBuffer();
   } catch (e) {
     const why = (e && (e.name || e.message)) ? (' (' + (e.name || e.message) + ')') : '';
-    throw new Error('تعذّر قراءة الملف' + why +
-      '. تأكد أنه محمّل على جهازك فعلًا وليس على السحابة فقط، ثم أعد المحاولة.');
+    throw new Error(omranAttTx('axChatcliAttReadFail', 'تعذّر قراءة الملف{why}. تأكد أنه محمّل على جهازك فعلًا وليس على السحابة فقط، ثم أعد المحاولة.', { why }));
   }
-  if (!buf || !buf.byteLength) throw new Error('الملف فارغ أو تعذّر فتحه.');
+  if (!buf || !buf.byteLength) throw new Error(omranAttTx('axChatcliAttEmpty', 'الملف فارغ أو تعذّر فتحه.'));
   const bytes = new Uint8Array(buf);
   let binary = '';
   const CHUNK = 32768;
@@ -23267,6 +23709,87 @@ async function fileToBase64(file){
     binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
   }
   return btoa(binary);
+}
+
+/* v-audit-attach (cli-chat-attach-3): وثيقة Office (docx/xlsx/pptx) أرشيف zip من XML. الفكّ المحلّيّ كان يقرأ كلّ ‎.xml‎ فيها نصًّا
+   خامًا بوسومه (styles وtheme و[Content_Types]…) ويقصّ document.xml عند ٨٠ ألف حرف — وثيقة ٦٠٠ فقرة وصل منها ٣١٧ بسبعة أضعاف
+   التكلفة، وخلايا Excel منفصلة عن نصوصها — ولا خطأ فلا يبلغ الخادمَ أبدًا. الآن أجزاء المحتوى وحدها بلا وسوم: كلّ فقرة سطر، وكلّ
+   صفّ سطر بخلاياه (النصوص المشتركة في خلاياها)، والشرائح بترتيبها. وثيقة بلا نصّ = خطأ فيكمل المسار إلى الخادم كما كان. */
+function omranXmlText(xml){
+  return String(xml || '').replace(/\r?\n/g, ' ')
+    .replace(/<(?:\w+:)?tab\/>/g, '\t')
+    .replace(/<\/(?:\w+:)?p>|<(?:\w+:)?(?:br|cr)\b[^>]*\/>/g, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&#x([0-9a-f]+);|&#(\d+);/gi, (m, h, d) => { try{ return String.fromCodePoint(h ? parseInt(h, 16) : parseInt(d, 10)); }catch(e){ return m; } })
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
+    .split('\n').map((l) => l.replace(/ {2,}/g, ' ').replace(/^ +| +$/g, '')).join('\n')
+    .replace(/\n{3,}/g, '\n\n').trim();
+}
+function omranXlsxShared(xml){
+  const out = [];
+  String(xml || '').replace(/<(?:\w+:)?si\b[^>]*>([\s\S]*?)<\/(?:\w+:)?si>|<(?:\w+:)?si\s*\/>/g, (m, body) => {
+    let s = '';
+    String(body || '').replace(/<(?:\w+:)?rPh\b[\s\S]*?<\/(?:\w+:)?rPh>/g, '')
+      .replace(/<(?:\w+:)?t(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?t>/g, (m2, tx) => { s += tx; return m2; });
+    out.push(omranXmlText(s));
+    return m;
+  });
+  return out;
+}
+function omranXlsxSheetText(xml, shared){
+  const rows = [];
+  String(xml || '').replace(/<(?:\w+:)?row\b[^>]*>([\s\S]*?)<\/(?:\w+:)?row>/g, (m, body) => {
+    const cells = [];
+    body.replace(/<(?:\w+:)?c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g, (m2, attrs, inner) => {
+      const ref = (attrs.match(/\br="([A-Z]+)\d*"/) || [])[1];
+      const typ = (attrs.match(/\bt="(\w+)"/) || [])[1] || '';
+      let val = '';
+      if(inner){
+        if(typ === 'inlineStr') val = omranXmlText(inner);
+        else {
+          const v = (inner.match(/<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/) || [])[1];
+          if(v != null) val = typ === 's' ? String(shared[parseInt(v, 10)] || '') : omranXmlText(v);
+        }
+      }
+      let col = cells.length;
+      if(ref){ col = 0; for(const ch of ref) col = col * 26 + (ch.charCodeAt(0) - 64); col -= 1; }
+      while(cells.length < col && cells.length < 256) cells.push(''); // عمود بعيد في ورقة متناثرة لا يصنع آلاف الخلايا الفارغة
+      cells.push(val.replace(/\t/g, ' '));
+      return m2;
+    });
+    while(cells.length && !cells[cells.length - 1]) cells.pop();
+    if(cells.length) rows.push(cells.join('\t'));
+    return m;
+  });
+  return rows.join('\n');
+}
+async function omranOfficeZipText(zip, fileName){
+  const names = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
+  const num = (n) => parseInt((n.match(/(\d+)\.xml$/) || [])[1] || '0', 10);
+  const pick = (re) => names.filter((n) => re.test(n)).sort((a, b) => num(a) - num(b));
+  const read = async (n) => { try{ return await zip.files[n].async('string'); }catch(e){ __swallow(e, 'attach:office-part'); return ''; } };
+  const sections = [];
+  for(const n of pick(/^word\/document\d*\.xml$/)) sections.push([n, omranXmlText(await read(n))]);
+  const sheets = pick(/^xl\/worksheets\/sheet\d+\.xml$/);
+  if(sheets.length){
+    const shared = names.indexOf('xl/sharedStrings.xml') !== -1 ? omranXlsxShared(await read('xl/sharedStrings.xml')) : [];
+    for(const n of sheets) sections.push([n, omranXlsxSheetText(await read(n), shared)]);
+  }
+  for(const n of pick(/^ppt\/slides\/slide\d+\.xml$/)) sections.push([n, omranXmlText(await read(n))]);
+  const MAX_TOTAL = 300000;
+  const parts = ['النصّ المستخرج من المستند "' + fileName + '" (بلا تنسيق):'];
+  let used = 0, readCount = 0, cut = false;
+  for(const [n, txt] of sections){
+    if(!txt) continue;
+    if(used >= MAX_TOTAL){ cut = true; break; }
+    const piece = txt.slice(0, MAX_TOTAL - used);
+    if(piece.length < txt.length) cut = true;
+    parts.push('\n--- ' + n + ' ---\n' + piece);
+    used += piece.length; readCount++;
+  }
+  if(!used) throw new Error('لا يوجد نصّ قابل للقراءة داخل المستند.');
+  parts.push('\n\n=== خلاصة القراءة ===\nقُرئ ' + readCount + ' جزء (' + used.toLocaleString('en-US') + ' حرف).' + (cut ? ' اختُصر الباقي بعد بلوغ الحدّ الإجماليّ.' : ''));
+  return parts.join('\n');
 }
 
 /* v412 — فكّ الأرشيف في المتصفح: يزيل حدّ الـ3 م.ب كليًا. بدل إرسال الأرشيف
@@ -23282,6 +23805,7 @@ async function unzipInBrowser(file){
     });
   }
   const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+  if(zip.files['[Content_Types].xml']) return omranOfficeZipText(zip, file.name); // v-audit-attach (cli-chat-attach-3): Office = نصّه لا XML
   const TEXT = /\.(txt|md|markdown|js|jsx|ts|tsx|mjs|cjs|json|html?|css|scss|less|py|rb|php|java|c|cpp|h|hpp|cs|go|rs|swift|kt|sh|bash|yml|yaml|xml|sql|env|vue|svelte|toml|ini|conf|csv)$/i;
   const SKIP = /(^|\/)(node_modules|\.git|dist|build|\.next|__pycache__|__MACOSX)\//;
   const names = Object.keys(zip.files)
@@ -23326,8 +23850,8 @@ async function processArchiveAttachment(file, attachment, preReadB64){
       // ملفات Office (docx/xlsx/pptx) بنيتها خاصة — الخادم يعرف كيف يقرأها.
     }
     if(file.size > MAX_ARCHIVE_DIRECT_BYTES){
-      throw new Error('الملف ' + (file.size / 1048576).toFixed(1) + ' م.ب — الحد ' +
-        (MAX_ARCHIVE_DIRECT_BYTES / 1048576) + ' م.ب للتحليل على الخادم. احذف مجلدات مثل node_modules وأعد الضغط.');
+      throw new Error(omranAttTx('axChatcliAttZipBig', 'الملف {size} م.ب — الحد {max} م.ب للتحليل على الخادم. احذف مجلدات مثل node_modules وأعد الضغط.',
+        { size: (file.size / 1048576).toFixed(1), max: MAX_ARCHIVE_DIRECT_BYTES / 1048576 }));
     }
     const fileBase64 = preReadB64 || await fileToBase64(file);
     const resp = await fetch('/api/analyze-zip', {
@@ -23336,7 +23860,8 @@ async function processArchiveAttachment(file, attachment, preReadB64){
       body: JSON.stringify({ fileBase64, filename: file.name, token: authGet('aiapp_auth_token'), guestId: (window.getGuestId ? window.getGuestId() : undefined) }) // v-sec-zip-gate: الحصّة على الحساب/الشبكة
     });
     const data = await resp.json().catch(() => ({}));
-    if(!resp.ok || !data.ok) throw new Error(data.error || ('فشل التحليل (HTTP ' + resp.status + ')'));
+    /* v-audit-chatcli: نصّ الخادم عربيّ ثابت — يظهر للعربيّ وحده، وغيره سطر مترجَم بحالة الطلب (دخول/حدّ يوميّ قائمان، وغيرهما فشل التحليل) */
+    if(!resp.ok || !data.ok) throw new Error(((typeof lang === 'undefined' || lang === 'ar') && data.error) || omranAttTx(resp.status === 401 ? 'portraitNeedLogin' : (resp.status === 429 ? 'portraitLimitReached' : 'axChatcliAttZipFail'), data.error || 'فشل التحليل (HTTP {status})', { status: resp.status }));
     attachment.text = data.content;
   }catch(err){
     console.error('archive analyze error', err);
@@ -23530,7 +24055,11 @@ async function omranIngestFiles(files, opts){
         try{ archiveB64 = file.size <= MAX_ARCHIVE_DIRECT_BYTES ? await fileToBase64(file) : null; }catch(e){ __swallow(e, 'attach:zipread'); }
         processArchiveAttachment(file, attachment, archiveB64);
       } else {
+        /* v-audit-attach (cli-chat-attach-4): الثنائيّ شريحة خطأ — لا قراءة ولا إرسال لحروفه التالفة */
+        const __binErr = () => ({ name: file.name, isImage: false, error: true, text: '⚠️ ' + file.name + ': ' + omranAttachT('axAttachBinary', 'صيغة هذا الملفّ لا تُقرأ نصًّا — أرسله PDF أو DOCX أو XLSX أو TXT أو صورة.', "This file format can't be read as text — send it as PDF, DOCX, XLSX, TXT or an image.") });
+        if(omranIsBinaryAttach(file)){ pendingAttachments.push(__binErr()); continue; }
         let text = await readFileAsText(file);
+        if(omranIsBinaryAttach(file, text)){ pendingAttachments.push(__binErr()); continue; }
         if(text.length > MAX_TEXT_ATTACH_CHARS){
           text = text.slice(0, MAX_TEXT_ATTACH_CHARS) + '\n... (' + t('attachTruncated') + ')';
         }
@@ -23602,17 +24131,17 @@ $('#attachInput').addEventListener('change', async (e) => {
               e.preventDefault();
               let __body = __pt;
               if(__body.length > MAX_TEXT_ATTACH_CHARS) __body = __body.slice(0, MAX_TEXT_ATTACH_CHARS) + '\n... (' + t('attachTruncated') + ')';
-              const __isArP = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
               /* الاسم يعكس المخزَّن فعلًا لا الملصوق الأصلي، ويميّز الكود عن النثر */
               const __looksCode = /[{}();=<>]/.test(__body.slice(0, 4000)) && /\n/.test(__body);
               const __kb = Math.max(1, Math.round(__body.length / 1024));
               pendingAttachments.push({
-                name: (__isArP ? (__looksCode ? 'كود ملصوق' : 'نص ملصوق') : (__looksCode ? 'Pasted code' : 'Pasted text'))
-                  + ' · ' + __kb + ' KB' + (__body.length < __pt.length ? (__isArP ? ' (مقتطع)' : ' (truncated)') : ''),
+                /* v-audit-attach (cli-chat-attach-8): كانت الأورديّة تُعامَل عربيّة («نص ملصوق»)، وبقيّة اللغات إنجليزيّة — مفاتيح الـ١٤ لغة */
+                name: (__looksCode ? omranAttachT('axAttachPastedCode', 'كود ملصوق', 'Pasted code') : omranAttachT('axAttachPastedText', 'نص ملصوق', 'Pasted text'))
+                  + ' · ' + __kb + ' KB' + (__body.length < __pt.length ? ' (' + omranAttachT('axAttachCutShort', 'مقتطع', 'truncated') + ')' : ''),
                 isImage: false, text: __body, _pasted: true
               });
               renderAttachStrip();
-              try{ if(typeof settingsToast === 'function') settingsToast(__isArP ? '📄 حُوّل النص إلى مرفق — اضغط عليه لعرضه' : '📄 Converted to an attachment — tap it to view'); }catch(_e){ /* guard-ok */ }
+              try{ if(typeof settingsToast === 'function') settingsToast('📄 ' + omranAttachT('axAttachPasteToast', 'حُوّل النص إلى مرفق — اضغط عليه لعرضه', 'Converted to an attachment — tap it to view')); }catch(_e){ /* guard-ok */ }
               try{ $('#prompt').focus(); }catch(_e){ /* guard-ok */ }
             }
           }catch(err2){ __swallow(err2, 'attach:paste-text'); }
@@ -23731,8 +24260,8 @@ function __textLayerOwnsImage(c){
 }
 function __imgAbortNote(c){
   c.messages.push({ role:'assistant', content: window.__omranTimedOut
-    ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول الصورة — أعد المحاولة.' : '⚠️ The connection dropped before the image arrived — please try again.')
-    : (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.') });
+    ? ('⚠️ ' + omranAttachT('axAttachImgDropped', 'انقطع الاتصال قبل وصول الصورة — أعد المحاولة.', 'The connection dropped before the image arrived — please try again.'))
+    : omranAttachT('axAttachImgStopped', 'تم إيقاف إنشاء الصورة.', 'Image generation stopped.') });
 }
 function extractOverlayText(t){
   const spec = window.__parseImageTextSpec ? window.__parseImageTextSpec(t) : null;
@@ -25467,10 +25996,10 @@ function __omranImgWait(cur, m, el){
 }
 async function omModeGenerateImage(cur, promptText, thinkingDiv){
   const textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(promptText) : { wantsText:false, exactText:null, visualPrompt:promptText };
-  const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
+  const __m = { role: 'assistant', content: '🎨 ' + omranAttachT('axAttachDrawingImage', 'أرسم لك الصورة…', 'Generating your image…'), _loading: true };
   if(textSpec.wantsText && !textSpec.exactText && !textSpec.autoAuthored){
     __m._loading = false;
-    __m.content = lang === 'ar' ? 'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.' : 'Send the exact wording you want on the image, and I will reproduce it verbatim.';
+    __m.content = omranAttachT('axAttachExactWording', 'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.', 'Send the exact wording you want on the image, and I will reproduce it verbatim.');
     cur.messages.push(__m); /* v-img-dots-plus: سؤال لا انتظار — بلا مربّع */
     renderAll(); saveState();
     try{ thinkingDiv && thinkingDiv.remove(); }catch(e){ /* guard-ok — cleanup, intentional */ }
@@ -25524,11 +26053,11 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
          أيّ مزوّد فشل ولماذا. يظهر للمالك وحده؛ أسماء المزوّدين ممنوعة عن بقية المستخدمين. */
       var __why = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __d && __d.__diag)
         ? (' [' + (__d.__diag.gErr || __d.__diag.openai || __d.__diag.nano || __d.__diag.free || '?') + ']') : '';
-      __m.content = ((__d && __d.error === 'unavailable') ? '⚠️ ' + t('svcPaused') : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — ' : 'Image generation failed — ') + ((__d && __d.error) || ('HTTP ' + __r.status))) + __why; // v-credit-out
+      __m.content = ((__d && __d.error === 'unavailable') ? '⚠️ ' + t('svcPaused') : (omranAttachT('axAttachImgFailedNow', 'تعذّر توليد الصورة الآن', 'Image generation failed') + ' — ') + ((__d && __d.error) || ('HTTP ' + __r.status))) + __why; // v-credit-out
     }
   }catch(e){
     __put(); __m._loading = false;
-    __m.content = (e && e.name === 'AbortError') ? (window.__omranTimedOut ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول الصورة — أعد المحاولة.' : '⚠️ The connection dropped before the image arrived — please try again.') : (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.')) : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
+    __m.content = (e && e.name === 'AbortError') ? (window.__omranTimedOut ? ('⚠️ ' + omranAttachT('axAttachImgDropped', 'انقطع الاتصال قبل وصول الصورة — أعد المحاولة.', 'The connection dropped before the image arrived — please try again.')) : omranAttachT('axAttachImgStopped', 'تم إيقاف إنشاء الصورة.', 'Image generation stopped.')) : omranAttachT('axAttachImgFailedRetry', 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.', 'Image generation failed — please try again.');
   }
   renderAll(); saveState();
   try{ thinkingDiv && thinkingDiv.remove(); }catch(e){ /* guard-ok — cleanup, intentional */ }
@@ -25538,7 +26067,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
    يمرّ نصّ المستخدم حرفيًّا بلا __parseImageTextSpec ولا كاشف شِعر/دعاء ولا هندسة، ويعمل
    مع صورة مرفقة (تعديل) أو بدونها (توليد). الخادم يُجبَر على الخام والمحرّك المفروض. */
 async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtts){
-  const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
+  const __m = { role: 'assistant', content: '🎨 ' + omranAttachT('axAttachDrawingImage', 'أرسم لك الصورة…', 'Generating your image…'), _loading: true };
   const __put = __omranImgWait(cur, __m, thinkingDiv); /* v-img-dots-plus: مربّع النقاط بدل سطر النصّ */
   /* v-gpt-multi-merge: يقبل صورة وحدة (توافقًا قديمًا) أو مصفوفة صور — دمج عدّة صور بالوضع الخام
      صار ممكنًا فعليًّا (نانو وGPT كلاهما يقبلان مراجع متعدّدة الآن)، لا صورة واحدة فقط كما كان. */
@@ -25583,11 +26112,11 @@ async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtts){
       /* v-image-modes: في الوضع الخام (للمالك) نُظهر سبب فشل المحرّك الحقيقيّ (openai/gemini)
          من __diag ليعرف المالك لماذا لم يخرج خامًا بدل رسالة عامّة. */
       var __why = (__d && __d.__diag && (__d.__diag.openai || __d.__diag.gErr || __d.__diag.free)) ? (' [' + (__d.__diag.openai || __d.__diag.gErr || __d.__diag.free) + ']') : '';
-      __m.content = ((__d && __d.error === 'unavailable') ? '⚠️ ' + t('svcPaused') : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — ' : 'Image generation failed — ') + ((__d && __d.error) || ('HTTP ' + __r.status))) + __why; // v-credit-out
+      __m.content = ((__d && __d.error === 'unavailable') ? '⚠️ ' + t('svcPaused') : (omranAttachT('axAttachImgFailedNow', 'تعذّر توليد الصورة الآن', 'Image generation failed') + ' — ') + ((__d && __d.error) || ('HTTP ' + __r.status))) + __why; // v-credit-out
     }
   }catch(e){
     __put(); __m._loading = false;
-    __m.content = (e && e.name === 'AbortError') ? (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.') : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
+    __m.content = (e && e.name === 'AbortError') ? omranAttachT('axAttachImgStopped', 'تم إيقاف إنشاء الصورة.', 'Image generation stopped.') : omranAttachT('axAttachImgFailedRetry', 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.', 'Image generation failed — please try again.');
   }
   renderAll(); saveState();
   try{ thinkingDiv && thinkingDiv.remove(); }catch(e){ /* guard-ok */ }
@@ -25662,7 +26191,7 @@ window.omranAnotherVersion = async function(){
       await omModeGenerateImage(cur, req.promptText, null);
       return;
     }
-    const __m = { role:'assistant', content: lang === 'ar' ? '🎨 أرسم لك نسخة ثانية…' : '🎨 Creating another version…', _loading:true };
+    const __m = { role:'assistant', content: '🎨 ' + omranAttachT('axAttachAnotherVersion', 'أرسم لك نسخة ثانية…', 'Creating another version…'), _loading:true };
     cur.messages.push(__m); renderAll();
     const __res = await fetch(req.url || '/api/maha-image', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
@@ -25683,7 +26212,7 @@ window.omranAnotherVersion = async function(){
       /* v-img-diag-owner: نفس منطق التوليد والتعديل العاديّين */
       var __whyA = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __data && __data.__diag)
         ? (' [' + (__data.__diag.gErr || __data.__diag.openai || __data.__diag.nano || __data.__diag.free || __data.__diag.tried || '?') + ']') : '';
-      __m.content = (imgErrFriendly(__data && __data.error, lang === 'ar', __data) || (lang === 'ar' ? '⚠️ تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.' : '⚠️ Could not create another version — try again.')) + __whyA;
+      __m.content = (imgErrFriendly(__data && __data.error, lang === 'ar', __data) || ('⚠️ ' + omranAttachT('axAttachAnotherFailed', 'تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.', 'Could not create another version — try again.'))) + __whyA;
     }
     renderAll(); saveState();
   }catch(e){
@@ -26016,7 +26545,7 @@ async function omranTalkPriceCheck(withCartoon, sig){
   const e = (d && d.error) || ('HTTP ' + r.status);
   if(e === 'HTTP 428') throw Object.assign(new Error(t('vidCancelled')), { __note: true });
   const isAr = (typeof lang === 'undefined' || lang === 'ar');
-  if(e === 'auth_required') throw new Error(isAr ? 'سجّل الدخول أولًا عشان أسوي لك الفيديو.' : 'Please log in first to create videos.');
+  if(e === 'auth_required') throw new Error(omranAttachT('axAttachVidLogin', 'سجّل الدخول أولًا عشان أسوي لك الفيديو.', 'Please log in first to create videos.'));
   throw new Error(omranVideoCodeText(e, d && d.retryAfter) || e);
 }
 /* مراجعة الدفعة A (rel-1 · rel-5): ما لا يحسمه التعبير وحده يُبنى صورةً فقط إن قال المصنّف image — لا «ليس none»، فالتعذّر (null) لا يكفي
@@ -26100,7 +26629,7 @@ async function __sendPromptCore(){
       const __isAr = (lang === 'ar');
       const __gh = __found.find(function(s){ return /^(gh[pousr]_|github_pat_)/.test(s); });
       const __ownerUi = String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran';
-      text = text.replace(__secRe, __isAr ? '[سرّ حُذف من الرسالة]' : '[secret removed]').trim();
+      text = text.replace(__secRe, '[' + omranAttachT('axAttachSecretTag', 'سرّ حُذف من الرسالة', 'secret removed') + ']').trim();
       promptEl.value = text;
       if(__gh && __ownerUi && typeof window.omranVaultStore === 'function'){
         if(confirm(__isAr ? 'رصدتُ توكن GitHub في رسالتك. أحفظه في خزنة الأسرار المشفّرة بدل إرساله للمحادثة؟' : 'A GitHub token was detected in your message. Save it in the encrypted secrets vault instead of sending it to the chat?')){
@@ -26109,13 +26638,13 @@ async function __sendPromptCore(){
           });
         }
       } else {
-        try{ settingsToast(__isAr ? '🔒 حُذف السرّ من رسالتك — الأسرار لا تُكتب في المحادثة' : '🔒 The secret was removed from your message — never paste secrets in chat'); }catch(e){ __swallow(e, 'vault:toast2'); }
+        try{ settingsToast('🔒 ' + omranAttachT('axAttachSecretToast', 'حُذف السرّ من رسالتك — الأسرار لا تُكتب في المحادثة', 'The secret was removed from your message — never paste secrets in chat')); }catch(e){ __swallow(e, 'vault:toast2'); }
       }
       if(!text && pendingAttachments.length === 0) return;
     }
   }catch(e){ __swallow(e, 'vault:intercept'); }
   if(pendingAttachments.some(a => a.pending)){
-    alert(lang === 'ar' ? 'الرجاء الانتظار حتى ينتهي تحليل الأرشيف' : 'Please wait until archive analysis finishes');
+    alert(omranAttachT('axAttachWaitPending', 'الرجاء الانتظار حتى تنتهي معالجة المرفقات', 'Please wait until the attachments finish processing')); // v-audit-attach (cli-chat-attach-8): PDF معلَّق ليس «أرشيفًا»
     return;
   }
   /* v-video-watch: فيديو مرفق = يُشاهَد ويُسمَع (app-32) — قبل بوّابات الوسائط كي لا يُفهم «وش يقول في الفيديو؟» طلبَ إنشاء فيديو. */
@@ -26196,7 +26725,7 @@ async function __sendPromptCore(){
           // افتح المودال فوراً بنص مؤقت
           window.omranOpenVideoMaker('', __heroAtt.dataUrl, __heroAtt.mime || 'image/jpeg');
           // اعرض رسالة تحميل
-          if(__statusEl){ __statusEl.textContent = (typeof lang !== 'undefined' && lang === 'en') ? '🔍 Analyzing image...' : '🔍 جاري تحليل الصورة...'; __statusEl.style.display = 'block'; }
+          if(__statusEl){ __statusEl.textContent = '🔍 ' + omranAttachT('axAttachAnalyzingImage', 'جاري تحليل الصورة...', 'Analyzing image...'); /* v-audit-attach (cli-chat-attach-8): كان عربيًّا لكلّ لغة غير الإنجليزيّة */ __statusEl.style.display = 'block'; }
           const b64 = __heroAtt.dataUrl.indexOf(',') !== -1 ? __heroAtt.dataUrl.split(',')[1] : __heroAtt.dataUrl;
           const res = await fetch('/api/video-prompt', {
             method: 'POST',
@@ -26615,9 +27144,9 @@ async function __sendPromptCore(){
 function __friendlyErr(e){
   var m = (e && e.message) ? String(e.message) : String(e || '');
   if(/Load failed|Failed to fetch|NetworkError|network error|The Internet connection|cancelled|ERR_NETWORK|ERR_INTERNET/i.test(m)){
-    var ar = (localStorage.getItem('aiapp_lang') || 'ar') === 'ar';
-    return ar ? 'انقطع الاتصال لحظة أثناء الرد 📡 — أعد إرسال سؤالك وسيصلك الجواب.'
-              : 'Connection dropped for a moment 📡 — resend your question.';
+    return omranAttachT('axAttachNetDrop', // v-audit-attach: كان عربيًّا/إنجليزيًّا فقط
+      'انقطع الاتصال لحظة أثناء الرد 📡 — أعد إرسال سؤالك وسيصلك الجواب.',
+      'Connection dropped for a moment 📡 — resend your question.');
   }
   return m;
 }
@@ -26771,7 +27300,7 @@ function __friendlyErr(e){
     const __realPhotoCue = /(حقيقي|حقيقية|من\s*النت|من\s*الانترنت|من\s*الإنترنت|من\s*قوقل|من\s*جوجل|\breal\b|\bactual\b|from\s+the\s+(?:web|internet))/i.test(text) || /(?:^|[\s،,])(?:صور)(?!\s*لي(?:$|[\s،,.!]))(?=$|[\s،,.!])|\b(?:photos|pictures|images)\b/i.test(text);
     const __isPhotoFetch = !__isLogoFetch && !__ownerAppPlace && __realPhotoCue && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !__designCtxRe.test(text) && !__photoMakeRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
     if(!imageAttachments.length && !__editIntent && (__isLogoFetch || __isPhotoFetch)){
-      const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
+      const __logoMsg = { role: 'assistant', content: '🔍 ' + (__isLogoFetch ? omranAttachT('axAttachLogoFetching', 'أجيب لك الشعار الأصلي من البحث…', 'Fetching the original logo from live search…') : omranAttachT('axAttachImgsFetching', 'أجيب لك صور حقيقية من البحث…', 'Fetching real images from live search…')), _loading: true };
       cur.messages.push(__logoMsg);
       renderMessages(true);
       // v-photo-ctx: «عطني صور السيارة» بعد نقاش عن ليوبارد 8 كانت تجيب سيارات
@@ -26799,11 +27328,11 @@ function __friendlyErr(e){
         const __imgs = (await __omranImgsThatLoad((Array.isArray(__ld.images) ? __ld.images : []).slice(0, 6), 6000)).slice(0, 4); // v-photo-honest: ما يفتح فعلًا وحده
         if(__imgs.length){
           __logoMsg._loading = false;
-          __logoMsg.content = lang === 'ar' ? (__isLogoFetch ? 'هذا الشعار الأصلي من البحث المباشر 👇 اضغط على الصورة لعرضها كبيرة، أو حمّلها مباشرة.' : 'هذي صور حقيقية من البحث المباشر 👇 اضغط على أي صورة لعرضها كبيرة، أو حمّلها مباشرة.') : 'Here are real images from live search 👇';
+          __logoMsg.content = __isLogoFetch ? omranAttachT('axAttachLogoFound', 'هذا الشعار الأصلي من البحث المباشر 👇 اضغط على الصورة لعرضها كبيرة، أو حمّلها مباشرة.', 'Here is the original logo from live search 👇 Tap the image to view it large, or download it directly.') : omranAttachT('axAttachImgsFound', 'هذي صور حقيقية من البحث المباشر 👇 اضغط على أي صورة لعرضها كبيرة، أو حمّلها مباشرة.', 'Here are real images from live search 👇 Tap any image to view it large, or download it directly.');
           __logoMsg.attachments = __imgs.map((u, i) => ({ isImage: true, dataUrl: (typeof u === 'string' ? u : (u && u.url) || ''), name: (__isLogoFetch ? 'logo-' : 'photo-') + (i + 1) + '.png' })).filter(a => a.dataUrl);
         } else if(__isLogoFetch){
           __logoMsg._loading = false;
-          __logoMsg.content = lang === 'ar' ? 'ما حصلت الشعار في البحث المباشر 😕 جرب تكتب اسم الجهة بشكل أوضح (مثال: "شعار شرطة دبي").' : 'Could not find the logo via live search. Try a clearer name.';
+          __logoMsg.content = omranAttachT('axAttachLogoNotFound', 'ما حصلت الشعار في البحث المباشر 😕 جرب تكتب اسم الجهة بشكل أوضح (مثال: "شعار شرطة دبي").', 'Could not find the logo via live search 😕 Try writing the organization name more clearly (e.g. "Dubai Police logo").');
         } else {
           /* v-photo-fallthrough (عقل واحد): فشل جلب الصور لا يعود رسالة فشل
              مخزنة — الطلب يمرّ للنموذج فيرسم المطلوب أو يتصرف بذكائه. */
@@ -26816,7 +27345,7 @@ function __friendlyErr(e){
           /* يكمل المسار الطبيعي للنموذج تحت */
         } else if(__isLogoFetch){
           __logoMsg._loading = false;
-          __logoMsg.content = lang === 'ar' ? 'تعذر جلب الشعار الآن — جرب مرة ثانية.' : 'Could not fetch the logo right now — try again.';
+          __logoMsg.content = omranAttachT('axAttachLogoFetchFail', 'تعذر جلب الشعار الآن — جرب مرة ثانية.', 'Could not fetch the logo right now — try again.');
         } else {
           cur.messages = cur.messages.filter(m => m !== __logoMsg);
           renderMessages(true);
@@ -27277,16 +27806,16 @@ function __friendlyErr(e){
     window.pickTalkCharacter = window.pickTalkCharacter || function(isAr){
       return new Promise(function(resolve){
         const chars = [
-          {id:'c1', name:(isAr?'شاب إماراتي':'Emirati man')},
-          {id:'c2', name:(isAr?'فتاة إماراتية':'Emirati woman')},
-          {id:'c3', name:(isAr?'روبوت':'Robot')},
-          {id:'c4', name:(isAr?'ولد':'Boy')},
-          {id:'c5', name:(isAr?'بنت':'Girl')},
-          {id:'c6', name:(isAr?'جدّ':'Grandpa')}
+          {id:'c1', name:omranAttachT('axAttachTcEmiratiMan', 'شاب إماراتي', 'Emirati man')},
+          {id:'c2', name:omranAttachT('axAttachTcEmiratiWoman', 'فتاة إماراتية', 'Emirati woman')},
+          {id:'c3', name:omranAttachT('axAttachTcRobot', 'روبوت', 'Robot')},
+          {id:'c4', name:omranAttachT('axAttachTcBoy', 'ولد', 'Boy')},
+          {id:'c5', name:omranAttachT('axAttachTcGirl', 'بنت', 'Girl')},
+          {id:'c6', name:omranAttachT('axAttachTcGrandpa', 'جدّ', 'Grandpa')}
         ];
         const ov = document.createElement('div');
         ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:18px;';
-        const dir=isAr?'rtl':'ltr';
+        const dir=(isAr || (typeof lang !== 'undefined' && lang === 'ur'))?'rtl':'ltr'; /* v-audit-attach: الأورديّة نصّها من اليمين */
         let grid='';
         chars.forEach(function(c){
           grid += '<button class="__pcItem" data-id="'+c.id+'" style="position:relative;border:2px solid rgba(255,255,255,.12);background:#111;border-radius:14px;padding:0;overflow:hidden;cursor:pointer;display:block;">' /* v-photo-only (المالك ١٧ أكتوبر): الصورة وحدها والاسم فوق أسفلها لا تحتها */
@@ -27294,11 +27823,11 @@ function __friendlyErr(e){
             + '<span style="position:absolute;inset:auto 0 0 0;padding:16px 4px 6px;font-size:11.5px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));pointer-events:none;">'+c.name+'</span></button>';
         });
         ov.innerHTML='<div dir="'+dir+'" style="width:100%;max-width:380px;max-height:88vh;overflow:auto;background:#1c1c24;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px;color:#fff;font-family:inherit;box-shadow:0 18px 50px rgba(0,0,0,.5);">'
-          + '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">'+(isAr?'اختر شخصية تتكلم 🎭':'Pick a talking character 🎭')+'</div>'
-          + '<div style="font-size:12px;opacity:.7;margin-bottom:14px;">'+(isAr?'اختر شخصية جاهزة، أو ارفع صورتك.':'Pick a ready character, or upload your photo.')+'</div>'
+          + '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">'+omranAttachT('axAttachTcPickTitle', 'اختر شخصية تتكلم', 'Pick a talking character')+' 🎭</div>'
+          + '<div style="font-size:12px;opacity:.7;margin-bottom:14px;">'+omranAttachT('axAttachTcPickSub', 'اختر شخصية جاهزة، أو ارفع صورتك.', 'Pick a ready character, or upload your photo.')+'</div>'
           + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">'+grid+'</div>'
-          + '<button id="__pcUpload" style="width:100%;padding:11px;border-radius:12px;border:1px dashed rgba(168,130,255,.5);background:rgba(168,130,255,.08);color:#c9b3ff;font-size:12.5px;cursor:pointer;margin-bottom:10px;">'+(isAr?'📎 أو ارفع صورتك بدل ذلك':'📎 Or upload your own photo')+'</button>'
-          + '<button id="__pcCancel" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#aaa;font-size:13px;cursor:pointer;">'+(isAr?'إلغاء':'Cancel')+'</button>'
+          + '<button id="__pcUpload" style="width:100%;padding:11px;border-radius:12px;border:1px dashed rgba(168,130,255,.5);background:rgba(168,130,255,.08);color:#c9b3ff;font-size:12.5px;cursor:pointer;margin-bottom:10px;">📎 '+omranAttachT('axAttachTcUploadOwn', 'أو ارفع صورتك بدل ذلك', 'Or upload your own photo')+'</button>'
+          + '<button id="__pcCancel" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#aaa;font-size:13px;cursor:pointer;">'+omranAttachT('cancel', 'إلغاء', 'Cancel')+'</button>'
           + '</div>';
         document.body.appendChild(ov);
         function done(v){ try{document.body.removeChild(ov);}catch(_){ __swallow(_, "misc:app-09-attach#15"); }; resolve(v); }
@@ -27312,7 +27841,7 @@ function __friendlyErr(e){
       const __pick = await window.pickTalkCharacter(lang==='ar');
       if(__pick === null){ __run.localDone = true; thinkingDiv && thinkingDiv.remove(); return; } // v-chat-sys-msg: الإلغاء بلا تشخيص
       if(__pick === 'upload'){
-        cur.messages.push({ role:'assistant', content:(lang==='ar'?'📎 ارفع صورتك من زر المشبك ثم أعد نفس الطلب مع الجملة اللي تبي الشخصية تقولها.':'📎 Attach your photo, then resend the same request with the line you want the character to say.') });
+        cur.messages.push({ role:'assistant', content:'📎 ' + omranAttachT('axAttachTcAttachHint', 'ارفع صورتك من زر المشبك ثم أعد نفس الطلب مع الجملة اللي تبي الشخصية تقولها.', 'Attach your photo, then resend the same request with the line you want the character to say.') });
         thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
       }
       try{
@@ -27321,7 +27850,7 @@ function __friendlyErr(e){
         const __pd = await new Promise(function(res){ const fr=new FileReader(); fr.onload=function(){res(fr.result);}; fr.readAsDataURL(__pb); });
         __charImg = { b64: (String(__pd).split(',')[1]||''), mime:'image/png' };
         __alreadyCartoon = true;
-      }catch(_){ thinkingDiv && thinkingDiv.remove(); cur.messages.push({ role:'assistant', content:(lang==='ar'?'⚠️ تعذّر تحميل الشخصية، جرّب مرة ثانية.':'⚠️ Could not load the character, try again.') }); renderAll(); saveState(); return; }
+      }catch(_){ thinkingDiv && thinkingDiv.remove(); cur.messages.push({ role:'assistant', content:'⚠️ ' + omranAttachT('axAttachTcLoadFail', 'تعذّر تحميل الشخصية، جرّب مرة ثانية.', 'Could not load the character, try again.') }); renderAll(); saveState(); return; }
     }
     const __wantsTalkChar = __talkCharIntent && !!(__charImg && __charImg.b64);
     if(__wantsTalkChar){
@@ -27333,24 +27862,24 @@ function __friendlyErr(e){
         return new Promise(function(resolve){
           const ov = document.createElement('div');
           ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:18px;';
-          const dir = isAr ? 'rtl' : 'ltr';
+          const dir = (isAr || (typeof lang !== 'undefined' && lang === 'ur')) ? 'rtl' : 'ltr'; const __tcSec = (n) => { let d = String(n); try{ d = new Intl.NumberFormat((typeof lang !== 'undefined' && lang) || 'ar').format(n); }catch(e){ __swallow(e, 'talkchar:num'); } return omranAttachT('axAttachTcSeconds', '{n} ثواني', '{n}s').replace('{n}', d); }; /* v-audit-attach: الأورديّة من اليمين، والثواني بأرقام اللغة */
           ov.innerHTML = '<div dir="'+dir+'" style="width:100%;max-width:340px;background:#1c1c24;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:20px;color:#fff;font-family:inherit;box-shadow:0 18px 50px rgba(0,0,0,.5);">'
-            + '<div style="font-size:16px;font-weight:700;margin-bottom:14px;">'+(isAr?'إعدادات الشخصية المتكلمة 🎬':'Talking character options 🎬')+'</div>'
-            + '<div style="font-size:13px;opacity:.75;margin-bottom:8px;">'+(isAr?'حركة الشخصية:':'Character motion:')+'</div>'
+            + '<div style="font-size:16px;font-weight:700;margin-bottom:14px;">'+omranAttachT('axAttachTcOptsTitle', 'إعدادات الشخصية المتكلمة', 'Talking character options')+' 🎬</div>'
+            + '<div style="font-size:13px;opacity:.75;margin-bottom:8px;">'+omranAttachT('axAttachTcMotion', 'حركة الشخصية:', 'Character motion:')+'</div>'
             + '<div id="__tcMotion" style="display:flex;gap:8px;margin-bottom:16px;">'
-            +   '<button data-v="static" class="__tcOpt" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+(isAr?'ثابتة (تتكلم فقط)':'Static (talk only)')+'</button>'
-            +   '<button data-v="moving" class="__tcOpt" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+(isAr?'متحركة':'Moving')+'</button>'
+            +   '<button data-v="static" class="__tcOpt" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+omranAttachT('axAttachTcStatic', 'ثابتة (تتكلم فقط)', 'Static (talk only)')+'</button>'
+            +   '<button data-v="moving" class="__tcOpt" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+omranAttachT('axAttachTcMoving', 'متحركة', 'Moving')+'</button>'
             + '</div>'
-            + '<div style="font-size:13px;opacity:.75;margin-bottom:8px;">'+(isAr?'مدة الفيديو:':'Video duration:')+'</div>'
+            + '<div style="font-size:13px;opacity:.75;margin-bottom:8px;">'+omranAttachT('axAttachTcDuration', 'مدة الفيديو:', 'Video duration:')+'</div>'
             + '<div id="__tcDur" style="display:flex;gap:8px;margin-bottom:16px;">'
-            +   '<button data-v="4" class="__tcD" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+(isAr?'٤ ثواني':'4s')+'</button>'
-            +   '<button data-v="6" class="__tcD" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+(isAr?'٦ ثواني':'6s')+'</button>'
-            +   '<button data-v="8" class="__tcD" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+(isAr?'٨ ثواني':'8s')+'</button>'
+            +   '<button data-v="4" class="__tcD" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+__tcSec(4)+'</button>'
+            +   '<button data-v="6" class="__tcD" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+__tcSec(6)+'</button>'
+            +   '<button data-v="8" class="__tcD" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+__tcSec(8)+'</button>'
             + '</div>'
-            + '<button data-v="more" id="__tcMore" style="width:100%;padding:10px;border-radius:12px;border:1px dashed rgba(168,130,255,.5);background:rgba(168,130,255,.08);color:#c9b3ff;font-size:12.5px;cursor:pointer;margin-bottom:14px;">'+(isAr?'أبي فيديو أطول / أكثر ✨':'I want a longer / more video ✨')+'</button>'
+            + '<button data-v="more" id="__tcMore" style="width:100%;padding:10px;border-radius:12px;border:1px dashed rgba(168,130,255,.5);background:rgba(168,130,255,.08);color:#c9b3ff;font-size:12.5px;cursor:pointer;margin-bottom:14px;">'+omranAttachT('axAttachTcMore', 'أبي فيديو أطول / أكثر', 'I want a longer / more video')+' ✨</button>'
             + '<div style="display:flex;gap:8px;">'
-            +   '<button id="__tcCancel" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#aaa;font-size:13px;cursor:pointer;">'+(isAr?'إلغاء':'Cancel')+'</button>'
-            +   '<button id="__tcGo" style="flex:2;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#6b7280,#4b5563);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">'+(isAr?'ابدأ 🎬':'Start 🎬')+'</button>'
+            +   '<button id="__tcCancel" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#aaa;font-size:13px;cursor:pointer;">'+omranAttachT('cancel', 'إلغاء', 'Cancel')+'</button>'
+            +   '<button id="__tcGo" style="flex:2;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#6b7280,#4b5563);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">'+omranAttachT('axAttachTcStart', 'ابدأ', 'Start')+' 🎬</button>'
             + '</div></div>';
           document.body.appendChild(ov);
           let motion = 'moving', dur = 6;
@@ -27371,7 +27900,7 @@ function __friendlyErr(e){
       const __tcChoice = await window.askTalkCharOpts(lang==='ar');
       if(__tcChoice === null){ __run.localDone = true; thinkingDiv && thinkingDiv.remove(); return; } // v-chat-sys-msg: الإلغاء بلا تشخيص
       if(__tcChoice === 'more'){
-        cur.messages.push({ role:'assistant', content:(lang==='ar'?'✨ الفيديوهات الأطول والخيارات الإضافية متاحة في الباقات المدفوعة — افتح ⚙️ ← الاشتراك لترقية باقتك وتطلّع فيديوهات أطول بجودة أعلى.':'✨ Longer videos and extra options are available on paid plans — open ⚙️ → Subscription to upgrade and create longer, higher-quality videos.') });
+        cur.messages.push({ role:'assistant', content:'✨ ' + omranAttachT('axAttachTcPaidMore', 'الفيديوهات الأطول والخيارات الإضافية متاحة في الباقات المدفوعة — افتح ⚙️ ← الاشتراك لترقية باقتك وتطلّع فيديوهات أطول بجودة أعلى.', 'Longer videos and extra options are available on paid plans — open ⚙️ → Subscription to upgrade and create longer, higher-quality videos.') });
         thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
       }
       const __tcMotion = __tcChoice.motion, __tcDur = __tcChoice.duration;
@@ -27382,7 +27911,7 @@ function __friendlyErr(e){
           __cartoonB64 = __charImg.b64; __cartoonMime = __charImg.mime || 'image/png';
         } else {
           // ① تحويل الصورة لشخصية كرتونية عبر Gemini
-          chatPhase('🎨', lang === 'ar' ? 'جاري تحويل صورتك لشخصية كرتونية…' : 'Turning your photo into a cartoon character…', thinkingDiv);
+          chatPhase('🎨', omranAttachT('axAttachTcCartoonizing', 'جاري تحويل صورتك لشخصية كرتونية…', 'Turning your photo into a cartoon character…'), thinkingDiv);
           const __cartoonPrompt = 'Transform this photo into a cute chibi-style 3D animated character: big adorable head, small short body, FULL BODY standing pose facing the camera, happy friendly expression, clean modern Pixar-like rendering. Keep the SAME face features, hairstyle, beard/facial hair, skin tone and the same clothing style and colors as the person in the photo (including traditional dress if worn). Soft simple pastel studio background, vertical 9:16 composition with the whole character visible from head to feet.';
           for(let __ct = 0; __ct < 2 && !__cartoonB64; __ct++){
             if(__ct) await new Promise(r=>setTimeout(r,1500));
@@ -27394,13 +27923,13 @@ function __friendlyErr(e){
             if(__cr.ok && __cd.imageBase64){ __cartoonB64 = __cd.imageBase64; __cartoonMime = __cd.mimeType || 'image/png'; } else if((__cartoonErr = __cd) && __cd.error === 'unavailable') throw new Error(t('svcPaused')); // v-credit-out: رصيد المزوّد نفد — لا «جرّب صورة أوضح» ولا إعادة
             else if(__cr.status === 402 || (__cr.status === 422 && __cd.retryable === false) || __cd.billed === true) break; // v-unchanged-cap: ردّ نهائيّ (الخصم باقٍ أو الرصيد نفد) — الإعادة التلقائيّة تخصم مرّة ثانية بلا صورة؛ عطل الشبكة المردود يُعاد كما كان
           }
-          if(!__cartoonB64) throw new Error(imgErrFriendly(__cartoonErr && __cartoonErr.error, lang==='ar', __cartoonErr) || (lang==='ar'?'تعذر تحويل الصورة لكرتون، جرّب صورة أوضح.':'Could not cartoonize the image, try a clearer photo.')); /* v-rest-fixes: «جرّب صورة أوضح» كان لكلّ فشل — زحام ونقاط وسقف الساعة */
-          cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎨 صارت شخصية كرتونية ✅ الحين أحرّكها تتكلم…':'🎨 Cartoon character ready ✅ now animating it to talk…'), attachments:[{ name:'cartoon.png', isImage:true, mime:__cartoonMime, dataUrl:'data:'+__cartoonMime+';base64,'+__cartoonB64 }] });
+          if(!__cartoonB64) throw new Error(imgErrFriendly(__cartoonErr && __cartoonErr.error, lang==='ar', __cartoonErr) || omranAttachT('axAttachTcCartoonFail', 'تعذر تحويل الصورة لكرتون، جرّب صورة أوضح.', 'Could not cartoonize the image, try a clearer photo.')); /* v-rest-fixes: «جرّب صورة أوضح» كان لكلّ فشل — زحام ونقاط وسقف الساعة */
+          cur.messages.push({ role:'assistant', content:'🎨 ' + omranAttachT('axAttachTcCartoonReady', 'صارت شخصية كرتونية ✅ الحين أحرّكها تتكلم…', 'Cartoon character ready ✅ now animating it to talk…'), attachments:[{ name:'cartoon.png', isImage:true, mime:__cartoonMime, dataUrl:'data:'+__cartoonMime+';base64,'+__cartoonB64 }] });
           cur.lastEditedImage = { b64: __cartoonB64, mime: __cartoonMime };
         }
         // ② تحريكها لفيديو ناطق بصوت مسموع عبر Veo 3 (image-to-video + صوت أصلي)
         //    Runway يطلّع فيديو صامت، فالصوت المنطوق يحتاج Veo 3 — عمودي 9:16.
-        chatPhase('🎬', lang === 'ar' ? 'جاري تحريك الشخصية لتتكلم بصوت… قد يستغرق ١–٣ دقائق' : 'Animating the character to talk with voice… 1–3 minutes', thinkingDiv);
+        chatPhase('🎬', omranAttachT('axAttachTcAnimating', 'جاري تحريك الشخصية لتتكلم بصوت… قد يستغرق ١–٣ دقائق', 'Animating the character to talk with voice… 1–3 minutes'), thinkingDiv);
         const __voiceLang = /[\u0600-\u06FF]/.test((__dialogue || '') + ' ' + (text || '')) ? 'Arabic' : 'the same language as the line';
         const __motionDesc = __tcMotion === 'static'
           ? 'The character stands still in place, only the head and mouth move naturally while talking (minimal body motion)'
@@ -27416,22 +27945,22 @@ function __friendlyErr(e){
           else { __verr = (__d && __d.error) || ('HTTP ' + __r.status); __vra = (__d && __d.retryAfter) || 0; if(__verr === 'auth_required' || __verr === 'points_insufficient' || __verr === 'video_cooldown' || __r.status === 428 || __d.retryable === false) break; if(__a === 0) await new Promise(r=>setTimeout(r,6000)); } /* المهلة والنقاط والإلغاء بلا إعادة (ولا تأكيد ثانٍ) */
         }
         if(!__op){
-          if(__verr === 'auth_required') throw new Error(lang==='ar'?'سجّل الدخول أولًا عشان أسوي لك الفيديو.':'Please log in first to create videos.');
-          if(__verr === 'points_insufficient') throw new Error(omranVideoCodeText(__verr) || (lang==='ar'?'رصيدك غير كافٍ لإنشاء فيديو ناطق.':'Not enough balance for a talking video.'));
+          if(__verr === 'auth_required') throw new Error(omranAttachT('axAttachVidLogin', 'سجّل الدخول أولًا عشان أسوي لك الفيديو.', 'Please log in first to create videos.'));
+          if(__verr === 'points_insufficient') throw new Error(omranVideoCodeText(__verr) || omranAttachT('axAttachTcNoBalance', 'رصيدك غير كافٍ لإنشاء فيديو ناطق.', 'Not enough balance for a talking video.'));
           if(__verr === 'HTTP 428') throw Object.assign(new Error(t('vidCancelled')), { __note: true }); throw new Error(omranVideoCodeText(__verr, __vra) || __verr);
         }
         let __vurl = null; const __vt0 = Date.now();
         while(!__vurl){
-          if(Date.now() - __vt0 > 6*60*1000) throw new Error(lang==='ar'?'تأخر إنشاء الفيديو، جرّب مرة ثانية.':'Video generation timed out, please try again.');
+          if(Date.now() - __vt0 > 6*60*1000) throw new Error(omranAttachT('axAttachVidTimeout', 'تأخر إنشاء الفيديو، جرّب مرة ثانية.', 'Video generation timed out, please try again.'));
           await new Promise(r=>setTimeout(r,6000));
           if(__runCtl.signal.aborted) throw Object.assign(new Error('aborted'), { name:'AbortError' });
           const __sr = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(__op), { signal: __runCtl.signal });
           const __sd = await __sr.json().catch(()=>({}));
           if(__sd.status === 'SUCCEEDED'){ __vurl = Array.isArray(__sd.output) ? __sd.output[0] : __sd.output; } else if(__sd.error === 'unavailable') throw new Error(t('svcPaused')); // v-credit-out: الخادم سوّى التذكرة وردّ النقاط — لا انتظار ٦ دقائق
-          else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(__sd.failureCode === 'safety' || /moderation|SAFETY|filtered|content did not pass/i.test(__fr)){ __fr = (lang==='ar')?'الرقابة رفضت المحتوى — جرّب صورة ثانية':'Content rejected by safety filters — try another photo'; } throw new Error((lang==='ar'?'فشل إنشاء الفيديو':'Video generation failed') + (__fr?(' — '+__fr):'')); }
-          else { chatPhase('🎬', (lang==='ar'?'جاري تحريك الشخصية بصوت… ':'Animating with voice… ') + (__sd.status || ''), thinkingDiv); }
+          else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(__sd.failureCode === 'safety' || /moderation|SAFETY|filtered|content did not pass/i.test(__fr)){ __fr = omranAttachT('axAttachTcSafety', 'الرقابة رفضت المحتوى — جرّب صورة ثانية', 'Content rejected by safety filters — try another photo'); } throw new Error(omranAttachT('axAttachVidFailed', 'فشل إنشاء الفيديو', 'Video generation failed') + (__fr?(' — '+__fr):'')); }
+          else { chatPhase('🎬', omranAttachT('axAttachTcAnimatingShort', 'جاري تحريك الشخصية بصوت…', 'Animating with voice…') + ' ' + (__sd.status || ''), thinkingDiv); }
         }
-        cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎬 شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)':'🎬 Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)'), attachments:[{ name:'talking-character.mp4', isVideo:true, url:__vurl }] });
+        cur.messages.push({ role:'assistant', content:'🎬 ' + omranAttachT('axAttachTcReady', 'شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)', 'Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)'), attachments:[{ name:'talking-character.mp4', isVideo:true, url:__vurl }] });
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
         if(!(e && e.name === 'AbortError')){ cur.messages.push({ role:'assistant', content:(e && e.__note) ? String(e.message) : '⚠️ ' + __friendlyErr(e) }); }
@@ -27477,13 +28006,13 @@ function __friendlyErr(e){
     }
     const __videoHasConcreteSubject = !!(__vidSrc && (__srcImg || cur.lastMsgWasImageEdit) && __animateRe.test(text || ''));
     if(__wantsVideo && !__videoHasConcreteSubject && __isVagueMediaRequest(text)){
-      cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'فيديو عن شو؟ وصفلي المشهد اللي تبيه 🎬' : 'A video about what? Describe the scene you want 🎬' });
+      cur.messages.push({ role: 'assistant', content: omranAttachT('axAttachVidAskWhat', 'فيديو عن شو؟ وصفلي المشهد اللي تبيه', 'A video about what? Describe the scene you want') + ' 🎬' });
       renderAll(); saveState();
       thinkingDiv && thinkingDiv.remove();
       return;
     }
     if(__wantsVideo){
-      chatPhase('🎬', lang === 'ar' ? 'جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق' : 'Creating video… this can take 1–3 minutes', thinkingDiv);
+      chatPhase('🎬', omranAttachT('axAttachVidCreating', 'جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق', 'Creating video… this can take 1–3 minutes'), thinkingDiv);
       try{
         const __vp = { promptText: text.slice(0, 900), duration: 5, ratio: '1280:720', token: authGet('aiapp_auth_token') };
         if(__vidSrc && __vidSrc.b64 && (__srcImg || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
@@ -27531,23 +28060,23 @@ function __friendlyErr(e){
           }
         }
         if(!__vid){
-          if(__verr === 'auth_required') throw new Error(lang === 'ar' ? 'سجّل الدخول أولًا عشان أسوي لك الفيديو.' : 'Please log in first to create videos.');
-          if(__verr === 'daily_limit_reached') throw new Error(lang === 'ar' ? 'وصلت حد الفيديوهات اليومي، جرّب بكرة.' : 'Daily video limit reached, try again tomorrow.');
+          if(__verr === 'auth_required') throw new Error(omranAttachT('axAttachVidLogin', 'سجّل الدخول أولًا عشان أسوي لك الفيديو.', 'Please log in first to create videos.'));
+          if(__verr === 'daily_limit_reached') throw new Error(omranAttachT('axAttachVidDaily', 'وصلت حد الفيديوهات اليومي، جرّب بكرة.', 'Daily video limit reached, try again tomorrow.'));
           if(__verr === 'HTTP 428') throw Object.assign(new Error(t('vidCancelled')), { __note: true }); throw new Error(omranVideoCodeText(__verr, __vra) || __verr); /* v-chat-video-cooldown: ألغى المستخدم التأكيد = سطر «أُلغي — لم تُخصم نقاط» بلا ⚠️ (بلا ردّ = فقاعة تشخيص finally) */
         }
         let __vurl = null;
         const __vt0 = Date.now();
         while(!__vurl){
-          if(Date.now() - __vt0 > 6 * 60 * 1000) throw new Error(lang === 'ar' ? 'تأخر إنشاء الفيديو، جرّب مرة ثانية.' : 'Video generation timed out, please try again.');
+          if(Date.now() - __vt0 > 6 * 60 * 1000) throw new Error(omranAttachT('axAttachVidTimeout', 'تأخر إنشاء الفيديو، جرّب مرة ثانية.', 'Video generation timed out, please try again.'));
           await new Promise(r => setTimeout(r, 5000));
           if(__runCtl.signal.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
           const __sr = await fetch('/api/video-status?id=' + encodeURIComponent(__vid), { signal: __runCtl.signal });
           const __sd = await __sr.json().catch(() => ({}));
           if(__sd.status === 'SUCCEEDED'){ __vurl = Array.isArray(__sd.output) ? __sd.output[0] : __sd.output; } else if(__sd.error === 'unavailable') throw new Error(t('svcPaused')); // v-credit-out: الخادم سوّى التذكرة وردّ النقاط — لا انتظار ٦ دقائق
-          else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(/moderation|SAFETY|content did not pass/i.test(__fr)){ __fr = (lang === 'ar') ? 'الرقابة رفضت المحتوى — جرّب وصفًا أهدأ أو شِل صورة الشخص' : 'Content rejected by safety filters — try a calmer description or remove the person photo'; } throw new Error((lang === 'ar' ? 'فشل إنشاء الفيديو' : 'Video generation failed') + (__fr ? (' — ' + __fr) : '')); }
-          else { chatPhase('🎬', (lang === 'ar' ? 'جاري إنشاء الفيديو… ' : 'Creating video… ') + (__sd.status || ''), thinkingDiv); }
+          else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(/moderation|SAFETY|content did not pass/i.test(__fr)){ __fr = omranAttachT('axAttachVidSafety', 'الرقابة رفضت المحتوى — جرّب وصفًا أهدأ أو شِل صورة الشخص', 'Content rejected by safety filters — try a calmer description or remove the person photo'); } throw new Error(omranAttachT('axAttachVidFailed', 'فشل إنشاء الفيديو', 'Video generation failed') + (__fr ? (' — ' + __fr) : '')); }
+          else { chatPhase('🎬', omranAttachT('axAttachVidCreatingShort', 'جاري إنشاء الفيديو…', 'Creating video…') + ' ' + (__sd.status || ''), thinkingDiv); }
         }
-        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? '🎬 فيديوك جاهز ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)' : '🎬 Your video is ready ✅ (link valid 24h — download it to keep it)'), attachments: [{ name: 'video.mp4', isVideo: true, url: __vurl }] });
+        cur.messages.push({ role: 'assistant', content: '🎬 ' + omranAttachT('axAttachVidReady', 'فيديوك جاهز ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)', 'Your video is ready ✅ (link valid 24h — download it to keep it)'), attachments: [{ name: 'video.mp4', isVideo: true, url: __vurl }] });
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
         if(!(e && e.name === 'AbortError')){
@@ -27848,7 +28377,7 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
         cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'edited.png', isImage:true, mime:__lm, dataUrl:'data:' + __lm + ';base64,' + __l.baseB64 }] });
         renderAll(); saveState(); return;
       }
-      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(k!=='size'&&k!=='positionFlex'&&__textSpec.styleEdit[k])__l[k]=k==='position'?__textStylePos(__textSpec,text):__textSpec.styleEdit[k]}); /* v-text-flex: علَم المرونة من المحلّل، وإن غاب فالجانب بلا «وسط» مرن */ if(__textSpec.styleEdit.size) __l.scale=__textScale(__l.scale,__textSpec.styleEdit.size); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position,__l.scale,__l.avoid);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;const __blk=/^(?:larger|large)$/.test(String(__textSpec.styleEdit.size||''))&&window.__textGrowBlocked; /* الجولة ٣: لا تكبير بلا تغطية وجه = مصارحة لا صورة صامتة */ cur.messages.push({role:'assistant',content:__blk?(lang==='ar'?'ما في مساحة أكبر هنا بدون ما يغطي الوجوه — تبيني أنقل الكتابة فوق أو تحت؟':'There is no room to make it bigger here without covering faces — want me to move the text up or down?'):'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
+      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(k!=='size'&&k!=='positionFlex'&&__textSpec.styleEdit[k])__l[k]=k==='position'?__textStylePos(__textSpec,text):__textSpec.styleEdit[k]}); /* v-text-flex: علَم المرونة من المحلّل، وإن غاب فالجانب بلا «وسط» مرن */ if(__textSpec.styleEdit.size) __l.scale=__textScale(__l.scale,__textSpec.styleEdit.size); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position,__l.scale,__l.avoid);__l.outTail=__outB64.slice(-64);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;const __blk=/^(?:larger|large)$/.test(String(__textSpec.styleEdit.size||''))&&window.__textGrowBlocked; /* الجولة ٣: لا تكبير بلا تغطية وجه = مصارحة لا صورة صامتة */ cur.messages.push({role:'assistant',content:__blk?(omranAttachT('axAttachTextNoRoom', 'ما في مساحة أكبر هنا بدون ما يغطي الوجوه — تبيني أنقل الكتابة فوق أو تحت؟', 'There is no room to make it bigger here without covering faces — want me to move the text up or down?')):'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:omranAttachT('axAttachTextStyleFail', 'تعذّر تعديل تنسيق الكتابة.', 'Could not update the text styling.')})} renderAll();saveState();return; }
       /* v-text-colors: «اكتب بخط صغير ومزخرف» بلا كتابة سابقة = لا نصّ نطبعه ولا تعديل نرسله للمولّد — نطلب النصّ نفسه. */
       if(__textSpec.styleOnlyWrite && !cur.imageTextLayer){
         cur.messages.push({ role:'assistant', content:(lang === 'ar'
@@ -27883,7 +28412,7 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
         }
         try{ const __av = await __avoidP; if(!__avoid) __avoid = __av; }catch(e){ __swallow(e, 'img:design-layout-wait'); } if(__runCtl.signal.aborted){ __imgAbortNote(cur); renderAll(); saveState(); return; } /* v-layout-timeout: الإيقاف يوقف فعلًا */
         if(!__resolvedText){
-          cur.messages.push({ role:'assistant', content:__textSpec.autoAuthored ? (lang==='ar'?'تعذّر تأليف الدعاء بدقة الآن. جرّب مرة أخرى.':'Could not author the prayer accurately. Please try again.') : (lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.') });
+          cur.messages.push({ role:'assistant', content:__textSpec.autoAuthored ? omranAttachT('axAttachPrayerFail', 'تعذّر تأليف الدعاء بدقة الآن. جرّب مرة أخرى.', 'Could not author the prayer accurately. Please try again.') : (omranAttachT('axAttachExactWording', 'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.', 'Send the exact wording you want on the image, and I will reproduce it verbatim.')) });
           renderAll(); saveState();
           return;
         }
@@ -27913,7 +28442,7 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
           if(__visEdit && /(?:خلفي[ةه]|background)[\s،,.!؟?]*$/i.test(__visEdit)) __visEdit = 'غيّر الخلفية بالكامل وراء الأشخاص إلى ' + (__planVisual || 'مكان مختلف تمامًا وجميل يناسب الصورة والمناسبة') + '، وأبقِ الأشخاص كما هم تمامًا بوجوههم وملابسهم ووقفتهم.';
           let __visFailed = false;
           if(__visEdit){
-            chatPhase('🎨', lang === 'ar' ? 'جاري تعديل الخلفية…' : 'Editing background…', thinkingDiv);
+            chatPhase('🎨', omranAttachT('axAttachEditingBg', 'جاري تعديل الخلفية…', 'Editing background…'), thinkingDiv);
             try{
               const __wShr = await omranShrinkForEdit(__wb64, __wmime); /* v-edit-shrink */
               __wb64 = __wShr.b64; __wmime = __wShr.mime;
@@ -27925,7 +28454,7 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
               const __vData = await __vRes.json().catch(() => ({}));
               if(__vRes.ok && __vData.imageBase64){ __wb64 = __vData.imageBase64; __wmime = __vData.mimeType || 'image/png'; } else __visFailed = true;
             }catch(e){ if(e && e.name === 'AbortError'){ __imgAbortNote(cur); renderAll(); saveState(); return; } __visFailed = true; __swallow(e, "img:visualEdit-v576"); }
-            chatPhase('✍️', lang === 'ar' ? 'جاري كتابة النص…' : 'Writing text…', thinkingDiv);
+            chatPhase('✍️', omranAttachT('axAttachWritingText', 'جاري كتابة النص…', 'Writing text…'), thinkingDiv);
           }
           // 🖌️ v681: الذكاء يرسم الخط أولاً (ضغط لـ800px يمنع 413) → كانفس كبديل احتياطي فقط
           const __compressB64 = (b64, mime) => new Promise(function(res3){
@@ -27987,17 +28516,17 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
           // احتياطي: كانفس إذا فشل الذكاء
           if(!__finalB64){
             try{ __finalB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos, __scale, __avoid); __finalMime = 'image/png'; __byCanvas = true; }
-            catch(e2){ cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّرت كتابة النص على الصورة.':'Could not add text to image.' }); renderAll(); saveState(); return; }
+            catch(e2){ cur.messages.push({ role:'assistant', content:omranAttachT('axAttachTextAddFail', 'تعذّرت كتابة النص على الصورة.', 'Could not add text to image.') }); renderAll(); saveState(); return; }
           }
           cur.imageTextLayer = __byCanvas ? { baseB64:__wb64, baseMime:__wmime, text:__resolvedText, fontKey:__textSpec.fontKey, color:__textSpec.color, position:__pos, scale:__scale, avoid:__avoid || undefined, outTail:String(__finalB64).slice(-64) } : null;
           /* لا صمت: تعديل الخلفيّة لم ينجح = نقولها بدل أن تبدو الصورة كأنّها المطلوب */
-          cur.messages.push({ role: 'assistant', content: __visFailed ? (lang === 'ar' ? 'كتبت على صورتك، بس تغيير الخلفية ما نجح هالمرة — تبيني أحاول مرة ثانية؟' : 'I wrote it on your photo, but the background change did not work this time — want me to try again?') : '', attachments: [{ name: 'edited.png', isImage: true, mime: __finalMime, dataUrl: 'data:' + __finalMime + ';base64,' + __finalB64 }] });
+          cur.messages.push({ role: 'assistant', content: __visFailed ? omranAttachT('axAttachBgChangeFail', 'كتبت على صورتك، بس تغيير الخلفية ما نجح هالمرة — تبيني أحاول مرة ثانية؟', 'I wrote it on your photo, but the background change did not work this time — want me to try again?') : '', attachments: [{ name: 'edited.png', isImage: true, mime: __finalMime, dataUrl: 'data:' + __finalMime + ';base64,' + __finalB64 }] });
           cur.lastEditedImage = { b64: __finalB64, mime: __finalMime };
           cur.lastMsgWasImageEdit = true;
           renderAll(); saveState();
           return;
         }catch(e){
-          cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّرت كتابة النص على الصورة.':'Could not add text to image.' });
+          cur.messages.push({ role:'assistant', content:omranAttachT('axAttachTextAddFail', 'تعذّرت كتابة النص على الصورة.', 'Could not add text to image.') });
           renderAll(); saveState();
           return;
         }
@@ -28047,7 +28576,7 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
         }
         /* v-lanes (قرار المالك ٢٠ سبتمبر «التعديل مرّة وحدة»): تبديل الحرف ضربة واحدة عند الخادم (مسار النصّ → GPT).
            مرحلتا «قراءة الموضع بالرؤية ثمّ قناع» الاحتياطيّتان أُزيلتا — فشل الخادم = مصارحة لا محاولة ثالثة. */
-        cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّر تبديل النصّ هذه المرّة — أعد المحاولة أو صِف الكلمة المطلوبة بوضوح أكثر.':'Could not swap the text this time — retry or describe the target word more clearly.' });
+        cur.messages.push({ role:'assistant', content:omranAttachT('axAttachTextSwapFail', 'تعذّر تبديل النصّ هذه المرّة — أعد المحاولة أو صِف الكلمة المطلوبة بوضوح أكثر.', 'Could not swap the text this time — retry or describe the target word more clearly.') });
         cur.lastMsgWasImageEdit = true;
         renderAll(); saveState(); return;
       }
@@ -28115,7 +28644,7 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
         /* v-img-diag-owner: نفس منطق التوليد العاديّ — السبب الحقيقيّ (__diag) يظهر للمالك وحده */
         var __whyE = (String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran' && __data && __data.__diag)
           ? (' [' + (__data.__diag.gErr || __data.__diag.openai || __data.__diag.nano || __data.__diag.free || __data.__diag.tried || '?') + ']') : '';
-        cur.messages.push({ role: 'assistant', content: (imgErrFriendly(__data && __data.error, lang === 'ar', __data) || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?'))))) + __whyE });
+        cur.messages.push({ role: 'assistant', content: (imgErrFriendly(__data && __data.error, lang === 'ar', __data) || (('⚠️ ' + omranAttachT('axAttachImgEditFailed', 'تعذر تعديل الصورة', 'Image edit failed') + ': ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?'))))) + __whyE });
         cur.lastMsgWasImageEdit = true;
       }
       renderAll(); saveState();
@@ -28274,14 +28803,14 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
          فعل رسم بلا موضوع يُسأل عنه كالطلب المبهم. */
       const __bareDraw = /^\s*(?:ارسم|أرسم|ارسمي|ارسم\s*لي|ارسملي|رسمة|رسمه|صمم|صمّم|draw|imagine)\s*[.!؟?]*\s*$/i.test(text);
       if(__bareDraw || __isVagueMediaRequest(text)){ /* v-vague-guard: «ارسم لي شي» كان يتخطّى الفحص لأنّ __txtOnlyImgRe يطابق «ارسم» */
-        cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
+        cur.messages.push({ role: 'assistant', content: omranAttachT('axAttachImgAskWhat', 'صورة عن شو؟ وصفلي اللي تبيه', 'An image of what? Describe what you want') + ' 🖼️' });
         renderAll(); saveState();
         thinkingDiv && thinkingDiv.remove();
         return;
       }
       const __genTextSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:false, exactText:null, visualPrompt:text };
       if(__genTextSpec.wantsText && !__genTextSpec.exactText && !__genTextSpec.autoAuthored){
-        cur.messages.push({ role:'assistant', content:lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.' });
+        cur.messages.push({ role:'assistant', content:omranAttachT('axAttachExactWording', 'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.', 'Send the exact wording you want on the image, and I will reproduce it verbatim.') });
         renderAll(); saveState();
         thinkingDiv && thinkingDiv.remove();
         return;
@@ -28330,7 +28859,7 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
         cur.lastEditedImage = { b64: __gData.imageBase64, mime: __gm };
         cur.lastMsgWasImageEdit = true;
       } else {
-        cur.messages.push({ role: 'assistant', content: imgErrFriendly(__gData && __gData.error, lang === 'ar', __gData) || ((lang === 'ar' ? '⚠️ تعذر إنشاء الصورة: ' : '⚠️ Image generation failed: ') + ((__gData && __gData.error) || ('HTTP ' + (__gData.__status || '?')))) });
+        cur.messages.push({ role: 'assistant', content: imgErrFriendly(__gData && __gData.error, lang === 'ar', __gData) || (('⚠️ ' + omranAttachT('axAttachImgGenFailed', 'تعذر إنشاء الصورة', 'Image generation failed') + ': ') + ((__gData && __gData.error) || ('HTTP ' + (__gData.__status || '?')))) });
         cur.lastMsgWasImageEdit = false;
       }
       renderAll(); saveState();
@@ -28530,7 +29059,7 @@ DESIGN RULES (non-negotiable):
         const __d = window.omranTopicSwitch(text, __pu ? __txt(__pu.m) : '', __pa ? __txt(__pa) : '', __olderUsers.map(x => __txt(x.m)));
         if(__d.kind === 'new'){
           apiMessages.push({ role: 'system', content: 'ملاحظة هذا الدور: رسالة المستخدم الأخيرة موضوع جديد مختلف عمّا قبله. أجب عنه وحده كاملًا، ولا تكمل الموضوع السابق ولا تشير إليه من تلقاء نفسك. لكن تاريخ المحادثة كلّه يبقى في ذاكرتك: إن عاد المستخدم إلى أيّ موضوع سابق لاحقًا فأنت تذكره بتفاصيله.' });
-          try{ if(typeof chatStatus !== 'undefined' && chatStatus){ const __s = chatStatus.step('🧭', lang === 'ar' ? 'موضوع جديد' : 'New topic'); __s.done(); } }catch(e){ __swallow(e, 'topic:status'); }
+          try{ if(typeof chatStatus !== 'undefined' && chatStatus){ const __s = chatStatus.step('🧭', omranAttachT('axAttachNewTopic', 'موضوع جديد', 'New topic')); __s.done(); } }catch(e){ __swallow(e, 'topic:status'); }
         } else if(__d.kind === 'back'){
           let __recall = '';
           const __hit = __d.backIndex >= 0 ? __olderUsers[__d.backIndex] : null;
@@ -28539,7 +29068,7 @@ DESIGN RULES (non-negotiable):
             __recall = '\nسؤاله السابق كان: «' + __txt(__hit.m).slice(0, 400) + '»' + (__ans ? '\nوجوابك عليه (مختصرًا): «' + __txt(__ans).slice(0, 1500) + '»' : '');
           }
           apiMessages.push({ role: 'system', content: 'ملاحظة هذا الدور: المستخدم يعود إلى موضوع سابق في هذه المحادثة نفسها. أنت تذكر ذلك الموضوع كاملًا مع ما قيل فيه؛ ابنِ على ما سبق مباشرةً، ولا تقل إنّك لا تذكره ولا تطلب منه إعادته، ولا تخلطه بالموضوع الذي جاء بينهما.' + __recall });
-          try{ if(typeof chatStatus !== 'undefined' && chatStatus){ const __s = chatStatus.step('🔁', lang === 'ar' ? 'عودة إلى موضوع سابق' : 'Back to an earlier topic'); __s.done(); } }catch(e){ __swallow(e, 'topic:status'); }
+          try{ if(typeof chatStatus !== 'undefined' && chatStatus){ const __s = chatStatus.step('🔁', omranAttachT('axAttachBackTopic', 'عودة إلى موضوع سابق', 'Back to an earlier topic')); __s.done(); } }catch(e){ __swallow(e, 'topic:status'); }
         }
       }
     }catch(e){ __swallow(e, 'topic:notes'); }
@@ -28953,10 +29482,10 @@ DESIGN RULES (non-negotiable):
             catch(e){ if(e && e.name === 'AbortError') throw e; __swallow(e, 'askall:site-guide-tools'); }
           }
           if(reply === null) reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 360000);
-          var __chatVideo = window.__chatVideoResult;
+          var __chatVideo = (window.__chatVideoByChat && window.__chatVideoByChat[cur.id]) || window.__chatVideoResult; /* v-audit-chatcli: فيديو محادثة هذا الطلب */
           if (__chatVideo && __chatVideo.url) {
             msg.attachments = (msg.attachments || []).concat([{ isVideo: true, url: __chatVideo.url, name: __chatVideo.name || 'chat-video.mp4', mime: 'video/mp4' }]);
-            window.__chatVideoResult = null;
+            if (window.__chatVideoByChat && window.__chatVideoByChat[cur.id] === __chatVideo) delete window.__chatVideoByChat[cur.id]; else window.__chatVideoResult = null;
           }
           let { code, explanation, edits: __edits } = extractReply(reply, cur.code); // v-chat-edit
           // 🔁 v326: مهمة بناء/تصميم رجعت نصًا بلا أي كود (مثل «تمام، هذا
@@ -29063,7 +29592,7 @@ DESIGN RULES (non-negotiable):
         }
       };
       const settled = await Promise.allSettled(Array.from({ length: Math.min(5, providers.length) }, () => __poolWorker()));
-      if(__runCtl.signal.aborted){
+      if(__runCtl.signal.aborted){ omranAskAllSealStop(cur, placeholders, prepMsg, revealStates); // v-audit-attach (cli-chat-attach-6): لا ⏳ عالقة ولا مؤقّت حيّ
         // User cancelled while "ask all" was mid-flight: skip showing any of
         // these results and let the outer catch restore the message for editing.
         const abortErr = new Error('aborted');
@@ -29473,7 +30002,7 @@ DESIGN RULES (non-negotiable):
       let __ctModel = ''; /* v-owner-model-badge: ما أعلنه الخادم عن الموديل الذي أجاب (للمالك) */
       let __ctServed = ''; /* v-owner-identity: الموديل كما أعلنه المزوّد نفسه — دليل المالك فوق الردّ */
       let __ctTier = null; /* v-tiers: طبقة الردّ (free / free-limit / guest / guest-limit) لشارة «ردّ مجاني» */
-      let __ctLog = null; /* v-read-all: سجلّ ما قرأه وفعله قبل الردّ — يُحفظ كسجلّ الوكيل (m._agParts) */
+      let __ctLog = null, __ctCards = null; /* v-read-all: سجلّ ما قرأه وفعله قبل الردّ — يُحفظ كسجلّ الوكيل (m._agParts) · v-audit-chatcli: بطاقات هذا الطلب (كانت window.__chatCardsResult يصفّره طلب محادثة أخرى أو يلتقطه ردّها) */
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
       // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
@@ -29519,7 +30048,7 @@ DESIGN RULES (non-negotiable):
             }
           }
         }
-        if(__ct){ __ctUsed = true; __ctFenceCut = !!__ct.fenceCut; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; window.__chatCardsResult = __ct.cards || null; /* v-cards */ if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
+        if(__ct){ __ctUsed = true; __ctFenceCut = !!__ct.fenceCut; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; __ctCards = __ct.cards || null; /* v-cards */ if(__ct.tier) __ctTier = __ct.tier; if(Array.isArray(__ct.log) && __ct.log.length) __ctLog = __ct.log; if(typeof __ct.served === 'string' && __ct.served) __ctServed = __ct.served; /* v-owner-identity */ if(typeof __ct.model === 'string' && __ct.model) __ctModel = __ct.model; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, __sigFn(onDelta), __ownerFree ? [__effProv] : __teamOrder, { solo: __ownerFree, toolsErr: __ownerFree ? __ctErr : null })); // v-owner-solo
       }finally{
         window.__claudeModelOverride = null;
@@ -29587,8 +30116,8 @@ DESIGN RULES (non-negotiable):
          «اسأل الكل» فقط — فيضيع الفيديو وتبدو الرسالة إنجازًا وهميًّا. */
       let __chatVidAtt;
       try{
-        const __cv = window.__chatVideoResult;
-        if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; window.__chatVideoResult = null; }
+        const __cv = (window.__chatVideoByChat && window.__chatVideoByChat[cur.id]) || window.__chatVideoResult; /* v-audit-chatcli: فيديو محادثة هذا الطلب (app-17) — العامّ لما بلا محادثة */
+        if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; if(window.__chatVideoByChat && window.__chatVideoByChat[cur.id] === __cv) delete window.__chatVideoByChat[cur.id]; else window.__chatVideoResult = null; }
       }catch(e){ __swallow(e, 'ui:chat-video-attach'); }
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, model: __ctModel || undefined /* v-owner-model-badge */, askAllReply: false, attachments: __chatVidAtt,
         tier: __ctTier || undefined, /* v-tiers */
@@ -29596,7 +30125,7 @@ DESIGN RULES (non-negotiable):
         _agParts: __ctLog || undefined,
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
-        searchImages: (__searchData && __searchData.images) || undefined, cards: (function(c){ window.__chatCardsResult = null; return c || undefined; })(window.__chatCardsResult) /* v-cards: تُقرأ مرّة وتُصفَّر فلا تلتصق برسالة تالية بلا أدوات */});
+        searchImages: (__searchData && __searchData.images) || undefined, cards: __ctCards || undefined /* v-cards · v-audit-chatcli: بطاقات هذا الطلب وحده فلا تلتصق برسالة تالية ولا بمحادثة أخرى */});
       // v-plans-gate: انتهت الرسائل المجّانيّة/التجربة — الردّ نفسه يبقى بشارته وزرّه، والباقات (أو التسجيل للضيف) تنفتح.
       if(__ctTier === 'free-limit' || __ctTier === 'guest-limit'){
         try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(e){ __swallow(e, 'chat:plans-gate'); }
@@ -29840,6 +30369,29 @@ function omranStopMsg(partial, timedOut, log){
   const m = { role: 'assistant', content: partial || t(timedOut ? 'stTimeout' : 'msgStopped'), _stopped: true, askAllReply: false, _agParts: log };
   if(!partial){ m._stopEmpty = true; m._sys = 'stop'; }
   return m;
+}
+/* v-audit-attach (cli-chat-attach-6): الإيقاف (⏹ أو قطع الحارس) أثناء «اسأل الكل» — ومسار البناء بمزوّد واحد يمرّ به — كان يرمي
+   AbortError وفقاعات المزوّدين ما زالت _loading. الإمساك الخارجيّ لا يضيف رسالة الإيقاف إلّا بعد رسالة مستخدم، فتبقى ⏳ بلا شريط
+   أدوات حتّى إعادة التحميل، ويُسقط فلتر !m._loading نصّها الجزئيّ من سياق الدور التالي، ومؤقّت العرض (كلّ ٣٠مل) لا يُطفأ لأنّ
+   done لا يُضبط. هنا قبل الرمي: كلّ مؤقّت عرض يُطفأ، والفقاعة بنصّ جزئيّ تُختم ردًّا موقوفًا (_stopped كالمحادثة العاديّة)، والفارغة
+   وفقاعة التجهيز تُحذفان فيضيف الإمساك الخارجيّ رسالة الإيقاف المترجمة كما يفعل للمزوّد الواحد. */
+function omranAskAllSealStop(cur, placeholders, prepMsg, revealStates){
+  try{
+    if(revealStates && typeof revealStates.forEach === 'function'){
+      revealStates.forEach((st) => { try{ if(st && st.timer) clearInterval(st.timer); }catch(e){ __swallow(e, 'askall:stop-timer'); } });
+    }
+    const drop = (m) => { const i = cur.messages.indexOf(m); if(i !== -1) cur.messages.splice(i, 1); };
+    (placeholders || []).forEach((m) => {
+      if(!m || !m._loading) return;
+      const st = (revealStates && revealStates.get) ? revealStates.get(m._uid) : null;
+      const txt = String((st && st.target) || m.content || '');
+      m._loading = false;
+      if(txt.trim()){ m.content = txt; m._stopped = true; }
+      else drop(m);
+    });
+    if(prepMsg){ prepMsg._loading = false; drop(prepMsg); }
+    if(revealStates && typeof revealStates.clear === 'function') revealStates.clear();
+  }catch(e){ __swallow(e, 'askall:stop-seal'); }
 }
 /* v-chat-sys-msg: سطر «المسار الأوّل» (v-img-err) لغير المالك برمز الحالة وحده («خطأ 503») — خطأ الشبكة («Failed to fetch»)
    والنصّ بلا رمز تقنيّان لا يفيدان المستخدم (المالك شاله لنفسه، v-owner-solo)، فيذهبان إلى سجلّ الأخطاء. */
@@ -30216,7 +30768,8 @@ if(btnShareApp){
         const copiedMsg = { ar:'تم نسخ رابط التطبيق!', en:'App link copied!', fr:"Lien de l'application copié !", hi:'ऐप लिंक कॉपी हो गया!', ur:'ایپ کا لنک کاپی ہو گیا!', bn:'অ্যাপ লিঙ্ক কপি হয়েছে!', ne:'एप लिंक कपी भयो!' };
         alert(copiedMsg[currentLang] || copiedMsg.ar);
       } catch(e){
-        prompt('انسخ الرابط:', shareUrl);
+        const cp = (typeof t === 'function') ? t('axChatcliCopyLinkPrompt') : '';
+        prompt((cp && cp !== 'axChatcliCopyLinkPrompt') ? cp : 'انسخ الرابط:', shareUrl); // v-audit-chatcli (x-i18n-5): بلغة الواجهة
       }
     }
   };
@@ -31311,7 +31864,7 @@ $('#history').addEventListener('click', () => {
       /* v-edu-selfhost: مستودع omran-edu غير موصول بالنشر التلقائي — الصفحة
          المحدثة تُستضاف هنا (edu-old/) فتنشر مع التطبيق، والخلفية تبقى على
          النشر القديم الشغال (CORS مفتوح). */
-      frame.src = '/edu-old/index.html?v=15j'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
+      frame.src = '/edu-old/index.html?v=15k'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
     }
     /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العنوان «التعليم» كان يتكرّر فوق رأس الإطار — نأخذ اسم صفّه المترجم في المركز،
        ونرفع data-i18n كي لا تعيده الترجمة. الفتح المباشر بلا مركز يبقى كما هو. */
@@ -31483,13 +32036,16 @@ function openShareModal(project){
       for(var i = 0; i < imgs.length; i++){
         var im = imgs[i];
         if(!im.__omHold) continue;
+        /* v-audit-tools: مصدر كُتب والنافذة مغلقة (نتيجة توليد اكتمل بعد الإغلاق) أحدث من المحجوز — لا يُكتب فوقه
+           (كانت إعادة الفتح تعرض القديمة وزرّ التحميل يشير إلى الجديدة) */
+        if(im.getAttribute('src') !== null){ im.__omHold = null; continue; }
         im.src = im.__omHold;
         im.__omHold = null;
       }
     }catch(e){ __swallow(e, 'modal-img-restore'); }
   }
   /* أيّ كود يقرأ .src ونافذته مغلقة يجد الفراغ — لذلك مُتاح استرجاعها صراحةً. */
-  window.omranModalImgSrc = function(img){ return (img && (img.__omHold || img.getAttribute('src'))) || ''; };
+  window.omranModalImgSrc = function(img){ return (img && (img.getAttribute('src') || img.__omHold)) || ''; }; /* v-audit-tools: المكتوب بعد الإغلاق أوّلًا */
 
   function watch(id){
     var m = document.getElementById(id);
@@ -31990,6 +32546,9 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       params.bg = (parseInt(localStorage.getItem(bk) || '0', 10) || 0) + 1;
       localStorage.setItem(bk, String(params.bg));
     }catch(e){ params.bg = Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
+    /* v-audit-video (cli-video-4): «أعد المحاولة» كانت تمحو الفيديو المدفوع السابق قبل سؤال السعر — فإلغاء نافذة الخصم أو المهلة
+       أو نفاد النقاط يُضيّعه بلا تحميل ولا سجلّ. الناتج السابق يُحفظ ويعود مكانه ما لم يصل ناتج جديد. */
+    var outEl = $('vtOut'), prevOut = outEl ? Array.prototype.slice.call(outEl.childNodes) : [];
     busy = true; $('vtGo').disabled = true; $('vtOut').innerHTML = '';
     setBusyFlag(true);
     status(ui('working'));
@@ -32005,6 +32564,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       status(ui('done'));
     }catch(e){
       setBusyFlag(false);
+      /* v-audit-video (cli-video-4): لا ناتج جديد — الناتج السابق يعود مكانه */
+      if(!urls.length && outEl && $('vtOut') === outEl && !outEl.childNodes.length) prevOut.forEach(function(nd){ outEl.appendChild(nd); });
       /* v-trend-one-confirm: المشاهد التي اكتملت (ودُفعت) قبل العطب تُعرض ولا تضيع — مع سبب التوقّف وعدد ما اكتمل */
       if(urls.length){
         try{ await show(t, urls); }catch(e2){ /* guard-ok — العرض أفضل جهد، والسطر يقول ما حدث */ }
@@ -32054,7 +32615,9 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     grid = $('vtGrid'); panel = $('vtPanel');
     renderGrid();
     try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
-    window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key && !(typeof omranHwHidden === 'function' && omranHwHidden('trend', x.key)); })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } } };
+    window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key && !(typeof omranHwHidden === 'function' && omranHwHidden('trend', x.key)); })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } },
+      /* v-audit-boot (cli-video-1): الخروج (app-04) يفرّغ صور الأشخاص ويغلق اللوحة المفتوحة — لا تُرسل صور الحساب السابق مع ترند من يدخل بعده */
+      reset: function(){ photos = []; cur = null; if(panel){ panel.innerHTML = ''; panel.style.display = 'none'; } if(grid) grid.style.display = 'grid'; } };
   }
   // v-perf-idle-timers: boot() كانت تُستدعى عند DOMContentLoaded (مرّتين: فورًا و٩٠٠مل ثانية لاحقًا) فتبني
   // شبكة ٤٥ بطاقة (٤٥ صورة معاينة) داخل نافذة صانع الفيديو حتّى لو لم يفتحها المستخدم إطلاقًا في تلك
@@ -32930,7 +33493,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -32963,9 +33526,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
     /* v-video-photo-identity: وضع الدمج يُظهر خانة صورة البطل لكنّه كان لا يرسلها — فيخترع المحرّك شخصًا. */
     const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
-      setStatus(isEn()
-        ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
-        : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+      setStatus(busyRetryText(attempt, max)); // v-audit-video (cli-video-6)
     }, filmHeroBase64, filmHeroMime);
     setStatus(bT('🎬 جاري إنهاء الفيديو...','🎬 Finalizing your video...'));
 
@@ -33008,7 +33569,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -33136,6 +33697,26 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     const tpl = (typeof window.t === 'function' && window.t('videoSceneWait') !== 'videoSceneWait') ? window.t('videoSceneWait')
       : bT('⏳ المشهد {i}/{n}: مهلة بين الفيديوهات — يبدأ تلقائيًا بعد {s} ثانية.', '⏳ Scene {i}/{n}: cooldown between videos — starting automatically in {s}s.');
     return String(tpl).replace('{i}', sceneNo).replace('{n}', total).replace('{s}', secs);
+  }
+  /* v-audit-video (cli-video-6): نصوص حدّ اليوم والمهلة و«المحرّك مزدحم» كانت isEn() — فكلّ لغة غير الإنجليزيّة تأخذ العربيّة.
+     الآن مفتاح I18N بالـ١٤ لغة، والاحتياط bT (القاموس الثنائيّ ثمّ الإنجليزيّة — لا عربيّة لغير العربيّة). */
+  function vmkT(key, ar, en){
+    const v = (typeof window.t === 'function') ? window.t(key) : key;
+    return (v && v !== key) ? String(v) : bT(ar, en);
+  }
+  function busyRetryText(attempt, max, sceneNo){
+    const tpl = sceneNo
+      ? vmkT('axVideoBusyRetryScene', '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد {i} ({a}/{m})...', '⏳ The AI engine is busy, retrying scene {i} ({a}/{m})...')
+      : vmkT('axVideoBusyRetry', '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة ({a}/{m})...', '⏳ The AI engine is busy, retrying ({a}/{m})...');
+    return String(tpl).replace('{i}', sceneNo).replace('{a}', attempt).replace('{m}', max);
+  }
+  /* v-audit-video (cli-video-2): مشهد سقط سرده (حدّ اليوم أو عطب) كان يُدمج بصوت فارغ بلا كلمة — فيلم مدفوع بلا سرد بصمت.
+     يُقال في سطر النهاية: «السرد ناقص في {k} من {n} مشاهد». */
+  function narrMissNote(miss, total){
+    if(!miss) return '';
+    const tpl = (typeof window.t === 'function' && window.t('axVideoNarrMissing') !== 'axVideoNarrMissing') ? window.t('axVideoNarrMissing')
+      : bT('⚠️ السرد ناقص في {k} من {n} مشاهد.', '⚠️ Narration is missing from {k} of {n} scenes.');
+    return ' ' + String(tpl).replace('{k}', miss).replace('{n}', total);
   }
   async function waitOutCooldown(err, sceneNo, total){
     const secs = Math.max(1, Math.ceil(Number(err && err.retryAfter) || 180));
@@ -33301,11 +33882,12 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       if((code === 'video_busy' || code === 'video_rejected') && typeof window.t === 'function') return '⚠️ ' + window.t(code === 'video_busy' ? 'vidBusy' : 'vidRejected'); // v-vid-codes
       if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
       /* v-ai-video-speed: ⏳ «مشغول» في بطاقة الانتظار — رسالة الخطأ به كانت تُبقي بطاقة «يتولّد» وعدّادها فوق المشهد بلا نهاية → 🕒 */
-      if(code === 'daily_limit_reached') return isEn() ? "🕒 You have reached today's free video limit. Try again tomorrow." : '🕒 لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
+      /* v-audit-video (cli-video-6): نصّ الباقات القائم بالـ١٤ لغة (plansWhyLimit) لا isEn() */
+      if(code === 'daily_limit_reached') return '🕒 ' + vmkT('plansWhyLimit', 'لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.', "You have reached today's free video limit. Try again tomorrow.");
       /* v-video-refund: بدل رمز «video_cooldown» الخام — مهلة بين فيديو وآخر، والانتظار بالدقائق. */
       if(code === 'video_cooldown'){
         const m = Math.max(1, Math.ceil((Number(err && err.retryAfter) || 180) / 60));
-        return isEn() ? ('🕒 One video every few minutes. Try again in about ' + m + ' min.') : ('🕒 فيديو واحد كل بضع دقائق. جرّب بعد ' + m + ' دقيقة تقريبًا.');
+        return String(vmkT('axVideoCooldown', '🕒 فيديو واحد كل بضع دقائق. جرّب بعد {m} دقيقة تقريبًا.', '🕒 One video every few minutes. Try again in about {m} min.')).replace('{m}', m);
       }
       /* v-ai-video-speed: الإلغاء سطر هادئ بلا ❌، ونفاد النقاط بنصّ الباقات القائم (١٤ لغة) لا الرمز الخامّ */
       if(code === 'confirm_declined') return scenesDone > 0 ? bT('⛔ توقّف الفيديو عند إلغائك — المشاهد التي اكتملت قبله حُسبت.','⛔ Stopped at your cancel — the scenes completed before it were charged.') : err.message;
@@ -33426,9 +34008,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           const videoUrl = await sceneInSequence(i + 1, scenes.length, () => filmUseVeo
             ? createVeoScene(scenePromptWithHero, ratio, token, wantQuality, filmHeroBase64, filmHeroMime)
             : createSceneWithRetry(scenePromptWithHero, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
-                setStatus(isEn()
-                  ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
-                  : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
+                setStatus(busyRetryText(attempt, max, i + 1)); // v-audit-video (cli-video-6)
               }, filmHeroBase64, filmHeroMime));
           scenesDone++;
           setStatus((bT('🎙️ جاري تسجيل سرد المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
@@ -33439,7 +34019,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -33505,7 +34085,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           }
         }
         if(finalUrl){
-          setStatus(bT('✅ فيلمك جاهز!','✅ Your film is ready!'));
+          setStatus(bT('✅ فيلمك جاهز!','✅ Your film is ready!') + narrMissNote(builtScenes.filter((s) => !(s.audioBlob && s.audioBlob.size)).length, builtScenes.length)); // v-audit-video
           resultEl.src = finalUrl;
           resultEl.style.display = 'block';
           downloadEl.href = finalUrl;
@@ -33768,9 +34348,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           const sc = scenes[i];
           setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenes.length + '...');
           const videoUrl = await createSceneWithRetry(sc.visual || text, style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
-            setStatus(isEn()
-              ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
-              : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
+            setStatus(busyRetryText(attempt, max, i + 1)); // v-audit-video (cli-video-6)
           }, filmHeroBase64, filmHeroMime);
           setStatus((bT('🎙️ جاري تسجيل صوت المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
@@ -33780,7 +34358,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -33794,7 +34372,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           setStatus((bT('🔗 جاري دمج المشهد ','🔗 Joining scene ')) + (i + 1) + '/' + total + '...');
         });
         const finalUrl = URL.createObjectURL(finalBlob);
-        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!') + narrMissNote(builtScenes.filter((s) => !(s.audioBlob && s.audioBlob.size)).length, builtScenes.length)); // v-audit-video
         resultEl.src = finalUrl;
         resultEl.style.display = 'block';
         downloadEl.href = finalUrl;
@@ -33818,7 +34396,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         ttsEarly = fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed() }),
+          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
         getFFmpeg().catch(() => null);
       };
@@ -33832,18 +34410,14 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         for(let i = 0; i < scenePrompts.length; i++){
           setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenePrompts.length + '...');
           const url = await sceneInSequence(i + 1, scenePrompts.length, () => createSceneWithRetry(scenePrompts[i], style, 10, ratio, token, false, (attempt, max) => {
-            setStatus(isEn()
-              ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
-              : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+            setStatus(busyRetryText(attempt, max)); // v-audit-video (cli-video-6)
           }, filmHeroBase64, filmHeroMime, startNarration));
           sceneUrls.push(url); scenesDone++;
         }
       } else {
         setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
         const url = await createSceneWithRetry(text, style, durationEl.value, ratio, token, false, (attempt, max) => {
-          setStatus(isEn()
-            ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
-            : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+          setStatus(busyRetryText(attempt, max)); // v-audit-video (cli-video-6)
         }, filmHeroBase64, filmHeroMime, startNarration);
         sceneUrls.push(url);
       }
@@ -33913,6 +34487,21 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       btnGenerate.disabled = false;
     }
   };
+  /* v-audit-video (cli-video-4): «إنشاء» يخفي الناتج السابق وزرّ تحميله قبل أيّ فحص — فإلغاء نافذة الخصم أو المهلة أو الرصيد يتركهما
+     مخفيّين والفيديو المدفوع لا يُرى. الغلاف يعيدهما (والوضع واسم الملفّ) ما لم يظهر ناتج جديد. */
+  { const __vmkGenRun = btnGenerate.onclick;
+    btnGenerate.onclick = async function(ev){
+      const prev = (resultEl.style.display !== 'none' && resultEl.getAttribute('src'))
+        ? { src: resultEl.getAttribute('src'), mode: resultEl.dataset.mode, dl: downloadEl.style.display, name: downloadEl.download } : null;
+      try{ return await __vmkGenRun.call(this, ev); }
+      finally{
+        if(prev && resultEl.style.display === 'none' && resultEl.getAttribute('src') === prev.src){
+          if(prev.mode == null) delete resultEl.dataset.mode; else resultEl.dataset.mode = prev.mode;
+          resultEl.style.display = 'block'; downloadEl.style.display = prev.dl; downloadEl.download = prev.name;
+        }
+      }
+    };
+  }
 })();
 /* ───────── v-fx-simple: تبسيط استوديو الأزياء ─────────
  * شكوى المالك: «في الأزياء كثر الاختيارات… الي يدخل يضيع فيه» — ~٧٠ خيارًا في ٩ أقسام قبل زرّ «صمم»،
@@ -34232,6 +34821,32 @@ async function __safeJson(res){
   try{ return JSON.parse(txt); }
   catch(e){ return { error: txt.slice(0,200) || ('HTTP '+res.status) }; }
 }
+/* v-audit-studcli (cli-studios-4): كتل catch في الاستوديوهات كانت تلصق e.message بعد «❌ خطأ:» — فيرى المستخدم بأيّ لغة جملة الخادم
+   العربيّة («تعذّر إنشاء الصورة الآن…»)، أو نصًّا تقنيًّا فيه اسم مزوّد ومتغيّر («Server is missing <المفتاح>»، «Proxy error: …»)، أو
+   نصّ ٤١٣ الخامّ من __safeJson. الرموز المعروفة تُحوَّل إلى مفاتيحها بالـ١٤ لغة، وما سواها رسالة عامّة مترجمة (fbKey وإلّا «تعذّر إنشاء
+   الصورة»)، والنصّ الخامّ للمالك وحده بين قوسين للتشخيص. الاحتياط العربيّ/الإنجليزيّ لا يُستعمل إلّا قبل جاهزيّة المترجم. */
+const __STUDIO_ERR_FB = {
+  voiceImageFailed: ['ما قدرت أسوي الصورة، حاول مرة ثانية.', "Couldn't create the image, please try again."],
+  designAiSuggestError: ['تعذر توليد أفكار، حاول مرة أخرى.', 'Could not generate ideas, try again.'],
+  svcPaused: ['الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.', 'This service is temporarily unavailable — please try again shortly.'],
+  portraitLimitReached: ['وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا', 'You reached the daily limit for this feature, try again tomorrow'],
+  portraitNeedLogin: ['يرجى تسجيل الدخول لاستخدام هذه الميزة', 'Please log in to use this feature'],
+  acctAvatarTooBig: ['الصورة كبيرة جدًا، اختر صورة أصغر', 'The image is too large, choose a smaller one'],
+};
+function __studioErrMsg(e, fbKey){
+  const raw = String((e && e.message) || e || '').trim();
+  let key = fbKey || 'voiceImageFailed';
+  if(raw === 'unavailable') key = 'svcPaused';
+  else if(raw === 'daily_limit_reached') key = 'portraitLimitReached';
+  else if(raw === 'auth_required') key = 'portraitNeedLogin';
+  else if(/\b413\b|Entity Too Large|PAYLOAD_TOO_LARGE/i.test(raw)) key = 'acctAvatarTooBig';
+  let msg = '';
+  try{ if(typeof window.t === 'function'){ const v = window.t(key); if(v && v !== key) msg = String(v); } }catch(_){ /* guard-ok — المترجم لم يجهز: الاحتياط أدناه */ }
+  if(!msg){ const fb = __STUDIO_ERR_FB[key] || __STUDIO_ERR_FB.voiceImageFailed; msg = (typeof window.__bT === 'function') ? window.__bT(fb[0], fb[1]) : fb[0]; }
+  msg = '❌ ' + String(msg).replace(/^\s*❌\s*/, '');
+  if(raw && !/^[a-z_]+$/.test(raw) && typeof omranOwnerUi === 'function' && omranOwnerUi()) msg += ' (' + raw.slice(0, 300) + ')';
+  return msg;
+}
 
 /* ---------- 🏠 AI Interior Design (Gemini image, server-side owner key) ---------- */
 (function(){
@@ -34455,7 +35070,8 @@ async function __safeJson(res){
       if(!imgs.length){
         /* v-ideas-resilient: مصدر الصور متوقف (حصّة) ≠ لا نتائج — نقول الحقيقة */
         if(d && d.error === 'provider'){
-          var __dt = ''; try{ __dt = d.detail ? (' (' + Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
+          /* v-audit-studcli (cli-studios-3): حالة المصادر (أسماء المزوّدين، off للمفتاح الناقص، عدد المدفوع) للمالك وحده — كـv-decor-fallback في designRun */
+          var __dt = ''; try{ __dt = (d.detail && typeof omranOwnerUi === 'function' && omranOwnerUi()) ? (' (' +Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
           ideaStatus('⚠️ ' + bT('مصدر الصور متوقف مؤقتًا — جرّب بعد قليل، أو ولّد تصاميم بالذكاء.', 'The photo source is temporarily unavailable — try again shortly, or generate AI designs.') + __dt);
         }
         else ideaStatus(noPhotos());
@@ -34631,7 +35247,7 @@ async function __safeJson(res){
       dsReveal((baWrap && baWrap.style.display !== 'none') ? baWrap : resultEl); /* v-scene-kinds */
       setStatus(t('designAiDone'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(__studioErrMsg(e));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -34913,7 +35529,7 @@ async function __safeJson(res){
         if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحب وقارن واختر','✓ Done — swipe and pick'));
       }
     } catch(e){
-      cmpStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      cmpStatus(__studioErrMsg(e));
     } finally {
       cmpBtn.disabled = false;
     }
@@ -35031,6 +35647,20 @@ function stuL(ar, en){
    فاستبدال الملفّ وحده يُبقي الصورة القديمة عند من فتح التطبيق أمس. ارفع الرقم مع كلّ استبدال. */
 const PSTYLE_IMG_V = '16'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
 function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYLE_IMG_V; }
+
+/* v-audit-stud2 (srv-studios-2-8): رمز الخادم (حارس الهويّة/الأسلوب، image_generation_failed، unavailable…) بنصّ الواجهة عبر
+   imgErrFriendly كما في studioErrText (app-13) — كان «❌ خطأ: image_edit_identity_mismatch» خامًا في الأنماط والأزياء. العربيّة
+   للعربيّة وحدها (الأردو وغيرها تأخذ الإنجليزيّة لا العربيّة)، وما لا ترجمة له يبقى كما كان بالبادئة. */
+function stud2ErrText(e, prefix, fbKey){
+  const code = (e && e.message) ? String(e.message) : String(e);
+  try{
+    const lg = (typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar');
+    const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, lg === 'ar') : null;
+    if(friendly) return '⚠️ ' + friendly;
+  }catch(err){ __swallow(err, 'stud2:err-text'); }
+  /* v-audit-studcli (cli-studios-4): ما لا ترجمة له لا يُعرض خامًّا — رسالة الاستوديو المترجمة (والخامّ للمالك وحده) */
+  return (typeof __studioErrMsg === 'function') ? __studioErrMsg(e, fbKey) : prefix + code;
+}
 
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
 (function(){
@@ -35520,6 +36150,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* التحميل على الجوال/الأغلفة يمرّ بالمسار الموحّد؛ الكمبيوتر يبقى تنزيلًا مباشرًا */
     downloadEl.addEventListener('click', (ev) => {
       try{
+        /* v-audit-shell (cli-ui-shell-2): الحافظ الموحّد (app-05-save-media، التقاط على document) سبقنا بنقرة المستخدم ونادى omranSaveMedia —
+           كان هذا ينادي omranSaveImage فوقه: رفعتان وورقتان للنقرة الواحدة على متصفّح الجوّال. */
+        if(ev.defaultPrevented) return;
         const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp());
         if(!mobile || typeof window.omranSaveImage !== 'function') return;
         ev.preventDefault(); ev.stopPropagation();
@@ -35621,6 +36254,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
      #portraitMulti* تخصّ أنماط الصور فقط؛ styleEl هنا هو portraitStyleSelect الصحيح (كان في
      مكانها القديم styleEl الأزياء الداخلية، فمقارنة 'merge2' لا تتحقّق أبدًا هناك). */
   let extraImagesB64 = [];
+  /* v-audit-studcli (cli-studios-2) + v-audit-stud2 (srv-studios-2-5): الصور الإضافيّة كانت تُقرأ بـreadAsDataURL بحجمها الأصليّ
+     (صورة كاميرا ٣ م.ب تكفي لتجاوز حدّ الاستضافة ٤٫٥ م.ب فيُرفض الطلب بـ٤١٣) وبلا تحويل HEIC، والقراءة غير متزامنة فكان «حوّلها»
+     قبل اكتمالها يرسل extraImages: [] فيخترع النموذج الشخص الثاني. الآن تمرّ كلّ واحدة بـ__compressImg(…, 1024) كالصورة الرئيسيّة،
+     بترتيبها، و«حوّلها» ينتظر اكتمال الدفعة (extraReady) ثمّ يرفض الإرسال بلا صورة إضافيّة؛ ودفعة أحدث تُلغي ما لم يكتمل من سابقتها. */
+  let extraReady = Promise.resolve();
+  let extraBatch = 0;
   const multiFileInput = $('#portraitMultiFileInput');
   const multiFileBtn = $('#portraitMultiFileBtn');
   const multiPreviewWrap = $('#portraitMultiPreviewWrap');
@@ -35629,22 +36268,24 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     multiFileInput.onchange = () => {
       const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
       const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
+      const batch = ++extraBatch;
+      const slots = [];
       extraImagesB64 = [];
       if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = String(reader.result || '');
-          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
-          if(multiPreviewWrap){
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
-            multiPreviewWrap.appendChild(img);
+      extraReady = Promise.all(files.map((file, i) => new Promise((done) => {
+        __compressImg(file, (dataUrl) => {
+          if(batch === extraBatch && dataUrl){
+            slots[i] = { base64: dataUrl.split(',')[1] || '', mime: 'image/jpeg' };
+            if(multiPreviewWrap){
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
+              multiPreviewWrap.appendChild(img);
+            }
           }
-        };
-        reader.readAsDataURL(file);
-      });
+          done();
+        }, 1024);
+      }))).then(() => { if(batch === extraBatch) extraImagesB64 = slots.filter(Boolean); });
     };
   }
 
@@ -35656,6 +36297,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
       setStatus(t('portraitNeedLogin'));
+      return;
+    }
+    /* v-audit-stud2 (srv-studios-2-5): الدمج والعائلي بلا صورة إضافيّة مقروءة = نصّ خانة الرفع نفسه، بلا طلب */
+    const multiStyle = styleEl.value === 'merge2' || styleEl.value === 'familystyle';
+    if(multiStyle) await extraReady; /* v-audit-studcli: الصور الإضافيّة مصغّرة وكاملة قبل الفحص والإرسال */
+    if(multiStyle && !extraImagesB64.length){
+      setStatus(t(styleEl.value === 'merge2' ? 'portraitMultiLabelMerge' : 'portraitMultiLabelFamily'));
       return;
     }
 
@@ -35676,6 +36324,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('portraitNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('portraitLimitReached')); return; }
+        if(data.error === 'missing_extra_images'){ setStatus(t(styleEl.value === 'merge2' ? 'portraitMultiLabelMerge' : 'portraitMultiLabelFamily')); return; } /* v-audit-stud2 */
         throw new Error(data.error || 'unknown');
       }
       if(styleEl.value === 'avatargif' && Array.isArray(data.frames) && data.frames.length){
@@ -35721,7 +36370,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         setStatus(t('portraitDone'));
       }
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -36290,7 +36939,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const __dl = fxDesignLine(data.design);
       setStatus(t('fashionAiDone') + (__dl ? ' ' + __dl : ''));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -36396,7 +37045,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       refineInput.value = '';
       setStatus(t('fashionAiDone'));
     }catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     }finally{
       refineBtn.disabled = false; btnGenerate.disabled = false;
     }
@@ -36481,7 +37130,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('fashionSuggestNeedImage'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '), 'designAiSuggestError')); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       suggestBtn.disabled = false;
     }
@@ -36556,6 +37205,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
             resultEl.src = r.dataUrl; if(resultWrap) resultWrap.style.display = 'block'; resultEl.style.display = 'block'; /* v-fashion-show */
             downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
             favSaveBtn.style.display = 'block';
+            /* v-audit-studcli (cli-studios-6): المختارة تصير مصدر «عدّل شيئًا محددًا» — كان __lastFxB64 يبقى على التوليد السابق فيُعدَّل
+               التصميم القديم ويحلّ محلّ المختارة. __refineRemember يبني الصفّ إن لم يُبنَ ويفرّغ خانته */
+            const __pm = /^data:([^;,]+);base64,(.*)$/.exec(r.dataUrl);
+            if(__pm) __refineRemember(__pm[2], __pm[1]);
             /* v-fashion-result-inplace: النتيجة وزرّ التحميل صارا أعلى النافذة — نصعد إليهما ليرى الاختيار */
             fxRevealResult();
           };
@@ -36568,7 +37221,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = __studioErrMsg(e);
     } finally {
       compareBtn.disabled = false;
     }
@@ -36808,6 +37461,17 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function emAiMsg(code){
     return (code === 'nokey' || code === 'badkey') ? t('emailAsst_draftNoKey') : (code === 'busy' ? t('emailAsst_draftBusy') : t('emailAsst_draftFailed'));
   }
+  /* v-audit-search (srv-search-6/7): خطأ الخادم رمز يُترجم هنا بلغة الواجهة — كان جملة عربيّة ثابتة («الجلسة منتهية…»، «لم يتم ربط
+     Gmail بعد»، «صيغة الوقت غير صحيحة») أو نصّ Gmail الخامّ بالإنجليزيّة لكلّ اللغات. صلاحيّة ناقصة/مسحوبة = «أعد الربط» وزرّ الربط ظاهر. */
+  const EM_SCOPE = { wide30: 'axSearchEmScope30', latest: 'axSearchEmScopeLatest', empty: 'axSearchEmScopeEmpty' };
+  function emErrText(d){
+    const c = String((d && (d.code || d.error)) || '');
+    if((d && (d.needsReauth || d.notConnected)) || c === 'needs_reauth' || c === 'not_connected') return T().notConnected;
+    if(c === 'session_expired') return t('axSearchSessionExpired');
+    if(c === 'bad_event') return t('axSearchEmBadEvent');
+    return t('svcPaused');
+  }
+  function emReconnect(){ connectBox.style.display = 'block'; emPrefetchTicket(); }
 
   /* v-email-cache (البندان ١ و٩): القائمة تُرسم فورًا بلا انتظار ذكاء، والمسوّدات الناقصة تُطلب رسالةً رسالة (ثلاث معًا)
      فتملأ بطاقاتها، والمحفوظ يأتي جاهزًا من الخادم. «إعادة توليد» وحدها تكتب المسوّدة من جديد، و«المزيد» يُلحق الصفحة
@@ -36921,8 +37585,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         });
         const d = await r.json();
         if(!r.ok){
-          if(d && d.needsReauth) throw new Error(tr.calReauth);
-          throw new Error((d && d.error) || 'calendar failed');
+          if(d && d.needsReauth){ emReconnect(); throw new Error(tr.calReauth); } // v-audit-search: «أعد الربط» ومعه زرّ الربط
+          throw new Error(emErrText(d)); // v-audit-search
         }
         cardStatus.textContent = tr.eventAdded;
         calBtn.textContent = tr.eventAdded;
@@ -36945,7 +37609,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
         });
         const d = await r.json();
-        if(!r.ok) throw new Error(d.error || 'send failed');
+        if(!r.ok){ if(d && d.needsReauth) emReconnect(); throw new Error(emErrText(d)); } // v-audit-search: صلاحيّة الإرسال ناقصة = زرّ الربط
         cardStatus.textContent = tr.sent;
         setTimeout(() => { card.remove(); }, 1200);
       }catch(e){
@@ -36965,7 +37629,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           body: JSON.stringify({ token, pattern }),
         });
         const d = await r.json();
-        if(!r.ok) throw new Error(d.error || 'ignore failed');
+        if(!r.ok) throw new Error(emErrText(d)); // v-audit-search
         cardStatus.textContent = tr.ignored;
         setTimeout(() => { card.remove(); }, 1000);
       }catch(e){
@@ -37061,14 +37725,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const d = await r.json();
       if(run !== emRun) return;
       /* «غير مربوط» يصل ٢٠٠ (حالة طبيعيّة لا خطأ — كان ٤٠٠ يطبع طلبًا فاشلًا عند كلّ فتح) فيُفحص قبل r.ok */
-      if(d.notConnected || (!r.ok && /invalid_grant/i.test(String(d.error || '')))){
+      if(d.notConnected || d.needsReauth || (!r.ok && /invalid_grant/i.test(String(d.error || '')))){ /* v-audit-search: needsReauth = صلاحيّة ناقصة */
         connectBox.style.display = 'block';
         connectedBox.style.display = 'none';
         setStatus(d.notConnected ? '' : T().notConnected);
         emPrefetchTicket(); // v-oauth-bind
         return;
       }
-      if(!r.ok) throw new Error(d.error || 'load failed');
+      if(!r.ok) throw new Error(emErrText(d) + (d && d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '')); // v-audit-search: التفصيل للمالك وحده من الخادم
       gmailLabel.textContent = d.gmailAddress || '';
       if(!more){
         // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
@@ -37076,7 +37740,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const detail = d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '';
         const aiLine = d.aiError ? emAiMsg(d.aiError) + detail : (d.aiNote ? t('emailAsst_draftFallback') + detail : '');
         if(aiLine) emKeyShown = true;
-        setStatus([d.note || '', aiLine].filter(Boolean).join('\n'));
+        const scopeLine = EM_SCOPE[d.scope] ? t(EM_SCOPE[d.scope]) : (d.note || ''); // v-audit-search (srv-search-7): رمز النطاق بلغة الواجهة
+        setStatus([scopeLine, aiLine].filter(Boolean).join('\n'));
       }
       const emails = d.emails || [];
       lastLoadedEmails = lastLoadedEmails.concat(emails);
@@ -37174,7 +37839,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-oauth-bind: state كان رمز الجلسة نفسه (٣٠ يومًا) — يمرّ في روابط جوجل وسجلّاتها، ومن أكمل رابطًا يحمل رمز
      غيره رُبطت Gmail الخاصّة به بحساب ذلك الغير. الآن تذكرة ربط من الخادم (استعمال واحد، عشر دقائق) تُسكّ مسبقًا
      حين يظهر زرّ الربط، فيبقى فتح سفاري في غلاف الآيفون داخل لمسة المستخدم بلا انتظار شبكة قبله. */
-  const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);
+  /* v-audit-search (srv-search-7): التنبيه كان عربيًّا دائمًا ويعرض الرمز الخامّ (session_expired، access_denied…) — الآن نصّ بلغة
+     الواجهة: الإلغاء في صفحة جوجل، والصلاحيّات الناقصة، وما سواهما «حاول مرّة ثانية» (التذكرة والشبكة والخادم علاجها واحد). */
+  const emLinkError = (err) => alert('⚠️ ' + t(err === 'access_denied' ? 'axSearchEmLinkDenied' : (err === 'missing_scopes' ? 'axSearchEmLinkScopes' : 'axSearchEmLinkFailed')));
   let emTicket = null; // { t: التذكرة، at: وقت سكّها، tok: الجلسة التي سكّتها — حساب آخر على الجهاز نفسه لا يستعملها }
   async function emMintTicket(token){
     const r = await fetch('/api/system?action=email-link-ticket', {
@@ -37333,7 +38000,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       /* v-stocks-fail (تدقيق ١٨ أكتوبر + الدفعة ٥): الخادم يرسل رمزًا لا رسالة مزوّد الأسعار (كانت «**symbol** or **figi** … https://…» باسمه ورابطه وبالإنجليزيّ) */
       if(j.error === 'symbol_not_found') throw new Error(t('stocksSymbolNotFound'));
       if(j.error === 'unavailable') throw new Error(t('svcPaused'));
-      throw new Error(j.error || 'HTTP '+r.status);
+      throw Object.assign(new Error(j.error || 'HTTP '+r.status), { data: j }); /* v-audit-search: الرمز وحقوله لمن يترجمه (pfErrText) */
     }
     return j;
   }
@@ -37567,7 +38234,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     analysisEl.style.display = 'block';
     analysisEl.textContent = '🤖 ...';
     try{
-      const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
+      const lang = localStorage.getItem('aiapp_lang')||'ar'; /* v-audit-search (srv-search-8): الرمز كاملًا — slice(0,2) كان يجعل fil «fi» */
       const j = await api({ mode:'analyze', symbol: currentSym, question: questionEl.value.trim(), lang: lang });
       if(j.analysis) setMd(analysisEl, j.analysis); else analysisEl.textContent = '⚠️'; // v-md-lite
     }catch(err){
@@ -37593,7 +38260,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     lessonEl.style.display = 'block';
     lessonEl.textContent = '🎓 ...';
     try{
-      const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
+      const lang = localStorage.getItem('aiapp_lang')||'ar'; /* v-audit-search (srv-search-8) */
       const j = await api({ mode:'learn', topic: topic||'', question: question||'', symbol: currentSym || 'AAPL', lang: lang });
       /* v-md-lite · v-stocks-fail: الفشل سطر وظيفيّ بلغة الواجهة، لا claudeError (نصّ المزوّد الخامّ) */
       if(j.lesson) setMd(lessonEl, j.lesson); else lessonEl.textContent = '⚠️ ' + t('svcPaused');
@@ -37770,7 +38437,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     (bd.top || []).forEach(function(r){
       h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
         + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
-        + '<span style="flex:1;">' + pfEsc(r.user) + '</span>'
+        /* v-audit-search (srv-search-1): الخادم يرسل اسمًا مقنَّعًا (لا مفتاح الحساب/البريد) وعلم me لسطرك؛ الاسم معزول FSI (اتّجاه أوّل حرف)
+           فلا تنقلب «ah***» إلى «***ah» في العربيّ */
+        + '<span style="flex:1;' + (r.me ? 'font-weight:700;' : '') + '">\u2068' + pfEsc(r.name != null ? r.name : '') + '\u2069</span>'
         + '<b style="color:' + pfCol(r.plPct) + ';">' + pfIso((r.plPct >= 0 ? '+' : '') + r.plPct + '%') + '</b></div>';
     });
     // آخر الصفقات + إعادة الضبط
@@ -37789,6 +38458,20 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   }
 
   function pfMsgShow(txt, ok){ var m = $('#pfMsg'); if(m){ m.textContent = txt; m.style.color = ok ? '#2E9E6B' : '#e05252'; } }
+  /* v-audit-search (srv-search-8): أخطاء الصفقة رموز من الخادم بأرقامها حقولًا — كانت جملًا عربيّة ثابتة يعرضها pfMsgShow كما هي.
+     المفتاح من القاموس (١٤ لغة)، وقبل وصوله stT العربيّ/الإنجليزيّ؛ الأرقام معزولة LTR (v-pf-bidi). */
+  function pfTk(k, ar, en){ var v = ''; try{ v = (typeof t === 'function') ? t(k) : ''; }catch(e){ __swallow(e, "misc:app-13-stocks-init#pfTk"); } return (v && v !== k) ? v : stT(ar, en); }
+  function pfErrText(e){
+    var d = (e && e.data) || {};
+    if(d.error === 'insufficient_cash') return pfTk('axSearchPfNoCash', 'رصيدك الافتراضي لا يكفي: عندك {cash} والصفقة تحتاج {cost}', 'Not enough virtual cash: you have {cash} and this trade needs {cost}')
+      .replace('{cash}', pfIso('$' + pfMoney(d.cash))).replace('{cost}', pfIso('$' + pfMoney(d.cost)));
+    if(d.error === 'not_enough_shares') return pfTk('axSearchPfNoShares', 'ما تملك هذه الكمية — عندك {qty} سهم من {sym}', "You don't own that many — you have {qty} shares of {sym}")
+      .replace('{qty}', pfIso(String(d.have || 0))).replace('{sym}', pfIso(String(d.symbol || '')));
+    if(d.error === 'trade_limit') return pfTk('axSearchPfLimit', 'وصلت لحدّ الصفقات اليوميّ ({limit}) — عد غدًا 🌙', "You've reached today's trade limit ({limit}) — come back tomorrow 🌙")
+      .replace('{limit}', pfIso(String(d.limit || '')));
+    if(d.error === 'bad_trade') return stT('اكتب رمز السهم والكمية أولًا','Enter a stock symbol and quantity first');
+    return (e && e.message) || stT('تعذرت الصفقة','Trade failed');
+  }
 
   function pfTrade(side, sym, qty){
     if(pfBusy) return;
@@ -37808,7 +38491,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           + (buy ? stT('🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.', '🎓 Lesson: don’t put all your cash in one stock — diversifying protects you.')
                  : stT('🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.', '🎓 Lesson: selling locks in a profit or stops a loss — good decisions follow a plan, not emotion.')), true);
       })
-      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || stT('تعذرت الصفقة','Trade failed')), false); });
+      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + pfErrText(e), false); });
   }
 
   function pfWire(){
@@ -37816,7 +38499,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(b1) b1.onclick = function(){ pfTrade('buy'); };
     if(b2) b2.onclick = function(){ pfTrade('sell'); };
     if(rs) rs.onclick = function(){
-      if(!confirm('تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.')) return;
+      if(!confirm(pfT('axChatcliPfResetConfirm', 'تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.'))) return; // v-audit-chatcli (x-i18n-5): بلغة الواجهة
       api({ mode:'pf-reset', token: pfTok() }).then(pfRender).catch(function(e){ pfMsgShow('⚠️ ' + e.message, false); });
     };
     pfWrap.querySelectorAll('[data-pfsell]').forEach(function(b){
@@ -37826,10 +38509,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       b.onclick = function(){
         var sym = b.getAttribute('data-pfwhy');
         var box = $('#pfLesson');
-        box.style.display = 'block'; box.textContent = '🎓 معلمك يجهز درسًا على ' + sym + ' بالأرقام الحية…';
+        box.style.display = 'block'; box.textContent = pfT('axChatcliPfLessonLoading', '🎓 معلمك يجهز درسًا على {sym} بالأرقام الحية…').split('{sym}').join(sym); // v-audit-chatcli
         api({ mode:'learn', symbol: sym, question: 'أنا مبتدئ وأملك هذا السهم في محفظتي التعليمية. علمني ماذا أراقب فيه الآن (الاتجاه، الدعم والمقاومة، متى أفكر بالبيع) بالأرقام الحية.', lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
-          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = 'تعذر الدرس الآن — حاول بعد قليل.'; }) // v-md-lite
-          .catch(function(e){ box.textContent = '⚠️ ' + (e.message || 'تعذر الدرس'); });
+          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = pfT('axChatcliPfLessonFail', 'تعذر الدرس الآن — حاول بعد قليل.'); }) // v-md-lite
+          .catch(function(e){ box.textContent = '⚠️ ' + (e.message || pfT('axChatcliPfLessonFail', 'تعذر الدرس الآن — حاول بعد قليل.')); });
       };
     });
   }
@@ -37986,6 +38669,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
 
   if(libraryBtn){
     libraryBtn.onclick = async () => {
+      /* v-audit-stud2 (srv-studios-2-2): المكتبة صارت بجلسة وسقف يوميّ في الخادم — نرسل الرمز، وبلاه «سجّل الدخول» بلا طلب */
+      const libToken = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+      if(!libToken){ setStatus(t('portraitNeedLogin')); return; } /* «سجّل الدخول لاستخدام هذه الميزة» — نصّ designAiNeedLogin يسمّي الديكور */
       libraryBtn.disabled = true;
       libraryEmptyEl.style.display = 'none';
       libraryWrap.style.display = 'none';
@@ -37995,9 +38681,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           /* v-cx-lib: المكتبة مشتركة وتسميات كلّ مخطّط بلغة صاحبه — نطلب مخطّطات لغتنا وحدها */
-          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
+          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar', token: libToken }),
         });
         const data = await res.json();
+        if(res.status === 401 || (data && data.error === 'auth_required')){ setStatus(t('portraitNeedLogin')); return; }
+        if(res.status === 429 || (data && data.error === 'daily_limit_reached')){ setStatus(t('portraitLimitReached')); return; }
         const items = (data && data.items) || [];
         if(!items.length){
           libraryEmptyEl.style.display = 'block';
@@ -38130,7 +38818,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     a.download = 'omran-boq.csv';
     document.body.appendChild(a); a.click();
-    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){} }, 1500);
+    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){ /* guard-ok — تنظيف رابط مؤقّت بعد التنزيل؛ فشله لا يمسّ الملفّ */ } }, 1500);
   };
 
   if(pdfBtn) pdfBtn.onclick = async function(){
@@ -38138,38 +38826,44 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const fig = function(b64, mime, cap){
       return b64 ? ('<figure><img src="data:' + (mime || 'image/png') + ';base64,' + b64 + '"><figcaption>' + cap + '</figcaption></figure>') : '';
     };
+    /* v-audit-search (cli-tools-7): التقرير بلغة الواجهة واتّجاهها — كان dir=rtl وlang=ar وعناوينه وتسمياته وتذييله وتاريخه (ar-AE)
+       عربيّة لكلّ اللغات، ونصّ الخطّة نفسه بلغة المستخدم، فيختلط الاتّجاهان في ملفّ يُرسل لطرف ثالث. المفتاح من القاموس، وقبله bT. */
+    const cxLang = String((typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar');
+    const cxRtl = cxLang === 'ar' || cxLang === 'ur';
+    const cxT = function(k, ar, en){ const v = t(k); return (v && v !== k) ? v : bT(ar, en); };
     const rows = boqRows();
     let tbl = '';
     if(rows){
-      tbl = '<h2>📊 جدول الكميات</h2><table>' + rows.map(function(r, i){
+      tbl = '<h2>' + esc(cxT('axSearchCxBoq', '📊 جدول الكميات', '📊 Bill of quantities')) + '</h2><table>' + rows.map(function(r, i){
         const g = i === 0 ? 'th' : 'td';
         return '<tr>' + r.map(function(c){ return '<' + g + '>' + esc(c) + '</' + g + '>'; }).join('') + '</tr>';
       }).join('') + '</table>';
     }
     const oTxt = function(el){ return (el && el.options[el.selectedIndex]) ? el.options[el.selectedIndex].text : ''; };
     /* v-md-lite: «عدد الأدوار: N» بدل «N أدوار» (كان «1 أدوار») */
-    const meta = [oTxt(typeEl), 'عدد الأدوار: ' + floorsEl.value, areaEl.value + ' م² بناء',
-      (plotEl && plotEl.value ? plotEl.value + ' م² أرض' : ''), oTxt(styleEl),
+    const meta = [oTxt(typeEl), t('constructionFloors') + ': ' + floorsEl.value, cxT('axSearchCxBuiltArea', '{n} م² بناء', '{n} m² built').replace('{n}', areaEl.value),
+      (plotEl && plotEl.value ? cxT('axSearchCxPlotArea', '{n} م² أرض', '{n} m² plot').replace('{n}', plotEl.value) : ''), oTxt(styleEl),
       (emirateEl && emirateEl.value ? oTxt(emirateEl) : '')].filter(Boolean).join(' · ');
-    const __docHtml = ('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير مشروع البناء</title><style>'
+    const cxTitle = cxT('axSearchCxReportTitle', 'تقرير مشروع البناء', 'Construction project report');
+    const __docHtml = ('<!doctype html><html dir="' + (cxRtl ? 'rtl' : 'ltr') + '" lang="' + esc(cxLang) + '"><head><meta charset="utf-8"><title>' + esc(cxTitle) + '</title><style>'
       + 'body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;margin:0;padding:0 26px 26px;color:#111;}'
       + 'header{background:linear-gradient(135deg,#0f766e,#134e4a);color:#fff;margin:0 -26px 18px;padding:20px 26px;}'
       + 'header h1{margin:0;font-size:21px}header p{margin:6px 0 0;font-size:13px;opacity:.92}'
       + 'h2{font-size:16px;border-bottom:2px solid #0f766e;padding-bottom:4px;margin:20px 0 8px}'
       + 'table{width:100%;border-collapse:collapse;font-size:12px}'
-      + 'th,td{border:1px solid #bbb;padding:5px 7px;text-align:right}th{background:#e6f2f0}'
+      + 'th,td{border:1px solid #bbb;padding:5px 7px;text-align:start}th{background:#e6f2f0}'
       + 'figure{margin:0 0 12px;page-break-inside:avoid}img{width:100%;border:1px solid #ccc;border-radius:6px}'
       + 'figcaption{font-size:11.5px;color:#555;margin-top:4px;text-align:center}'
       + '.plan{white-space:pre-wrap;font-size:12.5px;line-height:1.85;margin:0}.plan hr{border:0;border-top:1px solid #ccc;margin:8px 0}' /* v-md-lite */
       + 'footer{margin-top:22px;font-size:11px;color:#666;border-top:1px solid #ddd;padding-top:8px}'
       + '@media print{header,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
-      + '</style></head><body><header><h1>🏗️ تقرير مشروع البناء</h1><p>' + esc(meta)
-      + '</p><p>' + esc(new Date().toLocaleDateString('ar-AE')) + '</p></header>'
-      + fig(lastData.imageBase64, lastData.mimeType, 'المخطط المعماري')
-      + fig(lastData.photoImageBase64, lastData.photoMimeType, 'الواجهة الخارجية')
-      + fig(lastData.interiorImageBase64, lastData.interiorMimeType, 'التصميم الداخلي')
-      + '<h2>📋 التفاصيل والتكلفة</h2><div class="plan">' + window.__omMdLiteHtml(lastData.planText || '') + '</div>' + tbl
-      + '<footer>تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.</footer>'
+      + '</style></head><body><header><h1>🏗️ ' + esc(cxTitle) + '</h1><p>' + esc(meta)
+      + '</p><p>' + esc(new Date().toLocaleDateString(cxLang === 'ar' ? 'ar-AE' : cxLang)) + '</p></header>'
+      + fig(lastData.imageBase64, lastData.mimeType, esc(t('constructionPlanImageLabel')))
+      + fig(lastData.photoImageBase64, lastData.photoMimeType, esc(t('constructionExteriorLabel')))
+      + fig(lastData.interiorImageBase64, lastData.interiorMimeType, esc(t('constructionInteriorLabel')))
+      + '<h2>' + esc(cxT('axSearchCxDetails', '📋 التفاصيل والتكلفة', '📋 Details and cost')) + '</h2><div class="plan">' + window.__omMdLiteHtml(lastData.planText || '') + '</div>' + tbl
+      + '<footer>' + esc(cxT('axSearchCxFooter', 'تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.', 'Initial concept only — not a substitute for a licensed engineer or an official building permit. Issued by the om ai app.')) + '</footer>'
       + '</body></html>');
     /* v-cons-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة الطباعة
        ميتة — نصدّر ملف PDF حقيقيًا؛ والطباعة تبقى للكمبيوتر. */
@@ -38179,7 +38873,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       try{
         const __st = (__docHtml.match(/<style[\s\S]*?<\/style>/gi) || []).join('');
         const __bm = __docHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-        await window.omranExportHtmlAsPdfFile(__st + (__bm ? __bm[1] : __docHtml), { rtl: true, fileName: 'omran-construction.pdf' });
+        await window.omranExportHtmlAsPdfFile(__st + (__bm ? __bm[1] : __docHtml), { rtl: cxRtl, fileName: 'omran-construction.pdf' });
         return true;
       }catch(e){ return false; }
     }
@@ -38192,7 +38886,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     }
     w.document.write(__docHtml);
     w.document.close();
-    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 800);
+    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){ /* guard-ok — نافذة أُغلقت قبل الطباعة؛ التقرير معروض فيها */ } }, 800);
   };
 
   angleBtns.forEach((btn) => {
@@ -40397,7 +41091,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           const label = (styleEl.querySelector('option[value="' + r.styleVal + '"]') || {}).textContent || r.styleVal;
           cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* v-audit-studeng (srv-studios-1-3): الرمز بنصّ الواجهة (studioErrText) — كان «❌ image_generation_failed» أو نصّ الخادم خامًا */
+          const errP = document.createElement('p'); errP.style.cssText = 'font-size:11.5px; color:#f87171;';
+          errP.textContent = studioErrText(new Error(r.error || 'unknown')); cell.appendChild(errP);
         }
         compareResultsEl.appendChild(cell);
       });
@@ -40457,7 +41153,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         if(r.dataUrl){
           cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* v-audit-studeng (srv-studios-1-3): الرمز بنصّ الواجهة (studioErrText) — كان «❌ image_generation_failed» أو نصّ الخادم خامًا */
+          const errP = document.createElement('p'); errP.style.cssText = 'font-size:11.5px; color:#f87171;';
+          errP.textContent = studioErrText(new Error(r.error || 'unknown')); cell.appendChild(errP);
         }
         heritageCompareResultsEl.appendChild(cell);
       });
@@ -41518,7 +42216,7 @@ window.updateVersionLabel();
     '.note{margin:16px 0 0;padding:11px 14px;background:#FFF6E5;border-radius:8px;font-size:13px;color:#6b5320}'
   ].join('');
 
-  var EDITOR_CLIENT = '/* عميل المحرّر — يعمل داخل صفحة المعاينة (iframe).\n *\n * لماذا محرّر لا رسم ثابت:\n * الترتيب الآلي يرصّ الغرف في صفوف — نِسَب صحيحة ومساحات صحيحة، لكنه ليس\n * توزيعًا معماريًا. والمستخدم يعرف بيته أكثر من أي نموذج: أين يريد المجلس،\n * وأي غرفة على الشارع. فالنموذج يعطي البداية، وهو يضبط.\n *\n * والمساحة تبقى محسوبة في كل لحظة — تُعاد من العرض×الطول بعد كل سحب أو\n * تغيير مقاس. لا يمكن أن يظهر رقم لا يطابق الشكل.\n *\n * pointer events لا mouse: أغلب المستخدمين على الجوال.\n */\n(function () {\n  \'use strict\';\n\n  var SNAP = 0.25;                       // متر\n  var spec = window.__omranSpec || { floors: [] };\n  var LT = window.__omranL10n || null;\n  function T2(k, arv) { return (LT && LT[k]) || arv; }\n  function rn2(n) { if (!LT || !LT.roomEn) return String(n || \'\'); n = String(n || \'\'); for (var k in LT.roomEn) { if (n.indexOf(k) !== -1) return LT.roomEn[k]; } return n; }\n  var M = 30;                            // بكسل لكل متر (يُعاد حسابه للجوال)\n  var active = 0;                        // الطابق المعروض\n  var selected = null;\n\n  var PALETTE = {\n    مجلس: \'#F6E4D7\', صالة: \'#FAF3DC\', نوم: \'#FCE6D2\', حمام: \'#DCE9F5\',\n    مطبخ: \'#F5DDEE\', كراج: \'#E6E6E6\', خدامة: \'#EDE7DA\', مسبح: \'#BFE4F2\',\n    مكتب: \'#E4EEDC\', مخزن: \'#EAEAEA\', سلم: \'#E0DCE8\',\n  };\n  function colorFor(n) {\n    n = String(n || \'\');\n    for (var k in PALETTE) if (n.indexOf(k) !== -1) return PALETTE[k];\n    return \'#F0EFEA\';\n  }\n  function snap(v) { return Math.max(SNAP, Math.round(v / SNAP) * SNAP); }\n  function fmt(v) { return String(Math.round(v * 100) / 100); }\n\n  /* أول تحميل: نوزّع الغرف صفوفًا كبداية، ثم يعدّل المستخدم. */\n  function seedPositions() {\n    var pw = Number(spec.plotWidth) || 15;\n    (spec.floors || []).forEach(function (f) {\n      var x = 0, y = 0, rowH = 0;\n      (f.rooms || []).forEach(function (r) {\n        r.w = Number(r.w) || 3; r.h = Number(r.h) || 3;\n        if (typeof r.x === \'number\' && typeof r.y === \'number\') return;\n        if (x + r.w > pw + 0.01) { x = 0; y += rowH; rowH = 0; }\n        r.x = x; r.y = y; x += r.w; rowH = Math.max(rowH, r.h);\n      });\n    });\n  }\n\n  function floorDepth(f) {\n    return (f.rooms || []).reduce(function (m, r) { return Math.max(m, (r.y || 0) + r.h); }, 0);\n  }\n  function floorArea(f) {\n    return (f.rooms || []).reduce(function (s, r) { return s + r.w * r.h; }, 0);\n  }\n\n  /* تداخل الغرف — لا نمنعه (قد يريد المستخدم غرفة داخل أخرى مؤقتًا) لكن نُظهره. */\n  function overlaps(f, room) {\n    return (f.rooms || []).some(function (o) {\n      if (o === room) return false;\n      return room.x < o.x + o.w - 0.01 && o.x < room.x + room.w - 0.01 &&\n             room.y < o.y + o.h - 0.01 && o.y < room.y + room.h - 0.01;\n    });\n  }\n\n  var $ = function (id) { return document.getElementById(id); };\n\n  function render() {\n    var f = spec.floors[active];\n    if (!f) return;\n    var pw = Number(spec.plotWidth) || 15;\n    var avail = Math.min(document.body.clientWidth - 28, 900);\n    M = Math.max(14, Math.floor(avail / pw));\n    var depth = Math.max(floorDepth(f), 4);\n\n    var stage = $(\'stage\');\n    stage.style.width = (pw * M) + \'px\';\n    stage.style.height = (depth * M) + \'px\';\n    stage.innerHTML = \'\';\n\n    (f.rooms || []).forEach(function (r, i) {\n      var el = document.createElement(\'div\');\n      el.className = \'room\' + (selected === r ? \' sel\' : \'\') + (overlaps(f, r) ? \' clash\' : \'\');\n      el.style.cssText = \'left:\' + (r.x * M) + \'px;top:\' + (r.y * M) + \'px;width:\' + (r.w * M) +\n        \'px;height:\' + (r.h * M) + \'px;background:\' + colorFor(r.name);\n      el.dataset.i = i;\n      el.innerHTML =\n        \'<div class="rn">\' + rn2(r.name).replace(/</g, \'&lt;\') + \'</div>\' +\n        \'<div class="ra">\' + fmt(r.w * r.h) + T2(\'m2\', \' م²\') + \'</div>\' +\n        \'<div class="rd">\' + fmt(r.w) + \'×\' + fmt(r.h) + \'</div>\' +\n        \'<div class="grip" data-grip="1"></div>\' +\n        \'<div class="rx" data-del="1" title="\' + T2(\'del\', \'حذف\') + \'">✕</div>\';\n      stage.appendChild(el);\n    });\n\n    $(\'total\').textContent = fmt(floorArea(f)) + T2(\'m2\', \' م²\');\n    $(\'depth\').textContent = fmt(depth) + T2(\'m\', \' م\');\n    $(\'pw\').textContent = fmt(pw) + T2(\'m\', \' م\');\n    var grand = (spec.floors || []).reduce(function (s, x) { return s + floorArea(x); }, 0);\n    $(\'grand\').textContent = fmt(grand) + T2(\'m2\', \' م²\');\n    renderTabs();\n    renderPanel();\n  }\n\n  function renderTabs() {\n    var t = $(\'tabs\');\n    t.innerHTML = (spec.floors || []).map(function (f, i) {\n      return \'<button class="tab\' + (i === active ? \' on\' : \'\') + \'" data-f="\' + i + \'">\' +\n        String((LT && f.name && f.name.indexOf(\'طابق \') === 0) ? (T2(\'floor\', \'طابق\') + \' \' + f.name.slice(5)) : (f.name || (T2(\'floor\', \'طابق\') + \' \' + (i + 1)))).replace(/</g, \'&lt;\') + \'</button>\';\n    }).join(\'\');\n  }\n\n  function renderPanel() {\n    var p = $(\'panel\');\n    if (!selected) { p.innerHTML = \'<div class="hint">\' + T2(\'hint\', \'اضغط على أي غرفة لتغيير اسمها أو مقاسها · اسحبها لتحريكها · اسحب الزاوية لتكبيرها\') + \'</div>\'; return; }\n    p.innerHTML =\n      \'<div class="row"><label>\' + T2(\'nm\', \'الاسم\') + \'</label><input id="fName" value="\' + String(selected.name).replace(/"/g, \'&quot;\') + \'"></div>\' +\n      \'<div class="row"><label>\' + T2(\'w\', \'العرض (م)\') + \'</label><input id="fW" type="number" step="0.25" min="0.5" value="\' + fmt(selected.w) + \'"></div>\' +\n      \'<div class="row"><label>\' + T2(\'h\', \'الطول (م)\') + \'</label><input id="fH" type="number" step="0.25" min="0.5" value="\' + fmt(selected.h) + \'"></div>\' +\n      \'<div class="row"><span class="area">\' + T2(\'area\', \'المساحة\') + \': <b>\' + fmt(selected.w * selected.h) + T2(\'m2\', \' م²\') + \'</b></span>\' +\n      \'<button id="fDel" class="danger">\' + T2(\'del\', \'حذف\') + \'</button></div>\';\n\n    [\'fName\', \'fW\', \'fH\'].forEach(function (id) {\n      var el = $(id);\n      el.oninput = function () {\n        if (!selected) return;\n        if (id === \'fName\') selected.name = el.value || T2(\'room\', \'غرفة\');\n        else {\n          var v = parseFloat(el.value);\n          if (!isFinite(v) || v <= 0) return;\n          if (id === \'fW\') selected.w = v; else selected.h = v;\n        }\n        var keep = selected;\n        render();\n        selected = keep;\n        try { $(id).focus(); } catch (e) { /* أُعيد الرسم */ }\n      };\n    });\n    $(\'fDel\').onclick = function () {\n      var f = spec.floors[active];\n      f.rooms = f.rooms.filter(function (r) { return r !== selected; });\n      selected = null; render();\n    };\n  }\n\n  /* ───────── السحب وتغيير المقاس ───────── */\n  var drag = null;\n\n  function onDown(e) {\n    var el = e.target.closest ? e.target.closest(\'.room\') : null;\n    if (!el) { selected = null; render(); return; }\n    var f = spec.floors[active];\n    var r = f.rooms[+el.dataset.i];\n    if (e.target.dataset && e.target.dataset.del) { f.rooms = f.rooms.filter(function (x) { return x !== r; }); selected = null; render(); e.preventDefault(); return; } /* v-plan-delete: ✕ على الغرفة يحذفها مباشرة */\n    selected = r;\n    var isGrip = e.target.dataset && e.target.dataset.grip;\n    drag = {\n      room: r, mode: isGrip ? \'size\' : \'move\',\n      px: e.clientX, py: e.clientY,\n      ox: r.x, oy: r.y, ow: r.w, oh: r.h,\n    };\n    el.setPointerCapture && el.setPointerCapture(e.pointerId);\n    render();\n    e.preventDefault();\n  }\n\n  function onMove(e) {\n    if (!drag) return;\n    var dx = (e.clientX - drag.px) / M, dy = (e.clientY - drag.py) / M;\n    // v-plan-drag: الغرف موضوعة بـleft/top مطلقين فالسحب يمينًا = زيادة x دائمًا (كان يُعكس في RTL فتتحرك الغرفة عكس الإصبع)\n    var pw = Number(spec.plotWidth) || 15;\n    if (drag.mode === \'move\') {\n      drag.room.x = Math.max(0, Math.min(pw - drag.room.w, snap(drag.ox + dx)));\n      drag.room.y = Math.max(0, snap(drag.oy + dy));\n    } else {\n      drag.room.w = Math.max(0.5, Math.min(pw - drag.room.x, snap(drag.ow + dx)));\n      drag.room.h = Math.max(0.5, snap(drag.oh + dy));\n    }\n    render();\n    e.preventDefault();\n  }\n\n  function onUp() { drag = null; }\n\n  function addRoom() {\n    var f = spec.floors[active];\n    f.rooms = f.rooms || [];\n    var r = { name: T2(\'room\', \'غرفة\'), w: 4, h: 3.5, x: 0, y: floorDepth(f) };\n    f.rooms.push(r); selected = r; render();\n  }\n\n  function addFloor() {\n    spec.floors.push({ name: T2(\'floor\', \'طابق\') + \' \' + (spec.floors.length + 1), rooms: [] });\n    active = spec.floors.length - 1; selected = null; render();\n  }\n\n  /* ───────── توليد الواجهة من المخطط المُعدَّل ───────── */\n  function requestView(view, btn) {\n    var label = btn.textContent;\n    btn.disabled = true; btn.textContent = T2(\'gen\', \'… جارٍ التوليد\');\n    var id = Date.now();\n    function onMsg(e) {\n      var d = e.data;\n      if (!d || d.__omranViewOut !== 1 || d.id !== id) return;\n      window.removeEventListener(\'message\', onMsg);\n      btn.disabled = false; btn.textContent = label;\n      var out = $(\'views\');\n      if (d.ok) {\n        var fig = document.createElement(\'figure\');\n        fig.style.cssText = \'margin:12px 0\';\n        fig.innerHTML = \'<img src="\' + d.dataUrl + \'" style="width:100%;border-radius:12px;display:block">\' +\n          \'<figcaption style="font-size:12px;color:#777;margin-top:6px;text-align:center">\' +\n          label + \' — \' + T2(\'cap\', \'مولّد من المخطط كما عدّلته\') + \'</figcaption>\';\n        out.appendChild(fig);\n      } else {\n        var p = document.createElement(\'p\');\n        p.style.cssText = \'color:#a33;font-size:13px\';\n        p.textContent = \'⚠️ \' + (d.error || T2(\'genFail\', \'تعذّر التوليد\'));\n        out.appendChild(p);\n      }\n    }\n    window.addEventListener(\'message\', onMsg);\n    // نرسل المواصفات الحالية — أي بعد تعديلات المستخدم، لا الأصلية\n    parent.postMessage({ __omranView: 1, id: id, view: view, spec: spec }, \'*\');\n  }\n\n  function boot() {\n    seedPositions();\n    render();\n    var stage = $(\'stage\');\n    stage.addEventListener(\'pointerdown\', onDown);\n    /* v-drag-touch: بعض المتصفحات تخطف اللمس للتمرير رغم touch-action — نمنعها صراحة أثناء السحب */\n    stage.addEventListener(\'touchstart\', function (e) { if (e.target.closest && e.target.closest(\'.room\')) e.preventDefault(); }, { passive: false });\n    window.addEventListener(\'touchmove\', function (e) { if (drag) e.preventDefault(); }, { passive: false });\n    window.addEventListener(\'pointermove\', onMove);\n    window.addEventListener(\'pointerup\', onUp);\n    window.addEventListener(\'pointercancel\', onUp);\n    $(\'tabs\').addEventListener(\'click\', function (e) {\n      var b = e.target.closest(\'.tab\'); if (!b) return;\n      active = +b.dataset.f; selected = null; render();\n    });\n    $(\'addRoom\').onclick = addRoom;\n    $(\'addFloor\').onclick = addFloor;\n    document.querySelectorAll(\'.ov-btn\').forEach(function (b) {\n      b.onclick = function () { requestView(b.dataset.view, b); };\n    });\n    window.addEventListener(\'resize\', function () { render(); });\n  }\n\n  if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', boot);\n  else boot();\n})();\n';
+  var EDITOR_CLIENT = '/* عميل المحرّر — يعمل داخل صفحة المعاينة (iframe).\n *\n * لماذا محرّر لا رسم ثابت:\n * الترتيب الآلي يرصّ الغرف في صفوف — نِسَب صحيحة ومساحات صحيحة، لكنه ليس\n * توزيعًا معماريًا. والمستخدم يعرف بيته أكثر من أي نموذج: أين يريد المجلس،\n * وأي غرفة على الشارع. فالنموذج يعطي البداية، وهو يضبط.\n *\n * والمساحة تبقى محسوبة في كل لحظة — تُعاد من العرض×الطول بعد كل سحب أو\n * تغيير مقاس. لا يمكن أن يظهر رقم لا يطابق الشكل.\n *\n * pointer events لا mouse: أغلب المستخدمين على الجوال.\n */\n(function () {\n  \'use strict\';\n\n  var SNAP = 0.25;                       // متر\n  var spec = window.__omranSpec || { floors: [] };\n  var LT = window.__omranL10n || null;\n  function T2(k, arv) { return (LT && LT[k]) || arv; }\n  function rn2(n) { if (!LT || !LT.roomEn) return String(n || \'\'); n = String(n || \'\'); for (var k in LT.roomEn) { if (n.indexOf(k) !== -1) return LT.roomEn[k]; } return n; }\n  var M = 30;                            // بكسل لكل متر (يُعاد حسابه للجوال)\n  var active = 0;                        // الطابق المعروض\n  var selected = null;\n\n  var PALETTE = {\n    مجلس: \'#F6E4D7\', صالة: \'#FAF3DC\', نوم: \'#FCE6D2\', حمام: \'#DCE9F5\',\n    مطبخ: \'#F5DDEE\', كراج: \'#E6E6E6\', خدامة: \'#EDE7DA\', مسبح: \'#BFE4F2\',\n    مكتب: \'#E4EEDC\', مخزن: \'#EAEAEA\', سلم: \'#E0DCE8\',\n  };\n  function colorFor(n) {\n    n = String(n || \'\');\n    for (var k in PALETTE) if (n.indexOf(k) !== -1) return PALETTE[k];\n    return \'#F0EFEA\';\n  }\n  function snap(v) { return Math.max(SNAP, Math.round(v / SNAP) * SNAP); }\n  function fmt(v) { return String(Math.round(v * 100) / 100); }\n\n  /* أول تحميل: نوزّع الغرف صفوفًا كبداية، ثم يعدّل المستخدم. */\n  function seedPositions() {\n    var pw = Number(spec.plotWidth) || 15;\n    (spec.floors || []).forEach(function (f) {\n      var x = 0, y = 0, rowH = 0;\n      (f.rooms || []).forEach(function (r) {\n        r.w = Number(r.w) || 3; r.h = Number(r.h) || 3;\n        if (typeof r.x === \'number\' && typeof r.y === \'number\') return;\n        if (x + r.w > pw + 0.01) { x = 0; y += rowH; rowH = 0; }\n        r.x = x; r.y = y; x += r.w; rowH = Math.max(rowH, r.h);\n      });\n    });\n  }\n\n  function floorDepth(f) {\n    return (f.rooms || []).reduce(function (m, r) { return Math.max(m, (r.y || 0) + r.h); }, 0);\n  }\n  function floorArea(f) {\n    return (f.rooms || []).reduce(function (s, r) { return s + r.w * r.h; }, 0);\n  }\n\n  /* تداخل الغرف — لا نمنعه (قد يريد المستخدم غرفة داخل أخرى مؤقتًا) لكن نُظهره. */\n  function overlaps(f, room) {\n    return (f.rooms || []).some(function (o) {\n      if (o === room) return false;\n      return room.x < o.x + o.w - 0.01 && o.x < room.x + room.w - 0.01 &&\n             room.y < o.y + o.h - 0.01 && o.y < room.y + room.h - 0.01;\n    });\n  }\n\n  var $ = function (id) { return document.getElementById(id); };\n\n  function render(keepPanel) {\n    var f = spec.floors[active];\n    if (!f) return;\n    var pw = Number(spec.plotWidth) || 15;\n    var avail = Math.min(document.body.clientWidth - 28, 900);\n    M = Math.max(14, Math.floor(avail / pw));\n    var depth = Math.max(floorDepth(f), 4);\n\n    var stage = $(\'stage\');\n    stage.style.width = (pw * M) + \'px\';\n    stage.style.height = (depth * M) + \'px\';\n    stage.innerHTML = \'\';\n\n    (f.rooms || []).forEach(function (r, i) {\n      var el = document.createElement(\'div\');\n      el.className = \'room\' + (selected === r ? \' sel\' : \'\') + (overlaps(f, r) ? \' clash\' : \'\');\n      el.style.cssText = \'left:\' + (r.x * M) + \'px;top:\' + (r.y * M) + \'px;width:\' + (r.w * M) +\n        \'px;height:\' + (r.h * M) + \'px;background:\' + colorFor(r.name);\n      el.dataset.i = i;\n      el.innerHTML =\n        \'<div class="rn">\' + rn2(r.name).replace(/</g, \'&lt;\') + \'</div>\' +\n        \'<div class="ra">\' + fmt(r.w * r.h) + T2(\'m2\', \' م²\') + \'</div>\' +\n        \'<div class="rd">\' + fmt(r.w) + \'×\' + fmt(r.h) + \'</div>\' +\n        \'<div class="grip" data-grip="1"></div>\' +\n        \'<div class="rx" data-del="1" title="\' + T2(\'del\', \'حذف\') + \'">✕</div>\';\n      stage.appendChild(el);\n    });\n\n    $(\'total\').textContent = fmt(floorArea(f)) + T2(\'m2\', \' م²\');\n    $(\'depth\').textContent = fmt(depth) + T2(\'m\', \' م\');\n    $(\'pw\').textContent = fmt(pw) + T2(\'m\', \' م\');\n    var grand = (spec.floors || []).reduce(function (s, x) { return s + floorArea(x); }, 0);\n    $(\'grand\').textContent = fmt(grand) + T2(\'m2\', \' م²\');\n    renderTabs();\n    if (!keepPanel) renderPanel(); /* v-audit-studcli: أثناء الكتابة تبقى حقول اللوحة كما هي */\n  }\n\n  function renderTabs() {\n    var t = $(\'tabs\');\n    t.innerHTML = (spec.floors || []).map(function (f, i) {\n      return \'<button class="tab\' + (i === active ? \' on\' : \'\') + \'" data-f="\' + i + \'">\' +\n        String((LT && f.name && f.name.indexOf(\'طابق \') === 0) ? (T2(\'floor\', \'طابق\') + \' \' + f.name.slice(5)) : (f.name || (T2(\'floor\', \'طابق\') + \' \' + (i + 1)))).replace(/</g, \'&lt;\') + \'</button>\';\n    }).join(\'\');\n  }\n\n  function renderPanel() {\n    var p = $(\'panel\');\n    if (!selected) { p.innerHTML = \'<div class="hint">\' + T2(\'hint\', \'اضغط على أي غرفة لتغيير اسمها أو مقاسها · اسحبها لتحريكها · اسحب الزاوية لتكبيرها\') + \'</div>\'; return; }\n    p.innerHTML =\n      \'<div class="row"><label>\' + T2(\'nm\', \'الاسم\') + \'</label><input id="fName" value="\' + String(selected.name).replace(/"/g, \'&quot;\') + \'"></div>\' +\n      \'<div class="row"><label>\' + T2(\'w\', \'العرض (م)\') + \'</label><input id="fW" type="number" step="0.25" min="0.5" value="\' + fmt(selected.w) + \'"></div>\' +\n      \'<div class="row"><label>\' + T2(\'h\', \'الطول (م)\') + \'</label><input id="fH" type="number" step="0.25" min="0.5" value="\' + fmt(selected.h) + \'"></div>\' +\n      \'<div class="row"><span class="area">\' + T2(\'area\', \'المساحة\') + \': <b id="fArea">\' + fmt(selected.w * selected.h) + T2(\'m2\', \' م²\') + \'</b></span>\' +\n      \'<button id="fDel" class="danger">\' + T2(\'del\', \'حذف\') + \'</button></div>\';\n\n    [\'fName\', \'fW\', \'fH\'].forEach(function (id) {\n      var el = $(id);\n      /* v-audit-studcli (cli-studios-1): كان كلّ حرف يعيد بناء اللوحة بـinnerHTML ثمّ focus() على حقل جديد فيقفز المؤشّر لأوّله\n       * («مجلس»+XY ← «YمجلسX»، و3.5 ← 50.3). الكتابة الآن تحدّث النموذج والمسرح والمساحة وحدها والحقل باقٍ كما هو؛ القيد\n       * (0.5 حتّى عرض الأرض) على النموذج لحظيًّا، و«غرفة» الافتراضيّة وتسوية الحقل عند change (الخروج من الحقل). */\n      el.oninput = function () {\n        if (!selected) return;\n        if (id === \'fName\') selected.name = el.value || T2(\'room\', \'غرفة\');\n        else {\n          var v = parseFloat(el.value);\n          if (!isFinite(v) || v <= 0) return;\n          var pw = Number(spec.plotWidth) || 15;\n          if (id === \'fW\') selected.w = Math.max(0.5, Math.min(pw - (selected.x || 0), v)); else selected.h = Math.max(0.5, v);\n          var ar = $(\'fArea\'); if (ar) ar.textContent = fmt(selected.w * selected.h) + T2(\'m2\', \' م²\');\n        }\n        render(true);\n      };\n      el.onchange = function () {\n        if (!selected) return;\n        el.value = id === \'fName\' ? selected.name : fmt(id === \'fW\' ? selected.w : selected.h);\n      };\n    });\n    $(\'fDel\').onclick = function () {\n      var f = spec.floors[active];\n      f.rooms = f.rooms.filter(function (r) { return r !== selected; });\n      selected = null; render();\n    };\n  }\n\n  /* ───────── السحب وتغيير المقاس ───────── */\n  var drag = null;\n\n  function onDown(e) {\n    var el = e.target.closest ? e.target.closest(\'.room\') : null;\n    if (!el) { selected = null; render(); return; }\n    var f = spec.floors[active];\n    var r = f.rooms[+el.dataset.i];\n    if (e.target.dataset && e.target.dataset.del) { f.rooms = f.rooms.filter(function (x) { return x !== r; }); selected = null; render(); e.preventDefault(); return; } /* v-plan-delete: ✕ على الغرفة يحذفها مباشرة */\n    selected = r;\n    var isGrip = e.target.dataset && e.target.dataset.grip;\n    drag = {\n      room: r, mode: isGrip ? \'size\' : \'move\',\n      px: e.clientX, py: e.clientY,\n      ox: r.x, oy: r.y, ow: r.w, oh: r.h,\n    };\n    el.setPointerCapture && el.setPointerCapture(e.pointerId);\n    render();\n    e.preventDefault();\n  }\n\n  function onMove(e) {\n    if (!drag) return;\n    var dx = (e.clientX - drag.px) / M, dy = (e.clientY - drag.py) / M;\n    // v-plan-drag: الغرف موضوعة بـleft/top مطلقين فالسحب يمينًا = زيادة x دائمًا (كان يُعكس في RTL فتتحرك الغرفة عكس الإصبع)\n    var pw = Number(spec.plotWidth) || 15;\n    if (drag.mode === \'move\') {\n      drag.room.x = Math.max(0, Math.min(pw - drag.room.w, snap(drag.ox + dx)));\n      drag.room.y = Math.max(0, snap(drag.oy + dy));\n    } else {\n      drag.room.w = Math.max(0.5, Math.min(pw - drag.room.x, snap(drag.ow + dx)));\n      drag.room.h = Math.max(0.5, snap(drag.oh + dy));\n    }\n    render();\n    e.preventDefault();\n  }\n\n  function onUp() { drag = null; }\n\n  function addRoom() {\n    var f = spec.floors[active];\n    f.rooms = f.rooms || [];\n    var r = { name: T2(\'room\', \'غرفة\'), w: 4, h: 3.5, x: 0, y: floorDepth(f) };\n    f.rooms.push(r); selected = r; render();\n  }\n\n  function addFloor() {\n    spec.floors.push({ name: T2(\'floor\', \'طابق\') + \' \' + (spec.floors.length + 1), rooms: [] });\n    active = spec.floors.length - 1; selected = null; render();\n  }\n\n  /* ───────── توليد الواجهة من المخطط المُعدَّل ───────── */\n  function requestView(view, btn) {\n    var label = btn.textContent;\n    btn.disabled = true; btn.textContent = T2(\'gen\', \'… جارٍ التوليد\');\n    var id = Date.now();\n    function onMsg(e) {\n      var d = e.data;\n      if (!d || d.__omranViewOut !== 1 || d.id !== id) return;\n      window.removeEventListener(\'message\', onMsg);\n      btn.disabled = false; btn.textContent = label;\n      var out = $(\'views\');\n      if (d.ok) {\n        var fig = document.createElement(\'figure\');\n        fig.style.cssText = \'margin:12px 0\';\n        fig.innerHTML = \'<img src="\' + d.dataUrl + \'" style="width:100%;border-radius:12px;display:block">\' +\n          \'<figcaption style="font-size:12px;color:#777;margin-top:6px;text-align:center">\' +\n          label + \' — \' + T2(\'cap\', \'مولّد من المخطط كما عدّلته\') + \'</figcaption>\';\n        out.appendChild(fig);\n      } else {\n        var p = document.createElement(\'p\');\n        p.style.cssText = \'color:#a33;font-size:13px\';\n        p.textContent = \'⚠️ \' + (d.error || T2(\'genFail\', \'تعذّر التوليد\'));\n        out.appendChild(p);\n      }\n    }\n    window.addEventListener(\'message\', onMsg);\n    // نرسل المواصفات الحالية — أي بعد تعديلات المستخدم، لا الأصلية\n    parent.postMessage({ __omranView: 1, id: id, view: view, spec: spec }, \'*\');\n  }\n\n  function boot() {\n    seedPositions();\n    render();\n    var stage = $(\'stage\');\n    stage.addEventListener(\'pointerdown\', onDown);\n    /* v-drag-touch: بعض المتصفحات تخطف اللمس للتمرير رغم touch-action — نمنعها صراحة أثناء السحب */\n    stage.addEventListener(\'touchstart\', function (e) { if (e.target.closest && e.target.closest(\'.room\')) e.preventDefault(); }, { passive: false });\n    window.addEventListener(\'touchmove\', function (e) { if (drag) e.preventDefault(); }, { passive: false });\n    window.addEventListener(\'pointermove\', onMove);\n    window.addEventListener(\'pointerup\', onUp);\n    window.addEventListener(\'pointercancel\', onUp);\n    $(\'tabs\').addEventListener(\'click\', function (e) {\n      var b = e.target.closest(\'.tab\'); if (!b) return;\n      active = +b.dataset.f; selected = null; render();\n    });\n    $(\'addRoom\').onclick = addRoom;\n    $(\'addFloor\').onclick = addFloor;\n    document.querySelectorAll(\'.ov-btn\').forEach(function (b) {\n      b.onclick = function () { requestView(b.dataset.view, b); };\n    });\n    window.addEventListener(\'resize\', function () { render(); });\n  }\n\n  if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', boot);\n  else boot();\n})();\n';
 
   /* v-construction-3d: 🧊 «امشِ داخل بيتك قبل أن يُبنى» — جولة ثلاثية الأبعاد
    * مبنية من نفس مواصفات المخطط (أبعاد الغرف الحقيقية بالمتر، بعد تعديلات
@@ -42127,18 +42825,30 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     try { return JSON.parse(raw.slice(a, b + 1)); } catch (e) { return null; }
   }
 
-  /** ملخّص عربي لما قُرئ — يراه المستخدم قبل البناء ليصحّحه. */
+  /* v-audit-chatcli (x-i18n-5): نصوص «ورّني وأبنيه» الظاهرة (الحالات، اسم المشروع، رسالة المحادثة، الملخّص) من قاموس الواجهة بالـ١٤
+     لغة (axChatcliSnap*)، والعربيّة احتياطها إن غاب المفتاح — كانت عربيّة ثابتة لكلّ اللغات. تعليمات النموذج تبقى عربيّة (ليست واجهة). */
+  function sbT(k, fb, vars) {
+    var v = '';
+    try { v = (typeof t === 'function') ? t(k) : ''; } catch (e) { v = ''; } // guard-ok — بلا قاموس يبقى الاحتياط العربيّ
+    var s = String((v && v !== k) ? v : fb);
+    if (vars) Object.keys(vars).forEach(function (n) { s = s.split('{' + n + '}').join(String(vars[n])); });
+    return s;
+  }
+
+  /** ملخّص ما قُرئ بلغة الواجهة — يراه المستخدم قبل البناء ليصحّحه. */
   function summarize(d) {
     if (!d) return '';
     var out = [];
     var kinds = { menu: 'قائمة طعام', app: 'واجهة تطبيق', design: 'تصميم', form: 'نموذج', list: 'قائمة' };
-    out.push('📸 قرأتُ من الصورة: **' + (kinds[d.kind] || 'محتوى') + '**' + (d.title ? ' — ' + d.title : ''));
+    var kk = kinds[d.kind] ? String(d.kind) : 'other';
+    var kind = sbT('axChatcliSnapKind' + kk.charAt(0).toUpperCase() + kk.slice(1), kinds[d.kind] || 'محتوى');
+    out.push(sbT('axChatcliSnapRead', '📸 قرأتُ من الصورة: **{kind}**', { kind: kind }) + (d.title ? ' — ' + d.title : ''));
     var n = 0;
     (d.sections || []).forEach(function (s) { n += (s.items || []).length; });
-    if (n) out.push('• ' + (d.sections || []).length + ' قسم · ' + n + ' صنف');
-    if ((d.screens || []).length) out.push('• ' + d.screens.length + ' شاشة');
+    if (n) out.push(sbT('axChatcliSnapCounts', '• {s} قسم · {n} صنف', { s: (d.sections || []).length, n: n }));
+    if ((d.screens || []).length) out.push(sbT('axChatcliSnapScreens', '• {n} شاشة', { n: d.screens.length }));
     var unsure = JSON.stringify(d).split('?"').length - 1;
-    if (unsure) out.push('⚠️ ' + unsure + ' عنصر غير واضح في الصورة — راجعه بعد البناء.');
+    if (unsure) out.push(sbT('axChatcliSnapUnsure', '⚠️ {n} عنصر غير واضح في الصورة — راجعه بعد البناء.', { n: unsure }));
     return out.join('\n');
   }
 
@@ -42149,6 +42859,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     buildPrompt: buildPrompt,
     extract: extract,
     summarize: summarize,
+    tx: sbT, /* v-audit-chatcli: ترجمة نصوص الواجهة بالاحتياط العربيّ للتكامل أدناه */
     looksLikeSnapBuild: function (text, hasImages) {
       if (!hasImages) return false;
       var t = String(text || '').trim();
@@ -42193,15 +42904,38 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       input.click();
     });
 
+    /* v-audit-chatcli (x-i18n-5): خطأ نصّه للمستخدم بلغة الواجهة؛ وغيره (نصّ مزوّد أو خادم خامّ) سطر عامّ مترجَم ويُسجَّل في الطرفيّة */
+    function uiErr(k, fb) { var e = new Error(S.tx(k, fb)); e.snapUi = true; return e; }
+    /* v-audit-chatcli-r (x-i18n-5): ردّ الوسيط المرفوض سببه للمستخدم لا «صوّرها بإضاءة أوضح» — 401 جلسة منتهية و402 حدّ يوميّ:
+       العربيّ يرى نصّ الخادم العربيّ كما كان (كأرشيف المرفقات في app-09)، وغيره مفتاحه القائم بالـ١٤ لغة (الضيف والمجّانيّ بسطري
+       المحادثة كـomranPlanLimitMsg، والمشترك حدّ الميزة). وغيرهما (429 زحام المزوّد بعد إعادتين في الخادم، 5xx) سطر عامّ مترجَم،
+       ونصّ الخادم أو المزوّد للطرفيّة. ردّ ناجح لا يُقرأ وحده «صوّرها بإضاءة أوضح». */
+    function httpErr(rd) {
+      var st = (rd && rd.status) || 0, data = (rd && rd.data) || {};
+      if (st < 400) return null;
+      if (data.error) console.warn('[snap] proxy ' + st + ':', data.error.message || data.error);
+      if ((st === 401 || st === 402) && typeof data.error === 'string' && data.error && (typeof lang === 'undefined' || lang === 'ar')) {
+        var e = new Error(data.error); e.snapUi = true; return e;
+      }
+      if (st === 401) return uiErr('portraitNeedLogin', 'يرجى تسجيل الدخول لاستخدام هذه الميزة');
+      if (st === 402) {
+        var pl = window.__omranPlan;
+        if (pl === 'guest') return uiErr('chatGuestLimitMsg', 'سجّل حسابًا مجانيًّا لتبدأ الدردشة.');
+        if (pl === 'free') return uiErr('chatFreeLimitMsg', 'انتهت رسائلك المجانية لليوم. اشترك لترفع حدّك اليوميّ.');
+        return uiErr('portraitLimitReached', 'وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا');
+      }
+      return uiErr('axChatcliSnapFail', 'تعذّر البناء من الصورة — حاول مرّة ثانية');
+    }
+
     function fileToBlock(f) {
       return new Promise(function (resolve, reject) {
         var r = new FileReader();
         r.onload = function () {
           var m = String(r.result || '').match(/^data:([^;]+);base64,(.*)$/);
-          if (!m) return reject(new Error('صورة غير مقروءة'));
+          if (!m) return reject(uiErr('axChatcliSnapBadImage', 'صورة غير مقروءة'));
           resolve({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } });
         };
-        r.onerror = function () { reject(new Error('فشل قراءة الصورة')); };
+        r.onerror = function () { reject(uiErr('axChatcliSnapBadImage', 'فشل قراءة الصورة')); };
         r.readAsDataURL(f);
       });
     }
@@ -42240,32 +42974,37 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       }
       var content = (blocks && blocks.length) ? blocks.concat([{ type: 'text', text: userText }]) : userText;
       return claudeProxyRequest('claude-sonnet-5', system ? { content: system } : null, [{ role: 'user', content: content }], false)
-        .then(function (res) { return res.json().catch(function () { return {}; }); })
-        .then(function (data) { return { text: textFrom(data), data: data }; });
+        .then(function (res) {
+          return res.json().catch(function () { return {}; })
+            .then(function (data) { return { text: textFrom(data), data: data, status: res.status }; }); /* v-audit-chatcli-r: الحالة لـhttpErr */
+        });
     }
 
     input.addEventListener('change', function () {
       var files = Array.prototype.slice.call(input.files || []).slice(0, 4);
       if (!files.length) return;
-      statusMsg('📸 يقرأ الصورة بدقة (الأسعار والنصوص حرفيًا)…');
+      statusMsg(S.tx('axChatcliSnapReading', '📸 يقرأ الصورة بدقة (الأسعار والنصوص حرفيًا)…'));
 
       Promise.all(files.map(fileToBlock)).then(function (blocks) {
         return askText(S.READ_PROMPT, 'اقرأ الصورة/الصور حسب تعليمات النظام وأعد JSON فقط.', blocks);
       }).then(function (rd) {
-        var data = rd.data;
+        var he = httpErr(rd); /* v-audit-chatcli-r: الرفض (دخول/حدّ) بسببه قبل الحكم على الصورة */
+        if (he) throw he;
         var parsed = S.extract(rd.text);
-        if (!parsed) throw new Error((data && data.error && (data.error.message || data.error)) || 'لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية');
+        if (!parsed) throw uiErr('axChatcliSnapReadFail', 'لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية');
         var summary = S.summarize(parsed);
-        statusMsg('🏗️ يبني من المقروء…');
+        statusMsg(S.tx('axChatcliSnapBuilding', '🏗️ يبني من المقروء…'));
         return askText(null, S.buildPrompt(parsed), null)
           .then(function (b) {
+            var he2 = httpErr(b); /* v-audit-chatcli-r: البناء طلب ثانٍ يُحسب — حدّه بسببه لا «لم يصل كود صالح» */
+            if (he2) throw he2;
             var code = extractHtml(b.text);
-            if (!code) throw new Error('لم يصل كود صالح — حاول مرة ثانية');
+            if (!code) throw uiErr('axChatcliSnapNoCode', 'لم يصل كود صالح — حاول مرة ثانية');
             var cur = {
               id: Date.now().toString(),
-              title: String((parsed && parsed.title) || 'من الصورة 📸'),
+              title: String((parsed && parsed.title) || S.tx('axChatcliSnapTitle', 'من الصورة 📸')),
               code: code, codeType: 'html',
-              messages: [{ role: 'assistant', content: summary + '\n\n✅ بنيته لك — افتح المعاينة، وراجع الأسعار والنصوص، وقل لي أي تعديل.' }],
+              messages: [{ role: 'assistant', content: summary + '\n\n' + S.tx('axChatcliSnapDone', '✅ بنيته لك — افتح المعاينة، وراجع الأسعار والنصوص، وقل لي أي تعديل.') }],
             };
             state.projects.push(cur);
             state.currentId = cur.id;
@@ -42281,7 +43020,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
             statusMsg('');
           });
       }).catch(function (err) {
-        statusMsg('⚠️ ' + String((err && err.message) || err));
+        if (!(err && err.snapUi)) console.warn('[snap] failed:', err); /* v-audit-chatcli */
+        statusMsg('⚠️ ' + ((err && err.snapUi) ? err.message : S.tx('axChatcliSnapFail', 'تعذّر البناء من الصورة — حاول مرّة ثانية')));
         setTimeout(function () { statusMsg(''); }, 6000);
       });
     });
@@ -42480,6 +43220,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         }
         // 🎬 إنشاء فيديو من داخل المحادثة — يستخدم نفس محركات صانع الفيديو الحالي.
         if (name === 'generate_video') {
+          var vT0 = Date.now(); /* v-audit-chatcli: مهلة الخادم (runInClient ٢٩٠ ث) تبدأ من طلب الأداة، وتأكيد النقاط منها */
           var va = args || {};
           var vp = String(va.prompt || '').trim();
           if (!vp) return 'وصف الفيديو فارغ — لم يبدأ التوليد.';
@@ -42538,19 +43279,29 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           if (vrsp.status === 428) return 'لم يتم تشغيل الفيديو لأن المستخدم لم يؤكد خصم النقاط.';
           if (!vrsp.ok || !vjson) return 'تعذّر بدء الفيديو: ' + String((vjson && typeof omranVideoCodeText === 'function' && omranVideoCodeText(vjson.error, vjson.retryAfter)) || (vjson && vjson.error) || ('HTTP ' + vrsp.status)).slice(0, 160); // v-chat-video-cooldown: النموذج يرى المهلة بالدقائق لا الرمز
           var videoUrl = null;
-          var maxPoll = engine === 'veo' ? 34 : 36;
-          for (var pi = 0; pi < maxPoll; pi++) {
-            await new Promise(function (resolve) { setTimeout(resolve, engine === 'veo' ? 8000 : 5000); });
-            var sr = engine === 'veo'
-              ? await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(vjson.op || ''))
-              : await fetch('/api/video-status?id=' + encodeURIComponent(vjson.id || ''));
-            var sj = null; try { sj = await sr.json(); } catch (e2) { sj = null; }
+          /* v-audit-chatcli (cli-chat-rest-5): عثرة شبكة في استطلاع واحد كانت ترمي إلى catch العامّ («تعذّر التنفيذ: Failed to fetch») فيُترك
+             فيديو مدفوع يكتمل عند المزوّد ولا يراه أحد، وسقف Runway ‏٣٦×٥ ث = ١٨٠ ث والخادم ينتظر الأداة ٢٩٠ ث. الآن كلّ استطلاع في try يُعاد
+             بعد مهلته، والانتظار للمحرّكين حتّى ٢٨٠ ث من طلب الأداة (قبل مهلة الخادم)، ولا خروج إلّا بنتيجة أو فشل أو انتهاء الوقت. */
+          var vStep = engine === 'veo' ? 8000 : 5000;
+          while (Date.now() + vStep <= vT0 + 280000) {
+            await new Promise(function (resolve) { setTimeout(resolve, vStep); });
+            var sj = null;
+            try {
+              var sr = engine === 'veo'
+                ? await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(vjson.op || ''))
+                : await fetch('/api/video-status?id=' + encodeURIComponent(vjson.id || ''));
+              try { sj = await sr.json(); } catch (e2) { sj = null; }
+            } catch (e3) { sj = null; /* guard-ok — عثرة شبكة عابرة: المهمّة قائمة عند المزوّد، نستطلعها ثانية */ }
             if (sj && sj.status === 'SUCCEEDED') { videoUrl = Array.isArray(sj.output) ? sj.output[0] : sj.output; break; }
             if (sj && sj.status === 'FAILED') return 'فشل إنشاء الفيديو: ' + String(sj.failure || sj.error || 'سبب غير معروف').slice(0, 180);
             if (sj && sj.error === 'unavailable') return 'تعذّر إكمال الفيديو: ' + t('svcPaused') + ' (رُدّت نقاط المستخدم).'; // v-credit-out: الخادم سوّى التذكرة — لا انتظار ٤٫٥ دقيقة
           }
-          if (!videoUrl) return 'انتهت مهلة انتظار الفيديو قبل وصول النتيجة. حاول مرة أخرى إذا لم يظهر خلال دقائق.';
-          window.__chatVideoResult = { url: videoUrl, name: 'chat-video.mp4', provider: engine };
+          if (!videoUrl) return 'لم يصل الفيديو خلال مهلة الانتظار هنا (نحو ٤ دقائق ونصف) والمهمّة ما زالت عند المزوّد (المعرّف: ' + String(vjson.id || vjson.op || '') + '). لا تقل إنّه فشل، ولا تستدعِ generate_video من جديد الآن — طلب جديد يُخصم مرّة ثانية ويصطدم بقفل الفيديو الجاري. قل للمستخدم بجملة واحدة إنّ الفيديو أخذ أطول من المعتاد ولم يصل إلى المحادثة.';
+          /* v-audit-chatcli (cli-chat-rest-4): الفيديو لمحادثة طلبه — كان في window.__chatVideoResult العامّ، يصفّره طلب محادثة أخرى (app-18)
+             أو يلتقطه ردّها (app-09) مع المحادثات المتوازية، كما رُبطت الصور بمحادثتها (v-img-run-bind). بلا محادثة معروفة كما كان. */
+          var vRes = { url: videoUrl, name: 'chat-video.mp4', provider: engine }, vChat = CHAT();
+          if (vChat && vChat.id != null) (window.__chatVideoByChat = window.__chatVideoByChat || {})[vChat.id] = vRes;
+          else window.__chatVideoResult = vRes;
           return '✅ تم إنشاء الفيديو بنجاح. سيظهر الآن داخل المحادثة مع زر التنزيل.';
         }
         // 🎨 صورة حقيقية بدل رابط عشوائي. تُخزَّن محليًّا ويُعاد للنموذج رمز قصير
@@ -42888,8 +43639,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
 
   window.callChatWithTools = async function (messages, onDelta, provider, opts) {
     var __rcChat = (onDelta && onDelta.__chat) || ((typeof getCurrent === 'function') ? getCurrent() : null); /* v-img-run-bind: محادثة هذا الطلب (app-09 __sigFn) */
-    window.__chatVideoResult = null;
-    window.__chatCardsResult = null; /* v-cards */
+    window.__chatVideoResult = null; /* v-audit-chatcli: فيديو أداة المحادثة صار لمحادثته (__chatVideoByChat في app-17)، والبطاقات في ناتج هذه الدالّة وحده */
     window.__chatVideoReference = null;
     window.__chatLastUserText = '';
     try {
@@ -43422,11 +44172,20 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     try{ if(typeof window.__swallow === 'function') window.__swallow(e, ctx); else console.warn(ctx, e); }
     catch(_){ /* guard-ok: تعذّر التسجيل نفسه؛ لا نُسقط الواجهة. */ }
   }
-  function isAr(){
-    try{ return (document.documentElement.lang || 'ar').toLowerCase() !== 'en'; }
-    catch(e){ tell(e, 'sig:lang'); return true; }
+  /* v-audit-studcli (cli-studios-5): isAr() كان true لكلّ لغة سوى en فالأداة كلّها عربيّة لـ١٢ لغة. النصوص الآن من t() بالـ١٤ لغة،
+     والاحتياط (مترجم لم يجهز أو مفتاح ناقص) عربيّ للعربيّة وحدها وإنجليزيّ لغيرها — لا عربيّة للأرديّة؛ والاتّجاه RTL للعربيّة والأرديّة. */
+  function lg(){
+    try{ return String(document.documentElement.lang || 'ar').toLowerCase(); }
+    catch(e){ tell(e, 'sig:lang'); return 'ar'; }
   }
-  function T(a, b){ return isAr() ? a : b; }
+  function isRtl(){ return /^(ar|ur)/.test(lg()); }
+  function T(k, a, b){
+    try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return String(v); } }
+    catch(e){ tell(e, 'sig:t'); }
+    return lg().indexOf('ar') === 0 ? a : b;
+  }
+  var INK_KEYS = { white:'fxColWhite', ink:'fxColBlack', gold:'fxColGold' };
+  function fontName(f){ return T('axStudcliSigFont' + f.id.charAt(0).toUpperCase() + f.id.slice(1), f.ar, f.en); }
   function fontById(id){
     for(var i=0;i<FONTS.length;i++) if(FONTS[i].id === id) return FONTS[i];
     return FONTS[0];
@@ -43491,7 +44250,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   function paint(canvas, txt, scale){
     var f = fontById(state.font);
     var size = state.size;
-    var name = String(txt || '').trim() || T('اسمك', 'Your name');
+    var name = String(txt || '').trim() || T('axStudcliSigYourName', 'اسمك', 'Your name');
     var dpr = scale || 3;
     var pad = Math.round(size * 0.5);
     var probe = document.createElement('canvas').getContext('2d');
@@ -43549,12 +44308,12 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   /* المشاركة أوّلًا: ورقة النظام بالملفّ · ثمّ الحافظة · ثمّ التنزيل. */
   function shareCanvas(canvas){
     return blobOf(canvas).then(function(blob){
-      if(!blob){ toast(T('تعذّر توليد الصورة.', 'Could not build the image.')); return; }
+      if(!blob){ toast(T('voiceImageFailed', 'تعذّر توليد الصورة.', 'Could not build the image.')); return; }
       var file = null;
       try{ file = new File([blob], 'omran-signature.png', { type:'image/png' }); }
       catch(e){ tell(e, 'sig:file'); }
       if(file && navigator.canShare && navigator.canShare({ files:[file] })){
-        return navigator.share({ files:[file], title:'om ai', text:T('توقيعي ✍️', 'My signature ✍️') })
+        return navigator.share({ files:[file], title:'om ai', text:T('axStudcliSigTitle', 'توقيعي', 'My Signature') + ' ✍️' })
           .catch(function(err){
             if(err && err.name === 'AbortError') return;
             tell(err, 'sig:share');
@@ -43568,7 +44327,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     try{
       if(navigator.clipboard && window.ClipboardItem && navigator.clipboard.write){
         return navigator.clipboard.write([new window.ClipboardItem({ 'image/png':blob })])
-          .then(function(){ toast(T('نُسخ التوقيع — الصقه في أي محادثة.', 'Copied — paste it in any chat.')); })
+          .then(function(){ toast(T('axStudcliSigCopied', 'نُسخ التوقيع — الصقه في أي محادثة.', 'Copied — paste it in any chat.')); })
           .catch(function(err){ tell(err, 'sig:clip'); grab(blob); });
       }
     }catch(e){ tell(e, 'sig:clipboard'); }
@@ -43588,12 +44347,11 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   var BTN = 'flex:1; min-width:120px; border:none; border-radius:12px; padding:12px 16px; font-size:14px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px;';
 
   function open(){
-    var ar = isAr();
     var old = document.getElementById('sigOverlay');
     if(old) old.remove();
     var ov = document.createElement('div');
     ov.id = 'sigOverlay';
-    ov.dir = ar ? 'rtl' : 'ltr';
+    ov.dir = isRtl() ? 'rtl' : 'ltr';
     ov.style.cssText = 'position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.62); backdrop-filter:blur(4px); display:flex; align-items:flex-start; justify-content:center; padding:6vh 14px 20px; overflow:auto;';
     var card = document.createElement('div');
     card.style.cssText = 'width:100%; max-width:620px; background:var(--panel,#0b0b0f); border:1px solid rgba(128,128,128,.26); border-radius:18px; box-shadow:0 22px 64px rgba(0,0,0,.55); overflow:hidden;';
@@ -43601,10 +44359,10 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     head.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid rgba(128,128,128,.22);';
     var ttl = document.createElement('div');
     ttl.style.cssText = 'font-size:15.5px; font-weight:800; color:var(--text,#fff);';
-    ttl.textContent = T('توقيعي', 'My Signature');
+    ttl.textContent = T('axStudcliSigTitle', 'توقيعي', 'My Signature');
     var xb = document.createElement('button');
     xb.type = 'button';
-    xb.setAttribute('aria-label', T('إغلاق', 'Close'));
+    xb.setAttribute('aria-label', T('closeTitle', 'إغلاق', 'Close'));
     xb.style.cssText = 'background:none; border:none; color:#8b8ba7; font-size:22px; line-height:1; cursor:pointer; padding:2px 6px;';
     xb.textContent = '×';
     xb.onclick = function(){ ov.remove(); };
@@ -43618,7 +44376,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     input.maxLength = 40;
     input.autocomplete = 'off';
     input.value = state.name;
-    input.placeholder = T('اكتب اسمك…', 'Type your name…');
+    input.placeholder = T('axStudcliSigPh', 'اكتب اسمك…', 'Type your name…');
     input.style.cssText = 'width:100%; box-sizing:border-box; background:rgba(128,128,128,.12); border:1px solid rgba(128,128,128,.3); border-radius:12px; color:var(--text,#fff); font-size:16px; padding:12px 14px; outline:none;';
 
     var grid = document.createElement('div');
@@ -43652,13 +44410,13 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     inkRow.style.cssText = 'display:flex; align-items:center; gap:8px; font-size:12.5px; color:#8b8ba7;';
     var inkLbl = document.createElement('span');
     inkLbl.style.cssText = 'min-width:58px;';
-    inkLbl.textContent = T('اللون', 'Ink');
+    inkLbl.textContent = T('axStudcliSigInk', 'اللون', 'Ink');
     inkRow.appendChild(inkLbl);
     INKS.forEach(function(k){
       var b = document.createElement('button');
       b.type = 'button';
       b.setAttribute('data-sig-ink', k.id);
-      b.title = ar ? k.ar : k.en;
+      b.title = T(INK_KEYS[k.id], k.ar, k.en);
       b.style.cssText = 'width:26px; height:26px; border-radius:50%; cursor:pointer; background:' + k.v + '; border:2px solid ' + (state.ink === k.id ? '#c8a24a' : 'rgba(128,128,128,.4)') + ';';
       b.onclick = function(){
         state.ink = k.id;
@@ -43677,12 +44435,12 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     floBox.style.cssText = 'accent-color:var(--accent,#c8a24a);';
     floBox.onchange = function(){ state.flourish = floBox.checked; render(); };
     var floTxt = document.createElement('span');
-    floTxt.textContent = T('ذيل التوقيع', 'Flourish');
+    floTxt.textContent = T('axStudcliSigFlourish', 'ذيل التوقيع', 'Flourish');
     flo.appendChild(floBox); flo.appendChild(floTxt);
     inkRow.appendChild(flo);
 
-    rows.appendChild(slider(T('الحجم', 'Size'), 40, 200, state.size, 2, function(v){ state.size = v; render(); }));
-    rows.appendChild(slider(T('الميل', 'Slant'), -20, 20, state.slant, 1, function(v){ state.slant = v; render(); }));
+    rows.appendChild(slider(T('axStudcliSigSize', 'الحجم', 'Size'), 40, 200, state.size, 2, function(v){ state.size = v; render(); }));
+    rows.appendChild(slider(T('axStudcliSigSlant', 'الميل', 'Slant'), -20, 20, state.slant, 1, function(v){ state.slant = v; render(); }));
     rows.appendChild(inkRow);
 
     var acts = document.createElement('div');
@@ -43690,7 +44448,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var shareBtn = document.createElement('button');
     shareBtn.type = 'button';
     shareBtn.style.cssText = BTN + 'background:linear-gradient(135deg,#d8b45c,#b8912f); color:#14161a; box-shadow:0 6px 18px rgba(184,145,47,.28);';
-    shareBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg><span>' + T('مشاركة', 'Share') + '</span>';
+    shareBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg><span>' + T('shareMsgTitle', 'مشاركة', 'Share') + '</span>';
     shareBtn.onclick = function(){
       shareBtn.disabled = true;
       Promise.resolve(shareCanvas(canvas)).then(function(){ shareBtn.disabled = false; }, function(e){ tell(e, 'sig:shareclick'); shareBtn.disabled = false; });
@@ -43698,14 +44456,14 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var dlBtn = document.createElement('button');
     dlBtn.type = 'button';
     dlBtn.style.cssText = BTN + 'flex:0 0 auto; min-width:0; background:rgba(128,128,128,.16); color:var(--text,#cfcfe0);';
-    dlBtn.title = T('تنزيل PNG شفّاف', 'Download transparent PNG');
+    dlBtn.title = T('axStudcliSigDownload', 'تنزيل PNG شفّاف', 'Download transparent PNG');
     dlBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>';
     dlBtn.onclick = function(){ blobOf(canvas).then(function(b){ if(b) grab(b); }); };
     acts.appendChild(shareBtn); acts.appendChild(dlBtn);
 
     var note = document.createElement('div');
     note.style.cssText = 'margin-top:10px; color:#8b8ba7; font-size:12px; line-height:1.7;';
-    note.textContent = T('خلفيّة شفافة · يعمل بلا اتصال بعد تحميل الخطّ · بلا نقاط.', 'Transparent background · works offline once the font loads · no credits.');
+    note.textContent = T('axStudcliSigNote', 'خلفيّة شفافة · يعمل بلا اتصال بعد تحميل الخطّ · بلا نقاط.', 'Transparent background · works offline once the font loads · no credits.');
 
     body.appendChild(input); body.appendChild(grid); body.appendChild(stage); body.appendChild(rows); body.appendChild(acts); body.appendChild(note);
     card.appendChild(head); card.appendChild(body);
@@ -43726,10 +44484,10 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       var pv = document.createElement('span');
       pv.className = 'sigCardPv';
       pv.style.cssText = 'font-family:' + f.family + ", 'Tajawal', sans-serif; font-size:19px; color:var(--text,#fff); line-height:1.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;";
-      pv.textContent = state.name || T('اسمك', 'Name');
+      pv.textContent = state.name || T('axStudcliSigName', 'اسمك', 'Name');
       var nm = document.createElement('span');
       nm.style.cssText = 'font-size:11px; color:#8b8ba7;';
-      nm.textContent = ar ? f.ar : f.en;
+      nm.textContent = fontName(f);
       b.appendChild(pv); b.appendChild(nm);
       b.onclick = function(){
         state.font = f.id;
@@ -43745,7 +44503,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var pending = 0;
     function render(){
       state.name = input.value.slice(0, 40);
-      grid.querySelectorAll('.sigCardPv').forEach(function(p){ p.textContent = state.name || T('اسمك', 'Name'); });
+      grid.querySelectorAll('.sigCardPv').forEach(function(p){ p.textContent = state.name || T('axStudcliSigName', 'اسمك', 'Name'); });
       stage.style.background = (state.ink === 'ink' ? '#f2f2f4' : '#17171c');
       var mine = ++pending;
       var f = fontById(state.font);
@@ -43768,8 +44526,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var b = document.createElement('button');
     b.className = 'btn';
     b.id = 'btnSignature';
-    b.title = T('توقيعي — اصنع توقيعك وشاركه', 'My Signature — craft and share it');
-    b.innerHTML = '<svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17c3.5 0 5-8 8-8s2.5 8 6 8h4"></path><path d="M14 21h7"></path></svg> <span class="btnLabel">' + T('توقيعي', 'My Signature') + '</span>';
+    b.title = T('axStudcliSigMenuTitle', 'توقيعي — اصنع توقيعك وشاركه', 'My Signature — craft and share it');
+    b.innerHTML = '<svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17c3.5 0 5-8 8-8s2.5 8 6 8h4"></path><path d="M14 21h7"></path></svg> <span class="btnLabel">' + T('axStudcliSigTitle', 'توقيعي', 'My Signature') + '</span>';
     b.onclick = function(){ open(); };
     var logout = document.getElementById('btnMenuLogout');
     if(logout && logout.parentElement === dd) dd.insertBefore(b, logout);
@@ -43777,8 +44535,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     try{
       new MutationObserver(function(){
         var lbl = b.querySelector('.btnLabel');
-        if(lbl) lbl.textContent = T('توقيعي', 'My Signature');
-        b.title = T('توقيعي — اصنع توقيعك وشاركه', 'My Signature — craft and share it');
+        if(lbl) lbl.textContent = T('axStudcliSigTitle', 'توقيعي', 'My Signature');
+        b.title = T('axStudcliSigMenuTitle', 'توقيعي — اصنع توقيعك وشاركه', 'My Signature — craft and share it');
       }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] });
     }catch(e){ tell(e, 'sig:langwatch'); }
   }
@@ -43959,6 +44717,7 @@ if(document.readyState === 'loading'){
     patches: [],
     busy: false,
     ask: '',          /* v-code-review-limit: الطلب يبقى بعد النتيجة وإعادة الفتح */
+    crlf: false,      /* v-audit-chatcli: الملفّ رُفع بأسطر ويندوز — يُنزَّل بها */
   };
 
   function $id(x) { return document.getElementById(x); }
@@ -44133,14 +44892,32 @@ if(document.readyState === 'loading'){
     return list;
   }
 
-  /* ---------- فحص الصياغة قبل الحفظ ---------- */
-  function syntaxCheck(name, code) {
+  /* v-audit-chatcli (cli-chat-rest-3): ملفّ ويندوز (CRLF) — النموذج يكتب @@OLD بفواصل \n فلا تطابق رقعةٌ من سطرين أبدًا. النصّ يُوحَّد
+     بـ\n عند القراءة (الجهاز، والتسليم من «تحليل الكود»، والمشروع)، ويُعاد CRLF عند التنزيل كما رُفع. */
+  function setText(name, raw) {
+    var s = String(raw || '');
+    S.crlf = /\r\n/.test(s);
+    S.name = name; S.text = s.replace(/\r\n?/g, '\n'); S.original = null;
+  }
+
+  /* ---------- فحص الصياغة قبل الحفظ ----------
+     v-audit-chatcli (cli-chat-rest-2): new Function يفهم السكربت العاديّ وحده — ES Module (‎.mjs، أو import/export، أو import.meta)
+     وJSX وTS ترمي فيه دائمًا، فكانت كلّ رقعة عليها «لم يُحفظ». هذه لا تُفحص هنا (cfxNoCheck)، وسطر #! يُحذف قبل الفحص، وملفّ لا يجتاز
+     الفحص قبل الرقع (JSX داخل ‎.js مثلًا) لا يُحكم عليه بعدها. رقعة تكسر سكربتًا سليمًا تُرفض كما كانت. */
+  function jsErr(code) {
+    try { new Function(String(code).replace(/^#![^\n]*/, '')); return null; } // eslint-disable-line no-new-func
+    catch (e) { return e; }
+  }
+  function syntaxCheck(name, code, before) {
     var n = String(name || '').toLowerCase();
     try {
-      if (/\.(mjs|cjs|jsx?|ts x?)$/.test(n) || /\.js$/.test(n)) {
-        /* eslint-disable no-new-func */
-        new Function(code);
-        return { ok: true, msg: tx('cfxSyntaxOk') };
+      if (/\.(mjs|jsx|tsx?)$/.test(n)) return { ok: true, msg: tx('cfxNoCheck') };
+      if (/\.c?js$/.test(n)) {
+        if (/^[ \t]*(?:import\b[ \t]*[\w{*'"$]|export\b)|\bimport\.meta\b/m.test(code)) return { ok: true, msg: tx('cfxNoCheck') };
+        var err = jsErr(code);
+        if (!err) return { ok: true, msg: tx('cfxSyntaxOk') };
+        if (before != null && jsErr(before)) return { ok: true, msg: tx('cfxNoCheck') };
+        throw err;
       }
       if (/\.json$/.test(n)) { JSON.parse(code); return { ok: true, msg: tx('cfxJsonOk') }; }
       if (/\.html?$/.test(n)) {
@@ -44221,7 +44998,7 @@ if(document.readyState === 'loading'){
       if (f.size > MAX_BYTES) { setStatus(tx('cfxTooBig', { n: Math.round(MAX_BYTES / 1024) })); return; }
       var fr = new FileReader();
       fr.onload = function () {
-        S.name = f.name; S.text = String(fr.result || ''); S.original = null;
+        setText(f.name, fr.result);
         $id('cfxFileName').textContent = f.name + ' · ' + tx('cfxLines', { n: S.text.split('\n').length });
         setStatus('');
       };
@@ -44230,8 +45007,7 @@ if(document.readyState === 'loading'){
     $id('cfxCurBtn').onclick = function () {
       var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
       if (!cur || !cur.code) { setStatus(tx('cfxNoCode')); return; }
-      S.name = (cur.codeType === 'python') ? 'project.py' : 'project.html';
-      S.text = String(cur.code); S.original = null;
+      setText((cur.codeType === 'python') ? 'project.py' : 'project.html', cur.code);
       $id('cfxFileName').textContent = S.name + ' · ' + tx('cfxLines', { n: S.text.split('\n').length });
       setStatus('');
     };
@@ -44359,7 +45135,7 @@ if(document.readyState === 'loading'){
       text = text.replace(p.old, function () { return p.neu; });
       done++;
     }
-    var chk = syntaxCheck(S.name, text);
+    var chk = syntaxCheck(S.name, text, before);
     if (!chk.ok) {
       render('<div style="font-size:13px;line-height:1.9;">'
         + '<div style="color:#e88;font-weight:700;">' + esc(tx('cfxNotSaved')) + '</div>'
@@ -44383,7 +45159,7 @@ if(document.readyState === 'loading'){
       + '</div></div>');
 
     $id('cfxDl').onclick = function () {
-      var blob = new Blob([S.text], { type: 'text/plain;charset=utf-8' });
+      var blob = new Blob([S.crlf ? S.text.replace(/\n/g, '\r\n') : S.text], { type: 'text/plain;charset=utf-8' }); /* v-audit-chatcli */
       if (typeof omranSaveBlob === 'function') { omranSaveBlob(blob, S.name); return; }
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = S.name;
@@ -44445,7 +45221,7 @@ if(document.readyState === 'loading'){
   /* v-code-score: وحدة «تحليل الكود وتقييمه» (app-27) تسلّم الملفّ الواحد وطلب الإصلاح
      المبنيّ من أعلى المشاكل، فيبدأ المستخدم من شاشة الرقع مباشرةً. */
   window.omranCodeFixOpenWith = function (name, text, ask) {
-    S.name = String(name || 'file.txt'); S.text = String(text || ''); S.original = null; S.patches = [];
+    setText(String(name || 'file.txt'), text); S.patches = [];
     S.ask = String(ask || '');
     open();
     var a = $id('cfxAsk');
@@ -46346,10 +47122,14 @@ if(document.readyState === 'loading'){
     if(!l) return 4;
     var la = l.lat, lo = l.lng;
     var inBox = function(a, b, c, d){ return la >= a && la <= b && lo >= c && lo <= d; };
-    if(inBox(22.4, 26.6, 51.0, 56.6)) return 16;      /* الإمارات */
-    if(inBox(24.4, 26.3, 50.6, 51.8)) return 10;      /* قطر */
-    if(inBox(28.4, 30.2, 46.4, 48.6)) return 9;       /* الكويت */
+    /* v-audit-tools: البحرين ثمّ قطر قبل الإمارات — مربّع الإمارات (من خطّ ٥١) يغطّي أغلب قطر فكانت الدوحة والخور
+       تأخذان طريقة دبي، ومربّع قطر (من ٥٠٫٦) يغطّي شرق البحرين (المحرّق). وعُمان شرق خطّ ٥٦ كانت تسقط إلى
+       رابطة العالم الإسلاميّ؛ مربّعها جنوب ٢٤٫٩٥ فلا يدخله ساحل إيران */
     if(inBox(25.5, 26.4, 50.3, 50.9)) return 8;       /* البحرين — الخليج */
+    if(inBox(24.4, 26.3, 50.6, 51.8)) return 10;      /* قطر */
+    if(inBox(16.6, 24.95, 56.2, 59.9)) return 4;      /* عُمان: الباطنة ومسقط والشرقيّة — أم القرى */
+    if(inBox(22.4, 26.6, 51.0, 56.6)) return 16;      /* الإمارات */
+    if(inBox(28.4, 30.2, 46.4, 48.6)) return 9;       /* الكويت */
     if(inBox(16.0, 32.5, 34.4, 56.0)) return 4;       /* السعودية وعُمان واليمن — أم القرى */
     if(inBox(29.1, 33.5, 34.8, 39.4)) return 23;      /* الأردن */
     if(inBox(21.9, 31.8, 24.6, 36.9)) return 5;       /* مصر */
@@ -46506,6 +47286,9 @@ if(document.readyState === 'loading'){
   function renderTimes(){
     var el = shell();
     var body = el.querySelector('#qBody');
+    /* v-audit-tools: مؤقّت عدّ واحد فقط — كلّ رسم يوقف السابق (كان حلول الوقت ينشئ مؤقّتًا فوق آخر لا يوقف نفسه
+       فيُجلب aladhan كلّ ثانية بلا نهاية، حتّى بعد إغلاق الشاشة) */
+    if(S.ticker){ clearInterval(S.ticker); S.ticker = null; }
     if(!S.timings){
       body.innerHTML = '<div style="text-align:center;color:var(--muted,#98a0b3);padding:30px 0;">⏳ ' + tx('locating') + '</div>';
       fetchTimings().then(function(){ renderTimes(); }).catch(function(e){
@@ -46551,11 +47334,13 @@ if(document.readyState === 'loading'){
       b.onclick = function(){ toggleAlert(b.getAttribute('data-p'), b); };
     });
     if(np){
-      S.ticker = setInterval(function(){
+      var tk = S.ticker = setInterval(function(){
         var cd = document.getElementById('qCountdown');
-        if(!cd){ clearInterval(S.ticker); S.ticker = null; return; }
+        /* v-audit-tools: المؤقّت يوقف نفسه هو (لا S.ticker أيًّا كان) إن غاب العدّاد أو أُغلقت الشاشة — مواقيت رجعت
+           بعد الإغلاق كانت ترسم مؤقّتًا يعمل والشاشة مخفيّة، والعدّاد باقٍ في DOM المخفيّ */
+        if(!cd || el.style.display === 'none'){ clearInterval(tk); if(S.ticker === tk) S.ticker = null; return; }
         var left = np.at - new Date();
-        if(left <= 0){ S.timings = null; renderTimes(); return; }
+        if(left <= 0){ clearInterval(tk); if(S.ticker === tk) S.ticker = null; S.timings = null; renderTimes(); return; }
         cd.textContent = fmtDur(left);
       }, 1000);
     }
@@ -46950,6 +47735,7 @@ if(document.readyState === 'loading'){
       upgrade: 'اشترك للنسخة الاحترافية', signup: 'سجّل مجانًا', commentRatio: 'نسبة التعليقات', truncated: 'مقتطع',
       deep: 'التحليل التفصيليّ — ملفًّا ملفًّا ودالّةً دالّة', freeNote: 'هذا تقرير الوضع المجانيّ. النسخة الاحترافيّة تحلّل بعمق أكبر وبملفّات أكبر.',
       readNote: 'قرأ بنفسه: {n} فتحًا وتفتيشًا في {r} جولة · {f} ملفًّا متاحًا للقراءة',
+      fixAsk: 'أصلح هذه المشاكل التي كشفها التحليل:',
       sev: { critical: 'حرِج', high: 'عالٍ', medium: 'متوسّط', low: 'منخفض', info: 'ملاحظة' },
       cat: { correctness: 'الصحّة', security: 'الأمان', performance: 'الأداء', readability: 'الوضوح', maintainability: 'الصيانة', best_practices: 'أفضل الممارسات' },
     },
@@ -46970,13 +47756,23 @@ if(document.readyState === 'loading'){
       upgrade: 'Upgrade to Pro', signup: 'Sign up free', commentRatio: 'comment ratio', truncated: 'truncated',
       deep: 'Detailed analysis — file by file, function by function', freeNote: 'This is the free-tier report. The Pro engine analyzes deeper and accepts larger files.',
       readNote: 'Read on its own: {n} opens & searches across {r} rounds · {f} files available to read',
+      fixAsk: 'Fix these issues found by the analysis:',
       sev: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info' },
       cat: { correctness: 'Correctness', security: 'Security', performance: 'Performance', readability: 'Readability', maintainability: 'Maintainability', best_practices: 'Best practices' },
     },
   };
-  function t(k) { var d = ar() ? TXT.ar : TXT.en; return d[k] != null ? d[k] : (TXT.ar[k] != null ? TXT.ar[k] : k); }
-  function sevName(s) { return t('sev')[s] || s; }
-  function catName(c) { return t('cat')[c] || c; }
+  /* v-audit-chatcli (x-i18n-4): كلّ نصّ من قاموس الواجهة بالـ١٤ لغة (axChatcliCs + اسم المفتاح، والخطورة والفئة axChatcliCsSev… وaxChatcliCsCat…)
+     — كان TXT بالعربيّة والإنجليزيّة وحدهما، فيرى الأرديّ العربيّة والفرنسيّ وأخواته الإنجليزيّة. TXT احتياطٌ إن غاب المفتاح.
+     t هنا تحجب t العامّة، فالقاموس من window.t. */
+  function gt(key) {
+    try { var v = (typeof window.t === 'function') ? window.t(key) : null; if (typeof v === 'string' && v && v !== key) return v; }
+    catch (e) { if (window.__swallow) window.__swallow(e, 'codescore:t'); }
+    return null;
+  }
+  function csKey(k) { return 'axChatcliCs' + String(k).replace(/(^|_)([a-z])/g, function (m, a, c) { return c.toUpperCase(); }); }
+  function t(k) { var g = gt(csKey(k)); if (g != null) return g; var d = ar() ? TXT.ar : TXT.en; return d[k] != null ? d[k] : (TXT.ar[k] != null ? TXT.ar[k] : k); }
+  function sevName(s) { var g = gt(csKey('sev_' + s)); return g != null ? g : (t('sev')[s] || s); }
+  function catName(c) { var g = gt(csKey('cat_' + c)); return g != null ? g : (t('cat')[c] || c); }
 
   var SEV_COLOR = { critical: '#ff5f5f', high: '#e88', medium: '#e8b45a', low: '#b5d16a', info: '#8ab4f8' };
   function scoreColor(n) { return n == null ? '#98a0b3' : (n >= 85 ? '#7ac07a' : (n >= 70 ? '#b5d16a' : (n >= 55 ? '#e8b45a' : '#e88'))); }
@@ -47025,7 +47821,7 @@ if(document.readyState === 'loading'){
       '<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);">'
       + '<span style="font-weight:700;font-size:14px;">' + esc(t('title')) + '</span>'
       + '<span id="csStatus" style="flex:1;font-size:12px;' + MUTED + 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>'
-      + '<button type="button" id="csX" aria-label="close" style="background:none;border:0;' + MUTED + 'cursor:pointer;font-size:16px;padding:4px 8px;">✕</button>'
+      + '<button type="button" id="csX" aria-label="' + esc(gt('closeTitle') || 'close') + '" style="background:none;border:0;' + MUTED + 'cursor:pointer;font-size:16px;padding:4px 8px;">✕</button>'
       + '</div><div id="csBody" style="padding:14px 16px;overflow:auto;flex:1;font-size:13px;"></div>';
     ov.appendChild(box);
     document.body.appendChild(ov);
@@ -47151,7 +47947,7 @@ if(document.readyState === 'loading'){
             if (lines[i].indexOf('data: ') !== 0) continue;
             var ev;
             try { ev = JSON.parse(lines[i].slice(6)); } catch (e) { continue; }
-            if (ev.status) onStatus(ev.status);
+            if (ev.status) onStatus((typeof tStatus === 'function') ? tStatus(ev) : ev.status); /* v-audit-chatcli (x-i18n-2): مفتاح k وبارامتراته بلغة الواجهة */
             if (typeof ev.tier === 'string') out.tier = ev.tier;
             if (ev.error) out.error = ev.error;
             if (ev.report) out.report = ev.report;
@@ -47199,7 +47995,9 @@ if(document.readyState === 'loading'){
 
   function viewError(msg, tier) {
     var limit = tier === 'free-limit' || tier === 'guest-limit';
-    var h = '<div style="line-height:1.9;"><div style="color:#e88;">' + (limit ? '' : esc(t('fail'))) + esc(msg) + '</div>';
+    /* v-audit-chatcli: الحدّ بسطر المحادثة المترجَم نفسه (app-24 viewLimit) لا نصّ الخادم العربيّ */
+    var limMsg = limit ? gt(tier === 'guest-limit' ? 'chatGuestLimitMsg' : 'chatFreeLimitMsg') : null;
+    var h = '<div style="line-height:1.9;"><div style="color:#e88;">' + (limit ? '' : esc(t('fail'))) + esc(limMsg || msg) + '</div>';
     if (limit) {
       h += '<button type="button" id="csTier" class="btn" style="' + BTN + 'margin-top:10px;font-weight:700;">' + esc(tier === 'guest-limit' ? t('signup') : t('upgrade')) + '</button>';
     }
@@ -47384,7 +48182,7 @@ if(document.readyState === 'loading'){
     var fx = $id('csFix');
     if (fx) fx.onclick = function () {
       var top = issues.filter(function (x) { return x.severity !== 'info'; }).slice(0, 8);
-      var ask = (ar() ? 'أصلح هذه المشاكل التي كشفها التحليل:\n' : 'Fix these issues found by the analysis:\n')
+      var ask = t('fixAsk') + '\n'
         + top.map(function (x, i) { return (i + 1) + ') ' + (x.title || catName(x.category)) + (x.line ? ' (L' + x.line + ')' : '') + (x.fix ? ' — ' + x.fix.slice(0, 300) : ''); }).join('\n');
       var f0 = S.files[0];
       close();
@@ -47439,8 +48237,9 @@ if(document.readyState === 'loading'){
     b.id = 'btnCodeScore';
     b.type = 'button';
     b.title = t('menuTitle');
+    b.setAttribute('data-i18n-title', csKey('menuTitle')); /* v-audit-chatcli: الوسم وتلميحه يتبعان تبديل اللغة (applyLanguage) كزرّ «مراجعة» */
     b.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-      + '<path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg> <span class="btnLabel">' + esc(t('menu')) + '</span>';
+      + '<path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg> <span class="btnLabel" data-i18n="' + csKey('menu') + '">' + esc(t('menu')) + '</span>';
     b.onclick = function (e) { e.stopPropagation(); closeTabsMenu(); open(); };
     dd.appendChild(b);
     return true;
@@ -47545,6 +48344,17 @@ if(document.readyState === 'loading'){
   'use strict';
   function owner(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
   function token(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+  /* v-audit-bridge: نصوص الجسر الجديدة بمفاتيح الترجمة (رمز ثابت من الخادم ← مفتاح هنا)، والعربيّة/الإنجليزيّة احتياط. */
+  function ccT(k, ar, en){
+    try{ var v = (typeof window.t === 'function') ? window.t(k) : ''; if(v && v !== k) return v; }catch(e){ /* guard-ok — الترجمة ترف والاحتياط تحتها */ }
+    var lg = (typeof document !== 'undefined' && document.documentElement && document.documentElement.lang) || 'ar';
+    return lg === 'ar' ? ar : en;
+  }
+  function ccErr(j){
+    if(j && j.code === 'git_busy') return ccT('axBridgeGitBusy', 'عمليّة git جارية في الجسر (نشر أو دمج أو تراجع) — انتظر انتهاءها ثمّ أعد المحاولة.', 'A git operation (publish, merge or reset) is running on the bridge — wait for it to finish, then try again.');
+    return j && j.error;
+  }
+  function keptLine(){ return '\nℹ️ ' + ccT('axBridgeMergeKept', 'نسخة العمل بقيت كما هي: فيها تعديلات أو التزامات لم تُنشر، فلم تُعَد إلى الفرع الرئيسيّ.', 'The working copy was left as is: it has unpublished changes or commits, so it was not reset to the main branch.'); }
   /* الجلسة (sessionId) تعيش في محادثة التطبيق نفسها (cur.ccSessionId) لا هنا — v-cc-session-per-chat. */
   var S = { runId: '', since: 0, prNumber: 0, prUrl: '', lastTask: '', busy: false, retries: 0 };
   try{
@@ -47584,7 +48394,7 @@ if(document.readyState === 'loading'){
   function api(op, extra){
     var payload = Object.assign({ op: op, token: token() }, extra || {});
     return fetch('/api/system?action=cc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      .then(function(r){ return r.json().then(function(j){ if(!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j; }); });
+      .then(function(r){ return r.json().then(function(j){ if(!r.ok || j.error) throw new Error(ccErr(j) || ('HTTP ' + r.status)); return j; }); });
   }
 
   function signal(){ try{ return (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined; }catch(e){ return undefined; } }
@@ -47594,7 +48404,7 @@ if(document.readyState === 'loading'){
     var gotDone = false;
     return fetch('/api/system?action=cc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ token: token() }, body)), signal: signal() })
       .then(function(r){
-        if(!r.ok || !r.body){ return r.text().then(function(t){ var j = null; try{ j = JSON.parse(t); }catch(e){ j = null; } throw new Error((j && j.error) || ('HTTP ' + r.status)); }); }
+        if(!r.ok || !r.body){ return r.text().then(function(t){ var j = null; try{ j = JSON.parse(t); }catch(e){ j = null; } throw new Error(ccErr(j) || ('HTTP ' + r.status)); }); }
         var reader = r.body.getReader(), dec = new TextDecoder(), buf = '';
         function pump(){ return reader.read().then(function(x){
           if(x.done) return;
@@ -47645,6 +48455,7 @@ if(document.readyState === 'loading'){
     var out = '🔔 [' + n.id + '] ' + n.title + ' · ' + noteTime(n.at);
     if(n.url) out += '\n' + n.url;
     if(n.body) out += '\n\n' + n.body;
+    if(n.kept) out += '\n' + keptLine();
     if(n.wake) out += '\n\n🤖 ردّ الوكيل:\n' + (n.reply || (n.runId ? '⏳ يشتغل عليه الحين — اكتب أيّ رسالة لتلتحق بالتشغيل.' : '⏳ ينتظر دوره.'));
     return out;
   }
@@ -47783,7 +48594,7 @@ if(document.readyState === 'loading'){
       return api('merge', { prNumber: n, force: force }).then(function(j){
         if(j.queued) return done('⏳ الفحوص ما خلصت (' + (j.pending || []).join('، ') + ') — بدمج #' + n + ' تلقائيًّا أوّل ما تخضرّ، وإذا احمرّت ألغيه. تابع من «الإشعارات».');
         S.prNumber = 0; S.prUrl = ''; save();
-        done(j.already ? 'كان #' + n + ' مدموجًا من قبل.' : ('✅ دُمج #' + n + ' (' + String(j.sha || '').slice(0, 7) + ') — Vercel ينشر الآن.'));
+        done((j.already ? 'كان #' + n + ' مدموجًا من قبل.' : ('✅ دُمج #' + n + ' (' + String(j.sha || '').slice(0, 7) + ') — Vercel ينشر الآن.')) + (j.kept ? keptLine() : ''));
       }).catch(function(e){ done('✗ ' + e.message + (force ? '' : '\nللتجاوز اكتب «ادمج بالقوّة».')); });
     }
     if(c.cmd === 'reset'){
@@ -48427,6 +49238,7 @@ if(document.readyState === 'loading'){
     if(c === 'format') return t('vwFormat');
     if(c === 'points_insufficient') return t('vwNoPoints').replace('{p}', String(d.points || 0)).replace('{n}', String(d.needed || ''));
     if(c === 'unavailable') return t('vwUnavailable'); // v-plans-gate: رصيد المزوّد عندنا — لا ذنب للمستخدم ولا تحويل للباقات
+    if(c === 'limit') return t('portraitLimitReached'); // v-audit-video (srv-video-4): حدّ فتح الرفع لليوم — النصّ العامّ القائم بالـ١٤ لغة
     return t('vwFailed');
   }
   var lastWatch = null;
@@ -48887,47 +49699,53 @@ if(document.readyState === 'loading'){
       hideSel: '#designAiIdeas, #designBAWrap, #designAiResult, #designAiGrid, #designAiDownloadLink' }
   ];
 
-  /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء */
+  /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء.
+     v-audit-chatcli (cli-chat-rest-7): لكلّ نصّ مفتاح (k) يُقرأ بلغة الواجهة من t() بالـ١٤ لغة، وar/en احتياطه — كان isAr() وحدها، فيرى
+     الأرديّ والفرنسيّ وأخواتهما الإنجليزيّة. نصوص الرسمة نفسها (COMPLETE وكاملة) كما هي بقرار المالك. */
   var KINDS = {
     image: {
       est: 30,
-      hint: { ar: 'جاري توليد الصورة', en: 'Generating image' },
-      expect: { ar: 'الصور تاخذ ~٣٠ ثانية', en: 'images usually take ~30s' },
+      hint: { k: 'axChatcliGenwImageHint', ar: 'جاري توليد الصورة', en: 'Generating image' },
+      expect: { k: 'axChatcliGenwImageExpect', ar: 'الصور تاخذ ~٣٠ ثانية', en: 'images usually take ~30s' },
       stages: {
+        k: ['axChatcliGenwImageS1', 'axChatcliGenwImageS2', 'axChatcliGenwImageS3', 'axChatcliGenwFinal'],
         ar: ['نفهم طلبك…', 'نرسم التفاصيل…', 'نلوّن المشهد…', 'اللمسات الأخيرة ✨'],
         en: ['Understanding your request…', 'Drawing the details…', 'Coloring the scene…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     video: {
       est: 120, wide: true, film: true,
-      hint: { ar: 'جاري توليد الفيديو', en: 'Generating video' },
-      expect: { ar: 'الفيديو ياخذ ١-٣ دقائق', en: 'video usually takes 1-3 min' },
+      hint: { k: 'axChatcliGenwVideoHint', ar: 'جاري توليد الفيديو', en: 'Generating video' },
+      expect: { k: 'axChatcliGenwVideoExpect', ar: 'الفيديو ياخذ ١-٣ دقائق', en: 'video usually takes 1-3 min' },
       stages: {
+        k: ['axChatcliGenwVideoS1', 'axChatcliGenwVideoS2', 'axChatcliGenwVideoS3', 'axChatcliGenwFinal'],
         ar: ['نبني المشاهد…', 'نحرّك الإطارات…', 'نركّب الحركة…', 'اللمسات الأخيرة ✨'],
         en: ['Building the scenes…', 'Animating the frames…', 'Compositing the motion…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — المشاهد السينمائيّة تاخذ وقتًا…', en: 'Still rendering — cinematic scenes take time…' }
+      slow: { k: 'axChatcliGenwVideoSlow', ar: 'ما زال يتولّد — المشاهد السينمائيّة تاخذ وقتًا…', en: 'Still rendering — cinematic scenes take time…' }
     },
     styles: {
       est: 45,
-      hint: { ar: 'جاري توليد الأنماط', en: 'Generating styles' },
-      expect: { ar: 'الأنماط تاخذ ~٤٥ ثانية', en: 'styles usually take ~45s' },
+      hint: { k: 'axChatcliGenwStylesHint', ar: 'جاري توليد الأنماط', en: 'Generating styles' },
+      expect: { k: 'axChatcliGenwStylesExpect', ar: 'الأنماط تاخذ ~٤٥ ثانية', en: 'styles usually take ~45s' },
       stages: {
+        k: ['axChatcliGenwStylesS1', 'axChatcliGenwStylesS2', 'axChatcliGenwStylesS3', 'axChatcliGenwFinal'],
         ar: ['نحلّل ملامح الصورة…', 'نطبّق الأنماط…', 'نضبط الإضاءة…', 'اللمسات الأخيرة ✨'],
         en: ['Reading your features…', 'Applying the styles…', 'Tuning the light…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     fashion: {
       est: 40, /* v-gen-scene-exact: scenes تُربط أدناه بعد تعريف SCENES */
-      hint: { ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
-      expect: { ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
+      hint: { k: 'axChatcliGenwFashionHint', ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
+      expect: { k: 'axChatcliGenwFashionExpect', ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
       stages: {
+        k: ['axChatcliGenwFashionS1', 'axChatcliGenwFashionS2', 'axChatcliGenwFashionS3', 'axChatcliGenwFinal'],
         ar: ['نفهم ذوقك…', 'نرسم القطع…', 'ننسّق الإطلالة…', 'اللمسات الأخيرة ✨'],
         en: ['Reading your taste…', 'Sketching the pieces…', 'Styling the look…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     }
   };
   /* v-style-scene: الستايل — بلا نصّ جديد: مراحله وتوقّعه مركّبة من نصوص الأنواع القائمة (scenes تُربط أدناه) */
@@ -48936,6 +49754,7 @@ if(document.readyState === 'loading'){
     hint: KINDS.image.hint,
     expect: KINDS.image.expect,
     stages: {
+      k: [KINDS.styles.stages.k[0], KINDS.image.stages.k[1], KINDS.styles.stages.k[2], KINDS.image.stages.k[3]],
       ar: [KINDS.styles.stages.ar[0], KINDS.image.stages.ar[1], KINDS.styles.stages.ar[2], KINDS.image.stages.ar[3]],
       en: [KINDS.styles.stages.en[0], KINDS.image.stages.en[1], KINDS.styles.stages.en[2], KINDS.image.stages.en[3]]
     },
@@ -49330,6 +50149,13 @@ if(document.readyState === 'loading'){
   /* أعرض رقم مقيس بخطّ سطر الوقت: ٠٫٥٧٤em عربيًّا و٠٫٦em لاتينيًّا (مسبار الأرقام، ١٢ بكسل) */
   var SEC_DIGIT_EM = 0.62;
   function isAr(){ try{ return (typeof lang !== 'undefined' ? lang : 'ar') === 'ar'; }catch(e){ return true; } }
+  /* v-audit-chatcli: نصّ بلغة الواجهة من t() بمفتاحه، وإلّا احتياطه العربيّ للعربيّ والإنجليزيّ لغيره كما كان */
+  function genwTx(k, ar, en){
+    try{ if(k && typeof t === 'function'){ var v = t(k); if(typeof v === 'string' && v && v !== k) return v; } }catch(e){ /* guard-ok — بلا قاموس يبقى الاحتياط */ }
+    return isAr() ? ar : en;
+  }
+  function genwOne(o){ return genwTx(o.k, o.ar, o.en); }
+  function genwList(o){ return o.en.map(function(en, i){ return genwTx(o.k && o.k[i], o.ar[i], en); }); }
 
   /* منحنى التقدّم: يتسارع ثمّ يهدأ — لا يتجاوز ٩٢٪ مهما طال الانتظار (النتيجة تستبدل البطاقة) */
   function eased(p){ return p >= 1 ? 0.92 : (1 - Math.pow(1 - Math.min(p, 1), 2.2)) * 0.92; }
@@ -49348,10 +50174,11 @@ if(document.readyState === 'loading'){
     var t0 = (opts && Number(opts.t0)) || Date.now();
     var kind = (opts && opts.kind && KINDS[opts.kind]) ? opts.kind : 'image';
     var cfg = KINDS[kind];
-    var stages = cfg.stages[isAr() ? 'ar' : 'en'];
-    var hint = cfg.hint[isAr() ? 'ar' : 'en'];
-    var expect = cfg.expect[isAr() ? 'ar' : 'en'];
-    var slowTxt = cfg.slow[isAr() ? 'ar' : 'en'];
+    var stages = genwList(cfg.stages);
+    var hint = genwOne(cfg.hint);
+    var expect = genwOne(cfg.expect);
+    var slowTxt = genwOne(cfg.slow);
+    var secUnit = genwTx('axChatcliGenwSec', 'ث', 's');
 
     var sc = cfg.scenes ? nextScene(cfg) : null; /* v-gen-scene-exact: مشهد هذا التوليد (بالدور) — v-style-scene: بدور نوعه */
     var root = document.createElement('div');
@@ -49441,13 +50268,13 @@ if(document.readyState === 'loading'){
         timerEl.textContent = uiText('⏱ ');
         secEl = document.createElement('b');
         timerEl.appendChild(secEl);
-        timerEl.appendChild(document.createTextNode((isAr() ? 'ث' : 's') + ' — ' + expect));
+        timerEl.appendChild(document.createTextNode(secUnit + ' — ' + expect));
       }
       secEl.style.minWidth = (num.length * SEC_DIGIT_EM) + 'em';
       secEl.textContent = num;
     }
     /* قبل أوّل نبضة موصولة (≤١٥٠ مث) السطر نصّ عاديّ يحفظ ارتفاعه؛ بعدها يبنيه paintTimer بخانته */
-    timerEl.textContent = '⏱ ' + fmt(0) + (isAr() ? 'ث' : 's') + ' — ' + expect;
+    timerEl.textContent = '⏱ ' + fmt(0) + secUnit + ' — ' + expect;
     /* الساعة تبدأ بعد ما تُركّب البطاقة: أول نبضة قد تأتي والعنصر لم يُلحق بعد
        (render يُستدعى ثمّ يُلحق الناتج) فلا نطفئها إلا بعد اتصالٍ سابق. */
     var wasConnected = false;
@@ -49486,6 +50313,20 @@ if(document.readyState === 'loading'){
      فقاعة التفكير («🎬 جاري إنشاء الفيديو…») فبقي بلا بطاقة. نرصد السطر الجاري ونركّب
      بطاقة الفيديو العريضة في الفقاعة نفسها؛ تُرفع معها عند وصول النتيجة. */
   var CHAT_VIDEO_RE = /🎬 (?:جاري إنشاء الفيديو|Creating video)/;
+  /* v-audit-attach (x-i18n-6): سطرا فيديو المحادثة صارا بمفتاح الـ١٤ لغة في app-09 (axAttachVidCreating/axAttachVidCreatingShort) —
+     التعبير الحرفيّ وحده يُسقط البطاقة عن الفرنسيّة والهنديّة وغيرهما، فيُطابَق نصّ اللغة الحاليّة أيضًا (بلا نقاط الختام). */
+  function chatVideoLine(s){
+    if(CHAT_VIDEO_RE.test(s)) return true;
+    if(s.indexOf('🎬') < 0 || typeof t !== 'function') return false;
+    var ks = ['axAttachVidCreating', 'axAttachVidCreatingShort'];
+    for(var i = 0; i < ks.length; i++){
+      var v = '';
+      try{ v = String(t(ks[i]) || ''); }catch(e){ v = ''; }
+      v = v.replace(/[\s….]+$/, '');
+      if(v && v !== ks[i] && s.indexOf(v) !== -1) return true;
+    }
+    return false;
+  }
 
   /* ١٥ أكتوبر ٢٠٢٦ — طلب المالك إرجاع انتظار صور المحادثة لما قبل البطاقة:
      تبقى رسالة «أرسم لك الصورة…» من العارض، بلا عدّاد إضافي. بقية اللوحات كما هي. */
@@ -49540,7 +50381,7 @@ if(document.readyState === 'loading'){
     for(var ci = 0; ci < cvEls.length; ci++){
       var ctxt = '';
       try{ ctxt = String(cvEls[ci].textContent || ''); }catch(e){ continue; }
-      if(!CHAT_VIDEO_RE.test(ctxt)) continue;
+      if(!chatVideoLine(ctxt)) continue;
       var chost = cvEls[ci].closest ? cvEls[ci].closest('.msg.assistant') : null;
       if(!chost) continue;
       cvFound = true;

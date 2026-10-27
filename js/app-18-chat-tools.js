@@ -142,8 +142,7 @@
 
   window.callChatWithTools = async function (messages, onDelta, provider, opts) {
     var __rcChat = (onDelta && onDelta.__chat) || ((typeof getCurrent === 'function') ? getCurrent() : null); /* v-img-run-bind: محادثة هذا الطلب (app-09 __sigFn) */
-    window.__chatVideoResult = null;
-    window.__chatCardsResult = null; /* v-cards */
+    window.__chatVideoResult = null; /* v-audit-chatcli: فيديو أداة المحادثة صار لمحادثته (__chatVideoByChat في app-17)، والبطاقات في ناتج هذه الدالّة وحده */
     window.__chatVideoReference = null;
     window.__chatLastUserText = '';
     try {

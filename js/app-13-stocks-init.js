@@ -86,7 +86,7 @@
       /* v-stocks-fail (تدقيق ١٨ أكتوبر + الدفعة ٥): الخادم يرسل رمزًا لا رسالة مزوّد الأسعار (كانت «**symbol** or **figi** … https://…» باسمه ورابطه وبالإنجليزيّ) */
       if(j.error === 'symbol_not_found') throw new Error(t('stocksSymbolNotFound'));
       if(j.error === 'unavailable') throw new Error(t('svcPaused'));
-      throw new Error(j.error || 'HTTP '+r.status);
+      throw Object.assign(new Error(j.error || 'HTTP '+r.status), { data: j }); /* v-audit-search: الرمز وحقوله لمن يترجمه (pfErrText) */
     }
     return j;
   }
@@ -320,7 +320,7 @@
     analysisEl.style.display = 'block';
     analysisEl.textContent = '🤖 ...';
     try{
-      const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
+      const lang = localStorage.getItem('aiapp_lang')||'ar'; /* v-audit-search (srv-search-8): الرمز كاملًا — slice(0,2) كان يجعل fil «fi» */
       const j = await api({ mode:'analyze', symbol: currentSym, question: questionEl.value.trim(), lang: lang });
       if(j.analysis) setMd(analysisEl, j.analysis); else analysisEl.textContent = '⚠️'; // v-md-lite
     }catch(err){
@@ -346,7 +346,7 @@
     lessonEl.style.display = 'block';
     lessonEl.textContent = '🎓 ...';
     try{
-      const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
+      const lang = localStorage.getItem('aiapp_lang')||'ar'; /* v-audit-search (srv-search-8) */
       const j = await api({ mode:'learn', topic: topic||'', question: question||'', symbol: currentSym || 'AAPL', lang: lang });
       /* v-md-lite · v-stocks-fail: الفشل سطر وظيفيّ بلغة الواجهة، لا claudeError (نصّ المزوّد الخامّ) */
       if(j.lesson) setMd(lessonEl, j.lesson); else lessonEl.textContent = '⚠️ ' + t('svcPaused');
@@ -523,7 +523,9 @@
     (bd.top || []).forEach(function(r){
       h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
         + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
-        + '<span style="flex:1;">' + pfEsc(r.user) + '</span>'
+        /* v-audit-search (srv-search-1): الخادم يرسل اسمًا مقنَّعًا (لا مفتاح الحساب/البريد) وعلم me لسطرك؛ الاسم معزول FSI (اتّجاه أوّل حرف)
+           فلا تنقلب «ah***» إلى «***ah» في العربيّ */
+        + '<span style="flex:1;' + (r.me ? 'font-weight:700;' : '') + '">\u2068' + pfEsc(r.name != null ? r.name : '') + '\u2069</span>'
         + '<b style="color:' + pfCol(r.plPct) + ';">' + pfIso((r.plPct >= 0 ? '+' : '') + r.plPct + '%') + '</b></div>';
     });
     // آخر الصفقات + إعادة الضبط
@@ -542,6 +544,20 @@
   }
 
   function pfMsgShow(txt, ok){ var m = $('#pfMsg'); if(m){ m.textContent = txt; m.style.color = ok ? '#2E9E6B' : '#e05252'; } }
+  /* v-audit-search (srv-search-8): أخطاء الصفقة رموز من الخادم بأرقامها حقولًا — كانت جملًا عربيّة ثابتة يعرضها pfMsgShow كما هي.
+     المفتاح من القاموس (١٤ لغة)، وقبل وصوله stT العربيّ/الإنجليزيّ؛ الأرقام معزولة LTR (v-pf-bidi). */
+  function pfTk(k, ar, en){ var v = ''; try{ v = (typeof t === 'function') ? t(k) : ''; }catch(e){ __swallow(e, "misc:app-13-stocks-init#pfTk"); } return (v && v !== k) ? v : stT(ar, en); }
+  function pfErrText(e){
+    var d = (e && e.data) || {};
+    if(d.error === 'insufficient_cash') return pfTk('axSearchPfNoCash', 'رصيدك الافتراضي لا يكفي: عندك {cash} والصفقة تحتاج {cost}', 'Not enough virtual cash: you have {cash} and this trade needs {cost}')
+      .replace('{cash}', pfIso('$' + pfMoney(d.cash))).replace('{cost}', pfIso('$' + pfMoney(d.cost)));
+    if(d.error === 'not_enough_shares') return pfTk('axSearchPfNoShares', 'ما تملك هذه الكمية — عندك {qty} سهم من {sym}', "You don't own that many — you have {qty} shares of {sym}")
+      .replace('{qty}', pfIso(String(d.have || 0))).replace('{sym}', pfIso(String(d.symbol || '')));
+    if(d.error === 'trade_limit') return pfTk('axSearchPfLimit', 'وصلت لحدّ الصفقات اليوميّ ({limit}) — عد غدًا 🌙', "You've reached today's trade limit ({limit}) — come back tomorrow 🌙")
+      .replace('{limit}', pfIso(String(d.limit || '')));
+    if(d.error === 'bad_trade') return stT('اكتب رمز السهم والكمية أولًا','Enter a stock symbol and quantity first');
+    return (e && e.message) || stT('تعذرت الصفقة','Trade failed');
+  }
 
   function pfTrade(side, sym, qty){
     if(pfBusy) return;
@@ -561,7 +577,7 @@
           + (buy ? stT('🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.', '🎓 Lesson: don’t put all your cash in one stock — diversifying protects you.')
                  : stT('🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.', '🎓 Lesson: selling locks in a profit or stops a loss — good decisions follow a plan, not emotion.')), true);
       })
-      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || stT('تعذرت الصفقة','Trade failed')), false); });
+      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + pfErrText(e), false); });
   }
 
   function pfWire(){
@@ -569,7 +585,7 @@
     if(b1) b1.onclick = function(){ pfTrade('buy'); };
     if(b2) b2.onclick = function(){ pfTrade('sell'); };
     if(rs) rs.onclick = function(){
-      if(!confirm('تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.')) return;
+      if(!confirm(pfT('axChatcliPfResetConfirm', 'تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.'))) return; // v-audit-chatcli (x-i18n-5): بلغة الواجهة
       api({ mode:'pf-reset', token: pfTok() }).then(pfRender).catch(function(e){ pfMsgShow('⚠️ ' + e.message, false); });
     };
     pfWrap.querySelectorAll('[data-pfsell]').forEach(function(b){
@@ -579,10 +595,10 @@
       b.onclick = function(){
         var sym = b.getAttribute('data-pfwhy');
         var box = $('#pfLesson');
-        box.style.display = 'block'; box.textContent = '🎓 معلمك يجهز درسًا على ' + sym + ' بالأرقام الحية…';
+        box.style.display = 'block'; box.textContent = pfT('axChatcliPfLessonLoading', '🎓 معلمك يجهز درسًا على {sym} بالأرقام الحية…').split('{sym}').join(sym); // v-audit-chatcli
         api({ mode:'learn', symbol: sym, question: 'أنا مبتدئ وأملك هذا السهم في محفظتي التعليمية. علمني ماذا أراقب فيه الآن (الاتجاه، الدعم والمقاومة، متى أفكر بالبيع) بالأرقام الحية.', lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
-          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = 'تعذر الدرس الآن — حاول بعد قليل.'; }) // v-md-lite
-          .catch(function(e){ box.textContent = '⚠️ ' + (e.message || 'تعذر الدرس'); });
+          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = pfT('axChatcliPfLessonFail', 'تعذر الدرس الآن — حاول بعد قليل.'); }) // v-md-lite
+          .catch(function(e){ box.textContent = '⚠️ ' + (e.message || pfT('axChatcliPfLessonFail', 'تعذر الدرس الآن — حاول بعد قليل.')); });
       };
     });
   }
@@ -739,6 +755,9 @@
 
   if(libraryBtn){
     libraryBtn.onclick = async () => {
+      /* v-audit-stud2 (srv-studios-2-2): المكتبة صارت بجلسة وسقف يوميّ في الخادم — نرسل الرمز، وبلاه «سجّل الدخول» بلا طلب */
+      const libToken = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+      if(!libToken){ setStatus(t('portraitNeedLogin')); return; } /* «سجّل الدخول لاستخدام هذه الميزة» — نصّ designAiNeedLogin يسمّي الديكور */
       libraryBtn.disabled = true;
       libraryEmptyEl.style.display = 'none';
       libraryWrap.style.display = 'none';
@@ -748,9 +767,11 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           /* v-cx-lib: المكتبة مشتركة وتسميات كلّ مخطّط بلغة صاحبه — نطلب مخطّطات لغتنا وحدها */
-          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
+          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar', token: libToken }),
         });
         const data = await res.json();
+        if(res.status === 401 || (data && data.error === 'auth_required')){ setStatus(t('portraitNeedLogin')); return; }
+        if(res.status === 429 || (data && data.error === 'daily_limit_reached')){ setStatus(t('portraitLimitReached')); return; }
         const items = (data && data.items) || [];
         if(!items.length){
           libraryEmptyEl.style.display = 'block';
@@ -883,7 +904,7 @@
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     a.download = 'omran-boq.csv';
     document.body.appendChild(a); a.click();
-    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){} }, 1500);
+    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){ /* guard-ok — تنظيف رابط مؤقّت بعد التنزيل؛ فشله لا يمسّ الملفّ */ } }, 1500);
   };
 
   if(pdfBtn) pdfBtn.onclick = async function(){
@@ -891,38 +912,44 @@
     const fig = function(b64, mime, cap){
       return b64 ? ('<figure><img src="data:' + (mime || 'image/png') + ';base64,' + b64 + '"><figcaption>' + cap + '</figcaption></figure>') : '';
     };
+    /* v-audit-search (cli-tools-7): التقرير بلغة الواجهة واتّجاهها — كان dir=rtl وlang=ar وعناوينه وتسمياته وتذييله وتاريخه (ar-AE)
+       عربيّة لكلّ اللغات، ونصّ الخطّة نفسه بلغة المستخدم، فيختلط الاتّجاهان في ملفّ يُرسل لطرف ثالث. المفتاح من القاموس، وقبله bT. */
+    const cxLang = String((typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar');
+    const cxRtl = cxLang === 'ar' || cxLang === 'ur';
+    const cxT = function(k, ar, en){ const v = t(k); return (v && v !== k) ? v : bT(ar, en); };
     const rows = boqRows();
     let tbl = '';
     if(rows){
-      tbl = '<h2>📊 جدول الكميات</h2><table>' + rows.map(function(r, i){
+      tbl = '<h2>' + esc(cxT('axSearchCxBoq', '📊 جدول الكميات', '📊 Bill of quantities')) + '</h2><table>' + rows.map(function(r, i){
         const g = i === 0 ? 'th' : 'td';
         return '<tr>' + r.map(function(c){ return '<' + g + '>' + esc(c) + '</' + g + '>'; }).join('') + '</tr>';
       }).join('') + '</table>';
     }
     const oTxt = function(el){ return (el && el.options[el.selectedIndex]) ? el.options[el.selectedIndex].text : ''; };
     /* v-md-lite: «عدد الأدوار: N» بدل «N أدوار» (كان «1 أدوار») */
-    const meta = [oTxt(typeEl), 'عدد الأدوار: ' + floorsEl.value, areaEl.value + ' م² بناء',
-      (plotEl && plotEl.value ? plotEl.value + ' م² أرض' : ''), oTxt(styleEl),
+    const meta = [oTxt(typeEl), t('constructionFloors') + ': ' + floorsEl.value, cxT('axSearchCxBuiltArea', '{n} م² بناء', '{n} m² built').replace('{n}', areaEl.value),
+      (plotEl && plotEl.value ? cxT('axSearchCxPlotArea', '{n} م² أرض', '{n} m² plot').replace('{n}', plotEl.value) : ''), oTxt(styleEl),
       (emirateEl && emirateEl.value ? oTxt(emirateEl) : '')].filter(Boolean).join(' · ');
-    const __docHtml = ('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير مشروع البناء</title><style>'
+    const cxTitle = cxT('axSearchCxReportTitle', 'تقرير مشروع البناء', 'Construction project report');
+    const __docHtml = ('<!doctype html><html dir="' + (cxRtl ? 'rtl' : 'ltr') + '" lang="' + esc(cxLang) + '"><head><meta charset="utf-8"><title>' + esc(cxTitle) + '</title><style>'
       + 'body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;margin:0;padding:0 26px 26px;color:#111;}'
       + 'header{background:linear-gradient(135deg,#0f766e,#134e4a);color:#fff;margin:0 -26px 18px;padding:20px 26px;}'
       + 'header h1{margin:0;font-size:21px}header p{margin:6px 0 0;font-size:13px;opacity:.92}'
       + 'h2{font-size:16px;border-bottom:2px solid #0f766e;padding-bottom:4px;margin:20px 0 8px}'
       + 'table{width:100%;border-collapse:collapse;font-size:12px}'
-      + 'th,td{border:1px solid #bbb;padding:5px 7px;text-align:right}th{background:#e6f2f0}'
+      + 'th,td{border:1px solid #bbb;padding:5px 7px;text-align:start}th{background:#e6f2f0}'
       + 'figure{margin:0 0 12px;page-break-inside:avoid}img{width:100%;border:1px solid #ccc;border-radius:6px}'
       + 'figcaption{font-size:11.5px;color:#555;margin-top:4px;text-align:center}'
       + '.plan{white-space:pre-wrap;font-size:12.5px;line-height:1.85;margin:0}.plan hr{border:0;border-top:1px solid #ccc;margin:8px 0}' /* v-md-lite */
       + 'footer{margin-top:22px;font-size:11px;color:#666;border-top:1px solid #ddd;padding-top:8px}'
       + '@media print{header,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
-      + '</style></head><body><header><h1>🏗️ تقرير مشروع البناء</h1><p>' + esc(meta)
-      + '</p><p>' + esc(new Date().toLocaleDateString('ar-AE')) + '</p></header>'
-      + fig(lastData.imageBase64, lastData.mimeType, 'المخطط المعماري')
-      + fig(lastData.photoImageBase64, lastData.photoMimeType, 'الواجهة الخارجية')
-      + fig(lastData.interiorImageBase64, lastData.interiorMimeType, 'التصميم الداخلي')
-      + '<h2>📋 التفاصيل والتكلفة</h2><div class="plan">' + window.__omMdLiteHtml(lastData.planText || '') + '</div>' + tbl
-      + '<footer>تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.</footer>'
+      + '</style></head><body><header><h1>🏗️ ' + esc(cxTitle) + '</h1><p>' + esc(meta)
+      + '</p><p>' + esc(new Date().toLocaleDateString(cxLang === 'ar' ? 'ar-AE' : cxLang)) + '</p></header>'
+      + fig(lastData.imageBase64, lastData.mimeType, esc(t('constructionPlanImageLabel')))
+      + fig(lastData.photoImageBase64, lastData.photoMimeType, esc(t('constructionExteriorLabel')))
+      + fig(lastData.interiorImageBase64, lastData.interiorMimeType, esc(t('constructionInteriorLabel')))
+      + '<h2>' + esc(cxT('axSearchCxDetails', '📋 التفاصيل والتكلفة', '📋 Details and cost')) + '</h2><div class="plan">' + window.__omMdLiteHtml(lastData.planText || '') + '</div>' + tbl
+      + '<footer>' + esc(cxT('axSearchCxFooter', 'تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.', 'Initial concept only — not a substitute for a licensed engineer or an official building permit. Issued by the om ai app.')) + '</footer>'
       + '</body></html>');
     /* v-cons-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة الطباعة
        ميتة — نصدّر ملف PDF حقيقيًا؛ والطباعة تبقى للكمبيوتر. */
@@ -932,7 +959,7 @@
       try{
         const __st = (__docHtml.match(/<style[\s\S]*?<\/style>/gi) || []).join('');
         const __bm = __docHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-        await window.omranExportHtmlAsPdfFile(__st + (__bm ? __bm[1] : __docHtml), { rtl: true, fileName: 'omran-construction.pdf' });
+        await window.omranExportHtmlAsPdfFile(__st + (__bm ? __bm[1] : __docHtml), { rtl: cxRtl, fileName: 'omran-construction.pdf' });
         return true;
       }catch(e){ return false; }
     }
@@ -945,7 +972,7 @@
     }
     w.document.write(__docHtml);
     w.document.close();
-    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 800);
+    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){ /* guard-ok — نافذة أُغلقت قبل الطباعة؛ التقرير معروض فيها */ } }, 800);
   };
 
   angleBtns.forEach((btn) => {
@@ -3150,7 +3177,9 @@
           const label = (styleEl.querySelector('option[value="' + r.styleVal + '"]') || {}).textContent || r.styleVal;
           cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* v-audit-studeng (srv-studios-1-3): الرمز بنصّ الواجهة (studioErrText) — كان «❌ image_generation_failed» أو نصّ الخادم خامًا */
+          const errP = document.createElement('p'); errP.style.cssText = 'font-size:11.5px; color:#f87171;';
+          errP.textContent = studioErrText(new Error(r.error || 'unknown')); cell.appendChild(errP);
         }
         compareResultsEl.appendChild(cell);
       });
@@ -3210,7 +3239,9 @@
         if(r.dataUrl){
           cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* v-audit-studeng (srv-studios-1-3): الرمز بنصّ الواجهة (studioErrText) — كان «❌ image_generation_failed» أو نصّ الخادم خامًا */
+          const errP = document.createElement('p'); errP.style.cssText = 'font-size:11.5px; color:#f87171;';
+          errP.textContent = studioErrText(new Error(r.error || 'unknown')); cell.appendChild(errP);
         }
         heritageCompareResultsEl.appendChild(cell);
       });

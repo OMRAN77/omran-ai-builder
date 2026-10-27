@@ -514,10 +514,10 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
     /* v-recipe-card: طلب عمران — سؤال الطبخ يرجع صورة الطبق فوق + موقعا طبخ فأكثر.
        v-recipe-ideas: وكل وصفة تختم باقتراح تنويعات كأزرار تُضغط. */
     'سؤال طبخ أو وصفة: استدعِ معًا في نفس الجولة web_search عن الوصفة وgenerate_image بوصف فوتوغرافي شهي للطبق نفسه (professional food photography). ضع رمز الصورة وحده في أول سطر من ردك ثم الوصفة، ثم روابط موقعين للطبخ أو أكثر من نتائج بحثك، واختم بسؤال قصير يقترح تنويعات شهية من نفس المكوّن الرئيسي كأزرار بهذه الصيغة حرفيًّا: [[OPT]]نسخة بالباستا 🍝|نسخة بالكاري 🍛|طريقة مشوية 🔥[[/OPT]] — بدّل الاقتراحات الثلاثة بما يناسب الطبق نفسه.\n';
-    function messageSize(content) {
+    function messageSize(content) { /* v-audit-chatsrv (srv-chat-1): كتلة الصورة كانت تُحسب بطول base64 (لقطة شاشة = ٢٠٠–٥٠٠ ألف حرف) داخل ميزانيّة ٣٢ ألف حرف، فتتخطّى compactConversation كلّ ما قبلها ويصل النموذج رسالة الصورة وحدها. كلفة الصورة عند النموذج بكسلاتها لا طول ترميزها (≈ ١٦٠٠ توكن لأقصى مقاس يرسله العميل ≈ ٥٠٠٠ حرف بنسبة الميزانيّة نفسها) — حجم ثابت لكلّ صورة (IMAGE_BLOCK_CHARS)، والنصّ كما كان حرفيًّا. */
     if (typeof content === 'string') return content.length;
-    try { return JSON.stringify(content || '').length; } catch (e) { return 0; }
-    }
+    let n; try { n = JSON.stringify(content || '').length; } catch (e) { return 0; } if (Array.isArray(content)) for (const b of content) if (b && b.type === 'image') { try { n += IMAGE_BLOCK_CHARS - JSON.stringify(b).length; } catch (e) { /* guard-ok — كتلة لا تُسلسل: يبقى طولها الأوّل */ } } return n;
+    } const IMAGE_BLOCK_CHARS = 5000;
     function compactConversation(items, win) { // v-tokens-window: win = { histOffset, lane } من العميل الجديد — بلا histOffset السلوك القديم حرفيًّا
     const source = Array.isArray(items) ? items.filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content) : [];
     if (win && Number.isInteger(win.histOffset) && win.histOffset >= 0) { const __aw = alignedWindow(source, win.histOffset, win.lane); if (__aw) return __aw; } if (source.length <= 16 && source.reduce((n, m) => n + messageSize(m.content), 0) <= 36000) return source;
@@ -984,13 +984,13 @@ function pageLinks(html, base) {
   const out = [], seen = new Set();
   let host = '';
   try { host = new URL(base).hostname.replace(/^www\./, ''); } catch (e) { return ''; }
-  const re = /<a\b[^>]*?href\s*=\s*["']([^"'#][^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
-  let m;
-  while ((m = re.exec(String(html || ''))) && out.length < 200) {
-    const label = m[2].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().slice(0, 80);
+  const s = String(html || ''), openRe = /<a\b/gi, closeRe = /<\/a>/gi, hrefRe = /href\s*=\s*["']([^"'#][^"']*)["']/i; let m, gt = -1, close = -1, h; /* v-audit-chatsrv (srv-chat-2): التعبير الواحد (<a…>[\s\S]*?</a>) كان يمسح بقيّة المستند من عند كلّ «<a» بلا إغلاق — زمن تربيعيّ (صفحة ٢ م.ب ≈ ٥٠ ثانية تحجز المعالج، ومهلة الجلب لا توقف تعبيرًا متزامنًا). الآن مسح خطّيّ بالنتيجة نفسها: أقرب «>» وأقرب «</a>» يُحفظان ولا يُعاد البحث عنهما قبل تجاوزهما، وhref يُطلب داخل وسم الفتح وحده، ووسم بلا href يُتخطّى كلّه (لا «<a» داخله يجد غير ما وجده). */
+  while (out.length < 200 && (m = openRe.exec(s))) {
+    const at = m.index; if (gt < at) gt = s.indexOf('>', at); if (gt < 0) break; /* لا وسم مكتمل بعده */ h = hrefRe.exec(s.slice(at, gt)); if (!h) { openRe.lastIndex = gt + 1; continue; }
+    if (close <= gt) { closeRe.lastIndex = gt + 1; const c = closeRe.exec(s); close = c ? c.index : -1; } if (close < 0) break; /* لا «</a>» بعده */ openRe.lastIndex = close + 4; const label = s.slice(gt + 1, close).replace(/<[^<>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().slice(0, 80);
     if (!label) continue;
     let abs;
-    try { abs = new URL(m[1].replace(/&amp;/g, '&'), base); } catch (e) { continue; } // رابط مشوّه في الصفحة — يُتخطّى
+    try { abs = new URL(h[1].replace(/&amp;/g, '&'), base); } catch (e) { continue; } // رابط مشوّه في الصفحة — يُتخطّى
     if (!/^https?:$/.test(abs.protocol)) continue;
     abs.hash = '';
     const key = abs.href;
@@ -1566,7 +1566,7 @@ module.exports = async (req, res) => {
           const allowed = new Set();
           const urlRe = /https?:\/\/([^/\s)\]"]+)/g;
           let m;
-          while ((m = urlRe.exec(corpus || '')) !== null) {
+          const __src = (corpus || '') + ' ' + require('./reply-style.js').textOfMessages((Array.isArray(messages) ? messages : []).filter((x) => x && x.role === 'user')); while ((m = urlRe.exec(__src)) !== null) { /* v-audit-chatsrv (srv-chat-3): رابط كتبه المستخدم نفسه («رابط متجري https://…») كان يُمحى من الردّ النهائيّ — القائمة من ناتج الأدوات وحده، والقاعدة «الروابط من بحثك أو من المستخدم». نطاقات رسائل المستخدم في هذا الطلب تُقبل؛ ردود المساعد السابقة لا تزكّي رابطًا. */
             try { allowed.add(m[1].replace(/^www\./, '').toLowerCase().split('/')[0]); } catch(e) { /* guard-ok — URL parsing for domain allow-list; any error means the match is malformed, skip silently */ }
           }
           const ok = (url) => { try { return allowed.has(new URL(url).hostname.replace(/^www\./, '').toLowerCase()); } catch(e) { return false; } };
@@ -2152,11 +2152,13 @@ module.exports = async (req, res) => {
           /* v-providers-like-agent: أدوات الوكيل للمالك في المحادثة بحرّاسها نفسها — ثلاث رفعات ومهمّة مفوَّضة واحدة في الدور. */
           else if (cb.name === 'write_github') {
             if (!__ownerReq) result = '✗ الرفع إلى GitHub للمالك وحده.';
+            else if (require('./github-write.js').pushGate(input, lastUserText)) result = require('./github-write.js').pushGate(input, lastUserText); /* v-audit-agent (srv-agent-2): حارس النيّة من الخادم — لا رفع بمحتوى مقروء محقون */
             else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./agent-img.js').ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-write.js').pushFiles(input, { imgIds: __ownerOps.imgIds }))); /* v-agent-img: «__IMG_N__» */ result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4 */ if (/^✅ رُفع/.test(result)) { __ownerOps.prs = (__ownerOps.prs || 0) + 1; __ownerOps.lastPush = __ol.pushRef(result); } /* v-owner-like-me */ }
           }
           /* v-agent-surgical: كما في الوكيل — التعديل يتشارك سقف الرفعات، والدمج بإذن «ادمج» في آخر رسالة المالك يفحصه الخادم. */
           else if (cb.name === 'edit_github') {
             if (!__ownerReq) result = '✗ التعديل على GitHub للمالك وحده.';
+            else if (require('./github-write.js').pushGate(input, lastUserText)) result = require('./github-write.js').pushGate(input, lastUserText); /* v-audit-agent (srv-agent-2) */
             else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./agent-img.js').ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-edit.js').editFiles(input, { imgIds: __ownerOps.imgIds })).then((r) => { if (r && r.local) __ownerOps.pushes--; return r; })); /* v-agent-img */ result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4: رفعة تمسّ js/app-NN-*.js = «الحزمة لم تُبنَ» (partials لا تُحزَم) */ if (/^✅ رُفع/.test(result)) { __ownerOps.prs = (__ownerOps.prs || 0) + 1; __ownerOps.lastPush = __ol.pushRef(result); } /* v-owner-like-me */ }
           }
           else if (cb.name === 'merge_github') {

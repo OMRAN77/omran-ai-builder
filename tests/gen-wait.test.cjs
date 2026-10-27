@@ -35,8 +35,9 @@ test('نصوص انتظار صور المحادثة باقية في مسارات
   assert.match(src, /🎨 Creating another version…/);
   // الأسطر نفسها ما زالت في مسارات التوليد كما هي — الرصد يعتمد عليها
   const attach = read('js/app-09-attach.js');
-  assert.equal((attach.match(/🎨 أرسم لك الصورة…/g) || []).length, 2, 'سطرا التوليد العاديّ والخام');
-  assert.match(attach, /🎨 أرسم لك نسخة ثانية…/, 'سطر النسخة الثانية');
+  // v-audit-attach: السطران بمفتاح الـ١٤ لغة (العربيّة والإنجليزيّة احتياطه كما كانتا)
+  assert.equal((attach.match(/'🎨 ' \+ omranAttachT\('axAttachDrawingImage', 'أرسم لك الصورة…', 'Generating your image…'\)/g) || []).length, 2, 'سطرا التوليد العاديّ والخام');
+  assert.match(attach, /'🎨 ' \+ omranAttachT\('axAttachAnotherVersion', 'أرسم لك نسخة ثانية…', 'Creating another version…'\)/, 'سطر النسخة الثانية');
 });
 
 test('الرجوع للنص السابق: صور المحادثة لا تركّب بطاقة، ورصد الفيديو واللوحات باقٍ', () => {
@@ -148,8 +149,8 @@ test('فيديو المحادثة (v-gen-wait-chatvideo): سطر «🎬 جاري
   assert.match(src, /'💳'/, 'فحص الرصيد 💳 ضمن بادئات انشغال الفيديو');
   // النصّان اللذان يكتبهما مسار الفيديو في المحادثة فعلًا (app-09) — لو تغيّرا يصرخ الاختبار
   const attach = read('js/app-09-attach.js');
-  assert.match(attach, /chatPhase\('🎬', lang === 'ar' \? 'جاري إنشاء الفيديو…/, 'سطر بدء الفيديو');
-  assert.match(attach, /chatPhase\('🎬', \(lang === 'ar' \? 'جاري إنشاء الفيديو… '/, 'سطر الاستطلاع');
+  assert.match(attach, /chatPhase\('🎬', omranAttachT\('axAttachVidCreating', 'جاري إنشاء الفيديو…/, 'سطر بدء الفيديو'); // v-audit-attach: بمفتاح الـ١٤ لغة
+  assert.match(attach, /chatPhase\('🎬', omranAttachT\('axAttachVidCreatingShort', 'جاري إنشاء الفيديو…'/, 'سطر الاستطلاع');
   assert.match(attach, /'Creating video… this can take 1–3 minutes'/, 'الإنجليزيّ');
   assert.match(read('js/app-11-video.js'), /💳 جاري التأكد من رصيد الفيديو/, 'سطر فحص الرصيد في صانع الفيديو');
 });

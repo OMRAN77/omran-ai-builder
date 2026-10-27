@@ -3,6 +3,7 @@
  * اللغة تُقرأ من localStorage.aiapp_lang، والارتداد إلى الإنجليزيّة. */
 window.ADI18N = {
 ar: {
+  axStud2AdPaused: "الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.", axStud2AdLimit: "بلغتَ حدّ اليوم ({n} صور) لتوليد الإعلانات. جرّب غدًا.", axStud2AdFailed: "تعذّر توليد الإعلان الآن — حاول مرّة أخرى.",
   dir: "rtl", pageTitle: "استوديو الإعلانات — om ai", h1: "استوديو الإعلانات — تحدّث، ثمّ اختر تصميمك", sub: "تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج عشرة تصاميم جاهزة تختار منها.",
   back: "← رجوع إلى التطبيق", asstName: "مساعد الإعلانات", stepStart: "ابدأ", inpPh: "اكتب هنا…", gTitle: "عشرة تصاميم — اختر واحدًا", dragHint: "اسحب أيّ نصّ — والمسه ثمّ كبّره أو صغّره",
   ratioTitle: "نسبة الصورة المولَّدة", rSquare: "◻ مربّع", rTall: "▯ طولي", rWide: "▭ عرضي", genBtn: "ولّد الإعلان صورةً", bgLight: "خلفيّة فاتحة", bgDark: "خلفيّة داكنة", resetAll: "أعِد الكلّ لأصله",
@@ -43,6 +44,7 @@ ar: {
   edHint: "اضغط على أيّ نصّ لتكتبه، وعلى أيّ صورة لترفعها، و× يمسح العنصر.", addBox: "مربّع نصّ", zoomB: "تكبير", resetBoard: "رجّع اللوحة", newBoxTxt: "اكتب هنا"
 },
 en: {
+  axStud2AdPaused: "This service is temporarily unavailable — please try again shortly.", axStud2AdLimit: "You have reached today's limit ({n} images) for ad images. Try again tomorrow.", axStud2AdFailed: "Could not generate the ad right now — please try again.",
   dir: "ltr", pageTitle: "Ad Studio — om ai", h1: "Ad Studio — talk to it, then pick your design",
   sub: "Describe what you want to advertise in your own words, answer two questions, upload your photo — and ten finished designs come out for you to choose from.", back: "← Back to the app", asstName: "Ad assistant",
   stepStart: "Start", inpPh: "Type here…", gTitle: "Ten designs — pick one", dragHint: "Drag any text — tap it, then make it bigger or smaller", ratioTitle: "Generated image ratio", rSquare: "◻ Square", rTall: "▯ Portrait",
@@ -93,6 +95,7 @@ en: {
   edHint: "Tap any text to type it, any image to upload it, and × removes the element.", addBox: "Text box", zoomB: "Zoom", resetBoard: "Reset board", newBoxTxt: "Type here"
 },
 fr: {
+  axStud2AdPaused: "Ce service est temporairement indisponible — réessayez dans un instant.", axStud2AdLimit: "Vous avez atteint la limite du jour ({n} images) pour les visuels publicitaires. Réessayez demain.", axStud2AdFailed: "Impossible de générer la publicité pour le moment — réessayez.",
   dir: "ltr", pageTitle: "Studio Pub — om ai", h1: "Studio Pub — parlez-lui, puis choisissez votre design",
   sub: "Décrivez ce que vous voulez annoncer avec vos mots, répondez à deux questions, envoyez votre photo — puis choisissez parmi dix designs finis.", back: "← Retour à l’application", asstName: "Assistant publicitaire",
   stepStart: "Commencer", inpPh: "Écrivez ici…", gTitle: "Dix designs — choisissez-en un", dragHint: "Faites glisser un texte — touchez-le, puis agrandissez-le ou réduisez-le", ratioTitle: "Format de l’image générée",
@@ -144,6 +147,7 @@ fr: {
   edHint: "Touchez un texte pour l’écrire, une image pour l’envoyer ; × supprime l’élément.", addBox: "Zone de texte", zoomB: "Agrandir", resetBoard: "Réinitialiser", newBoxTxt: "Écrivez ici"
 },
 hi: {
+  axStud2AdPaused: "यह सेवा अस्थायी रूप से उपलब्ध नहीं है — थोड़ी देर बाद फिर कोशिश करें।", axStud2AdLimit: "विज्ञापन चित्रों की आज की सीमा ({n} चित्र) पूरी हो गई है। कल फिर कोशिश करें।", axStud2AdFailed: "अभी विज्ञापन नहीं बन सका — फिर से कोशिश करें।",
   dir: "ltr", pageTitle: "विज्ञापन स्टूडियो — om ai", h1: "विज्ञापन स्टूडियो — बात करें, फिर डिज़ाइन चुनें",
   sub: "जिसका विज्ञापन चाहिए उसे अपने शब्दों में लिखें, दो सवालों के जवाब दें, फोटो अपलोड करें — चुनने के लिए दस तैयार डिज़ाइन मिलेंगे।", back: "← ऐप पर वापस", asstName: "विज्ञापन सहायक", stepStart: "शुरू करें",
   inpPh: "यहाँ लिखें…", gTitle: "दस डिज़ाइन — एक चुनें", dragHint: "किसी भी पाठ को खींचें — टैप करें, फिर बड़ा या छोटा करें", ratioTitle: "बनी हुई छवि का अनुपात", rSquare: "◻ वर्गाकार", rTall: "▯ पोर्ट्रेट",
@@ -188,6 +192,7 @@ hi: {
   edHint: "किसी भी टेक्स्ट पर टैप करके लिखें, किसी भी तस्वीर पर टैप करके अपलोड करें, × से हटाएँ।", addBox: "टेक्स्ट बॉक्स", zoomB: "बड़ा करें", resetBoard: "बोर्ड रीसेट", newBoxTxt: "यहाँ लिखें"
 },
 ur: {
+  axStud2AdPaused: "یہ سروس عارضی طور پر دستیاب نہیں — تھوڑی دیر بعد دوبارہ کوشش کریں۔", axStud2AdLimit: "اشتہاری تصاویر کی آج کی حد ({n} تصاویر) پوری ہو گئی ہے۔ کل دوبارہ کوشش کریں۔", axStud2AdFailed: "ابھی اشتہار نہیں بن سکا — دوبارہ کوشش کریں۔",
   dir: "rtl", pageTitle: "اشتہار اسٹوڈیو — om ai", h1: "اشتہار اسٹوڈیو — بات کریں، پھر ڈیزائن چنیں",
   sub: "اپنے الفاظ میں بتائیں کیا اشتہار دینا ہے، دو سوالوں کے جواب دیں، تصویر اپ لوڈ کریں — انتخاب کے لیے دس تیار ڈیزائن ملیں گے۔", back: "← ایپ پر واپس", asstName: "اشتہار معاون", stepStart: "شروع کریں",
   inpPh: "یہاں لکھیں…", gTitle: "دس ڈیزائن — ایک چنیں", dragHint: "کوئی بھی متن کھینچیں — اسے چھوئیں، پھر بڑا یا چھوٹا کریں", ratioTitle: "بنائی گئی تصویر کا تناسب", rSquare: "◻ مربع", rTall: "▯ پورٹریٹ",
@@ -231,6 +236,7 @@ ur: {
   edHint: "کسی بھی متن پر ٹیپ کر کے لکھیں، کسی بھی تصویر پر ٹیپ کر کے اپ لوڈ کریں، × سے ہٹائیں۔", addBox: "ٹیکسٹ باکس", zoomB: "بڑا کریں", resetBoard: "بورڈ ری سیٹ", newBoxTxt: "یہاں لکھیں"
 },
 bn: {
+  axStud2AdPaused: "এই সেবাটি সাময়িকভাবে বন্ধ আছে — একটু পরে আবার চেষ্টা করুন।", axStud2AdLimit: "বিজ্ঞাপনের ছবির আজকের সীমা ({n}টি ছবি) পূর্ণ হয়েছে। আগামীকাল আবার চেষ্টা করুন।", axStud2AdFailed: "এখন বিজ্ঞাপন তৈরি করা যায়নি — আবার চেষ্টা করুন।",
   dir: "ltr", pageTitle: "বিজ্ঞাপন স্টুডিও — om ai", h1: "বিজ্ঞাপন স্টুডিও — কথা বলুন, তারপর ডিজাইন নিন",
   sub: "নিজের ভাষায় কী বিজ্ঞাপন চান বলুন, দুটি প্রশ্নের উত্তর দিন, ছবি আপলোড করুন — বাছাইয়ের জন্য দশটি তৈরি ডিজাইন পাবেন।", back: "← অ্যাপে ফিরুন", asstName: "বিজ্ঞাপন সহকারী", stepStart: "শুরু", inpPh: "এখানে লিখুন…",
   gTitle: "দশ ডিজাইন — একটি বাছুন", dragHint: "যেকোনো লেখা টানুন — ট্যাপ করে বড় বা ছোট করুন", ratioTitle: "তৈরি ছবির অনুপাত", rSquare: "◻ বর্গাকার", rTall: "▯ পোর্ট্রেট", rWide: "▭ ল্যান্ডস্কেপ",
@@ -274,6 +280,7 @@ bn: {
   edHint: "যেকোনো লেখায় ট্যাপ করে লিখুন, যেকোনো ছবিতে ট্যাপ করে আপলোড করুন, × দিয়ে সরান।", addBox: "টেক্সট বক্স", zoomB: "বড় করুন", resetBoard: "বোর্ড রিসেট", newBoxTxt: "এখানে লিখুন"
 },
 ml: {
+  axStud2AdPaused: "ഈ സേവനം താൽക്കാലികമായി ലഭ്യമല്ല — അൽപ്പസമയം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കൂ.", axStud2AdLimit: "പരസ്യ ചിത്രങ്ങളുടെ ഇന്നത്തെ പരിധി ({n} ചിത്രങ്ങൾ) എത്തി. നാളെ വീണ്ടും ശ്രമിക്കുക.", axStud2AdFailed: "ഇപ്പോൾ പരസ്യം സൃഷ്ടിക്കാനായില്ല — വീണ്ടും ശ്രമിക്കുക.",
   dir: "ltr", pageTitle: "പരസ്യ സ്റ്റുഡിയോ — om ai", h1: "പരസ്യ സ്റ്റുഡിയോ — സംസാരിക്കൂ, എന്നിട്ട് ഡിസൈൻ തിരഞ്ഞെടുക്കൂ",
   sub: "നിങ്ങൾ പരസ്യപ്പെടുത്താൻ ആഗ്രഹിക്കുന്നത് സ്വന്തം വാക്കുകളിൽ പറയൂ, രണ്ട് ചോദ്യങ്ങൾക്ക് ഉത്തരം നൽകൂ, ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യൂ — തിരഞ്ഞെടുക്കാൻ പത്ത് പൂർത്തിയായ ഡിസൈനുകൾ ലഭിക്കും.", back: "← ആപ്പിലേക്ക് മടങ്ങുക",
   asstName: "പരസ്യ സഹായി", stepStart: "ആരംഭിക്കുക", inpPh: "ഇവിടെ ടൈപ്പ് ചെയ്യൂ…", gTitle: "പത്ത് ഡിസൈനുകൾ — ഒന്ന് തിരഞ്ഞെടുക്കൂ", dragHint: "ഏതെങ്കിലും ടെക്സ്റ്റ് വലിച്ചിടൂ — ടാപ്പ് ചെയ്ത് വലുതോ ചെറുതോ ആക്കൂ",
@@ -330,6 +337,7 @@ ml: {
   edHint: "ഏതു വാചകത്തിലും ടാപ്പ് ചെയ്ത് എഴുതുക, ഏതു ചിത്രത്തിലും ടാപ്പ് ചെയ്ത് അപ്‌ലോഡ് ചെയ്യുക, × നീക്കും.", addBox: "ടെക്സ്റ്റ് ബോക്സ്", zoomB: "വലുതാക്കുക", resetBoard: "ബോർഡ് പുനഃസജ്ജം", newBoxTxt: "ഇവിടെ എഴുതുക"
 },
 ne: {
+  axStud2AdPaused: "यो सेवा अस्थायी रूपमा उपलब्ध छैन — केही बेरपछि फेरि प्रयास गर्नुहोस्।", axStud2AdLimit: "विज्ञापन तस्बिरको आजको सीमा ({n} तस्बिर) पुगिसक्यो। भोलि फेरि प्रयास गर्नुहोस्।", axStud2AdFailed: "अहिले विज्ञापन बनाउन सकिएन — फेरि प्रयास गर्नुहोस्।",
   dir: "ltr", pageTitle: "विज्ञापन स्टुडियो — om ai", h1: "विज्ञापन स्टुडियो — कुरा गर्नुहोस्, अनि आफ्नो डिजाइन छान्नुहोस्",
   sub: "आफ्नो शब्दमा के विज्ञापन गर्न चाहनुहुन्छ भन्नुहोस्, दुई प्रश्नको जवाफ दिनुहोस्, आफ्नो फोटो अपलोड गर्नुहोस् — अनि छान्नका लागि दस तयार डिजाइन तयार हुनेछन्।", back: "← एपमा फर्कनुहोस्", asstName: "विज्ञापन सहायक",
   stepStart: "सुरु गर्नुहोस्", inpPh: "यहाँ टाइप गर्नुहोस्…", gTitle: "दस डिजाइन — एउटा छान्नुहोस्", dragHint: "कुनै पनि लेखलाई तान्नुहोस् — छोइनुहोस्, अनि ठूलो वा सानो बनाउनुहोस्", ratioTitle: "तयार हुने तस्बिरको अनुपात",
@@ -378,6 +386,7 @@ ne: {
   edHint: "कुनै पनि पाठमा ट्याप गरेर लेख्नुहोस्, कुनै पनि तस्बिरमा ट्याप गरेर अपलोड गर्नुहोस्, × ले हटाउँछ।", addBox: "पाठ बाकस", zoomB: "ठूलो पार्नुहोस्", resetBoard: "बोर्ड रिसेट", newBoxTxt: "यहाँ लेख्नुहोस्"
 },
 fil: {
+  axStud2AdPaused: "Pansamantalang hindi available ang serbisyong ito — subukan ulit mamaya.", axStud2AdLimit: "Naabot mo na ang limit ngayong araw ({n} larawan) para sa mga larawan ng ad. Subukan ulit bukas.", axStud2AdFailed: "Hindi magawa ang ad ngayon — pakisubukan ulit.",
   dir: "ltr", pageTitle: "Ad Studio ng om ai", h1: "Ad Studio — makipag-usap, pagkatapos piliin ang disenyo mo",
   sub: "Ilarawan mo sa sarili mong pananalita kung ano ang ia-advertise mo, sagutin ang dalawang tanong, i-upload ang larawan mo — at may sampung tapos na disenyo na lalabas para pili-pilihin mo.", back: "← Bumalik sa app",
   asstName: "Ad assistant", stepStart: "Simulan", inpPh: "I-type dito…", gTitle: "Sampung disenyo — pumili ng isa", dragHint: "I-drag ang kahit anong teksto — i-tap ito, pagkatapos palakihin o paliitin",
@@ -434,6 +443,7 @@ fil: {
   edHint: "Pindutin ang alinmang teksto para isulat, alinmang larawan para i-upload, at × ang nagtatanggal.", addBox: "Text box", zoomB: "Palakihin", resetBoard: "I-reset ang board", newBoxTxt: "Isulat dito"
 },
 id: {
+  axStud2AdPaused: "Layanan ini sementara tidak tersedia — coba lagi sebentar lagi.", axStud2AdLimit: "Anda telah mencapai batas hari ini ({n} gambar) untuk gambar iklan. Coba lagi besok.", axStud2AdFailed: "Iklan tidak dapat dibuat saat ini — silakan coba lagi.",
   dir: "ltr", pageTitle: "Studio Iklan — om ai", h1: "Studio Iklan — ceritakan, lalu pilih desain",
   sub: "Jelaskan iklan Anda dengan kata sendiri, jawab dua pertanyaan, unggah foto — lalu pilih dari sepuluh desain jadi.", back: "← Kembali ke aplikasi", asstName: "Asisten iklan", stepStart: "Mulai",
   inpPh: "Ketik di sini…", gTitle: "Sepuluh desain — pilih satu", dragHint: "Seret teks apa pun — ketuk lalu besarkan atau kecilkan", ratioTitle: "Rasio gambar yang dibuat", rSquare: "◻ Persegi", rTall: "▯ Potret",
@@ -484,6 +494,7 @@ id: {
   edHint: "Ketuk teks mana pun untuk menulisnya, gambar mana pun untuk mengunggahnya, × menghapus elemen.", addBox: "Kotak teks", zoomB: "Perbesar", resetBoard: "Atur ulang papan", newBoxTxt: "Tulis di sini"
 },
 zh: {
+  axStud2AdPaused: "该服务暂时不可用 — 请稍后再试。", axStud2AdLimit: "您已达到今日广告图片上限（{n} 张）。请明天再试。", axStud2AdFailed: "暂时无法生成广告 — 请重试。",
   dir: "ltr", pageTitle: "广告工作室 — om ai", h1: "广告工作室 — 说出需求，再选设计", sub: "用自己的话描述要宣传什么，回答两个问题，上传照片 — 即可从十个成品设计中选择。", back: "← 返回应用", asstName: "广告助手", stepStart: "开始", inpPh: "在此输入…", gTitle: "十个设计 — 选一个",
   dragHint: "拖动任意文字 — 点按后可放大或缩小", ratioTitle: "生成图片比例", rSquare: "◻ 方形", rTall: "▯ 竖版", rWide: "▭ 横版", genBtn: "将广告生成为图片", bgLight: "浅色背景", bgDark: "深色背景", resetAll: "全部重置", zoomHint: "点按任意处关闭", stepOf: "{n} / {m}",
   stepReady: "准备好了", nm0: "电影感", nm1: "层次", nm2: "自由海报", nm3: "优雅", nm4: "大胆", nm5: "奢华", nm6: "极简", nm7: "杂志", nm8: "霓虹", nm9: "参数卡", cp0: "满版照片，文字融入底部。", cp1: "照片悬浮于拱门内，巨幅文字在后方。", cp2: "倾斜文字与圆形印章 — 街头海报感。",
@@ -511,6 +522,7 @@ zh: {
   edHint: "点任意文字即可编辑，点任意图片即可上传，× 删除元素。", addBox: "文字框", zoomB: "放大", resetBoard: "重置版面", newBoxTxt: "在此输入"
 },
 ru: {
+  axStud2AdPaused: "Сервис временно недоступен — попробуйте чуть позже.", axStud2AdLimit: "Вы достигли дневного лимита рекламных изображений ({n}). Попробуйте завтра.", axStud2AdFailed: "Не удалось создать рекламу сейчас — попробуйте ещё раз.",
   dir: "ltr", pageTitle: "Студия рекламы — om ai", h1: "Студия рекламы — расскажите, затем выберите дизайн",
   sub: "Опишите, что хотите рекламировать, ответьте на два вопроса, загрузите фото — и выберите один из десяти готовых дизайнов.", back: "← Назад в приложение", asstName: "Помощник по рекламе", stepStart: "Начать",
   inpPh: "Введите здесь…", gTitle: "Десять дизайнов — выберите один", dragHint: "Перетаскивайте любой текст — коснитесь его и увеличьте или уменьшите", ratioTitle: "Соотношение сторон изображения", rSquare: "◻ Квадрат",
@@ -561,6 +573,7 @@ ru: {
   edHint: "Нажмите на любой текст, чтобы ввести его, на изображение — чтобы загрузить; × удаляет элемент.", addBox: "Текстовый блок", zoomB: "Увеличить", resetBoard: "Сбросить макет", newBoxTxt: "Введите здесь"
 },
 tr: {
+  axStud2AdPaused: "Bu hizmet geçici olarak kullanılamıyor — birazdan tekrar deneyin.", axStud2AdLimit: "Reklam görselleri için bugünkü sınıra ({n} görsel) ulaştınız. Yarın tekrar deneyin.", axStud2AdFailed: "Reklam şu anda oluşturulamadı — lütfen tekrar deneyin.",
   dir: "ltr", pageTitle: "Reklam Stüdyosu — om ai", h1: "Reklam Stüdyosu — onunla konuşun, sonra tasarımınızı seçin",
   sub: "Neyi tanıtmak istediğinizi kendi sözlerinizle anlatın, iki soruyu yanıtlayın, fotoğrafınızı yükleyin — seçmeniz için on tamamlanmış tasarım hazır olsun.", back: "← Uygulamaya dön", asstName: "Reklam asistanı",
   stepStart: "Başla", inpPh: "Buraya yazın…", gTitle: "On tasarım — birini seçin", dragHint: "Herhangi bir metni sürükleyin — dokunun, sonra büyütün veya küçültün", ratioTitle: "Oluşturulan görsel oranı", rSquare: "◻ Kare",
@@ -610,6 +623,7 @@ tr: {
   edHint: "Yazmak için herhangi bir metne, yüklemek için herhangi bir görsele dokunun; × öğeyi siler.", addBox: "Metin kutusu", zoomB: "Büyüt", resetBoard: "Panoyu sıfırla", newBoxTxt: "Buraya yazın"
 },
 es: {
+  axStud2AdPaused: "Este servicio no está disponible temporalmente — inténtalo de nuevo en un momento.", axStud2AdLimit: "Alcanzaste el límite de hoy ({n} imágenes) para imágenes de anuncios. Inténtalo de nuevo mañana.", axStud2AdFailed: "No se pudo generar el anuncio ahora — inténtalo de nuevo.",
   dir: "ltr", pageTitle: "Estudio de anuncios — om ai", h1: "Estudio de anuncios — habla con él y elige tu diseño",
   sub: "Describe lo que quieres anunciar con tus palabras, responde dos preguntas, sube tu foto y tendrás diez diseños listos para elegir.", back: "← Volver a la aplicación", asstName: "Asistente de anuncios",
   stepStart: "Empezar", inpPh: "Escribe aquí…", gTitle: "Diez diseños — elige uno", dragHint: "Arrastra cualquier texto — tócalo y hazlo más grande o pequeño", ratioTitle: "Proporción de imagen generada",

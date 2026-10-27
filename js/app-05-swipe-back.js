@@ -96,6 +96,25 @@
     }
     return false;
   }
+  /* v-audit-shell (cli-ui-shell-4): بالفأرة، الضغط فوق حروف نصّ قابل للتحديد بداية تحديد لا سحب رجوع — كان سحب الفأرة لليمين على نتيجة
+     التفسير أو الأسهم أو المستند (١٢ لغة من اليسار) يمسح التحديد (removeAllRanges) ويغلق الأداة. caret*FromPoint تُلصق النقطة بأقرب
+     نصّ حتّى في الفراغ، فالحكم صندوق سطور العقدة نفسها؛ والسحب من الفراغ والهوامش، واللمس كلّه، كما كانا. */
+  function overText(x, y){
+    try{
+      var n = null;
+      if(document.caretPositionFromPoint){ var cp = document.caretPositionFromPoint(x, y); n = cp && cp.offsetNode; }
+      else if(document.caretRangeFromPoint){ var cr = document.caretRangeFromPoint(x, y); n = cr && cr.startContainer; }
+      if(!n || n.nodeType !== 3 || !/\S/.test(n.nodeValue || '') || !n.parentElement) return false;
+      /* حروف الأزرار والروابط لا تُحدَّد بالسحب — السحب منها رجوع كما كان */
+      if(n.parentElement.closest && n.parentElement.closest('button,a[href],[role="button"],label,summary')) return false;
+      var cs = getComputedStyle(n.parentElement);
+      if((cs.userSelect || cs.webkitUserSelect) === 'none') return false;
+      var rg = document.createRange(); rg.selectNodeContents(n);
+      var rs = rg.getClientRects();
+      for(var i = 0; i < rs.length; i++){ if(x >= rs[i].left && x <= rs[i].right && y >= rs[i].top && y <= rs[i].bottom) return true; }
+    }catch(err){ /* guard-ok — بلا واجهة نقطة النصّ يبقى السحب كما كان */ }
+    return false;
+  }
 
   function bind(el){
     var t0 = null, dragging = false, w = 0, p = null;
@@ -157,7 +176,7 @@
       return blocked(t);
     };
     el.addEventListener('mousedown', function(e){
-      if(e.button !== 0 || mouseBlocked(e.target)){ m0 = null; return; }
+      if(e.button !== 0 || mouseBlocked(e.target) || overText(e.clientX, e.clientY)){ m0 = null; return; }
       if(topTool() !== el){ m0 = null; return; }
       m0 = { x: e.clientX, y: e.clientY, ts: Date.now() };
       mDrag = false; p = panel(el); w = window.innerWidth || 360;

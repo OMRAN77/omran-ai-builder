@@ -130,8 +130,8 @@ async function dailyDigest(opts) {
 /** /api/system?action=owner-inbox — GET القائمة (الأحدث أوّلًا) للمالك وحده؛ POST {action:'clear'} يمسحها. */
 async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-  const { isOwner } = require('./_owner.js');
-  if (!isOwner(req)) { res.status(403).json({ error: 'owner only' }); return; }
+  const { isOwnerSession } = require('./_owner.js'); // v-audit-agent (srv-agent-3): مقاطع رسائل المستخدمين بأسمائهم — لا MONITOR_KEY
+  if (!isOwnerSession(req)) { res.status(403).json({ error: 'owner only' }); return; }
   const kv = require('./kv.js');
   if (req.method === 'POST') {
     const b = (req.body && typeof req.body === 'object') ? req.body : {};

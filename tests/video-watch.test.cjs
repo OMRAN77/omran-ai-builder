@@ -151,6 +151,7 @@ test('٤. التشغيل: ينتظر الجاهزيّة، يخصم مرّة با
   kv.delete('points:reem');
   G.fileState = 'PROCESSING'; G.gens.length = 0; G.deleted.length = 0;
   const id = await uploadAll(CH + 10, 'reem');
+  G.deleted.length = 0; // v-audit-video (srv-video-4): البدء حذف ملفّ مهمّة ٣ المتروكة (مهمّة واحدة مفتوحة للحساب) — المقيس هنا حذف ملفّ هذه بعد تحليلها
   const before = await bal('reem');
   const p = await call('run', { id, prompt: 'وش يقول الرجّال؟', lang: 'ar' });
   assert.deepEqual([p.code, p.j.pending], [200, true]);
@@ -327,7 +328,7 @@ test('١١. النصوص العشرة بالـ١٤ لغة، بمواضعها {n}
     assert.ok(d.vwCharged.includes('{n}') && d.vwCharged.includes('{d}'), l);
     assert.ok(d.vwNoPoints.includes('{n}') && d.vwNoPoints.includes('{p}'), l);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=774'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=775'"));
 });
 
 test('١٢. أوّل رسالة فيديو في تطبيق بلا محادثة تُنشئ المحادثة (كانت تعود بلا شيء — كشفتها اللقطة)', async () => {

@@ -106,47 +106,53 @@
       hideSel: '#designAiIdeas, #designBAWrap, #designAiResult, #designAiGrid, #designAiDownloadLink' }
   ];
 
-  /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء */
+  /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء.
+     v-audit-chatcli (cli-chat-rest-7): لكلّ نصّ مفتاح (k) يُقرأ بلغة الواجهة من t() بالـ١٤ لغة، وar/en احتياطه — كان isAr() وحدها، فيرى
+     الأرديّ والفرنسيّ وأخواتهما الإنجليزيّة. نصوص الرسمة نفسها (COMPLETE وكاملة) كما هي بقرار المالك. */
   var KINDS = {
     image: {
       est: 30,
-      hint: { ar: 'جاري توليد الصورة', en: 'Generating image' },
-      expect: { ar: 'الصور تاخذ ~٣٠ ثانية', en: 'images usually take ~30s' },
+      hint: { k: 'axChatcliGenwImageHint', ar: 'جاري توليد الصورة', en: 'Generating image' },
+      expect: { k: 'axChatcliGenwImageExpect', ar: 'الصور تاخذ ~٣٠ ثانية', en: 'images usually take ~30s' },
       stages: {
+        k: ['axChatcliGenwImageS1', 'axChatcliGenwImageS2', 'axChatcliGenwImageS3', 'axChatcliGenwFinal'],
         ar: ['نفهم طلبك…', 'نرسم التفاصيل…', 'نلوّن المشهد…', 'اللمسات الأخيرة ✨'],
         en: ['Understanding your request…', 'Drawing the details…', 'Coloring the scene…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     video: {
       est: 120, wide: true, film: true,
-      hint: { ar: 'جاري توليد الفيديو', en: 'Generating video' },
-      expect: { ar: 'الفيديو ياخذ ١-٣ دقائق', en: 'video usually takes 1-3 min' },
+      hint: { k: 'axChatcliGenwVideoHint', ar: 'جاري توليد الفيديو', en: 'Generating video' },
+      expect: { k: 'axChatcliGenwVideoExpect', ar: 'الفيديو ياخذ ١-٣ دقائق', en: 'video usually takes 1-3 min' },
       stages: {
+        k: ['axChatcliGenwVideoS1', 'axChatcliGenwVideoS2', 'axChatcliGenwVideoS3', 'axChatcliGenwFinal'],
         ar: ['نبني المشاهد…', 'نحرّك الإطارات…', 'نركّب الحركة…', 'اللمسات الأخيرة ✨'],
         en: ['Building the scenes…', 'Animating the frames…', 'Compositing the motion…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — المشاهد السينمائيّة تاخذ وقتًا…', en: 'Still rendering — cinematic scenes take time…' }
+      slow: { k: 'axChatcliGenwVideoSlow', ar: 'ما زال يتولّد — المشاهد السينمائيّة تاخذ وقتًا…', en: 'Still rendering — cinematic scenes take time…' }
     },
     styles: {
       est: 45,
-      hint: { ar: 'جاري توليد الأنماط', en: 'Generating styles' },
-      expect: { ar: 'الأنماط تاخذ ~٤٥ ثانية', en: 'styles usually take ~45s' },
+      hint: { k: 'axChatcliGenwStylesHint', ar: 'جاري توليد الأنماط', en: 'Generating styles' },
+      expect: { k: 'axChatcliGenwStylesExpect', ar: 'الأنماط تاخذ ~٤٥ ثانية', en: 'styles usually take ~45s' },
       stages: {
+        k: ['axChatcliGenwStylesS1', 'axChatcliGenwStylesS2', 'axChatcliGenwStylesS3', 'axChatcliGenwFinal'],
         ar: ['نحلّل ملامح الصورة…', 'نطبّق الأنماط…', 'نضبط الإضاءة…', 'اللمسات الأخيرة ✨'],
         en: ['Reading your features…', 'Applying the styles…', 'Tuning the light…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     fashion: {
       est: 40, /* v-gen-scene-exact: scenes تُربط أدناه بعد تعريف SCENES */
-      hint: { ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
-      expect: { ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
+      hint: { k: 'axChatcliGenwFashionHint', ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
+      expect: { k: 'axChatcliGenwFashionExpect', ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
       stages: {
+        k: ['axChatcliGenwFashionS1', 'axChatcliGenwFashionS2', 'axChatcliGenwFashionS3', 'axChatcliGenwFinal'],
         ar: ['نفهم ذوقك…', 'نرسم القطع…', 'ننسّق الإطلالة…', 'اللمسات الأخيرة ✨'],
         en: ['Reading your taste…', 'Sketching the pieces…', 'Styling the look…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     }
   };
   /* v-style-scene: الستايل — بلا نصّ جديد: مراحله وتوقّعه مركّبة من نصوص الأنواع القائمة (scenes تُربط أدناه) */
@@ -155,6 +161,7 @@
     hint: KINDS.image.hint,
     expect: KINDS.image.expect,
     stages: {
+      k: [KINDS.styles.stages.k[0], KINDS.image.stages.k[1], KINDS.styles.stages.k[2], KINDS.image.stages.k[3]],
       ar: [KINDS.styles.stages.ar[0], KINDS.image.stages.ar[1], KINDS.styles.stages.ar[2], KINDS.image.stages.ar[3]],
       en: [KINDS.styles.stages.en[0], KINDS.image.stages.en[1], KINDS.styles.stages.en[2], KINDS.image.stages.en[3]]
     },
@@ -549,6 +556,13 @@
   /* أعرض رقم مقيس بخطّ سطر الوقت: ٠٫٥٧٤em عربيًّا و٠٫٦em لاتينيًّا (مسبار الأرقام، ١٢ بكسل) */
   var SEC_DIGIT_EM = 0.62;
   function isAr(){ try{ return (typeof lang !== 'undefined' ? lang : 'ar') === 'ar'; }catch(e){ return true; } }
+  /* v-audit-chatcli: نصّ بلغة الواجهة من t() بمفتاحه، وإلّا احتياطه العربيّ للعربيّ والإنجليزيّ لغيره كما كان */
+  function genwTx(k, ar, en){
+    try{ if(k && typeof t === 'function'){ var v = t(k); if(typeof v === 'string' && v && v !== k) return v; } }catch(e){ /* guard-ok — بلا قاموس يبقى الاحتياط */ }
+    return isAr() ? ar : en;
+  }
+  function genwOne(o){ return genwTx(o.k, o.ar, o.en); }
+  function genwList(o){ return o.en.map(function(en, i){ return genwTx(o.k && o.k[i], o.ar[i], en); }); }
 
   /* منحنى التقدّم: يتسارع ثمّ يهدأ — لا يتجاوز ٩٢٪ مهما طال الانتظار (النتيجة تستبدل البطاقة) */
   function eased(p){ return p >= 1 ? 0.92 : (1 - Math.pow(1 - Math.min(p, 1), 2.2)) * 0.92; }
@@ -567,10 +581,11 @@
     var t0 = (opts && Number(opts.t0)) || Date.now();
     var kind = (opts && opts.kind && KINDS[opts.kind]) ? opts.kind : 'image';
     var cfg = KINDS[kind];
-    var stages = cfg.stages[isAr() ? 'ar' : 'en'];
-    var hint = cfg.hint[isAr() ? 'ar' : 'en'];
-    var expect = cfg.expect[isAr() ? 'ar' : 'en'];
-    var slowTxt = cfg.slow[isAr() ? 'ar' : 'en'];
+    var stages = genwList(cfg.stages);
+    var hint = genwOne(cfg.hint);
+    var expect = genwOne(cfg.expect);
+    var slowTxt = genwOne(cfg.slow);
+    var secUnit = genwTx('axChatcliGenwSec', 'ث', 's');
 
     var sc = cfg.scenes ? nextScene(cfg) : null; /* v-gen-scene-exact: مشهد هذا التوليد (بالدور) — v-style-scene: بدور نوعه */
     var root = document.createElement('div');
@@ -660,13 +675,13 @@
         timerEl.textContent = uiText('⏱ ');
         secEl = document.createElement('b');
         timerEl.appendChild(secEl);
-        timerEl.appendChild(document.createTextNode((isAr() ? 'ث' : 's') + ' — ' + expect));
+        timerEl.appendChild(document.createTextNode(secUnit + ' — ' + expect));
       }
       secEl.style.minWidth = (num.length * SEC_DIGIT_EM) + 'em';
       secEl.textContent = num;
     }
     /* قبل أوّل نبضة موصولة (≤١٥٠ مث) السطر نصّ عاديّ يحفظ ارتفاعه؛ بعدها يبنيه paintTimer بخانته */
-    timerEl.textContent = '⏱ ' + fmt(0) + (isAr() ? 'ث' : 's') + ' — ' + expect;
+    timerEl.textContent = '⏱ ' + fmt(0) + secUnit + ' — ' + expect;
     /* الساعة تبدأ بعد ما تُركّب البطاقة: أول نبضة قد تأتي والعنصر لم يُلحق بعد
        (render يُستدعى ثمّ يُلحق الناتج) فلا نطفئها إلا بعد اتصالٍ سابق. */
     var wasConnected = false;
@@ -705,6 +720,20 @@
      فقاعة التفكير («🎬 جاري إنشاء الفيديو…») فبقي بلا بطاقة. نرصد السطر الجاري ونركّب
      بطاقة الفيديو العريضة في الفقاعة نفسها؛ تُرفع معها عند وصول النتيجة. */
   var CHAT_VIDEO_RE = /🎬 (?:جاري إنشاء الفيديو|Creating video)/;
+  /* v-audit-attach (x-i18n-6): سطرا فيديو المحادثة صارا بمفتاح الـ١٤ لغة في app-09 (axAttachVidCreating/axAttachVidCreatingShort) —
+     التعبير الحرفيّ وحده يُسقط البطاقة عن الفرنسيّة والهنديّة وغيرهما، فيُطابَق نصّ اللغة الحاليّة أيضًا (بلا نقاط الختام). */
+  function chatVideoLine(s){
+    if(CHAT_VIDEO_RE.test(s)) return true;
+    if(s.indexOf('🎬') < 0 || typeof t !== 'function') return false;
+    var ks = ['axAttachVidCreating', 'axAttachVidCreatingShort'];
+    for(var i = 0; i < ks.length; i++){
+      var v = '';
+      try{ v = String(t(ks[i]) || ''); }catch(e){ v = ''; }
+      v = v.replace(/[\s….]+$/, '');
+      if(v && v !== ks[i] && s.indexOf(v) !== -1) return true;
+    }
+    return false;
+  }
 
   /* ١٥ أكتوبر ٢٠٢٦ — طلب المالك إرجاع انتظار صور المحادثة لما قبل البطاقة:
      تبقى رسالة «أرسم لك الصورة…» من العارض، بلا عدّاد إضافي. بقية اللوحات كما هي. */
@@ -759,7 +788,7 @@
     for(var ci = 0; ci < cvEls.length; ci++){
       var ctxt = '';
       try{ ctxt = String(cvEls[ci].textContent || ''); }catch(e){ continue; }
-      if(!CHAT_VIDEO_RE.test(ctxt)) continue;
+      if(!chatVideoLine(ctxt)) continue;
       var chost = cvEls[ci].closest ? cvEls[ci].closest('.msg.assistant') : null;
       if(!chost) continue;
       cvFound = true;

@@ -192,7 +192,7 @@ module.exports = async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.error('[fashion-create] image provider is not configured');
-      res.status(503).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      res.status(503).json({ error: 'unavailable' }); /* v-audit-stud2 (srv-studios-2-8): رموز تترجمها الواجهة (imgErrFriendly) لا نصّ عربيّ لكلّ اللغات */
       return;
     }
 
@@ -381,7 +381,7 @@ module.exports = async (req, res) => {
         res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
         return;
       }
-      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
+      res.status(502).json({ error: require('./_videoFail.js').isOutage(upstream.status, detail) ? 'unavailable' : 'image_generation_failed', upstream: upstream.status, detail });
       return;
     }
 
@@ -403,7 +403,7 @@ module.exports = async (req, res) => {
         await sendDuo(altN);
         return;
       }
-      res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بوصف أو ستايل آخر.' });
+      res.status(500).json({ error: 'image_generation_failed' });
       return;
     }
 
@@ -454,6 +454,6 @@ module.exports = async (req, res) => {
     });
   } catch (e) {
     console.error('[fashion-create] exception: ' + (e && e.stack ? e.stack : e));
-    res.status(500).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+    res.status(500).json({ error: 'image_generation_failed' });
   }
 };

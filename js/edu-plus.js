@@ -600,7 +600,7 @@ function openAlgo(){
   busy(c.body());
   if(!algoLoading) algoLoading = new Promise(function(res, rej){
     var s = document.createElement('script');
-    s.src = '/js/edu-algo.js?v=2';
+    s.src = '/js/edu-algo.js?v=3';
     s.onload = res; s.onerror = function(){ algoLoading = null; rej(new Error(L('تعذّر تحميل المسار — تحقّق من الاتصال.', 'Could not load the track — check your connection.'))); };
     document.head.appendChild(s);
   });

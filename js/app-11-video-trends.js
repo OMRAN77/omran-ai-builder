@@ -445,6 +445,9 @@
       params.bg = (parseInt(localStorage.getItem(bk) || '0', 10) || 0) + 1;
       localStorage.setItem(bk, String(params.bg));
     }catch(e){ params.bg = Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
+    /* v-audit-video (cli-video-4): «أعد المحاولة» كانت تمحو الفيديو المدفوع السابق قبل سؤال السعر — فإلغاء نافذة الخصم أو المهلة
+       أو نفاد النقاط يُضيّعه بلا تحميل ولا سجلّ. الناتج السابق يُحفظ ويعود مكانه ما لم يصل ناتج جديد. */
+    var outEl = $('vtOut'), prevOut = outEl ? Array.prototype.slice.call(outEl.childNodes) : [];
     busy = true; $('vtGo').disabled = true; $('vtOut').innerHTML = '';
     setBusyFlag(true);
     status(ui('working'));
@@ -460,6 +463,8 @@
       status(ui('done'));
     }catch(e){
       setBusyFlag(false);
+      /* v-audit-video (cli-video-4): لا ناتج جديد — الناتج السابق يعود مكانه */
+      if(!urls.length && outEl && $('vtOut') === outEl && !outEl.childNodes.length) prevOut.forEach(function(nd){ outEl.appendChild(nd); });
       /* v-trend-one-confirm: المشاهد التي اكتملت (ودُفعت) قبل العطب تُعرض ولا تضيع — مع سبب التوقّف وعدد ما اكتمل */
       if(urls.length){
         try{ await show(t, urls); }catch(e2){ /* guard-ok — العرض أفضل جهد، والسطر يقول ما حدث */ }
@@ -509,7 +514,9 @@
     grid = $('vtGrid'); panel = $('vtPanel');
     renderGrid();
     try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
-    window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key && !(typeof omranHwHidden === 'function' && omranHwHidden('trend', x.key)); })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } } };
+    window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key && !(typeof omranHwHidden === 'function' && omranHwHidden('trend', x.key)); })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } },
+      /* v-audit-boot (cli-video-1): الخروج (app-04) يفرّغ صور الأشخاص ويغلق اللوحة المفتوحة — لا تُرسل صور الحساب السابق مع ترند من يدخل بعده */
+      reset: function(){ photos = []; cur = null; if(panel){ panel.innerHTML = ''; panel.style.display = 'none'; } if(grid) grid.style.display = 'grid'; } };
   }
   // v-perf-idle-timers: boot() كانت تُستدعى عند DOMContentLoaded (مرّتين: فورًا و٩٠٠مل ثانية لاحقًا) فتبني
   // شبكة ٤٥ بطاقة (٤٥ صورة معاينة) داخل نافذة صانع الفيديو حتّى لو لم يفتحها المستخدم إطلاقًا في تلك

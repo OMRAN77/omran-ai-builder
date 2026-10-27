@@ -317,7 +317,9 @@ async function learn(user, messages, opts) {
   const rec = await readRecord(user);
   const fresh = await extractFacts(messages, Object.assign({}, opts, { known: rec.facts }));
   if (!fresh.length) return { facts: rec.facts, learned: 0 };
-  const merged = mergeFacts(rec.facts, fresh);
+  /* v-audit-chatsrv (srv-chat-5): القراءة أعلاه قبل نداء النموذج (ثوانٍ) — «مسح الكلّ» أو حذف حقيقة أثناءه كان يُلغى بكتابة الدمج فوق
+     النسخة القديمة. الحقائق الجديدة وحدها تُدمج فوق قراءة طازجة بعد الاستخراج. */
+  const merged = mergeFacts((await readRecord(user)).facts, fresh);
   await writeFacts(user, merged);
   return { facts: merged, learned: fresh.length };
 }

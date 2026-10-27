@@ -92,9 +92,10 @@ module.exports = async (req, res) => {
     }
     refund = () => refundCustom(token, null, clientIp(req), 'fashion-suggest');
 
-    const isArabic = lang !== 'en' && lang !== 'fr' && lang !== 'hi' && lang !== 'ur' && lang !== 'bn' && lang !== 'ne';
-    const langNames = { en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali' };
-    const targetLang = langNames[lang] || 'Arabic';
+    /* v-audit-stud2 (srv-studios-2-7): الجدول كان ستّ لغات فصار «Respond in Arabic» للإسبانيّة والتركيّة والروسيّة والصينيّة
+       والإندونيسيّة والفلبينيّة والمليالم — جدول الـ١٤ لغة كما في adchat (LANGN)، والعربيّة للعربيّة وحدها (وللطلب بلا لغة كما كان) */
+    const langNames = { ar: 'Arabic', en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ml: 'Malayalam', ne: 'Nepali', fil: 'Filipino', id: 'Indonesian', zh: 'Chinese (Simplified)', ru: 'Russian', tr: 'Turkish', es: 'Spanish' };
+    const targetLang = langNames[lang] || (lang ? 'English' : 'Arabic');
 
     const g = (gender === 'men' || gender === 'kids') ? gender : 'women'; // قيمة غريبة = نسائي كما كان
     // v-fx-gender-pics: الفئة المختارة في الاستوديو — بلاها كانت الاقتراحات نسائيّة (فستان، حقيبة يد، كعب) لرجل أو طفل

@@ -14,7 +14,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const src = fs.readFileSync(path.join(root, 'js/app-08-maha.js'), 'utf8');
-const fn = src.slice(src.indexOf('async function mahaRecordUntilSilence('), src.indexOf('async function mahaRecordUntilSilence(') + 3700);
+// الدالّة كاملة حتّى التعريف الأعلى التالي — نافذة ٣٧٠٠ حرف ثابتة انكسرت حين صار المايك والمسجّل محلّيّين للدور (v-audit-voice)
+const fnAt = src.indexOf('async function mahaRecordUntilSilence(');
+const fnNext = src.slice(fnAt + 1).search(/\n(?:async )?function /);
+const fn = src.slice(fnAt, fnNext < 0 ? undefined : fnAt + 1 + fnNext);
 
 test('SILENCE_HOLD_MS رُفعت إلى 2000 — سكتة تفكير طبيعية لا تُقطع بعد كلمتين', () => {
   assert.match(fn, /const SILENCE_HOLD_MS = 2000;/, 'القيمة الجديدة');

@@ -17,7 +17,7 @@ const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const KEY = 'db/knowledge/global.json';
-const MAX_FACTS = 60;          // سقف البنك كلّه
+const MAX_FACTS = 60;          // سقف المرشّحين (المعتمد سقفه MAX_APPROVED — v-audit-chatsrv)
 const MAX_FACT_CHARS = 160;
 const MIN_FACT_CHARS = 12;
 const NEEDED_VOUCHES = 2;      // مستخدمان مختلفان قبل النشر للجميع
@@ -75,13 +75,17 @@ async function readBank() {
   return { facts: [] };
 }
 
+/* v-audit-chatsrv (srv-chat-6): السقف كان واحدًا للبنك كلّه ولا ينظر إلى approved — فبعد ٦٠ مرشّحًا أحدث تخرج الحقيقة التي وافق عليها
+   المالك من الحقن ومن لوحته. الآن سقفان: المرشّحون (MAX_FACTS) يخرج أضعفهم تزكيةً ثمّ أقدمهم كما كان، والمعتمد لا يزاحمه مرشّح
+   (سقفه MAX_APPROVED، يخرج الأقدم اعتمادًا — بفعل المالك وحده). */
+const MAX_APPROVED = 60;
 function evict(facts) {
-  if (facts.length <= MAX_FACTS) return facts;
+  const ok = (f) => !!(f && f.approved === true);
+  const approved = facts.filter(ok), pending = facts.filter((f) => f && !ok(f));
+  if (pending.length <= MAX_FACTS && approved.length <= MAX_APPROVED) return facts;
   // الأضعف تزكيةً ثمّ الأقدم يخرج أوّلًا
-  return facts
-    .slice()
-    .sort((a, b) => ((b.v || []).length - (a.v || []).length) || (b.at - a.at))
-    .slice(0, MAX_FACTS);
+  return approved.slice().sort((a, b) => (b.approvedAt || 0) - (a.approvedAt || 0)).slice(0, MAX_APPROVED)
+    .concat(pending.slice().sort((a, b) => ((b.v || []).length - (a.v || []).length) || (b.at - a.at)).slice(0, MAX_FACTS));
 }
 
 async function addFact(username, text) {
@@ -226,7 +230,7 @@ async function rejectFact(k) {
 
 /** نقطة المالك: /api/system?action=knowledge — list · approve · reject. محميّة بـisOwner في الخادم. */
 async function handle(req, res) {
-  if (!require('./_owner.js').isOwner(req)) { res.status(403).json({ error: 'owner_only' }); return; }
+  if (!require('./_owner.js').isOwnerSession(req)) { res.status(403).json({ error: 'owner_only' }); return; } // v-audit-agent (srv-agent-3): اعتماد حقيقة تصل نظام كلّ مستخدم — جلسة المالك وحدها لا MONITOR_KEY
   const body = (req.body && typeof req.body === 'object') ? req.body : {};
   const op = String((req.query && req.query.op) || body.op || 'list');
   try {

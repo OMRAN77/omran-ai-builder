@@ -323,7 +323,8 @@ if(btnShareApp){
         const copiedMsg = { ar:'تم نسخ رابط التطبيق!', en:'App link copied!', fr:"Lien de l'application copié !", hi:'ऐप लिंक कॉपी हो गया!', ur:'ایپ کا لنک کاپی ہو گیا!', bn:'অ্যাপ লিঙ্ক কপি হয়েছে!', ne:'एप लिंक कपी भयो!' };
         alert(copiedMsg[currentLang] || copiedMsg.ar);
       } catch(e){
-        prompt('انسخ الرابط:', shareUrl);
+        const cp = (typeof t === 'function') ? t('axChatcliCopyLinkPrompt') : '';
+        prompt((cp && cp !== 'axChatcliCopyLinkPrompt') ? cp : 'انسخ الرابط:', shareUrl); // v-audit-chatcli (x-i18n-5): بلغة الواجهة
       }
     }
   };
@@ -1418,7 +1419,7 @@ $('#history').addEventListener('click', () => {
       /* v-edu-selfhost: مستودع omran-edu غير موصول بالنشر التلقائي — الصفحة
          المحدثة تُستضاف هنا (edu-old/) فتنشر مع التطبيق، والخلفية تبقى على
          النشر القديم الشغال (CORS مفتوح). */
-      frame.src = '/edu-old/index.html?v=15j'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
+      frame.src = '/edu-old/index.html?v=15k'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
     }
     /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العنوان «التعليم» كان يتكرّر فوق رأس الإطار — نأخذ اسم صفّه المترجم في المركز،
        ونرفع data-i18n كي لا تعيده الترجمة. الفتح المباشر بلا مركز يبقى كما هو. */
@@ -1590,13 +1591,16 @@ function openShareModal(project){
       for(var i = 0; i < imgs.length; i++){
         var im = imgs[i];
         if(!im.__omHold) continue;
+        /* v-audit-tools: مصدر كُتب والنافذة مغلقة (نتيجة توليد اكتمل بعد الإغلاق) أحدث من المحجوز — لا يُكتب فوقه
+           (كانت إعادة الفتح تعرض القديمة وزرّ التحميل يشير إلى الجديدة) */
+        if(im.getAttribute('src') !== null){ im.__omHold = null; continue; }
         im.src = im.__omHold;
         im.__omHold = null;
       }
     }catch(e){ __swallow(e, 'modal-img-restore'); }
   }
   /* أيّ كود يقرأ .src ونافذته مغلقة يجد الفراغ — لذلك مُتاح استرجاعها صراحةً. */
-  window.omranModalImgSrc = function(img){ return (img && (img.__omHold || img.getAttribute('src'))) || ''; };
+  window.omranModalImgSrc = function(img){ return (img && (img.getAttribute('src') || img.__omHold)) || ''; }; /* v-audit-tools: المكتوب بعد الإغلاق أوّلًا */
 
   function watch(id){
     var m = document.getElementById(id);

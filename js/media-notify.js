@@ -219,7 +219,21 @@
       var key = ok
         ? (kind === 'video' ? 'mediaNotifReadyVideo' : 'mediaNotifReadyImage')
         : 'mediaNotifFailVideo';
-      var n = new Notification(title(), { body: tr(key), icon: ICON, tag: 'maha-media-ready' }); // وسم ثابت = لا تكديس
+      var opts = { body: tr(key), icon: ICON, tag: 'maha-media-ready' }; // وسم ثابت = لا تكديس
+      var n;
+      try { n = new Notification(title(), opts); }
+      catch (ctorErr) {
+        /* v-audit-tools: Chrome أندرويد (ومنه TWA) يرمي «Illegal constructor» على الباني ويقبل الإشعار من عامل الخدمة
+           وحده — كان الخطأ يُبتلع فلا يصل إشعار والمفتاح مفعّل. الحاسوب على الباني كما كان، والضغطة هنا يتولّاها
+           notificationclick في sw.js (يركّز النافذة القائمة). */
+        var sw = null;
+        try { sw = (typeof navigator !== 'undefined' && navigator.serviceWorker) || null; } catch (e3) { sw = null; /* guard-ok — بلا عامل خدمة يُرمى خطأ الباني أدناه */ }
+        if (!sw || !sw.ready) throw ctorErr;
+        var t = title();
+        sw.ready.then(function (reg) { return reg.showNotification(t, opts); })
+          .catch(function (e4) { try { __swallow(e4, 'misc:media-notify-sw'); } catch (e5) { /* guard-ok */ } });
+        return true;
+      }
       n.onclick = function () {
         try { window.focus(); } catch (e) { /* guard-ok */ }
         try { n.close(); } catch (e2) { /* guard-ok */ }

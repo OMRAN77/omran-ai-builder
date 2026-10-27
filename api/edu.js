@@ -16,6 +16,8 @@ const { isRetired, retiredResponse } = require('./_lib/_retired.js');
 const { verifyToken } = require('./_lib/auth.js');
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv.js');
 const { clientIp } = require('./_lib/_usage.js');
+const { logError } = require('./_lib/log-error.js');
+const { toolFail } = require('./_lib/_videoFail.js');
 
 // v-owner-core: قائمة المالك الموحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
 const { isOwnerName } = require('./_lib/_owner.js');
@@ -126,6 +128,7 @@ function extractJSON(text) {
 let RESOLVED_MODEL = null;
 async function resolveModel(apiKey) {
   if (RESOLVED_MODEL) return RESOLVED_MODEL;
+  if (!apiKey) return MODEL; // v-audit-edu: مفتاح OpenRouter وحده — لا قائمة نماذج مباشرة نسألها
   try {
     const listRes = await fetch('https://api.anthropic.com/v1/models?limit=1000', {
       headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
@@ -421,6 +424,28 @@ async function callClaudeCv(apiKey, info, lang, model) {
   return extractJSON(text);
 }
 
+/* v-audit-edu (فحص التطبيق ٢٦ أكتوبر): نصّ المزوّد واسمه كانا يصلان الطالب — «OpenAI error: {…جسم خامّ…}»،
+   «تعذر تحليل المحاضرة: Your credit balance is too low to access the Anthropic API…»، «Server is missing ANTHROPIC_API_KEY»،
+   «Edu error: Upstash error: …». الآن النصّ التقنيّ للسجلّ وحده (logError)، والمستخدم يرى نصًّا وظيفيًّا عربيًّا ومعه رمز ثابت
+   (code) تترجمه الواجهة بلغتها: unavailable · failed · daily_cap (+scope) · too_big · timeout · reason. التصنيف هو مصنّف
+   v-provider-fail نفسه (toolFail): زحام أو رصيد/مفتاح/نموذج = unavailable، وما بقي = failed. */
+const EDU_DOWN = 'الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.';
+function eduDown(res, why) {
+  logError('edu/no-key', new Error(why));
+  res.status(503).json({ error: EDU_DOWN, code: 'unavailable' });
+}
+const EDU_SLOW = 'التوليد أخذ وقتًا أطول من المتوقع — أعد المحاولة الآن، غالبًا تنجح فورًا.';
+const isEduTimeout = (e) => /^(UpstreamTimeoutError|TimeoutError|AbortError)$/.test(String(e && e.name)) || /timeout|timed out|abort/i.test(String((e && e.message) || ''));
+function eduUpstreamFail(res, e, msg, scope) {
+  const st = Number(e && e.status) || 0;
+  logError('edu/' + scope, e, { status: st });
+  if (!st && isEduTimeout(e)) { res.status(504).json({ error: EDU_SLOW, code: 'timeout' }); return; }
+  const kind = toolFail(st, e && e.message).body.error;
+  res.status(st === 429 ? 429 : 502).json({ error: kind === 'unavailable' ? EDU_DOWN : msg, code: kind });
+}
+// سقف يوميّ: الضيف «سجّل الدخول أو عد غدًا»، والمسجّل «عد غدًا» — النصّ العربيّ كما كان، والرمز للغات الأخرى
+const eduCap = (username) => ({ code: 'daily_cap', scope: username ? 'user' : 'guest' });
+
 module.exports = withErrorCapture('edu', async (req, res) => {
   installCors(req, res);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -450,8 +475,9 @@ module.exports = withErrorCapture('edu', async (req, res) => {
 
     // ---------------- process ----------------
     if (action === 'process') {
+      // v-audit-edu (v-or-fallback): sendClaude يعمل بمفتاح OpenRouter وحده — لا يُشترط المباشر
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
 
       // Daily cap. Guests are limited by IP, registered users by account, and
       // only the owner is exempt.
@@ -460,6 +486,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) {
           res.status(402).json({
+            ...eduCap(username),
             error: username
               ? 'وصلت للحد اليومي (' + max + ' محاضرة). عد غدًا 🌙'
               : 'وصلت للحد اليومي المجاني (' + max + ' محاضرات). سجّل الدخول أو عد غدًا 🌙',
@@ -472,7 +499,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       let totalB64 = (fileBase64 || '').length;
       if (Array.isArray(images)) images.forEach((im) => { totalB64 += ((im && im.base64) || '').length; });
       if (totalB64 > MAX_BASE64_CHARS) {
-        res.status(413).json({ error: 'حجم الملف كبير جدًا (الحد الأقصى حوالي 10 ميغابايت). جرّب ملفًا أصغر أو صورًا أقل.' });
+        res.status(413).json({ error: 'حجم الملف كبير جدًا (الحد الأقصى حوالي 10 ميغابايت). جرّب ملفًا أصغر أو صورًا أقل.', code: 'too_big' });
         return;
       }
 
@@ -499,17 +526,17 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       ].filter(Boolean).join('\n');
       if (__upInfo) blocks.push({ type: 'text', text: 'معلومات أدخلها الطالب مع الملفّ (سياق للتركيز فقط، ليست من محتوى المحاضرة):\n' + __upInfo });
       blocks.push({ type: 'text', text: 'حلل هذه المحاضرة وأعد JSON فقط بالصيغة المطلوبة.' });
-      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' محاضرات). سجّل الدخول أو عد غدًا 🌙' }); return; }
+      if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' محاضرات). سجّل الدخول أو عد غدًا 🌙' }); return; }
 
       let result = null;
       try {
         result = await callClaude(apiKey, blocks, lang, nativeLang, examLang, stage, __eduModel);
       } catch (e) {
-        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر تحليل المحاضرة: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
+        eduUpstreamFail(res, e, 'تعذر تحليل المحاضرة — حاول مرة أخرى.', 'process');
         return;
       }
       if (!result || !result.summary || !Array.isArray(result.flashcards) || !Array.isArray(result.quiz)) {
-        res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.' });
+        res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.', code: 'failed' });
         return;
       }
       // sanitize quiz shape
@@ -525,14 +552,14 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // التلقائي — نُقل التوليد هنا بكل لغات التطبيق الـ14. نفس شكل الطلب والرد.
     if (action === 'lesson-script') {
       const oaiKey = process.env.OPENAI_API_KEY;
-      if (!oaiKey) { res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' }); return; }
+      if (!oaiKey) { eduDown(res, 'missing OPENAI_API_KEY'); return; }
       const topic = body.topic;
-      if (!topic || String(topic).trim().length < 2) { res.status(400).json({ error: 'Missing topic' }); return; }
+      if (!topic || String(topic).trim().length < 2) { res.status(400).json({ error: 'اكتب موضوع الدرس أولًا.', code: 'failed' }); return; }
       // الصفحة لا ترسل توكن — سقف يومي بالـIP يحمي المفتاح دون تغيير التجربة.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         if (await overDailyLimit(subject, 'lscript', __eduMax('lscript'))) {
-          res.status(402).json({ error: 'وصلت للحد اليومي لدروس الفيديو. عد غدًا 🌙' });
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي لدروس الفيديو. عد غدًا 🌙' });
           return;
         }
       }
@@ -553,23 +580,29 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const sys = 'You are an expert curriculum designer. Generate a complete lesson script as JSON only (no text outside JSON). The lesson is at ' + levelLabel + ' level. ALL text values in the JSON (title, heading, bullets, narration) MUST be written entirely in ' + langName + ' — do not mix in other languages. Content must be accurate, well organized, and sized for a video of about ' + mins + ' minutes (~' + totalWords + ' total narration words spread across slides).';
       const userMsg = 'Topic: "' + String(topic).slice(0, 500) + '"\n\nGenerate about ' + targetSlides + ' slides (a bit more or fewer if truly needed). Write every field in ' + langName + '. Return ONLY JSON in exactly this shape:\n{\n  "title": "Lesson title (in ' + langName + ')",\n  "slides": [\n    { "heading": "Slide heading (in ' + langName + ')", "bullets": ["point 1", "point 2", "point 3"] (in ' + langName + '), "narration": "Full narration text a natural voice will read for this slide, in ' + langName + ', clear and easy to understand" }\n  ]\n}\nFirst slide is always an intro, last slide is a summary/conclusion.';
 
+      /* v-audit-edu (srv-edu-bots-4): النداء غير متدفّق — الرؤوس لا تصل قبل اكتمال سرد ٢٠–٤٠ دقيقة (حتّى ٥٦٠٠ كلمة)، فمهلة
+         أوّل البايت العامّة (٣٠ث، _fetch-timeout) كانت تقطعه دائمًا. مهلته الخاصّة ٢٨٠ث كنداءات التعليم الثقيلة (v407). */
       const upstream = await oaLightFetch(oaiKey, { // v-models-latest
           messages: [{ role: 'system', content: sys }, { role: 'user', content: userMsg }],
           temperature: 0.7,
           response_format: { type: 'json_object' },
-        });
+        }, { signal: AbortSignal.timeout(280000) });
+      const LS_FAIL = 'تعذّر توليد سكربت الدرس الآن — حاول بعد قليل.';
       if (!upstream.ok) {
-        const errText = await upstream.text();
-        res.status(upstream.status).json({ error: 'OpenAI error: ' + errText.slice(0, 500) });
+        const errText = await upstream.text().catch(() => '');
+        const err = Object.assign(new Error(String(errText).slice(0, 300) || ('HTTP ' + upstream.status)), { status: upstream.status });
+        logError('edu/lesson-script', err, { status: upstream.status });
+        const kind = toolFail(upstream.status, errText).body.error;
+        res.status(upstream.status === 429 ? 429 : 502).json({ error: kind === 'unavailable' ? EDU_DOWN : LS_FAIL, code: kind });
         return;
       }
       const oaiData = await upstream.json();
       const content = oaiData && oaiData.choices && oaiData.choices[0] && oaiData.choices[0].message && oaiData.choices[0].message.content;
-      if (!content) { res.status(502).json({ error: 'Empty response from model' }); return; }
+      if (!content) { res.status(502).json({ error: LS_FAIL, code: 'failed' }); return; }
       let parsed;
-      try { parsed = JSON.parse(content); } catch (e) { res.status(502).json({ error: 'Model returned invalid JSON' }); return; }
+      try { parsed = JSON.parse(content); } catch (e) { res.status(502).json({ error: LS_FAIL, code: 'failed' }); return; }
       if (!parsed.slides || !Array.isArray(parsed.slides) || parsed.slides.length === 0) {
-        res.status(502).json({ error: 'Model returned no slides' });
+        res.status(502).json({ error: LS_FAIL, code: 'failed' });
         return;
       }
       res.status(200).json({ title: parsed.title || topic, slides: parsed.slides });
@@ -579,12 +612,13 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // ---------------- 📚 explain: درس من المنهج (بلد/مرحلة/صف/مادة/درس) — v655 ----------------
     if (action === 'explain') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) {
           res.status(402).json({
+            ...eduCap(username),
             error: username
               ? 'وصلت للحد اليومي (' + max + ' درسًا). عد غدًا 🌙'
               : 'وصلت للحد اليومي المجاني (' + max + ' دروس). سجّل الدخول أو عد غدًا 🌙',
@@ -604,16 +638,16 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         + (grade ? '- الصف/السنة: ' + grade + '\n' : '')
         + '- المادة: ' + subjName + '\n- عنوان الدرس: ' + lessonName + '\n'
         + 'في حقل "summary" اكتب شرح الدرس كاملًا كأنه فصل من كتاب مدرسي: تمهيد يربط الدرس بما قبله، شرح كل فكرة بالتفصيل مع أمثلة محلولة خطوة بخطوة، القوانين والقواعد بارزة بخط غامق، ثم خلاصة — بمستوى يناسب الصف المحدد بالضبط. واجعل حقل "subject" هو: ' + subjName + '. ثم ولّد البطاقات والاختبار والأسئلة المقالية من هذا الشرح نفسه.' }];
-      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' دروس). سجّل الدخول أو عد غدًا 🌙' }); return; }
+      if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' دروس). سجّل الدخول أو عد غدًا 🌙' }); return; }
       let result = null;
       try {
         result = await callClaude(apiKey, blocks, body.lang, body.nativeLang, body.examLang, (stageTxt && /جامع|كلي|university|college/i.test(stageTxt)) ? 'university' : ((stageTxt + ' ' + grade).trim() || 'school'), __eduModel);
       } catch (e) {
-        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر توليد الدرس: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
+        eduUpstreamFail(res, e, 'تعذر توليد الدرس — حاول مرة أخرى.', 'explain');
         return;
       }
       if (!result || !result.summary || !Array.isArray(result.flashcards) || !Array.isArray(result.quiz)) {
-        res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.' });
+        res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.', code: 'failed' });
         return;
       }
       result.quiz = result.quiz.filter((q) => q && q.q && Array.isArray(q.options) && q.options.length === 4 && q.correct >= 0 && q.correct <= 3);
@@ -626,27 +660,27 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // ---------------- 🩹 questions: إنقاذ درس ببطاقات (0) — توليد الأسئلة وحدها من الملخص ----------------
     if (action === 'questions') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
       const qSummary = String(body.summary || '').slice(0, 60000).trim();
       if (!qSummary) { res.status(400).json({ error: 'لا يوجد ملخص لتوليد الأسئلة منه.' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const max = __eduMax('proc');
-        if (await overDailyLimit(subject, 'proc', max)) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
+        if (await overDailyLimit(subject, 'proc', max)) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       }
       // نفس سلّة proc — نصّ الضيف نفسه الذي في process.
-      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' محاضرات). سجّل الدخول أو عد غدًا 🌙' }); return; }
+      if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' محاضرات). سجّل الدخول أو عد غدًا 🌙' }); return; }
       const qTail = eduLangTail(body.lang, body.nativeLang, body.examLang, body.stage || 'university');
       let qResult = null;
       try {
         qResult = await anthropicJSON(apiKey, buildQuestionsSys(qTail),
           [{ type: 'text', text: 'محتوى المحاضرة (ملخص الدرس):\n\n' + qSummary }], 9000, __eduModel);
       } catch (e) {
-        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر توليد الأسئلة: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' });
+        eduUpstreamFail(res, e, 'تعذر توليد الأسئلة — أعد المحاولة.', 'questions');
         return;
       }
       if (!qResult || !Array.isArray(qResult.quiz) || !qResult.quiz.length) {
-        res.status(502).json({ error: 'تعذر توليد الأسئلة — أعد المحاولة.' });
+        res.status(502).json({ error: 'تعذر توليد الأسئلة — أعد المحاولة.', code: 'failed' });
         return;
       }
       qResult.quiz = qResult.quiz.filter((q) => q && q.q && Array.isArray(q.options) && q.options.length === 4 && q.correct >= 0 && q.correct <= 3);
@@ -669,12 +703,12 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العميل يسأل عن المحفوظ عند إعادة فتح الدرس — الغياب جواب لا بناء
       if (body.cachedOnly) { res.status(200).json({ ok: true, html: null }); return; }
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'proc', max)) {
-          res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' });
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' });
           return;
         }
       }
@@ -683,7 +717,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const summary = String(body.summary || '').slice(0, 14000).trim();
       if (!title || !summary) { res.status(400).json({ error: 'الدرس غير مكتمل — حلّل المحاضرة أولًا.' }); return; }
       // v-edu-econ (المراجعة): المختبر ثقيل (١٤٠٠٠ + تكملة) فتحت سقف الضيوف الكلّيّ كالتحليل — كان تدوير الـIP يفتحه بعد امتلاء السقف.
-      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
+      if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       const nat = String(body.nativeLang || body.lang || 'ar').slice(0, 8);
       const sys = 'أنت مطوّر ألعاب تعليمية عبقري. يُعطى إليك ملخص درس، ومطلوب منك بناء «تجربة حية»: '
         + 'صفحة HTML واحدة كاملة تفاعلية تجعل الطالب يلعب بجوهر الدرس بيديه ويرى النتيجة فورًا.\n'
@@ -713,7 +747,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!r2.ok) {
         const msg = (r2.data && r2.data.error && r2.data.error.message) || ('HTTP ' + r2.status);
-        res.status(r2.status === 429 ? 429 : 502).json({ error: 'تعذر بناء التجربة: ' + msg + ' — حاول مرة أخرى.' });
+        eduUpstreamFail(res, Object.assign(new Error(msg), { status: r2.status }), 'تعذر بناء التجربة — حاول مرة أخرى.', 'lab');
         return;
       }
       let raw = (r2.data && r2.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
@@ -731,7 +765,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       // فتحة سور بلا إغلاق (انقطاع) لكن الصفحة نفسها مكتملة — خذها.
       if (!html) { const open = raw.match(/```html\s*([\s\S]*)$/i); if (open) html = open[1].trim(); }
       if (!html || html.length < 500 || html.length > 200000 || !/<\/html>\s*$/i.test(html)) {
-        res.status(502).json({ error: 'وصلت تجربة غير مكتملة من النموذج — أعد المحاولة.' });
+        res.status(502).json({ error: 'وصلت تجربة غير مكتملة من النموذج — أعد المحاولة.', code: 'failed' });
         return;
       }
       if (labKey) { try { await kvPutJSON(labKey, { html, at: Date.now() }); } catch (e) { /* best-effort: يبقى الرد للعميل */ } }
@@ -743,12 +777,12 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // ---------------- 💼 CV builder (returned from retirement بطلب عمران) ----------------
     if (action === 'cv') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
       // v-edu-tiers: كان المسجّل بلا سقف إطلاقًا (تسريب) — الآن حسب الطبقة.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         if (await overDailyLimit(subject, 'cv', __eduMax('cv'))) {
-          res.status(402).json({ error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' سير ذاتية). عد غدًا 🌙' });
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' سير ذاتية). عد غدًا 🌙' });
           return;
         }
       }
@@ -760,16 +794,16 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         const v = String(info[k] == null ? '' : info[k]).slice(0, 4000).trim();
         if (v) clean[k] = v;
       });
-      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' سير ذاتية). عد غدًا 🌙' }); return; }
+      if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' سير ذاتية). عد غدًا 🌙' }); return; }
       let out = null;
       try {
         out = await callClaudeCv(apiKey, clean, body.lang, __eduModel);
       } catch (e) {
-        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر توليد السيرة: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
+        eduUpstreamFail(res, e, 'تعذر توليد السيرة الآن — حاول مرة أخرى.', 'cv');
         return;
       }
       if (!out || typeof out.cvHtml !== 'string' || out.cvHtml.indexOf('<') === -1) {
-        res.status(502).json({ error: 'تعذر توليد السيرة الآن — حاول مرة أخرى.' });
+        res.status(502).json({ error: 'تعذر توليد السيرة الآن — حاول مرة أخرى.', code: 'failed' });
         return;
       }
       res.status(200).json({ ok: true, cvHtml: out.cvHtml, coverLetter: typeof out.coverLetter === 'string' ? out.coverLetter : '', guest: !username });
@@ -778,13 +812,13 @@ module.exports = withErrorCapture('edu', async (req, res) => {
 
     if (action === 'expense') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
 
       // v-edu-tiers: كان المسجّل بلا سقف إطلاقًا (تسريب) — الآن حسب الطبقة.
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         if (await overDailyLimit(subject, 'exp', __eduMax('cv'))) {
-          res.status(402).json({ error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' كشوفات). عد غدًا 🌙' });
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' كشوفات). عد غدًا 🌙' });
           return;
         }
       }
@@ -793,7 +827,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       let totalB64 = (fileBase64 || '').length;
       if (Array.isArray(images)) images.forEach((im) => { totalB64 += ((im && im.base64) || '').length; });
       if (totalB64 > MAX_BASE64_CHARS) {
-        res.status(413).json({ error: 'حجم الملف كبير جدًا (الحد الأقصى حوالي 10 ميغابايت). جرّب ملفًا أصغر.' });
+        res.status(413).json({ error: 'حجم الملف كبير جدًا (الحد الأقصى حوالي 10 ميغابايت). جرّب ملفًا أصغر.', code: 'too_big' });
         return;
       }
 
@@ -813,18 +847,18 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!blocks.length) { res.status(400).json({ error: 'لا يوجد محتوى للتحليل — ارفع كشف حساب أو الصق قائمة المصاريف.' }); return; }
       blocks.push({ type: 'text', text: 'حلّل هذه المصاريف وأعد JSON فقط بالصيغة المطلوبة.' });
-      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' كشوفات). عد غدًا 🌙' }); return; }
+      if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي (' + __eduMax('cv') + ' كشوفات). عد غدًا 🌙' }); return; }
 
       let result = null;
       try {
         result = await callClaudeExpense(apiKey, blocks, lang, __eduModel);
       } catch (e) {
-        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر تحليل الكشف: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
+        eduUpstreamFail(res, e, 'تعذر تحليل الكشف — حاول مرة أخرى.', 'expense');
         return;
       }
-      if (result && result.error) { res.status(422).json({ error: result.error }); return; }
+      if (result && result.error) { res.status(422).json({ error: result.error, code: 'reason' }); return; }
       if (!result || typeof result.total === 'undefined' || !Array.isArray(result.categories) || !result.categories.length) {
-        res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — تأكد أن الملف كشف حساب واضح وحاول مرة أخرى.' });
+        res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — تأكد أن الملف كشف حساب واضح وحاول مرة أخرى.', code: 'failed' });
         return;
       }
       result.categories = result.categories
@@ -838,7 +872,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // ---------------- 📄 docqa: تحليل مستند (عقد/فاتورة/تقرير) ----------------
     if (action === 'docqa') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey && !process.env.OPENROUTER_API_KEY) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
       // حدّ يومي (ضيف بالـIP، مسجّل بالحساب، المالك معفى) — يعالج سبب التقاعد
       // الأمني: لا نداء كلود بلا هوية/حدّ.
       if (!isOwner) {
@@ -846,6 +880,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         const max = __eduMax('proc');
         if (await overDailyLimit(subject, 'doc', max)) {
           res.status(402).json({
+            ...eduCap(username),
             error: username
               ? 'وصلت للحد اليومي (' + max + ' مستندًا). عد غدًا 🌙'
               : 'وصلت للحد اليومي المجاني (' + max + ' مستندات). سجّل الدخول أو عد غدًا 🌙',
@@ -855,7 +890,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       const { fileBase64, mime, text, lang } = body;
       if ((fileBase64 || '').length > MAX_BASE64_CHARS) {
-        res.status(413).json({ error: 'حجم الملف كبير جدًا (الحد الأقصى حوالي 10 ميغابايت). جرّب ملفًا أصغر.' });
+        res.status(413).json({ error: 'حجم الملف كبير جدًا (الحد الأقصى حوالي 10 ميغابايت). جرّب ملفًا أصغر.', code: 'too_big' });
         return;
       }
       const blocks = [];
@@ -869,16 +904,16 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!blocks.length) { res.status(400).json({ error: 'لا يوجد محتوى للتحليل — ارفع مستندًا أو الصق نصًا.' }); return; }
       blocks.push({ type: 'text', text: 'حلّل هذا المستند وأعد JSON فقط بالصيغة المطلوبة.' });
-      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' مستندات). سجّل الدخول أو عد غدًا 🌙' }); return; }
+      if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي المجاني (' + __eduMax('proc') + ' مستندات). سجّل الدخول أو عد غدًا 🌙' }); return; }
       let result = null;
       try {
         result = await callClaudeDoc(apiKey, blocks, lang, __eduModel);
       } catch (e) {
-        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر تحليل المستند: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
+        eduUpstreamFail(res, e, 'تعذر تحليل المستند — حاول مرة أخرى.', 'docqa');
         return;
       }
       if (!result || !result.summary) {
-        res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.' });
+        res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.', code: 'failed' });
         return;
       }
       result.fields = Array.isArray(result.fields)
@@ -893,7 +928,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // ---------------- 📄 docask: سؤال عن مستند سبق تحليله ----------------
     if (action === 'docask') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey && !process.env.OPENROUTER_API_KEY) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
       const docText = String(body.docText || '').slice(0, 60000).trim();
       const question = String(body.question || '').slice(0, 2000).trim();
       if (!docText || !question) { res.status(400).json({ error: 'ناقص نص المستند أو السؤال.' }); return; }
@@ -902,12 +937,12 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const cap = __eduMax('docask');
         if (await overDailyLimit(subject, 'docask', cap)) {
-          res.status(402).json({ error: 'وصلت للحد اليومي للأسئلة (' + cap + '). عد غدًا 🌙' });
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي للأسئلة (' + cap + '). عد غدًا 🌙' });
           return;
         }
       }
       // v-edu-econ (المراجعة): سقف كلّيّ للضيوف على الأسئلة (كلّ الـIP معًا) — يغلق تدويرها.
-      if (!username && !isOwner && await overDailyLimit('*', 'guest-light-total', guestLightCap())) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
+      if (!username && !isOwner && await overDailyLimit('*', 'guest-light-total', guestLightCap())) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
       const lang = body.lang;
       const outLang = (lang && /^ar/i.test(lang)) ? 'بالعربية' : ('in ' + eduLangName(lang || 'ar') + ' — not in Arabic');
       const sys = 'أنت مساعد مستندات. يُعطى إليك نصّ مستند وسؤال عنه. أجب عن السؤال بالاعتماد على المستند فقط، '
@@ -927,11 +962,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       }
       if (!r.ok) {
         const msg = (r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status);
-        res.status(r.status === 429 ? 429 : 502).json({ error: 'تعذّر الإجابة: ' + msg + ' — حاول مرة أخرى.' });
+        eduUpstreamFail(res, Object.assign(new Error(msg), { status: r.status }), 'تعذّر الإجابة — حاول مرة أخرى.', 'docask');
         return;
       }
       const answer = (r.data && r.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
-      if (!answer) { res.status(502).json({ error: 'تعذّر توليد إجابة — أعد المحاولة.' }); return; }
+      if (!answer) { res.status(502).json({ error: 'تعذّر توليد إجابة — أعد المحاولة.', code: 'failed' }); return; }
       res.status(200).json({ ok: true, answer });
       return;
     }
@@ -939,7 +974,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // ---------------- ✍️ grade a written answer against its rubric ----------------
     if (action === 'grade') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
 
       const { question, rubric, answer, dispute, lang, nativeLang } = body;
       if (!question || !Array.isArray(rubric) || !rubric.length) {
@@ -956,7 +991,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const cap = __eduMax('grade');
         if (await overDailyLimit(subject, 'grade', cap)) {
-          res.status(402).json({ error: 'وصلت للحد اليومي للتصحيح (' + cap + '). عد غدًا 🌙' });
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي للتصحيح (' + cap + '). عد غدًا 🌙' });
           return;
         }
       }
@@ -965,11 +1000,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       try {
         result = await callClaudeGrade(apiKey, { question, rubric, answer, dispute }, lang, nativeLang, __eduModel);
       } catch (e) {
-        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر التصحيح: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' });
+        eduUpstreamFail(res, e, 'تعذّر التصحيح — حاول مرة أخرى.', 'grade');
         return;
       }
       if (!result || typeof result.score !== 'number') {
-        res.status(502).json({ error: 'تعذّر قراءة نتيجة التصحيح. حاول مرة أخرى.' });
+        res.status(502).json({ error: 'تعذّر قراءة نتيجة التصحيح. حاول مرة أخرى.', code: 'failed' });
         return;
       }
 
@@ -995,14 +1030,14 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // بإيجاز وبطريقة غير التي في الملخّص. سقف يوميّ مستقلّ عن التحليل.
     if (action === 'tutor') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey && !process.env.OPENROUTER_API_KEY) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
       const question = String(body.question || '').slice(0, 2000).trim();
       if (!question) { res.status(400).json({ error: 'اكتب سؤالك أولًا.' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const cap = __eduMax('tutor');
         if (await overDailyLimit(subject, 'tutor', cap)) {
-          res.status(402).json({ error: 'وصلت للحد اليومي لأسئلة المعلّم (' + cap + '). عد غدًا 🌙' });
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي لأسئلة المعلّم (' + cap + '). عد غدًا 🌙' });
           return;
         }
       }
@@ -1021,9 +1056,9 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         + (history ? '\n\nآخر المحادثة:\n' + history : '') + '\n\nسؤال الطالب الآن:\n' + question }];
       let result = null;
       try { result = await anthropicJSON(apiKey, sys, blocks, 1800, __eduModel); }
-      catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر الردّ الآن — حاول مرة أخرى.' }); return; }
+      catch (e) { eduUpstreamFail(res, e, 'تعذّر الردّ الآن — حاول مرة أخرى.', 'tutor'); return; }
       const reply = String((result && result.reply) || '').trim();
-      if (!reply) { res.status(502).json({ error: 'وصل ردّ فارغ — حاول مرة أخرى.' }); return; }
+      if (!reply) { res.status(502).json({ error: 'وصل ردّ فارغ — حاول مرة أخرى.', code: 'failed' }); return; }
       res.status(200).json({ ok: true, reply: reply.slice(0, 8000) });
       return;
     }
@@ -1033,16 +1068,16 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // الواجهة تكشفها واحدة واحدة فيتعلّم الطالب الطريقة لا ينسخ الجواب.
     if (action === 'solve') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey && !process.env.OPENROUTER_API_KEY) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { eduDown(res, 'missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY'); return; }
       const text = String(body.text || '').slice(0, 6000).trim();
       const img = body.image && typeof body.image.base64 === 'string' ? body.image : null;
       if (!text && !img) { res.status(400).json({ error: 'اكتب المسألة أو صوّرها أولًا.' }); return; }
-      if (img && img.base64.length > MAX_BASE64_CHARS) { res.status(413).json({ error: 'الصورة كبيرة جدًا — جرّب صورة أصغر.' }); return; }
+      if (img && img.base64.length > MAX_BASE64_CHARS) { res.status(413).json({ error: 'الصورة كبيرة جدًا — جرّب صورة أصغر.', code: 'too_big' }); return; }
       if (!isOwner) {
         const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
         const cap = __eduMax('solve');
         if (await overDailyLimit(subject, 'solve', cap)) {
-          res.status(402).json({ error: 'وصلت للحد اليومي لحلّ المسائل (' + cap + '). عد غدًا 🌙' });
+          res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي لحلّ المسائل (' + cap + '). عد غدًا 🌙' });
           return;
         }
       }
@@ -1067,15 +1102,16 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       const blocks = [];
       if (img) blocks.push({ type: 'image', source: { type: 'base64', media_type: /^image\/(png|jpeg|gif|webp)$/i.test(img.mime || '') ? img.mime : 'image/jpeg', data: img.base64 } });
       blocks.push({ type: 'text', text: (text ? 'الواجب:\n' + text : 'الواجب في الصورة.') + '\n\nحلّه الآن كاملًا وأعد JSON فقط.' });
-      if (await __guestTotalOver()) { res.status(402).json({ error: 'وصلت للحد اليومي لحلّ المسائل (' + __eduMax('solve') + '). عد غدًا 🌙' }); return; }
+      if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي لحلّ المسائل (' + __eduMax('solve') + '). عد غدًا 🌙' }); return; }
       let result = null;
       try { result = await anthropicJSON(apiKey, sys, blocks, 8000, __eduModel); }
-      catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر الحلّ الآن — حاول مرة أخرى.' }); return; }
-      if (result && result.error) { res.status(422).json({ error: String(result.error).slice(0, 300) }); return; }
+      catch (e) { eduUpstreamFail(res, e, 'تعذّر الحلّ الآن — حاول مرة أخرى.', 'solve'); return; }
+      // سبب الرفض كتبه النموذج بلغة الطالب (languageRules) — يمرّ كما هو (code: reason)
+      if (result && result.error) { res.status(422).json({ error: String(result.error).slice(0, 300), code: 'reason' }); return; }
       const steps = (result && Array.isArray(result.steps) ? result.steps : [])
         .filter((st) => st && (st.work || st.hint)).slice(0, 12)
         .map((st) => ({ hint: String(st.hint || '').slice(0, 600), work: String(st.work || '').slice(0, 2500) }));
-      if (!steps.length || !result.answer) { res.status(502).json({ error: 'تعذّر فهم الحلّ — حاول مرة أخرى.' }); return; }
+      if (!steps.length || !result.answer) { res.status(502).json({ error: 'تعذّر فهم الحلّ — حاول مرة أخرى.', code: 'failed' }); return; }
       const kind = ['problem', 'questions', 'writing', 'project'].includes(result.kind) ? result.kind : 'problem';
       const strList = (a, n, len) => (Array.isArray(a) ? a : []).filter((x) => x && typeof x !== 'object').slice(0, n).map((x) => String(x).slice(0, len));
       const solution = {
@@ -1102,7 +1138,14 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     if (['save', 'list', 'get', 'delete', 'progress'].includes(action)) {
       if (!username) { res.status(200).json({ guest: true }); return; }
       const key = lessonsKey(username);
-      let lessons = (await kvGetJSON(key)) || [];
+      /* v-audit-mahakv (srv-edu-bots-2): الحفظ والحذف والتقدّم تكتب القائمة كاملة — عطل قراءة عابر كان يصير [] فيكتب
+         الحفظ [الجديد] والحذف [] فوق كلّ الدروس بلا رجعة. هنا قراءة صارمة: العطل 503 بلا كتابة، والعميل يعرض رسالته
+         المترجمة (لا نصّ خادم). القائمة والعرض يبقيان على القراءة المتسامحة. */
+      const writes = action === 'save' || action === 'delete' || action === 'progress';
+      let lessons;
+      try { lessons = writes ? await kvGetJSON(key, { strict: true }) : await kvGetJSON(key); }
+      catch (e) { if (!writes) throw e; /* القراءة: المعالج الخارجيّ يعطي مهلتها 504 وعطبها 500 برمز (srv-edu-bots-4/8) */ res.status(503).json({ ok: false, code: 'storage_retry' }); return; }
+      lessons = lessons || [];
       if (!Array.isArray(lessons)) lessons = [];
 
       if (action === 'save') {
@@ -1132,7 +1175,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         await kvPutJSON(key, lessons);
         // streak update (server-side merge)
         try {
-          const st = (await kvGetJSON(streakKey(username))) || { streak: 0, lastActive: '' };
+          const st = (await kvGetJSON(streakKey(username), { strict: true })) || { streak: 0, lastActive: '' }; // v-audit-mahakv: العطل يترك السلسلة كما هي لا يصفّرها
           const today = todayStr();
           if (st.lastActive !== today) {
             const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -1193,7 +1236,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         await kvPutJSON(key, lessons);
         // streak on any activity
         try {
-          const st = (await kvGetJSON(streakKey(username))) || { streak: 0, lastActive: '' };
+          const st = (await kvGetJSON(streakKey(username), { strict: true })) || { streak: 0, lastActive: '' }; // v-audit-mahakv: العطل يترك السلسلة كما هي لا يصفّرها
           const today = todayStr();
           if (st.lastActive !== today) {
             const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -1214,7 +1257,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
   } catch (e) {
     const __m = (e && e.message ? e.message : String(e));
     // v-edu-timeouts: مهلة التوليد تُشرح بالعربي لا بخطأ إنجليزي خام.
-    if (/timeout|abort/i.test(__m)) { res.status(504).json({ error: 'التوليد أخذ وقتًا أطول من المتوقع — أعد المحاولة الآن، غالبًا تنجح فورًا.' }); return; }
-    res.status(500).json({ error: 'Edu error: ' + __m });
+    /* v-audit-edu: مهلة _fetch-timeout اسمها UpstreamTimeoutError ونصّها «timed out» (لا «timeout») فكانت تصير 500 خامًّا؛
+       وما بقي نصّ وظيفيّ ثابت — الرسالة التقنيّة («Upstash error: …») للسجلّ وحده. */
+    const __timeout = isEduTimeout(e) || /timeout|timed out|abort/i.test(__m);
+    logError('edu/handler', e, { timeout: __timeout });
+    if (__timeout) { res.status(504).json({ error: EDU_SLOW, code: 'timeout' }); return; }
+    res.status(500).json({ error: 'حدث خطأ في الخادم — حاول مرة أخرى.', code: 'failed' });
   }
 });

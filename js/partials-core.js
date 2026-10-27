@@ -263,12 +263,13 @@
         <option value="entrance" data-en="🚪 Entrance" data-i18n="designAiPlaceEntrance">🚪 مدخل</option>
         <option value="garden" data-en="🌳 Garden" data-i18n="designAiPlaceGarden">🌳 حديقة</option>
         <!-- v-decor-outdoor (طلب المالك ١٥ أكتوبر ٢٠٢٦: «تقدر تحطلي افكار خارجيه في الديكور خارجي»): خيارات الديكور الخارجي -->
-        <option value="facade" data-en="🏡 House Facade">🏡 واجهة منزل</option>
-        <option value="pool" data-en="🏊 Pool &amp; Patio">🏊 مسبح وجلسة</option>
-        <option value="pergola" data-en="⛺ Pergola Seating">⛺ مظلة وبرجولا</option>
-        <option value="bbq" data-en="🔥 BBQ &amp; Firepit">🔥 شواء وجلسة نار</option>
-        <option value="rooftop" data-en="🌇 Rooftop Terrace">🌇 سطح روف</option>
-        <option value="pathway" data-en="🪴 Outdoor Pathway">🪴 ممر ومدخل خارجي</option>
+        <!-- v-audit-attach (x-i18n-6): الستّة بلا data-i18n ولا مدخل __OPT_XL فكانت إنجليزيّة لاثنتي عشرة لغة — مفاتيح الـ١٤ لغة -->
+        <option value="facade" data-en="🏡 House Facade" data-i18n="axAttachDecorFacade">🏡 واجهة منزل</option>
+        <option value="pool" data-en="🏊 Pool &amp; Patio" data-i18n="axAttachDecorPool">🏊 مسبح وجلسة</option>
+        <option value="pergola" data-en="⛺ Pergola Seating" data-i18n="axAttachDecorPergola">⛺ مظلة وبرجولا</option>
+        <option value="bbq" data-en="🔥 BBQ &amp; Firepit" data-i18n="axAttachDecorBbq">🔥 شواء وجلسة نار</option>
+        <option value="rooftop" data-en="🌇 Rooftop Terrace" data-i18n="axAttachDecorRooftop">🌇 سطح روف</option>
+        <option value="pathway" data-en="🪴 Outdoor Pathway" data-i18n="axAttachDecorPathway">🪴 ممر ومدخل خارجي</option>
       </select>
     </div>
 

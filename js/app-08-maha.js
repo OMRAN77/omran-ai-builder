@@ -17,6 +17,9 @@ const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat
 let mahaStream = null, mahaMediaRecorder = null, mahaChunks = [];
 let mahaAudioCtx = null, mahaAnalyser = null, mahaVadRaf = null, mahaLastPeakRms = 0, mahaLowMicStreak = 0;
 let mahaCallActive = false, mahaState = 'idle'; // idle | listening | thinking | speaking
+/* v-audit-voice (cli-voice-5): رقم جيل المكالمة — يزيد عند كلّ بدء. الحلقة الأساسيّة ونطقها يأخذانه عند البدء ويخرجان إن تغيّر:
+   mahaCallActive وحده كان يرجع true لمكالمة أُنهيت ثمّ فُتحت أثناء انتظار ردّ النموذج، فتنطق الحلقة القديمة ردّها فيها وتكمل بجانبها. */
+let mahaCallGen = 0;
 let mahaLastActivity = 0; // v-maha-band: آخر كلام أو ردّ — مهلة السكوت تُحسب منه
 let mahaHistory = [];
 let mahaIntroduced = false;
@@ -431,7 +434,7 @@ let mahaReplyLang = (typeof lang !== 'undefined' ? lang : 'ar');
 // تثبيت لغة الرد (المسار الاحتياطي): يمنع تقلب اللغة من كشف خاطئ واحد.
 let mahaLangLocked = false, mahaLangCandidate = null;
 
-async function mahaSpeak(text){
+async function mahaSpeak(text, gen){
   return new Promise(async (resolve) => {
     try{
       const resp = await fetch('/api/tts', {
@@ -439,6 +442,8 @@ async function mahaSpeak(text){
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang, speed: 'normal' /* v-speed-chat-only: «بطيء وسريع للدردشة فقط، ليس لمها وعبدالله» */, token: ttsAuthToken(), guestId: ttsGuestId() }) // v-tts-account
       });
+      // v-audit-voice (cli-voice-5): الصوت وصل بعد إنهاء المكالمة أو بدء غيرها — لا يُشغَّل فيها ولا يُكتب في سطرها
+      if(gen !== undefined && (gen !== mahaCallGen || !mahaCallActive)){ resolve(); return; }
       if(!resp.ok){
         // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
         // أجابت فعلًا — نعرض نص ردها على الشاشة مدة تكفي لقراءته ثم نكمل.
@@ -450,6 +455,7 @@ async function mahaSpeak(text){
         return;
       }
       const blob = await resp.blob();
+      if(gen !== undefined && (gen !== mahaCallGen || !mahaCallActive)){ resolve(); return; } // v-audit-voice
       const url = URL.createObjectURL(blob);
       const audio = mahaAudioEl;
       mahaCurrentAudio = audio;
@@ -476,32 +482,40 @@ async function mahaSpeak(text){
 
 // Records the mic and uses volume-based silence detection to know when the
 // user finished talking (hands-free - no button press needed per turn).
-async function mahaRecordUntilSilence(){
+/* v-audit-voice (cli-voice-5): المايك والمسجّل والمحلّل والمقاطع محلّيّة لهذا الدور (والعامّة مقابض فقط يطفئها mahaEndCall)،
+   وgen رقم مكالمته: مايك وصل بعد بدء مكالمة أخرى يُطفأ ولا يستبدل مايكها، ودورٌ صار قديمًا لا يمسّ مواردها. */
+async function mahaRecordUntilSilence(gen){
+  const live = () => mahaCallActive && (gen === undefined || gen === mahaCallGen);
   // نفس تحسينات المايك التي يطلبها الوضع الحديث: كانت الغائبة هنا، فصوت
   // المستخدم الهادئ يصل ضعيفًا وينرمى كأنه ضجيج — «أول مرة ما ترد».
-  mahaStream = await mahaGetUserMediaRetry({
+  const stream = await mahaGetUserMediaRetry({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
   });
+  if(!live()){ stream.getTracks().forEach(tr => tr.stop()); return null; }
+  mahaStream = stream;
   let mimeType = '';
   for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
     if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
   }
-  mahaMediaRecorder = mimeType ? new MediaRecorder(mahaStream, { mimeType }) : new MediaRecorder(mahaStream);
-  mahaChunks = [];
-  mahaMediaRecorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) mahaChunks.push(e.data); };
+  const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  const chunks = [];
+  mahaMediaRecorder = rec; mahaChunks = chunks;
+  rec.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
 
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  mahaAudioCtx = new AudioCtx();
-  const source = mahaAudioCtx.createMediaStreamSource(mahaStream);
-  mahaAnalyser = mahaAudioCtx.createAnalyser();
-  mahaAnalyser.fftSize = 2048;
-  source.connect(mahaAnalyser);
-  const dataArr = new Uint8Array(mahaAnalyser.fftSize);
+  const actx = new AudioCtx();
+  mahaAudioCtx = actx;
+  const source = actx.createMediaStreamSource(stream);
+  const analyser = actx.createAnalyser();
+  mahaAnalyser = analyser;
+  analyser.fftSize = 2048;
+  source.connect(analyser);
+  const dataArr = new Uint8Array(analyser.fftSize);
 
-  const finished = new Promise((resolve) => { mahaMediaRecorder.onstop = resolve; });
+  const finished = new Promise((resolve) => { rec.onstop = resolve; });
   // Collect progressively: some Android/Chrome builds truncate a single final
     // chunk on stop(), making the fallback hear only part of the first turn.
-    mahaMediaRecorder.start(1000);
+    rec.start(1000);
 
   const startTime = Date.now();
   // العتبات كانت ثابتة وعالية (0.022 صمت / ثانية كلام كاملة) — بغرفة هادئة
@@ -520,8 +534,8 @@ async function mahaRecordUntilSilence(){
 
   await new Promise((resolve) => {
     const tick = () => {
-      if(!mahaCallActive || mahaMediaRecorder.state !== 'recording'){ resolve(); return; }
-      mahaAnalyser.getByteTimeDomainData(dataArr);
+      if(!live() || rec.state !== 'recording'){ resolve(); return; }
+      analyser.getByteTimeDomainData(dataArr);
       let sumSq = 0;
       for(let i = 0; i < dataArr.length; i++){ const v = (dataArr[i] - 128) / 128; sumSq += v * v; }
       const rms = Math.sqrt(sumSq / dataArr.length);
@@ -551,17 +565,25 @@ async function mahaRecordUntilSilence(){
     };
     mahaVadRaf = requestAnimationFrame(tick);
   });
+  if(!live()){ // v-audit-voice: دور مكالمة سابقة — يُطفئ ما فتحه هو وحده، لا مقابض المكالمة الجديدة
+    if(rec.state === 'recording'){ try{ rec.stop(); }catch(e){ __swallow(e, 'maha:stale-rec'); } }
+    stream.getTracks().forEach(tr => tr.stop());
+    if(mahaAudioCtx === actx) mahaStopVad(); // غير ذلك أغلقه mahaEndCall أصلًا، أو المقبض لدور أحدث
+    if(mahaStream === stream) mahaStream = null;
+    return null;
+  }
   if(mahaOrbEl) mahaOrbEl.style.transform = '';
   mahaLastPeakRms = peakRms;
   // (أُزيل هنا كاشف الجنس من نبرة الصوت: كان يحسب ارتباطًا ذاتيًا ثقيلًا جدًا
   //  على الجوال طوال المكالمة ونتيجته مهملة منذ v493 — المستخدم يختار الصوت.)
 
   mahaStopVad();
-  if(mahaMediaRecorder.state === 'recording') mahaMediaRecorder.stop();
+  if(rec.state === 'recording') rec.stop();
   await finished;
-  mahaStopStream();
+  stream.getTracks().forEach(tr => tr.stop());
+  if(mahaStream === stream) mahaStream = null;
 
-  const blob = new Blob(mahaChunks, { type: mahaMediaRecorder.mimeType || mimeType || 'audio/webm' });
+  const blob = new Blob(chunks, { type: rec.mimeType || mimeType || 'audio/webm' });
   return blob;
 }
 
@@ -1559,11 +1581,15 @@ function mahaStartMicMeter(stream){
       while(mahaMicVoiced.length && mahaMicVoiced[0][0] < tickAt - 10000) mahaMicVoiced.shift();
       mahaMicLastTick = tickAt;
       fill.style.width = lvl + '%';
-      if(lvl > 8){ mahaMicSilenceStart = Date.now(); if(mahaMicWarned){ mahaMicWarned = false; const st = document.getElementById('mahaStateLabel'); if(st) st.textContent = ''; } }
+      /* v-audit-voice (cli-voice-9): التحذير كان عربيًّا ثابتًا لكلّ اللغات، ويظهر ومها تتكلّم (إلغاء الصدى يُسكت المايك وهو سليم)،
+         ويمسح سطر الحالة حين يتكلّم المستخدم. الآن: السكوت يُعدّ في الاستماع وحده، والنصّ mahaLowMic القائم بالـ١٤ لغة،
+         وزواله يعيد «أستمع» — وتغيّر الحالة كتب سطره بنفسه. */
+      const notListening = mahaRtPlaying || mahaState !== 'listening';
+      if(lvl > 8 || notListening){ mahaMicSilenceStart = Date.now(); if(mahaMicWarned){ mahaMicWarned = false; if(!notListening) mahaSetState('listening'); } }
       else if(!mahaMicWarned && Date.now() - mahaMicSilenceStart > 7000){
         mahaMicWarned = true;
         const st = document.getElementById('mahaStateLabel');
-        if(st) st.textContent = '⚠️ صوتك ما يوصل — تحقق من المايك';
+        if(st) st.textContent = '⚠️ ' + t('mahaLowMic'); // v-audit-voice (cli-voice-9) + v-audit-chatcli (x-i18n-5): mahaLowMic القائم بالـ١٤ لغة
       }
       mahaMicMeterRaf = requestAnimationFrame(tick);
     })();
@@ -2045,6 +2071,7 @@ async function mahaLookCamera(question){
 
 async function mahaHandleRtFunctionCall(ev){
   if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
+  const askDc = mahaRtDc; // v-audit-voice (cli-voice-5): النتيجة لقناة الجلسة التي طلبتها وحدها
   let args = {};
   try{ args = JSON.parse(ev.arguments || '{}'); }catch(e){ /* ignore */ }
 
@@ -2102,6 +2129,8 @@ async function mahaHandleRtFunctionCall(ev){
 
   // v-maha-img-wait: الأداة قد تأخذ ٢٠ث وأكثر، والمكالمة قد أُغلقت أثناءها (mahaRtDc = null) — لا نتيجة لقناة مغلقة، بصمت
   if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
+  // v-audit-voice (cli-voice-5): أُنهيت المكالمة وفُتحت غيرها أثناء الأداة — نتيجتها وresponse.create كانا يصلان الجلسة الجديدة فتردّ مها بلا سؤال
+  if(mahaRtDc !== askDc) return;
   try{
     mahaRtDc.send(JSON.stringify({
       type: 'conversation.item.create',
@@ -2286,12 +2315,16 @@ function mahaEndRealtimeCall(){
 }
 
 async function mahaCallLoop(){
-  while(mahaCallActive){
+  // v-audit-voice (cli-voice-5): حلقة هذه المكالمة وحدها — تخرج إن انتهت أو بدأت غيرها أثناء أيّ انتظار
+  const gen = mahaCallGen;
+  const live = () => mahaCallActive && gen === mahaCallGen;
+  while(live()){
     mahaSetState('listening');
     let blob;
     try{
-      blob = await mahaRecordUntilSilence();
+      blob = await mahaRecordUntilSilence(gen);
     }catch(e){
+      if(!live()) break; // خطأ مايك مكالمة سابقة لا يُنهي الجديدة
       // إن فشل شيء بعد فتح المايك (مثلاً MediaRecorder غير مدعوم) كان المايك
       // يظل «حيًّا» والمؤشر شغالًا حتى إعادة تحميل الصفحة — نطفيه هنا دائمًا.
       mahaStopVad();
@@ -2303,7 +2336,7 @@ async function mahaCallLoop(){
       alert(__m);
       break;
     }
-    if(!mahaCallActive) break;
+    if(!live()) break;
     if(!blob || blob.size < 800 || mahaLastPeakRms < 0.018){
       // Essentially silent/noise-only turn - the mic didn't pick up real speech,
       // just background noise. Don't send it to speech-to-text at all (avoids
@@ -2326,12 +2359,11 @@ async function mahaCallLoop(){
         signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
         body: JSON.stringify({ audioBase64, mimeType: blob.type, lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
-      const data = await res.json();
-      if(!mahaCallActive) break;
+      const data = await res.json().catch(() => null);
+      if(!live()) break;
       if(!res.ok){
         console.error('[maha] stt failed:', res.status, data);
-        const detail = (data && typeof data.error === 'string') ? data.error : ('HTTP ' + res.status); // v-maha-paused: لا [object Object]
-        mahaSetState('error', detail === 'unavailable' ? t('svcPaused') : (t('mahaSttError') + ' (' + detail.slice(0, 80) + ')')); // v-maha-paused: رصيد المزوّد نفد
+        mahaSetState('error', voiceSttErrorText(res.status, data)); // v-audit-voice (cli-voice-8): مترجم من الحالة والرمز، بلا نصّ الخادم بين قوسين — v-maha-paused: unavailable = svcPaused
         await new Promise(r => setTimeout(r, 3000));
         continue;
       }
@@ -2363,7 +2395,7 @@ async function mahaCallLoop(){
       if(data && data.lowConfidence){
         console.log('[maha] low-confidence transcript, asking user to repeat:', transcript);
         mahaSetState('speaking');
-        await mahaSpeak(t('mahaAskRepeat'));
+        await mahaSpeak(t('mahaAskRepeat'), gen);
         continue;
       }
 
@@ -2395,6 +2427,7 @@ async function mahaCallLoop(){
           __voiceRewrite = true;
         }
         const imgResult = await mahaGenerateOrEditImage(__voicePrompt, editMode, __voiceText, __voiceFont, __voiceColor, __voiceRewrite, __voicePos, __voiceTextRemove);
+        if(!live()) break; // v-audit-voice: لا ردّ صورة في تاريخ مكالمة أخرى
         let imgReply;
         if(imgResult.ok){
           imgReply = editMode ? t('mahaImageEditedReply') : t('mahaImageReadyReply');
@@ -2404,7 +2437,7 @@ async function mahaCallLoop(){
         mahaHistory.push({ role: 'assistant', content: imgReply });
         if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
         mahaSetState('speaking');
-        await mahaSpeak(imgReply);
+        await mahaSpeak(imgReply, gen);
         continue;
       }
 
@@ -2445,9 +2478,9 @@ async function mahaCallLoop(){
       let lastErr = null;
       for(const providerKey of order){
         try{ reply = await callProviderAI(providerKey, messages); lastErr = null; break; }
-        catch(e){ console.error('[maha] provider', providerKey, 'failed:', e); lastErr = e; continue; }
+        catch(e){ console.error('[maha] provider', providerKey, 'failed:', e); lastErr = e; if(!live()) break; continue; }
       }
-      if(!mahaCallActive) break;
+      if(!live()) break; // v-audit-voice: ردّ سؤال مكالمة سابقة لا يُنطق في الجديدة
       if(lastErr && !reply){
         console.error('[maha] all providers failed');
         mahaSetState('error', t('mahaConnectionError'));
@@ -2460,7 +2493,7 @@ async function mahaCallLoop(){
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       mahaSetState('speaking');
-      await mahaSpeak(reply);
+      await mahaSpeak(reply, gen);
     }catch(e){ console.error('[maha] turn error', e); }
   }
 }
@@ -2724,6 +2757,7 @@ async function mahaStartCallInner(mode){
   const __mahaName = (__mahaLang === 'ar' || __mahaLang === 'ur') ? 'مها' : 'Maha';
   if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : __mahaName;
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
+  mahaCallGen++; // v-audit-voice (cli-voice-5): حلقة مكالمة سابقة لم تخرج بعد تخرج عند أوّل فحص
   mahaCallActive = true;
   if(mahaCallScreenEl){
     mahaCallScreenEl.style.display = 'flex';
@@ -2769,7 +2803,8 @@ async function mahaStartCallInner(mode){
     mahaEndRealtimeCall();
     // v-maha-mute: السقوط للوضع الأساسي كان صامتًا (وسم صغير فقط) — نبّه
     // المتصل لحظةً حتى لا يظن المكالمة معلّقة.
-    try{ mahaSetState('thinking', 'الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️'); }catch(e2){ __swallow(e2, 'maha:fallback-note'); }
+    // v-audit-voice (cli-voice-9): بلغة الواجهة — كان عربيًّا ثابتًا لكلّ اللغات (والاحتياط حتّى يصل المفتاح بالـ١٤ لغة)
+    try{ mahaSetState('thinking', voiceTr('axVoiceBasicFallback', "HD voice isn't available right now — continuing in basic mode 🎙️", 'الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️')); }catch(e2){ __swallow(e2, 'maha:fallback-note'); }
   }
   if(!mahaCallActive) return;
   if(!window.MediaRecorder){

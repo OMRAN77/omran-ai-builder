@@ -5,7 +5,7 @@
    الذاكرة وKV؛ (٢) الاختيار يصل chat.js في body.model ويُقبل للمالك إن كان معرّف OpenRouter
    بالبادئة الصحيحة لذلك المزوّد؛ رفضه الوسيط = رجوع للافتراضيّ مع سطر حالة (آليّة v-claude-models
    نفسها). كلود يبقى على قائمته الثابتة (المسار المباشر). للمالك وحده كالمنتقي نفسه. */
-const { isOwner } = require('./_owner.js');
+const { isOwnerSession: isOwner } = require('./_owner.js'); // v-audit-agent (srv-agent-3): جلسة المالك وحدها — لا MONITOR_KEY
 
 // مفتاح المزوّد في التطبيق ← بادئة الشركة عند OpenRouter.
 const OR_VENDOR = { openai: 'openai', gemini: 'google', deepseek: 'deepseek', mistral: 'mistralai', cohere: 'cohere', groq: 'meta-llama', perplexity: 'perplexity', kimi: 'moonshotai' };
