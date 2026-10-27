@@ -68,6 +68,26 @@ function showPriceTab(tab){
 }
 window.showPriceTab = showPriceTab;
 
+/* v-audit-shell (cli-ui-shell-5): «باقتك الحالية» كانت ثابتة على بطاقة «مجاني» في الجزء (partials-settings)، و«اشترك الآن» على باقة المشترك
+   نفسها — فيُدعى المشترك لشراء باقته مرّة ثانية. بطاقة الباقة الفعليّة (__omranPlan) تأخذ الزرّ المعطّل بمفتاحه، وزرّ «مجاني» يُخفى لمن ليس
+   مجّانيًّا أو ضيفًا، وكلّ زرّ يعود كما كان حين تتغيّر الباقة. عرض فقط: الأسعار والدفع (openCheckout) والخادم كما هي. */
+function pricingMarkCurrentPlan(plan){
+  const p = String(plan || '').toLowerCase();
+  const cur = (!p || p === 'free' || p === 'guest') ? 'free' : p;
+  document.querySelectorAll('#pricingSection .priceTab[data-tab="chat"] .pcard .pbtn').forEach(function(b){
+    if(b.dataset.planCard === undefined){
+      b.dataset.planCard = ((b.getAttribute('onclick') || '').match(/openCheckout\('(\w+)'\)/) || [])[1] || 'free';
+      b.dataset.planCls = b.className;
+      b.dataset.planKey = b.getAttribute('data-i18n') || '';
+    }
+    const id = b.dataset.planCard, on = id === cur, key = on ? 'planCurrentBtn' : b.dataset.planKey;
+    b.className = on ? 'pbtn ghost' : b.dataset.planCls;
+    b.disabled = on || id === 'free';
+    b.style.visibility = (id === 'free' && !on) ? 'hidden' : '';
+    if(key && b.getAttribute('data-i18n') !== key){ b.setAttribute('data-i18n', key); b.textContent = t(key); }
+  });
+}
+
 // v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
 // v-media-merge: قسم «صور وفيديو» يعرض رصيد المدموجة، ومتبقّي باقة الصور أو الفيديو القديمة ما دامت سارية.
 function renderMediaPlanStatus(media){
@@ -109,6 +129,7 @@ async function refreshPointsWallet(){
   const val = document.getElementById('pricingWalletValue');
   if(!row || !val) return;
   const token = authGet('aiapp_auth_token');
+  pricingMarkCurrentPlan(token ? window.__omranPlan : 'guest'); // v-audit-shell: فورًا بالمعروف، ثمّ بردّ الرصيد
   if(!token){ row.style.display = 'none'; return; }
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
@@ -120,7 +141,8 @@ async function refreshPointsWallet(){
       window.__pointsBalance = d.unlimited ? Infinity : d.points;
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
       renderMediaPlanStatus(d.media);
-    } else { row.style.display = 'none'; }
+      pricingMarkCurrentPlan(window.__omranPlan); // v-audit-shell
+    } else { row.style.display = 'none'; pricingMarkCurrentPlan('guest'); }
   }catch(e){ /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;

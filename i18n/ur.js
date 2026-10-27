@@ -291,7 +291,7 @@ I18N['ur'] = {
     checkoutRedirecting: "ادائیگی کے صفحے پر بھیجا جا رہا ہے...",
     checkoutError: "کچھ غلط ہو گیا، براہ کرم دوبارہ کوشش کریں",
     checkoutNotConfigured: "ایڈمن نے ابھی ادائیگی سیٹ اپ نہیں کی",
-    checkoutSuccessMsg: "✅ کامیابی سے سبسکرائب کر لیا (ٹیسٹ موڈ)! شکریہ 🎉",
+    checkoutSuccessMsg: "✅ ادائیگی کامیاب ہو گئی — آپ کے اکاؤنٹ میں شامل کر دیا گیا۔ شکریہ 🎉",
     checkoutCancelMsg: "⚠️ ادائیگی منسوخ کر دی گئی",
     logoutTitle: "لاگ آؤٹ",
     loginAction: "لاگ ان",

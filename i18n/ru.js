@@ -282,7 +282,7 @@ I18N['ru'] = {
     "checkoutRedirecting": "Перенаправление на страницу оплаты...",
     "checkoutError": "Что-то пошло не так, попробуйте ещё раз",
     "checkoutNotConfigured": "Платежи ещё не настроены администратором",
-    "checkoutSuccessMsg": "✅ Подписка оформлена успешно (тестовый режим)! Спасибо 🎉",
+    "checkoutSuccessMsg": "✅ Оплата прошла успешно — зачислено на ваш аккаунт. Спасибо 🎉",
     "checkoutCancelMsg": "⚠️ Оплата отменена",
     "logoutTitle": "Выйти",
     "loginAction": "Вход",

@@ -281,7 +281,7 @@ I18N['tr'] = {
     "checkoutRedirecting": "Ödeme sayfasına yönlendiriliyor...",
     "checkoutError": "Bir şeyler ters gitti, lütfen tekrar deneyin",
     "checkoutNotConfigured": "Ödemeler henüz yönetici tarafından yapılandırılmadı",
-    "checkoutSuccessMsg": "✅ Abonelik başarıyla oluşturuldu (test modu)! Teşekkürler 🎉",
+    "checkoutSuccessMsg": "✅ Ödeme başarılı — hesabınıza eklendi. Teşekkürler 🎉",
     "checkoutCancelMsg": "⚠️ Ödeme iptal edildi",
     "logoutTitle": "Çıkış yap",
     "loginAction": "Giriş",

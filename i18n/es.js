@@ -282,7 +282,7 @@ I18N['es'] = {
     "checkoutRedirecting": "Redirigiendo a la página de pago...",
     "checkoutError": "Algo salió mal, inténtalo de nuevo",
     "checkoutNotConfigured": "El administrador aún no ha configurado los pagos",
-    "checkoutSuccessMsg": "✅ ¡Suscripción exitosa (modo de prueba)! Gracias 🎉",
+    "checkoutSuccessMsg": "✅ Pago realizado con éxito: ya está en tu cuenta. ¡Gracias! 🎉",
     "checkoutCancelMsg": "⚠️ El pago fue cancelado",
     "logoutTitle": "Cerrar sesión",
     "loginAction": "Iniciar sesión",

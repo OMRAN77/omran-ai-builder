@@ -281,7 +281,7 @@ I18N['id'] = {
     "checkoutRedirecting": "Mengalihkan ke halaman pembayaran...",
     "checkoutError": "Terjadi kesalahan, silakan coba lagi",
     "checkoutNotConfigured": "Pembayaran belum dikonfigurasi oleh admin",
-    "checkoutSuccessMsg": "✅ Berhasil berlangganan (mode uji coba)! Terima kasih 🎉",
+    "checkoutSuccessMsg": "✅ Pembayaran berhasil — sudah ditambahkan ke akun Anda. Terima kasih 🎉",
     "checkoutCancelMsg": "⚠️ Pembayaran dibatalkan",
     "logoutTitle": "Keluar",
     "loginAction": "Masuk",

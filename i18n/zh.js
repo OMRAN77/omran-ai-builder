@@ -276,7 +276,7 @@ I18N['zh'] = {
     "checkoutRedirecting": "正在跳转至支付页面...",
     "checkoutError": "出错了，请重试",
     "checkoutNotConfigured": "管理员尚未配置支付功能",
-    "checkoutSuccessMsg": "✅ 订阅成功(测试模式)!谢谢 🎉",
+    "checkoutSuccessMsg": "✅ 支付成功，已添加到您的账户。谢谢 🎉",
     "checkoutCancelMsg": "⚠️ 支付已取消",
     "logoutTitle": "退出登录",
     "loginAction": "登录",

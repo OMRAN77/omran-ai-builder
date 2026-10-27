@@ -292,7 +292,7 @@ I18N['ne'] = {
     checkoutRedirecting: "भुक्तानी पृष्ठमा रिडिरेक्ट गर्दै...",
     checkoutError: "केही गडबड भयो, कृपया फेरि प्रयास गर्नुहोस्",
     checkoutNotConfigured: "भुक्तानीहरू अझै व्यवस्थापकद्वारा कन्फिगर गरिएको छैन",
-    checkoutSuccessMsg: "✅ सफलतापूर्वक सदस्यता लिइयो (परीक्षण मोड)! धन्यवाद 🎉",
+    checkoutSuccessMsg: "✅ भुक्तानी सफल भयो — तपाईंको खातामा थपियो। धन्यवाद 🎉",
     checkoutCancelMsg: "⚠️ भुक्तानी रद्द गरियो",
     logoutTitle: "लग आउट गर्नुहोस्",
     loginAction: "लगइन गर्नुहोस्",

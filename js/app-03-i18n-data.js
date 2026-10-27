@@ -1171,7 +1171,7 @@ const I18N = {
     checkoutRedirecting: 'جارٍ التحويل إلى صفحة الدفع...',
     checkoutError: 'حدث خطأ ما، حاول مرة أخرى',
     checkoutNotConfigured: 'الدفع غير مفعّل من الإدارة بعد',
-    checkoutSuccessMsg: '✅ تم الاشتراك بنجاح (وضع تجريبي)! شكرًا لك 🎉',
+    checkoutSuccessMsg: "✅ تمّ الدفع بنجاح وأُضيف إلى حسابك. شكرًا لك 🎉",
     checkoutPaidPending: '✅ وصلنا دفعك، لكن إضافة رصيدك تأخّرت — نكمّلها تلقائيًّا أوّل ما ترجع للتطبيق. إذا ما وصلك خلال ساعة راسلنا.', // v-paypal-honest
     checkoutCancelMsg: '⚠️ تم إلغاء عملية الدفع',
     // v-video-watch: فيديو مرفق في المحادثة يُشاهَد ويُسمَع معًا (app-32)
@@ -1821,7 +1821,7 @@ const I18N = {
     checkoutRedirecting: 'Redirecting to payment page...',
     checkoutError: 'Something went wrong, please try again',
     checkoutNotConfigured: 'Payments not configured by admin yet',
-    checkoutSuccessMsg: '✅ Subscribed successfully (test mode)! Thank you 🎉',
+    checkoutSuccessMsg: "✅ Payment successful — added to your account. Thank you 🎉",
     checkoutPaidPending: '✅ We received your payment, but adding it to your account is delayed — it will complete automatically next time you open the app. If it has not arrived within an hour, contact us.', // v-paypal-honest
     checkoutCancelMsg: '⚠️ Payment was cancelled',
     // v-video-watch

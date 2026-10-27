@@ -283,7 +283,7 @@ I18N['fil'] = {
     "checkoutRedirecting": "Nire-redirect papunta sa payment page...",
     "checkoutError": "May nangyaring mali, subukan ulit",
     "checkoutNotConfigured": "Hindi pa naka-configure ang mga payment ng admin",
-    "checkoutSuccessMsg": "✅ Matagumpay na naka-subscribe (test mode)! Salamat 🎉",
+    "checkoutSuccessMsg": "✅ Matagumpay ang bayad — naidagdag na sa iyong account. Salamat 🎉",
     "checkoutCancelMsg": "⚠️ Kinansela ang pagbabayad",
     "logoutTitle": "Mag-log out",
     "loginAction": "Mag-login",

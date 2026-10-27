@@ -309,7 +309,7 @@ I18N['fr'] = {
     checkoutRedirecting: "Redirection vers la page de paiement...",
     checkoutError: "Une erreur s'est produite, veuillez réessayer",
     checkoutNotConfigured: "Les paiements ne sont pas encore configurés par l'administrateur",
-    checkoutSuccessMsg: "✅ Abonnement réussi (mode test) ! Merci 🎉",
+    checkoutSuccessMsg: "✅ Paiement réussi — ajouté à votre compte. Merci 🎉",
     checkoutCancelMsg: "⚠️ Le paiement a été annulé",
     logoutTitle: "Déconnexion",
     loginAction: "Connexion",

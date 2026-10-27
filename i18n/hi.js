@@ -292,7 +292,7 @@ I18N['hi'] = {
     checkoutRedirecting: "भुगतान पृष्ठ पर भेजा जा रहा है...",
     checkoutError: "कुछ गड़बड़ हुई, कृपया फिर से प्रयास करें",
     checkoutNotConfigured: "व्यवस्थापक द्वारा भुगतान अभी सेट नहीं किया गया",
-    checkoutSuccessMsg: "✅ सफलतापूर्वक सदस्यता ली (परीक्षण मोड)! धन्यवाद 🎉",
+    checkoutSuccessMsg: "✅ भुगतान सफल रहा — आपके खाते में जोड़ दिया गया। धन्यवाद 🎉",
     checkoutCancelMsg: "⚠️ भुगतान रद्द कर दिया गया",
     logoutTitle: "लॉग आउट",
     loginAction: "लॉग इन",

@@ -292,7 +292,7 @@ I18N['bn'] = {
     checkoutRedirecting: "অর্থপ্রদান পৃষ্ঠায় পুনঃনির্দেশ করা হচ্ছে...",
     checkoutError: "কিছু ভুল হয়েছে, আবার চেষ্টা করুন",
     checkoutNotConfigured: "প্রশাসক দ্বারা এখনও পেমেন্ট কনফিগার করা হয়নি",
-    checkoutSuccessMsg: "✅ সফলভাবে সদস্যতা (পরীক্ষা মোড)! ধন্যবাদ 🎉",
+    checkoutSuccessMsg: "✅ পেমেন্ট সফল হয়েছে — আপনার অ্যাকাউন্টে যোগ করা হয়েছে। ধন্যবাদ 🎉",
     checkoutCancelMsg: "⚠️ পেমেন্ট বাতিল করা হয়েছে",
     logoutTitle: "লগ আউট করুন",
     loginAction: "লগইন করুন",
