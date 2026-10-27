@@ -414,6 +414,20 @@ function promoteVip(emailKey, key) {
   return run;
 }
 
+/* v-lock-acct (srv-auth-12، باب المال بموافقة المالك ٢٧ أكتوبر): قائمة VIP بالأسماء، والاسم يتغيّر — من أضافه المالك كان يفقد الإعفاء
+   بأوّل تغيير لاسمه (يُخصم منه وتنطبق الحدود) والقائمة تعرض اسمًا ميّتًا. الآن مدخل الاسم القديم يصير الاسم الجديد في كتابة واحدة،
+   على سلسلة الترقية نفسها (قراءة القائمة ثمّ كتابتها). لا يرمي: التغيير تمّ قبله ولا يُفشله عطب القائمة. */
+function moveVip(oldKey, newKey) {
+  const run = vipPromoteChain.then(async () => {
+    try {
+      const vip = require('./_vip.js');
+      if (typeof vip.renameVip === 'function') await vip.renameVip(oldKey, newKey);
+    } catch (e) { logError('auth:vip-rename', e); }
+  });
+  vipPromoteChain = Promise.race([run.catch(() => {}), new Promise((r) => { const t = setTimeout(r, 5000); if (t && t.unref) t.unref(); })]);
+  return run;
+}
+
 /* v-unverified-email (أمر المالك ١٨ أكتوبر: «الدخول واسترجاع الحساب بالإيميل يشتغلون بس على إيميل متأكَّد… أي حساب إيميله غير
    متأكَّد، أول ما يدخل يطلع له تنبيه «أكّد إيميلك»… بعد ٣٠ يوم، الإيميل اللي ما تأكّد ينشال من الحساب تلقائيًا، والحساب نفسه يبقى»).
    سجلّات ما قبل v-signup-no-email تحمل بريدًا وفهرسه بلا ختم: كان الدخول بكلمة المرور أو بالرمز، ورابط الاسترجاع، يصل صاحبَ البريد
@@ -1061,6 +1075,7 @@ module.exports = async (req, res) => {
         // Free up the old key so it can't be logged into or re-claimed while pointing here.
         await putUser(oldKey, { deleted: true, movedTo: newKey });
         try { await moveLiveCounters(oldKey, newKey, movedUser); } catch (e) { logError('auth:rename-move', e, { from: String(oldKey).slice(0, 40) }); }
+        await moveVip(oldKey, newKey); // v-lock-acct (srv-auth-12): VIP يتبع الحساب لا الاسم — لا يرمي
         _banMemo.delete(oldKey); _banMemo.delete(newKey); // الشاهد جلسة ميّتة الآن (isBanned) — لا ينتظر ذاكرة الخمس ثوانٍ
         res.status(200).json({ ok: true, token: makeToken(newKey, movedUser.sv), username: movedUser.username, avatar: movedUser.avatar || null });
       } finally {
@@ -1104,6 +1119,7 @@ module.exports = async (req, res) => {
       user.salt = salt;
       user.hash = hash;
       user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): كلّ جلسة سابقة تموت — وهذا الجهاز يأخذ رمزه الجديد
+      user.passwordSet = true; // v-lock-acct (srv-auth-3): كلمة مرور وضعها صاحبها — حذف الحساب يطلبها (account-delete.js needsPassword)
       await putUser(u, user);
       res.status(200).json({ ok: true, token: makeToken(u, user.sv) });
       return;
@@ -1269,6 +1285,7 @@ module.exports = async (req, res) => {
       user.resetTokenHash = null;
       user.resetTokenExpiry = null;
       user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): الاستعادة تُبطل كلّ جلسة سابقة
+      user.passwordSet = true; // v-lock-acct (srv-auth-3): حساب Google/رمز البريد صار بكلمة مرور يعرفها صاحبه
       await putUser(key, user);
       await markKnownNet(key, req);
       res.status(200).json({ ok: true, token: makeToken(key, user.sv), username: user.username, avatar: user.avatar || null });

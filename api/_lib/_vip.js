@@ -123,4 +123,28 @@ async function promoteVerifiedEmail(email, username) {
   }
 }
 
-module.exports = { getVipList, addVip, removeVip, isVip, normalizeId, invalidateCache, promoteVerifiedEmail, promotedKey, VIP_KEY };
+// v-lock-acct (srv-auth-12، باب المال بموافقة المالك ٢٧ أكتوبر): تغيير الاسم (auth.js changeUsername) — مدخل الاسم القديم يصير
+// الجديد في كتابة واحدة، فلا يسقط الإعفاء ولا يبقى مدخلان لحساب واحد. القراءة صارمة: عطب Redis = لا كتابة فوق قائمة لم تُقرأ (المالك
+// قد يكون أضاف أحدًا للتوّ). مدخل فيه @ يبقى (قد يكون إيميلًا خامًا أضافه المالك لصاحبه — v-vip-verified) ويُضاف الاسم الجديد بجانبه.
+// لا يرمي (القاعدة ١).
+async function renameVip(oldId, newId) {
+  try {
+    const o = normalizeId(oldId);
+    const nw = normalizeId(newId);
+    if (!o || !nw || o === nw) return false;
+    const raw = await kvGetJSON(VIP_KEY, { strict: true });
+    const list = Array.isArray(raw) ? raw.map(normalizeId).filter(Boolean) : [];
+    if (list.indexOf(o) === -1) return false;
+    const next = list.filter((x) => x !== o || o.indexOf('@') !== -1);
+    if (next.indexOf(nw) === -1) next.push(nw);
+    await kvPutJSON(VIP_KEY, next);
+    invalidateCache();
+    cache = next;
+    cacheAt = Date.now();
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+module.exports = { getVipList, addVip, removeVip, isVip, normalizeId, invalidateCache, promoteVerifiedEmail, promotedKey, renameVip, VIP_KEY };
