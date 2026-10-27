@@ -29,6 +29,15 @@ const USER = process.env.SAMPLE_USER || 'omran';
 const TOKEN = process.env.SAMPLE_TOKEN || (LOCAL ? 'local' : '');
 if (!LOCAL && !TOKEN) { console.error('SAMPLE_TOKEN مفقود — رمز جلسة المالك (aiapp_auth_token) كسرّ في المستودع.'); process.exit(2); }
 const ACTOR_LINE = 'هلا والله! حياكم في تطبيق عمران، أسهل طريقة تسوّي فيديو بالذكاء الاصطناعي.';
+/* v-tab-tut-gen (المالك ٢٧ أكتوبر: «اريد بالذكاء الاصطناعي وهو يشرح» — فيديو «كيف تصنع فيديو» لكلّ قسم من القسم نفسه):
+   «<الوضع>-tut» في --modes ← محرّك القسم يولّد مقدّمًا يشرح القسم بصوته، بوصف ثابت هنا، ويُحفظ باسم <الوضع>-tut فيظهر في بطاقة
+   التعليميّ لذلك القسم (tutUrl في js/video.js). نسخة واحدة — --per لا يكرّره. بلا شاشة جوال في الوصف: المحرّك يرسم الواجهة مخربطة. */
+const TUT = {
+  veo: {
+    duration: '8',
+    prompt: 'لقطة متوسطة لمقدّم إماراتي أنيق بالكندورة البيضاء في استوديو حديث بإضاءة سينمائية ذهبية دافئة، ينظر مباشرة إلى الكاميرا ويشرح بحماس وبصوت واضح باللهجة الإماراتية: "تبي فيديو بصوت وكلام؟ اكتب وصفك، اختار المدّة والشكل، واضغط إنشاء الفيديو… وبس!" — يشير بيده مع كلّ خطوة، والكاميرا تقترب ببطء، والخلفية ضبابيّة دافئة، بلا أيّ كتابة على الشاشة',
+  },
+};
 
 let base = process.env.BASE || 'https://omran-ai-builder.vercel.app', srv = null;
 if (LOCAL) {
@@ -67,12 +76,22 @@ async function runOne(mode, n) {
     await page.evaluate(() => { ['omranIntro', 'privacyConsent'].forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); }); });
     await page.evaluate(() => document.getElementById('btnVideoMaker').click()); await page.waitForSelector('#vmkTabs', { timeout: 15000 });
     await page.click('#vmkTabs [data-tab="' + mode + '"]'); await page.waitForTimeout(500);
-    const card = page.locator('#vmkSamples .vmk-sm').nth(n); // ٠ = الفيديو التعليميّ، ثمّ المثالان
-    await card.waitFor({ timeout: 8000 });
-    const idea = (await card.locator('b').innerText()).trim();
-    await card.click(); await page.waitForTimeout(300);
-    // بطاقة لها فيديو تفتح المشغّل فوق الصفحة — يُغلق بزرّه قبل «إنشاء» (Escape يُغلق نافذة الصانع كلّها)
-    await page.evaluate(() => { const x = document.querySelector('.vmk-lb .vmk-lb-x'); if (x) x.click(); }); await page.waitForTimeout(200);
+    let idea;
+    if (n === 'tut') { // v-tab-tut-gen: الوصف والمدّة من TUT لا من بطاقة مثال
+      const tt = TUT[mode]; if (!tt) throw new Error('لا وصف تعليميّ لهذا القسم: ' + mode);
+      await page.fill('#videoMakerPrompt', tt.prompt);
+      // القائمتان مخفيّتان خلف أزرار الشرائح — تُضبطان كما تضبطهما الشرائح نفسها (قيمة + change)
+      await page.evaluate(([d]) => { [['videoMakerDuration', d], ['videoMakerRatio', '1280:720']].forEach(([id, v]) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); }); }, [tt.duration]);
+      if (await page.inputValue('#videoMakerDuration') !== tt.duration) throw new Error('المدّة لم تُضبط');
+      idea = 'فيديو تعليميّ يشرحه مقدّم';
+    } else {
+      const card = page.locator('#vmkSamples .vmk-sm').nth(n); // ٠ = الفيديو التعليميّ، ثمّ المثالان
+      await card.waitFor({ timeout: 8000 });
+      idea = (await card.locator('b').innerText()).trim();
+      await card.click(); await page.waitForTimeout(300);
+      // بطاقة لها فيديو تفتح المشغّل فوق الصفحة — يُغلق بزرّه قبل «إنشاء» (Escape يُغلق نافذة الصانع كلّها)
+      await page.evaluate(() => { const x = document.querySelector('.vmk-lb .vmk-lb-x'); if (x) x.click(); }); await page.waitForTimeout(200);
+    }
     if (mode === 'actor') await page.fill('#videoMakerActorSpeech', ACTOR_LINE);
     const prompt = await page.inputValue('#videoMakerPrompt');
     if (!prompt.trim()) throw new Error('الوصف فارغ بعد اختيار البطاقة');
@@ -110,8 +129,9 @@ async function runOne(mode, n) {
 }
 
 try {
-  for (const mode of MODES) for (let n = 1; n <= PER; n++) {
-    try { await runOne(mode, n); ok++; } catch (e) { fail++; console.error('✗', mode + '-' + n, String(e && e.message || e).slice(0, 220)); }
+  for (const mode of MODES) for (let n = 1; n <= (/-tut$/.test(mode) ? 1 : PER); n++) {
+    const m = mode.replace(/-tut$/, ''), nn = m === mode ? n : 'tut'; // v-tab-tut-gen
+    try { await runOne(m, nn); ok++; } catch (e) { fail++; console.error('✗', m + '-' + nn, String(e && e.message || e).slice(0, 220)); }
   }
 } finally { await browser.close(); if (srv) srv.close(); }
 console.log(`النتيجة: ${ok} نجح · ${fail} فشل` + (DRY ? ' (تجريبيّ — لا توليد)' : ''));
