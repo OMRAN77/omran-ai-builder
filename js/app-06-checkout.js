@@ -242,7 +242,7 @@ function openCheckout(plan){
     else settingsToast(t('checkoutLoginFirst'));
     return;
   }
-  if(checkoutLowerThanCurrent(plan)){ settingsToast(t('axLkSubsLowerPlan')); return; } // v-lock-subs (srv-money-4)
+  if(checkoutLowerThanCurrent(plan)){ checkoutSayLowerPlan(); return; } // v-lock-subs (srv-money-4)
   checkoutCurrentPlan = plan;
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
@@ -314,6 +314,17 @@ function checkoutLowerThanCurrent(plan){
     return !!(cur && Number(s.left) > 0 && CHECKOUT_PLAN_RANK[cur[1]] > CHECKOUT_PLAN_RANK[m[2]]);
   }
   return !!(CHECKOUT_PLAN_RANK[p] && CHECKOUT_PLAN_RANK[String(window.__omranPlan || '')] > CHECKOUT_PLAN_RANK[p]);
+}
+// التوست يُرسم تحت نافذة الإعدادات (showModal في الطبقة العليا) فلا يُرى فوق بطاقات الباقات — السبب في سطر «لماذا» داخل القسم نفسه (app-33).
+function checkoutSayLowerPlan(){
+  const sd = document.getElementById('settingsDialog'), g = window.__omranPlansGate;
+  if (sd && sd.open && g && typeof g.showWhy === 'function'){
+    g.showWhy(t('axLkSubsLowerPlan'));
+    const w = document.getElementById('plansWhy');
+    if (w && typeof w.scrollIntoView === 'function') w.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return;
+  }
+  settingsToast(t('axLkSubsLowerPlan'));
 }
 
 // "بطاقة" — opens the Stripe-hosted Checkout page (redirect). Creates a real

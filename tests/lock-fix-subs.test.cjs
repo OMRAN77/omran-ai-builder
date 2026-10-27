@@ -383,6 +383,12 @@ test('srv-money-4 ٥. الواجهة: «اشترك الآن» على باقة أ
   ui.openCheckout('basic');
   assert.notEqual(ui.els.checkoutModalOverlay.style.display, 'flex', 'كان يفتح نافذة دفع تُسقط Max');
   assert.deepEqual(ui.toasts, ['axLkSubsLowerPlan']);
+  // من داخل الإعدادات (نافذة showModal): التوست يُرسم تحتها فلا يُرى — السبب في سطر «لماذا» داخل قسم الباقات
+  const why = [];
+  ui = checkoutUi({ window: { __omranPlan: 'pro', __omranPlansGate: { showWhy: (s) => why.push(s) } } });
+  ui.els.settingsDialog = Object.assign(el('settingsDialog'), { open: true });
+  ui.openCheckout('basic');
+  assert.deepEqual([why, ui.toasts, ui.els.checkoutModalOverlay.style.display], [['axLkSubsLowerPlan'], [], undefined]);
   for (const p of ['max', 'pack100', 'maha_basic']) { ui = checkoutUi({ window: { __omranPlan: 'max' } }); ui.openCheckout(p); assert.equal(ui.els.checkoutModalOverlay.style.display, 'flex', p); }
   ui = checkoutUi({ window: { __omranPlan: 'basic' } }); ui.openCheckout('pro'); assert.equal(ui.els.checkoutModalOverlay.style.display, 'flex', 'الترقية');
   ui = checkoutUi({ window: { __omranPlan: 'max', __omranMediaStatus: { mix: { plan: 'media_max', left: 100 } } } });
