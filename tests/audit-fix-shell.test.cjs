@@ -503,6 +503,7 @@ test('cli-money-2: checkoutSuccessMsg بلا «وضع تجريبي/test mode» �
     assert.ok(val[lg].startsWith('✅'), lg);
   }
   assert.notEqual(val.ur, val.ar, 'الأرديّة ليست العربيّة');
-  /* النصّ نفسه يبقى مفتاح كلّ مسارات النجاح الستّة (البطاقة · PayPal · العودة من Stripe · جسر الآيفون · PayPal المعلّق) */
-  assert.equal((CHECKOUT.match(/t\('checkoutSuccessMsg'\)/g) || []).length, 6);
+  /* النصّ نفسه يبقى مفتاح كلّ مسارات النجاح الستّة (البطاقة · PayPal · العودة من Stripe · جسر الآيفون · PayPal المعلّق)
+     v-lock-gpay: +٢ — التقاط PayPal الضائع حين يؤكّده claim، وعمليّة Apple/Google Pay المعلّقة حين تُشحن عند العودة */
+  assert.equal((CHECKOUT.match(/t\('checkoutSuccessMsg'\)/g) || []).length, 8);
 });

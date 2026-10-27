@@ -7,7 +7,7 @@
 // بأحداث checkout.session.completed وinvoice.paid، وينسخ «Signing secret»
 // (يبدأ بـ whsec_) إلى متغير بيئة STRIPE_WEBHOOK_SECRET في Vercel.
 // v-pay-refund: وأحداث charge.refunded وcharge.dispute.created (سحب ما منحته الدفعة — pay-refund.js) وcustomer.subscription.deleted
-// (لا سحب: الفترة المدفوعة تكمل). وPayPal على ‎/api/webhook?src=paypal‎ بأحداث PAYMENT.CAPTURE.REFUNDED وPAYMENT.CAPTURE.REVERSED
+// (لا سحب: الفترة المدفوعة تكمل). v-lock-gpay: وpayment_intent.succeeded (شحن Apple Pay / Google Pay إن تعثّر تحقّق المتصفّح). وPayPal على ‎/api/webhook?src=paypal‎ بأحداث PAYMENT.CAPTURE.REFUNDED وPAYMENT.CAPTURE.REVERSED
 // وCUSTOMER.DISPUTE.CREATED، ومعرّف ذلك الويب هوك في PAYPAL_WEBHOOK_ID (بلا المعرّف = رفض).
 //
 // التحقق من التوقيع يدويًا بـ HMAC (بلا مكتبة stripe — المشروع كله fetch خام)،
@@ -139,6 +139,21 @@ module.exports = async (req, res) => {
         const g = await grantPlanToUser(md.username, md.plan, 'lastStripeInvoiceId', obj.id, { // v-pay-refund: سجلّ المنح بأرقام دفعته
           refs: [obj.payment_intent, obj.charge].concat(pays.map((x) => x.payment_intent), pays.map((x) => x.charge)), amount: obj.amount_paid, currency: obj.currency });
         console.log('[webhook] renewal ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
+      }
+    } else if (event.type === 'payment_intent.succeeded') {
+      /* v-lock-gpay (srv-money-1، موافقة المالك ٢٧ أكتوبر): Apple Pay / Google Pay كان يُشحن بطلب verify-payment-intent واحد من
+         المتصفّح — انقطاع الشبكة أو إغلاق التطبيق أو BUSY بعد ev.complete('success') = مبلغ مسحوب بلا نقاط ولا باقة. الآن الحدث
+         الموقَّع يشحن بالرقم نفسه والحقل نفسه (lastStripePaymentIntentId)، فالحجز الذرّيّ (v-pay-once) يمنع الازدواج مع التحقّق
+         من العميل، وحجز السحب قبل الشحن (v-pay-refund) يمنع الشحن بعد استرداد. الخطّة والاسم في metadata يضعهما
+         createPaymentIntent وحده — عمليّة صفحة Stripe وفواتير التجديد بلا metadata على الـPaymentIntent فلا تُشحن مرّتين. */
+      const md = obj.metadata || {};
+      if (obj.status === 'succeeded' && md.username && PLANS[md.plan]) {
+        const g = await grantPlanToUser(md.username, md.plan, 'lastStripePaymentIntentId', obj.id,
+          { refs: [obj.latest_charge], amount: obj.amount_received || obj.amount, currency: obj.currency }); // كما في verifyPaymentIntent
+        console.log('[webhook] wallet ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
+        /* v-lock-gpay (المراجعة المعاكسة): عطل قراءة الحساب لا يرمي — getUser يعيد null فيعود المنح {error, 404}، وكان 200 هنا
+           يوقف إعادة Stripe فيبقى المبلغ مسحوبًا بلا شحن. 2xx بعد أثرٍ تمّ أو سبق فقط؛ والحجز لم يُؤخذ فالإعادة تشحن مرّة. */
+        if (g.error) { res.status(500).json({ error: 'grant failed, retry' }); return; }
       }
     } else if (event.type === 'charge.refunded' || event.type === 'charge.dispute.created') {
       // v-pay-refund: الاسترداد (بنسبة المسترد) والاعتراض البنكيّ (مع تنبيه المالك) يسحبان ما منحته الدفعة، مرّة واحدة لكلّ حدث.
