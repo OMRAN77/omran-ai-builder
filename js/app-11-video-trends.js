@@ -65,7 +65,10 @@
   function renderGrid(){
     if(!grid) return;
     grid.innerHTML = '';
-    D.trends.forEach(function(t){ grid.appendChild(card(t)); });
+    D.trends.forEach(function(t){
+      if(typeof omranHwHidden === 'function' && omranHwHidden('trend', t.key)) return; // v-hw-resubmit-2: ترندات بأسماء علامات تُخفى في هواوي
+      grid.appendChild(card(t));
+    });
     $('vtTitle').textContent = ui('title');
     $('vtSub').textContent = ui('sub');
   }
@@ -506,7 +509,7 @@
     grid = $('vtGrid'); panel = $('vtPanel');
     renderGrid();
     try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
-    window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key; })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } } };
+    window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key && !(typeof omranHwHidden === 'function' && omranHwHidden('trend', x.key)); })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } } };
   }
   // v-perf-idle-timers: boot() كانت تُستدعى عند DOMContentLoaded (مرّتين: فورًا و٩٠٠مل ثانية لاحقًا) فتبني
   // شبكة ٤٥ بطاقة (٤٥ صورة معاينة) داخل نافذة صانع الفيديو حتّى لو لم يفتحها المستخدم إطلاقًا في تلك

@@ -4928,7 +4928,7 @@ function __friendlyErr(e){
         window.__stPickTheme = window.__stPickTheme || function(){
           return new Promise(function(rs){
             /* v735 (طلب عمران): أقسام بالعمر والجنس — صغار / شباب +12 / بنات. v-stamps-i18n: k يبقى عربيًّا (ما يُرسل للخادم hint)، والمعروض n بالـ١٤ لغة */
-            var __groups=[
+            var __groups=(typeof omranHwStampGroups==='function'?omranHwStampGroups:function(g){return g;})([
               { t:t('stampGrpKids'), th:[
                 {k:'فضاء',e:'🚀',n:t('stampThSpace')},{k:'ديناصور',e:'🦖',n:t('stampThDino')},{k:'أميرة',e:'👑',n:t('stampThPrincess')},
                 {k:'رياضة',e:'⚽',n:t('stampThSports')},{k:'بحر',e:'🌊',n:t('stampThSea')},{k:'سيارة سباق',e:'🏎️',n:t('stampThRaceCar')},
@@ -4951,7 +4951,7 @@ function __friendlyErr(e){
               { t:t('stampGrpGirls'), th:[
                 {k:'بناتي راقي',e:'🎀',n:t('stampThGirly')},{k:'فاشن',e:'👜',n:t('stampThFashion')}
               ]}
-            ];
+            ]);
             var ov=document.createElement('div');
             ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.76);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:12px;';
             var cards='';
@@ -5012,7 +5012,7 @@ function __friendlyErr(e){
         var __stFinalHint = __stHint === 'فاجئني' ? '' : __stHint;
         __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
         try{
-          var __stBodyOv = { name:__stName, names:__stNames, school:__stSchool, subject:__stSubject, hint:__stFinalHint, imageBase64:__stSrcB64, mimeType:__stSrcMime, images:__stImgs, count:window.__stOpts.count, shape:window.__stOpts.shape, style:window.__stOpts.style, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+          var __stBodyOv = { name:__stName, names:__stNames, school:__stSchool, subject:__stSubject, hint:__stFinalHint, imageBase64:__stSrcB64, mimeType:__stSrcMime, images:__stImgs, count:window.__stOpts.count, shape:window.__stOpts.shape, style:window.__stOpts.style, token:authGet('aiapp_auth_token'), guestId:window.getGuestId(), noBrands:(typeof omranHwPackage==='function' && omranHwPackage()) };
           var __stResOv = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:__runCtl.signal,body:JSON.stringify(__stBodyOv)});
           var __stDataOv = await __stResOv.json().catch(()=>({}));
           if(!__stResOv.ok || !__stDataOv.imageBase64){
@@ -5035,7 +5035,7 @@ function __friendlyErr(e){
       }
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
-        const __stBody = { name:__stName, names:__stNames, school:__stSchool, subject:__stSubject, hint:text, imageBase64:__stSrcB64, mimeType:__stSrcMime, images:__stImgs, count:window.__stOpts.count, shape:window.__stOpts.shape, style:window.__stOpts.style, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __stBody = { name:__stName, names:__stNames, school:__stSchool, subject:__stSubject, hint:text, imageBase64:__stSrcB64, mimeType:__stSrcMime, images:__stImgs, count:window.__stOpts.count, shape:window.__stOpts.shape, style:window.__stOpts.style, token:authGet('aiapp_auth_token'), guestId:window.getGuestId(), noBrands:(typeof omranHwPackage==='function' && omranHwPackage()) };
         const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:__runCtl.signal,body:JSON.stringify(__stBody)});
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){

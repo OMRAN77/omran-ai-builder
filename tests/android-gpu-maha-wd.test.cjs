@@ -24,7 +24,7 @@ test('٢. على أندرويد: النجوم بلا فلتر، الأيقونة
   assert.match(css, /@keyframes tickerAiPulseLite\{0%,100%\{opacity:\.72;\} 50%\{opacity:1;\}\}/);
   assert.doesNotMatch(css.slice(css.indexOf('@keyframes tickerAiPulseLite')), /filter:drop-shadow/);
   assert.match(css, /html\.omAndroid #sectionsToolsOverlay\{backdrop-filter:none; -webkit-backdrop-filter:none;\}/);
-  assert.match(html, /css\/redesign\.css\?v=696/);
+  assert.match(html, /css\/redesign\.css\?v=697/);
 });
 
 test('٣. رقيب الإقلاع لا يعيد التحميل ومكالمة مها جارية أو تبدأ أو شاشتها ظاهرة', () => {
@@ -64,21 +64,11 @@ test('٥. v-bdf-off: لا backdrop-filter على أندرويد إطلاقًا �
   // القاعدة تحت html.omAndroid وحدها
   const rule = css.match(/html\.omAndroid \*\{backdrop-filter[^}]+\}/)[0];
   assert.ok(rule.startsWith('html.omAndroid '), 'أندرويد وحده — لا قاعدة عامّة تصيب الجميع');
-  assert.match(html, /css\/redesign\.css\?v=696/);
+  assert.match(html, /css\/redesign\.css\?v=697/);
 });
 
-test('٦. v-intro-gpu: المقدّمة على أندرويد بلا طبقة تغبيش ملء الشاشة وبلا عزل مزج', () => {
-  // قبلها: oiBg يمرّر blur(30px) على 892×970 (أكبر من الشاشة، مكبّرة 1.12)،
-  // وoiSheen يفرض عزل طبقة بـmix-blend-mode:screen — في أثقل لحظة (الإقلاع).
-  assert.match(html, /html\.omAndroid #omranIntro \.oiBg\{display:none\}/);
-  assert.match(html, /html\.omAndroid #omranIntro \.oiSheen\{mix-blend-mode:normal;opacity:\.5\}/);
-  // الأصل باقٍ للآيفون والكمبيوتر
-  assert.match(html, /#omranIntro \.oiBg\{[^}]*filter:blur\(30px\) brightness\(\.5\)/);
-  assert.match(html, /#omranIntro \.oiSheen\{[^}]*mix-blend-mode:screen/);
-  // الحاوية نفسها معتمة فالإطار يبقى داكنًا نظيفًا بلا الخلفيّة المغبّشة
-  assert.match(html, /#omranIntro\{[^}]*background:#07070B/);
-  // الأمر يأتي بعد قاعدة تقليل الحركة فلا يُلغيها
-  assert.ok(html.indexOf('@media (prefers-reduced-motion:reduce){#omranIntro') < html.indexOf('html.omAndroid #omranIntro .oiBg'));
+test('٦. v-intro-gpu لم يعد له موضوع: شاشة الافتتاح حُذفت (v-no-intro) فلا طبقة تغبيش ولا مزج عند الإقلاع على أيّ جهاز', () => {
+  assert.doesNotMatch(html, /#omranIntro|\.oiBg|\.oiSheen/);
 });
 
 test('٧. v-stars-lite: نجوم أندرويد نصفها (١٢ بدل ٢٥) والآيفون والكمبيوتر كما كانا', () => {

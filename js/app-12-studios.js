@@ -248,8 +248,10 @@ async function __safeJson(res){
     try{ if(typeof window.t === 'function'){ var __v = window.t(__k); if(__v && __v !== __k) __g = __v; } }catch(e){ /* guard-ok */ }
       ideaTitle.textContent = '💡 ' + (__g || bT('أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد', 'Ideas without a photo — tap a place in the image or describe what you want'));
     }
-    if(ideaText) ideaText.placeholder = bT('مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
-    if(ideaGo){ ideaGo.textContent = '✨ ' + bT('أعطني أفكارًا', 'Give me ideas'); ideaGo.style.display = ''; } /* v-poster-notext: الزرّ ظاهر — لا مخ في البوستر */
+    /* v-hw-resubmit-2: مفتاح أوّلًا (decorIdeaPh/decorIdeaGo بالـ١٤ لغة)، والثنائيّ احتياطًا */
+    var __tk = function(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return bT(ar, en); };
+    if(ideaText) ideaText.placeholder = __tk('decorIdeaPh', 'مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
+    if(ideaGo){ ideaGo.textContent = '✨ ' + __tk('decorIdeaGo', 'أعطني أفكارًا', 'Give me ideas'); ideaGo.style.display = ''; } /* v-poster-notext: الزرّ ظاهر — لا مخ في البوستر */
   }
   buildIdeaChips();
   /* v-poster-notext: الأسماء فوق البوستر HTML فتُعاد عند تبديل اللغة (applyLanguage يكتب html.lang) */
@@ -975,7 +977,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function pstyleOpts(){
     const favs = getFavs();
     const opts = Array.from(styleEl.querySelectorAll('option'))
-      .filter((o) => !(o.parentElement && o.parentElement.id === 'portraitFavGroup'));
+      .filter((o) => !(o.parentElement && o.parentElement.id === 'portraitFavGroup'))
+      .filter((o) => !(typeof omranHwHidden === 'function' && omranHwHidden('portrait', o.value))); // v-hw-resubmit-2
     opts.sort((a, b) => (favs.includes(b.value) ? 1 : 0) - (favs.includes(a.value) ? 1 : 0));
     return opts;
   }
@@ -1097,7 +1100,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const ci = document.createElement('img'); ci.src = 'assets/portrait/before.webp?v=2'; ci.alt = ''; ci.onerror = function(){ ci.remove(); };
       const cl = document.createElement('span'); cl.textContent = gt('psheetBefore', 'قبل', 'Before');
       c.appendChild(ci); c.appendChild(cl); hero.appendChild(c);
-      const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli'];
+      /* v-hw-resubmit-2: في نسخة هواوي تسقط أنماط العلامات من الحلقة (لا ثقب — الزوايا تُحسب من العدد الباقي) */
+      const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli']
+        .filter((v) => !(typeof omranHwHidden === 'function' && omranHwHidden('portrait', v)));
       RING.forEach((v, i) => {
         const a = (-90 + i * (360 / RING.length)) * Math.PI / 180, r = 40.5;
         const tdiv = document.createElement('div'); tdiv.className = 'pstyleHeroT'; tdiv.setAttribute('data-pstyle-ring', v);

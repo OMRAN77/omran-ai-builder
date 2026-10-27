@@ -210,7 +210,7 @@ window.__omranWhenSeen = (function () {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" crossorigin="anonymous" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" crossorigin="anonymous"></noscript>
 <link rel="stylesheet" href="css/tokens.css?v=739">
-<link rel="stylesheet" href="css/redesign.css?v=696">
+<link rel="stylesheet" href="css/redesign.css?v=697">
 <link rel="stylesheet" href="css/modules.css?v=692">
 <link rel="stylesheet" href="css/خلفيات.css?v=5">
 <link rel="stylesheet" href="css/إطارات.css?v=9"><!-- v-frame-design: التصميم الجديد للكمبيوتر -->
@@ -619,33 +619,6 @@ body #btnMode{ display: none !important; }
   }
 }
 </style>
-<style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
-#omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
-#omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
-#omranIntro .oiBg{position:absolute;inset:-48px;background:#07070B url(/assets/intro/splash.jpg?v=3) center/cover no-repeat;filter:blur(30px) brightness(.5);transform:scale(1.12)}
-#omranIntro .oiImg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:oiBreathe 4.5s ease-in-out infinite alternate}
-#omranIntro .oiSheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 38%,rgba(255,238,180,.26) 50%,transparent 62%);background-size:260% 100%;mix-blend-mode:screen;animation:oiSheen 2.6s ease-in-out .4s infinite}
-#omranIntro .oiSkip{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;font:500 12px/1 system-ui,sans-serif;color:rgba(212,175,55,.75);letter-spacing:.4px;opacity:0;animation:oiUp 1s ease 1.4s forwards}
-@keyframes oiSheen{0%{background-position:160% 0}100%{background-position:-70% 0}}
-@keyframes oiBreathe{from{transform:scale(1)}to{transform:scale(1.025)}}
-@keyframes oiUp{to{opacity:1}}
-@media (prefers-reduced-motion:reduce){#omranIntro .oiImg,#omranIntro .oiSheen{animation:none}}
-/* v-intro-skip-pill (تدقيق ١٨–١٩ أكتوبر): شاشة أعرض من نسبة الصورة (1174×1218) تملؤها الصورة طولًا فينزل شريطها المرسوم
-   إلى الحافّة، و«اضغط للمتابعة» الشفّافة تقع فوق «المرشد». هنا كبسولة معتمة متوسّطة تغطّي التسمية المرسومة نظيفًا؛ الجوّال
-   العموديّ (الصورة بعرضه وأشرطة سوداء فوقها وتحتها) بلا تغيير. المقاس بـvh لأنّ الصورة هنا بطول الشاشة (مقيس من بكسلاتها):
-   التسمية بين ٩٦٫٦٪ و٩٧٫٩٪ من الارتفاع والأيقونة تنتهي عند ٩٥٫٤٪، والتنفّس (scale 1.025) ينزلهما حتّى ١٫٢٪ — الكبسولة من ٩٦٫٢٪
-   إلى ٩٩٫٥٪ تغطّي التسمية في كلّ أطوار التنفّس، ولا تلمس حلقة الأيقونة إلّا ببكسلات في ذروته. */
-@media (min-aspect-ratio:1174/1218){#omranIntro .oiSkip{left:50%;right:auto;bottom:calc(.5vh + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:max-content;padding:calc(1.65vh - 6px) 16px;border-radius:999px;background:rgba(7,7,11,.96)}}
-/* v-intro-gpu (المالك ٢٤ سبتمبر «وميض»): المقدّمة تظهر مع كلّ تشغيل، وهي أوّل ما يراه — وفيها
-   أغلى تأثيرين على معالج رسوم أندرويد في أثقل لحظة (الإقلاع): oiBg يمرّر blur(30px) على طبقة
-   892×970 (أكبر من الشاشة، مكبّرة 1.12)، وoiSheen يفرض عزل طبقة بـmix-blend-mode:screen.
-   قياس بمقاس جهاز المالك: ثماني طبقات بحجم الشاشة الكاملة أثناء المقدّمة. على أندرويد وحده:
-   الخلفيّة المغبّشة تُحذف (الحاوية أصلًا ‎#07070B‎ فيبقى الإطار داكنًا نظيفًا) والوميض يبقى
-   متحرّكًا بلا مزج. الآيفون والكمبيوتر بلا تغيير. */
-html.omAndroid #omranIntro .oiBg{display:none}
-html.omAndroid #omranIntro .oiSheen{mix-blend-mode:normal;opacity:.5}
-html.oiOn body{overflow:hidden}
-</style>
 <style>/* v-banner-pill (تدقيق ١٨–١٩ أكتوبر): على الحاسوب كان شريطا الانقطاع والتجمّد بعرض الشاشة كلّها فوق أيقونات الرأس
    (✦ ولوحة المعاينة). هنا كبسولة متوسّطة أعلى عمود المحادثة الفارغ؛ !important لأنّ موضعهما مضمّن في الوسم. الجوّال كما هو. */
 html:not(.mobile-ui) #offlineBanner, html:not(.mobile-ui) #freezeBanner{top:8px !important; left:50% !important; right:auto !important; transform:translateX(-50%) !important; width:max-content !important; max-width:40vw; border-radius:12px; box-sizing:border-box;}
@@ -661,20 +634,8 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 </head>
 <body>
 
-<div id="omranIntro" role="button" tabindex="0" aria-label="اضغط للمتابعة" data-i18n="[aria-label]introSkip">
-  <div class="oiBg"></div>
-  <img class="oiImg" src="/assets/intro/splash.jpg?v=3" alt="" decoding="async" fetchpriority="high">
-  <div class="oiSheen"></div>
-  <div class="oiSkip" data-i18n="introSkip">اضغط للمتابعة</div>
-</div>
-<script>/* v-intro-splash: القرار قبل أول رسمة — تظهر مرة لكل فتح، ويمكن إيقافها من الإعدادات */
-(function(){try{
-  var d=document.getElementById('omranIntro'); if(!d) return;
-  var off=false; try{ off = localStorage.getItem('aiapp_intro')==='0' || sessionStorage.getItem('omran_intro_seen')==='1'; }catch(e){}
-  if(off){ d.parentNode.removeChild(d); return; }
-  try{ sessionStorage.setItem('omran_intro_seen','1'); }catch(e){}
-  document.documentElement.classList.add('oiOn');
-}catch(e){ window.__swallow && window.__swallow(e,'intro:boot'); }})();</script>
+<!-- v-no-intro (المالك ٢٦ أكتوبر: «شاشة الافتتاح احذفها نهائي»): شاشة الافتتاح حُذفت من كلّ النسخ —
+     كانت صورة ثابتة لتصميم قديم (تحيّة باسم المالك وسعر الذهب) أوّل ما يراه مراجع هواوي. الصورة assets/intro/splash.jpg باقية (قرار مالك). -->
 
 <div id="vantaBg"></div>
 <div id="offlineBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10000; background:#b45309; color:#fff; font-size: var(--fs-3); text-align:center; padding:7px 10px;">
@@ -1026,12 +987,12 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script defer src="/js/partials-settings.js?v=706"></script>
+<script defer src="/js/partials-settings.js?v=707"></script>
 
 <script src="/js/selfdiag.js?v=hw-twa-10"></script>
 <script defer src="/templates-data.js?v=590"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=b620f13d"></script>
+    <script defer src="/js/app.bundle.js?v=a4553554"></script>
     <script defer src="/js/frame-touch.js?v=4"></script><!-- v-frame-gold: لمسة الضغط للكمبيوتر والجوال (v-touch-mobile: وفراغ المحادثة في الجوال) -->
     <script defer src="/js/modes.js?v=m211026"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
@@ -1054,7 +1015,7 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
   </div>
 </div>
 <div id="eduChatHint"><span id="eduChatHintTxt" style="flex:1;"></span><button class="eduPrimary" id="eduChatHintBtn" style="margin-top:0;padding:7px 12px;font-size:12px;border:none;border-radius:var(--r-2);cursor:pointer;color:var(--accent-on-surface);background:linear-gradient(90deg,var(--accent-surface),var(--accent-surface));">التعليم</button></div>
-<script defer src="/js/edu.js?v=672"></script>
+<script defer src="/js/edu.js?v=673"></script>
 <script defer src="/js/edu-plus.js?v=5"></script>
 
 <!-- 👑 الرد الاحترافي (Premium Reply) — client-side wiring only. Server enforces real deduction. -->

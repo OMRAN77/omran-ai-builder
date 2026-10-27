@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// store/huawei/shots.mjs — لقطات متجر هواوي الثماني من البناء الحاليّ (v-hw-resubmit-1313).
+// store/huawei/shots.mjs — لقطات متجر هواوي الثماني من البناء الحاليّ (v-hw-resubmit-1313، اللغات الثلاث v-hw-resubmit-2).
 // كلّ لقطة = تشغيلة scripts/ui-shot.mjs واحدة: رابط الحزمة /?store=huawei، حساب غير المالك (المالك يرى واجهة زائدة)،
-// هاتف ٣٦٠×٦٤٠ ×٣ = ١٠٨٠×١٩٢٠ (٩:١٦)، عربيّ. لا شيء يُرسم فوق التطبيق: ما في الصورة هو ما يراه المراجع.
-// الاستعمال: node store/huawei/shots.mjs [--pw /path/to/node_modules/playwright-core] [--only 03-fashion,08-qibla] [--out dir]
+// هاتف ٣٦٠×٦٤٠ ×٣ = ١٠٨٠×١٩٢٠ (٩:١٦). لا شيء يُرسم فوق التطبيق: ما في الصورة هو ما يراه المراجع.
+// v-hw-resubmit-2: التطبيق يتبع لغة الهاتف ومراجع هواوي على هاتف صينيّ أو إنجليزيّ، فاللقطات بثلاث لغات: العربيّة في المجلّد نفسه،
+// والإنجليزيّة في en/ والصينيّة في zh/ — كلّ مجموعة تُرفع تحت لغتها في AGC.
+// الاستعمال: node store/huawei/shots.mjs [--pw /path/to/node_modules/playwright-core] [--only 03-fashion,08-qibla] [--langs ar,en,zh] [--out dir]
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +14,8 @@ const args = process.argv.slice(2);
 const opt = (k) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : ''; };
 const OUT = opt('out') || path.join(ROOT, 'store/huawei/screenshots');
 const ONLY = (opt('only') || '').split(',').filter(Boolean);
+const LANGS = (opt('langs') || 'ar,en,zh').split(',').filter((l) => /^(ar|en|zh)$/.test(l));
+const dirFor = (lang) => (lang === 'ar' ? OUT : path.join(OUT, lang));
 
 // انتظار الخطوط وفكّ الصور الظاهرة قبل اللقطة (بسقف ٦ ث — صورة كسولة لا تعلّق التشغيلة)
 const READY = 'await document.fonts.ready; const im=[...document.images].filter(i=>i.getBoundingClientRect().height>0); im.forEach(i=>{i.loading="eager"}); await Promise.race([Promise.all(im.map(i=>i.decode().catch(()=>{}))), new Promise(r=>setTimeout(r,6000))]);';
@@ -34,14 +38,16 @@ const SHOTS = [
 ];
 
 let failed = 0;
-for (const s of SHOTS) {
-  if (ONLY.length && !ONLY.includes(s.name)) continue;
-  const a = [path.join(ROOT, 'scripts/ui-shot.mjs'), '--out', OUT, '--user', 'reviewer', '--mobile', '--viewport', '360x640', '--scale', '3',
-    '--path', s.path || '/?store=huawei', '--wait', '3500', '--name', s.name, '--settle', '600', '--eval', '(async()=>{ ' + s.js + READY + ' })()'];
-  if (opt('pw')) a.push('--pw', opt('pw'));
-  const r = spawnSync(process.execPath, a, { cwd: ROOT, encoding: 'utf8', timeout: 150000 });
-  const ok = r.status === 0;
-  if (!ok) failed++;
-  console.log((ok ? '✓ ' : '✗ ') + s.name + (ok ? '' : '\n' + (r.stdout || '') + (r.stderr || '')));
+for (const lang of LANGS) {
+  for (const s of SHOTS) {
+    if (ONLY.length && !ONLY.includes(s.name)) continue;
+    const a = [path.join(ROOT, 'scripts/ui-shot.mjs'), '--out', dirFor(lang), '--user', 'reviewer', '--mobile', '--viewport', '360x640', '--scale', '3', '--lang', lang,
+      '--path', s.path || '/?store=huawei', '--wait', '3500', '--name', s.name, '--settle', '600', '--eval', '(async()=>{ ' + s.js + READY + ' })()'];
+    if (opt('pw')) a.push('--pw', opt('pw'));
+    const r = spawnSync(process.execPath, a, { cwd: ROOT, encoding: 'utf8', timeout: 150000 });
+    const ok = r.status === 0;
+    if (!ok) failed++;
+    console.log((ok ? '✓ ' : '✗ ') + lang + '/' + s.name + (ok ? '' : '\n' + (r.stdout || '') + (r.stderr || '')));
+  }
 }
 process.exit(failed ? 1 : 0);

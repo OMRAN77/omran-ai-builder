@@ -182,6 +182,7 @@
           if (!vp) return 'وصف الفيديو فارغ — لم يبدأ التوليد.';
           if (typeof omranVideoWriteAsk === 'function' && omranVideoWriteAsk(UTXT, false)) return 'لم يبدأ أيّ توليد: المستخدم يطلب الكتابة على فيديو قائم، والتطبيق لا يكتب على الفيديو بعد. قل له ذلك بجملة واحدة ولا تدّعِ التنفيذ، واعرض كتابته على لقطة من الفيديو أو صورة يرسلها.'; // v-video-write-ask
           /* v-video-trends: الترند يحدد المحرك والنسبة ويُبنى أمره على الخادم */
+          if (va.trend && typeof omranHwHidden === 'function' && omranHwHidden('trend', String(va.trend))) va.trend = ''; // v-hw-resubmit-2
           var trendMeta = null;
           try { trendMeta = (window.__VIDEO_TRENDS && va.trend) ? (window.__VIDEO_TRENDS.trends || []).filter(function (t) { return t.key === va.trend; })[0] : null; } catch (e) { trendMeta = null; }
           var engine = trendMeta ? trendMeta.engine : (String(va.provider || 'runway').toLowerCase() === 'veo' ? 'veo' : 'runway');
