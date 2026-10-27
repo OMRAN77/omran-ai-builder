@@ -239,7 +239,9 @@ const EDU_LANG_NAMES = {
   tr: 'Turkish', ne: 'Nepali', ml: 'Malayalam',
 };
 function eduLangName(code) {
-  const c = String(code || '').trim();
+  /* v-lock-quotaa (srv-edu-bots-3، المراجعة): الرمز غير المعروف كان يُعاد خامًّا بلا حدّ إلى موجّه النظام — nativeLang من
+     ٧٠٠ ألف حرف أعاد نداء التصحيح إلى ~١٩٠ ألف توكن. الرموز ٢–٣ أحرف؛ ١٦ حرفًا تكفي أيّ رمز لغة (ar-AE، zh-Hans-CN). */
+  const c = String(code || '').trim().slice(0, 16);
   return EDU_LANG_NAMES[c.toLowerCase()] || c;
 }
 function languageRules(lang, nativeLang, examLang) {
@@ -473,6 +475,12 @@ module.exports = withErrorCapture('edu', async (req, res) => {
   // v-lock-quotaa (srv-edu-bots-7): حجوز هذا الطلب من الحصّة اليوميّة الفرديّة — تُردّ مرّة واحدة إن فشل قبل أن يجيب المزوّد.
   const __held = [];
   const __giveBack = () => giveBackDaily(__held);
+  /* v-lock-quotaa (srv-edu-bots-7، المراجعة): جواب المزوّد (ok) مدفوع — الحجز يثبت لحظة وصوله، قبل أيّ معالجة بعده، فلا يردّه
+     عطل لاحق ولا الـcatch الخارجيّ (كان flashcards نصًّا أو content «null» يرميان TypeError فيُردّ المدفوع: حساب مجّانيّ
+     نال ١٢ نداءً مدفوعًا والعدّاد صفر). والمهلة لا تُردّ كذلك: المزوّد استلم الطلب وغالبًا ولّد وفوتر، ودرس فيديو ٤٥ دقيقة
+     يتجاوزها دائمًا فيصير حلقة مدفوعة لا تُعدّ. يُردّ فقط رفض المزوّد بحالة خطأ (لم يُجب) وعطل الشبكة أو البناء قبل أن يصله. */
+  const __served = () => { __held.length = 0; };
+  const __failBack = async (e) => { if ((Number(e && e.status) || 0) || !isEduTimeout(e)) await __giveBack(); };
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
@@ -556,10 +564,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       try {
         result = await callClaude(apiKey, blocks, lang, nativeLang, examLang, stage, __eduModel);
       } catch (e) {
-        await __giveBack(); // v-lock-quotaa (srv-edu-bots-7): المزوّد لم يُجب (زحام/عطل/مهلة) — «حاول مرة أخرى» لا تكلّف وحدة
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7): المزوّد رفض قبل أن يجيب (زحام/عطل) — «حاول مرة أخرى» لا تكلّف وحدة؛ المهلة تُعدّ
         eduUpstreamFail(res, e, 'تعذر تحليل المحاضرة — حاول مرة أخرى.', 'process');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع) — لا ردّ بعد هذا السطر
       if (!result || !result.summary || !Array.isArray(result.flashcards) || !Array.isArray(result.quiz)) {
         res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.', code: 'failed' });
         return;
@@ -622,12 +631,14 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         res.status(upstream.status === 429 ? 429 : 502).json({ error: kind === 'unavailable' ? EDU_DOWN : LS_FAIL, code: kind });
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): 200 = جواب مدفوع — قراءة الجسم وتحليله بعده لا يردّان الوحدة
       const oaiData = await upstream.json();
       const content = oaiData && oaiData.choices && oaiData.choices[0] && oaiData.choices[0].message && oaiData.choices[0].message.content;
       if (!content) { res.status(502).json({ error: LS_FAIL, code: 'failed' }); return; }
       let parsed;
       try { parsed = JSON.parse(content); } catch (e) { res.status(502).json({ error: LS_FAIL, code: 'failed' }); return; }
-      if (!parsed.slides || !Array.isArray(parsed.slides) || parsed.slides.length === 0) {
+      // v-lock-quotaa (srv-edu-bots-7): content «null» كان يرمي TypeError عند parsed.slides (500) — الآن «تعذّر» برمزه
+      if (!parsed || !parsed.slides || !Array.isArray(parsed.slides) || parsed.slides.length === 0) {
         res.status(502).json({ error: LS_FAIL, code: 'failed' });
         return;
       }
@@ -670,10 +681,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       try {
         result = await callClaude(apiKey, blocks, body.lang, body.nativeLang, body.examLang, (stageTxt && /جامع|كلي|university|college/i.test(stageTxt)) ? 'university' : ((stageTxt + ' ' + grade).trim() || 'school'), __eduModel);
       } catch (e) {
-        await __giveBack(); // v-lock-quotaa (srv-edu-bots-7)
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذر توليد الدرس — حاول مرة أخرى.', 'explain');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (!result || !result.summary || !Array.isArray(result.flashcards) || !Array.isArray(result.quiz)) {
         res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.', code: 'failed' });
         return;
@@ -704,16 +716,18 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         qResult = await anthropicJSON(apiKey, buildQuestionsSys(qTail),
           [{ type: 'text', text: 'محتوى المحاضرة (ملخص الدرس):\n\n' + qSummary }], 9000, __eduModel);
       } catch (e) {
-        await __giveBack(); // v-lock-quotaa (srv-edu-bots-7)
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذر توليد الأسئلة — أعد المحاولة.', 'questions');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (!qResult || !Array.isArray(qResult.quiz) || !qResult.quiz.length) {
         res.status(502).json({ error: 'تعذر توليد الأسئلة — أعد المحاولة.', code: 'failed' });
         return;
       }
       qResult.quiz = qResult.quiz.filter((q) => q && q.q && Array.isArray(q.options) && q.options.length === 4 && q.correct >= 0 && q.correct <= 3);
-      qResult.flashcards = (qResult.flashcards || []).filter((c) => c && c.q && c.a);
+      // v-lock-quotaa (srv-edu-bots-7): flashcards نصًّا («none») كان يرمي TypeError — 500 للطالب والأسئلة المدفوعة تضيع
+      qResult.flashcards = (Array.isArray(qResult.flashcards) ? qResult.flashcards : []).filter((c) => c && c.q && c.a);
       res.status(200).json({ ok: true, flashcards: qResult.flashcards, quiz: qResult.quiz, written: Array.isArray(qResult.written) ? qResult.written : [] });
       return;
     }
@@ -781,6 +795,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         eduUpstreamFail(res, Object.assign(new Error(msg), { status: r2.status }), 'تعذر بناء التجربة — حاول مرة أخرى.', 'lab');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع) — جولة الإتمام والتحليل بعده لا يردّان
       let raw = (r2.data && r2.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
       // جولة إتمام واحدة: الرد انقطع عند السقف → نكمله من حيث توقف حرفيًا.
       if (r2.data && r2.data.stop_reason === 'max_tokens') {
@@ -831,10 +846,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       try {
         out = await callClaudeCv(apiKey, clean, body.lang, __eduModel);
       } catch (e) {
-        await __giveBack(); // v-lock-quotaa (srv-edu-bots-7)
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذر توليد السيرة الآن — حاول مرة أخرى.', 'cv');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (!out || typeof out.cvHtml !== 'string' || out.cvHtml.indexOf('<') === -1) {
         res.status(502).json({ error: 'تعذر توليد السيرة الآن — حاول مرة أخرى.', code: 'failed' });
         return;
@@ -886,10 +902,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       try {
         result = await callClaudeExpense(apiKey, blocks, lang, __eduModel);
       } catch (e) {
-        await __giveBack(); // v-lock-quotaa (srv-edu-bots-7)
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذر تحليل الكشف — حاول مرة أخرى.', 'expense');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (result && result.error) { res.status(422).json({ error: result.error, code: 'reason' }); return; }
       if (!result || typeof result.total === 'undefined' || !Array.isArray(result.categories) || !result.categories.length) {
         res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — تأكد أن الملف كشف حساب واضح وحاول مرة أخرى.', code: 'failed' });
@@ -944,10 +961,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       try {
         result = await callClaudeDoc(apiKey, blocks, lang, __eduModel);
       } catch (e) {
-        await __giveBack(); // v-lock-quotaa (srv-edu-bots-7)
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذر تحليل المستند — حاول مرة أخرى.', 'docqa');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (!result || !result.summary) {
         res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.', code: 'failed' });
         return;
@@ -1002,6 +1020,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         eduUpstreamFail(res, Object.assign(new Error(msg), { status: r.status }), 'تعذّر الإجابة — حاول مرة أخرى.', 'docask');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       const answer = (r.data && r.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
       if (!answer) { res.status(502).json({ error: 'تعذّر توليد إجابة — أعد المحاولة.', code: 'failed' }); return; }
       res.status(200).json({ ok: true, answer });
@@ -1040,10 +1059,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       try {
         result = await callClaudeGrade(apiKey, { question, rubric, answer, dispute }, lang, nativeLang, __eduModel);
       } catch (e) {
-        await __giveBack(); // v-lock-quotaa (srv-edu-bots-7)
+        await __failBack(e); // v-lock-quotaa (srv-edu-bots-7)
         eduUpstreamFail(res, e, 'تعذّر التصحيح — حاول مرة أخرى.', 'grade');
         return;
       }
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       if (!result || typeof result.score !== 'number') {
         res.status(502).json({ error: 'تعذّر قراءة نتيجة التصحيح. حاول مرة أخرى.', code: 'failed' });
         return;
@@ -1097,7 +1117,8 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         + (history ? '\n\nآخر المحادثة:\n' + history : '') + '\n\nسؤال الطالب الآن:\n' + question }];
       let result = null;
       try { result = await anthropicJSON(apiKey, sys, blocks, 1800, __eduModel); }
-      catch (e) { await __giveBack(); eduUpstreamFail(res, e, 'تعذّر الردّ الآن — حاول مرة أخرى.', 'tutor'); return; } // v-lock-quotaa (srv-edu-bots-7)
+      catch (e) { await __failBack(e); eduUpstreamFail(res, e, 'تعذّر الردّ الآن — حاول مرة أخرى.', 'tutor'); return; } // v-lock-quotaa (srv-edu-bots-7)
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       const reply = String((result && result.reply) || '').trim();
       if (!reply) { res.status(502).json({ error: 'وصل ردّ فارغ — حاول مرة أخرى.', code: 'failed' }); return; }
       res.status(200).json({ ok: true, reply: reply.slice(0, 8000) });
@@ -1146,7 +1167,8 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (await __guestTotalOver()) { res.status(402).json({ ...eduCap(username), error: 'وصلت للحد اليومي لحلّ المسائل (' + __eduMax('solve') + '). عد غدًا 🌙' }); return; }
       let result = null;
       try { result = await anthropicJSON(apiKey, sys, blocks, 8000, __eduModel); }
-      catch (e) { await __giveBack(); eduUpstreamFail(res, e, 'تعذّر الحلّ الآن — حاول مرة أخرى.', 'solve'); return; } // v-lock-quotaa (srv-edu-bots-7)
+      catch (e) { await __failBack(e); eduUpstreamFail(res, e, 'تعذّر الحلّ الآن — حاول مرة أخرى.', 'solve'); return; } // v-lock-quotaa (srv-edu-bots-7)
+      __served(); // v-lock-quotaa (srv-edu-bots-7): أجاب المزوّد (مدفوع)
       // سبب الرفض كتبه النموذج بلغة الطالب (languageRules) — يمرّ كما هو (code: reason)
       if (result && result.error) { res.status(422).json({ error: String(result.error).slice(0, 300), code: 'reason' }); return; }
       const steps = (result && Array.isArray(result.steps) ? result.steps : [])
@@ -1296,7 +1318,9 @@ module.exports = withErrorCapture('edu', async (req, res) => {
 
     res.status(400).json({ error: 'unknown action: ' + action });
   } catch (e) {
-    await __giveBack(); // v-lock-quotaa (srv-edu-bots-7): رمية بلا جواب (عطل شبكة/مهلة في نداء خارج try) — الحجز يعود
+    // v-lock-quotaa (srv-edu-bots-7): رمية قبل أن يجيب المزوّد (عطل شبكة في نداء خارج try) — الحجز يعود. ما رُمي بعد جوابه
+    // فارغ القائمة (__served)، والمهلة تُعدّ (المزوّد استلم الطلب وغالبًا فوتر).
+    await __failBack(e);
     const __m = (e && e.message ? e.message : String(e));
     // v-edu-timeouts: مهلة التوليد تُشرح بالعربي لا بخطأ إنجليزي خام.
     /* v-audit-edu: مهلة _fetch-timeout اسمها UpstreamTimeoutError ونصّها «timed out» (لا «timeout») فكانت تصير 500 خامًّا؛
