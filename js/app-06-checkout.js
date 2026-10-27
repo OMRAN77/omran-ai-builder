@@ -20,7 +20,8 @@ function sanitizeGeminiContents(list){
 // Stripe Payment Request Button API + PayPal) =====
 let checkoutCurrentPlan = null;
 let paypalSdkLoaded = false;
-let paypalLoadState = ''; // v-lock-ckui (cli-money-11): '' مفعّل أو غير مفعّل · 'fail' تعثّر تحميله · 'retry' إعادة جارية
+let paypalLoadState = ''; // v-lock-ckui (cli-money-11): '' مفعّل أو غير مفعّل · 'loading' تحميل جارٍ · 'fail' تعثّر تحميله
+let paypalLoadSeq = 0; // v-lock-ckui (cli-money-11): رقم آخر تحميل — نتيجة تحميل أقدم تُرمى فلا تُرسم أزرار PayPal مرّتين
 let stripeJsLoaded = false;
 let stripeInstance = null;
 let currentPaymentRequest = null;
@@ -509,17 +510,24 @@ async function loadPaypalButtons(){
   const container = document.getElementById('paypalButtonContainer');
   const fallbackBtn = document.getElementById('paypalFallbackBtn');
   if (!container) return;
+  /* v-lock-ckui (cli-money-11): تحميلان متداخلان (فتح الدفع ثانيةً أثناء إعادة المحاولة، أو نقرة على احتياطيّ قديم أثناء الفتح)
+     كانا يرسمان أزرار PayPal مرّتين ويُظهران الاحتياطيّ ورسالة التعثّر فوقها. كلّ تحميل يأخذ رقمًا، وبعد كلّ انتظار يتوقّف إن جاء
+     بعده أحدث؛ والاحتياطيّ يُخفى لحظة البدء (الحالة 'loading') فلا يُنقر احتياطيّ قديم أثناءه. */
+  const seq = ++paypalLoadSeq;
+  paypalLoadState = 'loading';
+  if (fallbackBtn) fallbackBtn.style.display = 'none';
   container.innerHTML = '';
   try {
     const r = await fetch('/api/account?action=paypal-client-id');
+    if (seq !== paypalLoadSeq) return;
     if (!r.ok) throw new Error('paypal-client-id ' + r.status); // v-lock-ckui (cli-money-11): عطل الخادم تعثّر تحميل، لا «غير مفعّل»
     const data = await r.json();
+    if (seq !== paypalLoadSeq) return;
     if (!data.configured) {
       paypalLoadState = '';
       if (fallbackBtn) fallbackBtn.style.display = 'flex';
       return;
     }
-    paypalLoadState = '';
     if (fallbackBtn) fallbackBtn.style.display = 'none';
     if (!paypalSdkLoaded) {
       await new Promise((resolve, reject) => {
@@ -529,8 +537,11 @@ async function loadPaypalButtons(){
         s.onerror = reject;
         document.head.appendChild(s);
       });
-      paypalSdkLoaded = true;
+      paypalSdkLoaded = !!window.paypal; // v-lock-ckui (cli-money-11): سكربت فارغ (حاجب) لا يُحسب محمّلًا، فتعيده المحاولة
     }
+    if (seq !== paypalLoadSeq) return;
+    if (!window.paypal) throw new Error('paypal-sdk-empty'); // v-lock-ckui (cli-money-11): كان لا يُرسم شيء ولا يظهر الاحتياطيّ
+    paypalLoadState = '';
     if (window.paypal) {
       window.paypal.Buttons({
         style: { color: 'blue', shape: 'rect', label: 'paypal', height: 45 },
@@ -580,6 +591,7 @@ async function loadPaypalButtons(){
       }).render('#paypalButtonContainer');
     }
   } catch (e) {
+    if (seq !== paypalLoadSeq) return; // v-lock-ckui (cli-money-11): تعثّر تحميل قديم لا يُظهر الاحتياطيّ فوق أزرار رسمها الأحدث
     paypalLoadState = 'fail';
     if (fallbackBtn) fallbackBtn.style.display = 'flex';
   }
@@ -587,19 +599,15 @@ async function loadPaypalButtons(){
 
 /* v-lock-ckui (cli-money-11): الزرّ الاحتياطيّ يظهر لسببين — PayPal غير مفعّل فعلًا (configured:false)، أو مفعّل وتعثّر تحميله على
    الجهاز (شبكة، حاجب إعلانات، عطل الخادم). الثاني كان يقول «الدفع غير مفعّل من الإدارة بعد» فيظنّ المستخدم أنّ الموقع لا يقبل PayPal.
-   الآن يقول «تعذّر التحميل» ويعيد المحاولة مرّة لكلّ نقرة (الزرّ يختفي أثناءها، والنقرات المتتالية لا تفتح إعادة ثانية). */
+   الآن يقول «تعذّر التحميل» ويعيد المحاولة مرّة لكلّ نقرة (الزرّ يختفي أثناءها، وأيّ نقرة أثناء تحميل جارٍ — إعادةً كان أو فتحًا — تُتجاهل). */
 async function startPaypalCheckout(){
   const statusMsg = document.getElementById('checkoutStatusMsg');
-  if (paypalLoadState === 'retry') return;
+  if (paypalLoadState === 'loading') return;
   if (paypalLoadState === 'fail') {
     const k = 'axLkCkuiPaypalLoadFail', m = t(k);
     const msg = m && m !== k ? m : t('checkoutError');
     if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = msg; }
-    const fb = document.getElementById('paypalFallbackBtn');
-    if (fb) fb.style.display = 'none';
-    paypalLoadState = 'retry';
-    await loadPaypalButtons(); // تضع الحالة '' إن نجحت أو 'fail' إن تعثّرت ثانيةً
-    if (paypalLoadState === 'retry') paypalLoadState = 'fail';
+    await loadPaypalButtons(); // تُخفي الاحتياطيّ وتضع 'loading' فورًا، ثمّ '' إن نجحت أو 'fail' إن تعثّرت ثانيةً
     if (paypalLoadState === '' && statusMsg && statusMsg.textContent === msg) statusMsg.textContent = '';
     return;
   }

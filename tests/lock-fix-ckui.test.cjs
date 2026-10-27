@@ -262,7 +262,9 @@ function loadPaypal({ idResponses = [], sdk = [] } = {}) {
     document: {
       getElementById: (id) => els[id] || null,
       createElement: () => ({}),
-      head: { appendChild: (s) => { log.scripts++; const mode = sdk.length ? sdk.shift() : 'ok'; setTimeout(() => { if (mode === 'ok') { ctx.paypal = { Buttons: () => ({ render: () => { log.rendered++; } }) }; s.onload(); } else s.onerror(new Error('blocked')); }, 1); } },
+      /* sdk: 'ok' يُحمَّل ويضع window.paypal · 'fail' ممنوع (onerror) · 'empty' حاجب يقدّم سكربتًا فارغًا (onload بلا window.paypal)،
+         أو { mode, wait } لسكربت بطيء (م‌ث حقيقيّة). */
+      head: { appendChild: (s) => { log.scripts++; const e = sdk.length ? sdk.shift() : 'ok'; const mode = typeof e === 'string' ? e : e.mode; setTimeout(() => { if (mode === 'ok') { ctx.paypal = { Buttons: () => ({ render: () => { log.rendered++; } }) }; s.onload(); } else if (mode === 'empty') s.onload(); else s.onerror(new Error('blocked')); }, (e && e.wait) || 1); } },
     },
     setTimeout: (fn, ms) => setTimeout(fn, Math.max(0, (Number(ms) || 0) / 100)),
     localStorage: mkStore(),
@@ -273,6 +275,7 @@ function loadPaypal({ idResponses = [], sdk = [] } = {}) {
       if (/paypal-client-id/.test(url)) {
         log.fetch++;
         const r = idResponses.length ? idResponses.shift() : { status: 200, body: { configured: true, clientId: 'cid' } };
+        if (r.wait) await sleep(r.wait); // جلب بطيء — الشبكة نفسها التي تعثّر عليها التحميل الأوّل
         if (r.throws) throw new Error('network down');
         return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.body };
       }
@@ -283,6 +286,7 @@ function loadPaypal({ idResponses = [], sdk = [] } = {}) {
   vm.createContext(ctx);
   vm.runInContext('var paypalSdkLoaded = false; var checkoutCurrentPlan = "basic";\n'
     + (A06.includes('let paypalLoadState') ? 'var paypalLoadState = "";\n' : '')
+    + (A06.includes('let paypalLoadSeq') ? 'var paypalLoadSeq = 0;\n' : '')
     + slice(A06, 'async function paypalClaim(orderId){', '// Handle Stripe redirect back'), ctx);
   return { ctx, log, els, DICT };
 }
@@ -350,6 +354,84 @@ test('cli-money-11: مفتاح الرسالة غائب من القاموس — �
   await ctx.loadPaypalButtons();
   await ctx.startPaypalCheckout();
   assert.equal(els.checkoutStatusMsg.textContent, 'checkoutError');
+});
+
+/* هجمات المراجع على إعادة المحاولة: تحميلان متوازيان كانا يرسمان أزرار PayPal مرّتين. إعادة فتح الدفع تفعل ما يفعله openCheckout
+   حرفيًّا: تمحو statusMsg ثمّ تنادي loadPaypalButtons (يتحقّق الاختبار الأوّل أدناه من ذلك في المصدر). */
+const CONF = { status: 200, body: { configured: true, clientId: 'cid' } };
+const SLOW = (ms) => ({ status: 200, wait: ms, body: { configured: true, clientId: 'cid' } });
+function reopenCheckout(ctx, els) { els.checkoutStatusMsg.textContent = ''; return ctx.loadPaypalButtons(); }
+
+test('cli-money-11 (هجوم P1): تعثّر ثمّ إعادة فتح الدفع ونقرة على الاحتياطيّ قبل عودة الجلب — لا تحميل ثانٍ ولا زرّا PayPal', async () => {
+  const oc = slice(A06, 'function openCheckout(plan){', 'window.openCheckout = openCheckout;');
+  assert.match(oc, /statusMsg\.textContent = '';[\s\S]*loadPaypalButtons\(\);/, 'openCheckout يمحو الرسالة ثمّ يحمّل PayPal');
+  const { ctx, log, els } = loadPaypal({ idResponses: [CONF, SLOW(20), CONF], sdk: ['fail', 'ok', 'ok'] });
+  await ctx.loadPaypalButtons();
+  assert.equal(els.paypalFallbackBtn.style.display, 'flex', 'الفتح الأوّل تعثّر');
+  const reopen = reopenCheckout(ctx, els);
+  assert.equal(els.paypalFallbackBtn.style.display, 'none', 'الاحتياطيّ القديم يُخفى لحظة بدء التحميل فلا يُنقر أثناءه');
+  const tap = ctx.startPaypalCheckout(); // نقرة مفروضة على الزرّ المخفيّ — لا تبدأ تحميلًا موازيًا
+  await Promise.all([reopen, tap]);
+  await settle(log, () => log.rendered > 0);
+  await sleep(40);
+  assert.equal(log.fetch, 2, 'جلب الفتح الثاني وحده (كان ٣)');
+  assert.equal(log.scripts, 2, 'سكربت SDK للفتح الثاني وحده (كان ٣)');
+  assert.equal(log.rendered, 1, 'زرّ PayPal واحد (كان اثنين)');
+  assert.equal(els.paypalFallbackBtn.style.display, 'none');
+  assert.notEqual(els.checkoutStatusMsg.textContent, 'checkoutNotConfigured', 'ولا «غير مفعّل» أثناء التحميل');
+});
+
+test('cli-money-11 (هجوم P2): نقرة إعادة ثمّ إعادة فتح الدفع أثناءها — نتيجة الإعادة القديمة تُرمى، زرّ PayPal واحد', async () => {
+  const { ctx, log, els } = loadPaypal({ idResponses: [CONF, SLOW(20), CONF], sdk: ['fail', 'ok', 'ok'] });
+  await ctx.loadPaypalButtons();
+  const tap = ctx.startPaypalCheckout();
+  assert.equal(els.checkoutStatusMsg.textContent, 'PP_LOAD_FAIL');
+  const reopen = reopenCheckout(ctx, els);
+  await Promise.all([tap, reopen]);
+  await settle(log, () => log.rendered > 0);
+  await sleep(40);
+  assert.equal(log.rendered, 1, 'زرّ PayPal واحد (كان اثنين)');
+  assert.equal(els.paypalFallbackBtn.style.display, 'none');
+  assert.equal(els.checkoutStatusMsg.textContent, '');
+  // والنقرة بعدها لا تعيد شيئًا: PayPal محمّل
+  await ctx.startPaypalCheckout();
+  assert.equal(log.rendered, 1);
+});
+
+test('cli-money-11 (هجوم P3): الإعادة تتعثّر بعد أن نجح تحميل أحدث — لا احتياطيّ ولا رسالة تعثّر فوق أزرار PayPal', async () => {
+  const { ctx, log, els } = loadPaypal({ idResponses: [CONF, CONF, CONF], sdk: ['fail', { mode: 'fail', wait: 30 }, 'ok'] });
+  await ctx.loadPaypalButtons();
+  const tap = ctx.startPaypalCheckout();
+  assert.equal(els.checkoutStatusMsg.textContent, 'PP_LOAD_FAIL');
+  await settle(log, () => log.scripts >= 2); // سكربت الإعادة معلّق (يتعثّر بعد ٣٠م‌ث)
+  const reopen = reopenCheckout(ctx, els);
+  await Promise.all([tap, reopen]);
+  await sleep(50);
+  assert.equal(log.rendered, 1);
+  assert.equal(els.paypalFallbackBtn.style.display, 'none', 'الأزرار مرسومة — لا احتياطيّ معها (كان يظهر)');
+  assert.notEqual(els.checkoutStatusMsg.textContent, 'PP_LOAD_FAIL');
+  await ctx.startPaypalCheckout();
+  assert.equal(log.fetch, 3, 'التعثّر القديم لا يترك حالة «تعثّر» تعيد التحميل');
+});
+
+test('cli-money-11: فتحان متداخلان للدفع (بلا نقرة) — نتيجة الأقدم تُرمى فيُرسم زرّ PayPal مرّة واحدة', async () => {
+  const { ctx, log } = loadPaypal({ idResponses: [SLOW(20), CONF] });
+  await Promise.all([ctx.loadPaypalButtons(), ctx.loadPaypalButtons()]);
+  await settle(log, () => log.rendered > 0);
+  await sleep(40);
+  assert.equal(log.rendered, 1);
+});
+
+test('cli-money-11: سكربت PayPal يُحمَّل فارغًا (حاجب) — تعثّر تحميل: الاحتياطيّ يظهر بالرسالة الصادقة، والنقرة تعيد السكربت', async () => {
+  const { ctx, log, els } = loadPaypal({ sdk: ['empty', 'ok'] });
+  await ctx.loadPaypalButtons();
+  assert.equal(log.rendered, 0);
+  assert.equal(els.paypalFallbackBtn.style.display, 'flex', 'كان لا يُرسم شيء ولا يظهر احتياطيّ');
+  await ctx.startPaypalCheckout();
+  assert.equal(log.scripts, 2, 'السكربت الفارغ لا يُحسب محمّلًا فتعيده الإعادة');
+  assert.equal(log.rendered, 1);
+  assert.equal(els.paypalFallbackBtn.style.display, 'none');
+  assert.equal(els.checkoutStatusMsg.textContent, '');
 });
 
 /* ───────────── cli-money-7 ───────────── */
