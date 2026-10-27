@@ -318,6 +318,54 @@ test('cli-voice-1 ط. (حارس) إنهاء المكالمة أثناء إعاد
   assert.equal(w.consumes().length, 1, 'الجديدة تُخصم دقيقتها الثانية');
 });
 
+/* v-lock-maha (cli-voice-1، جولة المراجعة): رصيد إعادة الاتّصال كان علمين (skipNext/rcMedia) فيكفي إعادةً واحدة في الدقيقة —
+   شبكة متقطّعة (مصعد، قطار) تعيد مرّتين في دقيقة واحدة فتدفع دقيقة زائدة، ودقيقة مها المدفوعة بالإعادة لا تدخل عدّاد الحدّ إلّا عند
+   النبضة فتمرّ إعادة ثانية من فحص الحدّ وتشتري دقيقة فوقه. */
+const MEDIA3 = { unlimited: false, points: 70, trial: false, prepaid: 'media', cost: 15, mahaMin: 5, capMin: 3 };
+const mediaWorld = (budget) => world({ mint: () => res(200, { clientSecret: 'ek', mahaBudget: Object.assign({}, budget), turn: 'natural' }), consume: () => ({ ok: true, media: 'maha', mediaLeft: 55 * 3 }) });
+async function dropAt(w, t0, times, until) {
+  for (const at of times) {
+    await w.advance(t0 + at - w.clock.now);
+    if (!w.v('mahaCallActive')) return;
+    w.pc().setState('failed');
+  }
+  await w.advance(t0 + until - w.clock.now);
+}
+test('cli-voice-1 ي. إعادتا اتّصال (وثلاث) ناجحة في دقيقة واحدة: عدد الدقائق المدفوعة كما بلا انقطاع', async () => {
+  const charges = (w) => w.mints().length + w.consumes().length;
+  const base = world();
+  const t0 = base.clock.now;
+  await liveCall(base);
+  await base.advance(t0 + 299000 - base.clock.now);
+  for (const drops of [[70000, 100000], [70000, 100000, 130000]]) {
+    const w = world();
+    await liveCall(w);
+    await dropAt(w, t0, drops, 299000);
+    assert.equal(w.v('mahaCallActive'), true, 'المكالمة رجعت ' + drops.length + ' مرّات');
+    assert.equal(w.mints().length, 1 + drops.length);
+    assert.equal(charges(w), charges(base), drops.length + ' إعادات: كانت الثانية تكتب فوق رصيد الأولى فتُدفع دقيقة زائدة (٦ مقابل ٥)');
+  }
+});
+
+test('cli-voice-1 ك. مشترك مها بحدّ ٣: إعادتا اتّصال في دقيقة واحدة لا تشتريان دقيقة فوق الحدّ، والدقيقة المدفوعة بالإعادة تُستوفى', async () => {
+  const two = mediaWorld(MEDIA3);
+  const t0 = two.clock.now;
+  await liveCall(two);
+  await dropAt(two, t0, [70000, 100000], 400000);
+  const paid = two.mints().length + two.consumes().length;
+  assert.ok(paid <= 3, 'دقائق مها المدفوعة ' + paid + ' فوق الحدّ ٣ — كانت ٤');
+  assert.equal(two.v('mahaCallActive'), false, 'انتهت عند الحدّ');
+  assert.ok(two.toasts.includes('mahaCapEnd'));
+  // إعادة واحدة: دقيقتها (الثالثة) مدفوعة — المكالمة تعيشها كاملة، ولا تُقطع عند نبضتها لأنّ الحدّ «امتلأ»
+  const one = mediaWorld(MEDIA3);
+  await liveCall(one);
+  await dropAt(one, t0, [70000], 170000);
+  assert.equal(one.v('mahaCallActive'), true, 'الدقيقة الثالثة دفعها افتتاح الإعادة — تُستوفى');
+  await one.advance(t0 + 185000 - one.clock.now);
+  assert.equal(one.v('mahaCallActive'), false, 'ثمّ تنتهي بحدّها');
+  assert.equal(one.mints().length + one.consumes().length, 3, 'ثلاث دقائق بالضبط');
+});
+
 /* ═════════════ cli-voice-3: الإنهاء أثناء التجهيز (العميل) ═════════════ */
 test('cli-voice-3 أ. لمسة عرضيّة أثناء «أجهّز الجلسة» لا تُنهي المكالمة (ولا تصل الصفحة)، وبعد الجاهزيّة اللمسة تُنهيها كما كانت', async () => {
   const gate = deferred();
@@ -383,6 +431,17 @@ const NOT_IMAGE = [
   'فوائد التفاح والموز وغيرها', 'what is the official exchange rate, can you change it to dirhams', 'how do I withdraw money from the bank',
   'كم رسوم التسجيل', 'the draw for the world cup', 'هل الرسم على الجدران ممنوع', 'وش تصميم البيت المناسب',
 ];
+/* جولة المراجعة — جمل ليست طلبًا كانت تولّد صورة مدفوعة بعد الإصلاح الأوّل:
+   (أ) تراجع أدخله الإصلاح الأوّل (الأساس لا يرسمها): سؤال قدرة، جمع بلا أداة، اسم مركّب، «I need a picture for…» */
+const CAPABILITY_EN = ['can you create images?', 'do you generate pictures?', 'I need a picture for my passport, where do I take it?', 'make a photo album list for me'];
+// (ب) النفي — المستخدم يرفض الصورة فيدفع ثمنها
+const NEGATED = ['ما ابي صورة ابي جواب بس', 'لا أريد صورة', 'لا ابي صورة', 'ما أبغى صورة', "don't make an image of it", 'please do not generate an image', "I don't want a picture of it", 'never create an image of me'];
+// (ج) كلمات متجانسة: أرسم = أنا أرسم، أبي = والدي، صمّم = أصرّ، draw = سحب/استنتج/سحب ورق
+const HOMOGRAPH_AR = ['أحب أرسم في وقت فراغي', 'أنا أرسم كل يوم', 'عند أبي صورة قديمة لجدي', 'أبوي صمم يسافر بكرة', 'صمم على رأيه', 'انا اعمل تصميم جرافيك'];
+const HOMOGRAPH_EN = ['I want to draw money from my account', 'just draw conclusions from this', 'Draw a conclusion from the data', 'you draw cards', 'draw the curtains'];
+// (د) «غيرها» = «أخرى»، و«change it» لغير الصورة — تعديل مدفوع إن كانت في المشروع صورة قديمة
+const OTHERS = ['في مطاعم غيرها قريبة؟', 'عندك أماكن غيرها؟', 'اقترح لي أفكار غيرها', 'can you change it to dirhams', 'change it to euros please', 'غيرها لنا الأماكن'];
+NOT_IMAGE.push(...CAPABILITY_EN, ...NEGATED, ...HOMOGRAPH_AR, ...HOMOGRAPH_EN, ...OTHERS);
 const IS_IMAGE = [
   'ارسم لي قطة', 'ارسمي وردة حمراء', 'أرسم جمل في الصحراء', 'سوي لي صورة قطة', 'سوّي صورة لبيت', 'اعطني صورة حصان', 'اعطيني صورة بحر', 'ولد صورة لجمل',
   'صمم لي شعار لمطعمي', 'ابي صورة قطة في الفضاء', 'أبغى رسمة لطفل', 'draw a cat', 'can you draw me a horse', 'please draw my house',
@@ -398,11 +457,11 @@ test('cli-voice-2 ب. mahaNeedsImage: أفعال الطلب الصريحة تب�
   for (const s of IS_IMAGE) assert.equal(w.v('mahaNeedsImage(' + JSON.stringify(s) + ')'), true, s);
 });
 
+const EDIT = ['غيرها للأحمر', 'غيّرها', 'عدلها شوي', 'عدّلها', 'change it to red', 'edit it please'];
 test('cli-voice-2 ج. «غيّرها/عدّلها/change it/edit it» تعديلٌ فقط حين في المكالمة صورة — و«وغيرها» ليست تعديلًا أبدًا', () => {
   const w = world();
-  const EDIT = ['غيرها للأحمر', 'غيّرها', 'عدلها شوي', 'عدّلها', 'change it to red', 'edit it please'];
   for (const s of EDIT) assert.equal(w.v('mahaNeedsImage(' + JSON.stringify(s) + ')'), false, 'بلا صورة: ' + s);
-  w.v('mahaLastImageBase64 = "QUFB"');
+  w.v('mahaShowImage("QUFB", "image/png")'); // صورة عُرضت في هذه المكالمة
   for (const s of EDIT) assert.equal(w.v('mahaNeedsImage(' + JSON.stringify(s) + ')'), true, 'مع صورة: ' + s);
   assert.equal(w.v('mahaNeedsImage("فوائد التفاح والموز وغيرها")'), false, '«وغيرها» = «and others»');
   assert.equal(w.v('mahaNeedsImage("ما هو الموقع الرسمي للوزارة؟")'), false);
@@ -421,6 +480,63 @@ test('cli-voice-2 د. الحلقة الأساسيّة: «الموقع الرسم
     await w.advance(3000);
     assert.equal(w.reqs.filter((r) => r.url === '/api/maha-image').length, want, said);
   }
+});
+
+/* ═════════════ cli-voice-2، جولة المراجعة: هجمات المراجع جملةً جملة ═════════════ */
+const needs = (w, s) => w.v('mahaNeedsImage(' + JSON.stringify(s) + ')');
+test('cli-voice-2 هـ. النفي ليس طلب صورة: «ما ابي صورة»، «لا أريد صورة»، don\'t/not/never — والنفي في جملة سابقة لا يُلغي طلبًا لاحقًا', () => {
+  const w = world();
+  for (const s of NEGATED) assert.equal(needs(w, s), false, 'رفضٌ يُدفع ثمنه صورة: ' + s);
+  for (const s of ['لا، ارسم لي قطة', 'no, draw a cat', 'ما ابي فيديو، ابي صورة قطة']) assert.equal(needs(w, s), true, 'النفي لجملة قبلها: ' + s);
+});
+
+test('cli-voice-2 و. الكلمات المتجانسة بالعربيّة: «أرسم/أبي/أعمل» في موضع الأمر وحده، و«صمّم» بمفعول (شعار/صورة)', () => {
+  const w = world();
+  for (const s of HOMOGRAPH_AR) assert.equal(needs(w, s), false, s);
+  for (const s of ['مها ارسم لي قطة', 'يا مها، أرسم لي حصان', 'لو سمحت ارسم لي بيت', 'ممكن ابي صورة قطة', 'طيب ابي رسمة جمل', 'حلو، ارسمه بالليل', 'صمم شعار لمحلي', 'وارسمي لي وردة'])
+    assert.equal(needs(w, s), true, 'أمر صريح: ' + s);
+});
+
+test('cli-voice-2 ز. بالإنجليزيّة: سؤال القدرة والجمع بلا أداة والاسم المركّب ليست طلبًا، وdraw أمرٌ بمفعول يُرسم', () => {
+  const w = world();
+  for (const s of CAPABILITY_EN.concat(HOMOGRAPH_EN, ['how do I create an image in photoshop', 'can you draw?', 'show me the picture of the menu']))
+    assert.equal(needs(w, s), false, s);
+  for (const s of ['Maha, draw a cat', 'could you draw a red car for me', 'generate an image', 'create a logo for my bakery', 'make a cute picture of a dog', 'I want a picture of a lion', 'i would like a drawing of my house'])
+    assert.equal(needs(w, s), true, 'طلب صريح: ' + s);
+});
+
+test('cli-voice-2 ح. «غيرها/change it» تعديلٌ لصورة هذه المكالمة وحدها، وفي أوّل الكلام أو مع هدف — لا «أماكن غيرها» ولا «change it to dirhams»', () => {
+  const w = world();
+  w.v('mahaLastImageBase64 = "QUFB"'); // صورة قديمة في المشروع من مكالمة سابقة (المرجع يبقى حتّى مشروع جديد)
+  for (const s of EDIT.concat(OTHERS)) assert.equal(needs(w, s), false, 'صورة مكالمة سابقة: ' + s);
+  w.v('mahaShowImage("QUFB", "image/png")'); // رُسمت في هذه المكالمة
+  for (const s of OTHERS) assert.equal(needs(w, s), false, '«أخرى» لا تعديل: ' + s);
+  for (const s of ["don't change it to red", 'لا غيرها للأحمر']) assert.equal(needs(w, s), false, 'نفي: ' + s);
+  for (const s of EDIT.concat(['مها غيرها للأزرق', 'حلوة بس غيرها للون الوردي', 'غيرها لو سمحت', 'غيرها لونها احمر', 'ok change it into a cartoon', 'please edit it to be brighter']))
+    assert.equal(needs(w, s), true, 'تعديل صريح: ' + s);
+  w.v('mahaClearImageRef()');
+  assert.equal(needs(w, 'غيّرها'), false, 'مشروع جديد: لا صورة');
+});
+
+test('cli-voice-2 ط. الحلقة الأساسيّة: صورة مكالمة سابقة ثمّ «عندك أماكن غيرها؟» لا تطلب تعديلًا مدفوعًا؛ و«ارسم» ثمّ «غيرها للأحمر» في المكالمة نفسها طلبان', async () => {
+  const run = async (said, before) => {
+    let sttN = 0, recN = 0;
+    const w = world({ mint: () => res(503, { error: 'unavailable' }), stt: () => ({ text: said[Math.min(sttN++, said.length - 1)], language: 'ar' }) });
+    if (before) before(w);
+    w.ctx.mahaRecordUntilSilence = () => (recN++ < said.length ? Promise.resolve({ size: 5000, type: 'audio/webm' }) : new Promise(() => {}));
+    w.ctx.mahaSpeak = async () => {};
+    w.v('mahaLastPeakRms = 0.5');
+    const p = w.v('mahaStartCall()');
+    await w.advance(3000);
+    await p;
+    await w.advance(5000);
+    return w.reqs.filter((r) => r.url === '/api/maha-image').length;
+  };
+  const oldImage = (w) => w.v('mahaShowImage("QUFB", "image/png")'); // صورة مكالمة سابقة في المشروع (قبل بدء هذه المكالمة)
+  assert.equal(await run(['عندك أماكن غيرها؟'], oldImage), 0, 'صورة المكالمة السابقة لا تجعل «غيرها» تعديلًا مدفوعًا في مكالمة جديدة');
+  assert.equal(await run(['غيرها للأحمر'], oldImage), 0, 'ولا «غيرها للأحمر»: التعديل لصورة هذه المكالمة وحدها (تُصفَّر عند البدء)');
+  assert.equal(await run(['ارسم لي قطة', 'غيرها للأحمر']), 2, 'رسمٌ ثمّ تعديله في المكالمة نفسها');
+  assert.equal(await run(['ارسم لي قطة', 'عندك أماكن غيرها؟']), 1, '«أماكن غيرها» بعد صورة هذه المكالمة ليست تعديلًا');
 });
 
 /* ═════════════ cli-voice-3: الخادم (realtime-session الحقيقيّ) ═════════════ */

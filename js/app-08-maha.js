@@ -980,30 +980,71 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
 // itself via OpenAI's built-in tool calling instead.
 /* v-lock-maha (cli-voice-2، باب المال بموافقة المالك ٢٧ أكتوبر): كانت includes على أجزاء الكلمات — «الرسمي» فيها «رسم»، و«بصورة مبسطة»
    فيها «صورة»، و«وغيرها» فيها «غيرها»، و«withdraw» فيها «draw» — فسؤال عاديّ يولّد صورة مدفوعة (٢٠ نقطة أو صورة ضيف مجّانيّة). الآن كلمات
-   كاملة لأفعال طلب صريحة (ارسم، صمّم، سوّ/ابي/اعطني + صورة، draw، generate an image) لا الأسماء المفردة، و«غيّرها/change it» تعديلٌ فقط
-   حين في المكالمة صورة (mahaLastImageBase64)، وبلا «و» قبلها («وغيرها» = «وما شابه»). */
+   كاملة لأفعال طلب صريحة (ارسم، صمّم، سوّ/ابي/اعطني + صورة، draw، generate an image) لا الأسماء المفردة.
+   (جولة المراجعة) وما زال غير الطلب يُرسم، فصار:
+   - النفي في الكلمتين قبل الفعل من الجملة نفسها («ما ابي صورة»، «لا أريد صورة»، don't/not/never/no) وسؤال «كيف/how» ليسا طلبًا.
+   - الكلمات المتجانسة في موضع الأمر وحده (أوّل الكلام أو الجملة بعد «مها/طيب…»، أو بعد أداة طلب: لو سمحت/ممكن/تقدر/can you):
+     «أرسم» (أنا أرسم)، «أبي» (والدي)، «أعمل/أصنع» (أنا أعمل)، «ولد» (صبيّ)؛ و«صمّم» (أصرّ) يحتاج مفعولًا: شعار/صورة/رسمة.
+   - بالإنجليزيّة اسم مفرد بأداته (a/an/one) لا يتبعه اسم آخر («a photo album»)، أو اسم يتبعه of/for — لا «can you create images?»؛
+     وdraw أمرٌ بمفعول غير money/cash/line/conclusion/card/attention؛ وI want/need/give me + picture of (لا «a picture for my passport»).
+   - «غيّرها/عدّلها/change it/edit it» تعديلٌ لصورة رُسمت في هذه المكالمة وحدها (mahaImgThisCall — المرجع يبقى بين المكالمات حتّى
+     مشروع جديد)، وفي أوّل الكلام أو مع هدف (للأحمر/لون/to red)؛ «عندك أماكن غيرها؟» و«change it to dirhams» ليستا تعديلًا. */
 const MAHA_IMG_AL = '\\u0621-\\u064A';
-const mahaImgWord = (alt) => new RegExp('(?:^|[^' + MAHA_IMG_AL + 'a-z])(?:' + alt + ')(?![' + MAHA_IMG_AL + 'a-z])', 'i');
+const MAHA_IMG_E = '(?![' + MAHA_IMG_AL + 'a-z])'; // نهاية كلمة
+const MAHA_IMG_SEP = '(?:\\s*[,،]\\s*|\\s+)';
+const MAHA_IMG_VOC = '(?:(?:(?:يا\\s+)?مها|طيب|زين|اوكي|يلا|الحين|(?:hey\\s+)?maha|ok(?:ay)?|now|so|please|pls)' + MAHA_IMG_SEP + ')*';
+const MAHA_IMG_REQ = '(?:لو\\s+سمحت(?:ي)?|من\\s+فضلك|ممكن|تقدر(?:ين)?|تكفى|تكفين|can\\s+(?:you|u)|could\\s+you|would\\s+you|will\\s+you|i\\s+(?:want|need)\\s+you\\s+to|i[\'’]?d\\s+like\\s+you\\s+to|go\\s+ahead\\s+and)';
+const MAHA_IMG_START = '(^\\s*' + MAHA_IMG_VOC + ')'; // أوّل الكلام
+const MAHA_IMG_HEAD = '((?:^|[,،.!?؟;؛:\\n])\\s*' + MAHA_IMG_VOC + '|(?:^|[^' + MAHA_IMG_AL + 'a-z])' + MAHA_IMG_REQ + MAHA_IMG_SEP + MAHA_IMG_VOC + ')'; // موضع الأمر
+const MAHA_IMG_ANY = '(^|[^' + MAHA_IMG_AL + 'a-z])';
+const MAHA_IMG_FOR = '(?:\\s+(?:لي|لنا|منك|منج))?';
+const MAHA_IMG_NOUN = '\\s+(?:ال)?(?:صور[ةه]|رسم[ةه]|لوجو|لوقو)' + MAHA_IMG_E + '(?!\\s+(?:عام|واضح|كامل|شامل|مبسط|مختصر)[ةه]?' + MAHA_IMG_E + ')';
+const MAHA_IMG_COLOR_AR = '(?:\\s+(?:إلى|الى))?\\s+(?:لل|ل|بال|ب)?(?:ال)?(?:[اأ]حمر|حمرا[ءئ]?|[اأ]زرق|زرقا[ءئ]?|[اأ]خضر|خضرا[ءئ]?|[اأ]صفر|صفرا[ءئ]?|[اأ]سود|سودا[ءئ]?|[اأ]بيض|بيضا[ءئ]?|وردي|زهري|بنفسجي|برتقالي|ذهبي|فضي|رمادي|بني|[اأ]لوان|لون(?:ها|ه)?|كرتون|كرتوني|انمي|واقعي[ةه]?|ليل|ليلي|نهار|[اأ]كبر|[اأ]صغر|[اأ]فتح|[اأ]غمق)' + MAHA_IMG_E;
+const MAHA_IMG_COLOR_EN = '\\s+(?:to|into)\\s+(?:be\\s+)?(?:(?:an?|the)\\s+)?(?:more\\s+)?(?:red|blue|green|yellow|black|white|pink|purple|orange|gold(?:en)?|silver|gr[ae]y|brown|colou?r(?:ful|s)?|cartoon|anime|realistic|night|day(?:time)?|bigger|smaller|brighter|darker)\\b';
+const mahaImgRe = (head, body) => new RegExp(head + '(?:' + body + ')', 'gi');
 const MAHA_IMAGE_ASK = [
-  mahaImgWord('[وف]?[اأإ]رسم(?:ي)?(?:لي|ها|ه|يها|يلي)?'),
-  mahaImgWord('[وف]?صمّ?م(?:ي)?(?:لي|ها|ه|يها|يلي)?'),
-  mahaImgWord('[وف]?(?:[اأ]?عط(?:ي)?ني|هات|[اأ]ب[اي]|[اأ]بغ[اىي]|[اأ]ريد|سوّ?(?:ي|ى)?(?:لي)?|[اأ]عمل(?:ي)?(?:لي)?|[اأ]صنع(?:ي)?(?:لي)?|ولّ?د(?:ي)?(?:لي)?)(?:\\s+(?:لي|لنا|منك|منج|منچ))?\\s+(?:ال)?(?:صور[ةه]|رسم[ةه]|شعار|لوجو|تصميم)'),
-  /(?:^|[,،.!?;:]\s*|\b(?:please|pls|can you|could you|would you|will you|you|to|and|now|just|then)\s+)draw\b/i,
-  /\b(?:generate|create|make|design|draw)\s+(?:me\s+|us\s+)?(?:an?\s+|the\s+|some\s+|one\s+)?(?:image|picture|photo|drawing|logo|poster)s?\b/i,
-  /\b(?:give\s+me|i\s+(?:want|need|would\s+like))\s+(?:an?\s+|the\s+|some\s+)?(?:image|picture|drawing|logo)s?\b/i,
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?[اأإ]رسم(?:لي|لنا|ها|ه)?' + MAHA_IMG_E),
+  mahaImgRe(MAHA_IMG_ANY, '[وف]?[اأإ]رسمي(?:لي|لنا|ها|ه)?' + MAHA_IMG_E),
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?صمّ?م(?:ي)?(?:لي|لنا)?' + MAHA_IMG_FOR + '\\s+(?:ال)?(?:شعار|لوجو|لوقو|صور[ةه]|رسم[ةه]|بوستر|تصميم)' + MAHA_IMG_E),
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?(?:[اأ]ب[اي]|ولّ?د(?:ي)?(?:لي)?|[اأ]عمل(?:ي)?(?:لي)?|[اأ]صنع(?:ي)?(?:لي)?)' + MAHA_IMG_FOR + MAHA_IMG_NOUN),
+  mahaImgRe(MAHA_IMG_ANY, '[وف]?(?:[اأ]?عط(?:ي)?ني|هات(?:ي)?(?:لي)?|[اأ]بغ[اىي](?:لي)?|[اأ]ريد|سوّ?ي?(?:لي)?)' + MAHA_IMG_FOR + MAHA_IMG_NOUN),
+  mahaImgRe(MAHA_IMG_HEAD, 'draw\\s+(?:me\\s+|us\\s+|for\\s+me\\s+)?(?!(?:(?:an?|the|some|my|your|his|her|our|their)\\s+)?(?:money|cash|funds?|lines?|conclusions?|cards?|attention|blood|water|breath|straws?|lots|up|out|from|on|back|near|closer|parallels?|comparisons?|inspiration|crowds?|curtains?|blinds|baths?|swords?|guns?|weapons?|fire|criticism|interest|support|a\\s+blank)\\b)[a-z]'),
+  mahaImgRe(MAHA_IMG_ANY, '(?:generate|create|make|design)\\s+(?:me\\s+|us\\s+)?(?:(?:an?|one)\\s+(?:[a-z-]+\\s+){0,2}?(?:image|picture|photo|drawing|logo|poster|illustration)(?=\\s*$|\\s*[,.!?;:]|\\s+(?:of|for|showing|that|with|about|please|now)\\b)|(?:(?:the|some|this|that)\\s+)?(?:image|picture|photo|drawing|logo|poster|illustration)s?\\s+(?:of|for)\\b)'),
+  mahaImgRe(MAHA_IMG_ANY, '(?:give\\s+me|i\\s+(?:want|need|would\\s+like)|i[\'’]d\\s+like)\\s+(?:(?:an?|one|the|some)\\s+)?(?:[a-z-]+\\s+){0,2}?(?:(?:image|picture|drawing|illustration)s?\\s+of|logo\\s+for)\\b'),
 ];
-const MAHA_IMAGE_EDIT = [mahaImgWord('غيّ?رها|عدّ?لها'), /\b(?:edit|change)\s+it\b/i];
+const MAHA_IMAGE_EDIT = [
+  // أوّل الكلام: «غيّرها» وحدها أو بلا وجهة؛ ومع وجهة (لـ/إلى/to) تحكم الوجهة: لون أو صفة لا «لنا الأماكن» ولا «to euros»
+  mahaImgRe(MAHA_IMG_START, 'ف?(?:غيّ?رها|عدّ?لها)' + MAHA_IMG_E + '(?!\\s+(?:إلى|الى)' + MAHA_IMG_E + '|\\s+ل(?!و' + MAHA_IMG_E + '))'),
+  mahaImgRe(MAHA_IMG_ANY, 'ف?(?:غيّ?رها|عدّ?لها)' + MAHA_IMG_COLOR_AR),
+  mahaImgRe(MAHA_IMG_START, '(?:change|edit)\\s+it\\b(?!\\s+(?:to|into)\\b)'),
+  mahaImgRe(MAHA_IMG_ANY, '(?:change|edit)\\s+it' + MAHA_IMG_COLOR_EN),
+];
+const MAHA_IMG_NEG = /^(?:لا|ما|مب|مو|مش|بدون|بلا|ماني|ولا|وما|ابد|ابدا|أبد|أبدا|no|not|never|dont|don['’]t|doesn['’]?t|didn['’]?t|won['’]?t|wont|shouldn['’]?t|can['’]?t|cannot|without)$/i;
+const MAHA_IMG_HOW = new RegExp('(?:^|[^a-z' + MAHA_IMG_AL + '])(?:how|كيف|شلون|وشلون)(?![a-z' + MAHA_IMG_AL + '])', 'i');
+// مطابقة لا يسبقها في جملتها نفي (كلمتان) ولا «كيف/how»
+function mahaImgHit(re, s){
+  re.lastIndex = 0;
+  let m;
+  while((m = re.exec(s))){
+    const clause = s.slice(0, m.index + m[1].length).split(/[,،.!?؟;؛:\n]/).pop();
+    const before = clause.trim().split(/\s+/).filter(Boolean).slice(-2);
+    if(!MAHA_IMG_HOW.test(clause) && !before.some(w => MAHA_IMG_NEG.test(w))) return true;
+    re.lastIndex = m.index + 1;
+  }
+  return false;
+}
 function mahaNeedsImage(text){
   if(!text) return false;
   const s = String(text);
-  if(MAHA_IMAGE_ASK.some(re => re.test(s))) return true;
-  return !!mahaLastImageBase64 && MAHA_IMAGE_EDIT.some(re => re.test(s));
+  if(MAHA_IMAGE_ASK.some(re => mahaImgHit(re, s))) return true;
+  return !!mahaLastImageBase64 && mahaImgThisCall && MAHA_IMAGE_EDIT.some(re => mahaImgHit(re, s));
 }
 
 // Stores the most recently generated image in the current call (base64 +
 // mime), so a follow-up "edit it" request can reference it. Reset per call.
 let mahaLastImageBase64 = null;
 let mahaLastImageMime = null;
+let mahaImgThisCall = false; // v-lock-maha (cli-voice-2): صورة عُرضت في المكالمة الجارية — «غيّرها» تعديلٌ لها وحدها، لا لصورة مكالمة سابقة
 // مصدر ثابت لسلسلة التعديل، مع تعليمات تراكمية. هذا يمنع تمرير الناتج
 // المعاد توليده كأصل جديد في كل متابعة وتراكم تغيّر الهوية أو النمط.
 let mahaEditSourceBase64 = null;
@@ -1014,6 +1055,7 @@ let mahaImageEditInstructions = [];
 function mahaClearImageRef(){
   mahaLastImageBase64 = null;
   mahaLastImageMime = null;
+  mahaImgThisCall = false;
   mahaEditSourceBase64 = null;
   mahaEditSourceMime = null;
   mahaImageEditInstructions = [];
@@ -1047,6 +1089,7 @@ function mahaImgPendingHide(){
 function mahaShowImage(base64, mimeType){
   mahaLastImageBase64 = base64;
   mahaLastImageMime = mimeType || 'image/png';
+  mahaImgThisCall = true; // v-lock-maha (cli-voice-2): يُصفَّر عند بدء كلّ مكالمة
   mahaImgPendingHide(); // v-maha-img-wait
   if(mahaCallMode === 'builder'){
     // Builder voice mode: never show the image inside the call bubble -
@@ -2592,8 +2635,10 @@ function mahaStartPointsMeter(budget){
       }, 400);
     };
     /* v-lock-maha (cli-voice-1): إعادة الاتّصال دفعت في الخادم دقيقة افتتاح — هي دقيقة النبضة التالية (أو نبضة أُجّلت أثناءها)،
-       فلا تُدفع دقيقتان عن وقت واحد، وعدّاد حدّ المكالمة (callMin) يبقى للمكالمة كلّها. */
-    let owed = false, skipNext = false, rcMedia = false;
+       فلا تُدفع دقيقتان عن وقت واحد، وعدّاد حدّ المكالمة (callMin) يبقى للمكالمة كلّها.
+       (جولة المراجعة): الرصيد عدّاد لا علم — إعادتان في دقيقة واحدة كانت الثانية تكتب فوق الأولى فتُدفع دقيقة زائدة؛ ودقيقة مها
+       المدفوعة بالإعادة تدخل callMin لحظة دفعها، فإعادة تالية تراها في فحص الحدّ ولا تشتري دقيقة فوقه. */
+    let owed = false, credits = 0;
     mahaMeter = {
       capHit: () => !!(capMin && callMin >= capMin),
       endCap: () => endGently(true),
@@ -2602,8 +2647,9 @@ function mahaStartPointsMeter(budget){
         const media = b.prepaid === 'media';
         if(!media && typeof b.points === 'number' && isFinite(b.points)) pts = b.points;
         mahaMin = Math.max(0, Math.floor(Number(b.mahaMin) || 0));
-        if(owed){ owed = false; trial = false; if(media) callMin++; } // دفعت النبضة المؤجَّلة
-        else { skipNext = true; rcMedia = media; }
+        if(media) callMin++; // دُفعت الآن من رصيد مها — تُحسب في الحدّ الآن لا عند النبضة
+        if(owed){ owed = false; trial = false; } // دفعت النبضة المؤجَّلة
+        else credits++; // تدفع نبضةً قادمة
         if(!trial) show();
       },
     };
@@ -2618,8 +2664,8 @@ function mahaStartPointsMeter(budget){
           trial = false;
           if(isGuest){ endGently(); return; } // ضيف: دقيقة تجريبية وحدة فقط
         }
+        if(credits > 0){ credits--; return; } // v-lock-maha: دفعها افتتاح إعادة الاتّصال (ومحسوبة في callMin) — قبل فحص الحدّ
         if(capMin && callMin >= capMin){ endGently(true); return; } // حدّ مكالمة مشترك مها: لا تُفتح دقيقة بعده
-        if(skipNext){ skipNext = false; if(rcMedia){ callMin++; rcMedia = false; } return; } // v-lock-maha: دفعها افتتاح إعادة الاتّصال
         const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ action:'consume', amount:cost, reason:'maha_minute', token: authGet('aiapp_auth_token') }) });
         const d = await r.json().catch(()=>({}));
@@ -2826,6 +2872,7 @@ async function mahaStartCallInner(mode){
   mahaIntroduced = false;
   mahaPrevCallAgoMs = mahaReadPrevCallAgo(); // v-maha-close
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
+  mahaImgThisCall = false; // v-lock-maha (cli-voice-2): لكن «غيّرها» في الوضع الأساسيّ لا تعدّل صورة مكالمة سابقة (تعديل مدفوع من «أماكن غيرها»)
   const mahaImgElStart = document.getElementById('mahaGenImage');
   if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
   mahaAvatarDisplay(mahaCallMode !== 'builder'); // v-maha-goldwave: الموجة الذهبيّة مكان الدائرة
