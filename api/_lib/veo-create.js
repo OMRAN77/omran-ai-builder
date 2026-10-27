@@ -426,6 +426,7 @@ module.exports = async (req, res) => {
 module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;
 module.exports.OMNI_OP_PREFIX = OMNI_OP_PREFIX;
 module.exports.omniOpKey = omniOpKey;
+module.exports.OMNI_OP_TTL_SEC = OMNI_OP_TTL_SEC; // v-lock-vid (srv-video-5): omni-create يحفظ ناتجه بالمدّة نفسها
 module.exports.trendEngine = trendEngine;
 module.exports.TREND_NO_CUTS = TREND_NO_CUTS;
 module.exports.TREND_REF_GUIDE = TREND_REF_GUIDE;

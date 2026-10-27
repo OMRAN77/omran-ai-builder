@@ -141,11 +141,12 @@ test('٦. الرفض المنطقيّ (٢٠٠ بلا status وبـbase_resp) = F
 
 test('٧. حلقات الاستطلاع (خمس منذ v-actor-lipsync) محروسة بعمر وبأخطاء متتالية، ولا ابتلاع صامت', () => {
   const src = read('js/app-11-video.js');
-  assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 5, 'حلقة استطلاع بلا حارس');
-  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 5, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
-  assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 5, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
+  /* v-lock-vid (srv-video-5): حلقة سادسة — استلام السينمائيّ من veo-status بمعرّف omni/… (كان ردًّا متزامنًا بلا تذكرة) */
+  assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 6, 'حلقة استطلاع بلا حارس');
+  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 6, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
+  assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 6, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
   assert.doesNotMatch(src, /catch\(e\)\{ \/\* keep polling \*\/ \}/, 'بقي ابتلاع صامت');
-  assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 5, /* v-actor-lipsync: حلقة الممثّل */ 'عدد الحلقات تغيّر — راجع الحراسة');
+  assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 6, /* v-actor-lipsync: حلقة الممثّل */ 'عدد الحلقات تغيّر — راجع الحراسة');
   assert.match(src, /function makePollGuard\(reject, everyMs, maxMs\)/);
   assert.ok(read('js/app.bundle.js').includes('function makePollGuard('), 'الحارس ليس في الحزمة — شغّل npm run bundle');
   // سلوك الحارس نفسه: العمر ينتهي، والأخطاء المتتالية تُنهي، والنجاح يصفّرها

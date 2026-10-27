@@ -276,3 +276,146 @@ test('srv-video-1 ح: الردّ مرّة واحدة تحت التكرار — �
   providersOk();
   assert.equal((await poll('mm', 'mm-many-1')).body.status, 'FAILED', 'ولا تسليم بعده');
 });
+
+// ─────────────────────────────── srv-video-5 ───────────────────────────────
+test('srv-video-5 أ: المحرّك السينمائيّ يرجع op بتذكرة (١٢٠ بنوع الخصم والقفل) لا رابطًا متزامنًا، وناتجه محفوظ', async () => {
+  reset(); account('sara', 1000); providersOk();
+  const c = await omni('sara');
+  assert.equal(c.code, 200, JSON.stringify(c.body));
+  assert.match(String(c.body && c.body.op), /^omni\/[0-9a-f-]{36}$/, 'معرّف مهمّة: ' + JSON.stringify(c.body));
+  assert.ok(!c.body.url && !c.body.dataUrl, 'لا رابط في ردّ الإنشاء — التسليم من الاستطلاع وحده');
+  assert.equal(pts('sara'), 1000 - COSTS.omni_video);
+  const t = JSON.parse(kv.get(job.ticketKey(c.body.op)));
+  assert.deepEqual([t.u, t.c, t.l, t.k], ['sara', COSTS.omni_video, true, 'p']);
+  assert.deepEqual(JSON.parse(kv.get(veoCreate.omniOpKey(c.body.op))), { uri: OMNI_URI });
+});
+
+test('srv-video-5 ب: أغلق التطبيق قبل الاستلام — الكنس بعد ٣١ دقيقة يردّ ١٢٠ مرّة ويفكّ القفل، ولا رابط بعدها', async () => {
+  reset(); account('sara', 1000); providersOk();
+  const c = await omni('sara');
+  assert.ok(c.body && c.body.op, JSON.stringify(c.body));
+  assert.equal((await sweep('sara', NOW + 10 * 60000)).refunded, 0, 'قبل نصف ساعة ما زال يُنتظر');
+  const s = await sweep('sara');
+  assert.deepEqual([s.refunded, s.points], [1, COSTS.omni_video]);
+  assert.equal(pts('sara'), 1000);
+  assert.ok(!locks.has('sara'), 'القفل فُكّ');
+  const p = await poll('veo', c.body.op);
+  assert.equal(p.body.status, 'FAILED');
+  assert.ok(!leaks(p));
+  assert.equal((await sweep('sara', NOW + 2 * LATE)).refunded, 0);
+  assert.equal(pts('sara'), 1000, 'مرّة واحدة');
+});
+
+test('srv-video-5 ج: بقي حتّى الاستلام — veo-status يسلّم الرابط الموقّع ويسوّي التذكرة بلا نداء مزوّد، والكنس لا يردّ', async () => {
+  reset(); account('sara', 1000); providersOk();
+  const c = await omni('sara');
+  calls = [];
+  const p = await poll('veo', c.body.op);
+  assert.ok(delivered(p), JSON.stringify(p.body));
+  assert.match(p.body.output[0], /^\/api\/video\?action=veo-download&uri=https%3A%2F%2Fgenerativelanguage\.googleapis\.com%2Fv1beta%2Ffiles%2Fomni1/);
+  assert.equal(calls.length, 0, 'لا نداء مزوّد عند التسليم');
+  assert.ok(!kv.has(job.ticketKey(c.body.op)), 'سُوّيت التذكرة نجاحًا');
+  assert.equal((await sweep('sara')).refunded, 0);
+  assert.equal(pts('sara'), 1000 - COSTS.omni_video, 'دفع مرّة واستلم');
+  assert.ok(delivered(await poll('veo', c.body.op)), 'إعادة الاستطلاع تسلّم');
+});
+
+test('srv-video-5 د: تعذّر حفظ الناتج = الرابط مباشرة كما كان، بلا ردّ وبلا تذكرة (لا فيديو مجّانيّ ولا نقاط ضائعة لمن ينتظر)', async () => {
+  reset(); account('sara', 1000); providersOk();
+  fail.rawPrefix = 'omni:op:';
+  const c = await omni('sara');
+  assert.equal(c.code, 200, JSON.stringify(c.body));
+  assert.match(String(c.body.url), /^\/api\/video\?action=veo-download&uri=/);
+  assert.equal(pts('sara'), 1000 - COSTS.omni_video, 'سُلِّم فلا ردّ');
+  assert.ok(![...kv.keys()].some((k) => k.indexOf('vidjob:') === 0 && !k.startsWith('vidjob:open:')), 'لا تذكرة');
+  assert.equal((await sweep('sara')).refunded, 0, 'لا يُكنس المسلَّم');
+});
+
+test('srv-video-5 هـ: المالك — op بلا تذكرة ولا خصم، ويُسلَّم من الاستطلاع', async () => {
+  reset(); providersOk();
+  const c = await omni('omran');
+  assert.match(String(c.body.op), /^omni\//, JSON.stringify(c.body));
+  assert.ok(!kv.has(job.ticketKey(c.body.op)));
+  assert.ok(delivered(await poll('veo', c.body.op)));
+});
+
+test('srv-video-5 و: الفشل قبل الناتج يردّ مرّة واحدة بلا تذكرة ولا op، ورمية بعد كتابة التذكرة لا تردّ ثانيةً (التذكرة تملك الردّ)', async () => {
+  const cases = [
+    [() => ({ status: 429, body: { error: { message: 'Your prepayment credits are depleted.' } } }), 503],
+    [() => ({ status: 200, body: { steps: [{ type: 'model_output', content: [{ type: 'text', text: 'blocked' }] }] } }), 502],
+    [() => ({ throw: Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' }) }), 500],
+  ];
+  for (const [reply, code] of cases) {
+    reset(); account('sara', 1000); providersOk(); P.omni = reply;
+    const c = await omni('sara');
+    assert.equal(c.code, code, JSON.stringify(c.body));
+    assert.equal(pts('sara'), 1000, 'رُدّت مرّة');
+    assert.ok(![...kv.keys()].some((k) => k.indexOf('omni:op:') === 0 || (k.indexOf('vidjob:') === 0 && !k.startsWith('vidjob:open:'))), 'لا ناتج ولا تذكرة');
+    assert.equal((await sweep('sara')).refunded, 0, 'ولا ردّ ثانٍ من الكنس');
+    assert.equal(pts('sara'), 1000);
+  }
+  // الردّ نفسه يرمي بعد كتابة التذكرة: لا ردّ في catch، والكنس يردّ مرّة واحدة
+  reset(); account('sara', 1000); providersOk();
+  let first = true;
+  const c = await omni('sara', { res: { json(v) { if (first && v && v.op) { first = false; throw new Error('socket closed'); } this.body = v; return this; } } });
+  assert.equal(c.code, 500);
+  assert.equal(pts('sara'), 1000 - COSTS.omni_video, 'catch لم يردّ — التذكرة تملكه');
+  const s = await sweep('sara');
+  assert.equal(s.refunded, 1);
+  assert.equal(pts('sara'), 1000, 'ردّ واحد بالضبط');
+});
+
+/* العميل: فرع «فيديو سينمائيّ» في صانع الفيديو بالـvm — op ثمّ استطلاع veo-status، والرابط القديم يعمل كما كان */
+const VIDEO = read('js/app-11-video.js');
+function extractBlock(source, startNeedle) {
+  const a = source.indexOf(startNeedle);
+  assert.ok(a >= 0, 'بداية الكتلة: ' + startNeedle);
+  let depth = 0, i = source.indexOf('{', a);
+  for (; i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') { depth--; if (depth === 0) break; }
+  }
+  return source.slice(a, i + 1);
+}
+async function runOmniClient(createReply, statusReplies) {
+  const log = { status: [], fetches: [], create: null, saved: null };
+  const ctx = {
+    window: { t: (k) => ({ axAttachVidFailed: 'VIDFAILED-T' })[k] || k,
+      postWithConfirm: async (url, payload) => { log.create = { url, payload }; return new Response(JSON.stringify(createReply.body), { status: createReply.code || 200 }); } },
+    creationMode: 'omni', text: 'قطّة', ratio: '720:1280', token: 'tk', wantQuality: false, style: '', filmHeroBase64: null, filmHeroMime: null,
+    setStatus: (s) => log.status.push(String(s)), bT: (a) => a, throwIfDeclined: () => {},
+    friendlyError: (e) => 'ERR:' + (e && (e.code || e.message)),
+    fetch: async (u) => { log.fetches.push(String(u)); if (/action=veo-status/.test(String(u))) return new Response(JSON.stringify(statusReplies.shift() || { status: 'RUNNING' }), { status: 200 }); return new Response('vid', { status: 200 }); },
+    URL: { createObjectURL: () => 'blob:omni' },
+    resultEl: { style: {} }, downloadEl: { style: {} }, btnGenerate: { disabled: true },
+    autoSaveVideo: (u) => { log.saved = u; },
+    setInterval: (fn) => setInterval(fn, 1), clearInterval, Response, encodeURIComponent, Error, Object, Promise, Array, String, Number, console,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractBlock(VIDEO, 'function makePollGuard(') + '\n' + extractBlock(VIDEO, 'function vmkT(') + '\nthis.__run = async function(){ ' + extractBlock(VIDEO, "    if(creationMode === 'omni'){") + ' };', ctx);
+  await ctx.__run();
+  return { ctx, log };
+}
+
+test('srv-video-5 ز: العميل — يستلم op فيستطلع veo-status حتّى SUCCEEDED ويعرض الفيديو؛ FAILED بنصّ مترجم؛ والرابط المباشر القديم كما كان', async () => {
+  const OUT = '/api/video?action=veo-download&uri=x&sig=s';
+  const a = await runOmniClient({ body: { op: 'omni/abc' } }, [{ status: 'RUNNING' }, { status: 'SUCCEEDED', output: [OUT] }]);
+  assert.equal(a.log.create.url, '/api/video?action=omni-create');
+  assert.ok(a.log.fetches.some((u) => u === '/api/video?action=veo-status&op=' + encodeURIComponent('omni/abc')), 'يستطلع بالـop: ' + a.log.fetches.join(' | '));
+  assert.equal(a.ctx.resultEl.src, 'blob:omni', 'عرض الفيديو: ' + a.log.status.join(' | '));
+  assert.equal(a.ctx.downloadEl.href, OUT);
+  assert.ok(a.log.fetches.includes(OUT), 'نزّل الرابط المسلَّم');
+  assert.equal(a.ctx.btnGenerate.disabled, false);
+
+  const f = await runOmniClient({ body: { op: 'omni/def' } }, [{ status: 'FAILED', failure: 'x', failureCode: 'failed' }]);
+  assert.equal(f.ctx.resultEl.src, undefined);
+  assert.equal(f.log.status.slice(-1)[0], 'ERR:VIDFAILED-T', 'نصّ القاموس (١٤ لغة)');
+
+  const u = await runOmniClient({ body: { error: 'unavailable', retryable: false }, code: 503 }, []);
+  assert.equal(u.log.status.slice(-1)[0], 'ERR:unavailable');
+
+  const old = await runOmniClient({ body: { url: OUT } }, []);
+  assert.ok(!old.log.fetches.some((x) => /veo-status/.test(x)), 'الرابط المباشر بلا استطلاع');
+  assert.equal(old.ctx.resultEl.src, 'blob:omni');
+  assert.equal(old.ctx.downloadEl.href, OUT);
+});
