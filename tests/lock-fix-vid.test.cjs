@@ -385,7 +385,7 @@ async function runOmniClient(createReply, statusReplies) {
     creationMode: 'omni', text: 'قطّة', ratio: '720:1280', token: 'tk', wantQuality: false, style: '', filmHeroBase64: null, filmHeroMime: null,
     setStatus: (s) => log.status.push(String(s)), bT: (a) => a, throwIfDeclined: () => {},
     friendlyError: (e) => 'ERR:' + (e && (e.code || e.message)),
-    fetch: async (u) => { log.fetches.push(String(u)); if (/action=veo-status/.test(String(u))) return new Response(JSON.stringify(statusReplies.shift() || { status: 'RUNNING' }), { status: 200 }); return new Response('vid', { status: 200 }); },
+    fetch: async (u) => { log.fetches.push(String(u)); if (/action=veo-status/.test(String(u))) { const r = statusReplies.shift() || { status: 'RUNNING' }; return new Response(JSON.stringify(r), { status: r.__code || 200 }); } return new Response('vid', { status: 200 }); },
     URL: { createObjectURL: () => 'blob:omni' },
     resultEl: { style: {} }, downloadEl: { style: {} }, btnGenerate: { disabled: true },
     autoSaveVideo: (u) => { log.saved = u; },
@@ -410,6 +410,12 @@ test('srv-video-5 ز: العميل — يستلم op فيستطلع veo-status �
   const f = await runOmniClient({ body: { op: 'omni/def' } }, [{ status: 'FAILED', failure: 'x', failureCode: 'failed' }]);
   assert.equal(f.ctx.resultEl.src, undefined);
   assert.equal(f.log.status.slice(-1)[0], 'ERR:VIDFAILED-T', 'نصّ القاموس (١٤ لغة)');
+
+  // عطل عابر عند الاستطلاع (٥xx) لا يُسقط فيديو جاهزًا مدفوعًا — يُعاد ثمّ يُسلَّم
+  const tr = await runOmniClient({ body: { op: 'omni/ghi' } }, [{ __code: 500, error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' }, { status: 'SUCCEEDED', output: [OUT] }]);
+  assert.equal(tr.ctx.resultEl.src, 'blob:omni', 'العابر يُعاد: ' + tr.log.status.join(' | '));
+  const gone = await runOmniClient({ body: { op: 'omni/jkl' } }, [{ __code: 503, error: 'unavailable', retryable: false }]);
+  assert.equal(gone.log.status.slice(-1)[0], 'ERR:unavailable', 'الخدمة متوقّفة نهائيّ لا يُعاد');
 
   const u = await runOmniClient({ body: { error: 'unavailable', retryable: false }, code: 503 }, []);
   assert.equal(u.log.status.slice(-1)[0], 'ERR:unavailable');

@@ -1501,7 +1501,10 @@
               const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(d.op));
               const s = await st.json();
               guard.ok();
-              if(s.error){ clearInterval(iv); reject(Object.assign(new Error(s.error), { code: s.error })); return; }
+              if(s.error){
+                if(s.error !== 'unavailable' && (st.status >= 500 || st.status === 429)){ guard.fail(iv, s.error); return; } /* عابر: الفيديو جاهز ومدفوع — يُعاد */
+                clearInterval(iv); reject(Object.assign(new Error(s.error), { code: s.error })); return;
+              }
               if(s.status === 'SUCCEEDED' && s.output && s.output[0]){ clearInterval(iv); resolve(s.output[0]); }
               else if(s.status === 'FAILED'){ clearInterval(iv); reject(new Error(vmkT('axAttachVidFailed', 'فشل إنشاء الفيديو', 'Video generation failed'))); }
             } catch(e){ guard.fail(iv); }
