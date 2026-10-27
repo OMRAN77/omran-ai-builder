@@ -27,13 +27,14 @@ function visibleHuaweiTools() {
 }
 
 // الاسم الإنجليزيّ في الواجهة (en) كما تكتبه الملاحظات
-const EN = { btnPortraitStyle: 'Photo Style', btnVideoMaker: 'Video Maker', btnDesignAI: 'Design AI', btnFashionAI: 'Fashion AI', btnStudioAI: 'Style AI',
+const EN = { btnPortraitStyle: 'Photo styles', btnVideoMaker: 'Video Maker', btnDesignAI: 'Design AI', btnFashionAI: 'Fashion AI', btnStudioAI: 'Style AI',
   btnAdStudio: 'Ad Studio', btnDocs: 'Document Assistant', btnEmailAssist: 'Smart Email Assistant', btnConstruction: 'Construction & Contracting Design',
-  btnQibla: 'Qibla & Prayer', btnOmranEdu: 'Education', btnReligion: 'Religious Insights', btnFeedback: 'Feedback' };
+  btnQibla: 'Qibla & Prayer', btnOmranEdu: 'Education', btnReligion: 'Religious Insights', btnFeedback: 'We value your feedback' };
 // ما يدلّ على أداة مخفيّة في نصّ المتجر
-const HIDDEN_WORDS = { btnOmranTV: /\bTV\b|تلفزيون|قنوات/, btnCV: /\bCV\b|سيرة/, btnExpense: /expense|مصاريف/i, btnQuickTemplates: /suggestion|اقتراحات/i,
-  btnGov: /government|حكوم/i, btnStocks: /stock|أسهم/i };
-const BANNED = /official|trusted|preferred|featured|\bbest\b|\btop\b|#1|number one|رسمي|موثوق|مفضل|مفضّل|مميز|مميّز|الأفضل/i;
+// (v-hw-resubmit-2: والصينيّة — المراجع على هاتف صينيّ)
+const HIDDEN_WORDS = { btnOmranTV: /\bTV\b|تلفزيون|قنوات|电视/, btnCV: /\bCV\b|سيرة|简历/, btnExpense: /expense|مصاريف|开支|支出/i, btnQuickTemplates: /suggestion|اقتراحات|建议/i,
+  btnGov: /government|حكوم|政府/i, btnStocks: /stock|أسهم|股票|股市/i };
+const BANNED = /official|trusted|preferred|featured|\bbest\b|\btop\b|#1|number one|رسمي|موثوق|مفضل|مفضّل|مميز|مميّز|الأفضل|官方|可靠|推荐|最佳|最好|精选|第一|最受欢迎/i;
 
 const notes = read('store/huawei/REVIEW-NOTES.md');
 const descriptions = notes.slice(notes.indexOf('## وصف المتجر (عربيّ)'));
@@ -70,13 +71,25 @@ test('٢. وصف المتجر بلا «رسمي/موثوق/مفضّل/مميّز
   assert.ok(notes.includes('Test account: (username) / (password)'));
 });
 
-test('٣. اللقطات الثماني من store/huawei/shots.mjs: رابط الحزمة، حساب غير المالك، هاتف ٣٦٠×٦٤٠ ×٣، ولا تلفزيون', () => {
+test('٣. اللقطات الثماني بثلاث لغات من store/huawei/shots.mjs: رابط الحزمة، حساب غير المالك، هاتف ٣٦٠×٦٤٠ ×٣، ولا تلفزيون', () => {
   const sh = read('store/huawei/shots.mjs');
   const names = [...sh.matchAll(/\{ name: '([^']+)'/g)].map((m) => m[1]);
   assert.equal(names.length, 8, 'AppGallery: ثماني لقطات كحدّ أقصى');
-  const files = fs.readdirSync(path.join(root, 'store/huawei/screenshots')).filter((f) => f.endsWith('.png')).sort();
-  assert.deepEqual(files, names.map((n) => n + '.png').sort(), 'الملفّات = قائمة المولّد (لا لقطة قديمة باقية)');
-  assert.ok(!files.some((f) => /tv|cv|expense|gov|suggest|stock/i.test(f)), 'لا لقطة لأداة مخفيّة');
+  const { PNG } = require('pngjs');
+  // v-hw-resubmit-2: العربيّة في المجلّد نفسه، والإنجليزيّة en/ والصينيّة zh/ — التطبيق يتبع لغة الهاتف
+  for (const sub of ['', 'en', 'zh']) {
+    const dir = path.join(root, 'store/huawei/screenshots', sub);
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort();
+    assert.deepEqual(files, names.map((n) => n + '.png').sort(), (sub || 'ar') + ': الملفّات = قائمة المولّد (لا لقطة قديمة باقية)');
+    assert.ok(!files.some((f) => /tv|cv|expense|gov|suggest|stock/i.test(f)), 'لا لقطة لأداة مخفيّة');
+    for (const f of files) {
+      const buf = fs.readFileSync(path.join(dir, f)); const p = PNG.sync.read(buf);
+      assert.ok(p.width === 1080 && p.height === 1920, (sub || 'ar') + '/' + f + ' ١٠٨٠×١٩٢٠');
+      assert.ok(buf.length < 2 * 1024 * 1024, (sub || 'ar') + '/' + f + ' أقلّ من ٢ م.ب');
+    }
+  }
+  assert.ok(sh.includes("const LANGS = (opt('langs') || 'ar,en,zh')") && sh.includes("'--lang', lang"), 'المولّد يصوّر اللغات الثلاث');
+  assert.match(read('scripts/ui-shot.mjs'), /localStorage\.setItem\('aiapp_lang', l\)/);
   assert.ok(sh.includes("'--path', s.path || '/?store=huawei'") && sh.includes("'--user', 'reviewer'") && !/'--user', 'omran'/.test(sh));
   assert.ok(sh.includes("'--viewport', '360x640', '--scale', '3'"), '١٠٨٠×١٩٢٠');
   assert.ok(sh.includes('scripts/ui-shot.mjs'));
@@ -91,4 +104,105 @@ test('٤. إعادة تقديم 1.3.13 نفسها بلا بناء (المالك:
   const readme = read('store/huawei/README.md');
   assert.ok(readme.includes('**إعادة تقديم 1.3.13 (٢٢ أكتوبر): لا بناء.**') && readme.includes('v-hw-resubmit-1313'));
   assert.ok(!(readme + notes).includes('1.3.14') && !(readme + notes).includes('20261022'), 'لا إصدار جديد');
+});
+
+test('٥. نسخة هواوي وحدها تخفي خيارات العلامات التجاريّة (1.15) ووصف «موثوقة»، والموقع كما هو', () => {
+  const a05 = read('js/app-05-ui.js');
+  const blk = a05.slice(a05.indexOf('var OMRAN_HW_BRAND_HIDE = {'), a05.indexOf('\n}', a05.indexOf('function omranHwHidden(')) + 2);
+  assert.ok(blk.includes('function omranHwHidden('), 'القائمة والدالّة في app-05');
+  const vm = require('node:vm');
+  // safe = html.store-safe؛ pkg = علم الحزمة ?store=huawei في الجلسة (متصفّح هواوي على الموقع يأخذ store-safe بلا العلم)
+  const run = (safe, pkg = safe) => {
+    const cls = new Set(safe ? ['store-safe'] : []);
+    const ctx = { document: { documentElement: { classList: { contains: (c) => cls.has(c) } } }, __swallow() {},
+      sessionStorage: { getItem: (k) => (pkg && k === 'aiapp_store' ? 'huawei' : null) } };
+    vm.runInNewContext(blk + '\nthis.H = omranHwHidden; this.L = OMRAN_HW_BRAND_HIDE;', ctx);
+    return ctx;
+  };
+  const hw = run(true), web = run(false), hwBrowser = run(true, false);
+  for (const [k, v] of [['portrait', 'lego'], ['portrait', 'disney'], ['portrait', 'ghibli'], ['trend', 'pixarstory'], ['trend', 'legofy'], ['studio', 'anime:ghibli'], ['stamps', 'ميكي ماوس']]) {
+    assert.equal(hw.H(k, v), true, 'هواوي يخفي ' + k + ':' + v);
+    assert.equal(web.H(k, v), false, 'الموقع يُبقي ' + k + ':' + v);
+    assert.equal(hwBrowser.H(k, v), false, 'متصفّح هواوي على الموقع يُبقي ' + k + ':' + v);
+  }
+  assert.equal(hw.H('portrait', 'anime'), false, 'الأنماط العامّة باقية في هواوي');
+  // المراجعة العدائيّة: «الدببة الثلاثة» (We Bare Bears) وكروس فت أيضًا
+  assert.equal(hw.H('stamps', 'الدببة الثلاثة'), true); assert.equal(hw.H('studio', 'body:bdcrossfita'), true);
+  // أداة الفيديو في المحادثة لا تشغّل ترندًا مخفيًّا، و«فاجئني» في الطوابع بلا علامات حين يرسل التطبيق noBrands
+  assert.match(read('js/app-17-agent-tools.js'), /omranHwHidden\('trend', String\(va\.trend\)\)\) va\.trend = ''/);
+  assert.equal((read('js/app-09-attach.js').match(/noBrands:\(typeof omranHwPackage==='function' && omranHwPackage\(\)\)/g) || []).length, 2, 'طلبا الطوابع');
+  const stamps = read('api/_lib/stamps.js');
+  assert.match(stamps, /if \(b\.noBrands === true\) \{ const nb = pool\.filter\(\(t\) => !STAMP_BRAND_RE\.test\(t\.d\)\)/);
+  const RE = new RegExp(stamps.match(/const STAMP_BRAND_RE = \/(.+)\/;/)[1]);
+  for (const d of ['MY MELODY SANRIO theme', 'SPONGEBOB cartoon theme', 'WE BARE BEARS theme', 'POKEMON cartoon theme']) assert.ok(RE.test(d), 'علامة: ' + d);
+  for (const d of ['OUTER SPACE theme', 'DINOSAUR theme', 'UAE HERITAGE theme', 'RACE CARS theme']) assert.ok(!RE.test(d), 'عامّ: ' + d);
+  // مثال الإعلان بلا اسم سيّارة تجاريّ
+  assert.doesNotMatch(read('i18n/ad-studio.js'), /Land Cruiser|لاندكروزر|Toyota|巡洋舰|Крузер|लैंड क्रूज़र/);
+  // كلّ قيمة مخفيّة موجودة فعلًا في مصدرها (لو تغيّر اسمها يسقط الاختبار بدل أن تعود العلامة بصمت)
+  const pc = read('js/partials-core.js'), tr = read('js/app-11-video-trends-data.js');
+  const st = read('js/app-13-stocks-init.js') + read('js/app-12-studio-more.js'), a09 = read('js/app-09-attach.js');
+  for (const v of hw.L.portrait) assert.ok(pc.includes('value="' + v + '"'), 'نمط الصورة موجود: ' + v);
+  for (const v of hw.L.trend) assert.ok(tr.includes('"key":"' + v + '"'), 'الترند موجود: ' + v);
+  for (const fv of hw.L.studio) { const v = fv.split(':')[1]; assert.ok(st.includes("value:'" + v + "'") || st.includes('"value":"' + v + '"'), 'خيار الستايل موجود: ' + fv); }
+  for (const k of hw.L.stamps) assert.ok(a09.includes("{k:'" + k + "'"), 'ثيم الطوابع موجود: ' + k);
+  // مواضع العرض الأربعة تمرّ بالفلتر
+  assert.match(read('js/app-12-studios.js'), /omranHwHidden\('portrait', v\)/);
+  assert.match(read('js/app-12-studios.js'), /omranHwHidden\('portrait', o\.value\)/);
+  assert.match(read('js/app-11-video-trends.js'), /omranHwHidden\('trend', t\.key\)/);
+  assert.match(read('js/app-11-video-trends.js'), /omranHwHidden\('trend', x\.key\)/);
+  assert.match(read('js/app-13-stocks-init.js'), /omranHwHidden\('studio', feature \+ ':' \+ o\.value\)/);
+  assert.match(a09, /var __groups=\(typeof omranHwStampGroups==='function'\?omranHwStampGroups:function\(g\)\{return g;\}\)\(\[/); assert.match(a05, /omranHwHidden\('stamps', th\.k\)/);
+  // وصف بطاقة التفسير «إجابات موثوقة / trusted / 可靠» لا يظهر في هواوي
+  assert.match(read('css/redesign.css'), /html\.store-safe #btnReligion \.tcSub\{display:none !important;\}/);
+});
+
+test('٦. ما يظهر في اللقطة الصينيّة مترجم: أسطر «أفكار بلا صورة» في الديكور بالـ١٤ لغة، وبطاقات أنواع المقاولات تُعاد تسميتها بعد وصول القاموس', () => {
+  const KEYS = ['decorIdeasTitlePoster', 'decorIdeaPh', 'decorIdeaGo'];
+  const a03 = read('js/app-03-i18n-data.js');
+  for (const L of ['ar', 'en']) {
+    const m = a03.match(new RegExp('Object\\.assign\\(I18N\\.' + L + ', (\\{"decorIdeasTitlePoster"[^\\n]*\\})\\);'));
+    assert.ok(m, L + ': كتلة المفاتيح الثلاثة');
+    const o = JSON.parse(m[1]); for (const k of KEYS) assert.ok(o[k], L + ' ' + k);
+  }
+  const seen = new Set();
+  for (const L of ['zh', 'fr', 'es', 'ru', 'tr', 'id', 'fil', 'hi', 'ur', 'bn', 'ne', 'ml']) {
+    const m = read('i18n/' + L + '.js').match(new RegExp('Object\\.assign\\(I18N\\["' + L + '"\\], (\\{"decorIdeasTitlePoster"[^\\n]*\\})\\);'));
+    assert.ok(m, L + ': كتلة المفاتيح الثلاثة');
+    const o = JSON.parse(m[1]);
+    for (const k of KEYS) { assert.ok(o[k] && !/^[\\x00-\\x7F]*$/.test(o[k]) || L === 'id' || L === 'fil' || L === 'fr' || L === 'es' || L === 'tr', L + ' ' + k); seen.add(o[k]); }
+  }
+  assert.equal(seen.size, 36, 'ترجمات لا نسخ');
+  const a12 = read('js/app-12-studios.js');
+  assert.match(a12, /__tk\('decorIdeaPh', /); assert.match(a12, /__tk\('decorIdeaGo', /);
+  assert.match(a12, /window\.t\(__k\)/, 'العنوان يقرأ decorIdeasTitlePoster أصلًا');
+  // وسم القواميس رُفع وسببه في رأس التعليق (رقمًا لا تثبيتًا)
+  const tag = read('js/app-04-i18n-state.js').split('\n').find((l) => l.includes("sc.src = 'i18n/' + lg + '.js?v=")) || '';
+  const tm = /\.js\?v=(\d+)'; \/\* v-hw-resubmit-2 \((\d+)\): /.exec(tag);
+  assert.ok(tm && Number(tm[1]) >= Number(tm[2]) && Number(tm[2]) >= 774, 'وسم اللغات مرفوع وسبب الطلب في الرأس');
+  // المقاولات: render يعيد اسم كلّ بطاقة من خيار النوع (القاموس الكسول يصل بعد بناء البطاقات)
+  const cx = read('js/app-15-cx-simple.js');
+  const render = (cx.match(/function render\(\)\{[\s\S]*?\n  \}/) || [''])[0];
+  assert.match(render, /#cxStartCards \[data-cx-preset\]/); assert.match(render, /cardLabel\(b\.getAttribute\('data-cx-preset'\)\)/);
+  assert.match(cx, /function cardLabel\(type\)\{/); assert.match(cx, /var lb = cardLabel\(p\.type\);/);
+});
+
+test('٧. المراجعة العدائيّة: أوّل شاشة صينيّة بالمبسّطة، والتلميح يُترجم، و«按教材学习»، وخانة Remarks تدلّ على زرّ الأدوات بالأدوات الـ١٣', () => {
+  // بطاقة الخصوصيّة (أوّل ما يراه مراجع صينيّ) بالصينيّة المبسّطة لا التقليديّة
+  const zh = read('i18n/zh.js');
+  const line = zh.split('\n').find((l) => l.includes('"privacyConsentTitle"')) || '';
+  assert.ok(line.includes('隐私优先') && line.includes('同意并继续'), 'مبسّطة');
+  assert.doesNotMatch(line, /隱|與|請|閱|說|資|權|條|並|繼/, 'بلا حروف تقليديّة');
+  // تلميح الطلب الأوّل يحمل مفتاحه فيترجمه applyLanguage حين يصل القاموس الكسول
+  assert.match(read('js/app-10-features.js'), /tip\.id = 'askAllHintTip'; tip\.setAttribute\('data-i18n', 'askAllHintText'\);/);
+  // بطاقة التعليم الرئيسيّة بالصينيّة
+  const edu = read('js/edu.js');
+  assert.ok(edu.includes("zh:'按教材学习——选择国家、年级和科目'") && !edu.includes('课程中的课程'));
+  assert.match(read('index.html'), /\/js\/edu\.js\?v=(\d+)"/);
+  assert.ok(Number(read('index.html').match(/\/js\/edu\.js\?v=(\d+)"/)[1]) >= 673, 'وسم edu.js مرفوع');
+  // خانة Remarks: ٣٠٠ حرف على الأكثر، الأدوات الـ١٣ بأسمائها، وأين زرّ الأدوات (العرض التلقائيّ مرّة لكلّ جهاز)
+  const r = (notes.match(/## خانة Remarks[^\n]*\n```\n([^\n]+)\n```/) || [])[1] || '';
+  assert.ok(r.length > 200 && r.length <= 300, 'Remarks ≤ ٣٠٠: ' + r.length);
+  const list = (r.match(/13 tools \(([^)]*)\)/) || [])[1] || '';
+  assert.equal(list.split(',').length, 13, 'الأدوات الـ١٣ في القوس');
+  assert.ok(r.includes('bottom bar > Tools'), 'مكان زرّ الأدوات');
 });

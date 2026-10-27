@@ -574,7 +574,7 @@ test('x-runtime-ui-3 بطاقات المقاولات تُعاد كتابتها �
       appendChild(c) { el.children.push(c); c.parentElement = el; return c; },
       insertAdjacentElement(p, c) { return c; },
       addEventListener() {}, remove() {}, contains: () => true, scrollIntoView() {},
-      querySelectorAll: (sel) => (sel === '.cx-sec' ? secs : []),
+      querySelectorAll: (sel) => (sel === '.cx-sec' ? secs : (sel === 'span' ? el.children.filter((c) => c.tagName === 'SPAN') : [])),
     };
     Object.defineProperty(el, 'innerHTML', { get() { return html; }, set(v) { html = String(v); const rx = /<(\w+)\b[^>]*\bid="([^"]+)"/g; let m; while ((m = rx.exec(html))) { const c = mk(m[1]); c.id = m[2]; } } });
     reg.push(el);
@@ -594,7 +594,8 @@ test('x-runtime-ui-3 بطاقات المقاولات تُعاد كتابتها �
     document: {
       readyState: 'complete',
       getElementById: (id) => { for (let i = reg.length - 1; i >= 0; i--) if (reg[i].id === id) return reg[i]; return null; },
-      createElement: mk, querySelectorAll: () => [], documentElement: {}, addEventListener() {},
+      /* main (v-hw-resubmit-2) أصلح الشيء نفسه: render يعيد اسم كلّ بطاقة من [data-cx-preset] — الصفحة المزيّفة تجيب هذا المحدِّد */
+      createElement: mk, querySelectorAll: (sel) => (sel === '#cxStartCards [data-cx-preset]' ? reg.filter((e) => e.getAttribute('data-cx-preset') !== null) : []), documentElement: {}, addEventListener() {},
     },
     MutationObserver: class { constructor(f) { observer = f; } observe() {} },
     requestAnimationFrame: (f) => f(), setTimeout: () => 0,

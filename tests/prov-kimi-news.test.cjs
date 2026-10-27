@@ -128,7 +128,7 @@ test('٦. الأخبار أُزيلت كلّها: لا ملفّات ولا نا�
   assert.ok(!st.includes('id="notifSection"') && !st.includes('chkNewsAlerts'));
   assert.ok(!read('js/app-05-ui.js').match(/SETTINGS_NAV_IDS = \[[^\]]*notifSection/));
   const html = read('index.html');
-  assert.ok(html.includes('/js/partials-core.js?v=676') && html.includes('/js/partials-settings.js?v=706'));
+  assert.ok(html.includes('/js/partials-core.js?v=676') && html.includes('/js/partials-settings.js?v=707'));
   const cr = read('api/_lib/check-reminders.js');
   assert.ok(!cr.includes('newsItems') && !cr.includes('breaking-news'));
   assert.match(cr, /if \(r\.type === 'news'\) \{\n[^\n]*\n\s+nextList\.push\(r\);\n\s+continue;\n\s+\}/, 'سجلّ الأخبار القديم يبقى كما هو بلا دفع');
@@ -172,5 +172,5 @@ test('٨. شريط المزوّد للمالك وحده: لا قاعدة CSS ت�
   const m = read('js/modes.js');
   assert.match(m, /bar\.style\.cssText = 'align-self:flex-end; margin-top:-2px; display:' \+ \(isOwner\(\) \? 'inline-flex' : 'none'\)/);
   assert.match(m, /if\(bar\) bar\.style\.display = on \? 'flex' : 'none';/);
-  assert.match(read('index.html'), /css\/redesign\.css\?v=696/);
+  assert.match(read('index.html'), /css\/redesign\.css\?v=697/);
 });

@@ -874,6 +874,30 @@ document.addEventListener('click', closeMsgMoreMenu);
    لا بطاقة في شاشة الأدوات (app-10-features) ولا اقتراح في المحادثة. الكود والنوافذ والخادم باقية كما هي؛
    الإرجاع = حذف المعرّف من هذه القائمة. */
 var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'];
+/* v-hw-resubmit-2 (رفض هواوي ٢٦ أكتوبر؛ القاعدة 1.15: لا أسماء علامات أو امتيازات تجاريّة لطرف ثالث بلا ترخيص): داخل تطبيق هواوي
+   وحده (html.store-safe ومعه علم الحزمة ?store=huawei في الجلسة — ui-wiring يضع store-safe أيضًا لمتصفّح هواوي على الموقع، وذاك يبقى
+   كما هو) تُخفى الخيارات المسمّاة بعلامة أو امتياز تجاريّ — أنماط الصور، ترندات الفيديو، الستايل، الطوابع. الموقع والمتاجر الأخرى كما هي؛
+   الأسماء العامّة (هوليوود، كي-بوب، رسمي = أنيق) باقية. الإرجاع = حذف القيمة من القائمة. */
+var OMRAN_HW_BRAND_HIDE = {
+  portrait: ['disney', 'ghibli', 'lego', 'linkedin', 'stickerpack', 'polaroid', 'celebtoon'],
+  trend: ['pixarstory', 'pixarsketch', 'ghibli', 'legofy'],
+  studio: ['anime:ghibli', 'anime:anghibliwarm', 'anime:anghiblicool', 'anime:anghiblivivid', 'anime:anghiblipastel', 'idphoto:linkedin',
+    'iconic:icracerstd', 'iconic:icracerscene', 'iconic:icracerposter', 'body:bdcrossfita', 'body:bdcrossfitb', 'body:bdcrossfitc'],
+  stamps: ['كرومي', 'ماي ملدي', 'هالو كاتي', 'الدببة الثلاثة', 'سبونج بوب', 'توم وجيري', 'ميكي ماوس', 'فروزن', 'سبايدرمان', 'باو باترول', 'بيبا', 'بوكيمون', 'ماريو', 'مينيونز', 'باربي', 'كارز']
+};
+function omranHwPackage(){
+  try{ return document.documentElement.classList.contains('store-safe') && sessionStorage.getItem('aiapp_store') === 'huawei'; }
+  catch(e){ __swallow(e, 'ui:hw-package'); return false; }
+}
+function omranHwHidden(kind, v){
+  try{ return omranHwPackage() && (OMRAN_HW_BRAND_HIDE[kind] || []).indexOf(v) >= 0; }
+  catch(e){ __swallow(e, 'ui:hw-brand-hide'); return false; }
+}
+/* ورقة ثيمات الطوابع (app-09 __stPickTheme): تسقط الشخصيّات المخفيّة، والمجموعة التي تفرغ تسقط بعنوانها — خارج __sendPromptCore (سقّاطة البنية) */
+function omranHwStampGroups(groups){
+  return groups.map(function(g){ return { t: g.t, th: g.th.filter(function(th){ return !omranHwHidden('stamps', th.k); }) }; })
+    .filter(function(g){ return g.th.length > 0; });
+}
 /* بطاقة «اقتراحات» في الصفحة الرئيسيّة (هواوي) تتبع زرّها المخفيّ */
 if(OMRAN_PAUSED_TOOLS.indexOf('btnQuickTemplates') >= 0){
   try{ var __hwSug = document.getElementById('hwCardSuggestions'); if(__hwSug){ __hwSug.hidden = true; __hwSug.style.setProperty('display', 'none', 'important'); } }

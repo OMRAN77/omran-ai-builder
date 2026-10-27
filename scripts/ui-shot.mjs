@@ -4,10 +4,11 @@
 // الاستعمال:
 //   node scripts/ui-shot.mjs --out /tmp/shots [--user omran] [--both|--desktop|--mobile] [--path /]
 //        [--settings accountSection] [--eval "JS يُنفَّذ في الصفحة قبل اللقطة"] [--wait 1500] [--full]
-//        [--viewport 540x960] [--scale 2] [--name 01-tools] [--settle 400]
+//        [--viewport 540x960] [--scale 2] [--name 01-tools] [--settle 400] [--lang ar]
 //        [--pw /path/to/node_modules/playwright-core]
 //   --viewport/--scale يفرضان مقاس اللقطة (لقطات المتاجر ٩:١٦ مثلًا 540x960 ×2 = 1080×1920)،
 //   --name يسمّي الملفّ بدل desktop/mobile، و--settle مهلة بعد --eval (فتح نافذة أداة قبل اللقطة).
+//   --lang لغة الواجهة (الافتراضيّ ar) — لقطات المتجر بلغة هاتف المراجع (v-hw-resubmit-2).
 //
 // يخدم المستودع ثابتًا من جذره ويردّ على /api/* بـ{} (لا شبكة)، يتخطّى المقدّمة وإشعار الخصوصيّة
 // وتبديل الجلسة التلقائيّ، ويحفظ desktop.png و/أو mobile.png ويطبع ملخّصًا JSON فيه أخطاء الصفحة.
@@ -33,6 +34,7 @@ const VIEWPORT = VP ? { width: Number(VP[1]), height: Number(VP[2]) } : null;
 const SCALE = Number(opt('scale', 0)) || 0;
 const NAME = String(opt('name', '') || '');
 const SETTLE = Number(opt('settle', 400)) || 400;
+const LANG = /^[a-z]{2,3}$/.test(String(opt('lang', 'ar'))) ? String(opt('lang', 'ar')) : 'ar';
 const which = opt('mobile', false) ? ['mobile'] : (opt('desktop', false) ? ['desktop'] : ['desktop', 'mobile']);
 
 async function loadPlaywright() {
@@ -65,7 +67,8 @@ const base = 'http://127.0.0.1:' + srv.address().port;
 
 const pwMod = await loadPlaywright();
 const chromium = pwMod.chromium || (pwMod.default && pwMod.default.chromium); // CJS عبر import: الاسم قد يكون تحت default
-const browser = await chromium.launch({ executablePath: chromiumPath() });
+// لغة المتصفّح نفسه مع --lang: على جهاز لغته عربيّة كانت حقول الأرقام تعرض ١ و٣٠٠ في لقطات en/zh
+const browser = await chromium.launch({ executablePath: chromiumPath(), args: LANG === 'ar' ? [] : ['--lang=' + (LANG === 'zh' ? 'zh-CN' : 'en-US')] });
 fs.mkdirSync(OUT, { recursive: true });
 const summary = { base, out: OUT, user: USER || null, shots: [], pageErrors: [], consoleErrors: [] };
 try {
@@ -74,13 +77,13 @@ try {
     const ctx = await browser.newContext(mobile
       ? { viewport: VIEWPORT || { width: 400, height: 860 }, isMobile: true, hasTouch: true, deviceScaleFactor: SCALE || 2, userAgent: 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36' }
       : { viewport: VIEWPORT || { width: 1280, height: 900 }, deviceScaleFactor: SCALE || 1 });
-    await ctx.addInitScript((u) => {
+    await ctx.addInitScript(({ u, l }) => {
       try { sessionStorage.setItem('omran_sess_v1', '1'); } catch (e) { /* لا شيء */ }
       try {
-        localStorage.setItem('aiapp_intro', '0'); localStorage.setItem('aiapp_privacy_ack', '1'); localStorage.setItem('aiapp_lang', 'ar');
+        localStorage.setItem('aiapp_intro', '0'); localStorage.setItem('aiapp_privacy_ack', '1'); localStorage.setItem('aiapp_lang', l);
         if (u) { localStorage.setItem('aiapp_username', u); localStorage.setItem('aiapp_auth_token', 'local'); }
       } catch (e) { /* لا شيء */ }
-    }, USER);
+    }, { u: USER, l: LANG });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => summary.pageErrors.push(kind + ': ' + String(e && e.message || e).slice(0, 200)));
     page.on('console', (m) => { if (m.type() === 'error') summary.consoleErrors.push(kind + ': ' + m.text().slice(0, 200)); });

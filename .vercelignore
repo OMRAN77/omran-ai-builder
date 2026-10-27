@@ -24,7 +24,6 @@ js/app-15-floorplan.js
 js/app-17-agent-tools.js
 # v-vercelignore-parts: الأجزاء التي أُضيفت بعد القائمة الأولى (كانت تُنشر مفردةً بجانب الحزمة).
 # tests/vercelignore-parts.test.cjs يفشل إن وُلد جزء بلا سطره هنا.
-js/app-00-intro.js
 js/app-05-img-save.js
 js/app-05-save-media.js
 js/app-05-share-text.js
