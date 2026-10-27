@@ -9,6 +9,7 @@
 // v-pay-refund: وأحداث charge.refunded وcharge.dispute.created (سحب ما منحته الدفعة — pay-refund.js) وcustomer.subscription.deleted
 // (لا سحب: الفترة المدفوعة تكمل). وPayPal على ‎/api/webhook?src=paypal‎ بأحداث PAYMENT.CAPTURE.REFUNDED وPAYMENT.CAPTURE.REVERSED
 // وCUSTOMER.DISPUTE.CREATED، ومعرّف ذلك الويب هوك في PAYPAL_WEBHOOK_ID (بلا المعرّف = رفض).
+// v-lock-credit: وPAYMENT.CAPTURE.COMPLETED (شحن التقاطٍ كان PENDING حين يكتمل — بلا متصفّح الدافع).
 //
 // التحقق من التوقيع يدويًا بـ HMAC (بلا مكتبة stripe — المشروع كله fetch خام)،
 // والمنح عبر grantPlanToUser نفسه: أمان التكرار مضمون (نفس الجلسة/الفاتورة
@@ -91,7 +92,9 @@ async function paypalWebhook(req, res) {
   try { raw = (await rawBody(req)).toString('utf8'); event = JSON.parse(raw); } catch (e) { res.status(400).json({ error: 'bad payload' }); return; }
   if (!(await pr.verifyPaypalSig(raw, req.headers || {}, hookId))) { res.status(401).json({ error: 'signature verification failed' }); return; }
   try {
-    const r = await pr.paypalEvent(event);
+    // v-lock-credit (srv-money-6): اكتمال التقاطٍ كان PENDING يشحن الطلب من الخادم (paypal-order captureCompleted)؛ والباقي استرداد وانعكاس واعتراض.
+    const completed = String((event && event.event_type) || '') === 'PAYMENT.CAPTURE.COMPLETED';
+    const r = completed ? await require('./_lib/paypal-order.js').captureCompleted(event) : await pr.paypalEvent(event);
     if (r && r.retry) { res.status(503).json({ error: 'busy, retry' }); return; }
     res.status(200).json({ received: true });
   } catch (e) {

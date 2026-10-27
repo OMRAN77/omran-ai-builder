@@ -83,7 +83,7 @@ async function creditOrder(order, username) {
   const m = matchOrder(order);
   if (!m.plan) return { credited: false, reason: 'no_plan' };
   // v-sec-paypal-capture: لا نشحن إلّا إذا اكتمل الالتقاط فعلًا. التقاط PENDING/غيره = لا شحن الآن؛
-  // يكتمل لاحقًا عبر ويب هوك PAYMENT.CAPTURE.COMPLETED أو إعادة 'claim' حين يصير COMPLETED.
+  // يكتمل لاحقًا عبر ويب هوك PAYMENT.CAPTURE.COMPLETED (captureCompleted أدناه، v-lock-credit) أو إعادة 'claim' حين يصير COMPLETED.
   if (m.status !== 'COMPLETED') return { credited: false, reason: 'capture_' + (m.status || 'unknown').toLowerCase() };
   if (m.ref && m.ref !== username && !(await wasNamed(username, m.ref))) return { credited: false, reason: 'not_owner' };
   m.plan = grantablePlan(m.plan, order);
@@ -102,6 +102,35 @@ async function safeCredit(order, username) {
     try { require('./log-error.js').logError('paypal:credit', e, { orderId: order && order.id, user: username }); } catch (e2) { /* guard-ok — التسجيل تحسين لا شرط */ }
     return { credited: false, reason: 'error' };
   }
+}
+
+/* v-lock-credit (srv-money-6، باب المال بموافقة المالك ٢٧ أكتوبر): التقاط PENDING (شيك بنكيّ، مراجعة PayPal) كان لا يُشحن إلّا من
+   متصفّح الدافع (aiapp_pp_pending، ‏claim عند كلّ تركيز ٧ أيّام) — بدّل جهازه أو مسح التخزين أو تأخّر الاكتمال، فالمال مسحوب بلا خدمة؛
+   والويب هوك الذي يعد به التعليق أعلاه كان يتجاهل الحدث. الآن PAYMENT.CAPTURE.COMPLETED (موقَّعًا، api/webhook.js?src=paypal) يجلب
+   الطلب نفسه من PayPal (الحالة الحاليّة لا حمولة الحدث، فإعادة حدث قديم بعد استرداد لا تشحن) ويشحنه لصاحبه بـcreditOrder نفسها —
+   حجز رقم الطلب الذرّيّ يمنع الازدواج مع capture وclaim، وحجز مسحوب قبل الشحن (pay-refund) يمنعه بعد الاسترداد. طلب بلا صاحب
+   (قبل reference_id) لا يُشحن من هنا كـclaim. لا 2xx إلّا والأثر تمّ أو لا يُعاد: عطل عابر يرمي (500)، والتقاط ما زال PENDING عند
+   PayPal ⇒ retry (503)؛ ما لا يُشحن أبدًا (مستردّ، مبلغ بلا خطّة، حساب محذوف) 200 وسطر في سجلّ أخطاء المالك. */
+async function captureCompleted(event) {
+  const r0 = (event && event.resource) || {};
+  const orderId = String((r0.supplementary_data && r0.supplementary_data.related_ids && r0.supplementary_data.related_ids.order_id) || '');
+  const note = (reason) => { try { require('./log-error.js').logError('paypal:capture-completed', new Error(reason), { orderId: orderId.slice(0, 60), capture: String(r0.id || '').slice(0, 60) }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ } };
+  if (!orderId) { note('no_order'); return { status: 'ignored' }; }
+  const token = await getAccessToken();
+  if (!token) throw new Error('paypal token unavailable'); // التوقيع تحقّق بالرمز نفسه للتوّ: غيابه عطل عابر يُعاد
+  const r = await fetch(`${baseUrl()}/v2/checkout/orders/${encodeURIComponent(orderId)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+  const order = await r.json().catch(() => null);
+  if (!r.ok || !order) {
+    if (r.status === 404) { note('order_not_found'); return { status: 'unknown' }; }
+    throw new Error('paypal order lookup ' + r.status);
+  }
+  const m = matchOrder(order);
+  if (!m.ref) { note('legacy'); return { status: 'legacy' }; }
+  if (m.status === 'PENDING') return { status: 'pending', retry: true }; // الحدث سبق حالة الطلب عند PayPal
+  if (order.status !== 'COMPLETED') { note('order_' + String(order.status || 'unknown').toLowerCase()); return { status: 'not_completed' }; }
+  const out = await creditOrder(order, m.ref); // يرمي عند فشل الشحن ⇒ 500 فيعيد PayPal (والحجز لا يشحن مرّتين)
+  if (!out.credited) note(out.reason || 'not_credited');
+  return { status: out.credited ? (out.alreadyGranted ? 'already' : 'credited') : String(out.reason || 'none') };
 }
 
 function creditReply(data, out) {
@@ -208,3 +237,4 @@ module.exports.baseUrl = baseUrl;
 module.exports.matchOrder = matchOrder;
 module.exports.RETIRED_SINCE = RETIRED_SINCE; // v-media-merge — للاختبار
 module.exports.grantablePlan = grantablePlan; // v-media-merge: مسار الاسترداد البديل (pay-refund paypalLegacy) يحوّل الخطّة كما حوّلها المنح
+module.exports.captureCompleted = captureCompleted; // v-lock-credit (srv-money-6): ويب هوك PAYMENT.CAPTURE.COMPLETED
